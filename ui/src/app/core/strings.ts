@@ -2197,13 +2197,13 @@ export const STRINGS = {
   sslFieldOcspUrl: 'OCSP responder URL',
   /** EXPERIENCE.md:484 */
   sslOwnRole:
-    'OcuPilot\'s agent makes every call to its model provider through this configuration. OcuPilot\'s installer sets its type, peer verification, trusted certificates and whether it is enabled, and restores them at every start.',
+    'OcuPilot\'s agent makes every call to its model provider through this configuration. OcuPilot\'s installer sets its type, peer verification, trusted certificates, minimum TLS version, cipher list and whether it is enabled, and restores them at every start.',
   /** EXPERIENCE.md:485 */
   sslRefusalOcuPilot:
     'OcuPilot\'s installer sets this setting of its own provider configuration and restores it at every start, so it cannot be changed here.',
   /** EXPERIENCE.md:485 */
   sslRefusalProviderNamed:
-    'Provider calls are made through this SSL/TLS configuration, so while Switches names it, or while it is OcuPilot\'s own, it cannot be deleted, created, or have its type, peer verification, trusted certificates or enablement changed.',
+    'Provider calls are made through this SSL/TLS configuration, so while Switches names it, or while it is OcuPilot\'s own, it cannot be deleted, created, or have its type, peer verification, trusted certificates, minimum TLS version, cipher list or enablement changed.',
   /** EXPERIENCE.md:486 */
   sslFileClassicOnly:
     'File locations are set on the classic portal\'s SSL/TLS Configuration page.',

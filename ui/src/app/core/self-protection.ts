@@ -62,8 +62,8 @@ export const SYSTEM_RESOURCE_RULE = 'system-resource';
 
 /**
  * The rule that protects OcuPilot's own provider SSL/TLS configuration (Story 9.5, AD-10): the
- * instance refuses its delete, and a change to its type, peer verification, trusted certificates
- * or enablement, whoever asks.
+ * instance refuses its delete, and a change to its type, peer verification, trusted certificates,
+ * minimum TLS version, cipher list or enablement, whoever asks.
  */
 export const OCUPILOT_SSL_RULE = 'ocupilot-ssl';
 

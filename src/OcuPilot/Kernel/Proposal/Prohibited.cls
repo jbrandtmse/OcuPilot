@@ -239,10 +239,11 @@ Parameter OCUPILOTRESOURCEREASON = "This resource guards OcuPilot's own data or 
 
 /// <p>The write would delete OcuPilot's own provider SSL/TLS configuration
 /// (<parameter>OcuPilot.Kernel.State.Base.SSLCONFIG</parameter>), or change its type, its peer
-/// verification, its trusted certificates or whether it is enabled
+/// verification, its trusted certificates, its minimum TLS version, its cipher list or whether it is enabled
 /// (<method>OcuPilotSslFields</method>): the installer sets those for AD-32 and restores them at
-/// every start, and peer verification off would send the provider key over unverified TLS (AD-10 as
-/// amended 2026-09-24). Every other field of it may change.</p>
+/// every start, and peer verification off, or a floor below TLS 1.2, would send the provider key over TLS nobody
+/// verified or over a protocol no longer sound (AD-10 as amended 2026-09-24 and 2026-10-14). Every other field of it may
+/// change.</p>
 Parameter OCUPILOTSSL = "PROHIBITED.OCUPILOTSSL";
 
 /// <p>The one sentence <parameter>OCUPILOTSSL</parameter> carries, caller-neutral, published and
@@ -251,15 +252,15 @@ Parameter OCUPILOTSSLREASON = "OcuPilot's installer sets this setting of its own
 
 /// <p>The write would delete the SSL/TLS configuration the egress row names for provider calls
 /// (<method>ProviderSsl</method>), create one under its name, or change its type, its peer verification, its trusted
-/// certificates or whether it is enabled (<method>OcuPilotSslFields</method>): peer verification off, or the
-/// configuration gone and made again unverified, would send the provider key over TLS nobody verified (AD-10 as amended
-/// 2026-10-13). A failed read of the egress row refuses too. Every other field of it may change, and once another
+/// certificates, its minimum TLS version, its cipher list or whether it is enabled (<method>OcuPilotSslFields</method>):
+/// peer verification off, or the configuration gone and made again unverified, would send the provider key over TLS
+/// nobody verified (AD-10 as amended 2026-10-13 and 2026-10-14). A failed read of the egress row refuses too. Every other field of it may change, and once another
 /// configuration is named it is not refused.</p>
 Parameter PROVIDERSSL = "PROHIBITED.PROVIDERSSL";
 
 /// <p>The one sentence <parameter>PROVIDERSSL</parameter> carries, caller-neutral, published and pinned as
 /// <parameter>UNCOVEREDFIELDREASON</parameter> is.</p>
-Parameter PROVIDERSSLREASON = "Provider calls are made through this SSL/TLS configuration, so while Switches names it, or while it is OcuPilot's own, it cannot be deleted, created, or have its type, peer verification, trusted certificates or enablement changed.";
+Parameter PROVIDERSSLREASON = "Provider calls are made through this SSL/TLS configuration, so while Switches names it, or while it is OcuPilot's own, it cannot be deleted, created, or have its type, peer verification, trusted certificates, minimum TLS version, cipher list or enablement changed.";
 
 /// <p>The effect <method>WeakensByEffect</method> answers for an SSL/TLS configuration that is not
 /// OcuPilot's own whose peer verification a write turns off: the server's certificate is no longer
@@ -1132,8 +1133,8 @@ ClassMethod CoveredTypes() As %List
 /// <p>An SSL/TLS configuration's are the thirteen settings its editor sets
 /// (<method>SslFields</method>) and its private key password, a template field the edit declares
 /// secret. Its file locations are not among them: no caller names a path (AD-21). A change to
-/// OcuPilot's own provider configuration's type, peer verification, trusted certificates or
-/// enablement is refused (<method>Ssl</method>).</p>
+/// OcuPilot's own provider configuration's type, peer verification, trusted certificates, minimum TLS version, cipher
+/// list or enablement is refused (<method>Ssl</method>).</p>
 /// <p>The auditing configuration's one is <code>Enabled</code>, and it carries <b>no</b> asymmetric
 /// predicate: AD-10 does not forbid turning auditing off, and the product's answer to it is the
 /// card's warning, the recorded drop and the banner rather than a refusal (AD-15 as amended
@@ -4570,7 +4571,8 @@ ClassMethod ResourceNames(pObject As %DynamicObject, Output pNames) [ Private ]
 /// server configuration's <code>CustomizationRoles</code> grants privilege when it adds a privileged
 /// role (<method>AddsPrivilegedCustomizationRole</method>). Any other type grants nothing here.</p>
 /// <p>A privileged routine application's <code>MatchRoles</code> is judged as a web application's, and a routine it
-/// adds while a target role escalates is a grant too (<method>AddsRoutineUnderPrivilege</method>, Story 18.33).</p>
+/// adds while a target role escalates is a grant too (<method>AddsRoutineUnderPrivilege</method>, Story 18.33), as is
+/// clearing its <code>Resource</code> or enabling it while one does (<method>WidensPrivilegedReach</method>).</p>
 ClassMethod GrantsPrivilegeByEffect(pType As %String, pPayload As %DynamicObject, pTarget As %DynamicObject, Output pGrants As %Boolean, pId As %String = "") As %Status
 {
     Set pGrants = 0
@@ -4636,6 +4638,7 @@ ClassMethod GrantsPrivilegeByEffect(pType As %String, pPayload As %DynamicObject
             ; target role in MatchRoles escalates is a grant too.
             Set tSC = ..GrantsPrivilegeByEffect(..#TYPEWEBAPPLICATION, pPayload, tTarget, .pGrants, pId)
             If $$$ISOK(tSC) && 'pGrants Set tSC = ..AddsRoutineUnderPrivilege(pPayload, tTarget, .pGrants)
+            If $$$ISOK(tSC) && 'pGrants Set tSC = ..WidensPrivilegedReach(pPayload, tTarget, .pGrants)
             Quit
         }
         If pType = ..#TYPEWEBAPPLICATION {
@@ -4659,12 +4662,12 @@ ClassMethod GrantsPrivilegeByEffect(pType As %String, pPayload As %DynamicObject
     Quit tSC
 }
 
-/// <p>The target roles <var>pObject</var>'s <parameter>APPLICATIONROLEFIELDS</parameter> grant, as
-/// <var>pNames(&lt;upper-cased name&gt;) = &lt;name as written&gt;</var>. The member is an array of
-/// <code>{MatchRole, TargetRoles}</code> entries on the vendor's own body; the stored
-/// <code>&lt;match&gt;:&lt;target&gt;[:&lt;target&gt;...]</code> string, entries comma-separated,
-/// is read too. A matching role is not collected: it names who receives the grant, not what is
-/// granted.</p>
+/// <p>The (matching role, target role) pairs <var>pObject</var>'s <parameter>APPLICATIONROLEFIELDS</parameter> grant, as
+/// <var>pNames(&lt;upper-cased matching role&gt; _ $Char(1) _ &lt;upper-cased target&gt;) = &lt;target as written&gt;</var>.
+/// The member is an array of <code>{MatchRole, TargetRoles}</code> entries on the vendor's own body; the stored
+/// <code>&lt;match&gt;:&lt;target&gt;[:&lt;target&gt;...]</code> string, entries comma-separated, is read too. The key
+/// carries the matching role because it names who receives the grant: a held target moved to another matching role
+/// (an empty one grants it to every caller) is a new pair.</p>
 ClassMethod ApplicationRoleNames(pObject As %DynamicObject, Output pNames) [ Private ]
 {
     Kill pNames
@@ -4678,11 +4681,13 @@ ClassMethod ApplicationRoleNames(pObject As %DynamicObject, Output pNames) [ Pri
             While tIterator.%GetNext(.tIndex, .tEntry) {
                 If '$IsObject(tEntry) || 'tEntry.%IsA("%Library.DynamicObject") Continue
                 If tEntry.%GetTypeOf("TargetRoles") '= "array" Continue
+                Set tMatch = ""
+                If tEntry.%GetTypeOf("MatchRole") = "string" Set tMatch = $ZConvert($ZStrip(tEntry.%Get("MatchRole"), "<>W"), "U")
                 Set tTargets = tEntry.%Get("TargetRoles").%GetIterator()
                 While tTargets.%GetNext(.tTargetIndex, .tRole) {
                     If $IsObject(tRole) Continue
                     Set tOne = $ZStrip(tRole, "<>W")
-                    If tOne '= "" Set pNames($ZConvert(tOne, "U")) = tOne
+                    If tOne '= "" Set pNames(tMatch _ $Char(1) _ $ZConvert(tOne, "U")) = tOne
                 }
             }
             Continue
@@ -4691,9 +4696,10 @@ ClassMethod ApplicationRoleNames(pObject As %DynamicObject, Output pNames) [ Pri
         Set tRaw = pObject.%Get(tField)
         For tI = 1:1:$Length(tRaw, ",") {
             Set tEntryText = $Piece(tRaw, ",", tI)
+            Set tMatch = $ZConvert($ZStrip($Piece(tEntryText, ":", 1), "<>W"), "U")
             For tJ = 2:1:$Length(tEntryText, ":") {
                 Set tOne = $ZStrip($Piece(tEntryText, ":", tJ), "<>W")
-                If tOne '= "" Set pNames($ZConvert(tOne, "U")) = tOne
+                If tOne '= "" Set pNames(tMatch _ $Char(1) _ $ZConvert(tOne, "U")) = tOne
             }
         }
     }
@@ -5637,7 +5643,7 @@ ClassMethod Ssl(pId As %String, pToolClass As %String, ByRef pChanged, Output pP
                 Quit
             }
         }
-        ; Story 18.40: the configuration the egress row names is held to the same four fields and its delete.
+        ; Story 18.40: the configuration the egress row names is held to the same fields and its delete.
         Set tMovesNamed = tDelete
         Set tOwnFields = ..OcuPilotSslFields()
         For tI = 1:1:$ListLength(tOwnFields) {
@@ -5656,12 +5662,12 @@ ClassMethod Ssl(pId As %String, pToolClass As %String, ByRef pChanged, Output pP
     Quit tSC
 }
 
-/// <p>The four settings of OcuPilot's own provider configuration the installer sets and restores at
+/// <p>The six settings of OcuPilot's own provider configuration the installer sets and restores at
 /// every start (<method>OcuPilot.Install.Installer.EnsureSslConfiguration</method>), which no caller
-/// changes.</p>
+/// changes, and which hold for the configuration the egress row names too.</p>
 ClassMethod OcuPilotSslFields() As %List
 {
-    Quit $ListBuild("Type", "VerifyPeer", "CAFile", "Enabled")
+    Quit $ListBuild("Type", "VerifyPeer", "CAFile", "Enabled", "TLSMinVersion", "CipherList")
 }
 
 /// <p>An SSL/TLS configuration's settable fields, create and change alike: the thirteen settings of
@@ -5951,24 +5957,57 @@ ClassMethod AddsRoutineUnderPrivilege(pPayload As %DynamicObject, pTarget As %Dy
             }
         }
         If 'tAdds Quit
-        Do ..ApplicationRoleNames($Select(pPayload.%GetTypeOf("MatchRoles") = "array": pPayload, 1: pTarget), .tRoles)
-        Set tKey = ""
-        For {
-            Set tKey = $Order(tRoles(tKey))
-            If tKey = "" Quit
-            Set tSC = ..RoleEscalates(tRoles(tKey), .tEscalates)
-            If $$$ISERR(tSC) Quit
-            If tEscalates {
-                Set pGrants = 1
-                Quit
-            }
-        }
+        Set tSC = ..ApplicationRolesEscalate(pPayload, pTarget, .pGrants)
     } Catch ex {
         Set pGrants = 0
         Set tSC = ex.AsStatus()
     }
     If $$$ISERR(tSC) Set pGrants = 0
     Quit tSC
+}
+
+/// <p>Whether a target role of the application's <code>MatchRoles</code> escalates (<method>RoleEscalates</method>), in
+/// <var>pEscalates</var>. The roles are <var>pPayload</var>'s when it sends them and <var>pTarget</var>'s otherwise.</p>
+ClassMethod ApplicationRolesEscalate(pPayload As %DynamicObject, pTarget As %DynamicObject, Output pEscalates As %Boolean) As %Status [ Private ]
+{
+    Set pEscalates = 0
+    Set tSC = $$$OK
+    Do ..ApplicationRoleNames($Select(pPayload.%GetTypeOf("MatchRoles") = "array": pPayload, 1: pTarget), .tRoles)
+    Set tKey = ""
+    For {
+        Set tKey = $Order(tRoles(tKey))
+        If tKey = "" Quit
+        Set tSC = ..RoleEscalates(tRoles(tKey), .tOne)
+        If $$$ISERR(tSC) Quit
+        If tOne {
+            Set pEscalates = 1
+            Quit
+        }
+    }
+    Quit tSC
+}
+
+/// <p>Whether <var>pPayload</var> clears <var>pTarget</var>'s <code>Resource</code> (<method>ClearsResource</method>) or turns
+/// <code>Enabled</code> on while <var>pTarget</var> holds it off, in <var>pGrants</var>, with a target role of the
+/// application's <code>MatchRoles</code> that escalates (<method>ApplicationRolesEscalate</method>) (Story 18.47, AD-10).
+/// An application with no <code>Resource</code> runs for anyone, and a disabled one for no one, so either change hands the
+/// roles' privilege to more callers. <code>Enabled</code> reads in the forms the routine application rules admit: a
+/// boolean, the number 1 or 0, the text <code>"1"</code> or <code>"0"</code>.</p>
+ClassMethod WidensPrivilegedReach(pPayload As %DynamicObject, pTarget As %DynamicObject, Output pGrants As %Boolean) As %Status [ Private ]
+{
+    Set pGrants = 0
+    If '(..ClearsResource(pPayload, pTarget) || (..EnabledOn(pPayload) && '..EnabledOn(pTarget))) Quit $$$OK
+    Quit ..ApplicationRolesEscalate(pPayload, pTarget, .pGrants)
+}
+
+/// <p>Whether <var>pObject</var>'s <code>Enabled</code> reads as on: the boolean <code>true</code>, the number 1 or the
+/// text <code>"1"</code>. A member of any other form, or none, reads as off.</p>
+ClassMethod EnabledOn(pObject As %DynamicObject) As %Boolean [ Private ]
+{
+    If '$IsObject(pObject) Quit 0
+    Set tType = pObject.%GetTypeOf("Enabled")
+    If (tType '= "boolean") && (tType '= "number") && (tType '= "string") Quit 0
+    Quit (pObject.%Get("Enabled") = 1)
 }
 
 /// <p>Whether the agent can reach the tool <var>pToolName</var>: <method>RegistryClass</method>'s <code>Resolve</code>, which

@@ -184,6 +184,7 @@ XData ReadShapes
 <screen name="RoutineAppList" filter="Name,Resource,Description" sort="Name,Enabled,Resource,Description" kinds="Name:name,Enabled:status,Resource:identifier,Description:text"/>
 <screen name="RoutineAppRoleList" filter="MatchRole" sort="MatchRole" kinds="MatchRole:name,TargetRoles:identifier"/>
 <screen name="RoutineAppRoutineList" filter="RoutineOrClass,Db" sort="RoutineOrClass,Db,Type" kinds="RoutineOrClass:name,Db:identifier,Type:text"/>
+<screen name="WebAppRoleList" filter="MatchRole" sort="MatchRole" kinds="MatchRole:name,TargetRoles:identifier"/>
 <screen name="SqlPrivilegeList" filter="Type,Object,Action,GrantedBy,GrantedVia" sort="Object,Type,Action,GrantedBy,GrantedVia" kinds="Object:name,Type:text,Action:text,GrantedBy:text,GrantOption:text,GrantedVia:text"/>
 <screen name="SqlColumnPrivilegeList" filter="Column,Action,GrantedBy,GrantedVia" sort="Column,Action,GrantedBy,GrantedVia" kinds="Column:name,Action:text,GrantedBy:text,GrantOption:text,GrantedVia:text"/>
 <screen name="SqlAdminPrivilegeList" filter="Privilege,GrantedVia" sort="Privilege,GrantedVia" kinds="Privilege:name,GrantOption:text,GrantedVia:text"/>

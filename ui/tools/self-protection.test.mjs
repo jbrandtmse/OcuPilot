@@ -325,7 +325,7 @@ const KERNEL_REFUSALS = [
   // with at Confirm and on the route.
   ['ALLOWLISTAGENT', 'allowListRefusalAgent'],
   // Story 18.40: the SSL/TLS configuration the egress row names for provider calls, whose delete, a create under its name
-  // and a change to its type, peer verification, trusted certificates or enablement either caller is answered with.
+  // and a change to its type, peer verification, trusted certificates, minimum TLS version, cipher list or enablement either caller is answered with.
   ['PROVIDERSSL', 'sslRefusalProviderNamed'],
 ];
 

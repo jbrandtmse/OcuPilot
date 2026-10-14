@@ -32,7 +32,7 @@ import { ScreenStores, type SortDirection } from '../core/screen-store';
 import { selfProtectionReason } from '../core/self-protection';
 import { Session } from '../core/session';
 import { STRINGS, stringFor } from '../core/strings';
-import { formatCapNotice, formatRowCount, rowFor } from '../core/table-model';
+import { entityKeyOf, formatCapNotice, formatRowCount, rowFor } from '../core/table-model';
 import { ViewOptions } from '../core/view-options';
 
 /**
@@ -475,7 +475,7 @@ export class CommandBar {
     // depend on a fact that has nothing to do with it.
     const selected = screen.rowActions.length === 0
       ? ''
-      : this.stores.for(screen.descriptor, screen.refreshRates).selection()[0] ?? '';
+      : entityKeyOf(this.stores.for(screen.descriptor, screen.refreshRates).selection()[0] ?? '');
     const row = selected === '' ? null : rowFor(this.stores.for(screen.descriptor, screen.refreshRates).data(), screen, selected);
     const checked = screen.multiSelect === null ? 0 : this.stores.for(screen.descriptor, screen.refreshRates).checked().size;
     const onBanner = bannerActionIds(screen);

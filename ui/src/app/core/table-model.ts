@@ -45,6 +45,34 @@ export function rowKey(row: unknown, declaration: Pick<ScreenDeclaration, 'id' |
   return name === undefined ? '' : textOf(fieldOf(row, name.field));
 }
 
+/** The private separator between a row's entity key and the ordinal that keeps it unique in a view (`viewKeys`). */
+export const VIEW_KEY_SEPARATOR = '\u0002';
+
+/**
+ * The key each row of `rows` is selected, activated, checked and marked changed by in one view: the first row holding a
+ * non-empty `rowKey` keeps it, and every later row holding the same one, and every row whose `rowKey` is empty, takes
+ * the key, `VIEW_KEY_SEPARATOR` and its ordinal among the rows with that key (Story 18.47). A list whose name column
+ * repeats, or whose id part is empty, therefore selects one row per click and walks every row by the arrow keys; a
+ * list whose keys are unique reads exactly its `rowKey`s.
+ *
+ * A link, a locator and an action name the entity, never this key: `entityKeyOf` returns the `rowKey` it was made from.
+ */
+export function viewKeys(rows: readonly unknown[], declaration: Pick<ScreenDeclaration, 'id' | 'table'>): readonly string[] {
+  const seen = new Map<string, number>();
+  return rows.map((row) => {
+    const key = rowKey(row, declaration);
+    const ordinal = (seen.get(key) ?? 0) + 1;
+    seen.set(key, ordinal);
+    return key !== '' && ordinal === 1 ? key : `${key}${VIEW_KEY_SEPARATOR}${ordinal}`;
+  });
+}
+
+/** The `rowKey` the view key `key` was made from (`viewKeys`); `key` itself where it carries no ordinal. */
+export function entityKeyOf(key: string): string {
+  const at = key.indexOf(VIEW_KEY_SEPARATOR);
+  return at < 0 ? key : key.slice(0, at);
+}
+
 /**
  * The row of `rows` whose `rowKey` is `key`, as its fields, or `null` where none is or `key` is
  * `''`. A surface that draws a row action passes it to `selfProtectionReason`, whose row-reading

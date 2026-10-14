@@ -1434,6 +1434,7 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
       'OcuPilot.Screen.Descriptor.TaskUpcomingList',
       'OcuPilot.Screen.Descriptor.WalletSecretList',
       'OcuPilot.Screen.Descriptor.WebAppPctAccessList',
+      'OcuPilot.Screen.Descriptor.WebAppRoleList',
     ]
   );
   for (const descriptor of ['GlobalMappingList', 'RoutineMappingList', 'PackageMappingList']) {

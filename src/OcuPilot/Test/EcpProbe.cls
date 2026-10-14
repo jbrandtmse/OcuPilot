@@ -872,8 +872,7 @@ ClassMethod PendingRestart(Output pReasons) As %Integer
 /// of lines: the license facts; every ECP data server with its listed status and connection state;
 /// every remote database configuration; the count of processes per job type and of ECP jobs;
 /// <code>Config.ECP</code> and <code>Config.config</code>'s ECP values; <code>%Service_ECP</code>'s
-/// enablement; the <code>%ECPClient</code> and <code>%ECPServer</code> SSL/TLS configurations; the monitor
-/// state; the line counts of <code>messages.log</code> and <code>alerts.log</code> and of ERROR #7846
+/// enablement; the <code>%ECPClient</code> and <code>%ECPServer</code> SSL/TLS configurations; the line counts of <code>messages.log</code> and <code>alerts.log</code> and of ERROR #7846
 /// lines; the async task rows a probe account queued; the six ECP settings; whether a restart is
 /// pending; and the authorized and pending SSL/TLS computer names.</p>
 ClassMethod Snapshot() As %DynamicArray
@@ -949,7 +948,6 @@ ClassMethod Snapshot() As %DynamicArray
         Set tSSL = ##class(Security.SSLConfigs).Exists("%ECPServer", .tSSLObject)
         Set tLines("sslconfig|%ECPServer|" _ tSSL _ "|" _ $Select(tSSL && $IsObject($Get(tSSLObject)): tSSLObject.Enabled, 1: "")) = ""
         Set tSSLObject = ""
-        Set tLines("monitor|" _ $SYSTEM.Monitor.State()) = ""
         Set $NAMESPACE = tOrigNS
     } Catch ex {
         Set $NAMESPACE = tOrigNS

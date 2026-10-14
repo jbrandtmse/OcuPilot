@@ -57,12 +57,13 @@ import {
   formatColumnWidth,
   formatRowCount,
   isMoveKey,
+  entityKeyOf,
   moveActive,
   parseMaxRows,
   reconcile,
   resizedWidth,
-  rowFor,
   rowKey,
+  viewKeys as viewKeysOf,
 } from '../core/table-model';
 
 /**
@@ -677,13 +678,18 @@ export class DataTable implements OnInit {
     const multiSelect = screen.multiSelect;
     const checked = store.checked();
     const ineligible = multiSelect === null || (multiSelect.ineligibleKey ?? '') === '' ? '' : this.lookup(multiSelect.ineligibleKey ?? '');
-    return this.view().map((row, index) => {
-      const key = rowKey(row, screen);
-      const checkable = multiSelect !== null && key !== '' && isCheckable(screen, row);
+    const view = this.view();
+    const keys = viewKeysOf(view, screen);
+    return view.map((row, index) => {
+      // `entity` is the row's own key, which a link names; `key` is what selects, activates, checks and marks it in this
+      // view, and differs only for a row whose key repeats or is empty (Story 18.47, DW-2328).
+      const entity = rowKey(row, screen);
+      const key = keys[index];
+      const checkable = multiSelect !== null && entity !== '' && isCheckable(screen, row);
       const id = `${this.tableId}-row-${index}`;
       const isActive = key !== '' && key === active;
       const isChanged = key !== '' && markedKeys.has(key);
-      const linkValue = rowTargetScreen !== null ? textOf(fieldOf(row, rowTargetField)) : key;
+      const linkValue = rowTargetScreen !== null ? textOf(fieldOf(row, rowTargetField)) : entity;
       const withheld = rowTargetScreen !== null && rowTargetUnless !== '' && fieldOf(row, rowTargetUnless) === true;
       const url = linkable && linkValue !== '' && !withheld ? withQuery(`${linkRoute}/${encodeEntityId(linkValue)}`, currentUrl) : '';
       const classicHref = rowLinked ? classicRowHref(row, screen) : '';
@@ -916,7 +922,9 @@ export class DataTable implements OnInit {
     this.generation();
     const screen = this.screen();
     const selected = this.store().selection()[0] ?? '';
-    const row = rowFor(this.store().data(), screen, selected);
+    const selectedAt = selected === '' ? -1 : this.viewKeys().indexOf(selected);
+    const selectedRow: unknown = selectedAt < 0 ? null : this.view()[selectedAt];
+    const row = selectedRow !== null && typeof selectedRow === 'object' ? (selectedRow as Readonly<Record<string, unknown>>) : null;
     const onBanner = bannerActionIds(screen);
     return screen.rowActions
       .filter((action) => action.id !== '')
@@ -933,7 +941,7 @@ export class DataTable implements OnInit {
       .map((action) => {
         // A registrant's own reason outranks the row's (AD-53), as the command bar orders them.
         const registered = this.actions.reason(screen.descriptor, action.id);
-        const reason = registered !== '' ? registered : selfProtectionReason(action.selfProtection, selected, this.signedIn(), row);
+        const reason = registered !== '' ? registered : selfProtectionReason(action.selfProtection, entityKeyOf(selected), this.signedIn(), row);
         const label = actionLabel(screen.descriptor, action.id);
         return {
           id: action.id,
@@ -1661,8 +1669,7 @@ export class DataTable implements OnInit {
   }
 
   private viewKeys(): readonly string[] {
-    const screen = this.screen();
-    return this.view().map((row) => rowKey(row, screen));
+    return viewKeysOf(this.view(), this.screen());
   }
 
   private activeIndex(): number {
@@ -1735,7 +1742,9 @@ export class DataTable implements OnInit {
     const screen = this.screen();
     const store = this.store();
     if (screen.multiSelect === null || store.checked().size === 0) return;
-    const checkable = new Set(this.view().filter((row) => isCheckable(screen, row)).map((row) => rowKey(row, screen)));
+    const view = this.view();
+    const keys = viewKeysOf(view, screen);
+    const checkable = new Set(keys.filter((_key, index) => isCheckable(screen, view[index])));
     const kept = [...store.checked()].filter((key) => checkable.has(key));
     if (kept.length !== store.checked().size) store.setChecked(kept);
   }
@@ -1785,7 +1794,7 @@ export class DataTable implements OnInit {
       const row = this.viewKeyFor(key);
       if (row === '') continue;
       this.announcedChanged.set(key, said);
-      this.announcement.set(withReadBack(formatChangeSentence(changeSentenceTemplate(action), row), readBack));
+      this.announcement.set(withReadBack(formatChangeSentence(changeSentenceTemplate(action), entityKeyOf(row)), readBack));
     }
   }
 
@@ -1799,19 +1808,19 @@ export class DataTable implements OnInit {
    * was created -- so a write to `/csp/MyApp` publishes `/csp/myapp` and an exact match marks a key
    * no row holds, leaving the write with no highlight, no scroll, no announcement and no toast.
    *
-   * `rowKey` itself stays unfolded: it is the selection, link and locator key, and folding it
-   * would change route segments.
+   * `rowKey` itself stays unfolded: it is the link and locator key and, where a row's key is unique, its
+   * selection key too (`viewKeys`), and folding it would change route segments.
    */
   private viewKeyFor(id: string): string {
     if (id === '') return '';
     if (this.lastKeys.includes(id)) return id;
     const type = this.screen().entityType;
     const canonical = normalizeEntityId(type, id);
-    return this.lastKeys.find((key) => normalizeEntityId(type, key) === canonical) ?? '';
+    return this.lastKeys.find((key) => normalizeEntityId(type, entityKeyOf(key)) === canonical) ?? '';
   }
 
   /**
-   * The key the mark covering row `rowKey` was stored under, or `''` when no mark covers it.
+   * The key the mark covering the row with view key `viewKey` was stored under, or `''` when no mark covers it.
    *
    * The inverse of `viewKeyFor`, and needed for the same reason: a change event marks the
    * **canonical** id (AD-13) while a row key is the instance's own spelling, so clearing a mark
@@ -1819,12 +1828,13 @@ export class DataTable implements OnInit {
    * read "Changed" for the life of the screen's store while the user worked on it.
    * `ScreenStore.clearChanged('')` is a no-op, so an unmarked row costs one set lookup here.
    */
-  private changedKeyFor(rowKey: string): string {
-    if (rowKey === '') return '';
+  private changedKeyFor(viewKey: string): string {
+    const entity = entityKeyOf(viewKey);
+    if (entity === '') return '';
     const changed = this.store().changed();
-    if (changed.has(rowKey)) return rowKey;
+    if (changed.has(entity)) return entity;
     const type = this.screen().entityType;
-    const canonical = normalizeEntityId(type, rowKey);
+    const canonical = normalizeEntityId(type, entity);
     for (const key of changed) {
       if (normalizeEntityId(type, key) === canonical) return key;
     }

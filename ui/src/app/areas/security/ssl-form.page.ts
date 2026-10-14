@@ -71,6 +71,8 @@ interface FieldView {
   readonly checked: boolean;
   readonly options: readonly Choice[];
   readonly disabled: boolean;
+  /** OcuPilot's own provider configuration's installer owns this setting, so it is drawn with the published reason (AD-10). */
+  readonly refused: boolean;
   readonly reason: string;
   readonly invalid: boolean;
   readonly describedBy: string | null;
@@ -386,7 +388,7 @@ const KEY_TYPES: Readonly<Record<string, string>> = {
                 <select
                   class="ocu-field-input"
                   [id]="view.id"
-                  [disabled]="locked"
+                  [disabled]="locked || view.disabled"
                   [attr.aria-invalid]="view.invalid"
                   [attr.aria-describedby]="view.describedBy"
                   (change)="onText(view.field, $event)"
@@ -396,6 +398,9 @@ const KEY_TYPES: Readonly<Record<string, string>> = {
                   }
                 </select>
               </div>
+              @if (view.refused) {
+                <p class="ocu-field-caption" [id]="view.id + '-refusal'">{{ STRINGS.sslRefusalOcuPilot }}</p>
+              }
               @if (view.invalid) {
                 <p class="ocu-form-error" [id]="view.id + '-reason'">{{ view.reason }}</p>
               }
@@ -411,7 +416,7 @@ const KEY_TYPES: Readonly<Record<string, string>> = {
                   spellcheck="false"
                   [id]="view.id"
                   [value]="view.value"
-                  [readOnly]="locked"
+                  [readOnly]="locked || view.disabled"
                   [attr.aria-invalid]="view.invalid"
                   [attr.aria-describedby]="view.describedBy"
                   (input)="onText(view.field, $event)"
@@ -419,6 +424,9 @@ const KEY_TYPES: Readonly<Record<string, string>> = {
                 ></textarea>
               </div>
               <p class="ocu-field-caption" [id]="view.id + '-caption'">{{ STRINGS.webAppCorsListCaption }}</p>
+              @if (view.refused) {
+                <p class="ocu-field-caption" [id]="view.id + '-refusal'">{{ STRINGS.sslRefusalOcuPilot }}</p>
+              }
               @if (view.invalid) {
                 <p class="ocu-form-error" [id]="view.id + '-reason'">{{ view.reason }}</p>
               }
@@ -1140,6 +1148,7 @@ export class SslFormPage {
       checked: this.store.flag(field),
       options: options.length === 0 || options.some((option) => option.value === value) || value === '' ? options : [{ value, label: value }, ...options],
       disabled,
+      refused: this.store.lockedField(field),
       reason,
       invalid,
       describedBy: described.length === 0 ? null : described.join(' '),

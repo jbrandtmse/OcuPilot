@@ -12,6 +12,7 @@ import { dirname, join } from 'node:path';
 //   active wherever it moved" goes red.
 // - `parseMaxRows` accepts 0 -> "DW-17 bad cap" goes red.
 // - `cellView` ignores its `emptyKey` -> "a column's emptyKey" goes red.
+// - `viewKeys` returns `rowKey` for every row (Story 18.47, DW-2328) -> "a view key is unique" goes red.
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const core = (name) => join(uiRoot, 'src', 'app', 'core', name);
@@ -37,6 +38,32 @@ test('a row key is the name column text, or the composite parts joined by the sh
 
   const composite = screenDeclaration({ table: TABLE, id: { kind: 'composite', parts: ['NameSpace', 'Name'] } });
   assert.equal(model.rowKey({ Name: '/csp/app', NameSpace: 'USER' }, composite), `USER${COMPOSITE_SEPARATOR}/csp/app`);
+});
+
+test('Story 18.47, DW-2328: a view key is unique where a row key repeats or is empty, and entityKeyOf gives the row key back', () => {
+  const single = screenDeclaration({ table: TABLE });
+  const rows = [{ Name: 'Metric' }, { Name: 'Other' }, { Name: 'Metric' }, { Name: '' }, { Name: 'Metric' }, { Name: '' }];
+  const keys = model.viewKeys(rows, single);
+  assert.equal(new Set(keys).size, rows.length, 'a view key is unique');
+  assert.deepEqual(
+    keys.slice(0, 2),
+    ['Metric', 'Other'],
+    'the first row holding a non-empty key keeps it'
+  );
+  assert.deepEqual(
+    keys.map((key) => model.entityKeyOf(key)),
+    rows.map((row) => model.rowKey(row, single)),
+    'entityKeyOf returns the row key every view key was made from, an empty one included'
+  );
+  assert.ok(keys[2].startsWith(`Metric${model.VIEW_KEY_SEPARATOR}`), 'a repeat takes the separator and its ordinal');
+  assert.notEqual(keys[3], '', 'an empty key is never an empty view key');
+  assert.deepEqual(model.viewKeys([{ Name: 'a' }, { Name: 'b' }], single), ['a', 'b'], 'a list whose keys are unique reads exactly its row keys');
+
+  const composite = screenDeclaration({ table: TABLE, id: { kind: 'composite', parts: ['Name'] } });
+  const roles = model.viewKeys([{ Name: '' }, { Name: '%Developer' }], composite);
+  assert.equal(roles[1], '%Developer');
+  assert.equal(model.entityKeyOf(roles[0]), '', 'an empty composite part is an empty entity key');
+  assert.equal(model.entityKeyOf('plain'), 'plain', 'a key with no ordinal is its own entity key');
 });
 
 test('cells: (none) for null, absent and empty; name and identifier in code; the status disc and word', () => {

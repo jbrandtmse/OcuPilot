@@ -632,7 +632,16 @@ Parameter UNLOGGEDQUERY = "WebSession/DELETE=id";
 /// holds (#1205) and <code>/DELETE/409</code> its last administrator (#1210), each mapped by
 /// <class>OcuPilot.Port.EncryptionPort</class> to a refusal on the request (Story 18.7, measured at Task 0);
 /// neither status carries any other answer on that type.</p>
-Parameter UNLOGGEDREFUSALS = "Lock/DELETE/409,License.Key/PUT/400,Security.Encryption.AdminInFile/POST/409,Security.Encryption.AdminInFile/DELETE/409";
+/// <p>An entry may end <code>/#&lt;code&gt;</code>: it then matches only a vendor status that carries that error code
+/// (<method>IsUnloggedRefusal</method>). <code>ECP.DataServer/PUT/500/#1454</code> is a data server saved with SSL/TLS
+/// and no <code>%ECPClient</code>, which <class>OcuPilot.Port.EcpPort</class> maps to a field refusal; and
+/// <code>Security.MFT/DELETE/500/#5809</code> is a connection deleted whose OAuth 2.0 client is already absent, which
+/// <class>OcuPilot.Port.MftPort</class> re-reads and answers done (Story 18.47). Other codes on the same endpoint,
+/// type and status stay logged.</p>
+Parameter UNLOGGEDREFUSALS = "Lock/DELETE/409,License.Key/PUT/400,Security.Encryption.AdminInFile/POST/409,Security.Encryption.AdminInFile/DELETE/409,ECP.DataServer/PUT/500/#1454,Security.MFT/DELETE/500/#5809";
+
+/// <p>The vendor's Access Denied code. A 404 carrying it is a refusal, not an absence (<method>Fail</method>).</p>
+Parameter ACCESSDENIEDCODE = 822;
 
 /// <p>Whether this port resolves a key file through <class>OcuPilot.Port.PathPort</class> before it
 /// reaches the vendor (AD-21's sixth case, Story 18.7). <code>0</code> here, so a
@@ -1479,12 +1488,11 @@ ClassMethod InvokeLocated(pEndpoint As %String, pType As %String, ByRef pQuery, 
             Quit
         }
         ; SQLCODEFAULTS (Story 18.9): a SQL privilege refusal the vendor answers 500 with its SQLCODE
-        ; is the product's own refusal; the vendor's text is logged, never sent.
+        ; is the product's own named refusal, an answer rather than a fault: nothing is logged and the vendor's text is never sent.
         If $$$ISERR(tSeqSC) && (tHttp = 500) {
             Set tCodeHttp = ..SqlCodeFault(pEndpoint, tSeqSC, .tCodeFault)
             If tCodeHttp {
                 Set tSC = ..Refuse(tCodeHttp, $Select(tCodeHttp = 403: ##class(OcuPilot.Api.Error).#FORBIDDEN, tCodeHttp = 409: ##class(OcuPilot.Api.Error).#CONFLICT, 1: ##class(OcuPilot.Api.Error).#NOTFOUND), tCodeFault, ##class(OcuPilot.Api.SqlPrivilegeError).ReasonFor(tCodeFault), .pHttpStatus, .pFault)
-                Do ..LogFault(pEndpoint _ " " _ pType _ " failed with HTTP 500", ..LoggedStatus(tSeqSC, pBody), pFault.code)
                 Quit
             }
         }
@@ -2806,11 +2814,33 @@ ClassMethod IsMutating(pEndpoint As %String, pSuffix As %String) As %Boolean
 }
 
 /// <p>Whether <var>pEndpoint</var>'s request type <var>pSuffix</var> answered
-/// <var>pHttpStatus</var> is a refusal <parameter>UNLOGGEDREFUSALS</parameter> lists.</p>
-ClassMethod IsUnloggedRefusal(pEndpoint As %String, pSuffix As %String, pHttpStatus As %Integer) As %Boolean
+/// <var>pHttpStatus</var> is a refusal <parameter>UNLOGGEDREFUSALS</parameter> lists. An entry ending
+/// <code>/#&lt;code&gt;</code> lists it only when <var>pVendorSC</var> carries that error code
+/// (<method>HasErrorCode</method>); an entry without one lists every answer of that endpoint, type and status.</p>
+ClassMethod IsUnloggedRefusal(pEndpoint As %String, pSuffix As %String, pHttpStatus As %Integer, pVendorSC As %Status = "") As %Boolean
 {
     If pSuffix = "" Quit 0
-    Quit ''$ListFind($ListFromString(..#UNLOGGEDREFUSALS), pEndpoint _ "/" _ pSuffix _ "/" _ (+pHttpStatus))
+    Set tKey = pEndpoint _ "/" _ pSuffix _ "/" _ (+pHttpStatus)
+    Set tEntries = $ListFromString(..#UNLOGGEDREFUSALS)
+    If $ListFind(tEntries, tKey) Quit 1
+    Set tListed = 0
+    For tI = 1:1:$ListLength(tEntries) {
+        Set tEntry = $List(tEntries, tI)
+        If $Extract(tEntry, 1, $Length(tKey) + 2) '= (tKey _ "/#") Continue
+        If ..HasErrorCode(pVendorSC, $Extract(tEntry, $Length(tKey) + 3, *)) {
+            Set tListed = 1
+            Quit
+        }
+    }
+    Quit tListed
+}
+
+/// <p>Whether the error status <var>pStatus</var> carries the error code <var>pCode</var> among
+/// <code>$System.Status.GetErrorCodes</code>. A status that is empty or not an error carries none.</p>
+ClassMethod HasErrorCode(pStatus As %Status, pCode As %String) As %Boolean
+{
+    If (pStatus = "") || $$$ISOK(pStatus) Quit 0
+    Quit (("," _ $System.Status.GetErrorCodes(pStatus) _ ",") [ ("," _ pCode _ ","))
 }
 
 /// <p>The code <parameter>TYPEFAULTS</parameter> names for <var>pEndpoint</var>'s request type
@@ -3502,9 +3532,14 @@ ClassMethod AwaitTask(pEndpoint As %String, pGuid As %String, Output pResult, Ou
 /// other 404, a write's included, is logged as any failure is.</p>
 /// <p><var>pType</var> is the request type, where the caller knows it: a refusal
 /// <parameter>UNLOGGEDREFUSALS</parameter> lists for that type and status is not logged either.</p>
+/// <p>A 404 whose vendor status carries <parameter>ACCESSDENIEDCODE</parameter> is answered 403, so the fault is
+/// <code>PORT.ACCESSDENIED</code> and the line is logged; a 404 without it stays an absence.</p>
 ClassMethod Fail(pEndpoint As %String, pHttp As %Integer, pVendorSC As %Status, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pWrapper As %String = "", pBody As %DynamicAbstractObject = "", pRead As %Boolean = 0, pType As %String = "") As %Status [ Private ]
 {
     Set pHttpStatus = $Select(+pHttp: +pHttp, 1: 500)
+    ; A 404 carrying the vendor's Access Denied is the caller being refused, which reads as a refusal and is logged,
+    ; never as an absent target.
+    If (pHttpStatus = 404) && ..HasErrorCode(pVendorSC, ..#ACCESSDENIEDCODE) Set pHttpStatus = 403
     Set tOutcomeSC = ##class(OcuPilot.Kernel.Fault).Outcome(pHttpStatus, pVendorSC, .pFault, .tDetail)
     If $$$ISERR(tOutcomeSC) Do ..LogFault(pEndpoint _ " fault mapping failed", tOutcomeSC, pFault.code)
     ; AD-39. A vendor refusal that names a body field crosses the boundary as detail.violations --
@@ -3526,7 +3561,7 @@ ClassMethod Fail(pEndpoint As %String, pHttp As %Integer, pVendorSC As %Status, 
         Do tFieldDetail.%Set("violations", tViolations)
         Do pFault.%Set("detail", tFieldDetail)
     }
-    If $$$ISERR(pVendorSC) && '(pRead && (pHttpStatus = 404)) && '..IsUnloggedRefusal(pEndpoint, pType, pHttpStatus) Do ..LogFault(pEndpoint _ " failed with HTTP " _ pHttpStatus, ..LoggedStatus(pVendorSC, pBody), pFault.code)
+    If $$$ISERR(pVendorSC) && '(pRead && (pHttpStatus = 404)) && '..IsUnloggedRefusal(pEndpoint, pType, pHttpStatus, pVendorSC) Do ..LogFault(pEndpoint _ " failed with HTTP " _ pHttpStatus, ..LoggedStatus(pVendorSC, pBody), pFault.code)
     Quit $$$ERROR($$$GeneralError, pFault.code _ ": " _ pFault.reason)
 }
 

@@ -854,11 +854,11 @@ ClassMethod GuardedUserAbsent(pUserName As %String, Output pUnavailable As %Bool
 }
 
 /// <p>Whether the TLS configuration <var>pName</var> exists and, when it does, its <code>Type</code>
-/// (<var>pType</var>, 0 for a client), <code>Enabled</code> (<var>pEnabled</var>) and
-/// <code>VerifyPeer</code> (<var>pVerifyPeer</var>) -- the fields that decide whether a provider call may
-/// be made through it -- read through the TLS read escalation (AD-9) so the answer does not depend on
-/// what the calling account may read. Answers <var>pExists</var>.</p>
-/// <p><b>Four values and nothing else leave the frame.</b> The configuration object opened to read them holds
+/// (<var>pType</var>, 0 for a client), <code>Enabled</code> (<var>pEnabled</var>),
+/// <code>VerifyPeer</code> (<var>pVerifyPeer</var>) and <code>TLSMinVersion</code> (<var>pTLSMinVersion</var>) -- the
+/// fields that decide whether a provider call may be made through it -- read through the TLS read escalation (AD-9) so
+/// the answer does not depend on what the calling account may read. Answers <var>pExists</var>.</p>
+/// <p><b>Five values and nothing else leave the frame.</b> The configuration object opened to read them holds
 /// the key file's password, and is dropped before the frame ends (AD-35). One argument, checked for shape
 /// before anything is escalated: a name the vendor cannot hold names no configuration, so it answers absent
 /// without asking. The role is obtained in this method's own frame through
@@ -870,12 +870,13 @@ ClassMethod GuardedUserAbsent(pUserName As %String, Output pUnavailable As %Bool
 /// reason other than the configuration's absence -- and 0 whenever it answered, absent included. <b>The two
 /// are different facts and a caller must not merge them</b>: absent is a statement about the configuration,
 /// unavailable a statement about OcuPilot's own install.</p>
-ClassMethod GuardedSslConfigRead(pName As %String, Output pExists As %Boolean, Output pType As %Integer, Output pEnabled As %Boolean, Output pVerifyPeer As %Integer, Output pUnavailable As %Boolean) As %Boolean
+ClassMethod GuardedSslConfigRead(pName As %String, Output pExists As %Boolean, Output pType As %Integer, Output pEnabled As %Boolean, Output pVerifyPeer As %Integer, Output pUnavailable As %Boolean, Output pTLSMinVersion As %Integer) As %Boolean
 {
     Set pExists = 0
     Set pType = ""
     Set pEnabled = 0
     Set pVerifyPeer = 0
+    Set pTLSMinVersion = 0
     Set pUnavailable = 0
     If '..SslNameUsable(pName) Quit 0
     Set tAnswered = 0
@@ -895,6 +896,7 @@ ClassMethod GuardedSslConfigRead(pName As %String, Output pExists As %Boolean, O
             Set pType = +tConfig.Type
             Set pEnabled = ''+tConfig.Enabled
             Set pVerifyPeer = +tConfig.VerifyPeer
+            Set pTLSMinVersion = +tConfig.TLSMinVersion
             Set pExists = 1
             Set tAnswered = 1
         } ElseIf $$$ISERR(tStatus), (("," _ $System.Status.GetErrorCodes(tStatus) _ ",") [ ("," _ ..#SSLABSENTCODE _ ",")) {
@@ -907,6 +909,7 @@ ClassMethod GuardedSslConfigRead(pName As %String, Output pExists As %Boolean, O
         Set pType = ""
         Set pEnabled = 0
         Set pVerifyPeer = 0
+        Set pTLSMinVersion = 0
         Set tConfig = ""
         Set tAnswered = 0
     }

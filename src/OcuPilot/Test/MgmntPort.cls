@@ -532,6 +532,84 @@ Method TestTheServiceReadsAreExactAndRefuseADeployedService()
     Do $$$AssertEquals(##class(OcuPilot.Test.MgmntImplFixture).CallText(), "GetRESTApps(PROBENS)", "a read naming no namespace runs in the scope's")
 }
 
+/// <p>A service is deployed when a web application of <b>any</b> namespace dispatches to its dispatch class, in any
+/// letter case (Story 18.47, AD-53): the call's namespace is read first and then each other namespace the roster names,
+/// an implicit one (<code>^</code>) skipped; a deployment found in another namespace refuses the delete and a service read
+/// 409 <code>RESTSERVICE.DEPLOYED</code> without a delete being sent; a namespace the vendor refuses to enter (its 403)
+/// refuses the question 403 <code>PORT.ACCESSDENIED</code> with a sentence naming that namespace, logged, and sends no
+/// delete; and a roster of namespaces that list no such application deletes.</p>
+/// <p>Mutation (Rule 19): read <code>pNamespace</code> alone in <method>OcuPilot.Port.MgmntPort.DeployedAnywhere</method>
+/// -- the other-namespace and refused-namespace legs go red; answer another namespace's 403 with
+/// <parameter>OcuPilot.Port.MgmntPort.REASONNAMESPACE</parameter> -- the refused-namespace leg goes red.</p>
+Method TestADeploymentInAnotherNamespaceRefusesTheDelete()
+{
+    Set tOrphan = "[{""name"":""/api/elsewhere"",""dispatchClass"":""ORPHAN.V2.DISP"",""namespace"":""OTHERNS"",""enabled"":true}]"
+    Set tRoster = $ListBuild("%SYS", "^^c:\implicit\", "OTHERNS", "USER")
+    Do ..HoldAllWritePairs()
+    Do ##class(OcuPilot.Test.MgmntPortFixture).SetNamespaces(tRoster)
+    Do ##class(OcuPilot.Test.MgmntImplFixture).Arm("GetWebRESTApps", "200 OK", "[]")
+    Do ##class(OcuPilot.Test.MgmntImplFixture).Arm("GetRESTApps", "200 OK", ..CannedJson("services"))
+    Do ##class(OcuPilot.Test.MgmntImplFixture).Arm("DeleteApplication", "200 OK", "{""msg"":""deleted""}")
+    Do ##class(OcuPilot.Test.MgmntImplFixture).ArmIn("OTHERNS", "GetWebRESTApps", "200 OK", tOrphan)
+    Set tSC = ..Service("DELETE", "USER", "Orphan.v2", "", .tResult, .tHttp, .tFault)
+    Do $$$AssertEquals(..FaultText(tHttp, tFault), "409 " _ ##class(OcuPilot.Api.RestServiceError).#DEPLOYED _ " " _ ##class(OcuPilot.Api.RestServiceError).#REASONDEPLOYED, "a web application of another namespace dispatches to it, in another case")
+    Do $$$AssertEquals(##class(OcuPilot.Test.MgmntImplFixture).CallText(), "GetWebRESTApps(USER)|GetWebRESTApps(%SYS)|GetWebRESTApps(OTHERNS)", "the call's namespace was read first, then the others in the roster's order, the implicit one skipped, and no delete was sent")
+
+    Do ##class(OcuPilot.Test.MgmntImplFixture).Clear()
+    Do ##class(OcuPilot.Test.MgmntImplFixture).Arm("GetWebRESTApps", "200 OK", "[]")
+    Do ##class(OcuPilot.Test.MgmntImplFixture).Arm("GetRESTApps", "200 OK", ..CannedJson("services"))
+    Do ##class(OcuPilot.Test.MgmntImplFixture).Arm("DeleteApplication", "200 OK", "{""msg"":""deleted""}")
+    Set tSC = ..Service("DELETE", "USER", "Orphan.v2", "", .tResult, .tHttp, .tFault)
+    Do $$$AssertEquals(tHttp _ " " _ tResult.%ToJSON(), "200 {""Name"":""Orphan.v2"",""Namespace"":""USER""}", "no namespace lists a web application dispatching to it: the service is deleted")
+    Do $$$AssertEquals(##class(OcuPilot.Test.MgmntImplFixture).CallText(), "GetWebRESTApps(USER)|GetWebRESTApps(%SYS)|GetWebRESTApps(OTHERNS)|GetRESTApps(USER)|DeleteApplication(USER,Orphan.v2)", "after every namespace was read")
+
+    Do ##class(OcuPilot.Test.MgmntImplFixture).Clear()
+    Do ##class(OcuPilot.Test.LogProbe).Clear()
+    Do ##class(OcuPilot.Test.MgmntImplFixture).Arm("GetWebRESTApps", "200 OK", "[]")
+    Do ##class(OcuPilot.Test.MgmntImplFixture).Arm("GetRESTApps", "200 OK", ..CannedJson("services"))
+    Do ##class(OcuPilot.Test.MgmntImplFixture).Arm("DeleteApplication", "200 OK", "{""msg"":""deleted""}")
+    Do ##class(OcuPilot.Test.MgmntImplFixture).ArmIn("OTHERNS", "GetWebRESTApps", "403 Forbidden", "", "write")
+    Set tSC = ..Service("DELETE", "USER", "Orphan.v2", "", .tResult, .tHttp, .tFault)
+    Do $$$AssertEquals(..FaultText(tHttp, tFault), "403 PORT.ACCESSDENIED " _ $Replace(##class(OcuPilot.Port.MgmntPort).#REASONNAMESPACEOTHER, "<namespace>", "OTHERNS"), "a namespace the vendor refuses to enter refuses the delete, named")
+    Do $$$AssertTrue(##class(OcuPilot.Test.MgmntImplFixture).CallText() '[ "DeleteApplication", "and no delete was sent: " _ ##class(OcuPilot.Test.MgmntImplFixture).CallText())
+    Do $$$AssertTrue(##class(OcuPilot.Test.LogProbe).Captured("message") [ ##class(OcuPilot.Test.MgmntImplFixture).#VENDORTEXT, "and the vendor's text reaches the log")
+    Set tSC = ..Service("SERVICE", "USER", "Orphan.v2", "", .tResult, .tHttp, .tFault)
+    Do $$$AssertEquals(tHttp, 403, "a service read is refused the same way")
+}
+
+/// <p>The deployed check fails closed (Story 18.47, AD-53): a namespace roster that cannot be read, and a dispatch class
+/// whose <code>UrlMap</code> cannot be read because its namespace cannot be entered, each answer 500 <code>INTERNAL</code>,
+/// logged once, and send no delete, so a partial read never reads as undeployed.</p>
+/// <p>Mutation (Rule 19): continue with an empty roster after the <code>Namespaces</code> error in
+/// <method>OcuPilot.Port.MgmntPort.DeployedAnywhere</method> -- the first leg deletes and goes red; continue with no targets
+/// after the <code>Forwards</code> error in <method>OcuPilot.Port.MgmntPort.ReachesDispatch</method> -- the second leg goes red.</p>
+Method TestAPartialReadOfTheDeploymentsDeletesNothing()
+{
+    Set tGeneric = "500 INTERNAL An internal error occurred"
+    Do ..HoldAllWritePairs()
+    Do ##class(OcuPilot.Test.MgmntImplFixture).Arm("GetWebRESTApps", "200 OK", "[]")
+    Do ##class(OcuPilot.Test.MgmntImplFixture).Arm("GetRESTApps", "200 OK", ..CannedJson("services"))
+    Do ##class(OcuPilot.Test.MgmntImplFixture).Arm("DeleteApplication", "200 OK", "{""msg"":""deleted""}")
+    Do ##class(OcuPilot.Test.LogProbe).Clear()
+    Do ##class(OcuPilot.Test.MgmntPortFixture).FailNamespaces()
+    Set tSC = ..Service("DELETE", "USER", "Orphan.v2", "", .tResult, .tHttp, .tFault)
+    Do $$$AssertEquals(..FaultText(tHttp, tFault), tGeneric, "a namespace roster that cannot be read refuses the delete")
+    Do $$$AssertTrue(##class(OcuPilot.Test.LogProbe).Captured("message") '= "", "and is logged")
+    Do $$$AssertTrue(##class(OcuPilot.Test.MgmntImplFixture).CallText() '[ "DeleteApplication", "and no delete was sent: " _ ##class(OcuPilot.Test.MgmntImplFixture).CallText())
+
+    Do ##class(OcuPilot.Test.MgmntImplFixture).Clear()
+    Do ##class(OcuPilot.Test.LogProbe).Clear()
+    Do ##class(OcuPilot.Test.MgmntImplFixture).Arm("GetWebRESTApps", "200 OK", "[]")
+    Do ##class(OcuPilot.Test.MgmntImplFixture).Arm("GetRESTApps", "200 OK", ..CannedJson("services"))
+    Do ##class(OcuPilot.Test.MgmntImplFixture).Arm("DeleteApplication", "200 OK", "{""msg"":""deleted""}")
+    Do ##class(OcuPilot.Test.MgmntImplFixture).ArmIn("OCUNOSUCHNS1847", "GetWebRESTApps", "200 OK", "[{""name"":""/api/elsewhere"",""dispatchClass"":""Probe1847.Router"",""namespace"":""OCUNOSUCHNS1847"",""enabled"":true}]")
+    Do ##class(OcuPilot.Test.MgmntPortFixture).SetNamespaces($ListBuild("USER", "OCUNOSUCHNS1847"))
+    Set tSC = ..Service("DELETE", "USER", "Orphan.v2", "", .tResult, .tHttp, .tFault)
+    Do $$$AssertEquals(..FaultText(tHttp, tFault), tGeneric, "a dispatch map that cannot be read refuses the delete")
+    Do $$$AssertTrue(##class(OcuPilot.Test.LogProbe).Captured("message") '= "", "and is logged")
+    Do $$$AssertTrue(##class(OcuPilot.Test.MgmntImplFixture).CallText() '[ "DeleteApplication", "and no delete was sent: " _ ##class(OcuPilot.Test.MgmntImplFixture).CallText())
+}
+
 /// <p>The create answers each vendor status in its own words (Story 18.32): 201 and 200 are served with the package and
 /// the namespace; a 400 or a 404 is 422 <code>RESTSERVICE.BUILD</code> on <code>Document</code> and logs nothing; a 403
 /// is <code>PORT.ACCESSDENIED</code> and a 500 the generic internal fault, each logged with the vendor's text and

@@ -4,7 +4,7 @@
 
 ## Goal
 
-Bring OcuPilot to System Administration and System Operation parity on the experimental, hidden `/api/admin` v2 service, plus `/api/mgmnt` and `/api/monitor` where they back a screen. That covers namespaces and mappings, databases and disk operations, journals, licensing and ECP, encryption, superservers and authentication options, MFT, SQL privileges, web-application extras and monitoring. Each screen comes with a read tool and a confirmed single-write tool, so the agent keeps pace with the portal. The stage also prepares OcuPilot for real, shared instances: install into a chosen namespace, a clean uninstall, and a directory allow-list only a person can edit. It keeps the doubled tool roster affordable with per-turn budgets and scoped tool sets, and extends provider configuration with proxy and custom-CA settings and a wallet-held key. It is the first versioned IPM release after the contest.
+Bring OcuPilot to System Administration and System Operation parity on the experimental, hidden `/api/admin` v2 service, plus `/api/mgmnt` and `/api/monitor` where they back a screen. That covers namespaces and mappings, databases and disk operations, journals, licensing and ECP, encryption, superservers and authentication options, MFT, SQL privileges, web-application extras and monitoring. Each screen comes with a read tool and a confirmed single-write tool, so the agent keeps pace with the portal. The stage also prepares OcuPilot for shared instances (install into a chosen namespace, a clean uninstall, a directory allow-list only a person can edit), keeps the doubled tool roster affordable, and adds proxy, custom-CA and wallet-key provider configuration. Every feature story and the first burn-down are done. Story 18.48, the second burn-down, fixes or closes on evidence the encryption, journal, LDAP, agent-read and provider defects the stage routed forward, so the first versioned IPM release after the contest ships without the stage's own debt.
 
 ## Stories
 
@@ -52,62 +52,54 @@ Bring OcuPilot to System Administration and System Operation parity on the exper
 - Story 18.43: Uninstall and grants on a shared instance
 - Story 18.45: The agent's tool roster scoped per turn
 - Story 18.46: Allowed directories: the screen's add, change and remove
+- Story 18.47: Epic 18 burn-down, part 1 (grants, providers, the shell, the monitor)
+- Story 18.48: Epic 18 burn-down, part 2 (encryption, journals, LDAP, agent reads)
 
 ## Requirements & Constraints
 
-- **One contract, no feature spec.** A story is accepted against the staged-delivery contract plus its own backing route. Anything finer is authored when the story is picked up, never invented ahead.
-- **One way to build a screen.** Each screen has one descriptor and reaches outside systems through one port. Its read tool and its write tools' field lists derive from that descriptor, with no hand-written dispatch or field list. Every write is a server-minted proposal with an instance-computed diff, an explicit confirmation and an agent audit marker.
-- **Reads.** Every read is bounded and reports truncation. A screen's list and its read tool resolve through one declared read.
-- **Gates.** Every gate is the caller's own `(resource, permission)` pairs, checked at call time. There is no service account. The vendor's `ResourcesOR()` is only a lower bound, so take privileges from the instance, not the specification.
-- **Governance.** Every destructive or disruptive action ships with its governance key disabled: delete, dismount, truncate, encryption changes, the allow-list write. A new write key joins the checked-in baseline in the same change.
-- **Secrets.** Key material and secrets are write-only and returned by no read. They are redacted from the ledger and every log line, and never placed in an exception, status or trap.
-- **Paths.** No endpoint takes a caller path. Every server-path field resolves through the allow-list (`PathPort`), whose self-protection refusals cover the manager directory, the served directory, instance, database and journal files, and an existing `IRIS.DAT`. A database create always names its own directory.
-- **Measure first.** The admin API's specification and IRIS disagree in places. Observe payloads, privileges and effects on a throwaway (Task 0) before building a form. "Checked" means seen on an instance; "reported" means another source's word only.
-- **Owner calls.** A choice that changes a product promise, trust scope or secret exposure goes to the owner at the spec gate, before anything is built.
+- **Burn-down acceptance.** Each of 18.48's twelve ledger entries is either fixed with a pinning test or closed on evidence in its ledger trailer. The entry text and the rulings recorded against it are the scope; nothing beyond them is invented.
+- **One contract.** Each screen is one descriptor that reaches the instance through one port. Its read tool and its write field lists derive from that descriptor. Every write is a server-minted proposal with an instance-computed diff, an explicit confirmation and an agent audit marker. Every read is bounded and reports truncation.
+- **Gates.** Every gate checks the caller's own `(resource, permission)` pairs at call time, with no service account. The vendor's `ResourcesOR()` is only a lower bound.
+- **Governance.** Every destructive or disruptive write ships with its governance key disabled. A new write key joins the checked-in baseline in the same change.
+- **Secrets.** Key material and secret values are write-only. No read returns them, the ledger and every log line redact them, and they never appear in an exception, a status or a trap.
+- **Paths.** No endpoint takes a caller path. Every server-path field is a root plus a relative name resolved by `PathPort`, whose self-protection refusals cover the manager directory, the served directory, the instance's, database and journal files, and an existing `IRIS.DAT`.
+- **Measure first.** Several entries rest on an inference: the start-arm gaps (DW-2100), the RSA certificate loss (DW-2126, read in the vendor source only), each key-file refusal's endpoint, type and status (DW-2427), and the LDAP write under the caller's own privilege (DW-1896). Task 0 measures each on the throwaway before it is fixed or closed. "Checked" means seen on an instance; anything else carries `(inference)`.
+- **Owner calls.** A choice that changes a product promise, the trust scope or secret exposure goes to the owner at the spec gate.
 
 ## Technical Decisions
 
-- **`AdminPort`** is the only code that names `%Api.Admin.*`. It runs the vendor endpoint objects in process, in `%SYS` by explicit save and restore, at ApiVersion 2 with stub CSP state and `IsRunningAsync` 0. It reads the outcome from both `tSC` and `%response.Status`; a non-2xx answer is a failure. A read answered 404, and a correct field refusal listed in `UNLOGGEDREFUSALS`, are not logged, so they do not raise the instance alert state. Port guards refuse before the vendor call: SQL-privilege wildcards and lists, a password the policy refuses, and a privileged-routine or web-app call whose target is the wrong type.
-- **Vendor-class fallback.** Where the admin API cannot carry a call, a dedicated port repeats the endpoint's gate and calls the vendor class in `%SYS`. Each such case is named in the architecture (user copy, background tasks, the encryption reads, for example).
-- **Async.** The port picks the path per request type. One poller per task reads the finished result exactly once and deletes the row; a second read logs #7846 and turns the instance state to Warning. A read that hits the bound fails with `PORT.TIMEOUT`; a queued write that hits it answers "started". A queued write is refused unless it is named in `QUEUEDWRITES` or `SELFQUEUEDTYPES` and its body carries no secret. No slice writes polling logic.
-- **Writes.** OcuPilot reads fresh, applies the diff and sends the complete property set. Per-endpoint exceptions are recorded in the architecture: journal settings, ECP's nested settings, encryption settings, web authentication, superservers, MFT, and the privileged-routine PUT, which replaces `MatchRoles` and empties an omitted `Routines`. There are three write kinds: merge; action-style (no body, a declared request type and fingerprint subject); and create (fingerprints the target's absence, which covers upserts). A write tool declares its port. A screen's Save and the agent's proposal are two callers of one tool. Save mints no proposal but inherits the prohibited set and the write's validation, and read-only and the kill switch never gate it. Every confirmed write reads its target back and returns a verdict.
-- **Field lists and secrets.** Write field lists are generated at build time from the endpoint's body template and checked in, and the CI inventory fixture pins them. Each field is classified `ordinary`, `secret` or `opaque`; an unclassified field defaults to secret.
-- **Prohibited set.** It lives once, in the kernel, and is evaluated against the resolved target inside the atomic confirm transition, from either caller. Stage 2 added these protections:
-  - OcuPilot's install namespace, its mappings (matched by pattern overlap) and its databases, plus the seven system databases
-  - keys in use
-  - a start that cannot finish
-  - OcuPilot's own sign-in, the O/S authentication its start hook signs in with, and the serving superserver
-  - OcuPilot's SQL schemas and its privileged routine applications
-  - any agent write to the allow-list
-
-  A `%All` or `%Admin_*` grant is permitted, at the destructive confirmation, naming the privilege.
-- **Tools per turn.** The tool listing is built from compile-time declarations only and cached per process, keyed by compile signature. A turn's scoped tool set is chosen after the listing, never inside it: the shell area's tools, the discovery tool `shell.tools.find`, and the screen context's tools. History is append-only, and a turn's tool results share a cap of 262,144 characters.
-- **Monitoring.** `MonitorPort` reads in process behind `%Admin_Operate:USE` and `%DB_IRISSYS:READ`, so the monitor API's anonymous reachability never becomes OcuPilot's. A metrics read rewrites the vendor's sensor baseline, so that screen never auto-refreshes. Interoperability usage runs the classic page's class queries as the signed-in user and never calls the deprecated `/api/monitor/interop`.
-- **Vendor writes during reads.** A vendor-internal write a read triggers is tolerated only under the named exceptions; a new one goes to the lead.
-- **Install.** One idempotent `Installer` class has two entry points, with one install namespace per instance. OcuPilot's globals map into its protected database, and its code stays in the install namespace's routines database. Uninstall removes only what OcuPilot created and still owns.
-- **Provider.** The provider call uses a named SSL configuration created at install, with server-identity checking on. Proxy settings are configuration, and a custom CA is a separately named SSL configuration. Provider egress is an allow-list. The credential is fetched at the point of use and never logged.
+- **`AdminPort`** is the only code that names `%Api.Admin.*`. It runs the vendor endpoint objects in process in `%SYS`, entered by explicit save and restore, at ApiVersion 2 with stub CSP state and `IsRunningAsync` 0. It reads the outcome from both `tSC` and `%response.Status`, and a non-2xx answer is a failure.
+- **Logging.** A read answered 404 is an absence and is not logged. A vendor 404 #822 (Access Denied) is a refusal, answered 403 and logged. Every other failure is logged at error severity, which raises the instance alert state, unless `UNLOGGEDREFUSALS` lists it. Entries may be scoped by vendor code: #1454 and #5809 are unlogged, while the superserver's generic #5001 stays logged. DW-2427 adds code-scoped entries for the key-file field refusals #5022, #1219 and #1204, each after its endpoint, type and status is measured.
+- **Vendor-class fallback.** The port may complete a call through the vendor's own class only when the admin API cannot carry it, and only as a new named case recorded in the architecture. DW-1896 is such a case. The admin API's `Security.LDAP` `PUT` keeps the stored list for `LDAPAttributes []` and answers `[""]` with 500 (measured). The fix writes through `Security.LDAPConfigs.Modify` in `%SYS`, built only under the caller's own `%Admin_Secure`, and then lifts the `LDAP.ATTRIBUTES.LASTONE` refusal. If that privilege does not suffice, the entry closes wontfix-accepted.
+- **Prohibited set.** It lives once in the kernel and is defined by effect, not by verb. It is evaluated against the resolved target inside the atomic confirm, from either caller. A privilege grant (`%All`, an `%Admin_*` role, or a role carrying one) is permitted at the strongest confirmation: the destructive treatment without a typed name, with the diff naming the privilege. Grants compare roles per (MatchRole, target). For a privileged routine application, a cleared `Resource`, or enabling it while it grants a privileged role, is a grant. DW-2425 extends this to web applications. Enabling one that grants a privileged role is a grant, and so is pointing a `Resource` at a publicly held one.
+- **Encryption start.** `PROHIBITED.STARTUPINTERACTIVE` refuses a settings change that would leave key activation at startup Interactive while the audit log, IRISSECURITY or IRISTEMP is encrypted, now or at the next start. Such a start aborts into single-user mode (measured). Two cases are unmeasured: an Unattended key file or KMIP server lacking the active key for those databases, and journal encryption under Interactive. Whether the arm widens is decided only after Task 0 measures both.
+- **Key activation.** An action write's fingerprint covers every field its precondition reads. DW-2086 carries the reviewed key list taken from the file through the activation's fingerprint, as task import does, so a key file whose keys changed since the mint refuses the confirm. DW-2087 gives a first database key activation only the destructive treatment, following the license activation's precedent, governance default included. Its consequence names the startup-mode change to Interactive. That change outlives every deactivation, and only a settings `PUT` of None resets it (measured). DW-2085 adds Encrypt database to the database create. It is offered only while a database key is active, and it sends `Encrypted` and the default key's id.
+- **Wallet keys.** A stored secret's value is never read, so a fingerprint covers metadata only. DW-2126: regenerating an RSA key over a secret that holds a certificate drops the certificate (inference). `WALLETKEY.REPLACE.RSA` and the card must say so. The wallet credential rung reads a key-value secret's value only after value-free checks of the caller's use privilege, its usage, `RequireTLS` and `AllowedHosts`. The value never reaches a local, a log or a refusal.
+- **Journal directories.** Both journal directories are vendor-writes locations named by a root and a relative name. They must already exist and are never cleared. DW-1966 refuses an existing database's directory, OcuPilot's own included, because the vendor writes its `iris.lck` there.
+- **Provider TLS.** `OCUPILOTSSL` and `PROVIDERSSL` refuse changes to `Type`, `VerifyPeer`, `CAFile`, `Enabled`, `TLSMinVersion` and `CipherList`. Before each call, the provider port re-reads the configuration in use through OcuPilot's SSL-read routine application. It refuses unless that configuration is an enabled client with `VerifyPeer` 1 or more and a `TLSMinVersion` floor of TLS 1.2 (16) or higher. `CipherList` is not judged at call time. Switches' egress save checks an enabled verifying client only. DW-2424 adds the TLS 1.2 floor to that save-time rule, with one new `EGRESS` violation code.
+- **Reads.** A screen and its read tool resolve through one declared read, so they cannot diverge. The tool's view is the screen's, narrowed by the context cap and stripped of secret fields. DW-2335 either widens the reads behind the superserver, local database and user copy forms (14, 10 and 12 unanswered fields) or records why each field stays form-only.
+- **Async and writes.** A port has one poller per task, and no slice writes polling logic. OcuPilot reads fresh, applies the diff and sends the complete property set. A screen's Save and the agent's proposal are two callers of one tool. Every confirmed write reads its target back and returns a verdict.
 
 ## UX & Interaction Patterns
 
-- A person's destructive action uses a typed-name dialog that names the target, with its consequence stated above the field. An agent proposal gets the destructive card treatment, without a typed name.
-- A consequence sentence appears both at the form field and on the proposal card. Confirmations always name the target.
-- A delete wizard lists dependents (namespaces, databases, web applications) before removing anything.
-- An action whose governance key is off is drawn off, with the refusal's sentence as the reason.
-- Async operations show progress from the port's single poller, which stops at the end. Auto-refresh comes only from the shared framework and pauses while a proposal is live.
-- Every screen keeps working with the agent disabled.
-- A new screen registers the full screen contract: route, side-bar position, archetype, pairs, entity key, context serializer, actions, empty state, fixed strings, aliases, and at least three suggested prompts. Adding a side-bar entry updates the browser specs that pin that area's list.
+- A gated control is never hidden. It stays focusable with `aria-disabled="true"` and names its reason. An action whose governance key is off is drawn off, with the refusal's sentence as the reason.
+- A person's destructive action uses a typed-name dialog that names the target, with its consequence stated above the field. An agent proposal gets the destructive card treatment without a typed name. A consequence sentence appears both at the field and on the card. The RSA replace sentence must say that a stored certificate is lost. The first database key activation's consequence names the startup-mode change.
+- Every screen works with the agent disabled. A field the person sees should be answerable by a read tool, unless the record says why it stays form-only.
+- Live tail streams only on the current alerts.log and messages.log files. With Live tail off, nothing streams, and that spec's timers must be isolated per test (DW-2415).
 
 ## Cross-Story Dependencies
 
-- **Open at this compile:** 18.37 and 18.46 (ready for dev), and 18.38, 18.40 and 18.41 (backlog). The rest are done.
-- **18.46** builds on 18.42's route, port, governance key and kernel refusal.
-- **18.38** needs three tier-1 amendments at its spec gate: a heartbeat carve-out in the error envelope, the live-data framework, and the UX that defers the live tail. The "nothing streams" pins are re-scoped to sources that do not opt in.
-- **18.37** prefers a source that checks the caller; relaxing that check is the owner's call. Its Task 0 measures any vendor metric-state write.
-- **18.40** amends the outbound-TLS decision; the CA trust scope is the owner's call.
-- **18.41** amends the egress, secrets and turn-job decisions. The vendor's per-use audit write is labeled (inference) until Task 0 measures it.
-- **Other epics:**
-  - 18.32 reused Story 20.21's namespace-routines-database check.
-  - 18.45 sits after Story 20.24's per-process listing.
-  - 18.30 leaves Story 19.17's Doc DB create and drop unchanged.
-  - 18.3 and 18.4 extend Epic 16's `BackgroundTaskPort`.
-  - Routed ledger items not taken by a story go to the Epic 18 burn-down.
+- **Open at this compile:** Story 18.48 only (backlog). Every other story is done, 18.47 included.
+- **Order and sources within 18.48:**
+  - DW-2100 comes first: its Task 0 runs on the throwaway, and only then is the start-arm scope decided.
+  - DW-2085, DW-2086 and DW-2087 build on Story 18.22's key activation.
+  - DW-2126 amends Story 18.24's RSA replace.
+  - DW-1966 amends Story 18.18's journal settings.
+  - DW-1896 is the LDAP editor's last-attribute write, left over when Story 18.27 closed unbuilt.
+  - DW-2335 comes from Story 18.12's survey.
+  - DW-2415 is Story 18.38's log-viewer spec. It failed on the Node 22.22.3 gates leg only.
+- **Built on 18.47:**
+  - DW-2425 extends DW-2322's grant arm and edits the kernel's prohibited-set class, which Epic 20 also holds. Coordinate the edit.
+  - DW-2427 extends the code-scoped unlogged list built for DW-2007.
+  - DW-2424 aligns Story 18.40's egress save with 18.47's call-time floor.
+- **Routed out of the epic:** DW-2299 went to Story 23.9, and DW-2426 (test classes' teardown on an unarmed instance) to Story 23.10.
