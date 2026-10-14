@@ -2,7 +2,7 @@
 title: 'Story 18.40: Proxy and custom CA configuration'
 type: 'feature'
 created: '2026-10-12'
-status: 'blocked'
+status: 'ready-for-dev'
 baseline_revision: '6c24da93ef31df4075e70960e276038ae068b4be'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -47,7 +47,8 @@ Every refusal stores nothing.
 | Proxy cleared | `proxyServer` `""` | `""` and port 0 stored | -- |
 | Name a configuration | changed to an enabled client with `VerifyPeer` 1 | stored | absent: 422 `EGRESS.SSLABSENT`; a server, disabled, or `VerifyPeer` not 1: 422 `EGRESS.SSLUNVERIFIED`; held: 409 `WRITE.TARGETBUSY`; without the SSL form's pairs: 403 naming the first, before any read |
 | Default | `""` or `OcuPilotProvider` | `""` stored, no Security pair asked | -- |
-| Named one weakened | delete, or change `Type`, `VerifyPeer`, `CAFile` or `Enabled`, while named | refused, either caller, every path | 403 `PROHIBITED.PROVIDERSSL`; a failed egress read refuses |
+| Named one weakened | delete, a create under its name, or a change to `Type`, `VerifyPeer`, `CAFile` or `Enabled`, while named [AMENDED 2026-10-13 - see the Spec Change Log] | refused, either caller, every path | 403 `PROHIBITED.PROVIDERSSL`; a failed egress read refuses |
+| Call in use | the configuration a provider call would use (the named one, or `OcuPilotProvider`) is absent, disabled, not a client, or `VerifyPeer` below 1, by any path, the classic portal included | the call is refused before any request is sent; nothing reaches the provider [AMENDED 2026-10-13 - see the Spec Change Log] | a provider fault naming the configuration and its remedy (re-enable peer verification on it, or clear the name / restart for `OcuPilotProvider`) |
 | Not administrator | no `OcuPilotAdmin:USE` | -- | 403 `AUTH.NOPRIVILEGE` |
 | Stale | older `rowVersion` | -- | 409 `STATE.CONFLICT` |
 
@@ -77,13 +78,16 @@ Under `src/OcuPilot/`, `54228e70`.
 5. `Api/Router.cls`: `GET` and `PUT /agent/switches/egress` before :79; wrappers at the tail.
 6. `Kernel/Proposal/Prohibited.cls` (add-only): `PROVIDERSSL` (`PROHIBITED.PROVIDERSSL`) with a caller-neutral reason, appended to `Codes`, a `ReasonFor` line. In `Ssl`, after the own-config block, refuse it on a delete or an `OcuPilotSslFields` change when `ProviderSsl(pId)`. At the end, `ProviderSsl(pId)`: 1 when `EgressStateClass()`'s `Resolve` names exactly `pId`, not `SSLCONFIG`, or the read fails; `EgressStateClass()` answers `OcuPilot.Kernel.State.Egress`.
 7. `Screen/Tool/SslUpdate.cls` (add-only, after :152): the same refusal for `ProviderSsl(pIdValue)`, with `PROVIDERSSLREASON`.
+7a. `Kernel/Proposal/Prohibited.cls` (add-only), orchestrator ruling A: an arm in `Created` refusing `PROVIDERSSL` for an `ssl-configuration` create whose name `ProviderSsl(pId)` answers 1, whatever the payload carries (the SSL/TLS form's create, the agent's mint and confirm) [AMENDED 2026-10-13 - see the Spec Change Log].
+7b. `Port/ProviderPort.cls`, orchestrator ruling B: before each provider call (every turn and Test connection), read the configuration in use (the named one, else `OcuPilotProvider`) and refuse the call, sending nothing, unless it exists, is enabled, is a client and has `VerifyPeer` 1 or more; extend `SslConfigurationMissing`'s existing check (its sibling, Rule 31) and its fault, or add one code beside it in a sibling error class, with a sentence naming the configuration and the remedy. One cheap read per call; no cache that a classic-portal edit could leave stale [AMENDED 2026-10-13 - see the Spec Change Log].
 8. Client: `switches.store.ts` loads and saves `${SWITCHES_PATH}/egress` with `rowVersion`, field violations and conflict, publishes `agent-switch` on save, and counts the edits in `FormDirty`. `switches.page.ts`: Provider connection after the holds section, three fields with hints and Save connection; a privilege refusal's action slot "change the provider connection".
 9. Strings: labels, two hints, the action slot, the five `EGRESS` sentences and `PROVIDERSSL`'s, into EXPERIENCE.md in place (:151's text; :344, :349, :485; line count unchanged) and `strings.ts`. 3,316 now, plus 25 (18.46, 18.37, 18.38) and these 14, is within 50 of 3,400: raise `ui/tools/strings.test.mjs` :607-612 to 3,800 under its protocol.
 
 **Tests** (each under 500 lines, each restoring the egress row, as no row or as it was, and removing its probe configurations):
 
 10. `Test/EgressSettingsWire.cls` (new, HTTP, suite account): every matrix row but administrator; GET after PUT; the audit row (`AuditRecord.RowFor`); a held probe's 409; Integration. mutations: no `proxyPort` stored -> GET-after-PUT and Integration red (C1); no `VerifyPeer` rule -> the unverified leg (C2); no `LogChange` -> the audit leg (C5).
-11. `Test/ProviderSslNamed.cls` (new, as `SslSave` :275-337): with a probe named, a `VerifyPeer`, `CAFile` or `Enabled` change on Save, the list's Delete, an agent change minted before the naming (at confirm) and after it (at mint) are refused `PROHIBITED.PROVIDERSSL` with its sentence; `Description` changes; cleared, the change is permitted; a `Prohibited` subclass whose `EgressStateClass` fails refuses. mutation: `ProviderSsl` answers 0 -> red.
+11. `Test/ProviderSslNamed.cls` (new, as `SslSave` :275-337): with the egress row naming an absent probe name, a create under that name refused `PROHIBITED.PROVIDERSSL` at Save and at confirm (ruling A) [AMENDED 2026-10-13 - see the Spec Change Log]; with a probe named, a `VerifyPeer`, `CAFile` or `Enabled` change on Save, the list's Delete, an agent change minted before the naming (at confirm) and after it (at mint) are refused `PROHIBITED.PROVIDERSSL` with its sentence; `Description` changes; cleared, the change is permitted; a `Prohibited` subclass whose `EgressStateClass` fails refuses. mutation: `ProviderSsl` answers 0 -> red.
+11a. The call-time check (ruling B), through `Test.ProviderPortProbe` and its stub: a named probe configuration flipped to `VerifyPeer` 0 outside OcuPilot (`Security.SSLConfigs` directly, in `%SYS`), and `OcuPilotProvider` flipped likewise, each refuse the call with the fault and send no request; restored after (`OcuPilotProvider` to its installer values), with a `mutation:` line (the check skipped -> red) [AMENDED 2026-10-13 - see the Spec Change Log].
 12. `Test/AgentWireSecurity.cls` (a method at the end): a non-administrator is refused both routes, nothing changed; an administrator without `%Admin_Secure:USE` naming a probe is refused 403 naming it and may clear the name. mutation: `SslRules.Gate` skipped -> red.
 13. `ui/tools/self-protection.test.mjs`: `KERNEL_REFUSALS` gains `PROVIDERSSL`; `EGRESS_SENTENCES` as `ALLOWLIST_SENTENCES` :858; `Egress).SetGuarded(` in no `src/OcuPilot` class but `Api/Switches.cls` and `Test/`. mutation: the call added to a `Screen/Tool` class -> red.
 14. `switches.page.spec.ts` and `ui/browser/switches.browser-spec.mjs`: stored values render, Save connection sends the three keys and `rowVersion`, an `EGRESS.SSLABSENT` reason lands on its field, a reload shows the stored values; the spec restores what it read. mutation: the store drops `proxyPort` -> both red.
@@ -96,13 +100,16 @@ Under `src/OcuPilot/`, `54228e70`.
 
 - **C1.** Given an OcuPilot administrator, when they save a proxy and a configuration name, then `GET /agent/switches/egress` answers them: configuration, not code.
 - **C2.** Given a configuration that is not an enabled client requiring the server's certificate, when it is named, then it is refused on its field.
-- **C3.** Given a named configuration, when any caller deletes it or changes its type, peer verification, trusted certificates or enablement, then it is refused `PROHIBITED.PROVIDERSSL`; once another is named, it is not.
+- **C3.** Given a named configuration, when any caller deletes it, creates one under its name, or changes its type, peer verification, trusted certificates or enablement [AMENDED 2026-10-13 - see the Spec Change Log], then it is refused `PROHIBITED.PROVIDERSSL`; once another is named, it is not.
 - **C4.** Given the agent, when its tools, reads and screen context are listed, then none reads or writes the provider connection, and only `Api/Switches.cls` writes the row.
 - **C5.** Given an administrator, when a save is accepted, then a `SecurityChange` row records the values before and after.
 - **C6.** Given the Switches page, when an administrator saves Provider connection, then the section shows the server's answer and a refusal on its field.
+- **C7.** Given the configuration a provider call would use, whether named or `OcuPilotProvider`, when it is no longer an enabled client with `VerifyPeer` 1 or more, by any path, the classic portal included, then the call is refused before any request is sent, naming the configuration and the remedy [AMENDED 2026-10-13 - see the Spec Change Log].
 - **Integration.** Given a proxy and a probe configuration saved through the route, when `Test.ProviderPortProbe` calls, then the stub's request carries `ProxyServer`, `ProxyPort`, `ProxyTunnel` 1, `ProxyHTTPS` 1, the `SSLConfiguration` and `SSLCheckServerIdentity` 1.
 
 ## Spec Change Log
+
+- 2026-10-13, lead, implement halt (the orchestrator's verification condition), orchestrator ruling A and B: (A) a create under the named configuration's name is refused `PROVIDERSSL` (task 7a, the matrix row, C3); (B) every provider call checks the configuration in use, named or `OcuPilotProvider`, at call time and refuses rather than send without peer verification (task 7b, a matrix row, C7, test 11a). CipherList and TLSMinVersion are out of scope (ledger, burn-down). AD-10 and AD-32 amended in the spine.
 
 - 2026-10-13, lead spec gate: "For the lead" applied in the spine (AD-32, AD-10, AD-42). The `Prohibited.Ssl` clause and task 15's six count pins are the Rule 11 ask to the orchestrator.
 

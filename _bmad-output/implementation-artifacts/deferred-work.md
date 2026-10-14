@@ -11723,3 +11723,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-38-the-live-log-tail.md | severity: low | fix-risk: med | footprint: in-story
 - evidence: wc -l: 605 at 02bd47fb, 692 at 5ab4af82, 713 after the rework 2 review's patches. A split adds a class to scripts/ci-throwaway.sh's arming roster (Epic 20's file) and ci-timings.json, more than a two-way door.
 - 2026-10-13T23:13:33Z status=wontfix-accepted owner=18-38-the-live-log-tail by=cr note=reopen_if=wc -l src/OcuPilot/Test/DatabaseIntegrity.cls exceeds 800, or a story adds a test method to it
+
+### DW-2400: CipherList and TLSMinVersion are settable on the provider's SSL/TLS configurations (OcuPilotProvider and an egress-named one), and neither OCUPILOTSSL nor PROVIDERSSL covers them, so a weak cipher list or TLS floor reaches provider calls
+- source: spec-18-40-proxy-and-custom-ca-configuration.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: 18.40 implement (inference, not measured): OcuPilotSslFields and the planned PROVIDERSSL fields are Type, VerifyPeer, CAFile and Enabled only; the call-time check reads VerifyPeer
+- 2026-10-14T00:06:53Z status=routed owner=burndown by=lead note=orchestrator 2026-10-13: one entry for both configurations, consistently; Epic 18 burn-down
