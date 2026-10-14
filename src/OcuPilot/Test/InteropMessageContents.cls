@@ -102,6 +102,18 @@ ClassMethod Lines(pId As %String, Output pHttp As %Integer, Output pFault, pMax 
     Quit $ClassMethod(..#FIXTURE, "Rows", "MessageContents", .tQuery, .pHttp, .pFault)
 }
 
+/// <p>Store a character stream of <var>pLines</var> lines of 999 <code>x</code> and a line feed (1,000 characters each), then
+/// <var>pTail</var>, and answer it. The caller deletes it.</p>
+ClassMethod CapStream(pLines As %Integer, pTail As %String = "") As %Stream.GlobalCharacter
+{
+    Set tStream = ##class(%Stream.GlobalCharacter).%New()
+    Set tLine = $Translate($Justify("", 999), " ", "x") _ $Char(10)
+    For tI = 1:1:pLines Do tStream.Write(tLine)
+    If pTail '= "" Do tStream.Write(pTail)
+    Do tStream.%Save()
+    Quit tStream
+}
+
 /// <p>The <code>Text</code> of each of <var>pRows</var>, joined by <code>/</code>.</p>
 ClassMethod Texts(pRows As %DynamicArray) As %String
 {
@@ -240,13 +252,10 @@ Method TestAMessageWithNothingToShowReadsAsNoRowsAndRecordsNoView()
 
 /// <p>AC3: the text is cut at its overall cap of 1,000,000 characters and the last line ends the cut; a lower line cap answers its
 /// lines and the read route says it truncated.</p>
-/// <p>Mutation (Rule 19): <method>OcuPilot.Port.InteropPort.StreamText</method> reads without its cap -- the overall leg goes red.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Port.InteropPort.ReadMessageContents</method> without its <parameter>TESTOUTPUTMAX</parameter> cut -- row 1,001 reads <code>x ... [cut]</code> and the overall leg goes red.</p>
 Method TestTheTextIsCutAtItsOverallCapAndTheLinesAtTheRowCap()
 {
-    Set tStream = ##class(%Stream.GlobalCharacter).%New()
-    Set tLine = $Translate($Justify("", 999), " ", "x") _ $Char(10)
-    For tI = 1:1:1200 Do tStream.Write(tLine)
-    Do tStream.%Save()
+    Set tStream = ..CapStream(1200)
     Set tId = ..HeaderFor("%Stream.GlobalCharacter", tStream.%Id())
     Set tQuery("message") = tId
     Set tQuery("maxRows") = 5000
@@ -254,8 +263,8 @@ Method TestTheTextIsCutAtItsOverallCapAndTheLinesAtTheRowCap()
     Do $$$AssertEquals(tHttp, 200, "the long stream answers")
     Do $$$AssertTrue($IsObject(tRows), "with rows")
     If $IsObject(tRows) {
-        Do $$$AssertEquals(tRows.%Size(), 1001, "a thousand full lines and the one character that reaches the cap")
-        Do $$$AssertEquals(tRows.%Get(1000).Text, "x" _ ..#CUT, "the last line ends the cut")
+        Do $$$AssertEquals(tRows.%Size(), 1001, "a thousand full lines, which fill the cap, and the cut")
+        Do $$$AssertEquals(tRows.%Get(1000).Text, ..#CUT, "the last line is the cut alone")
         Do $$$AssertEquals($Length(tRows.%Get(0).Text), 999, "the lines before it are whole")
     }
     Do $ClassMethod("%Stream.GlobalCharacter", "%DeleteId", tStream.%Id())
@@ -265,6 +274,27 @@ Method TestTheTextIsCutAtItsOverallCapAndTheLinesAtTheRowCap()
     Do $$$AssertEquals(tRouteHttp, 200, "the read route answers")
     Do $$$AssertTrue($IsObject($Get(tAnswer)), "with an answer")
     If $IsObject($Get(tAnswer)) Do $$$AssertEquals(tAnswer.rows.%Size() _ "|" _ tAnswer.truncated, "2|1", "two lines of three, truncated")
+}
+
+/// <p>AC3: a text of exactly the overall cap is shown whole with no cut, and one character more is cut at the cap and ends with the
+/// cut alone.</p>
+/// <p>Mutation (Rule 19): the length test in <method>OcuPilot.Port.InteropPort.ReadMessageContents</method> is <code>&gt;=</code> -- the
+/// exact-cap leg goes red; it is <code>&gt; TESTOUTPUTMAX + 1</code> -- the one-over leg goes red.</p>
+Method TestATextAtTheCapIsWholeAndOneCharacterOverIsCut()
+{
+    Set tExact = ..CapStream(1000)
+    Set tOver = ..CapStream(1000, "x")
+    Set tExactRows = ..Lines(..HeaderFor("%Stream.GlobalCharacter", tExact.%Id()), .tExactHttp, , 5000)
+    Set tOverRows = ..Lines(..HeaderFor("%Stream.GlobalCharacter", tOver.%Id()), .tOverHttp, , 5000)
+    Do $$$AssertEquals(tExactHttp _ "|" _ tOverHttp, "200|200", "both streams answer")
+    Do $$$AssertTrue($IsObject(tExactRows) && $IsObject(tOverRows), "with rows")
+    If $IsObject(tExactRows) && $IsObject(tOverRows) {
+        Set tWhole = $Translate($Justify("", 999), " ", "x")
+        Do $$$AssertEquals(tExactRows.%Size() _ "|" _ tExactRows.%Get(tExactRows.%Size() - 1).Text, "1000|" _ tWhole, "exactly the cap is its thousand whole lines and no cut")
+        Do $$$AssertEquals(tOverRows.%Size() _ "|" _ tOverRows.%Get(tOverRows.%Size() - 1).Text, "1001|" _ ..#CUT, "one character over ends with the cut alone")
+    }
+    Do $ClassMethod("%Stream.GlobalCharacter", "%DeleteId", tExact.%Id())
+    Do $ClassMethod("%Stream.GlobalCharacter", "%DeleteId", tOver.%Id())
 }
 
 /// <p>An alarm body is read as any message body and its view is not audited, as the classic Contents pane skips it.</p>

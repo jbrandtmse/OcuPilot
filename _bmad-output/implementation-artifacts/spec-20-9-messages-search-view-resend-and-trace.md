@@ -2,11 +2,11 @@
 title: 'Story 20.9: Messages - search, view, resend and trace'
 type: 'feature'
 created: '2026-10-13'
-status: 'in-progress'
-baseline_revision: 'f9983f29695b7f0660a4b4fe32a73d74ad22b6e5'
+status: 'done'
+baseline_revision: 'a772580fb1ab78f68ef6de7c31469150121b3e1f'
 baseline_commit: '71f1b7e2d9ef32b5725aa8530b3513c2114d037e'
 review_loop_iteration: 0
-followup_review_recommended: true
+followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
   - '{project-root}/_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md'
@@ -408,7 +408,7 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Lines were
 
 Code review 2026-10-14 (re-run from the start; layers `full-opus`).
 
-- [ ] [Review][Patch][High] The Contents text can reach 1,000,001 characters against AD-62 item 15's 1,000,000 [src/OcuPilot/Port/InteropPort.cls:3634] -- rework: in `ReadMessageContents`, right after `If tOutcome '= "text" Quit $$$OK` and before the CR/LF normalisation, add `If $Length(tText) > ..#TESTOUTPUTMAX Set tText = $Extract(tText, 1, ..#TESTOUTPUTMAX) _ ..#TESTCUT`. Leave the shared `StreamText` (:6316) alone: Story 20.27's `AddTestLines` relies on its +1 read. In `InteropMessageContents.TestTheTextIsCutAtItsOverallCapAndTheLinesAtTheRowCap` (:244) the 1,000 lines of 999 characters and a LF fill the cap exactly, so row 1,001 becomes `..#CUT` alone (was `"x" _ ..#CUT`, :258); its `Mutation` note and the `## Verification` line "`StreamText` reads 2,000,000 characters" become "`ReadMessageContents` without its `TESTOUTPUTMAX` cut -> that test (row 1,001 reads `x ... [cut]`)".
+- [x] [Review][Patch][High] The Contents text can reach 1,000,001 characters against AD-62 item 15's 1,000,000 [src/OcuPilot/Port/InteropPort.cls:3634] -- rework: in `ReadMessageContents`, right after `If tOutcome '= "text" Quit $$$OK` and before the CR/LF normalisation, add `If $Length(tText) > ..#TESTOUTPUTMAX Set tText = $Extract(tText, 1, ..#TESTOUTPUTMAX) _ ..#TESTCUT`. Leave the shared `StreamText` (:6316) alone: Story 20.27's `AddTestLines` relies on its +1 read. In `InteropMessageContents.TestTheTextIsCutAtItsOverallCapAndTheLinesAtTheRowCap` (:244) the 1,000 lines of 999 characters and a LF fill the cap exactly, so row 1,001 becomes `..#CUT` alone (was `"x" _ ..#CUT`, :258); its `Mutation` note and the `## Verification` line "`StreamText` reads 2,000,000 characters" become "`ReadMessageContents` without its `TESTOUTPUTMAX` cut -> that test (row 1,001 reads `x ... [cut]`)".
 - [x] [Review][Patch] The Contents block ignored the command bar's filter and sort, while the agent's context applied them [ui/src/app/areas/interoperability/interop-message-contents.ts:147]
 - [x] [Review][Patch] `UtcAgo` threw `<ILLEGAL VALUE>` from 23:00 to 24:00 UTC (no forward roll) [src/OcuPilot/Test/InteropMessageRead.cls:60]
 - [x] [Review][Patch] `StoreHeader` stamped `TimeCreated` and `TimeProcessed` by two clock reads (a millisecond flake), and the two were never told apart [src/OcuPilot/Test/InteropMessageRead.cls:98]
@@ -484,6 +484,18 @@ Rejected:
 - the HIGH (the 1,000,001-character Contents text) is left for the rework with its exact fix; every MED is patched but DW-2433 (escalated); LOWs patched, routed (DW-2434) or closed (DW-2435..2437, DW-2188 occurrence)
 - the item-row gap (verification-gap) was half false: `InteropHostRead.TestEachScreenAndToolAnswerTheSameRowsAsThePort` already reddens when `Production` and `Item` go missing; their values were unpinned, and are now
 - footprint extension: `src/OcuPilot/Test/AuditEvent.cls` (Epic 11's helper; `RowsCarrying` gains trailing optional arguments, its 60 callers unchanged)
+
+### 2026-10-14 -- Review pass (rework 1)
+
+- verdicts: 7 findings -- high 0, medium 0, low 6, false 1, maybe-false 0
+- findings:
+  - `[low]` `[patch]` The cap comparison's boundary (a text of exactly 1,000,000 characters and one of 1,000,001) was pinned by no test, so an off-by-one in the new line ships green -- patched: `TestATextAtTheCapIsWholeAndOneCharacterOverIsCut`, with the `CapStream` helper the cap test shares; two `mutation:` lines, each demonstrated red alone.
+  - `[low]` `[reject]` The cap test's row-cap leg cannot observe `ReadMessageContents`'s own `tTop` bound -- this pass did not change it; the row cap a person sees is `Screen/Read`'s trim, pinned by the `2|1` leg, and the port's bound only limits memory before that trim.
+  - `[false]` `[reject]` The `TESTCUT` marker sits outside the 1,000,000 characters (a text of 1,000,010) -- `AddTestLines` cuts the same way and a cut line is 4,000 characters plus the marker; the clause counts the text.
+  - `[low]` `[reject]` `carried` The 1,000,000-character cut sets no `truncated` and shows no cut note -- DW-2433, escalated at the first re-run; the fix needs `Screen/Read.cls`, on the Never list.
+  - `[low]` `[reject]` An XML or HL7 body over the cap has no test of its own -- every kind reaches the one line through `tText`, the stream leg reddens when the line goes, and a megabyte HL7 fixture exercises the same line.
+  - `[low]` `[reject]` A cut between a CR and its LF leaves the CR, which the normalisation turns into a line end before the marker -- cosmetic, and only for a CRLF body cut exactly there.
+  - `[low]` `[reject]` `carried` No test touches the sanitizer clause for the Contents rows -- no new model-bound path; the existing context pipeline has its own tests.
 
 ## Design Notes
 
@@ -741,7 +753,9 @@ Every header but Other has source `<marker>Src` and target `<marker>Op`.
 - mutation: no CRLF or CR normalization in `ReadMessageContents` -> `TestACharacterStreamIsItsTextSplitOnAnyLineEnd` and the XML line legs
 - mutation: `ContentsText` reads a binary stream as text -> `TestABodyThatIsNotTextIsRefusedAfterItsViewIsAudited`
 - mutation: `ContentsText` audits before it opens the body -> `TestAMessageWithNothingToShowReadsAsNoRowsAndRecordsNoView`
-- mutation: `StreamText` reads 2,000,000 characters -> `TestTheTextIsCutAtItsOverallCapAndTheLinesAtTheRowCap`
+- mutation: `ReadMessageContents` without its `TESTOUTPUTMAX` cut -> `TestTheTextIsCutAtItsOverallCapAndTheLinesAtTheRowCap` (row 1,001 reads `x ... [cut]`)
+- mutation: `ReadMessageContents`' length test `>=` instead of `>` -> `TestATextAtTheCapIsWholeAndOneCharacterOverIsCut` (exact-cap leg), alone
+- mutation: `ReadMessageContents`' length test `> TESTOUTPUTMAX + 1` instead of `> TESTOUTPUTMAX` -> `TestATextAtTheCapIsWholeAndOneCharacterOverIsCut` (one-over leg), alone
 - mutation: `AuditViewHere` without its alarm test -> `TestAnAlarmBodyIsReadAndItsViewIsNotAudited`
 - mutation: `rowTarget` removed from `InteropQueueMessageList` -> `InteropMessageDescriptor.TestTheQueueMessagesListLinksToTheMessage`; its field changed in `screens.generated.ts` -> `navigation.test.mjs`'s Story 20.9 test; `rowTarget` null in the bundle -> the queue spec's AC4 test
 - mutation: the Contents pair dropped from `Pairs` alone -> `InteropMessageDescriptor.TestThePortDeclaresEachScreensPairs`; dropped from `Pairs` and the Contents descriptor -> `InteropFloor` (four tests, the Operator-refused Contents leg among them) and `InteropMessageDescriptor`
@@ -786,10 +800,12 @@ Every header but Other has source `<marker>Src` and target `<marker>Op`.
 Status: done
 Blocking condition: none
 
-**Change (Part A).** `InteropPort` serves `Messages`, `MessageHeader` and `MessageContents` behind the message viewer's pairs (the Contents read adds `%Ens_MessageContent:USE`) and records the vendor's ViewContents audit row for a body that opens. Three descriptors, the `body` input on `ListPage` and `DetailPage`, the text-only Contents block, the Queue messages `rowTarget`, `SEARCHENDPOINTS` (the ruled `Registry.CriteriaProblem` and `screen-mirror.mjs` clause), the audit page's per-descriptor search state, strings, EXPERIENCE.md and the rosters are in; the trace and the resends stay with Stories 20.30 and 20.31.
+**This pass (rework 1).** `ReadMessageContents` cuts the text at `TESTOUTPUTMAX` characters and appends `TESTCUT` before it normalises line ends; the shared `StreamText` is unchanged (AD-62 item 15; closes the open High). The cap test expects row 1,001 to be `TESTCUT` alone, and `TestATextAtTheCapIsWholeAndOneCharacterOverIsCut` pins the boundary on both sides.
 
-**Review.** 15 findings: 2 medium and 5 low patched, 8 low rejected with their reasons in the Triage Log, none deferred beyond the three first-pass items. The patches: the fixture's fifth header (own source and target, a distinct value for every property, the default window's first bound anchored inside the fixture), the source-alone, target-alone and all-properties legs, silent guards made assertions, and a Contents leg in USER in the queue spec's AC4. `followup_review_recommended: true` (two medium patches): the new fixture header, the literal header legs and the USER leg have run only on this long-lived throwaway, so the unverified risk is order dependence on a fresh instance, which the runner's Rule 30 fresh check settles.
+**Files.** `src/OcuPilot/Port/InteropPort.cls` (the cut); `src/OcuPilot/Test/InteropMessageContents.cls` (the cap test's row and Mutation note, the boundary test, the `CapStream` helper both use); this spec (the item ticked, three `mutation:` lines, the triage entry).
 
-**Verification (slot B throwaway `ocupilot-b-ci`, tree loaded with 0 errors).** Green, one class or spec per call: `InteropMessageRead` 8, `InteropMessageContents` 7, `InteropMessageDescriptor` 4, `InteropFloor`, `StageTwoTools`, `SurfaceCoverage`, `Navigation`, `ReadTool` 28, `ToolRoundTrip`, `InteropHostDescriptor`, `Descriptor` 60, `CompileWithoutInterop`, `InteropFloorOwnPairs`, `ScreenAccessWire`, `ToolNavigate`, `InteropDescriptor`, `InteropTestDescriptor`, and the item, setting and usage descriptor classes; `npm run test:tools` 1998; `npm run test:components` 247 files and 3130 tests; `npm run build` with its seven checkers clean, initial total 1.94 MB (under 1992 kB), largest lazy chunk 83.33 kB (the Contents page 4.77 kB); `check-objectscript` and `lint-docs` clean; browser `interop-messages` 4, `interop-queue-job-actions` 7, `interop-host-tabs` 4 and `a11y-structural-invariants` 13. The two post-patch classes and both patched specs were rerun. The Matrix Test Audit found every row covered by a test that ran and passed. Mutations: the `SEARCHENDPOINTS` clause and the five new ones are in `## Verification`, each reverted byte-identical (sha256).
+**Review.** 7 findings, 6 low and 1 false: 1 low patched (the boundary test), 6 rejected with their reasons in the Triage Log (2 carried), none deferred. `followup_review_recommended: false` (one low patched).
 
-**Residual risks.** The Part A limits in Design Notes stand. The not-text 409 shows the generic refusal block on screen (rejected low). The full ObjectScript sweep, `npm test`, the smoke and the fresh check are the runner's.
+**Verification (`ocupilot-b-ci`, tree loaded with 0 errors).** `InteropMessageContents` 8, `InteropMessageRead` 8, `InteropMessageRows` 3 and `InteropTransformTest` 7, each green in its own call; `check-objectscript.py` 0 problems; `lint-docs.sh` clean. Mutations on the throwaway's copy, restored after (an `rsync --checksum` dry run empty), the worktree never mutated: the cut removed reddens the cap test alone; `>=` and `> TESTOUTPUTMAX + 1` each redden the boundary test alone, at its own leg.
+
+**Residual risks.** None new. The full ObjectScript sweep, `npm test` and the smoke are the runner's.

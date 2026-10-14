@@ -3632,6 +3632,7 @@ ClassMethod ReadMessageContents(pNamespace As %String, pId As %String, pMax As %
         Quit ..Conflict(##class(OcuPilot.Api.InteropError).#MESSAGECONTENTS, .pHttpStatus, .pFault)
     }
     If tOutcome '= "text" Quit $$$OK
+    If $Length(tText) > ..#TESTOUTPUTMAX Set tText = $Extract(tText, 1, ..#TESTOUTPUTMAX) _ ..#TESTCUT
     Set tText = $Replace($Replace(tText, $Char(13, 10), $Char(10)), $Char(13), $Char(10))
     If $Extract(tText, *) = $Char(10) Set tText = $Extract(tText, 1, *-1)
     Set tPos = 1
