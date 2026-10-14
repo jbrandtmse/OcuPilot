@@ -10589,6 +10589,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: cycle-log-epic-20.md (20.15 full sweep) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: red in 20.15's sweep on the long-lived throwaway; CI's fresh instance holds few rows (spine Conventions > Tests: no dependence on instance age)
 - 2026-10-08T07:00:29Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=harvest note=assert the pair-set refusal and a row, not the absence of truncation
+- 2026-10-14T22:47:27Z status=routed owner=23-11-the-range-end-cleanup-part-10 by=lead note=orchestrator 2026-10-14: chartered 23.11 for 23.5's later routings
 
 ### DW-2191: Screen permissions offers row actions the instance always refuses: Reset on Home, Agent co-pilot and unadjusted screens, and the dialog's Remove on a last pair
 - source: spec-20-15-per-screen-permissions-seen-and-adjusted.md | severity: low | fix-risk: med | footprint: in-story
@@ -10648,6 +10649,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-10T16:26:03Z occurrence=18-30-doc-db-applications
 - 2026-10-12T02:40:03Z occurrence=18-36-dashboard-drill-downs
 - 2026-10-13T04:27:20Z occurrence=18-42-allowed-directories-a-person-s-write
+- 2026-10-14T22:47:27Z status=routed owner=23-11-the-range-end-cleanup-part-10 by=lead note=orchestrator 2026-10-14: chartered 23.11 for 23.5's later routings
 
 ### DW-2204: IRIS defect candidate: the admin API's Security.SQLPrivilege.Column LIST and REVOKE match the object's case exactly while GRANT accepts any case, so a revoke in another case answers 200 and removes nothing
 - source: spec-18-28-sql-column-and-admin-privileges.md | severity: low | fix-risk: high | footprint: out-of-footprint
@@ -10776,6 +10778,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: Epic 20 runner report 2026-10-08 (20.17 implement handoff); cycle-log-parallel.md | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: A 20.17 handoff subagent ran panel-collapse, stream-reply and agent-sql with both unset between 15:48Z and ~16:35Z 10-08; they arm and disarm a probe agent definition on ocupilot-ci; ui/tools/browser-config.test.mjs pins the one-unset refusals but allows both unset
 - 2026-10-08T16:35:45Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=orchestrator note=CI sets both per shard, so a both-unset refusal costs CI nothing; update browser-config.test.mjs and the README/DEVELOPMENT browser-run lines that rely on the default
+- 2026-10-14T22:47:28Z status=routed owner=23-11-the-range-end-cleanup-part-10 by=lead note=orchestrator 2026-10-14: chartered 23.11 for 23.5's later routings
 
 ### DW-2230: UserCopy tool's ReadBackFields has no mismatch leg and no per-field check; the outcome is pinned only by stored-state asserts
 - source: spec-18-29-role-members-admin-option-user-copy-from-and-password-valida.md | severity: low | fix-risk: low | footprint: in-story
@@ -10868,6 +10871,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: cycle-log-epic-18.md (18.10 runner sweep) | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: ExplorerWire.TestTheReadToolsAnswerRowsAndNeverTheDocument red runs 158 and 535 on ocupilot-ci at fe8e3832; the cap is Kernel/Agent/Limits TOOLRESULTMAXLENGTH 65536; 20.19's source reads carry a 60,000-character exception, the class view read does not
 - 2026-10-09T10:32:54Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=harvest note=page or truncate the class view read as 20.19 does for source, or name the cap in the refusal; 18.10 moves ExplorerWire's leg to a small class
+- 2026-10-14T22:47:27Z status=routed owner=23-11-the-range-end-cleanup-part-10 by=lead note=orchestrator 2026-10-14: chartered 23.11 for 23.5's later routings
 
 ### DW-2249: PctAccessPort STATE's any-case application match (Task 5) has no pinning leg
 - source: spec-18-10-web-application-extras-and-spec-based-rest-services.md | severity: low | fix-risk: low | footprint: in-story
@@ -11968,6 +11972,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-23-5-the-range-end-cleanup-part-5.md | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: Story 23.5's plan read the sites at head 6c58e1c9; DW-1392 fixes only the System Information row
 - 2026-10-14T22:44:29Z status=routed owner=burndown by=spec_gate note=sibling_of_DW-1392;proposed_for_Story_23.11_with_DW-2182,2202,2221,2246
+- 2026-10-14T22:47:28Z status=routed owner=23-11-the-range-end-cleanup-part-10 by=lead note=orchestrator 2026-10-14: chartered 23.11 for 23.5's later routings
 
 ### DW-2440: The proposal card's confirm spinner (.ocu-proposal-card-confirm-spinner, _components.scss:4794) has the rotating 16px spinner's shape whose bounding box DW-2282 measured 3.3px past its box, so a structural gate may read it as overflow
 - source: spec-23-5-the-range-end-cleanup-part-5.md | severity: low | fix-risk: low | footprint: in-epic
