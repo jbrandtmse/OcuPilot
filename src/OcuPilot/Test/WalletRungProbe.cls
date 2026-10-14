@@ -16,8 +16,8 @@ Parameter RESOURCE = "OcuPilotProbe1841Use:USE";
 /// <p>The resource <parameter>RESOURCE</parameter> names, without its permission.</p>
 Parameter USERESOURCE = "OcuPilotProbe1841Use";
 
-/// <p>The key-value secret with the default uses, the one with the HTTP use alone, the one holding two members and the
-/// symmetric key.</p>
+/// <p>The key-value secret with the default uses, which requires TLS, the one with the HTTP use alone, the one holding two
+/// members and the symmetric key.</p>
 Parameter DEFAULTSECRET = "OcuPilotProbe1841.kv";
 
 Parameter HTTPONLYSECRET = "OcuPilotProbe1841.http";
@@ -65,14 +65,14 @@ ClassMethod User(pIndex As %Integer) As %String
     Quit $Piece($Piece(..#PRINCIPALS, ",", pIndex), ":", 1)
 }
 
-/// <p>Create the use resource, the collection, the four secrets and the three principals. The secrets hold
-/// <var>pValue</var> as the key-value secrets' value and a symmetric key, and the principals the password
-/// <var>pPassword</var>.</p>
+/// <p>Create the use resource, the collection, every secret this class names and the three principals. The key-value
+/// secrets hold <var>pValue</var> (the multi-member one as a member) but the control secret, which holds its own text, and
+/// the principals take the password <var>pPassword</var>.</p>
 ClassMethod SeedAll(pValue As %String, pPassword As %String) As %Status
 {
     Set tSC = ..EnsureResource()
     If $$$ISOK(tSC) Set tSC = ..EnsureCollection()
-    If $$$ISOK(tSC) Set tSC = ..AddKeyValue(..#DEFAULTSECRET, {"Secret": (pValue), "Usage": 15})
+    If $$$ISOK(tSC) Set tSC = ..AddKeyValue(..#DEFAULTSECRET, {"Secret": (pValue), "Usage": 15, "RequireTLS": true})
     If $$$ISOK(tSC) Set tSC = ..AddKeyValue(..#HTTPONLYSECRET, {"Secret": (pValue), "Usage": 1})
     If $$$ISOK(tSC) Set tSC = ..AddKeyValue(..#MULTISECRET, {"Secret": {"first": (pValue), "second": "two"}, "Usage": 15})
     If $$$ISOK(tSC) Set tSC = ..AddSymmetricKey(..#SYMMETRICSECRET)

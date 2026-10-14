@@ -1,14 +1,16 @@
 /// <p>Pins the wallet credential rung above the ladder (AD-35, AD-39, AD-42; Story 18.41's C2, C3, C4, C5 and the
 /// integration criterion): what a definition save does with a <code>wallet</code> credential type and its secret name,
 /// what the credential store route does with a key posted to such a definition, and what the provider base and port do
-/// with the ladder's answers -- a refusal, an absence, a value that opens with a brace and a stored key.</p>
+/// with the ladder's answers -- a refusal, an absence, a value that opens with a brace and a stored key -- and with the
+/// secret's own <code>RequireTLS</code> and <code>AllowedHosts</code>.</p>
 /// <p>The save and the store route are driven over HTTP as the suite's own account; the provider calls go through
 /// <class>OcuPilot.Test.ProviderPortProbe</class> and <class>OcuPilot.Test.ProviderStub</class>, so <b>no socket is
 /// opened</b>. A refusal is answered by <class>OcuPilot.Test.SecretWalletRefusal</class>; every other resolution reads the
 /// probe collection of <class>OcuPilot.Test.WalletRungProbe</class> through the shipped ladder.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed and serving, and an account holding
-/// <code>%Admin_Wallet</code>. Every wallet object and every definition is created by exact name and removed after each
-/// test.</p>
+/// <code>%Admin_Wallet</code> that may set the vendor audit event <code>WalletSecretUse</code>, which a test turns on and
+/// which is restored to the state it was read in. Every wallet object and every definition is created by exact name and
+/// removed after each test.</p>
 Class OcuPilot.Test.WalletRungWire Extends %UnitTest.TestCase
 {
 
@@ -39,8 +41,14 @@ Parameter ONLIST = "OcuPilotProbe1841.onlist";
 
 Parameter CANARYHOST = "api.anthropic.com";
 
-/// <p>The endpoint of a marked-local definition on the plain-http row, and of the one the canary row serves.</p>
+/// <p>The plain-http endpoint of a marked-local definition on the row that allows local.</p>
 Parameter PLAINENDPOINT = "http://127.0.0.1:11434/v1/messages";
+
+/// <p>The key-value secret that requires TLS and holds <parameter>LOCALCANARY</parameter>, a value shaped for the row that
+/// allows local, so a call that skipped the secret's settings would pass the key shape and reach the stub.</p>
+Parameter LOCALSECRET = "OcuPilotProbe1841.local";
+
+Parameter LOCALCANARY = "probe-local-ocupilotwalletwirecanary18410000";
 
 /// <p>Whether the vendor audit event <code>WalletSecretUse</code> was enabled before the test, or <code>-1</code>.</p>
 Property PreparedUseEvent As %Integer;
@@ -306,10 +314,11 @@ Method TestAWalletThatCouldNotBeReadLeavesTheDefinitionEnabled()
 /// with the published sentence and <code>detail.setting</code>, opens no socket, carries no part of the secret and leaves
 /// the stored definition enabled and verified.</p>
 /// <p>Mutation (Rule 19): drop the scheme test from <method>OcuPilot.Kernel.Secret.Ladder.WalletTransportRefusal</method>
-/// -- the call reaches the stub and this goes red.</p>
+/// -- the value passes the row's key shape, the call reaches the stub and this goes red.</p>
 Method TestAnEndpointThatIsNotHttpsFaultsAWalletCallThatRequiresTls()
 {
-    Set tId = ..StoredDefinition("Plain", $Parameter(..#PROBE, "DEFAULTSECRET"), 1)
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "AddKeyValue", ..#LOCALSECRET, {"Secret": (..#LOCALCANARY), "Usage": 15, "RequireTLS": true}), "a secret that requires TLS, holding a value shaped for the row, exists")
+    Set tId = ..StoredDefinition("Plain", ..#LOCALSECRET, 1)
     If tId = "" Quit
     Do $$$AssertStatusOK(##class(OcuPilot.Test.AgentFixture).SetFlags(tId, 1, 1), "the definition is enabled and verified before the call")
     Do ##class(OcuPilot.Test.ProviderPort).Messages(.tMessages)
@@ -340,8 +349,8 @@ Method TestAnEndpointThatIsNotHttpsFaultsAWalletCallThatRequiresTls()
 /// red.</p>
 Method TestAListedHostIsServedAndAnUnlistedOneFaultsTheCall()
 {
-    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "AddKeyValue", ..#OFFLIST, {"Secret": (..#CANARY), "Usage": 15, "AllowedHosts": ["other.example.test"]}), "a secret that does not list the endpoint's host exists")
-    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "AddKeyValue", ..#ONLIST, {"Secret": (..#CANARY), "Usage": 15, "AllowedHosts": [(..#CANARYHOST)]}), "and one that does")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "AddKeyValue", ..#OFFLIST, {"Secret": (..#CANARY), "Usage": 15, "RequireTLS": true, "AllowedHosts": ["other.example.test"]}), "a secret that does not list the endpoint's host exists")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "AddKeyValue", ..#ONLIST, {"Secret": (..#CANARY), "Usage": 15, "RequireTLS": true, "AllowedHosts": [(..#CANARYHOST)]}), "and one that does")
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "SetUseEvent", 1), "the WalletSecretUse event is turned on")
     Set tSince = ##class(OcuPilot.Test.AuditEvent).Now()
     Hang 1
@@ -382,7 +391,7 @@ Method TestAListedHostIsServedAndAnUnlistedOneFaultsTheCall()
 /// -- the first call reaches the ladder and is refused <code>WALLETRUNG.ALLOWEDHOSTS</code>, so this goes red.</p>
 Method TestTheTlsConfigurationIsJudgedBeforeTheSecretsSettings()
 {
-    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "AddKeyValue", ..#OFFLIST, {"Secret": (..#CANARY), "Usage": 15, "AllowedHosts": ["other.example.test"]}), "a secret that does not list the endpoint's host exists")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "AddKeyValue", ..#OFFLIST, {"Secret": (..#CANARY), "Usage": 15, "RequireTLS": true, "AllowedHosts": ["other.example.test"]}), "a secret that does not list the endpoint's host exists")
     Set tId = ..StoredDefinition("Order", ..#OFFLIST)
     If tId = "" Quit
     Do $$$AssertStatusOK(##class(OcuPilot.Test.AgentFixture).SetFlags(tId, 1, 1), "the definition is enabled and verified before the calls")

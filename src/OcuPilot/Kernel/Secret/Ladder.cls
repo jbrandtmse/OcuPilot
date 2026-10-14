@@ -475,12 +475,13 @@ ClassMethod WalletEndpointIsHttps(pUrl As %String) As %Boolean [ Private ]
 
 /// <p>The host <class>%Net.HttpRequest</class> sends as <code>Host</code> for a request to <var>pUrl</var>, which is what
 /// <method>%Wallet.KeyValue.ApplyHTTP</method> matches against <code>AllowedHosts</code>: the authority up to the first
-/// <code>/</code>, cut at its first <code>:</code>, or through the closing bracket of a bracketed IPv6 address
-/// (<method>SetServerAndPort</method>, <file>irislib/%Net/HttpRequest.cls</file> :2710). The port is not part of it, and
-/// the case is as written.</p>
+/// <code>/</code>, <code>?</code> or <code>#</code> (an adapter that writes a path puts it before a stored query or
+/// fragment, <method>OcuPilot.Kernel.Provider.Base.OriginOf</method>), cut at its first <code>:</code>, or through the
+/// closing bracket of a bracketed IPv6 address (<method>SetServerAndPort</method>, <file>irislib/%Net/HttpRequest.cls</file>
+/// :2710). The port is not part of it, and the case is as written.</p>
 ClassMethod WalletEndpointHost(pUrl As %String) As %String [ Private ]
 {
-    Set tAuthority = $Piece($Piece(pUrl, "://", 2, *), "/", 1)
+    Set tAuthority = $Piece($Piece($Piece($Piece(pUrl, "://", 2, *), "/", 1), "?", 1), "#", 1)
     If $Extract(tAuthority) = "[" Quit $Extract(tAuthority, 1, $Find(tAuthority, "]") - 1)
     Quit $Piece(tAuthority, ":", 1)
 }

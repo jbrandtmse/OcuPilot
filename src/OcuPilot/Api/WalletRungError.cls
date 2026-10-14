@@ -71,7 +71,7 @@ ClassMethod ReasonFor(pCode As %String, pPair As %String = "") As %String
 }
 
 /// <p>The numeric status a route answers <var>pCode</var> with: a refusal for want of the use resource is 403, one for
-/// want of custom use or of the secret's transport settings is 503 (the definition is not usable as configured, and is
+/// want of custom use, or by the secret's own transport settings, is 503 (the definition is not usable as configured, and is
 /// left enabled), and a malformed name or a key posted to a wallet definition is 422.</p>
 ClassMethod HttpFor(pCode As %String) As %Integer
 {
