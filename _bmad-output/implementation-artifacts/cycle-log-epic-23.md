@@ -360,3 +360,13 @@ spawn_at=2026-10-06T16:01:05Z	Story 23.4	cr_complete	batch=b 2026-10-06T20:34:58
 2026-10-10T09:39:07Z	Story 23.6	story_done	code_head=ea6454d9 run=38037814462 sprint=done spec=done items=19+addendum(fixed_except_18.10-4a(DW-2262),20.20-4,20.20-6_declined;20.20-3_epic20s) rework=1(ci:DW-2248) cycle_iterations=2
 2026-10-10T09:39:07Z	Epic 23	ledger_burndown_complete	partial=true(dispatch_23.6_only;epic_continues_with_23.5) open_before=0(owner_23-6) resolved=2(DW-2265_by_cr,DW-2248_owner_23-5_by_adjudication) terminal=2(DW-2263,DW-2264_at_birth) chartered=0 chartered_size=0 overflow=0 reowned=0 to_decision_sheet=0 open_after=0 cap=8 story_max=12 filed_this_epic=11(DW-2256..2266) closed_this_epic=4 drain_ratio=0.36 filed_to_queue=DW-2256..2261,DW-2266(range-end-cleanup),DW-2262(18-31)
 2026-10-10T09:39:07Z	Epic 23	epic_runner_complete	stories_completed=1(23.6) ready_for_merge=true code_head=ea6454d9 ci=success(38037814462) decisions_for_user=none amendments=epics.md:9000-9018(tier1_addendum);EXPERIENCE.md:471(in_place) throwaway=ocupilot-ci_left_up_for_Epic_18
+2026-10-14T22:09:56Z	Epic 23	runner_dispatched_received	dispatch=23.5_only prompt=e23-5-prompt.md slot=a retro_review=skip ff_from=14623b54 ff_to=1b3dfd7b(feature)
+2026-10-14T22:09:56Z	Epic 23	lead_model_gate	model=claude-opus-5-5 action=proceed
+2026-10-14T22:09:56Z	Epic 23	runtime_gate	bmad=6.12.1 uv=0.12.9 ci=gh
+2026-10-14T22:09:56Z	Epic 23	launch_env	depth=4 watchdog=1 bash_max_ms=default
+2026-10-14T22:09:56Z	Epic 23	telemetry_gate	pending=0 action=none
+2026-10-14T22:09:56Z	Epic 23	slot_binding_verified	docker_port_ocupilot_52773=52774 mcp_profile=ocupilot-slot-a_baseUrl=http://localhost:52774 bootstrap=ui/node_modules/.package-lock.json_present,irislib_symlink_ok
+2026-10-14T22:09:56Z	Epic 23	epic_branch_checked_out	repos=. head=1b3dfd7b mode=RESUME(ff_only_to_feature)
+2026-10-14T22:09:56Z	Epic 23	spine_resolved	path=_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md ads=65 status=final read=in_full
+2026-10-14T22:09:59Z	Epic 23	ledger_load	total=1892 open=0 routed=96 escalated=1 decision_pending=51 terminal=1744 owner_unknown=0 owner_23-5=24 duplicates_after_ff=0 reowned_none=0
+2026-10-14T22:15:02Z	Epic 23	epic_context_compiled	reason=planning_artifact_newer(ff_to_feature) model=claude-opus-5-5 agent=a636112aab350f2e2 lines=161
