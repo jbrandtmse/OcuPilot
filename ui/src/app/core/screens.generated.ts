@@ -13882,6 +13882,537 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "entityLabelKey": ""
   },
   {
+    "descriptor": "OcuPilot.Screen.Descriptor.InteropMessageContentsTab",
+    "route": "interoperability/messages/contents",
+    "area": "interoperability",
+    "labelKey": "interopMessageContentsLabel",
+    "sideBarPosition": 0,
+    "archetype": "detail",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Ens_Portal",
+        "permission": "USE"
+      },
+      {
+        "resource": "%Ens_MessageHeader",
+        "permission": "USE"
+      },
+      {
+        "resource": "%Ens_MessageContent",
+        "permission": "USE"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Ens_MessageHeader",
+        "permission": "USE"
+      },
+      {
+        "resource": "%Ens_MessageContent",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "interop-message",
+    "secondaryEntityTypes": [],
+    "scope": "namespace",
+    "parentScope": "interoperability/messages",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Line",
+        "Text"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "interopMessageContentsEmpty",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "interopMessageContentsPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "interopMessageContentsPrompt2"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "interopMessageContentsPrompt3"
+      }
+    ],
+    "classicPage": "EnsPortal.MessageViewer",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "interop",
+        "endpoint": "MessageContents",
+        "type": "LIST"
+      },
+      "fields": [
+        "Message",
+        "Line",
+        "Text"
+      ],
+      "filter": [
+        "Text"
+      ],
+      "sort": {
+        "fields": [
+          "Line"
+        ],
+        "default": "Line",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "message",
+            "labelKey": "interopColumnId",
+            "kind": "text",
+            "maxLength": 19,
+            "hint": "One message, as interop.messages.read answers its ID."
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Line",
+          "labelKey": "explorerColumnLine",
+          "kind": "name"
+        },
+        {
+          "field": "Text",
+          "labelKey": "explorerSearchTextLabel",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "tab": {
+      "group": "interoperability/messages/document",
+      "position": 2,
+      "labelKey": "interopMessageTabContents"
+    },
+    "toolIdentifier": "interop.messagecontents",
+    "refreshDefault": 0,
+    "banner": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.InteropMessageHeaderTab",
+    "route": "interoperability/messages/document",
+    "area": "interoperability",
+    "labelKey": "logViewerColumnMessage",
+    "sideBarPosition": 0,
+    "archetype": "detail",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Ens_Portal",
+        "permission": "USE"
+      },
+      {
+        "resource": "%Ens_MessageHeader",
+        "permission": "USE"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Ens_MessageHeader",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "interop-message",
+    "secondaryEntityTypes": [],
+    "scope": "namespace",
+    "parentScope": "interoperability/messages",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Name",
+        "Value"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "interopMessageHeaderEmpty",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "interopMessageHeaderPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "interopMessageHeaderPrompt2"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "interopMessageHeaderPrompt3"
+      }
+    ],
+    "classicPage": "EnsPortal.MessageViewer",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "interop",
+        "endpoint": "MessageHeader",
+        "type": "LIST"
+      },
+      "fields": [
+        "Message",
+        "Position",
+        "Name",
+        "Value"
+      ],
+      "filter": [
+        "Name",
+        "Value"
+      ],
+      "sort": {
+        "fields": [
+          "Position",
+          "Name"
+        ],
+        "default": "Position",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "message",
+            "labelKey": "interopColumnId",
+            "kind": "text",
+            "maxLength": 19,
+            "hint": "One message, as interop.messages.read answers its ID."
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "Value",
+          "labelKey": "errorLogColumnValue",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "tab": {
+      "group": "interoperability/messages/document",
+      "position": 1,
+      "labelKey": "interopMessageTabHeader"
+    },
+    "toolIdentifier": "interop.messageheader",
+    "refreshDefault": 0,
+    "banner": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.InteropMessageList",
+    "route": "interoperability/messages",
+    "area": "interoperability",
+    "labelKey": "interopItemTabMessages",
+    "sideBarPosition": 11,
+    "archetype": "list (server criteria)",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Ens_Portal",
+        "permission": "USE"
+      },
+      {
+        "resource": "%Ens_MessageHeader",
+        "permission": "USE"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Ens_MessageHeader",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "interop-message",
+    "secondaryEntityTypes": [],
+    "scope": "namespace",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "ID",
+        "TimeCreated",
+        "Status",
+        "Type",
+        "Source",
+        "Target",
+        "BodyClass",
+        "SessionId"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "interopMessagesEmpty",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "interopMessagesPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "interopMessagesPrompt2"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "interopMessagesPrompt3"
+      }
+    ],
+    "classicPage": "EnsPortal.MessageViewer",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "interop",
+        "endpoint": "Messages",
+        "type": "LIST"
+      },
+      "fields": [
+        "ID",
+        "TimeCreated",
+        "Status",
+        "Type",
+        "Source",
+        "Target",
+        "BodyClass",
+        "SessionId",
+        "Error"
+      ],
+      "filter": [
+        "Status",
+        "Type",
+        "Source",
+        "Target",
+        "BodyClass",
+        "SessionId"
+      ],
+      "sort": {
+        "fields": [
+          "TimeCreated",
+          "Status",
+          "Type",
+          "Source",
+          "Target",
+          "BodyClass",
+          "SessionId"
+        ],
+        "default": "TimeCreated",
+        "direction": "desc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "beginDateTime",
+            "labelKey": "auditCriteriaBegin",
+            "kind": "datetime",
+            "maxLength": 50,
+            "defaultHoursAgo": 24
+          },
+          {
+            "param": "endDateTime",
+            "labelKey": "auditCriteriaEnd",
+            "kind": "datetime",
+            "maxLength": 50
+          },
+          {
+            "param": "status",
+            "labelKey": "taskHistoryColumnStatus",
+            "kind": "choice",
+            "maxLength": 9,
+            "options": [
+              "Created",
+              "Queued",
+              "Delivered",
+              "Discarded",
+              "Suspended",
+              "Deferred",
+              "Aborted",
+              "Error",
+              "Completed"
+            ]
+          },
+          {
+            "param": "type",
+            "labelKey": "tableColumnType",
+            "kind": "choice",
+            "maxLength": 8,
+            "options": [
+              "Request",
+              "Response"
+            ]
+          },
+          {
+            "param": "source",
+            "labelKey": "auditEventFieldSource",
+            "kind": "text",
+            "maxLength": 128
+          },
+          {
+            "param": "target",
+            "labelKey": "agentLedgerColumnTarget",
+            "kind": "text",
+            "maxLength": 128
+          },
+          {
+            "param": "bodyClass",
+            "labelKey": "interopColumnBodyClass",
+            "kind": "text",
+            "maxLength": 220
+          },
+          {
+            "param": "session",
+            "labelKey": "webSessionColumnSession",
+            "kind": "text",
+            "maxLength": 19
+          },
+          {
+            "param": "errors",
+            "labelKey": "interopMessagesCriterionErrors",
+            "kind": "choice",
+            "maxLength": 3,
+            "options": [
+              "yes",
+              "no"
+            ]
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "ID",
+          "labelKey": "interopColumnId",
+          "kind": "name"
+        },
+        {
+          "field": "TimeCreated",
+          "labelKey": "journalColumnCreated",
+          "kind": "text"
+        },
+        {
+          "field": "Status",
+          "labelKey": "taskHistoryColumnStatus",
+          "kind": "status"
+        },
+        {
+          "field": "Type",
+          "labelKey": "tableColumnType",
+          "kind": "text"
+        },
+        {
+          "field": "Source",
+          "labelKey": "auditEventFieldSource",
+          "kind": "text"
+        },
+        {
+          "field": "Target",
+          "labelKey": "agentLedgerColumnTarget",
+          "kind": "text"
+        },
+        {
+          "field": "BodyClass",
+          "labelKey": "interopColumnBodyClass",
+          "kind": "identifier"
+        },
+        {
+          "field": "SessionId",
+          "labelKey": "webSessionColumnSession",
+          "kind": "identifier"
+        },
+        {
+          "field": "Error",
+          "labelKey": "errorLogColumnText",
+          "kind": "status"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "interop.messages",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
     "descriptor": "OcuPilot.Screen.Descriptor.InteropMonitorList",
     "route": "interoperability/monitor",
     "area": "interoperability",
@@ -14816,11 +15347,14 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyNextKey": "",
       "emptyAgentKey": "interopQueueMessagesEmptyAgent"
     },
+    "rowTarget": {
+      "route": "interoperability/messages/document",
+      "field": "MessageId"
+    },
     "toolIdentifier": "interop.queuemessages",
     "refreshDefault": 0,
     "banner": null,
     "tab": null,
-    "rowTarget": null,
     "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],

@@ -105,18 +105,22 @@ interface AuditView {
           }
         </div>
         <p class="ocu-criteria-hint">{{ STRINGS.auditCriteriaTimeHint }}</p>
-        <p class="ocu-criteria-hint">{{ STRINGS.auditCriteriaNameHint }}</p>
+        @if (hasMarker) {
+          <p class="ocu-criteria-hint">{{ STRINGS.auditCriteriaNameHint }}</p>
+        }
         <div class="ocu-criteria-controls">
           <button type="submit" class="ocu-button-primary">{{ STRINGS.auditCriteriaSearch }}</button>
-          <label class="ocu-criteria-marker" [id]="markerLabelId">
-            <input
-              type="checkbox"
-              data-ocu-marker="filter"
-              [checked]="markerOn"
-              (change)="onMarker($event)"
-            />
-            {{ STRINGS.auditMarkerFilterLabel }}
-          </label>
+          @if (hasMarker) {
+            <label class="ocu-criteria-marker" [id]="markerLabelId">
+              <input
+                type="checkbox"
+                data-ocu-marker="filter"
+                [checked]="markerOn"
+                (change)="onMarker($event)"
+              />
+              {{ STRINGS.auditMarkerFilterLabel }}
+            </label>
+          }
         </div>
       </form>
       <app-data-table [screen]="view.screen" [store]="view.store" (focusFilter)="onFocusFilter()" />
@@ -191,6 +195,7 @@ export class AuditPage {
     }
     const store = this.stores.for(screen.descriptor, screen.refreshRates);
     this.list = { screen, store };
+    this.search.adopt(screen.descriptor);
 
     // Bound on every open. The dialog round trip re-binds the same descriptor with the same
     // closure, which `bind` treats as a no-op that keeps `hasLoaded`, so it reads nothing.
@@ -272,6 +277,14 @@ export class AuditPage {
       value: this.search.value(field.param),
       unavailable: this.search.overriddenByMarker(screen, field.param),
     }));
+  }
+
+  /**
+   * Whether the screen declares an agent-marker filter. The marker checkbox and the comma-separated-names hint belong to the
+   * audit criteria that carry one; another `list (server criteria)` screen (Story 20.9's Messages) shows neither.
+   */
+  protected get hasMarker(): boolean {
+    return (this.list?.screen.read?.criteria?.marker ?? null) !== null;
   }
 
   protected get markerOn(): boolean {

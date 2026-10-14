@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, afterNextRender, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, type Type, afterNextRender, computed, inject, input, signal } from '@angular/core';
 import { MatTabLink, MatTabNav, MatTabNavPanel } from '@angular/material/tabs';
 import { Router } from '@angular/router';
 
@@ -52,6 +52,9 @@ let focusOnArrival: ArrivalRequest | null = null;
  * "Requires <pair>", the side bar's own shape, and does not navigate: the refusal is here, not in
  * the DOM (AD-8).
  *
+ * **A tab's page may draw its rows with a `body` component** (AD-5, Story 20.9): the page hands it to
+ * the list page, which renders it in place of the table; the strip is unchanged.
+ *
  * Every control-flow condition is a paren-free member reference, for the reason `sign-in.ts`
  * records: `ui/tools/client-lint.mjs`'s blanker matches `@if` plus one parenthesised group.
  */
@@ -87,16 +90,22 @@ let focusOnArrival: ArrivalRequest | null = null;
         }
       </nav>
       <mat-tab-nav-panel #panel class="ocu-detail-panel">
-        <app-list-page />
+        <app-list-page [body]="body()" />
       </mat-tab-nav-panel>
     } @else {
-      <app-list-page />
+      <app-list-page [body]="body()" />
     }
   </section>`,
 })
 export class DetailPage {
   private readonly navigation = inject(NavigationService);
   private readonly router = inject(Router);
+
+  /**
+   * A component that draws the current tab's rows in place of the table (AD-5, Story 20.9's message
+   * contents), passed to the list page; `null` draws the table.
+   */
+  readonly body = input<Type<unknown> | null>(null);
 
   /** Bumped by the navigation map and the router, so the strip follows both under `OnPush`. */
   private readonly generation = signal(0);

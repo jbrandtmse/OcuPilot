@@ -104,6 +104,7 @@ const SENTENCES = [
   ['REASONTRANSFORMTARGETFORMAT', 'interopTransformRefusalTargetFormat'],
   ['REASONTRANSFORMCONTENT', 'interopTransformRefusalContent'],
   ['REASONTRANSFORMRUNS', 'interopTransformRunsConsequence'],
+  ['REASONMESSAGECONTENTS', 'interopRefusalMessageContents'],
 ];
 
 /** The value `key` holds in `strings.ts`, which may sit on the line after its key. */

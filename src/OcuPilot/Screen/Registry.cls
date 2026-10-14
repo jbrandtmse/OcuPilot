@@ -1704,8 +1704,13 @@ ClassMethod CriteriaProblem(pDeclaration As %DynamicObject) As %String
 
         Set tPort = ""
         If tRead.%GetTypeOf("source") = "object" Set tPort = tRead.%Get("source").%Get("port")
-        ; AD-36 as amended (Story 20.3): an interop read takes criteria only as its parent's route id, on a parent-scoped list.
-        If (tPort '= "admin") && (tPort '= "mgmnt") && (tPort '= ##class(OcuPilot.Screen.Read).#SOURCEATELIER) && (tPort '= ##class(OcuPilot.Screen.Read).#SOURCETIMELINE) && (tPort '= ##class(OcuPilot.Screen.Read).#SOURCEENCRYPTION) && ((tPort '= ##class(OcuPilot.Screen.Read).#SOURCEINTEROP) || 'tParented) {
+        ; AD-36 as amended (Story 20.3): an interop read takes criteria only as its parent's route id, on a parent-scoped list;
+        ; except an endpoint the port declares searchable (Story 20.9's Messages), whose criteria are its own.
+        Set tSearches = 0
+        If (tPort = ##class(OcuPilot.Screen.Read).#SOURCEINTEROP) && (tRead.%GetTypeOf("source") = "object") {
+            Set tSearches = ''$ListFind($ListFromString($Parameter("OcuPilot.Port.InteropPort", "SEARCHENDPOINTS")), tRead.%Get("source").%Get("endpoint"))
+        }
+        If (tPort '= "admin") && (tPort '= "mgmnt") && (tPort '= ##class(OcuPilot.Screen.Read).#SOURCEATELIER) && (tPort '= ##class(OcuPilot.Screen.Read).#SOURCETIMELINE) && (tPort '= ##class(OcuPilot.Screen.Read).#SOURCEENCRYPTION) && ((tPort '= ##class(OcuPilot.Screen.Read).#SOURCEINTEROP) || ('tParented && 'tSearches)) {
             Set tProblem = "read.criteria is declared on a '" _ tPort _ "' source, and server criteria travel on the admin, mgmnt, atelier, timeline and encryption ports alone (AD-21)"
             Quit
         }

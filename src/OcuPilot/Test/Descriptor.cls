@@ -213,6 +213,9 @@ XData ReadShapes
 <screen name="InteropLookupTableList" filter="Name" sort="Name,Modified" kinds="Name:name,Modified:text"/>
 <screen name="InteropLookupEntryList" filter="Key,Value" sort="Key,Value" kinds="Key:name,Value:text,Secret:status"/>
 <screen name="InteropBusinessPartnerList" filter="Name,Description,PrimaryContact" sort="Name,Description,PrimaryContact" kinds="Name:name,Description:text,PrimaryContact:text,PrimaryPhone:text,PrimaryEmail:text"/>
+<screen name="InteropMessageList" filter="Status,Type,Source,Target,BodyClass,SessionId" sort="TimeCreated,Status,Type,Source,Target,BodyClass,SessionId" kinds="ID:name,TimeCreated:text,Status:status,Type:text,Source:text,Target:text,BodyClass:identifier,SessionId:identifier,Error:status"/>
+<screen name="InteropMessageHeaderTab" filter="Name,Value" sort="Position,Name" kinds="Name:name,Value:text"/>
+<screen name="InteropMessageContentsTab" filter="Text" sort="Line" kinds="Line:name,Text:text"/>
 </shapes>
 }
 

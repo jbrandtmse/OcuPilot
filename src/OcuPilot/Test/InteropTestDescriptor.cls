@@ -131,7 +131,7 @@ Method TestTheSendToolIsDeclaredAsTheSpecNamesIt()
 /// set <parameter>TESTWAIT</parameter> to 600 -- the wait leg goes red.</p>
 Method TestThePortServesTheItemTestEndpointWithTheTestingServicePairs()
 {
-    Do $$$AssertEquals($ListFind($ClassMethod(..#PORT, "Endpoints"), "ItemTest") _ "|" _ $Piece($Parameter(..#PORT, "ENDPOINTS"), ",", *), $ListLength($ClassMethod(..#PORT, "Endpoints")) _ "|ItemTest", "the roster ends with the endpoint")
+    Do $$$AssertEquals($ListFind($ClassMethod(..#PORT, "Endpoints"), "ItemTest") _ "|" _ $Piece($Parameter(..#PORT, "ENDPOINTS"), ",", *-3), ($ListLength($ClassMethod(..#PORT, "Endpoints")) - 3) _ "|ItemTest", "the roster holds the endpoint before Story 20.9's three message endpoints")
     Do $$$AssertEquals($Parameter(..#PORT, "TESTPAIRS"), "%Ens_Portal:USE,%Ens_TestingService:USE", "the Testing Service page's pairs")
     Do $$$AssertEquals($ClassMethod(..#PORT, "TestWait"), 15, "a test waits at most AD-62's 15 seconds")
     For tType = "LIST", "TESTTARGET", "SENDTEST" {

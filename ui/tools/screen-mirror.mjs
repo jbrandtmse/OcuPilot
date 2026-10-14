@@ -1120,6 +1120,19 @@ export function interopEndpoints() {
   return interopEndpointsCache;
 }
 
+const INTEROP_SEARCH_PARAM_RE = /^Parameter\s+SEARCHENDPOINTS\s*=\s*"([^"]*)"\s*;/m;
+
+let interopSearchEndpointsCache;
+
+/** The endpoints `InteropPort`'s `SEARCHENDPOINTS` parameter declares: the ones whose list takes search criteria of its own (Story 20.9). */
+export function interopSearchEndpoints() {
+  if (interopSearchEndpointsCache === undefined) {
+    const match = INTEROP_SEARCH_PARAM_RE.exec(readFileSync(INTEROP_PORT_SOURCE, 'utf8'));
+    interopSearchEndpointsCache = match === null ? [] : match[1].split(',').filter((name) => name !== '');
+  }
+  return interopSearchEndpointsCache;
+}
+
 /** The one request type an `interop` source declares. */
 export const INTEROP_READ_TYPE = 'LIST';
 
@@ -1927,8 +1940,10 @@ export function criteriaProblem(declaration) {
   if (keysFault !== null) return keysFault;
 
   const port = isObject(read.source) ? read.source.port : undefined;
-  // AD-36 as amended (Story 20.3): an interop read takes criteria only as its parent's route id, on a parent-scoped list.
-  if (port !== SOURCE_ADMIN && port !== SOURCE_MGMNT && port !== SOURCE_ATELIER && port !== SOURCE_TIMELINE && port !== SOURCE_ENCRYPTION && (port !== SOURCE_INTEROP || !parented)) {
+  // AD-36 as amended (Story 20.3): an interop read takes criteria only as its parent's route id, on a parent-scoped list;
+  // except an endpoint the port declares searchable (Story 20.9's Messages), whose criteria are its own.
+  const searches = port === SOURCE_INTEROP && isObject(read.source) && interopSearchEndpoints().includes(read.source.endpoint);
+  if (port !== SOURCE_ADMIN && port !== SOURCE_MGMNT && port !== SOURCE_ATELIER && port !== SOURCE_TIMELINE && port !== SOURCE_ENCRYPTION && (port !== SOURCE_INTEROP || (!parented && !searches))) {
     return `read.criteria is declared on a '${shown(port)}' source, and server criteria travel on the admin, mgmnt, atelier, timeline and encryption ports alone (AD-21)`;
   }
 
