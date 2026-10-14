@@ -709,7 +709,21 @@ test('readProblem returns every rowGet sentence OcuPilot.Test.RowGetCorpus decla
   assert.deepEqual(emitted.read.source.rowGet, {
     key: 'Name',
     param: 'name',
-    fields: ['Roles', 'ExpirationDate'],
+    fields: [
+      'Roles',
+      'ExpirationDate',
+      'AccountNeverExpires',
+      'AutheEnabled',
+      'ChangePassword',
+      'Comment',
+      'EmailAddress',
+      'HOTPKeyDisplay',
+      'NameSpace',
+      'PasswordNeverExpires',
+      'PhoneNumber',
+      'PhoneProvider',
+      'EscalationRoles',
+    ],
     derived: [{ field: 'Expired', rule: 'beforeToday', from: 'ExpirationDate' }],
   });
 
@@ -1581,6 +1595,8 @@ test('every declared banner severity has a .ocu-banner- rule in the stylesheet, 
 // value. Each exemption names the descriptor and the surface it is declared on, so the field on any other screen or
 // surface is still an offender. An item's Test tab (Story 20.6) lists each field of a request class with a `Secret` flag, set
 // true for a field the port finds named like a credential, which a test sends no value for; the flag holds no credential.
+// The users list (Story 18.48) carries `ChangePassword`, the account's "change password at next login" flag, which is a
+// boolean on the user record and holds no credential; the copy form's own password stays write-only and is not read.
 //
 // Mutation (Rule 19): rename a production column field to `ApiKey` -> this goes red naming the
 // descriptor and the field.
@@ -1597,6 +1613,8 @@ const CREDENTIAL_FLAG_FIELDS = new Set([
   'InteropLookupEntryList.cls table.columns: Secret',
   'InteropLookupEntryList.cls context.fields: Key',
   'InteropLookupEntryList.cls context.fields: Secret',
+  'UserList.cls read.fields: ChangePassword',
+  'UserList.cls context.fields: ChangePassword',
 ]);
 
 test('AD-35: no production descriptor names a read, filter, sort, column or context field matching the credential pattern', () => {

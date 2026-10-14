@@ -39,6 +39,8 @@
 /// names.</li>
 /// <li><parameter>ENCRYPTEDDATABASESTYPE</parameter>, AD-27's named case: which of
 /// <parameter>STARTUPDATABASES</parameter> are encrypted on disk.</li>
+/// <li><parameter>JOURNALSTARTUPTYPE</parameter>, AD-27's named case: whether the journal allows key
+/// activation at startup to be turned off, from the vendor's own <code>%SYS.Journal.System</code>.</li>
 /// </ul>
 /// <p>Every body is built here from the declared arguments in the query and the declared secrets in
 /// the body, and a password is held in a local cleared right after the call (AD-35, AD-56 (i)). Any
@@ -108,7 +110,11 @@ Parameter DEACTIVATIONS = "DeactivateDB,DeactivateMK";
 
 /// <p>The arguments Story 18.22's tools declare, each answered empty by their fresh read so the merge
 /// carries it into the stored payload (AD-51).</p>
-Parameter KEYARGUMENTS = "root,path,AdminName,KeyId";
+Parameter KEYARGUMENTS = "root,path,AdminName,KeyId,FileKeys";
+
+/// <p>The query key the activation's reviewed key list travels under: the key file's key ids the mint read,
+/// comma-separated, which <method>Activate</method> compares with the file's keys as sets (Story 18.48).</p>
+Parameter FILEKEYSPARAM = "FileKeys";
 
 /// <p>The writes whose vendor body this port composes from its own constants and no caller value
 /// (AD-51): a deactivation's <code>{Action, AdminName: "", AdminPassword: ""}</code>, whose two names the
@@ -125,6 +131,11 @@ Parameter KMIPSERVERSTYPE = "KMIPSERVERS";
 /// <p>The port-composed read of which of <parameter>STARTUPDATABASES</parameter> are encrypted on disk
 /// (AD-27's named case), which AD-10's start arm reads: <code>{Encrypted}</code>.</p>
 Parameter ENCRYPTEDDATABASESTYPE = "ENCRYPTEDDATABASES";
+
+/// <p>The port-composed read of whether the journal allows key activation at startup to be turned off
+/// (AD-27's named case), which AD-10's start arm reads: <code>{Allowed}</code>, the vendor's
+/// <code>OKNoDBEncKeyAtStartup()</code> answering OK.</p>
+Parameter JOURNALSTARTUPTYPE = "JOURNALSTARTUP";
 
 /// <p>The databases whose encryption makes every start activate its key, comma-separated: the audit log's,
 /// IRISSECURITY and IRISTEMP.</p>
@@ -204,6 +215,8 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
                 Set tSC = ..KmipServers(.pResult, .pHttpStatus, .pFault)
             } ElseIf pType = ..#ENCRYPTEDDATABASESTYPE {
                 Set tSC = ..EncryptedDatabases(.pResult, .pHttpStatus, .pFault)
+            } ElseIf pType = ..#JOURNALSTARTUPTYPE {
+                Set tSC = ..JournalStartupRead(.pResult, .pHttpStatus, .pFault)
             } Else {
                 Set tStartup = 0
             }
@@ -698,7 +711,9 @@ ClassMethod FileKeys(pRoot As %String, pPath As %String, pAction As %String, Out
 /// <p>Activate the keys of a key file (<code>File</code> <code>ACTIVATE</code>, Story 18.22): the
 /// query's key file, <code>AdminName</code> and constant <code>Action</code>, and the body's
 /// <code>AdminPassword</code>. The rules, then the key file and the name listed in it
-/// (<method>FileKeys</method>), are checked first; the body <code>{Action, AdminName, AdminPassword}</code>
+/// (<method>FileKeys</method>), are checked first, and a reviewed key list in the query
+/// (<parameter>FILEKEYSPARAM</parameter>) that is not the file's keys as a set is 409
+/// <parameter>OcuPilot.Api.EncryptionError.KEYFILECHANGED</parameter>; an empty one compares nothing; the body <code>{Action, AdminName, AdminPassword}</code>
 /// goes with the resolved path as <code>file</code>, and the password is cleared right after the call.</p>
 ClassMethod Activate(ByRef pQuery, pBody As %DynamicAbstractObject, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
@@ -718,6 +733,10 @@ ClassMethod Activate(ByRef pQuery, pBody As %DynamicAbstractObject, Output pResu
         Set tValues = ""
         Quit tSC
     }
+    If '..SameKeys(tIds, $Get(pQuery(..#FILEKEYSPARAM))) {
+        Set tValues = ""
+        Quit ..Refuse(409, ##class(OcuPilot.Api.Error).#CONFLICT, ##class(OcuPilot.Api.EncryptionError).#KEYFILECHANGED, ##class(OcuPilot.Api.EncryptionError).#REASONKEYFILECHANGED, .pHttpStatus, .pFault)
+    }
     Set tSend = {}
     Do tSend.%Set(..#ACTIONPARAM, tAction, "string")
     Do tSend.%Set("AdminName", tValues.%Get("AdminName"), "string")
@@ -729,6 +748,36 @@ ClassMethod Activate(ByRef pQuery, pBody As %DynamicAbstractObject, Output pResu
     Set tSend = ""
     If $$$ISERR(tSC) Quit ..KeyMapped(tSC, .pHttpStatus, .pFault)
     Quit tSC
+}
+
+/// <p>Whether the key ids <var>pIds</var> (a <class>%DynamicArray</class>, the file's keys) and the reviewed list
+/// <var>pReviewed</var> (ids separated by commas, blanks around each ignored) are one set. An empty
+/// <var>pReviewed</var> is the same: nothing was reviewed to compare.</p>
+ClassMethod SameKeys(pIds As %DynamicArray, pReviewed As %String) As %Boolean
+{
+    If $ZStrip($Get(pReviewed), "<>W") = "" Quit 1
+    Kill tFile, tReviewed
+    Set tIterator = pIds.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tId) {
+        Set tFile(tId _ "") = ""
+    }
+    For tI = 1:1:$Length(pReviewed, ",") {
+        Set tId = $ZStrip($Piece(pReviewed, ",", tI), "<>W")
+        If tId '= "" Set tReviewed(tId) = ""
+    }
+    Set tKey = ""
+    For {
+        Set tKey = $Order(tFile(tKey))
+        If tKey = "" Quit
+        If '$Data(tReviewed(tKey)) Quit
+    }
+    If tKey '= "" Quit 0
+    For {
+        Set tKey = $Order(tReviewed(tKey))
+        If tKey = "" Quit
+        If '$Data(tFile(tKey)) Quit
+    }
+    Quit (tKey = "")
 }
 
 /// <p>Deactivate one active key (<code>Key</code> <code>DEACTIVATE</code>, Story 18.22): the query's
@@ -1042,7 +1091,9 @@ ClassMethod StartupFault(ByRef pViolations, Output pHttpStatus As %Integer, Outp
 }
 
 /// <p>A vendor refusal of the startup settings write in the product's terms: a violation the admin port
-/// mapped to <parameter>OcuPilot.Api.EncryptionError.STARTUPREQUIRED</parameter> is 409 with its sentence.
+/// mapped to <parameter>OcuPilot.Api.EncryptionError.STARTUPREQUIRED</parameter> is 409 with its sentence, and
+/// one mapped to <parameter>OcuPilot.Api.EncryptionError.STARTUPKMIPUNCONFIGURED</parameter> or
+/// <parameter>OcuPilot.Api.EncryptionError.STARTUPKEYFILEDIFFERENT</parameter> is 422 on the start mode.
 /// The vendor's #5001, which <parameter>OcuPilot.Port.AdminPort.PROPERTYFAULTS</parameter> maps to a
 /// credentials violation, is 422 on <code>AdminPassword</code> only when the write carried credentials
 /// (<var>pCredentials</var>): it is also the code of the vendor's internal faults, so any other #5001 is the
@@ -1051,6 +1102,14 @@ ClassMethod StartupMapped(pSC As %Status, pCredentials As %Boolean, ByRef pHttpS
 {
     Set tCode = ##class(OcuPilot.Api.EncryptionError).#STARTUPREQUIRED
     If ..Carries(pFault, tCode) Quit ..Refuse(409, ##class(OcuPilot.Api.Error).#CONFLICT, tCode, ##class(OcuPilot.Api.EncryptionError).ReasonFor(tCode), .pHttpStatus, .pFault)
+    Set tModeCode = ""
+    For tCandidate = ##class(OcuPilot.Api.EncryptionError).#STARTUPKMIPUNCONFIGURED, ##class(OcuPilot.Api.EncryptionError).#STARTUPKEYFILEDIFFERENT {
+        If ..Carries(pFault, tCandidate) {
+            Set tModeCode = tCandidate
+            Quit
+        }
+    }
+    If tModeCode '= "" Quit ..Violation(tModeCode, ..#MODEFIELD, .pHttpStatus, .pFault)
     Set tCredentials = ##class(OcuPilot.Api.EncryptionError).#KEYFILECREDENTIALS
     If ..Carries(pFault, tCredentials) {
         If pCredentials Quit ..Violation(tCredentials, "AdminPassword", .pHttpStatus, .pFault)
@@ -1191,6 +1250,52 @@ ClassMethod EncryptedDatabases(Output pResult, Output pHttpStatus As %Integer, O
     If $$$ISERR(tSC) Quit tSC
     Set pResult = {}
     Do pResult.%Set("Encrypted", tNames)
+    Quit $$$OK
+}
+
+/// <p>Whether the journal allows key activation at startup to be turned off, in <var>pAllowed</var>: the
+/// vendor's own <code>%SYS.Journal.System.OKNoDBEncKeyAtStartup()</code>, called in <code>%SYS</code> (AD-16)
+/// after the endpoint's <code>%Admin_Secure:USE</code> gate (AD-27's named case). It answers an error while
+/// journal encryption is enabled, the current journal file is encrypted or a file needed for recovery is. A
+/// throw fails the read.</p>
+ClassMethod JournalStartup(Output pAllowed As %Boolean, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+{
+    Set pAllowed = 0
+    Set pHttpStatus = 0
+    Set pFault = ""
+    If '$System.Security.Check("%Admin_Secure", "USE") {
+        Do ##class(OcuPilot.Kernel.Fault).Outcome(403, $$$OK, .tMapped, .tDetail)
+        Quit ..Refuse(403, tMapped.error, tMapped.code, tMapped.reason, .pHttpStatus, .pFault, {"failedPair": "%Admin_Secure:USE"})
+    }
+    Set tError = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set pAllowed = $$$ISOK(##class(%SYS.Journal.System).OKNoDBEncKeyAtStartup())
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tError = ex.AsStatus()
+    }
+    If $$$ISERR(tError) {
+        Set pAllowed = 0
+        Set tSC = ..Refuse(500, ##class(OcuPilot.Api.Error).#SERVERERROR, ##class(OcuPilot.Api.Error).#INTERNAL, ##class(OcuPilot.Kernel.Fault).#DEFAULTREASON, .pHttpStatus, .pFault)
+        Do ..LogFault("the journal's key activation at startup could not be read", tError, pFault.code)
+        Quit tSC
+    }
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p><parameter>JOURNALSTARTUPTYPE</parameter>: <code>{Allowed}</code>, <method>JournalStartup</method>'s
+/// answer.</p>
+ClassMethod JournalStartupRead(Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    Set tSC = ..JournalStartup(.tAllowed, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    Set pResult = {}
+    Do pResult.%Set("Allowed", tAllowed, "boolean")
     Quit $$$OK
 }
 

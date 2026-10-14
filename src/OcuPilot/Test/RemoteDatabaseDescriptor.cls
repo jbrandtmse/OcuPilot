@@ -137,7 +137,7 @@ Method TestTheToolsDeclareTheirFieldsKindsAndPairs()
         Set tSeeds = tSeeds _ $Select(tSeeds = "": "", 1: ",") _ ##class(OcuPilot.Kernel.Governance.Baseline).Seed(tKey, .tListed) _ tListed
     }
     Do $$$AssertEquals(tSeeds, "11,01,11", "the baseline lists all three, the delete disabled (AD-22)")
-    Do $$$AssertEquals($ListToString(##class(OcuPilot.Kernel.Proposal.Prohibited).PermittedCreateFields("database-configuration")), "root,path,Size,GlobalJournalState,ResourceName,Server,Directory", "the prohibited set reviews a remote create's data server and directory")
+    Do $$$AssertEquals($ListToString(##class(OcuPilot.Kernel.Proposal.Prohibited).PermittedCreateFields("database-configuration")), "root,path,Size,GlobalJournalState,ResourceName,Encrypted,Server,Directory", "the prohibited set reviews a remote create's data server and directory")
     For tTool = "OcuPilot.Screen.Tool.RemoteDatabaseCreate", "OcuPilot.Screen.Tool.RemoteDatabaseUpdate" {
         Do $$$AssertTrue($Parameter(tTool, "DESCRIPTION") [ ("up to " _ $Parameter(..#PORT, "LISTSECONDS") _ " seconds"), tTool _ ": its description states the listing's bound, LISTSECONDS")
     }

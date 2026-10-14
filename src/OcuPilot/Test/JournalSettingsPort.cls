@@ -24,6 +24,34 @@ ClassMethod Hold()
     Set ^||OcuPilotJournalSettingsPort("hold") = 1
 }
 
+/// <p>Answer the databases' directories <method>DatabaseDirectories</method> reads with <var>pDirectories</var> (a
+/// <class>%List</class>) in place of the instance's, until <method>Clear</method>; <code>""</code> arms an empty list.</p>
+ClassMethod ArmDatabases(pDirectories As %List)
+{
+    Set ^||OcuPilotJournalSettingsPort("databases") = pDirectories
+}
+
+/// <p>Fail the read of the databases' directories until <method>Clear</method>.</p>
+ClassMethod FailDatabases()
+{
+    Set ^||OcuPilotJournalSettingsPort("databasesfail") = 1
+}
+
+/// <p>The databases' directories: the failure <method>FailDatabases</method> armed, the list
+/// <method>ArmDatabases</method> armed, or the instance's own.</p>
+ClassMethod DatabaseDirectories(Output pDirectories As %List) As %Status
+{
+    If $Get(^||OcuPilotJournalSettingsPort("databasesfail")) {
+        Set pDirectories = ""
+        Quit $$$ERROR($$$GeneralError, "the databases' directories cannot be read, as the seam was armed")
+    }
+    If $Data(^||OcuPilotJournalSettingsPort("databases")) {
+        Set pDirectories = ^||OcuPilotJournalSettingsPort("databases")
+        Quit $$$OK
+    }
+    Quit ##super(.pDirectories)
+}
+
 /// <p>Send the next settings <code>PUT</code>s to the instance again, as before <method>Hold</method>.</p>
 ClassMethod Release()
 {

@@ -196,6 +196,32 @@ describe('the create database wizard store', () => {
     expect([store.refusalCode(), store.refusalPair(), store.reason()]).toEqual(['AUTH.NOPRIVILEGE', '%DB_IRISSYS:WRITE', 'Forbidden']);
   });
 
+  it('Story 18.48: Encrypt database needs a default key -- refused with the rule\u2019s sentence without one, posted as Encrypted true with one', async () => {
+    const sentence = 'Activate a database encryption key on Database encryption before encrypting a database.';
+    const rules = [...FORM.rules, { field: 'Encrypted', code: 'DATABASE.ENCRYPT.NOKEY', reason: sentence }];
+    const without = mount({ form: { kind: 'ok', status: 200, body: { ...FORM, rules, EncryptionKeyID: '' } } });
+    await without.store.open();
+    expect([without.store.encryptAvailable(), without.store.encryptionKeyId(), without.store.encryptRefusal()]).toEqual([false, '', sentence]);
+    without.store.setEncrypted(true);
+    // Mutation (Rule 19): drop the availability check from `setEncrypted` -> this goes red.
+    expect(without.store.values().Encrypted).toBe(false);
+    without.store.setName('ocuprobe');
+    expect(await without.store.create()).toBe(true);
+    expect(JSON.parse(without.calls.find((call) => call.path === DATABASE_PATH)?.body ?? '{}')).not.toHaveProperty('Encrypted');
+
+    const withKey = mount({ form: { kind: 'ok', status: 200, body: { ...FORM, rules, EncryptionKeyID: 'K-1' } } });
+    await withKey.store.open();
+    expect([withKey.store.encryptAvailable(), withKey.store.encryptRefusal()]).toEqual([true, '']);
+    withKey.store.setName('ocuprobe');
+    withKey.store.setEncrypted(true);
+    expect(withKey.store.values().Encrypted).toBe(true);
+    expect(await withKey.store.next()).toBe(true);
+    expect(JSON.parse(withKey.calls.find((call) => call.path === DATABASE_CHECK_PATH)?.body ?? '{}').values.Encrypted).toBe(true);
+    expect(await withKey.store.create()).toBe(true);
+    // Mutation (Rule 19): drop `Encrypted` from `createBody` -> this goes red.
+    expect(JSON.parse(withKey.calls.find((call) => call.path === DATABASE_PATH)?.body ?? '{}').Encrypted).toBe(true);
+  });
+
   it('the existing-resource choice is refused while the resources could not be listed', async () => {
     const { store } = mount({ form: { kind: 'ok', status: 200, body: { ...FORM, resources: undefined, resourcesRefused: '%Admin_Secure:USE' } } });
     await store.open();

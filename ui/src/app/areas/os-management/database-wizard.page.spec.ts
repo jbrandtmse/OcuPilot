@@ -154,6 +154,39 @@ describe('DatabaseWizardPage', () => {
     expect(host.querySelector('#ocu-database-resource-new')?.closest('label')?.textContent?.trim()).toBe('Create the resource %DB_OCUPROBE183A');
   });
 
+  it('Story 18.48: Encrypt database is aria-disabled with the rule\u2019s sentence while no key is the default, and chosen and posted when one is', async () => {
+    const sentence = 'Activate a database encryption key on Database encryption before encrypting a database.';
+    const rules = [...FORM.rules, { field: 'Encrypted', code: 'DATABASE.ENCRYPT.NOKEY', reason: sentence }];
+    const none = await mount({ form: { ...FORM, rules, EncryptionKeyID: '' } });
+    type(none.host, 'ocu-database-Name', 'OcuProbe183A');
+    await settle(none.fixture);
+    await next(none.fixture, none.host);
+    const refused = none.host.querySelector('#ocu-database-Encrypted') as HTMLInputElement;
+    expect(none.host.querySelector('#ocu-database-Encrypted')?.closest('label')?.textContent?.trim()).toBe(STRINGS.databaseEncrypt);
+    // Mutation (Rule 19): drop the `aria-disabled` binding from the Encrypt database checkbox -> this goes red.
+    expect(refused.getAttribute('aria-disabled')).toBe('true');
+    expect(none.host.querySelector('#ocu-database-Encrypted-refused')?.textContent?.trim()).toBe(sentence);
+    expect(refused.getAttribute('aria-describedby')).toContain('ocu-database-Encrypted-refused');
+    refused.click();
+    await settle(none.fixture);
+    expect((none.host.querySelector('#ocu-database-Encrypted') as HTMLInputElement).checked).toBe(false);
+
+    const keyed = await mount({ form: { ...FORM, rules, EncryptionKeyID: 'K-1' } });
+    type(keyed.host, 'ocu-database-Name', 'OcuProbe183A');
+    await settle(keyed.fixture);
+    await next(keyed.fixture, keyed.host);
+    const open = keyed.host.querySelector('#ocu-database-Encrypted') as HTMLInputElement;
+    expect(open.getAttribute('aria-disabled')).toBeNull();
+    expect(keyed.host.querySelector('#ocu-database-Encrypted-refused')).toBeNull();
+    open.click();
+    await settle(keyed.fixture);
+    expect((keyed.host.querySelector('#ocu-database-Encrypted') as HTMLInputElement).checked).toBe(true);
+    await next(keyed.fixture, keyed.host);
+    primary(keyed.host).click();
+    await settle(keyed.fixture);
+    expect(JSON.parse(keyed.calls.find((call) => call.path === DATABASE_PATH)?.body ?? '{}').Encrypted).toBe(true);
+  });
+
   // Mutation (Rule 19): `onLocation` hands the preselection to `setLocation` -> the first
   // `dirty()` assertion goes red.
   it('opening over a single allowed root leaves the form clean; a user\u2019s edit of the path then marks it dirty', async () => {

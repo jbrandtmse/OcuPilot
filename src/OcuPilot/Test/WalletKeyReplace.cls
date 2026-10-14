@@ -151,6 +151,37 @@ Method TestACertificateOnlyReplaceLeavesNoPrivateKey()
     Do $$$AssertEquals($Select($IsObject(tMeta): tMeta.%Get("HasPrivateKey") _ " " _ tMeta.%Get("HasCertificate"), 1: ""), "0 1", "the secret holds a certificate and no private key")
 }
 
+/// <p>DW-2126, AD-10: replacing an RSA key over a secret that holds a certificate with a newly generated pair removes
+/// the certificate (measured), and the card's consequence and the dialog's say so. The secret holds a certificate and
+/// its matching private key, the replace is minted with its consequence, the sentence it carries opens with the
+/// certificate's removal, and the person's Save of the generated pair leaves a secret with a private key and no
+/// certificate.</p>
+/// <p>Mutation (Rule 19): put the sentence <parameter>OcuPilot.Api.WalletKeyError.REASONREPLACERSA</parameter> carried
+/// before Story 18.48 back -- the sentence leg goes red; make the Save keep the certificate (send the stored one with
+/// the length) -- the last leg goes red.</p>
+Method TestAGeneratedReplaceRemovesAStoredCertificateAndTheCardSaysSo()
+{
+    Set tName = ..Name("Cert")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "AddRsa", tName, 2048), "an RSA key is stored")
+    Set tSC = $ClassMethod(..#SAVE, "Update", tName, {"Certificate": ($ClassMethod(..#MATERIAL, "Pem", "Certificate")), "PrivateKey": ($ClassMethod(..#MATERIAL, "Pem", "PrivateKey"))}, .tHttp, .tFault, .tViolations, .tReadBack, .tKey)
+    Do $$$AssertStatusOK(tSC, "a certificate and its private key replace the pair")
+    Set tMeta = $ClassMethod(..#PROBE, "Metadata", tName)
+    Do $$$AssertEquals($Select($IsObject(tMeta): tMeta.%Get("HasPrivateKey") _ " " _ tMeta.%Get("HasCertificate"), 1: ""), "1 1", "the secret holds a private key and a certificate")
+    Set tSC = $ClassMethod(..#PROBE, "Mint", ..#RSATOOL, tName, {"Length": 3072}, .tProposal, .tHttp, .tFault)
+    Do $$$AssertStatusOK(tSC, "a generated replace is minted")
+    If $$$ISERR(tSC) Quit
+    Set tSC = ##class(OcuPilot.Kernel.State.Propose).GuardedByKey(tProposal.%Get("proposalId"), .tFound, .tValues)
+    Do $$$AssertEquals($Get(tValues("consequence")), "WALLETKEY.REPLACE.RSA", "with the RSA consequence")
+    Set tSentence = ##class(OcuPilot.Api.Error).ReasonForViolation("WALLETKEY.REPLACE.RSA")
+    Set tOpening = "Replaces the whole key pair, and a stored certificate is removed unless the import carries one."
+    Do $$$AssertEquals($Extract(tSentence, 1, $Length(tOpening)), tOpening, "whose sentence opens by saying the certificate is removed")
+    Do $ClassMethod(..#RECORD, "Clear")
+    Set tSC = $ClassMethod(..#SAVE, "Update", tName, {"Length": 3072}, .tHttp, .tFault, .tViolations, .tReadBack, .tKey)
+    Do $$$AssertStatusOK(tSC, "the generated replace is saved")
+    Set tMeta = $ClassMethod(..#PROBE, "Metadata", tName)
+    Do $$$AssertEquals($Select($IsObject(tMeta): tMeta.%Get("Length") _ " " _ tMeta.%Get("HasPrivateKey") _ " " _ tMeta.%Get("HasCertificate"), 1: ""), "3072 1 0", "the secret holds a new private key and no certificate")
+}
+
 /// <p>C4: the agent's confirm replaces the pair through one <code>PUT</code> of the length once the key
 /// is enabled, and at the baseline it is refused <code>GOVERNANCE.DISABLED</code> with no
 /// <code>PUT</code>.</p>

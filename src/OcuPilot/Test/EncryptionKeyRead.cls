@@ -56,7 +56,7 @@ Method TestEachReadAnswersTheSameRowsOnScreenAndTool()
         Kill tQuery
         Set tSC = $ClassMethod(..#PORT, "Invoke", "Security.Encryption.Key", $List(tCase, 3), .tQuery, "", .tFresh, .tHttp, .tFault)
         Do $$$AssertStatusOK(tSC, $List(tCase, 3) _ " answers")
-        Do $$$AssertEquals($Select($IsObject($Get(tFresh)): tFresh.%ToJSON(), 1: ""), "{""Keys"":" _ tRows _ ",""root"":"""",""path"":"""",""AdminName"":"""",""KeyId"":""""}", $List(tCase, 3) _ " answers the same keys beside the arguments, empty")
+        Do $$$AssertEquals($Select($IsObject($Get(tFresh)): tFresh.%ToJSON(), 1: ""), "{""Keys"":" _ tRows _ ",""root"":"""",""path"":"""",""AdminName"":"""",""KeyId"":"""",""FileKeys"":""""}", $List(tCase, 3) _ " answers the same keys beside the arguments, empty")
     }
 }
 

@@ -36,7 +36,13 @@ Parameter REQUIREDARGUMENTS = "root,path,AdminName";
 
 Parameter RULEFIELDS = "AdminName";
 
-Parameter FINGERPRINTSUBJECT = "Keys,root,path,AdminName";
+/// <p>The key ids the mint read from the key file, which the card lists and the write compares with the
+/// file's keys: settable, fingerprinted and answered empty by the fresh read, and never advertised.</p>
+Parameter MINTARGUMENTS = "FileKeys";
+
+Parameter READANSWERS = "Keys,root,path,AdminName,KeyId,FileKeys";
+
+Parameter FINGERPRINTSUBJECT = "Keys,root,path,AdminName,FileKeys";
 
 /// <p>The pair <class>OcuPilot.Port.PathPort</class>'s resolve requires (AD-21, AD-8; measured at Task
 /// 0).</p>

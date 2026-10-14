@@ -305,6 +305,10 @@ const KERNEL_REFUSALS = [
   // Story 18.23: Interactive key activation while the audit log, IRISSECURITY or IRISTEMP is encrypted,
   // which the form shows on the start-mode field when either caller is answered with it.
   ['STARTUPINTERACTIVE', 'encryptionStartupInteractiveRefusal'],
+  // Story 18.48: Interactive while journal encryption is on, and KMIP while the audit log, IRISSECURITY or IRISTEMP is
+  // encrypted, which the form shows on the start-mode field when either caller is answered with them.
+  ['STARTUPJOURNAL', 'encryptionStartupJournalRefusal'],
+  ['STARTUPKMIP', 'encryptionStartupKmipRefusal'],
   // Story 18.8: a change that leaves OcuPilot's own sign-in with no method, and turning O/S authentication
   // off, which the authentication options form draws on the field before a click and answers either caller
   // with.
@@ -828,6 +832,10 @@ const ENCRYPTION_SENTENCES = [
   [ENCRYPTION_ERROR, 'REASONSTARTUPKMIP', 'encryptionStartupKmipConsequence'],
   [ENCRYPTION_ERROR, 'REASONSTARTUPRESTART', 'encryptionStartupRestart'],
   [ENCRYPTION_ERROR, 'REASONSTARTUPJOURNAL', 'encryptionStartupJournalConsequence'],
+  // Story 18.48: the vendor's startup refusals of a KMIP server with no startup key list and of another Unattended key file,
+  // which the form draws on the start-mode field.
+  [ENCRYPTION_ERROR, 'REASONSTARTUPKMIPUNCONFIGURED', 'encryptionStartupKmipUnconfigured'],
+  [ENCRYPTION_ERROR, 'REASONSTARTUPKEYFILEDIFFERENT', 'encryptionStartupKeyFileDifferent'],
   // Story 18.8: the sign-out consequence, which the form states before Save and the card renders.
   [WEBAUTH_ERROR, 'REASONSIGNOUT', 'authOptionsSignOutConsequence'],
   // Story 18.25: the consequence of an SSL/TLS change to the superserver the web gateway connects through, which
@@ -850,6 +858,23 @@ test('Story 18.23: the form draws the Interactive refusal on the start-mode fiel
   const store = /export const STARTUP_INTERACTIVE_CODE = '([^']+)';/.exec(readFileSync(join(REPO_ROOT, 'ui', 'src', 'app', 'areas', 'security', 'encryption-startup.store.ts'), 'utf8'));
   assert.notEqual(store, null, 'encryption-startup.store.ts declares STARTUP_INTERACTIVE_CODE');
   assert.equal(store[1], kernel[1], "the store matches the server's refusal by the kernel's own code");
+});
+
+test('Story 18.48: the form draws the journal and KMIP start refusals on the start-mode field by the codes the kernel declares', () => {
+  // Mutation (Rule 19): change STARTUP_JOURNAL_CODE or STARTUP_KMIP_CODE in encryption-startup.store.ts -> this goes red.
+  const prohibited = readFileSync(PROHIBITED, 'utf8');
+  const source = readFileSync(join(REPO_ROOT, 'ui', 'src', 'app', 'areas', 'security', 'encryption-startup.store.ts'), 'utf8');
+  for (const [name, parameter] of [
+    ['STARTUP_JOURNAL_CODE', 'STARTUPJOURNAL'],
+    ['STARTUP_KMIP_CODE', 'STARTUPKMIP'],
+  ]) {
+    const kernel = new RegExp(`Parameter ${parameter} = "([^"]+)";`).exec(prohibited);
+    assert.notEqual(kernel, null, `Prohibited.cls declares ${parameter}`);
+    const store = new RegExp(`export const ${name} = '([^']+)';`).exec(source);
+    assert.notEqual(store, null, `encryption-startup.store.ts declares ${name}`);
+    assert.equal(store[1], kernel[1], `the store matches the server's ${parameter} refusal by the kernel's own code`);
+  }
+  assert.ok(source.includes('STARTUP_MODE_REFUSALS: readonly string[] = [STARTUP_INTERACTIVE_CODE, STARTUP_JOURNAL_CODE, STARTUP_KMIP_CODE]'), 'and lists all three');
 });
 
 test('Story 18.7: each key file refusal, state refusal and consequence is one sentence on both surfaces, published in Fixed strings', () => {
@@ -931,10 +956,11 @@ const EGRESS_SENTENCES = [
   ['REASONPROXYADDRESS', 'PROXYADDRESS', 'egressRefusalProxyAddress'],
   ['REASONSSLABSENT', 'SSLABSENT', 'egressRefusalSslAbsent'],
   ['REASONSSLUNVERIFIED', 'SSLUNVERIFIED', 'egressRefusalSslUnverified'],
+  ['REASONSSLWEAK', 'SSLWEAK', 'egressRefusalSslWeak'],
 ];
 
-test('Story 18.40: each provider connection refusal is one sentence on both surfaces, published in Fixed strings, for the five codes the class declares', () => {
-  // Mutation (Rule 19): change one word of REASONSSLABSENT in EgressError.cls, or add a sixth code to its Codes() -> this goes red.
+test('Story 18.40: each provider connection refusal is one sentence on both surfaces, published in Fixed strings, for the six codes the class declares', () => {
+  // Mutation (Rule 19): change one word of REASONSSLABSENT in EgressError.cls, or add a seventh code to its Codes() -> this goes red.
   const source = readFileSync(EGRESS_ERROR, 'utf8');
   const experience = readFileSync(EXPERIENCE, 'utf8');
   const declared = /ClassMethod Codes\(\) As %List\s*\{\s*Quit \$ListBuild\(([^)]*)\)/.exec(source);
@@ -942,7 +968,7 @@ test('Story 18.40: each provider connection refusal is one sentence on both surf
   assert.deepEqual(
     declared[1].split(',').map((member) => member.trim()).sort(),
     EGRESS_SENTENCES.map(([, code]) => `..#${code}`).sort(),
-    'the five codes Codes() lists are the five sentences this test pins'
+    'the six codes Codes() lists are the six sentences this test pins'
   );
   for (const [parameter, code, key] of EGRESS_SENTENCES) {
     const sentence = new RegExp(`Parameter ${parameter} = "([^"]+)";`).exec(source);

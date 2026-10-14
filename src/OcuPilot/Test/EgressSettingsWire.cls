@@ -25,6 +25,9 @@ Parameter VERIFIED = "OcuPilotProbeEgressVerified";
 
 Parameter NOVERIFY = "OcuPilotProbeEgressNoVerify";
 
+/// <p>An enabled client requiring the server's certificate, whose minimum TLS version is 1.1.</p>
+Parameter WEAK = "OcuPilotProbeEgressWeak";
+
 Parameter DISABLED = "OcuPilotProbeEgressDisabled";
 
 Parameter SERVER = "OcuPilotProbeEgressServer";
@@ -48,22 +51,22 @@ Method OnAfterAllTests() As %Status
     Quit ..RemoveProbes()
 }
 
-/// <p>Create the four probe configurations afresh.</p>
+/// <p>Create the five probe configurations afresh.</p>
 Method EnsureProbes() As %Status
 {
     Set tSC = $$$OK
-    For tCase = $ListBuild(..#VERIFIED, "verified"), $ListBuild(..#NOVERIFY, "noverify"), $ListBuild(..#DISABLED, "disabled"), $ListBuild(..#SERVER, "server") {
+    For tCase = $ListBuild(..#VERIFIED, "verified"), $ListBuild(..#NOVERIFY, "noverify"), $ListBuild(..#DISABLED, "disabled"), $ListBuild(..#SERVER, "server"), $ListBuild(..#WEAK, "weak") {
         Set tSC = ##class(OcuPilot.Test.EgressSslProbe).Ensure($List(tCase, 1), $List(tCase, 2))
         If $$$ISERR(tSC) Quit
     }
     Quit tSC
 }
 
-/// <p>Delete the four probe configurations.</p>
+/// <p>Delete the five probe configurations.</p>
 Method RemoveProbes() As %Status
 {
     Set tSC = $$$OK
-    For tName = ..#VERIFIED, ..#NOVERIFY, ..#DISABLED, ..#SERVER {
+    For tName = ..#VERIFIED, ..#NOVERIFY, ..#DISABLED, ..#SERVER, ..#WEAK {
         Set tOne = ##class(OcuPilot.Test.EgressSslProbe).Remove(tName)
         If $$$ISERR(tOne) Set tSC = tOne
     }
@@ -194,15 +197,17 @@ Method TestAClearedProxyStoresAnEmptyServerAndPortZero()
     Do $$$AssertEquals(tStored("proxyServer") _ "|" _ tStored("proxyPort"), "|0", "and hold the same")
 }
 
-/// <p><b>C2.</b> A configuration is named only when it is an enabled client with <code>VerifyPeer</code> 1: a verifying
-/// client is stored and read back by name; an absent name is <code>EGRESS.SSLABSENT</code>; a server, a disabled client
-/// and a client that does not verify are <code>EGRESS.SSLUNVERIFIED</code>; each refusal is on
-/// <code>sslConfiguration</code> and stores nothing. OcuPilot's own provider configuration and an empty name are stored
+/// <p><b>C2.</b> A configuration is named only when it is an enabled client with <code>VerifyPeer</code> 1 whose minimum
+/// TLS version is 1.2 or later: a verifying client is stored and read back by name; an absent name is
+/// <code>EGRESS.SSLABSENT</code>; a server, a disabled client and a client that does not verify are
+/// <code>EGRESS.SSLUNVERIFIED</code>; a verifying client whose minimum is 1.1 is <code>EGRESS.SSLWEAK</code> (Story 18.48,
+/// DW-2424); each refusal is on <code>sslConfiguration</code> and stores nothing. OcuPilot's own provider configuration and an empty name are stored
 /// as <code>""</code>, which clears a name.</p>
 /// <p>Mutation (Rule 19): drop the <code>VerifyPeer</code> rule from
 /// <method>OcuPilot.Kernel.SwitchRules.EnabledVerifyingClient</method> -- the client that does not verify is stored and
 /// the unverified leg goes red; drop its <code>Type</code> rule -- the server, which verifies, is stored and the server leg
-/// goes red. Stop storing OcuPilot's own name
+/// goes red; drop the floor from <method>OcuPilot.Kernel.SwitchRules.ValidateEgress</method> -- the weak client is stored
+/// and its leg goes red. Stop storing OcuPilot's own name
 /// as <code>""</code> in <method>OcuPilot.Api.Switches.EgressMerge</method> -- the stored-name leg goes red.</p>
 Method TestAConfigurationIsNamedOnlyAsAnEnabledClientThatVerifiesThePeer()
 {
@@ -212,7 +217,7 @@ Method TestAConfigurationIsNamedOnlyAsAnEnabledClientThatVerifiesThePeer()
     Do $$$AssertEquals(tRead.sslConfiguration, ..#VERIFIED, "and the read answers it")
     Set tVersion = tRead.rowVersion
 
-    For tCase = $ListBuild(..#ABSENT, "EGRESS.SSLABSENT"), $ListBuild(..#SERVER, "EGRESS.SSLUNVERIFIED"), $ListBuild(..#DISABLED, "EGRESS.SSLUNVERIFIED"), $ListBuild(..#NOVERIFY, "EGRESS.SSLUNVERIFIED"), $ListBuild($Translate($Justify("", 65), " ", "n"), "EGRESS.SSLABSENT") {
+    For tCase = $ListBuild(..#ABSENT, "EGRESS.SSLABSENT"), $ListBuild(..#SERVER, "EGRESS.SSLUNVERIFIED"), $ListBuild(..#DISABLED, "EGRESS.SSLUNVERIFIED"), $ListBuild(..#NOVERIFY, "EGRESS.SSLUNVERIFIED"), $ListBuild(..#WEAK, "EGRESS.SSLWEAK"), $ListBuild($Translate($Justify("", 65), " ", "n"), "EGRESS.SSLABSENT") {
         Do ..Put({"sslConfiguration": ($List(tCase, 1))}, .tStatus, .tAnswer)
         Set tFirst = $Select($IsObject(tAnswer) && (tAnswer.%GetTypeOf("detail") = "object"): tAnswer.detail.violations.%Get(0), 1: "")
         Set tSaw = $Select($IsObject(tFirst): tFirst.field _ " " _ tFirst.code, 1: "")

@@ -170,7 +170,7 @@ Method TestTheCodesAnswerTheirSentences()
     Do $$$AssertEquals(tCode, "PROHIBITED.SERVINGSUPERSERVER", "the refusal's code")
     Do $$$AssertEquals($ClassMethod(..#PROHIBITED, "ReasonFor", tCode), $Parameter(..#PROHIBITED, "SERVINGSUPERSERVERREASON"), "answers its sentence")
     Do $$$AssertTrue($ZConvert($Parameter(..#PROHIBITED, "SERVINGSUPERSERVERREASON"), "L") '[ "the agent", "which names no caller")
-    Do $$$AssertEquals($ListLength($ClassMethod(..#PROHIBITED, "Codes")) _ " " _ $ListFind($ClassMethod(..#PROHIBITED, "Codes"), tCode), "36 31", "the set's thirty-first code, of thirty-six since Stories 18.9, 20.15, 18.42 and 18.40")
+    Do $$$AssertEquals($ListLength($ClassMethod(..#PROHIBITED, "Codes")) _ " " _ $ListFind($ClassMethod(..#PROHIBITED, "Codes"), tCode), "38 31", "the set's thirty-first code, of thirty-eight since Stories 18.9, 20.15, 18.42, 18.40 and 18.48")
 }
 
 /// <p><var>pFields</var>, comma-separated, sorted.</p>

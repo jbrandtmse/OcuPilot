@@ -751,6 +751,11 @@ services:
       # every startup setting change only to a seam port that sends nothing, and sends the vendor one
       # Settings PUT of the settings unchanged.
       # classes: EncryptionStartupWrite
+      # Story 18.48's class activates one probe database key, which sets key activation at startup to
+      # Interactive, creates one encrypted probe database over it and, on every path, deletes the database,
+      # deactivates the key and sets key activation at startup back to None through the settings PUT. It
+      # never restarts the instance.
+      # classes: DatabaseCreateEncrypted
       OCUPILOT_ALLOW_ENCRYPTION_CONFIG: "1"
     volumes:
       - $DIR/data:/durable

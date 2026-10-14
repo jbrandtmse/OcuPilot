@@ -226,7 +226,8 @@ Method TestAuditPort()
 /// directory whose body carries none of the three names the port's read adds.</p>
 /// <p>Mutations (Rule 19): drop the resource step from
 /// <method>OcuPilot.Port.DatabasePort.Snippet</method> -> this goes red; let its file-edit branch fall
-/// through to the admin port's script -> this goes red.</p>
+/// through to the admin port's script -> this goes red; drop its <code>DefaultKey</code> lookup (Story 18.48) -> the
+/// encrypted leg goes red.</p>
 Method TestDatabasePort()
 {
     Set tPort = "OcuPilot.Port.DatabasePort"
@@ -249,6 +250,11 @@ Method TestDatabasePort()
     Do $$$AssertTrue(tText [ "If '##class(Security.Resources).Exists(""%DB_DRAFTDB"") { Set tSC = ##class(Security.Resources).Create(""%DB_DRAFTDB"", """", """")", "the resource is created only when it does not exist: " _ tText)
     Do $$$AssertTrue(tText [ """Size"":3", "and the file is made at the size asked for")
     Do $$$AssertTrue(tText '[ "Security.Resources).Modify(", "and one that exists is never modified")
+    Set tText = ..Text($ClassMethod("OcuPilot.Test.DatabaseKeyPort", "Snippet", "Database.ConfigCRUD", "PUT", .tQuery, {"Directory": "/draft/db/"}, ..Context()))
+    Do $$$AssertTrue((tText '[ "Encrypted") && (tText '[ "EncryptionKeyID"), "a create that does not ask for encryption carries neither the flag nor a key: " _ tText)
+    Set tQuery("Encrypted") = 1
+    Set tText = ..Text($ClassMethod("OcuPilot.Test.DatabaseKeyPort", "Snippet", "Database.ConfigCRUD", "PUT", .tQuery, {"Directory": "/draft/db/"}, ..Context()))
+    Do $$$AssertTrue((tText [ """Encrypted"":true") && (tText [ ("""EncryptionKeyID"":""" _ $Parameter("OcuPilot.Test.DatabaseKeyPort", "KEYID") _ """")), "an encrypted create's file carries the flag and the default key's id: " _ tText)
     For tCase = $ListBuild(1, ""), $ListBuild(0, "DELETE /database") {
         Kill tQuery
         Set tQuery("name") = "DRAFTDB"
@@ -285,7 +291,8 @@ ClassMethod Shapes(pSteps As %DynamicArray) As %String
 /// the credential decoded from its PEM body; the wrapper, the constant body and the composite key
 /// split of a <code>rest</code> step.</p>
 /// <p>Mutation (Rule 19): hand <method>OcuPilot.Port.AdminPort.ImportStep</method>'s decode the stored
-/// certificate as given -- the decode no longer reads the PEM body and this goes red.</p>
+/// certificate as given -- the decode no longer reads the PEM body and this goes red; remove the cleared-list branch from
+/// <method>OcuPilot.Port.AdminPort.Snippet</method> (Story 18.48) -- the LDAP leg goes red.</p>
 Method TestAdminPort()
 {
     Kill tQuery
@@ -293,6 +300,13 @@ Method TestAdminPort()
     Set tText = ..Text(##class(OcuPilot.Port.AdminPort).Snippet("Security.Resource", "PUT", .tQuery, {"Description": "d", "PublicPermission": ""}, ..Context()))
     Do $$$AssertTrue(tText [ "##class(Security.Resources).Exists(""R1"")", "a resource with no public permission is Security.Resources' own: " _ tText)
     Do $$$AssertTrue(tText [ "Set tProps(""PublicPermission"") = """"", "with the empty permission")
+
+    Kill tQuery
+    Set tQuery("name") = "L1"
+    Set tSteps = ##class(OcuPilot.Port.AdminPort).Snippet("Security.LDAP", "PUT", .tQuery, {"Description": "d", "LDAPAttributes": []}, ..Context())
+    Do $$$AssertEquals(tSteps.%Size(), 2, "clearing the attribute list is two steps: " _ ..Text(tSteps))
+    Do $$$AssertTrue((tSteps.%Get(0).%Get("kind") = "rest") && (tSteps.%Get(0).%Get("text") '[ "LDAPAttributes") && (tSteps.%Get(0).%Get("text") [ """Description"":""d"""), "the vendor PUT goes without the list")
+    Do $$$AssertTrue((tSteps.%Get(1).%Get("kind") = "objectscript") && (tSteps.%Get(1).%Get("text") [ "##class(Security.LDAPConfigs).Modify(""L1"", .tProps)") && (tSteps.%Get(1).%Get("text") [ "Set tProps(""LDAPAttributes"") = """""), "and Security.LDAPConfigs clears it")
 
     Kill tQuery
     Set tQuery("alias") = "a1"

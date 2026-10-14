@@ -28,6 +28,9 @@
  *    Namespace with `kept` and `database` gone from the URL, the typed Name and Routines kept and
  *    Globals the database the instance now holds; a Cancel in the wizard returns with the same values;
  *    leaving the form then asks, and no namespace is created.
+ * 8. **Encrypt database with no key** (Story 18.48, DW-2085): while no database encryption key is the default, the
+ *    wizard's Encrypt database is drawn `aria-disabled` with the server's refusal beside it, a click leaves it
+ *    unticked, and nothing is created.
  *
  * **It refuses the live and development containers.** It seeds `OCUPROBE183BE` and `OCUPROBE183BD`
  * through OcuPilot's own create route, a probe namespace and a probe web application over the second
@@ -72,6 +75,7 @@ function serverSentence(file, parameter) {
 
 const MANAGERDIR_REASON = serverSentence('Api/Error.cls', 'REASONPATHMANAGERDIR');
 const INUSE_REASON = serverSentence('Api/DatabaseError.cls', 'REASONINUSE');
+const ENCRYPT_NOKEY_REASON = serverSentence('Api/DatabaseError.cls', 'REASONENCRYPTNOKEY');
 
 /** The database the wizard leg creates, the one the editor leg edits, and the one the delete leg removes. */
 const WIZARD = 'OCUPROBE183BW';
@@ -822,6 +826,34 @@ test('AC8 (DW-1080): Database details lists the paused compact running against i
 
 // AC7. Mutation (Rule 19), over a rebuilt and redeployed bundle: draw a wizard step label in
 // `--ocu-surface` -> the contrast legs go red in both themes.
+// DW-2085 (Story 18.48). Mutation (Rule 19): make the wizard store's `encryptAvailable` answer true, rebuild and redeploy -> the
+// disabled control, the caption and the unticked box go red.
+test('DW-2085: with no database encryption key active, Encrypt database is drawn aria-disabled with the refusal beside it, cannot be ticked, and the create sends no flag', async () => {
+  const { context, page } = await signedInAt(browser, config, WIZARD_URL, VIEWPORTS.wide);
+  const writes = [];
+  page.on('request', (request) => {
+    if (request.method() !== 'GET' && new URL(request.url()).pathname === CREATE_PATH) writes.push(request.postData() ?? '');
+  });
+  try {
+    await page.waitForSelector('#ocu-database-location-path', { visible: true, timeout: config.navigationTimeoutMs });
+    await page.type('#ocu-database-Name', NEVER);
+    await chooseManagerRoot(page, 'ocu-database-location');
+    await nextTo(page, STRINGS.databaseWizardStepSize);
+    await page.waitForSelector('#ocu-database-Encrypted', { visible: true, timeout: config.navigationTimeoutMs });
+    assert.equal(await page.$eval('#ocu-database-Encrypted', (input) => input.closest('label').textContent.trim()), STRINGS.databaseEncrypt, 'the control is labelled Encrypt database');
+    assert.equal(await page.$eval('#ocu-database-Encrypted', (input) => input.getAttribute('aria-disabled')), 'true', 'it is aria-disabled, not hidden');
+    assert.equal(await page.$eval('#ocu-database-Encrypted-refused', (node) => node.textContent.trim()), ENCRYPT_NOKEY_REASON, 'with the refusal beside it');
+    assert.equal(await page.$eval('#ocu-database-Encrypted', (input) => input.getAttribute('aria-describedby')), 'ocu-database-Encrypted-refused', 'which names it');
+    await page.click('#ocu-database-Encrypted');
+    assert.equal(await page.$eval('#ocu-database-Encrypted', (input) => input.checked), false, 'a click leaves it unticked');
+    await nextTo(page, STRINGS.webAppColumnResource);
+    assert.deepEqual(writes, [], 'nothing was created');
+    assert.equal(configured(NEVER), null);
+  } finally {
+    await context.close();
+  }
+});
+
 test('AC7 (DW-1337): the list, the wizard\u2019s first and last steps and the editor pass the structural walk at wide light, narrow light and wide dark', async () => {
   for (const [url, route, ready] of [
     [LIST_URL, LIST_ROUTE, ROW_SELECTOR],

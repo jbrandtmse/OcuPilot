@@ -11,6 +11,8 @@ import {
   EncryptionStartupForm,
   MODE_FIELD,
   STARTUP_INTERACTIVE_CODE,
+  STARTUP_JOURNAL_CODE,
+  STARTUP_KMIP_CODE,
 } from './encryption-startup.store';
 
 /**
@@ -209,6 +211,37 @@ describe('the encryption startup settings store', () => {
     expect(store.violationFor(MODE_FIELD)).toBe(sentence);
     expect(store.reason()).toBe('');
     expect(store.mode()).toBe('Interactive');
+  });
+
+  it("Story 18.48: the server's journal and KMIP refusals are drawn on the start mode too, and the vendor's own on the mode as violations", async () => {
+    for (const [code, mode] of [
+      [STARTUP_JOURNAL_CODE, 'Interactive'],
+      [STARTUP_KMIP_CODE, 'KMIP'],
+    ] as const) {
+      const sentence = `SERVER-${code}-SENTENCE`;
+      const { store } = mount({ kmip: ['kms1'], save: { kind: 'error', status: 403, code, reason: sentence, detail: null } });
+      await store.open();
+      store.setMode(mode);
+      if (mode === 'KMIP') store.setKmipServer('kms1');
+      expect(await store.save()).toBe(false);
+      // Mutation (Rule 19): list only the Interactive code in `STARTUP_MODE_REFUSALS` -> these two lines go red.
+      expect(store.violationFor(MODE_FIELD), code).toBe(sentence);
+      expect(store.reason(), code).toBe('');
+    }
+    const field = 'SERVER-KEYFILEDIFFERENT-SENTENCE';
+    const { store } = mount({
+      save: {
+        kind: 'error',
+        status: 422,
+        code: 'ENCRYPTION.STARTUP.KEYFILEDIFFERENT',
+        reason: field,
+        detail: { violations: [{ field: MODE_FIELD, code: 'ENCRYPTION.STARTUP.KEYFILEDIFFERENT', reason: field }] },
+      },
+    });
+    await store.open();
+    store.setMode('Interactive');
+    expect(await store.save()).toBe(false);
+    expect(store.violationFor(MODE_FIELD)).toBe(field);
   });
 
   it('a refused Save keeps what was entered and names the refusal; the Save path is PUT /encryption-startup', async () => {

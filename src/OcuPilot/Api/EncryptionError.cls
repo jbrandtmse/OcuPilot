@@ -51,6 +51,12 @@ Parameter KEYFILEUNREADABLE = "ENCRYPTION.KEYFILE.UNREADABLE";
 
 Parameter REASONKEYFILEUNREADABLE = "This file is not an encryption key file.";
 
+/// <p>Refusal code: the key file's keys are no longer the ones the activation's proposal listed (409, Story
+/// 18.48).</p>
+Parameter KEYFILECHANGED = "ENCRYPTION.KEYFILE.CHANGED";
+
+Parameter REASONKEYFILECHANGED = "This key file's keys changed after the activation was reviewed, so nothing was activated. Review the file's keys and propose the activation again.";
+
 /// <p>Consequence code: a create or an added key makes a new key.</p>
 Parameter KEYFILENEWKEY = "ENCRYPTION.KEYFILE.NEWKEY";
 
@@ -133,6 +139,17 @@ Parameter STARTUPKEYINACTIVE = "ENCRYPTION.STARTUP.KEYINACTIVE";
 
 Parameter REASONSTARTUPKEYINACTIVE = "Choose a key that is active on Database encryption.";
 
+/// <p>Violation codes the vendor's startup refusals map to (422, Story 18.48), each on
+/// <code>DBEncStartMode</code>: a KMIP server with no startup key list (#1231), and an Unattended key file
+/// other than the one the instance already activates from (#1233).</p>
+Parameter STARTUPKMIPUNCONFIGURED = "ENCRYPTION.STARTUP.KMIPUNCONFIGURED";
+
+Parameter REASONSTARTUPKMIPUNCONFIGURED = "This KMIP server has no startup key list, so it cannot activate keys at startup. Choose a server that has one, or add a startup key list to this server's configuration.";
+
+Parameter STARTUPKEYFILEDIFFERENT = "ENCRYPTION.STARTUP.KEYFILEDIFFERENT";
+
+Parameter REASONSTARTUPKEYFILEDIFFERENT = "Unattended activation already uses another key file, and the instance does not switch files while it does. Keep the key file now stored, or change it on the classic Database Encryption page.";
+
 /// <p>Refusal code: the vendor keeps key activation at startup on while something depends on it (409).</p>
 Parameter STARTUPREQUIRED = "ENCRYPTION.STARTUP.REQUIRED";
 
@@ -177,14 +194,14 @@ Parameter REASONAUDITENCRYPTIONCHANGE = "Takes effect at the next start, when th
 /// <p>Every <code>ENCRYPTION.*</code> code, as a <class>%List</class>.</p>
 ClassMethod Codes() As %List
 {
-    Quit $ListBuild(..#KEYFILEVALIDATION, ..#KEYFILEDIRECTORY, ..#KEYFILEKEYLEN, ..#KEYFILEADMINNAME, ..#KEYFILEPASSWORD, ..#KEYFILECREDENTIALS, ..#KEYFILEUNREADABLE, ..#KEYFILENEWKEY, ..#KEYFILEREMOVEKEY, ..#KEYINUSE, ..#KEYROLE, ..#KEYACTIVATE, ..#KEYDEACTIVATE, ..#KEYACTIVATEDATAELEMENT, ..#KEYDEACTIVATEDATAELEMENT, ..#STARTUPKMIPSERVER, ..#STARTUPKEYFILE, ..#STARTUPNEEDSSTART, ..#STARTUPNOKEY, ..#STARTUPKEYINACTIVE, ..#STARTUPREQUIRED, ..#STARTUPNONE, ..#STARTUPINTERACTIVE, ..#STARTUPUNATTENDED, ..#STARTUPKMIP, ..#STARTUPRESTART, ..#STARTUPJOURNAL)
+    Quit $ListBuild(..#KEYFILEVALIDATION, ..#KEYFILEDIRECTORY, ..#KEYFILEKEYLEN, ..#KEYFILEADMINNAME, ..#KEYFILEPASSWORD, ..#KEYFILECREDENTIALS, ..#KEYFILEUNREADABLE, ..#KEYFILECHANGED, ..#KEYFILENEWKEY, ..#KEYFILEREMOVEKEY, ..#KEYINUSE, ..#KEYROLE, ..#KEYACTIVATE, ..#KEYDEACTIVATE, ..#KEYACTIVATEDATAELEMENT, ..#KEYDEACTIVATEDATAELEMENT, ..#STARTUPKMIPSERVER, ..#STARTUPKEYFILE, ..#STARTUPNEEDSSTART, ..#STARTUPNOKEY, ..#STARTUPKEYINACTIVE, ..#STARTUPREQUIRED, ..#STARTUPNONE, ..#STARTUPINTERACTIVE, ..#STARTUPUNATTENDED, ..#STARTUPKMIP, ..#STARTUPRESTART, ..#STARTUPJOURNAL, ..#STARTUPKMIPUNCONFIGURED, ..#STARTUPKEYFILEDIFFERENT)
 }
 
 /// <p>The field-level codes, as a <class>%List</class>, each with its first field in
 /// <method>FieldOf</method>.</p>
 ClassMethod ViolationCodes() As %List
 {
-    Quit $ListBuild(..#KEYFILEDIRECTORY, ..#KEYFILEKEYLEN, ..#KEYFILEADMINNAME, ..#KEYFILEPASSWORD, ..#KEYFILECREDENTIALS, ..#KEYFILEUNREADABLE, ..#STARTUPKMIPSERVER, ..#STARTUPKEYFILE, ..#STARTUPNEEDSSTART, ..#STARTUPNOKEY, ..#STARTUPKEYINACTIVE)
+    Quit $ListBuild(..#KEYFILEDIRECTORY, ..#KEYFILEKEYLEN, ..#KEYFILEADMINNAME, ..#KEYFILEPASSWORD, ..#KEYFILECREDENTIALS, ..#KEYFILEUNREADABLE, ..#STARTUPKMIPSERVER, ..#STARTUPKEYFILE, ..#STARTUPNEEDSSTART, ..#STARTUPNOKEY, ..#STARTUPKEYINACTIVE, ..#STARTUPKMIPUNCONFIGURED, ..#STARTUPKEYFILEDIFFERENT)
 }
 
 /// <p>The first field a violation code refuses, or <code>""</code>.</p>
@@ -198,6 +215,7 @@ ClassMethod FieldOf(pCode As %String) As %String
     If pCode = ..#STARTUPKEYFILE Quit "path"
     If (pCode = ..#STARTUPNEEDSSTART) || (pCode = ..#STARTUPNOKEY) Quit "DBEncJournal"
     If pCode = ..#STARTUPKEYINACTIVE Quit "DBEncDefaultKeyID"
+    If (pCode = ..#STARTUPKMIPUNCONFIGURED) || (pCode = ..#STARTUPKEYFILEDIFFERENT) Quit "DBEncStartMode"
     Quit ""
 }
 
@@ -212,6 +230,7 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#KEYFILEPASSWORD Quit ..#REASONKEYFILEPASSWORD
     If pCode = ..#KEYFILECREDENTIALS Quit ..#REASONKEYFILECREDENTIALS
     If pCode = ..#KEYFILEUNREADABLE Quit ..#REASONKEYFILEUNREADABLE
+    If pCode = ..#KEYFILECHANGED Quit ..#REASONKEYFILECHANGED
     If pCode = ..#KEYFILENEWKEY Quit ..#REASONKEYFILENEWKEY
     If pCode = ..#KEYFILEREMOVEKEY Quit ..#REASONKEYFILEREMOVEKEY
     If pCode = ..#KEYINUSE Quit ..#REASONKEYINUSE
@@ -232,6 +251,8 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#STARTUPKMIP Quit ..#REASONSTARTUPKMIP
     If pCode = ..#STARTUPRESTART Quit ..#REASONSTARTUPRESTART
     If pCode = ..#STARTUPJOURNAL Quit ..#REASONSTARTUPJOURNAL
+    If pCode = ..#STARTUPKMIPUNCONFIGURED Quit ..#REASONSTARTUPKMIPUNCONFIGURED
+    If pCode = ..#STARTUPKEYFILEDIFFERENT Quit ..#REASONSTARTUPKEYFILEDIFFERENT
     If pCode = ..#AUDITENCRYPTIONCHANGE Quit ..#REASONAUDITENCRYPTIONCHANGE
     Quit ""
 }

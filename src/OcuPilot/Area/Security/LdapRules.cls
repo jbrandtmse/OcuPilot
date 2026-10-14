@@ -33,8 +33,6 @@ Parameter FLAGSMAX As INTEGER = 255;
 /// <p>The two list fields, each an array of strings.</p>
 Parameter LISTFIELDS = "LDAPAttributes,LDAPHostNames";
 
-Parameter FIELDATTRIBUTES = "LDAPAttributes";
-
 /// <p>The three whole-number fields.</p>
 Parameter NUMBERFIELDS = "LDAPClientTimeout,LDAPFlags,LDAPServerTimeout";
 
@@ -142,11 +140,6 @@ ClassMethod Validate(pName As %String, pArgs As %DynamicObject, pFresh As %Dynam
         If ((tHostsType = "array") || (tHostsType = "unassigned")) && ((tHostsType '= "unassigned") || (tFlagsType '= "unassigned")) {
             If '..KerberosOnly(..Effective(pArgs, pFresh, ..#FIELDFLAGS)) && (..HostCount(pArgs, pFresh) = 0) Do ..Add(.pViolations, ..#FIELDHOSTS, ##class(OcuPilot.Api.LdapError).#HOSTREQUIRED)
         }
-        ; The vendor's PUT keeps the stored attributes when sent an empty list and fails on a list of
-        ; empty names (measured), so an edit that would leave none is refused rather than sent.
-        If ..Unnamed(pArgs.%Get(..#FIELDATTRIBUTES)) && $IsObject(pFresh) && (pFresh.%GetTypeOf(..#FIELDATTRIBUTES) = "array") && '..Unnamed(pFresh.%Get(..#FIELDATTRIBUTES)) {
-            Do ..Add(.pViolations, ..#FIELDATTRIBUTES, ##class(OcuPilot.Api.LdapError).#ATTRIBUTESLASTONE)
-        }
     } Catch ex {
         Set tSC = ex.AsStatus()
     }
@@ -198,19 +191,6 @@ ClassMethod Required(pField As %String, Output pRequired As %Boolean) As %Status
         Set tSC = ex.AsStatus()
     }
     Quit tSC
-}
-
-/// <p>Whether <var>pList</var> is an array holding no name: every entry, if it has any, a string of
-/// white space alone. Any other value is not.</p>
-ClassMethod Unnamed(pList) As %Boolean
-{
-    If '$IsObject(pList) || 'pList.%IsA("%Library.DynamicArray") Quit 0
-    Set tUnnamed = 1
-    Set tIterator = pList.%GetIterator()
-    While tUnnamed && tIterator.%GetNext(.tIndex, .tEntry) {
-        If (pList.%GetTypeOf(tIndex) '= "string") || ($ZStrip(tEntry, "<>W") '= "") Set tUnnamed = 0
-    }
-    Quit tUnnamed
 }
 
 /// <p>Whether <var>pValue</var> is a whole number from <var>pLow</var> to <var>pHigh</var>.</p>

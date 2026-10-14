@@ -69,7 +69,11 @@ Parameter JOURNALQUERY = "GlobalJournalState";
 Parameter RESOURCEQUERY = "ResourceName";
 
 /// <p>The create's arguments, comma-separated: none of them is sent in the configuration body.</p>
-Parameter CREATEARGUMENTS = "root,path,Size,GlobalJournalState,ResourceName";
+Parameter CREATEARGUMENTS = "root,path,Size,GlobalJournalState,ResourceName,Encrypted";
+
+/// <p>The create's encrypt flag, which <method>Create</method> turns into the file's <code>Encrypted</code> and
+/// the default database encryption key's <code>EncryptionKeyID</code> (Story 18.48).</p>
+Parameter ENCRYPTEDQUERY = "Encrypted";
 
 /// <p>The query keys the file edit's new volume directory travels under.</p>
 Parameter VOLUMEROOTQUERY = "volumeRoot";
@@ -236,7 +240,9 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
 
 /// <p>The create's sequence (AD-52 as amended 2026-09-29), in order: the directory resolved from
 /// <parameter>ROOTQUERY</parameter> and <parameter>PATHQUERY</parameter>; a directory holding
-/// <parameter>DATABASEFILE</parameter> refused; <code>%DB_&lt;NAME&gt;</code> created when
+/// <parameter>DATABASEFILE</parameter> refused; an <parameter>ENCRYPTEDQUERY</parameter> create refused
+/// <parameter>OcuPilot.Api.DatabaseError.ENCRYPTNOKEY</parameter> while no database key is default
+/// (<method>DefaultKey</method>); <code>%DB_&lt;NAME&gt;</code> created when
 /// <parameter>RESOURCEQUERY</parameter> is empty and no such resource exists; the file created; the
 /// configuration written with <parameter>DIRECTORYFIELD</parameter> added to the caller's body less
 /// the create's arguments. A failed configuration write deletes the file created here and answers
@@ -250,13 +256,19 @@ ClassMethod Create(ByRef pQuery, pBody As %DynamicAbstractObject, Output pResult
     Set tSC = ##class(OcuPilot.Port.PathPort).Resolve($Get(pQuery(..#ROOTQUERY)), $Get(pQuery(..#PATHQUERY)), ##class(OcuPilot.Port.PathPort).#KINDDIRECTORY, ..#ROOTQUERY, ..#PATHQUERY, .tDirectory, .pHttpStatus, .pFault, 0, 1)
     If $$$ISERR(tSC) Quit tSC
     If ..HoldsDatabase(tDirectory) Quit ..Refused(..#PATHQUERY, ##class(OcuPilot.Api.DatabaseError).#DIRECTORYINUSE, .pHttpStatus, .pFault)
+    Set tKeyID = ""
+    If ..Truthy($Get(pQuery(..#ENCRYPTEDQUERY))) {
+        Set tSC = ..DefaultKey(.tKeyID, .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) Quit tSC
+        If tKeyID = "" Quit ..Refused(..#ENCRYPTEDQUERY, ##class(OcuPilot.Api.DatabaseError).#ENCRYPTNOKEY, .pHttpStatus, .pFault)
+    }
     Set tResource = ..ResourceFor(tName, $Get(pQuery(..#RESOURCEQUERY)))
     If $Get(pQuery(..#RESOURCEQUERY)) = "" {
         Set tSC = ..EnsureResource(tResource, .pHttpStatus, .pFault)
         If $$$ISERR(tSC) Quit tSC
     }
     Kill tNone
-    Set tSC = ..Call(..#FILEENDPOINT, "POST", .tNone, ..FileBody(tDirectory, .pQuery, tResource), .tFile, .pHttpStatus, .pFault)
+    Set tSC = ..Call(..#FILEENDPOINT, "POST", .tNone, ..FileBody(tDirectory, .pQuery, tResource, tKeyID), .tFile, .pHttpStatus, .pFault)
     If $$$ISERR(tSC) Quit tSC
     Kill tQuery
     Set tQuery(..#NAMEPARAM) = tName
@@ -815,8 +827,9 @@ ClassMethod EnsureResource(pResource As %String, Output pHttpStatus As %Integer,
 
 /// <p>The body the create's file is made with: <code>{Directory, Size, GlobalJournalState,
 /// ResourceName}</code>, the size and journal state from the query, defaulting to
-/// <parameter>DEFAULTSIZE</parameter> and on.</p>
-ClassMethod FileBody(pDirectory As %String, ByRef pQuery, pResource As %String) As %DynamicObject
+/// <parameter>DEFAULTSIZE</parameter> and on; and, when <parameter>ENCRYPTEDQUERY</parameter> is true,
+/// <code>Encrypted</code> and <code>EncryptionKeyID</code> <var>pKeyID</var>, the default database key's id.</p>
+ClassMethod FileBody(pDirectory As %String, ByRef pQuery, pResource As %String, pKeyID As %String = "") As %DynamicObject
 {
     Set tSize = $Get(pQuery(..#SIZEQUERY))
     If tSize = "" Set tSize = ..#DEFAULTSIZE
@@ -826,7 +839,31 @@ ClassMethod FileBody(pDirectory As %String, ByRef pQuery, pResource As %String) 
     Do tBody.%Set("Size", +tSize, "number")
     Do tBody.%Set("GlobalJournalState", $Select(tJournal = "": 1, 1: ..Truthy(tJournal)), "boolean")
     Do tBody.%Set("ResourceName", pResource, "string")
+    If ..Truthy($Get(pQuery(..#ENCRYPTEDQUERY))) {
+        Do tBody.%Set("Encrypted", 1, "boolean")
+        Do tBody.%Set("EncryptionKeyID", pKeyID, "string")
+    }
     Quit tBody
+}
+
+/// <p>The id of the default database encryption key among the instance's active keys, in <var>pKeyID</var>, or
+/// <code>""</code> when none is the default (<method>OcuPilot.Port.EncryptionPort.ActiveKeys</method>). A read that
+/// fails is an error status with its fault.</p>
+ClassMethod DefaultKey(Output pKeyID As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+{
+    Set pKeyID = ""
+    Set pHttpStatus = 0
+    Set pFault = ""
+    Set tSC = ##class(OcuPilot.Port.EncryptionPort).ActiveKeys(##class(OcuPilot.Port.EncryptionPort).#DATABASEKEYSTYPE, .tRows, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    Set tIterator = tRows.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tRow) {
+        If $IsObject(tRow) && tRow.%Get("IsDefault") {
+            Set pKeyID = tRow.%Get("Id") _ ""
+            Quit
+        }
+    }
+    Quit $$$OK
 }
 
 /// <p>Whether a row of <var>pRows</var> other than <var>pName</var> (compared without regard to case)
@@ -946,7 +983,9 @@ ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody 
         Set tSteps = []
         If $Get(pQuery(..#RESOURCEQUERY)) = "" Do tSteps.%Push(..ResourceIfAbsentStep(tResource))
         Kill tNone
-        Set tFile = ##super(..#FILEENDPOINT, "POST", .tNone, ..FileBody(tDirectory, .pQuery, tResource), pContext)
+        Set tKeyID = ""
+        If ..Truthy($Get(pQuery(..#ENCRYPTEDQUERY))) Do ..DefaultKey(.tKeyID)
+        Set tFile = ##super(..#FILEENDPOINT, "POST", .tNone, ..FileBody(tDirectory, .pQuery, tResource, tKeyID), pContext)
         Kill tQuery
         Set tQuery(..#NAMEPARAM) = tName
         Set tBody = ..Without(pBody, $ListFromString(..#CREATEARGUMENTS _ "," _ ..#DELETEFILEQUERY))

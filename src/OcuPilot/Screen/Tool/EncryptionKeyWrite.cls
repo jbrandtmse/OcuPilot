@@ -59,20 +59,25 @@ Parameter CONSEQUENCE;
 /// <code>OcuPilot.Api.EncryptionError.REASONKEYINACTIVE</code>.</p>
 Parameter REASONKEYINACTIVE = "This key is not active.";
 
-/// <p>The argument the activate mint sets to the key file's key ids, which the card lists
-/// (<method>MergeUpdate</method>); no caller supplies it.</p>
+/// <p>The argument the activate mint sets to the key file's key ids, which the card lists and the activation
+/// compares with the file's keys at the write (<method>OcuPilot.Port.EncryptionPort.Activate</method>); no caller
+/// supplies it.</p>
 Parameter FILEKEYSARGUMENT = "FileKeys";
+
+/// <p>The arguments only the mint sets: settable, fingerprinted and passed to the port, and never advertised in the
+/// input schema (<parameter>ARGUMENTS</parameter> holds the advertised ones). <code>""</code> here.</p>
+Parameter MINTARGUMENTS;
 
 ClassMethod Endpoint() As %String
 {
     Quit ..#ENDPOINT
 }
 
-/// <p><parameter>ARGUMENTS</parameter>: the tool sends no body, and these reach the port through
-/// <method>PortQuery</method>.</p>
+/// <p><parameter>ARGUMENTS</parameter> and <parameter>MINTARGUMENTS</parameter>: the tool sends no body, and these
+/// reach the port through <method>PortQuery</method>.</p>
 ClassMethod SettableFields() As %List
 {
-    Quit $ListFromString(..#ARGUMENTS)
+    Quit $ListFromString(..#ARGUMENTS) _ $ListFromString(..#MINTARGUMENTS)
 }
 
 /// <p>The schema: the singleton target, then each argument with its shape in prose, the required ones
@@ -132,8 +137,7 @@ ClassMethod ArgumentProblem(pIdValue As %String, pArgs As %DynamicObject, Output
 }
 
 /// <p>The kernel's merge, then <method>StateRefusal</method> over the fresh read and the arguments, so the
-/// mint and the confirm's re-merge refuse what the active list rules out; where the arguments carry
-/// <parameter>FILEKEYSARGUMENT</parameter>, a card row naming the key file's keys follows.</p>
+/// mint and the confirm's re-merge refuse what the active list rules out.</p>
 ClassMethod MergeUpdate(pFresh As %DynamicObject, pArgs As %DynamicObject, pIdArgument As %String, pSettable As %List, Output pPayload As %DynamicObject, Output pDiff As %DynamicArray, Output pUnchanged As %Integer, Output pProblem As %String) As %Status
 {
     Set tSC = ##super(pFresh, pArgs, pIdArgument, pSettable, .pPayload, .pDiff, .pUnchanged, .pProblem)
@@ -144,8 +148,6 @@ ClassMethod MergeUpdate(pFresh As %DynamicObject, pArgs As %DynamicObject, pIdAr
         Set pDiff = []
         Quit tSC
     }
-    Set tFileKeys = ..Argument(pArgs, ..#FILEKEYSARGUMENT)
-    If tFileKeys '= "" Do pDiff.%Push({"field": (..#FILEKEYSARGUMENT), "before": "", "after": (tFileKeys)})
     Quit tSC
 }
 
@@ -193,7 +195,7 @@ ClassMethod PortQuery(pPayload As %DynamicObject, ByRef pQuery)
 {
     Set pQuery(##class(OcuPilot.Port.EncryptionPort).#ACTIONPARAM) = ..#ACTION
     If '$IsObject(pPayload) Quit
-    Set tArguments = $ListFromString(..#ARGUMENTS)
+    Set tArguments = ..SettableFields()
     For tI = 1:1:$ListLength(tArguments) {
         Set tName = $List(tArguments, tI)
         Set tType = pPayload.%GetTypeOf(tName)

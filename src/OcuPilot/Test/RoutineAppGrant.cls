@@ -21,6 +21,9 @@ Parameter UPDATETOOL = "OcuPilot.Screen.Tool.RoutineAppUpdate";
 
 Parameter SET = "OcuPilot.Kernel.Proposal.Prohibited";
 
+/// <p>The web application guard's test class, whose probe resources carry a public permission.</p>
+Parameter WEAKENING = "OcuPilot.Test.WebAppWeakening";
+
 Parameter TYPE = "routine-application";
 
 Parameter APP = "OcuProbe1831A";
@@ -54,6 +57,7 @@ Method OnAfterOneTest() As %Status
     Merge tRows = ..PreparedPolicy
     Do $$$AssertStatusOK(##class(OcuPilot.Test.GovernanceFixture).Restore(.tRows), "the governance policy is restored")
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "RemoveAll"), "every probe application, role and resource is removed by exact name")
+    Do $$$AssertStatusOK($ClassMethod(..#WEAKENING, "RemoveResources"), "and every public-permission probe resource")
     Do $$$AssertEquals($ClassMethod(..#PROBE, "Remaining"), 0, "and none is left")
     Do $$$AssertNotEquals(..PreparedFacts, "unreadable", "the application list was read before the test")
     Do $$$AssertEquals($ClassMethod(..#PROBE, "Facts"), ..PreparedFacts, "the application list reads as before the test")
@@ -67,6 +71,7 @@ Method OnAfterAllTests() As %Status
     If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 Quit $$$OK
     Merge tRows = ..PreparedPolicy
     Set tSC = ##class(OcuPilot.Test.GovernanceFixture).Restore(.tRows)
+    Set tSC = $$$ADDSC(tSC, $ClassMethod(..#WEAKENING, "RemoveResources"))
     Quit $$$ADDSC(tSC, $ClassMethod(..#PROBE, "RemoveAll"))
 }
 
@@ -197,6 +202,34 @@ Method TestClearingTheResourceOrEnablingUnderAPrivilegedRoleIsAGrant()
     Do ..AssertMint({"Description": "again"}, 0, "another setting changed")
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Seed", "", ..#APP, {"Description": "probe", "Enabled": true, "Resource": (tResource), "MatchRoles": [{"MatchRole": "", "TargetRoles": ["%DB_HSCUSTOM"]}], "Routines": []}), "an enabled probe application granting an unprivileged role")
     Do ..AssertMint({"Resource": ""}, 0, "the resource cleared under it")
+}
+
+/// <p>DW-2425: pointing a privileged routine application's resource at one whose public permission holds USE is a grant
+/// -- asked directly and through the agent's mint -- and is not when the public permission only reads or holds nothing; a
+/// resource the instance cannot read counts as public.</p>
+/// <p>Mutation (Rule 19): drop the <code>RepointsToPublicResource</code> clause from
+/// <method>OcuPilot.Kernel.Proposal.Prohibited.WidensPrivilegedReach</method> -- the public-use legs go red.</p>
+Method TestAResourceTheBroadPublicMayUseIsAGrantUnderAPrivilegedRole()
+{
+    Set tUse = $Parameter(..#WEAKENING, "PUBLICUSE")
+    Set tRead = $Parameter(..#WEAKENING, "PUBLICREAD")
+    Set tNone = $Parameter(..#WEAKENING, "PUBLICNONE")
+    Do $$$AssertStatusOK($ClassMethod(..#WEAKENING, "AddResource", tUse, "U"), "a resource whose public permission holds USE")
+    Do $$$AssertStatusOK($ClassMethod(..#WEAKENING, "AddResource", tRead, "R"), "one that only reads")
+    Do $$$AssertStatusOK($ClassMethod(..#WEAKENING, "AddResource", tNone, ""), "and one with none")
+    Set tTarget = {"Enabled": true, "Resource": "OcuProbe1831Res", "MatchRoles": [{"MatchRole": "", "TargetRoles": ["%All"]}]}
+    Do ..AssertGrants({"Resource": (tUse)}, tTarget, 1, "the resource moved to one the public may use")
+    Do ..AssertGrants({"Resource": (tRead)}, tTarget, 0, "moved to one the public only reads")
+    Do ..AssertGrants({"Resource": (tNone)}, tTarget, 0, "moved to one the public holds nothing of")
+    Do ..AssertGrants({"Resource": "OcuProbeNoSuchResource1848"}, tTarget, 1, "moved to a resource the instance cannot read")
+    Do ..AssertGrants({"Resource": (tUse)}, {"Enabled": true, "Resource": "OcuProbe1831Res", "MatchRoles": [{"MatchRole": "", "TargetRoles": ["%DB_HSCUSTOM"]}]}, 0, "the same move under an unprivileged role")
+    Do ..AssertGrants({"Resource": (tUse)}, {"Enabled": true, "Resource": (tUse), "MatchRoles": [{"MatchRole": "", "TargetRoles": ["%All"]}]}, 0, "kept on the public resource it already holds")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "EnsureResource"), "the probe resource")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "EnsureRole", "Admin", "%Admin_Secure:U"), "a probe role carrying an administrative resource")
+    Set tAdmin = $ClassMethod(..#PROBE, "RoleName", "Admin")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Seed", "", ..#APP, {"Description": "probe", "Enabled": true, "Resource": ($Parameter(..#PROBE, "RESOURCE")), "MatchRoles": [{"MatchRole": "", "TargetRoles": [(tAdmin)]}], "Routines": []}), "an enabled probe application granting a privileged role")
+    Do ..AssertMint({"Resource": (tUse)}, 1, "the resource moved to one the public may use")
+    Do ..AssertMint({"Resource": (tRead)}, 0, "the resource moved to one the public only reads")
 }
 
 /// <p>Mint the update of <parameter>APP</parameter> over <var>pChange</var> and assert it is destructive with
