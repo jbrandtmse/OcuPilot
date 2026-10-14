@@ -1643,3 +1643,6 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-10-14T12:33:07Z	Epic 18	ledger_routed_planned	story=18-48-epic-18-burn-down-part-2 entries=1(DW-2427) excess=0 by=cr
 2026-10-14T12:35:33Z	Epic 18	integrate_forward	feature=35982168(20.16) head=767f546a conflicts=ReadTool(union_386),ToolRoundTrip(REFUSEEMPTY_union),spine(AD-53_tail_both) dup_check=empty
 2026-10-14T12:35:33Z	Epic 18	ledger_routed_planned	story=18-48-epic-18-burn-down-part-2 entries=1(DW-2415) excess=0 by=lead
+2026-10-14T12:39:45Z	Epic 18	orchestrator_rulings	DW-2424->18-48 DW-2425=decided(privileged-grant_treatment_for_web_apps_as_DW-2322)->18-48 DW-2426,DW-2417->23-10(new) DW-1979,DW-1981->23-9 18.48=12(2100,2085,2086,2087,2126,1966,1896,2335,2415,2427,2424,2425) trailers_after_merging_a29d3958 DW-2311_403=release_notes_line
+2026-10-14T12:39:45Z	Story 18.47	fresh_check_started	throwaway=ocupilot-ci rebuilt(down+up,healthy 12:36:01Z) load=LOAD-OK,STARTPATH-OK bundle=1.92MB_deployed(+harness_build) browser=5_specs_30/30_fwd,30/30_rev offered=649
+2026-10-14T12:39:45Z	Story 18.47	stage_spawned	stage=full-sweep spawn_at=2026-10-14T12:39:45Z model=sonnet agent_name=18-47-sweep-1 prompt=carry-2026-10-10/epic-18-r/sweep-1847-prompt.md run_in_background=false
