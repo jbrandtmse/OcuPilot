@@ -11074,6 +11074,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-10T17:33:40Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=lead note=likely a token or session cache the earlier classes warm; make the leg read the refusal after the cache's own expiry or clear it; flake class, Rule 27
 - 2026-10-14T03:47:06Z occurrence=20-16-the-agent-edits-rule-dtl-and-bpl-content-behind-the-embedded note=CI run 38505285690 attempt 1 instance shard 7/8 (fresh CI leg, not a long local sweep); rerun
 - 2026-10-14T07:31:18Z occurrence=20-16-the-agent-edits-rule-dtl-and-bpl-content-behind-the-embedded note=cause found: an install or uninstall left the gate read unprepared, so Retention's deleted account was its first reader (503 not 401); fixed by Retention.PrimeGate (20.16 rework 2, DW-2414)
+- 2026-10-14T07:52:17Z status=resolved-by:20-16-the-agent-edits-rule-dtl-and-bpl-content-behind-the-embedded by=adjudication note=Retention.PrimeGate purges and runs the gate first; red alone under its mutation (20.16 rework 2)
 
 ### DW-2286: Every agent tool call lists the whole tool registry twice before its gate: Dispatch.AnswerOne's ResolveWire and Governance.Gate.Decide (through Registry.Resolve) each run Registry.ListTools, 0.55 s apiece at 331 tools on a development host, so a call pays about 1.1 s before anything else and the cost grows with every tool
 - source: cycle-log-epic-20.md (DW-2255 diagnosis) | severity: med | fix-risk: med | footprint: out-of-footprint
@@ -11768,3 +11769,4 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-20-16 (harvest, CI rework 2) | severity: low | fix-risk: med | footprint: out-of-footprint
 - evidence: Measured on ocupilot-b-ci: after an install or uninstall the first account to run the gate prepares its cached compile; once deleted, that account's token reads SQLCODE -99 at the gate (503); when another account prepared it first, 401. Other accounts unaffected (20 classes after Retention in CI shard 7 passed).
 - 2026-10-14T07:31:18Z status=wontfix-accepted owner=20-16-the-agent-edits-rule-dtl-and-bpl-content-behind-the-embedded by=harvest note=reopen_if=a live (not deleted) account is refused 503 INSTALL.UNREADABLE after an install or uninstall
+- 2026-10-14T07:50:55Z status=wontfix-accepted owner=20-16-the-agent-edits-rule-dtl-and-bpl-content-behind-the-embedded by=cr note=reopen_if=a live account gets 503 INSTALL.UNREADABLE; cr probe: live 200, disabled 401; site GuardedOpenOneWhereNoParam
