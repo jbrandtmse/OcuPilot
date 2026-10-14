@@ -191,6 +191,7 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Line numbe
     3. `FolderItem.timeModified`'s zone;
     4. `%ToObj`, `%GetCubeFactCount` and `GetLastUpdate` write nothing (USER's `^DeepSee*` node counts unchanged), and the time each takes;
     5. `%SYS.Portal.Resources.NormalizePage` of the three `_DeepSee.UI.*.zen` pages.
+    6. (orchestrator ruling 2026-10-14) that the in-process reads apply the vendor's own cube `Resource` check as the caller: against a probe cube carrying a resource the caller lacks, `Cubes` omits it and each model tab refuses it, as `%CheckPrivilege` decides; record the measurement in one line under Design Notes.
 
   A measurement that contradicts this spec halts the stage with its evidence.
 - [ ] **`src/OcuPilot/Api/AnalyticsError.cls`** (new; sibling of `InteropError`): `NAMESPACE = "ANALYTICS.NAMESPACE"` and `REASONNAMESPACE = "Analytics is not enabled in this namespace."`.
@@ -336,6 +337,8 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Line numbe
   - **Then** `AnalyticsProbe.Gone()` is true: no probe class, cube, term list, folder item, favorite or `CubeEvent` row remains, USER's two flags read their recorded values, and USER reports no analytics.
 
 ## Spec Change Log
+
+- 2026-10-14, spec gate (runner): the orchestrator ruled Q1 A (Parts B, C and D are Stories 20.32, 20.33 and 20.34, chartered in `epics.md` with their criteria verbatim; order 20.11, 20.32, 20.33, 20.34, then 20.12) and Q2 A (Folder items on `%Development:USE`, a named narrower audience in AD-8). `epics.md` Story 20.11 is amended under Rule 5 (the split, and the first criterion's API reworded to the vendor's classes, apply-and-report). The new AD is AD-65 (claimed from the coordination counter), with the AD-29, AD-36, AD-8, AD-44, AD-13 and AD-7 clauses. Task 0 gains the cube `Resource` check measurement (the orchestrator's). The REST layer finding is DW-2416, decision-pending under the owner's hold.
 
 ## Review Triage Log
 

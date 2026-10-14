@@ -2,14 +2,23 @@
 title: 'Story 20.8: The schema viewers and the production configuration diagram'
 type: 'feature'
 created: '2026-10-13'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '88f47946b91c27a9d807ec3a3be4cfbe6bae396c'
+baseline_commit: '86c9fb2939138203e2847f61e2a81b2c108c3e82'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
   - '{project-root}/_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md'
 warnings: [oversized, multiple-goals]
-deferred: []
+deferred:
+  - summary: >-
+      A real timer that re-arms itself for the life of the worker survives AC6's wait and drain and reddens its timer count.
+    evidence: |-
+      A scratch case before AC6 that left a real `setTimeout(poll, 5)` poll reddened AC6 with `1 fake timers pending, 0 real timers active: expected 1 to be +0`; a real interval arming one-shot 30 s timers stayed green. No spec is known to leave such a poll. DW-2415 is the canonical entry; a repeat red on CI with this message, or a search of the suite for a never-ending real poll, settles it.
+    location: >-
+      ui/src/app/areas/logs/log-viewer.spec.ts (AC6)
+    severity: medium (unverified)
 ---
 
 <intent-contract>
@@ -392,11 +401,149 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Line numbe
     - `InteropFloor` shows the Administrator opening both, the Operator opening the diagram and not the schema viewer, and the Monitor opening neither;
     - `RequiredPairs` for the schema viewer adds a custom resource assigned to any of its three classic pages.
 
+### Review Findings
+
+Code review, 2026-10-14, four layers on `full-opus`: 24 raw findings, 13 entries after triage (high 0, medium 6, low 7), 8 rejected. Every patch was applied and verified on `ocupilot-b-ci`.
+
+- [x] [Review][Patch] The AD-63 storage-key scan missed the two new apps' prefixes, `Schema_Viewer-` and `Interop-Editors-` [ui/tools/api.test.mjs:821]. The pattern and its hostile and fixture lines now cover them.
+- [x] [Review][Patch] `Access.ClassicResourceOf` copied `Gate.WithClassicPages`' loop (Rule 31) [src/OcuPilot/Screen/Access.cls:92]. It now calls it. The Access and Screen permissions headers say "the classic pages it replaces".
+- [x] [Review][Patch] `TestEachViewerClassicPageSharesTheScreensPair`'s page count compared the test's own constant with itself [src/OcuPilot/Test/InteropEditorDescriptor.cls:91]. The pages are now read from the descriptor.
+- [x] [Review][Patch] `TestTheSchemaViewerHonorsEveryClassicPage` assumed the screen has no adjustment row [src/OcuPilot/Test/InteropEditorDescriptor.cls:172].
+  - It now measures against `Gate.BaseSet`, and the declared-set leg runs only on an unadjusted screen.
+  - Its legs read with `$ListGet`, so each one reports.
+- [x] [Review][Patch] No test held that an adjustment never clears `CLASSICPAGES` (AD-64 item 2) [src/OcuPilot/Test/ScreenAccessWire.cls:459]. An adjusted leg is added.
+- [x] [Review][Patch] The diagram link took over an Alt+click [ui/src/app/areas/interoperability/interop-item-list.page.ts:128]. Alt+click is now left to the browser, and the page spec has a leg for it.
+- [x] [Review][Patch] `.ocu-interop-item-links` restated `.ocu-details-links` [ui/src/app/areas/interoperability/interop-item-list.page.ts:46]. The nav now carries both classes.
+- [x] [Review][Patch] Stale comments, each corrected:
+  - the store's `id()`;
+  - the page's change-event paragraph;
+  - the Schema viewer kind's unused `.cls` extension;
+  - the claim in `Gate.ClassicResource` and `ScreenGate` that one test writes the store.
+- [x] [Review][Defer] DW-2420, decision-pending (burndown): the diagram follows no confirmed change to its production.
+- [x] [Review][Defer] DW-2421, routed (burndown): the 20.7, 20.16 and 20.8 browser specs each copy the editor-page helpers (Rule 31).
+- [x] [Review][Defer] DW-2422, by-design: on IRIS that is not for Health, the viewer lists ASC X12 only.
+- [x] [Review][Defer] DW-2423, wontfix-theoretical: there is no all-descriptor `CLASSICPAGES` spelling check.
+
+Rejected:
+
+- `false`: `childListFor(Productions)` resolves by class-name order. `navigation.test.mjs`'s 20.8 pairing test reddens on any reorder, as the Design Notes chose.
+- `false`: the Items link is drawn when the diagram is denied. AD-8 draws a screen it denies and never hides it, and the diagram names its pair.
+- `low`: two classic resources share one dialog line, "A:USE, B:USE ... changes it". It needs custom resources on two schema pages, and a list with one line per pair adds template branching.
+- `low`: the Items `<nav>` has no accessible name. Task details' link nav is the same, and a name needs a new string.
+- `low`: AC1's count wait would accept the previous family's count if two families had equal counts. The pinned image fixes the counts, and a collision reds rather than passes.
+- `low`: AC2's tripwire reds on the address wait before it reaches its DW-2396 message. It still reds, and its title names DW-2396.
+- `low`: `restoreSearch` deletes every search row above the watermark, whoever wrote it. One spec runs at a time on a throwaway, so those rows are the run's own.
+- Rejected because the fix edits the spec: duplicated `## Verification` lines. Each pair records complementary reds, not a contradiction.
+
+### CI red on 7aba3c5f (run 38578125486, both attempts) - rework iteration 1
+
+- [x] [CI] **`ui/src/app/areas/logs/log-viewer.spec.ts` AC6, "with Live tail off, nothing streams"** (gates (node 26.0.0) only; the other 20 jobs green). Attempt 1: `os-management/language-servers/activity : expected 3 to be +0`; attempt 2, unchanged rerun: `logs/messages /logs/messages?ns=HSCUSTOM: expected 12 to be +0`. Ledger DW-2415 (the same test red once on node 22.22.3 at c14f3fc6). Not reproduced locally: the file alone eight times under CPU load, and the whole component suite in one worker and in three workers under load, all green. Angular's vitest runner defaults to `isolate: false`, so spec files share a worker, and a one-shot timer another file leaves can land in AC6's fake-timer window (inference). The orchestrator ruled the fix (2026-10-14), inside this spec file only: right after `vi.useFakeTimers()`, `vi.clearAllTimers()` (a no-op on the empty clock `vi.useFakeTimers()` installs; kept as ruled); before `vi.getTimerCount()`, drain only what is finite (a bounded number of `vi.runOnlyPendingTimersAsync()` passes, up to 5, while the count is above zero, after the request and toggle assertions). An interval, or a poll that re-arms itself, never drains, so AC6 still counts it. Every existing AC6 assertion stays. Two `mutation:` lines: the page (or its store) arming a `setInterval` while Live tail is off, e.g. `setInterval(() => {}, 30000)` in the constructor, reddens AC6 after the drain, and the page arming a self-re-arming `setTimeout` poll does too (apply, observe red, revert byte-identical, sha256 before and after). One check line, not a mutation: a single `setTimeout(() => {}, 20 * 60 * 1000)` armed by the page drains and AC6 stays green. The test comment states the contract and names `isolate: false` as an inference; it does not narrate this rework.
+  - Fixed in `log-viewer.spec.ts` only: AC6 clears the clock on entry, drains finite timers (five passes at most) and repeats its request assertions after the drain. Cause: `isolate: false` shares a worker across spec files (inference). A scratch probe (a real zero-delay timer, queued before the case, that arms a 20-minute timer) reddens the old test at `logs/messages` and not the new one.
+
+### Review Findings (rework 1 re-review)
+
+Code review of `c0a3b4cf..c8410546`, 2026-10-14, four layers on `full-opus`: 20 raw findings, 13 entries (high 0, medium 1, low 8, false 3, maybe-false 1). The diff meets the ruling step by step. The four `(CI)` lines in `## Verification` were re-observed on `c8410546`: `logs/alerts : expected 1 to be +0` twice, `expected 2 to be 1`, and the check line at 77 of 78. `log-viewer.page.ts` was reverted byte-identical (sha256 `c155534a1be8`). The file passes 78 after the patches.
+
+- [x] [Review][Patch] AC6's title promised "registers no timer", which the drain no longer pins [ui/src/app/areas/logs/log-viewer.spec.ts:344]. It now reads "no timer outlives a bounded drain".
+- [x] [Review][Patch] AC6's comment credited `vi.clearAllTimers()` with isolation [ui/src/app/areas/logs/log-viewer.spec.ts:355]. `vi.useFakeTimers()` installs an empty clock, so the clear reaches nothing. The comment now names the real path: a real timer an earlier test left behind, in this file or another, fires in the async advance's yields (inference).
+- [x] [Review][Patch] The comment said the drain runs what is finite "however far out" [ui/src/app/areas/logs/log-viewer.spec.ts:357]. Each pass runs only to the last timer pending when it starts, so the comment now says a one-shot chain up to `DRAIN_PASSES` links deep drains.
+- [x] [Review][By-design] A leftover that re-arms itself survives the drain, so the 12-timer red is not shown to be fixed [ui/src/app/areas/logs/log-viewer.spec.ts:410]. The ruling drains only what is finite. The drain runs only when the count is already above zero, so it cannot turn a green run red. DW-2415 stays the canonical entry, and a repeat red re-opens the story through CI. If that happens, the next probe is to put each surviving timer's arming stack in the count's message.
+
+Rejected:
+
+- `false`: the post-drain `liveAsked` check is shadowed by the `paths` count. It can still fail, it mirrors the pre-drain pair the ruling kept, and no text claims it catches anything alone.
+- `false`: the toggle is not re-read after the drain. Turning Live tail on issues a tail request, which the post-drain `paths` count catches.
+- `false`: a drained foreign callback could throw. The drain runs only when the count is above zero, where the old test already failed.
+- `low`: a one-shot chain deeper than five passes reddens like a poll. The ruling bounds the passes, and no page arms such a chain.
+- `low` (Rule 11): Story 18.38 AC1's count is undrained but not exposed. Its fake-clock window awaits only microtasks, so a leftover real timer cannot fire inside it (inference). No ledger entry.
+- Rejected because the fix edits the spec: the ruled item's sentence on `vi.clearAllTimers()`; the item text widened in the implement commit; the Auto Run Result's dropped earlier residuals, its "reproduced the cross-file mechanism" and its AC1 line; the probe's case name (maybe-false).
+
+### Rework iteration 2 (lead, on the same CI red)
+
+- [x] [CI] **AC6 waits for the real event loop to be empty before it installs the fake clock** [ui/src/app/areas/logs/log-viewer.spec.ts]. The rework 1 re-review's by-design MED stands: a real timer an earlier test leaves can fire in `advanceTimersByTimeAsync`'s real yields and arm a fake timer that re-arms, which the drain cannot clear. `home.page.spec.ts`'s Story 15.4 row met the same shape (4 on node 26, 1 on node 24) and waits, bounded, until `process.getActiveResourcesInfo()` lists no `Timeout` before `vi.useFakeTimers()`. AC6 takes the same wait, best effort and not asserted, as a copy whose comment names `home.page.spec.ts` as its source. The timer-count assertion's message also lists the real resources still active, so a repeat red says what was pending. The clear and the drain stay. The four `(CI)` lines in `## Verification` are re-observed on the new test.
+  - Fixed in `log-viewer.spec.ts` only: AC6 waits (50 polls of 20 ms at most, never asserted) until no real `Timeout` is active before `vi.useFakeTimers()`, and the timer-count message carries the fake and the real timer counts. The four `(CI)` lines were re-observed on it, and the probe line below reddens without the wait's sleep and not with it.
+
+### Review Findings (rework 2 re-review)
+
+Code review of `88f47946..1479b60a`, 2026-10-14, four layers on `full-opus`: 22 raw findings, 11 entries (high 0, medium 2, low 5, false 4).
+
+The iteration 2 item is done as written. The wait runs before any `mount()`, so it cannot absorb a timer the page arms: the four `(CI)` lines were re-observed on the patched test, with `log-viewer.page.ts` reverted byte-identical (sha256 `c155534a1be8`). It narrows rework 1's by-design MED. A real 0 ms or 50 ms leftover that arms a re-arming timer now fires before the fake clock exists, and each reddens AC6 without the wait (probe line).
+
+Two leftovers still reach the fake clock, because AC6 keeps `advanceTimersByTimeAsync` and its real yields: a real timer that re-arms itself (the `deferred:` entry, observed red), and a real one-shot that comes due after the wait ends and before AC6 does.
+
+Measured with temporary logging: the wait ends at zero real timers after 62 ms with the file alone and 41 ms in the full suite, and AC6 takes 99 ms and 140 ms. `log-viewer.spec.ts` passes 78, `test:components` passes 3130 in 247 files, and `client-lint` is clean.
+
+- [x] [Review][Patch] The count's message gave only the real timers active at the count [ui/src/app/areas/logs/log-viewer.spec.ts:421]. A poll that has moved onto the fake clock reads 0 there, so a repeat red could not tell a leftover from the page. The message now also gives the real timers active when the clock was faked, and the comment says "counts" where it said "lists what is still pending".
+- [x] [Review][Patch] The wait awaited between installing the EventSource and WebSocket probes and the `try` whose `finally` restores them [ui/src/app/areas/logs/log-viewer.spec.ts:372]. It now runs first.
+- [x] [Review][Patch] AC6's comment did not say what the test needs from the environment [ui/src/app/areas/logs/log-viewer.spec.ts:357]. One sentence now names the two leftovers that still reach the fake clock.
+- [x] [Review][Patch] The probe line was not evidence of what it claimed [`## Verification`].
+  - Its quoted message was retyped (`HSCUSTOM : 1`).
+  - Its 0 ms leftover is absorbed by any single yield, so it could not show that the polling loop matters.
+  - The line is rewritten from observed runs. It adds a 50 ms arm that reddens with the wait cut to one poll.
+  - It confirms the red lands on the second case, as the line said.
+- [x] [Review][Defer] DW-2430, routed (burndown): the wait is a copy of `home.page.spec.ts:1302-1308` (Rule 2). The rework item required the copy, because the ruled repair stays inside `log-viewer.spec.ts`. Unifying the two edits `home.page.spec.ts`.
+
+Rejected:
+
+- `false`: DW-2415 has two dispositions. The runner folds the `deferred:` entry into DW-2415 and resolves it after this review.
+- `false`: an orphaned `RefreshService` or `ConnectivityService` is the leaking poll. A grep finds all 30 spec constructions of the two passing a `schedule` option within 12 lines of the constructor, so the deferred entry's "no spec is known" stands.
+- `false`: the wait can push AC6 past vitest's 5 s timeout. AC6 takes 99 to 140 ms, and the wait's bound adds at most 1 s.
+- `false`: the implement's triage left the deferred residual without a ledger trailer. The `deferred:` list is the harvest path, and the runner folds it into DW-2415.
+- `low`: an unref'd `Timeout` or a pending `Immediate` is not waited for. No product source calls either, the three spec uses of `setImmediate` are awaited in their own tests, and the guard adds branches.
+- `low`: the Auto Run Result and the `deferred:` summary name only one of the two surviving leftovers. The fix edits the spec, and both are named above and in the test comment.
+
 ## Spec Change Log
 
 - 2026-10-13, spec gate (runner): the Design Notes' Rule 20 drafts are written (AD-63 item 1 and its named consequence, AD-44's screens that replace several classic pages, AD-64 item 2, EXPERIENCE.md :856). The `&ST` behavior is DW-2396, a vendor candidate under the owner's hold (not reported). The `multiple-goals` warning is accepted: both screens share the frame, page and store and are about one story's size. Story 20.16 implements before this story, so Task 0 re-anchors on it.
 
 ## Review Triage Log
+
+### 2026-10-14 — Review pass
+
+- verdicts: 20 findings — high 0, medium 5, low 4, false 11, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` Screen permissions builds `classic` as `${ClassicResource}:USE`, so a screen whose classic pages carry two custom resources shows `A, B:USE` — confirmed at `screen-permissions.page.ts` `openTarget`: the column is now comma-joined (`Access.ClassicResourceOf`) and the page appended one permission to the whole string. Fixed: each resource gets its own `:USE`; page spec row added.
+  - `[medium]` `[patch]` Production items page has no component spec; the `NavigationEnd` signal, the href, the modified click and the bare-route case are unpinned (browser AC3 clicks once on a fresh mount) — confirmed: no spec named the page. Fixed: `interop-item-list.page.spec.ts` (5 tests), each leg mutated red.
+  - `[false]` `[reject]` AC2's vendor tripwire is green because of the vendor defect it guards — the spec and the dispatch name it a deliberate tripwire; the builder clause carries a recorded mutation, and the harness clause is shown live by the in-test control.
+  - `[low]` `[patch]` Mutation claims in test headers that the observed list did not record — each was applied and observed red (store `settle`, `agentNote`, vocabulary parameters, store modes, descriptor own pair and `CLASSICPAGES`), recorded in `## Verification`; the frame spec's header was corrected to the leg that reddens.
+  - `[low]` `[reject]` AC7's Operator/Monitor legs, the 24-screen order and AC1's GET-only, box and count clauses have no recorded mutation — Rule 19 asks one demonstrated mutation per AC, and AC1 has two and AC7 has five.
+  - `[low]` `[reject]` AC1's `read.length > 0` for ASC X12 is met by the initial load — the per-family claim is carried by the `until` on the category count, and HL7 v2.x and ASTM are read only after being chosen; nothing a user meets.
+  - `[medium]` `[patch]` `panelMenuEntry` queries the app's panel bar once, with no wait — confirmed against Rule 19 (acts before the system signals it is ready). Fixed: it waits for the bar (`waitForFunction`) before it clicks.
+  - `[false]` `[reject]` AC5's gone leg assumes `OcuPilotProbe.Interop.Absent` is absent — a production by that name would draw a frame and redden the test, so it cannot pass vacuously; `before` creates no such production.
+  - `[medium]` `[patch]` The dialog names a malformed pair for two custom resources (restates the first finding) — same fix; the dialog input's doc comment now says the value holds each resource as a pair.
+  - `[false]` `[reject]` `Access.ClassicResourceOf` reaches beyond the intent's surfaces — Tasks & Acceptance names the edit and AC7 names the Screen permissions column.
+  - `[low]` `[reject]` `InteropFloor.TestEveryOpenScreenMatchesItsClassicPage` reads only `classicPage` — `TestEachViewerClassicPageSharesTheScreensPair` pins all three pages' `RESOURCE` against the screen's own pair.
+  - `[medium]` `[patch]` The Items link has no component spec (restates the second finding) — same fix.
+  - `[false]` `[reject]` Namespace move, Refused and Fault have no live leg — the spec's ACs pin live legs for Gone, Refresh and Sign out; the page spec pins the rest against the real template.
+  - `[false]` `[reject]` The Schema viewer's gate refusal is covered by server rosters — AC7 names exactly those rosters, and the screen has no client refusal to render.
+  - `[false]` `[reject]` The gate union is tested through `ScreenGate`'s stand-in — the spec names that seam; the real `%SetCustomResource` leg is `ScreenAccessWire`.
+  - `[false]` `[reject]` AC4 asserts OcuPilot's pair copy and not the tab's own `BPL_Editor-*` tokens — the matrix says "its copy of the tab's pair is revoked".
+  - `[false]` `[reject]` The sandbox mutation is labeled inference — the spec labels it so, as the prose rules ask.
+  - `[false]` `[reject]` An agent class save never reloads the diagram — `shows()` matches the route id against the event's id, the intent names no such trigger, and the agent line is not drawn there.
+  - `[false]` `[reject]` Read-only has no code counterpart — the intent measures it as a vendor fact and forbids the parameters that would change it.
+  - `[false]` `[reject]` Vendor behavior is pinned only by the browser spec — Rule 3 asks for that real-runtime evidence.
+
+### 2026-10-14 — Review pass (rework 1, the CI item)
+
+- verdicts: 7 findings — high 0, medium 1, low 2, false 4, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` After the drain, a one-shot timer may fire and issue a request that AC6 no longer sees (`log-viewer.spec.ts` AC6) — shown in a scratch copy; patched: the request and Live-tail assertions are repeated after the drain, with a `(CI) mutation:` line.
+  - `[low]` `[patch]` Nothing recorded that the drain absorbs a cross-file leftover — reproduced on the tree: a real zero-delay timer arming a 20-minute timer reddens the old test at `logs/messages` and not the new one; one sentence added to the item's cause line.
+  - `[low]` `[reject]` `vi.clearAllTimers()` is not load-bearing on a fresh fake clock — the ruling's first step requires the call; it is defensive and harmless, and the layer's removal run was not repeated here.
+  - `[false]` `[reject]` `home.page.spec.ts` has a stronger fix (wait for the event loop to empty) — an alternative design, not a defect; the ruling chose the drain.
+  - `[false]` `[reject]` The diff implements none of the story's feature reading — the item is a ruled CI repair outside the intent contract, so no feature surface is expected to change.
+  - `[false]` `[reject]` The intent has no clause for an unrelated test's change — the orchestrator pre-authorized the footprint extension, and no file in the contract's Never list is touched.
+  - `[false]` `[reject]` `Screen/Registry.cls` and `ci-timings.json` changed over the baseline range — those changes come from other commits, outside the audited diff.
+
+### 2026-10-14 — Review pass (rework 2, the CI item)
+
+- verdicts: 5 findings — high 0, medium 0, low 2, false 2, maybe-false 1
+- findings:
+  - `[maybe-false]` `[defer]` AC6 copies only the wait of `home.page.spec.ts`'s idiom and keeps the async advance, so a real timer that re-arms itself can still reach the fake clock — the reviewer's own demonstration (a real interval arming one-shot 30 s timers) stayed green in a scratch run; a real `setTimeout(poll, 5)` poll that never stops reddens AC6, which rework 1's by-design row already accepts. Whether any spec leaves such a poll is unknown. The fix (a synchronous window) restructures the ruled test, so it is not a patch. Deferred as medium (unverified) against DW-2415; the new message now names the form (fake timers pending, real timers active).
+  - `[low]` `[reject]` The wait has a `(CI) probe` line and no `(CI) mutation:` line — the probe line records the red with the sleep removed; a relabel is a spec edit.
+  - `[low]` `[reject]` The item text says the wait runs until no real `Timeout` is active, and the code gives up after 50 polls — the same text says "bounded" and "best effort", and the test comment states the bound; the fix edits the spec.
+  - `[false]` `[reject]` The diff touches none of the story's screens — it is the ruled CI repair of Story 18.38's test, a pre-authorized footprint extension, and no file in the contract's Never list changed.
+  - `[false]` `[reject]` `baseline_revision` names HEAD while the diff is uncommitted — the baseline is the commit before the reviewed change by design.
 
 ## Design Notes
 
@@ -591,15 +738,61 @@ Each value was checked unique against `strings.ts`. The labels double as the fra
 | AC7 | `RequiredPairs` without the `CLASSICPAGES` line | `TestTheSchemaViewerHonorsEveryClassicPage` |
 | AC7 | `%Ens_EDISchema:READ` dropped from the schema viewer | `InteropEditorDescriptor`, and `InteropFloor`'s Administrator roster |
 
+**Mutations observed (Rule 19).** Each was applied, read red, and reverted byte-identical (`git status --short` and `git diff --stat` unchanged); ObjectScript was recompiled on `ocupilot-b-ci` and the bundle rebuilt and redeployed before each browser read.
+
+- mutation: the page maps `InteropSchemaViewer` with `listFrom: 'document'` -> the page spec (3 tests) and browser AC1 (no frame: the frame wait times out).
+- mutation: `needsId` restored to every `viewer (source)` -> browser AC1's walk clause ("opens the Schema viewer at its bare route").
+- mutation: the builder appends `&%26ST=<document>` for `schema-viewer` -> `vendor-frame.test.mjs`'s schema viewer test and browser AC2's builder clause. The vendor tripwire (a harness frame at `&%26ST=HL7+v2.x` opens on ASC X12) cannot be reddened from here; its read is shown live by choosing HL7 v2.x in the harness frame's own list.
+- mutation: the store requires `.cls` for every kind -> the store test's two bare-name tests and browser AC3 (no frame at the builder's address).
+- mutation: `InteropProductionDiagram` declared `detail` (mirror regenerated) -> `navigation.test.mjs`'s 20.8 pairing test and browser AC3 (the name cell opens the diagram, so `openItems` times out).
+- mutation: the frame component sets `sandbox="allow-scripts allow-same-origin"` -> browser AC4 times out before a tab opens (inference: the app does not sign in under a sandbox).
+- mutation: the store opens a row the read did not return -> the store test (6 tests) and browser AC5's gone leg.
+- mutation: the frame's `@for` tracks `$index` -> the frame spec (4 tests) and both of browser AC5's Refresh legs.
+- mutation: `Session.signOut()` posts `/logout` with `credentials: 'omit'` -> browser AC6 on both screens. AC4's revoke clause stays green under it, because the Bearer alone revokes OcuPilot's pair; that clause is shown live by removing the sign-out step from the test (the copy's refresh answers 200, not 401).
+- mutation: one `Elsewhere` row removed -> `StageTwoTools` `TestTheRosterAndElsewhereAreEveryRegisteredScreen`, alone (1 of 4).
+- mutation: `RequiredPairs` without the `CLASSICPAGES` line -> `TestTheSchemaViewerHonorsEveryClassicPage` (the X12 and ASTM legs).
+- mutation: `%Ens_EDISchema:READ` dropped from the schema viewer -> `InteropEditorDescriptor` (3 of 5) and `InteropFloor` (2 of 7, the Administrator roster among them).
+- mutation: `Access.ClassicResourceOf` reads only `classicPage`, or drops its duplicate test -> `ScreenAccessWire` `TestTheSchemaViewersRowNamesTheResourceOfEveryClassicPage`.
+- mutation: `parentIdSegment` answers `''` -> `navigation.test.mjs` (2 tests) and the page spec's diagram tests (6).
+- mutation: the Items link's click does not navigate -> browser AC3.
+- mutation: the store's `settle` stops bumping the revision on `open` -> the page spec (5: Refresh, the change reload, and 20.8's two Refresh tests) and the store test (7).
+- mutation: `VIEWER` maps `agentNote: true` -> the page spec (3, the agent-line test among them).
+- mutation: the vocabulary gives `schema-viewer` the parameter `ST` -> `vendor-frame.test.mjs` (2) and the frame spec's refused-source test; the diagram's parameter renamed -> `vendor-frame.test.mjs` (4) and the frame spec's 20.8 draw test.
+- mutation: the store reads a list when it has none -> the store test's no-list row. The page spec cannot show it: the unguarded read does not type-check.
+- mutation: the store requires `.cls` whatever the extension -> the store test (2) and the page spec's diagram tests (6).
+- mutation: the store opens a row the read did not return -> the store test (6) and the page spec (6).
+- mutation: the Items page's link omits the production id (3), ignores `NavigationEnd` (the move leg), ignores modifier keys (the click leg) or is drawn whatever the route names (the bare-route leg) -> `interop-item-list.page.spec.ts`.
+- mutation: the Screen permissions page appends the permission to the whole `ClassicResource` column -> its two-resource test.
+- mutation: the Schema viewer declares `%Ens_EDISchema:USE` as its own pair -> `InteropEditorDescriptor` (3 of 5); its `CLASSICPAGES` emptied -> `TestTheViewerScreensRegister`, `TestTheSchemaViewerHonorsEveryClassicPage` and `TestEachViewerClassicPageSharesTheScreensPair`'s page count (3 of 5).
+- mutation: AC4's test does not sign out in the shell -> the copy's refresh answers 200, not 401.
+- (QA) mutation: `Screen.Gate.RequiredPairs` without its `CLASSICPAGES` line -> `InteropEditorDescriptor` `TestTheSchemaViewerHonorsEveryClassicPage` (the X12 and the ASTM leg, each at "added" and "at USE") and `ScreenAccessWire` `TestTheSchemaViewersRowNamesTheResourceOfEveryClassicPage` (Effective, with a real `%SetCustomResource`). The descriptor test now reads the third pair with `$ListGet`, so every page reports instead of the first red ending the loop.
+- (QA) mutation: a viewer that honors `&ST`, simulated for AC2's harness frame by a scratch copy of the spec that answers the viewer's own `get("&ST")` with `HL7 v2.x` (`page.evaluateOnNewDocument`) -> browser AC2's chosen-type assertion (expected `ASC X12`, shown `HL7 v2.x`). The tripwire is live; the scratch copy is deleted.
+- (QA) mutation: the page's `goneText` reads the rule editor's empty key (bundle rebuilt and redeployed) -> browser AC5's gone leg on the sentence, and the page spec (5 tests, the diagram's two among them).
+- (QA) mutation: `restoreSearch` does nothing (scratch copy of the spec, AC3 alone) -> the `after` hook's "message-search store in USER is as it was" (`{data: 11, counter: '1', max: 1}` against `{data: 0, counter: '', max: 0}`). The leftover row was removed by hand.
+- (QA) mutation: the store ignores a denied verdict, or does not refuse a 403 that names its pair -> the page spec's two "Requires <pair>" tests, each time; `refresh()` does nothing -> the page spec (8, the diagram's Retry and Refresh among them); the page ignores a namespace move -> the page spec (4, the Schema viewer's and the diagram's among them).
+- (QA) mutation: `.ocu-interop-editor-frame` is 300 px tall (bundle rebuilt and redeployed) -> browser AC1 `assertFillsHost`; a scratch copy of the spec makes the viewer's frame send one POST -> browser AC1 "apart from its empty-body login, every request the frame made is a GET".
+- (QA) mutation: the Schema viewer's `sideBarPosition` 10 becomes 3 -> `Navigation` `TestThePayloadCarriesEveryAreaWithAVerdict` (positions 17 to 24); the diagram's pair set names `%Ens_Code:READ` in place of `%Ens_ProductionConfig:READ` -> `InteropFloor` (2 of 7, the Operator roster among them).
+- (QA) Every (QA) mutation was reverted byte-identical and recompiled, or rebuilt and redeployed. On the rebuilt `ocupilot-b-ci`, `InteropFloorTurn`, `InteropEditorSaveTurn` and `ExplorerSaveTurn` (1 test each, status 1 in `%UnitTest_Result`) and `screen-permissions-agent.browser-spec.mjs` (2) are green; `interop-viewers` is green whole (11) and with AC1, AC4 and AC6 each run alone. No test file was added; `InteropEditorDescriptor.cls` has one edited line.
+- (CR) mutation: `Gate.RequiredPairs` unions `CLASSICPAGES` only on an unadjusted screen -> `ScreenAccessWire` `TestTheSchemaViewersRowNamesTheResourceOfEveryClassicPage`, its adjusted leg alone (1 of 8).
+- (CR) mutation: the AD-63 scan's pattern without `Schema_Viewer-` and `Interop-Editors-` -> `api.test.mjs` (2 of 40).
+- (CR) mutation: the Items link's click ignores `altKey` -> `interop-item-list.page.spec.ts`'s modified-click test.
+- (CR) Each (CR) mutation was applied to the throwaway's copy of `src`, or to the worktree and restored from a saved copy, read red, and reverted. `InteropEditorDescriptor` (5) and `ScreenAccessWire` (8) are green on the reverted code (runs 26 and 27). `test:tools` passes 1997 and `test:components` 3120. The build is green. `interop-viewers` passes 11 on the rebuilt bundle.
+- (CI) mutation: the page's constructor arms `setInterval(() => {}, 30000)` -> `log-viewer.spec.ts` AC6, at the timer count after the drain (`logs/alerts : 1 fake timers pending, 8 real timers active, 8 when the clock was faked: expected 1 to be +0`); Story 18.38 AC1's undrained count reddens too.
+- (CI) mutation: the page's constructor arms a self-re-arming 30 s `setTimeout` poll -> AC6, at the same count after the drain.
+- (CI) mutation: the page's constructor arms a 20-minute `setTimeout(() => void this.store.open(), ...)` -> AC6, at the request count after the drain (`logs/alerts : expected 2 to be 1`); Story 18.38 AC1 reddens too.
+- (CI) check, not a mutation: one `setTimeout(() => {}, 20 * 60 * 1000)` armed by the page is drained and AC6 stays green (77 of 78; only Story 18.38 AC1's undrained count reddens).
+- (CI) `log-viewer.page.ts` was reverted byte-identical after each (sha256 `c155534a1be8` before and after); the file passes 78 on the reverted code.
+- (CI) probe, not a mutation: a real timer queued before AC6's wait, which arms a timer that re-arms itself every 30 s, leaves the file at 78 of 78 at a 0 ms and at a 50 ms delay. With the wait's sleep removed, the 0 ms one reddens AC6 (`logs/messages /logs/messages?ns=HSCUSTOM: 1 fake timers pending, 1 real timers active, 4 when the clock was faked: expected 1 to be +0`). With the wait cut to one 20 ms poll, the 50 ms one does (`os-management/databases/integrity-log : 1 fake timers pending, 1 real timers active, 2 when the clock was faked: expected 1 to be +0`). A real 5 ms poll that never stops still reddens it with the full wait (`logs/messages /logs/messages?ns=HSCUSTOM: 1 fake timers pending, 0 real timers active, 1 when the clock was faked: expected 1 to be +0`). The scratch edits were reverted byte-identical (spec sha256 `b2743360bc2d` before and after).
+
+**Measured.** `npm run build`: initial total 1.93 MB (warning 1992 kB), largest lazy chunk `data-browser-page` 83.33 kB (ceiling 88 kB), `interop-editor-page` 11.11 kB, `interop-item-list-page` 14.30 kB.
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-**Plan pass (2026-10-13).** Planned on `c245652c` and halted after planning, as dispatched. Both apps were measured on `ocupilot-b-ci`, and every probe was removed afterwards (Design Notes › Measured).
+**This pass (rework 2, the CI item).** `log-viewer.spec.ts` AC6 waits, bounded and not asserted, until no real `Timeout` is active (50 polls of 20 ms at most) before `vi.useFakeTimers()`, as a copy of `home.page.spec.ts`'s Story 15.4 wait. The timer-count message now reads the fake timers pending and the real timers active. The clear, the drain and every other assertion are unchanged; no product file and no other spec changed.
 
-- The schema viewer ignores its `&ST` parameter, so one listed screen is planned instead of three.
-- The diagram is reached from Production items.
-- AD-44 is honored through a screen-level `CLASSICPAGES`.
+**Review.** Five findings, no patch: one deferred as medium (unverified) against DW-2415 (a real poll that never stops still reddens AC6), two low and two false rejected with reasons in the log. Follow-up review recommended: false (no high patched).
 
-The Rule 20 drafts for the lead are in Design Notes.
+**Verification.** `ng test --include src/app/areas/logs/log-viewer.spec.ts` passes 78 and `home.page.spec.ts` 67; `npm run test:components` passes 3130 in 247 files; `client-lint` and `lint-docs` are clean. The four `(CI)` lines were re-observed on the new test with `log-viewer.page.ts` reverted byte-identical (sha256 `c155534a1be8`), and one probe line shows the wait absorbs a real timer that arms a re-arming one. The CI failure itself is still not reproduced, so its cause stays an inference.

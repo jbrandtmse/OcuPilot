@@ -49,8 +49,9 @@ Parameter MONITORTOOLS = "interop.monitor.read";
 /// table's entries and Business partners (Story 20.5), through <code>%Ens_ProductionConfig:READ</code>,
 /// <code>%Ens_Queues:READ</code>, <code>%Ens_Jobs:READ</code>, <code>%Ens_EventLog:USE</code>,
 /// <code>%Ens_MessageHeader:USE</code> and <code>%Ens_LookupTables:READ</code>, and the event log through
-/// <code>%Ens_EventLog:USE</code>.</p>
-Parameter OPERATORSCREENS = "InteropBusinessPartnerList,InteropItemJobTab,InteropItemList,InteropItemLogTab,InteropItemMessageTab,InteropItemQueueTab,InteropItemSettingList,InteropItemStatusTab,InteropJobList,InteropLookupEntryList,InteropLookupTableList,InteropProductionList,InteropQueueList,InteropQueueMessageList,LogEventViewer";
+/// <code>%Ens_EventLog:USE</code>. The Configuration diagram (Story 20.8) opens through the
+/// <code>%Ens_ProductionConfig:READ</code> the Productions list needs.</p>
+Parameter OPERATORSCREENS = "InteropBusinessPartnerList,InteropItemJobTab,InteropItemList,InteropItemLogTab,InteropItemMessageTab,InteropItemQueueTab,InteropItemSettingList,InteropItemStatusTab,InteropJobList,InteropLookupEntryList,InteropLookupTableList,InteropProductionDiagram,InteropProductionList,InteropQueueList,InteropQueueMessageList,LogEventViewer";
 
 /// <p>See <parameter>OPERATORSCREENS</parameter>.</p>
 Parameter OPERATORTOOLS = "interop.businesspartners.read,interop.itemjobs.read,interop.itemlog.read,interop.itemmessages.read,interop.itemqueue.read,interop.items.read,interop.itemsettings.read,interop.itemstatus.read,interop.jobs.read,interop.lookupentries.read,interop.lookuptables.read,interop.productions.read,interop.queuemessages.read,interop.queues.read,logs.eventlog.read";
@@ -58,8 +59,9 @@ Parameter OPERATORTOOLS = "interop.businesspartners.read,interop.itemjobs.read,i
 /// <p>What the Administrator role adds beside the Operator's: the three code lists and the rule, BPL and DTL editor
 /// screens (Story 20.7), each through its own <code>%Ens_Code:READ</code>, and an item's Test tab (Story 20.6) through the <code>%Ens_TestingService:USE</code> the
 /// role holds (measured at that story's plan: <code>%EnsRole_Administrator</code> holds <code>%Ens_TestingService:U</code>, the
-/// Operator and Monitor roles do not).</p>
-Parameter ADMINISTRATORSCREENS = "InteropItemTestTab,InteropProcessEditor,InteropProcessList,InteropRuleEditor,InteropRuleList,InteropTransformEditor,InteropTransformList";
+/// Operator and Monitor roles do not), and the Schema viewer (Story 20.8) through the <code>%Ens_EDISchema:READ</code> the
+/// Administrator role holds and the Operator and Monitor roles do not.</p>
+Parameter ADMINISTRATORSCREENS = "InteropItemTestTab,InteropProcessEditor,InteropProcessList,InteropRuleEditor,InteropRuleList,InteropSchemaViewer,InteropTransformEditor,InteropTransformList";
 
 /// <p>See <parameter>ADMINISTRATORSCREENS</parameter>.</p>
 Parameter ADMINISTRATORTOOLS = "interop.itemtest.read,interop.processes.read,interop.rules.read,interop.transforms.read";

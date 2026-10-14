@@ -48,6 +48,7 @@ const {
   listedScreensForArea,
   ownIdSegment,
   parentCriteria,
+  parentIdSegment,
   parentListFor,
   routeEntityType,
   screenForRoute,
@@ -386,6 +387,8 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'interoperability/lookup-tables/entries',
       // Story 20.7: the BPL editor, unlisted, among the unlisted ones; the rule and DTL editors follow Queue messages.
       'interoperability/processes/document',
+      // Story 20.8: the Configuration diagram, unlisted, between the BPL editor and Queue messages by class name.
+      'interoperability/productions/diagram',
       'interoperability/queues/messages',
       'interoperability/rules/document',
       'interoperability/transforms/document',
@@ -401,6 +404,8 @@ test('a side bar lists only built screens, in side-bar order', () => {
       // Story 20.5: Lookup tables and Business partners, listed after them.
       'interoperability/lookup-tables',
       'interoperability/business-partners',
+      // Story 20.8: the Schema viewer, listed last.
+      'interoperability/schema-viewer',
       'agent/definitions/edit',
       'agent/transcripts/details',
       'agent/definitions',
@@ -852,6 +857,57 @@ test('Story 20.7: each code list pairs with its editor screen, an unlisted built
     assert.equal(screenForUrl(url)?.route, editorRoute, 'a document URL resolves to the editor');
     assert.equal(ownIdSegment(editor, url), 'Demo.Probe.Thing.cls', 'and its own id is the class\'s document name');
   }
+});
+
+// Story 20.8: the Configuration diagram is an unlisted `viewer (source)` under Productions, a child list of it, so the
+// Productions name cell keeps opening Production items (a child list sorts after `InteropItemList` by class name), and
+// the diagram's route id is the parent's, which `parentIdSegment` reads where `ownIdSegment` answers `''`. The Schema
+// viewer is a listed screen that takes no id.
+//
+// Mutation (Rule 19): declare InteropProductionDiagram `detail` -> `detailScreenFor(Productions)` answers the diagram
+// and `childListFor` no longer pairs Production items with the name cell, so the pairing legs go red.
+test('Story 20.8: the Productions name cell still opens Production items, the diagram pairs back to Productions, and its id is the production', () => {
+  const productions = screenForRoute('interoperability/productions');
+  assert.ok(productions, 'Productions is declared');
+  assert.equal(childListFor(productions)?.route, 'interoperability/productions/items', 'the name cell opens Production items');
+  assert.equal(documentScreenFor(productions), null, 'Productions has no document viewer');
+  assert.equal(detailScreenFor(productions), null, 'and no detail screen');
+  const diagram = screenForRoute('interoperability/productions/diagram');
+  assert.ok(diagram, 'the diagram is declared');
+  assert.equal(diagram.archetype, 'viewer (source)');
+  assert.equal(diagram.built, true, 'built');
+  assert.equal(isListedScreen(diagram), false, 'and unlisted');
+  assert.equal(hasIdRoute(diagram), true, 'keyed by a production');
+  assert.equal(parentListFor(diagram)?.route, 'interoperability/productions', 'the locator links it back to Productions');
+  const url = `/${diagram.route}/${encodeEntityId('Demo.Probe.Production')}?ns=USER`;
+  assert.equal(screenForUrl(url)?.route, diagram.route, 'a production URL resolves to the diagram');
+  assert.equal(parentIdSegment(diagram, url), 'Demo.Probe.Production', 'its id is the production, read as the parent\'s');
+  assert.equal(ownIdSegment(diagram, url), '', 'which a parent-scoped screen\'s own id is not');
+  assert.deepEqual(parentCriteria(diagram, url), {}, 'and it declares no criterion to put it in');
+  const viewer = screenForRoute('interoperability/schema-viewer');
+  assert.ok(viewer, 'the Schema viewer is declared');
+  assert.equal(viewer.archetype, 'viewer (source)');
+  assert.equal(isListedScreen(viewer), true, 'and listed');
+  assert.equal(hasIdRoute(viewer), false, 'with no id route');
+  assert.equal(screenForUrl(`/${viewer.route}?ns=USER`)?.route, viewer.route);
+  assert.equal(screenForUrl(`/${viewer.route}/x?ns=USER`), null, 'a route id after it names no screen');
+  assert.equal(listedScreensForArea('interoperability').at(-1)?.route, viewer.route, 'the last of the area\'s side bar');
+});
+
+test('parentIdSegment reads a parent-scoped screen\'s route id, encoded twice, and answers \'\' for any screen that is not', () => {
+  const diagram = screenForRoute('interoperability/productions/diagram');
+  for (const id of ['Demo.Probe.Production', '%Library.Probe', 'A B', 'A/B', '100%', 'caf\u00e9', '_SYSTEM']) {
+    assert.equal(parentIdSegment(diagram, `/${diagram.route}/${encodeEntityId(id)}?ns=USER`), id, id);
+  }
+  assert.equal(parentIdSegment(diagram, `/${diagram.route}?ns=USER`), '', 'the bare route has no id');
+  assert.equal(parentIdSegment(diagram, `/${diagram.route}/a/b`), '', 'two segments are no id');
+  assert.equal(parentIdSegment(diagram, '/interoperability/productions'), '', 'another route is no id');
+  const rules = screenForRoute('interoperability/rules/document');
+  const root = screenForRoute('interoperability/productions');
+  assert.equal(parentIdSegment(rules, `/${rules.route}/${encodeEntityId('Demo.Rule.cls')}`), '', 'a screen with no parent');
+  assert.equal(parentIdSegment(root, `/${root.route}/${encodeEntityId('Demo.Probe.Production')}`), '', 'a list with no parent');
+  assert.equal(parentIdSegment(screenForRoute('interoperability/schema-viewer'), '/interoperability/schema-viewer/x'), '', 'a screen with no id route');
+  assert.equal(parentIdSegment(screenForRoute(''), '/'), '', 'Home');
 });
 
 // Story 6.6, DW-1020: a sub-resource screen's route id names an entity of its parent's own

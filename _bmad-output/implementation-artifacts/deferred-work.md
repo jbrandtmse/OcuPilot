@@ -11777,6 +11777,51 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: wc -l: 605 at 02bd47fb, 692 at 5ab4af82, 713 after the rework 2 review's patches. A split adds a class to scripts/ci-throwaway.sh's arming roster (Epic 20's file) and ci-timings.json, more than a two-way door.
 - 2026-10-13T23:13:33Z status=wontfix-accepted owner=18-38-the-live-log-tail by=cr note=reopen_if=wc -l src/OcuPilot/Test/DatabaseIntegrity.cls exceeds 800, or a story adds a test method to it
 
+### DW-2401: Spine AD-8 does not name Story 20.16's %Ens_Code:WRITE among the pairs a write tool may add beyond its screen's set
+- source: spec-20-16-the-agent-edits-rule-dtl-and-bpl-content-behind-the-embedded.md code review | severity: low | fix-risk: low | footprint: in-story
+- evidence: AD-8 says a write tool adds pairs beyond its screen's only for a database the read does not write or a measured ResourcesOR; the editor saves add %Ens_Code:WRITE by the orchestrator's ruling, recorded in AD-53 alone, so AD-8 reads as violated.
+- 2026-10-14T00:51:42Z status=open owner=20-16-the-agent-edits-rule-dtl-and-bpl-content-behind-the-embedded by=cr note=spine amendment for the lead (Rule 20): add the ruling as AD-8's named case; wording in the spec's Review Findings
+- 2026-10-14T00:54:28Z status=resolved-by:20-16-the-agent-edits-rule-dtl-and-bpl-content-behind-the-embedded by=adjudication note=AD-8 sentence added (spine, 2026-10-13)
+
+### DW-2402: Spine AD-61 rule 6's Story 20.16 sentence gives an HTTP measurement as the port's reason to read the compile console
+- source: spec-20-16-the-agent-edits-rule-dtl-and-bpl-content-behind-the-embedded.md code review | severity: low | fix-risk: low | footprint: in-story
+- evidence: The BPL 200-with-no-status-error was measured over the Atelier HTTP route; the port compiles in process, where the implement stage measured #5475 in status.errors for the same edit, so the console clause is a fallback.
+- 2026-10-14T00:51:43Z status=open owner=20-16-the-agent-edits-rule-dtl-and-bpl-content-behind-the-embedded by=cr note=spine amendment for the lead (Rule 20): restate the because-clause; wording in the spec's Review Findings
+- 2026-10-14T00:54:28Z status=resolved-by:20-16-the-agent-edits-rule-dtl-and-bpl-content-behind-the-embedded by=adjudication note=AD-61 rule 6 restated as a fallback (spine, 2026-10-13)
+
+### DW-2403: The turn wire test classes (ExplorerSaveTurn and its siblings) leave their probe user's ledger rows, and SweepSince misses rows whose turn is gone
+- source: spec-20-16-the-agent-edits-rule-dtl-and-bpl-content-behind-the-embedded.md code review | severity: med | fix-risk: low | footprint: in-epic
+- evidence: Sweep and RemoveTurns delete no ledger rows; TurnWireFixture.SweepSince's owner pass reads SELECT DISTINCT TurnKey, which returns the collated uppercase key, so GuardedDeleteForTurn's exact match misses it (measured: 7 rows left).
+- 2026-10-14T00:51:43Z status=routed owner=burndown by=cr note=20.16's InteropEditorSaveTurn calls SweepSince before Sweep; fix SweepSince with %EXACT and sweep the others
+
+### DW-2405: OcuPilot's create and delete of a class or routine drop the source-control class's follow-up user action (an 'add to source control?' question for a new document or after a delete is never asked and AfterUserAction never runs)
+- source: spec-20-10-source-control-hooks.md (plan, harvested at the spec gate) | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: Measured at Story 20.10's plan on ocupilot-b-ci: with a probe source-control class whose UserAction answers 1, the Atelier delete route answered result.ext {action:1, target:<question>}; PutDoc of a new document runs UserAction(1,1) and (1,7); AtelierPort SaveSet (pCreate) and DeleteSet ignore it.
+- 2026-10-14T01:40:07Z status=routed owner=burndown by=spec_gate note=outside 20.10's scope; the follow-up needs a dialog or proposal step for the source-control question
+
+### DW-2407: The epic context's shared-rosters list omits ToolWrite's other-port write count, which every write through a non-admin port moves
+- source: spec-20-16-the-agent-edits-rule-dtl-and-bpl-content-behind-the-embedded.md (rework 1 re-review) | severity: med | fix-risk: low | footprint: in-epic
+- evidence: epic-20-context.md:169 (regenerated from planning artifacts per plan spawn) lists ReadTool and ToolRoundTrip, not ToolWrite.cls:1338 (49 after 20.16). 20.16's plan missed it and its fresh check went red, costing a rework; 20.25, 20.26 and 20.31 add InteropPort writes.
+- 2026-10-14T03:02:05Z status=routed owner=20-25-item-runtime-and-configuration-actions by=cr note=name ToolWrite's other-port count (49 after 20.16) in Shared surfaces and move it; first of 20.25/20.26/20.31
+
+### DW-2408: interop-item-test.browser-spec.mjs's cleanup leaves the host test's message headers and the probe production's Ens_Util.Log rows behind in USER
+- source: spec-20-30 plan (measured) | severity: med | fix-risk: low | footprint: in-epic
+- evidence: Measured at Story 20.30's plan on ocupilot-b-ci: after the cleanup calls interop-item-test.browser-spec.mjs also uses, USER held three message headers and the production's event-log rows; removed by hand.
+- 2026-10-14T03:47:33Z status=routed owner=burndown by=spec_gate note=Rule 19 hermeticity: the spec (Story 20.6's) removes the headers and log rows it caused
+
+### DW-2414: A deleted account that was the first to run the install gate's version-row read after its cached queries were purged (an install, an uninstall) is refused 503 INSTALL.UNREADABLE instead of 401 AUTH.DISABLED
+- source: spec-20-16 (harvest, CI rework 2) | severity: low | fix-risk: med | footprint: out-of-footprint
+- evidence: Measured on ocupilot-b-ci: after an install or uninstall the first account to run the gate prepares its cached compile; once deleted, that account's token reads SQLCODE -99 at the gate (503); when another account prepared it first, 401. Other accounts unaffected (20 classes after Retention in CI shard 7 passed).
+- 2026-10-14T07:31:18Z status=wontfix-accepted owner=20-16-the-agent-edits-rule-dtl-and-bpl-content-behind-the-embedded by=harvest note=reopen_if=a live (not deleted) account is refused 503 INSTALL.UNREADABLE after an install or uninstall
+- 2026-10-14T07:50:55Z status=wontfix-accepted owner=20-16-the-agent-edits-rule-dtl-and-bpl-content-behind-the-embedded by=cr note=reopen_if=a live account gets 503 INSTALL.UNREADABLE; cr probe: live 200, disabled 401; site GuardedOpenOneWhereNoParam
+
+### DW-2415: CI flake: log-viewer.spec.ts AC6 (Story 18.38, 'with Live tail off, nothing streams') read vi.getTimerCount() as 12, not 0, on gates (node 22.22.3) only
+- source: CI run 38532797700 attempt 1 (head c14f3fc6) | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: attempt 1 red on node 22.22.3 only (node 24 and 26 green on the same head); attempt 2 green unchanged; the head touches no logs code (inference: timers left by another spec in the worker).
+- 2026-10-14T09:30:29Z status=routed owner=burndown by=runner note=flake: the spec should set up and clear fake timers per test; Epic 18's test (orchestrator told Epic 18)
+- 2026-10-14T12:35:00Z status=routed owner=18-48-epic-18-burn-down-part-2 by=lead note=orchestrator 2026-10-14: Epic 18's test; fix its timer isolation
+- 2026-10-14T15:53:46Z status=routed owner=18-48-epic-18-burn-down-part-2 by=runner note=occurrence: run 38578125486 attempt 1 (head 7aba3c5f, Story 20.8) red on gates (node 26.0.0) only, same test, 'os-management/language-servers/activity : expected 3 to be +0'; rerun of the failed job
+- 2026-10-14T18:22:12Z status=resolved-by:20-8-the-schema-viewers-and-the-production-configuration-diagram by=adjudication note=AC6 waits (bounded) for the real loop to be empty before the fake clock, clears it, drains finite timers and repeats its request checks after the drain; its count message names fake and real timers. Cause is an inference (Angular's vitest runner isolate false: a real timer another test leaves fires in the async advance's yields); never reproduced locally, so CI is the only proof. Residual (the spec's deferred item): a real timer that re-arms for the worker's life, or a one-shot due after the wait, still reddens AC6. reopen_if=AC6 red again on CI with 'when the clock was faked' above 0 or a fake count above 0
 ### DW-2400: CipherList and TLSMinVersion are settable on the provider's SSL/TLS configurations (OcuPilotProvider and an egress-named one), and neither OCUPILOTSSL nor PROVIDERSSL covers them, so a weak cipher list or TLS floor reaches provider calls
 - source: spec-18-40-proxy-and-custom-ca-configuration.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: 18.40 implement (inference, not measured): OcuPilotSslFields and the planned PROVIDERSSL fields are Type, VerifyPeer, CAFile and Enabled only; the call-time check reads VerifyPeer
@@ -11865,49 +11910,30 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: DW-2007's 18-7 occurrence names them; Story 18.47 code review (code read): UNLOGGEDREFUSALS (AdminPort.cls:641) lists #1454 and #5809 only; each entry's endpoint, type and status needs a Task 0 measurement
 - 2026-10-14T12:29:05Z status=routed owner=18-48-epic-18-burn-down-part-2 by=cr note=add code-scoped UNLOGGEDREFUSALS entries after measuring each; #5001 stays logged (AD-2)
 - 2026-10-14T19:09:22Z status=resolved-by:18-48-epic-18-burn-down-part-2 by=adjudication note=fixed with its pinning test in Story 18.48 (ca9b32cf + QA + review); see the spec's Verification
-### DW-2401: Spine AD-8 does not name Story 20.16's %Ens_Code:WRITE among the pairs a write tool may add beyond its screen's set
-- source: spec-20-16-the-agent-edits-rule-dtl-and-bpl-content-behind-the-embedded.md code review | severity: low | fix-risk: low | footprint: in-story
-- evidence: AD-8 says a write tool adds pairs beyond its screen's only for a database the read does not write or a measured ResourcesOR; the editor saves add %Ens_Code:WRITE by the orchestrator's ruling, recorded in AD-53 alone, so AD-8 reads as violated.
-- 2026-10-14T00:51:42Z status=open owner=20-16-the-agent-edits-rule-dtl-and-bpl-content-behind-the-embedded by=cr note=spine amendment for the lead (Rule 20): add the ruling as AD-8's named case; wording in the spec's Review Findings
-- 2026-10-14T00:54:28Z status=resolved-by:20-16-the-agent-edits-rule-dtl-and-bpl-content-behind-the-embedded by=adjudication note=AD-8 sentence added (spine, 2026-10-13)
+### DW-2416: IRIS defect candidate: /api/deepsee (%Api.DeepSee, %DeepSee.REST.v3) resets roles to the login roles, checks no %DeepSee_* resource, and splices caller text into MDX and SQL
+- source: spec-20-11 plan (measured), orchestrator ruling 2026-10-14 | severity: med | fix-risk: high | footprint: out-of-footprint
+- evidence: Measured at Story 20.11's plan on ocupilot-b-ci: a user holding only %DB_USER:RW read every model, term list and folder item, built and synchronized cubes and ran MDX; read in irislib %DeepSee.REST.v3 (its Info and Query routes). OcuPilot calls the classes in process instead (AD-65).
+- 2026-10-14T09:34:45Z status=decision-pending owner=burndown by=spec_gate note=owner hold 2026-10-05: IRIS defect candidate, not reported
 
-### DW-2402: Spine AD-61 rule 6's Story 20.16 sentence gives an HTTP measurement as the port's reason to read the compile console
-- source: spec-20-16-the-agent-edits-rule-dtl-and-bpl-content-behind-the-embedded.md code review | severity: low | fix-risk: low | footprint: in-story
-- evidence: The BPL 200-with-no-status-error was measured over the Atelier HTTP route; the port compiles in process, where the implement stage measured #5475 in status.errors for the same edit, so the console clause is a fallback.
-- 2026-10-14T00:51:43Z status=open owner=20-16-the-agent-edits-rule-dtl-and-bpl-content-behind-the-embedded by=cr note=spine amendment for the lead (Rule 20): restate the because-clause; wording in the spec's Review Findings
-- 2026-10-14T00:54:28Z status=resolved-by:20-16-the-agent-edits-rule-dtl-and-bpl-content-behind-the-embedded by=adjudication note=AD-61 rule 6 restated as a fallback (spine, 2026-10-13)
+### DW-2420: The Configuration diagram follows no confirmed change to its production: after an agent item write it shows the old configuration until Refresh
+- source: spec-20-8 code review | severity: med | fix-risk: med | footprint: in-story
+- evidence: interop-editor.store.ts shows() accepts only type class events whose id is the route id; the diagram's id is a bare production name and item writes emit production-item. Redrawing it would drop the app's unsaved changes, which the 20.16 card states only for the editors.
+- 2026-10-14T12:12:09Z status=decision-pending owner=burndown by=cr note=owner: redraw the diagram on a confirmed production or item change (with card copy for unsaved edits), or keep Refresh only
 
-### DW-2403: The turn wire test classes (ExplorerSaveTurn and its siblings) leave their probe user's ledger rows, and SweepSince misses rows whose turn is gone
-- source: spec-20-16-the-agent-edits-rule-dtl-and-bpl-content-behind-the-embedded.md code review | severity: med | fix-risk: low | footprint: in-epic
-- evidence: Sweep and RemoveTurns delete no ledger rows; TurnWireFixture.SweepSince's owner pass reads SELECT DISTINCT TurnKey, which returns the collated uppercase key, so GuardedDeleteForTurn's exact match misses it (measured: 7 rows left).
-- 2026-10-14T00:51:43Z status=routed owner=burndown by=cr note=20.16's InteropEditorSaveTurn calls SweepSince before Sweep; fix SweepSince with %EXACT and sweep the others
+### DW-2421: Rule 31: three interop browser specs keep private copies of the editor-page helpers (shellAt, answered, the frame, frame-shows, decodedPath, boxes) instead of sharing them
+- source: spec-20-8 code review | severity: med | fix-risk: med | footprint: in-epic
+- evidence: interop-viewers.browser-spec.mjs:234-298 (20.8) repeats interop-editors.browser-spec.mjs:266-345 (20.7) nearly verbatim; agent-editor-save.browser-spec.mjs (20.16) holds its own shellAt and answered; interop-editor-spec.mjs is the shared module these specs already import.
+- 2026-10-14T12:12:09Z status=routed owner=burndown by=cr note=move them into interop-editor-spec.mjs, parameterized by browser and config; rerun the three specs
 
-### DW-2405: OcuPilot's create and delete of a class or routine drop the source-control class's follow-up user action (an 'add to source control?' question for a new document or after a delete is never asked and AfterUserAction never runs)
-- source: spec-20-10-source-control-hooks.md (plan, harvested at the spec gate) | severity: med | fix-risk: med | footprint: out-of-footprint
-- evidence: Measured at Story 20.10's plan on ocupilot-b-ci: with a probe source-control class whose UserAction answers 1, the Atelier delete route answered result.ext {action:1, target:<question>}; PutDoc of a new document runs UserAction(1,1) and (1,7); AtelierPort SaveSet (pCreate) and DeleteSet ignore it.
-- 2026-10-14T01:40:07Z status=routed owner=burndown by=spec_gate note=outside 20.10's scope; the follow-up needs a dialog or proposal step for the source-control question
+### DW-2422: On IRIS (not for Health) the vendor schema viewer lists ASC X12 only, so the Schema viewer's note, prompts and hl7/astm aliases name families it cannot show
+- source: spec-20-8 code review | severity: low | fix-risk: low | footprint: in-story
+- evidence: schema-viewer main.21f063f8a7b4829f.js: O.product.includes("forhealth")||(this.schemaTypes=[zs]); README supports IRIS or IRIS for Health 2026.2; the spec measured on IRIS for Health only.
+- 2026-10-14T12:12:09Z status=by-design owner=20-8-the-schema-viewers-and-the-production-configuration-diagram by=cr note=the spec fixes the note, prompts and aliases; a plain-IRIS wording reopens it through a spec amendment
 
-### DW-2407: The epic context's shared-rosters list omits ToolWrite's other-port write count, which every write through a non-admin port moves
-- source: spec-20-16-the-agent-edits-rule-dtl-and-bpl-content-behind-the-embedded.md (rework 1 re-review) | severity: med | fix-risk: low | footprint: in-epic
-- evidence: epic-20-context.md:169 (regenerated from planning artifacts per plan spawn) lists ReadTool and ToolRoundTrip, not ToolWrite.cls:1338 (49 after 20.16). 20.16's plan missed it and its fresh check went red, costing a rework; 20.25, 20.26 and 20.31 add InteropPort writes.
-- 2026-10-14T03:02:05Z status=routed owner=20-25-item-runtime-and-configuration-actions by=cr note=name ToolWrite's other-port count (49 after 20.16) in Shared surfaces and move it; first of 20.25/20.26/20.31
-
-### DW-2408: interop-item-test.browser-spec.mjs's cleanup leaves the host test's message headers and the probe production's Ens_Util.Log rows behind in USER
-- source: spec-20-30 plan (measured) | severity: med | fix-risk: low | footprint: in-epic
-- evidence: Measured at Story 20.30's plan on ocupilot-b-ci: after the cleanup calls interop-item-test.browser-spec.mjs also uses, USER held three message headers and the production's event-log rows; removed by hand.
-- 2026-10-14T03:47:33Z status=routed owner=burndown by=spec_gate note=Rule 19 hermeticity: the spec (Story 20.6's) removes the headers and log rows it caused
-
-### DW-2414: A deleted account that was the first to run the install gate's version-row read after its cached queries were purged (an install, an uninstall) is refused 503 INSTALL.UNREADABLE instead of 401 AUTH.DISABLED
-- source: spec-20-16 (harvest, CI rework 2) | severity: low | fix-risk: med | footprint: out-of-footprint
-- evidence: Measured on ocupilot-b-ci: after an install or uninstall the first account to run the gate prepares its cached compile; once deleted, that account's token reads SQLCODE -99 at the gate (503); when another account prepared it first, 401. Other accounts unaffected (20 classes after Retention in CI shard 7 passed).
-- 2026-10-14T07:31:18Z status=wontfix-accepted owner=20-16-the-agent-edits-rule-dtl-and-bpl-content-behind-the-embedded by=harvest note=reopen_if=a live (not deleted) account is refused 503 INSTALL.UNREADABLE after an install or uninstall
-- 2026-10-14T07:50:55Z status=wontfix-accepted owner=20-16-the-agent-edits-rule-dtl-and-bpl-content-behind-the-embedded by=cr note=reopen_if=a live account gets 503 INSTALL.UNREADABLE; cr probe: live 200, disabled 401; site GuardedOpenOneWhereNoParam
-
-### DW-2415: CI flake: log-viewer.spec.ts AC6 (Story 18.38, 'with Live tail off, nothing streams') read vi.getTimerCount() as 12, not 0, on gates (node 22.22.3) only
-- source: CI run 38532797700 attempt 1 (head c14f3fc6) | severity: med | fix-risk: low | footprint: out-of-footprint
-- evidence: attempt 1 red on node 22.22.3 only (node 24 and 26 green on the same head); attempt 2 green unchanged; the head touches no logs code (inference: timers left by another spec in the worker).
-- 2026-10-14T09:30:29Z status=routed owner=burndown by=runner note=flake: the spec should set up and clear fake timers per test; Epic 18's test (orchestrator told Epic 18)
-- 2026-10-14T12:35:00Z status=routed owner=18-48-epic-18-burn-down-part-2 by=lead note=orchestrator 2026-10-14: Epic 18's test; fix its timer isolation
+### DW-2423: Descriptor CLASSICPAGES has no all-descriptor exact-spelling check like the write tools' roster, so a mis-cased page on a later descriptor would gate nothing
+- source: spec-20-8 code review | severity: low | fix-risk: low | footprint: in-story
+- evidence: MappingDescriptor.TestTheClassicPagesRosterIsTheDeclaringTools covers write tools only and Registry.Validate never reads CLASSICPAGES; the one declarer, the Schema viewer, is pinned by InteropEditorDescriptor's NormalizePage leg.
+- 2026-10-14T12:12:09Z status=wontfix-theoretical owner=20-8-the-schema-viewers-and-the-production-configuration-diagram by=cr note=real once a second descriptor declares CLASSICPAGES with no exact-spelling pin (Story 20.11's DeepSee pages, say)
 
 ### DW-2428: Security.Encryption.Settings accepts journal encryption while key activation at startup is Interactive, though %SYS.Journal.System.OKNoDBEncKeyAtStartup() answers #1212 for that state; every later start aborts into single-user mode (an IRIS defect candidate)
 - source: spec-18-48-epic-18-burn-down-part-2.md | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -11932,3 +11958,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Prohibited.GrantsPrivilegeByEffect's TYPERESOURCE arm grants only when the resource itself is privileged (ResourceGrantsAdministrativePrivilege) and AddsPublicLetter; WidensPrivilegedReach judges only an application's own Resource change (code read, Story 18.48 review)
 - 2026-10-14T19:05:20Z status=decision-pending owner=burndown by=cr note=recommend extending AD-10 as DW-2425 did (an application lookup by Resource); Prohibited.cls is Epic 20-contended
 - 2026-10-14T19:17:29Z status=routed owner=23-10-the-range-end-cleanup-part-9-two-sweeps by=lead note=orchestrator 2026-10-14 (feature 07ff504f): decided, privileged-grant treatment as DW-2425
+### DW-2430: log-viewer.spec.ts AC6 copies home.page.spec.ts's real-timer wait instead of sharing one helper in ui/src/app/testing/
+- source: spec-20-8 code review (rework 2 re-review) | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: log-viewer.spec.ts AC6 (realTimers and its 50 x 20 ms wait) repeats home.page.spec.ts:1302-1308 (pendingRealTimers, same bound and cast); the rework item required the copy and gave no reason (Rule 2); ui/src/app/testing/ holds the shared spec helpers.
+- 2026-10-14T18:19:33Z status=routed owner=burndown by=cr note=spec-forced copy (Rule 2): unify both waits as one ui/src/app/testing helper

@@ -146,6 +146,26 @@ describe('the Screen permissions page', () => {
     expect(host.querySelector('.ocu-screen-permissions-classic')?.textContent?.trim()).toBe('The classic portal also requires ProbeClassic:USE here, and only the classic portal changes it.');
   });
 
+  // Mutation (Rule 19): the page appends the permission to the whole column rather than to each resource -> the second pair is malformed and this goes red.
+  it('Story 20.8: a screen whose classic pages carry two custom resources lists each as its own USE pair', async () => {
+    const schema = {
+      Screen: 'interop.schemaviewer',
+      Area: 'interoperability',
+      Declared: '%Ens_Portal:USE, %Ens_EDISchema:READ',
+      Adjustment: '',
+      ClassicResource: 'ProbeSchemaA, ProbeSchemaB',
+      Effective: '%Ens_Portal:USE, %Ens_EDISchema:READ, ProbeSchemaA:USE, ProbeSchemaB:USE',
+      Holds: true,
+      FailedPair: '',
+      Adjustable: true,
+    };
+    const { fixture, host, store, actions } = mount([], [...ROWS, schema]);
+    await open(fixture, store, actions, 'interop.schemaviewer');
+    const classic = host.querySelector('.ocu-screen-permissions-classic');
+    expect(classic?.textContent?.trim()).toBe('The classic portal also requires ProbeSchemaA:USE, ProbeSchemaB:USE here, and only the classic portal changes it.');
+    expect(classic?.getAttribute('data-pair')).toBe('ProbeSchemaA:USE, ProbeSchemaB:USE');
+  });
+
   it('opens a screen that cannot be adjusted with its set and neither control', async () => {
     const { fixture, host, store, actions } = mount([]);
     await open(fixture, store, actions, 'shell.home');

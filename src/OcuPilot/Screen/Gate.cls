@@ -224,8 +224,9 @@ ClassMethod ListedScreens(pAreaKey As %String, Output pList As %List) As %Status
 /// <p>What descriptor class <var>pDescriptor</var> requires: its base set (<method>BaseSet</method>) --
 /// the pairs an operator adjusted it to when its screen is adjustable and has a stored row
 /// (AD-64), else its declared set -- unioned with the custom resource assigned to the classic page it
-/// replaces, at <parameter>CLASSICPERMISSION</parameter>. An unassigned page reads <code>""</code> and
-/// adds nothing.</p>
+/// replaces, at <parameter>CLASSICPERMISSION</parameter>, and the custom resource of each page its
+/// <parameter>OcuPilot.Screen.Descriptor.Base.CLASSICPAGES</parameter> names (<method>WithClassicPages</method>).
+/// An unassigned page reads <code>""</code> and adds nothing.</p>
 /// <p><b>This is the one reader of a screen's adjustment</b> (AD-64). It reads the store on every call
 /// in the calling process and caches nothing, so every screen, area, read, tool, dispatch and confirm
 /// gate follows a change at once. A store that cannot be read refuses the screen.</p>
@@ -248,6 +249,7 @@ ClassMethod RequiredPairs(pDescriptor As %String, Output pResolved As %Boolean) 
         }
         Set tCustom = ..ClassicResource($ClassMethod(pDescriptor, "ClassicPage"))
         If tCustom '= "" Set tPairs = tPairs _ $ListBuild($ListBuild(tCustom, ..#CLASSICPERMISSION))
+        Set tPairs = ..WithClassicPages(tPairs, $Parameter(pDescriptor, "CLASSICPAGES"))
         Set pResolved = 1
     } Catch {
         Set tPairs = ""
@@ -573,9 +575,8 @@ ClassMethod HoldsPrivilege(pResource As %String, pPermission As %String) As %Boo
 /// <p>The custom resource an operator has assigned to the classic page <var>pPageClass</var>,
 /// or <code>""</code>. The class name is URL-encoded on the way in, which is the form
 /// <class>%SYS.Portal.Resources</class> documents and the portal itself passes.</p>
-/// <p><b>Overridable</b> so the union can be exercised against a fixture value. The one test that
-/// writes the store is <class>OcuPilot.Test.ClassicPageGate</class>, on a throwaway only, and it
-/// restores each page it assigns. Production never overrides it.</p>
+/// <p><b>Overridable</b> so the union can be exercised against a fixture value. A test that writes the
+/// store runs on a throwaway only and restores each page it assigns. Production never overrides it.</p>
 ClassMethod ClassicResource(pPageClass As %String) As %String
 {
     If pPageClass = "" Quit ""

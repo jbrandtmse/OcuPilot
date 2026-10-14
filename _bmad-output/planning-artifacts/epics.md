@@ -8417,6 +8417,8 @@ So that edits go through the same hooks they would elsewhere.
 
 ### Story 20.11: The Analytics rider
 
+[AMENDED 2026-10-14, orchestrator rulings Q1 A and Q2 A at this story's spec gate, Rule 5] Split for size: this story keeps the analytics port and the cube list, model browser, term list viewer and folder browser (its first criterion, its API reworded to what it calls). Its links criterion moved to Story 20.32, its MDX criterion to Story 20.33 and its cube manager criterion to Story 20.34, each verbatim; order 20.11, 20.32, 20.33, 20.34, then 20.12. Folder items require `%Development:USE` (a named narrower audience).
+
 As an analytics developer,
 I want cubes, the model browser, the MDX tool and the cube manager,
 So that the analytics category is not empty.
@@ -8425,19 +8427,7 @@ So that the analytics category is not empty.
 
 - **Given** the cube list, model browser, term list viewer and folder browser
 - **When** each loads
-- **Then** it reads through the analytics API.
-
-- **Given** the MDX query tool
-- **When** a query runs
-- **Then** results render, with drill-through and cancel.
-
-- **Given** the cube manager
-- **When** a build, synchronize or repair runs
-- **Then** it is a confirmed write - the one analytics write in this stage.
-
-- **Given** Architect, Analyzer and the User Portal
-- **When** they are reached
-- **Then** they are **linked**, not rebuilt.
+- **Then** it reads through the vendor's analytics classes in process, behind OcuPilot's own gate (the methods `/api/deepsee`'s Info routes call). [AMENDED 2026-10-14 - see the story change log]
 
 ### Story 20.12: The agent gains guided workflows and Investigate
 
@@ -8962,6 +8952,48 @@ So that a failed exchange can be retried here.
 - **Given** resend and edit-and-resend
 - **When** they run
 - **Then** they use a **dry-run then confirm** double gate with a bounded cap on how many messages one action may resend.
+
+### Story 20.32: The analytics links
+
+[AMENDED 2026-10-14, orchestrator ruling Q1 A at Story 20.11's spec gate, Rule 5] Split from Story 20.11, carrying its criterion verbatim. Its charter, as measured at 20.11's plan, is in that spec's Design Notes › Split (Part B): Architect, Analyzer and the User Portal open the namespace's own page in a new tab, never rebuilt; its browser test does not load those classic pages repeatedly (each load holds a license unit). After Story 20.11, before Story 20.33.
+
+As an analytics developer,
+I want to reach Architect, Analyzer and the User Portal from OcuPilot,
+So that the analytics tools OcuPilot does not rebuild are one step away.
+
+**Acceptance Criteria:**
+
+- **Given** Architect, Analyzer and the User Portal
+- **When** they are reached
+- **Then** they are **linked**, not rebuilt.
+
+### Story 20.33: The MDX query tool
+
+[AMENDED 2026-10-14, orchestrator ruling Q1 A at Story 20.11's spec gate, Rule 5] Split from Story 20.11, carrying its criterion verbatim. Its charter, as measured at 20.11's plan, is in that spec's Design Notes › Split (Part C): an owner-scoped asynchronous run with a row cap, a time bound, cancel and drill-through, never a write. After Story 20.32, before Story 20.34.
+
+As an analytics developer,
+I want to run an MDX query and see its results,
+So that a cube can be explored here.
+
+**Acceptance Criteria:**
+
+- **Given** the MDX query tool
+- **When** a query runs
+- **Then** results render, with drill-through and cancel.
+
+### Story 20.34: The cube manager's build and synchronize
+
+[AMENDED 2026-10-14, orchestrator ruling Q1 A at Story 20.11's spec gate, Rule 5] Split from Story 20.11, carrying its criterion verbatim. Its charter, as measured at 20.11's plan, is in that spec's Design Notes › Split (Part D): Build is destructive and its key ships `false`; Synchronize is not and its key ships `true`; Repair is the vendor's same build call and is offered as Build (Rule 5 apply-and-report). After Story 20.33, before Story 20.12.
+
+As an analytics developer,
+I want to build or synchronize a cube from OcuPilot,
+So that a changed cube can be brought up to date here.
+
+**Acceptance Criteria:**
+
+- **Given** the cube manager
+- **When** a build, synchronize or repair runs
+- **Then** it is a confirmed write - the one analytics write in this stage.
 
 ## Epic 21: Stage 5 - custom-REST parity from the MCP suite's handlers
 
@@ -9489,7 +9521,7 @@ So that the next reader is not misled by text the code no longer matches.
 
 ### Story 23.10: The range-end cleanup, part 9: two sweeps
 
-Chartered by the orchestrator on 2026-10-14 from two Epic 18 entries too wide for a burn-down. The first is the two-argument `%GetNext` loops over request bodies: 109 sites in 54 Area files. The second is the test classes whose `OnAfterAllTests` deletes shared rows, such as governance overrides and the egress row, on an instance not armed for tests: 48 classes. Each is one mechanical change repeated, so each lands as its own batch. A slot that would otherwise sit idle runs it, after Story 23.9.
+Chartered by the orchestrator on 2026-10-14 from two Epic 18 entries too wide for a burn-down. The first is the two-argument `%GetNext` loops over request bodies: 109 sites in 54 Area files. The second is the test classes whose `OnAfterAllTests` deletes shared rows, such as governance overrides and the egress row, on an instance not armed for tests: 48 classes. Each is one mechanical change repeated, so each lands as its own batch. Two refusal-classifier edges from Story 18.48's review joined the same day: KMIP start mode with journal encryption, to be measured on a throwaway before the start arm is widened, and a resource edit that opens a privileged application to everyone, which takes the privileged-grant treatment as Story 18.48 gave the application edit. A slot that would otherwise sit idle runs it, after Story 23.9.
 
 As a maintainer of OcuPilot,
 I want each repeated defect fixed at every site at once,
@@ -9497,7 +9529,7 @@ So that an out-of-range request value answers its field refusal and a test run n
 
 **Acceptance Criteria:**
 
-- **Given** the entries re-owned to this story: DW-2417 and DW-2426
+- **Given** the entries re-owned to this story: DW-2417, DW-2426, DW-2431 and DW-2432
 - **When** this story completes
 - **Then** each has a disposition written by the ledger tool: `resolved-by` this story with the commit, or `wontfix-accepted` or `by-design` with a reason and, where a condition would reopen it, that condition.
 

@@ -1,5 +1,5 @@
 /// <p>The Screen permissions list (AD-64, AD-36, Story 20.15): every built screen, with the pairs it
-/// declares, the set an operator adjusted it to, the classic page's custom resource, the pairs it requires
+/// declares, the set an operator adjusted it to, the custom resources of the classic pages it replaces, the pairs it requires
 /// now, and whether the signed-in account holds them. It is composed in the caller's process by
 /// <class>OcuPilot.Screen.Access</class> (source kind <code>access</code>).</p>
 /// <p><b>Its three row actions are the three write tools of one operation</b> (AD-53):

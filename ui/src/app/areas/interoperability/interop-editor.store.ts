@@ -1,5 +1,5 @@
 /**
- * The embedded rule, BPL and DTL editor screens' own state (AD-19, Story 20.7): which document the
+ * The embedded interoperability screens' own state (AD-19, Stories 20.7 and 20.8): which document the
  * route names, what the owning list's declared read answered about it, and the revision a new frame
  * is keyed by.
  *
@@ -17,6 +17,11 @@
  * `gone` for an id the read does not return (deleted, never created, another namespace, or past the
  * read's cap), `refused` for a denied verdict or a 403 that names its pair, and `fault` for any other
  * answer. A late answer for an older request is dropped.
+ *
+ * **Two further modes.** With no `list` (the Schema viewer) the store reads nothing: it opens with no
+ * document, and the screen gate has already decided whether the screen mounts. With `extension` `''` (the
+ * Configuration diagram, whose id is a production name) an id needs only to be non-empty, a row matches by
+ * `Name` as given, and the document is that `Name`.
  */
 
 import type { ApiService } from '../../core/api';
@@ -41,10 +46,12 @@ const DOCUMENT_ENTITY = 'class';
 export interface InteropEditorDeps {
   /** Issues the list's read; the store passes `scope` on every call. */
   readonly api: Pick<ApiService, 'requestJson'>;
-  /** The list whose declared read and verdict the screen follows. */
-  readonly list: Pick<ScreenDeclaration, 'route' | 'toolIdentifier' | 'read'>;
+  /** The list whose declared read and verdict the screen follows, or `null` for a screen that reads nothing. */
+  readonly list: Pick<ScreenDeclaration, 'route' | 'toolIdentifier' | 'read'> | null;
   /** The signed-in person's verdict for a screen's route (AD-8). */
   readonly verdict: (route: string) => Verdict;
+  /** The extension the list's `Name` carries and the document does not; `DOCUMENT_EXTENSION` when absent, `''` for a bare name. */
+  readonly extension?: string;
 }
 
 /** The shape of the list read's body the store relies on. */
@@ -94,7 +101,7 @@ export class InteropEditorState {
     return this.phaseValue;
   }
 
-  /** The route's document name, `<class>.cls`, as last opened. */
+  /** The route's id as last opened: a document name, `<class>.cls`, or for a bare-name screen a production's name. */
   id(): string {
     return this.idValue;
   }
@@ -160,20 +167,26 @@ export class InteropEditorState {
 
   private async read(): Promise<void> {
     const generation = ++this.generation;
-    const verdict = this.deps.verdict(this.deps.list.route);
+    const list = this.deps.list;
+    if (list === null) {
+      this.settle('open');
+      return;
+    }
+    const verdict = this.deps.verdict(list.route);
     if (!verdict.allowed) {
       this.settle('refused', verdict.failedPair);
       return;
     }
     const id = this.idValue;
-    if (id.length <= DOCUMENT_EXTENSION.length || !id.endsWith(DOCUMENT_EXTENSION)) {
+    const extension = this.deps.extension ?? DOCUMENT_EXTENSION;
+    if (id.length <= extension.length || !id.endsWith(extension)) {
       this.settle('gone');
       return;
     }
     this.busyValue = true;
     this.notify();
     const namespace = this.namespaceValue;
-    const result = await this.deps.api.requestJson<ListBody>(screenReadPath(this.deps.list, EDITOR_READ_ROWS), { scope: namespace });
+    const result = await this.deps.api.requestJson<ListBody>(screenReadPath(list, EDITOR_READ_ROWS), { scope: namespace });
     if (generation !== this.generation) return;
     if (result.kind === 'ok') {
       const rows = result.body !== null && typeof result.body === 'object' ? result.body.rows : undefined;
@@ -182,7 +195,7 @@ export class InteropEditorState {
         const name = row === undefined ? '' : String(row['Name']);
         if (row === undefined) this.settle('gone');
         else if (row['Coded'] === true) this.settle('coded');
-        else this.settle('open', '', name.slice(0, name.length - DOCUMENT_EXTENSION.length));
+        else this.settle('open', '', name.slice(0, name.length - extension.length));
         return;
       }
     } else if (result.kind === 'error' && result.status === 403) {

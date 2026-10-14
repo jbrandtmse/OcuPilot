@@ -126,6 +126,9 @@ export const SKIP = {
   // Story 20.7: HSCUSTOM holds no business rule, so the walk has no rule to open; interop-editors.browser-spec.mjs walks it on the
   // probe rule it creates.
   'interoperability/rules/document': 'HSCUSTOM holds no business rule, so the walk has no rule to open',
+  // Story 20.8: the Configuration diagram is reached from a Production items screen; interop-viewers.browser-spec.mjs walks it on the
+  // probe production it creates.
+  'interoperability/productions/diagram': 'HSCUSTOM holds no production, so the walk has no production to open',
 };
 
 /** The limits class the seeded entry is capped by, as the turn's own append is. */
@@ -207,9 +210,10 @@ export function componentMinimums() {
   return tokenSizedClasses(readFileSync(join(uiRoot, 'src', 'styles', '_components.scss'), 'utf8'));
 }
 
-/** Whether a declared screen can only be opened at `<route>/<id>`. */
+/** Whether a declared screen can only be opened at `<route>/<id>`: a parent-scoped one, or a viewer that takes an id. */
 export function needsId(screen) {
-  return screen.parentScope !== '' || screen.archetype === VIEWER_ARCHETYPE || screen.archetype === SOURCE_VIEWER_ARCHETYPE;
+  const viewer = screen.archetype === VIEWER_ARCHETYPE || screen.archetype === SOURCE_VIEWER_ARCHETYPE;
+  return screen.parentScope !== '' || (viewer && screen.id.kind !== 'none');
 }
 
 /** The key's route: the declared route, `/` for Home, and `/:id` where the screen takes an id. */
