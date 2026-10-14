@@ -341,59 +341,40 @@ describe('LogViewerPage', () => {
     expect(asked).toHaveLength(1);
   });
 
-  describe('AC6: with Live tail off, nothing streams', () => {
-    // The clock is faked for this describe alone: `beforeEach` fakes it, `afterEach` clears every timer
-    // the page registered and restores it, so no timer outlives the test whatever file ran before it
-    // and `vi.getTimerCount()` counts only what the page under test registered. It is what makes
-    // "registers no interval" an observation rather than an absence of evidence, and it needs no spy
-    // on a global the fake clock has already replaced.
+  it('AC6: with Live tail off, nothing streams -- ten minutes of fake time issues no request, draws a toggle only where a source opts in, and registers no timer', async () => {
+    // The clock is faked and restored here and nowhere else in this file; `vi.getTimerCount()` is
+    // what makes "registers no interval" an observation rather than an absence of evidence, and it
+    // needs no spy on a global the fake clock has already replaced.
     // jsdom supplies both constructors, so "opens no EventSource and no WebSocket" is counted at
     // construction rather than asserted as their absence -- which would pass on any page.
-    const globals = globalThis as { EventSource?: unknown; WebSocket?: unknown };
-    let heldSource: unknown;
-    let heldSocket: unknown;
-    let opened = 0;
-
-    beforeEach(() => {
-      heldSource = globals.EventSource;
-      heldSocket = globals.WebSocket;
-      opened = 0;
-      globals.EventSource = function EventSourceProbe() {
-        opened += 1;
-      };
-      globals.WebSocket = function WebSocketProbe() {
-        opened += 1;
-      };
-      vi.useFakeTimers();
-    });
-
-    afterEach(() => {
-      vi.clearAllTimers();
-      vi.useRealTimers();
-      globals.EventSource = heldSource;
-      globals.WebSocket = heldSocket;
-    });
-
+    //
     // Story 18.38: alerts.log and messages.log on their current files opt into the live tail and
     // draw the toggle, off. Every other log -- a rotated messages.log file, the six secondary logs,
     // the Integrity log and a language server's Activity log -- is derived from the mirror, draws
     // no toggle and requests no tail.
-    //
-    // Mutation (Rule 19): start the live loop when the page opens (Live tail on from the start) -> the
-    // toggle's aria-pressed, the live requests and the timer count go red.
-    it('ten minutes of fake time issues no request, draws a toggle only where a source opts in, and registers no timer', async () => {
-      const others = SCREENS.filter((screen) => screen.archetype === 'log-viewer' && screen.built && screen.route !== 'logs/alerts' && screen.route !== 'logs/messages');
-      expect(others.length).toBeGreaterThan(7);
-      const cases = [
-        { screen: ALERTS_SCREEN, address: '', offers: true },
-        { screen: MESSAGES_SCREEN, address: '/logs/messages?ns=HSCUSTOM', offers: true },
-        { screen: MESSAGES_SCREEN, address: '/logs/messages?ns=HSCUSTOM&file=messages.old_20260926_5', offers: false },
-        ...others.map((screen) => ({ screen, address: '', offers: false })),
-      ];
+    const globals = globalThis as { EventSource?: unknown; WebSocket?: unknown };
+    const heldSource = globals.EventSource;
+    const heldSocket = globals.WebSocket;
+    let opened = 0;
+    globals.EventSource = function EventSourceProbe() {
+      opened += 1;
+    };
+    globals.WebSocket = function WebSocketProbe() {
+      opened += 1;
+    };
+    const others = SCREENS.filter((screen) => screen.archetype === 'log-viewer' && screen.built && screen.route !== 'logs/alerts' && screen.route !== 'logs/messages');
+    expect(others.length).toBeGreaterThan(7);
+    const cases = [
+      { screen: ALERTS_SCREEN, address: '', offers: true },
+      { screen: MESSAGES_SCREEN, address: '/logs/messages?ns=HSCUSTOM', offers: true },
+      { screen: MESSAGES_SCREEN, address: '/logs/messages?ns=HSCUSTOM&file=messages.old_20260926_5', offers: false },
+      ...others.map((screen) => ({ screen, address: '', offers: false })),
+    ];
+    vi.useFakeTimers();
+    try {
       for (const { screen, address, offers } of cases) {
         TestBed.inject(LogViewerStore).reset();
         TestBed.resetTestingModule();
-        vi.clearAllTimers();
         api = new StubApi();
         api.tail(tailPage(FILE_LINES));
         const { fixture } = await mount(screen, address);
@@ -412,7 +393,11 @@ describe('LogViewerPage', () => {
         expect(vi.getTimerCount(), named).toBe(0);
         expect(opened, named).toBe(0);
       }
-    });
+    } finally {
+      vi.useRealTimers();
+      globals.EventSource = heldSource;
+      globals.WebSocket = heldSocket;
+    }
   });
 
   it('a log the instance has not written yet is the empty state, not a refusal', async () => {

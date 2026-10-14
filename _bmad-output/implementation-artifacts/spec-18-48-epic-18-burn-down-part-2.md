@@ -16,7 +16,7 @@ deferred: []
 
 ## Intent
 
-**Problem:** Epic 18 routed thirteen entries here (DW-1896, 1966, 2085, 2086, 2087, 2100, 2126, 2335, 2415, 2424, 2425, 2427, 2429); each one's `ledger.sh show` trailers carry its ruling.
+**Problem:** Epic 18 routed twelve entries here (DW-1896, 1966, 2085, 2086, 2087, 2100, 2126, 2335, 2424, 2425, 2427, 2429); each one's `ledger.sh show` trailers carry its ruling.
 
 **Approach:** Task 0 measures on `ocupilot-ci` what rests on inference; each entry is then fixed where its ruling places it, extending the named sibling, with one pinning test and one `mutation:` line, or closed on the recorded evidence.
 
@@ -38,7 +38,6 @@ deferred: []
 | 1966 | journal dir = a database or volume dir | 422 `JOURNAL.DIRECTORY.DATABASE` | failed read: 500 |
 | 1896 | last attribute removed | saved, read-back empty | no `%Admin_Secure`: 403 |
 | 2335 | the three forms' write fields | read-tool answered, or recorded form-only | `Password` form-only |
-| 2415 | AC6 after other files, one worker | 0 timers, Node 22.22.3 | -- |
 | 2424 | egress `TLSMinVersion` < 16 | 422 `EGRESS.SSLWEAK` | 16+: saved |
 | 2425 | app granting a privileged role | enabling, or `Resource` public for `U`: `GRANT.PRIVILEGED` | else ordinary; failed read: public |
 | 2427 | #5022, #1219, #1204 at measured keys | unlogged | other codes logged |
@@ -80,7 +79,7 @@ Under `src/OcuPilot/` at `3a91b5ee`; client under `ui/src/app/areas/`.
 6. **DW-1966:** `ResolveDirectory` refuses a directory equal (normalized, any case) to one `DatabaseDirectories` answers, `JOURNAL.DIRECTORY.DATABASE`; a failed read answers 500. Test: `JournalSettingsRules` leg (`USER`'s and OcuPilot's directories, both fields, settings unchanged); `JournalDescriptor` 13. Mutation: drop the check.
 7. **DW-1896:** if A2 clears under `%Admin_Secure` alone, `AdminPort` completes a `Security.LDAP` `PUT` with an empty or all-blank `LDAPAttributes` as AD-27's next named case (extending `CompleteThroughClass`): the vendor `PUT` without the field, then A2's `Modify` in `%SYS` behind the same gate, `VerifyApplied` comparing as a set; the `LASTONE` rule and code deleted. Test: `LdapEdit` and `LdapUpdate` legs become "the last attribute is removed" (`[]`, `[""]`), plus 403 without `%Admin_Secure`; an `ldap-editor` browser leg. Mutation: drop the completion.
 8. **DW-2335:** `UserList` `read.fields`, `rowGet.fields`, `context.fields` gain the eleven copy fields; `SuperserverList` each field A4 shows; `node tools/screen-mirror.mjs`. New `Test/FormReadCoverage.cls`: each scalar `ToolFields` field of the superserver, `osmgmt.localdatabases.update` and `permissions.users.copy` tools is answered by a named read tool's descriptor or listed form-only with its reason; a `permissions.users.read` run's row carries the eleven. Mutation: remove a widened field.
-9. **DW-2415:** fix A5's cause at its source if found; also AC6 in its own `describe`, `vi.useFakeTimers()` in `beforeEach`, `vi.clearAllTimers(); vi.useRealTimers()` in `afterEach`, timers present before each mount cleared, :345's comment corrected. Mutation: tail starts with Live tail off.
+9. **DW-2415:** withdrawn (orchestrator 2026-10-14): Epic 20's Story 20.8 fixes AC6's isolation; `log-viewer.spec.ts` is unchanged here.
 10. **DW-2424:** `ValidateEgress` raises `EGRESS.SSLWEAK` on `sslConfiguration` for an enabled verifying client below `ProviderPort.#MINTLSVERSION`; key `egressRefusalSslWeak`, EXPERIENCE.md :349, a sixth `EGRESS_SENTENCES` row. Test: `EgressSslProbe` kind `weak` (`VerifyPeer` 1, floor 8); an `EgressSettingsWire` case. Mutation: drop the floor.
 11. **DW-2425:** `WidensPrivilegedReach` also counts a `Resource` changed to one whose public permission holds `U` (read via `AdminPort` `Security.Resource` `GET`, as `ResourceRules.Present`; a failed read counts), and the web arm calls it; `web-app-editor` shows `privilegedGrantEffect` at Enabled and Resource while a granted role is privileged, as `routine-app-form`. Test: `WebAppWeakening` legs (enabling; public; unprivileged and non-public ordinary) over a probe resource it creates and removes; a `RoutineAppGrant` leg; the editor spec. Mutation: drop the public clause; drop the web call.
 12. **DW-2427, DW-2429:** `UNLOGGEDREFUSALS` gains `<endpoint>/<type>/<status>/#<code>` per code at its A1 key, and `Security.Encryption.Settings/PUT/500/#1217`, `/#1231`, `/#1233` (measured in Part B). `EncryptionPort` maps #1231 and #1233 to field refusals on the start-mode field beside #1217's `ENCRYPTION.STARTUP.REQUIRED`: two new `EncryptionError` codes, each sentence saying what the person can change, with `strings.ts` keys. Test: `AdminPortRefusals` legs; an `EncryptionKeyFileWrite` wrong-password leg logs no `failed` line; an `EncryptionStartupWrite` leg per new code through a port seam (no restart). Mutation: drop an entry; drop a mapping.
@@ -92,6 +91,8 @@ Under `src/OcuPilot/` at `3a91b5ee`; client under `ui/src/app/areas/`.
 - Given a Task 0 outcome that closes an entry instead (DW-2100 kept everywhere, DW-2126's certificate kept, DW-1896 not clearing, a code not driven), when the story is done, then `## Verification` records the evidence.
 
 ## Spec Change Log
+
+- 2026-10-14 (lead, orchestrator ruling): DW-2415 withdrawn after implement; Epic 20's 20.8 fixes AC6's isolation. Task 9's `log-viewer.spec.ts` hunk reverted to its pre-story content.
 
 ## Review Triage Log
 
@@ -157,7 +158,7 @@ Under `src/OcuPilot/` at `3a91b5ee`; client under `ui/src/app/areas/`.
 - A2: `Modify` with `LDAPAttributes` `""` cleared the list for a principal holding exactly `%Admin_Secure:USE` and `%DB_IRISSYS:READ`; without `%Admin_Secure` it answered #822 and changed nothing. Task 7 builds.
 - A3: `HasCertificate` read 1, then 0 after a generate-replace. Task 5 builds.
 - A4: a `Security.Superserver` `LIST` row carries `Port`, `BindAddress`, `Enabled`, `SystemDefault`.
-- A5: AC6 read 0 timers in 10 runs under Node 22.22.3 (order inferred from the CI log). Task 9 hardens the isolation; no source cause found.
+- A5: AC6 read 0 timers in 10 runs under Node 22.22.3 (order inferred from the CI log). No source cause found; DW-2415 is withdrawn (Spec Change Log).
 - M3 did not finish (Interactive, `DBEncJournal` on; `OKNoDBEncKeyAtStartup` answered #1212): `PROHIBITED.STARTUPJOURNAL` is built. M2 was refused (#1231, a server with no startup key list); M2b, KMIP over a startup-configured server at an unreachable host, was accepted and did not finish: `PROHIBITED.STARTUPKMIP` is built. M1 is kept, and `PROHIBITED.STARTUPKEYFILE` is not built: the vendor refused a file switch (#1233) and a move to None (#1217), and a first Unattended over a file lacking the default key finished.
 
 **Commands** (one run per call, `timeout: 600000`):
@@ -178,7 +179,6 @@ Under `src/OcuPilot/` at `3a91b5ee`; client under `ui/src/app/areas/`.
 - mutation: Task 6, `JournalPort.ResolveDirectory` without the refusal -> `JournalSettingsRules.TestADatabasesDirectoryIsRefusedOnEachPathField`; `DIRECTORYDATABASE` out of `Codes()` -> `JournalDescriptor`.
 - mutation: Task 7, `Security.LDAP/PUT=LDAPAttributes` out of `CLASSCOMPLETEDTYPES` -> `LdapEdit.TestTheLastAttributeIsRemoved`, `LdapUpdate.TestTheLastAttributeIsRemovedByAConfirmedProposal` and the `ldap-editor` browser leg.
 - mutation: Task 8, `Comment` out of `UserList` `read.fields` -> `FormReadCoverage.TestEveryFormFieldIsAnsweredOrListedFormOnly` and `ScreenReadWire.TestTheUsersListReadsOverTheWire`.
-- mutation: Task 9, the log-viewer store starting the live loop once a page leaves a cursor -> the AC6 test and the other live-tail legs of `log-viewer.spec`.
 - mutation: Task 10, the `TLSMinVersion` floor of `SwitchRules.ValidateEgress` to `ElseIf 0` -> `EgressSettingsWire.TestAConfigurationIsNamedOnlyAsAnEnabledClientThatVerifiesThePeer`.
 - mutation: Task 11, `RepointsToPublicResource` out of `WidensPrivilegedReach` -> `WebAppWeakening.TestEnablingAndAPublicResourceAreGrantsWhileAPrivilegedRoleIsGranted` and `RoutineAppGrant.TestAResourceTheBroadPublicMayUseIsAGrantUnderAPrivilegedRole`; the web application's `WidensPrivilegedReach` call dropped -> `WebAppWeakening`; the editor stating its line at Resource only -> `web-app-editor.page.spec`.
 - mutation: Task 12, the `#1204` entry out of `UNLOGGEDREFUSALS` -> `AdminPortRefusals.TestTheEncryptionRefusalsAreUnloggedForTheirOwnCodeAlone` (`EncryptionKeyFileWrite` does not reach `#1204`); the `#1219` entry -> `AdminPortRefusals` and `EncryptionKeyFileWrite.TestAFieldRefusalOfTheVendorLogsNoLine`; the `PROPERTYFAULTS` mapping for `#1231` -> `EncryptionStartupWrite.TestAVendorRefusalArrivesAsOcuPilotsSentence`.
@@ -186,7 +186,7 @@ Under `src/OcuPilot/` at `3a91b5ee`; client under `ui/src/app/areas/`.
 
 **Results (implement).** 48 ObjectScript classes (441 tests) green on `ocupilot-ci`, one at a time; `npm run test:tools` 1993 of 1993; `npm run test:components` 3119 of 3119 (245 files); browser: `local-databases` 8, `web-applications-editor` 7, `ldap-editor` 7, `switches` 5, `encryption-startup` 3, all green; initial bundle 1926.7 kB (the sum of the initial chunks' raw sizes), largest lazy chunk 83.32 kB (`data-browser-page`); `check-objectscript.py` and `lint-docs.sh`: 0 problems. The throwaway reads S0 (start mode None, no key active, nothing encrypted).
 
-**Results (review).** After the patches, green on `ocupilot-ci` one at a time: `DraftPorts` 13 (run 133), `EncryptionKeyWrite` 11 (144), `EncryptionStartupRead` 6 (145), `FormReadCoverage` 3 (143), `DatabaseCreateEncrypted` 3 (132), `JournalDescriptor` 13 (134); `check-objectscript.py` 0 problems. DW-2415's AC6 chain (`panel`, `proposal-card`, `home.page`, `log-viewer` specs, one worker, Node 22.22.3, evidence `1848/t0/a5/out/lead-run1.log`): 418 passed, `vi.getTimerCount()` 0 in all eleven cases. The throwaway reads S0.
+**Results (review).** After the patches, green on `ocupilot-ci` one at a time: `DraftPorts` 13 (run 133), `EncryptionKeyWrite` 11 (144), `EncryptionStartupRead` 6 (145), `FormReadCoverage` 3 (143), `DatabaseCreateEncrypted` 3 (132), `JournalDescriptor` 13 (134); `check-objectscript.py` 0 problems. The throwaway reads S0.
 
 **Shared surfaces:** prohibited, `EGRESS`, `ENCRYPTION`, `JOURNAL`, `LDAP`, `DATABASE` codes, sentences, counts; `UNLOGGEDREFUSALS`; the activate fingerprints; the create's arguments and form; the users and superserver reads; the screen mirror; the web editor's lines; AC6's timers.
 
@@ -197,7 +197,7 @@ every test added or changed passes on a fresh environment, in either order
 Status: done
 Blocking condition: none
 
-**Change.** All thirteen entries are built; none closed on evidence alone. DW-2100: `PROHIBITED.STARTUPJOURNAL` and `PROHIBITED.STARTUPKMIP` (38 codes); `STARTUPKEYFILE` is not built (M1 kept). DW-2085: `Encrypted` on the create, refused `DATABASE.ENCRYPT.NOKEY`, the file body carries the default key's id, the wizard control is `aria-disabled` without a key. DW-2086: the activate tools carry `FileKeys`; a changed file is 409 `ENCRYPTION.KEYFILE.CHANGED`. DW-2087: the first database key activation is destructive. DW-2126: the RSA replace sentence names the lost certificate. DW-1966: `JOURNAL.DIRECTORY.DATABASE`. DW-1896: `AdminPort` completes an empty or blank `LDAPAttributes` through `Security.LDAPConfigs.Modify`; `LASTONE` deleted. DW-2335: `UserList` answers the copy form's fields. DW-2415: AC6 in its own `describe` with per-test fake timers. DW-2424: `EGRESS.SSLWEAK`. DW-2425: enabling a privileged web application, or a publicly held `Resource`, is a grant; the editor states it. DW-2427, DW-2429: seven `UNLOGGEDREFUSALS` entries; #1231 and #1233 are field refusals on the start mode.
+**Change.** All twelve entries are built; none closed on evidence alone. DW-2100: `PROHIBITED.STARTUPJOURNAL` and `PROHIBITED.STARTUPKMIP` (38 codes); `STARTUPKEYFILE` is not built (M1 kept). DW-2085: `Encrypted` on the create, refused `DATABASE.ENCRYPT.NOKEY`, the file body carries the default key's id, the wizard control is `aria-disabled` without a key. DW-2086: the activate tools carry `FileKeys`; a changed file is 409 `ENCRYPTION.KEYFILE.CHANGED`. DW-2087: the first database key activation is destructive. DW-2126: the RSA replace sentence names the lost certificate. DW-1966: `JOURNAL.DIRECTORY.DATABASE`. DW-1896: `AdminPort` completes an empty or blank `LDAPAttributes` through `Security.LDAPConfigs.Modify`; `LASTONE` deleted. DW-2335: `UserList` answers the copy form's fields. DW-2424: `EGRESS.SSLWEAK`. DW-2425: enabling a privileged web application, or a publicly held `Resource`, is a grant; the editor states it. DW-2427, DW-2429: seven `UNLOGGEDREFUSALS` entries; #1231 and #1233 are field refusals on the start mode.
 
 **Files.** Product: `Api/{Database,Egress,Encryption,Journal,Ldap,WalletKey}Error.cls` (codes and sentences); `Area/OsMgmt/DatabaseRules.cls`, `Area/Security/LdapRules.cls`; `Kernel/Proposal/Prohibited.cls`, `Kernel/SwitchRules.cls`; `Port/{Admin,Database,Encryption,Journal}Port.cls`; `Screen/Descriptor/UserList.cls`, `Screen/Tool/{DataElementKeyActivate,DatabaseKeyActivate,EncryptionKeyWrite,LocalDatabaseCreate}.cls`; client `os-management/database-wizard.*`, `security/encryption-startup.store.ts`, `web-applications/web-app-editor.*`, `core/strings.ts`, `core/screens.generated.ts` (regenerated); EXPERIENCE.md Fixed strings rows; `scripts/ci-throwaway.sh` (roster comment). Tests: new `Test/{DatabaseCreateEncrypted,DatabaseNoKeyPort,DatabaseKeyPort,FormReadCoverage}.cls`; legs added or changed in the classes the Rule 30 sweep names, `log-viewer.spec.ts`, the wizard and editor specs, `local-databases` and `ldap-editor` browser specs, `screen-mirror.test.mjs`, `self-protection.test.mjs`.
 

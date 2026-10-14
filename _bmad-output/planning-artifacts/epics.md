@@ -7902,7 +7902,6 @@ So that the stage closes with its own debt paid. [AMENDED 2026-10-14, Epic 18 bu
 - DW-2335: Several Stage 2 editor forms show fields no read tool answers (superservers 14, local databases 10, user copy 12), so the agent cannot read what the person sees (ledger; chartered by the burn-down gate 2026-10-14)
 - DW-2427: The encryption key-file field refusals #5022, #1219 and #1204 are still logged at severity 2, so a mistyped key-file entry raises the instance alert state (ledger; routed by cr 2026-10-14)
 - DW-2429: EncryptionPort answers the vendor's startup-settings refusals #1231 and #1233 as 500 INTERNAL, logged at severity 2; each maps to an unlogged field refusal beside #1217's (ledger; routed by lead 2026-10-14, orchestrator: folded beside DW-2427)
-- DW-2415: CI flake: log-viewer.spec.ts AC6 ('with Live tail off, nothing streams') read vi.getTimerCount() as 12, not 0, on node 22.22.3 only; fix its timer isolation (ledger; routed by lead 2026-10-14, orchestrator)
 - DW-2424: Switches saves an egress SSL/TLS configuration whose minimum TLS version is below 1.2, which every provider call then refuses; the save-time rule matches the call-time floor with one new EGRESS code (ledger; routed by lead 2026-10-14, orchestrator)
 - DW-2425: AD-10's widened-reach arm extends to web applications as DW-2322 did: enabling one that grants a privileged role, or pointing its Resource at a public one, gets the privileged-grant treatment (ledger; decided by the orchestrator 2026-10-14)
 
