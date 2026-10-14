@@ -11740,6 +11740,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: irislib/%Wallet/KeyValue.cls :224-239 enforces RequireTLS and AllowedHosts only in ApplyHTTP (HTTP use); Ladder.Wallet reads by GetSecretValue and Base.Invoke sends the value to endpointUrl; AD-42's 18.41 amendment names neither property
 - 2026-10-14T02:07:47Z status=decision-pending owner=burndown by=cr note=owner: honour RequireTLS+AllowedHosts against the endpoint (recommended) or name the bypass in AD-42/AD-35
 - 2026-10-14T05:53:53Z status=routed owner=18-41-the-wallet-credential-rung by=merge_gate note=orchestrator ruling A: mirror ApplyHTTP's RequireTLS and AllowedHosts semantics at call time before the read; 18.41 rework 1
+- 2026-10-14T07:06:50Z status=resolved-by:18-41-the-wallet-credential-rung by=adjudication note=Ladder.WalletTransportRefusal mirrors ApplyHTTP's RequireTLS and AllowedHosts at call time before the read (9e02a6d6 + re-review); AD-42, AD-35 amended
 
 ### DW-2409: Install/Fixture.cls re-creates the demo SSL/TLS configuration with the vendor's default VerifyPeer 0 when absent
 - source: spec-18-40-proxy-and-custom-ca-configuration.md | severity: low | fix-risk: low | footprint: in-epic
