@@ -7247,6 +7247,29 @@ export const STRINGS = {
   interopDtlEditorPrompt2: 'Which target fields does this transformation set, and from what?',
   /** EXPERIENCE.md:604 */
   interopDtlEditorPrompt3: 'How do I test this transformation?',
+  /** EXPERIENCE.md:604 */
+  interopSchemaViewerTitle: 'Schema viewer',
+  /** EXPERIENCE.md:604 */
+  interopSchemaViewerNote: 'The viewer opens on ASC X12; choose another schema type from its list.',
+  /** EXPERIENCE.md:604 */
+  interopSchemaViewerPrompt1: 'Which HL7 v2.x schema categories does this namespace hold?',
+  /** EXPERIENCE.md:604 */
+  interopSchemaViewerPrompt2: 'Which segments make up an HL7 2.5 ADT_A01 message?',
+  /** EXPERIENCE.md:604 */
+  interopSchemaViewerPrompt3: 'How do I add a custom HL7 schema category?',
+  /** EXPERIENCE.md:604 */
+  interopProductionDiagramTitle: 'Configuration diagram',
+  /** EXPERIENCE.md:604 */
+  interopProductionDiagramEmpty: 'This production no longer exists.',
+  /** EXPERIENCE.md:604 */
+  interopProductionDiagramNote:
+    'Leaving this screen, or choosing Refresh to open the production again, discards any change not saved in the diagram.',
+  /** EXPERIENCE.md:604 */
+  interopProductionDiagramPrompt1: 'How do messages flow through this production?',
+  /** EXPERIENCE.md:604 */
+  interopProductionDiagramPrompt2: 'Which items in this production are disabled?',
+  /** EXPERIENCE.md:604 */
+  interopProductionDiagramPrompt3: 'Which business operations does this production send to?',
 } as const;
 
 /**

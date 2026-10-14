@@ -17,6 +17,7 @@ import { dirname, join } from 'node:path';
 // - match the row by case-insensitive name -> the exact-name row goes red.
 // - answer `open` with the id rather than the id less its extension -> the open rows go red.
 // - Story 20.16: compare the event's id case-folded with the namespace ignored, or answer false for every event -> the `shows` row goes red.
+// - Story 20.8: require `.cls` whatever the extension, or read a list when none is given -> the bare-name rows and the no-list rows go red.
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const { InteropEditorState, EDITOR_READ_ROWS } = await import(
@@ -26,6 +27,7 @@ const { screenReadPath } = await import(join(uiRoot, 'src', 'app', 'core', 'scre
 const { SCREENS } = await import(join(uiRoot, 'src', 'app', 'core', 'screens.generated.ts'));
 
 const LISTS = {
+  productions: SCREENS.find((screen) => screen.route === 'interoperability/productions'),
   rules: SCREENS.find((screen) => screen.route === 'interoperability/rules'),
   processes: SCREENS.find((screen) => screen.route === 'interoperability/processes'),
   transforms: SCREENS.find((screen) => screen.route === 'interoperability/transforms'),
@@ -63,8 +65,8 @@ function apiHeld() {
 const ok = (rows) => ({ kind: 'ok', status: 200, body: { rows, truncated: false } });
 const refusal = (status, detail = null) => ({ kind: 'error', status, code: null, reason: null, detail });
 
-function stateFor(list, api, verdict = () => ALLOWED) {
-  return new InteropEditorState({ api, list, verdict });
+function stateFor(list, api, verdict = () => ALLOWED, extension = undefined) {
+  return new InteropEditorState({ api, list, verdict, ...(extension === undefined ? {} : { extension }) });
 }
 
 test('a row the list answers opens: the document is the name less its extension, the read is the list\'s own at the route\'s ceiling, in the namespace it was opened in', async () => {
@@ -330,4 +332,93 @@ test('shows is true for a changed event of type class in the opened namespace wh
   assert.equal(state.shows(event({ type: 'routine' })), false, 'another entity type');
   assert.equal(state.shows(event({ kind: 'proposal-open', action: '' })), false, 'a proposal event is not a change');
   assert.equal(state.shows(event({ kind: 'proposal-closed', action: '' })), false, 'nor is a closed proposal');
+});
+
+// Story 20.8: the Schema viewer reads nothing.
+test('with no list the store opens with no document and sends nothing, asks no verdict, and a Refresh or a namespace move is a new revision', async () => {
+  // Mutation (Rule 19): the store reads a list or asks a verdict when it has none -> this goes red (a request or a thrown verdict).
+  const api = apiAnswering();
+  const state = new InteropEditorState({
+    api,
+    list: null,
+    verdict: () => {
+      throw new Error('a screen that reads nothing asks no verdict');
+    },
+  });
+  await state.refresh();
+  assert.equal(state.phase(), 'loading', 'a refresh before any open has nothing to open');
+  assert.equal(state.revision(), 0);
+  await state.open('', 'HSCUSTOM');
+  assert.equal(state.phase(), 'open');
+  assert.equal(state.document(), '', 'no document is named');
+  assert.equal(state.namespace(), 'HSCUSTOM');
+  assert.equal(state.revision(), 1);
+  assert.equal(state.busy(), false);
+  await state.refresh();
+  assert.equal(state.phase(), 'open');
+  assert.equal(state.revision(), 2, 'Refresh draws a new frame');
+  await state.open('', 'USER');
+  assert.equal(state.namespace(), 'USER');
+  assert.equal(state.revision(), 3, 'and a namespace move draws another');
+  assert.equal(state.shows({ kind: 'changed', type: 'class', scope: 'USER', id: '.cls', key: 'k', action: 'updated', proposalId: 'p', expiresAt: 0 }), false, 'no change event concerns it');
+  assert.deepEqual(api.calls, [], 'and nothing was requested');
+});
+
+// Story 20.8: the Configuration diagram's id is a production name, with no extension.
+test('with an empty extension a bare name opens as given, an absent one is gone, an empty id is gone without a request, and the match is exact', async () => {
+  // Mutation (Rule 19): the store requires `.cls` for every kind -> the bare-name rows go red (the name is gone).
+  const rows = [{ Name: 'Demo.Probe.Production', Status: 'Stopped' }, { Name: 'Other.Production', Status: 'Running' }];
+  const opened = apiAnswering(ok(rows));
+  const state = stateFor(LISTS.productions, opened, () => ALLOWED, '');
+  await state.open('Demo.Probe.Production', 'USER');
+  assert.equal(state.phase(), 'open');
+  assert.equal(state.document(), 'Demo.Probe.Production', 'the document is the row\'s Name as given');
+  assert.equal(state.revision(), 1);
+  assert.deepEqual(opened.calls, [{ path: screenReadPath(LISTS.productions, EDITOR_READ_ROWS), scope: 'USER' }], 'one request, the Productions list\'s own, in the namespace it opened in');
+
+  for (const id of ['Demo.Probe.Absent', 'demo.probe.production', 'Demo.Probe.Production.cls', 'Demo.Probe']) {
+    const api = apiAnswering(ok(rows));
+    const gone = stateFor(LISTS.productions, api, () => ALLOWED, '');
+    await gone.open(id, 'USER');
+    assert.equal(gone.phase(), 'gone', id);
+    assert.equal(gone.document(), '');
+    assert.equal(gone.revision(), 0, 'no frame');
+  }
+  const empty = apiAnswering(ok(rows));
+  const none = stateFor(LISTS.productions, empty, () => ALLOWED, '');
+  await none.open('', 'USER');
+  assert.equal(none.phase(), 'gone', 'an empty id names no production');
+  assert.deepEqual(empty.calls, [], 'and sends nothing');
+});
+
+test('with an empty extension a denied verdict is refused and sends nothing, Coded is still honored, and a stale answer is dropped', async () => {
+  const denied = apiAnswering(ok([{ Name: 'Demo.Probe.Production' }]));
+  const refused = stateFor(
+    LISTS.productions,
+    denied,
+    (route) => {
+      assert.equal(route, 'interoperability/productions', 'the verdict asked for is the Productions list\'s');
+      return { allowed: false, failedPair: '%Ens_ProductionConfig:READ' };
+    },
+    ''
+  );
+  await refused.open('Demo.Probe.Production', 'USER');
+  assert.equal(refused.phase(), 'refused');
+  assert.equal(refused.failedPair(), '%Ens_ProductionConfig:READ');
+  assert.deepEqual(denied.calls, []);
+
+  const coded = stateFor(LISTS.productions, apiAnswering(ok([{ Name: 'Demo.Probe.Production', Coded: true }])), () => ALLOWED, '');
+  await coded.open('Demo.Probe.Production', 'USER');
+  assert.equal(coded.phase(), 'coded', 'a row marked Coded is coded, whatever the extension');
+
+  const api = apiHeld();
+  const stale = stateFor(LISTS.productions, api, () => ALLOWED, '');
+  const first = stale.open('Demo.One', 'USER');
+  const second = stale.open('Demo.Two', 'USER');
+  api.releases[1](ok([{ Name: 'Demo.Two' }]));
+  await second;
+  api.releases[0](ok([{ Name: 'Demo.One' }]));
+  await first;
+  assert.equal(stale.document(), 'Demo.Two', 'the older answer did not overwrite the newer');
+  assert.equal(stale.revision(), 1, 'and drew no second frame');
 });

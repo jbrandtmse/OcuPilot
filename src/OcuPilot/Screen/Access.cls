@@ -1,8 +1,8 @@
 /// <p>The Screen permissions list's rows (AD-64, AD-36, Story 20.15): one row per built screen, ordered by
 /// area and then identifier, answering what the screen declares, what an operator adjusted it to, the
-/// classic page's custom resource, what it requires now, and whether the caller holds that.</p>
+/// custom resources of the classic pages it replaces, what it requires now, and whether the caller holds that.</p>
 /// <p><b><code>Effective</code> is what <method>OcuPilot.Screen.Gate.RequiredPairs</method> answers for the
-/// screen</b>, the classic page's custom resource included, so the list can never show a requirement the
+/// screen</b>, those custom resources included, so the list can never show a requirement the
 /// gates do not apply. <code>Holds</code> and <code>FailedPair</code> are the calling process's own verdict
 /// on that set (<method>OcuPilot.Screen.Gate.EvaluatePairs</method>). A screen whose requirement cannot be
 /// read has an empty <code>Effective</code>, <code>Holds</code> false and no failed pair.</p>
@@ -84,11 +84,17 @@ ClassMethod RowFor(pClass As %String, pArea As %String, pScreen As %String, ByRe
     Quit tRow
 }
 
-/// <p>The custom resource assigned to the classic page descriptor <var>pClass</var> replaces, or
-/// <code>""</code> (<method>OcuPilot.Screen.Gate.ClassicResource</method>).</p>
+/// <p>The custom resources assigned to the classic pages descriptor <var>pClass</var> replaces -- its
+/// <code>classicPage</code> and each page of its
+/// <parameter>OcuPilot.Screen.Descriptor.Base.CLASSICPAGES</parameter> -- each once, joined by
+/// <parameter>SEPARATOR</parameter>, or <code>""</code> when none is assigned
+/// (<method>OcuPilot.Screen.Gate.WithClassicPages</method>, the gate's own union).</p>
 ClassMethod ClassicResourceOf(pClass As %String) As %String [ Private ]
 {
-    Quit $ClassMethod("OcuPilot.Screen.Gate", "ClassicResource", $ClassMethod(pClass, "ClassicPage"))
+    Set tPairs = ##class(OcuPilot.Screen.Gate).WithClassicPages("", $ClassMethod(pClass, "ClassicPage") _ "," _ $Parameter(pClass, "CLASSICPAGES"))
+    Set tText = ""
+    For tI = 1:1:$ListLength(tPairs) Set tText = tText _ $Select(tText = "": "", 1: ..#SEPARATOR) _ $List($List(tPairs, tI), 1)
+    Quit tText
 }
 
 /// <p>The gate's pair list <var>pPairs</var> spelled <code>resource:permission</code>, separated by

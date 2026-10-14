@@ -21,6 +21,8 @@ import { blankComments, walkSource } from './source-scan.mjs';
 // - `core/vendor-frame.ts` imports `@angular/core` -> the framework-free test goes red.
 // - `app-interop-editor-frame` binds `[src]` through a `DomSanitizer` bypass, or writes `frame.src`
 //   itself -> the Renderer2 test goes red.
+// - Story 20.8: `interopEditorSource` appends `&%26ST=<document>` for `schema-viewer` -> the schema viewer
+//   row (a document answers null) goes red, and so does the browser AC2's builder clause.
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const corePath = (name) => join(uiRoot, 'src', 'app', 'core', name);
@@ -29,8 +31,11 @@ const { CLASS_NAME, NAMESPACE_NAME, INTEROP_EDITORS, interopEditorSource, isInte
   corePath('vendor-frame.ts')
 );
 
-const EDITORS = ['rule-editor', 'dtl-editor', 'bpl-editor'];
-const PARAMETER = { 'rule-editor': 'rule', 'dtl-editor': 'DTL', 'bpl-editor': 'BP' };
+/** The apps that open a document, and the schema viewer, which the vendor lets no address choose a schema type in (Story 20.8). */
+const EDITORS = ['rule-editor', 'dtl-editor', 'bpl-editor', 'interop-editor'];
+const VIEWER = 'schema-viewer';
+const ALL_APPS = [...EDITORS, VIEWER];
+const PARAMETER = { 'rule-editor': 'rule', 'dtl-editor': 'DTL', 'bpl-editor': 'BP', 'interop-editor': '$PRODUCTION' };
 
 /** The query parameter names of an answered source, in order. */
 function parameterNames(source) {
@@ -48,16 +53,27 @@ test('each editor answers its own address, with and without a document', () => {
       `${editor} with a document, in its own parameter`
     );
   }
-  assert.deepEqual(Object.keys(INTEROP_EDITORS), EDITORS, 'the vocabulary is these three editors');
+  assert.deepEqual(Object.keys(INTEROP_EDITORS), ['rule-editor', 'dtl-editor', 'bpl-editor', VIEWER, 'interop-editor'], 'the vocabulary is these five apps');
   assert.deepEqual(
-    Object.fromEntries(EDITORS.map((editor) => [editor, INTEROP_EDITORS[editor].parameter])),
-    PARAMETER,
-    "each editor's document parameter is the one its bundle reads"
+    Object.keys(INTEROP_EDITORS).map((editor) => INTEROP_EDITORS[editor].parameter),
+    ['rule', 'DTL', 'BP', '', '$PRODUCTION'],
+    "each app's document parameter is the one its bundle reads, and the schema viewer has none"
   );
   assert.deepEqual(
-    EDITORS.map((editor) => INTEROP_EDITORS[editor].titleKey),
-    ['interopRuleEditorTitle', 'interopDtlEditorTitle', 'interopBplEditorTitle']
+    Object.keys(INTEROP_EDITORS).map((editor) => INTEROP_EDITORS[editor].titleKey),
+    ['interopRuleEditorTitle', 'interopDtlEditorTitle', 'interopBplEditorTitle', 'interopSchemaViewerTitle', 'interopProductionDiagramTitle']
   );
+});
+
+test('the schema viewer answers its address with no document, and null for any document: the vendor ignores &ST (Story 20.8)', () => {
+  assert.equal(interopEditorSource(VIEWER, 'HSCUSTOM'), '/ui/interop/schema-viewer/index.html?$NAMESPACE=HSCUSTOM');
+  assert.equal(interopEditorSource(VIEWER, 'HSCUSTOM', ''), '/ui/interop/schema-viewer/index.html?$NAMESPACE=HSCUSTOM');
+  assert.equal(interopEditorSource(VIEWER, '%SYS'), '/ui/interop/schema-viewer/index.html?$NAMESPACE=%25SYS');
+  for (const document of ['HL7 v2.x', 'HL7', 'ASC X12', 'ASTM', 'Demo.Probe', 'A', '%A.B', '&ST=ASTM']) {
+    assert.equal(interopEditorSource(VIEWER, 'HSCUSTOM', document), null, `a document ${JSON.stringify(document)} names nothing the viewer reads`);
+  }
+  assert.deepEqual(parameterNames(interopEditorSource(VIEWER, 'HSCUSTOM')), ['$NAMESPACE'], 'and the address ends at the namespace');
+  assert.equal(INTEROP_EDITORS[VIEWER].parameter, '', 'because it declares no document parameter');
 });
 
 test('every value is percent-encoded, a %-led namespace and document included', () => {
@@ -65,6 +81,15 @@ test('every value is percent-encoded, a %-led namespace and document included', 
   assert.equal(
     interopEditorSource('dtl-editor', '%SYS', '%Library.Probe'),
     '/ui/interop/dtl-editor/index.html?$NAMESPACE=%25SYS&DTL=%25Library.Probe'
+  );
+  assert.equal(
+    interopEditorSource('interop-editor', '%SYS', '%Library.Probe'),
+    '/ui/interop/interop-editor/index.html?$NAMESPACE=%25SYS&$PRODUCTION=%25Library.Probe',
+    'the production is encoded in $PRODUCTION'
+  );
+  assert.equal(
+    new URL(interopEditorSource('interop-editor', 'USER', 'OcuPilotProbe.Interop.Production'), 'http://instance.invalid').searchParams.get('$PRODUCTION'),
+    'OcuPilotProbe.Interop.Production'
   );
   const decoded = new URL(interopEditorSource('bpl-editor', '%SYS', '%Library.Probe'), 'http://instance.invalid').searchParams;
   assert.equal(decoded.get('$NAMESPACE'), '%SYS', 'and the encoding round-trips');
@@ -88,16 +113,16 @@ test('the address strips no extension and adds nothing', () => {
 });
 
 test('a refused input answers null: an editor outside the vocabulary', () => {
-  for (const editor of ['', 'rule', 'rule-editor/', 'rule-editor/../x', 'RULE-EDITOR', 'schema-viewer', 'constructor', '__proto__', 'toString', 'hasOwnProperty', ' rule-editor', null, undefined, 7]) {
+  for (const editor of ['', 'rule', 'rule-editor/', 'rule-editor/../x', 'RULE-EDITOR', 'message-viewer', 'constructor', '__proto__', 'toString', 'hasOwnProperty', ' rule-editor', null, undefined, 7]) {
     assert.equal(interopEditorSource(editor, 'HSCUSTOM'), null, `editor ${JSON.stringify(editor)}`);
     assert.equal(isInteropEditor(editor), false, `and it is no editor: ${JSON.stringify(editor)}`);
   }
-  for (const editor of EDITORS) assert.equal(isInteropEditor(editor), true);
+  for (const editor of ALL_APPS) assert.equal(isInteropEditor(editor), true);
 });
 
 test('a refused input answers null: a namespace that is empty or outside its shape', () => {
   for (const namespace of ['', 'X&VSCODE=1', 'X#y', '../x', 'a/b', 'US ER', 'x=1', 'x?y', '%%SYS', 'N'.repeat(65), 'a.b', 'caf\u00e9', null, undefined, 7]) {
-    for (const editor of EDITORS) {
+    for (const editor of ALL_APPS) {
       assert.equal(interopEditorSource(editor, namespace), null, `${editor} namespace ${JSON.stringify(namespace)}`);
     }
   }
@@ -106,7 +131,7 @@ test('a refused input answers null: a namespace that is empty or outside its sha
 test('a refused input answers null: a non-empty document outside its shape', () => {
   const refused = ['..', '../x', 'x/y', 'x\\y', 'A&VSCODE=1', 'A#b', 'A?b', 'A=b', 'A b', ' A', 'A ', 'A\nB', '.', '.cls', 'Demo..Probe', 'Demo.Probe.', '1Demo.Probe', 'Demo.%Probe', 'Demo.Probe&DTL=Other', '%%Demo', '<x>', null, 7];
   for (const document of refused) {
-    for (const editor of EDITORS) {
+    for (const editor of ALL_APPS) {
       assert.equal(interopEditorSource(editor, 'HSCUSTOM', document), null, `${editor} document ${JSON.stringify(document)}`);
     }
   }
@@ -134,9 +159,14 @@ test('no answer ever carries VSCODE, READONLY or any parameter but the editor\'s
     }
   }
   assert.equal(answered, EDITORS.length * namespaces.length * documents.length, 'every combination was answered, so the scan above ran over all of them');
-  for (const editor of EDITORS) {
+  for (const editor of ALL_APPS) {
     assert.equal(interopEditorSource(editor, 'HSCUSTOM', 'A&VSCODE=1'), null);
     assert.equal(interopEditorSource(editor, 'HSCUSTOM&VSCODE=1'), null);
+  }
+  for (const namespace of namespaces) {
+    const source = interopEditorSource(VIEWER, namespace);
+    assert.deepEqual(parameterNames(source), ['$NAMESPACE'], `${source} names no parameter beyond the namespace`);
+    assert.ok(source.startsWith('/ui/interop/schema-viewer/index.html?'), `${source} is the viewer's own path on this origin`);
   }
 });
 

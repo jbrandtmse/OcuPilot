@@ -71,7 +71,7 @@ export const ARCHETYPE_PAGES: ArchetypePages = {
 const SERVICE_EDITOR_PAGE: PageLoader = () => import('../areas/permissions/service-editor.page').then((m) => m.ServiceEditorPage);
 const LDAP_EDITOR_PAGE: PageLoader = () => import('../areas/security/ldap-editor.page').then((m) => m.LdapEditorPage);
 
-/** Story 20.7: the one page the rule, BPL and DTL editor screens share, each descriptor naming this loader. */
+/** Stories 20.7 and 20.8: the one page the rule, BPL and DTL editor screens, the Schema viewer and the Configuration diagram share, each descriptor naming this loader. */
 const INTEROP_EDITOR_PAGE: PageLoader = () => import('../areas/interoperability/interop-editor.page').then((m) => m.InteropEditorPage);
 
 /**
@@ -227,6 +227,9 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, PageLoader>> = {
   'OcuPilot.Screen.Descriptor.InteropRuleEditor': INTEROP_EDITOR_PAGE,
   'OcuPilot.Screen.Descriptor.InteropProcessEditor': INTEROP_EDITOR_PAGE,
   'OcuPilot.Screen.Descriptor.InteropTransformEditor': INTEROP_EDITOR_PAGE,
+  // Story 20.8: the Schema viewer and the Configuration diagram, the vendor's apps in the same frame.
+  'OcuPilot.Screen.Descriptor.InteropSchemaViewer': INTEROP_EDITOR_PAGE,
+  'OcuPilot.Screen.Descriptor.InteropProductionDiagram': INTEROP_EDITOR_PAGE,
 };
 
 /**

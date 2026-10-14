@@ -17,12 +17,15 @@ import { InteropEditorFrame } from './interop-editor-frame';
  * pinned here; `browser/interop-editor-frame.browser-spec.mjs` loads the real editors.
  */
 
-const EDITORS: readonly InteropEditor[] = ['rule-editor', 'dtl-editor', 'bpl-editor'];
+/** The apps that open a document; the Schema viewer, which takes none, has its own test (Story 20.8). */
+const EDITORS: readonly InteropEditor[] = ['rule-editor', 'dtl-editor', 'bpl-editor', 'interop-editor'];
 
 const TITLES: Readonly<Record<InteropEditor, string>> = {
   'rule-editor': 'Rule editor',
   'dtl-editor': 'DTL editor',
   'bpl-editor': 'BPL editor',
+  'schema-viewer': 'Schema viewer',
+  'interop-editor': 'Configuration diagram',
 };
 
 const planted: HTMLElement[] = [];
@@ -125,9 +128,33 @@ describe('app-interop-editor-frame', () => {
     }
   });
 
+  it('Story 20.8: draws the Schema viewer\'s frame at its address with no document, titled "Schema viewer", and the diagram\'s at $PRODUCTION', async () => {
+    // Mutation (Rule 19): the diagram's document parameter is renamed in the vocabulary -> its address is not `$PRODUCTION=...` and this goes red.
+    const viewer = await mount({ editor: 'schema-viewer', namespace: 'HSCUSTOM' });
+    expect(viewer.frames().length).toBe(1);
+    const viewerFrame = viewer.frame() as HTMLIFrameElement;
+    expect(viewerFrame.getAttribute('src')).toBe('/ui/interop/schema-viewer/index.html?$NAMESPACE=HSCUSTOM');
+    expect(viewerFrame.getAttribute('src')).toBe(interopEditorSource('schema-viewer', 'HSCUSTOM'));
+    expect(viewerFrame.getAttribute('title')).toBe('Schema viewer');
+    expect(viewerFrame.getAttribute('title')).toBe(STRINGS.interopSchemaViewerTitle);
+
+    const diagram = await mount({ editor: 'interop-editor', namespace: 'USER', document: 'OcuPilotProbe.Interop.Production' }, 'USER');
+    expect(diagram.frames().length).toBe(1);
+    const diagramFrame = diagram.frame() as HTMLIFrameElement;
+    expect(diagramFrame.getAttribute('src')).toBe('/ui/interop/interop-editor/index.html?$NAMESPACE=USER&$PRODUCTION=OcuPilotProbe.Interop.Production');
+    expect(diagramFrame.getAttribute('title')).toBe('Configuration diagram');
+    expect(diagramFrame.getAttribute('title')).toBe(STRINGS.interopProductionDiagramTitle);
+    for (const element of [viewerFrame, diagramFrame]) {
+      for (const attribute of ['sandbox', 'allow', 'srcdoc', 'credentialless']) expect(element.hasAttribute(attribute), attribute).toBe(false);
+      expect(element.getAttributeNames().filter((name) => !name.startsWith('_ng')).sort()).toEqual(['class', 'data-ocu-source', 'src', 'title']);
+    }
+  });
+
   it('Story 20.13 AC4: draws no frame for a source the builder refuses', async () => {
     const refused: Inputs[] = [
-      { editor: 'schema-viewer', namespace: 'HSCUSTOM' },
+      { editor: 'message-viewer', namespace: 'HSCUSTOM' },
+      { editor: 'schema-viewer', namespace: 'HSCUSTOM', document: 'Demo.Probe' },
+      { editor: 'interop-editor', namespace: 'HSCUSTOM', document: 'Demo.Probe&x=1' },
       { editor: 'rule-editor', namespace: '' },
       { editor: 'rule-editor', namespace: 'X&Y=1' },
       { editor: 'dtl-editor', namespace: 'HSCUSTOM', document: 'a/b' },

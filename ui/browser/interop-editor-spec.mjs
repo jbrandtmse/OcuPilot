@@ -42,14 +42,21 @@ export const EDITOR_API = '/api/interop-editors/';
 const LOGOUT_PATH = '/api/ocupilot/logout';
 
 /**
- * Each embedded editor's storage prefix and the segment its document read uses, both read from its
- * bundle and measured on the instance (Story 20.13).
+ * Each embedded app's storage prefix and the segment its document read uses, both read from its
+ * bundle and measured on the instance (Stories 20.13 and 20.8).
  */
 export const EDITOR_APPS = {
   'rule-editor': { prefix: 'Rule_Editor', segment: 'rules' },
   'dtl-editor': { prefix: 'DTL_Editor', segment: 'dtl' },
   'bpl-editor': { prefix: 'BPL_Editor', segment: 'bpl' },
+  'schema-viewer': { prefix: 'Schema_Viewer', segment: 'schemas' },
+  'interop-editor': { prefix: 'Interop-Editors', segment: 'productions' },
 };
+
+/** Whether `key` is one a vendor app keeps in the tab: any `EDITOR_APPS` prefix followed by `-`, or a `_Editor-` key of an app this module does not name. */
+export function isEditorKey(key) {
+  return key.includes('_Editor-') || Object.values(EDITOR_APPS).some(({ prefix }) => key.includes(`${prefix}-`));
+}
 
 /** The frame a spec mounts or a screen draws, unless the caller names another. */
 export const DEFAULT_FRAME_SELECTOR = 'app-screen-outlet iframe';
@@ -373,7 +380,7 @@ export async function signOutThroughMenu(page, timeoutMs) {
 export async function assertSignOutEndsEditors(page, held) {
   assert.equal((await page.$$('iframe')).length, 0, 'no frame remains in the document');
   const keys = (await tabSnapshot(page)).keys;
-  assert.deepEqual(keys.filter((key) => key.includes('_Editor-')), [], `no editor key is left in the tab: ${JSON.stringify(keys)}`);
+  assert.deepEqual(keys.filter(isEditorKey), [], `no editor key is left in the tab: ${JSON.stringify(keys)}`);
   const answered = {
     login: (await inPage(page, LOGIN)).status,
     accessToken: (await inPage(page, readUnder(held.accessToken))).status,
