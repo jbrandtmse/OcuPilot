@@ -9446,7 +9446,7 @@ So that the scripts, the install checks and the explorer's save path say and do 
 
 ### Story 23.9: The range-end cleanup, part 8
 
-Chartered by the orchestrator on 2026-10-12 from the 32 entries the owner released out of Story 23.7. This part takes the last eight low-severity entries: doc comments and CLAUDE.md lines that no longer match the code, two pair-validation edges, a duplicated client constant and the CI runner's test-class floor. A slot that would otherwise sit idle runs it, after Story 23.8. A CLAUDE.md line changes only through the Planner, with the owner's OK.
+Chartered by the orchestrator on 2026-10-12 from the 32 entries the owner released out of Story 23.7. This part takes the last eight low-severity entries: doc comments and CLAUDE.md lines that no longer match the code, two pair-validation edges, a duplicated client constant and the CI runner's test-class floor. A ninth joined from Epic 18 on 2026-10-14: the delete tools' repeated state-diff body, lifted once into the shared write base. A slot that would otherwise sit idle runs it, after Story 23.8. A CLAUDE.md line changes only through the Planner, with the owner's OK.
 
 As a maintainer of OcuPilot,
 I want the stale comments, duplicated constants and small validation edges fixed,
@@ -9454,7 +9454,7 @@ So that the next reader is not misled by text the code no longer matches.
 
 **Acceptance Criteria:**
 
-- **Given** the entries re-owned to this story: DW-446, DW-1177, DW-1706, DW-1760, DW-1761, DW-2060, DW-2259 and DW-2260
+- **Given** the entries re-owned to this story: DW-446, DW-1177, DW-1706, DW-1760, DW-1761, DW-2060, DW-2259, DW-2260 and DW-2299
 - **When** this story completes
 - **Then** each has a disposition written by the ledger tool: `resolved-by` this story with the commit, or `wontfix-accepted` or `by-design` with a reason and, where a condition would reopen it, that condition.
 
