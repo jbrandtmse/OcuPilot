@@ -49,7 +49,8 @@ ClassMethod ResetErrorLog()
     Kill ^||OcuPilotProviderStubLog
 }
 
-/// <p>Arm the stub to compare the key header every call carries with <var>pExpected</var>, and to record only whether
+/// <p>Arm the stub to compare each call's <code>x-api-key</code> header, the key header of the
+/// <code>anthropic</code> family and its canary row, with <var>pExpected</var>, and to record only whether
 /// they are equal (<code>keyMatches</code>, <method>Recorded</method>). The request's key is read inside the comparison
 /// and never named, and no recording holds it. <method>Reset</method> disarms it.</p>
 ClassMethod ArmKeyCompare(pExpected As %String)

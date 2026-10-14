@@ -34,9 +34,6 @@ Parameter REASONUSAGE = "The wallet secret this definition names does not allow 
 /// <p>The text the use refusal's sentence is written around, replaced by the pair that failed when one is named.</p>
 Parameter USERESOURCEPHRASE = "the use resource of the secret's collection";
 
-/// <p>The longest name a wallet secret may carry, matching the vendor property's own bound.</p>
-Parameter NAMEMAX = 128;
-
 /// <p>Every <code>WALLETRUNG.*</code> code, as a <class>%List</class>.</p>
 ClassMethod Codes() As %List
 {

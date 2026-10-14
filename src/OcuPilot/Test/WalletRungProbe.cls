@@ -26,6 +26,10 @@ Parameter MULTISECRET = "OcuPilotProbe1841.multi";
 
 Parameter SYMMETRICSECRET = "OcuPilotProbe1841.sym";
 
+/// <p>The key-value secret no resolution names: a refused direct vendor call on it writes the control row the suites
+/// wait for before they count rows naming the others.</p>
+Parameter CONTROLSECRET = "OcuPilotProbe1841.control";
+
 /// <p>The vendor audit event the wallet writes a use row under, and the one it writes a refusal under.</p>
 Parameter USEEVENT = "WalletSecretUse";
 
@@ -58,6 +62,7 @@ ClassMethod SeedAll(pValue As %String, pPassword As %String) As %Status
     If $$$ISOK(tSC) Set tSC = ..AddKeyValue(..#HTTPONLYSECRET, {"Secret": (pValue), "Usage": 1})
     If $$$ISOK(tSC) Set tSC = ..AddKeyValue(..#MULTISECRET, {"Secret": {"first": (pValue), "second": "two"}, "Usage": 15})
     If $$$ISOK(tSC) Set tSC = ..AddSymmetricKey(..#SYMMETRICSECRET)
+    If $$$ISOK(tSC) Set tSC = ..AddKeyValue(..#CONTROLSECRET, {"Secret": "control", "Usage": 15})
     For tI = 1:1:$Length(..#PRINCIPALS, ",") {
         If $$$ISERR(tSC) Quit
         Set tEntry = $Piece(..#PRINCIPALS, ",", tI)
@@ -197,6 +202,22 @@ ClassMethod UseEventEnabled() As %Integer
         Set tValue = -1
     }
     Quit tValue
+}
+
+/// <p>How many <code>AccessDenied</code> rows since <var>pSince</var> name the secret <var>pSecret</var>, which the
+/// vendor's refusal row carries in its data, so a row this suite did not cause is not counted. With <var>pWait</var>, a
+/// zero is asked again for up to five seconds: the first row can take a moment to be readable.</p>
+ClassMethod DeniedRows(pSince As %String, pSecret As %String, pWait As %Boolean = 0) As %Integer
+{
+    Set tRows = ##class(OcuPilot.Test.AuditingUpdate).VendorRows(pSince, ..#DENIEDEVENT, pSecret _ " ", .tStamp)
+    If pWait && (tRows < 1) {
+        For tTry = 1:1:50 {
+            Hang 0.1
+            Set tRows = ##class(OcuPilot.Test.AuditingUpdate).VendorRows(pSince, ..#DENIEDEVENT, pSecret _ " ", .tStamp)
+            If tRows > 0 Quit
+        }
+    }
+    Quit tRows
 }
 
 /// <p>Turn the vendor audit event <parameter>USEEVENT</parameter> on or off.</p>

@@ -484,9 +484,10 @@ ClassMethod HandleUpdate(pId As %String) As %Status
         ; A definition repointed at another reference, or moved off the credentials rung, leaves the
         ; old entry behind. It is removed on exactly the terms a delete removes one (AD-37): only
         ; where OcuPilot created it, and only where no surviving definition -- this one included,
-        ; which is why it is compared against the value now stored -- still names it.
+        ; which is why it is compared against the value now stored -- still names it. A wallet
+        ; secret's name was never a credential entry, so leaving one disposes of nothing.
         Set tEntry = ""
-        If ($Get(tAfter("credentialName")) '= tPriorCredential) || ((tPriorCredType = ##class(OcuPilot.Kernel.AgentRules).#CREDTYPECREDS) && ($Get(tAfter("credType")) '= tPriorCredType)) {
+        If (tPriorCredType '= ##class(OcuPilot.Kernel.AgentRules).#CREDTYPEWALLET) && (($Get(tAfter("credentialName")) '= tPriorCredential) || ((tPriorCredType = ##class(OcuPilot.Kernel.AgentRules).#CREDTYPECREDS) && ($Get(tAfter("credType")) '= tPriorCredType))) {
             Set tEntry = ..ClearOwnedCredential(tPriorCredential, pId, tPriorOwned)
         }
         Do ..LogChange("update", pId, .tBefore, .tAfter, "", ..EntryEffects(tEntry))
@@ -530,8 +531,9 @@ ClassMethod HandleDelete(pId As %String) As %Status
         }
         ; After the row is gone, so the sibling query sees the set that survives. A stored key does
         ; not outlive the definition that named it, and a key OcuPilot did not store is not
-        ; OcuPilot's to remove (AD-37).
-        Set tEntry = ..ClearOwnedCredential($Get(tBefore("credentialName")), pId, tOwned)
+        ; OcuPilot's to remove (AD-37). A wallet secret's name was never a credential entry.
+        Set tEntry = ""
+        If $Get(tBefore("credType")) '= ##class(OcuPilot.Kernel.AgentRules).#CREDTYPEWALLET Set tEntry = ..ClearOwnedCredential($Get(tBefore("credentialName")), pId, tOwned)
         Kill tAfter
         Do ..LogChange("delete", pId, .tBefore, .tAfter, "", ..EntryEffects(tEntry))
         Set tBody = {}

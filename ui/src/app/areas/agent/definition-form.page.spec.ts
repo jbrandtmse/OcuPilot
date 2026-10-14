@@ -2282,4 +2282,68 @@ describe('the Definition form', () => {
     expect((host.querySelector('#ocu-definition-envVarName') as HTMLInputElement).value).toBe('ANTHROPIC_API_KEY');
     expect(host.querySelector('#ocu-definition-credentialName')).toBeNull();
   });
+
+  it('Story 18.41: ticking and unticking keeps a stored definition\'s own credential entry name, so the round trip repoints nothing', async () => {
+    // Mutation (Rule 19): make `setWallet(false)` always restore the catalog default name -> red on the PUT's name.
+    const { fixture, host, calls } = await mount((path, init) => {
+      if (path.endsWith('/agent/providers')) return ok(PROVIDERS_BODY);
+      if (init.method === 'PUT') return ok(definition(JSON.parse(init.body ?? '{}')));
+      return ok(definition({ credentialName: 'OperatorAnthropicKey' }));
+    }, '/agent/definitions/edit/7');
+    await tickWallet(fixture, host, true);
+    await tickWallet(fixture, host, false);
+    saveButton(host).click();
+    await settle(fixture);
+    expect(lastBody(calls, 'PUT')['credType']).toBe('creds');
+    expect(lastBody(calls, 'PUT')['credentialName']).toBe('OperatorAnthropicKey');
+  });
+
+  it('Story 18.41: unticking on a provider that does not license No API key restores the credentials rung, never `none`', async () => {
+    // Mutation (Rule 19): restore the held rung unguarded in `setWallet(false)` -> red on `credType` `none`.
+    const { fixture, host, calls } = await mount((path, init) => {
+      if (path.endsWith('/agent/providers')) return ok(LOCAL_PROVIDERS);
+      if (init.method === 'POST') return created(definition({ id: '9' }));
+      return ok({ definitions: [] });
+    });
+    await chooseProvider(fixture, host, 'compatible');
+    const noKey = host.querySelector('#ocu-definition-credType') as HTMLInputElement;
+    noKey.checked = true;
+    noKey.dispatchEvent(new Event('change'));
+    await settle(fixture);
+    await tickWallet(fixture, host, true);
+    await chooseProvider(fixture, host, 'anthropic');
+    await tickWallet(fixture, host, false);
+    await typeInto(fixture, host, '#ocu-definition-name', 'Claude');
+    saveButton(host).click();
+    await settle(fixture);
+    expect(lastBody(calls, 'POST')['credType']).toBe('creds');
+  });
+
+  it('Story 18.41: in env mode, unticking a stored wallet definition fills the environment variable with the catalog default', async () => {
+    // Mutation (Rule 19): keep `this.value('envVarName')` alone in `setWallet(false)` -> red on the empty variable.
+    const { fixture, host, calls } = await mount((path, init) => {
+      if (path.endsWith('/agent/providers')) return ok(withRung(PROVIDERS_BODY, false));
+      if (init.method === 'PUT') return ok(definition(JSON.parse(init.body ?? '{}')));
+      return ok(definition({ credType: 'wallet', credentialName: 'Keys.anthropic', envVarName: '' }));
+    }, '/agent/definitions/edit/7');
+    expect(walletBox(host).checked).toBe(true);
+    await tickWallet(fixture, host, false);
+    expect((host.querySelector('#ocu-definition-envVarName') as HTMLInputElement).value).toBe('ANTHROPIC_API_KEY');
+    saveButton(host).click();
+    await settle(fixture);
+    expect(lastBody(calls, 'PUT')['credType']).toBe('env');
+    expect(lastBody(calls, 'PUT')['envVarName']).toBe('ANTHROPIC_API_KEY');
+  });
+
+  it('Story 18.41: ticking the wallet in env mode drops a refusal on the environment variable field it hides', async () => {
+    // Mutation (Rule 19): drop `this.clearFieldViolation('envVarName')` from `setWallet(true)` -> red on the summary.
+    const { fixture, host } = await mount(envAnswer(withRung(PROVIDERS_BODY, false)));
+    await typeInto(fixture, host, '#ocu-definition-name', 'Claude');
+    await typeInto(fixture, host, '#ocu-definition-envVarName', '');
+    saveButton(host).click();
+    await settle(fixture);
+    expect(host.querySelector('.ocu-form-summary')).not.toBeNull();
+    await tickWallet(fixture, host, true);
+    expect(host.querySelector('.ocu-form-summary')).toBeNull();
+  });
 });

@@ -110,8 +110,8 @@ Method TestACallerHoldingThePairResolvesTheStoredValue()
 /// <p>C3: a caller holding neither pair is refused <code>WALLETRUNG.USE</code> naming the collection's use resource, a
 /// holder of the use resource is refused <code>WALLETRUNG.USAGE</code> naming <code>%Admin_Wallet:USE</code> when the
 /// secret's uses exclude custom, neither refusal is transient, and the refused resolutions write no
-/// <code>AccessDenied</code> row: the one row since the mark is the outsider's direct vendor call, which is the positive
-/// control that the audit reads rows at all.</p>
+/// <code>AccessDenied</code> row naming their secrets. The positive control is the outsider's direct vendor call on a
+/// secret no resolution names, made after them: once its row is readable, theirs would be.</p>
 /// <p>Mutation (Rule 19): drop the use-resource check from <method>OcuPilot.Kernel.Secret.Ladder.Wallet</method> -- the
 /// outsider's leg reads no refusal and this goes red.</p>
 Method TestACallerWithoutThePairIsRefusedBeforeAnyRead()
@@ -124,10 +124,10 @@ Method TestACallerWithoutThePairIsRefusedBeforeAnyRead()
     Do $$$AssertEquals(..LegText(tOutsider, 2), "matches=0 transient=0 refusal=WALLETRUNG.USE|OcuPilotProbe1841Use:USE", "whatever the secret's uses (" _ ..LegText(tOutsider, 2) _ ")")
     Set tHolder = ..Run(1, [{"kind": "resolve", "name": (..Secret("HTTPONLYSECRET")), "expected": (..#CANARY)}])
     Do $$$AssertEquals(..LegText(tHolder, 1), "matches=0 transient=0 refusal=WALLETRUNG.USAGE|%Admin_Wallet:USE", "the use resource's holder is refused a secret that allows no custom use, naming %Admin_Wallet:USE (" _ ..LegText(tHolder, 1) _ ")")
-    Do $$$AssertEquals(..DeniedRows(tSince), 0, "the refused resolutions wrote no AccessDenied row")
-    Set tControl = ..Run(2, [{"kind": "exists", "name": (..Secret("DEFAULTSECRET"))}])
-    Do $$$AssertEquals(tControl.steps.%Get(0).opened, 0, "the outsider's direct vendor call is refused")
-    Do $$$AssertEquals(..DeniedRows(tSince, 1), 1, "and writes the one AccessDenied row, so the count above counted something")
+    Set tControl = ..Run(2, [{"kind": "exists", "name": (..Secret("CONTROLSECRET"))}])
+    Do $$$AssertEquals(tControl.steps.%Get(0).opened, 0, "the outsider's direct vendor call on the control secret is refused")
+    Do $$$AssertEquals(..DeniedRows(tSince, "CONTROLSECRET", 1), 1, "and writes the one AccessDenied row naming it, so the audit store has caught up")
+    Do $$$AssertEquals(..DeniedRows(tSince, "DEFAULTSECRET") + ..DeniedRows(tSince, "HTTPONLYSECRET"), 0, "and the refused resolutions wrote no AccessDenied row naming their secrets")
 }
 
 /// <p>C4: a name the wallet lists no key-value secret under -- an absent secret, an absent collection, a symmetric key,
@@ -173,9 +173,9 @@ Method TestTheUseRowIsWrittenOnlyWhileTheEventIsOn()
     Do $$$AssertEquals(..LegText(tOff, 1), "matches=1 transient=0 refusal=", "the resolution succeeds with the event off")
     ; A refused direct vendor call writes a row of another event after the resolution above. Once that row is readable,
     ; every row the resolution wrote is readable too, so the zero below is read after the audit store has caught up.
-    Set tControl = ..Run(2, [{"kind": "exists", "name": (..Secret("DEFAULTSECRET"))}])
+    Set tControl = ..Run(2, [{"kind": "exists", "name": (..Secret("CONTROLSECRET"))}])
     Do $$$AssertEquals(tControl.steps.%Get(0).opened, 0, "the outsider's direct vendor call is refused")
-    Do $$$AssertEquals(..DeniedRows(tOffSince, 1), 1, "and its AccessDenied row is readable")
+    Do $$$AssertEquals(..DeniedRows(tOffSince, "CONTROLSECRET", 1), 1, "and its AccessDenied row is readable")
     Do $$$AssertEquals(..UseRows(tOffSince), 0, "so the audit store has caught up, and the resolution wrote no WalletSecretUse row")
 }
 
@@ -259,19 +259,11 @@ ClassMethod UseRowCarries(pSince As %String, pText As %String) As %Integer
     Quit ..AuditRows(pSince, $Parameter(..#PROBE, "USEEVENT"), pText)
 }
 
-/// <p>How many <code>AccessDenied</code> rows the audit database holds since <var>pSince</var>. With <var>pWait</var>,
-/// a zero is asked again for up to five seconds.</p>
-ClassMethod DeniedRows(pSince As %String, pWait As %Boolean = 0) As %Integer
+/// <p>How many <code>AccessDenied</code> rows since <var>pSince</var> name the probe secret <var>pParameter</var> of
+/// <parameter>PROBE</parameter> names (<method>OcuPilot.Test.WalletRungProbe.DeniedRows</method>).</p>
+ClassMethod DeniedRows(pSince As %String, pParameter As %String, pWait As %Boolean = 0) As %Integer
 {
-    Set tRows = ..AuditRows(pSince, $Parameter(..#PROBE, "DENIEDEVENT"), "")
-    If pWait && (tRows < 1) {
-        For tTry = 1:1:50 {
-            Hang 0.1
-            Set tRows = ..AuditRows(pSince, $Parameter(..#PROBE, "DENIEDEVENT"), "")
-            If tRows > 0 Quit
-        }
-    }
-    Quit tRows
+    Quit $ClassMethod(..#PROBE, "DeniedRows", pSince, ..Secret(pParameter), pWait)
 }
 
 /// <p>How many <code>%System/%Security/</code><var>pEvent</var> rows since <var>pSince</var> carry <var>pText</var>, read

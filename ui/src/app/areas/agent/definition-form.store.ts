@@ -290,10 +290,15 @@ export class DefinitionForm {
   private keyValue = '';
 
   /**
-   * The rung `credType` held when the wallet checkbox was ticked, restored when it is unticked. Held
-   * here because the buffer is the only record of it once `credType` has moved to `wallet`.
+   * The rung `credType` held when the wallet checkbox was ticked, restored when it is unticked, with the
+   * credential entry name and the provider it was held under. Held here because the buffer is the only
+   * record of them once `credType` has moved to `wallet`.
    */
   private walletHeldCredType: string = CRED_TYPE_CREDS;
+
+  private walletHeldName = '';
+
+  private walletHeldProvider = '';
 
   /** Bumped per issued request, so a late answer to a form the user has left is dropped. */
   private generation = 0;
@@ -530,6 +535,8 @@ export class DefinitionForm {
     this.gateArrivalPending = false;
     this.keyValue = '';
     this.walletHeldCredType = CRED_TYPE_CREDS;
+    this.walletHeldName = '';
+    this.walletHeldProvider = '';
     this.formDirty.reset();
     this.notify();
   }
@@ -605,30 +612,36 @@ export class DefinitionForm {
   /**
    * Tick or untick "Read the key from a wallet secret".
    *
-   * Ticking holds the rung `credType` was on, moves it to `wallet`, empties `credentialName` for the
-   * secret's name and drops a key typed before the tick: the key field is not offered in wallet
+   * Ticking holds the rung `credType` was on and the credential entry name it carried, moves it to
+   * `wallet`, empties `credentialName` for the secret's name, and drops a key typed before the tick and
+   * any refusal on the key or environment variable field it hides: neither field is offered in wallet
    * mode, and a hidden key would keep the leave guard standing over a value nobody can see. Unticking
    * restores the held rung -- never `creds` in env mode, never `none` on a provider that no longer
-   * licenses it -- and `credentialName` and `envVarName` to the catalog row's defaults where they are
-   * empty, because the wallet secret's name is not a credential entry's.
+   * licenses it -- and the held entry name, or the catalog row's default when none was held or the
+   * provider has changed since, because the wallet secret's name is not a credential entry's; an empty
+   * `envVarName` takes the row's default.
    */
   setWallet(on: boolean): void {
     if (on === this.walletMode()) return;
     const row = this.provider();
     if (on) {
       this.walletHeldCredType = this.value('credType');
+      this.walletHeldName = this.value('credentialName');
+      this.walletHeldProvider = this.value('provider');
       this.buffer = { ...this.buffer, credType: CRED_TYPE_WALLET, credentialName: '' };
       this.keyValue = '';
       this.clearFieldViolation('apiKey');
+      this.clearFieldViolation('envVarName');
     } else {
       const held =
         this.walletHeldCredType === CRED_TYPE_NONE && row?.allowsLocal !== true
           ? CRED_TYPE_CREDS
           : this.walletHeldCredType;
+      const heldName = this.walletHeldName !== '' && this.walletHeldProvider === this.value('provider');
       this.buffer = {
         ...this.buffer,
         credType: this.admissibleCredType(held),
-        credentialName: row?.defaultCredentialName ?? '',
+        credentialName: heldName ? this.walletHeldName : (row?.defaultCredentialName ?? ''),
         envVarName: this.value('envVarName') !== '' ? this.value('envVarName') : (row?.defaultEnvVarName ?? ''),
       };
     }

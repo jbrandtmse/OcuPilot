@@ -281,6 +281,7 @@ services:
       # classes: PermissionCheck, EffectiveUser
       # classes: LedgerSearchWire
       # classes: WalletRung
+      # classes: WalletRungRoles
       # classes: NamespaceWriteGate
       # The enable-interop gate class also enables interoperability on a probe namespace as its principal.
       # classes: NamespaceInteropGate
@@ -629,6 +630,7 @@ services:
       # classes: ExplorerSourceTurn
       # classes: ExplorerSaveTurn
       # classes: ExplorerCreateTurn
+      # classes: WalletRungRoles
       OCUPILOT_ALLOW_TEST_PROVIDER: "1"
       # Purges the instance's own audit database through the shipped screen route: every record
       # dated before today is removed, the agent's audit markers among them, and nothing puts one

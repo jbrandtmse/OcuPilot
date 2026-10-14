@@ -192,9 +192,11 @@ Method TestTheStoredValueIsTheKeyTheRequestCarries()
 
 /// <p>C3, above the ladder: a refusal the ladder answers faults the provider call with its own code, a reason that names
 /// the pair and <code>detail.failedPair</code>, opens no socket, and leaves the stored definition enabled and verified.
-/// The use refusal answers 403 and the usage refusal 503.</p>
+/// The use refusal answers 403 and the usage refusal 503, each on its status's own slug.</p>
 /// <p>Mutation (Rule 19): make <method>OcuPilot.Kernel.Provider.Base.Invoke</method> fault every empty resolution
-/// <code>PROVIDER.CREDENTIAL</code> -- the code assertion goes red, and the port disables the definition.</p>
+/// <code>PROVIDER.CREDENTIAL</code> -- the code assertion goes red, and the port disables the definition. Drop the slug
+/// line from <method>OcuPilot.Kernel.Provider.Base.FaultRefused</method> -- the use refusal reads
+/// <code>unavailable</code> and this goes red.</p>
 Method TestARefusalNamesThePairAndLeavesTheDefinitionEnabled()
 {
     Set tId = ..StoredDefinition("Refused", $Parameter(..#PROBE, "DEFAULTSECRET"))
@@ -213,6 +215,7 @@ Method TestARefusalNamesThePairAndLeavesTheDefinitionEnabled()
         If $IsObject(tFault) {
             Do $$$AssertEquals(tFault.reason, ##class(OcuPilot.Api.WalletRungError).ReasonFor(tCode, tPair), tCode _ ": the reason is the published sentence naming the pair")
             Do $$$AssertEquals(tFault.detail.failedPair, tPair, tCode _ ": and detail.failedPair is the pair")
+            Do $$$AssertEquals(tFault.error, ##class(OcuPilot.Api.Error).GetSlugForStatus($List(tCase, 3)), tCode _ ": and the slug is its status's own")
         }
         Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Calls(), 0, tCode _ ": and no socket was opened")
         Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Agent).GuardedOpenId(tId, .tRow), tCode _ ": the definition reads back")

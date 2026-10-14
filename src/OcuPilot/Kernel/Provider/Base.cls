@@ -716,10 +716,12 @@ ClassMethod Fault(pCode As %String, pReason As %String = "", pProviderText As %S
 /// <p>Build the wire fault for a wallet rung refusal, <var>pCode</var> being a
 /// <code>WALLETRUNG.*</code> code and <var>pPair</var> the <code>resource:permission</code> pair the
 /// caller lacks: the sentence names the pair, and <code>detail.failedPair</code> carries it
-/// (AD-8).</p>
+/// (AD-8). Its slug is the one its status maps to, so a 403 reads <code>forbidden</code> as every other
+/// refusal naming a pair does.</p>
 ClassMethod FaultRefused(pCode As %String, pPair As %String, Output pFault As %DynamicObject, Output pHttpStatus As %Integer)
 {
     Do ..Fault(pCode, ##class(OcuPilot.Api.WalletRungError).ReasonFor(pCode, pPair), "", .pFault, .pHttpStatus)
+    Do pFault.%Set("error", ##class(OcuPilot.Api.Error).GetSlugForStatus(pHttpStatus))
     Set tDetail = {}
     Do tDetail.%Set("failedPair", pPair, "string")
     Do pFault.%Set("detail", tDetail)

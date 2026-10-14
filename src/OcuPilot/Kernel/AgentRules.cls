@@ -48,8 +48,9 @@ Parameter CREDTYPENONE = "none";
 /// <code>envVarName</code> is cleared.</p>
 Parameter CREDTYPEWALLET = "wallet";
 
-/// <p>The shape a wallet secret's name takes: a collection name, a dot, and the secret's own name, as the
-/// vendor's <code>%Wallet.Secret.Name</code> pattern admits.</p>
+/// <p>The shape a wallet secret's name must take here: a collection name, a dot, and a non-empty secret name, in
+/// ASCII. It is narrower than the vendor's <code>%Wallet.Secret.Name</code> pattern, which also admits non-ASCII
+/// letters and an empty secret name.</p>
 Parameter WALLETNAMEPATTERN = "^[%A-Za-z][A-Za-z0-9_-]*\.[A-Za-z0-9_.-]+$";
 
 /// <p>The longest wallet secret name a definition may carry, matching the vendor property's

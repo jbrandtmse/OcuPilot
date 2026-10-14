@@ -103,6 +103,36 @@ Under `src/OcuPilot/` at `a1bd51d3`.
 - **C6.** Given auditing on, when the rung resolves, then no `WalletSecretUse` row is written while that event is off, and one row naming the secret and not its value while it is on.
 - **Integration.** Given a wallet definition whose secret holds a key-shaped canary, when `Test.ProviderPortProbe` calls, then the stub's request carries it in the family's key header.
 
+### Review Findings
+
+Code review 2026-10-13 (`full-opus`: blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor): 33 rows; 13 entries and 9 closed without one.
+
+- [x] [Review][Patch] (med) Unticking always wrote the catalog default into `credentialName`, so a tick and untick repointed a stored `creds` definition naming its own entry, and `HandleUpdate` removed that owned entry [definition-form.store.ts `setWallet`]: fixed; the name and provider are held at the tick and the name is restored while the provider is unchanged.
+- [x] [Review][Patch] (med, Rule 30) The `AccessDenied` counts in `WalletRung` (C3, C6) and `WalletRungRoles` counted every row on the instance, the control's wait stopped at the first row of any origin, and the two classes carried copies of one helper [WalletRung.cls, WalletRungRoles.cls `DeniedRows`]: fixed; `WalletRungProbe.DeniedRows` counts rows naming a probe secret, the control is a direct call on `CONTROLSECRET`, which no resolution names, and the zero is read after the control's row.
+- [x] [Review][Patch] (low) A wallet definition's delete or repoint ran `ClearOwnedCredential` on the secret's name, so its audit row read `effects.credentialEntry: notOwned` [Api/Definitions.cls:490, :536]: fixed; `AuditVerbs` gains the wallet legs.
+- [x] [Review][Patch] (low) `WALLETRUNG.USE` answered 403 on the `unavailable` slug [Kernel/Provider/Base.cls `FaultRefused`]: fixed; the slug is its status's own.
+- [x] [Review][Patch] (low) Ticking the wallet in env mode left the hidden environment variable field's refusal in the summary [definition-form.store.ts `setWallet`]: fixed.
+- [x] [Review][Patch] (low) Two untick branches had no test: `none` on a provider that does not license it, and the env default for a stored wallet definition: page-spec tests added.
+- [x] [Review][Patch] (low) `WALLETNAMEPATTERN`'s doc said it is the vendor's pattern; it is an ASCII subset with a non-empty secret name [Kernel/AgentRules.cls:52]: doc corrected (the narrower rule is the matrix's).
+- [x] [Review][Patch] (low) `WalletRungError.NAMEMAX` was unused beside `AgentRules.MAXWALLETNAMELENGTH`: removed.
+- [x] [Review][Patch] (low) `ProviderStub.ArmKeyCompare`'s doc said "every call's key header"; it reads `x-api-key`: doc corrected.
+- [x] [Review][Patch] (low) `WalletRungRoles.DirectCallRefused` read an errored step as a refusal: it now requires a boolean `opened`.
+- [x] [Review][Defer] (med) The rung ignores the secret's `RequireTLS` and `AllowedHosts`, which the vendor enforces only in `ApplyHTTP`, and sends the value to the definition's endpoint [Kernel/Secret/Ladder.cls `Wallet`]: DW-2406, decision-pending, owner=burndown; recommended: honour both against the endpoint.
+- [x] [Review][Defer] (low) wontfix-accepted: `Ladder.Wallet`'s two race-only transient branches (an unlisted collection; `Exists` failing for a holder) have no test; the earlier pass's patch pinned the raise alone. reopen_if: a story changes those branches, or a deleted collection is seen leaving a definition enabled.
+- [x] [Review][Defer] (low) wontfix-accepted pending the lead: EXPERIENCE.md :335 says the Wallet secret field replaces the API key field; in env mode it replaces the environment variable field. Epic 20 edits that file. reopen_if: the lead approves the one-line in-place edit.
+
+Closed without an entry:
+
+- by-design: the caption names no custom use, and an administrator's Test connection verifies a definition others are refused `WALLETRUNG.USAGE` on: Task 9 fixes the strings, privilege is the caller's (AD-8), and the refusal names the requirement.
+- by-design: a turn's sentence is recomputed from its code without the pair (AD-39); the pair is on the provider fault and Test connection's answer (Task 5), and the turn renderers are Epic 20 files.
+- settled: no warning on the Secrets screen that a definition reads the secret (a named consequence).
+- false: an undeclared `WALLETRUNG.*` code would get an empty reason; nothing emits one, and `Codes()` is pinned.
+- false: a refused login in `WalletRungProbe.Run` lets C6 pass; every control leg asserts `opened = 0`, which an `%All` child fails, and use rows do not depend on the principal.
+- false: the two non-raise transient answers contradict AD-42; "does not resolve" covers them, and `UseResource` is `Required`, so only a race reaches them.
+- wontfix-theoretical: an unreadable `WalletSecretUse` state leaves C6's event on after a mid-test failure; it needs `Security.Events.Get` to fail where `Modify` succeeds.
+- rejected: the `'wallet'` literal in two `Agent.cls` queries; a wire constant the tests pin, and binding it needs a signature change.
+- rejected: QA's files are uncommitted and the spec's deferred item is stale; the lead commits, and spec records are not this review's to rewrite.
+
 ## Spec Change Log
 
 - 2026-10-13, lead spec gate: "For the lead" applied in the spine (AD-42, AD-35, AD-7); the vendor candidate filed as DW-2377 (decision-pending, owner hold). The WalletSecretUse reading (an operator-enabled vendor event, not a new OcuPilot audit write) went to the orchestrator to confirm.
@@ -204,6 +234,12 @@ every test added or changed passes on a fresh environment, in either order
 - (QA) mutation: `Ladder.Wallet` answers `""` -> `WalletRungRoles.TestAPersonWithTheUseResourceReachesTheAdapterWithTheStoredKey` red (`PROVIDER.CREDENTIAL`, no request).
 - (QA) mutation: `Ladder.Wallet` appends a character to the value -> the same test red on the key header alone.
 - (QA) mutation: the `OCUPILOT_ALLOW_TEST_PROVIDER` roster row of `WalletRungRoles` removed -> `ui/tools/ci.test.mjs` "each arming roster names exactly the classes that declare that variable" red.
+- (CR) mutation: `Ladder.Wallet` skips the use-resource check -> `WalletRung.TestACallerWithoutThePairIsRefusedBeforeAnyRead` red, the scoped `AccessDenied` count included (run 92); `WalletRungRoles.TestAPersonWithoutThePairIsRefusedInTheTestConnectionChild` red, its scoped count included (run 93).
+- (CR) mutation: `WalletRung`'s C6 test never turns `WalletSecretUse` off -> its off leg red behind the `CONTROLSECRET` control (run 92).
+- (CR) mutation: drop the slug line from `Base.FaultRefused` -> `WalletRungWire.TestARefusalNamesThePairAndLeavesTheDefinitionEnabled` red on `WALLETRUNG.USE` (run 94).
+- (CR) mutation: drop the wallet term from `HandleUpdate`'s and `HandleDelete`'s clear -> `AuditVerbs.TestADeleteIsRecordedWithWhatBecameOfItsCredentialEntry` red on both wallet legs (run 95).
+- (CR) mutation: `setWallet(false)` always restores the catalog default name, restores the held rung unguarded, keeps `envVarName` as it is, and `setWallet(true)` clears no `envVarName` refusal -> the page spec's four new 18.41 tests red, each on its own mutation (4 of 71).
+- (CR) every mutation reverted byte-identical (sha, `git status --short`, `git diff --stat`); runs 96-99 green; component suite 3,093; `definitions.browser-spec.mjs` 11 on the rebuilt, redeployed bundle; `ocupilot-ci` at S0.
 
 **Manual check (implement, `ocupilot-ci`):** the Anthropic key from `.env.local`, read at the point of use and handed to the container through the environment, stored in a probe wallet secret (`OcuPilotProbe1841.live`, all uses); a probe `wallet` definition on `claude-haiku-5-5` created over the wire (201); Test connection answered 200 in 1,036 ms with no fault and left the definition `connectionVerified`; the response carried no `sk-ant` token. The definition, the secret, the collection and the probe resource were then removed, and the throwaway reads S0 (`WalletSecretUse` off, wallet collections `OcuPilotDemo` only, no 1841-named role, resource, user or definition). The key was printed and written nowhere.
 
