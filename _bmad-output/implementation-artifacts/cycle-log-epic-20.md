@@ -840,3 +840,6 @@
 2026-10-14T20:31:56Z	Epic 20	ledger_routed_planned	story=20-30-the-session-trace entries=1(DW-2434) excess=0 by=cr
 2026-10-14T20:31:56Z	Story 20.9	rework_opened	cycle_iteration=2 iteration=1 trigger=high items=[Review]HIGH_contents_cap_1000001(AD-62_item_15) scope_baseline=pending_rework_commit
 2026-10-14T20:33:39Z	Story 20.9	stage_spawned	stage=implement spawn_at=2026-10-14T20:33:39Z model=sonnet agent_name=20-9-rework-1 cycle_iteration=2 rework_commit=6534f81e
+2026-10-14T20:49:49Z	Story 20.9	dev_complete	spawn_at=(see_stage_spawned) model=sonnet agent_name=20-9-rework-1 build_sha=d8eadbb7 baseline_revision=a772580f review_loop_iteration=0 followup_review_recommended=false deferred=0 cycle_iteration=2 fix=ReadMessageContents_cut_at_TESTOUTPUTMAX+TESTCUT(StreamText_untouched)+boundary_test mutations=3 loc_added=+1(port) files=3
+2026-10-14T20:49:49Z	Story 20.9	adr_verifications_complete	tool=none acs= result=none_required evidence= mutations=none model=claude-opus-5-5 cycle_iteration=2
+2026-10-14T20:49:49Z	Story 20.9	stage_spawned	stage=code-review spawn_at=2026-10-14T20:49:49Z model=opus agent_name=20-9-code-review-3 cycle_iteration=2 scope=a772580f..HEAD(rework_1)
