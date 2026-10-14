@@ -746,6 +746,29 @@ test('a wire row with no unchanged array parses to no rows rather than to undefi
   ]);
 });
 
+test('an unchanged row carries a classified-opaque value\'s member count through the parse and onto the card view', () => {
+  // Mutation (Rule 19): drop `count` from `parseProposalUnchanged` in `core/turn.ts` -> this goes red.
+  const [parsed] = parseProposals([
+    wireProposal({
+      unchanged: [
+        { field: 'Roles', value: '', count: 2 },
+        { field: 'Empty', value: '', count: 0 },
+        { field: 'Negative', value: '', count: -1 },
+        { field: 'Fractional', value: '', count: 1.5 },
+        { field: 'Text', value: '', count: '2' },
+      ],
+    }),
+  ]);
+  assert.deepEqual(parsed.unchanged, [
+    { field: 'Roles', value: '', count: 2 },
+    { field: 'Empty', value: '', count: 0 },
+    { field: 'Negative', value: '' },
+    { field: 'Fractional', value: '' },
+    { field: 'Text', value: '' },
+  ]);
+  assert.deepEqual(toCardView(parsed, 'Web application').unchanged, parsed.unchanged);
+});
+
 test('no generated field list makes a container disclosable while classifying a member secret', () => {
   // The one fail-OPEN shape `Kernel/Proposal/Disclosure.OrdinaryPaths` has. It admits a top-level
   // property by a row whose path is the name itself or the name with `[]`, and skips every dotted

@@ -28,8 +28,10 @@ import {
   statusLineFor,
   cardTitleName,
 } from '../core/proposal-view';
+import { pickCount } from '../core/count-phrase';
 import { impactLine } from '../core/impact';
 import { estimateLines, isLong } from '../core/long-blocks';
+import { formatCount } from '../core/multi-select';
 import { type ReadBack, readBackLine } from '../core/read-back';
 import { STRINGS, stringFor } from '../core/strings';
 import {
@@ -213,7 +215,7 @@ export interface ProposalConfirmRequest {
             @for (row of unchangedRows; track row.field) {
               <p class="ocu-diff-row ocu-diff-row-unchanged">
                 <span class="ocu-diff-field">{{ row.field }}</span>
-                <span class="ocu-diff-value">{{ shown(row.value, row.emptyKey) }}</span>
+                <span class="ocu-diff-value">{{ unchangedValue(row) }}</span>
                 <span class="ocu-diff-direction">{{ STRINGS.proposalDiffUnchanged }}</span>
               </p>
             }
@@ -649,6 +651,12 @@ export class ProposalCard {
     return declared !== '' ? declared : STRINGS.tableEmptyValue;
   }
 
+  /** An unchanged row's value: a classified-opaque one reads its member count, any other as `shown` does. */
+  protected unchangedValue(row: ProposalUnchangedRow): string {
+    if (row.count === undefined) return this.shown(row.value, row.emptyKey);
+    return formatCount(pickCount(row.count, STRINGS.proposalOpaqueCountOne, STRINGS.proposalOpaqueCount), row.count);
+  }
+
   /**
    * Whether the card carries an unchanged-fields line at all: exactly when the proposal reports
    * unchanged fields.
@@ -680,9 +688,10 @@ export class ProposalCard {
   }
 
   protected get unchangedCaption(): string {
+    const count = this.view().unchangedCount;
     return formatUnchangedCaption(
-      STRINGS.proposalUnchangedFieldsDisclosure,
-      this.view().unchangedCount
+      pickCount(count, STRINGS.proposalUnchangedFieldsDisclosureOne, STRINGS.proposalUnchangedFieldsDisclosure),
+      count
     );
   }
 
@@ -788,7 +797,7 @@ export class ProposalCard {
     }
     const count = this.changedRows.length;
     if (count === 0) return name;
-    const template = count === 1 ? STRINGS.proposalSummaryField : STRINGS.proposalSummaryFields;
+    const template = pickCount(count, STRINGS.proposalSummaryField, STRINGS.proposalSummaryFields);
     return template.split('<n>').join(String(count)).split('<name>').join(name);
   }
 
@@ -842,7 +851,10 @@ export class ProposalCard {
 
   /** The published residue sentence with its count resolved from the rows the card lists. */
   protected get residueCaption(): string {
-    return formatRemovalResidue(STRINGS.proposalResidue, this.removedCount);
+    return formatRemovalResidue(
+      pickCount(this.removedCount, STRINGS.proposalResidueOne, STRINGS.proposalResidue),
+      this.removedCount
+    );
   }
 
   /**

@@ -288,6 +288,10 @@ describe('the Definition form', () => {
     // Mutation (Rule 19): drop the input's `(input)` binding -> the PUT carries 30 and the caption
     // keeps 30, and this goes red.
     const retention = host.querySelector('#ocu-definition-retentionDays') as HTMLInputElement;
+    retention.value = '1';
+    retention.dispatchEvent(new Event('input'));
+    await settle(fixture);
+    expect(host.querySelector('#ocu-definition-retentionDays-caption')?.textContent?.trim()).toBe('Transcripts are kept for 1 day.');
     retention.value = '7';
     retention.dispatchEvent(new Event('input'));
     await settle(fixture);

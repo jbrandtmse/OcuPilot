@@ -249,7 +249,7 @@ test("AC5, AC6: the card shows removals with no after-state and says what it lea
     assert.equal(card.unchanged, false, 'and nothing is sent, so nothing is disclosed as unchanged');
     assert.equal(
       card.residue,
-      STRINGS.proposalResidue.split('<n>').join(String(seeded)),
+      seeded === 1 ? STRINGS.proposalResidueOne : STRINGS.proposalResidue.split('<n>').join(String(seeded)),
       'the residue sentence names how many rows the card lists'
     );
 

@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
 
+import { pickCount } from '../../core/count-phrase';
 import { STRINGS } from '../../core/strings';
 import { type TestAnswer, testStatusLine } from '../../core/test-answer';
 import type { Violation } from '../../core/violations';
@@ -269,7 +270,7 @@ export class InteropItemTestDialog {
       const caption = row.secret
         ? STRINGS.interopTestRefusalSecret
         : row.maxLength !== null && !document
-          ? fill(STRINGS.interopTestMaxLength, 'n', String(row.maxLength))
+          ? fill(pickCount(row.maxLength, STRINGS.interopTestMaxLengthOne, STRINGS.interopTestMaxLength), 'n', String(row.maxLength))
           : '';
       const ids = [caption !== '' ? `${id}-caption` : '', violation !== '' ? `${id}-reason` : ''].filter((entry) => entry !== '');
       views.push({

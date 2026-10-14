@@ -46,6 +46,7 @@ import {
   setTag as sharedSetTag,
   requireFreeSlot as sharedRequireFreeSlot,
 } from './turnprobe-spec.mjs';
+import { FILTER_SELECTOR, ROW_SELECTOR, waitForRows } from './list-spec.mjs';
 import { resetRememberedState } from './preferences-reset.mjs';
 
 const config = browserConfig();
@@ -56,6 +57,7 @@ const USERS_URL = '/ocupilot/permissions/users?ns=HSCUSTOM';
 const FORM_URL = '/ocupilot/agent/definitions/edit?ns=HSCUSTOM';
 const CONTEXT_PATH = '/api/ocupilot/agent/context';
 const SWITCHES_PATH = '/api/ocupilot/agent/switches';
+const USERS_READ_PATH = '/api/ocupilot/screens/permissions.users/read';
 
 let browser = null;
 let preparedId = '';
@@ -192,6 +194,25 @@ async function putContextRowCap(cap) {
   assert.ok(answer.ok, `PUT /agent/switches {contextRowCap:${cap}} (HTTP ${answer.status})`);
 }
 
+/**
+ * A user name that exactly one row of the Users read contains, taken from that read's own rows.
+ * Every row is searched whole, so a name that another row carries in any field is passed over.
+ */
+async function nameOnlyOneRowContains() {
+  const answer = await fetch(`${config.origin}${USERS_READ_PATH}?maxRows=1000&ns=HSCUSTOM`, {
+    headers: { Authorization: authHeader() },
+  });
+  assert.equal(answer.status, 200, `the Users read answers (HTTP ${answer.status})`);
+  const { rows } = await answer.json();
+  assert.ok(rows.length > 1, `the Users read holds rows to narrow: ${rows.length}`);
+  const texts = rows.map((row) => JSON.stringify(Object.values(row)).toLowerCase());
+  for (const row of rows) {
+    const name = String(row.Name ?? '');
+    if (name !== '' && texts.filter((text) => text.includes(name.toLowerCase())).length === 1) return name;
+  }
+  assert.fail('no user name is contained by exactly one row of the Users read');
+}
+
 /** Click a rail item, then the named side-bar entry it reveals -- both agent's and permissions'
  * areas declare `"navigates": false`, so neither auto-selects a screen on the rail click alone
  * (the same two-step pattern `context-chip.browser-spec.mjs`'s "Fresh at Send" test already
@@ -315,15 +336,48 @@ function chipState(page) {
 test('List screen, remote provider: the chip carries the row count, provider and host, with the egress pill and its tooltip', async () => {
   const { context, page } = await signedInAt(USERS_URL);
   try {
-    await page.waitForFunction(() => (document.querySelector('.ocu-context-chip-text')?.textContent ?? '').includes('rows'), {
+    await page.waitForFunction(() => /\d+ rows?\b/.test(document.querySelector('.ocu-context-chip-text')?.textContent ?? ''), {
       timeout: config.navigationTimeoutMs,
     });
     const state = await chipState(page);
-    assert.match(state.text, /^Users, HSCUSTOM \u00b7 \d+ rows \u00b7 turnprobe \u00b7 192\.0\.2\.10/);
+    assert.match(state.text, /^Users, HSCUSTOM \u00b7 \d+ rows? \u00b7 turnprobe \u00b7 192\.0\.2\.10/);
     assert.equal(state.pill, STRINGS.contextChipLeavesInstance);
     assert.equal(state.pillTitle, STRINGS.contextChipSentToHost.split('<host>').join('192.0.2.10'));
     assert.equal(state.glyph, false);
     assert.equal(state.switchChecked, true);
+  } finally {
+    await context.close();
+  }
+});
+
+test('Integration AC: a filter that narrows the Users list to one row reads "1 row" in the footer, the command bar and the chip', async () => {
+  const name = await nameOnlyOneRowContains();
+  const { context, page } = await signedInAt(USERS_URL);
+  try {
+    await waitForRows(page, config.navigationTimeoutMs);
+    await page.type(FILTER_SELECTOR, name);
+    await namedWaitForFunction(
+      page,
+      (typed, selector, one) => {
+        const field = document.querySelector(selector);
+        const footer = document.querySelector('.ocu-data-table-count')?.textContent?.trim() ?? '';
+        const chip = document.querySelector('.ocu-context-chip-text')?.textContent ?? '';
+        return field?.value === typed && footer === one && chip.split(' \u00b7 ').includes(one);
+      },
+      [name, FILTER_SELECTOR, STRINGS.explorerSqlRowCountOne],
+      `the footer and the chip to read "${STRINGS.explorerSqlRowCountOne}" once ${JSON.stringify(name)} is typed`,
+      (p) =>
+        p.evaluate(() => ({
+          footer: document.querySelector('.ocu-data-table-count')?.textContent?.trim() ?? '(footer absent)',
+          chip: document.querySelector('.ocu-context-chip-text')?.textContent ?? '(chip absent)',
+        })).then((found) => JSON.stringify(found))
+    );
+    const shown = await page.evaluate((rowSelector) => ({
+      rows: document.querySelectorAll(rowSelector).length,
+      bar: document.querySelector('.ocu-command-bar-count')?.textContent?.trim() ?? '',
+    }), ROW_SELECTOR);
+    assert.equal(shown.rows, 1, 'one row is drawn');
+    assert.equal(shown.bar, STRINGS.explorerSqlRowCountOne, "and the command bar's polite count reads it too");
   } finally {
     await context.close();
   }
@@ -335,7 +389,7 @@ test('Secret-typed screen: the key glyph is present and no row segment appears',
     await page.waitForSelector('.ocu-context-chip', { timeout: config.navigationTimeoutMs });
     const state = await chipState(page);
     assert.equal(state.glyph, true);
-    assert.doesNotMatch(state.text, /rows/);
+    assert.doesNotMatch(state.text, /\d+ rows?\b/);
     const glyphName = await page.evaluate(
       () => document.querySelector('.ocu-context-chip-glyph + .ocu-visually-hidden')?.textContent ?? ''
     );
@@ -412,11 +466,11 @@ test('Integration AC: a sent turn carries the synthetic screen_context pair nami
   scriptReply(tag, 0, textReply('read the users'));
   const { context, page } = await signedInAt(USERS_URL);
   try {
-    await page.waitForFunction(() => (document.querySelector('.ocu-context-chip-text')?.textContent ?? '').includes('rows'), {
+    await page.waitForFunction(() => /\d+ rows?\b/.test(document.querySelector('.ocu-context-chip-text')?.textContent ?? ''), {
       timeout: config.navigationTimeoutMs,
     });
     const rowsShown = await page.evaluate(() => {
-      const match = /(\d+) rows/.exec(document.querySelector('.ocu-context-chip-text').textContent);
+      const match = /(\d+) rows?\b/.exec(document.querySelector('.ocu-context-chip-text').textContent);
       return match ? Number(match[1]) : null;
     });
     assert.ok(Number.isInteger(rowsShown), 'the chip showed a row count');
@@ -445,7 +499,7 @@ test('Fresh at Send: context is assembled at the moment of the click, not cached
   scriptReply(tag, 0, textReply('second'));
   const { context, page } = await signedInAt(USERS_URL);
   try {
-    await page.waitForFunction(() => (document.querySelector('.ocu-context-chip-text')?.textContent ?? '').includes('rows'), {
+    await page.waitForFunction(() => /\d+ rows?\b/.test(document.querySelector('.ocu-context-chip-text')?.textContent ?? ''), {
       timeout: config.navigationTimeoutMs,
     });
     await typeAndSend(page, 'first turn, on Users');
@@ -522,11 +576,11 @@ test('Cap follows agent-switch: raising the row cap through the Switches screen 
     await namedWaitForFunction(
       page,
       (low, high) => {
-        const match = /(\d+) rows/.exec(document.querySelector('.ocu-context-chip-text')?.textContent ?? '');
+        const match = /(\d+) rows?\b/.exec(document.querySelector('.ocu-context-chip-text')?.textContent ?? '');
         return match !== null && Number(match[1]) >= low && Number(match[1]) <= high;
       },
       [1, 1],
-      'the chip to read "1 rows" (the lowered cap, pre-raise)',
+      'the chip to read "1 row" (the lowered cap, pre-raise)',
       (p) => p.evaluate(() => document.querySelector('.ocu-context-chip-text')?.textContent ?? '(chip absent)')
     );
 
@@ -576,7 +630,7 @@ test('Cap follows agent-switch: raising the row cap through the Switches screen 
     await namedWaitForFunction(
       page,
       (low, high) => {
-        const match = /(\d+) rows/.exec(document.querySelector('.ocu-context-chip-text')?.textContent ?? '');
+        const match = /(\d+) rows?\b/.exec(document.querySelector('.ocu-context-chip-text')?.textContent ?? '');
         return match !== null && Number(match[1]) >= low && Number(match[1]) <= high;
       },
       [2, Number.MAX_SAFE_INTEGER],
@@ -584,7 +638,7 @@ test('Cap follows agent-switch: raising the row cap through the Switches screen 
       (p) => p.evaluate(() => document.querySelector('.ocu-context-chip-text')?.textContent ?? '(chip absent)')
     );
     const shownAfterRaise = await page.evaluate(() => {
-      const match = /(\d+) rows/.exec(document.querySelector('.ocu-context-chip-text').textContent);
+      const match = /(\d+) rows?\b/.exec(document.querySelector('.ocu-context-chip-text').textContent);
       return Number(match[1]);
     });
 

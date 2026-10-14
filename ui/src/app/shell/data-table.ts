@@ -24,6 +24,7 @@ import {
 } from '@angular/core';
 import { Router } from '@angular/router';
 
+import { capNoticePhrase, rowCountPhrase } from '../core/count-phrase';
 import { encodeEntityId } from '../core/entity-id';
 import { normalizeEntityId } from '../core/entity-ref';
 import { isBannerFault } from '../core/fault';
@@ -53,9 +54,7 @@ import {
   emptyStateView,
   fieldOf,
   formatClassicRowLinkDescription,
-  formatCapNotice,
   formatColumnWidth,
-  formatRowCount,
   isMoveKey,
   entityKeyOf,
   moveActive,
@@ -1077,7 +1076,7 @@ export class DataTable implements OnInit {
   }
 
   protected get rowCountText(): string {
-    return this.loaded ? formatRowCount(STRINGS.tableRowCount, this.view().length) : '';
+    return this.loaded ? rowCountPhrase(this.view().length) : '';
   }
 
   protected get maxRowsValue(): string {
@@ -1091,7 +1090,7 @@ export class DataTable implements OnInit {
   }
 
   protected get capNotice(): string {
-    return formatCapNotice(STRINGS.tableRowCapNotice, this.store().maxRows());
+    return capNoticePhrase(this.store().maxRows());
   }
 
   protected trackRow = (_index: number, row: RowModel): string => row.key;

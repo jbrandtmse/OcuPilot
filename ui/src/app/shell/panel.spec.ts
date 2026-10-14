@@ -1713,7 +1713,8 @@ describe('Story 4.11: the context chip, its toggle and the paste warning', () =>
     });
     screenStores.for(USERS_DESCRIPTOR, []).applyTick(userRows(['a', 'b', 'c', 'd', 'e', 'f']), false, '', new Date());
     fixture.detectChanges();
-    expect(chipText(host)).toContain('1 rows');
+    expect(chipText(host)).toContain('1 row');
+    expect(chipText(host)).not.toContain('1 rows');
 
     await typeDraft(host, fixture, 'who is the first user');
     (host.querySelector('.ocu-panel-send') as HTMLButtonElement).click();
@@ -1754,7 +1755,8 @@ describe('Story 4.11: the context chip, its toggle and the paste warning', () =>
     });
     screenStores.for(USERS_DESCRIPTOR, []).applyTick(userRows(['a', 'b', 'c', 'd', 'e', 'f']), false, '', new Date());
     fixture.detectChanges();
-    expect(chipText(host)).toContain('1 rows');
+    expect(chipText(host)).toContain('1 row');
+    expect(chipText(host)).not.toContain('1 rows');
 
     // Raises the cap the way an operator's Switches change does: the store's next answer differs,
     // and the same `agent-switch` re-read `agent-context.test.mjs`'s AD-14 test pins at the store

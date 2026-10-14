@@ -259,7 +259,8 @@ test('No read, no filter: Home draws its auto-refresh chip but no filter or coun
     assert.ok(total > 1, `the Users list has rows to narrow: ${total}`);
     const kept = await filterToSubset(page, { text: 'system', expectRow: '_SYSTEM', total, timeoutMs: config.navigationTimeoutMs });
     const count = await page.$eval('.ocu-command-bar-count', (region) => region.textContent.trim());
-    assert.equal(count, STRINGS.tableRowCount.replace('<n>', String(kept)), 'the count reads the narrowed number');
+    const narrowed = kept === 1 ? STRINGS.explorerSqlRowCountOne : STRINGS.tableRowCount.replace('<n>', String(kept));
+    assert.equal(count, narrowed, 'the count reads the narrowed number');
   } finally {
     await context.close();
   }

@@ -2,13 +2,21 @@
 title: 'Story 23.5: The range-end cleanup, part 5'
 type: 'bugfix'
 created: '2026-10-14'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '72e34617fd1e743c0d1bb34967d9ab9b4b2e6b7a'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
 warnings: ['multiple-goals', 'oversized']
-deferred: []
+deferred:
+  - summary: >-
+      Count strings outside Batch a's table still read the plural at 1, for example "Stopped after 1 seconds."
+    evidence: |-
+      `explorerSqlStopped` and `explorerSqlStoppedUndone` fill `<s>` from the server-recorded `seconds` (`core/sql-answer.ts:78,107`), so 1 is reachable. A heuristic pass over `strings.ts` (a `<n>`-style placeholder before a plural noun, no `One` sibling) also lists `agentDefinitionTestTimeout`, `agentDefinitionTestTimeoutLocal`, `processBroadcastHint`, `tableCheckAtMost`, `remoteDatabaseListHint`, `remoteDatabaseListConsequence` and `explorerSqlDataTabCap` (inference: reachability at 1 not checked). Fix is a census plus a singular per reachable string, which is a sweep rather than a patch.
+    location: >-
+      ui/src/app/core/strings.ts
+    severity: low
 ---
 
 <intent-contract>
@@ -171,7 +179,7 @@ deferred: []
 
 ### Batch a: count copy and the proposal card
 
-- [ ] **DW-1985, DW-2101: one count rule.**
+- [x] **DW-1985, DW-2101: one count rule.**
   - **The module.** New framework-free `ui/src/app/core/count-phrase.ts`:
     - `pickCount(count: number, one: string, many: string): string` returns `one` at exactly 1 and `many` otherwise.
     - `rowCountPhrase(count: number): string` is `formatRowCount(pickCount(count, STRINGS.explorerSqlRowCountOne, STRINGS.tableRowCount), count)`.
@@ -216,7 +224,7 @@ deferred: []
       - a scan of `ui/src/app/**/*.ts` (not specs) finds no expression choosing between two `STRINGS` values on `=== 1` or `!== 1` outside `count-phrase.ts`; `tasks/details.store.ts` is allow-listed.
     - In each consumer's component spec, a singular case for its string.
     - `data-table.spec.ts`: one row reads `.ocu-data-table-count` "1 row".
-- [ ] **DW-1436: a classified-opaque value reads its member count.** The owner decided on 2026-09-21 that opaque gets a rendering of its own.
+- [x] **DW-1436: a classified-opaque value reads its member count.** The owner decided on 2026-09-21 that opaque gets a rendering of its own.
   - **Server.** In `Disclosure.cls`, `OrdinaryPaths` also collects top-level paths whose entry reads `class` `opaque`. `Rows` then writes such an unchanged field as `value` `""` plus `count`: a number, the stored value's `%Size()`. A secret or unclassified field keeps `Mask()`.
   - **Client:**
     - `turn.ts` parses `count`.
@@ -227,7 +235,7 @@ deferred: []
     - `ProposalWire.cls:277` becomes `TestTheUserToolsDisclosureCountsBothRoleArrays`. `Roles` and `EscalationRoles` carry `count` equal to the minted payload's array sizes, read from the proposal and never written as a literal. Each value is not `Mask()`, and the JSON still holds no role name.
     - `proposal-card.spec.ts`: an unchanged row with `count` 2 reads "2 items", with `count` 1 reads "1 item", and neither shows bullets.
     - `users-write.browser-spec.mjs:290-322`: the `EscalationRoles` row reads its member count, taken from the stored user, in place of the mask.
-- [ ] **DW-2227.** In `proposal-confirm.browser-spec.mjs:209-218`, after the status-line wait, `waitForFunction` until `.ocu-proposal-card-confirm` is gone and Send's class has settled, then read focus. The assertions are unchanged.
+- [x] **DW-2227.** In `proposal-confirm.browser-spec.mjs:209-218`, after the status-line wait, `waitForFunction` until `.ocu-proposal-card-confirm` is gone and Send's class has settled, then read focus. The assertions are unchanged.
 
 **Acceptance criteria:**
 
@@ -325,6 +333,29 @@ deferred: []
 - 2026-10-14, lead, spec gate: DW-1951 closed `resolved-by` Story 18.46 (`0220d1e4`). The two Named-for-filing items are DW-2439 (routed to the burn-down, proposed for 23.11) and DW-2440 (`wontfix-theoretical`). The story block in `epics.md` names the three kept later routings (Rule 5 tier 1). The 23.11 proposal and the Contended edits go to the orchestrator before Batch a's implement pass.
 
 ## Review Triage Log
+
+### 2026-10-14 - Review pass (Batch a)
+
+- verdicts: 18 findings - high 0, medium 5, low 12, false 1, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` `turn-limit.browser-spec.mjs:199,208` still expects the plural at a limit of 1 - read the spec: AC3 runs `setLimit(1)`; switched both expectations to `agentTurnLimitBannerOne` and `agentTurnLimitLineOne`; spec green.
+  - `[medium]` `[patch]` `system-explorer-transfer.browser-spec.mjs:248` still expects "Imported 1 documents." - one class imported; switched to `explorerImportDoneOne`; spec green.
+  - `[medium]` `[patch]` `error-log-delete.browser-spec.mjs:252` still expects the plural residue sentence - `seeded` is 1 (a green run on the singular proves it); the expectation now follows `seeded`; spec green.
+  - `[medium]` `[patch]` `Disclosure.Rows` object arm and non-container fallback pinned by no test - added `ProposalWire.TestAnOpaqueObjectReadsItsMemberCountAndAScalarReadsTheMask` (an object counts 2, a string and `null` read the mask); dropping the `"object"` arm and dropping the type test each reddened it alone; 17 of 17 green after revert, tree byte-identical.
+  - `[low]` `[reject]` AC1's per-consumer singular cases have no recorded `mutation:` line - Rule 19 asks one demonstrated mutation per AC; AC1 has four recorded lines (rule, data table, scan, code list), and a line per assertion site would be per-assertion.
+  - `[low]` `[defer]` count strings outside Batch a's table read the plural at 1 ("Stopped after 1 seconds.") - `explorerSqlStopped` takes a server-recorded count; the census is a sweep, so it is in the frontmatter `deferred:` list (low).
+  - `[low]` `[reject]` `explorerCompileStoppedOne` is unreachable (a stop with one document always ends in the summary) - Batch a's table lists it; implemented as specified and pinned by the key-pairing check.
+  - `[low]` `[patch]` `ProposalWire.cls` doc says the users tool is the only classified entry with an `opaque` row - `ToolFields.cls` carries 26 `opaque` rows across other tools; the sentence is replaced.
+  - `[low]` `[reject]` the DW-2227 wait repeats the predicate of the later `settled` assertions - the spec prescribes the wait and leaves the assertions unchanged; a failure now shows as a wait timeout.
+  - `[low]` `[reject]` `users-write.browser-spec.mjs` pins "0 items" for `EscalationRoles` - the task reads the count from the stored user and `EnsureUser` creates the account with no escalation roles; non-zero counts are pinned by `ProposalWire` (1 and 2, and the object case), `proposal-card.spec.ts` and `proposal-view.test.mjs`.
+  - `[low]` `[patch]` `screen-grounding.browser-spec.mjs:153,177` match `/(\d+) rows/` - would miss a one-row chip; both now match `rows?\b`; spec green.
+  - `[low]` `[reject]` (intent-alignment) users update card: 1 and 2 appear only in synthetic places - same row as the `users-write` finding above.
+  - `[medium]` `[patch]` (intent-alignment) other opaque tools untested - same root cause as the `Disclosure.Rows` finding above; closed by the same test.
+  - `[low]` `[defer]` (intent-alignment) "any count" in AC1 is wider than Batch a's table - same root cause as the deferred census above.
+  - `[low]` `[reject]` (intent-alignment) a singular is pinned in jsdom or tools tests only, `explorerCompileStoppedOne` by existence, the panel turn-limit spec uses 3 - the spec asks for a singular case per consumer spec plus the named Integration ACs; `turn-limit.test.mjs` and the patched `turn-limit.browser-spec.mjs` pin a limit of 1.
+  - `[low]` `[reject]` (intent-alignment) `Api/Error.cls` `REASONTURNLIMITHOUR` still reads the plural - the client builds both turn-limit sentences from `detail`, and `turn-limit.test.mjs:176` pins the server sentence equal to the plural string.
+  - `[low]` `[reject]` (intent-alignment) red-before-fix order is not visible and DW-2227 has no recorded red - the spec's mutation line allows "no red reproduces"; the order is not checkable from a diff.
+  - `[false]` `[reject]` (intent-alignment) Batches b, c and d are not in the diff - they are scheduled passes, not a divergence of reading.
 
 ## Design Notes
 
@@ -484,13 +515,14 @@ Every test added or changed passes on a fresh environment, in either order.
 **Batch a (loop):**
 
 - Run Checks; Load; Class `ProposalWire`, then each class the `Mask()` sweep of `src/OcuPilot/Test` changes, one per call. Then Deploy, and run Spec for `context-chip`, `account-and-filter`, `users-write` and `proposal-confirm`.
-- `mutation:` `=== 1` becomes `<= 1` in `count-phrase.ts`. Expected red: the 0 case in `count-phrase.test.mjs`.
-- `mutation:` restore `formatRowCount(STRINGS.tableRowCount, …)` at `data-table.ts:1080`. Expected red: `data-table.spec.ts`'s one-row case and the context-chip leg.
-- `mutation:` inline `impact.ts`'s choice again. Expected red: the scan.
-- `mutation:` one consumer, the code list's export, skips the rule. Expected red: its spec's singular case.
-- `mutation:` `Rows` writes `Mask()` for opaque again. Expected red: `ProposalWire`'s count test and the `users-write` leg.
-- `mutation:` drop `count` in `turn.ts`. Expected red: `proposal-card.spec.ts`.
-- `mutation:` DW-2227: drop the wait, with CPU throttled 20× through CDP `Emulation.setCPUThrottlingRate`. Expected red: AC10. If no red reproduces, record that; the wait stands on its mechanism.
+- `mutation:` `=== 1` became `<= 1` in `pickCount` -> `count-phrase.test.mjs` red: the `pickCount` case and the `rowCountPhrase` 0 case.
+- `mutation:` `data-table.ts` filled `formatRowCount(STRINGS.tableRowCount, …)` again -> `data-table.spec.ts`'s one-row case red ("1 rows"), and `context-chip.browser-spec.mjs`'s one-row Integration AC red (footer "1 rows"; bundle rebuilt and redeployed).
+- `mutation:` `impact.ts` chose `part.count === 1 ? phrases.one : …` inline again -> `count-phrase.test.mjs`'s scan red.
+- `mutation:` the code list's two export summaries filled their plural strings alone -> `code-list.page.spec.ts` red: the browser-export case and the one-exported-document case.
+- `mutation:` `Disclosure.Rows` skipped its opaque branch (`ElseIf 0 && …`) and wrote `Mask()` -> `ProposalWire.TestTheUserToolsDisclosureCountsBothRoleArrays` red (1 of 16), and `users-write.browser-spec.mjs`'s AC1 red (the `EscalationRoles` row read the mask).
+- `mutation:` the `count` line dropped from `parseProposalUnchanged` in `turn.ts` -> `proposal-card.spec.ts`'s classified-opaque case red ("(none)"), and `proposal-view.test.mjs`'s parse case red.
+- `mutation:` `Disclosure.Rows` dropped the `"object"` arm of its type test, then the whole type test -> `ProposalWire.TestAnOpaqueObjectReadsItsMemberCountAndAScalarReadsTheMask` red in both (1 of 17).
+- `mutation:` DW-2227: the added wait dropped, with `Emulation.setCPUThrottlingRate` 20 set before Confirm -> no red in 3 runs of AC10; the wait stands on its mechanism.
 
 **Batch b (loop):**
 
@@ -524,5 +556,17 @@ Every test added or changed passes on a fresh environment, in either order.
 
 ## Auto Run Result
 
-Status: ready-for-dev
+**Pass: Batch a (count copy and the proposal card). Batches b, c and d are untouched and unchecked.**
+
+Status: done
 Blocking condition: none
+
+- **Change.** One count rule in `core/count-phrase.ts` (`pickCount`, `rowCountPhrase`, the cap-notice and Download CSV phrases); 26 singular keys beside their plurals; every consumer in the Code Map calls it. `Disclosure.cls` writes a classified-opaque top-level array or object as `value` `""` plus `count`; `turn.ts`, `proposal-view.ts` and `proposal-card.ts` read it as "<n> items". DW-2227's wait is in `proposal-confirm.browser-spec.mjs`.
+- **Files.**
+  - Source: `ui/src/app/core/` (count-phrase, strings, turn, proposal-view, guardrails, turn-limit, impact, form-tabs, sql-answer, data-browser-model, table-model), 22 consumers under `shell/` and `areas/`, `src/OcuPilot/Kernel/Proposal/Disclosure.cls`.
+  - Docs: EXPERIENCE.md (14 rows plus row 633) and DESIGN.md:1198, both line counts unchanged.
+  - Tests: `ui/tools/count-phrase.test.mjs` (new, with the source scan), 3 tools tests, 15 component specs, `ProposalWire.cls`, 7 browser specs.
+- **Review.** 18 findings: 0 high, 5 medium, 12 low, 1 false. Patched 6 entries (4 medium, 2 low): three stale browser-spec expectations (turn-limit, system-explorer-transfer, error-log-delete), one `screen-grounding` regex, a direct `Disclosure.Rows` test for the object arm and the scalar fallback (two mutations red), a stale `ProposalWire` doc sentence. Deferred 1 (low): count strings outside the table. Rejected 10, each with its reason in the Review Triage Log.
+- **Follow-up review: true.** Four medium entries were patched. Unverified risk: the implement pass's search for old-shape browser expectations missed three specs, which review found; a browser spec outside the loop set could still assert a plural at a count of 1, and only the lead's full browser run settles that.
+- **Verification.** `npm run test:tools` 2008 of 2008; `npm run test:components` 3151 of 3151; `check-objectscript` 0 problems; `lint-docs` exit 0; `LoadDir` 0 errors; `ProposalWire` 17 of 17 in `%UnitTest_Result`; browser specs green on the redeployed bundle: `context-chip`, `account-and-filter`, `users-write`, `proposal-confirm`, `turn-limit`, `system-explorer-transfer`, `error-log-delete`, `screen-grounding`. Seven mutations in Batch a's Verification plus the review-added one; the DW-2227 mutation stayed green in 3 runs, as the spec allows.
+- **Residual risk.** `explorerCompileStoppedOne` is not reachable from the UI (a stop with one document ends in the summary); it is pinned by the key-pairing check only.

@@ -12,6 +12,7 @@ import {
 import { Router } from '@angular/router';
 
 import { AgentStatus, DEFINITIONS_ROUTE } from '../../core/agent-status';
+import { pickCount } from '../../core/count-phrase';
 import { FormDirty } from '../../core/form-dirty';
 import { NavigationService, formatDeniedAction, withQuery } from '../../core/navigation';
 import { STRINGS } from '../../core/strings';
@@ -817,9 +818,10 @@ export class DefinitionFormPage {
 
   protected get retentionCaption(): string {
     this.generation();
-    return STRINGS.agentDefinitionRetentionCaption
+    const days = this.store.value('retentionDays');
+    return pickCount(Number(days), STRINGS.agentDefinitionRetentionCaptionOne, STRINGS.agentDefinitionRetentionCaption)
       .split(RETENTION_PLACEHOLDER)
-      .join(this.store.value('retentionDays'));
+      .join(days);
   }
 
   protected get nameValue(): string {

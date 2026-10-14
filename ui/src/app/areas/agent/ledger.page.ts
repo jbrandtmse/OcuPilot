@@ -1,10 +1,11 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, afterNextRender, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 
+import { capNoticePhrase, pickCount, rowCountPhrase } from '../../core/count-phrase';
 import { decodeEntityId, encodeEntityId } from '../../core/entity-id';
 import { formatDeniedAction, screenForDescriptor, screenForUrl, withQuery } from '../../core/navigation';
 import { STRINGS } from '../../core/strings';
-import { formatCapNotice, formatRowCount } from '../../core/table-model';
+import { formatRowCount } from '../../core/table-model';
 import { Dialog } from '../../shell/dialog';
 import {
   LedgerSearch,
@@ -425,25 +426,25 @@ export class LedgerPage {
 
   protected get rowCountText(): string {
     this.generation();
-    return formatRowCount(STRINGS.tableRowCount, this.search.view()?.rows.length ?? 0);
+    return rowCountPhrase(this.search.view()?.rows.length ?? 0);
   }
 
   protected get capNotice(): string {
     this.generation();
     const view = this.search.view();
-    return view !== null && view.truncated ? formatCapNotice(STRINGS.tableRowCapNotice, view.rows.length) : '';
+    return view !== null && view.truncated ? capNoticePhrase(view.rows.length) : '';
   }
 
   protected get withheldLine(): string {
     this.generation();
     const withheld = this.search.view()?.rowsWithheld ?? 0;
-    return withheld > 0 ? formatRowCount(STRINGS.agentLedgerWithheld, withheld) : '';
+    return withheld > 0 ? formatRowCount(pickCount(withheld, STRINGS.agentLedgerWithheldOne, STRINGS.agentLedgerWithheld), withheld) : '';
   }
 
   protected get droppedLine(): string {
     this.generation();
     const dropped = this.search.view()?.rowsDropped ?? 0;
-    return dropped > 0 ? formatRowCount(STRINGS.agentLedgerDropped, dropped) : '';
+    return dropped > 0 ? formatRowCount(pickCount(dropped, STRINGS.agentLedgerDroppedOne, STRINGS.agentLedgerDropped), dropped) : '';
   }
 
   /** Whether the id route is open: once the search has answered, with the row or the gone sentence. */

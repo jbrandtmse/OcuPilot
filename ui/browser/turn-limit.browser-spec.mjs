@@ -196,7 +196,7 @@ test('AC3: past the limit the instance refuses the Send, and the panel shows the
     }));
     assert.deepEqual(banner, {
       role: 'alert',
-      text: STRINGS.agentTurnLimitBanner.split('<n>').join('1').split('<hh:mm>').join(local),
+      text: STRINGS.agentTurnLimitBannerOne.split('<hh:mm>').join(local),
     });
     const line = await page.$$eval('.ocu-panel-turn', (turns) => {
       const last = turns[turns.length - 1];
@@ -205,7 +205,7 @@ test('AC3: past the limit the instance refuses the Send, and the panel shows the
         line: last?.querySelector('.ocu-panel-error-banner')?.textContent?.trim() ?? '',
       };
     });
-    assert.deepEqual(line, { message: 'second', line: STRINGS.agentTurnLimitLine.split('<n>').join('1') });
+    assert.deepEqual(line, { message: 'second', line: STRINGS.agentTurnLimitLineOne });
     assert.equal(await page.$('[data-slot="send-error"]'), null, 'and no send-error banner');
   } finally {
     await context.close();

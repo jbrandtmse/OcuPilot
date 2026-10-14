@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, input, signal } from '@angular/core';
 
+import { pickCount } from '../core/count-phrase';
 import { estimateLines } from '../core/long-blocks';
 import { formatDeniedScreen, screenForToolIdentifier } from '../core/navigation';
 import { STRINGS, stringFor } from '../core/strings';
@@ -197,7 +198,7 @@ export class ToolCallCard {
   protected get rowsLine(): string {
     const result = this.step().result;
     if (result === null) return '';
-    return STRINGS.toolCallReadResultLine
+    return pickCount(result.rowsReturned, STRINGS.toolCallReadResultLineOne, STRINGS.toolCallReadResultLine)
       .split('<n>')
       .join(String(result.rowsReturned))
       .split('<m>')

@@ -2,13 +2,13 @@ import { ChangeDetectionStrategy, Component, DestroyRef, inject, input, signal }
 import { Router } from '@angular/router';
 
 import { AgentContext } from '../core/agent-context';
+import { rowCountPhrase } from '../core/count-phrase';
 import { screenForUrl } from '../core/navigation';
 import { ScopeService, onScopeChange } from '../core/scope';
 import { CONTEXT_CHIP_OFF_ID } from '../core/explain-entry';
 import { contextRowsSent, contextViewDeclared } from '../core/screen-context';
 import { ScreenStores } from '../core/screen-store';
 import { STRINGS, stringFor } from '../core/strings';
-import { formatRowCount } from '../core/table-model';
 
 /** The sharing-off sentence's id, which describes a control that needs context sharing on. */
 export { CONTEXT_CHIP_OFF_ID };
@@ -159,7 +159,7 @@ export class ContextChip {
   protected get extraSegments(): readonly string[] {
     this.generation();
     const segments: string[] = [];
-    if (this.rowSegmentVisible) segments.push(formatRowCount(STRINGS.tableRowCount, this.rowCount));
+    if (this.rowSegmentVisible) segments.push(rowCountPhrase(this.rowCount));
     if (this.agentContext.provider() !== '') segments.push(this.agentContext.provider());
     if (this.agentContext.endpointHost() !== '') segments.push(this.agentContext.endpointHost());
     return segments;

@@ -179,6 +179,12 @@ export const STRINGS = {
   proposalDraftCaption: 'Nothing was changed. Fill in each value in angle brackets before you run this.',
   /** EXPERIENCE.md:276 */
   proposalUnchangedFieldsDisclosure: 'N unchanged fields',
+  /** EXPERIENCE.md:276 */
+  proposalUnchangedFieldsDisclosureOne: '1 unchanged field',
+  /** EXPERIENCE.md:276 */
+  proposalOpaqueCount: '<n> items',
+  /** EXPERIENCE.md:276 */
+  proposalOpaqueCountOne: '1 item',
   /** EXPERIENCE.md:604 */
   longBlockShowMore: 'Show more',
   /** EXPERIENCE.md:604 */
@@ -219,7 +225,12 @@ export const STRINGS = {
   agentTurnLimitBanner:
     'You have reached this instance\'s limit of <n> agent turns an hour. You can send again at <hh:mm>.',
   /** EXPERIENCE.md:281 */
+  agentTurnLimitBannerOne:
+    'You have reached this instance\'s limit of 1 agent turn an hour. You can send again at <hh:mm>.',
+  /** EXPERIENCE.md:281 */
   agentTurnLimitLine: 'This turn was not started: you have used your <n> turns for this hour.',
+  /** EXPERIENCE.md:281 */
+  agentTurnLimitLineOne: 'This turn was not started: you have used your 1 turn for this hour.',
   /** EXPERIENCE.md:500 */
   agentJumpToLatest: 'Jump to latest',
   // Story 4.5's four: from the tool-call-card Component Patterns row (:378) and the panel's
@@ -231,6 +242,8 @@ export const STRINGS = {
   agentNewConversationLockedReason: 'Stop the turn first',
   /** EXPERIENCE.md:352 */
   toolCallReadResultLine: '<n> rows returned \u00b7 <m> sent',
+  /** EXPERIENCE.md:352 */
+  toolCallReadResultLineOne: '1 row returned \u00b7 <m> sent',
   /** EXPERIENCE.md:282 */
   agentNavigationAnnouncement: 'I\'m opening <screen> for <entity> \u2014 use Back to return.',
   /** EXPERIENCE.md:282 */
@@ -333,6 +346,12 @@ export const STRINGS = {
   commandBoxNoMatch: 'No screen or action matches.',
   /** EXPERIENCE.md:307 */
   commandBoxResultCount: '<n> screens, <m> actions',
+  /** EXPERIENCE.md:307 */
+  commandBoxResultCountOneFirst: '1 screen, <m> actions',
+  /** EXPERIENCE.md:307 */
+  commandBoxResultCountOneSecond: '<n> screens, 1 action',
+  /** EXPERIENCE.md:307 */
+  commandBoxResultCountOneBoth: '1 screen, 1 action',
   /** EXPERIENCE.md:308 */
   commandBoxGroupScreens: 'Screens',
   /** EXPERIENCE.md:308 */
@@ -369,6 +388,8 @@ export const STRINGS = {
   agentShareContextLabel: 'Share screen context',
   /** EXPERIENCE.md:313 */
   tableRowCapNotice: 'Showing the first <n> rows. Narrow the filter or raise the max rows.',
+  /** EXPERIENCE.md:313 */
+  tableRowCapNoticeOne: 'Showing the first row. Narrow the filter or raise the max rows.',
   /** EXPERIENCE.md:314 */
   tableRowCount: '<n> rows',
   /** EXPERIENCE.md:314 */
@@ -670,6 +691,8 @@ export const STRINGS = {
   agentDefinitionHideKey: 'Hide key',
   /** EXPERIENCE.md:336 */
   agentDefinitionRetentionCaption: 'Transcripts are kept for <n> days.',
+  /** EXPERIENCE.md:336 */
+  agentDefinitionRetentionCaptionOne: 'Transcripts are kept for 1 day.',
   // Story 14.4: the Transcripts list, its columns, empty state and prompts, and the transcript
   // page's screen-context disclosure and its withheld sentence's action slot.
   /** EXPERIENCE.md:336 */
@@ -1587,6 +1610,9 @@ export const STRINGS = {
   /** EXPERIENCE.md:260 */
   proposalResidue:
     'Removes exactly the <n> errors listed here. Any logged since the proposal will remain.',
+  /** EXPERIENCE.md:260 */
+  proposalResidueOne:
+    'Removes exactly the error listed here. Any logged since the proposal will remain.',
 
   // Story 8.1's twelve. The Web applications list becomes write-capable, so its empty state
   // invites the agent instead of naming a next step, and the create form beside it publishes the
@@ -3021,6 +3047,8 @@ export const STRINGS = {
   /** EXPERIENCE.md:519 */
   oauthResourceServerMappingsRefused: 'Saved. <count> service mappings were not changed: <reason>',
   /** EXPERIENCE.md:519 */
+  oauthResourceServerMappingsRefusedOne: 'Saved. 1 service mapping was not changed: <reason>',
+  /** EXPERIENCE.md:519 */
   oauthResourceServerDeleteConsequence: 'This also deletes the resource server\'s service mappings.',
   /** EXPERIENCE.md:519 */
   oauthResourceServersEmptyAgent: 'create an OAuth 2.0 resource server',
@@ -3174,6 +3202,8 @@ export const STRINGS = {
   tryItCut: 'The response was cut at 256 KB.',
   /** EXPERIENCE.md:574 */
   tryItBinary: '<n> bytes, not shown as text.',
+  /** EXPERIENCE.md:574 */
+  tryItBinaryOne: '1 byte, not shown as text.',
   /** EXPERIENCE.md:575 */
   readBackMatches: 'Read back: matches',
   /** EXPERIENCE.md:575 */
@@ -3392,9 +3422,13 @@ export const STRINGS = {
   /** EXPERIENCE.md:583 */
   agentGuardrailsContextLimits: 'Each turn carries at most <rows> rows of the screen you are on, <total> characters in all and <field> characters a field.',
   /** EXPERIENCE.md:583 */
+  agentGuardrailsContextLimitsOne: 'Each turn carries at most 1 row of the screen you are on, <total> characters in all and <field> characters a field.',
+  /** EXPERIENCE.md:583 */
   agentGuardrailsLimitsHeading: 'Limits',
   /** EXPERIENCE.md:583 */
   agentGuardrailsTurnsLimit: 'Each user may start at most <n> agent turns an hour.',
+  /** EXPERIENCE.md:583 */
+  agentGuardrailsTurnsLimitOne: 'Each user may start at most 1 agent turn an hour.',
   /** EXPERIENCE.md:583 */
   agentGuardrailsTurnsNone: 'Agent turns an hour are not limited.',
   /** EXPERIENCE.md:583 */
@@ -3409,6 +3443,8 @@ export const STRINGS = {
   tableDownloadCsv: 'Download CSV',
   /** EXPERIENCE.md:313 */
   tableDownloadCsvCapped: 'The file holds the first <n> rows only.',
+  /** EXPERIENCE.md:313 */
+  tableDownloadCsvCappedOne: 'The file holds the first row only.',
 
   // Story 16.8: the six secondary log viewers' side-bar entries and titles, and the log viewer's two
   // match controls (DW-1102).
@@ -3555,7 +3591,11 @@ export const STRINGS = {
   /** EXPERIENCE.md:336 */
   agentLedgerWithheld: '<n> rows withheld: each records a privilege you do not hold.',
   /** EXPERIENCE.md:336 */
+  agentLedgerWithheldOne: '1 row withheld: it records a privilege you do not hold.',
+  /** EXPERIENCE.md:336 */
   agentLedgerDropped: '<n> calls were counted and not stored.',
+  /** EXPERIENCE.md:336 */
+  agentLedgerDroppedOne: '1 call was counted and not stored.',
   /** EXPERIENCE.md:336 */
   agentLedgerDeniedAction: 'see another user\'s agent activity',
   /** EXPERIENCE.md:336 */
@@ -4566,7 +4606,11 @@ export const STRINGS = {
   /** EXPERIENCE.md:589 */
   explorerCompileSummary: 'Compiled <done> of <n> documents, <errors> with errors.',
   /** EXPERIENCE.md:589 */
+  explorerCompileSummaryOne: 'Compiled <done> of 1 document, <errors> with errors.',
+  /** EXPERIENCE.md:589 */
   explorerCompileStopped: 'Stopped after <done> of <n> documents.',
+  /** EXPERIENCE.md:589 */
+  explorerCompileStoppedOne: 'Stopped after <done> of 1 document.',
   /** EXPERIENCE.md:589 */
   explorerDocumentResult: '<name>: <reason>',
   /** EXPERIENCE.md:589 */
@@ -4574,7 +4618,11 @@ export const STRINGS = {
   /** EXPERIENCE.md:589 */
   explorerDeleteRunning: 'Deleting <n> documents',
   /** EXPERIENCE.md:589 */
+  explorerDeleteRunningOne: 'Deleting 1 document',
+  /** EXPERIENCE.md:589 */
   explorerDeleteSummary: 'Deleted <done> of <n> documents.',
+  /** EXPERIENCE.md:589 */
+  explorerDeleteSummaryOne: 'Deleted <done> of 1 document.',
   /** EXPERIENCE.md:589 */
   explorerDeleteConsequence: 'The document\'s source and compiled code are removed and cannot be restored from OcuPilot. A persistent class\'s stored data is kept.',
   /** EXPERIENCE.md:589 */
@@ -4620,13 +4668,21 @@ export const STRINGS = {
   /** EXPERIENCE.md:591 */
   explorerExportDone: 'Exported <n> documents to <path>.',
   /** EXPERIENCE.md:591 */
+  explorerExportDoneOne: 'Exported 1 document to <path>.',
+  /** EXPERIENCE.md:591 */
   explorerExportSaved: 'Saved <n> documents as <file>.',
+  /** EXPERIENCE.md:591 */
+  explorerExportSavedOne: 'Saved 1 document as <file>.',
   /** EXPERIENCE.md:591 */
   explorerImportRunning: 'Importing <file>',
   /** EXPERIENCE.md:591 */
   explorerImportDone: 'Imported <n> documents.',
   /** EXPERIENCE.md:591 */
+  explorerImportDoneOne: 'Imported 1 document.',
+  /** EXPERIENCE.md:591 */
   explorerImportDoneErrors: 'Imported <n> documents, with compile errors.',
+  /** EXPERIENCE.md:591 */
+  explorerImportDoneErrorsOne: 'Imported 1 document, with compile errors.',
   /** EXPERIENCE.md:591 */
   explorerExportDirectory: 'There is no such directory under that allowed directory.',
   /** EXPERIENCE.md:592 */
@@ -4773,6 +4829,12 @@ export const STRINGS = {
   explorerCompareIdentical: 'The two documents are identical.',
   /** EXPERIENCE.md:594 */
   explorerCompareSummary: '<n> lines removed \u00b7 <m> lines added',
+  /** EXPERIENCE.md:594 */
+  explorerCompareSummaryOneFirst: '1 line removed \u00b7 <m> lines added',
+  /** EXPERIENCE.md:594 */
+  explorerCompareSummaryOneSecond: '<n> lines removed \u00b7 1 line added',
+  /** EXPERIENCE.md:594 */
+  explorerCompareSummaryOneBoth: '1 line removed \u00b7 1 line added',
   /** EXPERIENCE.md:594 */
   explorerCompareUnchanged: '<n> unchanged lines',
   /** EXPERIENCE.md:594 */
@@ -7169,6 +7231,8 @@ export const STRINGS = {
   interopTestDocumentLabel: 'Message text',
   /** EXPERIENCE.md:604 */
   interopTestMaxLength: 'At most <n> characters.',
+  /** EXPERIENCE.md:604 */
+  interopTestMaxLengthOne: 'At most 1 character.',
   /** EXPERIENCE.md:604 */
   interopTestDone: 'The target answered in session <session> with <class>.',
   /** EXPERIENCE.md:604 */

@@ -11,6 +11,7 @@ import {
 } from '@angular/core';
 import { NavigationEnd, Router } from '@angular/router';
 
+import { pickCount } from '../../core/count-phrase';
 import { encodeEntityId } from '../../core/entity-id';
 import { FormDirty } from '../../core/form-dirty';
 import { tabErrorCounts, tabToOpen } from '../../core/form-tabs';
@@ -680,7 +681,10 @@ export class OAuthResourceServerFormPage {
     const refused = this.store.secretRefused();
     if (refused !== '') lines.push(STRINGS.oauthResourceServerSecretRefused.split('<reason>').join(refused));
     const mappings = this.store.mappingsRefused();
-    if (mappings.count > 0) lines.push(STRINGS.oauthResourceServerMappingsRefused.split('<count>').join(String(mappings.count)).split('<reason>').join(mappings.reason));
+    if (mappings.count > 0) {
+      const template = pickCount(mappings.count, STRINGS.oauthResourceServerMappingsRefusedOne, STRINGS.oauthResourceServerMappingsRefused);
+      lines.push(template.split('<count>').join(String(mappings.count)).split('<reason>').join(mappings.reason));
+    }
     return lines.length === 0 ? savedLine(this.store.readBack()) : withReadBack(lines.join(' '), this.store.readBack());
   }
 

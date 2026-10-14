@@ -249,6 +249,16 @@ describe('the resource server editor', () => {
     expect(host.querySelector('.ocu-form-bar-status')?.textContent?.trim()).toBe(`${secret} ${mappings}`);
   });
 
+  it('one mapping refused after the save reads the singular', async () => {
+    // Mutation (Rule 19): fill `STRINGS.oauthResourceServerMappingsRefused` alone in the page's `status` -> this goes red.
+    const save = { kind: 'ok', status: 200, body: { name: NAME, secretRefused: '', mappingsRefused: { count: 1, reason: 'The key was refused.' } } };
+    const { fixture, host } = await mount(EDIT_URL, { save: save as JsonResult<unknown> });
+    type(fixture, host, 'ocu-oauth-resource-server-Description', 'changed');
+    press(host, STRINGS.actionSave);
+    await settle(fixture);
+    expect(host.querySelector('.ocu-form-bar-status')?.textContent?.trim()).toBe('Saved. 1 service mapping was not changed: The key was refused.');
+  });
+
   it('a stored empty introspection method is drawn as Not set, not as the first method', async () => {
     const { host } = await mount(EDIT_URL, { definition: { ...DEFINITION, IntrospectionAuthMethod: '' } });
     const select = host.querySelector('#ocu-oauth-resource-server-IntrospectionAuthMethod') as HTMLSelectElement;

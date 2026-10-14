@@ -8,6 +8,7 @@
  * instance did not give. A part the caller could not read is said to be unchecked, never "no ...".
  */
 
+import { pickCount } from './count-phrase.ts';
 import { READ_BACK_NAMES_SHOWN } from './read-back.ts';
 import { STRINGS } from './strings.ts';
 
@@ -238,7 +239,7 @@ function phraseOf(part: ImpactPart, subject: string): string {
   const phrases = PHRASES[part.part];
   if (part.unchecked !== '') return phrases.unchecked === '' ? '' : `${phrases.unchecked}${whyUnchecked(part.unchecked)}`;
   if (part.count === 0) return phrases.none;
-  const template = part.count === 1 ? phrases.one : phrases.many.replace('<n>', String(part.count));
+  const template = pickCount(part.count, phrases.one, phrases.many.replace('<n>', String(part.count)));
   return template.replace('<names>', () => namesOf(part));
 }
 

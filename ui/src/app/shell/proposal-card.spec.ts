@@ -8,10 +8,11 @@ import {
   MASKED_VALUE,
   type ProposalPhase,
   formatRemovalResidue,
+  toCardView,
 } from '../core/proposal-view';
 import { STRINGS } from '../core/strings';
 import { testOutcomeLines, transformOutcomeLines } from '../core/test-answer';
-import { outputErrorsOf } from '../core/turn';
+import { PROPOSAL_LIVE_STATE, outputErrorsOf, parseProposals } from '../core/turn';
 import { EXAMPLE_PROPOSAL, type ProposalCardView } from './example-proposal';
 import { ProposalCard } from './proposal-card';
 
@@ -164,6 +165,52 @@ describe('the proposal card', () => {
     const line = card.querySelector('.ocu-proposal-card-unchanged') as HTMLElement;
     expect(line.textContent).toContain('44 unchanged fields');
     expect(line.querySelector('.ocu-proposal-card-chevron')?.getAttribute('aria-hidden')).toBe('true');
+  });
+
+  it('reads "1 unchanged field" at a count of one, and the plural at 2', () => {
+    // Mutation (Rule 19): fill `STRINGS.proposalUnchangedFieldsDisclosure` alone in `unchangedCaption` -> the first case goes red.
+    const captionOf = (count: number): string =>
+      (mount(liveView({ unchangedCount: count, unchanged: [] }), { phase: 'live' }).card.querySelector('.ocu-proposal-card-unchanged') as HTMLElement).textContent?.trim() ?? '';
+    expect(captionOf(1)).toContain('1 unchanged field');
+    expect(captionOf(1)).not.toContain('1 unchanged fields');
+    expect(captionOf(2)).toContain('2 unchanged fields');
+  });
+
+  it('reads a classified-opaque unchanged value as its member count, never the mask', () => {
+    // Mutations (Rule 19): render `shown(row.value, row.emptyKey)` for every row in `unchangedValue` -> the
+    // count rows read "(none)"; drop `count` from `parseProposalUnchanged` in `core/turn.ts` -> the same. Either
+    // way this goes red, because the view is parsed from the wire shape rather than written here.
+    const [parsed] = parseProposals([
+      {
+        proposalId: 'p9',
+        target: { type: 'user', scope: 'instance', id: 'Probe' },
+        expiresAt: '2026-09-19T10:00:00Z',
+        tool: 'permissions.users.update',
+        changed: [{ field: 'Enabled', before: 'false', after: 'true' }],
+        unchangedCount: 3,
+        unchanged: [
+          { field: 'Roles', value: '', count: 1 },
+          { field: 'EscalationRoles', value: '', count: 2 },
+          { field: 'Password', value: '\u2022'.repeat(8) },
+        ],
+        rationale: 'why',
+        expectedImpact: 'what',
+        reverse: 'how',
+        state: PROPOSAL_LIVE_STATE,
+        auditWarning: false,
+      },
+    ]);
+    const { fixture, card } = mount(toCardView(parsed, 'User'), { phase: 'live' });
+    (card.querySelector('.ocu-proposal-card-disclosure') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    const rows = Array.from(card.querySelectorAll('.ocu-proposal-card-unchanged-rows .ocu-diff-row-unchanged')) as HTMLElement[];
+    const valueOf = (field: string): string =>
+      rows.find((row) => row.querySelector('.ocu-diff-field')?.textContent?.trim() === field)?.querySelector('.ocu-diff-value')?.textContent?.trim() ?? '';
+    expect(valueOf('Roles')).toBe('1 item');
+    expect(valueOf('EscalationRoles')).toBe('2 items');
+    expect(valueOf('Roles')).not.toContain('\u2022');
+    expect(valueOf('EscalationRoles')).not.toContain('\u2022');
+    expect(valueOf('Password')).toBe('\u2022'.repeat(8));
   });
 
   it('carries no unchanged-fields line at all when the proposal reports none', () => {
@@ -388,6 +435,15 @@ describe('the proposal card', () => {
       formatRemovalResidue(STRINGS.proposalResidue, DELETE_PROPOSAL.changed.length)
     );
     expect(residue?.textContent).toContain(String(DELETE_PROPOSAL.changed.length));
+
+    // One listed row reads the singular, with both facts intact.
+    const { card: single } = mount(
+      { ...DELETE_PROPOSAL, changed: [DELETE_PROPOSAL.changed[0]], proposalId: 'p4', expiresAt: NOW_MS + 60_000 },
+      { phase: 'live' }
+    );
+    expect(single.querySelector('.ocu-proposal-card-residue')?.textContent?.trim()).toBe(
+      'Removes exactly the error listed here. Any logged since the proposal will remain.'
+    );
 
     // A card with no removal row says nothing about residue.
     const { card: ordinary } = mount(liveView(), { phase: 'live' });
