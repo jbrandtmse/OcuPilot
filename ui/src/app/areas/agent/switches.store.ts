@@ -17,6 +17,12 @@ export const SWITCHES_PATH = '/api/ocupilot/agent/switches';
 /** The per-user holds beneath them. */
 export const HOLDS_PATH = `${SWITCHES_PATH}/holds`;
 
+/** The provider connection beneath them: the proxy and the SSL/TLS configuration provider calls go through. */
+export const EGRESS_PATH = `${SWITCHES_PATH}/egress`;
+
+/** Which of the screen's two saves a refusal came from, so its privilege sentence names the right action. */
+export type RefusalAction = 'switches' | 'connection';
+
 /** One per-user hold, as the switches read projects it. */
 export interface HoldRow {
   readonly id: string;
@@ -86,6 +92,10 @@ function holdsOf(body: unknown): readonly HoldRow[] {
     }));
 }
 
+function emptyConnection(): SwitchBuffer {
+  return { proxyServer: '', proxyPort: '', sslConfiguration: '' };
+}
+
 function emptyBuffer(): SwitchBuffer {
   return {
     killSwitch: false,
@@ -141,6 +151,22 @@ export class SwitchesStore {
 
   private holdRows: readonly HoldRow[] = [];
 
+  /** The provider connection's edit buffer, and the row version it was read at (Story 18.40). */
+  private connection: SwitchBuffer = emptyConnection();
+
+  private connectionVersion: number | null = null;
+
+  private connectionLoadedValue = false;
+
+  private connectionSavedValue = false;
+
+  /** Whether the switches, and the connection, hold an edit the instance has not been told about. */
+  private switchesDirty = false;
+
+  private connectionDirty = false;
+
+  private refusalActionValue: RefusalAction = 'switches';
+
   private violationList: readonly Violation[] = [];
 
   private envelopeReason = '';
@@ -186,6 +212,27 @@ export class SwitchesStore {
 
   holds(): readonly HoldRow[] {
     return this.holdRows;
+  }
+
+  /** Whether the provider connection has been read. */
+  connectionLoaded(): boolean {
+    return this.connectionLoadedValue;
+  }
+
+  /** One provider connection field's text. */
+  connectionValue(field: string): string {
+    const held = this.connection[field];
+    return typeof held === 'string' ? held : '';
+  }
+
+  /** Whether the last connection save succeeded. */
+  connectionSaved(): boolean {
+    return this.connectionSavedValue;
+  }
+
+  /** Which save the last refusal came from. */
+  refusalAction(): RefusalAction {
+    return this.refusalActionValue;
   }
 
   /** The concurrent bound the instance answered, as text, or `''` before a read answered one. */
@@ -256,6 +303,12 @@ export class SwitchesStore {
     this.rowVersionValue = null;
     this.concurrentTurnsValue = '';
     this.holdRows = [];
+    this.connection = emptyConnection();
+    this.connectionVersion = null;
+    this.connectionLoadedValue = false;
+    this.connectionSavedValue = false;
+    this.switchesDirty = false;
+    this.connectionDirty = false;
     this.violationList = [];
     this.clearRefusal();
     this.savedValue = false;
@@ -276,6 +329,15 @@ export class SwitchesStore {
       return;
     }
     this.notify();
+    const connection = await this.api().requestJson<unknown>(EGRESS_PATH);
+    if (generation !== this.generation) return;
+    if (connection.kind === 'ok') {
+      this.absorbConnection(connection.body);
+    } else {
+      this.refusalActionValue = 'connection';
+      this.absorbRefusal(connection);
+    }
+    this.notify();
   }
 
   /** Type into one text field. */
@@ -284,7 +346,19 @@ export class SwitchesStore {
     this.buffer = { ...this.buffer, [field]: value };
     this.clearFieldViolation(field);
     this.savedValue = false;
-    this.formDirty.setDirty(true);
+    this.switchesDirty = true;
+    this.syncDirty();
+    this.notify();
+  }
+
+  /** Type into one provider connection field. */
+  setConnectionValue(field: string, value: string): void {
+    if (this.connection[field] === value) return;
+    this.connection = { ...this.connection, [field]: value };
+    this.clearFieldViolation(field);
+    this.connectionSavedValue = false;
+    this.connectionDirty = true;
+    this.syncDirty();
     this.notify();
   }
 
@@ -294,7 +368,8 @@ export class SwitchesStore {
     this.buffer = { ...this.buffer, [field]: value };
     this.clearFieldViolation(field);
     this.savedValue = false;
-    this.formDirty.setDirty(true);
+    this.switchesDirty = true;
+    this.syncDirty();
     this.notify();
   }
 
@@ -331,7 +406,41 @@ export class SwitchesStore {
       return false;
     }
     this.savedValue = true;
-    this.formDirty.setDirty(false);
+    this.switchesDirty = false;
+    this.syncDirty();
+    this.publishChange();
+    this.notify();
+    return true;
+  }
+
+  /**
+   * Save the provider connection -- the proxy and the SSL/TLS configuration name -- and render the instance's answer in
+   * place of what was sent (Story 18.40). It carries the row version this screen read, and publishes the same change the
+   * switches' save does.
+   */
+  async saveConnection(): Promise<boolean> {
+    if (this.savingValue) return false;
+    const generation = this.generation;
+    this.savingValue = true;
+    this.violationList = [];
+    this.clearRefusal();
+    this.refusalActionValue = 'connection';
+    this.savedValue = false;
+    this.connectionSavedValue = false;
+    this.notify();
+
+    const result = await this.send('PUT', EGRESS_PATH, this.connectionBody());
+    if (generation !== this.generation) return false;
+    this.savingValue = false;
+    if (result.kind !== 'ok') {
+      this.absorbRefusal(result);
+      this.notify();
+      return false;
+    }
+    this.absorbConnection(result.body);
+    this.connectionSavedValue = true;
+    this.connectionDirty = false;
+    this.syncDirty();
     this.publishChange();
     this.notify();
     return true;
@@ -498,6 +607,40 @@ export class SwitchesStore {
     this.envelopeReason = '';
     this.refusalCodeValue = '';
     this.refusalPairValue = '';
+    this.refusalActionValue = 'switches';
+  }
+
+  /** The one form-dirty flag stands for both sections: set while either holds an unsaved edit. */
+  private syncDirty(): void {
+    this.formDirty.setDirty(this.switchesDirty || this.connectionDirty);
+  }
+
+  /**
+   * The provider connection, typed as the wire expects, with the row version this screen read when it has one. The port
+   * is a JSON number only when it parses as one, so the instance's own rule refuses anything else on its field.
+   */
+  private connectionBody(): Record<string, unknown> {
+    const raw = this.connectionValue('proxyPort');
+    const parsed = Number(raw);
+    const body: Record<string, unknown> = {
+      proxyServer: this.connectionValue('proxyServer'),
+      proxyPort: raw !== '' && Number.isFinite(parsed) ? parsed : raw,
+      sslConfiguration: this.connectionValue('sslConfiguration'),
+    };
+    if (this.connectionVersion !== null) body['rowVersion'] = this.connectionVersion;
+    return body;
+  }
+
+  /** Fill the connection buffer from a response body; no proxy shows an empty port rather than 0. */
+  private absorbConnection(body: unknown): void {
+    const port = numberOrNullAt(body, 'proxyPort');
+    this.connection = {
+      proxyServer: textAt(body, 'proxyServer'),
+      proxyPort: port === null || port === 0 ? '' : String(port),
+      sslConfiguration: textAt(body, 'sslConfiguration'),
+    };
+    this.connectionVersion = numberOrNullAt(body, 'rowVersion');
+    this.connectionLoadedValue = true;
   }
 
   /** Fill the buffer and the holds from a response body. */

@@ -1,7 +1,8 @@
-/// <p><b>AC6, the credential-never-leaks proof.</b> A canary credential is driven through ten
+/// <p><b>AC6, the credential-never-leaks proof.</b> A canary credential is driven through eleven
 /// forced provider failures -- eight on the environment rung, one on the credentials rung, out of
-/// a real credential entry resolved by the shipped ladder, and one as a key a Test connection body
-/// carries. Four of the eight drive the canonical family; the other four are a refusal and a
+/// a real credential entry resolved by the shipped ladder, one on the wallet rung, out of a real
+/// wallet secret, and one as a key a Test connection body carries. Four of the eight drive the
+/// canonical family; the other four are a refusal and a
 /// mid-flight raise on each of the two families whose adapters write their own authentication
 /// header -- and the two logs OcuPilot itself
 /// renders, the console log and the application error log, are read afterwards and asserted to carry
@@ -38,6 +39,9 @@ Parameter CANARYMARK = "ocupilotleakcanary";
 
 /// <p>The credential entry leg five puts the canary into, and removes again.</p>
 Parameter CREDSNAME = "OcuPilotProbeCanaryCredential";
+
+/// <p>The class that creates and removes the wallet objects leg nine puts the canary into.</p>
+Parameter WALLETPROBE = "OcuPilot.Test.WalletRungProbe";
 
 /// <p>The port the failures are driven through.</p>
 Parameter PORT = "OcuPilot.Test.ProviderPortProbe";
@@ -90,6 +94,8 @@ Method OnAfterOneTest() As %Status
     Do $ClassMethod(..#PORT, "Reset")
     Do ##class(OcuPilot.Test.ProviderStub).ResetErrorLog()
     Do ##class(OcuPilot.Test.CredentialFixture).Remove(..#CREDSNAME)
+    Do $ClassMethod(..#WALLETPROBE, "RemoveAll", .tWalletRemaining)
+    Do $$$AssertEquals(tWalletRemaining, 0, "no wallet object this class created survives it")
     Do $$$AssertEquals(##class(OcuPilot.Test.CredentialFixture).Exists(..#CREDSNAME), 0, "no credential entry this class created survives it")
     ; Leg five puts the canary into a real entry, so its removal has to be asserted where the
     ; vendor actually keeps the value as well: the row's delete trigger clears
@@ -108,14 +114,16 @@ Method OnAfterOneTest() As %Status
 /// <p><var>pUseRowEndpoint</var> leaves the endpoint empty, so the call goes to the provider row's
 /// own canonical endpoint as a create would resolve it
 /// (<method>OcuPilot.Port.ProviderPort.EndpointOf</method>).</p>
-ClassMethod Definition(Output pValues, pProvider As %String = "", pCredentialName As %String = "", pUseRowEndpoint As %Boolean = 0)
+/// <p><var>pCredType</var>, when it is given, is the rung the reference names instead of the one
+/// <var>pCredentialName</var> implies -- <code>wallet</code>, whose reference is a wallet secret's name.</p>
+ClassMethod Definition(Output pValues, pProvider As %String = "", pCredentialName As %String = "", pUseRowEndpoint As %Boolean = 0, pCredType As %String = "")
 {
     Kill pValues
     Set pValues("provider") = $Select(pProvider = "": ##class(OcuPilot.Test.CatalogProbe).#CANARYKEY, 1: pProvider)
     Set pValues("model") = "probe-canary-model-1"
     Set pValues("endpointUrl") = $Select(pUseRowEndpoint: "", 1: "https://api.anthropic.com/v1/messages")
     Set pValues("markedLocal") = 0
-    Set pValues("credType") = $Select(pCredentialName = "": "env", 1: "creds")
+    Set pValues("credType") = $Select(pCredType '= "": pCredType, pCredentialName = "": "env", 1: "creds")
     Set pValues("envVarName") = $Select(pCredentialName = "": "OCUPILOT_PROBE_CANARY_KEY", 1: "")
     Set pValues("credentialName") = pCredentialName
     Set pValues("maxTokens") = 4000
@@ -124,10 +132,10 @@ ClassMethod Definition(Output pValues, pProvider As %String = "", pCredentialNam
 
 /// <p>Drive one turn through the port and assert that everything it handed back is canary-free.
 /// <var>pKeyBody</var>, when it is an object, is a request body whose <code>apiKey</code> the call
-/// carries instead of any resolved key.</p>
-Method DriveAndAssert(pWhat As %String, pProvider As %String = "", pCredentialName As %String = "", pKeyBody As %DynamicObject = "", pUseRowEndpoint As %Boolean = 0)
+/// carries instead of any resolved key. <var>pCredType</var> is <method>Definition</method>'s.</p>
+Method DriveAndAssert(pWhat As %String, pProvider As %String = "", pCredentialName As %String = "", pKeyBody As %DynamicObject = "", pUseRowEndpoint As %Boolean = 0, pCredType As %String = "")
 {
-    Do ..Definition(.tValues, pProvider, pCredentialName, pUseRowEndpoint)
+    Do ..Definition(.tValues, pProvider, pCredentialName, pUseRowEndpoint, pCredType)
     If $IsObject(pKeyBody) {
         Set tValues("keySource") = ##class(OcuPilot.Kernel.Provider.Base).#KEYSOURCEBODY
         Set tValues("keyBody") = pKeyBody
@@ -207,6 +215,10 @@ Method TestNoCredentialMaterialReachesTheLogsOrTheEnvelope()
     ; only the rung Story 3.2 shipped, while the rung this story added -- whose read crosses a
     ; vendor frame -- would be claimed rather than measured.
     Do ..DriveTheCredentialsRung()
+
+    ; Leg nine: the same canary on the WALLET rung, resolved by the shipped ladder out of a real
+    ; wallet secret.
+    Do ..DriveTheWalletRung()
 
     ; Leg six: the canary as a key a Test connection body carries, with nothing resolvable behind the
     ; definition's own reference, so the only copy in play is the body's.
@@ -312,6 +324,31 @@ Method DriveTheCredentialsRung()
     Do $ClassMethod(..#PORT, "SetSecretClass", "OcuPilot.Test.SecretProbe")
     Do ##class(OcuPilot.Test.CredentialFixture).Remove(..#CREDSNAME)
     Do $$$AssertEquals(##class(OcuPilot.Test.CredentialFixture).Exists(..#CREDSNAME), 0, "and the entry is removed again")
+}
+
+/// <p>Leg nine: put the canary into a real key-value wallet secret, drive a provider refusal through the
+/// <b>shipped</b> ladder's <code>wallet</code> rung, and remove every wallet object again.</p>
+/// <p>The port's credential seam is set to <code>""</code> for the duration, as leg five does, so the resolution
+/// measured here is production's, vendor frames and all. The canary reaches the secret as a parameter and an argument
+/// object member, never a local of this method.</p>
+/// <p>Mutation: bind the resolved key to a local in <method>OcuPilot.Kernel.Provider.Base.Invoke</method> on the
+/// <code>wallet</code> path alone (<code>If $Get(pValues("credType")) = "wallet" Set tLeaked = ..ApiKey</code>) -- the
+/// variable-table assertion goes red on this leg's forced entries and on no other. A local inside
+/// <method>OcuPilot.Kernel.Secret.Ladder.Wallet</method> is not a falsifier, for the reason leg five's note gives.</p>
+Method DriveTheWalletRung()
+{
+    Set tName = $Parameter(..#WALLETPROBE, "DEFAULTSECRET")
+    Do $$$AssertStatusOK($ClassMethod(..#WALLETPROBE, "EnsureResource"), "the probe wallet resource exists")
+    Do $$$AssertStatusOK($ClassMethod(..#WALLETPROBE, "EnsureCollection"), "and its collection")
+    Do $$$AssertStatusOK($ClassMethod(..#WALLETPROBE, "AddKeyValue", tName, {"Secret": (..#CANARY), "Usage": 15}), "the canary is put into a real wallet secret")
+    Do ##class(OcuPilot.Test.ProviderStub).Reset()
+    Do $ClassMethod(..#PORT, "SetSecretClass", "")
+    Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(401, "{""type"":""error"",""error"":{""type"":""authentication_error"",""message"":""invalid x-api-key""}}")
+    Do ..DriveAndAssert("a provider refusal on the wallet rung", "", tName, "", 0, "wallet")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Calls(), 1, "the wallet leg's call resolved the secret and reached the provider, so the canary was in play")
+    Do $ClassMethod(..#PORT, "SetSecretClass", "OcuPilot.Test.SecretProbe")
+    Do $$$AssertStatusOK($ClassMethod(..#WALLETPROBE, "RemoveAll", .tRemaining), "every probe wallet object is removed again")
+    Do $$$AssertEquals(tRemaining, 0, "and none survives")
 }
 
 /// <p>The console log's current end, as the offset and identity a later page is asked for. Answers

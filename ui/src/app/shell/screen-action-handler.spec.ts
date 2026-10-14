@@ -1723,7 +1723,7 @@ describe('the Doc DB applications list\u2019s Delete (Story 18.30)', () => {
 
 /**
  * Story 18.31: the privileged routine applications list's Delete types the application's name under its published
- * consequence and sends the row key; OcuPilot's own two applications are refused at the click with the rule's sentence,
+ * consequence and sends the row key; OcuPilot's own three applications are refused at the click with the rule's sentence,
  * in any case, and nothing is sent.
  */
 describe('the privileged routine applications list\u2019s Delete (Story 18.31)', () => {
@@ -1752,10 +1752,10 @@ describe('the privileged routine applications list\u2019s Delete (Story 18.31)',
     expect(JSON.parse(calls[0].body)).toEqual({ action: 'delete', id: target });
   });
 
-  it('refuses OcuPilot\u2019s own two applications at the click, in any case, with the rule\u2019s sentence and sends nothing', async () => {
+  it('refuses OcuPilot\u2019s own three applications at the click, in any case, with the rule\u2019s sentence and sends nothing', async () => {
     // Mutation (Rule 19): drop the `ocupilot-routine-application` branch from `selfProtectionReason` -> each leg opens
     // the typed-name dialog instead and goes red.
-    for (const own of ['OcuPilotState', 'OcuPilotIdentity', 'ocupilotstate', 'OCUPILOTIDENTITY']) {
+    for (const own of ['OcuPilotState', 'OcuPilotIdentity', 'OcuPilotSslRead', 'ocupilotstate', 'OCUPILOTIDENTITY']) {
       const { handler, store, calls } = mount(undefined, descriptor);
       handler.startFor(descriptor, 'delete', own, { Name: own, Enabled: true, Resource: '', Description: '' }, store);
       expect(handler.pending()).toBeNull();

@@ -1239,6 +1239,7 @@ ClassMethod ReasonForToolCode(pCode As %String) As %String
     If $Extract(pCode, 1, 12) = "PRIVROUTINE." Set tReason = ##class(OcuPilot.Api.RoutineAppError).ReasonFor(pCode)
     If $Extract(pCode, 1, 12) = "RESTSERVICE." Set tReason = ##class(OcuPilot.Api.RestServiceError).ReasonFor(pCode)
     If $Extract(pCode, 1, 10) = "ALLOWLIST." Set tReason = ##class(OcuPilot.Api.AllowListError).ReasonFor(pCode)
+    If $Extract(pCode, 1, 11) = "WALLETRUNG." Set tReason = ##class(OcuPilot.Api.WalletRungError).ReasonFor(pCode)
     If tReason '= "" Quit tReason
     Quit ..#REASONTOOLUNAVAILABLE
 }
@@ -1255,6 +1256,7 @@ ClassMethod ReasonForTurnError(pCode As %String) As %String
     Set tReason = ..ReasonForRestraint(pCode)
     If tReason '= "" Quit tReason
     If $Extract(pCode, 1, 9) = "PROVIDER." Quit ##class(OcuPilot.Kernel.Provider.Base).ReasonFor(pCode)
+    If $Extract(pCode, 1, 11) = "WALLETRUNG." Quit ##class(OcuPilot.Api.WalletRungError).ReasonFor(pCode)
     Quit ..#REASONTURNUNAVAILABLE
 }
 
@@ -1452,6 +1454,8 @@ ClassMethod ReasonForViolation(pCode As %String) As %String
     If $Extract(pCode, 1, 12) = "PRIVROUTINE." Quit ##class(OcuPilot.Api.RoutineAppError).ReasonFor(pCode)
     If $Extract(pCode, 1, 12) = "RESTSERVICE." Quit ##class(OcuPilot.Api.RestServiceError).ReasonFor(pCode)
     If $Extract(pCode, 1, 10) = "ALLOWLIST." Quit ##class(OcuPilot.Api.AllowListError).ReasonFor(pCode)
+    If $Extract(pCode, 1, 7) = "EGRESS." Quit ##class(OcuPilot.Api.EgressError).ReasonFor(pCode)
+    If $Extract(pCode, 1, 11) = "WALLETRUNG." Quit ##class(OcuPilot.Api.WalletRungError).ReasonFor(pCode)
     Quit ""
 }
 
@@ -1638,7 +1642,7 @@ Parameter REASONAGENTMAXTOKENSRANGE = "Maximum tokens is a whole number from 1 t
 Parameter REASONAGENTTEMPERATURERANGE = "Temperature is a number from 0 to 2.";
 
 /// <p>Refusal sentence for <parameter>AGENTCREDTYPEUNKNOWN</parameter>.</p>
-Parameter REASONAGENTCREDTYPEUNKNOWN = "Choose where the key is read from: an environment variable, or a credential entry.";
+Parameter REASONAGENTCREDTYPEUNKNOWN = "Choose where the key is read from: an environment variable, a credential entry, or a wallet secret.";
 
 /// <p>Refusal sentence for <parameter>AGENTCREDTYPEUNAVAILABLE</parameter>.</p>
 Parameter REASONAGENTCREDTYPEUNAVAILABLE = "The credential store is not available in this namespace. Read the key from an environment variable instead.";

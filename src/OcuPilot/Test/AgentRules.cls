@@ -225,7 +225,7 @@ Method TestAnUnsetTemperatureIsAccepted()
     }
 }
 
-/// <p>Rule 5 -- the credential type is one of the two declared rungs, or <code>none</code> on a
+/// <p>Rule 5 -- the credential type is one of the three declared rungs, or <code>none</code> on a
 /// provider whose catalog row allows local.</p>
 /// <p><b>The third type rides the row, not the type name</b>: the same <code>none</code> that a
 /// shipped vendor family refuses is accepted on the <code>compatible</code> row, which is what
@@ -236,8 +236,8 @@ Method TestAnUnsetTemperatureIsAccepted()
 Method TestAnUnknownCredentialTypeIsRefused()
 {
     Do ..SoundValues(..#PROBEPREFIX _ "Cred", .tValues)
-    Set tValues("credType") = "wallet"
-    Do ..AssertOneViolation(.tValues, "credType", ##class(OcuPilot.Api.Error).#AGENTCREDTYPEUNKNOWN, "a credential type outside the three declared")
+    Set tValues("credType") = "vault"
+    Do ..AssertOneViolation(.tValues, "credType", ##class(OcuPilot.Api.Error).#AGENTCREDTYPEUNKNOWN, "a credential type outside the declared ones")
 
     Do ..SoundValues(..#PROBEPREFIX _ "CredNone", .tVendor)
     Set tVendor("credType") = ##class(OcuPilot.Kernel.AgentRules).#CREDTYPENONE

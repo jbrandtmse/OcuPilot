@@ -7857,6 +7857,52 @@ So that the person's write Story 18.42 adds is reachable where the list is shown
 - **Then** the actions are shown off with the reason, and nothing is written.
 - DW-2334: The allow-list's write has its server half (Story 18.42's route, tool and port); the screen's add, change and remove dialog is the surface still missing (ledger; routed by adjudication 2026-10-13)
 
+### Story 18.47: Epic 18 burn-down, part 1
+
+As a developer-administrator,
+I want Epic 18's routed grant, provider, shell and monitor defects fixed,
+So that the stage closes with its own debt paid. [AMENDED 2026-10-14, Epic 18 burn-down gate, orchestrator ruling: grants, providers, the shell and the monitor; DW-2329 handles both backslash forms; DW-2327 audits the 48 two-argument %GetNext sites and fixes those reading caller-controlled JSON, or charters one sweep entry if more than about 10 need it]
+
+**Acceptance Criteria:**
+
+- **Given** each entry below
+- **When** the story is done
+- **Then** it is fixed with a pinning test, or closed on evidence in its ledger trailer.
+- DW-2311: The REST service delete's deployed check sees only a web application of the same namespace dispatching to <Name>.disp: a service reached through another dispatch class's  (ledger; chartered by the burn-down gate 2026-10-14)
+- DW-2322: Clearing a privileged routine application's Resource, or enabling it, while it grants a privileged role is not treated as a grant (ledger; chartered by the burn-down gate 2026-10-14)
+- DW-2320: The MatchRoles grant classifier compares target role names only, so moving a held privileged target to another MatchRole (to every caller via an empty one) is not a grant (ledger; chartered by the burn-down gate 2026-10-14)
+- DW-2333: webapp.list.update takes a web application's MatchRoles whole, and no read tool answers that list, so the agent cannot send it with one entry changed (ledger; chartered by the burn-down gate 2026-10-14)
+- DW-2400: CipherList and TLSMinVersion are settable on the provider's SSL/TLS configurations (OcuPilotProvider and an egress-named one), and neither OCUPILOTSSL nor PROVIDERSSL cov (ledger; chartered by the burn-down gate 2026-10-14)
+- DW-2167: AdminPort answers the vendor's 404 #822 Access Denied as PORT.NOTFOUND, so a refused read reads as an absent target (inference: no LDAP surface reaches it today, each gat (ledger; chartered by the burn-down gate 2026-10-14)
+- DW-2328: Rows of an id-none list share one key when its name column repeats: MetricsList's 942 rows hold 115 Metric values, so a click selects every row of a metric and the arrow  (ledger; chartered by the burn-down gate 2026-10-14)
+- DW-2329: MonitorPort.Samples would fail the whole metrics table on an instance whose label value ends in an unescaped backslash (a Windows dir); unverified (ledger; chartered by the burn-down gate 2026-10-14)
+- DW-2340: The Dashboard's drill-down links draw live for a screen the caller is refused (AD-44 classic-page resource or AD-64 adjustment), not gated with the reason as EXPERIENCE.m (ledger; chartered by the burn-down gate 2026-10-14)
+- DW-2007: A data server Save with SSL/TLS and no %ECPClient raises the instance alert state: AdminPort logs the vendor's #1454 at severity 2 before EcpPort maps it to ECP.DATASERVE (ledger; chartered by the burn-down gate 2026-10-14)
+- DW-2149: Five test probes (EcpProbe, EncryptionProbe, JournalProbe, LicenseProbe, RemoteDatabaseProbe) include $SYSTEM.Monitor.State() in their before/after Snapshot; an earlier c (ledger; chartered by the burn-down gate 2026-10-14)
+- DW-2327: Area Saves and Rules iterate request bodies with a two-argument %GetNext: a value past the longest string or largest number raises and answers 500, not the field refusal (ledger; chartered by the burn-down gate 2026-10-14)
+
+### Story 18.48: Epic 18 burn-down, part 2
+
+As a developer-administrator,
+I want Epic 18's routed encryption, journal, LDAP and agent-read defects fixed,
+So that the stage closes with its own debt paid. [AMENDED 2026-10-14, Epic 18 burn-down gate, orchestrator ruling: DW-2100 first (measure on the throwaway in Task 0, then decide AD-10's start arm); DW-1979 and DW-1981 as fix-pack items; DW-1896 the AD-27 named case through Modify in %SYS, then lift the LASTONE refusal]
+
+**Acceptance Criteria:**
+
+- **Given** each entry below
+- **When** the story is done
+- **Then** it is fixed with a pinning test, or closed on evidence in its ledger trailer.
+- DW-2100: AD-10's start arm refuses only Interactive over the three databases: an Unattended key file or KMIP server that cannot activate the key encrypting IRISAUDIT, IRISSECURITY (ledger; chartered by the burn-down gate 2026-10-14)
+- DW-2085: The database create omits the classic wizard's Encrypt database? (Encrypted and EncryptionKeyID on POST /database-dir, offered while a database key is active); Story 18.3 (ledger; chartered by the burn-down gate 2026-10-14)
+- DW-2086: An encryption key activation's card lists the key file's keys, but its confirm activates whatever the file holds then: FileKeys is neither fingerprinted nor compared at t (ledger; chartered by the burn-down gate 2026-10-14)
+- DW-2087: A first database key activation takes no destructive treatment, though Task 0 measured that its startup-mode change (DBEncStartMode Interactive) outlives every deactivati (ledger; chartered by the burn-down gate 2026-10-14)
+- DW-2126: An RSA key regenerated over a secret holding a certificate drops the certificate, and WALLETKEY.REPLACE.RSA and the card do not say so (ledger; chartered by the burn-down gate 2026-10-14)
+- DW-1966: Journal settings accept an existing database's directory, OcuPilot's own included, as a journal directory, where the vendor then writes its iris.lck (ledger; chartered by the burn-down gate 2026-10-14)
+- DW-1979: Journal records' Newest first reads the newest records but the table shows them oldest first (ledger; chartered by the burn-down gate 2026-10-14)
+- DW-1981: Journal records' offset and value inputs carry no maxlength, so an over-long entry is refused only by the server (ledger; chartered by the burn-down gate 2026-10-14)
+- DW-1896: The LDAP editor cannot remove a configuration's last retrieved attribute through the admin API (its Security.LDAP PUT ignores LDAPAttributes []); an AD-27 named case writ (ledger; chartered by the burn-down gate 2026-10-14)
+- DW-2335: Several Stage 2 editor forms show fields no read tool answers (superservers 14, local databases 10, user copy 12), so the agent cannot read what the person sees (ledger; chartered by the burn-down gate 2026-10-14)
+
 ## Epic 19: Stage 3 - System Explorer over the Atelier API
 
 A developer gets classes and routines with source view, compile, delete, export, import and ETag-checked editing; search, compare and macro lookup; the SQL catalog with its query console behind a DML and DDL guard; and a data grid harvested from iris-table-editor with inline editing, staged saves and CSV export.

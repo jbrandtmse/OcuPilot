@@ -616,6 +616,14 @@ export const STRINGS = {
   agentDefinitionFieldLocalModel: 'Local model',
   /** EXPERIENCE.md:335 */
   agentDefinitionCredTypeNone: 'No API key',
+  // Story 18.41: the wallet rung's checkbox, the field that replaces the API key field, and its caption.
+  /** EXPERIENCE.md:335 */
+  agentDefinitionCredTypeWallet: 'Read the key from a wallet secret',
+  /** EXPERIENCE.md:335 */
+  agentDefinitionFieldWalletSecret: 'Wallet secret',
+  /** EXPERIENCE.md:335 */
+  agentDefinitionWalletSecretCaption:
+    'The secret\'s full name, collection.secret, as the Secrets screen lists it. Set its value there; whoever runs a turn needs permission to use its collection.',
   /** EXPERIENCE.md:335 */
   agentDefinitionHttpAcknowledge:
     'This endpoint is not encrypted, so the key travels across the network in clear.',
@@ -716,6 +724,14 @@ export const STRINGS = {
   agentSwitchesHoldRemove: 'Switch the agent back on',
   /** EXPERIENCE.md:342 */
   agentSwitchesHoldsEmpty: 'No users are switched off.',
+  /** EXPERIENCE.md:342 */
+  agentSwitchesConnectionHeading: 'Provider connection',
+  /** EXPERIENCE.md:342 */
+  agentSwitchesProxyServer: 'Proxy server',
+  /** EXPERIENCE.md:342 */
+  agentSwitchesProxyPort: 'Proxy port',
+  /** EXPERIENCE.md:342 */
+  agentSwitchesSaveConnection: 'Save connection',
   /** EXPERIENCE.md:343 */
   agentSwitchesShareContext: 'Screen context is shared by default',
   /** EXPERIENCE.md:349 */
@@ -729,8 +745,29 @@ export const STRINGS = {
   /** EXPERIENCE.md:349 */
   agentSwitchesConcurrentTurnsReason:
     'Fixed at 1: the conversation lock and the panel\'s single transcript assume one turn at a time per user.',
+  /** EXPERIENCE.md:349 */
+  agentSwitchesProxyHint:
+    'Leave the proxy empty to call the provider directly. The port applies only while a proxy is named.',
+  /** EXPERIENCE.md:349 */
+  agentSwitchesSslConfigurationHint:
+    'Leave empty to use OcuPilot\'s own configuration. To trust your own certificate authority, make an SSL/TLS configuration that does and name it here.',
+  /** EXPERIENCE.md:349 */
+  egressRefusalProxyHost:
+    'The proxy is a host name or an IP address on its own, with no scheme, path, port, user name or space, in at most 253 characters.',
+  /** EXPERIENCE.md:349 */
+  egressRefusalProxyPort: 'The proxy\'s port is a whole number from 1 to 65535.',
+  /** EXPERIENCE.md:349 */
+  egressRefusalProxyAddress:
+    'That proxy resolves to a loopback or link-local address or to this instance, which provider calls will not go through.',
+  /** EXPERIENCE.md:349 */
+  egressRefusalSslAbsent: 'No SSL/TLS configuration of that name exists on this instance.',
+  /** EXPERIENCE.md:349 */
+  egressRefusalSslUnverified:
+    'Provider calls need an enabled client configuration that requires the server\'s certificate.',
   /** EXPERIENCE.md:344 */
   agentSwitchesRefusedAction: 'change the switches',
+  /** EXPERIENCE.md:344 */
+  agentSwitchesConnectionRefusedAction: 'change the provider connection',
   // Story 14.2: the Governance policy screen, its refusal action, the governance tool refusal, the
   // purge card's consequence and the screen's prompts. "None", "Read-only" and "Enabled" reuse
   // `sslVerifyPeerNone`, `agentDefinitionFieldReadOnly` and `tableColumnEnabled`.
@@ -2160,6 +2197,9 @@ export const STRINGS = {
   /** EXPERIENCE.md:485 */
   sslRefusalOcuPilot:
     'OcuPilot\'s installer sets this setting of its own provider configuration and restores it at every start, so it cannot be changed here.',
+  /** EXPERIENCE.md:485 */
+  sslRefusalProviderNamed:
+    'Provider calls are made through this SSL/TLS configuration, so while Switches names it, or while it is OcuPilot\'s own, it cannot be deleted, created, or have its type, peer verification, trusted certificates or enablement changed.',
   /** EXPERIENCE.md:486 */
   sslFileClassicOnly:
     'File locations are set on the classic portal\'s SSL/TLS Configuration page.',

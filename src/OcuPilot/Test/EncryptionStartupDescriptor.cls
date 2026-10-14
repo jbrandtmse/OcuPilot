@@ -128,14 +128,14 @@ Method TestTheBaselineKeyShipsDisabled()
 }
 
 /// <p>AD-10, AD-53: <code>PROHIBITED.STARTUPINTERACTIVE</code> answers its own parameter, which names no
-/// caller, and is one of the set's thirty-five codes.</p>
+/// caller, and is one of the set's thirty-six codes.</p>
 Method TestTheInteractiveRefusalIsItsParameterAndNamesNoCaller()
 {
     Set tProhibited = ..#PROHIBITED
     Set tReason = $ClassMethod(tProhibited, "ReasonFor", "PROHIBITED.STARTUPINTERACTIVE")
     Do $$$AssertEquals(tReason, $Parameter(tProhibited, "STARTUPINTERACTIVEREASON"), "the refusal answers its parameter")
     Do $$$AssertTrue(($ZConvert(tReason, "L") '[ "the agent"), "naming no caller")
-    Do $$$AssertEquals($ListLength($ClassMethod(tProhibited, "Codes")), 35, "thirty-five codes")
+    Do $$$AssertEquals($ListLength($ClassMethod(tProhibited, "Codes")), 36, "thirty-six codes")
     Do $$$AssertTrue($ListFind($ClassMethod(tProhibited, "Codes"), "PROHIBITED.STARTUPINTERACTIVE"), "and it is one of them")
     Do $$$AssertTrue($ListFind($ClassMethod(tProhibited, "CoveredTypes"), "encryption-startup"), "the startup settings are a covered type")
 }

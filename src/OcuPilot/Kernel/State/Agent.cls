@@ -65,8 +65,9 @@ Property MarkedLocal As %Boolean [ InitialExpression = 0 ];
 /// <property>RowVersion</property> and <property>CredentialCreated</property>).</p>
 Property HttpAcknowledged As %Boolean [ InitialExpression = 0 ];
 
-/// <p><code>env</code>, <code>creds</code> or <code>none</code> -- which rung of the credential
-/// ladder this definition's secret is read from, or that it has none. <code>none</code> is accepted
+/// <p><code>env</code>, <code>creds</code>, <code>wallet</code> or <code>none</code> -- which rung of the
+/// credential ladder this definition's secret is read from, or that it has none. <code>wallet</code> reads
+/// a key-value secret from the IRIS wallet, at the point of use. <code>none</code> is accepted
 /// only on a provider whose catalog row sets <code>allowsLocal</code>, which is the family that
 /// serves a keyless model on the operator's own network.</p>
 Property CredType As %String(MAXLEN = 8);
@@ -76,7 +77,8 @@ Property CredType As %String(MAXLEN = 8);
 Property EnvVarName As %String(MAXLEN = 128);
 
 /// <p>The credential entry holding the secret, when <property>CredType</property> is
-/// <code>creds</code>; <code>""</code> otherwise. A weak reference (AD-37): a name that resolves
+/// <code>creds</code>, or the wallet secret's full name, <code>collection.secret</code>, when it is
+/// <code>wallet</code>; <code>""</code> otherwise. A weak reference (AD-37): a name that resolves
 /// to nothing on this instance still reads back verbatim and fails no read.</p>
 Property CredentialName As %String(MAXLEN = 128);
 
@@ -248,10 +250,11 @@ ClassMethod GuardedUpdate(pObject As OcuPilot.Kernel.State.Agent, ByRef pSnapsho
             Set pObject.ConnectionVerified = 0
             Set pObject.Enabled = 0
         }
-        ; The ownership mark belongs to the reference it was recorded against. A definition
-        ; repointed at another entry owns nothing behind the new name until a store there says so,
-        ; and a mark carried over would license removing an entry OcuPilot never created (AD-37).
-        If pObject.CredentialName '= $Get(pSnapshot("CredentialName")) Set pObject.CredentialCreated = 0
+        ; The ownership mark belongs to the reference it was recorded against, in the store its rung
+        ; names. A definition repointed at another entry, or moved to another rung, owns nothing
+        ; behind the new reference until a store there says so, and a mark carried over would license
+        ; removing an entry OcuPilot never created (AD-37).
+        If (pObject.CredentialName '= $Get(pSnapshot("CredentialName"))) || (pObject.CredType '= $Get(pSnapshot("CredType"))) Set pObject.CredentialCreated = 0
         Set pObject.UpdatedAt = ..Timestamp()
         Set tSC = ..GuardedSaveIfCurrent(pObject, $Select(pExpectedVersion '= "": +pExpectedVersion, 1: +pObject.RowVersion))
         If $$$ISERR(tSC) Quit
@@ -387,7 +390,8 @@ ClassMethod GuardedDeleteId(pId As %String) As %Status
 
 /// <p>The ids of every definition <b>other than</b> <var>pExceptId</var> whose
 /// <property>CredentialName</property> is <var>pName</var> -- the sibling query AD-37's bounded
-/// exception turns on: an entry a surviving definition still names is never removed.</p>
+/// exception turns on: an entry a surviving definition still names is never removed. A definition on the
+/// <code>wallet</code> rung is not one: its name is a wallet secret's, which this product never creates.</p>
 /// <p><var>pIds</var> comes back as <code>pIds(1)</code>, <code>pIds(2)</code>, ... and is simply
 /// absent when no sibling names the reference, which is the ordinary answer rather than an
 /// error.</p>
@@ -403,7 +407,7 @@ ClassMethod GuardedIdsByCredentialName(pName As %String, pExceptId As %String = 
 {
     Kill pIds
     If pName = "" Quit $$$OK
-    Set tSC = ..GuardedIdsWhere("SELECT ID FROM OcuPilot_Kernel_State.Agent WHERE %EXACT(CredentialName) = ? ORDER BY ID", pName, .tAll)
+    Set tSC = ..GuardedIdsWhere("SELECT ID FROM OcuPilot_Kernel_State.Agent WHERE %EXACT(CredentialName) = ? AND (CredType IS NULL OR %EXACT(CredType) <> 'wallet') ORDER BY ID", pName, .tAll)
     If $$$ISERR(tSC) Quit tSC
     For tI = 1:1:+$Get(tAll) {
         If tAll(tI) = pExceptId Continue
@@ -415,13 +419,13 @@ ClassMethod GuardedIdsByCredentialName(pName As %String, pExceptId As %String = 
 /// <p>Whether some definition whose <property>CredentialName</property> is exactly
 /// <var>pName</var> carries <property>CredentialCreated</property> -- that is, whether OcuPilot
 /// created the entry behind that reference and may therefore overwrite it (AD-37).</p>
-/// <p>Matched exactly, for the reason <method>GuardedIdsByCredentialName</method> is. An empty
-/// <var>pName</var> is owned by nothing and is answered without a query.</p>
+/// <p>Matched exactly, for the reason <method>GuardedIdsByCredentialName</method> is, and over the same
+/// definitions. An empty <var>pName</var> is owned by nothing and is answered without a query.</p>
 ClassMethod GuardedCredentialOwned(pName As %String, Output pOwned As %Boolean) As %Status
 {
     Set pOwned = 0
     If pName = "" Quit $$$OK
-    Set tSC = ..GuardedIdsWhere("SELECT TOP 1 ID FROM OcuPilot_Kernel_State.Agent WHERE %EXACT(CredentialName) = ? AND CredentialCreated = 1 ORDER BY ID", pName, .tIds)
+    Set tSC = ..GuardedIdsWhere("SELECT TOP 1 ID FROM OcuPilot_Kernel_State.Agent WHERE %EXACT(CredentialName) = ? AND CredentialCreated = 1 AND (CredType IS NULL OR %EXACT(CredType) <> 'wallet') ORDER BY ID", pName, .tIds)
     If $$$ISOK(tSC) Set pOwned = ($Get(tIds(1)) '= "")
     Quit tSC
 }

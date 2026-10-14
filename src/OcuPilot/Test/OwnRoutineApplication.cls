@@ -1,12 +1,12 @@
-/// <p>Pins AD-10's privileged routine application arm (DW-2239, Story 18.10): every write to <code>OcuPilotState</code> or
-/// <code>OcuPilotIdentity</code> -- a delete, a disable, a change to <code>MatchRoles</code>, a change to any other field, a
+/// <p>Pins AD-10's privileged routine application arm (DW-2239, Story 18.10): every write to <code>OcuPilotState</code>,
+/// <code>OcuPilotIdentity</code> or <code>OcuPilotSslRead</code> -- a delete, a disable, a change to <code>MatchRoles</code>, a change to any other field, a
 /// create -- is refused <code>PROHIBITED.OCUPILOTROUTINEAPP</code> with the kernel's own sentence, and an unrelated
 /// application is not refused by it.</p>
 /// <p>The privileged routine endpoint's legs (<class>OcuPilot.Port.AdminPort</class>) refuse every call but a read before the
 /// vendor is reached, and each leg reads the application before and after the call.</p>
-/// <p>Needs the throwaway's install (both applications exist and read). <class>OcuPilot.Port.AdminPort</class> admits
+/// <p>Needs the throwaway's install (all three applications exist and read). <class>OcuPilot.Port.AdminPort</class> admits
 /// <code>Security.PrivilegedRoutine</code> <code>PUT</code> and <code>DELETE</code> (Story 18.31), so a mutated arm reaches the
-/// vendor and the after-read shows it. <code>OnBeforeOneTest</code> records both applications' stored state and
+/// vendor and the after-read shows it. <code>OnBeforeOneTest</code> records each application's stored state and
 /// <code>OnAfterOneTest</code> puts back any of it that changed (<method>PutBack</method>). Each leg's mutation is named in
 /// the spec's Verification.</p>
 Class OcuPilot.Test.OwnRoutineApplication Extends %UnitTest.TestCase
@@ -27,14 +27,14 @@ Method OnBeforeAllTests() As %Status
 /// <p>The probe application the unrelated leg asks about; it is absent, so the set answers not prohibited.</p>
 Parameter PROBEPATH = "/csp/ocuprobe1810";
 
-/// <p>The stored state of both applications before the test, keyed by application name and then by field.</p>
+/// <p>The stored state of the three applications before the test, keyed by application name and then by field.</p>
 Property PreparedApps [ MultiDimensional ];
 
-/// <p>Records the stored state of both routine applications, so the after-test can put back what a mutated guard let through.</p>
+/// <p>Records the stored state of each routine application, so the after-test can put back what a mutated guard let through.</p>
 Method OnBeforeOneTest() As %Status
 {
     Kill ..PreparedApps
-    For tName = ##class(OcuPilot.Kernel.State.Base).#APPLICATION, ##class(OcuPilot.Kernel.State.Base).#IDENTITYAPPLICATION {
+    For tName = ##class(OcuPilot.Kernel.State.Base).#APPLICATION, ##class(OcuPilot.Kernel.State.Base).#IDENTITYAPPLICATION, ##class(OcuPilot.Kernel.State.Base).#SSLREADAPPLICATION {
         Set tSC = ..Stored(tName, .tProps)
         If $$$ISERR(tSC) Quit
         Merge ..PreparedApps(tName) = tProps
@@ -45,7 +45,7 @@ Method OnBeforeOneTest() As %Status
 /// <p>Puts back the stored state of each routine application whose stored fields differ from the record.</p>
 Method OnAfterOneTest() As %Status
 {
-    For tName = ##class(OcuPilot.Kernel.State.Base).#APPLICATION, ##class(OcuPilot.Kernel.State.Base).#IDENTITYAPPLICATION {
+    For tName = ##class(OcuPilot.Kernel.State.Base).#APPLICATION, ##class(OcuPilot.Kernel.State.Base).#IDENTITYAPPLICATION, ##class(OcuPilot.Kernel.State.Base).#SSLREADAPPLICATION {
         If $Data(..PreparedApps(tName)) = 0 Continue
         Kill tWas
         Merge tWas = ..PreparedApps(tName)
@@ -156,6 +156,21 @@ Method TestDeleteIdentityRefused()
     Quit
 }
 
+/// <p>A delete of OcuPilotSslRead is refused the arm, and so is a disable of it.</p>
+/// <p>Mutation (Rule 19): in <method>OcuPilot.Kernel.Proposal.Prohibited.OwnRoutineApplication</method>, drop the
+/// comparison with <parameter>SSLREADAPPLICATION</parameter>: this leg goes red.</p>
+Method TestSslReadApplicationRefused()
+{
+    Set tProhibits = ..Ask("webapp.list.delete", "OcuPilotSslRead", "{}", "[]", .tCode, .tSC)
+    Do $$$AssertTrue(tProhibits, "a delete of OcuPilotSslRead is prohibited")
+    Do $$$AssertEquals(tCode, "PROHIBITED.OCUPILOTROUTINEAPP", "a delete of OcuPilotSslRead answers the routine application code")
+    Set tDiff = [{"field": "Enabled", "before": "true", "after": "false"}]
+    Set tProhibits = ..Ask("webapp.list.update", "ocupilotsslread", "{""Enabled"": false}", tDiff.%ToJSON(), .tCode, .tSC)
+    Do $$$AssertTrue(tProhibits, "disabling OcuPilotSslRead, spelled in lower case, is prohibited")
+    Do $$$AssertEquals(tCode, "PROHIBITED.OCUPILOTROUTINEAPP", "and answers the routine application code")
+    Quit
+}
+
 /// <p>Disabling either application is refused the arm.</p>
 Method TestDisableRefused()
 {
@@ -184,7 +199,7 @@ Method TestMatchRolesRefused()
 /// Resource, NameSpace and create cases.</p>
 Method TestAnyOtherWriteIsRefused()
 {
-    For tName = ##class(OcuPilot.Kernel.State.Base).#APPLICATION, ##class(OcuPilot.Kernel.State.Base).#IDENTITYAPPLICATION {
+    For tName = ##class(OcuPilot.Kernel.State.Base).#APPLICATION, ##class(OcuPilot.Kernel.State.Base).#IDENTITYAPPLICATION, ##class(OcuPilot.Kernel.State.Base).#SSLREADAPPLICATION {
         For tCase = $ListBuild("Description", "b"), $ListBuild("Resource", "%Admin_Manage"), $ListBuild("NameSpace", "USER"), $ListBuild("Enabled", "true") {
             Set tField = $List(tCase, 1)
             Set tDiff = [{"field": (tField), "before": "a", "after": ($List(tCase, 2))}]
@@ -253,7 +268,7 @@ Method TestPrivilegedRoutineEndpointRefusesAWebApp()
     Do $$$AssertEquals(tHttp, 409, "a write of a web application through the privileged routine endpoint answers 409")
     Do $$$AssertEquals(tFault.code, "PRIVROUTINE.TYPE", "the write refusal names the type")
     Do $$$AssertEquals(..WebAppJSON("/csp/user"), tBefore, "and the vendor was not reached: the application reads as it did")
-    For tName = ##class(OcuPilot.Kernel.State.Base).#APPLICATION, ##class(OcuPilot.Kernel.State.Base).#IDENTITYAPPLICATION {
+    For tName = ##class(OcuPilot.Kernel.State.Base).#APPLICATION, ##class(OcuPilot.Kernel.State.Base).#IDENTITYAPPLICATION, ##class(OcuPilot.Kernel.State.Base).#SSLREADAPPLICATION {
         Kill tQuery
         Set tQuery("name") = tName
         Set tSC = ##class(OcuPilot.Port.AdminPort).Invoke("Security.PrivilegedRoutine", "GET", .tQuery, "", .tResult, .tHttp, .tFault)

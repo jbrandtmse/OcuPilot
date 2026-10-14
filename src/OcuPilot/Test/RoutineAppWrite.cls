@@ -3,11 +3,12 @@
 /// /screens/webapp.routineapps/action</code>), and the agent's mint and confirm -- a create that stores the name as
 /// typed, a change that keeps the roles and routines the application holds, a delete, every row of the rules refused
 /// before any <code>PUT</code>, a name any application holds, a moved target, a held lock, a web application write that
-/// names a routine application (DW-2252), and OcuPilot's own two applications refused every write.</p>
+/// names a routine application (DW-2252), and OcuPilot's own three applications refused every write.</p>
 /// <p>Every write is real for an application named <code>OcuProbe1831...</code> and the class touches no other: each
 /// application a test asserts on it creates, and each is removed by exact name. <b>It never writes
-/// <code>OcuPilotState</code> or <code>OcuPilotIdentity</code>:</b> every leg that names them is refused before the port,
-/// and the class compares both applications' stored state before and after each test, read-only.</p>
+/// <code>OcuPilotState</code>, <code>OcuPilotIdentity</code> or <code>OcuPilotSslRead</code>:</b> every leg that names them
+/// is refused before the port, and the class compares the three applications' stored state before and after each test,
+/// read-only.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed and serving, and
 /// <parameter>ARMINGVARIABLE</parameter> reading <code>1</code>, because the class creates, changes and deletes probe
 /// applications and one probe resource and sets the governance policy. After each test the application list reads as that
@@ -42,7 +43,7 @@ Property PreparedPolicy [ MultiDimensional ];
 
 Property PreparedFacts As %String(MAXLEN = "") [ InitialExpression = "" ];
 
-/// <p>OcuPilot's own two applications as the vendor reads them before the test.</p>
+/// <p>OcuPilot's own three applications as the vendor reads them before the test.</p>
 Property PreparedOwn As %String(MAXLEN = "") [ InitialExpression = "" ];
 
 Method OnBeforeAllTests() As %Status
@@ -59,7 +60,7 @@ Method OnBeforeAllTests() As %Status
 Method OnBeforeOneTest() As %Status
 {
     Set ..PreparedFacts = $ClassMethod(..#PROBE, "Facts")
-    Set ..PreparedOwn = ..OwnTwo()
+    Set ..PreparedOwn = ..OwnApplications()
     Set ^||OcuPilotDatabaseWritePort = ..#PORT
     Kill tSettings
     Set tSettings("webapp.routineapps.create") = "enabled"
@@ -77,8 +78,8 @@ Method OnAfterOneTest() As %Status
     Do $$$AssertEquals($ClassMethod(..#PROBE, "Remaining"), 0, "and none is left")
     Do $$$AssertNotEquals(..PreparedFacts, "unreadable", "the application list was read before the test")
     Do $$$AssertEquals($ClassMethod(..#PROBE, "Facts"), ..PreparedFacts, "the application list reads as before the test")
-    Do $$$AssertNotEquals(..PreparedOwn, "", "OcuPilot's own two applications were read before the test")
-    Do $$$AssertEquals(..OwnTwo(), ..PreparedOwn, "and read the same after it")
+    Do $$$AssertNotEquals(..PreparedOwn, "", "OcuPilot's own three applications were read before the test")
+    Do $$$AssertEquals(..OwnApplications(), ..PreparedOwn, "and read the same after it")
     Do ##class(OcuPilot.Test.ProposalFixture).RemoveSeeded(.tSeeded)
     Quit $$$OK
 }
@@ -382,7 +383,7 @@ Method TestATakenNameAMovedTargetAndABusyTargetAreRefused()
     Do $$$AssertEquals($ClassMethod(..#PROBE, "StoredField", "", "OcuProbe1831A", "Description"), "first", "and the application is as it was")
     Set tSC = $ClassMethod(..#PROBE, "Mint", ..#CREATETOOL, "ocuprobe1831a", tTaken, .tProposal, .tHttp, .tProblem)
     Do $$$AssertStatusNotOK(tSC, "the agent's create of it is refused at the mint: " _ tProblem)
-    For tHeld = "/csp/user", "OcuPilotState", "ocupilotidentity" {
+    For tHeld = "/csp/user", "OcuPilotState", "ocupilotidentity", "OcuPilotSslRead" {
         Do ..Save({"Name": (tHeld)}, .tStatus, .tAnswer)
         Do $$$AssertEquals(tStatus _ " " _ ..ViolationOf(tAnswer, "Name"), "422 " _ $Parameter(..#ERRORS, "TAKEN"), "a create naming " _ tHeld _ ", which another application holds, is refused on Name: " _ ..Text(tAnswer))
         Set tSC = $ClassMethod(..#PROBE, "Mint", ..#CREATETOOL, tHeld, {"Name": (tHeld)}, .tProposal, .tHttp, .tProblem)
@@ -548,19 +549,19 @@ Method TestAWebApplicationNameIsAnsweredFromTheFreshReadByEveryRoutineTool()
     Do $$$AssertEquals(##class(OcuPilot.Test.OwnRoutineApplication).WebAppJSON("/csp/user"), tBefore, "and the web application reads as it did")
 }
 
-/// <p>C3: OcuPilot's own two applications, in any case, are refused every write -- by the kernel's arm for each of the
+/// <p>C3: OcuPilot's own three applications, in any case, are refused every write -- by the kernel's arm for each of the
 /// three tools, asked through <code>Prohibits</code> and answering <code>PROHIBITED.OCUPILOTROUTINEAPP</code>; at the
 /// agent's mint of a change or a delete as a 403; at the form's Save of a change and the list's Delete as a 403; and a create
-/// naming them as a held name -- with nothing sent, and both applications read as they did. A probe application is
+/// naming them as a held name -- with nothing sent, and the three applications read as they did. A probe application is
 /// not refused by the arm.</p>
 /// <p>Mutation (Rule 19): drop the <code>routine-application</code> arm from <method>OcuPilot.Kernel.Proposal.Prohibited.Prohibits</method>
 /// -- the <code>Prohibits</code> legs go red, asked as a pure question; the wire legs stay green because the port arm
 /// <method>OcuPilot.Kernel.Proposal.Prohibited.RoutineEndpointRefused</method> also refuses, so nothing is written either
 /// way. Shrink <method>OcuPilot.Kernel.Proposal.Prohibited.RoutineApplicationChangeFields</method> to the three settings --
 /// the <code>Routines</code> and <code>MatchRoles</code> legs go red.</p>
-Method TestTheOwnTwoApplicationsAreRefusedEveryWrite()
+Method TestTheOwnApplicationsAreRefusedEveryWrite()
 {
-    For tName = "OcuPilotState", "OcuPilotIdentity", "ocupilotstate", "OCUPILOTIDENTITY" {
+    For tName = "OcuPilotState", "OcuPilotIdentity", "OcuPilotSslRead", "ocupilotstate", "OCUPILOTIDENTITY" {
         For tTool = "webapp.routineapps.create", "webapp.routineapps.update", "webapp.routineapps.delete" {
             Set tProhibits = ..Ask(tTool, tName, {"Description": "x"}.%ToJSON(), [{"field": "Description", "before": "a", "after": "x"}].%ToJSON(), .tCode, .tSC)
             Do $$$AssertStatusOK(tSC, "the set answers " _ tTool _ " on " _ tName)
@@ -585,7 +586,7 @@ Method TestTheOwnTwoApplicationsAreRefusedEveryWrite()
         Do $$$AssertStatusOK(tSC, "the set answers a diff naming " _ tField)
         Do $$$AssertEquals(tProhibits _ " " _ tCode, "1 " _ ##class(OcuPilot.Kernel.Proposal.Prohibited).#UNCOVEREDFIELD, "a probe application's " _ tField _ " is not a field the tools change")
     }
-    For tName = "OcuPilotState", "OcuPilotIdentity" {
+    For tName = "OcuPilotState", "OcuPilotIdentity", "OcuPilotSslRead" {
         Set tSC = $ClassMethod(..#PROBE, "Mint", ..#UPDATETOOL, tName, {"Name": (tName), "Description": "x"}, .tProposal, .tHttp, .tProblem)
         Do $$$AssertEquals($System.Status.IsOK(tSC) _ " " _ tHttp _ " " _ tProblem, "0 403 " _ ..#OWNCODE, "the agent's change of " _ tName _ " is refused at the mint")
         Set tSC = $ClassMethod(..#PROBE, "Mint", ..#DELETETOOL, tName, {"Name": (tName)}, .tProposal, .tHttp, .tProblem)
@@ -597,7 +598,7 @@ Method TestTheOwnTwoApplicationsAreRefusedEveryWrite()
         Do ..Remove(tName, .tStatus, .tAnswer)
         Do $$$AssertEquals(tStatus _ " " _ $Select($IsObject(tAnswer): tAnswer.%Get("code"), 1: ""), "403 " _ ..#OWNCODE, "and the list's Delete of it")
     }
-    Do $$$AssertEquals(..OwnTwo(), ..PreparedOwn, "OcuPilot's own two applications read as they did")
+    Do $$$AssertEquals(..OwnApplications(), ..PreparedOwn, "OcuPilot's own three applications read as they did")
 }
 
 /// <p><code>POST /routine-application</code> with <var>pBody</var>: the status and the parsed answer.</p>
@@ -632,19 +633,19 @@ ClassMethod Ask(pTool As %String, pId As %String, pPayload As %String, pDiff As 
     Quit tProhibits
 }
 
-/// <p>OcuPilot's own two applications as the vendor's <code>GET</code> reads them, one line each, or <code>""</code> when
-/// either does not read. Read only.</p>
-ClassMethod OwnTwo() As %String
+/// <p>OcuPilot's own three applications as the vendor's <code>GET</code> reads them, one line each, or <code>""</code> when
+/// any does not read. Read only.</p>
+ClassMethod OwnApplications() As %String
 {
     Set tOut = ""
-    For tName = ##class(OcuPilot.Kernel.State.Base).#APPLICATION, ##class(OcuPilot.Kernel.State.Base).#IDENTITYAPPLICATION {
+    For tName = ##class(OcuPilot.Kernel.State.Base).#APPLICATION, ##class(OcuPilot.Kernel.State.Base).#IDENTITYAPPLICATION, ##class(OcuPilot.Kernel.State.Base).#SSLREADAPPLICATION {
         Kill tQuery
         Set tQuery("name") = tName
         Set tSC = ##class(OcuPilot.Port.AdminPort).Invoke("Security.PrivilegedRoutine", "GET", .tQuery, "", .tRead, .tHttp, .tFault)
         If $$$ISERR(tSC) || '$IsObject($Get(tRead)) Quit
         Set tOut = tOut _ $Select(tOut = "": "", 1: $Char(10)) _ tName _ " " _ tRead.%ToJSON()
     }
-    Quit $Select($Length(tOut, $Char(10)) = 2: tOut, 1: "")
+    Quit $Select($Length(tOut, $Char(10)) = 3: tOut, 1: "")
 }
 
 /// <p>The read-back verdict of <var>pAnswer</var>, or <code>(none)</code>

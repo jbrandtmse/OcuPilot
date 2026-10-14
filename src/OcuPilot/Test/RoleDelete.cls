@@ -110,7 +110,7 @@ Method TestASystemRoleIsRefusedAtTheMint()
     Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).WriteCount(), 0, "and nothing is written")
 }
 
-/// <p>AD-10: deleting any of OcuPilot's four own roles is refused inside the transition, under any
+/// <p>AD-10: deleting any of OcuPilot's five own roles is refused inside the transition, under any
 /// spelling, and the list is read from the declarations that create them.</p>
 /// <p>Mutation: drop the <code>OcuPilotRoles</code> step from
 /// <method>OcuPilot.Kernel.Proposal.Prohibited.Role</method> -> every name goes red.</p>
@@ -118,8 +118,8 @@ Method TestOcuPilotsOwnRolesAreRefusedAtTheWrite()
 {
     Set tSC = ##class(OcuPilot.Kernel.Proposal.Prohibited).OcuPilotRoles(.tOwn)
     Do $$$AssertStatusOK(tSC, "OcuPilot's own roles are read")
-    Do $$$AssertEquals($ListToString(tOwn), "ocupilotadmin,ocupilotidentity,ocupilotshell,ocupilotreadiness", "the administrative, identity and two application roles")
-    For tName = "OcuPilotAdmin", "OCUPILOTIDENTITY", "ocupilotshell", "OcuPilotReadiness" {
+    Do $$$AssertEquals($ListToString(tOwn), "ocupilotadmin,ocupilotidentity,ocupilotsslread,ocupilotshell,ocupilotreadiness", "the administrative, identity, TLS read and two application roles")
+    For tName = "OcuPilotAdmin", "OCUPILOTIDENTITY", "OcuPilotSslRead", "ocupilotshell", "OcuPilotReadiness" {
         Do ##class(OcuPilot.Test.ProposalFixture).Clear()
         Do ##class(OcuPilot.Test.ProposalFixture).Arm(..RoleJson())
         Do ##class(OcuPilot.Test.ProposalFixture).ArmProhibited(..#SETFIXTURE)

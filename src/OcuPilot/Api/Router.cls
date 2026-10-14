@@ -76,6 +76,8 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
 <Routes>
   <Route Url="/agent/switches/holds/:id" Method="DELETE" Call="AgentSwitchHoldDelete"/>
   <Route Url="/agent/switches/holds" Method="POST" Call="AgentSwitchHoldCreate"/>
+  <Route Url="/agent/switches/egress" Method="GET" Call="AgentSwitchEgressRead"/>
+  <Route Url="/agent/switches/egress" Method="PUT" Call="AgentSwitchEgressUpdate"/>
   <Route Url="/agent/switches" Method="GET" Call="AgentSwitchesRead"/>
   <Route Url="/agent/switches" Method="PUT" Call="AgentSwitchesUpdate"/>
   <Route Url="/agent/restraint" Method="GET" Call="AgentRestraint"/>
@@ -2017,6 +2019,20 @@ ClassMethod AllowedDirectorySave() As %Status
 ClassMethod AllowedDirectoryState() As %Status
 {
     Quit ##class(OcuPilot.Area.Security.AllowedDirectorySave).HandleState()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /agent/switches/egress</code> (Story 18.40): the provider connection,
+/// delegated to <class>OcuPilot.Api.Switches</class>.</p>
+ClassMethod AgentSwitchEgressRead() As %Status
+{
+    Quit ##class(OcuPilot.Api.Switches).HandleEgressRead()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>PUT /agent/switches/egress</code> (Story 18.40): the provider
+/// connection's write, delegated to <class>OcuPilot.Api.Switches</class>.</p>
+ClassMethod AgentSwitchEgressUpdate() As %Status
+{
+    Quit ##class(OcuPilot.Api.Switches).HandleEgressUpdate()
 }
 
 }
