@@ -9536,3 +9536,25 @@ So that an out-of-range request value answers its field refusal and a test run n
 - **Given** a sweep
 - **When** it lands
 - **Then** a test reddens on a representative site before the fix, the story says how a new site written in the old form is caught or why none can be, and each sweep lands as its own batch with CI green on its own head.
+
+### Story 23.11: The range-end cleanup, part 10
+
+Chartered by the orchestrator on 2026-10-14 from five entries routed to Story 23.5 after its charter that fit neither its area batches nor the twelve-entry cap (Rule 27). The agent cannot read a large class's view at all, so that entry goes first. The others are a task-history test that reddens on a busy instance, literal shared-surface counts asserted outside their roster's own test, the browser configuration falling back to slot A's throwaway when its two variables are unset, and fixed heights that should be minimums. A slot that would otherwise sit idle runs it, ahead of Story 23.7. A CLAUDE.md line it makes stale changes only through the Planner, with the owner's OK.
+
+As a maintainer of OcuPilot,
+I want the agent able to read any class it can list, and the test harness free of counts and fallbacks that break as the product grows,
+So that a large class is readable and the suites stay green when a story adds a member or runs on another slot.
+
+**Acceptance Criteria:**
+
+- **Given** the entries re-owned to this story: DW-2246, DW-2182, DW-2202, DW-2221 and DW-2439
+- **When** this story completes
+- **Then** each has a disposition written by the ledger tool: `resolved-by` this story with the commit, or `wontfix-accepted` or `by-design` with a reason and, where a condition would reopen it, that condition.
+
+- **Given** the large-class read (DW-2246)
+- **When** it is fixed
+- **Then** the cause is measured before the fix, and a test over a class larger than the result cap reddens before the fix and passes after.
+
+- **Given** a fix to code or a test
+- **When** it lands
+- **Then** a test reddens on the defect before the fix, or the entry says why none can, and the fixes land in batches grouped by area, each with CI green on its own head.
