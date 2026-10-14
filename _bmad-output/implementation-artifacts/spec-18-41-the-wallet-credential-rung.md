@@ -199,6 +199,11 @@ every test added or changed passes on a fresh environment, in either order
 - mutation: `AgentRules.Normalize` stops clearing `envVarName` for `wallet` -> the same test red.
 - mutation: `WalletRung`'s C6 test never turns `WalletSecretUse` off -> `WalletRung.TestTheUseRowIsWrittenOnlyWhileTheEventIsOn` red on the off leg.
 - mutation: `setProvider` stops skipping `credentialName` in wallet mode -> the page spec's "a refused secret name keeps its reason across a provider change" red.
+- (QA) file: `src/OcuPilot/Test/WalletRungRoles.cls` (new, 2 tests green on `ocupilot-ci`, run 84): a least-privileged person sends Test connection over HTTP on a stored `wallet` definition of the `turnprobe` row, refused without the use resource and served with it; armed by `# classes: WalletRungRoles` in the `OCUPILOT_ALLOW_PRINCIPALS` and `OCUPILOT_ALLOW_TEST_PROVIDER` blocks of `scripts/ci-throwaway.sh` (add-only).
+- (QA) mutation: `Ladder.Wallet` skips the use-resource check -> `WalletRungRoles.TestAPersonWithoutThePairIsRefusedInTheTestConnectionChild` red (503 `PROVIDER.CREDENTIALSTORE`, and the vendor's own `AccessDenied` row).
+- (QA) mutation: `Ladder.Wallet` answers `""` -> `WalletRungRoles.TestAPersonWithTheUseResourceReachesTheAdapterWithTheStoredKey` red (`PROVIDER.CREDENTIAL`, no request).
+- (QA) mutation: `Ladder.Wallet` appends a character to the value -> the same test red on the key header alone.
+- (QA) mutation: the `OCUPILOT_ALLOW_TEST_PROVIDER` roster row of `WalletRungRoles` removed -> `ui/tools/ci.test.mjs` "each arming roster names exactly the classes that declare that variable" red.
 
 **Manual check (implement, `ocupilot-ci`):** the Anthropic key from `.env.local`, read at the point of use and handed to the container through the environment, stored in a probe wallet secret (`OcuPilotProbe1841.live`, all uses); a probe `wallet` definition on `claude-haiku-5-5` created over the wire (201); Test connection answered 200 in 1,036 ms with no fault and left the definition `connectionVerified`; the response carried no `sk-ant` token. The definition, the secret, the collection and the probe resource were then removed, and the throwaway reads S0 (`WalletSecretUse` off, wallet collections `OcuPilotDemo` only, no 1841-named role, resource, user or definition). The key was printed and written nowhere.
 
