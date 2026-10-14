@@ -11757,3 +11757,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-20-16-the-agent-edits-rule-dtl-and-bpl-content-behind-the-embedded.md (rework 1 re-review) | severity: med | fix-risk: low | footprint: in-epic
 - evidence: epic-20-context.md:169 (regenerated from planning artifacts per plan spawn) lists ReadTool and ToolRoundTrip, not ToolWrite.cls:1338 (49 after 20.16). 20.16's plan missed it and its fresh check went red, costing a rework; 20.25, 20.26 and 20.31 add InteropPort writes.
 - 2026-10-14T03:02:05Z status=routed owner=20-25-item-runtime-and-configuration-actions by=cr note=name ToolWrite's other-port count (49 after 20.16) in Shared surfaces and move it; first of 20.25/20.26/20.31
+
+### DW-2408: interop-item-test.browser-spec.mjs's cleanup leaves the host test's message headers and the probe production's Ens_Util.Log rows behind in USER
+- source: spec-20-30 plan (measured) | severity: med | fix-risk: low | footprint: in-epic
+- evidence: Measured at Story 20.30's plan on ocupilot-b-ci: after the cleanup calls interop-item-test.browser-spec.mjs also uses, USER held three message headers and the production's event-log rows; removed by hand.
+- 2026-10-14T03:47:33Z status=routed owner=burndown by=spec_gate note=Rule 19 hermeticity: the spec (Story 20.6's) removes the headers and log rows it caused

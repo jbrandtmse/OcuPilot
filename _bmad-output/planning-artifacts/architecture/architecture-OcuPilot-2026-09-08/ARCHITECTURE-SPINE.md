@@ -326,7 +326,7 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
   **The interoperability usage queries' temporary `%DB_IRISMETRICS`** [AMENDED 2026-10-12, Story 18.37 spec gate, Rule 20] is the vendor's own model, granted only after the vendor checks the caller's `%Admin_Operate:USE`, as `%SYS.Ensemble`'s production control is; OcuPilot adds no elevation (Story 18.37's Task 0 measured it: a caller without `%Admin_Operate:USE` is refused by every query, SQLCODE -99 or `<PROTECT>`).
 
-  **The message reads' pairs** [AMENDED 2026-10-13, Story 20.9 spec gate, Rule 20]: the message reads require `%Ens_MessageHeader:USE`, and Contents also `%Ens_MessageContent:USE`. `%EnsRole_Operator` holds the first, and `%EnsRole_Administrator` and `%EnsRole_WebDeveloper` the second (measured).
+  **The message reads' pairs** [AMENDED 2026-10-13, Story 20.9 spec gate, Rule 20]: the message reads require `%Ens_MessageHeader:USE`, and Contents also `%Ens_MessageContent:USE`. `%EnsRole_Operator` holds the first, and `%EnsRole_Administrator` and `%EnsRole_WebDeveloper` the second (measured). The trace also requires `%Ens_MessageTrace:USE`, which `%EnsRole_Operator` holds [AMENDED 2026-10-14, Story 20.30 spec gate, Rule 20].
 
   **Story 20.16's editor saves declare `%Ens_Code:WRITE`** [AMENDED 2026-10-13, Story 20.16 code review (DW-2401), Rule 20], the vendor editors' write resource, beside the class save's pairs, by the orchestrator's ruling that an editor path is never looser than the classic editor's (AD-53); it is neither the database case nor a measured `ResourcesOR()` case above.
 
@@ -989,6 +989,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
   **Story 20.9's `CLASSICPAGES`** [AMENDED 2026-10-13, Story 20.9 spec gate, Rule 20]: the Messages list and its Header and Contents tabs declare `EnsPortal.MessageViewer` (`NormalizePage`, measured); `EnsPortal.MessageContents` declares no `RESOURCE`.
 
+  **Story 20.30's `CLASSICPAGES`** [AMENDED 2026-10-14, Story 20.30 spec gate, Rule 20]: the Trace tab declares `EnsPortal.VisualTrace` (`NormalizePage`, measured by Story 20.9).
+
 ### AD-45 — There is one smoke path, and it is also the health check
 
 - **Binds:** FR-66, FR-67, NFR-9, AD-38; the installer, CI, the demo
@@ -1298,6 +1300,7 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
   13. **Coded classes on the process and transformation lists** [AMENDED 2026-10-13, Story 20.7 spec gate, Rule 20]. The Processes and Transforms lists answer `Coded`, true for a class that does not descend from `Ens.BusinessProcessBPL` or `Ens.DataTransformDTL` in the dictionary (the classic lists' `IsBPL` and `IsDTL`). The vendor's editors answer 400 for such a class (measured), so Story 20.7's editor screens show a sentence instead of a frame for it.
   14. **The editor saves' kind check** [AMENDED 2026-10-13, Story 20.16 spec gate, Rule 20]. `InteropPort.IsCodeOfKind` answers whether a class descends from a rule, BPL or DTL base in a namespace's dictionary, switched, as `ListClasses` and `Coded` read it; Story 20.16's editor saves ask it at the mint and at Confirm.
   15. **Message reads** [AMENDED 2026-10-13, Story 20.9 spec gate, Rule 20]. `InteropPort` gains `Messages` (`LIST`, criteria `beginDateTime` (required), `endDateTime`, `status`, `type`, `source`, `target`, `bodyClass`, `session`, `errors`), `MessageHeader` and `MessageContents` (`LIST`, criterion `message`, the header `ID`). Each reads `Ens.MessageHeader` with `%ExecDirectNoPriv` after the gate, the window turned into ID bounds by two top-level statements as the classic viewer does. Contents is rendered by the port as text (EDI as the raw view or indented XML, `%XML.Adaptor` through `%XML.Writer`, a character stream as read), at most 1,000,000 characters with lines cut at 4,000, and any other body is refused `INTEROP.MESSAGE.CONTENTS`. Each contents read that opens a body records the vendor's own `%Ensemble/%Message/ViewContents` through `Ens.Util.Auditing.AuditViewMessage`, as the classic Contents pane does. Saved searches are not offered: each vendor store belongs to its own search engine (named limit; orchestrator ruling Q2). The session trace is Story 20.30's and resend Story 20.31's.
+  16. **The session trace** [AMENDED 2026-10-14, Story 20.30 spec gate, Rule 20]. `InteropPort` gains `MessageTrace` (`LIST`, criterion `message`, a header `ID`). Two top-level statements read the header's `SessionId`, then that session's headers in `ID` order, capped, with `%ExecDirectNoPriv` after the gate; a header no row holds, or one with no session, reads as zero rows. It requires `%Ens_MessageHeader:USE` and `%Ens_MessageTrace:USE` (`EnsPortal.VisualTrace`'s `RESOURCE`). OcuPilot draws the trace itself, as template-bound SVG, and builds its Mermaid text in the browser from the same rows. The event, rule and IO logs and `SuperSession` are not read (named limit; the read's note).
 
 ### AD-63 -- The vendor's interoperability editors load in a same-origin frame, in normal mode, and OcuPilot never reaches into it
 

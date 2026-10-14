@@ -347,6 +347,8 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Lines were
 
 ## Spec Change Log
 
+- 2026-10-14, spec gate (runner): the Rule 20 drafts are written (AD-62 item 16, AD-8, AD-44). The fixture leak the plan measured in Story 20.6's browser spec is DW-2408, routed to the burn-down.
+
 ## Review Triage Log
 
 ## Design Notes
