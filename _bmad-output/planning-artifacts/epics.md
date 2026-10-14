@@ -9489,7 +9489,7 @@ So that the next reader is not misled by text the code no longer matches.
 
 ### Story 23.10: The range-end cleanup, part 9: two sweeps
 
-Chartered by the orchestrator on 2026-10-14 from two Epic 18 entries too wide for a burn-down. The first is the two-argument `%GetNext` loops over request bodies: 109 sites in 54 Area files. The second is the test classes whose `OnAfterAllTests` deletes shared rows, such as governance overrides and the egress row, on an instance not armed for tests: 48 classes. Each is one mechanical change repeated, so each lands as its own batch. A slot that would otherwise sit idle runs it, after Story 23.9.
+Chartered by the orchestrator on 2026-10-14 from two Epic 18 entries too wide for a burn-down. The first is the two-argument `%GetNext` loops over request bodies: 109 sites in 54 Area files. The second is the test classes whose `OnAfterAllTests` deletes shared rows, such as governance overrides and the egress row, on an instance not armed for tests: 48 classes. Each is one mechanical change repeated, so each lands as its own batch. Two refusal-classifier edges from Story 18.48's review joined the same day: KMIP start mode with journal encryption, to be measured on a throwaway before the start arm is widened, and a resource edit that opens a privileged application to everyone, which takes the privileged-grant treatment as Story 18.48 gave the application edit. A slot that would otherwise sit idle runs it, after Story 23.9.
 
 As a maintainer of OcuPilot,
 I want each repeated defect fixed at every site at once,
@@ -9497,7 +9497,7 @@ So that an out-of-range request value answers its field refusal and a test run n
 
 **Acceptance Criteria:**
 
-- **Given** the entries re-owned to this story: DW-2417 and DW-2426
+- **Given** the entries re-owned to this story: DW-2417, DW-2426, DW-2431 and DW-2432
 - **When** this story completes
 - **Then** each has a disposition written by the ledger tool: `resolved-by` this story with the commit, or `wontfix-accepted` or `by-design` with a reason and, where a condition would reopen it, that condition.
 
