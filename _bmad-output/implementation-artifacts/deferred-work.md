@@ -11072,6 +11072,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: cycle-log-epic-20.md (20.22 runner-side sweep shard 22/30, run 189) | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: Red at run 189 on ocupilot-b-ci mid-sweep, green alone at once (run 196); also seen green-alone in 20.18's sweep (2026-10-08); not yet seen in CI
 - 2026-10-10T17:33:40Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=lead note=likely a token or session cache the earlier classes warm; make the leg read the refusal after the cache's own expiry or clear it; flake class, Rule 27
+- 2026-10-14T03:47:06Z occurrence=20-16-the-agent-edits-rule-dtl-and-bpl-content-behind-the-embedded note=CI run 38505285690 attempt 1 instance shard 7/8 (fresh CI leg, not a long local sweep); rerun
 
 ### DW-2286: Every agent tool call lists the whole tool registry twice before its gate: Dispatch.AnswerOne's ResolveWire and Governance.Gate.Decide (through Registry.Resolve) each run Registry.ListTools, 0.55 s apiece at 331 tools on a development host, so a call pays about 1.1 s before anything else and the cost grows with every tool
 - source: cycle-log-epic-20.md (DW-2255 diagnosis) | severity: med | fix-risk: med | footprint: out-of-footprint

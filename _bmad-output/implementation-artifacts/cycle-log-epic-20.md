@@ -749,3 +749,5 @@
 2026-10-14T03:15:36Z	Epic 20	stage_spawned	stage=epic-context spawn_at=2026-10-14T03:15:36Z model=opus agent_name=20-context-recompile-5 reason=planning_artifact_newer(20.9_split,20.30_20.31_charters,20.10_gate,20.16_review_spine,feature_18.38)
 2026-10-14T03:20:23Z	Epic 20	epic_context_compiled	reason=planning_artifact_newer(20.9_split,20.10_gate,20.16_review,feature_18.38) model=opus lines=237
 2026-10-14T03:20:23Z	Story 20.30	stage_spawned	stage=plan spawn_at=2026-10-14T03:20:23Z model=opus agent_name=20-30-plan-1 cycle_iteration=1 inbox=none note=planned_while_20.16_CI_runs
+2026-10-14T03:47:06Z	Story 20.16	ci_red_classified	run=38505285690 class=flake(known_DW-2285) test=Retention.TestADeletedUsersSettingsGoAndTheirTranscriptsStay action=rerun_failed_jobs(attempt_2)
+2026-10-14T03:47:06Z	Story 20.30	story_created	spawn_at=(see_stage_spawned) model=opus agent_name=20-30-plan-1 path=_bmad-output/implementation-artifacts/spec-20-30-the-session-trace.md build_status=ready-for-dev(gate_pending) epic_context=reused warnings=oversized
