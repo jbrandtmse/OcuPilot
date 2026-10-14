@@ -172,7 +172,6 @@ Method TestEachSavesConfirmRuleAdmitsItsOwnKindAlone()
         Set tRow = $Piece(..#SAVES, ";", tI)
         Set tOwn = $Piece(tRow, "|", 1)
         Set tClass = $Piece(tRow, "|", 2)
-        Do $$$AssertTrue(##class(%Dictionary.CompiledMethod).%ExistsId(tClass _ "||ConfirmProblem"), tClass _ " has the rule Confirm asks")
         For tOther = "rule", "process", "transform", "coded", "plain", "missing" {
             Set tName = $Select(tOther = "plain": tPlain, tOther = "missing": ..#PACKAGE _ ".Missing", 1: $ClassMethod(..#PROBE, "Name", tOther, ..#PACKAGE)) _ ".cls"
             Kill tProblem

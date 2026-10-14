@@ -343,6 +343,29 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Lines were
   - **When** it calls the save.
   - **Then** dispatch refuses by name before any mint, naming the editor screen for the screen pair, and writes no row.
 
+### Review Findings
+
+Code review 2026-10-13 (four layers, `full-opus`; diff `645b1478..ae5398ff`): 1 high, 5 medium, 13 low kept; 15 rejected. Rule 3 holds (`agent-editor-save.browser-spec.mjs`, `InteropEditorSaveTurn` over HTTP). AD-53, AD-63, AD-24, AD-22 and AD-62 item 14 hold once the gate below is in.
+
+- [x] [Review][Patch] (high, AD-62 item 2) `IsCodeOfKind` called `SubclassOf` without the port's gate; it now asks `Admit` for the kind's code list first [src/OcuPilot/Port/InteropPort.cls:1143]
+- [x] [Review][Patch] (med, Rule 31) `InteropEditorSource.WARN` copied the save's sentence; it is now `{##class(...InteropEditorSave).#WARN}` under `DependsOn` [src/OcuPilot/Screen/Tool/InteropEditorSource.cls:10]
+- [x] [Review][Patch] (med, Rule 31) `proposeSave`, `slotText` and `cardViolations` were copied verbatim across the three agent code specs; they now live in `proposal-card-spec.mjs` [ui/browser/proposal-card-spec.mjs]
+- [x] [Review][Patch] (med, Rule 19) `InteropEditorSaveTurn` left its principal's ledger rows; `SweepSince` above a per-test mark, run before `Sweep`, now asserts none survive [src/OcuPilot/Test/InteropEditorSaveTurn.cls:111]
+- [x] [Review][Patch] (med, Rule 19) the browser spec read and restored `LastDTL` in `HSCUSTOM` while the DTL editor writes `USER`'s (measured: separate databases) [ui/browser/agent-editor-save.browser-spec.mjs:75]
+- [x] [Review][Patch] (low) `CUTTEXT` copied `ExplorerClassSource`'s sentences; it moved to `ExplorerSourceRead`, every description byte-identical (checksums) [src/OcuPilot/Screen/Tool/ExplorerSourceRead.cls:25]
+- [x] [Review][Patch] (low) the editor saves' `MATCHRULE` was pinned only as a parameter; a mint leg now refuses an absent `Old` naming the editor read [src/OcuPilot/Test/InteropEditorSaveRules.cls:140]
+- [x] [Review][Patch] (low) "`%UnitTest` skips `OnAfterAllTests`" is false (`Manager.RunOneTestCase` calls it after a failed setup); the comment is deleted here and in 15 Epic 20 test classes [src/OcuPilot/Test/InteropEditorSaveGate.cls:57]
+- [x] [Review][Patch] (low) test comments: a mutation `ScreenTools` cannot redden, a `FINGERPRINTSUBJECT` mutation stated otherwise than recorded, `AtelierPortSave`'s "answered on the instance" [src/OcuPilot/Test/InteropEditorTools.cls:133]
+- [x] [Review][Patch] (low) `%ExistsId(<save>||ConfirmProblem)` was true by inheritance; deleted [src/OcuPilot/Test/InteropEditorSaveConfirm.cls:163]
+- [x] [Review][Patch] (low) the read test's cleanup ran in its body; it runs in `OnAfterOneTest` [src/OcuPilot/Test/InteropEditorTools.cls:57]
+- [x] [Review][Patch] (low) `storedHolds` read an unread text as false; `after` stopped at its first failing step; `Remove` passed a failed dictionary query [ui/browser/agent-editor-save.browser-spec.mjs:176]
+- [x] [Review][Defer] (low) AD-8 does not name the saves' `%Ens_Code:WRITE` among a write tool's extra pairs; proposed: "Story 20.16's editor saves declare `%Ens_Code:WRITE`, the vendor editors' write resource, beside the class save's pairs, by the orchestrator's ruling that an editor path is never looser than the classic editor's (AD-53); it is neither case above." — DW-2401, the lead's (Rule 20)
+- [x] [Review][Defer] (low) AD-61 rule 6's because-clause is an HTTP measurement; proposed: "A compile is also failed when its console reads `Detected <n> errors during compilation` with n above zero, whatever `status.errors` holds: over HTTP the route answered a BPL whose generated class fails with 200 and no status error (Story 20.16's plan), though the port's in-process compile of the same edit carried #5475 (its implement), so the console is a fallback the port reads on every compile." The Boundaries sentence says the same over HTTP. — DW-2402, the lead's
+- [x] [Review][Defer] (med) the other turn wire classes leave ledger rows, and `SweepSince` misses rows whose turn is gone (`SELECT DISTINCT TurnKey` answers the collated key) — DW-2403, routed burndown
+- [x] Orchestrator ruling (DW-2395): `interop-editors.browser-spec.mjs` drops the NOTOPEN tolerance (the Compile legs accept only the editor's own notices) and gains a DW-2395 leg (integrity reports across the web pool, no worker loses `/dev/null`, then the DTL editor compiles with its own notice); 20.7's Named limit and mutation lines replaced.
+
+Rejected: `false` — a failed compile blocks a repair (the dictionary walk holds uncompiled classes, measured at plan); the EXPERIENCE.md :718 sentence lacks provenance (it names Story 20.16 inline); a failed setup leaks the turn principal (`OnAfterAllTests` runs after it); `IsCodeOfKind` should call `TransformFactsHere`'s scan (that method runs switched, where AD-62 item 3 bars OcuPilot code). `by-design` — the editor reloads on any confirmed change event naming its class (matrix Reload row, AD-14); the console verdict matches English only (Named limits). `low` — a missing class gets the wrong-kind sentence (rare, a new branch); no gate principal lacks `%Ens_Portal:USE` (one screen-pair path, pinned by `%Ens_Code:READ`); the browser leg asserts the stored text, not the card's confirmed line (the server tests read the state); `MATCHRULE` and the three descriptions repeat a template (per-kind sentences the spec sets); `InteropEditorConfirm.HoldsPair` repeats `ConfirmFixture`'s two lines (`ConfirmFixture` replaces the port, which this helper must not; a shared parent for a two-line seam reads worse, Rule 31); a gate child running past 180 s (theoretical: a stale answer from another principal fails the username assertion). Not reviewable here: the Auto Run Result, the Verification's "two nodes" line and a commit message's claim (each edits the spec or history).
+
 ## Spec Change Log
 
 - 2026-10-13, spec gate (runner): the orchestrator ruled Q1 the other way (B): the three saves also require `%Ens_Code:WRITE`, the vendor editor's write resource, confirmed from the vendor source at Task 0. The Pairs bullet, the matrix, Task 0, the save's `PrivilegePairs`, the tools and gate tests, the turn principal, AC8, the named limits and the mutation table carry it. The Rule 20 drafts are written into the spine with it.
@@ -598,6 +621,9 @@ Added at QA (each reverted to a byte-identical tree and recompiled or rebuilt be
 - (QA) mutation: `ExplorerSaveMint` skips `AgentProblem` -> `InteropEditorSaveRules` wrong-kind, coded, mapped and own-code tests (4 of 6; its Confirm-rule and no-interoperability tests stay green), `InteropEditorSaveConfirm` stays green.
 - (QA) mutation: `InteropEditorSource.SOURCEMAXLENGTH` 100 (the three reads recompiled) -> `InteropEditorTools` `TestEachEditorsReadAnswersTheWholeSavedClassText` alone.
 - (QA) mutation: `interop-editor.page.ts` omits `stopChanges()` on destroy -> `interop-editor.page.spec.ts` reload-for-each-editor test alone (the destroyed page reads the list again).
+- (CR) mutation: `IsCodeOfKind` skips the port's gate, its namespace checks kept (tree reloaded) -> `InteropEditorTools` `TestTheKindPredicateAnswersForEachKind`'s refused-caller leg alone.
+- (CR) mutation: `InteropEditorSave` drops its `MATCHRULE` (tree reloaded) -> `InteropEditorSaveRules` `TestAnOldTheStoredTextLacksNamesTheEditorsRead` alone.
+- (CR) `InteropEditorSaveTurn`'s ledger assertion went red with `SweepSince` after `Sweep` (7 rows left) and is green with it first, 0 rows left.
 
 ## Auto Run Result
 

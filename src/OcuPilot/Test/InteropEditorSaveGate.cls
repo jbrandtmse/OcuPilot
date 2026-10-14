@@ -64,7 +64,6 @@ Method OnBeforeAllTests() As %Status
     If $$$ISOK(tSC) Set tSC = $ClassMethod(..#PROBE, "Make", "transform", ..#PACKAGE)
     If $$$ISOK(tSC) Set tSC = $ClassMethod(..#SHARED, "CreatePrincipals", ..#PRINCIPALS, ..PreparedPassword, "OcuPilot.Test.InteropEditorSaveGate")
     If $$$ISOK(tSC) Set tSC = ..ReadBack()
-    ; %UnitTest skips OnAfterAllTests when this method fails, so a failed setup removes what it made here.
     If $$$ISERR(tSC) Set tSC = $$$ADDSC(tSC, ..OnAfterAllTests())
     Quit tSC
 }

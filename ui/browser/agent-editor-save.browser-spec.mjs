@@ -7,7 +7,8 @@
  * frame. The bar says, before any request, that the agent reads only what is saved. The live card passes the DW-1337 invariants.
  *
  * The probe is a data transformation `OcuProbe2016Ui.Transform` in `USER`, written, compiled and removed by this file, which
- * also records and restores `^EnsPortal.Settings(<user>, "LastDTL")`, the node the DTL editor writes when it opens a document.
+ * also records and restores `^EnsPortal.Settings(<user>, "LastDTL")` in `USER`, the node the DTL editor writes there when it opens a
+ * document.
  * `before` puts the governance policy back to its default, so the save's key reads enabled; `after` removes its proposals and the
  * probe and puts the definition back. It refuses to run in the live container or a slot instance before any docker call. Each test
  * signs in in its own context and waits for the screen's answered signal before it counts, clicks or types.
@@ -28,16 +29,8 @@ import { EDITOR_API, until, watchEditorTraffic } from './interop-editor-spec.mjs
 import { waitForMapAnswered } from './namespace-features.mjs';
 import { signedInAt } from './panel-spec.mjs';
 import { resetGovernancePolicy, resetRememberedState } from './preferences-reset.mjs';
-import {
-  INVARIANTS,
-  VIEWPORTS,
-  assertThrowaway,
-  compare,
-  componentMinimums,
-  detectScreen,
-  readBaseline,
-  toggleThemeThroughMenu,
-} from './structural-walk.mjs';
+import { VIEWPORTS, assertThrowaway } from './structural-walk.mjs';
+import { cardViolations, proposeFromPanel, slotText } from './proposal-card-spec.mjs';
 import {
   armProbeDefinition,
   disarmProbeDefinition,
@@ -78,7 +71,8 @@ const ASSIGN = "<assign value='source.StringValue' property='target.StringValue'
 const EDITED = "<assign value='source.StringValue_\"-agent-edit\"' property='target.StringValue' action='set'/>";
 const EDITED_VALUE = '-agent-edit';
 const BROKEN_CODE = '<code><![CDATA[ Set x = (1 ]]></code>';
-const SETTINGS_NODE = `^EnsPortal.Settings("${escapeOs(config.username)}","LastDTL")`;
+/** The editor's settings node in the probe's namespace, which the install namespace the commands run in does not share. */
+const SETTINGS_NODE = `^["${NAMESPACE}"]EnsPortal.Settings("${escapeOs(config.username)}","LastDTL")`;
 
 let browser = null;
 let preparedId = '';
@@ -132,11 +126,15 @@ after(async () => {
   if (browser !== null) await browser.close();
   if (config.container === LIVE_CONTAINER) return;
   await requireFreeSlot(config).catch(() => {});
-  dropProposals();
-  removeProbe();
-  restoreSetting();
-  await resetRememberedState();
-  disarmProbeDefinition(probe, priorDefault);
+  const failures = [];
+  for (const step of [dropProposals, removeProbe, restoreSetting, resetRememberedState, () => disarmProbeDefinition(probe, priorDefault)]) {
+    try {
+      await step();
+    } catch (error) {
+      failures.push(error);
+    }
+  }
+  if (failures.length > 0) throw failures[0];
 });
 
 function allowWrites() {
@@ -174,13 +172,15 @@ function removeProbe() {
   assert.equal(markerValue(output, 'AGENTEDITORGONE'), '1', `the probe package, its generated classes and its cache node are removed: ${output}`);
 }
 
-/** Whether the probe's stored text holds `fragment`. */
+/** Whether the probe's stored text holds `fragment`; the text must be read. */
 function storedHolds(fragment) {
   const output = runIris([
-    `Set tOrigNS=$NAMESPACE Set $NAMESPACE="${NAMESPACE}" Set sc=##class(%Compiler.UDL.TextServices).GetTextAsString("${NAMESPACE}","${CLASS}",.t) Set $NAMESPACE=tOrigNS`,
-    `Write "OCU-AGENTEDITORHOLD-START:"_(t[${JSON.stringify(fragment)})_":OCU-AGENTEDITORHOLD-END",!`,
+    `Set t="" Set tOrigNS=$NAMESPACE Set $NAMESPACE="${NAMESPACE}" Set sc=##class(%Compiler.UDL.TextServices).GetTextAsString("${NAMESPACE}","${CLASS}",.t) Set $NAMESPACE=tOrigNS`,
+    `Write "OCU-AGENTEDITORHOLD-START:"_$System.Status.IsOK(sc)_"|"_(t[${JSON.stringify(fragment)})_":OCU-AGENTEDITORHOLD-END",!`,
   ]);
-  return markerValue(output, 'AGENTEDITORHOLD') === '1';
+  const value = markerValue(output, 'AGENTEDITORHOLD');
+  assert.match(String(value), /^1\|[01]$/, `the probe's stored text was read: ${output}`);
+  return value === '1|1';
 }
 
 /** The names of the tools the first provider request of `tag` carried without `defer_loading`: the turn's starting set. */
@@ -259,48 +259,6 @@ async function editorShows(page, text) {
   return frame;
 }
 
-/** Wait for the composer, send one prompt, and wait for the card's Confirm button. */
-async function proposeSave(page, prompt) {
-  await page.waitForFunction(() => !document.querySelector('#ocu-panel-composer').hasAttribute('aria-disabled'), { timeout: config.navigationTimeoutMs });
-  await page.type('#ocu-panel-composer', prompt);
-  await page.click('.ocu-panel-send');
-  await page.waitForSelector('app-proposal-card .ocu-proposal-card-confirm', { timeout: config.navigationTimeoutMs });
-}
-
-/** The card's slot text, without its glyph, or `null` when the slot is absent. */
-async function slotText(page, name) {
-  return page.$eval(`app-proposal-card [data-slot="${name}"]`, (node) => (node.querySelector('.ocu-banner-message') ?? node).textContent.trim()).catch(() => null);
-}
-
-/** Every DW-1337 invariant over the card in light at both widths and dark at the wide width, outside the baseline. */
-async function cardViolations(page) {
-  const minimums = componentMinimums();
-  const baseline = (readBaseline()?.entries ?? []).filter((entry) => entry.route === ROUTE);
-  const requests = { inflight: new Set(), last: 0 };
-  const found = [];
-  for (const { viewport, theme } of [
-    { viewport: VIEWPORTS.wide, theme: 'light' },
-    { viewport: VIEWPORTS.narrow, theme: 'light' },
-    { viewport: VIEWPORTS.wide, theme: 'dark' },
-  ]) {
-    await page.setViewport(viewport);
-    // The docked panel re-lays out on the resize; measure once its right edge has come inside the viewport.
-    await page.waitForFunction((width) => {
-      const panel = document.querySelector('app-panel');
-      return panel === null || panel.getBoundingClientRect().right <= width + 1;
-    }, { timeout: 3000 }, viewport.width).catch(() => {});
-    if (theme === 'dark') await toggleThemeThroughMenu(page, requests, config.navigationTimeoutMs);
-    try {
-      const { entries } = await detectScreen(page, { route: ROUTE, checks: INVARIANTS, viewport: viewport.width, theme, minimums });
-      found.push(...entries);
-    } finally {
-      if (theme === 'dark') await toggleThemeThroughMenu(page, requests, config.navigationTimeoutMs);
-    }
-  }
-  await page.setViewport(VIEWPORTS.wide);
-  return compare(found, baseline).fresh.map((entry) => `${entry.key}: ${entry.measured}`);
-}
-
 // Mutation (Rule 19): the page omits the agent line (bundle rebuilt and redeployed) -> the bar assertion goes red.
 test('AC1: the bar says the agent reads only what is saved, beside the note and before any request of the agent', async () => {
   makeProbe();
@@ -339,7 +297,7 @@ test('AC1, AC2, AC3: a scripted turn reads and proposes, the card shows the diff
     await editorShows(page, CLASS);
     assert.equal(reads.length >= 1 && reads[0].status === 200, true, 'the editor read its document');
 
-    await proposeSave(page, 'append -agent-edit to the value this transformation sets');
+    await proposeFromPanel(page, 'append -agent-edit to the value this transformation sets', config.navigationTimeoutMs);
     assert.deepEqual(
       startingTools(tag)
         .filter((name) => name.includes('editor'))
@@ -396,7 +354,7 @@ test('AC6: a breaking edit, confirmed, says it did not compile, leaves the new t
     await answered(page);
     const oldFrame = await page.waitForSelector(FRAME, { timeout: config.navigationTimeoutMs });
     const address = await oldFrame.evaluate((node) => node.getAttribute('src'));
-    await proposeSave(page, 'add a code line that does not compile');
+    await proposeFromPanel(page, 'add a code line that does not compile', config.navigationTimeoutMs);
     await page.click('.ocu-proposal-card-confirm');
     await page.waitForSelector('app-proposal-card [data-slot="saved-not-compiled"]', { timeout: config.navigationTimeoutMs });
     assert.equal(await slotText(page, 'saved-not-compiled'), STRINGS.explorerSaveNotCompiled, 'the card says the save did not compile');
@@ -422,8 +380,8 @@ test('DW-1337: the live card on the editor screen passes the invariants in light
   try {
     await answered(page);
     await editorShows(page, CLASS);
-    await proposeSave(page, 'append -agent-edit to the value this transformation sets');
-    assert.deepEqual(await cardViolations(page), [], 'the card adds no structural violation in light or dark, at either width');
+    await proposeFromPanel(page, 'append -agent-edit to the value this transformation sets', config.navigationTimeoutMs);
+    assert.deepEqual(await cardViolations(page, ROUTE, config.navigationTimeoutMs), [], 'the card adds no structural violation in light or dark, at either width');
   } finally {
     await context.close();
     forgetTag(tag);

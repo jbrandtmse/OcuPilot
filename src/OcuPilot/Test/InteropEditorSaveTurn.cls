@@ -40,6 +40,9 @@ Property PreparedDefinitionId As %String;
 
 Property PreparedPrior As %String;
 
+/// <p>The state store's row counter before the test, above which every row the test's turns wrote is removed after it.</p>
+Property PreparedMark As %Integer;
+
 /// <p>The policy found before the test, put back after it.</p>
 Property StoredPolicy [ MultiDimensional ];
 
@@ -50,6 +53,7 @@ Method %OnNew(initvalue As %String = "") As %Status
     Set ..PreparedTurnPassword = ""
     Set ..PreparedDefinitionId = ""
     Set ..PreparedPrior = ""
+    Set ..PreparedMark = 0
     Quit $$$OK
 }
 
@@ -91,6 +95,7 @@ Method OnBeforeOneTest() As %Status
     Set tSC = ##class(OcuPilot.Test.GovernanceFixture).Clear()
     If $$$ISERR(tSC) Quit tSC
     Do $ClassMethod(..#FIXTURE, "Sweep", $ListBuild(..#TAG))
+    Set ..PreparedMark = $ClassMethod(..#FIXTURE, "StateMark")
     Set tSC = $ClassMethod(..#PROBE, "Remove", ..#PACKAGE)
     If $$$ISOK(tSC) Set tSC = $ClassMethod(..#PROBE, "Make", "transform", ..#PACKAGE)
     If $$$ISOK(tSC) Set tSC = $ClassMethod(..#FIXTURE, "SetTag", ..PreparedDefinitionId, ..#TAG)
@@ -103,6 +108,7 @@ Method OnAfterOneTest() As %Status
     Kill tRows
     Merge tRows = ..StoredPolicy
     Do $$$AssertStatusOK(##class(OcuPilot.Test.GovernanceFixture).Restore(.tRows), "the policy found before the test is put back")
+    Do $$$AssertEquals($ClassMethod(..#FIXTURE, "SweepSince", ..PreparedMark, $Parameter(..#FIXTURE, "USERA")), "", "no turn, conversation or ledger row the principal's turns wrote survives the method")
     Do $$$AssertEquals($ClassMethod(..#FIXTURE, "Sweep", $ListBuild(..#TAG)), "", "no probe job, turn, slot or stub node survives the method")
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Remove", ..#PACKAGE), "the probe package, its generated classes and its cache node are removed")
     Quit $$$OK

@@ -1124,10 +1124,12 @@ ClassMethod ListClasses(pNamespace As %String, pEndpoint As %String, pMax As %In
 /// item 14): the test <method>ListClasses</method> applies to list a rule, a business process written in BPL
 /// or a data transformation written in DTL. It reads the dictionary with
 /// <code>%Dictionary.ClassDefinition:SubclassOf</code>, which writes nothing, and calls no
-/// <code>OcuPilot.*</code> class while switched (AD-16).</p>
-/// <p><var>pRead</var> is 1 only when the dictionary was read. A namespace that does not report
-/// interoperability, an unknown namespace, a namespace of the wrong shape and a dictionary that cannot be read
-/// answer 0 with <var>pRead</var> 0, so a caller that refuses on an unread answer fails closed.</p>
+/// <code>OcuPilot.*</code> class while switched (AD-16). This port's gate (<method>Admit</method>) is asked first,
+/// as for the list of the kind's code (the rule list for <code>Ens.Rule.Definition</code>, the process list for
+/// <code>Ens.BusinessProcessBPL</code>, the transformation list otherwise).</p>
+/// <p><var>pRead</var> is 1 only when the dictionary was read. A caller the gate refuses, a namespace that does
+/// not report interoperability, an unknown namespace, a namespace of the wrong shape and a dictionary that cannot
+/// be read answer 0 with <var>pRead</var> 0, so a caller that refuses on an unread answer fails closed.</p>
 /// <p><b>Caller contract:</b> not called from an escalated frame (AD-9). The caller's namespace is restored
 /// whatever the outcome.</p>
 ClassMethod IsCodeOfKind(pNamespace As %String, pName As %String, pBase As %String, Output pRead As %Boolean) As %Boolean
@@ -1137,8 +1139,8 @@ ClassMethod IsCodeOfKind(pNamespace As %String, pName As %String, pBase As %Stri
     Set tOrigNS = $NAMESPACE
     Try {
         If (pNamespace = "") || (pName = "") || (pBase = "") Quit
-        If '$Match(pNamespace, ##class(OcuPilot.Port.AtelierPort).#NAMESPACEPATTERN) Quit
-        If '##class(OcuPilot.Kernel.Shell.NamespaceFeatures).Reports("interoperability", pNamespace) Quit
+        Set tEndpoint = $Case(pBase, "Ens.Rule.Definition": ..#ENDPOINTRULES, "Ens.BusinessProcessBPL": ..#ENDPOINTPROCESSES, : ..#ENDPOINTTRANSFORMS)
+        If $$$ISERR(..Admit(tEndpoint, ..#TYPELIST, pNamespace, .tHttp, .tFault)) Quit
         Set $NAMESPACE = pNamespace
         Set tResultSet = ##class(%ResultSet).%New("%Dictionary.ClassDefinition:SubclassOf")
         Set tStatusSC = tResultSet.Execute(pBase)

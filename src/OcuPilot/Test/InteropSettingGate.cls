@@ -75,7 +75,6 @@ Method OnBeforeAllTests() As %Status
     Set tGate = $ClassMethod(..#ITEMGATE, "%New", "")
     Set tGate.PreparedPassword = ..PreparedPassword
     Set tSC = tGate.EnsurePrincipals()
-    ; %UnitTest skips OnAfterAllTests when this method fails, so a failed setup removes what it made here.
     If $$$ISERR(tSC) Set tSC = $$$ADDSC(tSC, ..OnAfterAllTests())
     Quit tSC
 }

@@ -11729,3 +11729,20 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-38-the-live-log-tail.md | severity: low | fix-risk: med | footprint: in-story
 - evidence: wc -l: 605 at 02bd47fb, 692 at 5ab4af82, 713 after the rework 2 review's patches. A split adds a class to scripts/ci-throwaway.sh's arming roster (Epic 20's file) and ci-timings.json, more than a two-way door.
 - 2026-10-13T23:13:33Z status=wontfix-accepted owner=18-38-the-live-log-tail by=cr note=reopen_if=wc -l src/OcuPilot/Test/DatabaseIntegrity.cls exceeds 800, or a story adds a test method to it
+
+### DW-2401: Spine AD-8 does not name Story 20.16's %Ens_Code:WRITE among the pairs a write tool may add beyond its screen's set
+- source: spec-20-16-the-agent-edits-rule-dtl-and-bpl-content-behind-the-embedded.md code review | severity: low | fix-risk: low | footprint: in-story
+- evidence: AD-8 says a write tool adds pairs beyond its screen's only for a database the read does not write or a measured ResourcesOR; the editor saves add %Ens_Code:WRITE by the orchestrator's ruling, recorded in AD-53 alone, so AD-8 reads as violated.
+- 2026-10-14T00:51:42Z status=open owner=20-16-the-agent-edits-rule-dtl-and-bpl-content-behind-the-embedded by=cr note=spine amendment for the lead (Rule 20): add the ruling as AD-8's named case; wording in the spec's Review Findings
+- 2026-10-14T00:54:28Z status=resolved-by:20-16-the-agent-edits-rule-dtl-and-bpl-content-behind-the-embedded by=adjudication note=AD-8 sentence added (spine, 2026-10-13)
+
+### DW-2402: Spine AD-61 rule 6's Story 20.16 sentence gives an HTTP measurement as the port's reason to read the compile console
+- source: spec-20-16-the-agent-edits-rule-dtl-and-bpl-content-behind-the-embedded.md code review | severity: low | fix-risk: low | footprint: in-story
+- evidence: The BPL 200-with-no-status-error was measured over the Atelier HTTP route; the port compiles in process, where the implement stage measured #5475 in status.errors for the same edit, so the console clause is a fallback.
+- 2026-10-14T00:51:43Z status=open owner=20-16-the-agent-edits-rule-dtl-and-bpl-content-behind-the-embedded by=cr note=spine amendment for the lead (Rule 20): restate the because-clause; wording in the spec's Review Findings
+- 2026-10-14T00:54:28Z status=resolved-by:20-16-the-agent-edits-rule-dtl-and-bpl-content-behind-the-embedded by=adjudication note=AD-61 rule 6 restated as a fallback (spine, 2026-10-13)
+
+### DW-2403: The turn wire test classes (ExplorerSaveTurn and its siblings) leave their probe user's ledger rows, and SweepSince misses rows whose turn is gone
+- source: spec-20-16-the-agent-edits-rule-dtl-and-bpl-content-behind-the-embedded.md code review | severity: med | fix-risk: low | footprint: in-epic
+- evidence: Sweep and RemoveTurns delete no ledger rows; TurnWireFixture.SweepSince's owner pass reads SELECT DISTINCT TurnKey, which returns the collated uppercase key, so GuardedDeleteForTurn's exact match misses it (measured: 7 rows left).
+- 2026-10-14T00:51:43Z status=routed owner=burndown by=cr note=20.16's InteropEditorSaveTurn calls SweepSince before Sweep; fix SweepSince with %EXACT and sweep the others

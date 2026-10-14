@@ -5,7 +5,7 @@
 /// the warning sentence; each editor's context lists exactly its read and its save while the System Explorer screens' lists
 /// stay as they were; the tools that list themselves in a screen's context without an action are exactly the three saves;
 /// each read answers the whole saved text of a probe of its kind; and <method>OcuPilot.Port.InteropPort.IsCodeOfKind</method>
-/// answers for each kind, the base class, a coded process and a namespace it cannot read.</p>
+/// answers for each kind, the base class, a coded process, a namespace it cannot read and a caller its port's gate refuses.</p>
 /// <p><b>What it needs from the environment:</b> the compiled registries and a <code>USER</code> namespace that runs
 /// interoperability. It makes and removes the <code>OcuProbe2016</code> probe package in <code>USER</code>
 /// (<class>OcuPilot.Test.InteropEditorProbe</class>) and snapshots the stored governance policy before each test and puts it back
@@ -57,9 +57,12 @@ Method OnBeforeOneTest() As %Status
 Method OnAfterOneTest() As %Status
 {
     Do ##class(OcuPilot.Kernel.Scope).Clear()
+    Do ##class(OcuPilot.Test.ScreenGate).Reset()
     Kill tRows
     Merge tRows = ..StoredPolicy
     Do $$$AssertStatusOK(##class(OcuPilot.Test.GovernanceFixture).Restore(.tRows), "the policy found before the test is put back")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "ForgetLedger"), "the ledger rows of the probe turns are removed")
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.ProposalFixture).RemoveSeeded(.tRemaining), "the probe turns are removed")
     Quit $$$OK
 }
 
@@ -127,8 +130,6 @@ Method TestEachEditorBindsAnAdvertisedReadAndAnAgentOnlySave()
 }
 
 /// <p>The tools that list themselves in a screen's context with no action to carry them are exactly the three saves.</p>
-/// <p>Mutation (Rule 19): <method>OcuPilot.Screen.Context.ScreenTools</method> ignores <parameter>SCREENLISTED</parameter> --
-/// the editors' context legs go red here and in <class>OcuPilot.Test.InteropEditorSaveTurn</class>.</p>
 Method TestOnlyTheThreeSavesListThemselvesInAScreensContext()
 {
     Do $$$AssertStatusOK(..ToolsByName(.tByName), "the tool registry lists")
@@ -226,8 +227,6 @@ Method TestEachEditorsReadAnswersTheWholeSavedClassText()
         Do $$$AssertEquals(tBody.name _ "|" _ tBody.namespace _ "|" _ tBody.truncated, tClass _ ".cls|" _ ..#NAMESPACE _ "|0", tRead _ ": it answers the class asked, in the namespace, uncut")
         Do $$$AssertEquals(tBody.text, tStored, tRead _ ": and the text the instance stores")
     }
-    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "ForgetLedger"), "the ledger rows of the probe turns are removed")
-    Do $$$AssertStatusOK(##class(OcuPilot.Test.ProposalFixture).RemoveSeeded(.tRemaining), "the probe turns are removed")
 }
 
 /// <p>Each editor's context lists exactly its read and its save, read first; the System Explorer class screens' lists stay as
@@ -252,10 +251,11 @@ Method TestEachEditorsContextListsExactlyItsReadAndSave()
 
 /// <p><method>OcuPilot.Port.InteropPort.IsCodeOfKind</method> answers 1 for a probe of each kind against its own base, and for
 /// the DTL probe against the broader <code>Ens.DataTransform</code>; 0 for a probe of another kind and for a coded process,
-/// all read; 0 for the base class itself, read; and 0 with the dictionary unread for <code>%SYS</code> and a namespace that
-/// does not exist, neither of which reports interoperability.</p>
+/// all read; 0 for the base class itself, read; 0 with the dictionary unread for <code>%SYS</code> and a namespace that
+/// does not exist, neither of which reports interoperability; and 0 unread for a caller the port's gate refuses READ on the
+/// namespace's globals database (<class>OcuPilot.Test.InteropGateSeam</class>), read once it holds that pair too.</p>
 /// <p>Mutation (Rule 19): <method>OcuPilot.Port.InteropPort.IsCodeOfKind</method> answers 1 for every readable name -- the
-/// other-kind, coded and base legs go red.</p>
+/// other-kind, coded and base legs go red; it skips the port's gate -- the refused-caller leg goes red.</p>
 Method TestTheKindPredicateAnswersForEachKind()
 {
     Set tOrigNS = $NAMESPACE
@@ -276,6 +276,18 @@ Method TestTheKindPredicateAnswersForEachKind()
         Set tKind = ##class(OcuPilot.Port.InteropPort).IsCodeOfKind(tNamespace, tName, tDtl, .tRead)
         Do $$$AssertEquals(tKind _ "|" _ tRead, "0|0", "'" _ tNamespace _ "' cannot be read as an interoperability namespace")
     }
+    Set tGlobals = ""
+    Do ##class(OcuPilot.Kernel.Shell.Namespaces).GlobalDatabase(..#NAMESPACE, .tGlobals, .tReadOnly)
+    Do $$$AssertTrue(tGlobals '= "", ..#NAMESPACE _ "'s globals database resource resolves")
+    Do ##class(OcuPilot.Test.ScreenGate).Reset()
+    Do ##class(OcuPilot.Test.ScreenGate).Hold("%Ens_Portal", "USE")
+    Do ##class(OcuPilot.Test.ScreenGate).Hold("%Ens_Code", "READ")
+    Set tKind = ##class(OcuPilot.Test.InteropGateSeam).IsCodeOfKind(..#NAMESPACE, tName, tDtl, .tRead)
+    Do $$$AssertEquals(tKind _ "|" _ tRead, "0|0", "a caller holding the code lists' pairs but not READ on " _ tGlobals _ " is answered unread")
+    Do ##class(OcuPilot.Test.ScreenGate).Hold(tGlobals, "READ")
+    Set tKind = ##class(OcuPilot.Test.InteropGateSeam).IsCodeOfKind(..#NAMESPACE, tName, tDtl, .tRead)
+    Do $$$AssertEquals(tKind _ "|" _ tRead, "1|1", "and is read once it holds READ on " _ tGlobals _ " too")
+    Do ##class(OcuPilot.Test.ScreenGate).Reset()
     Do $$$AssertEquals($NAMESPACE, tOrigNS, "the caller's namespace is restored")
 }
 

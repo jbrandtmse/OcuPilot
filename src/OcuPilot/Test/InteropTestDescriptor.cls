@@ -41,7 +41,6 @@ Method OnBeforeAllTests() As %Status
     If $$$ISERR(tSC) Quit tSC
     Set tSC = $ClassMethod(..#FIXTURE, "Create")
     If $$$ISOK(tSC) Set tSC = $ClassMethod(..#TRANSFORMFIXTURE, "Create")
-    ; %UnitTest skips OnAfterAllTests when this method fails, so a failed setup removes what it made here.
     If $$$ISERR(tSC) Set tSC = $$$ADDSC(tSC, ..OnAfterAllTests())
     Quit tSC
 }

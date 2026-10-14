@@ -372,8 +372,8 @@ Method TestTheSaveRendersItsScript()
 
 /// <p>AD-61 rule 6: a compile's console that reads <code>Detected &lt;n&gt; errors during compilation</code> with <code>n</code> above
 /// zero counts as failed, though the call answers 200 with no status error (a BPL whose generated class fails does over the Atelier HTTP route); a
-/// console that finished successfully, reads no such line, reports zero errors, is empty or is not an array does not. The lines are
-/// the ones a BPL and a DTL compile failure and a success answered on the instance.</p>
+/// console that finished successfully, reads no such line, reports zero errors, is empty or is not an array does not. The lines take
+/// the shape a BPL and a DTL compile failure and a success answer.</p>
 /// <p>Mutation (Rule 19): <method>OcuPilot.Port.AtelierPort.ConsoleCountsErrors</method> answers 0 -- the failure legs go red.</p>
 Method TestTheCompileVerdictReadsTheConsole()
 {

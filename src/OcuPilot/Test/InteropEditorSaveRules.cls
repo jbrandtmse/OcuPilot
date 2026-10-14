@@ -1,8 +1,9 @@
 /// <p>Pins what Story 20.16's editor saves refuse (AD-10, AD-53, AD-62 item 14, AC5): a save admits only a class of its editor's
 /// kind, and refuses before the class is read a class of another kind, a coded process, a class that does not exist, a class
 /// stored in another database, an OcuPilot class, a name beginning with <code>%</code> and a class in <code>%SYS</code>, each
-/// answering its code and adding no proposal; Confirm's rule refuses a class that is not of the kind, and a namespace that does
-/// not report interoperability cannot be read, so the save refuses it too.</p>
+/// answering its code and adding no proposal; an <code>Old</code> the stored text lacks is refused with a match rule naming the
+/// editor's read; Confirm's rule refuses a class that is not of the kind, and a namespace that does not report interoperability
+/// cannot be read, so the save refuses it too.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed in <code>HSCUSTOM</code>, a <code>USER</code> namespace that
 /// runs interoperability, the <code>ENSLIB</code> database mapped for the <code>Ens</code> package and its classes, and a
 /// namespace other than <code>%SYS</code> that does not report interoperability (<code>HSSYSLOCALTEMP</code> on this image). It
@@ -130,6 +131,22 @@ Method TestConfirmRefusesAClassThatIsNotOfTheKind()
     Do $$$AssertTrue($Get(tProblem) [ "is not a data transformation written in DTL", "a class the namespace does not hold is refused: " _ $Get(tProblem))
     Do $$$AssertStatusOK($ClassMethod(tTool, "ConfirmProblem", ..#PACKAGE _ ".Transform.cls", tArgs, .tProblem), "Confirm's rule answers for a transformation")
     Do $$$AssertEquals($Get(tProblem), "", "a data transformation is admitted")
+}
+
+/// <p>An <code>Old</code> the stored text does not hold is refused 400 <code>TOOL.ARGUMENTS</code> with the match rule naming the
+/// editor's own read, not the System Explorer reads, and adds no proposal.</p>
+/// <p>Mutation (Rule 19): <class>OcuPilot.Screen.Tool.InteropEditorSave</class> drops its <parameter>MATCHRULE</parameter>, so the
+/// class save's is inherited -- this goes red.</p>
+Method TestAnOldTheStoredTextLacksNamesTheEditorsRead()
+{
+    Set tBefore = ##class(OcuPilot.Test.ExplorerSave).ProposalRows(..#TRANSFORMTOOL)
+    Set tWrite = ##class(OcuPilot.Test.ExplorerWrite).%New("")
+    Set tSC = tWrite.DispatchFor(..#TRANSFORMTOOL, ..#NAMESPACE, {"Names": (..#PACKAGE _ ".Transform.cls"), "Edits": [{"Old": "OcuProbe2016 holds no such line", "New": "y"}]}, .tContent, .tIsError, .tProposal)
+    Do $$$AssertTrue($$$ISOK(tSC) && tIsError, "the save is refused: " _ $Extract($Get(tContent), 1, 240))
+    Do $$$AssertEquals(##class(OcuPilot.Test.ExplorerSaveFlow).CodeOf($Get(tContent)), "TOOL.ARGUMENTS", "with TOOL.ARGUMENTS")
+    Set tProblem = ##class(OcuPilot.Test.ExplorerSaveFlow).ProblemOf($Get(tContent))
+    Do $$$AssertTrue((tProblem [ "occurs 0 times") && (tProblem [ "interop.transformeditor.source") && (tProblem '[ "explorer.class.source"), "its match rule names the editor's read: " _ tProblem)
+    Do $$$AssertEquals(##class(OcuPilot.Test.ExplorerSave).ProposalRows(..#TRANSFORMTOOL), tBefore, "and no proposal is added")
 }
 
 /// <p>A namespace that does not report interoperability cannot be read for the kind, so the save refuses it with its own

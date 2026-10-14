@@ -124,6 +124,7 @@ ClassMethod Remove(pPackage As %String = {..#PACKAGE}) As %Status
         Kill ^IRIS.TempEnsRule("class", pPackage _ ".Rule")
         Set tLeft = ""
         Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT Name FROM %Dictionary.ClassDefinition WHERE Name %STARTSWITH ?", pPackage _ ".")
+        If tRS.%SQLCODE < 0 Set tLeft = tLeft _ " (the dictionary was not read: SQLCODE " _ tRS.%SQLCODE _ ")"
         While tRS.%Next() {
             Set tLeft = tLeft _ " " _ tRS.%GetData(1)
         }

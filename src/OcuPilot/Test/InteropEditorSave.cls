@@ -132,8 +132,8 @@ Method TestEachEditorSaveIsMintedAndConfirmed()
 
 /// <p>A class another writer changed after the mint is refused 409 <code>TARGETCHANGED</code>, the kernel's changed-target answer,
 /// with the other writer's text left in place.</p>
-/// <p>Mutation (Rule 19): <class>OcuPilot.Screen.Tool.InteropEditorSave</class> overrides <parameter>FINGERPRINTSUBJECT</parameter>
-/// without <code>Modified</code> -- the confirm passes the fingerprint and is refused on another ground, so this goes red.</p>
+/// <p>Mutation (Rule 19): <class>OcuPilot.Screen.Tool.InteropEditorSave</class> sets <parameter>FINGERPRINTSUBJECT</parameter>
+/// without <code>Modified</code> and <parameter>PRECONDITIONFIELD</parameter> <code>Absent</code> -- this goes red alone.</p>
 Method TestAnOutsideRewriteAfterTheMintIsRefusedAsAChangedTarget()
 {
     Set tName = $ClassMethod(..#PROBE, "Name", "transform", ..#PACKAGE)
