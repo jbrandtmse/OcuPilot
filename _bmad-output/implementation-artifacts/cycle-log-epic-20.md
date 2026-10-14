@@ -737,3 +737,5 @@
 2026-10-14T02:37:14Z	Story 20.16	rework_opened	cycle_iteration=2 iteration=1 trigger=smoke items=[Smoke]ToolWrite_other-port_count scope_baseline=pending
 2026-10-14T02:37:14Z	Epic 20	deps_hash_rerecorded	reason=rule5_amendment(20.10_criterion)
 2026-10-14T02:37:14Z	Story 20.16	stage_spawned	stage=implement spawn_at=2026-10-14T02:37:14Z model=sonnet agent_name=20-16-rework-1 cycle_iteration=2
+2026-10-14T02:50:42Z	Story 20.16	dev_complete	spawn_at=(see_stage_spawned) model=sonnet agent_name=20-16-rework-1 build_sha=a92f8904 baseline_revision=b67d1b1e review_loop_iteration=0 followup_review_recommended=false deferred=0 cycle_iteration=2 fix=ToolWrite_other-port_46_to_49(read_from_instance)
+2026-10-14T02:50:42Z	Story 20.16	stage_spawned	stage=code-review spawn_at=2026-10-14T02:50:42Z model=opus agent_name=20-16-code-review-2 cycle_iteration=2 scope=b67d1b1e..HEAD(rework)
