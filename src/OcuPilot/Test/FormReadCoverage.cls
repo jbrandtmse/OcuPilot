@@ -132,11 +132,11 @@ ClassMethod SuperserverFormOnly() As %List
 }
 
 /// <p>The user list's detail call (<code>read.source.rowGet.fields</code>) asks for the eleven copy fields the list row
-/// lacks, and a real run of <code>permissions.users.read</code> answers, on each row, the copy form's twelve fields: those
-/// eleven and <code>Routine</code>, the list row's own. A row carries every declared field, empty when the detail call did
-/// not ask for it, so the detail call's own field list is the part that decides whether a value arrives.</p>
+/// lacks, and a real run of <code>permissions.users.read</code> answers, on each row, a value for each of the copy form's
+/// twelve fields: those eleven and <code>Routine</code>, the list row's own. A row carries every declared field, as JSON
+/// <code>null</code> when no call answered it, so a field counts only when it is not <code>null</code>.</p>
 /// <p>Mutation (Rule 19): drop <code>PhoneProvider</code> from the user list's <code>rowGet.fields</code> -- the detail
-/// call stops asking for it and this goes red.</p>
+/// call stops asking for it, its rows carry <code>null</code>, and both halves go red.</p>
 Method TestAUsersReadRowCarriesTheCopyFormsFields()
 {
     Set tSC = $ClassMethod(..#USERS, "DeclarationJson", .tDeclaration)
@@ -162,9 +162,9 @@ Method TestAUsersReadRowCarriesTheCopyFormsFields()
         Set tMissing = ""
         For tJ = 1:1:tCount + 1 {
             Set tField = $Select(tJ > tCount: "Routine", 1: $Piece(..#DETAILFIELDS, ",", tJ))
-            If 'tRow.%IsDefined(tField) Set tMissing = tMissing _ $Select(tMissing = "": "", 1: ",") _ tField
+            If $ListFind($ListBuild("null", "unassigned"), tRow.%GetTypeOf(tField)) Set tMissing = tMissing _ $Select(tMissing = "": "", 1: ",") _ tField
         }
-        Do $$$AssertEquals(tMissing, "", "row " _ tIndex _ " (" _ tRow.%Get("Name") _ ") carries every copy field")
+        Do $$$AssertEquals(tMissing, "", "row " _ tIndex _ " (" _ tRow.%Get("Name") _ ") carries a value for every copy field")
     }
 }
 

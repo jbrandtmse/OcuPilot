@@ -62,6 +62,8 @@ Method OnAfterOneTest() As %Status
 {
     If '..Armed() Quit $$$OK
     Kill ^||OcuPilotDatabaseRulesPort, ^||OcuPilotDatabaseWritePort
+    Do ##class(OcuPilot.Test.ProposalFixture).RemoveSeeded(.tSeeded)
+    Do $$$AssertEquals(tSeeded, 0, "the turns and proposals the mints seeded are removed")
     Do $$$AssertStatusOK(..Cleanup(..PreparedFacts), "the probe database, key and directory are removed and the key state is restored")
     Set tFacts = $ClassMethod(..#PROBE, "EncryptionFacts")
     Do $$$AssertTrue('tFacts.%IsDefined("error") && (..PreparedFacts '[ """error"":"), "the encryption facts were read whole before and after the test")
@@ -154,8 +156,7 @@ Method TestTheFileBodyCarriesTheFlagAndTheKeyOnlyForAnEncryptedCreate()
 
 /// <p>The live leg: over an active probe key, the form read answers the key's id, an encrypted create through the
 /// screen's Save is 201, and the database reads encrypted with that key on the instance
-/// (<code>SYS.Database</code>); the agent's mint of the same create is accepted and its card shows the flag; the create
-/// of a database that asks for no encryption makes an unencrypted one.</p>
+/// (<code>SYS.Database</code>); and the agent's mint of the same create is accepted and its card shows the flag.</p>
 /// <p>Mutation (Rule 19): drop <code>Encrypted</code> from <method>OcuPilot.Port.DatabasePort.FileBody</method> -- the
 /// database reads unencrypted and this goes red; send an empty key id -- the key leg goes red.</p>
 Method TestAnEncryptedCreateMakesADatabaseEncryptedWithTheDefaultKey()

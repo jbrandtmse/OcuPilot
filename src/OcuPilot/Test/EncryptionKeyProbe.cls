@@ -25,9 +25,9 @@ Parameter PASSWORD = "OcuProbeAct-Pass1";
 
 /// <p>The <class>Security.System</class> properties a first database key activation sets that
 /// <method>Restore</method> puts back (measured at Story 18.22's Task 0). It sets
-/// <code>DBEncStartMode</code> too, which no test call restores: <code>Security.System.Modify</code>
-/// answers OK and leaves that internal property as it is (measured), so only a rebuilt throwaway clears
-/// it.</p>
+/// <code>DBEncStartMode</code> too, which <code>Security.System.Modify</code> answers OK and leaves as it is
+/// (measured); a <code>Security.Encryption.Settings</code> <code>PUT</code> of None restores it once no key is active
+/// (<class>OcuPilot.Test.DatabaseCreateEncrypted</class>).</p>
 Parameter RESTOREDPROPERTIES = "DBEncDefaultKeyID,DBEncJournalKeyID";
 
 /// <p>The probe database's folder under the probe directory.</p>

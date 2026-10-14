@@ -58,6 +58,7 @@ Method OnAfterOneTest() As %Status
     Do $$$AssertStatusOK(##class(OcuPilot.Test.GovernanceFixture).Restore(.tRows), "the governance policy is restored")
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "RemoveAll"), "every probe application, role and resource is removed by exact name")
     Do $$$AssertStatusOK($ClassMethod(..#WEAKENING, "RemoveResources"), "and every public-permission probe resource")
+    Do $$$AssertEquals($ClassMethod(..#WEAKENING, "ResourcesHeld"), 0, "none of which is left")
     Do $$$AssertEquals($ClassMethod(..#PROBE, "Remaining"), 0, "and none is left")
     Do $$$AssertNotEquals(..PreparedFacts, "unreadable", "the application list was read before the test")
     Do $$$AssertEquals($ClassMethod(..#PROBE, "Facts"), ..PreparedFacts, "the application list reads as before the test")

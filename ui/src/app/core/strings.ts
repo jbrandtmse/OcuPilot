@@ -6021,16 +6021,19 @@ export const STRINGS = {
     'The audit log, IRISSECURITY or IRISTEMP is encrypted, so every start must activate its key, and with Interactive a start nobody answers on the console does not finish. Keep Unattended, or turn their encryption off first.',
   /** EXPERIENCE.md:364 */
   encryptionStartupJournalRefusal:
-    'Journal encryption is on, so every start must activate its key, and with Interactive a start nobody answers on the console does not finish. Keep Unattended, or turn journal encryption off first.',
+    'Journal encryption is on, or a journal file the instance still needs is encrypted, so every start must activate its key, and with Interactive a start nobody answers on the console does not finish. Keep Unattended, or turn journal encryption off and switch the journal file on Journals first.',
   /** EXPERIENCE.md:364 */
   encryptionStartupKmipRefusal:
-    'The audit log, IRISSECURITY or IRISTEMP is encrypted, and OcuPilot cannot check that the KMIP server is reachable and holds their keys, so a start that cannot activate them does not finish. Keep Unattended, or choose KMIP on the classic Database Encryption page.',
+    'The audit log, IRISSECURITY or IRISTEMP is encrypted, and OcuPilot cannot check that the KMIP server is reachable and holds their keys, so a start that cannot activate them does not finish. Keep Unattended, or make this change on the classic Database Encryption page.',
   /** EXPERIENCE.md:364 */
   encryptionStartupKmipUnconfigured:
     'This KMIP server has no startup key list, so it cannot activate keys at startup. Choose a server that has one, or add a startup key list to this server\'s configuration.',
   /** EXPERIENCE.md:364 */
   encryptionStartupKeyFileDifferent:
     'Unattended activation already uses another key file, and the instance does not switch files while it does. Keep the key file now stored, or change it on the classic Database Encryption page.',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileChanged:
+    'This key file\'s keys changed after the activation was reviewed, so nothing was activated. Review the file\'s keys and propose the activation again.',
   /** EXPERIENCE.md:364 */
   encryptionStartupPrompt1: 'How does this instance activate its encryption keys at startup?',
   /** EXPERIENCE.md:364 */

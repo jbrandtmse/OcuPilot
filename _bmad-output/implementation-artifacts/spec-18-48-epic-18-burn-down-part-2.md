@@ -4,6 +4,7 @@ type: 'bugfix'
 created: '2026-10-14'
 status: 'done'
 baseline_revision: '6ad16de0b6dc785e7c4aee1637ff45239b8d2943'
+baseline_commit: '6ad16de0b6dc785e7c4aee1637ff45239b8d2943'
 review_loop_iteration: 0
 followup_review_recommended: true
 context:
@@ -90,6 +91,53 @@ Under `src/OcuPilot/` at `3a91b5ee`; client under `ui/src/app/areas/`.
 - Given each matrix row, when the story is done, then its task's pinning test shows it holding and its recorded mutation reddens that test.
 - Given a Task 0 outcome that closes an entry instead (DW-2100 kept everywhere, DW-2126's certificate kept, DW-1896 not clearing, a code not driven), when the story is done, then `## Verification` records the evidence.
 
+### Review Findings
+
+Code review 2026-10-14 (`full-opus`: blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor): 45 layer rows and 3 reviewer rows (Rule 2) in 20 entries (high 0, medium 7, low 13) and 19 rejections. After the patches, green on `ocupilot-ci` one class at a time: runs 176-185 (78 tests) and, after the mutation reverts, 190-193; `test:tools` 1993/1993; `test:components` 3120/3120; on a redeployed bundle (initial 1.93 MB), browser `encryption-startup` 3 and `local-databases` 8; `check-objectscript.py` and `lint-docs.sh` 0 problems. The throwaway reads S0.
+
+- [x] [Review][Patch] [medium, fix-risk low] `STARTUPJOURNAL`'s sentence blamed journal encryption when only `OKNoDBEncKeyAtStartup` refused (encryption off, a needed journal file still encrypted), and gave no way out for that case: reworded in the kernel, `strings.ts` and EXPERIENCE.md :364 [src/OcuPilot/Kernel/Proposal/Prohibited.cls:563]
+- [x] [Review][Patch] [medium, low] `DatabaseCreateEncrypted` left the turns and proposals its mints seed: `OnAfterOneTest` removes them and asserts none remain [src/OcuPilot/Test/DatabaseCreateEncrypted.cls:65]
+- [x] [Review][Patch] [medium, low] The users read's live leg tested `%IsDefined`, which a `null` member passes, so a misnamed field could not redden it: it now requires a value [src/OcuPilot/Test/FormReadCoverage.cls:167]
+- [x] [Review][Patch] [medium, low] Rule 30: literal copies outside their roster pins dropped or derived: the `EncryptionError` count (`EncryptionStartupDescriptor`), `PermittedCreateFields` (`RemoteDatabaseDescriptor`), the users fields (`ScreenReadWire`), a code's position (`SuperserverDescriptor`); `screen-mirror.test.mjs:704-714` stays (Rule 11-approved) [src/OcuPilot/Test/ScreenReadWire.cls:117]
+- [x] [Review][Patch] [medium, low] Rule 2: `StartupJournalRefused` and `ResourcePublicUse` copied `StartupDatabasesEncrypted`'s fail-closed read; the three now share `ReadMember` [src/OcuPilot/Kernel/Proposal/Prohibited.cls:3236]
+- [x] [Review][Patch] [low] `STARTUPKMIP`'s way out fit only a write choosing KMIP, though a write keeping it is refused too: "make this change on the classic Database Encryption page" [src/OcuPilot/Kernel/Proposal/Prohibited.cls:573]
+- [x] [Review][Patch] [low] `ENCRYPTION.KEYFILE.CHANGED` was the one `EncryptionError` sentence left unpublished: `encryptionKeyFileChanged`, an `ENCRYPTION_SENTENCES` pin, EXPERIENCE.md :364 [ui/src/app/core/strings.ts:6035]
+- [x] [Review][Patch] [low] The startup tool's description and mode schema named only the three databases' refusal [src/OcuPilot/Screen/Tool/EncryptionStartupUpdate.cls:32]
+- [x] [Review][Patch] [low] The live leg's doc claimed an unencrypted-create leg it lacks [src/OcuPilot/Test/DatabaseCreateEncrypted.cls:159]
+- [x] [Review][Patch] [low] The DW-2085 browser title claimed "the create sends no flag", which the leg never reaches [ui/browser/local-databases.browser-spec.mjs:831]
+- [x] [Review][Patch] [low] Task 1's `mutation:` line named count asserts QA removed: re-run and corrected under `## Verification`
+- [x] [Review][Patch] [low] `EncryptionKeyProbe` and `EncryptionSeamPort` said no test call restores `DBEncStartMode`; a settings `PUT` of None does once no key is active, as `DatabaseCreateEncrypted` asserts [src/OcuPilot/Test/EncryptionKeyProbe.cls:29]
+- [x] [Review][Patch] [low] The wizard's drawing of a server refusal on Encrypt database was untested: a page-spec leg [ui/src/app/areas/os-management/database-wizard.page.spec.ts:190]
+- [x] [Review][Defer] [medium, unverified] The KMIP arm does not judge journal encryption [src/OcuPilot/Kernel/Proposal/Prohibited.cls:3136] — deferred: DW-2431 `decision-pending owner=burndown`; a throwaway restart settles it (KMIP over an unreachable startup server, `DBEncJournal` on)
+- [x] [Review][Defer] [medium, fix-risk med] A resource edit adding public USE to a resource that guards an application granting a privileged role mints ordinary, the reverse of DW-2425 [src/OcuPilot/Kernel/Proposal/Prohibited.cls:4717] — deferred: DW-2432 `decision-pending owner=burndown`
+- [low] EXPERIENCE.md's description cells were not updated (:349 still says "five field refusals"; :364 lists only the Interactive refusal; :377 omits Encrypt database): an in-place edit of base text in a file Epic 20 changes, so it is asked of the lead (Rule 11).
+- [low] AD-2 :104 still says a #5022 `LIST` refusal logs, which :120 supersedes: a spine edit, the lead's (Rule 20).
+- [low] The startup form pre-disables only the Interactive arm; the journal and KMIP refusals land on the start-mode field after Save: `wontfix-accepted reopen_if=modeRefusal('KMIP') answers '' while encryptedDatabases() is non-empty`.
+- [low] Rule 2: `WebAppEditor.grantsPrivileged` repeats `RoutineAppForm.grantsPrivileged` (six lines, two screens' stores): `wontfix-accepted reopen_if=a third store needs the same judgement`.
+- [low] Rule 2: `AdminPort.CompleteClearedList` repeats the endpoint gate that `CompleteThroughClass` and `ImportThroughClass` already share: `wontfix-accepted reopen_if=a fourth AD-27 named case`.
+
+Rejected:
+
+- The web editor states the grant at Enabled and Resource whenever a granted role is privileged: Task 11 places it "as `routine-app-form`" does (spec-bound).
+- A failed key read draws "no key": the form answers `EncryptionKeyID` or `""` (spec-bound; the prior pass's ruling).
+- The encrypted create's key is not reviewed: `FileBody` sends the default key at the write, as Task 2 specifies.
+- The draft renders an empty key id with no default key: needs a key deactivated between mint and draft, and the instance refuses the rendered call (low).
+- `CompleteClearedList` writes the other fields before `Modify`: after the caller's `%Admin_Secure` gate, `Modify` fails only on a concurrent delete (theoretical).
+- The cleared-list path calls `Security.LDAPConfigs.Modify` for any list-typed entry: the only other entry, `PublicPermission`, is refused as a non-string by `ResourceRules` on both callers (theoretical; reopen with a second list-typed entry).
+- A routine application's write runs `WidensPrivilegedReach` twice: one extra read; removing it leaves `pClears` dead and Story 18.47's mutation stale (low).
+- The users read carries contact fields to the agent: Task 8 widens `context.fields` and `read.fields` (spec-bound).
+- Turning journal encryption off under Interactive is refused: AD-10 (2026-10-14) reads `DBEncJournal` "in the payload or the stored settings" (by-design); its sentence is the first patch.
+- A key added to the file between `SameKeys` and the vendor `ACTIVATE` is activated: a concurrent writer within one request (theoretical).
+- `CompleteClearedList`'s own 403 names no `failedPair`: as `CompleteThroughClass`, behind the vendor's gate (low; settled redundant).
+- An unreadable volume list makes every journal directory change 500: matrix row 1966's edge (spec-bound).
+- `Encrypted: "yes"` reads false: the schema types it boolean and `GlobalJournalState` reads the same way (low).
+- The cleared-list read-back's failure legs: they need a seam over a non-overridable vendor call (the prior pass's ruling).
+- `JournalStartup` answering a constant true: its false branch needs an encrypted journal file, whose key the throwaway cannot then deactivate; the negation mutation reddens (low).
+- The no-key legs rely on no key being active: the class asserts it first and names it in its header, and the real-route legs are Task 2's Integration AC (the prior pass's ruling).
+- `CompleteClearedList`'s own gate is dead today: settled.
+- `TestAFieldRefusalOfTheVendorLogsNoLine` counts every new `messages.log` line: its siblings assert the same way, and it can only redden falsely (low).
+- `NameSet` passes a re-read that is not an array: the vendor's `GET` answers the list as an array (theoretical).
+
 ## Spec Change Log
 
 - 2026-10-14 (lead, orchestrator ruling): DW-2415 withdrawn after implement; Epic 20's 20.8 fixes AC6's isolation. Task 9's `log-viewer.spec.ts` hunk reverted to its pre-story content.
@@ -171,7 +219,7 @@ Under `src/OcuPilot/` at `3a91b5ee`; client under `ui/src/app/areas/`.
 
 **Mutations (Rule 19).** Each was applied, the mutated class and every descendant recompiled on `ocupilot-ci` (client code rebuilt and redeployed before a browser spec read it), the red test observed, then reverted with the file byte-identical (sha) and `git status --short` and `git diff --stat` unchanged.
 
-- mutation: Task 1, `Prohibited.EncryptionStartup` journal arm to `If 0` -> `EncryptionStartupWrite.TestInteractiveIsRefusedWhileTheJournalNeedsItsKeyOnBothCallers`; the KMIP arm to `If 0` -> `TestKmipIsRefusedWhileADatabaseNeedsItsKeyOnBothCallers`; `STARTUPKMIP` out of `Codes()` -> `EncryptionStartupDescriptor` (two tests) and `AuditingUpdate`; `STARTUP_JOURNAL_CODE` out of the store's `STARTUP_MODE_REFUSALS` -> `encryption-startup.store.spec`.
+- mutation: Task 1, `Prohibited.EncryptionStartup` journal arm to `If 0` -> `EncryptionStartupWrite.TestInteractiveIsRefusedWhileTheJournalNeedsItsKeyOnBothCallers`; the KMIP arm to `If 0` -> `TestKmipIsRefusedWhileADatabaseNeedsItsKeyOnBothCallers`; `STARTUPKMIP` out of `Codes()` -> `EncryptionStartupDescriptor.TestTheJournalAndKmipRefusalsAreTheirParametersAndNameNoCaller` and `Prohibited.TestTheSetHasOneHomeAndOneSentencePerCode` (review, runs 186, 187); `STARTUP_JOURNAL_CODE` out of the store's `STARTUP_MODE_REFUSALS` -> `encryption-startup.store.spec`.
 - mutation: Task 2, `DatabasePort.FileBody` drops `Encrypted` -> `DatabaseCreateEncrypted` (flag and live legs); `Encrypted` out of `DatabaseCreateFields` -> `DatabaseDescriptor` and `RemoteDatabaseDescriptor`; the wizard store's `encryptAvailable` true -> the `local-databases` browser no-key leg; its `setEncrypted` guard removed -> `database-wizard.store.spec`.
 - mutation: Task 3, `EncryptionPort.Activate` without the `SameKeys` comparison -> `EncryptionKeyWrite.TestAKeyFileChangedSinceTheMintIsRefusedAtTheConfirm`; `FileKeys` out of `KEYARGUMENTS` -> `EncryptionKeyRead` and `EncryptionKeyWrite`; `KEYFILECHANGED` out of `Codes()` -> `EncryptionDescriptor`.
 - mutation: Task 4, the `TYPEDATABASEKEYS` first-key line of `WeakensByEffect` dropped -> `EncryptionKeyWrite` (two tests).
@@ -187,6 +235,18 @@ Under `src/OcuPilot/` at `3a91b5ee`; client under `ui/src/app/areas/`.
 **Results (implement).** 48 ObjectScript classes (441 tests) green on `ocupilot-ci`, one at a time; `npm run test:tools` 1993 of 1993; `npm run test:components` 3119 of 3119 (245 files); browser: `local-databases` 8, `web-applications-editor` 7, `ldap-editor` 7, `switches` 5, `encryption-startup` 3, all green; initial bundle 1926.7 kB (the sum of the initial chunks' raw sizes), largest lazy chunk 83.32 kB (`data-browser-page`); `check-objectscript.py` and `lint-docs.sh`: 0 problems. The throwaway reads S0 (start mode None, no key active, nothing encrypted).
 
 **Results (review).** After the patches, green on `ocupilot-ci` one at a time: `DraftPorts` 13 (run 133), `EncryptionKeyWrite` 11 (144), `EncryptionStartupRead` 6 (145), `FormReadCoverage` 3 (143), `DatabaseCreateEncrypted` 3 (132), `JournalDescriptor` 13 (134); `check-objectscript.py` 0 problems. The throwaway reads S0.
+
+(QA) Test files changed, none created: `Test/WebAppWeakening.cls` and `Test/RoutineAppGrant.cls` (the public-permission probe resources are removed in `OnAfterOneTest` and asserted gone through `WebAppWeakening.ResourcesHeld`); `Test/{AuthOptionsDescriptor,EncryptionStartupDescriptor,SqlPrivilegeDescriptor,SuperserverDescriptor,AuditingUpdate}.cls` (their copies of the `Prohibited.Codes()` count are dropped, `Test/Prohibited.cls` stays the one pin). Green on `ocupilot-ci` one class at a time: the five count-dropping classes (runs 147-151), the eight classes the mutations ran against, after the reverts (62 tests, runs 168-175), `LdapEdit` 16 (167); `check-objectscript.py` 0 problems; the throwaway reads S0.
+
+- mutation (QA): DW-2086 edge, `EncryptionPort.SameKeys` compares an empty list -> `EncryptionKeyWrite.TestAKeyFileChangedSinceTheMintIsRefusedAtTheConfirm` (the screen's activation and the empty-list set) and four more activation tests.
+- mutation (QA): DW-2087 edge, the `TYPEDATABASEKEYS` arm of `WeakensByEffect` ignores `ActiveKeyCount` -> `EncryptionKeyWrite.TestTheFirstDatabaseKeyActivationIsDestructiveAndTheNextIsNot` ("not destructive while a database key is active").
+- mutation (QA): DW-2425 edge, `Prohibited.ResourcePublicUse` answers 0 for a read `ReadMember` did not answer (a failed read is not public) -> `WebAppWeakening.TestEnablingAndAPublicResourceAreGrantsWhileAPrivilegedRoleIsGranted` (the unreadable-resource leg alone; re-run in review, run 188).
+- mutation (review): `PhoneProvider` out of `UserList` `rowGet.fields` -> `FormReadCoverage.TestAUsersReadRowCarriesTheCopyFormsFields`, its declaration leg and now its live leg (run 189); the wizard's `hasEncryptViolation` block dropped -> `database-wizard.page.spec` "the size step's refusal of Encrypt database is drawn on the control". Each reverted byte-identical (sha, `git status --short`, `git diff --stat`) and reloaded; runs 190-193 green.
+- mutation (QA): DW-1966 edges, `JournalPort.ResolveDirectory` ignores a failed `DatabaseDirectories` read, and compares without lower-casing -> `JournalSettingsRules.TestADatabasesDirectoryIsRefusedOnEachPathField` (the 500 leg and the case leg; the `USER` and OcuPilot legs stay green).
+- mutation (QA): DW-2335 edge, `Password` added to `UserList` `read.fields` -> `FormReadCoverage.TestEveryFormFieldIsAnsweredOrListedFormOnly` (the form-only leg).
+- mutation (QA): DW-1896 edge, `AdminPort.CompleteClearedList`'s gate answers 200 instead of 403 -> `LdapEdit.TestTheLastAttributeIsRemoved` ("the port refuses it 403"). The gate itself out (`If 0`) leaves `LdapEdit` green: the endpoint's own `ResourcesOR()` is `%Admin_Secure` for every write type, the gate's resource, so the vendor sequence answers 403 first (measured: 16 passed).
+- mutation (QA): DW-2429, DW-2427, the `Security.Encryption.KeyInFile/LIST/500/#5022` and `Security.Encryption.Settings/PUT/500/#1233` entries out of `UNLOGGEDREFUSALS` -> `AdminPortRefusals.TestTheEncryptionRefusalsAreUnloggedForTheirOwnCodeAlone` (both), `EncryptionKeyFileWrite.TestAFieldRefusalOfTheVendorLogsNoLine` (#5022), `EncryptionStartupWrite.TestAVendorRefusalArrivesAsOcuPilotsSentence` ("and logs nothing", #1233); the #1233 `PROPERTYFAULTS` mapping out -> the same `EncryptionStartupWrite` test (its start-mode and sentence legs).
+- mutation (QA): the `RemoveResources` call out of `WebAppWeakening.OnAfterOneTest` and `RoutineAppGrant.OnAfterOneTest` -> "and none is left" in `WebAppWeakening` (two tests) and "none of which is left" in `RoutineAppGrant` (five). Each reverted byte-identical (sha, `git status --short`, `git diff --stat`) and reloaded.
 
 **Shared surfaces:** prohibited, `EGRESS`, `ENCRYPTION`, `JOURNAL`, `LDAP`, `DATABASE` codes, sentences, counts; `UNLOGGEDREFUSALS`; the activate fingerprints; the create's arguments and form; the users and superserver reads; the screen mirror; the web editor's lines; AC6's timers.
 

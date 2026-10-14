@@ -95,7 +95,7 @@ Method TestTheWebApplicationsListReadsOverTheWire()
 }
 
 /// <p>Story 2.6 AC3 -- <code>GET /screens/permissions.users/read</code> at <code>maxRows=1000</code>
-/// answers one JSON envelope whose <code>fields</code> are the nineteen the descriptor declares and whose
+/// answers one JSON envelope whose <code>fields</code> are the ones the descriptor declares and whose
 /// every row carries exactly those keys, with <code>Roles</code> an array, <code>Expired</code> a
 /// boolean and <code>ExpirationDate</code> a string; <code>_SYSTEM</code> holds <code>%All</code> and
 /// is not expired. At <code>maxRows=2</code> two rows come back truncated.</p>
@@ -113,8 +113,9 @@ Method TestTheUsersListReadsOverTheWire()
     If tStatus '= 200 Quit
 
     Set tObj = ##class(%DynamicObject).%FromJSON(tBody)
-    Set tExpected = "[""Name"",""FullName"",""Enabled"",""Type"",""Roles"",""ExpirationDate"",""Expired"",""Routine"",""AccountNeverExpires"",""AutheEnabled"",""ChangePassword"",""Comment"",""EmailAddress"",""HOTPKeyDisplay"",""NameSpace"",""PasswordNeverExpires"",""PhoneNumber"",""PhoneProvider"",""EscalationRoles""]"
-    Do $$$AssertEquals(tObj.fields.%ToJSON(), tExpected, "fields are the nineteen declared fields, in order")
+    Do $$$AssertStatusOK(##class(OcuPilot.Screen.Descriptor.UserList).DeclarationJson(.tDeclaration), "the user list's declaration reads")
+    Set tExpected = tDeclaration.read.fields.%ToJSON()
+    Do $$$AssertEquals(tObj.fields.%ToJSON(), tExpected, "fields are the declared fields, in order")
     Do $$$AssertTrue(tObj.rows.%Size() >= 3, "the instance's users are listed, enough to truncate at two: " _ tObj.rows.%Size())
 
     Set tBad = ""

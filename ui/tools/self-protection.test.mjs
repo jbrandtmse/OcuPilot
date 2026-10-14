@@ -833,9 +833,10 @@ const ENCRYPTION_SENTENCES = [
   [ENCRYPTION_ERROR, 'REASONSTARTUPRESTART', 'encryptionStartupRestart'],
   [ENCRYPTION_ERROR, 'REASONSTARTUPJOURNAL', 'encryptionStartupJournalConsequence'],
   // Story 18.48: the vendor's startup refusals of a KMIP server with no startup key list and of another Unattended key file,
-  // which the form draws on the start-mode field.
+  // which the form draws on the start-mode field, and an activation's refusal of a key file changed since it was reviewed.
   [ENCRYPTION_ERROR, 'REASONSTARTUPKMIPUNCONFIGURED', 'encryptionStartupKmipUnconfigured'],
   [ENCRYPTION_ERROR, 'REASONSTARTUPKEYFILEDIFFERENT', 'encryptionStartupKeyFileDifferent'],
+  [ENCRYPTION_ERROR, 'REASONKEYFILECHANGED', 'encryptionKeyFileChanged'],
   // Story 18.8: the sign-out consequence, which the form states before Save and the card renders.
   [WEBAUTH_ERROR, 'REASONSIGNOUT', 'authOptionsSignOutConsequence'],
   // Story 18.25: the consequence of an SSL/TLS change to the superserver the web gateway connects through, which

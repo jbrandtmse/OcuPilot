@@ -35,7 +35,7 @@
 /// when its password is the wrong one a test armed (<method>ArmRefusable</method>) and none of the probe
 /// key files' passwords (<method>Refusable</method>), so the vendor can only refuse it; any other is
 /// answered 500 without the vendor. A real first activation persistently changes the instance's key
-/// activation at startup, which no test can restore.</p>
+/// activation at startup, which only a settings <code>PUT</code> of None restores, once no key is active.</p>
 /// <p>Story 18.23's modes. Armed <code>startup</code>, <code>startupfails</code>, <code>kmip</code> or
 /// <code>settingsv1</code>, <method>Call</method> answers <code>Security.Encryption.Settings</code>
 /// <code>GET</code> from a seam-held settings object (<method>HoldSettings</method>,

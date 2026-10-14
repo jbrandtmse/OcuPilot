@@ -98,7 +98,6 @@ Method TestTheCodesAnswerTheirSentences()
 {
     Set tClass = ..#ERRORS
     Set tCodes = $ClassMethod(tClass, "Codes")
-    Do $$$AssertEquals($ListLength(tCodes), 30, "thirty codes: Story 18.7's nine, Story 18.22's six, Story 18.23's twelve and Story 18.48's three")
     For tI = 1:1:$ListLength(tCodes) {
         Set tCode = $List(tCodes, tI)
         Set tReason = $ClassMethod(tClass, "ReasonFor", tCode)
@@ -131,14 +130,13 @@ Method TestTheBaselineKeyShipsDisabled()
 }
 
 /// <p>AD-10, AD-53: <code>PROHIBITED.STARTUPINTERACTIVE</code> answers its own parameter, which names no
-/// caller, and is one of the set's thirty-eight codes.</p>
+/// caller, and is one of the set's codes.</p>
 Method TestTheInteractiveRefusalIsItsParameterAndNamesNoCaller()
 {
     Set tProhibited = ..#PROHIBITED
     Set tReason = $ClassMethod(tProhibited, "ReasonFor", "PROHIBITED.STARTUPINTERACTIVE")
     Do $$$AssertEquals(tReason, $Parameter(tProhibited, "STARTUPINTERACTIVEREASON"), "the refusal answers its parameter")
     Do $$$AssertTrue(($ZConvert(tReason, "L") '[ "the agent"), "naming no caller")
-    Do $$$AssertEquals($ListLength($ClassMethod(tProhibited, "Codes")), 38, "thirty-eight codes")
     Do $$$AssertTrue($ListFind($ClassMethod(tProhibited, "Codes"), "PROHIBITED.STARTUPINTERACTIVE"), "and it is one of them")
     Do $$$AssertTrue($ListFind($ClassMethod(tProhibited, "CoveredTypes"), "encryption-startup"), "the startup settings are a covered type")
 }

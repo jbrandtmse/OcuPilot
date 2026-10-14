@@ -828,7 +828,7 @@ test('AC8 (DW-1080): Database details lists the paused compact running against i
 // `--ocu-surface` -> the contrast legs go red in both themes.
 // DW-2085 (Story 18.48). Mutation (Rule 19): make the wizard store's `encryptAvailable` answer true, rebuild and redeploy -> the
 // disabled control, the caption and the unticked box go red.
-test('DW-2085: with no database encryption key active, Encrypt database is drawn aria-disabled with the refusal beside it, cannot be ticked, and the create sends no flag', async () => {
+test('DW-2085: with no database encryption key active, Encrypt database is drawn aria-disabled with the refusal beside it, cannot be ticked, and nothing is created', async () => {
   const { context, page } = await signedInAt(browser, config, WIZARD_URL, VIEWPORTS.wide);
   const writes = [];
   page.on('request', (request) => {

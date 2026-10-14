@@ -560,7 +560,7 @@ Parameter STARTUPJOURNAL = "PROHIBITED.STARTUPJOURNAL";
 /// <p>The one sentence <parameter>STARTUPJOURNAL</parameter> carries, caller-neutral, published in EXPERIENCE.md's
 /// Fixed strings and pinned equal to <code>encryptionStartupJournalRefusal</code> by
 /// <file>ui/tools/self-protection.test.mjs</file>.</p>
-Parameter STARTUPJOURNALREASON = "Journal encryption is on, so every start must activate its key, and with Interactive a start nobody answers on the console does not finish. Keep Unattended, or turn journal encryption off first.";
+Parameter STARTUPJOURNALREASON = "Journal encryption is on, or a journal file the instance still needs is encrypted, so every start must activate its key, and with Interactive a start nobody answers on the console does not finish. Keep Unattended, or turn journal encryption off and switch the journal file on Journals first.";
 
 /// <p>The write would choose, or keep, KMIP key activation at startup while the audit log, IRISSECURITY or
 /// IRISTEMP is encrypted, now or at the next start (AD-10 as amended 2026-10-14, Story 18.48), read as the
@@ -570,7 +570,7 @@ Parameter STARTUPKMIP = "PROHIBITED.STARTUPKMIP";
 
 /// <p>The one sentence <parameter>STARTUPKMIP</parameter> carries, published and pinned as
 /// <parameter>STARTUPJOURNALREASON</parameter> is, against <code>encryptionStartupKmipRefusal</code>.</p>
-Parameter STARTUPKMIPREASON = "The audit log, IRISSECURITY or IRISTEMP is encrypted, and OcuPilot cannot check that the KMIP server is reachable and holds their keys, so a start that cannot activate them does not finish. Keep Unattended, or choose KMIP on the classic Database Encryption page.";
+Parameter STARTUPKMIPREASON = "The audit log, IRISSECURITY or IRISTEMP is encrypted, and OcuPilot cannot check that the KMIP server is reachable and holds their keys, so a start that cannot activate them does not finish. Keep Unattended, or make this change on the classic Database Encryption page.";
 
 /// <p>The mode <parameter>STARTUPKMIP</parameter> judges, and the journal setting
 /// <parameter>STARTUPJOURNAL</parameter> reads.</p>
@@ -3216,16 +3216,8 @@ ClassMethod LeavesInteractiveJournal(pPayload As %DynamicObject, pTarget As %Dyn
 /// answers anything but its boolean, answers 1.</p>
 ClassMethod StartupJournalRefused(pPort As %String) As %Boolean [ Private ]
 {
-    Set tRefused = 1
-    Try {
-        Kill tQuery
-        Set tReadSC = $ClassMethod(pPort, "Invoke", "Security.Encryption.Settings", "JOURNALSTARTUP", .tQuery, "", .tRead, .tHttp, .tFault)
-        If $$$ISERR(tReadSC) || '$IsObject($Get(tRead)) || 'tRead.%IsA("%Library.DynamicObject") || (tRead.%GetTypeOf("Allowed") '= "boolean") Quit
-        Set tRefused = 'tRead.%Get("Allowed")
-    } Catch {
-        Set tRefused = 1
-    }
-    Quit tRefused
+    If '..ReadMember(pPort, "Security.Encryption.Settings", "JOURNALSTARTUP", "", "Allowed", "boolean", .tAllowed) Quit 1
+    Quit 'tAllowed
 }
 
 /// <p>Whether the audit log's, IRISSECURITY's or IRISTEMP's database is encrypted on disk, read through
@@ -3233,16 +3225,30 @@ ClassMethod StartupJournalRefused(pPort As %String) As %Boolean [ Private ]
 /// AD-27's named case). A read that fails, or answers anything but a list, answers 1.</p>
 ClassMethod StartupDatabasesEncrypted(pPort As %String) As %Boolean [ Private ]
 {
-    Set tEncrypted = 1
+    If '..ReadMember(pPort, "Security.Encryption.Settings", "ENCRYPTEDDATABASES", "", "Encrypted", "array", .tEncrypted) Quit 1
+    Quit (tEncrypted.%Size() > 0)
+}
+
+/// <p>Member <var>pMember</var> of <var>pPort</var>'s <var>pEndpoint</var> <var>pType</var> read, made as the caller
+/// with <code>name</code> <var>pName</var> when it is not empty, in <var>pValue</var>: 1 when the read answers an object
+/// whose member is of JSON type <var>pKind</var>, and 0 for a read that fails, throws or answers anything else, which
+/// each caller counts against the write.</p>
+ClassMethod ReadMember(pPort As %String, pEndpoint As %String, pType As %String, pName As %String, pMember As %String, pKind As %String, Output pValue) As %Boolean [ Private ]
+{
+    Set pValue = ""
+    Set tAnswered = 0
     Try {
         Kill tQuery
-        Set tReadSC = $ClassMethod(pPort, "Invoke", "Security.Encryption.Settings", "ENCRYPTEDDATABASES", .tQuery, "", .tRead, .tHttp, .tFault)
-        If $$$ISERR(tReadSC) || '$IsObject($Get(tRead)) || 'tRead.%IsA("%Library.DynamicObject") || (tRead.%GetTypeOf("Encrypted") '= "array") Quit
-        Set tEncrypted = (tRead.%Get("Encrypted").%Size() > 0)
+        If pName '= "" Set tQuery("name") = pName
+        Set tReadSC = $ClassMethod(pPort, "Invoke", pEndpoint, pType, .tQuery, "", .tRead, .tHttp, .tFault)
+        If $$$ISERR(tReadSC) || '$IsObject($Get(tRead)) || 'tRead.%IsA("%Library.DynamicObject") || (tRead.%GetTypeOf(pMember) '= pKind) Quit
+        Set pValue = tRead.%Get(pMember)
+        Set tAnswered = 1
     } Catch {
-        Set tEncrypted = 1
+        Set pValue = ""
+        Set tAnswered = 0
     }
-    Quit tEncrypted
+    Quit tAnswered
 }
 
 /// <p>How many keys <var>pTarget</var>, the active-keys read, lists in its <code>Keys</code>; 0 for a target that is
@@ -6142,17 +6148,8 @@ ClassMethod RepointsToPublicResource(pPayload As %DynamicObject, pTarget As %Dyn
 /// instance cannot answer is counted rather than passed.</p>
 ClassMethod ResourcePublicUse(pName As %String) As %Boolean [ Private ]
 {
-    Set tPublic = 1
-    Try {
-        Kill tQuery
-        Set tQuery("name") = pName
-        Set tSC = $ClassMethod(..PortClass(), "Invoke", "Security.Resource", "GET", .tQuery, "", .tFresh, .tHttp, .tFault)
-        If $$$ISERR(tSC) || '$IsObject($Get(tFresh)) || (tFresh.%GetTypeOf("PublicPermission") '= "string") Quit
-        Set tPublic = ($ZConvert(tFresh.%Get("PublicPermission"), "U") [ "U")
-    } Catch {
-        Set tPublic = 1
-    }
-    Quit tPublic
+    If '..ReadMember(..PortClass(), "Security.Resource", "GET", pName, "PublicPermission", "string", .tLetters) Quit 1
+    Quit ($ZConvert(tLetters, "U") [ "U")
 }
 
 /// <p>Whether <var>pObject</var>'s <code>Enabled</code> reads as on: the boolean <code>true</code>, the number 1 or the

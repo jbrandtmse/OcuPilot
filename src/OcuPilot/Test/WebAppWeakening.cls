@@ -73,6 +73,8 @@ Method OnAfterOneTest() As %Status
 {
     Do ##class(OcuPilot.Kernel.Proposal.Caller).Clear()
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.WebApp).DeleteByPath(..#OWNAPP), "install's record of the own probe is removed")
+    Do $$$AssertStatusOK(..RemoveResources(), "the public-permission probe resources are removed")
+    Do $$$AssertEquals(..ResourcesHeld(), 0, "and none is left")
     Set tSC = ##class(OcuPilot.Test.ProposalFixture).RemoveSeeded(.tRemaining)
     Do $$$AssertStatusOK(tSC, "the probe proposals and turns are removed")
     Do $$$AssertEquals(tRemaining, 0, "and none survives the removal")
@@ -269,7 +271,6 @@ Method TestEnablingAndAPublicResourceAreGrantsWhileAPrivilegedRoleIsGranted()
         Do ..Stored(tKey, .tDestructive, .tConsequence)
         Do $$$AssertEquals(tDestructive _ " " _ tConsequence, "0 ", $List(tCase, 1) _ " is ordinary")
     }
-    Do ..RemoveResources()
 }
 
 /// <p>Create the probe resource <var>pName</var> with public permission <var>pPermission</var> in <code>%SYS</code>,
@@ -288,6 +289,24 @@ ClassMethod AddResource(pName As %String, pPermission As %String) As %Status
         Set tSC = ex.AsStatus()
     }
     Quit tSC
+}
+
+/// <p>How many of the three probe resources the instance holds.</p>
+ClassMethod ResourcesHeld() As %Integer
+{
+    Set tHeld = 0
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        For tName = ..#PUBLICUSE, ..#PUBLICREAD, ..#PUBLICNONE {
+            If ##class(Security.Resources).Exists(tName) Set tHeld = tHeld + 1
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tHeld = -1
+    }
+    Quit tHeld
 }
 
 /// <p>Delete the three probe resources.</p>

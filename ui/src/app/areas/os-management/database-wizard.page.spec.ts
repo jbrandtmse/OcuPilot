@@ -187,6 +187,26 @@ describe('DatabaseWizardPage', () => {
     expect(JSON.parse(keyed.calls.find((call) => call.path === DATABASE_PATH)?.body ?? '{}').Encrypted).toBe(true);
   });
 
+  it('Story 18.48: the size step\u2019s refusal of Encrypt database is drawn on the control, and the step stays', async () => {
+    // Mutation (Rule 19): drop the `hasEncryptViolation` block from the Encrypt database field -> this goes red.
+    const sentence = 'Activate a database encryption key on Database encryption before encrypting a database.';
+    const { fixture, host } = await mount({
+      form: { ...FORM, EncryptionKeyID: 'K-1' },
+      check: [{ field: 'Encrypted', code: 'DATABASE.ENCRYPT.NOKEY', reason: sentence }],
+    });
+    type(host, 'ocu-database-Name', 'OcuProbe183A');
+    await settle(fixture);
+    await next(fixture, host);
+    (host.querySelector('#ocu-database-Encrypted') as HTMLInputElement).click();
+    await settle(fixture);
+    await next(fixture, host);
+    expect(currentStep(host)).toBe(STRINGS.databaseWizardStepSize);
+    const control = host.querySelector('#ocu-database-Encrypted') as HTMLInputElement;
+    expect(host.querySelector('#ocu-database-Encrypted-reason')?.textContent?.trim()).toBe(sentence);
+    expect(control.getAttribute('aria-invalid')).toBe('true');
+    expect(control.getAttribute('aria-describedby')).toBe('ocu-database-Encrypted-reason');
+  });
+
   // Mutation (Rule 19): `onLocation` hands the preselection to `setLocation` -> the first
   // `dirty()` assertion goes red.
   it('opening over a single allowed root leaves the form clean; a user\u2019s edit of the path then marks it dirty', async () => {
