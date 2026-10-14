@@ -607,8 +607,8 @@ test("EXPERIENCE.md's Fixed strings table itself holds roughly 200 distinct lite
   // drift tripwire, not a budget; raised once to 3400; the next raise when the count is within 50 of the bound.
   // Story 20.3's Production items literals take the table past 3000; the bound moves to 3400 under the same protocol
   // (approved at its spec gate).
-  // Story 18.38's Live tail takes the table to 3357, within 50 of 3400; the bound moves to 3800 under the
-  // same protocol (approved at its spec gate).
+  // Story 18.38's Live tail and Story 20.16's two literals, merged together, take the table within 50 of 3400; the
+  // bound moves to 3800 under the same protocol (approved at both spec gates).
   assert.ok(
     expectedLiterals.length >= 150 && expectedLiterals.length <= 3800,
     `expected between 150 and 3800 distinct literals, extracted ${expectedLiterals.length} -- the extractor's row range or quote-matching may have drifted from the table`

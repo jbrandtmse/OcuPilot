@@ -611,7 +611,7 @@ It does not touch `Test/Navigation.cls`, `Test/InteropFloor.cls`, `screens.gener
 - The editor can move away unseen. For DTL and BPL, Back moves the frame first.
 - The editor's notices exist only inside the frame. OcuPilot neither relays nor records them.
 - A coded row's name cell opens a screen that explains, rather than no link.
-- The vendor's DTL and BPL compile routes use the null device without opening it (DW-2394), so they fail with the editor's generic server-error notice in a web process that has closed that device; OcuPilot's own integrity report closes it (DW-2395, escalated). OcuPilot neither works around it nor reaches into the frame. When the browser spec takes that notice, which it does only when the instance's log records the failure, it checks neither compile notice's text; `t.diagnostic` says so.
+- The vendor's DTL and BPL compile routes use the null device without opening it (DW-2394), so they fail with the editor's generic server-error notice in a web process that has closed that device. OcuPilot's integrity report leaves the device as the process had it (DW-2395, fixed by Story 18.38), and OcuPilot neither works around the vendor's use nor reaches into the frame. The browser spec's Compile legs accept only the editor's own notices, and its DW-2395 leg runs integrity reports across the web process pool before a Compile, so a report that closes the device turns it red.
 
 ## Verification
 
@@ -708,8 +708,8 @@ It does not touch `Test/Navigation.cls`, `Test/InteropFloor.cls`, `screens.gener
 - mutation: (CR) AC4 namespace clause, the frame component's `@for` tracking a constant key -- the frame spec's rewritten namespace-change test reddens (it moves the scope and the input in one render).
 - mutation: (CR) AC4 no-alert clause, the dirty editor's frame given its `src` again in place before the route change (the design DW-2350 rejected, applied in the browser spec) -- the browser AC4 reddens with `beforeunload` recorded.
 - mutation: (CR) store `reset`, its listeners kept -- the store test's reset row reddens alone.
-- mutation: (CI) AC2 compile legs, on `ocupilot-b-ci` with every web process's null device closed (a probe class closing it per process) -- the earlier leg reddens (`<NOTOPEN>CompileDTL`, no compiled notice) and the new one passes with the vendor's notice taken; `NULL_DEVICE_FAILURE` naming a line the log never holds reddens the log clause, `compileNotice` not choosing Compile reddens its notice wait, and the editor posting a message after Compile reddens the no-message clause; each reverted byte-identical (`git status --short` and `git diff --stat` unchanged).
-- mutation: (CR) AC2 log gate, `compileNotice` sending its expected notice down the vendor branch, run on `ocupilot-b-ci` with every web process holding the null device and the log already holding 24 matching lines -- the AC2 log clause reddens after 30 s ("last read 24"). With the count also compared with 0 rather than with the count before the click, it goes green. Reverted byte-identical (checked by `shasum` against the patched file).
+- mutation: (CI) AC2 compile legs, which accept only the editor's own notices (the generic notice's tolerance was dropped at Story 20.16's code review by the orchestrator's DW-2395 ruling): `compileNotice` not choosing Compile reddens its notice wait, and the editor posting a message after Compile reddens the no-message clause (observed at the CI rework).
+- mutation: (20.16 CR) the DW-2395 leg, `LogSourcePort.IntegrityReport` closing the null device whether or not it opened it (its old unconditional `Close`, recompiled on `ocupilot-b-ci`) -- the leg's null-device clause reddens ("no web server process that held the null device has lost it"), and with that clause removed its compile clause reddens on `ERROR #6220: Internal Server Error`; reverted byte-identical and reloaded, the leg is green.
 
 ## Auto Run Result
 

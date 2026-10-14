@@ -16,6 +16,7 @@ import { dirname, join } from 'node:path';
 // - drop the verdict check before the read -> the denied-verdict row goes red (a request is sent).
 // - match the row by case-insensitive name -> the exact-name row goes red.
 // - answer `open` with the id rather than the id less its extension -> the open rows go red.
+// - Story 20.16: compare the event's id case-folded with the namespace ignored, or answer false for every event -> the `shows` row goes red.
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const { InteropEditorState, EDITOR_READ_ROWS } = await import(
@@ -311,4 +312,22 @@ test('subscribers hear every change, and reset drops an answer still in flight a
   api.releases[2](ok([{ Name: 'Demo.Thing.cls' }]));
   await reopening;
   assert.equal(kept, keptAtReset, 'and a listener never stopped hears nothing once reset has dropped it');
+});
+
+// Story 20.16: the page re-reads the document for a confirmed change to it (AD-14).
+test('shows is true for a changed event of type class in the opened namespace whose id holds the document, alone or in a set, and false for anything else', async () => {
+  const event = (over = {}) => ({ kind: 'changed', type: 'class', scope: 'USER', id: 'Demo.Probe.Transform.cls', key: 'k', action: 'updated', proposalId: 'p', expiresAt: 0, ...over });
+  const state = stateFor(LISTS.transforms, apiAnswering(ok([{ Name: 'Demo.Probe.Transform.cls', Coded: false }])));
+  assert.equal(state.shows(event()), false, 'nothing matches before a document and a namespace are held');
+  await state.open('Demo.Probe.Transform.cls', 'USER');
+  assert.equal(state.shows(event()), true, 'the match');
+  assert.equal(state.shows(event({ id: 'Demo.Other.cls,Demo.Probe.Transform.cls,Demo.Third.cls' })), true, 'a comma-separated set that holds the document');
+  assert.equal(state.shows(event({ action: 'created' })), true, 'whatever the action, the document is read again');
+  assert.equal(state.shows(event({ id: 'Demo.Probe.Other.cls' })), false, 'another document');
+  assert.equal(state.shows(event({ id: 'demo.probe.transform.cls' })), false, 'the id is compared exactly');
+  assert.equal(state.shows(event({ id: 'Demo.Probe.Transform.cls.bak' })), false, 'and as a whole name, not as a prefix');
+  assert.equal(state.shows(event({ scope: 'HSCUSTOM' })), false, 'another namespace');
+  assert.equal(state.shows(event({ type: 'routine' })), false, 'another entity type');
+  assert.equal(state.shows(event({ kind: 'proposal-open', action: '' })), false, 'a proposal event is not a change');
+  assert.equal(state.shows(event({ kind: 'proposal-closed', action: '' })), false, 'nor is a closed proposal');
 });

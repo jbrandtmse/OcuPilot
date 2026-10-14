@@ -21,6 +21,9 @@ Parameter KIND = "read";
 /// <p>The most characters the text of one read may escape to, quotes and backslashes included.</p>
 Parameter SOURCEMAXLENGTH As INTEGER = 60000;
 
+/// <p>The cut and the call-alone sentences every source read's description carries.</p>
+Parameter CUTTEXT = "The text is whole lines, cut to fit 60,000 characters: when it is cut, truncated is true and linesSent counts the lines it carries; a first line longer than that is itself cut and counts as one. Call this alone in a reply: a result past what remains of the reply's 65,536 characters answers TOOL.RESULTTOOLARGE.";
+
 /// <p>The description of the <code>name</code> argument a concrete subclass sets.</p>
 Parameter NAMEHINT = "";
 

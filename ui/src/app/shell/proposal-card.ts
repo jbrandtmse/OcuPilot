@@ -12,7 +12,7 @@ import {
 import {
   type ProposalPhase,
   type ProposalPrivilegeLine,
-  CONSEQUENCE_EXPLORERSAVECOMPILES,
+  CODESAVECONSEQUENCES,
   consequenceSentence,
   remoteListSentence,
   journalSentence,
@@ -1040,11 +1040,11 @@ export class ProposalCard {
   }
 
   /**
-   * Whether a confirmed agent save did not compile (Story 20.21): the save's own consequence, and the
-   * confirm's `output.errors`. The line sits under the status line, outside every long block.
+   * Whether a confirmed agent save did not compile (Stories 20.21 and 20.16): either code save's consequence,
+   * and the confirm's `output.errors`. The line sits under the status line, outside every long block.
    */
   protected get savedNotCompiledVisible(): boolean {
-    return this.confirmed && this.view().consequence === CONSEQUENCE_EXPLORERSAVECOMPILES && this.outputErrors() === true;
+    return this.confirmed && CODESAVECONSEQUENCES.has(this.view().consequence ?? '') && this.outputErrors() === true;
   }
 
   /** The fingerprint refusal, which draws its status line inside the warning banner. */

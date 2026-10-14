@@ -2,14 +2,23 @@
 title: 'Story 20.16: The agent edits rule, DTL and BPL content behind the embedded editors'
 type: 'feature'
 created: '2026-10-13'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: 'aa27b66cf28e68e6bfbe9975c9a8e6ce20bdd076'
+baseline_commit: 'aa27b66cf28e68e6bfbe9975c9a8e6ce20bdd076'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
   - '{project-root}/_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md'
 warnings: [oversized]
-deferred: []
+deferred:
+  - summary: >-
+      A deleted account that was the first to run the install gate's version-row read after that table's cached queries were purged is refused 503 INSTALL.UNREADABLE ("an administrator needs to run install again") instead of 401 AUTH.DISABLED.
+    evidence: |-
+      Measured on ocupilot-b-ci: after an install or an uninstall, or after $SYSTEM.SQL.PurgeQueries of OcuPilot_Kernel_State.Version, the first account to run the gate prepares its cached compile; once that account is deleted the gate's read answers SQLCODE -99 and the router renders the unreadable gate. When another account prepared it first, the same deleted token gets 401 AUTH.DISABLED. The token is refused either way; the gate runs before the identity check (AD-38).
+    location: >-
+      src/OcuPilot/Install/Installer.cls (GateStatus)
+    severity: low
 ---
 
 <intent-contract>
@@ -341,11 +350,113 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Lines were
   - **When** it calls the save.
   - **Then** dispatch refuses by name before any mint, naming the editor screen for the screen pair, and writes no row.
 
+### Review Findings
+
+Code review 2026-10-13 (four layers, `full-opus`; diff `645b1478..ae5398ff`): 1 high, 5 medium, 13 low kept; 15 rejected. Rule 3 holds (`agent-editor-save.browser-spec.mjs`, `InteropEditorSaveTurn` over HTTP). AD-53, AD-63, AD-24, AD-22 and AD-62 item 14 hold once the gate below is in.
+
+- [x] [Review][Patch] (high, AD-62 item 2) `IsCodeOfKind` called `SubclassOf` without the port's gate; it now asks `Admit` for the kind's code list first [src/OcuPilot/Port/InteropPort.cls:1143]
+- [x] [Review][Patch] (med, Rule 31) `InteropEditorSource.WARN` copied the save's sentence; it is now `{##class(...InteropEditorSave).#WARN}` under `DependsOn` [src/OcuPilot/Screen/Tool/InteropEditorSource.cls:10]
+- [x] [Review][Patch] (med, Rule 31) `proposeSave`, `slotText` and `cardViolations` were copied verbatim across the three agent code specs; they now live in `proposal-card-spec.mjs` [ui/browser/proposal-card-spec.mjs]
+- [x] [Review][Patch] (med, Rule 19) `InteropEditorSaveTurn` left its principal's ledger rows; `SweepSince` above a per-test mark, run before `Sweep`, now asserts none survive [src/OcuPilot/Test/InteropEditorSaveTurn.cls:111]
+- [x] [Review][Patch] (med, Rule 19) the browser spec read and restored `LastDTL` in `HSCUSTOM` while the DTL editor writes `USER`'s (measured: separate databases) [ui/browser/agent-editor-save.browser-spec.mjs:75]
+- [x] [Review][Patch] (low) `CUTTEXT` copied `ExplorerClassSource`'s sentences; it moved to `ExplorerSourceRead`, every description byte-identical (checksums) [src/OcuPilot/Screen/Tool/ExplorerSourceRead.cls:25]
+- [x] [Review][Patch] (low) the editor saves' `MATCHRULE` was pinned only as a parameter; a mint leg now refuses an absent `Old` naming the editor read [src/OcuPilot/Test/InteropEditorSaveRules.cls:140]
+- [x] [Review][Patch] (low) "`%UnitTest` skips `OnAfterAllTests`" is false (`Manager.RunOneTestCase` calls it after a failed setup); the comment is deleted here and in 15 Epic 20 test classes [src/OcuPilot/Test/InteropEditorSaveGate.cls:57]
+- [x] [Review][Patch] (low) test comments: a mutation `ScreenTools` cannot redden, a `FINGERPRINTSUBJECT` mutation stated otherwise than recorded, `AtelierPortSave`'s "answered on the instance" [src/OcuPilot/Test/InteropEditorTools.cls:133]
+- [x] [Review][Patch] (low) `%ExistsId(<save>||ConfirmProblem)` was true by inheritance; deleted [src/OcuPilot/Test/InteropEditorSaveConfirm.cls:163]
+- [x] [Review][Patch] (low) the read test's cleanup ran in its body; it runs in `OnAfterOneTest` [src/OcuPilot/Test/InteropEditorTools.cls:57]
+- [x] [Review][Patch] (low) `storedHolds` read an unread text as false; `after` stopped at its first failing step; `Remove` passed a failed dictionary query [ui/browser/agent-editor-save.browser-spec.mjs:176]
+- [x] [Review][Defer] (low) AD-8 does not name the saves' `%Ens_Code:WRITE` among a write tool's extra pairs; proposed: "Story 20.16's editor saves declare `%Ens_Code:WRITE`, the vendor editors' write resource, beside the class save's pairs, by the orchestrator's ruling that an editor path is never looser than the classic editor's (AD-53); it is neither case above." — DW-2401, the lead's (Rule 20)
+- [x] [Review][Defer] (low) AD-61 rule 6's because-clause is an HTTP measurement; proposed: "A compile is also failed when its console reads `Detected <n> errors during compilation` with n above zero, whatever `status.errors` holds: over HTTP the route answered a BPL whose generated class fails with 200 and no status error (Story 20.16's plan), though the port's in-process compile of the same edit carried #5475 (its implement), so the console is a fallback the port reads on every compile." The Boundaries sentence says the same over HTTP. — DW-2402, the lead's
+- [x] [Review][Defer] (med) the other turn wire classes leave ledger rows, and `SweepSince` misses rows whose turn is gone (`SELECT DISTINCT TurnKey` answers the collated key) — DW-2403, routed burndown
+- [x] Orchestrator ruling (DW-2395): `interop-editors.browser-spec.mjs` drops the NOTOPEN tolerance (the Compile legs accept only the editor's own notices) and gains a DW-2395 leg (integrity reports across the web pool, no worker loses `/dev/null`, then the DTL editor compiles with its own notice); 20.7's Named limit and mutation lines replaced.
+
+Rejected: `false` — a failed compile blocks a repair (the dictionary walk holds uncompiled classes, measured at plan); the EXPERIENCE.md :718 sentence lacks provenance (it names Story 20.16 inline); a failed setup leaks the turn principal (`OnAfterAllTests` runs after it); `IsCodeOfKind` should call `TransformFactsHere`'s scan (that method runs switched, where AD-62 item 3 bars OcuPilot code). `by-design` — the editor reloads on any confirmed change event naming its class (matrix Reload row, AD-14); the console verdict matches English only (Named limits). `low` — a missing class gets the wrong-kind sentence (rare, a new branch); no gate principal lacks `%Ens_Portal:USE` (one screen-pair path, pinned by `%Ens_Code:READ`); the browser leg asserts the stored text, not the card's confirmed line (the server tests read the state); `MATCHRULE` and the three descriptions repeat a template (per-kind sentences the spec sets); `InteropEditorConfirm.HoldsPair` repeats `ConfirmFixture`'s two lines (`ConfirmFixture` replaces the port, which this helper must not; a shared parent for a two-line seam reads worse, Rule 31); a gate child running past 180 s (theoretical: a stale answer from another principal fails the username assertion). Not reviewable here: the Auto Run Result, the Verification's "two nodes" line and a commit message's claim (each edits the spec or history).
+
+### Fresh check red (2026-10-14) - rework iteration 1
+
+- [x] [Smoke] **`ToolWrite`'s other-port count misses the three editor saves.** The full sweep on a freshly built `ocupilot-b-ci` (638 classes, 4,965 tests) had one red: `OcuPilot.Test.ToolWrite.TestEveryWriteToolsRequestTypeAgreesWithThePortsBodylessRoster`, "exactly forty-six shipped writes reach their target through another port" (`ToolWrite.cls`:1338). This story's three `interop.*editor.save` tools reach their target through the source code API port, so the pinned literal and its message are stale (the Shared surfaces line and the roster task did not name `ToolWrite`). Read the count from the instance, set the literal to it, add "since Story 20.16 the three editor saves through it too" to the message, and record the mutation (one save's port reference changed, or the literal off by one) observed red and reverted. Search `src/OcuPilot/Test` for any other count or roster that lists write tools by port and still reads the pre-20.16 value; the sweep found none.
+
+### Review Findings (rework 1 re-review)
+
+Code review 2026-10-14 (four layers, `full-opus`; diff `b67d1b1e..5e28ecbf`): 0 high, 1 medium, 1 low kept; 5 rejected. The `[Smoke]` item is closed: on `ocupilot-b-ci` the registry gives 385 tools, 227 writes and 49 through another port (`AtelierPort` 15, the three editor saves among them), the mutations are runs 655 and 656, and the reverted class is green in runs 657 and 662. No other test counts writes by port.
+
+- [x] [Review][Patch] (low) The Shared surfaces line did not name `ToolWrite`'s other-port count [spec `## Verification`]
+- [x] [Review][Defer] (med) The epic context's shared-rosters list omits `ToolWrite`'s other-port count, which 20.25, 20.26 and 20.31's interoperability-port writes move [_bmad-output/implementation-artifacts/epic-20-context.md:169] — deferred: DW-2407, routed to 20-25 (the file is regenerated per plan spawn)
+
+Rejected: `low` — the new triage heading (2026-10-13, local) and the red it answers (2026-10-14, UTC) use different date conventions; the two rework `mutation:` rows carry no `(Rework)` tag, though they follow the line that introduces them; the Auto Run Result repeats the `(Rework)` line; the Residual risk forecasts Epic 18 moving the literal (`OCU-1-epic18` still reads 46) — each fix edits a closed section of an `oversized` spec. `low` — the count is an aggregate and cannot tell which non-admin port a save uses; the save tests drive `AtelierPort.SaveSet`, so a port move reddens them (inference).
+
+### CI red on b7e0dec5 (run 38505285690, both attempts) - rework iteration 2
+
+- [x] [CI] **`Retention.TestADeletedUsersSettingsGoAndTheirTranscriptsStay`, "and the deleted account's token is refused"** (instance shard 7/8, red on attempt 1 and on the unchanged rerun, so it is not DW-2285's flake shape alone). The shard's class order (80 classes; Retention is run 60) is in `/private/tmp/claude-501/-Users-jbrandt-git-OcuPilot/1518373f-040c-4be6-a814-a27bfbff2961/scratchpad/e20r/res-2029/f16/shard7-order.txt`. Reproduced by the runner on a freshly built `ocupilot-b-ci`: the 59 classes before it, in that order, in two batches (`.../f16/batches.txt`), then Retention, red; `AuthOptionsWrite` then `Retention` alone is green. Find which earlier class leaves the state that makes a deleted account's token still served (bisect the 59), say in one cause line whether the defect is in that class's cleanup, in `Retention`'s own premise, or in the product's identity check (`Kernel/Identity`, `Kernel/State/Base.GuardedUserEnabled`), and fix it where it lies: a product defect in the product, a test that leaves state in that test. Pin it with a test that goes red on the old behavior. DW-2285 (the same assertion, a long local sweep) gets the cause in its note at adjudication.
+  Cause (in `Retention`'s own premise; `ProviderSsl` is the class that sets it up, and neither its cleanup nor the identity check is at fault): an install or an uninstall, as `ProviderSsl` runs them, leaves the install gate's read of `OcuPilot_Kernel_State.Version` unprepared, so `Retention`'s deleted account is the first to run it, and once that account is deleted its token is answered `503 INSTALL.UNREADABLE` (SQLCODE -99), not `401 AUTH.DISABLED`; when another account ran the gate first, the token is answered 401 (measured); `ProviderSsl` then `Retention` on a fresh instance was red 4 of 4, and `Retention.PrimeGate` now runs the gate once as the suite's own account before the deleted account's first request.
+
+### Review Findings (rework 2 re-review)
+
+Code review 2026-10-14 (four layers, `full-opus`; diff `aa27b66c..b10f9bf9`): 0 high, 1 medium, 3 low kept; 2 rejected. The `[CI]` item is closed at its cause, and the strict 401 stands. Probes on `ocupilot-b-ci` (a probe class, since removed): with the cached queries dropped, account A runs the gate first and is then deleted. A's token is answered 503 `INSTALL.UNREADABLE` (twice), while live accounts B and C are answered 200 before and after it, and a first reader that is disabled rather than deleted is answered 401. So DW-2414 stays low.
+
+- [x] [Review][Patch] (med, Rule 19) The pin went red only when `ProviderSsl` ran right before `Retention`. `PrimeGate` now drops the cached queries before it runs the gate, and its mutation (the gate run dropped) turns `Retention` red when it runs alone [src/OcuPilot/Test/Retention.cls:116]
+- [x] [Review][Patch] (low) The doc comments said the read was "prepared by this process's own account", which held only when the read was unprepared. With the drop it holds by construction; both comments and the assertion message now say so [src/OcuPilot/Test/Retention.cls:109]
+- [x] [Review][Patch] (low) The mutation row said the pin "needs a fresh instance", though CI's red came after 59 classes. The row is replaced, and the Auto Run Result's residual risk no longer holds [spec `## Verification`]
+- [x] [Review][Defer] (low) DW-2414's record omits two things: live accounts are unaffected, and the deleted user's tab reads "install again" rather than signing out. The failing read is `Base.GuardedOpenOneWhereNoParam`, and the 503 is the product's, not the test's — deferred: pre-existing and out of footprint; the probe result and the location are appended to DW-2414 (`by=cr`)
+
+Rejected: `false` — an account that an earlier class left with the same name, as the first reader, still breaks `PrimeGate` (measured: the first reader deleted, the gate run without a drop, the name re-created and deleted: 401). `low` — when `PrimeGate` answers 0, the test runs on and fails noisily (the precondition assertion fails first and names the cause). Not reviewable here: the cause line's "an install or an uninstall leaves the read unprepared" and the deferred entry's wording, since each would edit a closed part of an `oversized` spec. Whether a deleted first reader is reached also depends on the container health check, which runs `GateStatus` every 10 s (inference).
+
 ## Spec Change Log
 
 - 2026-10-13, spec gate (runner): the orchestrator ruled Q1 the other way (B): the three saves also require `%Ens_Code:WRITE`, the vendor editor's write resource, confirmed from the vendor source at Task 0. The Pairs bullet, the matrix, Task 0, the save's `PrivilegePairs`, the tools and gate tests, the turn principal, AC8, the named limits and the mutation table carry it. The Rule 20 drafts are written into the spine with it.
 
 ## Review Triage Log
+
+### 2026-10-13 — Review pass
+
+- verdicts: 21 findings — high 0, medium 0, low 13, false 8, maybe-false 0
+- findings:
+  - `[low]` `[patch]` Console-only compile failure is not driven through the save path, a test comment claims a mutation that does not redden it, and a planned row names it — patched: canned `AtelierPortSave` save leg added (red alone under `Outcome` without the console), the comment and planned rows corrected, `SaveSet` and consequence mutations recorded.
+  - `[low]` `[reject]` The page's `ChangeBus` subscription is not tested to be released on destroy — `task-editor.page.ts` has the same shape with no such test, a leak needs the one `stopChanges()` line removed, and the fix adds a test plus a client mutation run beyond a direct correction.
+  - `[low]` `[patch]` `IsCodeOfKind`'s base-class guard cannot be falsified on this build and a planned mutation row names a leg that cannot redden — the guard stays (the intent contract's Kind check requires it); the planned row now names the mutation that reddens (answers 1 for every readable name).
+  - `[low]` `[patch]` `Refused(..., "")` asserts `tProblem [ ""`, which is always true — patched: the reason assertion runs only when a text is given; the code and no-proposal assertions still pin the row.
+  - `[false]` `[reject]` The three base-class legs cannot fail — they assert `0|1` and go red under `IsCodeOfKind` answering 1 for every readable name (recorded).
+  - `[false]` `[reject]` The turn test's "no provider request carries a compile line" leg has no mutation — AC7 has its recorded mutation (`ScreenTools` ignoring `SCREENLISTED`) and the leg inspects a real second-turn request, so it can fail.
+  - `[low]` `[patch]` Several pinning tests carry no recorded mutation, and test comments name mutations that were never run — patched: the confirm half's mutation (`CONSEQUENCE`) is run and recorded; the unobserved mutation sentences are removed from the comments of the new test classes; every AC keeps at least one recorded mutation.
+  - `[false]` `[reject]` AC4's "no typed name" has no pin — `ConfirmIn` confirms with an empty typed name and asserts `destructive` 1, so a typed-name requirement would refuse the confirm.
+  - `[low]` `[reject]` The no-interoperability test takes the first non-`%SYS` namespace that does not report interoperability — its header states the need, it fails loudly if none exists, and the throwaway image has one.
+  - `[low]` `[reject]` `InteropEditorProbe.ForgetLedger` reads `ProposalFixture`'s private global — both classes are tests in one package; a drift leaves ledger rows behind, which the assertions on the probe turns would not mask.
+  - `[low]` `[reject]` The spine's AD-61 rule 6 sentence and the Boundaries sentence say a failing BPL answers 200 with no status error, while the port compiles in process — the sentence is a measurement of the Atelier route over HTTP and the clause does what the contract states; the code comments now say so, and reading the spine wording is the runner's call (Auto Run Result).
+  - `[false]` `[reject]` The Task bullet and the Code Map disagree about `InteropFloor` and `DeveloperFloor` — the bullet says "any other roster that lists the saves' pairs", none does, and both classes pass unchanged.
+  - `[low]` `[reject]` (intent layer) The compile verdict's measured surface (HTTP) differs from the port's route (in process) — same root as the AD-61 row above.
+  - `[low]` `[reject]` (intent layer) The reload is exercised end to end for the transformation editor only — AC3 names the DTL editor, the page and store are shared by all three screens, and two more browser legs cost about 25 s each for no new branch.
+  - `[false]` `[reject]` (intent layer) The warning is pinned as text, not as model behavior — the contract guarantees the bar line and the card sentence; the model's own warning is the recorded live check.
+  - `[low]` `[reject]` (intent layer) Confirm's kind check is tested by calling `ConfirmProblem` — the matrix row names that call; no flow changes a class's kind between mint and Confirm.
+  - `[low]` `[reject]` (intent layer) The failed-switch and failed-query branches of `IsCodeOfKind` are not reached — they fail closed by contract and cannot be driven on a healthy instance without faking the dictionary.
+  - `[false]` `[reject]` (intent layer) The Context row's input is a route and the unit test calls `ScreenTools(descriptor)` — the turn test posts the route and entity and asserts both tools in the starting set, so the route chain is exercised.
+  - `[false]` `[reject]` (intent layer) Server rows run in process while the person's path is HTTP — `InteropEditorSaveTurn` and the browser spec confirm over HTTP.
+  - `[false]` `[reject]` (intent layer) The owner's "in the background" has no mechanism — the contract's flow is read, propose, person confirms, page reloads.
+  - `[low]` `[patch]` (intent layer) The base-class exclusion is observably redundant — same root as the `IsCodeOfKind` guard row above; same route and fix.
+
+### 2026-10-13 — Review pass (rework iteration 1)
+
+- verdicts: 8 findings — high 0, medium 0, low 4, false 4, maybe-false 0
+- findings:
+  - `[low]` `[patch]` The `(Rework)` line in `## Verification` lacked the `mutation:` token and packed two mutations into one line — patched: split into two `- mutation:` bullets.
+  - `[low]` `[patch]` The `PORTCLASS` mutation does not isolate the count assertion — patched: the row now says the method's other legs fail too and the count assertion is among the failures; the literal-50 row stays as the assertion-alone proof.
+  - `[false]` `[reject]` (intent layer) The diff touches no tool, screen, port or card surface — the item is a roster literal; the story's own surfaces were reviewed and committed before this pass.
+  - `[low]` `[reject]` (intent layer) The count is an aggregate and cannot tell the editor saves from other non-admin-port writes — the roster's design, and the `PORTCLASS` mutation shows the count follows the saves.
+  - `[low]` `[reject]` (intent layer) The Shared surfaces line and the roster task still do not name `ToolWrite` — the fix edits the spec beyond the open items (the `oversized` warning); the ticked item and the mutation row record it.
+  - `[false]` `[reject]` (intent layer) The item's search for other write-by-port counts has no evidence in the diff — the implement stage and the verification-gap layer each searched `src/OcuPilot/Test` and found none (only an unrelated `forty-six` in `Navigation`).
+  - `[false]` `[reject]` (intent layer) No post-revert green run is in the diff — `ToolWrite` ran 34 of 34 green after the revert (runs 657 and 662) and the roster classes 45 of 45 (runs 663-666).
+  - `[false]` `[reject]` (intent layer) The message says "through the source code API port too" where the item suggested "through it too" — "it" would follow the 20.27 clause and name the interoperability port.
+
+### 2026-10-14 — Review pass (rework iteration 2)
+
+- verdicts: 6 findings — high 0, medium 0, low 4, false 2, maybe-false 0
+- findings:
+  - `[low]` `[patch]` The purge half of `PrimeGate` has no mutation row and no run it alone decides — verified: with the purge dropped and the gate run kept, `TurnWire` then `Retention` and `ProviderSsl`, `TurnWire`, `Retention` (fresh instances) stayed green, so the purge is unproven; patched: the purge and its doc-comment and cause-line mentions are removed, and the pin is the gate run, red after `ProviderSsl` on a fresh instance.
+  - `[low]` `[patch]` The precondition assertion's message says who prepared the read, which nothing observes — patched: the message says the gate reads `installed` before the account exists.
+  - `[low]` `[reject]` The cause line classes the red as a test premise while the deferred entry records the same observation as a product quirk, and no test now pins the 503 — the two describe one measured behavior at two places; the deferred entry is its record, the quirk needs a deleted account to be the first to run the gate, and a test pinning a deferred answer would assert behavior no story decided.
+  - `[low]` `[patch]` The doc comment states the instance's mechanism as fact — patched: it states the two measured answers and no cause.
+  - `[false]` `[reject]` (intent layer) The diff touches none of the intent's surface — the pass answers a CI item outside the contract; `git diff --stat` lists `Retention.cls` and the spec, and no file the contract's Never list names.
+  - `[false]` `[reject]` (intent layer) The moved baseline hides that the diff is a delta — each rework pass sets the baseline to its own start (iteration 1 reviewed `b67d1b1e..`).
 
 ## Design Notes
 
@@ -384,6 +495,8 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Lines were
 | Vendor privileges (hidden `Utils.GetPrivileges`) | Write: `%Ens_Code` or `%Ens_DTL`/`%Ens_BPL`/`%Ens_Rules*` WRITE, and `RoutinePermissionCheck("WRITE")`. No `%Development` check; the web app grants it through `%EnsRole_InteropEditorsAPI` |
 | Stock roles | `%EnsRole_Developer`: `%Development:U` through `%Developer`, and `%Ens_Code:RW`. `%EnsRole_Administrator`: `%Ens_Code:R` only. `%Developer`: no `%Ens_*` |
 | Sizes | The largest vendor DTL is 80,995 characters. Every rule, BPL and DTL in HSCUSTOM is mapped (642 HSLIB, 7 ENSLIB, no rule), so the agent saves only a namespace's own documents |
+
+**Task 0 reading (vendor source, `ocupilot-b-ci`).** Hidden `Utils.GetPrivileges` admits a write on `%Ens_Code:WRITE` or the kind's own resource (`%Ens_DTL`, `%Ens_BPL` or `%Ens_Rules`, with the business and routing rule resources beneath it), and `PutDTL`, like the other saves, adds `IsReadOnly` (the routines database's write and source control). `%Ens_Code:WRITE` is the one resource all three kinds accept, with nothing stricter for any kind; `%EnsRole_Developer` reaches it through `%EnsRole_WebDeveloper` (`%Ens_Code:RW`), and `%EnsRole_Administrator` holds `%Ens_Code:R` alone.
 
 **Decisions:**
 
@@ -479,7 +592,7 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Lines were
 
 **Shared surfaces:**
 
-- The tool registry: `ReadTool`'s count and names, `ToolRoundTrip`'s `REFUSEEMPTY`, `SurfaceCoverage`'s tool rows, `Test/Prohibited.cls`'s composed roster and `ToolEmit`'s branches.
+- The tool registry: `ReadTool`'s count and names, `ToolRoundTrip`'s `REFUSEEMPTY`, `SurfaceCoverage`'s tool rows, `Test/Prohibited.cls`'s composed roster, `ToolEmit`'s branches and `ToolWrite`'s other-port write count.
 - The governance baseline (three keys).
 - The three editor screens' context `tools`, with the explorer screens' lists pinned unchanged.
 - Every compile's, import's and save's `output.errors` (`AtelierPort.Outcome`).
@@ -517,6 +630,7 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Lines were
   - On a probe DTL's editor screen in `USER`, ask: "Make this transformation add -live to the end of the value it sets."
   - Record whether the reply tells the person to save the editor before or with its first read, which tools it calls, and whether its proposal mints. Do not confirm it.
   - Remove the provider and the probe afterwards, and record the observation under this section.
+  - Observed (2026-10-13, `ocupilot-b-ci`, `claude-haiku-5-5`, one turn, three model calls, 20,846 input and 1,134 output tokens): the first reply, before its read, told the person it works from the saved version, that unsaved changes are not visible to it and that confirming reopens the document and drops them, and asked to save the editor first; it then called `interop.transformeditor.source` and `interop.transformeditor.save` and minted one proposal (`-live` appended through `source.StringValue_"-live"`), which was not confirmed. The closing reply said the proposal awaits confirmation and repeated no warning. Provider, credential, principal, turn rows and probe were removed afterwards.
 - **Lead-owned (the runner's, not the implement stage's):** the full ObjectScript sweep, `cd ui && npm test`, `bash scripts/smoke.sh --container ocupilot-b-ci --user _SYSTEM --password SYS`, and Rule 30's fresh check.
 - **Left to CI:** the full browser suite.
 
@@ -532,13 +646,58 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Lines were
 | AC3 | `shows()` compares the id case-folded with the namespace ignored, or always answers false | `interop-editor-store.test.mjs`; the browser reload leg (the old handle stays connected) |
 | AC4 | `Baseline` `interop.transformeditor.save` is `false` | `InteropEditorTools` keys leg |
 | AC5 | `InteropEditorSave.AgentProblem` skips the kind check | `InteropEditorSaveRules` wrong-kind, coded and Confirm-rule legs |
-| AC5 | `IsCodeOfKind` stops excluding the base class | `InteropEditorTools` predicate leg (the base `Ens.DataTransformDTL` reads 1) |
-| AC6 | `ConsoleCountsErrors` answers 0 | `AtelierPortSave` console leg; `InteropEditorSave` BPL leg |
+| AC5 | `IsCodeOfKind` answers 1 for every readable name | `InteropEditorTools` predicate leg; `InteropEditorSaveRules` wrong-kind legs |
+| AC6 | `ConsoleCountsErrors` answers 0, or `Outcome` leaves the console out | `AtelierPortSave` console legs; `AtelierPortWrite` console leg |
+| AC6 | `SaveSet` reports its compile's errors as false | `InteropEditorSave` not-compiled leg |
 | AC6 | `savedNotCompiledVisible` keeps its single code | `proposal-card-code-states.spec.ts`; the browser breaking leg |
 | AC8 | `InteropEditorSave.PrivilegePairs` drops `%Development:USE` | `InteropEditorSaveGate` first leg (the refusal moves to the port); `ToolEmit` branch |
 | AC8 | `InteropEditorSave.PrivilegePairs` drops `%Ens_Code:WRITE` | `InteropEditorSaveGate`'s vendor-write leg; `InteropEditorTools`' pairs leg |
 
+Observed at implement (each reverted to a byte-identical tree and recompiled or rebuilt before the next):
+
+- mutation: `interop-editor.page.ts` omits the agent line -> `interop-editor.page.spec.ts` bar test and reload test; browser `agent-editor-save` bar leg (bundle rebuilt and redeployed).
+- mutation: `InteropEditorSave.WARN` loses "tell the person you work from what is saved" -> `InteropEditorTools` `TestEveryDescriptionCarriesTheWarning` alone.
+- mutation: `Context.ScreenTools` ignores `SCREENLISTED` -> `InteropEditorTools` `TestEachEditorsContextListsExactlyItsReadAndSave` and `InteropEditorSaveTurn` starting-tools leg.
+- mutation: `InteropEditorSave` sets `FINGERPRINTSUBJECT` without `Modified`, and `PRECONDITIONFIELD` `Absent` (the registration guard refuses a subject without the precondition field, so the subject alone fails every mint with `TOOL.UNAVAILABLE` and reddens all three tests) -> `InteropEditorSave` `TestAnOutsideRewriteAfterTheMintIsRefusedAsAChangedTarget` alone.
+- mutation: `consequenceSentence` drops the new branch -> `proposal-view.test.mjs` consequence row; browser `agent-editor-save` card leg.
+- mutation: `shows()` compares ids case-folded with the namespace ignored -> `interop-editor-store.test.mjs` `shows` row; `shows()` answers false -> the same row, the page spec's reload test, and the browser reload and breaking legs (the old frame stays attached).
+- mutation: `Baseline` `interop.transformeditor.save` `false` -> `InteropEditorTools` `TestTheThreeSaveKeysShipEnabled`.
+- mutation: `InteropEditorSave.AgentProblem` quits after `##super` -> `InteropEditorSaveRules` wrong-kind, coded, Confirm-rule and no-interoperability legs.
+- mutation: `IsCodeOfKind` stops excluding the base class -> no test went red: `%Dictionary.ClassDefinition:SubclassOf` lists no base class on this build (`Ens.DataTransformDTL` lists 2 subclasses in `USER`, `Ens.BusinessProcessBPL` 5, `Ens.Rule.Definition` 0, none its own base), so the exclusion is defensive and the base legs pin its answer 0. `IsCodeOfKind` answering 1 for every readable name -> `InteropEditorTools` predicate leg and three `InteropEditorSaveRules` legs.
+- mutation: `ConsoleCountsErrors` answers 0 -> `AtelierPortSave` `TestTheCompileVerdictReadsTheConsole` and `AtelierPortWrite` `TestACompileWhoseConsoleReportsErrorsIsFailedWhateverTheStatusSays`; `Outcome` without the console clause -> the `AtelierPortWrite` leg and `AtelierPortSave` `TestASaveWhoseCompileConsoleReportsErrorsReportsThem` (the save path), each alone. The `InteropEditorSave` BPL leg stays green under both: the in-process compile of a BPL whose generated class fails carries #5475 in `status.errors` on this build, though the HTTP route answers `[]` (measured with the same edit), so the console clause is pinned by the canned envelopes in `AtelierPortWrite` and `AtelierPortSave`.
+- mutation: `AtelierPort.SaveSet` reports its compile's errors as false -> `InteropEditorSave` `TestAnEditThatDoesNotCompileIsSavedAndSaysSo` alone.
+- mutation: `InteropEditorSave.CONSEQUENCE` answers `EXPLORER.SAVE.COMPILES` -> `InteropEditorSave` `TestEachEditorSaveIsMintedAndConfirmed` alone (the family recompiled).
+- mutation: `savedNotCompiledVisible` keeps its single code -> `proposal-card-code-states.spec.ts` editor test; browser breaking leg.
+- mutation: `panel.ts` passes `outputErrors` for `explorer.` tools alone -> `panel.spec.ts` Story 20.16 test.
+- mutation: `InteropEditorSave.PrivilegePairs` drops `%Development:USE` -> `InteropEditorSaveGate` dispatcher-made leg of the principal without it (the port refuses inside the mint, so the answer text alone would not tell), `ToolEmit` and `InteropEditorTools` pairs legs.
+- mutation: `InteropEditorSave.PrivilegePairs` drops `%Ens_Code:WRITE` -> `InteropEditorSaveGate` (the principal with `%Ens_Code:READ` only is minted a proposal) and `InteropEditorTools` pairs leg.
+
+Added at QA (each reverted to a byte-identical tree and recompiled or rebuilt before the next):
+
+- (QA) new `src/OcuPilot/Test/InteropEditorSaveConfirm.cls` and its helper `src/OcuPilot/Test/InteropEditorConfirm.cls` (the shipped confirm with the revoked-pair and fingerprint seams; not a test), pinning what Confirm asks again: the revoked pairs, the kind of a class changed after the mint, each save's Confirm rule. `(loop)` `cd ui && node tools/ci-runner.mjs --container ocupilot-b-ci --class OcuPilot.Test.InteropEditorSaveConfirm`. Expected: 0 failed.
+- (QA) `InteropEditorTools.cls` gains `TestEachEditorsReadAnswersTheWholeSavedClassText`; `interop-editor.page.spec.ts` gains the reload-for-each-editor and destroyed-page test.
+- (QA) mutation: `InteropEditorSave.PrivilegePairs` drops `%Ens_Code:WRITE` (family recompiled) -> `InteropEditorSaveConfirm` `TestAPairRevokedAfterTheMintRefusesTheConfirmAndLeavesTheProposalLive` alone (the confirm then saves with the pair revoked).
+- (QA) mutation: `ExplorerSave.ConfirmProblem` asks `ExplorerSave.AgentProblem` statically (family recompiled) -> `InteropEditorSaveConfirm` `TestAClassThatBecameAnotherKindAfterTheMintIsRefusedAtConfirm` and `TestEachSavesConfirmRuleAdmitsItsOwnKindAlone`, and `InteropEditorSaveRules` `TestConfirmRefusesAClassThatIsNotOfTheKind` alone (its five mint tests stay green).
+- (QA) mutation: `ExplorerSaveMint` skips `AgentProblem` -> `InteropEditorSaveRules` wrong-kind, coded, mapped and own-code tests (4 of 6; its Confirm-rule and no-interoperability tests stay green), `InteropEditorSaveConfirm` stays green.
+- (QA) mutation: `InteropEditorSource.SOURCEMAXLENGTH` 100 (the three reads recompiled) -> `InteropEditorTools` `TestEachEditorsReadAnswersTheWholeSavedClassText` alone.
+- (QA) mutation: `interop-editor.page.ts` omits `stopChanges()` on destroy -> `interop-editor.page.spec.ts` reload-for-each-editor test alone (the destroyed page reads the list again).
+- (CR) mutation: `IsCodeOfKind` skips the port's gate, its namespace checks kept (tree reloaded) -> `InteropEditorTools` `TestTheKindPredicateAnswersForEachKind`'s refused-caller leg alone.
+- (CR) mutation: `InteropEditorSave` drops its `MATCHRULE` (tree reloaded) -> `InteropEditorSaveRules` `TestAnOldTheStoredTextLacksNamesTheEditorsRead` alone.
+- (CR) `InteropEditorSaveTurn`'s ledger assertion went red with `SweepSince` after `Sweep` (7 rows left) and is green with it first, 0 rows left.
+- (Rework) `ToolWrite`'s other-port count is 49, read from the instance (46 before, plus the three editor saves, which reach their target through `OcuPilot.Port.AtelierPort`). Each mutation below was reverted to a byte-identical tree and recompiled.
+- mutation: `InteropTransformEditorSave` declares `PORTCLASS` `OcuPilot.Port.AdminPort` -> `ToolWrite` `TestEveryWriteToolsRequestTypeAgreesWithThePortsBodylessRoster`, the only method of the class that went red, with its other-port count assertion among the failures (the admin-port legs of that method fail too, so this row shows the count follows the saves' port).
+- mutation: the pinned literal 49 changed to 50 -> the same method, its other-port count assertion alone.
+- mutation: `Retention.PrimeGate` drops the cached queries but does not run the gate (its last line `Quit 1`) -> `Retention` alone, no class before it, on `ocupilot-b-ci` (run 5): `TestADeletedUsersSettingsGoAndTheirTranscriptsStay`, "and the deleted account's token is refused" alone; reverted to a byte-identical tree (sha-256 equal) and reloaded, then green alone (run 6) and after `ProviderSsl` (runs 7 and 8).
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+**Changed (rework iteration 2, closes the `[CI]` item).** `src/OcuPilot/Test/Retention.cls` gains `PrimeGate()`, which runs the install gate once in the suite's own process, and `TestADeletedUsersSettingsGoAndTheirTranscriptsStay` calls it first, so the strict `401 AUTH.DISABLED` assertion no longer depends on whether an earlier class left the gate's read unprepared. The cause is in `Retention`'s own premise, set up by `ProviderSsl`'s install and uninstall; the identity check and `ProviderSsl` are unchanged. The product's `503 INSTALL.UNREADABLE` answer to a deleted account that ran the gate first is the one `deferred:` entry (low).
+
+**Review.** Two layers (verification-gap, intent-alignment), 6 findings: 0 high, 0 medium, 4 low (3 patched: the unproven purge removed after two orders stayed green without it, the assertion's message, the comment's mechanism claim; 1 rejected), 2 false. Follow-up review not recommended (a follow-up pass that patched no high).
+
+**Verification.** On a freshly built `ocupilot-b-ci`: the CI shard order's first 59 classes in two batches, then `Retention` (runs 1-60), all green except `AgentConnectionWire.TestATestAnswersBeforeTheGatewayDoes` in batch 1 (an elapsed-time bound, 60.04 s against a 45 to 58 s window; green alone in the next run, not touched by this change); `ProviderSsl` then `Retention` green on a fresh instance; `Retention` alone green (10 of 10); `check-objectscript` and `lint-docs` 0 problems. The mutation (`PrimeGate` answers 1) reddens `Retention` after `ProviderSsl` on a fresh instance and was reverted byte-identical.
+
+**Residual risk.** None for the pin: since the re-review, `PrimeGate` drops the namespace's cached queries before it runs the gate, so its mutation reddens `Retention` run alone, in any order.

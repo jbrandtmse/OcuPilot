@@ -10,10 +10,10 @@
  *   instance's origin, the frame fills its host and the host ends at the outlet's bottom edge, the locator links to the list, and the
  *   DW-1337 checks find nothing beyond the baseline at 1280 light, 720 light and 1280 dark.
  * - AC2: the DTL editor's saved and compiled notices, and the compile error of `.Broken`, appear inside the frame and no message
- *   reaches the shell or the frame; the list's Modified is the class definition's `TimeChanged`. The vendor's compile route uses the
- *   null device without opening it, so in a web process that has closed that device it fails with the editor's generic server-error
- *   notice whatever the class holds; a Compile leg takes that notice for its outcome only when the instance log records the failure
- *   for its click.
+ *   reaches the shell or the frame; the list's Modified is the class definition's `TimeChanged`.
+ * - DW-2395: OcuPilot's integrity report, served across the web process pool, leaves each process's null device as it found it, and
+ *   the DTL editor's Compile then answers its own notice. The vendor's compile route uses that device without opening it (DW-2394),
+ *   so a report that closed it would leave the editor's generic server-error notice, which no Compile leg accepts.
  * - AC3: a class the list does not answer, and a process or transformation written as a class, draw their sentences and no frame and
  *   no editor request.
  * - AC4: the editor moving itself (its Back to standard UI) is left alone, Refresh draws a new frame, and a route change in the screen
@@ -23,8 +23,9 @@
  *   and requests nothing, and moving back draws a new frame (the real scope service, which the component specs stub).
  * - AC5: Sign out ends the editor's sign-in on the real screen.
  *
- * **It creates classes in `HSCUSTOM` and records and restores two of the editors' own settings nodes**
- * (`^EnsPortal.Settings(<user>, "LastDTL")` and `"LastBP"`), so it runs on a throwaway only. Each test signs in in its own context, waits
+ * **It creates classes in `HSCUSTOM`, records and restores two of the editors' own settings nodes**
+ * (`^EnsPortal.Settings(<user>, "LastDTL")` and `"LastBP"`), and runs one integrity check of `USER`'s database, which the leg that
+ * runs it removes, so it runs on a throwaway only. Each test signs in in its own context, waits
  * for the screen's answered signal before it counts, clicks or types, and the `after` hook restores the nodes and removes the classes.
  * The namespace move also needs a second interoperability namespace the switch offers, which the image ships (`USER`, `HSLIB`, `HSSYS`).
  *
@@ -32,14 +33,13 @@
  * `OCUPILOT_BROWSER_ORIGIN=<origin> OCUPILOT_BROWSER_CONTAINER=<container> node --test --test-concurrency=1 browser/interop-editors.browser-spec.mjs`.
  */
 
-import { spawnSync } from 'node:child_process';
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import puppeteer from 'puppeteer';
 
-import { LIVE_CONTAINER, browserConfig, launchOptions } from '../browser.config.mjs';
+import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
 import { loadStrings } from '../tools/strings.mjs';
 import {
   armMessageCounters,
@@ -73,11 +73,10 @@ const NOTE = '[data-ocu-editor="note"]';
 /** A Data transformations row of the vendor's own, which opens in the DTL editor. */
 const VENDOR_DTL = 'Ens.Util.DTL.Audit.MessageView.cls';
 const REDUCED_MOTION = [{ name: 'prefers-reduced-motion', value: 'reduce' }];
-/** The editor's notice when its compile route fails inside the vendor's code, which names neither the class nor the compiler's text. */
+/** The editor's notice when its compile route fails inside the vendor's code (DW-2394), which no Compile leg accepts. */
 const VENDOR_FAILURE_NOTICE = /Internal Server Error/;
-/** What the instance's log records when the vendor's DTL compile route uses a null device that its web process has closed. */
-const NULL_DEVICE_FAILURE = '<NOTOPEN>CompileDTL';
-const INSTANCE_LOG = '/durable/iris/mgr/messages.log';
+/** OcuPilot's integrity log read, which renders the named check's report in the web process that serves it. */
+const INTEGRITY_READ = '/api/ocupilot/logs/integrity';
 
 /** The three screens: each list, the editor it opens, and the probe class and title it is tested with. */
 const KINDS = [
@@ -360,32 +359,62 @@ async function snackbarWhere(frame, accept, what) {
 /** Wait until the editor's snackbar reads a sentence containing `text`, and answer the sentence. */
 const snackbarWith = (frame, text) => snackbarWhere(frame, (label) => label.includes(text), `the editor's notice contains ${JSON.stringify(text)}`);
 
-/** How many lines of the instance's log record the vendor's DTL compile route failing on a null device its web process has closed. */
-function nullDeviceFailures() {
-  const read = spawnSync('docker', ['exec', config.container, 'grep', '-c', '-F', NULL_DEVICE_FAILURE, INSTANCE_LOG], { encoding: 'utf8', timeout: 60000 });
-  // `grep -c` prints a count whether or not it matched; a failed `docker exec` prints none, so it is never read as 0.
-  assert.match(read.stdout ?? '', /^\d+\n?$/, `the instance log reads: ${read.error?.message ?? read.stderr}`);
-  return Number(read.stdout);
+/**
+ * Choose Compile in the DTL editor and answer the first notice that reads `expected` or the editor's server-error notice, so a caller
+ * asserting on `expected` fails as soon as the vendor's route fails rather than at the wait's end.
+ */
+async function compileNotice(frame, expected) {
+  await frame.click('#top-banner-button-4-secondary');
+  return snackbarWhere(
+    frame,
+    (label) => label.includes(expected) || VENDOR_FAILURE_NOTICE.test(label),
+    `the editor reports the compile in a notice (${JSON.stringify(expected)}, or its server-error notice)`
+  );
 }
 
 /**
- * Choose Compile in the DTL editor and answer the editor's own notice, and whether it is the vendor's failure notice.
- *
- * The vendor's compile route uses the null device without opening it, so in a web process that has closed that device it fails
- * whatever the class holds, and the editor shows its generic server-error notice. That notice is taken for the outcome only when the
- * instance's log records the failure after this click. A notice that is neither `expected` nor that one is never taken.
+ * Run an integrity check of `USER`'s database through OcuPilot's database port, wait until it has ended, and answer its id; the
+ * caller removes it with `removeIntegrityCheck`.
  */
-async function compileNotice(frame, expected) {
-  const failures = nullDeviceFailures();
-  await frame.click('#top-banner-button-4-secondary');
-  const notice = await snackbarWhere(
-    frame,
-    (label) => label.includes(expected) || VENDOR_FAILURE_NOTICE.test(label),
-    `the editor reports the compile in its own notice (${JSON.stringify(expected)}, or the vendor's failure notice)`
-  );
-  if (notice.includes(expected)) return { notice, vendorFailure: false };
-  await until(nullDeviceFailures, (count) => count > failures, `the instance's log records ${NULL_DEVICE_FAILURE} for the notice ${JSON.stringify(notice)}`, config.navigationTimeoutMs);
-  return { notice, vendorFailure: true };
+function runIntegrityCheck() {
+  const output = runIris(config.container, [
+    'Set dir=$Piece(##class(%SYS.Namespace).GetGlobalDest("USER","OcuPilotProbeEditorCheck"),"^",2)',
+    'Set $NAMESPACE="%SYS" Kill known Set rs=##class(%ResultSet).%New("SYS.BackgroundIntegrity:ListIntegrityTasks") If rs.Execute() { While rs.Next() { Set known(rs.Get("ID"))="" } } Set $NAMESPACE="HSCUSTOM"',
+    'Kill q Set q("dir")=dir Set sc=##class(OcuPilot.Port.DatabasePort).Invoke("Database.Actions","INTEGRITYCHECK",.q,"",.res,.http,.fault)',
+    'Set $NAMESPACE="%SYS",id="" For i=1:1:1200 { Set rs=##class(%ResultSet).%New("SYS.BackgroundIntegrity:ListIntegrityTasks") If rs.Execute() { While rs.Next() { If \'$Data(known(rs.Get("ID"))),rs.Get("HasEnded") Set id=rs.Get("ID") } } Quit:id\'=""  Hang 0.1 } Set $NAMESPACE="HSCUSTOM"',
+    'Write "OCU-EDCHECK-START:"_$Get(http)_"|"_id_":OCU-EDCHECK-END",!',
+  ]);
+  const [http, id] = String(markerValue(output, 'EDCHECK') ?? '').split('|');
+  assert.equal(http, '200', `the integrity check of USER's database is accepted: ${output}`);
+  assert.match(id ?? '', /^\d+$/, `and it ends: ${output}`);
+  return id;
+}
+
+/** Remove integrity check `id`, and assert it is gone. */
+function removeIntegrityCheck(id) {
+  const output = runIris(config.container, [
+    `Set $NAMESPACE="%SYS",sc=1,t=##class(%SYS.BackgroundTask).%OpenId("${escapeOs(id)}") If $IsObject(t),'t.HasEnded Do t.Cancel()`,
+    `Set c=$Select($IsObject(t):$ClassName(t),1:""),t="" If c'="" Set sc=$ClassMethod(c,"%DeleteId","${escapeOs(id)}")`,
+    `Write "OCU-EDUNCHECK-START:"_$System.Status.IsOK(sc)_(''##class(%SYS.BackgroundTask).%ExistsId("${escapeOs(id)}"))_":OCU-EDUNCHECK-END",!`,
+  ]);
+  assert.equal(markerValue(output, 'EDUNCHECK'), '10', `the integrity check ${id} is removed: ${output}`);
+}
+
+/** The instance's web server processes, each as `{ pid, nullOpen }`: whether it holds the null device open. */
+function webProcesses() {
+  const output = runIris(config.container, [
+    'Set $NAMESPACE="%SYS",n=##class(%Library.Device).GetNullDevice(),s="",rs=##class(%SQL.Statement).%ExecDirect(,"SELECT Pid, %EXACT(Routine), %EXACT(OpenDevices) FROM %SYS.ProcessQuery") While rs.%Next() { If $Extract(rs.%GetData(2),1,14)="%SYS.cspServer" Set s=s_rs.%GetData(1)_"="_((","_$Translate(rs.%GetData(3),"*")_",")[(","_n_","))_";" } Set $NAMESPACE="HSCUSTOM"',
+    'Write "OCU-EDWEB-START:"_s_":OCU-EDWEB-END",!',
+  ]);
+  const value = markerValue(output, 'EDWEB');
+  assert.notEqual(value, null, `the web server processes are read: ${output}`);
+  return value
+    .split(';')
+    .filter((entry) => entry !== '')
+    .map((entry) => {
+      const [pid, open] = entry.split('=');
+      return { pid, nullOpen: open === '1' };
+    });
 }
 
 // Mutation (Rule 19): the page passes `document` with its `.cls` kept (bundle rebuilt and redeployed) -> the editor's document read answers
@@ -460,13 +489,8 @@ test('AC1: each editor screen passes the structural and contrast checks at 1280 
 // Mutation (Rule 19): `interopEditorSource` appends the editor's mode flag (bundle rebuilt and redeployed) -> the editor posts the message
 // that flag selects and the sign-in the notices need never happens, so the message and notice clauses go red, and so does
 // `vendor-frame.test.mjs`.
-// Mutation (Rule 19): `compileNotice` does not choose Compile (no notice appears) -> its wait for the editor's notice goes red, whichever
-// web process serves the compile.
-// Mutation (Rule 19): the editor posts a message to the shell after Compile -> the no-message clause goes red, in either outcome.
-// Mutation (Rule 19): `NULL_DEVICE_FAILURE` names a line the log never holds -> with every web process's null device closed, the log
-// clause goes red.
-// Mutation (Rule 19): `compileNotice` sends the expected notice down the vendor branch -> with the log already holding matching lines,
-// the log clause goes red; it goes green only when the count is compared with 0 rather than with the count before the click.
+// Mutation (Rule 19): `compileNotice` does not choose Compile (no notice appears) -> its wait for the editor's notice goes red.
+// Mutation (Rule 19): the editor posts a message to the shell after Compile -> the no-message clause goes red.
 test('AC2: the DTL editor\'s saved and compiled notices appear in the frame and send no message, the list\'s Modified is the definition\'s TimeChanged, and a class that does not compile is reported in the editor\'s own notice', async (t) => {
   const document = TRANSFORM.name.slice(0, -'.cls'.length);
   const { context, page, messages } = await shellAt(`/ocupilot/${TRANSFORM.listRoute}?ns=${NAMESPACE}`);
@@ -485,9 +509,7 @@ test('AC2: the DTL editor\'s saved and compiled notices appear in the frame and 
     assert.equal(await snackbarWith(frame, `${document} saved.`), `${document} saved.`, 'the editor says the class is saved');
     // The compile is at least a second after the save, so the compiled class's time and the definition's cannot be equal at the list's resolution.
     await new Promise((resolve) => setTimeout(resolve, 1100));
-    const compiled = await compileNotice(frame, 'compiled successfully');
-    if (compiled.vendorFailure) t.diagnostic(`the vendor's compile route failed in the web process that served it; the editor's notice is ${JSON.stringify(compiled.notice)}`);
-    else assert.equal(compiled.notice, `${document} compiled successfully`, 'and then that it compiled');
+    assert.equal(await compileNotice(frame, 'compiled successfully'), `${document} compiled successfully`, 'and then that it compiled');
     assert.deepEqual(await messages.seen(), [], 'no message reached the shell or the frame');
 
     await openList(page, TRANSFORM.listRoute);
@@ -504,10 +526,54 @@ test('AC2: the DTL editor\'s saved and compiled notices appear in the frame and 
     const frame = await editorShows(broken.page, BROKEN.slice(0, -'.cls'.length));
     await frame.waitForSelector('#top-banner-button-4-secondary', { timeout: config.navigationTimeoutMs });
     const failed = await compileNotice(frame, 'error occurred while compiling');
-    if (failed.vendorFailure) t.diagnostic(`the vendor's compile route failed in the web process that served it; the editor's notice is ${JSON.stringify(failed.notice)}`);
+    assert.ok(failed.includes('error occurred while compiling'), `a class that does not compile is reported in the editor's own notice: ${failed}`);
     assert.deepEqual(await broken.messages.seen(), [], 'a class that does not compile sends no message either');
   } finally {
     await broken.context.close();
+  }
+});
+
+// Mutation (Rule 19): `LogSourcePort.IntegrityReport` closes the null device whether or not it opened it (recompiled on the throwaway) ->
+// the null-device clause goes red, and so does the compile clause once the editor's Compile lands in a process that served a report.
+test('DW-2395: an integrity report served across the web process pool leaves the null device open, and the DTL editor then compiles with its own notice', async () => {
+  const document = TRANSFORM.name.slice(0, -'.cls'.length);
+  const check = runIntegrityCheck();
+  try {
+    // Readiness reads first, which render no report, so the pool has its processes before they are read.
+    await Promise.all(Array.from({ length: 8 }, async () => (await fetch(`${config.origin}${READINESS_PATH}`)).arrayBuffer()));
+    const held = webProcesses()
+      .filter((process) => process.nullOpen)
+      .map((process) => process.pid);
+    assert.ok(held.length > 0, 'the instance has web server processes holding the null device');
+    // More reports at once than there are processes, so every process the pool has serves one.
+    const authorization = `Basic ${Buffer.from(`${config.username}:${config.password}`).toString('base64')}`;
+    const statuses = await Promise.all(
+      Array.from({ length: Math.max(8, held.length * 3) }, async () => {
+        const response = await fetch(`${config.origin}${INTEGRITY_READ}?file=${check}`, { headers: { Authorization: authorization } });
+        await response.arrayBuffer();
+        return response.status;
+      })
+    );
+    assert.deepEqual([...new Set(statuses)], [200], 'every report is answered');
+    const after = new Map(webProcesses().map((process) => [process.pid, process.nullOpen]));
+    assert.deepEqual(
+      held.filter((pid) => after.get(pid) === false),
+      [],
+      'no web server process that held the null device has lost it'
+    );
+
+    const { context, page, messages } = await shellAt(screenUrl(TRANSFORM.listRoute, TRANSFORM.name));
+    try {
+      await answered(page);
+      const frame = await editorShows(page, document);
+      await frame.waitForSelector('#top-banner-button-4-secondary', { timeout: config.navigationTimeoutMs });
+      assert.equal(await compileNotice(frame, 'compiled successfully'), `${document} compiled successfully`, "the editor's Compile answers its own notice");
+      assert.deepEqual(await messages.seen(), [], 'and sends no message');
+    } finally {
+      await context.close();
+    }
+  } finally {
+    removeIntegrityCheck(check);
   }
 });
 

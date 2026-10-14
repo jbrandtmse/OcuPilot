@@ -106,6 +106,19 @@ ClassMethod DeletedUser() As %String
     Quit $Parameter(..#FIXTURE, "USERA")
 }
 
+/// <p>Drop this namespace's cached queries, then run the install gate once in this process, so the
+/// gate's read of the version row is first run, whatever ran before, by this process's account,
+/// which no test here deletes. When the account that is deleted was the first to run that read after
+/// the queries were dropped, its token is answered <code>503 INSTALL.UNREADABLE</code> in place of
+/// <code>401 AUTH.DISABLED</code>; when another account ran it first, the token is answered
+/// <code>401 AUTH.DISABLED</code> (measured on 2026.2). Answers whether the queries were dropped and
+/// the gate reads <code>installed</code>.</p>
+ClassMethod PrimeGate() As %Boolean
+{
+    If $$$ISERR($SYSTEM.SQL.PurgeQueries()) Quit 0
+    Quit (##class(OcuPilot.Install.Installer).GateStatus() = "installed")
+}
+
 /// <p>A probe definition retaining <var>pDays</var> days; its id.</p>
 Method NewDefinition(pSuffix As %String, pDays As %Integer) As %String
 {
@@ -298,12 +311,14 @@ Method TestABackgroundRunPastRetentionIsSwept()
 /// first -- the account's flag is not read while the escalation is in effect, and its token is
 /// refused <code>401 AUTH.DISABLED</code> -- then the sweep abandons the turn and removes the
 /// preferences and the sharing choice, while the transcript and the ledger row survive and an
-/// administrator's gate still releases them.</p>
+/// administrator's gate still releases them. The cached queries are dropped and the install gate is
+/// run by this process's account first (<method>PrimeGate</method>).</p>
 /// <p>Mutation (Rule 19): add <method>OcuPilot.Kernel.State.Convo.GuardedDelete</method> of the
 /// user's conversations to <method>OcuPilot.Kernel.Retention.SweepGonePrincipals</method> -- the
 /// transcript is gone and this goes red.</p>
 Method TestADeletedUsersSettingsGoAndTheirTranscriptsStay()
 {
+    Do $$$AssertTrue(..PrimeGate(), "the cached queries are dropped and the install gate reads installed in this process before the account exists")
     Set tUser = ..DeletedUser()
     Do $$$AssertStatusOK($ClassMethod(..#FIXTURE, "EnsurePrincipal", tUser, ..PreparedPassword, $ClassMethod(..#FIXTURE, "Resources")), "a probe account exists")
     Set tLogin = {}

@@ -20,6 +20,7 @@
  */
 
 import type { ApiService } from '../../core/api';
+import type { ChangeEvent } from '../../core/change-bus';
 import type { Verdict } from '../../core/navigation';
 import { screenReadPath } from '../../core/screen-read.ts';
 import type { ScreenDeclaration } from '../../core/screens.generated';
@@ -32,6 +33,9 @@ export const EDITOR_READ_ROWS = 1000;
 
 /** The extension a document name carries, which the editor's own document parameter does not. */
 export const DOCUMENT_EXTENSION = '.cls';
+
+/** The entity type the screens' documents are: a class (AD-13). */
+const DOCUMENT_ENTITY = 'class';
 
 /** What the store reads and is told its verdict through. */
 export interface InteropEditorDeps {
@@ -134,6 +138,17 @@ export class InteropEditorState {
   refresh(): Promise<void> {
     if (this.namespaceValue === '') return Promise.resolve();
     return this.read();
+  }
+
+  /**
+   * Whether `event` is a confirmed change to the class this screen shows (AD-14, Story 20.16): a `changed` event of type
+   * `class` in the namespace the document opened in whose id, alone or in a comma-separated set (AD-13), is the
+   * document's name. Nothing matches until a document and a namespace are held.
+   */
+  shows(event: ChangeEvent): boolean {
+    if (event.kind !== 'changed' || event.type !== DOCUMENT_ENTITY) return false;
+    if (this.idValue === '' || this.namespaceValue === '') return false;
+    return event.scope === this.namespaceValue && event.id.split(',').includes(this.idValue);
   }
 
   /** Drop any answer still in flight and every listener; the page calls it as it is destroyed. */

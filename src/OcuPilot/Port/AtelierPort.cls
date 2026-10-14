@@ -3122,7 +3122,8 @@ ClassMethod Route(pVersion As %Integer, pNamespace As %String, pMethod As %Strin
 /// never put on the wire.</p>
 /// <p>With <var>pSoft</var> (a compile, or an import's load or save), such an error under a 2xx
 /// status is the call's own result rather than a fault: <var>pErrors</var> is 1, and <var>pConsole</var> is the envelope's
-/// <code>console</code> array on every 2xx answer that parses.</p>
+/// <code>console</code> array on every 2xx answer that parses. A console that reports errors
+/// (<method>ConsoleCountsErrors</method>) also sets <var>pErrors</var> to 1.</p>
 /// <p><code>PutDoc</code>'s own answers (AD-61 rule 6): 409, a version that no longer matches, is 409
 /// <code>EXPLORER.DOCUMENT.CONFLICT</code>, and 423, a document another process holds, is 409
 /// <code>EXPLORER.DOCUMENT.LOCKED</code>, neither logged as a fault and neither carrying the vendor's
@@ -3196,7 +3197,7 @@ ClassMethod Outcome(pMethod As %String, pCallSC As %Status, pHttp As %Integer, p
     If tParsed && pSoft {
         Set tConsolePart = tEnvelope.%Get("console")
         Set pConsole = $Select($IsObject(tConsolePart) && tConsolePart.%IsA("%Library.DynamicArray"): tConsolePart, 1: [])
-        Set pErrors = ($$$ISERR(pCallSC) || (tErrors '= ""))
+        Set pErrors = ($$$ISERR(pCallSC) || (tErrors '= "") || ..ConsoleCountsErrors(pConsole))
         Set pResult = tEnvelope.%Get("result")
         Set pHttpStatus = pHttp
         Quit $$$OK
@@ -3217,6 +3218,25 @@ ClassMethod Outcome(pMethod As %String, pCallSC As %Status, pHttp As %Integer, p
     Set pResult = tEnvelope.%Get("result")
     Set pHttpStatus = pHttp
     Quit $$$OK
+}
+
+/// <p>Whether the compile console <var>pConsole</var> (a <class>%DynamicArray</class> of lines) reports errors:
+/// 1 when any string line reads <code>Detected &lt;n&gt; errors during compilation</code> with <code>n</code> at
+/// least 1, and 0 for anything else, including a console that is not an array. A compile can answer 200 with no
+/// status error and report its failure only in this line, as a class whose generated class fails does on the
+/// Atelier route over HTTP (AD-61 rule 6); that counts as a failed compile.</p>
+ClassMethod ConsoleCountsErrors(pConsole) As %Boolean
+{
+    If '$IsObject($Get(pConsole)) || 'pConsole.%IsA("%Library.DynamicArray") Quit 0
+    Set tCounts = 0
+    Set tIterator = pConsole.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tLine, .tType) {
+        If (tType = "string") && $Match(tLine, "(?s)^Detected [1-9][0-9]* errors? during compilation.*") {
+            Set tCounts = 1
+            Quit
+        }
+    }
+    Quit tCounts
 }
 
 /// <p>Whether a soft error is the vendor's privilege or read-only refusal: a message number in

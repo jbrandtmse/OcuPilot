@@ -8386,6 +8386,8 @@ So that understanding an unfamiliar production is visual.
 
 ### Story 20.9: Messages - search, view, resend and trace
 
+[AMENDED 2026-10-13, orchestrator ruling Q1 A at this story's spec gate, Rule 5] Split for size: this story keeps message search and the viewer's Header and Contents tabs over OcuPilot's own read-only renderer (its first and fourth criteria). Its trace criterion moved to Story 20.30 and its resend criterion to Story 20.31, each verbatim; order 20.9, 20.30, 20.31, then 20.10. Saved searches are not offered: each vendor store belongs to its own search engine (a named limit).
+
 As an interoperability operator,
 I want to find a message and follow what happened to it,
 So that incident investigation is possible here.
@@ -8395,14 +8397,6 @@ So that incident investigation is possible here.
 - **Given** message search and the viewer
 - **When** they run
 - **Then** they read through the port, with saved searches where the API offers them.
-
-- **Given** resend and edit-and-resend
-- **When** they run
-- **Then** they use a **dry-run then confirm** double gate with a bounded cap on how many messages one action may resend.
-
-- **Given** a session
-- **When** its trace is opened
-- **Then** it renders as a visual trace, with a generated sequence diagram as the alternative.
 
 - **Given** message contents
 - **When** they render
@@ -8417,8 +8411,8 @@ So that edits go through the same hooks they would elsewhere.
 **Acceptance Criteria:**
 
 - **Given** source control is enabled on the namespace
-- **When** an embedded editor saves
-- **Then** the hooks, menus, user actions and status are exchanged through the port.
+- **When** a person saves, compiles or uses the Source Control menu in an embedded rule, BPL or DTL editor, in normal mode
+- **Then** the editor exchanges the hooks, menus, user actions and status with the instance itself, through the vendor's interoperability API inside the frame, as the signed-in person and as it does outside OcuPilot, and nothing reaches OcuPilot's shell; and OcuPilot's own saves of classes and routines, the agent's edits behind these editors included, run the same save and compile hooks through `AtelierPort` and refuse by name a document source control has not released for editing. [AMENDED 2026-10-14 - see the story change log]
 
 ### Story 20.11: The Analytics rider
 
@@ -8841,6 +8835,7 @@ So that the classic per-host Actions tab is not needed for them.
 - **Then** its destructiveness, its governance key's default and its audit record are stated (AD-22).
 
 - DW-2298: the classic per-host Actions tab's remaining item actions (temporary stop, start and restart of one item, change class, copy) have no story (ledger; routed by spec_gate 2026-10-11)
+- DW-2407: a story that adds a write reaching its target through another port updates ToolWrite's other-port count (49 after 20.16) in the same pass (ledger; routed by cr 2026-10-14)
 
 ---
 
@@ -8938,6 +8933,34 @@ So that OcuPilot opens faster and the bundle stays under its limit as screens ar
 - **Then** each edit that is not add-only goes to the orchestrator as a Rule 11 ask before it lands.
 
 ---
+
+### Story 20.30: The session trace
+
+[AMENDED 2026-10-13, orchestrator ruling Q1 A at Story 20.9's spec gate, Rule 5] Split from Story 20.9, carrying its trace criterion verbatim. Its charter, as measured at 20.9's plan, is in that spec's Design Notes › Split (Part B): OcuPilot's own SVG sequence diagram, with Mermaid text as the generated alternative. After Story 20.9, before Story 20.31.
+
+As an interoperability operator,
+I want to see what happened in a message's session,
+So that I can follow a message through the production.
+
+**Acceptance Criteria:**
+
+- **Given** a session
+- **When** its trace is opened
+- **Then** it renders as a visual trace, with a generated sequence diagram as the alternative.
+
+### Story 20.31: Message resend and edit-and-resend
+
+[AMENDED 2026-10-13, orchestrator ruling Q1 A at Story 20.9's spec gate, Rule 5] Split from Story 20.9, carrying its resend criterion verbatim. Its charter, as measured at 20.9's plan, is in that spec's Design Notes › Split (Part C): the proposal is the dry run, Confirm executes, and one action resends at most 100 messages. Its key posture is settled at its own spec gate (a destructive key defaults to disabled under the baseline rule; edit-and-resend is at least as guarded as resend). After Story 20.30, before Story 20.10; Story 20.12 needs it.
+
+As an interoperability operator,
+I want to resend a message, or edit one and resend it,
+So that a failed exchange can be retried here.
+
+**Acceptance Criteria:**
+
+- **Given** resend and edit-and-resend
+- **When** they run
+- **Then** they use a **dry-run then confirm** double gate with a bounded cap on how many messages one action may resend.
 
 ## Epic 21: Stage 5 - custom-REST parity from the MCP suite's handlers
 
@@ -9447,7 +9470,7 @@ So that the scripts, the install checks and the explorer's save path say and do 
 
 ### Story 23.9: The range-end cleanup, part 8
 
-Chartered by the orchestrator on 2026-10-12 from the 32 entries the owner released out of Story 23.7. This part takes the last eight low-severity entries: doc comments and CLAUDE.md lines that no longer match the code, two pair-validation edges, a duplicated client constant and the CI runner's test-class floor. A ninth joined from Epic 18 on 2026-10-14: the delete tools' repeated state-diff body, lifted once into the shared write base. A slot that would otherwise sit idle runs it, after Story 23.8. A CLAUDE.md line changes only through the Planner, with the owner's OK.
+Chartered by the orchestrator on 2026-10-12 from the 32 entries the owner released out of Story 23.7. This part takes the last eight low-severity entries: doc comments and CLAUDE.md lines that no longer match the code, two pair-validation edges, a duplicated client constant and the CI runner's test-class floor. Two more joined from Epic 18 on 2026-10-14: the delete tools' repeated state-diff body, lifted once into the shared write base, and a sweep of the two-argument `%GetNext` loops over request bodies, so that an out-of-range value answers the field refusal and never a 500. A slot that would otherwise sit idle runs it, after Story 23.8. A CLAUDE.md line changes only through the Planner, with the owner's OK.
 
 As a maintainer of OcuPilot,
 I want the stale comments, duplicated constants and small validation edges fixed,
@@ -9455,7 +9478,7 @@ So that the next reader is not misled by text the code no longer matches.
 
 **Acceptance Criteria:**
 
-- **Given** the entries re-owned to this story: DW-446, DW-1177, DW-1706, DW-1760, DW-1761, DW-2060, DW-2259, DW-2260 and DW-2299
+- **Given** the entries re-owned to this story: DW-446, DW-1177, DW-1706, DW-1760, DW-1761, DW-2060, DW-2259, DW-2260, DW-2299 and DW-2417
 - **When** this story completes
 - **Then** each has a disposition written by the ledger tool: `resolved-by` this story with the commit, or `wontfix-accepted` or `by-design` with a reason and, where a condition would reopen it, that condition.
 

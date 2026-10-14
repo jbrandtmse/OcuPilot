@@ -382,6 +382,8 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Lines were
 
 ## Spec Change Log
 
+- 2026-10-13, spec gate (runner): the orchestrator ruled Q1 A (Parts B and C are Stories 20.30 and 20.31, chartered in `epics.md` with their criteria verbatim; order 20.9, 20.30, 20.31, then 20.10) and Q2 A (no saved searches, a named limit; DW-2398 with its reopen_if). `epics.md` Story 20.9 is amended under Rule 5. The Rule 20 drafts are written (AD-62 item 15, AD-8, AD-44, AD-5).
+
 ## Review Triage Log
 
 ## Design Notes

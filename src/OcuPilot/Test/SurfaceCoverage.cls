@@ -419,6 +419,9 @@ XData Coverage
 <tool name="interop.lookuptables.import" class="OcuPilot.Test.InteropLookupTransfer" method="TestTheAgentsImportConfirmsOverHttp"/>
 <tool name="interop.itemtest.send" class="OcuPilot.Test.InteropHostTest" method="TestTheAgentsSendConfirmsOverHttp"/>
 <tool name="interop.transforms.test" class="OcuPilot.Test.InteropTransformTest" method="TestTheAgentsRunConfirmsOverHttp"/>
+<tool name="interop.ruleeditor.save" class="OcuPilot.Test.InteropEditorSave" method="TestEachEditorSaveIsMintedAndConfirmed" corpus="one loop pins all three Story 20.16 editor saves"/>
+<tool name="interop.processeditor.save" class="OcuPilot.Test.InteropEditorSave" method="TestEachEditorSaveIsMintedAndConfirmed" corpus="one loop pins all three Story 20.16 editor saves"/>
+<tool name="interop.transformeditor.save" class="OcuPilot.Test.InteropEditorSave" method="TestEachEditorSaveIsMintedAndConfirmed" corpus="one loop pins all three Story 20.16 editor saves"/>
 <tool name="osmgmt.remotedatabases.create" class="OcuPilot.Test.RemoteDatabaseDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the three remote database tools are asserted together in one loop"/>
 <tool name="osmgmt.remotedatabases.update" class="OcuPilot.Test.RemoteDatabaseDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the three remote database tools are asserted together in one loop"/>
 <tool name="osmgmt.remotedatabases.delete" class="OcuPilot.Test.RemoteDatabaseDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the three remote database tools are asserted together in one loop"/>

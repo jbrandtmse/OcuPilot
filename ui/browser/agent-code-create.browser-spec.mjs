@@ -22,15 +22,7 @@ import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '..
 import { loadStrings } from '../tools/strings.mjs';
 import { signedInAt } from './panel-spec.mjs';
 import { resetGovernancePolicy, resetRememberedState } from './preferences-reset.mjs';
-import {
-  INVARIANTS,
-  VIEWPORTS,
-  compare,
-  componentMinimums,
-  detectScreen,
-  readBaseline,
-  toggleThemeThroughMenu,
-} from './structural-walk.mjs';
+import { cardViolations, proposeFromPanel, slotText } from './proposal-card-spec.mjs';
 import {
   armProbeDefinition,
   disarmProbeDefinition,
@@ -183,48 +175,6 @@ function compiled() {
   return markerValue(output, 'AGENTCODECREATECOMPILED') === '1';
 }
 
-/** Wait for the composer, send one prompt, and wait for the card's Confirm button. */
-async function proposeCreate(page, prompt) {
-  await page.waitForFunction(() => !document.querySelector('#ocu-panel-composer').hasAttribute('aria-disabled'), { timeout: config.navigationTimeoutMs });
-  await page.type('#ocu-panel-composer', prompt);
-  await page.click('.ocu-panel-send');
-  await page.waitForSelector('app-proposal-card .ocu-proposal-card-confirm', { timeout: config.navigationTimeoutMs });
-}
-
-/** The card's slot text, without its glyph, or `null` when the slot is absent. */
-async function slotText(page, name) {
-  return page.$eval(`app-proposal-card [data-slot="${name}"]`, (node) => (node.querySelector('.ocu-banner-message') ?? node).textContent.trim()).catch(() => null);
-}
-
-/** Every DW-1337 invariant over the card in light at both widths and dark at the wide width, outside the baseline. */
-async function cardViolations(page) {
-  const minimums = componentMinimums();
-  const baseline = (readBaseline()?.entries ?? []).filter((entry) => entry.route === ROUTE);
-  const requests = { inflight: new Set(), last: 0 };
-  const found = [];
-  for (const { viewport, theme } of [
-    { viewport: VIEWPORTS.wide, theme: 'light' },
-    { viewport: VIEWPORTS.narrow, theme: 'light' },
-    { viewport: VIEWPORTS.wide, theme: 'dark' },
-  ]) {
-    await page.setViewport(viewport);
-    // The docked panel re-lays out on the resize; measure once its right edge has come inside the viewport.
-    await page.waitForFunction((width) => {
-      const panel = document.querySelector('app-panel');
-      return panel === null || panel.getBoundingClientRect().right <= width + 1;
-    }, { timeout: 3000 }, viewport.width).catch(() => {});
-    if (theme === 'dark') await toggleThemeThroughMenu(page, requests, config.navigationTimeoutMs);
-    try {
-      const { entries } = await detectScreen(page, { route: ROUTE, checks: INVARIANTS, viewport: viewport.width, theme, minimums });
-      found.push(...entries);
-    } finally {
-      if (theme === 'dark') await toggleThemeThroughMenu(page, requests, config.navigationTimeoutMs);
-    }
-  }
-  await page.setViewport(VIEWPORTS.wide);
-  return compare(found, baseline).fresh.map((entry) => `${entry.key}: ${entry.measured}`);
-}
-
 test('a new class draws its whole text as added lines and says Confirm compiles; Confirm creates and compiles it with no compile warning', async () => {
   // Mutation (Rule 19): make `ComposeCreate` answer no diff row -> no added line is drawn and this goes red.
   dropDocuments();
@@ -235,7 +185,7 @@ test('a new class draws its whole text as added lines and says Confirm compiles;
   scriptText(tag, 'created');
   const { context, page } = await signedInAt(browser, config, USER_URL);
   try {
-    await proposeCreate(page, 'create the probe class');
+    await proposeFromPanel(page, 'create the probe class', config.navigationTimeoutMs);
     const drawn = await page.$$eval('app-proposal-card app-text-diff [data-ocu-diff="added"]', (nodes) => nodes.map((node) => ({
       text: node.textContent.replace(/\s+/g, ' ').trim(),
       number: node.querySelector('.ocu-line-diff-number')?.textContent.trim() ?? '',
@@ -270,12 +220,12 @@ test('a new twelve-line routine starts collapsed under its summary line, Confirm
   scriptText(tag, 'created');
   const { context, page } = await signedInAt(browser, config, USER_URL);
   try {
-    await proposeCreate(page, 'create the probe routine');
+    await proposeFromPanel(page, 'create the probe routine', config.navigationTimeoutMs);
     const summary = await page.$eval('app-proposal-card .ocu-proposal-card-summary-fields', (node) => node.textContent.replace(/\s+/g, ' ').trim());
     assert.match(summary, /lines changed, 0 removed and 12 added$/, `the summary counts the added lines: ${summary}`);
     const buttons = await page.$$eval('app-proposal-card button', (nodes) => nodes.map((node) => node.textContent.trim()));
     assert.ok(buttons.includes(STRINGS.longBlockShowMore), 'the diff starts collapsed behind Show more');
-    assert.deepEqual(await cardViolations(page), [], 'the card adds no structural violation in light or dark, at either width');
+    assert.deepEqual(await cardViolations(page, ROUTE, config.navigationTimeoutMs), [], 'the card adds no structural violation in light or dark, at either width');
 
     await page.click('.ocu-proposal-card-confirm');
     await page.waitForSelector('app-proposal-card .ocu-proposal-card-status-confirmed', { timeout: config.navigationTimeoutMs });
@@ -298,7 +248,7 @@ test('a new class that does not compile, confirmed, is said to be saved but not 
   scriptText(tag, 'created');
   const { context, page } = await signedInAt(browser, config, USER_URL);
   try {
-    await proposeCreate(page, 'create the broken probe class');
+    await proposeFromPanel(page, 'create the broken probe class', config.navigationTimeoutMs);
     await page.click('.ocu-proposal-card-confirm');
     await page.waitForSelector('app-proposal-card [data-slot="saved-not-compiled"]', { timeout: config.navigationTimeoutMs });
     assert.equal(await slotText(page, 'saved-not-compiled'), STRINGS.explorerSaveNotCompiled, 'the card says the create did not compile');
