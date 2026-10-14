@@ -1650,3 +1650,9 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-10-14T12:40:26Z	Epic 18	ledger_routed_planned	story=18-48-epic-18-burn-down-part-2 entries=12(+DW-2424,DW-2425;-DW-1979,DW-1981_to_23-9) excess=0 by=lead
 2026-10-14T12:44:31Z	Epic 18	epic_context_compiled	reason=planning_artifact_newer(18.48_rebalanced) model=opus bytes=12947
 2026-10-14T12:44:31Z	Story 18.48	stage_spawned	stage=plan spawn_at=2026-10-14T12:44:31Z model=opus agent_name=18-48-burndown-2-plan-1 cycle_iteration=1 prompt=carry-2026-10-10/epic-18-r/plan-1848-prompt.md run_in_background=false throwaway=untouched(sweep_running)
+2026-10-14T14:19:55Z	Story 18.47	full_sweep_complete	spawn_at=2026-10-14T12:44:31Z model=sonnet agent_name=18-47-sweep-1 classes=649 tests=5025 failed=0 chunks=28 leftovers=0 window=12:44:45Z-14:18:59Z
+2026-10-14T14:19:55Z	Story 18.47	smoke_complete	method=browser+api result=pass iterations=1 defects_caught=0 evidence=smoke.sh(ocupilot-ci,PASSED)+5_browser_specs_30/30 model=claude-opus-5-5
+2026-10-14T14:19:55Z	Story 18.47	fresh_check	env=recipe tests=full_sweep_649+5_browser_specs_30_fwd+rev result=pass order=forward,reverse
+2026-10-14T14:19:55Z	Story 18.47	committed	sha=98773ed1(code=f9f48b18+9ece1cf9;merges_feature_35982168,a29d3958) submodules= ci=pending run=38579508305 head_confirmed_by=headSha pushed=code_head_alone footprint_extensions=Prohibited.cls,table-model.ts,data-table.ts,strings.ts(values),ReadTool(386_union),ProviderSslCallers.cls,EgressSslProbe.cls,EXPERIENCE.md
+2026-10-14T14:19:55Z	Story 18.47	story_cycle	plan_to_commit_min=315 implement_passes=1 reviews=1 rework=0 first_ci=pending models=plan:opus,implement:sonnet,qa:sonnet,cr:opus
+2026-10-14T14:19:55Z	Story 18.48	story_created	spawn_at=2026-10-14T12:44:31Z model=opus agent_name=18-48-burndown-2-plan-1 path=_bmad-output/implementation-artifacts/spec-18-48-epic-18-burn-down-part-2.md build_status=ready-for-dev bytes=15997 epic_context=reused probes=none
