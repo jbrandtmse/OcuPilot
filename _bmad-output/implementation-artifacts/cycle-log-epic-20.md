@@ -733,3 +733,7 @@
 2026-10-14T00:54:38Z	Story 20.16	ledger_adjudicated	owned=2 resolved=2(DW-2401,DW-2402_spine) reowned=0 terminal=0 note=DW-2403_routed_burndown
 2026-10-14T02:36:59Z	Story 20.10	spine_updated	ad=AD-63(named_consequence),AD-61(rules_6,8) reason=clarification(plan_draft) by=runner story=20-10 lint=ok(preexisting_low_line206)
 2026-10-14T02:36:59Z	Story 20.10	spec_validated	service_introducing=false(refusal_mapping,test_helper) integration_ac=present(AC6_20.16_save) adr_constrained_acs=AD-63,AD-61,AD-53,AD-62,AD-47,AD-8 decision_dependency=none sections_created=none owned_ledger=none addressed=0 declined=0 mutates_shared_runtime=true(throwaway_USER_source_control) amendments=epics.md:20.10_criterion(Rule5_apply-and-report) harvested=DW-2405(routed_burndown) order=after_20.31 model=claude-opus-5-5
+2026-10-14T02:37:14Z	Story 20.16	fresh_check	env=recipe(down+up_from_b9cc5e1c,feature_1f4d4915_merged,bundle_main-ITWCBE62.js) tests=story+roster_15_classes_first_on_fresh(119),browser_4_files_together(33) full_sweep=30/30_shards_638_classes_4965_tests_1_failed(ToolWrite_other-port_count_46) result=fail order=forward
+2026-10-14T02:37:14Z	Story 20.16	rework_opened	cycle_iteration=2 iteration=1 trigger=smoke items=[Smoke]ToolWrite_other-port_count scope_baseline=pending
+2026-10-14T02:37:14Z	Epic 20	deps_hash_rerecorded	reason=rule5_amendment(20.10_criterion)
+2026-10-14T02:37:14Z	Story 20.16	stage_spawned	stage=implement spawn_at=2026-10-14T02:37:14Z model=sonnet agent_name=20-16-rework-1 cycle_iteration=2

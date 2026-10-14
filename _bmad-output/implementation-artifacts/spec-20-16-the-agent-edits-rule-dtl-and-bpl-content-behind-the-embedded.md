@@ -2,7 +2,7 @@
 title: 'Story 20.16: The agent edits rule, DTL and BPL content behind the embedded editors'
 type: 'feature'
 created: '2026-10-13'
-status: 'done'
+status: 'in-progress'
 baseline_revision: '645b1478c828928296c44f2c4920884fb54142c8'
 baseline_commit: '645b1478c828928296c44f2c4920884fb54142c8'
 review_loop_iteration: 0
@@ -365,6 +365,10 @@ Code review 2026-10-13 (four layers, `full-opus`; diff `645b1478..ae5398ff`): 1 
 - [x] Orchestrator ruling (DW-2395): `interop-editors.browser-spec.mjs` drops the NOTOPEN tolerance (the Compile legs accept only the editor's own notices) and gains a DW-2395 leg (integrity reports across the web pool, no worker loses `/dev/null`, then the DTL editor compiles with its own notice); 20.7's Named limit and mutation lines replaced.
 
 Rejected: `false` — a failed compile blocks a repair (the dictionary walk holds uncompiled classes, measured at plan); the EXPERIENCE.md :718 sentence lacks provenance (it names Story 20.16 inline); a failed setup leaks the turn principal (`OnAfterAllTests` runs after it); `IsCodeOfKind` should call `TransformFactsHere`'s scan (that method runs switched, where AD-62 item 3 bars OcuPilot code). `by-design` — the editor reloads on any confirmed change event naming its class (matrix Reload row, AD-14); the console verdict matches English only (Named limits). `low` — a missing class gets the wrong-kind sentence (rare, a new branch); no gate principal lacks `%Ens_Portal:USE` (one screen-pair path, pinned by `%Ens_Code:READ`); the browser leg asserts the stored text, not the card's confirmed line (the server tests read the state); `MATCHRULE` and the three descriptions repeat a template (per-kind sentences the spec sets); `InteropEditorConfirm.HoldsPair` repeats `ConfirmFixture`'s two lines (`ConfirmFixture` replaces the port, which this helper must not; a shared parent for a two-line seam reads worse, Rule 31); a gate child running past 180 s (theoretical: a stale answer from another principal fails the username assertion). Not reviewable here: the Auto Run Result, the Verification's "two nodes" line and a commit message's claim (each edits the spec or history).
+
+### Fresh check red (2026-10-14) - rework iteration 1
+
+- [ ] [Smoke] **`ToolWrite`'s other-port count misses the three editor saves.** The full sweep on a freshly built `ocupilot-b-ci` (638 classes, 4,965 tests) had one red: `OcuPilot.Test.ToolWrite.TestEveryWriteToolsRequestTypeAgreesWithThePortsBodylessRoster`, "exactly forty-six shipped writes reach their target through another port" (`ToolWrite.cls`:1338). This story's three `interop.*editor.save` tools reach their target through the source code API port, so the pinned literal and its message are stale (the Shared surfaces line and the roster task did not name `ToolWrite`). Read the count from the instance, set the literal to it, add "since Story 20.16 the three editor saves through it too" to the message, and record the mutation (one save's port reference changed, or the literal off by one) observed red and reverted. Search `src/OcuPilot/Test` for any other count or roster that lists write tools by port and still reads the pre-20.16 value; the sweep found none.
 
 ## Spec Change Log
 
