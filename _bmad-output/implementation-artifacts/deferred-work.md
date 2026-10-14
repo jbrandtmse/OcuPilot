@@ -11760,3 +11760,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-40-proxy-and-custom-ca-configuration.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: AD-10's routine-application sentence and PROVIDERSSL bullet predated OcuPilotSslRead and condition 8
 - 2026-10-14T05:02:07Z status=resolved-by:18-40-proxy-and-custom-ca-configuration owner=18-40-proxy-and-custom-ca-configuration by=harvest note=spine amended by the lead at harvest (AD-10)
+
+### DW-2413: The Definition form's Wallet secret caption does not say that the secret's own RequireTLS and AllowedHosts decide where its key may be sent
+- source: spec-18-41-the-wallet-credential-rung.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: EXPERIENCE.md :335 and strings.ts caption predate DW-2406; the WALLETRUNG.REQUIRETLS and ALLOWEDHOSTS refusals name their setting and remedy
+- 2026-10-14T06:41:48Z status=wontfix-accepted owner=18-41-the-wallet-credential-rung by=harvest note=reopen_if=a person reports a wallet refusal they could not trace from the form
