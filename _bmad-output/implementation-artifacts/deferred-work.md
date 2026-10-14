@@ -11889,3 +11889,4 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: CI run 38532797700 attempt 1 (head c14f3fc6) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: attempt 1 red on node 22.22.3 only (node 24 and 26 green on the same head); attempt 2 green unchanged; the head touches no logs code (inference: timers left by another spec in the worker).
 - 2026-10-14T09:30:29Z status=routed owner=burndown by=runner note=flake: the spec should set up and clear fake timers per test; Epic 18's test (orchestrator told Epic 18)
+- 2026-10-14T12:35:00Z status=routed owner=18-48-epic-18-burn-down-part-2 by=lead note=orchestrator 2026-10-14: Epic 18's test; fix its timer isolation
