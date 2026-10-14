@@ -452,10 +452,12 @@ Method TestTheClassicResourceStaysInForceOnAnAdjustedScreen()
 
 /// <p><b>Classic pages (AD-44, Story 20.8)</b> -- a custom resource assigned to each of the Schema viewer's three classic
 /// pages (<code>classicPage</code> and each page of <code>CLASSICPAGES</code>) shows in its row's <code>ClassicResource</code>,
-/// one resource shared by two pages once, in page order, and in its <code>Effective</code> set at <code>USE</code>, once each.</p>
+/// one resource shared by two pages once, in page order, and in its <code>Effective</code> set at <code>USE</code>, once each;
+/// once Dev adjusts the screen, <code>Effective</code> is the adjusted set and the same resources (AD-64 item 2).</p>
 /// <p>Mutation (Rule 19): make <method>OcuPilot.Screen.Access.ClassicResourceOf</method> read only the descriptor's
 /// <code>classicPage</code> -- this goes red naming the missing second resource; drop its duplicate test -- the shared
-/// resource leg goes red.</p>
+/// resource leg goes red. Union <code>CLASSICPAGES</code> in <method>OcuPilot.Screen.Gate.RequiredPairs</method> only for a
+/// screen that is not adjusted -- the adjusted leg goes red.</p>
 Method TestTheSchemaViewersRowNamesTheResourceOfEveryClassicPage()
 {
     Do $$$AssertTrue(..PreparedSetupOk, "setup read back the principals' grants")
@@ -477,6 +479,12 @@ Method TestTheSchemaViewersRowNamesTheResourceOfEveryClassicPage()
     If '$IsObject(tRow) Quit
     Do $$$AssertEquals(tRow.ClassicResource, tFirst _ ", " _ tSecond, "the row names each page's resource, the shared one once, in page order")
     Do $$$AssertEquals(tRow.Effective, tRow.Declared _ ", " _ tFirst _ ":USE, " _ tSecond _ ":USE", "Effective is the declared set and each resource at USE, once")
+    Set tSC = ..Act(tDev, "add-pair", ..#SCHEMAVIEWER, ..#RAISED, .tStatus, .tAnswer)
+    Do $$$AssertEquals(tStatus, 200, "Dev adjusts the Schema viewer")
+    Set tRow = ..Row(tDev, ..#SCHEMAVIEWER, .tCount)
+    Do $$$AssertTrue($IsObject(tRow) && (tRow.Adjustment '= ""), "the Schema viewer's row carries the adjustment")
+    If '$IsObject(tRow) Quit
+    Do $$$AssertEquals(tRow.Effective, tRow.Adjustment _ ", " _ tFirst _ ":USE, " _ tSecond _ ":USE", "adjusted, Effective is the adjusted set and each resource at USE: an adjustment never clears them")
 }
 
 }

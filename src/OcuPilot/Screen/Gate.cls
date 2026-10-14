@@ -575,9 +575,8 @@ ClassMethod HoldsPrivilege(pResource As %String, pPermission As %String) As %Boo
 /// <p>The custom resource an operator has assigned to the classic page <var>pPageClass</var>,
 /// or <code>""</code>. The class name is URL-encoded on the way in, which is the form
 /// <class>%SYS.Portal.Resources</class> documents and the portal itself passes.</p>
-/// <p><b>Overridable</b> so the union can be exercised against a fixture value. The one test that
-/// writes the store is <class>OcuPilot.Test.ClassicPageGate</class>, on a throwaway only, and it
-/// restores each page it assigns. Production never overrides it.</p>
+/// <p><b>Overridable</b> so the union can be exercised against a fixture value. A test that writes the
+/// store runs on a throwaway only and restores each page it assigns. Production never overrides it.</p>
 ClassMethod ClassicResource(pPageClass As %String) As %String
 {
     If pPageClass = "" Quit ""

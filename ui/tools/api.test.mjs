@@ -818,7 +818,7 @@ const FORBIDDEN = [
     why: 'OcuPilot hears no message from a frame (AD-63)',
   },
   { pattern: /\bVSCODE\b/, why: 'an embedded editor loads in normal mode only (AD-63)' },
-  { pattern: /_Editor-|\bvscodeMode\b/, why: 'no vendor editor storage key is written or read (AD-63)' },
+  { pattern: /_Editor-|\bSchema_Viewer-|\bInterop-Editors-|\bvscodeMode\b/, why: 'no vendor editor storage key is written or read (AD-63)' },
 ];
 
 /**
@@ -861,6 +861,8 @@ test('the localStorage ban has no exempted path, and every forbidden shape still
     'const first = window.frames[0];',
     "const source = base + '?VSCODE=1';",
     "const held = tabStorage.getItem('Rule_Editor-0-accessToken');",
+    "const held = tabStorage.getItem('Schema_Viewer-0-accessToken');",
+    "const held = tabStorage.getItem('Interop-Editors-0-refreshToken');",
     "const mode = tabStorage.getItem('vscodeMode');",
     "window.addEventListener('message', handler);",
     "@HostListener('window:message', ['$event']) heard(event: MessageEvent) {}",
@@ -877,7 +879,7 @@ test('the localStorage ban has no exempted path, and every forbidden shape still
       ruleHits[rule] += 1;
     });
   });
-  assert.deepEqual(caught, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16], 'every forbidden shape is caught, localStorage included, each line by one rule');
+  assert.deepEqual(caught, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18], 'every forbidden shape is caught, localStorage included, each line by one rule');
   assert.ok(ruleHits.every((hits) => hits > 0), `and every rule has a hostile line: ${JSON.stringify(ruleHits)}`);
   assert.equal(
     existsSync(corePath('preferences.ts')),
@@ -900,6 +902,8 @@ test('the scan itself catches each forbidden shape on a fixture, and ignores a c
     'const first = window.frames[0];',
     "const source = base + '?VSCODE=1';",
     "const held = tabStorage.getItem('Rule_Editor-0-accessToken');",
+    "const held = tabStorage.getItem('Schema_Viewer-0-accessToken');",
+    "const held = tabStorage.getItem('Interop-Editors-0-refreshToken');",
     "const mode = tabStorage.getItem('vscodeMode');",
     "window.addEventListener('message', handler);",
     "@HostListener('window:message', ['$event']) heard(event: MessageEvent) {}",
@@ -915,8 +919,8 @@ test('the scan itself catches each forbidden shape on a fixture, and ignores a c
   const hits = forbiddenHits(blankComments(fixture)).map((hit) => hit.line);
   assert.deepEqual(
     hits,
-    [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18],
-    'sixteen real violations, the wrapped listener at the line its call starts, and neither comment nor sessionStorage'
+    [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20],
+    'eighteen real violations, the wrapped listener at the line its call starts, and neither comment nor sessionStorage'
   );
 });
 

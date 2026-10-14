@@ -48,7 +48,7 @@ const EDITOR_KINDS: Readonly<Record<string, EditorKind>> = {
     ...VIEWER,
     editor: 'schema-viewer',
     listFrom: 'none',
-    extension: DOCUMENT_EXTENSION,
+    extension: '',
     noteKey: 'interopSchemaViewerNote',
   },
   'OcuPilot.Screen.Descriptor.InteropProductionDiagram': {
@@ -95,9 +95,10 @@ function listFor(screen: ScreenDeclaration, kind: EditorKind): ScreenDeclaration
  * screen or choosing Refresh discards any change not saved in the editor. Refresh also opens the
  * document again after the editor has moved away by itself.
  *
- * **A confirmed change to the document opens it again** (AD-14, Story 20.16): the page hears `ChangeBus` and, for a `changed`
- * event `InteropEditorState.shows` accepts, reads the document again, which draws a new frame as Refresh does. The bar says the
- * agent reads only what is saved, before any request.
+ * **A confirmed change to an editor's class opens it again** (AD-14, Story 20.16): the page hears `ChangeBus` and, for a `changed`
+ * event `InteropEditorState.shows` accepts, reads the document again, which draws a new frame as Refresh does. On the editors the
+ * bar says the agent reads only what is saved, before any request. No change event reopens the Schema viewer or the Configuration
+ * diagram, whose route ids name no class document.
  *
  * Every control-flow condition is a paren-free member reference, for the reason `sign-in.ts`
  * records.

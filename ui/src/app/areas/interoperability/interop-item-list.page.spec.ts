@@ -129,18 +129,18 @@ describe('the Production items page', () => {
     };
     document.addEventListener('click', record);
     try {
-      for (const modifier of [{ ctrlKey: true }, { metaKey: true }, { shiftKey: true }, { button: 1 }]) {
+      for (const modifier of [{ ctrlKey: true }, { metaKey: true }, { shiftKey: true }, { altKey: true }, { button: 1 }]) {
         anchor.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, ...modifier }));
         await settle(fixture);
         expect(router.url, `a modified click ${JSON.stringify(modifier)} does not navigate`).toBe(itemsUrl('Demo.One'));
       }
-      expect(preventedByPage, "and each is left to the browser's own behavior").toEqual([false, false, false, false]);
+      expect(preventedByPage, "and each is left to the browser's own behavior").toEqual([false, false, false, false, false]);
       anchor.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
       await settle(fixture);
     } finally {
       document.removeEventListener('click', record);
     }
-    expect(preventedByPage[4], 'a plain click is handled by the page').toBe(true);
+    expect(preventedByPage[5], 'a plain click is handled by the page').toBe(true);
     expect(decodeURIComponent(decodeURIComponent(router.url))).toBe(`/${DIAGRAM_ROUTE}/Demo.One?ns=USER`);
   });
 

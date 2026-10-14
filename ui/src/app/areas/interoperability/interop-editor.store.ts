@@ -101,7 +101,7 @@ export class InteropEditorState {
     return this.phaseValue;
   }
 
-  /** The route's document name, `<class>.cls`, as last opened. */
+  /** The route's id as last opened: a document name, `<class>.cls`, or for a bare-name screen a production's name. */
   id(): string {
     return this.idValue;
   }

@@ -44,15 +44,12 @@ const INTEROP_PRODUCTION_DIAGRAM = 'OcuPilot.Screen.Descriptor.InteropProduction
       min-height: 0;
     }
     .ocu-interop-item-links {
-      display: flex;
       flex: 0 0 auto;
-      flex-wrap: wrap;
-      gap: var(--ocu-space-3);
       padding: var(--ocu-space-2) var(--ocu-space-4);
     }
   `,
   template: `@if (hasDiagram) {
-      <nav class="ocu-interop-item-links">
+      <nav class="ocu-details-links ocu-interop-item-links">
         <a class="ocu-details-link" data-ocu-item-link="diagram" [href]="diagramHref" (click)="onOpenDiagram($event)">{{
           STRINGS.interopProductionDiagramTitle
         }}</a>
@@ -128,7 +125,7 @@ export class InteropItemListPage {
 
   /** Open the diagram through the router; a modified click keeps the browser's own new-tab behavior. */
   protected onOpenDiagram(event: MouseEvent): void {
-    if (event.ctrlKey || event.metaKey || event.shiftKey || event.button !== 0) return;
+    if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey || event.button !== 0) return;
     event.preventDefault();
     const url = this.diagramUrl();
     if (url !== '') void this.router.navigateByUrl(url);

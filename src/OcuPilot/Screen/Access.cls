@@ -1,8 +1,8 @@
 /// <p>The Screen permissions list's rows (AD-64, AD-36, Story 20.15): one row per built screen, ordered by
 /// area and then identifier, answering what the screen declares, what an operator adjusted it to, the
-/// classic page's custom resource, what it requires now, and whether the caller holds that.</p>
+/// custom resources of the classic pages it replaces, what it requires now, and whether the caller holds that.</p>
 /// <p><b><code>Effective</code> is what <method>OcuPilot.Screen.Gate.RequiredPairs</method> answers for the
-/// screen</b>, the classic page's custom resource included, so the list can never show a requirement the
+/// screen</b>, those custom resources included, so the list can never show a requirement the
 /// gates do not apply. <code>Holds</code> and <code>FailedPair</code> are the calling process's own verdict
 /// on that set (<method>OcuPilot.Screen.Gate.EvaluatePairs</method>). A screen whose requirement cannot be
 /// read has an empty <code>Effective</code>, <code>Holds</code> false and no failed pair.</p>
@@ -88,20 +88,12 @@ ClassMethod RowFor(pClass As %String, pArea As %String, pScreen As %String, ByRe
 /// <code>classicPage</code> and each page of its
 /// <parameter>OcuPilot.Screen.Descriptor.Base.CLASSICPAGES</parameter> -- each once, joined by
 /// <parameter>SEPARATOR</parameter>, or <code>""</code> when none is assigned
-/// (<method>OcuPilot.Screen.Gate.ClassicResource</method>).</p>
+/// (<method>OcuPilot.Screen.Gate.WithClassicPages</method>, the gate's own union).</p>
 ClassMethod ClassicResourceOf(pClass As %String) As %String [ Private ]
 {
-    Set tPages = $ListBuild($ClassMethod(pClass, "ClassicPage")) _ $ListFromString($Parameter(pClass, "CLASSICPAGES"), ",")
-    Set tSeen = ""
+    Set tPairs = ##class(OcuPilot.Screen.Gate).WithClassicPages("", $ClassMethod(pClass, "ClassicPage") _ "," _ $Parameter(pClass, "CLASSICPAGES"))
     Set tText = ""
-    For tI = 1:1:$ListLength(tPages) {
-        Set tPage = $ZStrip($List(tPages, tI), "<>W")
-        If tPage = "" Continue
-        Set tResource = $ClassMethod("OcuPilot.Screen.Gate", "ClassicResource", tPage)
-        If (tResource = "") || $ListFind(tSeen, tResource) Continue
-        Set tSeen = tSeen _ $ListBuild(tResource)
-        Set tText = tText _ $Select(tText = "": "", 1: ..#SEPARATOR) _ tResource
-    }
+    For tI = 1:1:$ListLength(tPairs) Set tText = tText _ $Select(tText = "": "", 1: ..#SEPARATOR) _ $List($List(tPairs, tI), 1)
     Quit tText
 }
 

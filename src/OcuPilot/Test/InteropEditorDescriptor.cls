@@ -88,7 +88,7 @@ Method TestEachViewerClassicPageSharesTheScreensPair()
     For tI = 1:1:$Length(..#VIEWERS, ";") {
         Set tRow = $Piece(..#VIEWERS, ";", tI)
         Set tClass = "OcuPilot.Screen.Descriptor." _ $Piece(tRow, "|", 1)
-        Set tPages = $ListBuild($Piece(tRow, "|", 6)) _ $ListFromString($Piece(tRow, "|", 13), ",")
+        Set tPages = $ListBuild($ClassMethod(tClass, "ClassicPage")) _ $ListFromString($Parameter(tClass, "CLASSICPAGES"), ",")
         For tJ = 1:1:$ListLength(tPages) {
             Do ..AssertPageSharesOwnPair(tClass, $List(tPages, tJ))
         }
@@ -164,9 +164,11 @@ Method TestTheViewerScreensRegister()
 }
 
 /// <p>The Schema viewer replaces three classic pages (AD-44), and a custom resource assigned to any one of them gates it:
-/// unarmed, <method>OcuPilot.Screen.Gate.RequiredPairs</method> answers the declared set, and with a resource armed on
-/// each page in turn it adds that resource at <code>USE</code>. It runs through <class>OcuPilot.Test.ScreenGate</class>, whose
-/// answers live in process-private globals, so nothing is written to the instance.</p>
+/// unarmed, <method>OcuPilot.Screen.Gate.RequiredPairs</method> answers the gate's own base set
+/// (<method>OcuPilot.Screen.Gate.BaseSet</method>, read at that moment, so an adjustment the instance holds is followed), which
+/// is the declared set when the screen is not adjusted; with a resource armed on each page in turn it adds that resource at
+/// <code>USE</code> after the base set. It runs through <class>OcuPilot.Test.ScreenGate</class>, whose answers live in
+/// process-private globals, so nothing is written to the instance.</p>
 /// <p>Mutation (Rule 19): drop the <code>CLASSICPAGES</code> line from <method>OcuPilot.Screen.Gate.RequiredPairs</method> -- the
 /// X12 and ASTM legs go red.</p>
 Method TestTheSchemaViewerHonorsEveryClassicPage()
@@ -176,22 +178,24 @@ Method TestTheSchemaViewerHonorsEveryClassicPage()
     Do $$$AssertEquals($ListLength(tPages), 3, "the viewer replaces the HL7, X12 and ASTM schema pages")
     Do ##class(OcuPilot.Test.ScreenGate).Reset()
     Try {
+        Set tBase = ##class(OcuPilot.Test.ScreenGate).BaseSet(tClass, .tAdjusted, .tBaseResolved)
         Set tDeclared = ##class(OcuPilot.Test.ScreenGate).RequiredPairs(tClass, .tResolved)
-        Do $$$AssertTrue(tResolved, "its requirement resolves")
-        Do $$$AssertEquals($ListLength(tDeclared), 2, "unarmed, it requires the declared set")
-        Do $$$AssertEquals($List($List(tDeclared, 1), 1) _ ":" _ $List($List(tDeclared, 1), 2) _ "|" _ $List($List(tDeclared, 2), 1) _ ":" _ $List($List(tDeclared, 2), 2), "%Ens_Portal:USE|%Ens_EDISchema:READ", "the Interoperability menu's pair and its own")
+        Do $$$AssertTrue(tResolved && tBaseResolved, "its requirement and its base set resolve")
+        Do $$$AssertTrue($ListSame(tDeclared, tBase), "unarmed, it requires its base set and nothing more")
+        If 'tAdjusted Do $$$AssertEquals($ListGet($ListGet(tDeclared, 1), 1) _ ":" _ $ListGet($ListGet(tDeclared, 1), 2) _ "|" _ $ListGet($ListGet(tDeclared, 2), 1) _ ":" _ $ListGet($ListGet(tDeclared, 2), 2) _ "|" _ $ListLength(tDeclared), "%Ens_Portal:USE|%Ens_EDISchema:READ|2", "not adjusted, that is the declared set: the Interoperability menu's pair and its own")
+        Set tAdded = $ListLength(tBase) + 1
         For tI = 1:1:$ListLength(tPages) {
             Set tPage = $List(tPages, tI)
             Do ##class(OcuPilot.Test.ScreenGate).Reset()
             Do ##class(OcuPilot.Test.ScreenGate).AssignClassic(tPage, ..#PROBERESOURCE)
             Set tArmed = ##class(OcuPilot.Test.ScreenGate).RequiredPairs(tClass, .tResolved)
             Do $$$AssertTrue(tResolved, tPage _ ": its requirement resolves")
-            Do $$$AssertEquals($ListLength(tArmed), 3, tPage _ ": a custom resource on this page alone is added to the declared set")
-            Do $$$AssertEquals($ListGet($ListGet(tArmed, 3), 1) _ ":" _ $ListGet($ListGet(tArmed, 3), 2), ..#PROBERESOURCE _ ":USE", tPage _ ": at USE")
+            Do $$$AssertEquals($ListLength(tArmed), tAdded, tPage _ ": a custom resource on this page alone is added to the base set")
+            Do $$$AssertEquals($ListGet($ListGet(tArmed, tAdded), 1) _ ":" _ $ListGet($ListGet(tArmed, tAdded), 2), ..#PROBERESOURCE _ ":USE", tPage _ ": at USE")
         }
         Do ##class(OcuPilot.Test.ScreenGate).Reset()
         For tI = 1:1:$ListLength(tPages) Do ##class(OcuPilot.Test.ScreenGate).AssignClassic($List(tPages, tI), ..#PROBERESOURCE)
-        Do $$$AssertEquals($ListLength(##class(OcuPilot.Test.ScreenGate).RequiredPairs(tClass)), 3, "one resource on all three pages is added once")
+        Do $$$AssertEquals($ListLength(##class(OcuPilot.Test.ScreenGate).RequiredPairs(tClass)), tAdded, "one resource on all three pages is added once")
     } Catch ex {
         Do $$$AssertStatusOK(ex.AsStatus(), "the gate leg ran: " _ ex.DisplayString())
     }

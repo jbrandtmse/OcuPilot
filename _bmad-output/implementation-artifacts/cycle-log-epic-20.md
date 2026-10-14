@@ -790,3 +790,5 @@
 2026-10-14T11:17:56Z	Story 20.8	stage_spawned	stage=qa spawn_at=2026-10-14T11:17:56Z model=sonnet agent_name=20-8-qa-1 cycle_iteration=1
 2026-10-14T11:36:00Z	Story 20.8	qa_complete	spawn_at=(see_stage_spawned) model=sonnet agent_name=20-8-qa-1 tests=InteropEditorDescriptor($ListGet_one_line) tests_added=0 mutations_demonstrated=12 first_run_failures=0 clarifications=0 closing_sections_present=true tls_reds=did_not_reproduce_on_fresh(4/4_green)
 2026-10-14T11:36:00Z	Story 20.8	stage_spawned	stage=code-review spawn_at=2026-10-14T11:36:00Z model=opus agent_name=20-8-code-review-1 cycle_iteration=1
+2026-10-14T12:16:10Z	Story 20.8	cr_complete	spawn_at=(see_stage_spawned) model=opus agent_name=20-8-code-review-1 resolved=9 fixed_at_source=9 decision_pending=1(DW-2420) routed=1(DW-2421_burndown) by_design=1(DW-2422) wontfix_theoretical=1(DW-2423) dismissed=8 high=0 med=6 low=7 rows=24 unresolved_high_med=0 review_tier=full-opus status=done
+2026-10-14T12:16:10Z	Story 20.8	ledger_adjudicated	owned=0 resolved=0 reowned=0 terminal=0

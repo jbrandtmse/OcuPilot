@@ -11845,3 +11845,23 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-20-11 plan (measured), orchestrator ruling 2026-10-14 | severity: med | fix-risk: high | footprint: out-of-footprint
 - evidence: Measured at Story 20.11's plan on ocupilot-b-ci: a user holding only %DB_USER:RW read every model, term list and folder item, built and synchronized cubes and ran MDX; read in irislib %DeepSee.REST.v3 (its Info and Query routes). OcuPilot calls the classes in process instead (AD-65).
 - 2026-10-14T09:34:45Z status=decision-pending owner=burndown by=spec_gate note=owner hold 2026-10-05: IRIS defect candidate, not reported
+
+### DW-2420: The Configuration diagram follows no confirmed change to its production: after an agent item write it shows the old configuration until Refresh
+- source: spec-20-8 code review | severity: med | fix-risk: med | footprint: in-story
+- evidence: interop-editor.store.ts shows() accepts only type class events whose id is the route id; the diagram's id is a bare production name and item writes emit production-item. Redrawing it would drop the app's unsaved changes, which the 20.16 card states only for the editors.
+- 2026-10-14T12:12:09Z status=decision-pending owner=burndown by=cr note=owner: redraw the diagram on a confirmed production or item change (with card copy for unsaved edits), or keep Refresh only
+
+### DW-2421: Rule 31: three interop browser specs keep private copies of the editor-page helpers (shellAt, answered, the frame, frame-shows, decodedPath, boxes) instead of sharing them
+- source: spec-20-8 code review | severity: med | fix-risk: med | footprint: in-epic
+- evidence: interop-viewers.browser-spec.mjs:234-298 (20.8) repeats interop-editors.browser-spec.mjs:266-345 (20.7) nearly verbatim; agent-editor-save.browser-spec.mjs (20.16) holds its own shellAt and answered; interop-editor-spec.mjs is the shared module these specs already import.
+- 2026-10-14T12:12:09Z status=routed owner=burndown by=cr note=move them into interop-editor-spec.mjs, parameterized by browser and config; rerun the three specs
+
+### DW-2422: On IRIS (not for Health) the vendor schema viewer lists ASC X12 only, so the Schema viewer's note, prompts and hl7/astm aliases name families it cannot show
+- source: spec-20-8 code review | severity: low | fix-risk: low | footprint: in-story
+- evidence: schema-viewer main.21f063f8a7b4829f.js: O.product.includes("forhealth")||(this.schemaTypes=[zs]); README supports IRIS or IRIS for Health 2026.2; the spec measured on IRIS for Health only.
+- 2026-10-14T12:12:09Z status=by-design owner=20-8-the-schema-viewers-and-the-production-configuration-diagram by=cr note=the spec fixes the note, prompts and aliases; a plain-IRIS wording reopens it through a spec amendment
+
+### DW-2423: Descriptor CLASSICPAGES has no all-descriptor exact-spelling check like the write tools' roster, so a mis-cased page on a later descriptor would gate nothing
+- source: spec-20-8 code review | severity: low | fix-risk: low | footprint: in-story
+- evidence: MappingDescriptor.TestTheClassicPagesRosterIsTheDeclaringTools covers write tools only and Registry.Validate never reads CLASSICPAGES; the one declarer, the Schema viewer, is pinned by InteropEditorDescriptor's NormalizePage leg.
+- 2026-10-14T12:12:09Z status=wontfix-theoretical owner=20-8-the-schema-viewers-and-the-production-configuration-diagram by=cr note=real once a second descriptor declares CLASSICPAGES with no exact-spelling pin (Story 20.11's DeepSee pages, say)

@@ -394,6 +394,40 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Line numbe
     - `InteropFloor` shows the Administrator opening both, the Operator opening the diagram and not the schema viewer, and the Monitor opening neither;
     - `RequiredPairs` for the schema viewer adds a custom resource assigned to any of its three classic pages.
 
+### Review Findings
+
+Code review, 2026-10-14, four layers on `full-opus`: 24 raw findings, 13 entries after triage (high 0, medium 6, low 7), 8 rejected. Every patch was applied and verified on `ocupilot-b-ci`.
+
+- [x] [Review][Patch] The AD-63 storage-key scan missed the two new apps' prefixes, `Schema_Viewer-` and `Interop-Editors-` [ui/tools/api.test.mjs:821]. The pattern and its hostile and fixture lines now cover them.
+- [x] [Review][Patch] `Access.ClassicResourceOf` copied `Gate.WithClassicPages`' loop (Rule 31) [src/OcuPilot/Screen/Access.cls:92]. It now calls it. The Access and Screen permissions headers say "the classic pages it replaces".
+- [x] [Review][Patch] `TestEachViewerClassicPageSharesTheScreensPair`'s page count compared the test's own constant with itself [src/OcuPilot/Test/InteropEditorDescriptor.cls:91]. The pages are now read from the descriptor.
+- [x] [Review][Patch] `TestTheSchemaViewerHonorsEveryClassicPage` assumed the screen has no adjustment row [src/OcuPilot/Test/InteropEditorDescriptor.cls:172].
+  - It now measures against `Gate.BaseSet`, and the declared-set leg runs only on an unadjusted screen.
+  - Its legs read with `$ListGet`, so each one reports.
+- [x] [Review][Patch] No test held that an adjustment never clears `CLASSICPAGES` (AD-64 item 2) [src/OcuPilot/Test/ScreenAccessWire.cls:459]. An adjusted leg is added.
+- [x] [Review][Patch] The diagram link took over an Alt+click [ui/src/app/areas/interoperability/interop-item-list.page.ts:128]. Alt+click is now left to the browser, and the page spec has a leg for it.
+- [x] [Review][Patch] `.ocu-interop-item-links` restated `.ocu-details-links` [ui/src/app/areas/interoperability/interop-item-list.page.ts:46]. The nav now carries both classes.
+- [x] [Review][Patch] Stale comments, each corrected:
+  - the store's `id()`;
+  - the page's change-event paragraph;
+  - the Schema viewer kind's unused `.cls` extension;
+  - the claim in `Gate.ClassicResource` and `ScreenGate` that one test writes the store.
+- [x] [Review][Defer] DW-2420, decision-pending (burndown): the diagram follows no confirmed change to its production.
+- [x] [Review][Defer] DW-2421, routed (burndown): the 20.7, 20.16 and 20.8 browser specs each copy the editor-page helpers (Rule 31).
+- [x] [Review][Defer] DW-2422, by-design: on IRIS that is not for Health, the viewer lists ASC X12 only.
+- [x] [Review][Defer] DW-2423, wontfix-theoretical: there is no all-descriptor `CLASSICPAGES` spelling check.
+
+Rejected:
+
+- `false`: `childListFor(Productions)` resolves by class-name order. `navigation.test.mjs`'s 20.8 pairing test reddens on any reorder, as the Design Notes chose.
+- `false`: the Items link is drawn when the diagram is denied. AD-8 draws a screen it denies and never hides it, and the diagram names its pair.
+- `low`: two classic resources share one dialog line, "A:USE, B:USE ... changes it". It needs custom resources on two schema pages, and a list with one line per pair adds template branching.
+- `low`: the Items `<nav>` has no accessible name. Task details' link nav is the same, and a name needs a new string.
+- `low`: AC1's count wait would accept the previous family's count if two families had equal counts. The pinned image fixes the counts, and a collision reds rather than passes.
+- `low`: AC2's tripwire reds on the address wait before it reaches its DW-2396 message. It still reds, and its title names DW-2396.
+- `low`: `restoreSearch` deletes every search row above the watermark, whoever wrote it. One spec runs at a time on a throwaway, so those rows are the run's own.
+- Rejected because the fix edits the spec: duplicated `## Verification` lines. Each pair records complementary reds, not a contradiction.
+
 ## Spec Change Log
 
 - 2026-10-13, spec gate (runner): the Design Notes' Rule 20 drafts are written (AD-63 item 1 and its named consequence, AD-44's screens that replace several classic pages, AD-64 item 2, EXPERIENCE.md :856). The `&ST` behavior is DW-2396, a vendor candidate under the owner's hold (not reported). The `multiple-goals` warning is accepted: both screens share the frame, page and store and are about one story's size. Story 20.16 implements before this story, so Task 0 re-anchors on it.
@@ -643,7 +677,7 @@ Each value was checked unique against `strings.ts`. The labels double as the fra
 - mutation: the store opens a row the read did not return -> the store test (6) and the page spec (6).
 - mutation: the Items page's link omits the production id (3), ignores `NavigationEnd` (the move leg), ignores modifier keys (the click leg) or is drawn whatever the route names (the bare-route leg) -> `interop-item-list.page.spec.ts`.
 - mutation: the Screen permissions page appends the permission to the whole `ClassicResource` column -> its two-resource test.
-- mutation: the Schema viewer declares `%Ens_EDISchema:USE` as its own pair -> `InteropEditorDescriptor` (3 of 5); its `CLASSICPAGES` emptied -> `TestTheViewerScreensRegister` and `TestTheSchemaViewerHonorsEveryClassicPage` (2 of 5).
+- mutation: the Schema viewer declares `%Ens_EDISchema:USE` as its own pair -> `InteropEditorDescriptor` (3 of 5); its `CLASSICPAGES` emptied -> `TestTheViewerScreensRegister`, `TestTheSchemaViewerHonorsEveryClassicPage` and `TestEachViewerClassicPageSharesTheScreensPair`'s page count (3 of 5).
 - mutation: AC4's test does not sign out in the shell -> the copy's refresh answers 200, not 401.
 - (QA) mutation: `Screen.Gate.RequiredPairs` without its `CLASSICPAGES` line -> `InteropEditorDescriptor` `TestTheSchemaViewerHonorsEveryClassicPage` (the X12 and the ASTM leg, each at "added" and "at USE") and `ScreenAccessWire` `TestTheSchemaViewersRowNamesTheResourceOfEveryClassicPage` (Effective, with a real `%SetCustomResource`). The descriptor test now reads the third pair with `$ListGet`, so every page reports instead of the first red ending the loop.
 - (QA) mutation: a viewer that honors `&ST`, simulated for AC2's harness frame by a scratch copy of the spec that answers the viewer's own `get("&ST")` with `HL7 v2.x` (`page.evaluateOnNewDocument`) -> browser AC2's chosen-type assertion (expected `ASC X12`, shown `HL7 v2.x`). The tripwire is live; the scratch copy is deleted.
@@ -653,6 +687,10 @@ Each value was checked unique against `strings.ts`. The labels double as the fra
 - (QA) mutation: `.ocu-interop-editor-frame` is 300 px tall (bundle rebuilt and redeployed) -> browser AC1 `assertFillsHost`; a scratch copy of the spec makes the viewer's frame send one POST -> browser AC1 "apart from its empty-body login, every request the frame made is a GET".
 - (QA) mutation: the Schema viewer's `sideBarPosition` 10 becomes 3 -> `Navigation` `TestThePayloadCarriesEveryAreaWithAVerdict` (positions 17 to 24); the diagram's pair set names `%Ens_Code:READ` in place of `%Ens_ProductionConfig:READ` -> `InteropFloor` (2 of 7, the Operator roster among them).
 - (QA) Every (QA) mutation was reverted byte-identical and recompiled, or rebuilt and redeployed. On the rebuilt `ocupilot-b-ci`, `InteropFloorTurn`, `InteropEditorSaveTurn` and `ExplorerSaveTurn` (1 test each, status 1 in `%UnitTest_Result`) and `screen-permissions-agent.browser-spec.mjs` (2) are green; `interop-viewers` is green whole (11) and with AC1, AC4 and AC6 each run alone. No test file was added; `InteropEditorDescriptor.cls` has one edited line.
+- (CR) mutation: `Gate.RequiredPairs` unions `CLASSICPAGES` only on an unadjusted screen -> `ScreenAccessWire` `TestTheSchemaViewersRowNamesTheResourceOfEveryClassicPage`, its adjusted leg alone (1 of 8).
+- (CR) mutation: the AD-63 scan's pattern without `Schema_Viewer-` and `Interop-Editors-` -> `api.test.mjs` (2 of 40).
+- (CR) mutation: the Items link's click ignores `altKey` -> `interop-item-list.page.spec.ts`'s modified-click test.
+- (CR) Each (CR) mutation was applied to the throwaway's copy of `src`, or to the worktree and restored from a saved copy, read red, and reverted. `InteropEditorDescriptor` (5) and `ScreenAccessWire` (8) are green on the reverted code (runs 26 and 27). `test:tools` passes 1997 and `test:components` 3120. The build is green. `interop-viewers` passes 11 on the rebuilt bundle.
 
 **Measured.** `npm run build`: initial total 1.93 MB (warning 1992 kB), largest lazy chunk `data-browser-page` 83.33 kB (ceiling 88 kB), `interop-editor-page` 11.11 kB, `interop-item-list-page` 14.30 kB.
 

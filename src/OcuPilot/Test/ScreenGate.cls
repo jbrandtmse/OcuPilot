@@ -9,9 +9,8 @@
 /// principal holding exactly one administrative resource.</li>
 /// <li><method>ClassicResource</method> answers from a declared map instead of
 /// <class>%SYS.Portal.Resources</class>, so the classic-page union is exercised without ever
-/// writing a custom resource to the instance. The one test that writes the store is
-/// <class>OcuPilot.Test.ClassicPageGate</class>, on a throwaway only, and it restores each page it
-/// assigns.</li>
+/// writing a custom resource to the instance. A test that writes the store runs on a throwaway only
+/// and restores each page it assigns.</li>
 /// <li><method>ListedScreens</method> answers an armed roster for an area instead of the registry's,
 /// or an armed failure, so an area's verdict can be driven over a roster the shipped descriptors do
 /// not form. <method>TabMembers</method> answers an armed failure for a tab group's head the same
