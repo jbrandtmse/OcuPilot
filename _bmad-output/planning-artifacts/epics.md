@@ -948,78 +948,7 @@ The Interoperability category appears for namespaces that support it: production
 
 **Implementation notes:** Row groups: SH-23, SH-25; CP-37, CP-38; IO-02 to IO-29; AN-02 to AN-10. SH-23's sign-in hand-off gates every embed and is the stage's real risk: the `postMessage` contract has **no origin check**, the safer pre-written-`sessionStorage` alternative is untested, and AD-47 already forbids weakening the origin to make either work. The vendor bundles are never copied - they load in place from the instance. Four rows ship read-only first because their action halves need custom endpoints: queue and job actions, business-partner save and remove, and the message-contents renderer.
 
-#### Story 20.30: The session trace
-
-[AMENDED 2026-10-13, orchestrator ruling Q1 A at Story 20.9's spec gate, Rule 5] Split from Story 20.9, carrying its trace criterion verbatim. Its charter, as measured at 20.9's plan, is in that spec's Design Notes › Split (Part B): OcuPilot's own SVG sequence diagram, with Mermaid text as the generated alternative. After Story 20.9, before Story 20.31.
-
-As an interoperability operator,
-I want to see what happened in a message's session,
-So that I can follow a message through the production.
-
-**Acceptance Criteria:**
-
-- **Given** a session
-- **When** its trace is opened
-- **Then** it renders as a visual trace, with a generated sequence diagram as the alternative.
-
-### Story 20.31: Message resend and edit-and-resend
-
-[AMENDED 2026-10-13, orchestrator ruling Q1 A at Story 20.9's spec gate, Rule 5] Split from Story 20.9, carrying its resend criterion verbatim. Its charter, as measured at 20.9's plan, is in that spec's Design Notes › Split (Part C): the proposal is the dry run, Confirm executes, and one action resends at most 100 messages. Its key posture is settled at its own spec gate (a destructive key defaults to disabled under the baseline rule; edit-and-resend is at least as guarded as resend). After Story 20.30, before Story 20.10; Story 20.12 needs it.
-
-As an interoperability operator,
-I want to resend a message, or edit one and resend it,
-So that a failed exchange can be retried here.
-
-**Acceptance Criteria:**
-
-- **Given** resend and edit-and-resend
-- **When** they run
-- **Then** they use a **dry-run then confirm** double gate with a bounded cap on how many messages one action may resend.
-
-### Story 20.32: The analytics links
-
-[AMENDED 2026-10-14, orchestrator ruling Q1 A at Story 20.11's spec gate, Rule 5] Split from Story 20.11, carrying its criterion verbatim. Its charter, as measured at 20.11's plan, is in that spec's Design Notes › Split (Part B): Architect, Analyzer and the User Portal open the namespace's own page in a new tab, never rebuilt; its browser test does not load those classic pages repeatedly (each load holds a license unit). After Story 20.11, before Story 20.33.
-
-As an analytics developer,
-I want to reach Architect, Analyzer and the User Portal from OcuPilot,
-So that the analytics tools OcuPilot does not rebuild are one step away.
-
-**Acceptance Criteria:**
-
-- **Given** Architect, Analyzer and the User Portal
-- **When** they are reached
-- **Then** they are **linked**, not rebuilt.
-
-### Story 20.33: The MDX query tool
-
-[AMENDED 2026-10-14, orchestrator ruling Q1 A at Story 20.11's spec gate, Rule 5] Split from Story 20.11, carrying its criterion verbatim. Its charter, as measured at 20.11's plan, is in that spec's Design Notes › Split (Part C): an owner-scoped asynchronous run with a row cap, a time bound, cancel and drill-through, never a write. After Story 20.32, before Story 20.34.
-
-As an analytics developer,
-I want to run an MDX query and see its results,
-So that a cube can be explored here.
-
-**Acceptance Criteria:**
-
-- **Given** the MDX query tool
-- **When** a query runs
-- **Then** results render, with drill-through and cancel.
-
-### Story 20.34: The cube manager's build and synchronize
-
-[AMENDED 2026-10-14, orchestrator ruling Q1 A at Story 20.11's spec gate, Rule 5] Split from Story 20.11, carrying its criterion verbatim. Its charter, as measured at 20.11's plan, is in that spec's Design Notes › Split (Part D): Build is destructive and its key ships `false`; Synchronize is not and its key ships `true`; Repair is the vendor's same build call and is offered as Build (Rule 5 apply-and-report). After Story 20.33, before Story 20.12.
-
-As an analytics developer,
-I want to build or synchronize a cube from OcuPilot,
-So that a changed cube can be brought up to date here.
-
-**Acceptance Criteria:**
-
-- **Given** the cube manager
-- **When** a build, synchronize or repair runs
-- **Then** it is a confirmed write - the one analytics write in this stage.
-
-
-## Epic 21: Stage 5 - custom-REST parity from the MCP suite's handlers
+### Epic 21: Stage 5 - custom-REST parity from the MCP suite's handlers
 
 Every remaining classic portal leaf with a backing class but no route becomes reachable: backup and mirroring, startup and memory tables, NLS locales, SQL settings, globals and the whole SQL tuning track, interoperability credentials, purge, deployment, record maps, workflow, the analytics editors, and a developer-tools set. The agent gains the 28 harvested inspection tools and undo by snapshot and revert.
 
@@ -8994,6 +8923,76 @@ So that OcuPilot opens faster and the bundle stays under its limit as screens ar
 
 ---
 
+### Story 20.30: The session trace
+
+[AMENDED 2026-10-13, orchestrator ruling Q1 A at Story 20.9's spec gate, Rule 5] Split from Story 20.9, carrying its trace criterion verbatim. Its charter, as measured at 20.9's plan, is in that spec's Design Notes › Split (Part B): OcuPilot's own SVG sequence diagram, with Mermaid text as the generated alternative. After Story 20.9, before Story 20.31.
+
+As an interoperability operator,
+I want to see what happened in a message's session,
+So that I can follow a message through the production.
+
+**Acceptance Criteria:**
+
+- **Given** a session
+- **When** its trace is opened
+- **Then** it renders as a visual trace, with a generated sequence diagram as the alternative.
+
+### Story 20.31: Message resend and edit-and-resend
+
+[AMENDED 2026-10-13, orchestrator ruling Q1 A at Story 20.9's spec gate, Rule 5] Split from Story 20.9, carrying its resend criterion verbatim. Its charter, as measured at 20.9's plan, is in that spec's Design Notes › Split (Part C): the proposal is the dry run, Confirm executes, and one action resends at most 100 messages. Its key posture is settled at its own spec gate (a destructive key defaults to disabled under the baseline rule; edit-and-resend is at least as guarded as resend). After Story 20.30, before Story 20.10; Story 20.12 needs it.
+
+As an interoperability operator,
+I want to resend a message, or edit one and resend it,
+So that a failed exchange can be retried here.
+
+**Acceptance Criteria:**
+
+- **Given** resend and edit-and-resend
+- **When** they run
+- **Then** they use a **dry-run then confirm** double gate with a bounded cap on how many messages one action may resend.
+
+### Story 20.32: The analytics links
+
+[AMENDED 2026-10-14, orchestrator ruling Q1 A at Story 20.11's spec gate, Rule 5] Split from Story 20.11, carrying its criterion verbatim. Its charter, as measured at 20.11's plan, is in that spec's Design Notes › Split (Part B): Architect, Analyzer and the User Portal open the namespace's own page in a new tab, never rebuilt; its browser test does not load those classic pages repeatedly (each load holds a license unit). After Story 20.11, before Story 20.33.
+
+As an analytics developer,
+I want to reach Architect, Analyzer and the User Portal from OcuPilot,
+So that the analytics tools OcuPilot does not rebuild are one step away.
+
+**Acceptance Criteria:**
+
+- **Given** Architect, Analyzer and the User Portal
+- **When** they are reached
+- **Then** they are **linked**, not rebuilt.
+
+### Story 20.33: The MDX query tool
+
+[AMENDED 2026-10-14, orchestrator ruling Q1 A at Story 20.11's spec gate, Rule 5] Split from Story 20.11, carrying its criterion verbatim. Its charter, as measured at 20.11's plan, is in that spec's Design Notes › Split (Part C): an owner-scoped asynchronous run with a row cap, a time bound, cancel and drill-through, never a write. After Story 20.32, before Story 20.34.
+
+As an analytics developer,
+I want to run an MDX query and see its results,
+So that a cube can be explored here.
+
+**Acceptance Criteria:**
+
+- **Given** the MDX query tool
+- **When** a query runs
+- **Then** results render, with drill-through and cancel.
+
+### Story 20.34: The cube manager's build and synchronize
+
+[AMENDED 2026-10-14, orchestrator ruling Q1 A at Story 20.11's spec gate, Rule 5] Split from Story 20.11, carrying its criterion verbatim. Its charter, as measured at 20.11's plan, is in that spec's Design Notes › Split (Part D): Build is destructive and its key ships `false`; Synchronize is not and its key ships `true`; Repair is the vendor's same build call and is offered as Build (Rule 5 apply-and-report). After Story 20.33, before Story 20.12.
+
+As an analytics developer,
+I want to build or synchronize a cube from OcuPilot,
+So that a changed cube can be brought up to date here.
+
+**Acceptance Criteria:**
+
+- **Given** the cube manager
+- **When** a build, synchronize or repair runs
+- **Then** it is a confirmed write - the one analytics write in this stage.
+
 ## Epic 21: Stage 5 - custom-REST parity from the MCP suite's handlers
 
 Every remaining classic portal leaf with a backing class but no route becomes reachable: backup and mirroring, startup and memory tables, NLS locales, SQL settings, globals and the whole SQL tuning track, interoperability credentials, purge, deployment, record maps, workflow, the analytics editors, and a developer-tools set. The agent gains the 28 harvested inspection tools and undo by snapshot and revert.
@@ -9502,7 +9501,7 @@ So that the scripts, the install checks and the explorer's save path say and do 
 
 ### Story 23.9: The range-end cleanup, part 8
 
-Chartered by the orchestrator on 2026-10-12 from the 32 entries the owner released out of Story 23.7. This part takes the last eight low-severity entries: doc comments and CLAUDE.md lines that no longer match the code, two pair-validation edges, a duplicated client constant and the CI runner's test-class floor. A ninth joined from Epic 18 on 2026-10-14: the delete tools' repeated state-diff body, lifted once into the shared write base. A slot that would otherwise sit idle runs it, after Story 23.8. A CLAUDE.md line changes only through the Planner, with the owner's OK.
+Chartered by the orchestrator on 2026-10-12 from the 32 entries the owner released out of Story 23.7. This part takes the last eight low-severity entries: doc comments and CLAUDE.md lines that no longer match the code, two pair-validation edges, a duplicated client constant and the CI runner's test-class floor. Two more joined from Epic 18 on 2026-10-14: the delete tools' repeated state-diff body, lifted once into the shared write base, and a sweep of the two-argument `%GetNext` loops over request bodies, so that an out-of-range value answers the field refusal and never a 500. A slot that would otherwise sit idle runs it, after Story 23.8. A CLAUDE.md line changes only through the Planner, with the owner's OK.
 
 As a maintainer of OcuPilot,
 I want the stale comments, duplicated constants and small validation edges fixed,
@@ -9510,7 +9509,7 @@ So that the next reader is not misled by text the code no longer matches.
 
 **Acceptance Criteria:**
 
-- **Given** the entries re-owned to this story: DW-446, DW-1177, DW-1706, DW-1760, DW-1761, DW-2060, DW-2259, DW-2260 and DW-2299
+- **Given** the entries re-owned to this story: DW-446, DW-1177, DW-1706, DW-1760, DW-1761, DW-2060, DW-2259, DW-2260, DW-2299 and DW-2417
 - **When** this story completes
 - **Then** each has a disposition written by the ledger tool: `resolved-by` this story with the commit, or `wontfix-accepted` or `by-design` with a reason and, where a condition would reopen it, that condition.
 
