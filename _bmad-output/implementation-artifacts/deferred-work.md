@@ -11073,6 +11073,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Red at run 189 on ocupilot-b-ci mid-sweep, green alone at once (run 196); also seen green-alone in 20.18's sweep (2026-10-08); not yet seen in CI
 - 2026-10-10T17:33:40Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=lead note=likely a token or session cache the earlier classes warm; make the leg read the refusal after the cache's own expiry or clear it; flake class, Rule 27
 - 2026-10-14T03:47:06Z occurrence=20-16-the-agent-edits-rule-dtl-and-bpl-content-behind-the-embedded note=CI run 38505285690 attempt 1 instance shard 7/8 (fresh CI leg, not a long local sweep); rerun
+- 2026-10-14T07:31:18Z occurrence=20-16-the-agent-edits-rule-dtl-and-bpl-content-behind-the-embedded note=cause found: an install or uninstall left the gate read unprepared, so Retention's deleted account was its first reader (503 not 401); fixed by Retention.PrimeGate (20.16 rework 2, DW-2414)
 
 ### DW-2286: Every agent tool call lists the whole tool registry twice before its gate: Dispatch.AnswerOne's ResolveWire and Governance.Gate.Decide (through Registry.Resolve) each run Registry.ListTools, 0.55 s apiece at 331 tools on a development host, so a call pays about 1.1 s before anything else and the cost grows with every tool
 - source: cycle-log-epic-20.md (DW-2255 diagnosis) | severity: med | fix-risk: med | footprint: out-of-footprint
@@ -11762,3 +11763,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-20-30 plan (measured) | severity: med | fix-risk: low | footprint: in-epic
 - evidence: Measured at Story 20.30's plan on ocupilot-b-ci: after the cleanup calls interop-item-test.browser-spec.mjs also uses, USER held three message headers and the production's event-log rows; removed by hand.
 - 2026-10-14T03:47:33Z status=routed owner=burndown by=spec_gate note=Rule 19 hermeticity: the spec (Story 20.6's) removes the headers and log rows it caused
+
+### DW-2414: A deleted account that was the first to run the install gate's version-row read after its cached queries were purged (an install, an uninstall) is refused 503 INSTALL.UNREADABLE instead of 401 AUTH.DISABLED
+- source: spec-20-16 (harvest, CI rework 2) | severity: low | fix-risk: med | footprint: out-of-footprint
+- evidence: Measured on ocupilot-b-ci: after an install or uninstall the first account to run the gate prepares its cached compile; once deleted, that account's token reads SQLCODE -99 at the gate (503); when another account prepared it first, 401. Other accounts unaffected (20 classes after Retention in CI shard 7 passed).
+- 2026-10-14T07:31:18Z status=wontfix-accepted owner=20-16-the-agent-edits-rule-dtl-and-bpl-content-behind-the-embedded by=harvest note=reopen_if=a live (not deleted) account is refused 503 INSTALL.UNREADABLE after an install or uninstall
