@@ -725,3 +725,5 @@
 2026-10-13T23:47:17Z	Story 20.16	adr_verifications_complete	tool=none acs= result=none_required evidence= mutations=none model=claude-opus-5-5
 2026-10-13T23:47:17Z	Story 20.16	stage_spawned	stage=qa spawn_at=2026-10-13T23:47:17Z model=sonnet agent_name=20-16-qa-1 cycle_iteration=1
 2026-10-14T00:07:46Z	Story 20.16	qa_complete	spawn_at=(see_stage_spawned) model=sonnet agent_name=20-16-qa-1 tests=InteropEditorSaveConfirm(new,3),InteropEditorConfirm(helper),InteropEditorTools(+1),interop-editor.page.spec.ts(+1) tests_added=5 mutations_demonstrated=5 first_run_failures=0 clarifications=0 closing_sections_present=true
+2026-10-14T00:10:29Z	Story 20.16	forward_merged	feature=1f4d4915(18.38,DW-2395_fix)_at_e1f34b04 conflicts=strings.test.mjs(bound_comment_union),sprint-status(last_updated) ledger_dups=0 trailers_moved=0
+2026-10-14T00:10:29Z	Story 20.16	stage_spawned	stage=code-review spawn_at=2026-10-14T00:10:29Z model=opus agent_name=20-16-code-review-1 cycle_iteration=1 diff=645b1478..ae5398ff+working_tree ruling=DW-2395_drop_NOTOPEN_tolerance+integrity_then_compile_leg
