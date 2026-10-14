@@ -11770,3 +11770,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Measured on ocupilot-b-ci: after an install or uninstall the first account to run the gate prepares its cached compile; once deleted, that account's token reads SQLCODE -99 at the gate (503); when another account prepared it first, 401. Other accounts unaffected (20 classes after Retention in CI shard 7 passed).
 - 2026-10-14T07:31:18Z status=wontfix-accepted owner=20-16-the-agent-edits-rule-dtl-and-bpl-content-behind-the-embedded by=harvest note=reopen_if=a live (not deleted) account is refused 503 INSTALL.UNREADABLE after an install or uninstall
 - 2026-10-14T07:50:55Z status=wontfix-accepted owner=20-16-the-agent-edits-rule-dtl-and-bpl-content-behind-the-embedded by=cr note=reopen_if=a live account gets 503 INSTALL.UNREADABLE; cr probe: live 200, disabled 401; site GuardedOpenOneWhereNoParam
+
+### DW-2415: CI flake: log-viewer.spec.ts AC6 (Story 18.38, 'with Live tail off, nothing streams') read vi.getTimerCount() as 12, not 0, on gates (node 22.22.3) only
+- source: CI run 38532797700 attempt 1 (head c14f3fc6) | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: attempt 1 red on node 22.22.3 only (node 24 and 26 green on the same head); attempt 2 green unchanged; the head touches no logs code (inference: timers left by another spec in the worker).
+- 2026-10-14T09:30:29Z status=routed owner=burndown by=runner note=flake: the spec should set up and clear fake timers per test; Epic 18's test (orchestrator told Epic 18)
