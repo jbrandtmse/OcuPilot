@@ -21,6 +21,10 @@ Parameter COMPILEANSWER = "{""status"":{""errors"":[],""summary"":""""},""consol
 /// <p>A compile answer whose status carries the first error alone and whose console carries both.</p>
 Parameter COMPILEERRORANSWER = "{""status"":{""errors"":[{""error"":""ERROR #5030: An error occurred while compiling class 'Probe.Alpha'"",""code"":5030}],""summary"":""x""},""console"":["""",""Compiling class Probe.Alpha"",""ERROR #1003: Expected a space : at line 3"",""ERROR #5030: An error occurred while compiling class 'Probe.Alpha'"",""Detected 1 errors during compilation in 0.010s.""],""result"":{""content"":[]}}";
 
+/// <p>A compile answer as the Atelier route answers a business process whose generated class fails to compile (measured over
+/// HTTP): no status error, and the failure only in the console's <code>Detected 1 errors during compilation</code> line.</p>
+Parameter COMPILECONSOLEANSWER = "{""status"":{""errors"":[],""summary"":""""},""console"":["""",""Compilation started on 10/13/2026 21:30:01 with qualifiers 'cuk'"",""Compiling class Probe.Alpha"",""ERROR: Probe.Alpha.Thread1.cls(S1+6) #1010: Missing right parenthesis"",""Detected 1 errors during compilation in 0.191s.""],""result"":{""content"":[]}}";
+
 /// <p>A delete answer: one document deleted, one refused for want of a privilege and one held by
 /// another process.</p>
 Parameter DELETEANSWER = "{""status"":{""errors"":[],""summary"":""""},""console"":[],""result"":[{""name"":""Probe.Alpha.cls"",""db"":""HOME"",""status"":""""},{""name"":""Probe.Beta.cls"",""db"":""HOME"",""status"":""ERROR #5883: Item 'Probe.Beta.CLS' is mapped from a database that you do not have write permission on""},{""name"":""Probe.Gamma.cls"",""db"":""HOME"",""status"":""ERROR #5864: Probe.Gamma.cls is locked""}]}";
@@ -136,6 +140,27 @@ Method TestACompileErrorIsTheCompilesOwnOutput()
     Set tText = $Select($IsObject($Get(tResult)): tResult.lines.%ToJSON(), 1: "")
     Do $$$AssertTrue((tText [ "ERROR #1003") && (tText [ "ERROR #5030"), "every error line is in the output: " _ tText)
     Do $$$AssertEquals(##class(OcuPilot.Test.LogProbe).Captured("message"), "", "and no console line reaches the log")
+}
+
+/// <p>AD-61 rule 6, Story 20.16: a compile whose status carries no error but whose console reads
+/// <code>Detected 1 errors during compilation</code> answers 200 with <code>errors</code> true and the console's lines, and a console
+/// that finished successfully does not.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Port.AtelierPort.Outcome</method> leaves the console out of <code>pErrors</code> -- the
+/// failure leg goes red.</p>
+Method TestACompileWhoseConsoleReportsErrorsIsFailedWhateverTheStatusSays()
+{
+    Do ..ArmVendor()
+    Do ##class(OcuPilot.Test.AtelierPortFixture).Arm("Compile", "200 OK", ..#COMPILECONSOLEANSWER)
+    Set tSC = ..Act("COMPILE", "Probe.Alpha.cls", "101", .tResult, .tHttp, .tFault)
+    Do $$$AssertStatusOK(tSC, "a compile error is not a fault")
+    Do $$$AssertEquals(tHttp, 200, "it answers 200")
+    Do $$$AssertTrue($IsObject($Get(tResult)) && tResult.errors, "errors is true though the status holds none")
+    Do $$$AssertTrue($IsObject($Get(tResult)) && (tResult.lines.%ToJSON() [ "Detected 1 errors during compilation"), "and the console's lines are the output")
+    Do ##class(OcuPilot.Test.AtelierPortFixture).Clear()
+    Do ..ArmVendor()
+    Do ##class(OcuPilot.Test.AtelierPortFixture).Arm("Compile", "200 OK", ..#COMPILEANSWER)
+    Set tSC = ..Act("COMPILE", "Probe.Alpha.cls", "101", .tResult, .tHttp, .tFault)
+    Do $$$AssertTrue($IsObject($Get(tResult)) && 'tResult.errors, "a console that finished successfully reports no error")
 }
 
 /// <p>Each write reads the set first and refuses one naming a document the namespace does not hold,

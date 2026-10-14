@@ -11084,6 +11084,9 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: cycle-log-epic-20.md (20.22 runner-side sweep shard 22/30, run 189) | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: Red at run 189 on ocupilot-b-ci mid-sweep, green alone at once (run 196); also seen green-alone in 20.18's sweep (2026-10-08); not yet seen in CI
 - 2026-10-10T17:33:40Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=lead note=likely a token or session cache the earlier classes warm; make the leg read the refusal after the cache's own expiry or clear it; flake class, Rule 27
+- 2026-10-14T03:47:06Z occurrence=20-16-the-agent-edits-rule-dtl-and-bpl-content-behind-the-embedded note=CI run 38505285690 attempt 1 instance shard 7/8 (fresh CI leg, not a long local sweep); rerun
+- 2026-10-14T07:31:18Z occurrence=20-16-the-agent-edits-rule-dtl-and-bpl-content-behind-the-embedded note=cause found: an install or uninstall left the gate read unprepared, so Retention's deleted account was its first reader (503 not 401); fixed by Retention.PrimeGate (20.16 rework 2, DW-2414)
+- 2026-10-14T07:52:17Z status=resolved-by:20-16-the-agent-edits-rule-dtl-and-bpl-content-behind-the-embedded by=adjudication note=Retention.PrimeGate purges and runs the gate first; red alone under its mutation (20.16 rework 2)
 
 ### DW-2286: Every agent tool call lists the whole tool registry twice before its gate: Dispatch.AnswerOne's ResolveWire and Governance.Gate.Decide (through Registry.Resolve) each run Registry.ListTools, 0.55 s apiece at 331 tools on a development host, so a call pays about 1.1 s before anything else and the cost grows with every tool
 - source: cycle-log-epic-20.md (DW-2255 diagnosis) | severity: med | fix-risk: med | footprint: out-of-footprint
@@ -11740,6 +11743,12 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: CI run 38463014073 attempt 1, browser shard 3/5 (head 49436efa) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: turn.browser-spec.mjs:392 assertion 'the markup renders as literal text' got '<img '; the head differs from green-on-shard-3 481b3adc only in interop-editors.browser-spec.mjs; rerun pending.
 - 2026-10-13T21:11:34Z status=routed owner=burndown by=runner note=rerun once (attempt 2); if green it is a flake: the spec must wait for the reply's settled state before reading its text
+- 2026-10-13T21:52:09Z occurrence=20-7-the-three-embedded-vendor-editors note=attempt 2 of run 38463014073 green unchanged: a flake (orchestrator noted)
+
+### DW-2398: Saved message searches are not offered: each vendor store (the classic namespace-shared one and the per-user Ens.Message.SavedSearch) belongs to its own search engine, which OcuPilot's header search cannot run
+- source: spec-20-9 gate (orchestrator ruling Q2) | severity: low | fix-risk: med | footprint: in-epic
+- evidence: Measured at Story 20.9's plan: the per-user store's searches run through Ens.Message.Search on a work queue and store a row per run; OcuPilot's search is bound SQL over message headers.
+- 2026-10-13T21:53:29Z status=wontfix-accepted owner=20-9-messages-search-view-resend-and-trace by=spec_gate note=reopen_if=the vendor exposes an engine-neutral saved-search store (a criteria list readable without Ens.Message.Search)
 
 ### DW-2399: Test/DatabaseIntegrity.cls is 713 lines against the testing rule's guide of about 500; Story 18.38's null-device test grew it from 605
 - source: spec-18-38-the-live-log-tail.md | severity: low | fix-risk: med | footprint: in-story
@@ -11789,3 +11798,45 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-41-the-wallet-credential-rung.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: EXPERIENCE.md :335 and strings.ts caption predate DW-2406; the WALLETRUNG.REQUIRETLS and ALLOWEDHOSTS refusals name their setting and remedy
 - 2026-10-14T06:41:48Z status=wontfix-accepted owner=18-41-the-wallet-credential-rung by=harvest note=reopen_if=a person reports a wallet refusal they could not trace from the form
+### DW-2401: Spine AD-8 does not name Story 20.16's %Ens_Code:WRITE among the pairs a write tool may add beyond its screen's set
+- source: spec-20-16-the-agent-edits-rule-dtl-and-bpl-content-behind-the-embedded.md code review | severity: low | fix-risk: low | footprint: in-story
+- evidence: AD-8 says a write tool adds pairs beyond its screen's only for a database the read does not write or a measured ResourcesOR; the editor saves add %Ens_Code:WRITE by the orchestrator's ruling, recorded in AD-53 alone, so AD-8 reads as violated.
+- 2026-10-14T00:51:42Z status=open owner=20-16-the-agent-edits-rule-dtl-and-bpl-content-behind-the-embedded by=cr note=spine amendment for the lead (Rule 20): add the ruling as AD-8's named case; wording in the spec's Review Findings
+- 2026-10-14T00:54:28Z status=resolved-by:20-16-the-agent-edits-rule-dtl-and-bpl-content-behind-the-embedded by=adjudication note=AD-8 sentence added (spine, 2026-10-13)
+
+### DW-2402: Spine AD-61 rule 6's Story 20.16 sentence gives an HTTP measurement as the port's reason to read the compile console
+- source: spec-20-16-the-agent-edits-rule-dtl-and-bpl-content-behind-the-embedded.md code review | severity: low | fix-risk: low | footprint: in-story
+- evidence: The BPL 200-with-no-status-error was measured over the Atelier HTTP route; the port compiles in process, where the implement stage measured #5475 in status.errors for the same edit, so the console clause is a fallback.
+- 2026-10-14T00:51:43Z status=open owner=20-16-the-agent-edits-rule-dtl-and-bpl-content-behind-the-embedded by=cr note=spine amendment for the lead (Rule 20): restate the because-clause; wording in the spec's Review Findings
+- 2026-10-14T00:54:28Z status=resolved-by:20-16-the-agent-edits-rule-dtl-and-bpl-content-behind-the-embedded by=adjudication note=AD-61 rule 6 restated as a fallback (spine, 2026-10-13)
+
+### DW-2403: The turn wire test classes (ExplorerSaveTurn and its siblings) leave their probe user's ledger rows, and SweepSince misses rows whose turn is gone
+- source: spec-20-16-the-agent-edits-rule-dtl-and-bpl-content-behind-the-embedded.md code review | severity: med | fix-risk: low | footprint: in-epic
+- evidence: Sweep and RemoveTurns delete no ledger rows; TurnWireFixture.SweepSince's owner pass reads SELECT DISTINCT TurnKey, which returns the collated uppercase key, so GuardedDeleteForTurn's exact match misses it (measured: 7 rows left).
+- 2026-10-14T00:51:43Z status=routed owner=burndown by=cr note=20.16's InteropEditorSaveTurn calls SweepSince before Sweep; fix SweepSince with %EXACT and sweep the others
+
+### DW-2405: OcuPilot's create and delete of a class or routine drop the source-control class's follow-up user action (an 'add to source control?' question for a new document or after a delete is never asked and AfterUserAction never runs)
+- source: spec-20-10-source-control-hooks.md (plan, harvested at the spec gate) | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: Measured at Story 20.10's plan on ocupilot-b-ci: with a probe source-control class whose UserAction answers 1, the Atelier delete route answered result.ext {action:1, target:<question>}; PutDoc of a new document runs UserAction(1,1) and (1,7); AtelierPort SaveSet (pCreate) and DeleteSet ignore it.
+- 2026-10-14T01:40:07Z status=routed owner=burndown by=spec_gate note=outside 20.10's scope; the follow-up needs a dialog or proposal step for the source-control question
+
+### DW-2407: The epic context's shared-rosters list omits ToolWrite's other-port write count, which every write through a non-admin port moves
+- source: spec-20-16-the-agent-edits-rule-dtl-and-bpl-content-behind-the-embedded.md (rework 1 re-review) | severity: med | fix-risk: low | footprint: in-epic
+- evidence: epic-20-context.md:169 (regenerated from planning artifacts per plan spawn) lists ReadTool and ToolRoundTrip, not ToolWrite.cls:1338 (49 after 20.16). 20.16's plan missed it and its fresh check went red, costing a rework; 20.25, 20.26 and 20.31 add InteropPort writes.
+- 2026-10-14T03:02:05Z status=routed owner=20-25-item-runtime-and-configuration-actions by=cr note=name ToolWrite's other-port count (49 after 20.16) in Shared surfaces and move it; first of 20.25/20.26/20.31
+
+### DW-2408: interop-item-test.browser-spec.mjs's cleanup leaves the host test's message headers and the probe production's Ens_Util.Log rows behind in USER
+- source: spec-20-30 plan (measured) | severity: med | fix-risk: low | footprint: in-epic
+- evidence: Measured at Story 20.30's plan on ocupilot-b-ci: after the cleanup calls interop-item-test.browser-spec.mjs also uses, USER held three message headers and the production's event-log rows; removed by hand.
+- 2026-10-14T03:47:33Z status=routed owner=burndown by=spec_gate note=Rule 19 hermeticity: the spec (Story 20.6's) removes the headers and log rows it caused
+
+### DW-2414: A deleted account that was the first to run the install gate's version-row read after its cached queries were purged (an install, an uninstall) is refused 503 INSTALL.UNREADABLE instead of 401 AUTH.DISABLED
+- source: spec-20-16 (harvest, CI rework 2) | severity: low | fix-risk: med | footprint: out-of-footprint
+- evidence: Measured on ocupilot-b-ci: after an install or uninstall the first account to run the gate prepares its cached compile; once deleted, that account's token reads SQLCODE -99 at the gate (503); when another account prepared it first, 401. Other accounts unaffected (20 classes after Retention in CI shard 7 passed).
+- 2026-10-14T07:31:18Z status=wontfix-accepted owner=20-16-the-agent-edits-rule-dtl-and-bpl-content-behind-the-embedded by=harvest note=reopen_if=a live (not deleted) account is refused 503 INSTALL.UNREADABLE after an install or uninstall
+- 2026-10-14T07:50:55Z status=wontfix-accepted owner=20-16-the-agent-edits-rule-dtl-and-bpl-content-behind-the-embedded by=cr note=reopen_if=a live account gets 503 INSTALL.UNREADABLE; cr probe: live 200, disabled 401; site GuardedOpenOneWhereNoParam
+
+### DW-2415: CI flake: log-viewer.spec.ts AC6 (Story 18.38, 'with Live tail off, nothing streams') read vi.getTimerCount() as 12, not 0, on gates (node 22.22.3) only
+- source: CI run 38532797700 attempt 1 (head c14f3fc6) | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: attempt 1 red on node 22.22.3 only (node 24 and 26 green on the same head); attempt 2 green unchanged; the head touches no logs code (inference: timers left by another spec in the worker).
+- 2026-10-14T09:30:29Z status=routed owner=burndown by=runner note=flake: the spec should set up and clear fake timers per test; Epic 18's test (orchestrator told Epic 18)

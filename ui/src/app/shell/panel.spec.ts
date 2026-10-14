@@ -3637,6 +3637,22 @@ describe('Story 5.3: confirming, cancelling and re-proposing a card', () => {
     expect(host.querySelector('.ocu-proposal-card-summary-outcome')).toBeNull();
   });
 
+  // Story 20.16. Mutation (Rule 19): the gate admits only `explorer.` tools -> the outcome and the banner go red.
+  it('Story 20.16: an editor save, whose consequence names the editor reload, hands the card its compile outcome', async () => {
+    const editorSave = wireProposal({
+      tool: 'interop.transformeditor.save',
+      consequence: 'INTEROP.EDITOR.RELOADS',
+      target: { type: 'class', scope: 'USER', id: 'OcuProbe2016.Transform.cls' },
+    });
+    const { host, fixture } = await mountDecidable(confirmedWithOutput(true), [editorSave]);
+    (host.querySelector('.ocu-proposal-card-confirm') as HTMLButtonElement).click();
+    await turnSettle();
+    fixture.detectChanges();
+
+    expect(host.querySelector('.ocu-proposal-card-summary-outcome')?.textContent?.trim()).toBe(STRINGS.proposalSummaryCompileErrors);
+    expect(host.querySelector('.ocu-proposal-card [data-slot="saved-not-compiled"]')?.textContent).toContain(STRINGS.explorerSaveNotCompiled);
+  });
+
   it('AC: the audit-entry offer is appended once, even to a reply that already ends with it', async () => {
     // Idempotent like the other three appenders. **Driven against a MODEL-AUTHORED reply that
     // already carries the sentence**, which is the only shape the guard can be observed in:

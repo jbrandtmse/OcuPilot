@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '
 import { NavigationEnd, Router } from '@angular/router';
 
 import { ApiService } from '../../core/api';
+import { ChangeBus } from '../../core/change-bus';
 import { NavigationService, formatRequires, listForDocumentScreen, ownIdSegment } from '../../core/navigation';
 import { ScopeService, onScopeChange } from '../../core/scope';
 import type { ScreenDeclaration } from '../../core/screens.generated';
@@ -50,6 +51,10 @@ function kindFor(descriptor: string): EditorKind | null {
  * new frame, so the editor's own unsaved-changes alert does not show, and the note says that leaving the
  * screen or choosing Refresh discards any change not saved in the editor. Refresh also opens the
  * document again after the editor has moved away by itself.
+ *
+ * **A confirmed change to the document opens it again** (AD-14, Story 20.16): the page hears `ChangeBus` and, for a `changed`
+ * event `InteropEditorState.shows` accepts, reads the document again, which draws a new frame as Refresh does. The bar says the
+ * agent reads only what is saved, before any request.
  *
  * Every control-flow condition is a paren-free member reference, for the reason `sign-in.ts`
  * records.
@@ -104,6 +109,7 @@ function kindFor(descriptor: string): EditorKind | null {
     @if (isOpen) {
       <div class="ocu-interop-editor-bar">
         <p class="ocu-source-note" data-ocu-editor="note">{{ STRINGS.interopEditorNote }}</p>
+        <p class="ocu-source-note" data-ocu-editor="agent">{{ STRINGS.interopEditorAgentNote }}</p>
         <button type="button" class="ocu-button-text" data-ocu-editor="refresh" (click)="onRefresh()">{{ STRINGS.actionRefresh }}</button>
       </div>
       <div class="ocu-interop-editor-body" data-ocu-editor="frame">
@@ -174,10 +180,15 @@ export class InteropEditorPage {
     });
     // A namespace move takes the frame away at once and reads the document again there.
     const stopScope = onScopeChange(this.scope, () => void this.openFromRoute());
+    // AD-14, Story 20.16: a confirmed change to this document, the agent's save among them, opens it again in a new frame.
+    const stopChanges = inject(ChangeBus).subscribe((event) => {
+      if (state.shows(event)) void state.refresh();
+    });
     inject(DestroyRef).onDestroy(() => {
       stopState();
       stopRoute.unsubscribe();
       stopScope();
+      stopChanges();
       state.reset();
     });
   }

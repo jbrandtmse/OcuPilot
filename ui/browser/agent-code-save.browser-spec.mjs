@@ -22,15 +22,8 @@ import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '..
 import { loadStrings } from '../tools/strings.mjs';
 import { signedInAt } from './panel-spec.mjs';
 import { resetGovernancePolicy, resetRememberedState } from './preferences-reset.mjs';
-import {
-  INVARIANTS,
-  VIEWPORTS,
-  compare,
-  componentMinimums,
-  detectScreen,
-  readBaseline,
-  toggleThemeThroughMenu,
-} from './structural-walk.mjs';
+import { VIEWPORTS } from './structural-walk.mjs';
+import { cardViolations, proposeFromPanel, slotText } from './proposal-card-spec.mjs';
 import {
   armProbeDefinition,
   disarmProbeDefinition,
@@ -159,48 +152,6 @@ function saveReply(oldText, newText) {
   return `##class(OcuPilot.Test.TurnProvider).ToolUseReply([{"id": "toolu_save", "name": "${TOOL_WIRE_NAME}", "input": ${JSON.stringify(input)}}])`;
 }
 
-/** Wait for the composer, send one prompt, and wait for the card's Confirm button. */
-async function proposeSave(page, prompt) {
-  await page.waitForFunction(() => !document.querySelector('#ocu-panel-composer').hasAttribute('aria-disabled'), { timeout: config.navigationTimeoutMs });
-  await page.type('#ocu-panel-composer', prompt);
-  await page.click('.ocu-panel-send');
-  await page.waitForSelector('app-proposal-card .ocu-proposal-card-confirm', { timeout: config.navigationTimeoutMs });
-}
-
-/** The card's slot text, without its glyph, or `null` when the slot is absent. */
-async function slotText(page, name) {
-  return page.$eval(`app-proposal-card [data-slot="${name}"]`, (node) => (node.querySelector('.ocu-banner-message') ?? node).textContent.trim()).catch(() => null);
-}
-
-/** Every DW-1337 invariant over the card in light at both widths and dark at the wide width, outside the baseline. */
-async function cardViolations(page) {
-  const minimums = componentMinimums();
-  const baseline = (readBaseline()?.entries ?? []).filter((entry) => entry.route === ROUTE);
-  const requests = { inflight: new Set(), last: 0 };
-  const found = [];
-  for (const { viewport, theme } of [
-    { viewport: VIEWPORTS.wide, theme: 'light' },
-    { viewport: VIEWPORTS.narrow, theme: 'light' },
-    { viewport: VIEWPORTS.wide, theme: 'dark' },
-  ]) {
-    await page.setViewport(viewport);
-    // The docked panel re-lays out on the resize; measure once its right edge has come inside the viewport.
-    await page.waitForFunction((width) => {
-      const panel = document.querySelector('app-panel');
-      return panel === null || panel.getBoundingClientRect().right <= width + 1;
-    }, { timeout: 3000 }, viewport.width).catch(() => {});
-    if (theme === 'dark') await toggleThemeThroughMenu(page, requests, config.navigationTimeoutMs);
-    try {
-      const { entries } = await detectScreen(page, { route: ROUTE, checks: INVARIANTS, viewport: viewport.width, theme, minimums });
-      found.push(...entries);
-    } finally {
-      if (theme === 'dark') await toggleThemeThroughMenu(page, requests, config.navigationTimeoutMs);
-    }
-  }
-  await page.setViewport(VIEWPORTS.wide);
-  return compare(found, baseline).fresh.map((entry) => `${entry.key}: ${entry.measured}`);
-}
-
 test('a one-line edit draws a line diff and says Confirm compiles, and Confirm saves it with no compile warning', async () => {
   // Mutation (Rule 19): make the card ignore `kind` -> no `app-text-diff` and this goes red. The removed line's
   // number is the document's own line, which `ExplorerSaveMint.Hunk` sends as the hunk's first line.
@@ -212,7 +163,7 @@ test('a one-line edit draws a line diff and says Confirm compiles, and Confirm s
   scriptReply(tag, `##class(OcuPilot.Test.TurnProvider).TextReply("saved")`);
   const { context, page } = await signedInAt(browser, config, USER_URL);
   try {
-    await proposeSave(page, 'change the probe method');
+    await proposeFromPanel(page, 'change the probe method', config.navigationTimeoutMs);
     const card = await page.$eval('app-proposal-card', (node) => ({
       removed: node.querySelector('app-text-diff [data-ocu-diff="removed"]')?.textContent.replace(/\s+/g, ' ').trim() ?? '',
       added: node.querySelector('app-text-diff [data-ocu-diff="added"]')?.textContent.replace(/\s+/g, ' ').trim() ?? '',
@@ -248,7 +199,7 @@ test('a breaking edit, confirmed, says it did not compile and leaves the new tex
   scriptReply(tag, `##class(OcuPilot.Test.TurnProvider).TextReply("saved")`);
   const { context, page } = await signedInAt(browser, config, USER_URL);
   try {
-    await proposeSave(page, 'break the probe method');
+    await proposeFromPanel(page, 'break the probe method', config.navigationTimeoutMs);
     await page.click('.ocu-proposal-card-confirm');
     await page.waitForSelector('app-proposal-card [data-slot="saved-not-compiled"]', { timeout: config.navigationTimeoutMs });
     assert.equal(await slotText(page, 'saved-not-compiled'), STRINGS.explorerSaveNotCompiled, 'the card says the save did not compile');
@@ -270,12 +221,12 @@ test('a 12-line hunk shows its lines summary, starts collapsed, and Confirm work
   scriptReply(tag, `##class(OcuPilot.Test.TurnProvider).TextReply("saved")`);
   const { context, page } = await signedInAt(browser, config, USER_URL);
   try {
-    await proposeSave(page, 'rewrite the probe values');
+    await proposeFromPanel(page, 'rewrite the probe values', config.navigationTimeoutMs);
     const summary = await page.$eval('app-proposal-card .ocu-proposal-card-summary-fields', (node) => node.textContent.replace(/\s+/g, ' ').trim());
     assert.match(summary, /lines changed, 12 removed and 12 added$/, `the summary counts the lines: ${summary}`);
     const expand = await page.$$eval('app-proposal-card button', (buttons) => buttons.map((button) => button.textContent.trim()));
     assert.ok(expand.includes(STRINGS.longBlockShowMore), 'the diff starts collapsed behind Show more');
-    assert.deepEqual(await cardViolations(page), [], 'the card adds no structural violation in light or dark, at either width');
+    assert.deepEqual(await cardViolations(page, ROUTE, config.navigationTimeoutMs), [], 'the card adds no structural violation in light or dark, at either width');
 
     await page.click('.ocu-proposal-card-confirm');
     await page.waitForSelector('app-proposal-card .ocu-proposal-card-status', { timeout: config.navigationTimeoutMs });
@@ -320,14 +271,14 @@ test('(QA) a one-line edit shows its changed lines inside the diff box without o
   scriptReply(tag, `##class(OcuPilot.Test.TurnProvider).TextReply("saved")`);
   const { context, page } = await signedInAt(browser, config, USER_URL);
   try {
-    await proposeSave(page, 'change the probe method');
+    await proposeFromPanel(page, 'change the probe method', config.navigationTimeoutMs);
     const geometry = await diffGeometry(page);
     assert.equal(geometry.toggle, null, `a one-line edit's diff is short and offers no Show more: ${JSON.stringify(geometry)}`);
     assert.equal(geometry.changed.length, 2, 'the removed and the added line are drawn');
     for (const line of geometry.changed) {
       assert.ok(line.top >= geometry.regionTop - 1 && line.bottom <= geometry.regionBottom + 1, `the ${line.kind} line is inside the diff's box without opening it: ${JSON.stringify(geometry)}`);
     }
-    assert.deepEqual(await cardViolations(page), [], 'the card adds no structural violation in light or dark, at either width');
+    assert.deepEqual(await cardViolations(page, ROUTE, config.navigationTimeoutMs), [], 'the card adds no structural violation in light or dark, at either width');
   } finally {
     await context.close();
     forgetTag(tag);
@@ -347,7 +298,7 @@ test('(QA) a long changed line in an opened diff scrolls inside it, widens neith
   scriptReply(tag, `##class(OcuPilot.Test.TurnProvider).TextReply("saved")`);
   const { context, page } = await signedInAt(browser, config, USER_URL);
   try {
-    await proposeSave(page, 'add a long note to the probe method');
+    await proposeFromPanel(page, 'add a long note to the probe method', config.navigationTimeoutMs);
     // Opened, so the long block's own clip is gone and only the diff's containment keeps the line in.
     await page.click('app-proposal-card .ocu-proposal-card-diff .ocu-long-block-toggle');
     await page.waitForFunction(() => document.querySelector('app-proposal-card .ocu-proposal-card-diff .ocu-long-block-toggle')?.getAttribute('aria-expanded') === 'true', { timeout: config.navigationTimeoutMs });
@@ -382,7 +333,7 @@ test('(QA) a long changed line in an opened diff scrolls inside it, widens neith
     );
     assert.ok(rows.every((row) => row.text <= row.right + 1), `every drawn line's text stays inside its row: ${JSON.stringify(rows)}`);
     assert.ok(rows.every((row) => Math.abs(row.right - rows[0].right) <= 1), `every row is as wide as the longest: ${JSON.stringify(rows)}`);
-    assert.deepEqual(await cardViolations(page), [], 'the opened diff with a long line adds no structural violation in light or dark, at either width');
+    assert.deepEqual(await cardViolations(page, ROUTE, config.navigationTimeoutMs), [], 'the opened diff with a long line adds no structural violation in light or dark, at either width');
   } finally {
     await context.close();
     forgetTag(tag);
@@ -401,12 +352,12 @@ test('(QA) an opened 12-line diff passes the DW-1337 invariants in light and dar
   scriptReply(tag, `##class(OcuPilot.Test.TurnProvider).TextReply("saved")`);
   const { context, page } = await signedInAt(browser, config, USER_URL);
   try {
-    await proposeSave(page, 'rewrite the probe values');
+    await proposeFromPanel(page, 'rewrite the probe values', config.navigationTimeoutMs);
     await page.click('app-proposal-card .ocu-proposal-card-diff .ocu-long-block-toggle');
     await page.waitForFunction(() => document.querySelector('app-proposal-card .ocu-proposal-card-diff .ocu-long-block-toggle')?.getAttribute('aria-expanded') === 'true', { timeout: config.navigationTimeoutMs });
     const drawn = await page.$$eval('app-proposal-card app-text-diff [data-ocu-diff="removed"], app-proposal-card app-text-diff [data-ocu-diff="added"]', (nodes) => nodes.length);
     assert.equal(drawn, 24, 'all twelve removed and twelve added lines are drawn');
-    assert.deepEqual(await cardViolations(page), [], 'the opened diff adds no structural violation in light or dark, at either width');
+    assert.deepEqual(await cardViolations(page, ROUTE, config.navigationTimeoutMs), [], 'the opened diff adds no structural violation in light or dark, at either width');
   } finally {
     await context.close();
     forgetTag(tag);
@@ -425,7 +376,7 @@ test('(QA) a document changed after the mint is refused at Confirm, says so, and
   scriptReply(tag, `##class(OcuPilot.Test.TurnProvider).TextReply("saved")`);
   const { context, page } = await signedInAt(browser, config, USER_URL);
   try {
-    await proposeSave(page, 'change the probe method');
+    await proposeFromPanel(page, 'change the probe method', config.navigationTimeoutMs);
     writeClass('    Quit 3');
     await page.click('.ocu-proposal-card-confirm');
     await page.waitForSelector('app-proposal-card .ocu-proposal-card-status-target-changed', { timeout: config.navigationTimeoutMs });

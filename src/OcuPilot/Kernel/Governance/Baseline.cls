@@ -240,7 +240,10 @@ XData Keys [ MimeType = application/json ]
   "interop.lookuptables.export": true,
   "interop.lookuptables.import": false,
   "interop.itemtest.send": true,
-  "interop.transforms.test": true
+  "interop.transforms.test": true,
+  "interop.ruleeditor.save": true,
+  "interop.processeditor.save": true,
+  "interop.transformeditor.save": true
 }
 }
 

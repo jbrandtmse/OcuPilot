@@ -489,6 +489,9 @@ services:
       # the test class runs them from both callers and reads what each run leaves behind, the refusals class meets every outcome and
       # refusal, and the gate class signs in as probe principals each missing one pair the list, the read or the test requires.
       # classes: InteropTransformTest, InteropTransformTestGate, InteropTransformTestRefusals
+      # The editor save classes make and remove probe documents in USER (Story 20.16): the gate class signs in as probe principals each
+      # missing one pair an editor tool requires, and the turn class runs a scripted turn on a probe transformation and confirms its save.
+      # classes: InteropEditorSaveGate, InteropEditorSaveTurn
       # classes: ExplorerSourceTurn
       # classes: ExplorerSaveTurn
       # classes: ExplorerCreateTurn
@@ -639,6 +642,7 @@ services:
       # classes: ExplorerSaveTurn
       # classes: ExplorerCreateTurn
       # classes: WalletRungRoles
+      # classes: InteropEditorSaveTurn
       OCUPILOT_ALLOW_TEST_PROVIDER: "1"
       # Purges the instance's own audit database through the shipped screen route: every record
       # dated before today is removed, the agent's audit markers among them, and nothing puts one

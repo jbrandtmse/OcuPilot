@@ -345,6 +345,8 @@ development_status:
   epic-19-retrospective: optional
 
   epic-20: in-progress
+  20-30-the-session-trace: ready-for-dev
+  20-31-message-resend-and-edit-and-resend: ready-for-dev
   20-1-namespace-category-gating: done
   20-2-productions-listed-and-controlled: done
   20-3-production-items: done
@@ -354,15 +356,14 @@ development_status:
   20-7-the-three-embedded-vendor-editors: done
   20-8-the-schema-viewers-and-the-production-configuration-diagram: 
     ready-for-dev
-  20-9-messages-search-view-resend-and-trace: backlog
-  20-10-source-control-hooks: backlog
+  20-9-messages-search-view-resend-and-trace: ready-for-dev
+  20-10-source-control-hooks: ready-for-dev
   20-11-the-analytics-rider: backlog
   20-12-the-agent-gains-guided-workflows-and-investigate: backlog
   20-13-the-sign-in-hand-off-to-the-embedded-vendor-editors: done
   20-14-interoperability-holders-reach-ocupilot: done
   20-15-per-screen-permissions-seen-and-adjusted: done
-  20-16-the-agent-edits-rule-dtl-and-bpl-content-behind-the-embedded: 
-    ready-for-dev
+  20-16-the-agent-edits-rule-dtl-and-bpl-content-behind-the-embedded: done
   20-17-long-blocks-in-the-agent-panel-start-collapsed: done
   20-18-the-agent-proposes-permission-changes-and-refuses-on-a-scree: done
   20-19-the-agent-reads-class-and-routine-source: done

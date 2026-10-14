@@ -370,4 +370,38 @@ Method TestTheSaveRendersItsScript()
     Do $$$AssertEquals($ClassMethod(tPort, "Snippet", "Classes", "SAVEDOCS", .tQuery).%Size(), 0, "a read renders no step")
 }
 
+/// <p>AD-61 rule 6: a compile's console that reads <code>Detected &lt;n&gt; errors during compilation</code> with <code>n</code> above
+/// zero counts as failed, though the call answers 200 with no status error (a BPL whose generated class fails does over the Atelier HTTP route); a
+/// console that finished successfully, reads no such line, reports zero errors, is empty or is not an array does not. The lines take
+/// the shape a BPL and a DTL compile failure and a success answer.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Port.AtelierPort.ConsoleCountsErrors</method> answers 0 -- the failure legs go red.</p>
+Method TestTheCompileVerdictReadsTheConsole()
+{
+    Set tPort = "OcuPilot.Port.AtelierPort"
+    Set tBpl = ["", "Compilation started on 10/13/2026 21:30:01 with qualifiers 'cuk'", "Compiling class OcuProbe2016.Process", "Compiling class OcuProbe2016.Process.Thread1", "ERROR: OcuProbe2016.Process.Thread1.cls(OnResponse+3) : Expected a space", "Detected 1 errors during compilation in 0.191s."]
+    Set tDtl = ["", "Compilation started on 10/13/2026 21:30:02 with qualifiers 'cuk'", "Compiling class OcuProbe2016.Transform", "ERROR #5475: Error compiling routine : OcuProbe2016.Transform.1", "Detected 1 errors during compilation in 0.020s."]
+    Set tSuccess = ["", "Compilation started on 10/13/2026 21:30:03 with qualifiers 'cuk'", "Compiling class OcuProbe2016.Transform", "Compilation finished successfully in 0.018s."]
+    Do $$$AssertEquals($ClassMethod(tPort, "ConsoleCountsErrors", tBpl), 1, "a BPL whose generated class fails counts as failed")
+    Do $$$AssertEquals($ClassMethod(tPort, "ConsoleCountsErrors", tDtl), 1, "a DTL whose code fails counts as failed")
+    Do $$$AssertEquals($ClassMethod(tPort, "ConsoleCountsErrors", tSuccess), 0, "a console that finished successfully does not")
+    Do $$$AssertEquals($ClassMethod(tPort, "ConsoleCountsErrors", ["Detected 12 errors during compilation in 1.5s."]) _ $ClassMethod(tPort, "ConsoleCountsErrors", ["Detected 1 error during compilation"]), "11", "any count above zero, in the plural or not, counts")
+    Do $$$AssertEquals($ClassMethod(tPort, "ConsoleCountsErrors", ["Detected 0 errors during compilation in 0.1s."]) _ $ClassMethod(tPort, "ConsoleCountsErrors", ["Detected errors during compilation"]) _ $ClassMethod(tPort, "ConsoleCountsErrors", ["The log says Detected 1 errors during compilation"]), "000", "a zero count, a line with no count and a line that merely holds the words do not")
+    Do $$$AssertEquals($ClassMethod(tPort, "ConsoleCountsErrors", []) _ $ClassMethod(tPort, "ConsoleCountsErrors", [7]) _ $ClassMethod(tPort, "ConsoleCountsErrors", "Detected 1 errors during compilation") _ $ClassMethod(tPort, "ConsoleCountsErrors", {"a": "Detected 1 errors during compilation"}) _ $ClassMethod(tPort, "ConsoleCountsErrors", ""), "00000", "an empty console, a number, text, an object and nothing do not")
+}
+
+/// <p>AD-61 rule 6, Story 20.16: a save whose compile answers no status error but whose console reads
+/// <code>Detected 1 errors during compilation</code> answers <code>errors</code> true with the console's lines (canned routes).</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Port.AtelierPort.Outcome</method> leaves the console out of <code>pErrors</code> -- this goes
+/// red.</p>
+Method TestASaveWhoseCompileConsoleReportsErrorsReportsThem()
+{
+    Do $ClassMethod(..#FIXTURE, "UseFakeRoutes")
+    Do $ClassMethod(..#FIXTURE, "SetVersion", 8)
+    Do $ClassMethod(..#FIXTURE, "Arm", "GetDocNames", "200 OK", ..#CANNEDDOCS)
+    Do $ClassMethod(..#FIXTURE, "Arm", "Compile", "200 OK", "{""status"":{""errors"":[],""summary"":""""},""console"":[""Compiling class Probe.A"",""Detected 1 errors during compilation in 0.191s.""],""result"":{""content"":[]}}")
+    Set tText = "Class Probe.A Extends %RegisteredObject" _ $Char(10) _ "{" _ $Char(10) _ "}" _ $Char(10)
+    Do ..Save("Classes", "Probe.A.cls", tText, "2026-10-02 09:00:00.120", 1, .tResult, .tHttp, .tFault, $Namespace)
+    Do $$$AssertEquals(..Said(.tHttp, .tResult, .tFault), "200 {""lines"":[""Compiling class Probe.A"",""Detected 1 errors during compilation in 0.191s.""],""errors"":true}", "a save whose compile console reports an error answers errors true")
+}
+
 }

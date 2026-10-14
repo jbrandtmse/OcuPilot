@@ -1119,6 +1119,54 @@ ClassMethod ListClasses(pNamespace As %String, pEndpoint As %String, pMax As %In
     Quit $$$OK
 }
 
+/// <p>Whether class <var>pName</var> (no extension) is a subclass of <var>pBase</var> other than
+/// <var>pBase</var> itself in namespace <var>pNamespace</var>'s class dictionary, compiled or not (AD-62
+/// item 14): the test <method>ListClasses</method> applies to list a rule, a business process written in BPL
+/// or a data transformation written in DTL. It reads the dictionary with
+/// <code>%Dictionary.ClassDefinition:SubclassOf</code>, which writes nothing, and calls no
+/// <code>OcuPilot.*</code> class while switched (AD-16). This port's gate (<method>Admit</method>) is asked first,
+/// as for the list of the kind's code (the rule list for <code>Ens.Rule.Definition</code>, the process list for
+/// <code>Ens.BusinessProcessBPL</code>, the transformation list otherwise).</p>
+/// <p><var>pRead</var> is 1 only when the dictionary was read. A caller the gate refuses, a namespace that does
+/// not report interoperability, an unknown namespace, a namespace of the wrong shape and a dictionary that cannot
+/// be read answer 0 with <var>pRead</var> 0, so a caller that refuses on an unread answer fails closed.</p>
+/// <p><b>Caller contract:</b> not called from an escalated frame (AD-9). The caller's namespace is restored
+/// whatever the outcome.</p>
+ClassMethod IsCodeOfKind(pNamespace As %String, pName As %String, pBase As %String, Output pRead As %Boolean) As %Boolean
+{
+    Set pRead = 0
+    Set tKind = 0
+    Set tOrigNS = $NAMESPACE
+    Try {
+        If (pNamespace = "") || (pName = "") || (pBase = "") Quit
+        Set tEndpoint = $Case(pBase, "Ens.Rule.Definition": ..#ENDPOINTRULES, "Ens.BusinessProcessBPL": ..#ENDPOINTPROCESSES, : ..#ENDPOINTTRANSFORMS)
+        If $$$ISERR(..Admit(tEndpoint, ..#TYPELIST, pNamespace, .tHttp, .tFault)) Quit
+        Set $NAMESPACE = pNamespace
+        Set tResultSet = ##class(%ResultSet).%New("%Dictionary.ClassDefinition:SubclassOf")
+        Set tStatusSC = tResultSet.Execute(pBase)
+        Set tFound = 0
+        If $$$ISOK(tStatusSC) {
+            While tResultSet.Next() {
+                If tResultSet.GetData(1) = pName {
+                    Set tFound = 1
+                    Quit
+                }
+            }
+            Do tResultSet.Close()
+        }
+        Set tResultSet = ""
+        Set $NAMESPACE = tOrigNS
+        If $$$ISERR(tStatusSC) Quit
+        Set pRead = 1
+        Set tKind = tFound && (pName '= pBase)
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pRead = 0
+        Set tKind = 0
+    }
+    Quit tKind
+}
+
 /// <p>The facts one state read gathers, in <var>pFacts</var>: <code>word</code>, the target's state
 /// word (the current production's state word when it is the target, else <code>Stopped</code>, as the
 /// vendor's own list reads it; a mirror backup's word is kept, and any other unnamed state reads

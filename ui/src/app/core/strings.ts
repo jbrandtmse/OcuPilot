@@ -197,6 +197,10 @@ export const STRINGS = {
   explorerSaveCompilesOnConfirm: 'Confirming saves this text and then compiles it as you. The compile\'s outcome shows here once it has run.',
   /** EXPERIENCE.md:604 */
   explorerSaveNotCompiled: 'Saved, but it did not compile. The saved text is what is now on the instance.',
+  /** EXPERIENCE.md:604 */
+  interopEditorAgentNote: 'The agent reads only what is saved: save your changes here before you ask it for a change, because confirming its change opens the document again.',
+  /** EXPERIENCE.md:604 */
+  interopEditorSaveOnConfirm: 'Confirming saves this text and then compiles it as you, and the editor opens the document again, dropping any changes not saved there. The compile\'s outcome shows here once it has run.',
   /** EXPERIENCE.md:277 */
   proposalExampleCardTitle: 'Example \u2014 this is what a proposal looks like',
   /** EXPERIENCE.md:278 */
