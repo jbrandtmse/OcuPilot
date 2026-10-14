@@ -788,3 +788,5 @@
 2026-10-14T11:17:56Z	Story 20.8	dev_complete	spawn_at=(see_stage_spawned) model=sonnet agent_name=20-8-implement-1 build_sha=e297e14a baseline_revision=86c9fb29 review_loop_iteration=0 followup_review_recommended=true deferred=0 diff=_34_files_changed,_1991_insertions(+),_127_deletions(-) initial=1.93MB largest_chunk=83.33kB note=handoff_ran_pkill_Chrome_for_Testing_once(own_orphan)
 2026-10-14T11:17:56Z	Story 20.8	adr_verifications_complete	tool=none acs= result=none_required evidence= mutations=none model=claude-opus-5-5
 2026-10-14T11:17:56Z	Story 20.8	stage_spawned	stage=qa spawn_at=2026-10-14T11:17:56Z model=sonnet agent_name=20-8-qa-1 cycle_iteration=1
+2026-10-14T11:36:00Z	Story 20.8	qa_complete	spawn_at=(see_stage_spawned) model=sonnet agent_name=20-8-qa-1 tests=InteropEditorDescriptor($ListGet_one_line) tests_added=0 mutations_demonstrated=12 first_run_failures=0 clarifications=0 closing_sections_present=true tls_reds=did_not_reproduce_on_fresh(4/4_green)
+2026-10-14T11:36:00Z	Story 20.8	stage_spawned	stage=code-review spawn_at=2026-10-14T11:36:00Z model=opus agent_name=20-8-code-review-1 cycle_iteration=1

@@ -187,7 +187,7 @@ Method TestTheSchemaViewerHonorsEveryClassicPage()
             Set tArmed = ##class(OcuPilot.Test.ScreenGate).RequiredPairs(tClass, .tResolved)
             Do $$$AssertTrue(tResolved, tPage _ ": its requirement resolves")
             Do $$$AssertEquals($ListLength(tArmed), 3, tPage _ ": a custom resource on this page alone is added to the declared set")
-            Do $$$AssertEquals($List($List(tArmed, 3), 1) _ ":" _ $List($List(tArmed, 3), 2), ..#PROBERESOURCE _ ":USE", tPage _ ": at USE")
+            Do $$$AssertEquals($ListGet($ListGet(tArmed, 3), 1) _ ":" _ $ListGet($ListGet(tArmed, 3), 2), ..#PROBERESOURCE _ ":USE", tPage _ ": at USE")
         }
         Do ##class(OcuPilot.Test.ScreenGate).Reset()
         For tI = 1:1:$ListLength(tPages) Do ##class(OcuPilot.Test.ScreenGate).AssignClassic($List(tPages, tI), ..#PROBERESOURCE)
