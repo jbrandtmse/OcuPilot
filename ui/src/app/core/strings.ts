@@ -616,6 +616,14 @@ export const STRINGS = {
   agentDefinitionFieldLocalModel: 'Local model',
   /** EXPERIENCE.md:335 */
   agentDefinitionCredTypeNone: 'No API key',
+  // Story 18.41: the wallet rung's checkbox, the field that replaces the API key field, and its caption.
+  /** EXPERIENCE.md:335 */
+  agentDefinitionCredTypeWallet: 'Read the key from a wallet secret',
+  /** EXPERIENCE.md:335 */
+  agentDefinitionFieldWalletSecret: 'Wallet secret',
+  /** EXPERIENCE.md:335 */
+  agentDefinitionWalletSecretCaption:
+    'The secret\'s full name, collection.secret, as the Secrets screen lists it. Set its value there; whoever runs a turn needs permission to use its collection.',
   /** EXPERIENCE.md:335 */
   agentDefinitionHttpAcknowledge:
     'This endpoint is not encrypted, so the key travels across the network in clear.',

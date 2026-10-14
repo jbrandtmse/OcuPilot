@@ -2,13 +2,21 @@
 title: 'Story 18.41: The wallet credential rung'
 type: 'feature'
 created: '2026-10-12'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '5fa674b7ec6eb2c45b1f9f0abf30b5121273c17b'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-18-context.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      No automated test runs the wallet rung's refusal as a least-privileged person through the real provider call, or in the jobbed process a turn and Test connection use.
+    evidence: |-
+      The ladder is pinned with real principals in a child the test logs in (WalletRung), and Base and the port with an armed two-element refusal (WalletRungWire); the chain between them rests on the documented role inheritance of Kernel/Agent/Job and Kernel/Provider/TestCall. Settle it by running Test connection and a turn as a holder-only and an outsider principal on ocupilot-ci.
+    location: >-
+      src/OcuPilot/Test/WalletRung.cls, src/OcuPilot/Test/WalletRungWire.cls
+    severity: medium (unverified)
 ---
 
 <intent-contract>
@@ -100,6 +108,28 @@ Under `src/OcuPilot/` at `a1bd51d3`.
 
 ## Review Triage Log
 
+### 2026-10-13 - Review pass
+
+- verdicts: 16 findings - high 0, medium 1, low 8, false 5, maybe-false 2
+- findings:
+  - `[medium]` `[patch]` The wallet arm's transient answers (an unlisted collection, an unopenable secret, a raise) are pinned by no test - `WalletRung` asserts `transient=0` throughout and `WalletRungWire` has no transient leg; patched: `SecretWalletRefusal.ArmRaise` makes the shipped arm's listing raise and `WalletRungWire.TestAWalletThatCouldNotBeReadLeavesTheDefinitionEnabled` asserts `PROVIDER.CREDENTIALSTORE`, 503, no socket, definition still enabled and verified; mutation line added.
+  - `[maybe-false]` `[defer]` No test runs a real ladder refusal through the real `Base.Invoke`, or the wallet arm in a jobbed process as a non-superuser - the refusal shape is asserted on both sides (`WalletRung` reads the real refusal as `code|pair`, `WalletRungWire` arms the same two-element list for the real `Base.Invoke`), and `Kernel/Agent/Job` and `Kernel/Provider/TestCall` document that the child inherits `$USERNAME` and `$ROLES`, which every gated tool already relies on; to settle it: Test connection and a turn as a holder-only and an outsider principal on `ocupilot-ci`.
+  - `[low]` `[patch]` `ProviderSecret` leg nine has no standing proof the call reached the stub - patched: `Calls()` is asserted 1 after the leg; the `Ladder.Wallet` answers `""` mutation now reddens `ProviderSecret` as well.
+  - `[low]` `[patch]` C6's off leg reads zero rows 1 s after the resolution, a shorter wait than the class allows a positive row - patched: a refused direct vendor call writes a control row and the zero is read once that row is readable; mutation (the event never turned off) recorded.
+  - `[low]` `[patch]` The page spec's exclusivity test ends on `toHaveLength(0)` over POSTs after a sequence that never saves - patched: the line is removed, with its unused `calls` binding.
+  - `[low]` `[patch]` C2's server-side name rule, its 128 bound and `Normalize`'s clear have no recorded mutation, and a refused name's reason across a provider change has no test - patched: the three server mutations were run and recorded, and a page-spec test was added for the reason, with its mutation.
+  - `[low]` `[reject]` `WalletRungWire` and `ProviderSecret` leg nine create a probe resource and wallet collection without `ARMINGVARIABLE` - the sibling wallet classes that create collections arm nothing, `check-objectscript.py` reads 0 problems, and arming means a parameter, a start guard and a roster row in an Epic 20 file for probe-named objects the class removes.
+  - `[low]` `[reject]` `GuardedCredentialOwned`'s wallet term is unpinned - it is reachable only by a wallet row carrying the ownership mark, which `GuardedUpdate`'s reset and the `KEYSTORE` refusal prevent.
+  - `[false]` `[reject]` The `{` term in the shape gate also reaches the env, creds and body sources - Task 5 words it as the shape gate's term, and no provider key begins with `{`, so no valid key is refused.
+  - `[false]` `[reject]` The auto run result section still reads `ready-for-dev` - that section is the finalize step's to write, and it is written below.
+  - `[low]` `[defer]` Real refusals never reach the provider-call layer - grouped with the second row of this log (same root cause, same route); the deferred item covers both.
+  - `[maybe-false]` `[defer]` Spawned-job identity: tests set roles with `Login` in a child the test starts - the second row's part (b); the same deferred item.
+  - `[low]` `[reject]` The turn view names the refusal by a code-only sentence, not the specific pair - AD-39 recomputes a turn error's reason from its code; the pair is on the provider fault and Test connection's answer, which Task 5 specifies.
+  - `[false]` `[reject]` The `{` gate's shared reach - the same as the ninth row.
+  - `[false]` `[reject]` `Exists` opens the secret inside the vendor, and no test covers a pre-check that passes while the vendor then refuses - Task 4 prescribes `Exists` and measured it; the code names none of the banned methods; a vendor refusal after the pre-check lands in the catch the first row's test now pins.
+  - `[false]` `[reject]` `Error.cls` is edited though the intent says add no code to it - the edit is dispatch arms and one reworded sentence (Task 1); no parameter or code was added, and the arm in `ReasonForTurnError` is the same kind.
+
+
 ## Design Notes
 
 **Governing ADs:** AD-7, 8, 9, 10, 22, 29, 35, 37, 39, 42, 48 and 53.
@@ -138,9 +168,47 @@ Under `src/OcuPilot/` at `a1bd51d3`.
 
 every test added or changed passes on a fresh environment, in either order
 
-**Mutations (Rule 19):** per test above; implement records each here as `mutation: <change> -> <test red>` once observed.
+**Run (implement, `ocupilot-ci`, all green on the restored tree):** `WalletRung` 5, `WalletRungWire` 7, `ProviderSecret` 1, `CredentialOwnership` 9, `AgentRules` 20; unchanged and green: `AgentCredential` 17, `CredentialRepoint` 2, `CredentialRungOffer` 8, `AgentConnection` 20, `ProviderPort` 20, `DefinitionsFaults` 3, `AgentViolation` 8. Page spec 67 (the component suite read 3,088 before the review pass added one test), `definitions.browser-spec.mjs` 11, `check-objectscript.py` 0 problems, `lint-docs.sh` 0. `npm run test:tools` 1,986 of 1,986 (`scripts/ci-throwaway.sh` gained one roster row, `# classes: WalletRung`, in the `OCUPILOT_ALLOW_PRINCIPALS` block; add-only beside Epic 20's rows).
+
+**Sizes (fresh `npm run build`):** initial total 1.92 MB, under the 1992 kB warning; largest lazy chunk `data-browser-page` 83.32 kB, under the 88 kB cap; `definition-form-page` 28.70 kB. Fixed strings: the test's own count reads 3,375 (3,372 before this story), bound 3,800 unchanged.
+
+**Mutations (Rule 19):** each applied on `ocupilot-ci` (the mutated class recompiled with its descendants for `Base`), observed red, reverted byte-identical.
+
+- mutation: `Ladder.Wallet` skips the use-resource check -> `WalletRung.TestACallerWithoutThePairIsRefusedBeforeAnyRead` red.
+- mutation: `Ladder.Wallet` skips the custom-use check -> the same test red, on the `AccessDenied` count.
+- mutation: `Ladder.Wallet` answers `""` -> `WalletRung` C1, C3 and C6 red; `WalletRungWire` integration and brace tests red; `ProviderSecret` red (its wallet leg no longer reaches the stub).
+- mutation: `Ladder.Wallet` answers an absent secret as transient -> `WalletRung.TestAnAbsentOrNonKeyValueSecretIsAnAbsentReference` red; `WalletRungWire.TestAnAbsentSecretFaultsTheCredentialAndDisablesTheDefinition` red.
+- mutation: a second `GetSecretValue` in `Ladder.Wallet` -> `WalletRung.TestTheUseRowIsWrittenOnlyWhileTheEventIsOn` red (two rows).
+- mutation: drop the `{` term from `Base.Invoke`'s shape gate -> `WalletRungWire.TestAValueThatOpensWithABraceSendsNoRequest` red; it is driven on the prefix-less `gemini` row, because the `sk-ant-` row refuses a brace value on its prefix alone and stayed green.
+- mutation: `Base.Invoke` ignores the ladder's refusal -> `WalletRungWire.TestARefusalNamesThePairAndLeavesTheDefinitionEnabled` red.
+- mutation: drop the `WALLETRUNG.KEYSTORE` arm of `CredentialRefusal` -> `WalletRungWire.TestAKeyPostedToAWalletDefinitionIsRefusedAndNothingIsWritten` red (and left a credential entry, which the teardown now removes).
+- mutation: drop the `wallet` arm of `CredTypeAccepted` -> `WalletRungWire` save and store tests red.
+- mutation: drop the `WALLETRUNG.` arm of `Error.ReasonForViolation` -> `WalletRung.TestEveryCodeHasASentenceAndAStatus` red.
+- mutation: drop the type term from `HandleUpdate`'s clear condition -> `CredentialOwnership.TestMovingOffTheCredentialsRungRemovesTheOwnedEntryAndOwnsNothing` red.
+- mutation: drop the type term from `GuardedUpdate`'s mark reset -> the same test red.
+- mutation: drop the wallet exclusion from `GuardedIdsByCredentialName` -> the same test red.
+- mutation: bind the resolved key to a local in `Base.Invoke` on the wallet path -> `ProviderSecret.TestNoCredentialMaterialReachesTheLogsOrTheEnvelope` red on the wallet leg's two forced entries alone.
+- mutation: `setWallet` never moves `credType` to `wallet` -> five page-spec tests red and the browser spec red (bundle rebuilt and redeployed).
+- mutation: drop `!this.walletMode()` from the credential post guard -> the page spec's Test connection test red.
+- mutation: drop the wallet keep from `applyProviderDefaults` -> the page spec's provider-change test red.
+- mutation: drop `setWallet(false)` from `onNoKey` -> the same exclusivity test red.
+- mutation: the catch in `Ladder.Wallet` leaves `pTransient` 0 -> `WalletRungWire.TestAWalletThatCouldNotBeReadLeavesTheDefinitionEnabled` red.
+- mutation: `AgentRules.Validate` skips the wallet name rule -> `WalletRungWire.TestASaveStoresTheRungAndTheNameAndRefusesAMalformedOne` red.
+- mutation: the wallet name bound in `AgentRules.Validate` becomes 129 -> the same test red.
+- mutation: `AgentRules.Normalize` stops clearing `envVarName` for `wallet` -> the same test red.
+- mutation: `WalletRung`'s C6 test never turns `WalletSecretUse` off -> `WalletRung.TestTheUseRowIsWrittenOnlyWhileTheEventIsOn` red on the off leg.
+- mutation: `setProvider` stops skipping `credentialName` in wallet mode -> the page spec's "a refused secret name keeps its reason across a provider change" red.
+
+**Manual check (implement, `ocupilot-ci`):** the Anthropic key from `.env.local`, read at the point of use and handed to the container through the environment, stored in a probe wallet secret (`OcuPilotProbe1841.live`, all uses); a probe `wallet` definition on `claude-haiku-5-5` created over the wire (201); Test connection answered 200 in 1,036 ms with no fault and left the definition `connectionVerified`; the response carried no `sk-ant` token. The definition, the secret, the collection and the probe resource were then removed, and the throwaway reads S0 (`WalletSecretUse` off, wallet collections `OcuPilotDemo` only, no 1841-named role, resource, user or definition). The key was printed and written nowhere.
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+- **Implemented:** the `wallet` credential rung. `Ladder.Wallet` lists the secret and its collection, checks the use resource or `%Admin_Wallet:USE` and custom use, then makes one `GetSecretValue` returned straight onto `Base.ApiKey`; refusals are `WALLETRUNG.USE` and `.USAGE` (pair named, definition left enabled), an absent or non-key-value secret is `PROVIDER.CREDENTIAL`, a value beginning `{` is `PROVIDER.KEYSHAPE`. The save rules, the store-route refusal, the ownership reset on leaving `creds`, and the Definition form's checkbox and Wallet secret field are in.
+- **Files:** `Api/WalletRungError.cls` (new codes), `Api/Error.cls` (dispatch arms), `Api/Definitions.cls`, `Kernel/AgentRules.cls`, `Kernel/State/Agent.cls`, `Kernel/Secret/Ladder.cls`, `Kernel/Provider/Base.cls`; tests `WalletRung`, `WalletRungWire`, `WalletRungProbe`, `SecretWalletRefusal` (new), `ProviderSecret`, `CredentialOwnership`, `ProviderStub`, `AgentRules`; client `definition-form.store.ts`, `definition-form.page.ts`, `strings.ts` and their specs, `definitions.browser-spec.mjs`; EXPERIENCE.md :335 in place; one roster row in `scripts/ci-throwaway.sh`.
+- **Review:** 16 findings: 1 medium and 4 low patched, 1 deferred (the jobbed-process and real-refusal chain, `maybe-false`), the rest rejected with reasons in the triage log.
+- **Follow-up review recommended:** false (patched: 1 medium, 4 low).
+- **Verification:** `ocupilot-ci` runs green after the patches: `WalletRung` 5, `WalletRungWire` 7, `ProviderSecret` 1; before them `CredentialOwnership` 9, `AgentRules` 20 and the seven unchanged sweep classes. `npm run test:tools` 1,986, page spec 67, `definitions.browser-spec.mjs` 11, `npm run build` (initial 1.92 MB, `data-browser-page` 83.32 kB), `check-objectscript.py` and `lint-docs.sh` 0 problems; the live Test connection on `claude-haiku-5-5` verified; the throwaway reads S0.
+- **Residual risks:** the deferred item above; `WalletSecretUse` is off in the stock event set, so the rung writes no per-use row unless an operator turns it on (AD-7).

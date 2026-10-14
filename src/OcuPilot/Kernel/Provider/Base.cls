@@ -205,8 +205,14 @@ Method Invoke(ByRef pValues, ByRef pMessages, ByRef pTools, pSystemPrompt As %St
             ; local, because a local is what an ^%ETN entry captures (AD-48). The ladder's transient
             ; flag is a boolean and carries no text, so binding it is safe; it selects the code, so a
             ; store that could not be read is told apart from a reference that holds nothing.
-            Set ..ApiKey = $ClassMethod(..ResolvedSecretClass(), "Resolve", $Get(pValues("credType")), $Get(pValues("envVarName")), $Get(pValues("credentialName")), .tTransient)
+            Set ..ApiKey = $ClassMethod(..ResolvedSecretClass(), "Resolve", $Get(pValues("credType")), $Get(pValues("envVarName")), $Get(pValues("credentialName")), .tTransient, .tRefusal)
             If ..ApiKey = "" {
+                ; A refusal is the wallet rung declining to read a secret that exists, so it is told
+                ; apart from an absence and from an unreadable store, and it carries the pair.
+                If $ListValid($Get(tRefusal)) && ($ListLength(tRefusal) = 2) {
+                    Do ..FaultRefused($List(tRefusal, 1), $List(tRefusal, 2), .pFault, .pHttpStatus)
+                    Quit
+                }
                 Set tCode = $Select(+$Get(tTransient): ##class(OcuPilot.Api.Error).#PROVIDERCREDENTIALSTORE, 1: ##class(OcuPilot.Api.Error).#PROVIDERCREDENTIAL)
                 Do ..Fault(tCode, ..CredentialReason(.pValues, tCode), "", .pFault, .pHttpStatus)
                 Quit
@@ -225,7 +231,9 @@ Method Invoke(ByRef pValues, ByRef pMessages, ByRef pTools, pSystemPrompt As %St
         ; Any other source -- none, or one this class does not declare -- carries no key, so there
         ; is nothing to gate and ApplyAuth sends no key header.
         If (tKeySource = ..#KEYSOURCESTORED) || (tKeySource = ..#KEYSOURCEBODY) {
-            If '..IsApiKeyShapeValid() {
+            ; A value that opens with a brace is a wallet secret with several members, not a key, and
+            ; the whole of it would otherwise be sent as one.
+            If ($Extract(..ApiKey) = "{") || '..IsApiKeyShapeValid() {
                 Do ..Fault(##class(OcuPilot.Api.Error).#PROVIDERKEYSHAPE, ..KeyShapeReason(), "", .pFault, .pHttpStatus)
                 Quit
             }
@@ -705,6 +713,18 @@ ClassMethod Fault(pCode As %String, pReason As %String = "", pProviderText As %S
     Do pFault.%Set("detail", tDetail)
 }
 
+/// <p>Build the wire fault for a wallet rung refusal, <var>pCode</var> being a
+/// <code>WALLETRUNG.*</code> code and <var>pPair</var> the <code>resource:permission</code> pair the
+/// caller lacks: the sentence names the pair, and <code>detail.failedPair</code> carries it
+/// (AD-8).</p>
+ClassMethod FaultRefused(pCode As %String, pPair As %String, Output pFault As %DynamicObject, Output pHttpStatus As %Integer)
+{
+    Do ..Fault(pCode, ##class(OcuPilot.Api.WalletRungError).ReasonFor(pCode, pPair), "", .pFault, .pHttpStatus)
+    Set tDetail = {}
+    Do tDetail.%Set("failedPair", pPair, "string")
+    Do pFault.%Set("detail", tDetail)
+}
+
 /// <p>The numeric status a route answers <var>pCode</var> with. A failure of the upstream provider
 /// is a gateway failure (502); a failure of this instance's own configuration is 503; a provider
 /// that did not answer in time -- within its per-call timeout, or within Test connection's
@@ -719,6 +739,7 @@ ClassMethod HttpFor(pCode As %String) As %Integer
     If pCode = ##class(OcuPilot.Api.Error).#PROVIDERCREDENTIALSTORE Quit 503
     If pCode = ##class(OcuPilot.Api.Error).#PROVIDERKEYSHAPE Quit 503
     If pCode = ##class(OcuPilot.Api.Error).#PROVIDERTLS Quit 503
+    If $Extract(pCode, 1, 11) = "WALLETRUNG." Quit ##class(OcuPilot.Api.WalletRungError).HttpFor(pCode)
     Quit 502
 }
 
@@ -743,6 +764,7 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ##class(OcuPilot.Api.Error).#PROVIDERTESTTIMEOUTLOCAL Quit ..#REASONTESTTIMEOUTLOCAL
     If pCode = ##class(OcuPilot.Api.Error).#PROVIDERDECLINED Quit "The model declined to answer this request"
     If pCode = ##class(OcuPilot.Api.Error).#PROVIDERTOOLCALLFAILED Quit "The model could not make a valid tool call. Try again, or rephrase the request."
+    If $Extract(pCode, 1, 11) = "WALLETRUNG." Quit ##class(OcuPilot.Api.WalletRungError).ReasonFor(pCode)
     Quit "The provider call did not complete"
 }
 

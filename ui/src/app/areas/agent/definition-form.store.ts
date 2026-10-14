@@ -101,6 +101,13 @@ export const CRED_TYPE_ENV = 'env';
 export const CRED_TYPE_NONE = 'none';
 
 /**
+ * The `credType` that reads the key from a key-value secret in the IRIS wallet, named in
+ * `credentialName` as `collection.secret` (`OcuPilot.Kernel.AgentRules.CREDTYPEWALLET`). OcuPilot
+ * stores no key for it: the Secrets screen owns the secret, and no key is sent from this form.
+ */
+export const CRED_TYPE_WALLET = 'wallet';
+
+/**
  * The fields the provider cascade rewrites that the form renders **no control for**.
  *
  * They are sent in every body and the server refuses on them by name (`AGENT.CREDNAME.*`,
@@ -108,7 +115,7 @@ export const CRED_TYPE_NONE = 'none';
  * them, so `dropStaleViolation` can never run on either. `setProvider` clears them itself.
  *
  * `envVarName` is rendered in env mode (`envMode()`), and is then treated like any other rendered
- * field.
+ * field. `credentialName` is rendered in wallet mode (`walletMode()`) and treated the same way.
  */
 const CASCADE_ONLY_FIELDS: readonly string[] = ['credentialName', 'envVarName'];
 
@@ -282,6 +289,12 @@ export class DefinitionForm {
 
   private keyValue = '';
 
+  /**
+   * The rung `credType` held when the wallet checkbox was ticked, restored when it is unticked. Held
+   * here because the buffer is the only record of it once `credType` has moved to `wallet`.
+   */
+  private walletHeldCredType: string = CRED_TYPE_CREDS;
+
   /** Bumped per issued request, so a late answer to a form the user has left is dropped. */
   private generation = 0;
 
@@ -357,6 +370,15 @@ export class DefinitionForm {
    */
   admissibleCredType(credType: string): string {
     return this.envMode() && credType === CRED_TYPE_CREDS ? CRED_TYPE_ENV : credType;
+  }
+
+  /**
+   * Whether the definition reads its key from a wallet secret: `credentialName` is then the
+   * secret's name and a rendered field, the key field is not offered, and no key is stored from
+   * this form.
+   */
+  walletMode(): boolean {
+    return this.value('credType') === CRED_TYPE_WALLET;
   }
 
   /** The catalog row for the provider now selected, or `null`. */
@@ -507,6 +529,7 @@ export class DefinitionForm {
     this.openedByGateValue = false;
     this.gateArrivalPending = false;
     this.keyValue = '';
+    this.walletHeldCredType = CRED_TYPE_CREDS;
     this.formDirty.reset();
     this.notify();
   }
@@ -580,6 +603,42 @@ export class DefinitionForm {
   }
 
   /**
+   * Tick or untick "Read the key from a wallet secret".
+   *
+   * Ticking holds the rung `credType` was on, moves it to `wallet`, empties `credentialName` for the
+   * secret's name and drops a key typed before the tick: the key field is not offered in wallet
+   * mode, and a hidden key would keep the leave guard standing over a value nobody can see. Unticking
+   * restores the held rung -- never `creds` in env mode, never `none` on a provider that no longer
+   * licenses it -- and `credentialName` and `envVarName` to the catalog row's defaults where they are
+   * empty, because the wallet secret's name is not a credential entry's.
+   */
+  setWallet(on: boolean): void {
+    if (on === this.walletMode()) return;
+    const row = this.provider();
+    if (on) {
+      this.walletHeldCredType = this.value('credType');
+      this.buffer = { ...this.buffer, credType: CRED_TYPE_WALLET, credentialName: '' };
+      this.keyValue = '';
+      this.clearFieldViolation('apiKey');
+    } else {
+      const held =
+        this.walletHeldCredType === CRED_TYPE_NONE && row?.allowsLocal !== true
+          ? CRED_TYPE_CREDS
+          : this.walletHeldCredType;
+      this.buffer = {
+        ...this.buffer,
+        credType: this.admissibleCredType(held),
+        credentialName: row?.defaultCredentialName ?? '',
+        envVarName: this.value('envVarName') !== '' ? this.value('envVarName') : (row?.defaultEnvVarName ?? ''),
+      };
+    }
+    this.clearFieldViolation('credType');
+    this.clearFieldViolation('credentialName');
+    this.markDirty();
+    this.notify();
+  }
+
+  /**
    * Choose a provider, cascading that catalog row's canonical values into the model, endpoint,
    * maximum tokens, temperature and the two credential-naming fields (AD-5: the catalog is the one
    * table). The cascade overwrites whatever those fields held, because the row it came from no
@@ -596,6 +655,7 @@ export class DefinitionForm {
     // them, which is where they can see what replaced the value.
     for (const field of CASCADE_ONLY_FIELDS) {
       if (field === 'envVarName' && this.envMode()) continue;
+      if (field === 'credentialName' && this.walletMode()) continue;
       this.clearFieldViolation(field);
     }
     this.markDirty();
@@ -749,8 +809,9 @@ export class DefinitionForm {
       this.publishChange('created');
     }
 
-    // Env mode stores no key: the operator sets the variable on the host (FR-26).
-    if (this.keyValue !== '' && !this.envMode()) {
+    // Env mode stores no key: the operator sets the variable on the host (FR-26). Wallet mode stores
+    // none either: the Secrets screen owns the secret.
+    if (this.keyValue !== '' && !this.envMode() && !this.walletMode()) {
       const sentToStore = this.snapshotValues();
       const stored = await this.post(
         `${AGENT_DEFINITIONS_PATH}/${encodeURIComponent(this.idValue)}/credential`,
@@ -936,7 +997,8 @@ export class DefinitionForm {
       next['maxTokens'] = String(row.canonicalMaxTokens);
       // A row that declares no canonical temperature leaves the field empty, which saves unset.
       next['temperature'] = row.canonicalTemperature === null ? '' : String(row.canonicalTemperature);
-      next['credentialName'] = row.defaultCredentialName;
+      // A wallet secret's name is the operator's own and belongs to no provider, so the cascade keeps it.
+      if (!this.walletMode()) next['credentialName'] = row.defaultCredentialName;
       next['envVarName'] = row.defaultEnvVarName;
       // The three local-model fields are licensed by the row's own `allowsLocal`, and the form
       // renders their controls only for a row that sets it -- so a cascade onto a row that does

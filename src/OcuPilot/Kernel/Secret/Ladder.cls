@@ -11,12 +11,15 @@
 /// survives intact; what it buys is that a locked row, or a store that raised, is no longer
 /// indistinguishable from a reference nothing holds -- the confusion that let a transient fault
 /// disable a working definition.</p>
-/// <p><b>Both rungs ship.</b> <code>env</code> reads an environment variable and answers in any
+/// <p><b>Three rungs ship.</b> <code>env</code> reads an environment variable and answers in any
 /// namespace; <code>creds</code> reads an <code>Ens.Config.Credentials</code> row and answers only
-/// where the rung is reachable, <code>""</code> otherwise. <method>Store</method> and
-/// <method>Clear</method> are the write paths, and they exist only for the <code>creds</code>
-/// rung: <class>%SYSTEM.Util</class> publishes <method>GetEnviron</method> and no setter, so the
-/// <code>env</code> rung's store is the operating system and the operator owns it.</p>
+/// where the rung is reachable, <code>""</code> otherwise; <code>wallet</code> reads a key-value
+/// secret from the IRIS wallet in the caller's own process, after checks that read no value
+/// (<method>Wallet</method>). <method>Store</method> and <method>Clear</method> are the write paths,
+/// and they exist only for the <code>creds</code> rung: <class>%SYSTEM.Util</class> publishes
+/// <method>GetEnviron</method> and no setter, so the <code>env</code> rung's store is the operating
+/// system and the operator owns it, and the <code>wallet</code> rung's store is the Secrets
+/// screen.</p>
 /// <p><b><parameter>CREDSCLASS</parameter> is named through <code>$ClassMethod</code> and
 /// late-bound property access, never <code>##class(...)</code></b>, so the tree compiles on an
 /// edition without Interoperability -- which is what CI's <code>images</code> leg does. The one
@@ -43,6 +46,18 @@ Parameter INTEROPFEATURE As %Integer = 1;
 /// <p>The subsystem <method>Store</method>'s and <method>Clear</method>'s log lines are written
 /// under.</p>
 Parameter LOGSUBSYSTEM = "agent-credential";
+
+/// <p>The one wallet secret type the <code>wallet</code> rung reads.</p>
+Parameter WALLETKEYVALUETYPE = "%Wallet.KeyValue";
+
+/// <p>The resource and permission that let a caller use every wallet secret.</p>
+Parameter WALLETADMINRESOURCE = "%Admin_Wallet";
+
+Parameter WALLETADMINPERMISSION = "USE";
+
+/// <p>The bit of a key-value secret's <code>Usage</code> that permits custom use, which is what a
+/// caller without <code>%Admin_Wallet:USE</code> reads a value by.</p>
+Parameter WALLETCUSTOMUSAGE As %Integer = 8;
 
 /// <p><method>Clear</method>'s outcome: the entry was there and is gone.</p>
 Parameter CLEARREMOVED = "removed";
@@ -81,12 +96,22 @@ Parameter CLEARFAILED = "failed";
 /// no such entry, or an empty value. The <code>env</code> arm reports 0 always: an environment
 /// variable that is not set and one set to nothing are the same state, and there is no store to
 /// fail.</p>
-ClassMethod Resolve(pCredType As %String, pEnvVarName As %String = "", pCredentialName As %String = "", Output pTransient As %Boolean) As %String
+/// <p><var>pRefusal</var> is <code>$ListBuild(code, pair)</code> when the <code>wallet</code> arm
+/// declined to read a secret that exists, and <code>""</code> otherwise: the
+/// <code>WALLETRUNG.*</code> code and the <code>resource:permission</code> pair the caller lacks.
+/// A refusal is not an absence and not a store failure (<var>pTransient</var> is 0), so a caller
+/// that finds the answer <code>""</code> reads <var>pRefusal</var> first.</p>
+ClassMethod Resolve(pCredType As %String, pEnvVarName As %String = "", pCredentialName As %String = "", Output pTransient As %Boolean, Output pRefusal As %List) As %String
 {
     Set pTransient = 0
+    Set pRefusal = ""
     If pCredType = ##class(OcuPilot.Kernel.AgentRules).#CREDTYPEENV {
         If pEnvVarName = "" Quit ""
         Quit ..Environment(pEnvVarName)
+    }
+    If pCredType = ##class(OcuPilot.Kernel.AgentRules).#CREDTYPEWALLET {
+        If pCredentialName = "" Quit ""
+        Quit ..Wallet(pCredentialName, .pTransient, .pRefusal)
     }
     If pCredType '= ##class(OcuPilot.Kernel.AgentRules).#CREDTYPECREDS Quit ""
     If pCredentialName = "" Quit ""
@@ -269,6 +294,129 @@ ClassMethod Credential(pName As %String, Output pTransient As %Boolean) As %Stri
         Return ""
     }
     Quit ""
+}
+
+/// <p>The value of the key-value wallet secret <var>pName</var>, <code>collection.secret</code>, or
+/// <code>""</code> -- read in the caller's own process, after checks that read no value, in this
+/// order (AD-8, AD-42):</p>
+/// <ol>
+/// <li>The wallet lists exactly one <parameter>WALLETKEYVALUETYPE</parameter> secret by that name.
+/// Otherwise the answer is <code>""</code> and <var>pTransient</var> is 0: the reference names
+/// nothing, whether the secret is absent or of another type.</li>
+/// <li>The caller holds the use resource of the secret's collection or
+/// <code>%Admin_Wallet:USE</code>. Otherwise <var>pRefusal</var> is
+/// <code>WALLETRUNG.USE</code> with the use resource.</li>
+/// <li>Without <code>%Admin_Wallet:USE</code>, the secret allows custom use
+/// (<parameter>WALLETCUSTOMUSAGE</parameter>). Otherwise <var>pRefusal</var> is
+/// <code>WALLETRUNG.USAGE</code> with <code>%Admin_Wallet:USE</code>.</li>
+/// <li>One <method>%Wallet.KeyValue.GetSecretValue</method>, returned straight.</li>
+/// </ol>
+/// <p>Both queries answer every principal and write no audit row, and a refusal precedes the vendor
+/// read, so a refused call writes no <code>AccessDenied</code> row. A raise anywhere is a failure of
+/// the store: <var>pTransient</var> is 1 and the answer <code>""</code>, and the log carries the vendor
+/// status's codes alone.</p>
+/// <p><b>The value is returned from the vendor call without a named local</b> and the vendor method is
+/// called once, which is why no <code>$Char(0)</code> normalization happens here: a one-character
+/// sentinel is not shaped like a key and the shape gate refuses it.</p>
+ClassMethod Wallet(pName As %String, Output pTransient As %Boolean, Output pRefusal As %List) As %String
+{
+    Set pTransient = 0
+    Set pRefusal = ""
+    Try {
+        If ('$Match(pName, ##class(OcuPilot.Kernel.AgentRules).#WALLETNAMEPATTERN)) || ($Length(pName) > ##class(OcuPilot.Kernel.AgentRules).#MAXWALLETNAMELENGTH) Return ""
+        If '..WalletListsKeyValue(pName) Return ""
+        Set tUsePair = ..WalletUsePair($Piece(pName, ".", 1))
+        If tUsePair = "" {
+            Set pTransient = 1
+            Return ""
+        }
+        Set tAdmin = $System.Security.Check(..#WALLETADMINRESOURCE, ..#WALLETADMINPERMISSION)
+        If 'tAdmin && '$System.Security.Check($Piece(tUsePair, ":", 1), $Piece(tUsePair, ":", 2)) {
+            Set pRefusal = $ListBuild(##class(OcuPilot.Api.WalletRungError).#USE, tUsePair)
+            Return ""
+        }
+        If 'tAdmin {
+            Set tAllowed = ..WalletAllowsCustomUse(pName)
+            If tAllowed < 0 {
+                Set pTransient = 1
+                Return ""
+            }
+            If 'tAllowed {
+                Set pRefusal = $ListBuild(##class(OcuPilot.Api.WalletRungError).#USAGE, ..#WALLETADMINRESOURCE _ ":" _ ..#WALLETADMINPERMISSION)
+                Return ""
+            }
+        }
+        Return ##class(%Wallet.KeyValue).GetSecretValue(pName)
+    } Catch ex {
+        Set pTransient = 1
+        Set pRefusal = ""
+        Do ..LogCodes("the wallet read raised", ex.AsStatus())
+        Return ""
+    }
+    Quit ""
+}
+
+/// <p>Whether the wallet lists a secret named exactly <var>pName</var> whose type is
+/// <parameter>WALLETKEYVALUETYPE</parameter>. Reads no value and writes no audit row. A query that
+/// fails raises.</p>
+ClassMethod WalletListsKeyValue(pName As %String) As %Boolean [ Private ]
+{
+    Set tListed = 0
+    Set tResult = ##class(%ResultSet).%New("%Wallet.Secret:List")
+    Try {
+        Set tSC = tResult.Execute($Piece(pName, ".", 1), $Piece(pName, ".", 2, *))
+        If $$$ISERR(tSC) Throw ##class(%Exception.StatusException).CreateFromStatus(tSC)
+        While tResult.Next() {
+            If (tResult.Get("Name") = pName) && (tResult.Get("Type") = ..#WALLETKEYVALUETYPE) {
+                Set tListed = 1
+                Quit
+            }
+        }
+        Do tResult.Close()
+    } Catch ex {
+        ; The query's cursor is the process's own, and one left open fails every later list in it.
+        Try { Do tResult.Close() } Catch {}
+        Throw ex
+    }
+    Quit tListed
+}
+
+/// <p>The <code>resource:permission</code> pair that guards use of the wallet collection
+/// <var>pCollection</var>, or <code>""</code> when the wallet lists no such collection or names no
+/// resource for it. A query that fails raises.</p>
+ClassMethod WalletUsePair(pCollection As %String) As %String [ Private ]
+{
+    Set tPair = ""
+    Set tResult = ##class(%ResultSet).%New("%Wallet.Collection:List")
+    Try {
+        Set tSC = tResult.Execute(pCollection)
+        If $$$ISERR(tSC) Throw ##class(%Exception.StatusException).CreateFromStatus(tSC)
+        While tResult.Next() {
+            If tResult.Get("Name") = pCollection {
+                Set tPair = tResult.Get("UseResource")
+                Quit
+            }
+        }
+        Do tResult.Close()
+    } Catch ex {
+        Try { Do tResult.Close() } Catch {}
+        Throw ex
+    }
+    Quit tPair
+}
+
+/// <p>1 when the key-value secret <var>pName</var> allows custom use, 0 when it does not, and -1 when
+/// the wallet would not open it for a caller who holds the collection's use resource. The opened
+/// object is dropped before the method returns, and nothing it holds but its usage is read.</p>
+ClassMethod WalletAllowsCustomUse(pName As %String) As %Integer [ Private ]
+{
+    Set tAllowed = -1
+    Set tSecret = ""
+    If ##class(%Wallet.Secret).Exists(pName, .tSecret) && $IsObject(tSecret) {
+        Set tAllowed = $Select($ZBoolean(tSecret.Usage, ..#WALLETCUSTOMUSAGE, 1) '= 0: 1, 1: 0)
+    }
+    Set tSecret = ""
+    Quit tAllowed
 }
 
 /// <p>Put the key <var>pBody</var> carries under <var>pField</var> into the credential entry

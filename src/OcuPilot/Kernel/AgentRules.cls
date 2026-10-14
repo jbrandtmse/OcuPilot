@@ -43,6 +43,19 @@ Parameter CREDTYPECREDS = "creds";
 /// which is the same operator decision (AD-42) -- one switch rather than two.</p>
 Parameter CREDTYPENONE = "none";
 
+/// <p>Credential type: the secret is a key-value secret in the IRIS wallet, named in
+/// <code>credentialName</code> as <code>collection.secret</code>. OcuPilot stores no key for it, and
+/// <code>envVarName</code> is cleared.</p>
+Parameter CREDTYPEWALLET = "wallet";
+
+/// <p>The shape a wallet secret's name takes: a collection name, a dot, and the secret's own name, as the
+/// vendor's <code>%Wallet.Secret.Name</code> pattern admits.</p>
+Parameter WALLETNAMEPATTERN = "^[%A-Za-z][A-Za-z0-9_-]*\.[A-Za-z0-9_.-]+$";
+
+/// <p>The longest wallet secret name a definition may carry, matching the vendor property's
+/// <code>MAXLEN</code> and <property>OcuPilot.Kernel.State.Agent.CredentialName</property>.</p>
+Parameter MAXWALLETNAMELENGTH As %Integer = 128;
+
 /// <p>The longest name a definition may carry, matching the property's own
 /// <code>MAXLEN</code>.</p>
 Parameter MAXNAMELENGTH As %Integer = 64;
@@ -64,7 +77,8 @@ Parameter MAXCREDENTIALNAMELENGTH As %Integer = 50;
 
 /// <p>Apply the XOR credential invariant: whichever of <code>envVarName</code> /
 /// <code>credentialName</code> the credential type did not select is cleared to <code>""</code>,
-/// so the ladder Story 3.3 builds is deterministic.</p>
+/// so the ladder Story 3.3 builds is deterministic. <code>wallet</code> selects <code>credentialName</code>,
+/// the secret's name, as <code>creds</code> does.</p>
 /// <p><b>This normalizes; it does not reject.</b> Sending both is never an error -- one is
 /// cleared. <code>none</code> selects neither rung, so it clears both: a keyless definition names
 /// no credential, and a reference left behind would become live again the moment the type moved
@@ -80,7 +94,7 @@ ClassMethod Normalize(ByRef pValues)
     Set tCredType = $Get(pValues("credType"))
     If tCredType = ..#CREDTYPEENV {
         Set pValues("credentialName") = ""
-    } ElseIf tCredType = ..#CREDTYPECREDS {
+    } ElseIf (tCredType = ..#CREDTYPECREDS) || (tCredType = ..#CREDTYPEWALLET) {
         Set pValues("envVarName") = ""
     } ElseIf tCredType = ..#CREDTYPENONE {
         Set pValues("envVarName") = ""
@@ -105,7 +119,7 @@ ClassMethod Normalize(ByRef pValues)
 /// <li><b>Rule 4</b> -- <code>temperature</code> empty, which leaves it to the provider, or a
 /// number 0-2. Family-blind: a stored value on a family that takes none is kept, never
 /// refused.</li>
-/// <li><b>Rule 5</b> -- <code>credType</code> one of the two declared rungs, or
+/// <li><b>Rule 5</b> -- <code>credType</code> one of the three declared rungs, or
 /// <code>none</code> on a provider whose catalog row allows local.</li>
 /// <li><b>Rule 6</b> -- <code>env</code> implies a non-empty <code>envVarName</code>, after
 /// normalization.</li>
@@ -114,6 +128,9 @@ ClassMethod Normalize(ByRef pValues)
 /// <li><b>DW-344</b> -- <code>creds</code> implies a <code>credentialName</code> of at most
 /// <parameter>MAXCREDENTIALNAMELENGTH</parameter>. <b>OcuPilot's own</b>: a longer one used to
 /// reach the credential store and fail there with a 500 naming nothing.</li>
+/// <li><b>AD-42</b> -- <code>wallet</code> implies a <code>credentialName</code> matching
+/// <parameter>WALLETNAMEPATTERN</parameter> and at most <parameter>MAXWALLETNAMELENGTH</parameter>
+/// characters, reported as <code>WALLETRUNG.NAME</code> in place of the credential entry's rules above.</li>
 /// <li><b>Rule 8</b> -- a provider whose catalog row says <code>endpointRequired</code> implies a
 /// non-empty <code>endpointUrl</code> -- <b>provider-name-free</b>, so a family that needs one is
 /// a catalog row rather than a branch here.</li>
@@ -170,6 +187,12 @@ ClassMethod Validate(ByRef pValues, pExistingId As %String = "", Output pViolati
     }
     If (tCredType = ..#CREDTYPEENV) && ($Get(pValues("envVarName")) = "") {
         Do ..Add(.pViolations, "envVarName", ##class(OcuPilot.Api.Error).#AGENTENVVARREQUIRED)
+    }
+    If tCredType = ..#CREDTYPEWALLET {
+        Set tWalletName = $Get(pValues("credentialName"))
+        If '$Match(tWalletName, ..#WALLETNAMEPATTERN) || ($Length(tWalletName) > ..#MAXWALLETNAMELENGTH) {
+            Do ..Add(.pViolations, "credentialName", ##class(OcuPilot.Api.WalletRungError).#NAME)
+        }
     }
     If tCredType = ..#CREDTYPECREDS {
         Set tCredentialName = $Get(pValues("credentialName"))
@@ -326,13 +349,14 @@ ClassMethod SchemeAccepted(pValue As %String, pMarkedLocal As %Boolean, pAllowsL
     Quit ((pCredType = ..#CREDTYPENONE) || ''pHttpAcknowledged)
 }
 
-/// <p>Whether <var>pCredType</var> is a credential type rule 5 accepts: either of the two declared
+/// <p>Whether <var>pCredType</var> is a credential type rule 5 accepts: any of the three declared
 /// rungs always, and <parameter>CREDTYPENONE</parameter> only where <var>pAllowsLocal</var> -- the
 /// provider's own catalog column -- licenses it.</p>
 ClassMethod CredTypeAccepted(pCredType As %String, pAllowsLocal As %Boolean) As %Boolean
 {
     If pCredType = ..#CREDTYPEENV Quit 1
     If pCredType = ..#CREDTYPECREDS Quit 1
+    If pCredType = ..#CREDTYPEWALLET Quit 1
     Quit ((pCredType = ..#CREDTYPENONE) && ''pAllowsLocal)
 }
 

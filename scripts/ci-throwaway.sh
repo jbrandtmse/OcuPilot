@@ -280,6 +280,7 @@ services:
       # classes: AllowedDirectoryScreen
       # classes: PermissionCheck, EffectiveUser
       # classes: LedgerSearchWire
+      # classes: WalletRung
       # classes: NamespaceWriteGate
       # The enable-interop gate class also enables interoperability on a probe namespace as its principal.
       # classes: NamespaceInteropGate

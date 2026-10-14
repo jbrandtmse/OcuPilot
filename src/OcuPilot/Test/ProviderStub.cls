@@ -49,6 +49,14 @@ ClassMethod ResetErrorLog()
     Kill ^||OcuPilotProviderStubLog
 }
 
+/// <p>Arm the stub to compare the key header every call carries with <var>pExpected</var>, and to record only whether
+/// they are equal (<code>keyMatches</code>, <method>Recorded</method>). The request's key is read inside the comparison
+/// and never named, and no recording holds it. <method>Reset</method> disarms it.</p>
+ClassMethod ArmKeyCompare(pExpected As %String)
+{
+    Set ^||OcuPilotProviderStub("keyExpected") = pExpected
+}
+
 /// <p>Queue one canned answer: the transport succeeds and reports <var>pStatus</var>,
 /// <var>pBody</var> and <var>pRetryAfter</var>. Answers are consumed in the order they are
 /// queued; the last one queued is repeated once the script runs out, so a test that queues one
@@ -245,8 +253,9 @@ Method NewRequest(ByRef pSettings) As %Net.HttpRequest
 /// <code>proxyServer</code>, <code>proxyPort</code>, <code>proxyHttps</code>,
 /// <code>proxyTunnel</code>, <code>followRedirect</code>, <code>socketTimeout</code>,
 /// <code>url</code>, <code>body</code>, <code>headerNames</code>, <code>contentType</code>,
-/// <code>servedBy</code>, <code>acceptGzip</code>, <code>readRawMode</code> or
-/// <code>streamReader</code> (1 when a chunk reader was attached).</p>
+/// <code>servedBy</code>, <code>acceptGzip</code>, <code>readRawMode</code>,
+/// <code>streamReader</code> (1 when a chunk reader was attached) or <code>keyMatches</code> (1 when
+/// <method>ArmKeyCompare</method> was armed and the key header equalled its text).</p>
 ClassMethod Recorded(pKey As %String, pCall As %Integer = 1) As %String
 {
     Quit $Get(^||OcuPilotProviderStub("call", pCall, pKey))
@@ -304,6 +313,7 @@ Method IssueHttpsPost(pRequest As %Net.HttpRequest, pUrl As %String, Output pSta
     Set ^||OcuPilotProviderStub("call", tCall, "headerNames") = ..HeaderNames(pRequest)
     Set ^||OcuPilotProviderStub("call", tCall, "contentType") = pRequest.ContentType
     Set ^||OcuPilotProviderStub("call", tCall, "body") = ..BodyOf(pRequest)
+    If $Data(^||OcuPilotProviderStub("keyExpected")) Set ^||OcuPilotProviderStub("call", tCall, "keyMatches") = (pRequest.GetHeader("x-api-key") = ^||OcuPilotProviderStub("keyExpected"))
     Do ##class(OcuPilot.Test.ProviderStubTransport).RecordStreaming(pRequest, tCall)
     Set tIndex = tCall
     If tIndex > +$Get(^||OcuPilotProviderStub("script")) Set tIndex = +$Get(^||OcuPilotProviderStub("script"))
