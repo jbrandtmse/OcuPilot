@@ -11840,3 +11840,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-41-the-wallet-credential-rung.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: EXPERIENCE.md :335 and strings.ts caption predate DW-2406; the WALLETRUNG.REQUIRETLS and ALLOWEDHOSTS refusals name their setting and remedy
 - 2026-10-14T06:41:48Z status=wontfix-accepted owner=18-41-the-wallet-credential-rung by=harvest note=reopen_if=a person reports a wallet refusal they could not trace from the form
+
+### DW-2416: IRIS defect candidate: /api/deepsee (%Api.DeepSee, %DeepSee.REST.v3) resets roles to the login roles, checks no %DeepSee_* resource, and splices caller text into MDX and SQL
+- source: spec-20-11 plan (measured), orchestrator ruling 2026-10-14 | severity: med | fix-risk: high | footprint: out-of-footprint
+- evidence: Measured at Story 20.11's plan on ocupilot-b-ci: a user holding only %DB_USER:RW read every model, term list and folder item, built and synchronized cubes and ran MDX; read in irislib %DeepSee.REST.v3 (its Info and Query routes). OcuPilot calls the classes in process instead (AD-65).
+- 2026-10-14T09:34:45Z status=decision-pending owner=burndown by=spec_gate note=owner hold 2026-10-05: IRIS defect candidate, not reported
