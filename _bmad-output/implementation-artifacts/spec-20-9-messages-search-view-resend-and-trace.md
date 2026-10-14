@@ -706,6 +706,20 @@ Every header but Other has source `<marker>Src` and target `<marker>Op`.
 - mutation: `HEADERSQL` with `%EXTERNAL(Priority)` and `%EXTERNAL(Invocation)` swapped -> `InteropMessageRead.TestTheHeaderReadsTwentyThreePropertiesInOrder` alone (its all-properties leg)
 - mutation: `StoreFullHeader` made 172,700 s ago (before the default window opens) with a header from three hours earlier already stored -> `TestEveryCriterionNarrowsAloneAndTogether` and `TestTheWindowIsTheIdRangeBetweenTheBounds`; with the fixture as written and that header stored, the class is green
 - mutation: `Set $NAMESPACE = pNamespace` removed from `ContentsText` -> the queue spec's AC4 test (its Contents leg reads the probe message in USER)
+- (QA) test file added: `src/OcuPilot/Test/InteropMessageRows.cls` (unarmed, 3 tests, green on `ocupilot-b-ci` beside `InteropMessageRead`, `InteropMessageContents`, `InteropMessageDescriptor` and `ReadTool` after the reverts below).
+- (QA) test files extended: `ui/browser/interop-messages.browser-spec.mjs` (AC5: an Operator and the Contents tab's gate), `ui/browser/interop-queue-job-actions.browser-spec.mjs` (Messages searched in USER), `ui/src/app/areas/interoperability/interop-message-contents.spec.ts` (an empty line stays a line).
+- (QA) Each mutation below was applied, observed red on `ocupilot-b-ci` (ObjectScript reloaded, client specs run on the working tree, the browser specs on the deployed bundle), and reverted with the file's sha256 equal to HEAD's.
+- (QA) mutation: `ListMessages` without its test that an end with no last header means no rows -> `InteropMessageRows.TestAWindowEndingBeforeEveryHeaderHoldsNoneAndABeginBeforeEveryHeaderOpensAtTheFirst`, alone
+- (QA) mutation: `MessageRow` reads `TimeCreated` without `LocalStamp` -> `InteropMessageRows.TestASearchRowCarriesEveryFieldItDeclaresUnderItsOwnNameAndType` (the three row lines)
+- (QA) mutation: `MessageRow` leaves the search columns `Type` and `Error` out -> `InteropMessageRows.TestASearchRowCarriesEveryFieldItDeclaresUnderItsOwnNameAndType` (the field legs and the row lines); `InteropMessageRead` (8 tests) stayed green under it, because the route and the tool answer the same missing cell
+- (QA) mutation: `InteropMessageList` offers `Defered` for `Deferred` -> `InteropMessageRows.TestEveryChoiceTheFormOffersIsOneThePortTakes` (the status list and that word); `InteropMessageDescriptor` (4 tests) stayed green under it
+- (QA) mutation: `Registry.CriteriaProblem` takes every interop endpoint as searchable -> `ReadTool.TestEveryCriteriaCorpusCaseGetsItsSentence` (the Story 20.3 case and the not-searchable case of Story 20.9); the same in `screen-mirror.mjs` (`searches = port === SOURCE_INTEROP`) -> `screen-mirror.test.mjs`' `criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declares` (it stops at the first case, the Story 20.3 one)
+- (QA) mutation: `AuditSearch.adopt` without its same-screen early return -> `audit.page.spec.ts` `a return after a Search re-runs that Search`, alone
+- (QA) mutation: `AuditPage.hasMarker` always false -> seven Audit tests of `audit.page.spec.ts` (the declared-controls, default-read, marker and arrival tests)
+- (QA) mutation: the Contents block filters out rows whose `Text` is empty -> `interop-message-contents.spec.ts` `keeps an empty line an empty line`, alone
+- (QA) mutation: `%Ens_MessageContent:USE` dropped from `InteropMessageContentsTab`'s `privileges` and `ownPrivileges` -> `interop-messages.browser-spec.mjs` AC5 (the Operator's Contents tab reads `aria-disabled` false), alone
+- (QA) mutation: `ListMessages` reads `HSCUSTOM` whatever namespace the request names -> `interop-queue-job-actions.browser-spec.mjs` `AC1 in USER` (the default read of USER lists no row and the row wait times out)
+- (QA) `mutations_demonstrated=11`.
 
 ## Auto Run Result
 

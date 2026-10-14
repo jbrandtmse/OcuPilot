@@ -16,6 +16,9 @@
  * - AC3: the Contents tab draws the XML header's indented XML with its `<&>` literal, the HL7 header's segments one to a line with
  *   the long one ending the cut, and the response's empty sentence, as text in one block no control edits.
  * - AC4's browser leg is `interop-queue-job-actions.browser-spec.mjs`'s, on a real production's queue.
+ * - AC5: an account holding the stock `%EnsRole_Operator`, which holds the viewer's pairs and not `%Ens_MessageContent:USE`, reads a
+ *   message's Header tab and finds the Contents tab listed, unavailable, naming that pair, and opening nothing. The account is
+ *   `OcuPilot.Test.InteropFloorFixture`'s, created in the test and removed after it.
  * - The three screens pass the structural checks in three themes.
  *
  * **It stores message headers and bodies in `HSCUSTOM`** through `OcuPilot.Test.InteropMessageRead`'s fixture, found by a marker
@@ -38,12 +41,14 @@ import { ROW_SELECTOR, clickRowCentre, waitForRows } from './list-spec.mjs';
 import { waitForMapAnswered } from './namespace-features.mjs';
 import { openFromSideBar, signedInAt } from './panel-spec.mjs';
 import { INVARIANTS, VIEWPORTS, assertThrowaway, collapse, compare, componentMinimums, detectScreen, readBaseline } from './structural-walk.mjs';
+import { resetRememberedState } from './preferences-reset.mjs';
 import { markerValue, runIris } from './turnprobe-spec.mjs';
 
 const config = browserConfig();
 const STRINGS = loadStrings();
 
 const FIXTURE = 'OcuPilot.Test.InteropMessageRead';
+const FLOOR_FIXTURE = 'OcuPilot.Test.InteropFloorFixture';
 const NAMESPACE = 'HSCUSTOM';
 const RUN = randomBytes(4).toString('hex');
 const MARKER = `OcuPilotProbe209${RUN}`;
@@ -373,6 +378,64 @@ test('AC3: the Contents tab draws the XML, the HL7 segments with the long one cu
     assert.ok(empty?.text.includes(STRINGS.interopMessageContentsEmpty), 'but its empty sentence');
   } finally {
     await nonePage.context.close();
+  }
+});
+
+// AC5. Mutation (Rule 19): drop `%Ens_MessageContent:USE` from `InteropMessageContentsTab`'s `privileges`, recompile the tree -> the
+// Operator's Contents tab is available and the aria-disabled leg goes red.
+test('AC5: an Operator reads the Header tab and finds the Contents tab listed, unavailable, naming %Ens_MessageContent:USE, and opening nothing', async () => {
+  const [, , hl7] = ids;
+  const password = `OcuPilotMsg${randomBytes(12).toString('hex')}Aa9`;
+  const made = runIris(config.container, [
+    `Set tSC=##class(${FLOOR_FIXTURE}).EnsurePrincipal("${password}","operator",.tUser)`,
+    'Write "OCU-MSGUSER-START:"_$Get(tUser)_":OCU-MSGUSER-END",!',
+    'Write "OCU-MSGOK-START:"_$System.Status.IsOK(tSC)_":OCU-MSGOK-END",!',
+  ]);
+  try {
+    assert.equal(markerValue(made, 'MSGOK'), '1', `the Operator principal is created: ${made}`);
+    const user = markerValue(made, 'MSGUSER');
+    assert.ok(user, `the principal has a name: ${made}`);
+    await resetRememberedState();
+    const context = await browser.createBrowserContext();
+    const page = await context.newPage();
+    page.setDefaultNavigationTimeout(config.navigationTimeoutMs);
+    await page.setViewport(VIEWPORTS.wide);
+    try {
+      await page.goto(`${config.origin}/ocupilot/interoperability/messages/document/${hl7}?ns=${NAMESPACE}`, { waitUntil: 'networkidle2' });
+      await page.waitForSelector('#ocu-signin-user', { visible: true, timeout: config.navigationTimeoutMs });
+      await page.type('#ocu-signin-user', user);
+      await page.type('#ocu-signin-password', password);
+      await page.click('.ocu-signin-card button[type="submit"]');
+      await page.waitForSelector('.ocu-detail-tabs', { timeout: config.navigationTimeoutMs });
+      await waitForMapAnswered(page, config.navigationTimeoutMs);
+      await page.waitForFunction((rowSelector) => document.querySelectorAll(rowSelector).length === 23, { timeout: config.navigationTimeoutMs }, ROW_SELECTOR);
+      const rows = await allRows(page);
+      assert.equal(Object.fromEntries(rows.map((cells) => [cells[0], cells[1]])).ID, hl7, 'the Operator reads the Header tab\'s twenty-three properties');
+      const tabs = await page.$$eval('.ocu-detail-tabs .ocu-detail-tab', (nodes) =>
+        nodes.map((node) => ({
+          route: node.getAttribute('data-route'),
+          disabled: node.getAttribute('aria-disabled'),
+          reason: node.querySelector('.ocu-detail-tab-reason')?.textContent.trim() ?? null,
+        }))
+      );
+      assert.deepEqual(
+        tabs,
+        [
+          { route: 'interoperability/messages/document', disabled: 'false', reason: null },
+          { route: 'interoperability/messages/contents', disabled: 'true', reason: STRINGS.privilegeRequiresResource.replace('<resource>', '%Ens_MessageContent:USE') },
+        ],
+        'the strip lists Header and Contents, and Contents is unavailable naming its pair'
+      );
+      await page.click('button.ocu-detail-tab[data-route="interoperability/messages/contents"]');
+      await twoFrames(page);
+      assert.equal(new URL(page.url()).pathname, `/ocupilot/interoperability/messages/document/${hl7}`, 'and a click opens nothing');
+      assert.equal(await page.$('app-interop-message-contents'), null, 'so no Contents block is drawn');
+    } finally {
+      await context.close();
+    }
+  } finally {
+    const removed = runIris(config.container, [`Write "OCU-MSGLEFT-START:"_##class(${FLOOR_FIXTURE}).RemovePrincipals()_":OCU-MSGLEFT-END",!`]);
+    assert.equal(markerValue(removed, 'MSGLEFT'), '', `the principals and their roles are gone: ${removed}`);
   }
 });
 

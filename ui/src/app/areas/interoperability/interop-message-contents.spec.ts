@@ -169,6 +169,14 @@ describe('the message Contents block', () => {
     expect(Array.from(frame.children).map((child) => child.getAttribute('data-ocu-contents'))).toEqual(['cut', 'text']);
   });
 
+  // Mutation (Rule 19): drop the rows whose `Text` is empty from `text` -> this goes red.
+  it('keeps an empty line an empty line, so the block reads as the message does', () => {
+    const page = mount();
+    page.answer(['alpha', '', 'gamma', '']);
+    expect(page.block('text')?.textContent).toBe('alpha\n\ngamma\n');
+    expect(page.block('empty')).toBeNull();
+  });
+
   // Mutation (Rule 19): drop the `descriptor` comparison from `boundHere` -> this goes red.
   it('draws the skeleton while the framework is bound to another screen', () => {
     const page = mount();
