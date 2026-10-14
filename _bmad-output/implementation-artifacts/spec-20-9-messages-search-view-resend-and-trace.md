@@ -473,6 +473,18 @@ Rework 2 (the runner's Rule 30 fresh check):
 - [x] [Smoke] `OcuPilot.Test.CriterionHints.TestEveryTextCriterionHasAHintOrIsACommaList` is red on a fresh throwaway: `interop.messages.read`'s four text criteria `source`, `target`, `bodyClass` and `session` declare no `hint` [src/OcuPilot/Screen/Descriptor/InteropMessageList.cls:60-63] -- give each a hint in the grammar the class's other tests pin (a hint names the read tool and field that answers the value; every read a hint names is registered and declares that field), run `CriterionHints` and the story's classes green, and record the mutation (drop one hint -> `CriterionHints` red).
 - [x] [Smoke] `OcuPilot.Test.Descriptor.TestEveryShippedReadShapeMatchesTheCommittedTable` was red on a fresh throwaway: the review narrowed `InteropMessageHeaderTab`'s sort to `Position` but left the committed `ReadShapes` row at `Position,Name` [src/OcuPilot/Test/Descriptor.cls:217] -- fixed by the lead in the rework commit (the row reads `sort="Position"`; `Descriptor` 60/60 green on the fresh throwaway). Confirm only.
 
+Code review 2026-10-14 (rework 2 re-review of `d934bedd..c4c88b5c`; layers `full-opus`). Both [Smoke] items are confirmed fixed: `CriterionHints` 4 (run 689) and `Descriptor` 60 (run 686) are green on `ocupilot-b-ci`.
+
+- [x] [Review][Patch] The `source` and `target` hints named `interop.items.read`, which lists one production's configured items behind `%Ens_ProductionConfig:READ`, while the criteria match any stored `SourceConfigName`/`TargetConfigName` (`EnsLib.Testing.Service`, a removed item); they now name `interop.messages.read`'s `Source` and `Target` [src/OcuPilot/Screen/Descriptor/InteropMessageList.cls:60-61]
+- [x] [Review][Patch] The `session` hint did not say the value is a whole-number id, unlike the sibling id hints [src/OcuPilot/Screen/Descriptor/InteropMessageList.cls:63]
+
+Rejected:
+
+- The hints drop the "omit it" sentence, the only sign the criteria are optional -- false: `Read.InputSchema` publishes `"required": []`.
+- The hints do not state that the value is matched whole, with no wildcard or list -- low: "spelled as <read> answers its <field>" is how the other hints state an exact value, and this diff removed the description that wrongly advertised `*` and comma lists.
+- `CriterionHints` is missing from the spec's `(loop)` list and Shared surfaces -- the fix edits the spec under review (oversized); the full sweep and CI run the class.
+- The rework ran only some of the story's classes -- false: `hint` is read only by `Read.AddCriteria`, `Registry`'s validator and `screen-mirror.mjs`, and no class the rework skipped reads a tool description.
+
 ## Spec Change Log
 
 - 2026-10-13, spec gate (runner): the orchestrator ruled Q1 A (Parts B and C are Stories 20.30 and 20.31, chartered in `epics.md` with their criteria verbatim; order 20.9, 20.30, 20.31, then 20.10) and Q2 A (no saved searches, a named limit; DW-2398 with its reopen_if). `epics.md` Story 20.9 is amended under Rule 5. The Rule 20 drafts are written (AD-62 item 15, AD-8, AD-44, AD-5).
@@ -534,6 +546,13 @@ Rework 2 (the runner's Rule 30 fresh check):
 - verdicts: 0 findings from two layers (`verification-gap`: none; `intent-alignment`: descriptive, no findings) -- high 0, medium 0, low 0, false 0, maybe-false 0
 - the four hints are the only code change; `CriterionHints` 4, `Descriptor` 60, `InteropMessageRead` 8, `InteropMessageDescriptor` 4, `ReadTool` 28 and `ToolRoundTrip` 2 green on `ocupilot-b-ci` (runs 679-684), each in its own call; `npm run test:tools` 1999 pass; `screen-mirror.mjs --check` up to date
 - the `session` mutation line stands for all four hints: the test's one per-row condition is the comma-list roster, which none of the four is on
+
+### 2026-10-14 -- Code review (rework 2 re-review)
+
+- verdicts: 10 findings from four `full-opus` layers, grouped into 2 patches (low) and 4 rejected (2 false); high 0, medium 0
+- patched: the `source` and `target` hints name `interop.messages.read`'s `Source` and `Target`; the `session` hint says "whole-number id"; mirror regenerated, `screen-mirror.mjs --check` and `screen-mirror.test.mjs` (72) green
+- `CriterionHints` 4 (run 685), `Descriptor` 60 (686), `InteropMessageDescriptor` 4 (687) green; with `answers its Source` changed to `Sender` on the throwaway's copy, `TestEveryReadAHintNamesDeclaresItsField` alone went red (run 688); restored, green (689); worktree sha256 unchanged
+- no HIGH, so the story closes
 
 ## Design Notes
 
