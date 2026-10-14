@@ -357,8 +357,7 @@ development_status:
   20-5-lookup-tables-and-business-partners: done
   20-6-testing-hosts-and-transformations: done
   20-7-the-three-embedded-vendor-editors: done
-  20-8-the-schema-viewers-and-the-production-configuration-diagram: 
-    ready-for-dev
+  20-8-the-schema-viewers-and-the-production-configuration-diagram: in-progress
   20-9-messages-search-view-resend-and-trace: ready-for-dev
   20-10-source-control-hooks: ready-for-dev
   20-11-the-analytics-rider: ready-for-dev
