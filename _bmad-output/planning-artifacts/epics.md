@@ -9377,6 +9377,10 @@ So that the screens read cleanly at every common width and say what they mean.
 - **When** this story completes
 - **Then** each has a disposition written by the ledger tool: `resolved-by` this story with the commit, or `wontfix-accepted` or `by-design` with a reason and, where a condition would reopen it, that condition.
 
+- **Given** the three entries routed to this story since its charter that its plan kept, each a CI flake in one of its area batches: DW-2163, DW-2227 and DW-2282 [AMENDED 2026-10-14, Story 23.5 spec gate, Rule 5 tier 1: the four other later routings, DW-2182, DW-2202, DW-2221 and DW-2246, are proposed for a new Story 23.11]
+- **When** this story completes
+- **Then** each has a disposition written by the ledger tool, as above.
+
 - **Given** a layout or copy entry
 - **When** it is fixed
 - **Then** a test reddens on the defect before the fix: a component spec for copy and state, or a browser spec for anything about geometry, run against a rebuilt and redeployed bundle in both themes.

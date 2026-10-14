@@ -9233,6 +9233,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: seen on the demo's empty Remote databases list; not yet checked whether other empty screens' suggestion chips show the action id the same way
 - 2026-10-02T19:02:37Z status=routed owner=range-end-cleanup by=merge_gate note=check every empty-state suggestion chip, not only this screen
 - 2026-10-07T04:26:42Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=merge_gate note=owner-approved burn-down batch (c), visible polish, 2026-10-06 (relayed by the Planner): Story 23.5
+- 2026-10-14T22:44:29Z status=resolved-by:18-46-allowed-directories-the-screen-s-add-change-and-remove owner=18-46-allowed-directories-the-screen-s-add-change-and-remove by=spec_gate note=already_fixed_at_head:data-table.ts_primaryActionLabel=actionLabel(0220d1e4);verified_by_23.5_plan_and_lead
 ### DW-1948: A document deleted after the save's PresentSet and before its PutDoc is created again by the vendor (201) (inference)
 - source: spec-19-3-the-source-editor-with-etag-conflict-detection.md | severity: low | fix-risk: med | footprint: in-epic
 - evidence: %Api.Atelier.v1.PutDoc saves when ExistsDoc is 0 whatever If-None-Match holds; the AD-34 hold orders only OcuPilot's own writers, so an outside delete inside the window is not seen
@@ -11962,3 +11963,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-20-8 code review (rework 2 re-review) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: log-viewer.spec.ts AC6 (realTimers and its 50 x 20 ms wait) repeats home.page.spec.ts:1302-1308 (pendingRealTimers, same bound and cast); the rework item required the copy and gave no reason (Rule 2); ui/src/app/testing/ holds the shared spec helpers.
 - 2026-10-14T18:19:33Z status=routed owner=burndown by=cr note=spec-forced copy (Rule 2): unify both waits as one ui/src/app/testing helper
+
+### DW-2439: Text-bearing controls and rows set a fixed height where DESIGN.md:912 makes every height outside the virtualized lists a minimum (about twenty sites, e.g. _components.scss:1001, :1548 against DESIGN.md:327, :5571), so a text-only resize clips them
+- source: spec-23-5-the-range-end-cleanup-part-5.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: Story 23.5's plan read the sites at head 6c58e1c9; DW-1392 fixes only the System Information row
+- 2026-10-14T22:44:29Z status=routed owner=burndown by=spec_gate note=sibling_of_DW-1392;proposed_for_Story_23.11_with_DW-2182,2202,2221,2246
+
+### DW-2440: The proposal card's confirm spinner (.ocu-proposal-card-confirm-spinner, _components.scss:4794) has the rotating 16px spinner's shape whose bounding box DW-2282 measured 3.3px past its box, so a structural gate may read it as overflow
+- source: spec-23-5-the-range-end-cleanup-part-5.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: inference from the shape (Story 23.5 plan); no red observed
+- 2026-10-14T22:44:29Z status=wontfix-theoretical owner=23-5-the-range-end-cleanup-part-5 by=spec_gate note=reopen_if=a_structural-gate_red_naming_.ocu-proposal-card-confirm-spinner
