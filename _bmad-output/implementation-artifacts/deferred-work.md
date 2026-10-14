@@ -11795,3 +11795,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-47-epic-18-burn-down-part-1.md | severity: low | fix-risk: med | footprint: out-of-footprint
 - evidence: Story 18.47 plan audit 2026-10-14 (code read): 109 sites in 54 Area files; Screen/Tool about 14, Api 11, Kernel 20-25 (inference); over the ruling's 10, so 18.47 fixes none
 - 2026-10-14T09:42:09Z status=routed owner=23-9-the-range-end-cleanup-part-8 by=spec_gate note=orchestrator 2026-10-14: more than about 10 sites, so one sweep entry; supersedes DW-2327
+
+### DW-2418: A turn's one PROVIDER.TLS sentence names the absent, unverified and unreadable causes but not a TLS floor below 1.2
+- source: spec-18-47-epic-18-burn-down-part-1.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Story 18.47 implement (code read): TlsReason carries REASONTLSWEAK for the call-time refusal and Test connection; Base.ReasonFor and Error.ReasonForTurnError are unchanged
+- 2026-10-14T11:29:38Z status=open owner=18-47-epic-18-burn-down-part-1 by=harvest note=two-way door: one sentence and its test; QA or code review fixes it in-story
+
+### DW-2419: The page-level selection readers and the checked-set readers outside the table's three central ones read the view key, which carries an ordinal for a repeated or empty key
+- source: spec-18-47-epic-18-burn-down-part-1.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: Story 18.47 implement and review (inference): no list with these readers repeats or empties its key; grep selection()[0] and checked() under ui/src/app
+- 2026-10-14T11:29:38Z status=wontfix-accepted owner=18-47-epic-18-burn-down-part-1 by=harvest note=reopen_if=a list whose page reads selection()[0] or checked() repeats or empties its row key
