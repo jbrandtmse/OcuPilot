@@ -773,3 +773,5 @@
 2026-10-14T08:07:17Z	Epic 20	stage_spawned	stage=epic-context spawn_at=2026-10-14T08:07:17Z model=opus agent_name=20-context-recompile-7 reason=planning_artifact_newer(20.31_gate_spine,20.16_rework)
 2026-10-14T08:12:48Z	Epic 20	epic_context_compiled	reason=planning_artifact_newer(20.31_gate) model=opus lines=195
 2026-10-14T08:12:48Z	Story 20.11	stage_spawned	stage=plan spawn_at=2026-10-14T08:12:48Z model=opus agent_name=20-11-plan-1 cycle_iteration=1 inbox=none note=planned_while_20.16_CI_runs
+2026-10-14T09:19:56Z	Story 20.16	ci_red_classified	run=38532797700 class=flake(pending_rerun) test=log-viewer.spec.ts:AC6(Live_tail_off_timer_count_12,node_22.22.3_only;Story_18.38_test) instance_shards=green(Retention_fixed) action=rerun_failed_jobs(attempt_2)
+2026-10-14T09:19:56Z	Story 20.11	story_created	spawn_at=(see_stage_spawned) model=opus agent_name=20-11-plan-1 path=_bmad-output/implementation-artifacts/spec-20-11-the-analytics-rider.md build_status=ready-for-dev(gate_pending:Q1_split_4,Q2_folder_pair) epic_context=reused incident=throwaway_license_exhausted_08:52-08:57Z(plan_probes)
