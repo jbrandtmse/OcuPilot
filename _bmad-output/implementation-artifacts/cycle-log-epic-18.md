@@ -1624,3 +1624,5 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-10-14T08:59:58Z	Epic 18	ledger_routed_planned	story=18-47-epic-18-burn-down-part-1 entries=12 excess=0 by=burndown
 2026-10-14T08:59:58Z	Epic 18	ledger_routed_planned	story=18-48-epic-18-burn-down-part-2 entries=10 excess=0 by=burndown
 2026-10-14T08:59:58Z	Epic 18	deps_hash_rerecorded	reason=burndown_inserted(18.47,18.48)
+2026-10-14T09:04:13Z	Epic 18	epic_context_compiled	reason=planning_artifact_newer(18.47,18.48_chartered) model=opus bytes=12515
+2026-10-14T09:04:13Z	Story 18.47	stage_spawned	stage=plan spawn_at=2026-10-14T09:04:13Z model=opus agent_name=18-47-burndown-1-plan-1 cycle_iteration=1 prompt=carry-2026-10-10/epic-18-r/plan-1847-prompt.md run_in_background=false throwaway=ocupilot-ci(plan_probes_allowed)
