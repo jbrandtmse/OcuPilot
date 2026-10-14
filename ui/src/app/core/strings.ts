@@ -768,6 +768,8 @@ export const STRINGS = {
   /** EXPERIENCE.md:349 */
   egressRefusalSslUnverified:
     'Provider calls need an enabled client configuration that requires the server\'s certificate.',
+  /** EXPERIENCE.md:349 */
+  egressRefusalSslWeak: 'Provider calls need a client configuration whose lowest TLS version is TLS 1.2 or later.',
   /** EXPERIENCE.md:344 */
   agentSwitchesRefusedAction: 'change the switches',
   /** EXPERIENCE.md:344 */
@@ -1769,7 +1771,7 @@ export const STRINGS = {
   walletKeySecret64Shape: 'Enter the key as base64 that decodes to 16, 24 or 32 bytes.',
   walletKeyTypeMismatch: 'This secret holds another type of key, and a secret\'s type cannot change.',
   walletKeyReplaceRsaConsequence:
-    'Replaces the whole key pair. The old private key is discarded, so data encrypted to the old public key can no longer be decrypted with this secret. An import without a private key leaves the secret with none.',
+    'Replaces the whole key pair, and a stored certificate is removed unless the import carries one. The old private key is discarded, so data encrypted to the old public key can no longer be decrypted with this secret. An import without a private key leaves the secret with none.',
   walletKeyReplaceSymmetricConsequence:
     'Replaces the key. Data encrypted with the old key can no longer be decrypted with this secret.',
   walletTypeNotKeyValue: 'This secret is not a key-value secret.',
@@ -4042,6 +4044,8 @@ export const STRINGS = {
   /** EXPERIENCE.md:377 */
   databaseResourceExisting: 'Use an existing resource',
   /** EXPERIENCE.md:377 */
+  databaseEncrypt: 'Encrypt database',
+  /** EXPERIENCE.md:377 */
   databaseGroupMounting: 'Mounting',
   /** EXPERIENCE.md:377 */
   databaseMountAtStartup: 'Mount at startup',
@@ -6015,6 +6019,21 @@ export const STRINGS = {
   /** EXPERIENCE.md:364 */
   encryptionStartupInteractiveRefusal:
     'The audit log, IRISSECURITY or IRISTEMP is encrypted, so every start must activate its key, and with Interactive a start nobody answers on the console does not finish. Keep Unattended, or turn their encryption off first.',
+  /** EXPERIENCE.md:364 */
+  encryptionStartupJournalRefusal:
+    'Journal encryption is on, or a journal file the instance still needs is encrypted, so every start must activate its key, and with Interactive a start nobody answers on the console does not finish. Keep Unattended, or turn journal encryption off and switch the journal file on Journals first.',
+  /** EXPERIENCE.md:364 */
+  encryptionStartupKmipRefusal:
+    'The audit log, IRISSECURITY or IRISTEMP is encrypted, and OcuPilot cannot check that the KMIP server is reachable and holds their keys, so a start that cannot activate them does not finish. Keep Unattended, or make this change on the classic Database Encryption page.',
+  /** EXPERIENCE.md:364 */
+  encryptionStartupKmipUnconfigured:
+    'This KMIP server has no startup key list, so it cannot activate keys at startup. Choose a server that has one, or add a startup key list to this server\'s configuration.',
+  /** EXPERIENCE.md:364 */
+  encryptionStartupKeyFileDifferent:
+    'Unattended activation already uses another key file, and the instance does not switch files while it does. Keep the key file now stored, or change it on the classic Database Encryption page.',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileChanged:
+    'This key file\'s keys changed after the activation was reviewed, so nothing was activated. Review the file\'s keys and propose the activation again.',
   /** EXPERIENCE.md:364 */
   encryptionStartupPrompt1: 'How does this instance activate its encryption keys at startup?',
   /** EXPERIENCE.md:364 */

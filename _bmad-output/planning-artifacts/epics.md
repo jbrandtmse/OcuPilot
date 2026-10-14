@@ -7901,7 +7901,7 @@ So that the stage closes with its own debt paid. [AMENDED 2026-10-14, Epic 18 bu
 - DW-1896: The LDAP editor cannot remove a configuration's last retrieved attribute through the admin API (its Security.LDAP PUT ignores LDAPAttributes []); an AD-27 named case writ (ledger; chartered by the burn-down gate 2026-10-14)
 - DW-2335: Several Stage 2 editor forms show fields no read tool answers (superservers 14, local databases 10, user copy 12), so the agent cannot read what the person sees (ledger; chartered by the burn-down gate 2026-10-14)
 - DW-2427: The encryption key-file field refusals #5022, #1219 and #1204 are still logged at severity 2, so a mistyped key-file entry raises the instance alert state (ledger; routed by cr 2026-10-14)
-- DW-2415: CI flake: log-viewer.spec.ts AC6 ('with Live tail off, nothing streams') read vi.getTimerCount() as 12, not 0, on node 22.22.3 only; fix its timer isolation (ledger; routed by lead 2026-10-14, orchestrator)
+- DW-2429: EncryptionPort answers the vendor's startup-settings refusals #1231 and #1233 as 500 INTERNAL, logged at severity 2; each maps to an unlogged field refusal beside #1217's (ledger; routed by lead 2026-10-14, orchestrator: folded beside DW-2427)
 - DW-2424: Switches saves an egress SSL/TLS configuration whose minimum TLS version is below 1.2, which every provider call then refuses; the save-time rule matches the call-time floor with one new EGRESS code (ledger; routed by lead 2026-10-14, orchestrator)
 - DW-2425: AD-10's widened-reach arm extends to web applications as DW-2322 did: enabling one that grants a privileged role, or pointing its Resource at a public one, gets the privileged-grant treatment (ledger; decided by the orchestrator 2026-10-14)
 
@@ -9537,3 +9537,25 @@ So that an out-of-range request value answers its field refusal and a test run n
 - **Given** a sweep
 - **When** it lands
 - **Then** a test reddens on a representative site before the fix, the story says how a new site written in the old form is caught or why none can be, and each sweep lands as its own batch with CI green on its own head.
+
+### Story 23.11: The range-end cleanup, part 10
+
+Chartered by the orchestrator on 2026-10-14 from five entries routed to Story 23.5 after its charter that fit neither its area batches nor the twelve-entry cap (Rule 27). The agent cannot read a large class's view at all, so that entry goes first. The others are a task-history test that reddens on a busy instance, literal shared-surface counts asserted outside their roster's own test, the browser configuration falling back to slot A's throwaway when its two variables are unset, and fixed heights that should be minimums. A slot that would otherwise sit idle runs it, ahead of Story 23.7. A CLAUDE.md line it makes stale changes only through the Planner, with the owner's OK.
+
+As a maintainer of OcuPilot,
+I want the agent able to read any class it can list, and the test harness free of counts and fallbacks that break as the product grows,
+So that a large class is readable and the suites stay green when a story adds a member or runs on another slot.
+
+**Acceptance Criteria:**
+
+- **Given** the entries re-owned to this story: DW-2246, DW-2182, DW-2202, DW-2221 and DW-2439
+- **When** this story completes
+- **Then** each has a disposition written by the ledger tool: `resolved-by` this story with the commit, or `wontfix-accepted` or `by-design` with a reason and, where a condition would reopen it, that condition.
+
+- **Given** the large-class read (DW-2246)
+- **When** it is fixed
+- **Then** the cause is measured before the fix, and a test over a class larger than the result cap reddens before the fix and passes after.
+
+- **Given** a fix to code or a test
+- **When** it lands
+- **Then** a test reddens on the defect before the fix, or the entry says why none can, and the fixes land in batches grouped by area, each with CI green on its own head.

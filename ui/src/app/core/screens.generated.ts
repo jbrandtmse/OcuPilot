@@ -27546,7 +27546,19 @@ export const SCREENS: readonly ScreenDeclaration[] = [
         "Type",
         "Roles",
         "ExpirationDate",
-        "Expired"
+        "Expired",
+        "Routine",
+        "AccountNeverExpires",
+        "AutheEnabled",
+        "ChangePassword",
+        "Comment",
+        "EmailAddress",
+        "HOTPKeyDisplay",
+        "NameSpace",
+        "PasswordNeverExpires",
+        "PhoneNumber",
+        "PhoneProvider",
+        "EscalationRoles"
       ],
       "secretFields": []
     },
@@ -27588,7 +27600,18 @@ export const SCREENS: readonly ScreenDeclaration[] = [
           "param": "name",
           "fields": [
             "Roles",
-            "ExpirationDate"
+            "ExpirationDate",
+            "AccountNeverExpires",
+            "AutheEnabled",
+            "ChangePassword",
+            "Comment",
+            "EmailAddress",
+            "HOTPKeyDisplay",
+            "NameSpace",
+            "PasswordNeverExpires",
+            "PhoneNumber",
+            "PhoneProvider",
+            "EscalationRoles"
           ],
           "derived": [
             {
@@ -27606,7 +27629,19 @@ export const SCREENS: readonly ScreenDeclaration[] = [
         "Type",
         "Roles",
         "ExpirationDate",
-        "Expired"
+        "Expired",
+        "Routine",
+        "AccountNeverExpires",
+        "AutheEnabled",
+        "ChangePassword",
+        "Comment",
+        "EmailAddress",
+        "HOTPKeyDisplay",
+        "NameSpace",
+        "PasswordNeverExpires",
+        "PhoneNumber",
+        "PhoneProvider",
+        "EscalationRoles"
       ],
       "filter": [
         "Name",

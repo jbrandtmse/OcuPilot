@@ -10,8 +10,10 @@ Class OcuPilot.Test.EgressSslProbe Extends %RegisteredObject
 /// <p>The description every probe carries, which is how one is recognised as this helper's own before it is deleted.</p>
 Parameter MARKER = "OcuPilot egress probe";
 
-/// <p>The four shapes <method>Ensure</method> makes.</p>
+/// <p>The five shapes <method>Ensure</method> makes.</p>
 Parameter VERIFIED = "verified";
+
+Parameter WEAK = "weak";
 
 Parameter NOVERIFY = "noverify";
 
@@ -22,8 +24,10 @@ Parameter SERVER = "server";
 /// <p>Create the configuration <var>pName</var> of shape <var>pKind</var>, deleting it first when it is this helper's own
 /// and refusing when it is anybody else's: a client requiring the server's certificate (<code>verified</code>), a client
 /// that does not (<code>noverify</code>), a verifying client that is disabled (<code>disabled</code>), or an enabled server
-/// with <code>VerifyPeer</code> 1 (<code>server</code>), which only its <code>Type</code> keeps from qualifying. A client's
-/// minimum TLS version is 1.2 (16), set here rather than left to the vendor's default, which the call-time check reads.</p>
+/// with <code>VerifyPeer</code> 1 (<code>server</code>), which only its <code>Type</code> keeps from qualifying; or a client
+/// requiring the server's certificate whose minimum TLS version is 1.1 (8), below the floor every provider call holds
+/// (<code>weak</code>). A client's minimum TLS version is otherwise 1.2 (16), set here rather than left to the vendor's
+/// default, which the call-time check reads.</p>
 ClassMethod Ensure(pName As %String, pKind As %String = {..#VERIFIED}) As %Status
 {
     Set tSC = ..Remove(pName)
@@ -36,7 +40,7 @@ ClassMethod Ensure(pName As %String, pKind As %String = {..#VERIFIED}) As %Statu
         Set tProps("Enabled") = (pKind '= ..#DISABLED)
         Set tProps("VerifyPeer") = (pKind '= ..#NOVERIFY)
         If tProps("VerifyPeer") = 1 Set tProps("CAFile") = "%OSCertificateStore"
-        Set tProps("TLSMinVersion") = 16
+        Set tProps("TLSMinVersion") = $Select(pKind = ..#WEAK: 8, 1: 16)
         If pKind = ..#SERVER {
             Set tProps("Ciphersuites") = ""
             Set tProps("CipherList") = "ADH:@SECLEVEL=0"

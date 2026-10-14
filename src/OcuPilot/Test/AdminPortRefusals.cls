@@ -83,6 +83,29 @@ Method TestACodeScopedEntryUnlogsItsCodeAlone()
     Do $$$AssertEquals($ClassMethod(tPort, "IsUnloggedRefusal", "ECP.DataServer", "PUT", 500, $$$ERROR(1454, "x")) _ $ClassMethod(tPort, "IsUnloggedRefusal", "ECP.DataServer", "PUT", 500) _ $ClassMethod(tPort, "IsUnloggedRefusal", "ECP.DataServer", "PUT", 500, $$$OK), "100", "a code-scoped entry needs the status that carries the code")
 }
 
+/// <p>DW-2427, DW-2429: the encryption key file's field refusals -- no readable key (#5022 on a key list), a wrong
+/// administrator password (#1219 on an added key and on an activation) and an administrator the file does not list (#1204)
+/// -- and the startup settings' refusals (#1217, #1231, #1233 on a settings write) are answers: unlogged for their
+/// own code at their own endpoint, type and status, and logged for any other code, for the same code on another type
+/// and for the same code on another status.</p>
+/// <p>Mutation (Rule 19): drop any one of the seven entries from <parameter>OcuPilot.Port.AdminPort.UNLOGGEDREFUSALS</parameter>
+/// -- its unlogged leg goes red.</p>
+Method TestTheEncryptionRefusalsAreUnloggedForTheirOwnCodeAlone()
+{
+    For tCase = $ListBuild("Security.Encryption.KeyInFile", "LIST", 5022, "POST"), $ListBuild("Security.Encryption.KeyInFile", "POST", 1219, "DELETE"), $ListBuild("Security.Encryption.File", "ACTIVATE", 1219, "POST"), $ListBuild("Security.Encryption.KeyInFile", "POST", 1204, "DELETE"), $ListBuild("Security.Encryption.Settings", "PUT", 1217, "GET"), $ListBuild("Security.Encryption.Settings", "PUT", 1231, "GET"), $ListBuild("Security.Encryption.Settings", "PUT", 1233, "GET") {
+        Set tEndpoint = $List(tCase, 1)
+        Set tType = $List(tCase, 2)
+        Set tCode = $List(tCase, 3)
+        Set tNamed = tEndpoint _ "/" _ tType _ " #" _ tCode
+        Do $$$AssertEquals(..Logged(tEndpoint, tType, 500, $$$ERROR(tCode, "x")), 0, tNamed _ " is unlogged")
+        Do $$$AssertEquals(..Logged(tEndpoint, tType, 500, $$$ERROR(tCode + 1, "x")), 1, tNamed _ ": another code on that endpoint, type and status is logged")
+        Do $$$AssertEquals(..Logged(tEndpoint, $List(tCase, 4), 500, $$$ERROR(tCode, "x")), 1, tNamed _ ": the same code on another type is logged")
+        Do $$$AssertEquals(..Logged(tEndpoint, tType, 400, $$$ERROR(tCode, "x")), 1, tNamed _ ": and on another status")
+    }
+    Do $$$AssertEquals(..Logged("Security.Encryption.File", "POST", 500, $$$ERROR(1219, "x")), 1, "a key file create refused with #1219 is logged: only the activation's is listed")
+    Do $$$AssertEquals(..Logged("Security.Encryption.Settings", "PUT", 500, $$$ERROR(1212, "x")), 1, "and #1212 on a settings write is logged")
+}
+
 /// <p>DW-2007: a SQL privilege refusal mapped by its SQLCODE (a grant on an object the instance does not hold, SQLCODE -30,
 /// answered 404 <code>SQLPRIV.NOOBJECT</code>) is a named answer: nothing reaches the log.</p>
 /// <p>Mutation (Rule 19): restore the log line to the SQLCODE-mapped branch of <method>OcuPilot.Port.AdminPort.Invoke</method>

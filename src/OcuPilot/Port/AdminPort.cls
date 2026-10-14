@@ -638,7 +638,15 @@ Parameter UNLOGGEDQUERY = "WebSession/DELETE=id";
 /// <code>Security.MFT/DELETE/500/#5809</code> is a connection deleted whose OAuth 2.0 client is already absent, which
 /// <class>OcuPilot.Port.MftPort</class> re-reads and answers done (Story 18.47). Other codes on the same endpoint,
 /// type and status stay logged.</p>
-Parameter UNLOGGEDREFUSALS = "Lock/DELETE/409,License.Key/PUT/400,Security.Encryption.AdminInFile/POST/409,Security.Encryption.AdminInFile/DELETE/409,ECP.DataServer/PUT/500/#1454,Security.MFT/DELETE/500/#5809";
+/// <p>The encryption key file's field refusals (Story 18.48, each at the endpoint, type and status measured):
+/// <code>Security.Encryption.KeyInFile/LIST/500/#5022</code> is a file with no key it can read,
+/// <code>KeyInFile/POST/500/#1219</code> and <code>File/ACTIVATE/500/#1219</code> a wrong administrator password,
+/// and <code>KeyInFile/POST/500/#1204</code> an administrator the file does not list, each mapped by
+/// <class>OcuPilot.Port.EncryptionPort</class>. <code>Security.Encryption.Settings/PUT/500</code> carries #1217
+/// (key activation at startup kept while encrypted databases need it), #1231 (a KMIP server with no startup key
+/// list) and #1233 (another Unattended key file than the stored one), each mapped to a refusal on the start mode.
+/// A failed <code>ActivateDB</code> still writes the vendor's own severity-2 line.</p>
+Parameter UNLOGGEDREFUSALS = "Lock/DELETE/409,License.Key/PUT/400,Security.Encryption.AdminInFile/POST/409,Security.Encryption.AdminInFile/DELETE/409,ECP.DataServer/PUT/500/#1454,Security.MFT/DELETE/500/#5809,Security.Encryption.KeyInFile/LIST/500/#5022,Security.Encryption.KeyInFile/POST/500/#1219,Security.Encryption.File/ACTIVATE/500/#1219,Security.Encryption.KeyInFile/POST/500/#1204,Security.Encryption.Settings/PUT/500/#1217,Security.Encryption.Settings/PUT/500/#1231,Security.Encryption.Settings/PUT/500/#1233";
 
 /// <p>The vendor's Access Denied code. A 404 carrying it is a refusal, not an absence (<method>Fail</method>).</p>
 Parameter ACCESSDENIEDCODE = 822;
@@ -725,7 +733,14 @@ Parameter VERIFIEDWRITES = "Security.Resource/PUT";
 /// through the vendor's own class when the body carries a value the admin API refuses and the class
 /// accepts, as comma-separated <code>&lt;endpoint&gt;/&lt;type&gt;=&lt;field&gt;</code> entries. It
 /// applies only when <code>&lt;field&gt;</code> is the empty string.</p>
-/// <p><code>Security.Resource/PUT=PublicPermission</code> is the one entry (AD-27 as amended
+/// <p><code>Security.LDAP/PUT=LDAPAttributes</code> is the second (AD-27 as amended 2026-10-14, Story 18.48): an
+/// attribute list that is empty or holds only blank names. The endpoint's <code>RunPut</code> keeps the stored
+/// list for <code>[]</code> and fails on <code>[""]</code> (measured), while
+/// <code>Security.LDAPConfigs.Modify</code> with an empty list clears it under the caller's own
+/// <code>%Admin_Secure:USE</code> alone (measured). <method>CompleteClearedList</method> sends the vendor
+/// <code>PUT</code> without the field and then makes that call, and <method>VerifyApplied</method> reads the list
+/// back as a set.</p>
+/// <p><code>Security.Resource/PUT=PublicPermission</code> is the first entry (AD-27 as amended
 /// 2026-09-23). The endpoint's <code>RunPut</code> normalizes the value with
 /// <code>Security.Datatype.Permission.ExternalToInternal</code>, whose answer for no permission is
 /// 0, and refuses that with a 400, so no encoding of "none" is accepted on a create or a clear;
@@ -733,7 +748,11 @@ Parameter VERIFIEDWRITES = "Security.Resource/PUT";
 /// <method>CompleteThroughClass</method> makes that call behind the endpoint's own gate and
 /// validation, and <parameter>VERIFIEDWRITES</parameter> re-reads it as it re-reads the vendor's
 /// own.</p>
-Parameter CLASSCOMPLETEDTYPES = "Security.Resource/PUT=PublicPermission";
+Parameter CLASSCOMPLETEDTYPES = "Security.Resource/PUT=PublicPermission,Security.LDAP/PUT=LDAPAttributes";
+
+/// <p>The resource <method>CompleteClearedList</method> requires at <code>USE</code> before it sends anything: the one
+/// <code>Security.LDAPConfigs.Modify</code> checks.</p>
+Parameter CLEAREDLISTRESOURCE = "%Admin_Secure";
 
 /// <p>AD-27's second named case: the <parameter>MUTATINGTYPES</parameter> writes the port completes
 /// from <b>content</b> through the vendor's own class, because the admin API names only server file
@@ -1457,6 +1476,12 @@ ClassMethod InvokeLocated(pEndpoint As %String, pType As %String, ByRef pQuery, 
                 Set tSC = ..VerifyApplied(pEndpoint, .pQuery, pBody, .pHttpStatus, .pFault)
                 If $$$ISERR(tSC) Quit
             }
+            ; CLASSCOMPLETEDTYPES: a list the class call cleared is believed only once a re-read answers it empty.
+            Set tCleared = ..ClearedListBody(pEndpoint, pType, pBody)
+            If $IsObject(tCleared) {
+                Set tSC = ..VerifyApplied(pEndpoint, .pQuery, tCleared, .pHttpStatus, .pFault)
+                If $$$ISERR(tSC) Quit
+            }
             If tComposed '= "" {
                 Set tSC = ..ComposedAnswer(pEndpoint, tComposed, $Get(tAnswer), .tShaped, .pHttpStatus, .pFault)
                 If $$$ISERR(tSC) Quit
@@ -2177,15 +2202,36 @@ ClassMethod VerifyApplied(pEndpoint As %String, ByRef pQuery, pBody As %DynamicA
 }
 
 /// <p>Whether <var>pKey</var> reads the same on the sent <var>pSent</var> and the re-read
-/// <var>pRead</var>: rendered as the proposal diff renders a value, and a
-/// <code>PublicPermission</code> compared as a set of letters, since the vendor writes the letters
-/// in its own order.</p>
+/// <var>pRead</var>: rendered as the proposal diff renders a value, a <code>PublicPermission</code>
+/// compared as a set of letters, since the vendor writes the letters in its own order, and a list as the set
+/// of its non-blank names (<method>NameSet</method>).</p>
 ClassMethod SameValue(pKey As %String, pSent As %DynamicObject, pRead As %DynamicObject) As %Boolean [ Private ]
 {
+    If pSent.%GetTypeOf(pKey) = "array" Quit (..NameSet(pSent.%Get(pKey)) = ..NameSet(pRead.%Get(pKey)))
     Set tSent = ##class(OcuPilot.Kernel.Proposal.Mint).Display(pSent.%Get(pKey), pSent.%GetTypeOf(pKey))
     Set tRead = ##class(OcuPilot.Kernel.Proposal.Mint).Display(pRead.%Get(pKey), pRead.%GetTypeOf(pKey))
     If pKey '= "PublicPermission" Quit (tSent = tRead)
     Quit (..LetterSet(tSent) = ..LetterSet(tRead))
+}
+
+/// <p>The distinct non-blank names of the array <var>pList</var>, stripped of surrounding blanks, in
+/// alphabetical order and joined by a line feed; <code>""</code> for anything but an array.</p>
+ClassMethod NameSet(pList As %DynamicAbstractObject) As %String [ Private ]
+{
+    If '$IsObject(pList) || 'pList.%IsA("%Library.DynamicArray") Quit ""
+    Kill tSeen
+    Set tIterator = pList.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tName) {
+        If (pList.%GetTypeOf(tIndex) = "string") && ($ZStrip(tName, "<>W") '= "") Set tSeen($ZStrip(tName, "<>W")) = ""
+    }
+    Set tOut = ""
+    Set tKey = ""
+    For {
+        Set tKey = $Order(tSeen(tKey))
+        If tKey = "" Quit
+        Set tOut = tOut _ $Select(tOut = "": "", 1: $Char(10)) _ tKey
+    }
+    Quit tOut
 }
 
 /// <p>The distinct letters of <var>pLetters</var>, upper-cased and in alphabetical order.</p>
@@ -2205,8 +2251,9 @@ ClassMethod LetterSet(pLetters As %String) As %String [ Private ]
 }
 
 /// <p>The field <parameter>CLASSCOMPLETEDTYPES</parameter> names for <var>pEndpoint</var>'s request
-/// type <var>pSuffix</var>, when <var>pBody</var> carries it as the empty string; otherwise
-/// <code>""</code>, and the call goes to the vendor's endpoint.</p>
+/// type <var>pSuffix</var>, when <var>pBody</var> carries it as the empty string, or as an array holding no
+/// non-blank name (<method>BlankList</method>); otherwise <code>""</code>, and the call goes to the vendor's
+/// endpoint.</p>
 ClassMethod ClassCompletedField(pEndpoint As %String, pSuffix As %String, pBody As %DynamicAbstractObject) As %String
 {
     If '$IsObject(pBody) || 'pBody.%IsA("%Library.DynamicObject") Quit ""
@@ -2219,9 +2266,38 @@ ClassMethod ClassCompletedField(pEndpoint As %String, pSuffix As %String, pBody 
         Quit
     }
     If tField = "" Quit ""
-    If pBody.%GetTypeOf(tField) '= "string" Quit ""
+    Set tType = pBody.%GetTypeOf(tField)
+    If tType = "array" Quit $Select(..BlankList(pBody.%Get(tField)): tField, 1: "")
+    If tType '= "string" Quit ""
     If pBody.%Get(tField) '= "" Quit ""
     Quit tField
+}
+
+/// <p>Whether <var>pList</var> is an array holding no non-blank name: empty, or only blank strings.</p>
+ClassMethod BlankList(pList As %DynamicAbstractObject) As %Boolean
+{
+    If '$IsObject(pList) || 'pList.%IsA("%Library.DynamicArray") Quit 0
+    Set tBlank = 1
+    Set tIterator = pList.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tEntry) {
+        If (pList.%GetTypeOf(tIndex) '= "string") || ($ZStrip(tEntry, "<>W") '= "") {
+            Set tBlank = 0
+            Quit
+        }
+    }
+    Quit tBlank
+}
+
+/// <p>The body <method>VerifyApplied</method> reads back after a write <method>CompleteClearedList</method>
+/// completed: the one field <parameter>CLASSCOMPLETEDTYPES</parameter> names, as an empty list, or
+/// <code>""</code> for any other call.</p>
+ClassMethod ClearedListBody(pEndpoint As %String, pSuffix As %String, pBody As %DynamicAbstractObject) As %DynamicObject
+{
+    Set tField = ..ClassCompletedField(pEndpoint, pSuffix, pBody)
+    If (tField = "") || (pBody.%GetTypeOf(tField) '= "array") Quit ""
+    Set tCleared = {}
+    Do tCleared.%Set(tField, [])
+    Quit tCleared
 }
 
 /// <p>AD-27's fallback for <code>Security.Resource/PUT</code> with no public permission
@@ -2290,6 +2366,60 @@ ClassMethod CompleteThroughClass(pClass As %String, pType As %Integer, ByRef pQu
             Quit
         }
         Set pHttpStatus = $Select(tCreated: 201, 1: 200)
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+        Set pHttpStatus = 500
+    }
+    If $$$ISERR(tSC) && (pHttpStatus = 0) Set pHttpStatus = 500
+    Quit tSC
+}
+
+/// <p>AD-27's third case (<parameter>CLASSCOMPLETEDTYPES</parameter>, Story 18.48): a <code>PUT</code> whose list
+/// field <var>pField</var> clears the list. The caller must hold <parameter>CLEAREDLISTRESOURCE</parameter> and
+/// the endpoint's own <code>ResourcesOR()</code> (403 otherwise, before anything is sent); the vendor's
+/// <code>PUT</code> then goes without the field, through the same sequence; and, when it is made,
+/// <code>Security.LDAPConfigs.Modify</code> in <code>%SYS</code> (AD-16) sets the list empty. A <code>PUT</code>
+/// that fails answers its own status, and a <code>Modify</code> that fails 500 with its status, or 403 when it
+/// answers Access Denied.</p>
+ClassMethod CompleteClearedList(pEndpoint As %String, pClass As %String, pType As %Integer, pField As %String, ByRef pQuery, pBody As %DynamicObject, Output pAnswer, Output pHttpStatus As %Integer, Output pLocation As %String, pMethod As %String) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pAnswer = ""
+    Set pHttpStatus = 0
+    Set pLocation = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set tEndpoint = $ClassMethod(pClass, "%New", pType, ..#APIVERSION)
+        If '$IsObject(tEndpoint) {
+            Set tSC = $Get(%objlasterror, $$$ERROR($$$GeneralError, "endpoint did not construct"))
+            Quit
+        }
+        Set tAllowed = 0
+        Set tResources = tEndpoint.ResourcesOR()
+        For tI = 1:1:$ListLength(tResources) {
+            Set tAllowed = tAllowed || ..HoldsResource($ListGet(tResources, tI))
+        }
+        If 'tAllowed || '..HoldsResource(..#CLEAREDLISTRESOURCE) {
+            Set pHttpStatus = 403
+            Quit
+        }
+        Set tName = $Get(pQuery("name"))
+        If tName = "" {
+            Set pHttpStatus = 400
+            Set tSC = $$$ERROR($$$GeneralError, "the name query parameter is required")
+            Quit
+        }
+        Set tRest = ##class(%DynamicAbstractObject).%FromJSON(pBody.%ToJSON())
+        Do tRest.%Remove(pField)
+        Set tSC = ..RunSequence(pEndpoint, pClass, pType, .pQuery, tRest, .pAnswer, .pHttpStatus, .pLocation, pMethod)
+        If $$$ISERR(tSC) || (pHttpStatus < 200) || (pHttpStatus > 299) Quit
+        Kill tProps
+        Set tProps(pField) = ""
+        Set $NAMESPACE = "%SYS"
+        Set tSC = ##class(Security.LDAPConfigs).Modify(tName, .tProps)
+        Set $NAMESPACE = tOrigNS
+        If $$$ISERR(tSC) Set pHttpStatus = $Select(..HasErrorCode(tSC, ..#ACCESSDENIEDCODE): 403, 1: 500)
     } Catch ex {
         Set $NAMESPACE = tOrigNS
         Set tSC = ex.AsStatus()
@@ -3316,7 +3446,9 @@ ClassMethod RunSequence(pEndpoint As %String, pClass As %String, pType As %Integ
     Set pLocation = ""
     Set pLines = ""
     ; AD-27's named fallback: a value the admin API refuses and the vendor class accepts.
-    If ..ClassCompletedField(pEndpoint, pMethod, pBody) '= "" Quit ..CompleteThroughClass(pClass, pType, .pQuery, pBody, .pAnswer, .pHttpStatus)
+    Set tCompleted = ..ClassCompletedField(pEndpoint, pMethod, pBody)
+    If (tCompleted '= "") && (pBody.%GetTypeOf(tCompleted) = "array") Quit ..CompleteClearedList(pEndpoint, pClass, pType, tCompleted, .pQuery, pBody, .pAnswer, .pHttpStatus, .pLocation, pMethod)
+    If tCompleted '= "" Quit ..CompleteThroughClass(pClass, pType, .pQuery, pBody, .pAnswer, .pHttpStatus)
     ; AD-27's second case: an import completed from content rather than from server file paths.
     If ..IsContentCompleted(pEndpoint, pMethod) Quit ..ImportThroughClass(pEndpoint, pClass, pType, .pQuery, pBody, .pAnswer, .pHttpStatus)
     New %request, %response, %session
@@ -3711,7 +3843,7 @@ ClassMethod Denied(pEndpoint As %String, pFailedPair As %String, pVendorSC As %S
 /// code of the vendor's internal faults too, so <class>OcuPilot.Port.SuperserverPort</class> answers it 409 only
 /// for a write that starts a listener, a create or <code>Enabled</code> turned on, and leaves any other 5001
 /// as it is.</p>
-Parameter PROPERTYFAULTS = "Device.Standard:644:OpenParameters=DEVICE.OPENPARAMETERS.SHAPE,Security.SSLConfig:726:@CipherList=SSL.CIPHERLIST.EXPANDSEMPTY,Security.SSLConfig:746:@Ciphersuites=SSL.CIPHERSUITES.UNKNOWN,Security.SSLConfig:732:@PrivateKeyPassword=SSL.PRIVATEKEYPASSWORD.WRONG,Task.CRUD:7402:@RunAsUser=TASK.RUNASUSER.REFUSED,Task.CRUD:7405:@RunAsUser=TASK.RUNASUSER.REFUSED,Task.CRUD:7406:@RunAsUser=TASK.RUNASUSER.REFUSED,Task.CRUD:7404:@DailyIncrement=TASK.DAILYINCREMENT.REFUSED,Task.CRUD:7408:@DailyEndTime=TASK.DAILYENDTIME.REFUSED,Task.CRUD:7409:@EndDate=TASK.ENDDATE.REFUSED,Task.CRUD:7410:@TimePeriodDay=TASK.TIMEPERIODDAY.REFUSED,Task.CRUD:7426:@TimePeriodDay=TASK.TIMEPERIODDAY.REFUSED,Task.CRUD:7428:@TimePeriodDay=TASK.TIMEPERIODDAY.REFUSED,Task.CRUD:7411:@OutputFilename=TASK.OUTPUTFILENAME.REFUSED,Task.CRUD:7412:@OutputFilename=TASK.OUTPUTFILENAME.REFUSED,Task.CRUD:7413:@TaskClass=TASK.TASKCLASS.REFUSED,Task.CRUD:7414:@TaskClass=TASK.TASKCLASS.REFUSED,Task.CRUD:7433:@TaskClass=TASK.TASKCLASS.REFUSED,Task.CRUD:7434:@TaskClass=TASK.TASKCLASS.REFUSED,Task.CRUD:7427:@TimePeriodEvery=TASK.TIMEPERIODEVERY.REFUSED,Task.CRUD:7429:@TimePeriodEvery=TASK.TIMEPERIODEVERY.REFUSED,Task.CRUD:7430:@DailyFrequencyTime=TASK.DAILYFREQUENCYTIME.REFUSED,Task.CRUD:7431:@RunAfterGUID=TASK.RUNAFTERGUID.REFUSED,Task.CRUD:7432:@StartDate=TASK.STARTDATE.REFUSED,Security.OAuth2.ServerClients:8863:@Metadata.grant_types=OAUTH.CLIENTGRANTTYPES.UNSUPPORTED,Security.OAuth2.ServerClients:8886:@ClientCredentials=OAUTH.SERVERCLIENTCREDENTIALS.ABSENT,Security.OAuth2.ServerClients:8864:@=OAUTH.SERVERCLIENTCONFIG.ABSENT,Namespace.Namespace:457:@Name=NAMESPACE.NAME.SHAPE,Namespace.Namespace:7201:@Name=NAMESPACE.NAME.SHAPE,Namespace.GlobalMappings:5854:@Name=MAPPING.NAME.SHAPE,Namespace.GlobalMappings:448:@Name=MAPPING.NAME.SHAPE,Namespace.RoutineMappings:5854:@Name=MAPPING.NAME.SHAPE,Namespace.RoutineMappings:448:@Name=MAPPING.NAME.SHAPE,Namespace.PackageMappings:5854:@Name=MAPPING.NAME.SHAPE,Namespace.PackageMappings:448:@Name=MAPPING.NAME.SHAPE,Namespace.GlobalMappings:655:@Name=MAPPING.NAME.SHAPE,Namespace.GlobalMappings:217:@Name=MAPPING.NAME.SHAPE,Namespace.RoutineMappings:5028:@Name=MAPPING.NAME.SHAPE,Namespace.PackageMappings:5084:@Name=MAPPING.NAME.SHAPE,Namespace.GlobalMappings:451:@Name=MAPPING.NAME.SUBSCRIPTS,Database.SysCRUD:896:@ResourceName=DATABASE.RESOURCE.SHAPE,Database.SysCRUD:60:@path=DATABASE.DIRECTORY.INUSE,Database.SysCRUD:78:@path=DATABASE.DIRECTORY.INUSE,Database.SysCRUD:575:@volumePath=DATABASE.DIRECTORY.INUSE,Database.SysCRUD:576:@volumePath=DATABASE.DIRECTORY.INUSE,ECP.DataServer:1454:@SSLConfig=ECP.DATASERVER.SSLCLIENT,ECP.DataServer:456:@=ECP.SERVER.LIMIT,Security.Encryption.KeyInFile:1219:@AdminPassword=ENCRYPTION.KEYFILE.CREDENTIALS,Security.Encryption.KeyInFile:1204:@AdminName=ENCRYPTION.KEYFILE.CREDENTIALS,Security.Encryption.AdminInFile:5001:@OldAdminPassword=ENCRYPTION.KEYFILE.CREDENTIALS,Security.Encryption.KeyInFile:5022:@path=ENCRYPTION.KEYFILE.UNREADABLE,Security.Encryption.File:1219:@AdminPassword=ENCRYPTION.KEYFILE.CREDENTIALS,Security.Encryption.Key:1208:@=ENCRYPTION.KEY.INUSE,Security.Encryption.Key:1215:@=ENCRYPTION.KEY.INUSE,Security.Encryption.Key:1214:@=ENCRYPTION.KEY.ROLE,Security.Encryption.Settings:1217:@=ENCRYPTION.STARTUP.REQUIRED,Security.Encryption.Settings:1212:@=ENCRYPTION.STARTUP.REQUIRED,Security.Encryption.Settings:1213:@=ENCRYPTION.STARTUP.REQUIRED,Security.Encryption.Settings:5001:@AdminPassword=ENCRYPTION.KEYFILE.CREDENTIALS,Security.Superserver:5001:@Port=SUPERSERVER.PORT.INUSE";
+Parameter PROPERTYFAULTS = "Device.Standard:644:OpenParameters=DEVICE.OPENPARAMETERS.SHAPE,Security.SSLConfig:726:@CipherList=SSL.CIPHERLIST.EXPANDSEMPTY,Security.SSLConfig:746:@Ciphersuites=SSL.CIPHERSUITES.UNKNOWN,Security.SSLConfig:732:@PrivateKeyPassword=SSL.PRIVATEKEYPASSWORD.WRONG,Task.CRUD:7402:@RunAsUser=TASK.RUNASUSER.REFUSED,Task.CRUD:7405:@RunAsUser=TASK.RUNASUSER.REFUSED,Task.CRUD:7406:@RunAsUser=TASK.RUNASUSER.REFUSED,Task.CRUD:7404:@DailyIncrement=TASK.DAILYINCREMENT.REFUSED,Task.CRUD:7408:@DailyEndTime=TASK.DAILYENDTIME.REFUSED,Task.CRUD:7409:@EndDate=TASK.ENDDATE.REFUSED,Task.CRUD:7410:@TimePeriodDay=TASK.TIMEPERIODDAY.REFUSED,Task.CRUD:7426:@TimePeriodDay=TASK.TIMEPERIODDAY.REFUSED,Task.CRUD:7428:@TimePeriodDay=TASK.TIMEPERIODDAY.REFUSED,Task.CRUD:7411:@OutputFilename=TASK.OUTPUTFILENAME.REFUSED,Task.CRUD:7412:@OutputFilename=TASK.OUTPUTFILENAME.REFUSED,Task.CRUD:7413:@TaskClass=TASK.TASKCLASS.REFUSED,Task.CRUD:7414:@TaskClass=TASK.TASKCLASS.REFUSED,Task.CRUD:7433:@TaskClass=TASK.TASKCLASS.REFUSED,Task.CRUD:7434:@TaskClass=TASK.TASKCLASS.REFUSED,Task.CRUD:7427:@TimePeriodEvery=TASK.TIMEPERIODEVERY.REFUSED,Task.CRUD:7429:@TimePeriodEvery=TASK.TIMEPERIODEVERY.REFUSED,Task.CRUD:7430:@DailyFrequencyTime=TASK.DAILYFREQUENCYTIME.REFUSED,Task.CRUD:7431:@RunAfterGUID=TASK.RUNAFTERGUID.REFUSED,Task.CRUD:7432:@StartDate=TASK.STARTDATE.REFUSED,Security.OAuth2.ServerClients:8863:@Metadata.grant_types=OAUTH.CLIENTGRANTTYPES.UNSUPPORTED,Security.OAuth2.ServerClients:8886:@ClientCredentials=OAUTH.SERVERCLIENTCREDENTIALS.ABSENT,Security.OAuth2.ServerClients:8864:@=OAUTH.SERVERCLIENTCONFIG.ABSENT,Namespace.Namespace:457:@Name=NAMESPACE.NAME.SHAPE,Namespace.Namespace:7201:@Name=NAMESPACE.NAME.SHAPE,Namespace.GlobalMappings:5854:@Name=MAPPING.NAME.SHAPE,Namespace.GlobalMappings:448:@Name=MAPPING.NAME.SHAPE,Namespace.RoutineMappings:5854:@Name=MAPPING.NAME.SHAPE,Namespace.RoutineMappings:448:@Name=MAPPING.NAME.SHAPE,Namespace.PackageMappings:5854:@Name=MAPPING.NAME.SHAPE,Namespace.PackageMappings:448:@Name=MAPPING.NAME.SHAPE,Namespace.GlobalMappings:655:@Name=MAPPING.NAME.SHAPE,Namespace.GlobalMappings:217:@Name=MAPPING.NAME.SHAPE,Namespace.RoutineMappings:5028:@Name=MAPPING.NAME.SHAPE,Namespace.PackageMappings:5084:@Name=MAPPING.NAME.SHAPE,Namespace.GlobalMappings:451:@Name=MAPPING.NAME.SUBSCRIPTS,Database.SysCRUD:896:@ResourceName=DATABASE.RESOURCE.SHAPE,Database.SysCRUD:60:@path=DATABASE.DIRECTORY.INUSE,Database.SysCRUD:78:@path=DATABASE.DIRECTORY.INUSE,Database.SysCRUD:575:@volumePath=DATABASE.DIRECTORY.INUSE,Database.SysCRUD:576:@volumePath=DATABASE.DIRECTORY.INUSE,ECP.DataServer:1454:@SSLConfig=ECP.DATASERVER.SSLCLIENT,ECP.DataServer:456:@=ECP.SERVER.LIMIT,Security.Encryption.KeyInFile:1219:@AdminPassword=ENCRYPTION.KEYFILE.CREDENTIALS,Security.Encryption.KeyInFile:1204:@AdminName=ENCRYPTION.KEYFILE.CREDENTIALS,Security.Encryption.AdminInFile:5001:@OldAdminPassword=ENCRYPTION.KEYFILE.CREDENTIALS,Security.Encryption.KeyInFile:5022:@path=ENCRYPTION.KEYFILE.UNREADABLE,Security.Encryption.File:1219:@AdminPassword=ENCRYPTION.KEYFILE.CREDENTIALS,Security.Encryption.Key:1208:@=ENCRYPTION.KEY.INUSE,Security.Encryption.Key:1215:@=ENCRYPTION.KEY.INUSE,Security.Encryption.Key:1214:@=ENCRYPTION.KEY.ROLE,Security.Encryption.Settings:1217:@=ENCRYPTION.STARTUP.REQUIRED,Security.Encryption.Settings:1231:@DBEncStartMode=ENCRYPTION.STARTUP.KMIPUNCONFIGURED,Security.Encryption.Settings:1233:@DBEncStartMode=ENCRYPTION.STARTUP.KEYFILEDIFFERENT,Security.Encryption.Settings:1212:@=ENCRYPTION.STARTUP.REQUIRED,Security.Encryption.Settings:1213:@=ENCRYPTION.STARTUP.REQUIRED,Security.Encryption.Settings:5001:@AdminPassword=ENCRYPTION.KEYFILE.CREDENTIALS,Security.Superserver:5001:@Port=SUPERSERVER.PORT.INUSE";
 
 /// <p>Append to <var>pRows</var> one <code>{field, code, reason}</code> row per error in
 /// <var>pVendorSC</var> that <parameter>PROPERTYFAULTS</parameter> names for <var>pEndpoint</var>. The
@@ -3907,7 +4039,17 @@ ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody 
     If $IsObject(pBody) Set pBody = ..Renamed(pEndpoint, pType, pBody)
     Set tBody = pBody
     If $IsObject(pBody) Set tBody = ..Wrapped(pEndpoint, pType, pBody)
-    If ..ClassCompletedField(pEndpoint, pType, tBody) '= "" {
+    Set tCompleted = ..ClassCompletedField(pEndpoint, pType, tBody)
+    If (tCompleted '= "") && (tBody.%GetTypeOf(tCompleted) = "array") {
+        Set tRest = ##class(%DynamicAbstractObject).%FromJSON(tBody.%ToJSON())
+        Do tRest.%Remove(tCompleted)
+        Set tRestStep = ..RestStep(pEndpoint, pType, .tQuery, tRest, pContext)
+        If '$IsObject(tRestStep) Quit []
+        Do tSteps.%Push(tRestStep)
+        Do tSteps.%Push(..ClearedListStep($Get(tQuery("name")), tCompleted))
+        Quit tSteps
+    }
+    If tCompleted '= "" {
         Do tSteps.%Push(..ResourceStep($Get(tQuery("name")), tBody))
         Quit tSteps
     }
@@ -4028,6 +4170,15 @@ ClassMethod ResourceStep(pName As %String, pBody As %DynamicObject) As %DynamicO
     Set tLines = tLines _ $ListBuild("Set tProps(""PublicPermission"") = """"")
     Set tLines = tLines _ $ListBuild("If ##class(Security.Resources).Exists(" _ ..Literal(pName) _ ") { Set tSC = ##class(Security.Resources).Modify(" _ ..Literal(pName) _ ", .tProps) } Else { Set tSC = ##class(Security.Resources).Create(" _ ..Literal(pName) _ ", " _ ..Literal(tDescription) _ ", """") }")
     Set tLines = tLines _ $ListBuild("Do $System.Status.DisplayError(tSC)")
+    Quit ..ObjectScriptStep(tLines)
+}
+
+/// <p>AD-27's third case as a script: <method>CompleteClearedList</method>'s <code>Modify</code> of LDAP
+/// configuration <var>pName</var> through <class>Security.LDAPConfigs</class> with <var>pField</var> empty.</p>
+ClassMethod ClearedListStep(pName As %String, pField As %String) As %DynamicObject
+{
+    Set tLines = $ListBuild("Kill tProps", "Set tProps(" _ ..Literal(pField) _ ") = """"")
+    Set tLines = tLines _ $ListBuild("Set tSC = ##class(Security.LDAPConfigs).Modify(" _ ..Literal(pName) _ ", .tProps)", "Do $System.Status.DisplayError(tSC)")
     Quit ..ObjectScriptStep(tLines)
 }
 

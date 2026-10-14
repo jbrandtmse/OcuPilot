@@ -260,6 +260,20 @@ describe('the web application editor (Story 9.2)', () => {
     }
   });
 
+  it('Story 18.48: states the privilege line at Enabled and Resource while a granted role is privileged, and the cleared resource\u2019s own line over it', async () => {
+    // Mutation (Rule 19): drop the `grantsPrivileged` condition from `generalFields` -> the first two lines go red.
+    const { fixture, host } = await mount('/csp/probe', undefined, { MatchRoles: [{ MatchRole: '', TargetRoles: ['%Manager'] }] });
+    expect(host.querySelector('#ocu-web-app-edit-Enabled-effect')?.textContent?.trim()).toBe(STRINGS.privilegedGrantEffect);
+    expect(host.querySelector('#ocu-web-app-edit-Resource-effect')?.textContent?.trim()).toBe(STRINGS.privilegedGrantEffect);
+    type(fixture, host, 'ocu-web-app-edit-Resource', '');
+    await settle(fixture);
+    expect(host.querySelector('#ocu-web-app-edit-Resource-effect')?.textContent?.trim()).toBe(STRINGS.webAppNoResourceEffect);
+    expect(host.querySelector('#ocu-web-app-edit-Enabled-effect')?.textContent?.trim()).toBe(STRINGS.privilegedGrantEffect);
+    const plain = await mount('/csp/probe');
+    expect(plain.host.querySelector('#ocu-web-app-edit-Enabled-effect')).toBeNull();
+    expect(plain.host.querySelector('#ocu-web-app-edit-Resource-effect')).toBeNull();
+  });
+
   it('draws OcuPilot\u2019s own application refused: its fields and Save, and its role controls with the privilege-grant sentence', async () => {
     // Mutation (Rule 19): drop the serving-path lookup from the page's `locked` -> the read-only
     // assertion goes red.

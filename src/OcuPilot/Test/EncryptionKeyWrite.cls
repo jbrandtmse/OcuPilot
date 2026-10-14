@@ -113,9 +113,13 @@ Method TestADatabaseKeyIsActivatedAndDeactivatedOnBothCallers()
     Do $$$AssertStatusOK(tSC, "the agent's activation is minted (" _ tProblem _ ")")
     Do $$$AssertEquals(..Fields(tProposal), "root,path,AdminName,FileKeys,AdminPassword", "its card shows the location, the administrator, the file's keys and a password row")
     Do $$$AssertEquals(..Row(tProposal, "FileKeys"), tKey, "naming the key the file holds")
-    Do $$$AssertEquals(..Stored(tProposal, "consequence") _ " " _ ..Stored(tProposal, "destructive"), "ENCRYPTION.KEY.ACTIVATE 0", "with the activation's consequence, not destructive")
+    Do $$$AssertEquals(..Stored(tProposal, "consequence") _ " " _ ..Stored(tProposal, "destructive"), "ENCRYPTION.KEY.ACTIVATE 1", "with the activation's consequence, destructive because no database key is active yet")
     Do $$$AssertEquals($ClassMethod(tP, "Confirm", tProposal, {"AdminPassword": ($Parameter(tP, "PASSWORD"))}, .tResult), "200 ", "its confirm writes")
     Do $$$AssertEquals($ClassMethod(..#SEAM, "Writes") _ " " _ $ClassMethod(..#SEAM, "Held", "database").%Size(), "Security.Encryption.File/ACTIVATE 1", "one ACTIVATE, and the key is active")
+    Do $$$AssertStatusOK($ClassMethod(tP, "SeedKeyFile", "act-b.key", , , 256, "OCUPROBEACT B", .tSecondKey), "a second key file")
+    Set tSC = $ClassMethod(tP, "KeyMint", "OcuPilot.Test.SeamDatabaseKeyActivate", "act-b.key", {"AdminName": ($Parameter(tP, "ADMIN"))}, .tNext, .tHttp, .tProblem)
+    Do $$$AssertStatusOK(tSC, "a second activation is minted (" _ tProblem _ ")")
+    Do $$$AssertEquals(..Stored(tNext, "consequence") _ " " _ ..Stored(tNext, "destructive"), "ENCRYPTION.KEY.ACTIVATE 0", "with the same consequence, not destructive while a key is active")
     Do $ClassMethod(..#SEAM, "ClearCalls")
     Set tSC = $ClassMethod(tP, "KeyMint", "OcuPilot.Test.SeamDatabaseKeyDeactivate", "", {"KeyId": (tKey)}, .tProposal, .tHttp, .tProblem)
     Do $$$AssertStatusOK(tSC, "the agent's deactivation is minted (" _ tProblem _ ")")
@@ -123,6 +127,85 @@ Method TestADatabaseKeyIsActivatedAndDeactivatedOnBothCallers()
     Do $$$AssertEquals(..Stored(tProposal, "consequence") _ " " _ ..Stored(tProposal, "destructive"), "ENCRYPTION.KEY.DEACTIVATE 1", "with the deactivation's consequence, destructive")
     Do $$$AssertEquals($ClassMethod(tP, "Confirm", tProposal, "", .tResult), "200 ", "its confirm writes")
     Do $$$AssertEquals($ClassMethod(..#SEAM, "Writes") _ " " _ $ClassMethod(..#SEAM, "Held", "database").%Size(), "Security.Encryption.Key/DEACTIVATE 0", "one DEACTIVATE, and the list is empty")
+}
+
+/// <p>DW-2087, AD-10: an activation minted while no database key is active is destructive and keeps the tool's own
+/// consequence, which names the start-mode change; one minted while a key is active is not, nor is a data-element
+/// activation; the tool's governance key still ships disabled, so the agent's activation is off at the baseline.</p>
+/// <p>Mutation (Rule 19): drop the <code>TYPEDATABASEKEYS</code> arm from
+/// <method>OcuPilot.Kernel.Proposal.Prohibited.WeakensByEffect</method> -- the first mint reads not destructive and
+/// this goes red.</p>
+Method TestTheFirstDatabaseKeyActivationIsDestructiveAndTheNextIsNot()
+{
+    Set tP = ..#PROBE
+    Do $$$AssertStatusOK($ClassMethod(tP, "SeedKeyFile", "act-f.key", , , 256, "OCUPROBEACT F", .tFirst), "a key file")
+    Do $$$AssertStatusOK($ClassMethod(tP, "SeedKeyFile", "act-g.key", , , 256, "OCUPROBEACT G", .tSecond), "and a second")
+    Do $ClassMethod(..#SEAM, "Arm", "activation")
+    Set tSC = $ClassMethod(tP, "KeyMint", "OcuPilot.Test.SeamDatabaseKeyActivate", "act-f.key", {"AdminName": ($Parameter(tP, "ADMIN"))}, .tProposal, .tHttp, .tProblem)
+    Do $$$AssertStatusOK(tSC, "the first activation is minted (" _ tProblem _ ")")
+    Do $$$AssertEquals(..Stored(tProposal, "consequence") _ " " _ ..Stored(tProposal, "destructive"), "ENCRYPTION.KEY.ACTIVATE 1", "destructive, with the tool's consequence")
+    Do $ClassMethod(..#SEAM, "Hold", "database", [{"Id": (tFirst), "KeyLen": 256, "IsDefault": true}])
+    Set tSC = $ClassMethod(tP, "KeyMint", "OcuPilot.Test.SeamDatabaseKeyActivate", "act-g.key", {"AdminName": ($Parameter(tP, "ADMIN"))}, .tProposal, .tHttp, .tProblem)
+    Do $$$AssertStatusOK(tSC, "the second activation is minted (" _ tProblem _ ")")
+    Do $$$AssertEquals(..Stored(tProposal, "consequence") _ " " _ ..Stored(tProposal, "destructive"), "ENCRYPTION.KEY.ACTIVATE 0", "not destructive while a database key is active")
+    Do $ClassMethod(..#SEAM, "Hold", "database", [])
+    Set tSC = $ClassMethod(tP, "KeyMint", "OcuPilot.Test.SeamDataElementKeyActivate", "act-f.key", {"AdminName": ($Parameter(tP, "ADMIN"))}, .tProposal, .tHttp, .tProblem)
+    Do $$$AssertStatusOK(tSC, "a data-element activation is minted (" _ tProblem _ ")")
+    Do $$$AssertEquals(..Stored(tProposal, "destructive"), 0, "never destructive for the first data-element key")
+    Set tValue = ##class(OcuPilot.Kernel.Governance.Baseline).Seed("security.databaseencryption.activate", .tListed)
+    Do $$$AssertEquals(tListed _ " " _ tValue, "1 0", "and the activate tool's governance key ships disabled")
+}
+
+/// <p>DW-2086, AD-51: an activation fingerprints the key list its mint read from the key file, and the write compares
+/// the file's keys with it as sets: a key added to the file, or removed from it, since the mint closes the confirm 409
+/// <code>ENCRYPTION.KEYFILE.CHANGED</code> with nothing sent and nothing active; the same keys in another order
+/// activate; the screen, which carries no list, compares nothing.</p>
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Port.EncryptionPort.SameKeys</method> answer 1 -- both refused legs
+/// activate and this goes red; drop <code>FileKeys</code> from
+/// <parameter>OcuPilot.Screen.Tool.DatabaseKeyActivate.MINTARGUMENTS</parameter> -- the list never reaches the port.</p>
+Method TestAKeyFileChangedSinceTheMintIsRefusedAtTheConfirm()
+{
+    Set tP = ..#PROBE
+    Do $$$AssertStatusOK($ClassMethod(tP, "SeedKeyFile", "act-h.key", , , 256, "OCUPROBEACT H", .tFirst), "a key file with one key")
+    Do $ClassMethod(..#SEAM, "Arm", "activation")
+    Set tSC = $ClassMethod(tP, "KeyMint", "OcuPilot.Test.SeamDatabaseKeyActivate", "act-h.key", {"AdminName": ($Parameter(tP, "ADMIN"))}, .tProposal, .tHttp, .tProblem)
+    Do $$$AssertStatusOK(tSC, "the activation is minted (" _ tProblem _ ")")
+    Do $$$AssertEquals(..Row(tProposal, "FileKeys"), tFirst, "naming the file's one key")
+    Do $$$AssertStatusOK($ClassMethod(tP, "AddKeyToFile", "act-h.key", 128, .tSecond), "another writer adds a key to the file")
+    Do $ClassMethod(..#SEAM, "ClearCalls")
+    Do $$$AssertEquals($ClassMethod(tP, "Confirm", tProposal, {"AdminPassword": ($Parameter(tP, "PASSWORD"))}, .tResult), "409 ENCRYPTION.KEYFILE.CHANGED", "the confirm is refused")
+    Do $$$AssertEquals($ClassMethod(..#SEAM, "Writes") _ " " _ $ClassMethod(..#SEAM, "Held", "database").%Size(), " 0", "with nothing sent and nothing active")
+    Set tSC = $ClassMethod(tP, "KeyMint", "OcuPilot.Test.SeamDatabaseKeyActivate", "act-h.key", {"AdminName": ($Parameter(tP, "ADMIN"))}, .tProposal, .tHttp, .tProblem)
+    Do $$$AssertStatusOK(tSC, "a new activation is minted over both keys (" _ tProblem _ ")")
+    Do $$$AssertStatusOK($ClassMethod(tP, "RemoveFromFile", "act-h.key", tSecond), "another writer removes one")
+    Do $ClassMethod(..#SEAM, "ClearCalls")
+    Do $$$AssertEquals($ClassMethod(tP, "Confirm", tProposal, {"AdminPassword": ($Parameter(tP, "PASSWORD"))}, .tResult), "409 ENCRYPTION.KEYFILE.CHANGED", "its confirm is refused too")
+    Do $$$AssertEquals($ClassMethod(..#SEAM, "Writes"), "", "with nothing sent")
+    Do $ClassMethod(..#SEAM, "ClearCalls")
+    Set tSC = $ClassMethod(..#ACTION, "Act", ..#DATABASE, ..Activation("act-h.key"), .tAnswer, .tStatus)
+    Do $$$AssertEquals(tStatus, 200, "the screen's activation carries no list and activates: " _ $Extract(tAnswer, 1, 200))
+    Set tIds = [(tFirst), "B", "a"]
+    Set tPort = "OcuPilot.Port.EncryptionPort"
+    Do $$$AssertEquals($ClassMethod(tPort, "SameKeys", tIds, "a, B , " _ tFirst) _ $ClassMethod(tPort, "SameKeys", tIds, "B, " _ tFirst) _ $ClassMethod(tPort, "SameKeys", tIds, "B, a, " _ tFirst _ ", C") _ $ClassMethod(tPort, "SameKeys", tIds, ""), "1001", "the keys compare as sets, order and blanks ignored; an empty list compares nothing")
+}
+
+/// <p>DW-2086 on the data-element activation: the mint names the file's keys and a key added to the file since closes the
+/// confirm 409 <code>ENCRYPTION.KEYFILE.CHANGED</code> with nothing sent and nothing active.</p>
+/// <p>Mutation (Rule 19): drop <code>FileKeys</code> from
+/// <parameter>OcuPilot.Screen.Tool.DataElementKeyActivate.MINTARGUMENTS</parameter> -- the list never reaches the port, the
+/// confirm activates and this goes red.</p>
+Method TestADataElementKeyFileChangedSinceTheMintIsRefusedAtTheConfirm()
+{
+    Set tP = ..#PROBE
+    Do $$$AssertStatusOK($ClassMethod(tP, "SeedKeyFile", "act-j.key", , , 256, "OCUPROBEACT J", .tFirst), "a key file with one key")
+    Do $ClassMethod(..#SEAM, "Arm", "activation")
+    Set tSC = $ClassMethod(tP, "KeyMint", "OcuPilot.Test.SeamDataElementKeyActivate", "act-j.key", {"AdminName": ($Parameter(tP, "ADMIN"))}, .tProposal, .tHttp, .tProblem)
+    Do $$$AssertStatusOK(tSC, "the data-element activation is minted (" _ tProblem _ ")")
+    Do $$$AssertEquals(..Row(tProposal, "FileKeys"), tFirst, "naming the file's one key")
+    Do $$$AssertStatusOK($ClassMethod(tP, "AddKeyToFile", "act-j.key", 128, .tSecond), "another writer adds a key to the file")
+    Do $ClassMethod(..#SEAM, "ClearCalls")
+    Do $$$AssertEquals($ClassMethod(tP, "Confirm", tProposal, {"AdminPassword": ($Parameter(tP, "PASSWORD"))}, .tResult), "409 ENCRYPTION.KEYFILE.CHANGED", "the confirm is refused")
+    Do $$$AssertEquals($ClassMethod(..#SEAM, "Writes") _ " " _ $ClassMethod(..#SEAM, "Held", "dataElement").%Size(), " 0", "with nothing sent and nothing active")
 }
 
 /// <p>B2: a missing file, a text file, a file whose every key is active, an administrator the file does
@@ -258,7 +341,7 @@ Method TestDataElementKeysAreActivatedAndDeactivated()
     Do $$$AssertEquals($ClassMethod(tP, "Confirm", tProposal, "", .tResult), "200 ", "and its confirm writes")
     Do $$$AssertEquals($ClassMethod(..#SEAM, "Held", "dataElement").%Size(), 0, "neither key is active")
     Set tSC = $ClassMethod(tP, "KeyMint", "OcuPilot.Test.SeamDataElementKeyActivate", "act-c.key", {"AdminName": ($Parameter(tP, "ADMIN"))}, .tProposal, .tHttp, .tProblem)
-    Do $$$AssertEquals(..Stored(tProposal, "consequence"), "ENCRYPTION.KEY.ACTIVATEDATAELEMENT", "the agent's activation states the data-element consequence")
+    Do $$$AssertEquals(..Stored(tProposal, "consequence") _ " " _ ..Stored(tProposal, "destructive"), "ENCRYPTION.KEY.ACTIVATEDATAELEMENT 0", "the agent's activation states the data-element consequence, and no first key is destructive there")
     Set tSC = $ClassMethod(..#ACTION, "Act", ..#DATAELEMENT, {"action": "deactivate", "id": "SYSTEM", "values": {"KeyId": (tFirst)}}, .tAnswer, .tStatus)
     Do $$$AssertEquals(tStatus _ " " _ $ClassMethod(tP, "Refusal", tAnswer), "400 TOOL.ARGUMENTS " _ $Parameter("OcuPilot.Api.EncryptionError", "REASONKEYINACTIVE"), "an inactive key is refused")
 }

@@ -82,7 +82,7 @@ Method TestTheFormIsBuiltUnlistedWithTheListsPairs()
         Do $$$AssertNotEquals(##class(OcuPilot.Api.Error).ReasonForViolation($List(tCodes, tI)), "", $List(tCodes, tI) _ " carries a sentence")
         Set tFields = tFields _ $Select(tFields = "": "", 1: ",") _ ##class(OcuPilot.Area.OsMgmt.DatabaseRules).FieldOf($List(tCodes, tI))
     }
-    Do $$$AssertEquals(tFields, "Name,Name,Name,Name,path,Size,MaxSize,ExpansionSize,NewVolumeThreshold,NewVolumeThreshold,ResourceName,ResourceName,TargetSize,TargetFreeSpace,Size,InitialSize,Databases,Globals,Globals,Server,Server,Directory,Directory,Directory", "each code names its own field, Story 18.4's operation arguments, DW-1860's threshold and Story 18.16's remote fields among them")
+    Do $$$AssertEquals(tFields, "Name,Name,Name,Name,path,Size,MaxSize,ExpansionSize,NewVolumeThreshold,NewVolumeThreshold,ResourceName,ResourceName,TargetSize,TargetFreeSpace,Size,InitialSize,Databases,Globals,Globals,Server,Server,Directory,Directory,Directory,Encrypted", "each code names its own field, Story 18.4's operation arguments, DW-1860's threshold, Story 18.16's remote fields and Story 18.48's encrypt flag among them")
     Do $$$AssertEquals(##class(OcuPilot.Area.OsMgmt.DatabaseRules).Rules().%Size(), $ListLength(tCodes), "and the form read publishes one rule per code")
     For tCode = "DATABASE.INUSE", "DATABASE.REMOTE", "DATABASE.LOCAL" {
         Do $$$AssertNotEquals(##class(OcuPilot.Api.Error).ReasonForViolation(tCode), "", tCode _ ": the envelope code carries a sentence too")
@@ -105,7 +105,7 @@ Method TestTheToolsDeclareTheirFieldsKindsAndPairs()
     Set tFiles = $ListBuild("%Admin_FileSystemAccess", "USE")
     Set tOperate = $ListBuild("%Admin_Operate", "USE")
     ; name, settable, endpoint|write type|body|destructive|creates|change action, own pairs, classic pages
-    Set tCases = $ListBuild($ListBuild("osmgmt.localdatabases.create", "root,path,Size,GlobalJournalState,ResourceName", "Database.ConfigCRUD|PUT|1|0|1|created", $ListBuild(tWrite, tSecure, tFiles), "%CSP.UI.Portal.Dialog.DatabaseWizard"))
+    Set tCases = $ListBuild($ListBuild("osmgmt.localdatabases.create", "root,path,Size,GlobalJournalState,ResourceName,Encrypted", "Database.ConfigCRUD|PUT|1|0|1|created", $ListBuild(tWrite, tSecure, tFiles), "%CSP.UI.Portal.Dialog.DatabaseWizard"))
     Set tCases = tCases _ $ListBuild($ListBuild("osmgmt.localdatabases.updatemount", "ClusterMountMode,MountAtStartup,MountRequired", "Database.ConfigCRUD|PUT|1|0|0|updated", $ListBuild(tWrite), "%CSP.UI.Portal.Database"))
     Set tCases = tCases _ $ListBuild($ListBuild("osmgmt.localdatabases.update", "MaxSize,ExpansionSize,NewVolumeThreshold,ResourceName,NewGlobalIsKeep,GlobalJournalState,ReadOnly,volumeRoot,volumePath", "Database.SysCRUD|PUT|1|0|0|updated", "", "%CSP.UI.Portal.Database,%CSP.UI.Portal.DatabaseVolumes"))
     Set tCases = tCases _ $ListBuild($ListBuild("osmgmt.localdatabases.delete", "DeleteFile", "Database.ConfigCRUD|DELETE|0|1|0|deleted", $ListBuild(tWrite), "%CSP.UI.Portal.Dialog.DatabaseDelete"))
@@ -156,7 +156,7 @@ Method TestTheToolsDeclareTheirFieldsKindsAndPairs()
     Kill tQuery
     Do $ClassMethod(tCreate, "PortQuery", {"Name": "OCUPROBE183D", "root": "/probe/", "path": "ocuprobe183d", "Size": 2, "GlobalJournalState": false}, .tQuery)
     Do $$$AssertEquals($Get(tQuery("root")) _ "|" _ $Get(tQuery("path")) _ "|" _ $Get(tQuery("Size")) _ "|" _ $Get(tQuery("GlobalJournalState")) _ "|" _ $Data(tQuery("ResourceName")), "/probe/|ocuprobe183d|2|0|0", "and hands its arguments to the port as its query, an unsent resource left out (AD-52)")
-    Do $$$AssertEquals($ListToString(##class(OcuPilot.Kernel.Proposal.Prohibited).PermittedCreateFields("database-configuration")), "root,path,Size,GlobalJournalState,ResourceName,Server,Directory", "the prohibited set reviews the create's five, and a remote create's two (Story 18.16)")
+    Do $$$AssertEquals($ListToString(##class(OcuPilot.Kernel.Proposal.Prohibited).PermittedCreateFields("database-configuration")), "root,path,Size,GlobalJournalState,ResourceName,Encrypted,Server,Directory", "the prohibited set reviews the create's six, and a remote create's two (Story 18.16)")
     Do $$$AssertEquals($ListToString(##class(OcuPilot.Kernel.Proposal.Prohibited).PermittedChangeFields("database-configuration")), "MountAtStartup,MountRequired,ClusterMountMode,MaxSize,ExpansionSize,ResourceName,NewGlobalIsKeep,GlobalJournalState,ReadOnly,NewVolumeThreshold,volumeRoot,volumePath,Server,Directory", "and the two edits' settable fields for a change, with a remote re-point's two (Story 18.16)")
     Do $$$AssertEquals(##class(OcuPilot.Screen.Tool.LocalDatabaseUpdate).InputSchema().required.%ToJSON() _ "|" _ ##class(OcuPilot.Screen.Tool.LocalDatabaseUpdateMount).InputSchema().required.%ToJSON(), "[""Name""]|[""Name""]", "each edit requires the name alone")
 }

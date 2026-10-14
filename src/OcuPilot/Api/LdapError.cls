@@ -44,19 +44,10 @@ Parameter TESTUSERNAME = "LDAP.TEST.USERNAME";
 
 Parameter REASONTESTUSERNAME = "Enter the user name without a domain; the test uses this configuration.";
 
-/// <p>Violation code: an edit that would leave <code>LDAPAttributes</code> holding no name while the
-/// configuration holds one. The vendor's <code>PUT</code> keeps the stored list when sent an empty
-/// one and fails on a list of empty names, while the classic page's own save,
-/// <code>Security.LDAPConfigs.Modify</code> with an empty list, clears it (each measured), so the
-/// edit is refused before any write.</p>
-Parameter ATTRIBUTESLASTONE = "LDAP.ATTRIBUTES.LASTONE";
-
-Parameter REASONATTRIBUTESLASTONE = "Keep at least one attribute to retrieve; the last one can be removed only on the classic portal.";
-
 /// <p>Every code this class declares, as a <class>%List</class>.</p>
 ClassMethod ViolationCodes() As %List
 {
-    Quit $ListBuild(..#FLAGSKERBEROS, ..#NAMEFORM, ..#NAMETAKEN, ..#HOSTREQUIRED, ..#TESTREQUIRED, ..#TESTUSERNAME, ..#ATTRIBUTESLASTONE)
+    Quit $ListBuild(..#FLAGSKERBEROS, ..#NAMEFORM, ..#NAMETAKEN, ..#HOSTREQUIRED, ..#TESTREQUIRED, ..#TESTUSERNAME)
 }
 
 /// <p>The sentence <var>pCode</var> carries, or <code>""</code> for any code this class does not
@@ -69,7 +60,6 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#HOSTREQUIRED Quit ..#REASONHOSTREQUIRED
     If pCode = ..#TESTREQUIRED Quit ..#REASONTESTREQUIRED
     If pCode = ..#TESTUSERNAME Quit ..#REASONTESTUSERNAME
-    If pCode = ..#ATTRIBUTESLASTONE Quit ..#REASONATTRIBUTESLASTONE
     Quit ""
 }
 

@@ -35,7 +35,7 @@
 /// when its password is the wrong one a test armed (<method>ArmRefusable</method>) and none of the probe
 /// key files' passwords (<method>Refusable</method>), so the vendor can only refuse it; any other is
 /// answered 500 without the vendor. A real first activation persistently changes the instance's key
-/// activation at startup, which no test can restore.</p>
+/// activation at startup, which only a settings <code>PUT</code> of None restores, once no key is active.</p>
 /// <p>Story 18.23's modes. Armed <code>startup</code>, <code>startupfails</code>, <code>kmip</code> or
 /// <code>settingsv1</code>, <method>Call</method> answers <code>Security.Encryption.Settings</code>
 /// <code>GET</code> from a seam-held settings object (<method>HoldSettings</method>,
@@ -54,6 +54,10 @@
 /// (<method>EncryptedOnDisk</method>) answers the names <method>ArmOnDisk</method> armed, none unless armed,
 /// and <code>ondiskfails</code>, a further Story 18.23 mode, fails it; outside them it is the instance's own
 /// read, which changes nothing.</p>
+/// <p>Story 18.48's modes. Under those same modes the read of whether the journal allows key activation at startup
+/// to be turned off (<method>JournalStartup</method>) answers allowed unless <method>ArmJournalRefused</method>
+/// armed it refused, and <code>journalstartupfails</code>, a further mode, fails it. Every line the port logs is
+/// counted (<method>Logged</method>) and still written.</p>
 /// <p><b>Not a <class>%UnitTest.TestCase</class></b>: it holds no assertions and runs no tests.</p>
 Class OcuPilot.Test.EncryptionSeamPort Extends OcuPilot.Port.EncryptionPort
 {
@@ -366,7 +370,7 @@ ClassMethod Held(pKind As %String) As %DynamicArray
 /// <p>Whether a Story 18.23 mode is armed.</p>
 ClassMethod StartupArmed() As %Boolean
 {
-    Quit ''$ListFind($ListBuild("startup", "startupfails", "kmip", "settingsv1", "ondiskfails"), $Get(^||OcuPilotEncryptionSeam("mode")))
+    Quit ''$ListFind($ListBuild("startup", "startupfails", "kmip", "settingsv1", "ondiskfails", "journalstartupfails"), $Get(^||OcuPilotEncryptionSeam("mode")))
 }
 
 /// <p>The answer <method>Call</method> gives without the vendor for a settings read or write, or for an
@@ -494,11 +498,11 @@ ClassMethod ArmKmip(pNames As %String)
     Set ^||OcuPilotEncryptionSeam("kmipnames") = pNames
 }
 
-/// <p>The configured KMIP servers: the names <method>ArmKmip</method> armed under <code>kmip</code>, and the
-/// instance's own otherwise.</p>
+/// <p>The configured KMIP servers: the names <method>ArmKmip</method> armed under <code>kmip</code> and
+/// <code>ondiskfails</code>, and the instance's own otherwise.</p>
 ClassMethod KmipNames(Output pNames As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
 {
-    If $Get(^||OcuPilotEncryptionSeam("mode")) '= "kmip" Quit ##super(.pNames, .pHttpStatus, .pFault)
+    If ($Get(^||OcuPilotEncryptionSeam("mode")) '= "kmip") && ($Get(^||OcuPilotEncryptionSeam("mode")) '= "ondiskfails") Quit ##super(.pNames, .pHttpStatus, .pFault)
     Set pNames = []
     Set pHttpStatus = 200
     Set pFault = ""
@@ -537,6 +541,44 @@ ClassMethod EncryptedOnDisk(Output pNames As %DynamicArray, Output pHttpStatus A
     Quit $$$OK
 }
 
+/// <p>Arm the answer the Story 18.48 modes give for whether the journal forbids a start without its key: 1
+/// refused, 0 allowed.</p>
+ClassMethod ArmJournalRefused(pRefused As %Boolean)
+{
+    Set ^||OcuPilotEncryptionSeam("journalrefused") = ''pRefused
+}
+
+/// <p>Whether the journal allows key activation at startup to be turned off: under a Story 18.23 or 18.48 mode the
+/// answer <method>ArmJournalRefused</method> armed (allowed when none), a failed read under
+/// <code>journalstartupfails</code>; the instance's own read otherwise.</p>
+ClassMethod JournalStartup(Output pAllowed As %Boolean, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+{
+    If '..StartupArmed() Quit ##super(.pAllowed, .pHttpStatus, .pFault)
+    If $Get(^||OcuPilotEncryptionSeam("mode")) = "journalstartupfails" {
+        Set pAllowed = 0
+        Set pHttpStatus = 500
+        Set pFault = ##class(OcuPilot.Kernel.Fault).Build(##class(OcuPilot.Api.Error).#SERVERERROR, ##class(OcuPilot.Api.Error).#INTERNAL, ##class(OcuPilot.Kernel.Fault).#DEFAULTREASON)
+        Quit $$$ERROR($$$GeneralError, "the journal's key activation at startup cannot be read, as the seam was armed")
+    }
+    Set pAllowed = '$Get(^||OcuPilotEncryptionSeam("journalrefused"))
+    Set pHttpStatus = 200
+    Set pFault = ""
+    Quit $$$OK
+}
+
+/// <p>Count the line, then write it.</p>
+ClassMethod LogFault(pMessage As %String, pStatus As %Status, pCode As %String = "")
+{
+    Set ^||OcuPilotEncryptionSeam("logged") = $Get(^||OcuPilotEncryptionSeam("logged")) + 1
+    Do ##super(pMessage, pStatus, pCode)
+}
+
+/// <p>How many lines the port logged since the calls were last cleared.</p>
+ClassMethod Logged() As %Integer
+{
+    Quit +$Get(^||OcuPilotEncryptionSeam("logged"))
+}
+
 /// <p>The endpoint's body template, without <code>AdminName</code> and <code>AdminPassword</code> for the
 /// settings endpoint under <code>settingsv1</code>.</p>
 ClassMethod Template(pEndpoint As %String, Output pTemplate As %DynamicAbstractObject, Output pMethod As %String, pArgument As %String) As %Status
@@ -563,7 +605,7 @@ ClassMethod Clear()
 /// <p>Forget every recorded call, keeping the armed mode, its key and the held active lists.</p>
 ClassMethod ClearCalls()
 {
-    Kill ^||OcuPilotEncryptionSeam("calls"), ^||OcuPilotEncryptionSeam("keys"), ^||OcuPilotEncryptionSeam("file"), ^||OcuPilotEncryptionSeam("sent")
+    Kill ^||OcuPilotEncryptionSeam("calls"), ^||OcuPilotEncryptionSeam("keys"), ^||OcuPilotEncryptionSeam("file"), ^||OcuPilotEncryptionSeam("sent"), ^||OcuPilotEncryptionSeam("logged")
 }
 
 /// <p>The recorded calls, comma-joined in order.</p>

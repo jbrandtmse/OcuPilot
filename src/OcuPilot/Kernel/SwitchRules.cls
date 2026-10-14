@@ -99,7 +99,9 @@ ClassMethod ValidateHold(ByRef pValues, pHeldAlready As %Boolean = 0, Output pVi
 /// not a violation, as an endpoint's is not. No rule applies to an empty <code>proxyServer</code>.</p>
 /// <p><var>pFresh</var> is the configuration the caller read for a name just changed to a non-default one, as the
 /// SSL/TLS form's own read answers it, and <code>""</code> otherwise. A configuration that is not an enabled client
-/// with <code>VerifyPeer</code> 1 is <code>EGRESS.SSLUNVERIFIED</code> on <code>sslConfiguration</code>.</p>
+/// with <code>VerifyPeer</code> 1 is <code>EGRESS.SSLUNVERIFIED</code> on <code>sslConfiguration</code>; one that is such a
+/// client with a <code>TLSMinVersion</code> below <parameter>OcuPilot.Port.ProviderPort.MINTLSVERSION</parameter> is
+/// <code>EGRESS.SSLWEAK</code> (AD-32), so the save judges the floor the call holds.</p>
 ClassMethod ValidateEgress(ByRef pValues, pFresh As %DynamicObject = "", Output pViolations) As %Integer
 {
     Kill pViolations
@@ -120,8 +122,12 @@ ClassMethod ValidateEgress(ByRef pValues, pFresh As %DynamicObject = "", Output 
             Do ..Add(.pViolations, "proxyPort", ##class(OcuPilot.Api.EgressError).#PROXYPORT)
         }
     }
-    If $IsObject(pFresh) && '..EnabledVerifyingClient(pFresh) {
-        Do ..Add(.pViolations, "sslConfiguration", ##class(OcuPilot.Api.EgressError).#SSLUNVERIFIED)
+    If $IsObject(pFresh) {
+        If '..EnabledVerifyingClient(pFresh) {
+            Do ..Add(.pViolations, "sslConfiguration", ##class(OcuPilot.Api.EgressError).#SSLUNVERIFIED)
+        } ElseIf +pFresh.%Get("TLSMinVersion") < ##class(OcuPilot.Port.ProviderPort).#MINTLSVERSION {
+            Do ..Add(.pViolations, "sslConfiguration", ##class(OcuPilot.Api.EgressError).#SSLWEAK)
+        }
     }
     Quit +$Get(pViolations)
 }

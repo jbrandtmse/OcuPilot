@@ -95,7 +95,7 @@ Parameter REASONTYPEMISMATCH = "This secret holds another type of key, and a sec
 /// <class>OcuPilot.Kernel.Proposal.Mint</class> stores and the card renders.</p>
 Parameter REPLACERSA = "WALLETKEY.REPLACE.RSA";
 
-Parameter REASONREPLACERSA = "Replaces the whole key pair. The old private key is discarded, so data encrypted to the old public key can no longer be decrypted with this secret. An import without a private key leaves the secret with none.";
+Parameter REASONREPLACERSA = "Replaces the whole key pair, and a stored certificate is removed unless the import carries one. The old private key is discarded, so data encrypted to the old public key can no longer be decrypted with this secret. An import without a private key leaves the secret with none.";
 
 Parameter REPLACESYMMETRIC = "WALLETKEY.REPLACE.SYMMETRIC";
 

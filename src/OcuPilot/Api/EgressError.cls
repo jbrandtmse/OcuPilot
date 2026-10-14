@@ -37,13 +37,20 @@ Parameter SSLUNVERIFIED = "EGRESS.SSLUNVERIFIED";
 
 Parameter REASONSSLUNVERIFIED = "Provider calls need an enabled client configuration that requires the server's certificate.";
 
+/// <p>Violation code (422, Story 18.48): <code>sslConfiguration</code> names an enabled client that requires the
+/// server's certificate and whose lowest TLS version is below TLS 1.2, the floor every provider call holds
+/// (<parameter>OcuPilot.Port.ProviderPort.MINTLSVERSION</parameter>). Nothing is stored.</p>
+Parameter SSLWEAK = "EGRESS.SSLWEAK";
+
+Parameter REASONSSLWEAK = "Provider calls need a client configuration whose lowest TLS version is TLS 1.2 or later.";
+
 /// <p>The longest proxy host stored, in characters.</p>
 Parameter HOSTMAX = 253;
 
 /// <p>Every <code>EGRESS.*</code> code, as a <class>%List</class>.</p>
 ClassMethod Codes() As %List
 {
-    Quit $ListBuild(..#PROXYHOST, ..#PROXYPORT, ..#PROXYADDRESS, ..#SSLABSENT, ..#SSLUNVERIFIED)
+    Quit $ListBuild(..#PROXYHOST, ..#PROXYPORT, ..#PROXYADDRESS, ..#SSLABSENT, ..#SSLUNVERIFIED, ..#SSLWEAK)
 }
 
 /// <p>The sentence <var>pCode</var> carries, or <code>""</code> for any code this class does not declare.</p>
@@ -54,6 +61,7 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#PROXYADDRESS Quit ..#REASONPROXYADDRESS
     If pCode = ..#SSLABSENT Quit ..#REASONSSLABSENT
     If pCode = ..#SSLUNVERIFIED Quit ..#REASONSSLUNVERIFIED
+    If pCode = ..#SSLWEAK Quit ..#REASONSSLWEAK
     Quit ""
 }
 

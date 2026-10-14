@@ -199,10 +199,16 @@ Parameter REMOTEDIRECTORYMANAGER = "DATABASE.REMOTEDIRECTORY.MANAGER";
 
 Parameter REASONREMOTEDIRECTORYMANAGER = "That directory is the data server's IRISSYS directory. Choose another.";
 
+/// <p>Violation code (Story 18.48): a create asks for an encrypted database while no database encryption key is
+/// active, on <code>Encrypted</code>. The default key's id is the one the file is encrypted with.</p>
+Parameter ENCRYPTNOKEY = "DATABASE.ENCRYPT.NOKEY";
+
+Parameter REASONENCRYPTNOKEY = "Activate a database encryption key on Database encryption before encrypting a database.";
+
 /// <p>Every field-level code, as a <class>%List</class>, in the order the form lists its rules.</p>
 ClassMethod ViolationCodes() As %List
 {
-    Quit $ListBuild(..#NAMEREQUIRED, ..#NAMESHAPE, ..#NAMETAKEN, ..#NAMEABSENT, ..#DIRECTORYINUSE, ..#SIZESHAPE, ..#MAXSIZESHAPE, ..#EXPANSIONSIZESHAPE, ..#NEWVOLUMETHRESHOLDSHAPE, ..#NEWVOLUMETHRESHOLDMANAGER, ..#RESOURCESHAPE, ..#RESOURCEABSENT, ..#TARGETSIZESHAPE, ..#TARGETFREESHAPE, ..#GROWSIZESHAPE, ..#INITIALSIZESHAPE, ..#INTEGRITYDATABASES, ..#GLOBALSSHAPE, ..#GLOBALSONEDATABASE, ..#SERVERABSENT, ..#SERVERUNREACHABLE, ..#REMOTEDIRECTORYNONE, ..#REMOTEDIRECTORYABSENT, ..#REMOTEDIRECTORYMANAGER)
+    Quit $ListBuild(..#NAMEREQUIRED, ..#NAMESHAPE, ..#NAMETAKEN, ..#NAMEABSENT, ..#DIRECTORYINUSE, ..#SIZESHAPE, ..#MAXSIZESHAPE, ..#EXPANSIONSIZESHAPE, ..#NEWVOLUMETHRESHOLDSHAPE, ..#NEWVOLUMETHRESHOLDMANAGER, ..#RESOURCESHAPE, ..#RESOURCEABSENT, ..#TARGETSIZESHAPE, ..#TARGETFREESHAPE, ..#GROWSIZESHAPE, ..#INITIALSIZESHAPE, ..#INTEGRITYDATABASES, ..#GLOBALSSHAPE, ..#GLOBALSONEDATABASE, ..#SERVERABSENT, ..#SERVERUNREACHABLE, ..#REMOTEDIRECTORYNONE, ..#REMOTEDIRECTORYABSENT, ..#REMOTEDIRECTORYMANAGER, ..#ENCRYPTNOKEY)
 }
 
 /// <p>The sentence <var>pCode</var> carries, or <code>""</code> for a code this class does not
@@ -240,6 +246,7 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#REMOTEDIRECTORYNONE Quit ..#REASONREMOTEDIRECTORYNONE
     If pCode = ..#REMOTEDIRECTORYABSENT Quit ..#REASONREMOTEDIRECTORYABSENT
     If pCode = ..#REMOTEDIRECTORYMANAGER Quit ..#REASONREMOTEDIRECTORYMANAGER
+    If pCode = ..#ENCRYPTNOKEY Quit ..#REASONENCRYPTNOKEY
     Quit ""
 }
 

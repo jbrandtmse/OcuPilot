@@ -14,6 +14,7 @@
  *    host (AC3).
  * 6. **The list reads Enabled from the flags** (AC9, DW-1639).
  * 7. **The DW-1337 structural walk** of the editor at an id route, each tab in turn, in both themes.
+ * 8. **The last attribute is removed and saved**, and the instance holds none (DW-1896).
  *
  * **It runs only in a throwaway** (`-ci`), and writes only `ocup99*` configurations through
  * `OcuPilot.Test.ServiceLdapProbe`, armed by `OCUPILOT_ALLOW_SERVICE_CONFIG`; every leg that writes
@@ -320,6 +321,28 @@ test('AC5: a search password is entered, then cleared, each read back by presenc
     assert.equal(writes.length, 2, 'a second Save was sent');
     assert.equal(JSON.parse(writes[1].body).LDAPSearchPassword, '', 'carrying an empty password');
     assert.equal(passwordSet(PROBE), false, 'and the instance holds none');
+  } finally {
+    await context.close();
+  }
+});
+
+test('DW-1896: the last attribute is removed -- one is added and saved, then removed and saved, and the instance holds none', async () => {
+  // Mutation (Rule 19): drop `Security.LDAP/PUT=LDAPAttributes` from AdminPort's CLASSCOMPLETEDTYPES, reload the classes -> the second Save is refused and the read-back still holds the attribute.
+  makeProbe(PROBE, 72, UNREACHABLE);
+  const { context, page, writes } = await signedIn(editUrl(PROBE));
+  try {
+    await editorReady(page);
+    await openTab(page, 'attributes');
+    await page.type('#ocu-ldap-LDAPAttributes', 'cn');
+    await press(page, 'app-ldap-editor-page [data-action="add-attribute"]');
+    await saveAndSettle(page, config);
+    assert.deepEqual(readBack(PROBE).LDAPAttributes, ['cn'], 'the instance holds the attribute');
+    await press(page, 'app-ldap-editor-page [data-action="remove-attribute"]');
+    await saveAndSettle(page, config);
+    assert.equal(writes.length, 2, 'a second Save was sent');
+    assert.deepEqual(JSON.parse(writes[1].body), { LDAPAttributes: [] }, 'carrying an empty list');
+    assert.deepEqual(readBack(PROBE).LDAPAttributes, [], 'and the instance holds none');
+    assert.equal(await page.$('app-ldap-editor-page [data-action="remove-attribute"]'), null, 'the editor lists none');
   } finally {
     await context.close();
   }

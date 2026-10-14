@@ -544,6 +544,40 @@ Parameter STARTUPMODEFIELD = "DBEncStartMode";
 
 Parameter STARTUPREQUIREDFLAGS = "AuditEncrypt,DBEncIRISSecurity,DBEncIRISTemp";
 
+/// <p>The effect <method>WeakensByEffect</method> answers for an activation of database encryption keys while none is
+/// active (AD-10 as amended 2026-10-14, Story 18.48): the first activation also sets key activation at startup to
+/// Interactive, which no deactivation undoes (measured), so the proposal is permitted, destructive, and keeps its
+/// tool's own consequence. Its governance key ships disabled all the same.</p>
+Parameter EFFECTFIRSTKEY = "ENCRYPTION.KEY.ACTIVATE";
+
+/// <p>The write would leave key activation at startup Interactive while journal encryption is on, or while
+/// <code>%SYS.Journal.System.OKNoDBEncKeyAtStartup()</code> answers an error (AD-10 as amended 2026-10-14, Story
+/// 18.48): a start nobody answers on the console then aborts into single-user mode (measured), taking down the
+/// path that serves OcuPilot. Judged over the resolved settings, <code>DBEncJournal</code> set in the payload or
+/// the stored settings, before any write and from either caller; a failed read refuses.</p>
+Parameter STARTUPJOURNAL = "PROHIBITED.STARTUPJOURNAL";
+
+/// <p>The one sentence <parameter>STARTUPJOURNAL</parameter> carries, caller-neutral, published in EXPERIENCE.md's
+/// Fixed strings and pinned equal to <code>encryptionStartupJournalRefusal</code> by
+/// <file>ui/tools/self-protection.test.mjs</file>.</p>
+Parameter STARTUPJOURNALREASON = "Journal encryption is on, or a journal file the instance still needs is encrypted, so every start must activate its key, and with Interactive a start nobody answers on the console does not finish. Keep Unattended, or turn journal encryption off and switch the journal file on Journals first.";
+
+/// <p>The write would choose, or keep, KMIP key activation at startup while the audit log, IRISSECURITY or
+/// IRISTEMP is encrypted, now or at the next start (AD-10 as amended 2026-10-14, Story 18.48), read as the
+/// Interactive arm reads it: OcuPilot cannot judge a KMIP server's reach or key list, and a start that cannot
+/// activate their keys does not finish (measured).</p>
+Parameter STARTUPKMIP = "PROHIBITED.STARTUPKMIP";
+
+/// <p>The one sentence <parameter>STARTUPKMIP</parameter> carries, published and pinned as
+/// <parameter>STARTUPJOURNALREASON</parameter> is, against <code>encryptionStartupKmipRefusal</code>.</p>
+Parameter STARTUPKMIPREASON = "The audit log, IRISSECURITY or IRISTEMP is encrypted, and OcuPilot cannot check that the KMIP server is reachable and holds their keys, so a start that cannot activate them does not finish. Keep Unattended, or make this change on the classic Database Encryption page.";
+
+/// <p>The mode <parameter>STARTUPKMIP</parameter> judges, and the journal setting
+/// <parameter>STARTUPJOURNAL</parameter> reads.</p>
+Parameter STARTUPKMIPMODE = "KMIP";
+
+Parameter STARTUPJOURNALFIELD = "DBEncJournal";
+
 /// <p>The instance's authentication and web session options (Story 18.8), a singleton whose one merge
 /// write <method>AuthOptions</method> judges: a change that leaves one of OcuPilot's own web applications
 /// or the web gateway with no authentication method is refused <parameter>OCUPILOTSIGNIN</parameter>,
@@ -1015,10 +1049,10 @@ Parameter READTYPE = "GET";
 /// <method>Mapping</method> adds, the one <method>Database</method> adds, and the one
 /// <method>Lock</method> adds, and the one <method>Code</method> adds, and the one
 /// <method>SqlStatement</method> adds, the key arm's and the encryption start arm's, and the two
-/// <method>AuthOptions</method> adds, and the one <method>Superserver</method> adds, and the SQL privilege arm's, and the one <method>ScreenPermission</method> adds last, and the one <method>OwnRoutineApplication</method> arm adds after it, and the one <method>AgentReachable</method> judges, and the one <method>ProviderSsl</method> judges last -- thirty-six in all.</p>
+/// <method>AuthOptions</method> adds, and the one <method>Superserver</method> adds, and the SQL privilege arm's, and the one <method>ScreenPermission</method> adds last, and the one <method>OwnRoutineApplication</method> arm adds after it, and the one <method>AgentReachable</method> judges, and the one <method>ProviderSsl</method> judges, and the start arm's journal and KMIP codes last -- thirty-eight in all.</p>
 ClassMethod Codes() As %List
 {
-    Quit $ListBuild(..#SERVINGPATH, ..#UNAUTHENTICATED, ..#AUTHORIZATION, ..#DISPATCH, ..#SYSTEMACCOUNT, ..#SERVICEACCOUNT, ..#CURRENTUSER, ..#LASTALLHOLDER, ..#PRIVILEGEGRANT, ..#OCUPILOTPROCESS, ..#SYSTEMPROCESS, ..#UNCOVEREDFIELD, ..#UNCOVERED, ..#OCUPILOTROLE, ..#OCUPILOTRESOURCE, ..#SERVICEACCOUNTSIGNIN, ..#OCUPILOTSSL, ..#SERVINGSERVICE, ..#OCUPILOTNAMESPACE, ..#OCUPILOTSESSION, ..#PRESERVEDSESSION, ..#OCUPILOTMAPPING, ..#OCUPILOTDATABASE, ..#OCUPILOTLOCK, ..#OCUPILOTCODE, ..#OCUPILOTSQL, ..#OCUPILOTKEY, ..#STARTUPINTERACTIVE, ..#OCUPILOTSIGNIN, ..#OCUPILOTSTART, ..#SERVINGSUPERSERVER, ..#OCUPILOTSQLPRIVILEGE, ..#OCUPILOTSCREEN, ..#OCUPILOTROUTINEAPP, ..#ALLOWLISTAGENT, ..#PROVIDERSSL)
+    Quit $ListBuild(..#SERVINGPATH, ..#UNAUTHENTICATED, ..#AUTHORIZATION, ..#DISPATCH, ..#SYSTEMACCOUNT, ..#SERVICEACCOUNT, ..#CURRENTUSER, ..#LASTALLHOLDER, ..#PRIVILEGEGRANT, ..#OCUPILOTPROCESS, ..#SYSTEMPROCESS, ..#UNCOVEREDFIELD, ..#UNCOVERED, ..#OCUPILOTROLE, ..#OCUPILOTRESOURCE, ..#SERVICEACCOUNTSIGNIN, ..#OCUPILOTSSL, ..#SERVINGSERVICE, ..#OCUPILOTNAMESPACE, ..#OCUPILOTSESSION, ..#PRESERVEDSESSION, ..#OCUPILOTMAPPING, ..#OCUPILOTDATABASE, ..#OCUPILOTLOCK, ..#OCUPILOTCODE, ..#OCUPILOTSQL, ..#OCUPILOTKEY, ..#STARTUPINTERACTIVE, ..#OCUPILOTSIGNIN, ..#OCUPILOTSTART, ..#SERVINGSUPERSERVER, ..#OCUPILOTSQLPRIVILEGE, ..#OCUPILOTSCREEN, ..#OCUPILOTROUTINEAPP, ..#ALLOWLISTAGENT, ..#PROVIDERSSL, ..#STARTUPJOURNAL, ..#STARTUPKMIP)
 }
 
 /// <p>The written sentence a <code>PROHIBITED.*</code> code carries, or <code>""</code> for any
@@ -1066,6 +1100,8 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#OCUPILOTROUTINEAPP Quit ..#OCUPILOTROUTINEAPPREASON
     If pCode = ..#ALLOWLISTAGENT Quit ..#ALLOWLISTAGENTREASON
     If pCode = ..#PROVIDERSSL Quit ..#PROVIDERSSLREASON
+    If pCode = ..#STARTUPJOURNAL Quit ..#STARTUPJOURNALREASON
+    If pCode = ..#STARTUPKMIP Quit ..#STARTUPKMIPREASON
     Quit ""
 }
 
@@ -2060,6 +2096,8 @@ ClassMethod LowersScreenPermission(pTarget As %DynamicObject) As %Boolean
 /// <code>%</code>) or <code>*</code> reaches the <code>%</code> globals too, and answers the same effect.</p>
 /// <p>For a screen permission, <parameter>EFFECTSCREENLOWERED</parameter> when <method>LowersScreenPermission</method>
 /// answers true over <var>pTarget</var>.</p>
+/// <p>For the active database encryption keys, <parameter>EFFECTFIRSTKEY</parameter> for a write that removes nothing
+/// while <var>pTarget</var> lists no active key.</p>
 ClassMethod WeakensByEffect(pType As %String, pPayload As %DynamicObject, pTarget As %DynamicObject, Output pEffect As %String, pId As %String = "", pRemoves As %Boolean = 0) As %Status
 {
     Set pEffect = ""
@@ -2079,6 +2117,10 @@ ClassMethod WeakensByEffect(pType As %String, pPayload As %DynamicObject, pTarge
         }
         If pType = ..#TYPEENCRYPTIONSTARTUP {
             If ..ChangesAuditEncryption(pPayload, pTarget) Set pEffect = ..#EFFECTAUDITENCRYPTION
+            Quit
+        }
+        If pType = ..#TYPEDATABASEKEYS {
+            If 'pRemoves && (..ActiveKeyCount(pTarget) = 0) Set pEffect = ..#EFFECTFIRSTKEY
             Quit
         }
         If pType = ..#TYPEAUTHOPTIONS {
@@ -3050,11 +3092,12 @@ ClassMethod EncryptionKeyFileFields(pKind As %String) As %List [ Private ]
 }
 
 /// <p>An activation's and a deactivation's reviewed few (Story 18.22): the key file's location, its
-/// administrator and the administrator's password. A deactivation's <code>KeyId</code> names its row and
-/// is fingerprinted, never swept.</p>
+/// administrator and the administrator's password, and the key ids the activation's mint read from the file
+/// (<code>FileKeys</code>, Story 18.48). A deactivation's <code>KeyId</code> names its row and is
+/// fingerprinted, never swept.</p>
 ClassMethod EncryptionKeyFields() As %List [ Private ]
 {
-    Quit $ListBuild("root", "path", "AdminName", "AdminPassword")
+    Quit $ListBuild("root", "path", "AdminName", "AdminPassword", "FileKeys")
 }
 
 /// <p>The startup settings' reviewed few (Story 18.23): the start mode, the four encryption settings, the
@@ -3066,24 +3109,41 @@ ClassMethod EncryptionStartupFields() As %List [ Private ]
     Quit $ListBuild("DBEncStartMode", "DBEncJournal", "DBEncIRISSecurity", "DBEncIRISTemp", "AuditEncrypt", "DBEncStartKMIPServer", "DBEncDefaultKeyID", "DBEncJournalKeyID", "AdminName", "root", "path", "AdminPassword")
 }
 
-/// <p>The startup settings write's verdict (AD-10 as amended 2026-10-05, Story 18.23): when the settings
-/// the write leaves (<method>LeavesInteractiveRequired</method>) are Interactive key activation with the
-/// audit log, IRISSECURITY or IRISTEMP encrypted, now or at the next start, it is refused
-/// <parameter>STARTUPINTERACTIVE</parameter>; every write then passes the reviewed-few sweep. A write that
-/// leaves Interactive also reads, through <var>pToolClass</var>'s port as the caller, whether one of their
-/// databases is still encrypted on disk (<method>StartupDatabasesEncrypted</method>); a read that fails
-/// refuses.</p>
+/// <p>The startup settings write's verdict (AD-10 as amended 2026-10-05, Story 18.23, and 2026-10-14, Story 18.48):
+/// when the settings the write leaves (<method>LeavesInteractiveRequired</method>) are Interactive key activation
+/// with the audit log, IRISSECURITY or IRISTEMP encrypted, now or at the next start, it is refused
+/// <parameter>STARTUPINTERACTIVE</parameter>; when they are KMIP key activation with one of them encrypted
+/// (<method>LeavesKmipRequired</method>), <parameter>STARTUPKMIP</parameter>; and when they are Interactive with
+/// journal encryption on (<method>LeavesInteractiveJournal</method>), <parameter>STARTUPJOURNAL</parameter>.
+/// Every write then passes the reviewed-few sweep. A write that leaves Interactive or KMIP also reads, through
+/// <var>pToolClass</var>'s port as the caller, whether one of their databases is still encrypted on disk
+/// (<method>StartupDatabasesEncrypted</method>), and a write that leaves Interactive with journal encryption
+/// not set whether the journal allows no key at startup (<method>StartupJournalRefused</method>); a read that
+/// fails refuses.</p>
 ClassMethod EncryptionStartup(pToolClass As %String, pPayload As %DynamicObject, pTarget As %DynamicObject, ByRef pChanged, Output pProhibits As %Boolean, Output pCode As %String) As %Status [ Private ]
 {
     Set pProhibits = 0
     Set pCode = ""
     Set tSC = $$$OK
     Try {
+        Set tMode = ..StartupSetting(pPayload, pTarget, ..#STARTUPMODEFIELD)
         Set tOnDisk = 0
-        If ..StartupSetting(pPayload, pTarget, ..#STARTUPMODEFIELD) = "Interactive" Set tOnDisk = ..StartupDatabasesEncrypted(..PortClassOf(pToolClass))
+        If (tMode = "Interactive") || (tMode = ..#STARTUPKMIPMODE) Set tOnDisk = ..StartupDatabasesEncrypted(..PortClassOf(pToolClass))
         If ..LeavesInteractiveRequired(pPayload, pTarget, tOnDisk) {
             Do ..Refuse(..#STARTUPINTERACTIVE, .pProhibits, .pCode)
             Quit
+        }
+        If ..LeavesKmipRequired(pPayload, pTarget, tOnDisk) {
+            Do ..Refuse(..#STARTUPKMIP, .pProhibits, .pCode)
+            Quit
+        }
+        If tMode = "Interactive" {
+            Set tJournalRefused = 0
+            If '..SetsJournalEncryption(pPayload, pTarget) Set tJournalRefused = ..StartupJournalRefused(..PortClassOf(pToolClass))
+            If ..LeavesInteractiveJournal(pPayload, pTarget, tJournalRefused) {
+                Do ..Refuse(..#STARTUPJOURNAL, .pProhibits, .pCode)
+                Quit
+            }
         }
         Set tSC = ..ReviewedFewOnly(..#TYPEENCRYPTIONSTARTUP, .pChanged, .pProhibits, .pCode)
     } Catch ex {
@@ -3104,9 +3164,23 @@ ClassMethod EncryptionStartup(pToolClass As %String, pPayload As %DynamicObject,
 /// off leaves until the next start converts it.</p>
 ClassMethod LeavesInteractiveRequired(pPayload As %DynamicObject, pTarget As %DynamicObject, pEncryptedOnDisk As %Boolean = 0) As %Boolean
 {
-    If ..StartupSetting(pPayload, pTarget, ..#STARTUPMODEFIELD) '= "Interactive" Quit 0
+    Quit ..LeavesModeRequired("Interactive", pPayload, pTarget, pEncryptedOnDisk)
+}
+
+/// <p><method>LeavesInteractiveRequired</method>'s judgement for KMIP key activation at startup.</p>
+ClassMethod LeavesKmipRequired(pPayload As %DynamicObject, pTarget As %DynamicObject, pEncryptedOnDisk As %Boolean = 0) As %Boolean
+{
+    Quit ..LeavesModeRequired(..#STARTUPKMIPMODE, pPayload, pTarget, pEncryptedOnDisk)
+}
+
+/// <p>Whether a write leaves start mode <var>pMode</var> with one of
+/// <parameter>STARTUPREQUIREDFLAGS</parameter> set or one of their databases encrypted on disk, as
+/// <method>LeavesInteractiveRequired</method> reads it.</p>
+ClassMethod LeavesModeRequired(pMode As %String, pPayload As %DynamicObject, pTarget As %DynamicObject, pEncryptedOnDisk As %Boolean = 0) As %Boolean [ Private ]
+{
+    If ..StartupSetting(pPayload, pTarget, ..#STARTUPMODEFIELD) '= pMode Quit 0
     If pEncryptedOnDisk Quit 1
-    Set tChoosing = (..StartupSetting("", pTarget, ..#STARTUPMODEFIELD) '= "Interactive")
+    Set tChoosing = (..StartupSetting("", pTarget, ..#STARTUPMODEFIELD) '= pMode)
     Set tRequired = 0
     For tI = 1:1:$Length(..#STARTUPREQUIREDFLAGS, ",") {
         Set tFlag = $Piece(..#STARTUPREQUIREDFLAGS, ",", tI)
@@ -3116,21 +3190,73 @@ ClassMethod LeavesInteractiveRequired(pPayload As %DynamicObject, pTarget As %Dy
     Quit tRequired
 }
 
+/// <p>Whether the write leaves journal encryption set: <parameter>STARTUPJOURNALFIELD</parameter> true in
+/// <var>pPayload</var> or in <var>pTarget</var>, the instance's settings at the write.</p>
+ClassMethod SetsJournalEncryption(pPayload As %DynamicObject, pTarget As %DynamicObject) As %Boolean [ Private ]
+{
+    If ..StartupSetting(pPayload, "", ..#STARTUPJOURNALFIELD) = "true" Quit 1
+    Quit (..StartupSetting("", pTarget, ..#STARTUPJOURNALFIELD) = "true")
+}
+
+/// <p>Whether a write leaves key activation at startup Interactive while journal encryption is on:
+/// <parameter>STARTUPMODEFIELD</parameter> read from <var>pPayload</var> where it carries one and from
+/// <var>pTarget</var> otherwise, and either <parameter>STARTUPJOURNALFIELD</parameter> set in the payload or the
+/// stored settings (<method>SetsJournalEncryption</method>) or <var>pJournalRefused</var>, the vendor's own
+/// answer that the journal allows no key activation to be turned off, set.</p>
+ClassMethod LeavesInteractiveJournal(pPayload As %DynamicObject, pTarget As %DynamicObject, pJournalRefused As %Boolean = 0) As %Boolean
+{
+    If ..StartupSetting(pPayload, pTarget, ..#STARTUPMODEFIELD) '= "Interactive" Quit 0
+    If ..SetsJournalEncryption(pPayload, pTarget) Quit 1
+    Quit ''pJournalRefused
+}
+
+/// <p>Whether the journal forbids a start without its key, read through <var>pPort</var> as the caller
+/// (<code>Security.Encryption.Settings</code> <code>JOURNALSTARTUP</code>, the vendor's
+/// <code>OKNoDBEncKeyAtStartup()</code>, AD-27's named case): 1 when it answers an error. A read that fails, or
+/// answers anything but its boolean, answers 1.</p>
+ClassMethod StartupJournalRefused(pPort As %String) As %Boolean [ Private ]
+{
+    If '..ReadMember(pPort, "Security.Encryption.Settings", "JOURNALSTARTUP", "", "Allowed", "boolean", .tAllowed) Quit 1
+    Quit 'tAllowed
+}
+
 /// <p>Whether the audit log's, IRISSECURITY's or IRISTEMP's database is encrypted on disk, read through
 /// <var>pPort</var> as the caller (<code>Security.Encryption.Settings</code> <code>ENCRYPTEDDATABASES</code>,
 /// AD-27's named case). A read that fails, or answers anything but a list, answers 1.</p>
 ClassMethod StartupDatabasesEncrypted(pPort As %String) As %Boolean [ Private ]
 {
-    Set tEncrypted = 1
+    If '..ReadMember(pPort, "Security.Encryption.Settings", "ENCRYPTEDDATABASES", "", "Encrypted", "array", .tEncrypted) Quit 1
+    Quit (tEncrypted.%Size() > 0)
+}
+
+/// <p>Member <var>pMember</var> of <var>pPort</var>'s <var>pEndpoint</var> <var>pType</var> read, made as the caller
+/// with <code>name</code> <var>pName</var> when it is not empty, in <var>pValue</var>: 1 when the read answers an object
+/// whose member is of JSON type <var>pKind</var>, and 0 for a read that fails, throws or answers anything else, which
+/// each caller counts against the write.</p>
+ClassMethod ReadMember(pPort As %String, pEndpoint As %String, pType As %String, pName As %String, pMember As %String, pKind As %String, Output pValue) As %Boolean [ Private ]
+{
+    Set pValue = ""
+    Set tAnswered = 0
     Try {
         Kill tQuery
-        Set tReadSC = $ClassMethod(pPort, "Invoke", "Security.Encryption.Settings", "ENCRYPTEDDATABASES", .tQuery, "", .tRead, .tHttp, .tFault)
-        If $$$ISERR(tReadSC) || '$IsObject($Get(tRead)) || 'tRead.%IsA("%Library.DynamicObject") || (tRead.%GetTypeOf("Encrypted") '= "array") Quit
-        Set tEncrypted = (tRead.%Get("Encrypted").%Size() > 0)
+        If pName '= "" Set tQuery("name") = pName
+        Set tReadSC = $ClassMethod(pPort, "Invoke", pEndpoint, pType, .tQuery, "", .tRead, .tHttp, .tFault)
+        If $$$ISERR(tReadSC) || '$IsObject($Get(tRead)) || 'tRead.%IsA("%Library.DynamicObject") || (tRead.%GetTypeOf(pMember) '= pKind) Quit
+        Set pValue = tRead.%Get(pMember)
+        Set tAnswered = 1
     } Catch {
-        Set tEncrypted = 1
+        Set pValue = ""
+        Set tAnswered = 0
     }
-    Quit tEncrypted
+    Quit tAnswered
+}
+
+/// <p>How many keys <var>pTarget</var>, the active-keys read, lists in its <code>Keys</code>; 0 for a target that is
+/// not an object or lists none.</p>
+ClassMethod ActiveKeyCount(pTarget As %DynamicObject) As %Integer [ Private ]
+{
+    If '$IsObject(pTarget) || (pTarget.%GetTypeOf("Keys") '= "array") Quit 0
+    Quit pTarget.%Get("Keys").%Size()
 }
 
 /// <p>Whether <var>pPayload</var> carries an <code>AuditEncrypt</code> other than <var>pTarget</var>'s.</p>
@@ -3600,12 +3726,12 @@ ClassMethod DatabaseChangeFields() As %List [ Private ]
     Quit $ListBuild("MountAtStartup", "MountRequired", "ClusterMountMode", "MaxSize", "ExpansionSize", "ResourceName", "NewGlobalIsKeep", "GlobalJournalState", "ReadOnly", "NewVolumeThreshold", "volumeRoot", "volumePath", "Server", "Directory")
 }
 
-/// <p>A database create's fields: its five declared arguments.</p>
+/// <p>A database create's fields: its six declared arguments.</p>
 /// <p>Story 18.16's remote create adds the data server and the directory; the local tools' derived
 /// lists exclude both, so they never send them.</p>
 ClassMethod DatabaseCreateFields() As %List [ Private ]
 {
-    Quit $ListBuild("root", "path", "Size", "GlobalJournalState", "ResourceName", "Server", "Directory")
+    Quit $ListBuild("root", "path", "Size", "GlobalJournalState", "ResourceName", "Encrypted", "Server", "Directory")
 }
 
 /// <p>Whether <var>pType</var> is one of the three mapping types (Story 18.14).</p>
@@ -4572,7 +4698,8 @@ ClassMethod ResourceNames(pObject As %DynamicObject, Output pNames) [ Private ]
 /// role (<method>AddsPrivilegedCustomizationRole</method>). Any other type grants nothing here.</p>
 /// <p>A privileged routine application's <code>MatchRoles</code> is judged as a web application's, and a routine it
 /// adds while a target role escalates is a grant too (<method>AddsRoutineUnderPrivilege</method>, Story 18.33), as is
-/// clearing its <code>Resource</code> or enabling it while one does (<method>WidensPrivilegedReach</method>).</p>
+/// clearing its <code>Resource</code> or enabling it while one does (<method>WidensPrivilegedReach</method>), which a web
+/// application's enabling, or its <code>Resource</code> pointed at a publicly held one, is too (Story 18.48).</p>
 ClassMethod GrantsPrivilegeByEffect(pType As %String, pPayload As %DynamicObject, pTarget As %DynamicObject, Output pGrants As %Boolean, pId As %String = "") As %Status
 {
     Set pGrants = 0
@@ -4653,6 +4780,9 @@ ClassMethod GrantsPrivilegeByEffect(pType As %String, pPayload As %DynamicObject
                 If $$$ISERR(tSC) Quit
                 If tEscalates Set pGrants = 1 Quit
             }
+            ; Story 18.48 (DW-2425): enabling it, or pointing its Resource at a publicly held one, while a granted role
+            ; escalates. Clearing the Resource has its own effect (EFFECTNORESOURCE).
+            If $$$ISOK(tSC) && 'pGrants Set tSC = ..WidensPrivilegedReach(pPayload, tTarget, .pGrants, 0)
         }
     } Catch ex {
         Set pGrants = 0
@@ -5987,17 +6117,39 @@ ClassMethod ApplicationRolesEscalate(pPayload As %DynamicObject, pTarget As %Dyn
     Quit tSC
 }
 
-/// <p>Whether <var>pPayload</var> clears <var>pTarget</var>'s <code>Resource</code> (<method>ClearsResource</method>) or turns
-/// <code>Enabled</code> on while <var>pTarget</var> holds it off, in <var>pGrants</var>, with a target role of the
-/// application's <code>MatchRoles</code> that escalates (<method>ApplicationRolesEscalate</method>) (Story 18.47, AD-10).
-/// An application with no <code>Resource</code> runs for anyone, and a disabled one for no one, so either change hands the
-/// roles' privilege to more callers. <code>Enabled</code> reads in the forms the routine application rules admit: a
-/// boolean, the number 1 or 0, the text <code>"1"</code> or <code>"0"</code>.</p>
-ClassMethod WidensPrivilegedReach(pPayload As %DynamicObject, pTarget As %DynamicObject, Output pGrants As %Boolean) As %Status [ Private ]
+/// <p>Whether <var>pPayload</var> clears <var>pTarget</var>'s <code>Resource</code> (<method>ClearsResource</method>, only
+/// when <var>pClears</var>), turns <code>Enabled</code> on while <var>pTarget</var> holds it off, or points
+/// <code>Resource</code> at another resource whose public permission holds USE
+/// (<method>RepointsToPublicResource</method>), in <var>pGrants</var>, with a target role of the application's
+/// <code>MatchRoles</code> that escalates (<method>ApplicationRolesEscalate</method>) (Story 18.47 and 18.48, AD-10).
+/// An application with no <code>Resource</code>, or one anyone holds, runs for anyone, and a disabled one for no one, so
+/// each change hands the roles' privilege to more callers. <code>Enabled</code> reads in the forms the routine application
+/// rules admit: a boolean, the number 1 or 0, the text <code>"1"</code> or <code>"0"</code>.</p>
+ClassMethod WidensPrivilegedReach(pPayload As %DynamicObject, pTarget As %DynamicObject, Output pGrants As %Boolean, pClears As %Boolean = 1) As %Status [ Private ]
 {
     Set pGrants = 0
-    If '(..ClearsResource(pPayload, pTarget) || (..EnabledOn(pPayload) && '..EnabledOn(pTarget))) Quit $$$OK
+    If '((pClears && ..ClearsResource(pPayload, pTarget)) || (..EnabledOn(pPayload) && '..EnabledOn(pTarget)) || ..RepointsToPublicResource(pPayload, pTarget)) Quit $$$OK
     Quit ..ApplicationRolesEscalate(pPayload, pTarget, .pGrants)
+}
+
+/// <p>Whether <var>pPayload</var> carries a <code>Resource</code> other than <var>pTarget</var>'s, compared without
+/// regard to case, that is not empty and whose public permission holds USE (<method>ResourcePublicUse</method>).</p>
+ClassMethod RepointsToPublicResource(pPayload As %DynamicObject, pTarget As %DynamicObject) As %Boolean [ Private ]
+{
+    If '$IsObject(pPayload) || (pPayload.%GetTypeOf("Resource") = "unassigned") Quit 0
+    Set tNew = ..Rendered(pPayload, "Resource")
+    If tNew = "" Quit 0
+    If $ZConvert(tNew, "U") = $ZConvert(..Rendered(pTarget, "Resource"), "U") Quit 0
+    Quit ..ResourcePublicUse(tNew)
+}
+
+/// <p>Whether the public permission of resource <var>pName</var> holds USE, read through <method>PortClass</method>'s
+/// <code>Security.Resource</code> <code>GET</code> as the caller. <b>A read that fails answers 1</b>, so a question the
+/// instance cannot answer is counted rather than passed.</p>
+ClassMethod ResourcePublicUse(pName As %String) As %Boolean [ Private ]
+{
+    If '..ReadMember(..PortClass(), "Security.Resource", "GET", pName, "PublicPermission", "string", .tLetters) Quit 1
+    Quit ($ZConvert(tLetters, "U") [ "U")
 }
 
 /// <p>Whether <var>pObject</var>'s <code>Enabled</code> reads as on: the boolean <code>true</code>, the number 1 or the

@@ -42,6 +42,13 @@ Parameter CASESTORED = "/csp/OcuPilotProbeWeakeningCase";
 /// before it is deleted.</p>
 Parameter PROBEMARKER = "OcuPilot weakening probe";
 
+/// <p>DW-2425: three resources this class creates and removes, whose public permission holds USE, only read, and none.</p>
+Parameter PUBLICUSE = "OCUPILOTPROBEWEAKPUBLICU";
+
+Parameter PUBLICREAD = "OCUPILOTPROBEWEAKPUBLICR";
+
+Parameter PUBLICNONE = "OCUPILOTPROBEWEAKNONE";
+
 /// <p>The class a repointed application's dispatch class names: a <class>%CSP.REST</class> class
 /// this install compiles, so the vendor accepts it.</p>
 Parameter DISPATCHCLASS = "OcuPilot.Api.Router";
@@ -66,6 +73,8 @@ Method OnAfterOneTest() As %Status
 {
     Do ##class(OcuPilot.Kernel.Proposal.Caller).Clear()
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.WebApp).DeleteByPath(..#OWNAPP), "install's record of the own probe is removed")
+    Do $$$AssertStatusOK(..RemoveResources(), "the public-permission probe resources are removed")
+    Do $$$AssertEquals(..ResourcesHeld(), 0, "and none is left")
     Set tSC = ##class(OcuPilot.Test.ProposalFixture).RemoveSeeded(.tRemaining)
     Do $$$AssertStatusOK(tSC, "the probe proposals and turns are removed")
     Do $$$AssertEquals(tRemaining, 0, "and none survives the removal")
@@ -75,6 +84,7 @@ Method OnAfterOneTest() As %Status
 Method OnAfterAllTests() As %Status
 {
     Do ##class(OcuPilot.Kernel.State.WebApp).DeleteByPath(..#OWNAPP)
+    Do ..RemoveResources()
     Set tSC = ##class(OcuPilot.Test.WebAppSave).RemoveApp(..#PROBEAPP, ..#PROBEMARKER)
     Set tOwnSC = ##class(OcuPilot.Test.WebAppSave).RemoveApp(..#OWNAPP, ..#PROBEMARKER)
     Set tCaseSC = ##class(OcuPilot.Test.WebAppSave).RemoveApp(..#CASESTORED, ..#PROBEMARKER)
@@ -220,6 +230,101 @@ Method TestAHeldPrivilegedTargetMovedToAnotherMatchingRoleIsAGrant()
         Do ..Stored(tKey, .tDestructive, .tConsequence)
         Do $$$AssertEquals(tDestructive _ " " _ tConsequence, "0 ", "ordinary")
     }
+}
+
+/// <p>DW-2425 (AD-10): enabling a disabled application, and pointing its resource at one whose public permission holds
+/// USE, are grants while a granted role is privileged -- minted destructive with <code>GRANT.PRIVILEGED</code> -- and
+/// ordinary for an application that grants nothing privileged, for a resource whose public permission only reads and for
+/// one with none; a resource the instance cannot read counts as public. Clearing a privileged application's resource
+/// keeps its own effect.</p>
+/// <p>Mutation (Rule 19): drop the <code>RepointsToPublicResource</code> clause from
+/// <method>OcuPilot.Kernel.Proposal.Prohibited.WidensPrivilegedReach</method> -- the public-resource legs go red; drop the
+/// web application's call of <method>OcuPilot.Kernel.Proposal.Prohibited.WidensPrivilegedReach</method> from
+/// <method>OcuPilot.Kernel.Proposal.Prohibited.GrantsPrivilegeByEffect</method> -- every grant leg goes red.</p>
+Method TestEnablingAndAPublicResourceAreGrantsWhileAPrivilegedRoleIsGranted()
+{
+    Do ..RemoveResources()
+    Do $$$AssertStatusOK(..AddResource(..#PUBLICUSE, "U"), "a resource whose public permission holds USE")
+    Do $$$AssertStatusOK(..AddResource(..#PUBLICREAD, "R"), "one that only reads")
+    Do $$$AssertStatusOK(..AddResource(..#PUBLICNONE, ""), "and one with none")
+    Set tGranted = "{""NameSpace"": """ _ $Namespace _ """, ""Description"": """ _ ..#PROBEMARKER _ """, ""AutheEnabled"": 32, ""Resource"": ""%Development"", ""Enabled"": false, ""DispatchClass"": """", ""MatchRoles"": [{""MatchRole"": """", ""TargetRoles"": [""%All""]}]}"
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.WebAppSave).EnsureApp(..#PROBEAPP, ..#PROBEMARKER, ##class(%DynamicAbstractObject).%FromJSON(tGranted)), "a disabled application granting %All")
+    For tCase = $ListBuild("Enabled", "true", "enabling it", 1), $ListBuild("Resource", """" _ ..#PUBLICUSE _ """", "pointing its resource at one the public holds USE of", 1), $ListBuild("Resource", """" _ ..#PUBLICREAD _ """", "pointing it at one the public only reads", 0), $ListBuild("Resource", """" _ ..#PUBLICNONE _ """", "pointing it at one the public holds nothing of", 0), $ListBuild("Resource", """OcuPilotProbeNoSuchResource""", "pointing it at a resource the instance cannot read", 1) {
+        Set tKey = ..Mint(..#PROBEAPP, ..Args($List(tCase, 1), $List(tCase, 2)), .tProposal, .tHttp, .tFault)
+        Do $$$AssertNotEquals(tKey, "", $List(tCase, 3) _ " is minted: " _ $Select($IsObject($Get(tFault)): tFault.%ToJSON(), 1: ""))
+        If tKey = "" Continue
+        Do ..Stored(tKey, .tDestructive, .tConsequence)
+        Do $$$AssertEquals(tDestructive _ " " _ tConsequence, $Select($List(tCase, 4): "1 " _ ##class(OcuPilot.Kernel.Proposal.Mint).#CONSEQUENCEPRIVILEGED, 1: "0 "), $List(tCase, 3) _ " while it grants %All")
+    }
+    Set tKey = ..Mint(..#PROBEAPP, {"Resource": ""}, .tProposal, .tHttp, .tFault)
+    Do $$$AssertNotEquals(tKey, "", "clearing its resource is minted")
+    If tKey '= "" {
+        Do ..Stored(tKey, .tDestructive, .tConsequence)
+        Do $$$AssertEquals(tDestructive _ " " _ tConsequence, "1 " _ $Parameter(..#SET, "EFFECTNORESOURCE"), "with its own effect")
+    }
+    Set tPlain = $Replace(tGranted, "%All", "%DB_HSCUSTOM")
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.WebAppSave).EnsureApp(..#PROBEAPP, ..#PROBEMARKER, ##class(%DynamicAbstractObject).%FromJSON(tPlain)), "the same application granting nothing privileged")
+    For tCase = $ListBuild("Enabled", "true"), $ListBuild("Resource", """" _ ..#PUBLICUSE _ """") {
+        Set tKey = ..Mint(..#PROBEAPP, ..Args($List(tCase, 1), $List(tCase, 2)), .tProposal, .tHttp, .tFault)
+        Do $$$AssertNotEquals(tKey, "", $List(tCase, 1) _ " is minted: " _ $Select($IsObject($Get(tFault)): tFault.%ToJSON(), 1: ""))
+        If tKey = "" Continue
+        Do ..Stored(tKey, .tDestructive, .tConsequence)
+        Do $$$AssertEquals(tDestructive _ " " _ tConsequence, "0 ", $List(tCase, 1) _ " is ordinary")
+    }
+}
+
+/// <p>Create the probe resource <var>pName</var> with public permission <var>pPermission</var> in <code>%SYS</code>,
+/// replacing one of that name.</p>
+ClassMethod AddResource(pName As %String, pPermission As %String) As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        If ##class(Security.Resources).Exists(pName) Set tSC = ##class(Security.Resources).Delete(pName)
+        If $$$ISOK(tSC) Set tSC = ##class(Security.Resources).Create(pName, ..#PROBEMARKER, pPermission)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>How many of the three probe resources the instance holds.</p>
+ClassMethod ResourcesHeld() As %Integer
+{
+    Set tHeld = 0
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        For tName = ..#PUBLICUSE, ..#PUBLICREAD, ..#PUBLICNONE {
+            If ##class(Security.Resources).Exists(tName) Set tHeld = tHeld + 1
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tHeld = -1
+    }
+    Quit tHeld
+}
+
+/// <p>Delete the three probe resources.</p>
+ClassMethod RemoveResources() As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        For tName = ..#PUBLICUSE, ..#PUBLICREAD, ..#PUBLICNONE {
+            If ##class(Security.Resources).Exists(tName) Set tSC = $$$ADDSC(tSC, ##class(Security.Resources).Delete(tName))
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
 }
 
 /// <p>DW-1493 (AD-54): an agent create confirmed over the wire leaves the instance holding the

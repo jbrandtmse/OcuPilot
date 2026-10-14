@@ -98,7 +98,6 @@ Method TestTheCodesAnswerTheirSentences()
 {
     Set tClass = ..#ERRORS
     Set tCodes = $ClassMethod(tClass, "Codes")
-    Do $$$AssertEquals($ListLength(tCodes), 27, "twenty-seven codes: Story 18.7's nine, Story 18.22's six and Story 18.23's twelve")
     For tI = 1:1:$ListLength(tCodes) {
         Set tCode = $List(tCodes, tI)
         Set tReason = $ClassMethod(tClass, "ReasonFor", tCode)
@@ -106,8 +105,11 @@ Method TestTheCodesAnswerTheirSentences()
         Do $$$AssertEquals(##class(OcuPilot.Api.Error).ReasonForViolation(tCode), tReason, tCode _ " answers it through the violation dispatch")
     }
     Set tViolations = $ClassMethod(tClass, "ViolationCodes")
-    For tCode = "ENCRYPTION.STARTUP.KMIPSERVER", "ENCRYPTION.STARTUP.KEYFILE", "ENCRYPTION.STARTUP.NEEDSSTART", "ENCRYPTION.STARTUP.NOKEY", "ENCRYPTION.STARTUP.KEYINACTIVE" {
+    For tCode = "ENCRYPTION.STARTUP.KMIPSERVER", "ENCRYPTION.STARTUP.KEYFILE", "ENCRYPTION.STARTUP.NEEDSSTART", "ENCRYPTION.STARTUP.NOKEY", "ENCRYPTION.STARTUP.KEYINACTIVE", "ENCRYPTION.STARTUP.KMIPUNCONFIGURED", "ENCRYPTION.STARTUP.KEYFILEDIFFERENT" {
         Do $$$AssertTrue($ListFind(tViolations, tCode) && ($ClassMethod(tClass, "FieldOf", tCode) '= ""), tCode _ " is a violation code with its field")
+    }
+    For tCode = "ENCRYPTION.STARTUP.KMIPUNCONFIGURED", "ENCRYPTION.STARTUP.KEYFILEDIFFERENT" {
+        Do $$$AssertEquals($ClassMethod(tClass, "FieldOf", tCode), "DBEncStartMode", tCode _ " refuses the start mode")
     }
     Set tModes = $ListFromString($Parameter(..#TOOL, "MODECONSEQUENCES"))
     Do $$$AssertEquals($ListToString(tModes), $Parameter(tClass, "STARTUPNONE") _ "," _ $Parameter(tClass, "STARTUPINTERACTIVE") _ "," _ $Parameter(tClass, "STARTUPUNATTENDED") _ "," _ $Parameter(tClass, "STARTUPKMIP"), "the tool's mode codes are the class's")
@@ -128,16 +130,33 @@ Method TestTheBaselineKeyShipsDisabled()
 }
 
 /// <p>AD-10, AD-53: <code>PROHIBITED.STARTUPINTERACTIVE</code> answers its own parameter, which names no
-/// caller, and is one of the set's thirty-six codes.</p>
+/// caller, and is one of the set's codes.</p>
 Method TestTheInteractiveRefusalIsItsParameterAndNamesNoCaller()
 {
     Set tProhibited = ..#PROHIBITED
     Set tReason = $ClassMethod(tProhibited, "ReasonFor", "PROHIBITED.STARTUPINTERACTIVE")
     Do $$$AssertEquals(tReason, $Parameter(tProhibited, "STARTUPINTERACTIVEREASON"), "the refusal answers its parameter")
     Do $$$AssertTrue(($ZConvert(tReason, "L") '[ "the agent"), "naming no caller")
-    Do $$$AssertEquals($ListLength($ClassMethod(tProhibited, "Codes")), 36, "thirty-six codes")
     Do $$$AssertTrue($ListFind($ClassMethod(tProhibited, "Codes"), "PROHIBITED.STARTUPINTERACTIVE"), "and it is one of them")
     Do $$$AssertTrue($ListFind($ClassMethod(tProhibited, "CoveredTypes"), "encryption-startup"), "the startup settings are a covered type")
+}
+
+/// <p>AD-10 as amended 2026-10-14 (Story 18.48, DW-2100): <code>PROHIBITED.STARTUPJOURNAL</code> and
+/// <code>PROHIBITED.STARTUPKMIP</code> each answer their own parameter, which names no caller, and are among the
+/// set's codes; the KMIP sentence names the classic page.</p>
+/// <p>Mutation (Rule 19): drop either code from <method>OcuPilot.Kernel.Proposal.Prohibited.ReasonFor</method> --
+/// its leg goes red.</p>
+Method TestTheJournalAndKmipRefusalsAreTheirParametersAndNameNoCaller()
+{
+    Set tProhibited = ..#PROHIBITED
+    For tCase = $ListBuild("PROHIBITED.STARTUPJOURNAL", "STARTUPJOURNALREASON"), $ListBuild("PROHIBITED.STARTUPKMIP", "STARTUPKMIPREASON") {
+        Set tCode = $List(tCase, 1)
+        Set tReason = $ClassMethod(tProhibited, "ReasonFor", tCode)
+        Do $$$AssertEquals(tReason, $Parameter(tProhibited, $List(tCase, 2)), tCode _ " answers its parameter")
+        Do $$$AssertTrue((tReason '= "") && ($ZConvert(tReason, "L") '[ "the agent"), tCode _ " names no caller")
+        Do $$$AssertTrue($ListFind($ClassMethod(tProhibited, "Codes"), tCode) > 0, tCode _ " is one of the set's codes")
+    }
+    Do $$$AssertTrue($Parameter(tProhibited, "STARTUPKMIPREASON") [ "classic Database Encryption page", "the KMIP sentence names the classic page")
 }
 
 /// <p>AD-10, Decision 8: the startup arm judges the settings a write leaves, each read from the payload
@@ -186,6 +205,54 @@ Method TestTheStartupArmJudgesTheSettingsTheWriteLeaves()
     Do $$$AssertTrue($ClassMethod(tP, "LeavesInteractiveRequired", {"DBEncJournal": true}, tInteractive, 1), "a write that keeps Interactive while a database is still encrypted on disk is refused")
     Do $$$AssertTrue('$ClassMethod(tP, "LeavesInteractiveRequired", {"DBEncStartMode": "Unattended"}, tInteractive, 1), "leaving Interactive while a database is still encrypted on disk is not refused")
     Do $$$AssertTrue('$ClassMethod(tP, "LeavesInteractiveRequired", {"DBEncStartMode": "Interactive"}, tUnattended, 0), "Interactive chosen with every flag off and nothing encrypted on disk is not refused")
+}
+
+/// <p>AD-10 as amended 2026-10-14 (Story 18.48, DW-2100): KMIP key activation is judged exactly as Interactive is
+/// -- chosen while the audit log, IRISSECURITY or IRISTEMP is encrypted or being encrypted, kept while one is set,
+/// and refused whatever the flags while one of their databases is still encrypted on disk -- and Interactive is
+/// refused while journal encryption is set in the payload or the stored settings, or while the journal allows
+/// no key activation to be turned off; Unattended and a mode left alone are not.</p>
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Kernel.Proposal.Prohibited.LeavesKmipRequired</method> ask for
+/// <code>Interactive</code> -- the KMIP legs go red; drop the stored settings from
+/// <method>OcuPilot.Kernel.Proposal.Prohibited.SetsJournalEncryption</method> -- the stored-journal legs go red.</p>
+Method TestTheStartupArmJudgesKmipAndTheJournal()
+{
+    Set tP = ..#PROHIBITED
+    Set tNone = {"DBEncStartMode": "None", "DBEncJournal": false, "DBEncIRISSecurity": false, "DBEncIRISTemp": false, "AuditEncrypt": false}
+    Set tKmip = ##class(%DynamicObject).%FromJSON(tNone.%ToJSON())
+    Do tKmip.%Set("DBEncStartMode", "KMIP", "string")
+    Set tUnattended = ##class(%DynamicObject).%FromJSON(tNone.%ToJSON())
+    Do tUnattended.%Set("DBEncStartMode", "Unattended", "string")
+    For tFlag = "AuditEncrypt", "DBEncIRISSecurity", "DBEncIRISTemp" {
+        Set tHeld = ##class(%DynamicObject).%FromJSON(tUnattended.%ToJSON())
+        Do tHeld.%Set(tFlag, 1, "boolean")
+        Do $$$AssertTrue($ClassMethod(tP, "LeavesKmipRequired", {"DBEncStartMode": "KMIP"}, tHeld), "KMIP chosen while " _ tFlag _ " is set is refused")
+        Set tPayload = {"DBEncStartMode": "KMIP"}
+        Do tPayload.%Set(tFlag, 0, "boolean")
+        Do $$$AssertTrue($ClassMethod(tP, "LeavesKmipRequired", tPayload, tHeld), "KMIP chosen while " _ tFlag _ " is set is refused when the same write turns it off")
+        Set tPayload = {}
+        Do tPayload.%Set(tFlag, 1, "boolean")
+        Do $$$AssertTrue($ClassMethod(tP, "LeavesKmipRequired", tPayload, tKmip), tFlag _ " set under KMIP is refused")
+        Do $$$AssertTrue('$ClassMethod(tP, "LeavesKmipRequired", {"DBEncStartMode": "Unattended"}, tHeld), "Unattended with " _ tFlag _ " set is not refused")
+        Do $$$AssertTrue('$ClassMethod(tP, "LeavesInteractiveRequired", {"DBEncStartMode": "KMIP"}, tHeld), "and KMIP is not the Interactive arm's")
+    }
+    Do $$$AssertTrue('$ClassMethod(tP, "LeavesKmipRequired", {"DBEncStartMode": "KMIP"}, tNone), "KMIP with nothing encrypted is not refused")
+    Do $$$AssertTrue($ClassMethod(tP, "LeavesKmipRequired", {"DBEncStartMode": "KMIP"}, tUnattended, 1), "KMIP while a database is still encrypted on disk is refused")
+    Do $$$AssertTrue('$ClassMethod(tP, "LeavesKmipRequired", {"DBEncStartMode": "Unattended"}, tKmip, 1), "leaving KMIP while a database is still encrypted on disk is not refused")
+    Set tInteractive = ##class(%DynamicObject).%FromJSON(tNone.%ToJSON())
+    Do tInteractive.%Set("DBEncStartMode", "Interactive", "string")
+    Set tJournalHeld = ##class(%DynamicObject).%FromJSON(tUnattended.%ToJSON())
+    Do tJournalHeld.%Set("DBEncJournal", 1, "boolean")
+    Set tJournalInteractive = ##class(%DynamicObject).%FromJSON(tInteractive.%ToJSON())
+    Do tJournalInteractive.%Set("DBEncJournal", 1, "boolean")
+    Do $$$AssertTrue($ClassMethod(tP, "LeavesInteractiveJournal", {"DBEncStartMode": "Interactive"}, tJournalHeld), "Interactive chosen while journal encryption is set is refused")
+    Do $$$AssertTrue($ClassMethod(tP, "LeavesInteractiveJournal", {"DBEncStartMode": "Interactive", "DBEncJournal": false}, tJournalHeld), "and when the same write turns it off")
+    Do $$$AssertTrue($ClassMethod(tP, "LeavesInteractiveJournal", {"DBEncJournal": true}, tInteractive), "journal encryption set under Interactive is refused")
+    Do $$$AssertTrue($ClassMethod(tP, "LeavesInteractiveJournal", {"DBEncStartMode": "Interactive"}, tUnattended, 1), "Interactive while the journal allows no key activation to be turned off is refused")
+    Do $$$AssertTrue($ClassMethod(tP, "LeavesInteractiveJournal", {}, tJournalInteractive), "a write that keeps Interactive with journal encryption set in the stored settings is refused")
+    Do $$$AssertTrue('$ClassMethod(tP, "LeavesInteractiveJournal", {"DBEncStartMode": "Unattended"}, tJournalInteractive, 1), "leaving Interactive is not refused")
+    Do $$$AssertTrue('$ClassMethod(tP, "LeavesInteractiveJournal", {"DBEncJournal": true}, tUnattended), "journal encryption under Unattended is not refused")
+    Do $$$AssertTrue('$ClassMethod(tP, "LeavesInteractiveJournal", {"DBEncStartMode": "Interactive"}, tNone), "Interactive with journal encryption off and the journal free is not refused")
 }
 
 /// <p>C3, Decision 1: the merge leaves out the startup key file, an <code>AuditEncrypt</code> it does not

@@ -15,6 +15,10 @@
 /// (<code>""</code> or <code>YYYY-MM-DD</code>), and derives <code>Expired</code> with
 /// <code>beforeToday</code> on the instance clock, so the screen and the read tool agree and the
 /// client computes no expiry. A user deleted between the two calls is dropped from the list.</p>
+/// <p><b>The user copy form's twelve fields are answered here too</b> (Story 18.48): <code>Routine</code> from the
+/// row, and from the detail call the eleven the row lacks -- the account flags, the authentication methods, the
+/// contact fields, the startup namespace and the escalation roles. The copy's password is write-only and stays
+/// on the form (AD-35).</p>
 /// <p><b>Account expired is a <code>text</code> column</b>: a status disc would draw an expired
 /// account in the healthy colour, so the word carries the state.</p>
 /// <p><b>The classic page is <code>%CSP.UI.Portal.Users</code></b>, in the class's own case
@@ -77,7 +81,7 @@ XData Declaration
     , {"id": "grant-sql", "selfProtection": ""}
     , {"id": "revoke-sql", "selfProtection": ""}
   ],
-  "context": {"fields": ["Name", "FullName", "Enabled", "Type", "Roles", "ExpirationDate", "Expired"], "secretFields": []},
+  "context": {"fields": ["Name", "FullName", "Enabled", "Type", "Roles", "ExpirationDate", "Expired", "Routine", "AccountNeverExpires", "AutheEnabled", "ChangePassword", "Comment", "EmailAddress", "HOTPKeyDisplay", "NameSpace", "PasswordNeverExpires", "PhoneNumber", "PhoneProvider", "EscalationRoles"], "secretFields": []},
   "secretArguments": ["Password"],
   "emptyStateKey": "userListEmpty",
   "commandAliases": ["accounts"],
@@ -96,11 +100,11 @@ XData Declaration
       "rowGet": {
         "key": "Name",
         "param": "name",
-        "fields": ["Roles", "ExpirationDate"],
+        "fields": ["Roles", "ExpirationDate", "AccountNeverExpires", "AutheEnabled", "ChangePassword", "Comment", "EmailAddress", "HOTPKeyDisplay", "NameSpace", "PasswordNeverExpires", "PhoneNumber", "PhoneProvider", "EscalationRoles"],
         "derived": [{"field": "Expired", "rule": "beforeToday", "from": "ExpirationDate"}]
       }
     },
-    "fields": ["Name", "FullName", "Enabled", "Type", "Roles", "ExpirationDate", "Expired"],
+    "fields": ["Name", "FullName", "Enabled", "Type", "Roles", "ExpirationDate", "Expired", "Routine", "AccountNeverExpires", "AutheEnabled", "ChangePassword", "Comment", "EmailAddress", "HOTPKeyDisplay", "NameSpace", "PasswordNeverExpires", "PhoneNumber", "PhoneProvider", "EscalationRoles"],
     "filter": ["Name", "FullName", "Type", "Roles"],
     "sort": {"fields": ["Name", "FullName", "Type", "Roles"], "default": "Name", "direction": "asc"},
     "paging": "cap"

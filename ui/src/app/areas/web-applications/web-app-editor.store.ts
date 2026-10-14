@@ -329,6 +329,19 @@ export class WebAppEditor {
     return out;
   }
 
+  /**
+   * Whether a role the application grants, as an application role or a matching role's target, is privileged, so enabling it
+   * or pointing its resource at a publicly held one widens that grant (AD-10, Story 18.48); a role the form read does not know
+   * reads as privileged.
+   */
+  grantsPrivileged(): boolean {
+    const roles = [...this.applicationRoles(), ...this.matchingRoles().map((entry) => entry.role)];
+    return roles.some((role) => {
+      const choice = this.roleChoices().find((option) => option.name.toLowerCase() === role.toLowerCase());
+      return choice === undefined ? true : choice.privileged;
+    });
+  }
+
   /** The application type the form describes: REST with a dispatch class, Python with an application file, CSP otherwise. */
   derivedType(): string {
     if (this.text('DispatchClass') !== '') return DERIVED_REST;

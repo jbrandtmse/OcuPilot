@@ -305,23 +305,29 @@ Method TestAStoredDotlessNameIsMinted()
     Do $$$AssertEquals($Select($IsObject($Get(tAfter)): tAfter.%Get("Description"), 1: "") _ " " _ $ListFind($ListFromString(##class(OcuPilot.Test.LdapCreate).Residue()), tName), "agent 1", "under the same name")
 }
 
-/// <p>AD-39 on the agent's caller: an update that would leave a configuration retrieving no
-/// attribute -- an empty list, or one empty name -- is refused at the mint by
-/// <code>LDAP.ATTRIBUTES.LASTONE</code>'s sentence, and the stored attributes are kept.</p>
-/// <p>Mutation (Rule 19): drop that rule from
-/// <method>OcuPilot.Area.Security.LdapRules.Validate</method> -- both legs go red.</p>
-Method TestTheLastAttributeIsNotRemovedAtTheMint()
+/// <p>DW-1896, AD-27 on the agent's caller: an update that removes a configuration's last retrieved attribute -- an
+/// empty list, or one empty name -- is minted with its card showing the attributes before and after, and its confirm
+/// writes: the instance reads the attributes back as an empty list.</p>
+/// <p>Mutation (Rule 19): drop <code>Security.LDAP/PUT=LDAPAttributes</code> from
+/// <parameter>OcuPilot.Port.AdminPort.CLASSCOMPLETEDTYPES</parameter> -- the confirm leaves the stored list and both
+/// legs go red.</p>
+Method TestTheLastAttributeIsRemovedByAConfirmedProposal()
 {
     Set tName = "ocup99ldapattrs.invalid"
-    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "CreateLdap", tName, 8, "ocup99.invalid", "cn,uid"), "a configuration retrieving two attributes is created")
     For tJson = "[]", "[""""]" {
+        Do $$$AssertStatusOK($ClassMethod(..#PROBE, "CreateLdap", tName, 8, "ocup99.invalid", "cn,uid"), "a configuration retrieving two attributes is created")
         Set tArgs = {"Name": (tName)}
         Do tArgs.%Set("LDAPAttributes", ##class(%DynamicArray).%FromJSON(tJson))
         Set tSC = ..RealMint(tArgs, .tProposal, .tHttp, .tFault)
-        Do $$$AssertTrue(($Get(tHttp) = 400) && (##class(OcuPilot.Test.ServiceUpdate).Problem(.tFault) [ ##class(OcuPilot.Api.LdapError).#REASONATTRIBUTESLASTONE), tJson _ " is refused at the mint by its sentence: " _ ##class(OcuPilot.Test.ServiceUpdate).Problem(.tFault))
+        Do $$$AssertStatusOK(tSC, tJson _ " is minted: " _ ##class(OcuPilot.Test.ServiceUpdate).Problem(.tFault))
+        If '$IsObject($Get(tProposal)) Continue
+        Do $$$AssertEquals(tProposal.%Get("changed").%Get(0).%Get("field") _ " " _ tProposal.%Get("changed").%Get(0).%Get("before"), "LDAPAttributes [""cn"",""uid""]", tJson _ ": the card shows the attributes the configuration retrieves now")
+        Set tSC = $ClassMethod(..#CONFIRM, "Confirm", tProposal.%Get("proposalId"), "", $Username, .tResult, .tHttp, .tCode, .tDetail)
+        Do $$$AssertEquals(tHttp, 200, tJson _ ": the confirm writes: " _ $Get(tCode))
+        Set tSC = $ClassMethod(..#PROBE, "Read", tName, .tAfter, "Security.LDAP")
+        Do $$$AssertEquals($Select($IsObject($Get(tAfter)): tAfter.%Get("LDAPAttributes").%ToJSON(), 1: ""), "[]", tJson _ ": and the stored attributes read empty")
+        Do $$$AssertStatusOK($ClassMethod(..#PROBE, "RemoveLdap", tName), "the configuration is removed")
     }
-    Set tSC = $ClassMethod(..#PROBE, "Read", tName, .tAfter, "Security.LDAP")
-    Do $$$AssertEquals($Select($IsObject($Get(tAfter)): tAfter.%Get("LDAPAttributes").%ToJSON(), 1: ""), "[""cn"",""uid""]", "and the stored attributes are kept")
 }
 
 /// <p>AC11, AD-44: the update, create and password tools' pairs are the list's own with

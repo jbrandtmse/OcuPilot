@@ -8922,6 +8922,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-07T03:44:54Z owner=18-27-the-operator-s-read-only-ldap-view by=merge_gate note=18.8 split for size (orchestrator merge gate 2026-10-07, Rule 5): the LDAP editor's last-attribute write moves with the read-only LDAP view to Story 18.27
 - 2026-10-07T23:03:36Z status=routed owner=burndown by=spec_gate note=orchestrator: 18.27 closed unbuilt; 18.28 Task 0 measures Security.LDAPConfigs.Modify in %SYS on ocupilot-ci; build only under the caller's own %Admin_Secure, else wontfix-accepted
 - 2026-10-14T08:59:26Z status=routed owner=18-48-epic-18-burn-down-part-2 by=burndown note=chartered into the Epic 18 burn-down part 2 (orchestrator ruling 2026-10-14)
+- 2026-10-14T19:09:22Z status=resolved-by:18-48-epic-18-burn-down-part-2 by=adjudication note=fixed with its pinning test in Story 18.48 (ca9b32cf + QA + review); see the spec's Verification
 
 ### DW-1901: CI's instance suite needs a fourth shard: each of the three instance legs now runs 38-46 min and wall time rises with every story
 - source: OCU-1-epic16 CI run 36862943319 (16.26 close) | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -9297,6 +9298,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-03T03:45:21Z status=decision-pending owner=burndown by=cr note=unverified med (inference: lock-file collision); refusing database directories amends AD-21's sixth case
 - 2026-10-03T09:57:28Z status=routed owner=burndown by=merge_gate note=decided 2026-10-03: refuse an existing database's directory as a journal directory (amends AD-21 sixth case); Epic 18 close burn-down
 - 2026-10-14T08:59:25Z status=routed owner=18-48-epic-18-burn-down-part-2 by=burndown note=chartered into the Epic 18 burn-down part 2 (orchestrator ruling 2026-10-14)
+- 2026-10-14T19:09:22Z status=resolved-by:18-48-epic-18-burn-down-part-2 by=adjudication note=fixed with its pinning test in Story 18.48 (ca9b32cf + QA + review); see the spec's Verification
 
 ### DW-1967: The purge rule's archive-target branch runs only against a seam settings read, never against an instance with an archive target
 - source: spec-18-18-journal-settings.md | severity: low | fix-risk: low | footprint: in-story
@@ -9962,6 +9964,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: classic DatabaseWizard.cls:137 offers it; spec-18-3 :93 and :750 defer it to 18.7; spec-18-22 Never and Named limit 3 exclude it
 - 2026-10-05T05:05:22Z status=routed owner=burndown by=spec_gate note=build once 18.22's key activation has landed: the create offers Encrypt database only while a database key is active and sends the default key's id; parity row of FR-80
 - 2026-10-14T08:59:25Z status=routed owner=18-48-epic-18-burn-down-part-2 by=burndown note=chartered into the Epic 18 burn-down part 2 (orchestrator ruling 2026-10-14)
+- 2026-10-14T19:09:21Z status=resolved-by:18-48-epic-18-burn-down-part-2 by=adjudication note=fixed with its pinning test in Story 18.48 (ca9b32cf + QA + review); see the spec's Verification
 ### DW-2084: Vendor defect candidate: the DocDB REST drop (DELETE /api/docdb/v1/<ns>/db/<name>) of a database created without a resource answers 822 even for _SYSTEM, because its CheckAccess W needs a Security.DocDBs record neither create path makes
 - source: spec-19-9-documatic-and-docdb.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: Story 19.9 plan on ocupilot-a2-ci: %SYSTEM.DocDB.CreateDatabase(name) with no resource, then the REST drop as _SYSTEM answered 822; irissys %SYS/DOCDB.int CheckAccess reads Security.DocDBs; in-process DropDatabase dropped it
@@ -9994,6 +9997,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-05T10:31:38Z status=escalated owner=burndown by=cr note=fix-risk high: TaskImport-style reviewed FileKeys via fingerprint, PortQuery and port; amends AD-51's 18.22 case
 - 2026-10-05T12:28:16Z status=routed owner=burndown by=merge_gate note=decided (orchestrator): carry the reviewed key list through the activation's fingerprint as TaskImport does, so a key file whose keys changed since the mint refuses the confirm; built by Epic 18's burn-down
 - 2026-10-14T08:59:25Z status=routed owner=18-48-epic-18-burn-down-part-2 by=burndown note=chartered into the Epic 18 burn-down part 2 (orchestrator ruling 2026-10-14)
+- 2026-10-14T19:09:21Z status=resolved-by:18-48-epic-18-burn-down-part-2 by=adjudication note=fixed with its pinning test in Story 18.48 (ca9b32cf + QA + review); see the spec's Verification
 
 ### DW-2087: A first database key activation takes no destructive treatment, though Task 0 measured that its startup-mode change (DBEncStartMode Interactive) outlives every deactivation
 - source: spec-18-22-database-and-data-element-encryption-keys.md | severity: med | fix-risk: med | footprint: in-story
@@ -10002,6 +10006,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-05T12:28:16Z status=routed owner=burndown by=merge_gate note=decided (orchestrator, standing grant): give a first database activation only the destructive treatment, with a consequence naming the DBEncStartMode change, as 18.6's license activation is treated; follow 18.6's precedent for the governance key default too; built by Epic 18's burn-down
 - 2026-10-05T13:28:00Z status=routed owner=burndown by=adjudication note=for the burn-down (Story 18.23 Task 0 re-run step 7): a Settings PUT with None clears the stored unattended credential and Security.System's persisted default and journal key ids while the running keys stay, and the Settings GET answers the running ids; a first activation's start-mode change is reset only through that PUT
 - 2026-10-14T08:59:25Z status=routed owner=18-48-epic-18-burn-down-part-2 by=burndown note=chartered into the Epic 18 burn-down part 2 (orchestrator ruling 2026-10-14)
+- 2026-10-14T19:09:21Z status=resolved-by:18-48-epic-18-burn-down-part-2 by=adjudication note=fixed with its pinning test in Story 18.48 (ca9b32cf + QA + review); see the spec's Verification
 
 ### DW-2088: No EncryptionKeyGate principal withholds %DB_IRISSYS:READ, so the screens' second declared pair is never refused by name for 18.22's reads and tools
 - source: spec-18-22-database-and-data-element-encryption-keys.md | severity: low | fix-risk: med | footprint: in-story
@@ -10073,6 +10078,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-05T20:00:23Z status=decision-pending owner=burndown by=cr note=unverified high; settle on a throwaway (key file without the active key; journal under Interactive), then decide AD-10's scope
 - 2026-10-06T01:34:04Z status=routed owner=burndown by=merge_gate note=orchestrator 2026-10-05 under the owner's standing grant (recommended disposition): Epic 18's close burn-down measures an Unattended key file or KMIP server lacking the active key that encrypts IRISAUDIT, IRISSECURITY or IRISTEMP, and journal encryption under Interactive, on the throwaway first, then decides whether AD-10's STARTUPINTERACTIVE arm widens
 - 2026-10-14T08:59:24Z status=routed owner=18-48-epic-18-burn-down-part-2 by=burndown note=chartered into the Epic 18 burn-down part 2 (orchestrator ruling 2026-10-14)
+- 2026-10-14T19:09:21Z status=resolved-by:18-48-epic-18-burn-down-part-2 by=adjudication note=fixed with its pinning test in Story 18.48 (ca9b32cf + QA + review); see the spec's Verification
+- 2026-10-14T19:09:23Z note=Task 0 decided the scope: PROHIBITED.STARTUPJOURNAL and STARTUPKMIP built; STARTUPKEYFILE not built (M1 kept: #1233, #1217, M1c finished)
 
 ### DW-2103: structural-walk.mjs withRetry, the per-pass protocol-timeout retry, has no executed test: it is a closure inside walk()
 - source: spec-23-4-the-range-end-cleanup-part-4.md | severity: low | fix-risk: low | footprint: in-story
@@ -10209,6 +10216,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-07T02:41:59Z status=decision-pending owner=burndown by=cr note=product call: name a stored certificate's loss in WALLETKEY.REPLACE.RSA (EXPERIENCE.md :416 amendment)
 - 2026-10-07T03:42:40Z status=routed owner=burndown by=merge_gate note=orchestrator 2026-10-07 under the owner's standing grant (recommended disposition): Epic 18's close burn-down names a stored certificate's loss in WALLETKEY.REPLACE.RSA and the card (EXPERIENCE.md :416)
 - 2026-10-14T08:59:25Z status=routed owner=18-48-epic-18-burn-down-part-2 by=burndown note=chartered into the Epic 18 burn-down part 2 (orchestrator ruling 2026-10-14)
+- 2026-10-14T19:09:21Z status=resolved-by:18-48-epic-18-burn-down-part-2 by=adjudication note=fixed with its pinning test in Story 18.48 (ca9b32cf + QA + review); see the spec's Verification
 
 ### DW-2127: An imported symmetric key's two-PUT create is not atomic: a failed length PUT leaves the key stored with no Length, and an outside writer between the port's read and its PUT turns a create into a modify
 - source: spec-18-24-rsa-and-symmetric-key-wallet-secrets.md | severity: med | fix-risk: med | footprint: in-story
@@ -11440,6 +11448,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: 18.12's re-plan survey of descriptors against read tools; C1 checks write fields only
 - 2026-10-12T01:03:05Z status=routed owner=burndown by=spec_gate note=the Epic 18 burn-down decides: widen the reads or record why each field stays form-only
 - 2026-10-14T08:59:26Z status=routed owner=18-48-epic-18-burn-down-part-2 by=burndown note=chartered into the Epic 18 burn-down part 2 (orchestrator ruling 2026-10-14)
+- 2026-10-14T19:09:22Z status=resolved-by:18-48-epic-18-burn-down-part-2 by=adjudication note=fixed with its pinning test in Story 18.48 (ca9b32cf + QA + review); see the spec's Verification
 
 ### DW-2343: InteropPort cannot compile in an install namespace without interoperability: Story 20.6's Include Ensemble and Story 20.3's Ens.Config-typed method arguments both need ENSLIB
 - source: spec-20-6-testing-hosts-and-transformations.md | severity: med | fix-risk: med | footprint: in-epic
@@ -11882,12 +11891,14 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Story 18.47 code review (code read): SwitchRules.cls:156 checks Type, Enabled and VerifyPeer; ProviderPort.cls:667 adds MINTLSVERSION; the fix needs an EGRESS violation code, which 18.47's contract forbids
 - 2026-10-14T12:29:05Z status=routed owner=burndown by=cr note=two judges of one rule diverged; add the floor to the save-time judge with its own violation code
 - 2026-10-14T12:40:16Z status=routed owner=18-48-epic-18-burn-down-part-2 by=lead note=orchestrator 2026-10-14: the save-time rule matches the call-time floor, one new EGRESS code (18.40's path)
+- 2026-10-14T19:09:22Z status=resolved-by:18-48-epic-18-burn-down-part-2 by=adjudication note=fixed with its pinning test in Story 18.48 (ca9b32cf + QA + review); see the spec's Verification
 
 ### DW-2425: AD-10's widened-reach arm judges only a privileged routine application's cleared Resource or enabling: a Resource swapped to a publicly held one, and a web application enabled while it grants a privileged role, mint ordinary
 - source: spec-18-47-epic-18-burn-down-part-1.md | severity: med | fix-risk: med | footprint: in-epic
 - evidence: Story 18.47 code review (code read): Prohibited.cls GrantsPrivilegeByEffect's TYPEWEBAPPLICATION arm compares role pairs only; WidensPrivilegedReach (:5996) runs for routine applications and tests a cleared Resource alone
 - 2026-10-14T12:29:05Z status=decision-pending owner=burndown by=cr note=recommend extending AD-10 as DW-2322 did; Prohibited.cls is Epic 20-contended (Rule 11)
 - 2026-10-14T12:40:16Z status=routed owner=18-48-epic-18-burn-down-part-2 by=lead note=orchestrator 2026-10-14: privileged-grant treatment, as DW-2322 (web applications: enabling one that grants a privileged role, or a Resource pointed at a public one)
+- 2026-10-14T19:09:22Z status=resolved-by:18-48-epic-18-burn-down-part-2 by=adjudication note=fixed with its pinning test in Story 18.48 (ca9b32cf + QA + review); see the spec's Verification
 
 ### DW-2426: 48 test classes' OnAfterAllTests delete shared state on an unarmed instance: %UnitTest runs it after a refused OnBeforeAllTests, and GovernanceFixture.Restore over no snapshot deletes every policy row (EgressSettingsWire deletes the egress row)
 - source: spec-18-47-epic-18-burn-down-part-1.md | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -11899,6 +11910,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-47-epic-18-burn-down-part-1.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: DW-2007's 18-7 occurrence names them; Story 18.47 code review (code read): UNLOGGEDREFUSALS (AdminPort.cls:641) lists #1454 and #5809 only; each entry's endpoint, type and status needs a Task 0 measurement
 - 2026-10-14T12:29:05Z status=routed owner=18-48-epic-18-burn-down-part-2 by=cr note=add code-scoped UNLOGGEDREFUSALS entries after measuring each; #5001 stays logged (AD-2)
+- 2026-10-14T19:09:22Z status=resolved-by:18-48-epic-18-burn-down-part-2 by=adjudication note=fixed with its pinning test in Story 18.48 (ca9b32cf + QA + review); see the spec's Verification
 ### DW-2416: IRIS defect candidate: /api/deepsee (%Api.DeepSee, %DeepSee.REST.v3) resets roles to the login roles, checks no %DeepSee_* resource, and splices caller text into MDX and SQL
 - source: spec-20-11 plan (measured), orchestrator ruling 2026-10-14 | severity: med | fix-risk: high | footprint: out-of-footprint
 - evidence: Measured at Story 20.11's plan on ocupilot-b-ci: a user holding only %DB_USER:RW read every model, term list and folder item, built and synchronized cubes and ran MDX; read in irislib %DeepSee.REST.v3 (its Info and Query routes). OcuPilot calls the classes in process instead (AD-65).
@@ -11924,6 +11936,29 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: MappingDescriptor.TestTheClassicPagesRosterIsTheDeclaringTools covers write tools only and Registry.Validate never reads CLASSICPAGES; the one declarer, the Schema viewer, is pinned by InteropEditorDescriptor's NormalizePage leg.
 - 2026-10-14T12:12:09Z status=wontfix-theoretical owner=20-8-the-schema-viewers-and-the-production-configuration-diagram by=cr note=real once a second descriptor declares CLASSICPAGES with no exact-spelling pin (Story 20.11's DeepSee pages, say)
 
+### DW-2428: Security.Encryption.Settings accepts journal encryption while key activation at startup is Interactive, though %SYS.Journal.System.OKNoDBEncKeyAtStartup() answers #1212 for that state; every later start aborts into single-user mode (an IRIS defect candidate)
+- source: spec-18-48-epic-18-burn-down-part-2.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: Story 18.48 Task 0 M3 on ocupilot-ci 2026-10-14: the PUT answered 200; OKNoDBEncKeyAtStartup answered #1212 after it; 8 start attempts stopped at the key-file prompt and aborted (carry-2026-10-10/epic-18-r/1848/t0/part-b-results.md Pass 1)
+- 2026-10-14T15:53:47Z status=decision-pending owner=burndown by=lead note=owner_hold: IRIS defect candidate, never reported upstream; AD-10 PROHIBITED.STARTUPJOURNAL refuses it on OcuPilot's path
+
+### DW-2429: EncryptionPort answers the vendor's startup-settings refusals #1231 (a KMIP server not configured for startup) and #1233 (a different unattended key file configured) as 500 INTERNAL, logged at severity 2, where #1217 maps to 409 ENCRYPTION.STARTUP.REQUIRED
+- source: spec-18-48-epic-18-burn-down-part-2.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: Story 18.48 Task 0 M2 and M1 on ocupilot-ci 2026-10-14: the port's Security.Encryption.Settings PUT answered 500 INTERNAL with one [OcuPilot.Log] severity-2 line each (part-b-results.md Pass 2); Pass 3 shows #1217's mapping
+- 2026-10-14T15:53:47Z status=routed owner=burndown by=lead note=map each to a field refusal on the start-mode field and add code-scoped UNLOGGEDREFUSALS entries, beside DW-2427; placement asked of the orchestrator
+- 2026-10-14T15:55:09Z status=routed owner=18-48-epic-18-burn-down-part-2 by=lead note=orchestrator 2026-10-14: folded beside DW-2427, same port and change
+- 2026-10-14T19:09:22Z status=resolved-by:18-48-epic-18-burn-down-part-2 by=adjudication note=fixed with its pinning test in Story 18.48 (ca9b32cf + QA + review); see the spec's Verification
+
+### DW-2431: AD-10's KMIP arm does not judge journal encryption: KMIP with DBEncJournal set and none of the three databases encrypted is minted and confirmed (unverified that such a start fails)
+- source: spec-18-48-epic-18-burn-down-part-2.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: Prohibited.EncryptionStartup runs the journal arm for Interactive only and LeavesKmipRequired reads STARTUPREQUIREDFLAGS alone; Task 0 saw KMIP at an unreachable host and an unanswered journal key each abort a start (inference: together they do too); settle on a throwaway: KMIP over an unreachable startup server, DBEncJournal on, restart
+- 2026-10-14T19:05:14Z status=decision-pending owner=burndown by=cr note=unverified med; measure on a throwaway, then DW-2100's decision rule decides AD-10's scope
+- 2026-10-14T19:17:29Z status=routed owner=23-10-the-range-end-cleanup-part-9-two-sweeps by=lead note=orchestrator 2026-10-14 (feature 07ff504f): measure on a throwaway, then decide by DW-2100's rule
+
+### DW-2432: AD-10's grant arm misses the reverse of DW-2425: a Security.Resource edit that adds public USE to a resource guarding an enabled application whose MatchRoles grant a privileged role mints ordinary
+- source: spec-18-48-epic-18-burn-down-part-2.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: Prohibited.GrantsPrivilegeByEffect's TYPERESOURCE arm grants only when the resource itself is privileged (ResourceGrantsAdministrativePrivilege) and AddsPublicLetter; WidensPrivilegedReach judges only an application's own Resource change (code read, Story 18.48 review)
+- 2026-10-14T19:05:20Z status=decision-pending owner=burndown by=cr note=recommend extending AD-10 as DW-2425 did (an application lookup by Resource); Prohibited.cls is Epic 20-contended
+- 2026-10-14T19:17:29Z status=routed owner=23-10-the-range-end-cleanup-part-9-two-sweeps by=lead note=orchestrator 2026-10-14 (feature 07ff504f): decided, privileged-grant treatment as DW-2425
 ### DW-2430: log-viewer.spec.ts AC6 copies home.page.spec.ts's real-timer wait instead of sharing one helper in ui/src/app/testing/
 - source: spec-20-8 code review (rework 2 re-review) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: log-viewer.spec.ts AC6 (realTimers and its 50 x 20 ms wait) repeats home.page.spec.ts:1302-1308 (pendingRealTimers, same bound and cast); the rework item required the copy and gave no reason (Rule 2); ui/src/app/testing/ holds the shared spec helpers.

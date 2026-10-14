@@ -186,6 +186,26 @@ interface FieldView {
               <span>{{ STRINGS.databaseDetailsJournalNewGlobals }}</span>
             </label>
           </div>
+          <div class="ocu-field" data-field="Encrypted">
+            <label class="ocu-field-checkbox">
+              <input
+                type="checkbox"
+                [id]="encryptId"
+                [checked]="encryptValue"
+                [attr.aria-disabled]="encryptAriaDisabled"
+                [attr.aria-invalid]="encryptAriaInvalid"
+                [attr.aria-describedby]="encryptDescribedBy"
+                (click)="onEncrypt($event)"
+              />
+              <span>{{ STRINGS.databaseEncrypt }}</span>
+            </label>
+            @if (encryptRefused) {
+              <p class="ocu-field-caption" [id]="encryptReasonId" data-slot="encrypt-reason">{{ encryptReason }}</p>
+            }
+            @if (hasEncryptViolation) {
+              <p class="ocu-form-error" [id]="encryptViolationId">{{ encryptViolation }}</p>
+            }
+          </div>
         </div>
       </ng-template>
 
@@ -285,6 +305,12 @@ export class DatabaseWizardPage {
   protected readonly locationIdPrefix = LOCATION_ID_PREFIX;
 
   protected readonly journalId = databaseControlId('GlobalJournalState');
+
+  protected readonly encryptId = databaseControlId('Encrypted');
+
+  protected readonly encryptReasonId = `${databaseControlId('Encrypted')}-refused`;
+
+  protected readonly encryptViolationId = `${databaseControlId('Encrypted')}-reason`;
 
   protected readonly resourceNewId = 'ocu-database-resource-new';
 
@@ -434,6 +460,45 @@ export class DatabaseWizardPage {
     return this.store.values().GlobalJournalState;
   }
 
+  protected get encryptValue(): boolean {
+    this.generation();
+    return this.store.values().Encrypted;
+  }
+
+  /** Encrypt database is drawn `aria-disabled` while no database encryption key is the default (Story 18.48). */
+  protected get encryptRefused(): boolean {
+    this.generation();
+    return this.store.loaded() && !this.store.encryptAvailable();
+  }
+
+  /** The server's sentence for an encrypted create with no default key. */
+  protected get encryptReason(): string {
+    this.generation();
+    return this.store.encryptRefusal();
+  }
+
+  protected get encryptViolation(): string {
+    this.generation();
+    return this.store.violationFor('Encrypted');
+  }
+
+  protected get hasEncryptViolation(): boolean {
+    return this.encryptViolation !== '';
+  }
+
+  protected get encryptAriaDisabled(): 'true' | null {
+    return this.encryptRefused ? 'true' : null;
+  }
+
+  protected get encryptAriaInvalid(): 'true' | null {
+    return this.hasEncryptViolation ? 'true' : null;
+  }
+
+  protected get encryptDescribedBy(): string | null {
+    const ids = [this.encryptRefused ? this.encryptReasonId : '', this.hasEncryptViolation ? this.encryptViolationId : ''].filter((id) => id !== '');
+    return ids.length === 0 ? null : ids.join(' ');
+  }
+
   protected get choosesNew(): boolean {
     this.generation();
     return this.store.values().resourceChoice === 'new';
@@ -520,6 +585,15 @@ export class DatabaseWizardPage {
 
   protected onJournal(event: Event): void {
     this.store.setJournal((event.target as HTMLInputElement).checked);
+  }
+
+  /** A refused checkbox is never checked: its click is cancelled and it stays as the store holds it. */
+  protected onEncrypt(event: Event): void {
+    if (this.encryptRefused) {
+      event.preventDefault();
+      return;
+    }
+    this.store.setEncrypted((event.target as HTMLInputElement).checked);
   }
 
   protected onChoice(choice: ResourceChoice): void {
