@@ -15,7 +15,7 @@ deferred: []
 
 ## Intent
 
-**Problem:** Epic 18 routed twelve entries here (DW-1896, 1966, 2085, 2086, 2087, 2100, 2126, 2335, 2415, 2424, 2425, 2427); each one's `ledger.sh show` trailers carry its ruling.
+**Problem:** Epic 18 routed thirteen entries here (DW-1896, 1966, 2085, 2086, 2087, 2100, 2126, 2335, 2415, 2424, 2425, 2427, 2429); each one's `ledger.sh show` trailers carry its ruling.
 
 **Approach:** Task 0 measures on `ocupilot-ci` what rests on inference; each entry is then fixed where its ruling places it, extending the named sibling, with one pinning test and one `mutation:` line, or closed on the recorded evidence.
 
@@ -41,6 +41,7 @@ deferred: []
 | 2424 | egress `TLSMinVersion` < 16 | 422 `EGRESS.SSLWEAK` | 16+: saved |
 | 2425 | app granting a privileged role | enabling, or `Resource` public for `U`: `GRANT.PRIVILEGED` | else ordinary; failed read: public |
 | 2427 | #5022, #1219, #1204 at measured keys | unlogged | other codes logged |
+| 2429 | startup settings refused #1231, #1233 (and #1217) | field refusal on the start mode, unlogged | other codes logged |
 
 </intent-contract>
 
@@ -70,7 +71,7 @@ Under `src/OcuPilot/` at `3a91b5ee`; client under `ui/src/app/areas/`.
 
 **Execution** (change; pinning test; mutation):
 
-1. **DW-2100:** each widened case joins `EncryptionStartup` (`Codes()`, `ReasonFor`, a `strings.ts` key pinned in `self-protection.test.mjs`, EXPERIENCE.md's STARTUPINTERACTIVE row); `DatabaseEncryption` also answers key ids. Test: `EncryptionStartupWrite` legs per case, both callers (as `ArmOnDisk`). Mutation: drop the case.
+1. **DW-2100:** each widened case (`STARTUPJOURNAL`, `STARTUPKMIP`; Task 0 results) joins `EncryptionStartup` (`Codes()`, `ReasonFor`, a `strings.ts` key pinned in `self-protection.test.mjs`, EXPERIENCE.md's STARTUPINTERACTIVE row); `DatabaseEncryption` also answers key ids. Test: `EncryptionStartupWrite` legs per case, both callers (as `ArmOnDisk`). Mutation: drop the case.
 2. **DW-2085:** `Encrypted` joins `LocalDatabaseCreate` `ARGUMENTS` (and `DESCRIPTION`) and `CREATEARGUMENTS`; `DatabaseRules` and `Create` refuse it while `ActiveKeys(DATABASEKEYS)` has no default key (`DATABASE.ENCRYPT.NOKEY`); `FileBody` sends it with that key's `EncryptionKeyID`; `HandleForm` answers `EncryptionKeyID` or `""`, and on `""` the wizard's "Encrypt database" is `aria-disabled` with the refusal's sentence. Test: new `Test/DatabaseCreateEncrypted.cls` (`OCUPILOT_ALLOW_ENCRYPTION_CONFIG`): a no-key leg via a port seam; a live leg over a probe key reading `EncryptedDB` 1 and the key id, then removing it; the wizard spec; a `local-databases` browser no-key leg. Mutation: `FileBody` drops `Encrypted`.
 3. **DW-2086:** both activate tools carry `FileKeys` as `TaskImport` carries `tasks` (`SettableFields`, `READANSWERS`, `FINGERPRINTSUBJECT`, `PortQuery`); `Activate` compares the file's keys with it as sets, else 409 `ENCRYPTION.KEYFILE.CHANGED`; an empty list compares nothing. Test: `EncryptionKeyWrite` leg (mint, `AddKeyToFile`, confirm refused, nothing active). Mutation: drop the comparison.
 4. **DW-2087:** `WeakensByEffect` gains a `TYPEDATABASEKEYS` arm: a non-removing write whose target has `ActiveCount` 0 answers effect `ENCRYPTION.KEY.ACTIVATE`, so the mint is destructive and the card keeps the tool's consequence (it names the start-mode change; the screen dialog already shows it); governance key stays `false`. Test: `EncryptionKeyWrite` mint legs (first `destructive` 1, second 0). Mutation: drop the arm.
@@ -81,7 +82,7 @@ Under `src/OcuPilot/` at `3a91b5ee`; client under `ui/src/app/areas/`.
 9. **DW-2415:** fix A5's cause at its source if found; also AC6 in its own `describe`, `vi.useFakeTimers()` in `beforeEach`, `vi.clearAllTimers(); vi.useRealTimers()` in `afterEach`, timers present before each mount cleared, :345's comment corrected. Mutation: tail starts with Live tail off.
 10. **DW-2424:** `ValidateEgress` raises `EGRESS.SSLWEAK` on `sslConfiguration` for an enabled verifying client below `ProviderPort.#MINTLSVERSION`; key `egressRefusalSslWeak`, EXPERIENCE.md :349, a sixth `EGRESS_SENTENCES` row. Test: `EgressSslProbe` kind `weak` (`VerifyPeer` 1, floor 8); an `EgressSettingsWire` case. Mutation: drop the floor.
 11. **DW-2425:** `WidensPrivilegedReach` also counts a `Resource` changed to one whose public permission holds `U` (read via `AdminPort` `Security.Resource` `GET`, as `ResourceRules.Present`; a failed read counts), and the web arm calls it; `web-app-editor` shows `privilegedGrantEffect` at Enabled and Resource while a granted role is privileged, as `routine-app-form`. Test: `WebAppWeakening` legs (enabling; public; unprivileged and non-public ordinary) over a probe resource it creates and removes; a `RoutineAppGrant` leg; the editor spec. Mutation: drop the public clause; drop the web call.
-12. **DW-2427:** `UNLOGGEDREFUSALS` gains `<endpoint>/<type>/<status>/#<code>` per code at its A1 key; a code not driven stays logged, recorded. Test: `AdminPortRefusals` legs; an `EncryptionKeyFileWrite` wrong-password leg logs no `failed` line. Mutation: drop an entry.
+12. **DW-2427, DW-2429:** `UNLOGGEDREFUSALS` gains `<endpoint>/<type>/<status>/#<code>` per code at its A1 key, and `Security.Encryption.Settings/PUT/500/#1217`, `/#1231`, `/#1233` (measured in Part B). `EncryptionPort` maps #1231 and #1233 to field refusals on the start-mode field beside #1217's `ENCRYPTION.STARTUP.REQUIRED`: two new `EncryptionError` codes, each sentence saying what the person can change, with `strings.ts` keys. Test: `AdminPortRefusals` legs; an `EncryptionKeyFileWrite` wrong-password leg logs no `failed` line; an `EncryptionStartupWrite` leg per new code through a port seam (no restart). Mutation: drop an entry; drop a mapping.
 13. **Rule 30 sweep:** grep the four test trees for `STARTUPINTERACTIVE`, `DBEncJournal`, `CREATEARGUMENTS`, `FileKeys`, `REASONREPLACERSA`, `JOURNAL.DIRECTORY`, `LASTONE`, `UNLOGGEDREFUSALS`, `EGRESS_SENTENCES`, `EnabledVerifyingClient`, `WidensPrivilegedReach`, `SuperserverList`, `UserList`; update old-shape assertions; changed files join `(loop)`.
 
 **Acceptance Criteria:**
@@ -111,6 +112,15 @@ Under `src/OcuPilot/` at `3a91b5ee`; client under `ui/src/app/areas/`.
 - **Ledger:** each `resolved-by:18-48-epic-18-burn-down-part-2`, or its Task 0 closure (DW-2100 or DW-2126 kept: `dropped`; DW-1896: `wontfix-accepted reopen_if=Modify clears the list under %Admin_Secure alone`).
 
 ## Verification
+
+**Task 0 results** (lead-side, `ocupilot-ci`, 2026-10-14; evidence `1848/t0/part-a-results.md`, `part-b-results.md`). Task 0 is complete; implement starts at Execution and does not repeat it.
+
+- A1: `Security.Encryption.KeyInFile/LIST/500/#5022`, `Security.Encryption.KeyInFile/POST/500/#1219`, `Security.Encryption.File/ACTIVATE/500/#1219`, `Security.Encryption.KeyInFile/POST/500/#1204`, each logged. Named limit: a failed `ActivateDB` also writes the vendor's own severity-2 line.
+- A2: `Modify` with `LDAPAttributes` `""` cleared the list for a principal holding exactly `%Admin_Secure:USE` and `%DB_IRISSYS:READ`; without `%Admin_Secure` it answered #822 and changed nothing. Task 7 builds.
+- A3: `HasCertificate` read 1, then 0 after a generate-replace. Task 5 builds.
+- A4: a `Security.Superserver` `LIST` row carries `Port`, `BindAddress`, `Enabled`, `SystemDefault`.
+- A5: AC6 read 0 timers in 10 runs under Node 22.22.3 (order inferred from the CI log). Task 9 hardens the isolation; no source cause found.
+- M3 did not finish (Interactive, `DBEncJournal` on; `OKNoDBEncKeyAtStartup` answered #1212): `PROHIBITED.STARTUPJOURNAL` is built. M2 was refused (#1231, a server with no startup key list); M2b, KMIP over a startup-configured server at an unreachable host, was accepted and did not finish: `PROHIBITED.STARTUPKMIP` is built. M1 is kept, and `PROHIBITED.STARTUPKEYFILE` is not built: the vendor refused a file switch (#1233) and a move to None (#1217), and a first Unattended over a file lacking the default key finished.
 
 **Commands** (one run per call, `timeout: 600000`):
 

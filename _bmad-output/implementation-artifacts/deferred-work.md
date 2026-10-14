@@ -11896,3 +11896,14 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: attempt 1 red on node 22.22.3 only (node 24 and 26 green on the same head); attempt 2 green unchanged; the head touches no logs code (inference: timers left by another spec in the worker).
 - 2026-10-14T09:30:29Z status=routed owner=burndown by=runner note=flake: the spec should set up and clear fake timers per test; Epic 18's test (orchestrator told Epic 18)
 - 2026-10-14T12:35:00Z status=routed owner=18-48-epic-18-burn-down-part-2 by=lead note=orchestrator 2026-10-14: Epic 18's test; fix its timer isolation
+
+### DW-2428: Security.Encryption.Settings accepts journal encryption while key activation at startup is Interactive, though %SYS.Journal.System.OKNoDBEncKeyAtStartup() answers #1212 for that state; every later start aborts into single-user mode (an IRIS defect candidate)
+- source: spec-18-48-epic-18-burn-down-part-2.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: Story 18.48 Task 0 M3 on ocupilot-ci 2026-10-14: the PUT answered 200; OKNoDBEncKeyAtStartup answered #1212 after it; 8 start attempts stopped at the key-file prompt and aborted (carry-2026-10-10/epic-18-r/1848/t0/part-b-results.md Pass 1)
+- 2026-10-14T15:53:47Z status=decision-pending owner=burndown by=lead note=owner_hold: IRIS defect candidate, never reported upstream; AD-10 PROHIBITED.STARTUPJOURNAL refuses it on OcuPilot's path
+
+### DW-2429: EncryptionPort answers the vendor's startup-settings refusals #1231 (a KMIP server not configured for startup) and #1233 (a different unattended key file configured) as 500 INTERNAL, logged at severity 2, where #1217 maps to 409 ENCRYPTION.STARTUP.REQUIRED
+- source: spec-18-48-epic-18-burn-down-part-2.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: Story 18.48 Task 0 M2 and M1 on ocupilot-ci 2026-10-14: the port's Security.Encryption.Settings PUT answered 500 INTERNAL with one [OcuPilot.Log] severity-2 line each (part-b-results.md Pass 2); Pass 3 shows #1217's mapping
+- 2026-10-14T15:53:47Z status=routed owner=burndown by=lead note=map each to a field refusal on the start-mode field and add code-scoped UNLOGGEDREFUSALS entries, beside DW-2427; placement asked of the orchestrator
+- 2026-10-14T15:55:09Z status=routed owner=18-48-epic-18-burn-down-part-2 by=lead note=orchestrator 2026-10-14: folded beside DW-2427, same port and change
