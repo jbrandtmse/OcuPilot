@@ -20,6 +20,11 @@
 /// <p><b>The integrity checks and a check's report can be armed</b> (Story 18.4):
 /// <method>ArmIntegrityChecks</method> and <method>ArmIntegrityReport</method>, so a running check, a
 /// report carrying errors and a full listing are driven without an instance holding them.</p>
+/// <p><b>The live tail's timing and faults can be armed</b> (Story 18.38): <method>SetTail</method> sets
+/// the bound, check and beat seconds, <method>ArmTailThrow</method> makes a look at the file throw,
+/// <method>Faults</method> counts what <method>LogFault</method> was asked to log, which is how "nothing
+/// is logged" is read off a counter, and <method>AbsentLooks</method> counts the looks that found the file
+/// absent.</p>
 /// <p>State lives in <code>^||OcuPilotLogFixture</code>; <method>Clear</method> forgets it.</p>
 Class OcuPilot.Test.LogSourceFixture Extends OcuPilot.Port.LogSourcePort
 {
@@ -247,6 +252,77 @@ ClassMethod IntegrityReport(pId As %String, Output pStream As %Stream.TmpCharact
         Do pStream.Write($ListGet(tLines, tI) _ $Char(10))
     }
     Quit $$$OK
+}
+
+/// <p>Arm the live tail's timing: the longest a tail is held, the pause between two looks at the file and
+/// the pause between two heartbeats, all in seconds. A value left <code>""</code> keeps the port's own.</p>
+ClassMethod SetTail(pBound As %Numeric, pCheck As %Numeric, pBeat As %Numeric)
+{
+    Set ^||OcuPilotLogFixture("tailBound") = pBound
+    Set ^||OcuPilotLogFixture("tailCheck") = pCheck
+    Set ^||OcuPilotLogFixture("tailBeat") = pBeat
+}
+
+/// <p>Make <method>TailState</method> throw an exception named <var>pName</var> once it has looked at the
+/// file <var>pAfterLooks</var> times, and on every look after: <code>0</code> throws on the first look,
+/// <code>1</code> on the second.</p>
+ClassMethod ArmTailThrow(pName As %String, pAfterLooks As %Integer = 0)
+{
+    Set ^||OcuPilotLogFixture("tailThrow") = pName
+    Set ^||OcuPilotLogFixture("tailThrowAfter") = pAfterLooks
+}
+
+/// <p>How many times <method>LogFault</method> has been asked to log since <method>Clear</method>.</p>
+ClassMethod Faults() As %Integer
+{
+    Quit +$Get(^||OcuPilotLogFixture("faults"), 0)
+}
+
+/// <p>How many looks at the file <method>TailState</method> has answered absent since <method>Clear</method>.</p>
+ClassMethod AbsentLooks() As %Integer
+{
+    Quit +$Get(^||OcuPilotLogFixture("tailAbsent"), 0)
+}
+
+ClassMethod TailBoundSeconds() As %Integer
+{
+    Set tForced = $Get(^||OcuPilotLogFixture("tailBound"), "")
+    If tForced '= "" Quit tForced
+    Quit ##super()
+}
+
+ClassMethod TailCheckSeconds() As %Numeric
+{
+    Set tForced = $Get(^||OcuPilotLogFixture("tailCheck"), "")
+    If tForced '= "" Quit tForced
+    Quit ##super()
+}
+
+ClassMethod TailBeatSeconds() As %Numeric
+{
+    Set tForced = $Get(^||OcuPilotLogFixture("tailBeat"), "")
+    If tForced '= "" Quit tForced
+    Quit ##super()
+}
+
+ClassMethod TailState(pPath As %String, Output pSize As %Integer, Output pIdentity As %String) As %Boolean
+{
+    Set tLooks = $Get(^||OcuPilotLogFixture("tailLooks"), 0)
+    Set ^||OcuPilotLogFixture("tailLooks") = tLooks + 1
+    Set tThrow = $Get(^||OcuPilotLogFixture("tailThrow"), "")
+    If (tThrow '= "") && (tLooks >= $Get(^||OcuPilotLogFixture("tailThrowAfter"), 0)) {
+        Throw ##class(%Exception.SystemException).%New(tThrow, 0, "TailState", "armed by OcuPilot.Test.LogSourceFixture")
+    }
+    Set tPresent = ##super(pPath, .pSize, .pIdentity)
+    If 'tPresent Set ^||OcuPilotLogFixture("tailAbsent") = $Get(^||OcuPilotLogFixture("tailAbsent"), 0) + 1
+    Quit tPresent
+}
+
+ClassMethod LogFault(pMessage As %String, pStatus As %Status, pCode As %String = "")
+{
+    Set ^||OcuPilotLogFixture("faults") = $Get(^||OcuPilotLogFixture("faults"), 0) + 1
+    ; A fault armed on purpose is counted and not written to the instance's console log.
+    If '$Data(^||OcuPilotLogFixture("tailThrow")) Do ##super(pMessage, pStatus, pCode)
 }
 
 }

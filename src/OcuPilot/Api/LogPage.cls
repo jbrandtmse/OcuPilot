@@ -1,6 +1,8 @@
 /// <p>The handler behind the log routes -- <code>GET /api/ocupilot/logs/messages</code>,
-/// <code>GET /api/ocupilot/logs/alerts</code>, <code>GET /api/ocupilot/logs/messages/files</code> and
-/// the six secondary logs' <code>GET /api/ocupilot/logs/&lt;key&gt;</code> (Story 16.8).
+/// <code>GET /api/ocupilot/logs/alerts</code>, <code>GET /api/ocupilot/logs/messages/files</code>, the
+/// two live tails <code>GET /api/ocupilot/logs/messages/tail</code> and
+/// <code>GET /api/ocupilot/logs/alerts/tail</code> (Story 18.38) and the six secondary logs'
+/// <code>GET /api/ocupilot/logs/&lt;key&gt;</code> (Story 16.8).
 /// It reads the page parameters off the request and answers what
 /// <class>OcuPilot.Port.LogSourcePort</class> returns, through OcuPilot's one success writer or
 /// its one error writer (AD-12).</p>
@@ -40,6 +42,26 @@ ClassMethod Handle(pSource As %String) As %Status
         Set tFile = %request.Get("file", "")
         Set tPageSC = $ClassMethod(..PortClass(), "Page", pSource, tOffset, tMaxBytes, tIdentity, .tResult, .tHttpStatus, .tFault, tFile)
         Set tSC = ..Answer(tPageSC, .tResult, .tHttpStatus, .tFault)
+    } Catch ex {
+        Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ex)
+    }
+    Quit tSC
+}
+
+/// <p>Hold a request until log source <var>pSource</var>'s current file moves, and answer
+/// <code>{source, changed}</code> (<method>OcuPilot.Port.LogSourcePort.Tail</method>, Story 18.38),
+/// through the same two writers. The page's <code>identity</code> and <code>size</code>, and a
+/// <code>file</code> the port refuses, are passed through as the caller sent them; the heartbeat is
+/// <class>OcuPilot.Api.Response</class>'s.</p>
+ClassMethod HandleTail(pSource As %String) As %Status
+{
+    Set tSC = $$$OK
+    Try {
+        Set tIdentity = %request.Get("identity", "")
+        Set tSize = %request.Get("size", "")
+        Set tFile = %request.Get("file", "")
+        Set tTailSC = $ClassMethod(..PortClass(), "Tail", pSource, tIdentity, tSize, tFile, "OcuPilot.Api.Response", .tResult, .tHttpStatus, .tFault)
+        Set tSC = ..Answer(tTailSC, .tResult, .tHttpStatus, .tFault)
     } Catch ex {
         Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ex)
     }

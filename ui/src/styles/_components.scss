@@ -5458,6 +5458,28 @@ app-data-table {
   margin: var(--ocu-space-2) var(--ocu-space-4);
 }
 
+// The row under the window that holds Load newer and, on a source that tails live, the Live tail
+// toggle beside it (Story 18.38). Load newer keeps its own margin inside the row; the toggle's
+// pressed state is the secondary container, as the Raw toggle's is.
+.ocu-log-tail-bar {
+  display: flex;
+  align-items: center;
+  align-self: flex-start;
+}
+
+.ocu-log-tail-bar .ocu-log-live {
+  margin: var(--ocu-space-2) var(--ocu-space-4) var(--ocu-space-2) 0;
+}
+
+.ocu-log-tail-bar .ocu-log-live:first-child {
+  margin-left: var(--ocu-space-4);
+}
+
+.ocu-log-live[aria-pressed='true'] {
+  background: var(--ocu-secondary-container);
+  color: var(--ocu-on-secondary-container);
+}
+
 // --- Home's remembered-screen blocks and the locator bar's favorite toggle (Story 15.2) -------
 //
 // DESIGN.md publishes no block of its own for either, so both are drawn from the

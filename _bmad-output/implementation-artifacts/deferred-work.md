@@ -11673,6 +11673,27 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: InteropUsageGate.Wire and DashboardDrillDownGate.cls :102 differ only in maxRows; Story 18.11's review closed the second copy with reopen_if a third gate copied it
 - 2026-10-13T13:17:14Z status=wontfix-accepted owner=18-37-interoperability-usage by=cr note=reopen_if=Test.Http.AbsoluteRequest's signature or the failedPair detail changes; one Http helper then serves all five
 
+### DW-2390: A client that disconnects while a live tail is held leaves its CSP process in the wait until the bound (50 s), because the vendor does not fail a heartbeat after the disconnect
+- source: spec-18-38-the-live-log-tail.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Task 0 (e) on ocupilot-ci: a client dropped at 12 s left its process in Tail until about 50 s; beats returned OK; no license unit consumed (Task 0 f)
+- 2026-10-13T18:14:44Z status=by-design owner=18-38-the-live-log-tail by=harvest note=spec-bound: the matrix's Client gone row and AD-12 accept the bounded hold (lead, Rule 5 tier 1, 2026-10-13)
+
+### DW-2391: No automated test sees a live-tail heartbeat arrive on time: the flush properties are pinned in process and the wire tests count beats in a whole body
+- source: spec-18-38-the-live-log-tail.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Task 0 (b) timed delivery by hand (curl -sN --compressed on ocupilot-ci: beats at 10.1, 20.2, 30.3, 40.4 s); LogTailWire counts newlines per held interval
+- 2026-10-13T18:14:44Z status=wontfix-accepted owner=18-38-the-live-log-tail by=harvest note=reopen_if=a browser shows Live tail silent while messages.log grows, or the gateway's buffering changes on an upgrade
+
+### DW-2392: Turning Live tail off, choosing another file or leaving drops the held tail's answer but never cancels the request, so it keeps a browser connection open until the file moves or the bound
+- source: spec-18-38-the-live-log-tail.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: runLive calls requestJson with no signal and ApiRequestInit (core/api.ts) offers none; each off/on, file change or leave abandons one held request; six on one HTTP/1.1 origin would stall the shell's other calls (inference: browser per-host limit, not measured)
+- 2026-10-13T19:09:29Z status=escalated owner=burndown by=cr note=decision sheet: an abort signal through ApiRequestInit (not read as status 0), or the store reusing its own pending tail
+- 2026-10-13T19:13:04Z status=routed owner=18-38-the-live-log-tail by=merge_gate note=orchestrator ruling B: an optional abort signal on core/api.ts; the store aborts on off, file change and leave; fixed in 18.38 rework 1
+- 2026-10-13T20:29:41Z status=resolved-by:18-38-the-live-log-tail by=adjudication note=optional abort signal on core/api.ts; the store aborts on off, file change and leave (92e5d7b6 + re-review); browser leg abandons 8 tails
+
+### DW-2393: The rows Live tail appends to the log viewer are never trimmed, so a viewer left on a busy log holds every line written since it opened
+- source: spec-18-38-the-live-log-tail.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: Each changed answer runs loadNewer, which appends the page ([...fileEntries, ...window]) and the template renders every row; Load newer did the same per click; a cap needs a choice of what search and Raw keep
+- 2026-10-13T19:09:33Z status=wontfix-accepted owner=18-38-the-live-log-tail by=cr note=reopen_if=a viewer with Live tail on holds over 20,000 rows, or a person reports the tab slowing while it runs
 ### DW-2394: Vendor: the DTL editor's compile route answers 500 Internal Server Error in a CSP process that never opened the null device, because %Api.InteropEditors.v3.impl CompileDTL uses it without opening it (<NOTOPEN>CompileDTL+30)
 - source: CI run 38446203705 browser 5/5 (Story 20.7 AC2) | severity: med | fix-risk: high | footprint: out-of-footprint
 - evidence: CI log: ISCLOG apimgmnt <NOTOPEN>CompileDTL+30^%Api.InteropEditors.v3.impl.1; hidden source: use ##class(%Library.Device).GetNullDevice() with no open; green locally where the worker had it open (inference).
@@ -11685,6 +11706,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: ocupilot-b-ci: after database-operations.browser-spec.mjs two of seven web processes had no /dev/null (a fresh one has it); open, reopen, close then use raises <NOTOPEN>; LogSourcePort.cls:3043 Open tNull:::1 ... Close tNull on both paths. Only closer not isolated (inference).
 - 2026-10-13T20:02:45Z status=escalated owner=burndown by=harvest note=contended: Epic 18 is changing LogSourcePort.cls; for the orchestrator to route; when fixed, drop the NOTOPEN tolerance in interop-editors.browser-spec.mjs compileNotice
 - 2026-10-13T20:18:27Z occurrence=20-7-the-three-embedded-vendor-editors by=cr note=BPL editor Compile fails the same way; AC2 legs pass over it; the fix adds a device-state test too
+- 2026-10-13T22:10:41Z status=routed owner=18-38-the-live-log-tail by=lead note=orchestrator: LogSourcePort is 18.38's file; close the null device only if opened
+- 2026-10-13T23:15:35Z status=resolved-by:18-38-the-live-log-tail by=adjudication note=IntegrityReport opens and closes the null device only if the process had not; caller's device restored on every path (5ab4af82 + re-review); pinned by DatabaseIntegrity; Epic 20 may drop its NOTOPEN tolerance
 
 ### DW-2396: Vendor: the schema viewer app (/ui/interop) reads its document parameter &ST and then clears it with its own first address write, so it always opens on ASC X12, the classic pages' own link included
 - source: spec-20-8 plan (measured) | severity: low | fix-risk: low | footprint: out-of-footprint
@@ -11701,3 +11724,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-20-9 gate (orchestrator ruling Q2) | severity: low | fix-risk: med | footprint: in-epic
 - evidence: Measured at Story 20.9's plan: the per-user store's searches run through Ens.Message.Search on a work queue and store a row per run; OcuPilot's search is bound SQL over message headers.
 - 2026-10-13T21:53:29Z status=wontfix-accepted owner=20-9-messages-search-view-resend-and-trace by=spec_gate note=reopen_if=the vendor exposes an engine-neutral saved-search store (a criteria list readable without Ens.Message.Search)
+
+### DW-2399: Test/DatabaseIntegrity.cls is 713 lines against the testing rule's guide of about 500; Story 18.38's null-device test grew it from 605
+- source: spec-18-38-the-live-log-tail.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: wc -l: 605 at 02bd47fb, 692 at 5ab4af82, 713 after the rework 2 review's patches. A split adds a class to scripts/ci-throwaway.sh's arming roster (Epic 20's file) and ci-timings.json, more than a two-way door.
+- 2026-10-13T23:13:33Z status=wontfix-accepted owner=18-38-the-live-log-tail by=cr note=reopen_if=wc -l src/OcuPilot/Test/DatabaseIntegrity.cls exceeds 800, or a story adds a test method to it

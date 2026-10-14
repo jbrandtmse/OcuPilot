@@ -2,13 +2,29 @@
 title: 'Story 18.38: The live log tail'
 type: 'feature'
 created: '2026-10-12'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '02bd47fbf208b5ba701a9db5f475202318a9e509'
+baseline_commit: '02bd47fbf208b5ba701a9db5f475202318a9e509'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-18-context.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      A client that disconnects while a tail is held leaves its CSP process in the wait until the bound (50 s); nothing ends it earlier.
+    evidence: |-
+      Measured on ocupilot-ci (Task 0 e): a client dropped at 12 s left its process in Tail (HANG) until about 50 s; the beats at 20, 30 and 40 s returned OK, because Response.Flush answers $$$OK and the gateway keeps draining. Only the gateway's own 504 interrupts the process (<EXTERNAL INTERRUPT>, answered unlogged). Turning Live tail off, or a person leaving, therefore holds up to one process per tail still in flight for up to the bound.
+    location: >-
+      OcuPilot.Port.LogSourcePort.Tail; OcuPilot.Api.Response.Heartbeat
+    severity: low
+  - summary: >-
+      No automated test sees a beat arrive on time: Heartbeat's flush properties are pinned in process, and the delivery itself was measured by hand.
+    evidence: |-
+      The wire tests read a whole body, so they cannot tell a beat at 10 s from one released with the envelope; Task 0 b timed it with a raw socket and curl -sN --compressed on ocupilot-ci (beats at 10.1, 20.2, 30.3 and 40.4 s, envelope at 50.5 s).
+    location: >-
+      OcuPilot.Test.Envelope.TestAHeartbeatSetsTheStreamingPropertiesBeforeItsFirstFlushOnly
+    severity: low
 ---
 
 <intent-contract>
@@ -40,7 +56,7 @@ deferred: []
 | Partial line | bytes, no newline | `changed: true`; the next tail, at the new size, waits | -- |
 | Rotation | `MoveConsoleLog` mid-wait | `changed: true`; the page answers `restarted` | an absent instant is waited out |
 | Refused | non-tail source; no pair; bad cursor; `file` | 404 `LOG.SOURCE`; 403; 400 `LOG.OFFSET`; 400 `LOG.FILE` | no heartbeat; a gate refusal touches no file |
-| Client gone | a heartbeat write fails | the wait ends | nothing logged |
+| Client gone | a heartbeat write fails, or the gateway interrupts | the wait ends; a dropped socket's wait runs to the bound [AMENDED 2026-10-13 - see the Spec Change Log] | nothing logged |
 
 </intent-contract>
 
@@ -63,7 +79,7 @@ Under `src/OcuPilot/` at `093b3f34`.
 1. `Port/LogSourcePort.cls` (add-only; header corrected in place):
    - `TAILSOURCES = "messages,alerts"`, `TAILCHECKSECONDS` 1, `TAILBEATSECONDS` 10, `TailSources()`, and the seams `TailBoundSeconds()` (`SqlPort.BoundSeconds`' line), `TailCheckSeconds()`, `TailBeatSeconds()`.
    - `TailState(pPath, .pSize, .pIdentity) As %Boolean`, through `OpenStream` and `Identity`.
-   - `Tail(pSource, pIdentity, pSize, pFile, pBeatClass, .pResult, .pHttpStatus, .pFault)`: the Boundaries' refusals in order (cursor: `identity` `^[A-Za-z0-9_=-]{1,64}$`, `size` digits, both or neither), `Resolve`, then the matrix's loop, calling `$ClassMethod(pBeatClass, "Heartbeat")` per beat. A throw before the first beat is `Fail`; after it, logged and answered `changed`. A failed heartbeat ends the wait, unlogged.
+   - `Tail(pSource, pIdentity, pSize, pFile, pBeatClass, .pResult, .pHttpStatus, .pFault)`: the Boundaries' refusals in order (cursor: `identity` `^[A-Za-z0-9_=-]{1,64}$`, `size` digits, both required [AMENDED 2026-10-13 - see the Spec Change Log]), `Resolve`, then the matrix's loop, calling `$ClassMethod(pBeatClass, "Heartbeat")` per beat. A throw before the first beat is `Fail`; after it, logged and answered `changed`. A failed heartbeat ends the wait, unlogged.
 2. `Api/Response.cls`: `Heartbeat()` sets JSON `ContentType`, writes `$Char(10)`, `%response.Flush()`.
 3. `Api/LogPage.cls`: `HandleTail(pSource)` passes `identity`, `size`, `file` to `Tail(..., "OcuPilot.Api.Response", ...)`, through `Answer`.
 4. `Api/Router.cls`: `GET /logs/alerts/tail` above :152 and `/logs/messages/tail` above :154; thin `LogAlertsTail` and `LogMessagesTail` beside `LogAlerts` :1129 and `LogMessages` :974.
@@ -92,11 +108,185 @@ Under `src/OcuPilot/` at `093b3f34`.
 - **AC4.** Given Live tail on, when the person turns it off, chooses another file or leaves, then nothing more is requested and an in-flight answer is dropped.
 - **Integration.** Given the log viewer, the route's one consumer, when a marker is written under Live tail, then its row appears (task 13).
 
+### Review Findings
+
+Code review 2026-10-13 (full-opus: blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor): 41 rows, 17 entries (5 medium, 12 low), 15 rejected. The applied low patches are mechanical, fix-risk low, in-story. Rule 3: met (`messages-log.browser-spec.mjs`, `LogTailWire`). Rule 6: the named ADs hold.
+
+- [x] [Review][Patch] Medium: `LogTailWire` wrote the instance's `alerts.log` without the log-family arming its siblings carry [src/OcuPilot/Test/LogTailWire.cls:126]. Fix-risk low (test only, one roster line). `EnsureAlertLine` now writes only where `OCUPILOT_ALLOW_LOG_ROTATION` reads 1 and errors otherwise, and `# classes: LogTailWire` joins `scripts/ci-throwaway.sh`'s roster (add-only).
+- [x] [Review][Patch] Medium: no client test told the page's `size` from `offset - 1` as the tail cursor, which the Design Notes require [ui/src/app/areas/logs/log-viewer.spec.ts:878]. Fix-risk low. The second page now ends on a partial line (size 512); a mutation is recorded.
+- [x] [Review][Patch] Medium (Rule 19): the browser spec's live-tail lines carried the seed marker, so a re-run on one throwaway could count them as seeded and skip the re-seed [ui/browser/messages-log.browser-spec.mjs:505]. Fix-risk low. They now carry `OcuPilotMessagesLive`.
+- [x] [Review][Patch] Medium (Rule 2): `EnsureAlertLine`'s write copied `LogTail.Append` with no stated reason [src/OcuPilot/Test/LogTailWire.cls:137, src/OcuPilot/Test/LogTail.cls:135]. Fix-risk low. It calls `LogSource.WriteFile`, as its siblings do.
+- [x] [Review][Patch] Low: an `alerts.log` found empty kept the test's line [src/OcuPilot/Test/LogTailWire.cls:82]. `OnAfterAllTests` now empties it again.
+- [x] [Review][Patch] Low: the held-cursor test expected five newlines for an answer at 52 to 55 s, inside its own slack, where the port writes at most four [src/OcuPilot/Test/LogTailWire.cls:266]. Capped at `(BOUND - 1) \ BEAT`.
+- [x] [Review][Patch] Low: four mutation notes named a red their mutation does not produce (`LogTail` refusal and gate tests, `LogTailWire` refusal test, the live-chain component test). Each now names the observed or recorded red. Running the gate after `Resolve` survives, because `Resolve(..., 0)` touches no file.
+- [x] [Review][Patch] Low: `ArmTailThrow`'s doc was off by one against its code [src/OcuPilot/Test/LogSourceFixture.cls:269].
+- [x] [Review][Patch] Low: `Heartbeat`'s doc said a beat that cannot be written means the client has gone, but the vendor's `Flush` answers OK after a disconnect; and `Response`'s header did not name `Heartbeat` [src/OcuPilot/Api/Response.cls:2].
+- [x] [Review][Patch] Low: `Tail`'s `LOG.OFFSET` sentence told a caller with a malformed cursor to "supply both" [src/OcuPilot/Port/LogSourcePort.cls:935].
+- [x] [Review][Patch] Low: the method name `TestACursorABytebehindAnswersChangedAtOnce` is now `...AByteBehind...` [src/OcuPilot/Test/LogTailWire.cls:197].
+- [x] [Review][Patch] Low: `LogTail`'s header omitted `%Admin_Operate:USE`, which every leg the real gate checks needs [src/OcuPilot/Test/LogTail.cls:10]. `LogTailWire`'s header now names the 60 s gateway timeout.
+- [x] [Review][Patch] Low: a test header said "echoes nothing the caller sent", but no assertion checks it; the claim is removed [src/OcuPilot/Test/LogTail.cls:322].
+- [x] [Review][Patch] Low: Task 8's strings bound raise was not applied at 3,357 literals [ui/tools/strings.test.mjs:613]. The bound is now 3,800 under the protocol comment; the count was re-measured.
+- [x] [Review][Defer] Medium: turning Live tail off, choosing another file or leaving does not cancel the held request [ui/src/app/areas/logs/log-viewer.store.ts:520]. Deferred as DW-2392, escalated: the fix needs an abort signal in `core/api.ts`, outside this story (fix-risk medium).
+- [x] [Review][Defer] Low: the rows Live tail appends are never trimmed [ui/src/app/areas/logs/log-viewer.store.ts:669]. Deferred as DW-2393, wontfix-accepted with a `reopen_if`.
+
+Rejected:
+
+- By design: the hold follows `TestCall.BoundSeconds` with no cap of its own (AD-12, AD-43). A log with no file yet offers no Live tail (Task 6: `canLive` needs a cursor).
+- Low:
+  - `TailState`'s catch-all reads an interrupt during a look as absent. The window is about 0.3 ms per second, and the outcome is the accepted bounded hold.
+  - A held tail has no client timeout. `api.ts` waits by design, and the client cannot know the bound.
+  - Turning Live tail on over a truncated window reads the backlog at the next write.
+  - A stale fault stays after a re-enabled tail; the next page read clears it.
+  - A person's Load newer is dropped when Live tail goes off inside a page read.
+  - There is no per-user cap on held tails (Task 0 f).
+  - `EnsureAlertLine` can race between its check and its write.
+  - `StartWriter` does not check `$Test`, as `BackgroundTasksLive` does not.
+  - The bound's floor goes unchecked when the instance writes during the accepted hold (run 682 was red).
+  - The page and store say "Nothing ticks" in place of the spec's sentence; the contract is the same.
+- False: `tStart` comes after `TailState`. Each beat restarts the gateway's timer, and the work before it is sub-millisecond.
+- The fix would edit the spec:
+  - The `LastLines` rename and `Resolve`'s new argument are not add-only. Verified: `LastLines` is private and both its in-class callers are updated; no subclass overrides `Tail`; the argument defaults to 1.
+  - The spec says three holds where the code makes four.
+
+
+### Rework 1 (orchestrator ruling, 2026-10-13)
+
+- [x] [Review] DW-2392 (ruling B): an abandoned live tail holds a browser connection until the bound, and six on one HTTP/1.1 origin stall the shell. Add an add-only optional `signal` to `core/api.ts` `ApiRequestInit`, passed through to `fetch`, and an aborted request read as an abort (never as status 0, a fault or a log line); the log-viewer store owns one `AbortController` per held tail and aborts it on Live tail off, on a file or source change (`reset`, `clearWindow`, `setSource`) and on leaving the screen (the page's `onDestroy`). Pin it: a component spec that the held request's signal is aborted on each of the three, and a browser spec in `ui/browser/messages-log.browser-spec.mjs` (or its own file) that turns Live tail on and abandons it more than 6 times in a row (off, or a file change), then asserts another shell call (a page read or `/instance`) completes within a few seconds; each with its `mutation:` line. `core/api.ts` joins footprint_extensions (add-only).
+
+### Review Findings (rework 1 re-review)
+
+Code review 2026-10-13 over `d70b9273..HEAD` (full-opus: blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor): 20 rows, 6 entries (1 medium, 5 low, no high), 7 rejected. All six patched in this pass, fix-risk low, in-story (`core/api.ts` is the rework's footprint extension; Epic 20's diff touches none of the three files). Rule 3: met. Rule 6: AD-12 and AD-43 hold (the abort is client-only; no timer, `EventSource` or `WebSocket`).
+
+DW-2392 checklist: fixed. The `signal` is optional and add-only, and a call without one carries none. An abort rejects as `AbortError`, never status 0, a fault or a log line. The store aborts in `stopLive`, which Live tail off, `reset`, `clearWindow`, `setSource` and the page's `onDestroy` all reach, and component, `api.test.mjs` and browser legs pin it with recorded mutations. `core/session.ts`'s comment is accurate. The leg's 8 abandoned tails do not slow or redden a later spec file: `alerts-log` ran 7/7 in its usual 28.6 s while `%SYS.ProcessQuery` counted all 8 server waits still held. They write nothing, and no spec counts processes, sessions or tail routes.
+
+- [x] [Review][Patch] Medium (Rule 30): the browser abandon leg needed `messages.log` to stay still from the first window through all eight holds; a line written meanwhile answers a held tail, the viewer holds another, and the exact `tails.length === abandoned` wait never holds again [ui/browser/messages-log.browser-spec.mjs:589]. Fix-risk low (test only). Rounds now repeat until eight tails are abandoned (at most 16), each waiting until every tail asked was canceled or answered; mutation re-observed.
+- [x] [Review][Patch] Low: the stub's abort rejection left the AC4 off, file, leaving and reset legs releasing a tail that had already rejected [ui/src/app/areas/logs/log-viewer.spec.ts:928]. The leaving and reset legs now release before the trigger (the leaving leg now reddens without the loop's generation check), and the off and file legs lose the inert line.
+- [x] [Review][Patch] Low: `ApiRequestInit.signal`'s doc said a timeout and a signal are joined, but `send` drops the caller's listener once headers arrive, so an abort while that body streams goes unseen [ui/src/app/core/api.ts:97]. Doc corrected; no caller sets both.
+- [x] [Review][Patch] Low: the same doc said an already-aborted call never reaches the network, but an expired pair is renewed first [ui/src/app/core/api.ts:105]. Corrected.
+- [x] [Review][Patch] Low: `onFault`'s doc still said every JSON call is reported; an aborted one is not [ui/src/app/core/api.ts:40]. Corrected at the origin.
+- [x] [Review][Patch] Low: the browser leg stated a cache mechanism as fact [ui/browser/messages-log.browser-spec.mjs:562]. It now records what was measured and labels the mechanism (inference), as does the (R1) mutation line.
+
+Rejected:
+
+- Low:
+  - An abort during a 401's renewal that then fails answers the 401, and an abort after the body arrived but before `text()` settles resolves: races the store drops by generation; a fix adds guards.
+  - `requestJson`'s transport-fault comment and the Story 1.13 test title still hold: an abort is no transport fault, and that test's calls come back.
+  - The DW-2392 legs repeat the AC4 legs' triggers: each pins a different claim (the abort, against no further request).
+  - The combined file, source and reset leg's later two checks have no mutation of their own: one mutation per AC is met.
+  - The abort lifts the browser's six-connection cap on abandoned tails, so rapid toggling holds more server waits to the bound: the server never capped them (more tabs or a script reach it); the no-per-user-cap rejection and the dropped-client hold stand, and the lead adjudicates DW-2392.
+  - The leg's `until` copies a poll loop (Rule 2): its exported sibling is in `interop-editor-spec.mjs`, Epic 20's contended interop-editor helper, and importing it would tie this spec to that area; browser specs keep their own (`system-explorer-documatic` too).
+  - `heldUntilAborted` (`api.test.mjs`) repeats `halfOpenFetch` (`refresh-connectivity.wire.test.mjs`): importing a test module re-registers its tests, and the copy is six lines.
+
+
+### Rework 2 (orchestrator, 2026-10-13: DW-2395, routed from Epic 20)
+
+- [x] [Review] DW-2395: `LogSourcePort.IntegrityReport` opens and then unconditionally closes the null device in the web process; the vendor's `CompileDTL` and `CompileBPL` routes `Use` that device without opening it, so after any integrity report a later DTL or BPL compile in the same CSP process fails `<NOTOPEN>` (Epic 20's 20.7 measured it in CI). Fix: record whether the null device was already open before `IntegrityReport` opens it, and close it only if `IntegrityReport` opened it, leaving the process's device state (open devices and the current device) as it found it, on every path including a raise. Pin it with a test: with the null device already open in the test's process, an integrity report, then a `Use` of the null device that does not open it first, succeeds; and with it not open beforehand, it is not left open. Write its `mutation:` line (the unconditional close restored goes red). Then run `ui/browser/interop-editors.browser-spec.mjs` once on a rebuilt and redeployed bundle (its NOTOPEN tolerance is still in the file; record whether the notice appeared).
+
+### Review Findings (rework 2 re-review)
+
+Code review 2026-10-13 over `02bd47fb..HEAD` (full-opus: blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor): 25 rows, 9 entries (3 medium, 6 low, no high), 6 rejected. Eight patched in this pass, fix-risk low, in-story (Epic 20's diff touches neither file); one low closed as DW-2399. Rule 3: met (internal fix; the story's wire and browser tests stand). Rule 6: AD-16 holds (the namespace is restored before the device restore); AD-12 is untouched.
+
+DW-2395 checklist: fixed, for the lead to adjudicate. `IntegrityReport` opens the null device only when `DeviceIsOpen` answers no, closes it only if it opened it, and restores redirection and the caller's device after the `Try` on every path. The test's raise legs restore the vendor output global on every path, and only after the listing confirms the check is the test's own. The interop-editors run is recorded under (R2); it runs no integrity report, so the unit test is the guard (inference).
+
+- [x] [Review][Patch] Medium: no leg raised with the null device already open, the DW-2395 case; a close in the `Catch` passed all three legs, and the closed raise leg's `$IO` check held through the report's own close [src/OcuPilot/Test/DatabaseIntegrity.cls:433]. The raise now runs with the device closed and open, and asserts the stream holds the capture's first heading.
+- [x] [Review][Patch] Medium: "and is not empty" was met by the headings `IntegrityLine` writes directly, so a capture lost on an open device stayed green [src/OcuPilot/Test/DatabaseIntegrity.cls:424]. Both legs now assert the `Directory:` line `Display` writes.
+- [x] [Review][Patch] Medium (Rule 30): the raise leg overwrote the output global of the newest listed check without confirming it as its own, and restored it only if the report returned [src/OcuPilot/Test/DatabaseIntegrity.cls:431]. The listing assertion gates the raise legs, and the global is restored after the `Catch` too.
+- [x] [Review][Patch] Low: nothing pinned `ReDirectIO(0)`; with it deleted, an open null device stayed redirected into labels whose variables the `New` had popped [src/OcuPilot/Port/LogSourcePort.cls:3267]. `UseWithoutOpening` now reports the redirection switch, and the open legs assert it is off.
+- [x] [Review][Patch] Low: the doc said the devices come back as found, but a null device the process had open keeps this class's mnemonic space and has redirection off [src/OcuPilot/Port/LogSourcePort.cls:3210]. The doc now states what holds.
+- [x] [Review][Patch] Low: `tCapturing` was set before the `Use` that makes the null device current, so a raise there turned off the redirection `%CSP.REST` holds on the caller's device [src/OcuPilot/Port/LogSourcePort.cls:3247]. It is now set after that `Use`.
+- [x] [Review][Patch] Low: `DeviceIsOpen` answered closed for any raise, and its doc says only `<NOTOPEN>` does [src/OcuPilot/Port/LogSourcePort.cls:3284]. Any other raise is rethrown.
+- [x] [Review][Patch] Low: the first leg's closed device was inferred from a probe taken before the setup ran [src/OcuPilot/Test/DatabaseIntegrity.cls:414]. The leg now closes an open device itself.
+- [x] [Review][Defer] Low: `DatabaseIntegrity` is 713 lines against the guide of about 500 [src/OcuPilot/Test/DatabaseIntegrity.cls:1]. Deferred as DW-2399, wontfix-accepted with a `reopen_if`. A split would add a class to `scripts/ci-throwaway.sh`'s arming roster, which is Epic 20's file.
+
+Rejected:
+
+- By design: `interop-editors.browser-spec.mjs` keeps its `<NOTOPEN>` tolerance. The item keeps it, the file is in Epic 20's diff, and DW-2395's trailer names its removal for the lead.
+- Low:
+  - About 34 test classes open and close the null device without checking it first. They run in `iris session` test processes, never in a pooled web process.
+  - A runner whose current device is the null device would have that device closed by the legs. `ci-runner` runs `iris session` over `docker exec`, so no runner of this suite does.
+  - The interop-editors record cannot tell the fix from the defect. Correcting it would mean editing the spec's record.
+- False:
+  - `Open tNull:::1` can block indefinitely. Opening the null device never waits, and the `Use` rebinds its mnemonic space before any capture.
+  - `OutputNodeOf` restores the namespace after the `Catch`. The restore runs on both paths before anything else, and the `Catch` names no class.
+
 ## Spec Change Log
+
+- 2026-10-13, lead, implement halt (Task 0 e), Rule 5 tier 1: the vendor does not fail a heartbeat after a client disconnects, so the matrix's "Client gone" row now reads that a dropped socket's wait runs to the bound (at most `BoundSeconds`, one CSP process, nothing logged), the bounded hold the Design Notes already name; the cursor is required whole (`EndpointCoverage`'s bare probe draws `LOG.OFFSET`). AD-12's carve-out names the two response properties Task 0 b measured. Resumed at review (`in-review`) over the uncommitted implementation.
 
 - 2026-10-13, lead spec gate: "For the lead" applied (AD-12's second carve-out and AD-43's live tail in the spine; EXPERIENCE.md :646, :848, :899 in place, line count unchanged, `test:tools` 1948/1948). `Descriptor.cls` :1076 and :1120 are the Rule 11 ask to the orchestrator.
 
 ## Review Triage Log
+
+- 2026-10-13, rework 2: DW-2395 re-owned to 18.38 by the orchestrator (LogSourcePort is this story's file): close the null device only if `IntegrityReport` opened it.
+
+- 2026-10-13, rework 1: DW-2392 decided (orchestrator, ruling B): abort an abandoned tail through an optional signal on `core/api.ts`.
+
+### 2026-10-13 - Review pass
+
+- verdicts: 26 findings - high 0, medium 3, low 19, false 4, maybe-false 0
+- findings (G = verification-gap layer, I = intent-alignment layer):
+  - `[medium]` `[patch]` G1 heartbeat newline and its `HandleTail` wiring verified nowhere: `Envelope` never reads the device and `LogTailWire` accepted zero newlines - `LogTailWire` held-cursor test now holds past a beat interval (up to three tries, since the instance writes `messages.log` now and then) and asserts a newline per full beat and a hold to the bound when unchanged
+  - `[medium]` `[patch]` G2 the alerts tail route's source binding verified nowhere: every 200 assertion ran on messages - the cursor-behind test now loops both routes and asserts `source`
+  - `[low]` `[patch]` G3 the shipped bound had only an upper limit on the wire - the held-to-the-bound assertion in the same test
+  - `[low]` `[patch]` G4 the absent-file gap leg could pass on a writer that never ran - the fixture counts absent looks, the leg asserts at least one
+  - `[low]` `[reject]` G5a no mutation line for the identity term - Rule 19 asks one demonstrated mutation per AC; AC1 has several
+  - `[low]` `[patch]` G5b no mutation for the bound or the second-envelope and space-heartbeat claims - the unobserved claim left the test header; the bound mutation is recorded
+  - `[low]` `[patch]` G5c no mutation for the heartbeat write or the beat class - two mutations recorded (runs 680, 681)
+  - `[low]` `[patch]` G5d no mutation for the alerts binding - recorded (run 685)
+  - `[low]` `[reject]` G5e no mutation for the `livePath` term of `canLive` - per-AC discipline met by the current-file term
+  - `[low]` `[reject]` G5f no mutation for the `LOG.FILE` branch - per-AC discipline met by the cursor, gate and roster mutations
+  - `[low]` `[reject]` G6 writer-job tests carry about 1.3 s of start margin - generous for a job start, and a fix adds a readiness signal to every writer test
+  - `[false]` `[reject]` G7 the absent-file answer is not tied to the alerts route - the matrix row is the port's, tested by the absent-file test; the alerts route runs the same `Tail`
+  - `[low]` `[reject]` G8 gate-before-malformed-cursor precedence untested - no matrix row states it, and a reorder leaks only the cursor grammar
+  - `[medium]` `[patch]` I1 the heartbeat bytes are checked at the port with a fake class and on the wire only as "zero or more" - the G1 fix
+  - `[low]` `[patch]` I2 the envelope written after a flushed heartbeat is covered by no guaranteed-heartbeat test - the G1 test parses the whole body after four newlines (run 678)
+  - `[low]` `[reject]` I3 the 1 s check interval default is referenced by no test - a slow default would show in the browser spec's 10 s window
+  - `[low]` `[reject]` I4 rotation tested on a scratch file, never `MoveConsoleLog` - measured in Task 0 (c); rotating the instance log in a test breaks hermeticity
+  - `[low]` `[reject]` I5 a dropped socket is driven by no test - the accepted consequence of the Rule 5 amendment; the deferred entry stands
+  - `[false]` `[reject]` I6 the 404 `LOG.SOURCE` row is reachable only at the port - the Router maps the two tail sources only; the port test pins the row
+  - `[low]` `[patch]` I7 alerts held and changed paths unexercised on the wire - the G2 fix exercises the changed-at-once path; the held path is the same `Tail`
+  - `[low]` `[reject]` I8 opt-in is declared at the port, the Router and the client - AD-5; the descriptor tests tie the viewers to `TailSources()`
+  - `[low]` `[patch]` I9 `LOG.FILE` reused the page's rotated-file sentence - `Tail` now has its own
+  - `[low]` `[reject]` I10 `Page`'s order is mirrored, not shared or compared - the matrix's codes are pinned row by row
+  - `[low]` `[reject]` I11 the component spec runs against `StubApi` - the browser spec runs the real client
+  - `[false]` `[reject]` I12 `EXPERIENCE.md` and `strings.ts` are also in Epic 20's diff - the stage ruling lists both as shared add-only files; the hunks do not overlap
+  - `[false]` `[reject]` I13 the intent's `:899` quote is gone from the tree - the spec gate amended that line
+
+### 2026-10-13 - Review pass (rework 1)
+
+- verdicts: 15 findings - high 0, medium 1, low 11, false 3, maybe-false 0
+- findings (G = verification-gap layer, I = intent-alignment layer):
+  - `[medium]` `[patch]` G1 the abort-rejecting stub left the AC4 late-answer legs inert and the loop's generation check after the tail await unpinned (the dropped guard read 77 of 77 green; the recorded 4-red mutation measured 1) - a settled-answer leg added (answer released, then Live tail off in the same turn) and the mutation line corrected: guard dropped -> that leg alone red, `stopLive` keeping the generation -> it and the page-read leg red
+  - `[low]` `[reject]` G2 the abandon leg assumes `messages.log` stays still while eight tails are held - two non-spec writes in about 43 minutes against about 2.5 s of hold, and the fix adds a quiet-wait branch
+  - `[low]` `[reject]` G3 a 250 ms wait stands for "the request reached the wire" - it cannot cause a false red, since the mutated bundle still holds its connection
+  - `[low]` `[reject]` G4 the leg leaves eight server waits on the shared throwaway - the accepted dropped-client hold (deferred entry), and no spec asserts a process count
+  - `[low]` `[patch]` G5 `session.ts` said the signal is given only when the caller set a timeout - wording corrected in place
+  - `[low]` `[reject]` G6 the first leg's fault and path assertions are not load-bearing for the abort - they pin the leg's own claim (an abort is no fault and asks for nothing more) against a different mutation
+  - `[false]` `[reject]` I1 the browser leg rewrites each tail's URL, and tails at one cursor share one connection - the leg is falsifiable (the mutated bundle reddens it alone at the page read), so the rewrite makes it discriminate rather than vacuous
+  - `[low]` `[reject]` I2 tails are abandoned before the first heartbeat flushes headers, so the body-streaming state is pinned only in `api.test.mjs` - an abort frees the connection in either state, and a browser check would hold each tail 10 s or more
+  - `[false]` `[reject]` I3 only the off path runs in the browser - the item names "off, or a file change"; the file, source and reset paths are component legs
+  - `[low]` `[reject]` I4 the component spec runs `StubApi`, not the real `ApiService` - `api.test.mjs` pins the real service and the browser leg joins the two on the real bundle
+  - `[low]` `[reject]` I5 `requestJson` rejects on abort where its neighbours answer outcomes, and "never a log line" has no pinned surface - the ruling asks for an abort read as an abort, the store catches it, `api.test.mjs` asserts no fault, and client code writes no log line
+  - `[low]` `[reject]` I6 with a timeout and a signal both set, the caller-abort listener is removed once headers arrive - no caller sets both (the tail sets no timeout) and the timeout has never covered the body
+  - `[low]` `[reject]` I7 the server's wait continues after the browser cancels - the matrix's amended "Client gone" row and the deferred dropped-client entry
+  - `[low]` `[reject]` I8 a loop page read in flight is dropped by generation, not canceled - the item scopes the abort to the held tail
+  - `[false]` `[reject]` I9 `send`, `requestJson` and `arm` bodies change, not only the type - every new branch runs only for a caller that passes a signal (`api.test.mjs` asserts a plain call carries none; `test:tools` 1,972 green)
+
+### 2026-10-13 - Review pass (rework 2, DW-2395)
+
+- verdicts: 11 findings - high 0, medium 2, low 5, false 4, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` (verification-gap) the raise path of `IntegrityReport`'s device restore has no test - the restore moved after the `Try`; both legs ran the no-raise path. Patched: a third leg breaks the check's output global (`Display` raises `<LIST>` inside the capture) and asserts the error status, the null device closed and the caller's device; its mutation line is written
+  - `[low]` `[patch]` (verification-gap) mutations for the "not left open", current-device and `DeviceIsOpen` claims unrecorded - ran and recorded four mutations (runs 641-644)
+  - `[low]` `[patch]` (verification-gap) the item's browser run is unrecorded while the box is ticked - recorded under Verification and Auto Run Result
+  - `[low]` `[reject]` (verification-gap) the browser spec tolerates the vendor-failure notice, so it cannot fail on DW-2395 - the item keeps the tolerance by design, the file is in Epic 20's diff, and the unit test is the guard; the notice is recorded instead
+  - `[false]` `[reject]` (verification-gap) the mnemonic binding a pre-opened device keeps is unpinned - the vendor's `Redirect` binds `Use ..Device::("^"_$ZNAME)` and turns `ReDirectIO(1)` on itself (`%CSP/Portal/SourceControl/IO.cls`), and the report leaves redirection off, so nothing reads the stale binding
+  - `[false]` `[reject]` (intent-alignment) the diff touches none of the tail surface - the pass is the Rework 2 item; the contract's Never list keeps `integrity` out of the tail's sources, which this diff does not change, and no matrix row is affected
+  - `[low]` `[reject]` (intent-alignment) the test runs in a `%UnitTest` process with the vendor's bare `Use`, not in a CSP process through the vendor compile - a compile after a report in one web process cannot be driven deterministically; the browser spec's record covers it
+  - `[medium]` `[patch]` (intent-alignment) no leg forces a raise - same root cause as the first row; patched by the same leg
+  - `[low]` `[patch]` (intent-alignment) the browser run is unrecorded - same root cause as the third row; recorded
+  - `[false]` `[reject]` (intent-alignment) the redirect and mnemonic state are outside "open devices and the current device" - same claim as the fifth row; refuted there
+  - `[false]` `[reject]` (intent-alignment) about 40 test fixtures open and close the null device the same way - they run in test processes and nothing there `Use`s the device afterwards; the one shipped call site is `IntegrityReport`
 
 ## Design Notes
 
@@ -125,6 +315,14 @@ Under `src/OcuPilot/` at `093b3f34`.
   - :848: replace `Load newer only` with `Load newer; Live tail on alerts.log and messages.log`.
   - :899, the whole line: `- **Tail, live where the source opts in.** Log viewers load bounded pages and offer "Load newer"; on alerts.log's and messages.log's current file, "Live tail" also holds a long poll that brings newer lines as the instance writes them (Story 18.38); every other log, an older rotated file included, streams nothing.`
 - No vendor defect candidate.
+- **Task 0 findings** (`ocupilot-ci`, 2026-10-13, through Apache and the CSP gateway on 52776; measured, not recalled):
+  - **(a)** A hold to the 50 s bound answers 200 with a beat every 10 s and one envelope. With `TailBoundSeconds` mutated to 75 s it answered 200 at 75.6 s, so a beat restarts the gateway's 60 s timer; with the beat mutated to 1,000 s it answered 504 `text/html` with no body at 60.07 s, and the gateway interrupted the process at that instant (`<EXTERNAL INTERRUPT>` inside `Tail`).
+  - **(b)** As first written, only the first beat arrived on time; for a client sending `Accept-Encoding: gzip`, every browser, nothing arrived until the envelope (`Content-Length` 39). `Heartbeat` therefore sets `%response.GzipOutput = 0` and `%response.AllowOutputFlush = 1` before its first write, neither settable after it. Then `curl -sN --compressed` shows a beat at 10.1, 20.2, 30.3 and 40.4 s and the envelope at 50.5 s.
+  - **(c)** Across `MoveConsoleLog` a 2 ms sampler never saw an absent instant: `%File.Exists` and `TailState` stayed true; size 1,845,227 -> 325 and the identity changed at the call (2 ms), and the held tail answered `changed: true` 0.49 s later. A rotated `messages.old_20261013_1` remains on `ocupilot-ci`.
+  - **(d)** One `TailState` costs 0.29 ms (1,000 calls, 0.29 s; the same on 1.8 MB and 2.3 KB).
+  - **(e)** A heartbeat does not fail after a disconnect: `Response.Flush` answers OK. A client dropped at 12 s left its process in `Tail` until about 50 s, the beats at 20, 30 and 40 s returning OK, nothing logged. The matrix's "Client gone" row holds for a failing heartbeat and for the gateway's interrupt (both end the wait unlogged; the interrupt was logged as an error until `Tail` named it), not for a dropped socket: that costs one process to the bound, the Named consequence at its edge (deferred, low).
+  - **(f)** Three concurrent tails by `_SYSTEM` (one gzip-accepting, one with no cursor) held 50 s with beats on time beside a page read (7.7 ms), a sign-in (6.3 ms) and `/instance` (5.1 ms); `LUConsumed` read 2 before, during and after; no `messages.log` line.
+  - **Amendments recommended, not applied:** AD-12's carve-out names the two response properties ("`Response.Heartbeat` turns compression off and output flushing on, before its first write"); the matrix's "Client gone" row reads "a heartbeat write fails, or the gateway interrupts | the wait ends; a dropped socket's wait runs to the bound | nothing logged". The cursor is required (both `identity` and `size`; neither is `LOG.OFFSET`), so `EndpointCoverage`'s bare probe is refused at once rather than held.
 
 ## Verification
 
@@ -132,7 +330,7 @@ Under `src/OcuPilot/` at `093b3f34`.
 
 - `(loop)` `sh /Users/jbrandt/git/OcuPilot/.worktrees/.coordination/carry-2026-10-08/epic-18-d8/load-ocupilot-ci.sh`: `LOAD-OK`, `STARTPATH-OK`.
 - `(loop)` `cd ui && node tools/ci-runner.mjs --container ocupilot-ci --class OcuPilot.Test.<C>`, one at a time, totals in `%UnitTest_Result`: tasks 9-11 and task 14's classes.
-- `(loop)` `cd ui && npm run test:tools && npm run test:components && npm run build`, the bundle under the 3527kB warning.
+- `(loop)` `cd ui && npm run test:tools && npm run test:components && npm run build`, the bundle under the 1,992 kB warning.
 - `(loop)` `docker cp dist/ocupilot-ui/browser/. ocupilot-ci:/durable/iris/csp/ocupilot/`; then, with `OCUPILOT_BROWSER_ORIGIN=http://localhost:52776` and `OCUPILOT_BROWSER_CONTAINER=ocupilot-ci`, `node --test --test-concurrency=1 browser/<spec>.browser-spec.mjs` for tasks 13 and 14.
 - `(loop)` `uv run scripts/check-objectscript.py`, `bash scripts/lint-docs.sh`: 0 problems. The full ObjectScript sweep is the runner's; the full browser suite is CI's.
 
@@ -140,9 +338,58 @@ Under `src/OcuPilot/` at `093b3f34`.
 
 every test added or changed passes on a fresh environment, in either order
 
-**Mutations** (planned; recorded as `mutation: <change> -> <test red>` once observed): AC1, `Tail` ignores `size` -> `LogTail`'s moved and mid-wait legs; no `loadNewer` on `changed` -> the Live spec test and task 13; no beat call -> the still leg. AC2, `canLive` without the current-file test -> the rotated-file leg; `TAILSOURCES` plus `systemmonitor` -> the roster pin. AC3, the gate after `Resolve` -> the access count; the cursor check after the first beat -> the beat count. AC4, `setLive(false)` keeps the generation -> the off leg.
+**Results** (ocupilot-ci, final code, totals confirmed in `%UnitTest_Result`): `LogTail` 11 (run 688), `LogTailWire` 4 (687), `LogSource` 22 (686), `LogSourceDenial` 8 (667), `EndpointCoverage` 2 (668), `Descriptor` 60 (669), `DeveloperFloorRoutes` 1 (670), `InteropFloorRoutes` 1 (671), `LogSourceWire` 9 (673), `ReadTool` 28 (674), `SurfaceCoverage` 4 (675), `Envelope` 17 (676). `test:tools` 1,969/1,969; `test:components` 3,063 in 244 files; `check-objectscript` 0 problems and `lint-docs` 0 problems. Browser on the rebuilt bundle: `messages-log` 5/5, `alerts-log` 7/7, `messages-log-files` 5/5, `secondary-logs` 7/7, and `screen-height` 15/15 for the wrapped Load newer row. Build: initial total 1.91 MB (warning at 1,992 kB), largest lazy chunk `data-browser-page` 83.32 kB (cap 88 kB). Fixed strings: 3,356 -> 3,357 literals under the unchanged bound 3,400; 43 remain, so the next story that adds literals raises it. The review pass changed ObjectScript only (`LogSourcePort.Tail`'s `LOG.FILE` sentence, `LogSourceFixture`, `LogTail`, `LogTailWire`); the classes above it ran before it stand.
+
+**Mutations** (observed, each reverted; ObjectScript on `ocupilot-ci`'s mounted copy with the class and its descendants recompiled, client rebuilt and redeployed before the browser read it):
+
+- mutation: `Tail` drops the size term from its moved comparison -> `LogTail` moved, mid-wait, partial-line and gate-served legs (4 red); `LogTailWire` cursor-a-byte-behind (50.35 s, not 2 s)
+- mutation: `Tail` never calls its heartbeat -> `LogTail` still-file (0 beats), absent-file, client-gone and fault-after-first-beat legs (4 red)
+- mutation: a file access before the gate in `Tail` -> `LogTail` gate-refusal and the refusal rows' access count (red)
+- mutation: the cursor check removed from `Tail` (nothing before the first beat refuses) -> `LogTail` refusal rows, status, code and access count (red)
+- mutation: a failed or thrown heartbeat ignored -> `LogTail` client-gone (red); the external-interrupt branch removed -> the same test, status and nothing-logged (red)
+- mutation: `TAILSOURCES` plus `systemmonitor` -> `LogTail` roster and refusal row (red) and `Descriptor` secondary-log loop (red); `TAILSOURCES` minus `alerts` -> `Descriptor` alert leg (red)
+- mutation: the gate skipped in `Tail` -> `LogSourceDenial` both-tails leg (red, 403 expected)
+- mutation: `AllowOutputFlush` line deleted from `Heartbeat` -> `Envelope` heartbeat leg at "output flushing on" (red); `GzipOutput` line deleted -> the same leg at "compression off" (red)
+- mutation: `Write $Char(10)` deleted from `Heartbeat` -> `LogTailWire` held-cursor test at "a newline for each full beat interval held (4 after 50.3 s): 0" (run 680); `HandleTail` passing no beat class -> the same assertion (run 681)
+- mutation: `TailBoundSeconds` answers 15 -> `LogTailWire` held-cursor test at "an unchanged tail was held to the bound: 15.1" (run 682)
+- mutation: `LogAlertsTail` bound to the console log's key -> `LogTailWire` cursor-a-byte-behind test at "alerts: naming the source the route bound" (run 685)
+- mutation: `Tail` answers changed true as soon as the file is absent -> `LogTail` absent-file test (4 red, run 683); the gap writer started after the bound -> its "a look did find the file absent" assertion alone (run 684)
+- mutation: the `/logs/alerts/tail` probe deleted -> `EndpointCoverage` (196 probes, 197 routes, red); the `/logs/messages/tail` route deleted -> `LogTailWire` 4 of 4 red
+- mutation: `canLive` without the current-file test -> `log-viewer.spec.ts` AC6 loop, rotated-file and file-change legs (3 red)
+- mutation: `stopLive` keeps the live generation -> `log-viewer.spec.ts` AC4 settled-answer, page-read-in-flight and leaving legs (3 red); the loop without its generation return after the tail await -> the settled-answer and leaving legs (2 red) (both re-observed at the rework 1 re-review)
+- mutation: no `loadNewer` on `changed` -> the Live chain, truncated-pages, in-flight-page and refused-page legs (4 red); `messages-log.browser-spec.mjs` Live tail test (red: no line within 10 s)
+- mutation: page `onDestroy` without `setLive(false)` -> the leaving leg (red); `clearWindow` without `stopLive` -> the file-change and sign-out legs (2 red)
+- (QA) mutation: `Tail` moves on growth only (`tNowSize > tBaseSize`) -> `LogTail` moved-file identity leg and rotation test (2 red, run 691)
+- (QA) mutation: `Tail`'s `LOG.FILE` refusal disabled -> `LogTail` refusal rows with a file name (run 692) and `LogTailWire` refusal rows with a file name (run 693), one test red each
+- (QA) mutation: `EnsureAlertLine` skipped on an instance whose `alerts.log` is absent (moved aside on `ocupilot-ci`, restored after) -> `LogTailWire` alerts leg at "alerts: the page supplies a cursor" (run 689); the unmutated tree green on the same instance (run 690), the file it created removed again
+- (QA) mutation: `livePath` added to the `systemmonitor` source -> survived (equivalent: `canLive` already excludes every windowed source, so no source is offered the tail by `livePath` alone)
+- (QA) files: `src/OcuPilot/Test/LogTailWire.cls` changed (`EnsureAlertLine`, `OnAfterAllTests`, `AwaitQuiet`, four holds); no test file created. Final tree: `LogTailWire` 4 (run 694); browser `messages-log` 5/5 and `alerts-log` 7/7 on the rebuilt, redeployed bundle.
+- (CR) mutation: the live loop tails at `offset - 1` instead of the page's `size` -> `log-viewer.spec.ts` live-chain test at the second and third tails' size (1 red)
+- (CR) mutation: the live loop's `continue` for `changed: false` removed -> the same test at its page-read assertion (1 red)
+- (CR) final tree on `ocupilot-ci`: `LogTailWire` 4 (run 695, with `alerts.log` empty, so the line was written and removed again; run 697 as found); `LogTail` 11 (run 696); `log-viewer.spec.ts` 73; `test:tools` 1,969; `check-objectscript` 0 problems; browser `messages-log` 5/5 on the rebuilt, redeployed bundle.
+- (R1) mutation: `stopLive` without `liveAbort?.abort()` -> the four DW-2392 legs of `log-viewer.spec.ts` (4 red); `clearWindow` without `stopLive` -> the file leg and the two AC4 legs (3 red); the page's `onDestroy` without `setLive(false)` -> the leaving leg and the AC4 leaving leg (2 red); `{ signal: held.signal }` dropped from the loop's request -> all four (4 red)
+- (R1) mutation: `requestJson` answering an abort as status 0 -> the three DW-2392 legs of `api.test.mjs` (3 red); `send` without its already-aborted check, or without the `response.text()` rethrow -> the second leg alone (1 red each); `arm` ignoring the caller's signal when a timeout is set -> the third leg ("still pending", 1 red)
+- (R1) mutation: `stopLive` without `liveAbort?.abort()`, bundle rebuilt and redeployed -> `messages-log.browser-spec.mjs` abandon leg red at "every tail asked by round 1 was canceled or answered"; with that wait and the cancel count removed and eight rounds run, red alone at "the page read went unanswered for 5000 ms" (the held connections stall the shell; both re-observed at the rework 1 re-review). Tails at one cursor are one GET and were measured not to use up the browser's connections (inference: one of several identical GETs reaches the network at a time), and a moved file releases a held tail, so the leg gives each tail a URL of its own through request interception; without that the unmutated and mutated bundles both read green (measured)
+- (R1) final tree on `ocupilot-ci`: `test:components` 3,068 in 244 files (`log-viewer.spec.ts` 78 after the review patch); `test:tools` 1,972; build initial total 1.91 MB (warning at 1,992 kB), largest lazy chunk `data-browser-page` 83.32 kB (cap 88 kB); browser `messages-log` 6/6 and `alerts-log` 7/7 on the rebuilt, redeployed bundle. The eight tails the abandon leg cancels leave eight server processes in their wait for up to the 50 s bound (the deferred dropped-client hold), and the leg writes nothing.
+- (CR R1) final tree on `ocupilot-ci` (`src` loaded, bundle rebuilt and redeployed): `log-viewer.spec.ts` 78, `test:components` 3,068 in 244 files, `test:tools` 1,972; browser `messages-log` 6/6, then `alerts-log` 7/7 while the abandon leg's 8 server waits were held (`%SYS.ProcessQuery` counted 8 in `LogSourcePort` before and after it, 0 three minutes later); `client-lint`, `browser-reset` and `lint-docs` clean. The leg's mutation comment was reworded after that run (comment only).
+- (R2) mutation: `IntegrityReport` closes the null device whether or not it opened it, tree recompiled on `ocupilot-ci` -> `DatabaseIntegrity` null-device test red alone, at "a null device the process had open is still open" (run 633: 10 of 11 green); no close of a device it opened -> the same test red at both "not left open" assertions (run 641); no `Use` of the caller's device -> its open-beforehand "current device" assertion red, and `TestTheOperateReaderReadsTheLogOverTheWire` (run 642); `DeviceIsOpen` always answering open -> its closed-beforehand status assertion red (run 643); the devices restored only after a successful capture -> its raising leg red alone (run 644); each reverted byte-identical
+- (R2) final tree on `ocupilot-ci` (`src` loaded, bundle rebuilt and redeployed): `DatabaseIntegrity` 11 (run 645), `LogSource` 22 (636), `LogSourceWire` 9 (637), `LogTail` 11 (638), `LogTailWire` 4 (639); `interop-editors.browser-spec.mjs` 18 of 18 once on the rebuilt bundle, the vendor-failure notice did not appear and `messages.log` gained no `NOTOPEN` line from it; `check-objectscript` and `lint-docs` 0 problems
+- (CR R2) mutation: `IntegrityReport`'s `Catch` closes the null device -> the null-device test red alone, at the open raising leg (run 647); `ReDirectIO(1)` only when it opened the device -> at "and captures the listing Display wrote" (run 648); `ReDirectIO(0)` deleted -> at both open legs' redirection (run 649); the unconditional close, re-observed -> at both open legs (run 650); the restore only after a report that succeeded -> at "the legs ran to the end", `<UNDEFINED>wnl` (run 651). Each was applied to the mounted copy with `LogSourcePort` and its subclasses recompiled, then reverted byte-identical
+- (CR R2) final tree on `ocupilot-ci` (`src` loaded): `DatabaseIntegrity` 11 (run 652), `LogSource` 22 (653), `LogSourceWire` 9 (654); `check-objectscript` 0 problems; no probe database or integrity check left
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+**Change (rework 2, DW-2395).** `LogSourcePort.IntegrityReport` opens the null device only when the process has not (`DeviceIsOpen`, a `Use` that raises `<NOTOPEN>` when closed), turns redirection off and returns to the caller's device on every path including a raise, and closes the device only if it opened it. `DatabaseIntegrity.TestTheReportLeavesTheNullDeviceAsItFoundIt` pins it in three legs: device closed, device open, and a raise inside the capture.
+
+**Files.** `Port/LogSourcePort.cls` (`IntegrityReport`, `DeviceIsOpen`); `Test/DatabaseIntegrity.cls` (the test, `UseWithoutOpening`, `OutputNodeOf`); this spec.
+
+**Review.** Two layers, 11 findings: 2 medium, 5 low, 4 false (rows under Review Triage Log). Patched: the raise-path leg (medium), four mutations recorded and the browser run recorded (low). Deferred: nothing new.
+
+**Follow-up review: not recommended** (no high patched; patched: medium 1, low 2).
+
+**Verified** on `ocupilot-ci`: `DatabaseIntegrity` 11 (run 645), `LogSource` 22, `LogSourceWire` 9, `LogTail` 11, `LogTailWire` 4; five mutations red (Verification (R2)); `interop-editors.browser-spec.mjs` 18 of 18 on the rebuilt, redeployed bundle with no vendor-failure notice; `check-objectscript` and `lint-docs` 0 problems; the throwaway holds no probe database, user, role or integrity task.
+
+**Residual risk.** `DatabaseIntegrity` is 692 lines against the 500-line guide, and the raising leg relies on `Display^Integrity` raising on a non-list top node (a failed assertion names it if a build stops doing so). `Open tNull:::1` and the three test fixtures with the open-then-close pattern are unchanged.
