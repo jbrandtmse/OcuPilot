@@ -11382,6 +11382,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-11T18:27:53Z status=wontfix-accepted owner=18-34-the-person-s-rest-service-create by=cr note=reopen_if=a Save whose UI can send a field over 3.6 MB, or an out-of-range number, answers 500
 - 2026-10-11T21:38:31Z status=routed owner=burndown by=lead note=orchestrator: audit the 48 two-argument %GetNext sites at the Epic 18 burn-down; fix any that read caller-controlled JSON (the same 500) or charter a sweep if many
 - 2026-10-14T08:59:24Z status=routed owner=18-47-epic-18-burn-down-part-1 by=burndown note=chartered into the Epic 18 burn-down part 1 (orchestrator ruling 2026-10-14)
+- 2026-10-14T09:42:09Z status=dropped by=spec_gate note=superseded by the sweep entry DW-2417 (109 sites, over the ruling's 10; Story 18.47 plan audit)
 
 ### DW-2328: Rows of an id-none list share one key when its name column repeats: MetricsList's 942 rows hold 115 Metric values, so a click selects every row of a metric and the arrow keys stop at a group's first row
 - source: spec-18-11-monitoring-extras-and-the-live-log-tail.md | severity: med | fix-risk: med | footprint: out-of-footprint
@@ -11789,3 +11790,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-41-the-wallet-credential-rung.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: EXPERIENCE.md :335 and strings.ts caption predate DW-2406; the WALLETRUNG.REQUIRETLS and ALLOWEDHOSTS refusals name their setting and remedy
 - 2026-10-14T06:41:48Z status=wontfix-accepted owner=18-41-the-wallet-credential-rung by=harvest note=reopen_if=a person reports a wallet refusal they could not trace from the form
+
+### DW-2417: Sweep: two-argument %GetNext over caller JSON answers 500 past MAXSTRING/MAXNUMBER at 109 sites in 54 Area files; route key loops through one typed helper beside Kernel.Utils.ReadRequestBody, add .tType at nested loops, check untyped %Get
+- source: spec-18-47-epic-18-burn-down-part-1.md | severity: low | fix-risk: med | footprint: out-of-footprint
+- evidence: Story 18.47 plan audit 2026-10-14 (code read): 109 sites in 54 Area files; Screen/Tool about 14, Api 11, Kernel 20-25 (inference); over the ruling's 10, so 18.47 fixes none
+- 2026-10-14T09:42:09Z status=routed owner=23-9-the-range-end-cleanup-part-8 by=spec_gate note=orchestrator 2026-10-14: more than about 10 sites, so one sweep entry; supersedes DW-2327

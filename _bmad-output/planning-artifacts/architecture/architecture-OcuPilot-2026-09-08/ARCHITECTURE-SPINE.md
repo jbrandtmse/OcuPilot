@@ -115,6 +115,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
   **The type check also covers `WebApp.App`'s writes** [AMENDED 2026-10-10, Story 18.31 spec gate, Rule 20], DW-2252: a `PUT` or `DELETE` on `WebApp.App` naming a privileged routine application is refused 409 `PRIVROUTINE.WEBAPP` before the vendor call and unlogged (measured: the vendor answers a `PUT` 500 #799 and a `DELETE` deletes the routine application); its `GET` is unchanged.
 
+  **A vendor 404 #822 is a refusal, not an absence** [AMENDED 2026-10-14, Story 18.47 spec gate, Rule 20] (DW-2167): `AdminPort` answers it 403, logged. An unlogged-refusal entry may name a vendor code (DW-2007): the MFT `DELETE`'s #5809 and the SQLCODE-mapped branch are unlogged, the superserver's generic #5001 stays logged.
+
 ### AD-3 — Write payload field lists are derived; the semantic half is authored once per tool
 
 - **Binds:** every write tool in 5.5–5.10; the ~40 rows the PRD lists as built against an unverified contract
@@ -390,6 +392,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
   **The allow-list, through any tool the agent can reach** [AMENDED 2026-10-12, Story 18.42 spec gate, Rule 20]: an `allowed-directory` write whose tool resolves among the advertised tools, or whose resolve fails, is refused `PROHIBITED.ALLOWLISTAGENT` at Confirm and on the route.
 
   **The configuration provider calls are made through** [AMENDED 2026-10-13, Story 18.40 spec gate, Rule 20]: while the egress row names one other than `OcuPilotProvider`, its delete, a create under its name, or a change to `Type`, `VerifyPeer`, `CAFile` or `Enabled` is refused `PROHIBITED.PROVIDERSSL` from either caller; a failed read refuses [AMENDED 2026-10-13, Story 18.40 implement halt, orchestrator ruling A]. A create of `OcuPilotProvider` itself is refused the same way [AMENDED 2026-10-13, Story 18.40, condition 8]. The call itself is checked at call time for every caller (AD-32, through AD-9's third purpose).
+
+  **The provider SSL arms cover the transport fields** [AMENDED 2026-10-14, Story 18.47 spec gate, Rule 20] (DW-2400): `OCUPILOTSSL` and `PROVIDERSSL` also refuse a change to `TLSMinVersion` or `CipherList`. **A grant compares roles per (MatchRole, target)** (DW-2320), so moving a held privileged target to another MatchRole, an empty one included, is a grant; **a privileged routine application's cleared Resource, or its enabling, while it grants a privileged role is a grant** (DW-2322).
 
 ### AD-11 — Untrusted content never becomes instruction
 
@@ -732,6 +736,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 - **Prevents:** the provider call failing on a clean instance because no SSL configuration exists, and the opposite failure of connecting without verifying the peer
 - **Rule:** `ProviderPort` uses a named SSL configuration that **the installer creates** if it is absent, with server-identity checking on. It is never hardcoded to a configuration the harvested code happened to use, and never left to whatever `DefaultSSL` means on the operator's instance. **The same configuration serves one other outbound fetch** [AMENDED 2026-09-25, Story 12.8 spec gate, Rule 20]: a server client description's Update JWKS (AD-27's 12.8 case) fetches an `https` key-set URI through it, and an `http` URI through none, because the vendor's own choice -- the authorization server's SSL/TLS configuration -- can be read only with `%Admin_OAuth2_Server:USE`, a pair the tab does not declare (AD-8). Named gap: a key-set URI whose certificate only the authorization server's own configuration trusts is refused by name rather than fetched. Proxy settings are configuration, not code. **Switches sets the proxy and may name another configuration** [AMENDED 2026-10-13, Story 18.40 spec gate, Rule 20] (`PUT /agent/switches/egress`): a named one must be an enabled client with `VerifyPeer` 1, read in the caller's process under the SSL form's pairs; a custom CA is such a configuration, its trusted certificates the operator's own; `OcuPilotProvider` stays the installer's and serves the JWKS fetch. **Verification holds where the key is sent** [AMENDED 2026-10-13, Story 18.40 implement halt, orchestrator ruling B]: before each provider call `ProviderPort` reads the configuration in use, the named one or `OcuPilotProvider`, for every caller through AD-9's SSL-read application, and refuses the call, sending nothing, unless it is an enabled client with `VerifyPeer` 1 or more; one read per call and no cache, so a classic-portal edit is seen at the next call. Test connection (FR-27) exercises the same path as a real turn, so a TLS misconfiguration surfaces at setup rather than mid-demo.
 
+  **The provider configurations' transport floor** [AMENDED 2026-10-14, Story 18.47 spec gate, Rule 20] (DW-2400): the installer sets `TLSMinVersion` and `CipherList` on `OcuPilotProvider`, and the call-time check also refuses a configuration in use whose `TLSMinVersion` floor is below TLS 1.2 (16). Named limit: `CipherList` is not judged at call time, since no vendor API expands a cipher string.
+
 ### AD-33 — The progress channel is untrusted content in protected storage
 
 - **Binds:** AD-7, AD-11; the turn job, the panel, FR-12, FR-13
@@ -809,12 +815,14 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
   **An item setting whose name matches the credential pattern is never answered** (Story 20.22) [AMENDED 2026-10-10, owner decision "A: hide secrets, allow paths (Recommended)", by=merge_gate, Rule 20]: Item settings and its read tool answer such a row with an empty value and default and `Secret` true, and every other setting's value and default as row fields through AD-60. Named limit: a secret stored under a name the pattern does not match (an `ExtraHeaders` value carrying a credential) is answered like any other value.
   **Lookup entries** [AMENDED 2026-10-11, Story 20.5 spec gate, Rule 20]: a parent-scoped `interop` list (`table`); an entry whose key matches the credential pattern is answered with an empty value and `Secret` true, Story 20.22's rule applied to keys.
 
-  **A declared read may name the monitor port** (source kind `monitor`, Story 18.11) [AMENDED 2026-10-11, Story 18.11 spec gate, Rule 20]: `MonitorPort`'s `Metrics`/`LIST`, with no namespace and no criteria, cut at the cap plus one; a malformed sample fails the read closed, logged once. **A bare-rows read, and a parent-scoped `VOLUMELIST` read, require their route criterion before any port call** (DW-1872): a `VOLUMELIST` read without `dir` is refused 400 `READ.CRITERION`, as a bare-rows read is, so the vendor's 400 is never reached or logged; other parent-scoped reads are not covered by this check.
+  **A declared read may name the monitor port** (source kind `monitor`, Story 18.11) [AMENDED 2026-10-11, Story 18.11 spec gate, Rule 20]: `MonitorPort`'s `Metrics`/`LIST`, with no namespace and no criteria, cut at the cap plus one; a malformed sample fails the read closed, logged once (amended below for a backslash label value, Story 18.47). **A bare-rows read, and a parent-scoped `VOLUMELIST` read, require their route criterion before any port call** (DW-1872): a `VOLUMELIST` read without `dir` is refused 400 `READ.CRITERION`, as a bare-rows read is, so the vendor's 400 is never reached or logged; other parent-scoped reads are not covered by this check.
 
   **`AdminPort` answers two composed read types** (Story 18.36) [AMENDED 2026-10-11, Story 18.36 spec gate, Rule 20]: `Monitor` `RESOURCEROWS`, `{"Resources": <DASHBOARDRESOURCES' array>}`, and `BUSYPROCESSES`, `{"BusyProcesses": <DASHBOARDMAIN's SystemUsage.BusyProcesses less rows whose Process is empty, in order>}`, each read over that one member (`source.rows`); an answer of another shape fails the read closed, logged once. The read grammar is unchanged.
   **An item's Test tab** [AMENDED 2026-10-12, Story 20.6 spec gate, Rule 20]: a parent-scoped `interop` list (`item`) of the request classes the host accepts, as the classic dialog's `GetMessageList` lists them (AD-62 item 11's named limit), and their fields and subclasses, read from the class dictionary; a credential-named field, top-level or inside an embedded object, reads `Secret` true [AMENDED 2026-10-12, Story 20.6 review (DW-2346), Rule 20].
 
   **A `monitor` read names one of `MonitorPort`'s `ENDPOINTS`** [AMENDED 2026-10-12, Story 18.37 spec gate, Rule 20] (the metrics table, and the three interoperability usage tables of Story 18.37); it takes no criteria.
+
+  **A metrics sample neither backslash reading parses** [AMENDED 2026-10-14, Story 18.47 spec gate, Rule 20] (DW-2329, owner 2026-10-11): `MonitorPort.Samples` reads a label value with a single or a doubled backslash; a line neither parses is skipped and counted in one log line, and the read answers the remaining rows.
 
 ### AD-37 — OcuPilot's own state has a declared lifecycle against the objects it references
 
@@ -1177,6 +1185,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
   **A fourth unadvertised tool** [AMENDED 2026-10-12, Story 18.42 spec gate, Rule 20]: `security.alloweddirectories.update` is never the agent's (AD-21), its key ships disabled, and its one caller is `POST /allowed-directories`, so it declares no `SCREENACTIONS`; its `SecurityChange` row leaves no named gap.
 
   **A registered screen action may carry its registrant's reason** [AMENDED 2026-10-12, Story 18.46 spec gate, Rule 20] (`ScreenActions`), drawn on every surface as a self-protection reason is.
+
+  **The REST service delete's deployed check** [AMENDED 2026-10-14, Story 18.47 spec gate, Rule 20] (DW-2311): "deployed" spans every namespace the caller can enter and every UrlMap `Forward` chain reaching `<Name>.disp`; a namespace the caller cannot enter refuses the delete rather than calling it undeployed.
 
 ### AD-54 - A create write inverts what the fresh read must find, and fingerprints the target's absence
 
