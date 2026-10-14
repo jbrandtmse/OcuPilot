@@ -463,6 +463,35 @@ Rejected:
 - [x] [CI] **AC6 waits for the real event loop to be empty before it installs the fake clock** [ui/src/app/areas/logs/log-viewer.spec.ts]. The rework 1 re-review's by-design MED stands: a real timer an earlier test leaves can fire in `advanceTimersByTimeAsync`'s real yields and arm a fake timer that re-arms, which the drain cannot clear. `home.page.spec.ts`'s Story 15.4 row met the same shape (4 on node 26, 1 on node 24) and waits, bounded, until `process.getActiveResourcesInfo()` lists no `Timeout` before `vi.useFakeTimers()`. AC6 takes the same wait, best effort and not asserted, as a copy whose comment names `home.page.spec.ts` as its source. The timer-count assertion's message also lists the real resources still active, so a repeat red says what was pending. The clear and the drain stay. The four `(CI)` lines in `## Verification` are re-observed on the new test.
   - Fixed in `log-viewer.spec.ts` only: AC6 waits (50 polls of 20 ms at most, never asserted) until no real `Timeout` is active before `vi.useFakeTimers()`, and the timer-count message carries the fake and the real timer counts. The four `(CI)` lines were re-observed on it, and the probe line below reddens without the wait's sleep and not with it.
 
+### Review Findings (rework 2 re-review)
+
+Code review of `88f47946..1479b60a`, 2026-10-14, four layers on `full-opus`: 22 raw findings, 11 entries (high 0, medium 2, low 5, false 4).
+
+The iteration 2 item is done as written. The wait runs before any `mount()`, so it cannot absorb a timer the page arms: the four `(CI)` lines were re-observed on the patched test, with `log-viewer.page.ts` reverted byte-identical (sha256 `c155534a1be8`). It narrows rework 1's by-design MED. A real 0 ms or 50 ms leftover that arms a re-arming timer now fires before the fake clock exists, and each reddens AC6 without the wait (probe line).
+
+Two leftovers still reach the fake clock, because AC6 keeps `advanceTimersByTimeAsync` and its real yields: a real timer that re-arms itself (the `deferred:` entry, observed red), and a real one-shot that comes due after the wait ends and before AC6 does.
+
+Measured with temporary logging: the wait ends at zero real timers after 62 ms with the file alone and 41 ms in the full suite, and AC6 takes 99 ms and 140 ms. `log-viewer.spec.ts` passes 78, `test:components` passes 3130 in 247 files, and `client-lint` is clean.
+
+- [x] [Review][Patch] The count's message gave only the real timers active at the count [ui/src/app/areas/logs/log-viewer.spec.ts:421]. A poll that has moved onto the fake clock reads 0 there, so a repeat red could not tell a leftover from the page. The message now also gives the real timers active when the clock was faked, and the comment says "counts" where it said "lists what is still pending".
+- [x] [Review][Patch] The wait awaited between installing the EventSource and WebSocket probes and the `try` whose `finally` restores them [ui/src/app/areas/logs/log-viewer.spec.ts:372]. It now runs first.
+- [x] [Review][Patch] AC6's comment did not say what the test needs from the environment [ui/src/app/areas/logs/log-viewer.spec.ts:357]. One sentence now names the two leftovers that still reach the fake clock.
+- [x] [Review][Patch] The probe line was not evidence of what it claimed [`## Verification`].
+  - Its quoted message was retyped (`HSCUSTOM : 1`).
+  - Its 0 ms leftover is absorbed by any single yield, so it could not show that the polling loop matters.
+  - The line is rewritten from observed runs. It adds a 50 ms arm that reddens with the wait cut to one poll.
+  - It confirms the red lands on the second case, as the line said.
+- [x] [Review][Defer] DW-2430, routed (burndown): the wait is a copy of `home.page.spec.ts:1302-1308` (Rule 2). The rework item required the copy, because the ruled repair stays inside `log-viewer.spec.ts`. Unifying the two edits `home.page.spec.ts`.
+
+Rejected:
+
+- `false`: DW-2415 has two dispositions. The runner folds the `deferred:` entry into DW-2415 and resolves it after this review.
+- `false`: an orphaned `RefreshService` or `ConnectivityService` is the leaking poll. A grep finds all 30 spec constructions of the two passing a `schedule` option within 12 lines of the constructor, so the deferred entry's "no spec is known" stands.
+- `false`: the wait can push AC6 past vitest's 5 s timeout. AC6 takes 99 to 140 ms, and the wait's bound adds at most 1 s.
+- `false`: the implement's triage left the deferred residual without a ledger trailer. The `deferred:` list is the harvest path, and the runner folds it into DW-2415.
+- `low`: an unref'd `Timeout` or a pending `Immediate` is not waited for. No product source calls either, the three spec uses of `setImmediate` are awaited in their own tests, and the guard adds branches.
+- `low`: the Auto Run Result and the `deferred:` summary name only one of the two surviving leftovers. The fix edits the spec, and both are named above and in the test comment.
+
 ## Spec Change Log
 
 - 2026-10-13, spec gate (runner): the Design Notes' Rule 20 drafts are written (AD-63 item 1 and its named consequence, AD-44's screens that replace several classic pages, AD-64 item 2, EXPERIENCE.md :856). The `&ST` behavior is DW-2396, a vendor candidate under the owner's hold (not reported). The `multiple-goals` warning is accepted: both screens share the frame, page and store and are about one story's size. Story 20.16 implements before this story, so Task 0 re-anchors on it.
@@ -748,12 +777,12 @@ Each value was checked unique against `strings.ts`. The labels double as the fra
 - (CR) mutation: the AD-63 scan's pattern without `Schema_Viewer-` and `Interop-Editors-` -> `api.test.mjs` (2 of 40).
 - (CR) mutation: the Items link's click ignores `altKey` -> `interop-item-list.page.spec.ts`'s modified-click test.
 - (CR) Each (CR) mutation was applied to the throwaway's copy of `src`, or to the worktree and restored from a saved copy, read red, and reverted. `InteropEditorDescriptor` (5) and `ScreenAccessWire` (8) are green on the reverted code (runs 26 and 27). `test:tools` passes 1997 and `test:components` 3120. The build is green. `interop-viewers` passes 11 on the rebuilt bundle.
-- (CI) mutation: the page's constructor arms `setInterval(() => {}, 30000)` -> `log-viewer.spec.ts` AC6, at the timer count after the drain (`logs/alerts : 1 fake timers pending, 8 real timers active: expected 1 to be +0`); Story 18.38 AC1's undrained count reddens too.
+- (CI) mutation: the page's constructor arms `setInterval(() => {}, 30000)` -> `log-viewer.spec.ts` AC6, at the timer count after the drain (`logs/alerts : 1 fake timers pending, 8 real timers active, 8 when the clock was faked: expected 1 to be +0`); Story 18.38 AC1's undrained count reddens too.
 - (CI) mutation: the page's constructor arms a self-re-arming 30 s `setTimeout` poll -> AC6, at the same count after the drain.
 - (CI) mutation: the page's constructor arms a 20-minute `setTimeout(() => void this.store.open(), ...)` -> AC6, at the request count after the drain (`logs/alerts : expected 2 to be 1`); Story 18.38 AC1 reddens too.
 - (CI) check, not a mutation: one `setTimeout(() => {}, 20 * 60 * 1000)` armed by the page is drained and AC6 stays green (77 of 78; only Story 18.38 AC1's undrained count reddens).
 - (CI) `log-viewer.page.ts` was reverted byte-identical after each (sha256 `c155534a1be8` before and after); the file passes 78 on the reverted code.
-- (CI) probe, not a mutation: a real zero-delay timer queued before AC6's wait, which arms a timer that re-arms itself every 30 s, leaves the file at 78 of 78; with the wait's 20 ms sleep removed, the same timer reddens AC6 (`logs/messages /logs/messages?ns=HSCUSTOM : 1 fake timers pending, 1 real timers active: expected 1 to be +0`); the scratch edits were reverted byte-identical (spec sha256 `ad0eef73f81d` before and after).
+- (CI) probe, not a mutation: a real timer queued before AC6's wait, which arms a timer that re-arms itself every 30 s, leaves the file at 78 of 78 at a 0 ms and at a 50 ms delay. With the wait's sleep removed, the 0 ms one reddens AC6 (`logs/messages /logs/messages?ns=HSCUSTOM: 1 fake timers pending, 1 real timers active, 4 when the clock was faked: expected 1 to be +0`). With the wait cut to one 20 ms poll, the 50 ms one does (`os-management/databases/integrity-log : 1 fake timers pending, 1 real timers active, 2 when the clock was faked: expected 1 to be +0`). A real 5 ms poll that never stops still reddens it with the full wait (`logs/messages /logs/messages?ns=HSCUSTOM: 1 fake timers pending, 0 real timers active, 1 when the clock was faked: expected 1 to be +0`). The scratch edits were reverted byte-identical (spec sha256 `b2743360bc2d` before and after).
 
 **Measured.** `npm run build`: initial total 1.93 MB (warning 1992 kB), largest lazy chunk `data-browser-page` 83.33 kB (ceiling 88 kB), `interop-editor-page` 11.11 kB, `interop-item-list-page` 14.30 kB.
 
