@@ -233,10 +233,11 @@ Method Invoke(ByRef pValues, ByRef pMessages, ByRef pTools, pSystemPrompt As %St
             ; local, because a local is what an ^%ETN entry captures (AD-48). The ladder's transient
             ; flag is a boolean and carries no text, so binding it is safe; it selects the code, so a
             ; store that could not be read is told apart from a reference that holds nothing.
-            Set ..ApiKey = $ClassMethod(..ResolvedSecretClass(), "Resolve", $Get(pValues("credType")), $Get(pValues("envVarName")), $Get(pValues("credentialName")), .tTransient, .tRefusal)
+            ; The endpoint rides along because a wallet secret's own settings decide whether it may be sent there.
+            Set ..ApiKey = $ClassMethod(..ResolvedSecretClass(), "Resolve", $Get(pValues("credType")), $Get(pValues("envVarName")), $Get(pValues("credentialName")), .tTransient, .tRefusal, $Get(pValues("endpointUrl")))
             If ..ApiKey = "" {
                 ; A refusal is the wallet rung declining to read a secret that exists, so it is told
-                ; apart from an absence and from an unreadable store, and it carries the pair.
+                ; apart from an absence and from an unreadable store, and it carries the pair or the setting.
                 If $ListValid($Get(tRefusal)) && ($ListLength(tRefusal) = 2) {
                     Do ..FaultRefused($List(tRefusal, 1), $List(tRefusal, 2), .pFault, .pHttpStatus)
                     Quit
@@ -742,16 +743,17 @@ ClassMethod Fault(pCode As %String, pReason As %String = "", pProviderText As %S
 }
 
 /// <p>Build the wire fault for a wallet rung refusal, <var>pCode</var> being a
-/// <code>WALLETRUNG.*</code> code and <var>pPair</var> the <code>resource:permission</code> pair the
-/// caller lacks: the sentence names the pair, and <code>detail.failedPair</code> carries it
-/// (AD-8). Its slug is the one its status maps to, so a 403 reads <code>forbidden</code> as every other
-/// refusal naming a pair does.</p>
-ClassMethod FaultRefused(pCode As %String, pPair As %String, Output pFault As %DynamicObject, Output pHttpStatus As %Integer)
+/// <code>WALLETRUNG.*</code> code and <var>pDetail</var> the <code>resource:permission</code> pair the
+/// caller lacks or, for a refusal by the secret's own settings, the setting: the sentence names it, and the
+/// detail member <method>OcuPilot.Api.WalletRungError.DetailKeyFor</method> names (<code>failedPair</code> or
+/// <code>setting</code>) carries it (AD-8). Its slug is the one its status maps to, so a 403 reads
+/// <code>forbidden</code> as every other refusal naming a pair does.</p>
+ClassMethod FaultRefused(pCode As %String, pDetail As %String, Output pFault As %DynamicObject, Output pHttpStatus As %Integer)
 {
-    Do ..Fault(pCode, ##class(OcuPilot.Api.WalletRungError).ReasonFor(pCode, pPair), "", .pFault, .pHttpStatus)
+    Do ..Fault(pCode, ##class(OcuPilot.Api.WalletRungError).ReasonFor(pCode, pDetail), "", .pFault, .pHttpStatus)
     Do pFault.%Set("error", ##class(OcuPilot.Api.Error).GetSlugForStatus(pHttpStatus))
     Set tDetail = {}
-    Do tDetail.%Set("failedPair", pPair, "string")
+    Do tDetail.%Set(##class(OcuPilot.Api.WalletRungError).DetailKeyFor(pCode), pDetail, "string")
     Do pFault.%Set("detail", tDetail)
 }
 

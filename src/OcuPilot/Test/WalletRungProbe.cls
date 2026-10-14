@@ -30,6 +30,20 @@ Parameter SYMMETRICSECRET = "OcuPilotProbe1841.sym";
 /// wait for before they count rows naming the others.</p>
 Parameter CONTROLSECRET = "OcuPilotProbe1841.control";
 
+/// <p>The key-value secret that requires TLS and lists the hosts it may be sent to, and the one that does not require
+/// TLS and lists a host: the vendor ignores the list of the second.</p>
+Parameter HOSTSECRET = "OcuPilotProbe1841.hostlist";
+
+Parameter OPENSECRET = "OcuPilotProbe1841.opentls";
+
+/// <p>The hosts <parameter>HOSTSECRET</parameter> lists, and the host <parameter>OPENSECRET</parameter> lists.</p>
+Parameter LISTEDHOSTS = "api.allowed.test,second.allowed.test,[2001:db8::1]";
+
+Parameter OPENHOSTS = "only.listed.test";
+
+/// <p>The endpoint a resolution is made for when its step names none: https, and a host no list names.</p>
+Parameter ENDPOINT = "https://wallet-rung.example.test/v1/messages";
+
 /// <p>The vendor audit event the wallet writes a use row under, and the one it writes a refusal under.</p>
 Parameter USEEVENT = "WalletSecretUse";
 
@@ -63,12 +77,24 @@ ClassMethod SeedAll(pValue As %String, pPassword As %String) As %Status
     If $$$ISOK(tSC) Set tSC = ..AddKeyValue(..#MULTISECRET, {"Secret": {"first": (pValue), "second": "two"}, "Usage": 15})
     If $$$ISOK(tSC) Set tSC = ..AddSymmetricKey(..#SYMMETRICSECRET)
     If $$$ISOK(tSC) Set tSC = ..AddKeyValue(..#CONTROLSECRET, {"Secret": "control", "Usage": 15})
+    If $$$ISOK(tSC) Set tSC = ..AddKeyValue(..#HOSTSECRET, {"Secret": (pValue), "Usage": 15, "RequireTLS": true, "AllowedHosts": (..HostArray(..#LISTEDHOSTS))})
+    If $$$ISOK(tSC) Set tSC = ..AddKeyValue(..#OPENSECRET, {"Secret": (pValue), "Usage": 15, "RequireTLS": false, "AllowedHosts": (..HostArray(..#OPENHOSTS))})
     For tI = 1:1:$Length(..#PRINCIPALS, ",") {
         If $$$ISERR(tSC) Quit
         Set tEntry = $Piece(..#PRINCIPALS, ",", tI)
         Set tSC = ..SeedPrincipal($Piece(tEntry, ":", 1), $Piece(tEntry, ":", 2), $Piece(tEntry, ":", 3, *), pPassword)
     }
     Quit tSC
+}
+
+/// <p>The comma-separated host list <var>pHosts</var> as the array the wallet takes for <code>AllowedHosts</code>.</p>
+ClassMethod HostArray(pHosts As %String) As %DynamicArray
+{
+    Set tHosts = []
+    For tI = 1:1:$Length(pHosts, ",") {
+        Do tHosts.%Push($Piece(pHosts, ",", tI))
+    }
+    Quit tHosts
 }
 
 /// <p>Create the use resource, public permission none, unless it exists.</p>
@@ -144,9 +170,10 @@ ClassMethod RemoveAll(Output pRemaining As %Integer) As %Status
 
 /// <p>Log in as <var>pUsername</var>, run the JSON array <var>pPlan</var>, and signal <code>{loggedIn, username,
 /// steps}</code> to process <var>pParent</var>, or <code>{error}</code>. A step is <code>{kind: "resolve"|"exists",
-/// name, expected}</code>: <code>resolve</code> answers <code>{matches, transient, refusal}</code>, where
-/// <code>refusal</code> is <code>code|pair</code> or <code>""</code>, and <code>exists</code> asks the wallet whether
-/// the secret exists, as a direct vendor call that a caller without the pair is refused, and answers
+/// name, expected, endpoint}</code>: <code>resolve</code> answers <code>{matches, transient, refusal}</code>, where
+/// <code>refusal</code> is <code>code|detail</code> or <code>""</code>, for a call made to <code>endpoint</code>
+/// (<parameter>ENDPOINT</parameter> when the step has no <code>endpoint</code> member; an empty text is an endpoint), and <code>exists</code> asks
+/// the wallet whether the secret exists, as a direct vendor call that a caller without the pair is refused, and answers
 /// <code>{opened}</code>.</p>
 ClassMethod Run(pParent As %Integer, pUsername As %String, pPlan As %String)
 {
@@ -176,7 +203,8 @@ ClassMethod Step(pStep As %DynamicObject) As %DynamicObject
             Set tSecret = ""
             Quit
         }
-        Set tMatches = (##class(OcuPilot.Kernel.Secret.Ladder).Resolve("wallet", "", pStep.%Get("name"), .tTransient, .tRefusal) = pStep.%Get("expected"))
+        Set tEndpoint = $Select(pStep.%IsDefined("endpoint"): pStep.%Get("endpoint"), 1: ..#ENDPOINT)
+        Set tMatches = (##class(OcuPilot.Kernel.Secret.Ladder).Resolve("wallet", "", pStep.%Get("name"), .tTransient, .tRefusal, tEndpoint) = pStep.%Get("expected"))
         Do tLeg.%Set("matches", ''tMatches, "boolean")
         Do tLeg.%Set("transient", ''tTransient, "boolean")
         Do tLeg.%Set("refusal", $Select($ListValid(tRefusal): $ListToString(tRefusal, "|"), 1: ""), "string")
@@ -209,11 +237,24 @@ ClassMethod UseEventEnabled() As %Integer
 /// zero is asked again for up to five seconds: the first row can take a moment to be readable.</p>
 ClassMethod DeniedRows(pSince As %String, pSecret As %String, pWait As %Boolean = 0) As %Integer
 {
-    Set tRows = ##class(OcuPilot.Test.AuditingUpdate).VendorRows(pSince, ..#DENIEDEVENT, pSecret _ " ", .tStamp)
+    Quit ..RowsNaming(pSince, ..#DENIEDEVENT, pSecret _ " ", pWait)
+}
+
+/// <p>How many <code>WalletSecretUse</code> rows since <var>pSince</var> name the secret <var>pSecret</var>, with
+/// <var>pWait</var> as <method>DeniedRows</method> takes it.</p>
+ClassMethod UseRows(pSince As %String, pSecret As %String, pWait As %Boolean = 0) As %Integer
+{
+    Quit ..RowsNaming(pSince, ..#USEEVENT, pSecret, pWait)
+}
+
+/// <p>How many rows of the vendor audit event <var>pEvent</var> since <var>pSince</var> carry <var>pText</var>.</p>
+ClassMethod RowsNaming(pSince As %String, pEvent As %String, pText As %String, pWait As %Boolean = 0) As %Integer
+{
+    Set tRows = ##class(OcuPilot.Test.AuditingUpdate).VendorRows(pSince, pEvent, pText, .tStamp)
     If pWait && (tRows < 1) {
         For tTry = 1:1:50 {
             Hang 0.1
-            Set tRows = ##class(OcuPilot.Test.AuditingUpdate).VendorRows(pSince, ..#DENIEDEVENT, pSecret _ " ", .tStamp)
+            Set tRows = ##class(OcuPilot.Test.AuditingUpdate).VendorRows(pSince, pEvent, pText, .tStamp)
             If tRows > 0 Quit
         }
     }

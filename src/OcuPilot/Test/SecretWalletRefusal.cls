@@ -27,14 +27,14 @@ ClassMethod Disarm()
 }
 
 /// <p>The armed refusal for the <code>wallet</code> rung, and the shipped resolution for anything else.</p>
-ClassMethod Resolve(pCredType As %String, pEnvVarName As %String = "", pCredentialName As %String = "", Output pTransient As %Boolean, Output pRefusal As %List) As %String
+ClassMethod Resolve(pCredType As %String, pEnvVarName As %String = "", pCredentialName As %String = "", Output pTransient As %Boolean, Output pRefusal As %List, pEndpointUrl As %String = "") As %String
 {
     If (pCredType = ##class(OcuPilot.Kernel.AgentRules).#CREDTYPEWALLET) && ($Data(^||OcuPilotSecretWalletRefusal) # 2) {
         Set pTransient = 0
         Set pRefusal = ^||OcuPilotSecretWalletRefusal
         Quit ""
     }
-    Quit ##super(pCredType, pEnvVarName, pCredentialName, .pTransient, .pRefusal)
+    Quit ##super(pCredType, pEnvVarName, pCredentialName, .pTransient, .pRefusal, pEndpointUrl)
 }
 
 /// <p>The shipped listing, or a raise when <method>ArmRaise</method> was called.</p>

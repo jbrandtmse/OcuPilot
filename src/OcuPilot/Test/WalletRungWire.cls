@@ -31,6 +31,28 @@ Parameter POSTEDKEY = "sk-ant-ocupilotwalletpostedkey18410000";
 /// <p>The distinctive middle of both, which the assertions search for.</p>
 Parameter CANARYMARK = "ocupilotwallet";
 
+/// <p>The key-value secrets whose <code>AllowedHosts</code> do not list the canary provider row's host, and list it; each
+/// holds <parameter>CANARY</parameter> and requires TLS. The row's host is <parameter>CANARYHOST</parameter>.</p>
+Parameter OFFLIST = "OcuPilotProbe1841.offlist";
+
+Parameter ONLIST = "OcuPilotProbe1841.onlist";
+
+Parameter CANARYHOST = "api.anthropic.com";
+
+/// <p>The endpoint of a marked-local definition on the plain-http row, and of the one the canary row serves.</p>
+Parameter PLAINENDPOINT = "http://127.0.0.1:11434/v1/messages";
+
+/// <p>Whether the vendor audit event <code>WalletSecretUse</code> was enabled before the test, or <code>-1</code>.</p>
+Property PreparedUseEvent As %Integer;
+
+Method %OnNew(initvalue As %String = "") As %Status
+{
+    Set tSC = ##super(initvalue)
+    If $$$ISERR(tSC) Quit tSC
+    Set ..PreparedUseEvent = -1
+    Quit $$$OK
+}
+
 Method OnBeforeAllTests() As %Status
 {
     Quit $ClassMethod(..#PROBE, "RemoveAll", .tRemaining)
@@ -42,6 +64,7 @@ Method OnBeforeOneTest() As %Status
     Do $ClassMethod(..#PORT, "Reset")
     Do $ClassMethod(..#PORT, "SetSslState", "present")
     Do ##class(OcuPilot.Test.SecretWalletRefusal).Disarm()
+    Set ..PreparedUseEvent = $ClassMethod(..#PROBE, "UseEventEnabled")
     Set tSC = $ClassMethod(..#PROBE, "EnsureResource")
     If $$$ISOK(tSC) Set tSC = $ClassMethod(..#PROBE, "EnsureCollection")
     If $$$ISOK(tSC) Set tSC = $ClassMethod(..#PROBE, "AddKeyValue", $Parameter(..#PROBE, "DEFAULTSECRET"), {"Secret": (..#CANARY), "Usage": 15})
@@ -54,6 +77,7 @@ Method OnAfterOneTest() As %Status
 {
     Do $ClassMethod(..#PORT, "Reset")
     Do ##class(OcuPilot.Test.SecretWalletRefusal).Disarm()
+    If ..PreparedUseEvent '= -1 Do $$$AssertStatusOK($ClassMethod(..#PROBE, "SetUseEvent", ..PreparedUseEvent), "the WalletSecretUse event is restored to the state it was read in")
     Do $$$AssertStatusOK(##class(OcuPilot.Test.AgentFixture).RemoveProbeDefinitions(.tDefinitions), "every probe definition is removed")
     Do $$$AssertEquals(tDefinitions, 0, "and none survives")
     ; A store that reached the credentials rung would have created an entry under the secret's name.
@@ -191,18 +215,20 @@ Method TestTheStoredValueIsTheKeyTheRequestCarries()
 }
 
 /// <p>C3, above the ladder: a refusal the ladder answers faults the provider call with its own code, a reason that names
-/// the pair and <code>detail.failedPair</code>, opens no socket, and leaves the stored definition enabled and verified.
-/// The use refusal answers 403 and the usage refusal 503, each on its status's own slug.</p>
+/// the pair or the setting, the detail member that carries it (<code>failedPair</code> or <code>setting</code>), opens no
+/// socket, and leaves the stored definition enabled and verified. The use refusal answers 403 and the usage and setting
+/// refusals 503, each on its status's own slug.</p>
 /// <p>Mutation (Rule 19): make <method>OcuPilot.Kernel.Provider.Base.Invoke</method> fault every empty resolution
 /// <code>PROVIDER.CREDENTIAL</code> -- the code assertion goes red, and the port disables the definition. Drop the slug
 /// line from <method>OcuPilot.Kernel.Provider.Base.FaultRefused</method> -- the use refusal reads
-/// <code>unavailable</code> and this goes red.</p>
+/// <code>unavailable</code> and this goes red. Make <method>OcuPilot.Api.WalletRungError.DetailKeyFor</method> answer
+/// <code>failedPair</code> for every code -- the setting refusals carry no <code>setting</code> and this goes red.</p>
 Method TestARefusalNamesThePairAndLeavesTheDefinitionEnabled()
 {
     Set tId = ..StoredDefinition("Refused", $Parameter(..#PROBE, "DEFAULTSECRET"))
     If tId = "" Quit
     Do $ClassMethod(..#PORT, "SetSecretClass", "OcuPilot.Test.SecretWalletRefusal")
-    For tCase = $ListBuild("WALLETRUNG.USE", "OcuPilotProbe1841Use:USE", 403), $ListBuild("WALLETRUNG.USAGE", "%Admin_Wallet:USE", 503) {
+    For tCase = $ListBuild("WALLETRUNG.USE", "OcuPilotProbe1841Use:USE", 403, "failedPair"), $ListBuild("WALLETRUNG.USAGE", "%Admin_Wallet:USE", 503, "failedPair"), $ListBuild("WALLETRUNG.REQUIRETLS", "RequireTLS", 503, "setting"), $ListBuild("WALLETRUNG.ALLOWEDHOSTS", "AllowedHosts", 503, "setting") {
         Set tCode = $List(tCase, 1)
         Set tPair = $List(tCase, 2)
         Do ##class(OcuPilot.Test.SecretWalletRefusal).Arm(tCode, tPair)
@@ -213,8 +239,8 @@ Method TestARefusalNamesThePairAndLeavesTheDefinitionEnabled()
         Do $$$AssertEquals($Select($IsObject(tFault): tFault.code, 1: ""), tCode, tCode _ ": the fault carries the ladder's code")
         Do $$$AssertEquals(tHttpStatus, $List(tCase, 3), tCode _ ": answered " _ $List(tCase, 3))
         If $IsObject(tFault) {
-            Do $$$AssertEquals(tFault.reason, ##class(OcuPilot.Api.WalletRungError).ReasonFor(tCode, tPair), tCode _ ": the reason is the published sentence naming the pair")
-            Do $$$AssertEquals(tFault.detail.failedPair, tPair, tCode _ ": and detail.failedPair is the pair")
+            Do $$$AssertEquals(tFault.reason, ##class(OcuPilot.Api.WalletRungError).ReasonFor(tCode, tPair), tCode _ ": the reason is the published sentence naming the pair or the setting")
+            Do $$$AssertEquals(tFault.detail.%Get($List(tCase, 4)), tPair, tCode _ ": and detail." _ $List(tCase, 4) _ " carries it")
             Do $$$AssertEquals(tFault.error, ##class(OcuPilot.Api.Error).GetSlugForStatus($List(tCase, 3)), tCode _ ": and the slug is its status's own")
         }
         Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Calls(), 0, tCode _ ": and no socket was opened")
@@ -275,15 +301,112 @@ Method TestAWalletThatCouldNotBeReadLeavesTheDefinitionEnabled()
     Set tRow = ""
 }
 
+/// <p>A refusal by the secret's own <code>RequireTLS</code>, through the shipped ladder and the port: a marked-local
+/// definition on the plain-http row that names a secret that requires TLS faults <code>WALLETRUNG.REQUIRETLS</code> (503)
+/// with the published sentence and <code>detail.setting</code>, opens no socket, carries no part of the secret and leaves
+/// the stored definition enabled and verified.</p>
+/// <p>Mutation (Rule 19): drop the scheme test from <method>OcuPilot.Kernel.Secret.Ladder.WalletTransportRefusal</method>
+/// -- the call reaches the stub and this goes red.</p>
+Method TestAnEndpointThatIsNotHttpsFaultsAWalletCallThatRequiresTls()
+{
+    Set tId = ..StoredDefinition("Plain", $Parameter(..#PROBE, "DEFAULTSECRET"), 1)
+    If tId = "" Quit
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.AgentFixture).SetFlags(tId, 1, 1), "the definition is enabled and verified before the call")
+    Do ##class(OcuPilot.Test.ProviderPort).Messages(.tMessages)
+    Set tSC = $ClassMethod(..#PORT, "Invoke", tId, .tMessages, .tTools, "", .tResponse, .tHttpStatus, .tFault)
+    Do $$$AssertStatusOK(tSC, "the port returns $$$OK")
+    Do $$$AssertEquals($Select($IsObject(tFault): tFault.code, 1: ""), ##class(OcuPilot.Api.WalletRungError).#REQUIRETLS, "the call is refused by the secret's RequireTLS")
+    Do $$$AssertEquals(tHttpStatus, 503, "answered 503")
+    If $IsObject(tFault) {
+        Do $$$AssertEquals(tFault.reason, ##class(OcuPilot.Api.WalletRungError).#REASONREQUIRETLS, "with the published sentence")
+        Do $$$AssertEquals(tFault.detail.setting, "RequireTLS", "naming the setting")
+        Do $$$AssertEquals(tFault.%ToJSON() [ ..#CANARYMARK, 0, "and carrying no part of the secret")
+    }
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Calls(), 0, "no socket was opened")
+    Do $$$AssertEquals($ClassMethod(..#PORT, "Logged") [ ..#CANARYMARK, 0, "and the log carries no part of the secret")
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Agent).GuardedOpenId(tId, .tRow), "the definition reads back")
+    If $IsObject($Get(tRow)) Do $$$AssertEquals(tRow.Enabled _ tRow.ConnectionVerified, 11, "still enabled and verified")
+    Set tRow = ""
+}
+
+/// <p>A refusal by the secret's own <code>AllowedHosts</code>, and the host it lists: a stored definition whose endpoint
+/// host the secret does not list faults <code>WALLETRUNG.ALLOWEDHOSTS</code> (503) with the published sentence and
+/// <code>detail.setting</code>, opens no socket and stays enabled and verified; a secret that lists the host is read, and
+/// the stub's request carries its value. With <code>WalletSecretUse</code> on, the refused call wrote no use row and the
+/// served one wrote one, so the refusal came before the read.</p>
+/// <p>Mutation (Rule 19): pass no endpoint from <method>OcuPilot.Kernel.Provider.Base.Invoke</method> to the ladder -- the
+/// listed host is refused as not https and this goes red. Drop the host test from
+/// <method>OcuPilot.Kernel.Secret.Ladder.WalletTransportRefusal</method> -- the unlisted host is served and this goes
+/// red.</p>
+Method TestAListedHostIsServedAndAnUnlistedOneFaultsTheCall()
+{
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "AddKeyValue", ..#OFFLIST, {"Secret": (..#CANARY), "Usage": 15, "AllowedHosts": ["other.example.test"]}), "a secret that does not list the endpoint's host exists")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "AddKeyValue", ..#ONLIST, {"Secret": (..#CANARY), "Usage": 15, "AllowedHosts": [(..#CANARYHOST)]}), "and one that does")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "SetUseEvent", 1), "the WalletSecretUse event is turned on")
+    Set tSince = ##class(OcuPilot.Test.AuditEvent).Now()
+    Hang 1
+    Set tId = ..StoredDefinition("Unlisted", ..#OFFLIST)
+    If tId = "" Quit
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.AgentFixture).SetFlags(tId, 1, 1), "the definition is enabled and verified before the call")
+    Do ##class(OcuPilot.Test.ProviderPort).Messages(.tMessages)
+    Set tSC = $ClassMethod(..#PORT, "Invoke", tId, .tMessages, .tTools, "", .tResponse, .tHttpStatus, .tFault)
+    Do $$$AssertStatusOK(tSC, "the port returns $$$OK")
+    Do $$$AssertEquals($Select($IsObject(tFault): tFault.code, 1: ""), ##class(OcuPilot.Api.WalletRungError).#ALLOWEDHOSTS, "the call is refused by the secret's AllowedHosts")
+    Do $$$AssertEquals(tHttpStatus, 503, "answered 503")
+    If $IsObject(tFault) {
+        Do $$$AssertEquals(tFault.reason, ##class(OcuPilot.Api.WalletRungError).#REASONALLOWEDHOSTS, "with the published sentence")
+        Do $$$AssertEquals(tFault.detail.setting, "AllowedHosts", "naming the setting")
+        Do $$$AssertEquals(tFault.%ToJSON() [ ..#CANARYMARK, 0, "and carrying no part of the secret")
+    }
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Calls(), 0, "no socket was opened")
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Agent).GuardedOpenId(tId, .tRow), "the definition reads back")
+    If $IsObject($Get(tRow)) Do $$$AssertEquals(tRow.Enabled _ tRow.ConnectionVerified, 11, "still enabled and verified")
+    Set tRow = ""
+    Do ##class(OcuPilot.Test.ProviderPort).Messages(.tMessages)
+    Do ##class(OcuPilot.Test.ProviderSecret).Definition(.tValues, "", ..#ONLIST, 0, "wallet")
+    Do ##class(OcuPilot.Test.ProviderStub).ArmKeyCompare(..#CANARY)
+    Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(200, "{""content"":[{""type"":""text"",""text"":""ok""}],""stop_reason"":""end_turn"",""usage"":{""input_tokens"":1,""output_tokens"":1}}")
+    Set tSC = $ClassMethod(..#PORT, "InvokeDraft", .tValues, .tMessages, .tTools, "", .tResponse, .tHttpStatus, .tFault)
+    Do $$$AssertStatusOK(tSC, "the port returns $$$OK for the listed host")
+    Do $$$AssertEquals($Select($IsObject(tFault): tFault.%ToJSON(), 1: ""), "", "and the call succeeds")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Calls(), 1, "sending one request")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Recorded("keyMatches"), 1, "whose key header is the stored value")
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "UseRows", tSince, ..#ONLIST, 1), 1, "The served read wrote its use row")
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "UseRows", tSince, ..#OFFLIST), 0, "and the refused call wrote none")
+}
+
+/// <p>The order of the two checks: with the TLS configuration the call goes through absent and the endpoint host unlisted by
+/// the secret, the call is refused for the configuration (<code>PROVIDER.TLS</code>) and not for the secret; once the
+/// configuration is present, the same call is refused for the secret.</p>
+/// <p>Mutation (Rule 19): skip the refusal for an absent configuration in <method>OcuPilot.Port.ProviderPort.Dispatch</method>
+/// -- the first call reaches the ladder and is refused <code>WALLETRUNG.ALLOWEDHOSTS</code>, so this goes red.</p>
+Method TestTheTlsConfigurationIsJudgedBeforeTheSecretsSettings()
+{
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "AddKeyValue", ..#OFFLIST, {"Secret": (..#CANARY), "Usage": 15, "AllowedHosts": ["other.example.test"]}), "a secret that does not list the endpoint's host exists")
+    Set tId = ..StoredDefinition("Order", ..#OFFLIST)
+    If tId = "" Quit
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.AgentFixture).SetFlags(tId, 1, 1), "the definition is enabled and verified before the calls")
+    Do $ClassMethod(..#PORT, "SetSslState", "missing")
+    Do ##class(OcuPilot.Test.ProviderPort).Messages(.tMessages)
+    Set tSC = $ClassMethod(..#PORT, "Invoke", tId, .tMessages, .tTools, "", .tResponse, .tHttpStatus, .tFault)
+    Do $$$AssertEquals($Select($IsObject(tFault): tFault.code, 1: ""), ##class(OcuPilot.Api.Error).#PROVIDERTLS, "with the configuration absent, the call is refused for the configuration")
+    Do $ClassMethod(..#PORT, "SetSslState", "present")
+    Set tSC = $ClassMethod(..#PORT, "Invoke", tId, .tMessages, .tTools, "", .tResponse, .tHttpStatus, .tFault)
+    Do $$$AssertEquals($Select($IsObject(tFault): tFault.code, 1: ""), ##class(OcuPilot.Api.WalletRungError).#ALLOWEDHOSTS, "with it present, the same call is refused for the secret")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Calls(), 0, "and neither opened a socket")
+}
+
 /// <p>One stored definition on the wallet rung for the canary provider row, naming <var>pSecret</var>; its id, or
-/// <code>""</code>.</p>
-Method StoredDefinition(pSuffix As %String, pSecret As %String) As %String
+/// <code>""</code>. With <var>pLocal</var> it is the marked-local definition of the row that allows local, which names
+/// the plain-http <parameter>PLAINENDPOINT</parameter>.</p>
+Method StoredDefinition(pSuffix As %String, pSecret As %String, pLocal As %Boolean = 0) As %String
 {
     Set tRow = ##class(OcuPilot.Kernel.State.Agent).%New()
     Set tRow.Name = ..#PROBEPREFIX _ pSuffix
-    Set tRow.Provider = ##class(OcuPilot.Test.CatalogProbe).#CANARYKEY
+    Set tRow.Provider = $Select(pLocal: ##class(OcuPilot.Test.CatalogProbe).#LOCALKEY, 1: ##class(OcuPilot.Test.CatalogProbe).#CANARYKEY)
     Set tRow.Model = "probe-canary-model-1"
-    Set tRow.EndpointUrl = "https://api.anthropic.com/v1/messages"
+    Set tRow.EndpointUrl = $Select(pLocal: ..#PLAINENDPOINT, 1: "https://api.anthropic.com/v1/messages")
+    Set tRow.MarkedLocal = ''pLocal
     Set tRow.CredType = "wallet"
     Set tRow.CredentialName = pSecret
     Set tRow.MaxTokens = 4000

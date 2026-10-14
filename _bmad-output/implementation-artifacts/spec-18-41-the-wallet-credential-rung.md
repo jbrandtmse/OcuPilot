@@ -2,8 +2,8 @@
 title: 'Story 18.41: The wallet credential rung'
 type: 'feature'
 created: '2026-10-12'
-status: 'in-progress'
-baseline_revision: '5fa674b7ec6eb2c45b1f9f0abf30b5121273c17b'
+status: 'done'
+baseline_revision: 'add9961f0edccbc9b729d7ec4860332468a954ae'
 baseline_commit: '5fa674b7ec6eb2c45b1f9f0abf30b5121273c17b'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -18,6 +18,13 @@ deferred:
     location: >-
       src/OcuPilot/Test/WalletRung.cls, src/OcuPilot/Test/WalletRungWire.cls
     severity: medium (unverified)
+  - summary: >-
+      The Definition form's caption for the Wallet secret field does not say that the secret's own RequireTLS and AllowedHosts decide where it may be sent, so a person who names a secret with the default RequireTLS for a marked-local plain-http model learns it from the call's WALLETRUNG.REQUIRETLS refusal.
+    evidence: |-
+      The refusal sentence names the setting and the remedy (WalletRungError.REASONREQUIRETLS); the caption is EXPERIENCE.md :335 and strings.ts, which Epic 20 edits.
+    location: >-
+      EXPERIENCE.md, ui/src/app/core/strings.ts
+    severity: low
 ---
 
 <intent-contract>
@@ -136,7 +143,7 @@ Closed without an entry:
 
 ### Rework 1 (orchestrator ruling A on DW-2406, 2026-10-13)
 
-- [ ] [Review] DW-2406: honour the secret's own `RequireTLS` and `AllowedHosts` with the vendor's exact semantics, mirroring `%Wallet.KeyValue.ApplyHTTP` (`irislib/%Wallet/KeyValue.cls` :224-239); invent no stricter meaning. (1) `RequireTLS` set and the endpoint not https: refuse. (2) `RequireTLS` set and `AllowedHosts` non-empty: the endpoint's host must be in `AllowedHosts`, matched as the vendor matches (the server name without the port, `Headers("HOST")=server` at `%Net/HttpRequest.cls` :70, exactly, with `$ListFind`); the provider request must check server identity (`SSLCheckServerIdentity`: confirm the provider request sets it); and if the provider path can use a proxy without a CONNECT tunnel, the proxy host must also be listed, as the vendor requires (if it never proxies untunnelled, say so in one line). (3) `AllowedHosts` set without `RequireTLS`: the vendor enforces nothing, so neither do we. Run it at call time against the endpoint actually used, before `GetSecretValue`, reading only the two settings and never the value, in ONE place in the rung so Test connection, `TestCall` and the turn job all pass through it, ordered after Story 18.40's configuration check (`ProviderPort.SslConfigurationState`), both before any secret read. Refusals carry `WALLETRUNG` codes that name the setting (in `Api/WalletRungError.cls`). Tests: an http endpoint with `RequireTLS` is refused; a host not in the list is refused; a listed host is served; `AllowedHosts` without `RequireTLS` is served; on every refusal the secret is not read and no wallet use row is written (with `WalletSecretUse` on); each with its `mutation:` line.
+- [x] [Review] DW-2406: honour the secret's own `RequireTLS` and `AllowedHosts` with the vendor's exact semantics, mirroring `%Wallet.KeyValue.ApplyHTTP` (`irislib/%Wallet/KeyValue.cls` :224-239); invent no stricter meaning. (1) `RequireTLS` set and the endpoint not https: refuse. (2) `RequireTLS` set and `AllowedHosts` non-empty: the endpoint's host must be in `AllowedHosts`, matched as the vendor matches (the server name without the port, `Headers("HOST")=server` at `%Net/HttpRequest.cls` :70, exactly, with `$ListFind`); the provider request must check server identity (`SSLCheckServerIdentity`: confirm the provider request sets it); and if the provider path can use a proxy without a CONNECT tunnel, the proxy host must also be listed, as the vendor requires (if it never proxies untunnelled, say so in one line). (3) `AllowedHosts` set without `RequireTLS`: the vendor enforces nothing, so neither do we. Run it at call time against the endpoint actually used, before `GetSecretValue`, reading only the two settings and never the value, in ONE place in the rung so Test connection, `TestCall` and the turn job all pass through it, ordered after Story 18.40's configuration check (`ProviderPort.SslConfigurationState`), both before any secret read. Refusals carry `WALLETRUNG` codes that name the setting (in `Api/WalletRungError.cls`). Tests: an http endpoint with `RequireTLS` is refused; a host not in the list is refused; a listed host is served; `AllowedHosts` without `RequireTLS` is served; on every refusal the secret is not read and no wallet use row is written (with `WalletSecretUse` on); each with its `mutation:` line.
 
 ## Spec Change Log
 
@@ -166,6 +173,26 @@ Closed without an entry:
   - `[false]` `[reject]` The `{` gate's shared reach - the same as the ninth row.
   - `[false]` `[reject]` `Exists` opens the secret inside the vendor, and no test covers a pre-check that passes while the vendor then refuses - Task 4 prescribes `Exists` and measured it; the code names none of the banned methods; a vendor refusal after the pre-check lands in the catch the first row's test now pins.
   - `[false]` `[reject]` `Error.cls` is edited though the intent says add no code to it - the edit is dispatch arms and one reworded sentence (Task 1); no parameter or code was added, and the arm in `ReasonForTurnError` is the same kind.
+
+### 2026-10-13 - Review pass (rework 1, DW-2406)
+
+- verdicts: 15 findings - high 0, medium 0, low 10, false 3, maybe-false 2
+- findings:
+  - `[low]` `[patch]` The order of the custom-use refusal and the transport refusal is pinned by no test - patched: a holder-without-custom-use leg on an http endpoint in `WalletRung`'s RequireTLS test; mutation line added (run 416).
+  - `[low]` `[patch]` The bracketed-IPv6 arm of `WalletEndpointHost` has no test - patched: `WalletRungProbe.LISTEDHOSTS` lists a literal, and `WalletRung`'s host test serves it with a port and refuses an unlisted one; mutation line added (run 417).
+  - `[low]` `[reject]` The two vendor conditions the rung skips (server identity, untunnelled proxy) have no `mutation:` line in this spec - `Provider.TestTheRequestCarriesTheSettingsItWasGiven` and `ProviderProxy.TestAnHttpsEndpointAlwaysTunnelsThroughTheProxy` pin them and carry their own mutation notes; the item asked for the statement, not a new pin.
+  - `[low]` `[patch]` `WalletRungProbe.Run`'s doc says an empty `endpoint` takes the default; the code passes it through, and two legs depend on that - patched: the doc now says an empty text is an endpoint.
+  - `[maybe-false]` `[reject]` The host test's exact count of four use rows has no readiness wait - two child-process logins follow the last served read and every run so far read the count; it would be settled by a red from a slow audit store, and a LOW with no named occurrence is not worth a wait loop in a shared helper.
+  - `[low]` `[reject]` The diff has no spine hunk for AD-42 and AD-35 - the spine edit is the lead's (Rule 20, a contended file) and is named in the stage result.
+  - `[false]` `[reject]` Legs drive `Ladder.Resolve` with endpoints `Dispatch` refuses earlier (`ftp://`, empty, no scheme) - they pin the rung's fail-closed answer for those inputs; the dispatch path is driven by `WalletRungWire`.
+  - `[low]` `[reject]` No test compares the host extraction with the vendor's parsing - the vendor method is `[Internal]` and banned; the cited lines are mirrored and the legs pin case, port, userinfo, query and brackets.
+  - `[low]` `[patch]` Bracketed IPv6 untested (intent layer) - the second row's root; patched there.
+  - `[low]` `[reject]` Proxy and identity invariants unpinned in this story (intent layer) - the third row's root; pinned by the two named tests.
+  - `[maybe-false]` `[defer]` The new refusals are not driven through the route or the turn job - the same root as the story's existing deferred item (a least-privileged person through the real call and the jobbed process); not appended again. What mutates it: `Base.Invoke` passing no endpoint reddens `WalletRungRoles`, so Test connection's child does carry the endpoint.
+  - `[low]` `[reject]` Use-row evidence is uneven and `AccessDenied` rows are unasserted for the transport legs - `WalletRung` counts use rows over every refused and served leg of both settings, and a transport refusal follows a successful `Exists`, which writes no denial row.
+  - `[false]` `[reject]` Gemini's `RequestUrl` could move the call after the key is read - `Attempts` refuses a built URL whose scheme or authority differs from the judged endpoint's, and an override may rewrite only the path, so the host and scheme judged are the ones used.
+  - `[false]` `[reject]` An omitted endpoint is judged not https and `WalletSettings` now opens the secret for administrators too - by design: the rung fails closed, `Base.Invoke` is its only caller and passes the endpoint, and the administrator legs of `WalletRung` pin the open.
+  - `[low]` `[defer]` The Definition form caption does not mention the secret's own settings - the deferred item this pass added (`EXPERIENCE.md`, `strings.ts` are Epic 20 files).
 
 
 ## Design Notes
@@ -247,6 +274,19 @@ every test added or changed passes on a fresh environment, in either order
 - (CR) mutation: drop the wallet term from `HandleUpdate`'s and `HandleDelete`'s clear -> `AuditVerbs.TestADeleteIsRecordedWithWhatBecameOfItsCredentialEntry` red on both wallet legs (run 95).
 - (CR) mutation: `setWallet(false)` always restores the catalog default name, restores the held rung unguarded, keeps `envVarName` as it is, and `setWallet(true)` clears no `envVarName` refusal -> the page spec's four new 18.41 tests red, each on its own mutation (4 of 71).
 - (CR) every mutation reverted byte-identical (sha, `git status --short`, `git diff --stat`); runs 96-99 green; component suite 3,093; `definitions.browser-spec.mjs` 11 on the rebuilt, redeployed bundle; `ocupilot-ci` at S0.
+- (R1) mutation: `Ladder.WalletTransportRefusal` drops the scheme test -> `WalletRung.TestASecretThatRequiresTlsIsNotReadForAnEndpointThatIsNotHttps` and `TestASecretThatListsHostsIsReadOnlyForAListedHost` red (run 383); `WalletRungWire.TestAnEndpointThatIsNotHttpsFaultsAWalletCallThatRequiresTls` red (run 384).
+- (R1) mutation: it drops the host refusal -> `WalletRung.TestASecretThatListsHostsIsReadOnlyForAListedHost` red (run 385); `WalletRungWire.TestAListedHostIsServedAndAnUnlistedOneFaultsTheCall` and `TestTheTlsConfigurationIsJudgedBeforeTheSecretsSettings` red (run 386).
+- (R1) mutation: it judges the scheme and the list without `RequireTLS` -> `WalletRung.TestASecretThatDoesNotRequireTlsIsReadWhateverItsHostList` red (run 387).
+- (R1) mutation: `Ladder.Wallet` reads the secret before the refusal -> `WalletRung.TestASecretThatRequiresTlsIsNotReadForAnEndpointThatIsNotHttps`, `TestASecretThatListsHostsIsReadOnlyForAListedHost` and `TestTheUseRowIsWrittenOnlyWhileTheEventIsOn` red (run 388); `WalletRungWire.TestAListedHostIsServedAndAnUnlistedOneFaultsTheCall` red (run 389).
+- (R1) mutation: the host is compared lower-cased, then the authority is compared with its port -> `WalletRung.TestASecretThatListsHostsIsReadOnlyForAListedHost` red each time (runs 390, 391).
+- (R1) mutation: `Ladder.Wallet` skips the use-resource check -> `WalletRung.TestACallerWithoutThePairIsRefusedBeforeAnyRead` and the outsider leg of `TestASecretThatListsHostsIsReadOnlyForAListedHost` red (run 392).
+- (R1) mutation: `Base.Invoke` passes the ladder no endpoint -> `WalletRungWire.TestAListedHostIsServedAndAnUnlistedOneFaultsTheCall`, `TestAValueThatOpensWithABraceSendsNoRequest`, `TestTheStoredValueIsTheKeyTheRequestCarries` and `TestTheTlsConfigurationIsJudgedBeforeTheSecretsSettings`, `ProviderSecret.TestNoCredentialMaterialReachesTheLogsOrTheEnvelope` and `WalletRungRoles.TestAPersonWithTheUseResourceReachesTheAdapterWithTheStoredKey` red (runs 393-395).
+- (R1) mutation: `WalletRungError.DetailKeyFor` answers `failedPair` for every code -> `WalletRungWire.TestARefusalNamesThePairAndLeavesTheDefinitionEnabled`, `TestAListedHostIsServedAndAnUnlistedOneFaultsTheCall` and `TestAnEndpointThatIsNotHttpsFaultsAWalletCallThatRequiresTls` red (run 398); `WalletRung.TestEveryCodeHasASentenceAndAStatus` red (run 396).
+- (R1) mutation: `Codes()` drops `ALLOWEDHOSTS`; `HttpFor` answers 422 for the setting codes; `ReasonFor` drops the `ALLOWEDHOSTS` arm -> `WalletRung.TestEveryCodeHasASentenceAndAStatus` red each time (runs 400-402).
+- (R1) mutation: `ProviderPort.Dispatch` skips the refusal for a TLS configuration that is not usable -> `WalletRungWire.TestTheTlsConfigurationIsJudgedBeforeTheSecretsSettings` red (run 399).
+- (R1) mutation: `Ladder.Wallet` judges the secret's settings before the custom-use refusal -> `WalletRung.TestASecretThatRequiresTlsIsNotReadForAnEndpointThatIsNotHttps` red on its usage leg (run 416).
+- (R1) mutation: `Ladder.WalletEndpointHost` drops its bracketed-IPv6 arm -> `WalletRung.TestASecretThatListsHostsIsReadOnlyForAListedHost` red on the listed literal (run 417).
+- (R1) every mutation reverted byte-identical (sha256 before and after) and the tree reloaded; final runs on `ocupilot-ci`, totals read from `%UnitTest_Result`: `WalletRung` 8 (run 418), `WalletRungWire` 10 (419), `WalletRungRoles` 2 (420), `ProviderSecret` 1 (412), `ProviderPort` 20 (413), `ProviderSslCallTime` 3 (414), all green; `check-objectscript.py` and `lint-docs.sh` 0 problems; `ocupilot-ci` at S0.
 
 **Manual check (implement, `ocupilot-ci`):** the Anthropic key from `.env.local`, read at the point of use and handed to the container through the environment, stored in a probe wallet secret (`OcuPilotProbe1841.live`, all uses); a probe `wallet` definition on `claude-haiku-5-5` created over the wire (201); Test connection answered 200 in 1,036 ms with no fault and left the definition `connectionVerified`; the response carried no `sk-ant` token. The definition, the secret, the collection and the probe resource were then removed, and the throwaway reads S0 (`WalletSecretUse` off, wallet collections `OcuPilotDemo` only, no 1841-named role, resource, user or definition). The key was printed and written nowhere.
 
@@ -255,9 +295,9 @@ every test added or changed passes on a fresh environment, in either order
 Status: done
 Blocking condition: none
 
-- **Implemented:** the `wallet` credential rung. `Ladder.Wallet` lists the secret and its collection, checks the use resource or `%Admin_Wallet:USE` and custom use, then makes one `GetSecretValue` returned straight onto `Base.ApiKey`; refusals are `WALLETRUNG.USE` and `.USAGE` (pair named, definition left enabled), an absent or non-key-value secret is `PROVIDER.CREDENTIAL`, a value beginning `{` is `PROVIDER.KEYSHAPE`. The save rules, the store-route refusal, the ownership reset on leaving `creds`, and the Definition form's checkbox and Wallet secret field are in.
-- **Files:** `Api/WalletRungError.cls` (new codes), `Api/Error.cls` (dispatch arms), `Api/Definitions.cls`, `Kernel/AgentRules.cls`, `Kernel/State/Agent.cls`, `Kernel/Secret/Ladder.cls`, `Kernel/Provider/Base.cls`; tests `WalletRung`, `WalletRungWire`, `WalletRungProbe`, `SecretWalletRefusal` (new), `ProviderSecret`, `CredentialOwnership`, `ProviderStub`, `AgentRules`; client `definition-form.store.ts`, `definition-form.page.ts`, `strings.ts` and their specs, `definitions.browser-spec.mjs`; EXPERIENCE.md :335 in place; one roster row in `scripts/ci-throwaway.sh`.
-- **Review:** 16 findings: 1 medium and 4 low patched, 1 deferred (the jobbed-process and real-refusal chain, `maybe-false`), the rest rejected with reasons in the triage log.
-- **Follow-up review recommended:** false (patched: 1 medium, 4 low).
-- **Verification:** `ocupilot-ci` runs green after the patches: `WalletRung` 5, `WalletRungWire` 7, `ProviderSecret` 1; before them `CredentialOwnership` 9, `AgentRules` 20 and the seven unchanged sweep classes. `npm run test:tools` 1,986, page spec 67, `definitions.browser-spec.mjs` 11, `npm run build` (initial 1.92 MB, `data-browser-page` 83.32 kB), `check-objectscript.py` and `lint-docs.sh` 0 problems; the live Test connection on `claude-haiku-5-5` verified; the throwaway reads S0.
-- **Residual risks:** the deferred item above; `WalletSecretUse` is off in the stock event set, so the rung writes no per-use row unless an operator turns it on (AD-7).
+- **Implemented (rework 1, DW-2406):** the wallet rung refuses a secret whose own `RequireTLS` or `AllowedHosts` forbid the endpoint, before the value is read, with `ApplyHTTP`'s semantics: `RequireTLS` set and the endpoint not https is `WALLETRUNG.REQUIRETLS`; `RequireTLS` set, a non-empty list and a host no entry equals is `WALLETRUNG.ALLOWEDHOSTS`; `AllowedHosts` without `RequireTLS` enforces nothing. The one place is `Ladder.WalletTransportRefusal`, run in `Ladder.Wallet` after the pair and usage refusals and before the single `GetSecretValue`; `Base.Invoke` passes the endpoint, and both refusals answer 503 with `detail.setting` and leave the definition enabled. `NewRequest` always sets server-identity checking and the provider path never reaches a proxy without a CONNECT tunnel, so no proxy host is judged.
+- **Files:** `Kernel/Secret/Ladder.cls`, `Kernel/Provider/Base.cls`, `Api/WalletRungError.cls`; tests `WalletRung`, `WalletRungWire`, `WalletRungProbe`, `SecretWalletRefusal`.
+- **Review:** 15 findings: 3 low patched (the usage-before-settings order, the IPv6 arm, one probe doc), 2 deferred (the jobbed-process chain, already in `deferred:`, and the form caption), the rest rejected with reasons in the triage log.
+- **Follow-up review recommended:** false (patched: 3 low).
+- **Verification:** on `ocupilot-ci` after the patches `WalletRung` 8, `WalletRungWire` 10, `WalletRungRoles` 2, `ProviderSecret` 1, `ProviderPort` 20, `ProviderSslCallTime` 3, all green; `check-objectscript.py` and `lint-docs.sh` 0 problems; every mutation is in `## Verification`; the throwaway reads S0.
+- **Residual risks:** a secret with the vendor-default `RequireTLS` cannot serve a marked-local plain-http model until its `RequireTLS` is cleared on the Secrets screen; the spine's AD-42 and AD-35 wording still names two refusals (the lead's Rule 20 edit).

@@ -63,15 +63,16 @@ Method OnAfterAllTests() As %Status
 }
 
 /// <p>Every <code>WALLETRUNG.*</code> code carries a sentence through each resolver that answers it, the use refusal's
-/// sentence names the pair it is given, and the statuses are the matrix's: the use refusal 403, the usage refusal 503,
-/// a name and a key store 422 -- the same through the provider base.</p>
+/// sentence names the pair it is given, and the statuses are the matrix's: the use refusal 403, the usage refusal and the
+/// two refusals by the secret's own settings 503, a name and a key store 422 -- the same through the provider base. A
+/// setting refusal's detail member is <code>setting</code> and the others' is <code>failedPair</code>.</p>
 /// <p>Mutation (Rule 19): drop the <code>WALLETRUNG.</code> arm from
 /// <method>OcuPilot.Api.Error.ReasonForViolation</method> -- the violation resolver answers <code>""</code> and this
 /// goes red.</p>
 Method TestEveryCodeHasASentenceAndAStatus()
 {
     Set tCodes = ##class(OcuPilot.Api.WalletRungError).Codes()
-    Do $$$AssertEquals($ListLength(tCodes), 4, "the rung declares four codes")
+    Do $$$AssertEquals($ListLength(tCodes), 6, "the rung declares six codes")
     For tI = 1:1:$ListLength(tCodes) {
         Set tCode = $List(tCodes, tI)
         Set tSentence = ##class(OcuPilot.Api.WalletRungError).ReasonFor(tCode)
@@ -86,10 +87,18 @@ Method TestEveryCodeHasASentenceAndAStatus()
     Set tPair = "OcuPilotProbe1841Use:USE"
     Do $$$AssertTrue(##class(OcuPilot.Api.WalletRungError).ReasonFor(##class(OcuPilot.Api.WalletRungError).#USE, tPair) [ tPair, "the use refusal's sentence names the pair it is given")
     Do $$$AssertTrue(##class(OcuPilot.Api.WalletRungError).ReasonFor(##class(OcuPilot.Api.WalletRungError).#USAGE, "%Admin_Wallet:USE") [ "%Admin_Wallet:USE", "and the usage refusal's names %Admin_Wallet:USE")
-    For tCase = $ListBuild("WALLETRUNG.USE", 403), $ListBuild("WALLETRUNG.USAGE", 503), $ListBuild("WALLETRUNG.NAME", 422), $ListBuild("WALLETRUNG.KEYSTORE", 422) {
+    For tCase = $ListBuild("WALLETRUNG.USE", 403), $ListBuild("WALLETRUNG.USAGE", 503), $ListBuild("WALLETRUNG.REQUIRETLS", 503), $ListBuild("WALLETRUNG.ALLOWEDHOSTS", 503), $ListBuild("WALLETRUNG.NAME", 422), $ListBuild("WALLETRUNG.KEYSTORE", 422) {
         Do $$$AssertEquals(##class(OcuPilot.Api.WalletRungError).HttpFor($List(tCase, 1)), $List(tCase, 2), $List(tCase, 1) _ " answers " _ $List(tCase, 2))
         Do $$$AssertEquals(##class(OcuPilot.Kernel.Provider.Base).HttpFor($List(tCase, 1)), $List(tCase, 2), $List(tCase, 1) _ " answers " _ $List(tCase, 2) _ " through the provider base")
     }
+    For tCode = "WALLETRUNG.REQUIRETLS", "WALLETRUNG.ALLOWEDHOSTS" {
+        Do $$$AssertEquals(##class(OcuPilot.Api.WalletRungError).DetailKeyFor(tCode), "setting", tCode _ " carries the setting")
+    }
+    For tCode = "WALLETRUNG.USE", "WALLETRUNG.USAGE" {
+        Do $$$AssertEquals(##class(OcuPilot.Api.WalletRungError).DetailKeyFor(tCode), "failedPair", tCode _ " carries the pair")
+    }
+    Do $$$AssertTrue(##class(OcuPilot.Api.WalletRungError).ReasonFor(##class(OcuPilot.Api.WalletRungError).#REQUIRETLS) [ "RequireTLS", "the TLS refusal names its setting")
+    Do $$$AssertTrue(##class(OcuPilot.Api.WalletRungError).ReasonFor(##class(OcuPilot.Api.WalletRungError).#ALLOWEDHOSTS) [ "AllowedHosts", "and the host refusal names its setting")
 }
 
 /// <p>C1: a holder of the collection's use resource resolves the key-value secret to its stored value, and so does a
@@ -179,6 +188,95 @@ Method TestTheUseRowIsWrittenOnlyWhileTheEventIsOn()
     Do $$$AssertEquals(..UseRows(tOffSince), 0, "so the audit store has caught up, and the resolution wrote no WalletSecretUse row")
 }
 
+/// <p>The secret's <code>RequireTLS</code>: a secret that requires TLS is not read for an endpoint
+/// that is not https -- whoever asks, an empty endpoint and one with no scheme included -- and the refusal names
+/// <code>RequireTLS</code>, is not transient and leaves no <code>WalletSecretUse</code> row. The https read that follows
+/// is the control: it writes the one row, so the refusals before it wrote none.</p>
+/// <p>Mutation (Rule 19): drop the scheme test from <method>OcuPilot.Kernel.Secret.Ladder.WalletTransportRefusal</method>
+/// -- the refused legs read the secret and this goes red. Read the secret before the refusal -- the use row count reads
+/// more than one and this goes red. Judge the settings before the custom-use refusal in
+/// <method>OcuPilot.Kernel.Secret.Ladder.Wallet</method> -- the usage leg reads <code>WALLETRUNG.REQUIRETLS</code> and
+/// this goes red.</p>
+Method TestASecretThatRequiresTlsIsNotReadForAnEndpointThatIsNotHttps()
+{
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "SetUseEvent", 1), "the WalletSecretUse event is turned on")
+    Set tSince = ##class(OcuPilot.Test.AuditEvent).Now()
+    Hang 1
+    Set tPlan = []
+    For tEndpoint = "http://localhost:11434/v1/messages", "ftp://files.example.test/key", "", "api.example.test/v1/messages" {
+        Do tPlan.%Push({"kind": "resolve", "name": (..Secret("DEFAULTSECRET")), "expected": (..#CANARY), "endpoint": (tEndpoint)})
+    }
+    Do tPlan.%Push({"kind": "resolve", "name": (..Secret("DEFAULTSECRET")), "expected": (..#CANARY), "endpoint": "HTTPS://Wallet-Rung.example.test:8443/v1"})
+    Set tHolder = ..Run(1, tPlan)
+    Do $$$AssertEquals(..Ran(tHolder, 1), ..User(1) _ " 1", "the child process ran as the holder of the use resource")
+    For tLeg = 1:1:4 {
+        Do $$$AssertEquals(..LegText(tHolder, tLeg), "matches=0 transient=0 refusal=WALLETRUNG.REQUIRETLS|RequireTLS", "endpoint " _ tLeg _ " is refused naming RequireTLS (" _ ..LegText(tHolder, tLeg) _ ")")
+    }
+    Do $$$AssertEquals(..LegText(tHolder, 5), "matches=1 transient=0 refusal=", "an https endpoint is served, whatever the case of its scheme and its port (" _ ..LegText(tHolder, 5) _ ")")
+    Set tAdmin = ..Run(3, [{"kind": "resolve", "name": (..Secret("DEFAULTSECRET")), "expected": (..#CANARY), "endpoint": "http://localhost:11434/v1/messages"}])
+    Do $$$AssertEquals(..LegText(tAdmin, 1), "matches=0 transient=0 refusal=WALLETRUNG.REQUIRETLS|RequireTLS", "the holder of %Admin_Wallet:USE is refused too (" _ ..LegText(tAdmin, 1) _ ")")
+    Set tNoCustom = ..Run(1, [{"kind": "resolve", "name": (..Secret("HTTPONLYSECRET")), "expected": (..#CANARY), "endpoint": "http://localhost:11434/v1/messages"}])
+    Do $$$AssertEquals(..LegText(tNoCustom, 1), "matches=0 transient=0 refusal=WALLETRUNG.USAGE|%Admin_Wallet:USE", "a holder who may not use the secret is refused for that, before its settings are judged (" _ ..LegText(tNoCustom, 1) _ ")")
+    Do $$$AssertEquals(..UseRows(tSince, 1), 1, "and the one served read wrote the one use row: no refusal wrote one")
+}
+
+/// <p>The secret's <code>AllowedHosts</code>: a secret that requires TLS and lists hosts is read only for an https
+/// endpoint whose host an entry equals exactly -- the host without its port, in the case it is written in, and not a
+/// prefix, a suffix or the part before an <code>@</code> -- and a refusal names <code>AllowedHosts</code>, is not
+/// transient and leaves no use row. The scheme is judged first, a caller without the pair is refused for the pair
+/// whatever the endpoint, and a holder of <code>%Admin_Wallet:USE</code> is held to the list too.</p>
+/// <p>Mutation (Rule 19): drop the host refusal from <method>OcuPilot.Kernel.Secret.Ladder.WalletTransportRefusal</method>
+/// -- the unlisted hosts are served and this goes red. Compare the host without regard to case -- the upper-case leg is
+/// served and this goes red. Compare the authority with its port -- the leg naming a port is refused and this goes red.
+/// Read the secret before the refusal -- the use row count reads more than the served reads and this goes red. Take the
+/// host of a bracketed IPv6 literal as the text before its first colon -- the listed literal is refused and this goes
+/// red.</p>
+Method TestASecretThatListsHostsIsReadOnlyForAListedHost()
+{
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "SetUseEvent", 1), "the WalletSecretUse event is turned on")
+    Set tSince = ##class(OcuPilot.Test.AuditEvent).Now()
+    Hang 1
+    Set tSecret = ..Secret("HOSTSECRET")
+    Set tPlan = []
+    For tEndpoint = "https://api.allowed.test/v1/messages", "https://API.ALLOWED.TEST/v1/messages", "https://other.test/v1/messages", "https://api.allowed.test.other.test/v1/messages", "https://api.allowed.test@other.test/v1/messages", "http://api.allowed.test/v1/messages", "https://second.allowed.test:8443/v1/messages?x=1", "https://api.allowed.test", "https://allowed.test/v1/messages", "https://[2001:db8::1]:8443/v1/messages", "https://[2001:db8::2]/v1/messages" {
+        Do tPlan.%Push({"kind": "resolve", "name": (tSecret), "expected": (..#CANARY), "endpoint": (tEndpoint)})
+    }
+    Set tHolder = ..Run(1, tPlan)
+    Do $$$AssertEquals(..Ran(tHolder, 1), ..User(1) _ " 1", "the child process ran as the holder of the use resource")
+    Set tServed = "matches=1 transient=0 refusal="
+    Set tHosts = "matches=0 transient=0 refusal=WALLETRUNG.ALLOWEDHOSTS|AllowedHosts"
+    Set tTls = "matches=0 transient=0 refusal=WALLETRUNG.REQUIRETLS|RequireTLS"
+    Set tExpected = $ListBuild(tServed, tHosts, tHosts, tHosts, tHosts, tTls, tServed, tServed, tHosts, tServed, tHosts)
+    Set tNotes = $ListBuild("a listed host", "the same host in capitals", "a host no entry names", "a host that begins with a listed one", "a listed host before an @", "a listed host over http, refused for the scheme first", "the second entry, with a port and a query", "a listed host with no path", "a host that ends a listed one", "a listed bracketed IPv6 literal with a port", "an unlisted bracketed IPv6 literal")
+    For tLeg = 1:1:$ListLength(tExpected) {
+        Do $$$AssertEquals(..LegText(tHolder, tLeg), $List(tExpected, tLeg), $List(tNotes, tLeg) _ " (" _ ..LegText(tHolder, tLeg) _ ")")
+    }
+    Set tUnlisted = [{"kind": "resolve", "name": (tSecret), "expected": (..#CANARY), "endpoint": "https://other.test/v1/messages"}]
+    Set tOutsider = ..Run(2, tUnlisted)
+    Do $$$AssertEquals(..LegText(tOutsider, 1), "matches=0 transient=0 refusal=WALLETRUNG.USE|OcuPilotProbe1841Use:USE", "a caller without the pair is refused for the pair, and learns nothing of the secret's hosts (" _ ..LegText(tOutsider, 1) _ ")")
+    Set tAdmin = ..Run(3, tUnlisted)
+    Do $$$AssertEquals(..LegText(tAdmin, 1), "matches=0 transient=0 refusal=WALLETRUNG.ALLOWEDHOSTS|AllowedHosts", "the holder of %Admin_Wallet:USE is held to the list (" _ ..LegText(tAdmin, 1) _ ")")
+    Do $$$AssertEquals(..UseRows(tSince, 1, "HOSTSECRET"), 4, "and the four served reads wrote the four use rows: no refusal wrote one")
+}
+
+/// <p>A secret that does not require TLS enforces nothing: the vendor ignores its host list, and so is it here. It is read
+/// for an http endpoint, for one that is no URL at all and for an https host its list does not name.</p>
+/// <p>Mutation (Rule 19): judge the list and the scheme without regard to <code>RequireTLS</code> in
+/// <method>OcuPilot.Kernel.Secret.Ladder.WalletTransportRefusal</method> -- every leg is refused and this goes red.</p>
+Method TestASecretThatDoesNotRequireTlsIsReadWhateverItsHostList()
+{
+    Set tSecret = ..Secret("OPENSECRET")
+    Set tPlan = []
+    For tEndpoint = "http://localhost:11434/v1/messages", "https://not.listed.test/v1/messages", "", "https://only.listed.test/v1/messages" {
+        Do tPlan.%Push({"kind": "resolve", "name": (tSecret), "expected": (..#CANARY), "endpoint": (tEndpoint)})
+    }
+    Set tHolder = ..Run(1, tPlan)
+    Do $$$AssertEquals(..Ran(tHolder, 1), ..User(1) _ " 1", "the child process ran as the holder of the use resource")
+    For tLeg = 1:1:4 {
+        Do $$$AssertEquals(..LegText(tHolder, tLeg), "matches=1 transient=0 refusal=", "endpoint " _ tLeg _ " is served (" _ ..LegText(tHolder, tLeg) _ ")")
+    }
+}
+
 /// <p>The name of the probe secret <parameter>pParameter</parameter> of <parameter>PROBE</parameter> names.</p>
 ClassMethod Secret(pParameter As %String) As %String
 {
@@ -237,20 +335,12 @@ ClassMethod LegText(pRun As %DynamicObject, pIndex As %Integer) As %String
     Quit "matches=" _ tLeg.%Get("matches") _ " transient=" _ tLeg.%Get("transient") _ " refusal=" _ tLeg.%Get("refusal")
 }
 
-/// <p>How many <code>WalletSecretUse</code> rows naming the default probe secret the audit database holds since
-/// <var>pSince</var>. With <var>pWait</var>, a zero is asked again for up to five seconds: the first row can take a
-/// moment to be readable.</p>
-ClassMethod UseRows(pSince As %String, pWait As %Boolean = 0) As %Integer
+/// <p>How many <code>WalletSecretUse</code> rows naming the probe secret <var>pParameter</var> of
+/// <parameter>PROBE</parameter> names (the default secret unless one is given) the audit database holds since
+/// <var>pSince</var> (<method>OcuPilot.Test.WalletRungProbe.UseRows</method>).</p>
+ClassMethod UseRows(pSince As %String, pWait As %Boolean = 0, pParameter As %String = "DEFAULTSECRET") As %Integer
 {
-    Set tRows = ..AuditRows(pSince, $Parameter(..#PROBE, "USEEVENT"), ..Secret("DEFAULTSECRET"))
-    If pWait && (tRows < 1) {
-        For tTry = 1:1:50 {
-            Hang 0.1
-            Set tRows = ..AuditRows(pSince, $Parameter(..#PROBE, "USEEVENT"), ..Secret("DEFAULTSECRET"))
-            If tRows > 0 Quit
-        }
-    }
-    Quit tRows
+    Quit $ClassMethod(..#PROBE, "UseRows", pSince, ..Secret(pParameter), pWait)
 }
 
 /// <p>How many of the <code>WalletSecretUse</code> rows since <var>pSince</var> carry <var>pText</var>.</p>

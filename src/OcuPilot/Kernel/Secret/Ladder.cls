@@ -59,6 +59,11 @@ Parameter WALLETADMINPERMISSION = "USE";
 /// caller without <code>%Admin_Wallet:USE</code> reads a value by.</p>
 Parameter WALLETCUSTOMUSAGE As %Integer = 8;
 
+/// <p>The settings of a key-value secret the transport refusals name, as the vendor's property names.</p>
+Parameter WALLETREQUIRETLSSETTING = "RequireTLS";
+
+Parameter WALLETALLOWEDHOSTSSETTING = "AllowedHosts";
+
 /// <p><method>Clear</method>'s outcome: the entry was there and is gone.</p>
 Parameter CLEARREMOVED = "removed";
 
@@ -96,12 +101,15 @@ Parameter CLEARFAILED = "failed";
 /// no such entry, or an empty value. The <code>env</code> arm reports 0 always: an environment
 /// variable that is not set and one set to nothing are the same state, and there is no store to
 /// fail.</p>
-/// <p><var>pRefusal</var> is <code>$ListBuild(code, pair)</code> when the <code>wallet</code> arm
+/// <p><var>pRefusal</var> is <code>$ListBuild(code, detail)</code> when the <code>wallet</code> arm
 /// declined to read a secret that exists, and <code>""</code> otherwise: the
-/// <code>WALLETRUNG.*</code> code and the <code>resource:permission</code> pair the caller lacks.
+/// <code>WALLETRUNG.*</code> code and the <code>resource:permission</code> pair the caller lacks, or the setting of the
+/// secret that refused the call (<method>OcuPilot.Api.WalletRungError.DetailKeyFor</method>).
 /// A refusal is not an absence and not a store failure (<var>pTransient</var> is 0), so a caller
 /// that finds the answer <code>""</code> reads <var>pRefusal</var> first.</p>
-ClassMethod Resolve(pCredType As %String, pEnvVarName As %String = "", pCredentialName As %String = "", Output pTransient As %Boolean, Output pRefusal As %List) As %String
+/// <p><var>pEndpointUrl</var> is the URL the call is made to, which only the <code>wallet</code> arm reads
+/// (<method>Wallet</method>).</p>
+ClassMethod Resolve(pCredType As %String, pEnvVarName As %String = "", pCredentialName As %String = "", Output pTransient As %Boolean, Output pRefusal As %List, pEndpointUrl As %String = "") As %String
 {
     Set pTransient = 0
     Set pRefusal = ""
@@ -111,7 +119,7 @@ ClassMethod Resolve(pCredType As %String, pEnvVarName As %String = "", pCredenti
     }
     If pCredType = ##class(OcuPilot.Kernel.AgentRules).#CREDTYPEWALLET {
         If pCredentialName = "" Quit ""
-        Quit ..Wallet(pCredentialName, .pTransient, .pRefusal)
+        Quit ..Wallet(pCredentialName, .pTransient, .pRefusal, pEndpointUrl)
     }
     If pCredType '= ##class(OcuPilot.Kernel.AgentRules).#CREDTYPECREDS Quit ""
     If pCredentialName = "" Quit ""
@@ -309,16 +317,19 @@ ClassMethod Credential(pName As %String, Output pTransient As %Boolean) As %Stri
 /// <li>Without <code>%Admin_Wallet:USE</code>, the secret allows custom use
 /// (<parameter>WALLETCUSTOMUSAGE</parameter>). Otherwise <var>pRefusal</var> is
 /// <code>WALLETRUNG.USAGE</code> with <code>%Admin_Wallet:USE</code>.</li>
+/// <li>The secret's own transport settings hold for <var>pEndpointUrl</var>, the URL the call is made to
+/// (<method>WalletTransportRefusal</method>). Otherwise <var>pRefusal</var> is
+/// <code>WALLETRUNG.REQUIRETLS</code> or <code>WALLETRUNG.ALLOWEDHOSTS</code> with the setting.</li>
 /// <li>One <method>%Wallet.KeyValue.GetSecretValue</method>, returned straight.</li>
 /// </ol>
 /// <p>Both queries answer every principal and write no audit row, and a refusal precedes the vendor
-/// read, so a refused call writes no <code>AccessDenied</code> row. A raise anywhere is a failure of
-/// the store: <var>pTransient</var> is 1 and the answer <code>""</code>, and the log carries the vendor
-/// status's codes alone.</p>
+/// read, so a refused call writes no <code>AccessDenied</code> row and no <code>WalletSecretUse</code> row. A raise
+/// anywhere is a failure of the store: <var>pTransient</var> is 1 and the answer <code>""</code>, and the log carries
+/// the vendor status's codes alone.</p>
 /// <p><b>The value is returned from the vendor call without a named local</b> and the vendor method is
 /// called once, which is why no <code>$Char(0)</code> normalization happens here: a one-character
 /// sentinel is not shaped like a key and the shape gate refuses it.</p>
-ClassMethod Wallet(pName As %String, Output pTransient As %Boolean, Output pRefusal As %List) As %String
+ClassMethod Wallet(pName As %String, Output pTransient As %Boolean, Output pRefusal As %List, pEndpointUrl As %String = "") As %String
 {
     Set pTransient = 0
     Set pRefusal = ""
@@ -335,17 +346,16 @@ ClassMethod Wallet(pName As %String, Output pTransient As %Boolean, Output pRefu
             Set pRefusal = $ListBuild(##class(OcuPilot.Api.WalletRungError).#USE, tUsePair)
             Return ""
         }
-        If 'tAdmin {
-            Set tAllowed = ..WalletAllowsCustomUse(pName)
-            If tAllowed < 0 {
-                Set pTransient = 1
-                Return ""
-            }
-            If 'tAllowed {
-                Set pRefusal = $ListBuild(##class(OcuPilot.Api.WalletRungError).#USAGE, ..#WALLETADMINRESOURCE _ ":" _ ..#WALLETADMINPERMISSION)
-                Return ""
-            }
+        If '..WalletSettings(pName, .tCustomUse, .tRequireTls, .tAllowedHosts) {
+            Set pTransient = 1
+            Return ""
         }
+        If 'tAdmin && 'tCustomUse {
+            Set pRefusal = $ListBuild(##class(OcuPilot.Api.WalletRungError).#USAGE, ..#WALLETADMINRESOURCE _ ":" _ ..#WALLETADMINPERMISSION)
+            Return ""
+        }
+        Set pRefusal = ..WalletTransportRefusal(tRequireTls, tAllowedHosts, pEndpointUrl)
+        If pRefusal '= "" Return ""
         Return ##class(%Wallet.KeyValue).GetSecretValue(pName)
     } Catch ex {
         Set pTransient = 1
@@ -405,18 +415,74 @@ ClassMethod WalletUsePair(pCollection As %String) As %String [ Private ]
     Quit tPair
 }
 
-/// <p>1 when the key-value secret <var>pName</var> allows custom use, 0 when it does not, and -1 when
-/// the wallet would not open it for a caller who holds the collection's use resource. The opened
-/// object is dropped before the method returns, and nothing it holds but its usage is read.</p>
-ClassMethod WalletAllowsCustomUse(pName As %String) As %Integer [ Private ]
+/// <p>Read the settings of the key-value secret <var>pName</var> that decide whether the caller may use it and where it
+/// may go, without reading its value: <var>pCustomUse</var> says whether its uses include custom
+/// (<parameter>WALLETCUSTOMUSAGE</parameter>), <var>pRequireTls</var> its <code>RequireTLS</code> and
+/// <var>pAllowedHosts</var> its <code>AllowedHosts</code>. Answers 0, and the outputs are not to be read, when the wallet
+/// would not open the secret for a caller who holds the collection's use resource or <code>%Admin_Wallet:USE</code>. The
+/// opened object is dropped before the method returns.</p>
+ClassMethod WalletSettings(pName As %String, Output pCustomUse As %Boolean, Output pRequireTls As %Boolean, Output pAllowedHosts As %List) As %Boolean [ Private ]
 {
-    Set tAllowed = -1
+    Set tRead = 0
+    Set pCustomUse = 0
+    Set pRequireTls = 1
+    Set pAllowedHosts = ""
     Set tSecret = ""
     If ##class(%Wallet.Secret).Exists(pName, .tSecret) && $IsObject(tSecret) {
-        Set tAllowed = $Select($ZBoolean(tSecret.Usage, ..#WALLETCUSTOMUSAGE, 1) '= 0: 1, 1: 0)
+        Set pCustomUse = ($ZBoolean(tSecret.Usage, ..#WALLETCUSTOMUSAGE, 1) '= 0)
+        Set pRequireTls = ''tSecret.RequireTLS
+        Set pAllowedHosts = tSecret.AllowedHosts
+        Set tRead = 1
     }
     Set tSecret = ""
-    Quit tAllowed
+    Quit tRead
+}
+
+/// <p><code>$ListBuild(code, setting)</code> when a secret with <var>pRequireTls</var> and <var>pAllowedHosts</var> may
+/// not be sent to <var>pEndpointUrl</var>, and <code>""</code> when it may. It is the one place the secret's transport
+/// settings are judged, so Test connection, a turn and every other provider call that resolves a wallet reference pass
+/// through it, after <method>OcuPilot.Port.ProviderPort.Dispatch</method> has confirmed the TLS configuration
+/// (<method>OcuPilot.Port.ProviderPort.SslConfigurationState</method>) and before the secret is read. It reads no value.</p>
+/// <ul>
+/// <li>Without <code>RequireTLS</code> nothing is enforced, <code>AllowedHosts</code> included.</li>
+/// <li>With it, an endpoint that is not https is <code>WALLETRUNG.REQUIRETLS</code>. An empty endpoint is not https.</li>
+/// <li>With it and a non-empty <code>AllowedHosts</code>, a host (<method>WalletEndpointHost</method>) that no entry
+/// equals, compared exactly, is <code>WALLETRUNG.ALLOWEDHOSTS</code>.</li>
+/// </ul>
+/// <p>These are the conditions <method>%Wallet.KeyValue.ApplyHTTP</method> applies (<file>irislib/%Wallet/KeyValue.cls</file>
+/// :224-239), against the Host header <class>%Net.HttpRequest</class> sends (<file>irislib/%Net/HttpRequest.cls</file> :70,
+/// <method>SetServerAndPort</method> :2710), matched by <code>$ListFind</code>. The vendor's two further conditions hold
+/// without a check here: the provider request always sets <code>SSLCheckServerIdentity</code>
+/// (<method>OcuPilot.Kernel.Provider.Base.NewRequest</method>), and it never reaches a proxy without a CONNECT tunnel
+/// (<method>OcuPilot.Port.ProviderPort.Dispatch</method> forces the tunnel for an https endpoint and drops the proxy for the
+/// plain-http endpoint a marked-local definition alone may name), so no proxy host is judged.</p>
+ClassMethod WalletTransportRefusal(pRequireTls As %Boolean, pAllowedHosts As %List, pEndpointUrl As %String) As %List [ Private ]
+{
+    If 'pRequireTls Quit ""
+    If '..WalletEndpointIsHttps(pEndpointUrl) Quit $ListBuild(##class(OcuPilot.Api.WalletRungError).#REQUIRETLS, ..#WALLETREQUIRETLSSETTING)
+    If pAllowedHosts = "" Quit ""
+    If $ListFind(pAllowedHosts, ..WalletEndpointHost(pEndpointUrl)) Quit ""
+    Quit $ListBuild(##class(OcuPilot.Api.WalletRungError).#ALLOWEDHOSTS, ..#WALLETALLOWEDHOSTSSETTING)
+}
+
+/// <p>Whether <var>pUrl</var> is an https URL, its scheme matched case-insensitively as <class>%Net.HttpRequest</class> does
+/// (<file>irislib/%Net/HttpRequest.cls</file> :1209).</p>
+ClassMethod WalletEndpointIsHttps(pUrl As %String) As %Boolean [ Private ]
+{
+    If '(pUrl [ "://") Quit 0
+    Quit ($ZConvert($Piece(pUrl, "://", 1), "L") = "https")
+}
+
+/// <p>The host <class>%Net.HttpRequest</class> sends as <code>Host</code> for a request to <var>pUrl</var>, which is what
+/// <method>%Wallet.KeyValue.ApplyHTTP</method> matches against <code>AllowedHosts</code>: the authority up to the first
+/// <code>/</code>, cut at its first <code>:</code>, or through the closing bracket of a bracketed IPv6 address
+/// (<method>SetServerAndPort</method>, <file>irislib/%Net/HttpRequest.cls</file> :2710). The port is not part of it, and
+/// the case is as written.</p>
+ClassMethod WalletEndpointHost(pUrl As %String) As %String [ Private ]
+{
+    Set tAuthority = $Piece($Piece(pUrl, "://", 2, *), "/", 1)
+    If $Extract(tAuthority) = "[" Quit $Extract(tAuthority, 1, $Find(tAuthority, "]") - 1)
+    Quit $Piece(tAuthority, ":", 1)
 }
 
 /// <p>Put the key <var>pBody</var> carries under <var>pField</var> into the credential entry
