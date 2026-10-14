@@ -11739,3 +11739,23 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-41-the-wallet-credential-rung.md | severity: med | fix-risk: med | footprint: in-story
 - evidence: irislib/%Wallet/KeyValue.cls :224-239 enforces RequireTLS and AllowedHosts only in ApplyHTTP (HTTP use); Ladder.Wallet reads by GetSecretValue and Base.Invoke sends the value to endpointUrl; AD-42's 18.41 amendment names neither property
 - 2026-10-14T02:07:47Z status=decision-pending owner=burndown by=cr note=owner: honour RequireTLS+AllowedHosts against the endpoint (recommended) or name the bypass in AD-42/AD-35
+
+### DW-2409: Install/Fixture.cls re-creates the demo SSL/TLS configuration with the vendor's default VerifyPeer 0 when absent
+- source: spec-18-40-proxy-and-custom-ca-configuration.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: CreateSslConfig sets only Description (inference; read, not run); the call-time check now refuses a call through it
+- 2026-10-14T05:01:56Z status=wontfix-accepted owner=18-40-proxy-and-custom-ca-configuration by=harvest note=reopen_if=a demo instance names the demo configuration for provider calls and its calls are refused for verification
+
+### DW-2410: The call-time verification check ran in the caller's process, so it did not run for a caller who cannot read Security.SSLConfigs
+- source: spec-18-40-proxy-and-custom-ca-configuration.md | severity: high | fix-risk: med | footprint: in-story
+- evidence: ocupilot-ci: a %Developer user got <PROTECT> entering %SYS; a %Operator user's read answered #822
+- 2026-10-14T05:02:06Z status=resolved-by:18-40-proxy-and-custom-ca-configuration owner=18-40-proxy-and-custom-ca-configuration by=harvest note=resolved in-story by option 3: AD-9's OcuPilotSslRead reads for every caller (ddfb83ff); ProviderSslCallers pins it
+
+### DW-2411: PROHIBITED.PROVIDERSSL left a create of OcuPilotProvider's own name unrefused after an out-of-band delete
+- source: spec-18-40-proxy-and-custom-ca-configuration.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: Prohibits answered 0 for a create of OcuPilotProvider with VerifyPeer 0 on ocupilot-ci
+- 2026-10-14T05:02:06Z status=resolved-by:18-40-proxy-and-custom-ca-configuration owner=18-40-proxy-and-custom-ca-configuration by=harvest note=resolved in-story by condition 8: Prohibited.Created refuses it (ddfb83ff); ProviderSslNamed leg
+
+### DW-2412: AD-10 named two routine applications and omitted the create refusal under OcuPilotProvider's own name
+- source: spec-18-40-proxy-and-custom-ca-configuration.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: AD-10's routine-application sentence and PROVIDERSSL bullet predated OcuPilotSslRead and condition 8
+- 2026-10-14T05:02:07Z status=resolved-by:18-40-proxy-and-custom-ca-configuration owner=18-40-proxy-and-custom-ca-configuration by=harvest note=spine amended by the lead at harvest (AD-10)
