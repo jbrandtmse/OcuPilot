@@ -2,8 +2,8 @@
 title: 'Story 20.8: The schema viewers and the production configuration diagram'
 type: 'feature'
 created: '2026-10-13'
-status: 'in-progress'
-baseline_revision: 'c0a3b4cf0d84e1600909b6b779181b4f6eaf20b3'
+status: 'done'
+baseline_revision: '88f47946b91c27a9d807ec3a3be4cfbe6bae396c'
 baseline_commit: '86c9fb2939138203e2847f61e2a81b2c108c3e82'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -11,7 +11,14 @@ context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
   - '{project-root}/_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md'
 warnings: [oversized, multiple-goals]
-deferred: []
+deferred:
+  - summary: >-
+      A real timer that re-arms itself for the life of the worker survives AC6's wait and drain and reddens its timer count.
+    evidence: |-
+      A scratch case before AC6 that left a real `setTimeout(poll, 5)` poll reddened AC6 with `1 fake timers pending, 0 real timers active: expected 1 to be +0`; a real interval arming one-shot 30 s timers stayed green. No spec is known to leave such a poll. DW-2415 is the canonical entry; a repeat red on CI with this message, or a search of the suite for a never-ending real poll, settles it.
+    location: >-
+      ui/src/app/areas/logs/log-viewer.spec.ts (AC6)
+    severity: medium (unverified)
 ---
 
 <intent-contract>
@@ -453,7 +460,8 @@ Rejected:
 
 ### Rework iteration 2 (lead, on the same CI red)
 
-- [ ] [CI] **AC6 waits for the real event loop to be empty before it installs the fake clock** [ui/src/app/areas/logs/log-viewer.spec.ts]. The rework 1 re-review's by-design MED stands: a real timer an earlier test leaves can fire in `advanceTimersByTimeAsync`'s real yields and arm a fake timer that re-arms, which the drain cannot clear. `home.page.spec.ts`'s Story 15.4 row met the same shape (4 on node 26, 1 on node 24) and waits, bounded, until `process.getActiveResourcesInfo()` lists no `Timeout` before `vi.useFakeTimers()`. AC6 takes the same wait, best effort and not asserted, as a copy whose comment names `home.page.spec.ts` as its source. The timer-count assertion's message also lists the real resources still active, so a repeat red says what was pending. The clear and the drain stay. The four `(CI)` lines in `## Verification` are re-observed on the new test.
+- [x] [CI] **AC6 waits for the real event loop to be empty before it installs the fake clock** [ui/src/app/areas/logs/log-viewer.spec.ts]. The rework 1 re-review's by-design MED stands: a real timer an earlier test leaves can fire in `advanceTimersByTimeAsync`'s real yields and arm a fake timer that re-arms, which the drain cannot clear. `home.page.spec.ts`'s Story 15.4 row met the same shape (4 on node 26, 1 on node 24) and waits, bounded, until `process.getActiveResourcesInfo()` lists no `Timeout` before `vi.useFakeTimers()`. AC6 takes the same wait, best effort and not asserted, as a copy whose comment names `home.page.spec.ts` as its source. The timer-count assertion's message also lists the real resources still active, so a repeat red says what was pending. The clear and the drain stay. The four `(CI)` lines in `## Verification` are re-observed on the new test.
+  - Fixed in `log-viewer.spec.ts` only: AC6 waits (50 polls of 20 ms at most, never asserted) until no real `Timeout` is active before `vi.useFakeTimers()`, and the timer-count message carries the fake and the real timer counts. The four `(CI)` lines were re-observed on it, and the probe line below reddens without the wait's sleep and not with it.
 
 ## Spec Change Log
 
@@ -497,6 +505,16 @@ Rejected:
   - `[false]` `[reject]` The diff implements none of the story's feature reading — the item is a ruled CI repair outside the intent contract, so no feature surface is expected to change.
   - `[false]` `[reject]` The intent has no clause for an unrelated test's change — the orchestrator pre-authorized the footprint extension, and no file in the contract's Never list is touched.
   - `[false]` `[reject]` `Screen/Registry.cls` and `ci-timings.json` changed over the baseline range — those changes come from other commits, outside the audited diff.
+
+### 2026-10-14 — Review pass (rework 2, the CI item)
+
+- verdicts: 5 findings — high 0, medium 0, low 2, false 2, maybe-false 1
+- findings:
+  - `[maybe-false]` `[defer]` AC6 copies only the wait of `home.page.spec.ts`'s idiom and keeps the async advance, so a real timer that re-arms itself can still reach the fake clock — the reviewer's own demonstration (a real interval arming one-shot 30 s timers) stayed green in a scratch run; a real `setTimeout(poll, 5)` poll that never stops reddens AC6, which rework 1's by-design row already accepts. Whether any spec leaves such a poll is unknown. The fix (a synchronous window) restructures the ruled test, so it is not a patch. Deferred as medium (unverified) against DW-2415; the new message now names the form (fake timers pending, real timers active).
+  - `[low]` `[reject]` The wait has a `(CI) probe` line and no `(CI) mutation:` line — the probe line records the red with the sleep removed; a relabel is a spec edit.
+  - `[low]` `[reject]` The item text says the wait runs until no real `Timeout` is active, and the code gives up after 50 polls — the same text says "bounded" and "best effort", and the test comment states the bound; the fix edits the spec.
+  - `[false]` `[reject]` The diff touches none of the story's screens — it is the ruled CI repair of Story 18.38's test, a pre-authorized footprint extension, and no file in the contract's Never list changed.
+  - `[false]` `[reject]` `baseline_revision` names HEAD while the diff is uncommitted — the baseline is the commit before the reviewed change by design.
 
 ## Design Notes
 
@@ -730,11 +748,12 @@ Each value was checked unique against `strings.ts`. The labels double as the fra
 - (CR) mutation: the AD-63 scan's pattern without `Schema_Viewer-` and `Interop-Editors-` -> `api.test.mjs` (2 of 40).
 - (CR) mutation: the Items link's click ignores `altKey` -> `interop-item-list.page.spec.ts`'s modified-click test.
 - (CR) Each (CR) mutation was applied to the throwaway's copy of `src`, or to the worktree and restored from a saved copy, read red, and reverted. `InteropEditorDescriptor` (5) and `ScreenAccessWire` (8) are green on the reverted code (runs 26 and 27). `test:tools` passes 1997 and `test:components` 3120. The build is green. `interop-viewers` passes 11 on the rebuilt bundle.
-- (CI) mutation: the page's constructor arms `setInterval(() => {}, 30000)` -> `log-viewer.spec.ts` AC6, at the timer count after the drain (`logs/alerts : expected 1 to be +0`); Story 18.38 AC1's undrained count reddens too.
+- (CI) mutation: the page's constructor arms `setInterval(() => {}, 30000)` -> `log-viewer.spec.ts` AC6, at the timer count after the drain (`logs/alerts : 1 fake timers pending, 8 real timers active: expected 1 to be +0`); Story 18.38 AC1's undrained count reddens too.
 - (CI) mutation: the page's constructor arms a self-re-arming 30 s `setTimeout` poll -> AC6, at the same count after the drain.
 - (CI) mutation: the page's constructor arms a 20-minute `setTimeout(() => void this.store.open(), ...)` -> AC6, at the request count after the drain (`logs/alerts : expected 2 to be 1`); Story 18.38 AC1 reddens too.
 - (CI) check, not a mutation: one `setTimeout(() => {}, 20 * 60 * 1000)` armed by the page is drained and AC6 stays green (77 of 78; only Story 18.38 AC1's undrained count reddens).
 - (CI) `log-viewer.page.ts` was reverted byte-identical after each (sha256 `c155534a1be8` before and after); the file passes 78 on the reverted code.
+- (CI) probe, not a mutation: a real zero-delay timer queued before AC6's wait, which arms a timer that re-arms itself every 30 s, leaves the file at 78 of 78; with the wait's 20 ms sleep removed, the same timer reddens AC6 (`logs/messages /logs/messages?ns=HSCUSTOM : 1 fake timers pending, 1 real timers active: expected 1 to be +0`); the scratch edits were reverted byte-identical (spec sha256 `ad0eef73f81d` before and after).
 
 **Measured.** `npm run build`: initial total 1.93 MB (warning 1992 kB), largest lazy chunk `data-browser-page` 83.33 kB (ceiling 88 kB), `interop-editor-page` 11.11 kB, `interop-item-list-page` 14.30 kB.
 
@@ -743,10 +762,8 @@ Each value was checked unique against `strings.ts`. The labels double as the fra
 Status: done
 Blocking condition: none
 
-**This pass (rework 1, the CI item).** `log-viewer.spec.ts` AC6 now clears the fake clock on entry, drains finite timers (five passes at most) before it counts, and repeats its request and Live-tail assertions after the drain. Every earlier AC6 assertion stays; no product file changed.
+**This pass (rework 2, the CI item).** `log-viewer.spec.ts` AC6 waits, bounded and not asserted, until no real `Timeout` is active (50 polls of 20 ms at most) before `vi.useFakeTimers()`, as a copy of `home.page.spec.ts`'s Story 15.4 wait. The timer-count message now reads the fake timers pending and the real timers active. The clear, the drain and every other assertion are unchanged; no product file and no other spec changed.
 
-**Review.** Seven findings: one medium patched (the post-drain request assertions), one low patched (the cause line), one low and four false rejected (reasons in the log). Follow-up review recommended: false (no high patched).
+**Review.** Five findings, no patch: one deferred as medium (unverified) against DW-2415 (a real poll that never stops still reddens AC6), two low and two false rejected with reasons in the log. Follow-up review recommended: false (no high patched).
 
-**Verification.** `ng test --include src/app/areas/logs/log-viewer.spec.ts` passes 78; `npm run test:components` passes the whole suite; `client-lint` and `lint-docs` are clean. Three `(CI)` mutation lines and one check line are in `## Verification`, each observed on the final test and reverted byte-identical. A scratch probe reproduced the cross-file mechanism: red on the old test, green on the new. The CI failure itself is still not reproduced, so its cause stays an inference.
-
-**Residual risks.** A self-re-arming poll that another file leaves behind survives the drain and would still redden AC6. Story 18.38 AC1 has the same undrained count and is outside the ruling.
+**Verification.** `ng test --include src/app/areas/logs/log-viewer.spec.ts` passes 78 and `home.page.spec.ts` 67; `npm run test:components` passes 3130 in 247 files; `client-lint` and `lint-docs` are clean. The four `(CI)` lines were re-observed on the new test with `log-viewer.page.ts` reverted byte-identical (sha256 `c155534a1be8`), and one probe line shows the wait absorbs a real timer that arms a re-arming one. The CI failure itself is still not reproduced, so its cause stays an inference.
