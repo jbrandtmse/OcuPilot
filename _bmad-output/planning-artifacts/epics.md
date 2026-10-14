@@ -8392,8 +8392,8 @@ So that edits go through the same hooks they would elsewhere.
 **Acceptance Criteria:**
 
 - **Given** source control is enabled on the namespace
-- **When** an embedded editor saves
-- **Then** the hooks, menus, user actions and status are exchanged through the port.
+- **When** a person saves, compiles or uses the Source Control menu in an embedded rule, BPL or DTL editor, in normal mode
+- **Then** the editor exchanges the hooks, menus, user actions and status with the instance itself, through the vendor's interoperability API inside the frame, as the signed-in person and as it does outside OcuPilot, and nothing reaches OcuPilot's shell; and OcuPilot's own saves of classes and routines, the agent's edits behind these editors included, run the same save and compile hooks through `AtelierPort` and refuse by name a document source control has not released for editing. [AMENDED 2026-10-14 - see the story change log]
 
 ### Story 20.11: The Analytics rider
 

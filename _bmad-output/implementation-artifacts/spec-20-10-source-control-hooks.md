@@ -9,14 +9,7 @@ context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
   - '{project-root}/_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md'
 warnings: [oversized]
-deferred:
-  - summary: >-
-      OcuPilot's create and delete of a class or routine drop the source-control class's follow-up user action, so a class that asks "add to source control?" for a new document, or asks after a delete, is never asked and AfterUserAction never runs.
-    evidence: |-
-      Measured at Story 20.10's plan on ocupilot-b-ci: with a probe source-control class whose UserAction answers 1, the Atelier delete route answered result.ext {action:1, target:<question>}; PutDoc of a new document runs UserAction(1,1) and (1,7) (irissys/%Api/Atelier/v2.cls:615-628, read). AtelierPort reads neither ext.
-    location: >-
-      src/OcuPilot/Port/AtelierPort.cls SaveSet (pCreate) and DeleteSet
-    severity: medium
+deferred: []
 ---
 
 <intent-contract>
@@ -262,6 +255,8 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Lines were
   - **Then** `SourceControlClassGet("USER")` reads `""`, and neither the hooks class nor its global exists.
 
 ## Spec Change Log
+
+- 2026-10-14, spec gate (runner): the Rule 5 restatement (option A) is applied to `epics.md` Story 20.10 (apply-and-report: it restates the observable and keeps "edits go through the same hooks they would elsewhere"). Original: "Given source control is enabled on the namespace, When an embedded editor saves, Then the hooks, menus, user actions and status are exchanged through the port." The Rule 20 drafts are written (AD-63's named consequence, AD-61 rules 6 and 8). The plan's deferred item (create and delete drop the follow-up user action) is harvested as DW-2405 and removed from the frontmatter. DW-2395 is fixed on this branch since Story 20.16 (Epic 18's 18.38), so the DTL and BPL compile routes no longer fail on the null device; the rule editor may still carry the compile legs.
 
 ## Review Triage Log
 
