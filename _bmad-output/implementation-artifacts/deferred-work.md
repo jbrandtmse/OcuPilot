@@ -11733,3 +11733,9 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-41-the-wallet-credential-rung.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: WalletRung pins the ladder with real principals in a logged-in child; WalletRungWire pins Base and the port with an armed refusal; the chain between rests on Kernel/Agent/Job and TestCall's role inheritance (inference)
 - 2026-10-14T01:22:08Z status=open owner=18-41-the-wallet-credential-rung by=harvest note=QA to close: a least-privileged principal's Test connection through ProviderPortProbe's stub
+- 2026-10-14T02:11:51Z status=resolved-by:18-41-the-wallet-credential-rung by=adjudication note=WalletRungRoles drives Test connection as a least-privileged person through the real child (refused then served); the turn job inherits as TestCall does
+
+### DW-2406: The wallet rung ignores a key-value secret's RequireTLS and AllowedHosts: it reads the value by custom use and sends it to whatever endpoint the definition names, an acknowledged http:// one included
+- source: spec-18-41-the-wallet-credential-rung.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: irislib/%Wallet/KeyValue.cls :224-239 enforces RequireTLS and AllowedHosts only in ApplyHTTP (HTTP use); Ladder.Wallet reads by GetSecretValue and Base.Invoke sends the value to endpointUrl; AD-42's 18.41 amendment names neither property
+- 2026-10-14T02:07:47Z status=decision-pending owner=burndown by=cr note=owner: honour RequireTLS+AllowedHosts against the endpoint (recommended) or name the bypass in AD-42/AD-35
