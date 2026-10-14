@@ -341,20 +341,24 @@ describe('LogViewerPage', () => {
     expect(asked).toHaveLength(1);
   });
 
-  it('AC6: with Live tail off, nothing streams -- ten minutes of fake time issues no request, draws a toggle only where a source opts in, and registers no timer', async () => {
+  it('AC6: with Live tail off, nothing streams -- ten minutes of fake time issues no request, draws a toggle only where a source opts in, and no timer outlives a bounded drain', async () => {
     // The clock is faked and restored in this test; `vi.getTimerCount()` is what makes "registers no
     // interval" an observation rather than an absence of evidence, and it needs no spy on a global
     // the fake clock has already replaced.
     // jsdom supplies both constructors, so "opens no EventSource and no WebSocket" is counted at
     // construction rather than asserted as their absence -- which would pass on any page.
     //
-    // The timer count is taken after a bounded drain. Angular's vitest runner defaults to
-    // `isolate: false`, so spec files share a worker, and a one-shot timer another file left behind
-    // can land in this test's fake-clock window (inference). `vi.clearAllTimers()` empties the clock
-    // on entry; the drain (at most DRAIN_PASSES `vi.runOnlyPendingTimersAsync()` passes) runs what
-    // is finite, however far out, and the request and Live-tail assertions are repeated after it so a
-    // finite timer that issues a request is still counted. An interval, or a poll that re-arms
-    // itself, survives every pass, so the count still fails on it.
+    // The timer count is taken after a bounded drain. `advanceTimersByTimeAsync` yields to the real
+    // event loop between its steps, so a real timer an earlier test left pending -- in this file, or
+    // in another one, since Angular's vitest runner defaults to `isolate: false` and spec files share
+    // a worker -- can fire inside this test and arm a timer on its fake clock (inference).
+    // `vi.clearAllTimers()` clears only the fake clock, which `vi.useFakeTimers()` has just installed
+    // empty; a real timer is out of its reach. Each drain pass (at most DRAIN_PASSES
+    // `vi.runOnlyPendingTimersAsync()` calls) runs to the last timer pending when it starts, so a
+    // one-shot chain up to that many links deep drains however far out it reaches, and the request
+    // and Live-tail assertions are repeated after it so a drained timer that issues a request is
+    // still counted. An interval, or a poll that re-arms itself, survives every pass, so the count
+    // still fails on it.
     //
     // Story 18.38: alerts.log and messages.log on their current files opt into the live tail and
     // draw the toggle, off. Every other log -- a rotated messages.log file, the six secondary logs,
