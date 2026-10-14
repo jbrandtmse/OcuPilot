@@ -2,7 +2,8 @@
 title: 'Story 18.40: Proxy and custom CA configuration'
 type: 'feature'
 created: '2026-10-12'
-status: 'ready-for-dev'
+status: 'blocked'
+baseline_revision: '6c24da93ef31df4075e70960e276038ae068b4be'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -143,5 +144,13 @@ every test added or changed passes on a fresh environment, in either order
 
 ## Auto Run Result
 
-Status: ready-for-dev
-Blocking condition: none
+Status: blocked
+Blocking condition: intent gap: PROHIBITED.PROVIDERSSL as planned does not cover a create under the named configuration's name (verification could be lowered through OcuPilot's own create path); no code written, Task 0 not run.
+
+Implement pass 1 stopped at the orchestrator's verification-stays-on condition before any source edit. Task 6 puts the refusal in `Prohibited.Ssl`, but `Prohibited.Prohibits` sends every create (`CreatesOf` true) to `Created` and quits before `Ssl` is called, and `Created` has no ssl-configuration arm. Path: the named configuration X stops existing (a classic-portal delete, the operator's own named limit); OcuPilot's SSL/TLS form create (`SslSave.HandleCreate`) or an agent `security.ssl.create` then re-creates X with `VerifyPeer` 0; the egress row is unchanged, so no naming-time check runs again, and provider calls resume through X with verification off. Read-only `Prohibits` probes on `ocupilot-ci` (writes nothing): create of an absent name with `VerifyPeer` 0 answers `prohibits=0`; create of `OcuPilotProvider` with `VerifyPeer` 0 answers `prohibits=0`; update of `OcuPilotProvider` `VerifyPeer` 1 to 0 answers `PROHIBITED.OCUPILOTSSL`.
+
+Recommended amendment (the matrix row already promises "every path"): an add-only arm in `Kernel/Proposal/Prohibited.cls` `Created` refusing `PROVIDERSSL` when `pType` is `TYPESSL` and `ProviderSsl(pId)`, whatever the payload carries (covers `SslSave` create and the agent's mint and confirm); `Test/ProviderSslNamed` gains a leg (egress row naming an absent probe name, a create refused at Save and at confirm); AD-10's new bullet and the matrix row read "delete, a create under its name, or a change to ...". The same arm also leaves `OcuPilotProvider` unguarded after an out-of-band delete (not reachable in practice: `EnsureSslConfiguration` repairs it every start).
+
+Residual (inference, not verified): `CipherList` and `TLSMinVersion` are settable and are not among `Type`, `VerifyPeer`, `CAFile`, `Enabled`; `OcuPilotProvider` has the same exposure today, so it is not part of this stop.
+
+Facts for the re-dispatch: `Prohibited.Codes()` holds 35 entries on this tree (so 36 after); Epic 20's diff touches `Test/Prohibited.cls`, `strings.ts`, `strings.test.mjs`, EXPERIENCE.md, `Screen/Context.cls`, `Write.cls`, `ExplorerSave.cls`, `Baseline.cls`, `panel.ts`, `screen-outlet.ts` and not `Kernel/Proposal/Prohibited.cls`, `Api/Switches.cls`, `Api/Router.cls`, `Kernel/SwitchRules.cls`, `Kernel/State/Egress.cls` or `Screen/Tool/SslUpdate.cls`; `SaveHoldCoverage`'s `PUT /agent/` exemption already covers the egress route; `ProviderPort.ProxyHostOf` is Private, so `SwitchRules` copies its bracketing. `ocupilot-ci` was only read (no probe configuration, no egress write); scratch probes are under `.coordination/carry-2026-10-10/epic-18-r/18-40/`.
