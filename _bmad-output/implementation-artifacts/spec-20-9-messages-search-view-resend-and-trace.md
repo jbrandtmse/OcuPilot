@@ -2,7 +2,7 @@
 title: 'Story 20.9: Messages - search, view, resend and trace'
 type: 'feature'
 created: '2026-10-13'
-status: 'done'
+status: 'in-progress'
 baseline_revision: 'a772580fb1ab78f68ef6de7c31469150121b3e1f'
 baseline_commit: 'a772580fb1ab78f68ef6de7c31469150121b3e1f'
 review_loop_iteration: 0
@@ -468,11 +468,17 @@ Rejected:
 - The cap test's doc says "the last line ends the cut" -- false: row 1,001 is the cut, and it ends the text.
 - Spec prose: Code Map :138 ("caps at `TESTOUTPUTMAX`"), the rework triage's `AddTestLines` and "megabyte HL7 fixture" reasons, the residual risks without Rule 30's fresh check, and the Auto Run Result's "alone" -- the fix edits the spec under review (oversized); the corrected `mutation:` lines supersede "alone", and the fresh check stays the runner's.
 
+Rework 2 (the runner's Rule 30 fresh check):
+
+- [ ] [Smoke] `OcuPilot.Test.CriterionHints.TestEveryTextCriterionHasAHintOrIsACommaList` is red on a fresh throwaway: `interop.messages.read`'s four text criteria `source`, `target`, `bodyClass` and `session` declare no `hint` [src/OcuPilot/Screen/Descriptor/InteropMessageList.cls:60-63] -- give each a hint in the grammar the class's other tests pin (a hint names the read tool and field that answers the value; every read a hint names is registered and declares that field), run `CriterionHints` and the story's classes green, and record the mutation (drop one hint -> `CriterionHints` red).
+- [x] [Smoke] `OcuPilot.Test.Descriptor.TestEveryShippedReadShapeMatchesTheCommittedTable` was red on a fresh throwaway: the review narrowed `InteropMessageHeaderTab`'s sort to `Position` but left the committed `ReadShapes` row at `Position,Name` [src/OcuPilot/Test/Descriptor.cls:217] -- fixed by the lead in the rework commit (the row reads `sort="Position"`; `Descriptor` 60/60 green on the fresh throwaway). Confirm only.
+
 ## Spec Change Log
 
 - 2026-10-13, spec gate (runner): the orchestrator ruled Q1 A (Parts B and C are Stories 20.30 and 20.31, chartered in `epics.md` with their criteria verbatim; order 20.9, 20.30, 20.31, then 20.10) and Q2 A (no saved searches, a named limit; DW-2398 with its reopen_if). `epics.md` Story 20.9 is amended under Rule 5. The Rule 20 drafts are written (AD-62 item 15, AD-8, AD-44, AD-5).
 - 2026-10-14, implement intent gap (runner ruling): the registry and `screen-mirror.mjs` refuse criteria on an unparented `interop` read (AD-36 as amended at 20.3), so the Messages list could not register under the Never list. Epic 18's branch changes no code file (its diff against feature is planning files only), so `Screen/Registry.cls` is a shared file, not a contended one. The Never is lifted for `CriteriaProblem` and its twin `criteriaProblem`, through one `InteropPort` parameter, `SEARCHENDPOINTS`; `Test/CriteriaCorpus.cls` gains its cases; `ui/src/app/areas/logs/audit.page.ts`, `audit.store.ts` and `audit.page.spec.ts` (the shared `list (server criteria)` page) are a footprint extension. AD-36 and AD-62 item 15 name the parameter. The Header `Name` and Contents `Line` columns are kind `name`, because a tab's table needs one.
 - 2026-10-14: re-opened for rework iteration 1 (code review re-run left one HIGH, the Contents cap; see Review Findings).
+- 2026-10-14: re-opened for rework iteration 2 (the runner's Rule 30 fresh check on a rebuilt throwaway: two [Smoke] items under Review Findings).
 
 ## Review Triage Log
 
