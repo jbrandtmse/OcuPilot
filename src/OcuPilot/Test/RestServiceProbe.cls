@@ -167,6 +167,44 @@ ClassMethod MethodBody(pNamespace As %String, pClass As %String, pMethod As %Str
 /// <var>pNamespace</var> dispatching to the probe service <var>pName</var>'s dispatch class.</p>
 ClassMethod Deploy(pNamespace As %String, pName As %String, pPath As %String) As %Status
 {
+    Quit ..DeployClass(pNamespace, pName _ ".disp", pPath)
+}
+
+/// <p>Save and compile the probe class <var>pClass</var> in <var>pNamespace</var>: a <class>%CSP.REST</class> router
+/// whose <code>UrlMap</code> forwards <code>/v1</code> to the class <var>pForward</var>, written
+/// <code>Forward="..."</code>, or <code>Forward = '...'</code> when <var>pSpaced</var> is 1. A name that does not begin
+/// with <parameter>PREFIX</parameter>, in any case, is refused.</p>
+ClassMethod SeedRouter(pNamespace As %String, pClass As %String, pForward As %String, pSpaced As %Boolean = 0) As %Status
+{
+    If '..IsProbe(pClass) Quit $$$ERROR($$$GeneralError, "only a class beginning " _ ..#PREFIX _ " is written")
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tDefinition = ##class(%Dictionary.ClassDefinition).%New(pClass)
+        Set tDefinition.Super = "%CSP.REST"
+        Set tXData = ##class(%Dictionary.XDataDefinition).%New()
+        Set tXData.Name = "UrlMap"
+        Set tXData.XMLNamespace = "http://www.intersystems.com/urlmap"
+        Set tForward = $Select(pSpaced: "Forward = '" _ pForward _ "'", 1: "Forward=""" _ pForward _ """")
+        Do tXData.Data.Write("<Routes><Map Prefix=""/v1"" " _ tForward _ "/></Routes>")
+        Do tDefinition.XDatas.Insert(tXData)
+        Set tSC = tDefinition.%Save()
+        If $$$ISOK(tSC) Set tSC = $System.OBJ.Compile(pClass, "-d")
+        Set tXData = ""
+        Set tDefinition = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Create the web application <var>pPath</var> (which begins <parameter>APPLICATIONPREFIX</parameter>) in
+/// <var>pNamespace</var> dispatching to the class <var>pDispatchClass</var>, which need not exist there.</p>
+ClassMethod DeployClass(pNamespace As %String, pDispatchClass As %String, pPath As %String) As %Status
+{
     If $ZConvert($Extract(pPath, 1, $Length(..#APPLICATIONPREFIX)), "L") '= ..#APPLICATIONPREFIX Quit $$$ERROR($$$GeneralError, "only a path beginning " _ ..#APPLICATIONPREFIX _ " is written")
     Set tSC = $$$OK
     Set tOrigNS = $NAMESPACE
@@ -174,7 +212,7 @@ ClassMethod Deploy(pNamespace As %String, pName As %String, pPath As %String) As
         Set $NAMESPACE = "%SYS"
         Kill tProps
         Set tProps("NameSpace") = pNamespace
-        Set tProps("DispatchClass") = pName _ ".disp"
+        Set tProps("DispatchClass") = pDispatchClass
         Set tProps("Enabled") = 1
         Set tProps("AutheEnabled") = 32
         Set tSC = ##class(Security.Applications).Create(pPath, .tProps)

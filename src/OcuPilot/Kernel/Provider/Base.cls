@@ -78,8 +78,8 @@ Parameter REASONPROXYEGRESS = "The proxy this instance's provider calls go throu
 
 /// <p>The reason a <code>PROVIDER.TLS</code> refusal carries when the configuration a call would be made through is
 /// absent, to which the caller appends the configuration's name. <method>ReasonFor</method> answers the code's one
-/// sentence for a turn, which covers this cause, <parameter>REASONTLSUNVERIFIED</parameter>'s and
-/// <parameter>REASONTLSUNAVAILABLE</parameter>'s.</p>
+/// sentence for a turn, which covers this cause, <parameter>REASONTLSUNVERIFIED</parameter>'s,
+/// <parameter>REASONTLSWEAK</parameter>'s and <parameter>REASONTLSUNAVAILABLE</parameter>'s.</p>
 Parameter REASONTLSABSENT = "The TLS configuration this instance's provider calls are made through is not present";
 
 /// <p>The remedy appended to <parameter>REASONTLSABSENT</parameter> for a configuration the egress row names, and the one
@@ -98,6 +98,15 @@ Parameter REASONTLSUNVERIFIED = "The TLS configuration <name> is no longer an en
 
 /// <p>The same refusal for OcuPilot's own provider configuration, which the installer restores at every start.</p>
 Parameter REASONTLSUNVERIFIEDOWN = "OcuPilot's TLS configuration <name> is no longer an enabled client that requires the server's certificate, so no request was sent. Restart the instance to restore it.";
+
+/// <p>The reason a <code>PROVIDER.TLS</code> refusal carries when the configuration a call would be made through is sound
+/// but allows a protocol older than TLS 1.2, with <code>&lt;name&gt;</code> the configuration's name and the remedy for a
+/// configuration the egress row names (Story 18.47). Nothing was sent. OcuPilot refuses a change to the minimum TLS version
+/// while the configuration is named, so the repair this remedy offers is the classic portal's.</p>
+Parameter REASONTLSWEAK = "The TLS configuration <name> allows a protocol older than TLS 1.2, so no request was sent. Clear the name on Switches, or set its minimum TLS version to 1.2 in the classic portal.";
+
+/// <p>The same refusal for OcuPilot's own provider configuration, which the installer restores at every start.</p>
+Parameter REASONTLSWEAKOWN = "OcuPilot's TLS configuration <name> allows a protocol older than TLS 1.2, so no request was sent. Restart the instance to restore it.";
 
 /// <p>The reason a <code>PROVIDER.TLS</code> refusal carries when the read of the configuration a call would be made
 /// through did not answer, with <code>&lt;name&gt;</code> the configuration's name. The fault is in OcuPilot's own
@@ -791,7 +800,7 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ##class(OcuPilot.Api.Error).#PROVIDERREFUSED Quit "The provider refused the request"
     If pCode = ##class(OcuPilot.Api.Error).#PROVIDERUNAVAILABLE Quit "The provider did not serve this request on any attempt"
     If pCode = ##class(OcuPilot.Api.Error).#PROVIDERTIMEOUT Quit "The provider did not answer within the time this instance allows"
-    If pCode = ##class(OcuPilot.Api.Error).#PROVIDERTLS Quit "The TLS configuration this instance's provider calls are made through is not present, is no longer an enabled client that requires the server's certificate, or could not be read, so no request was sent. Test connection names the configuration and the remedy"
+    If pCode = ##class(OcuPilot.Api.Error).#PROVIDERTLS Quit "The TLS configuration this instance's provider calls are made through is not present, is no longer an enabled client that requires the server's certificate, allows a protocol older than TLS 1.2, or could not be read, so no request was sent. Test connection names the configuration and the remedy"
     If pCode = ##class(OcuPilot.Api.Error).#PROVIDERTESTTIMEOUT Quit ..#REASONTESTTIMEOUT
     If pCode = ##class(OcuPilot.Api.Error).#PROVIDERTESTTIMEOUTLOCAL Quit ..#REASONTESTTIMEOUTLOCAL
     If pCode = ##class(OcuPilot.Api.Error).#PROVIDERDECLINED Quit "The model declined to answer this request"
@@ -802,14 +811,16 @@ ClassMethod ReasonFor(pCode As %String) As %String
 
 /// <p>The sentence a <code>PROVIDER.TLS</code> fault carries for the configuration <var>pName</var> in
 /// <var>pState</var>, one of <class>OcuPilot.Port.ProviderPort</class>'s <code>TLSABSENT</code>,
-/// <code>TLSUNVERIFIED</code> and <code>TLSUNAVAILABLE</code>: <parameter>REASONTLSABSENT</parameter>,
+/// <code>TLSUNVERIFIED</code>, <code>TLSWEAK</code> and <code>TLSUNAVAILABLE</code>: <parameter>REASONTLSABSENT</parameter>,
 /// <parameter>REASONTLSUNVERIFIEDOWN</parameter> for <var>pOwnName</var> (OcuPilot's own provider configuration) or
-/// <parameter>REASONTLSUNVERIFIED</parameter> for any other, and <parameter>REASONTLSUNAVAILABLE</parameter>. Each
+/// <parameter>REASONTLSUNVERIFIED</parameter> for any other, <parameter>REASONTLSWEAKOWN</parameter> or
+/// <parameter>REASONTLSWEAK</parameter> likewise, and <parameter>REASONTLSUNAVAILABLE</parameter>. Each
 /// names the configuration and the remedy, and nothing the configuration holds.</p>
 ClassMethod TlsReason(pState As %String, pName As %String, pOwnName As %String) As %String
 {
     If pState = "absent" Quit ..#REASONTLSABSENT _ ": " _ pName _ ". " _ $Select(pName = pOwnName: ..#REMEDYTLSABSENTOWN, 1: ..#REMEDYTLSABSENT)
     If pState = "unavailable" Quit $Replace(..#REASONTLSUNAVAILABLE, "<name>", pName)
+    If pState = "weak" Quit $Replace($Select(pName = pOwnName: ..#REASONTLSWEAKOWN, 1: ..#REASONTLSWEAK), "<name>", pName)
     Quit $Replace($Select(pName = pOwnName: ..#REASONTLSUNVERIFIEDOWN, 1: ..#REASONTLSUNVERIFIED), "<name>", pName)
 }
 

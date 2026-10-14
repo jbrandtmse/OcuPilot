@@ -16,14 +16,14 @@
 /// so a denial reaches no vendor code. The arguments are shape-checked next. Each vendor method then
 /// runs behind fresh <code>%request</code>/<code>%response</code> stubs with its device output
 /// captured, and its outcome is read from both its return value and <code>%response.Status</code>.
-/// The vendor methods switch namespace for themselves; this class never sets
-/// <code>$NAMESPACE</code>.</p>
+/// The vendor methods switch namespace for themselves; this class sets <code>$NAMESPACE</code> only to read a
+/// dispatch class's <code>UrlMap</code> (<method>Forwards</method>), by explicit save and restore.</p>
 /// <p><b>Every refusal is a written reason.</b> A vendor status maps to a slug, a code and a sentence
 /// chosen here per vendor method (AD-12, AD-39); the vendor's own text and anything it wrote to the
 /// device go to <method>OcuPilot.Kernel.Fault.LogRaw</method> and nowhere else.</p>
 /// <p>Seams a test subclass overrides (<class>OcuPilot.Test.MgmntPortFixture</class>):
-/// <method>GateClass</method>, <method>ImplClass</method> and <method>LogFault</method>. Production
-/// overrides none of them.</p>
+/// <method>GateClass</method>, <method>ImplClass</method>, <method>Namespaces</method> and <method>LogFault</method>.
+/// Production overrides none of them.</p>
 Class OcuPilot.Port.MgmntPort Extends %RegisteredObject
 {
 
@@ -72,6 +72,10 @@ Parameter SPECPREFIX = "/api/mgmnt/v2/";
 /// <p>The class-name suffix of a spec-based service's dispatch class.</p>
 Parameter DISPATCHSUFFIX = ".disp";
 
+/// <p>How many <code>Forward</code> hops from a web application's dispatch class <method>Resolved</method> follows
+/// looking for a service's dispatch class.</p>
+Parameter FORWARDDEPTH As INTEGER = 8;
+
 /// <p>The prefix of a parameter reference this port resolves from the document.</p>
 Parameter PARAMETERREFPREFIX = "#/parameters/";
 
@@ -107,6 +111,10 @@ Parameter REASONBUILD = "The management API could not build this document.";
 
 /// <p>The reason the vendor's refused namespace switch (its 403) is refused with.</p>
 Parameter REASONNAMESPACE = "The management API refused to enter this namespace for this account.";
+
+/// <p>The same refusal for another namespace a REST service delete reads (<method>DeployedAnywhere</method>), naming it
+/// in place of <code>&lt;namespace&gt;</code>.</p>
+Parameter REASONNAMESPACEOTHER = "A REST service is deleted only after every namespace's web applications are read, and the management API refused to enter <namespace> for this account.";
 
 /// <p>The endpoint reading and writing one spec-based service (Story 18.32).</p>
 Parameter ENDPOINTSERVICE = "Service";
@@ -290,8 +298,8 @@ ClassMethod ApplicationShapeOk(pApplication As %String) As %Boolean
 /// <parameter>TYPECREATE</parameter> <code>{Name, Namespace}</code> at the vendor's 201, or 200 where it replaced a
 /// service, with a vendor 400 or 404 answered 422 <parameter>OcuPilot.Api.RestServiceError.BUILD</parameter> and not
 /// logged; <parameter>TYPEDELETE</parameter> <code>{Name, Namespace}</code>. A delete and a service read refuse 409
-/// <parameter>OcuPilot.Api.RestServiceError.DEPLOYED</parameter> for a service a web application dispatches to and for
-/// a name that starts with <code>/</code>.</p>
+/// <parameter>OcuPilot.Api.RestServiceError.DEPLOYED</parameter> for a service a web application of any namespace
+/// dispatches to, directly or through <code>Forward</code> routes, and for a name that starts with <code>/</code>.</p>
 ClassMethod Service(pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject = "", Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
     Set tSC = $$$OK
@@ -466,28 +474,137 @@ ClassMethod Held(pNamespace As %String, pName As %String) As %String [ Private ]
 }
 
 /// <p>The listed service a delete or a service read is about, in <var>pRow</var>: a name starting with
-/// <code>/</code> is a web application, and a service some web application of <var>pNamespace</var> dispatches to
-/// (<code>&lt;name&gt;.disp</code>, without regard to letter case) is deployed; both are 409
-/// <parameter>OcuPilot.Api.RestServiceError.DEPLOYED</parameter>, before the service list is read. Any other name must
-/// be listed exactly (<method>Listed</method>).</p>
+/// <code>/</code> is a web application, and a service some web application of any namespace dispatches to is deployed
+/// (<method>DeployedAnywhere</method>); both are 409 <parameter>OcuPilot.Api.RestServiceError.DEPLOYED</parameter>,
+/// before the service list is read. Any other name must be listed exactly (<method>Listed</method>).</p>
 ClassMethod Resolved(pNamespace As %String, pName As %String, Output pRow As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
     Set pRow = ""
     If $Extract(pName) = "/" Quit ..Deployed(.pHttpStatus, .pFault)
-    Set tSC = ..Call("GetWebRESTApps", pNamespace, "", .tWeb, .pHttpStatus, .pFault)
+    Set tSC = ..DeployedAnywhere(pNamespace, pName, .tDeployed, .pHttpStatus, .pFault)
     If $$$ISERR(tSC) Quit tSC
-    Set tDispatch = $ZConvert(pName _ ..#DISPATCHSUFFIX, "U")
-    Set tDeployed = 0
-    Set tIterator = tWeb.%GetIterator()
-    While tIterator.%GetNext(.tIndex, .tApp) {
-        If '$IsObject(tApp) || 'tApp.%IsA("%Library.DynamicObject") Continue
-        If tApp.%GetTypeOf("dispatchClass") '= "string" Continue
-        If $ZConvert(tApp.%Get("dispatchClass"), "U") '= tDispatch Continue
-        Set tDeployed = 1
-        Quit
-    }
     If tDeployed Quit ..Deployed(.pHttpStatus, .pFault)
     Quit ..Listed(pNamespace, pName, 1, .pRow, .pHttpStatus, .pFault)
+}
+
+/// <p>The namespace names the instance reports, in <var>pList</var> as a <class>%List</class>, implicit ones included.
+/// Overridable so a test can supply a roster; production never overrides it.</p>
+ClassMethod Namespaces(Output pList As %List) As %Status
+{
+    Quit ##class(OcuPilot.Kernel.Shell.Namespaces).NamespaceNames(.pList)
+}
+
+/// <p>Whether a web application of <var>pNamespace</var> or of any other namespace dispatches to the service
+/// <var>pName</var>, in <var>pDeployed</var>: its dispatch class is <var>pName</var><parameter>DISPATCHSUFFIX</parameter>
+/// in any letter case, or its compiled <code>UrlMap</code> forwards there, through up to
+/// <parameter>FORWARDDEPTH</parameter> hops (<method>ReachesDispatch</method>). The web applications of
+/// <var>pNamespace</var> are read first, then each other namespace in the instance's order; an implicit namespace
+/// (<parameter>OcuPilot.Kernel.Shell.Namespaces.IMPLICITPREFIX</parameter>) is skipped. A namespace the vendor refuses
+/// to enter for the caller refuses the whole question, so a service is never called undeployed on a partial read; when
+/// it is not <var>pNamespace</var>, the refusal names it (<parameter>REASONNAMESPACEOTHER</parameter>).</p>
+ClassMethod DeployedAnywhere(pNamespace As %String, pName As %String, Output pDeployed As %Boolean, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pDeployed = 0
+    Set tSC = ..Namespaces(.tList)
+    If $$$ISERR(tSC) Quit ..Fail("the namespace list could not be read", tSC, .pHttpStatus, .pFault)
+    Set tImplicit = ##class(OcuPilot.Kernel.Shell.Namespaces).#IMPLICITPREFIX
+    Set tOrder = $ListBuild(pNamespace)
+    For tI = 1:1:$ListLength(tList) {
+        Set tOne = $List(tList, tI)
+        If ($Extract(tOne) = tImplicit) || ($ZConvert(tOne, "U") = $ZConvert(pNamespace, "U")) Continue
+        Set tOrder = tOrder _ $ListBuild(tOne)
+    }
+    Set tDispatch = $ZConvert(pName _ ..#DISPATCHSUFFIX, "U")
+    Kill tVisited
+    For tN = 1:1:$ListLength(tOrder) {
+        Set tNamespace = $List(tOrder, tN)
+        Set tSC = ..Call("GetWebRESTApps", tNamespace, "", .tWeb, .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) && (tN > 1) && (+$Get(pHttpStatus) = 403) {
+            Set tSC = ..Refuse(403, ##class(OcuPilot.Api.Error).#FORBIDDEN, ##class(OcuPilot.Api.Error).#PORTACCESSDENIED, $Replace(..#REASONNAMESPACEOTHER, "<namespace>", tNamespace), .pHttpStatus, .pFault)
+        }
+        If $$$ISERR(tSC) Quit
+        Set tIterator = tWeb.%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tApp) {
+            If '$IsObject(tApp) || 'tApp.%IsA("%Library.DynamicObject") Continue
+            If tApp.%GetTypeOf("dispatchClass") '= "string" Continue
+            Set tClass = tApp.%Get("dispatchClass")
+            If $ZConvert(tClass, "U") = tDispatch {
+                Set pDeployed = 1
+                Quit
+            }
+            Set tSC = ..ReachesDispatch(tNamespace, tClass, tDispatch, 1, .tVisited, .tReached, .pHttpStatus, .pFault)
+            If $$$ISERR(tSC) Quit
+            If tReached {
+                Set pDeployed = 1
+                Quit
+            }
+        }
+        If $$$ISERR(tSC) || pDeployed Quit
+    }
+    Quit tSC
+}
+
+/// <p>Whether the compiled <code>UrlMap</code> of <var>pClass</var>, read in <var>pNamespace</var>, forwards to the
+/// upper-cased class <var>pDispatch</var>, directly or through the <code>Forward</code> routes of the classes it
+/// forwards to, in <var>pReached</var>. <var>pDepth</var> is the hop being read; a hop past
+/// <parameter>FORWARDDEPTH</parameter> and a class already read in <var>pNamespace</var> (<var>pVisited</var>, kept
+/// across the calls of one question) forward nowhere, so a cycle ends.</p>
+ClassMethod ReachesDispatch(pNamespace As %String, pClass As %String, pDispatch As %String, pDepth As %Integer, ByRef pVisited, Output pReached As %Boolean, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pReached = 0
+    If (pClass = "") || (pDepth > ..#FORWARDDEPTH) Quit $$$OK
+    Set tKey = $ZConvert(pNamespace, "U") _ $Char(1) _ $ZConvert(pClass, "U")
+    If $Data(pVisited(tKey)) Quit $$$OK
+    Set pVisited(tKey) = ""
+    Set tSC = ..Forwards(pNamespace, pClass, .tTargets)
+    If $$$ISERR(tSC) Quit ..Fail("the dispatch map of " _ pClass _ " could not be read", tSC, .pHttpStatus, .pFault)
+    For tI = 1:1:$ListLength(tTargets) {
+        Set tTarget = $List(tTargets, tI)
+        If $ZConvert(tTarget, "U") = pDispatch {
+            Set pReached = 1
+            Quit
+        }
+        Set tSC = ..ReachesDispatch(pNamespace, tTarget, pDispatch, pDepth + 1, .pVisited, .pReached, .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) || pReached Quit
+    }
+    Quit tSC
+}
+
+/// <p>The classes the compiled <code>UrlMap</code> of <var>pClass</var>, read in <var>pNamespace</var> (AD-16),
+/// forwards to, in <var>pTargets</var> as a <class>%List</class>: the <code>Forward</code> attribute of each
+/// <code>Map</code> element, as written, in either XML quote and with or without space around its <code>=</code>. A
+/// class with no <code>UrlMap</code>, and one the namespace does not hold, forward nowhere. The compiled map includes
+/// the one a class inherits.</p>
+ClassMethod Forwards(pNamespace As %String, pClass As %String, Output pTargets As %List) As %Status [ Private ]
+{
+    Set pTargets = ""
+    Set tSC = $$$OK
+    Set tMap = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tXData = ##class(%Dictionary.CompiledXData).%OpenId(pClass _ "||UrlMap")
+        If $IsObject(tXData) {
+            Do tXData.Data.Rewind()
+            While 'tXData.Data.AtEnd {
+                Set tMap = tMap _ tXData.Data.Read(32000)
+            }
+        }
+        Set tXData = ""
+        Set $NAMESPACE = tOrigNS
+        Set tStart = 1
+        While $Locate(tMap, "<Map\s[^>]*>", tStart, tEnd, tElement) {
+            Set tStart = tEnd
+            If '$Locate(tElement, "\sForward\s*=\s*(""[^""]*""|'[^']*')", 1, , tAttribute) Continue
+            Set tTarget = $Extract($ZStrip($Piece(tAttribute, "=", 2, *), "<W"), 2, *-1)
+            If tTarget '= "" Set pTargets = pTargets _ $ListBuild(tTarget)
+        }
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pTargets = ""
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
 }
 
 /// <p>The <parameter>ENDPOINTAPPLICATIONS</parameter> rows for <var>pNamespace</var>, at most

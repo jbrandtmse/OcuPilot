@@ -133,6 +133,20 @@ Parameter SSLVERIFYPEER As %Integer = 1;
 /// <class>HS.HealthConnect.FHIRExplorer.Upgrade.Base</class>).</p>
 Parameter SSLCAFILE As %String = "%OSCertificateStore";
 
+/// <p><class>Security.SSLConfigs</class>' <code>TLSMinVersion</code> for TLS 1.2 (4 = TLS 1.0, 8 = TLS 1.1, 16 = TLS 1.2,
+/// 32 = TLS 1.3; <code>$$$TLSv12</code> in <file>irissys/%sySecurity.inc</file>), the lowest floor outbound provider calls
+/// may use (AD-32). The vendor's own default is this on a build with OpenSSL 1.1 or later and TLS 1.1 below it, so the
+/// installer states it rather than inherit it. A floor above it is the operator's and is kept.</p>
+Parameter SSLTLSMINVERSION As %Integer = 16;
+
+/// <p><code>TLSMaxVersion</code> for TLS 1.3, the vendor's own default ceiling, which the installer sets only where an
+/// operator left the ceiling below <parameter>SSLTLSMINVERSION</parameter> (the vendor refuses a floor above its ceiling).</p>
+Parameter SSLTLSMAXVERSION As %Integer = 32;
+
+/// <p>The <code>CipherList</code> the installer creates the configuration with and restores: the vendor's own default
+/// (measured on this build), stated so a list an operator widened is repaired rather than adopted.</p>
+Parameter SSLCIPHERLIST As %String = "ALL:!aNULL:!eNULL:!EXP:!SSLv2";
+
 /// <p>How long <method>Install</method>, <method>StartPath</method>, <method>MarkInstalling</method>
 /// and <method>Uninstall</method> wait for their profile's install lock
 /// (<method>InstallLockName</method>) before refusing (DW-47, DW-84). Measured on this
@@ -3210,11 +3224,12 @@ ClassMethod EnsureMapping(ByRef pNames, pInstallNs As %String, ByRef pReports) A
 /// <method>EnsureAuditEvents</method> applies: created when absent with <code>Type</code> 0
 /// (client), <code>VerifyPeer</code> 1 (require a server certificate) and <code>CAFile</code>
 /// <code>%OSCertificateStore</code> (the operating system's own trusted store); and when it
-/// already exists, a drifted <code>VerifyPeer</code>, <code>CAFile</code>, <code>Type</code> or
-/// <code>Enabled</code> is <b>repaired, and the repair reported as a warn naming every drifted
+/// already exists, a drifted <code>VerifyPeer</code>, <code>CAFile</code>, <code>Type</code>,
+/// <code>Enabled</code>, <code>TLSMinVersion</code> (below <parameter>SSLTLSMINVERSION</parameter>) or
+/// <code>CipherList</code> is <b>repaired, and the repair reported as a warn naming every drifted
 /// property</b>, rather than adopted silently. A configuration that verifies no peer is a
-/// configuration that encrypts to anybody, and a disabled one serves no outbound call at all, so
-/// finding either is not a reason to leave it.</p>
+/// configuration that encrypts to anybody, a disabled one serves no outbound call at all, and one that allows a
+/// protocol older than TLS 1.2 negotiates it, so finding any of them is not a reason to leave it.</p>
 /// <p><b>The configuration is read back after every write and the step fails if it did not
 /// take.</b> <code>Create</code> and <code>Modify</code> both answer a status, and a status is not
 /// evidence that the security database now holds what was asked for -- which is the same
@@ -3233,6 +3248,8 @@ ClassMethod EnsureSslConfiguration(ByRef pNames, ByRef pReports) As %Status [ Pr
             Set tProps("VerifyPeer") = ..#SSLVERIFYPEER
             Set tProps("CAFile") = ..#SSLCAFILE
             Set tProps("Enabled") = 1
+            Set tProps("TLSMinVersion") = ..#SSLTLSMINVERSION
+            Set tProps("CipherList") = ..#SSLCIPHERLIST
             Set tProps("Description") = "OcuPilot outbound provider calls (AD-32) -- created by install"
             Set tSC = ##class(Security.SSLConfigs).Create(tName, .tProps)
             If $$$ISERR(tSC) Quit
@@ -3259,6 +3276,19 @@ ClassMethod EnsureSslConfiguration(ByRef pNames, ByRef pReports) As %Status [ Pr
             Set tModProps("Enabled") = 1
             Set tDrift = tDrift _ $Select(tDrift = "": "", 1: ", ") _ "Enabled"
         }
+        If +$Get(tCurrent("TLSMinVersion")) < ..#SSLTLSMINVERSION {
+            Set tModProps("TLSMinVersion") = ..#SSLTLSMINVERSION
+            Set tDrift = tDrift _ $Select(tDrift = "": "", 1: ", ") _ "TLSMinVersion"
+            ; The vendor refuses a floor above the ceiling, so a ceiling below the floor moves to the vendor's own default.
+            If +$Get(tCurrent("TLSMaxVersion")) < ..#SSLTLSMINVERSION {
+                Set tModProps("TLSMaxVersion") = ..#SSLTLSMAXVERSION
+                Set tDrift = tDrift _ ", TLSMaxVersion"
+            }
+        }
+        If $Get(tCurrent("CipherList")) '= ..#SSLCIPHERLIST {
+            Set tModProps("CipherList") = ..#SSLCIPHERLIST
+            Set tDrift = tDrift _ $Select(tDrift = "": "", 1: ", ") _ "CipherList"
+        }
         If tDrift = "" {
             Do ..Report(.pReports, "info", "Outbound TLS configuration already correct", {"name": (tName)})
             Quit
@@ -3272,7 +3302,7 @@ ClassMethod EnsureSslConfiguration(ByRef pNames, ByRef pReports) As %Status [ Pr
     Quit tSC
 }
 
-/// <p>Read the TLS configuration back and confirm the four properties install writes actually took;
+/// <p>Read the TLS configuration back and confirm the six properties install writes actually took;
 /// report <var>pMessage</var> when they did, as a warn where <var>pRepaired</var> says the run
 /// changed something an operator had moved.</p>
 ClassMethod AssertSslConfiguration(pName As %String, ByRef pReports, pMessage As %String, pRepaired As %Boolean = 0) As %Status [ Private ]
@@ -3290,6 +3320,12 @@ ClassMethod AssertSslConfiguration(pName As %String, ByRef pReports, pMessage As
     }
     If '+$Get(tProps("Enabled")) {
         Quit $$$ERROR($$$GeneralError, "the TLS configuration '" _ pName _ "' reads back disabled, so it would serve no outbound call")
+    }
+    If +$Get(tProps("TLSMinVersion")) < ..#SSLTLSMINVERSION {
+        Quit $$$ERROR($$$GeneralError, "the TLS configuration '" _ pName _ "' reads back TLSMinVersion " _ +$Get(tProps("TLSMinVersion")) _ ", below " _ ..#SSLTLSMINVERSION _ ", so it would negotiate a protocol older than TLS 1.2")
+    }
+    If $Get(tProps("CipherList")) '= ..#SSLCIPHERLIST {
+        Quit $$$ERROR($$$GeneralError, "the TLS configuration '" _ pName _ "' reads back CipherList '" _ $Get(tProps("CipherList")) _ "', not " _ ..#SSLCIPHERLIST)
     }
     Do ..Report(.pReports, $Select(pRepaired: "warn", 1: "info"), pMessage, {"name": (pName)})
     Quit $$$OK

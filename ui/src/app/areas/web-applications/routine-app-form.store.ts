@@ -282,6 +282,12 @@ export class RoutineAppForm {
     return choice === undefined ? true : choice.privileged;
   }
 
+  /** Whether a role the application grants now, as an application role or a matching role's target, is privileged (AD-10). */
+  grantsPrivileged(): boolean {
+    const roles = [...this.applicationRoles(), ...this.matchingRoles().map((entry) => entry.role)];
+    return roles.some((role) => this.privileged(role));
+  }
+
   /** The databases the instance defines, which a routine entry may name. */
   databases(): readonly string[] {
     return this.databaseNames;

@@ -8,7 +8,7 @@ import { actionLabel, ScreenActions } from '../core/screen-actions';
 import { ScreenStores } from '../core/screen-store';
 import { ENTITY_SINGLETON_ID, SCREENS } from '../core/screens.generated';
 import { STRINGS } from '../core/strings';
-import { rowKey } from '../core/table-model';
+import { VIEW_KEY_SEPARATOR, rowKey } from '../core/table-model';
 import { stubAccountPreferences } from '../testing/account-preferences';
 import { Session } from '../core/session';
 import {
@@ -152,6 +152,22 @@ describe('the generic screen-action handler', () => {
     expect(events[0].action).toBe('deleted');
     expect(events[0].type).toBe('web-application');
     expect(events[0].id).toBe(ORDINARY_ROW);
+  });
+
+  it('Story 18.47, DW-2328: a repeated row selected by its view key is sent as its entity key', async () => {
+    // Mutation (Rule 19): drop `entityKeyOf` from `selected()` -> the request id carries the ordinal and this goes red.
+    const { actions, store, calls } = mount({
+      kind: 'ok',
+      status: 200,
+      body: { action: 'enabled', target: { type: 'web-application', scope: 'instance', id: ORDINARY_ROW } },
+    });
+    store.setSelection([`${ORDINARY_ROW}${VIEW_KEY_SEPARATOR}2`]);
+
+    actions.run(WEB_APPS.descriptor, 'enable');
+    await settle();
+
+    expect(calls).toHaveLength(1);
+    expect(JSON.parse(calls[0].body)).toEqual({ action: 'enable', id: ORDINARY_ROW });
   });
 
   it('carries the instance\u2019s read-back onto the change event, and none it did not answer', async () => {

@@ -74,6 +74,7 @@ Method OnAfterOneTest() As %Status
 
 Method OnAfterAllTests() As %Status
 {
+    Do ##class(OcuPilot.Kernel.State.WebApp).DeleteByPath(..#OWNAPP)
     Set tSC = ##class(OcuPilot.Test.WebAppSave).RemoveApp(..#PROBEAPP, ..#PROBEMARKER)
     Set tOwnSC = ##class(OcuPilot.Test.WebAppSave).RemoveApp(..#OWNAPP, ..#PROBEMARKER)
     Set tCaseSC = ##class(OcuPilot.Test.WebAppSave).RemoveApp(..#CASESTORED, ..#PROBEMARKER)
@@ -196,6 +197,29 @@ Method TestAPrivilegedRoleOnAnUnauthenticatedApplicationIsOneLine()
     Do ..Stored(tKey, .tDestructive, .tConsequence)
     Do $$$AssertEquals(tDestructive, 1, "marked destructive")
     Do $$$AssertEquals(tConsequence, ##class(OcuPilot.Screen.Tool.WebAppCreate).#CONSEQUENCEUNAUTHENTICATEDPRIVILEGED, "with the one combined consequence")
+}
+
+/// <p>DW-2320 (AD-10): an application holding <code>%All</code> for a matching role, sent the same target for another
+/// matching role (an empty one grants it to every caller), is minted destructive with <code>GRANT.PRIVILEGED</code>; the
+/// same pair re-sent beside an unprivileged one is minted ordinary.</p>
+/// <p>Mutation (Rule 19): key <method>OcuPilot.Kernel.Proposal.Prohibited.ApplicationRoleNames</method> by the target alone
+/// -- the moved leg goes red.</p>
+Method TestAHeldPrivilegedTargetMovedToAnotherMatchingRoleIsAGrant()
+{
+    Set tBody = {"NameSpace": ($Namespace), "Description": (..#PROBEMARKER), "AutheEnabled": 32, "Resource": "%Development", "Enabled": true, "DispatchClass": "", "MatchRoles": [{"MatchRole": "%Developer", "TargetRoles": ["%All"]}]}
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.WebAppSave).EnsureApp(..#PROBEAPP, ..#PROBEMARKER, tBody), "the probe holds %All for a matching role")
+    Set tKey = ..Mint(..#PROBEAPP, {"MatchRoles": [{"MatchRole": "", "TargetRoles": ["%All"]}]}, .tProposal, .tHttp, .tFault)
+    Do $$$AssertNotEquals(tKey, "", "the move to every caller is minted: " _ $Select($IsObject($Get(tFault)): tFault.%ToJSON(), 1: ""))
+    If tKey '= "" {
+        Do ..Stored(tKey, .tDestructive, .tConsequence)
+        Do $$$AssertEquals(tDestructive _ " " _ tConsequence, "1 " _ ##class(OcuPilot.Kernel.Proposal.Mint).#CONSEQUENCEPRIVILEGED, "destructive, naming the privilege")
+    }
+    Set tKey = ..Mint(..#PROBEAPP, {"MatchRoles": [{"MatchRole": "%Developer", "TargetRoles": ["%All"]}, {"MatchRole": "%Manager", "TargetRoles": ["%DB_HSCUSTOM"]}]}, .tProposal, .tHttp, .tFault)
+    Do $$$AssertNotEquals(tKey, "", "the held pair re-sent beside an unprivileged one is minted: " _ $Select($IsObject($Get(tFault)): tFault.%ToJSON(), 1: ""))
+    If tKey '= "" {
+        Do ..Stored(tKey, .tDestructive, .tConsequence)
+        Do $$$AssertEquals(tDestructive _ " " _ tConsequence, "0 ", "ordinary")
+    }
 }
 
 /// <p>DW-1493 (AD-54): an agent create confirmed over the wire leaves the instance holding the

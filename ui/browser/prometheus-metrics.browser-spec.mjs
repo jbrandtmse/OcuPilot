@@ -21,7 +21,7 @@ import puppeteer from 'puppeteer';
 
 import { LIVE_CONTAINER, browserConfig, launchOptions } from '../browser.config.mjs';
 import { loadStrings } from '../tools/strings.mjs';
-import { ROW_SELECTOR, filterToSubset, viewCount, waitForRows } from './list-spec.mjs';
+import { ROW_SELECTOR, clickRowCentre, filterToSubset, viewCount, waitForRows } from './list-spec.mjs';
 import { authHeader, signedInAt } from './panel-spec.mjs';
 import { sideBarLabels } from './side-bar-spec.mjs';
 import { INVARIANTS, VIEWPORTS, assertThrowaway, collapse, compare, componentMinimums, detectScreen, readBaseline } from './structural-walk.mjs';
@@ -166,6 +166,55 @@ test('C4: a labeled row shows its labels as the instance answers them', async ()
     const shown = await describeRows(page);
     const row = shown.find((cells) => cells[0] === pick.Metric && cells[1] === pick.Labels);
     assert.ok(row !== undefined, `${pick.Metric} shows ${pick.Labels}: ${JSON.stringify(shown)}`);
+  } finally {
+    await context.close();
+  }
+});
+
+/** The `aria-rowindex` of every row the table draws selected, in document order. */
+function selectedRowIndexes(page) {
+  return page.evaluate(
+    (rowSelector) =>
+      Array.from(document.querySelectorAll(rowSelector))
+        .filter((row) => row.getAttribute('aria-selected') === 'true')
+        .map((row) => Number(row.getAttribute('aria-rowindex'))),
+    ROW_SELECTOR
+  );
+}
+
+// Story 18.47, DW-2328. Mutation (Rule 19): make `viewKeys` answer `rowKey` for every row, rebuild and redeploy -> the
+// click selects every row of the metric and the arrow keys stop at the first of them, so both assertions go red.
+test('DW-2328: a click selects one row of a metric that repeats, and ArrowDown walks every row of it', async () => {
+  const { context, page } = await atMetrics();
+  try {
+    const rows = await routeRows();
+    const counts = new Map();
+    for (const row of rows) counts.set(row.Metric, (counts.get(row.Metric) ?? 0) + 1);
+    const haystack = (row) => `${row.Metric}\n${row.Labels}\n${row.Help}`.toLowerCase();
+    const repeated = [...counts].find(
+      ([metric, count]) => count >= 3 && rows.every((row) => row.Metric === metric || !haystack(row).includes(metric.toLowerCase()))
+    );
+    assert.ok(repeated !== undefined, 'the instance answers a metric of three rows or more that no other row mentions');
+    const [metric, expected] = repeated;
+    const total = await viewCount(page);
+    const kept = await filterToSubset(page, { text: metric, expectRow: metric, total, timeoutMs: config.navigationTimeoutMs });
+    assert.equal(kept, expected, `only ${metric}'s ${expected} rows are left`);
+
+    await clickRowCentre(page, { index: 1, cell: 3 });
+    await page.waitForFunction((rowSelector) => document.querySelectorAll(`${rowSelector}[aria-selected="true"]`).length > 0, { timeout: config.navigationTimeoutMs }, ROW_SELECTOR);
+    assert.deepEqual(await selectedRowIndexes(page), [3], 'the click selects the second row alone');
+
+    for (let step = 1; step < expected - 1; step += 1) {
+      await page.keyboard.press('ArrowDown');
+      const want = 3 + step;
+      await page.waitForFunction(
+        (rowSelector, wanted) => document.querySelector(`${rowSelector}[aria-selected="true"]`)?.getAttribute('aria-rowindex') === String(wanted),
+        { timeout: config.navigationTimeoutMs },
+        ROW_SELECTOR,
+        want
+      );
+      assert.deepEqual(await selectedRowIndexes(page), [want], `ArrowDown ${step} selects the next row alone`);
+    }
   } finally {
     await context.close();
   }

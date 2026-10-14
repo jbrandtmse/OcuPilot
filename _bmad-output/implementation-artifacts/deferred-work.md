@@ -9355,6 +9355,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-03T14:57:35Z status=wontfix-accepted owner=18-19-journal-record-browser by=cr note=reopen_if=a user reports Newest first showing oldest first; fix needs the page to steer the store's remembered sort
 - 2026-10-03T15:02:19Z status=routed owner=burndown by=adjudication note=a Newest first that draws oldest first is a visible defect; Epic 18 close burn-down steers the store's sort with the order criterion
 - 2026-10-14T08:59:25Z status=routed owner=18-48-epic-18-burn-down-part-2 by=burndown note=chartered into the Epic 18 burn-down part 2 (orchestrator ruling 2026-10-14)
+- 2026-10-14T12:40:15Z status=routed owner=23-9-the-range-end-cleanup-part-8 by=lead note=orchestrator 2026-10-14: 18.48 kept at 12; the journal record browser's two lows move to 23.9
 
 ### DW-1980: The journal record dialog shows an empty body while its record loads (about 1.7 s, the guard's list read)
 - source: spec-18-19-journal-record-browser.md (code review) | severity: low | fix-risk: med | footprint: in-story
@@ -9368,6 +9369,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-03T14:57:36Z status=wontfix-accepted owner=18-19-journal-record-browser by=cr note=reopen_if=angular.json's budget is next re-based with room, or a user reports a refused over-long offset or value
 - 2026-10-03T15:02:19Z status=routed owner=burndown by=adjudication note=the bundle budget is re-based per story under DW-1166, so the measured maxlength patch lands with Epic 18's burn-down
 - 2026-10-14T08:59:25Z status=routed owner=18-48-epic-18-burn-down-part-2 by=burndown note=chartered into the Epic 18 burn-down part 2 (orchestrator ruling 2026-10-14)
+- 2026-10-14T12:40:15Z status=routed owner=23-9-the-range-end-cleanup-part-8 by=lead note=orchestrator 2026-10-14: 18.48 kept at 12; the journal record browser's two lows move to 23.9
 ### DW-1976: A long row text on a detail tab (a view's text, a procedure's description, trigger code) renders as one clipped data-table cell, and its cut-cell tooltip (480px wide, no height bound or scroll, clamped to the window) cannot show a text taller than the window, so AD-36's 'shown whole on the screen' holds for the read's answer but not for what a person can read
 - source: spec-19-14-the-sql-catalog-s-remaining-detail-tabs.md | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: ui/src/styles/_components.scss .ocu-data-table-cell nowrap + ellipsis and .ocu-data-table-tooltip max-width 480px, no max-height; data-table.ts placeTooltip clamps top to the window. Measured lengths (spec Design Notes): view text up to 5,856, SqlProc descriptions up to 41,734 characters
@@ -9578,6 +9580,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-08T07:44:01Z occurrence=18-9-sql-object-privileges note=code review maps #5035 -126 to SQLPRIV.DEPENDENT, logged at severity 2 like the rest
 - 2026-10-08T09:50:05Z occurrence=18-28-sql-column-and-admin-privileges note=add Security.SQLPrivilege.Admin 500 #516 (SQLCODE -99), logged severity 2
 - 2026-10-14T08:59:24Z status=routed owner=18-47-epic-18-burn-down-part-1 by=burndown note=chartered into the Epic 18 burn-down part 1 (orchestrator ruling 2026-10-14)
+- 2026-10-14T12:31:33Z status=resolved-by:18-47-epic-18-burn-down-part-1 by=adjudication note=#1454, #5809 and the SQLCODE-mapped refusals unlogged (18.47); the 18.7 occurrence's codes (#5022, #1219, #1204) carry on as DW-2427 (18.48)
 
 ### DW-2008: The agent's confirm of an ECP data server create at the limit carries ECP.SERVER.LIMIT's generic sentence, not EcpError.Limit's number
 - source: spec-18-20-ecp-data-servers.md (code review) | severity: low | fix-risk: med | footprint: out-of-footprint
@@ -10337,6 +10340,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-07T09:30:06Z status=routed owner=burndown by=cr note=remove the monitor value from each Snapshot, or prove it cannot move mid-class; verify on ocupilot-ci by raising the monitor mid-run
 - 2026-10-07T18:44:36Z occurrence=18-25-superservers by=merge_repair note=restored: its 15:41:54Z occurrence line now sits under DW-2162, moved there by the union merge of feature 0f3db5bb into OCU-1-epic20
 - 2026-10-14T08:59:24Z status=routed owner=18-47-epic-18-burn-down-part-1 by=burndown note=chartered into the Epic 18 burn-down part 1 (orchestrator ruling 2026-10-14)
+- 2026-10-14T12:31:33Z status=resolved-by:18-47-epic-18-burn-down-part-1 by=adjudication note=fixed with its pinning test in Story 18.47 (f9f48b18 + review); see the spec's Verification
 
 ### DW-2157: A production stop from Running can leave it reading Suspended while the tool answers success and the card promised Stopped
 - source: spec-20-2-productions-listed-and-controlled.md | severity: med | fix-risk: low | footprint: in-story
@@ -10441,6 +10445,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: 18.27 plan on ocupilot-ci: AdminPort.Invoke Security.LDAP GET in process as %Admin_Operate+%DB_IRISSYS:R answered 404 PORT.NOTFOUND over the vendor's #822
 - 2026-10-07T23:03:36Z status=routed owner=burndown by=spec_gate note=orchestrator 2026-10-07: routed to 18.28 at low severity; map #822 to an access refusal, not an absence
 - 2026-10-14T08:59:23Z status=routed owner=18-47-epic-18-burn-down-part-1 by=burndown note=chartered into the Epic 18 burn-down part 1 (orchestrator ruling 2026-10-14)
+- 2026-10-14T12:31:32Z status=resolved-by:18-47-epic-18-burn-down-part-1 by=adjudication note=fixed with its pinning test in Story 18.47 (f9f48b18 + review); see the spec's Verification
 
 ### DW-2168: IRIS defect candidate: the admin API's Security.LDAP LIST and GET admit %Admin_Operate at the gate (ResourcesOR), then fail for that caller (LIST 500 <INVALID OREF> in %Api.Admin.Util.ClassQuery, GET 404 #822)
 - source: spec-18-27-the-operator-s-read-only-ldap-view.md | severity: med | fix-risk: high | footprint: out-of-footprint
@@ -11224,6 +11229,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-11T09:46:42Z status=escalated owner=burndown by=cr note=fix walks each listed web app's UrlMap Forward targets or reads every namespace's apps; matrix row names direct dispatch only
 - 2026-10-11T13:57:30Z status=routed owner=burndown by=lead note=orchestrator ruling: fix at 18.35 (UrlMap Forward walk plus GetWebRESTApps over all namespaces in MgmntPort.Resolved); a forwarded or cross-namespace delete breaks a live API
 - 2026-10-14T08:59:23Z status=routed owner=18-47-epic-18-burn-down-part-1 by=burndown note=chartered into the Epic 18 burn-down part 1 (orchestrator ruling 2026-10-14)
+- 2026-10-14T12:31:31Z status=resolved-by:18-47-epic-18-burn-down-part-1 by=adjudication note=fixed with its pinning test in Story 18.47 (f9f48b18 + review); see the spec's Verification
 
 ### DW-2312: ToolEmit.TestEveryLiveToolRequiresItsScreensPairs's doc comment says no other live tool's arguments add pairs; the ExplorerSave and RestServiceWrite branches contradict it
 - source: spec-18-32-spec-based-rest-services.md | severity: low | fix-risk: low | footprint: in-epic
@@ -11317,6 +11323,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Prohibited.ApplicationRoleNames drops the MatchRole and GrantsPrivilegeByEffect's web branch skips a held name; {MatchRole:%Developer,TargetRoles:[%All]} to {MatchRole:'',TargetRoles:[%All]} mints ordinary for a web or routine application (code read), while the tab states privilegedGrantEffect
 - 2026-10-11T14:41:26Z status=routed owner=burndown by=cr note=key held and wanted targets by MatchRole and target; a non-add-only edit to Prohibited.cls, which Epic 20 holds
 - 2026-10-14T08:59:23Z status=routed owner=18-47-epic-18-burn-down-part-1 by=burndown note=chartered into the Epic 18 burn-down part 1 (orchestrator ruling 2026-10-14)
+- 2026-10-14T12:31:32Z status=resolved-by:18-47-epic-18-burn-down-part-1 by=adjudication note=fixed with its pinning test in Story 18.47 (f9f48b18 + review); see the spec's Verification
 
 ### DW-2321: The agent's update tools take MatchRoles and Routines whole, but no read tool answers either list, so the agent cannot send the current list with one entry changed
 - source: spec-18-33-privileged-routine-application-roles-and-routines.md | severity: med | fix-risk: med | footprint: in-epic
@@ -11330,6 +11337,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-11T14:41:33Z status=decision-pending owner=burndown by=cr note=AD-10 names no such effect for a routine application; web apps take 'no authorization resource' at strongest confirmation
 - 2026-10-11T16:15:23Z status=routed owner=burndown by=lead note=orchestrator ruling: a grant (no Resource is runnable by anyone); privileged-grant treatment; fix at the Epic 18 burn-down
 - 2026-10-14T08:59:23Z status=routed owner=18-47-epic-18-burn-down-part-1 by=burndown note=chartered into the Epic 18 burn-down part 1 (orchestrator ruling 2026-10-14)
+- 2026-10-14T12:31:32Z status=resolved-by:18-47-epic-18-burn-down-part-1 by=adjudication note=fixed with its pinning test in Story 18.47 (f9f48b18 + review); see the spec's Verification
 
 ### DW-2323: Classification.cls says neither routine application tool admits MatchRoles or Routines; since 18.33 the update admits both
 - source: spec-18-33-privileged-routine-application-roles-and-routines.md | severity: low | fix-risk: low | footprint: in-epic
@@ -11385,6 +11393,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-11T18:27:53Z status=wontfix-accepted owner=18-34-the-person-s-rest-service-create by=cr note=reopen_if=a Save whose UI can send a field over 3.6 MB, or an out-of-range number, answers 500
 - 2026-10-11T21:38:31Z status=routed owner=burndown by=lead note=orchestrator: audit the 48 two-argument %GetNext sites at the Epic 18 burn-down; fix any that read caller-controlled JSON (the same 500) or charter a sweep if many
 - 2026-10-14T08:59:24Z status=routed owner=18-47-epic-18-burn-down-part-1 by=burndown note=chartered into the Epic 18 burn-down part 1 (orchestrator ruling 2026-10-14)
+- 2026-10-14T09:42:09Z status=dropped by=spec_gate note=superseded by the sweep entry DW-2417 (109 sites, over the ruling's 10; Story 18.47 plan audit)
 
 ### DW-2328: Rows of an id-none list share one key when its name column repeats: MetricsList's 942 rows hold 115 Metric values, so a click selects every row of a metric and the arrow keys stop at a group's first row
 - source: spec-18-11-monitoring-extras-and-the-live-log-tail.md | severity: med | fix-risk: med | footprint: out-of-footprint
@@ -11394,6 +11403,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-12T06:54:07Z status=routed owner=burndown by=cr note=also an empty key: RoutineAppRoleList's Every caller row keys '' (MatchRole empty), so ArrowDown sticks on it
 - 2026-10-13T02:15:56Z occurrence=18-37-interoperability-usage (two interoperability usage tabs repeat their name column)
 - 2026-10-14T08:59:23Z status=routed owner=18-47-epic-18-burn-down-part-1 by=burndown note=chartered into the Epic 18 burn-down part 1 (orchestrator ruling 2026-10-14)
+- 2026-10-14T12:31:32Z status=resolved-by:18-47-epic-18-burn-down-part-1 by=adjudication note=fixed with its pinning test in Story 18.47 (f9f48b18 + review); see the spec's Verification
 
 ### DW-2329: MonitorPort.Samples would fail the whole metrics table on an instance whose label value ends in an unescaped backslash (a Windows dir); unverified
 - source: spec-18-11-monitoring-extras-and-the-live-log-tail.md | severity: med | fix-risk: low | footprint: in-story
@@ -11401,6 +11411,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-11T22:33:47Z status=decision-pending owner=burndown by=cr note=human=GET /api/monitor/metrics on a Windows instance: are backslashes in dir labels doubled
 - 2026-10-12T04:18:25Z status=routed owner=burndown by=lead note=owner 2026-10-11: Handle both forms (single or doubled backslash; skip and count one unreadable line); no Windows read needed
 - 2026-10-14T08:59:24Z status=routed owner=18-47-epic-18-burn-down-part-1 by=burndown note=chartered into the Epic 18 burn-down part 1 (orchestrator ruling 2026-10-14)
+- 2026-10-14T12:31:33Z status=resolved-by:18-47-epic-18-burn-down-part-1 by=adjudication note=fixed with its pinning test in Story 18.47 (f9f48b18 + review); see the spec's Verification
 
 ### DW-2330: AD-36's Story 18.11 amendment says every parent-scoped read requires its criterion before any port call; the code covers bare-rows and VOLUMELIST reads, and TaskRunList answers {}
 - source: spec-18-11-monitoring-extras-and-the-live-log-tail.md | severity: low | fix-risk: low | footprint: in-story
@@ -11413,6 +11424,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: DW-2321's web-application half: 18.12's re-plan builds the privileged routine application reads only (orchestrator guidance scoped it so)
 - 2026-10-12T01:03:05Z status=routed owner=burndown by=spec_gate note=split from DW-2321; a detail read over the web application's MatchRoles, as 18.12 builds for routine applications
 - 2026-10-14T08:59:23Z status=routed owner=18-47-epic-18-burn-down-part-1 by=burndown note=chartered into the Epic 18 burn-down part 1 (orchestrator ruling 2026-10-14)
+- 2026-10-14T12:31:32Z status=resolved-by:18-47-epic-18-burn-down-part-1 by=adjudication note=fixed with its pinning test in Story 18.47 (f9f48b18 + review); see the spec's Verification
 
 ### DW-2334: The admin API can write the directory allow-list (FSAccess.Path, FSAccess.Purpose) but OcuPilot offers no surface for it; Allowed directories stays read-only
 - source: spec-18-12-the-agent-grows-with-the-stage.md | severity: med | fix-risk: med | footprint: out-of-footprint
@@ -11455,6 +11467,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-12T02:40:03Z status=wontfix-accepted owner=18-36-dashboard-drill-downs by=cr note=reopen_if=a refused drill-down's link draws ungated (AD-44 classic-page resource or AD-64 adjustment)
 - 2026-10-12T02:44:39Z status=routed owner=burndown by=lead note=orchestrator: EXPERIENCE.md :214-216 is a contract, not optional; fix at the Epic 18 burn-down
 - 2026-10-14T08:59:24Z status=routed owner=18-47-epic-18-burn-down-part-1 by=burndown note=chartered into the Epic 18 burn-down part 1 (orchestrator ruling 2026-10-14)
+- 2026-10-14T12:31:33Z status=resolved-by:18-47-epic-18-burn-down-part-1 by=adjudication note=fixed with its pinning test in Story 18.47 (f9f48b18 + review); see the spec's Verification
 
 ### DW-2341: The routine-application roles read sorts the empty Every-caller MatchRoles entry first while the vendor lists it last, so an update echoing the list as read reports a change
 - source: spec-18-12-the-agent-grows-with-the-stage.md | severity: med | fix-risk: low | footprint: in-story
@@ -11797,6 +11810,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: CI run 38532797700 attempt 1 (head c14f3fc6) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: attempt 1 red on node 22.22.3 only (node 24 and 26 green on the same head); attempt 2 green unchanged; the head touches no logs code (inference: timers left by another spec in the worker).
 - 2026-10-14T09:30:29Z status=routed owner=burndown by=runner note=flake: the spec should set up and clear fake timers per test; Epic 18's test (orchestrator told Epic 18)
+- 2026-10-14T12:35:00Z status=routed owner=18-48-epic-18-burn-down-part-2 by=lead note=orchestrator 2026-10-14: Epic 18's test; fix its timer isolation
 - 2026-10-14T15:53:46Z status=routed owner=18-48-epic-18-burn-down-part-2 by=runner note=occurrence: run 38578125486 attempt 1 (head 7aba3c5f, Story 20.8) red on gates (node 26.0.0) only, same test, 'os-management/language-servers/activity : expected 3 to be +0'; rerun of the failed job
 - 2026-10-14T18:22:12Z status=resolved-by:20-8-the-schema-viewers-and-the-production-configuration-diagram by=adjudication note=AC6 waits (bounded) for the real loop to be empty before the fake clock, clears it, drains finite timers and repeats its request checks after the drain; its count message names fake and real timers. Cause is an inference (Angular's vitest runner isolate false: a real timer another test leaves fires in the async advance's yields); never reproduced locally, so CI is the only proof. Residual (the spec's deferred item): a real timer that re-arms for the worker's life, or a one-shot due after the wait, still reddens AC6. reopen_if=AC6 red again on CI with 'when the clock was faked' above 0 or a fake count above 0
 ### DW-2400: CipherList and TLSMinVersion are settable on the provider's SSL/TLS configurations (OcuPilotProvider and an egress-named one), and neither OCUPILOTSSL nor PROVIDERSSL covers them, so a weak cipher list or TLS floor reaches provider calls
@@ -11804,6 +11818,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: 18.40 implement (inference, not measured): OcuPilotSslFields and the planned PROVIDERSSL fields are Type, VerifyPeer, CAFile and Enabled only; the call-time check reads VerifyPeer
 - 2026-10-14T00:06:53Z status=routed owner=burndown by=lead note=orchestrator 2026-10-13: one entry for both configurations, consistently; Epic 18 burn-down
 - 2026-10-14T08:59:23Z status=routed owner=18-47-epic-18-burn-down-part-1 by=burndown note=chartered into the Epic 18 burn-down part 1 (orchestrator ruling 2026-10-14)
+- 2026-10-14T12:31:32Z status=resolved-by:18-47-epic-18-burn-down-part-1 by=adjudication note=fixed with its pinning test in Story 18.47 (f9f48b18 + review); see the spec's Verification
 
 ### DW-2404: No automated test runs the wallet rung's refusal as a least-privileged person through the real provider call, or in the jobbed process a turn and Test connection use
 - source: spec-18-41-the-wallet-credential-rung.md | severity: med | fix-risk: low | footprint: in-story
@@ -11843,6 +11858,46 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: EXPERIENCE.md :335 and strings.ts caption predate DW-2406; the WALLETRUNG.REQUIRETLS and ALLOWEDHOSTS refusals name their setting and remedy
 - 2026-10-14T06:41:48Z status=wontfix-accepted owner=18-41-the-wallet-credential-rung by=harvest note=reopen_if=a person reports a wallet refusal they could not trace from the form
 
+### DW-2417: Sweep: two-argument %GetNext over caller JSON answers 500 past MAXSTRING/MAXNUMBER at 109 sites in 54 Area files; route key loops through one typed helper beside Kernel.Utils.ReadRequestBody, add .tType at nested loops, check untyped %Get
+- source: spec-18-47-epic-18-burn-down-part-1.md | severity: low | fix-risk: med | footprint: out-of-footprint
+- evidence: Story 18.47 plan audit 2026-10-14 (code read): 109 sites in 54 Area files; Screen/Tool about 14, Api 11, Kernel 20-25 (inference); over the ruling's 10, so 18.47 fixes none
+- 2026-10-14T09:42:09Z status=routed owner=23-9-the-range-end-cleanup-part-8 by=spec_gate note=orchestrator 2026-10-14: more than about 10 sites, so one sweep entry; supersedes DW-2327
+- 2026-10-14T12:40:16Z status=routed owner=23-10-the-range-end-cleanup-part-9-two-sweeps by=lead note=orchestrator 2026-10-14: Story 23.10, two sweeps
+
+### DW-2418: A turn's one PROVIDER.TLS sentence names the absent, unverified and unreadable causes but not a TLS floor below 1.2
+- source: spec-18-47-epic-18-burn-down-part-1.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Story 18.47 implement (code read): TlsReason carries REASONTLSWEAK for the call-time refusal and Test connection; Base.ReasonFor and Error.ReasonForTurnError are unchanged
+- 2026-10-14T11:29:38Z status=open owner=18-47-epic-18-burn-down-part-1 by=harvest note=two-way door: one sentence and its test; QA or code review fixes it in-story
+- 2026-10-14T12:31:33Z status=resolved-by:18-47-epic-18-burn-down-part-1 by=adjudication note=QA put the TLS floor in the turn's PROVIDER.TLS sentence; ProviderSslCallTime pins it (run 796)
+
+### DW-2419: The page-level selection readers and the checked-set readers outside the table's three central ones read the view key, which carries an ordinal for a repeated or empty key
+- source: spec-18-47-epic-18-burn-down-part-1.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: Story 18.47 implement and review (inference): no list with these readers repeats or empties its key; grep selection()[0] and checked() under ui/src/app
+- 2026-10-14T11:29:38Z status=wontfix-accepted owner=18-47-epic-18-burn-down-part-1 by=harvest note=reopen_if=a list whose page reads selection()[0] or checked() repeats or empties its row key
+- 2026-10-14T12:29:05Z occurrence=18-47-epic-18-burn-down-part-1
+
+### DW-2424: Switches saves an egress SSL/TLS configuration whose minimum TLS version is below 1.2, which every provider call then refuses: SwitchRules.EnabledVerifyingClient does not judge the floor ProviderPort.SslConfigurationState now judges
+- source: spec-18-47-epic-18-burn-down-part-1.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: Story 18.47 code review (code read): SwitchRules.cls:156 checks Type, Enabled and VerifyPeer; ProviderPort.cls:667 adds MINTLSVERSION; the fix needs an EGRESS violation code, which 18.47's contract forbids
+- 2026-10-14T12:29:05Z status=routed owner=burndown by=cr note=two judges of one rule diverged; add the floor to the save-time judge with its own violation code
+- 2026-10-14T12:40:16Z status=routed owner=18-48-epic-18-burn-down-part-2 by=lead note=orchestrator 2026-10-14: the save-time rule matches the call-time floor, one new EGRESS code (18.40's path)
+
+### DW-2425: AD-10's widened-reach arm judges only a privileged routine application's cleared Resource or enabling: a Resource swapped to a publicly held one, and a web application enabled while it grants a privileged role, mint ordinary
+- source: spec-18-47-epic-18-burn-down-part-1.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: Story 18.47 code review (code read): Prohibited.cls GrantsPrivilegeByEffect's TYPEWEBAPPLICATION arm compares role pairs only; WidensPrivilegedReach (:5996) runs for routine applications and tests a cleared Resource alone
+- 2026-10-14T12:29:05Z status=decision-pending owner=burndown by=cr note=recommend extending AD-10 as DW-2322 did; Prohibited.cls is Epic 20-contended (Rule 11)
+- 2026-10-14T12:40:16Z status=routed owner=18-48-epic-18-burn-down-part-2 by=lead note=orchestrator 2026-10-14: privileged-grant treatment, as DW-2322 (web applications: enabling one that grants a privileged role, or a Resource pointed at a public one)
+
+### DW-2426: 48 test classes' OnAfterAllTests delete shared state on an unarmed instance: %UnitTest runs it after a refused OnBeforeAllTests, and GovernanceFixture.Restore over no snapshot deletes every policy row (EgressSettingsWire deletes the egress row)
+- source: spec-18-47-epic-18-burn-down-part-1.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: irislib %UnitTest/Manager.cls:1296 calls OnAfterAllTests when OnBeforeAllTests errs; Story 18.47 code review probe on ocupilot-ci: with no snapshot, armed, the call deleted 2 seeded policy rows; 18.47 guarded its 7 classes
+- 2026-10-14T12:29:05Z status=routed owner=burndown by=cr note=guard each by its OnBeforeAllTests arming condition as ProviderSslCallTime does; not in Restore: AllowedDirectorySave clears with it
+- 2026-10-14T12:40:16Z status=routed owner=23-10-the-range-end-cleanup-part-9-two-sweeps by=lead note=orchestrator 2026-10-14: Story 23.10, two sweeps
+
+### DW-2427: The encryption key-file field refusals #5022, #1219 and #1204 (AdminPort PROPERTYFAULTS) are still logged at severity 2, so a mistyped key-file password raises the instance alert state
+- source: spec-18-47-epic-18-burn-down-part-1.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: DW-2007's 18-7 occurrence names them; Story 18.47 code review (code read): UNLOGGEDREFUSALS (AdminPort.cls:641) lists #1454 and #5809 only; each entry's endpoint, type and status needs a Task 0 measurement
+- 2026-10-14T12:29:05Z status=routed owner=18-48-epic-18-burn-down-part-2 by=cr note=add code-scoped UNLOGGEDREFUSALS entries after measuring each; #5001 stays logged (AD-2)
 ### DW-2416: IRIS defect candidate: /api/deepsee (%Api.DeepSee, %DeepSee.REST.v3) resets roles to the login roles, checks no %DeepSee_* resource, and splices caller text into MDX and SQL
 - source: spec-20-11 plan (measured), orchestrator ruling 2026-10-14 | severity: med | fix-risk: high | footprint: out-of-footprint
 - evidence: Measured at Story 20.11's plan on ocupilot-b-ci: a user holding only %DB_USER:RW read every model, term list and folder item, built and synchronized cubes and ran MDX; read in irislib %DeepSee.REST.v3 (its Info and Query routes). OcuPilot calls the classes in process instead (AD-65).

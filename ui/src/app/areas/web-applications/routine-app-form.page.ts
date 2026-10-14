@@ -173,6 +173,9 @@ interface Option {
           />
           <span>{{ STRINGS.tableColumnEnabled }}</span>
         </label>
+        @if (hasReachEffect) {
+          <p class="ocu-field-caption" [id]="enabledEffectId">{{ STRINGS.privilegedGrantEffect }}</p>
+        }
         @if (enabledView.invalid) {
           <p class="ocu-form-error" [id]="enabledView.id + '-reason'">{{ enabledView.violation }}</p>
         }
@@ -192,6 +195,9 @@ interface Option {
           }
         </select>
         <p class="ocu-field-caption" [id]="resourceHintId">{{ STRINGS.routineAppResourceHint }}</p>
+        @if (hasReachEffect) {
+          <p class="ocu-field-caption" [id]="resourceEffectId">{{ STRINGS.privilegedGrantEffect }}</p>
+        }
         @if (resourceView.invalid) {
           <p class="ocu-form-error" [id]="resourceView.id + '-reason'">{{ resourceView.violation }}</p>
         }
@@ -262,6 +268,10 @@ export class RoutineAppFormPage {
   protected readonly resourceHintId = routineAppHintId(RESOURCE_FIELD);
 
   protected readonly ownRefusalId = 'ocu-routine-app-own-refusal';
+
+  protected readonly enabledEffectId = 'ocu-routine-app-enabled-effect';
+
+  protected readonly resourceEffectId = 'ocu-routine-app-resource-effect';
 
   /** The key of the tab on screen. */
   protected readonly selectedTab = signal(GENERAL_TAB);
@@ -446,12 +456,18 @@ export class RoutineAppFormPage {
     return this.inputView(DESCRIPTION_FIELD, null);
   }
 
+  /** Whether a role the application grants is privileged, so enabling it or clearing its resource widens that grant (AD-10). */
+  protected get hasReachEffect(): boolean {
+    this.generation();
+    return this.store.grantsPrivileged();
+  }
+
   protected get enabledView(): InputView {
-    return this.inputView(ENABLED_FIELD, null);
+    return this.inputView(ENABLED_FIELD, this.hasReachEffect ? this.enabledEffectId : null);
   }
 
   protected get resourceView(): InputView {
-    return this.inputView(RESOURCE_FIELD, this.resourceHintId);
+    return this.inputView(RESOURCE_FIELD, this.hasReachEffect ? `${this.resourceHintId} ${this.resourceEffectId}` : this.resourceHintId);
   }
 
   // --- intents ---------------------------------------------------------------------------------

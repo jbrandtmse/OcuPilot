@@ -27904,6 +27904,132 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "multiSelect": null
   },
   {
+    "descriptor": "OcuPilot.Screen.Descriptor.WebAppRoleList",
+    "route": "web-applications/list/roles",
+    "area": "web-applications",
+    "labelKey": "routineAppRolesLabel",
+    "sideBarPosition": 0,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Secure",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "web-applications/list",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "MatchRole"
+      ]
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "MatchRole",
+        "TargetRoles"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "routineAppRolesEmpty",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "routineAppRolesPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "routineAppRolesPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "routineAppRolesPrompt3"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.Applications.WebList",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "WebApp.App",
+        "type": "GET",
+        "rows": "MatchRoles"
+      },
+      "fields": [
+        "MatchRole",
+        "TargetRoles"
+      ],
+      "filter": [
+        "MatchRole"
+      ],
+      "sort": {
+        "fields": [
+          "MatchRole"
+        ],
+        "default": "MatchRole",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "name",
+            "labelKey": "tableColumnName",
+            "kind": "text",
+            "maxLength": 256,
+            "hint": "One web application, spelled as webapp.list.read answers its Name."
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "MatchRole",
+          "labelKey": "webAppFieldMatchRole",
+          "kind": "name",
+          "emptyKey": "routineAppRolesEveryCaller"
+        },
+        {
+          "field": "TargetRoles",
+          "labelKey": "userColumnRoles",
+          "kind": "identifier"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "webapp.webapproles",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
     "descriptor": "OcuPilot.Screen.Descriptor.WebSessionList",
     "route": "web-applications/sessions",
     "area": "web-applications",

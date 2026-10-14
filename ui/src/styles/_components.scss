@@ -5162,6 +5162,20 @@ app-data-table {
   @include ocu-focus-ring;
 }
 
+// A drill-down the caller is refused (Story 18.47): listed and focusable like the side bar's gated entry, with the reason
+// inline after the label at full opacity in `restrained`.
+.ocu-details-link-gated {
+  color: var(--ocu-restrained);
+  cursor: default;
+}
+
+.ocu-details-link-reason {
+  @include typo.ocu-type('caption');
+
+  margin-inline-start: var(--ocu-space-2);
+  color: var(--ocu-restrained);
+}
+
 // --- Meter (Story 6.9) -- shared by System usage and, from 6.11, Database details -------------
 //
 // EXPERIENCE.md's meter row: "never animates the needle". A 6px fully-rounded track over

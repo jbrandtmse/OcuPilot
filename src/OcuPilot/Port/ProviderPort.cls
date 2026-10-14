@@ -77,6 +77,12 @@ Parameter TLSABSENT = "absent";
 
 Parameter TLSUNVERIFIED = "unverified";
 
+Parameter TLSWEAK = "weak";
+
+/// <p>The lowest <code>TLSMinVersion</code> a call may go through (TLS 1.2; <code>$$$TLSv12</code>): the configuration's
+/// floor must be at least this, so it negotiates nothing older (AD-32).</p>
+Parameter MINTLSVERSION As INTEGER = 16;
+
 Parameter TLSUNAVAILABLE = "unavailable";
 
 /// <p>Make one provider call against the stored definition <var>pDefinitionId</var>.
@@ -340,7 +346,7 @@ ClassMethod Dispatch(ByRef pValues, ByRef pMessages, ByRef pTools, pSystemPrompt
         If tTlsState '= ..#TLSOK {
             Set pHttpStatus = ##class(OcuPilot.Kernel.Provider.Base).HttpFor(##class(OcuPilot.Api.Error).#PROVIDERTLS)
             Set pFault = ##class(OcuPilot.Kernel.Fault).Build(##class(OcuPilot.Api.Error).#UNAVAILABLE, ##class(OcuPilot.Api.Error).#PROVIDERTLS, ##class(OcuPilot.Kernel.Provider.Base).TlsReason(tTlsState, tSettings("sslConfiguration"), ##class(OcuPilot.Kernel.State.Base).#SSLCONFIG))
-            Do ..LogRaw($Case(tTlsState, ..#TLSABSENT: "the TLS configuration this call would go through is absent, so nothing was sent", ..#TLSUNAVAILABLE: "the TLS configuration this call would go through could not be read, so nothing was sent", : "the TLS configuration this call would go through no longer requires the server's certificate, so nothing was sent"), $$$ERROR($$$GeneralError, "configuration " _ tSettings("sslConfiguration")), ##class(OcuPilot.Api.Error).#PROVIDERTLS)
+            Do ..LogRaw($Case(tTlsState, ..#TLSABSENT: "the TLS configuration this call would go through is absent, so nothing was sent", ..#TLSUNAVAILABLE: "the TLS configuration this call would go through could not be read, so nothing was sent", ..#TLSWEAK: "the TLS configuration this call would go through allows a protocol older than TLS 1.2, so nothing was sent", : "the TLS configuration this call would go through no longer requires the server's certificate, so nothing was sent"), $$$ERROR($$$GeneralError, "configuration " _ tSettings("sslConfiguration")), ##class(OcuPilot.Api.Error).#PROVIDERTLS)
             Quit
         }
     } Else {
@@ -632,10 +638,13 @@ ClassMethod IsHttps(pUrl As %String) As %Boolean [ Private ]
 }
 
 /// <p>Whether a call may go through the TLS configuration <var>pName</var> (Story 18.40, AD-32, AD-9): one of
-/// <parameter>TLSOK</parameter> when it exists, is enabled, is a client and has <code>VerifyPeer</code> of 1 or more,
+/// <parameter>TLSOK</parameter> when it exists, is enabled, is a client, has <code>VerifyPeer</code> of 1 or more and a
+/// <code>TLSMinVersion</code> of TLS 1.2 or later,
 /// <parameter>TLSABSENT</parameter> when no such configuration exists, <parameter>TLSUNVERIFIED</parameter> when it
-/// exists and is a server, disabled or below that, and <parameter>TLSUNAVAILABLE</parameter> when the read did not
-/// answer. An empty name asks nothing and answers <parameter>TLSOK</parameter>, which is the marked-local plain-HTTP
+/// exists and is a server, disabled or below that, <parameter>TLSWEAK</parameter> when it is otherwise sound but its
+/// <code>TLSMinVersion</code> is below <parameter>MINTLSVERSION</parameter>, and <parameter>TLSUNAVAILABLE</parameter>
+/// when the read did not answer. The <code>CipherList</code> is not judged here: no vendor API expands it, and TLS 1.3's
+/// suites are authenticated-encryption only (inference). An empty name asks nothing and answers <parameter>TLSOK</parameter>, which is the marked-local plain-HTTP
 /// path.</p>
 /// <p><b>The same answer for every caller.</b> The read is
 /// <method>OcuPilot.Kernel.State.Base.GuardedSslConfigRead</method>'s, through its own privileged routine application
@@ -649,13 +658,13 @@ ClassMethod SslConfigurationState(pName As %String) As %String
     If pName = "" Quit ..#TLSOK
     Set tState = ..#TLSUNAVAILABLE
     Try {
-        Do ##class(OcuPilot.Kernel.State.Base).GuardedSslConfigRead(pName, .tExists, .tType, .tEnabled, .tVerifyPeer, .tUnavailable)
+        Do ##class(OcuPilot.Kernel.State.Base).GuardedSslConfigRead(pName, .tExists, .tType, .tEnabled, .tVerifyPeer, .tUnavailable, .tMinVersion)
         If +$Get(tUnavailable) {
             Set tState = ..#TLSUNAVAILABLE
         } ElseIf '+$Get(tExists) {
             Set tState = ..#TLSABSENT
         } ElseIf (+$Get(tType) = 0) && (+$Get(tEnabled) = 1) && (+$Get(tVerifyPeer) >= 1) {
-            Set tState = ..#TLSOK
+            Set tState = $Select(+$Get(tMinVersion) >= ..#MINTLSVERSION: ..#TLSOK, 1: ..#TLSWEAK)
         } Else {
             Set tState = ..#TLSUNVERIFIED
         }

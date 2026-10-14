@@ -91,8 +91,10 @@ Method OnAfterOneTest() As %Status
     Quit $$$OK
 }
 
+/// <p>On an instance the class is not armed for, <method>OnBeforeAllTests</method> created nothing, so nothing is removed.</p>
 Method OnAfterAllTests() As %Status
 {
+    If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 Quit $$$OK
     Kill ^||OcuPilotDatabaseWritePort
     Merge tRows = ..PreparedPolicy
     Set tSC = ##class(OcuPilot.Test.GovernanceFixture).Restore(.tRows)
@@ -202,13 +204,19 @@ Method TestADeleteRemovesTheConnectionItsClientAndItsDescription()
 /// port re-reads, finds it absent and answers the delete as done on both callers, with the read-back reading
 /// absent. A <code>DELETE</code> of a name no connection holds stays 404, and a 500 followed by a re-read that
 /// cannot say stays the fault.</p>
+/// <p>The vendor's 500 (#5809) is an answer, not a fault: <code>messages.log</code> gains no
+/// <code>Security.MFT failed</code> line for the first delete (Story 18.47).</p>
 /// <p>Mutation (Rule 19): remove the re-read from <method>OcuPilot.Port.MftPort.Delete</method> -- the list's
-/// Delete answers the 500 and the first leg goes red.</p>
+/// Delete answers the 500 and the first leg goes red; drop <code>Security.MFT/DELETE/500/#5809</code> from
+/// <parameter>OcuPilot.Port.AdminPort.UNLOGGEDREFUSALS</parameter> -- the log leg goes red.</p>
 Method TestADeleteOverAnAbsentClientIsAnsweredAsDeleted()
 {
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Seed", "OcuMftProbeA"), "a probe connection naming no client configuration")
+    Set tLines = ##class(OcuPilot.Test.EcpProbe).LineCount("messages.log")
     Set tSC = $ClassMethod(..#ACTION, "Act", ..#SCREEN, {"action": "delete", "id": "OcuMftProbeA"}, .tAnswer, .tStatus)
     Do $$$AssertEquals(tStatus, 200, "the list's Delete answers 200 as done: " _ $Extract(tAnswer, 1, 300))
+    Set tAfter = ##class(OcuPilot.Test.EcpProbe).LinesAfter("messages.log", tLines)
+    Do $$$AssertEquals(##class(OcuPilot.Test.EcpProbe).CountContaining(tAfter, "Security.MFT failed"), 0, "and messages.log gains no Security.MFT failed line (" _ tAfter.%Size() _ " new lines)")
     Do $$$AssertEquals($ClassMethod(..#SEAM, "Writes"), "DELETE:OcuMftProbeA", "after one DELETE")
     Do $$$AssertEquals($IsObject($ClassMethod(..#PROBE, "Stored", "OcuMftProbeA")), 0, "the connection is gone")
     Do $$$AssertEquals(..Verdict(##class(OcuPilot.Test.LicenseKey).Parsed(tAnswer)), "notFound", "and the read-back reads it absent")

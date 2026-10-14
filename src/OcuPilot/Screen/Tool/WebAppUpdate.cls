@@ -30,7 +30,7 @@ Parameter TOOLNAME = "webapp.list.update";
 
 Parameter DESCRIPTORCLASS = "OcuPilot.Screen.Descriptor.WebAppList";
 
-Parameter DESCRIPTION = "Propose a change to one web application's configuration on this instance: its description, namespace, whether it is enabled and the namespace default, its dispatch class, CSP package and superclass, Python application, callable and protocol, its resource, group, authentication methods, session timeout, JWT and CORS settings, how it serves files, and its application and matching roles. It changes nothing by itself: it answers a proposal the user reviews and confirms. Name the application exactly as the web applications list reports it, and send only the fields to change. Changes to OcuPilot's own web applications are refused.";
+Parameter DESCRIPTION = "Propose a change to one web application's configuration on this instance: its description, namespace, whether it is enabled and the namespace default, its dispatch class, CSP package and superclass, Python application, callable and protocol, its resource, group, authentication methods, session timeout, JWT and CORS settings, how it serves files, and its application and matching roles. It changes nothing by itself: it answers a proposal the user reviews and confirms. Name the application exactly as the web applications list reports it, and send only the fields to change. Read the current list first with webapp.webapproles.read and send it whole with only your change. Changes to OcuPilot's own web applications are refused.";
 
 /// <p>The derived subtree this tool never admits as a derived field: a web application's
 /// application and matching roles, which <parameter>MATCHROLESARGUMENT</parameter> authors

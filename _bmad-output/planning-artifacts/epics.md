@@ -7885,7 +7885,7 @@ So that the stage closes with its own debt paid. [AMENDED 2026-10-14, Epic 18 bu
 
 As a developer-administrator,
 I want Epic 18's routed encryption, journal, LDAP and agent-read defects fixed,
-So that the stage closes with its own debt paid. [AMENDED 2026-10-14, Epic 18 burn-down gate, orchestrator ruling: DW-2100 first (measure on the throwaway in Task 0, then decide AD-10's start arm); DW-1979 and DW-1981 as fix-pack items; DW-1896 the AD-27 named case through Modify in %SYS, then lift the LASTONE refusal]
+So that the stage closes with its own debt paid. [AMENDED 2026-10-14, Epic 18 burn-down gate, orchestrator ruling: DW-2100 first (measure on the throwaway in Task 0, then decide AD-10's start arm); DW-1896 the AD-27 named case through Modify in %SYS, then lift the LASTONE refusal]
 
 **Acceptance Criteria:**
 
@@ -7898,10 +7898,12 @@ So that the stage closes with its own debt paid. [AMENDED 2026-10-14, Epic 18 bu
 - DW-2087: A first database key activation takes no destructive treatment, though Task 0 measured that its startup-mode change (DBEncStartMode Interactive) outlives every deactivati (ledger; chartered by the burn-down gate 2026-10-14)
 - DW-2126: An RSA key regenerated over a secret holding a certificate drops the certificate, and WALLETKEY.REPLACE.RSA and the card do not say so (ledger; chartered by the burn-down gate 2026-10-14)
 - DW-1966: Journal settings accept an existing database's directory, OcuPilot's own included, as a journal directory, where the vendor then writes its iris.lck (ledger; chartered by the burn-down gate 2026-10-14)
-- DW-1979: Journal records' Newest first reads the newest records but the table shows them oldest first (ledger; chartered by the burn-down gate 2026-10-14)
-- DW-1981: Journal records' offset and value inputs carry no maxlength, so an over-long entry is refused only by the server (ledger; chartered by the burn-down gate 2026-10-14)
 - DW-1896: The LDAP editor cannot remove a configuration's last retrieved attribute through the admin API (its Security.LDAP PUT ignores LDAPAttributes []); an AD-27 named case writ (ledger; chartered by the burn-down gate 2026-10-14)
 - DW-2335: Several Stage 2 editor forms show fields no read tool answers (superservers 14, local databases 10, user copy 12), so the agent cannot read what the person sees (ledger; chartered by the burn-down gate 2026-10-14)
+- DW-2427: The encryption key-file field refusals #5022, #1219 and #1204 are still logged at severity 2, so a mistyped key-file entry raises the instance alert state (ledger; routed by cr 2026-10-14)
+- DW-2415: CI flake: log-viewer.spec.ts AC6 ('with Live tail off, nothing streams') read vi.getTimerCount() as 12, not 0, on node 22.22.3 only; fix its timer isolation (ledger; routed by lead 2026-10-14, orchestrator)
+- DW-2424: Switches saves an egress SSL/TLS configuration whose minimum TLS version is below 1.2, which every provider call then refuses; the save-time rule matches the call-time floor with one new EGRESS code (ledger; routed by lead 2026-10-14, orchestrator)
+- DW-2425: AD-10's widened-reach arm extends to web applications as DW-2322 did: enabling one that grants a privileged role, or pointing its Resource at a public one, gets the privileged-grant treatment (ledger; decided by the orchestrator 2026-10-14)
 
 ## Epic 19: Stage 3 - System Explorer over the Atelier API
 

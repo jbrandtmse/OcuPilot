@@ -95,6 +95,7 @@ XData Roster
 <screen name="InteropUsageImpactTab" kind="read-only" reason="the interoperability usage the instance records, which no write changes"/>
 <screen name="RoutineAppRoleList" kind="read-only" reason="a list the application's update tool replaces whole"/>
 <screen name="RoutineAppRoutineList" kind="read-only" reason="a list the application's update tool replaces whole"/>
+<screen name="WebAppRoleList" kind="read-only" reason="a list the application's update tool replaces whole"/>
 <tool name="osmgmt.databasedetails.mount"/>
 <tool name="osmgmt.databasedetails.dismount"/>
 <tool name="osmgmt.databasedetails.truncate"/>

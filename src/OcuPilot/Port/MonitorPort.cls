@@ -202,10 +202,11 @@ ClassMethod Performance(Output pValues As %DynamicObject, Output pHttpStatus As 
 /// <parameter>PARTMETRICS</parameter> as a JSON number.</li>
 /// <li>Anything else is 500 <code>INTERNAL</code>, logged once.</li>
 /// </ul>
-/// <p>A collection that raises, or that lacks a member or answers it as no number, or holds a
-/// sample <method>Samples</method> cannot read, and a usage query that raises or answers an error
-/// status, is 500 <code>INTERNAL</code>, logged once, with <var>pResult</var> empty -- never a
-/// partial answer. <var>pHttpStatus</var> is 200 otherwise.</p>
+/// <p>A collection that raises, or that lacks a member or answers it as no number, and a usage query
+/// that raises or answers an error status, is 500 <code>INTERNAL</code>, logged once, with
+/// <var>pResult</var> empty -- never a partial answer. A collection holding a sample line
+/// <method>Samples</method> cannot read answers 200 with every other row and one log line naming how
+/// many lines were skipped. <var>pHttpStatus</var> is 200 otherwise.</p>
 /// <p>Caller contract: must not be called from an escalated frame (AD-9); the caller's namespace is
 /// unchanged on return.</p>
 ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject = "", Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
@@ -233,11 +234,12 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
             }
             Set tSC = ..Take(.tText, .pHttpStatus, .pFault)
             If $$$ISERR(tSC) Quit
-            Set tSamplesSC = ..Samples(tText, $Select(tMaxText = "": ..#DEFAULTMAXROWS, 1: +tMaxText), .tRows)
+            Set tSamplesSC = ..Samples(tText, $Select(tMaxText = "": ..#DEFAULTMAXROWS, 1: +tMaxText), .tRows, .tSkipped)
             If $$$ISERR(tSamplesSC) {
                 Set tSC = ..Fail("the sensor collection could not be read", tSamplesSC, .pHttpStatus, .pFault)
                 Quit
             }
+            If tSkipped Do ..LogFault("the sensor collection held " _ tSkipped _ " sample line(s) the port could not read, which were skipped", $$$ERROR($$$GeneralError, tSkipped _ " unreadable sample line(s)"))
             Set pResult = tRows
             Set pHttpStatus = 200
             Quit
@@ -392,19 +394,22 @@ ClassMethod Parse(pText As %String, Output pValues As %DynamicObject, pMetrics A
 /// <li><code>Metric</code> runs to the first <code>{</code> or space.</li>
 /// <li><code>Labels</code> is the text between the braces as answered, <code>""</code> when there
 /// are none. The closing brace is the first <code>}</code> outside a double-quoted value, in which
-/// <code>\"</code> does not end the value.</li>
+/// <code>\"</code> does not end the value. A line whose label set does not close that way is read
+/// once more with a backslash taken as plain text, so a value ending in an unescaped backslash, as a
+/// Windows directory does, still reads.</li>
 /// <li><code>Value</code> is a JSON number when it is a valid number, otherwise its text
 /// (<code>NaN</code>, <code>+Inf</code>).</li>
 /// </ul>
-/// <p>The whole exposition is read before the cut, so whether the read fails does not depend on
-/// <var>pMax</var>.
-/// A sample with no name or no value, or whose label set is not closed, fails the read: an error
-/// status naming the line, with <var>pRows</var> empty. <method>Parse</method>, which reads only the
-/// unlabeled lines it is asked for, is a separate and tolerant reader.</p>
-ClassMethod Samples(pText As %String, pMax As %Integer, Output pRows As %DynamicArray) As %Status
+/// <p>The whole exposition is read before the cut, so <var>pSkipped</var> does not depend on
+/// <var>pMax</var>. A sample with no name or no value, or whose label set closes in neither reading,
+/// is skipped and counted in <var>pSkipped</var>, and the other rows are answered.
+/// <method>Parse</method>, which reads only the unlabeled lines it is asked for, is a separate and
+/// tolerant reader.</p>
+ClassMethod Samples(pText As %String, pMax As %Integer, Output pRows As %DynamicArray, Output pSkipped As %Integer) As %Status
 {
     Set tSC = $$$OK
     Set pRows = ""
+    Set pSkipped = 0
     Try {
         Kill tHelp
         Set tLines = $ListFromString(pText, $Char(10))
@@ -418,41 +423,13 @@ ClassMethod Samples(pText As %String, pMax As %Integer, Output pRows As %Dynamic
 
         Set tRows = []
         Set tAt = 0
-        Set tI = 0
         While $ListNext(tLines, tAt, tRaw) {
-            Set tI = tI + 1
             Set tLine = $ZStrip($Get(tRaw), "<>WC")
             If (tLine = "") || ($Extract(tLine) = "#") Continue
-            Set tLength = $Length(tLine)
-
-            Set tNameEnd = 1
-            While (tNameEnd <= tLength) && ($Extract(tLine, tNameEnd) '= "{") && ($Extract(tLine, tNameEnd) '= " ") && ($Extract(tLine, tNameEnd) '= $Char(9)) {
-                Set tNameEnd = tNameEnd + 1
+            If '..SampleParts(tLine, 0, .tName, .tLabels, .tValue) && '..SampleParts(tLine, 1, .tName, .tLabels, .tValue) {
+                Set pSkipped = pSkipped + 1
+                Continue
             }
-            Set tName = $Extract(tLine, 1, tNameEnd - 1)
-            If tName = "" {
-                Set tSC = $$$ERROR($$$GeneralError, "line " _ tI _ " is a sample with no metric name")
-                Quit
-            }
-
-            Set tLabels = ""
-            Set tRest = $Extract(tLine, tNameEnd, *)
-            If $Extract(tRest) = "{" {
-                Set tClose = ..LabelsEnd(tLine, tNameEnd)
-                If 'tClose {
-                    Set tSC = $$$ERROR($$$GeneralError, "line " _ tI _ " is a sample whose label set is not closed")
-                    Quit
-                }
-                Set tLabels = $Extract(tLine, tNameEnd + 1, tClose - 1)
-                Set tRest = $Extract(tLine, tClose + 1, *)
-            }
-
-            Set tValue = $Piece($ZStrip($Translate(tRest, $Char(9), " "), "<>WC"), " ", 1)
-            If tValue = "" {
-                Set tSC = $$$ERROR($$$GeneralError, "line " _ tI _ " is a sample with no value")
-                Quit
-            }
-
             If tRows.%Size() < pMax {
                 Set tRow = {}
                 Do tRow.%Set("Metric", tName, "string")
@@ -466,7 +443,6 @@ ClassMethod Samples(pText As %String, pMax As %Integer, Output pRows As %Dynamic
                 Do tRows.%Push(tRow)
             }
         }
-        If $$$ISERR(tSC) Quit
         Set pRows = tRows
     } Catch ex {
         Set pRows = ""
@@ -475,10 +451,37 @@ ClassMethod Samples(pText As %String, pMax As %Integer, Output pRows As %Dynamic
     Quit tSC
 }
 
+/// <p>One sample line <var>pLine</var> split into its metric name, label text and value, or 0 when it has no name, no
+/// value, or a label set that does not close. <var>pLiteral</var> 1 reads a backslash inside a quoted label value as plain
+/// text (<method>LabelsEnd</method>).</p>
+ClassMethod SampleParts(pLine As %String, pLiteral As %Boolean, Output pName As %String, Output pLabels As %String, Output pValue As %String) As %Boolean [ Private ]
+{
+    Set pName = ""
+    Set pLabels = ""
+    Set pValue = ""
+    Set tLength = $Length(pLine)
+    Set tNameEnd = 1
+    While (tNameEnd <= tLength) && ($Extract(pLine, tNameEnd) '= "{") && ($Extract(pLine, tNameEnd) '= " ") && ($Extract(pLine, tNameEnd) '= $Char(9)) {
+        Set tNameEnd = tNameEnd + 1
+    }
+    Set pName = $Extract(pLine, 1, tNameEnd - 1)
+    If pName = "" Quit 0
+    Set tRest = $Extract(pLine, tNameEnd, *)
+    If $Extract(tRest) = "{" {
+        Set tClose = ..LabelsEnd(pLine, tNameEnd, pLiteral)
+        If 'tClose Quit 0
+        Set pLabels = $Extract(pLine, tNameEnd + 1, tClose - 1)
+        Set tRest = $Extract(pLine, tClose + 1, *)
+    }
+    Set pValue = $Piece($ZStrip($Translate(tRest, $Char(9), " "), "<>WC"), " ", 1)
+    Quit (pValue '= "")
+}
+
 /// <p>The position of the brace closing the label set that opens at <var>pOpen</var> in
 /// <var>pLine</var>, or 0 when it is not closed. A brace inside a double-quoted value does not
-/// close it, and a backslash inside a quoted value escapes the character after it.</p>
-ClassMethod LabelsEnd(pLine As %String, pOpen As %Integer) As %Integer [ Private ]
+/// close it, and a backslash inside a quoted value escapes the character after it -- unless
+/// <var>pLiteral</var> is 1, when a backslash is plain text and a quote after it ends the value.</p>
+ClassMethod LabelsEnd(pLine As %String, pOpen As %Integer, pLiteral As %Boolean = 0) As %Integer [ Private ]
 {
     Set tQuoted = 0
     Set tI = pOpen + 1
@@ -486,7 +489,7 @@ ClassMethod LabelsEnd(pLine As %String, pOpen As %Integer) As %Integer [ Private
     While tI <= tLength {
         Set tChar = $Extract(pLine, tI)
         If tQuoted {
-            If tChar = "\" {
+            If (tChar = "\") && 'pLiteral {
                 Set tI = tI + 1
             } ElseIf tChar = """" {
                 Set tQuoted = 0
