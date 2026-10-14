@@ -2,11 +2,11 @@
 title: 'Story 20.8: The schema viewers and the production configuration diagram'
 type: 'feature'
 created: '2026-10-13'
-status: 'in-progress'
-baseline_revision: '86c9fb2939138203e2847f61e2a81b2c108c3e82'
+status: 'done'
+baseline_revision: 'c0a3b4cf0d84e1600909b6b779181b4f6eaf20b3'
 baseline_commit: '86c9fb2939138203e2847f61e2a81b2c108c3e82'
 review_loop_iteration: 0
-followup_review_recommended: true
+followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
   - '{project-root}/_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md'
@@ -430,7 +430,8 @@ Rejected:
 
 ### CI red on 7aba3c5f (run 38578125486, both attempts) - rework iteration 1
 
-- [ ] [CI] **`ui/src/app/areas/logs/log-viewer.spec.ts` AC6, "with Live tail off, nothing streams"** (gates (node 26.0.0) only; the other 20 jobs green). Attempt 1: `os-management/language-servers/activity : expected 3 to be +0`; attempt 2, unchanged rerun: `logs/messages /logs/messages?ns=HSCUSTOM: expected 12 to be +0`. Ledger DW-2415 (the same test red once on node 22.22.3 at c14f3fc6). Not reproduced locally: the file alone eight times under CPU load, and the whole component suite in one worker and in three workers under load, all green. Angular's vitest runner defaults to `isolate: false`, so spec files share a worker, and a one-shot timer another file leaves can land in AC6's fake-timer window (inference). The orchestrator ruled the fix (2026-10-14), inside this spec file only: right after `vi.useFakeTimers()`, `vi.clearAllTimers()`, so a timer queued before the case can be neither counted nor run in it; before `vi.getTimerCount()`, drain only what is finite (a bounded number of `vi.runOnlyPendingTimersAsync()` passes while the count is above zero). An interval, or a poll that re-arms itself, never drains, so AC6 still counts it. Two `mutation:` lines: the page arming a `setInterval` while Live tail is off reddens AC6 after the drain, and the page arming a self-re-arming `setTimeout` poll does too (apply, observe red, revert byte-identical). The test comment states the contract and names `isolate: false` as an inference; it does not narrate this rework.
+- [x] [CI] **`ui/src/app/areas/logs/log-viewer.spec.ts` AC6, "with Live tail off, nothing streams"** (gates (node 26.0.0) only; the other 20 jobs green). Attempt 1: `os-management/language-servers/activity : expected 3 to be +0`; attempt 2, unchanged rerun: `logs/messages /logs/messages?ns=HSCUSTOM: expected 12 to be +0`. Ledger DW-2415 (the same test red once on node 22.22.3 at c14f3fc6). Not reproduced locally: the file alone eight times under CPU load, and the whole component suite in one worker and in three workers under load, all green. Angular's vitest runner defaults to `isolate: false`, so spec files share a worker, and a one-shot timer another file leaves can land in AC6's fake-timer window (inference). The orchestrator ruled the fix (2026-10-14), inside this spec file only: right after `vi.useFakeTimers()`, `vi.clearAllTimers()`, so a timer queued before the case can be neither counted nor run in it; before `vi.getTimerCount()`, drain only what is finite (a bounded number of `vi.runOnlyPendingTimersAsync()` passes, up to 5, while the count is above zero, after the request and toggle assertions). An interval, or a poll that re-arms itself, never drains, so AC6 still counts it. Every existing AC6 assertion stays. Two `mutation:` lines: the page (or its store) arming a `setInterval` while Live tail is off, e.g. `setInterval(() => {}, 30000)` in the constructor, reddens AC6 after the drain, and the page arming a self-re-arming `setTimeout` poll does too (apply, observe red, revert byte-identical, sha256 before and after). One check line, not a mutation: a single `setTimeout(() => {}, 20 * 60 * 1000)` armed by the page drains and AC6 stays green. The test comment states the contract and names `isolate: false` as an inference; it does not narrate this rework.
+  - Fixed in `log-viewer.spec.ts` only: AC6 clears the clock on entry, drains finite timers (five passes at most) and repeats its request assertions after the drain. Cause: `isolate: false` shares a worker across spec files (inference). A scratch probe (a real zero-delay timer, queued before the case, that arms a 20-minute timer) reddens the old test at `logs/messages` and not the new one.
 
 ## Spec Change Log
 
@@ -462,6 +463,18 @@ Rejected:
   - `[false]` `[reject]` An agent class save never reloads the diagram — `shows()` matches the route id against the event's id, the intent names no such trigger, and the agent line is not drawn there.
   - `[false]` `[reject]` Read-only has no code counterpart — the intent measures it as a vendor fact and forbids the parameters that would change it.
   - `[false]` `[reject]` Vendor behavior is pinned only by the browser spec — Rule 3 asks for that real-runtime evidence.
+
+### 2026-10-14 — Review pass (rework 1, the CI item)
+
+- verdicts: 7 findings — high 0, medium 1, low 2, false 4, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` After the drain, a one-shot timer may fire and issue a request that AC6 no longer sees (`log-viewer.spec.ts` AC6) — shown in a scratch copy; patched: the request and Live-tail assertions are repeated after the drain, with a `(CI) mutation:` line.
+  - `[low]` `[patch]` Nothing recorded that the drain absorbs a cross-file leftover — reproduced on the tree: a real zero-delay timer arming a 20-minute timer reddens the old test at `logs/messages` and not the new one; one sentence added to the item's cause line.
+  - `[low]` `[reject]` `vi.clearAllTimers()` is not load-bearing on a fresh fake clock — the ruling's first step requires the call; it is defensive and harmless, and the layer's removal run was not repeated here.
+  - `[false]` `[reject]` `home.page.spec.ts` has a stronger fix (wait for the event loop to empty) — an alternative design, not a defect; the ruling chose the drain.
+  - `[false]` `[reject]` The diff implements none of the story's feature reading — the item is a ruled CI repair outside the intent contract, so no feature surface is expected to change.
+  - `[false]` `[reject]` The intent has no clause for an unrelated test's change — the orchestrator pre-authorized the footprint extension, and no file in the contract's Never list is touched.
+  - `[false]` `[reject]` `Screen/Registry.cls` and `ci-timings.json` changed over the baseline range — those changes come from other commits, outside the audited diff.
 
 ## Design Notes
 
@@ -695,6 +708,11 @@ Each value was checked unique against `strings.ts`. The labels double as the fra
 - (CR) mutation: the AD-63 scan's pattern without `Schema_Viewer-` and `Interop-Editors-` -> `api.test.mjs` (2 of 40).
 - (CR) mutation: the Items link's click ignores `altKey` -> `interop-item-list.page.spec.ts`'s modified-click test.
 - (CR) Each (CR) mutation was applied to the throwaway's copy of `src`, or to the worktree and restored from a saved copy, read red, and reverted. `InteropEditorDescriptor` (5) and `ScreenAccessWire` (8) are green on the reverted code (runs 26 and 27). `test:tools` passes 1997 and `test:components` 3120. The build is green. `interop-viewers` passes 11 on the rebuilt bundle.
+- (CI) mutation: the page's constructor arms `setInterval(() => {}, 30000)` -> `log-viewer.spec.ts` AC6, at the timer count after the drain (`logs/alerts : expected 1 to be +0`); Story 18.38 AC1's undrained count reddens too.
+- (CI) mutation: the page's constructor arms a self-re-arming 30 s `setTimeout` poll -> AC6, at the same count after the drain.
+- (CI) mutation: the page's constructor arms a 20-minute `setTimeout(() => void this.store.open(), ...)` -> AC6, at the request count after the drain (`logs/alerts : expected 2 to be 1`); Story 18.38 AC1 reddens too.
+- (CI) check, not a mutation: one `setTimeout(() => {}, 20 * 60 * 1000)` armed by the page is drained and AC6 stays green (77 of 78; only Story 18.38 AC1's undrained count reddens).
+- (CI) `log-viewer.page.ts` was reverted byte-identical after each (sha256 `c155534a1be8` before and after); the file passes 78 on the reverted code.
 
 **Measured.** `npm run build`: initial total 1.93 MB (warning 1992 kB), largest lazy chunk `data-browser-page` 83.33 kB (ceiling 88 kB), `interop-editor-page` 11.11 kB, `interop-item-list-page` 14.30 kB.
 
@@ -703,14 +721,10 @@ Each value was checked unique against `strings.ts`. The labels double as the fra
 Status: done
 Blocking condition: none
 
-**Implementation (2026-10-14).** Both screens draw through 20.7's page, store and frame. The client grows the vocabulary by `schema-viewer` and `interop-editor`, the store a no-list and a bare-name mode, and the page a kind table. `CLASSICPAGES` is read by `Gate.RequiredPairs` and Screen permissions. Production items links the diagram. The spec's Task 0 was applied: 20.16 had merged, and its agent line shows on the three editors only. One deviation: `parentIdSegment` in `core/navigation.ts` reads the diagram's route id, because `ownIdSegment` answers `''` for a parent-scoped screen.
+**This pass (rework 1, the CI item).** `log-viewer.spec.ts` AC6 now clears the fake clock on entry, drains finite timers (five passes at most) before it counts, and repeats its request and Live-tail assertions after the drain. Every earlier AC6 assertion stays; no product file changed.
 
-- **Server:** `Screen/Descriptor/Base.cls`, `Screen/Gate.cls`, `Screen/Access.cls`, the two new descriptors.
-- **Client:** `vendor-frame.ts`, `navigation.ts`, `strings.ts`, `screens.generated.ts`, `screen-outlet.ts`, the editor page and store, `interop-item-list.page.ts`, EXPERIENCE.md :159 and :604.
-- **Tests:** the descriptor, roster and `ScreenAccessWire` classes; the page, frame and new Items page specs; the store, vendor-frame, navigation and mirror tests; `interop-viewers.browser-spec.mjs` and the two browser helpers.
+**Review.** Seven findings: one medium patched (the post-drain request assertions), one low patched (the cause line), one low and four false rejected (reasons in the log). Follow-up review recommended: false (no high patched).
 
-**Review.** Twenty findings: 6 rows patched in 4 entries (three medium: Screen permissions' multi-resource column, the Items page spec, the panel-bar wait; one low: the mutation-claim cleanup), 14 rejected (11 false, 3 low; reasons in the log). Follow-up review recommended: true. The unreviewed risk is the lead-written Items page spec and the Screen permissions column change, which sit outside the story's declared footprint (report as `footprint_extensions`: `screen-permissions.page.ts`, its dialog comment and spec).
+**Verification.** `ng test --include src/app/areas/logs/log-viewer.spec.ts` passes 78; `npm run test:components` passes the whole suite; `client-lint` and `lint-docs` are clean. Three `(CI)` mutation lines and one check line are in `## Verification`, each observed on the final test and reverted byte-identical. A scratch probe reproduced the cross-file mechanism: red on the old test, green on the new. The CI failure itself is still not reproduced, so its cause stays an inference.
 
-**Verification, all on `ocupilot-b-ci`.** The ObjectScript (loop) sets are green (12 classes; `InteropEditorDescriptor` rerun after the last mutation). `test:tools` 1997 and `test:components` 3120 after the review patches; the build prechain is green (initial 1.93 MB, largest lazy chunk 83.33 kB, `interop-editor-page` 11.11 kB); `check-objectscript` and `lint-docs` are clean. Browser specs green: `interop-viewers` (11) and `screen-permissions` after the review patches; `interop-editors`, `interop-editor-frame`, `interop-items` and `a11y-structural-invariants` before them. Every `mutation:` line in `## Verification` was applied, observed red and reverted byte-identical.
-
-**Residual risks.** `InteropFloorTurn` fails on this throwaway with `PROVIDER.TLS`; `InteropEditorSaveTurn`, `ExplorerSaveTurn` and `screen-permissions-agent.browser-spec.mjs` fail in their turn the same way (inference). The throwaway was started before the 18.40 and 18.41 merge, and OcuPilot's provider TLS configuration is restored at start (inference). Re-run them on a fresh throwaway. The lead's full sweep, `npm test`, smoke and Rule 30 fresh check were not run. A subagent ran `pkill -f "Google Chrome for Testing"` once to clear its own orphaned Chrome, which could have ended another agent's browser.
+**Residual risks.** A self-re-arming poll that another file leaves behind survives the drain and would still redden AC6. Story 18.38 AC1 has the same undrained count and is outside the ruling.

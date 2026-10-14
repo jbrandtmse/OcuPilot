@@ -342,11 +342,19 @@ describe('LogViewerPage', () => {
   });
 
   it('AC6: with Live tail off, nothing streams -- ten minutes of fake time issues no request, draws a toggle only where a source opts in, and registers no timer', async () => {
-    // The clock is faked and restored here and nowhere else in this file; `vi.getTimerCount()` is
-    // what makes "registers no interval" an observation rather than an absence of evidence, and it
-    // needs no spy on a global the fake clock has already replaced.
+    // The clock is faked and restored in this test; `vi.getTimerCount()` is what makes "registers no
+    // interval" an observation rather than an absence of evidence, and it needs no spy on a global
+    // the fake clock has already replaced.
     // jsdom supplies both constructors, so "opens no EventSource and no WebSocket" is counted at
     // construction rather than asserted as their absence -- which would pass on any page.
+    //
+    // The timer count is taken after a bounded drain. Angular's vitest runner defaults to
+    // `isolate: false`, so spec files share a worker, and a one-shot timer another file left behind
+    // can land in this test's fake-clock window (inference). `vi.clearAllTimers()` empties the clock
+    // on entry; the drain (at most DRAIN_PASSES `vi.runOnlyPendingTimersAsync()` passes) runs what
+    // is finite, however far out, and the request and Live-tail assertions are repeated after it so a
+    // finite timer that issues a request is still counted. An interval, or a poll that re-arms
+    // itself, survives every pass, so the count still fails on it.
     //
     // Story 18.38: alerts.log and messages.log on their current files opt into the live tail and
     // draw the toggle, off. Every other log -- a rotated messages.log file, the six secondary logs,
@@ -370,8 +378,10 @@ describe('LogViewerPage', () => {
       { screen: MESSAGES_SCREEN, address: '/logs/messages?ns=HSCUSTOM&file=messages.old_20260926_5', offers: false },
       ...others.map((screen) => ({ screen, address: '', offers: false })),
     ];
+    const DRAIN_PASSES = 5;
     vi.useFakeTimers();
     try {
+      vi.clearAllTimers();
       for (const { screen, address, offers } of cases) {
         TestBed.inject(LogViewerStore).reset();
         TestBed.resetTestingModule();
@@ -390,6 +400,9 @@ describe('LogViewerPage', () => {
         const toggle = fixture.nativeElement.querySelector('[data-ocu-log="live"]') as HTMLButtonElement | null;
         expect(toggle !== null, `${named}: the toggle is drawn only where a source opts in`).toBe(offers);
         if (toggle !== null) expect(toggle.getAttribute('aria-pressed'), named).toBe('false');
+        for (let pass = 0; pass < DRAIN_PASSES && vi.getTimerCount() > 0; pass += 1) await vi.runOnlyPendingTimersAsync();
+        expect(api.paths.length, named).toBe(issued);
+        expect(api.liveAsked, named).toEqual([]);
         expect(vi.getTimerCount(), named).toBe(0);
         expect(opened, named).toBe(0);
       }
