@@ -2,7 +2,7 @@
 title: 'Story 20.8: The schema viewers and the production configuration diagram'
 type: 'feature'
 created: '2026-10-13'
-status: 'done'
+status: 'in-progress'
 baseline_revision: '86c9fb2939138203e2847f61e2a81b2c108c3e82'
 baseline_commit: '86c9fb2939138203e2847f61e2a81b2c108c3e82'
 review_loop_iteration: 0
@@ -427,6 +427,10 @@ Rejected:
 - `low`: AC2's tripwire reds on the address wait before it reaches its DW-2396 message. It still reds, and its title names DW-2396.
 - `low`: `restoreSearch` deletes every search row above the watermark, whoever wrote it. One spec runs at a time on a throwaway, so those rows are the run's own.
 - Rejected because the fix edits the spec: duplicated `## Verification` lines. Each pair records complementary reds, not a contradiction.
+
+### CI red on 7aba3c5f (run 38578125486, both attempts) - rework iteration 1
+
+- [ ] [CI] **`ui/src/app/areas/logs/log-viewer.spec.ts` AC6, "with Live tail off, nothing streams"** (gates (node 26.0.0) only; the other 20 jobs green). Attempt 1: `os-management/language-servers/activity : expected 3 to be +0`; attempt 2, unchanged rerun: `logs/messages /logs/messages?ns=HSCUSTOM: expected 12 to be +0`. Ledger DW-2415 (the same test red once on node 22.22.3 at c14f3fc6). Not reproduced locally: the file alone eight times under CPU load, and the whole component suite in one worker and in three workers under load, all green. Angular's vitest runner defaults to `isolate: false`, so spec files share a worker, and a one-shot timer another file leaves can land in AC6's fake-timer window (inference). The orchestrator ruled the fix (2026-10-14), inside this spec file only: right after `vi.useFakeTimers()`, `vi.clearAllTimers()`, so a timer queued before the case can be neither counted nor run in it; before `vi.getTimerCount()`, drain only what is finite (a bounded number of `vi.runOnlyPendingTimersAsync()` passes while the count is above zero). An interval, or a poll that re-arms itself, never drains, so AC6 still counts it. Two `mutation:` lines: the page arming a `setInterval` while Live tail is off reddens AC6 after the drain, and the page arming a self-re-arming `setTimeout` poll does too (apply, observe red, revert byte-identical). The test comment states the contract and names `isolate: false` as an inference; it does not narrate this rework.
 
 ## Spec Change Log
 
