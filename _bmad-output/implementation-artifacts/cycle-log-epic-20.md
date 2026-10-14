@@ -862,3 +862,5 @@
 2026-10-14T23:36:42Z	Story 20.9	story_cycle	plan_to_commit_min=n/a(resumed_across_two_holds) implement_passes=4(implement,resume,rework1,rework2) reviews=4(cr1_halted,cr2,cr3,cr4) rework=2(high,smoke) first_ci=pending models=plan:opus,implement:sonnet,qa:sonnet,cr:opus
 2026-10-14T23:37:39Z	Story 20.30	spec_inbox_updated	owned_ledger=DW-2434(routed_by_20.9_cr) addressed=1(Tasks_item_beside_message-tab-body.ts) by=lead note=spec_gate_passed_2026-10-14T03:47Z;inbox_grew_after
 2026-10-14T23:37:39Z	Epic 20	push_guard_adopted	by=orchestrator_order every_push=rev-parse_--verify_--quiet+40-char_check+ls-remote_confirm helper=scratchpad/e20r/push.sh stage_prompts=git_section_carries_it
+2026-10-14T23:43:12Z	Epic 20	epic_context_compiled	reason=planning_artifact_newer(20.8,20.9_shipped;20.30-20.34_chartered;AD-65;Epic_18_merge) model=opus lines=166
+2026-10-14T23:43:12Z	Story 20.32	stage_spawned	stage=plan spawn_at=2026-10-14T23:43:12Z model=opus agent_name=20-32-plan-1 cycle_iteration=1 inbox=none note=planned_while_20.9_CI_queued
