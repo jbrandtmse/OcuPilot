@@ -334,27 +334,50 @@ Method TestTheListIsCutAtTheCap()
     }
 }
 
-/// <p>Metrics list, a sample the port cannot read: no value, a label set that is not closed (also when
-/// its only brace sits inside a quoted value) and no metric name each fail the whole read 500
-/// <code>INTERNAL</code>, logged once, with no rows -- also when the sample lies past the cap.</p>
-/// <p>Mutation: skip a sample with no value in <method>OcuPilot.Port.MonitorPort.Samples</method>
-/// -&gt; the no-value rows go red.</p>
-Method TestAMalformedSampleFailsTheWholeRead()
+/// <p>Metrics list, a sample the port cannot read (Story 18.47, DW-2329): no value, a label set that is not closed (also
+/// when its only brace sits inside a quoted value) and no metric name are each skipped and counted, the read answers 200
+/// with every other row, and one line is logged naming how many were skipped -- also when the sample lies past the cap.</p>
+/// <p>Mutation: count nothing in <method>OcuPilot.Port.MonitorPort.Samples</method> -&gt; the log leg goes red; fail the
+/// read on a skipped line -&gt; the 200 legs go red.</p>
+Method TestAnUnreadableSampleIsSkippedAndCounted()
 {
     Set tQuote = """"
-    For tCase = $ListBuild("no value", "probe_a 1" _ $Char(10) _ "probe_b"), $ListBuild("labels without a value", "probe_a{id=" _ tQuote _ "x" _ tQuote _ "}"), $ListBuild("unclosed labels", "probe_a{id=" _ tQuote _ "x" _ tQuote _ " 5"), $ListBuild("a brace only inside a quote", "probe_a{id=" _ tQuote _ "x}" _ tQuote _ " 5"), $ListBuild("no name", "{id=" _ tQuote _ "x" _ tQuote _ "} 5") {
+    For tCase = $ListBuild("no value", "probe_a 1" _ $Char(10) _ "probe_b", "probe_a||1:number|", 1), $ListBuild("labels without a value", "probe_a{id=" _ tQuote _ "x" _ tQuote _ "}", "", 1), $ListBuild("unclosed labels", "probe_a{id=" _ tQuote _ "x" _ tQuote _ " 5", "", 1), $ListBuild("a brace only inside a quote", "probe_a{id=" _ tQuote _ "x}" _ tQuote _ " 5", "", 1), $ListBuild("no name", "{id=" _ tQuote _ "x" _ tQuote _ "} 5", "", 1), $ListBuild("two of them", "probe_b" _ $Char(10) _ "{} 5", "", 2) {
         Set tWhere = $List(tCase, 1)
         For tCap = "", 1 {
             Do ##class(OcuPilot.Test.MonitorPortFixture).Clear()
             Do ##class(OcuPilot.Test.MonitorPortFixture).SetText("probe_first 1" _ $Char(10) _ $List(tCase, 2))
             Set tSC = ..ReadList(tCap, .tRows, .tHttp, .tFault)
             Set tHow = tWhere _ $Select(tCap = "": "", 1: " past a cap of " _ tCap)
-            Do $$$AssertStatusNotOK(tSC, tHow _ ": the read fails")
-            Do $$$AssertEquals(tHttp _ " " _ $Select($IsObject(tFault): tFault.code _ " " _ tFault.reason, 1: ""), "500 INTERNAL " _ ##class(OcuPilot.Kernel.Fault).#DEFAULTREASON, tHow _ ": as the generic internal fault")
-            Do $$$AssertEquals(tRows, "", tHow _ ": answering no rows")
+            Do $$$AssertStatusOK(tSC, tHow _ ": the read succeeds")
+            Do $$$AssertEquals(tHttp, 200, tHow _ ": with 200")
+            Set tExpected = "probe_first||1:number|" _ $Select($List(tCase, 3) = "": "", 1: $Char(10) _ $List(tCase, 3))
+            If tCap = 1 Set tExpected = "probe_first||1:number|"
+            Do $$$AssertEquals(..RowsText(tRows), tExpected, tHow _ ": answering every row it could read")
             Do $$$AssertEquals(##class(OcuPilot.Test.MonitorPortFixture).LogCalls(), 1, tHow _ ": logged once")
+            Do $$$AssertTrue(##class(OcuPilot.Test.MonitorPortFixture).LastLog() [ ("held " _ $List(tCase, 4) _ " sample line"), tHow _ ": naming the count: " _ ##class(OcuPilot.Test.MonitorPortFixture).LastLog())
         }
     }
+}
+
+/// <p>Metrics list, a Windows directory (Story 18.47, DW-2329): a label value ending in an unescaped backslash reads, alone
+/// in its label set and before another label, as does the same value with its backslashes escaped; the labels are the text as
+/// answered, and nothing is skipped or logged.</p>
+/// <p>Mutation: drop the literal pass from <method>OcuPilot.Port.MonitorPort.Samples</method> -&gt; the two unescaped rows
+/// are skipped and this goes red.</p>
+Method TestAValueEndingInAnUnescapedBackslashReads()
+{
+    Set tQuote = """"
+    Set tLabelsA = "dir=" _ tQuote _ "C:\InterSystems\mgr\" _ tQuote
+    Set tLabelsB = "dir=" _ tQuote _ "C:\InterSystems\mgr\" _ tQuote _ ",id=" _ tQuote _ "1" _ tQuote
+    Set tLabelsC = "dir=" _ tQuote _ "C:\\InterSystems\\mgr\\" _ tQuote
+    Set tText = ..Joined($ListBuild("probe_a{" _ tLabelsA _ "} 7", "probe_b{" _ tLabelsB _ "} 8", "probe_c{" _ tLabelsC _ "} 9"))
+    Do ##class(OcuPilot.Test.MonitorPortFixture).SetText(tText)
+    Set tSC = ..ReadList("", .tRows, .tHttp, .tFault)
+    Do $$$AssertStatusOK(tSC, "the read succeeds")
+    Do $$$AssertEquals(tHttp, 200, "with 200")
+    Do $$$AssertEquals(..RowsText(tRows), ..Joined($ListBuild("probe_a|" _ tLabelsA _ "|7:number|", "probe_b|" _ tLabelsB _ "|8:number|", "probe_c|" _ tLabelsC _ "|9:number|")), "one row per sample, the labels as answered")
+    Do $$$AssertEquals(##class(OcuPilot.Test.MonitorPortFixture).LogCalls(), 0, "and nothing is logged")
 }
 
 /// <p>Metrics list, a collection that raises: 500 <code>INTERNAL</code>, logged once, no rows -- never an

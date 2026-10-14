@@ -48,17 +48,20 @@ Method OnAfterOneTest() As %Status
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Egress).DeleteGuarded(), "the egress row this method wrote is removed")
     Do $$$AssertStatusOK(##class(OcuPilot.Test.EgressSslProbe).Remove(..#PROBE), "the probe configuration is removed")
     Do $$$AssertEquals(##class(OcuPilot.Test.EgressSslProbe).Exists(..#PROBE), 0, "and none survives")
-    Do $$$AssertEquals(..OwnReads(), "0 1 1 %OSCertificateStore", "OcuPilot's own provider configuration reads the installer's values again")
+    Do $$$AssertEquals(..OwnReads(), "0 1 1 %OSCertificateStore 16", "OcuPilot's own provider configuration reads the installer's values again")
     Quit $$$OK
 }
 
 /// <p>A configuration the egress row names that is changed on the classic portal to stop requiring the server's
-/// certificate, to be disabled or to become a server, refuses the next call -- <code>PROVIDER.TLS</code> at 503, the
-/// sentence naming it and the remedy -- and the transport is not entered; set back, the call goes through. OcuPilot's
-/// own provider configuration is refused the same, with the restart remedy.</p>
+/// certificate, to be disabled, to become a server or to allow a protocol older than TLS 1.2 (Story 18.47), refuses the next
+/// call -- <code>PROVIDER.TLS</code> at 503, the sentence naming it and the remedy -- and the transport is not entered; set
+/// back, the call goes through, and a floor of TLS 1.3 is never refused. OcuPilot's own provider configuration is refused
+/// the same, with the restart remedy.</p>
 /// <p>Mutation (Rule 19): skip the <code>SslConfigurationState</code> check in
 /// <method>OcuPilot.Port.ProviderPort.Dispatch</method> -- every refused leg reaches the stub and goes red; drop the
-/// <code>Type</code> condition from <code>SslConfigurationState</code> -- the <code>Type</code> leg alone goes red.</p>
+/// <code>Type</code> condition from <code>SslConfigurationState</code> -- the <code>Type</code> leg alone goes red, because the
+/// server it sets has a floor below TLS 1.2 and would otherwise be refused with the floor's sentence; drop the
+/// <code>TLSMinVersion</code> comparison from it -- the floor legs alone go red.</p>
 Method TestAConfigurationChangedOutsideOcuPilotIsRefusedBeforeAnythingIsSent()
 {
     Set tValues("sslConfiguration") = ..#PROBE
@@ -79,7 +82,21 @@ Method TestAConfigurationChangedOutsideOcuPilotIsRefusedBeforeAnythingIsSent()
     Set tChange("TLSMinVersion") = 8
     Set tChange("TLSMaxVersion") = 16
     Set tBack("Type") = 0
-    Do ..RefusedThenRestored("Type", .tChange, .tBack)
+    ; The server leg emptied the TLS 1.3 suites and lowered the protocol range; the vendor's own values go back with the type.
+    Set tBack("Ciphersuites") = "TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256"
+    Set tBack("CipherList") = "ALL:!aNULL:!eNULL:!EXP:!SSLv2"
+    Set tBack("TLSMinVersion") = 16
+    Set tBack("TLSMaxVersion") = 32
+    Do ..RefusedThenRestored("Type", .tChange, .tBack, "no longer an enabled client")
+    ; A client that verifies but allows TLS 1.1 is refused with its own sentence; a floor of TLS 1.3 is not refused.
+    Set tChange("TLSMinVersion") = 8
+    Set tBack("TLSMinVersion") = 16
+    Do ..RefusedThenRestored("TLSMinVersion", .tChange, .tBack, "older than TLS 1.2")
+    Set tHigh("TLSMinVersion") = 32
+    Set tReset("TLSMinVersion") = 16
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.EgressSslProbe).Modify(..#PROBE, .tHigh), "the probe's floor is raised to TLS 1.3")
+    Do $$$AssertEquals(..Call(), "", "and a floor above TLS 1.2 is not refused")
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.EgressSslProbe).Modify(..#PROBE, .tReset), "set back")
 
     Do ##class(OcuPilot.Kernel.State.Egress).DeleteGuarded()
     Set tOwn = ##class(OcuPilot.Kernel.State.Base).#SSLCONFIG
@@ -89,6 +106,16 @@ Method TestAConfigurationChangedOutsideOcuPilotIsRefusedBeforeAnythingIsSent()
     Set tFault = ..Call(.tHttpStatus)
     Do $$$AssertEquals(..Said(tFault) _ " " _ tHttpStatus, "PROVIDER.TLS 503", "the call is refused")
     Do $$$AssertTrue((..Reason(tFault) [ tOwn) && (..Reason(tFault) [ "Restart the instance"), "naming it and the restart remedy: " _ ..Reason(tFault))
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Calls(), tBefore, "and the transport is not entered")
+    Do ..RestoreOwn()
+    Do $$$AssertEquals(..Call(), "", "restored, the next call is not refused")
+    Kill tProps
+    Set tProps("TLSMinVersion") = 8
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.EgressSslProbe).Modify(tOwn, .tProps), "OcuPilot's own provider configuration is given a floor of TLS 1.1 outside OcuPilot")
+    Set tBefore = ##class(OcuPilot.Test.ProviderStub).Calls()
+    Set tFault = ..Call(.tHttpStatus)
+    Do $$$AssertEquals(..Said(tFault) _ " " _ tHttpStatus, "PROVIDER.TLS 503", "the call is refused")
+    Do $$$AssertTrue((..Reason(tFault) [ tOwn) && (..Reason(tFault) [ "older than TLS 1.2") && (..Reason(tFault) [ "Restart the instance") && '(..Reason(tFault) [ "Switches"), "naming it, the protocol and the restart remedy: " _ ..Reason(tFault))
     Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Calls(), tBefore, "and the transport is not entered")
     Do ..RestoreOwn()
     Do $$$AssertEquals(..Call(), "", "restored, the next call is not refused")
@@ -129,14 +156,14 @@ Method TestATurnNamesEveryCauseAndAnAbsentOwnConfigurationTheRestart()
 /// <p>Change the probe the egress row names with <var>pChange</var> outside OcuPilot, assert the next call is refused
 /// <code>PROVIDER.TLS</code> at 503 naming the probe and the remedy without entering the transport, then set it back with
 /// <var>pBack</var> and assert the call is not refused. <var>pLabel</var> names the leg in the messages; both arrays are
-/// consumed.</p>
-Method RefusedThenRestored(pLabel As %String, ByRef pChange, ByRef pBack)
+/// consumed. <var>pSentence</var>, when given, is text the refusal's reason must also carry.</p>
+Method RefusedThenRestored(pLabel As %String, ByRef pChange, ByRef pBack, pSentence As %String = "")
 {
     Do $$$AssertStatusOK(##class(OcuPilot.Test.EgressSslProbe).Modify(..#PROBE, .pChange), "the probe's " _ pLabel _ " is changed outside OcuPilot")
     Set tBefore = ##class(OcuPilot.Test.ProviderStub).Calls()
     Set tFault = ..Call(.tHttpStatus)
     Do $$$AssertEquals(..Said(tFault) _ " " _ tHttpStatus, "PROVIDER.TLS 503", pLabel _ ": the call is refused")
-    Do $$$AssertTrue((..Reason(tFault) [ ..#PROBE) && (..Reason(tFault) [ "Clear the name on Switches") && (..Reason(tFault) [ "classic portal"), "naming the configuration and the remedy: " _ ..Reason(tFault))
+    Do $$$AssertTrue((..Reason(tFault) [ ..#PROBE) && (..Reason(tFault) [ "Clear the name on Switches") && (..Reason(tFault) [ "classic portal") && (..Reason(tFault) [ pSentence), "naming the configuration and the remedy: " _ ..Reason(tFault))
     Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Calls(), tBefore, "and the transport is not entered")
     Do $$$AssertStatusOK(##class(OcuPilot.Test.EgressSslProbe).Modify(..#PROBE, .pBack), "set back")
     Do $$$AssertEquals(..Call(), "", pLabel _ ": the next call is not refused")
@@ -181,11 +208,13 @@ ClassMethod RestoreOwn()
     Set tProps("VerifyPeer") = 1
     Set tProps("Enabled") = 1
     Set tProps("CAFile") = "%OSCertificateStore"
+    Set tProps("TLSMinVersion") = 16
+    Set tProps("CipherList") = "ALL:!aNULL:!eNULL:!EXP:!SSLv2"
     Do ##class(OcuPilot.Test.EgressSslProbe).Modify(##class(OcuPilot.Kernel.State.Base).#SSLCONFIG, .tProps)
 }
 
-/// <p>OcuPilot's own provider configuration's <code>Type</code>, <code>VerifyPeer</code>, <code>Enabled</code> and
-/// <code>CAFile</code>, space-separated.</p>
+/// <p>OcuPilot's own provider configuration's <code>Type</code>, <code>VerifyPeer</code>, <code>Enabled</code>,
+/// <code>CAFile</code> and <code>TLSMinVersion</code>, space-separated.</p>
 ClassMethod OwnReads() As %String
 {
     Set tOut = ""
@@ -193,7 +222,7 @@ ClassMethod OwnReads() As %String
     Set tOrigNS = $NAMESPACE
     Try {
         Set $NAMESPACE = "%SYS"
-        If ##class(Security.SSLConfigs).Exists(tOwn, .tConfig) Set tOut = tConfig.Type _ " " _ tConfig.VerifyPeer _ " " _ tConfig.Enabled _ " " _ tConfig.CAFile
+        If ##class(Security.SSLConfigs).Exists(tOwn, .tConfig) Set tOut = tConfig.Type _ " " _ tConfig.VerifyPeer _ " " _ tConfig.Enabled _ " " _ tConfig.CAFile _ " " _ tConfig.TLSMinVersion
         Set tConfig = ""
         Set $NAMESPACE = tOrigNS
     } Catch ex {

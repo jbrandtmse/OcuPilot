@@ -174,20 +174,19 @@ Method TestTheReadAnswersTheSamplesInOrderAndReportsTheCut()
     Do $$$AssertEquals(tExact.rows.%Size() _ "|" _ tExact.truncated, "4|0", "a cap equal to the sample count is not a cut")
 }
 
-/// <p>A malformed sample fails the screen's read 500 <code>INTERNAL</code>, logged once, with no rows;
-/// a caller missing either pair is refused 403 naming it and no collection is taken.</p>
-/// <p>Mutation (Rule 19): skip the sample with no value in
-/// <method>OcuPilot.Port.MonitorPort.Samples</method> -- the failure leg goes red; drop
+/// <p>A sample with no value is skipped and counted (Story 18.47, DW-2329): the screen's read answers 200 with the other
+/// rows and logs one line; a caller missing either pair is refused 403 naming it and no collection is taken.</p>
+/// <p>Mutation (Rule 19): fail the read on a skipped sample in
+/// <method>OcuPilot.Port.MonitorPort.Invoke</method> -- the first leg goes red; drop
 /// <code>%DB_IRISSYS:READ</code> from <parameter>OcuPilot.Port.MonitorPort.PAIRS</parameter> -- the
 /// refusal legs go red.</p>
-Method TestAMalformedSampleAndAMissingPairFailTheRead()
+Method TestAMalformedSampleIsSkippedAndAMissingPairFailsTheRead()
 {
     Do ##class(OcuPilot.Test.MonitorPortFixture).SetText($ListToString($ListBuild("probe_a 1", "probe_b"), $Char(10)))
     Set tSC = ##class(OcuPilot.Test.Read.ReadFixture).Execute(..#DESCRIPTOR, "", .tAnswer, .tHttp, .tFault)
-    Do $$$AssertStatusNotOK(tSC, "a sample with no value fails the read")
-    Do $$$AssertEquals(tHttp _ " " _ $Select($IsObject(tFault): tFault.code, 1: ""), "500 INTERNAL", "as the generic internal fault")
-    Do $$$AssertEquals($Get(tAnswer), "", "answering no rows")
-    Do $$$AssertEquals(##class(OcuPilot.Test.MonitorPortFixture).LogCalls(), 1, "logged once")
+    Do $$$AssertStatusOK(tSC, "a sample with no value does not fail the read")
+    Do $$$AssertEquals(tHttp _ " " _ $Select($IsObject($Get(tAnswer)): tAnswer.rows.%Size(), 1: "no rows"), "200 1", "it answers the sample that reads")
+    Do $$$AssertEquals(##class(OcuPilot.Test.MonitorPortFixture).LogCalls(), 1, "and logs one line for the one it skipped")
 
     Do ##class(OcuPilot.Test.MonitorPortFixture).Clear()
     Do ##class(OcuPilot.Test.MonitorPortFixture).SetText("probe_a 1")

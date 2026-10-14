@@ -406,6 +406,9 @@ services:
       # routines by the screens' routes and the agent's reads, and confirms an update built from those reads
       # (Story 18.12).
       # classes: RoutineAppListsRead
+      # The web application roles read class creates probe web applications named ocuprobe1847, reads their roles by the
+      # screen's route and the agent's read, and confirms an update built from that read (Story 18.47).
+      # classes: WebAppRolesRead
       # The REST service classes create and delete probe services named OcuProbe1832, and the gate class writes them as
       # principals holding the REST API explorer's pairs and each without one (Story 18.32).
       # classes: RestServiceGate, RestServiceWrite

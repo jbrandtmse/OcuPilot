@@ -2,7 +2,8 @@
 title: 'Story 18.47: Epic 18 burn-down, part 1 (grants, providers, the shell, the monitor)'
 type: 'bugfix'
 created: '2026-10-14'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '59d3a777edc0a64ece89f22c0a616f963be83d50'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -12,6 +13,14 @@ deferred:
   - summary: 'Sweep (DW-2327): two-argument %GetNext over caller JSON answers 500 past MAXSTRING/MAXNUMBER; route key loops through one typed helper beside Kernel.Utils.ReadRequestBody, add .tType at nested loops, check untyped %Get.'
     evidence: 'Story 18.47 plan audit 2026-10-14 (code read): 109 sites in 54 Area files; Screen/Tool about 14, Api 11, Kernel 20-25 (inference).'
     location: 'src/OcuPilot/Area/**/*.cls'
+    severity: low
+  - summary: 'A turn''s one PROVIDER.TLS sentence names the absent, unverified and unreadable causes but not a TLS floor below 1.2.'
+    evidence: 'Story 18.47 implement (code read): TlsReason carries REASONTLSWEAK for the call-time refusal and Test connection; Base.ReasonFor and Error.ReasonForTurnError are unchanged.'
+    location: 'src/OcuPilot/Kernel/Provider/Base.cls'
+    severity: low
+  - summary: 'The page-level selection readers and the checked-set readers outside the table''s three central ones read the view key, which carries an ordinal for a repeated or empty key.'
+    evidence: 'Story 18.47 implement and review (inference): no list with these readers repeats or empties its key; recipe is a grep of selection()[0] and checked() under ui/src/app (the checked-set target in screen-action-handler.ts, code-list.page.ts).'
+    location: 'ui/src/app/areas/**'
     severity: low
 ---
 
@@ -104,6 +113,34 @@ At `45c6bbc0`; paths under `src/OcuPilot/` or `ui/src/app/`.
 
 ## Review Triage Log
 
+### 2026-10-14 - Review pass
+
+- verdicts: 23 findings - high 0, medium 2, low 19, false 2, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` `ProviderSslCallTime` `Type` leg cannot tell a dropped `Type` check from the new floor check (the leg's server has floor 8, and the weak sentence carries the same three phrases) - the leg now asserts "no longer an enabled client"; mutation recorded (run 771).
+  - `[medium]` `[patch]` DW-2328's "actions get the entity key" cell has no test (`entityKeyOf` could be dropped from the three readers with every spec green) - a case in each of `screen-action-handler.spec.ts`, `command-bar.spec.ts`, `command-box.spec.ts`; each mutation red.
+  - `[low]` `[patch]` `DeployedAnywhere`'s unreadable-roster and unreadable-dispatch-map paths are untested - `MgmntPort.TestAPartialReadOfTheDeploymentsDeletesNothing` with a `FailNamespaces` seam; both mutations red (runs 772, 773).
+  - `[low]` `[reject]` the cycle leg does not isolate the visited set from the depth cap - both guards end the walk with the same answer; only the cost differs, bounded at 8 hops.
+  - `[low]` `[patch]` `#5809` is pinned with a synthetic status only - `MftConnectionWrite` asserts `messages.log` gains no `Security.MFT failed` line over the real delete; mutation red (runs 774, 775).
+  - `[low]` `[patch]` pinning tests lacking a `mutation:` line (the skip-and-count edge, `TLSMinVersion` in the field list, the installer's `CipherList` repair, the create and read-back arms) - each run and recorded in `## Verification`; the create and read-back arms are unobservable on 2026.2 and recorded so.
+  - `[low]` `[reject]` the Dashboard link's `target` substitution is untested - none of the four drill-downs is a tab-group head, so the branch cannot differ from the declared route today (wontfix-theoretical).
+  - `[low]` `[patch]` `MftPort`'s class comment still says the vendor's 500 is logged - replaced at its origin.
+  - `[low]` `[reject]` the DW-2328 browser leg depends on the instance's metrics - it reads the store's own answer at that moment and fails loudly if no metric repeats three times.
+  - `[low]` `[patch]` `ProviderSslCallTime`'s header claimed a mutation outcome this story made false - corrected with the `Type` leg's fix above.
+  - `[low]` `[defer]` the checked-set readers (`checkedSetTarget`, `code-list.page.ts`) read view keys - merged into the existing selection-readers entry in `deferred:` (inference: no multi-select list repeats or empties its key).
+  - `[low]` `[reject]` DW-2320 confirm-time re-judgment of a moved target is not newly driven - mint and confirm call the one `GrantsPrivilegeByEffect`, which `AssertGrants` pins directly.
+  - `[low]` `[reject]` DW-2322 form and kernel answer different questions (a static caption beside a transition judgment) - the spec binds the form to `hasRoutineEffect`'s test ("as `hasRoutineEffect` judges").
+  - `[false]` `[reject]` DW-2333 sorts like the sibling DW-2341 reported, so an echoed list reorders - `WebAppUpdate` builds `MatchRoles` as a delta over the fresh read and `ReadBack.Same` compares arrays as multisets, so order cannot report a change.
+  - `[low]` `[reject]` DW-2311 confirm-time re-check and the explorer-pairs holder now refused 403 - both follow the orchestrator ruling (an unenterable namespace refuses); `Resolved` is shared by mint and confirm and `RestServiceWrite` drives both.
+  - `[low]` `[reject]` DW-2167 pinned through `Fail` with a synthetic status, a write with #822 untested - the real LDAP read is Task 0's record, and the remap is unconditional on type.
+  - `[low]` `[reject]` DW-2007 sub-cases at different depths - #5809 now end to end (above), the SQLCODE-mapped branch's removed line is shared by all nine entries, and #5001 stays logged by the Never.
+  - `[low]` `[reject]` DW-2400's turn sentence and `CipherList` limit - the turn sentence is the `deferred:` entry already filed, the `CipherList` limit is the contract's Never.
+  - `[low]` `[reject]` DW-2328's other `selection()[0]` readers - carried from the `deferred:` entry; the edge cell is patched above.
+  - `[low]` `[reject]` DW-2329 answers 200 for every unreadable line, not only the backslash case - the spec's amended AD-36 (owner 2026-10-11) says so.
+  - `[low]` `[reject]` DW-2340 stubs the verdict and omits the focus tooltip - the task binds the inline reason "as `side-bar.ts` does", and the verdict source is the side bar's.
+  - `[low]` `[reject]` DW-2149 is static - the task is to delete the monitor lines, and `ProbeSnapshots` pins their absence.
+  - `[false]` `[reject]` content beyond the contract and Rule 11 lines not determinable from the diff - the installer, floor constant and new classes are the spec's tasks and condition; Epic 20's own changes overlap seven files, all add-only or approved, and `screen-mirror.mjs --check` passes on `screens.generated.ts`.
+
 ## Design Notes
 
 **Governing ADs:** AD-2, 5, 8, 10, 16, 27, 29, 32, 36, 39, 44, 53, 64.
@@ -124,6 +161,7 @@ At `45c6bbc0`; paths under `src/OcuPilot/` or `ui/src/app/`.
 - **AD-36** :812: a sample neither form parses is skipped and counted (owner 2026-10-11). **AD-53** :1169: "deployed" spans every namespace and Forward chains; an unenterable namespace refuses.
 - **Rule 11 union asks:** `strings.ts` values `sslOwnRole`, `sslRefusalProviderNamed` (Epic 20 only adds there); `Prohibited.cls`' DW-2400 hunks; the `ReadTool` count 379 to 380. Add-only: the roster rows, the `ci-throwaway.sh` line; EXPERIENCE.md in place.
 - **Ledger:** each entry `resolved-by:18-47-epic-18-burn-down-part-1`; DW-2327 `dropped`, superseded by the harvested sweep entry, owned by the standing cleanup story (Rule 27).
+- **Task 0, TLS floor (`ocupilot-ci`, 2026-10-14):** `OcuPilotProvider` holds `TLSMinVersion` 16 and `TLSMaxVersion` 32, created by an installer that sets neither, so it is the vendor default; no release's installer set either (`git log -S TLSMinVersion` finds no commit touching `Installer.cls`). A new configuration on 2026.2 reads `TLSMinVersion` 16, `TLSMaxVersion` 32, `CipherList` `ALL:!aNULL:!eNULL:!EXP:!SSLv2` and `VerifyPeer` 0. The vendor's initial floor is 8 where `$$$IsOpenSSL10` (read in `Security/SSLConfigs.cls`, inference for an older host), so an upgraded or older-host instance is repaired at start.
 
 ## Verification
 
@@ -137,9 +175,55 @@ At `45c6bbc0`; paths under `src/OcuPilot/` or `ui/src/app/`.
 
 **Shared surfaces:** the read-tool, surface, round-trip, stage-two and route rosters; the screen mirror; the SSL field lists, sentences and installer properties; `UNLOGGEDREFUSALS`; the REST-service calls; list keys and selection; the metrics contract; the Dashboard links; the probes' snapshots.
 
+**Task 0, LDAP (`ocupilot-ci`):** `SeedPrincipal(,, "%Admin_Operate:U,%DB_IRISSYS:R")` then `RunAs` a `Security.LDAP` `GET` answered 403 `PORT.ACCESSDENIED` (18.27: 404 over #822); `RemoveAll` left 0.
+
+**Run on `ocupilot-ci` (`%UnitTest_Result`, each class one at a time):** `RoutineAppGrant` 5, `WebAppWeakening` 7, `WebAppRolesRead` 2, `MgmntPort` 18, `RestServiceWrite` 13, `RestServiceGate` 3, `AdminPortRefusals` 3, `EcpDataServerWrite` 11, `ProviderSsl` 8, `ProviderSslCallTime` 3, `SslSave` 8, `SslUpdate` 7, `ProviderSslNamed` 5, `ProviderSslCallers` 5, `MonitorPort` 15, `MetricsDescriptor` 6, `ProbeSnapshots` 1; Rule 30: `ReadTool` 28, `SurfaceCoverage` 4, `StageTwoTools` 4, `Descriptor` 60, `ToolRoundTrip` 2, `Wire` 20, `WireSecurityRead` 25, `ToolEmit` 11, `Navigation` 14, `Fault` 6, `AdminPortFault` 26, `AdminPortAbsence` 3, `Installer` 27, `IdentityInstall` 6, `SslReadInstall` 4, `Prohibited` 15, `ToolWrite` 34, `MgmntPortDenial` 2, `MgmntPortWire` 8, `PortCapture` 1, `PortGate` 4, `RestServiceSave` 8, `RestServiceDescriptor` 8, `RestServiceReadBack` 1, `Dashboard` 6, `DashboardDrillDown` 6, `MetricsGate` 3, `RoutineAppListsRead` 2, `RoutineAppGate` 6, `RoutineAppRead` 4, `RoutineAppMembers` 7, `RoutineAppWrite` 15, `RoutineAppWebAppGuard` 2, `WebAppSave` 7, `WebAppWire` 6, `EcpSslConnectionWrite` 6, `ScreenRead` 30, `MftConnectionWrite` 9, `SqlPrivilegeWrite` 8, `SqlColumnPrivilegeWrite` 6, `SqlAdminPrivilegeWrite` 5, `LicenseDescriptor` 8, `LockRemoveTools` 13, `SuperserverWrite` 9, `EndpointCoverage` 2: all green, 0 failed. Client: `npm run test:tools` 1990 pass, `npm run test:components` 245 files and 3103 tests pass, `npm run build` clean (initial total 1.92 MB, largest lazy chunk 83.32 kB), browser specs `prometheus-metrics` 5, `dashboard-drill-downs` 5, `data-table` 9, `ssl-editor` 7, `routine-applications` 4 pass; `check-objectscript.py` and `lint-docs.sh` 0 problems.
+
+**Mutations (Rule 19), each applied on `ocupilot-ci` with the class and its descendants recompiled (client: rebuilt and redeployed), observed red, reverted:**
+
+- mutation: DW-2320 `ApplicationRoleNames` keyed by the target alone -> `RoutineAppGrant.TestAHeldPrivilegedTargetMovedToAnotherMatchingRoleIsAGrant` (5 asserts) and `WebAppWeakening.TestAHeldPrivilegedTargetMovedToAnotherMatchingRoleIsAGrant` red.
+- mutation: DW-2322 `WidensPrivilegedReach` call dropped -> `RoutineAppGrant.TestClearingTheResourceOrEnablingUnderAPrivilegedRoleIsAGrant` (6 asserts) red; `hasReachEffect` answering false -> `routine-app-form.page.spec.ts` "Story 18.47, DW-2322" red.
+- mutation: DW-2333 `read.rows` `Roles` -> `WebAppRolesRead` both tests red.
+- mutation: DW-2311 `DeployedAnywhere` reading `pNamespace` alone -> `MgmntPort.TestADeploymentInAnotherNamespaceRefusesTheDelete`, `RestServiceWrite.TestAServiceReachedThroughForwardRoutesIsRefused` and `RestServiceGate.TestTheDeclaredPairsCreateAndDelete` red; `ReachesDispatch` call dropped -> the router legs of `RestServiceWrite` red.
+- mutation: DW-2167 `Fail`'s #822 remap dropped -> `AdminPortRefusals.TestAnAccessDeniedUnderA404IsARefusalAndLogged` red.
+- mutation: DW-2007 the code ignored in `IsUnloggedRefusal` -> `AdminPortRefusals.TestACodeScopedEntryUnlogsItsCodeAlone` (4 asserts) red; the `#1454` entry deleted -> `EcpDataServerWrite.TestSslWithoutTheClientConfigurationIsRefusedOnItsField` red; the SQLCODE branch's `LogFault` restored -> `AdminPortRefusals.TestASqlCodeMappedRefusalLogsNothing` red.
+- mutation: DW-2400 the floor comparison dropped from `SslConfigurationState` -> `ProviderSslCallTime` floor legs red; `CipherList` dropped from `OcuPilotSslFields` -> `SslSave`, `SslUpdate` and `ProviderSslNamed` red; the installer's `TLSMinVersion` repair deleted -> `ProviderSsl.TestInstallRaisesALoweredFloorAndKeepsAHigherOne` and `TestInstallRepairsADriftedConfiguration` red; its `TLSMaxVersion` branch deleted -> the first red (vendor #899); client `OWN_FIELDS` without `CipherList` -> `ssl-form.page.spec.ts` AC3 red.
+- mutation: DW-2328 `viewKeys` answering `rowKey` -> `table-model.test.mjs`, `data-table.spec.ts` and `prometheus-metrics.browser-spec.mjs` (rebuilt, redeployed) red.
+- mutation: DW-2329 the literal pass dropped -> `MonitorPort.TestAValueEndingInAnUnescapedBackslashReads` red.
+- mutation: DW-2340 the verdict dropped from `linksFor` -> `dashboard.page.spec.ts` "Story 18.47, DW-2340" red.
+- mutation: DW-2149 one monitor line restored (`LicenseProbe`) -> `ProbeSnapshots.TestNoSnapshotHoldsTheMonitorState` red.
+- mutation (review pass): DW-2400 the `Type` condition dropped from `SslConfigurationState` -> `ProviderSslCallTime` (the `Type` leg's "no longer an enabled client" sentence; run 771).
+- mutation (review pass): DW-2311 an unreadable namespace roster continued with an empty one -> `MgmntPort.TestAPartialReadOfTheDeploymentsDeletesNothing` first leg (run 772); an unreadable dispatch map continued with no targets -> its second leg (run 773).
+- mutation (review pass): DW-2007 `Security.MFT/DELETE/500/#5809` dropped from `UNLOGGEDREFUSALS` -> `MftConnectionWrite.TestADeleteOverAnAbsentClientIsAnsweredAsDeleted` (log leg, run 774) and `AdminPortRefusals` (run 775).
+- mutation (review pass): DW-2328 `entityKeyOf` dropped from `screen-action-handler.ts` `selected()`, from `command-bar.ts` and from `command-box.ts` -> the new "Story 18.47, DW-2328" case in each of the three specs.
+- mutation (review pass): DW-2329 `pSkipped` left uncounted in `Samples` -> `MonitorPort.TestAnUnreadableSampleIsSkippedAndCounted` and `MetricsDescriptor.TestAMalformedSampleIsSkippedAndAMissingPairFailsTheRead` (runs 776, 777).
+- mutation (review pass): DW-2400 `TLSMinVersion` dropped from `OcuPilotSslFields` -> `SslSave`, `SslUpdate` and `ProviderSslNamed` (runs 778-780); the installer's `CipherList` repair arm disabled -> `ProviderSsl.TestInstallRepairsADriftedConfiguration` (run 781).
+- Unobservable on 2026.2: the installer's create-time `TLSMinVersion` and `CipherList` lines (the vendor default equals them; `ProviderSsl` stays green without them, run 782, and they matter on a host whose initial floor is 8) and `AssertSslConfiguration`'s two new read-back arms (the vendor refuses or applies a `Modify` before the read, inference).
+- After the review patches every class in the Run line above that a patch or mutation touched was rerun green on the restored tree: `ProviderSslCallTime` 3, `MgmntPort` 19, `MftConnectionWrite` 9, `AdminPortRefusals` 3, `MonitorPort` 15, `MetricsDescriptor` 6, `SslSave` 8, `SslUpdate` 7, `ProviderSslNamed` 5, `ProviderSsl` 8, `RestServiceWrite` 13, `RestServiceGate` 3 (runs 783-794); the three shell specs 233 pass.
+
+**Changed behavior pinned in passing:** a REST service delete now reads every namespace the caller can enter, so `RestServiceGate` gives its holder read on each namespace's databases before the delete and asserts the 403 without it; a monitor sample neither reading accepts is skipped, so `MonitorPort` and `MetricsDescriptor` assert 200 with one log line; `ReadTool` counts 380 tools and 61 descriptors with criteria.
+
 every test added or changed passes on a fresh environment, in either order
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+**Change.** Eleven Epic 18 entries fixed, each with a pinning test and a recorded mutation: DW-2320 (grants keyed by matching role and target), DW-2322 (a cleared Resource or enabling is a grant; the form states it), DW-2333 (`webapp.webapproles.read`, the 380th tool), DW-2311 (the deployed check spans every namespace and Forward chains, failing closed), DW-2167 (#822 under a 404 is 403, logged), DW-2007 (code-scoped unlogged refusals; the SQLCODE-mapped branch logs nothing), DW-2400 (`TLSMinVersion` and `CipherList` protected on both SSL arms; the installer creates and repairs both at every start; a floor below TLS 1.2 refuses the call), DW-2328 (unique view keys beside entity keys), DW-2329 (backslash-literal second read; unreadable lines skipped and counted, 200), DW-2340 (gated Dashboard drill-downs), DW-2149 (no monitor line in the five probes' `Snapshot`). DW-2327 changed no `%GetNext` site; its sweep entry is in `deferred:`.
+
+**Files.**
+
+- `src/OcuPilot/Install/Installer.cls`, `Kernel/Provider/Base.cls`, `Kernel/State/Base.cls`, `Port/ProviderPort.cls`, `Kernel/Proposal/Prohibited.cls`, `Screen/Tool/SslUpdate.cls`: DW-2400 and DW-2320/2322.
+- `Port/AdminPort.cls`, `Port/MgmntPort.cls`, `Port/MonitorPort.cls`, `Port/MftPort.cls` (comment), `Screen/Descriptor/WebAppRoleList.cls`, `Screen/Tool/WebAppUpdate.cls`: DW-2167/2007, DW-2311, DW-2329, DW-2333.
+- `src/OcuPilot/Test/**`: three new classes (`AdminPortRefusals`, `ProbeSnapshots`, `WebAppRolesRead`), changed pinning classes, fixtures, rosters and the five probes' snapshots; `scripts/ci-throwaway.sh`: one `# classes:` line.
+- `ui/src/app/**`, `ui/src/styles/_components.scss`, `ui/browser/**`, `ui/tools/**`: DW-2328 (`table-model.ts`, `data-table.ts`, the three readers), DW-2340 (`dashboard.page.ts`), DW-2322 and DW-2400 form lines, `strings.ts` values, the regenerated `screens.generated.ts`, and their specs.
+- `EXPERIENCE.md` :484-485: the SSL sentences, in place.
+
+**Review.** Two layers, 23 findings: 2 medium and 5 low patched (the `Type` leg's sentence, the entity-key cell for the three readers, the partial-read and `#5809` log legs, the missing mutation lines, two stale comments), 1 low merged into the existing deferred entry, 13 low and 2 false rejected with reasons in the Review Triage Log. No code under test changed in the patches; each new test went red under its mutation and green again on the restored tree.
+
+**Follow-up review.** Not recommended: the two patched mediums were test additions, each shown red under a mutation, with the touched classes and specs rerun green.
+
+**Verification.** Every class in `## Verification` green on `ocupilot-ci` (the story's run and the lead's rerun of the pinning and sweep classes); `test:tools` 1990, `test:components` 245 files and 3106 tests, `npm run build` clean (initial 1.92 MB, largest lazy chunk 83.32 kB); browser specs `prometheus-metrics` 5, `ssl-editor` 7, `dashboard-drill-downs` 5, plus the story run's `data-table` 9 and `routine-applications` 4; `check-objectscript.py` and `lint-docs.sh` 0 problems; the throwaway reads S0 (no probe-named object, `OcuPilotProvider` at 16 / 32 / the installer cipher list, monitor state 0).
+
+**Residual risks.** A principal holding only the REST explorer's declared pairs is refused 403 on a service delete until it can read every namespace's databases (the ruling for an unenterable namespace). The page-level selection and checked-set readers read view keys (deferred, inference). The turn's one `PROVIDER.TLS` sentence does not name the floor (deferred).

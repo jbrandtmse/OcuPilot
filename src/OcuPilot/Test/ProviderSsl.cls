@@ -1,6 +1,7 @@
 /// <p><b>AC3's installer half.</b> Install creates the outbound TLS configuration AD-32 names, with
-/// the three properties that decide whether an HTTPS call verifies anything, and repairs them --
-/// and the enabled flag -- when it finds them drifted rather than adopting whatever is there.</p>
+/// the three properties that decide whether an HTTPS call verifies anything, a minimum TLS version of 1.2
+/// and its cipher list, and repairs them -- and the enabled flag -- when it finds them drifted rather than
+/// adopting whatever is there.</p>
 /// <p><b>It creates a security object on the instance, so it runs on a throwaway container only</b>
 /// (<file>scripts/ci-throwaway.sh</file>, <code>ocupilot-ci</code>).
 /// <method>OnBeforeAllTests</method> refuses anywhere <parameter>ARMINGVARIABLE</parameter> does not
@@ -149,19 +150,47 @@ Method TestInstallRepairsADriftedConfiguration()
     Set tDrift("VerifyPeer") = 0
     Set tDrift("CAFile") = ""
     Set tDrift("Enabled") = 0
+    Set tDrift("TLSMinVersion") = 8
+    Set tDrift("CipherList") = "ALL:!aNULL"
     Do $$$AssertStatusOK(..Modify(..#CONFIGNAME, .tDrift), "the configuration is then drifted by hand on every repaired property a drift can reach")
     Do $$$AssertEquals(..Property(..#CONFIGNAME, "VerifyPeer"), 0, "so it verifies no peer")
     Do $$$AssertEquals(..Property(..#CONFIGNAME, "CAFile"), "", "trusts no certificate store")
-    Do $$$AssertEquals(..Property(..#CONFIGNAME, "Enabled"), 0, "and is disabled outright")
+    Do $$$AssertEquals(..Property(..#CONFIGNAME, "Enabled"), 0, "is disabled outright")
+    Do $$$AssertEquals(..Property(..#CONFIGNAME, "TLSMinVersion"), 8, "allows TLS 1.1")
+    Do $$$AssertEquals(..Property(..#CONFIGNAME, "CipherList"), "ALL:!aNULL", "and offers a cipher list the installer did not set")
 
     Do ##class(OcuPilot.Test.InstallerProbe).Clear()
     Do $$$AssertStatusOK(##class(OcuPilot.Test.InstallerProbe).Install(..#PROFILE), "and a further install runs over the drift")
     Do ..AssertProperties("after the drift was repaired")
     Set tReported = ##class(OcuPilot.Test.InstallerProbe).CapturedAll("warn")
-    For tField = "VerifyPeer", "CAFile", "Enabled" {
+    For tField = "VerifyPeer", "CAFile", "Enabled", "TLSMinVersion", "CipherList" {
         Do $$$AssertTrue(tReported [ tField, "the repair report names the drifted " _ tField _ ": " _ tReported)
     }
     Do ##class(OcuPilot.Test.InstallerProbe).Clear()
+}
+
+/// <p>The start repair of the TLS floor (Story 18.47, AD-32): a configuration whose minimum TLS version was lowered,
+/// or whose ceiling was set below the floor the installer sets, is repaired by the next install, never refused -- the
+/// floor reads TLS 1.2 or later, and a ceiling below it moves to TLS 1.3. A floor an operator raised to TLS 1.3 is kept.</p>
+/// <p>Mutation (Rule 19): delete <method>OcuPilot.Install.Installer.EnsureSslConfiguration</method>'s
+/// <code>TLSMinVersion</code> arm -- the floor stays 8 and the first leg goes red; delete the <code>TLSMaxVersion</code>
+/// line inside it -- the install fails on the vendor's floor-above-ceiling refusal and the second leg goes red.</p>
+Method TestInstallRaisesALoweredFloorAndKeepsAHigherOne()
+{
+    Do $$$AssertStatusOK(##class(OcuPilot.Install.Installer).Install(..#PROFILE), "the probe install creates the configuration")
+    Set tLow("TLSMinVersion") = 8
+    Do $$$AssertStatusOK(..Modify(..#CONFIGNAME, .tLow), "its floor is lowered by hand to TLS 1.1")
+    Do $$$AssertStatusOK(##class(OcuPilot.Install.Installer).Install(..#PROFILE), "a further install runs over it")
+    Do $$$AssertEquals(..Property(..#CONFIGNAME, "TLSMinVersion"), 16, "and the floor reads TLS 1.2 again")
+    Set tCeiling("TLSMinVersion") = 8
+    Set tCeiling("TLSMaxVersion") = 8
+    Do $$$AssertStatusOK(..Modify(..#CONFIGNAME, .tCeiling), "its floor and its ceiling are both set to TLS 1.1")
+    Do $$$AssertStatusOK(##class(OcuPilot.Install.Installer).Install(..#PROFILE), "a further install runs over it")
+    Do $$$AssertEquals(..Property(..#CONFIGNAME, "TLSMinVersion") _ " " _ ..Property(..#CONFIGNAME, "TLSMaxVersion"), "16 32", "and the floor reads TLS 1.2 beside a TLS 1.3 ceiling")
+    Set tHigh("TLSMinVersion") = 32
+    Do $$$AssertStatusOK(..Modify(..#CONFIGNAME, .tHigh), "its floor is raised by hand to TLS 1.3")
+    Do $$$AssertStatusOK(##class(OcuPilot.Install.Installer).Install(..#PROFILE), "a further install runs over it")
+    Do $$$AssertEquals(..Property(..#CONFIGNAME, "TLSMinVersion"), 32, "and keeps the higher floor")
 }
 
 /// <p><b>Why the drift test cannot reach <method>EnsureSslConfiguration</method>'s fourth repair
@@ -215,8 +244,8 @@ ClassMethod ServerTypeWithoutCertificateIsRefused(Output pText As %String) As %B
     Quit tRefused
 }
 
-/// <p>Assert the four properties install writes -- AD-32's three plus the enabled flag -- read
-/// back through the vendor's own API.</p>
+/// <p>Assert the six properties install writes -- AD-32's three, the enabled flag, the minimum TLS version and the cipher
+/// list -- read back through the vendor's own API.</p>
 /// <p><b>The expected values are literals, and that is load-bearing.</b> Comparing the
 /// configuration against <parameter>OcuPilot.Install.Installer.SSLVERIFYPEER</parameter> cannot
 /// fail: changing the installer's parameter moves the expectation with it, so a run that created a
@@ -229,10 +258,12 @@ Method AssertProperties(pWhen As %String)
     Do $$$AssertEquals(..Property(..#CONFIGNAME, "Type"), 0, pWhen _ ": the configuration is client-typed")
     Do $$$AssertEquals(..Property(..#CONFIGNAME, "VerifyPeer"), 1, pWhen _ ": it requires the server's certificate rather than continuing when verification fails")
     Do $$$AssertEquals(..Property(..#CONFIGNAME, "CAFile"), "%OSCertificateStore", pWhen _ ": and trusts the operating system's own certificate store")
-    Do $$$AssertEquals(..Property(..#CONFIGNAME, "Enabled"), 1, pWhen _ ": and is enabled")
+    Do $$$AssertEquals(..Property(..#CONFIGNAME, "Enabled"), 1, pWhen _ ": is enabled")
+    Do $$$AssertEquals(..Property(..#CONFIGNAME, "TLSMinVersion"), 16, pWhen _ ": allows nothing older than TLS 1.2")
+    Do $$$AssertEquals(..Property(..#CONFIGNAME, "CipherList"), "ALL:!aNULL:!eNULL:!EXP:!SSLv2", pWhen _ ": and offers the cipher list the installer sets")
 }
 
-/// <p>The installer's three parameters spell exactly what AD-32 asks for. Held against the same
+/// <p>The installer's parameters spell exactly what AD-32 asks for. Held against the same
 /// literals <method>AssertProperties</method> uses, so the parameters cannot be changed to
 /// something else without a red test -- which is the other half of not comparing a value against
 /// its own source.</p>
@@ -241,6 +272,8 @@ Method TestTheInstallersPropertiesAreTheOnesAD32Names()
     Do $$$AssertEquals(##class(OcuPilot.Install.Installer).#SSLTYPECLIENT, 0, "the installer creates a client-typed configuration")
     Do $$$AssertEquals(##class(OcuPilot.Install.Installer).#SSLVERIFYPEER, 1, "requiring the server's certificate")
     Do $$$AssertEquals(##class(OcuPilot.Install.Installer).#SSLCAFILE, "%OSCertificateStore", "and trusting the operating system's own certificate store")
+    Do $$$AssertEquals(##class(OcuPilot.Install.Installer).#SSLTLSMINVERSION, 16, "allowing nothing older than TLS 1.2")
+    Do $$$AssertEquals(##class(OcuPilot.Install.Installer).#SSLCIPHERLIST, "ALL:!aNULL:!eNULL:!EXP:!SSLv2", "with the vendor's own cipher list")
 }
 
 /// <p>Whether <var>pName</var> is a TLS configuration on this instance.</p>

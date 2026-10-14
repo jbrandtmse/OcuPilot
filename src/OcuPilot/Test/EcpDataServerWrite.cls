@@ -255,10 +255,13 @@ Method TestBadUpdateFieldsAreRefusedBeforeAnyWrite()
 
 /// <p>B2: SSL/TLS while the <code>%ECPClient</code> SSL/TLS configuration is absent is refused on
 /// <code>SSLConfig</code> on both callers' create and on the form's update, with nothing stored and the
-/// update's other change not applied.</p>
+/// update's other change not applied, and <code>messages.log</code> gains no <code>ECP.DataServer failed</code> line (DW-2007).</p>
+/// <p>Mutation (Rule 19): drop <code>ECP.DataServer/PUT/500/#1454</code> from
+/// <parameter>OcuPilot.Port.AdminPort.UNLOGGEDREFUSALS</parameter> -- the log leg goes red.</p>
 Method TestSslWithoutTheClientConfigurationIsRefusedOnItsField()
 {
     Do $$$AssertEquals($ClassMethod(..#PROBE, "ClientConfigured"), 0, "the instance holds no %ECPClient SSL/TLS configuration, as a stock instance does")
+    Set tLines = $ClassMethod(..#PROBE, "LineCount", "messages.log")
     Set tSC = $ClassMethod(..#SAVE, "Handle", "create", "", {"Name": "ocuprobeecps", "Address": "192.0.2.10", "Port": 1972, "SSLConfig": 1}, .tAnswer, .tStatus)
     Do $$$AssertEquals(tStatus _ " " _ ##class(OcuPilot.Test.LicenseKey).Violation(tAnswer), "422 SSLConfig:" _ ##class(OcuPilot.Api.EcpError).#SSLCLIENT, "the form's create is refused on SSLConfig: " _ $Extract(tAnswer, 1, 200))
     Do $$$AssertEquals($ClassMethod(..#PROBE, "Holds", "OCUPROBEECPS"), 0, "and nothing is stored")
@@ -271,6 +274,8 @@ Method TestSslWithoutTheClientConfigurationIsRefusedOnItsField()
     Do $$$AssertEquals(tStatus _ " " _ ##class(OcuPilot.Test.LicenseKey).Violation(tAnswer), "422 SSLConfig:" _ ##class(OcuPilot.Api.EcpError).#SSLCLIENT, "the form's update is refused on SSLConfig: " _ $Extract(tAnswer, 1, 200))
     Set tStored = $ClassMethod(..#PROBE, "Stored", "OCUPROBEECPU")
     Do $$$AssertEquals($Select($IsObject(tStored): tStored.%Get("Port") _ " " _ tStored.%Get("SSLConfig"), 1: ""), "1972 0", "and neither the port nor SSL/TLS is applied")
+    Set tAfter = $ClassMethod(..#PROBE, "LinesAfter", "messages.log", tLines)
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "CountContaining", tAfter, "ECP.DataServer failed"), 0, "and messages.log gains no ECP.DataServer failed line")
 }
 
 /// <p>B3: a delete on both callers sends <code>DELETE</code>; the server leaves the list and the

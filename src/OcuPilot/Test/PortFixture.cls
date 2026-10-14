@@ -103,6 +103,14 @@ ClassMethod Clear()
     Kill ^||OcuPilotPortFixture
 }
 
+/// <p>The port's <method>OcuPilot.Port.AdminPort.Fail</method> for the vendor outcome <var>pVendorSC</var> answered with
+/// HTTP <var>pHttp</var> to a request of type <var>pType</var> on <var>pEndpoint</var>, as a read when <var>pRead</var>.
+/// Its log line, if any, lands in <class>OcuPilot.Test.LogProbe</class>'s capture.</p>
+ClassMethod FailWith(pEndpoint As %String, pType As %String, pHttp As %Integer, pVendorSC As %Status, pRead As %Boolean, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+{
+    Quit ..Fail(pEndpoint, pHttp, pVendorSC, .pHttpStatus, .pFault, "", "", pRead, pType)
+}
+
 ClassMethod AdminApiClass() As %String
 {
     Set tForced = $Get(^||OcuPilotPortFixture("api"), "")

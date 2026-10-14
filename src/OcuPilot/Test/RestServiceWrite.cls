@@ -246,6 +246,44 @@ Method TestADeployedServiceAndAWebApplicationPathAreRefused()
     Do $$$AssertEquals(tStatus, 200, "and its Delete is accepted")
 }
 
+/// <p>DW-2311 (AD-53): a service no web application dispatches to directly is still deployed when a router's
+/// <code>UrlMap</code> forwards to it -- through one router, through a router that forwards to that router, and from a web
+/// application of another namespace dispatching to its dispatch class -- and its Delete is 409
+/// <code>RESTSERVICE.DEPLOYED</code> on the screen and at the agent's mint with nothing deleted. A pair of routers that
+/// forward to each other ends the walk, and a service they do not reach deletes.</p>
+/// <p>Mutation (Rule 19): drop the <method>OcuPilot.Port.MgmntPort.ReachesDispatch</method> call from
+/// <method>OcuPilot.Port.MgmntPort.DeployedAnywhere</method> -- the router legs delete the service and go red; read
+/// <code>pNamespace</code> alone -- the other-namespace leg goes red.</p>
+Method TestAServiceReachedThroughForwardRoutesIsRefused()
+{
+    Set tDeployed = ##class(OcuPilot.Api.RestServiceError).#DEPLOYED
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Seed", ..#NAMESPACE, "OcuProbe1832C"), "a probe service is built")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Seed", ..#NAMESPACE, "OcuProbe1832D"), "and a second one, nothing reaches")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "SeedRouter", ..#NAMESPACE, "OcuProbe1832R.A", "OcuProbe1832C.disp"), "a router forwards to the first")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "SeedRouter", ..#NAMESPACE, "OcuProbe1832R.B", "OcuProbe1832R.A"), "a second router forwards to the first router")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "DeployClass", ..#NAMESPACE, "OcuProbe1832R.B", ..#APPLICATION), "and a web application dispatches to the second")
+    Do ..Act("delete", "OcuProbe1832C", .tStatus, .tBody)
+    Do $$$AssertEquals(tStatus _ " " _ $Select($IsObject(tBody): tBody.code, 1: ""), "409 " _ tDeployed, "the Delete is refused through two routers")
+    Do ..EnableDelete()
+    Set tSC = ..Dispatch(..#DELETE, ..DeleteInput("OcuProbe1832C"), .tContent, .tIsError, .tProposal)
+    Do $$$AssertTrue($$$ISOK(tSC) && tIsError && (..CodeOf($Get(tContent)) = tDeployed), "and at the agent's mint: " _ $Extract($Get(tContent), 1, 200))
+    Do $$$AssertEquals(..Classes("OcuProbe1832C"), "111", "nothing was deleted")
+
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "RemoveAll", ..#NAMESPACE), "the probes are removed")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Seed", ..#NAMESPACE, "OcuProbe1832C"), "the service is built again")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "DeployClass", ..#OTHERSCOPE, "OcuProbe1832C.disp", ..#APPLICATION), "a web application of " _ ..#OTHERSCOPE _ " dispatches to its dispatch class")
+    Do ..Act("delete", "OcuProbe1832C", .tStatus, .tBody)
+    Do $$$AssertEquals(tStatus _ " " _ $Select($IsObject(tBody): tBody.code, 1: ""), "409 " _ tDeployed, "the Delete is refused for another namespace's web application")
+
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "RemoveAll", ..#NAMESPACE), "the probes are removed")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Seed", ..#NAMESPACE, "OcuProbe1832D"), "a service nothing reaches is built")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "SeedRouter", ..#NAMESPACE, "OcuProbe1832R.A", "OcuProbe1832R.B"), "a router forwards to a second")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "SeedRouter", ..#NAMESPACE, "OcuProbe1832R.B", "OcuProbe1832R.A"), "which forwards back to it")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "DeployClass", ..#NAMESPACE, "OcuProbe1832R.A", ..#APPLICATION), "and a web application dispatches to the cycle")
+    Do ..Act("delete", "OcuProbe1832D", .tStatus, .tBody)
+    Do $$$AssertEquals(tStatus, 200, "the walk ends and the service the cycle does not reach is deleted")
+}
+
 /// <p>A delete minted for a service nothing deploys is refused at the confirm as a changed target once a web application
 /// has been made to dispatch to it, and the service stands (C3: no vendor delete is sent).</p>
 /// <p>Mutation (Rule 19): drop the dispatch-class comparison from <method>OcuPilot.Port.MgmntPort.Resolved</method> -- the

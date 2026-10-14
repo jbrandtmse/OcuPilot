@@ -745,7 +745,7 @@ ClassMethod VendorRead(pRead As %String) As %DynamicObject
 /// file journaling writes now and the journal state; every <code>Config.Journal</code> property and
 /// <code>Config.config</code>'s <code>wijdir</code> and <code>targwijsz</code>; the listed file count
 /// and the newest five names; each probe directory's files; the admin API's async task rows; the
-/// monitor state; the line counts of <code>messages.log</code> and <code>alerts.log</code> and the
+/// line counts of <code>messages.log</code> and <code>alerts.log</code> and the
 /// count of ERROR #7846 lines; and the instance's users, roles, resources and OcuPilot's
 /// applications.</p>
 /// <p>Each vendor read runs in <code>%SYS</code> by explicit save and restore.</p>
@@ -793,7 +793,6 @@ ClassMethod Snapshot() As %DynamicArray
             If tResult.%Next() Set tLines("asynctask|rows|" _ tResult.%Get("N")) = ""
             Set tResult = ""
         }
-        Set tLines("monitor|" _ $SYSTEM.Monitor.State()) = ""
         Set tRS = ##class(%ResultSet).%New("Security.Users:List")
         If $$$ISOK(tRS.Execute("*")) {
             While tRS.Next() {

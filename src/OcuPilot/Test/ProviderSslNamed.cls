@@ -1,6 +1,6 @@
 /// <p>Pins Story 18.40's self-protection of the SSL/TLS configuration the egress row names (AD-10 as amended 2026-10-13):
 /// <code>PROHIBITED.PROVIDERSSL</code> on a delete, a create under its name, and a change to its type, peer verification,
-/// trusted certificates or enablement, from the SSL/TLS Save, the list's Delete and the agent's mint and confirm, with its
+/// trusted certificates, minimum TLS version, cipher list or enablement, from the SSL/TLS Save, the list's Delete and the agent's mint and confirm, with its
 /// one published sentence; the configuration's other fields pass; once another is named, or none, it is refused nothing; a
 /// failed read of the egress row refuses.</p>
 /// <p>Every write goes to a port that records it and never sends it, or to the fixture's, so no leg changes the instance.
@@ -131,20 +131,21 @@ Method TestACreateUnderOcuPilotsOwnProviderNameIsRefused()
     Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).WriteCount(), 0, "with no write")
 }
 
-/// <p>With the egress row naming a configuration, a change to its peer verification or enablement at the Save, and its
-/// Delete from the list, are refused <code>PROHIBITED.PROVIDERSSL</code> with the published sentence and nothing reaches
-/// the port, while a change to its description passes the set and reaches the held port; a change to its type or
-/// trusted certificates is refused by the set; an agent change minted before the naming is refused at its confirm, and one
+/// <p>With the egress row naming a configuration, a change to its peer verification, enablement, minimum TLS version or
+/// cipher list at the Save, and its Delete from the list, are refused <code>PROHIBITED.PROVIDERSSL</code> with the
+/// published sentence and nothing reaches the port, while a change to its description passes the set and reaches the held
+/// port; a change to its type or trusted certificates is refused by the set; an agent change minted before the naming is refused at its confirm, and one
 /// asked after it is refused at the mint with the same sentence. Naming another configuration, or none, lifts every
 /// refusal.</p>
 /// <p>Mutation (Rule 19): make <method>OcuPilot.Kernel.Proposal.Prohibited.ProviderSsl</method> answer 0 -- every
-/// refused leg reaches the port and goes red.</p>
-Method TestTheNamedConfigurationRefusesItsFourFieldsAndItsDeleteOnBothCallers()
+/// refused leg reaches the port and goes red; drop <code>TLSMinVersion</code> or <code>CipherList</code> from
+/// <method>OcuPilot.Kernel.Proposal.Prohibited.OcuPilotSslFields</method> -- that field's leg goes red.</p>
+Method TestTheNamedConfigurationRefusesItsSixFieldsAndItsDeleteOnBothCallers()
 {
     Do $$$AssertStatusOK(##class(OcuPilot.Test.SslSave).Fresh(..#PROBE, .tFresh), "the probe reads fresh")
     If '$IsObject($Get(tFresh)) Quit
     Do ..Name(..#PROBE)
-    For tBody = "{""VerifyPeer"":0}", "{""Enabled"":false}" {
+    For tBody = "{""VerifyPeer"":0}", "{""Enabled"":false}", "{""TLSMinVersion"":8}", "{""CipherList"":[""ALL""]}" {
         Do $ClassMethod(..#HELDPORT, "Clear")
         Set tSC = $ClassMethod(..#HELDSAVE, "Update", ..#PROBE, ##class(%DynamicObject).%FromJSON(tBody), .tHttp, .tFault, .tViolations)
         Do $$$AssertEquals(tHttp _ " " _ $Select($IsObject($Get(tFault)): tFault.code, 1: ""), "403 " _ $Parameter(..#SET, "PROVIDERSSL"), tBody _ " is refused as the provider configuration's")
@@ -190,7 +191,7 @@ Method TestTheNamedConfigurationRefusesItsFourFieldsAndItsDeleteOnBothCallers()
     }
 }
 
-/// <p>A read of the egress row that fails refuses the delete and the four fields of any SSL/TLS configuration, and a create
+/// <p>A read of the egress row that fails refuses the delete and the six fields of any SSL/TLS configuration, and a create
 /// under any name, since the set cannot say the configuration is not the one calls go through; the shipped read, with no
 /// row, refuses none of them.</p>
 /// <p>Mutation (Rule 19): answer 0 for a failed read in <method>OcuPilot.Kernel.Proposal.Prohibited.ProviderSsl</method>

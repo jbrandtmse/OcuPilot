@@ -14,6 +14,7 @@ import { ScreenStores, type ScreenStore } from '../core/screen-store';
 import { Session } from '../core/session';
 import { SCREENS, type ScreenDeclaration } from '../core/screens.generated';
 import { STRINGS, stringFor } from '../core/strings';
+import { entityKeyOf } from '../core/table-model';
 import { tableDeclaration } from '../testing/table-declaration';
 import { DataTable, TABLE_STRING_LOOKUP } from './data-table';
 import { stubAccountPreferences } from '../testing/account-preferences';
@@ -857,6 +858,51 @@ describe('the data table', () => {
     await settle(wired.fixture);
     expect(TestBed.inject(Router).url).toBe('/web-applications/probe/%252Fcsp%252Fapp02?ns=HSCUSTOM');
     expect(wired.store.selection()).toEqual(['/csp/app01']);
+  });
+
+  it('Story 18.47, DW-2328: rows whose names repeat or are empty each select alone, and ArrowDown walks every row', async () => {
+    // Mutation (Rule 19): make `viewKeys` answer `rowKey` for every row -> a click selects every row of a name and
+    // ArrowDown stops at a group's first row, so the selection and the walk both go red.
+    const base = rows(1)[0];
+    const repeated = [
+      { ...base, Name: 'Metric', Count: 1 },
+      { ...base, Name: 'Metric', Count: 2 },
+      { ...base, Name: '', Count: 3 },
+      { ...base, Name: 'Other', Count: 4 },
+      { ...base, Name: '', Count: 5 },
+      { ...base, Name: 'Metric', Count: 6 },
+    ];
+    const wired = await wire(tableDeclaration(), ok(repeated));
+    await wired.refresh.readNow();
+    await settle(wired.fixture);
+    const rowElements = (): HTMLElement[] => Array.from(wired.host().querySelectorAll('[role="row"][aria-rowindex]')).filter((row) => Number(row.getAttribute('aria-rowindex')) > 1) as HTMLElement[];
+    expect(rowElements()).toHaveLength(6);
+    const selectedRows = (): number => rowElements().filter((row) => row.getAttribute('aria-selected') === 'true').length;
+
+    // A click on the second row of a repeated name selects that row and no other.
+    const metricRows = rowElements().filter((row) => row.textContent?.includes('Metric'));
+    expect(metricRows).toHaveLength(3);
+    (metricRows[1].querySelectorAll('[role="gridcell"]')[2] as HTMLElement).click();
+    await settle(wired.fixture);
+    expect(selectedRows()).toBe(1);
+    expect(metricRows[1].getAttribute('aria-selected')).toBe('true');
+    expect(entityKeyOf(wired.store.selection()[0] ?? 'unset')).toBe('Metric');
+
+    // ArrowDown walks every row, the empty-named ones included.
+    const grid = wired.host().querySelector('[role="grid"]') as HTMLElement;
+    grid.focus();
+    wired.store.setActive('');
+    wired.store.setSelection([]);
+    await settle(wired.fixture);
+    const walked: string[] = [];
+    for (let step = 0; step < 6; step += 1) {
+      grid.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+      await settle(wired.fixture);
+      expect(selectedRows()).toBe(1);
+      walked.push(grid.getAttribute('aria-activedescendant') ?? '');
+    }
+    expect(walked).toEqual(rowElements().map((row) => row.id));
+    expect(new Set(walked).size).toBe(6);
   });
 
   it('Story 5.7: a marked row is announced once, politely, naming the row and what happened', async () => {

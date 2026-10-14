@@ -38,7 +38,7 @@ import { selfProtectionReason } from '../core/self-protection';
 import { Session } from '../core/session';
 import { ShellState } from '../core/shell-state';
 import { STRINGS, stringFor } from '../core/strings';
-import { rowFor } from '../core/table-model';
+import { entityKeyOf, rowFor } from '../core/table-model';
 
 /** The command box's name on the overlay stack (DW-137). */
 export const COMMAND_BOX_OVERLAY_ID = 'command-box';
@@ -540,7 +540,7 @@ export class CommandBox {
     // "Select a row first", which is what both surfaces already say.
     const selected = screen.rowActions.length === 0
       ? ''
-      : this.stores.for(screen.descriptor, screen.refreshRates).selection()[0] ?? '';
+      : entityKeyOf(this.stores.for(screen.descriptor, screen.refreshRates).selection()[0] ?? '');
     const row = selected === '' ? null : rowFor(this.stores.for(screen.descriptor, screen.refreshRates).data(), screen, selected);
     const checked = screen.multiSelect === null ? 0 : this.stores.for(screen.descriptor, screen.refreshRates).checked().size;
     const onBanner = bannerActionIds(screen);

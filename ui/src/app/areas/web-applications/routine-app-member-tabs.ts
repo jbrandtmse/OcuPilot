@@ -526,8 +526,7 @@ export class RoutineAppMemberTabs {
   /** Whether a role the application grants now is privileged, so a routine added now is a grant (AD-10). */
   protected get hasRoutineEffect(): boolean {
     this.generation();
-    const roles = [...this.store.applicationRoles(), ...this.store.matchingRoles().map((entry) => entry.role)];
-    return roles.some((role) => this.store.privileged(role));
+    return this.store.grantsPrivileged();
   }
 
   protected get routineNameDescribedBy(): string | null {

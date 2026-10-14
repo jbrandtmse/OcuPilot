@@ -271,26 +271,27 @@ Method TestUndeclaredKeysAreRefused()
     Do $$$AssertEquals($ClassMethod(..#PORT, "WriteCount"), 0, "and nothing is sent")
 }
 
-/// <p>AC3, AD-10 as amended 2026-09-24: on OcuPilot's own provider configuration a Save turning its
-/// peer verification off or disabling it is 403 <code>PROHIBITED.OCUPILOTSSL</code> with the
-/// published sentence and nothing is sent, while its description or minimum TLS version passes the
-/// set and reaches the held port; the set refuses a change to its type or trusted certificates the
+/// <p>AC3, AD-10 as amended 2026-09-24 and 2026-10-14: on OcuPilot's own provider configuration a Save turning its
+/// peer verification off, disabling it, lowering its minimum TLS version or changing its cipher list is 403
+/// <code>PROHIBITED.OCUPILOTSSL</code> with the published sentence and nothing is sent, while its description or maximum
+/// TLS version passes the set and reaches the held port; the set refuses a change to its type or trusted certificates the
 /// same; and it is left exactly as it was.</p>
 /// <p>Mutation (Rule 19): delete the change arm of <method>OcuPilot.Kernel.Proposal.Prohibited.Ssl</method>
-/// -- the refused legs reach the held port and go red.</p>
-Method TestOcuPilotsOwnConfigurationRefusesItsFourFields()
+/// -- the refused legs reach the held port and go red; drop <code>TLSMinVersion</code> or <code>CipherList</code> from
+/// <method>OcuPilot.Kernel.Proposal.Prohibited.OcuPilotSslFields</method> -- that field's leg goes red.</p>
+Method TestOcuPilotsOwnConfigurationRefusesItsSixFields()
 {
     Set tOwn = ##class(OcuPilot.Kernel.State.Base).#SSLCONFIG
     Do $$$AssertStatusOK(..Fresh(tOwn, .tBefore), "OcuPilot's own configuration reads fresh")
     If '$IsObject($Get(tBefore)) Quit
-    For tBody = "{""VerifyPeer"":0}", "{""Enabled"":false}" {
+    For tBody = "{""VerifyPeer"":0}", "{""Enabled"":false}", "{""TLSMinVersion"":8}", "{""CipherList"":[""ALL""]}" {
         Do $ClassMethod(..#HELDPORT, "Clear")
         Set tSC = $ClassMethod(..#HELDSAVE, "Update", tOwn, ##class(%DynamicObject).%FromJSON(tBody), .tHttp, .tFault, .tViolations)
         Do $$$AssertEquals(tHttp _ " " _ $Select($IsObject($Get(tFault)): tFault.code, 1: ""), "403 " _ $Parameter(..#SET, "OCUPILOTSSL"), tBody _ " is refused as OcuPilot's own")
         Do $$$AssertEquals($Select($IsObject($Get(tFault)): tFault.reason, 1: ""), $Parameter(..#SET, "OCUPILOTSSLREASON"), tBody _ ": with the published sentence")
         Do $$$AssertEquals($ClassMethod(..#HELDPORT, "WriteCount"), 0, tBody _ ": and nothing reaches the port")
     }
-    For tBody = "{""Description"":""probe""}", "{""TLSMinVersion"":8}" {
+    For tBody = "{""Description"":""probe""}", "{""TLSMaxVersion"":16}" {
         Do $ClassMethod(..#HELDPORT, "Clear")
         Set tSC = $ClassMethod(..#HELDSAVE, "Update", tOwn, ##class(%DynamicObject).%FromJSON(tBody), .tHttp, .tFault, .tViolations)
         Do $$$AssertEquals(tHttp _ " " _ $Select($IsObject($Get(tFault)): tFault.code, 1: ""), $Parameter(..#HELDPORT, "HELDSTATUS") _ " " _ ##class(OcuPilot.Api.Error).#PORTUNAVAILABLE, tBody _ " passes the set and reaches the held port")

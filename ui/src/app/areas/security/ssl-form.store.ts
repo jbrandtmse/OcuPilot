@@ -88,8 +88,8 @@ export const SSL_FIELD_TABS: Readonly<Record<string, string>> = {
   OCSPTimeout: OCSP_TAB,
 };
 
-/** The four settings of OcuPilot's own provider configuration the installer owns (AD-10). */
-export const OWN_FIELDS: readonly string[] = ['Type', 'VerifyPeer', 'CAFile', 'Enabled'];
+/** The six settings of OcuPilot's own provider configuration the installer owns (AD-10). */
+export const OWN_FIELDS: readonly string[] = ['Type', 'VerifyPeer', 'CAFile', 'Enabled', 'TLSMinVersion', 'CipherList'];
 
 /** What the form is doing: creating a configuration, or editing the one its route names. */
 export type FormMode = 'create' | 'edit';

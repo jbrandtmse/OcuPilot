@@ -48,6 +48,12 @@ ClassMethod LogCalls() As %Integer
     Quit +$Get(^||OcuPilotMonitorPortFixture("logCalls"))
 }
 
+/// <p>The message of the last line <method>LogFault</method> wrote since the last <method>Clear</method>, or <code>""</code>.</p>
+ClassMethod LastLog() As %String
+{
+    Quit $Get(^||OcuPilotMonitorPortFixture("lastLog"))
+}
+
 /// <p>Answer <method>UsageSource</method> for <var>pEndpoint</var> with the rows <var>pJson</var>
 /// holds, a JSON array of objects whose values are the strings the vendor query answers, instead of
 /// running the query. The fixture answers every armed row whatever the cap, so the port's own cut is
@@ -129,6 +135,7 @@ ClassMethod UsageSource(pEndpoint As %String, pMax As %Integer, Output pRows As 
 ClassMethod LogFault(pMessage As %String, pStatus As %Status, pCode As %String = "")
 {
     Set ^||OcuPilotMonitorPortFixture("logCalls") = $Get(^||OcuPilotMonitorPortFixture("logCalls")) + 1
+    Set ^||OcuPilotMonitorPortFixture("lastLog") = pMessage
     Do ##class(OcuPilot.Test.FaultProbe).LogRaw("monitorport", pMessage, pStatus, pCode)
 }
 

@@ -17,7 +17,7 @@ import { SCREENS, type ScreenDeclaration } from '../core/screens.generated';
 import { selfProtectionReason } from '../core/self-protection';
 import { Session } from '../core/session';
 import { STRINGS, stringFor } from '../core/strings';
-import { rowKey } from '../core/table-model';
+import { entityKeyOf, rowKey } from '../core/table-model';
 import { violationsOf, type Violation } from '../core/violations';
 
 /** The absolute path a screen's own row action is issued under (AD-20, AD-53). */
@@ -1545,9 +1545,9 @@ export class ScreenActionHandler {
     return this.lastContinues;
   }
 
-  /** The key of the row the screen has selected, or `''`. */
+  /** The entity key of the row the screen has selected, or `''` (`entityKeyOf` strips a repeated row's ordinal). */
   private selected(screen: ScreenDeclaration): string {
-    return this.store(screen.descriptor, screen.refreshRates).selection()[0] ?? '';
+    return entityKeyOf(this.store(screen.descriptor, screen.refreshRates).selection()[0] ?? '');
   }
 
   /**

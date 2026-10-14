@@ -25,6 +25,7 @@ import { ShellState } from '../core/shell-state';
 import { STRINGS } from '../core/strings';
 import { ViewOptions } from '../core/view-options';
 import { ApiService } from '../core/api';
+import { VIEW_KEY_SEPARATOR } from '../core/table-model';
 import { screenDeclaration } from '../testing/screen-declaration';
 import { tableDeclaration } from '../testing/table-declaration';
 import { CommandBar, SORT_MENU_OVERLAY_ID, VIEW_MENU_OVERLAY_ID } from './command-bar';
@@ -557,6 +558,28 @@ describe('the command bar', () => {
     expect(button.getAttribute('aria-disabled')).toBe('true');
     const reason = fixture.nativeElement.querySelector(`#${button.getAttribute('aria-describedby')}`);
     expect(reason?.textContent?.trim()).toBe(STRINGS.userRefusalCurrentUser);
+    button.click();
+    fixture.detectChanges();
+    expect(runs).toBe(0);
+  });
+
+  it('Story 18.47, DW-2328: a repeated row selected by its view key reads its entity key for the protected-account rule', () => {
+    // Mutation (Rule 19): drop `entityKeyOf` from the bar's `selected` -> the key carries the ordinal, no row or rule
+    // matches it, the button runs and this goes red.
+    const declared = tableDeclaration({
+      descriptor: 'OcuPilot.Screen.Descriptor.UserList',
+      rowActions: [{ id: 'disable', selfProtection: 'protected-account' }],
+    });
+    build(declared);
+    let runs = 0;
+    actions.register(declared.descriptor, 'disable', () => (runs += 1));
+    stores.for(declared.descriptor, declared.refreshRates).setSelection([`dana${VIEW_KEY_SEPARATOR}2`]);
+    fixture.detectChanges();
+    const button: HTMLButtonElement = fixture.nativeElement.querySelector('.ocu-command-bar-action');
+    expect(button.getAttribute('aria-disabled')).toBe('true');
+    expect(fixture.nativeElement.querySelector(`#${button.getAttribute('aria-describedby')}`)?.textContent?.trim()).toBe(
+      STRINGS.userRefusalCurrentUser
+    );
     button.click();
     fixture.detectChanges();
     expect(runs).toBe(0);

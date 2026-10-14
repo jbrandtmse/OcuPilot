@@ -11,6 +11,7 @@ import { Session } from '../core/session';
 import type { ScreenDeclaration } from '../core/screens.generated';
 import { ShellState } from '../core/shell-state';
 import { STRINGS } from '../core/strings';
+import { VIEW_KEY_SEPARATOR } from '../core/table-model';
 import { screenDeclaration } from '../testing/screen-declaration';
 import { tableDeclaration } from '../testing/table-declaration';
 import { COMMAND_BOX_OVERLAY_ID, CommandBox } from './command-box';
@@ -559,6 +560,28 @@ describe('the command box', () => {
     });
     TestBed.inject(ScreenActions).register('OcuPilot.Screen.Descriptor.UserList', 'delete', () => {});
     TestBed.inject(ScreenStores).for('OcuPilot.Screen.Descriptor.UserList', []).setSelection(['dana']);
+    chord();
+    const entry = Array.from(
+      fixture.nativeElement.querySelectorAll('.ocu-command-box-group-actions [role="option"]')
+    ).find(
+      (option) =>
+        (option as HTMLElement).querySelector('.ocu-command-box-option-label')?.textContent?.trim() ===
+        STRINGS.actionDelete
+    ) as HTMLElement | undefined;
+    expect(entry?.textContent).toContain(STRINGS.userRefusalCurrentUser);
+    expect(entry?.getAttribute('aria-disabled')).toBe('true');
+  });
+
+  it("Story 18.47, DW-2328: a repeated row selected by its view key reads its entity key for the protected-account rule", () => {
+    // Mutation (Rule 19): drop `entityKeyOf` from `actionCandidates`' selection -> the key carries the ordinal, no rule
+    // matches it, no reason, red.
+    navigation.current = screen('permissions/users', 'navAreaPermissions', 'permissions', {
+      descriptor: 'OcuPilot.Screen.Descriptor.UserList',
+      primaryAction: { id: '', selfProtection: '' },
+      rowActions: [{ id: 'delete', selfProtection: 'protected-account' }],
+    });
+    TestBed.inject(ScreenActions).register('OcuPilot.Screen.Descriptor.UserList', 'delete', () => {});
+    TestBed.inject(ScreenStores).for('OcuPilot.Screen.Descriptor.UserList', []).setSelection([`dana${VIEW_KEY_SEPARATOR}2`]);
     chord();
     const entry = Array.from(
       fixture.nativeElement.querySelectorAll('.ocu-command-box-group-actions [role="option"]')

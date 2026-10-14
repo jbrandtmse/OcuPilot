@@ -90,6 +90,8 @@ interface MountOptions {
   readonly tasks?: unknown[];
   readonly hold?: boolean;
   readonly tasksVerdict?: Verdict;
+  /** A verdict per route, for the screens a case refuses; every other route is ungated. */
+  readonly verdicts?: Readonly<Record<string, Verdict>>;
   /** The Dashboard's own read answers a 500 from the first call. */
   readonly failFirst?: boolean;
   /** Upcoming tasks' read answers a 500. */
@@ -155,7 +157,7 @@ async function mount(options: MountOptions = {}) {
         provide: NavigationService,
         useValue: {
           screenForUrl: () => declaration,
-          screenVerdict: (route: string) => (route === 'tasks/upcoming' ? verdict : UNGATED),
+          screenVerdict: (route: string) => options.verdicts?.[route] ?? (route === 'tasks/upcoming' ? verdict : UNGATED),
           subscribe: () => () => {},
         } as unknown as NavigationService,
       },
@@ -498,6 +500,33 @@ describe('DashboardPage', () => {
     expect(plain.defaultPrevented).toBe(true);
     await new Promise((resolve) => setTimeout(resolve, 20));
     expect(router.url).toBe('/os-management/ecp-statistics?ns=HSCUSTOM');
+  });
+
+  it('Story 18.47, DW-2340: a drill-down to a screen the caller is refused is listed, gated with its reason, and goes nowhere', async () => {
+    // Mutation (Rule 19): drop the verdict from `linksFor` -> the refused link draws live and every leg goes red.
+    const refused = 'os-management/ecp-statistics';
+    const { host } = await mount({ verdicts: { [refused]: { allowed: false, failedPair: '%Admin_Operate:USE' } } });
+    const gated = host.querySelector(`[data-drill-down="${refused}"]`) as HTMLAnchorElement;
+    expect(gated).not.toBeNull();
+    expect(gated.hasAttribute('href')).toBe(false);
+    expect(gated.getAttribute('tabindex')).toBe('0');
+    expect(gated.getAttribute('aria-disabled')).toBe('true');
+    const reason = gated.querySelector('.ocu-details-link-reason') as HTMLElement;
+    expect(reason.textContent?.trim()).toBe('Requires %Admin_Operate:USE');
+    expect(gated.getAttribute('aria-describedby')).toBe(reason.id);
+    expect(gated.textContent?.trim()).toBe(`${STRINGS.ecpStatisticsLabel}Requires %Admin_Operate:USE`);
+    const router = TestBed.inject(Router);
+    const click = new MouseEvent('click', { bubbles: true, cancelable: true });
+    gated.dispatchEvent(click);
+    expect(click.defaultPrevented).toBe(true);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(router.url).toBe('/os-management/dashboard?ns=HSCUSTOM');
+    // The caller's other links stay live and carry none of it.
+    const live = host.querySelector('[data-drill-down="os-management/global-statistics"]') as HTMLAnchorElement;
+    expect(live.getAttribute('href')).toContain('/os-management/global-statistics');
+    expect(live.hasAttribute('aria-disabled')).toBe(false);
+    expect(live.hasAttribute('tabindex')).toBe(false);
+    expect(live.querySelector('.ocu-details-link-reason')).toBeNull();
   });
 
   it('draws no link for a drill-down whose screen is not built', async () => {

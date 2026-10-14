@@ -142,6 +142,61 @@ Method TestTheClassifierAnswersTheSameWhenAskedDirectly()
     Do $$$AssertEquals($System.Status.IsOK(tSC) _ " " _ tGrants, "1 0", "a payload that is not an object grants nothing")
 }
 
+/// <p>DW-2320 (AD-10): the grant is judged per (matching role, target role) pair. A held privileged target moved to another
+/// matching role -- to every caller through an empty one, or to one matching role alone -- is a grant, through the direct
+/// question and through the agent's mint; the same pairs re-sent, in any case, are not.</p>
+/// <p>Mutation (Rule 19): key <method>OcuPilot.Kernel.Proposal.Prohibited.ApplicationRoleNames</method> by the target alone
+/// -- the moved legs go red.</p>
+Method TestAHeldPrivilegedTargetMovedToAnotherMatchingRoleIsAGrant()
+{
+    Set tHeld = {"MatchRoles": [{"MatchRole": "%Developer", "TargetRoles": ["%All"]}]}
+    Do ..AssertGrants({"MatchRoles": [{"MatchRole": "", "TargetRoles": ["%All"]}]}, tHeld, 1, "moved to every caller")
+    Do ..AssertGrants({"MatchRoles": [{"MatchRole": "%Manager", "TargetRoles": ["%All"]}]}, tHeld, 1, "moved to another matching role")
+    Do ..AssertGrants({"MatchRoles": [{"MatchRole": "%Developer", "TargetRoles": ["%All"]}]}, tHeld, 0, "the same pair re-sent")
+    Do ..AssertGrants({"MatchRoles": [{"MatchRole": "%DEVELOPER", "TargetRoles": ["%all"]}]}, tHeld, 0, "the same pair in another case")
+    Do ..AssertGrants({"MatchRoles": [{"MatchRole": "%Developer", "TargetRoles": ["%All"]}]}, {"MatchRoles": [{"MatchRole": "", "TargetRoles": ["%All"]}]}, 1, "every caller narrowed to one matching role")
+    Do ..AssertGrants({"MatchRoles": [{"MatchRole": "", "TargetRoles": ["%All"]}]}, {"MatchRoles": "%Developer:%All"}, 1, "the stored text form moved to every caller")
+    Do ..AssertGrants({"MatchRoles": [{"MatchRole": "%Developer", "TargetRoles": ["%All"]}]}, {"MatchRoles": "%Developer:%All"}, 0, "the stored text form re-sent")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "EnsureRole", "Admin", "%Admin_Secure:U"), "a probe role carrying an administrative resource")
+    Set tAdmin = $ClassMethod(..#PROBE, "RoleName", "Admin")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Seed", "", ..#APP, {"Description": "probe", "Enabled": true, "Resource": "", "MatchRoles": [{"MatchRole": "%Developer", "TargetRoles": [(tAdmin)]}], "Routines": []}), "a probe application granting the privileged role to a matching role's holders")
+    Do ..AssertMint({"MatchRoles": [{"MatchRole": "", "TargetRoles": [(tAdmin)]}]}, 1, "the role moved to every caller")
+}
+
+/// <p>DW-2322 (AD-10): clearing a privileged routine application's <code>Resource</code>, or turning <code>Enabled</code>
+/// on, while a role it grants is privileged is a grant -- through the direct question, in each form
+/// the routine application rules admit, and through the agent's mint; the
+/// same change under unprivileged roles, on an application that is already enabled or holds no resource, and turning it off
+/// are not.</p>
+/// <p>Mutation (Rule 19): drop the <method>OcuPilot.Kernel.Proposal.Prohibited.WidensPrivilegedReach</method> call from the
+/// routine application branch of <method>OcuPilot.Kernel.Proposal.Prohibited.GrantsPrivilegeByEffect</method> -- the
+/// cleared-resource and enabled legs go red.</p>
+Method TestClearingTheResourceOrEnablingUnderAPrivilegedRoleIsAGrant()
+{
+    Set tTarget = {"Enabled": false, "Resource": "OcuProbe1831Res", "MatchRoles": [{"MatchRole": "", "TargetRoles": ["%All"]}]}
+    Do ..AssertGrants({"Resource": ""}, tTarget, 1, "the resource cleared under %All")
+    Do ..AssertGrants({"Enabled": true}, tTarget, 1, "enabled as a boolean")
+    Do ..AssertGrants({"Enabled": 1}, tTarget, 1, "enabled as the number 1")
+    Do ..AssertGrants({"Enabled": "1"}, tTarget, 1, "enabled as the text 1")
+    Do ..AssertGrants({"Enabled": "yes"}, tTarget, 0, "a value no enabled form admits")
+    Do ..AssertGrants({"Enabled": false}, tTarget, 0, "turned off again")
+    Do ..AssertGrants({"Resource": "OcuProbe1831Res"}, tTarget, 0, "the resource kept")
+    Do ..AssertGrants({"Resource": ""}, {"Enabled": true, "Resource": "", "MatchRoles": [{"MatchRole": "", "TargetRoles": ["%All"]}]}, 0, "the resource cleared where none is held")
+    Do ..AssertGrants({"Enabled": true}, {"Enabled": true, "Resource": "OcuProbe1831Res", "MatchRoles": [{"MatchRole": "", "TargetRoles": ["%All"]}]}, 0, "enabled where it is already")
+    Do ..AssertGrants({"Resource": "", "Enabled": true}, {"Enabled": false, "Resource": "OcuProbe1831Res", "MatchRoles": [{"MatchRole": "", "TargetRoles": ["%DB_HSCUSTOM"]}]}, 0, "both under unprivileged roles")
+    Do ..AssertGrants({"Resource": "", "MatchRoles": [{"MatchRole": "", "TargetRoles": ["%All"]}]}, {"Enabled": true, "Resource": "OcuProbe1831Res", "MatchRoles": [{"MatchRole": "", "TargetRoles": ["%DB_HSCUSTOM"]}]}, 1, "the resource cleared in the change that sends the privileged role")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "EnsureResource"), "the probe resource")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "EnsureRole", "Admin", "%Admin_Secure:U"), "a probe role carrying an administrative resource")
+    Set tAdmin = $ClassMethod(..#PROBE, "RoleName", "Admin")
+    Set tResource = $Parameter(..#PROBE, "RESOURCE")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Seed", "", ..#APP, {"Description": "probe", "Enabled": false, "Resource": (tResource), "MatchRoles": [{"MatchRole": "", "TargetRoles": [(tAdmin)]}], "Routines": []}), "a disabled probe application holding a resource and granting a privileged role")
+    Do ..AssertMint({"Resource": ""}, 1, "the resource cleared")
+    Do ..AssertMint({"Enabled": true}, 1, "the application enabled")
+    Do ..AssertMint({"Description": "again"}, 0, "another setting changed")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Seed", "", ..#APP, {"Description": "probe", "Enabled": true, "Resource": (tResource), "MatchRoles": [{"MatchRole": "", "TargetRoles": ["%DB_HSCUSTOM"]}], "Routines": []}), "an enabled probe application granting an unprivileged role")
+    Do ..AssertMint({"Resource": ""}, 0, "the resource cleared under it")
+}
+
 /// <p>Mint the update of <parameter>APP</parameter> over <var>pChange</var> and assert it is destructive with
 /// <code>GRANT.PRIVILEGED</code> when <var>pGrant</var> is 1, and carries neither when it is 0.</p>
 Method AssertMint(pChange As %DynamicObject, pGrant As %Boolean, pLabel As %String)

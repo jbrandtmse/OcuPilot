@@ -476,7 +476,7 @@ ClassMethod Confirm(pProposal As %DynamicObject, Output pResult As %DynamicObjec
 /// <p>A canonical snapshot of what a license key check or activation, or a license server write, can
 /// change, as a sorted array of lines: the license facts (<method>LicenseFacts</method>); every license
 /// server; each process with its job type; the line counts of <code>messages.log</code> and
-/// <code>alerts.log</code>; the monitor state; and OcuPilot's own objects -- its applications, roles
+/// <code>alerts.log</code>; and OcuPilot's own objects -- its applications, roles
 /// and resources -- and the probe accounts.</p>
 /// <p>Each vendor read runs in <code>%SYS</code> by explicit save and restore, and calls nothing of
 /// this class while it is there.</p>
@@ -536,7 +536,6 @@ ClassMethod Snapshot() As %DynamicArray
             }
         }
         Set tRS = ""
-        Set tLines("monitor|" _ $SYSTEM.Monitor.State()) = ""
         Set tPid = ""
         For {
             Set tPid = $Order(^$JOB(tPid))
