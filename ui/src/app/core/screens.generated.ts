@@ -14317,25 +14317,29 @@ export const SCREENS: readonly ScreenDeclaration[] = [
             "param": "source",
             "labelKey": "auditEventFieldSource",
             "kind": "text",
-            "maxLength": 128
+            "maxLength": 128,
+            "hint": "The business host that sent the message, spelled as interop.items.read answers its Name."
           },
           {
             "param": "target",
             "labelKey": "agentLedgerColumnTarget",
             "kind": "text",
-            "maxLength": 128
+            "maxLength": 128,
+            "hint": "The business host the message was sent to, spelled as interop.items.read answers its Name."
           },
           {
             "param": "bodyClass",
             "labelKey": "interopColumnBodyClass",
             "kind": "text",
-            "maxLength": 220
+            "maxLength": 220,
+            "hint": "One message body class, spelled as interop.messages.read answers its BodyClass."
           },
           {
             "param": "session",
             "labelKey": "webSessionColumnSession",
             "kind": "text",
-            "maxLength": 19
+            "maxLength": 19,
+            "hint": "One session, spelled as interop.messages.read answers its SessionId."
           },
           {
             "param": "errors",

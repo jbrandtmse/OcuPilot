@@ -57,10 +57,10 @@ XData Declaration
         {"param": "endDateTime", "labelKey": "auditCriteriaEnd", "kind": "datetime", "maxLength": 50},
         {"param": "status", "labelKey": "taskHistoryColumnStatus", "kind": "choice", "maxLength": 9, "options": ["Created", "Queued", "Delivered", "Discarded", "Suspended", "Deferred", "Aborted", "Error", "Completed"]},
         {"param": "type", "labelKey": "tableColumnType", "kind": "choice", "maxLength": 8, "options": ["Request", "Response"]},
-        {"param": "source", "labelKey": "auditEventFieldSource", "kind": "text", "maxLength": 128},
-        {"param": "target", "labelKey": "agentLedgerColumnTarget", "kind": "text", "maxLength": 128},
-        {"param": "bodyClass", "labelKey": "interopColumnBodyClass", "kind": "text", "maxLength": 220},
-        {"param": "session", "labelKey": "webSessionColumnSession", "kind": "text", "maxLength": 19},
+        {"param": "source", "labelKey": "auditEventFieldSource", "kind": "text", "maxLength": 128, "hint": "The business host that sent the message, spelled as interop.items.read answers its Name."},
+        {"param": "target", "labelKey": "agentLedgerColumnTarget", "kind": "text", "maxLength": 128, "hint": "The business host the message was sent to, spelled as interop.items.read answers its Name."},
+        {"param": "bodyClass", "labelKey": "interopColumnBodyClass", "kind": "text", "maxLength": 220, "hint": "One message body class, spelled as interop.messages.read answers its BodyClass."},
+        {"param": "session", "labelKey": "webSessionColumnSession", "kind": "text", "maxLength": 19, "hint": "One session, spelled as interop.messages.read answers its SessionId."},
         {"param": "errors", "labelKey": "interopMessagesCriterionErrors", "kind": "choice", "maxLength": 3, "options": ["yes", "no"]}
       ]
     }

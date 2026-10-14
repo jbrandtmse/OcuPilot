@@ -2,9 +2,9 @@
 title: 'Story 20.9: Messages - search, view, resend and trace'
 type: 'feature'
 created: '2026-10-13'
-status: 'in-progress'
-baseline_revision: 'a772580fb1ab78f68ef6de7c31469150121b3e1f'
-baseline_commit: 'a772580fb1ab78f68ef6de7c31469150121b3e1f'
+status: 'done'
+baseline_revision: 'e1ecfdb650b24cc423e36de9a122e0f5704e6c84'
+baseline_commit: 'e1ecfdb650b24cc423e36de9a122e0f5704e6c84'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -470,7 +470,7 @@ Rejected:
 
 Rework 2 (the runner's Rule 30 fresh check):
 
-- [ ] [Smoke] `OcuPilot.Test.CriterionHints.TestEveryTextCriterionHasAHintOrIsACommaList` is red on a fresh throwaway: `interop.messages.read`'s four text criteria `source`, `target`, `bodyClass` and `session` declare no `hint` [src/OcuPilot/Screen/Descriptor/InteropMessageList.cls:60-63] -- give each a hint in the grammar the class's other tests pin (a hint names the read tool and field that answers the value; every read a hint names is registered and declares that field), run `CriterionHints` and the story's classes green, and record the mutation (drop one hint -> `CriterionHints` red).
+- [x] [Smoke] `OcuPilot.Test.CriterionHints.TestEveryTextCriterionHasAHintOrIsACommaList` is red on a fresh throwaway: `interop.messages.read`'s four text criteria `source`, `target`, `bodyClass` and `session` declare no `hint` [src/OcuPilot/Screen/Descriptor/InteropMessageList.cls:60-63] -- give each a hint in the grammar the class's other tests pin (a hint names the read tool and field that answers the value; every read a hint names is registered and declares that field), run `CriterionHints` and the story's classes green, and record the mutation (drop one hint -> `CriterionHints` red).
 - [x] [Smoke] `OcuPilot.Test.Descriptor.TestEveryShippedReadShapeMatchesTheCommittedTable` was red on a fresh throwaway: the review narrowed `InteropMessageHeaderTab`'s sort to `Position` but left the committed `ReadShapes` row at `Position,Name` [src/OcuPilot/Test/Descriptor.cls:217] -- fixed by the lead in the rework commit (the row reads `sort="Position"`; `Descriptor` 60/60 green on the fresh throwaway). Confirm only.
 
 ## Spec Change Log
@@ -528,6 +528,12 @@ Rework 2 (the runner's Rule 30 fresh check):
 - patched: the cut-removal `mutation:` line (both tests redden, run 75); an inside-a-line leg in the cap test (moved-back cut reddens it alone, run 76); `CapStream` asserts its save
 - DW-2438 (`wontfix-accepted`): with `StreamText`'s marker removed, `InteropMessageContents` (run 77) and `InteropTransformTest` (run 78) stay green; with its read at 2,000,000, `InteropMessageContents` does (run 79)
 - mutations ran on the throwaway's copy only, restored by `rsync --checksum` (dry run empty); `InteropMessageContents` 8 (run 80) and `InteropTransformTest` 7 (run 81) green after
+
+### 2026-10-14 -- Review pass (rework 2)
+
+- verdicts: 0 findings from two layers (`verification-gap`: none; `intent-alignment`: descriptive, no findings) -- high 0, medium 0, low 0, false 0, maybe-false 0
+- the four hints are the only code change; `CriterionHints` 4, `Descriptor` 60, `InteropMessageRead` 8, `InteropMessageDescriptor` 4, `ReadTool` 28 and `ToolRoundTrip` 2 green on `ocupilot-b-ci` (runs 679-684), each in its own call; `npm run test:tools` 1999 pass; `screen-mirror.mjs --check` up to date
+- the `session` mutation line stands for all four hints: the test's one per-row condition is the comma-list roster, which none of the four is on
 
 ## Design Notes
 
@@ -827,18 +833,19 @@ Every header but Other has source `<marker>Src` and target `<marker>Op`.
 - mutation: (review) `MessageRow` with its production test inverted -> `InteropHostRead.TestEachEndpointAnswersTheProbesRows` (the item's messages leg) and `TestEachScreenAndToolAnswerTheSameRowsAsThePort`
 - mutation: (review) `OpenBodyHere` without its `%ExistsId` test -> `InteropMessageContents.TestAMessageWithNothingToShowReadsAsNoRowsAndRecordsNoView` (the stream leg), alone
 - mutation: (review) `HEADERSQL` with `TimeCreated` and `TimeProcessed` swapped -> `InteropMessageRead.TestTheHeaderReadsTwentyThreePropertiesInOrder`, alone
+- mutation: (rework 2) the `session` criterion's `hint` dropped from `InteropMessageList`, on the throwaway's copy of the source (the worktree untouched, sha256 equal before and after), reloaded -> `CriterionHints.TestEveryTextCriterionHasAHintOrIsACommaList` (`interop.messages.read:session declares a hint`), alone; restored and reloaded, `CriterionHints` green
 
 ## Auto Run Result
 
 Status: done
 Blocking condition: none
 
-**This pass (rework 1).** `ReadMessageContents` cuts the text at `TESTOUTPUTMAX` characters and appends `TESTCUT` before it normalises line ends; the shared `StreamText` is unchanged (AD-62 item 15; closes the open High). The cap test expects row 1,001 to be `TESTCUT` alone, and `TestATextAtTheCapIsWholeAndOneCharacterOverIsCut` pins the boundary on both sides.
+**This pass (rework 2).** `interop.messages.read`'s four `text` criteria (`source`, `target`, `bodyClass`, `session`) declare a `hint` in `InteropMessageList`, so `CriterionHints.TestEveryTextCriterionHasAHintOrIsACommaList` is green; `ui/src/app/core/screens.generated.ts` is regenerated by `screen-mirror.mjs`. The `Descriptor` `ReadShapes` item closed in the rework commit and is confirmed green (60). Earlier passes closed in their Review Triage Log entries.
 
-**Files.** `src/OcuPilot/Port/InteropPort.cls` (the cut); `src/OcuPilot/Test/InteropMessageContents.cls` (the cap test's row and Mutation note, the boundary test, the `CapStream` helper both use); this spec (the item ticked, three `mutation:` lines, the triage entry).
+**Files.** `src/OcuPilot/Screen/Descriptor/InteropMessageList.cls` (four hints); `ui/src/app/core/screens.generated.ts` (generated); this spec (the item ticked, one `mutation:` line, the triage entry).
 
-**Review.** 7 findings, 6 low and 1 false: 1 low patched (the boundary test), 6 rejected with their reasons in the Triage Log (2 carried), none deferred. `followup_review_recommended: false` (one low patched).
+**Review.** 0 findings; none patched, deferred or rejected. `followup_review_recommended: false` (no patched high).
 
-**Verification (`ocupilot-b-ci`, tree loaded with 0 errors).** `InteropMessageContents` 8, `InteropMessageRead` 8, `InteropMessageRows` 3 and `InteropTransformTest` 7, each green in its own call; `check-objectscript.py` 0 problems; `lint-docs.sh` clean. Mutations on the throwaway's copy, restored after (an `rsync --checksum` dry run empty), the worktree never mutated: the cut removed reddens the cap test alone; `>=` and `> TESTOUTPUTMAX + 1` each redden the boundary test alone, at its own leg.
+**Verification (`ocupilot-b-ci`, tree loaded with 0 errors).** `CriterionHints` 4, `Descriptor` 60, `InteropMessageRead` 8, `InteropMessageDescriptor` 4, `ReadTool` 28 and `ToolRoundTrip` 2, each green in its own call; `npm run test:tools` 1999 pass; `screen-mirror.mjs --check`, `check-objectscript.py` and `lint-docs.sh` clean. The `session` hint dropped on the throwaway's copy reddens `CriterionHints` alone; the worktree was never mutated and the copy is restored (an `rsync --checksum` dry run empty).
 
-**Residual risks.** None new. The full ObjectScript sweep, `npm test` and the smoke are the runner's.
+**Residual risks.** None new. The runner re-runs its fresh check.
