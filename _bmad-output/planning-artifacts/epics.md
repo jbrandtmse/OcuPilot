@@ -8816,6 +8816,7 @@ So that the classic per-host Actions tab is not needed for them.
 - **Then** its destructiveness, its governance key's default and its audit record are stated (AD-22).
 
 - DW-2298: the classic per-host Actions tab's remaining item actions (temporary stop, start and restart of one item, change class, copy) have no story (ledger; routed by spec_gate 2026-10-11)
+- DW-2407: a story that adds a write reaching its target through another port updates ToolWrite's other-port count (49 after 20.16) in the same pass (ledger; routed by cr 2026-10-14)
 
 ---
 

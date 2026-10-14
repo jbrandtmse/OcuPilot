@@ -739,3 +739,6 @@
 2026-10-14T02:37:14Z	Story 20.16	stage_spawned	stage=implement spawn_at=2026-10-14T02:37:14Z model=sonnet agent_name=20-16-rework-1 cycle_iteration=2
 2026-10-14T02:50:42Z	Story 20.16	dev_complete	spawn_at=(see_stage_spawned) model=sonnet agent_name=20-16-rework-1 build_sha=a92f8904 baseline_revision=b67d1b1e review_loop_iteration=0 followup_review_recommended=false deferred=0 cycle_iteration=2 fix=ToolWrite_other-port_46_to_49(read_from_instance)
 2026-10-14T02:50:42Z	Story 20.16	stage_spawned	stage=code-review spawn_at=2026-10-14T02:50:42Z model=opus agent_name=20-16-code-review-2 cycle_iteration=2 scope=b67d1b1e..HEAD(rework)
+2026-10-14T03:03:32Z	Story 20.16	cr_complete	spawn_at=(see_stage_spawned) model=opus agent_name=20-16-code-review-2 cycle_iteration=2 resolved=1 routed=1(DW-2407_to_20-25) dismissed=5 high=0 med=1 low=1 rows=9 unresolved_high_med=0 review_tier=full-opus status=done smoke_item=confirmed_fixed(49_read_from_instance)
+2026-10-14T03:03:32Z	Story 20.16	ledger_routed_planned	story=20-25-item-runtime-and-configuration-actions entries=1(DW-2407) excess=0 by=cr
+2026-10-14T03:03:32Z	Story 20.16	ledger_adjudicated	owned=0 resolved=0 reowned=0 terminal=0

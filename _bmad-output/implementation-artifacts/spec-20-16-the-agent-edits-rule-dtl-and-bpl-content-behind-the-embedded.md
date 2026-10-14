@@ -370,6 +370,15 @@ Rejected: `false` — a failed compile blocks a repair (the dictionary walk hold
 
 - [x] [Smoke] **`ToolWrite`'s other-port count misses the three editor saves.** The full sweep on a freshly built `ocupilot-b-ci` (638 classes, 4,965 tests) had one red: `OcuPilot.Test.ToolWrite.TestEveryWriteToolsRequestTypeAgreesWithThePortsBodylessRoster`, "exactly forty-six shipped writes reach their target through another port" (`ToolWrite.cls`:1338). This story's three `interop.*editor.save` tools reach their target through the source code API port, so the pinned literal and its message are stale (the Shared surfaces line and the roster task did not name `ToolWrite`). Read the count from the instance, set the literal to it, add "since Story 20.16 the three editor saves through it too" to the message, and record the mutation (one save's port reference changed, or the literal off by one) observed red and reverted. Search `src/OcuPilot/Test` for any other count or roster that lists write tools by port and still reads the pre-20.16 value; the sweep found none.
 
+### Review Findings (rework 1 re-review)
+
+Code review 2026-10-14 (four layers, `full-opus`; diff `b67d1b1e..5e28ecbf`): 0 high, 1 medium, 1 low kept; 5 rejected. The `[Smoke]` item is closed: on `ocupilot-b-ci` the registry gives 385 tools, 227 writes and 49 through another port (`AtelierPort` 15, the three editor saves among them), the mutations are runs 655 and 656, and the reverted class is green in runs 657 and 662. No other test counts writes by port.
+
+- [x] [Review][Patch] (low) The Shared surfaces line did not name `ToolWrite`'s other-port count [spec `## Verification`]
+- [x] [Review][Defer] (med) The epic context's shared-rosters list omits `ToolWrite`'s other-port count, which 20.25, 20.26 and 20.31's interoperability-port writes move [_bmad-output/implementation-artifacts/epic-20-context.md:169] — deferred: DW-2407, routed to 20-25 (the file is regenerated per plan spawn)
+
+Rejected: `low` — the new triage heading (2026-10-13, local) and the red it answers (2026-10-14, UTC) use different date conventions; the two rework `mutation:` rows carry no `(Rework)` tag, though they follow the line that introduces them; the Auto Run Result repeats the `(Rework)` line; the Residual risk forecasts Epic 18 moving the literal (`OCU-1-epic18` still reads 46) — each fix edits a closed section of an `oversized` spec. `low` — the count is an aggregate and cannot tell which non-admin port a save uses; the save tests drive `AtelierPort.SaveSet`, so a port move reddens them (inference).
+
 ## Spec Change Log
 
 - 2026-10-13, spec gate (runner): the orchestrator ruled Q1 the other way (B): the three saves also require `%Ens_Code:WRITE`, the vendor editor's write resource, confirmed from the vendor source at Task 0. The Pairs bullet, the matrix, Task 0, the save's `PrivilegePairs`, the tools and gate tests, the turn principal, AC8, the named limits and the mutation table carry it. The Rule 20 drafts are written into the spine with it.
@@ -549,7 +558,7 @@ Rejected: `false` — a failed compile blocks a repair (the dictionary walk hold
 
 **Shared surfaces:**
 
-- The tool registry: `ReadTool`'s count and names, `ToolRoundTrip`'s `REFUSEEMPTY`, `SurfaceCoverage`'s tool rows, `Test/Prohibited.cls`'s composed roster and `ToolEmit`'s branches.
+- The tool registry: `ReadTool`'s count and names, `ToolRoundTrip`'s `REFUSEEMPTY`, `SurfaceCoverage`'s tool rows, `Test/Prohibited.cls`'s composed roster, `ToolEmit`'s branches and `ToolWrite`'s other-port write count.
 - The governance baseline (three keys).
 - The three editor screens' context `tools`, with the explorer screens' lists pinned unchanged.
 - Every compile's, import's and save's `output.errors` (`AtelierPort.Outcome`).

@@ -11751,3 +11751,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-20-10-source-control-hooks.md (plan, harvested at the spec gate) | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: Measured at Story 20.10's plan on ocupilot-b-ci: with a probe source-control class whose UserAction answers 1, the Atelier delete route answered result.ext {action:1, target:<question>}; PutDoc of a new document runs UserAction(1,1) and (1,7); AtelierPort SaveSet (pCreate) and DeleteSet ignore it.
 - 2026-10-14T01:40:07Z status=routed owner=burndown by=spec_gate note=outside 20.10's scope; the follow-up needs a dialog or proposal step for the source-control question
+
+### DW-2407: The epic context's shared-rosters list omits ToolWrite's other-port write count, which every write through a non-admin port moves
+- source: spec-20-16-the-agent-edits-rule-dtl-and-bpl-content-behind-the-embedded.md (rework 1 re-review) | severity: med | fix-risk: low | footprint: in-epic
+- evidence: epic-20-context.md:169 (regenerated from planning artifacts per plan spawn) lists ReadTool and ToolRoundTrip, not ToolWrite.cls:1338 (49 after 20.16). 20.16's plan missed it and its fresh check went red, costing a rework; 20.25, 20.26 and 20.31 add InteropPort writes.
+- 2026-10-14T03:02:05Z status=routed owner=20-25-item-runtime-and-configuration-actions by=cr note=name ToolWrite's other-port count (49 after 20.16) in Shared surfaces and move it; first of 20.25/20.26/20.31
