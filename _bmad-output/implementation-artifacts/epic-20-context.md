@@ -4,7 +4,7 @@
 
 ## Goal
 
-Bring the classic portal's Interoperability work into OcuPilot for namespaces that support it, with Analytics riding along, so the largest area the classic portal still owns is usable here. Shipped so far: category gating, production control, items and their settings, per-host tabs, the monitor, queue and job reads and actions, lookup tables, read-only business partners, host and transformation tests, the interoperability floor, per-screen permissions, the panel collapse, the agent's source reads, saves and creates, the shared tool-listing cache, the sign-in hand-off, a clean compile and install in a namespace without interoperability, screens that load on demand, the rule, BPL and DTL editors InterSystems built, loaded in place inside the shell (20.7), and the agent's confirmed edits to the content behind those editors (20.16). Three stories are ready for development: 20.8 (the schema viewer and the production configuration diagram), 20.9 (message search and the Header and Contents tabs) and 20.10 (source control). 20.9 was split for size. The session trace moved to 20.30, the next story to plan, and resend and edit-and-resend moved to 20.31. Still to come: item runtime actions, partner writes, the Analytics rider, and guided workflows with Investigate.
+Bring the classic portal's Interoperability work into OcuPilot for namespaces that support it, with Analytics riding along, so the largest area the classic portal still owns is usable here. Shipped so far: category gating, production control, items and their settings, per-host tabs, the monitor, queue and job reads and actions, lookup tables, read-only business partners, host and transformation tests, the interoperability floor, per-screen permissions, the panel collapse, the agent's source reads, saves and creates, the shared tool-listing cache, the sign-in hand-off, a clean compile and install in a namespace without interoperability, screens that load on demand, the rule, BPL and DTL editors InterSystems built, loaded in place inside the shell (20.7), and the agent's confirmed edits to the content behind those editors (20.16). Four stories are ready for development: 20.8 (the schema viewer and the production configuration diagram), 20.9 (message search and the Header and Contents tabs), 20.30 (the session trace, split from 20.9) and 20.10 (source control). The next story to plan is 20.31, message resend and edit-and-resend, also split from 20.9. Still to come: item runtime actions, partner writes, the Analytics rider, and guided workflows with Investigate.
 
 ## Stories
 
@@ -43,18 +43,7 @@ Bring the classic portal's Interoperability work into OcuPilot for namespaces th
 ## Requirements & Constraints
 
 - **Every write** is a server-minted proposal with a diff the instance computes, an explicit Confirm and an agent marker. A new write key joins the checked-in governance baseline in the same change, and a destructive key ships `false`. Each plan states the action's destructiveness, its key's default and its audit record.
-- **The session trace (20.30, next to plan).**
-  - **The acceptance.** Given a session, when its trace is opened, it renders as a visual trace, with a generated sequence diagram as the alternative.
-  - **The charter** (measured at 20.9's plan):
-    - **Screen.** A third tab in 20.9's message tab group, `interoperability/messages/trace` at position 3. It requires `%Ens_MessageHeader:USE` and `%Ens_MessageTrace:USE`, both held by `%EnsRole_Operator`, and its classic page is `EnsPortal.VisualTrace`.
-    - **Read.** A port endpoint `MessageTrace`, `LIST`, criterion `message`. It runs two top-level statements: the header's `SessionId`, then the session's headers by `ID`, capped. The vendor resolves any header to its session. The classic trace reads the whole session plus `Ens_Util.Log`, `Ens_Rule.Log` and the IO log, with no cap.
-    - **Drawing.** OcuPilot draws the trace itself, as an SVG sequence diagram, through 20.9's `body` input. Participants appear in first-appearance order. There is one arrow per header: a request is solid, a response dashed, and an error is marked. Each arrow links to its message.
-    - **The alternative.** Mermaid `sequenceDiagram` text from the same rows. It follows the id and escape rules of the sibling project's `Diagram/Writer.cls` (`iris-execute-mcp-v2`, MIT, the owner's), without its compression and correlation. Rename on harvest.
-    - **From the host test.** 20.6's host test answers a session id, so its answer can link to the trace. A session id is its first header's `ID` (inference). Measure it at Task 0.
-  - **Why not the vendor's viewer** (measured in its bundle):
-    - `/ui/interop/message-viewer` reads only `$NAMESPACE` and `SESSIONID`. `SESSIONID` opens a session's trace full height, and no parameter opens one message.
-    - Every load stores an `Ens.Message.Search` row.
-    - A namespace change pushes a history entry, and an unknown namespace silently falls back to the first.
+- **The vendor's message viewer is never embedded** (measured in its bundle). `/ui/interop/message-viewer` reads only `$NAMESPACE` and `SESSIONID`, and no parameter opens one message. Every load stores an `Ens.Message.Search` row. A namespace change pushes a history entry, and an unknown namespace silently falls back to the first. So 20.9, 20.30 and 20.31 build their own surfaces.
 - **Message reads (20.9, ready for development).**
   - **Endpoints** (AD-62 item 15):
     - `Messages` (`LIST`) takes the criteria `beginDateTime` (required), `endDateTime`, `status`, `type`, `source`, `target`, `bodyClass`, `session` and `errors`.
@@ -71,19 +60,29 @@ Bring the classic portal's Interoperability work into OcuPilot for namespaces th
     - Its tab group is `interoperability/messages/document`: Header at position 1, and Contents at `.../contents`, position 2.
     - The classic page is `EnsPortal.MessageViewer`.
     - Queue messages' `rowTarget` opens the Header tab. The item tabs are `detail` screens, and a `detail` screen may not declare a `rowTarget`.
-  - **What 20.9 does not use.** No saved searches (a named limit). It never touches `Ens.Message.Search`, `Ens.Message.Utils` or either saved-search store, and it does not embed the vendor's message viewer.
+  - **What 20.9 does not use.** No saved searches (a named limit). It never touches `Ens.Message.Search`, `Ens.Message.Utils` or either saved-search store.
   - **Tests** use synthetic headers saved with `%New`/`%Save`, which needs no production. A fresh throwaway holds no message header, and the save does not set `SessionId`.
-- **Resend and edit-and-resend (20.31, after 20.30).**
+- **The session trace (20.30, ready for development; AD-62 item 16).**
+  - **The acceptance.** Given a session, when its trace is opened, it renders as a visual trace, with a generated sequence diagram as the alternative.
+  - **Screen.** A third tab in 20.9's message tab group, `interoperability/messages/trace` at position 3, classic page `EnsPortal.VisualTrace`. It requires `%Ens_MessageHeader:USE` and `%Ens_MessageTrace:USE`, both held by `%EnsRole_Operator`.
+  - **Read.** `MessageTrace` (`LIST`, criterion `message`, a header `ID`). Two top-level statements, after the gate: the header's `SessionId`, then `TOP ?` of that session's headers in `ID` order. An id no header holds, or a header with no session, reads as zero rows. Rows carry a numeric `Step` (1 to n in `ID` order) as the only sort key, because string ids sort `10` before `9`.
+  - **Drawing.** OcuPilot draws the trace itself, as template-bound SVG through 20.9's `body` input: participants in first-appearance order, one arrow per header, a response dashed and anything else solid, an error in the error token. Each arrow links to its message's Header tab. Data reaches the SVG only as attribute values and interpolated text: no `innerHTML`, no `style` or `id` from data, colors from tokens through classes.
+  - **Mermaid.** `sequenceDiagram` text is built in the browser from the rows the diagram draws: no server build and no second read. It ports the id, escape and label rules of the sibling project's `Diagram/Writer.cls` (the owner's own MIT work), without its compression, correlation or comments.
+  - **From the host test.** 20.6's Test dialog links its answer's `sessionId` to the trace. A host test's session id is its first header's `ID` (measured at 20.30's plan).
+  - **Named limits.** The event, rule and IO logs and `SuperSession` are not read; the read's note says so. The trace draws the first `maxRows` headers (1,000 by default) and says when it is cut.
+- **Resend and edit-and-resend (20.31, the next story to plan).**
+  - **The acceptance.** Resend and edit-and-resend use a dry-run-then-confirm double gate, with a bounded cap on how many messages one action may resend.
   - **The vendor call.** `Ens.MessageHeader.ResendDuplicatedMessage(id, .new, target, body, source, headOfQueue)` checks no privilege.
     - It needs a running production and a running target queue, and it refuses retargeting a response.
-    - It keeps the session: `Resent` goes up by one and the Description reads "Resent <id>".
+    - It keeps the session: `Resent` goes up by one and the Description reads "Resent <id>". So a resent message appears in 20.30's trace of that session.
     - It audits `%Ensemble/%Message/Resend` on the new header.
   - **OcuPilot's gate.** It requires `%Ens_MessageResend:USE`, and `%Ens_MessageEditResend:USE` for an edit.
   - **The double gate.** The agent's proposal is the dry run: per-message verdicts, nothing sent. A person's action is a dialog showing the same dry run, then Confirm, and Confirm executes.
   - **The cap.** At most 100 messages per action. More than that is refused, never truncated.
   - **Edit-and-resend** works on one message, saving the edited body as a clone as `%ProcessSubmit` does.
   - **Surfaces.** It uses the message list's multi-select and the Header tab.
-  - **Settled at its own gate:** the key posture (edit-and-resend at least as guarded as resend) and the armed `ProductionProbe` fixture.
+  - **Settled at its own gate:** the key posture (a destructive key ships disabled under the baseline rule; edit-and-resend is at least as guarded as resend) and the armed `ProductionProbe` fixture.
+  - **Its tests remove what they cause.** At 20.30's plan, a host-test run on the probe production left three message headers in USER (the start-up `Ens.ScheduleService` header and each test session's last response) and the production's `Ens_Util.Log` rows, after `ProductionProbe`'s settle and remove calls (measured; DW-2408).
   - **The vendor app's own Resend** sends any number of messages, in requests of 300, with no dry run.
   - **The harvested reference** (sibling project; rename on harvest):
     - A dry run is the default. Executing needs both "not a dry run" and "confirm"; either alone is refused with "No changes were made."
@@ -152,8 +151,8 @@ Bring the classic portal's Interoperability work into OcuPilot for namespaces th
   - **Redraws.** 20.16's editor page redraws on a `changed` event of type `class` that names its document.
 - **Interoperability port (AD-62, `Port/InteropPort`).**
   - **Its role.** It is the only class that starts, stops, restarts, updates or recovers a production, and the only source of interoperability reads. It calls the vendor classes the classic pages call, in process, as the signed-in user.
-  - **Extending it.** A new read or write extends the port and names its case in AD-62 at its spec gate. A read also names its case in AD-36. 20.30's trace read and 20.31's resend each add one.
-  - **Pairs by endpoint.** A new endpoint takes an explicit `Pairs` branch ahead of the `CODEPAIRS` default, as 20.9's three do.
+  - **Extending it.** A new read or write extends the port and names its case in AD-62 at its spec gate. A read also names its case in AD-36. 20.9's reads are item 15 and 20.30's trace is item 16; 20.31's resend adds the next.
+  - **Pairs by endpoint.** A new endpoint takes an explicit `Pairs` branch ahead of the `CODEPAIRS` default, as 20.9's three and 20.30's `MessageTrace` do.
 - **Gate first.** The vendor's production, lookup, partner and test calls check no privilege (measured), so the port's gate is the whole gate.
   - **Order.** The endpoint's pairs come first, then READ on the namespace's globals database, or WRITE for a write. A refusal names the failed pair.
   - **Extra pairs** are declared only where a least-privileged run measured them. Each is refused by name before any port call, and a test that removes it pins it.
@@ -213,19 +212,21 @@ Bring the classic portal's Interoperability work into OcuPilot for namespaces th
 
 ## Cross-Story Dependencies
 
-- **Done:** 20.1 to 20.7, 20.13 to 20.24, and 20.27 to 20.29. 20.16's head `b7e0dec5` was committed with CI run 38505285690 still pending at this compile.
+- **Done:** 20.1 to 20.7, 20.13 to 20.24, and 20.27 to 20.29. 20.16's CI run 38505285690 went red on attempt 1 on the known Retention flake (DW-2285) and was rerun.
 - **Order:** 20.8, 20.9, 20.30, 20.31, 20.10, 20.11, 20.12, 20.25, 20.26, then the burn-down.
 - **20.8** re-anchors to 20.16's merged editor page, and shows 20.16's agent line only on the rule, BPL and DTL kinds.
 - **20.30 consumes:**
-  - from 20.9: the message tab group, the `body` input and the header reads with their `SessionId`;
+  - from 20.9: the message tab group, the `body` input, the message pairs, the id check, the header row builder and its synthetic-header fixture;
   - from 20.4: `SqlRows`, `LocalStamp` and the `interop-message` entity type;
-  - from 20.6: the host test's session id.
-  - 20.9 is not yet built, so 20.30 plans against 20.9's spec.
-- **20.31** consumes 20.9's list and Header tab. 20.12's resend-failed-messages workflow needs it.
+  - from 20.6: the Test dialog, its answer's `sessionId` and the probe fixture.
+  - 20.9 is not yet built, so 20.30 builds against 20.9's spec.
+- **20.30 is consumed by** 20.12's Investigate, which cites a session's rows through `interop.messagetrace.read`, and by 20.31, whose resent message joins the session's trace.
+- **20.31** consumes 20.9's list (multi-select) and Header tab, and comes after 20.30. Neither is built yet, so 20.31 plans against their specs. 20.12's resend-failed-messages workflow needs it.
 - **20.10** comes after 20.31. Its integration criterion exercises 20.16's save under source control.
 - **Known defects.**
   - **DW-2395 is fixed on feature** by Epic 18's 18.38: `LogSourcePort` no longer closes a web process's null device that the process already held. 20.7's browser spec no longer tolerates the vendor's `NOTOPEN` notice, and an integrity-then-compile leg guards it.
   - **On the owner's hold:** DW-2394 (the vendor uses the null device without opening it) and DW-2396 (the schema viewer's `&ST`).
+  - **DW-2408, routed to the burn-down:** 20.6's `interop-item-test.browser-spec.mjs` leaves the host test's message headers and the probe production's `Ens_Util.Log` rows behind in USER.
 - **Epic 18 runs beside this epic.**
   - **Shared rosters** take add-only edits, summed at the forward merge:
     - the entity types, the screen mirror, `strings.ts`, the navigation tests and EXPERIENCE.md's rows;

@@ -754,3 +754,5 @@
 2026-10-14T03:47:33Z	Story 20.30	spine_updated	ad=AD-62(item_16),AD-8,AD-44 reason=clarification(plan_draft) by=runner story=20-30 lint=ok(preexisting_low_line206)
 2026-10-14T03:47:33Z	Story 20.30	spec_validated	service_introducing=true(MessageTrace_read) integration_ac=present(20.6_host_test_link) adr_constrained_acs=AD-62,AD-8,AD-44,AD-5,AD-29,AD-47,AD-11 decision_dependency=none sections_created=none owned_ledger=none addressed=0 declined=0 mutates_shared_runtime=true(throwaway_named) filed=DW-2408(routed_burndown) model=claude-opus-5-5
 2026-10-14T03:47:41Z	Epic 20	stage_spawned	stage=epic-context spawn_at=2026-10-14T03:47:41Z model=opus agent_name=20-context-recompile-6 reason=planning_artifact_newer(20.30_gate_spine)
+2026-10-14T03:50:43Z	Epic 20	epic_context_compiled	reason=planning_artifact_newer(20.30_gate) model=opus lines=238
+2026-10-14T03:50:43Z	Story 20.31	stage_spawned	stage=plan spawn_at=2026-10-14T03:50:43Z model=opus agent_name=20-31-plan-1 cycle_iteration=1 inbox=none
