@@ -94,7 +94,11 @@ At `45c6bbc0`; paths under `src/OcuPilot/` or `ui/src/app/`.
 - Given each matrix row, when the story is done, then its task's pinning test shows it holding, and its recorded mutation reddens that test.
 - Given DW-2327, when the story is done, then its audit and the `deferred` sweep entry close it on evidence, with no `%GetNext` site changed.
 
+- **DW-2400 TLS floor, orchestrator condition (2026-10-14)** [AMENDED 2026-10-14 - see the Spec Change Log]: Task 0 measures `OcuPilotProvider`'s `TLSMinVersion` on `ocupilot-ci` as today's installer creates it (and as an older release's installer did, if the code shows a different create) and the vendor default for a new configuration on 2026.2, recorded under For the lead. The installer's ensure and repair of `OcuPilotProvider` set `TLSMinVersion` to 16 or more at every start, as they repair `VerifyPeer`, so an upgraded instance with a lower stored floor is repaired at start, never refused. An egress-named configuration below 16 (operator-owned, never repaired) is refused with a code whose sentence names what to raise in the classic portal. A test pins the start repair: lower the floor, run the ensure, read 16 or higher (`mutation:` line).
+
 ## Spec Change Log
+
+- 2026-10-14, lead: the orchestrator approved the Rule 11 asks and added a condition on DW-2400's TLS floor (the item above `## Spec Change Log`): the installer raises `OcuPilotProvider`'s floor at every start; a named configuration below it is refused with a remedy.
 
 - 2026-10-14, lead spec gate: "For the lead" applied in the spine (AD-2, AD-10, AD-32, AD-36, AD-53); DW-2327 closed `dropped`, superseded by the harvested sweep entry DW-2417 (owner 23.9); the `strings.ts` value edits, `Prohibited.cls`' DW-2400 hunks and the `ReadTool` count went to the orchestrator as the Rule 11 ask.
 
