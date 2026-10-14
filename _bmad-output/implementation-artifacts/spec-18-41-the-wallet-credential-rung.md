@@ -2,7 +2,7 @@
 title: 'Story 18.41: The wallet credential rung'
 type: 'feature'
 created: '2026-10-12'
-status: 'done'
+status: 'in-progress'
 baseline_revision: '5fa674b7ec6eb2c45b1f9f0abf30b5121273c17b'
 baseline_commit: '5fa674b7ec6eb2c45b1f9f0abf30b5121273c17b'
 review_loop_iteration: 0
@@ -133,7 +133,14 @@ Closed without an entry:
 - rejected: the `'wallet'` literal in two `Agent.cls` queries; a wire constant the tests pin, and binding it needs a signature change.
 - rejected: QA's files are uncommitted and the spec's deferred item is stale; the lead commits, and spec records are not this review's to rewrite.
 
+
+### Rework 1 (orchestrator ruling A on DW-2406, 2026-10-13)
+
+- [ ] [Review] DW-2406: honour the secret's own `RequireTLS` and `AllowedHosts` with the vendor's exact semantics, mirroring `%Wallet.KeyValue.ApplyHTTP` (`irislib/%Wallet/KeyValue.cls` :224-239); invent no stricter meaning. (1) `RequireTLS` set and the endpoint not https: refuse. (2) `RequireTLS` set and `AllowedHosts` non-empty: the endpoint's host must be in `AllowedHosts`, matched as the vendor matches (the server name without the port, `Headers("HOST")=server` at `%Net/HttpRequest.cls` :70, exactly, with `$ListFind`); the provider request must check server identity (`SSLCheckServerIdentity`: confirm the provider request sets it); and if the provider path can use a proxy without a CONNECT tunnel, the proxy host must also be listed, as the vendor requires (if it never proxies untunnelled, say so in one line). (3) `AllowedHosts` set without `RequireTLS`: the vendor enforces nothing, so neither do we. Run it at call time against the endpoint actually used, before `GetSecretValue`, reading only the two settings and never the value, in ONE place in the rung so Test connection, `TestCall` and the turn job all pass through it, ordered after Story 18.40's configuration check (`ProviderPort.SslConfigurationState`), both before any secret read. Refusals carry `WALLETRUNG` codes that name the setting (in `Api/WalletRungError.cls`). Tests: an http endpoint with `RequireTLS` is refused; a host not in the list is refused; a listed host is served; `AllowedHosts` without `RequireTLS` is served; on every refusal the secret is not read and no wallet use row is written (with `WalletSecretUse` on); each with its `mutation:` line.
+
 ## Spec Change Log
+
+- 2026-10-13, lead, rework 1 (Rule 5 tier 1 on AD-42 and AD-35, orchestrator ruling A on DW-2406): the rung honours the secret's `RequireTLS` and `AllowedHosts` exactly as `ApplyHTTP` does, at call time, before the value is read.
 
 - 2026-10-13, lead spec gate: "For the lead" applied in the spine (AD-42, AD-35, AD-7); the vendor candidate filed as DW-2377 (decision-pending, owner hold). The WalletSecretUse reading (an operator-enabled vendor event, not a new OcuPilot audit write) went to the orchestrator to confirm.
 
