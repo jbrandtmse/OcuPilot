@@ -2,9 +2,9 @@
 title: 'Story 20.16: The agent edits rule, DTL and BPL content behind the embedded editors'
 type: 'feature'
 created: '2026-10-13'
-status: 'in-progress'
-baseline_revision: '645b1478c828928296c44f2c4920884fb54142c8'
-baseline_commit: '645b1478c828928296c44f2c4920884fb54142c8'
+status: 'done'
+baseline_revision: 'b67d1b1e8babb954d47bbc25f1458c7699bc0a24'
+baseline_commit: 'b67d1b1e8babb954d47bbc25f1458c7699bc0a24'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -368,7 +368,7 @@ Rejected: `false` — a failed compile blocks a repair (the dictionary walk hold
 
 ### Fresh check red (2026-10-14) - rework iteration 1
 
-- [ ] [Smoke] **`ToolWrite`'s other-port count misses the three editor saves.** The full sweep on a freshly built `ocupilot-b-ci` (638 classes, 4,965 tests) had one red: `OcuPilot.Test.ToolWrite.TestEveryWriteToolsRequestTypeAgreesWithThePortsBodylessRoster`, "exactly forty-six shipped writes reach their target through another port" (`ToolWrite.cls`:1338). This story's three `interop.*editor.save` tools reach their target through the source code API port, so the pinned literal and its message are stale (the Shared surfaces line and the roster task did not name `ToolWrite`). Read the count from the instance, set the literal to it, add "since Story 20.16 the three editor saves through it too" to the message, and record the mutation (one save's port reference changed, or the literal off by one) observed red and reverted. Search `src/OcuPilot/Test` for any other count or roster that lists write tools by port and still reads the pre-20.16 value; the sweep found none.
+- [x] [Smoke] **`ToolWrite`'s other-port count misses the three editor saves.** The full sweep on a freshly built `ocupilot-b-ci` (638 classes, 4,965 tests) had one red: `OcuPilot.Test.ToolWrite.TestEveryWriteToolsRequestTypeAgreesWithThePortsBodylessRoster`, "exactly forty-six shipped writes reach their target through another port" (`ToolWrite.cls`:1338). This story's three `interop.*editor.save` tools reach their target through the source code API port, so the pinned literal and its message are stale (the Shared surfaces line and the roster task did not name `ToolWrite`). Read the count from the instance, set the literal to it, add "since Story 20.16 the three editor saves through it too" to the message, and record the mutation (one save's port reference changed, or the literal off by one) observed red and reverted. Search `src/OcuPilot/Test` for any other count or roster that lists write tools by port and still reads the pre-20.16 value; the sweep found none.
 
 ## Spec Change Log
 
@@ -401,6 +401,19 @@ Rejected: `false` — a failed compile blocks a repair (the dictionary walk hold
   - `[false]` `[reject]` (intent layer) Server rows run in process while the person's path is HTTP — `InteropEditorSaveTurn` and the browser spec confirm over HTTP.
   - `[false]` `[reject]` (intent layer) The owner's "in the background" has no mechanism — the contract's flow is read, propose, person confirms, page reloads.
   - `[low]` `[patch]` (intent layer) The base-class exclusion is observably redundant — same root as the `IsCodeOfKind` guard row above; same route and fix.
+
+### 2026-10-13 — Review pass (rework iteration 1)
+
+- verdicts: 8 findings — high 0, medium 0, low 4, false 4, maybe-false 0
+- findings:
+  - `[low]` `[patch]` The `(Rework)` line in `## Verification` lacked the `mutation:` token and packed two mutations into one line — patched: split into two `- mutation:` bullets.
+  - `[low]` `[patch]` The `PORTCLASS` mutation does not isolate the count assertion — patched: the row now says the method's other legs fail too and the count assertion is among the failures; the literal-50 row stays as the assertion-alone proof.
+  - `[false]` `[reject]` (intent layer) The diff touches no tool, screen, port or card surface — the item is a roster literal; the story's own surfaces were reviewed and committed before this pass.
+  - `[low]` `[reject]` (intent layer) The count is an aggregate and cannot tell the editor saves from other non-admin-port writes — the roster's design, and the `PORTCLASS` mutation shows the count follows the saves.
+  - `[low]` `[reject]` (intent layer) The Shared surfaces line and the roster task still do not name `ToolWrite` — the fix edits the spec beyond the open items (the `oversized` warning); the ticked item and the mutation row record it.
+  - `[false]` `[reject]` (intent layer) The item's search for other write-by-port counts has no evidence in the diff — the implement stage and the verification-gap layer each searched `src/OcuPilot/Test` and found none (only an unrelated `forty-six` in `Navigation`).
+  - `[false]` `[reject]` (intent layer) No post-revert green run is in the diff — `ToolWrite` ran 34 of 34 green after the revert (runs 657 and 662) and the roster classes 45 of 45 (runs 663-666).
+  - `[false]` `[reject]` (intent layer) The message says "through the source code API port too" where the item suggested "through it too" — "it" would follow the 20.27 clause and name the interoperability port.
 
 ## Design Notes
 
@@ -628,16 +641,19 @@ Added at QA (each reverted to a byte-identical tree and recompiled or rebuilt be
 - (CR) mutation: `IsCodeOfKind` skips the port's gate, its namespace checks kept (tree reloaded) -> `InteropEditorTools` `TestTheKindPredicateAnswersForEachKind`'s refused-caller leg alone.
 - (CR) mutation: `InteropEditorSave` drops its `MATCHRULE` (tree reloaded) -> `InteropEditorSaveRules` `TestAnOldTheStoredTextLacksNamesTheEditorsRead` alone.
 - (CR) `InteropEditorSaveTurn`'s ledger assertion went red with `SweepSince` after `Sweep` (7 rows left) and is green with it first, 0 rows left.
+- (Rework) `ToolWrite`'s other-port count is 49, read from the instance (46 before, plus the three editor saves, which reach their target through `OcuPilot.Port.AtelierPort`). Each mutation below was reverted to a byte-identical tree and recompiled.
+- mutation: `InteropTransformEditorSave` declares `PORTCLASS` `OcuPilot.Port.AdminPort` -> `ToolWrite` `TestEveryWriteToolsRequestTypeAgreesWithThePortsBodylessRoster`, the only method of the class that went red, with its other-port count assertion among the failures (the admin-port legs of that method fail too, so this row shows the count follows the saves' port).
+- mutation: the pinned literal 49 changed to 50 -> the same method, its other-port count assertion alone.
 
 ## Auto Run Result
 
 Status: done
 Blocking condition: none
 
-**Changed.** The rule, BPL and DTL editor screens each gain an agent read and an agent-only save (six tools on the abstract `InteropEditorSource` and `InteropEditorSave`, which extend 20.19's and 20.21's class tools). The saves require the screen's pairs, `%Development:USE` and `%Ens_Code:WRITE` (confirmed from the vendor source at Task 0; the orchestrator's ruling), and admit only a class of the editor's kind through `InteropPort.IsCodeOfKind`, at the mint and at Confirm. `Write.SCREENLISTED` and `Context.ScreenTools` list an agent-only write in its bound screen's context; `ExplorerSave.READWITH` names the editor read; `AtelierPort.Outcome` also counts a console line `Detected <n> errors during compilation` as a failed compile; three Baseline keys ship `true`. Client: the `INTEROP.EDITOR.RELOADS` consequence and the shared code-save set, the widened `outputErrors` gate, two strings, the store's `shows` and the page's `ChangeBus` subscription and agent bar line. EXPERIENCE.md has the four appends; `ci-throwaway.sh` arms the gate and turn classes. New tests: `InteropEditorTools`, `InteropEditorSave`, `InteropEditorSaveRules`, `InteropEditorSaveGate`, `InteropEditorSaveTurn`, the `InteropEditorProbe` helper, canned compile-verdict legs in `AtelierPortSave` and `AtelierPortWrite`, and `agent-editor-save.browser-spec.mjs`. `ReadTool` is now 385 tools (379 before); the count is summed with Epic 18's at the forward merge.
+**Changed (rework iteration 1, closes the `[Smoke]` item).** `src/OcuPilot/Test/ToolWrite.cls` pins the other-port write count at 49 (46 before, plus the three editor saves, which reach their target through `OcuPilot.Port.AtelierPort`); the count is read from the instance (`Registry.ListTools`: 385 tools, 227 writes, 49 not through the admin port) and the message gains "since Story 20.16 the three editor saves through the source code API port too". No other test in `src/OcuPilot/Test` counts writes by port at the pre-20.16 value (the implement stage and the verification-gap layer each searched). The `(Rework)` and two `mutation:` lines are in `## Verification`.
 
-**Review.** Two layers (verification-gap, intent-alignment), 21 findings: 0 high, 0 medium, 13 low (5 patched, 8 rejected), 8 false; nothing deferred, no follow-up review recommended. Patched: a canned `SaveSet` leg for a console-only compile failure; false mutation claims in test comments and two stale planned rows corrected; a vacuous empty-text assertion in `Refused`; the unobserved mutation sentences removed from the new test classes' comments. Mutations are recorded in `## Verification`; the `IsCodeOfKind` base-class guard is required by the contract and cannot redden on this build, so its row names the mutation that does.
+**Review.** Two layers (verification-gap, intent-alignment), 8 findings: 0 high, 0 medium, 4 low (2 patched in the spec's `## Verification`: the `mutation:` form and the `PORTCLASS` row's wording; 2 rejected), 4 false. Nothing deferred; no follow-up review recommended (this was a follow-up pass and patched no high). Reasons are in the triage log.
 
-**Verification.** On `ocupilot-b-ci`, every `(loop)` class was green after the last change (counts read from the runner and the instance): the five new classes and the two compile-verdict classes, the roster, floor and explorer classes, and the turn and descriptor classes. `check-objectscript` and `lint-docs` report 0; `npm run test:tools` 1985 of 1985; `npm run test:components` 3069 of 3069 in 245 files; `npm run build` green through the prebuild chain. Browser specs, one file per call after the bundle was redeployed: `agent-editor-save` 4 of 4, `interop-editors` 18 of 18, `agent-code-save` 7 of 7. The live check on `claude-haiku-5-5` is recorded under Verification (it warned before its first read, then read and minted one proposal, unconfirmed). Measured: the `interop-editor-page` chunk is 10.17 kB (limit 88 kB) and the initial total 1.92 MB (warning 1992 kB).
+**Verification.** On `ocupilot-b-ci`: `ToolWrite` 34 of 34 (run 662), `ReadTool` 28, `ToolRoundTrip` 2, `ToolEmit` 11 and `SurfaceCoverage` 4, all 0 failed (runs 663-666); `check-objectscript` 0 problems. Mutations: `InteropTransformEditorSave` `PORTCLASS` `AdminPort` -> the `ToolWrite` method reddens with its count assertion among the failures; the literal 50 -> that assertion alone; each reverted to a byte-identical tree and recompiled.
 
-**Residual risks.** The spine's AD-61 rule 6 sentence and the Boundaries sentence describe the Atelier route over HTTP, where a failing BPL answers 200 with no status error; the port compiles in process, where the implement stage measured #5475 in `status.errors` for the same edit (not re-measured at review). The console clause is therefore a fallback on this build, pinned by canned envelopes; the runner may reword the spine sentence. `InteropEditorSource.WARN` repeats `InteropEditorSave.WARN` literally because, as the implement stage reported (not re-checked), a parameter expression cannot read another class's parameter while both compile in one load; `InteropEditorTools` pins them equal (Rule 31 copy). The full ObjectScript sweep, `npm test`, smoke and the fresh check are the runner's.
+**Residual risks.** Epic 18's write tools that go through another port move this literal at the forward merge.
