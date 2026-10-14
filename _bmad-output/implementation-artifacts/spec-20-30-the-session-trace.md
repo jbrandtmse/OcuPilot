@@ -255,6 +255,7 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Lines were
   The header comment names the harvest: the sibling project iris-execute-mcp-v2's `Diagram/Writer.cls`, MIT.
 - [ ] **`ui/src/app/areas/interoperability/session-trace.store.ts`** (new, framework-free): `SessionTraceView`, holding `view()` (`'diagram'` or `'mermaid'`, default `'diagram'`), `setView` and `subscribe`. It is shaped like `SourceViewerState`.
 - [ ] **`ui/src/app/areas/interoperability/message-tab-body.ts`** (new): move `InteropMessageContents`' state getters (`loaded`, `fault`, skeleton, empty, empty title and Retry) into an abstract base. 20.9's component and the trace component both extend it. If Task 0 finds them already shared, use that instead.
+- [ ] **DW-2434 (ledger inbox, routed by 20.9's code review):** 20.9's `interop-message-contents.ts` repeats `shell/data-table.ts`'s state getters (`boundHere`, `loaded`, `fault`, `showRefusal`, `showSkeleton`, `busy`, `showEmpty`) and its skeleton, refusal and empty markup. When `message-tab-body.ts` takes them, make it the one helper both the body components and `DataTable` use (extend or call it from `data-table.ts`, whose getters keep their names and behavior); if sharing with `DataTable` would couple it to the body inputs, share only between the two bodies and record `Declined DW-2434 for DataTable: <reason>` under Design Notes. Either way the existing data-table and contents specs stay green.
 - [ ] **`ui/src/app/areas/interoperability/interop-message-trace.ts`** (new, `app-interop-message-trace`, `OnPush`; inputs `screen`, `store`). It draws:
   - the base's skeleton, fault with Retry, and empty sentence;
   - the view: `applyView(store.data(), read, {filter, sort, direction})`. An empty view of a non-empty read shows `logViewerNoMatches`;
@@ -348,6 +349,7 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Lines were
 ## Spec Change Log
 
 - 2026-10-14, spec gate (runner): the Rule 20 drafts are written (AD-62 item 16, AD-8, AD-44). The fixture leak the plan measured in Story 20.6's browser spec is DW-2408, routed to the burn-down.
+- 2026-10-14, lead (Rule 17 (1b)): DW-2434 routed here by 20.9's code review; added as a Tasks item beside `message-tab-body.ts`.
 
 ## Review Triage Log
 
