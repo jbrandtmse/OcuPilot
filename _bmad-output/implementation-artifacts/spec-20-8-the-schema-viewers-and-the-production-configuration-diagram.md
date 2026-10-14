@@ -2,7 +2,7 @@
 title: 'Story 20.8: The schema viewers and the production configuration diagram'
 type: 'feature'
 created: '2026-10-13'
-status: 'done'
+status: 'in-progress'
 baseline_revision: 'c0a3b4cf0d84e1600909b6b779181b4f6eaf20b3'
 baseline_commit: '86c9fb2939138203e2847f61e2a81b2c108c3e82'
 review_loop_iteration: 0
@@ -450,6 +450,10 @@ Rejected:
 - `low`: a one-shot chain deeper than five passes reddens like a poll. The ruling bounds the passes, and no page arms such a chain.
 - `low` (Rule 11): Story 18.38 AC1's count is undrained but not exposed. Its fake-clock window awaits only microtasks, so a leftover real timer cannot fire inside it (inference). No ledger entry.
 - Rejected because the fix edits the spec: the ruled item's sentence on `vi.clearAllTimers()`; the item text widened in the implement commit; the Auto Run Result's dropped earlier residuals, its "reproduced the cross-file mechanism" and its AC1 line; the probe's case name (maybe-false).
+
+### Rework iteration 2 (lead, on the same CI red)
+
+- [ ] [CI] **AC6 waits for the real event loop to be empty before it installs the fake clock** [ui/src/app/areas/logs/log-viewer.spec.ts]. The rework 1 re-review's by-design MED stands: a real timer an earlier test leaves can fire in `advanceTimersByTimeAsync`'s real yields and arm a fake timer that re-arms, which the drain cannot clear. `home.page.spec.ts`'s Story 15.4 row met the same shape (4 on node 26, 1 on node 24) and waits, bounded, until `process.getActiveResourcesInfo()` lists no `Timeout` before `vi.useFakeTimers()`. AC6 takes the same wait, best effort and not asserted, as a copy whose comment names `home.page.spec.ts` as its source. The timer-count assertion's message also lists the real resources still active, so a repeat red says what was pending. The clear and the drain stay. The four `(CI)` lines in `## Verification` are re-observed on the new test.
 
 ## Spec Change Log
 
