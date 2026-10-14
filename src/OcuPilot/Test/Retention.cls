@@ -106,6 +106,18 @@ ClassMethod DeletedUser() As %String
     Quit $Parameter(..#FIXTURE, "USERA")
 }
 
+/// <p>Run the install gate once in this process, so that the gate's read of the version row is
+/// prepared by this process's own account, which no test here deletes. The gate runs as the caller.
+/// When the account that is deleted was the first to run it after an install, an uninstall or a
+/// purge of the table's cached queries, that account's token is answered
+/// <code>503 INSTALL.UNREADABLE</code> (SQLCODE -99) in place of <code>401 AUTH.DISABLED</code>;
+/// when another account ran it first, the token is answered <code>401 AUTH.DISABLED</code>
+/// (measured on 2026.2). Answers whether the gate reads <code>installed</code>.</p>
+ClassMethod PrimeGate() As %Boolean
+{
+    Quit (##class(OcuPilot.Install.Installer).GateStatus() = "installed")
+}
+
 /// <p>A probe definition retaining <var>pDays</var> days; its id.</p>
 Method NewDefinition(pSuffix As %String, pDays As %Integer) As %String
 {
@@ -298,12 +310,14 @@ Method TestABackgroundRunPastRetentionIsSwept()
 /// first -- the account's flag is not read while the escalation is in effect, and its token is
 /// refused <code>401 AUTH.DISABLED</code> -- then the sweep abandons the turn and removes the
 /// preferences and the sharing choice, while the transcript and the ledger row survive and an
-/// administrator's gate still releases them.</p>
+/// administrator's gate still releases them. The install gate's read is prepared by this process's
+/// own account first (<method>PrimeGate</method>).</p>
 /// <p>Mutation (Rule 19): add <method>OcuPilot.Kernel.State.Convo.GuardedDelete</method> of the
 /// user's conversations to <method>OcuPilot.Kernel.Retention.SweepGonePrincipals</method> -- the
 /// transcript is gone and this goes red.</p>
 Method TestADeletedUsersSettingsGoAndTheirTranscriptsStay()
 {
+    Do $$$AssertTrue(..PrimeGate(), "the install gate reads installed in this process before the account exists")
     Set tUser = ..DeletedUser()
     Do $$$AssertStatusOK($ClassMethod(..#FIXTURE, "EnsurePrincipal", tUser, ..PreparedPassword, $ClassMethod(..#FIXTURE, "Resources")), "a probe account exists")
     Set tLogin = {}

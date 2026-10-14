@@ -2,16 +2,23 @@
 title: 'Story 20.16: The agent edits rule, DTL and BPL content behind the embedded editors'
 type: 'feature'
 created: '2026-10-13'
-status: 'in-progress'
-baseline_revision: 'b67d1b1e8babb954d47bbc25f1458c7699bc0a24'
-baseline_commit: 'b67d1b1e8babb954d47bbc25f1458c7699bc0a24'
+status: 'done'
+baseline_revision: 'aa27b66cf28e68e6bfbe9975c9a8e6ce20bdd076'
+baseline_commit: 'aa27b66cf28e68e6bfbe9975c9a8e6ce20bdd076'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
   - '{project-root}/_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md'
 warnings: [oversized]
-deferred: []
+deferred:
+  - summary: >-
+      A deleted account that was the first to run the install gate's version-row read after that table's cached queries were purged is refused 503 INSTALL.UNREADABLE ("an administrator needs to run install again") instead of 401 AUTH.DISABLED.
+    evidence: |-
+      Measured on ocupilot-b-ci: after an install or an uninstall, or after $SYSTEM.SQL.PurgeQueries of OcuPilot_Kernel_State.Version, the first account to run the gate prepares its cached compile; once that account is deleted the gate's read answers SQLCODE -99 and the router renders the unreadable gate. When another account prepared it first, the same deleted token gets 401 AUTH.DISABLED. The token is refused either way; the gate runs before the identity check (AD-38).
+    location: >-
+      src/OcuPilot/Install/Installer.cls (GateStatus)
+    severity: low
 ---
 
 <intent-contract>
@@ -381,7 +388,8 @@ Rejected: `low` — the new triage heading (2026-10-13, local) and the red it an
 
 ### CI red on b7e0dec5 (run 38505285690, both attempts) - rework iteration 2
 
-- [ ] [CI] **`Retention.TestADeletedUsersSettingsGoAndTheirTranscriptsStay`, "and the deleted account's token is refused"** (instance shard 7/8, red on attempt 1 and on the unchanged rerun, so it is not DW-2285's flake shape alone). The shard's class order (80 classes; Retention is run 60) is in `/private/tmp/claude-501/-Users-jbrandt-git-OcuPilot/1518373f-040c-4be6-a814-a27bfbff2961/scratchpad/e20r/res-2029/f16/shard7-order.txt`. Reproduced by the runner on a freshly built `ocupilot-b-ci`: the 59 classes before it, in that order, in two batches (`.../f16/batches.txt`), then Retention, red; `AuthOptionsWrite` then `Retention` alone is green. Find which earlier class leaves the state that makes a deleted account's token still served (bisect the 59), say in one cause line whether the defect is in that class's cleanup, in `Retention`'s own premise, or in the product's identity check (`Kernel/Identity`, `Kernel/State/Base.GuardedUserEnabled`), and fix it where it lies: a product defect in the product, a test that leaves state in that test. Pin it with a test that goes red on the old behavior. DW-2285 (the same assertion, a long local sweep) gets the cause in its note at adjudication.
+- [x] [CI] **`Retention.TestADeletedUsersSettingsGoAndTheirTranscriptsStay`, "and the deleted account's token is refused"** (instance shard 7/8, red on attempt 1 and on the unchanged rerun, so it is not DW-2285's flake shape alone). The shard's class order (80 classes; Retention is run 60) is in `/private/tmp/claude-501/-Users-jbrandt-git-OcuPilot/1518373f-040c-4be6-a814-a27bfbff2961/scratchpad/e20r/res-2029/f16/shard7-order.txt`. Reproduced by the runner on a freshly built `ocupilot-b-ci`: the 59 classes before it, in that order, in two batches (`.../f16/batches.txt`), then Retention, red; `AuthOptionsWrite` then `Retention` alone is green. Find which earlier class leaves the state that makes a deleted account's token still served (bisect the 59), say in one cause line whether the defect is in that class's cleanup, in `Retention`'s own premise, or in the product's identity check (`Kernel/Identity`, `Kernel/State/Base.GuardedUserEnabled`), and fix it where it lies: a product defect in the product, a test that leaves state in that test. Pin it with a test that goes red on the old behavior. DW-2285 (the same assertion, a long local sweep) gets the cause in its note at adjudication.
+  Cause (in `Retention`'s own premise; `ProviderSsl` is the class that sets it up, and neither its cleanup nor the identity check is at fault): an install or an uninstall, as `ProviderSsl` runs them, leaves the install gate's read of `OcuPilot_Kernel_State.Version` unprepared, so `Retention`'s deleted account is the first to run it, and once that account is deleted its token is answered `503 INSTALL.UNREADABLE` (SQLCODE -99), not `401 AUTH.DISABLED`; when another account ran the gate first, the token is answered 401 (measured); `ProviderSsl` then `Retention` on a fresh instance was red 4 of 4, and `Retention.PrimeGate` now runs the gate once as the suite's own account before the deleted account's first request.
 
 ## Spec Change Log
 
@@ -427,6 +435,17 @@ Rejected: `low` — the new triage heading (2026-10-13, local) and the red it an
   - `[false]` `[reject]` (intent layer) The item's search for other write-by-port counts has no evidence in the diff — the implement stage and the verification-gap layer each searched `src/OcuPilot/Test` and found none (only an unrelated `forty-six` in `Navigation`).
   - `[false]` `[reject]` (intent layer) No post-revert green run is in the diff — `ToolWrite` ran 34 of 34 green after the revert (runs 657 and 662) and the roster classes 45 of 45 (runs 663-666).
   - `[false]` `[reject]` (intent layer) The message says "through the source code API port too" where the item suggested "through it too" — "it" would follow the 20.27 clause and name the interoperability port.
+
+### 2026-10-14 — Review pass (rework iteration 2)
+
+- verdicts: 6 findings — high 0, medium 0, low 4, false 2, maybe-false 0
+- findings:
+  - `[low]` `[patch]` The purge half of `PrimeGate` has no mutation row and no run it alone decides — verified: with the purge dropped and the gate run kept, `TurnWire` then `Retention` and `ProviderSsl`, `TurnWire`, `Retention` (fresh instances) stayed green, so the purge is unproven; patched: the purge and its doc-comment and cause-line mentions are removed, and the pin is the gate run, red after `ProviderSsl` on a fresh instance.
+  - `[low]` `[patch]` The precondition assertion's message says who prepared the read, which nothing observes — patched: the message says the gate reads `installed` before the account exists.
+  - `[low]` `[reject]` The cause line classes the red as a test premise while the deferred entry records the same observation as a product quirk, and no test now pins the 503 — the two describe one measured behavior at two places; the deferred entry is its record, the quirk needs a deleted account to be the first to run the gate, and a test pinning a deferred answer would assert behavior no story decided.
+  - `[low]` `[patch]` The doc comment states the instance's mechanism as fact — patched: it states the two measured answers and no cause.
+  - `[false]` `[reject]` (intent layer) The diff touches none of the intent's surface — the pass answers a CI item outside the contract; `git diff --stat` lists `Retention.cls` and the spec, and no file the contract's Never list names.
+  - `[false]` `[reject]` (intent layer) The moved baseline hides that the diff is a delta — each rework pass sets the baseline to its own start (iteration 1 reviewed `b67d1b1e..`).
 
 ## Design Notes
 
@@ -657,16 +676,17 @@ Added at QA (each reverted to a byte-identical tree and recompiled or rebuilt be
 - (Rework) `ToolWrite`'s other-port count is 49, read from the instance (46 before, plus the three editor saves, which reach their target through `OcuPilot.Port.AtelierPort`). Each mutation below was reverted to a byte-identical tree and recompiled.
 - mutation: `InteropTransformEditorSave` declares `PORTCLASS` `OcuPilot.Port.AdminPort` -> `ToolWrite` `TestEveryWriteToolsRequestTypeAgreesWithThePortsBodylessRoster`, the only method of the class that went red, with its other-port count assertion among the failures (the admin-port legs of that method fail too, so this row shows the count follows the saves' port).
 - mutation: the pinned literal 49 changed to 50 -> the same method, its other-port count assertion alone.
+- mutation: `Retention.PrimeGate` answers 1 without running the gate (`Quit 1`) -> `ProviderSsl` then `Retention` on a fresh `ocupilot-b-ci` (runs 1 and 2): `Retention` `TestADeletedUsersSettingsGoAndTheirTranscriptsStay`, "and the deleted account's token is refused" alone, the `Retention` before this pass failing the same way; the same order on an instance that had already run 60 classes stayed green, so the pin needs a fresh instance, as CI's legs are; reverted to a byte-identical tree (sha-256 equal) and recompiled, then green in the same order on a fresh instance.
 
 ## Auto Run Result
 
 Status: done
 Blocking condition: none
 
-**Changed (rework iteration 1, closes the `[Smoke]` item).** `src/OcuPilot/Test/ToolWrite.cls` pins the other-port write count at 49 (46 before, plus the three editor saves, which reach their target through `OcuPilot.Port.AtelierPort`); the count is read from the instance (`Registry.ListTools`: 385 tools, 227 writes, 49 not through the admin port) and the message gains "since Story 20.16 the three editor saves through the source code API port too". No other test in `src/OcuPilot/Test` counts writes by port at the pre-20.16 value (the implement stage and the verification-gap layer each searched). The `(Rework)` and two `mutation:` lines are in `## Verification`.
+**Changed (rework iteration 2, closes the `[CI]` item).** `src/OcuPilot/Test/Retention.cls` gains `PrimeGate()`, which runs the install gate once in the suite's own process, and `TestADeletedUsersSettingsGoAndTheirTranscriptsStay` calls it first, so the strict `401 AUTH.DISABLED` assertion no longer depends on whether an earlier class left the gate's read unprepared. The cause is in `Retention`'s own premise, set up by `ProviderSsl`'s install and uninstall; the identity check and `ProviderSsl` are unchanged. The product's `503 INSTALL.UNREADABLE` answer to a deleted account that ran the gate first is the one `deferred:` entry (low).
 
-**Review.** Two layers (verification-gap, intent-alignment), 8 findings: 0 high, 0 medium, 4 low (2 patched in the spec's `## Verification`: the `mutation:` form and the `PORTCLASS` row's wording; 2 rejected), 4 false. Nothing deferred; no follow-up review recommended (this was a follow-up pass and patched no high). Reasons are in the triage log.
+**Review.** Two layers (verification-gap, intent-alignment), 6 findings: 0 high, 0 medium, 4 low (3 patched: the unproven purge removed after two orders stayed green without it, the assertion's message, the comment's mechanism claim; 1 rejected), 2 false. Follow-up review not recommended (a follow-up pass that patched no high).
 
-**Verification.** On `ocupilot-b-ci`: `ToolWrite` 34 of 34 (run 662), `ReadTool` 28, `ToolRoundTrip` 2, `ToolEmit` 11 and `SurfaceCoverage` 4, all 0 failed (runs 663-666); `check-objectscript` 0 problems. Mutations: `InteropTransformEditorSave` `PORTCLASS` `AdminPort` -> the `ToolWrite` method reddens with its count assertion among the failures; the literal 50 -> that assertion alone; each reverted to a byte-identical tree and recompiled.
+**Verification.** On a freshly built `ocupilot-b-ci`: the CI shard order's first 59 classes in two batches, then `Retention` (runs 1-60), all green except `AgentConnectionWire.TestATestAnswersBeforeTheGatewayDoes` in batch 1 (an elapsed-time bound, 60.04 s against a 45 to 58 s window; green alone in the next run, not touched by this change); `ProviderSsl` then `Retention` green on a fresh instance; `Retention` alone green (10 of 10); `check-objectscript` and `lint-docs` 0 problems. The mutation (`PrimeGate` answers 1) reddens `Retention` after `ProviderSsl` on a fresh instance and was reverted byte-identical.
 
-**Residual risks.** Epic 18's write tools that go through another port move this literal at the forward merge.
+**Residual risk.** The red needs a fresh instance and `ProviderSsl` before `Retention`; the same order on an instance that had run 60 classes did not reproduce it, so the pin is as strong as CI's fresh legs.
