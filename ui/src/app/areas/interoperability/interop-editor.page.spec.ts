@@ -408,6 +408,27 @@ describe('the embedded editor screens', () => {
     expect(block(host, 'agent')?.textContent?.trim()).toBe(STRINGS.interopEditorAgentNote);
   });
 
+  it('reloads each of the three editors, in its own editor, for a confirmed change to its document, and stops hearing changes once the page is destroyed', async () => {
+    // Mutation (Rule 19): the page does not release its bus subscription as it is destroyed -> the destroyed page reads the list again and this goes red.
+    for (const kind of KINDS) {
+      const mounted = await mount(kind, 'Demo.Thing.cls', rows({ Name: 'Demo.Thing.cls', Coded: false }));
+      const { fixture, host, bus } = mounted;
+      const publish = () => bus.publish({ kind: 'changed', type: 'class', scope: 'HSCUSTOM', id: 'Demo.Thing.cls', action: 'updated', proposalId: 'p1' });
+      const first = frames(host)[0];
+      expect(first.getAttribute('src'), `${kind.editor}: the first frame`).toBe(interopEditorSource(kind.editor, 'HSCUSTOM', 'Demo.Thing'));
+      expect(publish()).toBe(true);
+      await settle(fixture);
+      expect(mounted.reads.length, `${kind.editor}: the document is read again`).toBe(2);
+      expect(first.isConnected, `${kind.editor}: the old frame is detached`).toBe(false);
+      expect(frames(host).length, `${kind.editor}: and one frame is drawn`).toBe(1);
+      expect(frames(host)[0].getAttribute('src'), `${kind.editor}: for the same editor and address`).toBe(first.getAttribute('src'));
+      fixture.destroy();
+      expect(publish()).toBe(true);
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      expect(mounted.reads.length, `${kind.editor}: a destroyed page reads nothing for a change to its document`).toBe(2);
+    }
+  });
+
   it('reads nothing before the scope has a namespace, shows the skeleton meanwhile, and reads in the namespace the scope arrives with', async () => {
     // Mutation (Rule 19): the page reads at once, without waiting for the scope -> a read is sent with no namespace and this goes red.
     TestBed.resetTestingModule();

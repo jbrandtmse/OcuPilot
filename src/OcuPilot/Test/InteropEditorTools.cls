@@ -4,8 +4,8 @@
 /// declaring the routines database's WRITE as an argument pair; the three save keys ship enabled; every description carries
 /// the warning sentence; each editor's context lists exactly its read and its save while the System Explorer screens' lists
 /// stay as they were; the tools that list themselves in a screen's context without an action are exactly the three saves;
-/// and <method>OcuPilot.Port.InteropPort.IsCodeOfKind</method> answers for each kind, the base class, a coded process and
-/// a namespace it cannot read.</p>
+/// each read answers the whole saved text of a probe of its kind; and <method>OcuPilot.Port.InteropPort.IsCodeOfKind</method>
+/// answers for each kind, the base class, a coded process and a namespace it cannot read.</p>
 /// <p><b>What it needs from the environment:</b> the compiled registries and a <code>USER</code> namespace that runs
 /// interoperability. It makes and removes the <code>OcuProbe2016</code> probe package in <code>USER</code>
 /// (<class>OcuPilot.Test.InteropEditorProbe</class>) and snapshots the stored governance policy before each test and puts it back
@@ -204,6 +204,30 @@ Method TestEveryDescriptionCarriesTheWarning()
         Set tSaveText = ##class(OcuPilot.Screen.Tool.Registry).DescriptionOf(tByName(tPrefix _ ".save"))
         Do $$$AssertTrue((tSaveText [ "which the user confirms") && (tSaveText [ "opens the document again in the editor") && (tSaveText [ ("Read the class's text first with " _ tPrefix _ ".source")) && (tSaveText [ "explorer.classes.save changes other classes"), tPrefix _ ".save's description gives the confirmation, the reload, the read and the refusals")
     }
+}
+
+/// <p>Each editor's read, sent through the agent's dispatcher, answers the whole saved text of a probe of its own kind (the text an
+/// edit's <code>Old</code> is copied from): the name and namespace asked, no cut, and the lines the instance stores.</p>
+/// <p>Mutation (Rule 19): <parameter>OcuPilot.Screen.Tool.InteropEditorSource.SOURCEMAXLENGTH</parameter> is 100 -- the whole-text
+/// leg goes red.</p>
+Method TestEachEditorsReadAnswersTheWholeSavedClassText()
+{
+    Set tWrite = ##class(OcuPilot.Test.ExplorerWrite).%New("")
+    For tI = 1:1:$Length(..#EDITORS, ";") {
+        Set tRow = $Piece(..#EDITORS, ";", tI)
+        Set tRead = $Piece(tRow, "|", 3) _ ".source"
+        Set tClass = $ClassMethod(..#PROBE, "Name", $Piece(tRow, "|", 1), ..#PACKAGE)
+        Kill tContent, tIsError, tBody
+        Set tSC = tWrite.DispatchFor(tRead, ..#NAMESPACE, {"name": (tClass _ ".cls")}, .tContent, .tIsError, .tBody)
+        Do $$$AssertTrue($$$ISOK(tSC) && 'tIsError && $IsObject(tBody), tRead _ " answers: " _ $Extract(tContent, 1, 200))
+        If '$IsObject(tBody) Continue
+        Set tStored = ##class(OcuPilot.Test.ExplorerSaveProbe).Source(..#NAMESPACE, tClass _ ".cls")
+        Do $$$AssertTrue(tStored [ "Extends " _ $Piece(tRow, "|", 4), tRead _ ": the stored probe extends " _ $Piece(tRow, "|", 4))
+        Do $$$AssertEquals(tBody.name _ "|" _ tBody.namespace _ "|" _ tBody.truncated, tClass _ ".cls|" _ ..#NAMESPACE _ "|0", tRead _ ": it answers the class asked, in the namespace, uncut")
+        Do $$$AssertEquals(tBody.text, tStored, tRead _ ": and the text the instance stores")
+    }
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "ForgetLedger"), "the ledger rows of the probe turns are removed")
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.ProposalFixture).RemoveSeeded(.tRemaining), "the probe turns are removed")
 }
 
 /// <p>Each editor's context lists exactly its read and its save, read first; the System Explorer class screens' lists stay as

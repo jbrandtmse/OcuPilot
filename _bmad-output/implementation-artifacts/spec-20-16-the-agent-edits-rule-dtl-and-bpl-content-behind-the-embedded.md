@@ -589,6 +589,16 @@ Observed at implement (each reverted to a byte-identical tree and recompiled or 
 - mutation: `InteropEditorSave.PrivilegePairs` drops `%Development:USE` -> `InteropEditorSaveGate` dispatcher-made leg of the principal without it (the port refuses inside the mint, so the answer text alone would not tell), `ToolEmit` and `InteropEditorTools` pairs legs.
 - mutation: `InteropEditorSave.PrivilegePairs` drops `%Ens_Code:WRITE` -> `InteropEditorSaveGate` (the principal with `%Ens_Code:READ` only is minted a proposal) and `InteropEditorTools` pairs leg.
 
+Added at QA (each reverted to a byte-identical tree and recompiled or rebuilt before the next):
+
+- (QA) new `src/OcuPilot/Test/InteropEditorSaveConfirm.cls` and its helper `src/OcuPilot/Test/InteropEditorConfirm.cls` (the shipped confirm with the revoked-pair and fingerprint seams; not a test), pinning what Confirm asks again: the revoked pairs, the kind of a class changed after the mint, each save's Confirm rule. `(loop)` `cd ui && node tools/ci-runner.mjs --container ocupilot-b-ci --class OcuPilot.Test.InteropEditorSaveConfirm`. Expected: 0 failed.
+- (QA) `InteropEditorTools.cls` gains `TestEachEditorsReadAnswersTheWholeSavedClassText`; `interop-editor.page.spec.ts` gains the reload-for-each-editor and destroyed-page test.
+- (QA) mutation: `InteropEditorSave.PrivilegePairs` drops `%Ens_Code:WRITE` (family recompiled) -> `InteropEditorSaveConfirm` `TestAPairRevokedAfterTheMintRefusesTheConfirmAndLeavesTheProposalLive` alone (the confirm then saves with the pair revoked).
+- (QA) mutation: `ExplorerSave.ConfirmProblem` asks `ExplorerSave.AgentProblem` statically (family recompiled) -> `InteropEditorSaveConfirm` `TestAClassThatBecameAnotherKindAfterTheMintIsRefusedAtConfirm` and `TestEachSavesConfirmRuleAdmitsItsOwnKindAlone`, and `InteropEditorSaveRules` `TestConfirmRefusesAClassThatIsNotOfTheKind` alone (its five mint tests stay green).
+- (QA) mutation: `ExplorerSaveMint` skips `AgentProblem` -> `InteropEditorSaveRules` wrong-kind, coded, mapped and own-code tests (4 of 6; its Confirm-rule and no-interoperability tests stay green), `InteropEditorSaveConfirm` stays green.
+- (QA) mutation: `InteropEditorSource.SOURCEMAXLENGTH` 100 (the three reads recompiled) -> `InteropEditorTools` `TestEachEditorsReadAnswersTheWholeSavedClassText` alone.
+- (QA) mutation: `interop-editor.page.ts` omits `stopChanges()` on destroy -> `interop-editor.page.spec.ts` reload-for-each-editor test alone (the destroyed page reads the list again).
+
 ## Auto Run Result
 
 Status: done
