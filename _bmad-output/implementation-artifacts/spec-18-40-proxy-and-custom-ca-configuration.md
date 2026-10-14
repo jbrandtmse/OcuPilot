@@ -260,6 +260,17 @@ every test added or changed passes on a fresh environment, in either order
 - mutation: the remedy dropped from the absent sentence in `Provider.Base.TlsReason` -> `ProviderSslCallTime` run 344, the remedy assertion red.
 - mutation: the `@if (proxyPortField.invalid)` reason paragraph deleted from the page -> `switches.page.spec.ts` "proxy host and port refusals" red; `connectionLoadedValue` set on a refused read in the store -> "a connection that cannot be read" red.
 
+**QA pass (QA)** (each mutation reverted, the file's checksum identical afterwards, the whole tree loaded each time; `ocupilot-ci` read S0 after each group):
+
+- Files changed (QA), no new file: `src/OcuPilot/Test/ProviderSslCallers.cls` (`OnAfterAllTests` also removes the egress row and the probe), `src/OcuPilot/Test/EgressSettingsWire.cls` (`RawName`, the stored-name assertion), `src/OcuPilot/Test/AgentWireSecurity.cls` (the own-name leg), `ui/tools/self-protection.test.mjs` (the read-side pin).
+- mutation (QA): OcuPilot's own name no longer stored as `""` in `Switches.EgressMerge` (the matrix's Default row, unpinned until now) -> `EgressSettingsWire` run 356, the stored-name leg red alone; `AgentWireSecurity` run 357, the own-name leg red alone (an administrator without `%Admin_Secure:USE` is asked for the pair).
+- mutation (QA): `SSLConfiguration` not carried into the request in `Provider.Base.NewRequest` -> `EgressSettingsWire` run 360, the Integration leg red alone.
+- mutation (QA): `Egress).Resolve(` added to `Screen/Tool/SslUpdate.cls` -> the C4 read-side pin in `self-protection.test.mjs` red naming it.
+- mutation (QA), hermeticity: a raise after `OcuPilotProvider`'s `VerifyPeer` is set to 0 in `ProviderSslCallTime` -> the method errors, `OnAfterOneTest`'s restore assertion passes (run 350) and the instance reads the installer's values; with that restore dropped the assertion is red (run 351).
+- mutation (QA), hermeticity: a raise after `OcuPilotSslRead` is removed in `ProviderSslCallers` -> the put-back assertion passes in every test (run 352); with `PutBack` dropped four of five tests are red and the application stays missing (run 353).
+- mutation (QA), hermeticity: `OnBeforeOneTest` failing after the probe and the egress row exist -> `OnAfterOneTest` is not run (`%UnitTest.Manager` skips it); the new `OnAfterAllTests` leaves `ocupilot-ci` at S0 (run 347), without it the probe configuration and the row survive (run 348).
+- Run (QA): `switches.browser-spec.mjs` 5/5 and `routine-applications.browser-spec.mjs` 4/4 on a rebuilt and redeployed bundle; `self-protection.test.mjs` 42/42; `check-objectscript.py` 0 problems. `RoutineAppWrite` and `RoutineAppMembers` compare, and do not restore, the three own applications; no change.
+
 ## Auto Run Result
 
 Status: done
