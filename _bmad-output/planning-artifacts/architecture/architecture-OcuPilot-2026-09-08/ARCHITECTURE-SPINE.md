@@ -326,7 +326,7 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
   **The interoperability usage queries' temporary `%DB_IRISMETRICS`** [AMENDED 2026-10-12, Story 18.37 spec gate, Rule 20] is the vendor's own model, granted only after the vendor checks the caller's `%Admin_Operate:USE`, as `%SYS.Ensemble`'s production control is; OcuPilot adds no elevation (Story 18.37's Task 0 measured it: a caller without `%Admin_Operate:USE` is refused by every query, SQLCODE -99 or `<PROTECT>`).
 
-  **The message reads' pairs** [AMENDED 2026-10-13, Story 20.9 spec gate, Rule 20]: the message reads require `%Ens_MessageHeader:USE`, and Contents also `%Ens_MessageContent:USE`. `%EnsRole_Operator` holds the first, and `%EnsRole_Administrator` and `%EnsRole_WebDeveloper` the second (measured). The trace also requires `%Ens_MessageTrace:USE`, which `%EnsRole_Operator` holds [AMENDED 2026-10-14, Story 20.30 spec gate, Rule 20].
+  **The message reads' pairs** [AMENDED 2026-10-13, Story 20.9 spec gate, Rule 20]: the message reads require `%Ens_MessageHeader:USE`, and Contents also `%Ens_MessageContent:USE`. `%EnsRole_Operator` holds the first, and `%EnsRole_Administrator` and `%EnsRole_WebDeveloper` the second (measured). The trace also requires `%Ens_MessageTrace:USE`, which `%EnsRole_Operator` holds [AMENDED 2026-10-14, Story 20.30 spec gate, Rule 20]. Resend requires `%Ens_MessageResend:USE`, and edit also `%Ens_MessageContent:USE` and `%Ens_MessageEditResend:USE`, with WRITE on the globals database [AMENDED 2026-10-14, Story 20.31 spec gate, Rule 20].
 
   **Story 20.16's editor saves declare `%Ens_Code:WRITE`** [AMENDED 2026-10-13, Story 20.16 code review (DW-2401), Rule 20], the vendor editors' write resource, beside the class save's pairs, by the orchestrator's ruling that an editor path is never looser than the classic editor's (AD-53); it is neither the database case nor a measured `ResourcesOR()` case above.
 
@@ -480,6 +480,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
   **The allow-list is one target** [AMENDED 2026-10-12, Story 18.42 spec gate, Rule 20]: `allowed-directory`, instance scope, id `%GUIFileSelector` kept exactly, so AD-34's lock orders its writes.
 
+  **`interop-message`** [AMENDED 2026-10-14, Story 20.31 spec gate, Rule 20]: takes the integerset rule (Story 20.31).
+
 ### AD-14 — A confirmed write emits one change event; screens re-fetch, never patch
 
 - **Binds:** FR-14; every list and detail screen
@@ -593,6 +595,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
   **As shipped (Story 14.2)** [AMENDED 2026-09-27, Story 14.2 spec gate, Rule 20]: the layers are the stored per-key setting, then the preset (read-only or full), then the baseline, resolved null-coalescing so the first layer that holds a value decides and an explicit `false` there is honored; there is no environment layer. The baseline is the checked-in `Kernel/Governance/Baseline.cls`, and a test fails naming any registered write key missing from it. A `tool:action` key applies only to a tool that declares its governance action argument. The gate is asked at the dispatch gate point and again at Confirm, inside AD-34's transition (AD-40), so a key disabled after a proposal was minted refuses its confirm; it is never asked for a person's own screen write (AD-53, AD-55) or for a copy-out draft (AD-59), which runs no write. The agent's task import (`tasks.schedule.import`, Story 16.4) ships disabled; DW-1827's review of `TaskClass` and `RunAsUser` on an import proposal landed in Story 23.4, and re-enabling the key is the owner's decision [AMENDED 2026-09-29, merge gate, DW-1827] [AMENDED 2026-10-06, Story 23.4, DW-1827, Rule 20].
 
   **One person's write asks its key** [AMENDED 2026-10-12, Story 18.42 spec gate, Rule 20]: `POST /allowed-directories` asks `security.alloweddirectories.update`, shipped `false`, before any read, refusing 403 `ALLOWLIST.OFF`, because the owner decided it ships "with the action switched off by default" (DW-2334). No other person's write is asked. `GET /allowed-directories` answers that key's verdict for the screen, which draws Add, Change and Remove off with `ALLOWLIST.OFF`'s sentence while the key is disabled; the POST still asks at the write [AMENDED 2026-10-12, Story 18.46 spec gate, Rule 20].
+
+  **Story 20.31** [AMENDED 2026-10-14, Story 20.31 spec gate, Rule 20]: both message resend keys (`interop.messages.resend`, `interop.messageheader.editresend`) ship `false`; a delivered copy cannot be undone.
 
 ### AD-23 — Harvested handler bodies keep their call sites
 
@@ -991,6 +995,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
   **Story 20.30's `CLASSICPAGES`** [AMENDED 2026-10-14, Story 20.30 spec gate, Rule 20]: the Trace tab declares `EnsPortal.VisualTrace` (`NormalizePage`, measured by Story 20.9).
 
+  **Story 20.31's `CLASSICPAGES`** [AMENDED 2026-10-14, Story 20.31 spec gate, Rule 20]: the resend tools declare `EnsPortal.MessageResend`, and edit `EnsPortal.MessageResendEdit` too.
+
 ### AD-45 — There is one smoke path, and it is also the health check
 
 - **Binds:** FR-66, FR-67, NFR-9, AD-38; the installer, CI, the demo
@@ -1121,6 +1127,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
   **The `AllowListPort` case** [AMENDED 2026-10-12, Story 18.42 spec gate, Rule 20]: it composes the `AllowList` `PUT` from `Action`, `Directory` and `NewDirectory` as `FSAccess.Path` `PUT`/`DELETE` and `FSAccess.Purpose` `PUT` over a fresh `PathPort.Roots` read, and reads back through a port-composed `AllowList` `GET`.
 
+  **Story 20.31's case** [AMENDED 2026-10-14, Story 20.31 spec gate, Rule 20]: `InteropPort` answers the resend tools' fresh reads through port-composed `RESEND` and `EDIT` types, takes the reviewed digest from the stored payload or the person's `Reviewed`, and builds the edited body from the declared `Fields`.
+
 ### AD-52 — A write tool declares the port it reaches its target through
 
 - **Binds:** every write tool; Story 5.13 (application-error deletes) and every later write whose target is not an admin API endpoint; AD-2, AD-6, AD-29, AD-34, AD-40, AD-48
@@ -1184,6 +1192,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
   **A fourth unadvertised tool** [AMENDED 2026-10-12, Story 18.42 spec gate, Rule 20]: `security.alloweddirectories.update` is never the agent's (AD-21), its key ships disabled, and its one caller is `POST /allowed-directories`, so it declares no `SCREENACTIONS`; its `SecurityChange` row leaves no named gap.
 
   **A registered screen action may carry its registrant's reason** [AMENDED 2026-10-12, Story 18.46 spec gate, Rule 20] (`ScreenActions`), drawn on every surface as a self-protection reason is.
+
+  **Dry-run review of a person's screen action** [AMENDED 2026-10-14, Story 20.31 spec gate, Rule 20]: a screen action whose tool declares `DRYRUN` is reviewed through `POST /screens/:screen/dryrun`, which resolves it as the action route does and stops before the write, answering the rows the agent's card shows. The person's action then carries the reviewed digest, and the port refuses it when the verdicts moved (Story 20.31).
 
 ### AD-54 - A create write inverts what the fresh read must find, and fingerprints the target's absence
 
@@ -1301,6 +1311,7 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
   14. **The editor saves' kind check** [AMENDED 2026-10-13, Story 20.16 spec gate, Rule 20]. `InteropPort.IsCodeOfKind` answers whether a class descends from a rule, BPL or DTL base in a namespace's dictionary, switched, as `ListClasses` and `Coded` read it; Story 20.16's editor saves ask it at the mint and at Confirm.
   15. **Message reads** [AMENDED 2026-10-13, Story 20.9 spec gate, Rule 20]. `InteropPort` gains `Messages` (`LIST`, criteria `beginDateTime` (required), `endDateTime`, `status`, `type`, `source`, `target`, `bodyClass`, `session`, `errors`), `MessageHeader` and `MessageContents` (`LIST`, criterion `message`, the header `ID`). Each reads `Ens.MessageHeader` with `%ExecDirectNoPriv` after the gate, the window turned into ID bounds by two top-level statements as the classic viewer does. Contents is rendered by the port as text (EDI as the raw view or indented XML, `%XML.Adaptor` through `%XML.Writer`, a character stream as read), at most 1,000,000 characters with lines cut at 4,000, and any other body is refused `INTEROP.MESSAGE.CONTENTS`. Each contents read that opens a body records the vendor's own `%Ensemble/%Message/ViewContents` through `Ens.Util.Auditing.AuditViewMessage`, as the classic Contents pane does. Saved searches are not offered: each vendor store belongs to its own search engine (named limit; orchestrator ruling Q2). The session trace is Story 20.30's and resend Story 20.31's.
   16. **The session trace** [AMENDED 2026-10-14, Story 20.30 spec gate, Rule 20]. `InteropPort` gains `MessageTrace` (`LIST`, criterion `message`, a header `ID`). Two top-level statements read the header's `SessionId`, then that session's headers in `ID` order, capped, with `%ExecDirectNoPriv` after the gate; a header no row holds, or one with no session, reads as zero rows. It requires `%Ens_MessageHeader:USE` and `%Ens_MessageTrace:USE` (`EnsPortal.VisualTrace`'s `RESOURCE`). OcuPilot draws the trace itself, as template-bound SVG, and builds its Mermaid text in the browser from the same rows. The event, rule and IO logs and `SuperSession` are not read (named limit; the read's note).
+  17. **Resend and edit-and-resend** [AMENDED 2026-10-14, Story 20.31 spec gate, Rule 20]. `InteropPort` gains `RESEND`/`RESENDMESSAGES` and `EDIT`/`EDITRESEND` on `Messages`; each is action-style over its port-composed read and calls `Ens.MessageHeader.ResendDuplicatedMessage` in process, which checks no privilege. Before any vendor call the port refuses a stopped production and judges each message: gone, a body no longer present, a request whose target is not an enabled item of the running production (measured: the vendor queues it and answers OK), or a response whose reply queue no longer exists. It resends exactly the reviewed `resend` members, at most 100 per action, refused beyond and never truncated, in ascending ID order, continuing past a vendor failure. An edit saves a clone of the original body with the changed fields applied (an HL7 v2 document as the vendor's edit does) and resends the original with it; its read records `ViewContents`. Both are destructive; the vendor audits each new header.
 
 ### AD-63 -- The vendor's interoperability editors load in a same-origin frame, in normal mode, and OcuPilot never reaches into it
 
