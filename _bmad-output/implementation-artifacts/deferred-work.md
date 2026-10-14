@@ -11728,3 +11728,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-40-proxy-and-custom-ca-configuration.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: 18.40 implement (inference, not measured): OcuPilotSslFields and the planned PROVIDERSSL fields are Type, VerifyPeer, CAFile and Enabled only; the call-time check reads VerifyPeer
 - 2026-10-14T00:06:53Z status=routed owner=burndown by=lead note=orchestrator 2026-10-13: one entry for both configurations, consistently; Epic 18 burn-down
+
+### DW-2404: No automated test runs the wallet rung's refusal as a least-privileged person through the real provider call, or in the jobbed process a turn and Test connection use
+- source: spec-18-41-the-wallet-credential-rung.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: WalletRung pins the ladder with real principals in a logged-in child; WalletRungWire pins Base and the port with an armed refusal; the chain between rests on Kernel/Agent/Job and TestCall's role inheritance (inference)
+- 2026-10-14T01:22:08Z status=open owner=18-41-the-wallet-credential-rung by=harvest note=QA to close: a least-privileged principal's Test connection through ProviderPortProbe's stub
