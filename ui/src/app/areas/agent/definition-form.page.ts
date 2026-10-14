@@ -48,6 +48,9 @@ const ADVANCED_FIELDS: readonly string[] = [
 /** The read-only checkbox's id, the one control whose id is not its wire name's. */
 const READ_ONLY_CONTROL_ID = 'ocu-definition-read-only';
 
+/** The wallet checkbox's id: the rung has no wire field of its own, so its control is named for it. */
+const WALLET_CONTROL_ID = 'ocu-definition-wallet';
+
 /** The application root, which the first-save offer and Cancel on a form the gate opened go to. */
 const HOME_ROUTE = '';
 
@@ -272,7 +275,42 @@ interface FieldView {
         </div>
       }
 
-      @if (envMode) {
+      <div class="ocu-field">
+        <label class="ocu-field-checkbox">
+          <input
+            type="checkbox"
+            [id]="walletControlId"
+            [checked]="walletMode"
+            (change)="onWallet($event)"
+          />
+          <span>{{ STRINGS.agentDefinitionCredTypeWallet }}</span>
+        </label>
+      </div>
+
+      @if (walletMode) {
+      <div class="ocu-field">
+        <label class="ocu-field-label" [attr.for]="walletSecretField.id">{{ STRINGS.agentDefinitionFieldWalletSecret }}</label>
+        <div class="ocu-field-control">
+          <input
+            class="ocu-field-input"
+            type="text"
+            autocomplete="off"
+            [id]="walletSecretField.id"
+            [value]="walletSecretValue"
+            [attr.aria-invalid]="walletSecretField.invalid"
+            [attr.aria-describedby]="walletSecretField.describedBy"
+            (input)="onText('credentialName', $event)"
+            (blur)="onFieldBlur('credentialName')"
+          />
+        </div>
+        <p class="ocu-field-caption" [id]="walletSecretField.id + '-caption'">{{ STRINGS.agentDefinitionWalletSecretCaption }}</p>
+        @if (walletSecretField.invalid) {
+          <p class="ocu-form-error" [id]="walletSecretField.id + '-reason'">{{ walletSecretField.reason }}</p>
+        }
+      </div>
+      }
+
+      @if (showEnvVarField) {
       <div class="ocu-field">
         <label class="ocu-field-label" [attr.for]="envVarField.id">{{ STRINGS.agentDefinitionFieldEnvVar }}</label>
         <div class="ocu-field-control">
@@ -292,7 +330,9 @@ interface FieldView {
           <p class="ocu-form-error" [id]="envVarField.id + '-reason'">{{ envVarField.reason }}</p>
         }
       </div>
-      } @else {
+      }
+
+      @if (showKeyField) {
       <div class="ocu-field">
         <label class="ocu-field-label" [attr.for]="keyField.id">{{ STRINGS.agentDefinitionFieldApiKey }}</label>
         <div class="ocu-field-control">
@@ -821,6 +861,38 @@ export class DefinitionFormPage {
     return this.store.envMode();
   }
 
+  /**
+   * Whether the definition reads its key from a wallet secret, so the Wallet secret field takes the
+   * place of the API key field and no key is ever asked for.
+   */
+  protected get walletMode(): boolean {
+    this.generation();
+    return this.store.walletMode();
+  }
+
+  protected get walletControlId(): string {
+    return WALLET_CONTROL_ID;
+  }
+
+  protected get walletSecretValue(): string {
+    this.generation();
+    return this.store.value('credentialName');
+  }
+
+  protected get walletSecretField(): FieldView {
+    return this.fieldView('credentialName');
+  }
+
+  /** The environment variable field: env mode, and no wallet secret in its place. */
+  protected get showEnvVarField(): boolean {
+    return this.envMode && !this.walletMode;
+  }
+
+  /** The API key field: the credentials rung is reachable, and no wallet secret takes its place. */
+  protected get showKeyField(): boolean {
+    return !this.envMode && !this.walletMode;
+  }
+
   protected get maxTokensValue(): string {
     this.generation();
     return this.store.value('maxTokens');
@@ -1033,12 +1105,26 @@ export class DefinitionFormPage {
     const target = event.target;
     if (!(target instanceof HTMLInputElement)) return;
     if (target.checked) {
+      // The two choices are one `credType`, so ticking this leaves the wallet rung first: the rung the
+      // wallet displaced is then the one this choice remembers.
+      if (this.store.walletMode()) this.store.setWallet(false);
       const held = this.store.value('credType');
       if (held !== CRED_TYPE_NONE) this.heldCredType = held;
       this.store.setValue('credType', CRED_TYPE_NONE);
       return;
     }
     this.store.setValue('credType', this.store.admissibleCredType(this.heldCredType));
+  }
+
+  /**
+   * The wallet rung choice. Ticking it moves `credType` to `wallet`; unticking restores the rung it
+   * displaced (`DefinitionForm.setWallet`). Exclusive with No API key because both are the one
+   * `credType`.
+   */
+  protected onWallet(event: Event): void {
+    const target = event.target;
+    if (!(target instanceof HTMLInputElement)) return;
+    this.store.setWallet(target.checked);
   }
 
   protected onReadOnly(event: Event): void {
@@ -1206,7 +1292,7 @@ export class DefinitionFormPage {
     const described: string[] = [];
     if (field === 'apiKey' && this.showStoredCaption) described.push(`${id}-caption`);
     if (field === 'endpointUrl' && this.showModelUnused) described.push(`${id}-caption`);
-    if (field === 'envVarName') described.push(`${id}-caption`);
+    if (field === 'envVarName' || field === 'credentialName') described.push(`${id}-caption`);
     if (field === 'temperature' && !this.store.temperatureApplies()) described.push(`${id}-caption`);
     if (field === 'retentionDays') described.push(`${id}-caption`);
     if (invalid) described.push(`${id}-reason`);

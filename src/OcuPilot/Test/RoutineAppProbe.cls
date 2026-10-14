@@ -5,8 +5,8 @@
 /// argument every parent method takes is <code>""</code> here. The probe roles the lists name
 /// (<parameter>ROLEPREFIX</parameter>) are its own. It holds no assertions.</p>
 /// <p><b>Only <parameter>PREFIX</parameter> and <parameter>ROLEPREFIX</parameter> are ever touched.</b> An application,
-/// resource or role is named from them, in any case, and each is removed by exact name. <code>OcuPilotState</code> and
-/// <code>OcuPilotIdentity</code> are never named by it, so no method here can write them.</p>
+/// resource or role is named from them, in any case, and each is removed by exact name. <code>OcuPilotState</code>,
+/// <code>OcuPilotIdentity</code> and <code>OcuPilotSslRead</code> are never named by it, so no method here can write them.</p>
 /// <p><b>Not a <class>%UnitTest.TestCase</class></b>: it holds no assertions and runs no tests.</p>
 Class OcuPilot.Test.RoutineAppProbe Extends OcuPilot.Test.DocDbAppProbe
 {

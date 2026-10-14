@@ -76,6 +76,34 @@ Parameter KEYSOURCENONE = "none";
 /// provider sentences stay in one class.</p>
 Parameter REASONPROXYEGRESS = "The proxy this instance's provider calls go through resolves to an address OcuPilot will not call";
 
+/// <p>The reason a <code>PROVIDER.TLS</code> refusal carries when the configuration a call would be made through is
+/// absent, to which the caller appends the configuration's name. <method>ReasonFor</method> answers the code's one
+/// sentence for a turn, which covers this cause, <parameter>REASONTLSUNVERIFIED</parameter>'s and
+/// <parameter>REASONTLSUNAVAILABLE</parameter>'s.</p>
+Parameter REASONTLSABSENT = "The TLS configuration this instance's provider calls are made through is not present";
+
+/// <p>The remedy appended to <parameter>REASONTLSABSENT</parameter> for a configuration the egress row names, and the one
+/// for OcuPilot's own provider configuration, which the installer restores at every start. OcuPilot refuses a create under
+/// the name while it is named, so the create this remedy offers is the classic portal's.</p>
+Parameter REMEDYTLSABSENT = "Clear the name on Switches, or create it again in the classic portal.";
+
+Parameter REMEDYTLSABSENTOWN = "Restart the instance to restore it.";
+
+/// <p>The reason a <code>PROVIDER.TLS</code> refusal carries when the configuration a call would be made through
+/// exists but is no longer an enabled client that requires the server's certificate, with <code>&lt;name&gt;</code>
+/// the configuration's name and the remedy for a configuration the egress row names (Story 18.40). Nothing was sent.
+/// OcuPilot refuses a change to those settings while it is named, so the repair this remedy offers is the classic
+/// portal's.</p>
+Parameter REASONTLSUNVERIFIED = "The TLS configuration <name> is no longer an enabled client that requires the server's certificate, so no request was sent. Clear the name on Switches, or make it an enabled client that verifies the server again in the classic portal.";
+
+/// <p>The same refusal for OcuPilot's own provider configuration, which the installer restores at every start.</p>
+Parameter REASONTLSUNVERIFIEDOWN = "OcuPilot's TLS configuration <name> is no longer an enabled client that requires the server's certificate, so no request was sent. Restart the instance to restore it.";
+
+/// <p>The reason a <code>PROVIDER.TLS</code> refusal carries when the read of the configuration a call would be made
+/// through did not answer, with <code>&lt;name&gt;</code> the configuration's name. The fault is in OcuPilot's own
+/// install, so it names the repair: waiting does not help.</p>
+Parameter REASONTLSUNAVAILABLE = "OcuPilot cannot read the TLS configuration <name>, so no request was sent. Waiting will not help; an administrator needs to run install again.";
+
 /// <p>The reason the built-URL containment refusal carries, beside
 /// <parameter>REASONPROXYEGRESS</parameter>, because <code>PROVIDER.EGRESS</code> has three causes
 /// and <method>ReasonFor</method>'s one sentence names only the endpoint's own address. This one
@@ -205,8 +233,15 @@ Method Invoke(ByRef pValues, ByRef pMessages, ByRef pTools, pSystemPrompt As %St
             ; local, because a local is what an ^%ETN entry captures (AD-48). The ladder's transient
             ; flag is a boolean and carries no text, so binding it is safe; it selects the code, so a
             ; store that could not be read is told apart from a reference that holds nothing.
-            Set ..ApiKey = $ClassMethod(..ResolvedSecretClass(), "Resolve", $Get(pValues("credType")), $Get(pValues("envVarName")), $Get(pValues("credentialName")), .tTransient)
+            ; The endpoint rides along because a wallet secret's own settings decide whether it may be sent there.
+            Set ..ApiKey = $ClassMethod(..ResolvedSecretClass(), "Resolve", $Get(pValues("credType")), $Get(pValues("envVarName")), $Get(pValues("credentialName")), .tTransient, .tRefusal, $Get(pValues("endpointUrl")))
             If ..ApiKey = "" {
+                ; A refusal is the wallet rung declining to read a secret that exists, so it is told
+                ; apart from an absence and from an unreadable store, and it carries the pair or the setting.
+                If $ListValid($Get(tRefusal)) && ($ListLength(tRefusal) = 2) {
+                    Do ..FaultRefused($List(tRefusal, 1), $List(tRefusal, 2), .pFault, .pHttpStatus)
+                    Quit
+                }
                 Set tCode = $Select(+$Get(tTransient): ##class(OcuPilot.Api.Error).#PROVIDERCREDENTIALSTORE, 1: ##class(OcuPilot.Api.Error).#PROVIDERCREDENTIAL)
                 Do ..Fault(tCode, ..CredentialReason(.pValues, tCode), "", .pFault, .pHttpStatus)
                 Quit
@@ -225,7 +260,9 @@ Method Invoke(ByRef pValues, ByRef pMessages, ByRef pTools, pSystemPrompt As %St
         ; Any other source -- none, or one this class does not declare -- carries no key, so there
         ; is nothing to gate and ApplyAuth sends no key header.
         If (tKeySource = ..#KEYSOURCESTORED) || (tKeySource = ..#KEYSOURCEBODY) {
-            If '..IsApiKeyShapeValid() {
+            ; A value that opens with a brace is a wallet secret with several members, not a key, and
+            ; the whole of it would otherwise be sent as one.
+            If ($Extract(..ApiKey) = "{") || '..IsApiKeyShapeValid() {
                 Do ..Fault(##class(OcuPilot.Api.Error).#PROVIDERKEYSHAPE, ..KeyShapeReason(), "", .pFault, .pHttpStatus)
                 Quit
             }
@@ -705,6 +742,21 @@ ClassMethod Fault(pCode As %String, pReason As %String = "", pProviderText As %S
     Do pFault.%Set("detail", tDetail)
 }
 
+/// <p>Build the wire fault for a wallet rung refusal, <var>pCode</var> being a
+/// <code>WALLETRUNG.*</code> code and <var>pDetail</var> the <code>resource:permission</code> pair the
+/// caller lacks or, for a refusal by the secret's own settings, the setting: the sentence names it, and the
+/// detail member <method>OcuPilot.Api.WalletRungError.DetailKeyFor</method> names (<code>failedPair</code> or
+/// <code>setting</code>) carries it (AD-8). Its slug is the one its status maps to, so a 403 reads
+/// <code>forbidden</code> as every other refusal naming a pair does.</p>
+ClassMethod FaultRefused(pCode As %String, pDetail As %String, Output pFault As %DynamicObject, Output pHttpStatus As %Integer)
+{
+    Do ..Fault(pCode, ##class(OcuPilot.Api.WalletRungError).ReasonFor(pCode, pDetail), "", .pFault, .pHttpStatus)
+    Do pFault.%Set("error", ##class(OcuPilot.Api.Error).GetSlugForStatus(pHttpStatus))
+    Set tDetail = {}
+    Do tDetail.%Set(##class(OcuPilot.Api.WalletRungError).DetailKeyFor(pCode), pDetail, "string")
+    Do pFault.%Set("detail", tDetail)
+}
+
 /// <p>The numeric status a route answers <var>pCode</var> with. A failure of the upstream provider
 /// is a gateway failure (502); a failure of this instance's own configuration is 503; a provider
 /// that did not answer in time -- within its per-call timeout, or within Test connection's
@@ -719,6 +771,7 @@ ClassMethod HttpFor(pCode As %String) As %Integer
     If pCode = ##class(OcuPilot.Api.Error).#PROVIDERCREDENTIALSTORE Quit 503
     If pCode = ##class(OcuPilot.Api.Error).#PROVIDERKEYSHAPE Quit 503
     If pCode = ##class(OcuPilot.Api.Error).#PROVIDERTLS Quit 503
+    If $Extract(pCode, 1, 11) = "WALLETRUNG." Quit ##class(OcuPilot.Api.WalletRungError).HttpFor(pCode)
     Quit 502
 }
 
@@ -738,12 +791,26 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ##class(OcuPilot.Api.Error).#PROVIDERREFUSED Quit "The provider refused the request"
     If pCode = ##class(OcuPilot.Api.Error).#PROVIDERUNAVAILABLE Quit "The provider did not serve this request on any attempt"
     If pCode = ##class(OcuPilot.Api.Error).#PROVIDERTIMEOUT Quit "The provider did not answer within the time this instance allows"
-    If pCode = ##class(OcuPilot.Api.Error).#PROVIDERTLS Quit "The TLS configuration this instance's provider calls are made through is not present"
+    If pCode = ##class(OcuPilot.Api.Error).#PROVIDERTLS Quit "The TLS configuration this instance's provider calls are made through is not present, is no longer an enabled client that requires the server's certificate, or could not be read, so no request was sent. Test connection names the configuration and the remedy"
     If pCode = ##class(OcuPilot.Api.Error).#PROVIDERTESTTIMEOUT Quit ..#REASONTESTTIMEOUT
     If pCode = ##class(OcuPilot.Api.Error).#PROVIDERTESTTIMEOUTLOCAL Quit ..#REASONTESTTIMEOUTLOCAL
     If pCode = ##class(OcuPilot.Api.Error).#PROVIDERDECLINED Quit "The model declined to answer this request"
     If pCode = ##class(OcuPilot.Api.Error).#PROVIDERTOOLCALLFAILED Quit "The model could not make a valid tool call. Try again, or rephrase the request."
+    If $Extract(pCode, 1, 11) = "WALLETRUNG." Quit ##class(OcuPilot.Api.WalletRungError).ReasonFor(pCode)
     Quit "The provider call did not complete"
+}
+
+/// <p>The sentence a <code>PROVIDER.TLS</code> fault carries for the configuration <var>pName</var> in
+/// <var>pState</var>, one of <class>OcuPilot.Port.ProviderPort</class>'s <code>TLSABSENT</code>,
+/// <code>TLSUNVERIFIED</code> and <code>TLSUNAVAILABLE</code>: <parameter>REASONTLSABSENT</parameter>,
+/// <parameter>REASONTLSUNVERIFIEDOWN</parameter> for <var>pOwnName</var> (OcuPilot's own provider configuration) or
+/// <parameter>REASONTLSUNVERIFIED</parameter> for any other, and <parameter>REASONTLSUNAVAILABLE</parameter>. Each
+/// names the configuration and the remedy, and nothing the configuration holds.</p>
+ClassMethod TlsReason(pState As %String, pName As %String, pOwnName As %String) As %String
+{
+    If pState = "absent" Quit ..#REASONTLSABSENT _ ": " _ pName _ ". " _ $Select(pName = pOwnName: ..#REMEDYTLSABSENTOWN, 1: ..#REMEDYTLSABSENT)
+    If pState = "unavailable" Quit $Replace(..#REASONTLSUNAVAILABLE, "<name>", pName)
+    Quit $Replace($Select(pName = pOwnName: ..#REASONTLSUNVERIFIEDOWN, 1: ..#REASONTLSUNVERIFIED), "<name>", pName)
 }
 
 /// <p>The concrete key-shape test a family whose keys have no published prefix uses. <b>No

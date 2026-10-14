@@ -80,6 +80,8 @@ XData Probes
 <probe class="Api.Router" method="POST" url="/agent/switches/holds" path="/api/ocupilot/agent/switches/holds" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="GET" url="/agent/switches" path="/api/ocupilot/agent/switches" disposition="envelope"/>
 <probe class="Api.Router" method="PUT" url="/agent/switches" path="/api/ocupilot/agent/switches" disposition="envelope" refusal="1"/>
+<probe class="Api.Router" method="GET" url="/agent/switches/egress" path="/api/ocupilot/agent/switches/egress" disposition="envelope"/>
+<probe class="Api.Router" method="PUT" url="/agent/switches/egress" path="/api/ocupilot/agent/switches/egress" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="GET" url="/agent/restraint" path="/api/ocupilot/agent/restraint" disposition="envelope"/>
 <probe class="Api.Router" method="PUT" url="/agent/restraint" path="/api/ocupilot/agent/restraint" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="GET" url="/agent/governance" path="/api/ocupilot/agent/governance" disposition="envelope"/>

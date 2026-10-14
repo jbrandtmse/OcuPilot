@@ -9,7 +9,7 @@
 /// <p><b>What it needs from the environment:</b> OcuPilot installed and serving and
 /// <parameter>ARMINGVARIABLE</parameter> reading <code>1</code>, because the class creates probe privileged routine
 /// applications (<class>OcuPilot.Test.RoutineAppProbe</class>) and removes them by exact name before all, after each and
-/// after all. It reads OcuPilot's own two routine applications and never writes them. After each test the application
+/// after all. It reads OcuPilot's own three routine applications and never writes them. After each test the application
 /// list reads as that test found it.</p>
 Class OcuPilot.Test.RoutineAppRead Extends %UnitTest.TestCase
 {
@@ -56,7 +56,7 @@ Method OnAfterAllTests() As %Status
 
 /// <p>C1: the screen and the tool answer the same rows, each carrying the four list fields with <code>Enabled</code> a
 /// boolean read from the application's own <code>GET</code> -- the vendor's <code>LIST</code> answers it false on every
-/// row and answers no description -- and the probe applications are listed named as written; OcuPilot's own two are
+/// row and answers no description -- and the probe applications are listed named as written; OcuPilot's own three are
 /// listed with the flag each one's <code>GET</code> reads at that moment.</p>
 /// <p>Mutation (Rule 19): drop the <code>rowGet</code> from <class>OcuPilot.Screen.Descriptor.RoutineAppList</class> --
 /// the live-list legs stay and the rows legs go red, the screen answering <code>Enabled</code> false and no
@@ -88,11 +88,11 @@ Method TestTheScreenAndTheReadToolAnswerTheSameRows()
         Do $$$AssertEquals(##class(OcuPilot.Test.EncryptionStartupDescriptor).Keys(tRow), "Description,Enabled,Name,Resource", "row " _ tIndex _ " carries the four list fields and nothing else")
         Do $$$AssertEquals(tRow.%GetTypeOf("Enabled"), "boolean", "row " _ tIndex _ " reads Enabled as a boolean")
         If $ClassMethod(..#PROBE, "IsProbe", tRow.%Get("Name")) Set tSeen = tSeen _ $Select(tSeen = "": "", 1: ",") _ tRow.%Get("Name") _ ":" _ tRow.%Get("Enabled") _ ":" _ tRow.%Get("Description") _ ":" _ tRow.%Get("Resource")
-        If $ListFind($ListBuild("OcuPilotState", "OcuPilotIdentity"), tRow.%Get("Name")) Set tOwn = tOwn _ $Select(tOwn = "": "", 1: ",") _ tRow.%Get("Name") _ ":" _ tRow.%Get("Enabled")
+        If $ListFind($ListBuild("OcuPilotState", "OcuPilotIdentity", "OcuPilotSslRead"), tRow.%Get("Name")) Set tOwn = tOwn _ $Select(tOwn = "": "", 1: ",") _ tRow.%Get("Name") _ ":" _ tRow.%Get("Enabled")
     }
     Do $$$AssertEquals(tSeen, "OcuProbe1831A:0:first:,ocuprobe1831b:1:second:OcuProbe1831Res", "both probes are listed, named as written, with Enabled, description and resource as stored")
-    Set tOwnStored = "OcuPilotIdentity:" _ ''$ClassMethod(..#PROBE, "StoredField", "", "OcuPilotIdentity", "Enabled") _ ",OcuPilotState:" _ ''$ClassMethod(..#PROBE, "StoredField", "", "OcuPilotState", "Enabled")
-    Do $$$AssertEquals(..Sorted(tOwn), tOwnStored, "and OcuPilot's own two are listed with the flag each one's GET reads")
+    Set tOwnStored = "OcuPilotIdentity:" _ ''$ClassMethod(..#PROBE, "StoredField", "", "OcuPilotIdentity", "Enabled") _ ",OcuPilotSslRead:" _ ''$ClassMethod(..#PROBE, "StoredField", "", "OcuPilotSslRead", "Enabled") _ ",OcuPilotState:" _ ''$ClassMethod(..#PROBE, "StoredField", "", "OcuPilotState", "Enabled")
+    Do $$$AssertEquals(..Sorted(tOwn), tOwnStored, "and OcuPilot's own three are listed with the flag each one's GET reads")
     Set tSC = ##class(OcuPilot.Screen.Tool.Registry).Resolve(..#SCREEN _ ".read", .tTool)
     Do $$$AssertStatusOK(tSC, "webapp.routineapps.read resolves")
     Set tSC = ##class(OcuPilot.Screen.Tool.Registry).InvokeTool(tTool, {"maxRows": 100}, 100, .tResult, .tHttp, .tFault)

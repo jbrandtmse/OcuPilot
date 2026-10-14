@@ -16,7 +16,7 @@ import { ROUTINE_APP_FORM_PATH, RoutineAppForm } from './routine-app-form.store'
 /**
  * The privileged routine application editor's three member tabs over stubs of what an instance supplies (Story 18.33,
  * AD-56 (ii)): one body per `tab`, each act the list's own declared action with the values the pickers chose, a row
- * action's refusal shown and nothing read again, and the controls of OcuPilot's own two applications `aria-disabled`.
+ * action's refusal shown and nothing read again, and the controls of OcuPilot's own three applications `aria-disabled`.
  * The real store, the real action handler and the real template run.
  */
 

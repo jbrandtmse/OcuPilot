@@ -49,7 +49,7 @@ interface HeldRoutineView {
  * grants is privileged, states `privilegedGrantEffect` at the field (AD-10): the server's mark decides, the client decides
  * nothing.
  *
- * **On OcuPilot's own two applications every control is `aria-disabled`**, described by the sentence the list's declared
+ * **On OcuPilot's own three applications every control is `aria-disabled`**, described by the sentence the list's declared
  * rule explains the refusal with (`routineAppRefusalOcuPilot`); the instance refuses each action either way.
  *
  * Every control-flow condition is a paren-free member reference, for the reason `sign-in.ts` records.
@@ -366,7 +366,7 @@ export class RoutineAppMemberTabs {
 
   // --- refusals --------------------------------------------------------------------------------
 
-  /** The sentence the list's declared rule explains OcuPilot's own two applications with, or `''` for any other. */
+  /** The sentence the list's declared rule explains OcuPilot's own three applications with, or `''` for any other. */
   protected get refusal(): string {
     this.generation();
     return this.ruleReason(ADD_APPLICATION_ROLE);

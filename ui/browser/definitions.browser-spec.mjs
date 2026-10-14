@@ -27,6 +27,10 @@
  *    field reads `claude-opus-5-5`, first of the datalist's suggestions, and Save stores it.
  * 8. **The definition's read-only flag has a control** (DW-1621, Story 14.5): "Read-only" checked
  *    inside Advanced and saved reads back checked after a reload, and the instance stores it.
+ * 9. **The wallet rung is configurable through the form** (Story 18.41's C2): ticking "Read the key from a
+ *    wallet secret" replaces the key field with the Wallet secret field, a malformed name is refused on that
+ *    field with the instance's sentence, a named secret saves and reads back ticked after a reload with the
+ *    instance storing `wallet`, and unticking restores the key field.
  *
  * **It refuses the live container**, for the reason its siblings do: the throwaway is the instance
  * a browser run drives, and this spec creates a definition. It **creates the rows it filters and
@@ -73,7 +77,10 @@ const DEFINITIONS_PATH = '/api/ocupilot/agent/definitions';
 /** Every definition this spec creates is named with this prefix and removed in `after`. */
 const PREFIX = 'OcuPilotBrowserProbe';
 
-const NAMES = [`${PREFIX}Alpha`, `${PREFIX}Beta`, `${PREFIX}Local`, `${PREFIX}Sampling`, `${PREFIX}Timeout`, `${PREFIX}Opus`, `${PREFIX}ReadOnly`];
+const NAMES = [`${PREFIX}Alpha`, `${PREFIX}Beta`, `${PREFIX}Local`, `${PREFIX}Sampling`, `${PREFIX}Timeout`, `${PREFIX}Opus`, `${PREFIX}ReadOnly`, `${PREFIX}Wallet`];
+
+/** The wallet secret the wallet leg names. It need not exist: a definition's reference to it is weak (AD-37). */
+const WALLET_SECRET = 'OcuPilotProbe1841.browser';
 
 /** The form's key route in the structural baseline. */
 const FORM_ROUTE = 'agent/definitions/edit';
@@ -800,6 +807,88 @@ test('DW-1621: Read-only checked inside Advanced and saved reads back checked, a
     assert.ok(one.ok, 'the single-definition route answers');
     const stored = await one.json();
     assert.equal(stored.readOnly, true, `and the instance stores readOnly true: ${JSON.stringify(stored)}`);
+  } finally {
+    await context.close();
+  }
+});
+
+test('Story 18.41 C2: the wallet rung saves with a secret name, refuses a malformed one on its field, reads back ticked and unticks to the key field', async () => {
+  const { context, page } = await signedInAt(FORM_URL);
+  try {
+    await page.waitForSelector('#ocu-definition-name', { visible: true, timeout: config.navigationTimeoutMs });
+    // The providers read fills the model field, and the checkbox is drawn with the form: wait for both
+    // before anything is clicked or typed.
+    await page.waitForFunction(
+      () => (document.querySelector('#ocu-definition-model')?.value ?? '') !== '',
+      { timeout: config.navigationTimeoutMs }
+    );
+    await page.waitForSelector('#ocu-definition-wallet', { visible: true, timeout: config.navigationTimeoutMs });
+    assert.equal(await page.$eval('#ocu-definition-wallet', (box) => box.checked), false, 'a new definition opens on the key field');
+    assert.equal(
+      await page.$eval('#ocu-definition-wallet', (box) => box.closest('label').textContent.trim()),
+      STRINGS.agentDefinitionCredTypeWallet,
+      'the checkbox carries the published label, on the Anthropic row'
+    );
+
+    await fill(page, 'ocu-definition-name', NAMES[7]);
+    await page.click('#ocu-definition-wallet');
+    await page.waitForFunction(
+      () => document.querySelector('#ocu-definition-apiKey') === null && document.querySelector('#ocu-definition-credentialName') !== null,
+      { timeout: config.navigationTimeoutMs }
+    );
+    assert.equal(
+      await page.$eval('#ocu-definition-credentialName-caption', (node) => node.textContent.trim()),
+      STRINGS.agentDefinitionWalletSecretCaption,
+      'the Wallet secret field replaces the key field under its published caption'
+    );
+
+    // A name that is not collection.secret is refused on its own field, with the instance's sentence.
+    await fill(page, 'ocu-definition-credentialName', 'not a secret name');
+    const save = (await page.$$('.ocu-form-bar-actions button')).at(-1);
+    assert.ok(save, 'the sticky bar carries a primary action');
+    await save.click();
+    await page.waitForSelector('#ocu-definition-credentialName-reason', { visible: true, timeout: config.navigationTimeoutMs });
+    const reason = await page.$eval('#ocu-definition-credentialName-reason', (node) => node.textContent.trim());
+    assert.ok(reason.includes('collection.secret'), `the refusal is the instance's sentence on the field: ${reason}`);
+    assert.equal(await page.$eval('#ocu-definition-credentialName', (input) => input.getAttribute('aria-invalid')), 'true', 'and the field is marked invalid');
+
+    // A named secret saves.
+    await fill(page, 'ocu-definition-credentialName', WALLET_SECRET);
+    await (await page.$$('.ocu-form-bar-actions button')).at(-1).click();
+    await page.waitForFunction(
+      (sentence) => document.querySelector('.ocu-form-bar-status')?.textContent?.includes(sentence) === true,
+      { timeout: config.navigationTimeoutMs },
+      STRINGS.formSavedPendingTest
+    );
+    await page.waitForFunction(
+      () => /\/agent\/definitions\/edit\/[^/]+$/.test(new URL(window.location.href).pathname),
+      { timeout: config.navigationTimeoutMs }
+    );
+    const editor = new URL(page.url());
+    const id = decodeURIComponent(editor.pathname.split('/').at(-1));
+
+    // A reload of the editor: the form reads the stored row, not the buffer it saved from.
+    await page.goto(editor.href, { waitUntil: 'networkidle2' });
+    await leaveFirstLoginGate(page, config.navigationTimeoutMs, editor.pathname + editor.search);
+    await page.waitForSelector('#ocu-definition-wallet', { visible: true, timeout: config.navigationTimeoutMs });
+    assert.equal(await page.$eval('#ocu-definition-wallet', (box) => box.checked), true, 'the reload reads the checkbox ticked');
+    assert.equal(await page.$eval('#ocu-definition-credentialName', (input) => input.value), WALLET_SECRET, 'with the secret name');
+    assert.equal(await page.$('#ocu-definition-apiKey'), null, 'and no key field');
+
+    const one = await fetch(`${config.origin}${DEFINITIONS_PATH}/${encodeURIComponent(id)}`, {
+      headers: { Authorization: authHeader() },
+    });
+    assert.ok(one.ok, 'the single-definition route answers');
+    const stored = await one.json();
+    assert.equal(`${stored.credType} ${stored.credentialName}`, `wallet ${WALLET_SECRET}`, `and the instance stores the wallet rung: ${JSON.stringify(stored)}`);
+
+    // Unticking restores the key field and drops the secret name's field.
+    await page.click('#ocu-definition-wallet');
+    await page.waitForFunction(
+      () => document.querySelector('#ocu-definition-apiKey') !== null && document.querySelector('#ocu-definition-credentialName') === null,
+      { timeout: config.navigationTimeoutMs }
+    );
+    assert.equal(await page.$eval('#ocu-definition-wallet', (box) => box.checked), false, 'unticked');
   } finally {
     await context.close();
   }

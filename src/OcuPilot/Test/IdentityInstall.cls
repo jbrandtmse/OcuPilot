@@ -87,13 +87,14 @@ ClassMethod CodeDatabase() As %String
 /// <code>&lt;role Resources&gt;|&lt;role GrantedRoles&gt;|&lt;app Enabled&gt;|&lt;app Type&gt;|&lt;app MatchRoles&gt;|&lt;app Routines&gt;</code>.
 /// An absent object contributes <code>ABSENT</code> and a failed read <code>READFAILED</code>, so
 /// the two can never compare equal -- the discipline
-/// <method>OcuPilot.Install.Installer.StateFingerprint</method> already follows.</p>
-ClassMethod IdentityShape() As %String
+/// <method>OcuPilot.Install.Installer.StateFingerprint</method> already follows. <var>pName</var> names another
+/// application and role pair of the same shape, which is how <class>OcuPilot.Test.SslReadInstall</class> reads its own.</p>
+ClassMethod IdentityShape(pName As %String = "") As %String
 {
     Set tOut = ""
     Set tOrigNS = $NAMESPACE
     Try {
-        Set tName = ..IdentityName()
+        Set tName = $Select(pName = "": ..IdentityName(), 1: pName)
         Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
         If $$$ISERR(tSC) Quit
         Set tRolePart = "ABSENT|ABSENT"
@@ -144,14 +145,14 @@ ClassMethod DriftApplication(ByRef pProps, pName As %String = "") As %Boolean
     Quit tOk
 }
 
-/// <p>Write <var>pResources</var> onto the probe's identity role, and answer whether the modify
-/// succeeded. See <method>DriftApplication</method>.</p>
-ClassMethod DriftRole(pResources As %String) As %Boolean
+/// <p>Write <var>pResources</var> onto the probe's identity role, or the role <var>pName</var> names, and answer whether
+/// the modify succeeded. See <method>DriftApplication</method>.</p>
+ClassMethod DriftRole(pResources As %String, pName As %String = "") As %Boolean
 {
     Set tOk = 0
     Set tOrigNS = $NAMESPACE
     Try {
-        Set tName = ..IdentityName()
+        Set tName = $Select(pName = "": ..IdentityName(), 1: pName)
         Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
         If $$$ISERR(tSC) Quit
         Kill tProps
@@ -174,7 +175,7 @@ ClassMethod DriftRole(pResources As %String) As %Boolean
 /// <p>Mutation (Rule 19): widen
 /// <parameter>OcuPilot.Kernel.State.Base.IDENTITYRESOURCES</parameter> to include
 /// <code>%DB_OCUPILOT:RW</code>, or change <code>tWantRoutines</code> in
-/// <method>EnsureIdentityApplication</method> to a package wildcard, and recompile
+/// <method>OcuPilot.Install.Installer.EnsureReadApplication</method> to a package wildcard, and recompile
 /// <code>OcuPilot.*</code> -> this goes red. Before this class existed both mutations were
 /// invisible to the whole suite.</p>
 Method TestAFreshInstallCreatesTheIdentityPairInItsDeclaredShape()
@@ -195,7 +196,7 @@ Method TestAFreshInstallCreatesTheIdentityPairInItsDeclaredShape()
 /// storage application's does. Without this, a regression in that branch is a silent total
 /// lockout that every other gate reports as green.</p>
 /// <p>Mutation (Rule 19): invert the <code>tNeedsRepair</code> test in
-/// <method>OcuPilot.Install.Installer.EnsureIdentityApplication</method>, or delete its repair
+/// <method>OcuPilot.Install.Installer.EnsureReadApplication</method>, or delete its repair
 /// arm, and recompile <code>OcuPilot.*</code> -> this goes red.</p>
 Method TestASecondRunRepairsADriftedIdentityApplication()
 {
@@ -272,7 +273,7 @@ ClassMethod ApplicationType(pName As %String) As %String
 /// stripped. A role that grants nothing is the fault <code>AddRoles</code> cannot report, because
 /// the application is still enabled and the call still succeeds.</p>
 /// <p>Mutation (Rule 19): delete the role-repair arm from
-/// <method>OcuPilot.Install.Installer.EnsureIdentityApplication</method> and recompile
+/// <method>OcuPilot.Install.Installer.EnsureReadApplication</method> and recompile
 /// <code>OcuPilot.*</code> -> this goes red.</p>
 Method TestASecondRunRepairsADriftedIdentityRole()
 {

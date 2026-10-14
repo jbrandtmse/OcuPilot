@@ -145,9 +145,10 @@ Parameter PRIVILEGEGRANT = "PROHIBITED.PRIVILEGEGRANT";
 /// <code>webAppPrivilegeGrantRefusal</code> (AD-53).</p>
 Parameter PRIVILEGEGRANTREASON = "OcuPilot's own web applications carry only the roles its installer gives them. A role set there would run every OcuPilot request with it.";
 
-/// <p>Any write to one of OcuPilot's own privileged routine applications, <code>OcuPilotState</code> or
-/// <code>OcuPilotIdentity</code> (<method>OwnRoutineApplication</method>): a delete, a disable, a change to any field.
-/// OcuPilot reads its own protected state through them (AD-9, AD-10, DW-2239, Story 18.10).</p>
+/// <p>Any write to one of OcuPilot's own privileged routine applications, <code>OcuPilotState</code>,
+/// <code>OcuPilotIdentity</code> or <code>OcuPilotSslRead</code> (<method>OwnRoutineApplication</method>): a delete, a
+/// disable, a change to any field. OcuPilot reads its own protected state, an account's enabled flag and the provider's
+/// TLS configuration through them (AD-9, AD-10, DW-2239, Story 18.10).</p>
 Parameter OCUPILOTROUTINEAPP = "PROHIBITED.OCUPILOTROUTINEAPP";
 
 /// <p>The one sentence <parameter>OCUPILOTROUTINEAPP</parameter> carries, caller-neutral, published in EXPERIENCE.md's
@@ -247,6 +248,18 @@ Parameter OCUPILOTSSL = "PROHIBITED.OCUPILOTSSL";
 /// <p>The one sentence <parameter>OCUPILOTSSL</parameter> carries, caller-neutral, published and
 /// pinned as <parameter>UNCOVEREDFIELDREASON</parameter> is.</p>
 Parameter OCUPILOTSSLREASON = "OcuPilot's installer sets this setting of its own provider configuration and restores it at every start, so it cannot be changed here.";
+
+/// <p>The write would delete the SSL/TLS configuration the egress row names for provider calls
+/// (<method>ProviderSsl</method>), create one under its name, or change its type, its peer verification, its trusted
+/// certificates or whether it is enabled (<method>OcuPilotSslFields</method>): peer verification off, or the
+/// configuration gone and made again unverified, would send the provider key over TLS nobody verified (AD-10 as amended
+/// 2026-10-13). A failed read of the egress row refuses too. Every other field of it may change, and once another
+/// configuration is named it is not refused.</p>
+Parameter PROVIDERSSL = "PROHIBITED.PROVIDERSSL";
+
+/// <p>The one sentence <parameter>PROVIDERSSL</parameter> carries, caller-neutral, published and pinned as
+/// <parameter>UNCOVEREDFIELDREASON</parameter> is.</p>
+Parameter PROVIDERSSLREASON = "Provider calls are made through this SSL/TLS configuration, so while Switches names it, or while it is OcuPilot's own, it cannot be deleted, created, or have its type, peer verification, trusted certificates or enablement changed.";
 
 /// <p>The effect <method>WeakensByEffect</method> answers for an SSL/TLS configuration that is not
 /// OcuPilot's own whose peer verification a write turns off: the server's certificate is no longer
@@ -1001,10 +1014,10 @@ Parameter READTYPE = "GET";
 /// <method>Mapping</method> adds, the one <method>Database</method> adds, and the one
 /// <method>Lock</method> adds, and the one <method>Code</method> adds, and the one
 /// <method>SqlStatement</method> adds, the key arm's and the encryption start arm's, and the two
-/// <method>AuthOptions</method> adds, and the one <method>Superserver</method> adds, and the SQL privilege arm's, and the one <method>ScreenPermission</method> adds last, and the one <method>OwnRoutineApplication</method> arm adds after it, and the one <method>AgentReachable</method> judges last -- thirty-five in all.</p>
+/// <method>AuthOptions</method> adds, and the one <method>Superserver</method> adds, and the SQL privilege arm's, and the one <method>ScreenPermission</method> adds last, and the one <method>OwnRoutineApplication</method> arm adds after it, and the one <method>AgentReachable</method> judges, and the one <method>ProviderSsl</method> judges last -- thirty-six in all.</p>
 ClassMethod Codes() As %List
 {
-    Quit $ListBuild(..#SERVINGPATH, ..#UNAUTHENTICATED, ..#AUTHORIZATION, ..#DISPATCH, ..#SYSTEMACCOUNT, ..#SERVICEACCOUNT, ..#CURRENTUSER, ..#LASTALLHOLDER, ..#PRIVILEGEGRANT, ..#OCUPILOTPROCESS, ..#SYSTEMPROCESS, ..#UNCOVEREDFIELD, ..#UNCOVERED, ..#OCUPILOTROLE, ..#OCUPILOTRESOURCE, ..#SERVICEACCOUNTSIGNIN, ..#OCUPILOTSSL, ..#SERVINGSERVICE, ..#OCUPILOTNAMESPACE, ..#OCUPILOTSESSION, ..#PRESERVEDSESSION, ..#OCUPILOTMAPPING, ..#OCUPILOTDATABASE, ..#OCUPILOTLOCK, ..#OCUPILOTCODE, ..#OCUPILOTSQL, ..#OCUPILOTKEY, ..#STARTUPINTERACTIVE, ..#OCUPILOTSIGNIN, ..#OCUPILOTSTART, ..#SERVINGSUPERSERVER, ..#OCUPILOTSQLPRIVILEGE, ..#OCUPILOTSCREEN, ..#OCUPILOTROUTINEAPP, ..#ALLOWLISTAGENT)
+    Quit $ListBuild(..#SERVINGPATH, ..#UNAUTHENTICATED, ..#AUTHORIZATION, ..#DISPATCH, ..#SYSTEMACCOUNT, ..#SERVICEACCOUNT, ..#CURRENTUSER, ..#LASTALLHOLDER, ..#PRIVILEGEGRANT, ..#OCUPILOTPROCESS, ..#SYSTEMPROCESS, ..#UNCOVEREDFIELD, ..#UNCOVERED, ..#OCUPILOTROLE, ..#OCUPILOTRESOURCE, ..#SERVICEACCOUNTSIGNIN, ..#OCUPILOTSSL, ..#SERVINGSERVICE, ..#OCUPILOTNAMESPACE, ..#OCUPILOTSESSION, ..#PRESERVEDSESSION, ..#OCUPILOTMAPPING, ..#OCUPILOTDATABASE, ..#OCUPILOTLOCK, ..#OCUPILOTCODE, ..#OCUPILOTSQL, ..#OCUPILOTKEY, ..#STARTUPINTERACTIVE, ..#OCUPILOTSIGNIN, ..#OCUPILOTSTART, ..#SERVINGSUPERSERVER, ..#OCUPILOTSQLPRIVILEGE, ..#OCUPILOTSCREEN, ..#OCUPILOTROUTINEAPP, ..#ALLOWLISTAGENT, ..#PROVIDERSSL)
 }
 
 /// <p>The written sentence a <code>PROHIBITED.*</code> code carries, or <code>""</code> for any
@@ -1051,6 +1064,7 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#OCUPILOTSCREEN Quit ..#OCUPILOTSCREENREASON
     If pCode = ..#OCUPILOTROUTINEAPP Quit ..#OCUPILOTROUTINEAPPREASON
     If pCode = ..#ALLOWLISTAGENT Quit ..#ALLOWLISTAGENTREASON
+    If pCode = ..#PROVIDERSSL Quit ..#PROVIDERSSLREASON
     Quit ""
 }
 
@@ -1822,8 +1836,10 @@ ClassMethod UncoveredWriteTools(Output pTools As %List) As %Status
 /// registering before its type's list exists is the shape this fails closed against.</p>
 /// <p><var>pId</var> is the intended name, canonical under AD-13. A resource create that gives one of
 /// OcuPilot's own resources (<method>OcuPilotResources</method>) a public permission is refused
-/// <parameter>OCUPILOTRESOURCE</parameter>, and a mapping create of one of OcuPilot's own mappings
-/// (<method>IsOwnMapping</method>) <parameter>OCUPILOTMAPPING</parameter>.</p>
+/// <parameter>OCUPILOTRESOURCE</parameter>, a mapping create of one of OcuPilot's own mappings
+/// (<method>IsOwnMapping</method>) <parameter>OCUPILOTMAPPING</parameter>, and an SSL/TLS configuration create under
+/// the name the egress row names (<method>ProviderSsl</method>) or under OcuPilot's own provider configuration's name
+/// <parameter>PROVIDERSSL</parameter>.</p>
 ClassMethod Created(pType As %String, pServes As %Boolean, pPayload As %DynamicObject, Output pProhibits As %Boolean, Output pCode As %String, pId As %String = "") As %Status [ Private ]
 {
     Set pProhibits = 0
@@ -1849,6 +1865,18 @@ ClassMethod Created(pType As %String, pServes As %Boolean, pPayload As %DynamicO
         }
         If ..IsMappingType(pType) && ..IsOwnMapping(pId, pType) {
             Do ..Refuse(..#OCUPILOTMAPPING, .pProhibits, .pCode)
+            Quit
+        }
+        ; Story 18.40: a create under the name the egress row names, whatever the payload carries, since the configuration
+        ; it makes is one provider calls would then go through.
+        If (pType = ..#TYPESSL) && ..ProviderSsl(pId) {
+            Do ..Refuse(..#PROVIDERSSL, .pProhibits, .pCode)
+            Quit
+        }
+        ; And a create under OcuPilot's own provider configuration's name, which exists unless it was deleted outside OcuPilot
+        ; and which the installer restores at the next start.
+        If (pType = ..#TYPESSL) && (pId = ##class(OcuPilot.Kernel.State.Base).#SSLCONFIG) {
+            Do ..Refuse(..#PROVIDERSSL, .pProhibits, .pCode)
             Quit
         }
         Set tPermitted = ..PermittedCreateFields(pType)
@@ -2258,7 +2286,7 @@ ClassMethod Role(pId As %String, pToolClass As %String, pPayload As %DynamicObje
 }
 
 /// <p>OcuPilot's own roles, each in <method>NormalizedRole</method>'s spelling, in
-/// <var>pRoles</var>: the administrative role and the identity role
+/// <var>pRoles</var>: the administrative role, the identity role and the TLS read role
 /// (<class>OcuPilot.Kernel.State.Base</class>), and every non-empty <code>matchRole</code> the
 /// install roster declares. Read from those declarations, never transcribed. A roster that cannot
 /// be read is an error, never an empty list.</p>
@@ -2267,7 +2295,7 @@ ClassMethod OcuPilotRoles(Output pRoles As %List) As %Status
     Set pRoles = ""
     Set tSC = $$$OK
     Try {
-        Set tNames = $ListBuild(##class(OcuPilot.Kernel.State.Base).#ADMINRESOURCE, ##class(OcuPilot.Kernel.State.Base).#IDENTITYAPPLICATION)
+        Set tNames = $ListBuild(##class(OcuPilot.Kernel.State.Base).#ADMINRESOURCE, ##class(OcuPilot.Kernel.State.Base).#IDENTITYAPPLICATION, ##class(OcuPilot.Kernel.State.Base).#SSLREADAPPLICATION)
         Set tKeys = ##class(OcuPilot.Install.Roster).Keys()
         If tKeys = "" {
             Set tSC = $$$ERROR($$$GeneralError, "the install roster's application keys could not be read, so which roles are OcuPilot's own is unknown")
@@ -4686,14 +4714,14 @@ ClassMethod IsPrivilegedRole(pRole As %String) As %Boolean [ Private ]
 }
 
 /// <p>Whether <var>pPath</var> names one of OcuPilot's own privileged routine applications (<class>OcuPilot.Kernel.State.Base</class>'s
-/// <parameter>APPLICATION</parameter> and <parameter>IDENTITYAPPLICATION</parameter>), compared through
+/// <parameter>APPLICATION</parameter>, <parameter>IDENTITYAPPLICATION</parameter> and <parameter>SSLREADAPPLICATION</parameter>), compared through
 /// <method>NormalizedPath</method> so that a re-cased or slash-suffixed spelling earns the same verdict. Every write to
 /// one is refused <parameter>OCUPILOTROUTINEAPP</parameter>, whatever its type or field.</p>
 ClassMethod OwnRoutineApplication(pPath As %String) As %Boolean
 {
     Set tPath = ..NormalizedPath(pPath)
     If tPath = "" Quit 0
-    Quit (tPath = ..NormalizedPath(##class(OcuPilot.Kernel.State.Base).#APPLICATION)) || (tPath = ..NormalizedPath(##class(OcuPilot.Kernel.State.Base).#IDENTITYAPPLICATION))
+    Quit (tPath = ..NormalizedPath(##class(OcuPilot.Kernel.State.Base).#APPLICATION)) || (tPath = ..NormalizedPath(##class(OcuPilot.Kernel.State.Base).#IDENTITYAPPLICATION)) || (tPath = ..NormalizedPath(##class(OcuPilot.Kernel.State.Base).#SSLREADAPPLICATION))
 }
 
 /// <p>The early refusal of a write to one of OcuPilot's own privileged routine applications, answered before a write tool's
@@ -5583,7 +5611,9 @@ ClassMethod AuditEvent(pType As %String, ByRef pChanged, Output pProhibits As %B
 /// <p>The SSL/TLS configuration predicates, in declared order, first hit wins: for OcuPilot's own
 /// provider configuration (<parameter>OcuPilot.Kernel.State.Base.SSLCONFIG</parameter>), a
 /// <code>DELETE</code> and a change to any of <method>OcuPilotSslFields</method> are refused
-/// <parameter>OCUPILOTSSL</parameter>; then, for every write, the reviewed-few sweep.</p>
+/// <parameter>OCUPILOTSSL</parameter>; for the configuration the egress row names (<method>ProviderSsl</method>), the
+/// same delete and change are refused <parameter>PROVIDERSSL</parameter>; then, for every write, the reviewed-few
+/// sweep.</p>
 /// <p><var>pId</var> is the target's id as the reference carries it, compared exactly because the
 /// instance resolves a configuration's name exactly; <var>pToolClass</var> the proposal's tool. A
 /// delete's card rows are its declared fingerprint subject, so it reaches the sweep with nothing
@@ -5606,6 +5636,16 @@ ClassMethod Ssl(pId As %String, pToolClass As %String, ByRef pChanged, Output pP
                 Do ..Refuse(..#OCUPILOTSSL, .pProhibits, .pCode)
                 Quit
             }
+        }
+        ; Story 18.40: the configuration the egress row names is held to the same four fields and its delete.
+        Set tMovesNamed = tDelete
+        Set tOwnFields = ..OcuPilotSslFields()
+        For tI = 1:1:$ListLength(tOwnFields) {
+            If $Data(pChanged($List(tOwnFields, tI))) Set tMovesNamed = 1
+        }
+        If tMovesNamed && ..ProviderSsl(pId) {
+            Do ..Refuse(..#PROVIDERSSL, .pProhibits, .pCode)
+            Quit
         }
         Set tSC = ..ReviewedFewOnly(..#TYPESSL, .pChanged, .pProhibits, .pCode)
     } Catch ex {
@@ -5944,6 +5984,31 @@ ClassMethod AgentReachable(pToolName As %String) As %Boolean
         Set tReachable = 1
     }
     Quit tReachable
+}
+
+/// <p>The class whose <code>Resolve</code> answers the instance's outbound settings, which
+/// <method>ProviderSsl</method> reads. Overridable so a test can arm a read that fails; production never overrides
+/// it.</p>
+ClassMethod EgressStateClass() As %String
+{
+    Quit "OcuPilot.Kernel.State.Egress"
+}
+
+/// <p>Whether the SSL/TLS configuration <var>pId</var> is one provider calls are made through (Story 18.40): the egress
+/// row names exactly it, compared as the instance resolves a name, and it is not OcuPilot's own provider configuration,
+/// which <parameter>OCUPILOTSSL</parameter> holds. <b>A read that fails answers 1</b>, so a question the instance cannot
+/// answer is refused rather than passed.</p>
+ClassMethod ProviderSsl(pId As %String) As %Boolean
+{
+    Set tNamed = 1
+    Try {
+        Set tSC = $ClassMethod(..EgressStateClass(), "Resolve", .tSettings)
+        If $$$ISERR(tSC) Quit
+        Set tNamed = ($Get(tSettings("sslConfiguration")) = pId) && (pId '= ##class(OcuPilot.Kernel.State.Base).#SSLCONFIG)
+    } Catch {
+        Set tNamed = 1
+    }
+    Quit tNamed
 }
 
 }

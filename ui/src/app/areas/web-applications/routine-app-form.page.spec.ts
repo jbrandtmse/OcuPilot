@@ -270,11 +270,11 @@ describe('RoutineAppFormPage', () => {
     expect(JSON.parse(put?.body ?? '{}')).toEqual({ Enabled: true });
   });
 
-  it('C3, AD-10: OcuPilot\u2019s own two applications are drawn refused -- the fields read-only, Save aria-disabled and described by the rule\u2019s sentence -- and a click sends nothing', async () => {
+  it('C3, AD-10: OcuPilot\u2019s own three applications are drawn refused -- the fields read-only, Save aria-disabled and described by the rule\u2019s sentence -- and a click sends nothing', async () => {
     // Mutation (Rule 19): drop the `ocupilot-routine-application` branch from `selfProtectionReason`, or the page's
     // `ownRefusal` -> Save loses `aria-disabled`, the sentence is gone and this goes red; drop `onSave`'s `saveBlocked`
     // guard -> the changed buffer is put and the no-write assertion goes red.
-    for (const own of ['OcuPilotState', 'OcuPilotIdentity', 'ocupilotstate']) {
+    for (const own of ['OcuPilotState', 'OcuPilotIdentity', 'OcuPilotSslRead', 'ocupilotstate']) {
       const { fixture, host, calls } = await mount({ url: `/web-applications/routine-applications/edit/${encodeEntityId(own)}`, row: { ...HELD_ROW, Name: own } });
       const sentence = host.querySelector('[data-routine-app="own-refusal"]');
       expect(sentence?.textContent?.trim(), own).toBe(STRINGS.routineAppRefusalOcuPilot);
@@ -476,10 +476,10 @@ describe('RoutineAppFormPage', () => {
     expect(document.activeElement?.id).toBe('ocu-routine-app-Description');
   });
 
-  it('Story 18.33, C4, AD-10: on OcuPilot\u2019s own two applications every tab control is aria-disabled and described by the rule\u2019s sentence, and a click sends nothing', async () => {
+  it('Story 18.33, C4, AD-10: on OcuPilot\u2019s own three applications every tab control is aria-disabled and described by the rule\u2019s sentence, and a click sends nothing', async () => {
     // Mutation (Rule 19): make the tabs\u2019 `ruleReason` answer `''` (or the client rule, as `self-protection.test.mjs`
     // pins) -> the aria-disabled and described-by legs go red and the clicks post.
-    for (const own of ['OcuPilotState', 'OcuPilotIdentity', 'ocupilotstate']) {
+    for (const own of ['OcuPilotState', 'OcuPilotIdentity', 'OcuPilotSslRead', 'ocupilotstate']) {
       const { fixture, host, calls } = await mount({ url: editUrl(own), row: { ...HELD_ROW, Name: own } });
       for (const [index, key, actions] of [[1, 'application-roles', ['add-application-role', 'remove-application-role']], [2, 'matching-roles', ['add-matching-role', 'remove-matching-role']], [3, 'routines', ['add-routine', 'remove-routine']]] as const) {
         tabs(host)[index].click();

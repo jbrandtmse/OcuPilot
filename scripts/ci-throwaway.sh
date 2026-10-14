@@ -280,6 +280,8 @@ services:
       # classes: AllowedDirectoryScreen
       # classes: PermissionCheck, EffectiveUser
       # classes: LedgerSearchWire
+      # classes: WalletRung
+      # classes: WalletRungRoles
       # classes: NamespaceWriteGate
       # The enable-interop gate class also enables interoperability on a probe namespace as its principal.
       # classes: NamespaceInteropGate
@@ -494,6 +496,8 @@ services:
       # classes: ExplorerSaveTurn
       # classes: ExplorerCreateTurn
       # classes: StampRetention
+      # The provider TLS callers class signs in as probe principals holding %Developer, %Operator and %All (Story 18.40).
+      # classes: ProviderSslCallers
       OCUPILOT_ALLOW_PRINCIPALS: "1"
       # Writes an application error to a namespace's own ^ERRORS. Same reasoning again, and one
       # degree worse: an application error cannot be un-logged, so a runner pointed elsewhere
@@ -529,6 +533,7 @@ services:
       # classes: RetentionTask
       # classes: InstallTarget
       # classes: ContainerStartNamespace
+      # classes: SslReadInstall
       OCUPILOT_ALLOW_PRODUCTION_INSTALL: "1"
       # Runs the installer's EnsureSslConfiguration step under the probe profile and so creates
       # -- and leaves -- a TLS configuration in the instance's own security database. Same
@@ -539,6 +544,11 @@ services:
       # classes: ProviderSsl
       # classes: Demo, DemoFaults, FixtureNamespace, SslSave, SslSecret, SslTest
       # classes: SslWire
+      # The provider connection's classes (Story 18.40) create and delete probe configurations by exact name, and the call-time
+      # class briefly turns off peer verification on OcuPilot's own provider configuration and restores it. The callers class
+      # also briefly disables OcuPilot's TLS read application and restores it, so it is armed by this variable and by
+      # OCUPILOT_ALLOW_PRINCIPALS.
+      # classes: EgressSettingsWire, ProviderSslCallTime, ProviderSslCallers, ProviderSslNamed
       OCUPILOT_ALLOW_SSL_CONFIG: "1"
       # Turns the instance's own auditing OFF and back on through the shipped confirm path, which
       # is the widest effect any class here has: while it is off nothing on this instance is
@@ -632,6 +642,7 @@ services:
       # classes: ExplorerSaveTurn
       # classes: ExplorerCreateTurn
       # classes: InteropEditorSaveTurn
+      # classes: WalletRungRoles
       OCUPILOT_ALLOW_TEST_PROVIDER: "1"
       # Purges the instance's own audit database through the shipped screen route: every record
       # dated before today is removed, the agent's audit markers among them, and nothing puts one

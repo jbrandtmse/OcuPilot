@@ -467,6 +467,7 @@ ClassMethod HandleUpdate(pId As %String) As %Status
         ; and whether OcuPilot is the one that put a key behind it. Both are gone from the row a
         ; line later, and both are what AD-37's bounded deletion turns on.
         Set tPriorCredential = tRow.CredentialName
+        Set tPriorCredType = tRow.CredType
         Set tPriorOwned = ''tRow.CredentialCreated
         Do ##class(OcuPilot.Kernel.State.Agent).SnapshotSecurityFields(tRow, .tSnapshot)
         Do ..ApplyValues(tRow, .tValues)
@@ -480,12 +481,13 @@ ClassMethod HandleUpdate(pId As %String) As %Status
             Quit
         }
         Do ..ValuesFromRow(tRow, .tAfter)
-        ; A definition repointed at another reference leaves the old one behind. It is removed on
-        ; exactly the terms a delete removes one (AD-37): only where OcuPilot created it, and only
-        ; where no surviving definition -- this one included, which is why it is compared against
-        ; the value now stored -- still names it.
+        ; A definition repointed at another reference, or moved off the credentials rung, leaves the
+        ; old entry behind. It is removed on exactly the terms a delete removes one (AD-37): only
+        ; where OcuPilot created it, and only where no surviving definition -- this one included,
+        ; which is why it is compared against the value now stored -- still names it. A wallet
+        ; secret's name was never a credential entry, so leaving one disposes of nothing.
         Set tEntry = ""
-        If $Get(tAfter("credentialName")) '= tPriorCredential {
+        If (tPriorCredType '= ##class(OcuPilot.Kernel.AgentRules).#CREDTYPEWALLET) && (($Get(tAfter("credentialName")) '= tPriorCredential) || ((tPriorCredType = ##class(OcuPilot.Kernel.AgentRules).#CREDTYPECREDS) && ($Get(tAfter("credType")) '= tPriorCredType))) {
             Set tEntry = ..ClearOwnedCredential(tPriorCredential, pId, tPriorOwned)
         }
         Do ..LogChange("update", pId, .tBefore, .tAfter, "", ..EntryEffects(tEntry))
@@ -529,8 +531,9 @@ ClassMethod HandleDelete(pId As %String) As %Status
         }
         ; After the row is gone, so the sibling query sees the set that survives. A stored key does
         ; not outlive the definition that named it, and a key OcuPilot did not store is not
-        ; OcuPilot's to remove (AD-37).
-        Set tEntry = ..ClearOwnedCredential($Get(tBefore("credentialName")), pId, tOwned)
+        ; OcuPilot's to remove (AD-37). A wallet secret's name was never a credential entry.
+        Set tEntry = ""
+        If $Get(tBefore("credType")) '= ##class(OcuPilot.Kernel.AgentRules).#CREDTYPEWALLET Set tEntry = ..ClearOwnedCredential($Get(tBefore("credentialName")), pId, tOwned)
         Kill tAfter
         Do ..LogChange("delete", pId, .tBefore, .tAfter, "", ..EntryEffects(tEntry))
         Set tBody = {}
@@ -608,7 +611,7 @@ ClassMethod HandleSetDefault(pId As %String) As %Status
 /// <p><b>Its change record names the siblings it disabled</b>, as
 /// <code>effects.disabledSiblings</code> -- the ids whose clear succeeded -- so the sweep is not a
 /// change the record leaves out.</p>
-/// <p>The five refusals <method>CredentialRefusal</method> declares are evaluated in its order,
+/// <p>The refusals <method>CredentialRefusal</method> declares are evaluated in its order,
 /// then the store's own, each a <code>{field, code, reason}</code> violation on
 /// <parameter>KEYFIELD</parameter> in the envelope Story 3.1 established. Nothing is written by
 /// the time any of them answers.</p>
@@ -1127,6 +1130,8 @@ ClassMethod PortClass() As %String
 /// <li><code>AGENT.CREDENTIAL.REQUIRED</code> -- no <parameter>KEYFIELD</parameter> member, one
 /// that is not a JSON string, or an empty one. An absent body names no field, which is how Story
 /// 3.1 reads one.</li>
+/// <li><code>WALLETRUNG.KEYSTORE</code> -- the definition reads its key from a wallet secret, which
+/// the Secrets screen owns and this route never writes.</li>
 /// <li><code>AGENT.CREDENTIAL.ENVUNWRITABLE</code> -- the definition reads its secret from an
 /// environment variable, and IRIS publishes no setter for one.</li>
 /// <li><code>AGENT.CREDENTIAL.RUNGUNAVAILABLE</code> -- the credentials rung is not reachable from
@@ -1159,6 +1164,7 @@ ClassMethod CredentialRefusal(pRow As OcuPilot.Kernel.State.Agent, pBody As %Dyn
     ; characters strip alongside whitespace, because a pasted newline is as empty as a pasted
     ; space and neither begins a key.
     If $ZStrip(pBody.%Get(..#KEYFIELD), "<>WC") = "" Quit ##class(OcuPilot.Api.Error).#AGENTCREDENTIALREQUIRED
+    If pRow.CredType = ##class(OcuPilot.Kernel.AgentRules).#CREDTYPEWALLET Quit ##class(OcuPilot.Api.WalletRungError).#KEYSTORE
     If pRow.CredType = ##class(OcuPilot.Kernel.AgentRules).#CREDTYPEENV Quit ##class(OcuPilot.Api.Error).#AGENTCREDENTIALENVUNWRITABLE
     If '$ClassMethod(..SecretClass(), "CredentialsRungAvailable") Quit ##class(OcuPilot.Api.Error).#AGENTCREDENTIALRUNGUNAVAILABLE
     If '$System.Security.Check(..#CREDENTIALSRESOURCE, ..#CREDENTIALSPERMISSION) {

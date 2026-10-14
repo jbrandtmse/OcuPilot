@@ -30,6 +30,10 @@ Parameter UPPERCREDENTIAL = "OcuPilotProbeCaseCredential";
 /// <p>See <parameter>UPPERCREDENTIAL</parameter>.</p>
 Parameter LOWERCREDENTIAL = "ocupilotprobecasecredential";
 
+/// <p>A reference that is both a credential entry's name and a wallet secret's, for the leg that moves a definition off
+/// the credentials rung while the name stays.</p>
+Parameter SHAREDNAME = "OcuPilotProbe1841.owned";
+
 /// <p>An operator's key, shaped for the shipped <code>anthropic</code> row.</p>
 Parameter OPERATORKEY = "sk-ant-ocupilotoperatorprobe000000";
 
@@ -59,7 +63,7 @@ Method OnAfterOneTest() As %Status
     Do $$$AssertStatusOK(tSC, "the probe definitions this class created are removed")
     Do $$$AssertEquals(tRemaining, 0, "and no " _ ..#PROBEPREFIX _ " definition survives this class")
     Do ..RemoveEntries()
-    For tName = ..#OWNEDCREDENTIAL, ..#OTHERCREDENTIAL, ..#UPPERCREDENTIAL, ..#LOWERCREDENTIAL {
+    For tName = ..#OWNEDCREDENTIAL, ..#OTHERCREDENTIAL, ..#UPPERCREDENTIAL, ..#LOWERCREDENTIAL, ..#SHAREDNAME {
         Do $$$AssertEquals(##class(OcuPilot.Test.CredentialFixture).Exists(tName), 0, "no credential entry " _ tName _ " survives this class")
     }
     Quit $$$OK
@@ -68,7 +72,7 @@ Method OnAfterOneTest() As %Status
 /// <p>Remove every credential entry this class names.</p>
 ClassMethod RemoveEntries()
 {
-    For tName = ..#OWNEDCREDENTIAL, ..#OTHERCREDENTIAL, ..#UPPERCREDENTIAL, ..#LOWERCREDENTIAL {
+    For tName = ..#OWNEDCREDENTIAL, ..#OTHERCREDENTIAL, ..#UPPERCREDENTIAL, ..#LOWERCREDENTIAL, ..#SHAREDNAME {
         Do ##class(OcuPilot.Test.CredentialFixture).Remove(tName)
     }
 }
@@ -283,6 +287,39 @@ Method TestANonOwnerLeavingHandsOnNoMark()
     Do $$$AssertTrue(##class(OcuPilot.Kernel.Secret.Ladder).Resolve("creds", "", ..#OWNEDCREDENTIAL) = ..#OPERATORKEY, "the operator's entry still holds the operator's key")
     Do ..Delete(tStayer)
     Do $$$AssertEquals(##class(OcuPilot.Test.CredentialFixture).Exists(..#OWNEDCREDENTIAL), 1, "and survives the last definition that named it")
+}
+
+/// <p><b>Story 18.41</b> -- a definition that owns its credential entry and moves to the wallet rung while keeping the
+/// name leaves the credentials rung: its entry is removed on the terms a delete removes one, it reads back on the wallet
+/// rung, and it owns nothing behind the name any more. A sibling still on the credentials rung naming the entry keeps
+/// the entry, and the mark moves to it.</p>
+/// <p>Mutation: drop the credential-type term from the condition in
+/// <method>OcuPilot.Api.Definitions.HandleUpdate</method> that calls <code>ClearOwnedCredential</code> -- the entry
+/// survives the move and this goes red. Drop the type term from the mark reset in
+/// <method>OcuPilot.Kernel.State.Agent.GuardedUpdate</method> -- the definition still carries the mark and this goes
+/// red. Drop the wallet exclusion from <method>OcuPilot.Kernel.State.Agent.GuardedIdsByCredentialName</method> -- the
+/// mark moves to the wallet definition that shares the name and this goes red.</p>
+Method TestMovingOffTheCredentialsRungRemovesTheOwnedEntryAndOwnsNothing()
+{
+    Set tMover = ..Create("WalletMover", ..#SHAREDNAME)
+    If tMover = "" Quit
+    Do $$$AssertEquals(..Store(tMover, ..#POSTEDKEY, .tBody), 200, "the definition creates and owns its entry: " _ tBody)
+    Do $$$AssertEquals($Piece(..FlagsOf(tMover), "|", 3), 1, "and carries the mark")
+    Set tSC = ..Call("PUT", "/" _ tMover, "{""credType"":""wallet"",""credentialName"":""" _ ..#SHAREDNAME _ """}", .tStatus, .tPutBody)
+    Do $$$AssertEquals(tStatus, 200, "it moves to the wallet rung under the same name: " _ tPutBody)
+    Do $$$AssertEquals(##class(%DynamicObject).%FromJSON(tPutBody).credType _ " " _ ##class(%DynamicObject).%FromJSON(tPutBody).credentialName, "wallet " _ ..#SHAREDNAME, "and reads back on it")
+    Do $$$AssertEquals(##class(OcuPilot.Test.CredentialFixture).Exists(..#SHAREDNAME), 0, "its entry is removed")
+    Do $$$AssertEquals($Piece(..FlagsOf(tMover), "|", 3), 0, "and it owns nothing behind the name")
+
+    Set tOwner = ..Create("WalletKeeperOwner", ..#SHAREDNAME)
+    Set tKeeper = ..Create("WalletKeeperSibling", ..#SHAREDNAME)
+    If (tOwner = "") || (tKeeper = "") Quit
+    Do $$$AssertEquals(..Store(tOwner, ..#POSTEDKEY, .tOwnerBody), 200, "another definition creates and owns the entry again: " _ tOwnerBody)
+    Set tSC = ..Call("PUT", "/" _ tOwner, "{""credType"":""wallet"",""credentialName"":""" _ ..#SHAREDNAME _ """}", .tStatus, .tMoveBody)
+    Do $$$AssertEquals(tStatus, 200, "it moves to the wallet rung too: " _ tMoveBody)
+    Do $$$AssertEquals(##class(OcuPilot.Test.CredentialFixture).Exists(..#SHAREDNAME), 1, "the entry is kept while a definition on the credentials rung still names it")
+    Do $$$AssertEquals($Piece(..FlagsOf(tKeeper), "|", 3), 1, "and the mark moves to that definition")
+    Do $$$AssertEquals($Piece(..FlagsOf(tOwner), "|", 3), 0, "while the one that moved owns nothing")
 }
 
 /// <p><b>DW-411</b> -- <method>OcuPilot.Api.Definitions.ClearOwnedCredential</method> answers what
