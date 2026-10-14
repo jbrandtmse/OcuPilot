@@ -11797,6 +11797,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: CI run 38532797700 attempt 1 (head c14f3fc6) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: attempt 1 red on node 22.22.3 only (node 24 and 26 green on the same head); attempt 2 green unchanged; the head touches no logs code (inference: timers left by another spec in the worker).
 - 2026-10-14T09:30:29Z status=routed owner=burndown by=runner note=flake: the spec should set up and clear fake timers per test; Epic 18's test (orchestrator told Epic 18)
+- 2026-10-14T15:53:46Z status=routed owner=18-48-epic-18-burn-down-part-2 by=runner note=occurrence: run 38578125486 attempt 1 (head 7aba3c5f, Story 20.8) red on gates (node 26.0.0) only, same test, 'os-management/language-servers/activity : expected 3 to be +0'; rerun of the failed job
 ### DW-2400: CipherList and TLSMinVersion are settable on the provider's SSL/TLS configurations (OcuPilotProvider and an egress-named one), and neither OCUPILOTSSL nor PROVIDERSSL covers them, so a weak cipher list or TLS floor reaches provider calls
 - source: spec-18-40-proxy-and-custom-ca-configuration.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: 18.40 implement (inference, not measured): OcuPilotSslFields and the planned PROVIDERSSL fields are Type, VerifyPeer, CAFile and Enabled only; the call-time check reads VerifyPeer
