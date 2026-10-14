@@ -3227,6 +3227,24 @@ app-data-table {
   margin-top: var(--ocu-space-2);
 }
 
+// --- The Switches screen's provider connection section (Story 18.40) -------------------------
+//
+// Three fields over the instance's one outbound-call row, saved on their own: they are a different write from the
+// switches above, with their own route and their own refusals.
+.ocu-switches-connection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ocu-space-2);
+  margin-top: var(--ocu-space-4);
+}
+
+.ocu-switches-connection-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ocu-space-2);
+}
+
 // --- The Governance policy screen (Story 14.2) -----------------------------------------------
 //
 // A preset radio group over one row per write key. A form table rather than the data table: the

@@ -1,12 +1,12 @@
 /// <p>Pins Story 18.33's changes to a privileged routine application's two lists on both callers (C2, C3, C4): the
 /// screen's six row actions over <code>POST /screens/webapp.routineapps/action</code>, each a delta over the fresh read;
 /// the agent's mint and confirm of a complete <code>MatchRoles</code> and <code>Routines</code>; every row of the lists'
-/// rules refused before any <code>PUT</code>; the editor's General Save refusing a list; and OcuPilot's own two
+/// rules refused before any <code>PUT</code>; the editor's General Save refusing a list; and OcuPilot's own three
 /// applications refused by every action and by the mint.</p>
 /// <p>Every write is real for an application named <code>OcuProbe1831...</code> and a role named
-/// <code>OcuProbe1833Role...</code> and the class touches no other. <b>It never writes <code>OcuPilotState</code> or
-/// <code>OcuPilotIdentity</code>:</b> every leg that names them is refused before the port, and the class compares both
-/// applications' stored state before and after each test, read-only.</p>
+/// <code>OcuProbe1833Role...</code> and the class touches no other. <b>It never writes <code>OcuPilotState</code>,
+/// <code>OcuPilotIdentity</code> or <code>OcuPilotSslRead</code>:</b> every leg that names them is refused before the port,
+/// and the class compares the three applications' stored state before and after each test, read-only.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed and serving, and
 /// <parameter>ARMINGVARIABLE</parameter> reading <code>1</code>, because the class creates, changes and deletes probe
 /// applications and roles and sets the governance policy. After each test the application list reads as that test
@@ -39,7 +39,7 @@ Property PreparedPolicy [ MultiDimensional ];
 
 Property PreparedFacts As %String(MAXLEN = "") [ InitialExpression = "" ];
 
-/// <p>OcuPilot's own two applications as the vendor reads them before the test.</p>
+/// <p>OcuPilot's own three applications as the vendor reads them before the test.</p>
 Property PreparedOwn As %String(MAXLEN = "") [ InitialExpression = "" ];
 
 Method OnBeforeAllTests() As %Status
@@ -56,7 +56,7 @@ Method OnBeforeAllTests() As %Status
 Method OnBeforeOneTest() As %Status
 {
     Set ..PreparedFacts = $ClassMethod(..#PROBE, "Facts")
-    Set ..PreparedOwn = ##class(OcuPilot.Test.RoutineAppWrite).OwnTwo()
+    Set ..PreparedOwn = ##class(OcuPilot.Test.RoutineAppWrite).OwnApplications()
     Set ^||OcuPilotDatabaseWritePort = ..#PORT
     Kill tSettings
     Set tSettings("webapp.routineapps.update") = "enabled"
@@ -72,8 +72,8 @@ Method OnAfterOneTest() As %Status
     Do $$$AssertEquals($ClassMethod(..#PROBE, "Remaining"), 0, "and none is left")
     Do $$$AssertNotEquals(..PreparedFacts, "unreadable", "the application list was read before the test")
     Do $$$AssertEquals($ClassMethod(..#PROBE, "Facts"), ..PreparedFacts, "the application list reads as before the test")
-    Do $$$AssertNotEquals(..PreparedOwn, "", "OcuPilot's own two applications were read before the test")
-    Do $$$AssertEquals(##class(OcuPilot.Test.RoutineAppWrite).OwnTwo(), ..PreparedOwn, "and read the same after it")
+    Do $$$AssertNotEquals(..PreparedOwn, "", "OcuPilot's own three applications were read before the test")
+    Do $$$AssertEquals(##class(OcuPilot.Test.RoutineAppWrite).OwnApplications(), ..PreparedOwn, "and read the same after it")
     Do ##class(OcuPilot.Test.ProposalFixture).RemoveSeeded(.tSeeded)
     Quit $$$OK
 }
@@ -281,17 +281,17 @@ Method TestTheGeneralSaveRefusesAListAndKeepsBoth()
     Do $$$AssertEquals($ClassMethod(..#PROBE, "Targets", ..#APP, "") _ "|" _ $ClassMethod(..#PROBE, "Entries", ..#APP), "%DB_HSCUSTOM|OcuProbe1831.Routine:HSCUSTOM:Class", "with both lists as they were")
 }
 
-/// <p>C4: OcuPilot's own two applications are refused by every one of the six actions as 403
+/// <p>C4: OcuPilot's own three applications are refused by every one of the six actions as 403
 /// <code>PROHIBITED.OCUPILOTROUTINEAPP</code>, whether the value names something they hold or not; by the kernel's early
 /// refusal, the set asked about a change of each list, and the port arm; and by the agent's mint of a list change.
-/// Nothing is sent, and both applications read as they did.</p>
-/// <p>Mutation (Rule 19), never writing the own two, one arm at a time: drop the <code>routine-application</code>
+/// Nothing is sent, and the three applications read as they did.</p>
+/// <p>Mutation (Rule 19), never writing the own applications, one arm at a time: drop the <code>routine-application</code>
 /// own-application arm from <method>OcuPilot.Kernel.Proposal.Prohibited.Prohibits</method> -- the set's legs go red, and
 /// the action and mint legs stay green because the early refusal and the port arm refuse too; make
 /// <method>OcuPilot.Screen.Tool.RoutineAppUpdate.RefusedBeforeState</method> answer 0 -- the removes, which the delta then
 /// refuses for an entry the application does not hold, and the mint legs go red, and the set still refuses every
 /// write.</p>
-Method TestTheOwnTwoAreRefusedByEachActionAndTheMint()
+Method TestTheOwnApplicationsAreRefusedByEachActionAndTheMint()
 {
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "EnsureRole", "A"), "a probe role")
     Set tRole = $ClassMethod(..#PROBE, "RoleName", "A")
@@ -302,7 +302,7 @@ Method TestTheOwnTwoAreRefusedByEachActionAndTheMint()
     Do tValues.%Set("remove-matching-role", {"MatchRole": (tRole), "Role": "%Developer"})
     Do tValues.%Set("add-routine", ..Entry("OcuProbe1833.Own", "HSCUSTOM", "Class"))
     Do tValues.%Set("remove-routine", ..Entry("OcuProbe1833.Own", "HSCUSTOM", "Class"))
-    For tName = "OcuPilotState", "OcuPilotIdentity", "ocupilotstate" {
+    For tName = "OcuPilotState", "OcuPilotIdentity", "OcuPilotSslRead", "ocupilotstate" {
         Set tRefused = $ClassMethod("OcuPilot.Kernel.Proposal.Prohibited", "RefusesBeforeState", tName, .tCode)
         Do $$$AssertEquals(tRefused _ " " _ tCode, "1 " _ ..#OWNCODE, tName _ " is refused before its state is read")
         Set tRefused = $ClassMethod(..#UPDATETOOL, "RefusedBeforeState", tName, .tCode)
@@ -326,7 +326,7 @@ Method TestTheOwnTwoAreRefusedByEachActionAndTheMint()
         Set tSC = $ClassMethod(..#PROBE, "Mint", ..#UPDATETOOL, tName, {"Name": (tName), "Routines": []}, .tProposal, .tHttp, .tProblem)
         Do $$$AssertEquals($System.Status.IsOK(tSC) _ " " _ tHttp _ " " _ tProblem, "0 403 " _ ..#OWNCODE, "and its routines change")
     }
-    Do $$$AssertEquals(##class(OcuPilot.Test.RoutineAppWrite).OwnTwo(), ..PreparedOwn, "OcuPilot's own two applications read as they did")
+    Do $$$AssertEquals(##class(OcuPilot.Test.RoutineAppWrite).OwnApplications(), ..PreparedOwn, "OcuPilot's own three applications read as they did")
 }
 
 /// <p>One role-or-routine action <var>pAction</var> on <var>pId</var> with <var>pValues</var>, over the screen's own

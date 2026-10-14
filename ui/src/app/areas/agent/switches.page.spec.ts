@@ -60,6 +60,17 @@ const conflicted = (): JsonResult<unknown> => ({
   detail: null,
 });
 
+const EGRESS_PATH = '/api/ocupilot/agent/switches/egress';
+
+/** The provider connection as `GET /agent/switches/egress` answers it (Story 18.40). */
+const connection = (overrides: Record<string, unknown> = {}) => ({
+  proxyServer: '',
+  proxyPort: 0,
+  sslConfiguration: '',
+  rowVersion: 0,
+  ...overrides,
+});
+
 const switches = (overrides: Record<string, unknown> = {}) => ({
   killSwitch: false,
   killSwitchReason: '',
@@ -457,8 +468,11 @@ describe('the Switches screen', () => {
     const post = calls.find((call) => call.method === 'POST');
     expect(post?.path).toBe('/api/ocupilot/agent/switches/holds');
     expect(JSON.parse(post?.body ?? '{}')).toEqual({ userName: 'Someone', reason: 'on leave' });
-    // The list is re-read rather than patched.
-    expect(calls.filter((call) => call.method === 'GET')).toHaveLength(2);
+    // The list is re-read rather than patched: the open read the switches once, the re-read once more. The provider
+    // connection, read once on open, is not re-read, since a hold changes none of it.
+    expect(
+      calls.filter((call) => call.method === 'GET' && call.path === '/api/ocupilot/agent/switches')
+    ).toHaveLength(2);
     expect(events.map((event) => `${event.kind}:${event.type}`)).toContain('changed:agent-switch');
 
     const remove = host.querySelector('.ocu-switches-hold .ocu-button-text') as HTMLButtonElement;
@@ -547,5 +561,180 @@ describe('the Switches screen', () => {
     (host.querySelector('.ocu-button-primary[dialogAction]') as HTMLButtonElement)?.click();
     await settle(fixture);
     expect(await leaving).toBe(true);
+  });
+});
+
+describe('the Switches screen, Provider connection section (Story 18.40)', () => {
+  it('C6: renders the published copy and the stored connection, an empty port for no proxy', async () => {
+    // Mutation (Rule 19): bind the configuration field to another violation field (`this.field('sslConfigurationX')`) ->
+    // this, the Save leg and the refusal leg go red.
+    const { host } = await mount((path) =>
+      path === EGRESS_PATH
+        ? ok(connection({ proxyServer: '192.0.2.10', proxyPort: 3128, sslConfiguration: 'MyCa', rowVersion: 7 }))
+        : ok(switches())
+    );
+
+    expect(host.textContent).toContain(STRINGS.agentSwitchesConnectionHeading);
+    expect(host.textContent).toContain(STRINGS.agentSwitchesProxyServer);
+    expect(host.textContent).toContain(STRINGS.agentSwitchesProxyPort);
+    expect(host.textContent).toContain(STRINGS.sslFormLabel);
+    expect(host.textContent).toContain(STRINGS.agentSwitchesProxyHint);
+    expect(host.textContent).toContain(STRINGS.agentSwitchesSslConfigurationHint);
+    expect(host.textContent).toContain(STRINGS.agentSwitchesSaveConnection);
+    expect(input(host, 'ocu-switches-proxyServer').value).toBe('192.0.2.10');
+    expect(input(host, 'ocu-switches-proxyPort').value).toBe('3128');
+    expect(input(host, 'ocu-switches-sslConfiguration').value).toBe('MyCa');
+    expect(input(host, 'ocu-switches-proxyServer').getAttribute('aria-describedby')).toBe(
+      'ocu-switches-proxyServer-hint'
+    );
+  });
+
+  it('C1: Save connection sends the three keys and the row version, renders the answer and publishes the change', async () => {
+    // Mutation (Rule 19): drop `proxyPort` from `connectionBody()` in the store -> the body assertion goes red; show a
+    // stored port 0 as `0` rather than empty in `absorbConnection()` -> the empty-port assertion goes red.
+    const { fixture, host, calls, events, formDirty } = await mount((path, init) => {
+      if (path === EGRESS_PATH && init.method === 'PUT') {
+        return ok(connection({ proxyServer: 'proxy.example.net', proxyPort: 8080, sslConfiguration: 'MyCa', rowVersion: 8 }));
+      }
+      return path === EGRESS_PATH ? ok(connection({ rowVersion: 7 })) : ok(switches());
+    });
+
+    expect(input(host, 'ocu-switches-proxyPort').value).toBe('');
+    type(input(host, 'ocu-switches-proxyServer'), 'proxy.example.net');
+    type(input(host, 'ocu-switches-proxyPort'), '8080');
+    type(input(host, 'ocu-switches-sslConfiguration'), 'MyCa');
+    await settle(fixture);
+    expect(formDirty.dirty()).toBe(true);
+
+    const save = Array.from(host.querySelectorAll('button')).find(
+      (button) => button.textContent?.trim() === STRINGS.agentSwitchesSaveConnection
+    ) as HTMLButtonElement;
+    save.click();
+    await settle(fixture);
+
+    const put = calls.find((call) => call.method === 'PUT');
+    expect(put?.path).toBe(EGRESS_PATH);
+    expect(JSON.parse(put?.body ?? '{}')).toEqual({
+      proxyServer: 'proxy.example.net',
+      proxyPort: 8080,
+      sslConfiguration: 'MyCa',
+      rowVersion: 7,
+    });
+    expect(events.map((event) => `${event.kind}:${event.type}`)).toContain('changed:agent-switch');
+    expect(input(host, 'ocu-switches-proxyServer').value).toBe('proxy.example.net');
+    expect(host.querySelector('.ocu-switches-connection [role="status"]')?.textContent).toContain(STRINGS.formSaved);
+    expect(formDirty.dirty()).toBe(false);
+  });
+
+  it('C2, C6: an EGRESS.SSLABSENT reason lands on its field, and the form says nothing was saved', async () => {
+    // Mutation (Rule 19): bind the configuration field to another violation field (`this.field('sslConfigurationX')`) ->
+    // the field assertions go red.
+    const { fixture, host } = await mount((path, init) => {
+      if (path === EGRESS_PATH && init.method === 'PUT') {
+        return refused([
+          { field: 'sslConfiguration', code: 'EGRESS.SSLABSENT', reason: STRINGS.egressRefusalSslAbsent },
+        ]);
+      }
+      return path === EGRESS_PATH ? ok(connection()) : ok(switches());
+    });
+
+    type(input(host, 'ocu-switches-sslConfiguration'), 'NoSuchConfiguration');
+    (Array.from(host.querySelectorAll('button')).find(
+      (button) => button.textContent?.trim() === STRINGS.agentSwitchesSaveConnection
+    ) as HTMLButtonElement).click();
+    await settle(fixture);
+
+    const field = input(host, 'ocu-switches-sslConfiguration');
+    expect(field.getAttribute('aria-invalid')).toBe('true');
+    expect(host.querySelector('#ocu-switches-sslConfiguration-reason')?.textContent).toContain(
+      STRINGS.egressRefusalSslAbsent
+    );
+    expect(field.getAttribute('aria-describedby')).toContain('ocu-switches-sslConfiguration-reason');
+    expect(host.querySelector('.ocu-switches-connection [role="status"]')).toBeNull();
+    expect(field.value).toBe('NoSuchConfiguration');
+  });
+
+  it('C6: proxy host and port refusals land on their own fields, each described by its reason', async () => {
+    // Mutation (Rule 19): delete the `@if (proxyPortField.invalid)` reason paragraph from the page template -> the port
+    // assertions go red.
+    const { fixture, host } = await mount((path, init) => {
+      if (path === EGRESS_PATH && init.method === 'PUT') {
+        return refused([
+          { field: 'proxyServer', code: 'EGRESS.PROXYHOST', reason: STRINGS.egressRefusalProxyHost },
+          { field: 'proxyPort', code: 'EGRESS.PROXYPORT', reason: STRINGS.egressRefusalProxyPort },
+        ]);
+      }
+      return path === EGRESS_PATH ? ok(connection()) : ok(switches());
+    });
+
+    type(input(host, 'ocu-switches-proxyServer'), 'proxy.example:3128');
+    type(input(host, 'ocu-switches-proxyPort'), '0');
+    (Array.from(host.querySelectorAll('button')).find(
+      (button) => button.textContent?.trim() === STRINGS.agentSwitchesSaveConnection
+    ) as HTMLButtonElement).click();
+    await settle(fixture);
+
+    for (const [id, text] of [
+      ['ocu-switches-proxyServer', STRINGS.egressRefusalProxyHost],
+      ['ocu-switches-proxyPort', STRINGS.egressRefusalProxyPort],
+    ] as const) {
+      const field = input(host, id);
+      expect(field.getAttribute('aria-invalid')).toBe('true');
+      expect(host.querySelector(`#${id}-reason`)?.textContent).toContain(text);
+      expect(field.getAttribute('aria-describedby')).toContain(`${id}-reason`);
+    }
+    expect(input(host, 'ocu-switches-sslConfiguration').getAttribute('aria-invalid')).not.toBe('true');
+  });
+
+  it('a connection that cannot be read draws no section and offers no Save connection, while the switches still load', async () => {
+    // Mutation (Rule 19): mark the connection loaded when its read is refused (`connectionLoadedValue = true` in the
+    // store's `open` failure branch) -> the section assertions go red.
+    const { host } = await mount((path) => (path === EGRESS_PATH ? forbidden() : ok(switches())));
+
+    expect(host.querySelector('.ocu-switches-connection')).toBeNull();
+    expect(host.textContent).not.toContain(STRINGS.agentSwitchesSaveConnection);
+    expect(host.textContent).toContain(STRINGS.agentSwitchesKillSwitch);
+    const banner = host.querySelector('.ocu-banner-warning') as HTMLElement;
+    expect(banner.textContent).toContain(STRINGS.agentSwitchesConnectionRefusedAction);
+  });
+
+  it('a refused connection save names its own action, and a stale one reads the published reload sentence', async () => {
+    // Mutation (Rule 19): resolve the action from the switches phrase alone -> the first assertion goes red.
+    let answer: JsonResult<unknown> = forbidden();
+    const { fixture, host } = await mount((path, init) => {
+      if (path === EGRESS_PATH && init.method === 'PUT') return answer;
+      return path === EGRESS_PATH ? ok(connection()) : ok(switches());
+    });
+    const save = () =>
+      (Array.from(host.querySelectorAll('button')).find(
+        (button) => button.textContent?.trim() === STRINGS.agentSwitchesSaveConnection
+      ) as HTMLButtonElement).click();
+
+    save();
+    await settle(fixture);
+    const banner = host.querySelector('.ocu-banner-warning')?.textContent ?? '';
+    expect(banner).toContain(STRINGS.agentSwitchesConnectionRefusedAction);
+    expect(banner).not.toContain(STRINGS.agentSwitchesRefusedAction);
+
+    answer = conflicted();
+    save();
+    await settle(fixture);
+    expect(host.querySelector('.ocu-banner-warning')?.textContent).toContain(STRINGS.formStaleSave);
+    expect(host.textContent).not.toContain(CONFLICT_ENVELOPE_REASON);
+  });
+
+  it('one unsaved-changes flag stands for both sections: saving the switches does not clear an unsaved connection edit', async () => {
+    // Mutation (Rule 19): make a switches save call `formDirty.setDirty(false)` directly -> the last assertion goes red.
+    const { fixture, host, formDirty } = await mount((path, init) => {
+      if (init.method === 'PUT') return ok(switches({ enforcedReadOnly: true, rowVersion: 2 }));
+      return path === EGRESS_PATH ? ok(connection()) : ok(switches());
+    });
+
+    type(input(host, 'ocu-switches-proxyServer'), 'proxy.example.net');
+    tick(input(host, 'ocu-switches-read-only'), true);
+    await settle(fixture);
+    (host.querySelector('.ocu-button-primary') as HTMLButtonElement).click();
+    await settle(fixture);
+    expect(formDirty.dirty()).toBe(true);
   });
 });

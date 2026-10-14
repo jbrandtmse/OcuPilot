@@ -6,10 +6,11 @@
 /// configuration, not code", and the same argument binds the timeout and the attempt bound: an
 /// operator behind a proxy, or on a slow link, changes a value here rather than editing a shipped
 /// class. The port reads this on every call and never a parameter of its own.</p>
-/// <p><b>No route renders it in Release 1.</b> Nothing in the API reads or writes this row, so on
-/// a clean instance <method>Resolve</method> answers the defaults below and the row never exists.
-/// <method>SetGuarded</method> is here so the values are settable from a session or a later
-/// screen without a second write path being invented for them.</p>
+/// <p><b>Switches renders and writes it.</b> <code>GET</code> and <code>PUT /agent/switches/egress</code>
+/// (<class>OcuPilot.Api.Switches</class>) read and write the proxy and the TLS configuration name; that
+/// class is the one outside the tests that calls <method>SetGuarded</method>. The two proxy TLS flags, the timeout and the attempt bound have no route and
+/// keep their stored values. On an instance that never saved a setting <method>Resolve</method> answers the
+/// defaults below and the row never exists.</p>
 /// <p>Named scalars only -- no <code>list Of</code> -- per the persistent-storage rule, and no
 /// hand-written Storage.</p>
 Class OcuPilot.Kernel.State.Egress Extends OcuPilot.Kernel.State.Base
@@ -133,6 +134,18 @@ ClassMethod SetGuarded(ByRef pValues, pExpectedVersion As %String = "") As %Stat
     } Catch ex {
         Set tSC = ex.AsStatus()
     }
+    Quit tSC
+}
+
+/// <p>The version the instance's one row currently carries, or <code>0</code> when it holds none.
+/// The snapshot a caller that reads, does slow work and then saves hands back to
+/// <method>SetGuarded</method>.</p>
+ClassMethod GuardedVersion(Output pVersion As %Integer) As %Status
+{
+    Set pVersion = 0
+    Set tSC = ..GuardedCurrent(.tRow)
+    If $$$ISOK(tSC) && $IsObject(tRow) Set pVersion = +tRow.RowVersion
+    Set tRow = ""
     Quit tSC
 }
 

@@ -2989,8 +2989,8 @@ ClassMethod FingerprintSubjectProblem(pToolClass As %String) As %String
 /// <parameter>OcuPilot.Api.EcpError.REASONSSLNOTPENDING</parameter> and
 /// <parameter>OcuPilot.Api.EcpError.REASONSSLNOTAUTHORIZED</parameter> and refused by each tool's
 /// <code>StateDiff</code>.</p>
-/// <p><code>ocupilot-routine-application</code> is one of OcuPilot's own two privileged routine applications (Story 18.31):
-/// a <code>Name</code> of <code>OcuPilotState</code> or <code>OcuPilotIdentity</code> in any case, explained by the
+/// <p><code>ocupilot-routine-application</code> is one of OcuPilot's own three privileged routine applications (Story 18.31):
+/// a <code>Name</code> of <code>OcuPilotState</code>, <code>OcuPilotIdentity</code> or <code>OcuPilotSslRead</code> in any case, explained by the
 /// <code>routineAppRefusalOcuPilot</code> sentence and refused for every write by
 /// <parameter>OcuPilot.Kernel.Proposal.Prohibited.OCUPILOTROUTINEAPP</parameter>.</p>
 /// <p><code>allowed-directory-fallback</code> is the allow-list's unrestricted fallback row (Story 18.46): a row whose

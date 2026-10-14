@@ -16,7 +16,7 @@
  */
 
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { test } from 'node:test';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -324,6 +324,9 @@ const KERNEL_REFUSALS = [
   // Story 18.42: a write of the directory allow-list through a tool the agent can reach, which either caller is answered
   // with at Confirm and on the route.
   ['ALLOWLISTAGENT', 'allowListRefusalAgent'],
+  // Story 18.40: the SSL/TLS configuration the egress row names for provider calls, whose delete, a create under its name
+  // and a change to its type, peer verification, trusted certificates or enablement either caller is answered with.
+  ['PROVIDERSSL', 'sslRefusalProviderNamed'],
 ];
 
 test('DW-1598, AD-53: each kernel refusal is published verbatim in Fixed strings and is the sentence ReasonFor returns', () => {
@@ -367,7 +370,7 @@ test("Story 9.5: ocupilot-ssl answers OcuPilot's own provider configuration alon
   assert.equal(selfProtectionReason(OCUPILOT_SSL_RULE, 'ISC.FeatureTracker.SSL.Config'), '', 'and any other configuration is not');
 });
 
-test("Story 18.31: ocupilot-routine-application answers OcuPilot's own two routine applications alone, named as Base names them, in any case", async () => {
+test("Story 18.31: ocupilot-routine-application answers OcuPilot's own three routine applications alone, named as Base names them, in any case", async () => {
   // Mutation (Rule 19): answer '' for `ocupilot-routine-application` -> the own-application legs go red; rename a
   // name in `OCUPILOT_ROUTINE_APPLICATIONS` -> the Base.cls legs go red.
   const { selfProtectionReason, OCUPILOT_ROUTINE_APPLICATION_RULE, OCUPILOT_ROUTINE_APPLICATIONS } = await import('../src/app/core/self-protection.ts');
@@ -375,9 +378,11 @@ test("Story 18.31: ocupilot-routine-application answers OcuPilot's own two routi
   const base = readFileSync(join(REPO_ROOT, 'src', 'OcuPilot', 'Kernel', 'State', 'Base.cls'), 'utf8');
   const state = /Parameter APPLICATION As %String = "([^"]+)";/.exec(base);
   const identity = /Parameter IDENTITYAPPLICATION As %String = "([^"]+)";/.exec(base);
+  const sslRead = /Parameter SSLREADAPPLICATION As %String = "([^"]+)";/.exec(base);
   assert.notEqual(state, null, 'Base.cls declares APPLICATION');
   assert.notEqual(identity, null, 'Base.cls declares IDENTITYAPPLICATION');
-  assert.deepEqual([...OCUPILOT_ROUTINE_APPLICATIONS], [state[1], identity[1]], 'one pair of names, read by both sides');
+  assert.notEqual(sslRead, null, 'Base.cls declares SSLREADAPPLICATION');
+  assert.deepEqual([...OCUPILOT_ROUTINE_APPLICATIONS], [state[1], identity[1], sslRead[1]], 'one set of names, read by both sides');
   for (const name of OCUPILOT_ROUTINE_APPLICATIONS) {
     assert.equal(selfProtectionReason(OCUPILOT_ROUTINE_APPLICATION_RULE, name), STRINGS.routineAppRefusalOcuPilot, `${name} is refused`);
     assert.equal(selfProtectionReason(OCUPILOT_ROUTINE_APPLICATION_RULE, name.toLowerCase()), STRINGS.routineAppRefusalOcuPilot, `and in lower case, as the instance resolves a name`);
@@ -914,4 +919,58 @@ test('Story 18.42: each allow-list refusal is one sentence on both surfaces, pub
     assert.ok(experience.includes(`"${sentence[1]}"`), `${parameter}'s sentence is published in EXPERIENCE.md's Fixed strings`);
     assert.ok(!sentence[1].toLowerCase().includes('agent'), `${parameter} names no caller: ${sentence[1]}`);
   }
+});
+
+/** Story 18.40's error class, which declares the provider connection's published field refusals. */
+const EGRESS_ERROR = join(REPO_ROOT, 'src', 'OcuPilot', 'Api', 'EgressError.cls');
+
+/** Story 18.40's published sentences: `[parameter, code parameter, strings.ts key]`. */
+const EGRESS_SENTENCES = [
+  ['REASONPROXYHOST', 'PROXYHOST', 'egressRefusalProxyHost'],
+  ['REASONPROXYPORT', 'PROXYPORT', 'egressRefusalProxyPort'],
+  ['REASONPROXYADDRESS', 'PROXYADDRESS', 'egressRefusalProxyAddress'],
+  ['REASONSSLABSENT', 'SSLABSENT', 'egressRefusalSslAbsent'],
+  ['REASONSSLUNVERIFIED', 'SSLUNVERIFIED', 'egressRefusalSslUnverified'],
+];
+
+test('Story 18.40: each provider connection refusal is one sentence on both surfaces, published in Fixed strings, for the five codes the class declares', () => {
+  // Mutation (Rule 19): change one word of REASONSSLABSENT in EgressError.cls, or add a sixth code to its Codes() -> this goes red.
+  const source = readFileSync(EGRESS_ERROR, 'utf8');
+  const experience = readFileSync(EXPERIENCE, 'utf8');
+  const declared = /ClassMethod Codes\(\) As %List\s*\{\s*Quit \$ListBuild\(([^)]*)\)/.exec(source);
+  assert.notEqual(declared, null, 'EgressError.cls declares Codes()');
+  assert.deepEqual(
+    declared[1].split(',').map((member) => member.trim()).sort(),
+    EGRESS_SENTENCES.map(([, code]) => `..#${code}`).sort(),
+    'the five codes Codes() lists are the five sentences this test pins'
+  );
+  for (const [parameter, code, key] of EGRESS_SENTENCES) {
+    const sentence = new RegExp(`Parameter ${parameter} = "([^"]+)";`).exec(source);
+    assert.notEqual(sentence, null, `EgressError.cls declares ${parameter}`);
+    const wire = new RegExp(`Parameter ${code} = "(EGRESS\\.[A-Z]+)";`).exec(source);
+    assert.notEqual(wire, null, `EgressError.cls declares ${code} as an EGRESS code`);
+    assert.equal(sentence[1], stringValue(key), `${parameter} and ${key} are one published sentence`);
+    assert.ok(experience.includes(`"${sentence[1]}"`), `${parameter}'s sentence is published in EXPERIENCE.md's Fixed strings`);
+    assert.ok(!sentence[1].toLowerCase().includes('agent'), `${parameter} names no caller: ${sentence[1]}`);
+  }
+});
+
+/** Every `.cls` file under `directory`, as paths relative to the repository root with forward slashes. */
+function classFiles(directory) {
+  const found = [];
+  for (const entry of readdirSync(directory, { withFileTypes: true })) {
+    const path = join(directory, entry.name);
+    if (entry.isDirectory()) found.push(...classFiles(path));
+    else if (entry.name.endsWith('.cls')) found.push(path.slice(REPO_ROOT.length + 1).split('\\').join('/'));
+  }
+  return found;
+}
+
+test('Story 18.40: only Api/Switches.cls writes the egress row, outside the tests -- no tool, port or screen class reaches it', () => {
+  // Mutation (Rule 19): add `Do ##class(OcuPilot.Kernel.State.Egress).SetGuarded(.v)` to a class under Screen/Tool -> this goes red naming it.
+  const writers = classFiles(join(REPO_ROOT, 'src', 'OcuPilot')).filter(
+    (file) => !file.startsWith('src/OcuPilot/Test/') && /State\.Egress\)\s*\.SetGuarded\(/.test(readFileSync(join(REPO_ROOT, file), 'utf8'))
+  );
+  assert.deepEqual(writers, ['src/OcuPilot/Api/Switches.cls'], 'the one class outside the tests that calls Egress.SetGuarded');
+  assert.ok(readFileSync(join(REPO_ROOT, 'src', 'OcuPilot', 'Api', 'Switches.cls'), 'utf8').includes('##class(OcuPilot.Kernel.State.Egress).SetGuarded('), 'and it does');
 });

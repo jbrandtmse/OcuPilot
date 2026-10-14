@@ -116,12 +116,13 @@ ClassMethod Logged() As %String
     Quit tLines
 }
 
-/// <p>The switched TLS answer, or the real <code>%SYS</code> read when no test set one.</p>
-ClassMethod SslConfigurationMissing(pName As %String) As %Boolean
+/// <p>The switched TLS answer (<code>missing</code> is absent, <code>present</code> is a configuration that requires
+/// the server's certificate, and neither is read for it), or the real read when no test set one.</p>
+ClassMethod SslConfigurationState(pName As %String) As %String
 {
     Set tState = $Get(^||OcuPilotProviderPortProbe("ssl"))
-    If tState = "missing" Quit 1
-    If tState = "present" Quit 0
+    If tState = "missing" Quit ..#TLSABSENT
+    If tState = "present" Quit ..#TLSOK
     Quit ##super(pName)
 }
 

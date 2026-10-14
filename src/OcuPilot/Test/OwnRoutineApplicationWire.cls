@@ -1,15 +1,15 @@
 /// <p>Pins the routine application arm (AD-10 as amended, DW-2239, Story 18.10) over the three routes that reach it: the web
 /// applications screen's row actions over <code>POST /screens/webapp.list/action</code>, the editor's Save over
 /// <code>PUT /web-applications/:id</code>, and the agent's proposal, minted in process as the turn's write tool mints it and
-/// confirmed over <code>POST /proposal/:id/confirm</code>. Every write to <code>OcuPilotState</code> and to <code>OcuPilotIdentity</code> --
+/// confirmed over <code>POST /proposal/:id/confirm</code>. Every write to <code>OcuPilotState</code>, to <code>OcuPilotIdentity</code> and to <code>OcuPilotSslRead</code> --
 /// a delete, a disable, a <code>MatchRoles</code> change, a change to any other field -- is refused 403
 /// <code>PROHIBITED.OCUPILOTROUTINEAPP</code> with the kernel's own sentence, and the application reads back unchanged.</p>
 /// <p>The agent's mint refuses at once, before it stores a proposal. A stored proposal that reached its confirm anyway (a row
 /// minted before the arm refused it) is refused there; the class seeds those rows directly.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed and serving over HTTP as
-/// <class>OcuPilot.Test.Http</class>'s test account, with both routine applications present. It creates no application and
+/// <class>OcuPilot.Test.Http</class>'s test account, with all three routine applications present. It creates no application and
 /// sends no change the arm allows. Throwaway only: a leg that is not refused changes a routine application, so
-/// <method>OnBeforeOneTest</method> records both and <method>OnAfterOneTest</method> puts back what changed, then removes the
+/// <method>OnBeforeOneTest</method> records each and <method>OnAfterOneTest</method> puts back what changed, then removes the
 /// proposal rows it seeded.</p>
 Class OcuPilot.Test.OwnRoutineApplicationWire Extends %UnitTest.TestCase
 {
@@ -37,6 +37,8 @@ Parameter STATEAPP = "OcuPilotState";
 
 Parameter IDENTITYAPP = "OcuPilotIdentity";
 
+Parameter SSLREADAPP = "OcuPilotSslRead";
+
 /// <p>The code the arm answers.</p>
 Parameter CODE = "PROHIBITED.OCUPILOTROUTINEAPP";
 
@@ -54,12 +56,12 @@ Parameter UPDATETOOL = "OcuPilot.Screen.Tool.WebAppUpdate";
 /// <p>The stored state of both routine applications before the test, keyed by application name and then by field.</p>
 Property PreparedApps [ MultiDimensional ];
 
-/// <p>Records both routine applications' stored state, so the after-test can put back what a regressed arm let through.</p>
+/// <p>Records each routine application's stored state, so the after-test can put back what a regressed arm let through.</p>
 Method OnBeforeOneTest() As %Status
 {
     Kill ..PreparedApps
     Set tSC = $$$OK
-    For tName = ..#STATEAPP, ..#IDENTITYAPP {
+    For tName = ..#STATEAPP, ..#IDENTITYAPP, ..#SSLREADAPP {
         Set tSC = ##class(OcuPilot.Test.OwnRoutineApplication).Stored(tName, .tProps)
         If $$$ISERR(tSC) Quit
         Merge ..PreparedApps(tName) = tProps
@@ -71,7 +73,7 @@ Method OnBeforeOneTest() As %Status
 /// seeded.</p>
 Method OnAfterOneTest() As %Status
 {
-    For tName = ..#STATEAPP, ..#IDENTITYAPP {
+    For tName = ..#STATEAPP, ..#IDENTITYAPP, ..#SSLREADAPP {
         If $Data(..PreparedApps(tName)) = 0 Continue
         Kill tWas
         Merge tWas = ..PreparedApps(tName)
@@ -140,7 +142,7 @@ ClassMethod Put(pName As %String, pBody As %DynamicObject, Output pStatus As %In
 /// matching-role legs go red. Either alone leaves them refused by the other.</p>
 Method TestTheScreenRouteRefusesEveryArmedAction()
 {
-    For tName = ..#STATEAPP, ..#IDENTITYAPP {
+    For tName = ..#STATEAPP, ..#IDENTITYAPP, ..#SSLREADAPP {
         Set tBefore = ##class(OcuPilot.Test.OwnRoutineApplication).WebAppJSON(tName)
         Do $$$AssertNotEquals(tBefore, "", tName _ " is present to begin with")
         If tBefore = "" Continue
@@ -167,7 +169,7 @@ Method TestTheScreenRouteRefusesEveryArmedAction()
 /// red (the vendor refuses a write to a routine application and changes nothing, so the application still reads as it did).</p>
 Method TestTheEditorSaveRefusesEveryField()
 {
-    For tName = ..#STATEAPP, ..#IDENTITYAPP {
+    For tName = ..#STATEAPP, ..#IDENTITYAPP, ..#SSLREADAPP {
         Set tBefore = ##class(OcuPilot.Test.OwnRoutineApplication).WebAppJSON(tName)
         Do $$$AssertNotEquals(tBefore, "", tName _ " is present to begin with")
         If tBefore = "" Continue
@@ -201,7 +203,7 @@ Method TestTheAgentRefusesEveryWriteAtTheMintAndTheConfirm()
     Do $$$AssertStatusOK(tSC, "a completed turn is seeded for the agent's proposals")
     If $$$ISERR(tSC) Quit
 
-    For tName = ..#STATEAPP, ..#IDENTITYAPP {
+    For tName = ..#STATEAPP, ..#IDENTITYAPP, ..#SSLREADAPP {
         Set tBefore = ##class(OcuPilot.Test.OwnRoutineApplication).WebAppJSON(tName)
         Do $$$AssertNotEquals(tBefore, "", tName _ " is present to begin with")
         If tBefore = "" Continue

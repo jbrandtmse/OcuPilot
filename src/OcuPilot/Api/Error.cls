@@ -1454,6 +1454,7 @@ ClassMethod ReasonForViolation(pCode As %String) As %String
     If $Extract(pCode, 1, 12) = "PRIVROUTINE." Quit ##class(OcuPilot.Api.RoutineAppError).ReasonFor(pCode)
     If $Extract(pCode, 1, 12) = "RESTSERVICE." Quit ##class(OcuPilot.Api.RestServiceError).ReasonFor(pCode)
     If $Extract(pCode, 1, 10) = "ALLOWLIST." Quit ##class(OcuPilot.Api.AllowListError).ReasonFor(pCode)
+    If $Extract(pCode, 1, 7) = "EGRESS." Quit ##class(OcuPilot.Api.EgressError).ReasonFor(pCode)
     If $Extract(pCode, 1, 11) = "WALLETRUNG." Quit ##class(OcuPilot.Api.WalletRungError).ReasonFor(pCode)
     Quit ""
 }

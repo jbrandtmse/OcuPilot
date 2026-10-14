@@ -89,6 +89,79 @@ ClassMethod ValidateHold(ByRef pValues, pHeldAlready As %Boolean = 0, Output pVi
     Quit +$Get(pViolations)
 }
 
+/// <p>Every violation the provider connection <var>pValues</var> -- <code>proxyServer</code>,
+/// <code>proxyPort</code> and <code>sslConfiguration</code> -- commits, appended to <var>pViolations</var> as
+/// <code>pViolations(n) = $ListBuild(field, code)</code>; returns how many (Story 18.40, AD-32, AD-42).</p>
+/// <p><b>A proxy is judged as the call judges it</b>: a bare host name, IPv4 address or IPv6 address
+/// (<code>EGRESS.PROXYHOST</code>), a port from 1 to 65535 (<code>EGRESS.PROXYPORT</code>), and an address that is not
+/// loopback, link-local or this instance's own (<code>EGRESS.PROXYADDRESS</code>, from
+/// <method>OcuPilot.Kernel.AgentRules.AddressViolation</method> with no local escape). A name that does not resolve is
+/// not a violation, as an endpoint's is not. No rule applies to an empty <code>proxyServer</code>.</p>
+/// <p><var>pFresh</var> is the configuration the caller read for a name just changed to a non-default one, as the
+/// SSL/TLS form's own read answers it, and <code>""</code> otherwise. A configuration that is not an enabled client
+/// with <code>VerifyPeer</code> 1 is <code>EGRESS.SSLUNVERIFIED</code> on <code>sslConfiguration</code>.</p>
+ClassMethod ValidateEgress(ByRef pValues, pFresh As %DynamicObject = "", Output pViolations) As %Integer
+{
+    Kill pViolations
+    Set tHost = $Get(pValues("proxyServer"))
+    If tHost '= "" {
+        If '..ProxyHostShaped(tHost) {
+            Do ..Add(.pViolations, "proxyServer", ##class(OcuPilot.Api.EgressError).#PROXYHOST)
+        } Else {
+            ; The stored proxy is a bare host, and Egress.HostOf cuts a bare host at its first colon, so a bare IPv6
+            ; address is bracketed for the judgement, as ProviderPort.ProxyHostOf does at the call.
+            Set tJudged = $Select($Length(tHost, ":") > 2: "[" _ tHost _ "]", 1: tHost)
+            If ##class(OcuPilot.Kernel.AgentRules).AddressViolation(tJudged, 0, 0) '= "" {
+                Do ..Add(.pViolations, "proxyServer", ##class(OcuPilot.Api.EgressError).#PROXYADDRESS)
+            }
+        }
+        Set tPort = $Get(pValues("proxyPort"))
+        If '$Match(tPort, "^[0-9]+$") || (+tPort < 1) || (+tPort > 65535) {
+            Do ..Add(.pViolations, "proxyPort", ##class(OcuPilot.Api.EgressError).#PROXYPORT)
+        }
+    }
+    If $IsObject(pFresh) && '..EnabledVerifyingClient(pFresh) {
+        Do ..Add(.pViolations, "sslConfiguration", ##class(OcuPilot.Api.EgressError).#SSLUNVERIFIED)
+    }
+    Quit +$Get(pViolations)
+}
+
+/// <p>Whether <var>pHost</var> is a bare host name, an IPv4 address or a bare IPv6 address of at most
+/// <parameter>OcuPilot.Api.EgressError.HOSTMAX</parameter> characters. A scheme, a path, a port, a user name, brackets,
+/// white space and every other character a host does not carry fail it.</p>
+ClassMethod ProxyHostShaped(pHost As %String) As %Boolean [ Private ]
+{
+    If ($Length(pHost) = 0) || ($Length(pHost) > ##class(OcuPilot.Api.EgressError).#HOSTMAX) Quit 0
+    If pHost '[ ":" Quit $Match(pHost, "^[A-Za-z0-9_.-]+$")
+    ; A colon is either a port, which is refused, or an IPv6 address: three to nine groups of at most four hexadecimal
+    ; digits, the last of them a dotted IPv4 address where the address embeds one.
+    If '$Match(pHost, "^[0-9A-Fa-f:.]+$") Quit 0
+    Set tGroups = $Length(pHost, ":")
+    If (tGroups < 3) || (tGroups > 9) Quit 0
+    Set tShaped = 1
+    For tI = 1:1:tGroups {
+        Set tGroup = $Piece(pHost, ":", tI)
+        If (tI = tGroups) && (tGroup [ ".") {
+            If '$Match(tGroup, "^[0-9]{1,3}(\.[0-9]{1,3}){3}$") Set tShaped = 0
+        } ElseIf ($Length(tGroup) > 4) || (tGroup [ ".") {
+            Set tShaped = 0
+        }
+    }
+    Quit tShaped
+}
+
+/// <p>Whether <var>pFresh</var>, a configuration as the SSL/TLS form's read answers it, is an enabled client that
+/// requires the server's certificate: <code>Type</code> the number 0, <code>Enabled</code> true and
+/// <code>VerifyPeer</code> the number 1. Anything a field does not say plainly fails.</p>
+ClassMethod EnabledVerifyingClient(pFresh As %DynamicObject) As %Boolean
+{
+    If '$IsObject(pFresh) Quit 0
+    If (pFresh.%GetTypeOf("Type") '= "number") || (pFresh.%Get("Type") '= 0) Quit 0
+    If pFresh.%GetTypeOf("Enabled") '= "boolean" Quit 0
+    If 'pFresh.%Get("Enabled") Quit 0
+    Quit (pFresh.%GetTypeOf("VerifyPeer") = "number") && (pFresh.%Get("VerifyPeer") = 1)
+}
+
 /// <p>Append one violation as <code>$ListBuild(field, code)</code>, whose sentence
 /// <method>OcuPilot.Kernel.AgentRules.ViolationsJson</method> resolves by code (AD-39).</p>
 ClassMethod Add(ByRef pViolations, pField As %String, pCode As %String) [ Private ]

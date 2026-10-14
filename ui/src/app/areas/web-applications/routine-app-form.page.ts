@@ -83,7 +83,7 @@ interface Option {
  * roles, Matching roles, and Routines and classes (Story 18.33); they are not this form's fields, and each act on them
  * is one of the list's row actions (`RoutineAppMemberTabs`). A create shows General alone.
  *
- * **OcuPilot's own two applications are drawn refused**: their fields are read-only and Save is `aria-disabled`,
+ * **OcuPilot's own three applications are drawn refused**: their fields are read-only and Save is `aria-disabled`,
  * described by the sentence the instance would answer with (AD-10, AD-53); so is every control of the member tabs.
  *
  * It composes no payload and authors no field sentence; the unsaved-changes guard is the `form-page` route guard,
@@ -332,13 +332,13 @@ export class RoutineAppFormPage {
     return this.store.mode() === 'edit' || !this.store.editable();
   }
 
-  /** Whether the fields refuse input: an edit whose fresh read has not landed, or one of OcuPilot's own two. */
+  /** Whether the fields refuse input: an edit whose fresh read has not landed, or one of OcuPilot's own three. */
   protected get locked(): boolean {
     this.generation();
     return !this.store.editable() || this.ownRefusal !== '';
   }
 
-  /** The sentence OcuPilot's own two applications are drawn refused with, or `''` for any other. */
+  /** The sentence OcuPilot's own three applications are drawn refused with, or `''` for any other. */
   protected get ownRefusal(): string {
     this.generation();
     if (this.store.mode() !== 'edit') return '';

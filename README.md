@@ -428,7 +428,7 @@ OcuPilot is an administration tool, so it says plainly what it adds to an instan
 - **Three web applications:** `/ocupilot` (the portal's static files, served unauthenticated),
   `/api/ocupilot` (the REST API: password sign-in, JWT, no server session) and
   `/api/ocupilot/readiness`.
-- **Two privileged routine applications**, `OcuPilotState` and `OcuPilotIdentity`, a global mapping
+- **Three privileged routine applications**, `OcuPilotState`, `OcuPilotIdentity` and `OcuPilotSslRead`, a global mapping
   and an SSL/TLS configuration, `OcuPilotProvider`, for model calls.
 - **One scheduled task**, "OcuPilot transcript retention", which runs at 03:15 each night and removes
   agent conversations and their records once they are older than each definition's **Retention**.

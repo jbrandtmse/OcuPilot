@@ -1,7 +1,7 @@
 /**
  * The Switches screen in a real browser, against the throwaway instance (Story 3.7).
  *
- * Four claims, each on rendered DOM and the real URL rather than on store state:
+ * Five claims, each on rendered DOM and the real URL rather than on store state:
  *
  * 1. **DW-369 end to end**: two `form-page` screens, two different pages. The Switches route
  *    renders the Switches controls and the Definition form route renders the definition's, which
@@ -13,6 +13,10 @@
  *    operator's reason, and the rail's attention dot.
  * 4. **And it restrains the agent, not the product**: with the switch on, a route in another area
  *    and the other form-page route both still render, which is AC3's last clause.
+ * 5. **The provider connection (Story 18.40)**: the stored proxy and configuration render, Save
+ *    connection sends the three keys with the row version, a configuration the instance does not
+ *    hold is refused on its own field, and a fresh sign-in shows what the instance holds. The spec
+ *    puts the connection back to what it found, and removes the row when it found none.
  *
  * **It refuses the live container**, for the reason its siblings do: this spec writes the
  * instance's switches. It restores them in `after`, through the shipped routes, so the agent is
@@ -31,7 +35,7 @@ import puppeteer from 'puppeteer';
 import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
 import { leaveFirstLoginGate } from './shell-entry.mjs';
 import { authHeader as sharedAuthHeader, saveAndSettle } from './panel-spec.mjs';
-import { requireFreeSlot } from './turnprobe-spec.mjs';
+import { markerValue, requireFreeSlot, runIris } from './turnprobe-spec.mjs';
 import { resetRememberedState } from './preferences-reset.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -42,6 +46,7 @@ const config = browserConfig();
 const SWITCHES_URL = '/ocupilot/agent/switches?ns=HSCUSTOM';
 const FORM_URL = '/ocupilot/agent/definitions/edit?ns=HSCUSTOM';
 const SWITCHES_PATH = '/api/ocupilot/agent/switches';
+const EGRESS_PATH = `${SWITCHES_PATH}/egress`;
 
 /** The reason this spec writes, so an assertion can tell it from anything else on the instance. */
 const REASON = 'OcuPilotBrowserProbe: switched off for this run';
@@ -306,5 +311,110 @@ test('Story 4.4: the context row cap saves as a number and renders the server vi
     );
   } finally {
     await context.close();
+  }
+});
+
+/** The provider connection as the instance answers it now. */
+async function readEgress() {
+  const answer = await fetch(`${config.origin}${EGRESS_PATH}`, { headers: { Authorization: authHeader() } });
+  const text = await answer.text();
+  assert.equal(answer.status, 200, `the provider connection was read: ${text}`);
+  return JSON.parse(text);
+}
+
+/** Write the provider connection over HTTP, so a browser leg starts from a state it did not have to type. */
+async function writeEgress(body) {
+  const answer = await fetch(`${config.origin}${EGRESS_PATH}`, {
+    method: 'PUT',
+    headers: { Authorization: authHeader(), 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  assert.equal(answer.status, 200, `the provider connection was written: ${await answer.text()}`);
+}
+
+/** Type `value` into the field `selector` the way a person's keystrokes arrive. */
+async function typeInto(page, selector, value) {
+  await page.$eval(
+    selector,
+    (node, text) => {
+      node.value = text;
+      node.dispatchEvent(new Event('input', { bubbles: true }));
+    },
+    value
+  );
+}
+
+test('Story 18.40: the provider connection renders, saves its three keys, refuses an absent configuration on its field, and survives a fresh sign-in', async () => {
+  // Mutation (Rule 19): drop `proxyPort` from `connectionBody()` in switches.store.ts, rebuild and redeploy -> the
+  // sent-keys assertion goes red.
+  const found = await readEgress();
+  const absent = 'OcuPilotBrowserProbeNoSuchConfiguration';
+  try {
+    await writeEgress({ proxyServer: '192.0.2.10', proxyPort: 3128, sslConfiguration: '' });
+    const { context, page } = await signedInAt(SWITCHES_URL);
+    try {
+      // The section draws only once the connection's read has answered, which is the signal to wait for.
+      await page.waitForSelector('#ocu-switches-proxyServer', { visible: true, timeout: config.navigationTimeoutMs });
+      assert.equal(await page.$eval('#ocu-switches-proxyServer', (node) => node.value), '192.0.2.10', 'the stored proxy renders');
+      assert.equal(await page.$eval('#ocu-switches-proxyPort', (node) => node.value), '3128', 'and its port');
+      assert.equal(await page.$eval('#ocu-switches-sslConfiguration', (node) => node.value), '', 'and an empty configuration name while OcuPilot\'s own is in force');
+      const headings = await page.$$eval('.ocu-switches-connection .ocu-switches-holds-heading', (nodes) => nodes.map((node) => node.textContent.trim()));
+      assert.deepEqual(headings, [STRINGS.agentSwitchesConnectionHeading], 'under its published heading');
+
+      const sent = [];
+      page.on('request', (request) => {
+        if (request.method() === 'PUT' && new URL(request.url()).pathname === EGRESS_PATH) sent.push(JSON.parse(request.postData() ?? '{}'));
+      });
+      const saveConnection = '.ocu-switches-connection-actions .ocu-button-secondary';
+      await typeInto(page, '#ocu-switches-proxyServer', 'proxy.ocupilot-browser-probe.invalid');
+      await typeInto(page, '#ocu-switches-proxyPort', '8080');
+      await page.click(saveConnection);
+      await page.waitForSelector('.ocu-switches-connection [role="status"]', { timeout: config.navigationTimeoutMs });
+      assert.equal(sent.length, 1, 'one save was sent');
+      assert.deepEqual(
+        Object.keys(sent[0]).sort(),
+        ['proxyPort', 'proxyServer', 'rowVersion', 'sslConfiguration'],
+        'carrying the three keys and the row version'
+      );
+      assert.equal(sent[0].proxyPort, 8080, 'the port as a number');
+      const stored = await readEgress();
+      assert.equal(`${stored.proxyServer} ${stored.proxyPort}`, 'proxy.ocupilot-browser-probe.invalid 8080', 'the instance holds what the browser saved');
+
+      await typeInto(page, '#ocu-switches-sslConfiguration', absent);
+      await page.click(saveConnection);
+      await page.waitForSelector('#ocu-switches-sslConfiguration-reason', { timeout: config.navigationTimeoutMs });
+      assert.equal(
+        await page.$eval('#ocu-switches-sslConfiguration-reason', (node) => node.textContent.trim()),
+        STRINGS.egressRefusalSslAbsent,
+        'the absent configuration is refused on its own field, in the published sentence'
+      );
+      assert.equal(await page.$eval('#ocu-switches-sslConfiguration', (node) => node.getAttribute('aria-invalid')), 'true', 'and the control is marked invalid');
+      assert.equal((await readEgress()).sslConfiguration, '', 'and nothing was stored');
+    } finally {
+      await context.close();
+    }
+
+    const fresh = await signedInAt(SWITCHES_URL);
+    try {
+      await fresh.page.waitForSelector('#ocu-switches-proxyServer', { visible: true, timeout: config.navigationTimeoutMs });
+      assert.equal(
+        await fresh.page.$eval('#ocu-switches-proxyServer', (node) => node.value),
+        'proxy.ocupilot-browser-probe.invalid',
+        'a fresh sign-in shows the proxy the instance holds'
+      );
+      assert.equal(await fresh.page.$eval('#ocu-switches-proxyPort', (node) => node.value), '8080', 'and its port');
+    } finally {
+      await fresh.context.close();
+    }
+  } finally {
+    await writeEgress({ proxyServer: found.proxyServer, proxyPort: found.proxyPort, sslConfiguration: found.sslConfiguration });
+    if (found.rowVersion === 0) {
+      // The save above wrote a row where none existed; the instance's defaults are back in force only once it is gone.
+      const output = runIris(config.container, [
+        'Set sc=##class(OcuPilot.Kernel.State.Egress).DeleteGuarded()',
+        'Write "OCU-EGRESSCLEAR-START:"_$System.Status.IsOK(sc)_":OCU-EGRESSCLEAR-END",!',
+      ]);
+      assert.equal(markerValue(output, 'EGRESSCLEAR'), '1', `the egress row was removed: ${output}`);
+    }
   }
 });

@@ -20,7 +20,7 @@
  *
  * **It refuses the live and development containers.** It touches only probe applications named `OcuProbe1831...` and
  * probe roles named `OcuProbe1833Role...`: `before` and `after` remove them by exact name with
- * `OcuPilot.Test.RoutineAppProbe.RemoveAll`. It never sends a write naming `OcuPilotState` or `OcuPilotIdentity`: its
+ * `OcuPilot.Test.RoutineAppProbe.RemoveAll`. It never sends a write naming `OcuPilotState`, `OcuPilotIdentity` or `OcuPilotSslRead`: its
  * clicks on the own application's refused Delete and refused tab controls are asserted to send nothing. Every read of the list waits for the list's own answer, its rows, before it counts or clicks.
  *
  * Run, from `ui/`: `npm run build && docker cp dist/ocupilot-ui/browser/. <throwaway>:/durable/iris/csp/ocupilot/`,
@@ -96,7 +96,7 @@ function held() {
   return values.NAMES;
 }
 
-/** Wait until the list has answered: at least one row (OcuPilot's own two are always listed). */
+/** Wait until the list has answered: at least one row (OcuPilot's own three are always listed). */
 async function waitForListAnswered(page) {
   await page.waitForFunction((rows) => document.querySelector(rows) !== null, { timeout: config.navigationTimeoutMs }, ROW_SELECTOR);
 }
@@ -272,12 +272,12 @@ test('C2: create a probe application, change its description and delete it with 
 
 // Mutation (Rule 19), each rebuilt and redeployed: send `Role` under another name in the tabs' `onAssignApplicationRole`
 // -> the first action assertion goes red; the tabs' `ruleReason` answering `''` -> the own application's aria-disabled
-// legs go red (its clicks then post, refused 403 by the instance, so the own two are never written).
+// legs go red (its clicks then post, refused 403 by the instance, so the own applications are never written).
 test("C2, C4, C5: the editor's tabs add and remove a role, a matching role and a routine; OcuPilot's own application's tab controls are aria-disabled", async () => {
   removeProbes();
   const tabsName = 'OcuProbe1831Tabs';
   const privilegedRole = 'OcuProbe1833RoleTab';
-  const own = () => iris([mark('OWN', `$Translate(##class(OcuPilot.Test.RoutineAppWrite).OwnTwo(),$Char(10),"|")`)], ['OWN']).values.OWN;
+  const own = () => iris([mark('OWN', `$Translate(##class(OcuPilot.Test.RoutineAppWrite).OwnApplications(),$Char(10),"|")`)], ['OWN']).values.OWN;
   const targets = (match) => iris([mark('T', `##class(${PROBE}).Targets("${tabsName}","${match}")`)], ['T']).values.T;
   const entries = () => iris([mark('E', `##class(${PROBE}).Entries("${tabsName}")`)], ['E']).values.E;
   iris([`Do ##class(${PROBE}).EnsureRole("Tab","%Admin_Secure:U")`, `Do ##class(${PROBE}).Seed("","${tabsName}")`]);

@@ -85,24 +85,25 @@ Method TestInstallCreatesTheConfiguration()
 
 /// <p><b>AC3's call-time read, as the port actually makes it.</b> Every provider test answers the
 /// TLS question from a switch on <class>OcuPilot.Test.ProviderPortProbe</class>, so the shipped
-/// <method>OcuPilot.Port.ProviderPort.SslConfigurationMissing</method> -- the one piece of this
+/// <method>OcuPilot.Port.ProviderPort.SslConfigurationState</method> -- the one piece of this
 /// story that enters <code>%SYS</code> at call time -- runs in none of them. This class is already
 /// armed to create a configuration on a throwaway, so it is where that method can be asked about a
 /// real one.</p>
 /// <p>The namespace is asserted on both paths: a method that answered correctly and left the
 /// caller in <code>%SYS</code> would pass every other assertion in the suite and break the next
 /// thing the calling process touched (AD-16).</p>
-/// <p>Mutation: invert the shipped body's test, or delete the restore on its success path -- the
-/// first two legs, or the namespace legs, go red.</p>
+/// <p>Mutation: invert <method>OcuPilot.Port.ProviderPort.SslConfigurationState</method>'s absent test, or delete the
+/// namespace restore after the read in <method>OcuPilot.Kernel.State.Base.GuardedSslConfigRead</method> -- the first
+/// two legs, or the namespace legs, go red.</p>
 Method TestThePortsOwnTlsReadAnswersTheInstance()
 {
     Do $$$AssertStatusOK(##class(OcuPilot.Install.Installer).Install(..#PROFILE), "the probe install creates the configuration")
     Set tNs = $Namespace
-    Do $$$AssertEquals(##class(OcuPilot.Port.ProviderPort).SslConfigurationMissing(..#CONFIGNAME), 0, "the port's own read finds a configuration this instance holds")
+    Do $$$AssertEquals(##class(OcuPilot.Port.ProviderPort).SslConfigurationState(..#CONFIGNAME), "ok", "the port's own read finds a configuration this instance holds and calls it verifying")
     Do $$$AssertEquals($Namespace, tNs, "and leaves the caller's namespace where it found it")
-    Do $$$AssertEquals(##class(OcuPilot.Port.ProviderPort).SslConfigurationMissing(..#CONFIGNAME _ "NoSuchConfiguration"), 1, "and reports one it does not")
+    Do $$$AssertEquals(##class(OcuPilot.Port.ProviderPort).SslConfigurationState(..#CONFIGNAME _ "NoSuchConfiguration"), "absent", "and reports one it does not")
     Do $$$AssertEquals($Namespace, tNs, "restoring the namespace on that path too")
-    Do $$$AssertEquals(##class(OcuPilot.Port.ProviderPort).SslConfigurationMissing(""), 0, "an empty name asks nothing, which is the marked-local plain-HTTP path")
+    Do $$$AssertEquals(##class(OcuPilot.Port.ProviderPort).SslConfigurationState(""), "ok", "an empty name asks nothing, which is the marked-local plain-HTTP path")
 }
 
 /// <p>AD-17 -- install is safe to repeat: a second run finds the configuration correct and leaves

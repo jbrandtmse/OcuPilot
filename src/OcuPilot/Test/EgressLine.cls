@@ -315,10 +315,8 @@ Method TestATurnWhoseProxyWasRefusedRecordsNoEgress()
 
 /// <p>Refused TLS: a call whose TLS configuration is absent is refused <code>PROVIDER.TLS</code>
 /// before dispatch and answers no egress, while the same call under the instance's own
-/// configuration is dispatched and answers one. Asked of the port in this process, because the
-/// check reads the security database, which a turn's least-privileged owner cannot
-/// (<method>OcuPilot.Port.ProviderPort.SslConfigurationMissing</method> then lets the call
-/// proceed).</p>
+/// configuration is dispatched and answers one. Asked of the port in this process, through
+/// <method>OcuPilot.Port.ProviderPort.SslConfigurationState</method>'s real read.</p>
 Method TestACallRefusedForItsTlsConfigurationRecordsNoEgress()
 {
     Set tPort = "OcuPilot.Port.ProviderPort"

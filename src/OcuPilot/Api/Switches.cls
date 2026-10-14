@@ -15,6 +15,10 @@
 /// <p><b>No gate lives here.</b> Whether a write may happen is
 /// <method>OcuPilot.Kernel.Restraint.Verdict</method>'s alone (AD-30, AD-40); this class projects
 /// the verdict onto the wire and computes no part of it.</p>
+/// <p><b>The provider connection</b> (Story 18.40) -- <code>GET</code> and <code>PUT /agent/switches/egress</code> --
+/// is the instance's proxy and the SSL/TLS configuration provider calls go through, stored in
+/// <class>OcuPilot.Kernel.State.Egress</class>, which this class alone writes. Both routes require the same administrative
+/// resource, and naming a configuration needs the SSL/TLS form's pairs besides.</p>
 /// <p><b>A hold's user is a weak reference</b> (AD-37). The stored name reads back verbatim; whether
 /// it still resolves on this instance is answered here, where the <code>%SYS</code> switch AD-16
 /// requires is allowed, and travels as the row's <code>present</code> flag so the screen renders
@@ -48,6 +52,13 @@ Parameter HOLDVERB = "hold";
 
 /// <p>The verb a per-user hold's removal records under.</p>
 Parameter RELEASEVERB = "release";
+
+/// <p>The verb <code>PUT /agent/switches/egress</code> records under (Story 18.40).</p>
+Parameter EGRESSVERB = "egress";
+
+/// <p>The tool whose target a named SSL/TLS configuration is held under, so a Save on that configuration, a confirm
+/// and a naming of it are ordered by one lock (AD-34).</p>
+Parameter EGRESSTOOL = "OcuPilot.Screen.Tool.SslUpdate";
 
 /// <p>The field table for the instance-wide switches: one entry per wire field, as
 /// <code>$ListBuild(field, property, kind, security)</code>. Every one of them is writable; the
@@ -289,6 +300,197 @@ ClassMethod HandleHoldDelete(pId As %String) As %Status
         Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ex)
     }
     Quit tSC
+}
+
+/// <p>Answer <code>GET /agent/switches/egress</code> (Story 18.40): the provider connection in force --
+/// <code>proxyServer</code>, <code>proxyPort</code>, <code>sslConfiguration</code> and the
+/// <code>rowVersion</code> they were read at. <code>sslConfiguration</code> is <code>""</code> while OcuPilot's own
+/// provider configuration is in force.</p>
+ClassMethod HandleEgressRead() As %Status
+{
+    Set tSC = $$$OK
+    Try {
+        If '..IsAdministrator() {
+            Set tSC = ..RenderForbidden()
+            Quit
+        }
+        ; The version before the values, for the reason HandleUpdate gives.
+        Set tVersionSC = ##class(OcuPilot.Kernel.State.Egress).GuardedVersion(.tVersion)
+        If $$$ISERR(tVersionSC) {
+            Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(tVersionSC))
+            Quit
+        }
+        Set tReadSC = ##class(OcuPilot.Kernel.State.Egress).Resolve(.tStored)
+        If $$$ISERR(tReadSC) {
+            Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(tReadSC))
+            Quit
+        }
+        Do ..EgressProject(.tStored, .tValues)
+        Set tSC = ##class(OcuPilot.Api.Response).JSON(..EgressProjection(.tValues, tVersion))
+    } Catch ex {
+        Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ex)
+    }
+    Quit tSC
+}
+
+/// <p>Answer <code>PUT /agent/switches/egress</code> (Story 18.40): merge the body over the stored connection,
+/// validate, then save, conditional on the row version. A key the body omits keeps its stored value, and the timeout,
+/// the attempt bound and the two proxy TLS flags are no body's to set.</p>
+/// <p><b>Naming a configuration is judged on the instance's own read of it</b>, in this process and under the SSL/TLS
+/// form's pairs, which are asked before any read: a name changed to one other than OcuPilot's own provider configuration takes
+/// <method>OcuPilot.Area.Security.SslRules.Gate</method>, the configuration's target hold (AD-34) and
+/// <method>OcuPilot.Area.Security.SslRules.Present</method>, and is stored only as an enabled client with
+/// <code>VerifyPeer</code> 1. Naming OcuPilot's own, or none, stores <code>""</code> and asks nothing. The hold is
+/// released on every exit.</p>
+ClassMethod HandleEgressUpdate() As %Status
+{
+    Set tSC = $$$OK
+    Set tHoldKey = ""
+    Try {
+        If '..IsAdministrator() {
+            Set tSC = ..RenderForbidden()
+            Quit
+        }
+        Set tReadSC = ##class(OcuPilot.Kernel.Utils).ReadRequestBody(.tBody, .tStage)
+        If $$$ISERR(tReadSC) {
+            Set tSC = ..RenderBadBody(tReadSC, tStage)
+            Quit
+        }
+        If '##class(OcuPilot.Api.Definitions).BodyIsReadable(tBody) {
+            Set tSC = ..RenderBadBody(##class(OcuPilot.Api.Definitions).NotAnObject())
+            Quit
+        }
+        ; Version first, then the values, as HandleUpdate does.
+        Set tVersionSC = ##class(OcuPilot.Kernel.State.Egress).GuardedVersion(.tVersion)
+        If $$$ISERR(tVersionSC) {
+            Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(tVersionSC))
+            Quit
+        }
+        Set tResolveSC = ##class(OcuPilot.Kernel.State.Egress).Resolve(.tStored)
+        If $$$ISERR(tResolveSC) {
+            Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(tResolveSC))
+            Quit
+        }
+        Do ..EgressProject(.tStored, .tBefore)
+        Kill tValues
+        Merge tValues = tBefore
+        Do ..EgressMerge(tBody, .tValues)
+        Set tName = tValues("sslConfiguration")
+        Set tFresh = ""
+        If (tName '= "") && (tName '= tBefore("sslConfiguration")) {
+            Set tGateSC = ##class(OcuPilot.Area.Security.SslRules).Gate(.tRefused)
+            If tRefused || $$$ISERR(tGateSC) {
+                Set tSC = tGateSC
+                Quit
+            }
+            Set tHoldSC = ##class(OcuPilot.Kernel.Proposal.Operation).HoldTool(..#EGRESSTOOL, tName, .tHeld, .tHoldKey)
+            If $$$ISERR(tHoldSC) || 'tHeld {
+                Set tSC = ##class(OcuPilot.Api.Error).RenderTargetBusy(tHoldSC)
+                Quit
+            }
+            ; A name longer than the vendor stores names no configuration, so nothing is asked of the instance.
+            If $Length(tName) > ##class(OcuPilot.Area.Security.SslRules).#NAMEMAXLENGTH {
+                Set tPresentSC = $$$ERROR($$$GeneralError, ##class(OcuPilot.Api.Error).#SSLNAMEABSENT)
+                Set tHttp = 404
+            } Else {
+                Set tPresentSC = ##class(OcuPilot.Area.Security.SslRules).Present(tName, .tFresh, .tHttp, .tFault)
+            }
+            If $$$ISERR(tPresentSC) {
+                If +$Get(tHttp) = 404 {
+                    Kill tAbsent
+                    Set tAbsent($Increment(tAbsent)) = $ListBuild("sslConfiguration", ##class(OcuPilot.Api.EgressError).#SSLABSENT)
+                    Set tSC = ..RenderEgressViolations(.tAbsent)
+                    Quit
+                }
+                Set tSC = ##class(OcuPilot.Area.Security.SslRules).RenderRead(tPresentSC, $Get(tHttp), $Get(tFault))
+                Quit
+            }
+        }
+        If ##class(OcuPilot.Kernel.SwitchRules).ValidateEgress(.tValues, tFresh, .tViolations) {
+            Set tSC = ..RenderEgressViolations(.tViolations)
+            Quit
+        }
+        Set tExpected = ##class(OcuPilot.Api.Definitions).BodyRowVersion(tBody)
+        Kill tWrite
+        Merge tWrite = tValues
+        Set tSaveSC = ##class(OcuPilot.Kernel.State.Egress).SetGuarded(.tWrite, $Select(tExpected '= "": tExpected, 1: tVersion))
+        If ##class(OcuPilot.Kernel.State.Base).IsStaleSave(tSaveSC) {
+            Set tSC = ..RenderConflict()
+            Quit
+        }
+        If $$$ISERR(tSaveSC) {
+            Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("The provider connection could not be saved", ##class(%Exception.StatusException).CreateFromStatus(tSaveSC))
+            Quit
+        }
+        Set tAfterVersionSC = ##class(OcuPilot.Kernel.State.Egress).GuardedVersion(.tAfterVersion)
+        If $$$ISERR(tAfterVersionSC) {
+            Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(tAfterVersionSC))
+            Quit
+        }
+        Set tAfterSC = ##class(OcuPilot.Kernel.State.Egress).Resolve(.tStoredAfter)
+        If $$$ISERR(tAfterSC) {
+            Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(tAfterSC))
+            Quit
+        }
+        Do ..EgressProject(.tStoredAfter, .tAfter)
+        Do ..LogChange(..#EGRESSVERB, .tBefore, .tAfter)
+        Set tSC = ##class(OcuPilot.Api.Response).JSON(..EgressProjection(.tAfter, tAfterVersion))
+    } Catch ex {
+        Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ex)
+    }
+    Do ##class(OcuPilot.Kernel.Proposal.Operation).Release(tHoldKey)
+    Quit tSC
+}
+
+/// <p>The provider connection <var>pStored</var> -- <method>OcuPilot.Kernel.State.Egress.Resolve</method>'s array --
+/// as the wire carries it, in <var>pValues</var>: the proxy and its port, and the configuration name, <code>""</code>
+/// while OcuPilot's own provider configuration is in force. An empty proxy carries port 0.</p>
+ClassMethod EgressProject(ByRef pStored, Output pValues) [ Private ]
+{
+    Kill pValues
+    Set pValues("proxyServer") = $Get(pStored("proxyServer"))
+    Set pValues("proxyPort") = $Select(pValues("proxyServer") = "": 0, 1: +$Get(pStored("proxyPort")))
+    Set tName = $Get(pStored("sslConfiguration"))
+    Set pValues("sslConfiguration") = $Select(tName = ##class(OcuPilot.Kernel.State.Base).#SSLCONFIG: "", 1: tName)
+}
+
+/// <p>The answer both provider connection routes give: <var>pValues</var> from <method>EgressProject</method> and the
+/// <var>pVersion</var> they were read at.</p>
+ClassMethod EgressProjection(ByRef pValues, pVersion As %Integer) As %DynamicObject [ Private ]
+{
+    Set tOut = {}
+    Do tOut.%Set("proxyServer", pValues("proxyServer"), "string")
+    Do tOut.%Set("proxyPort", +pValues("proxyPort"), "number")
+    Do tOut.%Set("sslConfiguration", pValues("sslConfiguration"), "string")
+    Do tOut.%Set("rowVersion", +pVersion, "number")
+    Quit tOut
+}
+
+/// <p>Overwrite <var>pValues</var> with the provider connection fields <var>pBody</var> carries, by JSON type as
+/// <method>MergeBody</method> does: a string field takes only a JSON string and ignores any other type, and the port
+/// takes only a JSON number, any other type becoming <code>""</code> for
+/// <method>OcuPilot.Kernel.SwitchRules.ValidateEgress</method> to refuse. A key the body omits is left alone.
+/// OcuPilot's own provider configuration is stored as <code>""</code>, and an empty proxy carries port 0.</p>
+ClassMethod EgressMerge(pBody As %DynamicObject, ByRef pValues) [ Private ]
+{
+    If '$IsObject(pBody) Quit
+    For tField = "proxyServer", "sslConfiguration" {
+        If 'pBody.%IsDefined(tField) Continue
+        If pBody.%GetTypeOf(tField) '= "string" Continue
+        Set pValues(tField) = pBody.%Get(tField)
+    }
+    If pBody.%IsDefined("proxyPort") {
+        Set pValues("proxyPort") = $Select(pBody.%GetTypeOf("proxyPort") = "number": pBody.%Get("proxyPort"), 1: "")
+    }
+    If pValues("sslConfiguration") = ##class(OcuPilot.Kernel.State.Base).#SSLCONFIG Set pValues("sslConfiguration") = ""
+    If pValues("proxyServer") = "" Set pValues("proxyPort") = 0
+}
+
+/// <p>Refuse with <b>one</b> 422 carrying every provider connection violation as <code>detail.violations</code>
+/// (AD-39). Nothing has been written by the time this is called.</p>
+ClassMethod RenderEgressViolations(ByRef pViolations) As %Status [ Private ]
+{
+    Quit ##class(OcuPilot.Api.Definitions).RenderViolations(.pViolations, "The provider connection was refused")
 }
 
 /// <p>Answer <code>GET /agent/restraint</code>: the calling user's own verdict, as
@@ -641,7 +843,9 @@ ClassMethod LogChange(pVerb As %String, ByRef pBefore, ByRef pAfter)
 
 /// <p>Whether this write is a security change, computed per verb rather than declared constant.</p>
 /// <p>A hold and a release are security changes by what they do: each decides whether one named
-/// user may make the agent act at all (AD-30). A <code>switches</code> write is one when the change
+/// user may make the agent act at all (AD-30). A provider connection write is one whatever it changes: it
+/// decides where the provider's key goes and which certificates vouch for the place (AD-32). A
+/// <code>switches</code> write is one when the change
 /// set touched a field <method>SecurityFieldNames</method> declares -- so turning the kill switch
 /// on is a security change and reworded banner copy is not.</p>
 /// <p>A classification that could not be computed answers yes: the conservative direction, since
@@ -650,7 +854,7 @@ ClassMethod IsSecurityChange(pVerb As %String, pChanges As %DynamicObject) As %B
 {
     Set tFound = 0
     Try {
-        If (pVerb = ..#HOLDVERB) || (pVerb = ..#RELEASEVERB) {
+        If (pVerb = ..#HOLDVERB) || (pVerb = ..#RELEASEVERB) || (pVerb = ..#EGRESSVERB) {
             Set tFound = 1
             Quit
         }

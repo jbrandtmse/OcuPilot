@@ -76,6 +76,30 @@ Parameter KEYSOURCENONE = "none";
 /// provider sentences stay in one class.</p>
 Parameter REASONPROXYEGRESS = "The proxy this instance's provider calls go through resolves to an address OcuPilot will not call";
 
+/// <p>The reason a <code>PROVIDER.TLS</code> refusal carries when the configuration a call would be made through is
+/// absent, to which the caller appends the configuration's name. <method>ReasonFor</method> answers the code's one
+/// sentence for a turn, which covers this cause and <parameter>REASONTLSUNVERIFIED</parameter>'s.</p>
+Parameter REASONTLSABSENT = "The TLS configuration this instance's provider calls are made through is not present";
+
+/// <p>The remedy appended to <parameter>REASONTLSABSENT</parameter> for a configuration the egress row names, and the one
+/// for OcuPilot's own provider configuration, which the installer restores at every start.</p>
+Parameter REMEDYTLSABSENT = "Create it again, or clear the name on Switches.";
+
+Parameter REMEDYTLSABSENTOWN = "Restart the instance to restore it.";
+
+/// <p>The reason a <code>PROVIDER.TLS</code> refusal carries when the configuration a call would be made through
+/// exists but is no longer an enabled client that requires the server's certificate, with <code>&lt;name&gt;</code>
+/// the configuration's name and the remedy for a configuration the egress row names (Story 18.40). Nothing was sent.</p>
+Parameter REASONTLSUNVERIFIED = "The TLS configuration <name> is no longer an enabled client that requires the server's certificate, so no request was sent. Re-enable peer verification on it, or clear the name on Switches.";
+
+/// <p>The same refusal for OcuPilot's own provider configuration, which the installer restores at every start.</p>
+Parameter REASONTLSUNVERIFIEDOWN = "OcuPilot's TLS configuration <name> is no longer an enabled client that requires the server's certificate, so no request was sent. Restart the instance to restore it.";
+
+/// <p>The reason a <code>PROVIDER.TLS</code> refusal carries when the read of the configuration a call would be made
+/// through did not answer, with <code>&lt;name&gt;</code> the configuration's name. The fault is in OcuPilot's own
+/// install, so it names the repair: waiting does not help.</p>
+Parameter REASONTLSUNAVAILABLE = "OcuPilot cannot read the TLS configuration <name>, so no request was sent. Waiting will not help; an administrator needs to run install again.";
+
 /// <p>The reason the built-URL containment refusal carries, beside
 /// <parameter>REASONPROXYEGRESS</parameter>, because <code>PROVIDER.EGRESS</code> has three causes
 /// and <method>ReasonFor</method>'s one sentence names only the endpoint's own address. This one
@@ -761,13 +785,26 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ##class(OcuPilot.Api.Error).#PROVIDERREFUSED Quit "The provider refused the request"
     If pCode = ##class(OcuPilot.Api.Error).#PROVIDERUNAVAILABLE Quit "The provider did not serve this request on any attempt"
     If pCode = ##class(OcuPilot.Api.Error).#PROVIDERTIMEOUT Quit "The provider did not answer within the time this instance allows"
-    If pCode = ##class(OcuPilot.Api.Error).#PROVIDERTLS Quit "The TLS configuration this instance's provider calls are made through is not present"
+    If pCode = ##class(OcuPilot.Api.Error).#PROVIDERTLS Quit "The TLS configuration this instance's provider calls are made through is not present, or is no longer an enabled client that requires the server's certificate"
     If pCode = ##class(OcuPilot.Api.Error).#PROVIDERTESTTIMEOUT Quit ..#REASONTESTTIMEOUT
     If pCode = ##class(OcuPilot.Api.Error).#PROVIDERTESTTIMEOUTLOCAL Quit ..#REASONTESTTIMEOUTLOCAL
     If pCode = ##class(OcuPilot.Api.Error).#PROVIDERDECLINED Quit "The model declined to answer this request"
     If pCode = ##class(OcuPilot.Api.Error).#PROVIDERTOOLCALLFAILED Quit "The model could not make a valid tool call. Try again, or rephrase the request."
     If $Extract(pCode, 1, 11) = "WALLETRUNG." Quit ##class(OcuPilot.Api.WalletRungError).ReasonFor(pCode)
     Quit "The provider call did not complete"
+}
+
+/// <p>The sentence a <code>PROVIDER.TLS</code> fault carries for the configuration <var>pName</var> in
+/// <var>pState</var>, one of <class>OcuPilot.Port.ProviderPort</class>'s <code>TLSABSENT</code>,
+/// <code>TLSUNVERIFIED</code> and <code>TLSUNAVAILABLE</code>: <parameter>REASONTLSABSENT</parameter>,
+/// <parameter>REASONTLSUNVERIFIEDOWN</parameter> for <var>pOwnName</var> (OcuPilot's own provider configuration) or
+/// <parameter>REASONTLSUNVERIFIED</parameter> for any other, and <parameter>REASONTLSUNAVAILABLE</parameter>. Each
+/// names the configuration and the remedy, and nothing the configuration holds.</p>
+ClassMethod TlsReason(pState As %String, pName As %String, pOwnName As %String) As %String
+{
+    If pState = "absent" Quit ..#REASONTLSABSENT _ ": " _ pName _ ". " _ $Select(pName = pOwnName: ..#REMEDYTLSABSENTOWN, 1: ..#REMEDYTLSABSENT)
+    If pState = "unavailable" Quit $Replace(..#REASONTLSUNAVAILABLE, "<name>", pName)
+    Quit $Replace($Select(pName = pOwnName: ..#REASONTLSUNVERIFIEDOWN, 1: ..#REASONTLSUNVERIFIED), "<name>", pName)
 }
 
 /// <p>The concrete key-shape test a family whose keys have no published prefix uses. <b>No
