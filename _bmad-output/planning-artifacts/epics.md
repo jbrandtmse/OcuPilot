@@ -9471,7 +9471,7 @@ So that the scripts, the install checks and the explorer's save path say and do 
 
 ### Story 23.9: The range-end cleanup, part 8
 
-Chartered by the orchestrator on 2026-10-12 from the 32 entries the owner released out of Story 23.7. This part takes the last eight low-severity entries: doc comments and CLAUDE.md lines that no longer match the code, two pair-validation edges, a duplicated client constant and the CI runner's test-class floor. Two more joined from Epic 18 on 2026-10-14: the delete tools' repeated state-diff body, lifted once into the shared write base, and a sweep of the two-argument `%GetNext` loops over request bodies, so that an out-of-range value answers the field refusal and never a 500. A slot that would otherwise sit idle runs it, after Story 23.8. A CLAUDE.md line changes only through the Planner, with the owner's OK.
+Chartered by the orchestrator on 2026-10-12 from the 32 entries the owner released out of Story 23.7. This part takes the last eight low-severity entries: doc comments and CLAUDE.md lines that no longer match the code, two pair-validation edges, a duplicated client constant and the CI runner's test-class floor. Three more joined from Epic 18 on 2026-10-14: the delete tools' repeated state-diff body, lifted once into the shared write base, and the journal record browser's Newest first order and input lengths. A slot that would otherwise sit idle runs it, after Story 23.8. A CLAUDE.md line changes only through the Planner, with the owner's OK.
 
 As a maintainer of OcuPilot,
 I want the stale comments, duplicated constants and small validation edges fixed,
@@ -9479,10 +9479,28 @@ So that the next reader is not misled by text the code no longer matches.
 
 **Acceptance Criteria:**
 
-- **Given** the entries re-owned to this story: DW-446, DW-1177, DW-1706, DW-1760, DW-1761, DW-2060, DW-2259, DW-2260, DW-2299 and DW-2417
+- **Given** the entries re-owned to this story: DW-446, DW-1177, DW-1706, DW-1760, DW-1761, DW-2060, DW-2259, DW-2260, DW-2299, DW-1979 and DW-1981
 - **When** this story completes
 - **Then** each has a disposition written by the ledger tool: `resolved-by` this story with the commit, or `wontfix-accepted` or `by-design` with a reason and, where a condition would reopen it, that condition.
 
 - **Given** a fix to code or a test
 - **When** it lands
 - **Then** a test reddens on the defect before the fix, or the entry says why none can, and the fixes land in batches grouped by area, each with CI green on its own head.
+
+### Story 23.10: The range-end cleanup, part 9: two sweeps
+
+Chartered by the orchestrator on 2026-10-14 from two Epic 18 entries too wide for a burn-down. The first is the two-argument `%GetNext` loops over request bodies: 109 sites in 54 Area files. The second is the test classes whose `OnAfterAllTests` deletes shared rows, such as governance overrides and the egress row, on an instance not armed for tests: 48 classes. Each is one mechanical change repeated, so each lands as its own batch. A slot that would otherwise sit idle runs it, after Story 23.9.
+
+As a maintainer of OcuPilot,
+I want each repeated defect fixed at every site at once,
+So that an out-of-range request value answers its field refusal and a test run never deletes shared state it did not arrange.
+
+**Acceptance Criteria:**
+
+- **Given** the entries re-owned to this story: DW-2417 and DW-2426
+- **When** this story completes
+- **Then** each has a disposition written by the ledger tool: `resolved-by` this story with the commit, or `wontfix-accepted` or `by-design` with a reason and, where a condition would reopen it, that condition.
+
+- **Given** a sweep
+- **When** it lands
+- **Then** a test reddens on a representative site before the fix, the story says how a new site written in the old form is caught or why none can be, and each sweep lands as its own batch with CI green on its own head.
