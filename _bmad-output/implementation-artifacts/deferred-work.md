@@ -11925,8 +11925,10 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-48-epic-18-burn-down-part-2.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: Prohibited.EncryptionStartup runs the journal arm for Interactive only and LeavesKmipRequired reads STARTUPREQUIREDFLAGS alone; Task 0 saw KMIP at an unreachable host and an unanswered journal key each abort a start (inference: together they do too); settle on a throwaway: KMIP over an unreachable startup server, DBEncJournal on, restart
 - 2026-10-14T19:05:14Z status=decision-pending owner=burndown by=cr note=unverified med; measure on a throwaway, then DW-2100's decision rule decides AD-10's scope
+- 2026-10-14T19:17:29Z status=routed owner=23-10-the-range-end-cleanup-part-9-two-sweeps by=lead note=orchestrator 2026-10-14 (feature 07ff504f): measure on a throwaway, then decide by DW-2100's rule
 
 ### DW-2432: AD-10's grant arm misses the reverse of DW-2425: a Security.Resource edit that adds public USE to a resource guarding an enabled application whose MatchRoles grant a privileged role mints ordinary
 - source: spec-18-48-epic-18-burn-down-part-2.md | severity: med | fix-risk: med | footprint: in-epic
 - evidence: Prohibited.GrantsPrivilegeByEffect's TYPERESOURCE arm grants only when the resource itself is privileged (ResourceGrantsAdministrativePrivilege) and AddsPublicLetter; WidensPrivilegedReach judges only an application's own Resource change (code read, Story 18.48 review)
 - 2026-10-14T19:05:20Z status=decision-pending owner=burndown by=cr note=recommend extending AD-10 as DW-2425 did (an application lookup by Resource); Prohibited.cls is Epic 20-contended
+- 2026-10-14T19:17:29Z status=routed owner=23-10-the-range-end-cleanup-part-9-two-sweeps by=lead note=orchestrator 2026-10-14 (feature 07ff504f): decided, privileged-grant treatment as DW-2425
