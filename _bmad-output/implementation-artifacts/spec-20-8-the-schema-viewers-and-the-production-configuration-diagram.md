@@ -2,9 +2,10 @@
 title: 'Story 20.8: The schema viewers and the production configuration diagram'
 type: 'feature'
 created: '2026-10-13'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '86c9fb2939138203e2847f61e2a81b2c108c3e82'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
   - '{project-root}/_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md'
@@ -398,6 +399,31 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Line numbe
 
 ## Review Triage Log
 
+### 2026-10-14 — Review pass
+
+- verdicts: 20 findings — high 0, medium 5, low 4, false 11, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` Screen permissions builds `classic` as `${ClassicResource}:USE`, so a screen whose classic pages carry two custom resources shows `A, B:USE` — confirmed at `screen-permissions.page.ts` `openTarget`: the column is now comma-joined (`Access.ClassicResourceOf`) and the page appended one permission to the whole string. Fixed: each resource gets its own `:USE`; page spec row added.
+  - `[medium]` `[patch]` Production items page has no component spec; the `NavigationEnd` signal, the href, the modified click and the bare-route case are unpinned (browser AC3 clicks once on a fresh mount) — confirmed: no spec named the page. Fixed: `interop-item-list.page.spec.ts` (5 tests), each leg mutated red.
+  - `[false]` `[reject]` AC2's vendor tripwire is green because of the vendor defect it guards — the spec and the dispatch name it a deliberate tripwire; the builder clause carries a recorded mutation, and the harness clause is shown live by the in-test control.
+  - `[low]` `[patch]` Mutation claims in test headers that the observed list did not record — each was applied and observed red (store `settle`, `agentNote`, vocabulary parameters, store modes, descriptor own pair and `CLASSICPAGES`), recorded in `## Verification`; the frame spec's header was corrected to the leg that reddens.
+  - `[low]` `[reject]` AC7's Operator/Monitor legs, the 24-screen order and AC1's GET-only, box and count clauses have no recorded mutation — Rule 19 asks one demonstrated mutation per AC, and AC1 has two and AC7 has five.
+  - `[low]` `[reject]` AC1's `read.length > 0` for ASC X12 is met by the initial load — the per-family claim is carried by the `until` on the category count, and HL7 v2.x and ASTM are read only after being chosen; nothing a user meets.
+  - `[medium]` `[patch]` `panelMenuEntry` queries the app's panel bar once, with no wait — confirmed against Rule 19 (acts before the system signals it is ready). Fixed: it waits for the bar (`waitForFunction`) before it clicks.
+  - `[false]` `[reject]` AC5's gone leg assumes `OcuPilotProbe.Interop.Absent` is absent — a production by that name would draw a frame and redden the test, so it cannot pass vacuously; `before` creates no such production.
+  - `[medium]` `[patch]` The dialog names a malformed pair for two custom resources (restates the first finding) — same fix; the dialog input's doc comment now says the value holds each resource as a pair.
+  - `[false]` `[reject]` `Access.ClassicResourceOf` reaches beyond the intent's surfaces — Tasks & Acceptance names the edit and AC7 names the Screen permissions column.
+  - `[low]` `[reject]` `InteropFloor.TestEveryOpenScreenMatchesItsClassicPage` reads only `classicPage` — `TestEachViewerClassicPageSharesTheScreensPair` pins all three pages' `RESOURCE` against the screen's own pair.
+  - `[medium]` `[patch]` The Items link has no component spec (restates the second finding) — same fix.
+  - `[false]` `[reject]` Namespace move, Refused and Fault have no live leg — the spec's ACs pin live legs for Gone, Refresh and Sign out; the page spec pins the rest against the real template.
+  - `[false]` `[reject]` The Schema viewer's gate refusal is covered by server rosters — AC7 names exactly those rosters, and the screen has no client refusal to render.
+  - `[false]` `[reject]` The gate union is tested through `ScreenGate`'s stand-in — the spec names that seam; the real `%SetCustomResource` leg is `ScreenAccessWire`.
+  - `[false]` `[reject]` AC4 asserts OcuPilot's pair copy and not the tab's own `BPL_Editor-*` tokens — the matrix says "its copy of the tab's pair is revoked".
+  - `[false]` `[reject]` The sandbox mutation is labeled inference — the spec labels it so, as the prose rules ask.
+  - `[false]` `[reject]` An agent class save never reloads the diagram — `shows()` matches the route id against the event's id, the intent names no such trigger, and the agent line is not drawn there.
+  - `[false]` `[reject]` Read-only has no code counterpart — the intent measures it as a vendor fact and forbids the parameters that would change it.
+  - `[false]` `[reject]` Vendor behavior is pinned only by the browser spec — Rule 3 asks for that real-runtime evidence.
+
 ## Design Notes
 
 **Governing ADs:**
@@ -591,15 +617,49 @@ Each value was checked unique against `strings.ts`. The labels double as the fra
 | AC7 | `RequiredPairs` without the `CLASSICPAGES` line | `TestTheSchemaViewerHonorsEveryClassicPage` |
 | AC7 | `%Ens_EDISchema:READ` dropped from the schema viewer | `InteropEditorDescriptor`, and `InteropFloor`'s Administrator roster |
 
+**Mutations observed (Rule 19).** Each was applied, read red, and reverted byte-identical (`git status --short` and `git diff --stat` unchanged); ObjectScript was recompiled on `ocupilot-b-ci` and the bundle rebuilt and redeployed before each browser read.
+
+- mutation: the page maps `InteropSchemaViewer` with `listFrom: 'document'` -> the page spec (3 tests) and browser AC1 (no frame: the frame wait times out).
+- mutation: `needsId` restored to every `viewer (source)` -> browser AC1's walk clause ("opens the Schema viewer at its bare route").
+- mutation: the builder appends `&%26ST=<document>` for `schema-viewer` -> `vendor-frame.test.mjs`'s schema viewer test and browser AC2's builder clause. The vendor tripwire (a harness frame at `&%26ST=HL7+v2.x` opens on ASC X12) cannot be reddened from here; its read is shown live by choosing HL7 v2.x in the harness frame's own list.
+- mutation: the store requires `.cls` for every kind -> the store test's two bare-name tests and browser AC3 (no frame at the builder's address).
+- mutation: `InteropProductionDiagram` declared `detail` (mirror regenerated) -> `navigation.test.mjs`'s 20.8 pairing test and browser AC3 (the name cell opens the diagram, so `openItems` times out).
+- mutation: the frame component sets `sandbox="allow-scripts allow-same-origin"` -> browser AC4 times out before a tab opens (inference: the app does not sign in under a sandbox).
+- mutation: the store opens a row the read did not return -> the store test (6 tests) and browser AC5's gone leg.
+- mutation: the frame's `@for` tracks `$index` -> the frame spec (4 tests) and both of browser AC5's Refresh legs.
+- mutation: `Session.signOut()` posts `/logout` with `credentials: 'omit'` -> browser AC6 on both screens. AC4's revoke clause stays green under it, because the Bearer alone revokes OcuPilot's pair; that clause is shown live by removing the sign-out step from the test (the copy's refresh answers 200, not 401).
+- mutation: one `Elsewhere` row removed -> `StageTwoTools` `TestTheRosterAndElsewhereAreEveryRegisteredScreen`, alone (1 of 4).
+- mutation: `RequiredPairs` without the `CLASSICPAGES` line -> `TestTheSchemaViewerHonorsEveryClassicPage` (the X12 and ASTM legs).
+- mutation: `%Ens_EDISchema:READ` dropped from the schema viewer -> `InteropEditorDescriptor` (3 of 5) and `InteropFloor` (2 of 7, the Administrator roster among them).
+- mutation: `Access.ClassicResourceOf` reads only `classicPage`, or drops its duplicate test -> `ScreenAccessWire` `TestTheSchemaViewersRowNamesTheResourceOfEveryClassicPage`.
+- mutation: `parentIdSegment` answers `''` -> `navigation.test.mjs` (2 tests) and the page spec's diagram tests (6).
+- mutation: the Items link's click does not navigate -> browser AC3.
+- mutation: the store's `settle` stops bumping the revision on `open` -> the page spec (5: Refresh, the change reload, and 20.8's two Refresh tests) and the store test (7).
+- mutation: `VIEWER` maps `agentNote: true` -> the page spec (3, the agent-line test among them).
+- mutation: the vocabulary gives `schema-viewer` the parameter `ST` -> `vendor-frame.test.mjs` (2) and the frame spec's refused-source test; the diagram's parameter renamed -> `vendor-frame.test.mjs` (4) and the frame spec's 20.8 draw test.
+- mutation: the store reads a list when it has none -> the store test's no-list row. The page spec cannot show it: the unguarded read does not type-check.
+- mutation: the store requires `.cls` whatever the extension -> the store test (2) and the page spec's diagram tests (6).
+- mutation: the store opens a row the read did not return -> the store test (6) and the page spec (6).
+- mutation: the Items page's link omits the production id (3), ignores `NavigationEnd` (the move leg), ignores modifier keys (the click leg) or is drawn whatever the route names (the bare-route leg) -> `interop-item-list.page.spec.ts`.
+- mutation: the Screen permissions page appends the permission to the whole `ClassicResource` column -> its two-resource test.
+- mutation: the Schema viewer declares `%Ens_EDISchema:USE` as its own pair -> `InteropEditorDescriptor` (3 of 5); its `CLASSICPAGES` emptied -> `TestTheViewerScreensRegister` and `TestTheSchemaViewerHonorsEveryClassicPage` (2 of 5).
+- mutation: AC4's test does not sign out in the shell -> the copy's refresh answers 200, not 401.
+
+**Measured.** `npm run build`: initial total 1.93 MB (warning 1992 kB), largest lazy chunk `data-browser-page` 83.33 kB (ceiling 88 kB), `interop-editor-page` 11.11 kB, `interop-item-list-page` 14.30 kB.
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-**Plan pass (2026-10-13).** Planned on `c245652c` and halted after planning, as dispatched. Both apps were measured on `ocupilot-b-ci`, and every probe was removed afterwards (Design Notes › Measured).
+**Implementation (2026-10-14).** Both screens draw through 20.7's page, store and frame. The client grows the vocabulary by `schema-viewer` and `interop-editor`, the store a no-list and a bare-name mode, and the page a kind table. `CLASSICPAGES` is read by `Gate.RequiredPairs` and Screen permissions. Production items links the diagram. The spec's Task 0 was applied: 20.16 had merged, and its agent line shows on the three editors only. One deviation: `parentIdSegment` in `core/navigation.ts` reads the diagram's route id, because `ownIdSegment` answers `''` for a parent-scoped screen.
 
-- The schema viewer ignores its `&ST` parameter, so one listed screen is planned instead of three.
-- The diagram is reached from Production items.
-- AD-44 is honored through a screen-level `CLASSICPAGES`.
+- **Server:** `Screen/Descriptor/Base.cls`, `Screen/Gate.cls`, `Screen/Access.cls`, the two new descriptors.
+- **Client:** `vendor-frame.ts`, `navigation.ts`, `strings.ts`, `screens.generated.ts`, `screen-outlet.ts`, the editor page and store, `interop-item-list.page.ts`, EXPERIENCE.md :159 and :604.
+- **Tests:** the descriptor, roster and `ScreenAccessWire` classes; the page, frame and new Items page specs; the store, vendor-frame, navigation and mirror tests; `interop-viewers.browser-spec.mjs` and the two browser helpers.
 
-The Rule 20 drafts for the lead are in Design Notes.
+**Review.** Twenty findings: 6 rows patched in 4 entries (three medium: Screen permissions' multi-resource column, the Items page spec, the panel-bar wait; one low: the mutation-claim cleanup), 14 rejected (11 false, 3 low; reasons in the log). Follow-up review recommended: true. The unreviewed risk is the lead-written Items page spec and the Screen permissions column change, which sit outside the story's declared footprint (report as `footprint_extensions`: `screen-permissions.page.ts`, its dialog comment and spec).
+
+**Verification, all on `ocupilot-b-ci`.** The ObjectScript (loop) sets are green (12 classes; `InteropEditorDescriptor` rerun after the last mutation). `test:tools` 1997 and `test:components` 3120 after the review patches; the build prechain is green (initial 1.93 MB, largest lazy chunk 83.33 kB, `interop-editor-page` 11.11 kB); `check-objectscript` and `lint-docs` are clean. Browser specs green: `interop-viewers` (11) and `screen-permissions` after the review patches; `interop-editors`, `interop-editor-frame`, `interop-items` and `a11y-structural-invariants` before them. Every `mutation:` line in `## Verification` was applied, observed red and reverted byte-identical.
+
+**Residual risks.** `InteropFloorTurn` fails on this throwaway with `PROVIDER.TLS`; `InteropEditorSaveTurn`, `ExplorerSaveTurn` and `screen-permissions-agent.browser-spec.mjs` fail in their turn the same way (inference). The throwaway was started before the 18.40 and 18.41 merge, and OcuPilot's provider TLS configuration is restored at start (inference). Re-run them on a fresh throwaway. The lead's full sweep, `npm test`, smoke and Rule 30 fresh check were not run. A subagent ran `pkill -f "Google Chrome for Testing"` once to clear its own orphaned Chrome, which could have ended another agent's browser.

@@ -3,49 +3,92 @@ import { NavigationEnd, Router } from '@angular/router';
 
 import { ApiService } from '../../core/api';
 import { ChangeBus } from '../../core/change-bus';
-import { NavigationService, formatRequires, listForDocumentScreen, ownIdSegment } from '../../core/navigation';
+import {
+  NavigationService,
+  formatRequires,
+  listForDocumentScreen,
+  ownIdSegment,
+  parentIdSegment,
+  parentListFor,
+} from '../../core/navigation';
 import { ScopeService, onScopeChange } from '../../core/scope';
 import type { ScreenDeclaration } from '../../core/screens.generated';
 import { STRINGS, stringFor } from '../../core/strings';
 import type { InteropEditor } from '../../core/vendor-frame';
 import { InteropEditorFrame } from './interop-editor-frame';
-import { InteropEditorState, type InteropEditorPhase } from './interop-editor.store';
+import { DOCUMENT_EXTENSION, InteropEditorState, type InteropEditorPhase } from './interop-editor.store';
 
-/** What a descriptor maps to: the vendor editor its screen embeds, and the sentence for a class it cannot open. */
+/**
+ * What a descriptor maps to: the vendor app its screen embeds; the sentence for a class it cannot open; where the
+ * list whose read and verdict the screen follows comes from (the screen's document viewer pairing, its `parentScope`,
+ * or none, for a screen that reads nothing); the extension the list's names carry; the note the bar shows; and whether
+ * the bar says the agent reads only what is saved.
+ */
 interface EditorKind {
   readonly editor: InteropEditor;
   readonly codedKey: 'interopBplEditorCoded' | 'interopDtlEditorCoded' | '';
+  readonly listFrom: 'document' | 'parent' | 'none';
+  readonly extension: string;
+  readonly noteKey: 'interopEditorNote' | 'interopSchemaViewerNote' | 'interopProductionDiagramNote';
+  readonly agentNote: boolean;
 }
 
-/** The three editor descriptors, each with its editor (Story 20.7). */
+/** What the rule, BPL and DTL editors share: a class document read from the list that opens it, saved by the agent (Stories 20.7, 20.16). */
+const CLASS_EDITOR = { listFrom: 'document', extension: DOCUMENT_EXTENSION, noteKey: 'interopEditorNote', agentNote: true } as const;
+
+/** What the Schema viewer and the Configuration diagram share: nothing the agent saves from the screen (Story 20.8). */
+const VIEWER = { codedKey: '', agentNote: false } as const;
+
+/** The descriptors this page serves, each with its app. */
 const EDITOR_KINDS: Readonly<Record<string, EditorKind>> = {
-  'OcuPilot.Screen.Descriptor.InteropRuleEditor': { editor: 'rule-editor', codedKey: '' },
-  'OcuPilot.Screen.Descriptor.InteropProcessEditor': { editor: 'bpl-editor', codedKey: 'interopBplEditorCoded' },
-  'OcuPilot.Screen.Descriptor.InteropTransformEditor': { editor: 'dtl-editor', codedKey: 'interopDtlEditorCoded' },
+  'OcuPilot.Screen.Descriptor.InteropRuleEditor': { ...CLASS_EDITOR, editor: 'rule-editor', codedKey: '' },
+  'OcuPilot.Screen.Descriptor.InteropProcessEditor': { ...CLASS_EDITOR, editor: 'bpl-editor', codedKey: 'interopBplEditorCoded' },
+  'OcuPilot.Screen.Descriptor.InteropTransformEditor': { ...CLASS_EDITOR, editor: 'dtl-editor', codedKey: 'interopDtlEditorCoded' },
+  'OcuPilot.Screen.Descriptor.InteropSchemaViewer': {
+    ...VIEWER,
+    editor: 'schema-viewer',
+    listFrom: 'none',
+    extension: DOCUMENT_EXTENSION,
+    noteKey: 'interopSchemaViewerNote',
+  },
+  'OcuPilot.Screen.Descriptor.InteropProductionDiagram': {
+    ...VIEWER,
+    editor: 'interop-editor',
+    listFrom: 'parent',
+    extension: '',
+    noteKey: 'interopProductionDiagramNote',
+  },
 };
 
-/** The screen this page serves, the list whose read and verdict it follows, and the editor it embeds. */
+/** The screen this page serves, the list whose read and verdict it follows (`null` when it reads nothing), and the app it embeds. */
 interface EditorView {
   readonly screen: ScreenDeclaration;
-  readonly list: ScreenDeclaration;
+  readonly list: ScreenDeclaration | null;
   readonly kind: EditorKind;
 }
 
-/** The editor kind a descriptor names, or `null` for a descriptor that is not one of the three. */
+/** The kind a descriptor names, or `null` for a descriptor this page does not serve. */
 function kindFor(descriptor: string): EditorKind | null {
   return Object.prototype.hasOwnProperty.call(EDITOR_KINDS, descriptor) ? EDITOR_KINDS[descriptor] : null;
 }
 
+/** The list `kind` follows for `screen`, or `null` when it names none or the pairing does not resolve. */
+function listFor(screen: ScreenDeclaration, kind: EditorKind): ScreenDeclaration | null {
+  if (kind.listFrom === 'document') return listForDocumentScreen(screen);
+  return kind.listFrom === 'parent' ? parentListFor(screen) : null;
+}
+
 /**
- * The Business rule, Business process and Data transformation editor screens (Story 20.7), one page
- * serving the three `viewer (source)` descriptors at `<list route>/document/<class>.cls`.
+ * The embedded vendor app screens, one page serving the `viewer (source)` descriptors of the Business rule, Business
+ * process and Data transformation editors at `<list route>/document/<class>.cls` (Story 20.7), of the Schema viewer
+ * (no id) and of the Configuration diagram at `interoperability/productions/diagram/<production>` (Story 20.8).
  *
  * **The page issues no request of its own.** `InteropEditorState` reads the owning list's declared read
- * once for the document, and the page draws what that answers: skeleton bars while it is read; the
- * note, Refresh and `app-interop-editor-frame` for a row it returns; the descriptor's empty sentence
- * for an id it does not return; the editor's coded sentence for a process or transformation written
- * as a class; "Requires <pair>" for a refusal; and the request-refused strip with Retry for any other
- * answer. The page never draws an `<iframe>` itself: the frame component does (AD-63).
+ * once for the document (the Productions list for the diagram, none for the Schema viewer), and the page draws what
+ * that answers: skeleton bars while it is read; the note, Refresh and `app-interop-editor-frame` for a row it
+ * returns; the descriptor's empty sentence for an id it does not return; the editor's coded sentence for a process
+ * or transformation written as a class; "Requires <pair>" for a refusal; and the request-refused strip with Retry
+ * for any other answer. The page never draws an `<iframe>` itself: the frame component does (AD-63).
  *
  * **OcuPilot never navigates a drawn frame.** A new document, a namespace move and Refresh each draw a
  * new frame, so the editor's own unsaved-changes alert does not show, and the note says that leaving the
@@ -108,8 +151,10 @@ function kindFor(descriptor: string): EditorKind | null {
     }
     @if (isOpen) {
       <div class="ocu-interop-editor-bar">
-        <p class="ocu-source-note" data-ocu-editor="note">{{ STRINGS.interopEditorNote }}</p>
-        <p class="ocu-source-note" data-ocu-editor="agent">{{ STRINGS.interopEditorAgentNote }}</p>
+        <p class="ocu-source-note" data-ocu-editor="note">{{ noteText }}</p>
+        @if (agentNote) {
+          <p class="ocu-source-note" data-ocu-editor="agent">{{ STRINGS.interopEditorAgentNote }}</p>
+        }
         <button type="button" class="ocu-button-text" data-ocu-editor="refresh" (click)="onRefresh()">{{ STRINGS.actionRefresh }}</button>
       </div>
       <div class="ocu-interop-editor-body" data-ocu-editor="frame">
@@ -151,9 +196,9 @@ export class InteropEditorPage {
 
   constructor() {
     const screen = this.navigation.screenForUrl(this.router.url);
-    const list = screen === null ? null : listForDocumentScreen(screen);
     const kind = screen === null ? null : kindFor(screen.descriptor);
-    if (screen === null || list === null || kind === null) {
+    const list = screen === null || kind === null ? null : listFor(screen, kind);
+    if (screen === null || kind === null || (list === null && kind.listFrom !== 'none')) {
       this.view = null;
       this.state = null;
       return;
@@ -163,6 +208,7 @@ export class InteropEditorPage {
       api: inject(ApiService),
       list,
       verdict: (route) => this.navigation.screenVerdict(route),
+      extension: kind.extension,
     });
     this.state = state;
     const stopState = state.subscribe(() => this.bump());
@@ -232,6 +278,16 @@ export class InteropEditorPage {
     return this.view?.kind.editor ?? 'rule-editor';
   }
 
+  /** The note the bar shows beside Refresh. */
+  protected get noteText(): string {
+    return this.view === null ? '' : STRINGS[this.view.kind.noteKey];
+  }
+
+  /** Whether the bar says the agent reads only what is saved: the screens whose documents the agent saves. */
+  protected get agentNote(): boolean {
+    return this.view?.kind.agentNote === true;
+  }
+
   protected get namespace(): string {
     this.generation();
     return this.state === null ? '' : this.state.namespace();
@@ -267,9 +323,12 @@ export class InteropEditorPage {
     if (this.state !== null) void this.state.refresh();
   }
 
-  /** The document this route names, or `''`. */
+  /** The document this route names, or `''`: the screen's own id segment, or the parent's for a parent-scoped screen. */
   private routeId(): string {
-    return this.view === null ? '' : ownIdSegment(this.view.screen, this.router.url);
+    if (this.view === null) return '';
+    return this.view.kind.listFrom === 'parent'
+      ? parentIdSegment(this.view.screen, this.router.url)
+      : ownIdSegment(this.view.screen, this.router.url);
   }
 
   private openFromRoute(): Promise<void> {

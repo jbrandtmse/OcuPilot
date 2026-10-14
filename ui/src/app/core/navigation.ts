@@ -427,13 +427,22 @@ export function tabGroupFor(screen: ScreenDeclaration): ScreenDeclaration | null
 export function parentCriteria(screen: ScreenDeclaration, url: string): Readonly<Record<string, string>> {
   const fields = screen.read?.criteria?.fields ?? [];
   if (screen.parentScope === '' || fields.length !== 1) return {};
+  const id = routeIdSegment(screen, url);
+  return id === '' ? {} : { [fields[0].param]: id };
+}
+
+/**
+ * The id segment `url` carries after `screen`'s route, decoded twice (AD-13), or `''` when the URL is
+ * the bare route or what follows it is not one segment. The one reading `parentCriteria`,
+ * `ownIdSegment` and `parentIdSegment` share.
+ */
+function routeIdSegment(screen: ScreenDeclaration, url: string): string {
   const path = routeFromUrl(url);
   const prefix = `${screen.route}/`;
-  if (!path.startsWith(prefix)) return {};
+  if (!path.startsWith(prefix)) return '';
   const segment = path.slice(prefix.length);
-  if (segment === '' || segment.includes('/')) return {};
-  const id = decodeEntityId(decodeEntityId(segment));
-  return id === '' ? {} : { [fields[0].param]: id };
+  if (segment === '' || segment.includes('/')) return '';
+  return decodeEntityId(decodeEntityId(segment));
 }
 
 /**
@@ -458,12 +467,20 @@ export function parentCriteria(screen: ScreenDeclaration, url: string): Readonly
  */
 export function ownIdSegment(screen: ScreenDeclaration, url: string): string {
   if (screen.route === '' || screen.parentScope !== '' || !hasIdRoute(screen)) return '';
-  const path = routeFromUrl(url);
-  const prefix = `${screen.route}/`;
-  if (!path.startsWith(prefix)) return '';
-  const segment = path.slice(prefix.length);
-  if (segment === '' || segment.includes('/')) return '';
-  return decodeEntityId(decodeEntityId(segment));
+  return routeIdSegment(screen, url);
+}
+
+/**
+ * The parent's id a parent-scoped screen's route carries, decoded (AD-13), or `''` for a screen that
+ * declares no parent, takes no id route, or is rendered with no id.
+ *
+ * The companion to `ownIdSegment` for a parent-scoped screen that declares no read, so
+ * `parentCriteria` has no criterion to put the id in: the Configuration diagram's route id is the
+ * production it draws (Story 20.8).
+ */
+export function parentIdSegment(screen: ScreenDeclaration, url: string): string {
+  if (screen.route === '' || screen.parentScope === '' || !hasIdRoute(screen)) return '';
+  return routeIdSegment(screen, url);
 }
 
 /** The screen declared at `route`, or `null`. Home's route is the empty string. */

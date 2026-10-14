@@ -84,11 +84,25 @@ ClassMethod RowFor(pClass As %String, pArea As %String, pScreen As %String, ByRe
     Quit tRow
 }
 
-/// <p>The custom resource assigned to the classic page descriptor <var>pClass</var> replaces, or
-/// <code>""</code> (<method>OcuPilot.Screen.Gate.ClassicResource</method>).</p>
+/// <p>The custom resources assigned to the classic pages descriptor <var>pClass</var> replaces -- its
+/// <code>classicPage</code> and each page of its
+/// <parameter>OcuPilot.Screen.Descriptor.Base.CLASSICPAGES</parameter> -- each once, joined by
+/// <parameter>SEPARATOR</parameter>, or <code>""</code> when none is assigned
+/// (<method>OcuPilot.Screen.Gate.ClassicResource</method>).</p>
 ClassMethod ClassicResourceOf(pClass As %String) As %String [ Private ]
 {
-    Quit $ClassMethod("OcuPilot.Screen.Gate", "ClassicResource", $ClassMethod(pClass, "ClassicPage"))
+    Set tPages = $ListBuild($ClassMethod(pClass, "ClassicPage")) _ $ListFromString($Parameter(pClass, "CLASSICPAGES"), ",")
+    Set tSeen = ""
+    Set tText = ""
+    For tI = 1:1:$ListLength(tPages) {
+        Set tPage = $ZStrip($List(tPages, tI), "<>W")
+        If tPage = "" Continue
+        Set tResource = $ClassMethod("OcuPilot.Screen.Gate", "ClassicResource", tPage)
+        If (tResource = "") || $ListFind(tSeen, tResource) Continue
+        Set tSeen = tSeen _ $ListBuild(tResource)
+        Set tText = tText _ $Select(tText = "": "", 1: ..#SEPARATOR) _ tResource
+    }
+    Quit tText
 }
 
 /// <p>The gate's pair list <var>pPairs</var> spelled <code>resource:permission</code>, separated by

@@ -6,7 +6,7 @@
 /// and each action; an adjustment is followed by the navigation map, the screen's read and the write
 /// action's gate and undone by a reset; a lowering opens the screen while a port's or the vendor's own check
 /// still refuses by name; each accepted write is one <code>SecurityChange</code> row; and the classic page's
-/// custom resource stays in force.</p>
+/// custom resource stays in force, which the Schema viewer's row shows for each of its three classic pages (Story 20.8).</p>
 /// <p>It needs <parameter>ARMINGVARIABLE</parameter> armed: the principals are created in
 /// <method>OnBeforeAllTests</method>, which reads their grants back, and removed in
 /// <method>OnAfterAllTests</method>; every adjustment is removed before and after each test.</p>
@@ -35,12 +35,22 @@ Parameter EITHER = "%Development:USE or %Admin_Secure:USE";
 /// <p>The resource the Classic union leg assigns to Locks' classic page.</p>
 Parameter CLASSICRESOURCE = "OcuPilotProbeClassic";
 
+/// <p>The two resources the Schema viewer leg assigns to its three classic pages (Story 20.8).</p>
+Parameter VIEWERRESOURCES = "OcuPilotProbeSchemaA,OcuPilotProbeSchemaB";
+
+/// <p>The Schema viewer's screen identifier.</p>
+Parameter SCHEMAVIEWER = "interop.schemaviewer";
+
 Property PreparedPassword As %String;
 
 Property PreparedSetupOk As %Boolean [ InitialExpression = 0 ];
 
 /// <p>Locks' classic page's custom resource as found, restored in <method>OnAfterOneTest</method>.</p>
 Property PreparedClassic As %String;
+
+/// <p>Each classic page the Schema viewer leg assigned a resource to, with the resource it held, restored in
+/// <method>OnAfterOneTest</method>.</p>
+Property PreparedPages As %DynamicObject;
 
 Method %OnNew(initvalue As %String = "") As %Status
 {
@@ -49,6 +59,7 @@ Method %OnNew(initvalue As %String = "") As %Status
     Set ..PreparedPassword = ""
     Set ..PreparedSetupOk = 0
     Set ..PreparedClassic = $c(0)
+    Set ..PreparedPages = {}
     Quit $$$OK
 }
 
@@ -163,13 +174,19 @@ ClassMethod Spelled(pList As %List) As %String
     Quit tText
 }
 
-/// <p>Restore Locks' classic page to the custom resource <method>AssignClassic</method> found.</p>
+/// <p>Restore Locks' classic page, and each page the Schema viewer leg assigned, to the custom resource found.</p>
 Method RestoreClassic()
 {
-    If ..PreparedClassic = $c(0) Quit
-    Set tPage = $ClassMethod(##class(OcuPilot.Screen.Registry).DescriptorForTool(..#LOCKS), "ClassicPage")
-    Do ##class(%CSP.Portal.Utils).%SetCustomResource($ZConvert(tPage, "O", "URL"), ..PreparedClassic)
-    Set ..PreparedClassic = $c(0)
+    If ..PreparedClassic '= $c(0) {
+        Set tPage = $ClassMethod(##class(OcuPilot.Screen.Registry).DescriptorForTool(..#LOCKS), "ClassicPage")
+        Do ##class(%CSP.Portal.Utils).%SetCustomResource($ZConvert(tPage, "O", "URL"), ..PreparedClassic)
+        Set ..PreparedClassic = $c(0)
+    }
+    Set tIterator = ..PreparedPages.%GetIterator()
+    While tIterator.%GetNext(.tPage, .tHeld) {
+        Do ##class(%CSP.Portal.Utils).%SetCustomResource($ZConvert(tPage, "O", "URL"), tHeld)
+    }
+    Set ..PreparedPages = {}
 }
 
 /// <p><b>View (AC1)</b> -- Dev's read answers one row per built screen, each carrying the declared set, the
@@ -430,6 +447,36 @@ Method TestTheClassicResourceStaysInForceOnAnAdjustedScreen()
     If '$IsObject(tRow) Quit
     Do $$$AssertEquals(tRow.ClassicResource, ..#CLASSICRESOURCE, "the row names the classic resource")
     Do $$$AssertEquals(tRow.Effective, tRow.Adjustment _ ", " _ ..#CLASSICRESOURCE _ ":USE", "Effective is the adjusted set and the custom resource")
+}
+
+
+/// <p><b>Classic pages (AD-44, Story 20.8)</b> -- a custom resource assigned to each of the Schema viewer's three classic
+/// pages (<code>classicPage</code> and each page of <code>CLASSICPAGES</code>) shows in its row's <code>ClassicResource</code>,
+/// one resource shared by two pages once, in page order, and in its <code>Effective</code> set at <code>USE</code>, once each.</p>
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Screen.Access.ClassicResourceOf</method> read only the descriptor's
+/// <code>classicPage</code> -- this goes red naming the missing second resource; drop its duplicate test -- the shared
+/// resource leg goes red.</p>
+Method TestTheSchemaViewersRowNamesTheResourceOfEveryClassicPage()
+{
+    Do $$$AssertTrue(..PreparedSetupOk, "setup read back the principals' grants")
+    Set tDev = $ClassMethod(..#FIXTURE, "Dev")
+    Set tDescriptor = ##class(OcuPilot.Screen.Registry).DescriptorForTool(..#SCHEMAVIEWER)
+    Do $$$AssertNotEquals(tDescriptor, "", "the Schema viewer is registered")
+    If tDescriptor = "" Quit
+    Set tPages = $ListBuild($ClassMethod(tDescriptor, "ClassicPage")) _ $ListFromString($Parameter(tDescriptor, "CLASSICPAGES"), ",")
+    Do $$$AssertEquals($ListLength(tPages), 3, "it replaces three classic pages")
+    Set tFirst = $Piece(..#VIEWERRESOURCES, ",", 1)
+    Set tSecond = $Piece(..#VIEWERRESOURCES, ",", 2)
+    For tI = 1:1:$ListLength(tPages) {
+        Set tPage = $List(tPages, tI)
+        Do ..PreparedPages.%Set(tPage, ##class(%CSP.Portal.Utils).%GetCustomResource($ZConvert(tPage, "O", "URL")))
+        Do $$$AssertStatusOK(##class(%CSP.Portal.Utils).%SetCustomResource($ZConvert(tPage, "O", "URL"), $Select(tI = 2: tSecond, 1: tFirst)), tPage _ ": a probe resource is assigned")
+    }
+    Set tRow = ..Row(tDev, ..#SCHEMAVIEWER, .tCount)
+    Do $$$AssertTrue($IsObject(tRow), "the Schema viewer has a row")
+    If '$IsObject(tRow) Quit
+    Do $$$AssertEquals(tRow.ClassicResource, tFirst _ ", " _ tSecond, "the row names each page's resource, the shared one once, in page order")
+    Do $$$AssertEquals(tRow.Effective, tRow.Declared _ ", " _ tFirst _ ":USE, " _ tSecond _ ":USE", "Effective is the declared set and each resource at USE, once")
 }
 
 }

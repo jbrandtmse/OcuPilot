@@ -55,6 +55,14 @@ Class OcuPilot.Screen.Descriptor.Base Extends %RegisteredObject [ Abstract ]
 /// <p>The name of the XData block a subclass declares its screen in.</p>
 Parameter DECLARATIONXDATA = "Declaration";
 
+/// <p>The classic portal pages, beyond <code>classicPage</code>, that this screen also replaces, as
+/// comma-separated normalized class names spelled exactly (AD-44). <code>""</code> here.</p>
+/// <p><method>OcuPilot.Screen.Gate.RequiredPairs</method> unions the custom resource assigned to each
+/// page at <code>USE</code>, read on every gate call, so an operator's custom resource on any replaced
+/// page gates the screen, as a write tool's <parameter>OcuPilot.Screen.Tool.Write.CLASSICPAGES</parameter>
+/// gates its write.</p>
+Parameter CLASSICPAGES = "";
+
 /// <p>The declaration as a <class>%DynamicObject</class>, read from this class's own
 /// <parameter>DECLARATIONXDATA</parameter> block.</p>
 /// <p><b>Overridable</b> so a test fixture can supply a declaration no checked-in XData

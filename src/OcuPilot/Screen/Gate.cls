@@ -224,8 +224,9 @@ ClassMethod ListedScreens(pAreaKey As %String, Output pList As %List) As %Status
 /// <p>What descriptor class <var>pDescriptor</var> requires: its base set (<method>BaseSet</method>) --
 /// the pairs an operator adjusted it to when its screen is adjustable and has a stored row
 /// (AD-64), else its declared set -- unioned with the custom resource assigned to the classic page it
-/// replaces, at <parameter>CLASSICPERMISSION</parameter>. An unassigned page reads <code>""</code> and
-/// adds nothing.</p>
+/// replaces, at <parameter>CLASSICPERMISSION</parameter>, and the custom resource of each page its
+/// <parameter>OcuPilot.Screen.Descriptor.Base.CLASSICPAGES</parameter> names (<method>WithClassicPages</method>).
+/// An unassigned page reads <code>""</code> and adds nothing.</p>
 /// <p><b>This is the one reader of a screen's adjustment</b> (AD-64). It reads the store on every call
 /// in the calling process and caches nothing, so every screen, area, read, tool, dispatch and confirm
 /// gate follows a change at once. A store that cannot be read refuses the screen.</p>
@@ -248,6 +249,7 @@ ClassMethod RequiredPairs(pDescriptor As %String, Output pResolved As %Boolean) 
         }
         Set tCustom = ..ClassicResource($ClassMethod(pDescriptor, "ClassicPage"))
         If tCustom '= "" Set tPairs = tPairs _ $ListBuild($ListBuild(tCustom, ..#CLASSICPERMISSION))
+        Set tPairs = ..WithClassicPages(tPairs, $Parameter(pDescriptor, "CLASSICPAGES"))
         Set pResolved = 1
     } Catch {
         Set tPairs = ""

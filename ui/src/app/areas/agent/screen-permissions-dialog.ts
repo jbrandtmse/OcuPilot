@@ -109,7 +109,7 @@ export class ScreenPermissionsDialog {
   /** The pairs the screen requires before the classic page's resource, each `resource:PERMISSION`. */
   readonly pairs = input<readonly string[]>([]);
 
-  /** The classic page's custom resource as a pair, or `''`: listed as fixed. */
+  /** The custom resources of the classic pages the screen replaces, each as a pair and comma-separated, or `''`: listed as fixed. */
   readonly classic = input<string>('');
 
   /** Whether the screen's permissions can be adjusted at all. */

@@ -120,7 +120,7 @@ export class ScreenPermissionsPage {
     return {
       id,
       pairs: split(adjustment !== '' ? adjustment : text(row['Declared'])),
-      classic: classic === '' ? '' : `${classic}:${CLASSIC_PERMISSION}`,
+      classic: split(classic).map((resource) => `${resource}:${CLASSIC_PERMISSION}`).join(', '),
       adjustable: row['Adjustable'] === true,
     };
   }

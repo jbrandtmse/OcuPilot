@@ -20,7 +20,9 @@ import { InteropEditorPage } from './interop-editor.page';
  * `app-interop-editor-frame` and the real template run, so the assertions are about rendered DOM:
  * each phase draws its block, `open` draws one frame whose address is the builder's for the editor,
  * namespace and document less its extension, Refresh and an id change and a namespace move each draw
- * a different frame element, and the page issues only the list's read.
+ * a different frame element, and the page issues only the list's read. The Schema viewer, which reads
+ * nothing, and the Configuration diagram, which reads the Productions list for a bare production name, run
+ * through the same page (Story 20.8), and only the three editors say the agent reads what is saved (Story 20.16).
  */
 
 interface Kind {
@@ -54,6 +56,26 @@ const KINDS: readonly Kind[] = [
     coded: 'This data transformation is written as a class, not in DTL, so the DTL editor cannot open it.',
   },
 ];
+
+/** The Schema viewer: no list, no id, no document (Story 20.8). */
+const SCHEMA_VIEWER: Kind = {
+  descriptor: 'OcuPilot.Screen.Descriptor.InteropSchemaViewer',
+  list: '',
+  editor: 'schema-viewer',
+  empty: '',
+  coded: null,
+};
+
+/** The Configuration diagram: the Productions list's read, a production name as its id (Story 20.8). */
+const DIAGRAM: Kind = {
+  descriptor: 'OcuPilot.Screen.Descriptor.InteropProductionDiagram',
+  list: 'interoperability/productions',
+  editor: 'interop-editor',
+  empty: 'This production no longer exists.',
+  coded: null,
+};
+
+const PRODUCTION = 'OcuPilotProbe.Interop.Production';
 
 const screenFor = (descriptor: string) => SCREENS.find((screen) => screen.descriptor === descriptor) as ScreenDeclaration;
 
@@ -134,7 +156,7 @@ async function mount(kind: Kind, name: string, first: Answer): Promise<Mounted> 
     ],
   });
   const router = TestBed.inject(Router);
-  await router.navigateByUrl(`/${screen.route}/${encodeEntityId(name)}?ns=HSCUSTOM`);
+  await router.navigateByUrl(name === '' ? `/${screen.route}?ns=HSCUSTOM` : `/${screen.route}/${encodeEntityId(name)}?ns=HSCUSTOM`);
   const fixture = TestBed.createComponent(InteropEditorPage);
   document.body.appendChild(fixture.nativeElement);
   planted.push(fixture.nativeElement);
@@ -157,8 +179,8 @@ afterEach(() => {
 });
 
 describe('the embedded editor screens', () => {
-  it('are served by the one page, for each of the three descriptors', async () => {
-    for (const kind of KINDS) {
+  it('are served by the one page, for each of the five descriptors', async () => {
+    for (const kind of [...KINDS, SCHEMA_VIEWER, DIAGRAM]) {
       const screen = screenFor(kind.descriptor);
       expect(screen.archetype).toBe('viewer (source)');
       const loader = resolveScreenPage(DESCRIPTOR_PAGES, ARCHETYPE_PAGES, screen.descriptor, screen.archetype);
@@ -429,6 +451,147 @@ describe('the embedded editor screens', () => {
     }
   });
 
+  it('Story 20.8 AC1: the Schema viewer draws its note, Refresh and one frame with no document, sends no request and asks no verdict', async () => {
+    // Mutation (Rule 19): the page maps the Schema viewer with `listFrom: 'document'` -> no list resolves, nothing is drawn and this goes red.
+    const mounted = await mount(SCHEMA_VIEWER, '', rows());
+    const { host, reads, verdictsAsked } = mounted;
+    expect(reads, 'the Schema viewer issues no request').toEqual([]);
+    expect(verdictsAsked, 'and asks no verdict').toEqual([]);
+    expect(block(host, 'note')?.textContent?.trim()).toBe(STRINGS.interopSchemaViewerNote);
+    expect(block(host, 'refresh')?.textContent?.trim()).toBe(STRINGS.actionRefresh);
+    expect(frameHosts(host).length).toBe(1);
+    expect(frames(host).length).toBe(1);
+    expect(frames(host)[0].getAttribute('src')).toBe(interopEditorSource('schema-viewer', 'HSCUSTOM'));
+    expect(frames(host)[0].getAttribute('src')).toBe('/ui/interop/schema-viewer/index.html?$NAMESPACE=HSCUSTOM');
+    expect(frames(host)[0].getAttribute('title')).toBe(STRINGS.interopSchemaViewerTitle);
+    expect(block(host, 'agent'), 'the agent saves nothing from this screen, so its line is not drawn').toBeNull();
+    for (const absent of ['gone', 'coded', 'refused', 'fault', 'loading']) expect(block(host, absent), absent).toBeNull();
+    expect(host.querySelector('section')?.getAttribute('aria-busy')).toBe('false');
+  });
+
+  it('Story 20.8 AC5: a Refresh and a namespace move each draw a new Schema viewer frame, still without a request', async () => {
+    // Mutation (Rule 19): Refresh does not bump the revision -> the new element is not drawn and this goes red.
+    const mounted = await mount(SCHEMA_VIEWER, '', rows());
+    const { host } = mounted;
+    const first = frames(host)[0];
+    (block(host, 'refresh') as HTMLButtonElement).click();
+    await settle(mounted.fixture);
+    const second = frames(host)[0];
+    expect(frames(host).length).toBe(1);
+    expect(second).not.toBe(first);
+    expect(first.isConnected, 'the old element is detached').toBe(false);
+    expect(second.getAttribute('src')).toBe(first.getAttribute('src'));
+    mounted.switchNamespace('USER');
+    await settle(mounted.fixture);
+    const third = frames(host)[0];
+    expect(frames(host).length).toBe(1);
+    expect(third).not.toBe(second);
+    expect(second.isConnected).toBe(false);
+    expect(third.getAttribute('src')).toBe(interopEditorSource('schema-viewer', 'USER'));
+    expect(mounted.reads, 'no request through any of it').toEqual([]);
+  });
+
+  it('Story 20.8 AC3: the Configuration diagram reads the Productions list once, in the namespace on screen, and draws one frame with the bare production name', async () => {
+    // Mutation (Rule 19): the store requires `.cls` for every kind -> the production is gone and this goes red.
+    const mounted = await mount(DIAGRAM, PRODUCTION, rows({ Name: 'Other.Production', Status: 'Stopped' }, { Name: PRODUCTION, Status: 'Running' }));
+    const { host, reads, verdictsAsked } = mounted;
+    const productions = SCREENS.find((candidate) => candidate.route === DIAGRAM.list) as ScreenDeclaration;
+    expect(reads, 'the Productions list\'s read, once').toEqual([{ path: screenReadPath(productions, 1000), scope: 'HSCUSTOM' }]);
+    expect(verdictsAsked, 'the Productions list\'s verdict was asked').toEqual([DIAGRAM.list]);
+    expect(block(host, 'note')?.textContent?.trim()).toBe(STRINGS.interopProductionDiagramNote);
+    expect(block(host, 'refresh')?.textContent?.trim()).toBe(STRINGS.actionRefresh);
+    expect(frames(host).length).toBe(1);
+    expect(frames(host)[0].getAttribute('src')).toBe(interopEditorSource('interop-editor', 'HSCUSTOM', PRODUCTION));
+    expect(frames(host)[0].getAttribute('src')).toBe(`/ui/interop/interop-editor/index.html?$NAMESPACE=HSCUSTOM&$PRODUCTION=${PRODUCTION}`);
+    expect(frames(host)[0].getAttribute('title')).toBe(STRINGS.interopProductionDiagramTitle);
+    expect(block(host, 'agent'), 'no agent line on the diagram').toBeNull();
+    for (const absent of ['gone', 'coded', 'refused', 'fault', 'loading']) expect(block(host, absent), absent).toBeNull();
+  });
+
+  it('Story 20.8 AC5: a production the Productions read does not return is gone, with the sentence and no frame; a name with an extension is not a production', async () => {
+    // Mutation (Rule 19): the store opens a row the read did not return -> a frame is drawn and this goes red.
+    for (const name of ['OcuPilotProbe.Interop.Absent', `${PRODUCTION}.cls`, PRODUCTION.toLowerCase()]) {
+      const { host, reads } = await mount(DIAGRAM, name, rows({ Name: PRODUCTION, Status: 'Stopped' }));
+      expect(block(host, 'gone')?.textContent?.trim(), name).toBe(DIAGRAM.empty);
+      expect(block(host, 'gone')?.textContent?.trim()).toBe(STRINGS.interopProductionDiagramEmpty);
+      expect(frames(host), name).toEqual([]);
+      expect(frameHosts(host)).toEqual([]);
+      expect(block(host, 'note')).toBeNull();
+      expect(reads.length, 'the one read settled it').toBe(1);
+    }
+  });
+
+  it('Story 20.8 AC3: the diagram draws "Requires <pair>" for a denied Productions verdict without a request, and for a 403 that names its pair; any other answer is the request-refused strip', async () => {
+    const denied = await mountDeniedFor(DIAGRAM, '%Ens_ProductionConfig:READ');
+    expect(denied.reads, 'a denied verdict sends no request').toEqual([]);
+    expect(block(denied.host, 'refused')?.textContent?.trim()).toBe(formatRequires(STRINGS.privilegeRequiresResource, '%Ens_ProductionConfig:READ'));
+    expect(frames(denied.host)).toEqual([]);
+
+    const forbidden = await mount(DIAGRAM, PRODUCTION, { kind: 'error', status: 403, code: 'AUTH.NOPRIVILEGE', reason: 'no', detail: { failedPair: '%Ens_Portal:USE' } });
+    expect(block(forbidden.host, 'refused')?.textContent?.trim()).toBe(formatRequires(STRINGS.privilegeRequiresResource, '%Ens_Portal:USE'));
+    expect(frames(forbidden.host)).toEqual([]);
+
+    const faulted = await mount(DIAGRAM, PRODUCTION, { kind: 'error', status: 500, code: null, reason: null, detail: null });
+    expect(block(faulted.host, 'fault')?.textContent).toContain(STRINGS.connectivityRequestRefused);
+    expect(frames(faulted.host)).toEqual([]);
+    faulted.answer = rows({ Name: PRODUCTION });
+    (block(faulted.host, 'fault')?.querySelector('button') as HTMLButtonElement).click();
+    await settle(faulted.fixture);
+    expect(faulted.reads.length, 'Retry reads again').toBe(2);
+    expect(frames(faulted.host).length).toBe(1);
+  });
+
+  it('Story 20.8 AC5: Refresh on the diagram reads the Productions list again and draws a new frame element at the same address', async () => {
+    // Mutation (Rule 19): Refresh does not bump the revision -> red.
+    const mounted = await mount(DIAGRAM, PRODUCTION, rows({ Name: PRODUCTION }));
+    const { host } = mounted;
+    const first = frames(host)[0];
+    (block(host, 'refresh') as HTMLButtonElement).click();
+    await settle(mounted.fixture);
+    expect(mounted.reads.length).toBe(2);
+    const second = frames(host)[0];
+    expect(frames(host).length).toBe(1);
+    expect(second).not.toBe(first);
+    expect(first.isConnected).toBe(false);
+    expect(second.getAttribute('src')).toBe(first.getAttribute('src'));
+  });
+
+  it('Story 20.8: the diagram follows a move to another production, and a namespace move takes the frame away and reads again there', async () => {
+    const mounted = await mount(DIAGRAM, 'Demo.One', rows({ Name: 'Demo.One' }, { Name: 'Demo.Two' }));
+    const { host, router } = mounted;
+    const first = frames(host)[0];
+    expect(first.getAttribute('src')).toBe(interopEditorSource('interop-editor', 'HSCUSTOM', 'Demo.One'));
+    await router.navigateByUrl(`/${screenFor(DIAGRAM.descriptor).route}/${encodeEntityId('Demo.Two')}?ns=HSCUSTOM`);
+    await settle(mounted.fixture);
+    expect(mounted.reads.length).toBe(2);
+    const second = frames(host)[0];
+    expect(second).not.toBe(first);
+    expect(first.isConnected).toBe(false);
+    expect(second.getAttribute('src')).toBe(interopEditorSource('interop-editor', 'HSCUSTOM', 'Demo.Two'));
+    mounted.answer = rows();
+    mounted.switchNamespace('USER');
+    await settle(mounted.fixture);
+    expect(second.isConnected, 'the frame goes at once').toBe(false);
+    expect(mounted.reads.map((read) => read.scope)).toEqual(['HSCUSTOM', 'HSCUSTOM', 'USER']);
+    expect(frames(host)).toEqual([]);
+    expect(block(host, 'gone')?.textContent?.trim(), 'absent there: gone').toBe(DIAGRAM.empty);
+  });
+
+  it('Story 20.16 and 20.8: the agent line is drawn for the three editors only, and the note is the editor\'s own for each', async () => {
+    // Mutation (Rule 19): the Schema viewer or the diagram maps `agentNote: true` -> red.
+    for (const kind of KINDS) {
+      const { host } = await mount(kind, 'Demo.Thing.cls', rows({ Name: 'Demo.Thing.cls', Coded: false }));
+      expect(block(host, 'agent')?.textContent?.trim(), kind.editor).toBe(STRINGS.interopEditorAgentNote);
+      expect(block(host, 'note')?.textContent?.trim(), kind.editor).toBe(STRINGS.interopEditorNote);
+    }
+    const viewer = await mount(SCHEMA_VIEWER, '', rows());
+    const diagram = await mount(DIAGRAM, PRODUCTION, rows({ Name: PRODUCTION }));
+    for (const mounted of [viewer, diagram]) {
+      expect(block(mounted.host, 'note'), 'the bar is drawn').not.toBeNull();
+      expect(block(mounted.host, 'agent')).toBeNull();
+    }
+  });
+
   it('reads nothing before the scope has a namespace, shows the skeleton meanwhile, and reads in the namespace the scope arrives with', async () => {
     // Mutation (Rule 19): the page reads at once, without waiting for the scope -> a read is sent with no namespace and this goes red.
     TestBed.resetTestingModule();
@@ -484,6 +647,11 @@ describe('the embedded editor screens', () => {
 
 /** A page whose list's verdict is denied before it opens. */
 async function mountDenied(kind: Kind): Promise<Mounted> {
+  return mountDeniedFor(kind, '%Ens_Code:READ');
+}
+
+/** A page whose list's verdict is denied on `failedPair` before it opens. */
+async function mountDeniedFor(kind: Kind, failedPair: string): Promise<Mounted> {
   TestBed.resetTestingModule();
   const screen = screenFor(kind.descriptor);
   const reads: { path: string; scope: string | null | undefined }[] = [];
@@ -500,7 +668,7 @@ async function mountDenied(kind: Kind): Promise<Mounted> {
       { provide: ApiService, useValue: api as unknown as ApiService },
       {
         provide: NavigationService,
-        useValue: { screenForUrl: () => screen, screenVerdict: () => ({ allowed: false, failedPair: '%Ens_Code:READ' }) } as unknown as NavigationService,
+        useValue: { screenForUrl: () => screen, screenVerdict: () => ({ allowed: false, failedPair }) } as unknown as NavigationService,
       },
       {
         provide: ScopeService,

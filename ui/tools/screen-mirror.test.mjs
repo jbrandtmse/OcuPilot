@@ -2443,7 +2443,8 @@ test('ownPrivilegesProblem returns every sentence OwnPrivilegeCases declares, an
   // item's six tabs %Ens_ProductionConfig:READ and each its tab's, Production monitor %Ens_Dashboard:USE, Queues and
   // Queue messages %Ens_Queues:READ, and Jobs %Ens_Jobs:READ. Story 20.5's Lookup tables and a table's entries own
   // %Ens_LookupTables:READ, and Business partners %Ens_ProductionConfig:READ. Story 20.6's item Test tab owns
-  // %Ens_TestingService:USE.
+  // %Ens_TestingService:USE. Story 20.8's Schema viewer owns %Ens_EDISchema:READ and its Configuration diagram
+  // %Ens_ProductionConfig:READ.
   assert.deepEqual(
     owners.sort(),
     [
@@ -2469,11 +2470,13 @@ test('ownPrivilegesProblem returns every sentence OwnPrivilegeCases declares, an
       'OcuPilot.Screen.Descriptor.InteropMonitorList',
       'OcuPilot.Screen.Descriptor.InteropProcessEditor',
       'OcuPilot.Screen.Descriptor.InteropProcessList',
+      'OcuPilot.Screen.Descriptor.InteropProductionDiagram',
       'OcuPilot.Screen.Descriptor.InteropProductionList',
       'OcuPilot.Screen.Descriptor.InteropQueueList',
       'OcuPilot.Screen.Descriptor.InteropQueueMessageList',
       'OcuPilot.Screen.Descriptor.InteropRuleEditor',
       'OcuPilot.Screen.Descriptor.InteropRuleList',
+      'OcuPilot.Screen.Descriptor.InteropSchemaViewer',
       'OcuPilot.Screen.Descriptor.InteropTransformEditor',
       'OcuPilot.Screen.Descriptor.InteropTransformList',
       'OcuPilot.Screen.Descriptor.JournalSettings',
