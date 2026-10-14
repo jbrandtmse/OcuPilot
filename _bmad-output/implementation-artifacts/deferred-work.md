@@ -9355,6 +9355,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-03T14:57:35Z status=wontfix-accepted owner=18-19-journal-record-browser by=cr note=reopen_if=a user reports Newest first showing oldest first; fix needs the page to steer the store's remembered sort
 - 2026-10-03T15:02:19Z status=routed owner=burndown by=adjudication note=a Newest first that draws oldest first is a visible defect; Epic 18 close burn-down steers the store's sort with the order criterion
 - 2026-10-14T08:59:25Z status=routed owner=18-48-epic-18-burn-down-part-2 by=burndown note=chartered into the Epic 18 burn-down part 2 (orchestrator ruling 2026-10-14)
+- 2026-10-14T12:40:15Z status=routed owner=23-9-the-range-end-cleanup-part-8 by=lead note=orchestrator 2026-10-14: 18.48 kept at 12; the journal record browser's two lows move to 23.9
 
 ### DW-1980: The journal record dialog shows an empty body while its record loads (about 1.7 s, the guard's list read)
 - source: spec-18-19-journal-record-browser.md (code review) | severity: low | fix-risk: med | footprint: in-story
@@ -9368,6 +9369,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-03T14:57:36Z status=wontfix-accepted owner=18-19-journal-record-browser by=cr note=reopen_if=angular.json's budget is next re-based with room, or a user reports a refused over-long offset or value
 - 2026-10-03T15:02:19Z status=routed owner=burndown by=adjudication note=the bundle budget is re-based per story under DW-1166, so the measured maxlength patch lands with Epic 18's burn-down
 - 2026-10-14T08:59:25Z status=routed owner=18-48-epic-18-burn-down-part-2 by=burndown note=chartered into the Epic 18 burn-down part 2 (orchestrator ruling 2026-10-14)
+- 2026-10-14T12:40:15Z status=routed owner=23-9-the-range-end-cleanup-part-8 by=lead note=orchestrator 2026-10-14: 18.48 kept at 12; the journal record browser's two lows move to 23.9
 ### DW-1976: A long row text on a detail tab (a view's text, a procedure's description, trigger code) renders as one clipped data-table cell, and its cut-cell tooltip (480px wide, no height bound or scroll, clamped to the window) cannot show a text taller than the window, so AD-36's 'shown whole on the screen' holds for the read's answer but not for what a person can read
 - source: spec-19-14-the-sql-catalog-s-remaining-detail-tabs.md | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: ui/src/styles/_components.scss .ocu-data-table-cell nowrap + ellipsis and .ocu-data-table-tooltip max-width 480px, no max-height; data-table.ts placeTooltip clamps top to the window. Measured lengths (spec Design Notes): view text up to 5,856, SqlProc descriptions up to 41,734 characters
@@ -11815,6 +11817,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-47-epic-18-burn-down-part-1.md | severity: low | fix-risk: med | footprint: out-of-footprint
 - evidence: Story 18.47 plan audit 2026-10-14 (code read): 109 sites in 54 Area files; Screen/Tool about 14, Api 11, Kernel 20-25 (inference); over the ruling's 10, so 18.47 fixes none
 - 2026-10-14T09:42:09Z status=routed owner=23-9-the-range-end-cleanup-part-8 by=spec_gate note=orchestrator 2026-10-14: more than about 10 sites, so one sweep entry; supersedes DW-2327
+- 2026-10-14T12:40:16Z status=routed owner=23-10-the-range-end-cleanup-part-9-two-sweeps by=lead note=orchestrator 2026-10-14: Story 23.10, two sweeps
 
 ### DW-2418: A turn's one PROVIDER.TLS sentence names the absent, unverified and unreadable causes but not a TLS floor below 1.2
 - source: spec-18-47-epic-18-burn-down-part-1.md | severity: low | fix-risk: low | footprint: in-story
@@ -11832,16 +11835,19 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-47-epic-18-burn-down-part-1.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: Story 18.47 code review (code read): SwitchRules.cls:156 checks Type, Enabled and VerifyPeer; ProviderPort.cls:667 adds MINTLSVERSION; the fix needs an EGRESS violation code, which 18.47's contract forbids
 - 2026-10-14T12:29:05Z status=routed owner=burndown by=cr note=two judges of one rule diverged; add the floor to the save-time judge with its own violation code
+- 2026-10-14T12:40:16Z status=routed owner=18-48-epic-18-burn-down-part-2 by=lead note=orchestrator 2026-10-14: the save-time rule matches the call-time floor, one new EGRESS code (18.40's path)
 
 ### DW-2425: AD-10's widened-reach arm judges only a privileged routine application's cleared Resource or enabling: a Resource swapped to a publicly held one, and a web application enabled while it grants a privileged role, mint ordinary
 - source: spec-18-47-epic-18-burn-down-part-1.md | severity: med | fix-risk: med | footprint: in-epic
 - evidence: Story 18.47 code review (code read): Prohibited.cls GrantsPrivilegeByEffect's TYPEWEBAPPLICATION arm compares role pairs only; WidensPrivilegedReach (:5996) runs for routine applications and tests a cleared Resource alone
 - 2026-10-14T12:29:05Z status=decision-pending owner=burndown by=cr note=recommend extending AD-10 as DW-2322 did; Prohibited.cls is Epic 20-contended (Rule 11)
+- 2026-10-14T12:40:16Z status=routed owner=18-48-epic-18-burn-down-part-2 by=lead note=orchestrator 2026-10-14: privileged-grant treatment, as DW-2322 (web applications: enabling one that grants a privileged role, or a Resource pointed at a public one)
 
 ### DW-2426: 48 test classes' OnAfterAllTests delete shared state on an unarmed instance: %UnitTest runs it after a refused OnBeforeAllTests, and GovernanceFixture.Restore over no snapshot deletes every policy row (EgressSettingsWire deletes the egress row)
 - source: spec-18-47-epic-18-burn-down-part-1.md | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: irislib %UnitTest/Manager.cls:1296 calls OnAfterAllTests when OnBeforeAllTests errs; Story 18.47 code review probe on ocupilot-ci: with no snapshot, armed, the call deleted 2 seeded policy rows; 18.47 guarded its 7 classes
 - 2026-10-14T12:29:05Z status=routed owner=burndown by=cr note=guard each by its OnBeforeAllTests arming condition as ProviderSslCallTime does; not in Restore: AllowedDirectorySave clears with it
+- 2026-10-14T12:40:16Z status=routed owner=23-10-the-range-end-cleanup-part-9-two-sweeps by=lead note=orchestrator 2026-10-14: Story 23.10, two sweeps
 
 ### DW-2427: The encryption key-file field refusals #5022, #1219 and #1204 (AdminPort PROPERTYFAULTS) are still logged at severity 2, so a mistyped key-file password raises the instance alert state
 - source: spec-18-47-epic-18-burn-down-part-1.md | severity: med | fix-risk: low | footprint: in-epic
