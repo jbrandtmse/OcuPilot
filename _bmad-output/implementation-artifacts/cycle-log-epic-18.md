@@ -1648,3 +1648,5 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-10-14T12:39:45Z	Story 18.47	stage_spawned	stage=full-sweep spawn_at=2026-10-14T12:39:45Z model=sonnet agent_name=18-47-sweep-1 prompt=carry-2026-10-10/epic-18-r/sweep-1847-prompt.md run_in_background=false
 2026-10-14T12:40:26Z	Epic 18	integrate_forward	feature=a29d3958(placements;23.10) head=98773ed1 conflicts=sprint-status_only dup_check=empty
 2026-10-14T12:40:26Z	Epic 18	ledger_routed_planned	story=18-48-epic-18-burn-down-part-2 entries=12(+DW-2424,DW-2425;-DW-1979,DW-1981_to_23-9) excess=0 by=lead
+2026-10-14T12:44:31Z	Epic 18	epic_context_compiled	reason=planning_artifact_newer(18.48_rebalanced) model=opus bytes=12947
+2026-10-14T12:44:31Z	Story 18.48	stage_spawned	stage=plan spawn_at=2026-10-14T12:44:31Z model=opus agent_name=18-48-burndown-2-plan-1 cycle_iteration=1 prompt=carry-2026-10-10/epic-18-r/plan-1848-prompt.md run_in_background=false throwaway=untouched(sweep_running)
