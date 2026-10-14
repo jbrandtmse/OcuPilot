@@ -372,12 +372,15 @@ Method OnAfterOneTest() As %Status
 /// and may still clear a name and set a proxy.</p>
 /// <p>Mutation: skip <method>OcuPilot.Area.Security.SslRules.Gate</method> in
 /// <method>OcuPilot.Api.Switches.HandleEgressUpdate</method> -- the naming answers 422 <code>EGRESS.SSLABSENT</code> and
-/// this goes red; delete its <code>IsAdministrator()</code> arm -- the first leg goes red.</p>
+/// this goes red; delete its <code>IsAdministrator()</code> arm -- the first leg goes red; stop storing OcuPilot's own name as
+/// <code>""</code> in <method>OcuPilot.Api.Switches.EgressMerge</method> -- the last leg goes red.</p>
 Method TestTheEgressRoutesAreRefusedToANonAdministratorAndANamingNeedsTheSslPairs()
 {
     Do $$$AssertTrue(..PreparedSetupOk && ..PreparedAdminSetupOk, "setup confirmed both principals' pairs")
     Set tRoute = ..#APIBASE _ "/agent/switches/egress"
     Set tAdminPair = ##class(OcuPilot.Kernel.State.Base).#ADMINRESOURCE _ ":USE"
+    ; SetGuarded merges, so the row starts from none and holds only what this method writes.
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Egress).DeleteGuarded(), "the method starts from no egress row")
     Set tSeed("sslConfiguration") = ..#NAMEDPROBE
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Egress).SetGuarded(.tSeed), "the egress row names a configuration")
     For tMethod = "GET", "PUT" {
@@ -403,6 +406,8 @@ Method TestTheEgressRoutesAreRefusedToANonAdministratorAndANamingNeedsTheSslPair
     Do $$$AssertEquals(tStatus, 200, "the same administrator may clear the name and set a proxy (" _ tBody _ ")")
     Do ##class(OcuPilot.Kernel.State.Egress).Resolve(.tNow)
     Do $$$AssertEquals(tNow("sslConfiguration") _ "|" _ tNow("proxyServer") _ "|" _ tNow("proxyPort"), ##class(OcuPilot.Kernel.State.Base).#SSLCONFIG _ "|192.0.2.10|3128", "which are stored")
+    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("PUT", tRoute, ..#ADMINUSER, ..PreparedAdminPassword, .tStatus, .tBody, .tHeaders, "{""sslConfiguration"":""" _ ##class(OcuPilot.Kernel.State.Base).#SSLCONFIG _ """}", "application/json")
+    Do $$$AssertEquals(tStatus, 200, "and may name OcuPilot's own provider configuration, which asks for no pair (" _ tBody _ ")")
 }
 
 /// <p>Whether a definition named <var>pName</var> exists, read by SQL as the suite's own account

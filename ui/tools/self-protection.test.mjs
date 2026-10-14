@@ -974,3 +974,12 @@ test('Story 18.40: only Api/Switches.cls writes the egress row, outside the test
   assert.deepEqual(writers, ['src/OcuPilot/Api/Switches.cls'], 'the one class outside the tests that calls Egress.SetGuarded');
   assert.ok(readFileSync(join(REPO_ROOT, 'src', 'OcuPilot', 'Api', 'Switches.cls'), 'utf8').includes('##class(OcuPilot.Kernel.State.Egress).SetGuarded('), 'and it does');
 });
+
+test('Story 18.40, C4: no tool, read or screen class names the egress row or its route -- the agent does not read the provider connection', () => {
+  // Mutation (Rule 19): add `Do ##class(OcuPilot.Kernel.State.Egress).Resolve(.v)` to a class under Screen/Tool -> this goes red naming it.
+  const naming = classFiles(join(REPO_ROOT, 'src', 'OcuPilot', 'Screen')).filter((file) => {
+    const source = readFileSync(join(REPO_ROOT, file), 'utf8');
+    return /State\.Egress\b/.test(source) || source.includes('switches/egress');
+  });
+  assert.deepEqual(naming, [], 'no class under Screen/ reaches the egress row or its route');
+});

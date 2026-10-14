@@ -107,8 +107,23 @@ Method TestAnAbsentConfigurationIsRefusedAsAbsent()
     Set tFault = ..Call(.tHttpStatus)
     Do $$$AssertEquals(..Said(tFault) _ " " _ tHttpStatus, "PROVIDER.TLS 503", "the call is refused")
     Do $$$AssertTrue((..Reason(tFault) [ "is not present") && (..Reason(tFault) [ "OcuPilotProbeCallTimeAbsent"), "as absent, naming it: " _ ..Reason(tFault))
-    Do $$$AssertTrue(..Reason(tFault) [ "clear the name on Switches", "and the remedy: " _ ..Reason(tFault))
+    Do $$$AssertTrue((..Reason(tFault) [ "Clear the name on Switches") && (..Reason(tFault) [ "classic portal"), "and the remedy: " _ ..Reason(tFault))
     Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Calls(), 0, "and the transport is not entered")
+}
+
+/// <p>A turn's poll shows <code>PROVIDER.TLS</code>'s one sentence (<method>OcuPilot.Api.Error.ReasonForTurnError</method>),
+/// which names every cause, an unreadable configuration included, and where the configuration and its remedy are named.
+/// OcuPilot's own provider configuration, absent, takes the restart remedy and not the Switches one.</p>
+/// <p>Mutation (Rule 19): drop "or could not be read" from <code>PROVIDER.TLS</code>'s sentence in
+/// <method>OcuPilot.Kernel.Provider.Base.ReasonFor</method> -- the turn leg goes red; answer <code>REMEDYTLSABSENT</code>
+/// for OcuPilot's own name in <method>OcuPilot.Kernel.Provider.Base.TlsReason</method> -- the own-absent leg goes red.</p>
+Method TestATurnNamesEveryCauseAndAnAbsentOwnConfigurationTheRestart()
+{
+    Set tTurn = ##class(OcuPilot.Api.Error).ReasonForTurnError(##class(OcuPilot.Api.Error).#PROVIDERTLS)
+    Do $$$AssertTrue((tTurn [ "could not be read") && (tTurn [ "Test connection"), "a turn's sentence names the unreadable cause and where the remedy is named: " _ tTurn)
+    Set tOwn = ##class(OcuPilot.Kernel.State.Base).#SSLCONFIG
+    Set tAbsent = ##class(OcuPilot.Kernel.Provider.Base).TlsReason(##class(OcuPilot.Port.ProviderPort).#TLSABSENT, tOwn, tOwn)
+    Do $$$AssertTrue((tAbsent [ tOwn) && (tAbsent [ "Restart the instance") && '(tAbsent [ "Switches"), "OcuPilot's own, absent, names the restart and not Switches: " _ tAbsent)
 }
 
 /// <p>Change the probe the egress row names with <var>pChange</var> outside OcuPilot, assert the next call is refused
@@ -121,7 +136,7 @@ Method RefusedThenRestored(pLabel As %String, ByRef pChange, ByRef pBack)
     Set tBefore = ##class(OcuPilot.Test.ProviderStub).Calls()
     Set tFault = ..Call(.tHttpStatus)
     Do $$$AssertEquals(..Said(tFault) _ " " _ tHttpStatus, "PROVIDER.TLS 503", pLabel _ ": the call is refused")
-    Do $$$AssertTrue((..Reason(tFault) [ ..#PROBE) && (..Reason(tFault) [ "Re-enable peer verification") && (..Reason(tFault) [ "Switches"), "naming the configuration and the remedy: " _ ..Reason(tFault))
+    Do $$$AssertTrue((..Reason(tFault) [ ..#PROBE) && (..Reason(tFault) [ "Clear the name on Switches") && (..Reason(tFault) [ "classic portal"), "naming the configuration and the remedy: " _ ..Reason(tFault))
     Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Calls(), tBefore, "and the transport is not entered")
     Do $$$AssertStatusOK(##class(OcuPilot.Test.EgressSslProbe).Modify(..#PROBE, .pBack), "set back")
     Do $$$AssertEquals(..Call(), "", pLabel _ ": the next call is not refused")

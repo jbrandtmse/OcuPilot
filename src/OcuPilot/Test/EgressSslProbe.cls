@@ -21,8 +21,8 @@ Parameter SERVER = "server";
 
 /// <p>Create the configuration <var>pName</var> of shape <var>pKind</var>, deleting it first when it is this helper's own
 /// and refusing when it is anybody else's: a client requiring the server's certificate (<code>verified</code>), a client
-/// that does not (<code>noverify</code>), a verifying client that is disabled (<code>disabled</code>), or a server
-/// (<code>server</code>).</p>
+/// that does not (<code>noverify</code>), a verifying client that is disabled (<code>disabled</code>), or an enabled server
+/// with <code>VerifyPeer</code> 1 (<code>server</code>), which only its <code>Type</code> keeps from qualifying.</p>
 ClassMethod Ensure(pName As %String, pKind As %String = {..#VERIFIED}) As %Status
 {
     Set tSC = ..Remove(pName)
@@ -33,7 +33,7 @@ ClassMethod Ensure(pName As %String, pKind As %String = {..#VERIFIED}) As %Statu
         Set tProps("Description") = ..#MARKER
         Set tProps("Type") = (pKind = ..#SERVER)
         Set tProps("Enabled") = (pKind '= ..#DISABLED)
-        Set tProps("VerifyPeer") = $Select((pKind = ..#NOVERIFY) || (pKind = ..#SERVER): 0, 1: 1)
+        Set tProps("VerifyPeer") = (pKind '= ..#NOVERIFY)
         If tProps("VerifyPeer") = 1 Set tProps("CAFile") = "%OSCertificateStore"
         If pKind = ..#SERVER {
             Set tProps("Ciphersuites") = ""

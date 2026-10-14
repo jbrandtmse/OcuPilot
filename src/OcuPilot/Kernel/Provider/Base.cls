@@ -78,19 +78,23 @@ Parameter REASONPROXYEGRESS = "The proxy this instance's provider calls go throu
 
 /// <p>The reason a <code>PROVIDER.TLS</code> refusal carries when the configuration a call would be made through is
 /// absent, to which the caller appends the configuration's name. <method>ReasonFor</method> answers the code's one
-/// sentence for a turn, which covers this cause and <parameter>REASONTLSUNVERIFIED</parameter>'s.</p>
+/// sentence for a turn, which covers this cause, <parameter>REASONTLSUNVERIFIED</parameter>'s and
+/// <parameter>REASONTLSUNAVAILABLE</parameter>'s.</p>
 Parameter REASONTLSABSENT = "The TLS configuration this instance's provider calls are made through is not present";
 
 /// <p>The remedy appended to <parameter>REASONTLSABSENT</parameter> for a configuration the egress row names, and the one
-/// for OcuPilot's own provider configuration, which the installer restores at every start.</p>
-Parameter REMEDYTLSABSENT = "Create it again, or clear the name on Switches.";
+/// for OcuPilot's own provider configuration, which the installer restores at every start. OcuPilot refuses a create under
+/// the name while it is named, so the create this remedy offers is the classic portal's.</p>
+Parameter REMEDYTLSABSENT = "Clear the name on Switches, or create it again in the classic portal.";
 
 Parameter REMEDYTLSABSENTOWN = "Restart the instance to restore it.";
 
 /// <p>The reason a <code>PROVIDER.TLS</code> refusal carries when the configuration a call would be made through
 /// exists but is no longer an enabled client that requires the server's certificate, with <code>&lt;name&gt;</code>
-/// the configuration's name and the remedy for a configuration the egress row names (Story 18.40). Nothing was sent.</p>
-Parameter REASONTLSUNVERIFIED = "The TLS configuration <name> is no longer an enabled client that requires the server's certificate, so no request was sent. Re-enable peer verification on it, or clear the name on Switches.";
+/// the configuration's name and the remedy for a configuration the egress row names (Story 18.40). Nothing was sent.
+/// OcuPilot refuses a change to those settings while it is named, so the repair this remedy offers is the classic
+/// portal's.</p>
+Parameter REASONTLSUNVERIFIED = "The TLS configuration <name> is no longer an enabled client that requires the server's certificate, so no request was sent. Clear the name on Switches, or make it an enabled client that verifies the server again in the classic portal.";
 
 /// <p>The same refusal for OcuPilot's own provider configuration, which the installer restores at every start.</p>
 Parameter REASONTLSUNVERIFIEDOWN = "OcuPilot's TLS configuration <name> is no longer an enabled client that requires the server's certificate, so no request was sent. Restart the instance to restore it.";
@@ -785,7 +789,7 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ##class(OcuPilot.Api.Error).#PROVIDERREFUSED Quit "The provider refused the request"
     If pCode = ##class(OcuPilot.Api.Error).#PROVIDERUNAVAILABLE Quit "The provider did not serve this request on any attempt"
     If pCode = ##class(OcuPilot.Api.Error).#PROVIDERTIMEOUT Quit "The provider did not answer within the time this instance allows"
-    If pCode = ##class(OcuPilot.Api.Error).#PROVIDERTLS Quit "The TLS configuration this instance's provider calls are made through is not present, or is no longer an enabled client that requires the server's certificate"
+    If pCode = ##class(OcuPilot.Api.Error).#PROVIDERTLS Quit "The TLS configuration this instance's provider calls are made through is not present, is no longer an enabled client that requires the server's certificate, or could not be read, so no request was sent. Test connection names the configuration and the remedy"
     If pCode = ##class(OcuPilot.Api.Error).#PROVIDERTESTTIMEOUT Quit ..#REASONTESTTIMEOUT
     If pCode = ##class(OcuPilot.Api.Error).#PROVIDERTESTTIMEOUTLOCAL Quit ..#REASONTESTTIMEOUTLOCAL
     If pCode = ##class(OcuPilot.Api.Error).#PROVIDERDECLINED Quit "The model declined to answer this request"

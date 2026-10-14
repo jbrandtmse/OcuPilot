@@ -75,14 +75,19 @@ Method OnBeforeAllTests() As %Status
     Quit tSC
 }
 
-/// <p>Remove the users and the role, and return a failing status if any survives.</p>
+/// <p>Remove the egress row, the probe configuration, the users and the role, and return a failing status if any survives.
+/// A test whose <method>OnBeforeOneTest</method> failed after creating the probe is not followed by its
+/// <method>OnAfterOneTest</method>, so the probe and the row are removed here as well.</p>
 Method OnAfterAllTests() As %Status
 {
     Set tOrigNS = $NAMESPACE
     Set tLeft = ""
     Try {
+        Do ##class(OcuPilot.Kernel.State.Egress).DeleteGuarded()
+        Do ##class(OcuPilot.Test.EgressSslProbe).Remove(..#PROBE)
+        If ##class(OcuPilot.Test.EgressSslProbe).Exists(..#PROBE) Set tLeft = " configuration " _ ..#PROBE
         Set $NAMESPACE = "%SYS"
-        Set tLeft = ..RemovePrincipals()
+        Set tLeft = tLeft _ ..RemovePrincipals()
         Set $NAMESPACE = tOrigNS
     } Catch ex {
         Set $NAMESPACE = tOrigNS
@@ -134,7 +139,7 @@ Method TestEveryCallerIsRefusedAConfigurationThatDoesNotVerify()
         Set tCall = ..CallAs(tUser)
         Do $$$AssertEquals(tCall.%Get("loggedIn"), 1, tUser _ " signs in: " _ tCall.%ToJSON())
         Do $$$AssertEquals(tCall.%Get("code") _ " " _ tCall.%Get("status"), "PROVIDER.TLS 503", tUser _ ": the call is refused")
-        Do $$$AssertTrue((tCall.%Get("reason") [ ..#PROBE) && (tCall.%Get("reason") [ "Re-enable peer verification"), tUser _ ": naming the configuration and the remedy: " _ tCall.%Get("reason"))
+        Do $$$AssertTrue((tCall.%Get("reason") [ ..#PROBE) && (tCall.%Get("reason") [ "Clear the name on Switches"), tUser _ ": naming the configuration and the remedy: " _ tCall.%Get("reason"))
         Do $$$AssertEquals(tCall.%Get("calls"), 0, tUser _ ": and the transport is not entered")
         Do $$$AssertEquals(tCall.%Get("rolesKept"), 1, tUser _ ": and the roles are as they were after the call")
     }

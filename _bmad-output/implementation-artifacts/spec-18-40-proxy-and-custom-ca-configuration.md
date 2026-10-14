@@ -141,6 +141,37 @@ Under `src/OcuPilot/`, `54228e70`.
 - **C7.** Given the configuration a provider call would use, whether named or `OcuPilotProvider`, when it is no longer an enabled client with `VerifyPeer` 1 or more, by any path, the classic portal included, for every caller, then the call is refused before any request is sent, naming the configuration and the remedy [AMENDED 2026-10-13 - see the Spec Change Log].
 - **Integration.** Given a proxy and a probe configuration saved through the route, when `Test.ProviderPortProbe` calls, then the stub's request carries `ProxyServer`, `ProxyPort`, `ProxyTunnel` 1, `ProxyHTTPS` 1, the `SSLConfiguration` and `SSLCheckServerIdentity` 1.
 
+### Review Findings
+
+Code review 2026-10-13 (`full-opus`: blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor): 28 rows, 23 entries. Patched 2 medium and 4 low; rejected 17; none deferred.
+
+- [x] [Review][Patch] A turn's `PROVIDER.TLS` sentence named neither an unreadable configuration nor where the remedy is, so a missing `OcuPilotSslRead` read as "not present" on the panel [src/OcuPilot/Kernel/Provider/Base.cls:792]. Medium. The code's one sentence now names all three causes and Test connection, and `ProviderSslCallTime` pins it.
+- [x] [Review][Patch] `AgentWireSecurity`'s egress leg asserted an empty proxy it did not write (Rule 30) [src/OcuPilot/Test/AgentWireSecurity.cls:383]. Medium. The method now starts from no row.
+- [x] [Review][Patch] The TLS refusal remedies offered a create and a verification change that OcuPilot refuses while the name stands, and named only peer verification for a disabled or server configuration [src/OcuPilot/Kernel/Provider/Base.cls:88]. Low. Both now say to clear the name on Switches or repair the configuration in the classic portal.
+- [x] [Review][Patch] The naming's `Type` rule had no leg of its own, because the server probe did not verify [src/OcuPilot/Test/EgressSslProbe.cls:36]. Low. The server probe now verifies, so only `Type` refuses it.
+- [x] [Review][Patch] The restart remedy for an absent `OcuPilotProvider` was asserted nowhere [src/OcuPilot/Kernel/Provider/Base.cls:809]. Low. `ProviderSslCallTime` now pins it.
+- [x] [Review][Patch] `Egress.SetGuarded`'s comment said every production caller passes no version [src/OcuPilot/Kernel/State/Egress.cls:114]. Low. Corrected.
+
+Rejected:
+
+- `false`: the SSL/TLS editor does not draw the named configuration's fields off before a click. EXPERIENCE.md :485 makes `PROVIDERSSL`'s sentence the envelope reason for the editor, the list and the agent; only the own configuration's sentence is drawn before a click.
+- `false`: naming requires `VerifyPeer` 1 while the call accepts 1 or more. AD-32 as amended states both thresholds, and the stricter save weakens nothing.
+- `false`: an `SslUpdate` mint shows the agent which configuration is named. Test 11 requires the mint to be refused `PROVIDERSSL` with its sentence (AD-10, either caller).
+- `false`: an agent create under the named name is minted and refused only at confirm. Test 11 says "at Save and at confirm", and AD-10 evaluates the prohibited set at confirm.
+- `low`: `ProxyHostShaped` accepts `1:2:3`, `:::` and `a..b`. Such a value is stored and fails at the call, exactly as the unresolvable name the matrix stores does. `LicenseRules.IsAddress` is Area code bound to Config.Host's length, so Kernel cannot reuse it without moving it.
+- `low`: a 422 for an absent name omits the proxy's violations. Both in one save is rare, and the next save names the rest.
+- `low`: a failed egress read proceeds on the defaults (pre-existing). The router refuses every request when OcuPilot's state cannot be read; this is real only if the egress row alone became unreadable.
+- `low`: Switches does not show that a named configuration stopped qualifying. Fixing it adds a read field and UI; Test connection already names the configuration and its remedy.
+- `low`: either save clears the other section's field violations. It needs refusals in both sections at once, and the next save re-validates.
+- `low`: `ProviderSslNamed`'s method name claims the delete for both callers. The 2026-10-13 triage settled path-by-path coverage: one kernel `Ssl` arm serves every path.
+- `low`: two first-ever egress saves at once answer 500, not 409. It needs two administrators' first saves inside one save's window, and the switch row has the same shape.
+- `low`: the Switches browser spec's restore PUT can fail in `finally`. That happens only on an instance that names a no-longer-qualifying configuration on entry; throwaways start with no row.
+- `low`: half of `EgressSettingsWire`'s composite assertion at :174 compares the version with itself. The next assertion carries the version check.
+- `low`: `definition-form.page.spec.ts` mocks the old `PROVIDER.TLS` sentence. The client renders whatever reason the server sends.
+- `low`: this spec's `deferred:` list and Auto Run Result predate 7c and 7d. The fix edits the spec under review, and the lead has harvested the entries.
+- `low`: `GuardedSslConfigRead` answers for any shape-valid name. `GuardedUserEnabled` takes any user name the same way, as task 7c specifies, and the four values are what any `%Admin_Secure` holder can read.
+- `low`: `Egress.GuardedVersion` repeats `Switch.GuardedVersion` (Rule 31). Each singleton row carries its own private `GuardedCurrent`, and `Agent.GuardedVersion`'s different signature keeps the method out of `State.Base`. Wontfix-accepted; reopen_if a third singleton row under `Kernel/State` adds one.
+
 ## Spec Change Log
 
 - 2026-10-13, lead, second implement halt (B's read needs the security database), orchestrator ruling option 3: the call-time read runs for every caller through AD-9's third privileged routine application (task 7c, test 11b, C7 and the matrix row); condition 8, the `OcuPilotProvider` create after an out-of-band delete, folds into 7a's `Created` arm if it is one more add-only clause, with one test leg, else it waits for the burn-down. AD-9, AD-10 and AD-32 amended.
@@ -270,6 +301,11 @@ every test added or changed passes on a fresh environment, in either order
 - mutation (QA), hermeticity: a raise after `OcuPilotSslRead` is removed in `ProviderSslCallers` -> the put-back assertion passes in every test (run 352); with `PutBack` dropped four of five tests are red and the application stays missing (run 353).
 - mutation (QA), hermeticity: `OnBeforeOneTest` failing after the probe and the egress row exist -> `OnAfterOneTest` is not run (`%UnitTest.Manager` skips it); the new `OnAfterAllTests` leaves `ocupilot-ci` at S0 (run 347), without it the probe configuration and the row survive (run 348).
 - Run (QA): `switches.browser-spec.mjs` 5/5 and `routine-applications.browser-spec.mjs` 4/4 on a rebuilt and redeployed bundle; `self-protection.test.mjs` 42/42; `check-objectscript.py` 0 problems. `RoutineAppWrite` and `RoutineAppMembers` compare, and do not restore, the three own applications; no change.
+
+**Code review (2026-10-13).** Each mutation was reverted and the file compared byte-identical. The whole tree was loaded each time. Runs 365-372 were green on the patched tree, and runs 375 and 376 on the final one; `ocupilot-ci` reads S0.
+
+- mutation: "or could not be read" dropped from `PROVIDER.TLS`'s sentence in `Provider.Base.ReasonFor`, and `REMEDYTLSABSENT` answered for OcuPilot's own name in `TlsReason` -> `ProviderSslCallTime` run 373: the turn assertion and the own-absent assertion are each red.
+- mutation: the `Type` rule dropped from `SwitchRules.EnabledVerifyingClient` -> `EgressSettingsWire` run 374: the server leg is red (it is stored).
 
 ## Auto Run Result
 

@@ -111,8 +111,8 @@ ClassMethod Resolve(Output pSettings) As %Status
 /// same row and then both save no longer silently overwrite one another: the second is refused
 /// with <method>OcuPilot.Kernel.State.Base.IsStaleSave</method>'s own sentence.</p>
 /// <p><var>pExpectedVersion</var> is for a caller that read the row earlier than this call and
-/// holds the version it saw. Left <code>""</code> -- which is every production call site today --
-/// the version read a line below is used, which is the same window closed one read later.</p>
+/// holds the version it saw, as <class>OcuPilot.Api.Switches</class> does. Left <code>""</code>, the version read a
+/// line below is used, which is the same window closed one read later.</p>
 ClassMethod SetGuarded(ByRef pValues, pExpectedVersion As %String = "") As %Status
 {
     Set tSC = $$$OK

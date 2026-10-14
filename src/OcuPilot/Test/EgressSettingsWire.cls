@@ -201,7 +201,9 @@ Method TestAClearedProxyStoresAnEmptyServerAndPortZero()
 /// as <code>""</code>, which clears a name.</p>
 /// <p>Mutation (Rule 19): drop the <code>VerifyPeer</code> rule from
 /// <method>OcuPilot.Kernel.SwitchRules.EnabledVerifyingClient</method> -- the client that does not verify is stored and
-/// the unverified leg goes red.</p>
+/// the unverified leg goes red; drop its <code>Type</code> rule -- the server, which verifies, is stored and the server leg
+/// goes red. Stop storing OcuPilot's own name
+/// as <code>""</code> in <method>OcuPilot.Api.Switches.EgressMerge</method> -- the stored-name leg goes red.</p>
 Method TestAConfigurationIsNamedOnlyAsAnEnabledClientThatVerifiesThePeer()
 {
     Do ..Put({"sslConfiguration": (..#VERIFIED)}, .tStatus, .tAnswer)
@@ -224,6 +226,7 @@ Method TestAConfigurationIsNamedOnlyAsAnEnabledClientThatVerifiesThePeer()
     Do $$$AssertEquals(tStatus _ " '" _ tAnswer.sslConfiguration _ "'", "200 ''", "naming OcuPilot's own provider configuration clears the name")
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Egress).Resolve(.tStored), "the instance's settings are read")
     Do $$$AssertEquals(tStored("sslConfiguration"), ..#OWN, "and take the installer's configuration")
+    Do $$$AssertEquals(..RawName(), "", "while the row itself stores an empty name")
     Do ..Put({"sslConfiguration": (..#VERIFIED)}, .tStatus, .tAnswer)
     Do ..Put({"sslConfiguration": ""}, .tStatus, .tAnswer)
     Do $$$AssertEquals(tStatus _ " '" _ tAnswer.sslConfiguration _ "'", "200 ''", "an empty name clears it too")
@@ -306,6 +309,15 @@ ClassMethod Stored() As %String
 {
     Do ##class(OcuPilot.Kernel.State.Egress).Resolve(.tStored)
     Quit tStored("proxyServer") _ " " _ tStored("proxyPort")
+}
+
+/// <p>The configuration name the row stores, as the table holds it, or <code>?</code> when there is no row.</p>
+ClassMethod RawName() As %String
+{
+    Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT SslConfiguration FROM OcuPilot_Kernel_State.Egress")
+    If (tRS.%SQLCODE < 0) || 'tRS.%Next() Quit "?"
+    Set tName = tRS.%GetData(1)
+    Quit $Select(tName = $Char(0): "", 1: tName)
 }
 
 /// <p>The number of rows the egress table holds.</p>
