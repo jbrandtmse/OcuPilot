@@ -2,14 +2,35 @@
 title: 'Story 18.40: Proxy and custom CA configuration'
 type: 'feature'
 created: '2026-10-12'
-status: 'ready-for-dev'
-baseline_revision: '6c24da93ef31df4075e70960e276038ae068b4be'
+status: 'blocked'
+baseline_revision: 'f2b40cd5c7666a2fc632079efe9739baaa77c652'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-18-context.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      The call-time check (ruling B) runs in the caller's process, so it does not run for a caller who cannot read Security.SSLConfigs, and that caller's provider call goes through a named configuration or OcuPilotProvider whatever the classic portal has set on it.
+    evidence: |-
+      Probed on ocupilot-ci with throwaway users: a %Developer user gets <PROTECT> entering %SYS, and a %Operator user's Security.SSLConfigs.Exists answers 0 with ERROR #822 Access Denied, which SslConfigurationMissing already reads as not missing. Both are admitted by ProviderPort's INVOKEPAIRS floor. Closing it needs an elevation to read a configuration, which AD-8 and this story's Never list refuse, or refusing every such caller's turn; the orchestrator's call.
+    location: >-
+      src/OcuPilot/Port/ProviderPort.cls SslConfigurationUnverified
+    severity: high
+  - summary: >-
+      PROHIBITED.PROVIDERSSL leaves a create of OcuPilotProvider's own name unrefused, so after an out-of-band delete OcuPilot's SSL/TLS form or the agent can re-create it with VerifyPeer 0 until the next start repairs it.
+    evidence: |-
+      ProviderSsl answers 0 for SSLCONFIG by design, as ruling A states, and OCUPILOTSSL has no create arm (Prohibits answered 0 for a create of OcuPilotProvider with VerifyPeer 0 on ocupilot-ci). The call-time check refuses a call through it for a caller who can read it, and Installer.EnsureSslConfiguration repairs it at every start.
+    location: >-
+      src/OcuPilot/Kernel/Proposal/Prohibited.cls Created
+    severity: medium
+  - summary: >-
+      Install/Fixture.cls re-creates the demo SSL/TLS configuration with the vendor's default VerifyPeer 0 when it is absent, and a naming of that name made while it was verifying would then read an unverified configuration.
+    evidence: |-
+      CreateSslConfig sets only Description, so the vendor defaults apply (inference; the fixture was read, not run against a named demo configuration). It leaves an existing configuration untouched, so the path needs the demo configuration deleted while the egress row names it, then a demo start. The call-time check refuses the call for a caller who can read it.
+    location: >-
+      src/OcuPilot/Install/Fixture.cls CreateSslConfig
+    severity: low
 ---
 
 <intent-contract>
@@ -133,6 +154,12 @@ Under `src/OcuPilot/`, `54228e70`.
 - **AD-10**, a bullet: **The configuration provider calls are made through**: while the egress row names one other than `OcuPilotProvider`, its delete or a change to `Type`, `VerifyPeer`, `CAFile` or `Enabled` is refused `PROHIBITED.PROVIDERSSL` from either caller; a failed read refuses.
 - **AD-42**, after "judged by the same policy as the endpoint": and at its write, where a loopback, link-local or own-instance host is refused and an unresolvable one is not.
 - **Rule 11.** At plan time Epic 20's diff and `status -s` touch none of these ObjectScript files. The inserted `Prohibited.Ssl` clause is the orchestrator ask; Router rows, count pins, the strings bound and EXPERIENCE.md are unions or in-place edits. No vendor defect candidate found.
+- **Task 0 (implement, `ocupilot-ci`, as `_SYSTEM`, 2026-10-13).** `SslRules.Present` answers `Type` as the number 0 or 1, `Enabled` as a boolean and `VerifyPeer` as a number: `OcuPilotProvider` 0, true, 1 (`CAFile` `%OSCertificateStore`); `OcuProbe1840Server` 1, true, 0; `OcuProbe1840NoVerify` 0, true, 0; `OcuProbe1840Untrusted` 0, true, 1.
+- The vendor refused two probes as specified: a server without Certificate and Private Key files (#982) and a verifying client with neither `CAFile` nor `CAPath` (#986). They were made with `CipherList` `ADH:@SECLEVEL=0`, empty `Ciphersuites` and TLS 1.2 only (a server needing no file), and with `CAPath` `/etc/ssl/certs` (so the "untrusted" client does verify example.com).
+- `InvokeDraft` to `https://example.com/` (`compatible` row, no key, timeout 5, one attempt, body `probe`), no proxy: `OcuPilotProvider`, NoVerify and Untrusted each 502 `PROVIDER.REFUSED` in 0.10 to 0.13 s, example.com having answered with a 4xx, so the route is open and a client with `VerifyPeer` 0 sends; Server 502 `PROVIDER.TRANSPORT` after 15.07 s (a raw `%Net.HttpRequest` GET: #6085, `SSL_accept()` unexpected eof, 15.05 s). With proxy 192.0.2.10:3128 all four were 502 `PROVIDER.TRANSPORT` after 5.01 to 5.02 s, no route to the TEST-NET proxy. A raw GET with no proxy: 200 in 0.11 to 0.12 s for `OcuPilotProvider`, NoVerify and Untrusted.
+- The probes, a temporary class and two throwaway users were removed; the egress row was absent before and after; `OcuPilotProvider` read Type 0, VerifyPeer 1, Enabled 1, `CAFile` `%OSCertificateStore` before and after.
+- A caller's privilege decides whether the call-time check runs: a `%Developer` user cannot enter `%SYS` (`<PROTECT>`), and a `%Operator` user's `Security.SSLConfigs.Exists` answers 0 with #822 Access Denied, which `SslConfigurationMissing` reads as not missing and `SslConfigurationUnverified` as not unverified. Deferred above.
+- This pass added 13 strings, not 14: the configuration field reuses `sslFormLabel`. Fixed strings 3,375 to 3,388 on this tree, the bound 3,800 untouched. `Prohibited.Codes()` 35 to 36.
 
 ## Verification
 
@@ -149,15 +176,41 @@ every test added or changed passes on a fresh environment, in either order
 
 **Mutations (Rule 19):** per test above; implement records each here as `mutation: <change> -> <test red>` once observed.
 
+**Results (implement, 2026-10-13, `ocupilot-ci`; load LOAD-OK, STARTPATH-OK).** Class, run index, total/pass/fail, read from `%UnitTest_Result` after the last edit:
+
+- New: `EgressSettingsWire` 197, 6/6/0; `ProviderSslNamed` 198, 4/4/0; `ProviderSslCallTime` 199 (the task 11a legs), 2/2/0; `AgentWireSecurity` 174, 5/5/0.
+- Pins and rosters: `Prohibited` 175, 15/15/0; `AuditingUpdate` 176, 11/11/0; `AuthOptionsDescriptor` 177, 10/10/0; `EncryptionStartupDescriptor` 178, 10/10/0; `SqlPrivilegeDescriptor` 179, 11/11/0; `SuperserverDescriptor` 180, 7/7/0; `RefusalCopy` 181, 8/8/0; `EndpointCoverage` 182, 2/2/0.
+- Unchanged: `SwitchesWire` 183, 24/24/0; `SwitchState` 184, 13/13/0; `SaveHoldCoverage` 185, 2/2/0; `GuardrailsWire` 186, 2/2/0; `SslSave` 187, 8/8/0; `SslUpdate` 188, 7/7/0; `ProviderProxy` 189, 4/4/0; `ProviderSsl` 190, 7/7/0; `DeveloperFloorRoutes` 191, 1/1/0; `InteropFloorRoutes` 192, 1/1/0. On the changed dispatch path: `ProviderPort` 193, 20/20/0; `EgressLine` 194, 13/13/0; `AgentConnection` 195, 20/20/0; `Egress` 196, 23/23/0.
+- Client: `npm run test:tools` 1988/1988; `npm run test:components` 245 files, 3,098/3,098; `npm run build` green with the bundle at 1,921.17 kB initial (1.92 MB; warning 1,992 kB) and the largest lazy chunk 83.32 kB (`data-browser-page`; cap 88 kB); `switches.browser-spec.mjs` 5/5, leaving no egress row. `check-objectscript.py` 0 problems; `lint-docs.sh` 0 issues.
+
+**Mutations observed** (each reverted; `git status --short` and the tree hash identical afterwards; compiled with every descendant):
+
+- mutation: no `proxyPort` stored in `HandleEgressUpdate` -> `EgressSettingsWire` run 131, the GET-after-PUT and Integration legs red.
+- mutation: `EnabledVerifyingClient` skips the `VerifyPeer` rule -> run 133, the named-configuration leg red; no `LogChange` -> run 135, the audit leg red; `ValidateEgress` skips the address judgement -> run 137, the refusals leg red; the body's `rowVersion` ignored -> run 139, the stale leg red; the hold dropped -> run 141, the busy leg red; the port 0 for an empty proxy dropped from `EgressMerge` -> run 167, the cleared-proxy leg red.
+- mutation: `SslRules.Gate` skipped in `HandleEgressUpdate` -> `AgentWireSecurity` run 143 red; the `IsAdministrator()` arm skipped on the `PUT` -> run 145 red.
+- mutation: `ProviderSsl` answers 0 -> `ProviderSslNamed` run 147, 4 of 4 red; the `Created` arm deleted -> run 149, the create leg red; a failed read answers 0 -> run 151, the failed-read leg red; the `Ssl` arm deleted -> run 153; the `SslUpdate.ArgumentProblem` refusal deleted -> run 155, the mint leg red; the names compared case-blind -> run 169, the exact-name leg red.
+- mutation: the `SslConfigurationUnverified` check skipped in `Dispatch` -> `ProviderSslCallTime` run 157 red; the absent refusal built with the unverified sentence -> run 165 red.
+- mutation: the egress `PUT` probe row removed -> `EndpointCoverage` run 159 red alone; `ReasonFor` without `PROVIDERSSL` -> `RefusalCopy` run 161 red; `Codes()` without it -> `Prohibited` run 163 red (the five other count pins share its literal and were not mutated).
+- mutation: `Egress).SetGuarded(` added to `Screen/Tool/SslUpdate.cls` -> the writer pin in `self-protection.test.mjs` red; one word of `REASONSSLABSENT` changed, or a sixth code added to `EgressError.Codes()` -> the `EGRESS_SENTENCES` pin red; one word of `PROVIDERSSLREASON` changed -> the kernel-refusals pin red.
+- mutation: `proxyPort` dropped from `connectionBody()` in the store -> `switches.page.spec.ts` C1 red, and, after a rebuild and redeploy, the browser leg red on its sent keys; a stored port 0 shown as `0` -> C1 red; the configuration field bound to another violation name -> the C6, C1 and SSLABSENT legs red; the switches phrase used for a connection refusal -> the action leg red; a switches save clearing the one dirty flag -> the shared-flag leg red.
+
 ## Auto Run Result
 
 Status: blocked
-Blocking condition: intent gap: PROHIBITED.PROVIDERSSL as planned does not cover a create under the named configuration's name (verification could be lowered through OcuPilot's own create path); no code written, Task 0 not run.
+Blocking condition: intent gap: the call-time check (ruling B, task 7b, C7, the matrix row "Call in use") cannot run for a caller who cannot read `Security.SSLConfigs`, so that caller's provider call is sent through a named configuration, or `OcuPilotProvider`, that the classic portal has set to `VerifyPeer` 0: a fallback that sends with verification off. Closing it needs an elevation to read a configuration (AD-8, this story's Never list) or refusing every ordinary user's https turn.
 
-Implement pass 1 stopped at the orchestrator's verification-stays-on condition before any source edit. Task 6 puts the refusal in `Prohibited.Ssl`, but `Prohibited.Prohibits` sends every create (`CreatesOf` true) to `Created` and quits before `Ssl` is called, and `Created` has no ssl-configuration arm. Path: the named configuration X stops existing (a classic-portal delete, the operator's own named limit); OcuPilot's SSL/TLS form create (`SslSave.HandleCreate`) or an agent `security.ssl.create` then re-creates X with `VerifyPeer` 0; the egress row is unchanged, so no naming-time check runs again, and provider calls resume through X with verification off. Read-only `Prohibits` probes on `ocupilot-ci` (writes nothing): create of an absent name with `VerifyPeer` 0 answers `prohibits=0`; create of `OcuPilotProvider` with `VerifyPeer` 0 answers `prohibits=0`; update of `OcuPilotProvider` `VerifyPeer` 1 to 0 answers `PROHIBITED.OCUPILOTSSL`.
+Pass 1's halt closed in the Spec Change Log (rulings A and B). This pass (implement, 2026-10-13) built the whole spec, then stopped on the orchestrator's verification condition before review and finalize.
 
-Recommended amendment (the matrix row already promises "every path"): an add-only arm in `Kernel/Proposal/Prohibited.cls` `Created` refusing `PROVIDERSSL` when `pType` is `TYPESSL` and `ProviderSsl(pId)`, whatever the payload carries (covers `SslSave` create and the agent's mint and confirm); `Test/ProviderSslNamed` gains a leg (egress row naming an absent probe name, a create refused at Save and at confirm); AD-10's new bullet and the matrix row read "delete, a create under its name, or a change to ...". The same arm also leaves `OcuPilotProvider` unguarded after an out-of-band delete (not reachable in practice: `EnsureSslConfiguration` repairs it every start).
+**The gap.** `ProviderPort.SslConfigurationUnverified` reads the configuration in the caller's process, as its sibling `SslConfigurationMissing` does, and answers 0 ("proceed") when the read cannot run. Probed on `ocupilot-ci` with throwaway users (since removed): a `%Developer` user gets `<PROTECT>` entering `%SYS` (`%Developer` holds `%DB_IRISLIB:R`, not `%DB_IRISSYS`; role list read on the instance), and a `%Operator` user's `Security.SSLConfigs.Exists` answers 0 with #822 Access Denied. Both clear `ProviderPort`'s `INVOKEPAIRS` floor, so for them the check never refuses. Every OcuPilot write path is closed by ruling A (delete, create, `Type`, `VerifyPeer`, `CAFile`, `Enabled`); what stays open is an operator lowering verification outside OcuPilot, then a caller who cannot read it making a turn.
 
-Residual (inference, not verified): `CipherList` and `TLSMinVersion` are settable and are not among `Type`, `VerifyPeer`, `CAFile`, `Enabled`; `OcuPilotProvider` has the same exposure today, so it is not part of this stop.
+**Options for the orchestrator** (recommendation: 1).
 
-Facts for the re-dispatch: `Prohibited.Codes()` holds 35 entries on this tree (so 36 after); Epic 20's diff touches `Test/Prohibited.cls`, `strings.ts`, `strings.test.mjs`, EXPERIENCE.md, `Screen/Context.cls`, `Write.cls`, `ExplorerSave.cls`, `Baseline.cls`, `panel.ts`, `screen-outlet.ts` and not `Kernel/Proposal/Prohibited.cls`, `Api/Switches.cls`, `Api/Router.cls`, `Kernel/SwitchRules.cls`, `Kernel/State/Egress.cls` or `Screen/Tool/SslUpdate.cls`; `SaveHoldCoverage`'s `PUT /agent/` exemption already covers the egress route; `ProviderPort.ProxyHostOf` is Private, so `SwitchRules` copies its bracketing. `ocupilot-ci` was only read (no probe configuration, no egress write); scratch probes are under `.coordination/carry-2026-10-10/epic-18-r/18-40/`.
+1. Name the limit: C7, the matrix row, AD-10 and AD-32 read "for a caller who can read the configuration (an administrator above all); another caller's call proceeds as `SslConfigurationMissing`'s does". No code change. It matches the probed precedent and needs no elevation.
+2. Fail closed when the read cannot run for a reason other than absent: refuses every ordinary user's https turn (`SslConfigurationMissing`'s comment gives why that was not done).
+3. A privileged read for this one question: an elevation to read a configuration, which AD-8 and the Never list refuse; needs an AD amendment first.
+
+**Tree state (uncommitted; nothing committed or pushed).** `baseline_revision` is `f2b40cd5c7666a2fc632079efe9739baaa77c652`. The handoff subagent's work is in the tree: 29 modified files and seven new ones (`Api/EgressError.cls`, `Test/EgressSettingsWire.cls`, `EgressSslProbe.cls`, `ProhibitedEgressFailFixture.cls`, `ProviderSslCallTime.cls`, `ProviderSslNamed.cls`, `SslSaveProposalFixture.cls`); the seven are marked intent-to-add (`git add -N`) so `git diff` shows them. The diff since baseline is at `/Users/jbrandt/git/OcuPilot/.worktrees/.coordination/carry-2026-10-10/epic-18-r/18-40/diff-1.patch`. The handoff's results and its mutation lines are under `## Verification`; its three findings are in `deferred:` (the first is this halt's subject; the other two stand as filed).
+
+**Checked by the lead, not by the handoff report:** `check-objectscript.py` 0 problems; `lint-docs.sh` 0 issues; `%UnitTest_Result` on `ocupilot-ci` holds the latest runs `EgressSettingsWire` 197 (6/6), `ProviderSslNamed` 198 (4/4), `ProviderSslCallTime` 199 (2/2), `AgentWireSecurity` 174 (5/5); `ocupilot-ci` reads S0 (no egress row, no probe configurations, `OcuPilotProvider` Type 0, Enabled 1, `VerifyPeer` 1, `CAFile` `%OSCertificateStore`). Not re-run by the lead: the other classes, the client tiers, the browser spec and the mutations. The lead has read the production-code diff only as far as `Screen/Tool/SslUpdate.cls`; the tests, the client and the remaining hunks are unreviewed, and neither review layer has run.
+
+**To resume.** After the ruling, amend the spec (option 1 changes only wording), set `status: in-review` so the re-dispatch reviews the existing diff instead of re-running the handoff, and re-dispatch the spec path; do not re-implement. Fixed strings 3,375 to 3,388 (bound 3,800 untouched); `Prohibited.Codes()` 35 to 36; initial bundle 1,921.17 kB, largest lazy chunk 83.32 kB (handoff figures).
