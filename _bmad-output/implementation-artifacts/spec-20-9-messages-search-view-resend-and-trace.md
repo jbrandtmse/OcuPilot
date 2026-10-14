@@ -2,7 +2,7 @@
 title: 'Story 20.9: Messages - search, view, resend and trace'
 type: 'feature'
 created: '2026-10-13'
-status: 'done'
+status: 'in-progress'
 baseline_revision: 'f9983f29695b7f0660a4b4fe32a73d74ad22b6e5'
 baseline_commit: '71f1b7e2d9ef32b5725aa8530b3513c2114d037e'
 review_loop_iteration: 0
@@ -404,10 +404,57 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Lines were
     - `InteropFloor` shows the Operator opening the list and the Header tab and refused the Contents tab naming `%Ens_MessageContent:USE`, and the Administrator opening all three;
     - `structural` finds no fresh entry on the three screens in 1280 light, 720 light and 1280 dark.
 
+### Review Findings
+
+Code review 2026-10-14 (re-run from the start; layers `full-opus`).
+
+- [ ] [Review][Patch][High] The Contents text can reach 1,000,001 characters against AD-62 item 15's 1,000,000 [src/OcuPilot/Port/InteropPort.cls:3634] -- rework: in `ReadMessageContents`, right after `If tOutcome '= "text" Quit $$$OK` and before the CR/LF normalisation, add `If $Length(tText) > ..#TESTOUTPUTMAX Set tText = $Extract(tText, 1, ..#TESTOUTPUTMAX) _ ..#TESTCUT`. Leave the shared `StreamText` (:6316) alone: Story 20.27's `AddTestLines` relies on its +1 read. In `InteropMessageContents.TestTheTextIsCutAtItsOverallCapAndTheLinesAtTheRowCap` (:244) the 1,000 lines of 999 characters and a LF fill the cap exactly, so row 1,001 becomes `..#CUT` alone (was `"x" _ ..#CUT`, :258); its `Mutation` note and the `## Verification` line "`StreamText` reads 2,000,000 characters" become "`ReadMessageContents` without its `TESTOUTPUTMAX` cut -> that test (row 1,001 reads `x ... [cut]`)".
+- [x] [Review][Patch] The Contents block ignored the command bar's filter and sort, while the agent's context applied them [ui/src/app/areas/interoperability/interop-message-contents.ts:147]
+- [x] [Review][Patch] `UtcAgo` threw `<ILLEGAL VALUE>` from 23:00 to 24:00 UTC (no forward roll) [src/OcuPilot/Test/InteropMessageRead.cls:60]
+- [x] [Review][Patch] `StoreHeader` stamped `TimeCreated` and `TimeProcessed` by two clock reads (a millisecond flake), and the two were never told apart [src/OcuPilot/Test/InteropMessageRead.cls:98]
+- [x] [Review][Patch] The window legs depended on no other header in HSCUSTOM at 24 h-23 h 50 min, 30-25 min and 15-10 min ago; every bound is now a second a fixture header was made in (`Opening`, `LocalSecond`), in `InteropMessageRead`, `InteropMessageRows` and browser AC1's begin leg [src/OcuPilot/Test/InteropMessageRead.cls:250]
+- [x] [Review][Patch] Rule 2: `InteropMessageContents.Views`/`Now` copied `AuditEvent.RowsCarrying`/`Now`; `RowsCarrying` takes the source, type and description now [src/OcuPilot/Test/AuditEvent.cls:129]
+- [x] [Review][Patch] Rule 2: `OpenBodyHere` repeated `CollectResponseHere`'s open block, and `CLASSNAMEPATTERN` sat beside six inline copies; all share the parameter and the opener [src/OcuPilot/Port/InteropPort.cls:3541]
+- [x] [Review][Patch] Rule 2: `interopSearchEndpoints` copied `parseInteropEndpoints`, which takes the pattern now [ui/tools/screen-mirror.mjs:1111]
+- [x] [Review][Patch] Rule 19: the queue spec's "AC1 in USER" could read the opening read's rows before the Search answered [ui/browser/interop-queue-job-actions.browser-spec.mjs:309]
+- [x] [Review][Patch] A stream id no longer held opened as an empty stream and wrote a ViewContents row (matrix: no body, no audit) [src/OcuPilot/Port/InteropPort.cls:3547]
+- [x] [Review][Patch] The Header tab's sort menu offered Name alone, and a chosen Name sort persisted with no way back to the classic order [src/OcuPilot/Screen/Descriptor/InteropMessageHeaderTab.cls:47]
+- [x] [Review][Patch] The item Messages rows' `Production` and `Item` values were pinned by no test after the `MessageRow` extraction [src/OcuPilot/Test/InteropHostRead.cls:329]
+- [x] [Review][Patch] The focusable `pre` carried `aria-label` with no role [ui/src/app/areas/interoperability/interop-message-contents.ts:58]
+- [x] [Review][Patch] Literal counts outside a roster (Rule 30): the Messages choice option counts and `*-3` [ui/src/app/areas/logs/audit.page.spec.ts:288, src/OcuPilot/Test/InteropTestDescriptor.cls:136]
+- [x] [Review][Patch] `TestThePortServesTheNineEndpointsAndTheirPairs` pinned twelve; renamed `...RuntimeEndpoints...` [src/OcuPilot/Test/InteropHostDescriptor.cls:166]
+- [x] [Review][Patch] Browser AC1's comment claimed dropping `AuditSearch.adopt` reddens it; a fresh context has no earlier search [ui/browser/interop-messages.browser-spec.mjs:231]
+- [x] [Review][Patch] EXPERIENCE.md :856 said a long message "ends with" its cut note (it is drawn above, for the row cap) and left Messages out of the server-search screens [EXPERIENCE.md:856]
+- [x] [Review][Defer] A message cut at the 1,000,000-character cap shows no cut note, so lines after the cut vanish unannounced [src/OcuPilot/Port/InteropPort.cls:3634] -- deferred: DW-2433, escalated owner=burndown (the fix needs a port cut flag through `Screen/Read.cls`, on the Never list)
+- [x] [Review][Defer] Rule 31: the Contents block copies DataTable's state getters and markup [ui/src/app/areas/interoperability/interop-message-contents.ts] -- deferred: DW-2434, routed to 20-30-the-session-trace
+- [x] [Review][Defer] A malformed criterion reads as the generic "request refused" [ui/src/app/shell/data-table.ts:235] -- deferred: occurrence on DW-2188 (the Fault carries no reason)
+- [x] [Review][Defer] Frontmatter `deferred:` items -- DW-2435 (no `[innerHTML]` lint rule, wontfix-accepted), DW-2436 (no Max rows control, wontfix-accepted; the filter half is patched above), DW-2437 (the view audit's failure path, wontfix-theoretical)
+
+Rejected:
+
+- The not-text 409 draws `connectivityRequestRefused` with Retry, each Retry another ViewContents row -- spec-bound (Tasks name that block); each Retry is a view the vendor audits too.
+- A file-stream body names any file IRIS can read -- low; the classic pane opens the body the same way (`EnsPortal.MessageContents`:139), and it needs a principal who can write header rows.
+- `interoperability/messages/<id>` opens an empty audit-event dialog -- low; reached only by a pasted URL or an agent opening the list with an id; the guard belongs to the shared page.
+- `AuditSearch.adopt` resets the audit search after a visit to another server-criteria screen -- low; per-screen search state is more than a direct fix, and the reset replaces a cross-screen leak.
+- A `<PROTECT>` on the body's open reads as no rows -- low, theoretical: `Admit` checks READ on the namespace's globals database.
+- A document that fails to render reads 409 not-text, its vendor error dropped -- low and rare; the fix adds branches.
+- The catch path drops the body object in the install namespace -- maybe-false: nothing shows a close in another namespace failing; low if true.
+- A DST fall-back hour interleaves rows sorted by local text -- low, once a year; the default sort is specified.
+- The whole body is rendered before the cut -- low; a bounded writer is more than a direct fix, and the renderer is Story 20.27's.
+- `ErrorStatus` text resolves in the install namespace -- low; measured, an `<Ens>` status still carries its text in `%SYS`.
+- The list context leaves `Error` out -- spec-bound (Tasks: "the fields less `Error`").
+- `SessionId` sorts as text -- low; equal sessions still group, and the string shape is pinned.
+- A begin's fraction is widened to its whole second -- low, sub-second.
+- `navigation.test.mjs`'s side-bar order and `InteropDescriptor`'s sentence list are literal -- they are the roster pins (Rule 30's exception).
+- `RemoveAll` takes every marker header, not this run's -- low; one test run in flight, by policy.
+- `InteropMessageRead.cls` runs past the 500-line guide -- low.
+- The Auto Run Result's counts and the frontmatter `status` are stale -- the fix edits the spec under review.
+
 ## Spec Change Log
 
 - 2026-10-13, spec gate (runner): the orchestrator ruled Q1 A (Parts B and C are Stories 20.30 and 20.31, chartered in `epics.md` with their criteria verbatim; order 20.9, 20.30, 20.31, then 20.10) and Q2 A (no saved searches, a named limit; DW-2398 with its reopen_if). `epics.md` Story 20.9 is amended under Rule 5. The Rule 20 drafts are written (AD-62 item 15, AD-8, AD-44, AD-5).
 - 2026-10-14, implement intent gap (runner ruling): the registry and `screen-mirror.mjs` refuse criteria on an unparented `interop` read (AD-36 as amended at 20.3), so the Messages list could not register under the Never list. Epic 18's branch changes no code file (its diff against feature is planning files only), so `Screen/Registry.cls` is a shared file, not a contended one. The Never is lifted for `CriteriaProblem` and its twin `criteriaProblem`, through one `InteropPort` parameter, `SEARCHENDPOINTS`; `Test/CriteriaCorpus.cls` gains its cases; `ui/src/app/areas/logs/audit.page.ts`, `audit.store.ts` and `audit.page.spec.ts` (the shared `list (server criteria)` page) are a footprint extension. AD-36 and AD-62 item 15 name the parameter. The Header `Name` and Contents `Line` columns are kind `name`, because a tab's table needs one.
+- 2026-10-14: re-opened for rework iteration 1 (code review re-run left one HIGH, the Contents cap; see Review Findings).
 
 ## Review Triage Log
 
@@ -430,6 +477,13 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Lines were
   - `[low]` `[reject]` The 1,000,000-character cap sets no `truncated` and no cut note, only the inline `TESTCUT` — the Long row asks the note for rows past `maxRows`; a flag for the character cap needs a port-level change to the generic row cap.
   - `[low]` `[reject]` No Story 20.9 test touches the sanitizer clause (AD-60) — no new model-bound path: the Contents rows reach the model through the existing context pipeline, which has its own tests.
   - `[low]` `[reject]` The no-editors-request guard runs on the search screen only — the Header and Contents tabs add no request path of their own, and AC1 states the guard on the search.
+
+### 2026-10-14 -- Code review (re-run)
+
+- verdicts: 41 findings -- high 1, medium 9, low 14, rejected 17 (one maybe-false); the four layers ran blind, and the halted pass's 24 notes reconcile to a finding or a rejected line each
+- the HIGH (the 1,000,001-character Contents text) is left for the rework with its exact fix; every MED is patched but DW-2433 (escalated); LOWs patched, routed (DW-2434) or closed (DW-2435..2437, DW-2188 occurrence)
+- the item-row gap (verification-gap) was half false: `InteropHostRead.TestEachScreenAndToolAnswerTheSameRowsAsThePort` already reddens when `Production` and `Item` go missing; their values were unpinned, and are now
+- footprint extension: `src/OcuPilot/Test/AuditEvent.cls` (Epic 11's helper; `RowsCarrying` gains trailing optional arguments, its 60 callers unchanged)
 
 ## Design Notes
 
@@ -705,7 +759,7 @@ Every header but Other has source `<marker>Src` and target `<marker>Op`.
 - mutation: `.ocu-message-contents` given its own surface as its text color -> the browser structural test (contrast on the Contents tab)
 - mutation: `ListMessages` without its `SourceConfigName = ?` fragment -> `InteropMessageRead.TestEveryCriterionNarrowsAloneAndTogether` and `TestTheWindowIsTheIdRangeBetweenTheBounds`, and the browser AC1 and AC2; without its `TargetConfigName = ?` fragment -> `TestEveryCriterionNarrowsAloneAndTogether` alone
 - mutation: `HEADERSQL` with `%EXTERNAL(Priority)` and `%EXTERNAL(Invocation)` swapped -> `InteropMessageRead.TestTheHeaderReadsTwentyThreePropertiesInOrder` alone (its all-properties leg)
-- mutation: `StoreFullHeader` made 172,700 s ago (before the default window opens) with a header from three hours earlier already stored -> `TestEveryCriterionNarrowsAloneAndTogether` and `TestTheWindowIsTheIdRangeBetweenTheBounds`; with the fixture as written and that header stored, the class is green
+- mutation: (review) `InteropMessageRead.Opening` answers `LocalAgo(86400)`, with headers of another source stored in HSCUSTOM 23 h 55 min, 27 min and 12 min ago -> `TestEveryCriterionNarrowsAloneAndTogether` and `TestTheWindowIsTheIdRangeBetweenTheBounds`; as written, `InteropMessageRead` and `InteropMessageRows` are green with those headers stored
 - mutation: `Set $NAMESPACE = pNamespace` removed from `ContentsText` -> the queue spec's AC4 test (its Contents leg reads the probe message in USER)
 - (QA) test file added: `src/OcuPilot/Test/InteropMessageRows.cls` (unarmed, 3 tests, green on `ocupilot-b-ci` beside `InteropMessageRead`, `InteropMessageContents`, `InteropMessageDescriptor` and `ReadTool` after the reverts below).
 - (QA) test files extended: `ui/browser/interop-messages.browser-spec.mjs` (AC5: an Operator and the Contents tab's gate), `ui/browser/interop-queue-job-actions.browser-spec.mjs` (Messages searched in USER), `ui/src/app/areas/interoperability/interop-message-contents.spec.ts` (an empty line stays a line).
@@ -721,6 +775,11 @@ Every header but Other has source `<marker>Src` and target `<marker>Op`.
 - (QA) mutation: `%Ens_MessageContent:USE` dropped from `InteropMessageContentsTab`'s `privileges` and `ownPrivileges` -> `interop-messages.browser-spec.mjs` AC5 (the Operator's Contents tab reads `aria-disabled` false), alone
 - (QA) mutation: `ListMessages` reads `HSCUSTOM` whatever namespace the request names -> `interop-queue-job-actions.browser-spec.mjs` `AC1 in USER` (the default read of USER lists no row and the row wait times out)
 - (QA) `mutations_demonstrated=11`.
+- (review) Each applied on `ocupilot-b-ci` (the three port mutations together on the throwaway's copy of the source, each red at its own leg alone; the worktree untouched), reverted, reloaded and the classes green again; the client one on the working tree, the file's sha256 equal after.
+- mutation: (review) the Contents block's `text` draws `store.data()` instead of the store's view -> `interop-message-contents.spec.ts` `draws the lines the command bar's filter and sort leave`, alone
+- mutation: (review) `MessageRow` with its production test inverted -> `InteropHostRead.TestEachEndpointAnswersTheProbesRows` (the item's messages leg) and `TestEachScreenAndToolAnswerTheSameRowsAsThePort`
+- mutation: (review) `OpenBodyHere` without its `%ExistsId` test -> `InteropMessageContents.TestAMessageWithNothingToShowReadsAsNoRowsAndRecordsNoView` (the stream leg), alone
+- mutation: (review) `HEADERSQL` with `TimeCreated` and `TimeProcessed` swapped -> `InteropMessageRead.TestTheHeaderReadsTwentyThreePropertiesInOrder`, alone
 
 ## Auto Run Result
 

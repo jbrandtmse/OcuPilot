@@ -3534,14 +3534,16 @@ ClassMethod ReadMessageHeader(pNamespace As %String, pId As %String, Output pRow
     Quit $$$OK
 }
 
-/// <p>The body <var>pClass</var> <var>pBodyId</var> as an object, or <code>""</code> when the class is not a compiled persistent or
-/// stream class of this namespace or holds no such body. The class name is judged by <parameter>CLASSNAMEPATTERN</parameter> before
-/// it is called. Called while the message's namespace is switched.</p>
+/// <p>The object <var>pClass</var> <var>pBodyId</var>, or <code>""</code> when the class is not a compiled persistent or stream class
+/// of this namespace or holds no such id (a stream class would open an id it does not hold as an empty stream). The class name is
+/// judged by <parameter>CLASSNAMEPATTERN</parameter> before it is called. The opener of a message's body (<method>ContentsText</method>)
+/// and of a host test's response (<method>CollectResponseHere</method>). Called while the message's namespace is switched.</p>
 ClassMethod OpenBodyHere(pClass As %String, pBodyId As %String) As %RegisteredObject [ Private ]
 {
     If '$Match(pClass, ..#CLASSNAMEPATTERN) Quit ""
     If '##class(%Dictionary.CompiledClass).%ExistsId(pClass) Quit ""
     If '($ClassMethod(pClass, "%Extends", "%Library.Persistent") || $ClassMethod(pClass, "%Extends", "%Stream.Object")) Quit ""
+    If '$ClassMethod(pClass, "%ExistsId", pBodyId) Quit ""
     Set tObject = ""
     Try {
         Set tObject = $ClassMethod(pClass, "%OpenId", pBodyId)
@@ -5257,7 +5259,7 @@ ClassMethod IsDocumentClassHere(pClass As %String) As %Boolean [ Private ]
 ClassMethod OwnRequestTypesHere(pHostClass As %String, Output pOwn) [ Private ]
 {
     Kill pOwn
-    If '$Match(pHostClass, "^%?[A-Za-z][A-Za-z0-9]*(\.[A-Za-z][A-Za-z0-9]*)*$") Quit
+    If '$Match(pHostClass, ..#CLASSNAMEPATTERN) Quit
     If '##class(%Dictionary.CompiledClass).%ExistsId(pHostClass) Quit
     If '##class(%Dictionary.CompiledMethod).%ExistsId(pHostClass _ "||GetMessageList") Quit
     Set tList = $ClassMethod(pHostClass, "GetMessageList")
@@ -5308,7 +5310,7 @@ ClassMethod RequestClassesHere(pHostClass As %String, Output pClasses) [ Private
 /// namespace is switched.</p>
 ClassMethod IsRequestClassHere(pHostClass As %String, pClass As %String) As %Boolean [ Private ]
 {
-    If '$Match(pClass, "^%?[A-Za-z][A-Za-z0-9]*(\.[A-Za-z][A-Za-z0-9]*)*$") Quit 0
+    If '$Match(pClass, ..#CLASSNAMEPATTERN) Quit 0
     If '##class(%Dictionary.CompiledClass).%ExistsId(pClass) Quit 0
     If $$$comClassKeyGet(pClass, $$$cCLASSabstract) Quit 0
     Do ..OwnRequestTypesHere(pHostClass, .tOwn)
@@ -5337,7 +5339,7 @@ ClassMethod ClassFieldsHere(pClass As %String, Output pFields) [ Private ]
 {
     Kill pFields
     Set pFields = 0
-    If '$Match(pClass, "^%?[A-Za-z][A-Za-z0-9]*(\.[A-Za-z][A-Za-z0-9]*)*$") Quit
+    If '$Match(pClass, ..#CLASSNAMEPATTERN) Quit
     If '##class(%Dictionary.CompiledClass).%ExistsId(pClass) Quit
     If ..IsDocumentClassHere(pClass) {
         Set pFields = 1
@@ -5873,11 +5875,9 @@ ClassMethod CollectResponseHere(pSpec As %String, ByRef pAnswer) [ Private ]
 {
     Set tClass = $Select(pSpec = "": "", 1: $ListGet(pSpec, 1))
     Set tId = $Select(pSpec = "": "", 1: $ListGet(pSpec, 2))
-    If (tClass = "") || '$Match(tClass, "^%?[A-Za-z][A-Za-z0-9]*(\.[A-Za-z][A-Za-z0-9]*)*$") Quit
-    If '##class(%Dictionary.CompiledClass).%ExistsId(tClass) Quit
-    If '$ClassMethod(tClass, "%Extends", "%Library.Persistent") Quit
-    Set tObject = $ClassMethod(tClass, "%OpenId", tId)
-    If '$IsObject(tObject) Quit
+    If tClass = "" Quit
+    Set tObject = ..OpenBodyHere(tClass, tId)
+    If '$IsObject(tObject) || 'tObject.%Extends("%Library.Persistent") Quit
     Set pAnswer("responseClass") = tClass
     If ..IsDocumentClassHere(tClass) {
         Set tText = ""
@@ -6103,7 +6103,7 @@ ClassMethod TransformClassOf(pName As %String) As %String [ Private ]
     Set tExtension = $Length(..#CLASSEXTENSION)
     If (tLength <= tExtension) || ($Extract(pName, tLength - tExtension + 1, tLength) '= ..#CLASSEXTENSION) Quit ""
     Set tClass = $Extract(pName, 1, tLength - tExtension)
-    If '$Match(tClass, "^%?[A-Za-z][A-Za-z0-9]*(\.[A-Za-z][A-Za-z0-9]*)*$") Quit ""
+    If '$Match(tClass, ..#CLASSNAMEPATTERN) Quit ""
     Quit tClass
 }
 
@@ -6114,7 +6114,7 @@ ClassMethod TransformClassOf(pName As %String) As %String [ Private ]
 /// a class the namespace does not hold among it. Called while the production's namespace is switched.</p>
 ClassMethod FormatKindHere(pClass As %String) As %String [ Private ]
 {
-    If '$Match(pClass, "^%?[A-Za-z][A-Za-z0-9]*(\.[A-Za-z][A-Za-z0-9]*)*$") Quit "other"
+    If '$Match(pClass, ..#CLASSNAMEPATTERN) Quit "other"
     If '##class(%Dictionary.CompiledClass).%ExistsId(pClass) Quit "other"
     Set tRecordMap = 0
     For tI = 1:1:$Length(..#RECORDMAPBASES, ",") {

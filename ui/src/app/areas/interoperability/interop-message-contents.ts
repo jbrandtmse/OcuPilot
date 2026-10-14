@@ -3,7 +3,7 @@ import { ChangeDetectionStrategy, Component, DestroyRef, type OnInit, inject, in
 import { isBannerFault } from '../../core/fault';
 import { RefreshService } from '../../core/refresh';
 import { ScopeService } from '../../core/scope';
-import { textOf } from '../../core/screen-read';
+import { applyView, textOf } from '../../core/screen-read';
 import type { ScreenStore } from '../../core/screen-store';
 import type { ScreenDeclaration } from '../../core/screens.generated';
 import { STRINGS, stringFor } from '../../core/strings';
@@ -16,8 +16,9 @@ import { emptyStateView, fieldOf } from '../../core/table-model';
  * It draws the states `DataTable` draws, each block carrying `data-ocu-contents`: skeleton bars in an `aria-busy` region until the
  * first answer (`skeleton`); a refusal the connectivity banner has no copy for, with Retry (`fault`); the screen's empty sentence
  * when the answer holds no row (`empty`); and the rows (`text`), one `pre` that takes focus, holding each row's `Text` as
- * interpolated text -- never markup -- one line to a row, under the cut note when the read truncated (`cut`). It draws no
- * control that edits the text.
+ * interpolated text -- never markup -- one line to a row, under the cut note when the read truncated (`cut`). The lines are the
+ * store's view, as the table's rows are: the command bar's filter and sort apply to them, as they do to what the agent is sent.
+ * It draws no control that edits the text.
  *
  * `ListPage` binds the read, the refresh and the id-change re-read; this component only draws what the store holds.
  *
@@ -54,7 +55,7 @@ import { emptyStateView, fieldOf } from '../../core/table-model';
       @if (cut) {
         <p class="ocu-list-page-note" data-ocu-contents="cut">{{ STRINGS.interopMessageContentsCut }}</p>
       }
-      <pre class="ocu-message-contents" data-ocu-contents="text" tabindex="0" [attr.aria-label]="label">{{ text }}</pre>
+      <pre class="ocu-message-contents" data-ocu-contents="text" tabindex="0" role="region" [attr.aria-label]="label">{{ text }}</pre>
     }
   </div>`,
 })
@@ -142,13 +143,16 @@ export class InteropMessageContents implements OnInit {
     return stringFor(this.screen().labelKey);
   }
 
-  /** The message's text: each row's `Text`, one line to a row. */
+  /** The message's text: each row's `Text`, one line to a row, in the store's view (its filter and sort). */
   protected get text(): string {
     this.generation();
-    return this.store()
-      .data()
-      .map((row) => textOf(fieldOf(row, 'Text')))
-      .join('\n');
+    const store = this.store();
+    const read = this.screen().read;
+    const rows =
+      read === null
+        ? store.data()
+        : applyView(store.data(), read, { filter: store.filter(), sort: store.sort(), direction: store.direction() });
+    return rows.map((row) => textOf(fieldOf(row, 'Text'))).join('\n');
   }
 
   protected onRetry(): void {

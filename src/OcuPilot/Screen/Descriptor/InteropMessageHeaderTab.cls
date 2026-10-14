@@ -5,7 +5,8 @@
 /// <p><b>It is the head of the group</b> <code>interoperability/messages/document</code>, parent-scoped under Messages: its one
 /// criterion, <code>message</code>, is the route id, the header's ID kept exactly (AD-13), and the strip carries it from tab to tab.
 /// A Messages row's ID and a Queue messages row's message id open it. A message no header holds reads as no rows and shows the
-/// screen's sentence. Its pairs are the classic viewer's own (AD-8, AD-44); it does not refresh and offers no action.</p>
+/// screen's sentence. Its rows keep the classic pane's order, which no column shows, so it offers no sort. Its pairs are the classic
+/// viewer's own (AD-8, AD-44); it does not refresh and offers no action.</p>
 Class OcuPilot.Screen.Descriptor.InteropMessageHeaderTab Extends OcuPilot.Screen.Descriptor.Base
 {
 
@@ -43,7 +44,7 @@ XData Declaration
     "source": {"port": "interop", "endpoint": "MessageHeader", "type": "LIST"},
     "fields": ["Message", "Position", "Name", "Value"],
     "filter": ["Name", "Value"],
-    "sort": {"fields": ["Position", "Name"], "default": "Position", "direction": "asc"},
+    "sort": {"fields": ["Position"], "default": "Position", "direction": "asc"},
     "paging": "cap",
     "criteria": {
       "fields": [{"param": "message", "labelKey": "interopColumnId", "kind": "text", "maxLength": 19, "hint": "One message, as interop.messages.read answers its ID."}]

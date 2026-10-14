@@ -282,8 +282,11 @@ describe('the audit database viewer', () => {
       STRINGS.webSessionColumnSession,
       STRINGS.interopMessagesCriterionErrors,
     ]);
-    expect((host.querySelector('#ocu-audit-criterion-status') as HTMLSelectElement).options).toHaveLength(10);
-    expect((host.querySelector('#ocu-audit-criterion-errors') as HTMLSelectElement).options).toHaveLength(3);
+    // Each choice draws its declared options after an empty one.
+    const offered = (param: string) => (MESSAGES.read?.criteria?.fields.find((field) => field.param === param)?.options ?? []).length;
+    expect(offered('status')).toBeGreaterThan(0);
+    expect((host.querySelector('#ocu-audit-criterion-status') as HTMLSelectElement).options).toHaveLength(offered('status') + 1);
+    expect((host.querySelector('#ocu-audit-criterion-errors') as HTMLSelectElement).options).toHaveLength(offered('errors') + 1);
     expect((host.querySelector('#ocu-audit-criterion-source') as HTMLElement).tagName).toBe('INPUT');
     // The opening read's begin is the one the instance applied, shown in the form.
     expect((host.querySelector('#ocu-audit-criterion-beginDateTime') as HTMLInputElement).value).toBe(DEFAULT_BEGIN);

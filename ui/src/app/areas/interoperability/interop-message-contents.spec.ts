@@ -150,6 +150,7 @@ describe('the message Contents block', () => {
     expect(text.classList.contains('ocu-message-contents')).toBe(true);
     expect(text.getAttribute('tabindex')).toBe('0');
     expect(text.getAttribute('aria-label')).toBe(STRINGS.interopMessageContentsLabel);
+    expect(text.getAttribute('role')).toBe('region');
     expect(text.textContent).toBe('<StringRequest>\n  <script>alert(1)</script> <&>\n</StringRequest>');
     expect(text.querySelector('script')).toBeNull();
     expect(text.children.length).toBe(0);
@@ -175,6 +176,19 @@ describe('the message Contents block', () => {
     page.answer(['alpha', '', 'gamma', '']);
     expect(page.block('text')?.textContent).toBe('alpha\n\ngamma\n');
     expect(page.block('empty')).toBeNull();
+  });
+
+  // Mutation (Rule 19): draw `store.data()` in `text` instead of the store's view -> this goes red.
+  it('draws the lines the command bar\'s filter and sort leave, as the table and the agent\'s context do', () => {
+    const page = mount();
+    page.answer(['MSH|header', 'PID|patient', 'PV1|visit', 'PID|second']);
+    page.store.setFilter('PID');
+    page.redraw();
+    expect(page.block('text')?.textContent).toBe('PID|patient\nPID|second');
+    page.store.setFilter('');
+    page.store.setDirection('desc');
+    page.redraw();
+    expect(page.block('text')?.textContent).toBe('PID|second\nPV1|visit\nPID|patient\nMSH|header');
   });
 
   // Mutation (Rule 19): drop the `descriptor` comparison from `boundHere` -> this goes red.

@@ -1,12 +1,13 @@
 /// <p>Pins Story 20.9's message search and header reads (AD-21, AD-29, AD-36, AD-37, AD-62) on synthetic message headers it stores
 /// in the install namespace: each criterion of <code>Messages</code> narrows alone and together, newest first; the window is the
-/// classic viewer's ID bounds (a header made two days earlier is left out of the default window); a cap truncates through the read
+/// classic viewer's ID bounds (a header made two days earlier is left out of a 24-hour window); a cap truncates through the read
 /// route; each malformed criterion is refused by name and an empty begin is refused; a caller's value is bound, never run as SQL;
 /// <code>MessageHeader</code> answers the twenty-three properties in order, with local stamps and the error text; an id no header
 /// holds reads as no rows and a malformed one is refused; and the read route, the read tool and the port answer the same rows.</p>
 /// <p><b>What it needs from the environment:</b> the install namespace running interoperability, and the account running it holding
 /// the pairs the gate asks. It needs no production: the headers are stored directly, found by a marker in their source and target,
-/// and removed with their bodies after each test. It reads and writes no other header.</p>
+/// and removed with their bodies after each test. It writes no other header, and every window bound it asserts on is a second a
+/// fixture header was made in, so a header another process stores in the namespace does not move it.</p>
 Class OcuPilot.Test.InteropMessageRead Extends %UnitTest.TestCase
 {
 
@@ -65,6 +66,10 @@ ClassMethod UtcAgo(pSeconds As %Integer) As %String
         Set tSeconds = tSeconds + 86400
         Set tDays = tDays - 1
     }
+    While tSeconds >= 86400 {
+        Set tSeconds = tSeconds - 86400
+        Set tDays = tDays + 1
+    }
     Quit $ZDateTime(tDays _ "," _ tSeconds, 3, , 3)
 }
 
@@ -91,7 +96,7 @@ ClassMethod StoreHeader(pRun As %String, pBodyClass As %String, pBodyId As %Stri
     Set tHeader.Priority = 6
     Set tHeader.Status = pStatus
     Set tHeader.TimeCreated = ..UtcAgo(pAgo)
-    Set tHeader.TimeProcessed = ..UtcAgo(pAgo)
+    Set tHeader.TimeProcessed = tHeader.TimeCreated
     If pSession '= "" Set tHeader.SessionId = pSession
     If pErrorText '= "" {
         Set tHeader.IsError = 1
@@ -108,8 +113,9 @@ ClassMethod StoreHeader(pRun As %String, pBodyClass As %String, pBodyId As %Stri
 }
 
 /// <p>Store the fixture's other header (<method>CreateFixture</method>) and answer its id (0 when it could not be stored): a Response,
-/// Deferred, ten minutes after the default window opens, with a source and a target of its own and a distinct, non-default value for
-/// every other header property, so a Header read that put a value under another property's name is told from a right one.</p>
+/// Deferred, ten minutes after a 24-hour window opens, with a source and a target of its own, processed a minute after it was made,
+/// and a distinct, non-default value for every property the error header does not pin, so a Header read that put a value under
+/// another property's name is told from a right one.</p>
 ClassMethod StoreFullHeader(pRun As %String) As %Integer
 {
     Set tId = ..StoreHeader(pRun, "", "body-77", 2, 6, 85800, 9001, "", 0, "Other")
@@ -126,15 +132,16 @@ ClassMethod StoreFullHeader(pRun As %String) As %Integer
     Set tHeader.ReturnQueueName = "OcuPilotReturnQueue209"
     Set tHeader.Description = "OcuPilot full header 209"
     Set tHeader.Resent = 3
+    Set tHeader.TimeProcessed = ..UtcAgo(85740)
     If $$$ISERR(tHeader.%Save()) Quit 0
     Quit tId
 }
 
 /// <p>The fixture of Design Notes: the headers <var>pIds</var> (<code>$ListBuild(old, xml, hl7, none, other)</code>), created in the
 /// order old, other, xml, hl7, none so their ids rise with their times. Old: Completed, two days ago. Other: <method>StoreFullHeader</method>'s
-/// header, ten minutes after the default window opens, with a source and a target of its own. It anchors the default window's first ID bound at a header
-/// the fixture made, so a header another test or a production left behind cannot move the bound below Old, and it is the header
-/// every criterion test must leave out. XML: an <code>Ens.StringRequest</code> holding the marker and <code>&lt;&amp;&gt;</code>,
+/// header, ten minutes after a 24-hour window opens, with a source and a target of its own. The second it was made in opens the
+/// tests' window (<method>Opening</method>), so the window's first ID bound is a header the fixture made and no header another
+/// process stored can move it below Old; and it is the header every criterion test must leave out. XML: an <code>Ens.StringRequest</code> holding the marker and <code>&lt;&amp;&gt;</code>,
 /// Completed, 30 minutes ago, its session its own id. HL7: an <code>EnsLib.HL7.Message</code> read from text through a character
 /// stream, with a PID segment of 5,000 characters, Error with an error status, 20 minutes ago, in the XML header's session. None: a
 /// Response with no body and no session, 10 minutes ago.</p>
@@ -180,7 +187,7 @@ ClassMethod RemoveAll()
         For tI = 1:1:+$Get(tFound) {
             Set tLine = tFound(tI)
             Do ##class(Ens.MessageHeader).%DeleteId($List(tLine, 1))
-            If ($List(tLine, 2) '= "") && $Match($List(tLine, 2), "^%?[A-Za-z][A-Za-z0-9]*(\.[A-Za-z][A-Za-z0-9]*)*$") && ##class(%Dictionary.CompiledClass).%ExistsId($List(tLine, 2)) {
+            If ($List(tLine, 2) '= "") && $Match($List(tLine, 2), $Parameter(..#PORT, "CLASSNAMEPATTERN")) && ##class(%Dictionary.CompiledClass).%ExistsId($List(tLine, 2)) {
                 Try {
                     Do $ClassMethod($List(tLine, 2), "%DeleteId", $List(tLine, 3))
                 } Catch {
@@ -199,12 +206,21 @@ ClassMethod LeftBehind() As %Integer
     Quit -1
 }
 
-/// <p>The <code>TimeCreated</code> header <var>pId</var> is stored with, UTC, as the instance keeps it.</p>
-ClassMethod StoredCreated(pId As %String) As %String
+/// <p>The <code>TimeCreated</code> header <var>pId</var> is stored with, UTC, as the instance keeps it; its
+/// <code>TimeProcessed</code> when <var>pProcessed</var> is set.</p>
+ClassMethod StoredCreated(pId As %String, pProcessed As %Boolean = 0) As %String
 {
-    Set tResult = ##class(%SQL.Statement).%ExecDirectNoPriv(, "SELECT TimeCreated FROM Ens.MessageHeader WHERE ID = ?", pId)
+    Set tSql = $Select(pProcessed: "SELECT TimeProcessed FROM Ens.MessageHeader WHERE ID = ?", 1: "SELECT TimeCreated FROM Ens.MessageHeader WHERE ID = ?")
+    Set tResult = ##class(%SQL.Statement).%ExecDirectNoPriv(, tSql, pId)
     If tResult.%Next() Quit tResult.%GetData(1)
     Quit ""
+}
+
+/// <p>The second header <var>pId</var> was made in, as the instance's local clock time <code>YYYY-MM-DD HH:MM:SS</code>, the form
+/// a search's begin and end take.</p>
+ClassMethod LocalSecond(pId As %String) As %String
+{
+    Quit $Extract(##class(Ens.DataType.UTC).LogicalToOdbc(..StoredCreated(pId)), 1, 19)
 }
 
 /// <p>The rows the port's <var>pEndpoint</var> answers for the query <var>pQuery</var>, in the install namespace, or <code>""</code>
@@ -231,23 +247,31 @@ ClassMethod Ids(pRows As %DynamicArray) As %String
     Quit tText
 }
 
-/// <p>The ids a search for this run's headers answers, newest first, with <var>pQuery</var> narrowing it further; the search always
-/// carries the marker as its source unless <var>pQuery</var> names a source or a target of its own.</p>
+/// <p>The begin of this run's window: the second the fixture's other header was made in, ten minutes after a 24-hour window
+/// opens, so the window's first ID bound is a header the fixture made.</p>
+Method Opening() As %String
+{
+    Quit ..LocalSecond($List(..PreparedIds, 5))
+}
+
+/// <p>The ids a search for this run's headers answers, newest first, with <var>pQuery</var> narrowing it further; the search opens on
+/// <method>Opening</method> and carries the marker as its source unless <var>pQuery</var> names a begin, a source or a target of its
+/// own.</p>
 Method Search(ByRef pQuery, Output pHttp As %Integer, Output pFault) As %String
 {
-    If '$Data(pQuery("beginDateTime")) Set pQuery("beginDateTime") = ..LocalAgo(86400)
+    If '$Data(pQuery("beginDateTime")) Set pQuery("beginDateTime") = ..Opening()
     If '$Data(pQuery("source")) && '$Data(pQuery("target")) Set pQuery("source") = ..Marker() _ "Src"
     Quit ..Ids(..Rows("Messages", .pQuery, .pHttp, .pFault))
 }
 
-/// <p>The fixture's ids, <code>xml,hl7,none</code> newest first: the three headers the default window holds.</p>
+/// <p>The fixture's ids, <code>xml,hl7,none</code> newest first: the three headers the window holds besides the other header.</p>
 Method Newest() As %String
 {
     Quit $List(..PreparedIds, 4) _ "," _ $List(..PreparedIds, 3) _ "," _ $List(..PreparedIds, 2)
 }
 
 /// <p>AC1: each criterion narrows the search alone, beside the marker that keeps it to this run's rows, and together; rows come
-/// newest first. The default window holds the three recent headers and not the one made two days ago. The fixture's other header
+/// newest first. The window (<method>Opening</method>) holds the three recent headers and not the one made two days ago. The fixture's other header
 /// sits in the window with a source and a target of its own, so a search by this run's source or target must leave it out.</p>
 /// <p>Mutation (Rule 19): <method>OcuPilot.Port.InteropPort.ListMessages</method> without its <code>Status = ?</code> fragment -- the status
 /// leg goes red; without its <code>IsError = ?</code> fragment -- the errors leg goes red; without its
@@ -258,7 +282,7 @@ Method TestEveryCriterionNarrowsAloneAndTogether()
     Set tHl7 = $List(..PreparedIds, 3)
     Set tNone = $List(..PreparedIds, 4)
     Set tXml = $List(..PreparedIds, 2)
-    Do $$$AssertEquals(..Search(.tQ0, .tHttp), ..Newest(), "the default window and the marker's source give the three recent headers, newest first")
+    Do $$$AssertEquals(..Search(.tQ0, .tHttp), ..Newest(), "the window and the marker's source give the three recent headers, newest first")
     Do $$$AssertEquals(tHttp, 200, "answered 200")
     Kill tQ1
     Set tQ1("status") = "Error"
@@ -300,10 +324,11 @@ Method TestEveryCriterionNarrowsAloneAndTogether()
     Do $$$AssertEquals(..Search(.tQ10, .tHttp) _ "|" _ tHttp, "|200", "a caller's value is bound, never run as SQL")
 }
 
-/// <p>AC1: the window is the first ID at or after the start and the last ID at or before the end. The default window leaves out the
-/// header made two days earlier and a wider one holds it, last; an end at the XML header's own second holds it (the end runs to
-/// the last millisecond of its second); a begin between the HL7 and the last header leaves the last; a window in the future holds
-/// none.</p>
+/// <p>AC1: the window is the first ID at or after the start and the last ID at or before the end. A window opening ten minutes into the
+/// last 24 hours leaves out the header made two days earlier and a wider one holds it, last; an end at the XML header's own second
+/// holds it (the end runs to the last millisecond of its second); a begin at the last header's own second leaves the last; a window
+/// in the future holds none. Every bound but the wide one and the future one is a second a fixture header was made in, so no header
+/// another process stored can move it.</p>
 /// <p>Mutation (Rule 19): <method>OcuPilot.Port.InteropPort.ListMessages</method> without its lower ID bound -- the first leg goes red;
 /// without its <code>.999</code> -- the end-second leg goes red.</p>
 Method TestTheWindowIsTheIdRangeBetweenTheBounds()
@@ -312,26 +337,23 @@ Method TestTheWindowIsTheIdRangeBetweenTheBounds()
     Set tXml = $List(..PreparedIds, 2)
     Set tNone = $List(..PreparedIds, 4)
     Kill tQ
-    Set tQ("beginDateTime") = ..LocalAgo(86400)
-    Do $$$AssertEquals(..Search(.tQ), ..Newest(), "the default window leaves out the header made two days ago")
+    Set tQ("beginDateTime") = ..Opening()
+    Do $$$AssertEquals(..Search(.tQ), ..Newest(), "a window opening ten minutes into the last 24 hours leaves out the header made two days ago")
     Kill tQ
     Set tQ("beginDateTime") = ..LocalAgo(259200)
     Do $$$AssertEquals(..Search(.tQ), ..Newest() _ "," _ tOld, "a three-day window holds it, last")
     Kill tQ
-    Set tQ("beginDateTime") = ..LocalAgo(259200), tQ("endDateTime") = ..LocalAgo(1500)
-    Do $$$AssertEquals(..Search(.tQ), tXml _ "," _ tOld, "an end 25 minutes ago leaves the two headers made before it")
-    Kill tQ
-    Set tXmlSecond = $Extract(##class(Ens.DataType.UTC).LogicalToOdbc(..StoredCreated(tXml)), 1, 19)
+    Set tXmlSecond = ..LocalSecond(tXml)
     Set tQ("beginDateTime") = ..LocalAgo(259200), tQ("endDateTime") = tXmlSecond
     Do $$$AssertEquals(..Search(.tQ), tXml _ "," _ tOld, "an end at the second the XML header was made in holds it, with its fraction, and the one before: " _ tXmlSecond)
     Kill tQ
-    Set tQ("beginDateTime") = ..LocalAgo(900)
-    Do $$$AssertEquals(..Search(.tQ), tNone, "a begin between the HL7 and the last header leaves the last")
+    Set tQ("beginDateTime") = ..LocalSecond(tNone)
+    Do $$$AssertEquals(..Search(.tQ), tNone, "a begin at the last header's own second leaves the last")
     Kill tQ
     Set tQ("beginDateTime") = ..LocalAgo(-3600)
     Do $$$AssertEquals(..Search(.tQ, .tHttp), "", "a window that begins in the future holds none: " _ tHttp)
     Kill tQ
-    Set tQ("beginDateTime") = ..LocalAgo(86400), tQ("endDateTime") = ..LocalAgo(259200)
+    Set tQ("beginDateTime") = ..Opening(), tQ("endDateTime") = ..LocalAgo(259200)
     Do $$$AssertEquals(..Search(.tQ, .tHttp), "", "an end before the begin holds none: " _ tHttp)
 }
 
@@ -405,7 +427,8 @@ Method TestTheStatusAndTypeWordsAreTheVendorsOwn()
 /// status as its text.</p>
 /// <p>Mutation (Rule 19): <method>OcuPilot.Port.InteropPort.ReadMessageHeader</method> reads <code>TimeCreated</code> without
 /// <method>OcuPilot.Port.InteropPort.LocalStamp</method> -- the stamp leg goes red; <code>%EXTERNAL(Priority)</code> and
-/// <code>%EXTERNAL(Invocation)</code> swapped in <parameter>OcuPilot.Port.InteropPort.HEADERSQL</parameter> -- the last leg goes red.</p>
+/// <code>%EXTERNAL(Invocation)</code>, or <code>TimeCreated</code> and <code>TimeProcessed</code>, swapped in
+/// <parameter>OcuPilot.Port.InteropPort.HEADERSQL</parameter> -- the last leg goes red.</p>
 Method TestTheHeaderReadsTwentyThreePropertiesInOrder()
 {
     Set tHl7 = $List(..PreparedIds, 3)
@@ -448,7 +471,9 @@ Method TestTheHeaderReadsTwentyThreePropertiesInOrder()
     Set tLocal = ##class(OcuPilot.Test.InteropHostRead).LocalForm(..StoredCreated(tOther))
     Set tPairs = ""
     For tI = 1:1:tFull.%Size() Set tPairs = tPairs _ tFull.%Get(tI - 1).Name _ "=" _ tFull.%Get(tI - 1).Value _ "|"
-    Set tExpected = "ID=" _ tOther _ "|Type=Response|Priority=Normal|Invocation=Inproc|TimeCreated=" _ tLocal _ "|TimeProcessed=" _ tLocal _ "|Status=Deferred|IsError=0|ErrorStatus=|SourceConfigName=" _ ..Marker() _ "SrcOther|TargetConfigName=" _ ..Marker() _ "OpOther|SourceBusinessType=BusinessService|TargetBusinessType=BusinessOperation|SessionId=9001|SuperSession=OcuPilotSuper209|CorrespondingMessageId=4242|BusinessProcessId=5151|TargetQueueName=OcuPilotTargetQueue209|ReturnQueueName=OcuPilotReturnQueue209|MessageBodyClassName=|MessageBodyId=body-77|Description=OcuPilot full header 209|Resent=3|"
+    Set tProcessed = ##class(OcuPilot.Test.InteropHostRead).LocalForm(..StoredCreated(tOther, 1))
+    Do $$$AssertNotEquals(tProcessed, tLocal, "the other header was processed a minute after it was made")
+    Set tExpected = "ID=" _ tOther _ "|Type=Response|Priority=Normal|Invocation=Inproc|TimeCreated=" _ tLocal _ "|TimeProcessed=" _ tProcessed _ "|Status=Deferred|IsError=0|ErrorStatus=|SourceConfigName=" _ ..Marker() _ "SrcOther|TargetConfigName=" _ ..Marker() _ "OpOther|SourceBusinessType=BusinessService|TargetBusinessType=BusinessOperation|SessionId=9001|SuperSession=OcuPilotSuper209|CorrespondingMessageId=4242|BusinessProcessId=5151|TargetQueueName=OcuPilotTargetQueue209|ReturnQueueName=OcuPilotReturnQueue209|MessageBodyClassName=|MessageBodyId=body-77|Description=OcuPilot full header 209|Resent=3|"
     Do $$$AssertEquals(tPairs, tExpected, "each of the twenty-three properties reads its own value under its own name")
 }
 

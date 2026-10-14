@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-09-2026 07:49
-last_updated: '10-14-2026 19:47'
+last_updated: '10-14-2026 20:30'
 project: OcuPilot
 project_key: NOKEY
 tracking_system: file-system
@@ -353,7 +353,7 @@ development_status:
   20-6-testing-hosts-and-transformations: done
   20-7-the-three-embedded-vendor-editors: done
   20-8-the-schema-viewers-and-the-production-configuration-diagram: done
-  20-9-messages-search-view-resend-and-trace: review
+  20-9-messages-search-view-resend-and-trace: in-progress
   20-10-source-control-hooks: ready-for-dev
   20-11-the-analytics-rider: ready-for-dev
   20-12-the-agent-gains-guided-workflows-and-investigate: backlog

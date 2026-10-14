@@ -114,40 +114,18 @@ ClassMethod Texts(pRows As %DynamicArray) As %String
     Quit tText
 }
 
-/// <p>The audit database's own clock, in the form <code>%SYS.Audit.UTCTimeStamp</code> carries.</p>
+/// <p>The audit database's own clock (<method>OcuPilot.Test.AuditEvent.Now</method>).</p>
 ClassMethod Now() As %String
 {
-    Quit $ZDateTime($ZTimeStamp, 3, , 3)
+    Quit ##class(OcuPilot.Test.AuditEvent).Now()
 }
 
-/// <p>How many <code>%Ensemble/%Message/ViewContents</code> rows since <var>pSince</var> name header <var>pId</var>, read in
-/// <code>%SYS</code> by explicit save and restore; the last such row's description in <var>pDescription</var>. The read carries
-/// <code>%NOINDEX</code> on the three event predicates and is bounded by <code>UTCTimeStamp</code>, so it sees a row younger than the
-/// index pass (<class>OcuPilot.Test.AuditEvent</class>). <code>-1</code> when the read failed.</p>
+/// <p>How many <code>%Ensemble/%Message/ViewContents</code> rows since <var>pSince</var> name header <var>pId</var>, with the last such
+/// row's description in <var>pDescription</var>; <code>-1</code> when the read failed. Read as
+/// <method>OcuPilot.Test.AuditEvent.RowsCarrying</method> reads OcuPilot's own events.</p>
 ClassMethod Views(pSince As %String, pId As %String, Output pDescription As %String) As %Integer
 {
-    Set pDescription = ""
-    Set tRows = -1
-    Set tOrigNS = $NAMESPACE
-    Try {
-        Set $NAMESPACE = "%SYS"
-        Set tResult = ##class(%SQL.Statement).%ExecDirect(, "SELECT EventData, Description FROM %SYS.Audit WHERE UTCTimeStamp >= ? AND %NOINDEX EventSource = ? AND %NOINDEX EventType = ? AND %NOINDEX Event = ?", pSince, "%Ensemble", "%Message", "ViewContents")
-        If tResult.%SQLCODE < 0 {
-            Set $NAMESPACE = tOrigNS
-            Quit
-        }
-        Set tRows = 0
-        While tResult.%Next() {
-            If tResult.%Get("EventData") '[ ("MessageHeaderId = " _ pId _ ",") Continue
-            Set tRows = tRows + 1
-            Set pDescription = tResult.%Get("Description")
-        }
-        Set $NAMESPACE = tOrigNS
-    } Catch ex {
-        Set $NAMESPACE = tOrigNS
-        Set tRows = -1
-    }
-    Quit tRows
+    Quit ##class(OcuPilot.Test.AuditEvent).RowsCarrying(pSince, "ViewContents", "MessageHeaderId = " _ pId _ ",", .tData, "", "%Ensemble", "%Message", .pDescription)
 }
 
 /// <p>AC3: an XML body is its indented XML, one line to a row, its <code>&lt;&amp;&gt;</code> literal; the read leaves one view row
@@ -233,10 +211,11 @@ Method TestABodyThatIsNotTextIsRefusedAfterItsViewIsAudited()
     Do $ClassMethod(..#PLAIN, "%DeleteId", tPlain.%Id())
 }
 
-/// <p>AC3: a header with no body, one whose body no longer opens and one whose body class is gone each read as no rows and record
-/// no view; an unknown header reads as no rows.</p>
+/// <p>AC3: a header with no body, one whose body no longer opens (an object or a stream) and one whose body class is gone each read
+/// as no rows and record no view; an unknown header reads as no rows.</p>
 /// <p>Mutation (Rule 19): <method>OcuPilot.Port.InteropPort.ContentsText</method> audits before it opens the body -- the no-view legs
-/// go red.</p>
+/// go red; <method>OcuPilot.Port.InteropPort.OpenBodyHere</method> without its <code>%ExistsId</code> test -- the stream leg goes red,
+/// alone (a stream class opens an id it does not hold as an empty stream).</p>
 Method TestAMessageWithNothingToShowReadsAsNoRowsAndRecordsNoView()
 {
     Set tSince = ..Now()
@@ -246,8 +225,13 @@ Method TestAMessageWithNothingToShowReadsAsNoRowsAndRecordsNoView()
     Do tText.%Save()
     Set tVanished = ..HeaderFor("Ens.StringRequest", tText.%Id())
     Do ##class(Ens.StringRequest).%DeleteId(tText.%Id())
+    Set tStream = ##class(%Stream.GlobalCharacter).%New()
+    Do tStream.Write("gone soon")
+    Do tStream.%Save()
+    Set tStreamGone = ..HeaderFor("%Stream.GlobalCharacter", tStream.%Id())
+    Do ##class(%Stream.GlobalCharacter).%DeleteId(tStream.%Id())
     Set tNoClass = ..HeaderFor("OcuPilotProbe.Msg209.NoSuchClass", "1")
-    For tEntry = $ListBuild("a header with no body", tNone), $ListBuild("a body that no longer opens", tVanished), $ListBuild("a body class that is gone", tNoClass), $ListBuild("a header no row holds", "9223372036854775") {
+    For tEntry = $ListBuild("a header with no body", tNone), $ListBuild("a body that no longer opens", tVanished), $ListBuild("a stream that no longer opens", tStreamGone), $ListBuild("a body class that is gone", tNoClass), $ListBuild("a header no row holds", "9223372036854775") {
         Set tRows = ..Lines($List(tEntry, 2), .tHttp)
         Do $$$AssertEquals(tHttp _ "|" _ $Select($IsObject(tRows): tRows.%Size(), 1: "none"), "200|0", $List(tEntry, 1) _ " reads as no rows")
         Do $$$AssertEquals(..Views(tSince, $List(tEntry, 2)), 0, $List(tEntry, 1) _ ": and records no view")

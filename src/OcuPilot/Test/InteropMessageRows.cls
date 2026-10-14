@@ -45,11 +45,12 @@ Method OnAfterOneTest() As %Status
     Quit $$$OK
 }
 
-/// <p>The rows the port's <code>Messages</code> answers for <var>pQuery</var>, which gets the last 24 hours and this run's source
-/// unless it names its own; the HTTP status in <var>pHttp</var> and the fault in <var>pFault</var>.</p>
+/// <p>The rows the port's <code>Messages</code> answers for <var>pQuery</var>, which opens on the second the fixture's other header was
+/// made in (ten minutes into the last 24 hours) and takes this run's source unless it names its own; the HTTP status in
+/// <var>pHttp</var> and the fault in <var>pFault</var>.</p>
 Method Search(ByRef pQuery, Output pHttp As %Integer, Output pFault) As %DynamicArray
 {
-    If '$Data(pQuery("beginDateTime")) Set pQuery("beginDateTime") = $ClassMethod(..#FIXTURE, "LocalAgo", 86400)
+    If '$Data(pQuery("beginDateTime")) Set pQuery("beginDateTime") = $ClassMethod(..#FIXTURE, "LocalSecond", $List(..PreparedIds, 5))
     If '$Data(pQuery("source")) Set pQuery("source") = $Parameter(..#FIXTURE, "MARKER") _ ..PreparedRun _ "Src"
     Quit $ClassMethod(..#FIXTURE, "Rows", "Messages", .pQuery, .pHttp, .pFault)
 }

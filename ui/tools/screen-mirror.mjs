@@ -1104,9 +1104,12 @@ export const INTEROP_PORT_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Port', 'I
 
 const INTEROP_ENDPOINTS_PARAM_RE = /^Parameter\s+ENDPOINTS\s*=\s*"([^"]*)"\s*;/m;
 
-/** The endpoints `InteropPort`'s `ENDPOINTS` parameter declares in `text`, or `null` when it is missing. */
-export function parseInteropEndpoints(text) {
-  const match = INTEROP_ENDPOINTS_PARAM_RE.exec(text);
+/**
+ * The endpoints `InteropPort`'s `ENDPOINTS` parameter declares in `text` -- or the list parameter `pattern` matches, such as
+ * `SEARCHENDPOINTS` -- or `null` when it is missing.
+ */
+export function parseInteropEndpoints(text, pattern = INTEROP_ENDPOINTS_PARAM_RE) {
+  const match = pattern.exec(text);
   return match === null ? null : match[1].split(',').filter((name) => name !== '');
 }
 
@@ -1127,8 +1130,7 @@ let interopSearchEndpointsCache;
 /** The endpoints `InteropPort`'s `SEARCHENDPOINTS` parameter declares: the ones whose list takes search criteria of its own (Story 20.9). */
 export function interopSearchEndpoints() {
   if (interopSearchEndpointsCache === undefined) {
-    const match = INTEROP_SEARCH_PARAM_RE.exec(readFileSync(INTEROP_PORT_SOURCE, 'utf8'));
-    interopSearchEndpointsCache = match === null ? [] : match[1].split(',').filter((name) => name !== '');
+    interopSearchEndpointsCache = parseInteropEndpoints(readFileSync(INTEROP_PORT_SOURCE, 'utf8'), INTEROP_SEARCH_PARAM_RE) ?? [];
   }
   return interopSearchEndpointsCache;
 }

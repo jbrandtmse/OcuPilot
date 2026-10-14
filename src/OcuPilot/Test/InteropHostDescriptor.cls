@@ -163,7 +163,7 @@ Method TestTheItemTabsFormOneGroupInOrder()
 /// pins), and its <code>Pairs</code> are the declared sets; an endpoint the port does not serve has none.</p>
 /// <p>Mutation (Rule 19): drop <code>%Ens_Queues:READ</code> from the <code>ItemQueue</code> branch of
 /// <method>OcuPilot.Port.InteropPort.Pairs</method> -- the pair leg goes red.</p>
-Method TestThePortServesTheNineEndpointsAndTheirPairs()
+Method TestThePortServesTheRuntimeEndpointsAndTheirPairs()
 {
     Do $$$AssertEquals($Parameter(..#PORT, "ENDPOINTS"), ..#ENDPOINTS, "the port's endpoint roster")
     Do $$$AssertEquals($ListToString($ClassMethod(..#PORT, "RuntimeEndpoints")), "Monitor,ItemStatus,Queues,QueueItems,ItemQueue,ItemLog,ItemMessages,Jobs,ItemJobs,Messages,MessageHeader,MessageContents", "the runtime endpoints are Story 20.4's nine and Story 20.9's three message reads")

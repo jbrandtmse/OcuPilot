@@ -305,7 +305,14 @@ test('AC1 in USER: Messages searches the probe production\'s namespace and lists
     await page.click('#ocu-audit-criterion-target', { clickCount: 3 });
     await page.keyboard.press('Backspace');
     await page.type('#ocu-audit-criterion-target', OPERATION);
+    // The rows are read only after the search by target has answered, so the opening read's rows cannot stand in for them.
+    const searched = page.waitForResponse(
+      (response) =>
+        response.url().includes('/screens/interop.messages/read') && new URL(response.url()).searchParams.get('target') === OPERATION,
+      { timeout: config.navigationTimeoutMs }
+    );
     await page.click('.ocu-criteria-controls button[type="submit"]');
+    await searched;
     await page.waitForFunction(
       (rowSelector, wanted, target) => {
         const rows = Array.from(document.querySelectorAll(rowSelector)).map((row) => Array.from(row.querySelectorAll('[role="gridcell"]')).map((cell) => cell.textContent.trim()));

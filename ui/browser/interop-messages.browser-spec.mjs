@@ -109,9 +109,9 @@ after(async () => {
   }
 });
 
-/** The instance's local clock time `seconds` before now, as the search form takes it. */
-function localAgo(seconds) {
-  const value = probe('MSGAGO', `##class(${FIXTURE}).LocalAgo(${seconds})`).value;
+/** The second the fixture header `id` was made in, as the instance's local clock time the search form takes. */
+function localSecond(id) {
+  const value = probe('MSGSECOND', `##class(${FIXTURE}).LocalSecond(${id})`).value;
   assert.match(value ?? '', /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/, 'the instance answers a local time');
   return value;
 }
@@ -230,8 +230,7 @@ function contentsBlock(page, name) {
 
 // AC1. Mutation (Rule 19): drop the `Status = ?` fragment from `OcuPilot.Port.InteropPort.ListMessages`, recompile the tree -> the
 // status leg goes red and so does `OcuPilot.Test.InteropMessageRead`'s; drop its `SourceConfigName = ?` fragment -> the fixture's other
-// header stays in the list and the source leg goes red; drop `AuditSearch.adopt` from the audit page, rebuild and
-// redeploy -> the search the previous screen ran reaches this form and the opening leg goes red.
+// header stays in the list and the source leg goes red.
 test('AC1: Messages searches the headers by the fixture\'s source, narrows by status, error flag, session and begin, and reads only the instance', async () => {
   const [, xml, hl7, none] = ids;
   const { context, page } = await signedInAt(browser, config, `/ocupilot/?ns=${NAMESPACE}`, VIEWPORTS.wide, REDUCED_MOTION);
@@ -277,7 +276,7 @@ test('AC1: Messages searches the headers by the fixture\'s source, narrows by st
     await searchFor(page, { status: '' }, [none, hl7, xml]);
     await searchFor(page, { errors: 'yes' }, [hl7]);
     await searchFor(page, { errors: '', session: xml }, [hl7, xml]);
-    await searchFor(page, { session: '', beginDateTime: localAgo(900) }, [none]);
+    await searchFor(page, { session: '', beginDateTime: localSecond(none) }, [none]);
 
     const stray = requests.filter((path) => path.includes('/api/interop-editors/') || path.includes('/ui/interop/'));
     assert.deepEqual(stray, [], 'no request goes to the editors\' API or under /ui/interop/');

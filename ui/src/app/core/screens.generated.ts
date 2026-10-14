@@ -14109,8 +14109,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       ],
       "sort": {
         "fields": [
-          "Position",
-          "Name"
+          "Position"
         ],
         "default": "Position",
         "direction": "asc"
