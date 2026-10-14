@@ -2,7 +2,7 @@
 title: 'Story 20.16: The agent edits rule, DTL and BPL content behind the embedded editors'
 type: 'feature'
 created: '2026-10-13'
-status: 'done'
+status: 'in-progress'
 baseline_revision: 'b67d1b1e8babb954d47bbc25f1458c7699bc0a24'
 baseline_commit: 'b67d1b1e8babb954d47bbc25f1458c7699bc0a24'
 review_loop_iteration: 0
@@ -378,6 +378,10 @@ Code review 2026-10-14 (four layers, `full-opus`; diff `b67d1b1e..5e28ecbf`): 0 
 - [x] [Review][Defer] (med) The epic context's shared-rosters list omits `ToolWrite`'s other-port count, which 20.25, 20.26 and 20.31's interoperability-port writes move [_bmad-output/implementation-artifacts/epic-20-context.md:169] — deferred: DW-2407, routed to 20-25 (the file is regenerated per plan spawn)
 
 Rejected: `low` — the new triage heading (2026-10-13, local) and the red it answers (2026-10-14, UTC) use different date conventions; the two rework `mutation:` rows carry no `(Rework)` tag, though they follow the line that introduces them; the Auto Run Result repeats the `(Rework)` line; the Residual risk forecasts Epic 18 moving the literal (`OCU-1-epic18` still reads 46) — each fix edits a closed section of an `oversized` spec. `low` — the count is an aggregate and cannot tell which non-admin port a save uses; the save tests drive `AtelierPort.SaveSet`, so a port move reddens them (inference).
+
+### CI red on b7e0dec5 (run 38505285690, both attempts) - rework iteration 2
+
+- [ ] [CI] **`Retention.TestADeletedUsersSettingsGoAndTheirTranscriptsStay`, "and the deleted account's token is refused"** (instance shard 7/8, red on attempt 1 and on the unchanged rerun, so it is not DW-2285's flake shape alone). The shard's class order (80 classes; Retention is run 60) is in `/private/tmp/claude-501/-Users-jbrandt-git-OcuPilot/1518373f-040c-4be6-a814-a27bfbff2961/scratchpad/e20r/res-2029/f16/shard7-order.txt`. Reproduced by the runner on a freshly built `ocupilot-b-ci`: the 59 classes before it, in that order, in two batches (`.../f16/batches.txt`), then Retention, red; `AuthOptionsWrite` then `Retention` alone is green. Find which earlier class leaves the state that makes a deleted account's token still served (bisect the 59), say in one cause line whether the defect is in that class's cleanup, in `Retention`'s own premise, or in the product's identity check (`Kernel/Identity`, `Kernel/State/Base.GuardedUserEnabled`), and fix it where it lies: a product defect in the product, a test that leaves state in that test. Pin it with a test that goes red on the old behavior. DW-2285 (the same assertion, a long local sweep) gets the cause in its note at adjudication.
 
 ## Spec Change Log
 

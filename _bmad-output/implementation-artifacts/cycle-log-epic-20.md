@@ -756,3 +756,8 @@
 2026-10-14T03:47:41Z	Epic 20	stage_spawned	stage=epic-context spawn_at=2026-10-14T03:47:41Z model=opus agent_name=20-context-recompile-6 reason=planning_artifact_newer(20.30_gate_spine)
 2026-10-14T03:50:43Z	Epic 20	epic_context_compiled	reason=planning_artifact_newer(20.30_gate) model=opus lines=238
 2026-10-14T03:50:43Z	Story 20.31	stage_spawned	stage=plan spawn_at=2026-10-14T03:50:43Z model=opus agent_name=20-31-plan-1 cycle_iteration=1 inbox=none
+2026-10-14T04:37:39Z	Story 20.16	ci_resolved	story=20.16 run=38505285690 result=failure(attempt1+attempt2_same_test) head=b7e0dec5 resolved_at=next_implement
+2026-10-14T04:37:39Z	Story 20.16	ci_red_classified	run=38505285690 class=story(same_test_red_twice_on_same_head) test=Retention.TestADeletedUsersSettingsGoAndTheirTranscriptsStay reproduced=locally(shard7_order_fresh_throwaway)
+2026-10-14T04:37:39Z	Story 20.16	rework_opened	cycle_iteration=3 iteration=2 trigger=ci items=[CI]Retention_deleted_token_order_dependency scope_baseline=pending
+2026-10-14T04:37:39Z	Story 20.31	story_created	spawn_at=(see_stage_spawned) model=opus agent_name=20-31-plan-1 path=_bmad-output/implementation-artifacts/spec-20-31-message-resend-and-edit-and-resend.md build_status=ready-for-dev(gate_pending) epic_context=reused q1=keep_one_story q2=named_limits
+2026-10-14T04:37:39Z	Story 20.16	stage_spawned	stage=implement spawn_at=2026-10-14T04:37:39Z model=sonnet agent_name=20-16-rework-2 cycle_iteration=3
