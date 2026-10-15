@@ -1,7 +1,9 @@
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 
+import type { Fault } from '../../core/fault';
 import type { Finding, FindingGroupKey } from '../../core/findings';
 import { STRINGS } from '../../core/strings';
+import { FaultBanner } from '../../shell/fault-banner';
 
 /** What a finding's line offers: Fix it, Open, the prohibited set's sentence, or nothing. */
 export type FindingAction = 'fix' | 'open' | 'refused' | 'none';
@@ -48,10 +50,11 @@ export interface FindingGroupView {
 @Component({
   selector: 'app-findings-panel',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [FaultBanner],
   template: `<section class="ocu-home-findings" aria-labelledby="ocu-home-findings-heading">
     <h2 class="ocu-home-block-heading" id="ocu-home-findings-heading">{{ STRINGS.findingsHeading }}</h2>
     @if (faultShown) {
-      <p class="ocu-home-block-empty">{{ STRINGS.connectivityServerFault }}</p>
+      <app-fault-banner [fault]="fault()" (retried)="retried.emit()" />
     }
     <div class="ocu-home-findings-groups">
       @for (group of groupViews; track group.key) {
@@ -101,8 +104,14 @@ export class FindingsPanel {
 
   readonly groups = input.required<readonly FindingGroupView[]>();
 
-  /** Whether the read has never answered and the last one failed. */
-  readonly unanswered = input(false);
+  /**
+   * The fault to draw in place, or `null` for none: a read that has never answered and failed with
+   * something the shell's banner does not already say.
+   */
+  readonly fault = input<Fault | null>(null);
+
+  /** Retry on the in-place banner. */
+  readonly retried = output<void>();
 
   readonly fix = output<FindingRow>();
 
@@ -113,7 +122,7 @@ export class FindingsPanel {
   }
 
   protected get faultShown(): boolean {
-    return this.unanswered();
+    return this.fault() !== null;
   }
 
   /** An ordinary click opens the screen in place; a modified click is left to the browser. */

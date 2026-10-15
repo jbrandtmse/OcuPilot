@@ -5831,13 +5831,6 @@ app-interop-message-contents {
   overflow-wrap: anywhere;
 }
 
-.ocu-about-fault {
-  @include typo.ocu-type('body');
-
-  margin: 0;
-  color: var(--ocu-on-surface-variant);
-}
-
 // DW-3's stale-bundle prompt: a polite strip above the frame, offering Reload and blocking
 // nothing.
 .ocu-stale-bundle {
@@ -5856,12 +5849,12 @@ app-interop-message-contents {
 
 // Story 15.4. Home's System Information block reuses `.ocu-home-block*` wholesale; only the
 // label/value row inside it is new. A row is a label and the word the instance reported, so it
-// takes the remembered row's own 32px height and insets and lays the two out at opposite ends --
-// no new token, and `_tokens.scss` is untouched (Story 15.6 owns it).
+// takes the remembered row's 32px height as a minimum, and its insets, and lays the two out at
+// opposite ends -- no new token, and `_tokens.scss` is untouched (Story 15.6 owns it).
 .ocu-home-system-row {
   justify-content: space-between;
   gap: var(--ocu-space-3);
-  height: var(--ocu-control-height);
+  min-height: var(--ocu-control-height);
 }
 
 .ocu-home-system-label {

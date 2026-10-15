@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, inject, input, signal } from '@angular/core';
 import { NavigationError, Router } from '@angular/router';
 
 import { isStale } from '../core/build-identity';
@@ -18,6 +18,12 @@ import { STRINGS } from '../core/strings';
  * nothing. The comparison runs on every `/instance` settle, which is the read the shell already
  * makes at sign-in and on every connectivity recovery -- so no timer is armed for this.
  *
+ * **The live region is always mounted.** A region inserted together with its text is not reliably
+ * announced, so the `role="status"` node sits outside the strip, empty until the strip is drawn,
+ * and receives the sentence when it appears. The strip itself carries no role. `shown` lets the
+ * shell hold the strip back while a blocking instance notice stands over the frame -- two
+ * statements about the same instance at once -- and the region then stays empty too.
+ *
  * **A screen whose code cannot load is the one other cue.** A tab from before a reinstall asks
  * for page chunks the instance no longer serves, and the failed navigation (a router
  * `NavigationError`) leaves the person on the screen they were on. The notice then re-reads which
@@ -30,20 +36,24 @@ import { STRINGS } from '../core/strings';
 @Component({
   selector: 'app-stale-bundle-notice',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `@if (stale) {
-    <div class="ocu-stale-bundle" role="status">
-      <span class="ocu-stale-bundle-text">{{ STRINGS.staleBundleNotice }}</span>
-      <button type="button" class="ocu-button-secondary" (click)="chooseReload()">
-        {{ STRINGS.actionReload }}
-      </button>
-    </div>
-  }`,
+  template: `<span class="ocu-visually-hidden" role="status">{{ announcement }}</span>
+    @if (drawn) {
+      <div class="ocu-stale-bundle">
+        <span class="ocu-stale-bundle-text">{{ STRINGS.staleBundleNotice }}</span>
+        <button type="button" class="ocu-button-secondary" (click)="chooseReload()">
+          {{ STRINGS.actionReload }}
+        </button>
+      </div>
+    }`,
 })
 export class StaleBundleNotice {
   private readonly instance = inject(InstanceService);
   private readonly router = inject(Router);
 
   protected readonly STRINGS = STRINGS;
+
+  /** Whether the shell lets the strip show; `false` while a blocking instance notice stands. */
+  readonly shown = input<boolean>(true);
 
   /** Mirrors the framework-free instance service into the reactive graph. */
   private readonly serverIdentity = signal(this.instance.buildIdentity());
@@ -62,6 +72,16 @@ export class StaleBundleNotice {
 
   protected get stale(): boolean {
     return isStale(this.serverIdentity());
+  }
+
+  /** Whether the strip is drawn: the bundle is stale and the shell has not held it back. */
+  protected get drawn(): boolean {
+    return this.shown() && this.stale;
+  }
+
+  /** The live region's text: the sentence while the strip is drawn, and nothing otherwise. */
+  protected get announcement(): string {
+    return this.drawn ? STRINGS.staleBundleNotice : '';
   }
 
   /**

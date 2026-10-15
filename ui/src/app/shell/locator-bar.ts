@@ -164,6 +164,7 @@ const UNGATED_SEGMENT = {
             class="ocu-locator-favorite"
             [attr.aria-pressed]="favoritePressed"
             [attr.aria-label]="favoriteLabel"
+            [attr.aria-disabled]="favoriteDisabled"
             (click)="toggleFavorite()"
           >
             <span class="ocu-locator-favorite-glyph" aria-hidden="true">{{ favoriteGlyph }}</span>
@@ -228,6 +229,9 @@ export class LocatorBar {
 
   /** The polite region's text: empty until a toggle has changed the store, then its sentence. */
   private readonly announcement = signal('');
+
+  /** The route of the last favorite write started and not yet settled, or `''` when none is. */
+  private readonly favoritePendingRoute = signal('');
 
   /**
    * The two glyphs the toggle draws, produced in TypeScript so no non-ASCII byte enters a
@@ -417,8 +421,10 @@ export class LocatorBar {
     // change, or this one's own write, settles it.
     const stopPreferences = this.preferences.subscribe(() => this.bump());
     // The resolved help address arrives after the route does, so this bar re-renders when it
-    // lands. `HelpLinks.load` is idempotent per route and asks nothing at all for a screen the
-    // mirror says has no classic page, so a router event costs at most one request per screen.
+    // lands. `HelpLinks.load` is idempotent per route once the instance has answered, and asks
+    // nothing at all for a screen the mirror says has no classic page, so a router event costs at
+    // most one request per screen; a read that got no answer is asked again at the next router
+    // event that finds the screen, which may be the one that leaves it.
     const stopHelp = this.help.subscribe(() => this.bump());
     syncStoreSubscription();
     this.syncHelp();
@@ -450,6 +456,12 @@ export class LocatorBar {
   /** The control's accessible name: what activating it does, not what it currently is. */
   protected get favoriteLabel(): string {
     return this.isPinned() ? STRINGS.favoritesRemove : STRINGS.favoritesAdd;
+  }
+
+  /** `"true"` while a write for this route is in flight, and absent otherwise. */
+  protected get favoriteDisabled(): string | null {
+    const route = this.favoriteRoute();
+    return route !== '' && route === this.favoritePendingRoute() ? 'true' : null;
   }
 
   protected get favoriteGlyph(): string {
@@ -503,10 +515,17 @@ export class LocatorBar {
    * the instance's own answer, so a refusal -- an unknown route, the favorites cap, an instance
    * that did not reply -- leaves the toggle unpressed and confirms nothing. What it does leave is
    * the instance's own sentence, which `favoriteRefusal` announces assertively (DW-1326).
+   *
+   * The write in flight is tracked by its route: a second activation on that route returns before
+   * it reads the store, because the store has not yet answered which side of the toggle it is on.
+   * One route is tracked at a time, so a write started on another screen takes the tracking over.
+   * The control carries `aria-disabled` while its route is tracked, never `disabled`, so focus
+   * stays where it was.
    */
   protected toggleFavorite(): void {
     const route = this.favoriteRoute();
-    if (route === '') return;
+    if (route === '' || this.favoritePendingRoute() === route) return;
+    this.favoritePendingRoute.set(route);
     const pinned = this.preferences.isFavorite(route);
     // Both regions cleared first, so a second toggle has a change to announce rather than
     // re-writing a sentence already standing, which a live region does not read out again.
@@ -515,11 +534,23 @@ export class LocatorBar {
     const pending = pinned
       ? this.preferences.remove(FAVORITE_KIND, route, 'favorite')
       : this.preferences.add(FAVORITE_KIND, route, 'favorite');
-    void pending.then(() => {
-      if (this.preferences.isFavorite(route) === pinned) return;
-      this.announcement.set(pinned ? STRINGS.favoritesRemoved : STRINGS.favoritesAdded);
-      this.changeDetector.markForCheck();
-    });
+    void pending.then(
+      () => {
+        this.settleFavorite(route);
+        if (this.preferences.isFavorite(route) === pinned) return;
+        this.announcement.set(pinned ? STRINGS.favoritesRemoved : STRINGS.favoritesAdded);
+        this.changeDetector.markForCheck();
+      },
+      (error: unknown) => {
+        this.settleFavorite(route);
+        throw error;
+      }
+    );
+  }
+
+  /** Release the toggle once the write for `route` has answered, whichever way it went. */
+  private settleFavorite(route: string): void {
+    if (this.favoritePendingRoute() === route) this.favoritePendingRoute.set('');
   }
 
   /**

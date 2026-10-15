@@ -329,4 +329,92 @@ describe('the connectivity banner', () => {
     expect(router.url).toBe('/');
     expect(shell.shown).toEqual([]);
   });
+
+  describe('in place, over a fault the surface hands it', () => {
+    const inPlace = (kind: FaultKind): Fault => ({
+      kind,
+      status: kind === 'unreachable' ? 0 : 500,
+      code: null,
+      path: '/api/ocupilot/ui/about',
+    });
+
+    function mountInPlace(fault: Fault | null): void {
+      fixture.destroy();
+      fixture = TestBed.createComponent(FaultBanner);
+      fixture.componentRef.setInput('fault', fault);
+      fixture.detectChanges();
+    }
+
+    it('an unreachable fault draws the unreachable sentence with Retry alone, whatever the connectivity service holds', () => {
+      connectivity.publish('server-fault');
+      mountInPlace(inPlace('unreachable'));
+
+      expect(strip()?.getAttribute('role')).toBe('alert');
+      expect(strip()?.querySelector('.ocu-fault-banner-message')?.textContent?.trim()).toBe(
+        STRINGS.connectivityBannerUnreachable
+      );
+      expect(buttons().map((el) => el.textContent?.trim())).toEqual([STRINGS.actionRetry]);
+    });
+
+    it('any other kind draws the generic sentence with Retry and Open messages.log', () => {
+      // Mutation (Rule 19): make `serverFault` read `kind === 'server-fault'` alone -> this goes red
+      // at the `absent` kind, an absent or refused read drawing the unreachable sentence.
+      for (const kind of ['server-fault', 'absent', 'refused', 'rejected', 'not-installed'] as const) {
+        mountInPlace(inPlace(kind));
+        expect(
+          strip()?.querySelector('.ocu-fault-banner-message')?.textContent?.trim(),
+          kind
+        ).toBe(STRINGS.connectivityServerFault);
+        expect(buttons().map((el) => el.textContent?.trim()), kind).toEqual([
+          STRINGS.actionRetry,
+          STRINGS.actionOpenMessagesLog,
+        ]);
+      }
+    });
+
+    it('a null fault draws nothing, even over a banner fault the connectivity service holds', () => {
+      connectivity.publish('unreachable');
+      mountInPlace(null);
+      expect(strip()).toBeNull();
+    });
+
+    it('Retry emits retried and leaves the probe alone', () => {
+      mountInPlace(inPlace('unreachable'));
+      const retried = vi.fn();
+      fixture.componentInstance.retried.subscribe(retried);
+
+      button(STRINGS.actionRetry)?.click();
+
+      expect(retried).toHaveBeenCalledTimes(1);
+      expect(connectivity.retries).toBe(0);
+    });
+
+    it('Open messages.log emits logOpened before it navigates, and emits nothing while it is refused', async () => {
+      navigation.screens = [MESSAGES_LOG];
+      navigation.notify();
+      mountInPlace(inPlace('server-fault'));
+      // Mutation (Rule 19): move `this.logOpened.emit()` below the `navigateByUrl` call in
+      // `FaultBanner.openMessagesLog` -> this goes red, the navigation started before the surface
+      // stepped aside.
+      const order: string[] = [];
+      const navigateByUrl = router.navigateByUrl.bind(router);
+      vi.spyOn(router, 'navigateByUrl').mockImplementation((url, extras) => {
+        order.push('navigate');
+        return navigateByUrl(url, extras);
+      });
+      fixture.componentInstance.logOpened.subscribe(() => order.push('logOpened'));
+
+      button(STRINGS.actionOpenMessagesLog)?.click();
+      await fixture.whenStable();
+
+      expect(order).toEqual(['logOpened', 'navigate']);
+      expect(router.url).toBe('/logs/messages');
+
+      navigation.screens = [];
+      navigation.notify();
+      fixture.detectChanges();
+      button(STRINGS.actionOpenMessagesLog)?.click();
+      expect(order).toEqual(['logOpened', 'navigate']);
+    });
+  });
 });

@@ -5,7 +5,9 @@
  * **Its own caller-own chrome read.** It carries the shell's namespace like every other call, and
  * no timer re-reads it (AD-43): Home loads it when it opens, on a namespace switch and on a covered
  * change event. A read that does not answer leaves the previous answer standing and raises
- * `failed()`; only the newest read settles, and `reset()` drops a departed principal's answer.
+ * `failed()`; only the newest read settles, and `reset()` drops a departed principal's answer. A
+ * read that failed with a connectivity-banner fault is parked with `ConnectivityService` and runs
+ * again when the instance answers.
  *
  * **An unread check is never clean.** A group says "Nothing to report." only when every one of its
  * checks answered `checked`; each other check says "Not checked" with why.
@@ -14,6 +16,8 @@
  */
 
 import type { ApiService, JsonResult } from './api';
+import type { ConnectivityService } from './connectivity';
+import { classifyFailure, isBannerFault, type Fault } from './fault.ts';
 import { STRINGS } from './strings.ts';
 
 /** Absolute from the origin root, through the one API service (AD-20). */
@@ -266,14 +270,22 @@ export function findingLines(answer: FindingsAnswer): readonly FindingGroupLines
 
 export interface FindingsOptions {
   readonly api: ApiService;
+  /**
+   * Where a read that failed with a connectivity-banner fault is parked, so the panel reads again
+   * when the instance answers (DW-135's shape). Optional so a test that is not about the re-read
+   * can leave it out.
+   */
+  readonly connectivity?: ConnectivityService;
 }
 
 export class Findings {
   private readonly api: ApiService;
 
+  private readonly connectivity: ConnectivityService | null;
+
   private dataValue: FindingsAnswer | null = null;
 
-  private failedValue = false;
+  private faultValue: Fault | null = null;
 
   /** Bumped by `reset()`, so an answer for a departed principal never lands (AD-8). */
   private generation = 0;
@@ -285,6 +297,7 @@ export class Findings {
 
   constructor(options: FindingsOptions) {
     this.api = options.api;
+    this.connectivity = options.connectivity ?? null;
   }
 
   /** Whether a read has ever answered. */
@@ -294,7 +307,12 @@ export class Findings {
 
   /** Whether the most recent read did not answer. Cleared by the next one that does. */
   failed(): boolean {
-    return this.failedValue;
+    return this.faultValue !== null;
+  }
+
+  /** How the most recent read failed, or `null` when it did not. Cleared by the next one that answers. */
+  fault(): Fault | null {
+    return this.faultValue;
   }
 
   /** The last answer, or `null` before the first. */
@@ -317,13 +335,24 @@ export class Findings {
     if (generation !== this.generation || request !== this.request) return;
     const answer = result.kind === 'ok' ? findingsOf(result.body) : null;
     if (answer === null) {
-      if (this.failedValue) return;
-      this.failedValue = true;
+      // An ok answer the client cannot read raised no connectivity fault, so it is recorded as a
+      // rejected read: the block then says so itself rather than leaving no alert at all.
+      const previous = this.faultValue;
+      this.faultValue =
+        result.kind === 'ok'
+          ? { kind: 'rejected', status: result.status, code: null, path: FINDINGS_PATH }
+          : classifyFailure(result, FINDINGS_PATH);
+      // A banner fault is the shell's banner's to say, so it is parked and the panel reads again
+      // once the instance answers; any other fault is drawn in place with its own Retry.
+      if (isBannerFault(this.faultValue)) {
+        this.connectivity?.retryWhenReachable(FINDINGS_PATH, () => void this.load());
+      }
+      if (previous !== null && previous.kind === this.faultValue.kind) return;
       this.notify();
       return;
     }
     this.dataValue = answer;
-    this.failedValue = false;
+    this.faultValue = null;
     this.notify();
   }
 
@@ -332,7 +361,7 @@ export class Findings {
     this.generation += 1;
     this.request += 1;
     this.dataValue = null;
-    this.failedValue = false;
+    this.faultValue = null;
     this.notify();
   }
 

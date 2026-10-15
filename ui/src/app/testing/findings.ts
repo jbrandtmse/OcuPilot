@@ -15,6 +15,8 @@ export type StubbedFindings = Findings & {
   setBody(body: unknown): void;
   /** Flip the transport after construction. */
   setUnreachable(unreachable: boolean): void;
+  /** Make every read answer with this failing HTTP status (0 is unreachable), or `null` to answer. */
+  setStatus(status: number | null): void;
 };
 
 /** An answer with every check `checked` and no finding. */
@@ -33,9 +35,11 @@ export function stubFindings(seed: { readonly body?: unknown; readonly unreachab
   const calls: StubbedFindingsCall[] = [];
   let body: unknown = seed.body ?? cleanFindingsBody();
   let unreachable = seed.unreachable === true;
+  let failing: number | null = null;
   const api = {
     requestJson: async (path: string, init: { method?: string } = {}) => {
       calls.push({ path, method: init.method ?? 'GET' });
+      if (failing !== null) return { kind: 'error', status: failing, code: null, reason: null, detail: null };
       if (unreachable) return { kind: 'error', status: 0, code: null, reason: null, detail: null };
       return { kind: 'ok', status: 200, body: JSON.parse(JSON.stringify(body)) };
     },
@@ -47,6 +51,9 @@ export function stubFindings(seed: { readonly body?: unknown; readonly unreachab
     },
     setUnreachable(next: boolean) {
       unreachable = next;
+    },
+    setStatus(next: number | null) {
+      failing = next;
     },
   });
 }

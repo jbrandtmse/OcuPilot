@@ -2,6 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { ConnectivityService } from '../../core/connectivity';
 import { InstanceService } from '../../core/instance';
 import { NavigationService, orderedAreas, screenForRoute, type Verdict } from '../../core/navigation';
 import { ScopeService } from '../../core/scope';
@@ -128,6 +129,11 @@ class StubNavigation {
     return REAL_AREAS;
   }
 
+  /** None built: the in-place fault banner's Open messages.log reads this and gates itself. */
+  builtScreens(): readonly ScreenDeclaration[] {
+    return [];
+  }
+
   screensForArea(areaKey: string): readonly ScreenDeclaration[] {
     return this.screens.get(areaKey) ?? [];
   }
@@ -148,6 +154,19 @@ class StubNavigation {
 
   notify(): void {
     for (const listener of this.listeners) listener();
+  }
+}
+
+/** What the in-place fault banner reads from the shell; Home is not about connectivity. */
+class StubConnectivity {
+  fault(): null {
+    return null;
+  }
+
+  retry(): void {}
+
+  subscribe(): () => void {
+    return () => {};
   }
 }
 
@@ -350,6 +369,7 @@ describe('Home', () => {
           { path: 'security/oauth/server', children: [] },
         ]),
         { provide: NavigationService, useValue: navigation as unknown as NavigationService },
+        { provide: ConnectivityService, useValue: new StubConnectivity() as unknown as ConnectivityService },
         { provide: InstanceService, useValue: instance as unknown as InstanceService },
         { provide: ScopeService, useValue: scope as unknown as ScopeService },
         { provide: Session, useValue: session as unknown as Session },
@@ -1219,19 +1239,71 @@ describe('Home', () => {
     expect(rowValuesOf(systemPanel())[0]).toBe('uptime-value');
   });
 
-  it('Story 15.4: a panel whose read has never answered shows the fault, not seven confident rows', async () => {
+  it('Story 15.4: a panel whose read has never answered adds no alert for a banner fault, and no confident rows', async () => {
     // The state `stubSystemInfo({ unreachable: true })` mounts in -- no answer held and the last
-    // read failed -- arranged on the mounted store, because this spec has one mount point.
+    // read failed -- arranged on the mounted store, because this spec has one mount point. Status
+    // 0 is a banner fault: the shell's banner is the one alert, so the block adds none of its own.
+    //
+    // Mutation (Rule 19): render the in-place banner for a banner fault (return `fault` from
+    // `systemFault` unfiltered) -> this goes red, and the sentence is drawn twice on one page.
     systemInfo.reset();
     systemInfo.setUnreachable(true);
     await systemInfo.load();
     fixture.detectChanges();
 
     const panel = systemPanel();
-    expect(panel.querySelector('.ocu-home-block-empty')?.textContent?.trim()).toBe(
-      STRINGS.connectivityServerFault
-    );
+    expect(panel.querySelector('app-fault-banner')).toBeNull();
+    expect(panel.querySelector('[role="alert"]')).toBeNull();
+    expect(panel.textContent).not.toContain(STRINGS.connectivityServerFault);
+    expect(panel.textContent).not.toContain(STRINGS.connectivityBannerUnreachable);
     expect(panel.querySelectorAll('.ocu-home-system-row')).toHaveLength(0);
+
+    // A 5xx is a banner fault too.
+    systemInfo.setStatus(503);
+    await systemInfo.load();
+    fixture.detectChanges();
+    expect(panel.querySelector('[role="alert"]')).toBeNull();
+  });
+
+  it('Story 15.4: a panel whose read was refused or absent says so in place, and Retry reads again', async () => {
+    systemInfo.reset();
+    systemInfo.setStatus(404);
+    await systemInfo.load();
+    fixture.detectChanges();
+
+    const panel = systemPanel();
+    const alert = panel.querySelector('.ocu-fault-banner[role="alert"]') as HTMLElement;
+    expect(alert).not.toBeNull();
+    expect(alert.textContent).toContain(STRINGS.connectivityServerFault);
+    expect(panel.querySelectorAll('.ocu-home-system-row')).toHaveLength(0);
+    const retry = Array.from(alert.querySelectorAll('button')).find(
+      (button) => button.textContent?.trim() === STRINGS.actionRetry
+    ) as HTMLButtonElement;
+
+    systemInfo.setStatus(null);
+    const before = systemInfo.calls.length;
+    retry.click();
+    await settle();
+    fixture.detectChanges();
+
+    expect(systemInfo.calls.length - before).toBe(1);
+    expect(panel.querySelector('.ocu-fault-banner')).toBeNull();
+    expect(panel.querySelectorAll('.ocu-home-system-row').length).toBeGreaterThan(0);
+  });
+
+  it('Story 15.4: a later failure of another kind replaces the in-place alert with the shell\'s banner alone', async () => {
+    // Mutation (Rule 19): return from `SystemInfo.load` before it assigns a new fault while one is
+    // held -> this goes red, a 404's alert left standing beside the shell's unreachable banner.
+    systemInfo.reset();
+    systemInfo.setStatus(404);
+    await systemInfo.load();
+    fixture.detectChanges();
+    expect(systemPanel().querySelector('.ocu-fault-banner[role="alert"]')).not.toBeNull();
+
+    systemInfo.setStatus(0);
+    await systemInfo.load();
+    fixture.detectChanges();
+    expect(systemPanel().querySelector('[role="alert"]')).toBeNull();
   });
 
   it('Story 15.4: a panel whose read has not answered yet renders no rows at all', async () => {
@@ -1245,7 +1317,9 @@ describe('Home', () => {
 
     const panel = systemPanel();
     expect(panel.querySelectorAll('.ocu-home-system-row')).toHaveLength(0);
-    expect(panel.querySelector('.ocu-home-block-empty')).toBeNull();
+    // Mutation (Rule 19): mount the block's banner on `!systemAnswered` rather than on
+    // `systemFault` -> this goes red, a fault drawn before the read has failed.
+    expect(panel.querySelector('app-fault-banner')).toBeNull();
 
     await systemInfo.load();
     fixture.detectChanges();
@@ -1681,11 +1755,65 @@ describe('Home', () => {
     expect(task.querySelector('.ocu-home-finding-open')?.getAttribute('href')).toContain('tasks/schedule/details/1002');
   });
 
-  it('Story 16.21: a first read that fails shows the panel with the server-fault line and no group claims', async () => {
+  it('Story 16.21: a first read that fails with a banner fault shows the panel with no alert of its own and no group claims', async () => {
     findings.reset();
     findings.setUnreachable(true);
     await remount();
-    expect(findingsPanel()?.textContent).toContain(STRINGS.connectivityServerFault);
+    expect(findingsPanel()).not.toBeNull();
+    expect(findingsPanel()?.querySelector('app-fault-banner')).toBeNull();
+    expect(findingsPanel()?.querySelector('[role="alert"]')).toBeNull();
+    expect(findingsPanel()?.textContent).not.toContain(STRINGS.connectivityServerFault);
+    expect(findingsPanel()?.textContent).not.toContain(STRINGS.connectivityBannerUnreachable);
+    expect(groupTexts()).toEqual([]);
+  });
+
+  it('Story 16.21: a first read answered 404 says so in place, and Retry reads again', async () => {
+    findings.reset();
+    findings.setStatus(404);
+    await remount();
+    const alert = findingsPanel()?.querySelector('.ocu-fault-banner[role="alert"]') as HTMLElement;
+    expect(alert).not.toBeNull();
+    expect(alert.textContent).toContain(STRINGS.connectivityServerFault);
+    expect(groupTexts()).toEqual([]);
+
+    findings.setStatus(null);
+    const before = findings.calls.length;
+    (
+      Array.from(alert.querySelectorAll('button')).find(
+        (button) => button.textContent?.trim() === STRINGS.actionRetry
+      ) as HTMLButtonElement
+    ).click();
+    await settle();
+    fixture.detectChanges();
+
+    expect(findings.calls.length - before).toBe(1);
+    expect(findingsPanel()?.querySelector('.ocu-fault-banner')).toBeNull();
+    expect(groupTexts().length).toBeGreaterThan(0);
+  });
+
+  it('Story 16.21: a later failure of another kind replaces the in-place alert with the shell\'s banner alone', async () => {
+    // Mutation (Rule 19): return from `Findings.load` before it assigns a new fault while one is
+    // held -> this goes red, a 404's alert left standing beside the shell's unreachable banner.
+    findings.reset();
+    findings.setStatus(404);
+    await remount();
+    expect(findingsPanel()?.querySelector('.ocu-fault-banner[role="alert"]')).not.toBeNull();
+
+    findings.setStatus(0);
+    await findings.load();
+    fixture.detectChanges();
+    expect(findingsPanel()?.querySelector('[role="alert"]')).toBeNull();
+  });
+
+  it('Story 16.21: an answer the client cannot read is said in place, never an empty panel', async () => {
+    // Mutation (Rule 19): record an unreadable ok answer as no fault (drop the `rejected` arm in
+    // `Findings.load`) -> this goes red, a panel with no groups and no alert at all.
+    findings.reset();
+    findings.setBody({ checks: {} });
+    await remount();
+    const alert = findingsPanel()?.querySelector('.ocu-fault-banner[role="alert"]') as HTMLElement;
+    expect(alert).not.toBeNull();
+    expect(alert.textContent).toContain(STRINGS.connectivityServerFault);
     expect(groupTexts()).toEqual([]);
   });
 

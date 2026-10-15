@@ -152,6 +152,17 @@ export class Dialog {
   }
 
   /**
+   * Put focus on the dismissing action when it is no longer inside the surface. A control that held
+   * focus and left the document -- a Retry whose alert the answer replaced -- drops focus to the
+   * body, where the trap's keydown handler never fires again.
+   */
+  keepFocusInside(): void {
+    const active = document.activeElement;
+    if (active instanceof HTMLElement && this.surface().nativeElement.contains(active)) return;
+    this.closeButton().nativeElement.focus();
+  }
+
+  /**
    * The focus trap. Tab from the last focusable element wraps to the first and Shift+Tab from the
    * first wraps to the last, so focus never leaves the surface while it stands.
    *

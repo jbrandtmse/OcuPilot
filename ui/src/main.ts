@@ -227,10 +227,10 @@ const helpLinks = new HelpLinks({ api });
 // scoped like every other call: its production member is per namespace, so it rides the shell's
 // own `?ns=` rather than naming one of its own (AD-44). It runs no timer: on Home only the
 // performance row refreshes.
-const systemInfo = new SystemInfo({ api });
+const systemInfo = new SystemInfo({ api, connectivity });
 
 // Home's Findings panel (Story 16.21) and its Fix it hand-off, whose gate is the explain gate.
-const findings = new Findings({ api });
+const findings = new Findings({ api, connectivity });
 const fixFinding = new FixFinding({ explainEntry });
 
 // The Guardrails page's answer (Story 16.22), the caller's own; the page loads it when it opens.

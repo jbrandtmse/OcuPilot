@@ -4,6 +4,8 @@ import {
   DestroyRef,
   computed,
   inject,
+  input,
+  output,
   signal,
 } from '@angular/core';
 import { Router } from '@angular/router';
@@ -40,10 +42,11 @@ export const FAULT_CLEAR_HOLD_MS = 1500;
  * the sign-in card, where a submit met an unreachable instance, and the `checking` limbo, where
  * the identity read failed. A banner inside either gate would be absent in both.
  *
- * **Two of the six fault kinds render here, and the other four deliberately do not.** A 403 is
- * an inline refusal beside working data, an install in flight is the signing-in presentation,
- * a 404 has no Epic 1 surface, and a 401 is the sign-in card -- EXPERIENCE.md publishes no
- * banner sentence for any of them, and inventing one is what DW-126 is about.
+ * **Following the connectivity service, two of the six fault kinds render here, and the other four
+ * deliberately do not.** A 403 is an inline refusal beside working data, an install in flight is
+ * the signing-in presentation, a 404 has no Epic 1 surface, and a 401 is the sign-in card --
+ * EXPERIENCE.md publishes no banner sentence for any of them, and inventing one is what DW-126 is
+ * about.
  *
  * **Open messages.log is gated in place while nothing serves it.** The control is part of the
  * published server-fault copy, so it renders; the screen it opens is Epic 6's, so until a built
@@ -56,6 +59,14 @@ export const FAULT_CLEAR_HOLD_MS = 1500;
  * appears and removed once it has stayed clear for `FAULT_CLEAR_HOLD_MS`, so the alert fires on
  * the transition rather than re-announcing on every change-detection pass. Inside the hold the strip
  * keeps showing the fault it last showed.
+ *
+ * **In place, for a surface the shell's banner cannot speak for.** Given a `fault`, the banner
+ * renders that one fault where it is mounted instead of following the connectivity service: the
+ * About dialog is `aria-modal`, so the strip above the page is outside what its user can reach.
+ * `unreachable` draws the unreachable sentence with Retry; any other kind draws the generic
+ * sentence with Retry and Open messages.log. Retry emits `retried` and leaves the re-read to the
+ * surface; Open messages.log emits `logOpened` before it navigates, so a surface that sits over the
+ * page can step aside first. A `null` fault in this mode draws nothing.
  *
  * Every control-flow condition is a paren-free member reference, for the reason `sign-in.ts`
  * records: `ui/tools/client-lint.mjs`'s blanker matches `@if` plus one parenthesised group.
@@ -92,6 +103,18 @@ export class FaultBanner {
 
   protected readonly STRINGS = STRINGS;
 
+  /**
+   * The one fault to render in place, or `null` for an in-place banner with nothing to say. Left
+   * unset, the banner follows the connectivity service.
+   */
+  readonly fault = input<Fault | null | undefined>(undefined);
+
+  /** Emitted by Retry in place; the surface re-reads whatever failed. */
+  readonly retried = output<void>();
+
+  /** Emitted by Open messages.log in place, before the navigation. */
+  readonly logOpened = output<void>();
+
   /** Mirrors the framework-free connectivity service into the reactive graph (AD-19). */
   private readonly generation = signal(0);
 
@@ -103,7 +126,10 @@ export class FaultBanner {
 
   private holdTimer: ReturnType<typeof setTimeout> | null = null;
 
-  private readonly fault = computed(() => this.shown());
+  private readonly current = computed(() => {
+    const given = this.fault();
+    return given === undefined ? this.shown() : given;
+  });
 
   /**
    * The screen that shows `messages.log`, when one is built and this user may open it.
@@ -142,7 +168,7 @@ export class FaultBanner {
   }
 
   protected get visible(): boolean {
-    return this.fault() !== null;
+    return this.current() !== null;
   }
 
   /**
@@ -155,11 +181,19 @@ export class FaultBanner {
    * kind from the copy.
    */
   protected get kind(): string {
-    return this.fault()?.kind ?? '';
+    return this.current()?.kind ?? '';
   }
 
+  /**
+   * Whether the generic sentence and Open messages.log are drawn. The connectivity service raises
+   * only `unreachable` and `server-fault`; an in-place fault of any other kind reads as the generic
+   * sentence (EXPERIENCE.md "Generic internal"). A 403 has a row of its own ("Request refused"),
+   * which this banner does not draw: the reads it is mounted for in place (About, System
+   * Information, Findings) are caller-own and ungated beyond the router.
+   */
   protected get serverFault(): boolean {
-    return this.fault()?.kind === 'server-fault';
+    const kind = this.current()?.kind;
+    return kind !== undefined && kind !== 'unreachable';
   }
 
   protected get message(): string {
@@ -175,9 +209,14 @@ export class FaultBanner {
   /**
    * Probe now rather than waiting out the backoff. Every reader whose read failed is handed its
    * one re-read by the same response that clears this banner, so Retry and "the probe finally
-   * answered" are one recovery rather than two that could disagree.
+   * answered" are one recovery rather than two that could disagree. In place, it emits `retried`
+   * instead, and the surface that mounted it reads again.
    */
   protected retry(): void {
+    if (this.fault() !== undefined) {
+      this.retried.emit();
+      return;
+    }
     this.connectivity.retry();
   }
 
@@ -194,6 +233,7 @@ export class FaultBanner {
   protected openMessagesLog(): void {
     const screen = this.logScreen();
     if (screen === null) return;
+    this.logOpened.emit();
     this.shell.showArea(screen.area);
     void this.router.navigateByUrl(withQuery(screen.route, this.router.url));
   }

@@ -15,6 +15,8 @@ export type StubbedAbout = About & {
   setFields(fields: Partial<Record<AboutField, string>>): void;
   /** Flip the transport after construction, so one store can answer and then stop answering. */
   setUnreachable(unreachable: boolean): void;
+  /** Make every read answer with this failing HTTP status (0 is unreachable), or `null` to answer. */
+  setStatus(status: number | null): void;
 };
 
 export type StubbedHelpLinks = HelpLinks & { readonly calls: readonly StubbedAboutCall[] };
@@ -42,9 +44,13 @@ export function stubAbout(seed: StubbedAboutSeed = {}): StubbedAbout {
   for (const link of ABOUT_LINKS) links[link] = seed.links?.[link] ?? `https://ocupilot.invalid/${link}`;
 
   let unreachable = seed.unreachable === true;
+  let failing: number | null = null;
   const api = {
     requestJson: async (path: string, init: { method?: string } = {}) => {
       calls.push({ path, method: init.method ?? 'GET' });
+      if (failing !== null) {
+        return { kind: 'error', status: failing, code: null, reason: null, detail: null };
+      }
       if (unreachable) {
         return { kind: 'error', status: 0, code: null, reason: null, detail: null };
       }
@@ -62,6 +68,9 @@ export function stubAbout(seed: StubbedAboutSeed = {}): StubbedAbout {
     },
     setUnreachable(next: boolean) {
       unreachable = next;
+    },
+    setStatus(next: number | null) {
+      failing = next;
     },
   });
 }

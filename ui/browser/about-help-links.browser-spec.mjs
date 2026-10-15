@@ -124,8 +124,11 @@ async function signedInAt(url, prepare = null) {
  * tab from before a reinstall does. The page gets the instance's own answer for that name, which the
  * static handler gives as the shell document (the browser refuses it as a module); each answer's
  * status and content type are recorded in `control.chunkAnswers`.
+ *
+ * `overrides` replaces further members of the answer, which is how a leg makes the same instance
+ * report an admin API version the shell refuses.
  */
-function rewriteBuildIdentity(identity, control = null) {
+function rewriteBuildIdentity(identity, control = null, overrides = {}) {
   return async (page) => {
     await page.setRequestInterception(true);
     page.on('request', (request) => {
@@ -151,6 +154,7 @@ function rewriteBuildIdentity(identity, control = null) {
         });
         const body = await response.json();
         body.buildIdentity = control === null || control.armed === true ? identity : await documentBundle(page);
+        Object.assign(body, overrides);
         await request.respond({
           status: response.status,
           contentType: 'application/json',
@@ -350,6 +354,134 @@ test('AC3 and AC5: Home\u2019s Links block names the three destinations, and not
   }
 });
 
+/**
+ * Make `GET /ui/about` fail for as long as `control.mode` says so: `'abort'` is a transport
+ * failure (the browser's status 0), `'fault'` an instance that answers 500 with its envelope, and
+ * `null` lets the read through. Every other request goes on untouched.
+ */
+function interceptAbout(control) {
+  return async (page) => {
+    await page.setRequestInterception(true);
+    page.on('request', (request) => {
+      if (!request.url().includes(ABOUT_PATH) || control.mode === null) {
+        void request.continue();
+        return;
+      }
+      if (control.mode === 'abort') {
+        void request.abort('failed');
+        return;
+      }
+      void request.respond({
+        status: 500,
+        contentType: 'application/json',
+        body: JSON.stringify({ error: 'server_error', reason: 'Internal error', code: 'INTERNAL' }),
+      });
+    });
+  };
+}
+
+/** Open About from the account menu and wait for the dialog itself. */
+async function openAbout(page) {
+  await page.click('#ocu-account-trigger');
+  await page.waitForSelector('[role="menuitem"]', { visible: true, timeout: config.navigationTimeoutMs });
+  await page.evaluate((label) => {
+    const item = [...document.querySelectorAll('[role="menuitem"]')].find(
+      (candidate) => candidate.textContent.trim() === label
+    );
+    item.id = 'ocu-probe-about';
+  }, STRINGS.aboutTitle);
+  await page.click('#ocu-probe-about');
+  await page.waitForSelector('[role="dialog"]', { timeout: config.navigationTimeoutMs });
+}
+
+/** What the dialog's in-place banner shows: its alerts, their sentences and the actions they carry. */
+function readDialogFault(page) {
+  return page.evaluate(() => {
+    const dialog = document.querySelector('[role="dialog"]');
+    return {
+      alerts: Array.from(dialog.querySelectorAll('[role="alert"]')).map((alert) => ({
+        message: alert.querySelector('.ocu-fault-banner-message')?.textContent.trim() ?? '',
+        actions: Array.from(alert.querySelectorAll('button')).map((button) => button.textContent.trim()),
+      })),
+      rows: dialog.querySelectorAll('.ocu-about-term').length,
+    };
+  });
+}
+
+// Mutation (Rule 19): make `FaultBanner.message` draw the generic sentence whatever the kind,
+// rebuild and redeploy -> the first assertion below goes red naming the other sentence.
+test('Integration AC: an About read that cannot reach the instance shows the unreachable alert inside the dialog, and Retry shows the rows', async () => {
+  let session = null;
+  try {
+    const control = { mode: 'abort' };
+    session = await signedInAt(HOME_URL, interceptAbout(control));
+    const { page } = session;
+    await openAbout(page);
+    // The dialog's read is the answered signal: it renders the alert once the store has failed.
+    await page.waitForSelector('[role="dialog"] .ocu-fault-banner', { timeout: config.navigationTimeoutMs });
+
+    // One alert inside the dialog, which is aria-modal: the shell's banner above the page is
+    // outside what a person in the dialog can reach, so the dialog says it for itself.
+    const failed = await readDialogFault(page);
+    assert.deepEqual(
+      failed,
+      { alerts: [{ message: STRINGS.connectivityBannerUnreachable, actions: [STRINGS.actionRetry] }], rows: 0 },
+      `the dialog's alert reads the unreachable sentence with Retry alone: ${JSON.stringify(failed)}`
+    );
+
+    // The instance answers again; Retry reads again and the rows replace the alert.
+    control.mode = null;
+    await page.evaluate((label) => {
+      const dialog = document.querySelector('[role="dialog"]');
+      Array.from(dialog.querySelectorAll('.ocu-fault-banner button'))
+        .find((button) => button.textContent.trim() === label)
+        .click();
+    }, STRINGS.actionRetry);
+    await page.waitForSelector('[role="dialog"] .ocu-about-list', { timeout: config.navigationTimeoutMs });
+    const answered = await readDialogFault(page);
+    assert.deepEqual(answered.alerts, [], 'the alert is gone once the read answers');
+    assert.equal(answered.rows, 13, 'and the thirteen labelled members are listed');
+  } finally {
+    if (session !== null) await session.context.close();
+  }
+});
+
+test('Integration AC: an About read the instance answers with a fault shows the generic alert, and Open messages.log closes the dialog first', async () => {
+  let session = null;
+  try {
+    const control = { mode: 'fault' };
+    session = await signedInAt(HOME_URL, interceptAbout(control));
+    const { page } = session;
+    await openAbout(page);
+    await page.waitForSelector('[role="dialog"] .ocu-fault-banner', { timeout: config.navigationTimeoutMs });
+
+    const failed = await readDialogFault(page);
+    assert.deepEqual(
+      failed,
+      {
+        alerts: [
+          { message: STRINGS.connectivityServerFault, actions: [STRINGS.actionRetry, STRINGS.actionOpenMessagesLog] },
+        ],
+        rows: 0,
+      },
+      `the dialog's alert reads the generic sentence with both actions: ${JSON.stringify(failed)}`
+    );
+
+    await page.evaluate((label) => {
+      const dialog = document.querySelector('[role="dialog"]');
+      Array.from(dialog.querySelectorAll('.ocu-fault-banner button'))
+        .find((button) => button.textContent.trim() === label)
+        .click();
+    }, STRINGS.actionOpenMessagesLog);
+    await page.waitForFunction(
+      () => document.querySelector('[role="dialog"]') === null && window.location.pathname.endsWith('/logs/messages'),
+      { timeout: config.navigationTimeoutMs }
+    );
+  } finally {
+    if (session !== null) await session.context.close();
+  }
+});
+
 test('Integration AC (DW-3): the shipped bundle matches the stamp the installer recorded, so no prompt stands', async () => {
   let session = null;
   try {
@@ -378,14 +510,20 @@ test('Integration AC (DW-3): a buildIdentity the bundle does not carry raises th
     await page.waitForSelector('.ocu-stale-bundle', { timeout: config.navigationTimeoutMs });
 
     const notice = await page.evaluate(() => {
-      const region = document.querySelector('.ocu-stale-bundle');
+      const strip = document.querySelector('.ocu-stale-bundle');
+      // The live region is its own node, mounted before the strip and filled when it is drawn.
+      const region = document.querySelector('app-stale-bundle-notice [role="status"]');
       return {
-        role: region.getAttribute('role'),
-        text: region.querySelector('.ocu-stale-bundle-text').textContent.trim(),
-        action: region.querySelector('button').textContent.trim(),
+        stripRole: strip.getAttribute('role'),
+        regionRole: region?.getAttribute('role') ?? null,
+        regionText: region?.textContent.trim() ?? null,
+        text: strip.querySelector('.ocu-stale-bundle-text').textContent.trim(),
+        action: strip.querySelector('button').textContent.trim(),
       };
     });
-    assert.equal(notice.role, 'status', 'polite, never an alert');
+    assert.equal(notice.regionRole, 'status', 'polite, never an alert');
+    assert.equal(notice.regionText, STRINGS.staleBundleNotice, 'the region holds the sentence while the strip is drawn');
+    assert.equal(notice.stripRole, null, 'and the visible strip carries no role of its own');
     assert.equal(notice.text, STRINGS.staleBundleNotice);
     assert.equal(notice.action, STRINGS.actionReload);
 
@@ -417,6 +555,44 @@ test('Integration AC (DW-3): a buildIdentity the bundle does not carry raises th
     assert.equal(survived, false, 'Reload fetched the document again, so the marker is gone');
   } finally {
     if (session !== null) await session.context.close();
+  }
+});
+
+// Mutation (Rule 19): drop the `[shown]="staleNoticeShown"` binding from `app.ts`, rebuild and
+// redeploy -> the strip stands over the instance notice and the first assertion below goes red.
+test('Integration AC (DW-1371): a stale bundle under an instance notice that blocks the frame shows the notice alone, with its status region standing empty', async () => {
+  await resetRememberedState();
+  const context = await browser.createBrowserContext();
+  const page = await context.newPage();
+  page.setDefaultNavigationTimeout(config.navigationTimeoutMs);
+  try {
+    // A stale identity and an admin API version the shell refuses, from the same instance answer.
+    await rewriteBuildIdentity('main-NOTTHISONE.js', null, { adminApiVersion: 1 })(page);
+    await page.goto(`${config.origin}${HOME_URL}`, { waitUntil: 'networkidle2' });
+    await page.waitForSelector('#ocu-signin-user', { visible: true, timeout: config.navigationTimeoutMs });
+    await page.type('#ocu-signin-user', config.username);
+    await page.type('#ocu-signin-password', config.password);
+    await page.click('.ocu-signin-card button[type="submit"]');
+    // The notice replaces the frame, and the identity it reports is the answered signal: the stale
+    // comparison runs on the same settle.
+    await page.waitForSelector('app-instance-notice .ocu-empty-state-notice', { timeout: config.navigationTimeoutMs });
+    await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+
+    const seen = await page.evaluate(() => {
+      const region = document.querySelector('app-stale-bundle-notice [role="status"]');
+      return {
+        notice: document.querySelector('app-instance-notice .ocu-empty-state-notice').textContent.trim(),
+        strip: document.querySelector('.ocu-stale-bundle') !== null,
+        regionText: region?.textContent.trim() ?? null,
+        frame: document.querySelector('app-rail .ocu-rail') !== null,
+      };
+    });
+    assert.equal(seen.notice, STRINGS.authAdminApiVersionMismatch.replace('<n>', '1'), 'the instance notice is the one statement on screen');
+    assert.equal(seen.frame, false, 'and it stands in place of the frame');
+    assert.equal(seen.strip, false, 'so the stale-bundle strip waits behind it');
+    assert.equal(seen.regionText, '', 'and the status region stays mounted and empty');
+  } finally {
+    await context.close();
   }
 });
 

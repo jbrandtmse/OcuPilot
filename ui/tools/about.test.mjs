@@ -12,6 +12,8 @@
 // - make `helpHrefFor` ignore `available` -> the "an unavailable answer resolves to no address"
 //   row goes red, and a screen whose classic page publishes no address would get a control whose
 //   href is empty.
+// - drop `this.asked.delete(route)` from `HelpLinks.load` -> the "an answer that never came is asked
+//   for again on the next visit" row goes red, and one failed read hides Help for the session.
 // - make `shortcutScreens` return `SHORTCUT_ROUTES.map(screenForRoute)` without dropping the
 //   nulls -> the "a route no built screen declares is dropped" row goes red. Dropping the
 //   `!screen.built` half alone would NOT redden it: every screen the shipped mirror declares is
@@ -147,6 +149,25 @@ test('a failed read with nothing held is what the dialog renders its error state
   assert.equal(notified, 1, 'a second failure re-announces nothing');
 });
 
+test('a failed read is classified, and a change of fault kind notifies where the same kind does not', async () => {
+  // Mutation (Rule 19): return from `About.load` whenever a fault is held (`previous !== null`) ->
+  // this goes red, the dialog left on the unreachable sentence while the instance answers 500.
+  const fault = { kind: 'error', status: 500, code: 'INTERNAL', reason: 'no', detail: null };
+  const api = stubApi([transportError(), transportError(), fault]);
+  const store = new About({ api });
+  let notified = 0;
+  store.subscribe(() => (notified += 1));
+
+  await store.load();
+  assert.equal(store.fault()?.kind, 'unreachable');
+  await store.load();
+  assert.equal(notified, 1, 'the same kind again says nothing new');
+
+  await store.load();
+  assert.equal(store.fault()?.kind, 'server-fault', 'the next failure is classified afresh');
+  assert.equal(notified, 2, 'and the dialog is told, so its alert can change sentence');
+});
+
 test('a late answer does not overwrite a newer one', async () => {
   const api = deferredApi();
   const store = new About({ api });
@@ -211,6 +232,54 @@ test('helpHrefFor answers the resolved address, and nothing for an unavailable o
 
   const refused = stubApi([{ kind: 'error', status: 422, code: 'HELP.ROUTE', reason: 'no', detail: null }]);
   assert.equal(await helpHrefFor(refused, 'no-such-area/no-such-screen'), '');
+});
+
+test('helpHrefFor answers null where the instance could not say, and the empty string where it did', async () => {
+  const unreachable = stubApi([transportError()]);
+  assert.equal(await helpHrefFor(unreachable, 'permissions/users'), null, 'status 0 is no answer');
+
+  const fault = stubApi([{ kind: 'error', status: 500, code: 'INTERNAL', reason: 'no', detail: null }]);
+  assert.equal(await helpHrefFor(fault, 'permissions/users'), null, 'a server fault is no answer');
+
+  const installing = stubApi([{ kind: 'installing', status: 503, code: 'INSTALL.INFLIGHT' }]);
+  assert.equal(await helpHrefFor(installing, 'permissions/users'), null, 'an install in flight is no answer');
+
+  const forbidden = stubApi([{ kind: 'error', status: 403, code: 'AUTH.FORBIDDEN', reason: 'no', detail: null }]);
+  assert.equal(await helpHrefFor(forbidden, 'permissions/users'), '', 'a refusal is an answer');
+});
+
+test('an answer that never came is asked for again on the next visit; a refusal or an unavailable one is not', async () => {
+  const flaky = stubApi([transportError(), ok({ available: true, href: 'https://docs.invalid/page' })]);
+  const links = new HelpLinks({ api: flaky });
+  let notified = 0;
+  links.subscribe(() => (notified += 1));
+
+  await links.load('permissions/users');
+  assert.equal(links.hrefFor('permissions/users'), '', 'the failed read left no address');
+  assert.equal(notified, 0);
+
+  await links.load('permissions/users');
+  assert.equal(flaky.calls.length, 2, 'the next visit asked again');
+  assert.equal(links.hrefFor('permissions/users'), 'https://docs.invalid/page');
+  assert.equal(notified, 1);
+
+  await links.load('permissions/users');
+  assert.equal(flaky.calls.length, 2, 'and once answered it is held');
+
+  const refused = stubApi([
+    { kind: 'error', status: 403, code: 'AUTH.FORBIDDEN', reason: 'no', detail: null },
+    ok({ available: true, href: 'https://docs.invalid/other' }),
+  ]);
+  const closed = new HelpLinks({ api: refused });
+  await closed.load('permissions/users');
+  await closed.load('permissions/users');
+  assert.equal(refused.calls.length, 1, 'a refusal is an answer and is not asked again');
+
+  const unavailable = stubApi([ok({ available: false, href: '' }), ok({ available: true, href: 'https://docs.invalid/other' })]);
+  const none = new HelpLinks({ api: unavailable });
+  await none.load('logs/alerts');
+  await none.load('logs/alerts');
+  assert.equal(unavailable.calls.length, 1, 'available: false is an answer and is not asked again');
 });
 
 test('HelpLinks asks once per screen, and never for a screen the mirror says has no classic page', async () => {
