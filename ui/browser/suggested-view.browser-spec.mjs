@@ -38,6 +38,8 @@ import { pathOf } from './shell-entry.mjs';
 import {
   authHeader as sharedAuthHeader,
   definitions as sharedDefinitions,
+  setDarkTheme,
+  settleViewport,
   signedInAt as sharedSignedInAt,
 } from './panel-spec.mjs';
 import { armProbeDefinition, disarmProbeDefinition, removeDefinition } from './turnprobe-spec.mjs';
@@ -121,13 +123,14 @@ async function signedInAt(url, viewport = config.viewport, mediaFeatures = null)
 }
 
 /**
- * Wait for the panel's width transition to settle at `width`. Local, not shared: the sibling spec's
- * copy settles to a different tolerance, and unifying them would change a measurement (DW-1151).
+ * Wait for the panel's width transition to settle at `width`, to within the half pixel the
+ * assertions that follow round to. Local, not shared: the sibling spec's copy settles to a
+ * different tolerance, and unifying them would change a measurement (DW-1151).
  */
 async function panelSettlesAt(page, width) {
   await page.waitForFunction(
     (wanted) =>
-      Math.abs(document.querySelector('app-panel aside.ocu-panel').getBoundingClientRect().width - wanted) < 0.51,
+      Math.abs(document.querySelector('app-panel aside.ocu-panel').getBoundingClientRect().width - wanted) < 0.5,
     { timeout: config.navigationTimeoutMs },
     width
   );
@@ -163,31 +166,44 @@ test("AC8: Home settles at DESIGN.md's published panel width at each of the five
   // Mutation (Rule 19): `HOME_PANEL_FRACTION` 0.5 -> 0.4 -> the 1,920, 1,440 and 1,280 rows go
   // red here as well as in `tools/panel-layout.test.mjs` (960/720/592 become 768/576/512); the two
   // narrowest rows sit at the subtracted operand and the panel floor, so the fraction cannot move
-  // them.
+  // them. A 24px `margin-right` on `.ocu-shell-content` (bundle rebuilt and redeployed) -> the content
+  // assertion goes red alone (888, not 912, at 1,920). The side bar's layout input is pinned in
+  // `tools/panel-layout.test.mjs`: the side bar component draws nothing while Home is its visible area
+  // (`side-bar.ts` `showing`), so this leg reads the same.
   const { context, page } = await signedInAt(HOME_URL, { width: 1920, height: 900 });
   try {
-    for (const row of PUBLISHED_HOME_WIDTHS) {
-      await page.setViewport({ width: row.viewport, height: 900 });
-      await page.waitForFunction((w) => document.documentElement.clientWidth === w, {}, row.viewport);
-      await panelSettlesAt(page, row.panel);
-      const shown = await geometry(page);
-      assert.equal(Math.round(shown.panelRight), shown.viewport, `docked right at ${row.viewport}px`);
-      assert.equal(Math.round(shown.panelWidth), row.panel, `the published Home width at ${row.viewport}px`);
-      // 0 on this spec's entry path -- a fresh sign-in lands on Home with the bar closed and
-      // Home lists no screens. Home reached from a list route with the bar already open keeps that
-      // area's list, which is the state DESIGN.md `:904`'s Home row measures; `panelHomeTarget`
-      // does not change with it, so the panel column above holds either way.
-      assert.equal(shown.sideBar, 0, 'signed in straight to Home, no area list is open');
-      // The content column keeps its 640px floor, scrolling it inside itself at the narrowest.
-      assert.ok(
-        shown.contentScrollWidth >= 640,
-        `the content region holds its 640px floor at ${row.viewport}px: ${shown.contentScrollWidth}`
-      );
-      assert.equal(
-        shown.pageScrollWidth,
-        shown.pageClientWidth,
-        `the page body does not scroll horizontally at ${row.viewport}px`
-      );
+    for (const dark of [false, true]) {
+      await setDarkTheme(page, dark);
+      const theme = dark ? 'dark' : 'light';
+      for (const row of PUBLISHED_HOME_WIDTHS) {
+        await settleViewport(page, { width: row.viewport, height: 900 });
+        await panelSettlesAt(page, row.panel);
+        const shown = await geometry(page);
+        assert.equal(Math.round(shown.panelRight), shown.viewport, `docked right at ${row.viewport}px (${theme})`);
+        assert.equal(Math.round(shown.panelWidth), row.panel, `the published Home width at ${row.viewport}px (${theme})`);
+        // 0 on this spec's entry path -- a fresh sign-in lands on Home with the bar closed and
+        // Home lists no screens. Home reached from a list route with the bar already open keeps that
+        // area's list, which is the state DESIGN.md's "list: open" figures measure; `panelHomeTarget`
+        // does not change with it, so the panel column above holds either way.
+        assert.equal(shown.sideBar, 0, `signed in straight to Home, no area list is open (${theme})`);
+        // With no bar, the content column is what the rail and the panel leave: DESIGN.md's
+        // "closed" Home content figure (912 at 1,920).
+        assert.equal(
+          Math.round(shown.contentWidth),
+          shown.viewport - 48 - row.panel,
+          `the content column takes what the rail and the panel leave at ${row.viewport}px (${theme})`
+        );
+        // The content column keeps its 640px floor, scrolling it inside itself at the narrowest.
+        assert.ok(
+          shown.contentScrollWidth >= 640,
+          `the content region holds its 640px floor at ${row.viewport}px: ${shown.contentScrollWidth} (${theme})`
+        );
+        assert.equal(
+          shown.pageScrollWidth,
+          shown.pageClientWidth,
+          `the page body does not scroll horizontally at ${row.viewport}px (${theme})`
+        );
+      }
     }
   } finally {
     await context.close();

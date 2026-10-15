@@ -381,6 +381,39 @@ describe('the activity rail', () => {
     expect(router.url).toBe('/');
   });
 
+  it('DW-460: in full screen no rail item acts, and the first click after leaving it acts again', async () => {
+    // Mutation (Rule 19): drop the `panel.fullScreen()` guard from `Rail.activate` -> the side-bar
+    // item changes the visible area and Home navigates, and this goes red.
+    const router = TestBed.inject(Router);
+    await router.navigateByUrl('/permissions/users');
+    shell.showArea('logs');
+    panel.toggleFullScreen();
+    fixture.detectChanges();
+    expect(panel.fullScreen()).toBe(true);
+    const calls = account.calls.length;
+
+    items()[2].click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(shell.visibleArea()).toBe('logs');
+    expect(shell.open()).toBe(true);
+    expect(router.url).toBe('/permissions/users');
+
+    items()[0].click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(shell.visibleArea()).toBe('logs');
+    expect(shell.open()).toBe(true);
+    expect(router.url).toBe('/permissions/users');
+    expect(account.calls.length).toBe(calls);
+
+    panel.toggleFullScreen();
+    fixture.detectChanges();
+    items()[2].click();
+    fixture.detectChanges();
+    expect(shell.visibleArea()).toBe('os-management');
+  });
+
   it('Yield order: the visible area\'s item reopens a yielded side bar and releases it again, writing no preference either time', () => {
     // Mutation (Rule 19): drop the `sideBarReopened()` branch from `Rail.activate` -> the second
     // click goes through `activateArea`, which closes the bar and stores "false", and this goes red.
