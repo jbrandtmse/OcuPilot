@@ -2257,6 +2257,12 @@ app-interop-message-contents {
   white-space: nowrap;
 }
 
+// A strip wider than its column wraps onto further rows rather than paging: Material's links row is
+// a flex row that would otherwise keep every tab on one line.
+.ocu-detail-tabs .mat-mdc-tab-links {
+  flex-wrap: wrap;
+}
+
 // The banner strip above the table (Story 2.8). `.ocu-list-page` is a column flex whose table takes
 // `flex: 1 1 auto`, so a sibling above it needs no layout change beyond its own gap; it spans the
 // table's width, which is what DESIGN.md `:1203` asks of a banner in the content column.
@@ -6525,6 +6531,49 @@ app-data-table .ocu-data-table-header-cell {
 
 .ocu-data-table-tooltip-placed {
   visibility: visible;
+}
+
+// A `long` column's value, whole, beneath the table (DESIGN.md `data-table`). The wrapper takes at
+// most half the table's column and scrolls, so an opened long block is reachable at any height, the
+// table keeps the other half, and the block's own region is never clipped.
+.ocu-data-table-long {
+  box-sizing: border-box;
+  flex: 0 1 auto;
+  min-height: 0;
+  max-height: 50%;
+  padding-top: var(--ocu-space-3);
+  overflow-y: auto;
+}
+
+// While a long block shows, the frame keeps its header and one row (with 16px for a classic
+// horizontal scrollbar) wherever half the column holds them, and half the column below that: the
+// long blocks' wrapper yields the room, so neither the rows nor the block shrink to a sliver.
+app-data-table:has(> .ocu-data-table-long) > .ocu-data-table-frame {
+  min-height: min(calc(2 * var(--ocu-row-height) + 2px + 16px), 50%);
+}
+
+.ocu-data-table-long-block {
+  min-width: 0;
+}
+
+.ocu-data-table-long-block + .ocu-data-table-long-block {
+  margin-top: var(--ocu-space-3);
+}
+
+.ocu-data-table-long-label {
+  @include typo.ocu-type('label');
+
+  display: block;
+  color: var(--ocu-on-surface-variant);
+}
+
+.ocu-data-table-long-text {
+  @include typo.ocu-type('body');
+
+  margin: 0;
+  color: var(--ocu-on-surface);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 // Home's Shortcuts block lists the column-resize binding as text after its screen rows.

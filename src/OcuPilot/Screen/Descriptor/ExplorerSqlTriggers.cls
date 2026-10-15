@@ -60,7 +60,7 @@ XData Declaration
       {"field": "Trigger", "labelKey": "explorerSqlColumnTrigger", "kind": "name"},
       {"field": "Event", "labelKey": "explorerSqlColumnEvent", "kind": "text"},
       {"field": "Order", "labelKey": "explorerSqlColumnOrder", "kind": "number"},
-      {"field": "Code", "labelKey": "webAppPromptGroupCode", "kind": "text"}
+      {"field": "Code", "labelKey": "webAppPromptGroupCode", "kind": "text", "long": true}
     ],
     "emptyNextKey": "tableReadOnlyEmptyNext",
     "emptyAgentKey": ""

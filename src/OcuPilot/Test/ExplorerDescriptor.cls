@@ -411,6 +411,29 @@ Method TestTheStatementsToolsEndWithTheStatisticsNote()
     Do $$$AssertEquals(tDescription, "Read the rows the explorer.sqltable screen lists, bounded and with secret fields removed.", "explorer.sqltable.read's description is the read sentence alone")
 }
 
+/// <p>The three columns whose value can run past its cell declare <code>long</code>, so the table
+/// shows the selected or only row's value whole beneath the rows: a view's <code>Text</code>, a
+/// procedure's <code>Description</code> and a trigger's <code>Code</code>. No other column of those
+/// three declares it, and each declaration validates.</p>
+/// <p>Mutation (Rule 19): drop <code>"long": true</code> from
+/// <class>OcuPilot.Screen.Descriptor.ExplorerSqlView</class> -- its leg goes red alone.</p>
+Method TestTheLongTextColumnsDeclareLong()
+{
+    For tCase = $ListBuild("ExplorerSqlView", "Text"), $ListBuild("ExplorerSqlProcedure", "Description"), $ListBuild("ExplorerSqlTriggers", "Code") {
+        Set tClass = "OcuPilot.Screen.Descriptor." _ $List(tCase, 1)
+        Set tSC = $ClassMethod(tClass, "DeclarationJson", .tDeclaration)
+        Do $$$AssertStatusOK(tSC, tClass _ ": the declaration parses")
+        If $$$ISERR(tSC) Continue
+        Set tLong = ""
+        Set tIterator = tDeclaration.table.columns.%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tColumn) {
+            If tColumn.%Get("long") = 1 Set tLong = tLong _ $Select(tLong = "": "", 1: ",") _ tColumn.field
+        }
+        Do $$$AssertEquals(tLong, $List(tCase, 2), tClass _ ": its one long column is " _ $List(tCase, 2))
+        Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ReadProblem(tDeclaration), "", tClass _ ": the declaration validates")
+    }
+}
+
 /// <p>Stories 19.5 AC6 and 19.14 AC9: a custom resource an operator assigns to the classic SQL page
 /// gates all eighteen SQL catalog screens. The gate's classic-page store is
 /// <class>OcuPilot.Test.ScreenGate</class>'s, so nothing is written to the instance.</p>

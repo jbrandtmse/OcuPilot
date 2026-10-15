@@ -9,7 +9,12 @@
  * tab reading the object through its own declared read (19.14 AC2, AC3, AC11); each SQL statements tab
  * shows the statistics note above its rows, and Partitions shows none. The list, the Triggers
  * tab and a view's three tabs, which the structural walk skips, pass its checks at 1280 light, 720
- * light and 1280 dark, with no entry beyond the baseline.
+ * light and 1280 dark, with no entry beyond the baseline. The table's nine tabs all lie inside
+ * their strip at 1,024 and 1,280, wrapped onto 40px rows with no pagination, and a view whose text
+ * runs past its cell shows that text whole beneath its row in a long block, which a pointer or the
+ * keyboard reaches to the end, in light and in dark. The keyboard path is walked from Tab: Tab
+ * reaches Show more, Enter opens it and End brings the last line on screen. The one trigger of the
+ * probe table shows its code in a long block named by the Code header.
  *
  * The probe objects are `OcuPilot.Test.ExplorerSqlProbe`'s, created in `before` and removed in
  * `after` by that class. It refuses the live container.
@@ -27,7 +32,7 @@ import puppeteer from 'puppeteer';
 import { LIVE_CONTAINER, browserConfig, launchOptions } from '../browser.config.mjs';
 import { loadStrings } from '../tools/strings.mjs';
 import { ROW_SELECTOR, clickRowCentre } from './list-spec.mjs';
-import { signedInAt } from './panel-spec.mjs';
+import { setDarkTheme, settleViewport, signedInAt, transitionsSettled } from './panel-spec.mjs';
 import { INVARIANTS, VIEWPORTS, assertThrowaway, collapse, compare, componentMinimums, detectScreen, readBaseline } from './structural-walk.mjs';
 import { markerValue, runIris } from './turnprobe-spec.mjs';
 
@@ -44,11 +49,17 @@ const QUERY = 'OcuProbe195.Names';
 const CODE_MARK = 'OcuProbe195Code';
 const LITERAL = 'OcuProbe195Literal';
 const VIEW_LITERAL = 'OcuProbe195ViewLiteral';
+const LONG_VIEW = 'OcuProbe195.LongView';
+const LONG_VIEW_MARK = 'OcuProbe195View';
 const VIEWS_ROUTE = 'system-explorer/sql-views';
 const PROCEDURES_ROUTE = 'system-explorer/sql-procedures';
 const TABLES_ROUTE = 'system-explorer/sql-tables';
 const TABS_ROUTE = 'system-explorer/sql-tables';
 const READ_PREFIX = '/api/ocupilot/screens/';
+/** Tab presses allowed from the tab strip to the long block's control. */
+const TAB_LIMIT = 60;
+/** `ExplorerSqlProbe`'s `LONGLENGTH`: the long view's text and the probe trigger's comment line each carry a run this long. */
+const LONG_TEXT_LENGTH = 1500;
 
 /** The walk's own media feature (`structural-walk.mjs`): a theme flip lands at once rather than mid-transition. */
 const REDUCED_MOTION = [{ name: 'prefers-reduced-motion', value: 'reduce' }];
@@ -132,10 +143,7 @@ async function rowShowing(page, text) {
   );
 }
 
-/**
- * Open the tab at `route` from the strip as a keyboard user does: focus it and press Enter. A strip
- * wider than the content column pages its tabs, so a tab paged out of view is reached this way.
- */
+/** Open the tab at `route` from the strip as a keyboard user does: focus it and press Enter. */
 async function openTab(page, route) {
   await page.focus(`.ocu-detail-tab[data-route="${route}"]`);
   await page.keyboard.press('Enter');
@@ -155,6 +163,56 @@ async function currentEntry(page) {
   }
   await page.waitForSelector('app-side-bar nav.ocu-side-bar', { timeout: config.navigationTimeoutMs });
   return page.evaluate(() => document.querySelector('app-side-bar .ocu-side-bar-item[aria-current="page"] .ocu-side-bar-label')?.textContent?.trim() ?? '');
+}
+
+/** The tab strip's geometry: its link container's box, every tab's box, and how each pagination control displays. */
+function stripGeometry(page) {
+  return page.evaluate(() => {
+    const box = (element) => {
+      const { left, right, top, bottom, width, height } = element.getBoundingClientRect();
+      return { left, right, top, bottom, width, height };
+    };
+    const container = document.querySelector('nav.ocu-detail-tabs .mat-mdc-tab-link-container');
+    return {
+      container: box(container),
+      tabs: Array.from(document.querySelectorAll('.ocu-detail-tab')).map(box),
+      pagination: Array.from(document.querySelectorAll('nav.ocu-detail-tabs .mat-mdc-tab-header-pagination')).map((control) => getComputedStyle(control).display),
+    };
+  });
+}
+
+/**
+ * The strip on display at 1,024 and 1,280 px, in light and in dark: every one of its tabs lies inside
+ * the link container, each is 40px tall, no pagination control is displayed, and at 1,024 the tabs
+ * take more than one row. Leaves the page at the wide viewport in light.
+ *
+ * Mutation (Rule 19): drop `flex-wrap: wrap` from `.ocu-detail-tabs .mat-mdc-tab-links`, rebuilt and
+ * redeployed -> the containment assertion goes red at 1,024 in light, naming the tab past the edge.
+ */
+async function assertTabsWrap(page, count) {
+  for (const width of [1024, 1280]) {
+    for (const dark of [false, true]) {
+      const where = `${width}px ${dark ? 'dark' : 'light'}`;
+      await settleViewport(page, { width, height: VIEWPORTS.wide.height });
+      await setDarkTheme(page, dark);
+      await transitionsSettled(page, config.navigationTimeoutMs);
+      const { container, tabs, pagination } = await stripGeometry(page);
+      assert.equal(tabs.length, count, `${where}: every tab is drawn`);
+      tabs.forEach((tab, index) => {
+        assert.ok(
+          tab.left >= container.left - 1 && tab.right <= container.right + 1 && tab.top >= container.top - 1 && tab.bottom <= container.bottom + 1,
+          `${where}: tab ${index + 1} lies inside the strip (${JSON.stringify(tab)} in ${JSON.stringify(container)})`
+        );
+        assert.equal(Math.round(tab.height), 40, `${where}: tab ${index + 1} is 40px tall`);
+      });
+      assert.ok(pagination.every((display) => display === 'none'), `${where}: no pagination control is displayed (${JSON.stringify(pagination)})`);
+      const rows = new Set(tabs.map((tab) => Math.round(tab.top))).size;
+      if (width === 1024) assert.ok(rows > 1, `${where}: nine tabs do not fit one row`);
+    }
+  }
+  await setDarkTheme(page, false);
+  await settleViewport(page, VIEWPORTS.wide);
+  await transitionsSettled(page, config.navigationTimeoutMs);
 }
 
 test('AC2, AC8: the probe table opens to its tabs, and Fields then Triggers keep it, each reading it, the code shown as text', async () => {
@@ -191,6 +249,7 @@ test('AC2, AC8: the probe table opens to its tabs, and Fields then Triggers keep
     );
     await rowShowing(page, 'OcuProbe195.Visible');
     assert.equal(await currentEntry(page), STRINGS.explorerSqlTablesLabel, 'the side bar marks SQL tables');
+    await assertTabsWrap(page, 9);
 
     await openTab(page, `${TABS_ROUTE}/fields`);
     await page.waitForFunction((path) => location.pathname === path, { timeout: config.navigationTimeoutMs }, `/ocupilot/${TABS_ROUTE}/fields/${id}`);
@@ -261,6 +320,199 @@ test('Story 19.14 AC2, AC11: a view opens to View info with its text, then Field
     for (const tool of ['explorer.sqlview', 'explorer.sqlviewfields', 'explorer.sqlviewstatements']) {
       assert.ok(reads.some((read) => read.startsWith(`${READ_PREFIX}${tool}/read?`) && read.includes(`view=${encodeURIComponent(VIEW)}`)), `${tool} reads the view through its own read: ${JSON.stringify(reads)}`);
     }
+  } finally {
+    await context.close();
+  }
+});
+
+/**
+ * The long block's geometry: its region, the wrapper that scrolls it, where the text's last line
+ * sits, and the first row's name text against the part of the row viewport a person sees.
+ */
+function longBlockGeometry(page) {
+  return page.evaluate((rowSelector) => {
+    const wrapper = document.querySelector('.ocu-data-table-long');
+    const region = wrapper.querySelector('.ocu-long-block-region');
+    const text = wrapper.querySelector('.ocu-data-table-long-text');
+    const range = document.createRange();
+    range.selectNodeContents(text);
+    const lines = Array.from(range.getClientRects());
+    const last = lines[lines.length - 1];
+    const box = wrapper.getBoundingClientRect();
+    const host = document.querySelector('app-data-table').getBoundingClientRect();
+    const viewport = document.querySelector('app-data-table .ocu-data-table-viewport');
+    const viewTop = viewport.getBoundingClientRect().top + viewport.clientTop;
+    const name = document.createRange();
+    name.selectNodeContents(document.querySelector(rowSelector).querySelector('[role="gridcell"]'));
+    const nameBox = name.getBoundingClientRect();
+    return {
+      viewTop,
+      viewBottom: viewTop + viewport.clientHeight,
+      rowTextTop: nameBox.top,
+      rowTextBottom: nameBox.bottom,
+      hostHeight: host.height,
+      wrapperHeight: box.height,
+      regionScrollHeight: region.scrollHeight,
+      regionClientHeight: region.clientHeight,
+      wrapperScrollHeight: wrapper.scrollHeight,
+      wrapperClientHeight: wrapper.clientHeight,
+      wrapperScrollWidth: wrapper.scrollWidth,
+      wrapperClientWidth: wrapper.clientWidth,
+      wrapperScrollTop: wrapper.scrollTop,
+      wrapperBottom: box.bottom,
+      wrapperTop: box.top,
+      windowHeight: window.innerHeight,
+      lastLineTop: last.top,
+      lastLineBottom: last.bottom,
+      text: text.textContent,
+      collapsed: wrapper.querySelector('.ocu-long-block-collapsed') !== null,
+      toggle: wrapper.querySelector('.ocu-long-block-toggle')?.textContent.trim() ?? null,
+    };
+  }, ROW_SELECTOR);
+}
+
+test('DW-1976: a view whose text runs past its cell shows it whole beneath its row, reached to the end by pointer and by keyboard, in light and in dark', async () => {
+  const { context, page } = await signedInAt(browser, config, `/ocupilot/${VIEWS_ROUTE}/document/${encodeEntityId(LONG_VIEW)}?ns=USER`, VIEWPORTS.narrow, REDUCED_MOTION);
+  try {
+    await page.waitForSelector('.ocu-data-table-long .ocu-long-block-toggle', { timeout: config.navigationTimeoutMs });
+    const cellText = await page.$eval(ROW_SELECTOR, (row) => row.querySelectorAll('[role="gridcell"]')[7].textContent.trim());
+    assert.ok(cellText.includes(LONG_VIEW_MARK) && cellText.length > LONG_TEXT_LENGTH, `the view's text runs past its cell: ${cellText.length} characters`);
+    assert.equal(await page.$eval('.ocu-data-table-long-label', (label) => label.textContent.trim()), STRINGS.explorerSearchTextLabel, 'the block is named by the Text column\'s header');
+
+    for (const dark of [false, true]) {
+      const where = dark ? 'dark' : 'light';
+      await setDarkTheme(page, dark);
+      const closed = await longBlockGeometry(page);
+      assert.equal(closed.collapsed, true, `${where}: the block starts collapsed`);
+      assert.equal(closed.toggle, STRINGS.longBlockShowMore, `${where}: and offers Show more`);
+      assert.ok(closed.text.trim() === cellText, `${where}: its text is the cell's, whole, in the page while collapsed (${closed.text.length} against ${cellText.length} characters)`);
+      assert.ok(closed.rowTextTop >= closed.viewTop - 1 && closed.rowTextBottom <= closed.viewBottom + 1, `${where}: the table keeps its row's text in view beside the block (${closed.rowTextTop}..${closed.rowTextBottom} in ${closed.viewTop}..${closed.viewBottom})`);
+
+      // Mutation (Rule 19), each on a rebuilt and redeployed bundle: remove `long: true` from
+      // `ExplorerSqlView`'s Text column and regenerate the mirror -> the wait for the block times out
+      // before this loop starts. Delete the frame's floor beside `.ocu-data-table-long` -> the
+      // row-text assertion goes red. Drop `overflow-wrap: anywhere` from `.ocu-data-table-long-text` -> the
+      // sideways-scroll assertion goes red. Give `.ocu-long-block-region` a `max-height` with
+      // `overflow: hidden` -> the not-clipped assertion goes red. Restore `max-height: 40vh` on
+      // `.ocu-data-table-long` -> the half-column assertion goes red. Drop its
+      // `max-height` and `overflow-y` -> the wheel's wait for the last line times out.
+      // Light opens it with the keyboard, dark with the pointer.
+      if (dark) await page.click('.ocu-data-table-long .ocu-long-block-toggle');
+      else {
+        await page.focus('.ocu-data-table-long .ocu-long-block-toggle');
+        await page.keyboard.press('Enter');
+      }
+      await page.waitForFunction(() => document.querySelector('.ocu-data-table-long .ocu-long-block-collapsed') === null);
+      const open = await longBlockGeometry(page);
+      assert.equal(open.toggle, STRINGS.longBlockShowLess, `${where}: the control now offers Show less`);
+      assert.ok(open.text.includes(LONG_VIEW_MARK) && open.text.trim() === cellText, `${where}: the block holds the mark and the whole text (${open.text.length} against ${cellText.length} characters)`);
+      assert.ok(open.regionScrollHeight <= open.regionClientHeight + 1, `${where}: its region is not clipped (${open.regionScrollHeight} in ${open.regionClientHeight})`);
+      assert.ok(open.wrapperScrollWidth <= open.wrapperClientWidth + 1, `${where}: the unbroken text wraps rather than scrolling sideways (${open.wrapperScrollWidth} in ${open.wrapperClientWidth})`);
+      assert.ok(open.wrapperBottom <= open.windowHeight + 1, `${where}: the scrolling region ends inside the window (${open.wrapperBottom} of ${open.windowHeight})`);
+      assert.ok(open.wrapperHeight <= open.hostHeight / 2 + 1, `${where}: the scrolling region takes at most half the table's column (${open.wrapperHeight} of ${open.hostHeight})`);
+      assert.ok(open.wrapperScrollHeight > open.wrapperClientHeight, `${where}: the text is taller than the region that scrolls it, so reaching its end takes scrolling (${open.wrapperScrollHeight} in ${open.wrapperClientHeight})`);
+      assert.ok(open.rowTextTop >= open.viewTop - 1 && open.rowTextBottom <= open.viewBottom + 1, `${where}: and with the block open (${open.rowTextTop}..${open.rowTextBottom} in ${open.viewTop}..${open.viewBottom})`);
+
+      // Pointer: the wheel over the region scrolls it to the last line.
+      await page.evaluate(() => { document.querySelector('.ocu-data-table-long').scrollTop = 0; });
+      const box = await page.$eval('.ocu-data-table-long', (wrapper) => {
+        const { left, top, width, height } = wrapper.getBoundingClientRect();
+        return { x: left + width / 2, y: top + height / 2 };
+      });
+      await page.mouse.move(box.x, box.y);
+      for (let step = 0; step < 40; step += 1) await page.mouse.wheel({ deltaY: 400 });
+      await page.waitForFunction(() => {
+        const wrapper = document.querySelector('.ocu-data-table-long');
+        return wrapper.scrollTop + wrapper.clientHeight >= wrapper.scrollHeight - 1;
+      });
+      let end = await longBlockGeometry(page);
+      assert.ok(end.lastLineTop >= end.wrapperTop - 1 && end.lastLineBottom <= end.wrapperBottom + 1, `${where}: the last line is on screen after the wheel (${end.lastLineTop}..${end.lastLineBottom} in ${end.wrapperTop}..${end.wrapperBottom})`);
+
+      // Keyboard: from the top, with focus on the control and nothing scrolled into view, End reaches the same line.
+      await page.evaluate(() => {
+        const wrapper = document.querySelector('.ocu-data-table-long');
+        wrapper.scrollTop = 0;
+        wrapper.querySelector('.ocu-long-block-toggle').focus({ preventScroll: true });
+      });
+      const atTop = await longBlockGeometry(page);
+      assert.ok(atTop.lastLineBottom > atTop.wrapperBottom + 1, `${where}: before End the last line is below the region (${atTop.lastLineBottom} past ${atTop.wrapperBottom})`);
+      await page.keyboard.press('End');
+      await page.waitForFunction(() => {
+        const wrapper = document.querySelector('.ocu-data-table-long');
+        return wrapper.scrollTop + wrapper.clientHeight >= wrapper.scrollHeight - 1;
+      });
+      end = await longBlockGeometry(page);
+      assert.ok(end.lastLineTop >= end.wrapperTop - 1 && end.lastLineBottom <= end.wrapperBottom + 1, `${where}: the last line is on screen after the End key (${end.lastLineTop}..${end.lastLineBottom} in ${end.wrapperTop}..${end.wrapperBottom})`);
+
+      await page.click('.ocu-data-table-long .ocu-long-block-toggle');
+      await page.waitForFunction(() => document.querySelector('.ocu-data-table-long .ocu-long-block-collapsed') !== null);
+    }
+    await setDarkTheme(page, false);
+  } finally {
+    await context.close();
+  }
+});
+
+/** Press Tab until an element matching `selector` holds focus: the number of presses it took, or -1 after `limit`. */
+async function tabUntil(page, selector, limit) {
+  for (let presses = 1; presses <= limit; presses += 1) {
+    await page.keyboard.press('Tab');
+    if (await page.evaluate((wanted) => document.activeElement?.matches(wanted) === true, selector)) return presses;
+  }
+  return -1;
+}
+
+test('DW-1976: the keyboard alone reads a view\'s whole text: Tab reaches Show more, Enter opens it, End brings the last line on screen', async () => {
+  const { context, page } = await signedInAt(browser, config, `/ocupilot/${VIEWS_ROUTE}/document/${encodeEntityId(LONG_VIEW)}?ns=USER`, VIEWPORTS.narrow, REDUCED_MOTION);
+  const toggle = '.ocu-data-table-long .ocu-long-block-toggle';
+  try {
+    await page.waitForSelector(toggle, { timeout: config.navigationTimeoutMs });
+    // The tab strip is the stop before the table, so every press after this focus is a person's own Tab.
+    // Mutation (Rule 19), on a rebuilt and redeployed bundle: `tabindex="-1"` on `LongBlock`'s toggle
+    // -> the Tab assertion goes red, naming the press limit.
+    await page.focus('.ocu-detail-tab');
+    const presses = await tabUntil(page, toggle, TAB_LIMIT);
+    assert.ok(presses > 0, `Tab reaches Show more within ${TAB_LIMIT} presses of the tab strip`);
+    assert.equal(await page.$eval(toggle, (button) => button.getAttribute('aria-expanded')), 'false', 'the block is collapsed when Tab reaches it');
+
+    await page.keyboard.press('Enter');
+    await page.waitForFunction(() => document.querySelector('.ocu-data-table-long .ocu-long-block-collapsed') === null);
+    const open = await longBlockGeometry(page);
+    assert.equal(open.toggle, STRINGS.longBlockShowLess, 'Enter opened the block');
+    assert.ok(open.lastLineBottom > open.wrapperBottom + 1, `before End the last line is below the region (${open.lastLineBottom} past ${open.wrapperBottom}), so reaching it takes scrolling`);
+
+    await page.keyboard.press('End');
+    await page.waitForFunction(() => {
+      const wrapper = document.querySelector('.ocu-data-table-long');
+      return wrapper.scrollTop + wrapper.clientHeight >= wrapper.scrollHeight - 1;
+    });
+    const end = await longBlockGeometry(page);
+    assert.ok(end.text.includes(LONG_VIEW_MARK), 'the block holds the view\'s text');
+    assert.ok(end.lastLineTop >= end.wrapperTop - 1 && end.lastLineBottom <= end.wrapperBottom + 1, `the last line is on screen after End (${end.lastLineTop}..${end.lastLineBottom} in ${end.wrapperTop}..${end.wrapperBottom})`);
+  } finally {
+    await context.close();
+  }
+});
+
+test('DW-1976: the table\'s one trigger shows its code whole beneath its row in a long block named by the Code header', async () => {
+  const { context, page } = await signedInAt(browser, config, `/ocupilot/${TABS_ROUTE}/triggers/${encodeEntityId(TABLE)}?ns=USER`, VIEWPORTS.wide, REDUCED_MOTION);
+  try {
+    await rowShowing(page, 'VisibleStamp');
+    // Mutation (Rule 19), on a rebuilt and redeployed bundle: remove `long: true` from
+    // `ExplorerSqlTriggers`' Code column and regenerate the mirror -> this wait times out.
+    await page.waitForSelector('.ocu-data-table-long .ocu-data-table-long-text', { timeout: config.navigationTimeoutMs });
+    assert.equal(await page.$$eval(ROW_SELECTOR, (rows) => rows.length), 1, 'the table lists the one trigger of the probe table');
+    const blocks = await page.$$eval('.ocu-data-table-long-block', (nodes) =>
+      nodes.map((node) => ({ label: node.querySelector('.ocu-data-table-long-label').textContent.trim(), text: node.querySelector('.ocu-data-table-long-text').textContent }))
+    );
+    assert.equal(blocks.length, 1, 'one long column gives one block');
+    assert.equal(blocks[0].label, STRINGS.webAppPromptGroupCode, 'the block is named by the Code column\'s header');
+    assert.ok(blocks[0].text.includes(CODE_MARK) && blocks[0].text.includes('Set {Code} = "probe"'), `the block holds the code from its first line to its last (${blocks[0].text.length} characters)`);
+    // Mutation (Rule 19), on a rebuilt and redeployed bundle: drop `white-space: pre-wrap` from
+    // `.ocu-data-table-long-text` -> this assertion goes red.
+    assert.ok(blocks[0].text.includes('\n'), 'the trigger\'s code carries its own line breaks');
+    assert.equal(await page.$eval('.ocu-data-table-long-text', (text) => getComputedStyle(text).whiteSpace), 'pre-wrap', 'the block keeps the code\'s line breaks');
+    assert.ok(blocks[0].text.length > LONG_TEXT_LENGTH, `the code runs past a cell: ${blocks[0].text.length} characters`);
   } finally {
     await context.close();
   }

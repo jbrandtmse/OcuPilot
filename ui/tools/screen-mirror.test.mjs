@@ -1273,8 +1273,9 @@ test('readProblem returns every admin-privilege sentence OcuPilot.Test.AdminPair
 // one reaches the generator naming the file and the class.
 //
 // Mutation (Rule 19): drop the `emptyKey` arm from `tableProblem` -> the corpus run goes red on its
-// first refusing value case, "an empty emptyKey is refused".
-test('readProblem returns every column emptyKey sentence OcuPilot.Test.ColumnCorpus declares', () => {
+// first refusing value case, "an empty emptyKey is refused"; drop the `long` arm -> it goes red on
+// its first refusing `long` case, "a string long is refused".
+test('readProblem returns every column emptyKey and long sentence OcuPilot.Test.ColumnCorpus declares', () => {
   const corpus = testCorpus(['Test', 'ColumnCorpus.cls'], 'Cases');
   assert.ok(corpus.cases.length > 0, `the corpus carries cases (read ${corpus.cases.length})`);
   let refusals = 0;
@@ -1308,6 +1309,50 @@ test('readProblem returns every column emptyKey sentence OcuPilot.Test.ColumnCor
       assert.match(error.message, /Hostile\.cls/, 'the refusal names the file');
       assert.match(error.message, /OcuPilot\.Screen\.Descriptor\.Hostile/, 'and the class');
       assert.match(error.message, /entry #4 emptyKey is not a non-empty string key/);
+      return true;
+    }
+  );
+});
+
+// The view's Text, the procedure's Description and the trigger's Code columns declare
+// `long`, the checked-in mirror carries it, and a `long` that is not a boolean reaches the
+// generator naming the file and the class.
+//
+// Mutation (Rule 19): drop `long` from `ExplorerSqlView`'s Text column and regenerate -> the first
+// loop goes red on the view; drop the `long` arm from `tableProblem` -> the hostile build stops
+// throwing.
+test('the SQL view, procedure and trigger long-text columns declare long and the mirror carries it', () => {
+  const sources = readSources();
+  const mirror = JSON.parse(
+    readCheckedInMirror().match(/export const SCREENS: readonly ScreenDeclaration\[\] = (\[[\s\S]*?\n\]);/)[1]
+  );
+  const longColumns = [
+    ['ExplorerSqlView', 'Text'],
+    ['ExplorerSqlProcedure', 'Description'],
+    ['ExplorerSqlTriggers', 'Code'],
+  ];
+  for (const [name, field] of longColumns) {
+    const className = `OcuPilot.Screen.Descriptor.${name}`;
+    const declared = sources.screens.find((screen) => screen.className === className);
+    assert.ok(declared !== undefined, `${name} is declared`);
+    assert.equal(declared.declaration.table.columns.find((column) => column.field === field).long, true, `${name} declares ${field} long`);
+    const emitted = mirror.find((screen) => screen.descriptor === className);
+    assert.equal(emitted.table.columns.find((column) => column.field === field).long, true, `and the checked-in mirror carries it`);
+    assert.deepEqual(
+      emitted.table.columns.filter((column) => column.long === true).map((column) => column.field),
+      [field],
+      `${name} declares no other long column`
+    );
+  }
+
+  const hostile = structuredClone(sources.screens.find((screen) => screen.className === 'OcuPilot.Screen.Descriptor.ExplorerSqlView').declaration);
+  hostile.table.columns.find((column) => column.field === 'Text').long = 'yes';
+  assert.throws(
+    () => buildMirror({ ...sources, screens: [{ file: 'Hostile.cls', className: 'OcuPilot.Screen.Descriptor.Hostile', declaration: hostile }] }),
+    (error) => {
+      assert.match(error.message, /Hostile\.cls/, 'the refusal names the file');
+      assert.match(error.message, /OcuPilot\.Screen\.Descriptor\.Hostile/, 'and the class');
+      assert.match(error.message, /entry #8 long is not a boolean/);
       return true;
     }
   );

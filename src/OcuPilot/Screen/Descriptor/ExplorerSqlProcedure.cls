@@ -64,7 +64,7 @@ XData Declaration
       {"field": "Class", "labelKey": "explorerClassDocumentLabel", "kind": "name"},
       {"field": "Type", "labelKey": "tableColumnType", "kind": "text"},
       {"field": "Method", "labelKey": "explorerSqlColumnMethod", "kind": "identifier"},
-      {"field": "Description", "labelKey": "tableColumnDescription", "kind": "text"},
+      {"field": "Description", "labelKey": "tableColumnDescription", "kind": "text", "long": true},
       {"field": "Inputs", "labelKey": "explorerSqlColumnInputs", "kind": "number"},
       {"field": "InOuts", "labelKey": "explorerSqlColumnInOuts", "kind": "number"},
       {"field": "Outputs", "labelKey": "explorerSqlColumnOutputs", "kind": "number"},

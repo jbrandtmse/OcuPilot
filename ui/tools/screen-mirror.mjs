@@ -3042,7 +3042,8 @@ export function isWriteCapable(declaration) {
  * and `emptyAgentKey`; `columns` is non-empty, each column carries only `field` (one of `fields`,
  * none of `secrets`, unique), a non-empty `labelKey`, a kind from `TABLE_COLUMN_KINDS` and an
  * optional non-empty `emptyKey` (the string key an empty cell in that column reads instead of
- * "(none)"), and exactly one is `name`;
+ * "(none)") and an optional boolean `long` (the column's value can run past its cell, so the
+ * selected or only row's value shows whole beneath the rows), and exactly one is `name`;
  * `emptyStateKey` is non-empty; a composite id names only parts in `fields`; and a write-capable
  * declaration names `emptyAgentKey` with `emptyNextKey` empty, any other the reverse.
  */
@@ -3064,7 +3065,7 @@ export function tableProblem(declaration, fields, secrets) {
     if (column === null || typeof column !== 'object' || Array.isArray(column)) {
       return `${where} is not an object declaring its field, labelKey and kind`;
     }
-    const columnKeysFault = unknownKeyProblem(where, column, ['field', 'labelKey', 'kind', 'emptyKey']);
+    const columnKeysFault = unknownKeyProblem(where, column, ['field', 'labelKey', 'kind', 'emptyKey', 'long']);
     if (columnKeysFault !== null) return columnKeysFault;
     if (typeof column.field !== 'string' || !fields.includes(column.field)) {
       return `${where} field '${column.field}' is not one of read.fields`;
@@ -3082,6 +3083,9 @@ export function tableProblem(declaration, fields, secrets) {
     }
     if (Object.hasOwn(column, 'emptyKey') && (typeof column.emptyKey !== 'string' || column.emptyKey === '')) {
       return `${where} emptyKey is not a non-empty string key, and an empty cell in that column reads the string it names`;
+    }
+    if (Object.hasOwn(column, 'long') && typeof column.long !== 'boolean') {
+      return `${where} long is not a boolean, and a long column shows the selected row's whole value beneath the rows`;
     }
     if (column.kind === 'name') names += 1;
   }
@@ -3785,6 +3789,8 @@ export interface TableColumn {
   readonly labelKey: string;
   readonly kind: TableColumnKind;
   readonly emptyKey?: string;
+  /** The value can run past its cell, so the selected or only row's value shows whole beneath the rows. */
+  readonly long?: boolean;
 }
 
 /**

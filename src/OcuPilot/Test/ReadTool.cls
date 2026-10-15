@@ -302,11 +302,13 @@ Method TestEveryAdminPairCorpusCaseGetsItsSentence()
 /// <p>Story 6.2 -- every case in <class>OcuPilot.Test.ColumnCorpus</class> gets its exact sentence,
 /// or none, from <method>OcuPilot.Screen.Registry.ReadProblem</method>, the same corpus
 /// <file>ui/tools/screen-mirror.test.mjs</file> runs through <code>readProblem</code>: a column's
-/// optional <code>emptyKey</code> is a non-empty string key or refused; and the Services list's
-/// declared <code>emptyKey</code> passes.</p>
+/// optional <code>emptyKey</code> is a non-empty string key or refused, its optional
+/// <code>long</code> is a boolean or refused; and the Services list's declared <code>emptyKey</code>
+/// passes.</p>
 /// <p>Mutation: drop the <code>emptyKey</code> arm from
 /// <method>OcuPilot.Screen.Registry.TableProblem</method> -&gt; the five refusing value cases go
-/// red while the unknown-key case stays green.</p>
+/// red while the unknown-key case stays green. Drop the <code>long</code> arm -&gt; the four
+/// refusing <code>long</code> cases go red.</p>
 Method TestEveryColumnCorpusCaseGetsItsSentence()
 {
     Set tSC = ##class(OcuPilot.Test.ColumnCorpus).Corpus(.tCorpus)

@@ -1297,6 +1297,99 @@ describe('the data table', () => {
     );
   });
 
+  // A `long` column's value shows whole beneath the rows, in the panel's long block, for the only
+  // row or the selected one.
+  //
+  // Mutation (Rule 19): project `''` in place of `{{ block.text }}` in the long block -> all four
+  // cases go red.
+  describe('a long column', () => {
+    const longDeclaration = (): ScreenDeclaration => {
+      const base = tableDeclaration();
+      const table = base.table;
+      if (table === null) throw new Error('the probe declares a table');
+      return tableDeclaration({
+        table: { ...table, columns: table.columns.map((column) => (column.field === 'Note' ? { ...column, long: true } : column)) },
+      });
+    };
+    const withNotes = (...notes: (string | null)[]) => notes.map((note, index) => ({ ...rows(notes.length)[index], Note: note }));
+    const block = (wired: Wired) => wired.host().querySelector('.ocu-data-table-long') as HTMLElement | null;
+
+    it('shows the only row\'s 5,000-character value whole in a long block named by the column header, the cell unchanged', async () => {
+      const value = `${'select '.repeat(713)}${'z'.repeat(9)}`;
+      expect(value.length).toBe(5000);
+      const wired = await wire(longDeclaration(), ok(withNotes(value)));
+      await wired.refresh.readNow();
+      await settle(wired.fixture);
+
+      const region = block(wired)?.querySelector('.ocu-long-block-region') as HTMLElement;
+      expect(region.textContent).toBe(value);
+      const labelId = block(wired)?.querySelector('section')?.getAttribute('aria-labelledby') ?? '';
+      expect(labelId).not.toBe('');
+      expect(document.getElementById(labelId)?.textContent?.trim()).toBe(STRINGS.statusSegmentServer);
+      expect(block(wired)?.querySelector('.ocu-long-block-collapsed')).not.toBeNull();
+      expect(block(wired)?.querySelector('.ocu-long-block-toggle')?.textContent?.trim()).toBe(STRINGS.longBlockShowMore);
+      const cell = wired.host().querySelector('[aria-rowindex="2"]')?.querySelectorAll('[role="gridcell"]')[4] as HTMLElement;
+      expect(cell.textContent?.trim()).toBe(value);
+    });
+
+    it('shows a short value without the control, and draws no block for an empty value or a column that is not long', async () => {
+      const wired = await wire(longDeclaration(), ok(withNotes('one line')));
+      await wired.refresh.readNow();
+      await settle(wired.fixture);
+      expect(block(wired)?.querySelector('.ocu-long-block-region')?.textContent).toBe('one line');
+      expect(block(wired)?.querySelector('.ocu-long-block-toggle')).toBeNull();
+
+      wired.answer(ok(withNotes(null)));
+      await wired.refresh.readNow();
+      await settle(wired.fixture);
+      expect(block(wired)).toBeNull();
+
+      const plain = await wire(tableDeclaration(), ok(withNotes('one line')));
+      await plain.refresh.readNow();
+      await settle(plain.fixture);
+      expect(block(plain)).toBeNull();
+    });
+
+    it('draws no block for several rows with none selected, and the selected row\'s value once one is', async () => {
+      const wired = await wire(longDeclaration(), ok(withNotes('first value', 'second value')));
+      await wired.refresh.readNow();
+      await settle(wired.fixture);
+      expect(wired.store.selection()).toEqual([]);
+      expect(block(wired)).toBeNull();
+
+      const second = wired.host().querySelector('[aria-rowindex="3"]') as HTMLElement;
+      (second.querySelectorAll('[role="gridcell"]')[2] as HTMLElement).click();
+      await settle(wired.fixture);
+      expect(block(wired)?.querySelector('.ocu-long-block-region')?.textContent).toBe('second value');
+
+      const first = wired.host().querySelector('[aria-rowindex="2"]') as HTMLElement;
+      (first.querySelectorAll('[role="gridcell"]')[2] as HTMLElement).click();
+      await settle(wired.fixture);
+      expect(block(wired)?.querySelector('.ocu-long-block-region')?.textContent).toBe('first value');
+    });
+
+    it('shows the only row of a filtered view, and another row\'s block starts collapsed', async () => {
+      const long = 'x'.repeat(2000);
+      const other = 'y'.repeat(2000);
+      const wired = await wire(longDeclaration(), ok(withNotes(long, other)));
+      await wired.refresh.readNow();
+      await settle(wired.fixture);
+      wired.store.setFilter('app00');
+      await settle(wired.fixture);
+      expect(block(wired)?.querySelector('.ocu-long-block-region')?.textContent).toBe(long);
+
+      (block(wired)?.querySelector('.ocu-long-block-toggle') as HTMLButtonElement).click();
+      await settle(wired.fixture);
+      expect(block(wired)?.querySelector('.ocu-long-block-collapsed')).toBeNull();
+      expect(block(wired)?.querySelector('.ocu-long-block-toggle')?.textContent?.trim()).toBe(STRINGS.longBlockShowLess);
+
+      wired.store.setFilter('app01');
+      await settle(wired.fixture);
+      expect(block(wired)?.querySelector('.ocu-long-block-region')?.textContent).toBe(other);
+      expect(block(wired)?.querySelector('.ocu-long-block-collapsed')).not.toBeNull();
+    });
+  });
+
   it('DW-18 Emptied: a focused grid whose re-fetch answers zero rows hands focus to the empty state', async () => {
     const wired = await wire(tableDeclaration(), ok(rows(2)));
     await wired.refresh.readNow();
