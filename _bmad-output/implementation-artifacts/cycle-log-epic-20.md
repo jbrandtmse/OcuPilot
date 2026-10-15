@@ -964,3 +964,8 @@
 2026-10-15T19:21:44Z	Story 20.31	ci_resolved	story=20.31 run=38782509360 result=success attempt=2(attempt_1_flake_DW-2461) head=f1b45815 resolved_at=next_implement
 2026-10-15T19:21:44Z	Story 20.31	ci_green_verified	run=38782509360 attempt=2 head=f1b45815
 2026-10-15T19:22:12Z	Story 20.10	stage_spawned	stage=implement spawn_at=2026-10-15T19:22:12Z model=sonnet agent_name=20-10-implement-1 cycle_iteration=1 note=20.31_ci_resolved_success_38782509360
+2026-10-15T20:41:32Z	Epic 20	rulings_recorded	DW-2456=by-design(installer_refuses_newer_stored_version;spine_Deferred_row_closed) DW-2457=routed_burndown(MED_defect) 20.34_gate_rulings=accepted DW-2459=burndown by=orchestrator
+2026-10-15T20:41:32Z	Epic 20	story_chartered	story=20-36-investigate by=runner(orchestrator_ruling_Q1_A_at_20.12_gate) placement=epics.md_after_20.35;story_order_after_20-12(orchestrator) 20.12_block=Investigate_AC_moved_verbatim tracker=backlog
+2026-10-15T20:41:32Z	Story 20.12	spine_updated	ad=AD-66(new;claimed_from_counter,next=67),AD-5,AD-11,AD-24 reason=clarification(orchestrator_rulings_Q1_A,Q2_A) by=runner story=20-12 lint=ok(preexisting_low) note=CLAUDE.md_AD_count_65_to_66_for_the_Planner
+2026-10-15T20:41:32Z	Story 20.12	spec_validated	service_introducing=true(Kernel/Agent/Workflow_catalog,workflow_turn) integration_ac=present(suggested_prompt_workflow_key;browser_guided-workflow) consumers=20.36,21.6 adr_constrained_acs=AD-66,AD-6,AD-11,AD-22,AD-24,AD-40,AD-5 decision_dependency=none owned_ledger=none q1=A q2=A footprint_extensions=ATTRIBUTIONS.md,ui/licenses/iris-execute-mcp-v2.txt,ui/tools/licenses.test.mjs,scripts/ci-throwaway.sh(approved)
+2026-10-15T20:41:32Z	Epic 20	deps_hash_rerecorded	reason=20.36_chartered+20.12_block_amended
