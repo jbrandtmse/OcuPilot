@@ -7289,6 +7289,42 @@ export const STRINGS = {
   interopProductionDiagramPrompt2: 'Which items in this production are disabled?',
   /** EXPERIENCE.md:604 */
   interopProductionDiagramPrompt3: 'Which business operations does this production send to?',
+  /** EXPERIENCE.md:604 */
+  interopMessagesEmpty: 'No message matches these criteria.',
+  /** EXPERIENCE.md:604 */
+  interopMessagesCriterionErrors: 'Marked as an error',
+  /** EXPERIENCE.md:604 */
+  interopMessagesPrompt1: 'Which messages ended in error in the last hour?',
+  /** EXPERIENCE.md:604 */
+  interopMessagesPrompt2: 'Which business host sent the most messages today?',
+  /** EXPERIENCE.md:604 */
+  interopMessagesPrompt3: 'Show the messages of the newest session in the order they were sent.',
+  /** EXPERIENCE.md:604 */
+  interopMessageTabHeader: 'Header',
+  /** EXPERIENCE.md:604 */
+  interopMessageHeaderEmpty: 'This message no longer exists.',
+  /** EXPERIENCE.md:604 */
+  interopMessageHeaderPrompt1: 'Why did this message fail?',
+  /** EXPERIENCE.md:604 */
+  interopMessageHeaderPrompt2: 'Which host sent this message, and which received it?',
+  /** EXPERIENCE.md:604 */
+  interopMessageHeaderPrompt3: 'Was this message answered, and when?',
+  /** EXPERIENCE.md:604 */
+  interopMessageContentsLabel: 'Message contents',
+  /** EXPERIENCE.md:604 */
+  interopMessageTabContents: 'Contents',
+  /** EXPERIENCE.md:604 */
+  interopMessageContentsEmpty: 'This message has no contents to show.',
+  /** EXPERIENCE.md:604 */
+  interopMessageContentsCut: 'OcuPilot shows the first part of this message; the rest is cut.',
+  /** EXPERIENCE.md:604 */
+  interopRefusalMessageContents: 'OcuPilot cannot show this message body as text.',
+  /** EXPERIENCE.md:604 */
+  interopMessageContentsPrompt1: 'Summarize what this message says.',
+  /** EXPERIENCE.md:604 */
+  interopMessageContentsPrompt2: 'Which fields of this message are empty?',
+  /** EXPERIENCE.md:604 */
+  interopMessageContentsPrompt3: 'Does anything in this message look malformed?',
 } as const;
 
 /**

@@ -5,7 +5,8 @@
 /// <code>criteria</code> and names the exact sentence both engines return, or <code>null</code> for
 /// a sound shape. A case may also set <code>refreshes</code>, which is how the last rule -- a
 /// criteria-bearing screen never auto-refreshes -- is exercised, may replace
-/// <code>read.source.port</code>, which is how the admin-port rule is, and may set
+/// <code>read.source.port</code>, which is how the admin-port rule is, may replace
+/// <code>read.source.endpoint</code>, which is how the interoperability port's searchable endpoints are (Story 20.9), and may set
 /// <code>parentScope</code>, which is how the parent-scoped rule is. A later story that extends the
 /// grammar adds its cases here.</p>
 /// <p><b>Every criterion carries a <code>maxLength</code></b> (DW-279), including the ones whose
@@ -86,6 +87,8 @@ XData Cases
     {"name": "criteria on the timeline port are sound (Story 16.9)", "criteria": {"fields": [{"param": "since", "labelKey": "auditCriteriaBegin", "kind": "datetime", "maxLength": 50, "defaultHoursAgo": 1}]}, "port": "timeline", "expected": null},
     {"name": "criteria on a state source are refused by this rule too", "criteria": {"fields": [{"param": "application", "labelKey": "tableColumnName", "kind": "text", "maxLength": 256}]}, "port": "state", "expected": "read.criteria is declared on a 'state' source, and server criteria travel on the admin, mgmnt, atelier, timeline and encryption ports alone (AD-21)"},
     {"name": "criteria on the interop port are refused on a list with no parent (Story 20.3)", "criteria": {"fields": [{"param": "production", "labelKey": "tableColumnName", "kind": "text", "maxLength": 128}]}, "port": "interop", "expected": "read.criteria is declared on a 'interop' source, and server criteria travel on the admin, mgmnt, atelier, timeline and encryption ports alone (AD-21)"},
+    {"name": "criteria on an interop endpoint the port declares searchable are sound on a list with no parent (Story 20.9)", "criteria": {"fields": [{"param": "source", "labelKey": "auditEventFieldSource", "kind": "text", "maxLength": 128}]}, "port": "interop", "endpoint": "Messages", "expected": null},
+    {"name": "criteria on an interop endpoint the port does not declare searchable are refused on a list with no parent (Story 20.9)", "criteria": {"fields": [{"param": "source", "labelKey": "auditEventFieldSource", "kind": "text", "maxLength": 128}]}, "port": "interop", "endpoint": "Items", "expected": "read.criteria is declared on a 'interop' source, and server criteria travel on the admin, mgmnt, atelier, timeline and encryption ports alone (AD-21)"},
     {"name": "criteria on the interop port are sound on a parent-scoped list, where they are the route id (Story 20.3)", "criteria": {"fields": [{"param": "production", "labelKey": "tableColumnName", "kind": "text", "maxLength": 128}]}, "port": "interop", "parentScope": "interoperability/productions", "expected": null},
     {"name": "a criteria-bearing screen that also declares auto-refresh", "criteria": {"fields": [{"param": "eventSources", "labelKey": "auditColumnEventSource", "kind": "text", "maxLength": 50}]}, "refreshes": true, "expected": "refreshes is declared with read.criteria, and a screen that searches on the server does not auto-refresh (AD-43)"},
     {"name": "and auto-refresh alone, with no criteria, is outside this rule", "criteria": null, "refreshes": true, "expected": null},
@@ -156,8 +159,8 @@ ClassMethod Corpus(Output pCorpus As %DynamicObject) As %Status
 }
 
 /// <p>The corpus declaration with <var>pCase</var>'s <code>criteria</code> in place, its
-/// <code>refreshes</code> when the case declares one, its <code>read.source.port</code> when the
-/// case names one, and its <code>parentScope</code> when the case names one, as a new object.</p>
+/// <code>refreshes</code> when the case declares one, its <code>read.source.port</code> and
+/// <code>read.source.endpoint</code> when the case names them, and its <code>parentScope</code> when the case names one, as a new object.</p>
 ClassMethod DeclarationFor(pCorpus As %DynamicObject, pCase As %DynamicObject) As %DynamicObject
 {
     Set tDeclaration = ##class(%DynamicObject).%FromJSON(pCorpus.declaration.%ToJSON())
@@ -172,6 +175,7 @@ ClassMethod DeclarationFor(pCorpus As %DynamicObject, pCase As %DynamicObject) A
     }
     If pCase.%GetTypeOf("refreshes") = "boolean" Do tDeclaration.%Set("refreshes", ''pCase.refreshes, "boolean")
     If pCase.%GetTypeOf("port") = "string" Do tRead.source.%Set("port", pCase.port)
+    If pCase.%GetTypeOf("endpoint") = "string" Do tRead.source.%Set("endpoint", pCase.endpoint)
     If pCase.%GetTypeOf("parentScope") = "string" Do tDeclaration.%Set("parentScope", pCase.parentScope)
     Quit tDeclaration
 }

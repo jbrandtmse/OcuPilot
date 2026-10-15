@@ -1,3 +1,4 @@
+import { Component, type OnInit, type Type, input, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -10,7 +11,7 @@ import { OverlayStack } from '../core/overlay-stack';
 import { RefreshService } from '../core/refresh';
 import { ScopeService } from '../core/scope';
 import { REFRESH_ACTION_ID, ScreenActions } from '../core/screen-actions';
-import { ScreenStores } from '../core/screen-store';
+import { ScreenStores, type ScreenStore } from '../core/screen-store';
 import { SCREENS, type ScreenDeclaration } from '../core/screens.generated';
 import { STRINGS } from '../core/strings';
 import { tableDeclaration } from '../testing/table-declaration';
@@ -53,7 +54,8 @@ async function mount(
   declaration: ScreenDeclaration | null,
   initialRows: unknown[],
   scopeLoaded = true,
-  url = '/web-applications/probe?ns=HSCUSTOM'
+  url = '/web-applications/probe?ns=HSCUSTOM',
+  body: Type<unknown> | null = null
 ) {
   TestBed.resetTestingModule();
   let answerRows = initialRows;
@@ -103,6 +105,7 @@ async function mount(
   });
   await TestBed.inject(Router).navigateByUrl(url);
   const fixture = TestBed.createComponent(ListPage);
+  if (body !== null) fixture.componentRef.setInput('body', body);
   document.body.appendChild(fixture.nativeElement);
   planted.push(fixture.nativeElement);
   fixture.detectChanges();
@@ -133,6 +136,19 @@ const rowNames = (host: HTMLElement) =>
     row.querySelector('.ocu-data-table-link')?.textContent?.trim()
   );
 
+/** A body component that shows what the page gave it: the screen's descriptor and how many rows its store holds. */
+@Component({ selector: 'app-probe-body', template: '<p class="probe-body">{{ screen().descriptor }}|{{ count() }}</p>' })
+class ProbeBody implements OnInit {
+  readonly screen = input.required<ScreenDeclaration>();
+  readonly store = input.required<ScreenStore>();
+  protected readonly count = signal(0);
+
+  ngOnInit(): void {
+    this.count.set(this.store().data().length);
+    this.store().subscribe(() => this.count.set(this.store().data().length));
+  }
+}
+
 describe('the list page', () => {
   afterEach(() => {
     for (const element of planted.splice(0)) element.remove();
@@ -144,6 +160,25 @@ describe('the list page', () => {
     expect(page.refresh.descriptor()).toBe(declaration.descriptor);
     expect(page.paths).toEqual(['/api/ocupilot/screens/stub/read?maxRows=1000']);
     expect(rowNames(page.host())).toEqual(['A', 'B']);
+  });
+
+  // Story 20.9: a `body` component draws the rows in place of the table. The page still binds the declared read, so the body is
+  // given the screen and the store the read fills; with no body the table draws, as every other list does.
+  //
+  // Mutation (Rule 19): make `ListPage.drawsBody` answer false -> the first leg goes red (the table draws, the body does not);
+  // answer true always -> the second leg goes red (no table).
+  it('Story 20.9: a body component is drawn with the screen and its store in place of the table, and no body draws the table', async () => {
+    const declaration = tableDeclaration();
+    const drawn = await mount(declaration, named('A', 'B'), true, '/web-applications/probe?ns=HSCUSTOM', ProbeBody);
+    expect(drawn.host().querySelector('.probe-body')?.textContent).toBe(`${declaration.descriptor}|2`);
+    expect(drawn.host().querySelector('app-data-table')).toBeNull();
+    expect(drawn.paths).toEqual(['/api/ocupilot/screens/stub/read?maxRows=1000']);
+    expect(drawn.refresh.descriptor()).toBe(declaration.descriptor);
+
+    const plain = await mount(declaration, named('A', 'B'));
+    expect(plain.host().querySelector('.probe-body')).toBeNull();
+    expect(plain.host().querySelector('app-data-table')).not.toBeNull();
+    expect(rowNames(plain.host())).toEqual(['A', 'B']);
   });
 
   it('AC6: a tick updates the rows in place, keeps the active row by key, and the grid keeps DOM focus', async () => {

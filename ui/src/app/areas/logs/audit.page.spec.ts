@@ -56,6 +56,11 @@ const AUDIT = SCREENS.find(
   (screen) => screen.descriptor === 'OcuPilot.Screen.Descriptor.AuditList'
 ) as ScreenDeclaration;
 
+/** Story 20.9's Messages search, the other `list (server criteria)` screen this page draws: it declares no marker. */
+const MESSAGES = SCREENS.find(
+  (screen) => screen.descriptor === 'OcuPilot.Screen.Descriptor.InteropMessageList'
+) as ScreenDeclaration;
+
 /** One audit row, carrying every field the table and the dialog read. */
 const row = (event: string, source: string) => ({
   SystemID: 'IRIS',
@@ -86,10 +91,10 @@ const planted: HTMLElement[] = [];
 const DEFAULT_BEGIN = '2026-09-25 10:00:00';
 
 /** The criteria an instance would echo for `path`: each sent value, the begin's default, else empty. */
-function echoFor(path: string): Record<string, string> {
+function echoFor(path: string, screen: ScreenDeclaration = AUDIT): Record<string, string> {
   const query = new URLSearchParams(path.split('?')[1] ?? '');
   const applied: Record<string, string> = {};
-  for (const field of AUDIT.read?.criteria?.fields ?? []) {
+  for (const field of screen.read?.criteria?.fields ?? []) {
     const sent = query.get(field.param);
     applied[field.param] = sent !== null ? sent : field.param === 'beginDateTime' ? DEFAULT_BEGIN : '';
   }
@@ -100,9 +105,11 @@ async function mount(
   initialRows: unknown[] = [row('RoleGranted', 'OcuPilot')],
   explain: ExplainEntry | null = null,
   arrivals: ScreenArrivals | null = null,
-  firstAnswer: Promise<void> | null = null
+  firstAnswer: Promise<void> | null = null,
+  screen: ScreenDeclaration = AUDIT
 ) {
   TestBed.resetTestingModule();
+  let current = screen;
   let answerRows = initialRows;
   const paths: string[] = [];
   const api = {
@@ -114,7 +121,7 @@ async function mount(
       return {
         kind: 'ok',
         status: 200,
-        body: { fields: [], rows: answerRows, truncated: false, banner: '', criteria: echoFor(path) } as T,
+        body: { fields: [], rows: answerRows, truncated: false, banner: '', criteria: echoFor(path, current) } as T,
       };
     },
   };
@@ -138,7 +145,7 @@ async function mount(
         { path: 'logs/audit/:id', children: [] },
         { path: '**', children: [] },
       ]),
-      { provide: NavigationService, useValue: { screenForUrl: () => AUDIT } as unknown as NavigationService },
+      { provide: NavigationService, useValue: { screenForUrl: () => current } as unknown as NavigationService },
       { provide: ApiService, useValue: api as unknown as ApiService },
       { provide: RefreshService, useValue: refresh },
       { provide: ScreenStores, useValue: stores },
@@ -176,7 +183,8 @@ async function mount(
      * same root-provided `AuditSearch`. This is NOT the dialog round trip, which re-binds the same
      * descriptor with the same closure and keeps `hasLoaded`.
      */
-    revisit: async () => {
+    revisit: async (showing: ScreenDeclaration = current) => {
+      current = showing;
       fixture.destroy();
       refresh.unbind();
       const next = TestBed.createComponent(AuditPage);
@@ -248,6 +256,58 @@ describe('the audit database viewer', () => {
     expect((host.querySelector('#ocu-audit-criterion-eventSources') as HTMLElement).tagName).toBe('INPUT');
     const hints = Array.from(host.querySelectorAll('.ocu-criteria-hint')).map((element) => element.textContent?.trim());
     expect(hints).toEqual([STRINGS.auditCriteriaTimeHint, STRINGS.auditCriteriaNameHint]);
+  });
+
+  // Story 20.9: the page is every `list (server criteria)` screen's, and the marker checkbox and the names hint are the audit
+  // criteria's. A screen that declares no marker draws neither, and its labels and controls are its own.
+  //
+  // Mutation (Rule 19): drop the `@if (hasMarker)` around the checkbox -> the checkbox leg goes red; around the hint -> the hint leg
+  // goes red.
+  it('Story 20.9: a screen without a marker draws its own criteria and neither the marker checkbox nor the names hint', async () => {
+    const { host, paths } = await mount([], null, null, null, MESSAGES);
+    expect(paths).toEqual(['/api/ocupilot/screens/interop.messages/read?maxRows=1000']);
+    expect(host.querySelector('[data-ocu-marker="filter"]')).toBeNull();
+    expect(host.querySelector('.ocu-criteria-marker')).toBeNull();
+    const hints = Array.from(host.querySelectorAll('.ocu-criteria-hint')).map((element) => element.textContent?.trim());
+    expect(hints).toEqual([STRINGS.auditCriteriaTimeHint]);
+    const labels = Array.from(host.querySelectorAll('.ocu-criteria-label')).map((element) => element.textContent?.trim());
+    expect(labels).toEqual([
+      STRINGS.auditCriteriaBegin,
+      STRINGS.auditCriteriaEnd,
+      STRINGS.taskHistoryColumnStatus,
+      STRINGS.tableColumnType,
+      STRINGS.auditEventFieldSource,
+      STRINGS.agentLedgerColumnTarget,
+      STRINGS.interopColumnBodyClass,
+      STRINGS.webSessionColumnSession,
+      STRINGS.interopMessagesCriterionErrors,
+    ]);
+    // Each choice draws its declared options after an empty one.
+    const offered = (param: string) => (MESSAGES.read?.criteria?.fields.find((field) => field.param === param)?.options ?? []).length;
+    expect(offered('status')).toBeGreaterThan(0);
+    expect((host.querySelector('#ocu-audit-criterion-status') as HTMLSelectElement).options).toHaveLength(offered('status') + 1);
+    expect((host.querySelector('#ocu-audit-criterion-errors') as HTMLSelectElement).options).toHaveLength(offered('errors') + 1);
+    expect((host.querySelector('#ocu-audit-criterion-source') as HTMLElement).tagName).toBe('INPUT');
+    // The opening read's begin is the one the instance applied, shown in the form.
+    expect((host.querySelector('#ocu-audit-criterion-beginDateTime') as HTMLInputElement).value).toBe(DEFAULT_BEGIN);
+  });
+
+  // Story 20.9: the store is one per tab, so a screen other than the one that last held a search starts from none.
+  //
+  // Mutation (Rule 19): drop the `adopt` call from the page's constructor -> Messages opens on the Search the audit viewer ran, and
+  // this goes red.
+  it('Story 20.9: a search typed on one screen is never read on another, and the first screen starts again when it is revisited', async () => {
+    const audit = await mount();
+    await audit.type('eventSources', 'Probe');
+    await audit.search();
+    expect(audit.paths.at(-1)).toContain('eventSources=Probe');
+    const messages = await audit.revisit(MESSAGES);
+    expect(audit.paths.at(-1)).toBe('/api/ocupilot/screens/interop.messages/read?maxRows=1000');
+    expect(messages.host.querySelector('#ocu-audit-criterion-beginDateTime')).not.toBeNull();
+    expect((messages.host.querySelector('#ocu-audit-criterion-beginDateTime') as HTMLInputElement).value).toBe(DEFAULT_BEGIN);
+    const again = await audit.revisit(AUDIT);
+    expect(audit.paths.at(-1)).toBe('/api/ocupilot/screens/logs.audit/read?maxRows=1000');
+    expect((again.host.querySelector('#ocu-audit-criterion-eventSources') as HTMLInputElement).value).toBe('');
   });
 
   it('Story 11.11: opens on one default read, shows the begin the instance applied, and keeps the marker off', async () => {

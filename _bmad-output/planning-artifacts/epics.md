@@ -8938,6 +8938,7 @@ So that I can follow a message through the production.
 - **Given** a session
 - **When** its trace is opened
 - **Then** it renders as a visual trace, with a generated sequence diagram as the alternative.
+- DW-2434: Rule 31: interop-message-contents.ts copies DataTable's state getters and its skeleton, refusal and empty markup; share one state helper when the Trace tab adds the second body component (ledger; routed by cr 2026-10-14)
 
 ### Story 20.31: Message resend and edit-and-resend
 

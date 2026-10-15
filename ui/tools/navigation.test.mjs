@@ -385,6 +385,9 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'interoperability/productions/items/test',
       // Story 20.5: a lookup table's entries, unlisted and reached from a Lookup tables name cell, among the unlisted ones.
       'interoperability/lookup-tables/entries',
+      // Story 20.9: a message's Contents and Header tabs, unlisted, between the entries and the BPL editor by class name.
+      'interoperability/messages/contents',
+      'interoperability/messages/document',
       // Story 20.7: the BPL editor, unlisted, among the unlisted ones; the rule and DTL editors follow Queue messages.
       'interoperability/processes/document',
       // Story 20.8: the Configuration diagram, unlisted, between the BPL editor and Queue messages by class name.
@@ -404,8 +407,10 @@ test('a side bar lists only built screens, in side-bar order', () => {
       // Story 20.5: Lookup tables and Business partners, listed after them.
       'interoperability/lookup-tables',
       'interoperability/business-partners',
-      // Story 20.8: the Schema viewer, listed last.
+      // Story 20.8: the Schema viewer, listed after them.
       'interoperability/schema-viewer',
+      // Story 20.9: Messages, listed last.
+      'interoperability/messages',
       'agent/definitions/edit',
       'agent/transcripts/details',
       'agent/definitions',
@@ -830,6 +835,37 @@ test('Story 20.4: the Status tab is what an item row opens, from Production item
   );
 });
 
+// Story 20.9: a Messages row's ID opens the message's Header tab, the head of the group the Contents tab joins, and a Queue
+// messages row's message id opens the same tab. The pairing is the `<list route>/document` convention (`documentScreenFor`).
+//
+// Mutation (Rule 19): move InteropMessageHeaderTab off `interoperability/messages/document` -> the pairing leg and the
+// Queue messages leg go red. Drop `rowTarget` from InteropQueueMessageList -> the Queue messages leg goes red.
+test('Story 20.9: a Messages row and a Queue messages row open the message\'s Header tab, beside its Contents tab', () => {
+  const messages = screenForRoute('interoperability/messages');
+  assert.ok(messages, 'Messages is declared');
+  assert.equal(documentScreenFor(messages)?.route, 'interoperability/messages/document', 'the Messages name cell opens the Header tab');
+  assert.equal(childListFor(messages), null, 'and Messages has no child list');
+  const queueMessages = screenForRoute('interoperability/queues/messages');
+  assert.ok(queueMessages, 'Queue messages is declared');
+  assert.deepEqual(
+    queueMessages.rowTarget,
+    { route: 'interoperability/messages/document', field: 'MessageId' },
+    'a Queue messages row opens the Header tab by the message id'
+  );
+  assert.equal(screenForRoute(queueMessages.rowTarget.route)?.built, true, 'a built screen');
+  assert.equal(hasIdRoute(screenForRoute(queueMessages.rowTarget.route)), true, 'keyed by an id');
+  assert.deepEqual(
+    tabMembersFor(screenForRoute('interoperability/messages/document')).map((tab) => tab.route),
+    ['interoperability/messages/document', 'interoperability/messages/contents'],
+    'the strip reads Header, Contents'
+  );
+  assert.equal(
+    screenForUrl(`/interoperability/messages/contents/${encodeEntityId('42')}`)?.descriptor,
+    'OcuPilot.Screen.Descriptor.InteropMessageContentsTab',
+    'a Contents URL resolves to the Contents tab'
+  );
+});
+
 // Story 20.7: a Business rules, Business processes or Data transformations name cell opens the class in its editor
 // screen. The pairing is the `<list route>/document` convention (`documentScreenFor`), so the lists declare no row target
 // and the locator links the editor back to its list (`listForDocumentScreen`).
@@ -891,7 +927,9 @@ test('Story 20.8: the Productions name cell still opens Production items, the di
   assert.equal(hasIdRoute(viewer), false, 'with no id route');
   assert.equal(screenForUrl(`/${viewer.route}?ns=USER`)?.route, viewer.route);
   assert.equal(screenForUrl(`/${viewer.route}/x?ns=USER`), null, 'a route id after it names no screen');
-  assert.equal(listedScreensForArea('interoperability').at(-1)?.route, viewer.route, 'the last of the area\'s side bar');
+  const listed = listedScreensForArea('interoperability').map((screen) => screen.route);
+  assert.equal(listed.at(-2), viewer.route, 'listed before Messages (Story 20.9), the last of the area\'s side bar');
+  assert.equal(listed.at(-1), 'interoperability/messages', 'which closes the area\'s side bar');
 });
 
 test('parentIdSegment reads a parent-scoped screen\'s route id, encoded twice, and answers \'\' for any screen that is not', () => {

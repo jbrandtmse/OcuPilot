@@ -74,6 +74,9 @@ const LDAP_EDITOR_PAGE: PageLoader = () => import('../areas/security/ldap-editor
 /** Stories 20.7 and 20.8: the one page the rule, BPL and DTL editor screens, the Schema viewer and the Configuration diagram share, each descriptor naming this loader. */
 const INTEROP_EDITOR_PAGE: PageLoader = () => import('../areas/interoperability/interop-editor.page').then((m) => m.InteropEditorPage);
 
+/** Story 20.9: a message's Contents tab, the detail page drawing its rows as one block of text. */
+const INTEROP_MESSAGE_CONTENTS_PAGE: PageLoader = () => import('../areas/interoperability/interop-message-contents.page').then((m) => m.InteropMessageContentsPage);
+
 /**
  * Pages keyed by the descriptor that declares them, resolved **before** the archetype map
  * (DW-369).
@@ -230,6 +233,8 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, PageLoader>> = {
   // Story 20.8: the Schema viewer and the Configuration diagram, the vendor's apps in the same frame.
   'OcuPilot.Screen.Descriptor.InteropSchemaViewer': INTEROP_EDITOR_PAGE,
   'OcuPilot.Screen.Descriptor.InteropProductionDiagram': INTEROP_EDITOR_PAGE,
+  // Story 20.9: a message's Contents tab. The Messages search and the Header tab use their archetypes' pages.
+  'OcuPilot.Screen.Descriptor.InteropMessageContentsTab': INTEROP_MESSAGE_CONTENTS_PAGE,
 };
 
 /**

@@ -6,7 +6,8 @@
 /// <code>parentScope</code> <code>interoperability/queues</code>, and its one criterion, <code>queue</code>, is the
 /// route id, required as a single-object read's is (AD-36). Its id is the message header's id, and its one row action is
 /// <code>abort</code> (Story 20.23): <code>interop.queuemessages.abort</code> aborts one waiting message, destructive, with the
-/// message id typed. An item's Queue tab posts its own Abort to this list's route (AD-53).</p>
+/// message id typed. An item's Queue tab posts its own Abort to this list's route (AD-53). A waiting message's id opens that
+/// message's Header tab (<code>rowTarget</code> on <code>MessageId</code>, Story 20.9).</p>
 Class OcuPilot.Screen.Descriptor.InteropQueueMessageList Extends OcuPilot.Screen.Descriptor.Base
 {
 
@@ -64,6 +65,7 @@ XData Declaration
     "emptyNextKey": "",
     "emptyAgentKey": "interopQueueMessagesEmptyAgent"
   },
+  "rowTarget": {"route": "interoperability/messages/document", "field": "MessageId"},
   "toolIdentifier": "interop.queuemessages"
 }
 }

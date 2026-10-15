@@ -1,4 +1,4 @@
-/// <p>The interoperability codes and sentences (AD-29, AD-39, AD-62, Stories 20.2, 20.5, 20.6 and 20.27): every
+/// <p>The interoperability codes and sentences (AD-29, AD-39, AD-62, Stories 20.2, 20.5, 20.6, 20.9 and 20.27): every
 /// <code>INTEROP.*</code> code <class>OcuPilot.Port.InteropPort</class> answers with, the four
 /// consequence codes the production tools' proposals carry, and the sentence each carries. Each sentence
 /// is published once in EXPERIENCE.md's Fixed strings and pinned equal to its
@@ -391,11 +391,18 @@ Parameter TRANSFORMRUNS = "INTEROP.TRANSFORM.RUNS";
 
 Parameter REASONTRANSFORMRUNS = "The transformation's code runs on this instance as you, on the input shown. Whatever it writes or sends, it writes or sends.";
 
+/// <p>The message contents refusal (Story 20.9): a message body that is not text OcuPilot can draw, 409 on the
+/// <parameter>OcuPilot.Api.Error.CONFLICT</parameter> slug. The contents read answers it only after the vendor's own
+/// view audit row is written.</p>
+Parameter MESSAGECONTENTS = "INTEROP.MESSAGE.CONTENTS";
+
+Parameter REASONMESSAGECONTENTS = "OcuPilot cannot show this message body as text.";
+
 /// <p>The refusals the port answers with, as a <class>%List</class>: every code that is not a
 /// consequence.</p>
 ClassMethod Codes() As %List
 {
-    Quit $ListBuild(..#NAMESPACE, ..#RUNNING, ..#OTHER, ..#TROUBLED, ..#NOTRUNNING, ..#UPTODATE, ..#NOTTROUBLED, ..#BUSY, ..#STATE, ..#SUSPENDED, ..#PARTSTOPPED) _ ..ItemCodes() _ ..SettingCodes() _ ..RuntimeCodes() _ ..LookupCodes() _ ..TestCodes() _ ..TransformCodes()
+    Quit $ListBuild(..#NAMESPACE, ..#RUNNING, ..#OTHER, ..#TROUBLED, ..#NOTRUNNING, ..#UPTODATE, ..#NOTTROUBLED, ..#BUSY, ..#STATE, ..#SUSPENDED, ..#PARTSTOPPED) _ ..ItemCodes() _ ..SettingCodes() _ ..RuntimeCodes() _ ..LookupCodes() _ ..TestCodes() _ ..TransformCodes() _ ..MessageCodes()
 }
 
 /// <p>The consequence codes, as a <class>%List</class>.</p>
@@ -478,6 +485,13 @@ ClassMethod TestPreconditionCodes() As %List
 ClassMethod TransformCodes() As %List
 {
     Quit $ListBuild(..#TRANSFORMSOURCEFORMAT, ..#TRANSFORMTARGETFORMAT, ..#TRANSFORMCONTENT)
+}
+
+/// <p>The message contents code (Story 20.9), as a <class>%List</class>: the one refusal of a body OcuPilot cannot draw as
+/// text.</p>
+ClassMethod MessageCodes() As %List
+{
+    Quit $ListBuild(..#MESSAGECONTENTS)
 }
 
 /// <p>The refusals the data transformation tool's fresh read answers when the transformation cannot be tested, as a
@@ -575,6 +589,7 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#TRANSFORMTARGETFORMAT Quit ..#REASONTRANSFORMTARGETFORMAT
     If pCode = ..#TRANSFORMCONTENT Quit ..#REASONTRANSFORMCONTENT
     If pCode = ..#TRANSFORMRUNS Quit ..#REASONTRANSFORMRUNS
+    If pCode = ..#MESSAGECONTENTS Quit ..#REASONMESSAGECONTENTS
     Quit ""
 }
 

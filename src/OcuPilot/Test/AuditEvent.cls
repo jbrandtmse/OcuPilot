@@ -117,23 +117,26 @@ ClassMethod MissingTriples() As %String
 
 /// <p>How many rows the audit database's master map holds for <var>pEvent</var> since
 /// <var>pSince</var> whose <code>EventData</code> carries <var>pMarker</var> -- and
-/// <var>pAlso</var>, when one is given -- with the last such row's data in <var>pData</var>.
+/// <var>pAlso</var>, when one is given -- with the last such row's data in <var>pData</var> and its
+/// description in <var>pDescription</var>. The event is OcuPilot's own unless <var>pSource</var> and
+/// <var>pType</var> name another's, such as the vendor's <code>%Ensemble/%Message</code>.
 /// <code>-1</code> when the read itself failed.</p>
 /// <p><b><var>pSince</var> bounds the read; it does not identify a row.</b>
 /// <code>$ZTimeStamp</code>'s fractional resolution is coarser than the interval between two
 /// consecutive writes on this build -- measured here, two rows 14 ms apart both fell on or after
 /// a bound taken between them -- so a caller that needs "the row this write produced" passes a
 /// marker that only that row carries, and the time bound keeps the scan short.</p>
-ClassMethod RowsCarrying(pSince As %String, pEvent As %String, pMarker As %String, Output pData As %String, pAlso As %String = "") As %Integer
+ClassMethod RowsCarrying(pSince As %String, pEvent As %String, pMarker As %String, Output pData As %String, pAlso As %String = "", pSource As %String = "", pType As %String = "", Output pDescription As %String) As %Integer
 {
     Set pData = ""
-    Set tSource = ##class(OcuPilot.Kernel.Audit.Event).Source()
-    Set tType = ##class(OcuPilot.Kernel.Audit.Event).Type()
+    Set pDescription = ""
+    Set tSource = $Select(pSource '= "": pSource, 1: ##class(OcuPilot.Kernel.Audit.Event).Source())
+    Set tType = $Select(pType '= "": pType, 1: ##class(OcuPilot.Kernel.Audit.Event).Type())
     Set tRows = -1
     Set tOrigNS = $NAMESPACE
     Try {
         Set $NAMESPACE = "%SYS"
-        Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT EventData FROM %SYS.Audit WHERE UTCTimeStamp >= ? AND %NOINDEX EventSource = ? AND %NOINDEX EventType = ? AND %NOINDEX Event = ?", pSince, tSource, tType, pEvent)
+        Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT EventData, Description FROM %SYS.Audit WHERE UTCTimeStamp >= ? AND %NOINDEX EventSource = ? AND %NOINDEX EventType = ? AND %NOINDEX Event = ?", pSince, tSource, tType, pEvent)
         If tRS.%SQLCODE < 0 {
             Set $NAMESPACE = tOrigNS
             Quit
@@ -145,6 +148,7 @@ ClassMethod RowsCarrying(pSince As %String, pEvent As %String, pMarker As %Strin
             If (pAlso '= "") && (tData '[ pAlso) Continue
             Set tRows = tRows + 1
             Set pData = tData
+            Set pDescription = tRS.%Get("Description")
         }
         Set $NAMESPACE = tOrigNS
     } Catch ex {
