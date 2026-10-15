@@ -7,7 +7,7 @@ paradigm: 'Descriptor-driven vertical slices, hexagonal at the edges'
 scope: 'OcuPilot in full: Release 1 (119 P0 rows, contest deadline 2026-09-27) binding; Stages 2-6 decided where their gates are already clear, named as staged decisions where they are not.'
 status: final
 created: '2026-09-08'
-updated: '2026-10-13'
+updated: '2026-10-14'
 binds:
   - 'Areas 5.1-5.12 (shell, agent co-pilot, agent tools, agent config, web apps + REST explorer, permissions, security and secrets, tasks, OS management, logs, packaging, polish)'
   - 'FR-1 through FR-79, NFR-1 through NFR-14'
@@ -193,6 +193,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
   - **Each built screen's page loads on demand** [AMENDED 2026-10-12, Story 20.29 spec gate, Rule 20; AMENDED 2026-10-13, Story 20.29 CI rework, DW-2373]. Every screen route and id route has one child route whose `loadComponent` is the loader `ScreenOutlet`'s maps name for it, wrapped in `rememberedPage`, which answers a page already loaded at once so a navigation to it commits before the next render; one page has one loader, shared by every map that names it. `ScreenOutlet` still decides whether it mounts. No module of the initial bundle imports a page module statically, and a new page is one loader line. `build-output.test.mjs` holds this on the emitted files, and also keeps the initial total under `angular.json`'s warning (5% above the measured initial total; 4000 kB is the hard stop) and each lazy chunk under its ceiling.
   - **A `detail` tab's page may draw its rows with a `body` component** [AMENDED 2026-10-13, Story 20.9 spec gate, Rule 20]: `DetailPage` takes an optional `body` component that draws the rows in place of the table, with everything else `ListPage` does unchanged (Story 20.9's Contents tab).
 
+  **Story 20.32's link screens** [AMENDED 2026-10-14, Story 20.32 spec gate, Rule 20]: an `external` screen declares no read, table, action, tab or parentScope. Its tool identifier names a page in `Screen/ExternalPage`'s closed vocabulary. The navigation map answers its `href`, composed on the instance, when its area applies. The side bar and the command box open it in a new tab with no opener, and its route shows the classic-link card.
+
 ### AD-6 — The proposal is server-minted, single-use, fingerprinted and expiring
 
 - **Binds:** FR-17, FR-18, FR-20, NFR-6; every write the agent can make
@@ -337,6 +339,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
   **Story 20.16's editor saves declare `%Ens_Code:WRITE`** [AMENDED 2026-10-13, Story 20.16 code review (DW-2401), Rule 20], the vendor editors' write resource, beside the class save's pairs, by the orchestrator's ruling that an editor path is never looser than the classic editor's (AD-53); it is neither the database case nor a measured `ResourcesOR()` case above.
 
   **Story 20.11's analytics pairs** [AMENDED 2026-10-14, Story 20.11 spec gate, Rule 20]: Cubes and its tabs require `%DeepSee_Portal:USE`, Term lists `%DeepSee_PortalEdit:USE`, Folder items `%Development:USE` (orchestrator ruling Q2: a named narrower audience; the classic Folder Manager admits `%DeepSee_Admin` or `%Development`, and a custom role holding `%DeepSee_Admin` alone is refused). An account holding only `%DeepSee_*` resources is refused by the API floor; admitting one would be an owner decision, as DW-2140 was (named limit).
+
+  **Story 20.32's analytics link pairs** [AMENDED 2026-10-14, Story 20.32 spec gate (orchestrator ruling Q1 A), Rule 20]: Architect requires `%DeepSee_Architect:USE` and Analyzer `%DeepSee_Analyzer:USE`, each its own pair and a named narrower audience than the vendor page's any-of `RESOURCE`; the User Portal requires `%DeepSee_Portal:USE`. Named limit: a holder of only `%DeepSee_ArchitectEdit:USE` or `%DeepSee_AnalyzerEdit:USE`, whom the vendor admits, is refused here, and the link reads "Requires %DeepSee_Architect:USE" (or Analyzer) so that holder sees what to add. AD-64's either-of check is not extended to these screens.
 
 ### AD-9 — OcuPilot's own state is protected by a privileged routine application
 
@@ -1027,6 +1031,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
   **Story 20.11's `CLASSICPAGES`** [AMENDED 2026-10-14, Story 20.11 spec gate, Rule 20]: `%DeepSee.UI.ModelBrowser`, `%DeepSee.UI.TermListManager` and `%DeepSee.UI.FolderManager` (`NormalizePage`, measured at Task 0).
 
+  **Story 20.32's `CLASSICPAGES`** [AMENDED 2026-10-14, Story 20.32 spec gate, Rule 20]: the analytics links declare `%DeepSee.UI.Architect`, `%DeepSee.UI.Analyzer` and `%DeepSee.UserPortal.Home` as the classic pages they open (`NormalizePage`, measured).
+
 ### AD-45 — There is one smoke path, and it is also the health check
 
 - **Binds:** FR-66, FR-67, NFR-9, AD-38; the installer, CI, the demo
@@ -1056,6 +1062,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
   **Development does not relax this.** The dev loop proxies through the IRIS origin (AD-28) rather than enabling cross-origin requests, so no CORS allowance exists to be left switched on. CORS stays a non-goal in both settings, and the Deferred entry says development as well as production.
 
   **A vendor page OcuPilot embeds is inert** [AMENDED 2026-10-04, Story 19.9 spec gate, Rule 20], except the vendor's interoperability editors, which AD-63 frames unsandboxed as its named exception [AMENDED 2026-10-12, Story 20.13 review, Rule 20]. The class reference (Story 19.9) loads `/csp/documatic/%25CSP.Documatic.cls`'s class page, a fixed same-origin path whose only values are the namespace and the class the source viewer's read answered, in an `<iframe sandbox="">` with no flag. It runs no script, submits no form, opens nothing and has an opaque origin, so nothing in it can read the tab's storage. The shell's policy is unchanged, and its `default-src 'self'` admits the frame. Named consequences: a link followed inside the frame reaches the instance without the browser-level login and answers the sign-in page, which the page replaces with the class; and an image, stylesheet or font a class description names is fetched as the classic Documatic fetches it, because no policy of OcuPilot's governs the vendor's document. Measured on `ocupilot-a2-ci`: unsandboxed, a description's script read the tab's `sessionStorage`; sandboxed, reading it threw `SecurityError`; the iframe `csp` attribute blocked the page.
+
+  **Story 20.32's analytics links** [AMENDED 2026-10-14, Story 20.32 spec gate, Rule 20]: a link screen opens `<GetDefaultApp(ns)>/<vocabulary file>?$NAMESPACE=<ns>`, a root-relative same-origin path the instance composes and `ClassicHrefProblem` checks, in a new tab opened with `noopener`; the vendor page is never framed.
 
 ### AD-48 — The application error log goes through `SYS.ApplicationError`, and its deletes are ordinary writes
 

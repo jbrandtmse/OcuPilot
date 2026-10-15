@@ -79,7 +79,7 @@ Rows read on `ocupilot-b-ci`. "USER" means USER with analytics enabled by `Analy
 
 All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Lines were read at `f1e24f58da0cad25039f0e30b6409141e1adeeb1`. Story 20.11 lands first, and every symbol it adds is marked **(20.11, planned)**. Task 0 re-anchors them.
 
-**Server**
+**Server:**
 
 - `src/OcuPilot/Kernel/Shell/Navigation.cls` `Payload` :25-64. The screen loop is :45-54, after `SetVerdict` :51. The area's `applies` is set at :41.
 - `src/OcuPilot/Kernel/Shell/About.cls` `HelpHref` :145-164 is the sibling: it composes from the declared data and never from caller text.
@@ -97,7 +97,7 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Lines were
   - `BuiltRoutes` :70-85 holds every built route, so the agent can open these routes, onto the card page. This stays unchanged.
   - `Test/ToolNavigate.cls`:14 derives the routes.
 
-**Client**
+**Client:**
 
 - `ui/src/app/core/navigation.ts`:
   - `ScreenVerdictWire` :55-59 and the map parse :1104-1112;
@@ -113,7 +113,7 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Lines were
   - `readProblem` :1325-1331 and `suggestedPromptsProblem` :2572;
   - the archetype check :3326-3332, and `BuiltArchetypeKey` :3446-3480.
 
-**Tests and rosters**
+**Tests and rosters:**
 
 - `src/OcuPilot/Test/StageTwoTools.cls` `Elsewhere` :121. Rows go alphabetically after the `Analytics*` rows **(20.11, planned)**. The load-bearing test is :414.
 - `src/OcuPilot/Test/SurfaceCoverage.cls` `Coverage` :54. Follow the row format of :249-251.
@@ -140,7 +140,7 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Lines were
   - `external` :72 and :838;
   - the new-tab ban :887.
 
-**Vendor (read only)**
+**Vendor (read only):**
 
 - `RESOURCE` is any-of at USE (`irissys/%ZEN/Controller.cls`:32-50):
   - Architect `%DeepSee_Architect,%DeepSee_ArchitectEdit` (`irislib/%DeepSee/UI/Architect.cls`:17);
@@ -185,6 +185,7 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Lines were
   | `AnalyticsArchitectLink` | `analytics/architect` · 4 | `analytics.architect` | Portal + `%DeepSee_Architect:USE` (own) | `%DeepSee.UI.Architect` | architect, cube designer, deepsee architect |
   | `AnalyticsAnalyzerLink` | `analytics/analyzer` · 5 | `analytics.analyzer` | Portal + `%DeepSee_Analyzer:USE` (own) | `%DeepSee.UI.Analyzer` | analyzer, pivot tables, deepsee analyzer |
   | `AnalyticsUserPortalLink` | `analytics/user-portal` · 6 | `analytics.userportal` | Portal | `%DeepSee.UserPortal.Home` | user portal, dashboards, deepsee portal |
+
 - [ ] `ui/src/app/core/strings.ts` (add-only) -- the literals in Design Notes › Strings. Then regenerate the mirror with `cd ui && node tools/screen-mirror.mjs`.
 - [ ] `ui/src/app/core/navigation.ts`:
   - Parse an optional string `href` per screen entry, held with the verdicts and reset with the map.
@@ -283,6 +284,8 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Lines were
 
 ## Spec Change Log
 
+- 2026-10-14, spec gate (runner): the orchestrator ruled Q1 (A); the spine carries the four Story 20.32 clauses (AD-8's names the `*Edit`-only holder's refusal).
+
 ## Review Triage Log
 
 ## Design Notes
@@ -318,7 +321,7 @@ Checked and not engaged: AD-29 and AD-36 (no port, no read), AD-51 to AD-53 (no 
   - *Rejected:* a Help-style `GET /ui/link?route=` (`UiAbout.HandleHelp`). Help's cache is keyed by route, and this address varies by namespace.
   - *Consequence:* `shell.privileges.read` also shows the three addresses.
 - **`GetDefaultApp`, not `GetPortalApp`.** `%IsDeepSeeEnabled` decides whether the area applies from `GetDefaultApp`'s application, so the link opens exactly that application.
-  - *Named limit:* a person with no permission on the namespace's database meets the vendor's own refusal in the new tab, where the classic menu would grey the item out.
+  - *Named limit:* a person with no permission on the namespace's database meets the vendor's own refusal in the new tab, where the classic menu would gray the item out.
 - **The route has a page.** A built archetype requires one (`ArchetypePages`), and a deep link, the agent's `shell.screen.open` and the structural walk all reach the route. The page is the classic-link card, which EXPERIENCE.md already allows to open a new tab. The agent therefore needs no new code, and `BuiltRoutes` is unchanged.
 - **`window.open` with `noopener`** in the side bar and the command box. Their entries are a roving-focus button list and an ARIA option list, and are not anchors. The `noopener,noreferrer` feature string severs the opener and the session-storage copy, which the browser leg pins.
 - **The vocabulary is keyed by tool identifier, not by `classicPage`,** because `Registry` holds that no URL is derived from `classicPage` (AD-44). Its half of `ExternalProblem` is server-only, as `CLASSICPAGES` is: the client never reads the vocabulary or composes an address.
@@ -335,7 +338,7 @@ Checked and not engaged: AD-29 and AD-36 (no port, no read), AD-51 to AD-53 (no 
 
 **Gate question (for the orchestrator).**
 
-- **Q1, Architect's and Analyzer's either-of lists against AD-8's every-pair rule.**
+- **Q1, Architect's and Analyzer's either-of lists against AD-8's every-pair rule.** *Ruled (A) by the orchestrator, 2026-10-14:* the narrower pair each; an `*Edit`-only holder sees "Requires %DeepSee_Architect:USE" (or Analyzer) at the refusal, in EXPERIENCE.md's "Requires..." form; no to (B). The AD-5, AD-8, AD-44 and AD-47 clauses are written in the spine, AD-8's with that named limit.
   - **(A)** One named narrower pair each: `%DeepSee_Architect:USE` and `%DeepSee_Analyzer:USE`. This follows 20.11's Q2 (A). It is measured sufficient, and no shipped role holds any of the four resources. A custom role holding only an `*Edit` resource is refused here, though the vendor admits it. Recommended; this spec is planned on (A).
   - **(B)** Generalize AD-64's either-of check (`Gate.Alternatives`) to these two screens. This is a spine change, and it re-opens this spec.
 
