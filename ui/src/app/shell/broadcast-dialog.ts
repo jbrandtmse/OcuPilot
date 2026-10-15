@@ -12,6 +12,7 @@ import {
   viewChild,
 } from '@angular/core';
 
+import { pickCount } from '../core/count-phrase';
 import { formatCount } from '../core/multi-select';
 import { STRINGS } from '../core/strings';
 import { Dialog } from './dialog';
@@ -126,7 +127,7 @@ export class BroadcastDialog {
 
   protected get heading(): string {
     const count = this.count();
-    return count === 1 ? STRINGS.processBroadcastTitleOne : formatCount(STRINGS.processBroadcastTitle, count);
+    return pickCount(count, STRINGS.processBroadcastTitleOne, formatCount(STRINGS.processBroadcastTitle, count));
   }
 
   protected get hint(): string {

@@ -1286,6 +1286,17 @@ describe('the data table', () => {
     );
   });
 
+  it('one row reads "1 row" in the footer, and a cap of one reads "first row" in the notice', async () => {
+    const wired = await wire(tableDeclaration(), ok(rows(1), true));
+    wired.store.setMaxRows(1);
+    await wired.refresh.readNow();
+    await settle(wired.fixture);
+    expect(wired.host().querySelector('.ocu-data-table-count')?.textContent?.trim()).toBe('1 row');
+    expect(wired.host().querySelector('.ocu-data-table-cap-notice')?.textContent?.trim()).toBe(
+      'Showing the first row. Narrow the filter or raise the max rows.'
+    );
+  });
+
   it('DW-18 Emptied: a focused grid whose re-fetch answers zero rows hands focus to the empty state', async () => {
     const wired = await wire(tableDeclaration(), ok(rows(2)));
     await wired.refresh.readNow();

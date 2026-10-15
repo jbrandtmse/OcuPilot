@@ -223,6 +223,12 @@ export interface TurnProposalUnchangedRow {
   readonly value: string;
   /** As on a diff row: the declared word an empty value reads as, present only where sent (DW-1016). */
   readonly emptyKey?: string;
+  /**
+   * The member count of a classified-opaque value (an array or object no reviewed entry describes
+   * member by member), present only where the instance sent one in place of `value`. The count is
+   * all the wire carries of such a value (AD-3, AD-35).
+   */
+  readonly count?: number;
 }
 
 /**
@@ -667,6 +673,7 @@ function parseProposalUnchanged(value: unknown): TurnProposalUnchangedRow[] {
       field: textAt(row, 'field'),
       value: textAt(row, 'value'),
       ...(textAt(row, 'emptyKey') !== '' ? { emptyKey: textAt(row, 'emptyKey') } : {}),
+      ...(typeof row['count'] === 'number' && Number.isInteger(row['count']) && row['count'] >= 0 ? { count: row['count'] } : {}),
     });
   }
   return rows;

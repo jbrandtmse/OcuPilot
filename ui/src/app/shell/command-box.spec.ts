@@ -239,7 +239,7 @@ describe('the command box', () => {
     expect(options().map((option) => option.textContent?.trim())).toEqual([
       `${STRINGS.navAreaPermissions}${STRINGS.navAreaPermissions}`,
     ]);
-    expect(count()).toBe('1 screens, 0 actions');
+    expect(count()).toBe('1 screen, 0 actions');
 
     type('tail');
     expect(options()).toHaveLength(1);
@@ -640,7 +640,19 @@ describe('the command box', () => {
       fixture.nativeElement.querySelectorAll('.ocu-command-box-group-actions [role="option"]')
     ).map((option) => (option as HTMLElement).querySelector('.ocu-command-box-option-label')?.textContent?.trim());
     expect(labels).toEqual([STRINGS.actionDelete]);
-    expect(count()).toBe('2 screens, 1 actions');
+    expect(count()).toBe('2 screens, 1 action');
+  });
+
+  it('one screen with one action reads the singular of both, and the plural of neither', () => {
+    // Mutation (Rule 19): pick the count template on the screens alone in `command-box.ts` -> the
+    // "1 screen, 1 action" case reads "1 screen, 1 actions", red.
+    navigation.roster = [USERS];
+    navigation.current = screen('permissions/users', 'navAreaPermissions', 'permissions', {
+      primaryAction: { id: '', selfProtection: '' },
+      rowActions: [{ id: 'delete', selfProtection: 'current-user' }],
+    });
+    chord();
+    expect(count()).toBe('1 screen, 1 action');
   });
 
   it('Story 18.4: an action declared as both the primary and a row action is listed once, as the primary', () => {
@@ -689,7 +701,7 @@ describe('the command box', () => {
       fixture.nativeElement.querySelectorAll('.ocu-command-box-group-actions [role="option"]')
     ).map((option) => (option as HTMLElement).querySelector('.ocu-command-box-option-label')?.textContent?.trim());
     expect(labels).toEqual([STRINGS.actionDelete]);
-    expect(count()).toBe('2 screens, 1 actions');
+    expect(count()).toBe('2 screens, 1 action');
   });
 
   it('choosing a registered primary action runs it once and closes the box, and unregistering removes the row', () => {
@@ -1111,7 +1123,7 @@ describe('the command box', () => {
     chord();
     type('a');
 
-    expect(count()).toBe('2 screens, 1 actions');
+    expect(count()).toBe('2 screens, 1 action');
     expect(options()[0].textContent).toContain(STRINGS.navAreaLogs);
   });
 });

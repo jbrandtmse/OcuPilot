@@ -10,7 +10,9 @@
 /// <p><b>It masks rather than withholds.</b> Every field the payload sends is disclosed and every
 /// value the classification does not admit reads as the published mask, so the caption's count and
 /// the rows behind it are one population, every field stays available (FR-17), and no secret value
-/// reaches the wire (AD-3, AD-35).</p>
+/// reaches the wire (AD-3, AD-35). A value the classification calls <code>opaque</code> -- an array
+/// or object no reviewed entry describes member by member -- discloses its member count and no
+/// member.</p>
 /// <p><b>A write that sends no body discloses nothing</b> (AD-51). The stored payload of an
 /// action-style write is the fresh read the fingerprint covers, not a payload the confirm will
 /// send, so disclosing its properties would tell the user that fields are being written which
@@ -38,11 +40,13 @@ Parameter MASKWIDTH As %Integer = 8;
 /// whose path this tool's field list classifies <code>ordinary</code> and shapes
 /// <code>literal</code> -- as itself or as an array of literals -- carries its value, rendered by
 /// <method>OcuPilot.Kernel.Proposal.Mint.Display</method> so the disclosure and the diff read one
-/// value the same way. Every other path carries <method>Mask</method> instead: a
-/// <code>secret</code> or <code>opaque</code> row, a subtree the list describes only member by
-/// member, and a property with no row at all. So the caption's count and the rows behind it are
-/// one population, every field stays available, and no secret value reaches the wire. An
-/// unreadable field list masks everything rather than disclosing anything.</p>
+/// value the same way. A top-level property whose row is <code>opaque</code> carries
+/// <code>value</code> <code>""</code> and <code>count</code>, the number of members its stored
+/// array or object holds; a stored value of any other type carries the mask. Every other path
+/// carries <method>Mask</method> instead: a <code>secret</code> row, a subtree the list describes
+/// only member by member, and a property with no row at all. So the caption's count and the rows
+/// behind it are one population, every field stays available, and no secret value reaches the
+/// wire. An unreadable field list masks everything rather than disclosing anything.</p>
 /// <p>A disclosed field the tool names in <parameter>OcuPilot.Screen.Tool.Write.EMPTYKEYS</parameter>
 /// carries that string key as <code>emptyKey</code>, and its empty value (<code>""</code> or
 /// <code>[]</code>) reads <code>""</code>, as the mint's changed rows do (DW-1016).</p>
@@ -61,7 +65,7 @@ ClassMethod Rows(pToolName As %String, pPayload As %String, pDiff As %String) As
             If '$IsObject(tDiffRow) Continue
             Set tChanged($Piece(tDiffRow.%Get("field"), ".")) = 1
         }
-        Set tReadable = ..OrdinaryPaths(pToolName, .tOrdinary)
+        Set tReadable = ..OrdinaryPaths(pToolName, .tOrdinary, .tOpaque)
         Do ..EmptyKeysOf(pToolName, .tEmptyKeys)
         Set tIterator = tPayload.%GetIterator()
         While tIterator.%GetNext(.tKey, .tValue) {
@@ -73,6 +77,9 @@ ClassMethod Rows(pToolName As %String, pPayload As %String, pDiff As %String) As
                 If $Data(tEmptyKeys(tKey)) && (tShown = "[]") Set tShown = ""
                 Do tRow.%Set("value", tShown, "string")
                 If $Data(tEmptyKeys(tKey)) Do tRow.%Set("emptyKey", tEmptyKeys(tKey), "string")
+            } ElseIf tReadable && +$Get(tOpaque(tKey)) && ((tPayload.%GetTypeOf(tKey) = "array") || (tPayload.%GetTypeOf(tKey) = "object")) {
+                Do tRow.%Set("value", "", "string")
+                Do tRow.%Set("count", tValue.%Size(), "number")
             } Else {
                 Do tRow.%Set("value", ..Mask(), "string")
             }
@@ -156,9 +163,10 @@ ClassMethod EmptyKeysOf(pToolName As %String, Output pKeys) [ Private ]
 
 /// <p>The top-level property names the write tool <var>pToolName</var>'s generated field list
 /// classifies <code>ordinary</code> and shapes <code>literal</code>, as
-/// <code>pPaths(name) = 1</code>. Answers 0 -- with <var>pPaths</var> empty -- when that block
-/// cannot be read, because an unreadable field list is not a negative result and the caller masks
-/// everything on it.</p>
+/// <code>pPaths(name) = 1</code>, and the ones it classifies <code>opaque</code>, as
+/// <code>pOpaque(name) = 1</code>. Answers 0 -- with both empty -- when that block cannot be read,
+/// because an unreadable field list is not a negative result and the caller masks everything on
+/// it.</p>
 /// <p>A top-level property is admitted by a row whose path is the name itself or the name with
 /// <code>[]</code> (an array of literals). A deeper path never admits the property it sits under:
 /// <code>MatchRoles[].MatchRole</code> does not make <code>MatchRoles</code> disclosable, which is
@@ -167,9 +175,9 @@ ClassMethod EmptyKeysOf(pToolName As %String, Output pKeys) [ Private ]
 /// a tool class, which is why this projection lives here rather than in the store that calls it:
 /// nothing under <package>OcuPilot.Kernel.State</package> may name a screen or a tool (AD-9), and
 /// this class names one code-free generated block and no port at all.</p>
-ClassMethod OrdinaryPaths(pToolName As %String, Output pPaths) As %Boolean [ Private ]
+ClassMethod OrdinaryPaths(pToolName As %String, Output pPaths, Output pOpaque) As %Boolean [ Private ]
 {
-    Kill pPaths
+    Kill pPaths, pOpaque
     If pToolName = "" Quit 0
     Set tRead = 0
     Try {
@@ -184,18 +192,23 @@ ClassMethod OrdinaryPaths(pToolName As %String, Output pPaths) As %Boolean [ Pri
         Set tIterator = tEntry.%Get("fields").%GetIterator()
         While tIterator.%GetNext(.tIndex, .tField) {
             If '$IsObject(tField) Continue
-            If tField.%Get("class") '= "ordinary" Continue
-            If tField.%Get("shape") '= "literal" Continue
+            Set tClass = tField.%Get("class")
+            Set tOpaqueRow = (tClass = "opaque")
+            If 'tOpaqueRow && ((tClass '= "ordinary") || (tField.%Get("shape") '= "literal")) Continue
             Set tPath = tField.%Get("path")
             If tPath [ "." Continue
             If $Extract(tPath, *-1, *) = "[]" Set tPath = $Extract(tPath, 1, *-2)
             If tPath [ "[" Continue
             If tPath = "" Continue
-            Set pPaths(tPath) = 1
+            If tOpaqueRow {
+                Set pOpaque(tPath) = 1
+            } Else {
+                Set pPaths(tPath) = 1
+            }
         }
         Set tRead = 1
     } Catch {
-        Kill pPaths
+        Kill pPaths, pOpaque
         Set tRead = 0
     }
     Quit tRead

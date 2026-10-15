@@ -245,7 +245,7 @@ test('AC1: two checked probes are exported to a server file, deleted, and import
     await input.uploadFile(local);
     await page.waitForFunction(() => document.querySelector('[data-explorer-import-confirm]')?.getAttribute('aria-disabled') === null, { timeout: config.navigationTimeoutMs });
     await page.click('[data-explorer-import-confirm]');
-    await statusReads(page, STRINGS.explorerImportDone.replace('<n>', '1'));
+    await statusReads(page, STRINGS.explorerImportDoneOne);
     const sent = posts.at(-1);
     assert.deepEqual([sent.action, sent.id, sent.values.fileName, sent.values.Compile], ['import-local', 'import', 'Gamma.cls', 'true'], 'one local import, named by the file');
     await rowsRead(page, [ALPHA, BETA, GAMMA]);

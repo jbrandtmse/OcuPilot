@@ -18,6 +18,7 @@
  * `node --test`.
  */
 
+import { pickCount } from './count-phrase.ts';
 import { CSV_BOM, csvField } from './csv.ts';
 import { STRINGS } from './strings.ts';
 import { groupDigits } from './table-model.ts';
@@ -237,11 +238,6 @@ export function sortLine(sort: SortState | null): string {
 /** The line a page field outside 1 to `count` reads. */
 export function pageRangeLine(count: number | null): string {
   return fill(STRINGS.explorerSqlDataPageRange, { n: count === null ? '1' : groupDigits(count) });
-}
-
-/** `one` at exactly 1, `many` at 0 and at 2 or more: the one chooser every count sentence here shares. */
-function pickCount(count: number, one: string, many: string): string {
-  return count === 1 ? one : many;
 }
 
 /** The save dialog's sentence: the three counted phrases, each singular at 1, composed in `table`. */

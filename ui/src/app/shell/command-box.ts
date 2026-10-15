@@ -11,6 +11,7 @@ import {
 import { Router } from '@angular/router';
 
 import { AccountPreferences } from '../core/account-preferences';
+import { pickCount } from '../core/count-phrase';
 import {
   NavigationService,
   areaByKey,
@@ -324,7 +325,12 @@ export class CommandBox {
     const screens = this.screenRows.length;
     const actions = this.actionRows.length;
     if (screens + actions === 0) return STRINGS.commandBoxNoMatch;
-    return formatResultCount(STRINGS.commandBoxResultCount, screens, actions);
+    const template = pickCount(
+      screens,
+      pickCount(actions, STRINGS.commandBoxResultCountOneBoth, STRINGS.commandBoxResultCountOneFirst),
+      pickCount(actions, STRINGS.commandBoxResultCountOneSecond, STRINGS.commandBoxResultCount)
+    );
+    return formatResultCount(template, screens, actions);
   }
 
   /** Ctrl/Cmd+K from anywhere. Inert while a dialog is open (EXPERIENCE.md "anywhere (inert while a dialog or the command-box overlay is open)"). */

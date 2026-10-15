@@ -288,6 +288,10 @@ describe('the Definition form', () => {
     // Mutation (Rule 19): drop the input's `(input)` binding -> the PUT carries 30 and the caption
     // keeps 30, and this goes red.
     const retention = host.querySelector('#ocu-definition-retentionDays') as HTMLInputElement;
+    retention.value = '1';
+    retention.dispatchEvent(new Event('input'));
+    await settle(fixture);
+    expect(host.querySelector('#ocu-definition-retentionDays-caption')?.textContent?.trim()).toBe('Transcripts are kept for 1 day.');
     retention.value = '7';
     retention.dispatchEvent(new Event('input'));
     await settle(fixture);
@@ -734,6 +738,15 @@ describe('the Definition form', () => {
     expect(
       await failureAfterPress(timedOut('PROVIDER.TESTTIMEOUT', { waitedSeconds: 50, providerLabel: 'Google Gemini' }))
     ).toBe(STRINGS.agentDefinitionTestTimeout.replace('<provider>', 'Google Gemini').replace('<n>', '50'));
+
+    // A one-second wait reads the singular. Mutation (Rule 19): fill `agentDefinitionTestTimeoutLocal` and
+    // `agentDefinitionTestTimeout` alone in `testTimeoutText` -> both read "1 seconds", red.
+    expect(
+      await failureAfterPress(timedOut('PROVIDER.TESTTIMEOUTLOCAL', { waitedSeconds: 1, providerLabel: 'OpenAI-compatible' }))
+    ).toBe(STRINGS.agentDefinitionTestTimeoutLocalOne);
+    expect(
+      await failureAfterPress(timedOut('PROVIDER.TESTTIMEOUT', { waitedSeconds: 1, providerLabel: 'Google Gemini' }))
+    ).toBe(STRINGS.agentDefinitionTestTimeoutOne.replace('<provider>', 'Google Gemini'));
 
     // Without the detail the sentence cannot be resolved, so the envelope's own reason renders.
     expect(await failureAfterPress(timedOut('PROVIDER.TESTTIMEOUT', null))).toBe(

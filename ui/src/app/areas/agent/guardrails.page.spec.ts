@@ -140,10 +140,20 @@ describe('GuardrailsPage', () => {
     expect(line).toContain('1,000');
   });
 
+  it('reads one row of the screen in the singular when the context cap is one', async () => {
+    // Mutation (Rule 19): fill `STRINGS.agentGuardrailsContextLimits` alone in `limitsLine` -> this goes red.
+    const body = guardrailsBody();
+    body['limits'] = { contextRowCap: 1, totalMaxLength: 65536, fieldMaxLength: 1000, turnsPerHour: 0 };
+    const { root } = await mount(stubGuardrails({ body }));
+    const [line] = texts(root, '.ocu-guardrails-limits');
+    expect(line).toContain('at most 1 row of the screen');
+  });
+
   it('names the turns an hour in force below the limits line, and no limit at 0', async () => {
     // Mutation (Rule 19): remove the page's `.ocu-guardrails-turns` line -> both legs go red.
     for (const [turnsPerHour, line] of [
       [0, STRINGS.agentGuardrailsTurnsNone],
+      [1, STRINGS.agentGuardrailsTurnsLimitOne],
       [7, STRINGS.agentGuardrailsTurnsLimit.replace('<n>', '7')],
       [1200, STRINGS.agentGuardrailsTurnsLimit.replace('<n>', '1,200')],
     ] as const) {

@@ -3,6 +3,7 @@ import { Router } from '@angular/router';
 
 import { AllowedDirectoriesStore } from '../../core/allowed-directories';
 import { ApiService } from '../../core/api';
+import { pickCount } from '../../core/count-phrase';
 import { saveText } from '../../core/csv';
 import { checkedSetReason, checkedSetTarget } from '../../core/multi-select';
 import { NavigationService } from '../../core/navigation';
@@ -458,8 +459,11 @@ export class CodeListPage {
   protected get deleteConsequence(): string {
     const names = this.deleting();
     const routines = this.list?.screen.entityType === 'routine';
-    if (names.length === 1) return routines ? STRINGS.explorerRoutineDeleteConsequence : STRINGS.explorerDeleteConsequence;
-    return fillPlaceholders(routines ? STRINGS.explorerRoutineDeleteSetConsequence : STRINGS.explorerDeleteSetConsequence, { n: names.length });
+    return pickCount(
+      names.length,
+      routines ? STRINGS.explorerRoutineDeleteConsequence : STRINGS.explorerDeleteConsequence,
+      fillPlaceholders(routines ? STRINGS.explorerRoutineDeleteSetConsequence : STRINGS.explorerDeleteSetConsequence, { n: names.length })
+    );
   }
 
   /** The open export dialog's count, `0` (falsy) while none is open. */
@@ -572,11 +576,11 @@ export class CodeListPage {
       const sent = await this.handler.sendFor(view.screen.descriptor, server ? EXPORT_ACTION : EXPORT_BROWSER_ACTION, target, values, PANE_SINK, scope);
       if (!sent) return { applied: false, summary: '' };
       if (choice.destination === 'server') {
-        return { applied: true, summary: fillPlaceholders(STRINGS.explorerExportDone, { n: names.length, path: `${choice.root}${choice.path}` }) };
+        return { applied: true, summary: fillPlaceholders(pickCount(names.length, STRINGS.explorerExportDoneOne, STRINGS.explorerExportDone), { n: names.length, path: `${choice.root}${choice.path}` }) };
       }
       const fileName = exportFileName(scope);
       saveText(document, exportLinesOf(this.handler.lastOutput()).join('\n'), fileName, EXPORT_FILE_TYPE);
-      return { applied: true, summary: fillPlaceholders(STRINGS.explorerExportSaved, { n: names.length, file: fileName }) };
+      return { applied: true, summary: fillPlaceholders(pickCount(names.length, STRINGS.explorerExportSavedOne, STRINGS.explorerExportSaved), { n: names.length, file: fileName }) };
     });
     this.endSend(applied);
   }

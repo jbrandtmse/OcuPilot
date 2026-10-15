@@ -54,6 +54,8 @@ export interface ProposalUnchangedRow {
   readonly value: string;
   /** As on a changed row (DW-1016). */
   readonly emptyKey?: string;
+  /** A classified-opaque value's member count, which the row reads in place of `value`. */
+  readonly count?: number;
 }
 
 /**

@@ -181,7 +181,7 @@ export function groupDigits(n: number): string {
   return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 }
 
-/** `<n> rows` with the count filled in. */
+/** `template` with the count filled in and grouped in thousands; `rowCountPhrase` chooses between the singular and the plural. */
 export function formatRowCount(template: string, count: number): string {
   return template.split(COUNT_PLACEHOLDER).join(groupDigits(count));
 }

@@ -16,6 +16,7 @@
  */
 
 import type { ApiService, JsonResult } from './api';
+import { pickCount } from './count-phrase.ts';
 import { STRINGS } from './strings.ts';
 
 /** Absolute from the origin root, through the one API service (AD-20). */
@@ -199,7 +200,8 @@ const GROUPED = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
 
 /** The limits line, each number grouped en-US. */
 export function limitsLine(limits: GuardrailsLimits): string {
-  return STRINGS.agentGuardrailsContextLimits.split('<rows>')
+  return pickCount(limits.contextRowCap, STRINGS.agentGuardrailsContextLimitsOne, STRINGS.agentGuardrailsContextLimits)
+    .split('<rows>')
     .join(GROUPED.format(limits.contextRowCap))
     .split('<total>')
     .join(GROUPED.format(limits.totalMaxLength))
@@ -210,7 +212,9 @@ export function limitsLine(limits: GuardrailsLimits): string {
 /** The turns-an-hour line: the sentence for no limit at `0`, else the limit, grouped en-US. */
 export function turnsLine(limits: GuardrailsLimits): string {
   if (limits.turnsPerHour === 0) return STRINGS.agentGuardrailsTurnsNone;
-  return STRINGS.agentGuardrailsTurnsLimit.split('<n>').join(GROUPED.format(limits.turnsPerHour));
+  return pickCount(limits.turnsPerHour, STRINGS.agentGuardrailsTurnsLimitOne, STRINGS.agentGuardrailsTurnsLimit)
+    .split('<n>')
+    .join(GROUPED.format(limits.turnsPerHour));
 }
 
 export interface GuardrailsOptions {

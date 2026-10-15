@@ -111,6 +111,7 @@ async function mount(options: { rows?: readonly unknown[]; truncated?: boolean; 
       await settle(fixture);
     },
     settle: () => settle(fixture),
+    stores,
   };
 }
 
@@ -156,6 +157,14 @@ describe('System Explorer Search', () => {
     const { host, search } = await mount({ truncated: true });
     await search('needle');
     expect(host.querySelector('[data-ocu-search="status"]')?.textContent?.trim()).toBe(STRINGS.tableRowCapNotice.replace('<n>', '1,000'));
+  });
+
+  it('says the first row was kept when the cap is one and the read truncated', async () => {
+    // Mutation (Rule 19): fill `STRINGS.tableRowCapNotice` alone in `statusLine` -> this goes red.
+    const { host, search, stores } = await mount({ truncated: true });
+    stores.for(SEARCH.descriptor, SEARCH.refreshRates).setMaxRows(1);
+    await search('needle');
+    expect(host.querySelector('[data-ocu-search="status"]')?.textContent?.trim()).toBe(STRINGS.tableRowCapNoticeOne);
   });
 
   it('says nothing matches when the search answers no row', async () => {

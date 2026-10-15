@@ -3787,6 +3787,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-19T00:22:45Z status=resolved-by:4-12-epic-4-burn-down by=adjudication note=owner decision at the merge: angular.json's maximumWarning is 1050kB and maximumError 1600kB, both pinned literals updated in the same reviewed diff and the size parser taught to read either unit. Evidence: the merged initial total measured 994,301 B raw, 209.12 kB gzip transfer. The policy this entry now carries: re-base maximumWarning to about 5 percent above the measured total at each epic close so growth stays a reviewed diff, treat 1,600 kB raw as the hard stop, and lazy-load the area routes only if the raw total approaches it. Lazy routes were declined for now: the app has no lazy route at all and build-output.test.mjs's unmeasured-chunk tripwire would have to be taught to classify one
 - 2026-09-25T02:47:49Z status=resolved-by:4-12-epic-4-burn-down by=owner note=owner decision 2026-09-24: maximumError raised 1600kB->2000kB for Release 1 (Epics 9+12 project ~1.65 MB merged, inference); served from the instance, NFR-1 unaffected; on-demand loading of editor pages becomes a post-release story; maximumWarning policy (about 5% above measured) unchanged
 - 2026-09-26T20:04:26Z status=resolved-by:4-12-epic-4-burn-down by=owner note=owner decision 2026-09-26: maximumError raised 2000kB->4000kB for the voting week; on-demand loading of editor screens is a story after the voting week (owner reminder set for 2026-10-03); warning re-base policy unchanged; runners stop and ask above 3800kB
+- 2026-10-14T23:56:25Z status=resolved-by:23-5-the-range-end-cleanup-part-5 by=owner note=owner 2026-10-14: maximumWarning fixed at 2500kB, maximumError 4000kB; the re-base-on-crossing policy is retired, a crossing is reported to the owner
 
 ### DW-1167: requireFreeSlot guards only the navigation browser spec, while four other specs arm a turn probe and can be blocked the same way
 - source: spec-4-12-epic-4-burn-down.md | severity: low | fix-risk: low | footprint: in-epic
@@ -6070,6 +6071,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-22T15:30:14Z status=routed owner=range-end-cleanup by=burndown note=Rule 27: real but neither floor- nor downstream-blocking, so not chartered
 - 2026-09-30T06:34:04Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p4
 - 2026-10-07T04:26:43Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=merge_gate note=owner-approved burn-down batch (c), visible polish, 2026-10-06 (relayed by the Planner): Story 23.5
+- 2026-10-15T04:53:22Z status=resolved-by:23-5-the-range-end-cleanup-part-5 by=adjudication note=batch_a:Disclosure.Rows_opaque_count(cdf51e15);ProposalWire+users-write_count_legs;secret_still_masked;CI_38674536770
 
 ### DW-1437: AD-10's user-account set is enumerated by verb and by role name, so two equivalent-effect lockouts are permitted: stripping %All from the last holder, and a service account nobody can sign in as counting as another holder
 - source: spec-5-9-permissions-the-area-s-first-confirmed-user-write.md | severity: med | fix-risk: med | footprint: in-story
@@ -9233,6 +9235,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: seen on the demo's empty Remote databases list; not yet checked whether other empty screens' suggestion chips show the action id the same way
 - 2026-10-02T19:02:37Z status=routed owner=range-end-cleanup by=merge_gate note=check every empty-state suggestion chip, not only this screen
 - 2026-10-07T04:26:42Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=merge_gate note=owner-approved burn-down batch (c), visible polish, 2026-10-06 (relayed by the Planner): Story 23.5
+- 2026-10-14T22:44:29Z status=resolved-by:18-46-allowed-directories-the-screen-s-add-change-and-remove owner=18-46-allowed-directories-the-screen-s-add-change-and-remove by=spec_gate note=already_fixed_at_head:data-table.ts_primaryActionLabel=actionLabel(0220d1e4);verified_by_23.5_plan_and_lead
 ### DW-1948: A document deleted after the save's PresentSet and before its PutDoc is created again by the vendor (201) (inference)
 - source: spec-19-3-the-source-editor-with-etag-conflict-detection.md | severity: low | fix-risk: med | footprint: in-epic
 - evidence: %Api.Atelier.v1.PutDoc saves when ExistsDoc is 0 whatever If-None-Match holds; the AD-34 hold orders only OcuPilot's own writers, so an outside delete inside the window is not seen
@@ -9454,6 +9457,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: seen on two surfaces; not yet checked whether every row-count string in strings.ts lacks a singular
 - 2026-10-03T19:38:12Z status=routed owner=range-end-cleanup by=merge_gate note=check every row-count string, not only these two
 - 2026-10-07T04:26:42Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=merge_gate note=owner-approved burn-down batch (c), visible polish, 2026-10-06 (relayed by the Planner): Story 23.5
+- 2026-10-15T04:53:22Z status=resolved-by:23-5-the-range-end-cleanup-part-5 by=adjudication note=batch_a:count-phrase.ts_rowCountPhrase(cdf51e15);data-table_one-row+context-chip_1_row_leg;CI_38674536770_green_69da7a5e
 
 ### DW-1989: License servers' screen Delete dialog never states the multi-server-key consequence the agent's proposal card carries
 - source: spec-18-6-licensing-and-ecp.md | severity: low | fix-risk: med | footprint: in-story
@@ -10048,6 +10052,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Story 19.18's plan found the same plural-only count pattern as DW-2092 in shared shell surfaces and the code list's export status, outside the burn-down's scope
 - 2026-10-06T00:20:51Z status=routed owner=range-end-cleanup by=burndown note=same root cause as DW-2092; apply 19.18's count-phrase pattern to the shared row count and the export status in the next range-end cleanup
 - 2026-10-07T04:26:42Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=merge_gate note=owner-approved burn-down batch (c), visible polish, 2026-10-06 (relayed by the Planner): Story 23.5
+- 2026-10-15T04:53:22Z status=resolved-by:23-5-the-range-end-cleanup-part-5 by=adjudication note=batch_a:30_singular_keys_via_pickCount(cdf51e15,69da7a5e);source+spec_scans_in_count-phrase.test;CI_38674536770
 
 ### DW-2102: The ObjectScript suite has outgrown four instance shards: refreshed timings estimate the largest leg at 50.5 min, green run 37352698013's legs took 48-59 min, and run 37389702149's shard 1/4 was cancelled at its 61-minute limit with every class green
 - source: Epic 19 lead, CI run 37389702149 | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -10589,6 +10594,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: cycle-log-epic-20.md (20.15 full sweep) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: red in 20.15's sweep on the long-lived throwaway; CI's fresh instance holds few rows (spine Conventions > Tests: no dependence on instance age)
 - 2026-10-08T07:00:29Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=harvest note=assert the pair-set refusal and a row, not the absence of truncation
+- 2026-10-14T22:47:27Z status=routed owner=23-11-the-range-end-cleanup-part-10 by=lead note=orchestrator 2026-10-14: chartered 23.11 for 23.5's later routings
 
 ### DW-2191: Screen permissions offers row actions the instance always refuses: Reset on Home, Agent co-pilot and unadjusted screens, and the dialog's Remove on a last pair
 - source: spec-20-15-per-screen-permissions-seen-and-adjusted.md | severity: low | fix-risk: med | footprint: in-story
@@ -10648,6 +10654,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-10T16:26:03Z occurrence=18-30-doc-db-applications
 - 2026-10-12T02:40:03Z occurrence=18-36-dashboard-drill-downs
 - 2026-10-13T04:27:20Z occurrence=18-42-allowed-directories-a-person-s-write
+- 2026-10-14T22:47:27Z status=routed owner=23-11-the-range-end-cleanup-part-10 by=lead note=orchestrator 2026-10-14: chartered 23.11 for 23.5's later routings
 
 ### DW-2204: IRIS defect candidate: the admin API's Security.SQLPrivilege.Column LIST and REVOKE match the object's case exactly while GRANT accepts any case, so a revoke in another case answers 200 and removes nothing
 - source: spec-18-28-sql-column-and-admin-privileges.md | severity: low | fix-risk: high | footprint: out-of-footprint
@@ -10736,6 +10743,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: cycle-log-epic-20.md (run 37803753942 attempt 1) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: Red in browser shard 2/3 on 20bf830a; the spec passed in 20.18's run 37793652932 and 3/3 locally on ocupilot-b-ci with 20bf830a's own bundle and source (inference: timing between focus landing and the buttons' removal)
 - 2026-10-08T17:28:59Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=lead note=wait for the outgoing buttons to be gone (waitForFunction) before reading focus, rather than reading both in one evaluate
+- 2026-10-15T04:53:22Z status=resolved-by:23-5-the-range-end-cleanup-part-5 by=adjudication note=batch_a:proposal-confirm_AC10_waits_Confirm_gone(cdf51e15);no_red_under_20x_throttle_recorded;CI_38674536770
 ### DW-2215: IRIS defect candidate: the admin API's Security.SQLPrivilege.Admin GRANT of %DEFER, a name its own GetPrivNum maps (32), answers 500 with #514 Invalid privilege '%DEFER' at action GrantAdminPrivilege property AdminPriv, and an %All holder's admin LIST omits it
 - source: spec-18-28-sql-column-and-admin-privileges.md | severity: low | fix-risk: high | footprint: out-of-footprint
 - evidence: ocupilot-ci 2026-10-08 (18.28 code review): port and vendor GRANT of %DEFER answered 500 #514 for a probe user; the other 31 names grant, list Direct and revoke (run 698); _SYSTEM's admin LIST answers 31 rows
@@ -10776,6 +10784,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: Epic 20 runner report 2026-10-08 (20.17 implement handoff); cycle-log-parallel.md | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: A 20.17 handoff subagent ran panel-collapse, stream-reply and agent-sql with both unset between 15:48Z and ~16:35Z 10-08; they arm and disarm a probe agent definition on ocupilot-ci; ui/tools/browser-config.test.mjs pins the one-unset refusals but allows both unset
 - 2026-10-08T16:35:45Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=orchestrator note=CI sets both per shard, so a both-unset refusal costs CI nothing; update browser-config.test.mjs and the README/DEVELOPMENT browser-run lines that rely on the default
+- 2026-10-14T22:47:28Z status=routed owner=23-11-the-range-end-cleanup-part-10 by=lead note=orchestrator 2026-10-14: chartered 23.11 for 23.5's later routings
 
 ### DW-2230: UserCopy tool's ReadBackFields has no mismatch leg and no per-field check; the outcome is pinned only by stored-state asserts
 - source: spec-18-29-role-members-admin-option-user-copy-from-and-password-valida.md | severity: low | fix-risk: low | footprint: in-story
@@ -10868,6 +10877,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: cycle-log-epic-18.md (18.10 runner sweep) | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: ExplorerWire.TestTheReadToolsAnswerRowsAndNeverTheDocument red runs 158 and 535 on ocupilot-ci at fe8e3832; the cap is Kernel/Agent/Limits TOOLRESULTMAXLENGTH 65536; 20.19's source reads carry a 60,000-character exception, the class view read does not
 - 2026-10-09T10:32:54Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=harvest note=page or truncate the class view read as 20.19 does for source, or name the cap in the refusal; 18.10 moves ExplorerWire's leg to a small class
+- 2026-10-14T22:47:27Z status=routed owner=23-11-the-range-end-cleanup-part-10 by=lead note=orchestrator 2026-10-14: chartered 23.11 for 23.5's later routings
 
 ### DW-2249: PctAccessPort STATE's any-case application match (Task 5) has no pinning leg
 - source: spec-18-10-web-application-extras-and-spec-based-rest-services.md | severity: low | fix-risk: low | footprint: in-story
@@ -11965,6 +11975,22 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: log-viewer.spec.ts AC6 (realTimers and its 50 x 20 ms wait) repeats home.page.spec.ts:1302-1308 (pendingRealTimers, same bound and cast); the rework item required the copy and gave no reason (Rule 2); ui/src/app/testing/ holds the shared spec helpers.
 - 2026-10-14T18:19:33Z status=routed owner=burndown by=cr note=spec-forced copy (Rule 2): unify both waits as one ui/src/app/testing helper
 
+### DW-2439: Text-bearing controls and rows set a fixed height where DESIGN.md:912 makes every height outside the virtualized lists a minimum (about twenty sites, e.g. _components.scss:1001, :1548 against DESIGN.md:327, :5571), so a text-only resize clips them
+- source: spec-23-5-the-range-end-cleanup-part-5.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: Story 23.5's plan read the sites at head 6c58e1c9; DW-1392 fixes only the System Information row
+- 2026-10-14T22:44:29Z status=routed owner=burndown by=spec_gate note=sibling_of_DW-1392;proposed_for_Story_23.11_with_DW-2182,2202,2221,2246
+- 2026-10-14T22:47:28Z status=routed owner=23-11-the-range-end-cleanup-part-10 by=lead note=orchestrator 2026-10-14: chartered 23.11 for 23.5's later routings
+
+### DW-2440: The proposal card's confirm spinner (.ocu-proposal-card-confirm-spinner, _components.scss:4794) has the rotating 16px spinner's shape whose bounding box DW-2282 measured 3.3px past its box, so a structural gate may read it as overflow
+- source: spec-23-5-the-range-end-cleanup-part-5.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: inference from the shape (Story 23.5 plan); no red observed
+- 2026-10-14T22:44:29Z status=wontfix-theoretical owner=23-5-the-range-end-cleanup-part-5 by=spec_gate note=reopen_if=a_structural-gate_red_naming_.ocu-proposal-card-confirm-spinner
+
+### DW-2441: Count strings outside Batch a's table still read the plural at 1 (explorerSqlStopped's 'Stopped after 1 seconds.'; candidates agentDefinitionTestTimeout, processBroadcastHint, tableCheckAtMost, remoteDatabaseListHint, explorerSqlDataTabCap and others), against Story 23.5's AC that every count reads singular at 1
+- source: spec-23-5-the-range-end-cleanup-part-5.md (implement batch a deferred) | severity: med | fix-risk: low | footprint: in-story
+- evidence: explorerSqlStopped fills <s> from the recorded seconds (core/sql-answer.ts:78,107), so 1 is reachable; the other candidates are a heuristic scan (inference)
+- 2026-10-14T23:57:00Z status=open owner=23-5-the-range-end-cleanup-part-5 by=harvest note=census_plus_a_singular_per_reachable_string;through_count-phrase.ts
+- 2026-10-15T04:53:22Z status=resolved-by:23-5-the-range-end-cleanup-part-5 by=adjudication note=batch_a_review(69da7a5e):4_reachable_one-second_strings_via_pickCount;8_unreachable_recorded_in_spec_Review_Findings
 ### DW-2433: A message cut at the Contents read's 1,000,000-character cap shows no cut note: the inline TESTCUT reads like a 4,000-character line cut, so the lines after it vanish unannounced
 - source: spec-20-9-messages-search-view-resend-and-trace.md | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: ReadMessageContents cuts the text before splitting it, and truncated comes only from Screen/Read's extra-row check, so an HL7 body with a 1 MB document in one OBX segment ends on that segment cut at 4,000 and the segments after it go unannounced. LogSourcePort hands Screen/Read a port cut flag (tPortCut); the interop port has none, and Screen/Read.cls is on Story 20.9's Never list.

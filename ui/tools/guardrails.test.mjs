@@ -175,12 +175,16 @@ test('the limits line groups each number en-US', () => {
     STRINGS.agentGuardrailsContextLimits.replace('<rows>', '150').replace('<total>', '65,536').replace('<field>', '1,000')
   );
   assert.ok(!line.includes('<'), 'no placeholder survives');
+  const one = limitsLine({ contextRowCap: 1, totalMaxLength: 65536, fieldMaxLength: 1000, turnsPerHour: 0 });
+  assert.equal(one, STRINGS.agentGuardrailsContextLimitsOne.replace('<total>', '65,536').replace('<field>', '1,000'));
+  assert.ok(one.includes('at most 1 row of the screen'), 'a cap of one reads the singular');
 });
 
 test('the turns line reads no limit at 0 and the limit, grouped, above it', () => {
   const limits = { contextRowCap: 200, totalMaxLength: 65536, fieldMaxLength: 1000 };
   assert.equal(turnsLine({ ...limits, turnsPerHour: 0 }), STRINGS.agentGuardrailsTurnsNone);
-  assert.equal(turnsLine({ ...limits, turnsPerHour: 1 }), STRINGS.agentGuardrailsTurnsLimit.replace('<n>', '1'));
+  assert.equal(turnsLine({ ...limits, turnsPerHour: 1 }), STRINGS.agentGuardrailsTurnsLimitOne);
+  assert.equal(turnsLine({ ...limits, turnsPerHour: 2 }), STRINGS.agentGuardrailsTurnsLimit.replace('<n>', '2'));
   const grouped = turnsLine({ ...limits, turnsPerHour: 1200 });
   assert.equal(grouped, STRINGS.agentGuardrailsTurnsLimit.replace('<n>', '1,200'));
   assert.ok(!grouped.includes('<'), 'no placeholder survives');

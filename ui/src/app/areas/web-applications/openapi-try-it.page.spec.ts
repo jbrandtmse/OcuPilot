@@ -367,6 +367,14 @@ describe('OpenApiViewerPage try-it console', () => {
     expect(textOf(one(binary, 'answer'))).not.toContain('abc');
     expect(one(binary, 'cut')).toBeNull();
 
+    // A single byte reads the singular (Story 23.5).
+    TestBed.resetTestingModule();
+    stubFetch({ status: 200, type: 'image/png', body: 'a' });
+    const single = await opened('/api/probe', answer('/api/probe', [row(1, '/x', 'get')]));
+    one(single, 'send')!.click();
+    await settle(single);
+    expect(textOf(one(single, 'binary'))).toBe('1 byte, not shown as text.');
+
     TestBed.resetTestingModule();
     stubFetch({ status: 200, type: 'text/plain', body: 'A'.repeat(256 * 1024 + 1) });
     const long = await opened('/api/probe', answer('/api/probe', [row(1, '/x', 'get')]));

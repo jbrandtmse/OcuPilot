@@ -9,6 +9,7 @@
  * refused turn's transcript line.
  */
 
+import { pickCount } from './count-phrase.ts';
 import { STRINGS } from './strings.ts';
 
 /** The machine code a start refused for the limit carries (`OcuPilot.Api.Error.TURNLIMITHOUR`). */
@@ -42,10 +43,10 @@ function twoDigits(value: number): string {
 export function turnLimitBanner(limit: number, retryAt: string): string {
   const at = new Date(retryAt);
   const time = `${twoDigits(at.getHours())}:${twoDigits(at.getMinutes())}`;
-  return STRINGS.agentTurnLimitBanner.split('<n>').join(String(limit)).split('<hh:mm>').join(time);
+  return pickCount(limit, STRINGS.agentTurnLimitBannerOne, STRINGS.agentTurnLimitBanner).split('<n>').join(String(limit)).split('<hh:mm>').join(time);
 }
 
 /** The refused turn's published transcript line with `<n>` filled. */
 export function turnLimitLine(limit: number): string {
-  return STRINGS.agentTurnLimitLine.split('<n>').join(String(limit));
+  return pickCount(limit, STRINGS.agentTurnLimitLineOne, STRINGS.agentTurnLimitLine).split('<n>').join(String(limit));
 }

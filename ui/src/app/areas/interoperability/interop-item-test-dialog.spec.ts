@@ -114,6 +114,15 @@ describe('the Send test dialog (Story 20.6)', () => {
     fixture.detectChanges();
   }
 
+  // Mutation (Rule 19): fill `STRINGS.interopTestMaxLength` alone in `fields` -> the one-character caption goes red.
+  it('reads "At most 1 character." for a field bounded at one', () => {
+    const oneChar = 'OcuPilotProbe.Interop.OneChar';
+    fixture.componentInstance.rows.set([...ROWS, row(oneChar, 'Code', { MaxLength: 1 })]);
+    fixture.detectChanges();
+    choose(oneChar);
+    expect(fieldNamed('Code').querySelector('[data-interop-test-caption]')?.textContent?.trim()).toBe('At most 1 character.');
+  });
+
   it('reads the tab rows as typed rows and leaves out one with no class', () => {
     const typed = testRowsOf([...ROWS, 'text', null, row('', 'X')]);
     expect(typed).toHaveLength(ROWS.length);

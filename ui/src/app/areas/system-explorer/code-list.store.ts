@@ -11,6 +11,7 @@
  * descriptor alone.
  */
 
+import { pickCount } from '../../core/count-phrase';
 import type { RefreshRead } from '../../core/refresh';
 import type { ScreenArrival } from '../../core/screen-arrival';
 import type { ScreenReadCriteria } from '../../core/screen-read';
@@ -335,7 +336,7 @@ export class CodeListWrite {
   /** The polite status line: the step in flight, else the summary the last operation left. */
   status(): string {
     if (!this.runningNow) return this.summary;
-    if (this.kind === 'delete') return fillPlaceholders(STRINGS.explorerDeleteRunning, { n: this.names.length });
+    if (this.kind === 'delete') return fillPlaceholders(pickCount(this.names.length, STRINGS.explorerDeleteRunningOne, STRINGS.explorerDeleteRunning), { n: this.names.length });
     if (this.kind === 'import') return fillPlaceholders(STRINGS.explorerImportRunning, { file: this.importing });
     if (this.kind === 'export') return '';
     return fillPlaceholders(STRINGS.explorerCompileRunning, { i: this.position, n: this.names.length, name: this.current });
@@ -369,8 +370,8 @@ export class CodeListWrite {
     }
     const stopped = this.stopRequested && this.position < names.length;
     this.summary = stopped
-      ? fillPlaceholders(STRINGS.explorerCompileStopped, { done: this.position, n: names.length })
-      : fillPlaceholders(STRINGS.explorerCompileSummary, { done: this.done, n: names.length, errors: this.withErrors });
+      ? fillPlaceholders(pickCount(names.length, STRINGS.explorerCompileStoppedOne, STRINGS.explorerCompileStopped), { done: this.position, n: names.length })
+      : fillPlaceholders(pickCount(names.length, STRINGS.explorerCompileSummaryOne, STRINGS.explorerCompileSummary), { done: this.done, n: names.length, errors: this.withErrors });
     this.end();
   }
 
@@ -391,7 +392,7 @@ export class CodeListWrite {
             : fillPlaceholders(STRINGS.explorerDocumentResult, { name: document.name, reason: document.reason }),
         ];
       }
-      this.summary = fillPlaceholders(STRINGS.explorerDeleteSummary, { done: deleted, n: names.length });
+      this.summary = fillPlaceholders(pickCount(names.length, STRINGS.explorerDeleteSummaryOne, STRINGS.explorerDeleteSummary), { done: deleted, n: names.length });
     }
     this.end();
     return answer.applied;
@@ -420,7 +421,11 @@ export class CodeListWrite {
     const answer = await send();
     if (answer.applied) {
       this.linesValue = [...answer.imported, ...answer.lines];
-      this.summary = fillPlaceholders(answer.errors ? STRINGS.explorerImportDoneErrors : STRINGS.explorerImportDone, { n: answer.imported.length });
+      const imported = answer.imported.length;
+      const template = answer.errors
+        ? pickCount(imported, STRINGS.explorerImportDoneErrorsOne, STRINGS.explorerImportDoneErrors)
+        : pickCount(imported, STRINGS.explorerImportDoneOne, STRINGS.explorerImportDone);
+      this.summary = fillPlaceholders(template, { n: imported });
     }
     this.end();
     return answer.applied;

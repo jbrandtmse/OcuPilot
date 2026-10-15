@@ -11,6 +11,7 @@ import {
 } from '@angular/core';
 import { Router } from '@angular/router';
 
+import { downloadCappedPhrase, rowCountPhrase } from '../core/count-phrase';
 import { NavigationService } from '../core/navigation';
 import { OverlayStack } from '../core/overlay-stack';
 import { RefreshService } from '../core/refresh';
@@ -32,7 +33,7 @@ import { ScreenStores, type SortDirection } from '../core/screen-store';
 import { selfProtectionReason } from '../core/self-protection';
 import { Session } from '../core/session';
 import { STRINGS, stringFor } from '../core/strings';
-import { entityKeyOf, formatCapNotice, formatRowCount, rowFor } from '../core/table-model';
+import { entityKeyOf, rowFor } from '../core/table-model';
 import { ViewOptions } from '../core/view-options';
 
 /**
@@ -739,7 +740,7 @@ export class CommandBar {
       sort: store.sort(),
       direction: store.direction(),
     });
-    return formatRowCount(STRINGS.tableRowCount, view.length);
+    return rowCountPhrase(view.length);
   }
 
   /** The current screen's filter, or `''` on a screen with no read. */
@@ -904,7 +905,7 @@ export class CommandBar {
     const screen = this.screen();
     if (screen === null) return '';
     const store = this.stores.for(screen.descriptor, screen.refreshRates);
-    return store.truncated() ? formatCapNotice(STRINGS.tableDownloadCsvCapped, store.maxRows()) : '';
+    return store.truncated() ? downloadCappedPhrase(store.maxRows()) : '';
   }
 
   protected get downloadDescribedBy(): string | null {

@@ -1526,6 +1526,22 @@ describe('the command bar', () => {
     expect(reason?.classList.contains('ocu-command-bar-reason')).toBe(true);
   });
 
+  it('Story 23.5: one row reads "1 row" in the count, and a cap of one describes the file as the first row only', async () => {
+    // Mutation (Rule 19): fill `STRINGS.tableRowCount` and `STRINGS.tableDownloadCsvCapped` alone in `command-bar.ts` -> both go red.
+    const declared = tableDeclaration();
+    build(declared);
+    actions.register(declared.descriptor, DOWNLOAD_CSV_ACTION_ID, () => {});
+    stores.for(declared.descriptor, declared.refreshRates).setMaxRows(1);
+    refresh.bind(declared, async () => ({ kind: 'ok' as const, rows: [{ Name: 'a' }], truncated: true }));
+    await refresh.readNow();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.ocu-command-bar-count')?.textContent?.trim()).toBe('1 row');
+    const describedBy = download()?.getAttribute('aria-describedby') ?? '';
+    const reason = describedBy === '' ? null : fixture.nativeElement.querySelector(`#${describedBy}`);
+    expect(reason?.textContent?.trim()).toBe('The file holds the first row only.');
+  });
+
   it('AC: every command-bar action is reachable from the command box', () => {
     const declared = screenDeclaration({
       primaryAction: { id: 'create', selfProtection: '' },

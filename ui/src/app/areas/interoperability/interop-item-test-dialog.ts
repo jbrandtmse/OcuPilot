@@ -2,6 +2,7 @@ import { LocationStrategy } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject, input, output, signal } from '@angular/core';
 import { Router } from '@angular/router';
 
+import { pickCount } from '../../core/count-phrase';
 import { entityUrl } from '../../core/navigation';
 import { STRINGS } from '../../core/strings';
 import { type TestAnswer, testStatusLine } from '../../core/test-answer';
@@ -286,7 +287,7 @@ export class InteropItemTestDialog {
       const caption = row.secret
         ? STRINGS.interopTestRefusalSecret
         : row.maxLength !== null && !document
-          ? fill(STRINGS.interopTestMaxLength, 'n', String(row.maxLength))
+          ? fill(pickCount(row.maxLength, STRINGS.interopTestMaxLengthOne, STRINGS.interopTestMaxLength), 'n', String(row.maxLength))
           : '';
       const ids = [caption !== '' ? `${id}-caption` : '', violation !== '' ? `${id}-reason` : ''].filter((entry) => entry !== '');
       views.push({

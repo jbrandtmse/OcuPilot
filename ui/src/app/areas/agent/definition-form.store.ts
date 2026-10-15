@@ -7,6 +7,7 @@ import {
 } from '../../core/agent-status';
 import { ApiService, type JsonResult } from '../../core/api';
 import { ChangeBus, type ChangeAction } from '../../core/change-bus';
+import { pickCount } from '../../core/count-phrase';
 import { FormDirty } from '../../core/form-dirty';
 import { STRINGS } from '../../core/strings';
 import {
@@ -1223,11 +1224,15 @@ export function testTimeoutText(code: string | null, detail: Record<string, unkn
   const waited = detail['waitedSeconds'];
   if (typeof waited !== 'number' || !Number.isFinite(waited)) return null;
   if (code === TEST_TIMEOUT_LOCAL_CODE) {
-    return STRINGS.agentDefinitionTestTimeoutLocal.split('<n>').join(String(waited));
+    return pickCount(waited, STRINGS.agentDefinitionTestTimeoutLocalOne, STRINGS.agentDefinitionTestTimeoutLocal).split('<n>').join(String(waited));
   }
   const label = detail['providerLabel'];
   if (typeof label !== 'string' || label === '') return null;
-  return STRINGS.agentDefinitionTestTimeout.split('<provider>').join(label).split('<n>').join(String(waited));
+  return pickCount(waited, STRINGS.agentDefinitionTestTimeoutOne, STRINGS.agentDefinitionTestTimeout)
+    .split('<provider>')
+    .join(label)
+    .split('<n>')
+    .join(String(waited));
 }
 
 function emptyBuffer(): EditBuffer {

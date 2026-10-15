@@ -3,6 +3,7 @@ import { ActivatedRoute } from '@angular/router';
 
 import { ApiService, type ApiRequestInit, type JsonResult } from '../../core/api';
 import { ChangeBus } from '../../core/change-bus';
+import { pickCount } from '../../core/count-phrase';
 import { screenForRoute } from '../../core/navigation';
 import { ScopeService, onScopeChange } from '../../core/scope';
 import type { ScreenDeclaration } from '../../core/screens.generated';
@@ -250,7 +251,14 @@ export class CodeComparePage {
     const outcome = this.state.outcome();
     if (outcome.kind === 'identical') return STRINGS.explorerCompareIdentical;
     if (outcome.kind === 'too-large') return STRINGS.explorerCompareTooLarge;
-    if (outcome.kind === 'diff') return fillPlaceholders(STRINGS.explorerCompareSummary, { n: outcome.removed, m: outcome.added });
+    if (outcome.kind === 'diff') {
+      const template = pickCount(
+        outcome.removed,
+        pickCount(outcome.added, STRINGS.explorerCompareSummaryOneBoth, STRINGS.explorerCompareSummaryOneFirst),
+        pickCount(outcome.added, STRINGS.explorerCompareSummaryOneSecond, STRINGS.explorerCompareSummary)
+      );
+      return fillPlaceholders(template, { n: outcome.removed, m: outcome.added });
+    }
     return '';
   }
 

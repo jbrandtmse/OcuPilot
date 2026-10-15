@@ -8,6 +8,7 @@
  * message live on the screen and the card alone.
  */
 
+import { pickCount } from './count-phrase.ts';
 import { STRINGS } from './strings.ts';
 
 /** `template` with each `<placeholder>` of `values` replaced. */
@@ -15,11 +16,6 @@ function fill(template: string, values: Readonly<Record<string, string | number>
   let result = template;
   for (const [key, value] of Object.entries(values)) result = result.split(`<${key}>`).join(String(value));
   return result;
-}
-
-/** `one` at exactly 1, `many` at 0 and at 2 or more. */
-function pick(count: number, one: string, many: string): string {
-  return count === 1 ? one : many;
 }
 
 function text(value: unknown): string {
@@ -98,19 +94,24 @@ export function statusLineFor(answer: SqlAnswer | null): string {
     case 'rows':
       return fill(
         answer.result.truncated
-          ? pick(answer.result.rows.length, STRINGS.explorerSqlRowsCutOne, STRINGS.explorerSqlRowsCut)
-          : pick(answer.result.rows.length, STRINGS.explorerSqlRowCountOne, STRINGS.tableRowCount),
+          ? pickCount(answer.result.rows.length, STRINGS.explorerSqlRowsCutOne, STRINGS.explorerSqlRowsCut)
+          : pickCount(answer.result.rows.length, STRINGS.explorerSqlRowCountOne, STRINGS.tableRowCount),
         { n: answer.result.rows.length },
       );
     case 'done':
-      return answer.kind === 'dml' ? fill(pick(answer.rowCount, STRINGS.explorerSqlRowsChangedOne, STRINGS.explorerSqlRowsChanged), { n: answer.rowCount }) : STRINGS.explorerSqlDone;
+      return answer.kind === 'dml' ? fill(pickCount(answer.rowCount, STRINGS.explorerSqlRowsChangedOne, STRINGS.explorerSqlRowsChanged), { n: answer.rowCount }) : STRINGS.explorerSqlDone;
     case 'error':
       if (answer.sqlcode !== null) return fill(STRINGS.explorerSqlCode, { code: answer.sqlcode });
       return answer.rolledBack ? STRINGS.explorerSqlRolledBack : '';
     case 'stopped':
-      return fill(answer.kind === 'dml' ? STRINGS.explorerSqlStoppedUndone : STRINGS.explorerSqlStopped, { s: answer.seconds });
+      return fill(
+        answer.kind === 'dml'
+          ? pickCount(answer.seconds, STRINGS.explorerSqlStoppedUndoneOne, STRINGS.explorerSqlStoppedUndone)
+          : pickCount(answer.seconds, STRINGS.explorerSqlStoppedOne, STRINGS.explorerSqlStopped),
+        { s: answer.seconds },
+      );
     case 'parameters':
-      return fill(pick(answer.count, STRINGS.explorerSqlTakesValuesOne, STRINGS.explorerSqlTakesValues), { n: answer.count });
+      return fill(pickCount(answer.count, STRINGS.explorerSqlTakesValuesOne, STRINGS.explorerSqlTakesValues), { n: answer.count });
     case 'noplan':
       return STRINGS.explorerSqlNoPlan;
     case 'plan':
