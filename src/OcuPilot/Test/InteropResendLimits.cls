@@ -108,7 +108,7 @@ Method TestAHundredMessagesGoAndAHundredAndOneAreRefusedWholeWithNothingSent()
 }
 
 /// <p>AC2, AC3: the agent's mint of the whole cap, 100 messages, answers a card of one row of 100 lines and sends nothing: the message
-/// store's ids are as long as the store is old, and a set of them is one proposal target that must fit the proposal store's index.</p>
+/// store's ids are as long as the store is old, and a set of them is one proposal target that the proposal store keeps whole.</p>
 /// <p>Mutation (Rule 19): lower <parameter>OcuPilot.Port.InteropPort.RESENDMAX</parameter> to 99 -- the mint is refused and this goes red.</p>
 Method TestTheAgentsCardCarriesTheWholeCapOfAHundredMessages()
 {
@@ -123,6 +123,37 @@ Method TestTheAgentsCardCarriesTheWholeCapOfAHundredMessages()
         Do $$$AssertEquals(tProposal.changed.%Size() _ "|" _ $Length(tProposal.changed.%Get(0).after, $Char(10)), "1|100", "its card is one row of 100 lines")
     }
     Do $$$AssertEquals($ClassMethod(..#FIXTURE, "TopId"), tTop, "and the mint sent nothing")
+}
+
+/// <p>AC2, AC3: a set of 100 ids of 19 digits, the longest target a resend names, is minted for the agent, stored whole as the
+/// proposal's target and confirmed over HTTP: the confirm reads the set back from the stored target, so it sends the one id that
+/// is a message and reads the other 99 as gone. Only one of the 100 is a stored message, because the others cannot exist.</p>
+/// <p>Mutation (Rule 19): cut the stored target at 512 characters in <method>OcuPilot.Kernel.State.Propose.GuardedMint</method> -- the
+/// stored target and the confirm go red.</p>
+Method TestAHundredIdsOfNineteenDigitsAreMintedStoredWholeAndConfirmedForTheAgent()
+{
+    Set tReal = ..Make("alpha")
+    Set tSet = tReal
+    For tI = 1:1:99 {
+        Set tSet = tSet _ "," _ "9" _ $Translate($Justify(tI, 18), " ", "0")
+    }
+    Do $$$AssertEquals($Length(tSet, ","), 100, "the set names 100 ids")
+    Do ..EnableKey(..#RESENDKEY)
+    Set tTop = $ClassMethod(..#FIXTURE, "TopId")
+    Set tUser = ##class(OcuPilot.Test.Http).GetTestUsername()
+    Set tSC = $ClassMethod(..#CONTROL, "MintAs", ..#RESENDTOOL, {"Messages": (tSet)}, tUser, .tProposal, .tHttp, .tFault, .tTurn)
+    Do $$$AssertStatusOK(tSC, "the agent's mint of 100 ids of 19 digits succeeds: " _ $Select($IsObject($Get(tFault)): tFault.%ToJSON(), 1: ""))
+    If '$IsObject($Get(tProposal)) Quit
+    Do $$$AssertEquals($Length(tProposal.changed.%Get(0).after, $Char(10)), 100, "its card is one row of 100 lines")
+    Set tStored = ##class(OcuPilot.Test.ProposalFixture).Field(tProposal.proposalId, "TargetRef")
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.EntityRef).Key("interop-message", ..#NAMESPACE, tSet, .tExpected), "the target is named")
+    Do $$$AssertTrue($Length(tStored) > 2000, "the stored target is longer than 2,000 characters: " _ $Length(tStored))
+    Do $$$AssertEquals(tStored, tExpected, "and is the whole set, uncut")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tProposal.proposalId, "TargetKey"), ##class(OcuPilot.Kernel.State.Propose).TargetLockKey(tStored), "and its key is the digest of it")
+    Do $$$AssertEquals($ClassMethod(..#FIXTURE, "TopId"), tTop, "the mint sent nothing")
+    Set tSC = $ClassMethod(..#CONTROL, "ConfirmHttp", tProposal.proposalId, .tStatus, .tRaw, .tAnswer)
+    Do $$$AssertEquals(tStatus, 200, "the confirm is admitted: " _ $Extract($Get(tRaw), 1, 300))
+    Do $$$AssertEquals($ClassMethod(..#FIXTURE, "TopId") - tTop, 1, "and sends the one message that exists")
 }
 
 /// <p>AC4: a person's action is held to the digest of its review. A digest of the wrong length, of zeros, in the wrong letter case, with a

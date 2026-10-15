@@ -544,6 +544,7 @@ services:
       # classes: InstallTarget
       # classes: ContainerStartNamespace
       # classes: SslReadInstall
+      # classes: ProposalTargetKey
       OCUPILOT_ALLOW_PRODUCTION_INSTALL: "1"
       # Runs the installer's EnsureSslConfiguration step under the probe profile and so creates
       # -- and leaves -- a TLS configuration in the instance's own security database. Same

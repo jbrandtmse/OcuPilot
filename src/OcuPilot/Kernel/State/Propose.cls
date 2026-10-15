@@ -77,9 +77,14 @@ Property TurnKey As %String(MAXLEN = 64);
 /// <p>The canonical dotted name of the write tool that minted it.</p>
 Property ToolName As %String(MAXLEN = 128);
 
+/// <p>The longest <property>TargetRef</property> a row holds; the property's own <code>MAXLEN</code>
+/// equals it. A set of 100 message ids of 19 digits, the largest target a tool names, is about 2,040
+/// characters.</p>
+Parameter TARGETREFMAX As INTEGER = 2200;
+
 /// <p>The scoped target as <method>OcuPilot.Kernel.EntityRef.Key</method> spells it: the entity
 /// type, the scope and the id, joined by that class's separator (AD-13).</p>
-Property TargetRef As %String(MAXLEN = 512);
+Property TargetRef As %String(MAXLEN = 2200);
 
 /// <p>The digest of the payload the write will send, minus the descriptor's declared exclusions
 /// (AD-6). Confirm re-reads the target, recomputes this and refuses on a mismatch.</p>
@@ -204,6 +209,24 @@ Property Impact As %String(MAXLEN = 4000);
 /// row means anything different once a newer OcuPilot reads it.</p>
 Property TargetName As %String(MAXLEN = 256);
 
+/// <p><method>TargetLockKey</method> of <property>TargetRef</property>: 64 lower-case hex
+/// characters, or <code>""</code> for an unscoped reference. A global subscript is bounded and a
+/// target is not, so <code>ProposalTargetIdx</code> is keyed by this digest and a read through that
+/// index also compares <property>TargetRef</property> exactly.</p>
+/// <p>Computed whenever <property>TargetRef</property> is saved. A row stored before this property
+/// existed reads <code>NULL</code> until <method>GuardedRebuildTargetKeys</method> runs, which
+/// every install does.</p>
+/// <p><b>Declared after every other property, and a property added later goes after this one.</b>
+/// This class carries no Storage section, so the compiler numbers each stored property's data slot
+/// by declaration order, and a property declared before an existing one shifts the slot of every
+/// property after it in every stored row.</p>
+/// <p><b>Added with no <code>SCHEMAVERSION</code> move</b> (Consistency Conventions: when
+/// SCHEMAVERSION moves): the install step is idempotent and runs on every install, so a migration
+/// step, which runs once per version, is not what carries it; and no older row means anything
+/// different once a newer OcuPilot reads it, because a row without a key is given one before the
+/// install records <code>installed</code>.</p>
+Property TargetKey As %String(MAXLEN = 64) [ SqlComputeCode = {Set {*} = ##class(OcuPilot.Kernel.State.Propose).TargetLockKey({TargetRef})}, SqlComputed, SqlComputeOnChange = TargetRef ];
+
 Index ProposalKeyIdx On ProposalKey [ Unique ];
 
 Index ProposalTokenIdx On Token [ Unique ];
@@ -227,9 +250,10 @@ Index ProposalConvIdx On (ConvKey As Exact, UserName As Exact);
 
 /// <p>A scoped target's own proposals by state, the predicate the sibling cancel inside
 /// <method>GuardedClaimAndClose</method> runs while a claim's transaction is open (AD-34). Without
-/// it that update filters <property>TargetRef</property> against the master map with the claimed
-/// row's transaction still holding its locks.</p>
-Index ProposalTargetIdx On (TargetRef As Exact, State);
+/// it that update filters <property>TargetKey</property> against the master map with the claimed
+/// row's transaction still holding its locks. Keyed by <property>TargetKey</property> and not by
+/// <property>TargetRef</property>, whose length a subscript cannot bear.</p>
+Index ProposalTargetIdx On (TargetKey As Exact, State);
 
 /// <p>Mint one row and answer its id, token and expiry.</p>
 /// <p><b>Caller contract:</b> <var>pValues</var> carries <code>user</code>, <code>convKey</code>,
@@ -246,6 +270,8 @@ Index ProposalTargetIdx On (TargetRef As Exact, State);
 /// <p>Each of the three stream writes is checked and no row is saved on a failure: a row stored
 /// with a payload its diff does not describe reads to every diff-scoped gate behind the mint as a
 /// proposal that changes nothing (DW-1353).</p>
+/// <p>A <code>targetRef</code> longer than <parameter>TARGETREFMAX</parameter> is refused with an
+/// error and nothing is stored, because a cut target names another target.</p>
 ClassMethod GuardedMint(ByRef pValues, pLimitsClass As %String, Output pKey As %String, Output pToken As %String, Output pExpiresAt As %String) As %Status
 {
     Set pKey = ""
@@ -253,6 +279,10 @@ ClassMethod GuardedMint(ByRef pValues, pLimitsClass As %String, Output pKey As %
     Set pExpiresAt = ""
     Set tSC = $$$OK
     Try {
+        If $Length($Get(pValues("targetRef"))) > ..#TARGETREFMAX {
+            Set tSC = $$$ERROR($$$GeneralError, "the target reference is longer than the " _ ..#TARGETREFMAX _ " characters a proposal keeps whole")
+            Quit
+        }
         Set tStamp = $ZTimeStamp
         Set tSeconds = ..NowSeconds(tStamp) + +$Parameter(pLimitsClass, "PROPOSALEXPIRYSECONDS")
         Set tRow = ..%New()
@@ -262,7 +292,7 @@ ClassMethod GuardedMint(ByRef pValues, pLimitsClass As %String, Output pKey As %
         Set tRow.ConvKey = ..Cut($Get(pValues("convKey")), 64)
         Set tRow.TurnKey = ..Cut($Get(pValues("turnKey")), 64)
         Set tRow.ToolName = ..Cut($Get(pValues("toolName")), 128)
-        Set tRow.TargetRef = ..Cut($Get(pValues("targetRef")), 512)
+        Set tRow.TargetRef = $Get(pValues("targetRef"))
         Set tRow.Fingerprint = ..Cut($Get(pValues("fingerprint")), 128)
         Set tSC = tRow.Arguments.Write($Get(pValues("arguments")))
         If $$$ISERR(tSC) Quit
@@ -390,7 +420,8 @@ Parameter CLAIMLOCKSECONDS As %Integer = 10;
 
 /// <p>The lock subscript a claim on <var>pTargetRef</var> serializes on -- a SHA-256 digest of the
 /// reference rather than the reference itself, because <property>TargetRef</property> holds up to
-/// 512 characters and a lock name does not. <code>""</code> for an unscoped claim, which has no
+/// <parameter>TARGETREFMAX</parameter> characters and a lock name does not. It is also what
+/// <property>TargetKey</property> stores. <code>""</code> for an unscoped claim, which has no
 /// siblings to cancel and takes no lock.</p>
 /// <p>Public so a test can name the same lock a claim takes rather than rebuilding it, which is
 /// the only way an assertion about the serialization can fail for the right reason.</p>
@@ -480,7 +511,9 @@ ClassMethod GuardedTargetRelease(pKey As %String) As %Status
 /// compared byte-for-byte, so canonicalizing only the bound value would stop a row finding the
 /// siblings written at its own spelling -- rows that were siblings of each other before any
 /// normalization existed. Both are bound, so the set of rows closed is a superset of what either
-/// spelling alone reaches.</p>
+/// spelling alone reaches. A candidate row is found through <code>ProposalTargetIdx</code> by the
+/// <property>TargetKey</property> of either spelling, and is closed only when its
+/// <property>TargetRef</property> is exactly one of the two.</p>
 /// <p><b>Siblings are closed whatever user owns them.</b> The target moved for everyone, and a
 /// sibling left live would offer a decision against a diff that is already stale.</p>
 /// <p>A row count of 0 leaves <var>pWon</var> 0 and answers the row's current state in
@@ -523,8 +556,8 @@ ClassMethod GuardedClaimAndClose(pProposalKey As %String, pExpectedVersion As %I
         If tClaimed = 0 Quit
         Set pWon = 1
         If tTargetRef '= "" {
-            Set tSiblings = [].%Push(..#STATECANCELED).%Push(..#REASONSIBLING).%Push(tTargetRef).%Push(pTargetRef).%Push(..#STATELIVE).%Push(pProposalKey)
-            Set tSC = ..GuardedExecuteRows("UPDATE OcuPilot_Kernel_State.Proposal SET State = ?, ClosedReason = ? WHERE (%EXACT(TargetRef) = ? OR %EXACT(TargetRef) = ?) AND %EXACT(State) = ? AND %EXACT(ProposalKey) <> ?", .tSiblings, .tCanceled)
+            Set tSiblings = [].%Push(..#STATECANCELED).%Push(..#REASONSIBLING).%Push(..TargetLockKey(tTargetRef)).%Push(..TargetLockKey(pTargetRef)).%Push(tTargetRef).%Push(pTargetRef).%Push(..#STATELIVE).%Push(pProposalKey)
+            Set tSC = ..GuardedExecuteRows("UPDATE OcuPilot_Kernel_State.Proposal SET State = ?, ClosedReason = ? WHERE (%EXACT(TargetKey) = ? OR %EXACT(TargetKey) = ?) AND (%EXACT(TargetRef) = ? OR %EXACT(TargetRef) = ?) AND %EXACT(State) = ? AND %EXACT(ProposalKey) <> ?", .tSiblings, .tCanceled)
             If $$$ISERR(tSC) Quit
         }
         TCOMMIT
@@ -544,6 +577,39 @@ ClassMethod GuardedClaimAndClose(pProposalKey As %String, pExpectedVersion As %I
         Set tReadSC = ..GuardedByKey(pProposalKey, .tFound, .tValues)
         If $$$ISERR(tReadSC) Quit tReadSC
         Set pTerminal = $Select(tFound: $Get(tValues("state")), 1: "")
+    }
+    Quit tSC
+}
+
+/// <p>Give every stored proposal its <property>TargetKey</property> and build
+/// <code>ProposalTargetIdx</code> over the stored rows, and answer in <var>pChanged</var> how many
+/// rows were given a key.</p>
+/// <p><b>Idempotent.</b> Only a row whose key is unset and whose <property>TargetRef</property> is
+/// not empty is written, and the index is purged and built only when one was, so a second run
+/// changes nothing. A write leaves <property>RowVersion</property> as it was, so a claim that read
+/// the row earlier still matches it.</p>
+/// <p>A proposal minted before the key existed has none, and the sibling cancel in
+/// <method>GuardedClaimAndClose</method> does not find it until this has run; the index definition
+/// also changed, so the rebuild is what removes the entries the old definition left.</p>
+ClassMethod GuardedRebuildTargetKeys(Output pChanged As %Integer) As %Status
+{
+    Set pChanged = 0
+    Set tSC = $$$OK
+    Try {
+        Set tSC = ..GuardedRowsNoParam("SELECT ID, TargetRef FROM OcuPilot_Kernel_State.Proposal WHERE TargetKey IS NULL ORDER BY ID", .tRows)
+        If $$$ISERR(tSC) Quit
+        For tI = 1:1:+$Get(tRows) {
+            Set tRef = ..Text(tRows(tI, 2))
+            If tRef = "" Continue
+            Set tParams = [].%Push(..TargetLockKey(tRef)).%Push(tRows(tI, 1))
+            Set tSC = ..GuardedExecuteRows("UPDATE OcuPilot_Kernel_State.Proposal SET TargetKey = ? WHERE ID = ? AND TargetKey IS NULL", .tParams, .tRowCount)
+            If $$$ISERR(tSC) Quit
+            Set pChanged = pChanged + tRowCount
+        }
+        If $$$ISERR(tSC) Quit
+        If pChanged Set tSC = ..GuardedBuildIndices($ListBuild("ProposalTargetIdx"))
+    } Catch ex {
+        Set tSC = ex.AsStatus()
     }
     Quit tSC
 }

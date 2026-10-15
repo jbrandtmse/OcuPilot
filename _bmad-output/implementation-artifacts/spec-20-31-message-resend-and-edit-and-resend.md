@@ -2,11 +2,11 @@
 title: 'Story 20.31: Message resend and edit-and-resend'
 type: 'feature'
 created: '2026-10-13'
-status: 'in-progress'
-baseline_revision: '895d9fe9ce67457e19ebc35e8f2100d52a7aa36b'
+status: 'done'
+baseline_revision: '2f564cff76bc6fd62f3aae5aac07fac7b8c8f181'
 baseline_commit: '895d9fe9ce67457e19ebc35e8f2100d52a7aa36b'
 review_loop_iteration: 0
-followup_review_recommended: true
+followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
   - '{project-root}/_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md'
@@ -244,6 +244,20 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Lines were
 
 **Execution:**
 
+- [x] **Rework 1 (the only open work in this section; every item below it shipped in `18c88e71` and `080df411`, and its box was never ticked).** Close the open HIGH under `### Review Findings` as its **Lead ruling** says. Of the spine, read AD-6, AD-13, AD-34 and the Consistency Conventions rows on `Kernel.State` writes and "When `SCHEMAVERSION` moves".
+  - **`src/OcuPilot/Kernel/State/Propose.cls`:**
+    - `TargetRef` becomes `MAXLEN = 2200`.
+    - `TargetKey` is new: stored, `SqlComputed`, `SqlComputeOnChange = TargetRef`, `MAXLEN = 64`, equal to `TargetLockKey(TargetRef)`.
+    - `Index ProposalTargetIdx On (TargetKey As Exact, State)`.
+    - The sibling cancel in `GuardedClaimAndClose`, and every other query or `Exists`-style read on that index (search the repository for `ProposalTargetIdx` and for SQL over `TargetRef`), filters by `TargetKey` and then by the exact `TargetRef`, as it matches today (the canonical and the stored spelling).
+    - The Storage section stays the compiler's.
+  - **`src/OcuPilot/Install/Installer.cls`:** `src/OcuPilot` holds no index rebuild today. Add one install step, idempotent and run on every install, that gives each stored `Proposal` row its `TargetKey` and builds `ProposalTargetIdx` for the stored rows. It reaches the protected table through a guarded `Propose` class method (AD-9), and it is named in the failing-step vocabulary.
+  - **Design Notes:** one entry saying whether `SCHEMAVERSION` moves, and why.
+  - **Tests (one class per call; each about 500 lines or fewer):**
+    - `InteropResendLimits.TestTheAgentsCardCarriesTheWholeCapOfAHundredMessages` goes green as written.
+    - A leg with 100 nineteen-digit ids, at the store and, where the tool admits it, through the agent's mint.
+    - A new self-contained store class: a sibling cancel finds its sibling by the exact target and leaves a different target alone; a row stored before the change (`TargetKey` unset) is found by the sibling cancel after the install step; a second run of the step changes nothing.
+    - Each pinning test gets its `mutation:` line under Verification.
 - [ ] **Task 0 (re-anchor and measure; no product code).** This task runs on `ocupilot-b-ci` only. Record each result as a `Task 0:` line under Verification. A result that disagrees with Design Notes › Measured is HALT `intent gap`.
   - **Re-anchor on 20.9's and 20.30's shipped code:**
     - `InteropMessageList` and `InteropMessageHeaderTab`, as declared;
@@ -516,9 +530,9 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Lines were
 
 ### Review Findings
 
-Code review, 2026-10-15 (four layers, `full-opus`; Rule 6, Rule 3 and Rule 31 checked). Open: 1 HIGH.
+Code review, 2026-10-15 (four layers, `full-opus`; Rule 6, Rule 3 and Rule 31 checked). Open: none.
 
-- [ ] [Review][Patch] **HIGH (AD-6, AD-13, AC2, AC3): the agent's proposal of a long set cannot be stored** [src/OcuPilot/Kernel/State/Propose.cls:82,232] — the target `interop-message|<ns>|<ids>` is the canonical set, and `ProposalTargetIdx On (TargetRef As Exact, State)` overflows the global subscript near 455 characters (`<SUBSCRIPT>%SaveData+35`, 500 `INTERNAL`; run 881, 100 four-digit ids), while `TargetRef` is `MAXLEN = 512` and 100 ids of up to 19 digits need about 2,040. The person's route stores no proposal and sends 100. **(a) is not tool-local**: the mint keys the target by the kernel (`Kernel/Proposal/Mint.cls:154` → `Operation.TargetRefOf`, no tool hook), and Confirm and the draft read the port's id back from the stored `TargetRef` (`Confirm.cls:687`, `Draft.cls:144`), and the person's hold keys by the same `EntityRef` rule (`Api/ScreenAction.cls:228-232`). So a bounded identity needs a new `EntityRef` rule mirrored in the client, a confirm and draft path that read the ids from the payload, and a person's route that keeps the raw ids. Otherwise the agent and the person hold two different locks on one set (AD-34). **Recommended fix, (b):** in `Propose.cls`, widen `TargetRef` to `MAXLEN = 2200`, add a stored computed `TargetKey` (`TargetLockKey(TargetRef)`, 64 hex), key `ProposalTargetIdx On (TargetKey As Exact, State)`, and filter the sibling cancel in `GuardedClaimAndClose` by `TargetKey` plus the exact `TargetRef`. Then rebuild the index for stored rows (proposals live 10 minutes) and turn `InteropResendLimits.TestTheAgentsCardCarriesTheWholeCapOfAHundredMessages` green, with a 19-digit-id leg. **(c)** (a 400 naming `Messages` for a set whose target does not fit) needs a Rule 5 amendment of AC2 and AC3 and is the orchestrator's call.
+- [x] [Review][Patch] **HIGH (AD-6, AD-13, AC2, AC3): the agent's proposal of a long set cannot be stored** [src/OcuPilot/Kernel/State/Propose.cls:82,232] — the target `interop-message|<ns>|<ids>` is the canonical set, and `ProposalTargetIdx On (TargetRef As Exact, State)` overflows the global subscript near 455 characters (`<SUBSCRIPT>%SaveData+35`, 500 `INTERNAL`; run 881, 100 four-digit ids), while `TargetRef` is `MAXLEN = 512` and 100 ids of up to 19 digits need about 2,040. The person's route stores no proposal and sends 100. **(a) is not tool-local**: the mint keys the target by the kernel (`Kernel/Proposal/Mint.cls:154` → `Operation.TargetRefOf`, no tool hook), and Confirm and the draft read the port's id back from the stored `TargetRef` (`Confirm.cls:687`, `Draft.cls:144`), and the person's hold keys by the same `EntityRef` rule (`Api/ScreenAction.cls:228-232`). So a bounded identity needs a new `EntityRef` rule mirrored in the client, a confirm and draft path that read the ids from the payload, and a person's route that keeps the raw ids. Otherwise the agent and the person hold two different locks on one set (AD-34). **Recommended fix, (b):** in `Propose.cls`, widen `TargetRef` to `MAXLEN = 2200`, add a stored computed `TargetKey` (`TargetLockKey(TargetRef)`, 64 hex), key `ProposalTargetIdx On (TargetKey As Exact, State)`, and filter the sibling cancel in `GuardedClaimAndClose` by `TargetKey` plus the exact `TargetRef`. Then rebuild the index for stored rows (proposals live 10 minutes) and turn `InteropResendLimits.TestTheAgentsCardCarriesTheWholeCapOfAHundredMessages` green, with a 19-digit-id leg. **(c)** (a 400 naming `Messages` for a set whose target does not fit) needs a Rule 5 amendment of AC2 and AC3 and is the orchestrator's call.
   - **Lead ruling (rework 1):** take (b). It is inside Epic 20's footprint (`Kernel/**`) and no in-flight epic edits `Propose.cls`. Keep `TargetRef` exact and readable (Confirm and the draft still read it); the digest key only bounds the index subscript. Stored rows must keep working after an upgrade: read how the installer handles a changed index on a `Kernel.State` class (search `src/OcuPilot/Install` for `%BuildIndices` or index rebuilds, and the spine's "When `SCHEMAVERSION` moves" convention), rebuild `ProposalTargetIdx` there for existing rows, and say in Design Notes whether `SCHEMAVERSION` moves (a computed property every existing row reads safely after the rebuild does not move it). Pin it: the red `TestTheAgentsCardCarriesTheWholeCapOfAHundredMessages` goes green, a leg with 100 nineteen-digit ids is added, a sibling cancel still finds its sibling by the exact target, and an existing proposal row written before the change is still found after the rebuild.
 - [x] [Review][Patch] `RunScript` returned OK whatever the drafted script's `tSC` read, and left the script's variables in the process [src/OcuPilot/Test/InteropResendCase.cls:171]
 - [x] [Review][Patch] A session's header count read 1 for a session with no new header (`$Length("", ";")`) [src/OcuPilot/Test/InteropResend.cls:181,320; src/OcuPilot/Test/InteropResendLimits.cls:106]
@@ -605,6 +619,27 @@ Code review, 2026-10-15 (four layers, `full-opus`; Rule 6, Rule 3 and Rule 31 ch
   - the host-test suites `InteropHostTest` 12, `InteropHostTestEdges` 5 and `InteropHostTestRefusals` 7, and `InteropQueueActions` 10;
   - `test:tools` 2026, `test:components` 3238, `build`, and `interop-message-resend` 5 of 5.
 
+### 2026-10-15 — Review pass (rework 1, follow-up)
+
+- verdicts: 14 findings — high 0, medium 1, low 10, false 3, maybe-false 0
+- findings:
+  - Verification-gap layer:
+    - `[low]` `[reject]` The sibling cancel's `TargetKey` conjunct is not pinned (dropping it closes the same rows) — it is the index-use predicate, and the previous index was likewise not plan-pinned; the fix adds a SQL-text seam to a production class for a performance property on a table of ten-minute rows.
+    - `[low]` `[reject]` A failing `EnsureProposalTargetKeys` is not pinned to fail the install naming the step — the step follows the pattern of the other install steps, of which two have a failure pin; a fault needs an `Installer` subclass seam.
+    - `[low]` `[patch]` The step's report lines are unasserted — `TestARowStoredBefore...` asserts the first run's `Gave` line and `TestASecondRunOfTheStepChangesNothing` the third run's `already carries` line; swapping the branches reddens both.
+    - `[medium]` `[patch]` A target over `TARGETREFMAX` is stored cut (probed on `ocupilot-b-ci`: 3,000 characters stored as 2,200, mid-name, status OK), where it failed before the widening; `ExplorerWrite` names up to 100 documents, so a set over 2,200 characters is reachable — `GuardedMint` now refuses it with an error (the mint answers 500 `INTERNAL`, as it did), and a new test pins the limit and one more; the mutation reddens it alone.
+    - `[low]` `[patch]` `ProposalTargetKey` asserted `$Length(tRef) > 0` for the short target, which cannot fail — it now asserts `< 400` for the short and `> 2000` for the long.
+    - `[low]` `[patch]` No mutation line for the unscoped-row skip — applied and read red in `TestASecondRunOfTheStepChangesNothing`, alone; the line is under Verification.
+    - `[low]` `[patch]` The Rework 1 run record named 16 classes against the search's 110 — all 110 classes that hold a test ran green after the patches; the record says so.
+  - Intent-alignment layer:
+    - `[false]` `[reject]` The diff edits shared files the intent does not list — `Propose.cls`, `Installer.cls` and `Base.cls` are in none of the intent's Never or add-only lists, and the lead ruling (b) places the fix in `Kernel/**`.
+    - `[low]` `[reject]` The tests exercise the store, not the person's route, the draft or other tools — the person's route stores no proposal, the draft reads `TargetRef` whole, and the 110-class run drives the changed sibling cancel through other tools' confirms.
+    - `[low]` `[reject]` `Ledger.Target` is cut at 256 — pre-existing for every tool and untouched; the outcome lines name each message.
+    - `[false]` `[reject]` The cut ceiling of 2,200 against the largest resend target — 1,999 characters of ids plus the type, separators and a namespace name come to about 2,080 (inference: a namespace name is at most 64 characters), and a longer target is now refused.
+    - `[low]` `[reject]` Rows stored before the change are not found until the step has run — documented at `TargetKey`; the step runs before `installed` is recorded, and a row lives ten minutes.
+    - `[false]` `[reject]` No step roster to update — an observation, no bad outcome.
+    - `[low]` `[reject]` `ProposalTargetKey` has no entry in `ci-timings.json` — the merge gate refreshes the file, and `ui/tools/ci.test.mjs` (green) holds the class equal to its arming line.
+
 ## Design Notes
 
 **Governing ADs:**
@@ -660,6 +695,7 @@ Checked, with nothing to add: AD-21 (no path), AD-26, AD-27, AD-47 and AD-63.
 - **Edit kinds.** HL7 v2 documents are edited as the vendor's edit page does. Object bodies follow its AutoForm rule, which 20.6's `ClassFieldsHere` already encodes. Other document kinds have vendor-specific copy rules (X12 copies `ParentId`, `Source`, `OriginalDocId` and `Envelope`), unmeasured here, so they are a named limit.
 - **The Header tab's actions are page-drawn**, as 20.6's Test tab is. Its rows are properties, not messages, so a row action has no row to name.
 - **`interop-message:integerset`** makes `13,12` and `12,13` one target, as the process and document sets are. A single valid id is unchanged.
+- **`SCHEMAVERSION` does not move for `Propose.TargetKey`.** Every older row reads the new column as unset, and `Installer.EnsureProposalTargetKeys` gives it a value on every install before the install records `installed`, so no stored row changes meaning. A migration step runs once per version and this step is idempotent, so it is an install step. `TargetKey` is declared after every other property because the class has no Storage section: the compiler numbers data slots by declaration order, and a property declared earlier shifts every later column of every stored row (measured on `ocupilot-b-ci`: `State` read `0` until the property moved to the end).
 
 **Codes** (each published once, in EXPERIENCE.md :604 and `strings.ts`):
 
@@ -805,6 +841,7 @@ Not moved: `InteropFloor` (no principal holds a write tool; confirm in the sweep
 - `(loop)` `cd ui && OCUPILOT_BROWSER_ORIGIN=http://localhost:52777 OCUPILOT_BROWSER_CONTAINER=ocupilot-b-ci node --test --test-concurrency=1 browser/<file>`, one file per call, after the redeploy. Expected: green.
   - `interop-message-resend.browser-spec.mjs`
   - `interop-messages.browser-spec.mjs` (20.9's)
+- `(loop)` Rework 1, after the `src` reload and with `ci-runner.mjs --class` repeated per call, in batches of about 8 minutes (`ui/tools/ci-timings.json`): `InteropResendLimits`, `InteropResend`, `InteropEditResend`, `DryRunRoute`, the new store class, every class under `src/OcuPilot/Test` that names `Kernel.State.Propose`, `GuardedClaimAndClose` or `ProposalTargetIdx`, and the installer's upgrade classes (`Installer`, `Version`, `MigrateFault`, `InstallMark`, `ContainerStartNamespace`). Expected: green.
 - **Lead-owned (the runner's):** the full ObjectScript sweep, `cd ui && npm test`, `bash scripts/smoke.sh --container ocupilot-b-ci --user _SYSTEM --password SYS`, and Rule 30's fresh check.
 - **Left to CI:** the full browser suite.
 
@@ -883,21 +920,31 @@ Not moved: `InteropFloor` (no principal holds a write tool; confirm in the sweep
 - (CR) mutation: AD-34, `ScreenAction.Run` takes the hold for a preview too -> `DryRunRoute.TestTheAnswerIsRowsAndReviewAndTheRowsAreTheAgentsCardRows`, alone.
 - (CR) mutation: client, `reviewLinesOf` splits a text without ending its closing line feed -> `screen-action-handler-resend.spec.ts` document-edit test, alone.
 
+**Rework 1 pass (Rule 19).** Each mutation was applied to the copy of the tree on `ocupilot-b-ci`, the tree reloaded, and reverted by syncing the worktree back (the proposal index rebuilt); the worktree files were never touched, and SHA-256 of the changed files matched before and after.
+
+- mutation: AD-6/AD-13, `ProposalTargetIdx` keyed by `TargetRef` again -> `ProposalTargetKey` (`TestTheKeyIsTheDigestOfTheTargetAndALongTargetIsStoredWhole`, the sibling-cancel test and the legacy-row test) and `InteropResendLimits` (`TestTheAgentsCardCarriesTheWholeCapOfAHundredMessages` and the 19-digit leg).
+- mutation: AD-34, the sibling update's `%EXACT(TargetRef)` test made always true -> `ProposalTargetKey.TestASiblingCancelClosesItsSiblingsByTheExactTargetAndLeavesOthersAlone`, alone.
+- mutation: AD-17, `EnsureProposalTargetKeys` a no-op -> `ProposalTargetKey.TestARowStoredBeforeTheKeyExistedIsFoundBySiblingCancelOnceTheStepHasRun` and `TestTheProductionInstallGivesAStoredProposalItsKey`.
+- mutation: AD-17, `GuardedRebuildTargetKeys` skips `GuardedBuildIndices` -> `TestARowStoredBeforeTheKeyExistedIsFoundBySiblingCancelOnceTheStepHasRun`, alone (the entry the old definition left stays).
+- mutation: AD-17, `GuardedRebuildTargetKeys` builds the index on every run -> `ProposalTargetKey.TestASecondRunOfTheStepChangesNothing`, alone.
+- mutation: AD-17, `Install` no longer calls `EnsureProposalTargetKeys` -> `ProposalTargetKey.TestTheProductionInstallGivesAStoredProposalItsKey`, alone.
+- mutation: AC2/AC3, `GuardedMint` cuts the stored target at 512 -> `InteropResendLimits.TestAHundredIdsOfNineteenDigitsAreMintedStoredWholeAndConfirmedForTheAgent`, alone.
+- mutation: AD-6, `GuardedMint` cuts a target over `TARGETREFMAX` in place of refusing it -> `ProposalTargetKey.TestATargetOverTheLimitIsRefusedAtTheMintAndTheLimitItselfIsStoredWhole`, alone.
+- mutation: AD-17, `EnsureProposalTargetKeys` reports its two outcomes swapped -> `ProposalTargetKey.TestARowStoredBeforeTheKeyExistedIsFoundBySiblingCancelOnceTheStepHasRun` and `TestASecondRunOfTheStepChangesNothing`.
+- mutation: AD-17, `GuardedRebuildTargetKeys` no longer skips a row with no target -> `ProposalTargetKey.TestASecondRunOfTheStepChangesNothing`, alone (the row is written and the index rebuilt on every run).
+- Rework 1: on `ocupilot-b-ci` (tree reloaded after the review patches), green: the four resend classes, `ProposalTargetKey` 6, `Installer` 27, `Version` 19, `InstallMark` 6, `ContainerStartNamespace` 5, and every class under `src/OcuPilot/Test` that holds a test and names `Kernel.State.Propose`, `GuardedClaimAndClose` or `ProposalTargetIdx`: 110 classes and 996 tests in all. `MigrateFault` and five other classes of that search are fixtures and hold no test. `test:tools` 2033, `check-objectscript` and `lint-docs` clean.
+
 ## Auto Run Result
 
 Status: done
 Blocking condition: none
 
-**Implemented.** Two confirmed, destructive write tools reach `Ens.MessageHeader.ResendDuplicatedMessage` in process through `InteropPort`'s `Messages` endpoint: `interop.messages.resend` (1 to 100 ids, canonical per AD-13) and `interop.messageheader.editresend` (HL7 v2 and plain object fields, always on a saved clone). A message reads one verdict before any vendor call; Confirm sends exactly the reviewed `resend` members. The agent's card is the dry run; a person's dry run is the new `POST /screens/:screen/dryrun` (`DRYRUN` tools), and the action carries the reviewed digest, refused 409 `INTEROP.RESEND.CHANGED` when the verdicts or the body moved. Both keys ship `false`. The Messages list has multi-select Resend and the Header tab a page of its own with Resend and Edit and resend.
+**This pass (rework 1).** Closes the one HIGH, the agent's proposal of a long resend set, by the lead's ruling (b).
 
-**Files.** Server: `Port/InteropPort.cls` (the four types, verdicts, set rule, digest, clone, scripts), `Api/ScreenDryRun.cls` and `Api/ScreenAction.cls` `DryRun` (the route), `Api/Router.cls`, `Api/InteropError.cls` (codes), `Kernel/EntityRef.cls` (`interop-message:integerset`), `Kernel/Governance/Baseline.cls`, `Screen/Tool/Write.cls` (`DRYRUN`), the three new tool classes plus `InteropMessageResendMint`, and the two descriptors. Client: the typed-name dialog's `review`, the Test dialog's prefill inputs, `OutcomeDialog`, `interop-message-header.page.ts`, the handler's dry run and confirm, `AuditPage` hosting the dialogs, strings, labels, styles and the regenerated mirror. Tests: `InteropResend`, `InteropEditResend`, `InteropResendGate`, `InteropResendDescriptor`, `DryRunRoute` with `InteropResendCase`, `InteropResendFixture` and `InteropResendSeam`, `ProductionProbe` additions, rosters, client specs and `interop-message-resend.browser-spec.mjs`. EXPERIENCE.md :173 and :604 and `scripts/ci-throwaway.sh` carry their add-only lines.
-
-**Deviations from the plan, all in the handoff report.** `Reviewed` and `Fields` join the fingerprint subjects (a stored payload is narrowed to its subject); the new codes join `MessageCodes()` (`InteropRuntimeDescriptor` pins `RuntimeCodes`); tools reach the sentences through `InteropPort.Sentence` and `OutcomeWord`; `DryRunRoute` is armed and has no secret leg (no dry-run tool declares one); `targetoff` is read through `GatherItems`; a confirmed reviewed action opens a small `OutcomeDialog`.
-
-**Review.** 25 findings: patched 11 (medium 5, low 6), deferred 0, rejected 14 (false 4, low 10), each with its reason in the Review Triage Log. The patches are test assertions and fixtures plus one fixture fix: `ProductionProbe.SweepSince` read the body class from an index (upper case), so it had never deleted a body; it now reads the header and deletes persistent and stream bodies, and `HighWater` and the sweep refuse a failed read.
-
-**Follow-up review recommended: true.** Five medium findings were patched. The unverified risk is the patch pass itself: the changed `ProductionProbe` sweep, five added tests and new fixture methods were shown red and green on `ocupilot-b-ci` but not re-read by a layer.
-
-**Verification (`ocupilot-b-ci`, tree reloaded).** The five new classes and 18 roster classes green; `InteropEditResend` 11, `InteropResend` 9, `InteropResendGate` 4, `InteropResendDescriptor` 8, `DryRunRoute` 2, after the patch pass. Browser: `interop-message-resend` 5 of 5, and `interop-messages`, `interop-message-trace` and `audit` green on the redeployed bundle. `npm run test:tools` 2,026 and `test:components` 3,237 pass; `npm run build` is green through the seven checkers (Header page chunk 5.11 kB, initial total 1.96 MB, no 2500 kB warning). `check-objectscript` and `lint-docs` clean. Mutations are the `mutation:` lines under Verification, each reverted byte-identical.
-
-**Residual risks.** The full ObjectScript sweep, `npm test`, the smoke and Rule 30's fresh check are the runner's. `ci-timings.json` has no entries for the five new classes. The Header page keeps its first property row selected so the command bar's row action is never disabled for want of a selection. A person's REST call without `Reviewed` is not reviewed (by design, see the triage log).
+- **Store.** `Kernel/State/Propose.cls`: `TargetRef` is `MAXLEN = 2200` (`TARGETREFMAX`), a stored computed `TargetKey` (`TargetLockKey(TargetRef)`, declared last because the class has no Storage section) keys `ProposalTargetIdx`, and the sibling cancel in `GuardedClaimAndClose` filters by the key of either spelling and then by the exact `TargetRef`. `GuardedMint` refuses a target over the limit and `GuardedRebuildTargetKeys` gives older rows their key. `Kernel/State/Base.cls` gains `GuardedBuildIndices`.
+- **Install.** `Install/Installer.cls`: `EnsureProposalTargetKeys` runs on every install, idempotent. `SCHEMAVERSION` does not move (Design Notes).
+- **Tests.** `Test/ProposalTargetKey.cls` (new, 6 tests, armed in `scripts/ci-throwaway.sh`) and `InteropResendLimits.TestAHundredIdsOfNineteenDigitsAreMintedStoredWholeAndConfirmedForTheAgent`; `TestTheAgentsCardCarriesTheWholeCapOfAHundredMessages` is green.
+- **Review.** 14 findings: patched 5 (medium 1, low 4), deferred 0, rejected 9 (false 3, low 6), each with its reason in the Review Triage Log. The medium: a target over the limit was stored cut, and is now refused.
+- **Verification (`ocupilot-b-ci`, tree reloaded after the patches).** 110 classes and 996 tests green (the search in `## Verification`), `test:tools` 2033, `check-objectscript` and `lint-docs` clean. Mutations are the Rework 1 lines under Verification, each reverted byte-identical.
+- **Follow-up review recommended: false.** This pass patched no HIGH.
+- **Residual risks.** A tool that names more than 2,200 characters of target gets a 500 `INTERNAL` at the mint, as every target over about 455 characters did before; `ExplorerWrite` can reach it with a long document set. `ci-timings.json` has no entry for `ProposalTargetKey`. The full ObjectScript sweep, `npm test`, the smoke and Rule 30's fresh check are the runner's.
