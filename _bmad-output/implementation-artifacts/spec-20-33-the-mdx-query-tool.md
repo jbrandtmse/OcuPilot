@@ -2,7 +2,7 @@
 title: 'Story 20.33: The MDX query tool'
 type: 'feature'
 created: '2026-10-14'
-status: 'ready-for-dev'
+status: 'draft'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -23,7 +23,7 @@ deferred: []
 - A listed Analytics screen, **MDX query**, where a person writes one MDX statement and runs it.
 - The run is an **owner-scoped background run**: the SQL console's background run (Story 19.15), extended to a second kind rather than copied. It has a row cap, a time bound and cancel.
 - The answer renders as a grid of axis labels and cells. A cell drills through to the vendor's listing for that cell, and a `DRILLTHROUGH` statement shows its listing directly.
-- `AnalyticsPort` gains the MDX calls behind its own gate (AD-65). OcuPilot writes nothing to the instance. A statement whose text the vendor would splice into SQL or evaluate as code is refused before it runs.
+- `AnalyticsPort` gains the MDX calls behind its own gate (AD-65). OcuPilot writes nothing to the instance of its own. A statement whose text the vendor would splice into SQL or evaluate as code (`%SEARCH`, `%SQLRESTRICT`, `RETURN`, `%ORDER`) runs only after the person confirms, in a confirmation that names the consequence in plain words: "This query runs server-side code or SQL with your rights." A statement without them runs as a plain read. (Orchestrator ruling Q2 C, 2026-10-14, the owner's developer-tool-first rule; AD-65. The classic page runs them unasked, so this is stricter than the vendor.)
 
 ## Boundaries & Constraints
 
@@ -37,7 +37,7 @@ deferred: []
   5. WRITE on the database that `^DeepSee.Cache.Results` maps to in that namespace (`%SYS.Namespace.GetGlobalDest`), and that database mounted read-write (else 409 `ANALYTICS.MDX.READONLY`).
 
   A refusal names the failed pair.
-- **The statement is untrusted text.** It reaches only `%DeepSee.ResultSet.%PrepareMDX`. Before prepare, the port refuses (422 `ANALYTICS.MDX.SQL`) any text that names `%SEARCH`, `%SQLRESTRICT`, `RETURN` or `%ORDER`, case-insensitive, anywhere: the vendor splices those into SQL or evaluates them as ObjectScript (Design Notes › Measured). After prepare, only `queryType` `SELECT` (at most two axes) and `DRILLTHROUGH` run. `CREATE`, `DROP` and `%BITSET` are refused 422 `ANALYTICS.MDX.KIND`, and three or more axes 422 `ANALYTICS.MDX.AXES`.
+- **The statement is untrusted text.** It reaches only `%DeepSee.ResultSet.%PrepareMDX`. Before prepare, the port detects any text that names `%SEARCH`, `%SQLRESTRICT`, `RETURN` or `%ORDER`, case-insensitive, anywhere (the vendor splices those into SQL or evaluates them as ObjectScript; Design Notes › Measured) and runs it only when the start request carries the person's confirmation of that consequence; without it the start answers that confirmation is needed, naming the consequence, and nothing runs. Both paths are pinned by tests, the measured `%SEARCH.&[...{$Increment(^g)}]` case among them: not run until confirmed, then run. After prepare, only `queryType` `SELECT` (at most two axes) and `DRILLTHROUGH` run. `CREATE`, `DROP` and `%BITSET` are refused 422 `ANALYTICS.MDX.KIND`, and three or more axes 422 `ANALYTICS.MDX.AXES`.
 - **A drill-through is composed on the instance.** From the person's original statement and a cell's ordinals (its 1-based row and column positions, as the cells answer lists them), the job re-prepares the statement, reads the vendor's own `%GetFiltersForCellRange` for that one cell, and runs `DRILLTHROUGH MAXROWS <MDXMAXLISTINGROWS> SELECT FROM [<cube>] %FILTER <f>…`. Nothing from the client enters that text except the original statement, which has passed the checks above.
 - **Named limits (AD-7), all on `AnalyticsPort`, each with its reason:**
   - `MDXMAXSTATEMENT` is 100,000 characters;
@@ -61,7 +61,7 @@ deferred: []
 **Never:**
 
 - No call to `/api/deepsee`, `%Api.DeepSee` or `%DeepSee.REST.*`. The statement is never written to a log line, an audit row or the run row.
-- No write tool, governance key, row action, proposal or read tool. The agent's MDX read is Design Notes › Q1.
+- No write tool, governance key, row action, proposal or read tool. The agent's MDX read is Story 20.35 (orchestrator ruling Q1 A), which refuses those four constructs with `ANALYTICS.MDX.SQL`.
 - AD-65's Never list stands: no `%GetMemberTree`, `%GetDimensionMembers` or `%GetFavoritesForUser`, and no member-value read.
 - No session state: `CREATE`/`DROP` are refused, and nothing is kept between runs except the vendor's own cache.
 - No `$System.Process.Terminate` in product code, and no product code reads or writes `^DeepSee.Cache.*` directly (the fixture's cleanup is a test's).
@@ -353,6 +353,8 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Line numbe
   - **Then** both render their answers. The SQL console's background routes, job, store and browser tests pass unchanged.
 
 ## Spec Change Log
+
+- 2026-10-14, spec gate (runner): the orchestrator ruled Q1 (A, the agent's read is Story 20.35, chartered) and Q2 (C: the screen asks first and runs on confirmation; the agent refuses). The intent contract carries Q2 C; status reset to `draft` for a re-plan around it. The spine's AD-65 clause is written.
 
 ## Review Triage Log
 

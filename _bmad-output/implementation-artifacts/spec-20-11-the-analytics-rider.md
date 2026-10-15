@@ -339,6 +339,7 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Line numbe
 ## Spec Change Log
 
 - 2026-10-14, spec gate (runner): the orchestrator ruled Q1 A (Parts B, C and D are Stories 20.32, 20.33 and 20.34, chartered in `epics.md` with their criteria verbatim; order 20.11, 20.32, 20.33, 20.34, then 20.12) and Q2 A (Folder items on `%Development:USE`, a named narrower audience in AD-8). `epics.md` Story 20.11 is amended under Rule 5 (the split, and the first criterion's API reworded to the vendor's classes, apply-and-report). The new AD is AD-65 (claimed from the coordination counter), with the AD-29, AD-36, AD-8, AD-44, AD-13 and AD-7 clauses. Task 0 gains the cube `Resource` check measurement (the orchestrator's). The REST layer finding is DW-2416, decision-pending under the owner's hold.
+- 2026-10-14, lead (20.33's spec gate, orchestrator rulings Q1 A and Q2 C): Part C's splice limits become the screen's ask-first confirmation and the agent's refusal; the agent's MDX read is Story 20.35.
 
 ## Review Triage Log
 
@@ -429,11 +430,11 @@ The port therefore calls the classes themselves, as `InteropPort` does (AD-62).
   - **Bounds.** Cells or rows read capped, time bounded, and cancel.
   - **Drill-through.** `DRILLTHROUGH` defaults to 1,000 rows and needs SQL SELECT on the source table (-99 without it, measured).
   - **Never a write.** MDX has no DML. `CREATE` and `DROP` write only the session, and are refused.
-  - **Named limits, AD-21's family:** `RETURN`, `%SQLRESTRICT` and SQL computed dimensions splice the query's text into SQL, and `%KPI` runs class code. It is the caller's own query, as the SQL console's statement is (DW-2003).
+  - **Query text that runs code or SQL** (orchestrator ruling Q2 C at Story 20.33's spec gate, 2026-10-14; AD-65): `%SEARCH`, `%SQLRESTRICT`, `RETURN` and `%ORDER` run server-side code or SQL with the caller's rights. The person's MDX screen (20.33) asks first, in a confirmation naming that consequence, then runs; the agent's MDX read (Story 20.35) refuses them with `ANALYTICS.MDX.SQL`. SQL computed dimensions and `%KPI` classes are the cube author's code and stay named limits.
   - **Its gate:**
     - AD-7's new shape (queries write `^DeepSee.Cache.*`, `^DeepSee.AgentLog` and IRISTEMP: the vendor's derived cache);
     - the MDX Query Tool's OR pair (Q2's answer applies);
-    - whether the agent gets an MDX read tool.
+    - whether the agent gets an MDX read tool (ruled at 20.33's gate: not in 20.33; Story 20.35).
 - **Part D, "The cube manager's build and synchronize"** (third criterion).
   - **Screen.** A listed Cube manager with the own pair `%DeepSee_Admin:USE`, classic page `%DeepSee.UI.CubeRegistry`. Its row actions Build and Synchronize are action-style writes through `AnalyticsPort` (AD-51, AD-52), over a port-composed `STATE` read.
   - **Refused by name:** a synchronize on a source without `DSTIME` (`NoDSTIME`), and a build while one holds `^DeepSee.Build`.

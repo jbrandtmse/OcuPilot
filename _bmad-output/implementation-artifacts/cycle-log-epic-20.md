@@ -872,3 +872,8 @@
 2026-10-15T00:49:20Z	Story 20.9	ci_resolved	story=20.9 run=38655096956 result=success head=7535a66c jobs=21/21 resolved_at=next_implement
 2026-10-15T00:49:20Z	Story 20.9	ci_green_verified	run=38655096956 head=7535a66c merged_by_orchestrator=37cd8103 amendments_recorded=AD-36,AD-62_item_15(SEARCHENDPOINTS)
 2026-10-15T00:49:20Z	Story 20.33	story_created	spawn_at=(see_stage_spawned) model=opus agent_name=20-33-plan-1 path=_bmad-output/implementation-artifacts/spec-20-33-the-mdx-query-tool.md build_status=ready-for-dev(gate_pending:Q1_agent_mdx_tool,Q2_splice_refusals) epic_context=reused(spine_20.32_clauses_newer;governing_ADs_read_directly) warnings=oversized depends_on=20.11,20.32(planned,Task_0_re-anchor)
+2026-10-15T00:52:24Z	Epic 20	integrated_forward	feature=c54060a0(20.9_merged_37cd8103) head=634d7792 conflicts=none ledger_dup_check=0 no_code
+2026-10-15T00:52:24Z	Story 20.33	spine_updated	ad=AD-65(splice_clause:screen_asks_first,agent_refuses;Binds_20.35) reason=clarification(orchestrator_rulings_Q1_A,Q2_C) by=runner story=20-33 lint=ok(preexisting_low_line213)
+2026-10-15T00:52:24Z	Story 20.33	plan_clarification_requested	q1=A(agent_MDX_read_is_Story_20.35,chartered) q2=C(screen_detects_and_asks_first_with_plain-words_confirmation;agent_refuses_ANALYTICS.MDX.SQL) intent_amended=yes status=draft(re-plan_after_20.30_implement) amendments=spec-20-11:432(Part_C_splice_limits_at_origin),epics.md_20.33_block(AMENDED_Q1_A_Q2_C)
+2026-10-15T00:52:24Z	Epic 20	story_chartered	story=20-35-the-agent-s-mdx-read by=runner(orchestrator_ruling_Q1_A_at_20.33_gate) placement=epics.md_after_20.34;story_order_after_20.33(orchestrator) tracker=backlog
+2026-10-15T00:52:24Z	Epic 20	deps_hash_rerecorded	reason=20.35_chartered+20.33_amended(rulings)
