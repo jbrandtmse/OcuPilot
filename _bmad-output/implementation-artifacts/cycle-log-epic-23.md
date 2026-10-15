@@ -430,3 +430,5 @@ spawn_at=2026-10-06T16:01:05Z	Story 23.4	cr_complete	batch=b 2026-10-06T20:34:58
 2026-10-15T11:13:30Z	Story 23.5	pushed	batch=c head=782b093d ci=pending run=38725764786 head_confirmed_by=headSha
 2026-10-15T11:13:30Z	Story 23.5	adr_verifications_complete	batch=c result=none_required model=claude-opus-5-5
 2026-10-15T11:13:30Z	Story 23.5	stage_spawned	stage=qa batch=c spawn_at=2026-10-15T11:13:30Z model=sonnet agent_name=23-5-the-range-end-cleanup-part-5-qa-c cycle_iteration=4 scope=97abf108..782b093d
+2026-10-15T11:23:37Z	Story 23.5	qa_complete	batch=c model=sonnet agent=a26159df426c9e87b tests=rail.browser-spec(DW-460_full-screen_leg_light+dark) tests_added=1 mutations_demonstrated=1 first_run_failures=0 closing_sections_present=true
+2026-10-15T11:23:37Z	Story 23.5	stage_spawned	stage=code-review batch=c spawn_at=2026-10-15T11:23:37Z model=opus agent_name=23-5-the-range-end-cleanup-part-5-code-review-c cycle_iteration=4 scope=97abf108..782b093d+working_tree(QA)
