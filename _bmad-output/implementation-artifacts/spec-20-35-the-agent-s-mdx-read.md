@@ -2,7 +2,7 @@
 title: 'Story 20.35: The agent''s MDX read'
 type: 'feature'
 created: '2026-10-14'
-status: 'blocked'
+status: 'draft'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -286,6 +286,8 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Line numbe
   - **Then** it finds no fresh entry in either theme.
 
 ## Spec Change Log
+
+- 2026-10-15, lead: the orchestrator ruled Q1 (B, fail closed): 20.33's `MdxConstructs` reads tokens and quoted strings' tokens, covers the four plus `%PARM`, runs again on the variable-resolved text after prepare, and fails closed (the agent refuses with `ANALYTICS.MDX.SQL`); this story reuses it and builds no copy; stored definitions are a named limit (DW-2451). Q2 applied: no `SurfaceCoverage` row (that roster compares write tools only); `ReadTool`, `ToolRoundTrip`, `ToolEmit` and `DeveloperFloor` carry the tool. Back to `draft` for a re-plan after 20.33's amendment.
 
 ## Review Triage Log
 

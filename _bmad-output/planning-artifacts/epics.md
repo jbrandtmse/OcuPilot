@@ -8998,7 +8998,7 @@ So that a changed cube can be brought up to date here.
 
 ### Story 20.35: The agent's MDX read
 
-[CHARTERED 2026-10-14, orchestrator ruling Q1 A at Story 20.33's spec gate, Rule 5] Split from the Analytics rider's read tools: the MDX query tool's agent read, which Story 20.33 does not build. Synchronous in the turn job through `AnalyticsPort`, with Story 20.33's caps (row cap, time bound, drill-through cap) and AD-60. It refuses `%SEARCH`, `%SQLRESTRICT`, `RETURN` and `%ORDER` with `ANALYTICS.MDX.SQL`, because an agent read tool never executes code (AD-65, orchestrator ruling Q2 C). It carries its own `ReadTool`, `ToolRoundTrip`, `ToolEmit` and `SurfaceCoverage` rows. After Story 20.33, before Story 20.34.
+[CHARTERED 2026-10-14, orchestrator ruling Q1 A at Story 20.33's spec gate, Rule 5] Split from the Analytics rider's read tools: the MDX query tool's agent read, which Story 20.33 does not build. Synchronous in the turn job through `AnalyticsPort`, with Story 20.33's caps (row cap, time bound, drill-through cap) and AD-60. It refuses `%SEARCH`, `%SQLRESTRICT`, `RETURN` and `%ORDER` with `ANALYTICS.MDX.SQL`, because an agent read tool never executes code (AD-65, orchestrator ruling Q2 C). It carries its own `ReadTool`, `ToolRoundTrip`, `ToolEmit` and `DeveloperFloor` rows [AMENDED 2026-10-15, orchestrator ruling Q2 at its plan gate, Rule 5: no `SurfaceCoverage` row, a roster of write tools only]. Its refusal reuses Story 20.33's one detector, which reads the vendor's tokens and quoted strings, covers `%PARM` too, re-checks the variable-resolved text and fails closed (orchestrator ruling Q1 B). After Story 20.33, before Story 20.34.
 
 As an analytics developer,
 I want the agent to run an MDX query for me and read its results,

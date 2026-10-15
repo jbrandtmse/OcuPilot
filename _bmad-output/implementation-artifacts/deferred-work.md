@@ -12051,3 +12051,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-20-30-the-session-trace.md code review | severity: low | fix-risk: med | footprint: out-of-footprint
 - evidence: areas/tasks/details.page.ts:312,319, interop-item-list.page.ts:128 and journal-file-details.page.ts:341 repeat followInAppLink's guard; interop-editor.page.ts:176-177 and database-details, process-details and ledger pages draw their own skeleton or refusal.
 - 2026-10-15T03:53:48Z status=wontfix-accepted owner=20-30-the-session-trace by=cr note=reopen_if=a link-guard or state-block defect is fixed in one copy, or a story edits one of those pages
+
+### DW-2451: The MDX splice detector does not inspect stored definitions (shared calculated members, named filters, pivot variables) that a query can reference, so code inside one runs without the screen's ask-first or the agent's refusal
+- source: spec-20-35-the-agent-s-mdx-read.md (orchestrator ruling Q1 B, 2026-10-15) | severity: med | fix-risk: high | footprint: out-of-footprint
+- evidence: Orchestrator ruling Q1 B at 20.35's plan gate names stored definitions a named limit of the one detector (AD-65); a definition is authored by a person with write access to the cube's folder items, not by the query
+- 2026-10-15T09:36:05Z status=wontfix-accepted owner=20-33-the-mdx-query-tool by=lead note=reopen_if=a shared calculated member, named filter or pivot variable holding braces or %SEARCH is found reachable from an MDX query through the screen or the agent's read

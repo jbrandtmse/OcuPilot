@@ -2,7 +2,7 @@
 title: 'Story 20.33: The MDX query tool'
 type: 'feature'
 created: '2026-10-14'
-status: 'ready-for-dev'
+status: 'draft'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -37,7 +37,7 @@ deferred: []
   5. WRITE on the database that `^DeepSee.Cache.Results` maps to in that namespace (`%SYS.Namespace.GetGlobalDest`), and that database mounted read-write (else 409 `ANALYTICS.MDX.READONLY`).
 
   A refusal names the failed pair.
-- **The statement is untrusted text.** It reaches only `%DeepSee.ResultSet.%PrepareMDX`. Before prepare, the port detects any text that names `%SEARCH`, `%SQLRESTRICT`, `RETURN` or `%ORDER`, case-insensitive, anywhere (the vendor splices those into SQL or evaluates them as ObjectScript; Design Notes › Measured) and runs it only when the start request carries the person's confirmation of that consequence; without it the start answers that confirmation is needed, naming the consequence, and nothing runs. Both paths are pinned by tests, the measured `%SEARCH.&[...{$Increment(^g)}]` case among them: not run until confirmed, then run. After prepare, only `queryType` `SELECT` (at most two axes) and `DRILLTHROUGH` run. `CREATE`, `DROP` and `%BITSET` are refused 422 `ANALYTICS.MDX.KIND`, and three or more axes 422 `ANALYTICS.MDX.AXES`.
+- **The statement is untrusted text.** It reaches only `%DeepSee.ResultSet.%PrepareMDX`. Before prepare, the port detects any of `%SEARCH`, `%SQLRESTRICT`, `RETURN`, `%ORDER` and `%PARM` in the vendor's own tokens (`%Tokenize`) and in each quoted string's tokens, so a comment inside a word (`%SE/**/ARCH`) is still found, and after prepare it runs the detector again on the variable-resolved text; it fails closed (a failed tokenize or an unreadable resolved text asks first, as if a construct were found). Orchestrator ruling Q1 B at 20.35's gate, 2026-10-15; stored definitions are a named limit, DW-2451 (the vendor splices those into SQL or evaluates them as ObjectScript; Design Notes › Measured) and runs it only when the start request carries the person's confirmation of that consequence; without it the start answers that confirmation is needed, naming the consequence, and nothing runs. Both paths are pinned by tests, the measured `%SEARCH.&[...{$Increment(^g)}]` case among them: not run until confirmed, then run. After prepare, only `queryType` `SELECT` (at most two axes) and `DRILLTHROUGH` run. `CREATE`, `DROP` and `%BITSET` are refused 422 `ANALYTICS.MDX.KIND`, and three or more axes 422 `ANALYTICS.MDX.AXES`.
 - **A drill-through is composed on the instance.** From the person's original statement and a cell's ordinals (its 1-based row and column positions, as the cells answer lists them), the job re-prepares the statement, reads the vendor's own `%GetFiltersForCellRange` for that one cell, and runs `DRILLTHROUGH MAXROWS <MDXMAXLISTINGROWS> SELECT FROM [<cube>] %FILTER <f>…`. Nothing from the client enters that text except the original statement, which has passed the checks above.
 - **Named limits (AD-7), all on `AnalyticsPort`, each with its reason:**
   - `MDXMAXSTATEMENT` is 100,000 characters;
@@ -368,6 +368,7 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Line numbe
 
 - 2026-10-14, spec gate (runner): the orchestrator ruled Q1 (A, the agent's read is Story 20.35, chartered) and Q2 (C: the screen asks first and runs on confirmation; the agent refuses). The intent contract carries Q2 C; status reset to `draft` for a re-plan around it. The spine's AD-65 clause is written.
 - 2026-10-14, spec gate (runner, cycle 2): the intent contract's `Spliced` row follows Q2 C (Design Notes' erratum applied); the spine carries the Story 20.33 clauses in AD-7, AD-8, AD-21, AD-36, AD-41, AD-42, AD-44 and AD-65.
+- 2026-10-15, lead (orchestrator ruling Q1 B at 20.35's plan gate): the one detector reads the vendor's tokens and each quoted string's tokens, the set gains `%PARM`, a second check runs on the variable-resolved text after prepare, and it fails closed; stored definitions are a named limit (DW-2451). Back to `draft` for a plan amendment that measures the resolved-text check now; each measured obfuscation reddens the detector before the fix, with one resolved-text and one tokenizer-failure case per path.
 
 ## Review Triage Log
 

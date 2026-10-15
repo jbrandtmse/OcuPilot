@@ -902,3 +902,9 @@
 2026-10-15T06:55:22Z	Story 20.30	ci_resolved	story=20.30 run=38690133651 result=success head=ba97a70b resolved_at=next_implement
 2026-10-15T06:55:22Z	Story 20.30	ci_green_verified	run=38690133651 head=ba97a70b
 2026-10-15T06:55:59Z	Story 20.31	stage_spawned	stage=implement spawn_at=2026-10-15T06:55:59Z model=sonnet agent_name=20-31-implement-1 cycle_iteration=1 note=20.30_ci_resolved_success_38690133651
+2026-10-15T09:37:16Z	Story 20.31	dev_complete	spawn_at=(see_stage_spawned) model=sonnet agent_name=20-31-implement-1 build_sha=18c88e71 baseline_revision=895d9fe9 review_loop_iteration=0 followup_review_recommended=true(5_MED_patches_after_layers) deferred=0 files=64 bundle_initial=1.96MB header_chunk=5.11kB keys=interop.messages.resend,interop.messageheader.editresend(both_false) fixture_bug_fixed=ProductionProbe.SweepSince(body_class_from_header)
+2026-10-15T09:37:16Z	Story 20.31	adr_verifications_complete	tool=none acs= result=none_required evidence= mutations=none model=claude-opus-5-5
+2026-10-15T09:37:16Z	Story 20.35	plan_clarification_answered	q1=B(fail_closed:tokens+quoted_strings,%PARM,second_check_on_resolved_text,tokenize_or_resolve_failure_asks_or_refuses) q2=apply(no_SurfaceCoverage_row) by=orchestrator status=draft(re-plan_after_20.33_amendment) ledger=DW-2451(stored_definitions_named_limit,wontfix-accepted,reopen_if)
+2026-10-15T09:37:16Z	Story 20.33	spec_reopened	reason=orchestrator_ruling_Q1_B_at_20.35_gate status=draft tracker=backlog(was_ready-for-dev;re-plan_measures_resolved-text_check) spine=AD-65_splice_clause_widened
+2026-10-15T09:37:16Z	Epic 20	deps_hash_rerecorded	reason=rule5_amendment(20.35_block:no_SurfaceCoverage;detector_note)
+2026-10-15T09:37:16Z	Story 20.31	stage_spawned	stage=qa spawn_at=2026-10-15T09:37:16Z model=sonnet agent_name=20-31-qa-1 cycle_iteration=1
