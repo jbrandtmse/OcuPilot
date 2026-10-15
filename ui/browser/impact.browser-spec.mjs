@@ -341,9 +341,10 @@ test('AC2: the Users list\u2019s Remove role states what the account loses under
 test('AC1, AC6: the agent\u2019s role delete draws the impact read at its mint on the card, above the privilege line, in both themes, within the structural baseline', async () => {
   // Mutation (Rule 19): make `OcuPilot.Kernel.Proposal.Mint.ImpactValue` record "" always, recompile
   // on the throwaway -> the card draws no impact line and this goes red.
-  // Mutation (Rule 19): delete the rule beside `.ocu-diff-row` in `_components.scss` that lets a
-  // diff value wrap, rebuild and redeploy the bundle -> the 720 pass goes red on the removed row's
-  // before value. Without the settled-panel wait below it reads clean, the panel still narrowing.
+  // Mutation (Rule 19): delete the `overflow-wrap: anywhere` rule after `.ocu-diff-arrow` in
+  // `_components.scss`, rebuild and redeploy the bundle -> the 720 pass goes red on the removed
+  // row's before value. Without the settled-panel wait below, the pass can measure the panel
+  // mid-transition and read clean.
   await requireFreeSlot(config);
   const tag = sharedNextTag(probe);
   sharedSetTag(probe, preparedId, tag);

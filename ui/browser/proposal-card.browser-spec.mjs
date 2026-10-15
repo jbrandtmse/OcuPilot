@@ -381,37 +381,40 @@ test('(c) a card the user cancels is restrained by role at opacity 1, and its di
 });
 
 test('(d) a value with no space in it wraps inside its row, in the before cell, the after cell and an unchanged row, in both themes', async () => {
-  // Mutation (Rule 19): delete one selector of the wrap rule beside `.ocu-diff-arrow` in
-  // `_components.scss` (`.ocu-diff-before`, `.ocu-diff-after` or `.ocu-diff-row-unchanged
-  // .ocu-diff-value`), rebuild and redeploy the bundle -> that selector's row runs past the card
-  // and this goes red; the other two stay within it.
+  // Mutation (Rule 19): drop a selector from the `overflow-wrap: anywhere` rule after
+  // `.ocu-diff-arrow` in `_components.scss`, rebuild and redeploy the bundle -> the probe for that
+  // cell runs past its row and this goes red; the other probes stay inside theirs.
   const { context, page, tag } = await withLiveCard(0);
   try {
+    // The unchanged rows are drawn only once the disclosure is open; the card's own state, not a
+    // remembered one, so closing the context resets it.
+    await page.click('app-proposal-card .ocu-proposal-card-disclosure');
+    await page.waitForSelector('app-proposal-card .ocu-proposal-card-unchanged-rows .ocu-diff-row-unchanged', {
+      timeout: config.navigationTimeoutMs,
+    });
     await transitionsSettled(page, config.navigationTimeoutMs);
     for (const dark of [false, true]) {
       await setDarkTheme(page, dark);
-      // The three probe rows are the live row's own markup with one value replaced, and an
-      // unchanged row built from the template's three classes, so the rule is read where the
-      // card draws it. Each reports how far its widest descendant runs past the row.
+      // Each probe is a copy of a row the card drew, with one value replaced, added beside that row
+      // in its own container, so the rule is read on the template's markup where the card draws it.
+      // Each reports how far its widest descendant runs past the row.
       const past = await page.evaluate((unbroken) => {
-        const live = document.querySelector('app-proposal-card .ocu-diff-row:not(.ocu-diff-row-removed)');
-        const host = live.parentElement;
-        const withValue = (side) => {
-          const row = live.cloneNode(true);
-          row.querySelector(`.ocu-diff-${side} .ocu-diff-value`).textContent = unbroken;
-          return row;
+        const changed = document.querySelector(
+          'app-proposal-card .ocu-diff-row:not(.ocu-diff-row-removed):not(.ocu-diff-row-unchanged)'
+        );
+        const unchanged = document.querySelector('app-proposal-card .ocu-proposal-card-unchanged-rows .ocu-diff-row-unchanged');
+        const probe = (row, valueSelector) => {
+          const copy = row.cloneNode(true);
+          copy.querySelector(valueSelector).textContent = unbroken;
+          return [row.parentElement, copy];
         };
-        const unchanged = document.createElement('p');
-        unchanged.className = 'ocu-diff-row ocu-diff-row-unchanged';
-        for (const [className, text] of [['ocu-diff-field', 'Field'], ['ocu-diff-value', unbroken]]) {
-          const cell = document.createElement('span');
-          cell.className = className;
-          cell.textContent = text;
-          unchanged.appendChild(cell);
-        }
-        const probes = { before: withValue('before'), after: withValue('after'), unchanged };
+        const probes = {
+          before: probe(changed, '.ocu-diff-before .ocu-diff-value'),
+          after: probe(changed, '.ocu-diff-after .ocu-diff-value'),
+          unchanged: probe(unchanged, '.ocu-diff-value'),
+        };
         const result = {};
-        for (const [name, row] of Object.entries(probes)) {
+        for (const [name, [host, row]] of Object.entries(probes)) {
           host.appendChild(row);
           const edge = row.getBoundingClientRect().right;
           result[name] = Math.max(...[...row.querySelectorAll('*')].map((node) => node.getBoundingClientRect().right)) - edge;

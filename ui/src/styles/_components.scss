@@ -4648,8 +4648,8 @@ app-interop-message-contents {
 }
 
 // A value with no space in it, such as a role's `Resources` JSON, may break anywhere, so it wraps
-// inside its row at the panel's narrowest width instead of running past it. The after cell and an
-// unchanged row's value follow the before cell.
+// inside its row at any panel width, the narrowest included, instead of running past it. The after
+// cell and an unchanged row's value follow the before cell.
 .ocu-diff-before,
 .ocu-diff-after,
 .ocu-diff-row-unchanged .ocu-diff-value {
