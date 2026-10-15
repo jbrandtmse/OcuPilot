@@ -514,6 +514,8 @@ Rejected:
 
 - 2026-10-15, lead: Batch c closed (branch head `33d0b7c9`, CI run 38755393824, its one red a node-24 flake, DW-2458). Re-opened for Batch d.
 
+- 2026-10-15, lead: Batch d closed (code head `43cb9e06` with Story 20.31 merged forward, CI run 38794489165). All four batches are closed; the story is done.
+
 ## Review Triage Log
 
 ### 2026-10-14 - Review pass (Batch a)

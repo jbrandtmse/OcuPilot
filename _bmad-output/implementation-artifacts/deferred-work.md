@@ -9391,6 +9391,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-03T14:19:33Z status=escalated owner=burndown by=cr note=shared shell table; design call (wrapping info row, expandable cell or scrollable tooltip) for the decision sheet
 - 2026-10-03T14:36:23Z status=routed owner=range-end-cleanup by=merge_gate note=design item for the shared data-table cell; driving cases: a view's text (up to 5,856 characters measured), a procedure's description, trigger code
 - 2026-10-07T04:26:42Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=merge_gate note=owner-approved burn-down batch (c), visible polish, 2026-10-06 (relayed by the Planner): Story 23.5
+- 2026-10-15T22:57:25Z status=resolved-by:23-5-the-range-end-cleanup-part-5 by=adjudication note=column_key_long+long_block_beneath_rows(2b7c3686,7e8f8fe8);ReadTool,ExplorerDescriptor,screen-mi;CI_38794489165
 
 ### DW-1977: The SQL statements tabs' statistics are the last aggregated ones: a statement run since the instance last aggregated reads blank Executions, times and First seen, and nothing but a StatementIndex-style aggregation call fills them, so 'which statements run most often' can answer blank or stale with no sign on screen
 - source: spec-19-14-the-sql-catalog-s-remaining-detail-tabs.md | severity: med | fix-risk: low | footprint: in-story
@@ -9405,6 +9406,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: lead probe on ocupilot-a2-ci, Ens.MessageHeader in HSCUSTOM: hidden tabs at 1024 [Partition mappings..SQL statements], 1280 [Constraints, Cached queries, SQL statements], 1366 and 1440 [4-5], 1600 [3], 1920 none; the browser spec opens tabs by focus and Enter
 - 2026-10-03T14:36:23Z status=routed owner=range-end-cleanup by=merge_gate note=UX: the shared tab strip (detail-page.ts) with nine tabs; a wrap, overflow menu or visible scroll affordance is a design call
 - 2026-10-07T04:26:42Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=merge_gate note=owner-approved burn-down batch (c), visible polish, 2026-10-06 (relayed by the Planner): Story 23.5
+- 2026-10-15T22:57:25Z status=resolved-by:23-5-the-range-end-cleanup-part-5 by=adjudication note=detail_tab_strip_wraps,disablePagination(2b7c3686,7e8f8fe8);detail-page.spec+system-explorer-sql;CI_38794489165
 
 ### DW-1982: IRIS defect candidate: merely preparing CREATE USER ... IDENTIFY BY '<password>' stores the password in plain text in the namespace's SQL statement index (INFORMATION_SCHEMA.STATEMENTS)
 - source: spec-19-6-the-query-console-and-its-dml-and-ddl-guard.md | severity: high | fix-risk: high | footprint: out-of-footprint
@@ -12141,3 +12143,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: lead CI resolution, Story 20.31 | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: CI run 38782509360 attempt 1: 'Waiting for selector #ocu-encryption-startup-DBEncStartMode-None failed' after 34 s; ocupilot-b-ci on the same tree: 3 of 3 green; the spec is Story 18.48's, untouched by 20.31
 - 2026-10-15T18:44:49Z status=routed owner=burndown by=lead note=flake priority: rerun once; a second red on the same head is a story red
+
+### DW-2462: flake: OcuPilot.Test.LogTail TestAnAbsentFileIsWaitedOutAndReportedAtTheBound found the file present (a look did find the file absent: 0, waited .406 s, then INVALID OREF at +21) in a full sweep, green alone
+- source: lead full ObjectScript sweep, Story 23.5 batch d (merged 20.31) | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: ocupilot-ci fresh from 43cb9e06, shard 8/20: 1 of 282 failed; LogTail alone run 267 11/11; batch d changed no log code
+- 2026-10-15T20:11:03Z status=routed owner=23-11-the-range-end-cleanup-part-10 by=lead note=flake:likely_depends_on_an_earlier_class_leaving_the_file;CI_flakes_go_to_the_standing_cleanup_story
