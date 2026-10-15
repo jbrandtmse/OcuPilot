@@ -409,7 +409,7 @@ Code review of Batch c, 2026-10-15 (`97abf108..782b093d` plus QA's uncommitted D
 - [x] [Review][Patch] (low; comment) AC8's comment and Batch c's DW-1148 mutation line said the side bar never draws on Home. A list area's bar does draw there when Home is reached with it open [ui/browser/suggested-view.browser-spec.mjs:171] -- fixed: both now say it draws nothing while Home is its visible area.
 - [x] [Review][Patch] (low; comment) The rail leg's mutation comment named three assertions; the recorded run reddened the first shell-view assertion only [ui/browser/rail.browser-spec.mjs:193] -- fixed.
 - [x] [Review][Patch] (low; test) The DW-1148 pin took the first `| 1,920px |` line anywhere in DESIGN.md [ui/tools/panel-layout.test.mjs:362] -- fixed: it searches from the yield table's header.
-- [x] [Review][Defer] (medium; in-story) `impact`'s 720 px pass of the agent's role delete is clean only while the panel is still narrowing [ui/browser/impact.browser-spec.mjs:374] -- deferred: DW-2454, already planned into Batch d; not re-filed.
+- [x] [Review][Defer] (medium; in-story) `impact`'s 720 px pass of the agent's role delete is clean only while the panel is still narrowing [ui/browser/impact.browser-spec.mjs:374] -- deferred: DW-2454; fixed by Batch c's CI rework (`5574fede`).
 - [x] [Review][Defer] (medium; out-of-footprint) Narrow structural passes across the suite measure right after a bare `setViewport`, while the panel is still narrowing: 44 of 81 specs that use `VIEWPORTS.narrow` have no settle wait (by grep; inference), `impact` AC2 and AC6 among them [ui/browser/allowed-directories.browser-spec.mjs:148] -- deferred: pre-existing; DW-2455, escalated owner=burndown.
 
 Rejected:
