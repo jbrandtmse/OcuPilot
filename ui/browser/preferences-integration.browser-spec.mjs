@@ -23,11 +23,12 @@
  * is not on its own conclusive, because a page reached by an ordinary navigation (not a reload)
  * re-authenticates silently over the CSP browser-id cookie; only an explicit Sign out kills that.
  *
- * **Two writes the client must not send (Story 23.5), watched on the wire.** A signed-out tab that
- * goes Back to a listed screen sends no preference write (DW-1341), and two activations of the
- * favorite star inside one round trip send one (DW-1342). A request list is the only place either
- * can be read from the page's side: a component spec's transport is a stub that counts what it
- * was handed.
+ * **Three writes watched on the wire (Story 23.5).** A signed-out tab that goes Back to a listed
+ * screen sends no preference write (DW-1341), and two activations of the favorite star inside one
+ * round trip send one (DW-1342). A listed screen reached while the silent sign-in is still in
+ * flight sends its recent write only once the session signs in (DW-1329). A request list is the
+ * only place any of these can be read from the page's side: a component spec's transport is a stub
+ * that counts what it was handed.
  *
  * Refuses the live container, the way every write-driving spec here does. Clears both lists for
  * this caller before and after, so a re-run starts clean and leaves the throwaway as it found it.

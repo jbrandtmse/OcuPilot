@@ -211,6 +211,23 @@ describe('the recents recorder', () => {
     expect(preferences.recents()).toEqual(['permissions/users', 'logs/alerts']);
   });
 
+  it('a held arrival registered at sign-in is the last route, so the next arrival at that screen costs nothing', async () => {
+    session.current = 'probing';
+    await router.navigateByUrl('/logs/alerts');
+    session.move('signed-in');
+    await settled();
+
+    // The shell's namespace fix-up after sign-in is a navigation that leaves the screen where it is.
+    await router.navigateByUrl('/logs/alerts?ns=USER');
+    await settled();
+
+    // Mutation (Rule 19): make `settle` call `this.preferences.registerVisit(route)` in place of
+    // `this.register(route)` -> this goes red, a second write for the screen the held arrival
+    // already registered.
+    expect(writes()).toHaveLength(1);
+    expect(preferences.recents()).toEqual(['logs/alerts']);
+  });
+
   it('drops a held arrival when the session settles on anything but signed-in, and never brings it back', async () => {
     session.current = 'probing';
     await router.navigateByUrl('/logs/alerts');
@@ -246,7 +263,8 @@ describe('the recents recorder', () => {
     await settled();
 
     // Mutation (Rule 19): clear `pendingRoute` in `reset` -> this goes red, and a deep link that
-    // waits through an install never reaches Recent items.
+    // waits through an install never reaches Recent items. Dropping `settle`'s `isWaiting` return
+    // reddens it too: the move to `installing` then drops the held arrival.
     expect(writes()).toHaveLength(1);
     expect(preferences.recents()).toEqual(['logs/alerts']);
   });
