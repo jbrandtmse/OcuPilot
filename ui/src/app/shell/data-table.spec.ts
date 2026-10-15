@@ -1300,9 +1300,8 @@ describe('the data table', () => {
   // A `long` column's value shows whole beneath the rows, in the panel's long block, for the only
   // row or the selected one.
   //
-  // Mutation (Rule 19): project `''` in place of `{{ block.text }}` in the long block -> the whole-text
-  // and selection cases go red. Return `[]` from `longBlockModels` -> every case goes red but the
-  // no-block ones.
+  // Mutation (Rule 19): project `''` in place of `{{ block.text }}` in the long block -> all four
+  // cases go red.
   describe('a long column', () => {
     const longDeclaration = (): ScreenDeclaration => {
       const base = tableDeclaration();
@@ -1317,13 +1316,13 @@ describe('the data table', () => {
 
     it('shows the only row\'s 5,000-character value whole in a long block named by the column header, the cell unchanged', async () => {
       const value = `${'select '.repeat(713)}${'z'.repeat(9)}`;
+      expect(value.length).toBe(5000);
       const wired = await wire(longDeclaration(), ok(withNotes(value)));
       await wired.refresh.readNow();
       await settle(wired.fixture);
 
       const region = block(wired)?.querySelector('.ocu-long-block-region') as HTMLElement;
       expect(region.textContent).toBe(value);
-      expect(region.textContent?.length).toBe(5000);
       const labelId = block(wired)?.querySelector('section')?.getAttribute('aria-labelledby') ?? '';
       expect(labelId).not.toBe('');
       expect(document.getElementById(labelId)?.textContent?.trim()).toBe(STRINGS.statusSegmentServer);

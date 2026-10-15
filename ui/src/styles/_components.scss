@@ -2257,12 +2257,10 @@ app-interop-message-contents {
   white-space: nowrap;
 }
 
-// A strip wider than its column wraps onto further rows rather than paging: Material's links row
-// keeps its content width (`flex: 1 0 auto`), so it may shrink to the column and wrap.
+// A strip wider than its column wraps onto further rows rather than paging: Material's links row is
+// a flex row that would otherwise keep every tab on one line.
 .ocu-detail-tabs .mat-mdc-tab-links {
-  flex: 1 1 auto;
   flex-wrap: wrap;
-  min-width: 0;
 }
 
 // The banner strip above the table (Story 2.8). `.ocu-list-page` is a column flex whose table takes
@@ -6521,6 +6519,13 @@ app-data-table .ocu-data-table-header-cell {
   max-height: 50%;
   padding-top: var(--ocu-space-3);
   overflow-y: auto;
+}
+
+// While a long block shows, the frame keeps its header and one row (with 16px for a classic
+// horizontal scrollbar) wherever half the column holds them, and half the column below that: the
+// long blocks' wrapper yields the room, so neither the rows nor the block shrink to a sliver.
+app-data-table:has(> .ocu-data-table-long) > .ocu-data-table-frame {
+  min-height: min(calc(2 * var(--ocu-row-height) + 2px + 16px), 50%);
 }
 
 .ocu-data-table-long-block {

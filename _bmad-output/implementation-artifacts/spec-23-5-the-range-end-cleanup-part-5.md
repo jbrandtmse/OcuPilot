@@ -468,6 +468,36 @@ Rejected:
 - Integration AC: given a SQL view's text longer than the window on the throwaway, when its tab renders with the row, then a person can read the whole text on the screen, by keyboard or pointer.
 - Given a nine-tab strip at 1,024 to 1,600 px, when it renders, then every tab is visible without paging.
 
+### Review Findings
+
+Code review of Batch d, 2026-10-15 (`c07b840a..2b7c3686` plus QA's uncommitted two tests; four layers, full-opus; 30 layer rows, 22 entries: 0 high, 1 medium, 17 low, 3 false, 1 by-design). AD-5 holds: `Registry.cls` `TableProblem` and `screen-mirror.mjs` `tableProblem` take `long` at the same point with the same sentence, and `ColumnCorpus` runs through both. AD-19 and Conventions › Theme hold. `app-long-block` and `estimateLines` are reused, not copied. The Rule 1 Integration AC is the long-view leg on the throwaway, and the strip and long-block legs cover Rule 3's geometry in light and dark. In the contended files the batch adds lines only.
+
+- [x] [Review][Patch] (medium; fix-risk low; in-story) At 720x450, the 200%-zoom viewport named at DESIGN.md:912, the frame kept 47px whenever a long block showed, collapsed or open. That left the header and 9px of viewport, so the view's only row could not be read [ui/src/styles/_components.scss:6527] -- fixed: while a block shows, the frame keeps `min(header + one row + 16px, 50%)` and the wrapper gives up the room. The leg asserts that the row's name text is in the visible viewport, with the block collapsed and open, and DESIGN.md:1042 states the rule. Deleting the rule turns that assertion red (281.5..299.5 in 273..282, light).
+- [x] [Review][Patch] (low; mutation line) Nothing pinned the block's line breaks (`white-space: pre-wrap`) [ui/browser/system-explorer-sql.browser-spec.mjs:513] -- fixed: the trigger leg asserts that the code carries line breaks and that its text is `pre-wrap`. Dropping the declaration turns it red.
+- [x] [Review][Patch] (low; test) The strip leg's "wraps exactly when its tabs are wider than it" could not fail. Material stretches every tab (`stretchTabs` defaults to true), so the summed widths fill each row [ui/browser/system-explorer-sql.browser-spec.mjs:210] -- fixed: deleted. The 1,024 wrap and containment assertions stay.
+- [x] [Review][Patch] (low; CSS) The strip rule's `flex: 1 1 auto` and `min-width: 0` did nothing, because `.mat-mdc-tab-list` is a block, and the rule's comment described that mechanism [ui/src/styles/_components.scss:2262] -- fixed: the rule is `flex-wrap: wrap` alone, and the strip leg is green without the other two.
+- [x] [Review][Patch] (low; test) The long-block leg's End step could not fail on End, because `page.focus` had already scrolled the toggle, the last element, into view [ui/browser/system-explorer-sql.browser-spec.mjs:435] -- fixed: the toggle takes focus with `preventScroll`, and the leg asserts the last line is below the region before End is pressed.
+- [x] [Review][Patch] (low; doc) The wrap sentence at DESIGN.md:1071 sat in the shared tabs row, which also governs the form and data-browser strips, and those still page [DESIGN.md:1071] -- fixed: the sentence names the detail page's strip.
+- [x] [Review][Patch] (low; comment) `long-block.ts` and `long-blocks.ts` described only the agent panel [ui/src/app/shell/long-block.ts:8] -- fixed: one added line in each.
+- [x] [Review][Patch] (low; comment) Two mutation comments claimed reds the runs did not show [ui/src/app/shell/data-table.spec.ts:1303, ui/tools/screen-mirror.test.mjs:1273] -- fixed: one now reads "all four cases" (4 of 77); the other names only the first refusing `long` case, since `assert.equal` stops the loop at the first failure.
+- [x] [Review][Patch] (low; test) `oauth.browser-spec.mjs` kept the paging strip's focus and 600 ms wait under a comment that gave them a different reason [ui/browser/oauth.browser-spec.mjs:325] -- fixed: removed; `oauth` 6 of 6.
+- [x] [Review][Patch] (low; test) The view leg's literal `1500` duplicated the probe's `LONGLENGTH`, which `LONG_TEXT_LENGTH` already holds [ui/browser/system-explorer-sql.browser-spec.mjs:379] -- fixed.
+- [x] [Review][Patch] (low; test) `toBe(5000)` re-checked the test's own constant after the whole-value assertion [ui/src/app/shell/data-table.spec.ts:1319] -- fixed: it is now a precondition on the value.
+
+Rejected:
+
+- (low; wontfix-accepted) `estimateLines` counts 80 characters a line, which is the panel's width. So at 1,920 a one-line value of 700 to 1,200 characters starts collapsed, and its Show more reveals nothing. A width-aware estimate needs layout inside `LongBlock` (Story 20.17). reopen_if: a data-table long block shows Show more while its collapsed region reads `scrollHeight <= clientHeight`.
+- (low; wontfix-accepted) The procedure's Description has no browser leg. It runs the same `DataTable` path the view and trigger legs drive on the throwaway, and `screen-mirror.test.mjs` and `ExplorerDescriptor` pin its declaration. reopen_if: a procedure's Description draws no block on the throwaway.
+- (low; wontfix-accepted) The Integration AC says the text is longer than the window, but the probe's text renders 364px in a 450px window. Reaching the block's end depends on the text being taller than its scrolling region, which the leg asserts, and a longer probe would change `ExplorerSqlProbe`'s shared `LONGLENGTH`. reopen_if: a rule on the block or its wrapper keys on the window's height.
+- (low; by-design) After Enter on Show more, the toggle sits below the region's visible bottom. `LongBlock`'s contract (Story 20.17) is that the control scrolls nothing, and the panel behaves the same way.
+- (low; wontfix-theoretical) A block of eight lines or fewer has no toggle, so in a wrapper shorter than the block the scroller has no focusable descendant. Chromium and Firefox put such a scroller in the Tab order themselves; this becomes real on a supported browser that does not.
+- (low; wontfix-accepted) The row viewport's cached size can go stale if a block was present when it was measured and then goes away: rows past the 360px buffer would draw blank until the next measure. That takes an opened block on a window over about 1,100px tall, then a filter that drops the selected row, and a fix adds a `ResizeObserver`. reopen_if: rows draw blank under a data table after its long block goes away.
+- (low; wontfix-accepted) The doc in `ReadTool.cls` and a comment and title in `screen-mirror.test.mjs` change existing lines in files Epic 20 also edits. Their hunks do not overlap the ones on `origin/OCU-1-epic20`, the orchestrator's add-only list for this batch does not name them, and reverting them would leave the docs wrong. reopen_if: a forward merge conflicts in either file.
+- (false) A previous entity's value could show under the skeleton or a refusal. All three screens that declare `long` are parent-scoped: `list-page.ts:194` clears the store before binding, and an id change clears it again through `noteScopeChanged`. After a refused re-read the grid and the block stay visible together.
+- (false) A pending field's stale value could show in a block. Only `databases.page.ts` passes `pendingFields`, and none of its columns declares `long`.
+- (false) The Auto Run Result's counts disagree with the Triage Log. The log's 13 findings are 6 patched, 6 rejected and 1 false. The two medium patches share one root, so they are 5 patched and 7 rejected entries, which is 12.
+- (by-design) The spine's Screen archetype row does not name `long`. The lead adds it at this batch's boundary (Rule 20).
+
 ## Spec Change Log
 
 - 2026-10-14, lead, spec gate: DW-1951 closed `resolved-by` Story 18.46 (`0220d1e4`). The two Named-for-filing items are DW-2439 (routed to the burn-down, proposed for 23.11) and DW-2440 (`wontfix-theoretical`). The story block in `epics.md` names the three kept later routings (Rule 5 tier 1). The 23.11 proposal and the Contended edits go to the orchestrator before Batch a's implement pass.
@@ -850,7 +880,7 @@ Every test added or changed passes on a fresh environment, in either order.
 
 **Batch d (loop):**
 
-- Run Load, then Class `ColumnCorpus` and Class `ExplorerDescriptor`, then Checks, then Deploy. Then run Spec for `system-explorer-sql` (light and dark) and `data-table-columns`.
+- Run Load, then Class `ColumnCorpus` and Class `ExplorerDescriptor`, then Checks, then Deploy. Then run Spec for `system-explorer-sql` (light and dark), `data-table-columns` and `oauth`.
 - `mutation:` drop the `long` arm in `Registry.cls`, then in `screen-mirror.mjs`. Expected red: `ColumnCorpus`, then `screen-mirror.test.mjs`.
 - `mutation:` the block renders `''`. Expected red: `data-table.spec.ts`.
 - `mutation:` remove `long` from `ExplorerSqlView`. Expected red: the browser leg.
@@ -874,6 +904,19 @@ Every test added or changed passes on a fresh environment, in either order.
 - (CR) `mutation:` `[disablePagination]="true"` dropped with `flex-wrap` kept (rebuilt, redeployed) -> `system-explorer-sql` stayed green, 5 of 5: the wrapped strip never overflows, so Material hides its controls, and `detail-page.spec.ts` is the one pin for the attribute. `--mat-tab-container-height: 40px` raised to 48px -> the strip leg red at "1024px light: tab 1 is 40px tall".
 - (CR) `mutation:` in `longBlockModels`, the no-selection arm `-1` made `0` -> `data-table.spec.ts` red alone (1 of 77, the several-rows case); `keys.indexOf(selected)` made `0` -> the same case red alone; `if (text === '') return [];` dropped -> 4 of 77 red, the empty-value case among them; `column.long === true ? … : ''` made the text unconditionally -> 4 of 77 red, the not-long case among them; `track block.id` made `track block.labelId` -> the filtered-view case red alone (another row's block starts collapsed).
 - (CR) `mutation:` `long` removed from `ExplorerSqlTriggers`' `Code`, then from `ExplorerSqlProcedure`'s `Description` -> `screen-mirror.test.mjs` red each time: the long-columns test and the two drift checks (3 of 73). Every source mutation reverted byte-identical (sha256) and the clean bundle redeployed.
+- (QA) Tests changed: `ui/browser/system-explorer-sql.browser-spec.mjs` (two tests added: the keyboard path walked from Tab, and the probe table's one trigger shown in a long block named by the Code header, which is the procedure-or-trigger leg pinned; `ExplorerSqlProcedure` stays pinned by `screen-mirror.test.mjs` only). `system-explorer-sql` 7 of 7 on the rebuilt, redeployed clean bundle, each new test alone green; `npm run test:tools` 2035 of 2035.
+- (QA) `mutation:` `tabindex="-1"` on `LongBlock`'s toggle (rebuilt, redeployed) -> the keyboard test red alone ("Tab reaches Show more within 60 presses"); the `page.focus`-driven long-block leg stayed green.
+- (QA) `mutation:` `long: true` removed from `ExplorerSqlTriggers`' Code and the mirror regenerated (rebuilt, redeployed) -> the trigger test red alone, its wait for the block timing out at 30 s.
+- (QA) `mutation:` the strip's wrap rule prefixed `:root:not(.ocu-theme-dark)` (rebuilt, redeployed) -> the strip leg red at "1024px dark: tab 6 lies inside the strip", light green. Every source mutation reverted byte-identical (sha256), the clean bundle redeployed.
+- (code review) Changes:
+  - `_components.scss`: a frame floor while a long block shows; the strip rule cut to `flex-wrap: wrap`.
+  - DESIGN.md:1042 and :1071, in place.
+  - Docs: one added line each in `long-block.ts` and `long-blocks.ts`.
+  - `system-explorer-sql.browser-spec.mjs`: the row's text in view, collapsed and open; End from an unscrolled focus; the trigger's line breaks; the tautological wrap check deleted; `LONG_TEXT_LENGTH` in the view leg.
+  - `oauth.browser-spec.mjs`: the paging wait removed.
+  - `data-table.spec.ts` and `screen-mirror.test.mjs`: comments, and a precondition.
+  - Results: `npm run test:tools` 2035 of 2035; `data-table.spec.ts` and `detail-page.spec.ts` 91 of 91; `npm run build` passes. On the rebuilt and redeployed bundle, `system-explorer-sql` is 7 of 7 and `oauth` 6 of 6.
+- (code review) `mutation:` the frame-floor rule deleted and `white-space: pre-wrap` dropped from `.ocu-data-table-long-text` (rebuilt, redeployed) -> `system-explorer-sql` red 2 of 7. The long-block leg is red at "light: the table keeps its row's text in view beside the block (281.5..299.5 in 273..282)", and the trigger leg at "the block keeps the code's line breaks". `_components.scss` was restored byte-identical (sha256) and the clean bundle (`styles-AOINP42C.css`, the 7 of 7 one) redeployed.
 
 ## Auto Run Result
 

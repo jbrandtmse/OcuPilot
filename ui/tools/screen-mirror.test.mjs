@@ -1270,7 +1270,7 @@ test('readProblem returns every admin-privilege sentence OcuPilot.Test.AdminPair
 //
 // Mutation (Rule 19): drop the `emptyKey` arm from `tableProblem` -> the corpus run goes red on its
 // first refusing value case, "an empty emptyKey is refused"; drop the `long` arm -> it goes red on
-// "a string long is refused" and the three after it.
+// its first refusing `long` case, "a string long is refused".
 test('readProblem returns every column emptyKey and long sentence OcuPilot.Test.ColumnCorpus declares', () => {
   const corpus = testCorpus(['Test', 'ColumnCorpus.cls'], 'Cases');
   assert.ok(corpus.cases.length > 0, `the corpus carries cases (read ${corpus.cases.length})`);

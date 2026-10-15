@@ -323,9 +323,6 @@ test('AC1: the side bar lists OAuth 2.0 fifth; its strip reads the five tabs, an
     for (const index of [2, 3, 4, 0, 1]) {
       const tab = TABS[index];
       const beforeClick = reads.length;
-      // Focus the tab as a keyboard user reaches it, then click it.
-      await page.focus(`app-detail-page .ocu-detail-tab[data-route="${tab.route}"]`);
-      await new Promise((resolve) => setTimeout(resolve, 600));
       await page.click(`app-detail-page .ocu-detail-tab[data-route="${tab.route}"]`);
       await atTab(page, tab);
       assert.deepEqual(await headersOf(page), tab.headers, `${tab.label}: the declared headers`);

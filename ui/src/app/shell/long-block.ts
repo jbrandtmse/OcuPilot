@@ -5,6 +5,7 @@ import { STRINGS } from '../core/strings';
 
 /**
  * One long block in the agent panel (Story 20.17, EXPERIENCE.md panel > Long blocks).
+ * A data table also draws one beneath its rows for a `long` column, with an empty `key`.
  *
  * The projected content is always whole in the DOM. A block whose `lines` estimate is above eight
  * is clamped to eight lines by CSS and carries a native Show more / Show less button; a shorter
