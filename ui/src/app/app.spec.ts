@@ -193,9 +193,12 @@ class StubInstance {
     return 'IRIS';
   }
 
-  /** Story 15.3: the stale-bundle prompt reads this; '' means there is nothing to compare. */
+  /** The bundle name the instance reports; '' means there is nothing to compare. */
+  identity = '';
+
+  /** Story 15.3: the stale-bundle prompt reads this. */
   buildIdentity(): string {
-    return '';
+    return this.identity;
   }
 
   instanceVersion(): string {
@@ -964,10 +967,20 @@ describe('the shell frame', () => {
     // recorder still holding that route as `lastRoute` skips it -- so the one screen they land on
     // is the one screen their recents never get. `recents-recorder.spec.ts` calls `reset()`
     // itself, so nothing there can see whether the shell ever does.
+    //
+    // The next principal has signed in by then: a tab on the sign-in card registers no visit.
+    // Signing in re-reads the recents the instance already holds, so the list alone cannot tell a
+    // registration from that reload: the assertion is on the write.
+    const callsBefore = accountPreferences.calls.length;
+    session.move('signed-in');
     await TestBed.inject(Router).navigateByUrl('/');
     await TestBed.inject(Router).navigateByUrl('/permissions/users');
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(accountPreferences.recents()).toEqual(['permissions/users']);
+    const visits = accountPreferences.calls
+      .slice(callsBefore)
+      .filter((call) => call.method === 'POST' && (call.body ?? '').includes('"permissions/users"'));
+    expect(visits).toHaveLength(1);
   });
 
   it('an unverified instance renders the blocking notice and none of the frame', () => {
@@ -1091,6 +1104,52 @@ describe('the shell frame', () => {
     const bannerAtSignedIn = rootChildrenSignedIn.indexOf('app-fault-banner');
     expect(bannerAtSignedIn).toBeGreaterThanOrEqual(0);
     expect(rootChildrenSignedIn[bannerAtSignedIn + 1]).toBe('app-stale-bundle-notice');
+  });
+
+  it('a stale bundle shows no strip while a blocking instance notice stands, and still shows on the sign-in card', () => {
+    // The tab loaded one bundle and the instance names another. Created and removed here: the
+    // planted script and the identity are this test's own.
+    const script = document.createElement('script');
+    script.src = 'main-AAAA1111.js';
+    document.head.appendChild(script);
+    planted.push(script);
+    instance.identity = 'main-BBBB2222.js';
+    const strip = () => fixture.nativeElement.querySelector('.ocu-stale-bundle');
+    const region = () =>
+      fixture.nativeElement.querySelector('app-stale-bundle-notice [role="status"]') as HTMLElement;
+
+    // Control: the frame is up and the strip stands above it.
+    instance.move('ready');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.ocu-shell')).not.toBeNull();
+    expect(strip()).not.toBeNull();
+    expect(region().textContent?.trim()).toBe(STRINGS.staleBundleNotice);
+
+    // Mutation (Rule 19): drop `[shown]="staleNoticeShown"` from `<app-stale-bundle-notice>` in
+    // `app.ts` -> the three blocking cases below go red, a second statement above the notice.
+    instance.move('version-mismatch');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('app-instance-notice')).not.toBeNull();
+    expect(strip()).toBeNull();
+    expect(region().textContent?.trim()).toBe('');
+
+    instance.move('checking');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('app-instance-notice')).not.toBeNull();
+    expect(strip()).toBeNull();
+
+    session.move('install-unreadable');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('app-instance-notice')).not.toBeNull();
+    expect(strip()).toBeNull();
+    expect(region().textContent?.trim()).toBe('');
+
+    // The sign-in card is not an instance notice: a stale bundle is still worth saying there.
+    session.move('form');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('app-sign-in')).not.toBeNull();
+    expect(strip()).not.toBeNull();
+    expect(region().textContent?.trim()).toBe(STRINGS.staleBundleNotice);
   });
 
   it("AC4: the shell brings the Definitions list's action handlers into existence", () => {

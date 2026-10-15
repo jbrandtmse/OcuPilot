@@ -19,6 +19,7 @@
  */
 
 import type { ApiService } from './api';
+import { classifyFault, isBannerFault } from './fault.ts';
 import { screenForRoute } from './navigation.ts';
 
 /** Absolute from the origin root, through the one API service (AD-20). */
@@ -39,13 +40,19 @@ export function hasClassicPage(route: string): boolean {
 }
 
 /**
- * The documentation address the instance resolves for `route`, or `''` when it has none.
+ * The documentation address the instance resolves for `route`, `''` when it has none, or `null`
+ * when the instance could not say.
  *
- * A refusal, an unavailable answer and an instance that did not reply are all `''`: the control is
- * rendered only for an address, so the three collapse to "no control" and the caller has one case.
+ * A refusal and an unavailable answer are `''`: the instance answered, so the control is not
+ * rendered and the question is closed. An instance that did not reply, answered with a server
+ * fault, or was still installing is `null` -- the question is open, and `HelpLinks.load` asks
+ * again on the next visit.
  */
-export async function helpHrefFor(api: ApiService, route: string): Promise<string> {
-  const result = await api.requestJson<unknown>(`${HELP_PATH}?route=${encodeURIComponent(route)}`);
+export async function helpHrefFor(api: ApiService, route: string): Promise<string | null> {
+  const path = `${HELP_PATH}?route=${encodeURIComponent(route)}`;
+  const result = await api.requestJson<unknown>(path);
+  const fault = classifyFault(result, path);
+  if (isBannerFault(fault) || fault?.kind === 'not-installed') return null;
   if (result.kind !== 'ok') return '';
   const body = result.body;
   if (typeof body !== 'object' || body === null || Array.isArray(body)) return '';
@@ -62,8 +69,9 @@ export interface HelpLinksOptions {
  * The resolved address per route, so the locator bar asks once per screen rather than once per
  * render.
  *
- * A route is held once it has been asked, answer or not, which is what stops a screen whose
- * classic page publishes no address from re-asking on every router event.
+ * A route is held once the instance has answered, whatever the answer, which is what stops a screen
+ * whose classic page publishes no address from re-asking on every router event. A read that got no
+ * answer (a transport failure, a server fault) releases the route, so the next visit asks again.
  */
 export class HelpLinks {
   private readonly api: ApiService;
@@ -110,6 +118,10 @@ export class HelpLinks {
     const href = await helpHrefFor(this.api, route);
     if (generation !== this.generation) return;
     if (!this.asked.has(route)) return;
+    if (href === null) {
+      this.asked.delete(route);
+      return;
+    }
     if (href === '') return;
     this.hrefs.set(route, href);
     this.notify();

@@ -2,15 +2,20 @@ import {
   ChangeDetectionStrategy,
   Component,
   DestroyRef,
+  Injector,
+  afterNextRender,
   computed,
   inject,
   output,
   signal,
+  viewChild,
 } from '@angular/core';
 
 import { ABOUT_FIELDS, About, type AboutField } from '../core/about';
+import type { Fault } from '../core/fault';
 import { STRINGS } from '../core/strings';
 import { Dialog } from './dialog';
+import { FaultBanner } from './fault-banner';
 
 /** One labelled field of the overview, resolved for rendering. */
 interface AboutRow {
@@ -59,9 +64,12 @@ const FIELD_LABELS: Readonly<Record<AboutField, string>> = {
  * per field, so a blank value says "this instance did not report it" in the same place every
  * other value is; dropping the row would say nothing at all.
  *
- * **A read that never answered shows the shell's own server-fault sentence** rather than thirteen
- * blanks pretending to be an answer. A read that failed *after* one answered leaves the previous
- * answer standing, because that is still the last thing this instance said about itself.
+ * **A read that never answered shows its fault in the dialog** rather than thirteen blanks
+ * pretending to be an answer: the in-place `FaultBanner`, because the dialog is `aria-modal` and the
+ * shell's banner above the page is outside what its user can reach. Retry reads again, and Open
+ * messages.log closes the dialog before it navigates. A read that failed *after* one answered
+ * leaves the previous answer standing, because that is still the last thing this instance said
+ * about itself.
  *
  * Escape, the scrim and the dismissing action all close it through `app-dialog`, which returns
  * focus to the element that was focused when it mounted -- the account-menu trigger, because the
@@ -73,14 +81,14 @@ const FIELD_LABELS: Readonly<Record<AboutField, string>> = {
 @Component({
   selector: 'app-about-dialog',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [Dialog],
+  imports: [Dialog, FaultBanner],
   template: `<app-dialog
     [heading]="STRINGS.aboutTitle"
     [closeLabel]="STRINGS.auditDialogClose"
     (closed)="closed.emit()"
   >
     @if (unanswered) {
-      <p class="ocu-about-fault">{{ STRINGS.connectivityServerFault }}</p>
+      <app-fault-banner [fault]="fault" (retried)="reread()" (logOpened)="closed.emit()" />
     } @else {
       <dl class="ocu-about-list">
         @for (row of rows; track row.key) {
@@ -93,6 +101,13 @@ const FIELD_LABELS: Readonly<Record<AboutField, string>> = {
 })
 export class AboutDialog {
   private readonly about = inject(About);
+
+  private readonly injector = inject(Injector);
+
+  private readonly dialog = viewChild.required(Dialog);
+
+  /** Set when the dialog is destroyed, so a read that settles after the close asks nothing of it. */
+  private gone = false;
 
   protected readonly STRINGS = STRINGS;
 
@@ -114,7 +129,10 @@ export class AboutDialog {
 
   constructor() {
     const stop = this.about.subscribe(() => this.generation.set(this.generation() + 1));
-    inject(DestroyRef).onDestroy(stop);
+    inject(DestroyRef).onDestroy(() => {
+      stop();
+      this.gone = true;
+    });
     // Read on mount rather than at sign-in: this is the only surface that shows any of it, and a
     // tab that never opens About never spends the request.
     void this.about.load();
@@ -122,6 +140,23 @@ export class AboutDialog {
 
   protected get rows(): readonly AboutRow[] {
     return this.resolved();
+  }
+
+  /** How the read failed, for the in-place banner; `null` while there is nothing to say. */
+  protected get fault(): Fault | null {
+    this.generation();
+    return this.about.fault();
+  }
+
+  /**
+   * Retry: read the overview again. The Retry that held focus leaves with the alert once the read
+   * answers, so focus is put back inside the dialog after the render that follows.
+   */
+  protected reread(): void {
+    void this.about.load().then(() => {
+      if (this.gone) return;
+      afterNextRender(() => this.dialog().keepFocusInside(), { injector: this.injector });
+    });
   }
 
   /** Whether the dialog has nothing the instance said to show -- a read that failed with none held. */

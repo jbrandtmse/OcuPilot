@@ -3,6 +3,7 @@ import { NavigationEnd, Router } from '@angular/router';
 
 import { AccountPreferences } from '../core/account-preferences';
 import { NavigationService, isListedScreen } from '../core/navigation';
+import { Session, isSignedIn } from '../core/session';
 
 /**
  * Registers a visit each time a built screen opens (Story 15.2, AD-50): the third acceptance
@@ -15,6 +16,11 @@ import { NavigationService, isListedScreen } from '../core/navigation';
  * **It never blocks, delays or fails a navigation.** It acts on `NavigationEnd`, after the router
  * has arrived, and `AccountPreferences.registerVisit` is fire and forget -- a failure surfaces
  * nowhere, because a recent item nobody asked for is not worth a message.
+ *
+ * **Only while signed in.** A tab on the sign-in card, or one whose session ended, has no
+ * principal to write for: the instance would refuse the write, and a Back from the card to a listed
+ * screen is a navigation like any other. The check reads the session at the arrival, so a visit
+ * made before the sign-in completes is not registered later.
  *
  * **Only a listed screen, and only a route change.** A URL that resolves to no built screen is one
  * the shell cannot render, so it is not somewhere the user has been; and the last route this tab
@@ -34,6 +40,7 @@ export class RecentsRecorder {
   private readonly router = inject(Router);
   private readonly navigation = inject(NavigationService);
   private readonly preferences = inject(AccountPreferences);
+  private readonly session = inject(Session);
 
   /** The route this tab last registered, so a repeat arrival costs nothing. */
   private lastRoute = '';
@@ -57,6 +64,7 @@ export class RecentsRecorder {
   }
 
   private record(url: string): void {
+    if (!isSignedIn(this.session.state())) return;
     const screen = this.navigation.screenForUrl(url);
     if (screen === null || screen.route === '' || !isListedScreen(screen)) return;
     if (screen.route === this.lastRoute) return;

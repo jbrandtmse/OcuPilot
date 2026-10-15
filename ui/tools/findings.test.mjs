@@ -7,6 +7,10 @@
 // - print "Nothing to report." for a group whatever its checks read (drop `allChecked &&` in
 //   `findingLines`) -> "a group holding an unread check never says nothing to report" goes red.
 // - drop the `request !== this.request` guard in `Findings.load` -> the late-answer row goes red.
+// - record an ok answer the client cannot read as no fault (drop the `rejected` arm in
+//   `Findings.load`) -> the "a failed read is classified" row goes red.
+// - return from `Findings.load` before it assigns a new fault while one is held -> the same row
+//   goes red at the change of kind.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -166,6 +170,39 @@ test('the store reads its path with the shell scope, keeps a failure from blanki
   assert.equal(store.failed(), true);
   assert.equal(store.data().findings.length, 1, 'a failed read leaves the previous answer standing');
   assert.ok(notified >= 3);
+});
+
+test('a failed read is classified, a change of fault kind notifies, and an ok answer the client cannot read is a rejected read', async () => {
+  const absent = { kind: 'error', status: 404, code: 'ROUTE.NOTFOUND', reason: 'gone', detail: null };
+  const unreachable = { kind: 'error', status: 0, code: null, reason: null, detail: null };
+  const queue = [absent, absent, unreachable, ok({ checks: {} }), ok({ checks: checks(), findings: [] })];
+  const api = { requestJson: () => Promise.resolve(queue.shift()) };
+  const store = new Findings({ api });
+  let notified = 0;
+  store.subscribe(() => (notified += 1));
+
+  await store.load();
+  assert.equal(store.fault()?.kind, 'absent');
+  assert.equal(notified, 1);
+  await store.load();
+  assert.equal(notified, 1, 'the same kind again says nothing new');
+
+  await store.load();
+  assert.equal(store.fault()?.kind, 'unreachable', 'the next failure is classified afresh');
+  assert.equal(notified, 2, 'and the panel is told, so an alert for the old kind can leave');
+
+  // A 200 whose body is not an answer raised no connectivity fault, so the panel says it itself.
+  await store.load();
+  assert.equal(store.failed(), true);
+  assert.equal(store.fault()?.kind, 'rejected');
+  assert.equal(store.fault()?.status, 200);
+  assert.equal(store.answered(), false);
+  assert.equal(notified, 3);
+
+  await store.load();
+  assert.equal(store.fault(), null, 'an answer clears the fault');
+  assert.equal(store.failed(), false);
+  assert.equal(store.answered(), true);
 });
 
 test('reset drops the answer, and an answer for a departed principal never lands', async () => {

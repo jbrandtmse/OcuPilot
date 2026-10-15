@@ -350,6 +350,134 @@ test('AC3 and AC5: Home\u2019s Links block names the three destinations, and not
   }
 });
 
+/**
+ * Make `GET /ui/about` fail for as long as `control.mode` says so: `'abort'` is a transport
+ * failure (the browser's status 0), `'fault'` an instance that answers 500 with its envelope, and
+ * `null` lets the read through. Every other request goes on untouched.
+ */
+function interceptAbout(control) {
+  return async (page) => {
+    await page.setRequestInterception(true);
+    page.on('request', (request) => {
+      if (!request.url().includes(ABOUT_PATH) || control.mode === null) {
+        void request.continue();
+        return;
+      }
+      if (control.mode === 'abort') {
+        void request.abort('failed');
+        return;
+      }
+      void request.respond({
+        status: 500,
+        contentType: 'application/json',
+        body: JSON.stringify({ error: 'internal', reason: 'Internal error', code: 'INTERNAL.ERROR', detail: null }),
+      });
+    });
+  };
+}
+
+/** Open About from the account menu and wait for the dialog itself. */
+async function openAbout(page) {
+  await page.click('#ocu-account-trigger');
+  await page.waitForSelector('[role="menuitem"]', { visible: true, timeout: config.navigationTimeoutMs });
+  await page.evaluate((label) => {
+    const item = [...document.querySelectorAll('[role="menuitem"]')].find(
+      (candidate) => candidate.textContent.trim() === label
+    );
+    item.id = 'ocu-probe-about';
+  }, STRINGS.aboutTitle);
+  await page.click('#ocu-probe-about');
+  await page.waitForSelector('[role="dialog"]', { timeout: config.navigationTimeoutMs });
+}
+
+/** What the dialog's in-place banner shows: its alerts, their sentences and the actions they carry. */
+function readDialogFault(page) {
+  return page.evaluate(() => {
+    const dialog = document.querySelector('[role="dialog"]');
+    return {
+      alerts: Array.from(dialog.querySelectorAll('[role="alert"]')).map((alert) => ({
+        message: alert.querySelector('.ocu-fault-banner-message')?.textContent.trim() ?? '',
+        actions: Array.from(alert.querySelectorAll('button')).map((button) => button.textContent.trim()),
+      })),
+      rows: dialog.querySelectorAll('.ocu-about-term').length,
+    };
+  });
+}
+
+// Mutation (Rule 19): make `FaultBanner.message` draw the generic sentence whatever the kind,
+// rebuild and redeploy -> the first assertion below goes red naming the other sentence.
+test('Integration AC: an About read that cannot reach the instance shows the unreachable alert inside the dialog, and Retry shows the rows', async () => {
+  let session = null;
+  try {
+    const control = { mode: 'abort' };
+    session = await signedInAt(HOME_URL, interceptAbout(control));
+    const { page } = session;
+    await openAbout(page);
+    // The dialog's read is the answered signal: it renders the alert once the store has failed.
+    await page.waitForSelector('[role="dialog"] .ocu-fault-banner', { timeout: config.navigationTimeoutMs });
+
+    // One alert inside the dialog, which is aria-modal: the shell's banner above the page is
+    // outside what a person in the dialog can reach, so the dialog says it for itself.
+    const failed = await readDialogFault(page);
+    assert.deepEqual(
+      failed,
+      { alerts: [{ message: STRINGS.connectivityBannerUnreachable, actions: [STRINGS.actionRetry] }], rows: 0 },
+      `the dialog's alert reads the unreachable sentence with Retry alone: ${JSON.stringify(failed)}`
+    );
+
+    // The instance answers again; Retry reads again and the rows replace the alert.
+    control.mode = null;
+    await page.evaluate((label) => {
+      const dialog = document.querySelector('[role="dialog"]');
+      Array.from(dialog.querySelectorAll('.ocu-fault-banner button'))
+        .find((button) => button.textContent.trim() === label)
+        .click();
+    }, STRINGS.actionRetry);
+    await page.waitForSelector('[role="dialog"] .ocu-about-list', { timeout: config.navigationTimeoutMs });
+    const answered = await readDialogFault(page);
+    assert.deepEqual(answered.alerts, [], 'the alert is gone once the read answers');
+    assert.equal(answered.rows, 13, 'and the thirteen labelled members are listed');
+  } finally {
+    if (session !== null) await session.context.close();
+  }
+});
+
+test('Integration AC: an About read the instance answers with a fault shows the generic alert, and Open messages.log closes the dialog first', async () => {
+  let session = null;
+  try {
+    const control = { mode: 'fault' };
+    session = await signedInAt(HOME_URL, interceptAbout(control));
+    const { page } = session;
+    await openAbout(page);
+    await page.waitForSelector('[role="dialog"] .ocu-fault-banner', { timeout: config.navigationTimeoutMs });
+
+    const failed = await readDialogFault(page);
+    assert.deepEqual(
+      failed,
+      {
+        alerts: [
+          { message: STRINGS.connectivityServerFault, actions: [STRINGS.actionRetry, STRINGS.actionOpenMessagesLog] },
+        ],
+        rows: 0,
+      },
+      `the dialog's alert reads the generic sentence with both actions: ${JSON.stringify(failed)}`
+    );
+
+    await page.evaluate((label) => {
+      const dialog = document.querySelector('[role="dialog"]');
+      Array.from(dialog.querySelectorAll('.ocu-fault-banner button'))
+        .find((button) => button.textContent.trim() === label)
+        .click();
+    }, STRINGS.actionOpenMessagesLog);
+    await page.waitForFunction(
+      () => document.querySelector('[role="dialog"]') === null && window.location.pathname.endsWith('/logs/messages'),
+      { timeout: config.navigationTimeoutMs }
+    );
+  } finally {
+    if (session !== null) await session.context.close();
+  }
+});
+
 test('Integration AC (DW-3): the shipped bundle matches the stamp the installer recorded, so no prompt stands', async () => {
   let session = null;
   try {
@@ -378,14 +506,20 @@ test('Integration AC (DW-3): a buildIdentity the bundle does not carry raises th
     await page.waitForSelector('.ocu-stale-bundle', { timeout: config.navigationTimeoutMs });
 
     const notice = await page.evaluate(() => {
-      const region = document.querySelector('.ocu-stale-bundle');
+      const strip = document.querySelector('.ocu-stale-bundle');
+      // The live region is its own node, mounted before the strip and filled when it is drawn.
+      const region = document.querySelector('app-stale-bundle-notice [role="status"]');
       return {
-        role: region.getAttribute('role'),
-        text: region.querySelector('.ocu-stale-bundle-text').textContent.trim(),
-        action: region.querySelector('button').textContent.trim(),
+        stripRole: strip.getAttribute('role'),
+        regionRole: region?.getAttribute('role') ?? null,
+        regionText: region?.textContent.trim() ?? null,
+        text: strip.querySelector('.ocu-stale-bundle-text').textContent.trim(),
+        action: strip.querySelector('button').textContent.trim(),
       };
     });
-    assert.equal(notice.role, 'status', 'polite, never an alert');
+    assert.equal(notice.regionRole, 'status', 'polite, never an alert');
+    assert.equal(notice.regionText, STRINGS.staleBundleNotice, 'the region holds the sentence while the strip is drawn');
+    assert.equal(notice.stripRole, null, 'and the visible strip carries no role of its own');
     assert.equal(notice.text, STRINGS.staleBundleNotice);
     assert.equal(notice.action, STRINGS.actionReload);
 

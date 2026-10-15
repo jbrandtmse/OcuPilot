@@ -226,7 +226,7 @@ export function isComposerChord(event: KeyboardEvent): boolean {
     }
     <h1 class="ocu-product-heading">{{ STRINGS.productName }}</h1>
     <app-fault-banner />
-    <app-stale-bundle-notice />
+    <app-stale-bundle-notice [shown]="staleNoticeShown" />
     @if (installUnreadable) {
       <app-instance-notice />
     } @else {
@@ -497,6 +497,15 @@ export class App {
 
   protected get instanceReady(): boolean {
     return isInstanceReady(this.instanceStatus());
+  }
+
+  /**
+   * Whether the stale-bundle strip may show. An instance notice that blocks the frame -- the
+   * install state unreadable, or a signed-in tab whose instance is not ready -- is the one
+   * statement about the instance, so the strip waits behind it; the sign-in card keeps the strip.
+   */
+  protected get staleNoticeShown(): boolean {
+    return !(this.installUnreadable || (this.signedIn && !this.instanceReady));
   }
 
   /** The frame's condition: both gates open and the install state readable. */

@@ -5837,7 +5837,7 @@ app-interop-message-contents {
 .ocu-home-system-row {
   justify-content: space-between;
   gap: var(--ocu-space-3);
-  height: var(--ocu-control-height);
+  min-height: var(--ocu-control-height);
 }
 
 .ocu-home-system-label {

@@ -68,6 +68,17 @@ export interface Fault {
  */
 export function classifyFault(result: JsonResult<unknown>, path: string): Fault | null {
   if (result.kind === 'ok') return null;
+  return classifyFailure(result, path);
+}
+
+/**
+ * The fault one outcome that is known to have failed means -- `classifyFault` without its `null`
+ * arm, for a caller that has already ruled out `ok` and keeps the result.
+ */
+export function classifyFailure(
+  result: Exclude<JsonResult<unknown>, { readonly kind: 'ok' }>,
+  path: string
+): Fault {
   if (result.kind === 'installing') {
     return { kind: 'not-installed', status: result.status, code: result.code, path };
   }

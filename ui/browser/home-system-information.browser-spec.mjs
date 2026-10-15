@@ -227,3 +227,70 @@ test('AC2: with five blocks present the row wraps, at 1,440 px and at the 720 px
     }
   }
 });
+
+/** The four type tokens text-only resizing scales, as DESIGN.md `:912` names them. */
+const SCALED_TOKENS = [
+  '--ocu-type-caption-size',
+  '--ocu-type-caption-line-height',
+  '--ocu-type-body-size',
+  '--ocu-type-body-line-height',
+];
+
+/**
+ * Text-only resizing grows a System Information row rather than clipping it. The tokens
+ * are doubled on the document element, two animation frames are let go by, and every row must
+ * hold its own content: nothing scrolls inside it and each child lies inside its box. Run in both
+ * themes, since the row's colours and the type tokens are re-pointed by the theme scope.
+ */
+for (const theme of ['light', 'dark']) {
+  test(`at doubled caption and body type every System Information row holds its content (${theme})`, async () => {
+    const { context, page } = await signedInAtHome();
+    try {
+      await page.evaluate(
+        (dark) => document.documentElement.classList.toggle('ocu-theme-dark', dark),
+        theme === 'dark'
+      );
+      const scaled = await page.evaluate(async (tokens) => {
+        const root = document.documentElement;
+        const doubled = {};
+        for (const token of tokens) {
+          const read = getComputedStyle(root).getPropertyValue(token).trim();
+          const match = /^(-?\d*\.?\d+)([a-z%]*)$/.exec(read);
+          if (match === null) return { error: `${token} reads ${JSON.stringify(read)}` };
+          doubled[token] = `${parseFloat(match[1]) * 2}${match[2]}`;
+          root.style.setProperty(token, doubled[token]);
+        }
+        const frame = () => new Promise((resolve) => requestAnimationFrame(() => resolve()));
+        await frame();
+        await frame();
+        return { doubled };
+      }, SCALED_TOKENS);
+      assert.equal(scaled.error, undefined, `every token reads as a number: ${JSON.stringify(scaled)}`);
+
+      const rows = await page.evaluate(() =>
+        Array.from(document.querySelectorAll('.ocu-home-system-row')).map((row) => {
+          const box = row.getBoundingClientRect();
+          return {
+            label: row.querySelector('.ocu-home-system-label')?.textContent?.trim() ?? '',
+            scrollHeight: row.scrollHeight,
+            clientHeight: row.clientHeight,
+            outside: Array.from(row.children).filter((child) => {
+              const inner = child.getBoundingClientRect();
+              return inner.top < box.top - 1 || inner.bottom > box.bottom + 1;
+            }).length,
+          };
+        })
+      );
+      assert.equal(rows.length, 7, `the panel still renders its seven rows: ${JSON.stringify(rows)}`);
+      for (const row of rows) {
+        assert.ok(
+          row.scrollHeight <= row.clientHeight + 1,
+          `the ${JSON.stringify(row.label)} row does not clip at doubled type (${theme}): ${JSON.stringify({ row, scaled })}`
+        );
+        assert.equal(row.outside, 0, `and its children lie inside its box (${theme}): ${JSON.stringify(row)}`);
+      }
+    } finally {
+      await context.close();
+    }
+  });
+}

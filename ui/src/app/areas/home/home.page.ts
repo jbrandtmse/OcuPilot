@@ -18,6 +18,7 @@ import {
 } from '../../core/account-preferences';
 import { About } from '../../core/about';
 import { ChangeBus } from '../../core/change-bus';
+import { isBannerFault, type Fault } from '../../core/fault';
 import { Findings, findingLines, type Finding } from '../../core/findings';
 import { FixFinding, isFixable } from '../../core/fix-finding';
 import { InstanceService, serverFlagKind } from '../../core/instance';
@@ -46,6 +47,7 @@ import { SHORTCUT_KEYS, shortcutScreens } from '../../core/shortcuts';
 import { Session } from '../../core/session';
 import { ShellState } from '../../core/shell-state';
 import { STRINGS, stringFor } from '../../core/strings';
+import { FaultBanner } from '../../shell/fault-banner';
 import { AreaIcon } from '../../shell/rail-icon';
 import { ServerFlag } from '../../shell/server-flag';
 import { FindingsPanel, type FindingGroupView, type FindingRow } from './findings-panel';
@@ -282,8 +284,9 @@ interface LineSegment {
  * word and the interoperability runtime's -- rendered as the source reports it and never
  * translated, and each row carries that word as text so colour is never the only signal. It
  * reports uptime and mirror state because About declines both, so the product reports each once.
- * A read that has never answered renders the connectivity fault in place of the rows, because
- * seven not-reported rows would be a confident claim about an instance that did not reply.
+ * A read that has never answered renders no rows, because seven not-reported rows would be a
+ * confident claim about an instance that did not reply: a connectivity-banner fault is the shell's
+ * banner's to say once, and any other fault draws the in-place banner with Retry.
  * With five blocks the row wraps rather than widening: `.ocu-home-remembered` is already a
  * wrapping flex row and `.ocu-home-block` already carries `min-width: 0`, and
  * `ui/browser/home-system-information.browser-spec.mjs` is what pins that against a regression,
@@ -303,7 +306,7 @@ interface LineSegment {
 @Component({
   selector: 'app-home-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [AreaIcon, ServerFlag, PerformanceRowComponent, FindingsPanel],
+  imports: [AreaIcon, FaultBanner, ServerFlag, PerformanceRowComponent, FindingsPanel],
   template: `<section class="ocu-home">
     @if (performanceValues) {
       <app-performance-row [values]="performanceValues" [points]="performancePoints" />
@@ -311,7 +314,8 @@ interface LineSegment {
     @if (findingsShown) {
       <app-findings-panel
         [groups]="findingGroups"
-        [unanswered]="findingsUnanswered"
+        [fault]="findingsFault"
+        (retried)="onFindingsRetry()"
         (fix)="onFix($event)"
         (open)="onOpenFinding($event)"
       />
@@ -403,8 +407,8 @@ interface LineSegment {
       }
       <section class="ocu-home-block ocu-home-block-fixed">
         <h2 class="ocu-home-block-heading">{{ STRINGS.systemInfoHeading }}</h2>
-        @if (systemUnanswered) {
-          <p class="ocu-home-block-empty">{{ STRINGS.connectivityServerFault }}</p>
+        @if (systemFault) {
+          <app-fault-banner [fault]="systemFault" (retried)="onSystemRetry()" />
         }
         @if (systemAnswered) {
           <div class="ocu-home-block-list" role="list">
@@ -888,10 +892,21 @@ export class HomePage {
     return this.findings.answered() || this.findings.failed();
   }
 
-  /** Whether the Findings read has never answered and the last one failed. */
-  protected get findingsUnanswered(): boolean {
+  /**
+   * The fault the Findings panel draws in place: a read that has never answered and failed with
+   * something other than a connectivity-banner fault. A banner fault is the shell's banner's to
+   * say, once, so the panel adds nothing of its own for it.
+   */
+  protected get findingsFault(): Fault | null {
     this.findingsGeneration();
-    return !this.findings.answered() && this.findings.failed();
+    if (this.findings.answered()) return null;
+    const fault = this.findings.fault();
+    return isBannerFault(fault) ? null : fault;
+  }
+
+  /** Retry on the Findings panel's in-place banner: read the findings again. */
+  protected onFindingsRetry(): void {
+    void this.findings.load();
   }
 
   /**
@@ -951,14 +966,23 @@ export class HomePage {
   }
 
   /**
-   * Whether the panel has nothing the instance said -- a read that failed with no earlier answer
-   * held. Seven "Not reported" rows would be a confident claim about an instance that never
-   * replied, so the block renders the connectivity fault instead; once a read has answered, a
-   * later failure leaves that answer standing (`about-dialog.ts`'s shape).
+   * The fault the System Information block draws in place: a read that failed with no earlier
+   * answer held, and with something other than a connectivity-banner fault. Seven "Not reported"
+   * rows would be a confident claim about an instance that never replied, so the block says what
+   * failed instead -- except for a banner fault, which the shell's banner says once and the block
+   * adds nothing to. Once a read has answered, a later failure leaves that answer standing
+   * (`about-dialog.ts`'s shape).
    */
-  protected get systemUnanswered(): boolean {
+  protected get systemFault(): Fault | null {
     this.systemGeneration();
-    return !this.systemInfo.answered() && this.systemInfo.failed();
+    if (this.systemInfo.answered()) return null;
+    const fault = this.systemInfo.fault();
+    return isBannerFault(fault) ? null : fault;
+  }
+
+  /** Retry on the System Information block's in-place banner: read the panel's state again. */
+  protected onSystemRetry(): void {
+    void this.systemInfo.load();
   }
 
   /**

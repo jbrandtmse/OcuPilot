@@ -25,10 +25,13 @@ import { StaleBundleNotice } from './stale-bundle-notice';
  *
  * Mutations (Rule 19), each applied to `stale-bundle-notice.ts`, observed red here alone, and
  * reverted: make the `stale` getter return `false` unconditionally -> every test that expects the
- * prompt goes red (4 of 8); make `chooseReload()` a no-op -> "asks the document to fetch itself
- * again" goes red (1 of 8); remove the `NavigationError` subscription -> the two navigation-failure
- * tests go red (2 of 8); remove the `onDestroy` unsubscribe -> "stops listening to the router when it
- * is destroyed" goes red (1 of 8).
+ * prompt goes red; make `chooseReload()` a no-op -> "asks the document to fetch itself again" goes
+ * red; remove the `NavigationError` subscription -> the two navigation-failure tests go red; remove
+ * the `onDestroy` unsubscribe -> "stops listening to the router when it is destroyed" goes red.
+ *
+ * The live region is its own node, mounted empty and filled when the strip is drawn: move the
+ * `role="status"` span back inside the `@if` -> "the same live region node, mounted empty, holds
+ * the sentence once the identity flips" goes red.
  */
 class StubInstance {
   private identity = '';
@@ -77,6 +80,9 @@ describe('the stale-bundle notice', () => {
   const notice = (): HTMLElement | null =>
     fixture.nativeElement.querySelector('.ocu-stale-bundle');
 
+  const liveRegion = (): HTMLElement | null =>
+    fixture.nativeElement.querySelector('[role="status"]');
+
   function mount(): void {
     instance = new StubInstance();
     routerEvents = new Subject<unknown>();
@@ -115,18 +121,53 @@ describe('the stale-bundle notice', () => {
     expect(notice()).toBeNull();
   });
 
-  it('renders the polite reload prompt when the instance names a bundle this tab did not load', () => {
+  it('renders the reload prompt when the instance names a bundle this tab did not load, with no role of its own', () => {
     loadBundle('main-AAAA1111.js');
     mount();
     instance.publish('main-BBBB2222.js');
     fixture.detectChanges();
 
-    const region = notice();
-    expect(region).not.toBeNull();
-    expect(region?.getAttribute('role')).toBe('status');
-    expect(region?.textContent).toContain(STRINGS.staleBundleNotice);
-    const reload = region?.querySelector('button');
+    const strip = notice();
+    expect(strip).not.toBeNull();
+    expect(strip?.getAttribute('role')).toBeNull();
+    expect(strip?.textContent).toContain(STRINGS.staleBundleNotice);
+    expect(liveRegion()?.getAttribute('role')).toBe('status');
+    const reload = strip?.querySelector('button');
     expect(reload?.textContent?.trim()).toBe(STRINGS.actionReload);
+  });
+
+  it('the same live region node, mounted empty, holds the sentence once the identity flips', () => {
+    loadBundle('main-AAAA1111.js');
+    mount();
+    const region = liveRegion();
+    expect(region).not.toBeNull();
+    expect(region?.textContent?.trim()).toBe('');
+    expect(notice()).toBeNull();
+
+    instance.publish('main-BBBB2222.js');
+    fixture.detectChanges();
+    expect(liveRegion()).toBe(region);
+    expect(region?.textContent?.trim()).toBe(STRINGS.staleBundleNotice);
+
+    instance.publish('main-AAAA1111.js');
+    fixture.detectChanges();
+    expect(liveRegion()).toBe(region);
+    expect(region?.textContent?.trim()).toBe('');
+  });
+
+  it('draws neither the strip nor the sentence while the shell holds it back, and both once it lets go', () => {
+    loadBundle('main-AAAA1111.js');
+    mount();
+    fixture.componentRef.setInput('shown', false);
+    instance.publish('main-BBBB2222.js');
+    fixture.detectChanges();
+    expect(notice()).toBeNull();
+    expect(liveRegion()?.textContent?.trim()).toBe('');
+
+    fixture.componentRef.setInput('shown', true);
+    fixture.detectChanges();
+    expect(notice()).not.toBeNull();
+    expect(liveRegion()?.textContent?.trim()).toBe(STRINGS.staleBundleNotice);
   });
 
   it('reacts to a later instance update -- the prompt is not decided only at construction', () => {

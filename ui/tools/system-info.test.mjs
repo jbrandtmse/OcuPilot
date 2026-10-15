@@ -14,6 +14,8 @@
 //   namespace whatever namespace the user is looking at.
 // - drop the `generation !== this.generation` guard -> the "an answer for a departed principal
 //   does not land on the next" row goes red.
+// - return from `SystemInfo.load` before it assigns a new fault while one is held -> the "a change
+//   of fault kind notifies" row goes red.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -170,6 +172,24 @@ test('a second failed read notifies nothing: the parked state has not changed', 
   store.subscribe(() => (notified += 1));
   await store.load();
   assert.equal(notified, 0);
+});
+
+test('a failed read is classified, and a change of fault kind notifies where the same kind does not', async () => {
+  const absent = { kind: 'error', status: 404, code: 'ROUTE.NOTFOUND', reason: 'gone', detail: null };
+  const api = stubApi([absent, absent, transportError()]);
+  const store = new SystemInfo({ api });
+  let notified = 0;
+  store.subscribe(() => (notified += 1));
+
+  await store.load();
+  assert.equal(store.fault()?.kind, 'absent');
+  assert.equal(notified, 1);
+  await store.load();
+  assert.equal(notified, 1, 'the same kind again says nothing new');
+
+  await store.load();
+  assert.equal(store.fault()?.kind, 'unreachable', 'the next failure is classified afresh');
+  assert.equal(notified, 2, 'and the panel is told, so an alert for the old kind can leave');
 });
 
 test('a read that answers clears a previous failure', async () => {

@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import { AccountPreferences } from '../core/account-preferences';
 import { NavigationService, screenForRoute } from '../core/navigation';
+import { Session, type SessionState } from '../core/session';
 import type { ScreenDeclaration } from '../core/screens.generated';
 import {
   stubAccountPreferences,
@@ -31,9 +32,19 @@ class StubNavigation {
   }
 }
 
+/** The one member the recorder reads: which state the tab's session is in. */
+class StubSession {
+  current: SessionState = 'signed-in';
+
+  state(): SessionState {
+    return this.current;
+  }
+}
+
 describe('the recents recorder', () => {
   let preferences: StubbedAccountPreferences;
   let router: Router;
+  let session: StubSession;
 
   /**
    * Every write the stub was asked for. `recents()` cannot answer "was a visit registered?" on
@@ -52,6 +63,7 @@ describe('the recents recorder', () => {
   beforeEach(() => {
     TestBed.resetTestingModule();
     preferences = stubAccountPreferences();
+    session = new StubSession();
     TestBed.configureTestingModule({
       providers: [
         provideRouter([
@@ -63,6 +75,7 @@ describe('the recents recorder', () => {
         ]),
         { provide: NavigationService, useValue: new StubNavigation() as unknown as NavigationService },
         { provide: AccountPreferences, useValue: preferences },
+        { provide: Session, useValue: session },
       ],
     });
     TestBed.inject(RecentsRecorder);
@@ -111,6 +124,29 @@ describe('the recents recorder', () => {
     // of these go red, and every definition edit, database-details drill and wallet-secret view
     // puts a row on Home that opens an empty form.
     expect(writes()).toHaveLength(0);
+  });
+
+  it('registers nothing while the tab is signed out, and the screen is still new once it signs in', async () => {
+    // Back from the sign-in card to a listed screen is a navigation like any other, but the tab
+    // has no principal to write for. Created and removed here: the session state is this test's own.
+    session.current = 'form';
+    await router.navigateByUrl('/logs/alerts');
+    await settled();
+
+    // Mutation (Rule 19): drop `if (!isSignedIn(this.session.state())) return;` from
+    // `RecentsRecorder.record` -> this goes red, one `POST /account/preferences` from a tab that
+    // is signed out.
+    expect(writes()).toHaveLength(0);
+    expect(preferences.recents()).toEqual([]);
+
+    // The refused arrival does not latch `lastRoute`: the same screen, reached once the tab is
+    // signed in, is registered.
+    session.current = 'signed-in';
+    await router.navigateByUrl('/logs/alerts?ns=USER');
+    await settled();
+
+    expect(writes()).toHaveLength(1);
+    expect(preferences.recents()).toEqual(['logs/alerts']);
   });
 
   it('a second arrival at the same screen costs no second registration', async () => {

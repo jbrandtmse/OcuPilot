@@ -2,11 +2,11 @@
 title: 'Story 23.5: The range-end cleanup, part 5'
 type: 'bugfix'
 created: '2026-10-14'
-status: 'in-progress'
-baseline_revision: '72e34617fd1e743c0d1bb34967d9ab9b4b2e6b7a'
-baseline_commit: '72e34617fd1e743c0d1bb34967d9ab9b4b2e6b7a'
+status: 'done'
+baseline_revision: '2ed942779c87893d73d565c764d0b4a1cfdcd176'
+baseline_commit: '2ed942779c87893d73d565c764d0b4a1cfdcd176'
 review_loop_iteration: 0
-followup_review_recommended: true
+followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
 warnings: ['multiple-goals', 'oversized']
@@ -17,6 +17,13 @@ deferred:
       `explorerSqlStopped` and `explorerSqlStoppedUndone` fill `<s>` from the server-recorded `seconds` (`core/sql-answer.ts:78,107`), so 1 is reachable. A heuristic pass over `strings.ts` (a `<n>`-style placeholder before a plural noun, no `One` sibling) also lists `agentDefinitionTestTimeout`, `agentDefinitionTestTimeoutLocal`, `processBroadcastHint`, `tableCheckAtMost`, `remoteDatabaseListHint`, `remoteDatabaseListConsequence` and `explorerSqlDataTabCap` (inference: reachability at 1 not checked). Fix is a census plus a singular per reachable string, which is a sweep rather than a patch.
     location: >-
       ui/src/app/core/strings.ts
+    severity: low
+  - summary: >-
+      Home's System Information block and findings panel are not re-read when the shell's banner clears after a connectivity fault, so each stays a heading with no rows until a scope change, a change event or a revisit.
+    evidence: |-
+      `about.ts`, `system-info.ts` and `findings.ts` register no `retryWhenReachable`, so the banner's Retry (`connectivity.retry()`) re-runs none of them; the only in-place Retry is for a non-banner fault. Before this pass the same block stood on its plain fault sentence under the same conditions, so the gap is not new.
+    location: >-
+      ui/src/app/areas/home/home.page.ts:789-804
     severity: low
 ---
 
@@ -277,17 +284,17 @@ Rejected:
 
 ### Batch b: shell state, Home and About
 
-- [ ] **DW-1341.** In `recents-recorder.ts`, `record()` returns unless `isSignedIn(session.state())`. Test: `recents-recorder.spec.ts`, with a stubbed `Session` in state `'form'`, navigates to a listed screen; nothing is written.
-- [ ] **DW-1342.** In `locator-bar.ts`, `toggleFavorite()` sets a `favoritePendingRoute` signal before the write and clears it once the write settles. A second activation on that route returns early. While a write is pending, `.ocu-locator-favorite` carries `aria-disabled="true"`, never `disabled`. Test: in `locator-bar.spec.ts`, two clicks with no await between give one POST; `aria-disabled` is set before the write settles and gone after.
-- [ ] **DW-1368.** In `help.ts`, `helpHrefFor` answers `null` for a banner fault or `not-installed`, and `load()` then deletes the route from `asked`. A refusal or `available: false` still answers `''` and is not asked again. Test: in `about.test.mjs`, a status-0 answer and then an ok one across two `load`s give two calls and the href.
-- [ ] **DW-1371 and DW-1372.**
+- [x] **DW-1341.** In `recents-recorder.ts`, `record()` returns unless `isSignedIn(session.state())`. Test: `recents-recorder.spec.ts`, with a stubbed `Session` in state `'form'`, navigates to a listed screen; nothing is written.
+- [x] **DW-1342.** In `locator-bar.ts`, `toggleFavorite()` sets a `favoritePendingRoute` signal before the write and clears it once the write settles. A second activation on that route returns early. While a write is pending, `.ocu-locator-favorite` carries `aria-disabled="true"`, never `disabled`. Test: in `locator-bar.spec.ts`, two clicks with no await between give one POST; `aria-disabled` is set before the write settles and gone after.
+- [x] **DW-1368.** In `help.ts`, `helpHrefFor` answers `null` for a banner fault or `not-installed`, and `load()` then deletes the route from `asked`. A refusal or `available: false` still answers `''` and is not asked again. Test: in `about.test.mjs`, a status-0 answer and then an ok one across two `load`s give two calls and the href.
+- [x] **DW-1371 and DW-1372.**
   - `stale-bundle-notice.ts` takes a `shown` input, default `true`. `app.ts:229` binds it `false` while a blocking instance notice renders: `installUnreadable`, or signed in while not `instanceReady`. The strip still shows on the sign-in card.
   - The `role="status"` region sits outside the `@if`. It is always mounted, `ocu-visually-hidden`, and holds `STRINGS.staleBundleNotice` only while the strip is drawn. The visible strip carries no role.
   - Tests:
     - `app.spec.ts`: a version-mismatch instance stub with a stale identity gives no `.ocu-stale-bundle` while `app-instance-notice` renders. `:1068-1094` stays green.
     - `stale-bundle-notice.spec.ts`: the same `[role=status]` node, mounted empty, holds the sentence once the identity flips; retarget `:126`.
     - Retarget `about-help-links.browser-spec.mjs:381-388` to the region.
-- [ ] **DW-1401.** About, Home's System Information, and Home's findings panel. The findings panel is a third surface with the same root cause, found at plan.
+- [x] **DW-1401.** About, Home's System Information, and Home's findings panel. The findings panel is a third surface with the same root cause, found at plan.
   - **Stores.** `about.ts`, `system-info.ts` and the findings store keep the classified `Fault`: `fault(): Fault | null`, from `classifyFault`. `failed()` stays as `fault() !== null`.
   - **`fault-banner.ts`** gains an optional `fault` input and a `retried` output.
     - Given a fault, it renders that fault in place, as `role="alert"`: `unreachable` gives `connectivityBannerUnreachable` with Retry; any other kind gives `connectivityServerFault` with Retry and Open messages.log.
@@ -300,7 +307,7 @@ Rejected:
     - `about-dialog.spec.ts`: a status-0 stub gives `.ocu-fault-banner[role=alert]` with the unreachable sentence, and Retry re-reads; a 500 stub gives the generic sentence and Open messages.log.
     - `home.page.spec.ts:1222-1235` and `:1688`: status 0 gives no sentence and no alert inside the block; a 404 stub gives the in-place banner.
     - `about-help-links.browser-spec.mjs`: with the About read aborted by request interception, the dialog's alert reads the unreachable sentence; Retry with interception off shows the rows.
-- [ ] **DW-1392.** In `_components.scss:5798`, change `height:` to `min-height:` on `.ocu-home-system-row`. Test: in `home-system-information.browser-spec.mjs`, double `--ocu-type-{caption,body}-{size,line-height}` on `documentElement` and wait two frames. Every `.ocu-home-system-row` then has `scrollHeight <= clientHeight + 1`, with its children inside its box, in light and in dark.
+- [x] **DW-1392.** In `_components.scss:5798`, change `height:` to `min-height:` on `.ocu-home-system-row`. Test: in `home-system-information.browser-spec.mjs`, double `--ocu-type-{caption,body}-{size,line-height}` on `documentElement` and wait two frames. Every `.ocu-home-system-row` then has `scrollHeight <= clientHeight + 1`, with its children inside its box, in light and in dark.
 
 **Acceptance criteria:**
 
@@ -389,6 +396,30 @@ Rejected:
   - `[low]` `[reject]` (intent-alignment) `Api/Error.cls` `REASONTURNLIMITHOUR` still reads the plural - the client builds both turn-limit sentences from `detail`, and `turn-limit.test.mjs:176` pins the server sentence equal to the plural string.
   - `[low]` `[reject]` (intent-alignment) red-before-fix order is not visible and DW-2227 has no recorded red - the spec's mutation line allows "no red reproduces"; the order is not checkable from a diff.
   - `[false]` `[reject]` (intent-alignment) Batches b, c and d are not in the diff - they are scheduled passes, not a divergence of reading.
+
+### 2026-10-14 - Review pass (Batch b)
+
+- verdicts: 16 findings - high 0, medium 4, low 12, false 0, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` the `app.spec.ts` sign-out case no longer pins `recentsRecorder.reset()`: signing in reloads the instance's recents - asserted the list, so the reload satisfied it; now asserts the visit's POST after the sign-in, and deleting the reset reddens it (mutation recorded).
+  - `[medium]` `[patch]` the unreadable-ok-answer branch of `Findings.load` (`rejected`) is run by no test - added a tools case and a `home.page.spec.ts` case; recording it as a banner kind reddens both.
+  - `[medium]` `[patch]` a change of fault kind between two failed reads is untested for `SystemInfo` and `Findings` - added tools cases and two `home.page.spec.ts` cases; holding the first fault reddens all four.
+  - `[medium]` `[patch]` "closes the dialog first" is not observable in either test that claims it - both now spy on `navigateByUrl` and assert the order; moving the emit, or dropping the binding, reddens them.
+  - `[low]` `[patch]` Batch b lacks mutation lines for the 404 half, the Retry wiring, the `(logOpened)` binding and the `reset()` re-run - all demonstrated and recorded under Verification as `(CR)` lines.
+  - `[low]` `[reject]` AC 2's "with the shell's banner counted" has no page-level test - the spec prescribes the block-level tests (Tasks, DW-1401); a page-level count needs the shell and a Home block mounted together, which no existing spec does.
+  - `[low]` `[reject]` `rejected` for an unreadable ok answer reads oddly beside the kind's definition - the comment at `findings.ts` states why; a new kind adds surface for no user-visible gain.
+  - `[low]` `[reject]` the `about-help-links` "shipped bundle matches the stamp" leg is red after any `docker cp` of a changed bundle - environmental, not changed by this diff; the throwaway keeps the stamp recorded at container start (a fresh throwaway matches, inference).
+  - `[low]` `[reject]` DW-1341's gate is wider than the matrix row (the `probing` state registers nothing) - the spec text prescribes `isSignedIn(session.state())`; `preferences-integration.browser-spec.mjs` ran green on the redeployed bundle.
+  - `[low]` `[patch]` DW-1368 releases a 5xx and an install-in-flight answer too, and the locator bar's comment still says a router event costs at most one request per screen - the width is spec-prescribed; the comment now says "once the instance has answered".
+  - `[low]` `[reject]` the stale-bundle announcement cannot be observed and the blocking case is jsdom-only - inherent to a live region; the spec prescribes these tests.
+  - `[low]` `[reject]` the page-level picture (the shell's banner behind the modal plus the dialog's alert) is asserted nowhere - the Design Notes decide that About shows its own alert because the dialog is `aria-modal`.
+  - `[low]` `[reject]` `.ocu-about-fault` is unreferenced - `_components.scss` is Epic 20's file and add-only here; `reopen_if` a later pass may edit that file's existing lines (delete the rule, six lines).
+  - `[low]` `[defer]` Home's two blocks are not re-read when the shell's banner clears - pre-existing, in the frontmatter `deferred:` list (low).
+  - `[low]` `[reject]` findings at a 5xx is untested, and the in-place banner is wider than "a 404" - a 5xx and status 0 share `isBannerFault`, tested at status 0 and for System Information at 503; "any other fault" is the spec's wording.
+  - `[low]` `[reject]` DW-1392's test asserts no clip, not growth, and sibling rows keep a fixed height - restoring `height:` reddens it (scrollHeight 52, clientHeight 32); the siblings are under Named for filing.
+- also, not from a layer:
+  - `[medium]` `[patch]` (implement report) a Retry that answers removes the focused button, so focus falls to the body and the dialog's trap no longer hears Tab - `Dialog.keepFocusInside`, called after the render that follows the read; a focus case in `about-dialog.spec.ts`, red with the call dropped.
+  - `[low]` `[patch]` (lead read) `home.page.ts`'s class doc still said an unanswered read renders the connectivity fault in place - replaced.
 
 ## Design Notes
 
@@ -568,14 +599,24 @@ Every test added or changed passes on a fresh environment, in either order.
 **Batch b (loop):**
 
 - Run Checks and Deploy, then Spec for `about-help-links` and `home-system-information` (light and dark).
-- `mutation:` drop the session guard. Expected red: `recents-recorder.spec.ts`.
-- `mutation:` drop the pending guard. Expected red: two POSTs in `locator-bar.spec.ts`.
-- `mutation:` drop `asked.delete`. Expected red: `about.test.mjs`.
-- `mutation:` drop the `[shown]` binding. Expected red: `app.spec.ts`.
-- `mutation:` move the region back inside the `@if`. Expected red: `stale-bundle-notice.spec.ts`.
-- `mutation:` the in-place banner always shows the generic sentence. Expected red: About's unreachable leg, both tiers.
-- `mutation:` Home renders the in-place banner for a banner fault. Expected red: `home.page.spec.ts`.
-- `mutation:` restore `height:`. Expected red: `home-system-information`.
+- `mutation:` the session guard dropped from `RecentsRecorder.record` -> `recents-recorder.spec.ts`'s signed-out case red (one `POST /account/preferences` from a tab in state `form`).
+- `mutation:` the `favoritePendingRoute() === route` guard dropped from `toggleFavorite` -> `locator-bar.spec.ts`'s double-star case red (2 writes for 1 star).
+- `mutation:` `this.asked.delete(route)` dropped from `HelpLinks.load` -> `about.test.mjs`'s "asked for again" case red.
+- `mutation:` the `[shown]` binding dropped from `app.ts` -> `app.spec.ts`'s stale-bundle case red (`.ocu-stale-bundle` standing over `app-instance-notice`).
+- `mutation:` the `role="status"` span moved back inside the `@if` -> `stale-bundle-notice.spec.ts` red: the same-node case and the held-back case (2 of 10).
+- `mutation:` `FaultBanner.message` drew the generic sentence whatever the kind -> `about-dialog.spec.ts` red (the unreachable case and the Retry case, 2 of 7), and `about-help-links.browser-spec.mjs`'s status-0 Integration AC red (bundle rebuilt and redeployed; the status-500 leg stayed green).
+- `mutation:` Home returned the unfiltered fault from `systemFault` and `findingsFault` -> `home.page.spec.ts` red: the System Information and Findings banner-fault cases (2 of 69).
+- `mutation:` `.ocu-home-system-row` back to `height:` (bundle rebuilt and redeployed) -> `home-system-information.browser-spec.mjs`'s doubled-type case red in light and in dark (the Uptime row: `scrollHeight` 52, `clientHeight` 32).
+- (implement) Tests changed: `recents-recorder.spec.ts`, `locator-bar.spec.ts`, `app.spec.ts` (a stale-bundle case, and the sign-out case signs in again before the resumed arrival), `stale-bundle-notice.spec.ts`, `fault-banner.spec.ts` (in-place cases), `about-dialog.spec.ts`, `home.page.spec.ts`, `ui/tools/about.test.mjs`, `ui/browser/about-help-links.browser-spec.mjs` (two About-fault legs; the status region retargeted), `ui/browser/home-system-information.browser-spec.mjs` (doubled type, light and dark); `testing/about.ts`, `testing/system-info.ts` and `testing/findings.ts` gain `setStatus`.
+- (implement) Run Spec for `about-help-links` after Deploy: its "shipped bundle matches the stamp the installer recorded" leg reads red after any `docker cp` of a changed bundle (the version row keeps the stamp recorded at container start, `main-AIHA3XSZ.js` against the deployed `main-M7KNPJ2F.js`); the other eight legs are green.
+- (CR) Tests changed: `app.spec.ts` (the sign-out case asserts the visit's write, not the reloaded list), `fault-banner.spec.ts` and `about-dialog.spec.ts` (navigation order through a `navigateByUrl` spy; focus after Retry), `ui/tools/system-info.test.mjs` and `ui/tools/findings.test.mjs` (fault kind, change of kind, an unreadable ok answer), `home.page.spec.ts` (change of kind, unreadable findings). `dialog.ts` gains `keepFocusInside`, called from `AboutDialog.reread`.
+- (CR) `mutation:` `this.recentsRecorder.reset()` deleted from `app.ts` -> `app.spec.ts`'s sign-out case red (no recents write after the sign-in).
+- (CR) `mutation:` `this.logOpened.emit()` moved below the navigation in `fault-banner.ts` -> `fault-banner.spec.ts`'s order case and `about-dialog.spec.ts`'s close-before-navigate case red; `(logOpened)="closed.emit()"` dropped from `about-dialog.ts` -> the latter red.
+- (CR) `mutation:` the `afterNextRender` call dropped from `AboutDialog.reread` -> `about-dialog.spec.ts`'s focus case red (focus on the body).
+- (CR) `mutation:` `AboutDialog.reread` no longer reads, then `onSystemRetry` and `onFindingsRetry` no longer read -> `about-dialog.spec.ts` red (2 of 8) and `home.page.spec.ts` red (the two Retry cases).
+- (CR) `mutation:` `systemFault` and `findingsFault` always answer `null` -> 5 `home.page.spec.ts` cases red (the 404 cases, the change-of-kind cases, the unreadable-answer case).
+- (CR) `mutation:` `SystemInfo.load` and `Findings.load` keep the first fault they hold (`??=`) -> both tools tests red and the two change-of-kind `home.page.spec.ts` cases red.
+- (CR) `mutation:` `Findings.load` records an unreadable ok answer as `server-fault` -> its tools test and `home.page.spec.ts`'s unreadable-answer case red.
 
 **Batch c (loop):**
 
@@ -597,17 +638,14 @@ Every test added or changed passes on a fresh environment, in either order.
 
 ## Auto Run Result
 
-**Pass: Batch a (count copy and the proposal card). Batches b, c and d are untouched and unchecked.**
+**Pass: Batch b (shell state, Home and About). Batches c and d are untouched and unchecked.**
 
 Status: done
 Blocking condition: none
 
-- **Change.** One count rule in `core/count-phrase.ts` (`pickCount`, `rowCountPhrase`, the cap-notice and Download CSV phrases); 30 singular keys beside their plurals; every consumer in the Code Map calls it. `Disclosure.cls` writes a classified-opaque top-level array or object as `value` `""` plus `count`; `turn.ts`, `proposal-view.ts` and `proposal-card.ts` read it as "<n> items". DW-2227's wait is in `proposal-confirm.browser-spec.mjs`.
-- **Files.**
-  - Source: `ui/src/app/core/` (count-phrase, strings, turn, proposal-view, guardrails, turn-limit, impact, form-tabs, sql-answer, data-browser-model, table-model), 22 consumers under `shell/` and `areas/`, `src/OcuPilot/Kernel/Proposal/Disclosure.cls`.
-  - Docs: EXPERIENCE.md (14 rows plus row 633) and DESIGN.md:1198, both line counts unchanged.
-  - Tests: `ui/tools/count-phrase.test.mjs` (new, with the source scan), 3 tools tests, 15 component specs, `ProposalWire.cls`, 7 browser specs.
-- **Review.** 18 findings: 0 high, 5 medium, 12 low, 1 false. Patched 6 entries (4 medium, 2 low): three stale browser-spec expectations (turn-limit, system-explorer-transfer, error-log-delete), one `screen-grounding` regex, a direct `Disclosure.Rows` test for the object arm and the scalar fallback (two mutations red), a stale `ProposalWire` doc sentence. Deferred 1 (low): count strings outside the table. Rejected 10, each with its reason in the Review Triage Log.
-- **Follow-up review: true.** Four medium entries were patched. Unverified risk: the implement pass's search for old-shape browser expectations missed three specs, which review found; a browser spec outside the loop set could still assert a plural at a count of 1, and only the lead's full browser run settles that.
-- **Verification.** `npm run test:tools` 2008 of 2008; `npm run test:components` 3151 of 3151; `check-objectscript` 0 problems; `lint-docs` exit 0; `LoadDir` 0 errors; `ProposalWire` 17 of 17 in `%UnitTest_Result`; browser specs green on the redeployed bundle: `context-chip`, `account-and-filter`, `users-write`, `proposal-confirm`, `turn-limit`, `system-explorer-transfer`, `error-log-delete`, `screen-grounding`. Seven mutations in Batch a's Verification plus the review-added one; the DW-2227 mutation stayed green in 3 runs, as the spec allows.
-- **Residual risk.** `explorerCompileStoppedOne` is not reachable from the UI (a stop with one document ends in the summary); it is pinned by the key-pairing check only.
+- **Change.** `RecentsRecorder` registers nothing off a signed-in session; the favorite star holds a per-route pending signal and `aria-disabled`; `helpHrefFor` answers `null` where the instance could not say and `HelpLinks.load` asks again; the stale-bundle strip waits behind a blocking instance notice and its `role="status"` region is always mounted; `About`, `SystemInfo` and `Findings` keep a classified `Fault`, and `FaultBanner` draws one in place (`fault` input, `retried` and `logOpened` outputs) in the About dialog and in Home's two blocks for a non-banner fault; `.ocu-home-system-row` takes `min-height`. `Dialog.keepFocusInside` returns focus after About's Retry answers.
+- **Files.** Source: `ui/src/app/{app,core,shell,areas/home,testing}` (recents-recorder, locator-bar, help, stale-bundle-notice, fault-banner, about-dialog, dialog, about, system-info, findings, fault, home.page, findings-panel, three testing stubs), `ui/src/styles/_components.scss` (one line). Tests: 8 component specs, `about`, `system-info` and `findings` tools tests, 2 browser specs.
+- **Review.** 16 findings: 0 high, 4 medium, 12 low. Patched 9 entries (5 medium including the focus fix from the implement report, 4 low): the recents pin, the unreadable-answer and change-of-kind cases, the close-before-navigate order, the mutation lines, two stale comments. Deferred 1 (low): Home's blocks are not re-read when the banner clears. Rejected 8, each with its reason in the Review Triage Log.
+- **Follow-up review: false.** No patched entry was high.
+- **Verification.** `npm run test:tools` 2020 of 2020; `npm run test:components` 3183 of 3183; `npm run build` passes its checkers; browser specs on the rebuilt and redeployed bundle: `home-system-information` 4 of 4 (light and dark), `preferences-integration` 1 of 1, `about-help-links` 8 of 9. Mutations: eight in Batch b's Verification plus seven `(CR)` lines, each observed red and reverted with the tree byte-identical.
+- **Residual risk.** `about-help-links`' "shipped bundle matches the stamp" leg reads red on a throwaway after any `docker cp` of a changed bundle, so the loop's Spec step cannot read fully green locally; CI's fresh throwaway is where it passes (inference). About's Retry focus restore is pinned in jsdom only. On a failed About read the shell's banner stands behind the modal beside the dialog's own alert, as the Design Notes decide.

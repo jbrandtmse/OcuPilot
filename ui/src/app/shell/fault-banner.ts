@@ -4,6 +4,8 @@ import {
   DestroyRef,
   computed,
   inject,
+  input,
+  output,
   signal,
 } from '@angular/core';
 import { Router } from '@angular/router';
@@ -57,6 +59,14 @@ export const FAULT_CLEAR_HOLD_MS = 1500;
  * the transition rather than re-announcing on every change-detection pass. Inside the hold the strip
  * keeps showing the fault it last showed.
  *
+ * **In place, for a surface the shell's banner cannot speak for.** Given a `fault`, the banner
+ * renders that one fault where it is mounted instead of following the connectivity service: the
+ * About dialog is `aria-modal`, so the strip above the page is outside what its user can reach.
+ * `unreachable` draws the unreachable sentence with Retry; any other kind draws the generic
+ * sentence with Retry and Open messages.log. Retry emits `retried` and leaves the re-read to the
+ * surface; Open messages.log emits `logOpened` before it navigates, so a surface that sits over the
+ * page can step aside first. A `null` fault in this mode draws nothing.
+ *
  * Every control-flow condition is a paren-free member reference, for the reason `sign-in.ts`
  * records: `ui/tools/client-lint.mjs`'s blanker matches `@if` plus one parenthesised group.
  */
@@ -92,6 +102,18 @@ export class FaultBanner {
 
   protected readonly STRINGS = STRINGS;
 
+  /**
+   * The one fault to render in place, or `null` for an in-place banner with nothing to say. Left
+   * unset, the banner follows the connectivity service.
+   */
+  readonly fault = input<Fault | null | undefined>(undefined);
+
+  /** Emitted by Retry in place; the surface re-reads whatever failed. */
+  readonly retried = output<void>();
+
+  /** Emitted by Open messages.log in place, before the navigation. */
+  readonly logOpened = output<void>();
+
   /** Mirrors the framework-free connectivity service into the reactive graph (AD-19). */
   private readonly generation = signal(0);
 
@@ -103,7 +125,10 @@ export class FaultBanner {
 
   private holdTimer: ReturnType<typeof setTimeout> | null = null;
 
-  private readonly fault = computed(() => this.shown());
+  private readonly current = computed(() => {
+    const given = this.fault();
+    return given === undefined ? this.shown() : given;
+  });
 
   /**
    * The screen that shows `messages.log`, when one is built and this user may open it.
@@ -142,7 +167,7 @@ export class FaultBanner {
   }
 
   protected get visible(): boolean {
-    return this.fault() !== null;
+    return this.current() !== null;
   }
 
   /**
@@ -155,11 +180,17 @@ export class FaultBanner {
    * kind from the copy.
    */
   protected get kind(): string {
-    return this.fault()?.kind ?? '';
+    return this.current()?.kind ?? '';
   }
 
+  /**
+   * Whether the generic sentence and Open messages.log are drawn. The connectivity service raises
+   * only `unreachable` and `server-fault`; an in-place fault of any other kind reads as the generic
+   * sentence, because it has no published sentence of its own (EXPERIENCE.md "Generic internal").
+   */
   protected get serverFault(): boolean {
-    return this.fault()?.kind === 'server-fault';
+    const kind = this.current()?.kind;
+    return kind !== undefined && kind !== 'unreachable';
   }
 
   protected get message(): string {
@@ -178,6 +209,10 @@ export class FaultBanner {
    * answered" are one recovery rather than two that could disagree.
    */
   protected retry(): void {
+    if (this.fault() !== undefined) {
+      this.retried.emit();
+      return;
+    }
     this.connectivity.retry();
   }
 
@@ -194,6 +229,7 @@ export class FaultBanner {
   protected openMessagesLog(): void {
     const screen = this.logScreen();
     if (screen === null) return;
+    this.logOpened.emit();
     this.shell.showArea(screen.area);
     void this.router.navigateByUrl(withQuery(screen.route, this.router.url));
   }

@@ -23,6 +23,7 @@
  */
 
 import type { ApiService, JsonResult } from './api';
+import { classifyFailure, type Fault } from './fault.ts';
 
 /** Absolute from the origin root, through the one API service (AD-20). */
 export const SYSTEM_INFO_PATH = '/api/ocupilot/ui/system';
@@ -76,7 +77,7 @@ export class SystemInfo {
 
   private answeredValue = false;
 
-  private failedValue = false;
+  private faultValue: Fault | null = null;
 
   /**
    * Bumped by `reset()`, read across the await: an answer about the instance a departed principal
@@ -104,7 +105,12 @@ export class SystemInfo {
 
   /** Whether the most recent read did not answer. Cleared by the next one that does. */
   failed(): boolean {
-    return this.failedValue;
+    return this.faultValue !== null;
+  }
+
+  /** How the most recent read failed, or `null` when it did not. Cleared by the next one that answers. */
+  fault(): Fault | null {
+    return this.faultValue;
   }
 
   fields(): SystemInfoFields {
@@ -128,8 +134,9 @@ export class SystemInfo {
     if (result.kind !== 'ok') {
       // Parked. A refusal is not an answer about the instance, and neither is an instance that did
       // not reply: both leave the previous values standing and say so.
-      if (this.failedValue) return;
-      this.failedValue = true;
+      const previous = this.faultValue;
+      this.faultValue = classifyFailure(result, SYSTEM_INFO_PATH);
+      if (previous !== null && previous.kind === this.faultValue.kind) return;
       this.notify();
       return;
     }
@@ -137,7 +144,7 @@ export class SystemInfo {
     for (const field of SYSTEM_INFO_FIELDS) fields[field] = stringOf(result.body, field);
     this.fieldsValue = fields as SystemInfoFields;
     this.answeredValue = true;
-    this.failedValue = false;
+    this.faultValue = null;
     this.notify();
   }
 
@@ -151,7 +158,7 @@ export class SystemInfo {
     this.request += 1;
     this.fieldsValue = emptyFields();
     this.answeredValue = false;
-    this.failedValue = false;
+    this.faultValue = null;
     this.notify();
   }
 

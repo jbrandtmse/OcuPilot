@@ -613,6 +613,41 @@ describe('the locator bar', () => {
     expect(status.textContent?.trim()).toBe(STRINGS.favoritesAdded);
   });
 
+  it('two activations inside one round trip send one write, and the toggle is aria-disabled until it settles', async () => {
+    // Mutation (Rule 19): drop the `favoritePendingRoute() === route` guard from
+    // `LocatorBar.toggleFavorite` -> this goes red, two POSTs for one star (the second reads the
+    // store before the first has answered, so it adds the same route again).
+    await go('/permissions/users');
+    const writes = () => preferences.calls.filter((call) => call.method === 'POST');
+    // The stubbed request settles over microtasks; one macrotask drains them.
+    const settled = async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      fixture.detectChanges();
+    };
+    const before = writes().length;
+
+    toggle()?.click();
+    toggle()?.click();
+    fixture.detectChanges();
+
+    // Set before the write settles, and never the native `disabled`, which would drop focus.
+    expect(toggle()?.getAttribute('aria-disabled')).toBe('true');
+    expect(toggle()?.hasAttribute('disabled')).toBe(false);
+
+    await settled();
+
+    expect(writes().length - before).toBe(1);
+    expect(preferences.favorites()).toEqual(['permissions/users']);
+    expect(toggle()?.hasAttribute('aria-disabled')).toBe(false);
+
+    // Settled, the toggle works again: the next activation is the unpin.
+    toggle()?.click();
+    await settled();
+    expect(writes().length - before).toBe(2);
+    expect(preferences.favorites()).toEqual([]);
+    expect(toggle()?.hasAttribute('aria-disabled')).toBe(false);
+  });
+
   it('Story 15.2: a second activation unpins it, and the toggle reads unpressed again', async () => {
     await go('/permissions/users');
     toggle()?.click();
