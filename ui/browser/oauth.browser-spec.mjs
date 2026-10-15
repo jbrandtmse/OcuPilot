@@ -323,7 +323,7 @@ test('AC1: the side bar lists OAuth 2.0 fifth; its strip reads the five tabs, an
     for (const index of [2, 3, 4, 0, 1]) {
       const tab = TABS[index];
       const beforeClick = reads.length;
-      // A strip wider than the content column pages; focusing a tab scrolls it into view first.
+      // Focus the tab as a keyboard user reaches it, then click it.
       await page.focus(`app-detail-page .ocu-detail-tab[data-route="${tab.route}"]`);
       await new Promise((resolve) => setTimeout(resolve, 600));
       await page.click(`app-detail-page .ocu-detail-tab[data-route="${tab.route}"]`);

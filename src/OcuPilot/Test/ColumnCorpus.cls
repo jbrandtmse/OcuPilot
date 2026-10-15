@@ -1,4 +1,4 @@
-/// <p>The one corpus both engines of the table-column <code>emptyKey</code> rule run (AD-5):
+/// <p>The one corpus both engines of the table-column <code>emptyKey</code> and <code>long</code> rules run (AD-5):
 /// <method>OcuPilot.Screen.Registry.ReadProblem</method> in <class>OcuPilot.Test.ReadTool</class> and
 /// <code>readProblem</code> in <file>ui/tools/screen-mirror.test.mjs</file>, which reads this block
 /// off disk. Each case replaces the sound declaration's second table column with its own and names
@@ -44,7 +44,14 @@ XData Cases
     {"name": "a null emptyKey is refused rather than read as none declared", "column": {"field": "AllowedConnections", "labelKey": "serviceColumnAllowedAddresses", "kind": "identifier", "emptyKey": null}, "expected": "table.columns entry #2 emptyKey is not a non-empty string key, and an empty cell in that column reads the string it names"},
     {"name": "an array emptyKey is refused", "column": {"field": "AllowedConnections", "labelKey": "serviceColumnAllowedAddresses", "kind": "identifier", "emptyKey": ["serviceAllowedUnrestricted"]}, "expected": "table.columns entry #2 emptyKey is not a non-empty string key, and an empty cell in that column reads the string it names"},
     {"name": "a misspelt emptyKey is an unknown key, not an absent one", "column": {"field": "AllowedConnections", "labelKey": "serviceColumnAllowedAddresses", "kind": "identifier", "emptykey": "serviceAllowedUnrestricted"}, "expected": "table.columns entry #2 declares the unknown key 'emptykey'"},
-    {"name": "an emptyKey on a text column is sound, whatever string key it names", "column": {"field": "AllowedConnections", "labelKey": "serviceColumnAllowedAddresses", "kind": "text", "emptyKey": "tableEmptyValue"}, "expected": null}
+    {"name": "an emptyKey on a text column is sound, whatever string key it names", "column": {"field": "AllowedConnections", "labelKey": "serviceColumnAllowedAddresses", "kind": "text", "emptyKey": "tableEmptyValue"}, "expected": null},
+    {"name": "a column declaring long true is sound", "column": {"field": "AllowedConnections", "labelKey": "serviceColumnAllowedAddresses", "kind": "text", "long": true}, "expected": null},
+    {"name": "a column declaring long false is sound", "column": {"field": "AllowedConnections", "labelKey": "serviceColumnAllowedAddresses", "kind": "text", "long": false}, "expected": null},
+    {"name": "a string long is refused", "column": {"field": "AllowedConnections", "labelKey": "serviceColumnAllowedAddresses", "kind": "text", "long": "true"}, "expected": "table.columns entry #2 long is not a boolean, and a long column shows the selected row's whole value beneath the rows"},
+    {"name": "a number long is refused", "column": {"field": "AllowedConnections", "labelKey": "serviceColumnAllowedAddresses", "kind": "text", "long": 1}, "expected": "table.columns entry #2 long is not a boolean, and a long column shows the selected row's whole value beneath the rows"},
+    {"name": "a null long is refused rather than read as none declared", "column": {"field": "AllowedConnections", "labelKey": "serviceColumnAllowedAddresses", "kind": "text", "long": null}, "expected": "table.columns entry #2 long is not a boolean, and a long column shows the selected row's whole value beneath the rows"},
+    {"name": "an array long is refused", "column": {"field": "AllowedConnections", "labelKey": "serviceColumnAllowedAddresses", "kind": "text", "long": [true]}, "expected": "table.columns entry #2 long is not a boolean, and a long column shows the selected row's whole value beneath the rows"},
+    {"name": "a misspelt long is an unknown key, not an absent one", "column": {"field": "AllowedConnections", "labelKey": "serviceColumnAllowedAddresses", "kind": "text", "lng": true}, "expected": "table.columns entry #2 declares the unknown key 'lng'"}
   ]
 }
 }

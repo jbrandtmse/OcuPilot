@@ -2,9 +2,9 @@
 title: 'Story 23.5: The range-end cleanup, part 5'
 type: 'bugfix'
 created: '2026-10-14'
-status: 'in-progress'
-baseline_revision: 'd22d93ff913af1c8d592710c7a13dcd02ba3d874'
-baseline_commit: 'd22d93ff913af1c8d592710c7a13dcd02ba3d874'
+status: 'done'
+baseline_revision: 'c07b840ae8e1a8bb11dd61891acc90ad7fd77301'
+baseline_commit: 'c07b840ae8e1a8bb11dd61891acc90ad7fd77301'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -447,7 +447,7 @@ Rejected:
 
 ### Batch d: list and detail pages
 
-- [ ] **DW-1976.**
+- [x] **DW-1976.**
   - **Descriptor key.** A column may declare `long` (boolean, optional), validated alike by `Registry.cls` `TableProblem` and `screen-mirror.mjs`. The mirror's `TableColumn` gains `readonly long?: boolean;`. Regenerate `screens.generated.ts`, then declare `long: true` on `ExplorerSqlView` `Text`, `ExplorerSqlProcedure` `Description` and `ExplorerSqlTriggers` `Code`.
   - **`data-table.ts`.** After the grid, for each `long` column, render the selected row's value whole in an `app-long-block`, labeled by the column's header. When there is exactly one row, use that row's value. With several rows and none selected, render no block.
   - **CSS.** An added rule beside `.ocu-data-table-tooltip` gives the text `white-space: pre-wrap` and `overflow-wrap: anywhere`. The cell and its tooltip are unchanged.
@@ -456,7 +456,7 @@ Rejected:
     - `ColumnCorpus.cls`: a `long` that is not a boolean is refused, and `screen-mirror.test.mjs:1266` reads it alike.
     - `data-table.spec.ts`: one row with a 5,000-character `long` value gives a block holding the whole value. Two rows with none selected give no block; selecting row 2 shows its value.
     - `system-explorer-sql.browser-spec.mjs`: open `LONGVIEW`'s view tab at 720×450 and press Show more. The block holds `LONGVIEWMARK` and the whole text, and its region is not clipped (`scrollHeight <= clientHeight + 1`), in light and in dark.
-- [ ] **DW-1978.**
+- [x] **DW-1978.**
   - **Template and CSS.** Add `[disablePagination]="true"` to `detail-page.ts`'s `mat-tab-nav-bar`. Add a rule after `_components.scss:2256`: `.ocu-detail-tabs .mat-mdc-tab-links { flex: 1 1 auto; flex-wrap: wrap; min-width: 0; }`.
   - **Docs.** The doc at `:46-48` now says a strip wider than its column wraps onto further rows. Append to DESIGN.md:1071: "A strip wider than its column wraps onto further 40px rows, each filling the column; no tab is paged or scrolled out of view."
   - **Tests:**
@@ -578,6 +578,24 @@ Rejected:
   - `[false]` `[reject]` test (d) runs at 1440x900, not 320 px - a 600-character value overflows at any panel width, and `impact` holds the 320 px case.
   - `[low]` `[reject]` test (d)'s unchanged probe omits the direction span and the removed-row shape is pinned through `impact` alone - the span is a 1px absolute box, and a removed row's before cell is the changed row's own class.
   - `[low]` `[reject]` Review Findings says DW-2454 was "planned into Batch d" while no Batch d task names it - the fix is to edit this build's spec.
+
+### 2026-10-15 - Review pass (Batch d)
+
+- verdicts: 13 findings -- high 0, medium 2, low 10, false 1, maybe-false 0
+- findings:
+  - `[low]` `[patch]` The strip leg's pagination and 40px assertions have no recorded mutation -- recorded: `--mat-tab-container-height` 48px reddens the 40px assertion; `[disablePagination]` dropped with `flex-wrap` kept leaves the browser leg green (the strip never overflows), so `detail-page.spec.ts` is the attribute's pin; both are in Verification.
+  - `[low]` `[patch]` The long-block leg's mutation comment names assertions that stay green, and its clip and 40% bounds were unproven -- comment rewritten to name the assertion each mutation reddens; clip mutation (region 364 in 100) and `max-height`/`overflow-y` mutations recorded; the bound is now the half-column assertion.
+  - `[low]` `[patch]` `longBlockModels`' no-selection, selected, empty-value, not-long and per-row-identity arms have no mutation -- five jsdom mutations run, each red in `data-table.spec.ts`, recorded.
+  - `[low]` `[patch]` Only `ExplorerSqlView` was mutated for the three `long` declarations -- `ExplorerSqlTriggers` and `ExplorerSqlProcedure` mutated, each red in `screen-mirror.test.mjs` (3 of 73), recorded.
+  - `[low]` `[reject]` DESIGN's "each filling the column" is unasserted -- the sentence is the spec's own task text, and a wrapped flex row fills toward the column's width; no behavior is claimed beyond what the leg asserts.
+  - `[medium]` `[patch]` With a block open at a short window the table's frame shrinks to a sliver (12px at 720x450, 32px at 1,280x600) -- `.ocu-data-table-long` is now `max-height: 50%` (border-box) in place of `40vh`; frame 47px at 720x450, 122px at 1,280x600, 182px at 1,280x720; DESIGN.md:1042 says half the table's column; the leg asserts it and the `40vh` mutation reddens it.
+  - `[low]` `[reject]` The leg focuses the toggle with `page.focus` instead of tabbing to it -- the toggle is a native `button`, and `openTab` in the same file uses the same convention; a keyboard user's reach is Tab order, which the component does not change.
+  - `[low]` `[reject]` The probe view's text is about 1,600 characters, the intent's example 5,856 -- the leg asserts the text exceeds its cell by far and reaches its last line; the component spec uses 5,000; nothing in the block depends on the exact length.
+  - `[low]` `[reject]` The strip is not checked at 1,600 px -- the spec's test bullet fixes 1,024 and 1,280, and at 1,600 the strip fits one row, so a wrap assertion would hold vacuously there.
+  - `[low]` `[reject]` The block leg runs at 720x450 only -- the spec names that viewport; frame and block heights at 1,280x720, 1,280x900 and 1,920x1080 were measured and are in Verification.
+  - `[medium]` `[patch]` Rows are almost out of view while the block shows at 720x450 -- same root as the sliver row above; same fix.
+  - `[low]` `[reject]` Other detail strips take the same rule and attribute, with one geometry-checked -- the rule is generic over `.ocu-detail-tabs`; `oauth.browser-spec.mjs` (6 of 6) and the SQL view and procedure legs ran on the same bundle; a strip that fits one row is unchanged.
+  - `[false]` `[reject]` The not-clipped check sits on the inner region while a user meets the outer wrapper -- the leg asserts both: the region is not clipped, and the wrapper scrolls until the last line is on screen by wheel and by the End key.
 
 ## Design Notes
 
@@ -838,17 +856,38 @@ Every test added or changed passes on a fresh environment, in either order.
 - `mutation:` remove `long` from `ExplorerSqlView`. Expected red: the browser leg.
 - `mutation:` drop `flex-wrap`. Expected red: the strip leg.
 - `mutation:` drop `disablePagination`. Expected red: `detail-page.spec.ts`.
+- `mutation:` the `long` arm dropped from `Registry.cls` `TableProblem` (`src` reloaded and recompiled) -> `OcuPilot.Test.ReadTool` `TestEveryColumnCorpusCaseGetsItsSentence` red alone (1 of 28: the corpus's four refusing `long` cases). `ColumnCorpus` is a corpus with no test method, so `ci-runner` refuses it; `ReadTool` is the class that runs it. Reverted (sha256 identical), reloaded, 28 of 28.
+- `mutation:` the `long` arm dropped from `screen-mirror.mjs` -> `screen-mirror.test.mjs` red: the corpus test and the long-columns test (2 of 73). Reverted (sha256 identical).
+- `mutation:` `long` removed from `ExplorerSqlView` -> `ExplorerDescriptor` `TestTheLongTextColumnsDeclareLong` red alone (1 of 16, `src` reloaded); the same edit with the mirror not regenerated -> `screen-mirror.test.mjs` red (3 of 73: the long-columns test and the two drift checks). Reverted (sha256 identical).
+- `mutation:` the block projects `''` -> `data-table.spec.ts` red: the four long-column cases (4 of 77). Reverted (sha256 identical).
+- `mutation:` `long` removed from `ExplorerSqlView` and the mirror regenerated (bundle rebuilt and redeployed) -> the `system-explorer-sql` long-block leg red: the wait for `.ocu-data-table-long .ocu-long-block-toggle` timed out at 30 s.
+- `mutation:` `overflow-wrap: anywhere` dropped from `.ocu-data-table-long-text` (rebuilt, redeployed) -> the long-block leg red at light: "the unbroken text wraps rather than scrolling sideways (11079 in 608)". `_components.scss` restored byte-identical (sha256).
+- `mutation:` `flex-wrap: wrap` dropped from `.ocu-detail-tabs .mat-mdc-tab-links` (rebuilt, redeployed) -> the nine-tab strip leg red at 1,024 light: tab 6's right edge at 1,011.9 against the strip's 912. Restored byte-identical (sha256).
+- `mutation:` `[disablePagination]="true"` dropped from `DetailPage` -> `detail-page.spec.ts` red alone (1 of 14). Restored byte-identical (sha256); the clean bundle is rebuilt and deployed.
+- (implement) Files: `Registry.cls` and `screen-mirror.mjs` (the `long` key, its boolean check, the doc sentences, the emitted `TableColumn.long`), `screens.generated.ts` (regenerated), `ExplorerSqlView`, `ExplorerSqlProcedure` and `ExplorerSqlTriggers` (`long: true`), `data-table.ts` (the blocks), `detail-page.ts`, `_components.scss` (the block rules beside the tooltip rule and the strip rule after `.ocu-detail-tab-reason`), DESIGN.md:1042 and :1071 and EXPERIENCE.md:665 in place (line counts unchanged), and a stale comment in `oauth.browser-spec.mjs` that said the strip pages.
+- (implement) Tests: `ColumnCorpus` (seven `long` cases), `ReadTool`'s doc, `ExplorerDescriptor` (`TestTheLongTextColumnsDeclareLong`), `screen-mirror.test.mjs` (a long-columns test), `data-table.spec.ts` (four cases), `detail-page.spec.ts` (`disablePagination`), `system-explorer-sql.browser-spec.mjs` (the nine-tab strip at 1,024 and 1,280 and a long-block leg at 720x450, each in light and dark; the keyboard opens it in light, the pointer in dark, and the wheel and the End key reach the last line).
+- (implement) The blocks draw after the footer in `.ocu-data-table-long`, a region that scrolls and takes at most half the table's column, so the opened block's region is never clipped and the table keeps the other half. With a block open the table's frame measures 47px at 720x450 (the header and part of a row), 182px at 1,280x720 and 272px at 1,280x900.
+- (implement) Results: `npm run test:tools` 2035 of 2035; `npm run test:components` 3240 of 3240; `npm run build` passes; `ReadTool` 28 of 28, `ExplorerDescriptor` 16 of 16; on the rebuilt and redeployed clean bundle `system-explorer-sql` 5 of 5 (four runs), `data-table-columns` 18 of 18, `oauth` 6 of 6; `check-objectscript` and `lint-docs` clean.
+- (CR) Tests changed: `ui/browser/system-explorer-sql.browser-spec.mjs` (the long-block leg asserts the scrolling region takes at most half the table's column, and its mutation comment names the assertion each mutation reddens). `.ocu-data-table-long` is `max-height: 50%` with `box-sizing: border-box`, and DESIGN.md:1042 says half the table's column. `npm run test:tools` 2035 of 2035; `npm run test:components` 3240 of 3240; `bash scripts/lint-docs.sh` clean; `system-explorer-sql` 5 of 5 on the clean, rebuilt and redeployed bundle.
+- (CR) `mutation:` `max-height: 40vh` restored on `.ocu-data-table-long` (rebuilt, redeployed) -> the long-block leg red at "the scrolling region takes at most half the table's column (122.2 of 174)". `max-height` and `overflow-y` both dropped -> the same assertion red. `overflow-y` alone dropped -> the wheel's wait for the last line timed out at 30 s.
+- (CR) `mutation:` `.ocu-data-table-long .ocu-long-block-region { max-height: 100px; overflow: hidden; }` added (rebuilt, redeployed) -> the long-block leg red at "its region is not clipped (364 in 100)".
+- (CR) `mutation:` `[disablePagination]="true"` dropped with `flex-wrap` kept (rebuilt, redeployed) -> `system-explorer-sql` stayed green, 5 of 5: the wrapped strip never overflows, so Material hides its controls, and `detail-page.spec.ts` is the one pin for the attribute. `--mat-tab-container-height: 40px` raised to 48px -> the strip leg red at "1024px light: tab 1 is 40px tall".
+- (CR) `mutation:` in `longBlockModels`, the no-selection arm `-1` made `0` -> `data-table.spec.ts` red alone (1 of 77, the several-rows case); `keys.indexOf(selected)` made `0` -> the same case red alone; `if (text === '') return [];` dropped -> 4 of 77 red, the empty-value case among them; `column.long === true ? … : ''` made the text unconditionally -> 4 of 77 red, the not-long case among them; `track block.id` made `track block.labelId` -> the filtered-view case red alone (another row's block starts collapsed).
+- (CR) `mutation:` `long` removed from `ExplorerSqlTriggers`' `Code`, then from `ExplorerSqlProcedure`'s `Description` -> `screen-mirror.test.mjs` red each time: the long-columns test and the two drift checks (3 of 73). Every source mutation reverted byte-identical (sha256) and the clean bundle redeployed.
 
 ## Auto Run Result
 
-**Pass: Batch c `[CI]` rework 1 (DW-2454). Batch d is untouched and unchecked.**
+**Pass: Batch d (DW-1976, DW-1978). Batches a to c are closed.**
 
 Status: done
 Blocking condition: none
 
-- **Change.** An unbreakable diff value now wraps inside its row at the panel's 320 px minimum: `overflow-wrap: anywhere` on `.ocu-diff-before`, `.ocu-diff-after` and `.ocu-diff-row-unchanged .ocu-diff-value`, one added rule after `.ocu-diff-arrow` in `_components.scss`.
-- **Files.** `ui/src/styles/_components.scss` (the rule); `ui/browser/impact.browser-spec.mjs` (AC1/AC6's passes wait for the panel's width transition, so the 720 px pass measures the settled panel); `ui/browser/proposal-card.browser-spec.mjs` (test (d): the three cells, light and dark); this spec's `[CI]` box, `deferred:` list and Verification.
-- **Review.** 8 findings: 0 high, 0 medium, 5 low, 3 false. Patched 1 (low): `min-width: 0` was inert and is deleted. Rejected 7, each with its reason in the Review Triage Log.
+- **Change.** A table column may declare `long`, validated alike by `Registry.cls` `TableProblem` and `screen-mirror.mjs` (the mirror's `TableColumn` carries it); `ExplorerSqlView` `Text`, `ExplorerSqlProcedure` `Description` and `ExplorerSqlTriggers` `Code` declare it. `data-table.ts` shows the only row's, or the selected row's, value whole in an `app-long-block` named by the column header, beneath the footer, in a region that scrolls and takes at most half the table's column; several rows with none selected show no block. The detail page's strip wraps: `[disablePagination]="true"` and a wrap rule.
+- **Files.**
+  - Code: `src/OcuPilot/Screen/Registry.cls`, `ui/tools/screen-mirror.mjs` and `ui/src/app/core/screens.generated.ts` (the `long` key; the mirror regenerated); the three `Screen/Descriptor/ExplorerSql*.cls`; `ui/src/app/shell/data-table.ts` (the blocks); `ui/src/app/shell/detail-page.ts`; `ui/src/styles/_components.scss` (the block rules and the strip rule).
+  - Docs, in place with line counts unchanged: DESIGN.md:1042 and :1071, EXPERIENCE.md:665.
+  - Tests: `ColumnCorpus.cls`, `ReadTool.cls` (doc), `ExplorerDescriptor.cls`, `screen-mirror.test.mjs`, `data-table.spec.ts`, `detail-page.spec.ts`, `system-explorer-sql.browser-spec.mjs`, and a stale comment in `oauth.browser-spec.mjs`.
+- **Review.** 13 findings from two layers: 0 high, 2 medium, 10 low, 1 false. Patched 5 entries (1 medium, 4 low): the long region's `40vh` cap became half the table's column, so the table keeps its share at short windows, and the leg's comment and bounds were corrected; four missing mutation lines were run and recorded. Rejected 7, each with its reason in the Review Triage Log.
 - **Follow-up review: false.** No patched entry was high.
-- **Verification.** On the rebuilt and redeployed bundle `impact` 5 of 5, `proposal-card` 4 of 4, `proposal-demo` 3 of 3; `npm run test:tools` 2034 of 2034; `npm run test:components` 3235 of 3235; `bash scripts/lint-docs.sh` clean. Mutations: the rule deleted -> `impact` AC1/AC6 red alone (127px past the removed row); the rule narrowed to the before cell, then to the other two -> test (d) red alone for the cells dropped. Each reverted with `_components.scss` byte-identical; the clean bundle is deployed.
-- **Residual risk.** The `impact` pass reads light only; test (d) holds the dark side.
+- **Verification.** `npm run test:tools` 2035 of 2035; `npm run test:components` 3240 of 3240; `npm run build` passes; `check-objectscript` and `bash scripts/lint-docs.sh` clean. On `ocupilot-ci`: `ReadTool` 28 of 28 (it runs `ColumnCorpus`, which has no test method), `ExplorerDescriptor` 16 of 16; on the rebuilt and redeployed clean bundle `system-explorer-sql` 5 of 5 and `data-table-columns` 18 of 18. Every mutation is under Batch d's Verification and was reverted byte-identical.
+- **Residual risk.** With a block open the table's frame keeps 47px at 720x450, so a multi-row list is hard to use at that height; at 1,280x720 it keeps 182px. The wrapped strip is geometry-checked on the SQL table's strip only.

@@ -10,6 +10,8 @@ import { STRINGS } from '../core/strings';
 import { screenDeclaration } from '../testing/screen-declaration';
 import { DetailPage } from './detail-page';
 import { ListPage } from './list-page';
+import { MatTabNav } from '@angular/material/tabs';
+import { By } from '@angular/platform-browser';
 
 /**
  * The detail page's rendered contract (AD-5): a tab strip of the current screen's group, in position
@@ -141,6 +143,16 @@ describe('the detail page', () => {
     ]);
     expect(tabs(fixture).map((tab) => tab.getAttribute('aria-selected'))).toEqual(['true', 'false', 'false', 'false', 'false']);
     expect((fixture.nativeElement as HTMLElement).querySelector('[role="tabpanel"] .stub-list-page')).not.toBeNull();
+  });
+
+  // A strip wider than its column wraps onto further rows (`_components.scss`), so Material's
+  // pagination, whose arrows only a pointer reaches, stays off.
+  //
+  // Mutation (Rule 19): drop `[disablePagination]="true"` from the `mat-tab-nav-bar` in `DetailPage` -> this goes red.
+  it('draws the strip with pagination disabled, so a strip wider than its column wraps rather than pages', async () => {
+    const fixture = await build('/security/oauth?ns=HSCUSTOM');
+    const bar = fixture.debugElement.query(By.directive(MatTabNav)).componentInstance as MatTabNav;
+    expect(bar.disablePagination).toBe(true);
   });
 
   // Story 20.9: the page hands its `body` to the list page it draws, under the strip and without one.

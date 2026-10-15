@@ -360,6 +360,8 @@ export interface TableColumn {
   readonly labelKey: string;
   readonly kind: TableColumnKind;
   readonly emptyKey?: string;
+  /** The value can run past its cell, so the selected or only row's value shows whole beneath the rows. */
+  readonly long?: boolean;
 }
 
 /**
@@ -9487,7 +9489,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
         {
           "field": "Description",
           "labelKey": "tableColumnDescription",
-          "kind": "text"
+          "kind": "text",
+          "long": true
         },
         {
           "field": "Inputs",
@@ -10764,7 +10767,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
         {
           "field": "Code",
           "labelKey": "webAppPromptGroupCode",
-          "kind": "text"
+          "kind": "text",
+          "long": true
         }
       ],
       "emptyNextKey": "tableReadOnlyEmptyNext",
@@ -10930,7 +10934,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
         {
           "field": "Text",
           "labelKey": "explorerSearchTextLabel",
-          "kind": "text"
+          "kind": "text",
+          "long": true
         }
       ],
       "emptyNextKey": "tableReadOnlyEmptyNext",

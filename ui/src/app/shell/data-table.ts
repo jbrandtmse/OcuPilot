@@ -28,6 +28,7 @@ import { capNoticePhrase, rowCountPhrase } from '../core/count-phrase';
 import { encodeEntityId } from '../core/entity-id';
 import { normalizeEntityId } from '../core/entity-ref';
 import { childListFor, detailScreenFor, documentScreenFor, editorScreenFor, hasIdRoute, screenForRoute, withQuery } from '../core/navigation';
+import { estimateLines } from '../core/long-blocks';
 import { OverlayStack } from '../core/overlay-stack';
 import { readBackLine, withReadBack } from '../core/read-back';
 import { RefreshService } from '../core/refresh';
@@ -65,6 +66,7 @@ import {
   viewKeys as viewKeysOf,
 } from '../core/table-model';
 import { followInAppLink } from './in-app-link';
+import { LongBlock } from './long-block';
 import { ReadRefusal, ReadSkeleton } from './read-state-blocks';
 
 /**
@@ -185,6 +187,18 @@ interface CellTooltip {
   readonly placed: boolean;
 }
 
+/** One `long` column's value, shown whole beneath the rows for the row it belongs to. */
+interface LongBlockModel {
+  /** The column's field and the row's key: another row's value is another block. */
+  readonly id: string;
+  /** The column's header label, which names the block. */
+  readonly label: string;
+  readonly labelId: string;
+  readonly text: string;
+  /** `estimateLines` of `text`: past eight, the block starts collapsed. */
+  readonly lines: number;
+}
+
 /**
  * The data table every list screen renders (EXPERIENCE.md › data-table, DESIGN.md › data-table).
  *
@@ -208,13 +222,19 @@ interface CellTooltip {
  * grid left with no row sends focus to the empty state or asks for the filter field
  * (`focusFilter`).
  *
+ * **A `long` column's value shows whole.** A cell cuts it; beneath the rows, the selected row's
+ * value -- or the only row's, where the view holds one -- renders in an `app-long-block` named by
+ * the column's header, with no block where several rows are listed and none is selected. The
+ * blocks scroll in a region of their own, so an opened block is always reachable and its text is
+ * never clipped.
+ *
  * Every control-flow condition is a paren-free member reference, for the reason `sign-in.ts`
  * records: `ui/tools/client-lint.mjs`'s blanker matches `@if` plus one parenthesised group.
  */
 @Component({
   selector: 'app-data-table',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CdkVirtualScrollViewport, CdkFixedSizeVirtualScroll, CdkVirtualForOf, ReadSkeleton, ReadRefusal],
+  imports: [CdkVirtualScrollViewport, CdkFixedSizeVirtualScroll, CdkVirtualForOf, LongBlock, ReadSkeleton, ReadRefusal],
   host: { '(window:resize)': 'onWindowResize()' },
   template: `<div class="ocu-data-table-frame" [attr.aria-busy]="busy">
       <span class="ocu-visually-hidden ocu-data-table-announcement" role="status">{{
@@ -487,7 +507,19 @@ interface CellTooltip {
       @if (showCapNotice) {
         <p class="ocu-data-table-cap-notice">{{ capNotice }}</p>
       }
-    </div>`,
+    </div>
+    @if (hasLongBlocks) {
+      <div class="ocu-data-table-long">
+        @for (block of longBlocks; track block.id) {
+          <section class="ocu-data-table-long-block" [attr.aria-labelledby]="block.labelId">
+            <span class="ocu-data-table-long-label" [id]="block.labelId">{{ block.label }}</span>
+            <app-long-block [lines]="block.lines">
+              <p class="ocu-data-table-long-text">{{ block.text }}</p>
+            </app-long-block>
+          </section>
+        }
+      </div>
+    }`,
 })
 export class DataTable implements OnInit {
   readonly screen = input.required<ScreenDeclaration>();
@@ -730,6 +762,34 @@ export class DataTable implements OnInit {
         checkReason: multiSelect === null || checkable ? null : ineligible,
         checkDisabled: multiSelect === null || checkable ? null : 'true',
       };
+    });
+  });
+
+  /**
+   * The `long` columns' values for the row the table shows whole: the only row of the view, else
+   * the selected one, else none. A column whose value is empty draws no block.
+   */
+  private readonly longBlockModels = computed<readonly LongBlockModel[]>(() => {
+    this.generation();
+    const columns = this.columns();
+    if (!columns.some((column) => column.long === true)) return [];
+    const view = this.view();
+    const keys = this.viewKeys();
+    const selected = this.store().selection()[0] ?? '';
+    const at = view.length === 1 ? 0 : selected === '' ? -1 : keys.indexOf(selected);
+    if (at < 0) return [];
+    return columns.flatMap((column, columnIndex) => {
+      const text = column.long === true ? textOf(fieldOf(view[at], column.field)) : '';
+      if (text === '') return [];
+      return [
+        {
+          id: `${column.field}:${keys[at]}`,
+          label: this.lookup(column.labelKey),
+          labelId: `${this.tableId}-long-${columnIndex}`,
+          text,
+          lines: estimateLines(text),
+        },
+      ];
     });
   });
 
@@ -1061,6 +1121,14 @@ export class DataTable implements OnInit {
 
   protected get showRowCount(): boolean {
     return this.loaded;
+  }
+
+  protected get longBlocks(): readonly LongBlockModel[] {
+    return this.longBlockModels();
+  }
+
+  protected get hasLongBlocks(): boolean {
+    return this.longBlockModels().length > 0;
   }
 
   protected get rowCountText(): string {

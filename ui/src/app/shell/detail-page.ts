@@ -44,9 +44,9 @@ let focusOnArrival: ArrivalRequest | null = null;
  *
  * **Keyboard.** The strip is Material's tab nav bar: one Tab stop, Left and Right move between tabs,
  * Enter or Space opens the focused one (EXPERIENCE.md tabs, DESIGN.md tabs). A strip wider than the
- * content column pages, and the focused tab is scrolled into view. The tab a strip opened takes
- * focus on the page that replaces it, when focus has nowhere else to be (EXPERIENCE.md Accessibility
- * Floor, *Focus destinations*).
+ * content column wraps onto further rows, so every tab is in view and none is paged. The tab a
+ * strip opened takes focus on the page that replaces it, when focus has nowhere else to be
+ * (EXPERIENCE.md Accessibility Floor, *Focus destinations*).
  *
  * **A gated tab stays listed and focusable** with `aria-disabled` and its failed pair inline as
  * "Requires <pair>", the side bar's own shape, and does not navigate: the refusal is here, not in
@@ -69,6 +69,7 @@ let focusOnArrival: ArrivalRequest | null = null;
         class="ocu-detail-tabs"
         [tabPanel]="panel"
         [disableRipple]="true"
+        [disablePagination]="true"
         [attr.aria-label]="tabsLabel"
       >
         @for (tab of tabs; track tab.route) {
