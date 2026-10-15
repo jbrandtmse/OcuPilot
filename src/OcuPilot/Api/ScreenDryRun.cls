@@ -2,7 +2,7 @@
 /// sent (AD-53, Story 20.31). The body is the action route's own, <code>{action, id, values?}</code>.</p>
 /// <p><b>It resolves the action exactly as the action route does</b> (<method>OcuPilot.Api.ScreenAction.DryRun</method>): the same
 /// descriptor, declared action, write tool, value channel, pair gate, fresh read and body, so the rows it answers are the rows the
-/// agent's proposal card shows for the same action, and a request that route would refuse is refused here with the same envelope.
+/// agent's proposal card shows for the same action, and a request that resolution refuses is refused here with the same envelope.
 /// It stops before the write. It holds no target, writes nothing and asks no prohibited set.</p>
 /// <p>An unreadable body, or one with no <code>action</code>, is 400 <code>TOOL.ARGUMENTS</code> before anything is read; a body key
 /// beyond the route's three and a value the action declares secret, which this route never takes, are 400 as well. An action whose

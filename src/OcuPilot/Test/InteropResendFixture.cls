@@ -281,8 +281,8 @@ ClassMethod RemoveBodyClasses() As %Status
     Set tOrigNS = $NAMESPACE
     Try {
         Set $NAMESPACE = ..#NAMESPACE
-        If ##class(%Dictionary.CompiledClass).%ExistsId(..#BODYCLASS) Do $ClassMethod(..#BODYCLASS, "%KillExtent")
-        Do $System.OBJ.DeletePackage(..#BODYPACKAGE, "-d")
+        If ##class(%Dictionary.CompiledClass).%ExistsId(..#BODYCLASS) Set tSC = $ClassMethod(..#BODYCLASS, "%KillExtent")
+        Set tSC = $System.Status.AppendStatus(tSC, $System.OBJ.DeletePackage(..#BODYPACKAGE, "-d"))
         Set $NAMESPACE = tOrigNS
     } Catch ex {
         Set $NAMESPACE = tOrigNS

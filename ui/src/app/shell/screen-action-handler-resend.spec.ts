@@ -282,6 +282,17 @@ describe('the dry run and the review a page runs itself (Story 20.31)', () => {
     expect(handler.pending()?.outcome).toEqual(['12: resent as 40']);
   });
 
+  it('draws a document edit\u2019s changed lines, each closed by a line feed, with no empty line after either side', async () => {
+    // Mutation (Rule 19): split the before and after texts without ending their closing line feed -> a "- " and a "+ " line follow.
+    const hunk = { field: 'Body', before: 'MSH|^~\\&|A\nEVN|A01\n', after: 'MSH|^~\\&|B\nEVN|A08\n' };
+    const answer = (): JsonResult<unknown> => ({ kind: 'ok', status: 200, body: { rows: [hunk], review: { Digest: 'e'.repeat(64), Kind: 'document', Form: [] } } });
+    const { handler } = mount(answer);
+    const run = await handler.dryRunFor(INTEROP_MESSAGE_HEADER, MESSAGE_EDIT_RESEND, '12', { fields: '{"content":"x"}' });
+    if (run.kind !== 'ok') throw new Error('the dry run was answered');
+    expect(handler.openReview(INTEROP_MESSAGE_HEADER, MESSAGE_EDIT_RESEND, '12', { fields: '{"content":"x"}' }, run, { setRefusal: () => undefined })).toBe(true);
+    expect(handler.pending()?.review).toEqual(['- MSH|^~\\&|A', '- EVN|A01', '+ MSH|^~\\&|B', '+ EVN|A08']);
+  });
+
   it('opens no review over another dialog, and none for a dry run that answered no digest', async () => {
     // Mutation (Rule 19): open without checking the digest -> the second assertion goes red.
     const { handler } = mount(() => dryRunAnswer([LINE_OK('12')]));

@@ -214,8 +214,8 @@ ClassMethod EditProblem(pArgs As %DynamicObject) As %String
 }
 
 /// <p>AD-59: the script of a resend is one <code>ResendDuplicatedMessage</code> line for each id the reviewed verdicts read
-/// <code>resend</code> (every id of the set when the payload holds none), each id a string literal; a read, a list and an unknown type have
-/// no script.</p>
+/// <code>resend</code> (none when the payload holds no verdicts), each id a string literal; a read, a list and an unknown type have no
+/// script.</p>
 /// <p>Mutation (Rule 19): drop the verdict test in <method>OcuPilot.Port.InteropPort.MessageSnippet</method> -- the held-back row goes
 /// red.</p>
 Method TestTheResendScriptRendersTheReviewedIds()
@@ -230,7 +230,7 @@ Method TestTheResendScriptRendersTheReviewedIds()
     Set tQuery("id") = "4,5"
     Set tSteps = $ClassMethod(..#PORT, "Snippet", "Messages", "RESENDMESSAGES", .tQuery, "", {"payload": {}})
     Set tText = tSteps.%Get(0).text
-    Do $$$AssertTrue((tText [ "ResendDuplicatedMessage(""4"", .tNew)") && (tText [ "ResendDuplicatedMessage(""5"", .tNew)"), "with no verdicts it sends every id of the set: " _ tText)
+    Do $$$AssertTrue((tText '[ "ResendDuplicatedMessage("), "with no verdicts it sends nothing: " _ tText)
     For tType = "LIST", "RESEND", "EDIT", "UNKNOWN" {
         Do $$$AssertEquals($ClassMethod(..#PORT, "Snippet", "Messages", tType, .tQuery, "", tContext).%Size(), 0, tType _ " has no script")
     }

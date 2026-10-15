@@ -12056,3 +12056,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-20-35-the-agent-s-mdx-read.md (orchestrator ruling Q1 B, 2026-10-15) | severity: med | fix-risk: high | footprint: out-of-footprint
 - evidence: Orchestrator ruling Q1 B at 20.35's plan gate names stored definitions a named limit of the one detector (AD-65); a definition is authored by a person with write access to the cube's folder items, not by the query
 - 2026-10-15T09:36:05Z status=wontfix-accepted owner=20-33-the-mdx-query-tool by=lead note=reopen_if=a shared calculated member, named filter or pivot variable holding braces or %SEARCH is found reachable from an MDX query through the screen or the agent's read
+
+### DW-2452: Epic 20 interop list screens give a full sentence as emptyAgentKey, so the write-capable empty state reads 'Or ask the agent: Ask the agent ...'
+- source: spec-20-31-message-resend-and-edit-and-resend.md (code review) | severity: med | fix-risk: low | footprint: in-epic
+- evidence: table-model.ts emptyStateView joins tableWriteCapableEmptyState ('Or ask the agent: <a write it could propose here>.') with the key's text; interopProductions/Items/ItemSettings/Queues/QueueMessages/Jobs/LookupTables/LookupEntries/ItemTest/TransformsEmptyAgent are sentences (strings.ts:6635-7279) on write-capable descriptors (InteropItemList.cls:78, InteropQueueList.cls:55). 20.31's own key fixed in review.
+- 2026-10-15T10:52:19Z status=routed owner=burndown by=cr note=reword each to the bare phrase (as userListEmptyAgent) in strings.ts and EXPERIENCE.md :604; 20.31's fixed
+
+### DW-2453: ScreenDryRun.Handle repeats ScreenAction.Handle's body preamble (descriptor lookup, body read, closed-key loop) and its NotFound/Refuse
+- source: spec-20-31-message-resend-and-edit-and-resend.md (code review) | severity: low | fix-risk: med | footprint: in-story
+- evidence: Api/ScreenDryRun.cls Handle copies Api/ScreenAction.cls Handle:77-116 and NotFound/Refuse; the spec kept ScreenAction add-only (DryRun only), so the shared preamble could not be extracted. The two closed-key rules can drift.
+- 2026-10-15T10:52:24Z status=wontfix-accepted owner=20-31-message-resend-and-edit-and-resend by=cr note=reopen_if=ScreenAction.Handle's body rules change (a key, a stage) and ScreenDryRun.Handle does not follow

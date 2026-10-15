@@ -108,10 +108,9 @@ ClassMethod InputSchema(pDescriptor As %String = "") As %DynamicObject
     Quit tSchema
 }
 
-/// <p>What is wrong with the call's own arguments, as one sentence, or <code>""</code>: <code>Fields</code> is an object of text
-/// values whose JSON is at most the agent's bound for a card-sized argument
-/// (<parameter>OcuPilot.Screen.Tool.ExplorerSave.CHANGEMAXLENGTH</parameter>) and names at least one field, and no digest comes with
-/// it. The port judges the rest, from the instance.</p>
+/// <p>What is wrong with the call's own arguments, as one sentence, or <code>""</code>: no digest comes with it, and
+/// <code>Fields</code> is as the host test's fields are (<method>OcuPilot.Screen.Tool.InteropItemTestSend.FieldsProblem</method>) and
+/// names at least one field. The port judges the rest, from the instance.</p>
 ClassMethod ArgumentProblem(pIdValue As %String, pArgs As %DynamicObject, Output pProblem As %String) As %Status
 {
     Set pProblem = ""
@@ -120,27 +119,8 @@ ClassMethod ArgumentProblem(pIdValue As %String, pArgs As %DynamicObject, Output
         Set pProblem = "'" _ ..#REVIEWEDARGUMENT _ "' is not an argument a proposal takes"
         Quit $$$OK
     }
-    If pArgs.%GetTypeOf(..#FIELDSARGUMENT) '= "object" {
-        Set pProblem = "'" _ ..#FIELDSARGUMENT _ "' is an object of text values"
-        Quit $$$OK
-    }
-    Set tFields = pArgs.%Get(..#FIELDSARGUMENT)
-    If tFields.%Size() = 0 {
-        Set pProblem = "'" _ ..#FIELDSARGUMENT _ "' names at least one field to change"
-        Quit $$$OK
-    }
-    Set tBound = ##class(OcuPilot.Screen.Tool.ExplorerSave).#CHANGEMAXLENGTH
-    If $Length(tFields.%ToJSON()) > tBound {
-        Set pProblem = "'" _ ..#FIELDSARGUMENT _ "' is at most " _ tBound _ " characters of JSON"
-        Quit $$$OK
-    }
-    Set tIterator = tFields.%GetIterator()
-    While tIterator.%GetNext(.tKey, .tValue, .tType) {
-        If tType '= "string" {
-            Set pProblem = "'" _ ..#FIELDSARGUMENT _ "' holds text values only, and '" _ $Extract(tKey, 1, 100) _ "' is not text"
-            Quit
-        }
-    }
+    Set pProblem = ##class(OcuPilot.Screen.Tool.InteropItemTestSend).FieldsProblem(pArgs, ..#FIELDSARGUMENT)
+    If (pProblem = "") && (pArgs.%Get(..#FIELDSARGUMENT).%Size() = 0) Set pProblem = "'" _ ..#FIELDSARGUMENT _ "' names at least one field to change"
     Quit $$$OK
 }
 
@@ -152,27 +132,16 @@ ClassMethod ConfirmProblem(pIdValue As %String, pArgs As %DynamicObject, Output 
 }
 
 /// <p>The screen's values as this tool's arguments (AD-56 (ii)): <code>fields</code> from JSON object text to an object of text
-/// values, at most <parameter>OcuPilot.Port.AtelierPort.MAXIMPORTCHARACTERS</parameter> characters, any other spelling refused; and
-/// <code>Reviewed</code> as sent. A call that carries neither asks for the form.</p>
+/// values, as the host test reads them (<method>OcuPilot.Screen.Tool.InteropItemTestSend.FieldsFromText</method>), any other
+/// spelling refused; and <code>Reviewed</code> as sent. A call that carries neither asks for the form.</p>
 ClassMethod ScreenActionDelta(pActionId As %String, pValues As %DynamicObject, pFresh As %DynamicObject, Output pArgs As %DynamicObject, Output pProblem As %String) As %Status
 {
     Set pArgs = {}
     Set pProblem = ""
     If '$IsObject(pValues) Quit $$$OK
     If pValues.%GetTypeOf("fields") = "string" {
-        Set tText = pValues.%Get("fields")
-        Set tFields = ""
-        If $Length(tText) <= ##class(OcuPilot.Port.AtelierPort).#MAXIMPORTCHARACTERS {
-            Try {
-                Set tFields = ##class(%DynamicAbstractObject).%FromJSON(tText)
-            } Catch {
-                Set tFields = ""
-            }
-        }
-        If '$IsObject(tFields) || 'tFields.%IsA("%Library.DynamicObject") {
-            Set pProblem = "'fields' is a JSON object of text values, at most " _ ##class(OcuPilot.Port.AtelierPort).#MAXIMPORTCHARACTERS _ " characters"
-            Quit $$$OK
-        }
+        Set pProblem = ##class(OcuPilot.Screen.Tool.InteropItemTestSend).FieldsFromText(pValues.%Get("fields"), .tFields)
+        If pProblem '= "" Quit $$$OK
         Do pArgs.%Set(..#FIELDSARGUMENT, tFields)
     }
     If pValues.%GetTypeOf(..#REVIEWEDARGUMENT) = "string" Do pArgs.%Set(..#REVIEWEDARGUMENT, pValues.%Get(..#REVIEWEDARGUMENT), "string")
@@ -180,16 +149,14 @@ ClassMethod ScreenActionDelta(pActionId As %String, pValues As %DynamicObject, p
 }
 
 /// <p>The supplied fields, from the payload <var>pPayload</var> -- the call's arguments, or a stored payload, which carries the
-/// fresh read's -- under the port's own query key (AD-52), so the mint, a screen action and the confirm's re-read each read, and the
-/// write sends, one edit. <code>Fields</code> is an object in the arguments and JSON text in a payload; either is passed as JSON
-/// text. The action key and the digest are <method>OcuPilot.Screen.Tool.InteropMessageAction.PortQuery</method>'s.</p>
+/// fresh read's -- under the port's own query key (AD-52, <method>OcuPilot.Screen.Tool.InteropItemTestSend.FieldsQuery</method>), so
+/// the mint, a screen action and the confirm's re-read each read, and the write sends, one edit. The action key and the digest are
+/// <method>OcuPilot.Screen.Tool.InteropMessageAction.PortQuery</method>'s.</p>
 ClassMethod PortQuery(pPayload As %DynamicObject, ByRef pQuery)
 {
     Do ##super(pPayload, .pQuery)
     If '$IsObject(pPayload) Quit
-    Set tType = pPayload.%GetTypeOf(..#FIELDSARGUMENT)
-    If tType = "string" Set pQuery(##class(OcuPilot.Port.InteropPort).#FIELDSKEY) = pPayload.%Get(..#FIELDSARGUMENT)
-    If tType = "object" Set pQuery(##class(OcuPilot.Port.InteropPort).#FIELDSKEY) = pPayload.%Get(..#FIELDSARGUMENT).%ToJSON()
+    Do ##class(OcuPilot.Screen.Tool.InteropItemTestSend).FieldsQuery(pPayload, ..#FIELDSARGUMENT, .pQuery)
 }
 
 /// <p>What a reviewed edit answers beside its rows: the digest, the body's kind and the form the dialog is built from.</p>

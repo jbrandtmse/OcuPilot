@@ -496,8 +496,9 @@ services:
       # resends from both callers and meets every verdict, the edit class edits a string request, an HL7 message and a request of every
       # field shape and meets every refusal, the dry-run class reads the review route, and the gate class signs in as probe principals
       # each missing one pair a resend or an edit requires. They share one case class, which records the message store's high water
-      # first and removes everything above it after the last test.
-      # classes: DryRunRoute, InteropEditResend, InteropResend, InteropResendCase, InteropResendGate
+      # first and removes everything above it after the last test. The limits class sends 100 stored messages and meets the digest, the
+      # governance key and the outcome of a refused message, and the sweep class pins the sweep the others end with.
+      # classes: DryRunRoute, InteropEditResend, InteropResend, InteropResendCase, InteropResendGate, InteropResendLimits, InteropResendSweep
       # The editor save classes make and remove probe documents in USER (Story 20.16): the gate class signs in as probe principals each
       # missing one pair an editor tool requires, and the turn class runs a scripted turn on a probe transformation and confirms its save.
       # classes: InteropEditorSaveGate, InteropEditorSaveTurn

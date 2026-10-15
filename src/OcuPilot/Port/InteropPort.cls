@@ -3802,37 +3802,18 @@ ClassMethod Sha256Hex(pText As %String) As %String
 /// ids, each of the shape <parameter>MESSAGEIDPATTERN</parameter> once its surrounding blanks are taken off, each named once whatever
 /// the repeats, in ascending order. Answers 1 for 1 to <parameter>RESENDMAX</parameter> ids, else 0 with <var>pIds</var>
 /// <code>""</code>: an empty set, a member of another shape (<code>0x1</code>, <code>007</code>, an empty one) and a set over the cap
-/// are each refused whole, never cut. The ids are ordered as strings by length and then digits, so no id is read as a number. Pure.</p>
+/// are each refused whole, never cut. Once every member has that shape, the set is the <code>interop-message</code> entity's own
+/// canonical spelling (<method>OcuPilot.Kernel.EntityRef.NormalizedId</method>, AD-13), so no id is read as a number. Pure.</p>
 ClassMethod MessageSet(pText As %String, Output pIds As %List) As %Boolean
 {
     Set pIds = ""
     If pText = "" Quit 0
-    Kill tSorted
-    Set tCount = 0
-    Set tBad = 0
     For tI = 1:1:$Length(pText, ",") {
-        Set tPart = $ZStrip($Piece(pText, ",", tI), "<>W")
-        If '$Match(tPart, ..#MESSAGEIDPATTERN) {
-            Set tBad = 1
-            Quit
-        }
-        If '$Data(tSorted($Length(tPart), "d" _ tPart)) {
-            Set tSorted($Length(tPart), "d" _ tPart) = tPart
-            Set tCount = tCount + 1
-        }
+        If '$Match($ZStrip($Piece(pText, ",", tI), "<>W"), ..#MESSAGEIDPATTERN) Return 0
     }
-    If tBad || (tCount > ..#RESENDMAX) Quit 0
-    Set tLength = ""
-    For {
-        Set tLength = $Order(tSorted(tLength))
-        If tLength = "" Quit
-        Set tKey = ""
-        For {
-            Set tKey = $Order(tSorted(tLength, tKey), 1, tId)
-            If tKey = "" Quit
-            Set pIds = pIds _ $ListBuild(tId)
-        }
-    }
+    Set tCanonical = ##class(OcuPilot.Kernel.EntityRef).NormalizedId(..#ENTITYMESSAGE, pText)
+    If $Length(tCanonical, ",") > ..#RESENDMAX Quit 0
+    Set pIds = $ListFromString(tCanonical, ",")
     Quit 1
 }
 
@@ -3884,8 +3865,8 @@ ClassMethod OutcomeWord(pResent As %Boolean) As %String
 }
 
 /// <p>The namespace's production while it is running, in <var>pProduction</var> (<code>""</code> when none is: stopped, suspended or
-/// troubled), switched by explicit save and restore. A fault is <var>pCaught</var>, with the namespace restored. Only vendor classes
-/// run while the namespace is switched.</p>
+/// troubled), switched by explicit save and restore. A fault, a status the vendor could not read among them, is <var>pCaught</var>,
+/// with the namespace restored. Only vendor classes run while the namespace is switched.</p>
 ClassMethod RunningProduction(pNamespace As %String, Output pProduction As %String, Output pCaught) As %Status [ Private ]
 {
     Set pProduction = ""
@@ -3894,7 +3875,8 @@ ClassMethod RunningProduction(pNamespace As %String, Output pProduction As %Stri
     Try {
         Set $NAMESPACE = pNamespace
         Set tSC = ##class(Ens.Director).GetProductionStatus(.tCurrent, .tState, 2)
-        If $$$ISOK(tSC) && (+$Get(tState) = 1) Set pProduction = $Get(tCurrent)
+        If $$$ISERR(tSC) Throw ##class(%Exception.StatusException).CreateFromStatus(tSC)
+        If +$Get(tState) = 1 Set pProduction = $Get(tCurrent)
         Set $NAMESPACE = tOrigNS
     } Catch ex {
         Set $NAMESPACE = tOrigNS
@@ -4557,7 +4539,7 @@ ClassMethod InvokeMessageAction(pNamespace As %String, pType As %String, ByRef p
 
 /// <p>The lines <method>Snippet</method> adds for a Messages write of Story 20.31, from the stored payload of <var>pContext</var> and
 /// the query <var>pQuery</var>. A resend: <code>ResendDuplicatedMessage</code> of each id the payload's <code>Verdicts</code> reads
-/// <code>resend</code> (every id of the set <var>pId</var> when it holds none), each failure kept in <code>tSC</code>. An
+/// <code>resend</code> (none when it holds no verdicts), each failure kept in <code>tSC</code>. An
 /// edit-and-resend: the header and its body opened, the body cloned, each supplied field set on the clone along its path (a document
 /// as the classic edit page rebuilds it: cleared, its <code>Source</code> annotated, the text parsed from a character stream and
 /// copied in), and the header resent with the clone. The body's class and fields are read in the namespace
@@ -4577,8 +4559,6 @@ ClassMethod MessageSnippet(pType As %String, pId As %String, ByRef pQuery, pCont
                 Set tPair = $Piece(tVerdicts, ",", tI)
                 If $Piece(tPair, "=", 2) = "resend" Set tIds = tIds _ $ListBuild($Piece(tPair, "=", 1))
             }
-        } ElseIf ..MessageSet(pId, .tAll) {
-            Set tIds = tAll
         }
         Set tText = tNL _ " Set tSC = 1"
         For tI = 1:1:$ListLength(tIds) {
@@ -4694,7 +4674,7 @@ ClassMethod QueueDigest(ByRef pFound) As %String
     For tI = 1:1:+$Get(pFound) {
         Set tText = tText _ $List(pFound(tI), 1) _ ":" _ $List(pFound(tI), 2) _ ":" _ $List(pFound(tI), 3) _ $Char(10)
     }
-    Quit $ZConvert(##class(%xsd.hexBinary).LogicalToXSD($System.Encryption.SHAHash(256, $ZConvert(tText, "O", "UTF8"))), "L")
+    Quit ..Sha256Hex(tText)
 }
 
 /// <p>Serve a typed call on Queues, QueueItems or Jobs (Story 20.23) after <method>Invoke</method>'s gate: the read of one

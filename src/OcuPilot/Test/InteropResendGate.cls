@@ -163,8 +163,7 @@ Method TestEachMissingPairIsRefusedByNameOnTheTools()
 
 /// <p>AC6: on the routes each principal is refused naming the pair the screen's action needs, on the dry run and on the action, before
 /// any message is read or sent; the person's route for the list's resend and the Header tab's edit are each asked, and a principal
-/// without READ on the namespace's database is refused naming it. The agent's confirm of a proposal minted for the principal is refused
-/// the same way, leaving the proposal live and sending nothing.</p>
+/// without READ on the namespace's database is refused naming it.</p>
 /// <p>Mutation (Rule 19): drop the pair gate from <method>OcuPilot.Api.ScreenAction.Run</method> -- the dry-run rows go red.</p>
 Method TestEachMissingPairIsRefusedByNameOnTheScreenRoutes()
 {
@@ -224,8 +223,8 @@ Method ConfirmAs(pProposalId As %String, pUser As %String, Output pRaw) As %Inte
 
 /// <p>AC6: a principal holding exactly the pairs completes both writes: through the port (the first test), through the routes -- the
 /// review and the action of the resend and of the edit -- and through the agent's confirm of a proposal minted for it, while the
-/// principals missing the resend page's pair and the edit page's pair are each refused that confirm, naming the pair, with the proposal
-/// left live and nothing sent.</p>
+/// principals missing the resend page's pair and the edit page's pair are each refused that confirm, naming the pair, with nothing
+/// sent.</p>
 /// <p>Mutation (Rule 19): have <method>OcuPilot.Port.InteropPort.PerformEditResend</method> set a node of <code>^%SYS</code>, a
 /// database the pairs do not grant -- the exact principal's edit is answered 500 and this goes red.</p>
 Method TestAPrincipalHoldingExactlyThePairsCompletesResendAndEdit()

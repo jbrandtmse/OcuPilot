@@ -1833,14 +1833,21 @@ function dryRunRowsOf(rows: unknown): readonly DryRunRow[] {
 
 /**
  * The lines a review dialog draws for a dry run's first row: a row with no before-text (a resend's) is its after-text's lines; one
- * with both (an edit's) is the changed lines before and after, each marked `-` or `+` as a diff is.
+ * with both (an edit's) is the changed lines before and after, each marked `-` or `+` as a diff is. A text's closing line feed (a
+ * document's changed lines end with one) ends its last line and adds none.
  */
 function reviewLinesOf(rows: readonly DryRunRow[]): readonly string[] {
   const row = rows[0];
   if (row === undefined) return [];
-  const after = row.after === '' ? [] : row.after.split('\n');
+  const after = textLines(row.after);
   if (row.before === '') return after;
-  return [...row.before.split('\n').map((line) => `- ${line}`), ...after.map((line) => `+ ${line}`)];
+  return [...textLines(row.before).map((line) => `- ${line}`), ...after.map((line) => `+ ${line}`)];
+}
+
+/** The lines of `text`, its one closing line feed ending the last line; none for empty text. */
+function textLines(text: string): readonly string[] {
+  const body = text.endsWith('\n') ? text.slice(0, -1) : text;
+  return body === '' ? [] : body.split('\n');
 }
 
 /** The lines a confirmed reviewed action answered for the screen alone: its `output.lines` that are text. */

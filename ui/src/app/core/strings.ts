@@ -7473,7 +7473,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:604 */
   interopResendFailed: 'not resent',
   /** EXPERIENCE.md:604 */
-  interopMessagesEmptyAgent: 'Or ask the agent to find and resend messages.',
+  interopMessagesEmptyAgent: 'find and resend messages',
 } as const;
 
 /**

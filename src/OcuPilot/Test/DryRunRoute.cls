@@ -3,7 +3,7 @@
 /// the route's three -- is 400 <code>TOOL.ARGUMENTS</code> before anything is read; an unknown screen, an action the screen does not
 /// declare and an action whose tool does not declare a dry run are the framework's 404; and a request that resolves answers exactly
 /// <code>{rows, review}</code>, whose rows are the rows the agent's proposal card shows for the same action, while writing no proposal,
-/// holding no target and sending nothing.</p>
+/// asking for no target's hold and sending nothing.</p>
 /// <p>A secret value is refused before any read by the shared preview (<method>OcuPilot.Api.ScreenAction.Resolve</method>, pinned by
 /// <class>OcuPilot.Test.ImpactRoute</class>); no tool that declares a dry run declares a secret, so this route cannot be asked for one.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed in <code>HSCUSTOM</code> and serving over HTTP as
@@ -72,15 +72,19 @@ Method TestARequestTheActionRouteWouldNotTakeIsRefusedBeforeAnythingIsRead()
 
 /// <p>AC1, AC2: the answer is <code>{rows, review}</code> and nothing else; its rows are the rows the agent's proposal card shows for the same
 /// resend and the same edit, its review carries the digest (and, for the edit, the kind and the form); and the review wrote no proposal,
-/// held no target -- the agent's mint of the same target then succeeds -- and sent nothing.</p>
+/// sent nothing and asked for no target's hold: both reviews answer while this process holds the message (AD-34), as a write would.</p>
 /// <p>Mutation (Rule 19): answer <code>review</code> from the tool's class default in <method>OcuPilot.Api.ScreenAction.DryRun</method> -- the
-/// review legs go red.</p>
+/// review legs go red; have <method>OcuPilot.Api.ScreenAction.Run</method> take the hold for a preview too -- the reviews wait and are
+/// refused <code>WRITE.TARGETBUSY</code>, and this goes red.</p>
 Method TestTheAnswerIsRowsAndReviewAndTheRowsAreTheAgentsCardRows()
 {
     Set tA = ..Make("alpha")
     Set tTop = $ClassMethod(..#FIXTURE, "TopId")
     Set tProposals = ##class(OcuPilot.Test.ProposalFixture).ProposalCount()
     Set tFields = {"StringValue": "edited"}.%ToJSON()
+    Do ##class(OcuPilot.Kernel.Scope).Set(..#NAMESPACE)
+    Set tHoldSC = ##class(OcuPilot.Kernel.Proposal.Operation).HoldTool(..#RESENDTOOL, tA, .tHeld, .tKey)
+    Do $$$AssertTrue($$$ISOK(tHoldSC) && $Get(tHeld), "this process holds the message, as a write in flight would")
     Set tStatus = ..Raw(..#MESSAGESCREEN, "{""action"": ""resend"", ""id"": """ _ tA _ """}", .tCode, .tResend, .tContentType)
     Do $$$AssertEquals(tStatus _ "|" _ $Piece(tContentType, ";", 1), "200|application/json", "the resend review answers 200 as JSON")
     Set tBody = {"action": "editresend"}
@@ -88,6 +92,7 @@ Method TestTheAnswerIsRowsAndReviewAndTheRowsAreTheAgentsCardRows()
     Do tBody.%Set("values", {}.%Set("fields", tFields, "string"))
     Set tStatus = ..Raw(..#HEADERSCREEN, tBody.%ToJSON(), .tCode, .tEdit)
     Do $$$AssertEquals(tStatus, 200, "the edit review answers")
+    Do ##class(OcuPilot.Kernel.Proposal.Operation).Release($Get(tKey))
     If '$IsObject(tResend) || '$IsObject(tEdit) Quit
     Do $$$AssertEquals(##class(%DynamicObject).%FromJSON(tResend.%ToJSON()).%Size() _ "|" _ tResend.%GetTypeOf("rows") _ "|" _ tResend.%GetTypeOf("review"), "2|array|object", "the answer is rows and review and nothing else")
     Do $$$AssertEquals(tResend.review.%Size() _ "|" _ $Length(tResend.review.Digest), "1|64", "the resend's review is its digest")
@@ -97,7 +102,7 @@ Method TestTheAnswerIsRowsAndReviewAndTheRowsAreTheAgentsCardRows()
     Do ..EnableKey("interop.messageheader.editresend")
     Set tUser = ##class(OcuPilot.Test.Http).GetTestUsername()
     Set tSC = $ClassMethod(..#CONTROL, "MintAs", ..#RESENDTOOL, {"Messages": (tA)}, tUser, .tCard, .tHttp, .tFault, .tTurn)
-    Do $$$AssertStatusOK(tSC, "the agent's resend of the same target mints, so the review held nothing: " _ $Select($IsObject($Get(tFault)): tFault.%ToJSON(), 1: ""))
+    Do $$$AssertStatusOK(tSC, "the agent's resend of the same target mints: " _ $Select($IsObject($Get(tFault)): tFault.%ToJSON(), 1: ""))
     If $IsObject($Get(tCard)) Do $$$AssertEquals(tResend.rows.%ToJSON(), tCard.changed.%ToJSON(), "and its card shows the review's rows")
     Set tSC = $ClassMethod(..#CONTROL, "MintAs", ..#EDITTOOL, {"Message": (tA), "Fields": {"StringValue": "edited"}}, tUser, .tCard, .tHttp, .tFault, .tTurn)
     Do $$$AssertStatusOK(tSC, "so does the agent's edit: " _ $Select($IsObject($Get(tFault)): tFault.%ToJSON(), 1: ""))

@@ -178,7 +178,7 @@ Method TestEachMessageIsJudgedAndOnlyTheOnesThatCanGoAreSent()
     Set tCode = ..Send(tSet, tDry.review.Digest, .tSent)
     Do $$$AssertEquals(tCode, "200 ", "the resend is admitted: " _ $Select($IsObject(tSent): tSent.%ToJSON(), 1: tSent))
     If $IsObject(tSent) Do $$$AssertEquals(tSent.output.lines.%Size() _ "|" _ $Piece(tSent.output.lines.%Get(0), ": ", 1), "1|" _ tGood, "one line, for the message that could go")
-    Do $$$AssertEquals($Length($ClassMethod(..#FIXTURE, "Session", $ClassMethod(..#FIXTURE, "Property", tGood, "SessionId"), tTop), ";") _ "|" _ $ClassMethod(..#FIXTURE, "Session", $ClassMethod(..#FIXTURE, "Property", tOff, "SessionId"), tTop) _ "|" _ $ClassMethod(..#FIXTURE, "Session", $ClassMethod(..#FIXTURE, "Property", tNoBody, "SessionId"), tTop), "1||", "only the first message's session gained a header")
+    Do $$$AssertEquals(..Gained($ClassMethod(..#FIXTURE, "Property", tGood, "SessionId"), tTop) _ "|" _ ..Gained($ClassMethod(..#FIXTURE, "Property", tOff, "SessionId"), tTop) _ "|" _ ..Gained($ClassMethod(..#FIXTURE, "Property", tNoBody, "SessionId"), tTop), "1|0|0", "only the first message's session gained a header")
 }
 
 /// <p>AC1, AC3: a set none of whose messages can go is refused 409 <code>INTEROP.RESEND.NONE</code> by the port and, as the sentence and
@@ -317,7 +317,7 @@ Method TestTheCopyOutDraftOfAResendRendersItsScriptAndRunningItDoesTheSame()
     Do $$$AssertTrue((tText [ "Set $NAMESPACE = ""USER""") && (tText [ "ResendDuplicatedMessage(""" _ tA _ """, .tNew)") && (tText [ "ResendDuplicatedMessage(""" _ tB _ """, .tNew)") && (tText '[ ("ResendDuplicatedMessage(""" _ tOff _ """")), "one line for each message that could go, none for the one held back: " _ tText)
     Do $$$AssertEquals($ClassMethod(..#FIXTURE, "TopId"), tTop, "the draft sent nothing")
     Do $$$AssertStatusOK(..RunScript(tText), "the script runs")
-    Do $$$AssertEquals($Length($ClassMethod(..#FIXTURE, "Session", $ClassMethod(..#FIXTURE, "Property", tA, "SessionId"), tTop), ";") _ "|" _ $Length($ClassMethod(..#FIXTURE, "Session", $ClassMethod(..#FIXTURE, "Property", tB, "SessionId"), tTop), ";") _ "|" _ $ClassMethod(..#FIXTURE, "Session", $ClassMethod(..#FIXTURE, "Property", tOff, "SessionId"), tTop), "1|1|", "and sends the two that could go and not the third")
+    Do $$$AssertEquals(..Gained($ClassMethod(..#FIXTURE, "Property", tA, "SessionId"), tTop) _ "|" _ ..Gained($ClassMethod(..#FIXTURE, "Property", tB, "SessionId"), tTop) _ "|" _ ..Gained($ClassMethod(..#FIXTURE, "Property", tOff, "SessionId"), tTop), "1|1|0", "and sends the two that could go and not the third")
 }
 
 /// <p>AC3: the agent's resend is refused by governance at its shipped value, with nothing minted and nothing sent.</p>

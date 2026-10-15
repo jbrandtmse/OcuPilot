@@ -167,21 +167,56 @@ ClassMethod TakeDraft(pProposalId As %String, Output pDraft, Output pText As %St
 }
 
 /// <p>Run the ObjectScript text <var>pText</var> of a draft step as this process does, one line at a time in one frame, so the locals
-/// a line sets reach the next; the namespace is put back. The status is the one the script left in <code>tSC</code>.</p>
+/// a line sets reach the next; the namespace is put back. The status is the script's own <code>tSC</code> (OK when it sets none), or
+/// the error a line raised. The lines run with the process's public variables, so every variable the script left is removed
+/// afterwards and no object it opened outlives the call.</p>
 ClassMethod RunScript(pText As %String) As %Status
 {
+    Set tBefore = ..PublicNames()
     Set tOrigNS = $NAMESPACE
+    Set tSC = $$$OK
     Try {
+        XECUTE "Kill tSC"
         For tI = 1:1:$Length(pText, $Char(10)) {
             Set tLine = $Piece(pText, $Char(10), tI)
             If $ZStrip(tLine, "<>W") '= "" XECUTE tLine
         }
         Set $NAMESPACE = tOrigNS
+        XECUTE "Set %OcuRunScriptSC = $Get(tSC, 1)"
+        Set tSC = %OcuRunScriptSC
     } Catch ex {
         Set $NAMESPACE = tOrigNS
         Set tSC = ex.AsStatus()
     }
-    Quit $Get(tSC, $$$OK)
+    Kill %OcuRunScriptSC
+    Set tAfter = ..PublicNames()
+    For tI = 1:1:$ListLength(tAfter) {
+        Set tName = $List(tAfter, tI)
+        If (tName = "tSC") || '$ListFind(tBefore, tName) Kill @tName
+    }
+    Quit tSC
+}
+
+/// <p>The names of the process's public variables that do not begin with <code>%</code>.</p>
+ClassMethod PublicNames() As %List [ Private ]
+{
+    Set tNames = ""
+    Set tName = "%"
+    For {
+        Set tName = $Order(@tName)
+        If tName = "" Quit
+        If $Extract(tName) '= "%" Set tNames = tNames _ $ListBuild(tName)
+    }
+    Quit tNames
+}
+
+/// <p>How many headers above <var>pAbove</var> the session <var>pSession</var> holds (<method>OcuPilot.Test.InteropResendFixture.Session</method>),
+/// <code>0</code> for none and <code>-1</code> when the session could not be read.</p>
+ClassMethod Gained(pSession As %String, pAbove As %String) As %Integer
+{
+    Set tText = $ClassMethod(..#FIXTURE, "Session", pSession, pAbove)
+    If $Extract(tText, 1, 7) = "unread " Quit -1
+    Quit $Select(tText = "": 0, 1: $Length(tText, ";"))
 }
 
 /// <p><var>pBody</var> posted to <var>pPath</var> as the HTTP account: <code>status code</code>, the answer in <var>pAnswer</var>.</p>

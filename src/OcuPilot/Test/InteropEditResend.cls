@@ -323,6 +323,58 @@ Method TestABodyEditedAfterTheReviewIsRefusedForThePersonAndTheAgent()
     Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tTurn)
 }
 
+/// <p>AC4: a person's edit is held to the digest of its review. A digest of the wrong length, of zeros, the digest of another message's
+/// form or one that is not hex at all is refused 409 <code>INTEROP.RESEND.CHANGED</code>, nothing is sent, and
+/// the reviewed digest then sends the copy.</p>
+/// <p>Mutation (Rule 19): compare only the first 8 characters of the digest in <method>OcuPilot.Port.InteropPort.ReadEdit</method> -- the
+/// truncated and foreign rows go red.</p>
+Method TestAForgedTruncatedOrForeignDigestIsRefusedForTheEditAndOnlyTheReviewedOneSends()
+{
+    Set tB = ..Make("beta")
+    Set tOther = ..Make("other")
+    Set tFields = {"StringValue": "edited"}.%ToJSON()
+    Do $$$AssertEquals(..Dry(tB, "", .tForm) _ "|" _ ..Dry(tOther, "", .tForeign), "200 |200 ", "two messages are reviewed")
+    If '$IsObject(tForm) || '$IsObject(tForeign) Quit
+    Set tDigest = tForm.review.Digest
+    Do $$$AssertNotEquals(tForeign.review.Digest, tDigest, "their digests differ")
+    Set tTop = $ClassMethod(..#FIXTURE, "TopId")
+    For tCase = $ListBuild("64 letters a", $Translate($Justify("", 64), " ", "a")), $ListBuild("64 zeros", $Translate($Justify("", 64), " ", "0")), $ListBuild("the digest less its last digit", $Extract(tDigest, 1, 63)), $ListBuild("the digest of another message", tForeign.review.Digest), $ListBuild("a word", "reviewed") {
+        Set tCode = ..Send(tB, tFields, $List(tCase, 2), .tRefused)
+        Do $$$AssertEquals(tCode, "409 INTEROP.RESEND.CHANGED", $List(tCase, 1) _ " is refused as a review the verdicts no longer give")
+    }
+    Do $$$AssertEquals($ClassMethod(..#FIXTURE, "TopId"), tTop, "and nothing was sent")
+    Do $$$AssertEquals(..Send(tB, tFields, tDigest, .tSent), "200 ", "the reviewed digest sends: " _ $Select($IsObject(tSent): $Extract(tSent.%ToJSON(), 1, 200), 1: tSent))
+    Do $$$AssertEquals($ClassMethod(..#FIXTURE, "TopId") - tTop, 1, "one copy")
+}
+
+/// <p>AC5, AD-59: what an edit refuses at the port is refused the same way at the person's review and at the agent's mint -- 422 naming the
+/// credential-named field, the path that is no field and the value its field refuses, 409 for a body of another kind -- with no card
+/// minted for the agent, so no copy-out script can carry a credential, and nothing sent.</p>
+/// <p>Mutation (Rule 19): drop the credential-named test from the object branch of <method>OcuPilot.Port.InteropPort.ReadEdit</method> --
+/// the credential rows go red.</p>
+Method TestWhatAnEditRefusesIsRefusedTheSameAtTheReviewAndTheMint()
+{
+    Do $$$AssertStatusOK($ClassMethod(..#FIXTURE, "StoredObject", ..#BODYCLASS, {"Text": "orig", "Count": "3", "Kind": "alpha", "Password": "pw1"}, ..#OPNAME, .tO), "a request is stored")
+    Do $$$AssertStatusOK($ClassMethod(..#FIXTURE, "X12", ..#OPNAME, .tX12), "so is an X12 document")
+    Do ..EnableKey(..#KEY)
+    Set tUser = ##class(OcuPilot.Test.Http).GetTestUsername()
+    Set tTop = $ClassMethod(..#FIXTURE, "TopId")
+    Set tViolation = ##class(OcuPilot.Api.InteropError).#EDITVALUE
+    For tCase = $ListBuild("Password", "x", ##class(OcuPilot.Api.InteropError).#EDITSECRET), $ListBuild("Nope", "x", ##class(OcuPilot.Api.InteropError).#EDITFIELD), $ListBuild("Kind", "delta", tViolation), $ListBuild("Count", "abc", tViolation) {
+        Set tPath = $List(tCase, 1)
+        Set tWant = "422 " _ $List(tCase, 3) _ "|" _ tPath _ ":" _ $List(tCase, 3)
+        Set tCode = ..Dry(tO, {}.%Set(tPath, $List(tCase, 2), "string").%ToJSON(), .tDry)
+        Do $$$AssertEquals(tCode _ "|" _ ..Violations(tDry), tWant, "the review refuses " _ tPath _ " = '" _ $List(tCase, 2) _ "': " _ tCode)
+        Set tSC = $ClassMethod(..#CONTROL, "MintAs", ..#TOOL, {"Message": (tO), "Fields": ({}.%Set(tPath, $List(tCase, 2), "string"))}, tUser, .tProposal, .tHttp, .tFault, .tTurn)
+        Do $$$AssertTrue($$$ISERR(tSC) && '$IsObject($Get(tProposal)) && ($Get(tHttp) = 422), "the mint refuses it and writes no card: " _ $Get(tHttp))
+        Do $$$AssertEquals(..Violations($Get(tFault)), tPath _ ":" _ $List(tCase, 3), "naming " _ tPath)
+    }
+    Do $$$AssertEquals(..Dry(tX12, {"x": "y"}.%ToJSON()), "409 INTEROP.EDIT.NOTEDITABLE", "the review refuses a body of another kind")
+    Set tSC = $ClassMethod(..#CONTROL, "MintAs", ..#TOOL, {"Message": (tX12), "Fields": {"x": "y"}}, tUser, .tProposal, .tHttp, .tFault, .tTurn)
+    Do $$$AssertTrue($$$ISERR(tSC) && '$IsObject($Get(tProposal)) && ($Get(tHttp) = 409), "and so does the mint: " _ $Get(tHttp))
+    Do $$$AssertEquals($ClassMethod(..#FIXTURE, "TopId"), tTop, "nothing was sent")
+}
+
 /// <p>An edit whose copy was saved and then refused by the vendor leaves no copy behind and sends nothing: no header names the copy, so
 /// the port deletes it.</p>
 /// <p>Mutation (Rule 19): drop the delete of the copy from <method>OcuPilot.Port.InteropPort.EditCloneHere</method> -- the body count

@@ -131,14 +131,20 @@ function pathHolds(page, suffix) {
   return page.waitForFunction((wanted) => new URL(window.location.href).pathname.includes(wanted), { timeout: config.navigationTimeoutMs }, suffix);
 }
 
-/** Search Messages by the probe service and wait until the rows hold every id of `ids`. */
+/** Search Messages by the probe service, wait for that search's answer, then until the rows hold every id of `ids`. */
 async function listProbeMessages(page, ids) {
   await answered(page);
   await page.waitForSelector(SOURCE_FIELD, { timeout: config.navigationTimeoutMs });
   await page.click(SOURCE_FIELD, { clickCount: 3 });
   await page.keyboard.press('Backspace');
   await page.type(SOURCE_FIELD, SERVICE);
+  // The rows are read only after the search by source has answered, so the opening read's rows cannot stand in for them.
+  const searched = page.waitForResponse(
+    (response) => response.url().includes('/screens/interop.messages/read') && new URL(response.url()).searchParams.get('source') === SERVICE,
+    { timeout: config.navigationTimeoutMs }
+  );
   await page.click('.ocu-criteria-controls button[type="submit"]');
+  await searched;
   await rowsHold(page, ids);
 }
 

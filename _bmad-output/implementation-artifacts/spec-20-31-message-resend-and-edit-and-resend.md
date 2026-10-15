@@ -2,7 +2,7 @@
 title: 'Story 20.31: Message resend and edit-and-resend'
 type: 'feature'
 created: '2026-10-13'
-status: 'done'
+status: 'in-progress'
 baseline_revision: '895d9fe9ce67457e19ebc35e8f2100d52a7aa36b'
 baseline_commit: '895d9fe9ce67457e19ebc35e8f2100d52a7aa36b'
 review_loop_iteration: 0
@@ -514,9 +514,51 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Lines were
   - **When** its Trace tab opens (20.30).
   - **Then** the diagram holds an arrow for the new header's `ID` in the original's session, and `interop.messagetrace.read` answers that row.
 
+### Review Findings
+
+Code review, 2026-10-15 (four layers, `full-opus`; Rule 6, Rule 3 and Rule 31 checked). Open: 1 HIGH.
+
+- [ ] [Review][Patch] **HIGH (AD-6, AD-13, AC2, AC3): the agent's proposal of a long set cannot be stored** [src/OcuPilot/Kernel/State/Propose.cls:82,232] — the target `interop-message|<ns>|<ids>` is the canonical set, and `ProposalTargetIdx On (TargetRef As Exact, State)` overflows the global subscript near 455 characters (`<SUBSCRIPT>%SaveData+35`, 500 `INTERNAL`; run 881, 100 four-digit ids), while `TargetRef` is `MAXLEN = 512` and 100 ids of up to 19 digits need about 2,040. The person's route stores no proposal and sends 100. **(a) is not tool-local**: the mint keys the target by the kernel (`Kernel/Proposal/Mint.cls:154` → `Operation.TargetRefOf`, no tool hook), and Confirm and the draft read the port's id back from the stored `TargetRef` (`Confirm.cls:687`, `Draft.cls:144`), and the person's hold keys by the same `EntityRef` rule (`Api/ScreenAction.cls:228-232`). So a bounded identity needs a new `EntityRef` rule mirrored in the client, a confirm and draft path that read the ids from the payload, and a person's route that keeps the raw ids. Otherwise the agent and the person hold two different locks on one set (AD-34). **Recommended fix, (b):** in `Propose.cls`, widen `TargetRef` to `MAXLEN = 2200`, add a stored computed `TargetKey` (`TargetLockKey(TargetRef)`, 64 hex), key `ProposalTargetIdx On (TargetKey As Exact, State)`, and filter the sibling cancel in `GuardedClaimAndClose` by `TargetKey` plus the exact `TargetRef`. Then rebuild the index for stored rows (proposals live 10 minutes) and turn `InteropResendLimits.TestTheAgentsCardCarriesTheWholeCapOfAHundredMessages` green, with a 19-digit-id leg. **(c)** (a 400 naming `Messages` for a set whose target does not fit) needs a Rule 5 amendment of AC2 and AC3 and is the orchestrator's call.
+  - **Lead ruling (rework 1):** take (b). It is inside Epic 20's footprint (`Kernel/**`) and no in-flight epic edits `Propose.cls`. Keep `TargetRef` exact and readable (Confirm and the draft still read it); the digest key only bounds the index subscript. Stored rows must keep working after an upgrade: read how the installer handles a changed index on a `Kernel.State` class (search `src/OcuPilot/Install` for `%BuildIndices` or index rebuilds, and the spine's "When `SCHEMAVERSION` moves" convention), rebuild `ProposalTargetIdx` there for existing rows, and say in Design Notes whether `SCHEMAVERSION` moves (a computed property every existing row reads safely after the rebuild does not move it). Pin it: the red `TestTheAgentsCardCarriesTheWholeCapOfAHundredMessages` goes green, a leg with 100 nineteen-digit ids is added, a sibling cancel still finds its sibling by the exact target, and an existing proposal row written before the change is still found after the rebuild.
+- [x] [Review][Patch] `RunScript` returned OK whatever the drafted script's `tSC` read, and left the script's variables in the process [src/OcuPilot/Test/InteropResendCase.cls:171]
+- [x] [Review][Patch] A session's header count read 1 for a session with no new header (`$Length("", ";")`) [src/OcuPilot/Test/InteropResend.cls:181,320; src/OcuPilot/Test/InteropResendLimits.cls:106]
+- [x] [Review][Patch] An edit that clears a field was never round-tripped through the stored `Fields` [src/OcuPilot/Test/InteropResendLimits.cls]
+- [x] [Review][Patch] The browser spec acted on Messages rows before the source search answered [ui/browser/interop-message-resend.browser-spec.mjs:135]
+- [x] [Review][Patch] The edit tool repeated the host test's `Fields` checks, parse and query (Rule 31; `InteropItemTestSend` now shares `FieldsProblem`, `FieldsFromText`, `FieldsQuery`) [src/OcuPilot/Screen/Tool/InteropMessageEditResend.cls]
+- [x] [Review][Patch] `MessageSet` repeated `EntityRef.PlainIntegerSet`'s ordering and `QueueDigest` repeated `Sha256Hex` (Rule 31) [src/OcuPilot/Port/InteropPort.cls:3807,4672]
+- [x] [Review][Patch] `DryRunRoute`'s "held no target" leg could not fail, because the agent's mint takes no hold [src/OcuPilot/Test/DryRunRoute.cls:78]
+- [x] [Review][Patch] The Messages empty state read "Or ask the agent: Or ask the agent to find and resend messages.." [ui/src/app/core/strings.ts:7476; EXPERIENCE.md :604]
+- [x] [Review][Patch] A document edit's review drew an empty `- ` and `+ ` line, because each hunk line ends in a line feed [ui/src/app/shell/screen-action-handler.ts reviewLinesOf]
+- [x] [Review][Patch] `RunningProduction` read a status the vendor could not read as not running (409) [src/OcuPilot/Port/InteropPort.cls:3870]
+- [x] [Review][Patch] `MessageSnippet` rendered every id of a set with no verdicts, against AD-62 (17) [src/OcuPilot/Port/InteropPort.cls:4561]
+- [x] [Review][Patch] Two `InteropResendGate` doc comments claimed checks the tests do not make [src/OcuPilot/Test/InteropResendGate.cls:166,227]
+- [x] [Review][Patch] `RemoveBodyClasses` ignored the `%KillExtent` and `DeletePackage` statuses [src/OcuPilot/Test/InteropResendFixture.cls:278]
+- [x] [Review][Patch] `ScreenDryRun`'s doc claimed the action route's envelope for every refusal; an unreadable body differs [src/OcuPilot/Api/ScreenDryRun.cls:4]
+- [x] [Review][Patch] EXPERIENCE.md :173 named no outcome after a confirmed review [EXPERIENCE.md :173]
+- [x] [Review][Defer] The other Epic 20 interop empty states garble the same way [ui/src/app/core/strings.ts:6635-7279] — deferred: pre-existing in 20.3 to 20.27, DW-2452 routed burndown
+- [x] [Review][Defer] `ScreenDryRun.Handle` repeats `ScreenAction.Handle`'s body preamble [src/OcuPilot/Api/ScreenDryRun.cls:17] — deferred: the spec kept `ScreenAction` add-only, DW-2453 wontfix-accepted
+
+**Rejected:**
+
+- No in-flight guard after a confirmed review, and an empty outcome on `installing`: low. The window is one request, and a second send needs a new review, the typed count and a confirm.
+- The Header tab's Resend is served by the Messages route: by design, because the Task has the page call `startDryRun(InteropMessageList, …)`.
+- The NONE banner shows only the published sentence: by design. The list's banner is the refusal sentence.
+- `targetoff` is read from the stored configuration and implicit hosts: by design (the verdict is defined over the production's items). A target the vendor then refuses reads `not resent: <text>`.
+- `EditCloneHere` after a vendor throw, its `%DeleteId` status and no `%EXACT`: theoretical. The vendor answers statuses, and class names differ by more than case.
+- `<PROTECT>` after earlier resends, and an action without `Reviewed`: closed in the implement review.
+- A clone that fails validation or save answers 500: low. Each value is validated at the read.
+- HL7 `DocType` kept after an MSH-9 change: false. The vendor's `%ProcessSubmit` (`MsgBodyMethods.cls:158-197`) keeps it, as the spec requires.
+- `007` admitted for a person, refused for the agent: low. Only a hand-written body reaches it, and AD-13 names `007` and `7` one entity.
+- A Header-tab resend unchecks the Messages rows, a review in flight across a cancel and reopen, and an outcome for an unmounted list: low and rare; each fix adds a guard.
+- AC7's mirror leg has no mutation line: false. Rule 19 asks one per AC, and AC7 has three.
+- `DRY_RUN_ACTIONS` is not pinned to the server: low, because no other `DRYRUN` tool exists.
+- `Original` omits properties the form does not show, one edit records several `ViewContents` rows, and the empty state invites a key that ships off: each by design (spec Design Notes, Always and Strings).
+- Copied `EnableKey` and the gate's own helpers: low. They are test-only, and the pattern is shared by three interop suites.
+
 ## Spec Change Log
 
 - 2026-10-14, spec gate (runner): Q1 is answered as recommended (one story: no split, so nothing is deferred), and Q2's named limits are accepted (a new target, head of queue, resend of every match, and editing X12, EDIFACT or ASTM bodies are out of scope; the criterion's double gate and cap hold for what ships). Both keys ship `false`, as the orchestrator's 2026-10-13 guidance and AD-22 direct. The Rule 20 drafts are written (AD-62 item 17, AD-53, AD-51, AD-8, AD-44, AD-13, AD-22).
+- 2026-10-15: re-opened for rework iteration 1 (code review's one HIGH, the long-set proposal target; lead ruling (b) under Review Findings).
 
 ## Review Triage Log
 
@@ -551,6 +593,17 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Lines were
     - `[low]` `[reject]` The browser edit covers an `Ens.StringRequest` only — the spec names that body for AC5's browser leg and `InteropEditResend` pins the HL7 path.
     - `[low]` `[reject]` The browser spec runs as the all-privilege account — the gate is pinned for restricted principals at the port, the tools and both routes (`InteropResendGate`); the browser leg checks the screens.
     - `[low]` `[reject]` A vendor `<PROTECT>` stops the write with 403 instead of continuing — a privilege fault repeats for every message, and the gate has already asked for WRITE on the globals database; the case is not reachable with the gate in place.
+
+### 2026-10-15 — Code review (cr stage)
+
+- verdicts: 42 raw findings (41 from the layers, and QA's HIGH) in 37 entries — high 1 (open), medium 9, low 8, rejected 19 (false 2).
+- open: the HIGH in `### Review Findings` (proposal target overflow). Fix (b) is recommended because (a) is not tool-local; (c) is a Rule 5 ask.
+- patched: 15 (medium 8, low 7). Ledger: DW-2452 (medium, routed burndown) and DW-2453 (low, wontfix-accepted).
+- verified on `ocupilot-b-ci` (tree reloaded, bundle redeployed):
+  - green: `InteropResendDescriptor` 8, `InteropResend` 9, `InteropEditResend` 13, `DryRunRoute` 2 and `InteropResendGate` 4;
+  - `InteropResendLimits` 7, red only on the open HIGH;
+  - the host-test suites `InteropHostTest` 12, `InteropHostTestEdges` 5 and `InteropHostTestRefusals` 7, and `InteropQueueActions` 10;
+  - `test:tools` 2026, `test:components` 3238, `build`, and `interop-message-resend` 5 of 5.
 
 ## Design Notes
 
@@ -808,6 +861,27 @@ Not moved: `InteropFloor` (no principal holds a write tool; confirm in the sweep
 - mutation: AC1, `ReadEdit` drops its not-running refusal -> `InteropEditResend.TestAStoppedProductionIsRefusedByTheEditReadReviewAndWrite`, alone.
 - mutation: AC6, `PerformResend` and `PerformEditResend` each record an OcuPilot `ConfigChange` row -> `InteropResend.TestTheAgentsResendConfirmsOverHttp` and `InteropEditResend.TestTheAgentsEditAndResendConfirmsOverHttp`, each alone.
 - mutation: AC2, `ReadResend` refuses a set naming `message` in place of `Messages` -> `InteropResend.TestASetOverTheCapOrMalformedIsRefusedWholeAndNothingIsSent`, alone.
+
+**QA pass (Rule 19).** Each ObjectScript mutation was applied on `ocupilot-b-ci` with the tree reloaded, and each client one under `ng test --include <spec>`; every one read red and was reverted byte-identical (SHA-256 before and after).
+
+- (QA) tests added, all armed and listed on the `# classes:` line of `scripts/ci-throwaway.sh` (`ui/tools/ci.test.mjs` DW-1276 holds the line equal to the classes that declare the variable): `src/OcuPilot/Test/InteropResendLimits.cls` (6 tests: the cap at 100 and 101 on real messages, a forged or foreign digest, each key off then on then put back, the outcome line of a refused message), `src/OcuPilot/Test/InteropResendSweep.cls` (2 tests: the sweep of `ProductionProbe`), and two tests added to `src/OcuPilot/Test/InteropEditResend.cls` (now 13: a forged or foreign digest for the edit, and an edit refused at the review and at the mint).
+- (QA) `InteropResendLimits.TestTheAgentsCardCarriesTheWholeCapOfAHundredMessages` is red on the shipped code: the agent's mint of 100 messages answers `INTERNAL` because the proposal target (type, scope and the ids) exceeds the proposal store's index subscript. The same test is green with 60 messages, so its assertions are sound; a mutation does not apply to a test that is red unmutated.
+- (QA) mutation: AC2, `RESENDMAX` 99, and again 101 -> `InteropResendLimits.TestAHundredMessagesGoAndAHundredAndOneAreRefusedWholeWithNothingSent`.
+- (QA) mutation: AC4, `ReadResend` compares the first 8 characters of the digest -> `InteropResendLimits.TestAForgedTruncatedOrForeignDigestIsRefusedAndOnlyTheReviewedOneSends`, alone.
+- (QA) mutation: AC4, `ReadEdit` compares the first 8 characters of the digest -> `InteropEditResend.TestAForgedTruncatedOrForeignDigestIsRefusedForTheEditAndOnlyTheReviewedOneSends`, alone.
+- (QA) mutation: AC5, `ReadEdit` drops the credential-named test of its object branch -> `InteropEditResend.TestWhatAnEditRefusesIsRefusedTheSameAtTheReviewAndTheMint` and `TestWhatCannotBeEditedIsRefusedWithNothingSent`; `InteropMessageEditResend.PortQuery` drops the action key (the review and the mint read leniently) -> `TestWhatAnEditRefusesIsRefusedTheSameAtTheReviewAndTheMint` and `TestThePersonsEditAndResendReviewsTheFormThenTheChange`, while the port-level test stays green.
+- (QA) mutation: AC3, `interop.messages.resend` ships `true` -> `InteropResendLimits.TestTheResendKeyAloneDecidesWhetherTheAgentMintsAndAPersonIsNeverAsked`, alone; `interop.messageheader.editresend` ships `true` -> `TestTheEditKeyAloneDecidesWhetherTheAgentMintsAndAPersonIsNeverAsked`, alone.
+- (QA) mutation: AC1, `InteropMessageAction.WriteOutput` reads every entry as sent -> `InteropResendLimits.TestAVendorRefusalReadsNotResentWithTheVendorsTextOnTheOutcome`, alone.
+- (QA) mutation: AC7, one class dropped from the `# classes:` line -> `ui/tools/ci.test.mjs` DW-1276, alone.
+- (QA) mutation: `SweepSince` reads the body class in upper case -> `InteropResendSweep.TestTheSweepRemovesWhatAboveTheMarkAndKeepsWhatAHeaderBelowItNames`, alone; deletes a body without asking whether a header still names it -> the same test, alone; accepts any mark -> `InteropResendSweep.TestAMarkThatIsNotAPairOfNumbersSweepsNothing`, alone.
+- (QA) mutation: client, each reverted byte-identical: `OutcomeDialog` drops `(closed)` -> `outcome-dialog.spec.ts` closes-on-Close, alone; draws the list for a refusal -> its refusal test, alone; draws a line through `innerHTML` -> its text test, alone; the Header page sends every field in place of the changed ones -> `interop-message-header.page.spec.ts` changed-fields test, alone; the Header page leaves the form open for the review -> the same test, alone; `DESCRIPTOR_PAGES` drops the Header tab -> `screen-outlet.spec.ts` Header-page test, alone; `dryRunFor` drops the `DRY_RUN_ACTIONS` test -> `screen-action-handler-resend.spec.ts` listed-actions test, alone; the mirror declares `max` 101 -> `screen-action-handler-resend.spec.ts` cap test, alone.
+
+**Code-review pass (Rule 19).** Each mutation was applied on `ocupilot-b-ci`, with the whole tree reloaded (or, for the client, under `ng test --include`). Each read red and was reverted byte-identical (SHA-256 checked).
+
+- (CR) mutation: AC5, `CanonicalFields` ignores its keep-empty flag -> `InteropResendLimits.TestAnEditThatClearsAFieldSendsACopyWithTheFieldEmpty`, alone beside the open HIGH's test.
+- (CR) mutation: AD-59, `MessageSnippet` renders each resend line behind `If 0` -> `InteropResend.TestTheCopyOutDraftOfAResendRendersItsScriptAndRunningItDoesTheSame`, alone (each session gained 0); ends the resend script with an error status -> the same test, alone ("the script runs").
+- (CR) mutation: AD-34, `ScreenAction.Run` takes the hold for a preview too -> `DryRunRoute.TestTheAnswerIsRowsAndReviewAndTheRowsAreTheAgentsCardRows`, alone.
+- (CR) mutation: client, `reviewLinesOf` splits a text without ending its closing line feed -> `screen-action-handler-resend.spec.ts` document-edit test, alone.
 
 ## Auto Run Result
 
