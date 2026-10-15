@@ -81,6 +81,43 @@ export async function until(read, accept, what, timeoutMs) {
   assert.fail(`${what}: waited ${timeoutMs} ms, last read ${JSON.stringify(last)}`);
 }
 
+/** The selector of the frame an editor screen draws. */
+export const SCREEN_FRAME_SELECTOR = 'app-interop-editor-frame iframe';
+
+/** The editor screen has answered the list's read: its section is no longer busy and it draws a block. */
+export async function answered(page, timeoutMs) {
+  await page.waitForFunction(
+    () => {
+      const section = document.querySelector('app-interop-editor-page section');
+      return section !== null && section.getAttribute('aria-busy') === 'false' && section.querySelector('[data-ocu-editor]') !== null;
+    },
+    { timeout: timeoutMs }
+  );
+}
+
+/** The screen's frame, as a puppeteer frame, once it is drawn. */
+export async function editorFrame(page, timeoutMs) {
+  const handle = await page.waitForSelector(SCREEN_FRAME_SELECTOR, { timeout: timeoutMs });
+  return handle.contentFrame();
+}
+
+/** Wait until the frame's editor shows the signed-in person `username` and `text`, answering the puppeteer frame. */
+export async function editorShows(page, username, text, timeoutMs) {
+  const frame = await editorFrame(page, timeoutMs);
+  await until(() => frame.evaluate(() => document.body.innerText), (body) => body.includes(username) && body.includes(text), `the editor shows ${text}`, timeoutMs);
+  return frame;
+}
+
+/** Wait until the editor's snackbar holds a sentence `accept` takes, and answer the sentence. */
+export async function snackbarWhere(frame, accept, what, timeoutMs) {
+  return until(
+    () => frame.evaluate(() => Array.from(document.querySelectorAll('.mdc-snackbar__label')).map((node) => node.innerText.trim())),
+    (labels) => labels.some(accept),
+    what,
+    timeoutMs
+  ).then((labels) => labels.find(accept));
+}
+
 /** The tab's `sessionStorage` keys and OcuPilot's stored pair, exactly as stored. */
 export function tabSnapshot(page) {
   return page.evaluate((pairKey) => ({ keys: Object.keys(sessionStorage), pair: sessionStorage.getItem(pairKey) }), PAIR_STORAGE_KEY);

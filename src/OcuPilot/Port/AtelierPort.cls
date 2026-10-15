@@ -464,6 +464,11 @@ Parameter MAXDOCUMENTS As INTEGER = 100;
 /// answers as a soft error rather than as <code>&lt;PROTECT&gt;</code> (AD-61 rule 6).</p>
 Parameter ACCESSDENIEDCODES = "5838,5883,302";
 
+/// <p>The vendor's message numbers for the source-control edit check of a save: not editable (#5845), not
+/// checked out (#5865) and read-only by source control (#6151). A source-control hook's own
+/// <code>OnBeforeSave</code> error is not among them: the vendor wraps it in #16008 (AD-61 rule 6).</p>
+Parameter SOURCECONTROLCODES = "5845,5865,6151";
+
 /// <p>The vendor's message number for a document another process holds.</p>
 Parameter LOCKEDCODE = 5864;
 
@@ -842,7 +847,8 @@ ClassMethod MinVersion(pEndpoint As %String, pType As %String = {..#REQUESTTYPE}
 /// 404 <code>PORT.NOTFOUND</code>; 404 <code>EXPLORER.DOCUMENT.ABSENT</code> for a write naming a
 /// document the namespace does not hold, with nothing sent; a file's own refusals
 /// (<method>ExportFile</method>, <method>ImportSource</method>, <method>ImportSet</method>); a save's
-/// own (<method>SaveSet</method>); 403
+/// own (<method>SaveSet</method>), among them 409 <code>EXPLORER.DOCUMENT.SOURCECONTROL</code> for a document
+/// the source-control class has not released for editing; 403
 /// <code>PORT.ACCESSDENIED</code> for
 /// the vendor's own privilege refusal; 503 <code>PORT.UNAVAILABLE</code> for an answer above
 /// <parameter>CAPTURECEILING</parameter>; and 500 <code>INTERNAL</code> for anything else.</p>
@@ -2488,9 +2494,11 @@ ClassMethod ImportSet(pVersion As %Integer, pNamespace As %String, ByRef pQuery,
 /// feed) are put with <code>PUT doc/&lt;name&gt;</code>, carrying <code>version</code> as
 /// the vendor's <code>If-None-Match</code> (a create sends none) and never <code>ignoreConflict</code>, so a
 /// document changed since the read is refused 409 <code>EXPLORER.DOCUMENT.CONFLICT</code> and one another process holds
-/// 409 <code>EXPLORER.DOCUMENT.LOCKED</code>, neither logged as a fault, and a text the vendor refuses under 200
-/// is 422 <code>EXPLORER.SAVE.REFUSED</code>, or 403 <code>PORT.ACCESSDENIED</code> for an access
-/// refusal (<method>Outcome</method>);</li>
+/// 409 <code>EXPLORER.DOCUMENT.LOCKED</code>, neither logged as a fault, one the namespace's source-control class
+/// has not released for editing 409 <code>EXPLORER.DOCUMENT.SOURCECONTROL</code>, and a text the vendor refuses under
+/// 200 is 422 <code>EXPLORER.SAVE.REFUSED</code>, or 403 <code>PORT.ACCESSDENIED</code> for an access
+/// refusal (<method>Outcome</method>); the put and the compile run the class's save and compile hooks in this
+/// process, as the caller (AD-61 rule 8);</li>
 /// <li>once it saved, with <code>Compile</code> on, the document is compiled with
 /// <parameter>IMPORTCOMPILEFLAGS</parameter>.</li>
 /// </ol>
@@ -3127,8 +3135,11 @@ ClassMethod Route(pVersion As %Integer, pNamespace As %String, pMethod As %Strin
 /// <p><code>PutDoc</code>'s own answers (AD-61 rule 6): 409, a version that no longer matches, is 409
 /// <code>EXPLORER.DOCUMENT.CONFLICT</code>, and 423, a document another process holds, is 409
 /// <code>EXPLORER.DOCUMENT.LOCKED</code>, neither logged as a fault and neither carrying the vendor's
-/// text, the lock's text going to the log at information severity (<method>LogNote</method>); and,
-/// without <var>pSoft</var>, an error under a 2xx status that is not an access refusal is 422
+/// text, the lock's text going to the log at information severity (<method>LogNote</method>); a 400 or,
+/// without <var>pSoft</var>, a 2xx answer that is no access refusal and whose text names one of
+/// <parameter>SOURCECONTROLCODES</parameter>, the source-control edit check, is 409
+/// <code>EXPLORER.DOCUMENT.SOURCECONTROL</code>, its text logged the same way, and any other 400 is
+/// <code>PORT.VALIDATION</code>; and, without <var>pSoft</var>, any other error under a 2xx status is 422
 /// <code>EXPLORER.SAVE.REFUSED</code>, logged.</p>
 ClassMethod Outcome(pMethod As %String, pCallSC As %Status, pHttp As %Integer, pText As %String, pOverflow As %Boolean, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pSoft As %Boolean = 0, Output pConsole As %DynamicArray, Output pErrors As %Boolean) As %Status [ Private ]
 {
@@ -3184,6 +3195,11 @@ ClassMethod Outcome(pMethod As %String, pCallSC As %Status, pHttp As %Integer, p
             Do ..LogNote(pMethod _ " found the document held by another process", tRawSC, pFault.code)
             Quit tSC
         }
+        If (pMethod = "PutDoc") && (pHttp = 400) && ..NamesCode(tCodes, tRaw, ..#SOURCECONTROLCODES) {
+            Set tSC = ..Refuse(409, ##class(OcuPilot.Api.Error).#CONFLICT, ##class(OcuPilot.Api.AtelierError).#DOCUMENTSOURCECONTROL, ##class(OcuPilot.Api.AtelierError).#REASONDOCUMENTSOURCECONTROL, .pHttpStatus, .pFault)
+            Do ..LogNote(pMethod _ " found the document not released for editing by source control", tRawSC, pFault.code)
+            Quit tSC
+        }
         If pHttp = 400 {
             Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONVALIDATION, .pHttpStatus, .pFault)
         } ElseIf pHttp = 403 {
@@ -3203,9 +3219,14 @@ ClassMethod Outcome(pMethod As %String, pCallSC As %Status, pHttp As %Integer, p
         Quit $$$OK
     }
     If $$$ISERR(pCallSC) || (tErrors '= "") || 'tParsed {
-        If (tRaw [ "<PROTECT>") || ..AccessDenied(tCodes, tRaw) {
+        If (tRaw [ "<PROTECT>") || ..NamesCode(tCodes, tRaw, ..#ACCESSDENIEDCODES) {
             Set tSC = ..Refuse(403, ##class(OcuPilot.Api.Error).#FORBIDDEN, ##class(OcuPilot.Api.Error).#PORTACCESSDENIED, ..#REASONACCESSDENIED, .pHttpStatus, .pFault)
             Do ..LogFault(pMethod _ " was refused", tRawSC, pFault.code)
+            Quit tSC
+        }
+        If (pMethod = "PutDoc") && ..NamesCode(tCodes, tRaw, ..#SOURCECONTROLCODES) {
+            Set tSC = ..Refuse(409, ##class(OcuPilot.Api.Error).#CONFLICT, ##class(OcuPilot.Api.AtelierError).#DOCUMENTSOURCECONTROL, ##class(OcuPilot.Api.AtelierError).#REASONDOCUMENTSOURCECONTROL, .pHttpStatus, .pFault)
+            Do ..LogNote(pMethod _ " found the document not released for editing by source control", tRawSC, pFault.code)
             Quit tSC
         }
         If (pMethod = "PutDoc") && tParsed {
@@ -3239,12 +3260,12 @@ ClassMethod ConsoleCountsErrors(pConsole) As %Boolean
     Quit tCounts
 }
 
-/// <p>Whether a soft error is the vendor's privilege or read-only refusal: a message number in
-/// <var>pCodes</var>, or one <var>pRaw</var> names as <code>#&lt;number&gt;:</code>, is one of
-/// <parameter>ACCESSDENIEDCODES</parameter>.</p>
-ClassMethod AccessDenied(pCodes As %List, pRaw As %String) As %Boolean [ Private ]
+/// <p>Whether a soft error names one of the vendor's message numbers in the comma list <var>pList</var>
+/// (<parameter>ACCESSDENIEDCODES</parameter> or <parameter>SOURCECONTROLCODES</parameter>): a number in
+/// <var>pCodes</var>, or one <var>pRaw</var> names as <code>#&lt;number&gt;:</code>.</p>
+ClassMethod NamesCode(pCodes As %List, pRaw As %String, pList As %String) As %Boolean [ Private ]
 {
-    Set tDenied = $ListFromString(..#ACCESSDENIEDCODES)
+    Set tDenied = $ListFromString(pList)
     Set tFound = 0
     For tI = 1:1:$ListLength(tDenied) {
         Set tCode = $List(tDenied, tI)
