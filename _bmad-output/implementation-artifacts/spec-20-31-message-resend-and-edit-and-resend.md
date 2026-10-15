@@ -2,9 +2,9 @@
 title: 'Story 20.31: Message resend and edit-and-resend'
 type: 'feature'
 created: '2026-10-13'
-status: 'in-progress'
-baseline_revision: 'b52c8926189c91b25c5739cf7828616434a1290d'
-baseline_commit: 'b52c8926189c91b25c5739cf7828616434a1290d'
+status: 'done'
+baseline_revision: 'b455879557a7af2fa176d8abd7151d35ccce9c33'
+baseline_commit: 'b455879557a7af2fa176d8abd7151d35ccce9c33'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -13,7 +13,14 @@ context:
   - '{project-root}/_bmad-output/implementation-artifacts/spec-20-9-messages-search-view-resend-and-trace.md'
   - '{project-root}/_bmad-output/implementation-artifacts/spec-20-23-queue-and-job-actions.md'
 warnings: [oversized, multiple-goals]
-deferred: []
+deferred:
+  - summary: >-
+      No check before CI fails when a Parameter whose value is a {...} expression names a project class that its class neither extends nor declares DependsOn for.
+    evidence: |-
+      A fresh container compile built Test/InteropEditResend before Test/InteropResendFixture and failed LOAD-FAILED (CI run 38772231768); Test/DraftLoser.cls documents the same trap. scripts/check-objectscript.py has no rule on expression-valued parameters, and DependsOn appears in no file under scripts/, ui/tools/ or .github/. A rule would flag a Parameter value that begins with a brace and names an OcuPilot class through ##class, $Parameter or $ClassMethod when the class has no matching Extends or DependsOn, with a case in scripts/test_check_objectscript.py.
+    location: >-
+      scripts/check-objectscript.py
+    severity: medium
 ---
 
 <intent-contract>
@@ -615,7 +622,7 @@ Rework 2 (the runner's Rule 30 fresh check and full sweep on a rebuilt throwaway
 
 Rework 3 (CI run 38772231768 on 45f97556):
 
-- [ ] [CI] instance shards 5/8 and 6/8, browser shards 1/5 and 2/5 and both `images` jobs failed at the container's compile: `LOAD-FAILED: ERROR #5002 <CLASS DOES NOT EXIST>pBODYCLASS+1^OcuPilot.Test.InteropEditResend.G1 *OcuPilot.Test.InteropResendFixture` (ERROR #5574, the generator for `InteropEditResend:BODYCLASS` and `:OWNBODYCLASS`) [src/OcuPilot/Test/InteropEditResend.cls:12,26,28] -- the two parameters are compile-time expressions on `InteropResendFixture`, and a fresh compile does not always build the fixture first (the other shards and the local throwaway happened to). Declare the dependency on the class (`[ DependsOn = OcuPilot.Test.InteropResendFixture ]`, as `Test/DraftLoser.cls` does for its `{##class(...)}` parameters, with a one-line doc note saying why), search `src/OcuPilot` for every other parameter whose value is a `{...}` expression naming another project class and add the same `DependsOn` where it is missing, and prove it: compile `src/OcuPilot` into a namespace where `InteropResendFixture` does not yet exist (or delete the fixture's compiled class first) and show the old declaration fails and the new one compiles. The `gates (node 26.0.0)` red in the same run is `log-viewer.spec.ts` AC6 (DW-2458, routed to Story 23.11): do not touch that test.
+- [x] [CI] instance shards 5/8 and 6/8, browser shards 1/5 and 2/5 and both `images` jobs failed at the container's compile: `LOAD-FAILED: ERROR #5002 <CLASS DOES NOT EXIST>pBODYCLASS+1^OcuPilot.Test.InteropEditResend.G1 *OcuPilot.Test.InteropResendFixture` (ERROR #5574, the generator for `InteropEditResend:BODYCLASS` and `:OWNBODYCLASS`) [src/OcuPilot/Test/InteropEditResend.cls:12,26,28] -- the two parameters are compile-time expressions on `InteropResendFixture`, and a fresh compile does not always build the fixture first (the other shards and the local throwaway happened to). Declare the dependency on the class (`[ DependsOn = OcuPilot.Test.InteropResendFixture ]`, as `Test/DraftLoser.cls` does for its `{##class(...)}` parameters, with a one-line doc note saying why), search `src/OcuPilot` for every other parameter whose value is a `{...}` expression naming another project class and add the same `DependsOn` where it is missing, and prove it: compile `src/OcuPilot` into a namespace where `InteropResendFixture` does not yet exist (or delete the fixture's compiled class first) and show the old declaration fails and the new one compiles. The `gates (node 26.0.0)` red in the same run is `log-viewer.spec.ts` AC6 (DW-2458, routed to Story 23.11): do not touch that test.
 
 ## Spec Change Log
 
@@ -723,6 +730,16 @@ Rework 3 (CI run 38772231768 on 45f97556):
 - verdicts: 15 raw findings in 10 entries — high 0, medium 0, low 7, false 3. The Edge Case Hunter's one finding was discarded because the layer wrote scratch files.
 - patched: 1 (low), the `mutation:` line for the route's pair gate. `InteropResendGate` read red under the mutation (run 757), was reverted with the trees equal, and read green 4 of 4 (run 758).
 - rejected: 9 (low 6, false 3), each with its reason under Review Findings. Ledger: none.
+
+### 2026-10-15 — Review pass (rework 3, follow-up)
+
+- scope: `b4558795..` (one class declaration and the spec's tracking sections). The `[CI]` item is confirmed fixed: the sweep reproduced (17 expression-valued `Parameter` statements in 14 classes; `InteropEditResend` was the only one missing its dependency), `ocupilot-b-ci` holds the declaration and `InteropEditResend` 13, `InteropResend` 9 and `InteropResendLimits` 8 read green (runs 53 to 55).
+- verdicts: 4 findings — high 0, medium 1, low 0, false 3, maybe-false 0
+- findings:
+    - `[medium]` `[defer]` No check before CI fails when a `Parameter` whose value is a `{...}` expression names a project class its class neither extends nor declares `DependsOn` for [scripts/check-objectscript.py] — the second occurrence after `Test/DraftLoser.cls`; out of this story's footprint and the rule is the pending candidate, so it is deferred (frontmatter `deferred:`), not added here.
+    - `[false]` `[reject]` The contract has no clause on compile order, so the diff is not justified by it — the contract's proof surface is this test class, which must load in a fresh container; no clause is violated.
+    - `[false]` `[reject]` The `Class` line edit is not add-only for a contended file — `InteropEditResend.cls` is this story's own test class and is on no contended list (Design Notes, Contended files).
+    - `[false]` `[reject]` The frontmatter reads `in-review` while the Auto Run Result opens `Status: done`; the rewritten result drops earlier passes' lines — the finalize step writes `done` in this run, and a rework's result covers only its own pass (Prose discipline).
 
 ## Design Notes
 
@@ -1028,16 +1045,22 @@ Not moved: `InteropFloor` (no principal holds a write tool; confirm in the sweep
 - Rework 2: on `ocupilot-b-ci` (tree reloaded, `src` equal to the worktree), green, one class per call: `DeveloperFloorRoutes` 1 (run 743), `InteropFloorRoutes` 1 (744), `InteropDescriptor` 12 (745), `DryRunRoute` 2 (746) and `InteropResend` 9 (747). The code-roster and route-roster search (`src/OcuPilot/Test`, `ui/tools`) found no other roster that misses this story's codes or its dry-run route (`ui/tools/interop.test.mjs`, `EndpointCoverage` and `SaveHoldCoverage` already hold them). `check-objectscript` and `lint-docs` clean.
 - (CR) mutation: AC6, `ScreenAction.Run` skips its pair gate for a preview -> `InteropResendGate.TestEachMissingPairIsRefusedByNameOnTheScreenRoutes`, alone: `OcuS31NoWrite`'s resend and edit dry runs answer 200 for 403 `%DB_USER:WRITE` (run 757). It was reverted by syncing the worktree, the trees were equal, and the class read green (run 758). The floor sweeps' dry-run row stays green under this mutation, because the port's refusal also names a pair.
 
+**Rework 3 pass (Rule 19).** On `ocupilot-b-ci`, `src` synced from the worktree; only the compiled classes were deleted, never a source file.
+
+- mutation: CI compile order, `InteropEditResend` without `DependsOn = OcuPilot.Test.InteropResendFixture` -> with both classes deleted and reloaded uncompiled, compiling `InteropEditResend` alone fails with the CI error (`ERROR #5002 <CLASS DOES NOT EXIST>pBODYCLASS+1^OcuPilot.Test.InteropEditResend.G1 *OcuPilot.Test.InteropResendFixture`, ERROR #5574, again for `OWNBODYCLASS`). With the declaration it compiles and compiles the fixture first (compiled rows E/F `1/0` before, `1/1` after). The whole tree was then reloaded (`LoadDir`, 0 errors).
+- Parameters checked: every `Parameter` statement under `src/OcuPilot` (13,942, parsed over its lines for a value that begins with `{`) gives 17 expression-valued parameters in 14 classes; greps for `= {` (17), a trailing `=` (0) and `##class`, `$Parameter` or `$ClassMethod` on a Parameter line (9) agree. Already covered: `Api/Router` (2), `Port/ProviderPort` and `Port/ScreenAccessPort` (`DependsOn` `Screen.Gate`); `Screen/Tool/InteropEditorSource` (`DependsOn` `InteropEditorSave`); `Test/DraftLoser` (2, `DependsOn` `Kernel.State.Propose`); the eight `DESCRIPTION` expressions name only `..#CUTTEXT`, `..#WARN` and `..#MATCHRULE`, each defined in a superclass. Missing: `Test/InteropEditResend` (2), added; no other class changed.
+- Green, one class per call (runs 53 to 55): `InteropEditResend` 13, `InteropResend` 9, `InteropResendLimits` 8; `InteropResendFixture` holds no test. `check-objectscript` and `lint-docs` clean.
+
 ## Auto Run Result
 
 Status: done
 Blocking condition: none
 
-**This pass (rework 2).** Closes the two `[Smoke]` items of the runner's Rule 30 fresh check. Test code only; no product file changed.
+**This pass (rework 3).** Closes the `[CI]` item: `Test/InteropEditResend.cls` declares `DependsOn = OcuPilot.Test.InteropResendFixture` for its two `$Parameter` expressions, with a one-line doc note. Test code only; no product file changed, and no other class needed the declaration (Verification, Rework 3 line).
 
-- `Test/DeveloperFloorRoutes.cls`: `ConcretePath` gives `POST /screens/:screen/dryrun` the action route's body (an action and an absent id), against `DRYRUNSCREEN` and `DRYRUNACTION`, because the dry-run route answers 404 for a tool that declares no dry run. `InteropFloorRoutes` shares it. `ScreenDryRun` needed no change: both routes check the body before the gate.
-- `Test/InteropDescriptor.cls`: the code roster of `TestEveryInteropErrorCodeResolvesToItsSentence` gains the nine codes this story added.
-- **Review.** 7 findings: patched 1 (low), rejected 6 (low 1, false 5), each with its reason in the Review Triage Log.
-- **Verification (`ocupilot-b-ci`).** The five `(loop)` classes green (Verification, Rework 2 line), `check-objectscript` and `lint-docs` clean. Mutations are the Rework 2 lines under Verification, each reverted byte-identical.
+- **Files changed.** `src/OcuPilot/Test/InteropEditResend.cls` (the `DependsOn` and its doc note); this spec (the `[CI]` item ticked, Verification > Rework 3 pass, this result).
+- **Review.** 4 findings: patched 0, deferred 1 (medium, frontmatter `deferred:`), rejected 3 (false 3), each with its reason in the Review Triage Log.
+- **Verification (`ocupilot-b-ci`).** The old declaration fails the CI error on a fresh compile and the new one compiles (Verification, Rework 3 line); `InteropEditResend` 13, `InteropResend` 9 and `InteropResendLimits` 8 green (runs 53 to 55); `check-objectscript` and `lint-docs` clean. The parameter sweep was reproduced by the review: 17 expression-valued `Parameter` statements in 14 classes, one missing its dependency.
+- **Rule candidate (not added).** A `scripts/check-objectscript.py` rule could flag a `Parameter` whose value is a `{...}` expression naming a project class through `##class`, `$Parameter` or `$ClassMethod` when the class has no matching `Extends` or `DependsOn`; deferred above.
 - **Follow-up review recommended: false.** This pass patched no HIGH.
-- **Residual risks.** The handoff once sent two test-runner calls in one message and re-ran both alone; the later runs read `0 overlap(s)`. The full ObjectScript sweep, `npm test`, the smoke and Rule 30's fresh check are the runner's.
+- **Residual risks.** The CI re-run, the full ObjectScript sweep, the smoke and Rule 30's fresh check are the runner's. The unrelated `gates (node 26.0.0)` red (`log-viewer.spec.ts` AC6, DW-2458) is untouched.

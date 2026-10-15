@@ -9,7 +9,8 @@
 /// <parameter>ARMINGVARIABLE</parameter> reading <code>1</code>, because it <b>compiles and runs a probe production in
 /// <code>USER</code></b>, compiles the request classes of <parameter>OcuPilot.Test.InteropResendFixture.BODYPACKAGE</parameter> there
 /// and sends messages to the production (<class>OcuPilot.Test.InteropResendCase</class>). One class per run.</p>
-Class OcuPilot.Test.InteropEditResend Extends OcuPilot.Test.InteropResendCase
+/// <p><code>DependsOn</code> is required: <parameter>BODYCLASS</parameter> and <parameter>OWNBODYCLASS</parameter> are compile-time expressions over <class>OcuPilot.Test.InteropResendFixture</class>.</p>
+Class OcuPilot.Test.InteropEditResend Extends OcuPilot.Test.InteropResendCase [ DependsOn = OcuPilot.Test.InteropResendFixture ]
 {
 
 /// <p>The environment variable that arms this class, set by <file>scripts/ci-throwaway.sh</file> alone.</p>
