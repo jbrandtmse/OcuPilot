@@ -901,3 +901,4 @@
 2026-10-15T06:55:13Z	Story 20.35	plan_clarification_requested	spawn_at=(see_stage_spawned) model=opus agent_name=20-35-plan-1 build_status=blocked(intent_gap:AD-65,AD-60,AD-11) q1=detection_scope(comment-split_keywords_measured;%PARM_braces_run_X_from_source) q2=SurfaceCoverage_row_impossible(write-only_roster;apply-and-report) recommended=Q1_A(tokens+quoted_strings,add_%PARM,stored_definitions_named_limit;amend_20.33_before_implement)
 2026-10-15T06:55:22Z	Story 20.30	ci_resolved	story=20.30 run=38690133651 result=success head=ba97a70b resolved_at=next_implement
 2026-10-15T06:55:22Z	Story 20.30	ci_green_verified	run=38690133651 head=ba97a70b
+2026-10-15T06:55:59Z	Story 20.31	stage_spawned	stage=implement spawn_at=2026-10-15T06:55:59Z model=sonnet agent_name=20-31-implement-1 cycle_iteration=1 note=20.30_ci_resolved_success_38690133651
