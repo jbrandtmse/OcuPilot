@@ -12127,3 +12127,4 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-20-31-message-resend-and-edit-and-resend.md (rework 3 deferred) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: CI run 38772231768: four shards and both image builds failed LOAD-FAILED because InteropEditResend compiled before InteropResendFixture; Test/DraftLoser.cls documents the same trap (second occurrence)
 - 2026-10-15T17:44:49Z status=routed owner=burndown by=harvest note=a structural rule in scripts/check-objectscript.py plus its harness case
+- 2026-10-15T17:56:53Z status=routed owner=burndown by=cr note=rule scope: resolve ..#NAME args via own/inherited params (e.g. ..#FIXTURE); Extends covers the chain

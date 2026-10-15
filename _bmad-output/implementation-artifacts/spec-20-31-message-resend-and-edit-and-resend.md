@@ -624,6 +624,19 @@ Rework 3 (CI run 38772231768 on 45f97556):
 
 - [x] [CI] instance shards 5/8 and 6/8, browser shards 1/5 and 2/5 and both `images` jobs failed at the container's compile: `LOAD-FAILED: ERROR #5002 <CLASS DOES NOT EXIST>pBODYCLASS+1^OcuPilot.Test.InteropEditResend.G1 *OcuPilot.Test.InteropResendFixture` (ERROR #5574, the generator for `InteropEditResend:BODYCLASS` and `:OWNBODYCLASS`) [src/OcuPilot/Test/InteropEditResend.cls:12,26,28] -- the two parameters are compile-time expressions on `InteropResendFixture`, and a fresh compile does not always build the fixture first (the other shards and the local throwaway happened to). Declare the dependency on the class (`[ DependsOn = OcuPilot.Test.InteropResendFixture ]`, as `Test/DraftLoser.cls` does for its `{##class(...)}` parameters, with a one-line doc note saying why), search `src/OcuPilot` for every other parameter whose value is a `{...}` expression naming another project class and add the same `DependsOn` where it is missing, and prove it: compile `src/OcuPilot` into a namespace where `InteropResendFixture` does not yet exist (or delete the fixture's compiled class first) and show the old declaration fails and the new one compiles. The `gates (node 26.0.0)` red in the same run is `log-viewer.spec.ts` AC6 (DW-2458, routed to Story 23.11): do not touch that test.
 
+**Rework re-review 3, 2026-10-15** (four layers, `full-opus`, over `b4558795..f1b45815`; Rule 6 and Rule 19 checked). The `[CI]` item above is confirmed fixed. Re-derived here: 17 expression-valued `Parameter` statements in 14 classes, and each class reaches what its expressions name through `Extends`, `DependsOn` or its own parameters. On `ocupilot-b-ci` the old declaration fails CI's whole-tree compile from a state without either class, and the new one compiles (Verification, the Rework 3 `(CR) mutation:` line); `InteropEditResend` 13 green (run 56). Open: none.
+
+- [x] [Review][Patch] The Rework 3 `mutation:` line read "compiled rows E/F `1/0` before, `1/1` after", defined neither, and recorded no setup or revert [## Verification, Rework 3 pass]
+- [x] [Review][Patch] The proof compiled the class alone, never the tree the item names, so CI's own compile path was not shown red under the old declaration [## Verification, Rework 3 pass]
+
+**Rejected (rework re-review 3):**
+
+- No deterministic check catches a missing `DependsOn` before CI: medium, already DW-2459 (`routed owner=burndown`, harvested from this rework). No new entry.
+- The DW-2459 rule as worded would miss `{$Parameter(..#FIXTURE, "BODYCLASS")}`, the indirect form `InteropResendCase.FIXTURE` invites: low. It is the future rule's scope, not this story's code; recorded as a trailer note on DW-2459.
+- A fixture recompiled alone after its `BODYCLASS` changes leaves `InteropEditResend` with stale compile-time values: low. The parameters predate this diff, every compile path (`container-start.sh` and `ci-image-compile.sh` `LoadDir "ck"`, the throwaway reload) compiles the tree, and moving them to run-time reads is more than a direct correction.
+- The rule candidate and the sweep result are each written three times in an `oversized` spec: low. The fix edits an earlier pass's text.
+- The new doc line is 204 characters and omits "so the fixture must be compiled first": false. It states why the declaration is needed, and the project has no doc-line length rule (`check-objectscript` clean).
+
 ## Spec Change Log
 
 - 2026-10-14, spec gate (runner): Q1 is answered as recommended (one story: no split, so nothing is deferred), and Q2's named limits are accepted (a new target, head of queue, resend of every match, and editing X12, EDIFACT or ASTM bodies are out of scope; the criterion's double gate and cap hold for what ships). Both keys ship `false`, as the orchestrator's 2026-10-13 guidance and AD-22 direct. The Rule 20 drafts are written (AD-62 item 17, AD-53, AD-51, AD-8, AD-44, AD-13, AD-22).
@@ -740,6 +753,13 @@ Rework 3 (CI run 38772231768 on 45f97556):
     - `[false]` `[reject]` The contract has no clause on compile order, so the diff is not justified by it — the contract's proof surface is this test class, which must load in a fresh container; no clause is violated.
     - `[false]` `[reject]` The `Class` line edit is not add-only for a contended file — `InteropEditResend.cls` is this story's own test class and is on no contended list (Design Notes, Contended files).
     - `[false]` `[reject]` The frontmatter reads `in-review` while the Auto Run Result opens `Status: done`; the rewritten result drops earlier passes' lines — the finalize step writes `done` in this run, and a rework's result covers only its own pass (Prose discipline).
+
+### 2026-10-15 — Code review (rework re-review 3)
+
+- scope: `b4558795..f1b45815`. The `[CI]` item is confirmed fixed; the parameter sweep was re-derived (17 in 14 classes, none missing its dependency).
+- verdicts: 11 raw findings in 7 entries — high 0, medium 1, low 5, false 1.
+- patched: 2 (low), the Rework 3 `mutation:` line, re-run on `ocupilot-b-ci`: the whole-tree `LoadDir` and the class alone read red under the old declaration, were reverted with the `src` trees equal, and read green under the new one; `InteropEditResend` 13 (run 56).
+- rejected: 5 (medium 1, already DW-2459; low 3; false 1), each with its reason under Review Findings. Ledger: one trailer note on DW-2459 (the rule's scope), no new entry.
 
 ## Design Notes
 
@@ -1047,7 +1067,7 @@ Not moved: `InteropFloor` (no principal holds a write tool; confirm in the sweep
 
 **Rework 3 pass (Rule 19).** On `ocupilot-b-ci`, `src` synced from the worktree; only the compiled classes were deleted, never a source file.
 
-- mutation: CI compile order, `InteropEditResend` without `DependsOn = OcuPilot.Test.InteropResendFixture` -> with both classes deleted and reloaded uncompiled, compiling `InteropEditResend` alone fails with the CI error (`ERROR #5002 <CLASS DOES NOT EXIST>pBODYCLASS+1^OcuPilot.Test.InteropEditResend.G1 *OcuPilot.Test.InteropResendFixture`, ERROR #5574, again for `OWNBODYCLASS`). With the declaration it compiles and compiles the fixture first (compiled rows E/F `1/0` before, `1/1` after). The whole tree was then reloaded (`LoadDir`, 0 errors).
+- (CR) mutation: CI compile order, the `Class` line of the throwaway's copy of `InteropEditResend.cls` without `[ DependsOn = OcuPilot.Test.InteropResendFixture ]` -> with both classes deleted from `HSCUSTOM` (`$System.OBJ.Delete`), the whole-tree `LoadDir("/opt/ocupilot/src/OcuPilot","ck-d")`, CI's compile path, fails with the CI error (`ERROR #5002 <CLASS DOES NOT EXIST>pBODYCLASS+1^OcuPilot.Test.InteropEditResend.G1 *OcuPilot.Test.InteropResendFixture`, ERROR #5574, 2 errors; `$System.OBJ.IsUpToDate` reads 0 for `InteropEditResend`, 1 for the fixture), and so does compiling `InteropEditResend` alone with both classes loaded uncompiled. Reverted by syncing the worktree's `src` (`diff -r` of the two trees empty; the worktree was never edited). From the same deleted state the whole-tree `LoadDir` then reads 0 errors, and the class compiled alone compiles the fixture first (`IsUpToDate` 1 and 1). `InteropEditResend` 13 green afterwards (run 56).
 - Parameters checked: every `Parameter` statement under `src/OcuPilot` (13,942, parsed over its lines for a value that begins with `{`) gives 17 expression-valued parameters in 14 classes; greps for `= {` (17), a trailing `=` (0) and `##class`, `$Parameter` or `$ClassMethod` on a Parameter line (9) agree. Already covered: `Api/Router` (2), `Port/ProviderPort` and `Port/ScreenAccessPort` (`DependsOn` `Screen.Gate`); `Screen/Tool/InteropEditorSource` (`DependsOn` `InteropEditorSave`); `Test/DraftLoser` (2, `DependsOn` `Kernel.State.Propose`); the eight `DESCRIPTION` expressions name only `..#CUTTEXT`, `..#WARN` and `..#MATCHRULE`, each defined in a superclass. Missing: `Test/InteropEditResend` (2), added; no other class changed.
 - Green, one class per call (runs 53 to 55): `InteropEditResend` 13, `InteropResend` 9, `InteropResendLimits` 8; `InteropResendFixture` holds no test. `check-objectscript` and `lint-docs` clean.
 
