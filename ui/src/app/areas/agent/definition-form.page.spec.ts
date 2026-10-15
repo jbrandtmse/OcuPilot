@@ -739,6 +739,15 @@ describe('the Definition form', () => {
       await failureAfterPress(timedOut('PROVIDER.TESTTIMEOUT', { waitedSeconds: 50, providerLabel: 'Google Gemini' }))
     ).toBe(STRINGS.agentDefinitionTestTimeout.replace('<provider>', 'Google Gemini').replace('<n>', '50'));
 
+    // A one-second wait reads the singular. Mutation (Rule 19): fill `agentDefinitionTestTimeoutLocal` and
+    // `agentDefinitionTestTimeout` alone in `testTimeoutText` -> both read "1 seconds", red.
+    expect(
+      await failureAfterPress(timedOut('PROVIDER.TESTTIMEOUTLOCAL', { waitedSeconds: 1, providerLabel: 'OpenAI-compatible' }))
+    ).toBe(STRINGS.agentDefinitionTestTimeoutLocalOne);
+    expect(
+      await failureAfterPress(timedOut('PROVIDER.TESTTIMEOUT', { waitedSeconds: 1, providerLabel: 'Google Gemini' }))
+    ).toBe(STRINGS.agentDefinitionTestTimeoutOne.replace('<provider>', 'Google Gemini'));
+
     // Without the detail the sentence cannot be resolved, so the envelope's own reason renders.
     expect(await failureAfterPress(timedOut('PROVIDER.TESTTIMEOUT', null))).toBe(
       'the envelope reason, not the published sentence'

@@ -657,10 +657,11 @@ ClassMethod ProjectedState(pStored As %String, pExpiresAt As %String) As %String
 /// <method>OcuPilot.Kernel.EntityRef.Parse</method>'s reading of the stored key, so a reader
 /// cannot be handed a triple this store never wrote; <code>changed</code> is the stored diff,
 /// parsed, and <code>unchanged</code> is a projection of the stored payload -- one
-/// <code>{field, value}</code> per top-level property the diff does not name, every path that is
-/// not <code>ordinary</code> and literal in its tool's field list carrying the published mask
-/// instead of its value (AD-3's fail-closed rule). The payload itself never travels: no other
-/// key of it reaches the wire, and no secret value reaches it at all.</p>
+/// <code>{field, value}</code> per top-level property the diff does not name, a classified-opaque
+/// array or object carrying <code>count</code>, its member count, in place of its value, and every
+/// other path that is not <code>ordinary</code> and literal in its tool's field list carrying the
+/// published mask instead of its value (AD-3's fail-closed rule). The payload itself never travels:
+/// no other key of it reaches the wire, and no secret value reaches it at all.</p>
 ClassMethod GuardedRowsForTurn(pTurnKey As %String, pUser As %String, Output pRows As %DynamicArray) As %Status
 {
     Set pRows = []

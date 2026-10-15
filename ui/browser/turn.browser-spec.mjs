@@ -267,7 +267,9 @@ test('AC2: a read card, expanded, shows the rows the read returned and the rows 
     await page.click('.ocu-tool-call-toggle');
     await page.waitForSelector('.ocu-tool-call-rows', { timeout: config.navigationTimeoutMs });
     const rowsLine = await page.evaluate(() => document.querySelector('.ocu-tool-call-rows').textContent.trim());
-    assert.match(rowsLine, /^\d+ rows returned \u00b7 \d+ sent$/, `the rows line: ${rowsLine}`);
+    const rowsParts = /^(\d+) (rows?) returned \u00b7 \d+ sent$/.exec(rowsLine);
+    assert.ok(rowsParts, `the rows line: ${rowsLine}`);
+    assert.equal(rowsParts[2], rowsParts[1] === '1' ? 'row' : 'rows', `the noun follows the count: ${rowsLine}`);
   } finally {
     await context.close();
     forgetTag(tag);

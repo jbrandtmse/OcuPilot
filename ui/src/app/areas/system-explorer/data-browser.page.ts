@@ -3,6 +3,7 @@ import { MatTabLink, MatTabNav, MatTabNavPanel } from '@angular/material/tabs';
 import { Router } from '@angular/router';
 
 import { ApiService } from '../../core/api';
+import { pickCount } from '../../core/count-phrase';
 import { saveCsv } from '../../core/csv';
 import { FormDirty } from '../../core/form-dirty';
 import {
@@ -699,7 +700,7 @@ export class DataBrowserPage {
     if (answer.outcome === 'rows') {
       line = rowsLine(answer.offset, answer.rows.length, answer.total, Object.keys(this.state.filters()).length > 0);
     } else if (answer.outcome === 'stopped') {
-      line = fillPlaceholders(STRINGS.explorerSqlStopped, { s: answer.seconds });
+      line = fillPlaceholders(pickCount(answer.seconds, STRINGS.explorerSqlStoppedOne, STRINGS.explorerSqlStopped), { s: answer.seconds });
     } else if (answer.sqlcode !== null) {
       line = fillPlaceholders(STRINGS.explorerSqlCode, { code: answer.sqlcode });
     }

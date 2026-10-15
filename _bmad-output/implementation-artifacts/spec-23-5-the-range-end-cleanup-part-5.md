@@ -245,6 +245,36 @@ deferred:
 - Integration AC: given a list on the throwaway that `context-chip.browser-spec.mjs` narrows to one row, by a filter value taken from that read's own rows that no other row contains, when the footer and the context chip render, then both read "1 row".
 - Given a users update proposal on the throwaway, when its unchanged rows render, then `Roles` and `EscalationRoles` read their member counts and no role name reaches the wire.
 
+### Review Findings
+
+Code review of Batch a, 2026-10-14 (four layers, full-opus; 24 layer rows plus DW-2441 from the stage prompt, 16 entries after grouping).
+
+- [x] [Review][Patch] (medium; fix-risk low, test-only; in-story) AC2's source scan cannot see a re-introduced chooser helper (`pick(n, STRINGS.aOne, STRINGS.a)`), a condition holding a call (`if (this.count() === 1)`), or a parenthesized or reversed condition [ui/tools/count-phrase.test.mjs:88-112] -- fixed: a second scan finds any singular key reached other than through `pickCount` or a phrase table's `one`, and the inline scan reads both forms; self-test cases for each shape.
+- [x] [Review][Patch] (medium; fix-risk low, copy only; in-story) DW-2441: four count sentences still read the plural at 1 where their bound can be 1 (`TestCall.BoundSeconds` floors at 1, at a gateway timeout of 1 or 2 s): `explorerSqlStopped`, `explorerSqlStoppedUndone`, `agentDefinitionTestTimeout`, `agentDefinitionTestTimeoutLocal` [ui/src/app/core/sql-answer.ts:107] -- fixed: four `…One` keys beside their plurals (rows 466 and 597, appended in place), chosen through `pickCount` in `sql-answer.ts`, `data-browser.page.ts`, `data-browser.store.ts` and `testTimeoutText`; a one-second case in `sql-answer.test.mjs`, `data-browser.page.spec.ts` (page line and row outcome) and `definition-form.page.spec.ts`.
+- [x] [Review][Patch] (low; fix-risk low; in-story) `count-phrase.ts`'s doc says every module that renders a count picks through `pickCount`, wider than the contract that holds [ui/src/app/core/count-phrase.ts:4-6] -- fixed: a sentence that can be filled with 1 has a singular chosen through `pickCount`; a count fixed above 1 has none.
+- [x] [Review][Patch] (low; fix-risk low, test-only; in-story) The tests' plural-only scan misses a plural key filled with `'1'`, the nouns `calls` and `errors`, and `\s+` or `[\d,]` spellings, while its header claims every expected count pattern [ui/tools/count-phrase.test.mjs:4-5,175-191] -- fixed: a fill scan (`replace`, `split`/`join` or a formatter filling a plural that has a singular with 1), the two nouns and spellings, and a header naming what each scan reads. A count filled from a computed value is not scanned; the 48 such fills today are each a literal other than 1 or a fixed fixture.
+- [x] [Review][Patch] (low; fix-risk low; in-story) QA's Compare leg hand-writes the English sentence instead of choosing among the four `explorerCompareSummary` templates [ui/browser/system-explorer-find.browser-spec.mjs:155-158] -- fixed: the expected sentence is the template the two drawn counts choose.
+- [x] [Review][Patch] (low; fix-risk low, comment; in-story) `users-write` comment says "the two arrays" read their count; only `EscalationRoles` is unchanged there [ui/browser/users-write.browser-spec.mjs:292-293] -- fixed.
+- [x] [Review][Patch] (low; fix-risk low, doc; in-story origin) `Propose.GuardedRowsForTurn`'s doc says every non-ordinary path carries the mask; an opaque array or object now carries `count` [src/OcuPilot/Kernel/State/Propose.cls:659-662] -- fixed at the origin; the class loads and compiles on `ocupilot-ci`.
+
+DW-2441 census (each candidate's count at runtime):
+
+- Reachable at 1, patched: the four above. `seconds` and `waitedSeconds` are `TestCall.BoundSeconds` of the gateway's `Server_Response_Timeout`, which answers 1 for a timeout of 1 or 2 (inference: the gateway accepts such a value).
+- Unreachable: `processBroadcastHint` (the one broadcast screen, ProcessList, declares `multiSelect.max` 20); `tableCheckAtMost` (declared maxima 100, 100, 20); `remoteDatabaseListHint` and `remoteDatabaseListConsequence` (`LISTSECONDS` and `REMOTE_DATABASE_LIST_SECONDS`, 20); `explorerSqlDataTabCap` (`MAX_TABS` 8). The same census found three more, also unreachable: `pathPickerTruncated` (shown only at the `ROOTSMAX` 1,000 cap), `databaseTasksTruncated` (`TASKS_MAX_ROWS` 1,000), `explorerCompareUnchanged` (`hunks` collapses at least 2 lines unless the whole script is unchanged, which Compare answers as identical).
+- Follow-up check: no test in `ui/browser`, `ui/tools` or the component specs fills a plural that has a singular with a count that can be 1 (48 such fills, each a literal other than 1 or a fixed fixture).
+
+Rejected:
+
+- (false) `OrdinaryPaths` is misnamed now that it also answers opaque paths: its signature carries `Output pOpaque`, its doc names both outputs, and its one caller binds `.tOrdinary, .tOpaque`.
+- (false) A typed retention of "01" reads "kept for 1 day.": that is the value the field holds, not a wrong count.
+- (low, theoretical) An opaque row and a secret row on one top-level path, or a secret row beneath an opaque one, would disclose a count. Of the 26 opaque top-level rows in `ToolFields` (86 tools), none shares its path or has a row beneath it. A count also releases no member.
+- (low, theoretical) A wire `count` that is negative or fractional drops to "(none)". `Disclosure.Rows` writes only `%Size()`.
+- (low) The Auto Run Result miscounts the new keys (31, not 26), the consumers and browser specs, and the triage tally. The fix would edit this spec's own record.
+- (low) The scan excuses `ssl-form.page.ts`, which the spec does not list. The excuse is a boolean flag, not a count, and the scan's own test pins it as still present.
+- (low) The `angular-json.test.mjs` budget comment is a dated history. `c7edabf5` is reviewed for its pin, which is exact (`'2500kB'`, under `'4000kB'`).
+- (low) The context-chip format leg's `\d+ rows?` would accept "1 rows". The throwaway's Users list holds several rows, and the same file's Integration AC pins "1 row".
+- (low) Rendered on the throwaway, AC4 covers `EscalationRoles` at 0 only. The task names that row; counts of 1 and 2 are pinned by `ProposalWire` and the component specs (the Review Triage Log closed this once).
+
 ### Batch b: shell state, Home and About
 
 - [ ] **DW-1341.** In `recents-recorder.ts`, `record()` returns unless `isSignedIn(session.state())`. Test: `recents-recorder.spec.ts`, with a stubbed `Session` in state `'form'`, navigates to a listed screen; nothing is written.
@@ -524,6 +554,14 @@ Every test added or changed passes on a fresh environment, in either order.
 - `mutation:` the `count` line dropped from `parseProposalUnchanged` in `turn.ts` -> `proposal-card.spec.ts`'s classified-opaque case red ("(none)"), and `proposal-view.test.mjs`'s parse case red.
 - `mutation:` `Disclosure.Rows` dropped the `"object"` arm of its type test, then the whole type test -> `ProposalWire.TestAnOpaqueObjectReadsItsMemberCountAndAScalarReadsTheMask` red in both (1 of 17).
 - `mutation:` DW-2227: the added wait dropped, with `Emulation.setCPUThrottlingRate` 20 set before Confirm -> no red in 3 runs of AC10; the wait stands on its mechanism.
+- (QA) Tests changed: `ui/browser/system-explorer-find.browser-spec.mjs` (AC4 derives the Compare sentence from the drawn rows), `ui/browser/turn.browser-spec.mjs` (the rows line follows its count), `ui/tools/count-phrase.test.mjs` (a scan of the tests' own count patterns). Run Spec for `system-explorer-find` and `turn` after Deploy; the scan runs with Checks.
+- (QA) `mutation:` `code-compare.page.ts` filled `STRINGS.explorerCompareSummary` alone (bundle rebuilt and redeployed) -> `system-explorer-find.browser-spec.mjs` AC4 red ("12 lines removed · 1 lines added").
+- (QA) `mutation:` the old `/^\d+ lines removed · \d+ lines added$/` back in `system-explorer-find.browser-spec.mjs` -> `count-phrase.test.mjs`'s test scan red.
+- (CR) Tests changed: `ui/tools/count-phrase.test.mjs` (the singular-key and fill scans), `ui/tools/sql-answer.test.mjs`, `data-browser.page.spec.ts`, `definition-form.page.spec.ts`, `ui/browser/system-explorer-find.browser-spec.mjs` (the expected sentence from the four templates). Shared surfaces for DW-2441's strings (`sql-query.page.spec.ts:338,353,541`, `data-browser.page.spec.ts:604,851`, `definitions.browser-spec.mjs:690,699`, `turn.test.mjs:2425`) fill counts other than 1 and are unchanged.
+- (CR) `mutation:` a private `pick(count, one, many)` restored in `core/sql-answer.ts` and called for the stopped line -> `count-phrase.test.mjs`'s singular-key scan red (`core/sql-answer.ts:114`).
+- (CR) `mutation:` `system-explorer-transfer.browser-spec.mjs:226` filled `explorerImportDone` with `'1'` -> `count-phrase.test.mjs`'s fill scan red.
+- (CR) `mutation:` `statusLineFor` filled `explorerSqlStopped` and `explorerSqlStoppedUndone` alone -> `sql-answer.test.mjs`'s one-second case red ("Stopped after 1 seconds."); `data-browser.page.ts`, `data-browser.store.ts` and `testTimeoutText` filled their plurals alone -> `data-browser.page.spec.ts`'s two one-second legs and `definition-form.page.spec.ts`'s Story 10.5 case red.
+- (CR) `mutation:` QA's Compare mutation re-run against the template-chosen expectation (bundle rebuilt and redeployed) -> AC4 red ("12 lines removed · 1 lines added"); clean bundle redeployed, 6 of 6 green.
 
 **Batch b (loop):**
 
@@ -562,7 +600,7 @@ Every test added or changed passes on a fresh environment, in either order.
 Status: done
 Blocking condition: none
 
-- **Change.** One count rule in `core/count-phrase.ts` (`pickCount`, `rowCountPhrase`, the cap-notice and Download CSV phrases); 26 singular keys beside their plurals; every consumer in the Code Map calls it. `Disclosure.cls` writes a classified-opaque top-level array or object as `value` `""` plus `count`; `turn.ts`, `proposal-view.ts` and `proposal-card.ts` read it as "<n> items". DW-2227's wait is in `proposal-confirm.browser-spec.mjs`.
+- **Change.** One count rule in `core/count-phrase.ts` (`pickCount`, `rowCountPhrase`, the cap-notice and Download CSV phrases); 30 singular keys beside their plurals; every consumer in the Code Map calls it. `Disclosure.cls` writes a classified-opaque top-level array or object as `value` `""` plus `count`; `turn.ts`, `proposal-view.ts` and `proposal-card.ts` read it as "<n> items". DW-2227's wait is in `proposal-confirm.browser-spec.mjs`.
 - **Files.**
   - Source: `ui/src/app/core/` (count-phrase, strings, turn, proposal-view, guardrails, turn-limit, impact, form-tabs, sql-answer, data-browser-model, table-model), 22 consumers under `shell/` and `areas/`, `src/OcuPilot/Kernel/Proposal/Disclosure.cls`.
   - Docs: EXPERIENCE.md (14 rows plus row 633) and DESIGN.md:1198, both line counts unchanged.

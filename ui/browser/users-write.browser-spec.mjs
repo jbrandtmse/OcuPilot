@@ -289,8 +289,9 @@ test(
       assert.equal(card.expanded, 'false', 'the disclosure starts collapsed, as the published caption does');
 
       // AD-4: the disclosure is the rest of the complete property set the write sends, and its rows
-      // equal the caption's own count. An `ordinary` literal carries its value; the two arrays the
-      // classification calls `opaque` read their member count and no member.
+      // equal the caption's own count. An `ordinary` literal carries its value; `EscalationRoles`, an
+      // array the classification calls `opaque` and this proposal leaves unchanged, reads its member
+      // count and no member.
       await page.click('.ocu-proposal-card-disclosure');
       await page.waitForFunction(
         () => document.querySelector('.ocu-proposal-card-disclosure')?.getAttribute('aria-expanded') === 'true',

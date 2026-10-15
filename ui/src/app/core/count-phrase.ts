@@ -1,11 +1,12 @@
 /**
  * The one rule that chooses between a count sentence's singular and its plural.
  *
- * A count of exactly 1 reads the singular; 0 and every count of 2 or more read the plural. Every
- * module that renders a count picks through `pickCount`, so no sentence is chosen by an inline
- * comparison of its own; `ui/tools/count-phrase.test.mjs` scans the app source for one. A sentence
- * with two counts picks nested, the outer pick on the first count. A sentence carrying a schedule's
- * "every N" is wording about a cadence, not a count, and is chosen where it is built.
+ * A count of exactly 1 reads the singular; 0 and every count of 2 or more read the plural. A count
+ * sentence that can be filled with 1 has a singular, and it is chosen through `pickCount`, never by a
+ * comparison of its own; `ui/tools/count-phrase.test.mjs` scans the app source for one. A count fixed
+ * above 1 (a declared cap or maximum) has no singular. A sentence with two counts picks nested, the
+ * outer pick on the first count. A sentence carrying a schedule's "every N" is wording about a
+ * cadence, not a count, and is chosen where it is built.
  *
  * Framework-free, like the rest of `core/`, so `node --test` executes it.
  */

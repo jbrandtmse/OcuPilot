@@ -104,7 +104,12 @@ export function statusLineFor(answer: SqlAnswer | null): string {
       if (answer.sqlcode !== null) return fill(STRINGS.explorerSqlCode, { code: answer.sqlcode });
       return answer.rolledBack ? STRINGS.explorerSqlRolledBack : '';
     case 'stopped':
-      return fill(answer.kind === 'dml' ? STRINGS.explorerSqlStoppedUndone : STRINGS.explorerSqlStopped, { s: answer.seconds });
+      return fill(
+        answer.kind === 'dml'
+          ? pickCount(answer.seconds, STRINGS.explorerSqlStoppedUndoneOne, STRINGS.explorerSqlStoppedUndone)
+          : pickCount(answer.seconds, STRINGS.explorerSqlStoppedOne, STRINGS.explorerSqlStopped),
+        { s: answer.seconds },
+      );
     case 'parameters':
       return fill(pickCount(answer.count, STRINGS.explorerSqlTakesValuesOne, STRINGS.explorerSqlTakesValues), { n: answer.count });
     case 'noplan':

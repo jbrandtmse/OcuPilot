@@ -673,8 +673,14 @@ export const STRINGS = {
   agentDefinitionTestTimeoutLocal:
     'The model did not answer within <n> seconds. A local model may still be loading; test again in a minute.',
   /** EXPERIENCE.md:466 */
+  agentDefinitionTestTimeoutLocalOne:
+    'The model did not answer within 1 second. A local model may still be loading; test again in a minute.',
+  /** EXPERIENCE.md:466 */
   agentDefinitionTestTimeout:
     'The provider (<provider>) did not answer within <n> seconds. Check the endpoint and the provider\'s status, then test again.',
+  /** EXPERIENCE.md:466 */
+  agentDefinitionTestTimeoutOne:
+    'The provider (<provider>) did not answer within 1 second. Check the endpoint and the provider\'s status, then test again.',
   /** EXPERIENCE.md:335 */
   agentDefinitionFieldMaxIterations: 'Maximum iterations',
   /** EXPERIENCE.md:335 */
@@ -5458,7 +5464,11 @@ export const STRINGS = {
   /** EXPERIENCE.md:597 */
   explorerSqlStopped: 'Stopped after <s> seconds.',
   /** EXPERIENCE.md:597 */
+  explorerSqlStoppedOne: 'Stopped after 1 second.',
+  /** EXPERIENCE.md:597 */
   explorerSqlStoppedUndone: 'Stopped after <s> seconds; its changes were undone.',
+  /** EXPERIENCE.md:597 */
+  explorerSqlStoppedUndoneOne: 'Stopped after 1 second; its changes were undone.',
   /** EXPERIENCE.md:597 */
   explorerSqlTakesValues: 'This statement takes <n> values.',
   /** EXPERIENCE.md:597 */

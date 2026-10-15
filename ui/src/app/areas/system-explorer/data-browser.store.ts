@@ -31,6 +31,7 @@
  */
 
 import type { ApiService, JsonResult } from '../../core/api';
+import { pickCount } from '../../core/count-phrase';
 import { csvFileName } from '../../core/csv';
 import {
   DEFAULT_PAGE_SIZE,
@@ -209,7 +210,9 @@ export function outcomeText(outcome: RowOutcome, sqlcode: number | null, message
     case 'refused':
       return STRINGS.explorerSqlDataOutcomeRefused;
     case 'stopped':
-      return typeof seconds === 'number' ? fillPlaceholders(STRINGS.explorerSqlStopped, { s: seconds }) : STRINGS.explorerSqlDataOutcomeSkipped;
+      return typeof seconds === 'number'
+        ? fillPlaceholders(pickCount(seconds, STRINGS.explorerSqlStoppedOne, STRINGS.explorerSqlStopped), { s: seconds })
+        : STRINGS.explorerSqlDataOutcomeSkipped;
     case 'skipped':
       return STRINGS.explorerSqlDataOutcomeSkipped;
     default: {

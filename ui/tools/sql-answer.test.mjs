@@ -23,6 +23,14 @@ test('statusLineFor reads a DML count, a DDL done, an error and the empty consol
   assert.equal(statusLineFor(null), STRINGS.explorerSqlEmpty);
 });
 
+test('statusLineFor reads a stopped run in the singular at a bound of 1 second, for a query and a DML statement', () => {
+  // Mutation (Rule 19): fill `explorerSqlStopped` and `explorerSqlStoppedUndone` alone in `statusLineFor` -> the 1-second legs go red.
+  assert.equal(statusLineFor(answerOf({ outcome: 'stopped', kind: 'query', seconds: 1 })), STRINGS.explorerSqlStoppedOne);
+  assert.equal(statusLineFor(answerOf({ outcome: 'stopped', kind: 'dml', seconds: 1 })), STRINGS.explorerSqlStoppedUndoneOne);
+  assert.equal(statusLineFor(answerOf({ outcome: 'stopped', kind: 'query', seconds: 2 })), STRINGS.explorerSqlStopped.replace('<s>', '2'));
+  assert.equal(statusLineFor(answerOf({ outcome: 'stopped', kind: 'dml', seconds: 2 })), STRINGS.explorerSqlStoppedUndone.replace('<s>', '2'));
+});
+
 test('sqlOutcomeLines adds the instance message only under an error, and nothing for a non-answer', () => {
   // Mutation (Rule 19): push the message for every outcome -> the `done` leg goes red.
   assert.deepEqual(sqlOutcomeLines({ outcome: 'done', kind: 'ddl', message: 'ignored' }), [STRINGS.explorerSqlDone]);
