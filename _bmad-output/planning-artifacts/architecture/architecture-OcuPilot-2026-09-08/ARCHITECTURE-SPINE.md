@@ -239,6 +239,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
   **So does the agent's MDX read (Story 20.35)** [AMENDED 2026-10-15, Story 20.35 spec gate, Rule 20], in the turn job; by OcuPilot's classification it never mutates.
 
+  **A cube build or synchronize (Story 20.34)** [AMENDED 2026-10-15, Story 20.34 spec gate, Rule 20] runs in its confirm or action request on the vendor's agents, which run in the caller's security context (measured: 1,000,000 facts in 4.8 s). A build that outlasts the Web Gateway's response timeout runs to its end in that request's process; its answer is lost (named limit).
+
 ### AD-8 — Privilege is the process's, checked at call time, never cached
 
 - **Binds:** FR-4, FR-18, FR-19; every screen and every tool
@@ -348,6 +350,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
   **Story 20.33's MDX pairs** [AMENDED 2026-10-14, Story 20.33 spec gate, Rule 20]: MDX query requires `%DeepSee_Portal:USE` and its own `%Development:USE`, a named narrower audience than the classic page's either-of.
 
+  **Story 20.34's cube manager pairs** [AMENDED 2026-10-15, Story 20.34 spec gate, Rule 20]: the Cube manager requires `%DeepSee_Admin:USE`, `%DeepSee.UI.CubeRegistry`'s `RESOURCE`, which no shipped role but `%All` holds; its writes add WRITE on the database `^DeepSee.Fact` maps to, and READ on the routines database.
+
 ### AD-9 — OcuPilot's own state is protected by a privileged routine application
 
 - **Binds:** FR-29, FR-66; agent definitions, switches, the ledger, transcripts, proposals
@@ -419,6 +423,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
   **The provider SSL arms cover the transport fields** [AMENDED 2026-10-14, Story 18.47 spec gate, Rule 20] (DW-2400): `OCUPILOTSSL` and `PROVIDERSSL` also refuse a change to `TLSMinVersion` or `CipherList`. **A grant compares roles per (MatchRole, target)** (DW-2320), so moving a held privileged target to another MatchRole, an empty one included, is a grant; **a privileged routine application's cleared Resource, or its enabling, while it grants a privileged role is a grant** (DW-2322).
 
   **A first database-key activation is destructive** [AMENDED 2026-10-14, Story 18.48 spec gate, Rule 20] (DW-2087): an activation while no database key is active also sets key activation at startup to Interactive, which no deactivation undoes (measured at Story 18.22), so it is minted destructive with the tool's consequence, as Story 18.6's license activation is; its governance key still ships `false`. **The privileged-grant arm covers web applications and public resources** (DW-2425): enabling a web application while it grants a privileged role is a grant, and so is changing a web or privileged routine application's `Resource` to one whose public permission holds `U` (read at the write; a failed read counts).
+
+  **`cube` is a covered type (Story 20.34)** [AMENDED 2026-10-15, Story 20.34 spec gate, Rule 20], `ReviewedFewOnly`; OcuPilot owns no cube.
 
 ### AD-11 — Untrusted content never becomes instruction
 
@@ -532,6 +538,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
   **An allow-list write records OcuPilot's own `SecurityChange`** [AMENDED 2026-10-12, Story 18.42 spec gate, Rule 20], roots before and after, since the vendor's `FSAccess` endpoints write no audit event (measured by Story 18.42's Task 0 on a throwaway with auditing on; DW-2371, a vendor candidate under the owner's hold, never reported).
 
+  **The cube manager's build and synchronize (Story 20.34)** [AMENDED 2026-10-15, Story 20.34 spec gate, Rule 20], which the vendor does not audit (its `CubeEvent` rows are bookkeeping; measured with auditing on), record OcuPilot's own `ConfigChange` from either caller, beside the marker for an agent write.
+
 ### AD-16 — Namespace is switched by explicit save and restore
 
 - **Binds:** every class that reaches `%SYS`; AdminPort, the installer, security reads
@@ -627,6 +635,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
   **One person's write asks its key** [AMENDED 2026-10-12, Story 18.42 spec gate, Rule 20]: `POST /allowed-directories` asks `security.alloweddirectories.update`, shipped `false`, before any read, refusing 403 `ALLOWLIST.OFF`, because the owner decided it ships "with the action switched off by default" (DW-2334). No other person's write is asked. `GET /allowed-directories` answers that key's verdict for the screen, which draws Add, Change and Remove off with `ALLOWLIST.OFF`'s sentence while the key is disabled; the POST still asks at the write [AMENDED 2026-10-12, Story 18.46 spec gate, Rule 20].
 
   **Story 20.31** [AMENDED 2026-10-14, Story 20.31 spec gate, Rule 20]: both message resend keys (`interop.messages.resend`, `interop.messageheader.editresend`) ship `false`; a delivered copy cannot be undone.
+
+  **Story 20.34's keys** [AMENDED 2026-10-15, Story 20.34 spec gate, Rule 20]: `analytics.cubemanager.build` ships `false`; `analytics.cubemanager.synchronize` ships `true`.
 
 ### AD-23 — Harvested handler bodies keep their call sites
 
@@ -1053,6 +1063,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
   **Story 20.33's `CLASSICPAGES`** [AMENDED 2026-10-14, Story 20.33 spec gate, Rule 20]: the MDX query screen declares `%DeepSee.UI.MDXQuery`.
 
+  **Story 20.34's `CLASSICPAGES`** [AMENDED 2026-10-15, Story 20.34 spec gate, Rule 20]: the Cube manager and its two tools declare `%DeepSee.UI.CubeRegistry`.
+
 ### AD-45 — There is one smoke path, and it is also the health check
 
 - **Binds:** FR-66, FR-67, NFR-9, AD-38; the installer, CI, the demo
@@ -1187,6 +1199,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
   **The `AllowListPort` case** [AMENDED 2026-10-12, Story 18.42 spec gate, Rule 20]: it composes the `AllowList` `PUT` from `Action`, `Directory` and `NewDirectory` as `FSAccess.Path` `PUT`/`DELETE` and `FSAccess.Purpose` `PUT` over a fresh `PathPort.Roots` read, and reads back through a port-composed `AllowList` `GET`.
 
   **Story 20.31's case** [AMENDED 2026-10-14, Story 20.31 spec gate, Rule 20]: `InteropPort` answers the resend tools' fresh reads through port-composed `RESEND` and `EDIT` types, takes the reviewed digest from the stored payload or the person's `Reviewed`, and builds the edited body from the declared `Fields`.
+
+  **`AnalyticsPort` answers the cube tools' fresh read through a port-composed `STATE` type (Story 20.34)** [AMENDED 2026-10-15, Story 20.34 spec gate, Rule 20].
 
 ### AD-52 — A write tool declares the port it reaches its target through
 
@@ -1410,6 +1424,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
   **The MDX query tool (Story 20.33)** [AMENDED 2026-10-14, Story 20.33 spec gate, Rule 20]: MDX runs through `AnalyticsPort`'s `Mdx*` calls behind `MDXPAIRS` and WRITE on the database `^DeepSee.Cache.Results` maps to (a read-only one is refused 409 `ANALYTICS.MDX.READONLY`). Only SELECT with at most two axes, and DRILLTHROUGH, run; a drill-through is composed in the job from the vendor's `%GetFiltersForCellRange`. `MdxConstructs` is the one detection of the splice clause's five constructs, on the vendor's tokens and each string literal's, before and after prepare, failing closed: the screen's start carries the person's confirmation as `confirmed: true`, and without it the start answers `confirm`, naming the consequence, and runs nothing; Story 20.35's agent read refuses through the same detection. The vendor's `%CancelQuery` checks no owner, so the run row is the owner check.
 
   **The agent's MDX read (Story 20.35)** [AMENDED 2026-10-15, Story 20.35 spec gate, Rule 20]: `analytics.mdxquery.read` runs in the turn job through `MdxRun`, under MDX query's pairs, `MdxAdmit` and the `MDX*` caps. It polls the vendor and the turn's stop, abandon and lease, reserves no background run, and refuses with `ANALYTICS.MDX.SQL` a statement `MdxConstructs` finds a construct in or cannot read, before prepare, and one whose resolved text `MdxPrepare` asks for, after it.
+
+  **The cube manager (Story 20.34)** [AMENDED 2026-10-15, Story 20.34 spec gate, Rule 20]: build and synchronize run through `AnalyticsPort`'s `CubeManager` `BUILD` and `SYNCHRONIZE` behind `MANAGERPAIRS` and WRITE on the database `^DeepSee.Fact` maps to (a read-only one is refused 409 `ANALYTICS.CUBE.READONLY`). Over a port-composed `STATE` that spans the cube and its dependents, they refuse by name before any vendor call: an update in progress (`ANALYTICS.CUBE.BUSY`), and for a synchronize a source without `DSTIME` (`ANALYTICS.CUBE.NODSTIME`) or a never-built cube (`ANALYTICS.CUBE.NOTBUILT`, so a synchronize can never become a build that Build's `false` key refuses). They call `%BuildCube(cube,1,0,0,0,0)` and `%SynchronizeCube(cube,0)` inside an output capture; the reads `%IsCubeAvailable`, `%GetCubeDSTime`, `%GetSourceInfo`, `%GetDependentCubes` and `GetLastUpdate(...,"synch")` join the measured pure reads, and the zero-timeout `"SYNC"` lock probe is the one vendor-global name the port uses. A build runs the cube's own source expressions and callbacks as the signed-in person, as the classic page does (named limit).
 
 ## Consistency Conventions
 
