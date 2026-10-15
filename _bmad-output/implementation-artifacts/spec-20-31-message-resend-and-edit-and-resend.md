@@ -2,7 +2,7 @@
 title: 'Story 20.31: Message resend and edit-and-resend'
 type: 'feature'
 created: '2026-10-13'
-status: 'done'
+status: 'in-progress'
 baseline_revision: '2f564cff76bc6fd62f3aae5aac07fac7b8c8f181'
 baseline_commit: '2f564cff76bc6fd62f3aae5aac07fac7b8c8f181'
 review_loop_iteration: 0
@@ -589,10 +589,16 @@ Code review, 2026-10-15 (four layers, `full-opus`; Rule 6, Rule 3 and Rule 31 ch
 - Rework 1 ticked no task box and replaced the Auto Run Result: low, and the fix edits the spec under the `oversized` rule.
 - The rework's run left out the other classes that run `Install`: false. The full sweep is the runner's (Verification, Lead-owned); `InstallTarget` read 7 of 7 here.
 
+Rework 2 (the runner's Rule 30 fresh check and full sweep on a rebuilt throwaway):
+
+- [ ] [Smoke] `OcuPilot.Test.InteropFloorRoutes.TestEveryRouteOutsideTheRosterRefusesTheInteroperabilityHolders` and `OcuPilot.Test.DeveloperFloorRoutes.TestEveryRouteOutsideTheRosterRefusesTheDeveloper` are red: their sweep reaches the new `POST /screens/:screen/dryrun` with an empty body, and the route answers 400 `TOOL.ARGUMENTS` ("'action' names the row action and is required") instead of 403 `AUTH.NOPRIVILEGE` naming the failed pair [src/OcuPilot/Test/DeveloperFloorRoutes.cls:107-114 `ConcretePath`] -- give the dry-run route the same concrete body the action route gets there (an action and an absent id), confirm with the action route as the sibling that a holder without the screen's pairs is then refused 403 naming the pair, and run both floor-route classes green.
+- [ ] [Smoke] `OcuPilot.Test.InteropDescriptor.TestEveryInteropErrorCodeResolvesToItsSentence` is red: "Codes and ConsequenceCodes list every code this test names" -- the story's new interop error codes are not in the roster that test pins [src/OcuPilot/Test/InteropDescriptor.cls] -- add each new code (read from `Api/InteropError.cls`, never recalled) to that roster so the two sides are equal again, prove the row load-bearing (drop one, red), and run the class green.
+
 ## Spec Change Log
 
 - 2026-10-14, spec gate (runner): Q1 is answered as recommended (one story: no split, so nothing is deferred), and Q2's named limits are accepted (a new target, head of queue, resend of every match, and editing X12, EDIFACT or ASTM bodies are out of scope; the criterion's double gate and cap hold for what ships). Both keys ship `false`, as the orchestrator's 2026-10-13 guidance and AD-22 direct. The Rule 20 drafts are written (AD-62 item 17, AD-53, AD-51, AD-8, AD-44, AD-13, AD-22).
 - 2026-10-15: re-opened for rework iteration 1 (code review's one HIGH, the long-set proposal target; lead ruling (b) under Review Findings).
+- 2026-10-15: re-opened for rework iteration 2 (the runner's fresh check and full sweep: two [Smoke] items under Review Findings).
 
 ## Review Triage Log
 
