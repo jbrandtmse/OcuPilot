@@ -597,6 +597,22 @@ Rework 2 (the runner's Rule 30 fresh check and full sweep on a rebuilt throwaway
   - Read the new codes from `src/OcuPilot/Api/InteropError.cls` (the ones this story added, per `git diff 895d9fe9..HEAD -- src/OcuPilot/Api/InteropError.cls`). Then grep `src/OcuPilot/Test` and `ui/tools` for every other roster that names interop error codes or declared routes (Rule 30) and fix any that misses this story's additions. Write the `mutation:` line for each roster row proved load-bearing (drop it, red, restore byte-identical).
   - `(loop)`, one class per call, on `ocupilot-b-ci`: `InteropFloorRoutes`, `DeveloperFloorRoutes`, `InteropDescriptor`, `DryRunRoute`, `InteropResend`, and every roster class changed here. No `(once)` sweep.
 
+**Rework re-review 2, 2026-10-15** (four layers, `full-opus`, over `b52c8926..801c26b9`; Rule 6, Rule 19 and Rule 31 checked). Both `[Smoke]` items above are confirmed fixed: `InteropFloorRoutes` 1 (run 754), `DeveloperFloorRoutes` 1 (755) and `InteropDescriptor` 12 (756) on `ocupilot-b-ci`. Open: none.
+
+- [x] [Review][Patch] The dry-run route's own pair gate had no `mutation:` line, and the floor sweeps' dry-run row is also met by the port's refusal, which names a pair too [src/OcuPilot/Test/InteropResendGate.cls:164; ## Verification]
+
+**Rejected (rework re-review 2):**
+
+- The body checks run before the gate, recorded by a mutation of the request rather than of the product: low. Both routes run the one `ScreenAction.Resolve`, so the order is one code path, and either order refuses with nothing read.
+- The rework 2 triage row on the canonical id says the refusal comes before the id is judged: low. The empty-id check precedes the gate, and the canonical-set check naming `Messages` follows it. The fix edits a closed row of an oversized spec.
+- A floor-route class keeps a mutation red as its latest run: false. Runs 751 to 753 are all `DeveloperFloorRoutes` (`^UnitTest.Result`), and runs 754 and 755 are now each class's latest, green.
+- The residual-risk line's "0 overlap(s)" cannot fail across two runner calls: low. Checked here: the windows of runs 713 to 753 overlap nowhere beyond `DateTime`'s one-second resolution, no `OcuS31*` or `OcuPilotProbe*` principal is left, and run 718's probe class `Rw2Probe` is not compiled.
+- `SaveHoldCoverage` exempts the dry-run route through the `POST /screens/` row, whose reason is the action route's hold: low. The route writes nothing and needs no hold, so the exemption is right. The row predates this rework.
+- `ScreenAction.cls:271` and `Operation.Gate`'s doc say the port refuses without naming the pair, which `InteropPort` does name: low. It is outside the rework, and `ScreenAction.cls` is add-only for this story.
+- The Code Map's roster list omits the two rosters the fresh check caught: low. The fix edits the spec, and both rosters hold their rows (runs 754 to 756).
+- The sweep may name the database pair rather than a screen pair for the stock kinds: false. The sweep pins a named refusal for every route outside the roster, and `InteropResendGate` pins the screen pair per principal.
+- The work order's sub-bullets first appear in the rework commit: false. No bad outcome.
+
 ## Spec Change Log
 
 - 2026-10-14, spec gate (runner): Q1 is answered as recommended (one story: no split, so nothing is deferred), and Q2's named limits are accepted (a new target, head of queue, resend of every match, and editing X12, EDIFACT or ASTM bodies are out of scope; the criterion's double gate and cap hold for what ships). Both keys ship `false`, as the orchestrator's 2026-10-13 guidance and AD-22 direct. The Rule 20 drafts are written (AD-62 item 17, AD-53, AD-51, AD-8, AD-44, AD-13, AD-22).
@@ -695,6 +711,13 @@ Rework 2 (the runner's Rule 30 fresh check and full sweep on a rebuilt throwaway
     - `[false]` `[reject]` The sweep sends a non-canonical id, so the Messages validation is not reached — the sweep asserts the refusal of a holder, which comes before the id is judged; the canonical-set refusal is pinned by `InteropResend` and `InteropResendLimits`.
     - `[false]` `[reject]` The sweep covers only the refused holder — the answering holder and the 404 for a tool with no dry run are pinned by `DryRunRoute` (run 746) and `InteropResend` (run 747).
     - `[false]` `[reject]` The diff shows no green run — `DeveloperFloorRoutes` 743, `InteropFloorRoutes` 744, `InteropDescriptor` 745, `DryRunRoute` 746 and `InteropResend` 747 were re-run by this stage after a whole-tree reload.
+
+### 2026-10-15 — Code review (rework re-review 2)
+
+- scope: `b52c8926..801c26b9`. Both `[Smoke]` items are confirmed fixed on `ocupilot-b-ci`, the tree reloaded first.
+- verdicts: 15 raw findings in 10 entries — high 0, medium 0, low 7, false 3. The Edge Case Hunter's one finding was discarded because the layer wrote scratch files.
+- patched: 1 (low), the `mutation:` line for the route's pair gate. `InteropResendGate` read red under the mutation (run 757), was reverted with the trees equal, and read green 4 of 4 (run 758).
+- rejected: 9 (low 6, false 3), each with its reason under Review Findings. Ledger: none.
 
 ## Design Notes
 
@@ -998,6 +1021,7 @@ Not moved: `InteropFloor` (no principal holds a write tool; confirm in the sweep
 - mutation: AC6, the dry-run route names the action route's screen and action (`webapp.list` / `enable`) -> both sweeps, each alone (404, because that tool declares no dry run; runs 729 and 730).
 - mutation: AC7, `EDITSECRET` dropped from `InteropDescriptor`'s code roster -> `InteropDescriptor.TestEveryInteropErrorCodeResolvesToItsSentence`, alone (run 733); `EDITVALUE` dropped from `InteropError.MessageCodes` -> the same test, alone (run 734).
 - Rework 2: on `ocupilot-b-ci` (tree reloaded, `src` equal to the worktree), green, one class per call: `DeveloperFloorRoutes` 1 (run 743), `InteropFloorRoutes` 1 (744), `InteropDescriptor` 12 (745), `DryRunRoute` 2 (746) and `InteropResend` 9 (747). The code-roster and route-roster search (`src/OcuPilot/Test`, `ui/tools`) found no other roster that misses this story's codes or its dry-run route (`ui/tools/interop.test.mjs`, `EndpointCoverage` and `SaveHoldCoverage` already hold them). `check-objectscript` and `lint-docs` clean.
+- (CR) mutation: AC6, `ScreenAction.Run` skips its pair gate for a preview -> `InteropResendGate.TestEachMissingPairIsRefusedByNameOnTheScreenRoutes`, alone: `OcuS31NoWrite`'s resend and edit dry runs answer 200 for 403 `%DB_USER:WRITE` (run 757). It was reverted by syncing the worktree, the trees were equal, and the class read green (run 758). The floor sweeps' dry-run row stays green under this mutation, because the port's refusal also names a pair.
 
 ## Auto Run Result
 
