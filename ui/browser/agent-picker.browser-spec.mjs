@@ -3,7 +3,8 @@
  * definitions the panel header carries a named picker; choosing the other one moves the context chip
  * and the next turn's egress line with no reload, is stored as the account's own `shell` preference,
  * survives a reload, the open menu passes the DW-1337 invariants in both themes, and the name shows
- * whole where the header has room while the header holds its toggle at the narrowest panel (Leg 3).
+ * whole where the header has room, stops at half the header when longer, and leaves the header its
+ * toggle at the narrowest panel (Leg 3).
  *
  * Uses two `turnprobe` definitions of `OcuPilot.Test.TurnWireFixture`: A, armed default at
  * `192.0.2.10`, and B at the private `10.0.0.5`. `after` removes both, restores the default the
@@ -20,7 +21,7 @@ import puppeteer from 'puppeteer';
 
 import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
 import { loadStrings } from '../tools/strings.mjs';
-import { setDarkTheme, settleViewport, signedInAt } from './panel-spec.mjs';
+import { setDarkTheme, settleViewport, signedInAt, transitionsSettled } from './panel-spec.mjs';
 import { rememberedShellMember, resetRememberedState } from './preferences-reset.mjs';
 import {
   INVARIANTS,
@@ -133,7 +134,7 @@ async function openMenuViolations(page, route) {
     { viewport: VIEWPORTS.wide, theme: 'dark' },
   ]) {
     await settleViewport(page, viewport);
-    await panelWidthSettled(page);
+    await transitionsSettled(page, config.navigationTimeoutMs);
     if (theme === 'dark') await toggleThemeThroughMenu(page, requests, config.navigationTimeoutMs);
     try {
       await openMenu(page);
@@ -213,26 +214,6 @@ test('Leg 2: choosing B moves the header and the chip, is stored as the account\
   }
 });
 
-/** Resolve once the docked panel's width reads the same on three frames in a row, that is, its width transition has ended. */
-function panelWidthSettled(page) {
-  return page.evaluate(
-    () =>
-      new Promise((resolve) => {
-        const panel = document.querySelector('app-panel aside.ocu-panel');
-        let last = -1;
-        let still = 0;
-        const tick = () => {
-          const width = panel.getBoundingClientRect().width;
-          still = width === last ? still + 1 : 0;
-          last = width;
-          if (still >= 3) resolve();
-          else requestAnimationFrame(tick);
-        };
-        requestAnimationFrame(tick);
-      })
-  );
-}
-
 /** The picker's name and the full-screen toggle, against the panel header they sit in. With two definitions the name is the button's text; with one it is the plain-text span. */
 function measureHeader(page) {
   return page.evaluate(() => {
@@ -243,42 +224,62 @@ function measureHeader(page) {
       scrollWidth: name.scrollWidth,
       clientWidth: name.clientWidth,
       picker: document.querySelector('.ocu-agent-picker').getBoundingClientRect().width,
+      header: header.getBoundingClientRect().width,
       headerRight: header.getBoundingClientRect().right,
       toggleRight: document.querySelector('.ocu-panel-full-screen-toggle').getBoundingClientRect().right,
     };
   });
 }
 
-test('Leg 3: the picker shows the whole definition name with room for it, and at the narrowest panel the header holds its toggle, in light and in dark', async () => {
+test('Leg 3: the picker shows the whole definition name with room for it and stops at half the header, and at the narrowest panel the header holds its toggle, in light and in dark', async () => {
   // Mutation (Rule 19): delete the `app-agent-picker { display: contents; }` rule from `_components.scss`
-  // (bundle rebuilt and redeployed) -> the toggle sits past the header at the narrowest panel, and with
-  // full screen on the name is cut at half the width its button needs; both assertions go red.
+  // (bundle rebuilt and redeployed) -> with full screen on the name is cut at half the width its button
+  // needs, and the whole-name assertion goes red. Delete `.ocu-agent-picker`'s `max-width: 50%` -> the
+  // long name takes most of the header, and the half-header assertion goes red.
   const { context, page } = await signedInReady(USERS_URL);
   try {
-    // No room: the narrowest viewport leaves the panel at its 320px minimum.
-    await settleViewport(page, VIEWPORTS.narrow);
-    await panelWidthSettled(page);
-    for (const dark of [false, true]) {
-      const theme = dark ? 'dark' : 'light';
-      await setDarkTheme(page, dark);
-      const docked = await measureHeader(page);
-      assert.ok(docked.toggleRight <= docked.headerRight + 1, `the full-screen toggle stays inside the header: ${JSON.stringify(docked)} (${theme})`);
-    }
-    await settleViewport(page, config.viewport);
-    await panelWidthSettled(page);
-
     // Room: full screen leaves the whole header to the name.
     await page.click('.ocu-panel-full-screen-toggle');
     await page.waitForFunction(
       () => document.querySelector('.ocu-shell-content').hasAttribute('inert') && document.querySelector('app-panel aside.ocu-panel').getBoundingClientRect().width > 1000,
       { timeout: config.navigationTimeoutMs }
     );
+    await transitionsSettled(page, config.navigationTimeoutMs);
     for (const dark of [false, true]) {
       const theme = dark ? 'dark' : 'light';
       await setDarkTheme(page, dark);
       const measured = await measureHeader(page);
       assert.equal(measured.text, NAME_A, `the default's name is the one on screen (${theme})`);
       assert.ok(measured.scrollWidth <= measured.clientWidth + 1, `the whole name shows: ${JSON.stringify(measured)} (${theme})`);
+    }
+
+    // A name wider than the header stops at half of it. The text is written into the picker directly,
+    // as the paused-chip test in `panel.browser-spec.mjs` writes its chip: the length is what lays it out.
+    const writeName = (text) =>
+      page.$eval('.ocu-agent-picker-text, .ocu-agent-picker-name', (node, value) => {
+        node.textContent = value;
+      }, text);
+    await writeName(NAME_A.repeat(8));
+    for (const dark of [false, true]) {
+      const theme = dark ? 'dark' : 'light';
+      await setDarkTheme(page, dark);
+      const long = await measureHeader(page);
+      assert.ok(long.picker <= long.header / 2 + 1, `the picker stops at half the header: ${JSON.stringify(long)} (${theme})`);
+    }
+    await writeName(NAME_A);
+
+    // No room: docked again, the narrowest viewport leaves the panel at its 320px minimum.
+    await page.click('.ocu-panel-full-screen-toggle');
+    await page.waitForFunction(() => !document.querySelector('.ocu-shell-content').hasAttribute('inert'), {
+      timeout: config.navigationTimeoutMs,
+    });
+    await settleViewport(page, VIEWPORTS.narrow);
+    await transitionsSettled(page, config.navigationTimeoutMs);
+    for (const dark of [false, true]) {
+      const theme = dark ? 'dark' : 'light';
+      await setDarkTheme(page, dark);
+      const docked = await measureHeader(page);
+      assert.ok(docked.toggleRight <= docked.headerRight + 1, `the full-screen toggle stays inside the header: ${JSON.stringify(docked)} (${theme})`);
     }
   } finally {
     await context.close();

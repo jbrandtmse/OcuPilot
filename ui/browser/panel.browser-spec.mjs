@@ -30,6 +30,7 @@ import {
   definitions as sharedDefinitions,
   setDarkTheme,
   settleViewport,
+  settleWrites,
   signedInAt as sharedSignedInAt,
 } from './panel-spec.mjs';
 import { rememberedShellMember, resetRememberedState } from './preferences-reset.mjs';
@@ -244,17 +245,6 @@ function commandBarBox(page) {
  * for seconds. Each `page.evaluate` binds to the live execution context, which is what makes the
  * poll see the page the reload produced.
  */
-/**
- * Give a fire-and-forget preference write time to arrive, for an assertion that it does not.
- *
- * A poll is the right shape for a value that must appear (`panelSettlesAt`); a value that must
- * stay absent has nothing to poll for, so this bounds how long "absent" was given to become
- * "present".
- */
-async function settleWrites() {
-  await new Promise((resolve) => setTimeout(resolve, 500));
-}
-
 async function panelSettlesAt(page, width) {
   const deadline = Date.now() + config.navigationTimeoutMs;
   let seen = null;

@@ -359,7 +359,7 @@ test("DW-1148: DESIGN.md's 1,920px Home content figure is the width Home gives w
   const header = lines.find((line) => line.startsWith('| Viewport |') && line.includes('Content on Home'));
   assert.ok(header, "DESIGN.md's yield table has a `Content on Home` column");
   const column = cells(header).indexOf('Content on Home');
-  const row = lines.find((line) => line.startsWith('| 1,920px |'));
+  const row = lines.slice(lines.indexOf(header)).find((line) => line.startsWith('| 1,920px |'));
   assert.ok(row, "DESIGN.md's yield table has a 1,920px row");
   const figure = /^[\d,]+/.exec(cells(row)[column]);
   assert.ok(figure, `the row's Content on Home cell opens with a figure: ${cells(row)[column]}`);

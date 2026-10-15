@@ -168,7 +168,8 @@ test("AC8: Home settles at DESIGN.md's published panel width at each of the five
   // narrowest rows sit at the subtracted operand and the panel floor, so the fraction cannot move
   // them. A 24px `margin-right` on `.ocu-shell-content` (bundle rebuilt and redeployed) -> the content
   // assertion goes red alone (888, not 912, at 1,920). The side bar's layout input is pinned in
-  // `tools/panel-layout.test.mjs`: the side bar component never draws on Home, so this leg reads the same.
+  // `tools/panel-layout.test.mjs`: the side bar component draws nothing while Home is its visible area
+  // (`side-bar.ts` `showing`), so this leg reads the same.
   const { context, page } = await signedInAt(HOME_URL, { width: 1920, height: 900 });
   try {
     for (const dark of [false, true]) {

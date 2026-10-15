@@ -33,7 +33,7 @@ import puppeteer from 'puppeteer';
 
 import { LIVE_CONTAINER, browserConfig, launchOptions } from '../browser.config.mjs';
 import { FILTER_SELECTOR, ROW_SELECTOR, clickRowCentre, waitForRows } from './list-spec.mjs';
-import { settleViewport, signedInAt } from './panel-spec.mjs';
+import { setDarkTheme, settleViewport, signedInAt } from './panel-spec.mjs';
 import { INVARIANTS, VIEWPORTS, assertThrowaway, collapse, compare, componentMinimums, detectScreen, readBaseline } from './structural-walk.mjs';
 import {
   armProbeDefinition,
@@ -126,11 +126,6 @@ function createProbes() {
     ],
     ['MADE']
   );
-}
-
-/** Two rendered frames, so a resize or a theme flip has landed before anything is measured. */
-function frames(page) {
-  return page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
 }
 
 /** Narrow the list to `name`, select its row and open its row menu. */
@@ -242,14 +237,13 @@ test('AC6, AC1: the Roles list\u2019s Delete states the impact read as it opens,
     const surfaces = {};
     for (const { viewport, theme, checks } of passes) {
       await page.setViewport(viewport);
-      await page.evaluate((isDark) => document.documentElement.classList.toggle('ocu-theme-dark', isDark), theme === 'dark');
-      await frames(page);
+      await setDarkTheme(page, theme === 'dark');
       surfaces[theme] = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
       assert.equal(await advisory(page), roleLine(HOLDERS), `the line reads the same at ${viewport.width}px ${theme}`);
       const { entries } = await detectScreen(page, { route: ROLES_ROUTE, checks, viewport: viewport.width, theme, minimums });
       found.push(...entries);
     }
-    await page.evaluate(() => document.documentElement.classList.remove('ocu-theme-dark'));
+    await setDarkTheme(page, false);
     await page.setViewport(VIEWPORTS.wide);
     assert.notEqual(surfaces.dark, surfaces.light, 'the dark pass measured the dark theme, not the light one');
     const fresh = compare(collapse(found), readBaseline()?.entries ?? []).fresh;
@@ -328,14 +322,13 @@ test('AC2: the Users list\u2019s Remove role states what the account loses under
     const minimums = componentMinimums();
     for (const { viewport, theme, checks } of passes) {
       await page.setViewport(viewport);
-      await page.evaluate((isDark) => document.documentElement.classList.toggle('ocu-theme-dark', isDark), theme === 'dark');
-      await frames(page);
+      await setDarkTheme(page, theme === 'dark');
       const caption = await page.$eval('[role="dialog"] [data-slot="impact"]', (node) => node.textContent.trim());
       assert.equal(caption, expected, `the caption reads the same at ${viewport.width}px ${theme}`);
       const { entries } = await detectScreen(page, { route: 'permissions/users', checks, viewport: viewport.width, theme, minimums });
       found.push(...entries);
     }
-    await page.evaluate(() => document.documentElement.classList.remove('ocu-theme-dark'));
+    await setDarkTheme(page, false);
     await page.setViewport(VIEWPORTS.wide);
     const fresh = compare(collapse(found), readBaseline()?.entries ?? []).fresh;
     assert.deepEqual(fresh.map((entry) => `${entry.key}: ${entry.measured}`), [], 'no violation beyond the baseline with the Remove role caption showing');
@@ -379,13 +372,12 @@ test('AC1, AC6: the agent\u2019s role delete draws the impact read at its mint o
     const minimums = componentMinimums();
     for (const { viewport, theme, checks } of passes) {
       await settleViewport(page, viewport);
-      await page.evaluate((isDark) => document.documentElement.classList.toggle('ocu-theme-dark', isDark), theme === 'dark');
-      await frames(page);
+      await setDarkTheme(page, theme === 'dark');
       assert.equal((await cardLine()).text, roleLine(HOLDERS), `the card line reads the same at ${viewport.width}px ${theme}`);
       const { entries } = await detectScreen(page, { route: '/', checks, viewport: viewport.width, theme, minimums });
       found.push(...entries);
     }
-    await page.evaluate(() => document.documentElement.classList.remove('ocu-theme-dark'));
+    await setDarkTheme(page, false);
     const fresh = compare(collapse(found), readBaseline()?.entries ?? []).fresh;
     assert.deepEqual(fresh.map((entry) => `${entry.key}: ${entry.measured}`), [], 'no violation beyond the baseline with the card\u2019s impact line showing');
   } finally {

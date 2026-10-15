@@ -12079,3 +12079,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-23-5-the-range-end-cleanup-part-5.md (implement batch c deferred) | severity: med | fix-risk: low | footprint: in-story
 - evidence: settled at 320 px on ocupilot-ci, detectScreen reports app-long-block>span.ocu-diff-before 127 px past p.ocu-diff-row-removed (389 px of text in a 262 px row); pre-existing
 - 2026-10-15T11:13:01Z status=open owner=23-5-the-range-end-cleanup-part-5 by=harvest note=added_to_batch_d:wrap_diff_values,impact_720_pass_on_a_settled_panel
+
+### DW-2455: Browser specs' 720px structural passes measure right after a bare setViewport, while the panel's width transition still runs, so an overflow at the settled 320px panel can read clean and a pass can flake
+- source: spec-23-5-the-range-end-cleanup-part-5.md (code review, batch c) | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: 44 of 81 specs using VIEWPORTS.narrow carry no settle wait (settleViewport, transitionsSettled, panelSettlesAt or a clientWidth wait; by grep, inference), e.g. allowed-directories.browser-spec.mjs:147-151 and impact AC2/AC6. DW-2454 is one overflow this hid; DW-2163, DW-2282 and DW-2450 were flakes of the same shape.
+- 2026-10-15T11:56:49Z status=escalated owner=burndown by=cr note=sweep: settleViewport plus transitionsSettled before each narrow pass; settling may surface hidden overflows (fix-risk)
