@@ -2,7 +2,9 @@
 title: 'Story 20.30: The session trace'
 type: 'feature'
 created: '2026-10-13'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '1eb850bec79bb7ff626749c58149c44c7c6b61d9'
+baseline_commit: '1eb850bec79bb7ff626749c58149c44c7c6b61d9'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -40,7 +42,7 @@ deferred: []
   - Any other text is refused 400 `PORT.VALIDATION`, naming `message`.
 - **Rows.** `{Message, Step, ID, TimeCreated, Status, Type, Source, Target, BodyClass, SessionId, Error}`, built through 20.9's `MessageRow`.
   - `Step` is a JSON number, 1 to n in `ID` order, and the read's only sort key.
-  - Every other value is a string. `TimeCreated` is local time (`LocalStamp`).
+  - `Error` is a JSON boolean. Every other value is a string. `TimeCreated` is local time (`LocalStamp`).
 - **Drawing** (AD-5 `body`; AD-11 and AD-47).
   - Participants run left to right in first-appearance order: for each row in `Step` order, its source, then its target.
   - There is one arrow per row, in `Step` order. A `Response` arrow is dashed; every other type is solid.
@@ -58,7 +60,7 @@ deferred: []
 
 - A call to `%Api.InteropEditors` or a request under `/ui/interop/`. The vendor's message viewer and Visual Trace are not embedded.
 - A write of any kind: no tool, governance key, change event or proposal.
-- A read of `Ens_Util.Log`, `Ens_Rule.Log` or `Ens_Util.IOLog`, or following `SuperSession`. This is a named limit, stated by the read's note.
+- A read of `Ens_Util.Log`, `Ens_Rule.Log` or `Ens_Util.IOLog` (a named limit, stated by the read's note), or following `SuperSession`, which the classic Visual Trace does not follow either.
 - Mermaid built on the server, or a second read for it.
 - Edits to:
   - `Screen/Registry.cls`, `Screen/Read.cls`, `Kernel/EntityType.cls`, `Kernel/Proposal/Prohibited.cls`, `Kernel/Governance/Baseline.cls`, `Port/LogSourcePort.cls`;
@@ -255,6 +257,7 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Lines were
   The header comment names the harvest: the sibling project iris-execute-mcp-v2's `Diagram/Writer.cls`, MIT.
 - [ ] **`ui/src/app/areas/interoperability/session-trace.store.ts`** (new, framework-free): `SessionTraceView`, holding `view()` (`'diagram'` or `'mermaid'`, default `'diagram'`), `setView` and `subscribe`. It is shaped like `SourceViewerState`.
 - [ ] **`ui/src/app/areas/interoperability/message-tab-body.ts`** (new): move `InteropMessageContents`' state getters (`loaded`, `fault`, skeleton, empty, empty title and Retry) into an abstract base. 20.9's component and the trace component both extend it. If Task 0 finds them already shared, use that instead.
+- [ ] **DW-2434 (ledger inbox, routed by 20.9's code review):** 20.9's `interop-message-contents.ts` repeats `shell/data-table.ts`'s state getters (`boundHere`, `loaded`, `fault`, `showRefusal`, `showSkeleton`, `busy`, `showEmpty`) and its skeleton, refusal and empty markup. When `message-tab-body.ts` takes them, make it the one helper both the body components and `DataTable` use (extend or call it from `data-table.ts`, whose getters keep their names and behavior); if sharing with `DataTable` would couple it to the body inputs, share only between the two bodies and record `Declined DW-2434 for DataTable: <reason>` under Design Notes. Either way the existing data-table and contents specs stay green.
 - [ ] **`ui/src/app/areas/interoperability/interop-message-trace.ts`** (new, `app-interop-message-trace`, `OnPush`; inputs `screen`, `store`). It draws:
   - the base's skeleton, fault with Retry, and empty sentence;
   - the view: `applyView(store.data(), read, {filter, sort, direction})`. An empty view of a non-empty read shows `logViewerNoMatches`;
@@ -345,11 +348,69 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Lines were
     - `structural` finds no fresh entry at 1280 light, 720 light and 1280 dark;
     - in both themes, every `<a>` in the SVG has a non-empty `aria-label`, is reached by Tab, and has a hit area at least 24 px tall; each label's `fill` equals the panel text's computed color; the error arrow's stroke equals `--ocu-error`'s computed color; and the light and dark values differ.
 
+### Review Findings
+
+Code review, 2026-10-15: 0 high, 2 medium, 17 low; 4 rejected. Patches applied in the review pass are checked.
+
+- [x] [Review][Patch] DW-2434's markup half: the skeleton, refusal and empty blocks were copied in Contents, Trace and DataTable. They are `shell/read-state-blocks.ts` now, and DataTable takes the skeleton and refusal. Declined DW-2434 for DataTable's empty block: it carries the primary action, its reason and the focus target the table moves to, none of which a body's block has. [ui/src/app/shell/read-state-blocks.ts:1]
+- [x] [Review][Patch] "No matches." showed when a re-read of an empty answer faulted, beside the banner or the refusal [ui/src/app/areas/interoperability/interop-message-trace.ts:203]
+- [x] [Review][Patch] `followInAppLink` took an Alt click (the browser's download) into the app, unlike the app's other link guards [ui/src/app/shell/in-app-link.ts:10]
+- [x] [Review][Patch] The follow test's router-URL reads could not fail: it navigated back itself, and read before a navigation could land [ui/src/app/areas/interoperability/interop-message-trace.spec.ts:294]
+- [x] [Review][Patch] The ragged-`Step` leg passed with the fallback removed [ui/src/app/areas/interoperability/session-trace.spec.ts:75]
+- [x] [Review][Patch] The 24-character head cut could split a surrogate pair [ui/src/app/areas/interoperability/session-trace.ts:98]
+- [x] [Review][Patch] A self call's label on the last column had 64 px before the SVG clipped it [ui/src/app/areas/interoperability/session-trace.ts:224]
+- [x] [Review][Patch] AC3 read the session with `/session (\d+) /`, which misses the waiting, no-response and failed sentences and then skips `ClearSession` [ui/browser/interop-item-test.browser-spec.mjs:237]
+- [x] [Review][Patch] EXPERIENCE.md said a capped session "ends with" its cut note; it shows above the drawing [_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md:856]
+- [x] [Review][Patch] The opaque hover fill hid the lifelines crossing the hovered band; it is the 8% on-surface state layer now [ui/src/styles/_components.scss:8932]
+- [x] [Review][Patch] `InteropMessageList`'s doc named the group as the Header and Contents tabs [src/OcuPilot/Screen/Descriptor/InteropMessageList.cls:10]
+- [x] [Review][Patch] `ListMessageTrace`'s doc said the classic Visual Trace shows super-sessions; it never follows `SuperSession`. AD-62 (16)'s "(named limit; the read's note)" and Named limits overstate it too, the lead's to correct at origin [src/OcuPilot/Port/InteropPort.cls:3515]
+- [x] [Review][Patch] AC4's Tab and focus-ring legs ran in the light theme only [ui/browser/interop-message-trace.browser-spec.mjs:315]
+- [x] [Review][Defer] An arrow's accessible name leaves out its visible label and `[ERROR]` (WCAG 2.5.3) [ui/src/app/areas/interoperability/session-trace.ts:104] — deferred: DW-2442 `decision-pending owner=burndown`; the string is the spec's `interopTraceArrow`, and a `<label>` placeholder is recommended
+- [x] [Review][Defer] Each arrow is its own Tab stop, up to 1,000 [ui/src/app/areas/interoperability/interop-message-trace.ts:141] — deferred: DW-2443 `by-design` (AC4)
+- [x] [Review][Defer] The trace marks neither the opened message nor its session id [ui/src/app/areas/interoperability/session-trace.ts:58] — deferred: DW-2444 `wontfix-accepted`
+- [x] [Review][Defer] A `#` in a participant's name ends its Mermaid line (inference) [ui/src/app/areas/interoperability/session-trace.ts:251] — deferred: DW-2445 `by-design` (Writer parity; "Nothing else is escaped")
+- [x] [Review][Defer] QA's no-trace account helpers copy the fixture's principal code [src/OcuPilot/Test/InteropFloor.cls:216] — deferred: DW-2446 `wontfix-accepted`
+- [x] [Review][Defer] Older near-copies of `followInAppLink` and the state blocks outside the story [ui/src/app/areas/tasks/details.page.ts:312] — deferred: DW-2447 `wontfix-accepted` (pre-existing)
+
+Rejected:
+
+- `low` Spec statements QA superseded (5 tests, the no-principal residual, AC3's DW-2408 leak, the Gated reject, Named limits): a spec edit. See the triage log.
+- `low` `showGrid`/`showRows` and `emptyTitle`/`emptyNext` in both DataTable and `MessageTabBody`: one-expression delegations to `ReadState` and `emptyStateView`.
+- `false` `ClearSession` leaves the testing process's business-process row: `Ens.Actor` deletes a completed instance unless `RetainCompletedInstances` (Actor.cls:219-265).
+- `false` QA's account breaks the Never on principals: the Never names `InteropFloorFixture`; the account lives in the armed `InteropFloor`, and its test removes it.
+
 ## Spec Change Log
 
 - 2026-10-14, spec gate (runner): the Rule 20 drafts are written (AD-62 item 16, AD-8, AD-44). The fixture leak the plan measured in Story 20.6's browser spec is DW-2408, routed to the burn-down.
+- 2026-10-14, lead (Rule 17 (1b)): DW-2434 routed here by 20.9's code review; added as a Tasks item beside `message-tab-body.ts`.
 
 ## Review Triage Log
+
+### 2026-10-14 -- Review pass
+
+- verdicts: 14 findings -- high 0, medium 3, low 9, false 2, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` Verification gap: the self-call loop path and the arrowhead path were bound in the template and asserted nowhere -- dropping either left every test green; patched: `interop-message-trace.spec.ts` gained a loop-and-head test, red when either is dropped.
+  - `[medium]` `[patch]` Browser AC4's 24-pixel leg measured the anchor's bounding box (35 px with a 20 px hit rect), not the hit rect -- patched: it measures `.ocu-trace-hit`; red at a height of 20.
+  - `[low]` `[patch]` `arrowName` substituted its placeholders one after another, so a name holding `<target>` or `<status>` was rewritten -- patched: one pass; `session-trace.spec.ts` gained a placeholder-name test, red on the old form.
+  - `[low]` `[patch]` Browser AC4's comment claims (24-pixel, Tab, panel-color) had no recorded mutation, and the first was untrue -- all three demonstrated red and recorded in `## Verification`.
+  - `[low]` `[reject]` AC3 adds one more host-test send to the USER header leak -- the leak is DW-2408 (Spec Change Log), AC3 asserts nothing about leftovers; a ledger occurrence is the lead's.
+  - `[low]` `[reject]` Gated: no test shows the trace pair refusing a principal, nor the disabled-tab text -- spec-bound: Named limits state no stock role holds the header pair without the trace pair, so the pair is pinned by declaration and classic-page parity; the strip's text is the Contents tab's generic mechanism.
+  - `[medium]` `[patch]` Self call: the template's loop branch is never rendered by a test -- same root cause as the first row, patched with it.
+  - `[low]` `[reject]` Error marking: no row has Status "Error" with the `Error` flag false -- the intent marks an `Error` row; the flag is the only marker the diagram uses, and no scenario separates them.
+  - `[low]` `[reject]` Bad id and Missing id are exercised at the port and `Screen.Read` class methods, not over HTTP -- the 400 mapping is shared code 20.9 tests; `InteropFloor` reads the route; a layer choice, no failing scenario.
+  - `[low]` `[reject]` Filter is driven by `store.setFilter` in jsdom, not the real command bar -- the matrix row is covered at the component; the bar's wiring is `ListPage`'s.
+  - `[low]` `[reject]` The cap's server and client halves are not joined, and the cut note is hidden when a filter leaves no arrows -- each half has its test; with nothing drawn "No matches." is the answer and a cut note would qualify nothing.
+  - `[low]` `[reject]` The test-answer link carries the session id as a message id, so a purged first header reads as gone -- AC3 fixes the route `trace/<sessionId>` and measured the id as the first header's; purge removes a session's headers together (inference, `wontfix-theoretical`).
+  - `[false]` `[reject]` Mermaid trim differs from Writer's `$ZStrip(...,"<>W")` -- measured on `ocupilot-b-ci`: `W` strips code units 9, 32 and 160, which is what the port trims.
+  - `[false]` `[reject]` Work beyond the footprint (`data-table.ts`, `read-state.ts`, `in-app-link.ts`, `message-tab-body.ts`, 20.9's Contents rewrite) -- each is a Tasks item: the base class, `followInAppLink`, and DW-2434's sharing with `DataTable`.
+
+### 2026-10-15 -- Code review (four layers, `full-opus`)
+
+- verdicts: 34 raw findings, 23 entries -- high 0, medium 2, low 17, rejected low 2, false 2; each is in `### Review Findings`.
+- QA superseded three statements above: the trace pair's refusal now has a principal (`InteropFloor.TestAHolderOfTheHeaderPairWithoutTheTracePairIsRefusedTheTrace`, `InteropMessageTrace.TestTheTracePairIsRefusedToAHolderOfTheHeaderPairAlone`); AC3 clears its session (`ClearSession`, asserted `0`); `InteropMessageTrace` holds 7 tests.
+- ledger: DW-2434 `resolved-by` this story; new DW-2442 (decision-pending, burndown), DW-2443 and DW-2445 (by-design), DW-2444, DW-2446 and DW-2447 (wontfix-accepted).
+- verified on `ocupilot-b-ci` after reloading `src` (0 errors) and redeploying: `InteropMessageTrace` 7/7, `InteropFloor` 8/8, `InteropMessageDescriptor` 5/5; browser `interop-message-trace` 4/4, `interop-item-test` 5/5, `interop-messages` 5/5, `interop-queue-job-actions` 8/8, `a11y-structural-invariants` 13/13; `test:tools` 2009, `test:components` 3189; build, `client-lint`, `check-objectscript` and `lint-docs` clean.
 
 ## Design Notes
 
@@ -480,7 +541,7 @@ The table is declared because a read declares one (`TableProblem`). The `body` d
   - **Reading.** Two top-level statements read the header's `SessionId`, then that session's headers in `ID` order, capped, with `%ExecDirectNoPriv` after the gate. A header no row holds, or one with no session, reads as zero rows.
   - **Pairs.** `%Ens_MessageHeader:USE` and `%Ens_MessageTrace:USE` (`EnsPortal.VisualTrace`'s `RESOURCE`).
   - **Drawing.** OcuPilot draws the trace itself, as template-bound SVG, and builds its Mermaid text in the browser from the same rows.
-  - **Not read.** The event, rule and IO logs and `SuperSession` are not read (named limit; the read's note)."
+  - **Not read.** The event, rule and IO logs are not read (named limit; the read's note); `SuperSession` is not followed, as the classic Visual Trace does not follow it."
 - **AD-8, a Story 20.30 clause:** "The trace also requires `%Ens_MessageTrace:USE`, which `%EnsRole_Operator` holds."
 - **AD-44, a Story 20.30 clause:** "The Trace tab declares `EnsPortal.VisualTrace` (`NormalizePage`, measured by 20.9)."
 - **EXPERIENCE.md:** :159, :604 and :856, as Tasks says.
@@ -588,9 +649,59 @@ There is no Rule 11 ask. `data-table.ts` (`onLinkClick`'s body moves) and `_comp
 | AC4 | `.ocu-trace-error` loses `--ocu-error` | The browser spec's token leg |
 | Matrix | `ListMessageTrace` binds `SQLMAX` in place of `pMax` | `TestTheCapTruncates` |
 
+**Demonstrated mutations (Rule 19, implement pass).** Each was applied on `ocupilot-b-ci`, read red, and reverted byte-identical; an ObjectScript one recompiled the package, a client one rebuilt and redeployed the bundle.
+
+- mutation: AC1, `TRACESQL` reads `WHERE ID = ?` in place of the session -> `InteropMessageTrace` `TestAnyHeaderOpensItsWholeSession` (with three more of its tests).
+- mutation: AC1, `TRACESQL` orders `ID DESC` -> `TestAnyHeaderOpensItsWholeSession`, `TestTheCapTruncates` and `TestTheRowsCarryTheHeaders`.
+- mutation: AC1, `Step` set as a string -> `TestTheRowsCarryTheHeaders`, alone. `MessageRow` without `LocalStamp` -> the same test. `TRACESQL` also reading `OR ID = ?` with the empty-session check dropped -> `TestAbsentAndMalformedIds`. The id-shape check bypassed for MessageTrace -> `TestAbsentAndMalformedIds`. The `message` criterion renamed -> `TestTheCapTruncates` and `TestTheToolAndTheRouteAgree`.
+- mutation: AC1, `traceModel` registers a row's target before its source -> `session-trace.spec.ts` (ten of its tests), `interop-message-trace.spec.ts` (heads, filter and markup tests) and browser AC1 (heads) and AC2.
+- mutation: AC1, the body ignores `kind` (every arrow solid) -> `interop-message-trace.spec.ts` link test, and browser AC1's dashed leg.
+- mutation: AC1, the arrow link targets `messages/trace` -> the component spec's href test, and browser AC1's follow leg.
+- mutation: AC2, the `;` escape dropped -> `session-trace.spec.ts` (fixture and escape tests), and browser AC2.
+- mutation: AC2, the keyword suffix dropped -> `session-trace.spec.ts`'s keyword test, alone.
+- mutation: AC3, the dialog link built from `responseClass` -> the dialog spec's Story 20.30 test, and `interop-item-test` AC3.
+- mutation: AC4, `%Ens_MessageTrace:USE` dropped from the descriptor and from `Pairs` -> `InteropFloor.TestEveryOpenScreenMatchesItsClassicPage` and `InteropMessageDescriptor.TestTheTraceTabJoinsTheMessageGroup`. The trace pair listed before the header pair in the descriptor -> `InteropFloor.TestTheInteroperabilityReadsFollowTheirOwnPairs`.
+- mutation: AC4, the `Elsewhere` row removed -> `StageTwoTools.TestTheRosterAndElsewhereAreEveryRegisteredScreen`, alone. Each other roster row removed (`SurfaceCoverage`, `ReadShapes`, `REFUSEEMPTY`, `Navigation`'s order, `InteropHostDescriptor`'s endpoint literal, `InteropFloor`'s `OPERATORSCREENS`) -> its own test, alone but for `InteropFloor`, which reddens two.
+- mutation: AC4, `.ocu-trace-error` loses `--ocu-error` -> browser AC4's token leg.
+- mutation: Matrix, `ListMessageTrace` binds `SQLMAX` in place of `pMax` -> `TestTheCapTruncates`, alone.
+- mutation: the shared read state, `showSkeleton`, `showRefusal`, `showEmpty` and `boundHere` each broken -> `read-state.test.mjs` and `interop-message-trace.spec.ts`; `followInAppLink` without `preventDefault`, without the navigation or without the Ctrl guard -> `in-app-link.spec.ts`.
+- mutation: AC1, the self-call `@else` branch dropped, or the arrowhead path dropped -> `interop-message-trace.spec.ts`'s loop-and-head test, alone. `arrowName` substituting its placeholders one after another -> `session-trace.spec.ts`'s placeholder-name test, alone.
+- mutation: AC4, the hit rect given a height of 20 -> browser AC4's 24-pixel leg (it measures the hit rect) and the component spec's hit-area test; the arrow's `href` dropped -> browser AC4's Tab leg and AC1's follow leg; `.ocu-trace-label` given its own fill -> browser AC4's panel-color leg.
+
+**QA pass (QA).** Each mutation below was applied on `ocupilot-b-ci` or in the client, read red, and reverted byte-identical; an ObjectScript one recompiled the package, a bundle one rebuilt and redeployed.
+
+- (QA) Tests: new `ui/tools/session-trace-view.test.mjs`. Changed: `src/OcuPilot/Test/InteropMessageTrace.cls` (`TestTheTracePairIsRefusedToAHolderOfTheHeaderPairAlone`, `TestClearSessionRemovesTheSessionAlone`, `ClearSession`), `src/OcuPilot/Test/InteropFloor.cls` (`TestAHolderOfTheHeaderPairWithoutTheTracePairIsRefusedTheTrace`, which makes and removes its own account), `ui/src/app/shell/data-table.spec.ts`, `ui/src/app/areas/interoperability/interop-item-test-dialog.spec.ts`, `ui/src/app/areas/interoperability/session-trace.spec.ts`, `ui/browser/interop-item-test.browser-spec.mjs` (AC3 removes the session it caused) and `ui/browser/interop-message-trace.browser-spec.mjs` (AC4 focus-ring leg).
+- mutation (QA): Gated, `MESSAGETRACEPAIR` dropped from the MessageTrace branch of `Pairs` -> `InteropMessageTrace.TestTheTracePairIsRefusedToAHolderOfTheHeaderPairAlone`, alone. The trace pair dropped from the descriptor's `privileges` and `ownPrivileges` -> `InteropFloor.TestAHolderOfTheHeaderPairWithoutTheTracePairIsRefusedTheTrace` (navigation leg) and `TestEveryOpenScreenMatchesItsClassicPage`; dropped from the descriptor and `Pairs` -> that test's refusal and navigation legs.
+- mutation (QA): AC3, `ClearSession` selecting `WHERE ID = ?` -> `TestClearSessionRemovesTheSessionAlone`, alone; deleting nothing -> `interop-item-test` AC3's last assertion. `Serves` true for MessageTrace, and `RuntimeEndpoints` without it -> one leg each of `InteropMessageDescriptor.TestTheTraceTabJoinsTheMessageGroup`.
+- mutation (QA): DW-2434, `ReadState`'s `fault`, `loaded`, `showRefusal`, `showSkeleton`, `busy`, `showEmpty` and `boundHere` each broken -> `data-table.spec.ts` (`boundHere`, `fault` and `loaded` -> its new Story 20.30 test, alone); `ReadState` without `touch` -> `read-state.test.mjs`; `MessageTabBody` without `touch` -> 17 tests of `interop-message-trace.spec.ts` and `interop-message-contents.spec.ts`.
+- mutation (QA): AC3, the dialog's `SESSION_ID` at `{0,19}` or with a leading `[0-9]` -> the no-link test; at `{0,17}` -> the nineteen-digit test. `SessionTraceView` without its same-view guard, with a no-op unsubscribe, or starting at `mermaid` -> `session-trace-view.test.mjs`.
+- mutation (QA): AC1, the trace body with `[innerHTML]` on the arrow label, `cut` false, `aria-pressed` fixed, `showNoMatch` false, the link's, the svg's or the view group's `aria-label` dropped, the head `<title>` set to the cut text, or Retry's click dropped -> one named test each in `interop-message-trace.spec.ts`.
+- mutation (QA): AC2 and AC4, twenty `session-trace.ts` mutations (keyword case, `_2` collision, UTF-16 code unit, empty id, TAB and no-break-space trim, the ` as ` clause, `->>` and `-->>`, trailing line feed, head cut, ID gutter, self-call loop and the loop's base, call-back direction, Step sort, error flag, Response kind, no-body and no-name labels) -> its own test in `session-trace.spec.ts` each.
+- mutation (QA): AC4, `tab.position` 1 in the generated mirror -> `navigation.test.mjs`; the Trace row removed from `screen-mirror.test.mjs`' note owners, and from its tab-group rows -> one test each. Browser: `.ocu-trace-response` without `stroke-dasharray` -> AC1's dash leg; the `:focus-visible` rule without its stroke -> AC4's focus-ring leg; the empty title set to another sentence -> the gone-id test. The svg group's `aria-label` dropped is red in the component spec and stays green in the browser's structural leg, which does not name-check it.
+- mutation (CR): DW-2434, the shared refusal without Retry's click -> one refusal test each in `data-table.spec.ts`, `interop-message-contents.spec.ts` and `interop-message-trace.spec.ts`; the shared skeleton without its class -> two `data-table.spec.ts` tests.
+- mutation (CR): `showNoMatch` without its non-empty-read term -> the trace spec's faulted re-read test, alone. `followInAppLink` without `altKey` -> `in-app-link.spec.ts` and the trace spec's follow test; navigating a Shift click while leaving the default -> the follow test's URL read, alone.
+- mutation (CR): a non-numeric `Step` taken as it is -> the ragged step leg; the head cut by code unit -> the astral leg; the width by columns alone -> the self-call room test (each `session-trace.spec.ts`, alone).
+- mutation (CR): the focused link ringed in `--ocu-outline` under the dark theme only, rebuilt and redeployed -> browser AC4's dark focus-ring leg.
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-Planned against Story 20.9's spec, with Task 0 re-anchoring on 20.9 as built. The charter's inference (a session id is its first header's `ID`) was measured at this plan. The Rule 20 drafts are in Design Notes.
+**Summary.** `InteropPort` gained `MessageTrace` (two top-level statements through `SqlRows`, rows through `MessageRow` plus `Message` and `Step`, pairs `MESSAGEPAIRS` plus `%Ens_MessageTrace:USE`), the `InteropMessageTraceTab` descriptor joins the message group as its third tab, and the client draws the session as template-bound SVG or as Mermaid text built in the browser, each arrow a link to its message's Header tab. The Test dialog links a digits `sessionId` to its trace. DW-2434 was taken, not declined: `core/read-state.ts` (`ReadState`) is the one decision of the bound, loaded, refusal, skeleton and empty states, used by `DataTable` (getters keep their names) and by `MessageTabBody`, the base of the Contents and Trace bodies.
+
+**Files.**
+
+- ObjectScript: `Port/InteropPort.cls` (endpoint, pair, `ListMessageTrace`); `Screen/Descriptor/InteropMessageTraceTab.cls` (new); `Test/InteropMessageTrace.cls` (new, 5 tests, `Plant`/`Clear` double as the browser fixture); `Test/InteropMessageDescriptor.cls` (group test); `Test/InteropMessageRead.cls` (`StoreHeader` takes optional source and target); roster rows in `StageTwoTools`, `SurfaceCoverage`, `Descriptor`, `Navigation`, `ReadTool`, `ToolRoundTrip`, `InteropHostDescriptor`, `InteropFloor`, `InteropDescriptor`.
+- Client: `session-trace.ts`, `session-trace.store.ts`, `interop-message-trace.ts` and `.page.ts`, `message-tab-body.ts`, `core/read-state.ts`, `shell/in-app-link.ts` (new); `interop-message-contents.ts`, `data-table.ts`, `interop-item-test-dialog.ts`, `screen-outlet.ts`, `strings.ts`, `_components.scss`, `screens.generated.ts` (regenerated) edited.
+- Tests: new `session-trace.spec.ts`, `interop-message-trace.spec.ts`, `in-app-link.spec.ts`, `tools/read-state.test.mjs`, `interop-message-trace.browser-spec.mjs`; changed the dialog spec, `interop-item-test`, `interop-messages` and `interop-queue-job-actions` browser specs (the strip now reads Header, Contents, Trace), `structural-walk.mjs` `SKIP`, `navigation.test.mjs`, `screen-mirror.test.mjs`. EXPERIENCE.md :159, :604 and :856 are add-only edits.
+
+**Review (one pass).** 14 findings: 3 medium, 9 low, 2 false, 0 high. Patched: the self-call loop and arrowhead assertions, browser AC4's 24-pixel leg now measuring the hit rect, and `arrowName` in one pass (three entries; two medium, one low), plus the recorded mutations of AC4's three comment claims. Deferred: none. Rejected: eight lows and two falses, each with its reason in the log. `followup_review_recommended: false`: the patches are test code and one pure function, each shown red under its mutation.
+
+**Verification (this pass).** On `ocupilot-b-ci` after reloading `src`: the 16 ObjectScript classes the diff touches or the spec names, green (`InteropMessageTrace` 5, `InteropMessageDescriptor` 5, `InteropMessageRead` 8, and thirteen roster classes, 178 tests); `npm run test:tools` 2005 pass; `npm run test:components` 3185 pass; `npm run build` clean through its prebuild chain, initial total 1.95 MB, trace chunk 10.92 kB (the fixed 2500 kB warning was not crossed); browser specs `interop-message-trace` 4/4, `interop-item-test` 5/5, `interop-messages` 5/5, `interop-queue-job-actions` 8/8, `a11y-structural-invariants` 13/13 (the last before the review patches, which changed no markup); `check-objectscript.py` and `lint-docs.sh` clean. Every mutation is recorded in `## Verification` and was reverted byte-identical.
+
+**For the lead.**
+
+- The intent's "every other value is a string" does not hold for `Error`: `MessageRow` answers it as a boolean (the Messages list declares it a `status` column), and the trace follows it (Rule 31). The sentence needs correcting at its origin.
+- DW-2408 gains an occurrence: the new AC3 send leaves its session's headers in USER, as AC2's does.
+- Residual: no test runs a principal that holds the header pair without the trace pair (none exists; Named limits).

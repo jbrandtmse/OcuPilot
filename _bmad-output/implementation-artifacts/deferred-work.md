@@ -11819,6 +11819,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-20-30 plan (measured) | severity: med | fix-risk: low | footprint: in-epic
 - evidence: Measured at Story 20.30's plan on ocupilot-b-ci: after the cleanup calls interop-item-test.browser-spec.mjs also uses, USER held three message headers and the production's event-log rows; removed by hand.
 - 2026-10-14T03:47:33Z status=routed owner=burndown by=spec_gate note=Rule 19 hermeticity: the spec (Story 20.6's) removes the headers and log rows it caused
+- 2026-10-15T02:29:03Z occurrence=20-30-the-session-trace
 
 ### DW-2414: A deleted account that was the first to run the install gate's version-row read after its cached queries were purged (an install, an uninstall) is refused 503 INSTALL.UNREADABLE instead of 401 AUTH.DISABLED
 - source: spec-20-16 (harvest, CI rework 2) | severity: low | fix-risk: med | footprint: out-of-footprint
@@ -11999,6 +12000,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-20-9-messages-search-view-resend-and-trace.md | severity: low | fix-risk: med | footprint: in-epic
 - evidence: The block's getters repeat ui/src/app/shell/data-table.ts:824-854 word for word, with showGrid renamed showText; the spec's Rule 31 note says only that the block follows them. Story 20.30's Trace tab is the next body component and would make a third copy.
 - 2026-10-14T20:29:43Z status=routed owner=20-30-the-session-trace by=cr note=share one state helper between DataTable and the body components when the Trace tab adds the second body
+- 2026-10-15T03:53:48Z status=resolved-by:20-30-the-session-trace by=cr note=getters via ReadState (all three); skeleton and refusal via read-state-blocks.ts (all three), empty block (bodies)
 
 ### DW-2435: client-lint has no rule against an [innerHTML] binding, so the Contents block's text-only drawing (AD-47) is pinned by its component spec and the browser leg alone
 - source: spec-20-9-messages-search-view-resend-and-trace.md | severity: low | fix-risk: med | footprint: out-of-footprint
@@ -12035,3 +12037,32 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: lead fresh check, Story 23.5 batch b | severity: med | fix-risk: low | footprint: in-epic
 - evidence: ci-browser --shard 2/20 on ocupilot-ci rebuilt from 9b1fcdeb: 1 of 7 failed; alone 7/7; same shard re-run 41/41
 - 2026-10-15T08:02:43Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=lead note=batch_c_touches_suggested-view_(DW-1148):_check_AC8's_settle_wait
+### DW-2442: A trace arrow's accessible name leaves out its visible label (body class, [ERROR]), so the link fails WCAG 2.5.3 and an Error flag beside a Completed status never reaches assistive technology
+- source: spec-20-30-the-session-trace.md code review | severity: med | fix-risk: low | footprint: in-story
+- evidence: interop-message-trace.ts binds aria-label to arrowName (session-trace.ts:104-113), the spec's interopTraceArrow 'Message <id>: <type> from <source> to <target>, <status>'; the link's visible text is its ID and its label, e.g. '(no body) [ERROR]', which the name does not contain.
+- 2026-10-15T03:53:48Z status=decision-pending owner=burndown by=cr note=spec-bound string: recommend a <label> placeholder in interopTraceArrow (strings.ts, EXPERIENCE Fixed strings, the spec)
+
+### DW-2443: Every trace arrow is its own Tab stop, so a session drawn to the 1,000-row cap is up to 1,000 Tab presses to leave the diagram
+- source: spec-20-30-the-session-trace.md code review | severity: low | fix-risk: med | footprint: in-story
+- evidence: AC4 requires every <a> in the SVG to be reached by Tab, and the template gives each arrow its own link; DataTable keeps its grid as one Tab stop with arrow-key movement.
+- 2026-10-15T03:53:48Z status=by-design owner=20-30-the-session-trace by=cr note=AC4 pins Tab reach for each arrow; a roving tabindex needs a spec amendment
+
+### DW-2444: The session trace marks neither the message it was opened from nor its session id
+- source: spec-20-30-the-session-trace.md code review | severity: low | fix-risk: med | footprint: in-story
+- evidence: The rows carry Message, which the client never reads; the classic Visual Trace selects the message it was given (EnsPortal/VisualTrace.cls:948-957) and names the session. The route and the ID gutter do carry the id.
+- 2026-10-15T03:53:48Z status=wontfix-accepted owner=20-30-the-session-trace by=cr note=reopen_if=a person asks which arrow is the opened message, or Story 20.12's Investigate needs it marked
+
+### DW-2445: A '#' in a participant's name ends its Mermaid line, since Mermaid's sequence grammar reads it as a comment start (inference)
+- source: spec-20-30-the-session-trace.md code review | severity: low | fix-risk: low | footprint: in-story
+- evidence: traceMermaid escapes only ';', as Writer.cls does and as the spec's 'Nothing else is escaped' fixes; Mermaid's sequence lexer stops alias and message text at '#' (inference: read from its grammar, not run here).
+- 2026-10-15T03:53:48Z status=by-design owner=20-30-the-session-trace by=cr note=spec-bound (Writer parity); reopen_if=a configuration name holding '#' is seen, by an amendment escaping it as #35;
+
+### DW-2446: InteropFloor's no-trace account helpers copy InteropFloorFixture.EnsurePrincipal and RemovePrincipals with only the name, roles and description changed
+- source: spec-20-30-the-session-trace.md code review | severity: low | fix-risk: med | footprint: in-epic
+- evidence: MakeNoTracePrincipal and RemoveNoTracePrincipal repeat the fixture's %SYS switch, delete-if-exists and Security.Users.Create call; over 20 test classes create principals inline, and a failed create asserts loudly ('the account is made').
+- 2026-10-15T03:53:48Z status=wontfix-accepted owner=20-30-the-session-trace by=cr note=reopen_if=a third copy of the fixture's create appears, or Security.Users.Create's arguments change
+
+### DW-2447: followInAppLink and read-state-blocks.ts have older near-copies outside the story: link guards in tasks details, the item list, journal file details and about 16 more; refusal and skeleton blocks in interop-editor and detail pages
+- source: spec-20-30-the-session-trace.md code review | severity: low | fix-risk: med | footprint: out-of-footprint
+- evidence: areas/tasks/details.page.ts:312,319, interop-item-list.page.ts:128 and journal-file-details.page.ts:341 repeat followInAppLink's guard; interop-editor.page.ts:176-177 and database-details, process-details and ledger pages draw their own skeleton or refusal.
+- 2026-10-15T03:53:48Z status=wontfix-accepted owner=20-30-the-session-trace by=cr note=reopen_if=a link-guard or state-block defect is fixed in one copy, or a story edits one of those pages

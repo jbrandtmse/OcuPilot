@@ -254,6 +254,7 @@ XData Coverage
 <screen name="InteropMessageList" class="OcuPilot.Test.InteropMessageDescriptor" method="TestTheThreeDeclarationsRegister" corpus="one declaration test pins all three Story 20.9 message screens in one loop"/>
 <screen name="InteropMessageHeaderTab" class="OcuPilot.Test.InteropMessageDescriptor" method="TestTheThreeDeclarationsRegister" corpus="one declaration test pins all three Story 20.9 message screens in one loop"/>
 <screen name="InteropMessageContentsTab" class="OcuPilot.Test.InteropMessageDescriptor" method="TestTheThreeDeclarationsRegister" corpus="one declaration test pins all three Story 20.9 message screens in one loop"/>
+<screen name="InteropMessageTraceTab" class="OcuPilot.Test.InteropMessageDescriptor" method="TestTheTraceTabJoinsTheMessageGroup"/>
 <tool name="permissions.users.create" class="OcuPilot.Test.UserCreate" method="TestTheSchemaCarriesNoSecretAndThePermittedSetIsTheSets"/>
 <tool name="permissions.users.copy" class="OcuPilot.Test.UserCopy" method="TestTheCopyToolPinsItsInputSchemaAndSnippetForm"/>
 <tool name="permissions.roles.create" class="OcuPilot.Test.RoleCreate" method="TestTheSchemaCarriesNoEscalationOnlyAndThePermittedSetIsTheSets"/>

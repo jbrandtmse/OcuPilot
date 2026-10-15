@@ -235,7 +235,7 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Lines were
   - **`ReadMessageHeader`**: one `SqlRows` statement by `ID`, giving the 23 rows of Design Notes › Header.
     - Enumerations are read with `%EXTERNAL` and stamps through `LocalStamp`.
     - `ErrorStatus` becomes `$System.Status.GetErrorText`, or `""` when it is OK.
-    - `Position` (1 to 23) and `Line` are JSON numbers, so the read order is the sort order. Every other value is a string.
+    - `Position` (1 to 23) and `Line` are JSON numbers, so the read order is the sort order. `Error` is a JSON boolean. Every other value is a string.
   - **`ReadMessageContents`**:
     - Read the header's body class and id (bound SQL), then switched:
       - open the body;

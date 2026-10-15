@@ -10,7 +10,7 @@
  *   three recent headers, newest first, with their status, type, source, target, body class and session; status Error, then the error
  *   flag, each leave the error header; the session leaves its two; a begin after the second leaves the third; the form offers no
  *   saved search and no agent marker; no request goes to `/api/interop-editors/` or under `/ui/interop/`.
- * - AC2: the error header's ID cell opens `interoperability/messages/document/<id>`, a strip of Header and Contents, and the
+ * - AC2: the error header's ID cell opens `interoperability/messages/document/<id>`, a strip of Header, Contents and Trace, and the
  *   twenty-three properties in order, with the error text, `IsError` 1 and the creation time in the instance's local time; an
  *   id no header holds reads "This message no longer exists."
  * - AC3: the Contents tab draws the XML header's indented XML with its `<&>` literal, the HL7 header's segments one to a line with
@@ -288,7 +288,7 @@ test('AC1: Messages searches the headers by the fixture\'s source, narrows by st
 // AC2. Mutation (Rule 19): move InteropMessageHeaderTab off `interoperability/messages/document`, regenerate, rebuild and redeploy ->
 // the ID cell links to the list's own id route and the path wait goes red; read `TimeCreated` raw in `ReadMessageHeader`, recompile
 // the tree -> the local-time leg goes red.
-test('AC2: the error header\'s ID opens its Header tab: a strip of Header and Contents and the twenty-three properties in order, the error text, the local time', async () => {
+test('AC2: the error header\'s ID opens its Header tab: a strip of Header, Contents and Trace and the twenty-three properties in order, the error text, the local time', async () => {
   const [, , hl7] = ids;
   const { context, page } = await signedInAt(browser, config, `/ocupilot/interoperability/messages?ns=${NAMESPACE}`, TALL, REDUCED_MOTION);
   try {
@@ -302,8 +302,8 @@ test('AC2: the error header\'s ID opens its Header tab: a strip of Header and Co
     await page.waitForFunction((rowSelector) => document.querySelectorAll(rowSelector).length === 23, { timeout: config.navigationTimeoutMs }, ROW_SELECTOR);
     assert.deepEqual(
       await page.$$eval('.ocu-detail-tabs .ocu-detail-tab-label', (nodes) => nodes.map((node) => node.textContent.trim())),
-      [STRINGS.interopMessageTabHeader, STRINGS.interopMessageTabContents],
-      'the strip reads Header and Contents'
+      [STRINGS.interopMessageTabHeader, STRINGS.interopMessageTabContents, STRINGS.interopMessageTabTrace],
+      'the strip reads Header, Contents and Trace'
     );
     const rows = await allRows(page);
     assert.equal(rows.length, 23, 'twenty-three properties');
@@ -422,8 +422,9 @@ test('AC5: an Operator reads the Header tab and finds the Contents tab listed, u
         [
           { route: 'interoperability/messages/document', disabled: 'false', reason: null },
           { route: 'interoperability/messages/contents', disabled: 'true', reason: STRINGS.privilegeRequiresResource.replace('<resource>', '%Ens_MessageContent:USE') },
+          { route: 'interoperability/messages/trace', disabled: 'false', reason: null },
         ],
-        'the strip lists Header and Contents, and Contents is unavailable naming its pair'
+        'the strip lists Header, Contents and Trace, Contents is unavailable naming its pair, and the Operator holds the Trace tab\'s'
       );
       await page.click('button.ocu-detail-tab[data-route="interoperability/messages/contents"]');
       await twoFrames(page);

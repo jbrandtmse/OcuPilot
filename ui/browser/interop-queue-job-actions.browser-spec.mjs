@@ -278,8 +278,8 @@ test('AC4: a Queue messages row\'s message id opens that message\'s Header tab i
     assert.equal(value.TargetConfigName, OPERATION, 'and its TargetConfigName row the probe operation');
     assert.deepEqual(
       await page.$$eval('.ocu-detail-tabs .ocu-detail-tab-label', (nodes) => nodes.map((node) => node.textContent.trim())),
-      [STRINGS.interopMessageTabHeader, STRINGS.interopMessageTabContents],
-      'under the Header and Contents strip'
+      [STRINGS.interopMessageTabHeader, STRINGS.interopMessageTabContents, STRINGS.interopMessageTabTrace],
+      'under the Header, Contents and Trace strip'
     );
     // The Contents tab reads the same message's body in USER, where the port opens it switched into that namespace.
     await (await page.waitForSelector('button.ocu-detail-tab[data-route="interoperability/messages/contents"]', { visible: true, timeout: config.navigationTimeoutMs })).click();

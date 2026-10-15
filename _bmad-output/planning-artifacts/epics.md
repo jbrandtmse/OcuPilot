@@ -8970,7 +8970,7 @@ So that the analytics tools OcuPilot does not rebuild are one step away.
 
 ### Story 20.33: The MDX query tool
 
-[AMENDED 2026-10-14, orchestrator ruling Q1 A at Story 20.11's spec gate, Rule 5] Split from Story 20.11, carrying its criterion verbatim. Its charter, as measured at 20.11's plan, is in that spec's Design Notes › Split (Part C): an owner-scoped asynchronous run with a row cap, a time bound, cancel and drill-through, never a write. After Story 20.32, before Story 20.34.
+[AMENDED 2026-10-14, orchestrator ruling Q1 A at Story 20.11's spec gate, Rule 5] Split from Story 20.11, carrying its criterion verbatim. Its charter, as measured at 20.11's plan, is in that spec's Design Notes › Split (Part C): an owner-scoped asynchronous run with a row cap, a time bound, cancel and drill-through, never a write. After Story 20.32, before Story 20.34. [AMENDED 2026-10-14, orchestrator rulings Q1 A and Q2 C at this story's spec gate, Rule 5] A query whose text runs server-side code or SQL (`%SEARCH`, `%SQLRESTRICT`, `RETURN`, `%ORDER`) runs only after the person confirms a plain-words warning (AD-65); the agent's MDX read is Story 20.35.
 
 As an analytics developer,
 I want to run an MDX query and see its results,
@@ -8995,6 +8995,20 @@ So that a changed cube can be brought up to date here.
 - **Given** the cube manager
 - **When** a build, synchronize or repair runs
 - **Then** it is a confirmed write - the one analytics write in this stage.
+
+### Story 20.35: The agent's MDX read
+
+[CHARTERED 2026-10-14, orchestrator ruling Q1 A at Story 20.33's spec gate, Rule 5] Split from the Analytics rider's read tools: the MDX query tool's agent read, which Story 20.33 does not build. Synchronous in the turn job through `AnalyticsPort`, with Story 20.33's caps (row cap, time bound, drill-through cap) and AD-60. It refuses `%SEARCH`, `%SQLRESTRICT`, `RETURN` and `%ORDER` with `ANALYTICS.MDX.SQL`, because an agent read tool never executes code (AD-65, orchestrator ruling Q2 C). It carries its own `ReadTool`, `ToolRoundTrip`, `ToolEmit` and `SurfaceCoverage` rows. After Story 20.33, before Story 20.34.
+
+As an analytics developer,
+I want the agent to run an MDX query for me and read its results,
+So that I can ask about a cube's numbers in the conversation.
+
+**Acceptance Criteria:**
+
+- **Given** the agent's MDX read
+- **When** it runs a query
+- **Then** it answers the results within the MDX query tool's caps, and refuses a query that would run server-side code or SQL.
 
 ## Epic 21: Stage 5 - custom-REST parity from the MCP suite's handlers
 

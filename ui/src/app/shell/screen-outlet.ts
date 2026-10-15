@@ -76,6 +76,7 @@ const INTEROP_EDITOR_PAGE: PageLoader = () => import('../areas/interoperability/
 
 /** Story 20.9: a message's Contents tab, the detail page drawing its rows as one block of text. */
 const INTEROP_MESSAGE_CONTENTS_PAGE: PageLoader = () => import('../areas/interoperability/interop-message-contents.page').then((m) => m.InteropMessageContentsPage);
+const INTEROP_MESSAGE_TRACE_PAGE: PageLoader = () => import('../areas/interoperability/interop-message-trace.page').then((m) => m.InteropMessageTracePage);
 
 /**
  * Pages keyed by the descriptor that declares them, resolved **before** the archetype map
@@ -235,6 +236,8 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, PageLoader>> = {
   'OcuPilot.Screen.Descriptor.InteropProductionDiagram': INTEROP_EDITOR_PAGE,
   // Story 20.9: a message's Contents tab. The Messages search and the Header tab use their archetypes' pages.
   'OcuPilot.Screen.Descriptor.InteropMessageContentsTab': INTEROP_MESSAGE_CONTENTS_PAGE,
+  // Story 20.30: the Trace tab, the session drawn as a sequence diagram.
+  'OcuPilot.Screen.Descriptor.InteropMessageTraceTab': INTEROP_MESSAGE_TRACE_PAGE,
 };
 
 /**

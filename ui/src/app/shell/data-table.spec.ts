@@ -545,6 +545,35 @@ describe('the data table', () => {
     expect(first.host().querySelector('.ocu-data-table-empty')).toBeNull();
   });
 
+  // DW-2434: `core/read-state.ts` decides the states this table draws, and the detail tabs' bodies decide them the same way.
+  // Mutation (Rule 19): drop the descriptor comparison from `ReadState.boundHere` -> the table keeps drawing its rows after the
+  // framework is bound to another screen, and this goes red; read `ReadState.fault` without it -> another screen's refusal is drawn
+  // in this table, and the last leg goes red.
+  it('Story 20.30, DW-2434: a table whose screen the framework is no longer bound to draws the skeleton in place of the rows it drew', async () => {
+    const wired = await wire(tableDeclaration(), ok(rows(3)));
+    await wired.refresh.readNow();
+    await settle(wired.fixture);
+    expect(wired.host().querySelectorAll('[role="row"][aria-rowindex]').length).toBe(4);
+
+    wired.refresh.bind({ ...tableDeclaration(), descriptor: 'OcuPilot.Screen.Descriptor.Other' }, async () => ({ kind: 'ok', rows: [], truncated: false }));
+    await wired.refresh.readNow();
+    await settle(wired.fixture);
+    expect(wired.refresh.hasLoaded()).toBe(true);
+
+    expect(wired.host().querySelector('.ocu-data-table-frame')?.getAttribute('aria-busy')).toBe('true');
+    expect(wired.host().querySelector('.ocu-data-table-skeleton')).not.toBeNull();
+    expect(wired.host().querySelector('[role="grid"]')).toBeNull();
+    expect(wired.host().querySelector('.ocu-data-table-empty')).toBeNull();
+
+    // A refusal of the screen the framework is bound to is that screen's, not this table's.
+    wired.refresh.bind({ ...tableDeclaration(), descriptor: 'OcuPilot.Screen.Descriptor.Third' }, async () => ({ kind: 'fault', fault: REFUSED }));
+    await wired.refresh.readNow();
+    await settle(wired.fixture);
+    expect(wired.refresh.fault()).toEqual(REFUSED);
+    expect(wired.host().querySelector('.ocu-data-table-refusal')).toBeNull();
+    expect(wired.host().querySelector('.ocu-data-table-skeleton')).not.toBeNull();
+  });
+
   it('the grid is one Tab stop; Down selects, Right steps into the cells, Alt+Down opens the menu and closing it returns focus', async () => {
     const declaration = tableDeclaration({ rowActions: [{ id: 'disable', selfProtection: '' }] });
     const wired = await wire(declaration, ok(rows(3)));

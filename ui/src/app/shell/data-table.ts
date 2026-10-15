@@ -27,11 +27,11 @@ import { Router } from '@angular/router';
 import { capNoticePhrase, rowCountPhrase } from '../core/count-phrase';
 import { encodeEntityId } from '../core/entity-id';
 import { normalizeEntityId } from '../core/entity-ref';
-import { isBannerFault } from '../core/fault';
 import { childListFor, detailScreenFor, documentScreenFor, editorScreenFor, hasIdRoute, screenForRoute, withQuery } from '../core/navigation';
 import { OverlayStack } from '../core/overlay-stack';
 import { readBackLine, withReadBack } from '../core/read-back';
 import { RefreshService } from '../core/refresh';
+import { ReadState } from '../core/read-state';
 import { ScopeService } from '../core/scope';
 import { csvFileName, csvText, saveCsv, tableCsvRows } from '../core/csv';
 import { DOWNLOAD_CSV_ACTION_ID, ScreenActions, actionLabel, bannerActionIds } from '../core/screen-actions';
@@ -64,6 +64,8 @@ import {
   rowKey,
   viewKeys as viewKeysOf,
 } from '../core/table-model';
+import { followInAppLink } from './in-app-link';
+import { ReadRefusal, ReadSkeleton } from './read-state-blocks';
 
 /**
  * How the table resolves a descriptor's string keys. `stringFor` everywhere but a spec, which
@@ -212,28 +214,17 @@ interface CellTooltip {
 @Component({
   selector: 'app-data-table',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CdkVirtualScrollViewport, CdkFixedSizeVirtualScroll, CdkVirtualForOf],
+  imports: [CdkVirtualScrollViewport, CdkFixedSizeVirtualScroll, CdkVirtualForOf, ReadSkeleton, ReadRefusal],
   host: { '(window:resize)': 'onWindowResize()' },
   template: `<div class="ocu-data-table-frame" [attr.aria-busy]="busy">
       <span class="ocu-visually-hidden ocu-data-table-announcement" role="status">{{
         announcementText
       }}</span>
       @if (showSkeleton) {
-        <div class="ocu-data-table-skeleton" aria-hidden="true">
-          @for (bar of skeletonRows; track bar) {
-            <div class="ocu-data-table-skeleton-row">
-              <span class="ocu-skeleton-bar ocu-skeleton-bar-40"></span>
-              <span class="ocu-skeleton-bar ocu-skeleton-bar-25"></span>
-              <span class="ocu-skeleton-bar ocu-skeleton-bar-15"></span>
-            </div>
-          }
-        </div>
+        <app-read-skeleton />
       }
       @if (showRefusal) {
-        <div class="ocu-data-table-refusal" role="alert">
-          <span class="ocu-data-table-refusal-message">{{ STRINGS.connectivityRequestRefused }}</span>
-          <button type="button" class="ocu-button-text" (click)="onRetry()">{{ STRINGS.actionRetry }}</button>
-        </div>
+        <app-read-refusal (retry)="onRetry()" />
       }
       @if (showEmpty) {
         <section #empty class="ocu-empty-state ocu-data-table-empty" tabindex="-1">
@@ -532,7 +523,6 @@ export class DataTable implements OnInit {
   protected readonly rowHeight = ROW_HEIGHT_PX;
   protected readonly minBufferPx = MIN_BUFFER_PX;
   protected readonly maxBufferPx = MAX_BUFFER_PX;
-  protected readonly skeletonRows = [0, 1, 2, 3, 4, 5];
 
   /** The vertical ellipsis the row-overflow trigger draws, as an escape (Rule 14). */
   protected readonly menuGlyph = '\u22ee';
@@ -556,6 +546,14 @@ export class DataTable implements OnInit {
 
   /** Bumped by the store, the framework, the scope, the action registry and the router. */
   private readonly generation = signal(0);
+
+  /** The states the read draws, decided where the detail tabs' body components decide them (`core/read-state.ts`). */
+  private readonly readState = new ReadState(
+    this.refresh,
+    () => this.screen(),
+    () => this.store(),
+    () => this.generation()
+  );
   private readonly renderedRange = signal<ListRange>({ start: 0, end: 0 });
   private readonly activeColumn = signal(-1);
   private readonly menuIsOpen = signal(false);
@@ -820,34 +818,24 @@ export class DataTable implements OnInit {
 
   // --- What renders ------------------------------------------------------------------------------
 
-  private get boundHere(): boolean {
-    this.generation();
-    return this.refresh.descriptor() === this.screen().descriptor;
-  }
-
   private get loaded(): boolean {
-    return this.boundHere && this.refresh.hasLoaded();
-  }
-
-  private get fault() {
-    return this.boundHere ? this.refresh.fault() : null;
+    return this.readState.loaded;
   }
 
   protected get showRefusal(): boolean {
-    const fault = this.fault;
-    return fault !== null && !isBannerFault(fault);
+    return this.readState.showRefusal;
   }
 
   protected get showSkeleton(): boolean {
-    return !this.loaded && !this.showRefusal;
+    return this.readState.showSkeleton;
   }
 
   protected get busy(): string | null {
-    return this.showSkeleton ? 'true' : null;
+    return this.readState.busy;
   }
 
   protected get showEmpty(): boolean {
-    return this.loaded && this.fault === null && this.store().data().length === 0;
+    return this.readState.showEmpty;
   }
 
   protected get showGrid(): boolean {
@@ -1558,9 +1546,7 @@ export class DataTable implements OnInit {
 
   protected onLinkClick(event: MouseEvent, row: RowModel): void {
     event.stopPropagation();
-    if (event.ctrlKey || event.metaKey || event.shiftKey || event.button !== 0) return;
-    event.preventDefault();
-    void this.router.navigateByUrl(row.url);
+    followInAppLink(event, this.router, row.url);
   }
 
   /**

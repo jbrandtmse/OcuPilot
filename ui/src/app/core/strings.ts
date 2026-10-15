@@ -7399,6 +7399,36 @@ export const STRINGS = {
   interopMessageContentsPrompt2: 'Which fields of this message are empty?',
   /** EXPERIENCE.md:604 */
   interopMessageContentsPrompt3: 'Does anything in this message look malformed?',
+  /** EXPERIENCE.md:604 */
+  interopMessageTraceLabel: 'Session trace',
+  /** EXPERIENCE.md:604 */
+  interopMessageTabTrace: 'Trace',
+  /** EXPERIENCE.md:604 */
+  interopMessageTraceNote: 'OcuPilot draws this session\'s messages. The classic Visual Trace also shows its event, rule and I/O log entries.',
+  /** EXPERIENCE.md:604 */
+  interopTraceDiagramLabel: 'Sequence diagram of this session',
+  /** EXPERIENCE.md:604 */
+  interopTraceViewDiagram: 'Diagram',
+  /** EXPERIENCE.md:604 */
+  interopTraceViewMermaid: 'Mermaid text',
+  /** EXPERIENCE.md:604 */
+  interopTraceArrow: 'Message <id>: <type> from <source> to <target>, <status>',
+  /** EXPERIENCE.md:604 */
+  interopTraceNoBody: '(no body)',
+  /** EXPERIENCE.md:604 */
+  interopTraceErrorMark: '[ERROR]',
+  /** EXPERIENCE.md:604 */
+  interopTraceNoName: '(no name)',
+  /** EXPERIENCE.md:604 */
+  interopTraceCut: 'OcuPilot draws the first <n> messages of this session.',
+  /** EXPERIENCE.md:604 */
+  interopTestTraceLink: 'Open this session\'s trace',
+  /** EXPERIENCE.md:604 */
+  interopMessageTracePrompt1: 'What happened in this session, step by step?',
+  /** EXPERIENCE.md:604 */
+  interopMessageTracePrompt2: 'Which host in this session reported the error?',
+  /** EXPERIENCE.md:604 */
+  interopMessageTracePrompt3: 'How long did this session take from its first message to its last?',
 } as const;
 
 /**
