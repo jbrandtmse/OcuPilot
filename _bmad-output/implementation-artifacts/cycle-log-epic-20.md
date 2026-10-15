@@ -908,3 +908,5 @@
 2026-10-15T09:37:16Z	Story 20.33	spec_reopened	reason=orchestrator_ruling_Q1_B_at_20.35_gate status=draft tracker=backlog(was_ready-for-dev;re-plan_measures_resolved-text_check) spine=AD-65_splice_clause_widened
 2026-10-15T09:37:16Z	Epic 20	deps_hash_rerecorded	reason=rule5_amendment(20.35_block:no_SurfaceCoverage;detector_note)
 2026-10-15T09:37:16Z	Story 20.31	stage_spawned	stage=qa spawn_at=2026-10-15T09:37:16Z model=sonnet agent_name=20-31-qa-1 cycle_iteration=1
+2026-10-15T10:05:17Z	Story 20.31	qa_complete	spawn_at=(see_stage_spawned) model=sonnet agent_name=20-31-qa-1 tests=InteropResendLimits(new,armed,6;1_red_on_purpose:agent_mint_of_100_500_SUBSCRIPT_ProposalTargetIdx),InteropResendSweep(new,armed,2),InteropEditResend(+2) tests_added=10 mutations_demonstrated=21 first_run_failures=1(real_defect) clarifications=0 closing_sections_present=true footprint=scripts/ci-throwaway.sh(roster_add)
+2026-10-15T10:05:17Z	Story 20.31	stage_spawned	stage=code-review spawn_at=2026-10-15T10:05:17Z model=opus agent_name=20-31-code-review-1 cycle_iteration=1
