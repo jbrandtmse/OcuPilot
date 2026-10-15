@@ -3125,6 +3125,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-26T04:49:15Z owner=range-end-cleanup by=burndown note=Epic 11 burn-down (Rule 27): panel layout/rail behavior, not floor-blocking, no remaining Epic 11 story
 - 2026-09-30T06:34:04Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p4
 - 2026-10-07T04:26:43Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=merge_gate note=owner-approved burn-down batch (c), visible polish, 2026-10-06 (relayed by the Planner): Story 23.5
+- 2026-10-15T15:33:34Z status=resolved-by:23-5-the-range-end-cleanup-part-5 by=adjudication note=panelMax_subtracts_only_a_reopened_side_bar(782b093d);panel-layout.test+panel.browser_1280_leg_l;CI_38755393824
 
 ### DW-459: The first-login gate leaves the fresh-sign-in flag unspent after a failed read and retries on every later navigation or agent-status change with no bound, so a user mid-task can be redirected to the Definition form long after sign-in
 - source: spec-4-3-the-docked-panel-present-on-every-route.md | severity: med | fix-risk: low | footprint: in-story
@@ -3141,6 +3142,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-26T04:49:15Z owner=range-end-cleanup by=burndown note=Epic 11 burn-down (Rule 27): panel layout/rail behavior, not floor-blocking, no remaining Epic 11 story
 - 2026-09-30T06:34:04Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p4
 - 2026-10-07T04:26:43Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=merge_gate note=owner-approved burn-down batch (c), visible polish, 2026-10-06 (relayed by the Planner): Story 23.5
+- 2026-10-15T15:33:34Z status=resolved-by:23-5-the-range-end-cleanup-part-5 by=adjudication note=rail_inert_in_full_screen(782b093d);rail.spec+rail.browser_leg_light+dark;CI_38755393824
 
 ### DW-1029: Switches.MergeBody treats a JSON object or array sent for any switch field, contextRowCap included, as absent and keeps the stored value instead of refusing
 - source: spec-4-4-screen-context-reaches-the-turn-capped-and-secret-free.md | severity: low | fix-risk: low | footprint: in-story
@@ -3664,6 +3666,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-19T18:35:54Z status=routed owner=range-end-cleanup by=burndown note=Rule 27 non-blocking: a DESIGN.md geometry row the ordinary Home arrival cannot reach
 - 2026-09-30T06:34:04Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p4
 - 2026-10-07T04:26:42Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=merge_gate note=owner-approved burn-down batch (c), visible polish, 2026-10-06 (relayed by the Planner): Story 23.5
+- 2026-10-15T15:33:34Z status=resolved-by:23-5-the-range-end-cleanup-part-5 by=adjudication note=DESIGN.md_1920_row_corrected_tier1(782b093d);panel-layout.test_reads_the_row+suggested-view_AC8;CI_38755393824
 
 ### DW-1149: ERROR_LOG_DATES_PATH duplicates error-log.store.ts's prefix with nothing pinning the two equal, so a path change fails silently as no line
 - source: spec-4-10-homes-suggested-view-and-the-starter-prompts.md | severity: low | fix-risk: low | footprint: in-epic
@@ -10136,6 +10139,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: seen on the demo account at the default panel width, 1440 px window; Story 19.11's picker
 - 2026-10-06T10:41:23Z status=routed owner=range-end-cleanup by=merge_gate note=visible polish, a candidate for the drafted batch (c) or a later polish pass; not part of 23.4
 - 2026-10-07T04:26:44Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=merge_gate note=owner-approved burn-down batch (c), visible polish, 2026-10-06 (relayed by the Planner): Story 23.5
+- 2026-10-15T15:33:35Z status=resolved-by:23-5-the-range-end-cleanup-part-5 by=adjudication note=app-agent-picker_display_contents(782b093d);agent-picker_Leg3_whole_name+half_cap;CI_38755393824
 
 ### DW-2111: Five error-log browser navigations timed out at 30 s in one CI run and did not reproduce on a re-run of the identical head, so the instance wedges intermittently during that spec
 - source: cycle-log-parallel.md (Epic 10 merge gate) | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -10480,6 +10484,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: cycle-log-epic-20.md (run 37670705022 attempt 1) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: Failed in browser shard 1/3 of attempt 1 on 95eecef8; attempt 2 green; passed in 37649713980 and 37660214447 and 3/3 locally on ocupilot-b-ci (inference: measured mid-reflow after setViewport)
 - 2026-10-07T20:40:47Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=lead note=settle the layout after setViewport(720) before openMenuViolations measures, as 20.1 did for the navigation map; same screen family as DW-2107
+- 2026-10-15T15:33:35Z status=resolved-by:23-5-the-range-end-cleanup-part-5 by=adjudication note=settleViewport_before_720px_gate(782b093d);no_red_under_20x_throttle_recorded;CI_38755393824
 
 ### DW-2170: Wire.cls doc comments at :234 and :326 still describe the API floor as %Admin_* or %Development, so a %Ens_Portal holder reads as an AUTH.NOADMIN caller
 - source: spec-20-14-interoperability-holders-reach-ocupilot.md | severity: low | fix-risk: low | footprint: in-story
@@ -11110,6 +11115,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: cycle-log-epic-20.md (run 38047135210 attempt 1) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: Red in browser shard 2/3 on 9a8f2b2e; no change to _components.scss or tool-call-card.ts since 20.3's baseline; passed in attempt 2's rerun of the shard
 - 2026-10-10T16:05:47Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=lead note=wait for the tool-call card to settle (spinner gone) before the structural walk, or exempt the transient spinner; CI flake, Rule 27
+- 2026-10-15T15:33:35Z status=resolved-by:23-5-the-range-end-cleanup-part-5 by=adjudication note=spinner_wait+settled_panel(782b093d,5574fede);no_red_under_throttle_recorded;CI_38755393824
 
 ### DW-2285: Sweep flake: Retention.TestADeletedUsersSettingsGoAndTheirTranscriptsStay's 'the deleted account's token is refused' fails in a long local sweep on a reused throwaway and passes alone
 - source: cycle-log-epic-20.md (20.22 runner-side sweep shard 22/30, run 189) | severity: low | fix-risk: low | footprint: out-of-footprint
@@ -12045,6 +12051,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: lead fresh check, Story 23.5 batch b | severity: med | fix-risk: low | footprint: in-epic
 - evidence: ci-browser --shard 2/20 on ocupilot-ci rebuilt from 9b1fcdeb: 1 of 7 failed; alone 7/7; same shard re-run 41/41
 - 2026-10-15T08:02:43Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=lead note=batch_c_touches_suggested-view_(DW-1148):_check_AC8's_settle_wait
+- 2026-10-15T15:33:35Z status=resolved-by:23-5-the-range-end-cleanup-part-5 by=adjudication note=AC8_waits_settled_layout_tolerance_0.5(782b093d);cause_not_reproduced,recorded;CI_38755393824
 ### DW-2442: A trace arrow's accessible name leaves out its visible label (body class, [ERROR]), so the link fails WCAG 2.5.3 and an Error flag beside a Completed status never reaches assistive technology
 - source: spec-20-30-the-session-trace.md code review | severity: med | fix-risk: low | footprint: in-story
 - evidence: interop-message-trace.ts binds aria-label to arrowName (session-trace.ts:104-113), the spec's interopTraceArrow 'Message <id>: <type> from <source> to <target>, <status>'; the link's visible text is its ID and its label, e.g. '(no body) [ERROR]', which the name does not contain.
@@ -12079,8 +12086,14 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-23-5-the-range-end-cleanup-part-5.md (implement batch c deferred) | severity: med | fix-risk: low | footprint: in-story
 - evidence: settled at 320 px on ocupilot-ci, detectScreen reports app-long-block>span.ocu-diff-before 127 px past p.ocu-diff-row-removed (389 px of text in a 262 px row); pre-existing
 - 2026-10-15T11:13:01Z status=open owner=23-5-the-range-end-cleanup-part-5 by=harvest note=added_to_batch_d:wrap_diff_values,impact_720_pass_on_a_settled_panel
+- 2026-10-15T15:33:35Z status=resolved-by:23-5-the-range-end-cleanup-part-5 by=adjudication note=overflow-wrap_anywhere_on_diff_values(5574fede);impact_720_settled+proposal-card_(d)_light+dark;CI_38755393824
 
 ### DW-2455: Browser specs' 720px structural passes measure right after a bare setViewport, while the panel's width transition still runs, so an overflow at the settled 320px panel can read clean and a pass can flake
 - source: spec-23-5-the-range-end-cleanup-part-5.md (code review, batch c) | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: 44 of 81 specs using VIEWPORTS.narrow carry no settle wait (settleViewport, transitionsSettled, panelSettlesAt or a clientWidth wait; by grep, inference), e.g. allowed-directories.browser-spec.mjs:147-151 and impact AC2/AC6. DW-2454 is one overflow this hid; DW-2163, DW-2282 and DW-2450 were flakes of the same shape.
 - 2026-10-15T11:56:49Z status=escalated owner=burndown by=cr note=sweep: settleViewport plus transitionsSettled before each narrow pass; settling may surface hidden overflows (fix-risk)
+
+### DW-2458: CI flake: log-viewer.spec.ts AC6 (with Live tail off nothing streams) read 10 fake timers pending on gates (node 24.15.0) only, green on node 22 and 26 in the same run
+- source: lead CI resolution, Story 23.5 batch c | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: run 38755393824 head 33d0b7c9: 'logs/messages: 10 fake timers pending, 2 real timers active'; head differs from green 5574fede by test files and a CSS comment only
+- 2026-10-15T15:26:35Z status=routed owner=23-11-the-range-end-cleanup-part-10 by=lead note=flake:rerun_failed_job_once;CI_flakes_go_to_the_standing_cleanup_story

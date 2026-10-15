@@ -2,7 +2,7 @@
 title: 'Story 23.5: The range-end cleanup, part 5'
 type: 'bugfix'
 created: '2026-10-14'
-status: 'done'
+status: 'in-progress'
 baseline_revision: 'd22d93ff913af1c8d592710c7a13dcd02ba3d874'
 baseline_commit: 'd22d93ff913af1c8d592710c7a13dcd02ba3d874'
 review_loop_iteration: 0
@@ -479,6 +479,10 @@ Rejected:
 - 2026-10-15, lead: Batch b closed (code head `0a1fcf3e`, merged 20.30). Re-opened for Batch c, with DW-2450 added from the lead's fresh check.
 
 - 2026-10-15, lead: Batch c re-opened for one `[CI]` item (CI run 38725764786: DW-2454's overflow, exposed by the settled 720 px pass).
+
+- 2026-10-15, lead: DW-1148 amended DESIGN.md:904 (Rule 5 tier 1). Original: `| 1,920px | open (240) | 960 | 672 | 400 | 1,232 | none |`. Amended: `| 1,920px | Home: collapsed · list: open (240) | 960 | 912 closed · 672 open | 400 | 1,232 | none [AMENDED 2026-10-14, Story 23.5, DW-1148] |`. Reason: Home closes the side bar (EXPERIENCE.md:53, :949), so its content is 912.
+
+- 2026-10-15, lead: Batch c closed (branch head `33d0b7c9`, CI run 38755393824, its one red a node-24 flake, DW-2458). Re-opened for Batch d.
 
 ## Review Triage Log
 
