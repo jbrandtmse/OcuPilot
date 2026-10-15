@@ -181,6 +181,12 @@ Parameter SCREENLISTED As BOOLEAN = 0;
 /// for the values the read is composed from, and again with the fresh read.</p>
 Parameter READSVALUES As BOOLEAN = 0;
 
+/// <p>Whether this tool's screen action is reviewed by a person before it is sent (AD-53, Story 20.31):
+/// <code>0</code> here. A tool that declares <code>1</code> answers <code>POST /screens/:screen/dryrun</code>
+/// (<method>OcuPilot.Api.ScreenAction.DryRun</method>), which resolves the action as the action route does and stops
+/// before the write, answering the rows the agent's proposal card shows and <method>DryRunReview</method>.</p>
+Parameter DRYRUN As BOOLEAN = 0;
+
 /// <p>The top-level names this tool's own <parameter>READTYPE</parameter> read answers,
 /// comma-separated, or <code>""</code> where the screen's declared read is the whole record of
 /// them.</p>
@@ -391,6 +397,14 @@ ClassMethod CreatedId(pWritten) As %String
 ClassMethod TargetName(pFresh, pId As %String, pArgs) As %String
 {
     Quit ""
+}
+
+/// <p>What a reviewed screen action (<parameter>DRYRUN</parameter>) answers beside its rows, from the fresh read
+/// <var>pFresh</var>: <code>{}</code> here. The dry-run route answers it as <code>review</code>, and the person's
+/// action carries back what the tool names in it.</p>
+ClassMethod DryRunReview(pFresh As %DynamicObject) As %DynamicObject
+{
+    Quit {}
 }
 
 /// <p>The row-action ids <parameter>SCREENACTIONS</parameter> names, as a <class>%List</class>.</p>

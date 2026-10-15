@@ -397,6 +397,9 @@ export const CONSEQUENCE_INTEROPLOOKUPIMPORT = 'INTEROP.LOOKUP.IMPORT';
 export const CONSEQUENCE_INTEROPTESTSENDS = 'INTEROP.TEST.SENDS';
 /** Story 20.27: a data transformation test, which runs the transformation's code on this instance as the person. */
 export const CONSEQUENCE_INTEROPTRANSFORMRUNS = 'INTEROP.TRANSFORM.RUNS';
+/** Story 20.31: a message resend, and an edit and resend, each of which delivers a copy that cannot be recalled. */
+export const CONSEQUENCE_INTEROPMESSAGERESEND = 'INTEROP.MESSAGE.RESEND';
+export const CONSEQUENCE_INTEROPMESSAGEEDITRESEND = 'INTEROP.MESSAGE.EDITRESEND';
 /** Story 20.22: a set of a setting that is a location on the server (AD-21's ninth case). */
 export const CONSEQUENCE_INTEROPSETTINGLOCATION = 'INTEROP.SETTING.LOCATION';
 /** The field a setting set's diff names the value under. */
@@ -552,6 +555,9 @@ export function consequenceSentence(code: string | undefined): string {
   if (code === CONSEQUENCE_INTEROPTESTSENDS) return STRINGS.interopTestSendsConsequence;
   // Story 20.27: a data transformation test's sentence, the one its own dialog shows.
   if (code === CONSEQUENCE_INTEROPTRANSFORMRUNS) return STRINGS.interopTransformRunsConsequence;
+  // Story 20.31: a message resend's and an edit and resend's sentences, each published once.
+  if (code === CONSEQUENCE_INTEROPMESSAGERESEND) return STRINGS.interopMessageResendConsequence;
+  if (code === CONSEQUENCE_INTEROPMESSAGEEDITRESEND) return STRINGS.interopMessageEditResendConsequence;
   return '';
 }
 

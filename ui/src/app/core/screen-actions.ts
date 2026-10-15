@@ -144,6 +144,9 @@ const ACTION_LABELS: Readonly<Record<string, string>> = {
   recover: STRINGS.actionRecover,
   // Story 20.23: an abort, on Queue messages and an item's Queue tab.
   abort: STRINGS.actionAbort,
+  // Story 20.31: Resend, on Messages' checked rows and a message's Header tab, and Edit and resend, on the Header tab.
+  resend: STRINGS.interopMessagesResendAction,
+  editresend: STRINGS.interopMessagesEditResendAction,
 };
 
 /**

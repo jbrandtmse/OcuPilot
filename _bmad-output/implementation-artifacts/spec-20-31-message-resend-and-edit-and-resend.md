@@ -2,9 +2,10 @@
 title: 'Story 20.31: Message resend and edit-and-resend'
 type: 'feature'
 created: '2026-10-13'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '895d9fe9ce67457e19ebc35e8f2100d52a7aa36b'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
   - '{project-root}/_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md'
@@ -518,6 +519,38 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Lines were
 
 ## Review Triage Log
 
+### 2026-10-15 — Review pass
+
+- verdicts: 25 findings — high 0, medium 5, low 16, false 4, maybe-false 0
+- findings:
+  - Verification-gap layer:
+    - `[medium]` `[patch]` The edit form's `Value` for a credential-named field, and the `Fields` echo, are not asserted — read the test: it collected `Field` and `Secret` only. Asserted both in `TestEveryFieldShapeIsEditedOnACloneAndTheOriginalIsLeftAlone`; each mutation reddens it alone.
+    - `[medium]` `[patch]` `Original` binds no review: no test changes the body between review and send — added `TestABodyEditedAfterTheReviewIsRefusedForThePersonAndTheAgent` (person CHANGED, agent target-changed); the mutation reddens it alone.
+    - `[medium]` `[patch]` The clean-up of a copy the vendor refused after the save never ran: `RefuseEditAfterSave` had no caller — added `TestACopyTheVendorRefusedAfterTheSaveIsDeleted` over the seam, counting bodies and headers; the mutation reddens it alone.
+    - `[medium]` `[patch]` The HL7 branch of the edit's copy-out script has no test — added `TestTheCopyOutDraftOfAnHl7EditRendersItsScriptAndRunningItDoesTheSame`, which runs the script and compares segments, source and original; the mutation reddens it alone.
+    - `[low]` `[patch]` A stopped production is not tested for the edit read, review and write — added `TestAStoppedProductionIsRefusedByTheEditReadReviewAndWrite`; the mutation reddens it alone.
+    - `[medium]` `[patch]` "OcuPilot writes no ConfigChange" is pinned for resend only, by an id-exact match, with no mutation line — both agent tests now count `ConfigChange` rows naming `interop-message` since their start; a mutation per write reddens each test alone.
+    - `[low]` `[patch]` The over-cap 400 is asserted by code only — the port, review and action legs now assert the sentence naming `Messages` and the cap, and a 101-id action call is refused; the mutation reddens the test alone.
+    - `[low]` `[patch]` The governance test relies on a policy it did not set — it now asserts that no stored policy overrides the baseline, as `ToolDispatch` does.
+    - `[low]` `[patch]` `HighWater` swallows a failed read, so the sweep can delete every row in USER — it answers `""` on a failed read, `SweepSince` deletes nothing for a mark that is not `<digits>|<digits>`, and the suite and the browser spec refuse to start without a mark.
+    - `[low]` `[reject]` The AC3 mutation does not isolate the target-changed leg — the recorded mutation reddens that test among eight; isolation is not what Rule 19 asks, and a narrower mutation would also redden the person's digest legs.
+    - `[false]` `[reject]` An assertion in `audit.page.spec.ts` cannot observe the dry run — the cited `paths.at(-1)` assertion fails on any further read after the opening one; the dry run is held by the dialog and review-line assertions that follow it.
+    - `[low]` `[reject]` AC2's client leg has no recorded mutation — AC2 has one (`RESENDMAX` 1000, reddening the descriptor and the 101 leg), and `screen-action-handler-resend.spec.ts` names the descriptor mutation at its assertion.
+    - `[low]` `[reject]` A person's action without `Reviewed` skips the review gate — by design: the dry run and the action share one value rule, so `Reviewed` must be optional, and a caller of the REST route holds the privileges the classic page needs without any review. Closing it would change specified behavior.
+    - `[false]` `[reject]` `MessageVerdict` treats every non-`Request` type as a response — the vendor's `NewDuplicatedMessage` branches `If Type = Request ... Else { reply queue check }`, so `Terminate` is judged by the vendor as the code judges it.
+    - `[low]` `[patch]` A stream body may leave data in USER after the sweep — confirmed, and wider: the sweep read the body class from an index, which returns it upper-case (`%STREAM.GLOBALCHARACTER`), so no body of any class was ever deleted. It now reads the class from the header and deletes persistent and stream bodies; probed on the throwaway (stream and `Ens.StringRequest` counts fall back).
+    - `[low]` `[patch]` Test comments mislabel their ACs, and the gate's mutation text names `ScreenAction.DryRun` — comments now cite the spec's numbering, and the pair gate is named at `ScreenAction.Run`.
+    - `[false]` `[reject]` `DryRunRoute` differs from the spec's list — the answering leg needs the running production, so the class is armed; no tool that declares a dry run declares a secret, and the shared guard is pinned by `ImpactRoute`. No bad outcome.
+  - Intent-alignment layer:
+    - `[low]` `[reject]` The command bar's "Check at most 100 rows" is tested at function level only — the screen's declaration is pinned by `screen-action-handler-resend.spec.ts` and the bar's rendering of a checked-set reason is shared code with its own specs; a test of the bar would add no unique coverage.
+    - `[low]` `[reject]` The Gated row's "drawn `aria-disabled` with Requires" is not drawn on the row action — the agent's proposal card draws it from the tool's declared pairs (`privilegeProposalMissing`), and a person's press is refused 403 naming the pair (`InteropResendGate`); no row action in the client is pre-disabled by pair, so a pre-disable would be a new server-computed surface.
+    - `[low]` `[reject]` The double gate is server-enforced only when `Reviewed` is supplied — same root as the verification-gap row on a person's action without `Reviewed`; closed by design there.
+    - `[low]` `[reject]` A named stream, collection or object property answers `INTEROP.EDIT.FIELD`, not `.NOTEDITABLE` — the form lists no such property, so naming one is naming a path that is no field; both refuse with nothing sent, and a branch for the other code adds surface for one sentence.
+    - `[false]` `[reject]` `Terminate` reads as a response — same claim as the verification-gap row; the vendor treats it so.
+    - `[low]` `[reject]` The browser edit covers an `Ens.StringRequest` only — the spec names that body for AC5's browser leg and `InteropEditResend` pins the HL7 path.
+    - `[low]` `[reject]` The browser spec runs as the all-privilege account — the gate is pinned for restricted principals at the port, the tools and both routes (`InteropResendGate`); the browser leg checks the screens.
+    - `[low]` `[reject]` A vendor `<PROTECT>` stops the write with 403 instead of continuing — a privilege fault repeats for every message, and the gate has already asked for WRITE on the globals database; the case is not reachable with the gate in place.
+
 ## Design Notes
 
 **Governing ADs:**
@@ -738,9 +771,58 @@ Not moved: `InteropFloor` (no principal holds a write tool; confirm in the sweep
 | AC7 | A key ships `true` | `InteropResendDescriptor` and `GovernanceBaseline` |
 | AC8 | `RESENDMESSAGES` answers each id as resent without calling the vendor | `InteropResend`'s trace leg, and the browser AC8 |
 
+**Task 0 results (implement pass, `ocupilot-b-ci`).**
+
+- Task 0: re-anchored on the shipped 20.9 and 20.30 code. `InteropMessageList` and `InteropMessageHeaderTab` declared no action, `MESSAGEPAIRS`, the id check, `MessageRow`, the `Messages` `InvokeRuntime` branch and `InteropMessageDescriptor`'s no-action pins read as the Code Map names them. The Header tab had no page of its own (`screen-outlet.ts` held no entry for it), so `interop-message-header.page.ts` is new. `strings.ts` held 3,478 literals and holds 3,499 now, under the bound of 3,800, and all 21 new values were unique. EXPERIENCE.md :173 and :604 now hold the story's clauses.
+- Task 0: least privilege. A principal holding `%DB_USER:RW` and the code database's READ, and no Ensemble resource, completes the vendor's `Ens.MessageHeader.ResendDuplicatedMessage` (new header 1195): the vendor checks no privilege. Through the port, `InteropResendGate` shows the exact principal completing resend and edit with the pairs the plan names, and `OcuS31NoWrite` (`%DB_USER:R`) refused naming `%DB_USER:WRITE`.
+- Task 0: reply queue. A response header whose `TargetQueueName` names no queue reads `noreplyqueue` through the port (`InteropResend.TestEachMessageIsJudgedAndOnlyTheOnesThatCanGoAreSent`), and the vendor answers `ERROR <Ens>ErrGeneral: Target reply queue 'OcuPilotProbeNoQueue' no longer exists`.
+- Task 0: a disabled item's request reads `targetoff` through `GatherItems`' effective `Enabled`, which is the production-item read the port already composes; the plan named `ResolveItem`, whose result is for one item and needs a production id.
+- Task 0: `%SYS.Portal.Resources.NormalizePage` spells `EnsPortal.MessageResend` and `EnsPortal.MessageResendEdit` as the tools declare them (`InteropResendDescriptor.TestTheTwoToolsDeclareWhatThePlanNames`).
+- Task 0: one HTTP confirm per new tool answers exactly one envelope (`InteropResend.TestTheAgentsResendConfirmsOverHttp` and `InteropEditResend.TestTheAgentsEditAndResendConfirmsOverHttp` count `}{` in the raw body).
+- build: `npm run build -- --verbose` is green through the seven prebuild checkers. The Header page's chunk is 5.11 kB raw (1.92 kB transferred), against the 88 kB bound. The initial total is 1.96 MB raw (349.57 kB transferred), against 1992 kB. No 2500 kB warning.
+
+**Demonstrated mutations (Rule 19, implement pass).** Each was applied on `ocupilot-b-ci`, read red, and reverted byte-identical (checked by SHA-256); an ObjectScript one reloaded the whole tree, a client one rebuilt and redeployed the bundle for the browser leg.
+
+- mutation: AC1, `MessageVerdict` reads `resend` for a disabled target -> `InteropResend` (five tests: the mixed, none-to-send, target-changed, person and draft legs), `InteropResendDescriptor.TestTheVerdictMatrixAndItsOrder`, and browser AC1 (the fourth line reads will-be-resent).
+- mutation: AC1, `startDryRun` opens the typed-name dialog without the dry run -> `screen-action-handler-resend.spec.ts` (four tests), and browser AC1 (no review lines: the wait for `[data-ocu-review] li` times out).
+- mutation: AC2, `RESENDMAX` 1000 -> `InteropResendDescriptor` (`TestTheMessageSetAndItsDigest`, `TestTheScreensDeclareTheirActionsAndTheCap`) and `InteropResend.TestASetOverTheCapOrMalformedIsRefusedWholeAndNothingIsSent`.
+- mutation: AC3, `FINGERPRINTSUBJECT` drops `Verdicts` -> `InteropResend`, eight of its nine tests, the target-changed one among them. The tool cannot read its own state marker without the subject, so the dry run answers `INTERNAL`; the mutation fails closed.
+- mutation: AC4, the write ignores `DIGESTKEY` -> `InteropResend.TestThePersonsResendIsReviewedThenSentAndRefusedWhenTheVerdictsMove`, `InteropEditResend.TestThePersonsEditAndResendReviewsTheFormThenTheChange`, and browser AC4.
+- mutation: AC5, the edit is saved onto the original body (`tClone = tOriginal`) -> `InteropEditResend` (the agent's, the person's and the every-shape tests, the last on the embedded city), and browser AC5.
+- mutation: AC5, the HL7 path skips `Clear()` -> `InteropEditResend.TestAnHl7MessageIsEditedThroughItsContent`, alone: the dropped PID segment stays on the copy.
+- mutation: AC6, `RESENDPAIR` removed from the resend branch of `Pairs` -> `InteropResendGate.TestEachMissingPairIsRefusedByNameThroughThePort`, and also `InteropResendDescriptor.TestThePortServesTheFourTypesAndAsksTheirPairs`, which pins the pair lists.
+- mutation: AC6, `AuditViewHere` removed from `EditBodyFacts` -> `InteropEditResend.TestEachEditReadThatOpensABodyIsAuditedOnce` and `TestWhatCannotBeEditedIsRefusedWithNothingSent`.
+- mutation: AC7, one `SurfaceCoverage` row removed -> `SurfaceCoverage.TestEveryWriteToolHasACoverageRowAndBack`, alone (`ToolWrite` and `ReadTool` stayed green).
+- mutation: AC7, `interop.messages.resend` ships `true` -> `InteropResendDescriptor.TestTheTwoToolsDeclareWhatThePlanNames`, `GovernanceBaseline.TestThePurgeIsTheOneDisabledLine` and `Governance.TestTheDefaultEnablesEveryWriteButTheBaselineDisabled`.
+- mutation: AC8, `PerformResend` answers each id as resent without calling the vendor -> `InteropResend` (the vendor-refusal, the agent's and the person's tests), and browser AC8.
+- mutation: the typed-name review drawn through `innerHTML` -> `typed-name-dialog.spec.ts`'s review test. `keepSelection` dropped from the Header page's store subscription -> `interop-message-header.page.spec.ts`'s selection test. The Test dialog's `values` prefill dropped -> `interop-item-test-dialog-edit.spec.ts` (two tests).
+- mutation: structural, `.ocu-dialog-review`'s `color` set to its own background -> the browser structural leg (a contrast entry). A `width: 2000px` on the list did not redden it: the dialog scrolls its content, so that was not kept as the mutation.
+
+**Review-pass mutations (Rule 19).** Each was applied on `ocupilot-b-ci` to `InteropPort.cls` (reloaded whole), read red, and reverted byte-identical (SHA-256 `233b032d...` before and after).
+
+- mutation: AC5, `ReadEdit` shows a credential-named field's stored value in the form -> `InteropEditResend.TestEveryFieldShapeIsEditedOnACloneAndTheOriginalIsLeftAlone`, alone. `ReadEdit` echoing a credential-named member of `Fields` -> the same test, alone.
+- mutation: AC4, `ReadEdit` sets `Original` to `""` -> `InteropEditResend.TestABodyEditedAfterTheReviewIsRefusedForThePersonAndTheAgent`, alone.
+- mutation: AC5, `EditCloneHere` keeps the copy the vendor refused after the save -> `InteropEditResend.TestACopyTheVendorRefusedAfterTheSaveIsDeleted`, alone.
+- mutation: AD-59, `MessageSnippet` drops the `Clear()` line of its document branch -> `InteropEditResend.TestTheCopyOutDraftOfAnHl7EditRendersItsScriptAndRunningItDoesTheSame`, alone.
+- mutation: AC1, `ReadEdit` drops its not-running refusal -> `InteropEditResend.TestAStoppedProductionIsRefusedByTheEditReadReviewAndWrite`, alone.
+- mutation: AC6, `PerformResend` and `PerformEditResend` each record an OcuPilot `ConfigChange` row -> `InteropResend.TestTheAgentsResendConfirmsOverHttp` and `InteropEditResend.TestTheAgentsEditAndResendConfirmsOverHttp`, each alone.
+- mutation: AC2, `ReadResend` refuses a set naming `message` in place of `Messages` -> `InteropResend.TestASetOverTheCapOrMalformedIsRefusedWholeAndNothingIsSent`, alone.
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-Planned whole. Q1 (split, recommend no) and Q2 (named limits) are for the orchestrator at the spec gate. The Rule 20 drafts are in Design Notes. The measured facts and the 103 audit rows left on `ocupilot-b-ci` are in Design Notes › Measured.
+**Implemented.** Two confirmed, destructive write tools reach `Ens.MessageHeader.ResendDuplicatedMessage` in process through `InteropPort`'s `Messages` endpoint: `interop.messages.resend` (1 to 100 ids, canonical per AD-13) and `interop.messageheader.editresend` (HL7 v2 and plain object fields, always on a saved clone). A message reads one verdict before any vendor call; Confirm sends exactly the reviewed `resend` members. The agent's card is the dry run; a person's dry run is the new `POST /screens/:screen/dryrun` (`DRYRUN` tools), and the action carries the reviewed digest, refused 409 `INTEROP.RESEND.CHANGED` when the verdicts or the body moved. Both keys ship `false`. The Messages list has multi-select Resend and the Header tab a page of its own with Resend and Edit and resend.
+
+**Files.** Server: `Port/InteropPort.cls` (the four types, verdicts, set rule, digest, clone, scripts), `Api/ScreenDryRun.cls` and `Api/ScreenAction.cls` `DryRun` (the route), `Api/Router.cls`, `Api/InteropError.cls` (codes), `Kernel/EntityRef.cls` (`interop-message:integerset`), `Kernel/Governance/Baseline.cls`, `Screen/Tool/Write.cls` (`DRYRUN`), the three new tool classes plus `InteropMessageResendMint`, and the two descriptors. Client: the typed-name dialog's `review`, the Test dialog's prefill inputs, `OutcomeDialog`, `interop-message-header.page.ts`, the handler's dry run and confirm, `AuditPage` hosting the dialogs, strings, labels, styles and the regenerated mirror. Tests: `InteropResend`, `InteropEditResend`, `InteropResendGate`, `InteropResendDescriptor`, `DryRunRoute` with `InteropResendCase`, `InteropResendFixture` and `InteropResendSeam`, `ProductionProbe` additions, rosters, client specs and `interop-message-resend.browser-spec.mjs`. EXPERIENCE.md :173 and :604 and `scripts/ci-throwaway.sh` carry their add-only lines.
+
+**Deviations from the plan, all in the handoff report.** `Reviewed` and `Fields` join the fingerprint subjects (a stored payload is narrowed to its subject); the new codes join `MessageCodes()` (`InteropRuntimeDescriptor` pins `RuntimeCodes`); tools reach the sentences through `InteropPort.Sentence` and `OutcomeWord`; `DryRunRoute` is armed and has no secret leg (no dry-run tool declares one); `targetoff` is read through `GatherItems`; a confirmed reviewed action opens a small `OutcomeDialog`.
+
+**Review.** 25 findings: patched 11 (medium 5, low 6), deferred 0, rejected 14 (false 4, low 10), each with its reason in the Review Triage Log. The patches are test assertions and fixtures plus one fixture fix: `ProductionProbe.SweepSince` read the body class from an index (upper case), so it had never deleted a body; it now reads the header and deletes persistent and stream bodies, and `HighWater` and the sweep refuse a failed read.
+
+**Follow-up review recommended: true.** Five medium findings were patched. The unverified risk is the patch pass itself: the changed `ProductionProbe` sweep, five added tests and new fixture methods were shown red and green on `ocupilot-b-ci` but not re-read by a layer.
+
+**Verification (`ocupilot-b-ci`, tree reloaded).** The five new classes and 18 roster classes green; `InteropEditResend` 11, `InteropResend` 9, `InteropResendGate` 4, `InteropResendDescriptor` 8, `DryRunRoute` 2, after the patch pass. Browser: `interop-message-resend` 5 of 5, and `interop-messages`, `interop-message-trace` and `audit` green on the redeployed bundle. `npm run test:tools` 2,026 and `test:components` 3,237 pass; `npm run build` is green through the seven checkers (Header page chunk 5.11 kB, initial total 1.96 MB, no 2500 kB warning). `check-objectscript` and `lint-docs` clean. Mutations are the `mutation:` lines under Verification, each reverted byte-identical.
+
+**Residual risks.** The full ObjectScript sweep, `npm test`, the smoke and Rule 30's fresh check are the runner's. `ci-timings.json` has no entries for the five new classes. The Header page keeps its first property row selected so the command bar's row action is never disabled for want of a selection. A person's REST call without `Reviewed` is not reviewed (by design, see the triage log).

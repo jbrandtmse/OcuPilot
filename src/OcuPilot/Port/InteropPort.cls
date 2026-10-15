@@ -1,8 +1,9 @@
-/// <p>The port to the instance's interoperability runtime (AD-62, AD-29, AD-52, Stories 20.2, 20.3, 20.5, 20.6, 20.23 and 20.27): <b>the
+/// <p>The port to the instance's interoperability runtime (AD-62, AD-29, AD-52, Stories 20.2, 20.3, 20.5, 20.6, 20.23, 20.27 and 20.31): <b>the
 /// only product class that starts, stops, restarts, updates or recovers a production, enables, disables,
 /// adds or removes one of its items, aborts a queued message, a queue's messages or a job's retried message,
 /// suspends that message or stops a job, adds, changes or removes a lookup table's entry, deletes, imports or exports a lookup
-/// table, sends a test request to an item, or runs a data transformation on a pasted message</b>, and the only one that reads the interoperability configuration for
+/// table, sends a test request to an item, runs a data transformation on a pasted message, or resends messages with or without an
+/// edited body</b>, and the only one that reads the interoperability configuration for
 /// a declared read (source kind <code>interop</code>); Story 20.4 adds the nine runtime reads (<parameter>ENDPOINTS</parameter>
 /// from <code>Monitor</code> on), which write nothing. It calls the documented classes the classic pages call --
 /// <code>Ens.Director</code>, <code>Ens.Queue</code>, <code>Ens.Job</code>, <code>Ens.Config.Production:ProductionStatus</code> and
@@ -73,6 +74,14 @@
 /// <p><b>The session trace</b> (Story 20.30, the <code>MessageTrace</code> endpoint) reads the whole session of one message header,
 /// in <code>ID</code> order, capped, as <method>MessageRow</method> builds each header plus its <code>Step</code>
 /// (<method>ListMessageTrace</method>). It reads no event, rule or I/O log entry and does not follow <code>SuperSession</code>.</p>
+/// <p><b>The resend writes</b> (Story 20.31, the <code>Messages</code> endpoint's <code>RESENDMESSAGES</code> and
+/// <code>EDITRESEND</code>, each over its port-composed read, <code>RESEND</code> and <code>EDIT</code>) call
+/// <code>Ens.MessageHeader.ResendDuplicatedMessage</code> in process, which checks no privilege and audits each new header itself, so
+/// the gate is the whole gate and OcuPilot records no row of its own. Before any vendor call the port refuses a namespace whose
+/// production is not running and judges each message (<method>MessageVerdict</method>); it resends exactly the messages whose verdict
+/// is <code>resend</code>, at most <parameter>RESENDMAX</parameter> in one action, in ascending id order, and goes on past a vendor
+/// refusal of one. An edit resends the original header with a saved clone of its body that carries the changed fields
+/// (<method>EditCloneHere</method>); the original body is never changed.</p>
 /// <p>Seams a test subclass overrides: <method>GateClass</method>, <method>LogFault</method>,
 /// <method>StopSeconds</method>, <method>RoutineResource</method>, <method>SourceControlled</method>,
 /// <method>VendorAbortItem</method>, <method>VendorJob</method>, <method>LockTable</method>, <method>VendorSendTest</method>
@@ -210,8 +219,9 @@ Parameter TESTPAIRS = "%Ens_Portal:USE,%Ens_TestingService:USE";
 /// <p>The endpoint and type pairs that send no body and take their arguments through the query (AD-51 as amended by Story 12.3): the
 /// lookup table export and import (Story 20.5), whose files and reviewed counts the port reads from its query, and the host test's
 /// send (Story 20.6), whose request class and field values it reads from its query, and the data transformation test (Story 20.27),
-/// whose pasted message it reads from its query.</p>
-Parameter COMPOSEDTYPES = "LookupTables/EXPORT,LookupTables/IMPORT,ItemTest/SENDTEST,Transforms/TRANSFORMTEST";
+/// whose pasted message it reads from its query, and the edit-and-resend (Story 20.31), whose edited body it builds from the fields its
+/// query carries.</p>
+Parameter COMPOSEDTYPES = "LookupTables/EXPORT,LookupTables/IMPORT,ItemTest/SENDTEST,Transforms/TRANSFORMTEST,Messages/EDITRESEND";
 
 /// <p>The pair each item tab adds to the Productions endpoint's pairs (the classic configuration page's
 /// <code>initSecurity</code>): the queue, the event log, the message headers and the jobs.</p>
@@ -414,6 +424,43 @@ Parameter TYPETRANSFORMTEST = "TRANSFORMTEST";
 /// (Story 20.27). The vendor's <code>Transform</code> checks no privilege, so this, the endpoint's pairs and WRITE on the
 /// namespace's globals database are the whole gate.</p>
 Parameter DTLTESTPAIR = "%Ens_DTLTest:USE";
+
+/// <p>The pair a resend adds to the Messages endpoint's pairs, and the pair an edit-and-resend adds after it: the classic
+/// <code>EnsPortal.MessageResend</code> and <code>EnsPortal.MessageResendEdit</code> resources (Story 20.31). The vendor's
+/// <code>ResendDuplicatedMessage</code> checks no privilege, so these, the endpoint's pairs and WRITE on the namespace's globals
+/// database are the whole gate.</p>
+Parameter RESENDPAIR = "%Ens_MessageResend:USE";
+
+Parameter EDITRESENDPAIR = "%Ens_MessageEditResend:USE";
+
+/// <p>The Messages endpoint's four resend types (Story 20.31): <code>RESEND</code> and <code>EDIT</code> are the composed fresh
+/// reads, <code>RESENDMESSAGES</code> and <code>EDITRESEND</code> the writes.</p>
+/// <p><code>RESEND</code> answers <code>{Namespace, Production, Messages: [{ID, Type, Source, Target, Verdict}], Verdicts, Eligible,
+/// Reviewed, Digest}</code> for the canonical set the id names. <code>EDIT</code> answers <code>{Namespace, Production, Message,
+/// Type, Source, Target, BodyClass, Kind, Verdict, Form, Fields, Changed, Before, After, Original, Reviewed, Digest}</code> for one
+/// message and the fields <parameter>FIELDSKEY</parameter> supplies. <code>RESENDMESSAGES</code> answers <code>{Namespace, Resent,
+/// Failed, Messages: [{ID, NewId}|{ID, Error}]}</code> and <code>EDITRESEND</code> <code>{Namespace, Message, NewId, BodyClass,
+/// BodyId}</code>.</p>
+Parameter TYPERESEND = "RESEND";
+
+Parameter TYPERESENDMESSAGES = "RESENDMESSAGES";
+
+Parameter TYPEEDIT = "EDIT";
+
+Parameter TYPEEDITRESEND = "EDITRESEND";
+
+/// <p>The most messages one resend names, and so the most it sends (Story 20.31). A set over it is refused whole, never cut. The
+/// sentence that states it is <file>ui/src/app/core/strings.ts</file>'s, and the descriptor's <code>multiSelect.max</code> equals it.</p>
+Parameter RESENDMAX = 100;
+
+/// <p>The text an edited HL7 message's <code>Source</code> ends with, followed by the original body's id, as the classic Edit and
+/// Resend page writes it, and the lower-case prefix of the body class names OcuPilot never edits.</p>
+Parameter EDITEDCOPY = "; Edited copy of ";
+
+Parameter OWNCLASSPREFIX = "ocupilot";
+
+/// <p>The longest vendor error text a message that was not resent carries.</p>
+Parameter ERRORTEXTMAX = 1000;
 
 /// <p>The classes the test judges a transformation's source and target by (<method>FormatKindHere</method>): the Record Map records and
 /// batches it refuses, EDI XML, segmented documents and the XML adaptor.</p>
@@ -757,10 +804,23 @@ ClassMethod IsTestWrite(pType As %String) As %Boolean
     Quit (pType = ..#TYPESENDTEST) || (pType = ..#TYPETRANSFORMTEST)
 }
 
+/// <p>Whether <var>pType</var> is one of the Messages endpoint's resend writes (Story 20.31): an action-style write over a
+/// port-composed read of the messages, needing WRITE on the namespace's globals database and no routines database.</p>
+ClassMethod IsMessageWrite(pType As %String) As %Boolean
+{
+    Quit (pType = ..#TYPERESENDMESSAGES) || (pType = ..#TYPEEDITRESEND)
+}
+
+/// <p>Whether <var>pType</var> is one of the Messages endpoint's four resend types, the two reads and the two writes.</p>
+ClassMethod IsMessageType(pType As %String) As %Boolean
+{
+    Quit (pType = ..#TYPERESEND) || (pType = ..#TYPEEDIT) || ..IsMessageWrite(pType)
+}
+
 /// <p>Whether <var>pType</var> is any write this port carries, whichever family declares it.</p>
 ClassMethod IsAnyWrite(pType As %String) As %Boolean
 {
-    Quit ..IsWrite(pType) || ..IsItemWrite(pType) || ..IsSettingWrite(pType) || ..IsRuntimeWrite(pType) || ..IsLookupWrite(pType) || ..IsTestWrite(pType)
+    Quit ..IsWrite(pType) || ..IsItemWrite(pType) || ..IsSettingWrite(pType) || ..IsRuntimeWrite(pType) || ..IsLookupWrite(pType) || ..IsTestWrite(pType) || ..IsMessageWrite(pType)
 }
 
 /// <p>The runtime reads, as a <class>%List</class>: Story 20.4's nine, Story 20.9's three message reads and Story 20.30's session trace. Each serves
@@ -828,6 +888,8 @@ ClassMethod Pairs(pEndpoint As %String, pType As %String = "") As %List
     If pType = ..#TYPESUSPENDJOB Set tSpec = tSpec _ "," _ ..#SUSPENDPAIR
     If ..IsLookupWrite(pType) Set tSpec = tSpec _ "," _ ..#LOOKUPWRITEPAIR
     If (pEndpoint = ..#ENDPOINTTRANSFORMS) && ((pType = ..#TYPETRANSFORM) || (pType = ..#TYPETRANSFORMTEST)) Set tSpec = tSpec _ "," _ ..#DTLTESTPAIR
+    If (pEndpoint = ..#ENDPOINTMESSAGES) && ((pType = ..#TYPERESEND) || (pType = ..#TYPERESENDMESSAGES)) Set tSpec = tSpec _ "," _ ..#RESENDPAIR
+    If (pEndpoint = ..#ENDPOINTMESSAGES) && ((pType = ..#TYPEEDIT) || (pType = ..#TYPEEDITRESEND)) Set tSpec = tSpec _ "," _ ..#MESSAGECONTENTPAIR _ "," _ ..#RESENDPAIR _ "," _ ..#EDITRESENDPAIR
     Quit ##class(OcuPilot.Screen.Gate).ParsePairSpec(tSpec)
 }
 
@@ -835,7 +897,7 @@ ClassMethod Pairs(pEndpoint As %String, pType As %String = "") As %List
 /// beyond it, Productions the production reads and writes, Items and Settings theirs, and Queues (<code>QUEUE</code>,
 /// <code>ABORTQUEUE</code>), QueueItems (<code>ENTRY</code>, <code>ABORTMESSAGE</code>), Jobs (<code>JOB</code>,
 /// <code>ABORTJOB</code>, <code>SUSPENDJOB</code>, <code>STOPJOB</code>) and Transforms (<code>TRANSFORM</code>,
-/// <code>TRANSFORMTEST</code>).</p>
+/// <code>TRANSFORMTEST</code>) and Messages the four resend types of Story 20.31.</p>
 ClassMethod Serves(pEndpoint As %String, pType As %String) As %Boolean
 {
     If '$ListFind(..Endpoints(), pEndpoint) Quit 0
@@ -849,6 +911,7 @@ ClassMethod Serves(pEndpoint As %String, pType As %String) As %Boolean
     If pEndpoint = ..#ENDPOINTLOOKUPENTRIES Quit (pType = ..#TYPELOOKUPENTRY) || (pType = ..#TYPEADDENTRY) || (pType = ..#TYPESETENTRY) || (pType = ..#TYPEREMOVEENTRY)
     If pEndpoint = ..#ENDPOINTITEMTEST Quit (pType = ..#TYPETESTTARGET) || (pType = ..#TYPESENDTEST)
     If pEndpoint = ..#ENDPOINTTRANSFORMS Quit (pType = ..#TYPETRANSFORM) || (pType = ..#TYPETRANSFORMTEST)
+    If pEndpoint = ..#ENDPOINTMESSAGES Quit ..IsMessageType(pType)
     If pEndpoint '= ..#ENDPOINTPRODUCTIONS Quit 0
     Quit (pType = ..#TYPESTATE) || ..IsWrite(pType)
 }
@@ -2675,7 +2738,8 @@ ClassMethod Fail(pMessage As %String, pStatus As %Status, Output pHttpStatus As 
 /// resolved as an item read resolves it: 400 when it is not one, 404 for an unknown production or item, 409
 /// <code>INTEROP.ITEM.AMBIGUOUS</code> for a name the production holds more than once.</li>
 /// <li>Queues, QueueItems and Jobs also serve a typed read (<parameter>TYPEQUEUE</parameter>, <parameter>TYPEENTRY</parameter>,
-/// <parameter>TYPEJOB</parameter>) and the action writes of Story 20.23 (<method>InvokeTyped</method>).</li>
+/// <parameter>TYPEJOB</parameter>) and the action writes of Story 20.23 (<method>InvokeTyped</method>); Messages serves the four
+/// resend types of Story 20.31 (<method>InvokeMessageAction</method>).</li>
 /// </ul>
 ClassMethod InvokeRuntime(pNamespace As %String, pEndpoint As %String, pType As %String, ByRef pQuery, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
@@ -2683,7 +2747,11 @@ ClassMethod InvokeRuntime(pNamespace As %String, pEndpoint As %String, pType As 
     Set pResult = ""
     Try {
         If pType '= ..#TYPELIST {
-            Set tSC = ..InvokeTyped(pNamespace, pEndpoint, pType, .pQuery, .pResult, .pHttpStatus, .pFault)
+            If pEndpoint = ..#ENDPOINTMESSAGES {
+                Set tSC = ..InvokeMessageAction(pNamespace, pType, .pQuery, .pResult, .pHttpStatus, .pFault)
+            } Else {
+                Set tSC = ..InvokeTyped(pNamespace, pEndpoint, pType, .pQuery, .pResult, .pHttpStatus, .pFault)
+            }
             Quit
         }
         Set tMaxText = $Get(pQuery(..#MAXROWSKEY))
@@ -3404,6 +3472,7 @@ ClassMethod MessageCriterionReason(pName As %String) As %String
     If pName = "bodyClass" Quit pName _ " must be a class name."
     If pName = "errors" Quit pName _ " must be yes or no."
     If pName = "message" Quit pName _ " must be a message header's ID: digits, not beginning with zero."
+    If pName = "Messages" Quit pName _ " must name 1 to " _ ..#RESENDMAX _ " message header IDs, separated by commas: digits, not beginning with zero."
     Quit pName _ " is not valid."
 }
 
@@ -3583,6 +3652,22 @@ ClassMethod ReadMessageHeader(pNamespace As %String, pId As %String, Output pRow
     Quit $$$OK
 }
 
+/// <p>Whether the message body <var>pClass</var> <var>pBodyId</var> is there: the class name has a class name's shape, the class
+/// is compiled here and holds the id. <code>0</code> for a header that names no body, which is no body gone. Called while the
+/// message's namespace is switched; nothing is opened.</p>
+ClassMethod BodyExistsHere(pClass As %String, pBodyId As %String) As %Boolean [ Private ]
+{
+    If (pClass = "") || (pBodyId = "") || '$Match(pClass, ..#CLASSNAMEPATTERN) Quit 0
+    If '##class(%Dictionary.CompiledClass).%ExistsId(pClass) Quit 0
+    Set tExists = 0
+    Try {
+        Set tExists = ''$ClassMethod(pClass, "%ExistsId", pBodyId)
+    } Catch {
+        Set tExists = 0
+    }
+    Quit tExists
+}
+
 /// <p>The object <var>pClass</var> <var>pBodyId</var>, or <code>""</code> when the class is not a compiled persistent or stream class
 /// of this namespace or holds no such id (a stream class would open an id it does not hold as an empty stream). The class name is
 /// judged by <parameter>CLASSNAMEPATTERN</parameter> before it is called. The opener of a message's body (<method>ContentsText</method>)
@@ -3707,6 +3792,871 @@ ClassMethod ReadMessageContents(pNamespace As %String, pId As %String, pMax As %
     Quit $$$OK
 }
 
+/// <p>The SHA-256 of <var>pText</var>, taken as UTF-8, as lower-case hex. Pure.</p>
+ClassMethod Sha256Hex(pText As %String) As %String
+{
+    Quit $ZConvert(##class(%xsd.hexBinary).LogicalToXSD($System.Encryption.SHAHash(256, $ZConvert(pText, "O", "UTF8"))), "L")
+}
+
+/// <p>The message header ids <var>pText</var> names (Story 20.31, AD-13), in <var>pIds</var> as a <class>%List</class>: comma-separated
+/// ids, each of the shape <parameter>MESSAGEIDPATTERN</parameter> once its surrounding blanks are taken off, each named once whatever
+/// the repeats, in ascending order. Answers 1 for 1 to <parameter>RESENDMAX</parameter> ids, else 0 with <var>pIds</var>
+/// <code>""</code>: an empty set, a member of another shape (<code>0x1</code>, <code>007</code>, an empty one) and a set over the cap
+/// are each refused whole, never cut. The ids are ordered as strings by length and then digits, so no id is read as a number. Pure.</p>
+ClassMethod MessageSet(pText As %String, Output pIds As %List) As %Boolean
+{
+    Set pIds = ""
+    If pText = "" Quit 0
+    Kill tSorted
+    Set tCount = 0
+    Set tBad = 0
+    For tI = 1:1:$Length(pText, ",") {
+        Set tPart = $ZStrip($Piece(pText, ",", tI), "<>W")
+        If '$Match(tPart, ..#MESSAGEIDPATTERN) {
+            Set tBad = 1
+            Quit
+        }
+        If '$Data(tSorted($Length(tPart), "d" _ tPart)) {
+            Set tSorted($Length(tPart), "d" _ tPart) = tPart
+            Set tCount = tCount + 1
+        }
+    }
+    If tBad || (tCount > ..#RESENDMAX) Quit 0
+    Set tLength = ""
+    For {
+        Set tLength = $Order(tSorted(tLength))
+        If tLength = "" Quit
+        Set tKey = ""
+        For {
+            Set tKey = $Order(tSorted(tLength, tKey), 1, tId)
+            If tKey = "" Quit
+            Set pIds = pIds _ $ListBuild(tId)
+        }
+    }
+    Quit 1
+}
+
+/// <p>The one verdict a message reads before a resend (Story 20.31), checked in this order, the first that holds winning:
+/// <code>gone</code> when no header has the id (<var>pExists</var> 0); <code>nobody</code> when the header names a body class and id
+/// and the body is no longer there (<var>pBodyGone</var>); <code>targetoff</code> for a request (<var>pType</var>
+/// <code>Request</code>) whose target is not an enabled item of the running production (<var>pEnabledTarget</var> 0), which the
+/// vendor queues and answers OK for (measured); <code>noreplyqueue</code> for any other type, a response, whose reply queue no longer
+/// exists (<var>pReplyQueue</var> 0); else <code>resend</code>. <var>pType</var> is the display word. Pure.</p>
+ClassMethod MessageVerdict(pType As %String, pExists As %Boolean, pBodyGone As %Boolean, pEnabledTarget As %Boolean, pReplyQueue As %Boolean) As %String
+{
+    If 'pExists Quit "gone"
+    If pBodyGone Quit "nobody"
+    If pType = "Request" {
+        If 'pEnabledTarget Quit "targetoff"
+    } ElseIf 'pReplyQueue {
+        Quit "noreplyqueue"
+    }
+    Quit "resend"
+}
+
+/// <p>The digest that stands for the verdicts <var>pVerdicts</var> (<code>id=verdict</code> joined by a comma, in id order) of the
+/// running production <var>pProduction</var>: the SHA-256 of <code>Production|Verdicts</code> as lower-case hex. The same verdicts in
+/// another order give another digest. Pure.</p>
+ClassMethod ResendDigest(pProduction As %String, pVerdicts As %String) As %String
+{
+    Quit ..Sha256Hex(pProduction _ "|" _ pVerdicts)
+}
+
+/// <p>The words that say verdict <var>pVerdict</var> (<method>OcuPilot.Api.InteropError.VerdictSentence</method>).</p>
+ClassMethod VerdictSentence(pVerdict As %String) As %String
+{
+    Quit ##class(OcuPilot.Api.InteropError).VerdictSentence(pVerdict)
+}
+
+/// <p>The sentence of the interoperability code <var>pCode</var> (<method>OcuPilot.Api.InteropError.ReasonFor</method>), or
+/// <code>""</code>. The tools that quote a refusal in a card reach the sentences through the port, as they reach every other fact of the
+/// interoperability API.</p>
+ClassMethod Sentence(pCode As %String) As %String
+{
+    Quit ##class(OcuPilot.Api.InteropError).ReasonFor(pCode)
+}
+
+/// <p>The words that follow a message id in an outcome line: <code>resent as</code> when <var>pResent</var> is 1, else <code>not
+/// resent</code> (<parameter>OcuPilot.Api.InteropError.OUTCOMERESENT</parameter> and <parameter>OUTCOMEFAILED</parameter>).</p>
+ClassMethod OutcomeWord(pResent As %Boolean) As %String
+{
+    Quit $Select(pResent: ##class(OcuPilot.Api.InteropError).#OUTCOMERESENT, 1: ##class(OcuPilot.Api.InteropError).#OUTCOMEFAILED)
+}
+
+/// <p>The namespace's production while it is running, in <var>pProduction</var> (<code>""</code> when none is: stopped, suspended or
+/// troubled), switched by explicit save and restore. A fault is <var>pCaught</var>, with the namespace restored. Only vendor classes
+/// run while the namespace is switched.</p>
+ClassMethod RunningProduction(pNamespace As %String, Output pProduction As %String, Output pCaught) As %Status [ Private ]
+{
+    Set pProduction = ""
+    Set pCaught = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tSC = ##class(Ens.Director).GetProductionStatus(.tCurrent, .tState, 2)
+        If $$$ISOK(tSC) && (+$Get(tState) = 1) Set pProduction = $Get(tCurrent)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+    Quit $$$OK
+}
+
+/// <p>Judge the messages <var>pIds</var> (<method>MessageSet</method>'s list) of the running production <var>pProduction</var>
+/// (Story 20.31): one <method>MessageVerdict</method> each, read from the header, whether its body is there
+/// (<method>HeaderFacts</method>), whether the item its request names is enabled in the production
+/// (<method>GatherItems</method>, the effective <code>Enabled</code>) and whether the queue its response replies to exists. Nothing is
+/// called that changes anything.</p>
+/// <p><var>pRows</var> is one <code>{ID, Type, Source, Target, Verdict}</code> each, in order, the three descriptive members
+/// <code>""</code> for a header that is gone; <var>pFacts</var><code>(n)</code> is <code>$ListBuild(ID, Type, Source, Target,
+/// BodyClass, BodyId, Verdict)</code>; <var>pVerdicts</var> is <code>id=verdict</code> joined by a comma; <var>pEligible</var> counts
+/// <code>resend</code>.</p>
+ClassMethod JudgeMessages(pNamespace As %String, pProduction As %String, pIds As %List, Output pRows As %DynamicArray, ByRef pFacts, Output pVerdicts As %String, Output pEligible As %Integer, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Kill pFacts
+    Set pFacts = 0
+    Set pRows = ""
+    Set pVerdicts = ""
+    Set pEligible = 0
+    Set tSC = ..GatherItems(pNamespace, pProduction, "", 0, .tExists, .tFound, .tCount, .tCaught)
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the production's items could not be read", .pHttpStatus, .pFault)
+    Kill tEnabled
+    For tI = 1:1:tFound {
+        If $List(tFound(tI), 4) Set tEnabled($ZConvert($List(tFound(tI), 1), "U")) = 1
+    }
+    Set pRows = []
+    For tI = 1:1:$ListLength(pIds) {
+        Set tId = $List(pIds, tI)
+        Set tSC = ..HeaderFacts(pNamespace, tId, .tHeaderExists, .tQueue, .tStatus, .tCaught, .tType, .tSource, .tTarget, .tBodyClass, .tBodyId, .tBodyExists, .tQueueExists)
+        If $IsObject(tCaught) Quit
+        Set tBodyGone = tHeaderExists && (tBodyClass '= "") && (tBodyId '= "") && 'tBodyExists
+        Set tTargetEnabled = $Select(tTarget = "": 0, 1: ''$Data(tEnabled($ZConvert(tTarget, "U"))))
+        Set tVerdict = ..MessageVerdict(tType, tHeaderExists, tBodyGone, tTargetEnabled, tQueueExists)
+        If tVerdict = "resend" Set pEligible = pEligible + 1
+        Set pVerdicts = pVerdicts _ $Select(pVerdicts = "": "", 1: ",") _ tId _ "=" _ tVerdict
+        Set pFacts($Increment(pFacts)) = $ListBuild(tId, tType, tSource, tTarget, tBodyClass, tBodyId, tVerdict)
+        Set tRow = {}
+        Do tRow.%Set("ID", tId, "string")
+        Do tRow.%Set("Type", tType, "string")
+        Do tRow.%Set("Source", tSource, "string")
+        Do tRow.%Set("Target", tTarget, "string")
+        Do tRow.%Set("Verdict", tVerdict, "string")
+        Do pRows.%Push(tRow)
+    }
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "a message header could not be read", .pHttpStatus, .pFault)
+    Quit $$$OK
+}
+
+/// <p>The messages <var>pText</var> names as the resend read answers them (Story 20.31), composed for the action
+/// <var>pAction</var> (<code>""</code> for the plain read): <code>{Namespace, Production, Messages: [{ID, Type, Source, Target,
+/// Verdict}], Verdicts, Eligible, Reviewed, Digest}</code>. <code>Reviewed</code> is <var>pReviewed</var>, the digest a person
+/// reviewed the verdicts at, <code>""</code> for none; <code>Digest</code> is <method>ResendDigest</method>.</p>
+/// <p>A set that is not 1 to <parameter>RESENDMAX</parameter> message ids is 400 <code>PORT.VALIDATION</code> naming
+/// <code>Messages</code>, before anything is read. A namespace whose production is not running is 409
+/// <code>INTEROP.PRODUCTION.NOTRUNNING</code> as a whole. Composed for an action, a <var>pReviewed</var> the verdicts no longer give
+/// is 409 <code>INTEROP.RESEND.CHANGED</code>. Whether anything can be resent is the write's to refuse
+/// (<method>PerformResend</method>), so a dry run still answers the lines.</p>
+ClassMethod ReadResend(pNamespace As %String, pText As %String, pAction As %String, pReviewed As %String, Output pRow As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRow = ""
+    If '..MessageSet(pText, .tIds) Quit ..RefuseCriterion("Messages", .pHttpStatus, .pFault)
+    Set tSC = ..RunningProduction(pNamespace, .tProduction, .tCaught)
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the production's state could not be read", .pHttpStatus, .pFault)
+    If tProduction = "" Quit ..Conflict(##class(OcuPilot.Api.InteropError).#NOTRUNNING, .pHttpStatus, .pFault)
+    Set tSC = ..JudgeMessages(pNamespace, tProduction, tIds, .tRows, .tFacts, .tVerdicts, .tEligible, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    Set tDigest = ..ResendDigest(tProduction, tVerdicts)
+    If (pAction '= "") && (pReviewed '= "") && (pReviewed '= tDigest) Quit ..Conflict(##class(OcuPilot.Api.InteropError).#RESENDCHANGED, .pHttpStatus, .pFault)
+    Set pRow = {}
+    Do pRow.%Set("Namespace", pNamespace, "string")
+    Do pRow.%Set("Production", tProduction, "string")
+    Do pRow.%Set("Messages", tRows)
+    Do pRow.%Set("Verdicts", tVerdicts, "string")
+    Do pRow.%Set("Eligible", tEligible, "number")
+    Do pRow.%Set("Reviewed", pReviewed, "string")
+    Do pRow.%Set("Digest", tDigest, "string")
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p><code>Ens.MessageHeader.ResendDuplicatedMessage</code> of the header <var>pId</var> in <var>pNamespace</var>, switched by
+/// explicit save and restore: the new header's id in <var>pNewId</var>. A thrown fault is <var>pCaught</var>. Only vendor classes
+/// run while it is switched. Overridable so a test can fail one message; production never overrides it.</p>
+ClassMethod VendorResend(pNamespace As %String, pId As %String, Output pNewId As %String, Output pCaught) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pNewId = ""
+    Set pCaught = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tSC = ##class(Ens.MessageHeader).ResendDuplicatedMessage(pId, .pNewId)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+    Quit tSC
+}
+
+/// <p>Resend the messages <var>pText</var> names whose verdict is <code>resend</code> (Story 20.31), one
+/// <code>ResendDuplicatedMessage</code> each in ascending id order, and answer <code>{Namespace, Resent, Failed, Messages: [{ID,
+/// NewId}|{ID, Error}]}</code>, one entry for each message sent. The set is read and judged again first
+/// (<method>ReadResend</method>, composed for this write): a <var>pReviewed</var> the verdicts no longer give is 409
+/// <code>INTEROP.RESEND.CHANGED</code>, and no message reading <code>resend</code> is 409 <code>INTEROP.RESEND.NONE</code>, each
+/// with nothing sent. A message the vendor refuses is recorded with its text (cut at <parameter>ERRORTEXTMAX</parameter>) and the
+/// rest still go; a vendor <code>&lt;PROTECT&gt;</code> stops the write as 403 <code>PORT.ACCESSDENIED</code>. The vendor audits each
+/// new header, so this records nothing.</p>
+ClassMethod PerformResend(pNamespace As %String, pText As %String, pReviewed As %String, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    Set tSC = ..ReadResend(pNamespace, pText, ..#TYPERESENDMESSAGES, pReviewed, .tRow, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    If 'tRow.%Get("Eligible") Quit ..Conflict(##class(OcuPilot.Api.InteropError).#RESENDNONE, .pHttpStatus, .pFault)
+    Set tSent = []
+    Set tResent = 0
+    Set tFailed = 0
+    Set tStopped = ""
+    Set tIterator = tRow.%Get("Messages").%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tMessage) {
+        If tMessage.%Get("Verdict") '= "resend" Continue
+        Set tId = tMessage.%Get("ID")
+        Set tVendorSC = ..VendorResend(pNamespace, tId, .tNewId, .tCaught)
+        If $IsObject(tCaught) Set tVendorSC = tCaught.AsStatus()
+        Set tEntry = {}
+        Do tEntry.%Set("ID", tId, "string")
+        If $$$ISOK(tVendorSC) {
+            Do tEntry.%Set("NewId", tNewId _ "", "string")
+            Set tResent = tResent + 1
+        } Else {
+            Set tText = $System.Status.GetErrorText(tVendorSC)
+            If tText [ "<PROTECT>" {
+                Set tStopped = tVendorSC
+                Quit
+            }
+            Do ..LogFault("a message could not be resent", tVendorSC)
+            Do tEntry.%Set("Error", $Extract(tText, 1, ..#ERRORTEXTMAX), "string")
+            Set tFailed = tFailed + 1
+        }
+        Do tSent.%Push(tEntry)
+    }
+    If tStopped '= "" Quit ..Statused(tStopped, "the message resend failed", .pHttpStatus, .pFault)
+    Set pResult = {}
+    Do pResult.%Set("Namespace", pNamespace, "string")
+    Do pResult.%Set("Resent", tResent, "number")
+    Do pResult.%Set("Failed", tFailed, "number")
+    Do pResult.%Set("Messages", tSent)
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>The body of the message header <var>pHeaderId</var> as an edit reads it (Story 20.31), in <var>pFacts</var>, opened and
+/// recorded as viewed (<method>AuditViewHere</method>) while the namespace is switched; a fault is <var>pCaught</var>, with it
+/// restored. <var>pFacts</var><code>("editable")</code> is 1 for a body OcuPilot edits and 0 otherwise: a header that
+/// names no body, a body that does not open, a stream, a class that is not persistent, a class whose name begins
+/// <parameter>OWNCLASSPREFIX</parameter> in any letter case (it is not opened), a document that is not an HL7 v2 message, one over
+/// <parameter>TESTOUTPUTMAX</parameter> characters, and a class with no field a person can set.
+/// <code>("kind")</code> is <code>document</code> or <code>object</code>. A document's raw view (<method>RenderTargetHere</method>) is
+/// <var>pFacts</var><code>("text")</code>; an object's fields are <code>("meta")</code> and <code>("meta", n)</code>
+/// (<method>ClassFieldsHere</method>'s records), each current value as the class stores it <code>("logical", n)</code> and as a
+/// person types it <code>("display", n)</code>, read along the field's path.</p>
+ClassMethod EditBodyFacts(pNamespace As %String, pHeaderId As %String, pBodyClass As %String, pBodyId As %String, ByRef pFacts, Output pCaught) As %Status [ Private ]
+{
+    Kill pFacts
+    Set pFacts("editable") = 0
+    Set pFacts("kind") = ""
+    Set pFacts("text") = ""
+    Set pFacts("meta") = 0
+    Set pCaught = ""
+    If $Extract($ZConvert(pBodyClass, "L"), 1, $Length(..#OWNCLASSPREFIX)) = ..#OWNCLASSPREFIX Quit $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tObject = ..OpenBodyHere(pBodyClass, pBodyId)
+        If $IsObject(tObject) {
+            Do ..AuditViewHere(pHeaderId, pBodyClass, pBodyId)
+            If tObject.%Extends("%Library.Persistent") && 'tObject.%Extends("%Stream.Object") {
+                If tObject.%Extends("EnsLib.HL7.Message") {
+                    Set tRender = ..RenderTargetHere(tObject, .tText)
+                    If $$$ISOK(tRender) && ($Length(tText) <= ..#TESTOUTPUTMAX) {
+                        Set pFacts("editable") = 1
+                        Set pFacts("kind") = "document"
+                        Set pFacts("text") = tText
+                    }
+                } ElseIf '..IsDocumentClassHere(pBodyClass) {
+                    Do ..ClassFieldsHere(pBodyClass, .tMeta)
+                    If tMeta {
+                        Set pFacts("editable") = 1
+                        Set pFacts("kind") = "object"
+                        Set pFacts("meta") = tMeta
+                        For tI = 1:1:tMeta {
+                            Set pFacts("meta", tI) = tMeta(tI)
+                            Set tPath = $List(tMeta(tI), 2)
+                            Set tCurrent = tObject
+                            For tJ = 1:1:$Length(tPath, ".") - 1 {
+                                Set tCurrent = $Property(tCurrent, $Piece(tPath, ".", tJ))
+                                If '$IsObject(tCurrent) Quit
+                            }
+                            Set tLogical = $Select($IsObject(tCurrent): $Property(tCurrent, $List(tMeta(tI), 3)), 1: "")
+                            Set tDisplay = tLogical
+                            If (tLogical '= "") && ##class(%Dictionary.CompiledMethod).%ExistsId($List(tMeta(tI), 8) _ "||" _ $List(tMeta(tI), 3) _ "LogicalToDisplay") {
+                                Set tDisplay = $ClassMethod($List(tMeta(tI), 8), $List(tMeta(tI), 3) _ "LogicalToDisplay", tLogical)
+                            }
+                            Set pFacts("logical", tI) = tLogical
+                            Set pFacts("display", tI) = tDisplay
+                        }
+                    }
+                }
+            }
+        }
+        Set tObject = ""
+        Set tCurrent = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+    Quit $$$OK
+}
+
+/// <p>The text <var>pText</var> parsed as the HL7 v2 message class <var>pClass</var> would parse an edited body, and rendered as its
+/// raw view in <var>pNewText</var> (Story 20.31): the text is written to a <class>%Stream.TmpCharacter</class> and handed to the
+/// class's <code>ImportFromLibraryStream</code>, as the classic edit does. <var>pStatus</var> is the parser's refusal. Called while
+/// the message's namespace is switched.</p>
+ClassMethod ParseEditDocumentHere(pClass As %String, pText As %String, Output pNewText As %String, Output pStatus As %Status) [ Private ]
+{
+    Set pNewText = ""
+    Set pStatus = $$$OK
+    Set tStream = ##class(%Stream.TmpCharacter).%New()
+    Do tStream.Write(pText)
+    Do tStream.Rewind()
+    Set tTemp = $ClassMethod(pClass, "ImportFromLibraryStream", tStream, .pStatus)
+    If $$$ISERR(pStatus) Quit
+    If '$IsObject(tTemp) {
+        Set pStatus = $$$ERROR($$$GeneralError, "the text did not give an HL7 message")
+        Quit
+    }
+    Set pStatus = ..RenderTargetHere(tTemp, .pNewText)
+}
+
+/// <p><var>pText</var> as <method>ParseEditDocumentHere</method> parses it in <var>pNamespace</var>, switched by explicit save and
+/// restore; a fault is <var>pCaught</var>, with the namespace restored.</p>
+ClassMethod ParseEditDocument(pNamespace As %String, pClass As %String, pText As %String, Output pNewText As %String, Output pStatus As %Status, Output pCaught) As %Status [ Private ]
+{
+    Set pNewText = ""
+    Set pStatus = $$$OK
+    Set pCaught = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Do ..ParseEditDocumentHere(pClass, pText, .pNewText, .pStatus)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+    Quit $$$OK
+}
+
+/// <p>Convert the plan <var>pPlan</var> of an edit to the logical values its fields store and judge them
+/// (<method>ConvertPlanHere</method>), in <var>pNamespace</var>, switched by explicit save and restore. <var>pViolations</var> is
+/// <method>ConvertPlanHere</method>'s; a fault is <var>pCaught</var>, with the namespace restored.</p>
+ClassMethod ConvertEditPlan(pNamespace As %String, ByRef pPlan, Output pViolations, Output pCaught) As %Status [ Private ]
+{
+    Kill pViolations
+    Set pViolations = 0
+    Set pCaught = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Do ..ConvertPlanHere(.pPlan, .pViolations)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+    Quit $$$OK
+}
+
+/// <p>The edit of one message as the edit read answers it (Story 20.31), composed for the action <var>pAction</var> (<code>""</code>
+/// for the plain read): <code>{Namespace, Production, Message, Type, Source, Target, BodyClass, Kind, Verdict, Form: [{RequestClass,
+/// Kind, Field, Type, Required, MaxLength, Values, Secret, Value}], Fields, Changed, Before, After, Original, Reviewed, Digest}</code>.</p>
+/// <ul>
+/// <li>A namespace whose production is not running is 409 <code>INTEROP.PRODUCTION.NOTRUNNING</code>; a header that is gone is 404
+/// <code>PORT.NOTFOUND</code>, unlogged. A message that reads anything but <code>resend</code> is answered with its verdict, no
+/// <code>Kind</code> and no form, and its body is not opened.</li>
+/// <li>A message that reads <code>resend</code> has its body opened and recorded as viewed (<method>EditBodyFacts</method>), and one
+/// OcuPilot does not edit is 409 <code>INTEROP.EDIT.NOTEDITABLE</code>. <code>Kind</code> is <code>document</code> (an HL7 v2
+/// message, one field, <code>content</code>, whose <code>Value</code> is the raw view) or <code>object</code> (the class's plain
+/// fields, <code>Value</code> as a person types it, blank for a credential-named field).</li>
+/// <li><code>Original</code> is the SHA-256 of the form; <code>Digest</code> is the SHA-256 of <code>Verdict|Original</code>.</li>
+/// <li><var>pFieldsText</var> is the supplied fields, JSON object text of text values, <code>""</code> for none (400
+/// <code>PORT.VALIDATION</code> otherwise). <code>Fields</code> echoes them, a credential-named one left out. <code>Changed</code>
+/// lists the paths whose value differs from the current one (a document by the raw view of the parsed text);
+/// <code>Before</code> and <code>After</code> are those fields as <code>&lt;path&gt;: &lt;value&gt;</code> lines, or, for a
+/// document, <method>OcuPilot.Screen.Tool.ExplorerSaveMint.Hunk</method>'s two texts.</li>
+/// <li>Composed for an action, a <var>pReviewed</var> the message and its form no longer give is 409
+/// <code>INTEROP.RESEND.CHANGED</code>, then the supplied fields are judged, 422 on the field: <code>INTEROP.EDIT.FIELD</code> for a
+/// path that is not a field, <code>.SECRET</code> for a credential-named one, <code>.VALUE</code> for a value its datatype refuses, a
+/// value outside a closed list, a required field left empty, a member that is not text, or a document the parser refuses.</li>
+/// </ul>
+/// <p><var>pPlan</var> answers what an edit sends from, as <method>ReadTestTarget</method>'s: <code>pPlan("kind")</code>, for a
+/// document <code>pPlan("content")</code>, else <code>pPlan</code> fields and <code>pPlan(n)</code> <code>$ListBuild(path, leaf,
+/// owner, chain, typed, logical)</code> for each changed field.</p>
+ClassMethod ReadEdit(pNamespace As %String, pId As %String, pAction As %String, pFieldsText As %String, pReviewed As %String, Output pRow As %DynamicObject, ByRef pPlan, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRow = ""
+    Kill pPlan
+    Set pPlan = 0
+    If '..ParseTestFields(pFieldsText, .tInput, .tBad) Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONTESTFIELDS, .pHttpStatus, .pFault)
+    Set tSC = ..RunningProduction(pNamespace, .tProduction, .tCaught)
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the production's state could not be read", .pHttpStatus, .pFault)
+    If tProduction = "" Quit ..Conflict(##class(OcuPilot.Api.InteropError).#NOTRUNNING, .pHttpStatus, .pFault)
+    Set tSC = ..JudgeMessages(pNamespace, tProduction, $ListBuild(pId), .tRows, .tFacts, .tVerdicts, .tEligible, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    Set tFact = tFacts(1)
+    Set tVerdict = $List(tFact, 7)
+    If tVerdict = "gone" Quit ..Absent(.pHttpStatus, .pFault)
+    Set tBodyClass = $List(tFact, 5)
+    Kill tBody
+    Set tBody("editable") = 0
+    Set tBody("kind") = ""
+    Set tBody("meta") = 0
+    If tVerdict = "resend" {
+        Set tSC = ..EditBodyFacts(pNamespace, pId, tBodyClass, $List(tFact, 6), .tBody, .tCaught)
+        If $IsObject(tCaught) Quit ..Mapped(tCaught, "the message body could not be read", .pHttpStatus, .pFault)
+        If 'tBody("editable") Quit ..Conflict(##class(OcuPilot.Api.InteropError).#EDITNOTEDITABLE, .pHttpStatus, .pFault)
+    }
+    Set tKind = tBody("kind")
+
+    ; The form: the body's fields as the Test tab lists them, with the value each holds now. A credential-named field shows none.
+    Set tForm = []
+    Set tOriginalText = ""
+    If tKind = "document" {
+        Do tForm.%Push(..TestFieldRow("", "", $ListBuild(tBodyClass, "document", ..#DOCUMENTFIELD, ..#DOCUMENTFIELD, "%Library.String", 1, "", "", tBodyClass, ""), 1, tBody("text")))
+        Set tOriginalText = tBody("text")
+    } ElseIf tKind = "object" {
+        For tI = 1:1:tBody("meta") {
+            Set tPath = $List(tBody("meta", tI), 2)
+            Set tShown = $Select(..SecretPath(tPath): "", 1: tBody("display", tI))
+            Do tForm.%Push(..TestFieldRow("", "", $ListBuild(tBodyClass) _ tBody("meta", tI), 1, tShown))
+            Set tOriginalText = tOriginalText _ tPath _ $Char(1) _ tShown _ $Char(2)
+        }
+    }
+    Set tOriginal = $Select(tKind = "": "", 1: ..Sha256Hex(tBodyClass _ $Char(3) _ tOriginalText))
+    Set tDigest = ..Sha256Hex(tVerdict _ "|" _ tOriginal)
+    If (pAction '= "") && (pReviewed '= "") && (pReviewed '= tDigest) Quit ..Conflict(##class(OcuPilot.Api.InteropError).#RESENDCHANGED, .pHttpStatus, .pFault)
+
+    ; The supplied fields.
+    Kill tViolations
+    Set tViolations = 0
+    Set tChanged = []
+    Set tBefore = ""
+    Set tAfter = ""
+    Set tNL = $Char(10)
+    Set tKey = ""
+    For {
+        Set tKey = $Order(tBad(tKey))
+        If tKey = "" Quit
+        Set tViolations($Increment(tViolations)) = $ListBuild(tKey, ##class(OcuPilot.Api.InteropError).#EDITVALUE)
+    }
+    If tKind = "document" {
+        Set tKey = ""
+        For {
+            Set tKey = $Order(tInput(tKey))
+            If tKey = "" Quit
+            If tKey '= ..#DOCUMENTFIELD Set tViolations($Increment(tViolations)) = $ListBuild(tKey, ##class(OcuPilot.Api.InteropError).#EDITFIELD)
+        }
+        If $Data(tInput(..#DOCUMENTFIELD)) {
+            Set tText = tInput(..#DOCUMENTFIELD)
+            If ($Length(tText) < 1) || ($Length(tText) > ##class(OcuPilot.Port.AtelierPort).#MAXIMPORTCHARACTERS) {
+                Set tViolations($Increment(tViolations)) = $ListBuild(..#DOCUMENTFIELD, ##class(OcuPilot.Api.InteropError).#EDITVALUE)
+            } Else {
+                Set tSC = ..ParseEditDocument(pNamespace, tBodyClass, tText, .tNewText, .tParse, .tCaught)
+                If $IsObject(tCaught) Quit ..Mapped(tCaught, "the edited message could not be parsed", .pHttpStatus, .pFault)
+                If $$$ISERR(tParse) {
+                    Do ..LogFault("the edited message could not be parsed", tParse)
+                    Set tViolations($Increment(tViolations)) = $ListBuild(..#DOCUMENTFIELD, ##class(OcuPilot.Api.InteropError).#EDITVALUE)
+                } ElseIf tNewText '= tBody("text") {
+                    Do tChanged.%Push(..#DOCUMENTFIELD, "string")
+                    Set tHunk = ##class(OcuPilot.Screen.Tool.ExplorerSaveMint).Hunk(tBody("text"), tNewText)
+                    Set tBefore = tHunk.%Get("before")
+                    Set tAfter = tHunk.%Get("after")
+                    Set pPlan("kind") = "document"
+                    Set pPlan("content") = tText
+                }
+            }
+        }
+    } ElseIf tKind = "object" {
+        For tI = 1:1:tBody("meta") {
+            Set tPaths($List(tBody("meta", tI), 2)) = tI
+        }
+        Kill tPlan
+        Set tPlan = 0
+        Set tKey = ""
+        For {
+            Set tKey = $Order(tInput(tKey), 1, tTyped)
+            If tKey = "" Quit
+            If '$Data(tPaths(tKey)) {
+                Set tViolations($Increment(tViolations)) = $ListBuild(tKey, ##class(OcuPilot.Api.InteropError).#EDITFIELD)
+                Continue
+            }
+            If ..SecretPath(tKey) {
+                Set tViolations($Increment(tViolations)) = $ListBuild(tKey, ##class(OcuPilot.Api.InteropError).#EDITSECRET)
+                Continue
+            }
+            Set tRecord = tBody("meta", tPaths(tKey))
+            If ($List(tRecord, 7) '= "") && (tTyped '= "") && '$ListFind($List(tRecord, 7), tTyped) {
+                Set tViolations($Increment(tViolations)) = $ListBuild(tKey, ##class(OcuPilot.Api.InteropError).#EDITVALUE)
+                Continue
+            }
+            If $List(tRecord, 6) && (tTyped = "") {
+                Set tViolations($Increment(tViolations)) = $ListBuild(tKey, ##class(OcuPilot.Api.InteropError).#EDITVALUE)
+                Continue
+            }
+            Set tPlan($Increment(tPlan)) = $ListBuild(tKey, $List(tRecord, 3), $List(tRecord, 8), $List(tRecord, 9), tTyped, tTyped)
+        }
+        If tPlan {
+            Set tSC = ..ConvertEditPlan(pNamespace, .tPlan, .tConverted, .tCaught)
+            If $IsObject(tCaught) Quit ..Mapped(tCaught, "the edited values could not be judged", .pHttpStatus, .pFault)
+            Kill tBadPath
+            For tI = 1:1:tConverted {
+                Set tBadPath($List(tConverted(tI), 1)) = ""
+                Set tViolations($Increment(tViolations)) = $ListBuild($List(tConverted(tI), 1), ##class(OcuPilot.Api.InteropError).#EDITVALUE)
+            }
+            For tI = 1:1:tPlan {
+                Set tPath = $List(tPlan(tI), 1)
+                If $Data(tBadPath(tPath)) Continue
+                ; A value the field's conversion turned into nothing would clear the field in place of the value the card shows.
+                If ($List(tPlan(tI), 5) '= "") && ($List(tPlan(tI), 6) = "") {
+                    Set tBadPath(tPath) = ""
+                    Set tViolations($Increment(tViolations)) = $ListBuild(tPath, ##class(OcuPilot.Api.InteropError).#EDITVALUE)
+                    Continue
+                }
+                If $List(tPlan(tI), 6) = tBody("logical", tPaths(tPath)) Continue
+                Do tChanged.%Push(tPath, "string")
+                Set tBefore = tBefore _ $Select(tBefore = "": "", 1: tNL) _ tPath _ ": " _ tBody("display", tPaths(tPath))
+                Set tAfter = tAfter _ $Select(tAfter = "": "", 1: tNL) _ tPath _ ": " _ $List(tPlan(tI), 5)
+                Set pPlan($Increment(pPlan)) = tPlan(tI)
+            }
+            If pPlan Set pPlan("kind") = "object"
+        }
+    }
+    If (pAction '= "") && tViolations Quit ..Violations(.tViolations, .pHttpStatus, .pFault)
+
+    ; What the answer echoes of the fields: none of a credential-named field's value.
+    Set tKey = ""
+    For {
+        Set tKey = $Order(tInput(tKey))
+        If tKey = "" Quit
+        If ..SecretPath(tKey) Kill tInput(tKey)
+    }
+    Set pRow = {}
+    Do pRow.%Set("Namespace", pNamespace, "string")
+    Do pRow.%Set("Production", tProduction, "string")
+    Do pRow.%Set("Message", pId, "string")
+    Do pRow.%Set("Type", $List(tFact, 2), "string")
+    Do pRow.%Set("Source", $List(tFact, 3), "string")
+    Do pRow.%Set("Target", $List(tFact, 4), "string")
+    Do pRow.%Set("BodyClass", tBodyClass, "string")
+    Do pRow.%Set("Kind", tKind, "string")
+    Do pRow.%Set("Verdict", tVerdict, "string")
+    Do pRow.%Set("Form", tForm)
+    Do pRow.%Set("Fields", ..CanonicalFields(.tInput, 1), "string")
+    Do pRow.%Set("Changed", tChanged)
+    Do pRow.%Set("Before", tBefore, "string")
+    Do pRow.%Set("After", tAfter, "string")
+    Do pRow.%Set("Original", tOriginal, "string")
+    Do pRow.%Set("Reviewed", pReviewed, "string")
+    Do pRow.%Set("Digest", tDigest, "string")
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>Save a clone of the body of the message header <var>pHeaderId</var> that carries the changed fields of the plan
+/// <var>pPlan</var> (<method>ReadEdit</method>'s), and resend the header with it (Story 20.31): the new header's id in
+/// <var>pNewId</var>, the clone's class and id in <var>pCloneClass</var> and <var>pCloneId</var>, the vendor's answer in
+/// <var>pStatus</var>. The original body is never changed.</p>
+/// <ul>
+/// <li>A document is cloned as the classic edit page clones it: the clone keeps the original's <code>ParentId</code>, is cleared,
+/// takes the original's <code>Source</code> followed by a carriage return and <parameter>EDITEDCOPY</parameter> and the original
+/// body's id, then the parsed text's <code>Separators</code> and, by <code>CopyValues</code>, its segments.</li>
+/// <li>An object is cloned (<code>%ConstructClone</code>), each changed field is set along its path on the clone
+/// (<method>ApplyFieldsHere</method>, an embedded object the original shares first copied), and the clone is validated.</li>
+/// </ul>
+/// <p>A resend the vendor refuses after the clone was saved deletes the clone when no header names it. Called while the message's
+/// namespace is switched.</p>
+ClassMethod EditCloneHere(pHeaderId As %String, ByRef pPlan, Output pNewId As %String, Output pCloneClass As %String, Output pCloneId As %String, Output pStatus As %Status) [ Private ]
+{
+    Set pNewId = ""
+    Set pCloneClass = ""
+    Set pCloneId = ""
+    Set pStatus = $$$OK
+    Set tHeader = ##class(Ens.MessageHeader).%OpenId(pHeaderId)
+    If '$IsObject(tHeader) {
+        Set pStatus = $$$ERROR($$$GeneralError, "the message header is gone")
+        Quit
+    }
+    Set tClass = tHeader.MessageBodyClassName
+    Set tBodyId = tHeader.MessageBodyId
+    Set tHeader = ""
+    Set tOriginal = ..OpenBodyHere(tClass, tBodyId)
+    If '$IsObject(tOriginal) {
+        Set pStatus = $$$ERROR($$$GeneralError, "the message body is gone")
+        Quit
+    }
+    If pPlan("kind") = "document" {
+        Set tParent = tOriginal.ParentId
+        Set tSource = tOriginal.Source _ $Char(13) _ ..#EDITEDCOPY _ tBodyId
+        Set tClone = tOriginal.%ConstructClone()
+        If '$IsObject(tClone) {
+            Set pStatus = $$$ERROR($$$GeneralError, "the message body could not be cloned")
+            Quit
+        }
+        Set tClone.ParentId = tParent
+        Set pStatus = tClone.Clear()
+        If $$$ISERR(pStatus) Quit
+        Set tClone.Source = tSource
+        Set tStream = ##class(%Stream.TmpCharacter).%New()
+        Do tStream.Write(pPlan("content"))
+        Do tStream.Rewind()
+        Set tTemp = $ClassMethod(tClass, "ImportFromLibraryStream", tStream, .pStatus)
+        If $$$ISERR(pStatus) Quit
+        If '$IsObject(tTemp) {
+            Set pStatus = $$$ERROR($$$GeneralError, "the text did not give an HL7 message")
+            Quit
+        }
+        Set tClone.Separators = tTemp.Separators
+        Set pStatus = tClone.CopyValues(tTemp, "()", "()", "set", "")
+        If $$$ISERR(pStatus) Quit
+    } Else {
+        Set tClone = tOriginal.%ConstructClone(0)
+        If '$IsObject(tClone) {
+            Set pStatus = $$$ERROR($$$GeneralError, "the message body could not be cloned")
+            Quit
+        }
+        Set tFailed = ..ApplyFieldsHere(tClone, .pPlan, 1)
+        If tFailed '= "" {
+            Set pStatus = $$$ERROR($$$GeneralError, tFailed)
+            Quit
+        }
+        Set pStatus = tClone.%ValidateObject()
+        If $$$ISERR(pStatus) Quit
+    }
+    Set pStatus = ..VendorResendWithBody(pHeaderId, tClone, .pNewId)
+    Set pCloneClass = tClone.%ClassName(1)
+    Set pCloneId = tClone.%Id()
+    If $$$ISERR(pStatus) && (pCloneId '= "") {
+        Set tStatement = ##class(%SQL.Statement).%New()
+        Set tResult = ##class(%SQL.Statement).%ExecDirectNoPriv(.tStatement, "SELECT COUNT(*) FROM Ens.MessageHeader WHERE MessageBodyClassName = ? AND MessageBodyId = ?", pCloneClass, pCloneId)
+        If $IsObject(tResult) && tResult.%Next() && ('tResult.%GetData(1)) {
+            Set tClone = ""
+            Do $ClassMethod(pCloneClass, "%DeleteId", pCloneId)
+        }
+    }
+}
+
+/// <p><code>Ens.MessageHeader.ResendDuplicatedMessage</code> of the header <var>pHeaderId</var> with the body <var>pClone</var>, the
+/// new header's id in <var>pNewId</var>. Called while the message's namespace is switched. Overridable so a test can refuse the
+/// resend after the clone was saved; production never overrides it.</p>
+ClassMethod VendorResendWithBody(pHeaderId As %String, pClone As %RegisteredObject, Output pNewId As %String) As %Status [ Private ]
+{
+    Quit ##class(Ens.MessageHeader).ResendDuplicatedMessage(pHeaderId, .pNewId, "", pClone)
+}
+
+/// <p><method>EditCloneHere</method> in <var>pNamespace</var>, switched by explicit save and restore; a fault is
+/// <var>pCaught</var>, with the namespace restored. Only vendor classes and this class run while it is switched. Overridable so a
+/// test can fail the resend after the clone was saved; production never overrides it.</p>
+ClassMethod VendorEditResend(pNamespace As %String, pHeaderId As %String, ByRef pPlan, Output pNewId As %String, Output pCloneClass As %String, Output pCloneId As %String, Output pCaught) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pCaught = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Do ..EditCloneHere(pHeaderId, .pPlan, .pNewId, .pCloneClass, .pCloneId, .tSC)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+    Quit tSC
+}
+
+/// <p>Edit and resend the message <var>pId</var> (Story 20.31): the edit is read and judged again first
+/// (<method>ReadEdit</method>, composed for this write), and refused with nothing sent when the message reads anything but
+/// <code>resend</code> (409 <code>INTEROP.RESEND.NONE</code>) or when no supplied field changes it (409
+/// <code>INTEROP.EDIT.NOCHANGE</code>); a <var>pReviewed</var> the message no longer gives is 409
+/// <code>INTEROP.RESEND.CHANGED</code>. Then a clone of the body carrying the changes is saved and the header resent with it
+/// (<method>EditCloneHere</method>). The answer is <code>{Namespace, Message, NewId, BodyClass, BodyId}</code>: the new header's id
+/// and the clone it names. The vendor audits the new header, so this records nothing.</p>
+ClassMethod PerformEditResend(pNamespace As %String, pId As %String, pFieldsText As %String, pReviewed As %String, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    Set tSC = ..ReadEdit(pNamespace, pId, ..#TYPEEDITRESEND, pFieldsText, pReviewed, .tRow, .tPlan, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    If tRow.%Get("Verdict") '= "resend" Quit ..Conflict(##class(OcuPilot.Api.InteropError).#RESENDNONE, .pHttpStatus, .pFault)
+    If 'tRow.%Get("Changed").%Size() Quit ..Conflict(##class(OcuPilot.Api.InteropError).#EDITNOCHANGE, .pHttpStatus, .pFault)
+    Set tVendorSC = ..VendorEditResend(pNamespace, pId, .tPlan, .tNewId, .tCloneClass, .tCloneId, .tCaught)
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the edited message could not be resent", .pHttpStatus, .pFault)
+    If $$$ISERR(tVendorSC) Quit ..Statused(tVendorSC, "the edited message could not be resent", .pHttpStatus, .pFault)
+    Set pResult = {}
+    Do pResult.%Set("Namespace", pNamespace, "string")
+    Do pResult.%Set("Message", pId, "string")
+    Do pResult.%Set("NewId", tNewId _ "", "string")
+    Do pResult.%Set("BodyClass", tCloneClass, "string")
+    Do pResult.%Set("BodyId", tCloneId _ "", "string")
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>Serve a Messages call of Story 20.31 after <method>Invoke</method>'s gate: the resend read (<code>RESEND</code>), the resend
+/// (<code>RESENDMESSAGES</code>), the edit read (<code>EDIT</code>) and the edit-and-resend (<code>EDITRESEND</code>). The messages
+/// travel under <parameter>IDKEY</parameter> as the set <method>MessageSet</method> reads, or for an edit the one message; the
+/// fields of an edit under <parameter>FIELDSKEY</parameter>, as JSON object text; the digest a person reviewed under
+/// <parameter>DIGESTKEY</parameter>. A read composed for an action carries it under <parameter>ACTIONKEY</parameter>, which must be
+/// the write of its own family, else 501.</p>
+ClassMethod InvokeMessageAction(pNamespace As %String, pType As %String, ByRef pQuery, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pResult = ""
+    Try {
+        Set tEdit = (pType = ..#TYPEEDIT) || (pType = ..#TYPEEDITRESEND)
+        Set tWrite = ..IsMessageWrite(pType)
+        Set tAction = $Select(tWrite: pType, 1: $Get(pQuery(..#ACTIONKEY)))
+        If (tAction '= "") && (tAction '= $Select(tEdit: ..#TYPEEDITRESEND, 1: ..#TYPERESENDMESSAGES)) {
+            Set tSC = ..Refuse(501, ##class(OcuPilot.Api.Error).#NOTIMPLEMENTED, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, ..#REASONNOTIMPLEMENTED, .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tId = $Get(pQuery(..#IDKEY))
+        Set tReviewed = $Get(pQuery(..#DIGESTKEY))
+        If tEdit {
+            If '$Match(tId, ..#MESSAGEIDPATTERN) {
+                Set tSC = ..RefuseCriterion("message", .pHttpStatus, .pFault)
+                Quit
+            }
+            If tWrite {
+                Set tSC = ..PerformEditResend(pNamespace, tId, $Get(pQuery(..#FIELDSKEY)), tReviewed, .pResult, .pHttpStatus, .pFault)
+            } Else {
+                Set tSC = ..ReadEdit(pNamespace, tId, tAction, $Get(pQuery(..#FIELDSKEY)), tReviewed, .pResult, .tPlan, .pHttpStatus, .pFault)
+            }
+            Quit
+        }
+        If tWrite {
+            Set tSC = ..PerformResend(pNamespace, tId, tReviewed, .pResult, .pHttpStatus, .pFault)
+        } Else {
+            Set tSC = ..ReadResend(pNamespace, tId, tAction, tReviewed, .pResult, .pHttpStatus, .pFault)
+        }
+    } Catch ex {
+        Set pResult = ""
+        Set tSC = ..Fail("the message resend call failed inside the port", ex.AsStatus(), .pHttpStatus, .pFault)
+    }
+    Quit tSC
+}
+
+/// <p>The lines <method>Snippet</method> adds for a Messages write of Story 20.31, from the stored payload of <var>pContext</var> and
+/// the query <var>pQuery</var>. A resend: <code>ResendDuplicatedMessage</code> of each id the payload's <code>Verdicts</code> reads
+/// <code>resend</code> (every id of the set <var>pId</var> when it holds none), each failure kept in <code>tSC</code>. An
+/// edit-and-resend: the header and its body opened, the body cloned, each supplied field set on the clone along its path (a document
+/// as the classic edit page rebuilds it: cleared, its <code>Source</code> annotated, the text parsed from a character stream and
+/// copied in), and the header resent with the clone. The body's class and fields are read in the namespace
+/// <parameter>NAMESPACEKEY</parameter> names; a class they cannot be read for gives the lines without a field. Every id, name and
+/// value is a string literal, so nothing the payload carries runs as code, and every line closes any block it opens. A
+/// credential-named field is left out.</p>
+ClassMethod MessageSnippet(pType As %String, pId As %String, ByRef pQuery, pContext As %DynamicObject) As %String [ Private ]
+{
+    Set tNL = $Char(10)
+    Set tPayload = ""
+    If $IsObject(pContext) && (pContext.%GetTypeOf("payload") = "object") Set tPayload = pContext.%Get("payload")
+    If pType = ..#TYPERESENDMESSAGES {
+        Set tIds = ""
+        If $IsObject(tPayload) && (tPayload.%GetTypeOf("Verdicts") = "string") {
+            Set tVerdicts = tPayload.%Get("Verdicts")
+            For tI = 1:1:$Length(tVerdicts, ",") {
+                Set tPair = $Piece(tVerdicts, ",", tI)
+                If $Piece(tPair, "=", 2) = "resend" Set tIds = tIds _ $ListBuild($Piece(tPair, "=", 1))
+            }
+        } ElseIf ..MessageSet(pId, .tAll) {
+            Set tIds = tAll
+        }
+        Set tText = tNL _ " Set tSC = 1"
+        For tI = 1:1:$ListLength(tIds) {
+            Set tText = tText _ tNL _ " Set tSC = $System.Status.AppendStatus(tSC, ##class(Ens.MessageHeader).ResendDuplicatedMessage(" _ ..Literal($List(tIds, tI)) _ ", .tNew))"
+        }
+        Quit tText
+    }
+    If '..ParseTestFields($Get(pQuery(..#FIELDSKEY)), .tInput, .tBad) Kill tInput
+    Set tClass = ""
+    Set tMeta = 0
+    Set tDocument = 0
+    Kill tConvert
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = $Get(pQuery(..#NAMESPACEKEY))
+        Set tHeader = ##class(Ens.MessageHeader).%OpenId(pId)
+        If $IsObject(tHeader) Set tClass = tHeader.MessageBodyClassName
+        Set tHeader = ""
+        If $Match(tClass, ..#CLASSNAMEPATTERN) && ##class(%Dictionary.CompiledClass).%ExistsId(tClass) {
+            Set tDocument = ''$ClassMethod(tClass, "%Extends", "EnsLib.HL7.Message")
+            If 'tDocument {
+                Do ..ClassFieldsHere(tClass, .tMeta)
+                For tI = 1:1:tMeta {
+                    Set tConvert(tI) = ##class(%Dictionary.CompiledMethod).%ExistsId($List(tMeta(tI), 8) _ "||" _ $List(tMeta(tI), 3) _ "DisplayToLogical")
+                }
+            }
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch {
+        Set $NAMESPACE = tOrigNS
+        Set tClass = ""
+        Set tDocument = 0
+        Set tMeta = 0
+        Kill tConvert
+    }
+    Set tId = ..Literal(pId)
+    Set tText = tNL _ " Set tHeader = ##class(Ens.MessageHeader).%OpenId(" _ tId _ ")"
+    Set tText = tText _ tNL _ " Set tOriginal = $ClassMethod(tHeader.MessageBodyClassName, ""%OpenId"", tHeader.MessageBodyId)"
+    If tDocument {
+        Set tText = tText _ tNL _ " Set tSource = tOriginal.Source _ $Char(13) _ " _ ..Literal(..#EDITEDCOPY) _ " _ tHeader.MessageBodyId"
+        Set tText = tText _ tNL _ " Set tParent = tOriginal.ParentId"
+        Set tText = tText _ tNL _ " Set tClone = tOriginal.%ConstructClone()"
+        Set tText = tText _ tNL _ " Set tClone.ParentId = tParent"
+        Set tText = tText _ tNL _ " Set tSC = tClone.Clear()"
+        Set tText = tText _ tNL _ " Set tClone.Source = tSource"
+        Set tText = tText _ tNL _ " Set tStream = ##class(%Stream.TmpCharacter).%New()"
+        Set tText = tText _ tNL _ " Do tStream.Write(" _ ..Literal($Get(tInput(..#DOCUMENTFIELD))) _ ")"
+        Set tText = tText _ tNL _ " Do tStream.Rewind()"
+        Set tText = tText _ tNL _ " Set tTemp = $ClassMethod(tHeader.MessageBodyClassName, ""ImportFromLibraryStream"", tStream, .tSC)"
+        Set tText = tText _ tNL _ " Set tClone.Separators = tTemp.Separators"
+        Set tText = tText _ tNL _ " If $System.Status.IsOK(tSC) Set tSC = tClone.CopyValues(tTemp, ""()"", ""()"", ""set"", """")"
+    } Else {
+        Set tText = tText _ tNL _ " Set tClone = tOriginal.%ConstructClone(0)"
+        Kill tVariable
+        Set tVariables = 0
+        For tI = 1:1:tMeta {
+            Set tRecord = tMeta(tI)
+            Set tPath = $List(tRecord, 2)
+            If '$Data(tInput(tPath)) || ..SecretPath(tPath) Continue
+            Set tCurrent = "tClone"
+            For tJ = 1:1:$Length(tPath, ".") - 1 {
+                Set tPrefix = $Piece(tPath, ".", 1, tJ)
+                If '$Data(tVariable(tPrefix)) {
+                    Set tVariable(tPrefix) = "tPart" _ $Increment(tVariables)
+                    Set tText = tText _ tNL _ " Set " _ tVariable(tPrefix) _ " = $Select($IsObject($Property(" _ tCurrent _ ", " _ ..Literal($Piece(tPath, ".", tJ)) _ ")): $Property(" _ tCurrent _ ", " _ ..Literal($Piece(tPath, ".", tJ)) _ ").%ConstructClone(1), 1: $ClassMethod(" _ ..Literal($List($List(tRecord, 9), tJ)) _ ", ""%New""))"
+                    Set tText = tText _ tNL _ " Set $Property(" _ tCurrent _ ", " _ ..Literal($Piece(tPath, ".", tJ)) _ ") = " _ tVariable(tPrefix)
+                }
+                Set tCurrent = tVariable(tPrefix)
+            }
+            Set tValue = ..Literal(tInput(tPath))
+            If tInput(tPath) '= "" && $Get(tConvert(tI)) Set tValue = "$ClassMethod(" _ ..Literal($List(tRecord, 8)) _ ", " _ ..Literal($List(tRecord, 3) _ "DisplayToLogical") _ ", " _ tValue _ ")"
+            Set tText = tText _ tNL _ " Set $Property(" _ tCurrent _ ", " _ ..Literal($List(tRecord, 3)) _ ") = " _ tValue
+        }
+        Set tText = tText _ tNL _ " Set tSC = tClone.%ValidateObject()"
+    }
+    Quit tText _ tNL _ " If $System.Status.IsOK(tSC) Set tSC = ##class(Ens.MessageHeader).ResendDuplicatedMessage(" _ tId _ ", .tNew, """", tClone)"
+}
+
 /// <p>Whether a queue or job action of type <var>pType</var> is refused for the target state the arguments give, and the code
 /// it is refused with, or <code>""</code> when it may go ahead (Story 20.23): whatever the vendor would answer as a silent
 /// success is refused here by its own code, and nothing is called. Pure.</p>
@@ -3803,13 +4753,24 @@ ClassMethod ReadQueue(pNamespace As %String, pName As %String, Output pRow As %D
 
 /// <p>The message header <var>pId</var> of <var>pNamespace</var>: <var>pExists</var>, the queue its own
 /// <code>TargetQueueName</code> names and its status as the display word. A fault is <var>pCaught</var>, with the namespace
-/// restored. No body is read.</p>
-ClassMethod HeaderFacts(pNamespace As %String, pId As %String, Output pExists As %Boolean, Output pQueue As %String, Output pStatus As %String, Output pCaught) As %Status [ Private ]
+/// restored. No body is opened.</p>
+/// <p>For the resend reads (Story 20.31) it also answers the header's type as the display word, source and target configuration
+/// names, body class and body id, whether the body it names is still there (<var>pBodyExists</var>: a compiled class that holds the
+/// id; <code>0</code> too when the header names none), and whether the queue its own <code>TargetQueueName</code> names exists
+/// (<var>pQueueExists</var>: <code>Ens.Queue.Exists</code> throws on an empty name, so an empty name reads <code>0</code>).</p>
+ClassMethod HeaderFacts(pNamespace As %String, pId As %String, Output pExists As %Boolean, Output pQueue As %String, Output pStatus As %String, Output pCaught, Output pType As %String, Output pSource As %String, Output pTarget As %String, Output pBodyClass As %String, Output pBodyId As %String, Output pBodyExists As %Boolean, Output pQueueExists As %Boolean) As %Status [ Private ]
 {
     Set pExists = 0
     Set pQueue = ""
     Set pStatus = ""
     Set pCaught = ""
+    Set pType = ""
+    Set pSource = ""
+    Set pTarget = ""
+    Set pBodyClass = ""
+    Set pBodyId = ""
+    Set pBodyExists = 0
+    Set pQueueExists = 0
     Set tOrigNS = $NAMESPACE
     Try {
         Set $NAMESPACE = pNamespace
@@ -3818,6 +4779,13 @@ ClassMethod HeaderFacts(pNamespace As %String, pId As %String, Output pExists As
             Set pExists = 1
             Set pQueue = tHeader.TargetQueueName
             Set pStatus = ##class(Ens.DataType.MessageStatus).LogicalToDisplay(tHeader.Status)
+            Set pType = ##class(Ens.DataType.MessageType).LogicalToDisplay(tHeader.Type)
+            Set pSource = tHeader.SourceConfigName
+            Set pTarget = tHeader.TargetConfigName
+            Set pBodyClass = tHeader.MessageBodyClassName
+            Set pBodyId = tHeader.MessageBodyId
+            Set pBodyExists = ..BodyExistsHere(pBodyClass, pBodyId)
+            Set pQueueExists = $Select(pQueue = "": 0, 1: ''##class(Ens.Queue).Exists(pQueue))
         }
         Set tHeader = ""
         Set $NAMESPACE = tOrigNS
@@ -4089,6 +5057,7 @@ ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
     If (..IsLookupWrite(pType) || (pType = ..#TYPEEXPORT)) && ..Serves(pEndpoint, pType) Quit "objectscript"
     If (pEndpoint = ..#ENDPOINTITEMTEST) && ..IsTestWrite(pType) Quit "objectscript"
     If (pEndpoint = ..#ENDPOINTTRANSFORMS) && (pType = ..#TYPETRANSFORMTEST) Quit "objectscript"
+    If (pEndpoint = ..#ENDPOINTMESSAGES) && ..IsMessageWrite(pType) Quit "objectscript"
     If pEndpoint '= ..#ENDPOINTPRODUCTIONS Quit ""
     If ..IsWrite(pType) Quit "objectscript"
     Quit ""
@@ -4100,7 +5069,8 @@ ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
 /// <code>RestartProduction</code> and <code>UpdateProduction</code> with the production's own timeout capped
 /// at <parameter>STOPSECONDS</parameter>, and <code>RecoverProduction</code>; an item's
 /// <code>EnableConfigItem</code>, add and remove, each followed by the production class's
-/// <code>SaveToClass</code>; and the queue and job actions (<method>RuntimeSnippet</method>). A read writes nothing and answers no step. Every value is rendered as a
+/// <code>SaveToClass</code>; the queue and job actions (<method>RuntimeSnippet</method>); and the message resend and edit and resend
+/// (<method>MessageSnippet</method>). A read writes nothing and answers no step. Every value is rendered as a
 /// string literal, so nothing the query carries runs as code, and every line closes any block it opens.
 /// Whoever runs the script is checked by the vendor's own run resource, and a recover by the namespace's
 /// database alone; an item write is checked by the databases alone.</p>
@@ -4116,6 +5086,8 @@ ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody 
         Set tText = tText _ ..TestSnippet($Get(pQuery(..#IDKEY)), .pQuery)
     } ElseIf pEndpoint = ..#ENDPOINTTRANSFORMS {
         Set tText = tText _ ..TransformSnippet($Get(pQuery(..#IDKEY)), .pQuery)
+    } ElseIf pEndpoint = ..#ENDPOINTMESSAGES {
+        Set tText = tText _ ..MessageSnippet(pType, $Get(pQuery(..#IDKEY)), .pQuery, pContext)
     } ElseIf ..IsRuntimeWrite(pType) {
         Set tText = tText _ ..RuntimeSnippet(pType, $Get(pQuery(..#IDKEY)), pContext)
     } ElseIf (pType = ..#TYPEIMPORT) || (pType = ..#TYPEEXPORT) {
@@ -5529,14 +6501,19 @@ ClassMethod GatherTestFields(pNamespace As %String, pHostClass As %String, pMax 
 /// of <var>pProduction</var>: <code>{Production, Item, RequestClass, Kind, Field, Type, Required, MaxLength, Values, Secret}</code>,
 /// <code>Item</code> the item's <code>Production||Name</code>, <code>MaxLength</code> null where the field has none and
 /// <code>Values</code> the values a field of a closed list takes, as a person types them. A credential-named field is
-/// <code>Secret</code> (AD-35). A document's <code>content</code> is bounded by the longest text the screen sends.</p>
-ClassMethod TestFieldRow(pProduction As %String, pItemName As %String, pLine As %List) As %DynamicObject [ Private ]
+/// <code>Secret</code> (AD-35). A document's <code>content</code> is bounded by the longest text the screen sends. With
+/// <var>pForm</var> (Story 20.31) the row is an edit form's: <code>{RequestClass, Kind, Field, Type, Required, MaxLength, Values,
+/// Secret, Value}</code>, without the production and the item, <code>Value</code> being <var>pValue</var>, the field's current
+/// value as a person types it.</p>
+ClassMethod TestFieldRow(pProduction As %String, pItemName As %String, pLine As %List, pForm As %Boolean = 0, pValue As %String = "") As %DynamicObject [ Private ]
 {
     Set tKind = $List(pLine, 2)
     Set tPath = $List(pLine, 3)
     Set tRow = {}
-    Do tRow.%Set("Production", pProduction, "string")
-    Do tRow.%Set("Item", pProduction _ "||" _ pItemName, "string")
+    If 'pForm {
+        Do tRow.%Set("Production", pProduction, "string")
+        Do tRow.%Set("Item", pProduction _ "||" _ pItemName, "string")
+    }
     Do tRow.%Set("RequestClass", $List(pLine, 1), "string")
     Do tRow.%Set("Kind", tKind, "string")
     Do tRow.%Set("Field", tPath, "string")
@@ -5556,6 +6533,7 @@ ClassMethod TestFieldRow(pProduction As %String, pItemName As %String, pLine As 
     }
     Do tRow.%Set("Values", tValues)
     Do tRow.%Set("Secret", $Select(tPath = "": 0, 1: ''..SecretPath(tPath)), "boolean")
+    If pForm Do tRow.%Set("Value", pValue, "string")
     Quit tRow
 }
 
@@ -5589,17 +6567,17 @@ ClassMethod ParseTestFields(pText As %String, Output pInput, Output pBad) As %Bo
     Quit 1
 }
 
-/// <p>The text members of <var>pInput</var> (<method>ParseTestFields</method>) that are not empty, as canonical JSON text: one
-/// object whose members are in name order. It is the value <code>Fields</code> reads and the fingerprint covers, so one request
-/// reads one text. Pure.</p>
-ClassMethod CanonicalFields(ByRef pInput) As %String [ Private ]
+/// <p>The text members of <var>pInput</var> (<method>ParseTestFields</method>) that are not empty, or all of them with
+/// <var>pKeepEmpty</var> (an edit may clear a field, Story 20.31), as canonical JSON text: one object whose members are in name
+/// order. It is the value <code>Fields</code> reads and the fingerprint covers, so one request reads one text. Pure.</p>
+ClassMethod CanonicalFields(ByRef pInput, pKeepEmpty As %Boolean = 0) As %String [ Private ]
 {
     Set tObject = {}
     Set tKey = ""
     For {
         Set tKey = $Order(pInput(tKey), 1, tValue)
         If tKey = "" Quit
-        If tValue '= "" Do tObject.%Set(tKey, tValue, "string")
+        If pKeepEmpty || (tValue '= "") Do tObject.%Set(tKey, tValue, "string")
     }
     Quit tObject.%ToJSON()
 }
@@ -5849,28 +6827,7 @@ ClassMethod BuildTestRequestHere(pRequestClass As %String, ByRef pPlan, Output p
     } Else {
         Set tObject = $ClassMethod(pRequestClass, "%New")
         If '$IsObject(tObject) Quit $$$ERROR($$$GeneralError, "a " _ pRequestClass _ " could not be created")
-        Set tFailed = ""
-        For tI = 1:1:+$Get(pPlan) {
-            If tFailed '= "" Quit
-            Set tRecord = pPlan(tI)
-            Set tChain = $List(tRecord, 4)
-            Set tCurrent = tObject
-            For tJ = 1:1:$Length($List(tRecord, 1), ".") - 1 {
-                Set tSegment = $Piece($List(tRecord, 1), ".", tJ)
-                Set tNext = $Property(tCurrent, tSegment)
-                If '$IsObject(tNext) {
-                    Set tNext = $ClassMethod($List(tChain, tJ), "%New")
-                    If '$IsObject(tNext) {
-                        Set tFailed = "an embedded " _ $List(tChain, tJ) _ " could not be created"
-                        Quit
-                    }
-                    Set $Property(tCurrent, tSegment) = tNext
-                }
-                Set tCurrent = tNext
-            }
-            If tFailed '= "" Quit
-            Set $Property(tCurrent, $List(tRecord, 2)) = $List(tRecord, 6)
-        }
+        Set tFailed = ..ApplyFieldsHere(tObject, .pPlan)
         If tFailed '= "" Quit $$$ERROR($$$GeneralError, tFailed)
         Set tSC = tObject.%ValidateObject()
         If $$$ISERR(tSC) Quit tSC
@@ -5881,6 +6838,45 @@ ClassMethod BuildTestRequestHere(pRequestClass As %String, ByRef pPlan, Output p
     }
     Set pRequest = tObject
     Quit $$$OK
+}
+
+/// <p>Set each field of the plan <var>pPlan</var> (<method>ReadTestTarget</method>'s) on <var>pObject</var>, along its path, to the
+/// plan element's logical value (its sixth member), creating the embedded serial object a path passes where the object holds none.
+/// With <var>pCloneEmbedded</var> an embedded object the object already holds is replaced by a copy of it before its first field is
+/// set, so the objects the original shares with a clone of it are never changed (Story 20.31). The answer is <code>""</code>, or
+/// what could not be created. Called while the production's namespace is switched.</p>
+ClassMethod ApplyFieldsHere(pObject As %RegisteredObject, ByRef pPlan, pCloneEmbedded As %Boolean = 0) As %String [ Private ]
+{
+    Set tFailed = ""
+    Kill tCopied
+    For tI = 1:1:+$Get(pPlan) {
+        If tFailed '= "" Quit
+        Set tRecord = pPlan(tI)
+        Set tChain = $List(tRecord, 4)
+        Set tCurrent = pObject
+        For tJ = 1:1:$Length($List(tRecord, 1), ".") - 1 {
+            Set tSegment = $Piece($List(tRecord, 1), ".", tJ)
+            Set tPrefix = $Piece($List(tRecord, 1), ".", 1, tJ)
+            Set tNext = $Property(tCurrent, tSegment)
+            If '$IsObject(tNext) {
+                Set tNext = $ClassMethod($List(tChain, tJ), "%New")
+                If '$IsObject(tNext) {
+                    Set tFailed = "an embedded " _ $List(tChain, tJ) _ " could not be created"
+                    Quit
+                }
+                Set $Property(tCurrent, tSegment) = tNext
+                Set tCopied(tPrefix) = ""
+            } ElseIf pCloneEmbedded && '$Data(tCopied(tPrefix)) {
+                Set tNext = tNext.%ConstructClone(1)
+                Set $Property(tCurrent, tSegment) = tNext
+                Set tCopied(tPrefix) = ""
+            }
+            Set tCurrent = tNext
+        }
+        If tFailed '= "" Quit
+        Set $Property(tCurrent, $List(tRecord, 2)) = $List(tRecord, 6)
+    }
+    Quit tFailed
 }
 
 /// <p>Wait, at most <method>TestWait</method> seconds, for the test session <var>pSession</var>'s answer, reading every

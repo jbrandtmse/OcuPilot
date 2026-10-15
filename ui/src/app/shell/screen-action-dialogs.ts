@@ -3,6 +3,7 @@ import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, input
 import { AllowedDirectoryDialogs } from '../areas/security/allowed-directory-dialogs';
 import { screenForDescriptor } from '../core/navigation';
 import { BroadcastDialog } from './broadcast-dialog';
+import { OutcomeDialog } from './outcome-dialog';
 import { type PendingCheck, PermissionCheck } from './permission-check';
 import { PermissionCheckDialog } from './permission-check-dialog';
 import { RoleDialog } from './role-dialog';
@@ -14,7 +15,7 @@ import { WarningDialog, type WarningAnswer } from './warning-dialog';
 /**
  * The dialogs a declared action waits on (AD-53): the typed-name confirm of a destructive action,
  * the warning before a non-delete write, the set-password dialog, the role dialog and the broadcast
- * dialog over a list's checked rows (Story 16.6) -- the ones
+ * dialog over a list's checked rows (Story 16.6), and the outcome that follows a reviewed action (Story 20.31) -- the ones
  * `ScreenActionHandler` holds pending for `descriptor`, rendered wherever that screen's actions are
  * offered. A list page renders it under its table and the user editor under its form (DW-1501), so
  * the two surfaces show one dialog, not two copies of it. The Check permission dialog (Story 16.3)
@@ -30,7 +31,7 @@ import { WarningDialog, type WarningAnswer } from './warning-dialog';
 @Component({
   selector: 'app-screen-action-dialogs',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [AllowedDirectoryDialogs, BroadcastDialog, PermissionCheckDialog, RoleDialog, SetPasswordDialog, TypedNameDialog, WarningDialog],
+  imports: [AllowedDirectoryDialogs, BroadcastDialog, OutcomeDialog, PermissionCheckDialog, RoleDialog, SetPasswordDialog, TypedNameDialog, WarningDialog],
   template: `@if (pendingTypedName; as pending) {
       <app-typed-name-dialog
         [verb]="pending.verb"
@@ -38,8 +39,17 @@ import { WarningDialog, type WarningAnswer } from './warning-dialog';
         [consequence]="pending.consequence"
         [advisory]="pending.advisory"
         [flagLabel]="pending.flagLabel"
+        [review]="pending.review ?? []"
         (confirmed)="onConfirm($event)"
         (cancelled)="onCancel()"
+      />
+    }
+    @if (pendingOutcome; as pending) {
+      <app-outcome-dialog
+        [heading]="pending.verb + ' ' + pending.name"
+        [lines]="pending.outcome ?? []"
+        [refusal]="pending.refusal ?? ''"
+        (closed)="onCancel()"
       />
     }
     @if (pendingSetPassword; as pending) {
@@ -116,6 +126,10 @@ export class ScreenActionDialogs {
 
   protected get pendingTypedName(): PendingConfirm | null {
     return this.pendingOf('typed-name');
+  }
+
+  protected get pendingOutcome(): PendingConfirm | null {
+    return this.pendingOf('outcome');
   }
 
   protected get pendingSetPassword(): PendingConfirm | null {

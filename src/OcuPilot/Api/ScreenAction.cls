@@ -132,6 +132,43 @@ ClassMethod Preview(pDescriptor As %String, pActionId As %String, pId As %String
     Quit ..Resolve(pDescriptor, tBody, 1, pValue, .pPreview)
 }
 
+/// <p>The review of the action <code>pBody</code> names (Story 20.31, AD-53): <method>Resolve</method>'s preview, which stops
+/// before the write and asks no prohibited set, and, in <var>pPreview</var><code>.review</code>, what the action's tool
+/// answers beside its rows (<method>OcuPilot.Screen.Tool.Write.DryRunReview</method>) over the fresh read. <var>pBody</var> is
+/// the action route's own <code>{action, id, values}</code>, already parsed.</p>
+/// <p>An action the screen does not declare, one no tool carries out and one whose tool does not declare
+/// <parameter>OcuPilot.Screen.Tool.Write.DRYRUN</parameter> are each the framework's 404 before anything is read. Any other
+/// request the action route would refuse renders that refusal's envelope and answers <var>pPreview</var> <code>""</code>.</p>
+ClassMethod DryRun(pDescriptor As %String, pBody As %DynamicObject, Output pPreview As %DynamicObject) As %Status
+{
+    Set pPreview = ""
+    Set tSC = $$$OK
+    Try {
+        Set tActionId = pBody.%Get("action")
+        If (tActionId = "") || '$ListFind($ClassMethod(pDescriptor, "RowActionIds"), tActionId) {
+            Set tSC = ..NotFound()
+            Quit
+        }
+        Set tResolveSC = ..ToolFor(pDescriptor, tActionId, .tTool, .tToolClass)
+        If $$$ISERR(tResolveSC) {
+            Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(tResolveSC))
+            Quit
+        }
+        If '$IsObject(tTool) || '+$Parameter(tToolClass, "DRYRUN") {
+            Set tSC = ..NotFound()
+            Quit
+        }
+        Set tSC = ..Resolve(pDescriptor, pBody, 1, "", .tPreview)
+        If $$$ISERR(tSC) || '$IsObject(tPreview) Quit
+        Do tPreview.%Set("review", $ClassMethod(tToolClass, "DryRunReview", tPreview.%Get("fresh")))
+        Set pPreview = tPreview
+    } Catch ex {
+        Set pPreview = ""
+        Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ex)
+    }
+    Quit tSC
+}
+
 /// <p><method>Handle</method>'s resolution from the action onward, over the parsed body
 /// <var>pBody</var>. With <var>pPreviewOnly</var>, <method>Run</method> stops before the write and
 /// answers <var>pPreview</var>, and <var>pPreviewValue</var> is set as the action's first declared

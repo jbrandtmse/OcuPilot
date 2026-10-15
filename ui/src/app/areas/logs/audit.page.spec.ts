@@ -87,6 +87,9 @@ async function settle(fixture: ComponentFixture<unknown>): Promise<void> {
 
 const planted: HTMLElement[] = [];
 
+/** A POST the stub instance answers in its own words (Story 20.31's dry run), by path, or `null` to answer the read. */
+let postAnswer: ((path: string) => JsonResult<unknown> | null) | null = null;
+
 /** The begin the stub instance applies when a read omits it: its own now less 24 hours. */
 const DEFAULT_BEGIN = '2026-09-25 10:00:00';
 
@@ -114,6 +117,8 @@ async function mount(
   const paths: string[] = [];
   const api = {
     requestJson: async <T,>(path: string): Promise<JsonResult<T>> => {
+      const posted = postAnswer?.(path) ?? null;
+      if (posted !== null) return posted as JsonResult<T>;
       // The opening read's answer waits on `firstAnswer` when a test holds it.
       const wait = paths.length === 0 ? firstAnswer : null;
       paths.push(path);
@@ -224,6 +229,7 @@ const rowNames = (host: HTMLElement) =>
   );
 
 afterEach(() => {
+  postAnswer = null;
   for (const node of planted.splice(0)) node.remove();
 });
 
@@ -308,6 +314,28 @@ describe('the audit database viewer', () => {
     const again = await audit.revisit(AUDIT);
     expect(audit.paths.at(-1)).toBe('/api/ocupilot/screens/logs.audit/read?maxRows=1000');
     expect((again.host.querySelector('#ocu-audit-criterion-eventSources') as HTMLInputElement).value).toBe('');
+  });
+
+  // Story 20.31: the Messages search is this page's, so its Resend dialogs are drawn here. The page registers none of its own: the
+  // shell's handler registers Resend for the checked rows once the dialogs host is on the page.
+  //
+  // Mutation (Rule 19): drop `app-screen-action-dialogs` from the page's template -> Resend registers nowhere and no review opens, and
+  // this goes red.
+  it('Story 20.31: the Messages search reviews its checked rows at the dry-run route and draws the review on the page', async () => {
+    const line = `12 \u00b7 Svc \u2192 Op: ${STRINGS.interopResendVerdictResend}`;
+    postAnswer = (path) =>
+      path.endsWith('/dryrun')
+        ? { kind: 'ok', status: 200, body: { rows: [{ field: 'Messages', before: '', after: line }], review: { Digest: 'f'.repeat(64) } } }
+        : null;
+    const { fixture, host, paths, actions } = await mount([{ ID: '12', Status: 'Completed' }], null, null, null, MESSAGES);
+    expect(actions.has(MESSAGES.descriptor, 'resend')).toBe(true);
+    const store = TestBed.inject(ScreenStores).for(MESSAGES.descriptor, MESSAGES.refreshRates);
+    store.setChecked(['12']);
+    actions.run(MESSAGES.descriptor, 'resend');
+    await settle(fixture);
+    expect(paths.at(-1)).toBe('/api/ocupilot/screens/interop.messages/read?maxRows=1000');
+    expect(host.querySelector('.ocu-dialog-title')?.textContent?.trim()).toBe(`${STRINGS.interopMessagesResendAction} 12`);
+    expect(Array.from(host.querySelectorAll('[data-ocu-review] li')).map((item) => item.textContent)).toEqual([line]);
   });
 
   it('Story 11.11: opens on one default read, shows the begin the instance applied, and keeps the marker off', async () => {

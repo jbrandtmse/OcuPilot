@@ -7429,6 +7429,51 @@ export const STRINGS = {
   interopMessageTracePrompt2: 'Which host in this session reported the error?',
   /** EXPERIENCE.md:604 */
   interopMessageTracePrompt3: 'How long did this session take from its first message to its last?',
+  /** EXPERIENCE.md:604 */
+  interopRefusalResendNone: 'None of these messages can be resent now.',
+  /** EXPERIENCE.md:604 */
+  interopRefusalResendChanged: 'These messages changed after they were reviewed, so nothing was resent. Review them again.',
+  /** EXPERIENCE.md:604 */
+  interopRefusalEditNotEditable:
+    'OcuPilot can edit an HL7 v2 message or the plain fields of a message object, not this message\'s body. Use the classic Edit and Resend page for it.',
+  /** EXPERIENCE.md:604 */
+  interopRefusalEditNoChange: 'This edit changes nothing in the message. Use Resend to send it again as it is.',
+  /** EXPERIENCE.md:604 */
+  interopRefusalEditField: 'The message body has no such field that an edit can set.',
+  /** EXPERIENCE.md:604 */
+  interopRefusalEditSecret: 'This field names a credential, so OcuPilot does not change it.',
+  /** EXPERIENCE.md:604 */
+  interopRefusalEditValue: 'This value is not valid for the field.',
+  /** EXPERIENCE.md:604 */
+  interopMessageResendConsequence:
+    'Resending sends each message marked to be resent to its target again, as a new message in the same session. A message that was already delivered is delivered twice. It cannot be undone.',
+  /** EXPERIENCE.md:604 */
+  interopMessageEditResendConsequence:
+    'Edit and resend saves the edited body as a new copy and sends it to the message\'s target as a new message in the same session. The original message and body stay as they were. It cannot be undone.',
+  /** EXPERIENCE.md:604 */
+  interopResendVerdictResend: 'will be resent',
+  /** EXPERIENCE.md:604 */
+  interopResendVerdictGone: 'no longer exists',
+  /** EXPERIENCE.md:604 */
+  interopResendVerdictNobody: 'its body no longer exists',
+  /** EXPERIENCE.md:604 */
+  interopResendVerdictTargetOff: 'its target is not an enabled item of the running production',
+  /** EXPERIENCE.md:604 */
+  interopResendVerdictNoReplyQueue: 'the queue its reply would go to no longer exists',
+  /** EXPERIENCE.md:604 */
+  interopMessagesResendAction: 'Resend',
+  /** EXPERIENCE.md:604 */
+  interopMessagesEditResendAction: 'Edit and resend',
+  /** EXPERIENCE.md:604 */
+  interopEditResendHeading: 'Edit and resend message',
+  /** EXPERIENCE.md:604 */
+  interopEditResendReview: 'Review',
+  /** EXPERIENCE.md:604 */
+  interopResendOutcome: 'resent as',
+  /** EXPERIENCE.md:604 */
+  interopResendFailed: 'not resent',
+  /** EXPERIENCE.md:604 */
+  interopMessagesEmptyAgent: 'Or ask the agent to find and resend messages.',
 } as const;
 
 /**

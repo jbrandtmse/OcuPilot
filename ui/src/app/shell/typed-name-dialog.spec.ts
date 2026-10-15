@@ -207,3 +207,51 @@ describe('the typed-name dialog\u2019s flag (Story 7.8)', () => {
     TestBed.resetTestingModule();
   });
 });
+
+describe('the typed-name dialog\u2019s review (Story 20.31)', () => {
+  function open(review: readonly string[] | null) {
+    TestBed.configureTestingModule({ providers: [{ provide: OverlayStack, useValue: new OverlayStack() }] });
+    const fixture = TestBed.createComponent(TypedNameDialog);
+    fixture.componentRef.setInput('verb', STRINGS.interopMessagesResendAction);
+    fixture.componentRef.setInput('target', '3');
+    fixture.componentRef.setInput('consequence', STRINGS.interopMessageResendConsequence);
+    if (review !== null) fixture.componentRef.setInput('review', review);
+    fixture.detectChanges();
+    return { fixture, element: fixture.nativeElement as HTMLElement };
+  }
+
+  it('draws each line it is given above the consequence as text, and nothing when it is given none', () => {
+    // Mutation (Rule 19): draw the lines through `innerHTML` -> the markup line becomes an element and the text assertion goes red;
+    // drop the list from the template -> the first half goes red.
+    const none = open(null);
+    expect(none.element.querySelector('[data-ocu-review]')).toBeNull();
+    expect(none.element.querySelector('.ocu-dialog-review')).toBeNull();
+    TestBed.resetTestingModule();
+
+    const lines = ['12 \u00B7 A \u2192 B: will be resent', '<script>alert(1)</script>', '12 \u00B7 A \u2192 B: will be resent'];
+    const drawn = open(lines);
+    const list = drawn.element.querySelector('[data-ocu-review]') as HTMLElement | null;
+    expect(list).not.toBeNull();
+    expect(list?.classList.contains('ocu-dialog-review')).toBe(true);
+    const items = Array.from(list?.querySelectorAll('li') ?? []).map((item) => item.textContent);
+    expect(items).toEqual(lines);
+    expect(list?.querySelector('script')).toBeNull();
+    // The list sits above the consequence, which EXPERIENCE.md's confirm-dialog order puts first among the sentences.
+    const consequence = drawn.element.querySelector('.ocu-typed-name-consequence') as HTMLElement;
+    expect(list?.compareDocumentPosition(consequence) ?? 0).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    TestBed.resetTestingModule();
+  });
+
+  it('leaves the button released by the typed name alone: a review changes nothing about when it confirms', () => {
+    // Mutation (Rule 19): gate the button on the review's length -> this goes red.
+    const drawn = open(['one']);
+    const button = drawn.element.querySelector('.ocu-button-destructive') as HTMLButtonElement;
+    expect(button.getAttribute('aria-disabled')).toBe('true');
+    const field = drawn.element.querySelector('.ocu-typed-name-field') as HTMLInputElement;
+    field.value = '3';
+    field.dispatchEvent(new Event('input'));
+    drawn.fixture.detectChanges();
+    expect(button.getAttribute('aria-disabled')).toBeNull();
+    TestBed.resetTestingModule();
+  });
+});

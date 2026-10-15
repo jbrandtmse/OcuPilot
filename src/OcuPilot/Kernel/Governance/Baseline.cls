@@ -243,7 +243,9 @@ XData Keys [ MimeType = application/json ]
   "interop.transforms.test": true,
   "interop.ruleeditor.save": true,
   "interop.processeditor.save": true,
-  "interop.transformeditor.save": true
+  "interop.transformeditor.save": true,
+  "interop.messages.resend": false,
+  "interop.messageheader.editresend": false
 }
 }
 

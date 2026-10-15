@@ -233,12 +233,14 @@ Method TestEachReadToolIsRegistered()
     }
 }
 
-/// <p>The three entity types Story 20.4 adds are in the closed vocabulary, each with no spelling rule of its own.</p>
+/// <p>The three entity types Story 20.4 adds are in the closed vocabulary, each with no spelling rule of its own but a message's: Story
+/// 20.31 gave <code>interop-message</code> the integer-set rule, so the checked rows of Messages are one target in one spelling.</p>
 Method TestTheNewEntityTypesAreKnownAndKeptExactly()
 {
     For tType = "interop-queue", "interop-message", "interop-job" {
         Do $$$AssertTrue(##class(OcuPilot.Kernel.EntityType).IsKnown(tType), tType _ " is a declared entity type")
-        Do $$$AssertEquals(("," _ $Parameter("OcuPilot.Kernel.EntityRef", "IDRULES")) [ ("," _ tType _ ":"), 0, tType _ " has no id rule, so its id is kept exactly")
+        Set tRuled = (("," _ $Parameter("OcuPilot.Kernel.EntityRef", "IDRULES")) [ ("," _ tType _ ":"))
+        Do $$$AssertEquals(tRuled, tType = "interop-message", tType _ $Select(tRuled: " has the integer-set rule Story 20.31 gave it", 1: " has no id rule, so its id is kept exactly"))
     }
 }
 

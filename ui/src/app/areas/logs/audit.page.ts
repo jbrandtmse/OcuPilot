@@ -15,6 +15,7 @@ import type { ScreenDeclaration } from '../../core/screens.generated';
 import { STRINGS, stringFor } from '../../core/strings';
 import { COMMAND_BAR_FILTER_ID } from '../../shell/command-bar';
 import { DataTable } from '../../shell/data-table';
+import { ScreenActionDialogs } from '../../shell/screen-action-dialogs';
 import { Dialog } from '../../shell/dialog';
 import { AuditSearch } from './audit.store';
 
@@ -67,7 +68,7 @@ interface AuditView {
 @Component({
   selector: 'app-audit-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DataTable, Dialog],
+  imports: [DataTable, Dialog, ScreenActionDialogs],
   template: `<section class="ocu-list-page">
     @if (list; as view) {
       <form class="ocu-criteria-form" (submit)="onSearch($event)">
@@ -124,6 +125,7 @@ interface AuditView {
         </div>
       </form>
       <app-data-table [screen]="view.screen" [store]="view.store" (focusFilter)="onFocusFilter()" />
+      <app-screen-action-dialogs [descriptor]="view.screen.descriptor" />
       @if (detail; as row) {
         <app-dialog
           [heading]="STRINGS.auditDialogTitle"

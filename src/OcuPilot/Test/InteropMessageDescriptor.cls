@@ -1,4 +1,4 @@
-/// <p>Pins Story 20.9's declarations (AD-5, AD-8, AD-13, AD-29, AD-36, AD-44, AD-62): the three message screens -- the Messages
+/// <p>Pins Story 20.9's declarations (and the actions Story 20.31 gave two of them) (AD-5, AD-8, AD-13, AD-29, AD-36, AD-44, AD-62): the three message screens -- the Messages
 /// search, and the Header and Contents tabs of one message -- with the values the plan names, the registry's verdict, the port's
 /// pairs for each endpoint equal to the screen's, the classic viewer's resource shared with the screen's own pair, and the Queue
 /// messages list's link to the message. Story 20.30's Trace tab joins the group as its third member.</p>
@@ -40,7 +40,8 @@ Method TestTheThreeDeclarationsRegister()
         Do $$$AssertEquals(tDeclaration.route _ "|" _ tDeclaration.sideBarPosition _ "|" _ tDeclaration.archetype _ "|" _ tDeclaration.labelKey, $Piece(tRow, "|", 2) _ "|" _ $Piece(tRow, "|", 3) _ "|" _ $Piece(tRow, "|", 4) _ "|" _ $Piece(tRow, "|", 5), tClass _ ": route, position, archetype and label")
         Do $$$AssertEquals(tDeclaration.area _ "|" _ tDeclaration.built _ "|" _ tDeclaration.refreshes _ "|" _ tDeclaration.entityType _ "|" _ tDeclaration.scope _ "|" _ tDeclaration.id.kind _ "|" _ tDeclaration.parentScope, "interoperability|1|0|interop-message|namespace|single|" _ $Piece(tRow, "|", 8), tClass _ ": interoperability, built, never refreshing, one message header, namespace-scoped, a single id")
         Do $$$AssertEquals(tDeclaration.read.source.port _ "|" _ tDeclaration.read.source.endpoint _ "|" _ tDeclaration.read.source.type _ "|" _ tDeclaration.toolIdentifier _ "|" _ tDeclaration.classicPage, "interop|" _ $Piece(tRow, "|", 6) _ "|LIST|" _ $Piece(tRow, "|", 7) _ "|" _ ..#CLASSICPAGE, tClass _ ": an interop LIST on its endpoint, its tool and the classic viewer")
-        Do $$$AssertEquals(tDeclaration.rowActions.%Size() _ "|" _ tDeclaration.primaryAction.id _ "|" _ tDeclaration.commandAliases.%Size(), "0||0", tClass _ ": no action and no command alias")
+        ; Story 20.31: the search resends its checked rows, and the Header tab resends and edits and resends the message it shows.
+        Do $$$AssertEquals(tDeclaration.rowActions.%Size() _ "|" _ tDeclaration.primaryAction.id _ "|" _ tDeclaration.commandAliases.%Size(), $Case($Piece(tRow, "|", 1), "InteropMessageList": "1||0", "InteropMessageHeaderTab": "2|resend|0", : "0||0"), tClass _ ": its actions and no command alias")
         Do $$$AssertEquals(tDeclaration.emptyStateKey, $Piece(tRow, "|", 11), tClass _ ": its empty sentence")
         Do $$$AssertEquals(tDeclaration.suggestedPrompts.%Size(), 3, tClass _ ": three suggested prompts")
         For tJ = 1:1:3 {

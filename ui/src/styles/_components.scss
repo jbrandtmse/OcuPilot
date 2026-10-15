@@ -2835,6 +2835,30 @@ app-interop-message-contents {
   overflow-wrap: anywhere;
 }
 
+// A review dialog's lines (Story 20.31): one list item for each message or changed field the person is
+// about to act on, scrolling inside the surface so a long set never grows the dialog past the viewport.
+.ocu-dialog-review {
+  @include typo.ocu-type('body');
+
+  margin: 0 0 var(--ocu-space-4);
+  padding: var(--ocu-space-2);
+  border-radius: var(--ocu-radius-sm);
+  background: var(--ocu-surface-container-low);
+  color: var(--ocu-on-surface);
+  max-height: 200px;
+  overflow: auto;
+  list-style: none;
+}
+
+.ocu-dialog-review > li {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.ocu-dialog-review > li + li {
+  margin-top: var(--ocu-space-1);
+}
+
 // --- The server-criteria list's form (Story 2.10) -----------------------------------------------
 //
 // The criteria form sits above the table (DESIGN.md `:1080`). It inherits `form-page`'s outlined

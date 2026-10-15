@@ -26,6 +26,9 @@ export const SCREEN_ACTION_PATH_SUFFIX = '/action';
 /** The path a removal's impact is read from when its dialog opens (AD-8, Story 16.19). */
 export const SCREEN_IMPACT_PATH_SUFFIX = '/impact';
 
+/** The path a person's reviewed action is dry-run at before its dialog opens (AD-53, Story 20.31). */
+export const SCREEN_DRY_RUN_PATH_SUFFIX = '/dryrun';
+
 /**
  * The descriptors whose declared row actions this handler carries out.
  *
@@ -145,6 +148,10 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   'OcuPilot.Screen.Descriptor.InteropItemTestTab',
   // Story 20.27: Data transformations, whose Test its own page's dialog sends.
   'OcuPilot.Screen.Descriptor.InteropTransformList',
+  // Story 20.31: Messages, whose Resend acts on the checked rows after a dry run, and a message's Header tab, whose Resend and Edit and
+  // resend its own page runs.
+  'OcuPilot.Screen.Descriptor.InteropMessageList',
+  'OcuPilot.Screen.Descriptor.InteropMessageHeaderTab',
 ];
 
 /**
@@ -352,12 +359,35 @@ export const BROADCAST = 'broadcast';
 const MESSAGE_VALUE = 'Message';
 
 /**
+ * Messages (the search) and a message's Header tab (Story 20.31): the list's Resend acts on the checked rows and the tab's on the
+ * message it shows, each after a dry run the person reviews; the tab's Edit and resend runs the form, then a dry run, then the review.
+ * The tab's two actions are registered by its own page (`areas/interoperability/interop-message-header.page.ts`).
+ */
+export const INTEROP_MESSAGE_LIST = 'OcuPilot.Screen.Descriptor.InteropMessageList';
+export const INTEROP_MESSAGE_HEADER = 'OcuPilot.Screen.Descriptor.InteropMessageHeaderTab';
+export const MESSAGE_RESEND = 'resend';
+export const MESSAGE_EDIT_RESEND = 'editresend';
+
+/** The value a reviewed action carries beside its own: the digest of the review it was confirmed from (AD-53). */
+const REVIEWED_VALUE = 'Reviewed';
+
+/**
+ * The actions a person reviews through `POST /screens/:screen/dryrun` before they are sent, keyed by descriptor (AD-53, Story 20.31).
+ * `dryRunFor` refuses any other, so no action is dry-run that its tool does not declare so.
+ */
+const DRY_RUN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
+  [INTEROP_MESSAGE_LIST]: [MESSAGE_RESEND],
+  [INTEROP_MESSAGE_HEADER]: [MESSAGE_EDIT_RESEND],
+};
+
+/**
  * The multi-select actions that open a dialog over the checked rows, keyed by descriptor and then
  * by action id (Story 16.6). An action here is never sent without its dialog, which supplies its
- * value.
+ * value -- or, for a `'dry-run'`, without the review of what it would do (Story 20.31).
  */
-const CHECKED_SET_DIALOGS: Readonly<Record<string, Readonly<Record<string, 'broadcast'>>>> = {
+const CHECKED_SET_DIALOGS: Readonly<Record<string, Readonly<Record<string, 'broadcast' | 'dry-run'>>>> = {
   [PROCESS_LIST]: { [BROADCAST]: 'broadcast' },
+  [INTEROP_MESSAGE_LIST]: { [MESSAGE_RESEND]: 'dry-run' },
 };
 
 /** The two role actions, and the one value each sends (AD-56 (ii)). */
@@ -424,6 +454,8 @@ const UNDRAWN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   'OcuPilot.Screen.Descriptor.InteropItemTestTab': ['test'],
   // Data transformations' page registers Test itself, whose dialog sends the pasted message (Story 20.27).
   'OcuPilot.Screen.Descriptor.InteropTransformList': ['test'],
+  // A message's Header tab page registers Resend and Edit and resend itself, each reviewed before it is sent (Story 20.31).
+  [INTEROP_MESSAGE_HEADER]: [MESSAGE_RESEND, MESSAGE_EDIT_RESEND],
 };
 
 /**
@@ -486,7 +518,7 @@ const ACTION_ADDRESS: Readonly<Record<string, string>> = {
  * `DESTRUCTIVE` declaration. This is EXPERIENCE.md's `confirm-dialog` rule -- a delete carries the
  * typed-name field and a `button-destructive` -- applied to the verb that deletes.
  */
-const DESTRUCTIVE_ACTIONS: readonly string[] = ['delete', 'terminate', 'revoke-tokens', 'revoke-token', 'end', ENCRYPTION_REMOVE_ADMIN, ENCRYPTION_REMOVE_KEY, ENCRYPTION_DEACTIVATE, 'remove', 'abort'];
+const DESTRUCTIVE_ACTIONS: readonly string[] = ['delete', 'terminate', 'revoke-tokens', 'revoke-token', 'end', ENCRYPTION_REMOVE_ADMIN, ENCRYPTION_REMOVE_KEY, ENCRYPTION_DEACTIVATE, 'remove', 'abort', MESSAGE_RESEND, MESSAGE_EDIT_RESEND];
 
 /**
  * The destructive actions whose typed-name dialog states the removal's impact as its advisory,
@@ -577,6 +609,9 @@ const DESTRUCTIVE_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, 
   [INTEROP_ITEM_QUEUE_TAB]: { abort: STRINGS.interopMessageAbortConsequence },
   [INTEROP_JOB_LIST]: { abort: STRINGS.interopJobAbortConsequence },
   [INTEROP_ITEM_JOB_TAB]: { abort: STRINGS.interopJobAbortConsequence },
+  // Story 20.31: a resend delivers a copy that cannot be recalled, and so does an edit and resend.
+  [INTEROP_MESSAGE_LIST]: { [MESSAGE_RESEND]: STRINGS.interopMessageResendConsequence },
+  [INTEROP_MESSAGE_HEADER]: { [MESSAGE_RESEND]: STRINGS.interopMessageResendConsequence, [MESSAGE_EDIT_RESEND]: STRINGS.interopMessageEditResendConsequence },
 };
 
 /**
@@ -861,8 +896,11 @@ interface ScreenActionAnswer {
   readonly output?: unknown;
 }
 
-/** Which dialog a pending row action is waiting on. */
-export type PendingKind = 'typed-name' | 'warning' | 'set-password' | 'role' | 'broadcast';
+/**
+ * Which dialog a pending row action is waiting on. `'outcome'` is not a question but the report of a reviewed action that was sent
+ * (Story 20.31): the lines it answered, or the sentence it was refused with.
+ */
+export type PendingKind = 'typed-name' | 'warning' | 'set-password' | 'role' | 'broadcast' | 'outcome';
 
 /**
  * The dialog a row action is waiting on, or `null`: the typed-name confirm of a destructive action,
@@ -901,7 +939,33 @@ export interface PendingConfirm {
   readonly sent?: boolean;
   /** The envelope's reason for a refused broadcast, shown in the dialog, or `''`. */
   readonly refusal?: string;
+  /**
+   * A reviewed action's dialog (Story 20.31): the lines the person reviewed, drawn above the typed-name field.
+   * Absent for every other dialog.
+   */
+  readonly review?: readonly string[];
+  /** The digest of the review those lines came from, sent as `Reviewed` when the person confirms; present only on a reviewed action's dialog. */
+  readonly reviewed?: string;
+  /** The values the review was made with, sent again beside `Reviewed` when the person confirms. */
+  readonly reviewValues?: ActionValues;
+  /** An `'outcome'` dialog's lines: what the confirmed action answered for each message. */
+  readonly outcome?: readonly string[];
 }
+
+/** One row of a dry run's answer: the field the action's card names and what it changes from and to (AD-53). */
+export interface DryRunRow {
+  readonly field: string;
+  readonly before: string;
+  readonly after: string;
+}
+
+/**
+ * What one dry run answered (Story 20.31): the rows the action's proposal card would show and what the tool adds beside them, or the
+ * refusal the action route would give the same request.
+ */
+export type DryRunResult =
+  | { readonly kind: 'ok'; readonly rows: readonly DryRunRow[]; readonly review: Readonly<Record<string, unknown>> }
+  | { readonly kind: 'refused'; readonly refusal: ActionRefusal };
 
 /**
  * Where an action started with `startFor` reports back: the refusal sentence to show (AD-39), and,
@@ -1031,6 +1095,11 @@ export class ScreenActionHandler {
    */
   confirmPending(flag = false, value = ''): void {
     const pending = this.waiting();
+    // A reviewed action (Story 20.31) is sent with the digest of its review, and answers with an outcome dialog.
+    if (pending !== null && pending.kind === 'typed-name' && pending.reviewed !== undefined) {
+      void this.confirmReviewed(pending);
+      return;
+    }
     const sink = this.takeSink();
     if (pending === null || (pending.kind !== 'typed-name' && pending.kind !== 'warning')) return;
     // Story 18.7: the confirmed name is the action's one value (`TYPED_VALUES`).
@@ -1248,8 +1317,13 @@ export class ScreenActionHandler {
     const store = this.store(screen.descriptor, screen.refreshRates);
     const checked = store.checked();
     if (checkedSetReason(screen, checked.size) !== '') return;
-    if (CHECKED_SET_DIALOGS[screen.descriptor]?.[actionId] !== 'broadcast') return;
+    const dialog = CHECKED_SET_DIALOGS[screen.descriptor]?.[actionId];
     const target = checkedSetTarget(screen, checked);
+    if (dialog === 'dry-run') {
+      void this.startDryRun(screen.descriptor, actionId, target, undefined, store);
+      return;
+    }
+    if (dialog !== 'broadcast') return;
     this.open('broadcast', screen.descriptor, actionId, target, '', [], store);
     const opened = this.waiting();
     if (opened !== null) this.waiting.set({ ...opened, count: checked.size, sending: false, sent: false, refusal: '' });
@@ -1386,6 +1460,101 @@ export class ScreenActionHandler {
       );
     if (result.kind !== 'ok') return '';
     return impactLine(impactOf(result.body?.impact), target);
+  }
+
+  /**
+   * The review of `actionId` on `id` (Story 20.31, AD-53): `POST /screens/:screen/dryrun` with the body the action route takes, so the
+   * rows it answers are the rows the agent's proposal card shows for the same action. A request the action route would refuse is refused
+   * here with that refusal; an action `DRY_RUN_ACTIONS` does not list for `descriptor` is refused with no reason and no request.
+   * Nothing is sent, held or written.
+   */
+  async dryRunFor(descriptor: string, actionId: string, id: string, values?: ActionValues): Promise<DryRunResult> {
+    const none: DryRunResult = { kind: 'refused', refusal: { reason: '', code: '', violations: [], detail: null } };
+    const listed = Object.hasOwn(DRY_RUN_ACTIONS, descriptor) ? DRY_RUN_ACTIONS[descriptor] : [];
+    const addressed = SCREENS.find((entry) => entry.descriptor === (ACTION_ADDRESS[descriptor] ?? descriptor));
+    if (addressed === undefined || !listed.includes(actionId)) return none;
+    const request: { action: string; id: string; values?: ActionValues } = { action: actionId, id };
+    if (values !== undefined) request.values = values;
+    const result = await this.injector.get(ApiService).requestJson<{ readonly rows?: unknown; readonly review?: unknown }>(
+      `${SCREEN_READ_PATH_PREFIX}${encodeURIComponent(addressed.toolIdentifier)}${SCREEN_DRY_RUN_PATH_SUFFIX}`,
+      { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(request) }
+    );
+    if (result.kind === 'installing') return none;
+    if (result.kind === 'error') {
+      return {
+        kind: 'refused',
+        refusal: {
+          reason: dryRunReason(result),
+          code: result.code ?? '',
+          violations: result.detail ? violationsOf(result) : [],
+          detail: result.detail ?? null,
+        },
+      };
+    }
+    return { kind: 'ok', rows: dryRunRowsOf(result.body?.rows), review: recordOf(result.body?.review) };
+  }
+
+  /**
+   * Review `actionId` on `id`, then open its typed-name dialog over the review (Story 20.31): the lines the dry run answered above the
+   * action's consequence, the typed name the message id -- or, over a set of several, how many of them will be sent -- and the digest of
+   * the review kept to be sent as `Reviewed` when the person confirms. A refusal is `sink`'s; nothing opens over another dialog.
+   * `values` are the action's declared values the review was made with, sent again on the confirm.
+   */
+  async startDryRun(descriptor: string, actionId: string, id: string, values: ActionValues | undefined, sink: ActionSink): Promise<boolean> {
+    if (this.waiting() !== null) return false;
+    sink.setRefusal('');
+    const run = await this.dryRunFor(descriptor, actionId, id, values);
+    if (run.kind === 'refused') {
+      sink.setRefusal(run.refusal.reason);
+      return false;
+    }
+    return this.openReview(descriptor, actionId, id, values, run, sink);
+  }
+
+  /** Open the review dialog for a dry run that was answered (`startDryRun`'s second half); `false` where another dialog stands or no digest came. */
+  openReview(
+    descriptor: string,
+    actionId: string,
+    id: string,
+    values: ActionValues | undefined,
+    run: Extract<DryRunResult, { readonly kind: 'ok' }>,
+    sink: ActionSink
+  ): boolean {
+    const digest = run.review['Digest'];
+    if (this.waiting() !== null || typeof digest !== 'string' || digest === '') return false;
+    const lines = reviewLinesOf(run.rows);
+    const sendable = lines.filter((line) => line.endsWith(`: ${STRINGS.interopResendVerdictResend}`)).length;
+    this.open('typed-name', descriptor, actionId, id, this.consequence(descriptor, actionId), [], sink, id.includes(',') ? String(sendable) : id);
+    const opened = this.waiting();
+    if (opened === null) return false;
+    this.waiting.set({ ...opened, review: lines, reviewed: digest, ...(values === undefined ? {} : { reviewValues: values }) });
+    return true;
+  }
+
+  /**
+   * The confirmed review: the action is sent with the values it was reviewed with and `Reviewed`, and the dialog gives way to an
+   * outcome -- the lines the instance answered for each message, or the sentence it refused with (a message that changed after the
+   * review, for one). A set the action applied is unchecked. A dialog that opened meanwhile keeps the surface.
+   */
+  private async confirmReviewed(pending: PendingConfirm): Promise<void> {
+    this.takeSink();
+    let refusal = '';
+    const sink: ActionSink = {
+      setRefusal: (reason) => {
+        refusal = reason;
+      },
+    };
+    const values: ActionValues = { ...(pending.reviewValues ?? {}), [REVIEWED_VALUE]: pending.reviewed ?? '' };
+    const applied = await this.send(pending.descriptor, pending.actionId, pending.target, values, sink);
+    const screen = SCREENS.find((entry) => entry.descriptor === pending.descriptor);
+    if (applied && screen !== undefined && isCheckedSetAction(screen, pending.actionId)) {
+      this.store(screen.descriptor, screen.refreshRates).setChecked([]);
+    }
+    if (this.waiting() !== null) return;
+    this.open('typed-name', pending.descriptor, pending.actionId, pending.target, '', [], sink, pending.name, '', pending.verb);
+    const opened = this.waiting();
+    if (opened === null) return;
+    this.waiting.set({ ...opened, kind: 'outcome', outcome: applied ? outcomeLinesOf(this.lastOutputValue) : [], refusal: applied ? '' : refusal });
   }
 
   /** The row keyed `target` on the screen's last read, or `null`. */
@@ -1625,6 +1794,59 @@ export class ScreenActionHandler {
     if (own === undefined) return '';
     return Object.hasOwn(own, actionId) ? own[actionId] : '';
   }
+}
+
+/** The sentences a dry run's 400 `detail.problem` begins with, which are published (Story 20.31): none of the messages can be resent, and an edit that changes nothing. */
+const DRY_RUN_SENTENCES: readonly string[] = [STRINGS.interopRefusalResendNone, STRINGS.interopRefusalEditNoChange];
+
+/** The sentence a refused dry run shows: the published first line of its problem, else a published state refusal or the envelope's reason. */
+function dryRunReason(result: { readonly reason: string | null; readonly detail: Record<string, unknown> | null }): string {
+  const problem = result.detail === null || result.detail === undefined ? undefined : result.detail['problem'];
+  if (typeof problem === 'string') {
+    const first = problem.split('\n')[0];
+    if (DRY_RUN_SENTENCES.includes(first)) return first;
+  }
+  return refusalReason(result);
+}
+
+/** `value` as a record of its own members, or an empty one. */
+function recordOf(value: unknown): Readonly<Record<string, unknown>> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value) ? (value as Readonly<Record<string, unknown>>) : {};
+}
+
+/** A dry run's rows: those that name a field, with the before and after text each carries. */
+function dryRunRowsOf(rows: unknown): readonly DryRunRow[] {
+  if (!Array.isArray(rows)) return [];
+  const out: DryRunRow[] = [];
+  for (const entry of rows as readonly unknown[]) {
+    const row = recordOf(entry);
+    const field = row['field'];
+    if (typeof field !== 'string' || field === '') continue;
+    out.push({
+      field,
+      before: typeof row['before'] === 'string' ? row['before'] : '',
+      after: typeof row['after'] === 'string' ? row['after'] : '',
+    });
+  }
+  return out;
+}
+
+/**
+ * The lines a review dialog draws for a dry run's first row: a row with no before-text (a resend's) is its after-text's lines; one
+ * with both (an edit's) is the changed lines before and after, each marked `-` or `+` as a diff is.
+ */
+function reviewLinesOf(rows: readonly DryRunRow[]): readonly string[] {
+  const row = rows[0];
+  if (row === undefined) return [];
+  const after = row.after === '' ? [] : row.after.split('\n');
+  if (row.before === '') return after;
+  return [...row.before.split('\n').map((line) => `- ${line}`), ...after.map((line) => `+ ${line}`)];
+}
+
+/** The lines a confirmed reviewed action answered for the screen alone: its `output.lines` that are text. */
+function outcomeLinesOf(output: unknown): readonly string[] {
+  const lines = recordOf(output)['lines'];
+  return Array.isArray(lines) ? (lines as readonly unknown[]).filter((line): line is string => typeof line === 'string') : [];
 }
 
 /** The roles `rowFields` holds, as the instance spells them. */

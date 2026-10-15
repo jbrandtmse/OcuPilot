@@ -428,6 +428,8 @@ XData Coverage
 <tool name="interop.ruleeditor.save" class="OcuPilot.Test.InteropEditorSave" method="TestEachEditorSaveIsMintedAndConfirmed" corpus="one loop pins all three Story 20.16 editor saves"/>
 <tool name="interop.processeditor.save" class="OcuPilot.Test.InteropEditorSave" method="TestEachEditorSaveIsMintedAndConfirmed" corpus="one loop pins all three Story 20.16 editor saves"/>
 <tool name="interop.transformeditor.save" class="OcuPilot.Test.InteropEditorSave" method="TestEachEditorSaveIsMintedAndConfirmed" corpus="one loop pins all three Story 20.16 editor saves"/>
+<tool name="interop.messages.resend" class="OcuPilot.Test.InteropResend" method="TestTheAgentsResendConfirmsOverHttp"/>
+<tool name="interop.messageheader.editresend" class="OcuPilot.Test.InteropEditResend" method="TestTheAgentsEditAndResendConfirmsOverHttp"/>
 <tool name="osmgmt.remotedatabases.create" class="OcuPilot.Test.RemoteDatabaseDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the three remote database tools are asserted together in one loop"/>
 <tool name="osmgmt.remotedatabases.update" class="OcuPilot.Test.RemoteDatabaseDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the three remote database tools are asserted together in one loop"/>
 <tool name="osmgmt.remotedatabases.delete" class="OcuPilot.Test.RemoteDatabaseDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the three remote database tools are asserted together in one loop"/>

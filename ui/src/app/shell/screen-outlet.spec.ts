@@ -17,11 +17,14 @@ import { HomePage } from '../areas/home/home.page';
 import { OpenApiViewerPage } from '../areas/web-applications/openapi-viewer.page';
 import { TaskEditorPage } from '../areas/tasks/task-editor.page';
 import { TaskWizardPage } from '../areas/tasks/task-wizard.page';
+import { InteropMessageHeaderPage } from '../areas/interoperability/interop-message-header.page';
+import { AuditPage } from '../areas/logs/audit.page';
 import { MappingFormPage } from '../areas/os-management/mapping-form.page';
 import { NamespaceListPage } from '../areas/os-management/namespace-list.page';
 import { ServiceEditorPage } from '../areas/permissions/service-editor.page';
 import { LdapEditorPage } from '../areas/security/ldap-editor.page';
 import { CodeListPage } from '../areas/system-explorer/code-list.page';
+import { DetailPage } from './detail-page';
 import { ListPage } from './list-page';
 import {
   ARCHETYPE_PAGES,
@@ -618,6 +621,16 @@ describe('the descriptor map (DW-369)', () => {
     for (const list of ['Schemas', 'Tables', 'Views', 'Procedures']) {
       expect(await pageOf(resolveScreenPage(DESCRIPTOR_LOADERS, ARCHETYPE_LOADERS, `OcuPilot.Screen.Descriptor.ExplorerSql${list}`, 'list (server criteria)'))).toBe(CodeListPage);
     }
+  });
+
+  it('Story 20.31: a message\u2019s Header tab resolves to its own page, while the Messages search and the other tabs keep their archetypes\u2019', async () => {
+    // Mutation (Rule 19): drop InteropMessageHeaderTab from `DESCRIPTOR_PAGES` -> the Header tab falls to the detail page and
+    // neither of its actions has a page to register them.
+    const resolve = (name: string, archetype: string) =>
+      pageOf(resolveScreenPage(DESCRIPTOR_LOADERS, ARCHETYPE_LOADERS, `OcuPilot.Screen.Descriptor.${name}`, archetype));
+    expect(await resolve('InteropMessageHeaderTab', 'detail')).toBe(InteropMessageHeaderPage);
+    expect(await resolve('InteropMessageList', 'list (server criteria)')).toBe(AuditPage);
+    expect(await resolve('InteropItemQueueTab', 'detail')).toBe(DetailPage);
   });
 
   it('the two form-page screens resolve to two different pages, which is what DW-369 asked for', async () => {

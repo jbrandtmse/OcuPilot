@@ -1,4 +1,4 @@
-/// <p>The interoperability codes and sentences (AD-29, AD-39, AD-62, Stories 20.2, 20.5, 20.6, 20.9 and 20.27): every
+/// <p>The interoperability codes and sentences (AD-29, AD-39, AD-62, Stories 20.2, 20.5, 20.6, 20.9, 20.27 and 20.31): every
 /// <code>INTEROP.*</code> code <class>OcuPilot.Port.InteropPort</class> answers with, the four
 /// consequence codes the production tools' proposals carry, and the sentence each carries. Each sentence
 /// is published once in EXPERIENCE.md's Fixed strings and pinned equal to its
@@ -398,6 +398,69 @@ Parameter MESSAGECONTENTS = "INTEROP.MESSAGE.CONTENTS";
 
 Parameter REASONMESSAGECONTENTS = "OcuPilot cannot show this message body as text.";
 
+/// <p>The message resend's refusals (Story 20.31), each 409 on the <parameter>OcuPilot.Api.Error.CONFLICT</parameter> slug:
+/// none of the messages named can be resent, and the messages changed after a person reviewed them.</p>
+Parameter RESENDNONE = "INTEROP.RESEND.NONE";
+
+Parameter REASONRESENDNONE = "None of these messages can be resent now.";
+
+Parameter RESENDCHANGED = "INTEROP.RESEND.CHANGED";
+
+Parameter REASONRESENDCHANGED = "These messages changed after they were reviewed, so nothing was resent. Review them again.";
+
+/// <p>The edit-and-resend's refusals (Story 20.31): a body OcuPilot does not edit and an edit that changes nothing, each 409 on the
+/// <parameter>OcuPilot.Api.Error.CONFLICT</parameter> slug, and the three violations of the fields an edit supplies, each 422 on the
+/// field: no such field, a credential-named field, and a value the field refuses.</p>
+Parameter EDITNOTEDITABLE = "INTEROP.EDIT.NOTEDITABLE";
+
+Parameter REASONEDITNOTEDITABLE = "OcuPilot can edit an HL7 v2 message or the plain fields of a message object, not this message's body. Use the classic Edit and Resend page for it.";
+
+Parameter EDITNOCHANGE = "INTEROP.EDIT.NOCHANGE";
+
+Parameter REASONEDITNOCHANGE = "This edit changes nothing in the message. Use Resend to send it again as it is.";
+
+Parameter EDITFIELD = "INTEROP.EDIT.FIELD";
+
+Parameter REASONEDITFIELD = "The message body has no such field that an edit can set.";
+
+Parameter EDITSECRET = "INTEROP.EDIT.SECRET";
+
+Parameter REASONEDITSECRET = "This field names a credential, so OcuPilot does not change it.";
+
+Parameter EDITVALUE = "INTEROP.EDIT.VALUE";
+
+Parameter REASONEDITVALUE = "This value is not valid for the field.";
+
+/// <p>The consequence codes the resend and the edit-and-resend proposals and dialogs carry (Story 20.31). The client maps each to its
+/// published sentence.</p>
+Parameter MESSAGERESEND = "INTEROP.MESSAGE.RESEND";
+
+Parameter REASONMESSAGERESEND = "Resending sends each message marked to be resent to its target again, as a new message in the same session. A message that was already delivered is delivered twice. It cannot be undone.";
+
+Parameter MESSAGEEDITRESEND = "INTEROP.MESSAGE.EDITRESEND";
+
+Parameter REASONMESSAGEEDITRESEND = "Edit and resend saves the edited body as a new copy and sends it to the message's target as a new message in the same session. The original message and body stay as they were. It cannot be undone.";
+
+/// <p>The five verdicts a message reads before a resend (Story 20.31), in the order they are judged, and the words that say each
+/// (<method>VerdictSentence</method>).</p>
+Parameter VERDICTS = "gone,nobody,targetoff,noreplyqueue,resend";
+
+Parameter VERDICTRESEND = "will be resent";
+
+Parameter VERDICTGONE = "no longer exists";
+
+Parameter VERDICTNOBODY = "its body no longer exists";
+
+Parameter VERDICTTARGETOFF = "its target is not an enabled item of the running production";
+
+Parameter VERDICTNOREPLYQUEUE = "the queue its reply would go to no longer exists";
+
+/// <p>The words that follow a message id in the outcome of a resend (Story 20.31): <code>&lt;id&gt;: resent as &lt;new&gt;</code>
+/// and <code>&lt;id&gt;: not resent: &lt;text&gt;</code>.</p>
+Parameter OUTCOMERESENT = "resent as";
+
+Parameter OUTCOMEFAILED = "not resent";
+
 /// <p>The refusals the port answers with, as a <class>%List</class>: every code that is not a
 /// consequence.</p>
 ClassMethod Codes() As %List
@@ -408,7 +471,7 @@ ClassMethod Codes() As %List
 /// <p>The consequence codes, as a <class>%List</class>.</p>
 ClassMethod ConsequenceCodes() As %List
 {
-    Quit $ListBuild(..#STOP, ..#RESTART, ..#UPDATE, ..#RECOVER, ..#ITEMPENDING, ..#ITEMREMOVE, ..#SETTINGLOCATION, ..#MESSAGEABORT, ..#QUEUEABORT, ..#JOBABORT, ..#JOBSUSPEND, ..#JOBSTOP, ..#LOOKUPREMOVE, ..#LOOKUPDELETE, ..#LOOKUPIMPORT, ..#TESTSENDS, ..#TRANSFORMRUNS)
+    Quit $ListBuild(..#STOP, ..#RESTART, ..#UPDATE, ..#RECOVER, ..#ITEMPENDING, ..#ITEMREMOVE, ..#SETTINGLOCATION, ..#MESSAGEABORT, ..#QUEUEABORT, ..#JOBABORT, ..#JOBSUSPEND, ..#JOBSTOP, ..#LOOKUPREMOVE, ..#LOOKUPDELETE, ..#LOOKUPIMPORT, ..#TESTSENDS, ..#TRANSFORMRUNS, ..#MESSAGERESEND, ..#MESSAGEEDITRESEND)
 }
 
 /// <p>The item codes, as a <class>%List</class>: the refusals an item read or write answers with.</p>
@@ -487,11 +550,23 @@ ClassMethod TransformCodes() As %List
     Quit $ListBuild(..#TRANSFORMSOURCEFORMAT, ..#TRANSFORMTARGETFORMAT, ..#TRANSFORMCONTENT)
 }
 
-/// <p>The message contents code (Story 20.9), as a <class>%List</class>: the one refusal of a body OcuPilot cannot draw as
-/// text.</p>
+/// <p>The message codes, as a <class>%List</class>: the contents refusal of a body OcuPilot cannot draw as text (Story 20.9),
+/// and the resend and edit-and-resend refusals and violations (Story 20.31). The two consequence codes are
+/// <method>ConsequenceCodes</method>'s.</p>
 ClassMethod MessageCodes() As %List
 {
-    Quit $ListBuild(..#MESSAGECONTENTS)
+    Quit $ListBuild(..#MESSAGECONTENTS, ..#RESENDNONE, ..#RESENDCHANGED, ..#EDITNOTEDITABLE, ..#EDITNOCHANGE, ..#EDITFIELD, ..#EDITSECRET, ..#EDITVALUE)
+}
+
+/// <p>The words that say <var>pVerdict</var>, one of <parameter>VERDICTS</parameter>, or <code>""</code> for any other.</p>
+ClassMethod VerdictSentence(pVerdict As %String) As %String
+{
+    If pVerdict = "resend" Quit ..#VERDICTRESEND
+    If pVerdict = "gone" Quit ..#VERDICTGONE
+    If pVerdict = "nobody" Quit ..#VERDICTNOBODY
+    If pVerdict = "targetoff" Quit ..#VERDICTTARGETOFF
+    If pVerdict = "noreplyqueue" Quit ..#VERDICTNOREPLYQUEUE
+    Quit ""
 }
 
 /// <p>The refusals the data transformation tool's fresh read answers when the transformation cannot be tested, as a
@@ -590,6 +665,15 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#TRANSFORMCONTENT Quit ..#REASONTRANSFORMCONTENT
     If pCode = ..#TRANSFORMRUNS Quit ..#REASONTRANSFORMRUNS
     If pCode = ..#MESSAGECONTENTS Quit ..#REASONMESSAGECONTENTS
+    If pCode = ..#RESENDNONE Quit ..#REASONRESENDNONE
+    If pCode = ..#RESENDCHANGED Quit ..#REASONRESENDCHANGED
+    If pCode = ..#EDITNOTEDITABLE Quit ..#REASONEDITNOTEDITABLE
+    If pCode = ..#EDITNOCHANGE Quit ..#REASONEDITNOCHANGE
+    If pCode = ..#EDITFIELD Quit ..#REASONEDITFIELD
+    If pCode = ..#EDITSECRET Quit ..#REASONEDITSECRET
+    If pCode = ..#EDITVALUE Quit ..#REASONEDITVALUE
+    If pCode = ..#MESSAGERESEND Quit ..#REASONMESSAGERESEND
+    If pCode = ..#MESSAGEEDITRESEND Quit ..#REASONMESSAGEEDITRESEND
     Quit ""
 }
 
