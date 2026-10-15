@@ -12099,3 +12099,9 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: run 38755393824 head 33d0b7c9: 'logs/messages: 10 fake timers pending, 2 real timers active'; head differs from green 5574fede by test files and a CSS comment only
 - 2026-10-15T15:26:35Z status=routed owner=23-11-the-range-end-cleanup-part-10 by=lead note=flake:rerun_failed_job_once;CI_flakes_go_to_the_standing_cleanup_story
 - 2026-10-15T16:32:23Z status=routed owner=23-11-the-range-end-cleanup-part-10 by=lead note=see DW-2415 (resolved-by 20-8, reopen_if met); fix drains or clears timers before the count on all three Node bands
+- 2026-10-15T18:17:28Z occurrence=23-5-the-range-end-cleanup-part-5
+
+### DW-2460: flake: OcuPilot.Test.SqlBackgroundJob TestAnEarlyCancelIsSentAgainUntilTheQueryRuns failed once in a local full sweep and passed on the shard's re-run
+- source: lead full ObjectScript sweep, Story 23.5 batch d | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: ocupilot-ci run 459 (shard 14/20, tree a555c2a8): 1 of 248 failed; the same shard re-run green; batch d changed no SQL background code
+- 2026-10-15T17:47:31Z status=routed owner=23-11-the-range-end-cleanup-part-10 by=lead note=flake:a_timing_test_of_the_background_SQL_cancel;CI_flakes_go_to_the_standing_cleanup_story
