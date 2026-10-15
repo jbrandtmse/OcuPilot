@@ -955,3 +955,4 @@
 2026-10-15T18:04:07Z	Story 20.31	committed	sha=f1b45815 submodules= ci=pending run=38782509360 fix_for=20-31-message-resend-and-edit-and-resend(CI_red_38772231768)
 2026-10-15T18:09:49Z	Epic 20	epic_context_compiled	reason=planning_artifact_newer(20.31_built,20.35_block,spine_clauses,23.5_b_c) model=opus lines=185
 2026-10-15T18:09:49Z	Story 20.34	stage_spawned	stage=plan spawn_at=2026-10-15T18:09:49Z model=opus agent_name=20-34-plan-1 cycle_iteration=1 inbox=none note=planned_while_20.31_CI_runs
+2026-10-15T18:44:49Z	Story 20.31	ci_red_classified	run=38782509360 class=flake test=encryption-startup.browser-spec.mjs_C1(DW-2461;local_3/3_green) action=rerun_failed_once

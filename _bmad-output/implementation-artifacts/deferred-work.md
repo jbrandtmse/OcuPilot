@@ -12128,3 +12128,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: CI run 38772231768: four shards and both image builds failed LOAD-FAILED because InteropEditResend compiled before InteropResendFixture; Test/DraftLoser.cls documents the same trap (second occurrence)
 - 2026-10-15T17:44:49Z status=routed owner=burndown by=harvest note=a structural rule in scripts/check-objectscript.py plus its harness case
 - 2026-10-15T17:56:53Z status=routed owner=burndown by=cr note=rule scope: resolve ..#NAME args via own/inherited params (e.g. ..#FIXTURE); Extends covers the chain
+
+### DW-2461: flake: encryption-startup.browser-spec.mjs C1, C2, C9 timed out waiting for #ocu-encryption-startup-DBEncStartMode-None in CI browser shard 1/5 (run 38782509360), green on the same tree locally
+- source: lead CI resolution, Story 20.31 | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: CI run 38782509360 attempt 1: 'Waiting for selector #ocu-encryption-startup-DBEncStartMode-None failed' after 34 s; ocupilot-b-ci on the same tree: 3 of 3 green; the spec is Story 18.48's, untouched by 20.31
+- 2026-10-15T18:44:49Z status=routed owner=burndown by=lead note=flake priority: rerun once; a second red on the same head is a story red
