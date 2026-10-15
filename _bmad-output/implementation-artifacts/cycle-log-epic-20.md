@@ -981,3 +981,5 @@
 2026-10-15T23:45:12Z	Story 20.10	smoke_complete	method=instance+browser result=pass iterations=1 defects_caught=0 evidence=smoke_pass;interop-editor-source-control_5,interop-editors_19 model=claude-opus-5-5
 2026-10-15T23:45:12Z	Story 20.10	committed	sha=5f40b92f submodules= ci=pending run=38825425215 amendments=none footprint_extensions=scripts/ci-throwaway.sh(roster)
 2026-10-15T23:45:12Z	Story 20.10	story_cycle	plan_to_commit_min=n/a(planned_10-13) implement_passes=1 reviews=1 rework=0 first_ci=pending models=plan:opus,implement:sonnet,qa:sonnet,cr:opus
+2026-10-15T23:50:35Z	Epic 20	epic_context_compiled	reason=planning_artifact_newer(20.36_charter,AD-66,20.10_shipped,23.5_d) model=opus lines=181
+2026-10-15T23:50:35Z	Story 20.36	stage_spawned	stage=plan spawn_at=2026-10-15T23:50:35Z model=opus agent_name=20-36-plan-1 cycle_iteration=1 inbox=none note=planned_while_20.10_CI_runs
