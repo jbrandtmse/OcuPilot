@@ -15,6 +15,15 @@ import { dirname, join } from 'node:path';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const core = (name) => join(uiRoot, 'src', 'app', 'core', name);
+const designPath = join(
+  uiRoot,
+  '..',
+  '_bmad-output',
+  'planning-artifacts',
+  'ux-designs',
+  'ux-OcuPilot-2026-09-08',
+  'DESIGN.md'
+);
 
 const {
   resolveLayout,
@@ -191,10 +200,34 @@ test('keyboard resize moves 16px within [320, the 640px content point], and stor
   assert.equal(panel.layout().panelWidth, 320, 'never below the minimum');
   await flush();
   assert.equal(stored(), '320');
-  // Narrow enough that the preferred side bar fits again, so the yield is undone and the maximum is
-  // the width that leaves content at 640 beside it.
+  // Narrow enough that the preferred side bar fits again, so the yield is undone. The bar is not
+  // the user's reopened one, so it does not cap the panel: the maximum is still the width that
+  // leaves content at 640 once the bar yields to a wider panel.
   assert.equal(panel.layout().sideBarShown, true);
-  assert.equal(panel.layout().panelMax, 352);
+  assert.equal(panel.layout().panelMax, 592);
+});
+
+test('DW-458: a panel narrowed until the side bar returns can be widened again, and the bar yields to the drag', async () => {
+  // Mutation (Rule 19): restore `available - CONTENT_MIN_WIDTH` as `panelMax` in `resolveLayout` ->
+  // the widening steps stop at 352 and the `panelMax` and last-width assertions go red.
+  const { panel } = await panelOver({}, 1280);
+  assert.equal(panel.layout().panelWidth, 400);
+  assert.equal(panel.layout().sideBarShown, false);
+
+  for (let step = 0; step < 4; step += 1) panel.resizeBy(-PANEL_KEYBOARD_STEP);
+  assert.equal(panel.layout().panelWidth, 336);
+  assert.equal(panel.layout().sideBarShown, true, 'the narrowed panel leaves room for the side bar');
+  assert.equal(panel.layout().panelMax, 592, 'a bar the width returned does not cap the panel');
+
+  for (let step = 0; step < 4; step += 1) panel.resizeBy(PANEL_KEYBOARD_STEP);
+  assert.equal(panel.layout().panelWidth, 400, 'the panel takes the width it was drawn out to');
+  assert.equal(panel.layout().sideBarShown, false, 'and the bar yields to it');
+  assert.equal(panel.layout().panelMax, 592);
+
+  // The layout alone, without a store: the bar fits at 336, and only a reopened one caps the panel.
+  assert.equal(layoutAt(1280, { remembered: 336 }).sideBarShown, true);
+  assert.equal(layoutAt(1280, { remembered: 336 }).panelMax, 592);
+  assert.equal(layoutAt(1280, { remembered: 336, sideBarReopened: true }).panelMax, 352);
 });
 
 test('a step that leaves the rendered width unchanged changes nothing: 1,024px, remembered 400, rendered 336', async () => {
@@ -215,8 +248,8 @@ test('a drag clamps at both stops and stores the width it ended at, not every mo
   assert.equal(panel.layout().panelWidth, 450, 'moving left widens a panel docked right');
   assert.equal(stored(), undefined, 'nothing stored mid-drag');
   panel.dragTo(-5000);
-  assert.equal(panel.layout().panelWidth, 992, 'the max with the side bar shown: 1,920 - 48 - 240 - 640');
-  assert.equal(panel.layout().sideBarShown, true, 'dragging to the stop never collapses the side bar');
+  assert.equal(panel.layout().panelWidth, 1232, 'the max: 1,920 - 48 - 640');
+  assert.equal(panel.layout().sideBarShown, false, 'dragging to the stop collapses the side bar the width needs');
   panel.dragTo(5000);
   assert.equal(panel.layout().panelWidth, 320);
   panel.endDrag();
@@ -288,13 +321,14 @@ test('the draft is held by the store and survives whatever the router does', asy
 
 // --- Home's wider panel (Story 4.10, DW-160) ------------------------------------
 
-test("DESIGN.md's five published Home widths, resolved through the one layout computation", async () => {
+test("DESIGN.md's five published Home widths with the list's side bar open, resolved through the one layout computation", async () => {
   // Mutation (Rule 19): `HOME_PANEL_FRACTION` 0.5 -> 0.4 -> this test goes red on the 1,920,
   // 1,440 and 1,280 rows (960/720/592 become 768/576/512); the two narrowest rows are already at
   // the subtracted operand and the panel floor, so they are unmoved by the fraction.
   //
-  // DESIGN.md `:904`'s table, read straight: `Panel on Home` and `Content on Home` at each
-  // published viewport, with the side bar preferred (which is what its `Side bar` column names).
+  // DESIGN.md's yield table, read straight: `Panel on Home` and `Content on Home` at each
+  // published viewport, with the side bar preferred, which is the table's "list: open" case. At
+  // 1,920 that leaves 672; Home's own closed bar leaves 912, pinned in the next test.
   const published = [
     { viewport: 1920, sideBar: 240, panel: 960, content: 672, scrolls: false },
     { viewport: 1440, sideBar: 0, panel: 720, content: 672, scrolls: false },
@@ -315,6 +349,23 @@ test("DESIGN.md's five published Home widths, resolved through the one layout co
       `${row.viewport}px`
     );
   }
+});
+
+test("DW-1148: DESIGN.md's 1,920px Home content figure is the width Home gives with its side bar closed", async () => {
+  // Mutation (Rule 19): `areaHasSideBar('home')` answering true -> Home keeps a bar open at 1,920
+  // and the layout assertion goes red. The row is red on its pre-amendment figure of 672.
+  const lines = readFileSync(designPath, 'utf8').split('\n');
+  const cells = (line) => line.split('|').slice(1, -1).map((cell) => cell.trim());
+  const header = lines.find((line) => line.startsWith('| Viewport |') && line.includes('Content on Home'));
+  assert.ok(header, "DESIGN.md's yield table has a `Content on Home` column");
+  const column = cells(header).indexOf('Content on Home');
+  const row = lines.find((line) => line.startsWith('| 1,920px |'));
+  assert.ok(row, "DESIGN.md's yield table has a 1,920px row");
+  const figure = /^[\d,]+/.exec(cells(row)[column]);
+  assert.ok(figure, `the row's Content on Home cell opens with a figure: ${cells(row)[column]}`);
+  const { panel } = await panelOnHome({}, 1920);
+  assert.equal(panel.layout().sideBarShown, false, 'Home has no screen list, so no side bar');
+  assert.equal(Number(figure[0].replace(/,/g, '')), panel.layout().contentWidth);
 });
 
 test('an unmeasured viewport has no Home target, so a first render never widens a panel it has not measured', async () => {

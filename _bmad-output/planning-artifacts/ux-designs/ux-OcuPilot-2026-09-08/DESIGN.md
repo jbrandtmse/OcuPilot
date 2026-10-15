@@ -901,7 +901,7 @@ The shell is VS Code's: a 48px activity rail on the left, a collapsible primary 
 
 | Viewport | Side bar | Panel on Home | Content on Home | Panel on a list route | Content on a list route | Yield |
 |---|---|---|---|---|---|---|
-| 1,920px | open (240) | 960 | 672 | 400 | 1,232 | none |
+| 1,920px | Home: collapsed · list: open (240) | 960 | 912 closed · 672 open | 400 | 1,232 | none [AMENDED 2026-10-14, Story 23.5, DW-1148] |
 | 1,440px | Home: collapsed · list: open | 720 | 672 | 400 | 752 | Home: 1 |
 | 1,280px | collapsed | 592 | 640 | 400 | 832 | 1 |
 | 1,024px | collapsed | 336 | 640 | 336 | 640 | 1, 2 |

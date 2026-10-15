@@ -33,7 +33,7 @@ import puppeteer from 'puppeteer';
 
 import { LIVE_CONTAINER, browserConfig, launchOptions } from '../browser.config.mjs';
 import { FILTER_SELECTOR, ROW_SELECTOR, clickRowCentre, waitForRows } from './list-spec.mjs';
-import { signedInAt } from './panel-spec.mjs';
+import { settleViewport, signedInAt } from './panel-spec.mjs';
 import { INVARIANTS, VIEWPORTS, assertThrowaway, collapse, compare, componentMinimums, detectScreen, readBaseline } from './structural-walk.mjs';
 import {
   armProbeDefinition,
@@ -366,6 +366,9 @@ test('AC1, AC6: the agent\u2019s role delete draws the impact read at its mint o
         return { text: line?.textContent.trim() ?? '', next: line?.nextElementSibling?.getAttribute('data-slot') ?? '' };
       });
     assert.deepEqual(await cardLine(), { text: roleLine(HOLDERS), next: 'privilege' }, 'the card states the impact above the privilege line');
+    // The tool-call card's spinner rotates while its call runs, and a rotating square measures wider
+    // than its frame, so the structural passes begin once it is gone.
+    await page.waitForFunction(() => document.querySelector('.ocu-tool-call-spinner') === null, { timeout: config.navigationTimeoutMs });
 
     const found = [];
     const passes = [
@@ -375,7 +378,7 @@ test('AC1, AC6: the agent\u2019s role delete draws the impact read at its mint o
     ];
     const minimums = componentMinimums();
     for (const { viewport, theme, checks } of passes) {
-      await page.setViewport(viewport);
+      await settleViewport(page, viewport);
       await page.evaluate((isDark) => document.documentElement.classList.toggle('ocu-theme-dark', isDark), theme === 'dark');
       await frames(page);
       assert.equal((await cardLine()).text, roleLine(HOLDERS), `the card line reads the same at ${viewport.width}px ${theme}`);

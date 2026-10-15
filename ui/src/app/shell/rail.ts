@@ -233,9 +233,12 @@ export class Rail {
   /**
    * Open the area's side bar, or -- for Home alone -- navigate to it and collapse. A gated item
    * does nothing: it is `aria-disabled`, which carries no behaviour of its own, so the refusal
-   * has to be here.
+   * has to be here. So does every item, Home included, while the panel is full screen: the rail
+   * stays live beside the cover, and an activation would route, open a bar or write a preference
+   * behind it, where the full-screen toggle is the one way back.
    */
   protected activate(item: RailItem): void {
+    if (this.panel.fullScreen()) return;
     if (item.gated) return;
     const index = this.resolved().findIndex((candidate) => candidate.key === item.key);
     if (index >= 0) this.focusedIndex.set(index);

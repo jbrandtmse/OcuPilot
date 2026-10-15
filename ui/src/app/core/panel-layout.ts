@@ -83,7 +83,11 @@ export interface Layout {
   readonly sideBarShown: boolean;
   /** The docked panel's rendered width. */
   readonly panelWidth: number;
-  /** The widest the panel may be dragged: the width that leaves the content at its minimum. */
+  /**
+   * The widest the panel may be dragged: the width that leaves the content at its minimum. A side
+   * bar showing only because the width allows it does not cap the panel, because a wider panel
+   * collapses it; one the user reopened over the yield does.
+   */
   readonly panelMax: number;
   /** The content column's width; below `CONTENT_MIN_WIDTH` when it scrolls. */
   readonly contentWidth: number;
@@ -94,6 +98,10 @@ export interface Layout {
 /**
  * The yield order over one viewport width. Undone in reverse as width returns, because it is a
  * function of the width rather than a history of concessions.
+ *
+ * `panelMax` is the width at which the content holds its minimum with the side bar yielded. Only a
+ * side bar the user reopened (`sideBarReopened`) is counted against it: any other bar that shows
+ * does so because the panel is narrow, so widening the panel collapses it rather than stopping at it.
  */
 export function resolveLayout(input: LayoutInput): Layout {
   const target = Math.max(
@@ -114,7 +122,10 @@ export function resolveLayout(input: LayoutInput): Layout {
   const sideBarFits = SIDE_BAR_WIDTH + CONTENT_MIN_WIDTH + target <= row;
   const sideBarShown = input.sideBarPreferred && (input.sideBarReopened || sideBarFits);
   const available = row - (sideBarShown ? SIDE_BAR_WIDTH : 0);
-  const panelMax = Math.max(PANEL_MIN_WIDTH, available - CONTENT_MIN_WIDTH);
+  const panelMax = Math.max(
+    PANEL_MIN_WIDTH,
+    (sideBarShown && input.sideBarReopened ? available : row) - CONTENT_MIN_WIDTH
+  );
   const panelWidth = Math.min(target, panelMax);
   const contentWidth = available - panelWidth;
   return {

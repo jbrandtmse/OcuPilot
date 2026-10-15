@@ -8703,6 +8703,14 @@ app-ecp-data-server-form-page .ocu-field-checkbox input[aria-disabled='true'] {
 // (`.ocu-command-bar-sort-menu`) of the enabled definitions. With one definition the name is plain
 // text. Never colour alone: the one in use is `aria-checked` and its weight is the third reading, as
 // the sort menu's is.
+
+// The host element draws no box of its own, so `.ocu-agent-picker`'s `max-width: 50%` resolves against
+// the panel header it sits in. As a content-sized flex item the host would be the percentage's base,
+// and the name would be cut at half of its own width.
+app-agent-picker {
+  display: contents;
+}
+
 .ocu-agent-picker {
   display: inline-flex;
   flex: 0 1 auto;
