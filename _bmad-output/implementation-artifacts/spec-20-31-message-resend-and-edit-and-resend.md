@@ -2,8 +2,8 @@
 title: 'Story 20.31: Message resend and edit-and-resend'
 type: 'feature'
 created: '2026-10-13'
-status: 'in-progress'
-baseline_revision: '2f564cff76bc6fd62f3aae5aac07fac7b8c8f181'
+status: 'done'
+baseline_revision: 'b52c8926189c91b25c5739cf7828616434a1290d'
 baseline_commit: '2f564cff76bc6fd62f3aae5aac07fac7b8c8f181'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -591,8 +591,11 @@ Code review, 2026-10-15 (four layers, `full-opus`; Rule 6, Rule 3 and Rule 31 ch
 
 Rework 2 (the runner's Rule 30 fresh check and full sweep on a rebuilt throwaway):
 
-- [ ] [Smoke] `OcuPilot.Test.InteropFloorRoutes.TestEveryRouteOutsideTheRosterRefusesTheInteroperabilityHolders` and `OcuPilot.Test.DeveloperFloorRoutes.TestEveryRouteOutsideTheRosterRefusesTheDeveloper` are red: their sweep reaches the new `POST /screens/:screen/dryrun` with an empty body, and the route answers 400 `TOOL.ARGUMENTS` ("'action' names the row action and is required") instead of 403 `AUTH.NOPRIVILEGE` naming the failed pair [src/OcuPilot/Test/DeveloperFloorRoutes.cls:107-114 `ConcretePath`] -- give the dry-run route the same concrete body the action route gets there (an action and an absent id), confirm with the action route as the sibling that a holder without the screen's pairs is then refused 403 naming the pair, and run both floor-route classes green.
-- [ ] [Smoke] `OcuPilot.Test.InteropDescriptor.TestEveryInteropErrorCodeResolvesToItsSentence` is red: "Codes and ConsequenceCodes list every code this test names" -- the story's new interop error codes are not in the roster that test pins [src/OcuPilot/Test/InteropDescriptor.cls] -- add each new code (read from `Api/InteropError.cls`, never recalled) to that roster so the two sides are equal again, prove the row load-bearing (drop one, red), and run the class green.
+- [x] [Smoke] `OcuPilot.Test.InteropFloorRoutes.TestEveryRouteOutsideTheRosterRefusesTheInteroperabilityHolders` and `OcuPilot.Test.DeveloperFloorRoutes.TestEveryRouteOutsideTheRosterRefusesTheDeveloper` are red: their sweep reaches the new `POST /screens/:screen/dryrun` with an empty body, and the route answers 400 `TOOL.ARGUMENTS` ("'action' names the row action and is required") instead of 403 `AUTH.NOPRIVILEGE` naming the failed pair [src/OcuPilot/Test/DeveloperFloorRoutes.cls:107-114 `ConcretePath`] -- give the dry-run route the same concrete body the action route gets there (an action and an absent id), confirm with the action route as the sibling that a holder without the screen's pairs is then refused 403 naming the pair, and run both floor-route classes green.
+  - Extend the existing `POST /screens/:screen/action` branch of `ConcretePath` (shared by `InteropFloorRoutes`), do not copy it. Read `Api/ScreenAction.cls` and `Api/ScreenDryRun.cls`: when the action route checks the gate before the body's `action` and `id` values, make `ScreenDryRun` check in the same order. Pin the order with a mutation line.
+- [x] [Smoke] `OcuPilot.Test.InteropDescriptor.TestEveryInteropErrorCodeResolvesToItsSentence` is red: "Codes and ConsequenceCodes list every code this test names" -- the story's new interop error codes are not in the roster that test pins [src/OcuPilot/Test/InteropDescriptor.cls] -- add each new code (read from `Api/InteropError.cls`, never recalled) to that roster so the two sides are equal again, prove the row load-bearing (drop one, red), and run the class green.
+  - Read the new codes from `src/OcuPilot/Api/InteropError.cls` (the ones this story added, per `git diff 895d9fe9..HEAD -- src/OcuPilot/Api/InteropError.cls`). Then grep `src/OcuPilot/Test` and `ui/tools` for every other roster that names interop error codes or declared routes (Rule 30) and fix any that misses this story's additions. Write the `mutation:` line for each roster row proved load-bearing (drop it, red, restore byte-identical).
+  - `(loop)`, one class per call, on `ocupilot-b-ci`: `InteropFloorRoutes`, `DeveloperFloorRoutes`, `InteropDescriptor`, `DryRunRoute`, `InteropResend`, and every roster class changed here. No `(once)` sweep.
 
 ## Spec Change Log
 
@@ -678,6 +681,20 @@ Rework 2 (the runner's Rule 30 fresh check and full sweep on a rebuilt throwaway
 - verified on `ocupilot-b-ci` (tree reloaded after the patches, every mutation reverted by syncing the worktree, compiled storage read back in declaration order):
   - green: `ProposalTargetKey` 7 (run 1167), `InteropResendLimits` 8 (run 1168), `ProposalSpelling` 5, `ExplorerWrite` 10, `TaskWire` 6 and `InstallTarget` 7;
   - `check-objectscript` clean.
+
+### 2026-10-15 — Review pass (rework 2, follow-up)
+
+- verdicts: 7 findings — high 0, medium 0, low 2, false 5, maybe-false 0
+- findings:
+  - Verification-gap layer:
+    - `[false]` `[reject]` No mutation removes the pair gate in `ScreenAction.Run`, expected to redden both sweeps (inference) — applied on `ocupilot-b-ci` (the gate skipped for a preview, run 751 and 752): only the `impact` route reddened, because the port's own gate still refuses the dry run naming a pair. The dry-run route's mutation is the recorded `ConcretePath` one. Reverted, trees equal, run 753 green.
+    - `[low]` `[reject]` The roster's completeness assertion compares counts, not sets — pre-existing shape of the test; the per-name `$Parameter` assertions catch a name that denotes nothing, and a duplicate standing in for a new code is a contrived edit.
+    - `[low]` `[patch]` The Rework 2 record held no green line and no roster-search result — one line added under the Rework 2 mutations.
+  - Intent-alignment layer:
+    - `[false]` `[reject]` The gate-first clause: the route validates body shape before the gate (R3b) — `ScreenAction.Resolve` checks `action` and `id` before `Run`'s gate for both routes, so the dry-run route matches the action route; the spec item asked for exactly that order.
+    - `[false]` `[reject]` The sweep sends a non-canonical id, so the Messages validation is not reached — the sweep asserts the refusal of a holder, which comes before the id is judged; the canonical-set refusal is pinned by `InteropResend` and `InteropResendLimits`.
+    - `[false]` `[reject]` The sweep covers only the refused holder — the answering holder and the 404 for a tool with no dry run are pinned by `DryRunRoute` (run 746) and `InteropResend` (run 747).
+    - `[false]` `[reject]` The diff shows no green run — `DeveloperFloorRoutes` 743, `InteropFloorRoutes` 744, `InteropDescriptor` 745, `DryRunRoute` 746 and `InteropResend` 747 were re-run by this stage after a whole-tree reload.
 
 ## Design Notes
 
@@ -974,17 +991,24 @@ Not moved: `InteropFloor` (no principal holds a write tool; confirm in the sweep
 - mutation: AD-17, `GuardedRebuildTargetKeys` no longer skips a row with no target -> `ProposalTargetKey.TestASecondRunOfTheStepChangesNothing`, alone (the row is written and the index rebuilt on every run).
 - Rework 1: on `ocupilot-b-ci` (tree reloaded after the review patches), green: the four resend classes, `ProposalTargetKey` 6, `Installer` 27, `Version` 19, `InstallMark` 6, `ContainerStartNamespace` 5, and every class under `src/OcuPilot/Test` that holds a test and names `Kernel.State.Propose`, `GuardedClaimAndClose` or `ProposalTargetIdx`: 110 classes and 996 tests in all. `MigrateFault` and five other classes of that search are fixtures and hold no test. `test:tools` 2033, `check-objectscript` and `lint-docs` clean.
 
+**Rework 2 pass (Rule 19).** Each mutation was applied to the copy of the tree on `ocupilot-b-ci`, the tree reloaded, and reverted by syncing the worktree back (`diff -r` of the two `src` trees empty); the worktree files were never touched.
+
+- mutation: AC6, `DeveloperFloorRoutes.ConcretePath` leaves the dry-run route its empty body -> `DeveloperFloorRoutes.TestEveryRouteOutsideTheRosterRefusesTheDeveloper` and `InteropFloorRoutes.TestEveryRouteOutsideTheRosterRefusesTheInteroperabilityHolders`, each alone (400 `TOOL.ARGUMENTS`, runs 740 and 741).
+- mutation: AC6, the dry-run body carries an action and no `id` -> both sweeps, each alone (400, "'id' names the target and cannot be empty", before the pair gate; runs 727 and 728).
+- mutation: AC6, the dry-run route names the action route's screen and action (`webapp.list` / `enable`) -> both sweeps, each alone (404, because that tool declares no dry run; runs 729 and 730).
+- mutation: AC7, `EDITSECRET` dropped from `InteropDescriptor`'s code roster -> `InteropDescriptor.TestEveryInteropErrorCodeResolvesToItsSentence`, alone (run 733); `EDITVALUE` dropped from `InteropError.MessageCodes` -> the same test, alone (run 734).
+- Rework 2: on `ocupilot-b-ci` (tree reloaded, `src` equal to the worktree), green, one class per call: `DeveloperFloorRoutes` 1 (run 743), `InteropFloorRoutes` 1 (744), `InteropDescriptor` 12 (745), `DryRunRoute` 2 (746) and `InteropResend` 9 (747). The code-roster and route-roster search (`src/OcuPilot/Test`, `ui/tools`) found no other roster that misses this story's codes or its dry-run route (`ui/tools/interop.test.mjs`, `EndpointCoverage` and `SaveHoldCoverage` already hold them). `check-objectscript` and `lint-docs` clean.
+
 ## Auto Run Result
 
 Status: done
 Blocking condition: none
 
-**This pass (rework 1).** Closes the one HIGH, the agent's proposal of a long resend set, by the lead's ruling (b).
+**This pass (rework 2).** Closes the two `[Smoke]` items of the runner's Rule 30 fresh check. Test code only; no product file changed.
 
-- **Store.** `Kernel/State/Propose.cls`: `TargetRef` is `MAXLEN = 2200` (`TARGETREFMAX`), a stored computed `TargetKey` (`TargetLockKey(TargetRef)`, declared last because the class has no Storage section) keys `ProposalTargetIdx`, and the sibling cancel in `GuardedClaimAndClose` filters by the key of either spelling and then by the exact `TargetRef`. `GuardedMint` refuses a target over the limit and `GuardedRebuildTargetKeys` gives older rows their key. `Kernel/State/Base.cls` gains `GuardedBuildIndices`.
-- **Install.** `Install/Installer.cls`: `EnsureProposalTargetKeys` runs on every install, idempotent. `SCHEMAVERSION` does not move (Design Notes).
-- **Tests.** `Test/ProposalTargetKey.cls` (new, 6 tests, armed in `scripts/ci-throwaway.sh`) and `InteropResendLimits.TestAHundredIdsOfNineteenDigitsAreMintedStoredWholeAndConfirmedForTheAgent`; `TestTheAgentsCardCarriesTheWholeCapOfAHundredMessages` is green.
-- **Review.** 14 findings: patched 5 (medium 1, low 4), deferred 0, rejected 9 (false 3, low 6), each with its reason in the Review Triage Log. The medium: a target over the limit was stored cut, and is now refused.
-- **Verification (`ocupilot-b-ci`, tree reloaded after the patches).** 110 classes and 996 tests green (the search in `## Verification`), `test:tools` 2033, `check-objectscript` and `lint-docs` clean. Mutations are the Rework 1 lines under Verification, each reverted byte-identical.
+- `Test/DeveloperFloorRoutes.cls`: `ConcretePath` gives `POST /screens/:screen/dryrun` the action route's body (an action and an absent id), against `DRYRUNSCREEN` and `DRYRUNACTION`, because the dry-run route answers 404 for a tool that declares no dry run. `InteropFloorRoutes` shares it. `ScreenDryRun` needed no change: both routes check the body before the gate.
+- `Test/InteropDescriptor.cls`: the code roster of `TestEveryInteropErrorCodeResolvesToItsSentence` gains the nine codes this story added.
+- **Review.** 7 findings: patched 1 (low), rejected 6 (low 1, false 5), each with its reason in the Review Triage Log.
+- **Verification (`ocupilot-b-ci`).** The five `(loop)` classes green (Verification, Rework 2 line), `check-objectscript` and `lint-docs` clean. Mutations are the Rework 2 lines under Verification, each reverted byte-identical.
 - **Follow-up review recommended: false.** This pass patched no HIGH.
-- **Residual risks.** A tool that names more than 2,200 characters of target gets a 500 `INTERNAL` at the mint, as every target over about 455 characters did before; `ExplorerWrite` can reach it with a long document set. `ci-timings.json` has no entry for `ProposalTargetKey`. The full ObjectScript sweep, `npm test`, the smoke and Rule 30's fresh check are the runner's.
+- **Residual risks.** The handoff once sent two test-runner calls in one message and re-ran both alone; the later runs read `0 overlap(s)`. The full ObjectScript sweep, `npm test`, the smoke and Rule 30's fresh check are the runner's.

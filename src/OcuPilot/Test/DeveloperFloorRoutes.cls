@@ -8,7 +8,8 @@
 /// are not sent.</p>
 /// <p>Placeholders reach each route's gate rather than a 404 before it: <code>:screen</code> is
 /// <parameter>SCREENKEY</parameter>, a screen the principal may not read, and its action and impact
-/// routes name that screen's <parameter>SCREENACTION</parameter>; <code>:kind</code> is
+/// routes name that screen's <parameter>SCREENACTION</parameter>, except that the dry-run route names
+/// <parameter>DRYRUNSCREEN</parameter>'s <parameter>DRYRUNACTION</parameter>; <code>:kind</code> is
 /// <parameter>MAPPINGKIND</parameter>; every other id is <parameter>ABSENTID</parameter>, which no
 /// row holds.</p>
 /// <p>It needs <parameter>ARMINGVARIABLE</parameter> armed: <class>OcuPilot.Test.DeveloperFloorFixture</class>
@@ -35,6 +36,12 @@ Parameter ABSENTID = "OcuPilotProbeAbsent";
 /// <p>The row action <parameter>SCREENKEY</parameter>'s action and impact routes name, so each
 /// resolves a declared action and reaches the screen's pair gate.</p>
 Parameter SCREENACTION = "enable";
+
+/// <p>The screen and row action the dry-run route names, on <parameter>ABSENTID</parameter>. The route answers 404 for an
+/// action whose tool declares no dry run, so it cannot name <parameter>SCREENKEY</parameter>'s action.</p>
+Parameter DRYRUNSCREEN = "interop.messages";
+
+Parameter DRYRUNACTION = "resend";
 
 /// <p>The principal's password for this run.</p>
 Property PreparedPassword As %String;
@@ -96,19 +103,21 @@ ClassMethod Roster() As %List
 /// reach its gate (this class's header).</p>
 ClassMethod ConcretePath(pMethod As %String, pUrl As %String, Output pBody As %String) As %String
 {
+    Set tDryRun = (pUrl = "/screens/:screen/dryrun")
+    Set tScreen = $Select(tDryRun: ..#DRYRUNSCREEN, 1: ..#SCREENKEY)
     Set tOut = ""
     For tI = 2:1:$Length(pUrl, "/") {
         Set tSegment = $Piece(pUrl, "/", tI)
         If $Extract(tSegment) = ":" {
-            Set tSegment = $Case(tSegment, ":screen": ..#SCREENKEY, ":kind": ..#MAPPINGKIND, : ..#ABSENTID)
+            Set tSegment = $Case(tSegment, ":screen": tScreen, ":kind": ..#MAPPINGKIND, : ..#ABSENTID)
         }
         Set tOut = tOut _ "/" _ tSegment
     }
     Set pBody = $Select($ListFind($ListBuild("POST", "PUT"), pMethod): "{}", 1: "")
     If pUrl = "/screens/:screen/impact" Set tOut = tOut _ "?action=" _ ..#SCREENACTION _ "&id=" _ ..#ABSENTID
-    If pUrl = "/screens/:screen/action" {
+    If (pUrl = "/screens/:screen/action") || tDryRun {
         Set tAction = {}
-        Do tAction.%Set("action", ..#SCREENACTION, "string")
+        Do tAction.%Set("action", $Select(tDryRun: ..#DRYRUNACTION, 1: ..#SCREENACTION), "string")
         Do tAction.%Set("id", ..#ABSENTID, "string")
         Set pBody = tAction.%ToJSON()
     }
