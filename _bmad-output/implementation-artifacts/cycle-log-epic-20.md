@@ -947,3 +947,5 @@
 2026-10-15T17:28:52Z	Story 20.31	ci_red_classified	run=38772231768 class=flake test=gates_node_26:log-viewer.spec.ts_AC6(DW-2458_open_routed_23.11)
 2026-10-15T17:28:52Z	Story 20.31	rework_opened	cycle_iteration=4 iteration=3 trigger=ci items=[CI]InteropEditResend_DependsOn_InteropResendFixture(+repo_search_for_brace_parameters) scope_baseline=pending_rework_commit note=last_iteration_under_the_cap
 2026-10-15T17:28:53Z	Story 20.31	stage_spawned	stage=implement spawn_at=2026-10-15T17:28:53Z model=sonnet agent_name=20-31-rework-3 cycle_iteration=4
+2026-10-15T17:44:49Z	Story 20.31	dev_complete	spawn_at=(see_stage_spawned) model=sonnet agent_name=20-31-rework-3 build_sha=f1b45815 baseline_revision=b4558795 review_loop_iteration=0 followup_review_recommended=false deferred=1(DW-2459_routed_burndown) cycle_iteration=4 fix=DependsOn_InteropResendFixture(17_brace_params_in_14_classes_checked;only_missing_one) mutation=old_declaration_fails_compile_alone
+2026-10-15T17:44:49Z	Story 20.31	stage_spawned	stage=code-review spawn_at=2026-10-15T17:44:49Z model=opus agent_name=20-31-code-review-4 cycle_iteration=4 scope=b4558795..f1b45815(rework_3)

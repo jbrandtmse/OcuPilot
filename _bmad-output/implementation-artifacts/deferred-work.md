@@ -12122,3 +12122,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: run 38755393824 head 33d0b7c9: 'logs/messages: 10 fake timers pending, 2 real timers active'; head differs from green 5574fede by test files and a CSS comment only
 - 2026-10-15T15:26:35Z status=routed owner=23-11-the-range-end-cleanup-part-10 by=lead note=flake:rerun_failed_job_once;CI_flakes_go_to_the_standing_cleanup_story
 - 2026-10-15T17:29:10Z occurrence=20-31-message-resend-and-edit-and-resend
+
+### DW-2459: check-objectscript.py has no rule for a Parameter whose value is a {...} expression naming a project class the class neither extends nor declares DependsOn for, so a fresh container compile can fail LOAD-FAILED on compile order
+- source: spec-20-31-message-resend-and-edit-and-resend.md (rework 3 deferred) | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: CI run 38772231768: four shards and both image builds failed LOAD-FAILED because InteropEditResend compiled before InteropResendFixture; Test/DraftLoser.cls documents the same trap (second occurrence)
+- 2026-10-15T17:44:49Z status=routed owner=burndown by=harvest note=a structural rule in scripts/check-objectscript.py plus its harness case
