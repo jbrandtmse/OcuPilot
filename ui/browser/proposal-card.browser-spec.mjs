@@ -22,7 +22,7 @@
  * browser/proposal-card.browser-spec.mjs`. The build output is `dist/ocupilot-ui`, never
  * `dist/ocupilot` -- the path spelled in `.claude/rules/objectscript-testing.md`'s otherwise
  * applicable "a browser spec runs against the deployed bundle" section copies nothing, and these
- * three tests would then read a stale bundle and pass.
+ * tests would then read a stale bundle and pass.
  */
 
 import { test, before, after } from 'node:test';
@@ -31,7 +31,7 @@ import puppeteer from 'puppeteer';
 
 import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
 import { loadStrings } from '../tools/strings.mjs';
-import { signedInAt } from './panel-spec.mjs';
+import { setDarkTheme, signedInAt, transitionsSettled } from './panel-spec.mjs';
 import {
   armProbeDefinition,
   disarmProbeDefinition,
@@ -373,6 +373,55 @@ test('(c) a card the user cancels is restrained by role at opacity 1, and its di
     const agent = await measure(page, 'app-proposal-card .ocu-proposal-card-agent');
     assert.equal(agent.opacity, '1');
     assert.notEqual(agent.backgroundColor, card.backgroundColor, 'the agent tint is still drawn');
+  } finally {
+    await context.close();
+    forgetTag(tag);
+    dropProposals();
+  }
+});
+
+test('(d) a value with no space in it wraps inside its row, in the before cell, the after cell and an unchanged row, in both themes', async () => {
+  // Mutation (Rule 19): delete one selector of the wrap rule beside `.ocu-diff-arrow` in
+  // `_components.scss` (`.ocu-diff-before`, `.ocu-diff-after` or `.ocu-diff-row-unchanged
+  // .ocu-diff-value`), rebuild and redeploy the bundle -> that selector's row runs past the card
+  // and this goes red; the other two stay within it.
+  const { context, page, tag } = await withLiveCard(0);
+  try {
+    await transitionsSettled(page, config.navigationTimeoutMs);
+    for (const dark of [false, true]) {
+      await setDarkTheme(page, dark);
+      // The three probe rows are the live row's own markup with one value replaced, and an
+      // unchanged row built from the template's three classes, so the rule is read where the
+      // card draws it. Each reports how far its widest descendant runs past the row.
+      const past = await page.evaluate((unbroken) => {
+        const live = document.querySelector('app-proposal-card .ocu-diff-row:not(.ocu-diff-row-removed)');
+        const host = live.parentElement;
+        const withValue = (side) => {
+          const row = live.cloneNode(true);
+          row.querySelector(`.ocu-diff-${side} .ocu-diff-value`).textContent = unbroken;
+          return row;
+        };
+        const unchanged = document.createElement('p');
+        unchanged.className = 'ocu-diff-row ocu-diff-row-unchanged';
+        for (const [className, text] of [['ocu-diff-field', 'Field'], ['ocu-diff-value', unbroken]]) {
+          const cell = document.createElement('span');
+          cell.className = className;
+          cell.textContent = text;
+          unchanged.appendChild(cell);
+        }
+        const probes = { before: withValue('before'), after: withValue('after'), unchanged };
+        const result = {};
+        for (const [name, row] of Object.entries(probes)) {
+          host.appendChild(row);
+          const edge = row.getBoundingClientRect().right;
+          result[name] = Math.max(...[...row.querySelectorAll('*')].map((node) => node.getBoundingClientRect().right)) - edge;
+          row.remove();
+        }
+        return result;
+      }, 'x'.repeat(600));
+      const runningPast = Object.entries(past).filter(([, pixels]) => pixels > 1);
+      assert.deepEqual(runningPast, [], `every value wraps inside its row (${dark ? 'dark' : 'light'}), or runs this many px past it`);
+    }
   } finally {
     await context.close();
     forgetTag(tag);

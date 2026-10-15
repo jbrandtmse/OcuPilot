@@ -33,7 +33,7 @@ import puppeteer from 'puppeteer';
 
 import { LIVE_CONTAINER, browserConfig, launchOptions } from '../browser.config.mjs';
 import { FILTER_SELECTOR, ROW_SELECTOR, clickRowCentre, waitForRows } from './list-spec.mjs';
-import { setDarkTheme, settleViewport, signedInAt } from './panel-spec.mjs';
+import { setDarkTheme, settleViewport, signedInAt, transitionsSettled } from './panel-spec.mjs';
 import { INVARIANTS, VIEWPORTS, assertThrowaway, collapse, compare, componentMinimums, detectScreen, readBaseline } from './structural-walk.mjs';
 import {
   armProbeDefinition,
@@ -341,6 +341,9 @@ test('AC2: the Users list\u2019s Remove role states what the account loses under
 test('AC1, AC6: the agent\u2019s role delete draws the impact read at its mint on the card, above the privilege line, in both themes, within the structural baseline', async () => {
   // Mutation (Rule 19): make `OcuPilot.Kernel.Proposal.Mint.ImpactValue` record "" always, recompile
   // on the throwaway -> the card draws no impact line and this goes red.
+  // Mutation (Rule 19): delete the rule beside `.ocu-diff-row` in `_components.scss` that lets a
+  // diff value wrap, rebuild and redeploy the bundle -> the 720 pass goes red on the removed row's
+  // before value. Without the settled-panel wait below it reads clean, the panel still narrowing.
   await requireFreeSlot(config);
   const tag = sharedNextTag(probe);
   sharedSetTag(probe, preparedId, tag);
@@ -373,6 +376,8 @@ test('AC1, AC6: the agent\u2019s role delete draws the impact read at its mint o
     for (const { viewport, theme, checks } of passes) {
       await settleViewport(page, viewport);
       await setDarkTheme(page, theme === 'dark');
+      // The panel narrows over a width transition; the card's diff rows are measured at its settled width.
+      await transitionsSettled(page, config.navigationTimeoutMs);
       assert.equal((await cardLine()).text, roleLine(HOLDERS), `the card line reads the same at ${viewport.width}px ${theme}`);
       const { entries } = await detectScreen(page, { route: '/', checks, viewport: viewport.width, theme, minimums });
       found.push(...entries);

@@ -2,9 +2,9 @@
 title: 'Story 23.5: The range-end cleanup, part 5'
 type: 'bugfix'
 created: '2026-10-14'
-status: 'in-progress'
-baseline_revision: '97abf10835be09c97cf93055eb81da25808cc064'
-baseline_commit: '97abf10835be09c97cf93055eb81da25808cc064'
+status: 'done'
+baseline_revision: 'd22d93ff913af1c8d592710c7a13dcd02ba3d874'
+baseline_commit: 'd22d93ff913af1c8d592710c7a13dcd02ba3d874'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -25,14 +25,6 @@ deferred:
     location: >-
       ui/src/app/areas/home/home.page.ts:789-804
     severity: low
-  - summary: >-
-      A proposal card's diff row overflows the panel at its 320 px minimum: an unbreakable value runs past its row, and `impact.browser-spec.mjs`'s 720 px pass of the agent's role delete reads green only while the panel is still narrowing.
-    evidence: |-
-      With the panel settled at 320 px on `ocupilot-ci`, `detectScreen` reports `/|overflow|720|app-long-block>span.ocu-diff-before` 127 px past `p.ocu-diff-row-removed` (the `Resources[{"Name":"OcuPilotProbeImpactRes","Permissions":"RW"}]` row: 389 px of text in a 262 px row), and the baseline holds no entry.
-      With a plain `page.setViewport` the same pass measured the panel at 547 px and then 506 px, mid-transition, and read clean.
-    location: >-
-      ui/src/styles/_components.scss:4605
-    severity: medium
 ---
 
 <intent-contract>
@@ -431,7 +423,7 @@ Rejected:
 - (low) The two-frame wait is written twice in `panel-spec.mjs`, and other specs keep local `frames` copies. These are one-line copies that predate this batch.
 - (low) `header-lockup.browser-spec.mjs` `setDark`, and about 80 inline theme flips across the suite, predate the shared helper. `setDark` also drops focus before a screenshot.
 
-- [ ] [CI] DW-2454: CI run 38725764786 on `782b093d` failed `impact.browser-spec.mjs` AC1/AC6 (`:348`): with the panel now settled at 320 px (`settleViewport`), the structural gate reads `app-long-block>span.ocu-diff-before` 87 px past `p.ocu-diff-row-removed`, an unbreakable diff value (a role's `Resources` JSON) running past its row. Fix the proposal card's diff values so an unbreakable value wraps inside its row at the panel's minimum width (an added rule beside the diff-row rules in `_components.scss`, e.g. `overflow-wrap: anywhere` on the before/after value spans; `long-block` itself unchanged unless the value is drawn there), in light and dark. The red is the CI run above; pin it with the `impact` 720 px pass on a settled panel, record its `mutation:` line, and run `impact`, `proposal-card` and `proposal-demo` browser specs on a rebuilt bundle. DW-2454 then leaves Batch d.
+- [x] [CI] DW-2454: CI run 38725764786 on `782b093d` failed `impact.browser-spec.mjs` AC1/AC6 (`:348`): with the panel now settled at 320 px (`settleViewport`), the structural gate reads `app-long-block>span.ocu-diff-before` 87 px past `p.ocu-diff-row-removed`, an unbreakable diff value (a role's `Resources` JSON) running past its row. Fix the proposal card's diff values so an unbreakable value wraps inside its row at the panel's minimum width (an added rule beside the diff-row rules in `_components.scss`, e.g. `overflow-wrap: anywhere` on the before/after value spans; `long-block` itself unchanged unless the value is drawn there), in light and dark. The red is the CI run above; pin it with the `impact` 720 px pass on a settled panel, record its `mutation:` line, and run `impact`, `proposal-card` and `proposal-demo` browser specs on a rebuilt bundle. DW-2454 then leaves Batch d.
 
 ### Batch d: list and detail pages
 
@@ -549,6 +541,19 @@ Rejected:
   - `[false]` `[reject]` AC8 never reads DESIGN.md - the task puts the DESIGN.md read in `panel-layout.test.mjs`; AC8 pins the DOM figure it states.
   - `[low]` `[reject]` Leg 3 measures full screen and a class-toggled theme, and an empty picker host now draws no gap (inference) - the task names both; the empty host is the no-definitions state, outside the matrix.
   - `[low]` `[reject]` `settleViewport` does not wait for the width transition - its doc says so; Leg 1 now waits for it and the `impact` pass is the deferred entry above.
+
+### 2026-10-15 - Review pass (Batch c, `[CI]` rework)
+
+- verdicts: 8 findings - high 0, medium 0, low 5, false 3, maybe-false 0
+- findings:
+  - `[low]` `[patch]` `min-width: 0` in the new rule changes nothing beside `overflow-wrap: anywhere`, no mutation could redden it, and the comment credited it - the declaration is deleted and the comment states the wrap alone; `impact`, `proposal-card` and `proposal-demo` green on the rebuilt bundle, and both narrowed-selector mutations re-run.
+  - `[low]` `[reject]` test (d) appends its unchanged-row probe to the long block's region, not to `.ocu-proposal-card-unchanged-rows` - both are column flex containers whose rows stretch to their width, and a real row needs the disclosure click on a card that may carry no unchanged fields.
+  - `[false]` `[reject]` no matrix row names the diff-row wrap - the item is Batch c's `[CI]` red, and the intent asks for CI green on each batch's head.
+  - `[false]` `[reject]` no component or tools test is added - the change is geometry, which the intent assigns to a red-first browser spec.
+  - `[low]` `[reject]` the `impact` 720 px pass reads light only - the rule carries no color, and test (d) loops light and dark over the same classes.
+  - `[false]` `[reject]` test (d) runs at 1440x900, not 320 px - a 600-character value overflows at any panel width, and `impact` holds the 320 px case.
+  - `[low]` `[reject]` test (d)'s unchanged probe omits the direction span and the removed-row shape is pinned through `impact` alone - the span is a 1px absolute box, and a removed row's before cell is the changed row's own class.
+  - `[low]` `[reject]` Review Findings says DW-2454 was "planned into Batch d" while no Batch d task names it - the fix is to edit this build's spec.
 
 ## Design Notes
 
@@ -779,7 +784,7 @@ Every test added or changed passes on a fresh environment, in either order.
 - `mutation:` DW-2282: the spinner wait dropped, with a `.ocu-tool-call-spinner` injected for 2.5 s after the card line -> the 720 pass red (`app-tool-call-card>span.ocu-tool-call-spinner: 3px past its containing block`); with the wait, green. The real spinner is gone before the card shows here: 3 runs with the wait dropped under 20x throttle stayed green.
 - `mutation:` DW-2450: AC8 as it was (`page.setViewport`, then the width wait) at 1x, 6x and 20x throttle, and 12 runs at 20x beside six busy loops -> no red reproduced; the cause is not found. (inference) The wait's 0.51 tolerance admitted a panel half a pixel from the figure that the rounded assertions reject; it now admits only what they accept. The new AC8 ran green 3 times at 20x.
 - (implement) Tests changed: `ui/tools/panel-layout.test.mjs` (DW-458 and DW-1148 cases; the keyboard, drag and published-widths cases flipped or relabelled), `rail.spec.ts` (DW-460), `ui/browser/panel.browser-spec.mjs` (AC3 flipped; a 1,280 leg in light and dark; the Yield test settles through `settleViewport` and its own panel width), `ui/browser/suggested-view.browser-spec.mjs` (AC8 in light and dark through `settleViewport`, with the content figure), `ui/browser/agent-picker.browser-spec.mjs` (Leg 3; `settleViewport` in Leg 1), `ui/browser/impact.browser-spec.mjs` (`settleViewport`; the spinner wait), `ui/browser/panel-spec.mjs` (`settleViewport`, `setDarkTheme`). `npm run test:tools` 2034 of 2034; `npm run test:components` 3235 of 3235; `npm run build` passes; on the rebuilt and redeployed bundle `panel` 13 of 13, `suggested-view` 7 of 7, `agent-picker` 3 of 3, `impact` 5 of 5. Every source mutation was reverted with the tree byte-identical, and the clean bundle is deployed.
-- (implement) The name is `.ocu-agent-picker-text` with two definitions (`.ocu-agent-picker-name` is the one-definition span), so Leg 3 measures whichever exists. The diff-row overflow found at 720 is in the frontmatter `deferred:` list.
+- (implement) The name is `.ocu-agent-picker-text` with two definitions (`.ocu-agent-picker-name` is the one-definition span), so Leg 3 measures whichever exists.
 - (CR) Tests changed: `ui/browser/agent-picker.browser-spec.mjs` (Leg 3's half-header assertion, which could not fail at 500 px or more of header, gives way to the toggle staying inside the header at the narrowest panel; `panelWidthSettled` makes Leg 1's 720 pass and Leg 3 measure the settled panel), `ui/browser/suggested-view.browser-spec.mjs` (AC8's mutation comment), `ui/browser/panel-spec.mjs` (header comment). `agent-picker` 3 of 3 on the clean, rebuilt and redeployed bundle.
 - (CR) `mutation:` the `app-agent-picker { display: contents; }` rule deleted (bundle rebuilt and redeployed) -> Leg 1 red ("the open menu adds no structural violation") and Leg 3 red at the toggle assertion (738 against 720, light); rule restored, `_components.scss` byte-identical (checksum), clean bundle redeployed.
 - (QA) Tests changed: `ui/browser/rail.browser-spec.mjs` (a DW-460 leg: with the panel full screen, a pointer click on the Logs item and on Home, in light and in dark, leaves the route, the side bar's area and entries and the stored `sideBarOpen` as they were and sends no preferences write; after leaving full screen the same Logs click acts and stores the open state). `rail` 3 of 3, `panel` 13 of 13, `suggested-view` 7 of 7, `agent-picker` 3 of 3 and `impact` 5 of 5 on the rebuilt and redeployed clean bundle; `npm run test:tools` 2034 of 2034. DW-458 (`panel`), DW-1148 (`suggested-view` AC8) and DW-2107 (`agent-picker` Leg 3) each loop light and dark and reset the remembered state they write.
@@ -794,6 +799,9 @@ Every test added or changed passes on a fresh environment, in either order.
   - Results: `npm run test:tools` 2034 of 2034, and `npm run build` passes. On the clean, rebuilt and redeployed bundle: `agent-picker` 3 of 3, `rail` 3 of 3, `impact` 5 of 5, `panel` 13 of 13.
 - (code review) `mutation:` the `app-agent-picker { display: contents; }` rule deleted (bundle rebuilt and redeployed) -> Leg 3 red at the whole-name assertion (`scrollWidth` 179 against `clientWidth` 77, light) and Leg 1 red (the open menu's structural gate); Leg 2 green.
 - (code review) `mutation:` `.ocu-agent-picker`'s `max-width: 50%` deleted (bundle rebuilt and redeployed) -> Leg 3 red alone at the half-header assertion (picker 1,173 against a 1,391 header, light). Both rules restored, `_components.scss` byte-identical (checksum), clean bundle redeployed.
+- (CI) Tests changed: `ui/browser/impact.browser-spec.mjs` (AC1/AC6's passes wait for the panel's width transition after `settleViewport`) and `ui/browser/proposal-card.browser-spec.mjs` (test (d): a 600-character value with no space in the before cell, the after cell and an unchanged row stays inside its row, in light and dark). The wrap rule is new in `_components.scss`, after `.ocu-diff-arrow`. `npm run test:tools` 2034 of 2034; `npm run test:components` 3235 of 3235; on the rebuilt and redeployed clean bundle `impact` 5 of 5, `proposal-card` 4 of 4, `proposal-demo` 3 of 3.
+- (CI) `mutation:` the added wrap rule deleted (bundle rebuilt and redeployed) -> `impact.browser-spec.mjs` AC1/AC6 red alone (1 of 5: `app-long-block>span.ocu-diff-before` 127px past `p.ocu-diff-row-removed` at 720). With that rule still deleted and the settled-panel wait dropped -> green in 3 runs, the panel still narrowing, so the wait is part of the pin. Both reverted (sha256 identical), clean bundle redeployed.
+- (CI) `mutation:` the wrap rule narrowed to `.ocu-diff-before` (bundle rebuilt and redeployed) -> `proposal-card` test (d) red alone, naming the after and unchanged rows (3,658px past, light). The rule narrowed to the after and unchanged selectors -> (d) red alone, naming the before row. Both re-run after the review dropped `min-width: 0`, which a static page showed changes nothing beside `overflow-wrap: anywhere`; `impact` 5 of 5 and `proposal-card` 4 of 4 stayed green without it. `_components.scss` restored byte-identical (sha256), clean bundle redeployed.
 
 **Batch d (loop):**
 
@@ -806,14 +814,14 @@ Every test added or changed passes on a fresh environment, in either order.
 
 ## Auto Run Result
 
-**Pass: Batch c (shell geometry and the panel). Batch d is untouched and unchecked.**
+**Pass: Batch c `[CI]` rework 1 (DW-2454). Batch d is untouched and unchecked.**
 
 Status: done
 Blocking condition: none
 
-- **Change.** `resolveLayout` counts the side bar against `panelMax` only when the user reopened it (DW-458); `Rail.activate` returns first while the panel is full screen (DW-460); DESIGN.md's 1,920 px row reads `Home: collapsed · list: open (240) | 960 | 912 closed · 672 open | 400 | 1,232 | none [AMENDED 2026-10-14, Story 23.5, DW-1148]`, its line count unchanged (it was `| 1,920px | open (240) | 960 | 672 | 400 | 1,232 | none |`); `app-agent-picker { display: contents; }` joins `_components.scss` (DW-2107); `settleViewport` and `setDarkTheme` move into `ui/browser/panel-spec.mjs` for `panel`, `suggested-view`, `agent-picker` and `impact` (DW-2163, DW-2282, DW-2450), and `impact` waits for the tool-call spinner to go.
-- **Files.** `ui/src/app/core/panel-layout.ts`, `ui/src/app/shell/rail.ts`, `ui/src/styles/_components.scss`, DESIGN.md, `ui/tools/panel-layout.test.mjs`, `ui/src/app/shell/rail.spec.ts`, `ui/browser/panel-spec.mjs`, `panel`, `suggested-view`, `agent-picker` and `impact` browser specs, and this spec's Batch c boxes, Verification and `deferred:` list.
-- **Review.** 12 findings: 0 high, 3 medium, 6 low, 3 false. Patched 3 (2 medium, 1 low): Leg 3's unfalsifiable half-header assertion, Leg 1 and Leg 3 measuring before the panel settled, and AC8's mutation comment. Deferred 1 (medium, carried from the implement pass): the `impact` 720 pass is clean only while the panel is still narrowing, because a proposal-card diff row overflows a settled 320 px panel. Rejected 8, each with its reason in the Review Triage Log.
+- **Change.** An unbreakable diff value now wraps inside its row at the panel's 320 px minimum: `overflow-wrap: anywhere` on `.ocu-diff-before`, `.ocu-diff-after` and `.ocu-diff-row-unchanged .ocu-diff-value`, one added rule after `.ocu-diff-arrow` in `_components.scss`.
+- **Files.** `ui/src/styles/_components.scss` (the rule); `ui/browser/impact.browser-spec.mjs` (AC1/AC6's passes wait for the panel's width transition, so the 720 px pass measures the settled panel); `ui/browser/proposal-card.browser-spec.mjs` (test (d): the three cells, light and dark); this spec's `[CI]` box, `deferred:` list and Verification.
+- **Review.** 8 findings: 0 high, 0 medium, 5 low, 3 false. Patched 1 (low): `min-width: 0` was inert and is deleted. Rejected 7, each with its reason in the Review Triage Log.
 - **Follow-up review: false.** No patched entry was high.
-- **Verification.** `npm run test:tools` 2034 of 2034; `npm run test:components` 3235 of 3235; `npm run build` passes its checkers; `bash scripts/lint-docs.sh` clean; on the rebuilt and redeployed bundle `panel` 13 of 13, `suggested-view` 7 of 7, `agent-picker` 3 of 3 and `impact` 5 of 5. Mutations: Batch c's lines, each observed red and reverted with the tree byte-identical; the clean bundle is deployed.
-- **Residual risk.** DW-2163 and DW-2282 reproduced no red under a 20x CPU throttle and DW-2450's cause was not found, so those three fixes stand on mechanism (recorded under Batch c's Verification, with an injected-spinner red for DW-2282). The `impact` deferred entry is a real overflow the structural baseline does not hold.
+- **Verification.** On the rebuilt and redeployed bundle `impact` 5 of 5, `proposal-card` 4 of 4, `proposal-demo` 3 of 3; `npm run test:tools` 2034 of 2034; `npm run test:components` 3235 of 3235; `bash scripts/lint-docs.sh` clean. Mutations: the rule deleted -> `impact` AC1/AC6 red alone (127px past the removed row); the rule narrowed to the before cell, then to the other two -> test (d) red alone for the cells dropped. Each reverted with `_components.scss` byte-identical; the clean bundle is deployed.
+- **Residual risk.** The `impact` pass reads light only; test (d) holds the dark side. Test (d)'s unchanged row is a replica of the template's markup rather than a disclosed row.

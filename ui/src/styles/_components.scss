@@ -4647,6 +4647,15 @@ app-interop-message-contents {
   color: var(--ocu-on-surface-variant);
 }
 
+// A value with no space in it, such as a role's `Resources` JSON, may break anywhere, so it wraps
+// inside its row at the panel's narrowest width instead of running past it. The after cell and an
+// unchanged row's value follow the before cell.
+.ocu-diff-before,
+.ocu-diff-after,
+.ocu-diff-row-unchanged .ocu-diff-value {
+  overflow-wrap: anywhere;
+}
+
 // The unchanged-fields line. Story 5.2 turns this element into a `<button aria-expanded>` when
 // there are rows behind it; here it is the published caption and an `aria-hidden` chevron.
 .ocu-proposal-card-unchanged {
