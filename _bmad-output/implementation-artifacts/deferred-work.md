@@ -12039,6 +12039,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-23-5-the-range-end-cleanup-part-5.md | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: guardrails.page.ts:60 and web-app-class-access-tab.ts:49 render STRINGS.connectivityServerFault under a failed() boolean; api.ts reports every requestJson to the shell's banner (EXPERIENCE.md:769 one banner); DW-1401's root cause on two surfaces Batch b did not touch
 - 2026-10-15T06:35:45Z status=escalated owner=burndown by=cr note=pre-existing; fix is DW-1401's shape (classified Fault, in-place FaultBanner for non-banner kinds)
+- 2026-10-15T11:12:48Z status=routed owner=23-11-the-range-end-cleanup-part-10 by=lead note=orchestrator: same root cause as DW-1401, two more surfaces
 
 ### DW-2450: flake: suggested-view.browser-spec.mjs AC8 (Home settles at DESIGN.md's published panel width at each of five viewports) failed once in a local fresh-throwaway shard and passed alone and on a re-run of the same shard order
 - source: lead fresh check, Story 23.5 batch b | severity: med | fix-risk: low | footprint: in-epic
@@ -12073,3 +12074,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-20-30-the-session-trace.md code review | severity: low | fix-risk: med | footprint: out-of-footprint
 - evidence: areas/tasks/details.page.ts:312,319, interop-item-list.page.ts:128 and journal-file-details.page.ts:341 repeat followInAppLink's guard; interop-editor.page.ts:176-177 and database-details, process-details and ledger pages draw their own skeleton or refusal.
 - 2026-10-15T03:53:48Z status=wontfix-accepted owner=20-30-the-session-trace by=cr note=reopen_if=a link-guard or state-block defect is fixed in one copy, or a story edits one of those pages
+
+### DW-2454: A proposal card's diff row overflows the panel at its 320 px minimum: an unbreakable value runs past its row, so impact.browser-spec's 720 px pass of a role delete is clean only while the panel is still narrowing
+- source: spec-23-5-the-range-end-cleanup-part-5.md (implement batch c deferred) | severity: med | fix-risk: low | footprint: in-story
+- evidence: settled at 320 px on ocupilot-ci, detectScreen reports app-long-block>span.ocu-diff-before 127 px past p.ocu-diff-row-removed (389 px of text in a 262 px row); pre-existing
+- 2026-10-15T11:13:01Z status=open owner=23-5-the-range-end-cleanup-part-5 by=harvest note=added_to_batch_d:wrap_diff_values,impact_720_pass_on_a_settled_panel
