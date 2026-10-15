@@ -441,3 +441,6 @@ spawn_at=2026-10-06T16:01:05Z	Story 23.4	cr_complete	batch=b 2026-10-06T20:34:58
 2026-10-15T12:44:26Z	Story 23.5	pushed	batch=c head=5574fede ci=pending run=38736916117 head_confirmed_by=headSha
 2026-10-15T12:44:26Z	Story 23.5	stage_spawned	stage=code-review batch=c rework=1 spawn_at=2026-10-15T12:44:26Z model=opus agent_name=23-5-the-range-end-cleanup-part-5-code-review-c-2 cycle_iteration=5 scope=d22d93ff..5574fede
 2026-10-15T13:09:01Z	Story 23.5	cr_complete	batch=c rework=1 model=opus agent=ac5f1e866a80d8ecc scope=d22d93ff..5574fede resolved=7 high=0 med=1 low=9 rows=16 dismissed=5 unresolved_high_med=0 checklist=CI:DW-2454_fixed(impact_5/5_shard_5_on_38736916117) sprint=done closing_sections_present=true
+2026-10-15T14:52:30Z	Story 23.5	ci_resolved	story=23.5 batch=c run=38736916117 head=5574fede result=success resolved_at=after_rereview(DW-2454_confirmed)
+2026-10-15T14:52:30Z	Story 23.5	fresh_check	batch=c env=recipe(down+up_ocupilot-ci_from_65b6b885,bundle+harness_rebuilt,src_parity) result=pass order=forward(full_browser_suite_20_shards:199_specs,884_tests,0_failed),reverse(6_specs:35/35)
+2026-10-15T14:52:30Z	Story 23.5	smoke_complete	batch=c method=cli+browser result=pass iterations=1 defects_caught=0 evidence=smoke.sh_ocupilot-ci_49/49+panel_13/13+agent-picker_3/3+rail_3/3 model=claude-opus-5-5
