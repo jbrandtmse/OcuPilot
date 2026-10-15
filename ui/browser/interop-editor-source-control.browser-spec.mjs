@@ -13,9 +13,9 @@
  *   `/api/interop-editors/`, and no message reaches the shell or the frame.
  * - AC2: a DTL the probe no longer releases is refused by the editor's own notice, with the definition's `TimeChanged` unchanged and no
  *   `OnBeforeSave` logged; a rule the probe has not released opens read-only, with the editor's sentence and its "Check Out" and "Get
- *   Latest" menu.
+ *   Latest" menu. Neither leg lets the shell's main frame send anything under `/api/interop-editors/` or lets a message through.
  * - AC3: the rule editor's Compile saves and compiles, running `OnBeforeSave`, `OnAfterSave`, `OnBeforeCompile` and `OnAfterCompile` in
- *   that order, and enables "Source Control Messages".
+ *   that order, and enables "Source Control Messages", with nothing sent by the shell's main frame under `/api/interop-editors/` and no message let through.
  *
  * **It enables a source-control class in `USER`, creates classes there and records and restores two of the editors' own settings nodes**
  * (`^EnsPortal.Settings(<user>, "LastDTL")` and `"LastBP"`), so it runs on a throwaway only and refuses a container that is not one.
@@ -34,6 +34,7 @@ import puppeteer from 'puppeteer';
 
 import { LIVE_CONTAINER, browserConfig, launchOptions } from '../browser.config.mjs';
 import {
+  SCREEN_FRAME_SELECTOR,
   answered as screenAnswered,
   armMessageCounters,
   editorShows as screenShows,
@@ -165,10 +166,10 @@ before(async () => {
   assert.notEqual(config.container, LIVE_CONTAINER, 'this spec runs commands inside the container, so it never runs against the live one');
   await assertThrowaway(config);
   assert.match(config.container, /-ci$/, `this spec enables source control in ${NAMESPACE}, compiles probe classes and edits settings nodes, so it runs only in a throwaway; ${config.container} is not one`);
-  const removed = probe('SCCLEAN', `$System.Status.IsOK($System.OBJ.DeletePackage("${PACKAGE}","-d"))`);
-  assert.equal(removed.value, '1', `an earlier run's probe classes are removed: ${removed.output}`);
   const disabled = probe('SCDISABLE', `$System.Status.GetErrorText(##class(${SC}).Disable("${NAMESPACE}"))`);
   assert.equal(disabled.value, '', `an earlier run's source-control class is taken out of ${NAMESPACE}: ${disabled.output}`);
+  const removed = probe('SCCLEAN', `$System.Status.IsOK(##class(${PROBES}).Remove("${PACKAGE}"))`);
+  assert.equal(removed.value, '1', `an earlier run's probe classes are removed from ${NAMESPACE}: ${removed.output}`);
   heldSettings = readSettings();
   created = true;
   for (const [kind, label] of [['rule', 'rule'], ['transform', 'transformation']]) {
@@ -379,7 +380,7 @@ test('AC2: a DTL the probe no longer releases is refused by the editor\'s own no
   await t.test('the DTL editor refuses the save', async () => {
     resetProbe();
     const documentName = `${TRANSFORM.class}.cls`;
-    const { context, frame } = await openEditor(TRANSFORM);
+    const { context, frame, requests, messages } = await openEditor(TRANSFORM);
     try {
       const before = definitionModified(TRANSFORM.class);
       await editDescription(frame, 'edited by the browser spec');
@@ -391,6 +392,8 @@ test('AC2: a DTL the probe no longer releases is refused by the editor\'s own no
       assert.equal(names.includes('GetStatus'), true, `the editor asked the source-control class for the document's status: ${JSON.stringify(names)}`);
       assert.equal(names.includes('OnBeforeSave'), false, `no OnBeforeSave ran: ${JSON.stringify(names)}`);
       assert.equal(definitionModified(TRANSFORM.class), before, "and the definition's TimeChanged is unchanged");
+      assert.deepEqual(requests.mainFrame, [], "the shell's main frame sends nothing under /api/interop-editors/");
+      assert.deepEqual(await messages.seen(), [], 'no message reached the shell or the frame');
     } finally {
       await context.close();
     }
@@ -399,7 +402,7 @@ test('AC2: a DTL the probe no longer releases is refused by the editor\'s own no
   await t.test('the rule editor opens the rule read-only', async () => {
     resetProbe();
     refuse(`${RULE.class}.cls`, 1);
-    const { context, frame } = await openEditor(RULE);
+    const { context, frame, requests, messages } = await openEditor(RULE);
     try {
       await until(() => frame.evaluate(() => document.body.innerText), (body) => body.includes(READ_ONLY), `the editor says ${READ_ONLY}`, config.navigationTimeoutMs);
       const items = await openMenu(frame, ['Check Out', 'Get Latest', 'Source Control Messages']);
@@ -408,6 +411,8 @@ test('AC2: a DTL the probe no longer releases is refused by the editor\'s own no
         [false, false, true],
         'the menu holds Check Out and Get Latest, and Source Control Messages is disabled'
       );
+      assert.deepEqual(requests.mainFrame, [], "the shell's main frame sends nothing under /api/interop-editors/");
+      assert.deepEqual(await messages.seen(), [], 'no message reached the shell or the frame');
     } finally {
       await context.close();
     }
@@ -418,7 +423,7 @@ test('AC2: a DTL the probe no longer releases is refused by the editor\'s own no
 test('AC3: the rule editor\'s Compile saves and compiles through the probe\'s hooks in order, and enables Source Control Messages', async () => {
   resetProbe();
   const documentName = `${RULE.class}.cls`;
-  const { context, page, frame, messages } = await openEditor(RULE);
+  const { context, page, frame, requests, messages } = await openEditor(RULE);
   try {
     const before = await openMenu(frame, ['Undo Check Out', 'Check In', 'Source Control Messages']);
     assert.equal(before[2].disabled, true, 'Source Control Messages is disabled before the compile');
@@ -435,8 +440,9 @@ test('AC3: the rule editor\'s Compile saves and compiles through the probe\'s ho
 
     const after = await openMenu(frame, ['Undo Check Out', 'Check In', 'Source Control Messages']);
     assert.equal(after[2].disabled, false, 'Source Control Messages is enabled after the compile');
+    assert.deepEqual(requests.mainFrame, [], "the shell's main frame sends nothing under /api/interop-editors/");
     assert.deepEqual(await messages.seen(), [], 'no message reached the shell or the frame');
-    assert.ok((await page.$$('app-interop-editor-frame iframe')).length === 1, 'the editor is still the one frame the screen drew');
+    assert.ok((await page.$$(SCREEN_FRAME_SELECTOR)).length === 1, 'the editor is still the one frame the screen drew');
   } finally {
     await context.close();
   }

@@ -1,9 +1,10 @@
 /// <p>Pins Story 20.10's half of a namespace under source control (AD-8, AD-53, AD-61 rules 6 and 8): OcuPilot's own
-/// saves, compiles and deletes of classes run the namespace's hooks in the calling process, as the caller, with the
+/// saves, imports, compiles and deletes of classes run the namespace's hooks in the calling process, as the caller, with the
 /// caller's <code>%SourceControl</code> unchanged; a document the source-control class has not released for editing is
 /// refused 409 <code>EXPLORER.DOCUMENT.SOURCECONTROL</code> by the person's save over HTTP and by the agent's editor
 /// save at Confirm, the document unchanged and the vendor's text at information severity; and a hook's own refusal of a
-/// save stays 422 <code>EXPLORER.SAVE.REFUSED</code>, logged as a fault.</p>
+/// save stays 422 <code>EXPLORER.SAVE.REFUSED</code>, logged as a fault; and the probe that enables source control takes none
+/// that is not its own.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed in <code>HSCUSTOM</code> and serving over HTTP as
 /// <class>OcuPilot.Test.Http</class>'s account, a <code>USER</code> namespace that runs interoperability, and
 /// <parameter>ARMINGVARIABLE</parameter> reading <code>1</code>, because each test puts <code>USER</code> under
@@ -142,6 +143,7 @@ ClassMethod Source() As %String
 /// <code>%SourceControl</code> clause goes red.</p>
 Method TestThePortRunsTheHooksInTheCallersProcess()
 {
+    New %SourceControl
     Do ..Arm(.tVersion)
     Set tText = $ClassMethod(..#PROBE, "ClassText", ..#ALPHA, "2")
     Set tSentinel = {}
@@ -260,22 +262,84 @@ Method TestAnImportOfAnUnreleasedDocumentIsRefusedBySourceControl()
     Do $$$AssertEquals(..Sequence(tEntries, "GetStatus"), "", "no save hook ran: " _ tEntries.%ToJSON())
 }
 
+/// <p>AC4: an import of one UDL file over a class the source-control class has released stores it through the put and, with
+/// Compile on, compiles it, running <code>OnBeforeSave</code>, <code>OnAfterSave</code>, <code>OnBeforeCompile</code> and
+/// <code>OnAfterCompile</code> in the calling process, as the caller, and the caller's <code>%SourceControl</code> is the
+/// object it was before the call.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Port.AtelierPort.ImportSet</method> stores a UDL document with
+/// <code>%Compiler.UDL.TextServices.SetTextFromString</code> in place of the put -- the hooks clause goes red.</p>
+Method TestAnImportRunsTheHooksInTheCallersProcess()
+{
+    New %SourceControl
+    Do ..Arm(.tVersion)
+    Set tText = $ClassMethod(..#PROBE, "ClassText", ..#ALPHA, "6")
+    Do $ClassMethod(..#SAVE, "Act", "Classes", "PREVIEW", $ListBuild("id=import", "fileName=Alpha.cls", "content=" _ tText), .tPreview, .tHttp, .tFault)
+    Do $$$AssertTrue((tHttp = 200) && $IsObject($Get(tPreview)), "the file previews: " _ ##class(OcuPilot.Test.AtelierPortSave).Said(.tHttp, .tPreview, .tFault))
+    Do $ClassMethod(..#SC, "Clear", ..#NAMESPACE)
+    Set tSentinel = {}
+    Set %SourceControl = tSentinel
+    Do $ClassMethod(..#SAVE, "Act", "Classes", "IMPORT", $ListBuild("id=import", "fileName=Alpha.cls", "content=" _ tText, "documents=" _ $Select($IsObject($Get(tPreview)): tPreview.documents, 1: ""), "Compile=true"), .tResult, .tHttp, .tFault)
+    Do $$$AssertTrue($IsObject($Get(%SourceControl)) && ($Get(%SourceControl) = tSentinel), "the caller's %SourceControl is the object it was before the call")
+    Kill %SourceControl
+    Do $$$AssertEquals(tHttp _ " " _ $Select($IsObject($Get(tResult)): tResult.errors, 1: ""), "200 0", "the import answers 200 and a clean compile: " _ ##class(OcuPilot.Test.AtelierPortSave).Said(.tHttp, .tResult, .tFault))
+    Do $$$AssertEquals(..Source(), tText, "the class holds the text")
+    Set tEntries = $ClassMethod(..#SC, "Entries", ..#NAMESPACE)
+    Do $$$AssertEquals(..Sequence(tEntries), ..#SAVEHOOKS, "the save and compile hooks run once each, in order: " _ tEntries.%ToJSON())
+    Do ..AssertCaller(tEntries, ..#ALPHA _ ".cls", $Job, $Username, "the port's import")
+}
+
 /// <p>AC5: a source-control class whose own <code>OnBeforeSave</code> fails is the save's refusal 422
-/// <code>EXPLORER.SAVE.REFUSED</code>, logged as a fault, with the class unchanged and no later hook run: the vendor wraps the
-/// hook's error, so the port cannot tell it from any other text the instance refuses.</p>
-/// <p>Mutation (Rule 19): add <code>16008</code> to <parameter>OcuPilot.Port.AtelierPort.SOURCECONTROLCODES</parameter> -- this
-/// goes red.</p>
+/// <code>EXPLORER.SAVE.REFUSED</code>, logged as a fault, with the class unchanged and no later hook run, also when the hook's
+/// error is the edit check's own #5865: the vendor wraps the hook's error in #16008, so the port cannot tell it from any other
+/// text the instance refuses.</p>
+/// <p>Mutation (Rule 19): drop the <parameter>OcuPilot.Port.AtelierPort.SAVEERRORCODE</parameter> exclusion from
+/// <method>OcuPilot.Port.AtelierPort.EditCheckRefused</method> -- the #5865 leg alone goes red.</p>
 Method TestAHookVetoIsTheSavesRefusal()
 {
     Do ..Arm(.tVersion)
     Set tBefore = ..Source()
-    Do $ClassMethod(..#SC, "Veto", ..#NAMESPACE, ..#ALPHA _ ".cls", 1)
-    Do $ClassMethod(..#SAVE, "Save", "Classes", ..#ALPHA _ ".cls", $ClassMethod(..#PROBE, "ClassText", ..#ALPHA, "2"), tVersion, 1, .tResult, .tHttp, .tFault)
-    Do $$$AssertEquals(##class(OcuPilot.Test.AtelierPortSave).Said(.tHttp, .tResult, .tFault), "422 EXPLORER.SAVE.REFUSED", "the save is refused as the instance's refusal of the text")
-    Do $$$AssertEquals(##class(OcuPilot.Test.LogProbe).Captured("severity"), 2, "and is logged as a fault: " _ ##class(OcuPilot.Test.LogProbe).Captured("message"))
-    Do $$$AssertEquals(..Source(), tBefore, "the class is unchanged")
-    Set tEntries = $ClassMethod(..#SC, "Entries", ..#NAMESPACE)
-    Do $$$AssertEquals(..Sequence(tEntries), "OnBeforeSave", "and only the hook that refused ran: " _ tEntries.%ToJSON())
+    For tVeto = 1, 5865 {
+        Set tLabel = $Select(tVeto = 1: "a hook's error of its own", 1: "a hook's error #" _ tVeto)
+        Kill tResult, tHttp, tFault
+        Do $ClassMethod(..#SC, "Clear", ..#NAMESPACE)
+        Do ##class(OcuPilot.Test.LogProbe).Clear()
+        Do $ClassMethod(..#SC, "Veto", ..#NAMESPACE, ..#ALPHA _ ".cls", tVeto)
+        Do $ClassMethod(..#SAVE, "Save", "Classes", ..#ALPHA _ ".cls", $ClassMethod(..#PROBE, "ClassText", ..#ALPHA, "2"), tVersion, 1, .tResult, .tHttp, .tFault)
+        Do $$$AssertEquals(##class(OcuPilot.Test.AtelierPortSave).Said(.tHttp, .tResult, .tFault), "422 EXPLORER.SAVE.REFUSED", tLabel _ " is the save's refusal, as the instance's refusal of the text")
+        Do $$$AssertEquals(##class(OcuPilot.Test.LogProbe).Captured("severity"), 2, tLabel _ " is logged as a fault: " _ ##class(OcuPilot.Test.LogProbe).Captured("message"))
+        Do $$$AssertEquals(..Source(), tBefore, tLabel _ ": the class is unchanged")
+        Set tEntries = $ClassMethod(..#SC, "Entries", ..#NAMESPACE)
+        Do $$$AssertEquals(..Sequence(tEntries), "OnBeforeSave", tLabel _ ": only the hook that refused ran: " _ tEntries.%ToJSON())
+    }
+}
+
+/// <p>AC8: the probe takes no source control that is not its own. With <code>USER</code> naming another source-control class,
+/// <method>OcuPilot.Test.SourceControlProbe.Enable</method> and <method>OcuPilot.Test.SourceControlProbe.Disable</method> each
+/// fail and leave the setting as it was, and write no hooks class; for a namespace other than <code>USER</code> both fail and
+/// change nothing. Once the other class is taken away, <method>OcuPilot.Test.SourceControlProbe.Disable</method> succeeds.</p>
+/// <p>Mutation (Rule 19): drop <method>OcuPilot.Test.SourceControlProbe.Enable</method>'s refusal of another class -- the
+/// Enable clause goes red; let <method>OcuPilot.Test.SourceControlProbe.Disable</method> clear whatever the setting names -- the
+/// Disable clause goes red.</p>
+Method TestTheProbeTakesNoSourceControlThatIsNotItsOwn()
+{
+    Set tOther = "%Studio.SourceControl.Base"
+    Set tElsewhere = "HSCUSTOM"
+    Set tElsewhereHeld = ##class(%Studio.SourceControl.Interface).SourceControlClassGet(tElsewhere)
+    Do $$$AssertStatusOK(##class(%Studio.SourceControl.Interface).SourceControlClassSet(tOther, ..#NAMESPACE), ..#NAMESPACE _ " is given another source-control class")
+    Try {
+        Do $$$AssertStatusNotOK($ClassMethod(..#SC, "Enable", ..#NAMESPACE), "the probe is not enabled over it")
+        Do $$$AssertEquals(##class(%Studio.SourceControl.Interface).SourceControlClassGet(..#NAMESPACE), tOther, "and the setting is as it was")
+        Do $$$AssertTrue('$ClassMethod(..#PROBE, "Exists", ..#NAMESPACE, $Parameter(..#SC, "HOOKS") _ ".cls"), "and no hooks class was written")
+        Do $$$AssertStatusNotOK($ClassMethod(..#SC, "Disable", ..#NAMESPACE), "the probe does not claim to have taken it out")
+        Do $$$AssertEquals(##class(%Studio.SourceControl.Interface).SourceControlClassGet(..#NAMESPACE), tOther, "and the setting is as it was")
+    } Catch ex {
+        Do $$$AssertStatusOK(ex.AsStatus(), "the probe's refusals ran")
+    }
+    Do $$$AssertStatusOK(##class(%Studio.SourceControl.Interface).SourceControlClassSet($Char(0), ..#NAMESPACE), "the other class is taken away")
+    Do $$$AssertStatusNotOK($ClassMethod(..#SC, "Enable", tElsewhere), "the probe is not enabled in " _ tElsewhere)
+    Do $$$AssertStatusNotOK($ClassMethod(..#SC, "Disable", tElsewhere), "nor disabled there")
+    Do $$$AssertEquals(##class(%Studio.SourceControl.Interface).SourceControlClassGet(tElsewhere), tElsewhereHeld, tElsewhere _ "'s setting is as it was")
+    Do $$$AssertStatusOK($ClassMethod(..#SC, "Disable", ..#NAMESPACE), "with nothing else named, the probe's Disable succeeds")
 }
 
 /// <p>The agent's <code>interop.transformeditor.save</code> proposal for the probe transformation, minted through the
@@ -314,8 +378,11 @@ Method TestTheAgentsEditorSaveRunsTheHooksAndIsRefusedByName()
     If '..Mint(tDocument, .tRefused) Quit
     Do $ClassMethod(..#SC, "Refuse", ..#NAMESPACE, tDocument, 1)
     Do $ClassMethod(..#SC, "Clear", ..#NAMESPACE)
+    Set tFrom = ..LogSize(.tLog)
     Set tSC = ##class(OcuPilot.Test.ExplorerWrite).ConfirmIn(..#NAMESPACE, tRefused, .tResult, .tHttp, .tCode)
     Do $$$AssertEquals(tHttp _ " " _ $Get(tCode), "409 EXPLORER.DOCUMENT.SOURCECONTROL", "the confirm is refused by name while the transformation is not released")
+    Set tLine = ..LogLine(tLog, tFrom, "PutDoc found the document not released for editing by source control")
+    Do $$$AssertTrue((tLine [ "#5865") && ($Piece($Piece(tLine, ") ", 2), " ", 1) = "0"), "the vendor's text is logged at information severity: " _ tLine)
     Do $$$AssertEquals($ClassMethod(..#PROBE, "Source", ..#NAMESPACE, tDocument), tBefore, "and the text is unchanged")
     Do $$$AssertEquals(..Sequence($ClassMethod(..#SC, "Entries", ..#NAMESPACE), "GetStatus"), "", "with no save hook run")
     Do $ClassMethod(..#SC, "Refuse", ..#NAMESPACE, tDocument, 0)

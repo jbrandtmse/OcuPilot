@@ -124,12 +124,13 @@ ClassMethod Refuse(pNamespace As %String, pDocument As %String, pOn As %Boolean)
 }
 
 /// <p>Make the <code>OnBeforeSave</code> of document <var>pDocument</var> fail with an error of its own when
-/// <var>pOn</var> is 1, and succeed when it is 0.</p>
-ClassMethod Veto(pNamespace As %String, pDocument As %String, pOn As %Boolean)
+/// <var>pOn</var> is 1, with the vendor's message <var>pOn</var> when it is a message number (5865, say), and succeed
+/// when it is 0.</p>
+ClassMethod Veto(pNamespace As %String, pDocument As %String, pOn As %Integer)
 {
     Set tLog = ..Global(pNamespace)
     If pOn {
-        Set @tLog@("veto", $ZConvert(pDocument, "U")) = 1
+        Set @tLog@("veto", $ZConvert(pDocument, "U")) = +pOn
     } Else {
         Kill @tLog@("veto", $ZConvert(pDocument, "U"))
     }
@@ -192,7 +193,9 @@ ClassMethod HooksText() As %String
     }
     Set tText = tText _ "Method OnBeforeSave(InternalName As %String, Location As %String = """", Object As %RegisteredObject = {$$$NULLOREF}) As %Status" _ tNL _ "{" _ tNL
     Set tText = tText _ "    Do ..Note(""OnBeforeSave"", InternalName)" _ tNL
-    Set tText = tText _ "    If ..Marked(""veto"", InternalName) Quit $$$ERROR($$$GeneralError, ""OcuProbe2010 vetoed the save"")" _ tNL
+    Set tText = tText _ "    Set tVeto = +$Get(^@LOG@(""veto"", $ZConvert(InternalName, ""U"")))" _ tNL
+    Set tText = tText _ "    If tVeto = 1 Quit $$$ERROR($$$GeneralError, ""OcuProbe2010 vetoed the save"")" _ tNL
+    Set tText = tText _ "    If tVeto Quit $$$ERROR(tVeto, InternalName)" _ tNL
     Set tText = tText _ "    If ..Marked(""refuse"", InternalName) Quit $$$ERROR($$$ItemNotCheckedOut, InternalName)" _ tNL
     Set tText = tText _ "    Quit $$$OK" _ tNL _ "}" _ tNL _ tNL
     Set tText = tText _ "Method GetStatus(InternalName As %String, ByRef IsInSourceControl As %Boolean, ByRef Editable As %Boolean, ByRef IsCheckedOut As %Boolean, ByRef UserCheckedOut As %String) As %Status" _ tNL _ "{" _ tNL

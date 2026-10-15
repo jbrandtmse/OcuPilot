@@ -230,7 +230,9 @@ Method TestTheVersionIsSentAsIfNoneMatch()
 /// <p>Mutation (Rule 19): log the 423 through <method>OcuPilot.Port.AtelierPort.LogFault</method> --
 /// the <code>LOCKED</code> leg goes red. Remove the source-control branches from
 /// <method>OcuPilot.Port.AtelierPort.Outcome</method> -- the four source-control rows go red. Drop 5845 from
-/// <parameter>OcuPilot.Port.AtelierPort.SOURCECONTROLCODES</parameter> -- the 5845 row alone goes red.</p>
+/// <parameter>OcuPilot.Port.AtelierPort.SOURCECONTROLCODES</parameter> -- the 5845 row alone goes red. Test the source-control codes
+/// ahead of the access codes in the 2xx path of <method>OcuPilot.Port.AtelierPort.Outcome</method> -- the row naming #5883 and #5865
+/// alone goes red.</p>
 Method TestTheVendorsRefusalsAreAnsweredByName()
 {
     Set tText = "Class Probe.A Extends %RegisteredObject" _ $Char(10) _ "{" _ $Char(10) _ "}"
@@ -238,9 +240,11 @@ Method TestTheVendorsRefusalsAreAnsweredByName()
     Set tSourceControl = "409 EXPLORER.DOCUMENT.SOURCECONTROL"
     Set tCases = $ListBuild($ListBuild("200 OK", $Replace(tSoft, "CODE", "16021"), "422 EXPLORER.SAVE.REFUSED", "2"), $ListBuild("200 OK", $Replace(tSoft, "CODE", "5883"), "403 PORT.ACCESSDENIED", "2"), $ListBuild("409 Conflict", "{""status"":{""errors"":[],""summary"":""""},""console"":[],""result"":{""name"":""Probe.A.cls"",""status"":"""",""content"":[""Class Probe.A""]}}", "409 EXPLORER.DOCUMENT.CONFLICT", ""), $ListBuild("423 Locked", $Replace(tSoft, "CODE", "5864"), "409 EXPLORER.DOCUMENT.LOCKED", "0"))
     Set tCases = tCases _ $ListBuild($ListBuild("400 Bad Request", $Replace(tSoft, "CODE", "5865"), tSourceControl, "0"), $ListBuild("400 Bad Request", $Replace(tSoft, "CODE", "5845"), tSourceControl, "0"), $ListBuild("400 Bad Request", $Replace(tSoft, "CODE", "6151"), tSourceControl, "0"), $ListBuild("200 OK", $Replace(tSoft, "CODE", "5865"), tSourceControl, "0"), $ListBuild("400 Bad Request", $Replace(tSoft, "CODE", "16021"), "400 PORT.VALIDATION", "2"))
+    ; An answer naming an access code and a source-control code is the access refusal, which is checked first.
+    Set tCases = tCases _ $ListBuild($ListBuild("200 OK", $Replace(tSoft, "CODE", "5883: refused ERROR #5865"), "403 PORT.ACCESSDENIED", "2"))
     For tIndex = 1:1:$ListLength(tCases) {
         Set tCase = $List(tCases, tIndex)
-        Set tLabel = $List(tCase, 1) _ $Select($List(tCase, 2) [ "#": " with #" _ $Piece($Piece($List(tCase, 2), "#", 2), ":", 1), 1: "")
+        Set tLabel = $List(tCase, 1) _ $Select($List(tCase, 2) [ "#": " with #" _ $Piece($Piece($List(tCase, 2), "#", 2), ":", 1) _ $Select($Length($List(tCase, 2), "#") > 2: " and #" _ $Piece($Piece($List(tCase, 2), "#", 3), ":", 1), 1: ""), 1: "")
         Do ..ClearFixtures()
         Do $ClassMethod(..#FIXTURE, "UseFakeRoutes")
         Do $ClassMethod(..#FIXTURE, "SetVersion", 8)

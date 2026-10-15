@@ -466,8 +466,13 @@ Parameter ACCESSDENIEDCODES = "5838,5883,302";
 
 /// <p>The vendor's message numbers for the source-control edit check of a save: not editable (#5845), not
 /// checked out (#5865) and read-only by source control (#6151). A source-control hook's own
-/// <code>OnBeforeSave</code> error is not among them: the vendor wraps it in #16008 (AD-61 rule 6).</p>
+/// <code>OnBeforeSave</code> error is never read as one of them, whatever it names: the vendor wraps it in
+/// <parameter>SAVEERRORCODE</parameter> (AD-61 rule 6).</p>
 Parameter SOURCECONTROLCODES = "5845,5865,6151";
+
+/// <p>The vendor's message number wrapping an error the save itself raised, a source-control hook's own
+/// <code>OnBeforeSave</code> error among them, with the wrapped error's text kept.</p>
+Parameter SAVEERRORCODE = 16008;
 
 /// <p>The vendor's message number for a document another process holds.</p>
 Parameter LOCKEDCODE = 5864;
@@ -847,8 +852,9 @@ ClassMethod MinVersion(pEndpoint As %String, pType As %String = {..#REQUESTTYPE}
 /// 404 <code>PORT.NOTFOUND</code>; 404 <code>EXPLORER.DOCUMENT.ABSENT</code> for a write naming a
 /// document the namespace does not hold, with nothing sent; a file's own refusals
 /// (<method>ExportFile</method>, <method>ImportSource</method>, <method>ImportSet</method>); a save's
-/// own (<method>SaveSet</method>), among them 409 <code>EXPLORER.DOCUMENT.SOURCECONTROL</code> for a document
-/// the source-control class has not released for editing; 403
+/// own (<method>SaveSet</method>), among them, as for a UDL import's put, 409
+/// <code>EXPLORER.DOCUMENT.SOURCECONTROL</code> for a document the source-control class has not released for
+/// editing; 403
 /// <code>PORT.ACCESSDENIED</code> for
 /// the vendor's own privilege refusal; 503 <code>PORT.UNAVAILABLE</code> for an answer above
 /// <parameter>CAPTURECEILING</parameter>; and 500 <code>INTERNAL</code> for anything else.</p>
@@ -2398,7 +2404,10 @@ ClassMethod Preview(pVersion As %Integer, pNamespace As %String, ByRef pQuery, O
 /// <p><code>imported</code> names each document loaded as the vendor spells it, <code>lines</code> is
 /// the vendor's console, and <code>errors</code> is true when the compile or the save reported an error
 /// or the file carries a <code>status</code>. None of those is a fault: a file's <code>status</code> and
-/// a save's error are logged, and never sent (AD-39, AD-61 rule 6).</p>
+/// a save's error are logged, and never sent (AD-39, AD-61 rule 6). A put the vendor answers 400 refuses the whole
+/// import, a document the source-control class has not released for editing as 409
+/// <code>EXPLORER.DOCUMENT.SOURCECONTROL</code> (<method>Outcome</method>); the put and the compile run the class's save
+/// and compile hooks in this process, as the caller (AD-61 rule 8).</p>
 ClassMethod ImportSet(pVersion As %Integer, pNamespace As %String, ByRef pQuery, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
     Set tSC = $$$OK
@@ -3136,8 +3145,8 @@ ClassMethod Route(pVersion As %Integer, pNamespace As %String, pMethod As %Strin
 /// <code>EXPLORER.DOCUMENT.CONFLICT</code>, and 423, a document another process holds, is 409
 /// <code>EXPLORER.DOCUMENT.LOCKED</code>, neither logged as a fault and neither carrying the vendor's
 /// text, the lock's text going to the log at information severity (<method>LogNote</method>); a 400 or,
-/// without <var>pSoft</var>, a 2xx answer that is no access refusal and whose text names one of
-/// <parameter>SOURCECONTROLCODES</parameter>, the source-control edit check, is 409
+/// without <var>pSoft</var>, a 2xx answer that is no access refusal and that is the source-control edit
+/// check's refusal (<method>EditCheckRefused</method>) is 409
 /// <code>EXPLORER.DOCUMENT.SOURCECONTROL</code>, its text logged the same way, and any other 400 is
 /// <code>PORT.VALIDATION</code>; and, without <var>pSoft</var>, any other error under a 2xx status is 422
 /// <code>EXPLORER.SAVE.REFUSED</code>, logged.</p>
@@ -3195,7 +3204,7 @@ ClassMethod Outcome(pMethod As %String, pCallSC As %Status, pHttp As %Integer, p
             Do ..LogNote(pMethod _ " found the document held by another process", tRawSC, pFault.code)
             Quit tSC
         }
-        If (pMethod = "PutDoc") && (pHttp = 400) && ..NamesCode(tCodes, tRaw, ..#SOURCECONTROLCODES) {
+        If (pMethod = "PutDoc") && (pHttp = 400) && ..EditCheckRefused(tCodes, tRaw) {
             Set tSC = ..Refuse(409, ##class(OcuPilot.Api.Error).#CONFLICT, ##class(OcuPilot.Api.AtelierError).#DOCUMENTSOURCECONTROL, ##class(OcuPilot.Api.AtelierError).#REASONDOCUMENTSOURCECONTROL, .pHttpStatus, .pFault)
             Do ..LogNote(pMethod _ " found the document not released for editing by source control", tRawSC, pFault.code)
             Quit tSC
@@ -3224,7 +3233,7 @@ ClassMethod Outcome(pMethod As %String, pCallSC As %Status, pHttp As %Integer, p
             Do ..LogFault(pMethod _ " was refused", tRawSC, pFault.code)
             Quit tSC
         }
-        If (pMethod = "PutDoc") && ..NamesCode(tCodes, tRaw, ..#SOURCECONTROLCODES) {
+        If (pMethod = "PutDoc") && ..EditCheckRefused(tCodes, tRaw) {
             Set tSC = ..Refuse(409, ##class(OcuPilot.Api.Error).#CONFLICT, ##class(OcuPilot.Api.AtelierError).#DOCUMENTSOURCECONTROL, ##class(OcuPilot.Api.AtelierError).#REASONDOCUMENTSOURCECONTROL, .pHttpStatus, .pFault)
             Do ..LogNote(pMethod _ " found the document not released for editing by source control", tRawSC, pFault.code)
             Quit tSC
@@ -3275,6 +3284,14 @@ ClassMethod NamesCode(pCodes As %List, pRaw As %String, pList As %String) As %Bo
         }
     }
     Quit tFound
+}
+
+/// <p>Whether a <code>PutDoc</code> answer is the source-control edit check's refusal: it names one of
+/// <parameter>SOURCECONTROLCODES</parameter> and not <parameter>SAVEERRORCODE</parameter>, under which a hook's own
+/// error arrives (AD-61 rule 6).</p>
+ClassMethod EditCheckRefused(pCodes As %List, pRaw As %String) As %Boolean [ Private ]
+{
+    Quit ..NamesCode(pCodes, pRaw, ..#SOURCECONTROLCODES) && '..NamesCode(pCodes, pRaw, ..#SAVEERRORCODE)
 }
 
 /// <p>Send a raw status to the log, and nowhere else (AD-39). Overridable so a fixture can capture
