@@ -411,3 +411,4 @@ spawn_at=2026-10-06T16:01:05Z	Story 23.4	cr_complete	batch=b 2026-10-06T20:34:58
 2026-10-15T06:39:30Z	Story 23.5	ci_resolved	story=23.5 batch=b run=38688234353 head=4b3e5f13 result=failure resolved_at=after_cr
 2026-10-15T06:39:30Z	Story 23.5	ci_red_classified	run=38688234353 class=story test=preferences-integration.browser-spec.mjs:DW-1329(recents_before_sign-out) cause=DW-1341_guard_drops_a_bootstrap_arrival_while_session_probing(deep-link_visit_lost) first_red=dbade405
 2026-10-15T06:39:30Z	Story 23.5	rework_opened	cycle_iteration=3 iteration=1(batch_b) trigger=ci items=CI:recents_pending_visit(DW-1341,DW-1329_leg) scope_baseline=pending(after_rework_commit) spec=status_in-progress,one_[CI]_item
+2026-10-15T06:40:42Z	Story 23.5	stage_spawned	stage=implement batch=b spawn_at=2026-10-15T06:40:42Z model=sonnet agent_name=23-5-the-range-end-cleanup-part-5-implement-b-rework-1 cycle_iteration=3 rework=ci
