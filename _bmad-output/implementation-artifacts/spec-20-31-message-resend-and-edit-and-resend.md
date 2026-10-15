@@ -2,7 +2,7 @@
 title: 'Story 20.31: Message resend and edit-and-resend'
 type: 'feature'
 created: '2026-10-13'
-status: 'done'
+status: 'in-progress'
 baseline_revision: 'b52c8926189c91b25c5739cf7828616434a1290d'
 baseline_commit: 'b52c8926189c91b25c5739cf7828616434a1290d'
 review_loop_iteration: 0
@@ -613,11 +613,16 @@ Rework 2 (the runner's Rule 30 fresh check and full sweep on a rebuilt throwaway
 - The sweep may name the database pair rather than a screen pair for the stock kinds: false. The sweep pins a named refusal for every route outside the roster, and `InteropResendGate` pins the screen pair per principal.
 - The work order's sub-bullets first appear in the rework commit: false. No bad outcome.
 
+Rework 3 (CI run 38772231768 on 45f97556):
+
+- [ ] [CI] instance shards 5/8 and 6/8, browser shards 1/5 and 2/5 and both `images` jobs failed at the container's compile: `LOAD-FAILED: ERROR #5002 <CLASS DOES NOT EXIST>pBODYCLASS+1^OcuPilot.Test.InteropEditResend.G1 *OcuPilot.Test.InteropResendFixture` (ERROR #5574, the generator for `InteropEditResend:BODYCLASS` and `:OWNBODYCLASS`) [src/OcuPilot/Test/InteropEditResend.cls:12,26,28] -- the two parameters are compile-time expressions on `InteropResendFixture`, and a fresh compile does not always build the fixture first (the other shards and the local throwaway happened to). Declare the dependency on the class (`[ DependsOn = OcuPilot.Test.InteropResendFixture ]`, as `Test/DraftLoser.cls` does for its `{##class(...)}` parameters, with a one-line doc note saying why), search `src/OcuPilot` for every other parameter whose value is a `{...}` expression naming another project class and add the same `DependsOn` where it is missing, and prove it: compile `src/OcuPilot` into a namespace where `InteropResendFixture` does not yet exist (or delete the fixture's compiled class first) and show the old declaration fails and the new one compiles. The `gates (node 26.0.0)` red in the same run is `log-viewer.spec.ts` AC6 (DW-2458, routed to Story 23.11): do not touch that test.
+
 ## Spec Change Log
 
 - 2026-10-14, spec gate (runner): Q1 is answered as recommended (one story: no split, so nothing is deferred), and Q2's named limits are accepted (a new target, head of queue, resend of every match, and editing X12, EDIFACT or ASTM bodies are out of scope; the criterion's double gate and cap hold for what ships). Both keys ship `false`, as the orchestrator's 2026-10-13 guidance and AD-22 direct. The Rule 20 drafts are written (AD-62 item 17, AD-53, AD-51, AD-8, AD-44, AD-13, AD-22).
 - 2026-10-15: re-opened for rework iteration 1 (code review's one HIGH, the long-set proposal target; lead ruling (b) under Review Findings).
 - 2026-10-15: re-opened for rework iteration 2 (the runner's fresh check and full sweep: two [Smoke] items under Review Findings).
+- 2026-10-15: re-opened for rework iteration 3 of 3 (a CI story red: the container compile order; one [CI] item under Review Findings).
 
 ## Review Triage Log
 
