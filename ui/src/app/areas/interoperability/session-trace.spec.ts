@@ -64,13 +64,15 @@ describe('traceModel', () => {
     ]);
   });
 
-  // Mutation (Rule 19): keep the rows in the order they were given -> the order leg goes red.
+  // Mutation (Rule 19): keep the rows in the order they were given -> the order leg goes red; take a non-numeric `Step` as it is in
+  // place of its place in the answer -> the ragged step leg goes red.
   it('puts the arrows in Step order whatever order the rows come in, and a row with no numeric Step keeps its place', () => {
     const model = traceModel([row(3, 'c', 'a'), row(1, 'a', 'b'), row(2, 'b', 'c')]);
     expect(model.arrows.map((arrow) => arrow.step)).toEqual([1, 2, 3]);
     expect(model.participants).toEqual(['a', 'b', 'c']);
     const ragged = traceModel([row(1, 'a', 'b'), row(2, 'b', 'a', { Step: 'two' })]);
     expect(ragged.arrows.map((arrow) => arrow.id)).toEqual(['11', '12']);
+    expect(ragged.arrows.map((arrow) => arrow.step)).toEqual([1, 2]);
   });
 
   it('is a call a participant makes to itself when the source equals the target, with one participant', () => {
@@ -127,6 +129,7 @@ describe('traceModel', () => {
     expect(labels.map((arrow) => arrow.error)).toEqual([false, false, false, true, true, false]);
   });
 
+  // Mutation (Rule 19): cut the head by UTF-16 code unit in place of by character -> the astral leg goes red (a lone surrogate).
   it('cuts a participant\'s head at 24 characters with an ellipsis and keeps its whole name for the title', () => {
     const exact = 'a'.repeat(HEAD_CHARACTERS);
     const long = `${exact}b`;
@@ -134,6 +137,8 @@ describe('traceModel', () => {
     expect(headText(long)).toBe(`${'a'.repeat(HEAD_CHARACTERS - 1)}\u2026`);
     expect(headText(long)).toHaveLength(HEAD_CHARACTERS);
     expect(participantName(long)).toBe(long);
+    const astral = `${'a'.repeat(HEAD_CHARACTERS - 2)}\u{1F600}tail`;
+    expect(headText(astral)).toBe(`${'a'.repeat(HEAD_CHARACTERS - 2)}\u{1F600}\u2026`);
   });
 });
 
@@ -227,7 +232,8 @@ describe('traceLayout', () => {
     expect(layout.lifelineEnd).toBeLessThanOrEqual(layout.height);
   });
 
-  // Mutation (Rule 19): point every arrow rightward -> the leftward leg goes red.
+  // Mutation (Rule 19): point every arrow rightward -> the leftward leg goes red; end a loop's path at its lifeline in place of the
+  // base of its arrowhead -> the loop leg goes red.
   it('draws an arrow toward its target, a line to the left for a call back, and a loop with no line for a self call', () => {
     const layout = traceLayout(traceModel([row(1, 'a', 'b'), row(2, 'b', 'a'), row(3, 'a', 'a')]));
     const [forward, back, self] = layout.arrows;
@@ -239,8 +245,19 @@ describe('traceLayout', () => {
     expect(back.line !== null && back.line.x2 > tip(back.head)).toBe(true);
     expect(self.line).toBeNull();
     expect(self.loop).toMatch(/^M /);
+    // The loop runs back to the base of its arrowhead, not under the head.
+    const base = (head: string): number => Number(/^M \S+ \S+ L (\S+) /.exec(head)?.[1]);
+    expect(Number(/ H (\S+)$/.exec(self.loop)?.[1])).toBe(base(self.head));
     expect(self.labelAnchor).toBe('start');
     expect(forward.head.startsWith('M ')).toBe(true);
+  });
+
+  // Mutation (Rule 19): size the diagram by its columns alone -> the last column's self-call label runs past the width and this goes red.
+  it('makes room for a self call\'s label on the last column', () => {
+    const layout = traceLayout(traceModel([row(1, 'a', 'b'), row(2, 'b', 'b', { BodyClass: 'Ens.StringRequest' })]));
+    const self = layout.arrows[1];
+    expect(self.line).toBeNull();
+    expect(layout.width).toBeGreaterThanOrEqual(self.labelX + self.arrow.label.length * 7);
   });
 
   it('widens the ID gutter for a longer id', () => {

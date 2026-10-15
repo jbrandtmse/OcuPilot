@@ -3512,8 +3512,8 @@ Parameter TRACESQL = "SELECT TOP ? ID, TimeCreated, %EXTERNAL(Status), SourceCon
 /// <code>ID</code> order, at most <var>pMax</var> (<parameter>SQLMAX</parameter> when that is not above zero) of them, as
 /// <method>MessageRow</method> builds a search row, with <code>Message</code> (<var>pId</var>) and <code>Step</code> (1 to n in
 /// <code>ID</code> order, a JSON number) added. A header that is gone, or one saved with no session, reads as no rows (AD-37); the
-/// id's shape is judged by the caller. Every value is bound. The trace reads no event, rule or I/O log entry and does not follow
-/// <code>SuperSession</code>: the classic Visual Trace shows those and this read does not.</p>
+/// id's shape is judged by the caller. Every value is bound. The trace reads no event, rule or I/O log entry, which the classic
+/// Visual Trace adds, and, like the classic page, does not follow <code>SuperSession</code>.</p>
 ClassMethod ListMessageTrace(pNamespace As %String, pId As %String, pMax As %Integer, Output pRows As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
     Set pRows = ""

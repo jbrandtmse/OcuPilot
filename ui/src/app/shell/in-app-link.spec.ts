@@ -37,8 +37,8 @@ describe('followInAppLink', () => {
   });
 
   // Mutation (Rule 19): drop `event.ctrlKey ||` from the guard -> the Ctrl leg goes red, and likewise for each other term.
-  it('leaves a Ctrl, Meta or Shift click, and a click of another button, to the browser', () => {
-    for (const init of [{ ctrlKey: true }, { metaKey: true }, { shiftKey: true }, { button: 1 }, { button: 2 }]) {
+  it('leaves a Ctrl, Meta, Shift or Alt click, and a click of another button, to the browser', () => {
+    for (const init of [{ ctrlKey: true }, { metaKey: true }, { shiftKey: true }, { altKey: true }, { button: 1 }, { button: 2 }]) {
       const result = follow(init);
       expect(result.urls, JSON.stringify(init)).toEqual([]);
       expect(result.prevented, JSON.stringify(init)).toBe(false);

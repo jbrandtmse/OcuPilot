@@ -13,7 +13,8 @@
  *
  * **It compiles, starts and writes a probe production in `USER`** through `OcuPilot.Test.ProductionProbe` and
  * `OcuPilot.Test.InteropTestFixture`, so it runs on a throwaway only; the `after` hook stops and removes the production, its
- * classes, its messages and its saved requests, whatever the tests answered.
+ * classes, its messages and its saved requests, whatever the tests answered, and the trace test (Story 20.30) removes the session it
+ * caused as soon as it has read it (`OcuPilot.Test.InteropMessageTrace.ClearSession`) and checks that none of its headers is left.
  *
  * Run: `OCUPILOT_BROWSER_ORIGIN=<origin> OCUPILOT_BROWSER_CONTAINER=<container> \
  *   node --test --test-concurrency=1 browser/interop-item-test.browser-spec.mjs` (after `npm run build` and the bundle copied into
@@ -36,6 +37,7 @@ const config = browserConfig();
 const STRINGS = loadStrings();
 const PROBE = 'OcuPilot.Test.ProductionProbe';
 const FIXTURE = 'OcuPilot.Test.InteropTestFixture';
+const TRACE_FIXTURE = 'OcuPilot.Test.InteropMessageTrace';
 const PRODUCTION = 'OcuPilotProbe.Interop.Production';
 const ECHO = 'OcuPilotProbeEchoOp';
 const SERVICE = 'OcuPilotProbeSvc';
@@ -217,9 +219,12 @@ test('AC2, AC8: Send test sends the request built from the typed fields and show
 });
 
 // AC3 (Story 20.30, Integration). Mutation (Rule 19): build the dialog's link from `responseClass` in place of `sessionId` -> the path wait
-// goes red; point the link at `messages/document` -> the path wait goes red; drop `data-interop-test-trace` -> the link wait goes red.
+// goes red; point the link at `messages/document` -> the path wait goes red; drop `data-interop-test-trace` -> the link wait goes red;
+// skip the `ClearSession` call -> the last assertion goes red.
 test('AC3 (Story 20.30): a sent test\'s answer links to its session\'s trace, whose first arrow runs from the testing service to the testing process', async () => {
   const { context, page } = await signedInAt(browser, config, PRODUCTIONS_URL, VIEWPORTS.wide, REDUCED_MOTION);
+  let sessionId = '';
+  let left = null;
   try {
     await openTestTab(page);
     await openDialog(page);
@@ -229,7 +234,7 @@ test('AC3 (Story 20.30): a sent test\'s answer links to its session\'s trace, wh
     await (await page.waitForSelector('[role="dialog"] [data-interop-test-send]', { visible: true })).click();
     await page.waitForSelector('[role="dialog"] [data-interop-test-result] [data-interop-test-trace]', { timeout: config.navigationTimeoutMs });
     const status = await page.$eval('[data-interop-test-status]', (node) => node.textContent?.trim() ?? '');
-    const sessionId = /session (\d+) /.exec(status)?.[1] ?? '';
+    sessionId = /session (\d+)\b/.exec(status)?.[1] ?? '';
     assert.match(sessionId, /^[1-9]\d*$/, `the status sentence names the session: ${status}`);
     assert.equal(await page.$eval('[data-interop-test-trace]', (node) => node.textContent?.trim() ?? ''), STRINGS.interopTestTraceLink, 'the link reads "Open this session\'s trace"');
     await page.click('[data-interop-test-trace]');
@@ -248,7 +253,9 @@ test('AC3 (Story 20.30): a sent test\'s answer links to its session\'s trace, wh
     assert.deepEqual(drawn.heads.slice(0, 3), ['EnsLib.Testing.Service', 'EnsLib.Testing.Process', ECHO], 'the first three heads are the service, the process and the echo operation');
   } finally {
     await context.close();
+    if (/^[1-9]\d*$/.test(sessionId)) left = probe('ITSESSION', `##class(${TRACE_FIXTURE}).ClearSession("USER","${sessionId}")`).value;
   }
+  assert.equal(left, '0', `the headers of the session the send caused are removed: ${left}`);
 });
 
 // AC2, AD-35. Mutation (Rule 19): drop `disabled` from the credential field -> the first assertion goes red.

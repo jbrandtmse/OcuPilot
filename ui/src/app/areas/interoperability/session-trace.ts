@@ -94,10 +94,11 @@ export function participantName(name: string): string {
 /** The most characters of a participant's name its head draws; a longer one ends with an ellipsis, and its `<title>` holds it whole. */
 export const HEAD_CHARACTERS = 24;
 
-/** A participant's name as its head draws it. */
+/** A participant's name as its head draws it, counted and cut by character, so a surrogate pair is never split. */
 export function headText(name: string): string {
   const shown = participantName(name);
-  return shown.length > HEAD_CHARACTERS ? `${shown.slice(0, HEAD_CHARACTERS - 1)}\u2026` : shown;
+  const characters = Array.from(shown);
+  return characters.length > HEAD_CHARACTERS ? `${characters.slice(0, HEAD_CHARACTERS - 1).join('')}\u2026` : shown;
 }
 
 /** One arrow's accessible name: its message, type, participants and status. */
@@ -124,6 +125,8 @@ const TOP = 8;
 const BOTTOM = 12;
 const ARROWHEAD = 8;
 const LOOP_WIDTH = 36;
+/** An upper estimate of one caption character's width, which a self call's label is given room by (as the ID gutter's 8 is). */
+const LABEL_CHARACTER = 7;
 
 /** One participant's head and lifeline. */
 export interface DrawnHead {
@@ -171,7 +174,10 @@ function arrowheadPath(x: number, y: number, direction: number): string {
   return `M ${x} ${y} L ${back} ${y - 4} L ${back} ${y + 4} Z`;
 }
 
-/** The geometry of `model`: columns in participant order, one band to an arrow, an `ID` gutter as wide as its longest `ID`. */
+/**
+ * The geometry of `model`: columns in participant order, one band to an arrow, an `ID` gutter as wide as its longest `ID`, and room
+ * to the right for a self call's label, which starts past its loop.
+ */
 export function traceLayout(model: TraceModel): TraceLayout {
   const longestId = model.arrows.reduce((longest, arrow) => Math.max(longest, arrow.id.length), 0);
   const gutter = Math.max(48, 20 + longestId * 8);
@@ -215,8 +221,12 @@ export function traceLayout(model: TraceModel): TraceLayout {
       idY: y + 4,
     };
   });
+  const selfCallEnd = arrows.reduce(
+    (end, drawn) => (drawn.line === null ? Math.max(end, drawn.labelX + drawn.arrow.label.length * LABEL_CHARACTER + 8) : end),
+    0
+  );
   return {
-    width: gutter + columns * COLUMN_WIDTH + 8,
+    width: Math.max(gutter + columns * COLUMN_WIDTH + 8, selfCallEnd),
     height,
     gutter,
     heads,

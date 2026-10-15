@@ -66,6 +66,7 @@ import {
   viewKeys as viewKeysOf,
 } from '../core/table-model';
 import { followInAppLink } from './in-app-link';
+import { ReadRefusal, ReadSkeleton } from './read-state-blocks';
 
 /**
  * How the table resolves a descriptor's string keys. `stringFor` everywhere but a spec, which
@@ -214,28 +215,17 @@ interface CellTooltip {
 @Component({
   selector: 'app-data-table',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CdkVirtualScrollViewport, CdkFixedSizeVirtualScroll, CdkVirtualForOf],
+  imports: [CdkVirtualScrollViewport, CdkFixedSizeVirtualScroll, CdkVirtualForOf, ReadSkeleton, ReadRefusal],
   host: { '(window:resize)': 'onWindowResize()' },
   template: `<div class="ocu-data-table-frame" [attr.aria-busy]="busy">
       <span class="ocu-visually-hidden ocu-data-table-announcement" role="status">{{
         announcementText
       }}</span>
       @if (showSkeleton) {
-        <div class="ocu-data-table-skeleton" aria-hidden="true">
-          @for (bar of skeletonRows; track bar) {
-            <div class="ocu-data-table-skeleton-row">
-              <span class="ocu-skeleton-bar ocu-skeleton-bar-40"></span>
-              <span class="ocu-skeleton-bar ocu-skeleton-bar-25"></span>
-              <span class="ocu-skeleton-bar ocu-skeleton-bar-15"></span>
-            </div>
-          }
-        </div>
+        <app-read-skeleton />
       }
       @if (showRefusal) {
-        <div class="ocu-data-table-refusal" role="alert">
-          <span class="ocu-data-table-refusal-message">{{ STRINGS.connectivityRequestRefused }}</span>
-          <button type="button" class="ocu-button-text" (click)="onRetry()">{{ STRINGS.actionRetry }}</button>
-        </div>
+        <app-read-refusal (retry)="onRetry()" />
       }
       @if (showEmpty) {
         <section #empty class="ocu-empty-state ocu-data-table-empty" tabindex="-1">
@@ -534,7 +524,6 @@ export class DataTable implements OnInit {
   protected readonly rowHeight = ROW_HEIGHT_PX;
   protected readonly minBufferPx = MIN_BUFFER_PX;
   protected readonly maxBufferPx = MAX_BUFFER_PX;
-  protected readonly skeletonRows = [0, 1, 2, 3, 4, 5];
 
   /** The vertical ellipsis the row-overflow trigger draws, as an escape (Rule 14). */
   protected readonly menuGlyph = '\u22ee';

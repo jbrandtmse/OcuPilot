@@ -215,6 +215,21 @@ describe('the message Trace block', () => {
     expect(page.block('empty')).toBeNull();
   });
 
+  // Mutation (Rule 19): drop the `store().data().length > 0` term from `showNoMatch` -> the faulted re-read draws "No matches." and
+  // this goes red.
+  it('says nothing of matches when a re-read of an empty answer faults, since no filter left anything out', async () => {
+    const page = await mount();
+    page.answer([]);
+    page.refresh.failure = { kind: 'unreachable', status: 0, code: null, path: '/screens/x/read' };
+    page.redraw();
+    expect(page.block('nomatch')).toBeNull();
+    expect(page.block('diagram')).toBeNull();
+    page.refresh.failure = { kind: 'refused', status: 403, code: null, path: '/screens/x/read' };
+    page.redraw();
+    expect(page.block('fault')).not.toBeNull();
+    expect(page.block('nomatch')).toBeNull();
+  });
+
   // Mutation (Rule 19): register a row's target before its source in `traceModel` -> the head order goes red.
   it('draws a head and a lifeline for each participant in first-appearance order, each head titled with the whole name', async () => {
     const page = await mount();
@@ -263,7 +278,8 @@ describe('the message Trace block', () => {
     for (const link of [self, error]) expect(link.querySelector('path.ocu-trace-mark')?.getAttribute('d') ?? '').toMatch(/^M .* Z$/);
   });
 
-  // Mutation (Rule 19): build the href from `messages/trace` in place of `messages/document` -> the href leg goes red.
+  // Mutation (Rule 19): build the href from `messages/trace` in place of `messages/document` -> the href leg goes red; let
+  // `followInAppLink` navigate a Shift click while leaving the browser's default -> the Shift leg's URL read goes red.
   it('links each arrow to its message\'s Header tab in the namespace on screen, and follows it in the app on a plain click only', async () => {
     const page = await mount();
     page.answer(SESSION);
@@ -275,12 +291,11 @@ describe('the message Trace block', () => {
       '/ocupilot/interoperability/messages/document/14?ns=HSCUSTOM',
     ]);
 
-    expect(page.click(second, { ctrlKey: true })).toBe(true);
-    await TestBed.inject(Router).navigateByUrl(TRACE_URL);
-    expect(page.router.url).toBe(TRACE_URL);
-    expect(page.click(second, { shiftKey: true })).toBe(true);
-    expect(page.click(second, { button: 1 })).toBe(true);
-    expect(page.router.url).toBe(TRACE_URL);
+    for (const init of [{ ctrlKey: true }, { metaKey: true }, { shiftKey: true }, { altKey: true }, { button: 1 }]) {
+      expect(page.click(second, init), JSON.stringify(init)).toBe(true);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(page.router.url, JSON.stringify(init)).toBe(TRACE_URL);
+    }
 
     expect(page.click(second)).toBe(false);
     await new Promise((resolve) => setTimeout(resolve, 0));

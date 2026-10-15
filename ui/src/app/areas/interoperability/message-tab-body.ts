@@ -30,7 +30,6 @@ export abstract class MessageTabBody implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
 
   protected readonly STRINGS = STRINGS;
-  protected readonly skeletonRows = [0, 1, 2, 3, 4, 5];
 
   /** Bumped by the store and the framework, so the block re-renders under `OnPush`. */
   protected readonly generation = signal(0);

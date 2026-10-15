@@ -23,6 +23,16 @@ Parameter FIXTURE = "OcuPilot.Test.InteropFloorFixture";
 /// Monitor, Operator and Administrator roles.</p>
 Parameter KINDS = "portal,monitor,operator,administrator";
 
+/// <p>The account <method>TestAHolderOfTheHeaderPairWithoutTheTracePairIsRefusedTheTrace</method> makes and removes itself: it holds
+/// <parameter>NOTRACEROLE</parameter> beside the code database's READ.</p>
+Parameter NOTRACEUSER = "OcuPilotProbeInteropNoTraceUser";
+
+/// <p>The role <parameter>NOTRACEUSER</parameter> holds, and what it grants: the Interoperability menu's pair and the message
+/// header's, and not the Visual Trace's.</p>
+Parameter NOTRACEROLE = "OcuPilotProbeInteropNoTraceRole";
+
+Parameter NOTRACEGRANTS = "%Ens_Portal:U,%Ens_MessageHeader:U";
+
 /// <p>The package the screens below are declared in.</p>
 Parameter DESCRIPTORPACKAGE = "OcuPilot.Screen.Descriptor.";
 
@@ -159,8 +169,14 @@ ClassMethod Held(pComposed As %DynamicObject, pResource As %String, pPermission 
 /// <p>One request as kind <var>pKind</var>; <var>pObject</var> is the parsed body, or <code>""</code>.</p>
 Method Request(pMethod As %String, pPath As %String, pKind As %String, Output pStatus As %Integer, Output pObject, Output pText As %String) As %Status
 {
+    Quit ..RequestAs(pMethod, pPath, $ClassMethod(..#FIXTURE, "UserOf", pKind), ..PreparedPassword, .pStatus, .pObject, .pText)
+}
+
+/// <p>One request as the account <var>pUser</var> with <var>pPassword</var>; <var>pObject</var> is the parsed body, or <code>""</code>.</p>
+Method RequestAs(pMethod As %String, pPath As %String, pUser As %String, pPassword As %String, Output pStatus As %Integer, Output pObject, Output pText As %String) As %Status
+{
     Set pObject = ""
-    Set tSC = $ClassMethod(..#FIXTURE, "Call", pMethod, pPath, $ClassMethod(..#FIXTURE, "UserOf", pKind), ..PreparedPassword, .pStatus, .pText, .tHeaders)
+    Set tSC = $ClassMethod(..#FIXTURE, "Call", pMethod, pPath, pUser, pPassword, .pStatus, .pText, .tHeaders)
     Try {
         If $Get(pText) '= "" Set pObject = ##class(%DynamicAbstractObject).%FromJSON(pText)
     } Catch {
@@ -173,10 +189,17 @@ Method Request(pMethod As %String, pPath As %String, pKind As %String, Output pS
 /// short name) each <code>$ListBuild(allowed, failedPair, area)</code>.</p>
 Method Navigation(pKind As %String, Output pAreas, Output pScreens) As %Status
 {
+    Quit ..NavigationAs($ClassMethod(..#FIXTURE, "UserOf", pKind), ..PreparedPassword, pKind, .pAreas, .pScreens)
+}
+
+/// <p>The navigation map of the account <var>pUser</var> with <var>pPassword</var>, named <var>pLabel</var> in a failure, in
+/// <method>Navigation</method>'s shape.</p>
+Method NavigationAs(pUser As %String, pPassword As %String, pLabel As %String, Output pAreas, Output pScreens) As %Status
+{
     Kill pAreas, pScreens
-    Set tSC = ..Request("GET", "/navigation", pKind, .tStatus, .tMap, .tText)
+    Set tSC = ..RequestAs("GET", "/navigation", pUser, pPassword, .tStatus, .tMap, .tText)
     If $$$ISERR(tSC) Quit tSC
-    If (tStatus '= 200) || '$IsObject(tMap) Quit $$$ERROR($$$GeneralError, pKind _ ": the navigation map answered " _ tStatus _ ": " _ $Extract(tText, 1, 300))
+    If (tStatus '= 200) || '$IsObject(tMap) Quit $$$ERROR($$$GeneralError, pLabel _ ": the navigation map answered " _ tStatus _ ": " _ $Extract(tText, 1, 300))
     Set tAreas = tMap.areas.%GetIterator()
     While tAreas.%GetNext(.tIndex, .tArea) {
         Set pAreas(tArea.key) = $ListBuild(''tArea.allowed, tArea.%Get("failedPair"), tArea.key)
@@ -188,6 +211,53 @@ Method Navigation(pKind As %String, Output pAreas, Output pScreens) As %Status
         }
     }
     Quit $$$OK
+}
+
+/// <p>Create <parameter>NOTRACEUSER</parameter> with <var>pPassword</var>, replacing any account of that name: it holds
+/// <parameter>NOTRACEROLE</parameter> and the code role <class>OcuPilot.Test.InteropFloorFixture</class> made. Answers its name in
+/// <var>pUser</var>. Refuses, creating nothing, unless <parameter>ARMINGVARIABLE</parameter> is armed.</p>
+ClassMethod MakeNoTracePrincipal(pPassword As %String, Output pUser As %String) As %Status
+{
+    Set pUser = ""
+    If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 Quit $$$ERROR($$$GeneralError, "OcuPilot.Test.InteropFloor creates IRIS users and roles on a throwaway container only. " _ ..#ARMINGVARIABLE _ " does not read 1 here, so nothing was created.")
+    Set tSC = $ClassMethod("OcuPilot.Test.DeveloperFloorFixture", "ResetRole", ..#NOTRACEROLE, ..#NOTRACEGRANTS)
+    If $$$ISERR(tSC) Quit tSC
+    Set tRoles = $Parameter(..#FIXTURE, "CODEROLE") _ "," _ ..#NOTRACEROLE
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        If ##class(Security.Users).Exists(..#NOTRACEUSER, .tU, .tUS) {
+            Set tSC = ##class(Security.Users).Delete(..#NOTRACEUSER)
+            If $$$ISERR(tSC) Quit
+        }
+        Set tSC = ##class(Security.Users).Create(..#NOTRACEUSER, tRoles, pPassword, "OcuPilot interoperability floor test principal without the trace pair (throwaway)", "", "", "", 0, 1, "Created by OcuPilot.Test.InteropFloor")
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Set $NAMESPACE = tOrigNS
+    If $$$ISOK(tSC) Set pUser = ..#NOTRACEUSER
+    Quit tSC
+}
+
+/// <p>Delete <parameter>NOTRACEUSER</parameter> and <parameter>NOTRACEROLE</parameter>, and answer what survives, <code>""</code> when
+/// nothing does.</p>
+ClassMethod RemoveNoTracePrincipal() As %String
+{
+    Set tLeft = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        If ##class(Security.Users).Exists(..#NOTRACEUSER, .tU, .tUS) Do ##class(Security.Users).Delete(..#NOTRACEUSER)
+        If ##class(Security.Users).Exists(..#NOTRACEUSER, .tU2, .tUS2) Set tLeft = tLeft _ " user " _ ..#NOTRACEUSER
+        If ##class(Security.Roles).Exists(..#NOTRACEROLE, .tR, .tRS) Do ##class(Security.Roles).Delete(..#NOTRACEROLE)
+        If ##class(Security.Roles).Exists(..#NOTRACEROLE, .tR2, .tRS2) Set tLeft = tLeft _ " role " _ ..#NOTRACEROLE
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tLeft = tLeft _ " (" _ ex.DisplayString() _ ")"
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tLeft
 }
 
 /// <p>The failed pair of a refused read: <code>code|pair</code>.</p>
@@ -279,6 +349,48 @@ Method TestTheInteroperabilityReadsFollowTheirOwnPairs()
     Do $$$AssertEquals(..Refusal(tObject, tStatus), "403|AUTH.NOPRIVILEGE|%Ens_MessageHeader:USE", "the %Ens_Portal holder is refused a message's Trace, naming the message header resource: " _ $Extract(tText, 1, 200))
     Do ..Request("GET", "/screens/interop.messagetrace/read?ns=" _ tNs _ "&message=1", "operator", .tStatus, .tObject, .tText)
     Do $$$AssertEquals(tStatus, 200, "the Operator reads a message's Trace: " _ $Extract(tText, 1, 200))
+}
+
+/// <p><b>The trace pair beside the header pair (Story 20.30).</b> No stock role holds <code>%Ens_MessageHeader:USE</code> without
+/// <code>%Ens_MessageTrace:USE</code>, so the test makes an account that does (<parameter>NOTRACEROLE</parameter>, with the code
+/// database's READ) and removes it after. Its grants are read back, it reads Messages and a message's Header tab, it is refused a
+/// message's Trace 403 <code>AUTH.NOPRIVILEGE</code> naming <code>%Ens_MessageTrace:USE</code>, and the navigation map lists the
+/// Trace tab unavailable naming that pair beside the available Messages and Header tab.</p>
+/// <p>Mutation: drop <code>%Ens_MessageTrace:USE</code> from <class>OcuPilot.Screen.Descriptor.InteropMessageTraceTab</class>'s
+/// <code>privileges</code> and <code>ownPrivileges</code> -> the map lists the Trace tab available and the navigation leg goes red; from
+/// the descriptor and from <method>OcuPilot.Port.InteropPort.Pairs</method> both -> the read is answered 200 and the refusal leg goes
+/// red.</p>
+Method TestAHolderOfTheHeaderPairWithoutTheTracePairIsRefusedTheTrace()
+{
+    Do $$$AssertTrue(..PreparedSetupOk, "setup read back the principals' grants")
+    Set tNs = ##class(OcuPilot.Install.Installer).ResolveNamespace()
+    Set tPassword = $ClassMethod(..#FIXTURE, "NewPassword")
+    Do ..RemoveNoTracePrincipal()
+    Set tSC = ..MakeNoTracePrincipal(tPassword, .tUser)
+    Try {
+        Do $$$AssertStatusOK(tSC, "the account is made")
+        If $$$ISERR(tSC) Quit
+        Set tSC = $ClassMethod(..#FIXTURE, "Composed", tUser, .tComposed)
+        Do $$$AssertStatusOK(tSC, "its grants are read back")
+        If $$$ISERR(tSC) Quit
+        Do $$$AssertEquals(..Held(tComposed, "%Ens_Portal", "USE") _ ..Held(tComposed, "%Ens_MessageHeader", "USE") _ ..Held(tComposed, "%Ens_MessageTrace", "USE"), "110", "it holds the menu's and the header's pair and not the trace's")
+        Set tMessage = "&message=9223372036854775807"
+        Do ..RequestAs("GET", "/screens/interop.messages/read?ns=" _ tNs, tUser, tPassword, .tStatus, .tObject, .tText)
+        Do $$$AssertEquals(tStatus, 200, "it reads Messages: " _ $Extract(tText, 1, 200))
+        Do ..RequestAs("GET", "/screens/interop.messageheader/read?ns=" _ tNs _ tMessage, tUser, tPassword, .tStatus, .tObject, .tText)
+        Do $$$AssertEquals(tStatus, 200, "and a message's Header tab: " _ $Extract(tText, 1, 200))
+        Do ..RequestAs("GET", "/screens/interop.messagetrace/read?ns=" _ tNs _ tMessage, tUser, tPassword, .tStatus, .tObject, .tText)
+        Do $$$AssertEquals(..Refusal(tObject, tStatus), "403|AUTH.NOPRIVILEGE|%Ens_MessageTrace:USE", "but is refused its Trace, naming the trace pair: " _ $Extract(tText, 1, 200))
+        Set tSC = ..NavigationAs(tUser, tPassword, "the account without the trace pair", .tAreas, .tScreens)
+        Do $$$AssertStatusOK(tSC, "its navigation map answers")
+        If $$$ISERR(tSC) Quit
+        Do $$$AssertEquals($List($Get(tScreens("InteropMessageList"), $ListBuild("none")), 1) _ "|" _ $List($Get(tScreens("InteropMessageHeaderTab"), $ListBuild("none")), 1), "1|1", "the map lists Messages and the Header tab available")
+        Set tTrace = $Get(tScreens("InteropMessageTraceTab"), $ListBuild("none", ""))
+        Do $$$AssertEquals($List(tTrace, 1) _ "|" _ $List(tTrace, 2), "0|%Ens_MessageTrace:USE", "and the Trace tab unavailable, naming the trace pair")
+    } Catch ex {
+        Do $$$AssertEquals(ex.DisplayString(), "", "the test ran without a fault")
+    }
+    Do $$$AssertEquals(..RemoveNoTracePrincipal(), "", "the account and its role are removed")
 }
 
 /// <p><b>Event log.</b> The Operator reads it; the <code>%Ens_Portal</code> holder is refused naming

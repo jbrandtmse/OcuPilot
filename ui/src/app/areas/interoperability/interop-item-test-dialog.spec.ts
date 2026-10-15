@@ -275,13 +275,23 @@ describe('the Send test dialog (Story 20.6)', () => {
     }
   });
 
+  // Mutation (Rule 19): widen the pattern to nineteen digits after the first (`{0,19}`) -> the twenty-digit leg goes red; drop its leading
+  // `[1-9]` for `[0-9]` -> the leading-zero leg goes red.
   it('Story 20.30: an answer with no session offers no link', () => {
-    for (const sessionId of ['', '0', '12ab', '-3']) {
+    for (const sessionId of ['', '0', '012', '12ab', '-3', ' 41', '12345678901234567890']) {
       fixture.componentInstance.answer.set({ status: 'error', sessionId, responseClass: '', lines: ['boom'], errors: true });
       fixture.detectChanges();
       expect(host.querySelector('[data-interop-test-result]'), `a result block for '${sessionId}'`).not.toBeNull();
       expect(host.querySelector('[data-interop-test-trace]'), `no link for '${sessionId}'`).toBeNull();
     }
+  });
+
+  // Mutation (Rule 19): narrow the pattern to seventeen digits after the first (`{0,17}`) -> this goes red.
+  it('Story 20.30: the link is offered for a session id of nineteen digits, the longest a message id can be', async () => {
+    await TestBed.inject(Router).navigateByUrl('/interoperability/productions/items/test/P.Prod%7C%7COp?ns=USER');
+    fixture.componentInstance.answer.set({ status: 'done', sessionId: '1234567890123456789', responseClass: 'Ens.StringResponse', lines: [], errors: false });
+    fixture.detectChanges();
+    expect(host.querySelector('[data-interop-test-trace]')?.getAttribute('href')).toBe('/ocupilot/interoperability/messages/trace/1234567890123456789?ns=USER');
   });
 
   it('emits cancelled once, from the dismissing button', () => {

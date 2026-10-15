@@ -13,8 +13,9 @@
  *   arrow opens that message's Header tab, whose ID row reads its id.
  * - AC2: the Mermaid text view holds the plan's text for the fixture exactly, under a Copy control.
  * - AC4: the strip reads Header, Contents and Trace; the tab passes the structural checks at 1280 light, 720 light and 1280 dark; and
- *   in both themes every link in the diagram has an accessible name, is reached by Tab and is at least 24 pixels tall, every label
- *   takes the panel text's color, the error arrow takes the error token's color, and the light and dark colors differ.
+ *   in both themes every link in the diagram has an accessible name, is reached by Tab, shows the focus ring when it is, and is at
+ *   least 24 pixels tall, every label takes the panel text's color, the error arrow takes the error token's color, and the light and
+ *   dark colors differ.
  * - A header id no message holds draws the Header tab's "no longer exists" sentence.
  *
  * AC3, the trace of a host test's session, is `interop-item-test.browser-spec.mjs`'s.
@@ -156,10 +157,13 @@ function diagramFacts(page) {
     probe.style.color = 'var(--ocu-error)';
     scroll.appendChild(probe);
     const errorToken = getComputedStyle(probe).color;
+    probe.style.color = 'var(--ocu-focus-ring)';
+    const ringToken = getComputedStyle(probe).color;
     probe.remove();
     return {
       panelColor,
       errorToken,
+      ringToken,
       heads: Array.from(scroll.querySelectorAll('g.ocu-trace-participant')).map((head) => ({
         title: head.querySelector('title')?.textContent ?? '',
         text: head.querySelector('text')?.textContent ?? '',
@@ -275,7 +279,9 @@ test('AC2: the Mermaid text view holds the plan\'s text for the fixture exactly,
 
 // AC4. Mutation (Rule 19): `.ocu-trace-error` loses `--ocu-error`, rebuild and redeploy -> the token leg goes red; the hit rect's height
 // is 20, rebuild and redeploy -> the 24-pixel leg goes red; the arrow's `href` is dropped, rebuild and redeploy -> the Tab leg goes
-// red; give `.ocu-trace-label` its own fill, rebuild and redeploy -> the panel-color leg goes red.
+// red; give `.ocu-trace-label` its own fill, rebuild and redeploy -> the panel-color leg goes red; drop the `:focus-visible` rule's
+// stroke, rebuild and redeploy -> the focus-ring leg goes red; ring the focused link in another token under the dark theme only, rebuild
+// and redeploy -> the dark focus-ring leg goes red.
 test('AC4: the Trace tab passes the structural checks, and its links are named, reached by Tab, 24 pixels tall and drawn in the theme\'s colors in both themes', async () => {
   const { context, page } = await signedInAt(browser, config, `/ocupilot/${TRACE_ROUTE}/${ids[0]}?ns=${NAMESPACE}`, VIEWPORTS.wide, REDUCED_MOTION);
   try {
@@ -305,15 +311,27 @@ test('AC4: the Trace tab passes the structural checks, and its links are named, 
     }
     assert.notEqual(seen.light.errorToken, seen.dark.errorToken, 'the error token differs between the themes');
     assert.notEqual(seen.light.panelColor, seen.dark.panelColor, 'and so does the panel text');
-    await page.evaluate(() => document.documentElement.classList.remove('ocu-theme-dark'));
 
-    await page.focus('[data-ocu-trace-view="mermaid"]');
-    const reached = [];
-    for (let at = 0; at < 4; at += 1) {
-      await page.keyboard.press('Tab');
-      reached.push(await page.evaluate(() => (document.activeElement?.tagName.toLowerCase() === 'a' && document.activeElement.closest('svg') !== null ? document.activeElement.getAttribute('aria-label') : null)));
+    for (const theme of ['light', 'dark']) {
+      await page.evaluate((dark) => document.documentElement.classList.toggle('ocu-theme-dark', dark), theme === 'dark');
+      await twoFrames(page);
+      await transitionsSettled(page);
+      await page.focus('[data-ocu-trace-view="mermaid"]');
+      const reached = [];
+      const rings = [];
+      for (let at = 0; at < 4; at += 1) {
+        await page.keyboard.press('Tab');
+        reached.push(await page.evaluate(() => (document.activeElement?.tagName.toLowerCase() === 'a' && document.activeElement.closest('svg') !== null ? document.activeElement.getAttribute('aria-label') : null)));
+        rings.push(
+          await page.evaluate(() => {
+            const hit = document.activeElement?.querySelector('.ocu-trace-hit');
+            return hit === null || hit === undefined ? null : { stroke: getComputedStyle(hit).stroke, width: getComputedStyle(hit).strokeWidth };
+          })
+        );
+      }
+      assert.deepEqual(reached, seen[theme].arrows.map((arrow) => arrow.aria), `${theme}: Tab reaches the four links in order, each by its accessible name`);
+      assert.deepEqual(rings, rings.map(() => ({ stroke: seen[theme].ringToken, width: '2px' })), `${theme}: the focused link is ringed in the focus ring token's color`);
     }
-    assert.deepEqual(reached, seen.light.arrows.map((arrow) => arrow.aria), 'Tab reaches the four links in order, each by its accessible name');
     await page.keyboard.press('Enter');
     await pathHolds(page, `/interoperability/messages/document/${ids[3]}`);
   } finally {

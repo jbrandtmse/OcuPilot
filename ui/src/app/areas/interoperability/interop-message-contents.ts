@@ -3,15 +3,16 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { applyView, textOf } from '../../core/screen-read';
 import { stringFor } from '../../core/strings';
 import { fieldOf } from '../../core/table-model';
+import { ReadEmpty, ReadRefusal, ReadSkeleton } from '../../shell/read-state-blocks';
 import { MessageTabBody } from './message-tab-body';
 
 /**
  * A message's Contents (Story 20.9, AD-5, AD-11): the rows of the Contents tab's read drawn as one block of text lines, in place
  * of the table, by the detail page's `body` input. A table's fixed row height would cut every long line; a block wraps them.
  *
- * It draws the states `DataTable` draws, each block carrying `data-ocu-contents`: skeleton bars in an `aria-busy` region until the
- * first answer (`skeleton`); a refusal the connectivity banner has no copy for, with Retry (`fault`); the screen's empty sentence
- * when the answer holds no row (`empty`); and the rows (`text`), one `pre` that takes focus, holding each row's `Text` as
+ * It draws the states `DataTable` draws, with `shell/read-state-blocks.ts`'s blocks, each carrying `data-ocu-contents`: skeleton
+ * bars in an `aria-busy` region until the first answer (`skeleton`); a refusal the connectivity banner has no copy for, with Retry
+ * (`fault`); the screen's empty sentence when the answer holds no row (`empty`); and the rows (`text`), one `pre` that takes focus, holding each row's `Text` as
  * interpolated text -- never markup -- one line to a row, under the cut note when the read truncated (`cut`). The lines are the
  * store's view, as the table's rows are: the command bar's filter and sort apply to them, as they do to what the agent is sent.
  * It draws no control that edits the text.
@@ -24,29 +25,16 @@ import { MessageTabBody } from './message-tab-body';
 @Component({
   selector: 'app-interop-message-contents',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [ReadSkeleton, ReadRefusal, ReadEmpty],
   template: `<div class="ocu-message-contents-frame" [attr.aria-busy]="busy">
     @if (showSkeleton) {
-      <div class="ocu-data-table-skeleton" data-ocu-contents="skeleton" aria-hidden="true">
-        @for (bar of skeletonRows; track bar) {
-          <div class="ocu-data-table-skeleton-row">
-            <span class="ocu-skeleton-bar ocu-skeleton-bar-40"></span>
-            <span class="ocu-skeleton-bar ocu-skeleton-bar-25"></span>
-            <span class="ocu-skeleton-bar ocu-skeleton-bar-15"></span>
-          </div>
-        }
-      </div>
+      <app-read-skeleton data-ocu-contents="skeleton" />
     }
     @if (showRefusal) {
-      <div class="ocu-data-table-refusal" role="alert" data-ocu-contents="fault">
-        <span class="ocu-data-table-refusal-message">{{ STRINGS.connectivityRequestRefused }}</span>
-        <button type="button" class="ocu-button-text" (click)="onRetry()">{{ STRINGS.actionRetry }}</button>
-      </div>
+      <app-read-refusal data-ocu-contents="fault" (retry)="onRetry()" />
     }
     @if (showEmpty) {
-      <section class="ocu-empty-state ocu-data-table-empty" data-ocu-contents="empty">
-        <p class="ocu-data-table-empty-title">{{ emptyTitle }}</p>
-        <p class="ocu-data-table-empty-next">{{ emptyNext }}</p>
-      </section>
+      <app-read-empty data-ocu-contents="empty" [title]="emptyTitle" [next]="emptyNext" />
     }
     @if (showRows) {
       @if (cut) {

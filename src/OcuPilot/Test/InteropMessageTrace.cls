@@ -2,11 +2,13 @@
 /// namespace: any header of a session answers the session's whole trace, in <code>ID</code> order, as <code>Step</code> 1 to n, and a
 /// header of another session is absent; each row carries the header's type and status words, error flag, local creation time,
 /// source, target, body class, session and the id the trace was asked for; a cap truncates through the read route; an id no header
-/// holds, and a header saved with no session, read as no rows; a malformed id is refused by name; and the read route and the read tool
-/// answer the same rows.</p>
+/// holds, and a header saved with no session, read as no rows; a malformed id is refused by name; the read route and the read tool
+/// answer the same rows; the trace pair is refused to a caller who holds the header pair alone; and <method>ClearSession</method>, which
+/// a browser spec calls to remove a session it caused, removes that session alone.</p>
 /// <p><b>What it needs from the environment:</b> the install namespace running interoperability, and the account running it holding
-/// the pairs the gate asks. It needs no production: the headers are stored directly, found by a marker in their source, and removed
-/// after each test. <method>Plant</method> and <method>Clear</method> are the browser spec's fixture too.</p>
+/// the pairs the gate asks. It needs no production and no armed variable: the headers are stored directly, found by a marker in their
+/// source, and removed after each test, and the gate is the test seam's. <method>Plant</method> and <method>Clear</method> are the browser
+/// spec's fixture too.</p>
 Class OcuPilot.Test.InteropMessageTrace Extends %UnitTest.TestCase
 {
 
@@ -47,6 +49,7 @@ Method OnBeforeOneTest() As %Status
 
 Method OnAfterOneTest() As %Status
 {
+    Do ##class(OcuPilot.Test.ScreenGate).Reset()
     Do $$$AssertEquals(..Clear(..PreparedMarker), 0, "no header of this test's marker is left")
     Quit $$$OK
 }
@@ -116,6 +119,48 @@ ClassMethod Clear(pMarker As %String) As %Integer
     } Catch {
     }
     Quit ..Left(pMarker)
+}
+
+/// <p>Remove every header of the session <var>pSessionId</var> in <var>pNamespace</var>, and the persistent bodies they name, and
+/// answer how many of that session's headers are left: <code>-1</code> when the session id is not 1 to 19 digits, the namespace is not
+/// a name, or the removal faulted. A browser spec that sends through a running production calls it for the session it caused, so the
+/// send leaves nothing of that session in the message store (the host test's session is its first header's id).</p>
+ClassMethod ClearSession(pNamespace As %String, pSessionId As %String) As %Integer
+{
+    If '$Match(pSessionId, "^[1-9][0-9]{0,18}$") || '$Match(pNamespace, "^[A-Za-z%][A-Za-z0-9%_-]{0,63}$") Quit -1
+    Set tLeft = -1
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Kill tIds, tBodies
+        Set tResult = ##class(%SQL.Statement).%ExecDirectNoPriv(, "SELECT ID, MessageBodyClassName, MessageBodyId FROM Ens.MessageHeader WHERE SessionId = ?", +pSessionId)
+        While tResult.%Next() {
+            Set tIds($Increment(tIds)) = tResult.%GetData(1)
+            If (tResult.%GetData(2) '= "") && (tResult.%GetData(3) '= "") Set tBodies(tResult.%GetData(2), tResult.%GetData(3)) = ""
+        }
+        Set tClass = ""
+        For {
+            Set tClass = $Order(tBodies(tClass))
+            If tClass = "" Quit
+            If '##class(%Dictionary.CompiledClass).%ExistsId(tClass) || '$ClassMethod(tClass, "%Extends", "%Library.Persistent") Continue
+            Set tBody = ""
+            For {
+                Set tBody = $Order(tBodies(tClass, tBody))
+                If tBody = "" Quit
+                Do $ClassMethod(tClass, "%DeleteId", tBody)
+            }
+        }
+        For tI = 1:1:+$Get(tIds) {
+            Do ##class(Ens.MessageHeader).%DeleteId(tIds(tI))
+        }
+        Set tResult = ##class(%SQL.Statement).%ExecDirectNoPriv(, "SELECT COUNT(*) FROM Ens.MessageHeader WHERE SessionId = ?", +pSessionId)
+        If tResult.%Next() Set tLeft = tResult.%GetData(1)
+        Set $NAMESPACE = tOrigNS
+    } Catch {
+        Set $NAMESPACE = tOrigNS
+        Set tLeft = -1
+    }
+    Quit tLeft
 }
 
 /// <p>The rows the port's MessageTrace answers for the header <var>pId</var> (or for the query already in <var>pQuery</var>), or
@@ -234,6 +279,57 @@ Method TestAbsentAndMalformedIds()
     }
     Set tSC = ##class(OcuPilot.Screen.Read).Execute(..#SCREEN, 1000, .tAnswer, .tReadHttp, .tReadFault)
     Do $$$AssertEquals(tReadHttp _ "|" _ $Select($IsObject($Get(tReadFault)): tReadFault.code, 1: ""), "400|READ.CRITERION", "a read with no id is refused READ.CRITERION by the route")
+}
+
+/// <p>The port asks the Visual Trace's pair beside the message viewer's (AD-8, AD-62): a caller who holds the Interoperability menu's
+/// pair, the message header's and READ on the namespace's globals database, and not <code>%Ens_MessageTrace:USE</code>, is refused
+/// 403 <code>AUTH.NOPRIVILEGE</code> naming that pair and gets no row, reads the message header, and reads the session once the pair is
+/// held. The held set is declared to <class>OcuPilot.Test.InteropGateSeam</class>'s gate, because the suite's own account holds
+/// <code>%All</code>; the same refusal over HTTP, for an account of the instance, is <class>OcuPilot.Test.InteropFloor</class>'s.</p>
+/// <p>Mutation (Rule 19): <parameter>OcuPilot.Port.InteropPort.MESSAGETRACEPAIR</parameter> dropped from the MessageTrace branch of
+/// <method>OcuPilot.Port.InteropPort.Pairs</method> -- the refusal leg goes red.</p>
+Method TestTheTracePairIsRefusedToAHolderOfTheHeaderPairAlone()
+{
+    Set tGate = "OcuPilot.Test.ScreenGate"
+    Set tOk = $ClassMethod("OcuPilot.Kernel.Shell.Namespaces", "GlobalDatabase", $NAMESPACE, .tResource, .tReadOnly)
+    Do $$$AssertTrue(tOk && (tResource '= ""), "the namespace's globals database resource is read: " _ tResource)
+    Do $ClassMethod(tGate, "Reset")
+    Do $ClassMethod(tGate, "Hold", "%Ens_Portal", "USE")
+    Do $ClassMethod(tGate, "Hold", "%Ens_MessageHeader", "USE")
+    Do $ClassMethod(tGate, "Hold", tResource, "READ")
+    Set tH1 = $List(..PreparedIds, 1)
+    Kill tQ
+    Set tQ("namespace") = $NAMESPACE, tQ("maxRows") = 1000, tQ("message") = tH1
+    Set tSC = $ClassMethod("OcuPilot.Test.InteropGateSeam", "Invoke", "MessageTrace", "LIST", .tQ, "", .tRows, .tHttp, .tFault)
+    Do $$$AssertEquals(tHttp _ "|" _ $Select($IsObject(tFault): tFault.code _ "|" _ tFault.detail.%Get("failedPair"), 1: ""), "403|AUTH.NOPRIVILEGE|%Ens_MessageTrace:USE", "the trace is refused, naming the pair the caller lacks")
+    Do $$$AssertEquals($IsObject($Get(tRows)), 0, "and no row is returned")
+    Kill tQ, tRows, tFault
+    Set tQ("namespace") = $NAMESPACE, tQ("maxRows") = 1000, tQ("message") = tH1
+    Set tSC = $ClassMethod("OcuPilot.Test.InteropGateSeam", "Invoke", "MessageHeader", "LIST", .tQ, "", .tRows, .tHttp, .tFault)
+    Do $$$AssertEquals(tHttp, 200, "the same caller reads the message header")
+    Do $ClassMethod(tGate, "Hold", "%Ens_MessageTrace", "USE")
+    Kill tQ, tRows, tFault
+    Set tQ("namespace") = $NAMESPACE, tQ("maxRows") = 1000, tQ("message") = tH1
+    Set tSC = $ClassMethod("OcuPilot.Test.InteropGateSeam", "Invoke", "MessageTrace", "LIST", .tQ, "", .tRows, .tHttp, .tFault)
+    Do $$$AssertEquals(tHttp _ "|" _ $Select($IsObject($Get(tRows)): tRows.%Size(), 1: "none"), "200|4", "and reads the session's four steps once it holds the trace pair")
+}
+
+/// <p><method>ClearSession</method> removes every header of the session it is given and no header of another, and refuses a malformed
+/// session id or namespace without removing anything.</p>
+/// <p>Mutation (Rule 19): <method>ClearSession</method> selects <code>WHERE ID = ?</code> in place of the session -- this goes red.</p>
+Method TestClearSessionRemovesTheSessionAlone()
+{
+    Set tH1 = $List(..PreparedIds, 1), tH5 = $List(..PreparedIds, 5)
+    Do $$$AssertEquals(..Left(..PreparedMarker), 5, "the fixture's five headers are stored")
+    For tBad = "", "0", "abc", "12345678901234567890" {
+        Do $$$AssertEquals(..ClearSession($NAMESPACE, tBad), -1, "'" _ tBad _ "' is refused")
+    }
+    Do $$$AssertEquals(..ClearSession("not a namespace", tH1), -1, "a namespace that is not a name is refused")
+    Do $$$AssertEquals(..Left(..PreparedMarker), 5, "and nothing was removed")
+    Do $$$AssertEquals(..ClearSession($NAMESPACE, tH1), 0, "the session's headers are removed, none left")
+    Do $$$AssertEquals(..Left(..PreparedMarker), 1, "and the other session's header alone remains")
+    Kill tQ
+    Do $$$AssertEquals(..Steps(..Trace(tH5, .tQ)), "1:" _ tH5, "and it reads as its own session")
 }
 
 /// <p>AD-36: the read route, the read tool and the port answer the same rows, in the fields the screen declares.</p>

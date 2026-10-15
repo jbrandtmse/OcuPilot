@@ -8,6 +8,7 @@ import { applyView } from '../../core/screen-read';
 import { STRINGS } from '../../core/strings';
 import { CodeBlock } from '../../shell/code-block';
 import { followInAppLink } from '../../shell/in-app-link';
+import { ReadEmpty, ReadRefusal, ReadSkeleton } from '../../shell/read-state-blocks';
 import { MessageTabBody } from './message-tab-body';
 import {
   HEAD_HEIGHT,
@@ -55,9 +56,10 @@ interface Drawing {
  * Mermaid text the same rows give, in place of the table, by the detail page's `body` input. The Mermaid text is built here, in the
  * browser, from the rows the diagram draws.
  *
- * It draws the states `DataTable` draws, each block carrying `data-ocu-trace`: skeleton bars in an `aria-busy` region until the first
- * answer (`skeleton`); a refusal the connectivity banner has no copy for, with Retry (`fault`); the screen's empty sentence when the
- * answer holds no row (`empty`); "No matches." when the command bar's filter leaves none of the rows held (`nomatch`); the cut note
+ * It draws the states `DataTable` draws, with `shell/read-state-blocks.ts`'s blocks, each carrying `data-ocu-trace`: skeleton bars
+ * in an `aria-busy` region until the first answer (`skeleton`); a refusal the connectivity banner has no copy for, with Retry
+ * (`fault`); the screen's empty sentence when the answer holds no row (`empty`); "No matches." when the command bar's filter leaves
+ * none of the rows the read answered (`nomatch`); the cut note
  * when the read truncated the session (`cut`); and the session itself, as the diagram (`diagram`) or the Mermaid text (`mermaid`),
  * under a Diagram and Mermaid text view group that reuses the source viewer's.
  *
@@ -73,30 +75,16 @@ interface Drawing {
 @Component({
   selector: 'app-interop-message-trace',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CodeBlock],
+  imports: [CodeBlock, ReadSkeleton, ReadRefusal, ReadEmpty],
   template: `<div class="ocu-trace-frame" [attr.aria-busy]="busy">
     @if (showSkeleton) {
-      <div class="ocu-data-table-skeleton" data-ocu-trace="skeleton" aria-hidden="true">
-        @for (bar of skeletonRows; track bar) {
-          <div class="ocu-data-table-skeleton-row">
-            <span class="ocu-skeleton-bar ocu-skeleton-bar-40"></span>
-            <span class="ocu-skeleton-bar ocu-skeleton-bar-25"></span>
-            <span class="ocu-skeleton-bar ocu-skeleton-bar-15"></span>
-          </div>
-        }
-      </div>
+      <app-read-skeleton data-ocu-trace="skeleton" />
     }
     @if (showRefusal) {
-      <div class="ocu-data-table-refusal" role="alert" data-ocu-trace="fault">
-        <span class="ocu-data-table-refusal-message">{{ STRINGS.connectivityRequestRefused }}</span>
-        <button type="button" class="ocu-button-text" (click)="onRetry()">{{ STRINGS.actionRetry }}</button>
-      </div>
+      <app-read-refusal data-ocu-trace="fault" (retry)="onRetry()" />
     }
     @if (showEmpty) {
-      <section class="ocu-empty-state ocu-data-table-empty" data-ocu-trace="empty">
-        <p class="ocu-data-table-empty-title">{{ emptyTitle }}</p>
-        <p class="ocu-data-table-empty-next">{{ emptyNext }}</p>
-      </section>
+      <app-read-empty data-ocu-trace="empty" [title]="emptyTitle" [next]="emptyNext" />
     }
     @if (showNoMatch) {
       <section class="ocu-empty-state ocu-data-table-empty" data-ocu-trace="nomatch">
@@ -213,7 +201,7 @@ export class InteropMessageTrace extends MessageTabBody {
 
   /** The command bar's filter left none of the rows the read answered. */
   protected get showNoMatch(): boolean {
-    return this.showRows && this.drawing.arrows.length === 0;
+    return this.showRows && this.store().data().length > 0 && this.drawing.arrows.length === 0;
   }
 
   /** The session has an arrow to draw. */

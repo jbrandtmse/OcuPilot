@@ -8930,7 +8930,7 @@ app-ecp-data-server-form-page .ocu-field-checkbox input[aria-disabled='true'] {
 }
 
 .ocu-trace-link:hover .ocu-trace-hit {
-  fill: var(--ocu-surface-container-low);
+  fill: color-mix(in srgb, var(--ocu-on-surface) 8%, transparent);
 }
 
 .ocu-trace-link:focus {

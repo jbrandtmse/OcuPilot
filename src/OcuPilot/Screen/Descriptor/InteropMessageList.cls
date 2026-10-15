@@ -8,8 +8,8 @@
 /// window is turned into ID bounds as the classic message viewer turns it. Saved searches, and the classic viewer's body, search-table
 /// and virtual-document criteria, stay in the classic page.</p>
 /// <p><b>A row's ID opens that message's Header tab</b> (<code>interoperability/messages/document</code>, the head of the group
-/// <class>OcuPilot.Screen.Descriptor.InteropMessageHeaderTab</class> and
-/// <class>OcuPilot.Screen.Descriptor.InteropMessageContentsTab</class> form). Its pairs are the classic viewer's own
+/// <class>OcuPilot.Screen.Descriptor.InteropMessageHeaderTab</class>, <class>OcuPilot.Screen.Descriptor.InteropMessageContentsTab</class>
+/// and <class>OcuPilot.Screen.Descriptor.InteropMessageTraceTab</class> form). Its pairs are the classic viewer's own
 /// (<code>%Ens_MessageHeader:USE</code> beside the area's <code>%Ens_Portal:USE</code>), which the Operator role holds (AD-8, AD-44).
 /// It does not refresh and offers no action: resend and edit-and-resend are later stories'.</p>
 Class OcuPilot.Screen.Descriptor.InteropMessageList Extends OcuPilot.Screen.Descriptor.Base
