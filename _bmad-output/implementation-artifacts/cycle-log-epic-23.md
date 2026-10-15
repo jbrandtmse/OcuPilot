@@ -475,3 +475,14 @@ spawn_at=2026-10-06T16:01:05Z	Story 23.4	cr_complete	batch=b 2026-10-06T20:34:58
 2026-10-15T22:58:00Z	Epic 23	ledger_burndown_complete	partial=true(dispatch_23.5_only;epic_continues_with_23.11,23.7-23.10) open_before=24(owner_23-5) resolved=24(19_in_story+DW-1951+DW-2441,2448,2450,2454) terminal=1(DW-2440) chartered=0 chartered_size=0 overflow=0 reowned=10(DW-2246,2182,2202,2221,2439,2449,2455,2458,2460,2462->23-11,orchestrator) to_decision_sheet=0 open_after=0 cap=8 story_max=12 filed_this_epic=11 closed_this_epic=26 drain_ratio=2.36
 2026-10-15T22:58:00Z	Epic 23	throwaway_down	container=ocupilot-ci project=ocupilot-ci dir=/Users/jbrandt/.ocupilot-throwaways/ocupilot-ci by=this_runner(own_up)
 2026-10-15T22:58:17Z	Epic 23	epic_runner_complete	stories_completed=1(23.5) ready_for_merge=true head=db14298f code_head=43cb9e06 ci=success(38794489165) decisions_for_user=none amendments=epics.md:9380-9382(tier1);DESIGN.md:904(DW-1148);EXPERIENCE.md_Fixed_strings_rows_and_633,665(approved);spine_Conventions_Screen_archetype(Rule20) footprint_extensions=.github/workflows/ci.yml,ui/tools/ci-timings.json(orchestrator) throwaway=down
+2026-10-15T23:07:53Z	Epic 23	lead_model_gate	model=claude-opus-5-5 action=proceed dispatch=e23-11(story_23.11_only)
+2026-10-15T23:07:53Z	Epic 23	runtime_gate	bmad=6.12.1 uv=0.12.9 ci=gh
+2026-10-15T23:07:53Z	Epic 23	launch_env	depth=4 watchdog=1 bash_max_ms=default
+2026-10-15T23:07:53Z	Epic 23	telemetry_gate	pending=0 action=none
+2026-10-15T23:07:53Z	Epic 23	slot_binding_verified	docker_port_ocupilot_52773=52774 mcp_profile=ocupilot-slot-a_baseUrl=http://localhost:52774 bootstrap=ui/node_modules/.package-lock.json_present,irislib_symlink_ok
+2026-10-15T23:07:53Z	Epic 23	epic_branch_checked_out	repos=. head=49d32222 mode=RESUME(ff_only_to_feature_from_099412bc)
+2026-10-15T23:07:53Z	Epic 23	spine_resolved	path=_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md ads=65 status=final read=in_full
+2026-10-15T23:07:53Z	Epic 23	ledger_load	total=1922 open=0 routed=85 escalated=4 decision_pending=52 terminal=1781 owner_unknown=0 burndown=81 owner_23-11=10 duplicates_after_ff=0 reowned_none=0 note=epic-start_gates_not_repeated(dispatch)
+2026-10-15T23:07:53Z	Epic 23	ledger_routed_planned	story=23-11-the-range-end-cleanup-part-10 entries=5(DW-2449,2455,2458,2460,2462) excess=0 by=lead amendment=epics.md_EOF_append(tier1,no_line_shift)
+2026-10-15T23:12:00Z	Epic 23	epic_context_compiled	reason=planning_artifact_newer(ff_to_feature,epics.md_DW_bullets) model=opus agent=a4076e3e86e0750a4 lines=121
+2026-10-15T23:12:00Z	Story 23.11	stage_spawned	stage=plan spawn_at=2026-10-15T23:12:00Z model=opus agent_name=23-11-the-range-end-cleanup-part-10-plan-1 cycle_iteration=1 inbox=10 contended=epic-20_diff(Port/AtelierPort.cls,Api/AtelierError.cls,strings.ts,self-protection.test.mjs,interop-editor*.browser-spec.mjs,EXPERIENCE.md,ci-throwaway.sh)
