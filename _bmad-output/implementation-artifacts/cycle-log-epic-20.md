@@ -953,3 +953,5 @@
 2026-10-15T17:57:38Z	Story 20.31	ledger_adjudicated	owned=0 resolved=0 reowned=0 terminal=0 note=slice_empty;DW-2459_routed_burndown
 2026-10-15T18:03:39Z	Story 20.31	fresh_check	env=recipe(down+up_ocupilot-b-ci_17:59Z_from_HEAD:clean_whole-tree_compile_by_the_start_hook) tests=14_classes_108_forward_and_reverse_green+browser_interop-message-resend_5+smoke_pass result=pass order=forward,reverse fix_for=CI_red_38772231768
 2026-10-15T18:04:07Z	Story 20.31	committed	sha=f1b45815 submodules= ci=pending run=38782509360 fix_for=20-31-message-resend-and-edit-and-resend(CI_red_38772231768)
+2026-10-15T18:09:49Z	Epic 20	epic_context_compiled	reason=planning_artifact_newer(20.31_built,20.35_block,spine_clauses,23.5_b_c) model=opus lines=185
+2026-10-15T18:09:49Z	Story 20.34	stage_spawned	stage=plan spawn_at=2026-10-15T18:09:49Z model=opus agent_name=20-34-plan-1 cycle_iteration=1 inbox=none note=planned_while_20.31_CI_runs
