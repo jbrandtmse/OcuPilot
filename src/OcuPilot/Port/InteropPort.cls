@@ -66,6 +66,10 @@
 /// first <code>&lt;</code> and with no document type, so no pasted text names a file the parser opens (AD-21); the vendor calls run
 /// inside the output capture; the target is shown as text; and a source or target that gained an <code>%Id()</code> is deleted in the
 /// same request. The output, error and console lines reach the screen and the proposal card only (AD-39's seventh exception).</p>
+/// <p><b>The message reads</b> (Story 20.9, the <code>Messages</code>, <code>MessageHeader</code> and <code>MessageContents</code>
+/// endpoints) search <code>Ens.MessageHeader</code> by time window and header criteria, read one header's twenty-three properties,
+/// and show one message body as text. They read with <code>%ExecDirectNoPriv</code> after the gate, bind every value, and write
+/// nothing but the vendor's own view audit row for a body that opened (<method>ReadMessageContents</method>).</p>
 /// <p>Seams a test subclass overrides: <method>GateClass</method>, <method>LogFault</method>,
 /// <method>StopSeconds</method>, <method>RoutineResource</method>, <method>SourceControlled</method>,
 /// <method>VendorAbortItem</method>, <method>VendorJob</method>, <method>LockTable</method>, <method>VendorSendTest</method>
@@ -79,7 +83,7 @@ Parameter GATECLASS = "OcuPilot.Screen.Gate";
 /// <p>The endpoints this port serves, comma-separated: the namespace's productions, business
 /// processes, data transformations and business rules, and a production's items.
 /// <file>ui/tools/screen-mirror.mjs</file> reads this list.</p>
-Parameter ENDPOINTS = "Productions,Processes,Transforms,Rules,Items,Settings,Monitor,ItemStatus,Queues,QueueItems,ItemQueue,ItemLog,ItemMessages,Jobs,ItemJobs,LookupTables,LookupEntries,BusinessPartners,ItemTest";
+Parameter ENDPOINTS = "Productions,Processes,Transforms,Rules,Items,Settings,Monitor,ItemStatus,Queues,QueueItems,ItemQueue,ItemLog,ItemMessages,Jobs,ItemJobs,LookupTables,LookupEntries,BusinessPartners,ItemTest,Messages,MessageHeader,MessageContents";
 
 Parameter ENDPOINTPRODUCTIONS = "Productions";
 
@@ -141,6 +145,28 @@ Parameter ENDPOINTBUSINESSPARTNERS = "BusinessPartners";
 /// sent) and the write <code>SENDTEST</code>.</p>
 Parameter ENDPOINTITEMTEST = "ItemTest";
 
+/// <p>The namespace's message headers (Story 20.9): <code>LIST</code> searches them by time window, status, type, source, target,
+/// body class, session and error flag, newest first. It is the one endpoint whose <code>LIST</code> takes search criteria of its
+/// own, beside a parented list's route id (<parameter>SEARCHENDPOINTS</parameter>).</p>
+Parameter ENDPOINTMESSAGES = "Messages";
+
+/// <p>One message header's twenty-three properties (Story 20.9), as <code>{Message, Position, Name, Value}</code> rows, for the
+/// header <parameter>MESSAGEKEY</parameter> names.</p>
+Parameter ENDPOINTMESSAGEHEADER = "MessageHeader";
+
+/// <p>One message's body as text lines (Story 20.9), <code>{Message, Line, Text}</code>, for the header
+/// <parameter>MESSAGEKEY</parameter> names.</p>
+Parameter ENDPOINTMESSAGECONTENTS = "MessageContents";
+
+/// <p>The endpoints whose <code>LIST</code> declares search criteria of its own (Story 20.9). A declared read names criteria on
+/// the interoperability port only as its parent's route id, except on these; <file>ui/tools/screen-mirror.mjs</file> reads this
+/// list as it reads <parameter>ENDPOINTS</parameter>.</p>
+Parameter SEARCHENDPOINTS = "Messages";
+
+/// <p>The query key naming the message header a header or contents read is about: its one criterion, the header's id kept exactly
+/// (AD-13).</p>
+Parameter MESSAGEKEY = "message";
+
 /// <p>The pairs the Productions endpoint requires: the classic Interoperability menu's
 /// <code>%Ens_Portal:USE</code> and <code>EnsPortal.Productions</code>'s own resource (AD-8,
 /// AD-29).</p>
@@ -189,6 +215,14 @@ Parameter ITEMLOGPAIR = "%Ens_EventLog:USE";
 Parameter ITEMMESSAGEPAIR = "%Ens_MessageHeader:USE";
 
 Parameter ITEMJOBPAIR = "%Ens_Jobs:READ";
+
+/// <p>The pairs the Messages and MessageHeader endpoints require: the classic Interoperability menu's <code>%Ens_Portal:USE</code>
+/// and <code>EnsPortal.MessageViewer</code>'s own resource, <code>%Ens_MessageHeader:USE</code> (Story 20.9).</p>
+Parameter MESSAGEPAIRS = "%Ens_Portal:USE,%Ens_MessageHeader:USE";
+
+/// <p>The pair the MessageContents endpoint adds: the classic Contents pane's resource, which <code>EnsPortal.MessageContents</code>
+/// checks in its own code (Story 20.9).</p>
+Parameter MESSAGECONTENTPAIR = "%Ens_MessageContent:USE";
 
 /// <p>The pair a write adds: the vendor's own run resource, the classic
 /// <code>EnsPortal.ProductionConfig</code> check (measured: start, stop and restart answer #940
@@ -719,11 +753,12 @@ ClassMethod IsAnyWrite(pType As %String) As %Boolean
     Quit ..IsWrite(pType) || ..IsItemWrite(pType) || ..IsSettingWrite(pType) || ..IsRuntimeWrite(pType) || ..IsLookupWrite(pType) || ..IsTestWrite(pType)
 }
 
-/// <p>The endpoints Story 20.4 added, as a <class>%List</class>: the nine runtime reads. Each serves <code>LIST</code>; Queues,
-/// QueueItems and Jobs also serve the typed reads and writes of Story 20.23 (<method>Serves</method>).</p>
+/// <p>The runtime reads, as a <class>%List</class>: Story 20.4's nine and Story 20.9's three message reads. Each serves
+/// <code>LIST</code>; Queues, QueueItems and Jobs also serve the typed reads and writes of Story 20.23
+/// (<method>Serves</method>).</p>
 ClassMethod RuntimeEndpoints() As %List
 {
-    Quit $ListBuild(..#ENDPOINTMONITOR, ..#ENDPOINTITEMSTATUS, ..#ENDPOINTQUEUES, ..#ENDPOINTQUEUEITEMS, ..#ENDPOINTITEMQUEUE, ..#ENDPOINTITEMLOG, ..#ENDPOINTITEMMESSAGES, ..#ENDPOINTJOBS, ..#ENDPOINTITEMJOBS)
+    Quit $ListBuild(..#ENDPOINTMONITOR, ..#ENDPOINTITEMSTATUS, ..#ENDPOINTQUEUES, ..#ENDPOINTQUEUEITEMS, ..#ENDPOINTITEMQUEUE, ..#ENDPOINTITEMLOG, ..#ENDPOINTITEMMESSAGES, ..#ENDPOINTJOBS, ..#ENDPOINTITEMJOBS, ..#ENDPOINTMESSAGES, ..#ENDPOINTMESSAGEHEADER, ..#ENDPOINTMESSAGECONTENTS)
 }
 
 /// <p>The runtime reads that are about one item, named under <parameter>ITEMKEY</parameter>.</p>
@@ -740,7 +775,8 @@ ClassMethod ItemEndpoints() As %List
 /// not serve. The Items and Settings endpoints take the
 /// Productions endpoint's pairs, and so does ItemStatus. The other runtime reads take the pairs of the classic page
 /// they replace (Story 20.4): Monitor, Queues and QueueItems, Jobs; and each item tab the Productions pairs plus its
-/// own (queue, event log, message headers, jobs).</p>
+/// own (queue, event log, message headers, jobs). The Messages and MessageHeader endpoints take the classic message viewer's
+/// pair (<parameter>MESSAGEPAIRS</parameter>), and MessageContents adds the Contents pane's (Story 20.9).</p>
 ClassMethod Pairs(pEndpoint As %String, pType As %String = "") As %List
 {
     If (pEndpoint = ..#ENDPOINTPRODUCTIONS) || (pEndpoint = ..#ENDPOINTITEMS) || (pEndpoint = ..#ENDPOINTSETTINGS) || (pEndpoint = ..#ENDPOINTITEMSTATUS) || (pEndpoint = ..#ENDPOINTBUSINESSPARTNERS) {
@@ -761,6 +797,10 @@ ClassMethod Pairs(pEndpoint As %String, pType As %String = "") As %List
         Set tSpec = ..#PRODUCTIONPAIRS _ "," _ ..#ITEMLOGPAIR
     } ElseIf pEndpoint = ..#ENDPOINTITEMMESSAGES {
         Set tSpec = ..#PRODUCTIONPAIRS _ "," _ ..#ITEMMESSAGEPAIR
+    } ElseIf (pEndpoint = ..#ENDPOINTMESSAGES) || (pEndpoint = ..#ENDPOINTMESSAGEHEADER) {
+        Set tSpec = ..#MESSAGEPAIRS
+    } ElseIf pEndpoint = ..#ENDPOINTMESSAGECONTENTS {
+        Set tSpec = ..#MESSAGEPAIRS _ "," _ ..#MESSAGECONTENTPAIR
     } ElseIf pEndpoint = ..#ENDPOINTITEMJOBS {
         Set tSpec = ..#PRODUCTIONPAIRS _ "," _ ..#ITEMJOBPAIR
     } ElseIf $ListFind(..Endpoints(), pEndpoint) {
@@ -2611,10 +2651,12 @@ ClassMethod Fail(pMessage As %String, pStatus As %Status, Output pHttpStatus As 
     Quit $$$ERROR($$$GeneralError, pFault.code _ ": " _ pFault.reason)
 }
 
-/// <p>Serve one of the nine runtime endpoints after <method>Invoke</method>'s gate. <code>LIST</code> answers an array of
+/// <p>Serve one of the runtime endpoints after <method>Invoke</method>'s gate. <code>LIST</code> answers an array of
 /// rows, at most <parameter>MAXROWSKEY</parameter> of them when that is above zero, and writes nothing:
 /// <code>Ens.Job:Enumerate</code>, whose <code>MarkDeadJobs</code> writes, is never called.</p>
 /// <ul>
+/// <li>Messages takes the search criteria <method>ListMessages</method> names; MessageHeader and MessageContents take the header's
+/// id under <parameter>MESSAGEKEY</parameter> (Story 20.9).</li>
 /// <li>Monitor, Queues and Jobs take no criterion; QueueItems takes <parameter>QUEUEKEY</parameter>; every other
 /// endpoint takes the item under <parameter>ITEMKEY</parameter> (the composite id or <code>Production||Name</code>),
 /// resolved as an item read resolves it: 400 when it is not one, 404 for an unknown production or item, 409
@@ -2656,6 +2698,23 @@ ClassMethod InvokeRuntime(pNamespace As %String, pEndpoint As %String, pType As 
                 Quit
             }
             Set tSC = ..ListQueueEntries(pNamespace, tQueue, "", "", "", tMax, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
+        If pEndpoint = ..#ENDPOINTMESSAGES {
+            Set tSC = ..ListMessages(pNamespace, .pQuery, tMax, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
+        If (pEndpoint = ..#ENDPOINTMESSAGEHEADER) || (pEndpoint = ..#ENDPOINTMESSAGECONTENTS) {
+            Set tMessage = $Get(pQuery(..#MESSAGEKEY))
+            If '$Match(tMessage, ..#MESSAGEIDPATTERN) {
+                Set tSC = ..RefuseCriterion("message", .pHttpStatus, .pFault)
+                Quit
+            }
+            If pEndpoint = ..#ENDPOINTMESSAGEHEADER {
+                Set tSC = ..ReadMessageHeader(pNamespace, tMessage, .pResult, .pHttpStatus, .pFault)
+            } Else {
+                Set tSC = ..ReadMessageContents(pNamespace, tMessage, tMax, .pResult, .pHttpStatus, .pFault)
+            }
             Quit
         }
         If '..ItemParts($Get(pQuery(..#ITEMKEY)), .tProduction, .tItem) {
@@ -3246,19 +3305,356 @@ ClassMethod ListItemMessages(pNamespace As %String, pProduction As %String, pIte
         Set tCount = tCount + 1
         Set tLine = tById(tId)
         Set tId = $Order(tById(tId), -1)
-        Set tRow = {}
-        Do tRow.%Set("Production", pProduction, "string")
-        Do tRow.%Set("Item", pProduction _ "||" _ pItem, "string")
-        Do tRow.%Set("ID", $List(tLine, 1) _ "", "string")
-        Do tRow.%Set("TimeCreated", ..LocalStamp($List(tLine, 2)), "string")
-        Do tRow.%Set("Status", $List(tLine, 3) _ "", "string")
-        Do tRow.%Set("Source", $List(tLine, 4) _ "", "string")
-        Do tRow.%Set("Target", $List(tLine, 5) _ "", "string")
-        Do tRow.%Set("BodyClass", $List(tLine, 6) _ "", "string")
-        Do tRow.%Set("SessionId", $List(tLine, 7) _ "", "string")
-        Do pRows.%Push(tRow)
+        Do pRows.%Push(..MessageRow(tLine, pProduction, pItem))
     }
     Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>One message header's row, built from <var>pLine</var>, a statement's columns in the order <code>ID, TimeCreated,
+/// Status (display word), Source, Target, BodyClass, SessionId</code> and, for <var>pSearch</var>, <code>Type (display
+/// word), IsError</code> after them: <code>{ID, TimeCreated, Status, Source, Target, BodyClass, SessionId}</code>, with
+/// <code>Production</code> and <code>Item</code> (<code>Production||Item</code>) first when <var>pProduction</var> is given and
+/// <code>Type</code> and <code>Error</code> (a boolean) last for a search. <code>TimeCreated</code> is the instance's local clock
+/// time (<method>LocalStamp</method>). Shared by the item's Messages tab and the Messages search (Story 20.9). Runs in the
+/// install namespace.</p>
+ClassMethod MessageRow(pLine As %List, pProduction As %String = "", pItem As %String = "", pSearch As %Boolean = 0) As %DynamicObject [ Private ]
+{
+    Set tRow = {}
+    If pProduction '= "" {
+        Do tRow.%Set("Production", pProduction, "string")
+        Do tRow.%Set("Item", pProduction _ "||" _ pItem, "string")
+    }
+    Do tRow.%Set("ID", $List(pLine, 1) _ "", "string")
+    Do tRow.%Set("TimeCreated", ..LocalStamp($List(pLine, 2)), "string")
+    Do tRow.%Set("Status", $List(pLine, 3) _ "", "string")
+    Do tRow.%Set("Source", $List(pLine, 4) _ "", "string")
+    Do tRow.%Set("Target", $List(pLine, 5) _ "", "string")
+    Do tRow.%Set("BodyClass", $List(pLine, 6) _ "", "string")
+    Do tRow.%Set("SessionId", $List(pLine, 7) _ "", "string")
+    If pSearch {
+        Do tRow.%Set("Type", $List(pLine, 8) _ "", "string")
+        Do tRow.%Set("Error", ''$List(pLine, 9), "boolean")
+    }
+    Quit tRow
+}
+
+/// <p>The statements of the message reads (Story 20.9). The first two give the window's ID bounds, as the classic message viewer
+/// finds them (<code>EnsPortal.MsgFilter.Assistant</code>): the first header created at or after the start and the last created
+/// at or before the end. They are separate top-level statements, because a nested <code>TOP</code> is refused on a cold cached
+/// query (<method>SqlRows</method>). Each bound value is a UTC stamp in the stored form.</p>
+Parameter LOWERIDSQL = "SELECT TOP 1 %ID FROM Ens.MessageHeader WHERE TimeCreated >= ? ORDER BY TimeCreated ASC, %ID ASC";
+
+Parameter UPPERIDSQL = "SELECT TOP 1 %ID FROM Ens.MessageHeader WHERE TimeCreated <= ? ORDER BY TimeCreated DESC, %ID DESC";
+
+/// <p>The search statement's head: the newest headers from the window's first ID, with the columns
+/// <method>MessageRow</method> builds a search row from. <method>ListMessages</method> adds a fixed fragment for each criterion
+/// given, in a fixed order, and <code>ORDER BY ID DESC</code>.</p>
+Parameter SEARCHSQL = "SELECT TOP ? ID, TimeCreated, %EXTERNAL(Status), SourceConfigName, TargetConfigName, MessageBodyClassName, SessionId, %EXTERNAL(Type), IsError FROM Ens.MessageHeader WHERE ID >= ?";
+
+/// <p>One header's twenty-three properties, in <parameter>HEADERFIELDS</parameter>' order: the enumerations as their display
+/// words, the stamps as stored (UTC) for <method>LocalStamp</method>, and <code>ErrorStatus</code> as stored for
+/// <method>ErrorText</method>.</p>
+Parameter HEADERSQL = "SELECT ID, %EXTERNAL(Type), %EXTERNAL(Priority), %EXTERNAL(Invocation), TimeCreated, TimeProcessed, %EXTERNAL(Status), IsError, ErrorStatus, SourceConfigName, TargetConfigName, %EXTERNAL(SourceBusinessType), %EXTERNAL(TargetBusinessType), SessionId, SuperSession, CorrespondingMessageId, BusinessProcessId, TargetQueueName, ReturnQueueName, MessageBodyClassName, MessageBodyId, Description, Resent FROM Ens.MessageHeader WHERE ID = ?";
+
+/// <p>The header properties a Header read answers, in order (Story 20.9). Their order is the rows' <code>Position</code>.</p>
+Parameter HEADERFIELDS = "ID,Type,Priority,Invocation,TimeCreated,TimeProcessed,Status,IsError,ErrorStatus,SourceConfigName,TargetConfigName,SourceBusinessType,TargetBusinessType,SessionId,SuperSession,CorrespondingMessageId,BusinessProcessId,TargetQueueName,ReturnQueueName,MessageBodyClassName,MessageBodyId,Description,Resent";
+
+/// <p>The statement that names a header's body.</p>
+Parameter BODYSQL = "SELECT MessageBodyClassName, MessageBodyId FROM Ens.MessageHeader WHERE ID = ?";
+
+/// <p>The display words of a header's status and type, in the order of their stored values (1 to 9, and 1 to 2): the fixed map a
+/// search criterion is turned into its stored value by. <code>Terminate</code>, the vendor's third type, is not searched.</p>
+Parameter STATUSWORDS = "Created,Queued,Delivered,Discarded,Suspended,Deferred,Aborted,Error,Completed";
+
+Parameter TYPEWORDS = "Request,Response";
+
+/// <p>The longest line a contents read answers, in characters; a longer line ends with <parameter>TESTCUT</parameter>.</p>
+Parameter CONTENTLINEMAX = 4000;
+
+/// <p>The shape of a message header's id: digits, not beginning with zero, kept exactly (AD-13).</p>
+Parameter MESSAGEIDPATTERN = "^[1-9][0-9]{0,18}$";
+
+/// <p>The shape of a class name.</p>
+Parameter CLASSNAMEPATTERN = "^%?[A-Za-z][A-Za-z0-9]*(\.[A-Za-z][A-Za-z0-9]*)*$";
+
+/// <p>The sentence a refused message criterion carries: its name, then what it must be (Story 20.9).</p>
+ClassMethod MessageCriterionReason(pName As %String) As %String
+{
+    If pName = "beginDateTime" Quit pName _ " is required, as a local date and time written YYYY-MM-DD HH:MM:SS."
+    If pName = "endDateTime" Quit pName _ " must be a local date and time, written YYYY-MM-DD HH:MM:SS."
+    If pName = "status" Quit pName _ " must be one of " _ $Replace(..#STATUSWORDS, ",", ", ") _ "."
+    If pName = "type" Quit pName _ " must be Request or Response."
+    If pName = "session" Quit pName _ " must be digits."
+    If pName = "bodyClass" Quit pName _ " must be a class name."
+    If pName = "errors" Quit pName _ " must be yes or no."
+    If pName = "message" Quit pName _ " must be a message header's ID: digits, not beginning with zero."
+    Quit pName _ " is not valid."
+}
+
+/// <p>Refuse the message criterion <var>pName</var> by name: 400 <code>PORT.VALIDATION</code> (Story 20.9).</p>
+ClassMethod RefuseCriterion(pName As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..MessageCriterionReason(pName), .pHttpStatus, .pFault)
+}
+
+/// <p>A local <code>YYYY-MM-DD HH:MM:SS[.fff]</code> as the UTC stamp a header's <code>TimeCreated</code> is stored as,
+/// <code>YYYY-MM-DD HH:MM:SS</code>, or <code>""</code> for a value that is not one (<method>OcuPilot.Kernel.Audit.Ledger.LocalToUtc</method>).
+/// Runs in the install namespace.</p>
+ClassMethod StoredStamp(pLocal As %String) As %String [ Private ]
+{
+    Set tUtc = ##class(OcuPilot.Kernel.Audit.Ledger).LocalToUtc(pLocal)
+    If tUtc = "" Quit ""
+    Quit $Translate($Extract(tUtc, 1, 19), "T", " ")
+}
+
+/// <p>The message headers matching a search, newest first, at most <var>pMax</var> (<parameter>SQLMAX</parameter> when that is
+/// not above zero), as <method>MessageRow</method> builds them with its search columns (Story 20.9). <var>pQuery</var> carries the
+/// criteria, each optional but <code>beginDateTime</code>:</p>
+/// <ul>
+/// <li><code>beginDateTime</code> (required) and <code>endDateTime</code>: instance local times, turned into the window's ID bounds by
+/// <parameter>LOWERIDSQL</parameter> and <parameter>UPPERIDSQL</parameter>, the end taken to the last millisecond of its second as the
+/// classic viewer takes it. A bound that finds no header means no row.</li>
+/// <li><code>status</code> and <code>type</code>: display words, turned into stored values by <parameter>STATUSWORDS</parameter> and
+/// <parameter>TYPEWORDS</parameter>.</li>
+/// <li><code>source</code>, <code>target</code> and <code>bodyClass</code>: matched whole, in any letter case (the columns'
+/// collation); <code>session</code>: digits; <code>errors</code>: <code>yes</code> or <code>no</code>.</li>
+/// </ul>
+/// <p>A criterion of the wrong shape is 400 <code>PORT.VALIDATION</code> naming it, and nothing is read. Every value is bound; the
+/// statement is the head <parameter>SEARCHSQL</parameter> and one fixed fragment for each criterion given, so no caller value reaches
+/// SQL text (AD-21).</p>
+ClassMethod ListMessages(pNamespace As %String, ByRef pQuery, pMax As %Integer, Output pRows As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRows = ""
+    Set tTop = $Select(pMax > 0: pMax, 1: ..#SQLMAX)
+    Set tBegin = ..StoredStamp($Get(pQuery("beginDateTime")))
+    If tBegin = "" Quit ..RefuseCriterion("beginDateTime", .pHttpStatus, .pFault)
+    Set tEnd = ""
+    If $Get(pQuery("endDateTime")) '= "" {
+        Set tEnd = ..StoredStamp(pQuery("endDateTime"))
+        If tEnd = "" Quit ..RefuseCriterion("endDateTime", .pHttpStatus, .pFault)
+        Set tEnd = tEnd _ ".999"
+    }
+    Set tStatus = $Get(pQuery("status"))
+    Set tStatusValue = $Select(tStatus = "": "", 1: $ListFind($ListFromString(..#STATUSWORDS), tStatus))
+    If (tStatus '= "") && 'tStatusValue Quit ..RefuseCriterion("status", .pHttpStatus, .pFault)
+    Set tType = $Get(pQuery("type"))
+    Set tTypeValue = $Select(tType = "": "", 1: $ListFind($ListFromString(..#TYPEWORDS), tType))
+    If (tType '= "") && 'tTypeValue Quit ..RefuseCriterion("type", .pHttpStatus, .pFault)
+    Set tSession = $Get(pQuery("session"))
+    If (tSession '= "") && '$Match(tSession, "^[0-9]{1,19}$") Quit ..RefuseCriterion("session", .pHttpStatus, .pFault)
+    Set tBodyClass = $Get(pQuery("bodyClass"))
+    If (tBodyClass '= "") && '$Match(tBodyClass, ..#CLASSNAMEPATTERN) Quit ..RefuseCriterion("bodyClass", .pHttpStatus, .pFault)
+    Set tErrors = $Get(pQuery("errors"))
+    If (tErrors '= "") && (tErrors '= "yes") && (tErrors '= "no") Quit ..RefuseCriterion("errors", .pHttpStatus, .pFault)
+
+    Set tSC = ..SqlRows(pNamespace, ..#LOWERIDSQL, .tLower, .tCaught, tBegin)
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the message window's first header could not be found", .pHttpStatus, .pFault)
+    Set tUpperId = ""
+    If tLower && (tEnd '= "") {
+        Set tSC = ..SqlRows(pNamespace, ..#UPPERIDSQL, .tUpper, .tCaught, tEnd)
+        If $IsObject(tCaught) Quit ..Mapped(tCaught, "the message window's last header could not be found", .pHttpStatus, .pFault)
+        If tUpper Set tUpperId = +$List(tUpper(1), 1)
+    }
+    If 'tLower || ((tEnd '= "") && (tUpperId = "")) {
+        Set pRows = []
+        Set pHttpStatus = 200
+        Quit $$$OK
+    }
+
+    Set tSql = ..#SEARCHSQL
+    Kill tArgs
+    Set tArgs = 2
+    Set tArgs(1) = tTop
+    Set tArgs(2) = +$List(tLower(1), 1)
+    If tUpperId '= "" Set tSql = tSql _ " AND ID <= ?", tArgs($Increment(tArgs)) = tUpperId
+    If tStatusValue Set tSql = tSql _ " AND Status = ?", tArgs($Increment(tArgs)) = tStatusValue
+    If tTypeValue Set tSql = tSql _ " AND Type = ?", tArgs($Increment(tArgs)) = tTypeValue
+    If $Get(pQuery("source")) '= "" Set tSql = tSql _ " AND SourceConfigName = ?", tArgs($Increment(tArgs)) = pQuery("source")
+    If $Get(pQuery("target")) '= "" Set tSql = tSql _ " AND TargetConfigName = ?", tArgs($Increment(tArgs)) = pQuery("target")
+    If tBodyClass '= "" Set tSql = tSql _ " AND MessageBodyClassName = ?", tArgs($Increment(tArgs)) = tBodyClass
+    If tSession '= "" Set tSql = tSql _ " AND SessionId = ?", tArgs($Increment(tArgs)) = +tSession
+    If tErrors '= "" Set tSql = tSql _ " AND IsError = ?", tArgs($Increment(tArgs)) = (tErrors = "yes")
+    Set tSql = tSql _ " ORDER BY ID DESC"
+    Set tSC = ..SqlRows(pNamespace, tSql, .tFound, .tCaught, tArgs...)
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the message search failed", .pHttpStatus, .pFault)
+    Set pRows = []
+    For tI = 1:1:tFound {
+        Do pRows.%Push(..MessageRow(tFound(tI), "", "", 1))
+    }
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p><var>pStatus</var>, a header's stored <code>ErrorStatus</code>, as its error text, or <code>""</code> when it is empty or
+/// reads OK. Runs in the install namespace.</p>
+ClassMethod ErrorText(pStatus As %String) As %String [ Private ]
+{
+    If pStatus = "" Quit ""
+    Set tText = ""
+    Try {
+        If '$System.Status.IsOK(pStatus) Set tText = $System.Status.GetErrorText(pStatus)
+    } Catch {
+        Set tText = ""
+    }
+    Quit tText
+}
+
+/// <p>The header <var>pId</var> as <code>{Message, Position, Name, Value}</code> rows, one for each of the twenty-three properties
+/// in <parameter>HEADERFIELDS</parameter>' order, <code>Position</code> from 1 (a JSON number) and every <code>Value</code> a string:
+/// the enumerations as display words, <code>TimeCreated</code> and <code>TimeProcessed</code> as the instance's local clock time
+/// (<method>LocalStamp</method>), and <code>ErrorStatus</code> as its error text (<method>ErrorText</method>). An id no header holds
+/// reads as no rows (AD-37). The id's shape is judged by the caller.</p>
+ClassMethod ReadMessageHeader(pNamespace As %String, pId As %String, Output pRows As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRows = ""
+    Set tSC = ..SqlRows(pNamespace, ..#HEADERSQL, .tFound, .tCaught, +pId)
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the message header could not be read", .pHttpStatus, .pFault)
+    Set pRows = []
+    If tFound {
+        Set tLine = tFound(1)
+        Set tNames = $ListFromString(..#HEADERFIELDS)
+        For tI = 1:1:$ListLength(tNames) {
+            Set tName = $List(tNames, tI)
+            Set tValue = $List(tLine, tI)
+            If (tName = "TimeCreated") || (tName = "TimeProcessed") {
+                Set tValue = ..LocalStamp(tValue)
+            } ElseIf tName = "ErrorStatus" {
+                Set tValue = ..ErrorText(tValue)
+            }
+            Set tRow = {}
+            Do tRow.%Set("Message", pId, "string")
+            Do tRow.%Set("Position", tI, "number")
+            Do tRow.%Set("Name", tName, "string")
+            Do tRow.%Set("Value", tValue _ "", "string")
+            Do pRows.%Push(tRow)
+        }
+    }
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>The object <var>pClass</var> <var>pBodyId</var>, or <code>""</code> when the class is not a compiled persistent or stream class
+/// of this namespace or holds no such id (a stream class would open an id it does not hold as an empty stream). The class name is
+/// judged by <parameter>CLASSNAMEPATTERN</parameter> before it is called. The opener of a message's body (<method>ContentsText</method>)
+/// and of a host test's response (<method>CollectResponseHere</method>). Called while the message's namespace is switched.</p>
+ClassMethod OpenBodyHere(pClass As %String, pBodyId As %String) As %RegisteredObject [ Private ]
+{
+    If '$Match(pClass, ..#CLASSNAMEPATTERN) Quit ""
+    If '##class(%Dictionary.CompiledClass).%ExistsId(pClass) Quit ""
+    If '($ClassMethod(pClass, "%Extends", "%Library.Persistent") || $ClassMethod(pClass, "%Extends", "%Stream.Object")) Quit ""
+    If '$ClassMethod(pClass, "%ExistsId", pBodyId) Quit ""
+    Set tObject = ""
+    Try {
+        Set tObject = $ClassMethod(pClass, "%OpenId", pBodyId)
+    } Catch {
+        Set tObject = ""
+    }
+    Quit $Select($IsObject(tObject): tObject, 1: "")
+}
+
+/// <p>Record that the body <var>pClass</var> <var>pBodyId</var> of header <var>pHeaderId</var> was viewed, as the classic Contents
+/// pane records it: the vendor's own <code>%Ensemble/%Message/ViewContents</code> row, through
+/// <code>Ens.Util.Auditing.AuditViewMessage</code>, with the source <code>OcuPilot</code>. The pane skips <code>Ens.AlarmRequest</code>
+/// and <code>Ens.AlarmResponse</code>, and so does this. A failure to audit is not a failure to read. Called while the message's
+/// namespace is switched.</p>
+ClassMethod AuditViewHere(pHeaderId As %String, pClass As %String, pBodyId As %String) [ Private ]
+{
+    If (pClass = "Ens.AlarmRequest") || (pClass = "Ens.AlarmResponse") Quit
+    Try {
+        Do ##class(Ens.Util.Auditing).AuditViewMessage("OcuPilot", pHeaderId, pClass, pBodyId)
+    } Catch {
+    }
+}
+
+/// <p>Open the body <var>pClass</var> <var>pBodyId</var> of header <var>pHeaderId</var> in <var>pNamespace</var>, record the view
+/// (<method>AuditViewHere</method>), and render it as text in <var>pText</var>. <var>pOutcome</var> is <code>none</code> when the
+/// class or the body is not there (nothing is audited), <code>text</code>, or <code>notext</code> for a body that opened and is
+/// neither a virtual document, an <parameter>XMLADAPTOR</parameter> object nor a character stream, such as a binary stream; the view
+/// of a <code>notext</code> body has been recorded. A fault is <var>pCaught</var>, with the namespace restored. Only vendor classes
+/// and this class run while it is switched.</p>
+ClassMethod ContentsText(pNamespace As %String, pHeaderId As %String, pClass As %String, pBodyId As %String, Output pOutcome As %String, Output pText As %String, Output pCaught) As %Status [ Private ]
+{
+    Set pOutcome = "none"
+    Set pText = ""
+    Set pCaught = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tObject = ..OpenBodyHere(pClass, pBodyId)
+        If $IsObject(tObject) {
+            Do ..AuditViewHere(pHeaderId, pClass, pBodyId)
+            Set pOutcome = "notext"
+            If tObject.%Extends("%Stream.Object") {
+                If tObject.IsCharacter() {
+                    Do tObject.Rewind()
+                    Set pText = ..StreamText(tObject)
+                    Set pOutcome = "text"
+                }
+            } ElseIf $$$ISOK(..RenderTargetHere(tObject, .pText)) {
+                Set pOutcome = "text"
+            } Else {
+                Set pText = ""
+            }
+        }
+        Set tObject = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+    Quit $$$OK
+}
+
+/// <p>The message <var>pId</var>'s body as text lines (Story 20.9): <code>{Message, Line, Text}</code>, <code>Line</code> from 1 (a
+/// JSON number), at most <var>pMax</var> (<parameter>SQLMAX</parameter> when that is not above zero) of them, each cut at
+/// <parameter>CONTENTLINEMAX</parameter> characters with <parameter>TESTCUT</parameter>, and the whole text cut at
+/// <parameter>TESTOUTPUTMAX</parameter> characters. The text is split on <code>CRLF</code>, <code>LF</code> or <code>CR</code>, and a
+/// final terminator ends the last line. A header that is gone, one that names no body and a body that no longer opens read as no rows,
+/// and record no view. A body that opens is recorded (<method>AuditViewHere</method>) before it is rendered
+/// (<method>ContentsText</method>); one that is not text is 409 <parameter>OcuPilot.Api.InteropError.MESSAGECONTENTS</parameter>. The
+/// id's shape is judged by the caller.</p>
+ClassMethod ReadMessageContents(pNamespace As %String, pId As %String, pMax As %Integer, Output pRows As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRows = ""
+    Set tTop = $Select(pMax > 0: pMax, 1: ..#SQLMAX)
+    Set tSC = ..SqlRows(pNamespace, ..#BODYSQL, .tFound, .tCaught, +pId)
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the message's body could not be named", .pHttpStatus, .pFault)
+    Set tClass = $Select(tFound: $List(tFound(1), 1) _ "", 1: "")
+    Set tBodyId = $Select(tFound: $List(tFound(1), 2) _ "", 1: "")
+    Set pRows = []
+    Set pHttpStatus = 200
+    If (tClass = "") || (tBodyId = "") Quit $$$OK
+    Set tSC = ..ContentsText(pNamespace, pId, tClass, tBodyId, .tOutcome, .tText, .tCaught)
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the message's body could not be shown", .pHttpStatus, .pFault)
+    If tOutcome = "notext" {
+        Set pRows = ""
+        Quit ..Conflict(##class(OcuPilot.Api.InteropError).#MESSAGECONTENTS, .pHttpStatus, .pFault)
+    }
+    If tOutcome '= "text" Quit $$$OK
+    If $Length(tText) > ..#TESTOUTPUTMAX Set tText = $Extract(tText, 1, ..#TESTOUTPUTMAX) _ ..#TESTCUT
+    Set tText = $Replace($Replace(tText, $Char(13, 10), $Char(10)), $Char(13), $Char(10))
+    If $Extract(tText, *) = $Char(10) Set tText = $Extract(tText, 1, *-1)
+    Set tPos = 1
+    Set tLength = $Length(tText)
+    If tLength = 0 Quit $$$OK
+    For tLine = 1:1:tTop {
+        If tPos > (tLength + 1) Quit
+        Set tEndAt = $Find(tText, $Char(10), tPos)
+        If tEndAt = 0 {
+            Set tPiece = $Extract(tText, tPos, tLength)
+            Set tPos = tLength + 2
+        } Else {
+            Set tPiece = $Extract(tText, tPos, tEndAt - 2)
+            Set tPos = tEndAt
+        }
+        If $Length(tPiece) > ..#CONTENTLINEMAX Set tPiece = $Extract(tPiece, 1, ..#CONTENTLINEMAX) _ ..#TESTCUT
+        Set tRow = {}
+        Do tRow.%Set("Message", pId, "string")
+        Do tRow.%Set("Line", tLine, "number")
+        Do tRow.%Set("Text", tPiece, "string")
+        Do pRows.%Push(tRow)
+    }
     Quit $$$OK
 }
 
@@ -4864,7 +5260,7 @@ ClassMethod IsDocumentClassHere(pClass As %String) As %Boolean [ Private ]
 ClassMethod OwnRequestTypesHere(pHostClass As %String, Output pOwn) [ Private ]
 {
     Kill pOwn
-    If '$Match(pHostClass, "^%?[A-Za-z][A-Za-z0-9]*(\.[A-Za-z][A-Za-z0-9]*)*$") Quit
+    If '$Match(pHostClass, ..#CLASSNAMEPATTERN) Quit
     If '##class(%Dictionary.CompiledClass).%ExistsId(pHostClass) Quit
     If '##class(%Dictionary.CompiledMethod).%ExistsId(pHostClass _ "||GetMessageList") Quit
     Set tList = $ClassMethod(pHostClass, "GetMessageList")
@@ -4915,7 +5311,7 @@ ClassMethod RequestClassesHere(pHostClass As %String, Output pClasses) [ Private
 /// namespace is switched.</p>
 ClassMethod IsRequestClassHere(pHostClass As %String, pClass As %String) As %Boolean [ Private ]
 {
-    If '$Match(pClass, "^%?[A-Za-z][A-Za-z0-9]*(\.[A-Za-z][A-Za-z0-9]*)*$") Quit 0
+    If '$Match(pClass, ..#CLASSNAMEPATTERN) Quit 0
     If '##class(%Dictionary.CompiledClass).%ExistsId(pClass) Quit 0
     If $$$comClassKeyGet(pClass, $$$cCLASSabstract) Quit 0
     Do ..OwnRequestTypesHere(pHostClass, .tOwn)
@@ -4944,7 +5340,7 @@ ClassMethod ClassFieldsHere(pClass As %String, Output pFields) [ Private ]
 {
     Kill pFields
     Set pFields = 0
-    If '$Match(pClass, "^%?[A-Za-z][A-Za-z0-9]*(\.[A-Za-z][A-Za-z0-9]*)*$") Quit
+    If '$Match(pClass, ..#CLASSNAMEPATTERN) Quit
     If '##class(%Dictionary.CompiledClass).%ExistsId(pClass) Quit
     If ..IsDocumentClassHere(pClass) {
         Set pFields = 1
@@ -5480,11 +5876,9 @@ ClassMethod CollectResponseHere(pSpec As %String, ByRef pAnswer) [ Private ]
 {
     Set tClass = $Select(pSpec = "": "", 1: $ListGet(pSpec, 1))
     Set tId = $Select(pSpec = "": "", 1: $ListGet(pSpec, 2))
-    If (tClass = "") || '$Match(tClass, "^%?[A-Za-z][A-Za-z0-9]*(\.[A-Za-z][A-Za-z0-9]*)*$") Quit
-    If '##class(%Dictionary.CompiledClass).%ExistsId(tClass) Quit
-    If '$ClassMethod(tClass, "%Extends", "%Library.Persistent") Quit
-    Set tObject = $ClassMethod(tClass, "%OpenId", tId)
-    If '$IsObject(tObject) Quit
+    If tClass = "" Quit
+    Set tObject = ..OpenBodyHere(tClass, tId)
+    If '$IsObject(tObject) || 'tObject.%Extends("%Library.Persistent") Quit
     Set pAnswer("responseClass") = tClass
     If ..IsDocumentClassHere(tClass) {
         Set tText = ""
@@ -5710,7 +6104,7 @@ ClassMethod TransformClassOf(pName As %String) As %String [ Private ]
     Set tExtension = $Length(..#CLASSEXTENSION)
     If (tLength <= tExtension) || ($Extract(pName, tLength - tExtension + 1, tLength) '= ..#CLASSEXTENSION) Quit ""
     Set tClass = $Extract(pName, 1, tLength - tExtension)
-    If '$Match(tClass, "^%?[A-Za-z][A-Za-z0-9]*(\.[A-Za-z][A-Za-z0-9]*)*$") Quit ""
+    If '$Match(tClass, ..#CLASSNAMEPATTERN) Quit ""
     Quit tClass
 }
 
@@ -5721,7 +6115,7 @@ ClassMethod TransformClassOf(pName As %String) As %String [ Private ]
 /// a class the namespace does not hold among it. Called while the production's namespace is switched.</p>
 ClassMethod FormatKindHere(pClass As %String) As %String [ Private ]
 {
-    If '$Match(pClass, "^%?[A-Za-z][A-Za-z0-9]*(\.[A-Za-z][A-Za-z0-9]*)*$") Quit "other"
+    If '$Match(pClass, ..#CLASSNAMEPATTERN) Quit "other"
     If '##class(%Dictionary.CompiledClass).%ExistsId(pClass) Quit "other"
     Set tRecordMap = 0
     For tI = 1:1:$Length(..#RECORDMAPBASES, ",") {
@@ -5887,7 +6281,8 @@ ClassMethod SeparatorsHere(pTarget As %RegisteredObject) As %String [ Private ]
 /// not count line ends, so it cannot see that cut), and the vendor's status: EDI XML as indented XML, any other segmented document as the classic raw view
 /// (<method>SeparatorsHere</method>), any other document as its library stream, and an <parameter>XMLADAPTOR</parameter> object
 /// through <code>%XML.Writer</code> indented. An object that is neither is an error status. Called while the production's
-/// namespace is switched.</p>
+/// namespace is switched, by the transformation test (Story 20.27) and by a message's Contents read
+/// (<method>ContentsText</method>, Story 20.9).</p>
 ClassMethod RenderTargetHere(pTarget As %RegisteredObject, Output pText As %String) As %Status [ Private ]
 {
     Set pText = ""
@@ -5910,9 +6305,18 @@ ClassMethod RenderTargetHere(pTarget As %RegisteredObject, Output pText As %Stri
     }
     If $$$ISERR(tSC) Quit tSC
     Do tStream.Rewind()
-    Set pText = tStream.Read(..#TESTOUTPUTMAX + 1)
-    If 'tStream.AtEnd Set pText = pText _ ..#TESTCUT
+    Set pText = ..StreamText(tStream)
     Quit $$$OK
+}
+
+/// <p>The text of the character stream <var>pStream</var> from its current position: at most <parameter>TESTOUTPUTMAX</parameter> + 1
+/// characters of it, followed by <parameter>TESTCUT</parameter> when the stream held more. The one reader of a rendered
+/// target (<method>RenderTargetHere</method>) and of a message body that is a character stream (<method>ContentsText</method>).</p>
+ClassMethod StreamText(pStream As %Stream.Object) As %String [ Private ]
+{
+    Set tText = pStream.Read(..#TESTOUTPUTMAX + 1)
+    If 'pStream.AtEnd Set tText = tText _ ..#TESTCUT
+    Quit tText
 }
 
 /// <p>Run the data transformation <var>pClass</var> once on the pasted message <var>pContent</var> (Story 20.27): parse it as

@@ -10553,6 +10553,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-9-sql-object-privileges.md | severity: low | fix-risk: med | footprint: in-story
 - evidence: sql-privileges-tab.ts:38 renders connectivityRequestRefused; createScreenRead's Fault carries the code only (core/fault.ts:49), as the database volumes tab does; Effective privileges names the pair (user-editor.store.ts:651)
 - 2026-10-08T07:43:47Z status=wontfix-accepted owner=18-9-sql-object-privileges by=cr note=reopen_if=core/fault.ts Fault gains reason or detail, or a person reports not knowing which pair the tab lacks
+- 2026-10-14T20:29:43Z occurrence=20-9-messages-search-view-resend-and-trace
 
 ### DW-2189: The SQL privileges tab's Revoke buttons carry no aria-label naming the row's action and object, unlike the role editor's row buttons
 - source: spec-18-9-sql-object-privileges.md | severity: low | fix-risk: low | footprint: in-story
@@ -11984,3 +11985,32 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-23-5-the-range-end-cleanup-part-5.md (implement batch a deferred) | severity: med | fix-risk: low | footprint: in-story
 - evidence: explorerSqlStopped fills <s> from the recorded seconds (core/sql-answer.ts:78,107), so 1 is reachable; the other candidates are a heuristic scan (inference)
 - 2026-10-14T23:57:00Z status=open owner=23-5-the-range-end-cleanup-part-5 by=harvest note=census_plus_a_singular_per_reachable_string;through_count-phrase.ts
+### DW-2433: A message cut at the Contents read's 1,000,000-character cap shows no cut note: the inline TESTCUT reads like a 4,000-character line cut, so the lines after it vanish unannounced
+- source: spec-20-9-messages-search-view-resend-and-trace.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: ReadMessageContents cuts the text before splitting it, and truncated comes only from Screen/Read's extra-row check, so an HL7 body with a 1 MB document in one OBX segment ends on that segment cut at 4,000 and the segments after it go unannounced. LogSourcePort hands Screen/Read a port cut flag (tPortCut); the interop port has none, and Screen/Read.cls is on Story 20.9's Never list.
+- 2026-10-14T20:29:43Z status=escalated owner=burndown by=cr note=fix: an interop port cut flag through Screen/Read as LogSourcePort's tPortCut, or a product call on how the cut shows
+
+### DW-2434: Rule 31: interop-message-contents.ts copies DataTable's state getters (boundHere, loaded, fault, showRefusal, showSkeleton, busy, showEmpty) and its skeleton, refusal and empty markup instead of sharing them
+- source: spec-20-9-messages-search-view-resend-and-trace.md | severity: low | fix-risk: med | footprint: in-epic
+- evidence: The block's getters repeat ui/src/app/shell/data-table.ts:824-854 word for word, with showGrid renamed showText; the spec's Rule 31 note says only that the block follows them. Story 20.30's Trace tab is the next body component and would make a third copy.
+- 2026-10-14T20:29:43Z status=routed owner=20-30-the-session-trace by=cr note=share one state helper between DataTable and the body components when the Trace tab adds the second body
+
+### DW-2435: client-lint has no rule against an [innerHTML] binding, so the Contents block's text-only drawing (AD-47) is pinned by its component spec and the browser leg alone
+- source: spec-20-9-messages-search-view-resend-and-trace.md | severity: low | fix-risk: med | footprint: out-of-footprint
+- evidence: Measured on ocupilot-b-ci: the block bound through [innerHTML] left node tools/client-lint.mjs clean while interop-message-contents.spec.ts and browser AC3 went red. shell/reply.ts and shell/tool-call-card.ts bind innerHTML today, so a rule needs a reviewed-exception list.
+- 2026-10-14T20:29:43Z status=wontfix-accepted owner=20-9-messages-search-view-resend-and-trace by=cr note=reopen_if=grep -rln innerHTML ui/src/app outside specs finds a file beyond shell/reply.ts and shell/tool-call-card.ts
+
+### DW-2436: The message Contents block draws no Max rows control, so a message past the read's 1,000-line cap cannot be widened from the screen
+- source: spec-20-9-messages-search-view-resend-and-trace.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: The body input replaces the data table and its Max rows control; the block shows the cut note instead. The command bar's filter and sort apply to the block since the review patch.
+- 2026-10-14T20:29:43Z status=wontfix-accepted owner=20-9-messages-search-view-resend-and-trace by=cr note=reopen_if=a person needs a message line past the 1,000th on the Contents tab, or the Trace tab needs the control
+
+### DW-2437: A failed ViewContents audit is pinned by construction (AuditViewHere's Try/Catch), not by a test, and would leave no trace
+- source: spec-20-9-messages-search-view-resend-and-trace.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: Ens.Util.Auditing.AuditViewMessage answers an error only when the header id and the body are both missing (Auditing.cls:21), which ContentsText never passes, and $System.Security.Audit drops a disabled or unregistered event with no status, so no input reaches the catch or a failing status.
+- 2026-10-14T20:29:43Z status=wontfix-theoretical owner=20-9-messages-search-view-resend-and-trace by=cr note=reopen_if=AuditViewMessage gains an error path on a supported build, or a Contents read is found with no ViewContents row
+
+### DW-2438: StreamText's TESTOUTPUTMAX + 1 read and its TESTCUT marker are pinned by no test now that the Contents read cuts on its own
+- source: spec-20-9-messages-search-view-resend-and-trace.md code review (rework 1 re-review) | severity: low | fix-risk: med | footprint: in-epic
+- evidence: The Contents cap tests read through the new ReadMessageContents cut, which hides StreamText's bound and marker (dropping either leaves them green); InteropTransformTest has no output over 1,000,000 characters, so Story 20.27's AddTestLines dependence on that read is unpinned.
+- 2026-10-14T21:00:33Z status=wontfix-accepted owner=20-9-messages-search-view-resend-and-trace by=cr note=reopen_if=StreamText or RenderTargetHere changes, or a transformation output over 1,000,000 characters loses its cut mark

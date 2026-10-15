@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal, viewChild } from '@angular/core';
+import { NgComponentOutlet } from '@angular/common';
+import { ChangeDetectionStrategy, Component, DestroyRef, type Type, inject, input, signal, viewChild } from '@angular/core';
 import { NavigationEnd, Router } from '@angular/router';
 
 import { ApiService } from '../core/api';
@@ -47,6 +48,11 @@ export const BANNER_REASON_ID = 'ocu-list-page-banner-reason';
  * go of the binding when it is destroyed, unless another screen has bound since. A list declaration
  * with no read renders no table.
  *
+ * **A page may draw the rows itself** (AD-5, Story 20.9). Where the `body` input names a component,
+ * the page renders it with the screen and its store as inputs in place of the table, and everything
+ * else is unchanged: the binding, the refresh, the id-change re-read, the banners, the refusal and
+ * the note.
+ *
  * **The banner strip is the store's, not the component's.** A screen may declare a `banner` (AD-36):
  * the instance resolves it inside the screen's own read and the store holds the string key the
  * answer carried, so the strip appears and disappears with the rows rather than on a second request,
@@ -76,7 +82,7 @@ export const BANNER_REASON_ID = 'ocu-list-page-banner-reason';
 @Component({
   selector: 'app-list-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DataTable, ScreenActionDialogs],
+  imports: [DataTable, NgComponentOutlet, ScreenActionDialogs],
   template: `<section class="ocu-list-page">
     @if (bannerText) {
       <p [class]="bannerClass" role="status">
@@ -110,7 +116,11 @@ export const BANNER_REASON_ID = 'ocu-list-page-banner-reason';
       <p class="ocu-list-page-note">{{ noteText }}</p>
     }
     @if (list; as view) {
-      <app-data-table [screen]="view.screen" [store]="view.store" (focusFilter)="onFocusFilter()" />
+      @if (drawsBody) {
+        <ng-container *ngComponentOutlet="body(); inputs: bodyInputs" />
+      } @else {
+        <app-data-table [screen]="view.screen" [store]="view.store" (focusFilter)="onFocusFilter()" />
+      }
     }
     @if (list; as view) {
       <app-screen-action-dialogs [descriptor]="view.screen.descriptor" (acting)="onActing()" />
@@ -136,6 +146,15 @@ export class ListPage {
   private readonly screenActions = inject(ScreenActionHandler);
 
   protected readonly list: ListView | null;
+
+  /**
+   * A component that draws the rows in place of the table (Story 20.9's message contents), given the
+   * screen and its store as its `screen` and `store` inputs; `null` draws the table.
+   */
+  readonly body = input<Type<unknown> | null>(null);
+
+  /** The inputs the body component is given, the screen and its store; empty while the page has no list. */
+  protected readonly bodyInputs: Record<string, unknown>;
 
   private readonly table = viewChild(DataTable);
 
@@ -163,11 +182,13 @@ export class ListPage {
     if (screen === null || screen.read === null || screen.table === null) {
       this.list = null;
       this.noteText = '';
+      this.bodyInputs = {};
       return;
     }
     this.noteText = screen.read.note ? stringFor(screen.read.note.key) : '';
     const store = this.stores.for(screen.descriptor, screen.refreshRates);
     this.list = { screen, store };
+    this.bodyInputs = { screen, store };
     // Every parent's page shares the descriptor's store, so what it holds may be another parent's
     // rows and selection: dropped before this parent's read, as an id change drops them.
     if (screen.parentScope !== '') store.clearAnswers();
@@ -308,6 +329,11 @@ export class ListPage {
     const action = this.bannerAction;
     if (view === null || action === null || action.ariaDisabled !== null) return;
     this.actions.run(view.screen.descriptor, action.id);
+  }
+
+  /** Whether a body component draws the rows in place of the table. */
+  protected get drawsBody(): boolean {
+    return this.body() !== null;
   }
 
   /** The strip's sentence, or `''` when none stands. */

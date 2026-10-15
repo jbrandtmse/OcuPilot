@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, type Type, input } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router, provideRouter, type Route } from '@angular/router';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -21,8 +21,17 @@ import { ListPage } from './list-page';
  * OAuth 2.0 screen, resolved through the real `screenForUrl`.
  */
 
-@Component({ selector: 'app-list-page', template: '<p class="stub-list-page"></p>' })
-class StubListPage {}
+@Component({ selector: 'app-list-page', template: '<p class="stub-list-page" [attr.data-body]="bodyName"></p>' })
+class StubListPage {
+  readonly body = input<Type<unknown> | null>(null);
+
+  protected get bodyName(): string {
+    return this.body()?.name ?? '';
+  }
+}
+
+/** A body component, which the page hands its list page by class. */
+class ProbeBody {}
 
 const ALLOWED: Verdict = { allowed: true, failedPair: '' };
 
@@ -67,7 +76,7 @@ async function settle(fixture: ComponentFixture<unknown>): Promise<void> {
   }
 }
 
-async function build(url: string, navigation = new StubNavigation()): Promise<ComponentFixture<DetailPage>> {
+async function build(url: string, navigation = new StubNavigation(), body: Type<unknown> | null = null): Promise<ComponentFixture<DetailPage>> {
   TestBed.resetTestingModule();
   TestBed.configureTestingModule({
     providers: [
@@ -78,6 +87,7 @@ async function build(url: string, navigation = new StubNavigation()): Promise<Co
   TestBed.overrideComponent(DetailPage, { remove: { imports: [ListPage] }, add: { imports: [StubListPage] } });
   await TestBed.inject(Router).navigateByUrl(url);
   const fixture = TestBed.createComponent(DetailPage);
+  if (body !== null) fixture.componentRef.setInput('body', body);
   document.body.appendChild(fixture.nativeElement);
   planted.push(fixture.nativeElement);
   await settle(fixture);
@@ -131,6 +141,19 @@ describe('the detail page', () => {
     ]);
     expect(tabs(fixture).map((tab) => tab.getAttribute('aria-selected'))).toEqual(['true', 'false', 'false', 'false', 'false']);
     expect((fixture.nativeElement as HTMLElement).querySelector('[role="tabpanel"] .stub-list-page')).not.toBeNull();
+  });
+
+  // Story 20.9: the page hands its `body` to the list page it draws, under the strip and without one.
+  //
+  // Mutation (Rule 19): drop `[body]="body()"` from either `app-list-page` in `DetailPage` -> that leg goes red.
+  it('Story 20.9: hands its body to the list page, under the tab strip and without one', async () => {
+    const stripped = await build('/security/oauth?ns=HSCUSTOM', new StubNavigation(), ProbeBody);
+    expect((stripped.nativeElement as HTMLElement).querySelector('[role="tabpanel"] .stub-list-page')?.getAttribute('data-body')).toBe('ProbeBody');
+    const bare = await build('/security/untabbed?ns=HSCUSTOM', new StubNavigation(), ProbeBody);
+    expect((bare.nativeElement as HTMLElement).querySelector('.stub-list-page')?.getAttribute('data-body')).toBe('ProbeBody');
+    expect((bare.nativeElement as HTMLElement).querySelector('nav.ocu-detail-tabs')).toBeNull();
+    const none = await build('/security/oauth?ns=HSCUSTOM');
+    expect((none.nativeElement as HTMLElement).querySelector('.stub-list-page')?.getAttribute('data-body')).toBe('');
   });
 
   it('AC1: a click opens that tab\'s own route with the namespace, and a later tab selects itself', async () => {

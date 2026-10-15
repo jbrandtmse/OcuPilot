@@ -185,6 +185,9 @@ XData Elsewhere
 <screen name="InteropJobList"/>
 <screen name="InteropLookupEntryList"/>
 <screen name="InteropLookupTableList"/>
+<screen name="InteropMessageContentsTab"/>
+<screen name="InteropMessageHeaderTab"/>
+<screen name="InteropMessageList"/>
 <screen name="InteropMonitorList"/>
 <screen name="InteropProcessEditor"/>
 <screen name="InteropProcessList"/>

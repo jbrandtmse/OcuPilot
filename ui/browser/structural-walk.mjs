@@ -129,6 +129,10 @@ export const SKIP = {
   // Story 20.8: the Configuration diagram is reached from a Production items screen; interop-viewers.browser-spec.mjs walks it on the
   // probe production it creates.
   'interoperability/productions/diagram': 'HSCUSTOM holds no production, so the walk has no production to open',
+  // Story 20.9: a message's Header and Contents tabs are reached from a Messages row; interop-messages.browser-spec.mjs walks them on the
+  // headers it creates.
+  'interoperability/messages/document': 'a fresh instance holds no message; interop-messages.browser-spec.mjs walks them on the headers it creates',
+  'interoperability/messages/contents': 'a fresh instance holds no message; interop-messages.browser-spec.mjs walks them on the headers it creates',
 };
 
 /** The limits class the seeded entry is capped by, as the turn's own append is. */

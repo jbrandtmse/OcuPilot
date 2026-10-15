@@ -904,6 +904,8 @@ test('tabProblem and tabGroupProblem return every sentence OcuPilot.Test.TabCorp
     ['system-explorer/sql-views/document', 'system-explorer/sql-views/document', 1, 0],
     // Story 20.4: a production item's six tabs, a parent-scoped group whose head is unlisted.
     ['interoperability/productions/items/document', 'interoperability/productions/items/document', 1, 0],
+    // Story 20.9: a message's two tabs, Header and Contents, a parent-scoped group whose head is unlisted.
+    ['interoperability/messages/document', 'interoperability/messages/document', 1, 0],
     // Story 18.37: Interoperability usage's three tabs, a listed group whose head is its first tab.
     ['os-management/interoperability-usage', 'os-management/interoperability-usage', 1, 22],
     ['os-management/license-usage', 'os-management/license-usage', 1, 8],
@@ -913,6 +915,7 @@ test('tabProblem and tabGroupProblem return every sentence OcuPilot.Test.TabCorp
     ['system-explorer/sql-procedures/statements', 'system-explorer/sql-procedures/document', 2, 0],
     ['system-explorer/sql-views/fields', 'system-explorer/sql-views/document', 2, 0],
     ['interoperability/productions/items/settings', 'interoperability/productions/items/document', 2, 0],
+    ['interoperability/messages/contents', 'interoperability/messages/document', 2, 0],
     ['os-management/interoperability-usage/volume', 'os-management/interoperability-usage', 2, 0],
     ['os-management/license-usage/processes', 'os-management/license-usage', 2, 0],
     ['security/oauth/clients', 'security/oauth', 2, 0],
@@ -1320,6 +1323,7 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
     declaration.read.criteria = structuredClone(testCase.criteria);
     if (typeof testCase.refreshes === 'boolean') declaration.refreshes = testCase.refreshes;
     if (typeof testCase.port === 'string') declaration.read.source.port = testCase.port;
+    if (typeof testCase.endpoint === 'string') declaration.read.source.endpoint = testCase.endpoint;
     if (typeof testCase.parentScope === 'string') declaration.parentScope = testCase.parentScope;
     assert.equal(criteriaProblem(declaration), testCase.expected, testCase.name);
     if (testCase.expected !== null) refusals += 1;
@@ -1384,6 +1388,7 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
   // the production the route id names. Story 20.4's six item tabs, whose one criterion is the item the route id names,
   // and Queue messages, whose one criterion is the queue. Story 20.5's lookup table entries, whose one criterion is the table.
   // Story 18.12's privileged routine application roles and routines lists, whose one criterion is the application the route id names.
+  // Story 20.9's Messages search, whose nine criteria are its own, and its Header and Contents tabs, whose one criterion is the message.
   const withCriteria = emittedScreens.filter((screen) => (screen.read?.criteria ?? null) !== null);
   assert.deepEqual(
     withCriteria.map((screen) => screen.descriptor),
@@ -1427,6 +1432,9 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
       'OcuPilot.Screen.Descriptor.InteropItemStatusTab',
       'OcuPilot.Screen.Descriptor.InteropItemTestTab',
       'OcuPilot.Screen.Descriptor.InteropLookupEntryList',
+      'OcuPilot.Screen.Descriptor.InteropMessageContentsTab',
+      'OcuPilot.Screen.Descriptor.InteropMessageHeaderTab',
+      'OcuPilot.Screen.Descriptor.InteropMessageList',
       'OcuPilot.Screen.Descriptor.InteropQueueMessageList',
       'OcuPilot.Screen.Descriptor.JournalFileDatabaseList',
       'OcuPilot.Screen.Descriptor.JournalFileDetails',
@@ -2463,7 +2471,8 @@ test('ownPrivilegesProblem returns every sentence OwnPrivilegeCases declares, an
   // Queue messages %Ens_Queues:READ, and Jobs %Ens_Jobs:READ. Story 20.5's Lookup tables and a table's entries own
   // %Ens_LookupTables:READ, and Business partners %Ens_ProductionConfig:READ. Story 20.6's item Test tab owns
   // %Ens_TestingService:USE. Story 20.8's Schema viewer owns %Ens_EDISchema:READ and its Configuration diagram
-  // %Ens_ProductionConfig:READ.
+  // %Ens_ProductionConfig:READ. Story 20.9's Messages and its Header tab own %Ens_MessageHeader:USE, and its Contents tab
+  // that and %Ens_MessageContent:USE.
   assert.deepEqual(
     owners.sort(),
     [
@@ -2486,6 +2495,9 @@ test('ownPrivilegesProblem returns every sentence OwnPrivilegeCases declares, an
       'OcuPilot.Screen.Descriptor.InteropJobList',
       'OcuPilot.Screen.Descriptor.InteropLookupEntryList',
       'OcuPilot.Screen.Descriptor.InteropLookupTableList',
+      'OcuPilot.Screen.Descriptor.InteropMessageContentsTab',
+      'OcuPilot.Screen.Descriptor.InteropMessageHeaderTab',
+      'OcuPilot.Screen.Descriptor.InteropMessageList',
       'OcuPilot.Screen.Descriptor.InteropMonitorList',
       'OcuPilot.Screen.Descriptor.InteropProcessEditor',
       'OcuPilot.Screen.Descriptor.InteropProcessList',
