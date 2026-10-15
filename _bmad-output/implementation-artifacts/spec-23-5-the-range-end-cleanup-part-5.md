@@ -2,8 +2,8 @@
 title: 'Story 23.5: The range-end cleanup, part 5'
 type: 'bugfix'
 created: '2026-10-14'
-status: 'in-progress'
-baseline_revision: '2ed942779c87893d73d565c764d0b4a1cfdcd176'
+status: 'done'
+baseline_revision: '5668fb361a5ec306e3ef8e1bb77af744592bbd1f'
 baseline_commit: '2ed942779c87893d73d565c764d0b4a1cfdcd176'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -346,7 +346,7 @@ Rejected:
 - (low) The `.ocu-fault-banner` stylesheet comment describes the shell's strip. What it says about that strip is still true.
 - (low) The Auto Run Result's counts are off by one or two. Fixing them would edit this spec's own record.
 
-- [ ] [CI] DW-1341's guard drops a deep-link arrival: `preferences-integration.browser-spec.mjs` DW-1329 failed on CI run 38688234353 (`Recent items lists the visited screen before sign-out: ["Users"]`). A `page.goto` to a listed screen is a fresh bootstrap whose first `NavigationEnd` arrives while the session is still `probing` (or `installing`), so `record()` returns and the visit is lost. Fix in `recents-recorder.ts`: a listed-screen arrival while `isWaiting(state)` is held as the one pending visit and registered when the session reaches `signed-in`; it is dropped if the session settles in any other state; an arrival in a settled non-signed-in state (`form`, `signed-out`, `session-ended`, ...) is still never registered (DW-1341). Pin both halves in `recents-recorder.spec.ts` (a pending arrival registered once the stub session turns `signed-in`; a pending arrival dropped when it turns `form`), each with a `mutation:` line, and keep `preferences-integration.browser-spec.mjs` green on a rebuilt bundle, run three times.
+- [x] [CI] DW-1341's guard drops a deep-link arrival: `preferences-integration.browser-spec.mjs` DW-1329 failed on CI run 38688234353 (`Recent items lists the visited screen before sign-out: ["Users"]`). A `page.goto` to a listed screen is a fresh bootstrap whose first `NavigationEnd` arrives while the session is still `probing` (or `installing`), so `record()` returns and the visit is lost. Fix in `recents-recorder.ts`: a listed-screen arrival while `isWaiting(state)` is held as the one pending visit and registered when the session reaches `signed-in`; it is dropped if the session settles in any other state; an arrival in a settled non-signed-in state (`form`, `signed-out`, `session-ended`, ...) is still never registered (DW-1341). Pin both halves in `recents-recorder.spec.ts` (a pending arrival registered once the stub session turns `signed-in`; a pending arrival dropped when it turns `form`), each with a `mutation:` line, and keep `preferences-integration.browser-spec.mjs` green on a rebuilt bundle, run three times.
 
 ### Batch c: shell geometry and the panel
 
@@ -455,6 +455,22 @@ Rejected:
 - also, not from a layer:
   - `[medium]` `[patch]` (implement report) a Retry that answers removes the focused button, so focus falls to the body and the dialog's trap no longer hears Tab - `Dialog.keepFocusInside`, called after the render that follows the read; a focus case in `about-dialog.spec.ts`, red with the call dropped.
   - `[low]` `[patch]` (lead read) `home.page.ts`'s class doc still said an unanswered read renders the connectivity fault in place - replaced.
+
+### 2026-10-15 - Review pass (Batch b, `[CI]` rework)
+
+- verdicts: 11 findings - high 0, medium 1, low 7, false 3, maybe-false 0
+- findings:
+  - `[low]` `[patch]` the signed-out case's not-held assertion had no mutation line - `record` holding every non-signed-in arrival reddens it alone (1 of 15); the line is written.
+  - `[medium]` `[patch]` the held leg released the sign-in after a fixed 1.5 s and never observed the arrival, so a slow shard could leave it green with or without the hold; its `writes` and `=== 1` assertions had no mutation lines - the leg now waits for the page to settle with the held sign-in as its one open request, the `=== 1` assertion is dropped (the unit held-once case pins it), and registering at once reddens the `writes` assertion.
+  - `[low]` `[patch]` the mutation line counted 3 of 15 for "returns for a waiting arrival", and the reset case also reddens - re-run, 4 of 15; the line is replaced.
+  - `[low]` `[reject]` the held registration's POST is issued before the preferences read, and the newer read's answer wins - the overlap is the one `account-preferences.ts` documents; Home re-reads on arrival and the server holds the visit, and ordering the two is more than a direct correction.
+  - `[false]` `[reject]` the DW-1341 wire leg never enters a waiting state - the new held leg exercises the hold at the wire; the DW-1341 leg pins the signed-out half.
+  - `[low]` `[reject]` the deferred write at `signed-in` and the departure from the literal `isSignedIn` gate sit outside the matrix - the `[CI]` item prescribes hold-and-register.
+  - `[false]` `[reject]` the stub session's `move` always notifies while `Session.setState` skips an unchanged state - `settle` clears the held route on its first settle, so an extra notify changes nothing.
+  - `[low]` `[reject]` the drop-on-`form` half has no wire-level counterpart - the item names the component spec for it, and a dropped visit leaves nothing on the wire beyond the DW-1341 leg's silence.
+  - `[low]` `[reject]` the fix is pinned by a synthetic held sign-in, not the leg that failed - the failed leg stays and CI runs it; the held leg makes the window deterministic.
+  - `[low]` `[reject]` `isWaiting` also covers a form submit and a token renewal - a renewal is the same principal, and an arrival held through a failed one is dropped; the item prescribes `isWaiting`.
+  - `[false]` `[reject]` the spec's mutation text, baseline and status edits are bookkeeping off the intent's surface - they are the pass's own record.
 
 ## Design Notes
 
@@ -634,7 +650,7 @@ Every test added or changed passes on a fresh environment, in either order.
 **Batch b (loop):**
 
 - Run Checks and Deploy, then Spec for `about-help-links` and `home-system-information` (light and dark).
-- `mutation:` the session guard dropped from `RecentsRecorder.record` -> `recents-recorder.spec.ts`'s signed-out case red (one `POST /account/preferences` from a tab in state `form`).
+- `mutation:` `if (!waiting && !isSignedIn(state)) return;` dropped from `RecentsRecorder.record` -> `recents-recorder.spec.ts`'s signed-out case red (one `POST /account/preferences` from a tab in state `form`).
 - `mutation:` the `favoritePendingRoute() === route` guard dropped from `toggleFavorite` -> `locator-bar.spec.ts`'s double-star case red (2 writes for 1 star).
 - `mutation:` `this.asked.delete(route)` dropped from `HelpLinks.load` -> `about.test.mjs`'s "asked for again" case red.
 - `mutation:` the `[shown]` binding dropped from `app.ts` -> `app.spec.ts`'s stale-bundle case red (`.ocu-stale-bundle` standing over `app-instance-notice`).
@@ -653,7 +669,7 @@ Every test added or changed passes on a fresh environment, in either order.
 - (CR) `mutation:` `SystemInfo.load` and `Findings.load` keep the first fault they hold (`??=`) -> both tools tests red and the two change-of-kind `home.page.spec.ts` cases red.
 - (CR) `mutation:` `Findings.load` records an unreadable ok answer as `server-fault` -> its tools test and `home.page.spec.ts`'s unreadable-answer case red.
 - (QA) Tests changed: `ui/browser/home-system-information.browser-spec.mjs` (a System Information and a Findings read failed with status 0 and with a 404, counting every alert in the document), `ui/browser/preferences-integration.browser-spec.mjs` (DW-1342 double activation; DW-1341 Back while signed out), `ui/browser/about-help-links.browser-spec.mjs` (DW-1371 stale identity under a version-mismatch notice; `rewriteBuildIdentity` takes `overrides`). Run Spec for `home-system-information`, `preferences-integration` and `about-help-links` after Deploy; the last still reads 9 of 10 locally, its stamp leg being the environmental red above.
-- (QA) `mutation:` the `isSignedIn(this.session.state())` guard dropped from `RecentsRecorder.record` (bundle rebuilt and redeployed) -> `preferences-integration.browser-spec.mjs`'s DW-1341 leg red (a `recent` write for `permissions/users` left the signed-out tab).
+- (QA) `mutation:` `if (!waiting && !isSignedIn(state)) return;` dropped from `RecentsRecorder.record` (bundle rebuilt and redeployed) -> `preferences-integration.browser-spec.mjs`'s DW-1341 leg red (a preference write left the signed-out tab).
 - (QA) `mutation:` the `favoritePendingRoute() === route` guard dropped from `toggleFavorite` -> the DW-1342 leg red (two favorite writes while the first is open).
 - (QA) `mutation:` the `[shown]="staleNoticeShown"` binding dropped from `app.ts` -> `about-help-links.browser-spec.mjs`'s DW-1371 leg red (the strip stood over the version-mismatch notice).
 - (QA) `mutation:` Home returned the unfiltered fault from `systemFault` and `findingsFault` -> `home-system-information.browser-spec.mjs`'s two status-0 legs red (a second alert inside the block beside the shell's).
@@ -666,6 +682,11 @@ Every test added or changed passes on a fresh environment, in either order.
 - (code review) `mutation:` `settleFavorite` moved below the early return in `toggleFavorite`'s fulfilled arm -> `locator-bar.spec.ts`'s DW-1326 case red (`aria-disabled` still set).
 - (code review) `mutation:` `if (this.gone) return;` dropped from `AboutDialog.reread` -> `about-dialog.spec.ts`'s closed-during-Retry case red (NG0911).
 - (code review) `mutation:` the System Information banner mounted on `!systemAnswered` -> `home.page.spec.ts` red (the pending case and the banner-fault case, 2 of 72). Every source mutation reverted, tree byte-identical, clean bundle redeployed.
+- (CI) Tests changed: `recents-recorder.spec.ts` (the stub session gains `subscribe` and `move`; seven new cases: a latest listed arrival held while `probing` and while `installing`, a held arrival registered once, a held arrival dropped on a settled state, a held arrival kept through `reset()`, and Home and an unlisted screen not held), `ui/browser/preferences-integration.browser-spec.mjs` (a fourth leg holds a fresh document's silent sign-in and waits for the page to settle with that one request open; `watchPreferenceWrites` takes a `probe`). `npm run test:components` 3191 of 3191; `npm run test:tools` 2023 of 2023; `npm run build` passes; `preferences-integration` 4 of 4 on a rebuilt and redeployed bundle, three runs.
+- (CI) `mutation:` `record` registers a waiting arrival at once -> `recents-recorder.spec.ts` red: the two held cases and the dropped case (3 of 15), and the held sign-in leg red at its `writes` assertion (a `recent` write while the sign-in is held; bundle rebuilt and redeployed). `record` returns for a waiting arrival instead of holding it -> the two held cases, the held-once case and the case that keeps a held arrival through `reset()` red (4 of 15), and the held leg red at its final wait (bundle rebuilt and redeployed). The leg waits with `waitForNetworkIdle` at `concurrency: 1`, so the held sign-in is the one request open when the arrival has ended. The older DW-1329 leg did not reproduce the CI red on the throwaway in the implement pass (reported, not re-run); the held leg does.
+- (CI) `mutation:` `record` holding the arrival of every non-signed-in state (`const waiting = !isSignedIn(state)`) -> the signed-out case red alone (1 of 15), at its not-held assertion once the tab signs in.
+- (CI) `mutation:` `this.pendingRoute ??= screen.route` (the first arrival held, not the latest) -> the two held cases red. `this.pendingRoute = null` dropped from `settle` -> the held-once case and the dropped case red (2 of 15). `settle` registering on any settled state, then clearing the held route only on `signed-in` -> the dropped case red, once for each (1 of 15).
+- (CI) `mutation:` `reset` clearing the held route -> the case that keeps a held arrival through the shell's resets red (1 of 15). The unlisted test moved after the hold -> the unlisted case red; the `''` test moved after it -> the Home case red; both -> both red (2 of 15). Every source mutation reverted, the recorder byte-identical to the fixed copy, clean bundle redeployed.
 
 **Batch c (loop):**
 
@@ -687,14 +708,14 @@ Every test added or changed passes on a fresh environment, in either order.
 
 ## Auto Run Result
 
-**Pass: Batch b (shell state, Home and About). Batches c and d are untouched and unchecked.**
+**Pass: Batch b `[CI]` rework (DW-1341's guard and a deep link). Batches c and d are untouched and unchecked.**
 
 Status: done
 Blocking condition: none
 
-- **Change.** `RecentsRecorder` registers nothing off a signed-in session; the favorite star holds a per-route pending signal and `aria-disabled`; `helpHrefFor` answers `null` where the instance could not say and `HelpLinks.load` asks again; the stale-bundle strip waits behind a blocking instance notice and its `role="status"` region is always mounted; `About`, `SystemInfo` and `Findings` keep a classified `Fault`, and `FaultBanner` draws one in place (`fault` input, `retried` and `logOpened` outputs) in the About dialog and in Home's two blocks for a non-banner fault; `.ocu-home-system-row` takes `min-height`. `Dialog.keepFocusInside` returns focus after About's Retry answers.
-- **Files.** Source: `ui/src/app/{app,core,shell,areas/home,testing}` (recents-recorder, locator-bar, help, stale-bundle-notice, fault-banner, about-dialog, dialog, about, system-info, findings, fault, home.page, findings-panel, three testing stubs), `ui/src/styles/_components.scss` (one line). Tests: 8 component specs, `about`, `system-info` and `findings` tools tests, 2 browser specs.
-- **Review.** 16 findings: 0 high, 4 medium, 12 low. Patched 9 entries (5 medium including the focus fix from the implement report, 4 low): the recents pin, the unreadable-answer and change-of-kind cases, the close-before-navigate order, the mutation lines, two stale comments. Deferred 1 (low): Home's blocks are not re-read when the banner clears. Rejected 8, each with its reason in the Review Triage Log.
+- **Change.** `RecentsRecorder` holds a listed arrival made while the session is `probing` or `installing` as the one pending visit, registers it when the session reaches `signed-in`, and drops it when the session settles anywhere else; an arrival in a settled non-signed-in state is still never registered. `reset()` leaves a held arrival alone, because `app.ts` calls it on every move into a non-signed-in state.
+- **Files.** `ui/src/app/shell/recents-recorder.ts` (hold, `settle`, `register`; the class doc states the new contract), `ui/src/app/shell/recents-recorder.spec.ts` (seven cases; the stub session gains `subscribe` and `move`), `ui/browser/preferences-integration.browser-spec.mjs` (a fourth leg holds the silent sign-in; `watchPreferenceWrites` takes a `probe`), and this spec's Verification and `[CI]` box.
+- **Review.** 11 findings: 0 high, 1 medium, 7 low, 3 false. Patched 3 (1 medium, 2 low): the held leg waits for the page to settle with the held sign-in as its one open request in place of a fixed 1.5 s, and its unproven `=== 1` assertion is dropped; the signed-out case and the mutation count carry their lines. Rejected 8, each with its reason in the Review Triage Log. Nothing deferred.
 - **Follow-up review: false.** No patched entry was high.
-- **Verification.** `npm run test:tools` 2020 of 2020; `npm run test:components` 3183 of 3183; `npm run build` passes its checkers; browser specs on the rebuilt and redeployed bundle: `home-system-information` 4 of 4 (light and dark), `preferences-integration` 1 of 1, `about-help-links` 8 of 9. Mutations: eight in Batch b's Verification plus seven `(CR)` lines, each observed red and reverted with the tree byte-identical.
-- **Residual risk.** `about-help-links`' "shipped bundle matches the stamp" leg reads red on a throwaway after any `docker cp` of a changed bundle, so the loop's Spec step cannot read fully green locally; CI's fresh throwaway is where it passes (inference). About's Retry focus restore is pinned in jsdom only. On a failed About read the shell's banner stands behind the modal beside the dialog's own alert, as the Design Notes decide.
+- **Verification.** `npm run test:components` 3191 of 3191 and `npm run test:tools` 2023 of 2023, `npm run build` passes its checkers; `preferences-integration` 4 of 4 on the rebuilt and redeployed bundle, three runs, run again after the review patches. Mutations: the (CI) lines in Batch b's Verification, each observed red and reverted with the recorder byte-identical to the fixed copy; the clean bundle is deployed.
+- **Residual risk.** The older DW-1329 leg, the one that failed on CI, did not reproduce the red on the throwaway in the implement pass (reported, not re-run), so the CI run on this head is its confirmation.

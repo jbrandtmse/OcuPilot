@@ -61,6 +61,7 @@ const USERS_URL = '/ocupilot/permissions/users?ns=HSCUSTOM';
 /** Visited, never favorited: registers as a recent with no explicit action (AC3). */
 const ALERTS_URL = '/ocupilot/logs/alerts?ns=HSCUSTOM';
 const PREFERENCES_PATH = '/api/ocupilot/account/preferences';
+const LOGIN_PATH = '/api/ocupilot/login';
 
 let browser = null;
 
@@ -334,12 +335,26 @@ test('DW-1329 (Integration AC): favorites and recents held before sign-out rende
 /**
  * Record every write this page sends to the preferences route into `writes`, as the body it carried.
  * With a `gate` promise, a favorite write is held until the gate settles, which keeps one round
- * trip open for as long as the test wants it open; every other request goes on untouched.
+ * trip open for as long as the test wants it open. With a `probe` object, the silent sign-in
+ * (`POST /api/ocupilot/login` with no body) is held while `probe.hold` is true, until
+ * `probe.release` settles, and `probe.held` counts the requests held. Every other request goes on
+ * untouched.
  */
-function watchPreferenceWrites(writes, gate = null) {
+function watchPreferenceWrites(writes, gate = null, probe = null) {
   return async (page) => {
     await page.setRequestInterception(true);
     page.on('request', (request) => {
+      if (
+        probe !== null &&
+        probe.hold &&
+        request.method() === 'POST' &&
+        request.url().endsWith(LOGIN_PATH) &&
+        !request.postData()
+      ) {
+        probe.held += 1;
+        void probe.release.then(() => request.continue()).catch(() => {});
+        return;
+      }
       if (request.method() !== 'POST' || !request.url().includes(PREFERENCES_PATH)) {
         void request.continue();
         return;
@@ -426,9 +441,9 @@ test('DW-1342: two activations of the favorite star inside one round trip send o
   }
 });
 
-// Mutation (Rule 19): drop the `isSignedIn(this.session.state())` guard from `RecentsRecorder.record`
-// in `recents-recorder.ts`, rebuild and redeploy -> the Back lands on a listed screen and a recent
-// write leaves the signed-out tab.
+// Mutation (Rule 19): drop the `if (!waiting && !isSignedIn(state)) return;` guard from
+// `RecentsRecorder.record` in `recents-recorder.ts`, rebuild and redeploy -> the Back lands on a
+// listed screen and a recent write leaves the signed-out tab.
 test('DW-1341: a signed-out tab that goes Back to a listed screen sends no preference write', async () => {
   let session = null;
   try {
@@ -463,6 +478,53 @@ test('DW-1341: a signed-out tab that goes Back to a listed screen sends no prefe
     );
     assert.deepEqual(writes.slice(signedOutAt), [], 'and no preference write left it');
   } finally {
+    if (session !== null) await session.context.close();
+    await clearPreferences();
+  }
+});
+
+// Mutation (Rule 19), each with the bundle rebuilt and redeployed: make `RecentsRecorder.record`
+// return for a waiting arrival instead of holding it (delete `this.pendingRoute = screen.route;`) ->
+// no `recent` write for the screen leaves the page once the sign-in answers; make it register a
+// waiting arrival at once (`this.register(screen.route);` in that place) -> a write leaves the page
+// while the sign-in is still held.
+test('DW-1329: a listed screen reached while the silent sign-in is still in flight is registered as a recent once the session signs in', async () => {
+  let session = null;
+  let release = () => {};
+  try {
+    await clearPreferences();
+    const writes = [];
+    const probe = { hold: false, held: 0, release: null };
+    probe.release = new Promise((resolve) => {
+      release = resolve;
+    });
+    session = await signedInAt(USERS_URL, watchPreferenceWrites(writes, null, probe));
+    const { page } = session;
+    await page.waitForNetworkIdle({ idleTime: 400, timeout: config.navigationTimeoutMs });
+
+    // A fresh document is not a resumed tab, so this arrival starts a silent sign-in of its own.
+    // The held sign-in is the one request left open once every chunk the router's first navigation
+    // needs has landed, so that navigation has ended while the session is still waiting.
+    writes.length = 0;
+    probe.hold = true;
+    await page.goto(`${config.origin}${ALERTS_URL}`, { waitUntil: 'domcontentloaded' });
+    await until(() => probe.held > 0, 'the silent sign-in to leave the page');
+    const quiet = await page
+      .waitForNetworkIdle({ idleTime: 1000, concurrency: 1, timeout: config.navigationTimeoutMs })
+      .then(
+        () => true,
+        () => false
+      );
+    assert.deepEqual(writes, [], 'nothing is written for a principal the instance has not yet answered for');
+    assert.ok(quiet, 'the page settles with the held sign-in as its one open request');
+
+    release();
+    await until(
+      () => writes.some((write) => write.kind === 'recent' && write.route === 'logs/alerts'),
+      'the held visit to register once the session signs in'
+    );
+  } finally {
+    release();
     if (session !== null) await session.context.close();
     await clearPreferences();
   }

@@ -32,12 +32,26 @@ class StubNavigation {
   }
 }
 
-/** The one member the recorder reads: which state the tab's session is in. */
+/** The two members the recorder reads: which state the tab's session is in, and when it changes. */
 class StubSession {
   current: SessionState = 'signed-in';
+  private readonly listeners = new Set<() => void>();
 
   state(): SessionState {
     return this.current;
+  }
+
+  subscribe(listener: () => void): () => void {
+    this.listeners.add(listener);
+    return () => {
+      this.listeners.delete(listener);
+    };
+  }
+
+  /** Settle the session on `next` and tell every listener, the way `Session.setState` does. */
+  move(next: SessionState): void {
+    this.current = next;
+    for (const listener of this.listeners) listener();
   }
 }
 
@@ -133,20 +147,131 @@ describe('the recents recorder', () => {
     await router.navigateByUrl('/logs/alerts');
     await settled();
 
-    // Mutation (Rule 19): drop `if (!isSignedIn(this.session.state())) return;` from
+    // Mutation (Rule 19): drop `if (!waiting && !isSignedIn(state)) return;` from
     // `RecentsRecorder.record` -> this goes red, one `POST /account/preferences` from a tab that
     // is signed out.
     expect(writes()).toHaveLength(0);
     expect(preferences.recents()).toEqual([]);
 
-    // The refused arrival does not latch `lastRoute`: the same screen, reached once the tab is
-    // signed in, is registered.
-    session.current = 'signed-in';
+    // The refused arrival does not latch `lastRoute`, and is not held for the sign-in: the same
+    // screen, reached once the tab is signed in, is registered.
+    session.move('signed-in');
+    await settled();
+    expect(writes()).toHaveLength(0);
+
     await router.navigateByUrl('/logs/alerts?ns=USER');
     await settled();
 
     expect(writes()).toHaveLength(1);
     expect(preferences.recents()).toEqual(['logs/alerts']);
+  });
+
+  it.each(['probing', 'installing'] as const)(
+    'holds the latest listed arrival made while the session is %s, and registers it when the session signs in',
+    async (waiting) => {
+      // A deep link's first navigation ends before the silent sign-in has answered, and the later
+      // arrival is where the tab is by the time it does.
+      session.current = waiting;
+      await router.navigateByUrl('/logs/alerts');
+      await router.navigateByUrl('/permissions/users');
+      await settled();
+
+      // Mutation (Rule 19): make `record` register a waiting arrival at once -> this goes red, a
+      // write from a tab whose principal is not yet known.
+      expect(writes()).toHaveLength(0);
+
+      session.move('signed-in');
+      await settled();
+
+      // Mutation (Rule 19): make `record` return for a waiting arrival instead of holding it ->
+      // this goes red, and a deep link to a listed screen never reaches Recent items. Holding the
+      // first arrival (`??=`) instead of the latest reddens the list below alone.
+      expect(writes()).toHaveLength(1);
+      expect(preferences.recents()).toEqual(['permissions/users']);
+    }
+  );
+
+  it('registers a held arrival once, so a later pass through the waiting states does not bring it back', async () => {
+    session.current = 'probing';
+    await router.navigateByUrl('/logs/alerts');
+    session.move('signed-in');
+    await settled();
+    await router.navigateByUrl('/permissions/users');
+    await settled();
+    expect(preferences.recents()).toEqual(['permissions/users', 'logs/alerts']);
+
+    // The session leaves `signed-in` and comes back: nothing is owed.
+    session.move('probing');
+    session.move('signed-in');
+    await settled();
+
+    // Mutation (Rule 19): drop `this.pendingRoute = null` from `settle` -> this goes red, a third
+    // write that puts the screen the tab left a minute ago back at the front of Recent items.
+    expect(writes()).toHaveLength(2);
+    expect(preferences.recents()).toEqual(['permissions/users', 'logs/alerts']);
+  });
+
+  it('drops a held arrival when the session settles on anything but signed-in, and never brings it back', async () => {
+    session.current = 'probing';
+    await router.navigateByUrl('/logs/alerts');
+    session.move('form');
+    await settled();
+
+    // Mutation (Rule 19): register the held route on any settled state (drop `isSignedIn(state)`
+    // from `settle`'s condition) -> this goes red, a write from a tab left on the sign-in form.
+    expect(writes()).toHaveLength(0);
+
+    // The person signs in on the form. The arrival they left before it is not theirs to have.
+    session.move('probing');
+    session.move('signed-in');
+    await settled();
+
+    // Mutation (Rule 19): clear the held route only when it is registered (move `this.pendingRoute
+    // = null` inside the `isSignedIn(state)` branch) -> this goes red, a visit from before the
+    // principal signed in.
+    expect(writes()).toHaveLength(0);
+    expect(preferences.recents()).toEqual([]);
+  });
+
+  it('keeps a held arrival through the shell\'s resets while the session moves between the waiting states', async () => {
+    // `app.ts` calls `reset()` on every move into a state other than `signed-in`, so a deep link
+    // that meets `installing` after `probing` has been reset twice by the time it signs in.
+    const recorder = TestBed.inject(RecentsRecorder);
+    session.current = 'probing';
+    await router.navigateByUrl('/logs/alerts');
+    recorder.reset();
+    session.move('installing');
+    recorder.reset();
+    session.move('signed-in');
+    await settled();
+
+    // Mutation (Rule 19): clear `pendingRoute` in `reset` -> this goes red, and a deep link that
+    // waits through an install never reaches Recent items.
+    expect(writes()).toHaveLength(1);
+    expect(preferences.recents()).toEqual(['logs/alerts']);
+  });
+
+  it('holds nothing for an unlisted screen reached while the session is waiting', async () => {
+    session.current = 'probing';
+    await router.navigateByUrl('/agent/definitions/edit/42');
+    session.move('signed-in');
+    await settled();
+
+    // Mutation (Rule 19): hold the route before `record` tests `isListedScreen` -> this goes red,
+    // a write for the Definition form's id-less create route.
+    expect(writes()).toHaveLength(0);
+  });
+
+  it('holds nothing for Home reached while the session is waiting', async () => {
+    await router.navigateByUrl('/logs/alerts');
+    session.move('probing');
+    await router.navigateByUrl('/');
+    session.move('signed-in');
+    await settled();
+
+    // Mutation (Rule 19): hold the route before `record` tests it for `''` -> this goes red, a
+    // second write, for the empty route the instance refuses.
+    expect(writes()).toHaveLength(1);
   });
 
   it('a second arrival at the same screen costs no second registration', async () => {
