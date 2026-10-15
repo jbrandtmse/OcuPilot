@@ -11809,6 +11809,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-20-30 plan (measured) | severity: med | fix-risk: low | footprint: in-epic
 - evidence: Measured at Story 20.30's plan on ocupilot-b-ci: after the cleanup calls interop-item-test.browser-spec.mjs also uses, USER held three message headers and the production's event-log rows; removed by hand.
 - 2026-10-14T03:47:33Z status=routed owner=burndown by=spec_gate note=Rule 19 hermeticity: the spec (Story 20.6's) removes the headers and log rows it caused
+- 2026-10-15T02:29:03Z occurrence=20-30-the-session-trace
 
 ### DW-2414: A deleted account that was the first to run the install gate's version-row read after its cached queries were purged (an install, an uninstall) is refused 503 INSTALL.UNREADABLE instead of 401 AUTH.DISABLED
 - source: spec-20-16 (harvest, CI rework 2) | severity: low | fix-risk: med | footprint: out-of-footprint

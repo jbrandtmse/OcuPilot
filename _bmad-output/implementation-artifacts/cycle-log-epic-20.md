@@ -878,3 +878,7 @@
 2026-10-15T00:52:24Z	Epic 20	story_chartered	story=20-35-the-agent-s-mdx-read by=runner(orchestrator_ruling_Q1_A_at_20.33_gate) placement=epics.md_after_20.34;story_order_after_20.33(orchestrator) tracker=backlog
 2026-10-15T00:52:24Z	Epic 20	deps_hash_rerecorded	reason=20.35_chartered+20.33_amended(rulings)
 2026-10-15T00:52:33Z	Story 20.30	stage_spawned	stage=implement spawn_at=2026-10-15T00:52:33Z model=sonnet agent_name=20-30-implement-1 cycle_iteration=1 note=20.9_ci_resolved_success_38655096956
+2026-10-15T02:29:28Z	Story 20.30	dev_complete	spawn_at=(see_stage_spawned) model=sonnet agent_name=20-30-implement-1 build_sha=a03f713c baseline_revision=1eb850be review_loop_iteration=0 followup_review_recommended=false deferred=0 files=42 loc_added=2930 loc_removed=165 bundle_initial=1.95MB trace_chunk=10.92kB DW-2434=taken(core/read-state.ts_shared_by_DataTable_and_bodies) occurrence=DW-2408 origin_fix=spec-20-9:238+spec-20-30:44(Error_is_boolean)
+2026-10-15T02:29:28Z	Story 20.30	adr_verifications_complete	tool=none acs= result=none_required evidence= mutations=none model=claude-opus-5-5
+2026-10-15T02:29:28Z	Story 20.33	spine_updated	ad=AD-65(owner_quote_added:Lets_go_with_your_recommendation) reason=clarification(owner_confirmed_Q2_C) by=runner story=20-33 lint=ok(preexisting_low_line213) note=written_in_AD-65(the_riders_AD),not_AD-62_item_15
+2026-10-15T02:29:28Z	Story 20.30	stage_spawned	stage=qa spawn_at=2026-10-15T02:29:28Z model=sonnet agent_name=20-30-qa-1 cycle_iteration=1

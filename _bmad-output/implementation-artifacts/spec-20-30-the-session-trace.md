@@ -4,6 +4,7 @@ type: 'feature'
 created: '2026-10-13'
 status: 'done'
 baseline_revision: '1eb850bec79bb7ff626749c58149c44c7c6b61d9'
+baseline_commit: '1eb850bec79bb7ff626749c58149c44c7c6b61d9'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -41,7 +42,7 @@ deferred: []
   - Any other text is refused 400 `PORT.VALIDATION`, naming `message`.
 - **Rows.** `{Message, Step, ID, TimeCreated, Status, Type, Source, Target, BodyClass, SessionId, Error}`, built through 20.9's `MessageRow`.
   - `Step` is a JSON number, 1 to n in `ID` order, and the read's only sort key.
-  - Every other value is a string. `TimeCreated` is local time (`LocalStamp`).
+  - `Error` is a JSON boolean. Every other value is a string. `TimeCreated` is local time (`LocalStamp`).
 - **Drawing** (AD-5 `body`; AD-11 and AD-47).
   - Participants run left to right in first-appearance order: for each row in `Step` order, its source, then its target.
   - There is one arrow per row, in `Step` order. A `Response` arrow is dashed; every other type is solid.
