@@ -42,10 +42,11 @@ export const FAULT_CLEAR_HOLD_MS = 1500;
  * the sign-in card, where a submit met an unreachable instance, and the `checking` limbo, where
  * the identity read failed. A banner inside either gate would be absent in both.
  *
- * **Two of the six fault kinds render here, and the other four deliberately do not.** A 403 is
- * an inline refusal beside working data, an install in flight is the signing-in presentation,
- * a 404 has no Epic 1 surface, and a 401 is the sign-in card -- EXPERIENCE.md publishes no
- * banner sentence for any of them, and inventing one is what DW-126 is about.
+ * **Following the connectivity service, two of the six fault kinds render here, and the other four
+ * deliberately do not.** A 403 is an inline refusal beside working data, an install in flight is
+ * the signing-in presentation, a 404 has no Epic 1 surface, and a 401 is the sign-in card --
+ * EXPERIENCE.md publishes no banner sentence for any of them, and inventing one is what DW-126 is
+ * about.
  *
  * **Open messages.log is gated in place while nothing serves it.** The control is part of the
  * published server-fault copy, so it renders; the screen it opens is Epic 6's, so until a built
@@ -186,7 +187,9 @@ export class FaultBanner {
   /**
    * Whether the generic sentence and Open messages.log are drawn. The connectivity service raises
    * only `unreachable` and `server-fault`; an in-place fault of any other kind reads as the generic
-   * sentence, because it has no published sentence of its own (EXPERIENCE.md "Generic internal").
+   * sentence (EXPERIENCE.md "Generic internal"). A 403 has a row of its own ("Request refused"),
+   * which this banner does not draw: the reads it is mounted for in place (About, System
+   * Information, Findings) are caller-own and ungated beyond the router.
    */
   protected get serverFault(): boolean {
     const kind = this.current()?.kind;
@@ -206,7 +209,8 @@ export class FaultBanner {
   /**
    * Probe now rather than waiting out the backoff. Every reader whose read failed is handed its
    * one re-read by the same response that clears this banner, so Retry and "the probe finally
-   * answered" are one recovery rather than two that could disagree.
+   * answered" are one recovery rather than two that could disagree. In place, it emits `retried`
+   * instead, and the surface that mounted it reads again.
    */
   protected retry(): void {
     if (this.fault() !== undefined) {

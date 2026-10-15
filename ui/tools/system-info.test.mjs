@@ -26,6 +26,7 @@ const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const core = (name) => join(uiRoot, 'src', 'app', 'core', name);
 
 const { SystemInfo, SYSTEM_INFO_PATH, SYSTEM_INFO_FIELDS } = await import(core('system-info.ts'));
+const { ConnectivityService } = await import(core('connectivity.ts'));
 
 /** An answer in the shape `GET /ui/system` publishes. */
 function systemBody(overrides = {}) {
@@ -190,6 +191,29 @@ test('a failed read is classified, and a change of fault kind notifies where the
   await store.load();
   assert.equal(store.fault()?.kind, 'unreachable', 'the next failure is classified afresh');
   assert.equal(notified, 2, 'and the panel is told, so an alert for the old kind can leave');
+});
+
+test('a banner fault is parked and read again once the instance answers; a 404 is not parked', async () => {
+  // Mutation (Rule 19): drop the `retryWhenReachable` park from `SystemInfo.load` -> this goes red,
+  // the panel left unread once the shell's banner clears (DW-2448).
+  const connectivity = new ConnectivityService({ api: () => null, schedule: () => {} });
+  const api = stubApi([transportError(), ok(systemBody())]);
+  const store = new SystemInfo({ api, connectivity });
+  await store.load();
+  assert.equal(store.fault()?.kind, 'unreachable');
+
+  connectivity.note(null); // an unrelated call answered, which clears the shell's banner
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.equal(api.calls.length, 2, 'the parked read ran when the instance answered');
+  assert.equal(store.answered(), true);
+
+  const absent = { kind: 'error', status: 404, code: 'ROUTE.NOTFOUND', reason: 'gone', detail: null };
+  const other = stubApi([absent, ok(systemBody())]);
+  const held = new SystemInfo({ api: other, connectivity });
+  await held.load();
+  connectivity.note(null);
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.equal(other.calls.length, 1, "a 404 is the block's own alert, whose Retry reads again");
 });
 
 test('a read that answers clears a previous failure', async () => {

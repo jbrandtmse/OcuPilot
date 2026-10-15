@@ -691,6 +691,15 @@ describe('the locator bar', () => {
     expect(polite?.textContent?.trim()).toBe('');
     expect(preferences.favorites()).toEqual([]);
     expect(toggle()?.getAttribute('aria-pressed')).toBe('false');
+
+    // The refusal settled the write, so the toggle is released and the next activation is sent.
+    // Mutation (Rule 19): move `this.settleFavorite(route)` below the early return in
+    // `toggleFavorite`'s fulfilled arm -> this goes red, the star held for good after a refusal.
+    expect(toggle()?.hasAttribute('aria-disabled')).toBe(false);
+    const writes = preferences.calls.filter((call) => call.method === 'POST').length;
+    toggle()?.click();
+    await fixture.whenStable();
+    expect(preferences.calls.filter((call) => call.method === 'POST')).toHaveLength(writes + 1);
   });
 
   it('a background write refused while a screen is open is announced once, by the locator bar', async () => {

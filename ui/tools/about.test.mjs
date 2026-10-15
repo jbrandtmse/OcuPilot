@@ -149,6 +149,25 @@ test('a failed read with nothing held is what the dialog renders its error state
   assert.equal(notified, 1, 'a second failure re-announces nothing');
 });
 
+test('a failed read is classified, and a change of fault kind notifies where the same kind does not', async () => {
+  // Mutation (Rule 19): return from `About.load` whenever a fault is held (`previous !== null`) ->
+  // this goes red, the dialog left on the unreachable sentence while the instance answers 500.
+  const fault = { kind: 'error', status: 500, code: 'INTERNAL', reason: 'no', detail: null };
+  const api = stubApi([transportError(), transportError(), fault]);
+  const store = new About({ api });
+  let notified = 0;
+  store.subscribe(() => (notified += 1));
+
+  await store.load();
+  assert.equal(store.fault()?.kind, 'unreachable');
+  await store.load();
+  assert.equal(notified, 1, 'the same kind again says nothing new');
+
+  await store.load();
+  assert.equal(store.fault()?.kind, 'server-fault', 'the next failure is classified afresh');
+  assert.equal(notified, 2, 'and the dialog is told, so its alert can change sentence');
+});
+
 test('a late answer does not overwrite a newer one', async () => {
   const api = deferredApi();
   const store = new About({ api });

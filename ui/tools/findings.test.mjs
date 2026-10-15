@@ -21,6 +21,7 @@ const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const core = (name) => join(uiRoot, 'src', 'app', 'core', name);
 
 const { Findings, FINDINGS_PATH, FINDING_CHECKS, findingLines, findingsOf } = await import(core('findings.ts'));
+const { ConnectivityService } = await import(core('connectivity.ts'));
 const { STRINGS } = await import(core('strings.ts'));
 
 const SECURITY = ['webapp-open', 'monitor-open', 'all-holder', 'certificate', 'auditing-off'];
@@ -203,6 +204,31 @@ test('a failed read is classified, a change of fault kind notifies, and an ok an
   assert.equal(store.fault(), null, 'an answer clears the fault');
   assert.equal(store.failed(), false);
   assert.equal(store.answered(), true);
+});
+
+test('a banner fault is parked and read again once the instance answers; a 404 is not parked', async () => {
+  // Mutation (Rule 19): drop the `retryWhenReachable` park from `Findings.load` -> this goes red,
+  // the panel left unread once the shell's banner clears (DW-2448).
+  const connectivity = new ConnectivityService({ api: () => null, schedule: () => {} });
+  const unreachable = { kind: 'error', status: 0, code: null, reason: null, detail: null };
+  const queue = [unreachable, ok({ checks: checks(), findings: [] })];
+  const calls = [];
+  const store = new Findings({ api: { requestJson: () => (calls.push(1), Promise.resolve(queue.shift())) }, connectivity });
+  await store.load();
+  assert.equal(store.fault()?.kind, 'unreachable');
+
+  connectivity.note(null); // an unrelated call answered, which clears the shell's banner
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.equal(calls.length, 2, 'the parked read ran when the instance answered');
+  assert.equal(store.answered(), true);
+
+  const absent = { kind: 'error', status: 404, code: 'ROUTE.NOTFOUND', reason: 'gone', detail: null };
+  const other = [];
+  const held = new Findings({ api: { requestJson: () => (other.push(1), Promise.resolve(absent)) }, connectivity });
+  await held.load();
+  connectivity.note(null);
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.equal(other.length, 1, "a 404 is the panel's own alert, whose Retry reads again");
 });
 
 test('reset drops the answer, and an answer for a departed principal never lands', async () => {

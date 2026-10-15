@@ -12024,3 +12024,9 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-23-5-the-range-end-cleanup-part-5.md (implement batch b deferred) | severity: low | fix-risk: low | footprint: in-story
 - evidence: about.ts, system-info.ts and findings.ts register no retryWhenReachable, so the banner's Retry re-runs none of them (home.page.ts:789-804); pre-existing
 - 2026-10-15T05:42:35Z status=open owner=23-5-the-range-end-cleanup-part-5 by=harvest note=two-way_door_candidate_for_batch_b_review
+- 2026-10-15T06:35:49Z status=resolved-by:23-5-the-range-end-cleanup-part-5 by=cr note=patched in review: SystemInfo and Findings park a banner-fault read via retryWhenReachable; tools and browser legs pin it
+
+### DW-2449: The Guardrails page and a web application's class-access tab draw the generic server-fault sentence as role=alert for any failed read, status 0 included, so an unreachable instance shows a second alert with the wrong sentence beside the shell's banner
+- source: spec-23-5-the-range-end-cleanup-part-5.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: guardrails.page.ts:60 and web-app-class-access-tab.ts:49 render STRINGS.connectivityServerFault under a failed() boolean; api.ts reports every requestJson to the shell's banner (EXPERIENCE.md:769 one banner); DW-1401's root cause on two surfaces Batch b did not touch
+- 2026-10-15T06:35:45Z status=escalated owner=burndown by=cr note=pre-existing; fix is DW-1401's shape (classified Fault, in-place FaultBanner for non-banner kinds)

@@ -124,8 +124,11 @@ async function signedInAt(url, prepare = null) {
  * tab from before a reinstall does. The page gets the instance's own answer for that name, which the
  * static handler gives as the shell document (the browser refuses it as a module); each answer's
  * status and content type are recorded in `control.chunkAnswers`.
+ *
+ * `overrides` replaces further members of the answer, which is how a leg makes the same instance
+ * report an admin API version the shell refuses.
  */
-function rewriteBuildIdentity(identity, control = null) {
+function rewriteBuildIdentity(identity, control = null, overrides = {}) {
   return async (page) => {
     await page.setRequestInterception(true);
     page.on('request', (request) => {
@@ -151,6 +154,7 @@ function rewriteBuildIdentity(identity, control = null) {
         });
         const body = await response.json();
         body.buildIdentity = control === null || control.armed === true ? identity : await documentBundle(page);
+        Object.assign(body, overrides);
         await request.respond({
           status: response.status,
           contentType: 'application/json',
@@ -370,7 +374,7 @@ function interceptAbout(control) {
       void request.respond({
         status: 500,
         contentType: 'application/json',
-        body: JSON.stringify({ error: 'internal', reason: 'Internal error', code: 'INTERNAL.ERROR', detail: null }),
+        body: JSON.stringify({ error: 'server_error', reason: 'Internal error', code: 'INTERNAL' }),
       });
     });
   };
@@ -551,6 +555,44 @@ test('Integration AC (DW-3): a buildIdentity the bundle does not carry raises th
     assert.equal(survived, false, 'Reload fetched the document again, so the marker is gone');
   } finally {
     if (session !== null) await session.context.close();
+  }
+});
+
+// Mutation (Rule 19): drop the `[shown]="staleNoticeShown"` binding from `app.ts`, rebuild and
+// redeploy -> the strip stands over the instance notice and the first assertion below goes red.
+test('Integration AC (DW-1371): a stale bundle under an instance notice that blocks the frame shows the notice alone, with its status region standing empty', async () => {
+  await resetRememberedState();
+  const context = await browser.createBrowserContext();
+  const page = await context.newPage();
+  page.setDefaultNavigationTimeout(config.navigationTimeoutMs);
+  try {
+    // A stale identity and an admin API version the shell refuses, from the same instance answer.
+    await rewriteBuildIdentity('main-NOTTHISONE.js', null, { adminApiVersion: 1 })(page);
+    await page.goto(`${config.origin}${HOME_URL}`, { waitUntil: 'networkidle2' });
+    await page.waitForSelector('#ocu-signin-user', { visible: true, timeout: config.navigationTimeoutMs });
+    await page.type('#ocu-signin-user', config.username);
+    await page.type('#ocu-signin-password', config.password);
+    await page.click('.ocu-signin-card button[type="submit"]');
+    // The notice replaces the frame, and the identity it reports is the answered signal: the stale
+    // comparison runs on the same settle.
+    await page.waitForSelector('app-instance-notice .ocu-empty-state-notice', { timeout: config.navigationTimeoutMs });
+    await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+
+    const seen = await page.evaluate(() => {
+      const region = document.querySelector('app-stale-bundle-notice [role="status"]');
+      return {
+        notice: document.querySelector('app-instance-notice .ocu-empty-state-notice').textContent.trim(),
+        strip: document.querySelector('.ocu-stale-bundle') !== null,
+        regionText: region?.textContent.trim() ?? null,
+        frame: document.querySelector('app-rail .ocu-rail') !== null,
+      };
+    });
+    assert.equal(seen.notice, STRINGS.authAdminApiVersionMismatch.replace('<n>', '1'), 'the instance notice is the one statement on screen');
+    assert.equal(seen.frame, false, 'and it stands in place of the frame');
+    assert.equal(seen.strip, false, 'so the stale-bundle strip waits behind it');
+    assert.equal(seen.regionText, '', 'and the status region stays mounted and empty');
+  } finally {
+    await context.close();
   }
 });
 

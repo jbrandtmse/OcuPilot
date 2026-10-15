@@ -5,7 +5,9 @@
  * **Its own caller-own chrome read.** It carries the shell's namespace like every other call, and
  * no timer re-reads it (AD-43): Home loads it when it opens, on a namespace switch and on a covered
  * change event. A read that does not answer leaves the previous answer standing and raises
- * `failed()`; only the newest read settles, and `reset()` drops a departed principal's answer.
+ * `failed()`; only the newest read settles, and `reset()` drops a departed principal's answer. A
+ * read that failed with a connectivity-banner fault is parked with `ConnectivityService` and runs
+ * again when the instance answers.
  *
  * **An unread check is never clean.** A group says "Nothing to report." only when every one of its
  * checks answered `checked`; each other check says "Not checked" with why.
@@ -14,7 +16,8 @@
  */
 
 import type { ApiService, JsonResult } from './api';
-import { classifyFailure, type Fault } from './fault.ts';
+import type { ConnectivityService } from './connectivity';
+import { classifyFailure, isBannerFault, type Fault } from './fault.ts';
 import { STRINGS } from './strings.ts';
 
 /** Absolute from the origin root, through the one API service (AD-20). */
@@ -267,10 +270,18 @@ export function findingLines(answer: FindingsAnswer): readonly FindingGroupLines
 
 export interface FindingsOptions {
   readonly api: ApiService;
+  /**
+   * Where a read that failed with a connectivity-banner fault is parked, so the panel reads again
+   * when the instance answers (DW-135's shape). Optional so a test that is not about the re-read
+   * can leave it out.
+   */
+  readonly connectivity?: ConnectivityService;
 }
 
 export class Findings {
   private readonly api: ApiService;
+
+  private readonly connectivity: ConnectivityService | null;
 
   private dataValue: FindingsAnswer | null = null;
 
@@ -286,6 +297,7 @@ export class Findings {
 
   constructor(options: FindingsOptions) {
     this.api = options.api;
+    this.connectivity = options.connectivity ?? null;
   }
 
   /** Whether a read has ever answered. */
@@ -330,6 +342,11 @@ export class Findings {
         result.kind === 'ok'
           ? { kind: 'rejected', status: result.status, code: null, path: FINDINGS_PATH }
           : classifyFailure(result, FINDINGS_PATH);
+      // A banner fault is the shell's banner's to say, so it is parked and the panel reads again
+      // once the instance answers; any other fault is drawn in place with its own Retry.
+      if (isBannerFault(this.faultValue)) {
+        this.connectivity?.retryWhenReachable(FINDINGS_PATH, () => void this.load());
+      }
       if (previous !== null && previous.kind === this.faultValue.kind) return;
       this.notify();
       return;

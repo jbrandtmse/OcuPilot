@@ -1317,7 +1317,9 @@ describe('Home', () => {
 
     const panel = systemPanel();
     expect(panel.querySelectorAll('.ocu-home-system-row')).toHaveLength(0);
-    expect(panel.querySelector('.ocu-home-block-empty')).toBeNull();
+    // Mutation (Rule 19): mount the block's banner on `!systemAnswered` rather than on
+    // `systemFault` -> this goes red, a fault drawn before the read has failed.
+    expect(panel.querySelector('app-fault-banner')).toBeNull();
 
     await systemInfo.load();
     fixture.detectChanges();

@@ -233,6 +233,27 @@ describe('the about dialog', () => {
     expect(surface.contains(document.activeElement)).toBe(true);
   });
 
+  it('a Retry read that settles after the dialog closed asks nothing of the destroyed dialog', async () => {
+    // Mutation (Rule 19): drop `if (this.gone) return;` from `AboutDialog.reread` -> this goes red,
+    // `afterNextRender` registered on a destroyed view rejects the read's promise (NG0911).
+    const rejected: unknown[] = [];
+    const onRejection = (reason: unknown): void => {
+      rejected.push(reason);
+    };
+    process.on('unhandledRejection', onRejection);
+    try {
+      await mount(stubAbout({ unreachable: true }));
+      about.setUnreachable(false);
+      faultButton(STRINGS.actionRetry)?.click();
+      fixture.destroy();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(about.calls).toHaveLength(2);
+      expect(rejected).toEqual([]);
+    } finally {
+      process.off('unhandledRejection', onRejection);
+    }
+  });
+
   it('Open messages.log closes the dialog before it navigates', async () => {
     const store = stubAbout();
     store.setStatus(500);

@@ -16,14 +16,17 @@
  * last, the shape `about.ts` and `agent-status.ts` use for the same hazard.
  *
  * **No timer.** The panel settles with this one read, and Home's auto-refresh tick (AD-43) re-reads
- * only its performance row; nothing here schedules a second call.
+ * only its performance row; nothing here schedules a second call. A read that failed with a
+ * connectivity-banner fault is parked with `ConnectivityService` and runs again when the instance
+ * answers.
  *
  * Framework-free, like the rest of `core/` (AD-19), so `ui/tools/system-info.test.mjs` executes
  * it under `node --test`.
  */
 
 import type { ApiService, JsonResult } from './api';
-import { classifyFailure, type Fault } from './fault.ts';
+import type { ConnectivityService } from './connectivity';
+import { classifyFailure, isBannerFault, type Fault } from './fault.ts';
 
 /** Absolute from the origin root, through the one API service (AD-20). */
 export const SYSTEM_INFO_PATH = '/api/ocupilot/ui/system';
@@ -48,6 +51,12 @@ export type SystemInfoFields = Readonly<Record<SystemInfoField, string>>;
 
 export interface SystemInfoOptions {
   readonly api: ApiService;
+  /**
+   * Where a read that failed with a connectivity-banner fault is parked, so the panel reads again
+   * when the instance answers (DW-135's shape). Optional so a test that is not about the re-read
+   * can leave it out.
+   */
+  readonly connectivity?: ConnectivityService;
 }
 
 function emptyFields(): SystemInfoFields {
@@ -94,8 +103,11 @@ export class SystemInfo {
 
   private readonly listeners = new Set<() => void>();
 
+  private readonly connectivity: ConnectivityService | null;
+
   constructor(options: SystemInfoOptions) {
     this.api = options.api;
+    this.connectivity = options.connectivity ?? null;
   }
 
   /** Whether a read has ever settled, so the panel can tell "not asked yet" from "empty". */
@@ -132,10 +144,15 @@ export class SystemInfo {
     if (generation !== this.generation) return;
     if (request !== this.request) return;
     if (result.kind !== 'ok') {
-      // Parked. A refusal is not an answer about the instance, and neither is an instance that did
-      // not reply: both leave the previous values standing and say so.
+      // A refusal is not an answer about the instance, and neither is an instance that did not
+      // reply: both leave the previous values standing and say so. A banner fault is the shell's
+      // banner's to say, so it is parked and the panel reads again once the instance answers; any
+      // other fault is drawn in place with its own Retry.
       const previous = this.faultValue;
       this.faultValue = classifyFailure(result, SYSTEM_INFO_PATH);
+      if (isBannerFault(this.faultValue)) {
+        this.connectivity?.retryWhenReachable(SYSTEM_INFO_PATH, () => void this.load());
+      }
       if (previous !== null && previous.kind === this.faultValue.kind) return;
       this.notify();
       return;

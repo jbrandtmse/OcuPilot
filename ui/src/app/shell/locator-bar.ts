@@ -230,7 +230,7 @@ export class LocatorBar {
   /** The polite region's text: empty until a toggle has changed the store, then its sentence. */
   private readonly announcement = signal('');
 
-  /** The route whose favorite write is in flight, or `''` when none is. */
+  /** The route of the last favorite write started and not yet settled, or `''` when none is. */
   private readonly favoritePendingRoute = signal('');
 
   /**
@@ -423,7 +423,8 @@ export class LocatorBar {
     // The resolved help address arrives after the route does, so this bar re-renders when it
     // lands. `HelpLinks.load` is idempotent per route once the instance has answered, and asks
     // nothing at all for a screen the mirror says has no classic page, so a router event costs at
-    // most one request per screen; a read that got no answer is asked again on the next visit.
+    // most one request per screen; a read that got no answer is asked again at the next router
+    // event that finds the screen, which may be the one that leaves it.
     const stopHelp = this.help.subscribe(() => this.bump());
     syncStoreSubscription();
     this.syncHelp();
@@ -515,10 +516,11 @@ export class LocatorBar {
    * that did not reply -- leaves the toggle unpressed and confirms nothing. What it does leave is
    * the instance's own sentence, which `favoriteRefusal` announces assertively (DW-1326).
    *
-   * One write at a time per route: an activation while that route's write is in flight returns
-   * before it reads the store, because the store has not yet answered which side of the toggle it
-   * is on. The control carries `aria-disabled` for the length of the write, never `disabled`, so
-   * focus stays where it was.
+   * The write in flight is tracked by its route: a second activation on that route returns before
+   * it reads the store, because the store has not yet answered which side of the toggle it is on.
+   * One route is tracked at a time, so a write started on another screen takes the tracking over.
+   * The control carries `aria-disabled` while its route is tracked, never `disabled`, so focus
+   * stays where it was.
    */
   protected toggleFavorite(): void {
     const route = this.favoriteRoute();

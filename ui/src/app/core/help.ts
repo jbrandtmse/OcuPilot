@@ -46,7 +46,7 @@ export function hasClassicPage(route: string): boolean {
  * A refusal and an unavailable answer are `''`: the instance answered, so the control is not
  * rendered and the question is closed. An instance that did not reply, answered with a server
  * fault, or was still installing is `null` -- the question is open, and `HelpLinks.load` asks
- * again on the next visit.
+ * again the next time it is called for the route.
  */
 export async function helpHrefFor(api: ApiService, route: string): Promise<string | null> {
   const path = `${HELP_PATH}?route=${encodeURIComponent(route)}`;
@@ -71,7 +71,8 @@ export interface HelpLinksOptions {
  *
  * A route is held once the instance has answered, whatever the answer, which is what stops a screen
  * whose classic page publishes no address from re-asking on every router event. A read that got no
- * answer (a transport failure, a server fault) releases the route, so the next visit asks again.
+ * answer (a transport failure, a server fault, an install in flight) releases the route, so the
+ * next `load` for it asks again; the locator bar calls it on every router event.
  */
 export class HelpLinks {
   private readonly api: ApiService;
