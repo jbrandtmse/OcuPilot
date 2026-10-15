@@ -12082,6 +12082,30 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: areas/tasks/details.page.ts:312,319, interop-item-list.page.ts:128 and journal-file-details.page.ts:341 repeat followInAppLink's guard; interop-editor.page.ts:176-177 and database-details, process-details and ledger pages draw their own skeleton or refusal.
 - 2026-10-15T03:53:48Z status=wontfix-accepted owner=20-30-the-session-trace by=cr note=reopen_if=a link-guard or state-block defect is fixed in one copy, or a story edits one of those pages
 
+### DW-2451: The MDX splice detector does not inspect stored definitions (shared calculated members, named filters, pivot variables) that a query can reference, so code inside one runs without the screen's ask-first or the agent's refusal
+- source: spec-20-35-the-agent-s-mdx-read.md (orchestrator ruling Q1 B, 2026-10-15) | severity: med | fix-risk: high | footprint: out-of-footprint
+- evidence: Orchestrator ruling Q1 B at 20.35's plan gate names stored definitions a named limit of the one detector (AD-65); a definition is authored by a person with write access to the cube's folder items, not by the query
+- 2026-10-15T09:36:05Z status=wontfix-accepted owner=20-33-the-mdx-query-tool by=lead note=reopen_if=a shared calculated member, named filter or pivot variable holding braces or %SEARCH is found reachable from an MDX query through the screen or the agent's read
+
+### DW-2452: Epic 20 interop list screens give a full sentence as emptyAgentKey, so the write-capable empty state reads 'Or ask the agent: Ask the agent ...'
+- source: spec-20-31-message-resend-and-edit-and-resend.md (code review) | severity: med | fix-risk: low | footprint: in-epic
+- evidence: table-model.ts emptyStateView joins tableWriteCapableEmptyState ('Or ask the agent: <a write it could propose here>.') with the key's text; interopProductions/Items/ItemSettings/Queues/QueueMessages/Jobs/LookupTables/LookupEntries/ItemTest/TransformsEmptyAgent are sentences (strings.ts:6635-7279) on write-capable descriptors (InteropItemList.cls:78, InteropQueueList.cls:55). 20.31's own key fixed in review.
+- 2026-10-15T10:52:19Z status=routed owner=burndown by=cr note=reword each to the bare phrase (as userListEmptyAgent) in strings.ts and EXPERIENCE.md :604; 20.31's fixed
+
+### DW-2453: ScreenDryRun.Handle repeats ScreenAction.Handle's body preamble (descriptor lookup, body read, closed-key loop) and its NotFound/Refuse
+- source: spec-20-31-message-resend-and-edit-and-resend.md (code review) | severity: low | fix-risk: med | footprint: in-story
+- evidence: Api/ScreenDryRun.cls Handle copies Api/ScreenAction.cls Handle:77-116 and NotFound/Refuse; the spec kept ScreenAction add-only (DryRun only), so the shared preamble could not be extracted. The two closed-key rules can drift.
+- 2026-10-15T10:52:24Z status=wontfix-accepted owner=20-31-message-resend-and-edit-and-resend by=cr note=reopen_if=ScreenAction.Handle's body rules change (a key, a stage) and ScreenDryRun.Handle does not follow
+
+### DW-2456: Rework 1 of 20.31 changes ProposalTargetIdx and widens TargetRef without moving SCHEMAVERSION, so a reinstall of 1.0.12 over a volume this code wrote is admitted and 1.0.12 cannot file a long-target proposal row
+- source: spec-20-31-message-resend-and-edit-and-resend.md (code review, rework re-review 1) | severity: med | fix-risk: high | footprint: in-story
+- evidence: PlanMigration (Installer.cls:2133) refuses a downgrade only by SCHEMAVERSION, which stays 1. 1.0.12 keys ProposalTargetIdx by TargetRef (MAXLEN 512): its all-users GuardedExpireStale, which GuardedClose and GuardedCloseLiveForConvo run first, fails on a stored-live row whose TargetRef is over about 455 characters (inference, from the measured <SUBSCRIPT>), and its sibling cancel misses rows indexed by digest. The Design Notes argue the upgrade direction only.
+- 2026-10-15T13:19:16Z status=escalated owner=burndown by=cr note=decision sheet: move SCHEMAVERSION with a MigrateToVersion2 (installer suite, MigrateFault steps 2-3) or record the downgrade as accepted
+
+### DW-2457: A write tool whose target is longer than Propose.TARGETREFMAX (2,200 characters), such as an explorer compile or delete of up to 100 long document names, fails its mint with 500 INTERNAL after the fresh read and diff, not with a typed refusal
+- source: spec-20-31-message-resend-and-edit-and-resend.md (code review, rework re-review 1) | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: GuardedMint (Kernel/State/Propose.cls) answers a GeneralError for a target over 2,200 characters, which the mint renders as 500 INTERNAL; ExplorerWrite admits up to AtelierPort.MAXDOCUMENTS = 100 names, so names of about 22 characters exceed it. Before rework 1 the same set failed near 455 characters with <SUBSCRIPT>; the rework records it only as a residual risk.
+- 2026-10-15T13:19:21Z status=escalated owner=burndown by=cr note=decision sheet: a typed refusal at Mint (after Operation.TargetRefOf) naming the limit, or a document cap bounded by target length
 ### DW-2454: A proposal card's diff row overflows the panel at its 320 px minimum: an unbreakable value runs past its row, so impact.browser-spec's 720 px pass of a role delete is clean only while the panel is still narrowing
 - source: spec-23-5-the-range-end-cleanup-part-5.md (implement batch c deferred) | severity: med | fix-risk: low | footprint: in-story
 - evidence: settled at 320 px on ocupilot-ci, detectScreen reports app-long-block>span.ocu-diff-before 127 px past p.ocu-diff-row-removed (389 px of text in a 262 px row); pre-existing
@@ -12105,3 +12129,15 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: lead full ObjectScript sweep, Story 23.5 batch d | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: ocupilot-ci run 459 (shard 14/20, tree a555c2a8): 1 of 248 failed; the same shard re-run green; batch d changed no SQL background code
 - 2026-10-15T17:47:31Z status=routed owner=23-11-the-range-end-cleanup-part-10 by=lead note=flake:a_timing_test_of_the_background_SQL_cancel;CI_flakes_go_to_the_standing_cleanup_story
+- 2026-10-15T17:29:10Z occurrence=20-31-message-resend-and-edit-and-resend
+
+### DW-2459: check-objectscript.py has no rule for a Parameter whose value is a {...} expression naming a project class the class neither extends nor declares DependsOn for, so a fresh container compile can fail LOAD-FAILED on compile order
+- source: spec-20-31-message-resend-and-edit-and-resend.md (rework 3 deferred) | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: CI run 38772231768: four shards and both image builds failed LOAD-FAILED because InteropEditResend compiled before InteropResendFixture; Test/DraftLoser.cls documents the same trap (second occurrence)
+- 2026-10-15T17:44:49Z status=routed owner=burndown by=harvest note=a structural rule in scripts/check-objectscript.py plus its harness case
+- 2026-10-15T17:56:53Z status=routed owner=burndown by=cr note=rule scope: resolve ..#NAME args via own/inherited params (e.g. ..#FIXTURE); Extends covers the chain
+
+### DW-2461: flake: encryption-startup.browser-spec.mjs C1, C2, C9 timed out waiting for #ocu-encryption-startup-DBEncStartMode-None in CI browser shard 1/5 (run 38782509360), green on the same tree locally
+- source: lead CI resolution, Story 20.31 | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: CI run 38782509360 attempt 1: 'Waiting for selector #ocu-encryption-startup-DBEncStartMode-None failed' after 34 s; ocupilot-b-ci on the same tree: 3 of 3 green; the spec is Story 18.48's, untouched by 20.31
+- 2026-10-15T18:44:49Z status=routed owner=burndown by=lead note=flake priority: rerun once; a second red on the same head is a story red

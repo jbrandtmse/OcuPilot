@@ -27,6 +27,10 @@ let dialogCount = 0;
  * It is a warning banner, `data-slot="advisory"`, never a refusal: the button's condition is
  * unchanged.
  *
+ * **A review is an optional list of lines, drawn only when the caller passes some** -- the verdict of each message a resend
+ * is about to send, or the fields an edit changes (Story 20.31). It is `data-ocu-review`, above the consequence, scrolls inside
+ * the dialog and changes nothing about the button's condition.
+ *
  * **A flag is an optional checkbox, drawn only when the caller passes its label** -- Terminate's
  * error-to-job flag, `data-slot="flag"`, unchecked when the dialog opens. It changes what is sent --
  * which write, or a value the one write carries -- never the button's condition, and `confirmed`
@@ -46,6 +50,13 @@ let dialogCount = 0;
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [Dialog],
   template: `<app-dialog [heading]="heading()" [closeLabel]="STRINGS.actionCancel" (closed)="cancelled.emit()">
+    @if (reviewVisible) {
+      <ul class="ocu-dialog-review" data-ocu-review>
+        @for (entry of reviewList; track entry.index) {
+          <li>{{ entry.text }}</li>
+        }
+      </ul>
+    }
     <p class="ocu-typed-name-consequence">{{ consequence() }}</p>
     @if (advisoryVisible) {
       <p class="ocu-banner ocu-banner-warning ocu-typed-name-advisory" data-slot="advisory">
@@ -106,6 +117,12 @@ export class TypedNameDialog {
   readonly flagLabel = input('');
 
   /**
+   * The lines a reviewed action is about to act on (Story 20.31), drawn above the consequence as a list of text, or none for a
+   * dialog that reviews nothing. Each line is interpolated, never markup.
+   */
+  readonly review = input<readonly string[]>([]);
+
+  /**
    * Emitted once, when the typed name matches and the destructive action is taken, carrying whether
    * the checkbox is checked (`false` when none is drawn).
    */
@@ -155,6 +172,17 @@ export class TypedNameDialog {
 
   protected get flagVisible(): boolean {
     return this.flagLabel() !== '';
+  }
+
+  protected get reviewVisible(): boolean {
+    return this.review().length > 0;
+  }
+
+  /** The review's lines with their positions, which keys each list item (two lines may read alike). */
+  private readonly reviewEntries = computed(() => this.review().map((text, index) => ({ index, text })));
+
+  protected get reviewList(): readonly { readonly index: number; readonly text: string }[] {
+    return this.reviewEntries();
   }
 
   protected get mismatchVisible(): boolean {

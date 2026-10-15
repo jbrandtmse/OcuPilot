@@ -23,7 +23,7 @@ deferred: []
 - A listed Analytics screen, **MDX query**, where a person writes one MDX statement and runs it.
 - The run is an **owner-scoped background run**: the SQL console's background run (Story 19.15), extended to a second kind rather than copied. It has a row cap, a time bound and cancel.
 - The answer renders as a grid of axis labels and cells. A cell drills through to the vendor's listing for that cell, and a `DRILLTHROUGH` statement shows its listing directly.
-- `AnalyticsPort` gains the MDX calls behind its own gate (AD-65). OcuPilot writes nothing to the instance of its own. A statement whose text the vendor would splice into SQL or evaluate as code (`%SEARCH`, `%SQLRESTRICT`, `RETURN`, `%ORDER`) runs only after the person confirms, in a confirmation that names the consequence in plain words: "This query runs server-side code or SQL with your rights." A statement without them runs as a plain read. (Orchestrator ruling Q2 C, 2026-10-14, the owner's developer-tool-first rule; AD-65. The classic page runs them unasked, so this is stricter than the vendor.)
+- `AnalyticsPort` gains the MDX calls behind its own gate (AD-65). OcuPilot writes nothing to the instance of its own. A statement whose text the vendor would splice into SQL or evaluate as code (`%SEARCH`, `%SQLRESTRICT`, `RETURN`, `%ORDER`, `%PARM`), or that the detector cannot read, runs only after the person confirms, in a confirmation that names the consequence in plain words: "This query runs server-side code or SQL with your rights." A statement without them runs as a plain read. (Orchestrator ruling Q2 C, 2026-10-14, the owner's developer-tool-first rule; AD-65. The classic page runs them unasked, so this is stricter than the vendor.)
 
 ## Boundaries & Constraints
 
@@ -37,7 +37,7 @@ deferred: []
   5. WRITE on the database that `^DeepSee.Cache.Results` maps to in that namespace (`%SYS.Namespace.GetGlobalDest`), and that database mounted read-write (else 409 `ANALYTICS.MDX.READONLY`).
 
   A refusal names the failed pair.
-- **The statement is untrusted text.** It reaches only `%DeepSee.ResultSet.%PrepareMDX`. Before prepare, the port detects any text that names `%SEARCH`, `%SQLRESTRICT`, `RETURN` or `%ORDER`, case-insensitive, anywhere (the vendor splices those into SQL or evaluates them as ObjectScript; Design Notes › Measured) and runs it only when the start request carries the person's confirmation of that consequence; without it the start answers that confirmation is needed, naming the consequence, and nothing runs. Both paths are pinned by tests, the measured `%SEARCH.&[...{$Increment(^g)}]` case among them: not run until confirmed, then run. After prepare, only `queryType` `SELECT` (at most two axes) and `DRILLTHROUGH` run. `CREATE`, `DROP` and `%BITSET` are refused 422 `ANALYTICS.MDX.KIND`, and three or more axes 422 `ANALYTICS.MDX.AXES`.
+- **The statement is untrusted text.** It reaches only `%DeepSee.ResultSet.%PrepareMDX`. Before prepare, the port detects any of `%SEARCH`, `%SQLRESTRICT`, `RETURN`, `%ORDER` and `%PARM` in the vendor's own tokens (`%Tokenize`) and in each quoted string's tokens, so a comment inside a word (`%SE/**/ARCH`) is still found, and after prepare it runs the detector again on the variable-resolved text; it fails closed (a failed tokenize or an unreadable resolved text asks first, as if a construct were found). The vendor splices those into SQL or evaluates them as ObjectScript (Design Notes › Measured); orchestrator ruling Q1 B at 20.35's gate, 2026-10-15; stored definitions are a named limit (DW-2451). A statement with a finding runs only when the start request carries the person's confirmation of that consequence; without it the start answers that confirmation is needed, naming the consequence, and nothing runs. Both paths are pinned by tests, the measured `%SEARCH.&[...{$Increment(^g)}]` case among them: not run until confirmed, then run. After prepare, only `queryType` `SELECT` (at most two axes) and `DRILLTHROUGH` run. `CREATE`, `DROP` and `%BITSET` are refused 422 `ANALYTICS.MDX.KIND`, and three or more axes 422 `ANALYTICS.MDX.AXES`.
 - **A drill-through is composed on the instance.** From the person's original statement and a cell's ordinals (its 1-based row and column positions, as the cells answer lists them), the job re-prepares the statement, reads the vendor's own `%GetFiltersForCellRange` for that one cell, and runs `DRILLTHROUGH MAXROWS <MDXMAXLISTINGROWS> SELECT FROM [<cube>] %FILTER <f>…`. Nothing from the client enters that text except the original statement, which has passed the checks above.
 - **Named limits (AD-7), all on `AnalyticsPort`, each with its reason:**
   - `MDXMAXSTATEMENT` is 100,000 characters;
@@ -61,7 +61,7 @@ deferred: []
 **Never:**
 
 - No call to `/api/deepsee`, `%Api.DeepSee` or `%DeepSee.REST.*`. The statement is never written to a log line, an audit row or the run row.
-- No write tool, governance key, row action, proposal or read tool. The agent's MDX read is Story 20.35 (orchestrator ruling Q1 A), which refuses those four constructs with `ANALYTICS.MDX.SQL`.
+- No write tool, governance key, row action, proposal or read tool. The agent's MDX read is Story 20.35 (orchestrator ruling Q1 A), which refuses those five constructs, and a statement the detector cannot read, with `ANALYTICS.MDX.SQL`.
 - AD-65's Never list stands: no `%GetMemberTree`, `%GetDimensionMembers` or `%GetFavoritesForUser`, and no member-value read.
 - No session state: `CREATE`/`DROP` are refused, and nothing is kept between runs except the vendor's own cache.
 - No `$System.Process.Terminate` in product code, and no product code reads or writes `^DeepSee.Cache.*` directly (the fixture's cleanup is a test's).
@@ -79,10 +79,10 @@ Rows run in USER on `ocupilot-b-ci` with `AnalyticsProbe` (20.11, planned) creat
 | Row cap | A members set with more than 1,000 positions on rows | 1,000 rows, `rowsAvailable` the axis size, `truncated` true | - |
 | Cancel | Start the grid crossjoin (Task 0's slow query); cancel after 1 s | `canceled` within 12 s. The job's pid is gone, `%GetQueryStatus` reads 100, and no process in USER runs `%DeepSee` code | - |
 | Bound | The same query through the fixture whose `BoundSeconds()` is 2 | `ended`, `result {outcome: "stopped", seconds: 2}`, and nothing running, as above | - |
-| Syntax | `SELECT FROM [OcuPilotProbeVisits` | 200 `{outcome: "error", message}` with the vendor's text, before any spawn | - |
+| Syntax | `SELEKT FROM [OcuPilotProbeVisits]` | 200 `{outcome: "error", message}` with the vendor's text, before any spawn | - |
 | Kind | `CREATE MEMBER [OcuPilotProbeVisits].[Measures].[X] AS '1'` | Nothing spawned | 422 `ANALYTICS.MDX.KIND` |
 | Axes | Three axes (`ON 2`) | Nothing spawned | 422 `ANALYTICS.MDX.AXES` |
-| Spliced | Text naming `%SEARCH`, `%SQLRESTRICT`, `RETURN` or `%ORDER`, without `confirmed` | 200 `{outcome: "confirm", constructs, consequence}`; nothing prepared or spawned. With `confirmed: true` the run starts (202) | - |
+| Spliced | Text naming `%SEARCH`, `%SQLRESTRICT`, `RETURN`, `%ORDER` or `%PARM` in the vendor's tokens or a string literal's, or text the detector cannot read, without `confirmed` | 200 `{outcome: "confirm", constructs, consequence}`; nothing prepared or spawned. With `confirmed: true` the run starts (202) | - |
 | Input | Empty text, over 100,000 characters, or a `drill` that is not two positive integers within the caps | Nothing prepared | 400 `ANALYTICS.MDX.INPUT` |
 | Busy | A second start while the first runs | Nothing spawned | 409 `ANALYTICS.MDX.BUSY`, `detail.runId` names the live run |
 | Kinds apart | An MDX run live; the same user starts a SQL background run | The SQL run starts. Five live runs of any kind refuse a sixth start of either kind | 503 `ANALYTICS.MDX.FULL` or `EXPLORER.SQL.BACKGROUND.FULL` |
@@ -97,7 +97,7 @@ Rows run in USER on `ocupilot-b-ci` with `AnalyticsProbe` (20.11, planned) creat
 
 ## Code Map
 
-All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Line numbers were read at `393472b924f1e59c7a9cb7c7617785a60f3a9607`. Stories 20.11 and 20.32 land first. Their symbols are marked **(20.11, planned)** and **(20.32, planned)**, and Task 0 re-anchors them.
+All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Line numbers were read at `d09e50936d74cc5fac57b3738d305581ab1ba142`. Stories 20.11 and 20.32 land first. Their symbols are marked **(20.11, planned)** and **(20.32, planned)**, and Task 0 re-anchors them.
 
 ### The sibling to extend: the SQL console's background run (Story 19.15)
 
@@ -115,7 +115,7 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Line numbe
   - `GuardedBegin` :142, `GuardedFinish` :183, `GuardedCancel` :221, `GuardedViewForOwner` :266, `GuardedSweep` :302, `Reconcile` :341, `LockHeld` :382, `IdForOwner` :396.
 - **`src/OcuPilot/Kernel/Agent/Limits.cls`**: `RETENTIONSECONDS` 900 :28, `QUEUEDSECONDS` 10 :60. **`Kernel/Retention.cls`**:61 sweeps runs daily.
 - **`src/OcuPilot/Port/SqlPort.cls`**: `MAXSTATEMENT` :89, `MAXROWS` :95, `MAXCELL` :105, `MAXANSWER` :107; `BoundSeconds` :321; `Executed` :1013, whose fetch loop :1049-1097 becomes `FetchRows`.
-- **`src/OcuPilot/Api/Router.cls`**: routes :244-246 (the `:id` routes first), and the handlers :1812-1832.
+- **`src/OcuPilot/Api/Router.cls`**: routes :245-247 (the `:id` routes first), and the handlers :1820-1840.
 - **`src/OcuPilot/Api/AtelierError.cls`** :172-200: the five `EXPLORER.SQL.BACKGROUND.*` codes, each with its `REASON*`. They are the shape for the MDX codes.
 - **`scripts/check-objectscript.py`**: `JOB_ALLOWED` :863 (prose :159, :858). **`scripts/test_check_objectscript.py`** :1057-1059 names `SqlBackground` as an allowed spawn site.
 
@@ -134,15 +134,15 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Line numbe
   - `Test/SqlBackgroundJob.cls`: `Settle` :84, bound :300, cancel :312, job death :383-408;
   - `Test/SqlBackgroundRoutes.cls`, whose other-user 404 is at :282;
   - `Test/SqlRunStore.cls` :91-147, :183, :207, :274;
-  - `Test/ClassicPageGate.cls` :434-470 and `Test/Retention.cls` :295;
+  - `Test/ClassicPageGate.cls` :437-479 and `Test/Retention.cls` :295;
   - the fixtures `SqlBackgroundFixture`, `Delayed`, `Unspawned`, `Unindexed` and `Probe`, and `SqlPortFixture.PROBESECONDS`.
-- **`Test/DeveloperFloorRoutes.cls`** :87-88, the GET and other route lists. **`Test/EndpointCoverage.cls`** `XData Probes` :73, whose SQL background rows :258-260 set the row format.
+- **`Test/DeveloperFloorRoutes.cls`** :94-95, the GET and other route lists. **`Test/EndpointCoverage.cls`** `XData Probes` :73, whose SQL background rows :259-261 set the row format.
 - **`Test/StageTwoTools.cls`** `XData Elsewhere` :121. The load-bearing test is `TestTheRosterAndElsewhereAreEveryRegisteredScreen` :415.
 - **`Test/SurfaceCoverage.cls`** `XData Coverage` :54.
 - **`Test/Navigation.cls`**: the analytics block, 10 screens **(20.32, planned)**. **`Test/DeveloperFloor.cls`** `SCREENS` :38.
 - **`Test/PortGate.cls`** `ROSTER` :29, with its `AnalyticsPort` row **(20.11, planned)**.
 - **The analytics test classes (20.11, planned):** `AnalyticsProbe` (`Enable`, `Create`, `Remove`, `Gone`), `AnalyticsGate` (P1, P2, `EnsurePrincipals`) and `AnalyticsGateSeam`.
-- **`scripts/ci-throwaway.sh`** :434-503: the `# classes:` lines of `OCUPILOT_ALLOW_PRINCIPALS`.
+- **`scripts/ci-throwaway.sh`** :444-520: the `# classes:` lines of `OCUPILOT_ALLOW_PRINCIPALS`.
 
 ### Client
 
@@ -155,27 +155,32 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Line numbe
 - **`ui/src/app/shell/warning-dialog.ts`** `WarningDialog` (`app-warning-dialog`): inputs `verb` and `consequence` :93-97, outputs `confirmed` and `cancelled` :114-118. Proceed is `button-primary`, Cancel takes initial focus.
 - **`core/sql-answer.ts`** `answerOf`/`statusLineFor`; this story imports it only.
 - **`core/poll-schedule.ts`** `schedulePoll`; **`core/screen-read.ts`** `screenReadPath` :177.
-- **`shell/screen-outlet.ts`** `DESCRIPTOR_PAGES` :97, with the SQL page's line at :212.
-- **`core/strings.ts`**: `explorerSqlConfirmTitle` "Run this statement?" :5443; the SQL background strings :5513-5527. **`src/styles/_components.scss`**: the SQL query styles :7836-7881.
+- **`shell/screen-outlet.ts`** `DESCRIPTOR_PAGES` :100, with the SQL page's line at :215.
+- **`core/strings.ts`**: `explorerSqlConfirmTitle` "Run this statement?" :5443; the SQL background strings :5513-5527. **`src/styles/_components.scss`**: the SQL query styles :7862-7915.
 - **`ui/tools/self-protection.test.mjs`** :610-660 pins each refusal sentence to `strings.ts` and EXPERIENCE.md. **`ui/tools/analytics.test.mjs`** **(20.11, planned)** is the analytics twin. **`ui/tools/build-output.test.mjs`** `LAZYCHUNKMAX` 88 kB :267.
 - **Browser:**
   - `ui/browser/system-explorer-sql-query.browser-spec.mjs`: `structural` :91-113, `makeBackgroundProbe` and `removeBackgroundProbe` :124/:133, `backgroundReads` :144, AC11 :235-254;
   - `structural-walk.mjs` (`VIEWPORTS`, `INVARIANTS`, `detectScreen`, `compare`, `readBaseline`, `assertThrowaway`);
   - `analytics.browser-spec.mjs` **(20.11, planned)**: `before`/`after` with `AnalyticsProbe`.
-- **EXPERIENCE.md**: the side-bar prose :159; the Dialogs list :173, whose "warnings that precede a non-delete write" already hold SQL query's run of a changing statement (Story 19.6) and Data transformations' Test, "its code runs as you" (Story 20.27).
+- **EXPERIENCE.md**: the Side-bar screen lists table :157-170, whose Analytics row is **(20.32, planned)**; the Dialogs list :173, whose "warnings that precede a non-delete write" already hold SQL query's run of a changing statement (Story 19.6) and Data transformations' Test, "its code runs as you" (Story 20.27).
 
 ### Vendor (read only; `irislib/%DeepSee/`)
 
 - **`ResultSet.cls`:**
-  - `%PrepareMDX` :159: it parses (:204) and calls `%PrepareObject` (:208, which calls the query's `%Prepare`), and writes the query-text cache node (:213-215);
+  - `%PrepareMDX(pMDX, ByRef pVariables, Output pResolvedMDX)` :159: it resolves pivot variables from `pVariables` alone and sets the resolved text (:186-202) before it parses (:204), calls `%PrepareObject` (:208, which calls the query's `%Prepare`), and writes the query-text cache node (:213-215);
   - `%ExecuteAsynch` :855. A DRILLTHROUGH forces the wait (:873-878) and its listing runs in the caller (:973-978). Both execute paths call `%InitializeResultsCache` (:794, :926);
   - `%GetStatus` :650 and `%GetQueryStatus` :475, where 100 means done or failed;
   - `%CancelQuery` :598, a class method with no owner check;
   - `%GetQueryKey` :378, `%GetCubeName` :385, `%GetListingResultSet` :418, `%IsDrillThrough` :437;
   - `%GetAxisSize` :2293, `%GetAxisCount` :2318, `%GetOrdinalValue` :2387, `%GetOrdinalLabel` :2461, `%GetFiltersForCellRange` :4018;
   - the RETURN splice :1708-1714 and the `%ORDER BY` splice :2006.
-- **`Query/query.cls`**: `queryType` :16 (`SELECT,DRILLTHROUGH,CREATE,DROP,%BITSET`), `%MaxListingRows` 1000 :136; `%Prepare` :190 parses filters and resolves no member; `%InitializeResultsCache` :2570 calls `%PreProcessQuery` :2659/:2776, which resolves members. **`Query/memberComputed.cls`** :93/:300 calls `%ComputeBitset`, which reaches `ComputedDimension/SQL.cls` :38 `%ProcessSQL`. So `%SEARCH`'s braces run at execute, not at prepare (inference from source; Task 0 measures it).
-- **`Query/Parser.cls`**: RETURN :3170-3198; there is no `%KILL`. **`ComputedDimension/Base.cls`**: `%ProcessSQL`'s `{…}` is evaluated as ObjectScript (:653, :796-829).
+- **`Query/query.cls`**: `queryType` :16 (`SELECT,DRILLTHROUGH,CREATE,DROP,%BITSET`), `%MaxListingRows` 1000 :136; `%Prepare` :190 parses filters and resolves no member; `%InitializeResultsCache` :2570 calls `%PreProcessQuery` :2659/:2776, which resolves members. **`Query/memberComputed.cls`** :93/:300 calls `%ComputeBitset`, which reaches `ComputedDimension/SQL.cls` :38 `%ProcessSQL`, so `%SEARCH`'s braces run at execute (measured, Design Notes › Measured).
+  - `%ResolveVariablesInText` :6855 turns an unsupplied `$variable.<name>` into `""`; a stored calculated member's expression resolves with the query's own variables (:4704-4711), which are the ones `%PrepareMDX` was handed.
+  - `%ResolveNamedParm` :5154 runs `X` on a braced `%PARM` value (:5178-5181), reached from `constant.cls` :28-38 and `memberSpec.cls` :120.
+- **`Query/Parser.cls`**:
+  - `%Tokenize` :99 (`[Internal]`, `pTokens(n) = $LB(type, value)`). `%NextToken` :254 drops `/* */`, `//` and `--` comments outside a bracket (:273-305), makes `'` a token by itself (:333-347), a `[…]` one `QSTR` token that keeps a comment (:292, :348-353), and a `"…"` literal one `LIT` token (:354-358, :523-538). `%UnquoteIdent` :197. They set only the parser's own properties (inference from source: :99-114, :254-610).
+  - The vendor's own recognition, which the detector mirrors: `%ValidateText` :3448 matches `$$$UPPER` of `%Tokenize`'s values (`%SQLRESTRICT` :3473); `%SEARCH` as `%SEARCH` or `[%SEARCH]` (:263, :2560, :2637); `RETURN` :3080, whose `%LISTING` form names a stored listing (:3085-3137); `%ORDER` after it (:3163-3170); `%PARM` :958, whose braced value enters state 21 (:1291-1294, :1310-1314), which no branch handles. There is no `%KILL`.
+- **`ComputedDimension/Base.cls`**: `%ProcessSQL`'s `{…}` is evaluated as ObjectScript (:653, :796-829).
 - **`UI/MDXQuery.cls`**: `RESOURCE` `%DeepSee_Admin,%Development` (:15), re-checked in `%OnPreHTTP` (:518-528). It has no cancel button, no timeout and no confirmation.
 - **Elsewhere:** `%SYSTEM/WorkMgr.cls`:38-39 (agents run in the caller's security context); `%SYS/Namespace.cls` `GetGlobalDest` :93.
 
@@ -193,7 +198,7 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Line numbe
     4. That `$SYSTEM.SQL.CancelQuery` sent to a job that runs no SQL returns at once.
     5. The run of `%PrepareMDX`, `%ExecuteAsynch` and the poll from a `JOB`'d process, the port switching namespace for each call.
     6. That the strings' values are unique, and that the literal count stays more than 50 under `strings.test.mjs`'s bound.
-    7. The ask-first statement: the exact text over the grid cube whose `%SEARCH` braces run `$Increment(^OcuPilotProbeMdxSplice(<n>))` in USER. `%PrepareMDX` alone leaves the node undefined; `%ExecuteAsynch` and the poll define it. Record the text the tests use.
+    7. The ask-first statements over the grid cube: the `%SEARCH` text whose braces run `$Increment(^OcuPilotProbeMdxSplice(<n>))` in USER, its `%SE/**/ARCH` spelling, and the `%PARM` text. On a scratch cube, `%PrepareMDX` alone left the node undefined and execute defined it, and the `%PARM` text failed prepare (Design Notes › Measured). Confirm both on the grid cube and record the texts the tests use.
 
     A measurement that contradicts this spec halts the stage with its evidence.
 - [ ] **`src/OcuPilot/Kernel/State/SqlRun.cls`**: add `Kind` (`MAXLEN` 16, `InitialExpression` `"sql"`).
@@ -210,10 +215,15 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Line numbe
 - [ ] **`src/OcuPilot/Port/SqlPort.cls`**: move `Executed`'s fetch loop into a public `FetchRows(pSet, pColumns, pMaxRows, Output pRows, Output pTruncated, Output pMore, Output pCut)` with `MAXCELL` and `MAXANSWER` as now; `Executed` calls it.
 - [ ] **`src/OcuPilot/Api/AnalyticsError.cls`** (add to 20.11's class): `MDXINPUT` 400, `MDXKIND` 422, `MDXAXES` 422, `MDXREADONLY` 409, `MDXBUSY` 409, `MDXFULL` 503, `MDXNOTFOUND` 404 and `MDXLOST` 503. Codes are `ANALYTICS.MDX.*`; each sentence is in Design Notes › Strings. No `MDXSQL`: that code is Story 20.35's.
 - [ ] **`src/OcuPilot/Port/AnalyticsPort.cls`** (extend 20.11's port):
-  - **Parameters.** `MDXPAIRS` `%DeepSee_Portal:USE,%Development:USE`; the named limits in Always, each doc comment giving its reason (Design Notes › Limits); `MDXCONSTRUCTS` `%SEARCH,%SQLRESTRICT,RETURN,%ORDER`; and `MDXCONSEQUENCE` "This query runs server-side code or SQL with your rights."
+  - **Parameters.** `MDXPAIRS` `%DeepSee_Portal:USE,%Development:USE`; the named limits in Always, each doc comment giving its reason (Design Notes › Limits); `MDXCONSTRUCTS` `%SEARCH,%SQLRESTRICT,RETURN,%ORDER,%PARM`; `MDXSTRINGDEPTH` 3, how deep a string literal is read; and `MDXCONSEQUENCE` "This query runs server-side code or SQL with your rights."
   - **`MdxAdmit(ns)`.** The gate in Always' order. The cache database is resolved by `GetGlobalDest` and checked WRITE and not read-only.
-  - **`MdxConstructs(text, Output found)`.** Pure, public, the one detection of AD-65's four constructs: answers whether the text names any of `MDXCONSTRUCTS`, case-insensitive, anywhere, with `found` the names it holds in that order. Story 20.35 calls it for its refusal.
-  - **`MdxPrepare(ns, text, .rs, .answer, .http, .fault)`.** Prepares the statement and classifies it; executes nothing. A prepare error is `{outcome: "error", message}`. Kinds and axes are refused here.
+  - **`MdxConstructs(text, Output found, Output unread) As %Boolean`.** Public, the one detection of AD-65's splice clause; it writes nothing and switches no namespace. It answers 1 when:
+    - a token of `%DeepSee.Query.Parser.%Tokenize(text)`, a `[…]` token unquoted as `%UnquoteIdent` does, then upper-cased, equals a member of `MDXCONSTRUCTS`;
+    - or a token of a string literal does: each `LIT` token's value is tokenized the same way, to `MDXSTRINGDEPTH` levels;
+    - or, fail closed with `unread` 1, the text is blank, a tokenize answers an error or throws, or a literal lies deeper than `MDXSTRINGDEPTH`.
+
+    `found` is a `$ListBuild` of the names found, in `MDXCONSTRUCTS` order, without repeats (empty when only `unread` is set). A single-quoted span needs no rule: `'` is a token by itself, so its content is in the stream (measured). Story 20.35 calls it for its refusal.
+  - **`MdxPrepare(ns, text, .rs, .answer, .http, .fault, .ask, .found, .variables)`.** Prepares with `%PrepareMDX(text, .variables, .resolved)` and classifies; executes nothing. A prepare error is `{outcome: "error", message}`. Kinds and axes are refused here. Then it runs `MdxConstructs` on `$Get(resolved)`, so an unreadable resolved text reads blank and asks: `ask` is that answer and `found` its names. No production caller hands `variables` (Design Notes › Named limits).
   - **`MdxStart(ns, rs, .cube, .key)`**, **`MdxStatus(ns, rs, .error)`** and **`MdxCancel(ns, cube, key)`**.
   - **`MdxDrill(ns, rs, row, column, .drill, .http, .fault)`**, called on an executed original: an ordinal past its axis's size is refused 400 `ANALYTICS.MDX.INPUT`; otherwise it reads `%GetFiltersForCellRange` for that one cell, composes `DRILLTHROUGH MAXROWS <MDXMAXLISTINGROWS> SELECT FROM [<cube>] %FILTER <f>…` with the cube name bracket-quoted (`]` doubled), and prepares it.
   - **`MdxAnswer(ns, rs, seconds)`.**
@@ -231,33 +241,47 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Line numbe
 
   The doc names AD-5, AD-8, AD-29, AD-36, AD-44 and AD-65.
 - [ ] **`src/OcuPilot/Area/Analytics/MdxQuery.cls`** (new; extends `Kernel.Shell.BackgroundRun`, `Kind` `mdx`):
-  - **`Admit`.** Reads the body `{statement, drill?, confirmed?}` and the scope. `statement` is a string, `drill` is `{row, column}` (positive integers within `MDXMAXROWS` and `MDXMAXCOLUMNS`), `confirmed` is absent or `true`; any other key or shape is 400 `ANALYTICS.MDX.INPUT`. Then, in order: `MdxAdmit`; `MdxConstructs`, answering 200 `{outcome: "confirm", constructs, consequence: MDXCONSEQUENCE}` when it finds any and `confirmed` is absent; `MdxPrepare` and its refusals. It reserves and spawns nothing for a refusal, an error answer or a confirm answer. The request list is `$ListBuild(statement, row, column, confirmed)`.
-  - **`Work` (the job).** It repeats the gate, `MdxConstructs` against the flag it was handed, and `MdxPrepare`, then:
+  - **`Admit`.** Reads the body `{statement, drill?, confirmed?}` and the scope. `statement` is a string, `drill` is `{row, column}` (positive integers within `MDXMAXROWS` and `MDXMAXCOLUMNS`), `confirmed` is absent or `true`; any other key or shape is 400 `ANALYTICS.MDX.INPUT`. Then, in order:
+    1. `MdxAdmit`;
+    2. `MdxConstructs` on the statement: when it answers 1 and `confirmed` is absent, 200 `{outcome: "confirm", constructs: found, consequence: MDXCONSEQUENCE}` (`constructs` empty for an unread statement);
+    3. `MdxPrepare` with `Variables()`, and its refusals and error answer;
+    4. the same confirm answer when `MdxPrepare`'s `ask` is 1 and `confirmed` is absent.
+
+    It reserves and spawns nothing for a refusal, an error answer or a confirm answer. The request list is `$ListBuild(statement, row, column, confirmed)`.
+  - **`Work` (the job).** It repeats the gate, both checks and `MdxPrepare`. A finding the flag does not confirm ends the run `failed` with `MDXLOST`'s envelope, as `FinishRefused` ends a refused SQL run, and executes nothing. Then:
     1. The run loop: `MdxStart`, then every 0.1 s `MdxStatus` and `GuardedCancelRequested`. On a cancel, or at `$ZHorolog` past `BoundSeconds()`, it calls `MdxCancel`, waits up to `MDXSETTLESECONDS` for status 100, and ends `canceled` or `{outcome: "stopped", seconds}`.
     2. For a drill, the loop runs the original, then `MdxDrill` and the listing's one waiting call under `$System.Alarm.Set` of the time that remains, as `SqlPort.Executed` bounds its statement. `<ALARM>` cancels and stops. A typed `DRILLTHROUGH` is that one waiting call alone.
     3. It finishes with `MdxAnswer`.
   - **`CancelJob`.** One `$SYSTEM.SQL.CancelQuery(job,,0)`, which reaches a listing statement.
-  - **Seams**, beside the kernel class's `PortClass`, `MaxRunning`, `LimitsClass` and `Spawn`: `BoundSeconds()`, which answers `AnalyticsPort.#MDXSECONDS`. Production overrides none.
+  - **Seams**, beside the kernel class's `PortClass`, `MaxRunning`, `LimitsClass` and `Spawn`: `BoundSeconds()`, which answers `AnalyticsPort.#MDXSECONDS`, and `Variables(Output variables)`, the pivot variables handed to `MdxPrepare`, which answers none. Production overrides neither.
   - **Routes.** `HandleStart`, `HandlePoll` and `HandleCancel` delegate to the kernel class.
 - [ ] **`src/OcuPilot/Api/Router.cls`** (add-only): `POST /analytics/mdx/background/:id/cancel`, `GET /analytics/mdx/background/:id` and `POST /analytics/mdx/background`, in that order, with thin `AnalyticsMdxBackground*` handlers.
 - [ ] **`src/OcuPilot/Test/AnalyticsProbe.cls`** (extend 20.11's fixture):
   - `Create` also compiles `OcuPilotProbe.Analytics.Grid` (50,000 deterministic rows: `Sub = i#2000`, `Sub2 = (i\7)#2000`, `Amount = i#100`) and the cube `OcuPilotProbeGrid` (dimensions `Sub` and `Sub2`, measure `Amount`, a listing), and builds it.
-  - `Remove` also kills each probe cube's remaining `^DeepSee.Cache.Results(<cube>)` subtree, because `%KillCube` leaves an `activeChunk` node per query key (measured), and `^OcuPilotProbeMdxSplice` in USER. `Gone` checks both.
+  - `Remove` also kills each probe cube's remaining `^DeepSee.Cache.Results(<cube>)` subtree, because `%KillCube` leaves an `activeChunk` node per query key (measured), `^OcuPilotProbeMdxSplice` in USER, and `^DeepSee.ComputedSQL` when its value names a probe class (a `%SEARCH` run leaves its SQL there, measured). `Gone` checks all three.
 - [ ] **Server tests** (new; the first four armed `OCUPILOT_ALLOW_PRINCIPALS`, `Remove`/`Enable`/`Create` before all, `Remove` and `Gone` after all):
   - **`Test/AnalyticsMdx.cls`** (port):
     - the cells answer equals the vendor's own labels and values, read in the test;
     - the cell drill equals the vendor's listing for the composed text, and an ordinal past its axis is refused `ANALYTICS.MDX.INPUT`;
     - the row, column, cell and total caps;
-    - `MdxConstructs` finds each of the four, in mixed case, and inside a member key (the named false positive), in `MDXCONSTRUCTS` order, and finds none in a plain SELECT;
+    - `MdxConstructs`, written first and shown red against cycle 2's detector (the four words as a case-insensitive substring of the raw text) before the token version turns it green:
+      - finds each of the five in mixed case, in `MDXCONSTRUCTS` order, and none in a plain SELECT;
+      - finds each measured obfuscation: `/**/` inside each of the five words, `%SEARCH` split by a `--` and by a `//` line comment, `%SE/**/ARCH` inside a `%MDX("…")` literal and inside a single-quoted `WITH MEMBER … AS '…'`, and `WITH %PARM P AS 'VALUE:{…}'`;
+      - finds `[%SEARCH]` and a member key named exactly `[RETURN]` (the named false positive), and none in `[%SE/**/ARCH]`, whose bracket keeps the comment (Story 20.35's Not-a-construct row);
+      - fails closed: an unterminated `[` or `"`, `3rd`, a blank text and a literal nested deeper than `MDXSTRINGDEPTH` each answer 1 with `unread` 1 and nothing found;
+    - `MdxPrepare`'s second check: with `variables("v")` holding the `%SEARCH` text (node 10), `… WHERE $variable.v` answers `ask` 1 naming `%SEARCH` and leaves the node undefined; with none, `ask` is 0;
     - CREATE, DROP and three axes are refused, and a syntax error answers the vendor's text;
     - HSCUSTOM answers 409 `ANALYTICS.NAMESPACE`, and HSLIB 409 `ANALYTICS.MDX.READONLY`.
   - **`Test/AnalyticsMdxJob.cls`** (sibling `SqlBackgroundJob`):
     - the owner's cancel ends `canceled` within 12 s, then `'$Data(^$JOB(pid))`, `%GetQueryStatus` 100, and no `%SYS.ProcessQuery` row in USER whose `Routine` starts `%DeepSee`;
     - the bound, through the fixture subclass `Test/AnalyticsMdxFixture` (new) whose `BoundSeconds()` is 2, ends `stopped` with the same three checks;
+    - the resolved-text case, through the same fixture, whose `Variables()` hands `v` the `%SEARCH` text (node 5), started as `SqlBackgroundJob` starts its fixture: `… WHERE $variable.v` answers `confirm` naming `%SEARCH`, reserves nothing and leaves the node undefined;
     - a cancel before the job begins;
     - the job's failure log line carries no statement.
   - **`Test/AnalyticsMdxRoutes.cls`** (sibling `SqlBackgroundRoutes`):
     - **ask first:** Task 0's statement with `^OcuPilotProbeMdxSplice(1)`, started without `confirmed`, answers 200 `{outcome: "confirm", constructs: ["%SEARCH"], consequence}` equal to `MDXCONSEQUENCE`, reserves no run row and leaves the node undefined; started with `confirmed: true` it answers 202, ends, and the node is defined;
+    - the comment-split `%SE/**/ARCH` text (node 3) asks first the same way, its node undefined until confirmed; the `%PARM` text (node 4) asks first, and confirmed answers the vendor's prepare error with the node still undefined (measured);
+    - the tokenizer-failure case: `SELECT FROM [OcuPilotProbeVisits` answers `confirm` with `constructs` empty and reserves nothing; confirmed, it answers 200 `{outcome: "error"}` with the vendor's "Unexpected end of statement" text and spawns nothing. `SELEKT FROM [OcuPilotProbeVisits]` answers `error` with no confirmation;
     - `confirmed` of any value but `true` is 400 `ANALYTICS.MDX.INPUT`, and a plain SELECT with `confirmed: true` runs as it would without it;
     - another user's poll and cancel equal the unknown id's 404;
     - a second start answers 409 naming the run;
@@ -296,9 +320,9 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Line numbe
 - [ ] **`ui/src/app/shell/screen-outlet.ts`**: one `DESCRIPTOR_PAGES` loader line, then run `cd ui && node tools/screen-mirror.mjs`.
 - [ ] **Client tests:**
   - `ui/tools/background-run.test.mjs` (start, a 200 answer returned, busy attach, poll, cancel, 404 clear, transient re-poll, stale answer dropped);
-  - `ui/tools/mdx-answer.test.mjs` (each outcome, `mdxConfirmOf` included);
+  - `ui/tools/mdx-answer.test.mjs` (each outcome, `mdxConfirmOf` included, which answers `[]`, never `null`, for a `confirm` with empty `constructs`);
   - `ui/tools/analytics.test.mjs`: the eight `REASONMDX*` sentences and `MDXCONSEQUENCE` equal their `strings.ts` value and EXPERIENCE.md literal;
-  - `mdx-query.page.spec.ts`: run, cancel, the cell button's drill request body, the picker fills only an empty statement; a `confirm` answer draws the dialog with the consequence, Cancel sends nothing more, Proceed re-sends the asked statement with `confirmed: true`, a drill after a confirmed run carries it, and a plain run draws no dialog;
+  - `mdx-query.page.spec.ts`: run, cancel, the cell button's drill request body, the picker fills only an empty statement; a `confirm` answer draws the dialog with the consequence, Cancel sends nothing more, Proceed re-sends the asked statement with `confirmed: true`, a drill after a confirmed run carries it, a `confirm` with empty `constructs` draws the same dialog, and a plain run draws no dialog;
   - `result-grid.spec.ts`;
   - `ui/tools/navigation.test.mjs` (the route) and `ui/tools/screen-mirror.test.mjs` (the owners list).
 - [ ] **`ui/browser/analytics-mdx.browser-spec.mjs`** (new). `before` refuses the live container, requires readiness, and runs `AnalyticsProbe` `Remove`, `Enable` and `Create`. `after` runs `Remove` and asserts `Gone`. Each leg carries its mutation comment:
@@ -310,7 +334,7 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Line numbe
   - **AC10:** Task 0's statement with `^OcuPilotProbeMdxSplice(2)` opens the dialog with the consequence sentence, and `structural` with it open finds no fresh entry at 1280 light or 1280 dark. Cancel closes it and `runIris` reads the node undefined; Run and Proceed end the run, and `runIris` reads it defined.
   - If `structural-walk.mjs`, which walks the route in HSCUSTOM, reports a fresh entry for it, fix the page, or append the entry as that file says.
 - [ ] **`_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md`** (add-only):
-  - the side-bar prose :159 gains "then MDX query (Story 20.33)";
+  - the Analytics row of the Side-bar screen lists table (:157-170, written by 20.32) gains "MDX query (Story 20.33)" after 20.32's entries;
   - the Dialogs list :173 gains, among the warnings that precede a non-delete write, "run an MDX query whose text runs server-side code or SQL (MDX query, Story 20.33)";
   - the Fixed strings get one row with this story's literals;
   - run `cd ui && npm run test:tools`.
@@ -362,22 +386,29 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Line numbe
 - **AC10 (ask first; orchestrator ruling Q2 C, AD-65).**
   - **Given** `AnalyticsProbe` in USER and a statement whose `%SEARCH` braces define `^OcuPilotProbeMdxSplice(<n>)`.
   - **When** the person runs it, then cancels the confirmation, then runs it again and proceeds.
-  - **Then** the first run opens the warning "This query runs server-side code or SQL with your rights." with nothing started and the node undefined; Cancel sends nothing; Proceed starts it with the confirmation, the run ends, and the node is defined. A start without the confirmation answers `confirm` naming the consequence, reserving and preparing nothing, and each of the four constructs is detected. A statement without them runs with no dialog.
+  - **Then** the first run opens the warning "This query runs server-side code or SQL with your rights." with nothing started and the node undefined; Cancel sends nothing; Proceed starts it with the confirmation, the run ends, and the node is defined. A start without the confirmation answers `confirm` naming the consequence, reserving and preparing nothing. Each of the five constructs is detected in the vendor's tokens and in a string literal's, a comment inside a word included. A statement the detector cannot read is asked the same way; one whose variable-resolved text names a construct is asked after a prepare that executes nothing. A statement without them runs with no dialog.
 
 ## Spec Change Log
 
 - 2026-10-14, spec gate (runner): the orchestrator ruled Q1 (A, the agent's read is Story 20.35, chartered) and Q2 (C: the screen asks first and runs on confirmation; the agent refuses). The intent contract carries Q2 C; status reset to `draft` for a re-plan around it. The spine's AD-65 clause is written.
 - 2026-10-14, spec gate (runner, cycle 2): the intent contract's `Spliced` row follows Q2 C (Design Notes' erratum applied); the spine carries the Story 20.33 clauses in AD-7, AD-8, AD-21, AD-36, AD-41, AD-42, AD-44 and AD-65.
+- 2026-10-15, lead (orchestrator ruling Q1 B at 20.35's plan gate): the one detector reads the vendor's tokens and each quoted string's tokens, the set gains `%PARM`, a second check runs on the variable-resolved text after prepare, and it fails closed; stored definitions are a named limit (DW-2451). Back to `draft` for a plan amendment that measures the resolved-text check now; each measured obfuscation reddens the detector before the fix, with one resolved-text and one tokenizer-failure case per path.
+- 2026-10-15, spec gate (runner, cycle 3): the intent contract's five errata applied as Design Notes suggested (`Syntax` row input `SELEKT FROM [OcuPilotProbeVisits]`; `Spliced` row, Approach and Never bullets name five constructs and an unreadable statement; the Always bullet's sentence split); AD-65's Story 20.33 clause names five constructs.
 
 ## Review Triage Log
 
 ## Design Notes
 
-**Intent-contract erratum (for the lead).** The I/O matrix's `Spliced` row predates ruling Q2 C and still reads 422 `ANALYTICS.MDX.SQL`. The Approach, Always and Never bullets carry Q2 C and govern; this plan implements them (AC10, `AnalyticsMdxRoutes`' ask-first test). The row should read: "Spliced | Text naming `%SEARCH`, `%SQLRESTRICT`, `RETURN` or `%ORDER`, without `confirmed` | 200 `{outcome: "confirm", constructs, consequence}`; nothing prepared or spawned. With `confirmed: true` the run starts (202) | -".
+**Intent-contract errata (for the lead).** The Always bullet on the statement carries ruling Q1 B and governs; this plan implements it. Five places predate it:
+
+1. **The `Syntax` row.** `SELECT FROM [OcuPilotProbeVisits` fails `%Tokenize` ("Unexpected end of statement", measured), so under Q1 B it asks first, and confirmed it answers the vendor's error. The plan pins the row's behavior with `SELEKT FROM [OcuPilotProbeVisits]` (measured: it tokenizes, and prepare answers "Unknown term at start of query: SELEKT"), and uses the row's text as the tokenizer-failure case. Suggested input: `SELEKT FROM [OcuPilotProbeVisits]`.
+2. **The `Spliced` row** names four words. Suggested: "Text naming `%SEARCH`, `%SQLRESTRICT`, `RETURN`, `%ORDER` or `%PARM` in the vendor's tokens or a string literal's, or text the detector cannot read, without `confirmed`".
+3. **The Approach bullet** lists the four; **the Never bullet** says Story 20.35 "refuses those four constructs". Both should say five, and a statement the detector cannot read.
+4. **The Always bullet's second sentence** reads as two sentences spliced: the ruling's clause sits between "detects any of …" and "and runs it only when the start request carries the person's confirmation". Suggested: end the ruling's sentence at "(DW-2451)", then "A statement with a finding runs only when the start request carries …".
 
 **Governing ADs (Rule 6).**
 
-- **AD-65:** the port's MDX extension, its gate, and its splice clause (the screen asks first, Story 20.35 refuses).
+- **AD-65:** the port's MDX extension, its gate, and its splice clause: one token detector over five constructs, run before and after prepare, failing closed (the screen asks first, Story 20.35 refuses).
 - **AD-29:** the gate before any call (measured).
 - **AD-7:** the run never mutates of its own; the vendor's cache is its new cost shape.
 - **AD-33 and AD-41:** owner-scoped runs and the bounds.
@@ -386,14 +417,14 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Line numbe
 - **AD-44:** the classic page.
 - **AD-16:** switched calls.
 - **AD-21:** the statement is the person's own query, never concatenated by OcuPilot.
-- **AD-11 and AD-60:** untrusted results.
+- **AD-11 and AD-60:** untrusted text and results; a statement the detector cannot read is treated as one with a finding.
 - **AD-42:** the spawn site.
 - **AD-5 and AD-19:** a `form-page` with one loader line, and a framework-free store.
 - **AD-64:** the screen is adjustable, the port's pairs are not.
 
 Checked and not engaged: AD-6, AD-34 and AD-40, because the confirmation is the person's own step on their own query (AD-65), with no proposal, token or ledger row, on a REST route the model cannot reach (AD-1; this story adds no tool); AD-10, AD-15, AD-22 and AD-51 to AD-53, because nothing writes and no tool or key is added; AD-43, because the screen does not refresh; AD-47 and AD-63, because nothing is framed.
 
-**Measured at the first plan on `ocupilot-b-ci`** (2026-10-14; IRIS for Health 2026.2 build 221U). The probe enabled analytics on `/csp/user`, compiled a 50,000-row source and a three-dimension cube, created two principals, and removed all of it. USER's flags were restored and its `^DeepSee.Cache.*`, `AgentLog`, `Agents`, `Update` and IRISTEMP nodes were cleared. The vendor counters `^DeepSee.Tasks` and `TaskGroups` and statement-index rows stay, as 20.11 names. The re-plan measured nothing new; Task 0's item 7 measures the one new assumption.
+**Measured at the first plan on `ocupilot-b-ci`** (2026-10-14; IRIS for Health 2026.2 build 221U). The probe enabled analytics on `/csp/user`, compiled a 50,000-row source and a three-dimension cube, created two principals, and removed all of it. USER's flags were restored and its `^DeepSee.Cache.*`, `AgentLog`, `Agents`, `Update` and IRISTEMP nodes were cleared. The vendor counters `^DeepSee.Tasks` and `TaskGroups` and statement-index rows stay, as 20.11 names.
 
 - **Running.** `%PrepareMDX` plus `%ExecuteAsynch(.key,,0)` plus a 0.1 s `%GetStatus` poll ran a small query in 0.1 s.
   - A 2,000 × 2,000 crossjoin took 20 s for its axes and 122 s in all.
@@ -410,7 +441,7 @@ Checked and not engaged: AD-6, AD-34 and AD-40, because the confirmation is the 
   - `%SEARCH.&[Amount > {$Increment(^g)}]` incremented `^g` before its SQL failed: the braces run ObjectScript.
   - `RETURN Note,(SELECT COUNT(*) FROM …) AS N` ran the subquery.
   - `%SQLRESTRICT` (the same `ComputedDimension.SQL` path) and `%ORDER BY`'s raw splice (RS:2006) are inferences from the source.
-  - The braces run at execute, not at prepare (inference from source: Code Map › Vendor). So the start request's prepare runs none of the person's code.
+  - The braces run at execute, not at prepare (measured at the third plan, below). So the start request's prepare runs none of the person's code.
 - **Kinds.** After prepare: CREATE and DROP read their type, three axes read `axes` 3, `%SHOWPLAN SELECT` reads SELECT, and a syntax error and an unknown cube each answer #5001 text.
 - **Drill.**
   - `%GetFiltersForCellRange` gave `f(0)` (slicer) and `f(2)` (rows), and the composed `DRILLTHROUGH MAXROWS 3 … %FILTER …` ran.
@@ -418,6 +449,17 @@ Checked and not engaged: AD-6, AD-34 and AD-40, because the confirmation is the 
   - P3 without a SELECT grant got #5540 SQLCODE -99 from `%ExecuteAsynch`.
 - **Shared key.** Another process running the same text ended with the same `<EXTERNAL INTERRUPT>` 1.1 s after this process canceled. One cancel stops every run of that text.
 - **Classic page.** `NormalizePage("_DeepSee.UI.MDXQuery.zen")` is `%DeepSee.UI.MDXQuery` (compiled), `RESOURCE` `%DeepSee_Admin,%Development`. `GetGlobalDest("USER","^DeepSee.Cache.Results")` is `^/durable/iris/mgr/user/`.
+
+**Measured at the third plan on `ocupilot-b-ci`** (2026-10-15, build 221U). A 300-row scratch cube in USER, with no flag changed; the cube, its classes, the splice nodes and the cache, `ComputedSQL`, `Update` and `CubeEvent` residue it left were removed afterwards.
+
+- **The tokenizer.**
+  - `%Tokenize` reads `%SE/**/ARCH`, `%SQL/**/RESTRICT`, `RET/**/URN`, `%ORD/**/ER` and `%PA/**/RM` as the five words, and `%SE--` or `%SE//` followed by a newline and `ARCH` as `%SEARCH`.
+  - `[%SEARCH]` is one `QSTR` token, and `[%SE/**/ARCH]` keeps its comment. A `"…"` literal is one `LIT` token with its comments dropped (`LIT<SELECT %SEARCH x>`). `'` is a token by itself, so `'VALUE:{…}'`'s content is in the stream.
+  - It fails on an unterminated `[` (the matrix's Syntax text: "Unexpected end of statement") or `"`, and on `3rd` ("Invalid number").
+- **Where the splices run.**
+  - `%SE/**/ARCH.&[…{$Increment(…)}]`, its `--` spelling and `[%SEARCH].&[…]` each left the node undefined after `%PrepareMDX` and defined it at execute.
+  - `WITH %PARM P AS 'VALUE:{…}'` failed prepare with "Query has no SELECT section" in four placements, `{3}` included, and the node stayed undefined. The braced value enters a parser state no branch handles (Code Map › Vendor), so the rest of the text is swallowed. `'VALUE:3'` prepared and ran. A braced `%PARM` is unreachable from statement text on this build.
+- **The resolved text.** `%PrepareMDX`'s third argument read the statement itself, `""` in place of `$variable.v` when no variables were handed, and the variable's value when one was. A `%SEARCH` value handed that way prepared with the node undefined.
 
 **Decisions.**
 
@@ -428,9 +470,11 @@ Checked and not engaged: AD-6, AD-34 and AD-40, because the confirmation is the 
 - **The job polls; the vendor computes.** The query runs on the vendor's agents in the person's security context. The job owns the deadline and the cancel, which is why a time bound and a "nothing running" proof are possible.
   - *Rejected:* starting the query in the request and polling the vendor from each poll. That needs the statement stored, and nobody enforces the bound while nobody polls.
 - **The request prepares, the job executes.** A drill's original statement executes in the job, under the run loop's bound and cancel, never in the start request, which only classifies.
-- **Ask first (Q2 C).**
-  - **One detection.** `AnalyticsPort.MdxConstructs` is the only place that knows the four constructs, so the screen's ask-first and Story 20.35's refusal cannot drift.
-  - **The answer.** A start without the confirmation answers 200 `{outcome: "confirm", constructs, consequence}`, the shape of the SQL console's `confirm` answer (Story 19.6), and reserves, prepares and spawns nothing. The page draws the shell's `WarningDialog`, as the SQL page does for a changing statement.
+- **Ask first (Q2 C, and Q1 B for detection).**
+  - **One detection.** `AnalyticsPort.MdxConstructs` is the only place that knows the five constructs and the fail-closed rule, so the screen's ask-first and Story 20.35's refusal cannot drift.
+  - **The vendor's tokens, the vendor's matching.** The detector compares `%Tokenize`'s values as the vendor's own `%ValidateText` does, and unquotes a bracket as the parser does for `%SEARCH`. A substring match missed every comment-split word (measured), and token equality no longer asks first for `[Return Policy]`.
+  - **Two checks.** Before prepare on the statement, after prepare on the variable-resolved text, in the request and again in the job. The first is the one that matters on this build: no production caller hands variables, so the resolved text differs only by `""` (measured). The second is Story 20.35's seam and a guard for a later caller that hands some.
+  - **The answer.** A start without the confirmation answers 200 `{outcome: "confirm", constructs, consequence}`, the shape of the SQL console's `confirm` answer (Story 19.6), and reserves and spawns nothing; a finding in the statement itself is answered before any prepare. The page draws the shell's `WarningDialog`, as the SQL page does for a changing statement.
   - **The carrier.** The confirmation is `confirmed: true` in the same start body as the statement, so it confirms exactly the text sent with it. A server token is rejected: it would bind the confirmation to text the server keeps, and the statement is never stored.
   - **Drills.** A drill re-runs the original statement, so it carries the confirmation the person gave that statement's run, with no second dialog.
   - The confirmation guards the person against a statement they did not read, as the SQL console's warning does. It is not a barrier against the person.
@@ -440,6 +484,7 @@ Checked and not engaged: AD-6, AD-34 and AD-40, because the confirmation is the 
   - Cell and total characters: AD-36's screen-only bounds.
   - 120 s: the measured slow crossjoin (122 s) is stopped, and a forgotten run frees its slot of five within two minutes.
   - Settle 10 s: twice the slowest measured settle.
+  - String depth 3: a literal inside a literal inside a literal, more than a `%MDX("…")` nesting needs (inference); deeper text asks first.
 - **Pairs.** `%DeepSee_Portal:USE` comes from the area, and `%Development:USE` is the screen's own: a named narrower audience than the classic page's either-of, 20.11's Q2 precedent. The cache WRITE pair is the port's, read at call time.
 - **The grid.** Value cells are buttons, so drill-through is reachable by keyboard. It is the page's own template because it has row headers and buttons. The listing reuses `ResultGrid`.
 - **Not done:** member values (the person queries members with MDX), session sets and members, formatting by measure format (cells are the vendor's raw values), and auto-refresh.
@@ -449,7 +494,10 @@ Checked and not engaged: AD-6, AD-34 and AD-40, because the confirmation is the 
 - **The shared key.** A cancel or bound stops the vendor's computation of that text for every process running it, including the classic tool's (measured).
 - **The cache.** A query, even a canceled one, leaves the vendor's cache in the namespace's database until the cube is next built or killed (AD-7's new shape).
 - **Code the query names.** `%KPI` and a cube's own listing or computed-dimension code run as the person, as on the classic page. Those are the cube author's code, not the statement's.
-- **False positives.** A statement whose member keys contain one of the four words asks first.
+- **False positives, the fail-closed side.** A statement asks first when one of its tokens, or a string literal's, is one of the five words (a member named `[RETURN]`, a caption "Return rate"); when it names `%PARM` at all; and when it does not tokenize (an unterminated bracket, `3rd`, or a literal holding `--` or `//`, which the lexer reads as a comment: inference from source, `Parser.cls`:292-301).
+- **Stored definitions (DW-2451, `wontfix-accepted`).** Shared calculated members and named filters expand from stores their authors write, and the detector never reads them. Pivot variables reach a query only when a caller hands them: no production caller does, so each `$variable.<name>` resolves to `""` (measured), in a stored calculated member too (`query.cls`:4704-4711).
+- **A braced `%PARM` does not parse on this build** (measured). The set keeps `%PARM` for a build that fixes the parser; the first check sees it before any prepare, so a build that ran the braces at prepare would still ask first.
+- **`%Tokenize` is `[Internal]`.** If a later build removes it or it throws, every statement asks first; `AnalyticsMdx`'s obfuscation cases catch a build whose tokens change.
 - **The confirmation is a step.** Any client of the start route can send `confirmed: true`.
 - **The drill listing.** The vendor scans every matching fact before `TOP`. A cancel during the listing statement waits for `CancelQuery` to reach it.
 - **HSLIB** reports analytics but cannot run MDX.
@@ -485,7 +533,7 @@ A split needs the orchestrator's ruling.
   - 19.15's run, 19.6's fetch loop and `confirm` answer, and the shell's `WarningDialog`;
   - 20.29's loader map.
 - **Consumed-by:**
-  - 20.35, the agent's MDX read: `MdxConstructs` and `MDXCONSTRUCTS` for its `ANALYTICS.MDX.SQL` refusal, the `MDX*` caps, and `MdxPrepare`, `MdxStart`, `MdxStatus`, `MdxCancel`, `MdxDrill` and `MdxAnswer`, all public on `AnalyticsPort`;
+  - 20.35, the agent's MDX read: `MdxConstructs` (its answer, with `unread`) and `MdxPrepare`'s `ask` and `found`, handed no `variables`, for its `ANALYTICS.MDX.SQL` refusal; `MDXCONSTRUCTS`, the `MDX*` caps, and `MdxStart`, `MdxStatus`, `MdxCancel`, `MdxDrill` and `MdxAnswer`, all public on `AnalyticsPort`;
   - 20.34, whose build can outlast a request: it can extend `Kernel.Shell.BackgroundRun` with a third kind (inference);
   - 20.12's Investigate (inference);
   - Epic 21's analytics editors.
@@ -496,25 +544,15 @@ A split needs the orchestrator's ruling.
 
 - **Add-only:** `Test/SurfaceCoverage.cls`, `Test/StageTwoTools.cls`, `screens.generated.ts` (regenerated), `strings.ts`, `_components.scss` (if touched) and EXPERIENCE.md.
 - **Unchanged:** `Kernel/EntityType.cls` (it uses 20.11's `cube`), `Test/Descriptor.cls`, `Test/ReadTool.cls`, `Screen/Registry.cls`, `Screen/Read.cls`, `Prohibited.cls` and `shell/warning-dialog.ts` and `shell/dialog.ts` (imported only).
-- **Epic 23** (`origin/OCU-1-epic23` at `e3c09eb16d1c7b2fad411efe42e9b426e7ea98d2`, 23.5 batch b) edits `shell/dialog.ts`, `_components.scss` (2 lines), `app.ts` and the Home, About, help and fault files. This story edits none of them beyond an add-only `_components.scss` rule.
+- **Epic 23** (`origin/OCU-1-epic23` at `a555c2a8af4c14acd488a461d10a5620f28c33a4`, 23.5 batch d, against the feature head) edits `Screen/Registry.cls`, `Test/ReadTool.cls`, `Test/ExplorerDescriptor.cls`, `screens.generated.ts`, `_components.scss` (+44), `screen-mirror.mjs` and its test, `shell/data-table.ts`, `shell/detail-page.ts` and EXPERIENCE.md (2 lines). This story edits `screen-mirror.test.mjs` (the owners list), `screens.generated.ts` (regenerated), `_components.scss` and EXPERIENCE.md, each add-only, and none of the others.
 - **Footprint extensions** (outside `paths_hint`):
   - approved by the orchestrator: `src/OcuPilot/Area/Explorer/SqlBackground.cls`, `scripts/check-objectscript.py`, `scripts/test_check_objectscript.py` and `scripts/ci-throwaway.sh`;
   - reported (Rule 11 (b)): the new `src/OcuPilot/Area/Analytics/MdxQuery.cls`, and EXPERIENCE.md's add-only rows.
 
-**Spine drafts (Rule 20; the lead writes them at the gate).**
+**Spine (Rule 20).** The Story 20.33 clauses are written (AD-7 :238, AD-8 :347, AD-21 :610, AD-36 :864, AD-41 :929, AD-42 :943, AD-44 :1048, AD-65 :1402-1404), and AD-65's splice clause carries ruling Q1 B. Corrections for the lead:
 
-- **AD-65, a Story 20.33 clause beside the splice clause:**
-  - MDX runs through `AnalyticsPort`'s `Mdx*` calls behind `MDXPAIRS` and WRITE on the database `^DeepSee.Cache.Results` maps to (read-only refused 409 `ANALYTICS.MDX.READONLY`).
-  - Only SELECT with at most two axes, and DRILLTHROUGH, run. A drill-through is composed in the job from the vendor's `%GetFiltersForCellRange`.
-  - `MdxConstructs` is the one detection of the splice clause's four constructs. The screen's start carries the person's confirmation as `confirmed: true`; without it the start answers `confirm`, naming the consequence, and runs nothing.
-  - The vendor's `%CancelQuery` checks no owner, so the run row is the owner check.
-- **AD-7:** "So does the MDX tool's query (Story 20.33): it writes the vendor's result and axis cache in the namespace's database, kept after a cancel, plus `^DeepSee.AgentLog`, `^DeepSee.Agents` and IRISTEMP's `^IRIS.Temp.DeepSee*`. The MDX job is the background run's second kind and never mutates of its own."
-- **AD-41:** "Background runs carry a kind: a user has at most one live run per kind, and the instance at most five of all kinds (Story 20.33)."
-- **AD-42:** the fourth spawn site is `Kernel/Shell/BackgroundRun`, shared by the SQL console and the MDX tool, with the same rules.
-- **AD-36:** "An MDX run's cells and listing are a screen-only payload (Story 20.33), bounded by `AnalyticsPort`'s `MDX*` limits, held as the SQL console's background answer is."
-- **AD-8:** MDX query requires `%DeepSee_Portal:USE` and its own `%Development:USE`, a named narrower audience than the classic page's either-of.
-- **AD-44:** `%DeepSee.UI.MDXQuery`.
-- **AD-21:** "The MDX tool's statement is the person's own query: OcuPilot concatenates it into nothing and hands it only to the vendor's parser. Text the vendor splices into SQL or evaluates as code runs only on the person's confirmation in the same request (AD-65's splice clause), and a drill-through's text is composed from the vendor's filters (Story 20.33)."
+- **AD-65's Story 20.33 clause** (:1404) says "`MdxConstructs` is the one detection of the splice clause's four constructs". It should read "five constructs, and a statement it cannot read".
+- **The splice clause's named limit** (:1402) lists pivot variables. No production caller hands any, so each resolves to `""` (measured); the limit that remains is shared calculated members and named filters. Optional, for precision; DW-2451's summary lists pivot variables too.
 
 **Strings (about 20 literals, add-only; reused keys keep their values).**
 
@@ -554,9 +592,9 @@ A split needs the orchestrator's ruling.
 - `DeveloperFloor` `SCREENS` and `DeveloperFloorRoutes`' lists;
 - `PortGate`'s `ROSTER`;
 - `navigation.test.mjs`' routes and `screen-mirror.test.mjs`' owners;
-- the strings table, EXPERIENCE.md :159, its Dialogs list :173 and its Fixed strings;
+- the strings table, EXPERIENCE.md's side-bar table :157-170, its Dialogs list :173 and its Fixed strings;
 - the built-screen count Screen permissions derives (+1);
-- USER's analytics flags, `^DeepSee.Cache.Results` and `^OcuPilotProbeMdxSplice` while the probe runs;
+- USER's analytics flags, `^DeepSee.Cache.Results`, `^DeepSee.ComputedSQL` and `^OcuPilotProbeMdxSplice` while the probe runs (nodes 1, 3, 4 and 5 server-side, 2 browser, 10 port; Story 20.35 takes 351 on);
 - the SQL page's DOM.
 
 *Every test added or changed passes on a fresh environment, in either order.* `AnalyticsProbe` creates and removes everything it asserts on, its cache residue and the splice node included. Each ask-first leg uses its own node subscript, so its statement text is its own, and each job test settles its own runs.
@@ -607,7 +645,12 @@ A split needs the orchestrator's ruling.
 | AC8 | A pale color on a drill cell | The browser structural leg |
 | AC9 | `BackgroundRun` drops the 404 clear | `background-run.test.mjs` and `sql-query.page.spec.ts`' swept-run case |
 | AC10 | `Admit` skips the confirmation check | `AnalyticsMdxRoutes`' ask-first test (202, and the node defined before any confirmation) and the browser AC10 (no dialog) |
-| AC10 | `MdxConstructs` drops `RETURN` | `AnalyticsMdx`'s constructs test |
+| AC10 | `MdxConstructs` is cycle 2's detector, the four words as a case-insensitive substring of the raw text | `AnalyticsMdx`'s obfuscation cases (each `/**/` word, `--`, `//`, both literals, the braced `%PARM`) and `AnalyticsMdxRoutes`' node-3 and node-4 cases |
+| AC10 | `MdxConstructs` reads no string literal's tokens | `AnalyticsMdx`'s `%MDX("…")` case |
+| AC10 | `MdxConstructs` answers 0 when a tokenize fails | `AnalyticsMdx`'s fail-closed cases and `AnalyticsMdxRoutes`' tokenizer-failure case (an error answer, not `confirm`) |
+| AC10 | `MdxPrepare` skips the check on the resolved text | `AnalyticsMdx`'s variable case and `AnalyticsMdxJob`'s resolved-text case |
+| AC10 | `MDXCONSTRUCTS` loses `%PARM` | `AnalyticsMdx`'s `%PARM` cases and `AnalyticsMdxRoutes`' node-4 case |
+| AC10 | `mdxConfirmOf` answers `null` for empty `constructs` | `mdx-answer.test.mjs` and the page spec's empty-constructs case |
 | AC10 | The store sends `confirmed: true` on the first start | `mdx-query.page.spec.ts`' ask-first case |
 
 ## Auto Run Result
@@ -615,4 +658,4 @@ A split needs the orchestrator's ruling.
 Status: ready-for-dev
 Blocking condition: none
 
-Re-plan (cycle 2) around rulings Q1 A and Q2 C. Changed: the four constructs now ask first (`MdxConstructs`, a 200 `confirm` answer, `confirmed: true` in the start body, the shell's `WarningDialog`, AC10 with its server, component and browser legs on a probe node), `ANALYTICS.MDX.SQL` and its sentence left to 20.35, a drill's original executed in the job rather than the start request, the bundle at the owner's fixed 2500 kB, anchors re-read at `393472b9`, and the AD-65 and AD-21 drafts. Cycle 1's measurements kept; one new assumption (the braces run at execute) is inferred from source and measured at Task 0. The intent contract is kept verbatim; its stale `Spliced` matrix row is in Design Notes › Intent-contract erratum for the lead.
+Plan amendment (cycle 3) around ruling Q1 B. Changed: `MdxConstructs` reads the vendor's tokens and each string literal's, over five constructs, and fails closed (`unread`); `MdxPrepare` runs it again on the resolved text (`ask`, `found`, a `variables` seam reached through `MdxQuery.Variables()`); `Admit` and `Work` run both checks; the port, route and job tests gain the obfuscation, `%PARM`, resolved-text and tokenizer-failure cases, written red against cycle 2's substring detector first; DW-2451 and the new limits are in Named limits; anchors re-read at `d09e5093`. Measured on `ocupilot-b-ci` with a scratch cube, removed with its residue: the tokenizer, where `%SEARCH` runs (execute), that a braced `%PARM` never prepares on this build, and the resolved text. For the lead: Design Notes › Intent-contract errata (the `Syntax` row's text fails the tokenizer, so under Q1 B it asks first; four other stale places) and › Spine (AD-65's Story 20.33 clause still says four constructs).

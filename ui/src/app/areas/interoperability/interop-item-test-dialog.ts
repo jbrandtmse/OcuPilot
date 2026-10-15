@@ -106,8 +106,8 @@ interface FieldView extends TestFieldRow {
   selector: 'app-interop-item-test-dialog',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [Dialog, CodeBlock],
-  template: `<app-dialog [heading]="heading()" [closeLabel]="STRINGS.actionCancel" (closed)="onClosed()">
-    <p class="ocu-banner" data-interop-test-consequence>{{ STRINGS.interopTestSendsConsequence }}</p>
+  template: `<app-dialog [heading]="title()" [closeLabel]="STRINGS.actionCancel" (closed)="onClosed()">
+    <p class="ocu-banner" data-interop-test-consequence>{{ consequenceText }}</p>
     @if (hasRefusal) {
       <p class="ocu-banner ocu-banner-warning" role="alert" data-interop-test-reason>{{ refusal() }}</p>
     }
@@ -211,13 +211,35 @@ interface FieldView extends TestFieldRow {
       [attr.aria-disabled]="sending() ? 'true' : null"
       (click)="submit()"
     >
-      {{ STRINGS.interopItemTestAction }}
+      {{ submitText }}
     </button>
   </app-dialog>`,
 })
 export class InteropItemTestDialog {
   /** The item's name, which titles the dialog. */
   readonly item = input<string>('');
+
+  /**
+   * The dialog's title where it is not a test's (Story 20.31: Edit and resend message), or `''` for "Test <item>". With `submitLabel`,
+   * `values`, `consequence` and `secretCaption` it lets the message edit form reuse the form's fields; each default leaves the Test
+   * dialog exactly as it was.
+   */
+  readonly heading = input<string>('');
+
+  /** The send button's label where it is not "Send test", or `''` (the edit form's Review). */
+  readonly submitLabel = input<string>('');
+
+  /** The sentence above the fields where it is not a test's, or `''` (the edit and resend consequence). */
+  readonly consequence = input<string>('');
+
+  /** The caption under a credential-named field where it is not a test's, or `''`. */
+  readonly secretCaption = input<string>('');
+
+  /**
+   * The value each field holds when the dialog opens, keyed by the field's path, or `null` for a form that starts empty. A form given
+   * values is an edit: every field that is not a credential is handed on, an emptied one as `''`, so a cleared field is a change.
+   */
+  readonly values = input<Readonly<Record<string, string>> | null>(null);
 
   /** The Test tab's rows, as the screen's store holds them. */
   readonly rows = input<readonly unknown[]>([]);
@@ -271,7 +293,7 @@ export class InteropItemTestDialog {
     return chosen !== null && names.includes(chosen) ? chosen : (names[0] ?? '');
   });
 
-  protected readonly heading = computed(() => fill(STRINGS.interopTestDialogTitle, 'item', this.item()));
+  protected readonly title = computed(() => (this.heading() !== '' ? this.heading() : fill(STRINGS.interopTestDialogTitle, 'item', this.item())));
 
   /** The chosen class's fields as drawn. A class with no settable field has one row with an empty field name, which draws none. */
   protected readonly fields = computed<readonly FieldView[]>(() => {
@@ -285,7 +307,7 @@ export class InteropItemTestDialog {
       const document = row.kind === 'document';
       const violation = refused.get(row.field) ?? '';
       const caption = row.secret
-        ? STRINGS.interopTestRefusalSecret
+        ? this.secretCaptionText
         : row.maxLength !== null && !document
           ? fill(pickCount(row.maxLength, STRINGS.interopTestMaxLengthOne, STRINGS.interopTestMaxLength), 'n', String(row.maxLength))
           : '';
@@ -328,6 +350,18 @@ export class InteropItemTestDialog {
     return this.refusal() !== '';
   }
 
+  protected get consequenceText(): string {
+    return this.consequence() !== '' ? this.consequence() : STRINGS.interopTestSendsConsequence;
+  }
+
+  protected get submitText(): string {
+    return this.submitLabel() !== '' ? this.submitLabel() : STRINGS.interopItemTestAction;
+  }
+
+  private get secretCaptionText(): string {
+    return this.secretCaption() !== '' ? this.secretCaption() : STRINGS.interopTestRefusalSecret;
+  }
+
   protected get hasAnswer(): boolean {
     return this.answer() !== null;
   }
@@ -368,9 +402,9 @@ export class InteropItemTestDialog {
     return [{ kind: 'text', text: (this.answer()?.lines ?? []).join('\n') }];
   }
 
-  /** The text typed for `field`, or `''`. */
+  /** The text typed for `field`, else the value the dialog opened with, or `''`. */
   protected typedFor(field: string): string {
-    return this.typed()[field] ?? '';
+    return this.typed()[field] ?? this.values()?.[field] ?? '';
   }
 
   protected onClass(event: Event): void {
@@ -387,9 +421,10 @@ export class InteropItemTestDialog {
   protected submit(): void {
     if (this.sending() || this.activeClass() === '') return;
     const fields: Record<string, string> = {};
+    const editing = this.values() !== null;
     for (const view of this.fields()) {
       const value = this.typedFor(view.field);
-      if (!view.secret && value !== '') fields[view.field] = value;
+      if (!view.secret && (value !== '' || editing)) fields[view.field] = value;
     }
     this.submitted.emit({ requestClass: this.activeClass(), fields });
   }

@@ -27,7 +27,7 @@ const STRINGS_SOURCE = join(REPO_ROOT, 'ui', 'src', 'app', 'core', 'strings.ts')
 
 const EXPERIENCE = join(REPO_ROOT, '_bmad-output', 'planning-artifacts', 'ux-designs', 'ux-OcuPilot-2026-09-08', 'EXPERIENCE.md');
 
-/** Every `<parameter>` sentence `InteropError` declares, and the `strings.ts` key it is pinned equal to. */
+/** Every `<parameter>` sentence `InteropError` declares, and the `strings.ts` key it is pinned equal to (Story 20.31's resend and edit sentences, verdicts and outcome words included). */
 const SENTENCES = [
   ['REASONNAMESPACE', 'interopRefusalNoProductions'],
   ['REASONRUNNING', 'interopRefusalRunning'],
@@ -105,6 +105,22 @@ const SENTENCES = [
   ['REASONTRANSFORMCONTENT', 'interopTransformRefusalContent'],
   ['REASONTRANSFORMRUNS', 'interopTransformRunsConsequence'],
   ['REASONMESSAGECONTENTS', 'interopRefusalMessageContents'],
+  ['REASONRESENDNONE', 'interopRefusalResendNone'],
+  ['REASONRESENDCHANGED', 'interopRefusalResendChanged'],
+  ['REASONEDITNOTEDITABLE', 'interopRefusalEditNotEditable'],
+  ['REASONEDITNOCHANGE', 'interopRefusalEditNoChange'],
+  ['REASONEDITFIELD', 'interopRefusalEditField'],
+  ['REASONEDITSECRET', 'interopRefusalEditSecret'],
+  ['REASONEDITVALUE', 'interopRefusalEditValue'],
+  ['REASONMESSAGERESEND', 'interopMessageResendConsequence'],
+  ['REASONMESSAGEEDITRESEND', 'interopMessageEditResendConsequence'],
+  ['VERDICTRESEND', 'interopResendVerdictResend'],
+  ['VERDICTGONE', 'interopResendVerdictGone'],
+  ['VERDICTNOBODY', 'interopResendVerdictNobody'],
+  ['VERDICTTARGETOFF', 'interopResendVerdictTargetOff'],
+  ['VERDICTNOREPLYQUEUE', 'interopResendVerdictNoReplyQueue'],
+  ['OUTCOMERESENT', 'interopResendOutcome'],
+  ['OUTCOMEFAILED', 'interopResendFailed'],
 ];
 
 /** The value `key` holds in `strings.ts`, which may sit on the line after its key. */

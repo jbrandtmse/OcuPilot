@@ -1135,6 +1135,14 @@ ClassMethod Install(pProfile As %String = "", pUnexpire As %Boolean = 0, pBundle
         Set $NAMESPACE = tOrigNS
         Set tFailingStep = ""
 
+        ; AD-34: the sibling cancel finds a stored proposal through its target key, so a proposal
+        ; minted before the key existed is given one here, in the install namespace, which is the
+        ; only place OcuPilot.Kernel.State.Propose is reachable from.
+        Set tFailingStep = "EnsureProposalTargetKeys"
+        Set tSC = ..EnsureProposalTargetKeys(.tReports)
+        If $$$ISERR(tSC) Quit
+        Set tFailingStep = ""
+
         ; DW-94: the provenance rows for whatever this run created or recognised, written after
         ; the namespace restore because OcuPilot.Kernel.State.WebApp is compiled only into the
         ; install namespace -- the same read-in-the-install-namespace, act-in-%SYS,
@@ -1797,6 +1805,31 @@ ClassMethod ReadApplicationProvenance(pProfile As %String, ByRef pNames, Output 
     Kill pRecorded
     If ..IsEscalationInfrastructureAbsent(.pNames, .pReports) Quit $$$OK
     Quit ##class(OcuPilot.Kernel.State.WebApp).GuardedPathsForProfile(pProfile, .pRecorded)
+}
+
+/// <p>Give every stored proposal its target key and build the proposal target index over them
+/// (<method>OcuPilot.Kernel.State.Propose.GuardedRebuildTargetKeys</method>). Idempotent: it
+/// reports how many rows it gave a key, and a second run reports none. It runs on every install
+/// and is not a migration step, so it does not move <parameter>SCHEMAVERSION</parameter>.</p>
+/// <p><b>Public, not <code>[ Private ]</code></b>, the same documented deviation
+/// <method>EnsureGrant</method> already carries:
+/// <class>OcuPilot.Test.ProposalTargetKey</class> drives it directly. Runs in the install
+/// namespace, where <class>OcuPilot.Kernel.State.Propose</class> is compiled.</p>
+ClassMethod EnsureProposalTargetKeys(ByRef pReports) As %Status
+{
+    Set tSC = $$$OK
+    Try {
+        Set tSC = ##class(OcuPilot.Kernel.State.Propose).GuardedRebuildTargetKeys(.tChanged)
+        If $$$ISERR(tSC) Quit
+        If tChanged {
+            Do ..Report(.pReports, "info", "Gave " _ tChanged _ " stored proposal(s) their target key and rebuilt the proposal target index", {"rows": (tChanged)})
+        } Else {
+            Do ..Report(.pReports, "info", "Every stored proposal already carries its target key", {"rows": 0})
+        }
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
 }
 
 /// <p>Write a provenance row for every application <var>pRecordedApps</var> names -- each

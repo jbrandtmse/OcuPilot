@@ -610,6 +610,150 @@ ClassMethod AbortQueues() [ Private ]
     }
 }
 
+/// <p>USER's highest <code>Ens.MessageHeader</code> id and highest <code>Ens_Util.Log</code> id, as <code>&lt;headers&gt;|&lt;logs&gt;</code>
+/// (<code>0</code> for an empty table): the mark a suite records before it makes messages, so <method>SweepSince</method> removes
+/// exactly what the suite made and nothing a person or an earlier run left (Story 20.31). <code>""</code> when either table could not
+/// be read, which <method>SweepSince</method> refuses to sweep from.</p>
+ClassMethod HighWater() As %String
+{
+    Set tMark = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = ..#NAMESPACE
+        Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT MAX(ID) FROM Ens.MessageHeader")
+        Set tHeaders = $Select(tRS.%Next(): +tRS.%GetData(1), 1: "")
+        Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT MAX(ID) FROM Ens_Util.Log")
+        Set tLogs = $Select(tRS.%Next(): +tRS.%GetData(1), 1: "")
+        If (tHeaders '= "") && (tLogs '= "") Set tMark = tHeaders _ "|" _ tLogs
+        Set $NAMESPACE = tOrigNS
+    } Catch {
+        Set $NAMESPACE = tOrigNS
+        Set tMark = ""
+    }
+    Quit tMark
+}
+
+/// <p>Delete, in <code>USER</code>, every message header above the mark <var>pMark</var> (<method>HighWater</method>'s) and the
+/// persistent or stream body each names that no header at or below the mark still names (a resend shares its original's body), and
+/// every event-log row above the mark. The answer is what is left above the mark, as <code>&lt;headers&gt;|&lt;logs&gt;</code>:
+/// <code>0|0</code> for a clean sweep (Story 20.31). A mark that is not <code>&lt;digits&gt;|&lt;digits&gt;</code> deletes nothing
+/// and answers <code>?|?</code>.</p>
+ClassMethod SweepSince(pMark As %String) As %String
+{
+    Set tLeft = "?|?"
+    If pMark '? 1.N1"|"1.N Quit tLeft
+    Set tHeaderMark = +$Piece(pMark, "|", 1)
+    Set tLogMark = +$Piece(pMark, "|", 2)
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = ..#NAMESPACE
+        Kill tBodies
+        ; The class name is read from the header, not from a query: an index returns it in upper case, which no class carries.
+        Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT ID FROM Ens.MessageHeader WHERE ID > ?", tHeaderMark)
+        While tRS.%Next() {
+            Set tHeader = ##class(Ens.MessageHeader).%OpenId(tRS.%GetData(1))
+            If $IsObject(tHeader) && (tHeader.MessageBodyClassName '= "") && (tHeader.MessageBodyId '= "") Set tBodies(tHeader.MessageBodyClassName, tHeader.MessageBodyId) = ""
+            Set tHeader = ""
+        }
+        Set tRS = ##class(%SQL.Statement).%ExecDirect(, "DELETE FROM Ens.MessageHeader WHERE ID > ?", tHeaderMark)
+        Set tRS = ##class(%SQL.Statement).%ExecDirect(, "DELETE FROM Ens_Util.Log WHERE ID > ?", tLogMark)
+        Set tClass = ""
+        For {
+            Set tClass = $Order(tBodies(tClass))
+            If tClass = "" Quit
+            If '$Match(tClass, "^%?[A-Za-z][A-Za-z0-9]*(\.[A-Za-z][A-Za-z0-9]*)*$") || '##class(%Dictionary.CompiledClass).%ExistsId(tClass) Continue
+            If '$ClassMethod(tClass, "%Extends", "%Library.Persistent") && '$ClassMethod(tClass, "%Extends", "%Stream.Object") Continue
+            Set tId = ""
+            For {
+                Set tId = $Order(tBodies(tClass, tId))
+                If tId = "" Quit
+                Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT COUNT(*) FROM Ens.MessageHeader WHERE MessageBodyClassName = ? AND MessageBodyId = ?", tClass, tId)
+                If tRS.%Next() && (+tRS.%GetData(1) = 0) Do $ClassMethod(tClass, "%DeleteId", tId)
+            }
+        }
+        Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT COUNT(*) FROM Ens.MessageHeader WHERE ID > ?", tHeaderMark)
+        Set tHeaders = $Select(tRS.%Next(): +tRS.%GetData(1), 1: "?")
+        Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT COUNT(*) FROM Ens_Util.Log WHERE ID > ?", tLogMark)
+        Set tLogs = $Select(tRS.%Next(): +tRS.%GetData(1), 1: "?")
+        Set tLeft = tHeaders _ "|" _ tLogs
+        Set $NAMESPACE = tOrigNS
+    } Catch {
+        Set $NAMESPACE = tOrigNS
+    }
+    Quit tLeft
+}
+
+/// <p>Save the body <var>pBody</var> and a request header for it in <code>USER</code>, through
+/// <code>Ens.MessageHeader.NewRequestMessage</code>, sent by the probe service (<parameter>SVCNAME</parameter>) to the item
+/// <var>pTarget</var> and read <code>Completed</code>, so a resend of it needs no production to have handled it first
+/// (Story 20.31). The new header's id is in <var>pId</var>. It refuses, touching nothing, when <code>USER</code>'s current
+/// production is not one of the probe's own.</p>
+ClassMethod StoredRequest(pBody As %RegisteredObject, pTarget As %String = {..#OPNAME}, Output pId As %String) As %Status
+{
+    Set pId = ""
+    Set tSC = ..CheckOwn()
+    If $$$ISERR(tSC) Quit tSC
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = ..#NAMESPACE
+        Set tSC = ##class(Ens.MessageHeader).NewRequestMessage(.tHeader, pBody, .tSession)
+        If $$$ISOK(tSC) {
+            Set tHeader.SourceConfigName = ..#SVCNAME
+            Set tHeader.SourceBusinessType = 1
+            Set tHeader.TargetConfigName = pTarget
+            Set tHeader.TargetBusinessType = 3
+            Set tHeader.TargetQueueName = pTarget
+            Set tHeader.Invocation = 1
+            Set tHeader.Status = 9
+            Set tSC = tHeader.%Save()
+            Set pId = tHeader.%Id()
+        }
+        Set tHeader = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Save, in <code>USER</code>, the response header to the request header <var>pRequestId</var> through
+/// <code>Ens.MessageHeader.NewResponseMessage</code>, with the reply queue it is addressed to set to <var>pQueue</var> and
+/// the status <code>Completed</code> (Story 20.31): a queue no production has makes it a response whose reply queue no longer
+/// exists. The new header's id is in <var>pId</var>. It refuses, touching nothing, when <code>USER</code>'s current production is not
+/// one of the probe's own.</p>
+ClassMethod StoredResponse(pRequestId As %String, pQueue As %String, Output pId As %String) As %Status
+{
+    Set pId = ""
+    Set tSC = ..CheckOwn()
+    If $$$ISERR(tSC) Quit tSC
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = ..#NAMESPACE
+        Set tRequest = ##class(Ens.MessageHeader).%OpenId(pRequestId)
+        If '$IsObject(tRequest) {
+            Set tSC = $$$ERROR($$$GeneralError, "the request header " _ pRequestId _ " is not there")
+        } Else {
+            Set tBody = ##class(Ens.StringResponse).%New()
+            Set tBody.StringValue = "reply"
+            Set tSC = tRequest.NewResponseMessage(.tHeader, tBody)
+            If $$$ISOK(tSC) {
+                Set tHeader.TargetQueueName = pQueue
+                Set tHeader.Status = 9
+                Set tSC = tHeader.%Save()
+                Set pId = tHeader.%Id()
+            }
+        }
+        Set tHeader = ""
+        Set tRequest = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
 /// <p>1 when <code>USER</code> holds no probe state: no current production, no probe production
 /// configuration and no probe class; 0 otherwise.</p>
 ClassMethod Gone() As %Boolean

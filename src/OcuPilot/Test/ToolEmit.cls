@@ -251,6 +251,20 @@ Method TestEveryLiveToolRequiresItsScreensPairs()
             For tWritePair = $ListBuild("%Ens_ProductionConfig", "WRITE"), $ListBuild(tGlobalResource, "WRITE"), $ListBuild(tRoutineResource, "WRITE") {
                 If '$ListFind(tExpected, tWritePair) Set tExpected = tExpected _ $ListBuild(tWritePair)
             }
+        } ElseIf $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.InteropMessageAction") {
+            ; Story 20.31: the resend declares %Ens_MessageResend:USE and the edit and resend %Ens_MessageContent:USE,
+            ; %Ens_MessageResend:USE and %Ens_MessageEditResend:USE, then WRITE on the globals database of the request's
+            ; namespace, here this one's, after their screen's pairs, each once (AD-8, AD-62).
+            Set tExpected = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(tTool.class, "DESCRIPTORCLASS"), .tExpectedResolved)
+            Do $$$AssertTrue($ListLength(tExpected) > 0, tTool.name _ ": its screen declares pairs")
+            Do $$$AssertTrue(##class(OcuPilot.Kernel.Shell.Namespaces).GlobalDatabase($Namespace, .tGlobalResource, .tReadOnly), tTool.name _ ": this namespace's globals database resolves")
+            Set tOwnPairs = $ListBuild($ListBuild("%Ens_MessageResend", "USE"))
+            If tTool.class = "OcuPilot.Screen.Tool.InteropMessageEditResend" Set tOwnPairs = $ListBuild($ListBuild("%Ens_MessageContent", "USE"), $ListBuild("%Ens_MessageResend", "USE"), $ListBuild("%Ens_MessageEditResend", "USE"))
+            For tOwnIndex = 1:1:$ListLength(tOwnPairs) {
+                If '$ListFind(tExpected, $List(tOwnPairs, tOwnIndex)) Set tExpected = tExpected _ $ListBuild($List(tOwnPairs, tOwnIndex))
+            }
+            Set tWritePair = $ListBuild(tGlobalResource, "WRITE")
+            If '$ListFind(tExpected, tWritePair) Set tExpected = tExpected _ $ListBuild(tWritePair)
         } ElseIf $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.InteropProductionAction") || $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.InteropJobAction") || (tTool.class = "OcuPilot.Screen.Tool.InteropQueueAbort") || (tTool.class = "OcuPilot.Screen.Tool.InteropQueueMessageAbort") {
             ; Story 20.2: the production actions declare %Ens_ProductionRun:USE and WRITE on the globals
             ; database of the request's namespace, here this one's, after their screen's pairs, each

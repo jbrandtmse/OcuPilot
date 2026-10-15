@@ -292,6 +292,8 @@ test('AD-13: the id-rule table is read from the kernel and is what the mirror em
     ['docdb-application', 'foldcase'],
     // Story 18.31: a privileged routine application is keyed by its name, which the instance resolves in any case.
     ['routine-application', 'foldcase'],
+    // Story 20.31: a message header's id may name the set of messages a resend names, each once and ascending.
+    ['interop-message', 'integerset'],
   ]);
   assert.deepEqual(parseIdRuleNames(text), ['foldcase-striptrailingslash', 'foldcase', 'singleton', 'integer', 'foldcase-firstpart', 'integerset', 'directoryset', 'documentset', 'portbind']);
   // `null`, never `[]`, when the parameter is missing: an absent table and a table that declares
@@ -982,13 +984,15 @@ test('multiSelectProblem returns every sentence OcuPilot.Test.MultiSelectCorpus 
   const declaring = sources.screens.filter((screen) => screen.declaration.multiSelect !== undefined);
   assert.deepEqual(
     declaring.map((screen) => screen.className).sort(),
-    ['OcuPilot.Screen.Descriptor.ExplorerClassList', 'OcuPilot.Screen.Descriptor.ExplorerRoutineList', 'OcuPilot.Screen.Descriptor.ProcessList'],
-    'Processes and, since Story 19.2, the Classes and Routines lists are the lists that declare a multi-select'
+    ['OcuPilot.Screen.Descriptor.ExplorerClassList', 'OcuPilot.Screen.Descriptor.ExplorerRoutineList', 'OcuPilot.Screen.Descriptor.InteropMessageList', 'OcuPilot.Screen.Descriptor.ProcessList'],
+    'Processes and, since Story 19.2, the Classes and Routines lists and, since Story 20.31, Messages are the lists that declare a multi-select'
   );
   for (const screen of declaring) assert.equal(multiSelectProblem(screen.declaration), null, `${screen.className}'s declaration passes`);
   const processes = declaring.find((screen) => screen.className === 'OcuPilot.Screen.Descriptor.ProcessList');
   assert.ok(declaredStringKeys(processes.declaration).includes('processBroadcastIneligible'), 'its ineligible reason is a key the string check resolves');
-  for (const screen of declaring.filter((entry) => entry !== processes)) {
+  const messages = declaring.find((screen) => screen.className === 'OcuPilot.Screen.Descriptor.InteropMessageList');
+  assert.deepEqual(messages.declaration.multiSelect, { action: 'resend', max: 100 }, 'Messages checks every row for resend, at most the port\'s cap (Story 20.31)');
+  for (const screen of declaring.filter((entry) => entry !== processes && entry !== messages)) {
     assert.deepEqual(screen.declaration.multiSelect, { action: 'compile', max: 100, extraActions: ['delete', 'export'] }, `${screen.className} checks every row for compile and, as its extra actions, delete and export (Story 19.13)`);
   }
 

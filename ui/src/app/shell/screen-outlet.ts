@@ -78,6 +78,9 @@ const INTEROP_EDITOR_PAGE: PageLoader = () => import('../areas/interoperability/
 const INTEROP_MESSAGE_CONTENTS_PAGE: PageLoader = () => import('../areas/interoperability/interop-message-contents.page').then((m) => m.InteropMessageContentsPage);
 const INTEROP_MESSAGE_TRACE_PAGE: PageLoader = () => import('../areas/interoperability/interop-message-trace.page').then((m) => m.InteropMessageTracePage);
 
+/** Story 20.31: a message's Header tab, the detail page with its Resend and Edit and resend actions. */
+const INTEROP_MESSAGE_HEADER_PAGE: PageLoader = () => import('../areas/interoperability/interop-message-header.page').then((m) => m.InteropMessageHeaderPage);
+
 /**
  * Pages keyed by the descriptor that declares them, resolved **before** the archetype map
  * (DW-369).
@@ -234,8 +237,10 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, PageLoader>> = {
   // Story 20.8: the Schema viewer and the Configuration diagram, the vendor's apps in the same frame.
   'OcuPilot.Screen.Descriptor.InteropSchemaViewer': INTEROP_EDITOR_PAGE,
   'OcuPilot.Screen.Descriptor.InteropProductionDiagram': INTEROP_EDITOR_PAGE,
-  // Story 20.9: a message's Contents tab. The Messages search and the Header tab use their archetypes' pages.
+  // Story 20.9: a message's Contents tab. The Messages search uses its archetype's page.
   'OcuPilot.Screen.Descriptor.InteropMessageContentsTab': INTEROP_MESSAGE_CONTENTS_PAGE,
+  // Story 20.31: a message's Header tab, whose Resend and Edit and resend its own page runs.
+  'OcuPilot.Screen.Descriptor.InteropMessageHeaderTab': INTEROP_MESSAGE_HEADER_PAGE,
   // Story 20.30: the Trace tab, the session drawn as a sequence diagram.
   'OcuPilot.Screen.Descriptor.InteropMessageTraceTab': INTEROP_MESSAGE_TRACE_PAGE,
 };

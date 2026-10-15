@@ -346,6 +346,29 @@ test('AD-13: the integerset rule folds a process id set to unique pids in ascend
   assert.equal(entityRefKey(type, 'instance', '907, 812,812'), entityRefKey(type, 'instance', '812,907'), 'so two spellings of one set build one key');
 });
 
+// Story 20.31, AD-13: a message header's id may name the set of messages a resend names. The client answers what
+// `OcuPilot.Kernel.EntityRef` answers for the same corpus (`OcuPilot.Test.EntityRef`): the `integerset` rule, so
+// the checked rows of Messages are one target in one spelling and a single valid id reads as itself.
+//
+// Mutation (Rule 19): drop `interop-message` from `IDRULES` in `EntityRef.cls` and regenerate the mirror -> the first
+// assertion goes red.
+test('Story 20.31, AD-13: a message header id names a set of messages in ascending order', () => {
+  const type = 'interop-message';
+  assert.equal(ENTITY_ID_RULES[type], 'integerset', 'the mirrored table declares the rule');
+  for (const [spelling, canonical] of [
+    ['13,2,13', '2,13'],
+    ['13,12', '12,13'],
+    ['12,13', '12,13'],
+    ['13', '13'],
+    [' 13 ', '13'],
+    ['100,9,10', '9,10,100'],
+  ]) {
+    assert.equal(normalizeEntityId(type, spelling), canonical, `'${spelling}' is the message set ${canonical}`);
+  }
+  assert.equal(normalizeEntityId(type, '0x1,2'), '0x1,2', 'a set with a member that is no number keeps its spelling, for the instance to refuse by name');
+  assert.equal(entityRefKey(type, 'namespace:USER', '13,12'), entityRefKey(type, 'namespace:USER', '12,13'), 'so two spellings of one set build one key');
+});
+
 // Story 18.4, AD-13: a database is addressed by its directory, or, for an integrity check, by a set
 // of directories as a JSON array. The client answers what `OcuPilot.Port.DatabasePort.CanonicalSet`
 // answers for the same corpus (`OcuPilot.Test.EntityRef`, `OcuPilot.Test.DatabaseIntegrity`).

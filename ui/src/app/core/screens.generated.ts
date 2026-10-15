@@ -597,7 +597,8 @@ export const ENTITY_ID_RULES: Readonly<Partial<Record<EntityTypeKey, string>>> =
   "authentication-options": "singleton",
   "superserver": "portbind",
   "docdb-application": "foldcase",
-  "routine-application": "foldcase"
+  "routine-application": "foldcase",
+  "interop-message": "integerset"
 };
 
 /**
@@ -14062,10 +14063,19 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "parts": []
     },
     "primaryAction": {
-      "id": "",
+      "id": "resend",
       "selfProtection": ""
     },
-    "rowActions": [],
+    "rowActions": [
+      {
+        "id": "resend",
+        "selfProtection": ""
+      },
+      {
+        "id": "editresend",
+        "selfProtection": ""
+      }
+    ],
     "context": {
       "fields": [
         "Name",
@@ -14145,8 +14155,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
           "kind": "text"
         }
       ],
-      "emptyNextKey": "tableReadOnlyEmptyNext",
-      "emptyAgentKey": ""
+      "emptyNextKey": "",
+      "emptyAgentKey": "interopMessagesEmptyAgent"
     },
     "tab": {
       "group": "interoperability/messages/document",
@@ -14200,7 +14210,16 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "id": "",
       "selfProtection": ""
     },
-    "rowActions": [],
+    "rowActions": [
+      {
+        "id": "resend",
+        "selfProtection": ""
+      }
+    ],
+    "multiSelect": {
+      "action": "resend",
+      "max": 100
+    },
     "context": {
       "fields": [
         "ID",
@@ -14407,15 +14426,14 @@ export const SCREENS: readonly ScreenDeclaration[] = [
           "kind": "status"
         }
       ],
-      "emptyNextKey": "tableReadOnlyEmptyNext",
-      "emptyAgentKey": ""
+      "emptyNextKey": "",
+      "emptyAgentKey": "interopMessagesEmptyAgent"
     },
     "toolIdentifier": "interop.messages",
     "refreshDefault": 0,
     "banner": null,
     "tab": null,
     "rowTarget": null,
-    "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""

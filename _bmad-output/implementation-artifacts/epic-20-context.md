@@ -4,7 +4,7 @@
 
 ## Goal
 
-Bring the classic portal's Interoperability work into OcuPilot for namespaces that support it, with Analytics riding along, so the largest area the classic portal still owns is usable here. Shipped so far: category gating, production control, items and their settings, per-host tabs, the monitor, queue and job reads and actions, lookup tables, read-only business partners, host and transformation tests, the interoperability floor, per-screen permissions, the panel collapse, the agent's source reads, saves and creates, the shared tool-listing cache, the sign-in hand-off, a clean compile without interoperability, screens that load on demand, the rule, BPL and DTL editors in place and the agent's edits behind them, the schema viewer and the configuration diagram, message search with its Header and Contents tabs, and the session trace (20.30). Planned and ready for development, in order: 20.31 (resend and edit-and-resend), 20.10 (source control), 20.11 (the analytics port and its four read surfaces) and 20.32 (the analytics links). The next story to plan is 20.33, the MDX query tool, re-planned around the orchestrator's rulings: the person's screen asks first before running query text that runs server-side code or SQL, and the agent's MDX read is its own story. Then 20.34 (cube build and synchronize) and 20.35 (the agent's MDX read) are planned. After them come 20.12 (guided workflows and Investigate), 20.25 (item runtime actions), 20.26 (partner writes), then the burn-down.
+Bring the classic portal's Interoperability work into OcuPilot for namespaces that support it, with Analytics riding along, so the largest area the classic portal still owns can be used here. Already shipped: category gating, productions and their items and settings, per-host tabs, the monitor, queue and job actions, lookup tables, read-only business partners, host and transformation tests, the interoperability floor, per-screen permissions, the agent's source reads, saves and creates, the embedded rule, BPL and DTL editors with the agent's edits behind them, the schema viewer and configuration diagram, message search, contents and session trace, and message resend and edit-and-resend (20.31). Ready for development: 20.10 (source control), 20.11 (the analytics port and its read screens), 20.32 (the analytics links), 20.33 (the MDX query tool) and 20.35 (the agent's MDX read). The next story to plan is 20.34, the cube manager's build and synchronize, which is the one analytics write in this stage. After it come 20.12 (guided workflows and Investigate), 20.25 (item runtime actions) and 20.26 (partner writes), then the burn-down.
 
 ## Stories
 
@@ -46,150 +46,140 @@ Bring the classic portal's Interoperability work into OcuPilot for namespaces th
 
 ## Requirements & Constraints
 
-- **Every write** is a server-minted proposal with a diff the instance computes, an explicit Confirm and an agent marker. A new write key joins the checked-in governance baseline in the same change, and a destructive key ships `false`. Each plan states the action's destructiveness, its key's default and its audit record.
+- **Every write** is a server-minted proposal with a diff the instance computes, an explicit Confirm and an agent marker. A new write key joins `Kernel/Governance/Baseline` in the same change, and a destructive key ships `false`. Each plan states the action's destructiveness, its key's default and its audit record.
 - **Posture questions** go to the orchestrator, with options and a recommendation.
+- **No compile-time dependency on interoperability.** No shipped class names an `Ens.*`, `EnsLib.*` or `EnsPortal.*` class where the compiler resolves it. `OcuPilot.Test.CompileWithoutInterop` and CI's `package` job enforce this.
+- **Secrets and paths.** A secret-named setting reads as empty, and an attempt to set one is refused. No endpoint accepts a path outside AD-21's cases.
 
-### Analytics
+### Analytics (AD-65)
 
-- **The port (AD-65).** `Port/AnalyticsPort` calls the vendor's `%DeepSee` classes in process, as the signed-in person. It never calls `/api/deepsee`, `%Api.DeepSee` or `%DeepSee.REST.*`: that layer resets roles to the login roles, checks no `%DeepSee_*` resource and splices caller text into MDX and SQL (DW-2416, under the owner's hold). Stories 20.11 and 20.32 to 20.35 all extend this one port.
-  - **Gate order, before any vendor call:** the endpoint's pairs; the namespace's shape; that the namespace reports analytics, else 409 `ANALYTICS.NAMESPACE`; READ on the namespace's globals and routines databases. A refusal names the failed pair.
-  - **The vendor's own checks still apply.** `%DeepSee.Utils.%CheckPrivilege` hides a cube carrying a resource the caller lacks, and a folder item's `%CheckResource()` hides that item.
-  - **Reads only where measured to write nothing.** Never `%GetMemberTree`, `%GetDimensionMembers` or `%GetFavoritesForUser`. Never a caller value into `%GetFolderItemList`. The port prepares no statement of its own. Member values run MDX, so they are not offered as a read.
-- **MDX text that runs server-side code or SQL (AD-65; orchestrator ruling Q2 C, which the owner confirmed).** `%SEARCH`, `%SQLRESTRICT`, `RETURN` and `%ORDER` make the vendor run ObjectScript or SQL with the caller's rights.
-  - The person's MDX screen (20.33) detects them and asks first, in a confirmation that reads "This query runs server-side code or SQL with your rights.", then runs the query. A query without them runs as a plain read.
-  - That confirmation is the person's own step on their own query, not an AD-6 proposal. It is stricter than the classic page, which asks nothing.
-  - The agent's MDX read (20.35) refuses them with `ANALYTICS.MDX.SQL`, because an agent read tool never executes code.
-  - SQL computed dimensions and `%KPI` classes are the cube author's code, not query text, and stay named limits.
-- **Measured vendor facts** (throwaways, 2026-10-14):
-  - The vendor classes check no `%DeepSee_*` resource. No shipped role holds one, and `%DeepSee_Portal` is public USE. The API floor admits no `%DeepSee_*` resource, so an analytics-only account is refused; admitting one is an owner decision.
-  - USER and HSCUSTOM do not report analytics; HSLIB and HSSYS do. HSLIB's database is read-only, so MDX cannot run there.
-  - **License.** Each cookieless classic DeepSee page load holds a license unit for 900 s. Eight loads exhausted a Community throwaway's license for about five minutes, so no test loads those pages repeatedly.
-  - **MDX writes the vendor's cache.** Even `%DeepSee.ResultSet.%New()` writes `^DeepSee.Cache.LocalResults`. A principal without WRITE on that database, or in a read-only one, gets `<PROTECT>`. A canceled crossjoin left millions of `^DeepSee.Cache.Axis` nodes, kept until the cube is next built or killed.
-  - **Running and cancel.** `%PrepareMDX` with `%ExecuteAsynch` runs on the vendor's agents in the caller's security context. `%CancelQuery` checks no owner and stops every process running the same text. A cancel settled in 1.1 to 5.4 s.
-  - **The splices are real.** `%SEARCH.&[... {$Increment(^g)}]` wrote a global before its SQL failed, and `RETURN`'s subquery ran.
-  - **Drill-through** answers 1,000 rows by default and needs SQL SELECT on the source table (SQLCODE -99 without it). `CREATE` and `DROP` change only the session.
-- **20.11 (ready for development).** Source kind `analytics` becomes the fifteenth. Seven `LIST` endpoints and seven screens: Cubes, with its Measures, Dimensions and Relationships tabs (`%DeepSee_Portal:USE`); Term lists and their entries (`%DeepSee_PortalEdit:USE`); Folder items (`%Development:USE`, a named narrower audience). Entity types `cube`, `term-list`, `term-list-entry` and `folder-item`. `Test/AnalyticsProbe` enables analytics on USER's default web application and restores USER exactly. HSCUSTOM is not analytics-enabled, so the analytics browser spec walks USER.
-- **20.32 (ready for development; gate ruling Q1 A).** Architect, Analyzer and User Portal are three listed screens of the `external` archetype, at side-bar positions 4 to 6.
-  - `Screen/ExternalPage` holds a closed vocabulary of vendor pages. The instance composes each address from `$System.CSP.GetDefaultApp(ns)`, the page file and `?$NAMESPACE=`, checked by `ClassicHrefProblem`. The navigation map carries `href` only on an `external` entry whose area applies.
-  - The side bar and the command box open it with `noopener` in the person's own click or key press. The route itself shows the classic-link card. A vendor page is never framed, fetched or rebuilt.
-  - **Pairs.** Architect requires `%DeepSee_Architect:USE` and Analyzer `%DeepSee_Analyzer:USE`, each with the area's `%DeepSee_Portal:USE`; the User Portal requires `%DeepSee_Portal:USE`. Named limit: a holder of only the `...Edit` resource, whom the vendor admits, is refused here. AD-64's either-of check is not extended.
-- **20.33, the MDX query tool (re-plan).** Its first plan stays the measured baseline; the re-plan replaces its refusal of the four constructs with Q2 C's ask-first confirmation.
-  - **Shape.** A listed Analytics screen where a person writes one MDX statement and runs it as an owner-scoped background run. It has a row cap, a time bound, cancel, and a grid of axis labels and cells. A cell's drill-through is composed on the instance from the vendor's `%GetFiltersForCellRange`, and never from client text beyond the original statement.
-  - **What runs.** After prepare, only `SELECT` with at most two axes, and `DRILLTHROUGH`, run. `CREATE` and `DROP` are refused, and nothing is kept between runs.
-  - **The run.** The SQL console's background run (Story 19.15) has the needed row, lock, sweep, owner 404 and bounds, so it is extended to a second kind rather than copied. The statement is never stored or logged. Cells, labels, listings and the vendor's error text are a screen-only payload.
-  - **Gate.** Beyond AD-65's order, the gate needs WRITE on the database `^DeepSee.Cache.Results` maps to, and refuses a read-only one.
-  - **Pairs.** The first plan proposed `%DeepSee_Portal:USE` plus the screen's own `%Development:USE`, a named narrower audience than classic `%DeepSee.UI.MDXQuery`'s `%DeepSee_Admin,%Development`.
-  - **No agent surface:** no write tool, key, proposal or read tool here.
-  - **Spine.** Only AD-65's splice clause is written. Its AD-7 cost shape, AD-8 pairs, AD-21, AD-36, AD-41 run kinds, AD-42 spawn site and AD-44 page clauses are written at its gate.
-- **20.35, the agent's MDX read (charter).** Synchronous in the turn job through `AnalyticsPort`, with 20.33's row, time and drill-through caps and AD-60's sanitizer. It refuses the four constructs with `ANALYTICS.MDX.SQL`, and carries its own `ReadTool`, `ToolRoundTrip`, `ToolEmit` and `SurfaceCoverage` rows.
-- **20.34, the cube manager (charter).** A listed Cube manager with the own pair `%DeepSee_Admin:USE`, classic page `%DeepSee.UI.CubeRegistry`.
-  - Build and Synchronize are action-style row actions through `AnalyticsPort` (AD-51, AD-52) over a port-composed `STATE` read.
-  - Build kills every fact first and leaves them gone if it fails, so it is destructive and its key ships `false`. Synchronize keeps the cube queryable, so its key ships `true`. Repair is the vendor's same build call and is offered as Build.
-  - Refused by name: a synchronize on a source without `DSTIME`, and a build while another holds `^DeepSee.Build`. The card names the dependent cubes (`%GetDependentCubes`). The vendor records `CubeEvent` rows, not an audit event.
-  - **Its gate:** a build can outlast the confirm request (the classic page `JOB`s it and polls), the audit, and the user code a build runs.
-- **Out of this epic:** term-list editing, folder export, import and delete, listing groups, quality measures, analytics settings, and the cube registry's edits (Epic 21's analytics editors). Text Analytics and rebuilt Architect, Analyzer or User Portal are excluded. The Analytics log already ships under Logs.
+- **One port.** `Port/AnalyticsPort` (20.11) calls the vendor's `%DeepSee` classes in process, as the signed-in person. It never calls `/api/deepsee`, `%Api.DeepSee` or `%DeepSee.REST.*` (DW-2416, under the owner's hold). Every analytics story extends this port.
+  - **Gate order, before any vendor call:** the endpoint's pairs; the namespace's shape; that the namespace reports analytics, else 409 `ANALYTICS.NAMESPACE`; READ on the namespace's globals and routines databases.
+  - **The vendor's own checks still apply:** `%CheckPrivilege` for cubes and `%CheckResource()` for folder items.
+  - **Reads only where measured to write nothing.** Never `%GetMemberTree`, `%GetDimensionMembers` or `%GetFavoritesForUser`. The port prepares no statement of its own.
+- **MDX text that runs code or SQL.** `%SEARCH`, `%SQLRESTRICT`, `RETURN`, `%ORDER` and `%PARM` make the vendor run ObjectScript or SQL with the caller's rights.
+  - **One detector,** `AnalyticsPort.MdxConstructs` (20.33). It reads the vendor's own tokens and each quoted string's tokens, runs before prepare and again on the variable-resolved text, and fails closed.
+  - **The person's screen asks first** ("This query runs server-side code or SQL with your rights."). That confirmation is the person's own step, not an AD-6 proposal.
+  - **The agent's read refuses** such text with `ANALYTICS.MDX.SQL`.
+  - **Named limits:** stored definitions are not inspected (DW-2451, accepted). SQL computed dimensions and `%KPI` classes are the cube author's code.
+- **Measured vendor facts.**
+  - The vendor classes check no `%DeepSee_*` resource. The API floor admits none, so an analytics-only account is refused; changing that is an owner decision. No shipped role holds `%DeepSee_Admin`.
+  - USER and HSCUSTOM do not report analytics, so the analytics browser specs walk USER, which `Test/AnalyticsProbe` enables and then restores.
+  - Each cookieless classic DeepSee page load holds a license unit for 900 s, so no test loads those pages repeatedly.
+  - MDX writes the vendor's cache, so it needs WRITE, and a read-only database is refused 409 `ANALYTICS.MDX.READONLY`. `%CancelQuery` checks no owner, so OcuPilot's run row is the owner check.
+- **The planned analytics surfaces** (their specs carry the details):
+  - **20.11:** source kind `analytics`, with seven `LIST` endpoints, plus Cubes and its tabs, Term lists and Folder items (side-bar positions 1 to 3).
+  - **20.32:** Architect, Analyzer and the User Portal as `external` link screens (positions 4 to 6). Each opens in a new tab with `noopener` and is never framed.
+  - **20.33:** MDX query (position 7) requires `%DeepSee_Portal:USE` plus `%Development:USE`. Only `SELECT` with at most two axes and `DRILLTHROUGH` run. It is an owner-scoped background run whose answer stays on the screen.
+  - **20.35:** `analytics.mdxquery.read` runs in the turn job through `MdxRun`, under the MDX pairs and caps, and reserves no background run. Its answer reaches the model through AD-60.
+- **20.34, the cube manager (next to plan).**
+  - **Screen.** A listed Cube manager with its own pair, `%DeepSee_Admin:USE`. Its classic page is `%DeepSee.UI.CubeRegistry`.
+  - **Writes.** Build and Synchronize are action-style row actions through `AnalyticsPort` (AD-51, AD-52), over a `STATE` read the port composes.
+  - **Build** kills every fact first. The cube and its dependents cannot be queried while it runs, and the facts stay gone if it fails. It is destructive, so its key ships `false`.
+  - **Synchronize** applies only the recorded source changes and keeps the cube queryable, so its key ships `true`.
+  - **Repair** is the vendor's same `%BuildCube` call, so it is offered as Build.
+  - **Refused by name:** a synchronize on a source without `DSTIME`, and a build while another process holds `^DeepSee.Build`.
+  - **The card** names the dependent cubes (`%GetDependentCubes`, which writes nothing). Cubes' Last build and Facts are the read-back.
+  - **Gate questions:**
+    - A build can outlast the confirm request. AD-7 runs a write in that request and forbids a detached process from mutating, while the classic page `JOB`s the build and polls a tracking global.
+    - The audit record: the vendor writes `CubeEvent` rows, not an audit event (see AD-15's named cases).
+    - The user code a build runs: `^DeepSee.InitCode` and the registry's Post code.
+- **Out of this epic:**
+  - term-list editing;
+  - folder export, import and delete;
+  - analytics settings and the cube registry's edits, which are Epic 21's analytics editors;
+  - Text Analytics, and rebuilt Architect, Analyzer or User Portal.
 
 ### Interoperability still to build
 
-- **Messages as built (20.9, 20.30).** A message opens to its tab group: Header, Contents and Trace.
-  - Search reads headers through `InteropPort`, with `beginDateTime` required. A message id matches `^[1-9][0-9]{0,18}$`.
-  - Contents is text only, capped, and records the vendor's `ViewContents` audit.
-  - Trace (`MessageTrace`, `%Ens_MessageTrace:USE` too) reads the session's headers in `ID` order, capped. OcuPilot draws it as template-bound SVG, with Mermaid text built in the browser. `SuperSession` is not followed, as the classic Visual Trace does not follow it.
-- **20.31, resend and edit-and-resend (AD-62 item 17).**
-  - `interop.messages.resend` takes 1 to 100 ids, refused beyond and never truncated. `interop.messageheader.editresend` saves an edited clone, never a changed original. Both run through `Ens.MessageHeader.ResendDuplicatedMessage` in process.
-  - Each message gets a verdict before any vendor call, and a stopped production is refused 409. The agent's card is the dry run. A person's dialog reviews through `POST /screens/:screen/dryrun`, and moved verdicts are refused 409 `INTEROP.RESEND.CHANGED`.
-  - Both keys are destructive and ship `false`.
-- **20.10, source control.** The embedded editors exchange hooks with the instance themselves, and nothing reaches the shell. OcuPilot's own saves run the save and compile hooks through `AtelierPort`, and an unreleased document is refused 409 `EXPLORER.DOCUMENT.SOURCECONTROL`.
-- **20.25, item runtime actions.** A temporary stop, start or restart is followed by the production update the vendor requires. A vendor no-op (a stopped production, a disabled item) is refused by name.
-- **20.26, partner writes.** Each is confirmed over a fresh read and records OcuPilot's own audit row. A rename is refused or runs in one transaction. A removal first reads the items that name the partner.
-- **20.12, workflows and Investigate.** A workflow is a sequence of individually confirmed proposals, never a batch approval, and each write still evaluates the prohibited set, both agent switches and governance. Investigate returns a recap and ranked hypotheses that cite the rows used.
-- **No compile-time dependency on interoperability.** No shipped class names an `Ens.*`, `EnsLib.*` or `EnsPortal.*` class where the compiler resolves it, or includes an interoperability include file. `OcuPilot.Test.CompileWithoutInterop` and CI's `package` job enforce this.
-- **Secrets and paths.** A secret-named setting answers empty, and setting one is refused. No endpoint accepts a path outside AD-21's cases.
+- **20.10, source control.** The embedded editors exchange source-control hooks with the instance themselves. OcuPilot's own saves run the save and compile hooks through `AtelierPort`, and an unreleased document is refused 409 `EXPLORER.DOCUMENT.SOURCECONTROL`.
+- **20.25, item runtime actions.** These are temporary stop, start and restart, copy, and change of class. A runtime action is followed by the production update the vendor requires. A vendor no-op (a stopped production, a disabled item) is refused by name before any vendor call.
+- **20.26, partner writes.** Each write is confirmed over a fresh read and records OcuPilot's own audit row.
+  - A rename is refused, or runs in one transaction.
+  - A removal first reads the items that name the partner.
+  - Its pairs are an orchestrator question.
+- **20.12, workflows and Investigate.**
+  - A workflow is a sequence of confirmations, each individually confirmed and never batch-approved. Each write still evaluates the prohibited set, both agent switches and governance.
+  - Investigate returns a recap and ranked hypotheses that cite the rows used.
+  - Its resend workflow proposes `interop.messages.resend`, whose key ships `false`, so an administrator must enable it first.
 
 ## Technical Decisions
 
-- **Ports are the whole gate (AD-29).** The vendor's production, lookup, partner, test, resend and analytics calls check no privilege (measured), so each port gates first.
-  - **Order:** the endpoint's pairs, then the tool's own, then database READ (WRITE for a write). A refusal names the failed pair.
-  - **Extra pairs** are declared only where a least-privileged run measured them, and a test that removes each one pins it.
+- **Ports are the whole gate (AD-29).** The vendor's production, partner, test, resend and analytics calls check no privilege (measured), so each port gates first.
+  - **Order:** the endpoint's pairs, then the tool's own pairs, then database READ (WRITE for a write). A refusal names the failed pair.
+  - **Extra pairs** are declared only where a least-privileged run measured them.
   - **The floor** admits `%Ens_Portal:USE`, so every new surface declares its own pair.
-- **`InteropPort` (AD-62)** is the only class that controls a production, and the only source of interoperability reads. A new read or write names its case in AD-62 at its spec gate, and a read also in AD-36. A new endpoint takes an explicit `Pairs` branch ahead of the `CODEPAIRS` default.
-- **Classic pages (AD-44, AD-64).** Each descriptor declares the classic page it replaces or opens, by normalized class name read on the instance. `Screen.Gate.RequiredPairs` is the one reader of a screen's requirement. A port's pairs and the vendor's checks are never adjustable.
-- **SQL reads without grants.** `InteropPort` reads through `SqlRows`, with `%ExecDirectNoPriv` after its own gate. No statement nests a query carrying `TOP`, because a cold cached query refuses it with SQLCODE -99.
-- **Namespace (AD-16).** A port switches by explicit save and restore, calls no `OcuPilot.*` class while switched, and builds rows after it restores.
-- **Background runs (AD-7, AD-33, AD-41, AD-42).** The SQL console's background run is a job a person starts for one query, and it never mutates. A user has at most one live run and the instance at most five, a limit measured against the license. The answer is held for its owner's poll alone, swept 900 s after the run ends, and another user's run reads as 404.
+- **`InteropPort` (AD-62)** is the only class that controls a production. A new read or write names its case in AD-62 at its spec gate, and a read also names it in AD-36. Each in-process port keeps its own private `Deny`, `Refuse` and `Conflict`.
+- **Classic pages (AD-44, AD-64).** Each descriptor declares, in `CLASSICPAGES`, the classic page it replaces or opens, using the class name as read on the instance. `Screen.Gate.RequiredPairs` is the one reader of a screen's requirement.
+- **SQL and namespace.** `InteropPort` reads through `SqlRows`, with `%ExecDirectNoPriv` after its own gate. No statement nests a query that carries `TOP`. A port switches namespace by explicit save and restore and calls no `OcuPilot.*` class while switched (AD-16).
+- **Background runs (AD-7, AD-41, AD-42).**
+  - **The rules:** a background run never mutates. Each run carries a kind, and a user may have one live run per kind and the instance five across all kinds. The answer is held for its owner alone and swept 900 s after the run ends. Another user's run reads as 404.
+  - **The shared class:** 20.33 plans `Kernel/Shell/BackgroundRun`, the fourth spawn site, shared by the SQL console and MDX.
+  - **20.34** could add a third kind (inference). AD-7's ban on mutation by a detached process makes that a gate question.
 - **Write shape (AD-51 to AD-53).**
-  - Action-style: each write declares its request type and fingerprints a fresh read the port composes.
-  - A screen action and the agent's write are one operation. A person's action is never asked of governance.
-  - A tool declaring `DRYRUN` is reviewed through 20.31's dry-run route, and any later one reuses it.
-  - Each write finishes in its own confirm request, and every port with `Invoke` also defines a pure `Snippet`.
-- **Reads and ids (AD-13, AD-36).** Every read has a row cap and reports truncation. A parent-scoped read takes its parent's route id as its one criterion. An id keeps every part exactly in one percent-encoded segment.
+  - An action-style write declares its request type and fingerprints a fresh read that the port composes. A screen's action and the agent's write are one operation, and a person's action is never put to governance.
+  - Each write finishes in its own confirm request.
+  - Every port with `Invoke` also defines a pure `Snippet`.
+  - A tool that declares `DRYRUN` is reviewed through `POST /screens/:screen/dryrun` (20.31), which any later dry-run tool reuses.
+- **OcuPilot's stored state.**
+  - **Property order:** a property added to a `%Persistent` class of OcuPilot's state is declared after every existing one. A rename or removal needs a migration step.
+  - **`SCHEMAVERSION`** moves only when a stored row's meaning changes.
+  - **Decision sheet:** two questions are open there. One is whether a changed index definition moves the version (DW-2456). The other is that a proposal target longer than `Propose.TARGETREFMAX` (2,200 characters) fails its mint with 500 (DW-2457).
+- **Compile order.** A `Parameter` whose `{...}` value names a project class needs `Extends` or `DependsOn` on that class. Without it, a fresh container compile fails `LOAD-FAILED` (20.31's CI red; the checker rule is DW-2459).
+- **Reads and ids (AD-13, AD-36).** Every read has a row cap and reports truncation. An id keeps every part exactly, in one percent-encoded segment.
 - **Client (AD-5, AD-19).**
-  - Every screen route loads its page through `rememberedPage(loader)`. A new screen of an existing page needs only a descriptor and its `ScreenOutlet` map line; a new page needs one loader line.
+  - Every screen route loads through `rememberedPage(loader)`.
   - `screens.generated.ts` is generated and never hand-edited.
-  - **Bundle.** The initial bundle measures about 1.95 MB. The owner fixed `maximumWarning` at 2500 kB, with 4000 kB as the hard stop. The re-base policy is retired: a crossing is reported to the owner, never re-based. AD-5 still states the older 5% rule. `angular.json`'s budgets are not edited in this epic. Each lazy chunk stays under 88 kB.
-  - The client is zoneless and `OnPush`, with screen state in framework-free stores. A `detail` tab may draw its rows with a `body` component.
-- **Embedded vendor apps (AD-63)** are the one exception to AD-47's inert embeds, for the interoperability editors only. The frame is never navigated, nothing is posted into it or read from it, and an embed brings no write tool, key or read. Analytics pages are linked in a new tab, never framed.
-- **Tools.** Interoperability tools extend `InteropAction`, are named `<area>.<screen>.<verb>` and declare `CLASSICPAGES`. Each new write is reviewed against the prohibited set. For Gemini, keep numeric enums at the schema's top level.
-- **Untrusted content (AD-11, AD-60).** Untrusted content includes:
-  - message bodies and headers, session participants, log text and settings;
-  - names, editor content, and cube, member, term and folder item names;
-  - MDX statements, cells and listings, and the vendor's error text.
-
-  It reaches the screen only as interpolated text, and the model only through the one sanitizer.
-- **Reuse rather than copy (Rule 31).** Extend the shared helpers:
-  - server: `SqlRows`, `LocalStamp`, `SecretPath`, `Ledger.LocalToUtc`, and the SQL console's background run (`Area/Explorer/SqlBackground`, `Kernel.State.SqlRun`);
-  - client: `DataTable`'s getters, `core/read-state.ts`, `shell/read-state-blocks.ts`, `followInAppLink`, `core/sql-answer.ts`, `pickCount` for any count, the typed-name dialog and the fault classes;
-  - tests: `runIris`, `list-spec.mjs`, `MintAs`, `ConfirmHttp`, `ProductionProbe`, `AnalyticsProbe` and the floors' principals.
-
-  Each in-process port keeps its own private `Deny`, `Refuse` and `Conflict`.
-- **Measure on the instance**, and amend the spine at the spec gate rather than working around it.
+  - The client is zoneless and `OnPush`, with screen state in framework-free stores.
+  - **Bundle:** the owner set `maximumWarning` to 2,500 kB, with 4,000 kB as the hard stop. A crossing is reported to the owner and never re-based. Each lazy chunk stays under 88 kB.
+- **Embedded vendor apps (AD-63).** The same-origin frame is the one exception to AD-47's inert embeds, and only for the interoperability editors. OcuPilot never navigates, posts into or reads from the frame. Analytics pages are linked, never framed.
+- **Tools.** Names follow `<area>.<screen>.<verb>`, and each tool declares `CLASSICPAGES`. Each new write is reviewed against the prohibited set. For Gemini, numeric enums stay at the schema's top level.
+- **Untrusted content (AD-11, AD-60).** This covers message bodies and headers, settings, log text, and cube, member, term and folder-item names, as well as MDX statements, cells, listings and the vendor's error text. It reaches the screen only as interpolated text, and the model only through the one sanitizer.
+- **Reuse rather than copy (Rule 31).**
+  - **Server:** `SqlRows`, `LocalStamp`, `SecretPath`, `Ledger.LocalToUtc`, and the SQL console's background run (`Area/Explorer/SqlBackground`, `Kernel.State.SqlRun`).
+  - **Client:** `DataTable`'s getters, `core/read-state.ts`, `shell/read-state-blocks.ts`, `followInAppLink`, `pickCount`, the typed-name dialog, `WarningDialog`, and `classifyFault` with `classifyFailure`.
+  - **Tests:** `runIris`, `list-spec.mjs`, `MintAs`, `ConfirmHttp`, `ProductionProbe`, `AnalyticsProbe` and the floors' principals.
+- **Measure on the instance**, and amend the spine at the spec gate rather than work around it.
 
 ## UX & Interaction Patterns
 
-- **Rail and side bar.** Interoperability and Analytics follow System Explorer and appear only where the namespace reports the feature. A screen joins the side bar only once it ships. 20.11 adds Cubes, Term lists and Folder items, and 20.32 adds the three links at positions 4 to 6.
-- **Tabs.** An item's tabs are Status, Settings, Queue, Log, Messages, Jobs and Test. A message's are Header, Contents and Trace. A cube's are Measures, Dimensions and Relationships.
-- **New tabs are banned except where EXPERIENCE.md names them:** today the classic-link card and a `rowLink` exemption's name cell. 20.32 adds its links to that list. A classic link's caption notes the classic portal may ask the user to sign in again. A classic-link card is never placed on a list screen.
-- **Dialogs** exist only where EXPERIENCE.md's dialog list names one, and never stack. A destructive screen action uses the typed-name confirm. The SQL console's "Run this statement?" warning (Story 19.6) is the nearest precedent for 20.33's ask-first confirmation, which would join that list's warnings (inference).
-- **Loading.** A screen's first load shows its skeleton until the first page arrives (two-second target), never on a re-fetch.
+- **Rail and side bar.** Interoperability and Analytics appear only where the namespace reports the feature. A screen joins the side bar only once it ships. Analytics positions 1 to 7 are taken (20.11, 20.32 and 20.33), so the Cube manager takes the next free one (inference).
+- **Tabs.** An item has Status, Settings, Queue, Log, Messages, Jobs and Test. A message has Header, Contents and Trace. A cube has Measures, Dimensions and Relationships.
+- **New tabs** are opened only where EXPERIENCE.md's list names them: the classic-link card, a `rowLink` exemption and 20.32's links.
+- **Dialogs** appear only where EXPERIENCE.md's dialog list names one, and never stack. A destructive screen action uses the typed-name confirm. 20.33 adds its ask-first warning to that list's warnings before a non-delete write.
 - **Gated controls are never hidden.** They stay focusable and `aria-disabled`, and name the failed pair.
 - **Strings.**
   - Each list or tab has a title, an empty state and three suggested prompts.
-  - Every new string goes into EXPERIENCE.md's Fixed strings and `strings.ts`, with unique values.
+  - Every new string goes into EXPERIENCE.md's Fixed strings and `strings.ts`, with a unique value.
   - A count reads singular at 1, through `pickCount`.
-  - A refusal sentence lives once, on the server, pinned equal to its fixed string.
-  - `strings.test.mjs` bounds the literal count at 3,800, raised when the count comes within 50.
-- **Auto-refresh** is opt-in per screen, off by default, and declared in the descriptor and EXPERIENCE.md's roster.
+  - A refusal sentence lives once, on the server.
+  - `strings.test.mjs` caps the literals at 3,800.
 - **Cards.** An agent's destructive proposal carries no typed name. A block over about eight lines starts collapsed, and Confirm never requires expanding it.
 
 ## Cross-Story Dependencies
 
-- **Status.**
-  - Done: 20.1 to 20.9, 20.13 to 20.24, and 20.27 to 20.30.
-  - Ready for development: 20.31, 20.10, 20.11, 20.32.
-  - Backlog: 20.33 (draft, to re-plan), 20.35, 20.34, 20.12, 20.25, 20.26.
-- **Order:** 20.31, 20.10, 20.11, 20.32, 20.33, 20.35, 20.34, 20.12, 20.25, 20.26, then the burn-down. Plans run ahead of implementation, so a story planned against an unbuilt predecessor re-anchors on its shipped code at Task 0.
-- **20.33** consumes:
-  - from 20.11: `AnalyticsPort`, `AnalyticsError`, `AnalyticsProbe`, the analytics gate principals, Cubes as its cube picker and the `cube` entity type;
-  - from 20.32: the side-bar positions it takes;
-  - 19.15's background run and 19.6's fetch loop;
-  - 20.29's loader map.
-- **20.35** consumes 20.33's port calls, caps and construct detection. **20.34** consumes the port's writes, with Cubes' Last build and Facts as its read-back. It may extend 20.33's background run with a third kind (inference).
-- **Message stories.** **20.31** consumes 20.9's list and Header tab, 20.30's `interop.messagetrace.read`, 20.6's field model and 20.23's action-write shape. **20.12** cites a session's rows through `interop.messagetrace.read`, and its resend workflow proposes `interop.messages.resend`. **20.10's** integration criterion exercises 20.16's save under source control.
+- **Status.** Done: 20.1 to 20.9, 20.13 to 20.24, and 20.27 to 20.31. Ready for development: 20.10, 20.11, 20.32, 20.33 and 20.35. Backlog: 20.34, 20.12, 20.25 and 20.26.
+- **Order.** 20.10, 20.11, 20.32, 20.33, 20.35, 20.34, 20.12, 20.25, 20.26, then the burn-down. A story planned against a predecessor that is not yet built re-anchors on its shipped code at Task 0.
+- **20.34 consumes:**
+  - from 20.11: `AnalyticsPort`, `AnalyticsError`, `AnalyticsProbe`, the gate principals, the `cube` entity type, and Cubes' Last build and Facts;
+  - from 20.33, possibly: `BackgroundRun` (inference).
+  - Epic 21's 21.8 may extend its Cube manager (inference).
+- **20.35** consumes 20.33's `MdxAdmit`, `MdxConstructs`, `MdxPrepare` and `MDX*` caps.
+- **20.12** cites a session's rows through `interop.messagetrace.read` (20.30).
+- **20.10's** integration criterion exercises 20.16's save under source control.
 - **Shared rosters take add-only edits:**
-  - entity types, the screen mirror, `strings.ts`, the navigation tests and EXPERIENCE.md's rows;
-  - the tool rosters (`ReadTool`, `ToolRoundTrip`, `ToolEmit`, `SurfaceCoverage`), `ToolWrite`'s other-port write count (20.31 makes it 51), and `PortGate`'s `ROSTER`;
-  - `StageTwoTools`' `Elsewhere` block, which needs a row for every new screen, and the `InteropFloor` and `DeveloperFloor` rosters.
+  - entity types, the screen mirror, `strings.ts`, EXPERIENCE.md's rows and the navigation tests;
+  - `ReadTool`, `ToolRoundTrip`, `ToolEmit` and `SurfaceCoverage`, which holds write tools only;
+  - `PortGate`'s `ROSTER`, the governance baseline, `StageTwoTools`' `Elsewhere` block, and the `InteropFloor` and `DeveloperFloor` rosters;
+  - `ToolWrite`'s other-port write count, now 51: every write that reaches its target through a non-admin port moves it, including 20.34's, 20.25's and 20.26's (DW-2407).
 - **Ask first** before editing anything else contended:
   - `Screen/Registry.cls` and `Screen/Read.cls` beyond add-only, and `Kernel/EntityType.cls`;
-  - the prohibited set, the governance baseline and `LogSourcePort`;
+  - the prohibited set and `LogSourcePort`;
   - `app.routes.ts`, `angular.json` and the CI files.
-
-  Epic 23's range-end cleanup (23.5 in progress) runs beside this epic and edits `strings.ts`, EXPERIENCE.md, `data-table.ts` and many Area and test classes, which can conflict at forward merges (inference).
+- **Epic 23 in parallel.** 23.5 (batch d in progress) runs beside this epic. Its batches b and c changed shell components, `core/fault.ts`, `shell/dialog.ts`, `_components.scss` and DESIGN.md's panel widths, so forward merges can conflict there (inference).
 - **Known defects.**
-  - **On the owner's hold:** DW-2394 (the vendor uses the null device without opening it), DW-2396 (the schema viewer's `&ST`), DW-2416 (the `/api/deepsee` layer).
-  - **Burn-down:** DW-2408 (a host-test browser spec leaves headers and log rows in USER), DW-2420 (the diagram follows no confirmed change), DW-2433 (no cut note at the contents cap), DW-2442 (decision pending: a trace arrow's accessible name omits its visible label, WCAG 2.5.3).
-  - **DW-2415** is the canonical entry for `log-viewer.spec.ts` AC6's timer-count red.
-- **Into Epic 21.**
-  - 21.8's analytics editors wait on 20.11 and extend its Term lists, Folder items and `AnalyticsPort`; they may extend 20.34's Cube manager (inference).
-  - 21.6's SQL tuning track waits on 20.12's slow-query workflow, and 21.7 and 21.11 wait on all of Epic 20.
-  - Epic 21 owns interoperability credentials, purge, deployment, record maps and workflow.
+  - **On the owner's hold:** DW-2394, DW-2396 and DW-2416.
+  - **Burn-down:** DW-2408, DW-2452 and DW-2459.
+  - **Decision pending:** DW-2420 and DW-2442.
+  - **Escalated to the Epic 20 decision sheet:** DW-2456 and DW-2457.
+  - **CI flake:** DW-2458 (log-viewer AC6) goes to 23.11. Re-run the failed job once.

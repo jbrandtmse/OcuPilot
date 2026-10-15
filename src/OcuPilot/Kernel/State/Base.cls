@@ -1479,6 +1479,24 @@ ClassMethod GuardedExecuteRows(pSql As %String, ByRef pParams As %DynamicArray, 
     Quit tSC
 }
 
+/// <p>Escalated: purge and build the indices <var>pIndices</var> (a <code>$ListBuild</code> of index
+/// names) of the calling subclass from its stored rows. For a class whose index definition changed
+/// under rows already stored. Reach it through inherited (<code>..</code>) dispatch from a subclass
+/// in this package, as the other <code>Private</code> methods here are reached.</p>
+ClassMethod GuardedBuildIndices(pIndices As %List) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    New $ROLES
+    Try {
+        Set tSC = $SYSTEM.Security.AddRoles(..#APPLICATION)
+        If $$$ISERR(tSC) Quit
+        Set tSC = ..%BuildIndices(pIndices, 1)
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
 /// <p>Whether <var>pStatus</var> carries IRIS's own lock-timeout error (5803,
 /// <code>$$$LockFailedToAcquireExclusive</code>) rather than any other failure. Public so
 /// <class>OcuPilot.Test.Convo</class> can pin the classification directly against a status this

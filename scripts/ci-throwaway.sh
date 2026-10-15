@@ -492,6 +492,13 @@ services:
       # the test class runs them from both callers and reads what each run leaves behind, the refusals class meets every outcome and
       # refusal, and the gate class signs in as probe principals each missing one pair the list, the read or the test requires.
       # classes: InteropTransformTest, InteropTransformTestGate, InteropTransformTestRefusals
+      # The message resend classes compile and run the probe production in USER and send messages to it (Story 20.31): the resend class
+      # resends from both callers and meets every verdict, the edit class edits a string request, an HL7 message and a request of every
+      # field shape and meets every refusal, the dry-run class reads the review route, and the gate class signs in as probe principals
+      # each missing one pair a resend or an edit requires. They share one case class, which records the message store's high water
+      # first and removes everything above it after the last test. The limits class sends 100 stored messages and meets the digest, the
+      # governance key and the outcome of a refused message, and the sweep class pins the sweep the others end with.
+      # classes: DryRunRoute, InteropEditResend, InteropResend, InteropResendCase, InteropResendGate, InteropResendLimits, InteropResendSweep
       # The editor save classes make and remove probe documents in USER (Story 20.16): the gate class signs in as probe principals each
       # missing one pair an editor tool requires, and the turn class runs a scripted turn on a probe transformation and confirms its save.
       # classes: InteropEditorSaveGate, InteropEditorSaveTurn
@@ -537,6 +544,7 @@ services:
       # classes: InstallTarget
       # classes: ContainerStartNamespace
       # classes: SslReadInstall
+      # classes: ProposalTargetKey
       OCUPILOT_ALLOW_PRODUCTION_INSTALL: "1"
       # Runs the installer's EnsureSslConfiguration step under the probe profile and so creates
       # -- and leaves -- a TLS configuration in the instance's own security database. Same

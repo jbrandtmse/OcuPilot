@@ -11,7 +11,8 @@
 /// <class>OcuPilot.Screen.Descriptor.InteropMessageHeaderTab</class>, <class>OcuPilot.Screen.Descriptor.InteropMessageContentsTab</class>
 /// and <class>OcuPilot.Screen.Descriptor.InteropMessageTraceTab</class> form). Its pairs are the classic viewer's own
 /// (<code>%Ens_MessageHeader:USE</code> beside the area's <code>%Ens_Portal:USE</code>), which the Operator role holds (AD-8, AD-44).
-/// It does not refresh and offers no action: resend and edit-and-resend are later stories'.</p>
+/// It does not refresh. The checked rows (at most 100) resend after a dry run lists what each would do (Story 20.31,
+/// <class>OcuPilot.Screen.Tool.InteropMessageResend</class>).</p>
 Class OcuPilot.Screen.Descriptor.InteropMessageList Extends OcuPilot.Screen.Descriptor.Base
 {
 
@@ -34,7 +35,8 @@ XData Declaration
   "parentScope": "",
   "id": {"kind": "single", "parts": []},
   "primaryAction": {"id": "", "selfProtection": ""},
-  "rowActions": [],
+  "rowActions": [{"id": "resend", "selfProtection": ""}],
+  "multiSelect": {"action": "resend", "max": 100},
   "context": {"fields": ["ID", "TimeCreated", "Status", "Type", "Source", "Target", "BodyClass", "SessionId"], "secretFields": []},
   "emptyStateKey": "interopMessagesEmpty",
   "commandAliases": [],
@@ -77,8 +79,8 @@ XData Declaration
       {"field": "SessionId", "labelKey": "webSessionColumnSession", "kind": "identifier"},
       {"field": "Error", "labelKey": "errorLogColumnText", "kind": "status"}
     ],
-    "emptyNextKey": "tableReadOnlyEmptyNext",
-    "emptyAgentKey": ""
+    "emptyNextKey": "",
+    "emptyAgentKey": "interopMessagesEmptyAgent"
   },
   "toolIdentifier": "interop.messages"
 }
