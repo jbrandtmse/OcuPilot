@@ -12121,3 +12121,4 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: lead CI resolution, Story 23.5 batch c | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: run 38755393824 head 33d0b7c9: 'logs/messages: 10 fake timers pending, 2 real timers active'; head differs from green 5574fede by test files and a CSS comment only
 - 2026-10-15T15:26:35Z status=routed owner=23-11-the-range-end-cleanup-part-10 by=lead note=flake:rerun_failed_job_once;CI_flakes_go_to_the_standing_cleanup_story
+- 2026-10-15T17:29:10Z occurrence=20-31-message-resend-and-edit-and-resend
