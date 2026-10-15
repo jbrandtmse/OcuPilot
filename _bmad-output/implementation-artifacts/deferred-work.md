@@ -12030,3 +12030,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-23-5-the-range-end-cleanup-part-5.md | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: guardrails.page.ts:60 and web-app-class-access-tab.ts:49 render STRINGS.connectivityServerFault under a failed() boolean; api.ts reports every requestJson to the shell's banner (EXPERIENCE.md:769 one banner); DW-1401's root cause on two surfaces Batch b did not touch
 - 2026-10-15T06:35:45Z status=escalated owner=burndown by=cr note=pre-existing; fix is DW-1401's shape (classified Fault, in-place FaultBanner for non-banner kinds)
+
+### DW-2450: flake: suggested-view.browser-spec.mjs AC8 (Home settles at DESIGN.md's published panel width at each of five viewports) failed once in a local fresh-throwaway shard and passed alone and on a re-run of the same shard order
+- source: lead fresh check, Story 23.5 batch b | severity: med | fix-risk: low | footprint: in-epic
+- evidence: ci-browser --shard 2/20 on ocupilot-ci rebuilt from 9b1fcdeb: 1 of 7 failed; alone 7/7; same shard re-run 41/41
+- 2026-10-15T08:02:43Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=lead note=batch_c_touches_suggested-view_(DW-1148):_check_AC8's_settle_wait
