@@ -1,7 +1,8 @@
 /// <p>Pins the proposal store's target key (AD-6, AD-13, AD-34): <code>ProposalTargetIdx</code> is keyed by the digest of a proposal's
 /// target and not by the target, so a target of any length the store accepts is stored whole and a longer one is refused, never cut; the
 /// sibling cancel finds its siblings by that key and closes only a row whose target is exactly the claimed one; and a proposal stored
-/// before the key existed is given its key, and its index entry, by the install step, which a second run leaves alone.</p>
+/// before the key existed keeps each column in its data slot and is given its key, and its index entry, by the install step, which a
+/// second run leaves alone.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot's protected state, an account holding <code>%All</code>, and
 /// <parameter>ARMINGVARIABLE</parameter> reading <code>1</code>, because one test runs OcuPilot's production install. Every row it seeds
 /// names a user starting with <parameter>OcuPilot.Test.ProposalFixture.PROBEPREFIX</parameter>, removed in
@@ -65,7 +66,7 @@ ClassMethod IndexHas(pTargetKey As %String, pState As %String, pId As %String) A
     Quit ''$Data(@tLoc@("ProposalTargetIdx", pTargetKey, " " _ $ZConvert(pState, "U"), pId))
 }
 
-/// <p>A target the size of the longest one a tool names: 100 message ids of 19 digits, built through
+/// <p>A target the size of the longest resend target: 100 message ids of 19 digits, built through
 /// <method>OcuPilot.Kernel.EntityRef.Key</method> so the separator is the one the store holds. <var>pLast</var> replaces the last id's
 /// final digit, which names another target of the same length.</p>
 ClassMethod LongRef(pLast As %Integer = 1) As %String
@@ -298,6 +299,22 @@ Method TestTheProductionInstallGivesAStoredProposalItsKey()
     Do $$$AssertEquals(..NullKey(tKey), 0, "a row is left as one stored before the key existed is")
     Do $$$AssertStatusOK($ClassMethod(..#INSTALLER, "Install", ""), "the production install runs")
     Do $$$AssertEquals(..Field(tKey, "TargetKey"), $ClassMethod(..#STORE, "TargetLockKey", tRef), "and the row has its key")
+}
+
+/// <p>Consistency Conventions, new properties on a stored class: the proposal row's data slots hold, in order, the 30 columns a row
+/// stored before the key existed was written with, and then the key, so such a row reads each column where it wrote it. A slot after
+/// the 31st, a property added later, is not checked.</p>
+/// <p>Mutation (Rule 19): declare <code>TargetKey</code> directly after <code>TargetRef</code> in
+/// <class>OcuPilot.Kernel.State.Propose</class> -- every slot after <code>TargetRef</code> moves and this goes red.</p>
+Method TestARowStoredBeforeTheKeyKeepsEachColumnInItsSlot()
+{
+    Set tExpected = $ListBuild("ProposalKey", "Token", "Burned", "UserName", "ConvKey", "TurnKey", "ToolName", "TargetRef", "Fingerprint", "Arguments", "Payload", "Diff", "UnchangedCount", "Rationale", "ExpectedImpact", "Reverse", "CreatedAt", "ExpiresAt", "State", "AuditWarning", "Destructive", "Consequence", "ConfirmedAt", "ClosedReason", "DefinitionId", "DefinitionVersion", "RequiredPairs", "ReadBack", "Impact", "TargetName", "TargetKey")
+    Set tActual = ""
+    For tSlot = 1:1:$ListLength(tExpected) {
+        Set tValue = ##class(%Dictionary.CompiledStorageDataValue).%OpenId(..#STORE _ "||Default||ProposeDefaultData||" _ tSlot)
+        Set tActual = tActual _ $ListBuild($Select($IsObject(tValue): tValue.Value, 1: ""))
+    }
+    Do $$$AssertEquals($ListToString(tActual), $ListToString(tExpected), "the first 31 data slots of a proposal row")
 }
 
 }

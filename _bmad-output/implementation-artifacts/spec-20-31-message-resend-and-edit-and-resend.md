@@ -569,6 +569,26 @@ Code review, 2026-10-15 (four layers, `full-opus`; Rule 6, Rule 3 and Rule 31 ch
 - `Original` omits properties the form does not show, one edit records several `ViewContents` rows, and the empty state invites a key that ships off: each by design (spec Design Notes, Always and Strings).
 - Copied `EnableKey` and the gate's own helpers: low. They are test-only, and the pattern is shared by three interop suites.
 
+**Rework re-review 1, 2026-10-15** (four layers, `full-opus`, over `2f564cff..a61b3b8f`; Rule 6, Rule 3 and Rule 31 checked). The HIGH above is closed: `InteropResendLimits` 8 of 8 (run 1168) and `ProposalTargetKey` 7 of 7 (run 1167) on `ocupilot-b-ci`. Open: none.
+
+- [x] [Review][Patch] A failed index build was never repaired: the build ran only when the run had given a row its key, after the keys were committed, so a run that stopped in the build left the next run nothing to do [src/OcuPilot/Kernel/State/Propose.cls:598]
+- [x] [Review][Patch] No test pinned the declaration order that keeps an older row's columns in their data slots [src/OcuPilot/Test/ProposalTargetKey.cls:309]
+- [x] [Review][Patch] `TARGETREFMAX` and `LongRef` called 100 ids of 19 digits the longest target a tool names; a document set can be longer [src/OcuPilot/Kernel/State/Propose.cls:80; src/OcuPilot/Test/ProposalTargetKey.cls:69]
+- [x] [Review][Patch] The 19-digit confirm leg asserted no line of its answer [src/OcuPilot/Test/InteropResendLimits.cls:158]
+- [x] [Review][Patch] The 512-cut `mutation:` line said "alone"; three `ProposalTargetKey` tests also go red [## Verification]
+- [x] [Review][Defer] `SCHEMAVERSION` stays 1, so a reinstall of 1.0.12 over a volume this code wrote is admitted, and 1.0.12 cannot file a long-target row [src/OcuPilot/Install/Installer.cls:81] — deferred: DW-2456 escalated to the decision sheet
+- [x] [Review][Defer] A target over 2,200 characters, such as a long explorer document set, fails the mint with 500 `INTERNAL` [src/OcuPilot/Kernel/State/Propose.cls:283] — deferred: pre-existing (near 455 characters before the rework), DW-2457 escalated to the decision sheet
+
+**Rejected (rework re-review 1):**
+
+- `GuardedBuildIndices` queues the build on `$SYSTEM.WorkMgr`, against AD-9's no-spawn rule: false. The work queue records the caller's security context for each work unit, and `%BuildIndexInternal` waits in `Sync` before the frame unwinds, so no role outlives the frame.
+- The legacy-row tests file a null-key index entry that a real older row lacks: false for the outcome. The candidate read `TargetKey IS NULL` reads the master map (EXPLAIN on `ocupilot-b-ci`), so it finds an older row with no entry the same way.
+- The build takes no locks: low. The sibling cancel re-tests every condition against the master row (EXPLAIN), so a stale entry closes nothing, and an install while requests are served is AD-38's accepted window.
+- The five store tests share the production-install arming: low. Every CI shard and throwaway arms the class.
+- Three fixture self-checks cannot fail: low. They guard the fixture, and the unscoped-row skip is pinned by the second run's count.
+- Rework 1 ticked no task box and replaced the Auto Run Result: low, and the fix edits the spec under the `oversized` rule.
+- The rework's run left out the other classes that run `Install`: false. The full sweep is the runner's (Verification, Lead-owned); `InstallTarget` read 7 of 7 here.
+
 ## Spec Change Log
 
 - 2026-10-14, spec gate (runner): Q1 is answered as recommended (one story: no split, so nothing is deferred), and Q2's named limits are accepted (a new target, head of queue, resend of every match, and editing X12, EDIFACT or ASTM bodies are out of scope; the criterion's double gate and cap hold for what ships). Both keys ship `false`, as the orchestrator's 2026-10-13 guidance and AD-22 direct. The Rule 20 drafts are written (AD-62 item 17, AD-53, AD-51, AD-8, AD-44, AD-13, AD-22).
@@ -639,6 +659,19 @@ Code review, 2026-10-15 (four layers, `full-opus`; Rule 6, Rule 3 and Rule 31 ch
     - `[low]` `[reject]` Rows stored before the change are not found until the step has run — documented at `TargetKey`; the step runs before `installed` is recorded, and a row lives ten minutes.
     - `[false]` `[reject]` No step roster to update — an observation, no bad outcome.
     - `[low]` `[reject]` `ProposalTargetKey` has no entry in `ci-timings.json` — the merge gate refreshes the file, and `ui/tools/ci.test.mjs` (green) holds the class equal to its arming line.
+
+### 2026-10-15 — Code review (rework re-review 1)
+
+- scope: `2f564cff..a61b3b8f`. The open HIGH (long-set proposal target) is closed by ruling (b): `TestTheAgentsCardCarriesTheWholeCapOfAHundredMessages` and the 19-digit leg are green.
+- verdicts: 24 raw findings in 15 entries — high 0, medium 4, low 8, false 3.
+- patched: 5 (medium 2, low 3).
+  - The build in `GuardedRebuildTargetKeys` now runs before any key is written, and only while a scoped row lacks its key, so a run that stops in the build or between the writes is finished by the next. On success the end state is the same in either order, and a failed build needs a fault seam, as the step's own failure does (above), so no test separates the orders. Its three `mutation:` lines were re-applied under the new order and each reddened its test alone (runs 1163, 1164 and 1165).
+  - Slot roster test, the corrected `TARGETREFMAX` and `LongRef` comments, the confirm leg's answer line, and the 512-cut `mutation:` line.
+- deferred: 2 medium, both `escalated owner=burndown` for the decision sheet — DW-2456 (`SCHEMAVERSION` and the downgrade direction) and DW-2457 (a target over 2,200 characters answers 500 `INTERNAL`).
+- rejected: 8 (false 3, low 5), each with its reason under Review Findings.
+- verified on `ocupilot-b-ci` (tree reloaded after the patches, every mutation reverted by syncing the worktree, compiled storage read back in declaration order):
+  - green: `ProposalTargetKey` 7 (run 1167), `InteropResendLimits` 8 (run 1168), `ProposalSpelling` 5, `ExplorerWrite` 10, `TaskWire` 6 and `InstallTarget` 7;
+  - `check-objectscript` clean.
 
 ## Design Notes
 
@@ -928,7 +961,8 @@ Not moved: `InteropFloor` (no principal holds a write tool; confirm in the sweep
 - mutation: AD-17, `GuardedRebuildTargetKeys` skips `GuardedBuildIndices` -> `TestARowStoredBeforeTheKeyExistedIsFoundBySiblingCancelOnceTheStepHasRun`, alone (the entry the old definition left stays).
 - mutation: AD-17, `GuardedRebuildTargetKeys` builds the index on every run -> `ProposalTargetKey.TestASecondRunOfTheStepChangesNothing`, alone.
 - mutation: AD-17, `Install` no longer calls `EnsureProposalTargetKeys` -> `ProposalTargetKey.TestTheProductionInstallGivesAStoredProposalItsKey`, alone.
-- mutation: AC2/AC3, `GuardedMint` cuts the stored target at 512 -> `InteropResendLimits.TestAHundredIdsOfNineteenDigitsAreMintedStoredWholeAndConfirmedForTheAgent`, alone.
+- mutation: AC2/AC3, `GuardedMint` cuts the stored target at 512 -> `InteropResendLimits.TestAHundredIdsOfNineteenDigitsAreMintedStoredWholeAndConfirmedForTheAgent`, alone in its class (the confirm 409s, nothing is sent and no answer line comes back), and `ProposalTargetKey`'s `TestTheKeyIsTheDigestOfTheTargetAndALongTargetIsStoredWhole`, `TestASiblingCancelClosesItsSiblingsByTheExactTargetAndLeavesOthersAlone` and `TestATargetOverTheLimitIsRefusedAtTheMintAndTheLimitItselfIsStoredWhole` (code review, runs 1161 and 1162).
+- mutation: Conventions › new properties on a stored class, `TargetKey` declared directly after `TargetRef` -> `ProposalTargetKey.TestARowStoredBeforeTheKeyKeepsEachColumnInItsSlot` (slot 9 read `TargetKey`; code review, the method run alone so no stored row was written under the moved layout).
 - mutation: AD-6, `GuardedMint` cuts a target over `TARGETREFMAX` in place of refusing it -> `ProposalTargetKey.TestATargetOverTheLimitIsRefusedAtTheMintAndTheLimitItselfIsStoredWhole`, alone.
 - mutation: AD-17, `EnsureProposalTargetKeys` reports its two outcomes swapped -> `ProposalTargetKey.TestARowStoredBeforeTheKeyExistedIsFoundBySiblingCancelOnceTheStepHasRun` and `TestASecondRunOfTheStepChangesNothing`.
 - mutation: AD-17, `GuardedRebuildTargetKeys` no longer skips a row with no target -> `ProposalTargetKey.TestASecondRunOfTheStepChangesNothing`, alone (the row is written and the index rebuilt on every run).

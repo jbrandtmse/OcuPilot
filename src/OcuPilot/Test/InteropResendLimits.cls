@@ -127,7 +127,8 @@ Method TestTheAgentsCardCarriesTheWholeCapOfAHundredMessages()
 
 /// <p>AC2, AC3: a set of 100 ids of 19 digits, the longest target a resend names, is minted for the agent, stored whole as the
 /// proposal's target and confirmed over HTTP: the confirm reads the set back from the stored target, so it sends the one id that
-/// is a message and reads the other 99 as gone. Only one of the 100 is a stored message, because the others cannot exist.</p>
+/// is a message, answers one line for it, and reads the other 99 as gone. Only one of the 100 is a stored message, because the others
+/// cannot exist.</p>
 /// <p>Mutation (Rule 19): cut the stored target at 512 characters in <method>OcuPilot.Kernel.State.Propose.GuardedMint</method> -- the
 /// stored target and the confirm go red.</p>
 Method TestAHundredIdsOfNineteenDigitsAreMintedStoredWholeAndConfirmedForTheAgent()
@@ -154,6 +155,7 @@ Method TestAHundredIdsOfNineteenDigitsAreMintedStoredWholeAndConfirmedForTheAgen
     Set tSC = $ClassMethod(..#CONTROL, "ConfirmHttp", tProposal.proposalId, .tStatus, .tRaw, .tAnswer)
     Do $$$AssertEquals(tStatus, 200, "the confirm is admitted: " _ $Extract($Get(tRaw), 1, 300))
     Do $$$AssertEquals($ClassMethod(..#FIXTURE, "TopId") - tTop, 1, "and sends the one message that exists")
+    Do $$$AssertEquals($Select('$IsObject($Get(tAnswer)): "", '$IsObject(tAnswer.output): "", 1: tAnswer.output.lines.%Size() _ "|" _ $Piece(tAnswer.output.lines.%Get(0), ": resent as ", 1)), "1|" _ tReal, "and answers one line, for that message")
 }
 
 /// <p>AC4: a person's action is held to the digest of its review. A digest of the wrong length, of zeros, in the wrong letter case, with a

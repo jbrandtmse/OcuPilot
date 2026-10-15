@@ -78,8 +78,9 @@ Property TurnKey As %String(MAXLEN = 64);
 Property ToolName As %String(MAXLEN = 128);
 
 /// <p>The longest <property>TargetRef</property> a row holds; the property's own <code>MAXLEN</code>
-/// equals it. A set of 100 message ids of 19 digits, the largest target a tool names, is about 2,040
-/// characters.</p>
+/// equals it. The longest resend target, 100 message ids of 19 digits in a namespace of up to 64
+/// characters, is about 2,080 characters. A tool can name a longer target, a long document set among
+/// them, and <method>GuardedMint</method> refuses it.</p>
 Parameter TARGETREFMAX As INTEGER = 2200;
 
 /// <p>The scoped target as <method>OcuPilot.Kernel.EntityRef.Key</method> spells it: the entity
@@ -584,13 +585,16 @@ ClassMethod GuardedClaimAndClose(pProposalKey As %String, pExpectedVersion As %I
 /// <p>Give every stored proposal its <property>TargetKey</property> and build
 /// <code>ProposalTargetIdx</code> over the stored rows, and answer in <var>pChanged</var> how many
 /// rows were given a key.</p>
-/// <p><b>Idempotent.</b> Only a row whose key is unset and whose <property>TargetRef</property> is
-/// not empty is written, and the index is purged and built only when one was, so a second run
-/// changes nothing. A write leaves <property>RowVersion</property> as it was, so a claim that read
-/// the row earlier still matches it.</p>
+/// <p><b>Idempotent, and a run that stops part-way is finished by the next.</b> Only a row whose
+/// key is unset and whose <property>TargetRef</property> is not empty is written. The index is
+/// purged and built only while such a row exists, and before any key is written, so a run that
+/// fails in the build or between the writes leaves a row without a key and the next run builds
+/// again; a run that finds none changes nothing. Each key write files the row's entry under its
+/// key. A write leaves <property>RowVersion</property> as it was, so a claim that read the row
+/// earlier still matches it.</p>
 /// <p>A proposal minted before the key existed has none, and the sibling cancel in
 /// <method>GuardedClaimAndClose</method> does not find it until this has run; the index definition
-/// also changed, so the rebuild is what removes the entries the old definition left.</p>
+/// also changed, so the build is what removes the entries the old definition left.</p>
 ClassMethod GuardedRebuildTargetKeys(Output pChanged As %Integer) As %Status
 {
     Set pChanged = 0
@@ -598,16 +602,22 @@ ClassMethod GuardedRebuildTargetKeys(Output pChanged As %Integer) As %Status
     Try {
         Set tSC = ..GuardedRowsNoParam("SELECT ID, TargetRef FROM OcuPilot_Kernel_State.Proposal WHERE TargetKey IS NULL ORDER BY ID", .tRows)
         If $$$ISERR(tSC) Quit
+        Set tCount = 0
         For tI = 1:1:+$Get(tRows) {
             Set tRef = ..Text(tRows(tI, 2))
             If tRef = "" Continue
-            Set tParams = [].%Push(..TargetLockKey(tRef)).%Push(tRows(tI, 1))
+            Set tCount = tCount + 1
+            Set tKeys(tCount) = $ListBuild(tRows(tI, 1), ..TargetLockKey(tRef))
+        }
+        If tCount = 0 Quit
+        Set tSC = ..GuardedBuildIndices($ListBuild("ProposalTargetIdx"))
+        If $$$ISERR(tSC) Quit
+        For tI = 1:1:tCount {
+            Set tParams = [].%Push($List(tKeys(tI), 2)).%Push($List(tKeys(tI), 1))
             Set tSC = ..GuardedExecuteRows("UPDATE OcuPilot_Kernel_State.Proposal SET TargetKey = ? WHERE ID = ? AND TargetKey IS NULL", .tParams, .tRowCount)
             If $$$ISERR(tSC) Quit
             Set pChanged = pChanged + tRowCount
         }
-        If $$$ISERR(tSC) Quit
-        If pChanged Set tSC = ..GuardedBuildIndices($ListBuild("ProposalTargetIdx"))
     } Catch ex {
         Set tSC = ex.AsStatus()
     }
