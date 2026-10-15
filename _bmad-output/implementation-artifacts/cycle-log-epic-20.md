@@ -963,3 +963,4 @@
 2026-10-15T19:21:29Z	Story 20.12	story_created	spawn_at=(see_stage_spawned) model=opus agent_name=20-12-plan-1 path=_bmad-output/implementation-artifacts/spec-20-12-the-agent-gains-guided-workflows-and-investigate.md build_status=ready-for-dev(gate_pending:Q1_split_Investigate_to_20.36,Q2_nine_workflows) scope=Part_A(criteria_1,3) footprint_extensions=ATTRIBUTIONS.md,ui/licenses/iris-execute-mcp-v2.txt,ui/tools/licenses.test.mjs,scripts/ci-throwaway.sh
 2026-10-15T19:21:44Z	Story 20.31	ci_resolved	story=20.31 run=38782509360 result=success attempt=2(attempt_1_flake_DW-2461) head=f1b45815 resolved_at=next_implement
 2026-10-15T19:21:44Z	Story 20.31	ci_green_verified	run=38782509360 attempt=2 head=f1b45815
+2026-10-15T19:22:12Z	Story 20.10	stage_spawned	stage=implement spawn_at=2026-10-15T19:22:12Z model=sonnet agent_name=20-10-implement-1 cycle_iteration=1 note=20.31_ci_resolved_success_38782509360
