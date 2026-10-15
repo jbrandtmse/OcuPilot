@@ -12019,3 +12019,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-20-9-messages-search-view-resend-and-trace.md code review (rework 1 re-review) | severity: low | fix-risk: med | footprint: in-epic
 - evidence: The Contents cap tests read through the new ReadMessageContents cut, which hides StreamText's bound and marker (dropping either leaves them green); InteropTransformTest has no output over 1,000,000 characters, so Story 20.27's AddTestLines dependence on that read is unpinned.
 - 2026-10-14T21:00:33Z status=wontfix-accepted owner=20-9-messages-search-view-resend-and-trace by=cr note=reopen_if=StreamText or RenderTargetHere changes, or a transformation output over 1,000,000 characters loses its cut mark
+
+### DW-2448: Home's System Information block and findings panel are not re-read when the shell's banner clears after a connectivity fault, so each stays a heading with no rows until a scope change, a change event or a revisit
+- source: spec-23-5-the-range-end-cleanup-part-5.md (implement batch b deferred) | severity: low | fix-risk: low | footprint: in-story
+- evidence: about.ts, system-info.ts and findings.ts register no retryWhenReachable, so the banner's Retry re-runs none of them (home.page.ts:789-804); pre-existing
+- 2026-10-15T05:42:35Z status=open owner=23-5-the-range-end-cleanup-part-5 by=harvest note=two-way_door_candidate_for_batch_b_review
