@@ -436,3 +436,4 @@ spawn_at=2026-10-06T16:01:05Z	Story 23.4	cr_complete	batch=b 2026-10-06T20:34:58
 2026-10-15T12:00:02Z	Story 23.5	ci_resolved	story=23.5 batch=c run=38725764786 head=782b093d result=failure resolved_at=after_cr
 2026-10-15T12:00:02Z	Story 23.5	ci_red_classified	run=38725764786 class=story test=impact.browser-spec.mjs:348(AC1/AC6_720px_structural:ocu-diff-before_87px_past_its_row) cause=batch_c_settleViewport_exposes_DW-2454(pre-existing_diff-row_overflow_at_320px_panel) first_red=782b093d
 2026-10-15T12:00:02Z	Story 23.5	rework_opened	cycle_iteration=5 iteration=1(batch_c) trigger=ci items=CI:DW-2454(diff_value_wraps_in_its_row) scope_baseline=pending(after_rework_commit)
+2026-10-15T12:01:22Z	Story 23.5	stage_spawned	stage=implement batch=c spawn_at=2026-10-15T12:01:22Z model=sonnet agent_name=23-5-the-range-end-cleanup-part-5-implement-c-rework-1 cycle_iteration=5 rework=ci
