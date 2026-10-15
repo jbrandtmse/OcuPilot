@@ -2,7 +2,7 @@
 title: 'Story 23.5: The range-end cleanup, part 5'
 type: 'bugfix'
 created: '2026-10-14'
-status: 'done'
+status: 'in-progress'
 baseline_revision: '72e34617fd1e743c0d1bb34967d9ab9b4b2e6b7a'
 baseline_commit: '72e34617fd1e743c0d1bb34967d9ab9b4b2e6b7a'
 review_loop_iteration: 0
@@ -362,6 +362,8 @@ Rejected:
 ## Spec Change Log
 
 - 2026-10-14, lead, spec gate: DW-1951 closed `resolved-by` Story 18.46 (`0220d1e4`). The two Named-for-filing items are DW-2439 (routed to the burn-down, proposed for 23.11) and DW-2440 (`wontfix-theoretical`). The story block in `epics.md` names the three kept later routings (Rule 5 tier 1). The 23.11 proposal and the Contended edits go to the orchestrator before Batch a's implement pass.
+
+- 2026-10-15, lead: Batch a closed green (code head `69da7a5e`, CI run 38674536770). Re-opened for Batch b.
 
 ## Review Triage Log
 
