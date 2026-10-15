@@ -2,7 +2,7 @@
 title: 'Story 23.5: The range-end cleanup, part 5'
 type: 'bugfix'
 created: '2026-10-14'
-status: 'done'
+status: 'in-progress'
 baseline_revision: '5668fb361a5ec306e3ef8e1bb77af744592bbd1f'
 baseline_commit: '5668fb361a5ec306e3ef8e1bb77af744592bbd1f'
 review_loop_iteration: 0
@@ -387,6 +387,7 @@ Rejected:
   - Add `settleViewport(page, viewport)` to `ui/browser/panel-spec.mjs`: `setViewport`, then wait for `documentElement.clientWidth === width`, then two animation frames.
   - Call it at `agent-picker.browser-spec.mjs:134` and `impact.browser-spec.mjs:378`.
   - `impact.browser-spec.mjs` also waits, after `:368`, until `.ocu-tool-call-spinner` is gone before its structural passes.
+- [ ] **DW-2450 (flake).** `suggested-view.browser-spec.mjs` AC8 (Home settles at DESIGN.md's published panel width at each of five viewports) failed once in the lead's fresh-throwaway shard and passed alone and on a re-run of the same order. While this batch edits the spec for DW-1148, find what AC8 reads before the layout has settled after each viewport change (the same shape as DW-2163) and make it wait on the settled layout (`settleViewport` once it exists), keeping its assertions; record the cause found, or that none reproduced, under Batch c's Verification.
 
 **Acceptance criteria:**
 
@@ -425,6 +426,8 @@ Rejected:
 - 2026-10-15, lead: Batch a closed green (code head `69da7a5e`, CI run 38674536770). Re-opened for Batch b.
 
 - 2026-10-15, lead: Batch b re-opened for one `[CI]` item (CI run 38688234353, DW-1329's recents leg).
+
+- 2026-10-15, lead: Batch b closed (code head `0a1fcf3e`, merged 20.30). Re-opened for Batch c, with DW-2450 added from the lead's fresh check.
 
 ## Review Triage Log
 

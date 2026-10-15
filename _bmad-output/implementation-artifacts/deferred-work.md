@@ -5493,6 +5493,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-20T10:52:09Z status=open owner=range-end-cleanup by=cr note=Outcome is a refused write nobody sees, not a wrong render; the fix is a session check in record().
 - 2026-09-30T06:34:03Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p4
 - 2026-10-07T04:26:43Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=merge_gate note=owner-approved burn-down batch (c), visible polish, 2026-10-06 (relayed by the Planner): Story 23.5
+- 2026-10-15T10:08:52Z status=resolved-by:23-5-the-range-end-cleanup-part-5 by=adjudication note=recents_recorder_holds_a_probing_arrival,never_registers_signed-out(dbade405,b8ceb96d);recents-;CI_38714129019
 
 ### DW-1342: The locator favorite toggle has no in-flight guard, so two activations inside one round trip both send add and the screen ends pinned
 - source: spec-15-2-favorites-recent-items-and-menu-search.md | severity: low | fix-risk: low | footprint: in-story
@@ -5500,6 +5501,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-20T10:52:16Z status=open owner=range-end-cleanup by=cr note=Distinct from DW-1327: that entry is the server-side race the two requests can trip, this is the client offering the gesture at all. Fix is a pending-route guard in the component.
 - 2026-09-30T06:34:04Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p4
 - 2026-10-07T04:26:43Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=merge_gate note=owner-approved burn-down batch (c), visible polish, 2026-10-06 (relayed by the Planner): Story 23.5
+- 2026-10-15T10:08:52Z status=resolved-by:23-5-the-range-end-cleanup-part-5 by=adjudication note=favorite_in-flight_guard_aria-disabled(dbade405);locator-bar.spec+preferences-integration_leg;CI_38714129019
 ### DW-1286: OcuPilot.Test.AgentConnection's verification-write test no longer reaches the branch it names, so Api/Definitions.cls:853 is undriven
 - source: spec-13-2-the-test-suite-grows-in-ci-against-a-stock-image.md | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: It deletes the row then calls ConnectionOutcome, so since DW-362 added the version capture at Api/Definitions.cls:802 it lands on the GuardedVersion-unreadable refusal at :809, not the GuardedSetVerification refusal at :853. Both render 500/INTERNAL and the test asserts only status and code, so it passes either way, and its recorded mutation would not redden it
@@ -5876,6 +5878,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-20T17:49:09Z status=routed owner=range-end-cleanup by=adjudication note=residual: HelpLinks.load adds a route to asked before awaiting and never removes it on failure, so one transient refusal hides that screen's Help control until reload. Non-blocking for the 2026-09-27 floor and for every downstream story: Help is a convenience link to vendor documentation, the instance is unaffected, and a reload clears it. Closing it gives helpHrefFor a third outcome, which changes a contract this story just published
 - 2026-09-30T06:34:05Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p4
 - 2026-10-07T04:26:43Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=merge_gate note=owner-approved burn-down batch (c), visible polish, 2026-10-06 (relayed by the Planner): Story 23.5
+- 2026-10-15T10:08:52Z status=resolved-by:23-5-the-range-end-cleanup-part-5 by=adjudication note=help_href_null_on_banner_fault,route_released(dbade405);about.test.mjs;CI_38714129019
 
 ### DW-1369: stale-bundle-notice.ts has no component spec and app.spec.ts's band-order row was not extended to it
 - source: spec-15-3-about-help-shortcuts-and-the-links-panel.md | severity: med | fix-risk: low | footprint: in-story
@@ -5896,6 +5899,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-20T17:49:09Z status=routed owner=range-end-cleanup by=adjudication note=residual: app.ts renders app-stale-bundle-notice outside the signed-in branch, so the strip can stand above the blocking instance notice that EXPERIENCE.md says replaces the product surface rather than sharing it. Non-blocking: both surfaces are correct in isolation and the overlap needs an install or upgrade to be in flight while a stale bundle is held. Belongs with the other shell-chrome polish rather than re-opening a done story for a z-order
 - 2026-09-30T06:34:04Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p4
 - 2026-10-07T04:26:43Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=merge_gate note=owner-approved burn-down batch (c), visible polish, 2026-10-06 (relayed by the Planner): Story 23.5
+- 2026-10-15T10:08:52Z status=resolved-by:23-5-the-range-end-cleanup-part-5 by=adjudication note=stale_strip_hidden_under_blocking_notice(dbade405);app.spec+about-help-links_DW-1371_leg;CI_38714129019
 
 ### DW-1372: The reload prompt's role=status region is inserted when it becomes true rather than kept mounted and populated, which is commonly not announced
 - source: spec-15-3-about-help-shortcuts-and-the-links-panel.md | severity: low | fix-risk: low | footprint: in-story
@@ -5904,6 +5908,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-20T17:49:09Z status=routed owner=range-end-cleanup by=adjudication note=residual: the prompt's role=status region is inserted when it becomes true rather than kept mounted and populated, which is commonly not announced, while EXPERIENCE.md now publishes it among the polite status messages. Non-blocking for the floor; the spine's own Deferred row puts accessibility mechanics with EXPERIENCE.md as component-level and not an architecture concern, so this names no AD invariant. The visual prompt and its Reload are pinned in two tiers
 - 2026-09-30T06:34:04Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p4
 - 2026-10-07T04:26:43Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=merge_gate note=owner-approved burn-down batch (c), visible polish, 2026-10-06 (relayed by the Planner): Story 23.5
+- 2026-10-15T10:08:52Z status=resolved-by:23-5-the-range-end-cleanup-part-5 by=adjudication note=status_region_always_mounted(dbade405);stale-bundle-notice.spec;CI_38714129019
 
 ### DW-1373: Nothing in the suite executes the real audit-log call for the new uiabout subsystem
 - source: spec-15-3-about-help-shortcuts-and-the-links-panel.md | severity: low | fix-risk: low | footprint: in-story
@@ -5977,6 +5982,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-20T21:41:36Z occurrence=15-4-home-s-system-information-panel
 - 2026-09-30T06:34:03Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p3 (repeat occurrence)
 - 2026-10-07T04:26:42Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=merge_gate note=owner-approved burn-down batch (c), visible polish, 2026-10-06 (relayed by the Planner): Story 23.5
+- 2026-10-15T10:08:53Z status=resolved-by:23-5-the-range-end-cleanup-part-5 by=adjudication note=min-height_on_.ocu-home-system-row(dbade405);home-system-information_doubled_type_light+dark;CI_38714129019
 
 ### DW-1400: The shell-chrome read seam is in its third verbatim copy -- Members/Payload/Field/ReadSource/LogSourceFailure/LOGSUBSYSTEM -- with no extracted base, so a change to the per-field degrade contract has to be made in three places
 - source: spec-15-4-home-s-system-information-panel.md | severity: med | fix-risk: med | footprint: out-of-footprint
@@ -5993,6 +5999,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-26T09:53:52Z status=routed owner=burndown by=spec_gate note=About and Home system-information errors need role=alert, Retry, messages.log and a kind-aware failed()
 - 2026-09-30T03:32:46Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down decision sheet 2026-09-29: into Story 23.3 (after the following release)
 - 2026-10-07T04:26:42Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=merge_gate note=owner-approved burn-down batch (c), visible polish, 2026-10-06 (relayed by the Planner): Story 23.5
+- 2026-10-15T10:08:53Z status=resolved-by:23-5-the-range-end-cleanup-part-5 by=adjudication note=FaultBanner_in-place_mode_on_About,Home_SI,findings;banner_fault_parked(dbade405,778f10e5);abou;CI_38714129019
 
 ### DW-1410: A view or refresh row whose route no longer names a built screen is never read and no surface clears it; only clear on the kind removes it
 - source: spec-15-5-ui-state-that-survives-a-sign-out.md | severity: low | fix-risk: low | footprint: in-story
