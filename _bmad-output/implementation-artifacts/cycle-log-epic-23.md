@@ -451,3 +451,5 @@ spawn_at=2026-10-06T16:01:05Z	Story 23.4	cr_complete	batch=b 2026-10-06T20:34:58
 2026-10-15T15:33:53Z	Story 23.5	committed	batch=c sha=33d0b7c9 code=782b093d+d22d93ff(review+QA)+5574fede(ci_rework_DW-2454)+65b6b885(re-review) ci=success run=38755393824(attempt_2) head_confirmed_by=headSha rework=1(ci:DW-2454) amendments=DESIGN.md:904(tier1,DW-1148)
 2026-10-15T15:33:53Z	Story 23.5	rework_opened	cycle_iteration=6 iteration=batch_d trigger=next_batch items=DW-1976,1978 scope_baseline=HEAD spec=status_in-progress
 2026-10-15T15:33:53Z	Story 23.5	stage_spawned	stage=implement batch=d spawn_at=2026-10-15T15:33:53Z model=sonnet agent_name=23-5-the-range-end-cleanup-part-5-implement-d cycle_iteration=6 prior_ci=success(38755393824)
+2026-10-15T16:32:46Z	Story 23.5	ledger_reowned	entries=DW-2455(owner_23-11,orchestrator),DW-2458(note_see_DW-2415) by=lead
+2026-10-15T16:32:46Z	Story 23.5	implement_returned	batch=d agent=a604d6e2accfe9abc build_sha=2b7c3686 baseline_revision=c07b840a spec_status=done followup_review_recommended=false pushed=2b7c3686_alone run=38769868311

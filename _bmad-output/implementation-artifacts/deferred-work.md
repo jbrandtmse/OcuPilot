@@ -12092,8 +12092,10 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-23-5-the-range-end-cleanup-part-5.md (code review, batch c) | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: 44 of 81 specs using VIEWPORTS.narrow carry no settle wait (settleViewport, transitionsSettled, panelSettlesAt or a clientWidth wait; by grep, inference), e.g. allowed-directories.browser-spec.mjs:147-151 and impact AC2/AC6. DW-2454 is one overflow this hid; DW-2163, DW-2282 and DW-2450 were flakes of the same shape.
 - 2026-10-15T11:56:49Z status=escalated owner=burndown by=cr note=sweep: settleViewport plus transitionsSettled before each narrow pass; settling may surface hidden overflows (fix-risk)
+- 2026-10-15T16:32:23Z status=routed owner=23-11-the-range-end-cleanup-part-10 by=lead note=orchestrator: test hygiene, beside DW-2449
 
 ### DW-2458: CI flake: log-viewer.spec.ts AC6 (with Live tail off nothing streams) read 10 fake timers pending on gates (node 24.15.0) only, green on node 22 and 26 in the same run
 - source: lead CI resolution, Story 23.5 batch c | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: run 38755393824 head 33d0b7c9: 'logs/messages: 10 fake timers pending, 2 real timers active'; head differs from green 5574fede by test files and a CSS comment only
 - 2026-10-15T15:26:35Z status=routed owner=23-11-the-range-end-cleanup-part-10 by=lead note=flake:rerun_failed_job_once;CI_flakes_go_to_the_standing_cleanup_story
+- 2026-10-15T16:32:23Z status=routed owner=23-11-the-range-end-cleanup-part-10 by=lead note=see DW-2415 (resolved-by 20-8, reopen_if met); fix drains or clears timers before the count on all three Node bands
