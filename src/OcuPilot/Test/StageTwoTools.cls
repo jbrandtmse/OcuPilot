@@ -188,6 +188,7 @@ XData Elsewhere
 <screen name="InteropMessageContentsTab"/>
 <screen name="InteropMessageHeaderTab"/>
 <screen name="InteropMessageList"/>
+<screen name="InteropMessageTraceTab"/>
 <screen name="InteropMonitorList"/>
 <screen name="InteropProcessEditor"/>
 <screen name="InteropProcessList"/>

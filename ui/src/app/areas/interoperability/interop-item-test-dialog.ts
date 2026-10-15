@@ -1,10 +1,20 @@
-import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
+import { LocationStrategy } from '@angular/common';
+import { ChangeDetectionStrategy, Component, computed, inject, input, output, signal } from '@angular/core';
+import { Router } from '@angular/router';
 
+import { entityUrl } from '../../core/navigation';
 import { STRINGS } from '../../core/strings';
 import { type TestAnswer, testStatusLine } from '../../core/test-answer';
 import type { Violation } from '../../core/violations';
 import { CodeBlock } from '../../shell/code-block';
 import { Dialog } from '../../shell/dialog';
+import { followInAppLink } from '../../shell/in-app-link';
+
+/** The route of a session's trace, which a message id opens (Story 20.30). */
+const TRACE_ROUTE = 'interoperability/messages/trace';
+
+/** The shape of a session id a test answers: digits, not beginning with zero, as a message id is. */
+const SESSION_ID = /^[1-9][0-9]{0,18}$/;
 
 /** How many Test dialogs have been constructed, which makes each one's field ids its own. */
 let dialogCount = 0;
@@ -87,8 +97,9 @@ interface FieldView extends TestFieldRow {
  * instance's refusal, drawn on that field.
  *
  * **The result stays in the dialog.** After a send the status sentence, the session and the response's lines show beneath the
- * fields as text, never as markup, and a further send replaces them. A refusal the instance gives a field is drawn under it, and
- * any other is drawn above the fields as an alert; both are the server's sentences.
+ * fields as text, never as markup, and a further send replaces them. When the answer names a session, a link under the status line
+ * opens that session's trace in the namespace the tab is scoped to (Story 20.30). A refusal the instance gives a field is drawn under
+ * it, and any other is drawn above the fields as an alert; both are the server's sentences.
  */
 @Component({
   selector: 'app-interop-item-test-dialog',
@@ -183,6 +194,9 @@ interface FieldView extends TestFieldRow {
     @if (hasAnswer) {
       <div class="ocu-test-result" data-interop-test-result>
         <p class="ocu-field-caption" data-interop-test-status [class.ocu-form-error]="failed">{{ statusLine }}</p>
+        @if (hasTraceLink) {
+          <a class="ocu-details-link" data-interop-test-trace [href]="traceHref" (click)="onTrace($event)">{{ STRINGS.interopTestTraceLink }}</a>
+        }
         @if (hasLines) {
           <app-code-block [steps]="steps" />
         }
@@ -226,6 +240,9 @@ export class InteropItemTestDialog {
   readonly cancelled = output<void>();
 
   protected readonly STRINGS = STRINGS;
+
+  private readonly router = inject(Router);
+  private readonly location = inject(LocationStrategy);
 
   private readonly instance = ++dialogCount;
 
@@ -321,6 +338,24 @@ export class InteropItemTestDialog {
   protected get statusLine(): string {
     const answer = this.answer();
     return answer === null ? '' : testStatusLine(answer);
+  }
+
+  /** The answer names a session, whose trace the link opens: a test that sent nothing answers none. */
+  protected get hasTraceLink(): boolean {
+    return SESSION_ID.test(this.answer()?.sessionId ?? '');
+  }
+
+  /** The router URL of the session's trace, in the namespace the Test tab is scoped to. */
+  private get traceUrl(): string {
+    return entityUrl(TRACE_ROUTE, this.answer()?.sessionId ?? '', '', this.router.url);
+  }
+
+  protected get traceHref(): string {
+    return this.location.prepareExternalUrl(this.traceUrl);
+  }
+
+  protected onTrace(event: MouseEvent): void {
+    followInAppLink(event, this.router, this.traceUrl);
   }
 
   protected get hasLines(): boolean {

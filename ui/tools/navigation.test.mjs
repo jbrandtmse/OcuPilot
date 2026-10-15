@@ -385,9 +385,11 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'interoperability/productions/items/test',
       // Story 20.5: a lookup table's entries, unlisted and reached from a Lookup tables name cell, among the unlisted ones.
       'interoperability/lookup-tables/entries',
-      // Story 20.9: a message's Contents and Header tabs, unlisted, between the entries and the BPL editor by class name.
+      // Story 20.9: a message's Contents and Header tabs, unlisted, between the entries and the BPL editor by class name; Story 20.30's
+      // Trace tab follows them (InteropMessageTraceTab sorts after InteropMessageHeaderTab).
       'interoperability/messages/contents',
       'interoperability/messages/document',
+      'interoperability/messages/trace',
       // Story 20.7: the BPL editor, unlisted, among the unlisted ones; the rule and DTL editors follow Queue messages.
       'interoperability/processes/document',
       // Story 20.8: the Configuration diagram, unlisted, between the BPL editor and Queue messages by class name.
@@ -837,10 +839,12 @@ test('Story 20.4: the Status tab is what an item row opens, from Production item
 
 // Story 20.9: a Messages row's ID opens the message's Header tab, the head of the group the Contents tab joins, and a Queue
 // messages row's message id opens the same tab. The pairing is the `<list route>/document` convention (`documentScreenFor`).
+// Story 20.30: the Trace tab is the group's third member.
 //
 // Mutation (Rule 19): move InteropMessageHeaderTab off `interoperability/messages/document` -> the pairing leg and the
-// Queue messages leg go red. Drop `rowTarget` from InteropQueueMessageList -> the Queue messages leg goes red.
-test('Story 20.9: a Messages row and a Queue messages row open the message\'s Header tab, beside its Contents tab', () => {
+// Queue messages leg go red. Drop `rowTarget` from InteropQueueMessageList -> the Queue messages leg goes red. Move the Trace tab's
+// `tab.position` to 1 -> the strip leg goes red.
+test('Story 20.9: a Messages row and a Queue messages row open the message\'s Header tab, beside its Contents and Trace tabs', () => {
   const messages = screenForRoute('interoperability/messages');
   assert.ok(messages, 'Messages is declared');
   assert.equal(documentScreenFor(messages)?.route, 'interoperability/messages/document', 'the Messages name cell opens the Header tab');
@@ -856,8 +860,13 @@ test('Story 20.9: a Messages row and a Queue messages row open the message\'s He
   assert.equal(hasIdRoute(screenForRoute(queueMessages.rowTarget.route)), true, 'keyed by an id');
   assert.deepEqual(
     tabMembersFor(screenForRoute('interoperability/messages/document')).map((tab) => tab.route),
-    ['interoperability/messages/document', 'interoperability/messages/contents'],
-    'the strip reads Header, Contents'
+    ['interoperability/messages/document', 'interoperability/messages/contents', 'interoperability/messages/trace'],
+    'the strip reads Header, Contents, Trace'
+  );
+  assert.equal(
+    screenForUrl(`/interoperability/messages/trace/${encodeEntityId('42')}`)?.descriptor,
+    'OcuPilot.Screen.Descriptor.InteropMessageTraceTab',
+    'a Trace URL resolves to the Trace tab'
   );
   assert.equal(
     screenForUrl(`/interoperability/messages/contents/${encodeEntityId('42')}`)?.descriptor,

@@ -84,12 +84,13 @@ ClassMethod LocalAgo(pSeconds As %Integer) As %String
 /// <code>Op</code>, each followed by <var>pSuffix</var>, made <var>pAgo</var> seconds ago, naming the body <var>pBodyClass</var>
 /// <var>pBodyId</var>, and answer its id (0 when it could not be stored). <var>pSession</var>, when given, is the session id it
 /// carries; <var>pErrorText</var>, when given, marks it as an error with that text; <var>pSetOwnSession</var> makes its own id its
-/// session.</p>
-ClassMethod StoreHeader(pRun As %String, pBodyClass As %String, pBodyId As %String, pType As %Integer, pStatus As %Integer, pAgo As %Integer, pSession As %String, pErrorText As %String = "", pSetOwnSession As %Boolean = 0, pSuffix As %String = "") As %Integer
+/// session. <var>pSource</var> and <var>pTarget</var>, when given, are the source and target names in place of the marker's own, as
+/// Story 20.30's session trace stores its own hosts.</p>
+ClassMethod StoreHeader(pRun As %String, pBodyClass As %String, pBodyId As %String, pType As %Integer, pStatus As %Integer, pAgo As %Integer, pSession As %String, pErrorText As %String = "", pSetOwnSession As %Boolean = 0, pSuffix As %String = "", pSource As %String = "", pTarget As %String = "") As %Integer
 {
     Set tHeader = ##class(Ens.MessageHeader).%New()
-    Set tHeader.SourceConfigName = ..#MARKER _ pRun _ "Src" _ pSuffix
-    Set tHeader.TargetConfigName = ..#MARKER _ pRun _ "Op" _ pSuffix
+    Set tHeader.SourceConfigName = $Select(pSource '= "": pSource, 1: ..#MARKER _ pRun _ "Src" _ pSuffix)
+    Set tHeader.TargetConfigName = $Select(pTarget '= "": pTarget, 1: ..#MARKER _ pRun _ "Op" _ pSuffix)
     Set tHeader.MessageBodyClassName = pBodyClass
     Set tHeader.MessageBodyId = pBodyId
     Set tHeader.Type = pType

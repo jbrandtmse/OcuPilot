@@ -216,6 +216,7 @@ XData ReadShapes
 <screen name="InteropMessageList" filter="Status,Type,Source,Target,BodyClass,SessionId" sort="TimeCreated,Status,Type,Source,Target,BodyClass,SessionId" kinds="ID:name,TimeCreated:text,Status:status,Type:text,Source:text,Target:text,BodyClass:identifier,SessionId:identifier,Error:status"/>
 <screen name="InteropMessageHeaderTab" filter="Name,Value" sort="Position" kinds="Name:name,Value:text"/>
 <screen name="InteropMessageContentsTab" filter="Text" sort="Line" kinds="Line:name,Text:text"/>
+<screen name="InteropMessageTraceTab" filter="Type,Status,Source,Target,BodyClass" sort="Step" kinds="ID:name,TimeCreated:text,Type:text,Status:status,Source:text,Target:text,BodyClass:identifier"/>
 </shapes>
 }
 

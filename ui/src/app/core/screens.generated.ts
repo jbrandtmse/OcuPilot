@@ -14416,6 +14416,195 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "entityLabelKey": ""
   },
   {
+    "descriptor": "OcuPilot.Screen.Descriptor.InteropMessageTraceTab",
+    "route": "interoperability/messages/trace",
+    "area": "interoperability",
+    "labelKey": "interopMessageTraceLabel",
+    "sideBarPosition": 0,
+    "archetype": "detail",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Ens_Portal",
+        "permission": "USE"
+      },
+      {
+        "resource": "%Ens_MessageHeader",
+        "permission": "USE"
+      },
+      {
+        "resource": "%Ens_MessageTrace",
+        "permission": "USE"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Ens_MessageHeader",
+        "permission": "USE"
+      },
+      {
+        "resource": "%Ens_MessageTrace",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "interop-message",
+    "secondaryEntityTypes": [],
+    "scope": "namespace",
+    "parentScope": "interoperability/messages",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Step",
+        "ID",
+        "TimeCreated",
+        "Type",
+        "Status",
+        "Source",
+        "Target",
+        "BodyClass",
+        "Error"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "interopMessageHeaderEmpty",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "interopMessageTracePrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "interopMessageTracePrompt2"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "interopMessageTracePrompt3"
+      }
+    ],
+    "classicPage": "EnsPortal.VisualTrace",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "interop",
+        "endpoint": "MessageTrace",
+        "type": "LIST"
+      },
+      "fields": [
+        "Message",
+        "Step",
+        "ID",
+        "TimeCreated",
+        "Type",
+        "Status",
+        "Source",
+        "Target",
+        "BodyClass",
+        "Error",
+        "SessionId"
+      ],
+      "filter": [
+        "Type",
+        "Status",
+        "Source",
+        "Target",
+        "BodyClass"
+      ],
+      "sort": {
+        "fields": [
+          "Step"
+        ],
+        "default": "Step",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "note": {
+        "key": "interopMessageTraceNote",
+        "text": "OcuPilot draws this session's messages. The classic Visual Trace also shows its event, rule and I/O log entries."
+      },
+      "criteria": {
+        "fields": [
+          {
+            "param": "message",
+            "labelKey": "interopColumnId",
+            "kind": "text",
+            "maxLength": 19,
+            "hint": "One message, as interop.messages.read answers its ID; the trace is that message's whole session."
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "ID",
+          "labelKey": "interopColumnId",
+          "kind": "name"
+        },
+        {
+          "field": "TimeCreated",
+          "labelKey": "journalColumnCreated",
+          "kind": "text"
+        },
+        {
+          "field": "Type",
+          "labelKey": "tableColumnType",
+          "kind": "text"
+        },
+        {
+          "field": "Status",
+          "labelKey": "taskHistoryColumnStatus",
+          "kind": "status"
+        },
+        {
+          "field": "Source",
+          "labelKey": "auditEventFieldSource",
+          "kind": "text"
+        },
+        {
+          "field": "Target",
+          "labelKey": "agentLedgerColumnTarget",
+          "kind": "text"
+        },
+        {
+          "field": "BodyClass",
+          "labelKey": "interopColumnBodyClass",
+          "kind": "identifier"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "tab": {
+      "group": "interoperability/messages/document",
+      "position": 3,
+      "labelKey": "interopMessageTabTrace"
+    },
+    "toolIdentifier": "interop.messagetrace",
+    "refreshDefault": 0,
+    "banner": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
     "descriptor": "OcuPilot.Screen.Descriptor.InteropMonitorList",
     "route": "interoperability/monitor",
     "area": "interoperability",

@@ -1,7 +1,7 @@
 /// <p>Pins Story 20.9's declarations (AD-5, AD-8, AD-13, AD-29, AD-36, AD-44, AD-62): the three message screens -- the Messages
 /// search, and the Header and Contents tabs of one message -- with the values the plan names, the registry's verdict, the port's
 /// pairs for each endpoint equal to the screen's, the classic viewer's resource shared with the screen's own pair, and the Queue
-/// messages list's link to the message.</p>
+/// messages list's link to the message. Story 20.30's Trace tab joins the group as its third member.</p>
 /// <p><b>What it needs from the environment:</b> the compiled registries. It reads no message and writes nothing.</p>
 Class OcuPilot.Test.InteropMessageDescriptor Extends %UnitTest.TestCase
 {
@@ -75,6 +75,71 @@ Method TestTheThreeDeclarationsRegister()
     Do $$$AssertEquals(tSearch.read.criteria.fields.%Get(8).options.%Get(0) _ "," _ tSearch.read.criteria.fields.%Get(8).options.%Get(1) _ "|" _ tSearch.read.criteria.fields.%Get(8).labelKey, "yes,no|interopMessagesCriterionErrors", "and the error flag is a yes or no")
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DescriptorForRoute("interoperability/messages/document"), ..#PREFIX _ "InteropMessageHeaderTab", "the group's route resolves to the Header tab")
     Do $$$AssertEquals(##class(%SYS.Portal.Resources).NormalizePage("EnsPortal.MessageViewer.zen"), "EnsPortal.MessageViewer", "the portal's own resolver answers the classic viewer for its page")
+}
+
+/// <p>The names of the fields of <var>pArray</var>, comma-separated, in order.</p>
+ClassMethod Joined(pArray As %DynamicArray) As %String
+{
+    Set tText = ""
+    Set tIterator = pArray.%GetIterator()
+    While tIterator.%GetNext(.tAt, .tValue) {
+        Set tText = tText _ $Select(tText = "": "", 1: ",") _ tValue
+    }
+    Quit tText
+}
+
+/// <p>Story 20.30's Trace tab carries the values the plan names -- its route, labels, pairs (the viewer's and the Visual Trace's), the
+/// group it joins as the third tab, the read on the interoperability port's MessageTrace endpoint with its one criterion, fields,
+/// filter, sort, note and table, its context, its empty sentence (the Header tab's), three prompts and the classic Visual Trace as its
+/// page -- the registry validates it, the group reads Header, Contents, Trace in order, the portal's own resolver answers the Visual
+/// Trace for its page, and the port's pairs for the endpoint are the descriptor's.</p>
+/// <p>Mutation (Rule 19): drop <code>%Ens_MessageTrace:USE</code> from the descriptor and from
+/// <method>OcuPilot.Port.InteropPort.Pairs</method> -- this goes red, and so does
+/// <method>OcuPilot.Test.InteropFloor.TestEveryOpenScreenMatchesItsClassicPage</method>.</p>
+Method TestTheTraceTabJoinsTheMessageGroup()
+{
+    Set tSC = ##class(OcuPilot.Screen.Registry).Validate(.tProblem)
+    Do $$$AssertStatusOK(tSC, "the registry validates every descriptor: " _ $Get(tProblem))
+    Set tD = ..Declaration("InteropMessageTraceTab")
+    Do $$$AssertTrue($IsObject(tD), "the Trace tab declares JSON")
+    If '$IsObject(tD) Quit
+    Do $$$AssertEquals(tD.route _ "|" _ tD.labelKey _ "|" _ tD.area _ "|" _ tD.archetype _ "|" _ tD.sideBarPosition, "interoperability/messages/trace|interopMessageTraceLabel|interoperability|detail|0", "route, label, area, archetype and no side-bar position")
+    Do $$$AssertEquals(tD.built _ "|" _ tD.refreshes _ "|" _ tD.refreshRates.%Size(), "1|0|0", "built, never refreshing")
+    Do $$$AssertEquals(##class(OcuPilot.Test.InteropHostDescriptor).PairText(tD.privileges), "%Ens_Portal:USE,%Ens_MessageHeader:USE,%Ens_MessageTrace:USE", "its pairs are the viewer's and the Visual Trace's")
+    Do $$$AssertEquals(##class(OcuPilot.Test.InteropHostDescriptor).PairText(tD.ownPrivileges), "%Ens_MessageHeader:USE,%Ens_MessageTrace:USE", "and its own pairs are the two beyond the area's")
+    Do $$$AssertEquals(tD.entityType _ "|" _ tD.scope _ "|" _ tD.id.kind _ "|" _ tD.parentScope, "interop-message|namespace|single|interoperability/messages", "one message header, namespace-scoped, a single id, under Messages")
+    Do $$$AssertEquals(tD.read.source.port _ "|" _ tD.read.source.endpoint _ "|" _ tD.read.source.type _ "|" _ tD.toolIdentifier _ "|" _ tD.classicPage, "interop|MessageTrace|LIST|interop.messagetrace|EnsPortal.VisualTrace", "an interop LIST on MessageTrace, its tool and the Visual Trace")
+    Do $$$AssertEquals(tD.read.criteria.fields.%Size() _ "|" _ tD.read.criteria.fields.%Get(0).param _ "|" _ tD.read.criteria.fields.%Get(0).kind _ "|" _ tD.read.criteria.fields.%Get(0).maxLength _ "|" _ tD.read.criteria.fields.%Get(0).labelKey, "1|message|text|19|interopColumnId", "one criterion, the message's id")
+    Do $$$AssertEquals(tD.read.criteria.fields.%Get(0).hint, "One message, as interop.messages.read answers its ID; the trace is that message's whole session.", "with its hint")
+    Do $$$AssertEquals(..Joined(tD.read.fields), "Message,Step,ID,TimeCreated,Type,Status,Source,Target,BodyClass,Error,SessionId", "the fields it reads")
+    Do $$$AssertEquals(..Joined(tD.read.filter), "Type,Status,Source,Target,BodyClass", "its filter")
+    Do $$$AssertEquals(..Joined(tD.read.sort.fields) _ "|" _ tD.read.sort.default _ "|" _ tD.read.sort.direction _ "|" _ tD.read.paging, "Step|Step|asc|cap", "sorted by step, ascending, capped")
+    Do $$$AssertEquals(tD.read.note.key _ "|" _ tD.read.note.text, "interopMessageTraceNote|OcuPilot draws this session's messages. The classic Visual Trace also shows its event, rule and I/O log entries.", "its note states the named limit")
+    Set tColumns = ""
+    Set tIterator = tD.table.columns.%GetIterator()
+    While tIterator.%GetNext(.tAt, .tColumn) {
+        Set tColumns = tColumns _ $Select(tColumns = "": "", 1: ",") _ tColumn.field _ ":" _ tColumn.kind _ ":" _ tColumn.labelKey
+    }
+    Do $$$AssertEquals(tColumns, "ID:name:interopColumnId,TimeCreated:text:journalColumnCreated,Type:text:tableColumnType,Status:status:taskHistoryColumnStatus,Source:text:auditEventFieldSource,Target:text:agentLedgerColumnTarget,BodyClass:identifier:interopColumnBodyClass", "the table a read declares")
+    Do $$$AssertEquals(tD.table.emptyNextKey _ "|" _ tD.emptyStateKey, "tableReadOnlyEmptyNext|interopMessageHeaderEmpty", "and the Header tab's empty sentence")
+    Do $$$AssertEquals(..Joined(tD.context.fields), "Step,ID,TimeCreated,Type,Status,Source,Target,BodyClass,Error", "its context")
+    Do $$$AssertEquals(tD.tab.group _ "|" _ tD.tab.position _ "|" _ tD.tab.labelKey, "interoperability/messages/document|3|interopMessageTabTrace", "the third tab of the message group")
+    Do $$$AssertEquals(tD.rowActions.%Size() _ "|" _ tD.primaryAction.id _ "|" _ tD.commandAliases.%Size(), "0||0", "no action and no command alias")
+    Do $$$AssertEquals(tD.suggestedPrompts.%Size(), 3, "three suggested prompts")
+    For tJ = 1:1:3 {
+        Set tPrompt = tD.suggestedPrompts.%Get(tJ - 1)
+        Do $$$AssertEquals($Select($IsObject(tPrompt): tPrompt.groupKey _ "|" _ tPrompt.textKey, 1: ""), "promptGroupTroubleshooting|interopMessageTracePrompt" _ tJ, "prompt " _ tJ _ " is its own")
+    }
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DeclarationProblem(tD), "", "the declaration validates")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DescriptorForTool("interop.messagetrace"), ..#PREFIX _ "InteropMessageTraceTab", "its tool identifier resolves to it")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DescriptorForRoute("interoperability/messages/trace"), ..#PREFIX _ "InteropMessageTraceTab", "and its route")
+    Set tSC = ##class(OcuPilot.Screen.Registry).TabMembersFor(..#PREFIX _ "InteropMessageHeaderTab", .tMembers)
+    Do $$$AssertStatusOK(tSC, "the group's members are read from its head")
+    Do $$$AssertEquals($ListToString(tMembers), ..#PREFIX _ "InteropMessageContentsTab," _ ..#PREFIX _ "InteropMessageTraceTab", "the group reads Header, Contents, Trace in order")
+    Do $$$AssertEquals(##class(%SYS.Portal.Resources).NormalizePage("EnsPortal.VisualTrace.zen"), "EnsPortal.VisualTrace", "the portal's own resolver answers the Visual Trace for its page")
+    Do $$$AssertEquals(##class(OcuPilot.Test.InteropHostDescriptor).PairText($ClassMethod(..#PORT, "Pairs", "MessageTrace", "LIST")), ##class(OcuPilot.Test.InteropHostDescriptor).PairText(tD.privileges), "the port's pairs for MessageTrace are the descriptor's")
+    Do $$$AssertEquals(+$ClassMethod(..#PORT, "Serves", "MessageTrace", "LIST") _ "|" _ +$ClassMethod(..#PORT, "Serves", "MessageTrace", "SENDTEST"), "1|0", "MessageTrace serves LIST and nothing else")
+    Do $$$AssertTrue($ListFind($ClassMethod(..#PORT, "RuntimeEndpoints"), "MessageTrace") > 0, "it is among the port's runtime reads")
 }
 
 /// <p>The declaration of the descriptor <var>pShortName</var> in the Screen.Descriptor package.</p>

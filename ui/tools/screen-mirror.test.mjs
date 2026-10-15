@@ -205,6 +205,8 @@ test('every read note\'s text is the string its key names, and the three SQL sta
       'OcuPilot.Screen.Descriptor.ExplorerSqlProcedureStatements',
       'OcuPilot.Screen.Descriptor.ExplorerSqlTableStatements',
       'OcuPilot.Screen.Descriptor.ExplorerSqlViewStatements',
+      // Story 20.30: the Trace tab states that the classic Visual Trace also shows the session's event, rule and I/O log entries.
+      'OcuPilot.Screen.Descriptor.InteropMessageTraceTab',
       // Story 18.37: Interoperability usage's three tabs state that the counts have no date range.
       'OcuPilot.Screen.Descriptor.InteropUsageImpactTab',
       'OcuPilot.Screen.Descriptor.InteropUsageTab',
@@ -216,7 +218,7 @@ test('every read note\'s text is the string its key names, and the three SQL sta
       // Story 19.10: SQL activity states whose statement text it shows.
       'OcuPilot.Screen.Descriptor.SqlActivityList',
     ],
-    'the three SQL statements reads, the ECP Connections tab, Services, SQL activity, Prometheus metrics and the three Interoperability usage tabs declare a note'
+    'the three SQL statements reads, the ECP Connections tab, Services, SQL activity, Prometheus metrics, the three Interoperability usage tabs and the message Trace tab declare a note'
   );
   for (const screen of noted) {
     const { key, text } = screen.declaration.read.note;
@@ -922,6 +924,8 @@ test('tabProblem and tabGroupProblem return every sentence OcuPilot.Test.TabCorp
     ['system-explorer/sql-tables/indices', 'system-explorer/sql-tables/document', 3, 0],
     ['system-explorer/sql-views/statements', 'system-explorer/sql-views/document', 3, 0],
     ['interoperability/productions/items/queue', 'interoperability/productions/items/document', 3, 0],
+    // Story 20.30: a message's Trace tab, the third of the message group.
+    ['interoperability/messages/trace', 'interoperability/messages/document', 3, 0],
     ['os-management/interoperability-usage/impact', 'os-management/interoperability-usage', 3, 0],
     ['os-management/license-usage/users', 'os-management/license-usage', 3, 0],
     ['security/oauth/resource-servers', 'security/oauth', 3, 0],
@@ -1389,6 +1393,7 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
   // and Queue messages, whose one criterion is the queue. Story 20.5's lookup table entries, whose one criterion is the table.
   // Story 18.12's privileged routine application roles and routines lists, whose one criterion is the application the route id names.
   // Story 20.9's Messages search, whose nine criteria are its own, and its Header and Contents tabs, whose one criterion is the message.
+  // Story 20.30's Trace tab, whose one criterion is the message too.
   const withCriteria = emittedScreens.filter((screen) => (screen.read?.criteria ?? null) !== null);
   assert.deepEqual(
     withCriteria.map((screen) => screen.descriptor),
@@ -1435,6 +1440,7 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
       'OcuPilot.Screen.Descriptor.InteropMessageContentsTab',
       'OcuPilot.Screen.Descriptor.InteropMessageHeaderTab',
       'OcuPilot.Screen.Descriptor.InteropMessageList',
+      'OcuPilot.Screen.Descriptor.InteropMessageTraceTab',
       'OcuPilot.Screen.Descriptor.InteropQueueMessageList',
       'OcuPilot.Screen.Descriptor.JournalFileDatabaseList',
       'OcuPilot.Screen.Descriptor.JournalFileDetails',
@@ -2498,6 +2504,7 @@ test('ownPrivilegesProblem returns every sentence OwnPrivilegeCases declares, an
       'OcuPilot.Screen.Descriptor.InteropMessageContentsTab',
       'OcuPilot.Screen.Descriptor.InteropMessageHeaderTab',
       'OcuPilot.Screen.Descriptor.InteropMessageList',
+      'OcuPilot.Screen.Descriptor.InteropMessageTraceTab',
       'OcuPilot.Screen.Descriptor.InteropMonitorList',
       'OcuPilot.Screen.Descriptor.InteropProcessEditor',
       'OcuPilot.Screen.Descriptor.InteropProcessList',

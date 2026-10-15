@@ -51,11 +51,12 @@ Parameter MONITORTOOLS = "interop.monitor.read";
 /// <code>%Ens_MessageHeader:USE</code> and <code>%Ens_LookupTables:READ</code>, and the event log through
 /// <code>%Ens_EventLog:USE</code>. The Configuration diagram (Story 20.8) opens through the
 /// <code>%Ens_ProductionConfig:READ</code> the Productions list needs. Messages and a message's Header tab (Story 20.9) open
-/// through the <code>%Ens_MessageHeader:USE</code> the role holds.</p>
-Parameter OPERATORSCREENS = "InteropBusinessPartnerList,InteropItemJobTab,InteropItemList,InteropItemLogTab,InteropItemMessageTab,InteropItemQueueTab,InteropItemSettingList,InteropItemStatusTab,InteropJobList,InteropLookupEntryList,InteropLookupTableList,InteropMessageHeaderTab,InteropMessageList,InteropProductionDiagram,InteropProductionList,InteropQueueList,InteropQueueMessageList,LogEventViewer";
+/// through the <code>%Ens_MessageHeader:USE</code> the role holds, and a message's Trace tab (Story 20.30) through the
+/// <code>%Ens_MessageTrace:USE</code> it also holds.</p>
+Parameter OPERATORSCREENS = "InteropBusinessPartnerList,InteropItemJobTab,InteropItemList,InteropItemLogTab,InteropItemMessageTab,InteropItemQueueTab,InteropItemSettingList,InteropItemStatusTab,InteropJobList,InteropLookupEntryList,InteropLookupTableList,InteropMessageHeaderTab,InteropMessageList,InteropMessageTraceTab,InteropProductionDiagram,InteropProductionList,InteropQueueList,InteropQueueMessageList,LogEventViewer";
 
 /// <p>See <parameter>OPERATORSCREENS</parameter>.</p>
-Parameter OPERATORTOOLS = "interop.businesspartners.read,interop.itemjobs.read,interop.itemlog.read,interop.itemmessages.read,interop.itemqueue.read,interop.items.read,interop.itemsettings.read,interop.itemstatus.read,interop.jobs.read,interop.lookupentries.read,interop.lookuptables.read,interop.messageheader.read,interop.messages.read,interop.productions.read,interop.queuemessages.read,interop.queues.read,logs.eventlog.read";
+Parameter OPERATORTOOLS = "interop.businesspartners.read,interop.itemjobs.read,interop.itemlog.read,interop.itemmessages.read,interop.itemqueue.read,interop.items.read,interop.itemsettings.read,interop.itemstatus.read,interop.jobs.read,interop.lookupentries.read,interop.lookuptables.read,interop.messageheader.read,interop.messages.read,interop.messagetrace.read,interop.productions.read,interop.queuemessages.read,interop.queues.read,logs.eventlog.read";
 
 /// <p>What the Administrator role adds beside the Operator's: the three code lists and the rule, BPL and DTL editor
 /// screens (Story 20.7), each through its own <code>%Ens_Code:READ</code>, and an item's Test tab (Story 20.6) through the <code>%Ens_TestingService:USE</code> the
@@ -236,7 +237,8 @@ Method TestEachPrincipalSignsInAndOpensExactlyItsRoster()
 /// holder naming <code>%Ens_Dashboard:USE</code>, and an item's Status tab refuses the Monitor role naming
 /// <code>%Ens_ProductionConfig:READ</code> (Story 20.4). Messages answers the Operator and refuses the <code>%Ens_Portal</code>
 /// holder naming <code>%Ens_MessageHeader:USE</code>, and a message's Contents answers the Administrator and refuses the Operator
-/// naming <code>%Ens_MessageContent:USE</code> (Story 20.9).</p>
+/// naming <code>%Ens_MessageContent:USE</code> (Story 20.9). A message's Trace answers the Operator and refuses the
+/// <code>%Ens_Portal</code> holder naming <code>%Ens_MessageHeader:USE</code> (Story 20.30).</p>
 /// <p>Mutation: give <class>OcuPilot.Screen.Descriptor.InteropProductionList</class> and
 /// <parameter>OcuPilot.Port.InteropPort.PRODUCTIONPAIRS</parameter>, the two gates the read meets, the
 /// pair set <code>%Ens_Portal:USE</code> alone -> the <code>%Ens_Portal</code> holder reads
@@ -272,6 +274,11 @@ Method TestTheInteroperabilityReadsFollowTheirOwnPairs()
     Do $$$AssertEquals(..Refusal(tObject, tStatus), "403|AUTH.NOPRIVILEGE|%Ens_MessageContent:USE", "the Operator is refused a message's Contents, naming the content resource: " _ $Extract(tText, 1, 200))
     Do ..Request("GET", "/screens/interop.messagecontents/read?ns=" _ tNs _ "&message=9223372036854775807", "administrator", .tStatus, .tObject, .tText)
     Do $$$AssertEquals(tStatus, 200, "the Administrator reads a message's Contents: " _ $Extract(tText, 1, 200))
+    ; Story 20.30: a message's Trace needs the message header resource and the Visual Trace's, which the Operator role holds.
+    Do ..Request("GET", "/screens/interop.messagetrace/read?ns=" _ tNs _ "&message=1", "portal", .tStatus, .tObject, .tText)
+    Do $$$AssertEquals(..Refusal(tObject, tStatus), "403|AUTH.NOPRIVILEGE|%Ens_MessageHeader:USE", "the %Ens_Portal holder is refused a message's Trace, naming the message header resource: " _ $Extract(tText, 1, 200))
+    Do ..Request("GET", "/screens/interop.messagetrace/read?ns=" _ tNs _ "&message=1", "operator", .tStatus, .tObject, .tText)
+    Do $$$AssertEquals(tStatus, 200, "the Operator reads a message's Trace: " _ $Extract(tText, 1, 200))
 }
 
 /// <p><b>Event log.</b> The Operator reads it; the <code>%Ens_Portal</code> holder is refused naming

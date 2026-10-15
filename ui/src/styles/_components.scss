@@ -8841,3 +8841,104 @@ app-ecp-data-server-form-page .ocu-field-checkbox input[aria-disabled='true'] {
   font-weight: 400;
   overflow-wrap: anywhere;
 }
+
+// A message's Trace tab (Story 20.30): the session as a sequence diagram, drawn as SVG inside a scroll region. Tokens only, so both
+// themes hold. Heads and lifelines are the participants; an arrow is a link whose line and head take the arrow's class -- dashed for a
+// response, the error token for an error -- and whose band is its hit area.
+.ocu-trace-frame {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: var(--ocu-space-2);
+  min-height: 0;
+}
+
+.ocu-trace-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  border: 1px solid var(--ocu-outline-variant);
+  border-radius: var(--ocu-radius-md);
+  background: var(--ocu-surface-container-lowest);
+  color: var(--ocu-on-surface);
+}
+
+.ocu-trace-svg {
+  display: block;
+}
+
+.ocu-trace-lifeline {
+  stroke: var(--ocu-outline-variant);
+  stroke-width: 1;
+}
+
+.ocu-trace-head {
+  fill: var(--ocu-surface-container);
+  stroke: var(--ocu-outline);
+  stroke-width: 1;
+}
+
+.ocu-trace-head-text {
+  @include typo.ocu-type('caption');
+
+  fill: var(--ocu-on-surface);
+}
+
+.ocu-trace-hit {
+  fill: none;
+  stroke: none;
+  pointer-events: all;
+}
+
+.ocu-trace-id {
+  @include typo.ocu-type('caption');
+
+  fill: var(--ocu-on-surface-variant);
+}
+
+.ocu-trace-label {
+  @include typo.ocu-type('caption');
+
+  fill: var(--ocu-on-surface);
+}
+
+.ocu-trace-line {
+  fill: none;
+  stroke: var(--ocu-on-surface-variant);
+  stroke-width: 1.5;
+}
+
+.ocu-trace-mark {
+  fill: var(--ocu-on-surface-variant);
+  stroke: none;
+}
+
+.ocu-trace-response .ocu-trace-line {
+  stroke-dasharray: 6 4;
+}
+
+.ocu-trace-error .ocu-trace-line {
+  stroke: var(--ocu-error);
+}
+
+.ocu-trace-error .ocu-trace-mark {
+  fill: var(--ocu-error);
+}
+
+.ocu-trace-link {
+  cursor: pointer;
+}
+
+.ocu-trace-link:hover .ocu-trace-hit {
+  fill: var(--ocu-surface-container-low);
+}
+
+.ocu-trace-link:focus {
+  outline: none;
+}
+
+.ocu-trace-link:focus-visible .ocu-trace-hit {
+  fill: none;
+  stroke: var(--ocu-focus-ring);
+  stroke-width: 2;
+}

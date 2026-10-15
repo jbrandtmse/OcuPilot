@@ -7,7 +7,8 @@
  * and the fields of each; Send test builds one request from the fields typed in the dialog and shows the status sentence, the
  * session and the response's line, and a value that is markup (`<b>x</b>`) is drawn as the text it is, with no element made of it;
  * a field that names a credential is drawn disabled with its sentence; a business service's tab lists no row, says so, and Send test
- * opens no dialog and says why on the list; and the tab passes the structural and contrast checks at 1280
+ * opens no dialog and says why on the list; a sent test's answer links to its session's trace, whose first arrow runs from the testing
+ * service to the testing process (Story 20.30); and the tab passes the structural and contrast checks at 1280
  * light, 720 light and 1280 dark, with no entry beyond the baseline (DW-1337).
  *
  * **It compiles, starts and writes a probe production in `USER`** through `OcuPilot.Test.ProductionProbe` and
@@ -210,6 +211,41 @@ test('AC2, AC8: Send test sends the request built from the typed fields and show
     assert.ok(/^The target answered in session \d+ with Ens\.StringResponse\.$/.test(shown.status), `the status sentence names the session and the response class: ${shown.status}`);
     assert.equal(shown.lines, `StringValue: echo:${MARKUP}`, 'the response\'s line, with its markup as text');
     assert.equal(shown.markupElements, 0, 'no element was made of the markup');
+  } finally {
+    await context.close();
+  }
+});
+
+// AC3 (Story 20.30, Integration). Mutation (Rule 19): build the dialog's link from `responseClass` in place of `sessionId` -> the path wait
+// goes red; point the link at `messages/document` -> the path wait goes red; drop `data-interop-test-trace` -> the link wait goes red.
+test('AC3 (Story 20.30): a sent test\'s answer links to its session\'s trace, whose first arrow runs from the testing service to the testing process', async () => {
+  const { context, page } = await signedInAt(browser, config, PRODUCTIONS_URL, VIEWPORTS.wide, REDUCED_MOTION);
+  try {
+    await openTestTab(page);
+    await openDialog(page);
+    await page.select('[role="dialog"] [data-interop-test-class]', 'Ens.StringRequest');
+    const text = await page.waitForSelector('[role="dialog"] [data-interop-test-field][data-field="StringValue"] [data-interop-test-input]', { visible: true, timeout: config.navigationTimeoutMs });
+    await text.type('trace probe');
+    await (await page.waitForSelector('[role="dialog"] [data-interop-test-send]', { visible: true })).click();
+    await page.waitForSelector('[role="dialog"] [data-interop-test-result] [data-interop-test-trace]', { timeout: config.navigationTimeoutMs });
+    const status = await page.$eval('[data-interop-test-status]', (node) => node.textContent?.trim() ?? '');
+    const sessionId = /session (\d+) /.exec(status)?.[1] ?? '';
+    assert.match(sessionId, /^[1-9]\d*$/, `the status sentence names the session: ${status}`);
+    assert.equal(await page.$eval('[data-interop-test-trace]', (node) => node.textContent?.trim() ?? ''), STRINGS.interopTestTraceLink, 'the link reads "Open this session\'s trace"');
+    await page.click('[data-interop-test-trace]');
+    await pathHolds(page, `/interoperability/messages/trace/${sessionId}`);
+    assert.equal(new URL(page.url()).searchParams.get('ns'), 'USER', 'in the list\'s namespace');
+    await waitForMapAnswered(page, config.navigationTimeoutMs);
+    await page.waitForSelector('app-interop-message-trace [data-ocu-trace="diagram"] svg a', { timeout: config.navigationTimeoutMs });
+    const drawn = await page.evaluate(() => ({
+      heads: Array.from(document.querySelectorAll('app-interop-message-trace g.ocu-trace-participant title')).map((node) => node.textContent ?? ''),
+      first: document.querySelector('app-interop-message-trace svg a')?.getAttribute('aria-label') ?? '',
+      firstId: document.querySelector('app-interop-message-trace svg a .ocu-trace-id')?.textContent ?? '',
+    }));
+    assert.equal(drawn.firstId, sessionId, 'the first arrow\'s ID is the session id');
+    const prefix = STRINGS.interopTraceArrow.split(', <status>')[0].replace('<id>', sessionId).replace('<type>', 'Request').replace('<source>', 'EnsLib.Testing.Service').replace('<target>', 'EnsLib.Testing.Process');
+    assert.ok(drawn.first.startsWith(`${prefix},`), `the first arrow runs from the testing service to the testing process: ${drawn.first}`);
+    assert.deepEqual(drawn.heads.slice(0, 3), ['EnsLib.Testing.Service', 'EnsLib.Testing.Process', ECHO], 'the first three heads are the service, the process and the echo operation');
   } finally {
     await context.close();
   }

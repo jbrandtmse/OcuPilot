@@ -70,6 +70,9 @@
 /// endpoints) search <code>Ens.MessageHeader</code> by time window and header criteria, read one header's twenty-three properties,
 /// and show one message body as text. They read with <code>%ExecDirectNoPriv</code> after the gate, bind every value, and write
 /// nothing but the vendor's own view audit row for a body that opened (<method>ReadMessageContents</method>).</p>
+/// <p><b>The session trace</b> (Story 20.30, the <code>MessageTrace</code> endpoint) reads the whole session of one message header,
+/// in <code>ID</code> order, capped, as <method>MessageRow</method> builds each header plus its <code>Step</code>
+/// (<method>ListMessageTrace</method>). It reads no event, rule or I/O log entry and does not follow <code>SuperSession</code>.</p>
 /// <p>Seams a test subclass overrides: <method>GateClass</method>, <method>LogFault</method>,
 /// <method>StopSeconds</method>, <method>RoutineResource</method>, <method>SourceControlled</method>,
 /// <method>VendorAbortItem</method>, <method>VendorJob</method>, <method>LockTable</method>, <method>VendorSendTest</method>
@@ -83,7 +86,7 @@ Parameter GATECLASS = "OcuPilot.Screen.Gate";
 /// <p>The endpoints this port serves, comma-separated: the namespace's productions, business
 /// processes, data transformations and business rules, and a production's items.
 /// <file>ui/tools/screen-mirror.mjs</file> reads this list.</p>
-Parameter ENDPOINTS = "Productions,Processes,Transforms,Rules,Items,Settings,Monitor,ItemStatus,Queues,QueueItems,ItemQueue,ItemLog,ItemMessages,Jobs,ItemJobs,LookupTables,LookupEntries,BusinessPartners,ItemTest,Messages,MessageHeader,MessageContents";
+Parameter ENDPOINTS = "Productions,Processes,Transforms,Rules,Items,Settings,Monitor,ItemStatus,Queues,QueueItems,ItemQueue,ItemLog,ItemMessages,Jobs,ItemJobs,LookupTables,LookupEntries,BusinessPartners,ItemTest,Messages,MessageHeader,MessageContents,MessageTrace";
 
 Parameter ENDPOINTPRODUCTIONS = "Productions";
 
@@ -158,6 +161,10 @@ Parameter ENDPOINTMESSAGEHEADER = "MessageHeader";
 /// <parameter>MESSAGEKEY</parameter> names.</p>
 Parameter ENDPOINTMESSAGECONTENTS = "MessageContents";
 
+/// <p>One message's whole session (Story 20.30): the headers that share the session of the header <parameter>MESSAGEKEY</parameter>
+/// names, in <code>ID</code> order, as the search's rows with <code>Message</code> and <code>Step</code> added.</p>
+Parameter ENDPOINTMESSAGETRACE = "MessageTrace";
+
 /// <p>The endpoints whose <code>LIST</code> declares search criteria of its own (Story 20.9). A declared read names criteria on
 /// the interoperability port only as its parent's route id, except on these; <file>ui/tools/screen-mirror.mjs</file> reads this
 /// list as it reads <parameter>ENDPOINTS</parameter>.</p>
@@ -223,6 +230,9 @@ Parameter MESSAGEPAIRS = "%Ens_Portal:USE,%Ens_MessageHeader:USE";
 /// <p>The pair the MessageContents endpoint adds: the classic Contents pane's resource, which <code>EnsPortal.MessageContents</code>
 /// checks in its own code (Story 20.9).</p>
 Parameter MESSAGECONTENTPAIR = "%Ens_MessageContent:USE";
+
+/// <p>The pair the MessageTrace endpoint adds: <code>EnsPortal.VisualTrace</code>'s <code>RESOURCE</code> (Story 20.30).</p>
+Parameter MESSAGETRACEPAIR = "%Ens_MessageTrace:USE";
 
 /// <p>The pair a write adds: the vendor's own run resource, the classic
 /// <code>EnsPortal.ProductionConfig</code> check (measured: start, stop and restart answer #940
@@ -753,12 +763,12 @@ ClassMethod IsAnyWrite(pType As %String) As %Boolean
     Quit ..IsWrite(pType) || ..IsItemWrite(pType) || ..IsSettingWrite(pType) || ..IsRuntimeWrite(pType) || ..IsLookupWrite(pType) || ..IsTestWrite(pType)
 }
 
-/// <p>The runtime reads, as a <class>%List</class>: Story 20.4's nine and Story 20.9's three message reads. Each serves
+/// <p>The runtime reads, as a <class>%List</class>: Story 20.4's nine, Story 20.9's three message reads and Story 20.30's session trace. Each serves
 /// <code>LIST</code>; Queues, QueueItems and Jobs also serve the typed reads and writes of Story 20.23
 /// (<method>Serves</method>).</p>
 ClassMethod RuntimeEndpoints() As %List
 {
-    Quit $ListBuild(..#ENDPOINTMONITOR, ..#ENDPOINTITEMSTATUS, ..#ENDPOINTQUEUES, ..#ENDPOINTQUEUEITEMS, ..#ENDPOINTITEMQUEUE, ..#ENDPOINTITEMLOG, ..#ENDPOINTITEMMESSAGES, ..#ENDPOINTJOBS, ..#ENDPOINTITEMJOBS, ..#ENDPOINTMESSAGES, ..#ENDPOINTMESSAGEHEADER, ..#ENDPOINTMESSAGECONTENTS)
+    Quit $ListBuild(..#ENDPOINTMONITOR, ..#ENDPOINTITEMSTATUS, ..#ENDPOINTQUEUES, ..#ENDPOINTQUEUEITEMS, ..#ENDPOINTITEMQUEUE, ..#ENDPOINTITEMLOG, ..#ENDPOINTITEMMESSAGES, ..#ENDPOINTJOBS, ..#ENDPOINTITEMJOBS, ..#ENDPOINTMESSAGES, ..#ENDPOINTMESSAGEHEADER, ..#ENDPOINTMESSAGECONTENTS, ..#ENDPOINTMESSAGETRACE)
 }
 
 /// <p>The runtime reads that are about one item, named under <parameter>ITEMKEY</parameter>.</p>
@@ -776,7 +786,8 @@ ClassMethod ItemEndpoints() As %List
 /// Productions endpoint's pairs, and so does ItemStatus. The other runtime reads take the pairs of the classic page
 /// they replace (Story 20.4): Monitor, Queues and QueueItems, Jobs; and each item tab the Productions pairs plus its
 /// own (queue, event log, message headers, jobs). The Messages and MessageHeader endpoints take the classic message viewer's
-/// pair (<parameter>MESSAGEPAIRS</parameter>), and MessageContents adds the Contents pane's (Story 20.9).</p>
+/// pair (<parameter>MESSAGEPAIRS</parameter>), and MessageContents adds the Contents pane's (Story 20.9) and MessageTrace the Visual Trace's
+/// (Story 20.30).</p>
 ClassMethod Pairs(pEndpoint As %String, pType As %String = "") As %List
 {
     If (pEndpoint = ..#ENDPOINTPRODUCTIONS) || (pEndpoint = ..#ENDPOINTITEMS) || (pEndpoint = ..#ENDPOINTSETTINGS) || (pEndpoint = ..#ENDPOINTITEMSTATUS) || (pEndpoint = ..#ENDPOINTBUSINESSPARTNERS) {
@@ -801,6 +812,8 @@ ClassMethod Pairs(pEndpoint As %String, pType As %String = "") As %List
         Set tSpec = ..#MESSAGEPAIRS
     } ElseIf pEndpoint = ..#ENDPOINTMESSAGECONTENTS {
         Set tSpec = ..#MESSAGEPAIRS _ "," _ ..#MESSAGECONTENTPAIR
+    } ElseIf pEndpoint = ..#ENDPOINTMESSAGETRACE {
+        Set tSpec = ..#MESSAGEPAIRS _ "," _ ..#MESSAGETRACEPAIR
     } ElseIf pEndpoint = ..#ENDPOINTITEMJOBS {
         Set tSpec = ..#PRODUCTIONPAIRS _ "," _ ..#ITEMJOBPAIR
     } ElseIf $ListFind(..Endpoints(), pEndpoint) {
@@ -2655,8 +2668,8 @@ ClassMethod Fail(pMessage As %String, pStatus As %Status, Output pHttpStatus As 
 /// rows, at most <parameter>MAXROWSKEY</parameter> of them when that is above zero, and writes nothing:
 /// <code>Ens.Job:Enumerate</code>, whose <code>MarkDeadJobs</code> writes, is never called.</p>
 /// <ul>
-/// <li>Messages takes the search criteria <method>ListMessages</method> names; MessageHeader and MessageContents take the header's
-/// id under <parameter>MESSAGEKEY</parameter> (Story 20.9).</li>
+/// <li>Messages takes the search criteria <method>ListMessages</method> names; MessageHeader, MessageContents and MessageTrace take the
+/// header's id under <parameter>MESSAGEKEY</parameter> (Stories 20.9 and 20.30).</li>
 /// <li>Monitor, Queues and Jobs take no criterion; QueueItems takes <parameter>QUEUEKEY</parameter>; every other
 /// endpoint takes the item under <parameter>ITEMKEY</parameter> (the composite id or <code>Production||Name</code>),
 /// resolved as an item read resolves it: 400 when it is not one, 404 for an unknown production or item, 409
@@ -2704,7 +2717,7 @@ ClassMethod InvokeRuntime(pNamespace As %String, pEndpoint As %String, pType As 
             Set tSC = ..ListMessages(pNamespace, .pQuery, tMax, .pResult, .pHttpStatus, .pFault)
             Quit
         }
-        If (pEndpoint = ..#ENDPOINTMESSAGEHEADER) || (pEndpoint = ..#ENDPOINTMESSAGECONTENTS) {
+        If (pEndpoint = ..#ENDPOINTMESSAGEHEADER) || (pEndpoint = ..#ENDPOINTMESSAGECONTENTS) || (pEndpoint = ..#ENDPOINTMESSAGETRACE) {
             Set tMessage = $Get(pQuery(..#MESSAGEKEY))
             If '$Match(tMessage, ..#MESSAGEIDPATTERN) {
                 Set tSC = ..RefuseCriterion("message", .pHttpStatus, .pFault)
@@ -2712,6 +2725,8 @@ ClassMethod InvokeRuntime(pNamespace As %String, pEndpoint As %String, pType As 
             }
             If pEndpoint = ..#ENDPOINTMESSAGEHEADER {
                 Set tSC = ..ReadMessageHeader(pNamespace, tMessage, .pResult, .pHttpStatus, .pFault)
+            } ElseIf pEndpoint = ..#ENDPOINTMESSAGETRACE {
+                Set tSC = ..ListMessageTrace(pNamespace, tMessage, tMax, .pResult, .pHttpStatus, .pFault)
             } Else {
                 Set tSC = ..ReadMessageContents(pNamespace, tMessage, tMax, .pResult, .pHttpStatus, .pFault)
             }
@@ -3483,6 +3498,40 @@ ClassMethod ListMessages(pNamespace As %String, ByRef pQuery, pMax As %Integer, 
         Do pRows.%Push(..MessageRow(tFound(tI), "", "", 1))
     }
     Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>The two statements of the session trace (Story 20.30), each top-level (<method>SqlRows</method> takes no nested
+/// <code>TOP</code>): the session of one header, and that session's headers in <code>ID</code> order with the columns
+/// <method>MessageRow</method> builds a search row from. The second binds the cap first, then the session.</p>
+Parameter TRACESESSIONSQL = "SELECT SessionId FROM Ens.MessageHeader WHERE ID = ?";
+
+Parameter TRACESQL = "SELECT TOP ? ID, TimeCreated, %EXTERNAL(Status), SourceConfigName, TargetConfigName, MessageBodyClassName, SessionId, %EXTERNAL(Type), IsError FROM Ens.MessageHeader WHERE SessionId = ? ORDER BY ID";
+
+/// <p>The whole session of the message header <var>pId</var> (Story 20.30): every header that shares its <code>SessionId</code>, in
+/// <code>ID</code> order, at most <var>pMax</var> (<parameter>SQLMAX</parameter> when that is not above zero) of them, as
+/// <method>MessageRow</method> builds a search row, with <code>Message</code> (<var>pId</var>) and <code>Step</code> (1 to n in
+/// <code>ID</code> order, a JSON number) added. A header that is gone, or one saved with no session, reads as no rows (AD-37); the
+/// id's shape is judged by the caller. Every value is bound. The trace reads no event, rule or I/O log entry and does not follow
+/// <code>SuperSession</code>: the classic Visual Trace shows those and this read does not.</p>
+ClassMethod ListMessageTrace(pNamespace As %String, pId As %String, pMax As %Integer, Output pRows As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRows = ""
+    Set tTop = $Select(pMax > 0: pMax, 1: ..#SQLMAX)
+    Set tSC = ..SqlRows(pNamespace, ..#TRACESESSIONSQL, .tSession, .tCaught, +pId)
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the message's session could not be read", .pHttpStatus, .pFault)
+    Set tSessionId = $Select(tSession: $List(tSession(1), 1), 1: "")
+    Set pRows = []
+    Set pHttpStatus = 200
+    If tSessionId = "" Quit $$$OK
+    Set tSC = ..SqlRows(pNamespace, ..#TRACESQL, .tFound, .tCaught, tTop, +tSessionId)
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the message's trace failed", .pHttpStatus, .pFault)
+    For tI = 1:1:tFound {
+        Set tRow = ..MessageRow(tFound(tI), "", "", 1)
+        Do tRow.%Set("Message", pId, "string")
+        Do tRow.%Set("Step", tI, "number")
+        Do pRows.%Push(tRow)
+    }
     Quit $$$OK
 }
 
