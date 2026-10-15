@@ -235,6 +235,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
   **So is the wallet's use row** [AMENDED 2026-10-13, Story 18.41 spec gate, Rule 20]: `%System/%Security/WalletSecretUse` is off in the stock event set, and a wallet read writes no row; once an operator turns it on, each read writes one naming the secret, never the value: the vendor's record of a use the operator chose to record. Cost: one row per provider call while on. The wallet rung's refusals precede the vendor read and write no `AccessDenied` row.
 
+  **The MDX tool's query (Story 20.33)** [AMENDED 2026-10-14, Story 20.33 spec gate, Rule 20]: it writes the vendor's result and axis cache in the namespace's database, kept after a cancel, plus `^DeepSee.AgentLog`, `^DeepSee.Agents` and IRISTEMP's `^IRIS.Temp.DeepSee*`. The MDX job is the background run's second kind and never mutates of its own.
+
 ### AD-8 — Privilege is the process's, checked at call time, never cached
 
 - **Binds:** FR-4, FR-18, FR-19; every screen and every tool
@@ -341,6 +343,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
   **Story 20.11's analytics pairs** [AMENDED 2026-10-14, Story 20.11 spec gate, Rule 20]: Cubes and its tabs require `%DeepSee_Portal:USE`, Term lists `%DeepSee_PortalEdit:USE`, Folder items `%Development:USE` (orchestrator ruling Q2: a named narrower audience; the classic Folder Manager admits `%DeepSee_Admin` or `%Development`, and a custom role holding `%DeepSee_Admin` alone is refused). An account holding only `%DeepSee_*` resources is refused by the API floor; admitting one would be an owner decision, as DW-2140 was (named limit).
 
   **Story 20.32's analytics link pairs** [AMENDED 2026-10-14, Story 20.32 spec gate (orchestrator ruling Q1 A), Rule 20]: Architect requires `%DeepSee_Architect:USE` and Analyzer `%DeepSee_Analyzer:USE`, each its own pair and a named narrower audience than the vendor page's any-of `RESOURCE`; the User Portal requires `%DeepSee_Portal:USE`. Named limit: a holder of only `%DeepSee_ArchitectEdit:USE` or `%DeepSee_AnalyzerEdit:USE`, whom the vendor admits, is refused here, and the link reads "Requires %DeepSee_Architect:USE" (or Analyzer) so that holder sees what to add. AD-64's either-of check is not extended to these screens.
+
+  **Story 20.33's MDX pairs** [AMENDED 2026-10-14, Story 20.33 spec gate, Rule 20]: MDX query requires `%DeepSee_Portal:USE` and its own `%Development:USE`, a named narrower audience than the classic page's either-of.
 
 ### AD-9 — OcuPilot's own state is protected by a privileged routine application
 
@@ -603,6 +607,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
   **The tenth case is the allow-list itself** [AMENDED 2026-10-12, Story 18.42 spec gate, Rule 20]: on `POST /allowed-directories` alone a person names one whole absolute directory (at most 1,024 characters, compared normalized, else `ALLOWLIST.PATH`), written to `%GUIFileSelector` alone; an unrestricted add stores the manager directory before it restricts, so no write drops a root the person did not name.
 
+  **The MDX tool's statement (Story 20.33)** [AMENDED 2026-10-14, Story 20.33 spec gate, Rule 20]: the statement is the person's own query. OcuPilot concatenates it into nothing and hands it only to the vendor's parser. Text the vendor splices into SQL or evaluates as code runs only on the person's confirmation in the same request (AD-65's splice clause), and a drill-through's text is composed from the vendor's filters.
+
 ### AD-22 — Governance is polish-week work, and its shape is fixed now so Release 1 does not preclude it
 
 - **Binds:** FR-72 and the polish-week governance; every tool added after the Release 1 freeze
@@ -855,6 +861,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
   **A metrics sample neither backslash reading parses** [AMENDED 2026-10-14, Story 18.47 spec gate, Rule 20] (DW-2329, owner 2026-10-11): `MonitorPort.Samples` reads a label value with a single or a doubled backslash; a line neither parses is skipped and counted in one log line, and the read answers the remaining rows.
 
+  **An MDX run's answer (Story 20.33)** [AMENDED 2026-10-14, Story 20.33 spec gate, Rule 20]: its cells and listing are a screen-only payload, bounded by `AnalyticsPort`'s `MDX*` limits and held as the SQL console's background answer is.
+
 ### AD-37 — OcuPilot's own state has a declared lifecycle against the objects it references
 
 - **Binds:** AD-9, FR-21, 7.2; transcripts, the ledger, proposals, agent definitions
@@ -918,6 +926,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
   **Background SQL runs are bounded too** [AMENDED 2026-10-03, Story 19.15 spec gate, Rule 20]: a user has at most one running and the instance at most five (ruled by=merge_gate, subject to Story 19.15's Task 0 measurement of five concurrent runs beside ordinary sign-ins under the instance's license; a license-limit line or a refused sign-in lowers the instance cap to the largest clean value, recorded at AD-42; measured clean at five on `ocupilot-a2-ci`'s 8-unit Community key: five principals' runs held 7 of 8 units, each job one unit for its user, while nine concurrent sign-ins and requests answered 200, a sixth start answered 503 and `messages.log` carried no license line, so the cap stays five [AMENDED 2026-10-03, Story 19.15 implement Task 0, Rule 20]); a start past the first is refused 409 `EXPLORER.SQL.BACKGROUND.BUSY` naming the caller's running run, past the second 503 `EXPLORER.SQL.BACKGROUND.FULL`, and nothing is spawned.
 
+  **Background runs carry a kind** [AMENDED 2026-10-14, Story 20.33 spec gate, Rule 20]: a user has at most one live run per kind, and the instance at most five of all kinds (the SQL console and the MDX tool, Story 20.33).
+
 ### AD-42 — Provider egress is an allow-list, not a free-text URL
 
 - **Binds:** FR-25, FR-26, FR-27, 7.2, NFR-6; `ProviderPort`, the agent-definition screen
@@ -929,6 +939,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
   Three consequences settled at the Epic 3 merge gate. A configured **proxy** is a destination too: its host is judged by the same policy as the endpoint and at its write [AMENDED 2026-10-13, Story 18.40 spec gate, Rule 20], where a loopback, link-local or own-instance host is refused and an unresolvable one is not, and an https endpoint CONNECT-tunnels through it so the proxy never terminates the session that carries the key. **A marked-local endpoint bypasses the proxy entirely, and so is not judged against it** [AMENDED 2026-09-19, Story 10.3 (DW-441, decided at the Epic 4 merge gate)] -- a local call must never cross a proxy in cleartext, and because the chip's statement is computed from the same configuration the request uses, a proxy the call does not take cannot make that call read as leaving. A **stored credential goes only to the stored endpoint**: Test connection may try a body-supplied endpoint before saving, but that call carries the body's own key or none, and says which. Storing a key needs the instance's own credential-store privilege, which install never grants; its absence is a **named refusal** naming the resource. Moving the **default marker** is a security change, because it selects the endpoint and credential a turn uses for every user without an enabled pick; a pick is a preference, moves no marker and is not audited [AMENDED 2026-10-05, Story 19.11 spec gate, Rule 20].
 
   **Test connection answers before the Web Gateway does** [AMENDED 2026-09-24, Story 10.5 spec gate]. It is the one provider call made inside a foreground request, and a per-call timeout cannot bound it because `%Net.HttpRequest.Timeout` re-arms on every read (DW-1179). So its one call runs in a short-lived child job (`Kernel.Provider.TestCall`, one of four process spawn sites, with the turn job of AD-7, AD-21's remote-directory listing in `Port/RemoteDatabasePort`, which follows this model [AMENDED 2026-10-01, Story 18.16 spec gate, Rule 20], and the SQL console's background run in `Area/Explorer/SqlBackground` (Story 19.15), which the request does not wait for: it is spawned from no escalated frame, takes its statement, values and Max rows as one `JOB` argument and stores none of them, holds its run's lock for its life and is bounded by `SqlPort`'s alarm [AMENDED 2026-10-03, Story 19.15 spec gate, Rule 20]) that the request waits for against a **wall-clock bound of `g - min(10, g\2)` seconds**, `g` being the gateway's `Server_Response_Timeout` as the installer reads it (AD-17), or 60 when it cannot be read -- so raising that setting lengthens the test. On expiry the request answers its own envelope (`PROVIDER.TESTTIMEOUT`, or `PROVIDER.TESTTIMEOUTLOCAL` for a definition marked local) and records nothing verified; the child writes nothing, so a late answer can never verify a definition. The child is spawned from no escalated frame (AD-9) and the key never becomes a named local on either side (AD-35).
+
+  **The fourth spawn site** [AMENDED 2026-10-14, Story 20.33 spec gate, Rule 20]: `Kernel/Shell/BackgroundRun`, shared by the SQL console and the MDX tool (Story 20.33), with the same rules.
 
 ### AD-43 — Live data has one framework, and the proposal pause is part of it
 
@@ -1032,6 +1044,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
   **Story 20.11's `CLASSICPAGES`** [AMENDED 2026-10-14, Story 20.11 spec gate, Rule 20]: `%DeepSee.UI.ModelBrowser`, `%DeepSee.UI.TermListManager` and `%DeepSee.UI.FolderManager` (`NormalizePage`, measured at Task 0).
 
   **Story 20.32's `CLASSICPAGES`** [AMENDED 2026-10-14, Story 20.32 spec gate, Rule 20]: the analytics links declare `%DeepSee.UI.Architect`, `%DeepSee.UI.Analyzer` and `%DeepSee.UserPortal.Home` as the classic pages they open (`NormalizePage`, measured).
+
+  **Story 20.33's `CLASSICPAGES`** [AMENDED 2026-10-14, Story 20.33 spec gate, Rule 20]: the MDX query screen declares `%DeepSee.UI.MDXQuery`.
 
 ### AD-45 — There is one smoke path, and it is also the health check
 
@@ -1386,6 +1400,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 - **Rule:** [AMENDED 2026-10-14, Story 20.11 spec gate, Rule 20] `AnalyticsPort` calls the vendor's `%DeepSee` classes in process, as the signed-in person, never `/api/deepsee`, `%Api.DeepSee` or `%DeepSee.REST.*` (the REST layer resets roles to the login roles, checks no `%DeepSee_*` resource and splices caller text; an IRIS defect candidate under the owner's hold). Before any vendor call it checks, in order: the endpoint's pairs; the namespace's shape; that the namespace reports analytics (`NamespaceFeatures`), else 409 `ANALYTICS.NAMESPACE`; READ on the namespace's globals and routines databases. The vendor's own cube and folder-item resource checks still apply (`%DeepSee.Utils.%CheckPrivilege`, `%CheckResource()`). It calls only reads measured to write nothing (`%GetCubeList`, `%GetCubeClass`, `%GetCubeFactCount`, `%GetCubeMeasures`, `%GetDimensionList`, `%GetRelatedCube`, `%CheckPrivilege`, `%CubeExists`, `CubeManager.Utils.GetLastUpdate`, `%DeepSee.TermList` `%GetTermLists` and `%ToObj`, `%GetFolderItemList` with no caller value, `%GetFavoriteList`, `FolderItem` reads), never `%GetMemberTree` (writes `^DeepSee.Session`), `%GetDimensionMembers` (writes the MDX cache) or `%GetFavoritesForUser` (deletes favorites), and prepares no statement of its own. Its source kind is `analytics`, with seven `LIST` endpoints (AD-36). MDX execution is Story 20.33's and the cube manager's build and synchronize Story 20.34's, each extending this port.
 
   **MDX text that runs server-side code or SQL** [AMENDED 2026-10-14, Story 20.33 spec gate (orchestrator ruling Q2 C, the owner's developer-tool-first rule; the owner confirmed it: "Let's go with your recommendation"), Rule 20]: `%SEARCH`, `%SQLRESTRICT`, `RETURN` and `%ORDER` make the vendor run ObjectScript or SQL with the caller's rights (measured at Story 20.33's plan: `%SEARCH.&[...{$Increment(^g)}]` wrote a global). The person's MDX screen (Story 20.33) detects them and asks first, in a confirmation that names the consequence in plain words ("This query runs server-side code or SQL with your rights."), then runs the query; a query without them runs as a plain read. The classic MDX page runs them with no confirmation, so this is stricter than the vendor. The confirmation is the person's own step on their own query, not an AD-6 proposal. The agent's MDX read (Story 20.35) refuses them with `ANALYTICS.MDX.SQL`: an agent read tool never executes code (AD-60). SQL computed dimensions and `%KPI` classes are the cube author's code, not query text, and stay named limits.
+
+  **The MDX query tool (Story 20.33)** [AMENDED 2026-10-14, Story 20.33 spec gate, Rule 20]: MDX runs through `AnalyticsPort`'s `Mdx*` calls behind `MDXPAIRS` and WRITE on the database `^DeepSee.Cache.Results` maps to (a read-only one is refused 409 `ANALYTICS.MDX.READONLY`). Only SELECT with at most two axes, and DRILLTHROUGH, run; a drill-through is composed in the job from the vendor's `%GetFiltersForCellRange`. `MdxConstructs` is the one detection of the splice clause's four constructs: the screen's start carries the person's confirmation as `confirmed: true`, and without it the start answers `confirm`, naming the consequence, and runs nothing; Story 20.35's agent read refuses through the same detection. The vendor's `%CancelQuery` checks no owner, so the run row is the owner check.
 
 ## Consistency Conventions
 
