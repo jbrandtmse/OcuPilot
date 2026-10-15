@@ -379,3 +379,8 @@ spawn_at=2026-10-06T16:01:05Z	Story 23.4	cr_complete	batch=b 2026-10-06T20:34:58
 2026-10-14T22:48:23Z	Epic 23	integrated_forward	feature=f5af4d7e conflicts=sprint-status.yaml_last_updated(resolved_ours+generate) ledger_duplicates=0 code_in_merge=none
 2026-10-14T22:48:23Z	Story 23.5	ledger_reowned	entries=DW-2246,DW-2182,DW-2202,DW-2221,DW-2439 owner=23-11-the-range-end-cleanup-part-10 by=lead slice_23-5_after=19
 2026-10-14T22:48:23Z	Story 23.5	stage_spawned	stage=implement batch=a spawn_at=2026-10-14T22:48:23Z model=sonnet agent_name=23-5-the-range-end-cleanup-part-5-implement-a cycle_iteration=1 items=DW-1985,2101,1436,2227 throwaway=ocupilot-ci
+2026-10-15T00:33:06Z	Story 23.5	implement_returned	batch=a agent=af6c1e448a861a4b0 build_sha=cdf51e15 baseline_revision=72e34617 spec_status=done review_loop_iteration=0 followup_review_recommended=true deferred=1(harvested_DW-2441_open_23-5,residual_of_DW-2101)
+2026-10-15T00:33:06Z	Story 23.5	owner_decision_committed	sha=c7edabf5 what=bundle_maximumWarning_2500kB_fixed(owner_2026-10-14),maximumError_4000kB,rebase_policy_retired measured_initial=1.93MB mutation=1992kB_literal->angular-json.test_DW-371_red ledger=DW-1166_resolved-by_23-5_by=owner
+2026-10-15T00:33:06Z	Story 23.5	pushed	batch=a head=c7edabf5 code=cdf51e15+c7edabf5 ci=pending run=38657122381 head_confirmed_by=headSha
+2026-10-15T00:33:06Z	Story 23.5	lead_error	fault=lead what=sweep_shards_2/20_and_3/20_issued_in_one_message observed=ci-runner_reported_0_overlaps_0_foreign_runs_on_both;both_green consequence=none_observed;sweep_restarted_on_merged_tree_anyway
+2026-10-15T00:33:06Z	Story 23.5	sweep_interrupted	shards_done=1-7/20_green(pre-merge_tree_c7edabf5) reason=orchestrator:feature_moved(20.9_merged);restart_full_sweep_on_merged_tree

@@ -3787,6 +3787,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-19T00:22:45Z status=resolved-by:4-12-epic-4-burn-down by=adjudication note=owner decision at the merge: angular.json's maximumWarning is 1050kB and maximumError 1600kB, both pinned literals updated in the same reviewed diff and the size parser taught to read either unit. Evidence: the merged initial total measured 994,301 B raw, 209.12 kB gzip transfer. The policy this entry now carries: re-base maximumWarning to about 5 percent above the measured total at each epic close so growth stays a reviewed diff, treat 1,600 kB raw as the hard stop, and lazy-load the area routes only if the raw total approaches it. Lazy routes were declined for now: the app has no lazy route at all and build-output.test.mjs's unmeasured-chunk tripwire would have to be taught to classify one
 - 2026-09-25T02:47:49Z status=resolved-by:4-12-epic-4-burn-down by=owner note=owner decision 2026-09-24: maximumError raised 1600kB->2000kB for Release 1 (Epics 9+12 project ~1.65 MB merged, inference); served from the instance, NFR-1 unaffected; on-demand loading of editor pages becomes a post-release story; maximumWarning policy (about 5% above measured) unchanged
 - 2026-09-26T20:04:26Z status=resolved-by:4-12-epic-4-burn-down by=owner note=owner decision 2026-09-26: maximumError raised 2000kB->4000kB for the voting week; on-demand loading of editor screens is a story after the voting week (owner reminder set for 2026-10-03); warning re-base policy unchanged; runners stop and ask above 3800kB
+- 2026-10-14T23:56:25Z status=resolved-by:23-5-the-range-end-cleanup-part-5 by=owner note=owner 2026-10-14: maximumWarning fixed at 2500kB, maximumError 4000kB; the re-base-on-crossing policy is retired, a crossing is reported to the owner
 
 ### DW-1167: requireFreeSlot guards only the navigation browser spec, while four other specs arm a turn probe and can be blocked the same way
 - source: spec-4-12-epic-4-burn-down.md | severity: low | fix-risk: low | footprint: in-epic
@@ -11978,3 +11979,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-23-5-the-range-end-cleanup-part-5.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: inference from the shape (Story 23.5 plan); no red observed
 - 2026-10-14T22:44:29Z status=wontfix-theoretical owner=23-5-the-range-end-cleanup-part-5 by=spec_gate note=reopen_if=a_structural-gate_red_naming_.ocu-proposal-card-confirm-spinner
+
+### DW-2441: Count strings outside Batch a's table still read the plural at 1 (explorerSqlStopped's 'Stopped after 1 seconds.'; candidates agentDefinitionTestTimeout, processBroadcastHint, tableCheckAtMost, remoteDatabaseListHint, explorerSqlDataTabCap and others), against Story 23.5's AC that every count reads singular at 1
+- source: spec-23-5-the-range-end-cleanup-part-5.md (implement batch a deferred) | severity: med | fix-risk: low | footprint: in-story
+- evidence: explorerSqlStopped fills <s> from the recorded seconds (core/sql-answer.ts:78,107), so 1 is reachable; the other candidates are a heuristic scan (inference)
+- 2026-10-14T23:57:00Z status=open owner=23-5-the-range-end-cleanup-part-5 by=harvest note=census_plus_a_singular_per_reachable_string;through_count-phrase.ts
