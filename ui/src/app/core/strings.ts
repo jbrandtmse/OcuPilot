@@ -4715,6 +4715,8 @@ export const STRINGS = {
   explorerSaveRefused: 'The instance refused this text, so nothing was saved.',
   /** EXPERIENCE.md:593 */
   explorerEditorRefusedAction: 'save this document',
+  /** EXPERIENCE.md:604 */
+  explorerDocumentSourceControl: 'Source control has not released this document for editing, so nothing was saved. Check it out first.',
   // Story 18.5: Journals, Journal file details and Journal file databases -- titles, column headers,
   // empty states and prompts; the two screen-level switches and the integrity check, their warnings
   // (also the agent's card lines), the check's flag and its two verdicts. Size, Reason, Maximum size,

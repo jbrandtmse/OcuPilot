@@ -4796,6 +4796,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Api.Confirm.ReasonFor falls through to Error.ReasonForToolCode, whose terminal fallback is REASONTOOLUNAVAILABLE. The codes that reach it are PORT.*, set on Confirm.Transition's write-failure branch where the row is burned and confirmed. A correct sentence needs either new copy or a PORT arm in the contended Api/Error.cls, which this story's ruling (c) forbids. Location: src/OcuPilot/Api/Confirm.cls ReasonFor
 - 2026-09-19T23:47:47Z status=routed owner=5-8-web-applications-enable-a-disabled-application-and-grant-it by=cr note=5.8 drives a confirm end to end for UJ-3 and owns the refusal the user sees, as DW-1252 is already owned there
 - 2026-09-19T23:49:40Z status=wontfix-accepted owner=range-end-cleanup by=cr note=the implement pass rejected this with a stated reason and this pass has no new evidence; reopen_if=a user reports the write-failed refusal as a tool problem
+- 2026-10-15T21:30:01Z occurrence=20-10-source-control-hooks
+- 2026-10-15T21:30:01Z status=escalated owner=burndown by=cr note=reopened: 20.10 publishes EXPLORER.DOCUMENT.SOURCECONTROL for the agent save; its card shows REASONTOOLUNAVAILABLE
 
 ### DW-1281: A confirm that cannot take its target's lock is answered 500 rather than as the contention it is
 - source: spec-5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at.md | severity: low | fix-risk: low | footprint: in-epic
@@ -12103,11 +12105,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-20-31-message-resend-and-edit-and-resend.md (code review, rework re-review 1) | severity: med | fix-risk: high | footprint: in-story
 - evidence: PlanMigration (Installer.cls:2133) refuses a downgrade only by SCHEMAVERSION, which stays 1. 1.0.12 keys ProposalTargetIdx by TargetRef (MAXLEN 512): its all-users GuardedExpireStale, which GuardedClose and GuardedCloseLiveForConvo run first, fails on a stored-live row whose TargetRef is over about 455 characters (inference, from the measured <SUBSCRIPT>), and its sibling cancel misses rows indexed by digest. The Design Notes argue the upgrade direction only.
 - 2026-10-15T13:19:16Z status=escalated owner=burndown by=cr note=decision sheet: move SCHEMAVERSION with a MigrateToVersion2 (installer suite, MigrateFault steps 2-3) or record the downgrade as accepted
+- 2026-10-15T20:39:51Z status=by-design owner=20-31-message-resend-and-edit-and-resend by=lead note=orchestrator ruling 2026-10-15: the installer refuses a stored version newer than the code, so a downgrade is refused first; SCHEMAVERSION stays
 
 ### DW-2457: A write tool whose target is longer than Propose.TARGETREFMAX (2,200 characters), such as an explorer compile or delete of up to 100 long document names, fails its mint with 500 INTERNAL after the fresh read and diff, not with a typed refusal
 - source: spec-20-31-message-resend-and-edit-and-resend.md (code review, rework re-review 1) | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: GuardedMint (Kernel/State/Propose.cls) answers a GeneralError for a target over 2,200 characters, which the mint renders as 500 INTERNAL; ExplorerWrite admits up to AtelierPort.MAXDOCUMENTS = 100 names, so names of about 22 characters exceed it. Before rework 1 the same set failed near 455 characters with <SUBSCRIPT>; the rework records it only as a residual risk.
 - 2026-10-15T13:19:21Z status=escalated owner=burndown by=cr note=decision sheet: a typed refusal at Mint (after Operation.TargetRefOf) naming the limit, or a document cap bounded by target length
+- 2026-10-15T20:39:51Z status=routed owner=burndown by=lead note=orchestrator ruling 2026-10-15: a defect, not a decision; a mint target over 2,200 chars must answer a field refusal, never 500 (MED)
 ### DW-2454: A proposal card's diff row overflows the panel at its 320 px minimum: an unbreakable value runs past its row, so impact.browser-spec's 720 px pass of a role delete is clean only while the panel is still narrowing
 - source: spec-23-5-the-range-end-cleanup-part-5.md (implement batch c deferred) | severity: med | fix-risk: low | footprint: in-story
 - evidence: settled at 320 px on ocupilot-ci, detectScreen reports app-long-block>span.ocu-diff-before 127 px past p.ocu-diff-row-removed (389 px of text in a 262 px row); pre-existing
@@ -12145,6 +12149,15 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: CI run 38782509360 attempt 1: 'Waiting for selector #ocu-encryption-startup-DBEncStartMode-None failed' after 34 s; ocupilot-b-ci on the same tree: 3 of 3 green; the spec is Story 18.48's, untouched by 20.31
 - 2026-10-15T18:44:49Z status=routed owner=burndown by=lead note=flake priority: rerun once; a second red on the same head is a story red
 
+### DW-2463: The interop-editor browser specs keep local copies of the helpers interop-editor-spec.mjs now shares (answered, editorShows, the frame selector) and of 20.7's readSettings, settingsNode and shellAt
+- source: spec-20-10-source-control-hooks.md (code review) | severity: low | fix-risk: low | footprint: in-epic
+- evidence: agent-editor-save.browser-spec.mjs:244-260 and interop-viewers.browser-spec.mjs:246-258 keep answered/editorShows/appFrame and their own FRAME; interop-editors.browser-spec.mjs:74 keeps FRAME; interop-editor-source-control.browser-spec.mjs copies readSettings/settingsNode/shellAt/definitionModified from interop-editors with a USER namespace. Consolidating touches four specs, each needing its own browser run (Rule 31, weak reason).
+- 2026-10-15T21:30:06Z status=wontfix-accepted owner=20-10-source-control-hooks by=cr note=reopen_if=a fifth interop-editor browser spec copies answered, editorShows, readSettings, shellAt or the frame selector
+
+### DW-2464: messages.log tail readers are copied across tests (SourceControlSave.LogSize/LogLine, WalletKeyProbe.LogSize/LogSince, inline in SqlSaveLive and five others), and the %Stream.FileCharacter ones seek a byte offset as a character position
+- source: spec-20-10-source-control-hooks.md (code review) | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: GetFileSize answers bytes and FileCharacter.MoveTo counts characters, so multibyte text before the offset skips the new line (inference: false red only). The sibling WalletKeyProbe.LogSince reads binary; it is Epic 18's, a contended file in another area, so 20.10 copied rather than extended (Rule 31).
+- 2026-10-15T21:30:11Z status=wontfix-accepted owner=20-10-source-control-hooks by=cr note=reopen_if=a messages.log tail assertion goes red while the line it looks for is in the log after its offset
 ### DW-2462: flake: OcuPilot.Test.LogTail TestAnAbsentFileIsWaitedOutAndReportedAtTheBound found the file present (a look did find the file absent: 0, waited .406 s, then INVALID OREF at +21) in a full sweep, green alone
 - source: lead full ObjectScript sweep, Story 23.5 batch d (merged 20.31) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: ocupilot-ci fresh from 43cb9e06, shard 8/20: 1 of 282 failed; LogTail alone run 267 11/11; batch d changed no log code

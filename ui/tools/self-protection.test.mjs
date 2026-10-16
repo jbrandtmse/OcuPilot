@@ -620,6 +620,7 @@ const ATELIER_REFUSALS = [
   ['REASONSAVEHEADER', 'explorerSaveHeader'],
   ['REASONSAVETOOLARGE', 'explorerSaveTooLarge'],
   ['REASONSAVEREFUSED', 'explorerSaveRefused'],
+  ['REASONDOCUMENTSOURCECONTROL', 'explorerDocumentSourceControl'],
   ['REASONEXPORTDIRECTORY', 'explorerExportDirectory'],
   ['REASONIMPORTUNREADABLE', 'explorerImportUnreadable'],
   ['REASONIMPORTCHANGED', 'explorerImportChanged'],

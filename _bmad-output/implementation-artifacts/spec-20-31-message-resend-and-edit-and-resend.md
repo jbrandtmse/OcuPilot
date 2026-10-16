@@ -643,6 +643,7 @@ Rework 3 (CI run 38772231768 on 45f97556):
 - 2026-10-15: re-opened for rework iteration 1 (code review's one HIGH, the long-set proposal target; lead ruling (b) under Review Findings).
 - 2026-10-15: re-opened for rework iteration 2 (the runner's fresh check and full sweep: two [Smoke] items under Review Findings).
 - 2026-10-15: re-opened for rework iteration 3 of 3 (a CI story red: the container compile order; one [CI] item under Review Findings).
+- 2026-10-15, lead (orchestrator rulings): DW-2456 is by-design (the installer refuses a stored version newer than the code, so a downgrade is refused before the re-keyed `ProposalTargetIdx` matters; `SCHEMAVERSION` stays); DW-2457 (a mint target over 2,200 characters answers 500) is a defect routed to the Epic 20 burn-down.
 
 ## Review Triage Log
 

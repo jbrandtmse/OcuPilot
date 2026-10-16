@@ -319,6 +319,8 @@ Its license is MIT, "Copyright (c) 2026 jbrandtmse". `ATTRIBUTIONS.md`:35-45 has
 
 ## Spec Change Log
 
+- 2026-10-15, spec gate (runner): the orchestrator ruled Q1 (A, Story 20.36 chartered) and Q2 (A); attribution approved (the iris-execute-mcp-v2 row also credits Story 20.30's diagram port); the spine carries AD-66 and the Story 20.12 clauses in AD-5, AD-11 and AD-24.
+
 ## Review Triage Log
 
 ## Design Notes
@@ -455,8 +457,8 @@ Checked and not engaged: AD-51 and AD-52 (no new write tools), AD-58 (only its v
 
 **Gate questions (for the orchestrator):**
 
-- **Q1, split.** (A) This spec is Part A, and Part B becomes Story 20.36 after 20.12, before 20.25. Rule 5 ask-first: it defers a criterion. Recommended. (B) One story: the lead re-opens this spec to `draft`, and the re-plan adds Part B.
-- **Q2, the set.** (A) The nine above. `run-external-backup` waits for freeze, thaw and backup history (Story 21.2), and `promote-environment-change` for environment diff and promote (Story 21.9). Recommended. (B) Only the four that need this stage's screens (`recoverproduction`, `resendmessages`, `tracemessage`, `slowquery`), with the rest added as data later.
+- **Q1, split.** *Ruled (A) by the orchestrator, 2026-10-15: Investigate is Story 20.36, chartered.* (A) This spec is Part A, and Part B becomes Story 20.36 after 20.12, before 20.25. Rule 5 ask-first: it defers a criterion. Recommended. (B) One story: the lead re-opens this spec to `draft`, and the re-plan adds Part B.
+- **Q2, the set.** *Ruled (A) by the orchestrator, 2026-10-15: all nine, renamed; the two without tools are a named limit until Stories 21.2 and 21.9 land.* (A) The nine above. `run-external-backup` waits for freeze, thaw and backup history (Story 21.2), and `promote-environment-change` for environment diff and promote (Story 21.9). Recommended. (B) Only the four that need this stage's screens (`recoverproduction`, `resendmessages`, `tracemessage`, `slowquery`), with the rest added as data later.
 
 **Rule 5 draft (Q1 A, for `epics.md`).** Story 20.12 keeps its title and its first and third criteria. The second moves verbatim to Story 20.36, inserted after 20.12 in `story_order`.
 
