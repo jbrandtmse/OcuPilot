@@ -6,8 +6,9 @@
 /// returns the rows, each field bounded, and never the document. Denials over the wire, by real
 /// principals, are <class>OcuPilot.Test.AtelierPortDenial</class>'s.</p>
 /// <p>Needs the API application installed in the install namespace and the test principal holding
-/// <code>%Development:USE</code> and READ on the namespaces' code databases. It issues reads only;
-/// the dispatch leg seeds one completed turn as the principal and removes it and its ledger rows.</p>
+/// <code>%Development:USE</code> and READ on the namespaces' code databases. It issues reads only,
+/// apart from the large-view test, which saves one probe class and deletes it; the dispatch legs seed
+/// one completed turn as the principal and remove it and its ledger rows.</p>
 Class OcuPilot.Test.ExplorerWire Extends %UnitTest.TestCase
 {
 
@@ -16,6 +17,9 @@ Parameter READPATH = "/api/ocupilot/screens/";
 
 /// <p>The agent's limits class.</p>
 Parameter LIMITS = "OcuPilot.Kernel.Agent.Limits";
+
+/// <p>The probe documents' maker and remover.</p>
+Parameter PROBE = "OcuPilot.Test.ExplorerProbe";
 
 Method OnBeforeOneTest() As %Status
 {
@@ -218,6 +222,70 @@ Method TestTheReadToolsAnswerRowsAndNeverTheDocument()
     } Catch ex {
         Do $$$AssertStatusOK(ex.AsStatus(), "the dispatch leg ran")
     }
+    Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tTurnKey)
+    Do ##class(OcuPilot.Test.ProposalFixture).RemoveSeeded(.tRemaining)
+    Do $$$AssertEquals(tRemaining, 0, "the seeded turn is removed")
+}
+
+/// <p>Dispatch <code>explorer.class.read</code> of <var>pName</var> (without <code>.cls</code>) for
+/// turn <var>pKey</var> with the reply's share <var>pMaxLength</var> (the limits class's own when 0).
+/// <var>pIsError</var> and <var>pContent</var> are the <code>tool_result</code>'s.</p>
+Method DispatchClassRead(pKey As %String, pName As %String, pMaxLength As %Integer, Output pIsError As %Boolean, Output pContent As %String) As %Status
+{
+    Set tUse = {"type": "tool_use", "id": "toolu_large"}
+    Do tUse.%Set("name", ##class(OcuPilot.Screen.Tool.Registry).WireName("explorer.class.read"), "string")
+    Do tUse.%Set("input", {"name": (pName _ ".cls")})
+    Set tSC = ##class(OcuPilot.Kernel.Agent.Dispatch).Answer(pKey, $Username, "", [(tUse)], ..#LIMITS, .tResults, .tNames, 0, pMaxLength, .tDetails)
+    Set pIsError = 1
+    Set pContent = ""
+    If $$$ISOK(tSC) {
+        Set pIsError = tResults.%Get(0).%Get("is_error")
+        Set pContent = tResults.%Get(0).%Get("content")
+    }
+    Quit tSC
+}
+
+/// <p>Integration (AC3, AD-24): a class whose view is larger than the reply's share is answered through
+/// the agent's dispatcher as the first member rows that fit, whole rows from the end cut and reported,
+/// never <code>TOOL.RESULTTOOLARGE</code> -- at the default share, and at a share one character under
+/// that answer, which answers one row fewer.</p>
+/// <p>Saves <class>OcuProbe192.LargeView</class>, uncompiled, with 80 methods each documented in 1,500
+/// characters, and deletes it.</p>
+/// <p>Mutation: drop the loop that removes kept rows from step 3 of
+/// <method>OcuPilot.Kernel.Agent.Bound.Apply</method> -&gt; the second dispatch answers
+/// <code>TOOL.RESULTTOOLARGE</code> and its assertions go red.</p>
+Method TestALargeClassViewIsCutByWholeRows()
+{
+    Set tName = $Parameter(..#PROBE, "PACKAGE") _ ".LargeView"
+    Set tShare = +$Parameter(..#LIMITS, "TOOLRESULTMAXLENGTH")
+    Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedTurn($Username, "completed", .tTurnKey)
+    Do $$$AssertStatusOK(tSC, "a probe turn is seeded")
+    If $$$ISERR(tSC) Quit
+    Try {
+        Do $$$AssertStatusOK($ClassMethod(..#PROBE, "MakeLargeClass", $Namespace, tName, 80, 1500), "the probe class is saved")
+
+        Set tSC = ..DispatchClassRead(tTurnKey, tName, 0, .tIsError, .tContent)
+        Do $$$AssertStatusOK(tSC, "the dispatch answers at the default share")
+        Do $$$AssertEquals(tIsError, 0, "without error: " _ $Extract(tContent, 1, 200))
+        Set tAnswer = ##class(%DynamicObject).%FromJSON(tContent)
+        Do $$$AssertEquals(tAnswer.truncated, 1, "the view is cut")
+        Do $$$AssertTrue(tAnswer.rowsSent < tAnswer.rowsAvailable, "to fewer rows than it holds: " _ tAnswer.rowsSent _ " of " _ tAnswer.rowsAvailable)
+        Do $$$AssertEquals(tAnswer.rowsSent, tAnswer.rows.%Size(), "the count it reports is the rows it holds")
+        Do $$$AssertEquals(tAnswer.rows.%Get(0).Kind, "class", "from the first row")
+        Do $$$AssertTrue($Length(tContent) <= tShare, "within the share: " _ $Length(tContent))
+
+        Set tCap = $Length(tContent) - 1
+        Set tSC = ..DispatchClassRead(tTurnKey, tName, tCap, .tIsError2, .tContent2)
+        Do $$$AssertStatusOK(tSC, "the dispatch answers at a share one under")
+        Do $$$AssertEquals(tIsError2, 0, "without error: " _ $Extract(tContent2, 1, 200))
+        Set tAnswer2 = ##class(%DynamicObject).%FromJSON(tContent2)
+        Do $$$AssertEquals(tAnswer2.rowsSent, tAnswer.rowsSent - 1, "one row fewer")
+        Do $$$AssertEquals(tAnswer2.rowsSent, tAnswer2.rows.%Size(), "the count it reports is the rows it holds")
+        Do $$$AssertTrue($Length(tContent2) <= tCap, "within that share: " _ $Length(tContent2) _ " of " _ tCap)
+    } Catch ex {
+        Do $$$AssertStatusOK(ex.AsStatus(), "the large-view leg ran")
+    }
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Remove", $Namespace), "the probe class is deleted")
     Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tTurnKey)
     Do ##class(OcuPilot.Test.ProposalFixture).RemoveSeeded(.tRemaining)
     Do $$$AssertEquals(tRemaining, 0, "the seeded turn is removed")

@@ -22,6 +22,7 @@
 /// report carrying errors and a full listing are driven without an instance holding them.</p>
 /// <p><b>The live tail's timing and faults can be armed</b> (Story 18.38): <method>SetTail</method> sets
 /// the bound, check and beat seconds, <method>ArmTailThrow</method> makes a look at the file throw,
+/// <method>ArmTailGap</method> removes the file at one look and writes it back at a later one,
 /// <method>Faults</method> counts what <method>LogFault</method> was asked to log, which is how "nothing
 /// is logged" is read off a counter, and <method>AbsentLooks</method> counts the looks that found the file
 /// absent.</p>
@@ -272,6 +273,18 @@ ClassMethod ArmTailThrow(pName As %String, pAfterLooks As %Integer = 0)
     Set ^||OcuPilotLogFixture("tailThrowAfter") = pAfterLooks
 }
 
+/// <p>Make <method>TailState</method> remove the file it looks at before reading on look
+/// <var>pAtLook</var>, and write <var>pContent</var> to it before reading on look
+/// <var>pAtLook</var> + <var>pLooks</var>, so the file is absent to the <var>pLooks</var> looks between.
+/// Looks are counted from 0, as <method>ArmTailThrow</method> counts them; <method>Clear</method> forgets
+/// the arm.</p>
+ClassMethod ArmTailGap(pAtLook As %Integer, pLooks As %Integer, pContent As %String)
+{
+    Set ^||OcuPilotLogFixture("tailGapAt") = pAtLook
+    Set ^||OcuPilotLogFixture("tailGapLooks") = pLooks
+    Set ^||OcuPilotLogFixture("tailGapContent") = pContent
+}
+
 /// <p>How many times <method>LogFault</method> has been asked to log since <method>Clear</method>.</p>
 ClassMethod Faults() As %Integer
 {
@@ -312,6 +325,11 @@ ClassMethod TailState(pPath As %String, Output pSize As %Integer, Output pIdenti
     Set tThrow = $Get(^||OcuPilotLogFixture("tailThrow"), "")
     If (tThrow '= "") && (tLooks >= $Get(^||OcuPilotLogFixture("tailThrowAfter"), 0)) {
         Throw ##class(%Exception.SystemException).%New(tThrow, 0, "TailState", "armed by OcuPilot.Test.LogSourceFixture")
+    }
+    Set tGapAt = $Get(^||OcuPilotLogFixture("tailGapAt"), "")
+    If tGapAt '= "" {
+        If tLooks = tGapAt Do ##class(%File).Delete(pPath)
+        If tLooks = (tGapAt + ^||OcuPilotLogFixture("tailGapLooks")) Do ##class(OcuPilot.Test.LogSource).WriteFile(pPath, ^||OcuPilotLogFixture("tailGapContent"))
     }
     Set tPresent = ##super(pPath, .pSize, .pIdentity)
     If 'tPresent Set ^||OcuPilotLogFixture("tailAbsent") = $Get(^||OcuPilotLogFixture("tailAbsent"), 0) + 1

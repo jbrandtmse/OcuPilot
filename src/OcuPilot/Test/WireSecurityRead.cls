@@ -483,7 +483,9 @@ Method TestOnDemandAndUpcomingTasksPairSetsAreEnforcedForARealPrincipal()
 /// <p>Story 6.6, Matrix "Pairs" -- Task history (all) and the per-task history declare the task
 /// schedule's own pair set, proved with the same real principals: a caller holding
 /// <code>%Admin_Task:USE</code> alone is denied by name on both routes, and granting
-/// <code>%DB_IRISSYS:READ</code> too serves the same rows the test account reads.</p>
+/// <code>%DB_IRISSYS:READ</code> too serves the same rows the test account reads. The per-task read is
+/// scoped to the demo task, so it stays under the 1,000-row bound on an instance with a long
+/// history.</p>
 /// <p>Mutation: remove <code>%DB_IRISSYS:READ</code> from
 /// <class>OcuPilot.Screen.Descriptor.TaskHistoryList</class> or
 /// <class>OcuPilot.Screen.Descriptor.TaskRunList</class> -&gt; the registry refuses to validate the
@@ -495,7 +497,10 @@ Method TestTaskHistoryPairSetsAreEnforcedForARealPrincipal()
     Do ..AssertReadRefused(..#TASKUSER, "tasks.taskhistory", "%DB_IRISSYS:READ")
 
     Do ..AssertSameRowsAsTestAccount(..#TASKBOTHUSER, "tasks.history", "&search=OcuPilotDemo%20nightly", "OcuPilotDemo nightly")
-    Do ..AssertSameRowsAsTestAccount(..#TASKBOTHUSER, "tasks.taskhistory")
+    Set tTaskId = ..DemoTaskId()
+    Do $$$AssertNotEquals(tTaskId, "", "the demo task's id is found")
+    If tTaskId = "" Quit
+    Do ..AssertSameRowsAsTestAccount(..#TASKBOTHUSER, "tasks.taskhistory", "&taskId=" _ tTaskId, "", "TaskId=" _ tTaskId)
 }
 
 /// <p>The demo fixture task's own numeric <code>Id</code>, read through the test account's
@@ -1081,9 +1086,11 @@ Method TestBothPairsReadEveryList()
 
 /// <p>Assert that <var>pUser</var>'s read of <var>pTool</var> at <code>maxRows=1000</code> answers
 /// 200 with a non-empty, untruncated row set equal, row for row, to the test account's own read of
-/// the same screen. <var>pQuery</var> is appended to both reads' query strings as given, and when
-/// <var>pEveryNameContains</var> is not empty every row's <code>Name</code> must contain it.</p>
-Method AssertSameRowsAsTestAccount(pUser As %String, pTool As %String, pQuery As %String = "", pEveryNameContains As %String = "")
+/// the same screen. <var>pQuery</var> is appended to both reads' query strings as given, when
+/// <var>pEveryNameContains</var> is not empty every row's <code>Name</code> must contain it, and when
+/// <var>pEveryFieldEquals</var> is not empty, as <code>field=value</code>, every row's field must equal
+/// the value.</p>
+Method AssertSameRowsAsTestAccount(pUser As %String, pTool As %String, pQuery As %String = "", pEveryNameContains As %String = "", pEveryFieldEquals As %String = "")
 {
     Set tPath = "/api/ocupilot/screens/" _ pTool _ "/read?maxRows=1000" _ pQuery
     Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", tPath, ##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), .tWantStatus, .tWantBody, .tWantHeaders)
@@ -1099,13 +1106,24 @@ Method AssertSameRowsAsTestAccount(pUser As %String, pTool As %String, pQuery As
     Do $$$AssertEquals(tGot.truncated, 0, pUser _ " " _ pTool _ ": nothing is cut at 1,000")
     Do $$$AssertEquals(tGot.rows.%Size(), tWant.rows.%Size(), pUser _ " " _ pTool _ ": as many rows as the test account reads")
     Do $$$AssertTrue(tGot.rows.%ToJSON() = tWant.rows.%ToJSON(), pUser _ " " _ pTool _ ": and the same rows")
-    If pEveryNameContains = "" Quit
-    Set tOther = ""
-    Set tIter = tGot.rows.%GetIterator()
-    While tIter.%GetNext(.tKey, .tRow) {
-        If '(tRow.Name [ pEveryNameContains) Set tOther = "row " _ tKey _ ": " _ tRow.Name Quit
+    If pEveryNameContains '= "" {
+        Set tOther = ""
+        Set tIter = tGot.rows.%GetIterator()
+        While tIter.%GetNext(.tKey, .tRow) {
+            If '(tRow.Name [ pEveryNameContains) Set tOther = "row " _ tKey _ ": " _ tRow.Name Quit
+        }
+        Do $$$AssertEquals(tOther, "", pUser _ " " _ pTool _ ": every row is one the query names (" _ pEveryNameContains _ ")")
     }
-    Do $$$AssertEquals(tOther, "", pUser _ " " _ pTool _ ": every row is one the query names (" _ pEveryNameContains _ ")")
+    If pEveryFieldEquals '= "" {
+        Set tField = $Piece(pEveryFieldEquals, "=", 1)
+        Set tValue = $Extract(pEveryFieldEquals, $Length(tField) + 2, *)
+        Set tOther = ""
+        Set tIter = tGot.rows.%GetIterator()
+        While tIter.%GetNext(.tKey, .tRow) {
+            If tRow.%Get(tField) '= tValue Set tOther = "row " _ tKey _ ": " _ tField _ " " _ tRow.%Get(tField) Quit
+        }
+        Do $$$AssertEquals(tOther, "", pUser _ " " _ pTool _ ": every row has " _ tField _ " " _ tValue)
+    }
 }
 
 /// <p>Story 6.3, Matrix "Secure pairs" -- a principal holding <code>%Admin_Secure:USE</code> and

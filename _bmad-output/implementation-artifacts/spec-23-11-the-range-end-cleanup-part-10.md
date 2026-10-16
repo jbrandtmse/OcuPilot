@@ -2,8 +2,8 @@
 title: 'Story 23.11: The range-end cleanup, part 10'
 type: 'bugfix'
 created: '2026-10-15'
-status: 'ready-for-dev'
-baseline_revision: 'a69613d295e28b1fcbf3ff6ca63816c28cbf183e'
+status: 'in-progress'
+baseline_revision: '4dba7011b5b40b35401c6c68304698470b109e0e'
 baseline_commit: 'a69613d295e28b1fcbf3ff6ca63816c28cbf183e'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -155,7 +155,7 @@ deferred: []
 
 ### Batch a: the agent's class read and three ObjectScript tests
 
-- [ ] **DW-2246: the total cut measures the count it writes.**
+- [x] **DW-2246: the total cut measures the count it writes.**
   - **The fix.** In `Bound.cls` `Apply` step 3, after the greedy keep, write the kept rows and their `rowsSent` and serialize. While the JSON exceeds `pTotalMax` and rows remain, drop the last kept row, rewrite `rowsSent` and serialize again. Answer 0 only when the payload holding no rows exceeds `pTotalMax`. The method's doc says the count is measured with the rows it reports.
   - **Tests:**
     - `ContextBound.cls`: new `TestTheTotalCutMeasuresTheCountItWrites`. The payload holds 150 rows of fixed, known lengths. For every cap within 40 characters of each length at which the kept count changes from 9 to 10 rows and from 99 to 100 rows, `Apply` answers 1, the JSON is at most the cap, and the parsed `rowsSent` equals the parsed `rows` size.
@@ -165,14 +165,14 @@ deferred: []
       - Dispatched again with `pMaxLength` one under that content's length, it answers `is_error` 0 with one row fewer, and the content is at most that cap.
       - It deletes its class.
       - The class header now says it saves and deletes one probe class.
-- [ ] **DW-2182: one task's history.** `WireSecurityRead.cls:497`'s both-pairs leg reads `tasks.taskhistory` with `&taskId=` set from `DemoTaskId()`, and it first asserts that id is not empty. `AssertSameRowsAsTestAccount` gains an optional `pEveryFieldEquals` of the form `<field>=<value>`, asserted on every row; this leg passes `TaskId=<id>`.
-- [ ] **DW-2460: cancel once the job is in the delayed port.** In `TestAnEarlyCancelIsSentAgainUntilTheQueryRuns`:
+- [x] **DW-2182: one task's history.** `WireSecurityRead.cls:497`'s both-pairs leg reads `tasks.taskhistory` with `&taskId=` set from `DemoTaskId()`, and it first asserts that id is not empty. `AssertSameRowsAsTestAccount` gains an optional `pEveryFieldEquals` of the form `<field>=<value>`, asserted on every row; this leg passes `TaskId=<id>`.
+- [x] **DW-2460: cancel once the job is in the delayed port.** In `TestAnEarlyCancelIsSentAgainUntilTheQueryRuns`:
   - read the run's `JobId` by SQL, as `TestARunWhoseJobDiedReadsLost` does;
   - then poll `%SYS.ProcessQuery` (open fresh each pass, the reference dropped between polls) until `CurrentLineAndRoutine` names `OcuPilot.Test.SqlPortDelayed`, bounded at 10 s, before the cancel.
   - Assert the job was seen there.
   - `SqlPortDelayed`'s doc says its delay is counted from the port's entry.
   - The other assertions are unchanged.
-- [ ] **DW-2462: the gap is made between looks.**
+- [x] **DW-2462: the gap is made between looks.**
   - `LogSourceFixture.cls`: add `ArmTailGap(pAtLook, pLooks, pContent)` beside `ArmTailThrow`. `TailState` deletes the file it looks at before reading on look `pAtLook`, and writes `pContent` to it before reading on look `pAtLook + pLooks`. Looks are counted from 0, as `tailLooks` is; `Clear` forgets the arm.
   - `LogTail.cls`: the absent-file leg arms a gap at look 2 for 4 looks in place of `StartWriter(0.4, "gap", …)`. Drop `Writer`'s `gap` mode, which no other caller uses.
   - The page-read assertion reads `$Select($IsObject(tPageFault): tPageFault.code, 1: "")`, so a present file fails an assertion rather than raising `<INVALID OREF>`.
@@ -405,10 +405,10 @@ Every test added or changed passes on a fresh environment, in either order.
 **Batch a (loop):**
 
 - Run Load, then Class `ContextBound`, `ExplorerWire`, `ToolDispatch`, `Sanitize`, `WireSecurityRead`, `SqlBackgroundJob` and `LogTail`, one per call. Then Checks.
-- `mutation:` the drop loop removed from `Bound.Apply`. Expected red: `ContextBound.TestTheTotalCutMeasuresTheCountItWrites`, and `ExplorerWire.TestALargeClassViewIsCutByWholeRows`'s second dispatch (`TOOL.RESULTTOOLARGE`).
-- `mutation:` `pEveryFieldEquals` ignored by `AssertSameRowsAsTestAccount`, with the `taskId` scope dropped. Expected: the `TaskId` assertion red when the throwaway's history holds another task's run; otherwise record the task ids the throwaway held, as an honest null.
-- `mutation:` `Hang 1.5` in `SqlBackgroundDelayed.PortClass` (a slow check phase). Expected: the leg as it was (cancel on `startedAt`) red at "within three seconds"; the new leg green. Then `CANCELTRIES` 1. Expected: the new leg red.
-- `mutation:` `ArmTailGap`'s write-back dropped. Expected red: "an absent instant that ends unchanged is no change". `Tail` answering `changed` as soon as the file is absent. Expected: the leg red, as its existing mutation says.
+- `mutation:` the drop loop removed from `Bound.Apply`. Expected red: `ContextBound.TestTheTotalCutMeasuresTheCountItWrites`, and `ExplorerWire.TestALargeClassViewIsCutByWholeRows`'s second dispatch (`TOOL.RESULTTOOLARGE`). Observed red, each the only failing test of its class: `Apply` refused the ceilings 1 under the 10-row edge and 2 and 1 under the 100-row edge, and the second dispatch answered `TOOL.RESULTTOOLARGE`.
+- `mutation:` `pEveryFieldEquals` ignored by `AssertSameRowsAsTestAccount`, with the `taskId` scope dropped. Expected: the `TaskId` assertion red when the throwaway's history holds another task's run; otherwise record the task ids the throwaway held, as an honest null. Observed with the scope dropped and the assertion kept: red at "every row has TaskId 1003"; the throwaway held 52 history rows over 21 task ids, the demo task's 3. The 1,000-row bound itself is not reproduced there.
+- `mutation:` `Hang 1.5` in `SqlBackgroundDelayed.PortClass` (a slow check phase). Expected: the leg as it was (cancel on `startedAt`) red at "within three seconds"; the new leg green. Then `CANCELTRIES` 1. Expected: the new leg red. Observed: the leg as it was red at "within three seconds" (12.18 s); the new leg green (12 of 12). With `CANCELTRIES` 1 (`SqlBackground` and its four subclasses recompiled) the new leg red (10.43 s).
+- `mutation:` `ArmTailGap`'s write-back dropped. Expected red: "an absent instant that ends unchanged is no change". `Tail` answering `changed` as soon as the file is absent. Expected: the leg red, as its existing mutation says. Observed red, the only failing test of 11: with the write-back dropped, at that assertion alone; with `Tail` answering at once (`LogSourcePort` and its three subclasses recompiled), at that assertion and "waited out to the bound", "no earlier" and the heartbeat count.
 
 **Batch b (loop):**
 

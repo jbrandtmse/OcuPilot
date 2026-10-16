@@ -27,6 +27,9 @@ $Char(8230)
 /// <code>rowsAvailable</code> of its own), <code>truncated</code> (true when this call cut
 /// anything, ORed with whatever the caller already set) and <code>truncatedFields</code> (sorted,
 /// unique field names, ORed with whatever the caller already set).</p>
+/// <p>The total-size cut measures the payload as it is written, <code>rowsSent</code> included, so
+/// <var>pJson</var> is within <var>pTotalMax</var> and its <code>rowsSent</code> is the count of its
+/// <code>rows</code>.</p>
 /// <p>Returns 0, with <var>pJson</var> <code>""</code>, when the payload cannot fit inside
 /// <var>pTotalMax</var> even with zero rows.</p>
 ClassMethod Apply(pPayload As %DynamicObject, pRowCap As %Integer, ByRef pFieldMaxLengths, pDefaultFieldMax As %Integer, pTotalMax As %Integer, Output pJson As %String) As %Boolean
@@ -123,6 +126,7 @@ ClassMethod Apply(pPayload As %DynamicObject, pRowCap As %Integer, ByRef pFieldM
     If tFits Quit 1
     Set pJson = ""
 
+    ; Rows are kept greedily against the payload measured with no rows, whose count is one digit.
     Set tCount = tRows.%Size()
     Do pPayload.%Set("rows", [])
     Do pPayload.%Set("rowsSent", 0, "number")
@@ -137,14 +141,20 @@ ClassMethod Apply(pPayload As %DynamicObject, pRowCap As %Integer, ByRef pFieldM
         Set tBase = tBase + tAdd
         Set tKeep = tKeep + 1
     }
-    If tBase > pTotalMax Quit 0
-    Set tKept = []
-    For tI = 0:1:tKeep - 1 {
-        Do tKept.%Push(tRows.%Get(tI))
+
+    ; The payload is then written with the count it reports, which can be wider than the one digit
+    ; measured above: the last kept row goes while the written payload is over the ceiling.
+    For {
+        Set tKept = []
+        For tI = 0:1:tKeep - 1 {
+            Do tKept.%Push(tRows.%Get(tI))
+        }
+        Do pPayload.%Set("rows", tKept)
+        Do pPayload.%Set("rowsSent", tKeep, "number")
+        Set pJson = pPayload.%ToJSON()
+        If ($Length(pJson) <= pTotalMax) || (tKeep = 0) Quit
+        Set tKeep = tKeep - 1
     }
-    Do pPayload.%Set("rows", tKept)
-    Do pPayload.%Set("rowsSent", tKeep, "number")
-    Set pJson = pPayload.%ToJSON()
     If $Length(pJson) > pTotalMax {
         Set pJson = ""
         Quit 0

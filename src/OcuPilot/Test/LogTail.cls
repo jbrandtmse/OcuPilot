@@ -142,24 +142,18 @@ ClassMethod Append(pPath As %String, pContent As %String)
 }
 
 /// <p>The body of the writer job. After <var>pDelay</var> seconds: <code>append</code> adds
-/// <var>pContent</var> to the file; <code>replace</code> replaces the file with <var>pContent</var>;
-/// <code>gap</code> removes the file and writes <var>pContent</var> back <var>pGap</var> seconds later.</p>
-ClassMethod Writer(pPath As %String, pDelay As %Numeric, pMode As %String, pContent As %String, pGap As %Numeric = 0)
+/// <var>pContent</var> to the file; <code>replace</code> replaces the file with <var>pContent</var>.</p>
+ClassMethod Writer(pPath As %String, pDelay As %Numeric, pMode As %String, pContent As %String)
 {
     Hang pDelay
     If pMode = "append" Do ..Append(pPath, pContent)
     If pMode = "replace" Do ##class(OcuPilot.Test.LogSource).WriteFile(pPath, pContent)
-    If pMode = "gap" {
-        Do ##class(%File).Delete(pPath)
-        Hang pGap
-        Do ##class(OcuPilot.Test.LogSource).WriteFile(pPath, pContent)
-    }
 }
 
 /// <p>Start the writer job and keep its pid for <method>OnAfterOneTest</method>.</p>
-Method StartWriter(pDelay As %Numeric, pMode As %String, pContent As %String, pGap As %Numeric = 0)
+Method StartWriter(pDelay As %Numeric, pMode As %String, pContent As %String)
 {
-    Job ##class(OcuPilot.Test.LogTail).Writer(..Path(), pDelay, pMode, pContent, pGap)::10
+    Job ##class(OcuPilot.Test.LogTail).Writer(..Path(), pDelay, pMode, pContent)::10
     Set ..PreparedWriter = $ZChild
 }
 
@@ -289,17 +283,20 @@ Method TestARotationWakesTheTailAndThePageRestarts()
 
 /// <p>An absent file is no change before the bound and <code>changed</code> true at it, so the page read
 /// reports it; an absent instant that ends where it began is waited out.</p>
-/// <p>The gap leg also asserts that a look found the file absent, so it cannot pass on a writer that never
-/// ran.</p>
+/// <p>The gap leg is made between looks by the fixture, which removes the file at look 2 and writes it
+/// back at look 6, so no second process touches the file; it also asserts that a look found the file
+/// absent, so it cannot pass on a gap that never opened.</p>
 /// <p>Mutation (Rule 19): <code>Tail</code> answers <code>changed</code> true as soon as the file is
-/// absent -&gt; the gap leg answers early with <code>changed</code> true and goes red.</p>
+/// absent -&gt; the gap leg answers early with <code>changed</code> true and goes red. Drop the write-back
+/// from <method>OcuPilot.Test.LogSourceFixture.ArmTailGap</method>'s arm -&gt; the file stays absent and
+/// the gap leg answers <code>changed</code> true at the bound.</p>
 Method TestAnAbsentFileIsWaitedOutAndReportedAtTheBound()
 {
     Do ..Cursor(.tIdentity, .tSize)
     Set tContent = ""
     For tI = 1:1:20 Set tContent = tContent _ ##class(OcuPilot.Test.LogSource).LineText("alpha", tI) _ $Char(10)
-    ; An instant without the file, then the same file again: nothing has moved.
-    Do ..StartWriter(0.4, "gap", tContent, 0.8)
+    ; Four looks without the file, then the same file again: nothing has moved.
+    Do ##class(OcuPilot.Test.LogSourceFixture).ArmTailGap(2, 4, tContent)
     Set tSC = ..Hold(tIdentity, tSize, .tResult, .tHttp, .tFault, .tElapsed)
     Do $$$AssertStatusOK(tSC, "the tail is answered")
     Do $$$AssertTrue(##class(OcuPilot.Test.LogSourceFixture).AbsentLooks() >= 1, "a look did find the file absent: " _ ##class(OcuPilot.Test.LogSourceFixture).AbsentLooks())
@@ -308,6 +305,7 @@ Method TestAnAbsentFileIsWaitedOutAndReportedAtTheBound()
 
     ; A file that stays absent is held to the bound and then reported as a change.
     Kill ^||OcuPilotLogTail
+    Do ..Rearm()
     Do ##class(%File).Delete(..Path())
     Set tSC = ..Hold(tIdentity, tSize, .tResult2, .tHttp2, .tFault2, .tElapsed2)
     Do $$$AssertStatusOK(tSC, "an absent file is answered")
@@ -316,7 +314,7 @@ Method TestAnAbsentFileIsWaitedOutAndReportedAtTheBound()
     Do $$$AssertTrue(tElapsed2 >= (..#BOUND - 0.1), "no earlier: " _ tElapsed2)
     Do $$$AssertTrue(..Beats() >= 2, "with heartbeats while it waited: " _ ..Beats())
     Set tPageSC = ##class(OcuPilot.Test.LogSourceFixture).Page(..#PROBESOURCE, "", "", "", .tPage, .tPageHttp, .tPageFault)
-    Do $$$AssertEquals(tPageHttp _ " " _ tPageFault.code, "404 LOG.ABSENT", "and the page read reports the absence")
+    Do $$$AssertEquals(tPageHttp _ " " _ $Select($IsObject(tPageFault): tPageFault.code, 1: ""), "404 LOG.ABSENT", "and the page read reports the absence")
 }
 
 /// <p>Refused: every refusal comes before any wait, heartbeat or file access, with the matrix's status and
