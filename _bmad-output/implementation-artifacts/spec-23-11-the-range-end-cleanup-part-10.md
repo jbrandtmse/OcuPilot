@@ -78,7 +78,7 @@ deferred: []
   - `src/OcuPilot/Test/SqlBackgroundJob.cls:340-357`: the cancel is sent on `startedAt`.
   - `Area/Explorer/SqlBackground.cls`: `Run` `:249-310` (gate, `Check`, then `PortClass().Run`); `Cancel` `:332-346`, which retries `CANCELTRIES` 10 × `CANCELPAUSE` 0.2 s.
   - `Test/SqlPortDelayed.cls`: `Hang` `DELAYSECONDS` 1 inside `Run`. `Test/SqlBackgroundDelayed.cls` overrides only `PortClass`.
-  - `SqlRun.GuardedFinish` ends a cancel-flagged row `canceled`. The red this fixes is therefore the 3 s bound (inference).
+  - A cancel the retries miss is lost: the run completes, and reads neither canceled nor within 3 s (run 12; DW-2466).
   - `%SYS.ProcessQuery` precedent: `Test/EcpProbe.cls:447`.
 - DW-2462:
   - `src/OcuPilot/Test/LogTail.cls:296-320`: the writer job deletes at 0.4 s. The tail looks every `CHECK` 0.2 s from the hold's start, so the delete lands on the third look.
@@ -183,6 +183,33 @@ deferred: []
 - Integration AC: given `OcuProbe192.LargeView` on the throwaway, when `Kernel/Agent/Dispatch.Answer` runs `explorer.class.read` at the default share and at a share one character under its default answer, then both answer rows within their share.
 - Given the both-pairs principal, when it reads the demo task's history, then it reads exactly the test account's rows, every one that task's.
 - Given a check phase slower than the cancel's retry window, when the cancel is sent once the job is inside the delayed port, then the run reads canceled within three seconds.
+
+### Review Findings (batch a)
+
+Code review 2026-10-19, layers `blind-hunter`, `edge-case-hunter`, `verification-gap`, `acceptance-auditor`. 22 rows, 20 entries: 4 patch, 1 defer, 15 rejected.
+
+- [x] [Review][Patch] The early-cancel leg's job-id wait is a copy of `TestARunWhoseJobDiedReadsLost`'s loop, the same SQL, deadline and exit, with no stated reason (med, Rule 2; fix-risk low: two test callers, one helper) [src/OcuPilot/Test/SqlBackgroundJob.cls:362]. Fixed: both tests call the new `RunJob`. `SqlBackgroundJob` 12 of 12 (run 718).
+- [x] [Review][Patch] The DW-2246 mutation that two test docs and Verification name ("drop the loop") is not the one that produced the reds: removing the loop leaves `pJson` empty, so `Apply` answers 1. The reds came from step 3 writing once with no row dropped (low, Rule 19; fix-risk low: wording, plus the named mutation re-run) [src/OcuPilot/Test/ContextBound.cls:90]. Fixed: both docs and the Verification line name that mutation. It was applied on `ocupilot-ci` and was red in runs 714 and 715, then reverted (tree byte-identical) and green in runs 716 and 717.
+- [x] [Review][Patch] `ExplorerWire`'s header says the large-view test "saves one probe class and deletes it". The save needs WRITE on the namespace's code database for the running process, and `ExplorerProbe.Remove` removes every probe document (low; fix-risk low: comment) [src/OcuPilot/Test/ExplorerWire.cls:158]. Fixed: the header now says both.
+- [x] [Review][Patch] The DW-2460 `mutation:` line records only the "within three seconds" red. Runs 12, 13 and 703 also red at "the run reads canceled, with no answer" (low, Rule 19; fix-risk low: Verification record) [spec Verification, Batch a]. Fixed: the Observed text names both reds and the run ids.
+- [x] [Review][Defer] `TestTheOwnersCancelStopsTheQuery` still cancels at `startedAt` + 0.5 s without confirming the query runs. The production port leaves about 2.5 s of check phase before the retries miss (inference), and no red is recorded [src/OcuPilot/Test/SqlBackgroundJob.cls:312] — deferred: pre-existing sibling, DW-2465 `wontfix-theoretical`, with `reopen_if` set to a red at "within three seconds"
+
+Rejected:
+
+- `low` The second dispatch discriminates only when the first answer keeps 10 or more rows. AD-24 fixes both numbers it depends on (65,536 and 1,000), and they keep about 56 rows. A narrower field bound would make every row fit, so `rowsSent < rowsAvailable` would go red loudly.
+- `low` Row order is pinned only by the first row's `Kind`. `Apply`'s keep is a prefix loop, and the first-row check fails on any cut from the front.
+- `false` `AbsentLooks() >= 1` could be `= 4`. Each named mutation is already red at another assertion, so an exact count adds nothing.
+- `false` QA's mutations left the latest runs red. Runs 707–713 are green after runs 696–706 in `%UnitTest_Result`.
+- `low` The Review Triage Log's DW-2182 reject cites a null that QA's run 701 replaced. The row was accurate when written, run 701 strengthens the pin, and the fix would edit the spec outside Verification.
+- `false` `WireSecurityRead`'s doc names only the pairs mutation. That mutation still holds, and the scope's `mutation:` line is under Verification.
+- `low` `ArmTailGap` on an unredirected path would delete the console log. Its one caller redirects in `Rearm`, so the guard would be for a misuse no caller makes.
+- `low` `ArmTailGap` with `pLooks` < 1, `MakeLargeClass` with 1,000 or more methods, and `pEveryFieldEquals` without `=`: each has one caller, which passes 4, 80 and `TaskId=<id>` (after asserting the id is not empty).
+- `low` A failed `%ExecDirect` in the job-id wait is read as "the run's job has begun". It fails loudly.
+- `low` A cancel that lands after the port's 1 s hang skips the re-send path. The job is seen within a 20 ms poll of entering the port, and the `CANCELTRIES` 1 mutation went red twice (runs 13 and 703).
+- `false` "Whole rows at any share". The matrix row's Error Handling column keeps the row-free refusal.
+- `false` `AwaitInDelayedPort` opens `%SYS.ProcessQuery` with no `Try`. `%OnOpen` answers an empty slot or a refused open as a status, so `%OpenId` gives `""` and the `$IsObject` guard reads it.
+- `low` `MakeLargeClass` repeats `MakeClass`'s one-line package guard. The bodies differ, and a helper for one line reads worse than two copies (Rule 31).
+- `low` The Code Map's DW-2460 inference ("the red this fixes is therefore the 3 s bound") is contradicted by runs 12, 13 and 703. That is outside Verification; the lead corrects it at origin.
 
 ### Batch b: the client test harness
 
@@ -301,7 +328,7 @@ deferred: []
 | --- | --- | --- | --- |
 | DW-2246 | confirmed | Measured below; the window was reproduced on `ocupilot` | a |
 | DW-2182 | confirmed | `WireSecurityRead.cls:497` is unscoped and `:1099` asserts `truncated` 0. `ocupilot` holds 3,555 task-history rows; `ocupilot-b-ci` held 1,224. | a |
-| DW-2460 | confirmed (inference) | The cancel's window is about 2 s from `startedAt`, while the query starts after gate + `Check` + 1 s + prepare. A run missed by the retries reaches the 3 s bound. | a |
+| DW-2460 | confirmed (inference) | The cancel's window is about 2 s from `startedAt`, while the query starts after gate + `Check` + 1 s + prepare. A cancel the retries miss is lost and the run completes (run 12). | a |
 | DW-2462 | confirmed (inference) | The red read `AbsentLooks` 0 at .406 s. The writer's delete at 0.4 s coincides with the third 0.2 s look; the second leg then met the writer's write-back, and the page answered 200 (`<INVALID OREF>` at `tPageFault.code`). | a |
 | DW-2458 | confirmed | `log-viewer.spec.ts:410,418` yield to the real loop; Home's sibling moved to a synchronous advance for the same contamination (`home.page.spec.ts:1357-1368`) | b |
 | DW-2221 | confirmed | `browser.config.mjs:73,99` default both; `browser-config.test.mjs:11-15` allows both unset | b |
@@ -337,7 +364,7 @@ Counts: 10 confirmed, 0 refuted, 0 already fixed (DW-2202's two named sites refu
 - **DW-2246: fix the cut, not the read.** The cut answers one row fewer in the window, so AD-24's contract (whole rows from the end, reported) holds unchanged, and no spine amendment is needed.
 - **DW-2458: no yield while counting.** A synchronous advance and drain let no real timer reach the fake clock, so the count is the page's own on every band. This is the shape Home's sibling already takes.
 - **DW-2221: keep the constants.** `DEFAULT_ORIGIN` and `DEFAULT_CONTAINER` stay as slot A's pair: the refusal names them, and `ci.test.mjs` holds the origin equal to `ci-throwaway.sh`'s port.
-- **DW-2460, DW-2462: the race moves out of the test.** The product is unchanged. A cancel the retries miss still ends at the port's bound and reads canceled (`GuardedFinish`). A file deleted mid-look reads as a change, which the viewer's next page read reports.
+- **DW-2460, DW-2462: the race moves out of the test.** The product is unchanged. A cancel the retries miss is lost and the run completes (DW-2466, `wontfix-accepted`). A file deleted mid-look reads as a change, which the viewer's next page read reports.
 - **Batches:** DW-2455 and DW-2202's browser-spec sites share batch d, because both are browser-spec sweeps over overlapping files.
 
 **Governing ADs (Rule 6):**
@@ -424,9 +451,10 @@ Every test added or changed passes on a fresh environment, in either order.
 **Batch a (loop):**
 
 - Run Load, then Class `ContextBound`, `ExplorerWire`, `ToolDispatch`, `Sanitize`, `WireSecurityRead`, `SqlBackgroundJob` and `LogTail`, one per call. Then Checks.
-- `mutation:` the drop loop removed from `Bound.Apply`. Expected red: `ContextBound.TestTheTotalCutMeasuresTheCountItWrites`, and `ExplorerWire.TestALargeClassViewIsCutByWholeRows`'s second dispatch (`TOOL.RESULTTOOLARGE`). Observed red, each the only failing test of its class: `Apply` refused the ceilings 1 under the 10-row edge and 2 and 1 under the 100-row edge, and the second dispatch answered `TOOL.RESULTTOOLARGE`. With the loop's exit made unconditional (run 26), the test's answered-count and problems assertions both red, the only failing test of 15.
-- `mutation:` the `&taskId=` scope dropped from the both-pairs read, `pEveryFieldEquals` kept. Expected: the `TaskId` assertion red when the throwaway's history holds another task's run; otherwise record the task ids it held, as an honest null. Observed: red at "every row has TaskId 1003"; the throwaway held 52 history rows over 21 task ids, the demo task's 3. The 1,000-row bound itself is not reproduced there.
-- `mutation:` `Hang 1.5` in `SqlBackgroundDelayed.PortClass` (a slow check phase). Expected: the leg as it was (cancel on `startedAt`) red at "within three seconds"; the new leg green. Then `CANCELTRIES` 1. Expected: the new leg red. Observed: the leg as it was red at "within three seconds" (12.18 s); the new leg green (12 of 12). With `CANCELTRIES` 1 (`SqlBackground` and its four subclasses recompiled) the new leg red (10.43 s).
+- `mutation:` step 3 of `Bound.Apply` writes once and drops no row (the loop's exit made unconditional). Expected red: `ContextBound.TestTheTotalCutMeasuresTheCountItWrites`, and `ExplorerWire.TestALargeClassViewIsCutByWholeRows`'s second dispatch (`TOOL.RESULTTOOLARGE`). Observed red (code review, runs 714 and 715), each the only failing test of its class: `ContextBound`'s answered-count and problems assertions at both edges, where `Apply` refused the ceilings 1 under the 10-row edge and 2 and 1 under the 100-row edge, and the second dispatch answered `TOOL.RESULTTOOLARGE`. Reverted: both green (runs 716 and 717).
+- `mutation:` (QA) the final refusal in `Bound.Apply` made unreachable (`If $Length(pJson) > pTotalMax` replaced by `If 0`). Expected red: the row-free refusal, at the function and at the dispatch. Observed red (runs 698 and 699), each the only failing test of its class: `ContextBound.TestTheTotalSizeCutDropsTrailingRowsAndRefusesWhenNothingFits` ("a rowless payload that cannot fit is refused") and `ToolDispatch.TestAFailureInsideTheDispatchPathIsUnavailableAndLogged` ("a result over the cap once every row is dropped is refused").
+- `mutation:` the `&taskId=` scope dropped from the both-pairs read, `pEveryFieldEquals` kept. Expected: the `TaskId` assertion red when the throwaway's history holds another task's run; otherwise record the task ids it held, as an honest null. Observed (QA, run 701): red at "nothing is cut at 1,000" and at "every row has TaskId 1003", the only failing test of 25; the throwaway's unscoped history read answered 1,000 rows, truncated, over 93 task ids.
+- `mutation:` `Hang 1.5` in `SqlBackgroundDelayed.PortClass` (a slow check phase). Expected: the leg as it was (cancel on `startedAt`) red at "within three seconds"; the new leg green. Then `CANCELTRIES` 1. Expected: the new leg red. Observed: the leg as it was red at "the run reads canceled, with no answer" and "within three seconds" (12.18 s, run 12); the new leg green (12 of 12). With `CANCELTRIES` 1 (`SqlBackground` and its four subclasses recompiled) the new leg red at the same two (10.43 s, run 13; QA run 703, 10.47 s).
 - `mutation:` `ArmTailGap`'s write-back dropped. Expected red: "an absent instant that ends unchanged is no change". `Tail` answering `changed` as soon as the file is absent. Expected: the leg red, as its existing mutation says. Observed red, the only failing test of 11: with the write-back dropped, at that assertion alone; with `Tail` answering at once (`LogSourcePort` and its three subclasses recompiled), at that assertion and "waited out to the bound", "no earlier" and the heartbeat count.
 
 **Batch b (loop):**
@@ -465,4 +493,4 @@ Batch a (DW-2246, DW-2182, DW-2460, DW-2462), review and finalize. Batches b, c 
 - **Change.** `Bound.Apply` step 3 writes the kept rows with the count they report and drops the last kept row while the written payload is over the ceiling, so the class read answers whole rows at any share. Three ObjectScript tests are made deterministic: the both-pairs task history reads one task's runs (`WireSecurityRead`), the early-cancel leg waits for the job inside the delayed port (`SqlBackgroundJob`, `SqlPortDelayed`), and the absent-file leg arms its gap between looks (`LogSourceFixture.ArmTailGap`, `LogTail`). New tests: `ContextBound.TestTheTotalCutMeasuresTheCountItWrites`, `ExplorerWire.TestALargeClassViewIsCutByWholeRows`, with `ExplorerProbe.MakeLargeClass`.
 - **Review.** Layers: verification-gap and intent-alignment. 13 findings: low 6, false 7. Patched 3 lows (the `LogTail` header, the DW-2182 `mutation:` line, the `ContextBound` answered-count assertion), rejected 10 with reasons in the Review Triage Log, deferred none. `followup_review_recommended` is false.
 - **Verification.** On `ocupilot-ci` after reloading `src` (0 errors): `ContextBound` 15 of 15 (run 27, green), `LogTail` 11 of 11 (run 28), confirmed by SQL on `%UnitTest_Result`. The patched assertion was falsified with the loop's exit made unconditional: red in run 26, the only failing test, then `Bound.cls` restored from git and reloaded. `ExplorerWire`, `ToolDispatch`, `Sanitize`, `WireSecurityRead`, `SqlBackgroundJob`, `TurnContext` and `ScreenGrounding` were run green by the implement pass and are untouched since. `uv run scripts/check-objectscript.py` on the nine changed classes: 0 problems.
-- **Residual risk.** DW-2182's 1,000-row bound is not reproduced on any throwaway; the scoped read is pinned by its `TaskId` assertion, which can fail only where another task has history.
+- **Residual risk.** On a fresh throwaway with little task history, the scoped read is pinned only by its `TaskId` assertion, which fails only where another task has history. On `ocupilot-ci` after three days up, the unscoped read answers 1,000 rows, truncated (QA, run 701).

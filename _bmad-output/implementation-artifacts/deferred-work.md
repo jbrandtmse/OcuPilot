@@ -12162,3 +12162,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: lead full ObjectScript sweep, Story 23.5 batch d (merged 20.31) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: ocupilot-ci fresh from 43cb9e06, shard 8/20: 1 of 282 failed; LogTail alone run 267 11/11; batch d changed no log code
 - 2026-10-15T20:11:03Z status=routed owner=23-11-the-range-end-cleanup-part-10 by=lead note=flake:likely_depends_on_an_earlier_class_leaving_the_file;CI_flakes_go_to_the_standing_cleanup_story
+
+### DW-2465: SqlBackgroundJob.TestTheOwnersCancelStopsTheQuery cancels at startedAt + 0.5 s without confirming the query runs, the trigger DW-2460 replaced in the early-cancel leg
+- source: spec-23-11-the-range-end-cleanup-part-10.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: SqlBackgroundJob.cls:312-333 cancels 0.5 s after startedAt on the production port; the retries span 2 s, so a check phase over about 2.5 s would miss them (inference); no red is recorded
+- 2026-10-19T11:27:15Z status=wontfix-theoretical owner=23-11-the-range-end-cleanup-part-10 by=cr note=reopen_if=TestTheOwnersCancelStopsTheQuery reds at 'within three seconds' in a sweep or a CI shard
+
+### DW-2466: A background SQL run's Cancel pressed before the query starts is lost once the retries (CANCELTRIES 10 x CANCELPAUSE 0.2 s) end first: the run completes, not canceled
+- source: spec-23-11-the-range-end-cleanup-part-10.md | severity: low | fix-risk: med | footprint: out-of-footprint
+- evidence: Run 12 (23.11 batch a): cancel at startedAt with a 1.5 s check phase read neither canceled nor within 3 s (12.18 s); CANCELTRIES 1 reds the same (runs 13, 703). Product reach needs a check phase over ~2 s (inference)
+- 2026-10-19T11:30:01Z status=wontfix-accepted owner=23-11-the-range-end-cleanup-part-10 by=adjudication note=reopen_if=a person reports a background SQL run that completed after Cancel, or Area/Explorer/SqlBackground Run is changed to start the port later
