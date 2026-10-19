@@ -152,9 +152,9 @@ ClassMethod WrittenLength(pKept As %Integer, pCount As %Integer) As %Integer
 /// within 40 characters of the length at which the kept rows go from 9 to 10, and from 99 to 100, is
 /// answered: the payload is within the ceiling, its <code>rowsSent</code> is the size of its
 /// <code>rows</code>, and the rows are the most that fit.</p>
-/// <p>Mutation: drop the loop that removes kept rows from step 3 of
-/// <method>OcuPilot.Kernel.Agent.Bound.Apply</method> -- the ceilings under the edge, where the count gains
-/// a digit, are refused, and this goes red.</p>
+/// <p>Mutation: make step 3 of <method>OcuPilot.Kernel.Agent.Bound.Apply</method> write once and drop no
+/// row (its loop's exit unconditional) -- the ceilings under the edge, where the count gains a digit, are
+/// refused, and this goes red.</p>
 Method TestTheTotalCutMeasuresTheCountItWrites()
 {
     For tEdgeRows = 10, 100 {

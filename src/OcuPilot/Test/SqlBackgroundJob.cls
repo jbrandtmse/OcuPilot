@@ -333,6 +333,21 @@ Method TestTheOwnersCancelStopsTheQuery()
     Do $$$AssertEquals(tStatus _ " " _ tText, "200 " _ tView.%ToJSON(), "a cancel of the ended run answers it unchanged")
 }
 
+/// <p>The job id of run <var>pKey</var> once its row reads running, polled for up to <var>pSeconds</var>;
+/// <code>""</code> when it has not begun by then.</p>
+ClassMethod RunJob(pKey As %String, pSeconds As %Numeric = 10) As %String
+{
+    Set tJob = ""
+    Set tDeadline = $ZHorolog + pSeconds
+    For {
+        Set tResult = ##class(%SQL.Statement).%ExecDirect(, "SELECT JobId FROM OcuPilot_Kernel_State.SqlRun WHERE %EXACT(RunKey) = ? AND State = 'running'", pKey)
+        If tResult.%Next() Set tJob = tResult.%GetData(1)
+        If (tJob '= "") || ($ZHorolog > tDeadline) Quit
+        Hang 0.05
+    }
+    Quit tJob
+}
+
 /// <p>Whether process <var>pJob</var> is running <class>OcuPilot.Test.SqlPortDelayed</class>'s code, polled
 /// for up to <var>pSeconds</var>. Each poll opens the process afresh and drops it before the next.</p>
 ClassMethod AwaitInDelayedPort(pJob As %Integer, pSeconds As %Numeric = 10) As %Boolean
@@ -359,14 +374,7 @@ Method TestAnEarlyCancelIsSentAgainUntilTheQueryRuns()
     Set tUser = $Parameter(..#PROBE, "USER")
     Set tStart = ..StartAs(tUser, ..#DELAYED, ..#LONGERQUERY)
     Set tKey = tStart.%Get("key")
-    Set tJob = ""
-    Set tDeadline = $ZHorolog + 10
-    For {
-        Set tResult = ##class(%SQL.Statement).%ExecDirect(, "SELECT JobId FROM OcuPilot_Kernel_State.SqlRun WHERE %EXACT(RunKey) = ? AND State = 'running'", tKey)
-        If tResult.%Next() Set tJob = tResult.%GetData(1)
-        If (tJob '= "") || ($ZHorolog > tDeadline) Quit
-        Hang 0.05
-    }
+    Set tJob = ..RunJob(tKey, 10)
     Do $$$AssertNotEquals(tJob, "", "the run's job has begun")
     If tJob = "" Quit
     Do $$$AssertTrue(..AwaitInDelayedPort(tJob, 10), "the job was seen inside the delayed port")
@@ -407,14 +415,7 @@ Method TestARunWhoseJobDiedReadsLost()
     Set tUser = $Parameter(..#PROBE, "USER")
     Set tStart = ..StartAs(tUser, ..#PRODUCTION, ..#LONGERQUERY)
     Set tKey = tStart.%Get("key")
-    Set tJob = ""
-    Set tDeadline = $ZHorolog + 10
-    For {
-        Set tResult = ##class(%SQL.Statement).%ExecDirect(, "SELECT JobId FROM OcuPilot_Kernel_State.SqlRun WHERE %EXACT(RunKey) = ? AND State = 'running'", tKey)
-        If tResult.%Next() Set tJob = tResult.%GetData(1)
-        If (tJob '= "") || ($ZHorolog > tDeadline) Quit
-        Hang 0.1
-    }
+    Set tJob = ..RunJob(tKey, 10)
     Do $$$AssertNotEquals(tJob, "", "the run's job has begun")
     If tJob = "" Quit
     Set tOrigNS = $NAMESPACE

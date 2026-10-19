@@ -7,8 +7,10 @@
 /// principals, are <class>OcuPilot.Test.AtelierPortDenial</class>'s.</p>
 /// <p>Needs the API application installed in the install namespace and the test principal holding
 /// <code>%Development:USE</code> and READ on the namespaces' code databases. It issues reads only,
-/// apart from the large-view test, which saves one probe class and deletes it; the dispatch legs seed
-/// one completed turn as the principal and remove it and its ledger rows.</p>
+/// apart from the large-view test: it saves one probe class as the running process, which therefore needs
+/// WRITE on the namespace's code database, and then removes every probe document with
+/// <method>OcuPilot.Test.ExplorerProbe.Remove</method>. The dispatch legs seed one completed turn as the
+/// principal and remove it and its ledger rows.</p>
 Class OcuPilot.Test.ExplorerWire Extends %UnitTest.TestCase
 {
 
@@ -251,9 +253,9 @@ Method DispatchClassRead(pKey As %String, pName As %String, pMaxLength As %Integ
 /// that answer, which answers one row fewer.</p>
 /// <p>Saves <class>OcuProbe192.LargeView</class>, uncompiled, with 80 methods each documented in 1,500
 /// characters, and deletes it.</p>
-/// <p>Mutation: drop the loop that removes kept rows from step 3 of
-/// <method>OcuPilot.Kernel.Agent.Bound.Apply</method> -&gt; the second dispatch answers
-/// <code>TOOL.RESULTTOOLARGE</code> and its assertions go red.</p>
+/// <p>Mutation: make step 3 of <method>OcuPilot.Kernel.Agent.Bound.Apply</method> write once and drop no
+/// row (its loop's exit unconditional) -&gt; the second dispatch answers <code>TOOL.RESULTTOOLARGE</code>
+/// and its assertions go red.</p>
 Method TestALargeClassViewIsCutByWholeRows()
 {
     Set tName = $Parameter(..#PROBE, "PACKAGE") _ ".LargeView"
