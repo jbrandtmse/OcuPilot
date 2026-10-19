@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-09-2026 07:49
-last_updated: '10-15-2026 23:51'
+last_updated: '10-19-2026 09:10'
 project: OcuPilot
 project_key: NOKEY
 tracking_system: file-system
@@ -354,9 +354,9 @@ development_status:
   20-7-the-three-embedded-vendor-editors: done
   20-8-the-schema-viewers-and-the-production-configuration-diagram: done
   20-9-messages-search-view-resend-and-trace: done
-  20-10-source-control-hooks: ready-for-dev
+  20-10-source-control-hooks: done
   20-11-the-analytics-rider: ready-for-dev
-  20-12-the-agent-gains-guided-workflows-and-investigate: backlog
+  20-12-the-agent-gains-guided-workflows-and-investigate: ready-for-dev
   20-13-the-sign-in-hand-off-to-the-embedded-vendor-editors: done
   20-14-interoperability-holders-reach-ocupilot: done
   20-15-per-screen-permissions-seen-and-adjusted: done
@@ -380,6 +380,7 @@ development_status:
   20-33-the-mdx-query-tool: ready-for-dev
   20-34-the-cube-manager-s-build-and-synchronize: ready-for-dev
   20-35-the-agent-s-mdx-read: ready-for-dev
+  20-36-investigate: backlog
   epic-20-retrospective: optional
 
   epic-21: backlog

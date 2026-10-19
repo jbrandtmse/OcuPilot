@@ -42,11 +42,14 @@ import puppeteer from 'puppeteer';
 import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
 import { loadStrings } from '../tools/strings.mjs';
 import {
+  answered as screenAnswered,
   armMessageCounters,
   assertSignOutEndsEditors,
   assertSignedInSilently,
   editorSessionControls,
+  editorShows as screenShows,
   signOutThroughMenu,
+  snackbarWhere as editorSnackbarWhere,
   tabSnapshot,
   until,
   waitForEditorTokens,
@@ -274,29 +277,11 @@ async function shellAt(url) {
   return { context, page, ...observers };
 }
 
-/** The editor screen has answered the list's read: its section is no longer busy and it draws a block. */
-async function answered(page) {
-  await page.waitForFunction(
-    () => {
-      const section = document.querySelector('app-interop-editor-page section');
-      return section !== null && section.getAttribute('aria-busy') === 'false' && section.querySelector('[data-ocu-editor]') !== null;
-    },
-    { timeout: config.navigationTimeoutMs }
-  );
-}
-
-/** The screen's frame, as a puppeteer frame, once it is drawn. */
-async function editorFrame(page) {
-  const handle = await page.waitForSelector(FRAME, { timeout: config.navigationTimeoutMs });
-  return handle.contentFrame();
-}
+/** The editor screen has answered the list's read (`interop-editor-spec.mjs`). */
+const answered = (page) => screenAnswered(page, config.navigationTimeoutMs);
 
 /** Wait until the frame's editor shows the signed-in person and `text`. */
-async function editorShows(page, text) {
-  const frame = await editorFrame(page);
-  await until(() => frame.evaluate(() => document.body.innerText), (body) => body.includes(config.username) && body.includes(text), `the editor shows ${text}`, config.navigationTimeoutMs);
-  return frame;
-}
+const editorShows = (page, text) => screenShows(page, config.username, text, config.navigationTimeoutMs);
 
 /** Wait until the list on screen has drawn its rows, narrow it to `name`, and answer that row's cells once it is the one shown. */
 async function narrowTo(page, name) {
@@ -347,14 +332,7 @@ function boxes(page) {
 }
 
 /** Wait until the editor's snackbar reads a sentence `accept` takes, and answer the sentence. */
-async function snackbarWhere(frame, accept, what) {
-  return until(
-    () => frame.evaluate(() => Array.from(document.querySelectorAll('.mdc-snackbar__label')).map((node) => node.innerText.trim())),
-    (labels) => labels.some(accept),
-    what,
-    config.navigationTimeoutMs
-  ).then((labels) => labels.find(accept));
-}
+const snackbarWhere = (frame, accept, what) => editorSnackbarWhere(frame, accept, what, config.navigationTimeoutMs);
 
 /** Wait until the editor's snackbar reads a sentence containing `text`, and answer the sentence. */
 const snackbarWith = (frame, text) => snackbarWhere(frame, (label) => label.includes(text), `the editor's notice contains ${JSON.stringify(text)}`);

@@ -224,25 +224,39 @@ Method TestTheVersionIsSentAsIfNoneMatch()
 /// <p>A soft refusal under 200 is 422 <code>EXPLORER.SAVE.REFUSED</code> and an access refusal 403
 /// <code>PORT.ACCESSDENIED</code>, each logged as a fault; the vendor's 409 and 423 are
 /// <code>CONFLICT</code>, unlogged, and <code>LOCKED</code>, its text logged at information severity
-/// (AD-61 rule 6); nothing is compiled after any of them (canned routes).</p>
+/// (AD-61 rule 6); the source-control edit check (#5845, #5865, #6151), under 400 or under 200, is 409
+/// <code>EXPLORER.DOCUMENT.SOURCECONTROL</code>, logged the same way, while any other 400 stays
+/// <code>PORT.VALIDATION</code>, a fault; nothing is compiled after any of them (canned routes).</p>
 /// <p>Mutation (Rule 19): log the 423 through <method>OcuPilot.Port.AtelierPort.LogFault</method> --
-/// the <code>LOCKED</code> leg goes red.</p>
+/// the <code>LOCKED</code> leg goes red. Remove the source-control branches from
+/// <method>OcuPilot.Port.AtelierPort.Outcome</method> -- the four source-control rows go red. Drop 5845 from
+/// <parameter>OcuPilot.Port.AtelierPort.SOURCECONTROLCODES</parameter> -- the 5845 row alone goes red. Test the source-control codes
+/// ahead of the access codes in the 2xx path of <method>OcuPilot.Port.AtelierPort.Outcome</method> -- the row naming #5883 and #5865
+/// alone goes red.</p>
 Method TestTheVendorsRefusalsAreAnsweredByName()
 {
     Set tText = "Class Probe.A Extends %RegisteredObject" _ $Char(10) _ "{" _ $Char(10) _ "}"
     Set tSoft = "{""status"":{""errors"":[],""summary"":""""},""console"":[],""result"":{""name"":""Probe.A.cls"",""ts"":"""",""status"":""ERROR #CODE: probe refusal""}}"
-    For tCase = $ListBuild("200 OK", $Replace(tSoft, "CODE", "16021"), "422 EXPLORER.SAVE.REFUSED", "2"), $ListBuild("200 OK", $Replace(tSoft, "CODE", "5883"), "403 PORT.ACCESSDENIED", "2"), $ListBuild("409 Conflict", "{""status"":{""errors"":[],""summary"":""""},""console"":[],""result"":{""name"":""Probe.A.cls"",""status"":"""",""content"":[""Class Probe.A""]}}", "409 EXPLORER.DOCUMENT.CONFLICT", ""), $ListBuild("423 Locked", $Replace(tSoft, "CODE", "5864"), "409 EXPLORER.DOCUMENT.LOCKED", "0") {
+    Set tSourceControl = "409 EXPLORER.DOCUMENT.SOURCECONTROL"
+    Set tCases = $ListBuild($ListBuild("200 OK", $Replace(tSoft, "CODE", "16021"), "422 EXPLORER.SAVE.REFUSED", "2"), $ListBuild("200 OK", $Replace(tSoft, "CODE", "5883"), "403 PORT.ACCESSDENIED", "2"), $ListBuild("409 Conflict", "{""status"":{""errors"":[],""summary"":""""},""console"":[],""result"":{""name"":""Probe.A.cls"",""status"":"""",""content"":[""Class Probe.A""]}}", "409 EXPLORER.DOCUMENT.CONFLICT", ""), $ListBuild("423 Locked", $Replace(tSoft, "CODE", "5864"), "409 EXPLORER.DOCUMENT.LOCKED", "0"))
+    Set tCases = tCases _ $ListBuild($ListBuild("400 Bad Request", $Replace(tSoft, "CODE", "5865"), tSourceControl, "0"), $ListBuild("400 Bad Request", $Replace(tSoft, "CODE", "5845"), tSourceControl, "0"), $ListBuild("400 Bad Request", $Replace(tSoft, "CODE", "6151"), tSourceControl, "0"), $ListBuild("200 OK", $Replace(tSoft, "CODE", "5865"), tSourceControl, "0"), $ListBuild("400 Bad Request", $Replace(tSoft, "CODE", "16021"), "400 PORT.VALIDATION", "2"))
+    ; An answer naming an access code and a source-control code is the access refusal, which is checked first.
+    Set tCases = tCases _ $ListBuild($ListBuild("200 OK", $Replace(tSoft, "CODE", "5883: refused ERROR #5865"), "403 PORT.ACCESSDENIED", "2"))
+    For tIndex = 1:1:$ListLength(tCases) {
+        Set tCase = $List(tCases, tIndex)
+        Set tLabel = $List(tCase, 1) _ $Select($List(tCase, 2) [ "#": " with #" _ $Piece($Piece($List(tCase, 2), "#", 2), ":", 1) _ $Select($Length($List(tCase, 2), "#") > 2: " and #" _ $Piece($Piece($List(tCase, 2), "#", 3), ":", 1), 1: ""), 1: "")
         Do ..ClearFixtures()
         Do $ClassMethod(..#FIXTURE, "UseFakeRoutes")
         Do $ClassMethod(..#FIXTURE, "SetVersion", 8)
         Do $ClassMethod(..#FIXTURE, "Arm", "GetDocNames", "200 OK", ..#CANNEDDOCS)
         Do $ClassMethod(..#FIXTURE, "Arm", "PutDoc", $List(tCase, 1), $List(tCase, 2))
         Do ..Save("Classes", "Probe.A.cls", tText, "v", 1, .tResult, .tHttp, .tFault, $Namespace)
-        Do $$$AssertEquals(..Said(.tHttp, .tResult, .tFault) _ " " _ $ClassMethod(..#FIXTURE, "CallCount"), $List(tCase, 3) _ " 2", $List(tCase, 1) _ " is " _ $List(tCase, 3) _ ", with nothing compiled")
+        Do $$$AssertEquals(..Said(.tHttp, .tResult, .tFault) _ " " _ $ClassMethod(..#FIXTURE, "CallCount"), $List(tCase, 3) _ " 2", tLabel _ " is " _ $List(tCase, 3) _ ", with nothing compiled")
         Set tLogged = ##class(OcuPilot.Test.LogProbe).Captured("message")
-        Do $$$AssertEquals(##class(OcuPilot.Test.LogProbe).Captured("severity"), $List(tCase, 4), $List(tCase, 3) _ $Case($List(tCase, 4), "": " is not logged", "0": " is logged at information severity", : " is logged as a fault") _ ": " _ tLogged)
-        If $List(tCase, 4) '= "" Do $$$AssertTrue(tLogged [ $Piece($Piece($List(tCase, 2), "#", 2), ":", 1), "with the vendor's text: " _ tLogged)
+        Do $$$AssertEquals(##class(OcuPilot.Test.LogProbe).Captured("severity"), $List(tCase, 4), tLabel _ " answers " _ $List(tCase, 3) _ $Case($List(tCase, 4), "": " and is not logged", "0": " and is logged at information severity", : " and is logged as a fault") _ ": " _ tLogged)
+        If $List(tCase, 4) '= "" Do $$$AssertTrue(tLogged [ $Piece($Piece($List(tCase, 2), "#", 2), ":", 1), tLabel _ " logs the vendor's text: " _ tLogged)
         If $IsObject($Get(tFault)) Do $$$AssertTrue(tFault.reason '[ "#", "and its reason carries no vendor text: " _ tFault.reason)
+        If $IsObject($Get(tFault)) Do $$$AssertEquals(tFault.%GetTypeOf("detail"), "unassigned", tLabel _ " carries its sentence alone, with no detail")
     }
 }
 

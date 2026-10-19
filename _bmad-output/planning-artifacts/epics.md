@@ -8431,6 +8431,8 @@ So that the analytics category is not empty.
 
 ### Story 20.12: The agent gains guided workflows and Investigate
 
+[AMENDED 2026-10-15, orchestrator rulings Q1 A and Q2 A at this story's spec gate, Rule 5] Its Investigate criterion moved verbatim to Story 20.36. The harvested prompt set is all nine workflows, renamed; the two whose tools do not exist yet (Story 21.2's backup, Story 21.9's promote) get none until those stories land (named limit).
+
 As a developer-administrator facing a stuck production,
 I want the agent to run a known procedure rather than a single call,
 So that recovery follows a rehearsed path.
@@ -8440,10 +8442,6 @@ So that recovery follows a rehearsed path.
 - **Given** the harvested prompt set
 - **When** a guided workflow is run
 - **Then** it executes its steps, each write still an individually confirmed proposal - a workflow is a sequence of confirmations, **never a batch approval**.
-
-- **Given** an alert or a log entry
-- **When** the user chooses Investigate
-- **Then** a multistep run returns a recap and ranked hypotheses, citing the rows it used.
 
 - **Given** any workflow
 - **When** it reaches a write
@@ -9009,6 +9007,20 @@ So that I can ask about a cube's numbers in the conversation.
 - **Given** the agent's MDX read
 - **When** it runs a query
 - **Then** it answers the results within the MDX query tool's caps, and refuses a query that would run server-side code or SQL.
+
+### Story 20.36: Investigate
+
+[CHARTERED 2026-10-15, orchestrator ruling Q1 A at Story 20.12's spec gate, Rule 5] Split from Story 20.12, carrying its second criterion verbatim. It reuses 20.12's workflow catalog, its synthetic workflow call and its refusals; the outline is in Story 20.12's spec, Design Notes › Split. After Story 20.12, before Story 20.25.
+
+As a developer-administrator facing a stuck production,
+I want the agent to investigate an alert or a log entry for me,
+So that I start from a recap and ranked hypotheses rather than a blank page.
+
+**Acceptance Criteria:**
+
+- **Given** an alert or a log entry
+- **When** the user chooses Investigate
+- **Then** a multistep run returns a recap and ranked hypotheses, citing the rows it used.
 
 ## Epic 21: Stage 5 - custom-REST parity from the MCP suite's handlers
 

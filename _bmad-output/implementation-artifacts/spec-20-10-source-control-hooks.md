@@ -2,7 +2,9 @@
 title: 'Story 20.10: Source-control hooks'
 type: 'feature'
 created: '2026-10-13'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '58181770557e66a2f5a77279555df1a596b802f6'
+baseline_commit: '58181770557e66a2f5a77279555df1a596b802f6'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -124,22 +126,22 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Lines were
 
 **Execution:**
 
-- [ ] **Task 0 (re-anchor, no code).** After 20.16 and 20.8 have merged into this branch, read again:
+- [x] **Task 0 (re-anchor, no code).** After 20.16 and 20.8 have merged into this branch, read again:
   - `AtelierPort.Outcome` and `AtelierPortSave.TestTheVendorsRefusalsAreAnsweredByName`;
   - EXPERIENCE.md :159 and :604, and the `strings.test.mjs` bound;
   - 20.16's `InteropEditorProbe` and the input of its `interop.transformeditor.save` (`Names`, `Edits`).
 
   Anchor this story's edits to what is there. If `interop.transformeditor.save` is not registered, stop with `## Clarification Needed`, because AC6 consumes it.
-- [ ] **`src/OcuPilot/Api/AtelierError.cls`**:
+- [x] **`src/OcuPilot/Api/AtelierError.cls`**:
   - Add `DOCUMENTSOURCECONTROL = "EXPLORER.DOCUMENT.SOURCECONTROL"`, documented as `DOCUMENTLOCKED` is (409 on the `CONFLICT` slug; the vendor's text logged at information severity, never sent).
   - Add `REASONDOCUMENTSOURCECONTROL` with the Strings literal.
   - In `SAVEREFUSED`'s doc, replace "a source-control refusal" with "a source-control hook's own refusal".
-- [ ] **`src/OcuPilot/Port/AtelierPort.cls`**:
+- [x] **`src/OcuPilot/Port/AtelierPort.cls`**:
   - Add `Parameter SOURCECONTROLCODES = "5845,5865,6151";` beside `ACCESSDENIEDCODES`, documented as the vendor's source-control edit check.
   - Generalize `AccessDenied(pCodes, pRaw)` into `NamesCode(pCodes, pRaw, pList)`, taking the comma list. Its one caller passes `..#ACCESSDENIEDCODES`.
   - In `Outcome`, for `PutDoc`, add the refusal in Boundaries, in both the 400 branch and the 2xx branch: `Refuse(409, CONFLICT, DOCUMENTSOURCECONTROL, ...)`, then `LogNote`.
   - Update the docs of `Outcome`, `SaveSet` and `Invoke`'s fault list.
-- [ ] **New `src/OcuPilot/Test/SourceControlProbe.cls`** (a helper, `%RegisteredObject`):
+- [x] **New `src/OcuPilot/Test/SourceControlProbe.cls`** (a helper, `%RegisteredObject`):
   - Parameters: `HOOKS = "OcuProbe2010.SourceControl"` and `LOG = "OcuProbe2010SourceControl"` (a global in the probe namespace). Its doc says what it creates and that it is test-only.
   - **`Enable(pNamespace) As %Status`**:
     - Refuse unless `$System.Util.GetEnviron("OCUPILOT_ALLOW_NAMESPACE_CONFIG") = 1`.
@@ -157,7 +159,7 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Lines were
     - `OnBeforeSave` answers `$$$ERROR($$$ItemNotCheckedOut, InternalName)` when refused, and a `GeneralError` when vetoed.
     - `UserAction` answers the stored action (default 0) with the target "OcuPilot probe asks: proceed?".
     - `OnAfterSave` writes one console line.
-- [ ] **`src/OcuPilot/Test/AtelierPortSave.cls`** `TestTheVendorsRefusalsAreAnsweredByName`, extended. The `For` list gains these rows; the doc and its mutation line are updated:
+- [x] **`src/OcuPilot/Test/AtelierPortSave.cls`** `TestTheVendorsRefusalsAreAnsweredByName`, extended. The `For` list gains these rows; the doc and its mutation line are updated:
 
   | Vendor answer | OcuPilot's answer | Logged |
   |---|---|---|
@@ -167,7 +169,7 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Lines were
   | `200 OK` with `#5865` | `409 EXPLORER.DOCUMENT.SOURCECONTROL` | at information severity |
   | `400 Bad Request` with `#16021` | `400 PORT.VALIDATION` | as a fault |
 
-- [ ] **New `src/OcuPilot/Test/SourceControlSave.cls`**, armed by `Parameter ARMINGVARIABLE = "OCUPILOT_ALLOW_NAMESPACE_CONFIG"` with `NamespaceInterop`'s `OnBeforeAllTests` refusal. About 300 lines.
+- [x] **New `src/OcuPilot/Test/SourceControlSave.cls`**, armed by `Parameter ARMINGVARIABLE = "OCUPILOT_ALLOW_NAMESPACE_CONFIG"` with `NamespaceInterop`'s `OnBeforeAllTests` refusal. About 300 lines.
   - **`OnBeforeOneTest`:** `Disable("USER")`, remove the `ExplorerSaveProbe` documents and 20.16's probe package `OcuProbe2010Ui`, clear the fixture and `LogProbe`, and snapshot governance.
   - **`OnAfterOneTest`:** `Disable("USER")`, asserted OK. Remove the probes, restore governance, and remove the seeded proposals.
   - **Tests:**
@@ -177,13 +179,13 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Lines were
     4. `TestAHookVetoIsTheSavesRefusal` (AC5).
     5. `TestTheAgentsEditorSaveRunsTheHooksAndIsRefusedByName` (AC6, through `ExplorerSaveFlow.Dispatch` and `ExplorerWrite.ConfirmIn`, with an `Old` the probe's stored text holds exactly once).
   - Each test makes its probe documents before `Enable`.
-- [ ] **`scripts/ci-throwaway.sh`** (add-only), after :657: a comment line saying that the source-control classes enable a probe source-control class on `USER` and remove it, then `# classes: SourceControlProbe, SourceControlSave`.
-- [ ] **`ui/src/app/core/strings.ts`** (add-only): after `explorerEditorRefusedAction`, `/** EXPERIENCE.md:604 */ explorerDocumentSourceControl` with the literal. If `strings.test.mjs`'s literal count is then within 50 of its bound and the bound still reads 3,400, raise it to 3,800, as its comment rules.
-- [ ] **`ui/tools/self-protection.test.mjs`** `ATELIER_REFUSALS`: add `['REASONDOCUMENTSOURCECONTROL', 'explorerDocumentSourceControl']` after `REASONSAVEREFUSED`.
-- [ ] **Browser helpers.** If 20.16 or 20.8 has already exported equivalents of `answered`, `editorFrame` and `snackbarWhere` from `ui/browser/interop-editor-spec.mjs`, import those. Otherwise:
+- [x] **`scripts/ci-throwaway.sh`** (add-only), after :657: a comment line saying that the source-control classes enable a probe source-control class on `USER` and remove it, then `# classes: SourceControlProbe, SourceControlSave`.
+- [x] **`ui/src/app/core/strings.ts`** (add-only): after `explorerEditorRefusedAction`, `/** EXPERIENCE.md:604 */ explorerDocumentSourceControl` with the literal. If `strings.test.mjs`'s literal count is then within 50 of its bound and the bound still reads 3,400, raise it to 3,800, as its comment rules.
+- [x] **`ui/tools/self-protection.test.mjs`** `ATELIER_REFUSALS`: add `['REASONDOCUMENTSOURCECONTROL', 'explorerDocumentSourceControl']` after `REASONSAVEREFUSED`.
+- [x] **Browser helpers.** If 20.16 or 20.8 has already exported equivalents of `answered`, `editorFrame` and `snackbarWhere` from `ui/browser/interop-editor-spec.mjs`, import those. Otherwise:
   - move the three there as exports, each taking its `timeoutMs` (and `config.username` where `editorShows` needs it);
   - import them in `interop-editors.browser-spec.mjs`, leaving its behavior unchanged.
-- [ ] **New `ui/browser/interop-editor-source-control.browser-spec.mjs`**:
+- [x] **New `ui/browser/interop-editor-source-control.browser-spec.mjs`**:
   - **`before`:**
     - Refuse `LIVE_CONTAINER` and require a `-ci` container (20.7's checks).
     - Through `runIris`, make 20.16's rule and DTL probes in `USER` (package `OcuProbe2010Ui`), then `SourceControlProbe.Enable("USER")`.
@@ -194,10 +196,10 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Lines were
     - AC1, the DTL menu, user action and save;
     - AC2, the DTL refusal and the rule opened read-only;
     - AC3, the rule's Compile.
-- [ ] **EXPERIENCE.md** (add-only), then `cd ui && npm run test:tools`:
+- [x] **EXPERIENCE.md** (add-only), then `cd ui && npm run test:tools`:
   - **:604:** append the literal to the literals cell, and append to the description cell: "; and System Explorer's and the agent's saves (Story 20.10): the refusal of a document source control has not released for editing", closed with the row's `[ADDED YYYY-MM-DD - Story 20.10]` marker dated the day it lands.
   - **:159:** append "Where the namespace uses source control, each editor shows its own Source Control menu and runs the namespace's hooks itself (Story 20.10)."
-- [ ] **Roster sweep (Rule 30).** Search `src/OcuPilot/Test`, `ui/tools`, `ui/browser` and the `ui/src` specs for:
+- [x] **Roster sweep (Rule 30).** Search `src/OcuPilot/Test`, `ui/tools`, `ui/browser` and the `ui/src` specs for:
   - a `PutDoc` 400 asserted as `PORT.VALIDATION`;
   - the `ATELIER_REFUSALS` size;
   - the strings count;
@@ -254,11 +256,70 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Lines were
   - **When** it ends, passing or failing.
   - **Then** `SourceControlClassGet("USER")` reads `""`, and neither the hooks class nor its global exists.
 
+### Review Findings
+
+Code review 2026-10-15 (bmad-code-review, four layers, `full-opus`).
+
+- [x] [Review][Patch] A hook's own `OnBeforeSave` error naming #5865 was answered 409 `EXPLORER.DOCUMENT.SOURCECONTROL` (measured: `#16008 > #16000 > #5865`), against AD-61 rule 6 and the Never list; `EditCheckRefused` now excludes `SAVEERRORCODE` (16008) [src/OcuPilot/Port/AtelierPort.cls:3292]
+- [x] [Review][Patch] The browser spec's `before` removed the probe package in `HSCUSTOM`, so its cleanup assertion could not fail; it now calls `InteropEditorProbe.Remove` after `Disable` [ui/browser/interop-editor-source-control.browser-spec.mjs:171]
+- [x] [Review][Patch] `ImportSet`'s doc and `Invoke`'s fault list did not name the import's 409 refusal [src/OcuPilot/Port/AtelierPort.cls:2407]
+- [x] [Review][Patch] The agent's refused leg did not pin the information-severity log its class header promises [src/OcuPilot/Test/SourceControlSave.cls:384]
+- [x] [Review][Patch] The `%SourceControl` sentinel outlived a test that throws; both tests now `New` it [src/OcuPilot/Test/SourceControlSave.cls:146]
+- [x] [Review][Patch] AC3 wrote the frame selector as a literal; it imports `SCREEN_FRAME_SELECTOR` [ui/browser/interop-editor-source-control.browser-spec.mjs:445]
+- [x] [Review][Defer] The agent's confirm renders every `EXPLORER.*` port refusal, this story's included, with `REASONTOOLUNAVAILABLE` [src/OcuPilot/Api/Confirm.cls:148] — deferred: pre-existing root cause DW-1280, reopened `escalated owner=burndown`
+- [x] [Review][Defer] The interop-editor browser specs keep local copies of the shared helpers (`answered`, `editorShows`, the frame selector, `readSettings`, `shellAt`) [ui/browser/agent-editor-save.browser-spec.mjs:244] — deferred: DW-2463, `wontfix-accepted`
+- [x] [Review][Defer] `messages.log` tail readers are copied across tests, and the `%Stream.FileCharacter` ones seek a byte offset as a character position [src/OcuPilot/Test/SourceControlSave.cls:195] — deferred: DW-2464, `wontfix-accepted`; the sibling `WalletKeyProbe.LogSince` is Epic 18's, a contended file in another area
+
+Rejected:
+
+- `low` AD-61 rule 6 and the Boundaries name no soft-caller exception for the 2xx form: the spec's ordering (after the access refusal, before 422) puts it behind the soft return, as the 422 sentence already does; the 2xx form is the routine path (inference: `%Routine.LockRoutine` runs no source-control check) and is pinned for non-soft callers by the canned row.
+- `low` "Check it out first." does not fit #5845, #6151 or a document another user holds: the literal is fixed by the Strings note, so the change is a spec amendment.
+- `false` EXPERIENCE.md :159 overclaims for the BPL editor: it is the task's sentence, and the BPL editor does show its own (empty) menu and run the load hooks itself, as the named limits record.
+- `low` The Auto Run Result's "six tests" and its finding counts are stale: the fix edits the spec, which carries the `oversized` warning; the QA block records 8/8.
+- `false` AC2's rule leg asserts only the banner and the menu: those are AC2's whole Then.
+- `false` AC1's order clause can match any `GetStatus`: AC1 asks an order, not adjacency.
+- `false` AC1 filters the log by document: "all for `<doc>.CLS`" covers the five named hooks, asserted on the document's own entries; the user is asserted over every entry.
+- `low` `Disable`'s `$Char(0)` removes an explicit `""` over an instance-wide default class: no throwaway carries one (theoretical).
+- `low` `OnBeforeOneTest` clears governance before `Remove`: `ExplorerSave`'s order, throwaway-only, and a failed `Remove` fails loudly.
+- `low` `TestTheProbeTakesNoSourceControlThatIsNotItsOwn` sets a class in `USER` without the probe: the Always clause's purposes hold (armed throwaway, `USER` only, only when it names none, cleared after a Try/Catch, `OnAfterOneTest` asserts none).
+- `low` `readSettings` reads `$Data` 10 as present: the editors' nodes are scalar (theoretical), and it is 20.7's code.
+- `false` AC8's browser half has no mutation: Rule 19 asks one per AC, and AC8's is recorded.
+
 ## Spec Change Log
 
 - 2026-10-14, spec gate (runner): the Rule 5 restatement (option A) is applied to `epics.md` Story 20.10 (apply-and-report: it restates the observable and keeps "edits go through the same hooks they would elsewhere"). Original: "Given source control is enabled on the namespace, When an embedded editor saves, Then the hooks, menus, user actions and status are exchanged through the port." The Rule 20 drafts are written (AD-63's named consequence, AD-61 rules 6 and 8). The plan's deferred item (create and delete drop the follow-up user action) is harvested as DW-2405 and removed from the frontmatter. DW-2395 is fixed on this branch since Story 20.16 (Epic 18's 18.38), so the DTL and BPL compile routes no longer fail on the null device; the rule editor may still carry the compile legs.
 
 ## Review Triage Log
+
+### 2026-10-15 — Review pass
+
+- verdicts: 14 findings — high 0, medium 2, low 6, false 6, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` An import of one UDL file over a source-control-refused class reaches the new 400 branch (a soft caller) with no test — the branch sits before the soft return; added `SourceControlSave.TestAnImportOfAnUnreleasedDocumentIsRefusedBySourceControl`; mutation `&& 'pSoft` reddens it alone.
+  - `[low]` `[patch]` "The vendor's text is never sent" is asserted on `reason` only — added a no-detail assertion to the canned loop and a body assertion to the person's HTTP save; passing the raw text as `detail` reddens both.
+  - `[low]` `[patch]` AC2's DTL refusal leg passes without any source-control exchange — added the `GetStatus` assertion; a probe whose `GetStatus` records nothing reddens it.
+  - `[low]` `[patch]` Rule 19: no mutation row for AC8, and none labeled AC6 — recorded the AC8 mutation (`Disable` without its `Kill`) red in every `SourceControlSave` test; AC6 joins the labels of the two rows that redden its tests.
+  - `[low]` `[reject]` The 2xx form of the refusal skips soft callers — it sits beside the existing 2xx handlers (the access refusal and 422), which skip soft callers too; the edit check answers 400 (measured); moving it ahead of the soft return changes the import's per-document reporting, a larger change than a rare unmeasured answer is worth.
+  - `[low]` `[reject]` `SourceControlProbe.Enable`'s three refusals have no test — a test helper that runs on a throwaway; the fix is new test cases, not a correction, and the failure is not met in everyday use.
+  - `[false]` `[reject]` The agent leg asserts its hooks in the test process, not a web process — AC6 asks `job = $Job` in the confirm process, which `ExplorerWrite.ConfirmIn` is; the person's HTTP leg covers the web process.
+  - `[false]` `[reject]` The real vendor is exercised for #5865 only — the canned rows are the planned cover for #5845, #6151 and the 2xx form.
+  - `[false]` `[reject]` The hook veto is asserted at the port, not over HTTP — AC5 asks for the 422 answer and the fault log; the HTTP leg of the refusal covers the transport.
+  - `[low]` `[patch]` The embedded refusal's vendor 400 is not observed — same root cause as the AC2 DTL leg finding above, closed by its `GetStatus` assertion.
+  - `[false]` `[reject]` AC2 and AC3 carry fewer observer clauses than AC1 — AC2 asks for neither, AC1 and AC3 assert the message counters, and the rule leg's three-item menu is the measured one.
+  - `[medium]` `[patch]` The 400 form now reaches imports, which no AC names — same root cause as the import finding above, closed by its test.
+  - `[false]` `[reject]` EXPERIENCE.md and `ci-throwaway.sh` are touched beyond the matrix — both are named tasks of the spec and neither is in its Never list.
+  - `[false]` `[reject]` "After the access refusal" holds only on the 2xx path — the 400 branch fires for HTTP 400 alone, and an access refusal is a 403 or a 2xx soft error, both ordered ahead on their own paths.
+
+### 2026-10-15 — Code review (bmad-code-review)
+
+- verdicts: 33 layer findings in 21 entries — high 1, medium 2, low 11, false 6; patch 6 (applied), defer 3, rejected 12 (listed under Review Findings)
+- findings:
+  - `[high]` `[patch]` A hook's own `OnBeforeSave` error naming #5865 is answered 409 `SOURCECONTROL` (AD-61 rule 6, the Never list); measured red on the unpatched port (run 87); `EditCheckRefused` excludes `SAVEERRORCODE`, and the probe's `Veto` takes a message number for the veto test's new #5865 leg.
+  - `[medium]` `[patch]` The browser spec's `before` cleanup ran in `HSCUSTOM` and could not fail; it removes the package in `USER` after `Disable`.
+  - `[medium]` `[defer]` The agent's confirm shows `REASONTOOLUNAVAILABLE` for every `EXPLORER.*` refusal; DW-1280's root cause, out of footprint (`Api/Confirm.cls`, `Api/Error.cls`), reopened `escalated owner=burndown`.
+  - `[low]` `[patch]` Import refusal docs; the agent leg's log-severity assertion; `New %SourceControl` in the two sentinel tests; AC3's frame selector.
+  - `[low]` `[defer]` Browser helper copies (DW-2463) and `messages.log` tail copies (DW-2464): `wontfix-accepted`, each with `reopen_if`.
+- verification: `SourceControlSave` 8/8 (run 94), `AtelierPortSave` 16/16, `AtelierPortDocument` 11/11, `ExplorerSave` 8/8; the browser spec 5/5 twice after a rebuild and redeploy; `npm run test:tools` 2035/2035; `check-objectscript` clean; `USER` names no source-control class afterwards.
 
 ## Design Notes
 
@@ -393,22 +454,62 @@ Checked and not engaged: AD-5, AD-44 and AD-64 (no screen); AD-10, AD-15, AD-22 
 - **Lead-owned:** the full ObjectScript sweep, `cd ui && npm test`, `bash scripts/smoke.sh --container ocupilot-b-ci --user _SYSTEM --password SYS`, and Rule 30's fresh check.
 - **Left to CI:** the full browser suite.
 
-**Planned pinning mutations (Rule 19).** Revert each byte-identical. Reload, or rebuild and redeploy, before the next.
+**Pinning mutations (Rule 19).** Each was applied, observed red and reverted byte-identical, with the tree reloaded or the bundle rebuilt and redeployed before the next.
 
-| AC | Mutation | Expected red |
+| AC | Mutation | Red (observed) |
 |---|---|---|
-| AC1 | `interop-editor.page.ts` hands the frame `HSCUSTOM` whatever the scope | AC1: no document, so no "Check In" and no hook |
-| AC2 | The probe's `GetStatus` answers editable whatever is refused (the fixture holds the vendor's behavior) | AC2's DTL leg (the save succeeds) and its rule leg |
-| AC3 | The probe's `OnBeforeCompile` records nothing | AC3, and AC4's compile clause |
-| AC4 | `SaveSet` stores the text with `SetTextFromString` in place of `PutDoc` | AC4's save clause, and AC6's allowed leg |
-| AC5 | `Outcome` without the source-control branch | The four canned rows, AC5's HTTP leg, and AC6's refused leg |
+| AC1 | `interop-editor.page.ts` hands the frame `HSCUSTOM` whatever the scope | All five browser tests, at the wait for the frame |
+| AC1 | The probe's `OnBeforeSave` records nothing | AC1 and AC3 of the browser spec |
+| AC2 | The probe's `GetStatus` answers editable whatever is refused | AC2's DTL and rule legs; `SourceControlSave`'s person's and agent's tests |
+| AC3 | The probe's `OnBeforeCompile` records nothing | AC3 alone in the browser spec; `SourceControlSave`'s port-save, compile and agent's tests |
+| AC4, AC6 | `SaveSet` stores the text with `SetTextFromString` in place of the put | `SourceControlSave`'s port-save, person's, veto and agent's tests |
+| AC4 | The probe's `OnBeforeDelete` records nothing | `SourceControlSave`'s compile and delete test, at its delete leg |
+| AC4 | `Route` without `%SourceControl` in its `New` | `SourceControlSave`'s port-save test, at its `%SourceControl` clause |
+| AC5, AC6 | `Outcome` without the source-control branches | The four source-control canned rows, the person's refusal over HTTP, the agent's refused leg |
 | AC5 | `SOURCECONTROLCODES` without 5845 | The 5845 canned row alone |
-| AC7 | One word of `REASONDOCUMENTSOURCECONTROL` changed | `self-protection.test.mjs` |
+| AC5 | `EditCheckRefused` without its `SAVEERRORCODE` exclusion (review) | `SourceControlSave`'s veto test alone, at its #5865 leg (run 93) |
+| AC5 | `Outcome`'s 400 branch skips soft callers (`&& 'pSoft`) | `SourceControlSave`'s import test alone |
+| AC5 | A source-control refusal passes the vendor's text as its `detail` | The source-control canned rows' no-detail assertion, and `SourceControlSave`'s person's save at its body assertion |
+| AC2 | The probe's `GetStatus` records nothing | The browser spec's AC2 DTL leg at its status assertion, and AC1 |
+| AC8 | `Disable` leaves the log global (no `Kill`) | Every `SourceControlSave` test, at the cleanup assertions of `OnAfterOneTest` |
+| AC7 | One word of `REASONDOCUMENTSOURCECONTROL` changed | `self-protection.test.mjs`, naming both surfaces |
+| AC5, AC6 | The 400 source-control branch logs through `LogFault` (review) | `SourceControlSave`'s person's and agent's tests alone, at their information-severity clauses (run 89) |
+
+**QA additions (Rule 8, Rule 19), on `ocupilot-b-ci`.** Each mutation was applied, observed red, reverted byte-identical (`cmp` against a copy) and the tree reloaded or the bundle rebuilt and redeployed.
+
+- (QA) `src/OcuPilot/Test/SourceControlSave.cls`: `TestAnImportRunsTheHooksInTheCallersProcess` (AC4, the import's put and compile) and `TestTheProbeTakesNoSourceControlThatIsNotItsOwn` (AC8, the Never on a namespace that has a class of its own).
+- (QA) `src/OcuPilot/Test/AtelierPortSave.cls` `TestTheVendorsRefusalsAreAnsweredByName`: one row, a 200 naming #5883 and #5865, answers 403 `PORT.ACCESSDENIED` (the Boundaries' order); the row label names every code it carries.
+- (QA) `ui/browser/interop-editor-source-control.browser-spec.mjs`: AC2's two legs and AC3 assert that the main frame sends nothing under `/api/interop-editors/` and that no message is received (AC1 already did).
+- (QA) mutation: `ImportSet` stores a UDL document with `SetTextFromString` in place of the put → `SourceControlSave.TestAnImportRunsTheHooksInTheCallersProcess` at its hooks clause, and the import refusal test.
+- (QA) mutation: `SourceControlProbe.Enable` without its refusal of another source-control class → `TestTheProbeTakesNoSourceControlThatIsNotItsOwn` alone, at its Enable clauses.
+- (QA) mutation: `SourceControlProbe.Disable` clears the setting whatever it names → the same test alone, at its Disable clauses.
+- (QA) mutation: `Outcome`'s 2xx path tests the source-control codes ahead of the access codes → `AtelierPortSave.TestTheVendorsRefusalsAreAnsweredByName`, the "200 OK with #5883 and #5865" row alone.
+- (QA) mutation: `scripts/ci-throwaway.sh`'s `# classes:` line drops `SourceControlSave` → `ui/tools/ci.test.mjs`, "DW-1276: each arming roster names exactly the classes that declare that variable".
+- (QA) mutation: the sentence in EXPERIENCE.md :604 shortened → `self-protection.test.mjs`'s Story 19.2 test ("published in EXPERIENCE.md's Fixed strings") and three `strings.test.mjs` tests.
+- (QA) mutation: `interop-editor-frame.ts` posts a message into the frame once it loads (bundle rebuilt and redeployed) → all five tests of the browser spec, at the message clause.
+- (QA) mutation: `interop-editor-frame.ts` requests `/api/interop-editors/v7/USER/qa-probe` from the main frame → AC1, both AC2 legs and AC3, at the main-frame clause.
+- (QA) mutation: `interop-editor-frame.ts` requests `/api/interop-editors/v7/USER/sourcecontrol/enabled` from the main frame → AC1, at "every one of them is the frame's own".
+- (QA) final state: `SourceControlSave` 8/8, `AtelierPortSave` 16/16, `AtelierPortDocument` 11/11 and `ExplorerSave` 8/8, forward and in reverse order; the new browser spec 5/5 and `interop-editors.browser-spec.mjs` 19/19; `npm run test:tools` 2035/2035; afterwards `USER` names no source-control class and the hooks class, its global and the probe packages are gone.
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-- Plan pass. The vendor editors' source-control exchange in OcuPilot's frame, `AtelierPort`'s hooks and its refusal answer were measured on `ocupilot-b-ci`; every probe was removed and verified gone.
-- For the lead at the spec gate: the Rule 5 draft (Story 20.10's criterion, apply-and-report, option A), the Rule 20 drafts (AD-63's consequence, AD-61 rules 6 and 8), the frontmatter `deferred` item, and the BPL menu as a vendor candidate.
+**Implemented.** A `PutDoc` answer naming #5845, #5865 or #6151 is 409 `EXPLORER.DOCUMENT.SOURCECONTROL` (its text at information severity, never sent) under HTTP 400 and under a non-soft 2xx; a hook's own refusal stays 422. The vendor's editors, the port's save, compile and delete, the person's save and the agent's editor save are pinned against a probe source-control class enabled in `USER`, which every test removes and verifies gone.
+
+**Files changed:**
+
+- `src/OcuPilot/Api/AtelierError.cls`: the code and its sentence; `SAVEREFUSED`'s doc.
+- `src/OcuPilot/Port/AtelierPort.cls`: `SOURCECONTROLCODES`, `NamesCode` (generalizing `AccessDenied`), the two `Outcome` branches, the docs.
+- `src/OcuPilot/Test/SourceControlProbe.cls` (new): `Enable`, `Disable`, `Refuse`, `Veto`, `Action`, `Entries`, `Clear`, and the hooks class it writes.
+- `src/OcuPilot/Test/SourceControlSave.cls` (new): six tests for AC4 to AC6 and AC8, including the import found at review.
+- `src/OcuPilot/Test/AtelierPortSave.cls`: five canned refusal rows, each labeled by vendor code, and a no-detail assertion.
+- `ui/browser/interop-editor-source-control.browser-spec.mjs` (new): AC1 to AC3 in the vendor's DTL and rule editors; `ui/browser/interop-editor-spec.mjs` exports `answered`, `editorFrame`, `editorShows` and `snackbarWhere`, and `interop-editors.browser-spec.mjs` imports them.
+- `ui/src/app/core/strings.ts`, `ui/tools/self-protection.test.mjs`, EXPERIENCE.md (:159 and :604, marker dated 2026-10-15), `scripts/ci-throwaway.sh` (arming roster comment).
+
+**Review.** 14 findings: patches applied 4 entries (the import test; the no-detail assertions; the AC2 `GetStatus` assertion with the AC8 and AC6 mutation rows), deferred 0, rejected 8 with their reasons in the triage log. Follow-up review: not recommended (one medium entry patched, no high).
+
+**Verification (slot B, `ocupilot-b-ci`, final tree).** `SourceControlSave` 6/6, `AtelierPortSave` 16/16, `AtelierPortDocument` 11/11, `ExplorerSave` 8/8; `npm run test:tools` 2035/2035; `npm run build` green with the initial total 1.96 MB, under the fixed 2500 kB warning; `check-objectscript` and `lint-docs` clean; the new browser spec 5/5 and `interop-editors.browser-spec.mjs` 19/19. Mutations are in `## Verification`. Afterwards `USER` names no source-control class and neither the hooks class, its global nor any probe package exists. The full ObjectScript sweep, `npm test`, smoke and Rule 30's fresh check are the lead's.
+
+**Residual risks.** The implementation pass measured that the vendor's DTL editor needs its settings panel opened, closed and opened again before a Description change enables Save while a namespace is under source control (`editDescription` in the browser spec). It also saw `LastBP` written by the editors and `LastDTL` not. `ci-timings.json` has no entry for the new class and spec until the merge-gate refresh.

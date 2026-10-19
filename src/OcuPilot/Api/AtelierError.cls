@@ -60,6 +60,16 @@ Parameter DOCUMENTLOCKED = "EXPLORER.DOCUMENT.LOCKED";
 /// <parameter>DELETELOCKED</parameter> carries.</p>
 Parameter REASONDOCUMENTLOCKED = "Another process is editing this document.";
 
+/// <p>Envelope code: the namespace's source-control class has not released the document a save names for
+/// editing (#5845, #5865 or #6151, its edit check), so nothing was written (Story 20.10). Rendered on the
+/// <parameter>OcuPilot.Api.Error.CONFLICT</parameter> slug with 409, and never logged as a fault; the
+/// vendor's message, which can name the user who holds the document, is logged at information severity and
+/// never sent (AD-61 rule 6).</p>
+Parameter DOCUMENTSOURCECONTROL = "EXPLORER.DOCUMENT.SOURCECONTROL";
+
+/// <p>The sentence <parameter>DOCUMENTSOURCECONTROL</parameter> carries.</p>
+Parameter REASONDOCUMENTSOURCECONTROL = "Source control has not released this document for editing, so nothing was saved. Check it out first.";
+
 /// <p>Envelope code: the first line of a save's text does not name the document saved, by name and
 /// kind, so nothing was sent (Story 19.3). Rendered on the
 /// <parameter>OcuPilot.Api.Error.VALIDATIONFAILED</parameter> slug with 422.</p>
@@ -76,7 +86,7 @@ Parameter SAVETOOLARGE = "EXPLORER.SAVE.TOOLARGE";
 Parameter REASONSAVETOOLARGE = "The text is longer than 3,000,000 characters, the most one save sends.";
 
 /// <p>Envelope code: the instance refused a save's text with an error of its own, a source-control
-/// refusal or text it cannot store among them, and kept the document as it was (Story 19.3). Rendered
+/// hook's own refusal or text it cannot store among them, and kept the document as it was (Story 19.3). Rendered
 /// on the <parameter>OcuPilot.Api.Error.VALIDATIONFAILED</parameter> slug with 422; the vendor's text
 /// is logged and never sent.</p>
 Parameter SAVEREFUSED = "EXPLORER.SAVE.REFUSED";
