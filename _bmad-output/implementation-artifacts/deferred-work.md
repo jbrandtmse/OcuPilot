@@ -10611,6 +10611,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: red in 20.15's sweep on the long-lived throwaway; CI's fresh instance holds few rows (spine Conventions > Tests: no dependence on instance age)
 - 2026-10-08T07:00:29Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=harvest note=assert the pair-set refusal and a row, not the absence of truncation
 - 2026-10-14T22:47:27Z status=routed owner=23-11-the-range-end-cleanup-part-10 by=lead note=orchestrator 2026-10-14: chartered 23.11 for 23.5's later routings
+- 2026-10-19T12:24:33Z status=resolved-by:23-11-the-range-end-cleanup-part-10 by=adjudication note=both-pairs leg reads DemoTaskId's history, every row's TaskId asserted; unscoped read red at 1,000 rows (QA run 701)
 
 ### DW-2191: Screen permissions offers row actions the instance always refuses: Reset on Home, Agent co-pilot and unadjusted screens, and the dialog's Remove on a last pair
 - source: spec-20-15-per-screen-permissions-seen-and-adjusted.md | severity: low | fix-risk: med | footprint: in-story
@@ -10894,6 +10895,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: ExplorerWire.TestTheReadToolsAnswerRowsAndNeverTheDocument red runs 158 and 535 on ocupilot-ci at fe8e3832; the cap is Kernel/Agent/Limits TOOLRESULTMAXLENGTH 65536; 20.19's source reads carry a 60,000-character exception, the class view read does not
 - 2026-10-09T10:32:54Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=harvest note=page or truncate the class view read as 20.19 does for source, or name the cap in the refusal; 18.10 moves ExplorerWire's leg to a small class
 - 2026-10-14T22:47:27Z status=routed owner=23-11-the-range-end-cleanup-part-10 by=lead note=orchestrator 2026-10-14: chartered 23.11 for 23.5's later routings
+- 2026-10-19T12:24:33Z status=resolved-by:23-11-the-range-end-cleanup-part-10 by=adjudication note=Bound.Apply writes the count it reports (2bfa8cab); ContextBound+ExplorerWire pins; AdminPort caps 64000-65536 all answer
 
 ### DW-2249: PctAccessPort STATE's any-case application match (Task 5) has no pinning leg
 - source: spec-18-10-web-application-extras-and-spec-based-rest-services.md | severity: low | fix-risk: low | footprint: in-story
@@ -12131,12 +12133,14 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-15T16:32:23Z status=routed owner=23-11-the-range-end-cleanup-part-10 by=lead note=see DW-2415 (resolved-by 20-8, reopen_if met); fix drains or clears timers before the count on all three Node bands
 - 2026-10-15T17:29:10Z occurrence=20-31-message-resend-and-edit-and-resend
 - 2026-10-15T18:17:28Z occurrence=23-5-the-range-end-cleanup-part-5
+- 2026-10-19T11:51:14Z occurrence=23-11-the-range-end-cleanup-part-10
 
 ### DW-2460: flake: OcuPilot.Test.SqlBackgroundJob TestAnEarlyCancelIsSentAgainUntilTheQueryRuns failed once in a local full sweep and passed on the shard's re-run
 - source: lead full ObjectScript sweep, Story 23.5 batch d | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: ocupilot-ci run 459 (shard 14/20, tree a555c2a8): 1 of 248 failed; the same shard re-run green; batch d changed no SQL background code
 - 2026-10-15T17:47:31Z status=routed owner=23-11-the-range-end-cleanup-part-10 by=lead note=flake:a_timing_test_of_the_background_SQL_cancel;CI_flakes_go_to_the_standing_cleanup_story
 - 2026-10-15T17:29:10Z occurrence=20-31-message-resend-and-edit-and-resend
+- 2026-10-19T12:24:33Z status=resolved-by:23-11-the-range-end-cleanup-part-10 by=adjudication note=cancel sent once the job is in SqlPortDelayed (AwaitInDelayedPort); green with a 1.5 s check; CANCELTRIES 1 red
 
 ### DW-2459: check-objectscript.py has no rule for a Parameter whose value is a {...} expression naming a project class the class neither extends nor declares DependsOn for, so a fresh container compile can fail LOAD-FAILED on compile order
 - source: spec-20-31-message-resend-and-edit-and-resend.md (rework 3 deferred) | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -12162,6 +12166,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: lead full ObjectScript sweep, Story 23.5 batch d (merged 20.31) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: ocupilot-ci fresh from 43cb9e06, shard 8/20: 1 of 282 failed; LogTail alone run 267 11/11; batch d changed no log code
 - 2026-10-15T20:11:03Z status=routed owner=23-11-the-range-end-cleanup-part-10 by=lead note=flake:likely_depends_on_an_earlier_class_leaving_the_file;CI_flakes_go_to_the_standing_cleanup_story
+- 2026-10-19T12:24:33Z status=resolved-by:23-11-the-range-end-cleanup-part-10 by=adjudication note=ArmTailGap makes the gap between looks, Writer gap mode dropped; write-back dropped red; fresh 11/11 both orders
 
 ### DW-2465: SqlBackgroundJob.TestTheOwnersCancelStopsTheQuery cancels at startedAt + 0.5 s without confirming the query runs, the trigger DW-2460 replaced in the early-cancel leg
 - source: spec-23-11-the-range-end-cleanup-part-10.md | severity: low | fix-risk: med | footprint: in-story
