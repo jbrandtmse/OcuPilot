@@ -4,9 +4,10 @@
 /// <parameter>BOUND</parameter> seconds, looking every <parameter>CHECK</parameter> and beating every
 /// <parameter>BEAT</parameter>. One row of the story's matrix per test.</p>
 /// <p>This class is the heartbeat the port calls (<method>Heartbeat</method>): it counts each beat, and
-/// can be armed to fail or throw as a gone client does. A writer job of its own appends to, replaces or
-/// briefly removes the scratch file while a tail waits, and is stopped in <method>OnAfterOneTest</method>.
-/// The instance's own console log is never written, rotated or removed here.</p>
+/// can be armed to fail or throw as a gone client does. A writer job of its own appends to or replaces the
+/// scratch file while a tail waits, and is stopped in <method>OnAfterOneTest</method>; the absent-file leg
+/// has the fixture remove the file at one look and write it back at a later one. The instance's own console
+/// log is never written, rotated or removed here.</p>
 /// <p>Needs a writable manager directory and a running principal holding <code>%Admin_Operate:USE</code>,
 /// which the port's own gate checks on every call this class does not arm a stand-in gate for; the longest
 /// test holds one tail to the bound.</p>

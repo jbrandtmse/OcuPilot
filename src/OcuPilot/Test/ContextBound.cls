@@ -160,20 +160,20 @@ Method TestTheTotalCutMeasuresTheCountItWrites()
     For tEdgeRows = 10, 100 {
         Set tEdge = ..WrittenLength(tEdgeRows, 150)
         Do $$$AssertTrue(..WrittenLength(tEdgeRows - 1, 150) < (tEdge - 40), "the row before the edge is out of the window: " _ ..WrittenLength(tEdgeRows - 1, 150) _ " under " _ tEdge)
-        Set tChecked = 0
+        Set tAnswered = 0
         Set tProblems = ""
         For tCap = (tEdge - 40):1:(tEdge + 40) {
-            Set tChecked = tChecked + 1
             Kill tFieldMax
             Set tOk = ##class(OcuPilot.Kernel.Agent.Bound).Apply(..FixedRows(150), 200, .tFieldMax, 1000, tCap, .tJson)
             If 'tOk Set tProblems = tProblems _ " " _ tCap _ ":refused" Continue
+            Set tAnswered = tAnswered + 1
             Set tParsed = ##class(%DynamicObject).%FromJSON(tJson)
             Set tWant = $Select(tCap >= tEdge: tEdgeRows, 1: tEdgeRows - 1)
             If $Length(tJson) > tCap Set tProblems = tProblems _ " " _ tCap _ ":over"
             If tParsed.rowsSent '= tParsed.rows.%Size() Set tProblems = tProblems _ " " _ tCap _ ":count"
             If tParsed.rows.%Size() '= tWant Set tProblems = tProblems _ " " _ tCap _ ":rows=" _ tParsed.rows.%Size()
         }
-        Do $$$AssertEquals(tChecked, 81, tEdgeRows _ " rows: every ceiling in the window was tried")
+        Do $$$AssertEquals(tAnswered, 81, tEdgeRows _ " rows: every ceiling in the window was answered")
         Do $$$AssertEquals(tProblems, "", tEdgeRows _ " rows: each ceiling answers the most rows that fit, within it, counted as written")
     }
 }

@@ -2,7 +2,7 @@
 title: 'Story 23.11: The range-end cleanup, part 10'
 type: 'bugfix'
 created: '2026-10-15'
-status: 'in-review'
+status: 'done'
 baseline_revision: '4dba7011b5b40b35401c6c68304698470b109e0e'
 baseline_commit: 'a69613d295e28b1fcbf3ff6ca63816c28cbf183e'
 review_loop_iteration: 0
@@ -274,6 +274,25 @@ deferred: []
 
 ## Review Triage Log
 
+### 2026-10-19 -- Review pass (batch a)
+
+- verdicts: 13 findings -- high 0, medium 0, low 6, false 7, maybe-false 0
+- findings:
+  - `[low]` `[patch]` `LogTail.cls` header says the writer job "briefly removes" the scratch file -- the `gap` mode is gone and `ArmTailGap` removes it; the header now says so.
+  - `[low]` `[patch]` DW-2182 `mutation:` line names "`pEveryFieldEquals` ignored", which cannot redden -- the observed half is a different mutation; the line now names the one run (Rule 19).
+  - `[low]` `[reject]` The DW-2182 `TaskId` assertion fails only where the history holds another task's run -- the defect is data volume, which a hermetic test cannot seed into the system task history; the Verification line records the null.
+  - `[low]` `[patch]` `AssertEquals(tChecked, 81)` cannot fail -- it now counts answered ceilings; red under the loop's removal (run 26).
+  - `[low]` `[reject]` `AwaitInDelayedPort` fails if the test process stalls about a second before its first sample -- it fails loudly, never passes falsely, and `DELAYSECONDS` cannot rise past the cancel's retry window.
+  - `[false]` `[reject]` The default-share leg passes without the fix -- it is the AC's first leg; the second dispatch carries the discrimination and went red alone under the mutation.
+  - `[false]` `[reject]` The second dispatch's share is constructed -- the AC names it ("one character under its default answer"); a real class sits in the window over two characters.
+  - `[false]` `[reject]` `AdminPort` is not pinned and the default share does not reproduce the refusal -- Design Notes measure the window; the AC pins `OcuProbe192.LargeView`.
+  - `[false]` `[reject]` The turn loop's share derivation and 256-character floor are untested -- neither is changed by the diff, and `Answer` takes the share as an argument.
+  - `[false]` `[reject]` The row-free refusal has no tool-level test -- the refusal path is unchanged (`tKeep` 0, then the check) and `TestTheTotalSizeCutDropsTrailingRowsAndRefusesWhenNothingFits` pins it.
+  - `[false]` `[reject]` `Api/Turn.cls` is not pinned -- it shares `Apply`, pinned at the function; `TurnContext` and `ScreenGrounding` ran green in the implement pass.
+  - `[low]` `[reject]` DW-2182: no test makes the history exceed 1,000 rows -- same root cause and route as the third row.
+  - `[false]` `[reject]` DW-2460: `SqlBackgroundDelayed` is untouched and the slow check phase is only a transient mutation -- the test waits for the job inside the delayed port, so it is independent of the check phase; the `Hang 1.5` mutation shows the old leg red and the new leg green.
+- own checks: `AwaitInDelayedPort` opens `%SYS.ProcessQuery` from `HSCUSTOM` with no namespace switch, and it resolved on this build (the leg's seen-in-port assertion green, and red under `CANCELTRIES` 1); it sets `tProcess` to `""` after each poll, so no reference survives a pass. `WireSecurityRead.cls` is large and no defect was found in it.
+
 ## Design Notes
 
 **Verdicts at head `a69613d2`** (Rule 17 inbox):
@@ -405,8 +424,8 @@ Every test added or changed passes on a fresh environment, in either order.
 **Batch a (loop):**
 
 - Run Load, then Class `ContextBound`, `ExplorerWire`, `ToolDispatch`, `Sanitize`, `WireSecurityRead`, `SqlBackgroundJob` and `LogTail`, one per call. Then Checks.
-- `mutation:` the drop loop removed from `Bound.Apply`. Expected red: `ContextBound.TestTheTotalCutMeasuresTheCountItWrites`, and `ExplorerWire.TestALargeClassViewIsCutByWholeRows`'s second dispatch (`TOOL.RESULTTOOLARGE`). Observed red, each the only failing test of its class: `Apply` refused the ceilings 1 under the 10-row edge and 2 and 1 under the 100-row edge, and the second dispatch answered `TOOL.RESULTTOOLARGE`.
-- `mutation:` `pEveryFieldEquals` ignored by `AssertSameRowsAsTestAccount`, with the `taskId` scope dropped. Expected: the `TaskId` assertion red when the throwaway's history holds another task's run; otherwise record the task ids the throwaway held, as an honest null. Observed with the scope dropped and the assertion kept: red at "every row has TaskId 1003"; the throwaway held 52 history rows over 21 task ids, the demo task's 3. The 1,000-row bound itself is not reproduced there.
+- `mutation:` the drop loop removed from `Bound.Apply`. Expected red: `ContextBound.TestTheTotalCutMeasuresTheCountItWrites`, and `ExplorerWire.TestALargeClassViewIsCutByWholeRows`'s second dispatch (`TOOL.RESULTTOOLARGE`). Observed red, each the only failing test of its class: `Apply` refused the ceilings 1 under the 10-row edge and 2 and 1 under the 100-row edge, and the second dispatch answered `TOOL.RESULTTOOLARGE`. With the loop's exit made unconditional (run 26), the test's answered-count and problems assertions both red, the only failing test of 15.
+- `mutation:` the `&taskId=` scope dropped from the both-pairs read, `pEveryFieldEquals` kept. Expected: the `TaskId` assertion red when the throwaway's history holds another task's run; otherwise record the task ids it held, as an honest null. Observed: red at "every row has TaskId 1003"; the throwaway held 52 history rows over 21 task ids, the demo task's 3. The 1,000-row bound itself is not reproduced there.
 - `mutation:` `Hang 1.5` in `SqlBackgroundDelayed.PortClass` (a slow check phase). Expected: the leg as it was (cancel on `startedAt`) red at "within three seconds"; the new leg green. Then `CANCELTRIES` 1. Expected: the new leg red. Observed: the leg as it was red at "within three seconds" (12.18 s); the new leg green (12 of 12). With `CANCELTRIES` 1 (`SqlBackground` and its four subclasses recompiled) the new leg red (10.43 s).
 - `mutation:` `ArmTailGap`'s write-back dropped. Expected red: "an absent instant that ends unchanged is no change". `Tail` answering `changed` as soon as the file is absent. Expected: the leg red, as its existing mutation says. Observed red, the only failing test of 11: with the write-back dropped, at that assertion alone; with `Tail` answering at once (`LogSourcePort` and its three subclasses recompiled), at that assertion and "waited out to the bound", "no earlier" and the heartbeat count.
 
@@ -438,9 +457,12 @@ Every test added or changed passes on a fresh environment, in either order.
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-- Planned four batches, a to d, over the ten owned entries. All ten are confirmed: DW-2460 and DW-2462 by inference, and DW-2202 with two named sites refuted.
-- DW-2246's cause was measured on `ocupilot`. The window was reproduced at caps 65,070 and 65,071. The largest view is `AdminPort`'s, at 126,191 characters, and the largest class is `InteropPort`.
-- No contended file. Lead edits name the `CLAUDE.md:129` wording and the testing rule's line.
+Batch a (DW-2246, DW-2182, DW-2460, DW-2462), review and finalize. Batches b, c and d are later passes.
+
+- **Change.** `Bound.Apply` step 3 writes the kept rows with the count they report and drops the last kept row while the written payload is over the ceiling, so the class read answers whole rows at any share. Three ObjectScript tests are made deterministic: the both-pairs task history reads one task's runs (`WireSecurityRead`), the early-cancel leg waits for the job inside the delayed port (`SqlBackgroundJob`, `SqlPortDelayed`), and the absent-file leg arms its gap between looks (`LogSourceFixture.ArmTailGap`, `LogTail`). New tests: `ContextBound.TestTheTotalCutMeasuresTheCountItWrites`, `ExplorerWire.TestALargeClassViewIsCutByWholeRows`, with `ExplorerProbe.MakeLargeClass`.
+- **Review.** Layers: verification-gap and intent-alignment. 13 findings: low 6, false 7. Patched 3 lows (the `LogTail` header, the DW-2182 `mutation:` line, the `ContextBound` answered-count assertion), rejected 10 with reasons in the Review Triage Log, deferred none. `followup_review_recommended` is false.
+- **Verification.** On `ocupilot-ci` after reloading `src` (0 errors): `ContextBound` 15 of 15 (run 27, green), `LogTail` 11 of 11 (run 28), confirmed by SQL on `%UnitTest_Result`. The patched assertion was falsified with the loop's exit made unconditional: red in run 26, the only failing test, then `Bound.cls` restored from git and reloaded. `ExplorerWire`, `ToolDispatch`, `Sanitize`, `WireSecurityRead`, `SqlBackgroundJob`, `TurnContext` and `ScreenGrounding` were run green by the implement pass and are untouched since. `uv run scripts/check-objectscript.py` on the nine changed classes: 0 problems.
+- **Residual risk.** DW-2182's 1,000-row bound is not reproduced on any throwaway; the scoped read is pinned by its `TaskId` assertion, which can fail only where another task has history.
