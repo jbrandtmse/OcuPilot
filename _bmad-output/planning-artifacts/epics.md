@@ -9589,3 +9589,8 @@ So that a large class is readable and the suites stay green when a story adds a 
 - **Given** a fix to code or a test
 - **When** it lands
 - **Then** a test reddens on the defect before the fix, or the entry says why none can, and the fixes land in batches grouped by area, each with CI green on its own head.
+- DW-2449: The Guardrails page and a web application's class-access tab draw the generic server-fault sentence as role=alert for any failed read, status 0 included, so an unreachable instance shows a second alert with the wrong sentence beside the shell's banner (ledger; routed by cr 2026-10-15)
+- DW-2455: Browser specs' 720px structural passes measure right after a bare setViewport, while the panel's width transition still runs, so an overflow at the settled 320px panel can read clean and a pass can flake (ledger; routed by cr 2026-10-15)
+- DW-2458: CI flake: log-viewer.spec.ts AC6 (with Live tail off nothing streams) reads fake timers pending on gates (node 24 and node 26), DW-2415 recurring after Story 20.8's fix (ledger; routed by lead 2026-10-15)
+- DW-2460: flake: OcuPilot.Test.SqlBackgroundJob TestAnEarlyCancelIsSentAgainUntilTheQueryRuns failed once in a local full sweep and passed on the shard's re-run (ledger; routed by lead 2026-10-15)
+- DW-2462: flake: OcuPilot.Test.LogTail TestAnAbsentFileIsWaitedOutAndReportedAtTheBound found the file present in a full sweep, green alone (ledger; routed by lead 2026-10-15)

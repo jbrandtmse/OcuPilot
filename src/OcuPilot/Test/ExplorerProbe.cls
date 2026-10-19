@@ -33,6 +33,24 @@ ClassMethod MakeClass(pNamespace As %String, pName As %String, pBroken As %Boole
     Quit ##class(%Compiler.UDL.TextServices).SetTextFromString(pNamespace, pName, tText)
 }
 
+/// <p>Save class <var>pName</var> (without <code>.cls</code>, in <parameter>PACKAGE</parameter> or
+/// <parameter>OWNPACKAGE</parameter>) in <var>pNamespace</var>, uncompiled, with <var>pMethods</var>
+/// class methods <code>M001</code>, <code>M002</code>, ... each carrying a doc comment of
+/// <var>pDocLength</var> characters, so the class's view is as many member rows of that size.</p>
+ClassMethod MakeLargeClass(pNamespace As %String, pName As %String, pMethods As %Integer, pDocLength As %Integer) As %Status
+{
+    If ($Piece(pName, ".", 1) '= ..#PACKAGE) && ($Piece(pName, ".", 1) '= ..#OWNPACKAGE) Quit $$$ERROR($$$GeneralError, "a probe class is in package " _ ..#PACKAGE _ " or " _ ..#OWNPACKAGE)
+    Set tDoc = $Translate($Justify("", pDocLength), " ", "x")
+    Set tText = "Class " _ pName _ " Extends %RegisteredObject" _ $Char(13, 10) _ "{" _ $Char(13, 10)
+    For tI = 1:1:pMethods {
+        Set tText = tText _ "/// " _ tDoc _ $Char(13, 10)
+        Set tText = tText _ "ClassMethod M" _ $Extract(1000 + tI, 2, 4) _ "() As %Integer" _ $Char(13, 10) _ "{" _ $Char(13, 10)
+        Set tText = tText _ "    Quit 1" _ $Char(13, 10) _ "}" _ $Char(13, 10)
+    }
+    Set tText = tText _ "}" _ $Char(13, 10)
+    Quit ##class(%Compiler.UDL.TextServices).SetTextFromString(pNamespace, pName, tText)
+}
+
 /// <p>Save routine <var>pName</var> (one of <parameter>ROUTINES</parameter>) in
 /// <var>pNamespace</var>, uncompiled.</p>
 ClassMethod MakeRoutine(pNamespace As %String, pName As %String) As %Status

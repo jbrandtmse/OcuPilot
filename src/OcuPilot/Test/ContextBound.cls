@@ -121,6 +121,63 @@ Method TestTheTotalSizeCutDropsTrailingRowsAndRefusesWhenNothingFits()
     Do $$$AssertEquals(tRefusedJson, "", "with no payload")
 }
 
+/// <p>A payload of <var>pCount</var> rows of one written length: <code>n</code>, three digits, and a
+/// 60-character <code>text</code>.</p>
+ClassMethod FixedRows(pCount As %Integer) As %DynamicObject
+{
+    Set tPayload = {"rows": []}
+    For tI = 1:1:pCount {
+        Set tRow = {}
+        Do tRow.%Set("n", $Extract(1000 + tI, 2, 4), "string")
+        Do tRow.%Set("text", $Translate($Justify("", 60), " ", "x"), "string")
+        Do tPayload.rows.%Push(tRow)
+    }
+    Quit tPayload
+}
+
+/// <p>The length of <method>FixedRows</method>' first <var>pKept</var> rows written the way a cut writes
+/// them out of <var>pCount</var>: with <code>rowsSent</code> <var>pKept</var>, <code>rowsAvailable</code>
+/// <var>pCount</var>, <code>truncated</code> true and no <code>truncatedFields</code>.</p>
+ClassMethod WrittenLength(pKept As %Integer, pCount As %Integer) As %Integer
+{
+    Set tPayload = ..FixedRows(pKept)
+    Do tPayload.%Set("rowsSent", pKept, "number")
+    Do tPayload.%Set("rowsAvailable", pCount, "number")
+    Do tPayload.%Set("truncated", 1, "boolean")
+    Do tPayload.%Set("truncatedFields", [])
+    Quit $Length(tPayload.%ToJSON())
+}
+
+/// <p>The total-size cut measures the count it writes. Over 150 rows of one written length, every ceiling
+/// within 40 characters of the length at which the kept rows go from 9 to 10, and from 99 to 100, is
+/// answered: the payload is within the ceiling, its <code>rowsSent</code> is the size of its
+/// <code>rows</code>, and the rows are the most that fit.</p>
+/// <p>Mutation: make step 3 of <method>OcuPilot.Kernel.Agent.Bound.Apply</method> write once and drop no
+/// row (its loop's exit unconditional) -- the ceilings under the edge, where the count gains a digit, are
+/// refused, and this goes red.</p>
+Method TestTheTotalCutMeasuresTheCountItWrites()
+{
+    For tEdgeRows = 10, 100 {
+        Set tEdge = ..WrittenLength(tEdgeRows, 150)
+        Do $$$AssertTrue(..WrittenLength(tEdgeRows - 1, 150) < (tEdge - 40), "the row before the edge is out of the window: " _ ..WrittenLength(tEdgeRows - 1, 150) _ " under " _ tEdge)
+        Set tAnswered = 0
+        Set tProblems = ""
+        For tCap = (tEdge - 40):1:(tEdge + 40) {
+            Kill tFieldMax
+            Set tOk = ##class(OcuPilot.Kernel.Agent.Bound).Apply(..FixedRows(150), 200, .tFieldMax, 1000, tCap, .tJson)
+            If 'tOk Set tProblems = tProblems _ " " _ tCap _ ":refused" Continue
+            Set tAnswered = tAnswered + 1
+            Set tParsed = ##class(%DynamicObject).%FromJSON(tJson)
+            Set tWant = $Select(tCap >= tEdge: tEdgeRows, 1: tEdgeRows - 1)
+            If $Length(tJson) > tCap Set tProblems = tProblems _ " " _ tCap _ ":over"
+            If tParsed.rowsSent '= tParsed.rows.%Size() Set tProblems = tProblems _ " " _ tCap _ ":count"
+            If tParsed.rows.%Size() '= tWant Set tProblems = tProblems _ " " _ tCap _ ":rows=" _ tParsed.rows.%Size()
+        }
+        Do $$$AssertEquals(tAnswered, 81, tEdgeRows _ " rows: every ceiling in the window was answered")
+        Do $$$AssertEquals(tProblems, "", tEdgeRows _ " rows: each ceiling answers the most rows that fit, within it, counted as written")
+    }
+}
+
 /// <p>Descriptor bound (AD-24, Story 4.4) -- <code>context.maxLength</code> above 1,000, naming a
 /// field not in <code>context.fields</code>, or a non-integer value, is refused by
 /// <method>OcuPilot.Screen.Registry.ReadProblem</method>, naming <code>context.maxLength</code>; a

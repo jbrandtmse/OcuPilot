@@ -333,8 +333,40 @@ Method TestTheOwnersCancelStopsTheQuery()
     Do $$$AssertEquals(tStatus _ " " _ tText, "200 " _ tView.%ToJSON(), "a cancel of the ended run answers it unchanged")
 }
 
-/// <p>AC5: a cancel sent as soon as the run has begun, while its job runs no statement yet, is sent
-/// again until the query runs, and the run reads canceled within three seconds.</p>
+/// <p>The job id of run <var>pKey</var> once its row reads running, polled for up to <var>pSeconds</var>;
+/// <code>""</code> when it has not begun by then.</p>
+ClassMethod RunJob(pKey As %String, pSeconds As %Numeric = 10) As %String
+{
+    Set tJob = ""
+    Set tDeadline = $ZHorolog + pSeconds
+    For {
+        Set tResult = ##class(%SQL.Statement).%ExecDirect(, "SELECT JobId FROM OcuPilot_Kernel_State.SqlRun WHERE %EXACT(RunKey) = ? AND State = 'running'", pKey)
+        If tResult.%Next() Set tJob = tResult.%GetData(1)
+        If (tJob '= "") || ($ZHorolog > tDeadline) Quit
+        Hang 0.05
+    }
+    Quit tJob
+}
+
+/// <p>Whether process <var>pJob</var> is running <class>OcuPilot.Test.SqlPortDelayed</class>'s code, polled
+/// for up to <var>pSeconds</var>. Each poll opens the process afresh and drops it before the next.</p>
+ClassMethod AwaitInDelayedPort(pJob As %Integer, pSeconds As %Numeric = 10) As %Boolean
+{
+    Set tSeen = 0
+    Set tDeadline = $ZHorolog + pSeconds
+    For {
+        Set tProcess = ##class(%SYS.ProcessQuery).%OpenId(pJob)
+        Set tWhere = $Select($IsObject(tProcess): tProcess.CurrentLineAndRoutine, 1: "")
+        Set tProcess = ""
+        If tWhere [ "OcuPilot.Test.SqlPortDelayed" Set tSeen = 1 Quit
+        If $ZHorolog > tDeadline Quit
+        Hang 0.02
+    }
+    Quit tSeen
+}
+
+/// <p>AC5: a cancel sent once the run's job is inside the delayed port, before it runs its statement, is
+/// sent again until the query runs, and the run reads canceled within three seconds.</p>
 /// <p>Mutation (Rule 19): set <parameter>OcuPilot.Area.Explorer.SqlBackground.CANCELTRIES</parameter>
 /// to 1 -- the one cancel finds no query, the count runs on and this goes red.</p>
 Method TestAnEarlyCancelIsSentAgainUntilTheQueryRuns()
@@ -342,12 +374,10 @@ Method TestAnEarlyCancelIsSentAgainUntilTheQueryRuns()
     Set tUser = $Parameter(..#PROBE, "USER")
     Set tStart = ..StartAs(tUser, ..#DELAYED, ..#LONGERQUERY)
     Set tKey = tStart.%Get("key")
-    Set tDeadline = $ZHorolog + 10
-    For {
-        Do ..Poll(tUser, tKey, .tStatus, .tBody, .tType)
-        If ($IsObject(tBody) && (tBody.%Get("startedAt") '= "")) || ($ZHorolog > tDeadline) Quit
-        Hang 0.05
-    }
+    Set tJob = ..RunJob(tKey, 10)
+    Do $$$AssertNotEquals(tJob, "", "the run's job has begun")
+    If tJob = "" Quit
+    Do $$$AssertTrue(..AwaitInDelayedPort(tJob, 10), "the job was seen inside the delayed port")
     Set tAsked = $ZHorolog
     Do ##class(OcuPilot.Test.Http).AbsoluteRequest("POST", ..#POLL _ tKey _ "/cancel?ns=USER", tUser, ..PreparedPassword, .tStatus, .tText, .tHeaders)
     Do $$$AssertEquals(tStatus, 200, "the owner's cancel answers 200")
@@ -385,14 +415,7 @@ Method TestARunWhoseJobDiedReadsLost()
     Set tUser = $Parameter(..#PROBE, "USER")
     Set tStart = ..StartAs(tUser, ..#PRODUCTION, ..#LONGERQUERY)
     Set tKey = tStart.%Get("key")
-    Set tJob = ""
-    Set tDeadline = $ZHorolog + 10
-    For {
-        Set tResult = ##class(%SQL.Statement).%ExecDirect(, "SELECT JobId FROM OcuPilot_Kernel_State.SqlRun WHERE %EXACT(RunKey) = ? AND State = 'running'", tKey)
-        If tResult.%Next() Set tJob = tResult.%GetData(1)
-        If (tJob '= "") || ($ZHorolog > tDeadline) Quit
-        Hang 0.1
-    }
+    Set tJob = ..RunJob(tKey, 10)
     Do $$$AssertNotEquals(tJob, "", "the run's job has begun")
     If tJob = "" Quit
     Set tOrigNS = $NAMESPACE
