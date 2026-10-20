@@ -14,6 +14,14 @@ story_parallelism: off           # off is the only supported value under BMAD v6
 build_auto_mode: spawned         # spawned (default; runner spawns bmad-build-auto stage agents — depth-3 nesting)
                                  # | inline (runner invokes bmad-build-auto via Skill; implement tier must then be
                                  #   routed through _bmad/custom/bmad-build-auto.toml implementation_handoff — see Runner-Mode Deltas)
+integrate_conflicts: resolve-plain # owner 2026-09-29 (skill-rules Rule 22): a runner resolves a plain-intent conflict (a roster,
+                                 # key or test union) itself and asks only for a behaviour choice; --unattended runs use the
+                                 # policy's gates.merge_conflicts instead
+
+# Worktree bootstrap (skill-rules Rule 25): npm ci from the lockfile plus read-only links to the main checkout's
+# reference trees. Run from the worktree root; the script needs the main checkout named, found via git's common dir.
+bootstrap: 'bash _bmad/scripts/bootstrap-epic-worktree.sh . "$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")"'
+bootstrap_check: "test -f ui/node_modules/.package-lock.json && test -e irislib"
 
 # Runtime-touching stages serialize behind named claim-file locks
 # (<worktree_base>/.coordination/locks/<name>.lock). A project with no shared
