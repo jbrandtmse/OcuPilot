@@ -992,3 +992,5 @@
 2026-10-20T10:16:05Z	Epic 20	epic_branch_checked_out	repos=. head=bab8157f slot=b binding=ok(docker_port_52775,profile_ocupilot-slot-b_baseUrl_52775) bootstrap_check=ok ledger_entry_check=0(1926) dup_ids=none throwaway=down(torn_down_by_orchestrator;first_fresh_check_runs_up_alone)
 2026-10-20T10:16:05Z	Epic 20	ci_pending	sha=bab8157f runs=39401232457 note=forward_merge_of_feature_6a467d36(kit_upgrade)
 2026-10-20T10:16:54Z	Epic 20	throwaway_up	run=20261020T0940Z-20,23 container=ocupilot-b-ci dir=/Users/jbrandt/.ocupilot-throwaways/ocupilot-b-ci project=ocupilot-b-ci web=52777 super=1976 src=bab8157f result=healthy started_by=epic-20-runner
+2026-10-20T10:22:24Z	Epic 20	ci_resolved	sha=bab8157f runs=39401232457 result=success failed=none via=none resolved_at=next_implement
+2026-10-20T10:23:44Z	Story 20.11	stage_spawned	stage=implement spawn_at=2026-10-20T10:23:44Z model=sonnet agent_name=20-11-implement-1 cycle_iteration=1 story_base=eb2479f8
