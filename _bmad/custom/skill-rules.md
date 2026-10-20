@@ -122,7 +122,7 @@ Inside a provisioned epic worktree: NEVER run `git submodule update` (it resets 
 
 The footprint (`paths_hint` + `submodules` in `_bmad/custom/epic-dependencies.yaml`) answers one question — **what might collide with another epic running at the same time** — and the orchestrator lists the **contended** paths (the footprints of every epic that could run concurrently with yours: any epic that neither depends on yours nor is depended on by it, transitively) in the spawn prompt. Authority is a different question, answered by the runner's role: **the runner is the lead for its epic**, and always owns its epic's durable artifacts — everything under `implementation-artifacts`, and its own epic's story blocks in `epics.md` (Rule 5 amendments, Story X.0 insertion, the burn-down story charter are all things this workflow requires the runner to do).
 
-So: (a) your footprint and your epic's artifacts — edit freely; (b) a path outside your footprint that no contended epic owns — you may edit it, and you MUST report it under `footprint_extensions:` in the completion contract (the orchestrator re-checks overlap at the merge gate); (c) a contended path, an undeclared submodule, another epic's story blocks, epic boundaries or dependency statements — `## Clarification Needed`, never a judgment call. Amendments to planning artifacts follow Rule 5's two tiers (apply-and-report vs ask-first) and are listed under `amendments:` in the contract; the boundary is what forced orchestrator verification of each amendment and that verification stays — post-hoc, on the contract, instead of blocking.
+So: (a) your footprint and your epic's artifacts — edit freely; (b) a path outside your footprint that no contended epic owns — you may edit it, and you MUST report it under `footprint_extensions:` in the completion contract (the orchestrator re-checks overlap at the merge gate); (c) a contended path, an undeclared submodule, another epic's story blocks, epic boundaries or dependency statements — `## Clarification Needed`, never a judgment call (under `--unattended`, the orchestrator classifies it and rules or parks — doctrine U14). Amendments to planning artifacts follow Rule 5's two tiers (apply-and-report vs ask-first) and are listed under `amendments:` in the contract; the boundary is what forced orchestrator verification of each amendment and that verification stays — post-hoc, on the contract, instead of blocking.
 
 (Field report 2026-08-29: five one-time "footprint widenings" in three stories, ~4 of 9 clarifications authorization-only — the concurrency footprint was being used to answer an authority question it was never designed for.)
 
@@ -240,23 +240,27 @@ OcuPilot runs one IRIS dev instance per parallel slot and one throwaway per slot
 
 ## Rule 22 — Integrate forward before completing; nothing dispatches onto a red feature branch (runners and orchestrator, under `/epic-cycle`)
 
-Before a runner emits its completion contract it merges `origin/<feature>` into its epic branch inside its worktree, resolves any conflict there, re-runs the full suite and the per-story smoke against the merged tree, pushes, and only then completes — so the orchestrator's SC-4-P merge is conflict-free and the tests that prove the merge ran where the code lives. On OcuPilot this overrides the kit skeleton's item 9, which makes every code conflict a `## Clarification Needed` (owner 2026-09-29: conflicts are resolved, with green CI on the exact head): the runner resolves a conflict whose two sides' intent is plain, such as a roster, key or test union, and asks the orchestrator only when resolving it means choosing one epic's behavior over the other's. The feature-head dispatch gate is kit text now: parallel kit, "Dispatch loop" (`ci_green_verified` for the feature head).
+Kit text now: the Runner Spawn Skeleton's item 9 (integrate forward, full suite and smoke on the merged tree, push, CI green on that exact head, then complete) and the dispatch loop's feature-head gate. The owner's 2026-09-29 ruling that runners resolve plain-intent conflicts themselves is the kit setting `integrate_conflicts: resolve-plain` in `_bmad/custom/parallel.yaml` for attended runs, and `gates.merge_conflicts: resolve` in `_bmad/custom/unattended.yaml` for `--unattended` runs: a roster, key or test union is resolved by the runner, and a conflict that chooses one epic's behavior over the other's goes to the orchestrator.
 
 **When the merge brings ObjectScript** (owner-approved 2026-09-26, DW-1435), load the merged `src/` into a fresh or re-loaded throwaway before the suite. The merged tree's browser tier is CI's browser job.
 
 ## Rule 23 — Pre-approved gates (orchestrator, under `/epic-cycle`; owner instruction 2026-09-15)
 
-The owner has pre-answered two of the three merge-gate questions: **merge** — yes, whenever CI is green on the runner's head and the merge is conflict-free; **retrospective** — no. The **decision sheet** is not pre-answered: `escalated` and `decision-pending` entries are presented as the base kit requires, one sitting, with a recommended disposition each, and the orchestrator waits for the owner. A conflicted merge or a red head still stops and asks.
+**Attended runs.** The owner has pre-answered two of the three merge-gate questions: **merge** — yes, whenever CI is green on the runner's head and the merge is conflict-free; **retrospective** — no. The **decision sheet** is not pre-answered: `escalated` and `decision-pending` entries are presented as the base kit requires, one sitting, with a recommended disposition each, and the orchestrator waits for the owner. A conflicted merge or a red head still stops and asks.
 
-**Model-tier checkpoint (owner instruction 2026-09-16):** the `checkpoint:` map in `_bmad/custom/model-overrides.yaml` pre-answers the checkpoint's two offers — `recommend_escalate: decline` (moot while implement is on Opus, as it is again since 2026-09-18; kept so a later de-escalation never pauses) and `offer_mixed: decline` (review stays `full-opus`, as the owner refused at Epic 2). The orchestrator still evaluates and logs `model_tier_checkpoint` on every epic, adds `answer=<offer>=decline(pre_answered)` to the row, leaves `overrides:` unchanged, and does not pause. The mandatory rollback (`review_tier: mixed` active with smoke defects) is not user-gated and is unaffected.
+**`--unattended` runs.** The policy carries the same answers: `gates.merge_to_feature: when_green`, `gates.retrospective: skip` (owner 2026-10-01: no retrospective for any remaining epic) and `gates.model_tier: record_only`. Nothing waits for the owner: the decision sheet, a conflicted merge and a red head follow doctrine U9 and U5, and an owner-only entry parks in the inbox.
+
+**Model-tier checkpoint (owner instruction 2026-09-16):** the `checkpoint:` map in `_bmad/custom/model-overrides.yaml` pre-answers the checkpoint's two offers — `recommend_escalate: decline` (implement runs on Sonnet, owner 2026-10-09) and `offer_mixed: decline` (review stays `full-opus`, as the owner refused at Epic 2). The orchestrator still evaluates and logs `model_tier_checkpoint` on every epic, adds `answer=<offer>=decline(pre_answered)` to the row, leaves `overrides:` unchanged, and does not pause. The mandatory rollback (`review_tier: mixed` active with smoke defects) is not user-gated and is unaffected.
 
 ## Rule 24 — Orphan sweeps are slot-scoped; owner-managed instances are never touched (every agent at every depth, under `/epic-cycle`)
 
 Kit Rule 13 (runtime targets) limits teardown to what this session started and can name from its own transcript. A throwaway compose project is an orphan only if its project name is THIS slot's throwaway project (`ocupilot-ci` for slot A, `ocupilot-b-ci` for slot B) and it is not the current story's. Never stop, remove, recreate or `down` `ocupilot`, any `ocupilot-slot-*` container, another slot's throwaway, or `iris-community-edition`. The `GENERATED BY scripts/ci-throwaway.sh` banner names the tool that wrote a compose file, not who ran it (field report 2026-09-15: the sequential lead tore down the owner's slot B instance on that banner).
 
+**Under `--unattended`** (doctrine U1: never stop, recreate or tear down a runtime resource this run did not start), a runner rebuilds only a throwaway whose `up` its own epic's cycle log records under the current run id. The orchestrator tears down both slots' throwaways before it launches or resumes a run, so each runner's first fresh check brings its throwaway up under the run. A throwaway that predates the run is reported, never rebuilt.
+
 ## Rule 25 — An epic worktree is bootstrapped before its runner is spawned (orchestrator; runner verifies; under `/epic-cycle`)
 
-`new-epic-worktree.sh` checks out tracked files only. OcuPilot's client tests and build need `ui/node_modules` (gitignored), and the rules send agents to the `irislib`/`irissys`/`irisui`/`irisdocs` reference exports (gitignored). Immediately after the script reports `PROVISIONED` and before the runner spawn, the orchestrator runs `bash _bmad/scripts/bootstrap-epic-worktree.sh <worktree>` — `npm ci` from the lockfile plus read-only symlinks to the main checkout's reference trees — and logs `worktree_bootstrapped` in the parallel cycle log; the script refuses to leave the worktree dirty. At runner start, before any stage spawn, the runner verifies `ui/node_modules/.package-lock.json` exists and `irislib` resolves, and halts with a `TOOLING:` clarification otherwise — a stage that runs `npm test` in an unbootstrapped worktree fails on every verification and reports the story, not the environment.
+Kit text now: the dispatch loop's `bootstrap:` step and the runner's `bootstrap_check:` (parallel kit), which `_bmad/custom/parallel.yaml` sets to OcuPilot's script and check. OcuPilot remainder: `new-epic-worktree.sh` checks out tracked files only, and the client tests and build need `ui/node_modules` (gitignored), while the rules send agents to the `irislib`/`irissys`/`irisui`/`irisdocs` reference exports (gitignored). `bash _bmad/scripts/bootstrap-epic-worktree.sh <worktree> <main-checkout>` runs `npm ci` from the lockfile and links the main checkout's reference trees read-only. It refuses to leave the worktree dirty, and refuses to run with the worktree as its own main checkout, so the `bootstrap:` line passes the main checkout explicitly.
 
 ## Rule 26 — Read once, then work from the copy you hold (every agent at every depth, under `/epic-cycle`)
 
@@ -270,7 +274,7 @@ An epic's X.0 cleanup story and its burn-down gate (Rule 17) charter only ledger
 
 ## Rule 28 — CI resolves before the next implement spawn, not before the next plan spawn (lead/runner, under `/epic-cycle`; owner instruction 2026-09-20)
 
-Kit text now: the base kit's "CI Is a Gate" — resolution point (1) is the next story's implement spawn, and the plan, spec validation and spec gate do not wait for it — and its "At `committed`" paragraph, which pushes the code commit on its own and confirms its run by `headSha` before any further push (DW-1434). Nothing OcuPilot-specific remains; the number stays because specs and cycle logs cite it.
+Kit text now: the base kit's "CI Is a Gate" — resolution point (1) is the next story's implement spawn, and the plan, spec validation and spec gate do not wait for it — and its "At `committed`" paragraph, which pushes the code commit on its own and confirms every workflow's run registered for that exact sha (`CI status`, `missing=none`) before any further push (DW-1434). Nothing OcuPilot-specific remains; the number stays because specs and cycle logs cite it.
 
 ## Rule 29 — Targeted verification inside the implement stage; the full suites once before `dev_complete` (plan and implement stages, under `/epic-cycle`; owner instruction 2026-09-20)
 
@@ -288,7 +292,7 @@ Kit text now: Rule 19's hermeticity paragraph — the `Shared surfaces:` line, s
 
 - **Shared surfaces.** An example line: `Shared surfaces: rail, Home tiles, users editor tabs, entity types` (or `Shared surfaces: none`). The implement stage's sweep for the old shape greps `ui/browser`, `ui/tools`, the `ui/src` specs and `src/OcuPilot/Test`, and each file it changes joins the story's Rule 29 `(loop)` set. A count or list asserted outside its own roster test is derived from the registry, descriptor or mirror, never written as a literal. A roster's own pin (`SurfaceCoverage`, `EndpointCoverage`, the floor-only roster and their kind) stays literal, because a roster that derives both sides proves nothing.
 - **Self-contained tests.** A test asserts on its own rows by marker, or against the store's own read at that moment, never on a store being empty or on a named configuration, row, log line or setting it did not make. A browser spec waits for the screen's answered signal (`waitForMapAnswered` or the screen's equivalent) before it counts, clicks or types.
-- **The fresh-environment recipe** (the runner, once per story, before the code commit is pushed). Rebuild your own slot's throwaway: `scripts/ci-throwaway.sh down`, then `up` with the slot's exact `--dir`, `--project`, `--web` and `--super` (Rule 21; Rule 24 limits this to your own throwaway). Load `src` and redeploy the bundle. Run the story's own test classes and every class the shared-surface sweep changed, one at a time. Run the story's browser specs plus every spec file the sweep changed, once together and once one file at a time in reverse order. Then run the per-story smoke. Log `fresh_check env=recipe`; a red re-opens the story as a CI red would.
+- **The fresh-environment recipe** (the runner, once per story, before the code commit is pushed). Rebuild your own slot's throwaway: `scripts/ci-throwaway.sh down`, then `up` with the slot's exact `--dir`, `--project`, `--web` and `--super` (Rule 21; Rule 24 limits this to your own throwaway, and under `--unattended` to one this run started — when none is up yet, `up` alone). Load `src` and redeploy the bundle. Run the story's own test classes and every class the shared-surface sweep changed, one at a time. Run the story's browser specs plus every spec file the sweep changed, once together and once one file at a time in reverse order. Then run the per-story smoke. Log `fresh_check env=recipe`; a red re-opens the story as a CI red would.
 
 ## Rule 31 — Prefer extending the sibling over copying it (plan, implement and code-review stages, under `/epic-cycle`; owner approval 2026-10-09)
 
@@ -296,3 +300,37 @@ Kit text now: Rule 2's reuse paragraph, with the code-review block's Rule 2 bull
 
 - **The siblings to look for:** a tool or mint of the same type, a port method, a seam or probe, a rules class, a client store or loader. When the code map lists a new one, the plan names the sibling it extends or says why a copy is the better choice here. Code review searches the repository for a sibling of the same kind for each new class, method or helper in the diff, including one a review patch adds.
 - **Ways to extend:** subclass the sibling, add a parameter or hook in the parent, or make the existing helper reachable. **Reasons that typically justify a copy:** the two are expected to diverge; a shared base would couple unrelated areas or vendor APIs; the sibling is in a file the story must not edit; or the shared version would read worse than two short copies.
+
+## Rule 32 — A head the CI gate reads carries a real run; `[skip ci]` is for bookkeeping between them (orchestrator and runners, under `/epic-cycle`; owner instruction 2026-10-20)
+
+The kit's `ci-gate.py` reads a commit whose push carries a CI-skip token as `result=unavailable` ("push a commit without one"), and three unavailable reads count as a CI outage. OcuPilot pushes bookkeeping (cycle logs, the tracker, the ledger, specs, the timings refresh) as `[skip ci]` commits after a green code head, so that a bookkeeping push never cancels a code head's run under `ci.yml`'s `cancel-in-progress`. The two meet as follows.
+
+- **Never a CI-skip token on code**, as before, and never in a commit message that quotes one: a quoted `[skip ci]` skips the run all the same.
+- **A code head is pushed on its own,** and `CI status --branch <branch> --sha <code sha>` must report `missing=none` before any bookkeeping push to the same branch. Every CI question (`committed`, the resolution points, the per-story merge in Rule 33) is asked about that code sha, never about a bookkeeping head above it.
+- **A head the gate itself reads gets a real run:**
+  - the feature head before any runner dispatch or re-dispatch, where the orchestrator pushes its write-ahead dispatch bookkeeping without the token when the head carries one, and waits for `result=success`;
+  - a runner's final integrate-forward commit before its completion contract;
+  - the kit install or upgrade commit;
+  - an orchestrator forward-merge into an epic branch, since the merge carries code.
+- **Resume reads the last code head.** The doctrine's "check CI for the last pushed commit" means the newest pushed commit with no CI-skip token. A bookkeeping commit above it is judged by that code head, as long as the diff between them touches only `_bmad-output/**` and `ui/tools/ci-timings.json`.
+
+The kit maintainer has been sent the finding (2026-10-20). When the gate gains a bookkeeping carry rule, this rule shrinks to its first two bullets.
+
+## Rule 33 — Stories merge into feature one at a time (orchestrator and runners, under `/epic-cycle`; owner grant 2026-09-29, restated for `--unattended` runs 2026-10-20)
+
+The kit merges an epic into the feature branch when the whole epic completes. OcuPilot merges each story as it lands, so that a release on the owner's word can carry every finished story.
+
+- **The runner reports each story boundary** to the orchestrator with `SendMessage` to `main`: the code head, its run ids and its ledger delta. A cleanup story run in batches reports each batch. The runner then continues with its next story without waiting for the merge.
+- **The orchestrator merges** in the main checkout, when the code head's `CI status` reads `success`, in one of three ways:
+  - by fast-forward when feature is an ancestor of the epic tip;
+  - by a code-equal merge when the tip's code equals the green head (`git diff <green> <tip> -- src ui scripts module.xml .github .gitattributes docker-compose.yml` prints nothing);
+  - otherwise through a `staging/OCU-1-<story>` branch whose own CI must be green.
+- **Merge checks:**
+  - `ledger_entry_check.py` over the merge;
+  - no duplicate or lost `DW-n` headings;
+  - `SPRINT_PLAN validate`;
+  - the epics hash, re-recorded only for a prose-only change;
+  - the release-upgrade triggers (`Kernel/State`, `Install`, `module.xml`, compose, the container start script) and new `Kernel/Governance/Baseline.cls` keys, noted for the next cut;
+  - Rule 29's timings refresh.
+- **The orchestrator logs `merged`,** commits its bookkeeping, and pushes with a guard that refuses an empty sha, then confirms with `git ls-remote`.
+- **A story merge lands on feature, never on the trunk** (doctrine U1). The orchestrator never resolves a code conflict itself: the runner integrates forward and reports again. The epic's final merge still follows the kit (SC-4-P, and doctrine U9 under `--unattended`).
