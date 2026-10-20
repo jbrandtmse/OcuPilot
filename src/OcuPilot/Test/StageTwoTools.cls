@@ -130,13 +130,6 @@ XData Elsewhere
 <screen name="AgentSwitches"/>
 <screen name="AgentTranscript"/>
 <screen name="AgentTranscripts"/>
-<screen name="AnalyticsCubeDimensionsTab"/>
-<screen name="AnalyticsCubeList"/>
-<screen name="AnalyticsCubeMeasuresTab"/>
-<screen name="AnalyticsCubeRelationshipsTab"/>
-<screen name="AnalyticsFolderItemList"/>
-<screen name="AnalyticsTermListEntryList"/>
-<screen name="AnalyticsTermListList"/>
 <screen name="AuditList"/>
 <screen name="AuditSystemEventList"/>
 <screen name="AuditUserEventList"/>

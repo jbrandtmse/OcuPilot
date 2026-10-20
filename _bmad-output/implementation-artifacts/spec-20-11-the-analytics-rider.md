@@ -2,7 +2,7 @@
 title: 'Story 20.11: The Analytics rider'
 type: 'feature'
 created: '2026-10-14'
-status: 'done'
+status: 'ready-for-dev'
 baseline_revision: '673ced36dc780d0d546622f006a03ac444cfb83f'
 baseline_commit: '673ced36dc780d0d546622f006a03ac444cfb83f'
 review_loop_iteration: 0

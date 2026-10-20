@@ -697,7 +697,6 @@ test('Story 1.11 adds no string: the switch and its refusal are named by keys th
   assert.deepEqual(
     namespaceSentences.map(([key]) => key).sort(),
     [
-      'analyticsRefusalNamespace',
       'errorLogEmptyNamespace',
       'errorLogRefusedNamespace',
       'headerNamespaceLabel',
@@ -734,7 +733,7 @@ test('Story 1.11 adds no string: the switch and its refusal are named by keys th
       'namespaceRefusalOcuPilot',
       'userFormNamespace',
     ],
-    'the namespace-named keys are the switch\'s accessible name, one drilled-scope empty state, two named refusals, three field labels and the Namespaces screens\' own copy'
+    'the namespace-named keys are the switch\'s accessible name, one drilled-scope empty state, one named refusal, three field labels and the Namespaces screens\' own copy'
   );
 });
 

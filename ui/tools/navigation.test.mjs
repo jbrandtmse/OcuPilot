@@ -413,14 +413,6 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'interoperability/schema-viewer',
       // Story 20.9: Messages, listed last.
       'interoperability/messages',
-      // Story 20.11: Analytics' four unlisted screens (a cube's three tabs and a term list's entries), then Cubes, Term lists and Folder items.
-      'analytics/cubes/dimensions',
-      'analytics/cubes/document',
-      'analytics/cubes/relationships',
-      'analytics/term-lists/entries',
-      'analytics/cubes',
-      'analytics/term-lists',
-      'analytics/folder-items',
       'agent/definitions/edit',
       'agent/transcripts/details',
       'agent/definitions',
@@ -842,45 +834,6 @@ test('Story 20.4: the Status tab is what an item row opens, from Production item
     screenForChange({ type: 'production-item', id: `P.Prod${sep}Item` })?.screen.route,
     'interoperability/monitor',
     'and one that names none opens the earlier listed list of the type, the Production monitor'
-  );
-});
-
-// Story 20.11: a Cubes row opens the cube's Measures tab, the head of the group its Dimensions and Relationships tabs join, a
-// Relationships row opens the related cube's Measures tab, and a Term lists row opens the list's entries. The first is the
-// `<list route>/document` convention (`documentScreenFor`), the second the tab's `rowTarget`, the third the entries list's
-// `parentScope` (`childListFor`).
-//
-// Mutation (Rule 19): drop `rowTarget` from AnalyticsCubeRelationshipsTab and regenerate the mirror -> the Relationships leg goes red.
-// Change AnalyticsTermListEntryList's `parentScope` and regenerate -> the Term lists leg goes red. (A Measures tab moved off
-// `analytics/cubes/document` is refused by the mirror's own tab check before this test can run.)
-test('Story 20.11: a Cubes row opens the cube\'s Measures tab, a Relationships row the related cube\'s, and a Term lists row its entries', () => {
-  const cubes = screenForRoute('analytics/cubes');
-  assert.ok(cubes, 'Cubes is declared');
-  assert.equal(documentScreenFor(cubes)?.route, 'analytics/cubes/document', 'the Cubes name cell opens the Measures tab');
-  assert.equal(childListFor(cubes), null, 'and Cubes has no child list');
-  assert.deepEqual(
-    tabMembersFor(screenForRoute('analytics/cubes/document')).map((tab) => tab.route),
-    ['analytics/cubes/document', 'analytics/cubes/dimensions', 'analytics/cubes/relationships'],
-    'the strip reads Measures, Dimensions, Relationships'
-  );
-  const relationships = screenForRoute('analytics/cubes/relationships');
-  assert.ok(relationships, 'the Relationships tab is declared');
-  assert.deepEqual(relationships.rowTarget, { route: 'analytics/cubes/document', field: 'RelatedCube' }, 'a Relationships row opens the related cube by its name');
-  assert.equal(screenForRoute(relationships.rowTarget.route)?.built, true, 'a built screen');
-  assert.equal(hasIdRoute(screenForRoute(relationships.rowTarget.route)), true, 'keyed by an id');
-  const termLists = screenForRoute('analytics/term-lists');
-  assert.ok(termLists, 'Term lists is declared');
-  assert.equal(childListFor(termLists)?.route, 'analytics/term-lists/entries', 'the Term lists name cell opens the entries');
-  assert.equal(documentScreenFor(termLists), null, 'and Term lists pairs no document viewer');
-  assert.equal(
-    screenForUrl(`/analytics/cubes/dimensions/${encodeEntityId('OcuPilotProbeVisits')}`)?.descriptor,
-    'OcuPilot.Screen.Descriptor.AnalyticsCubeDimensionsTab',
-    'a Dimensions URL resolves to the Dimensions tab'
-  );
-  assert.equal(
-    screenForUrl(`/analytics/term-lists/entries/${encodeEntityId('OcuPilotProbeTerms')}`)?.descriptor,
-    'OcuPilot.Screen.Descriptor.AnalyticsTermListEntryList',
-    'an entries URL resolves to the entries list'
   );
 });
 

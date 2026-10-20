@@ -39,8 +39,7 @@
 /// Prometheus metrics and interoperability usage, through <method>MonitorPortClass</method>; and
 /// <code>interop</code>, the namespace's productions and interoperability classes, through
 /// <method>InteropPortClass</method>
-/// (AD-62); and <code>analytics</code>, the namespace's cubes, term lists and folder items, through
-/// <method>AnalyticsPortClass</method> (AD-65). <code>port: "state"</code> is
+/// (AD-62). <code>port: "state"</code> is
 /// OcuPilot's own protected state (AD-9), resolved against a kernel store's guarded list through
 /// <method>StateRows</method>. The second changes where the rows come from and nothing else: the
 /// same declared <code>fields</code>, the same secret strip, the same filter, sort and view rule,
@@ -312,18 +311,6 @@ ClassMethod InteropPortClass() As %String
     Quit "OcuPilot.Port.InteropPort"
 }
 
-/// <p>The <code>read.source.port</code> value naming the namespace's cubes, a cube's measures, levels and relationships, its term
-/// lists and their entries, and its folder items, read through <method>AnalyticsPortClass</method> behind that port's own gate,
-/// which is handed the route's scope as its namespace (AD-29, AD-36, AD-65, Story 20.11).</p>
-Parameter SOURCEANALYTICS = "analytics";
-
-/// <p>The port every <b>analytics</b> read is issued through. Overridable so a fixture can reach another; production never
-/// overrides it.</p>
-ClassMethod AnalyticsPortClass() As %String
-{
-    Quit "OcuPilot.Port.AnalyticsPort"
-}
-
 /// <p>The <code>read.source.port</code> value naming the screens' required permissions, composed by
 /// <method>AccessClass</method> from the registry, the adjustment store and the caller's own privileges
 /// (AD-36, AD-64, Story 20.15). Its <code>endpoint</code> is <code>Screens</code>.</p>
@@ -439,7 +426,7 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
         ; AD-36 as amended (Story 16.7): a bare admin type read as a list over one member.
         Set tRowsMember = $Select($IsObject(tSource) && (tSource.%GetTypeOf("rows") = "string"): tSource.%Get("rows"), 1: "")
         Set tBareRows = (tRowsMember '= "") && (tSource.%Get("port") = ..#SOURCEADMIN) && $Match(tSourceType, ..#BARETYPEPATTERN)
-        If '$IsObject(tSource) || '$ListFind($ListBuild(..#SOURCEADMIN, ..#SOURCESTATE, ..#SOURCEMGMNT, ..#SOURCELOGSOURCE, ..#SOURCEPATH, ..#SOURCETIMELINE, ..#SOURCEBACKGROUND, ..#SOURCEATELIER, ..#SOURCEENCRYPTION, ..#SOURCEDOCDB, ..#SOURCESQLACTIVITY, ..#SOURCEINTEROP, ..#SOURCEACCESS, ..#SOURCEMONITOR, ..#SOURCEANALYTICS), tSource.%Get("port")) || ('tBareRows && (tSourceType '= ..#READTYPE) && (((tSourceType '= ..#OBJECTTYPE) && (tSourceType '= ..#UPCOMINGTYPE) && (tSourceType '= ..#HISTORYTYPE) && (tSourceType '= ..#VOLUMELISTTYPE) && (tSourceType '= ..#DATAELEMENTLISTTYPE)) || (tSource.%Get("port") '= ..#SOURCEADMIN))) {
+        If '$IsObject(tSource) || '$ListFind($ListBuild(..#SOURCEADMIN, ..#SOURCESTATE, ..#SOURCEMGMNT, ..#SOURCELOGSOURCE, ..#SOURCEPATH, ..#SOURCETIMELINE, ..#SOURCEBACKGROUND, ..#SOURCEATELIER, ..#SOURCEENCRYPTION, ..#SOURCEDOCDB, ..#SOURCESQLACTIVITY, ..#SOURCEINTEROP, ..#SOURCEACCESS, ..#SOURCEMONITOR), tSource.%Get("port")) || ('tBareRows && (tSourceType '= ..#READTYPE) && (((tSourceType '= ..#OBJECTTYPE) && (tSourceType '= ..#UPCOMINGTYPE) && (tSourceType '= ..#HISTORYTYPE) && (tSourceType '= ..#VOLUMELISTTYPE) && (tSourceType '= ..#DATAELEMENTLISTTYPE)) || (tSource.%Get("port") '= ..#SOURCEADMIN))) {
             Set tSC = ..Internal(pDescriptor _ " declares no read this executor can issue", .pHttpStatus, .pFault)
             Quit
         }
@@ -583,28 +570,6 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
                 Quit
             }
             Set tPortSC = $ClassMethod(..InteropPortClass(), "Invoke", tSource.%Get("endpoint"), ..#READTYPE, .tQuery, "", .tAnswer, .pHttpStatus, .pFault)
-            If $$$ISERR(tPortSC) {
-                Set tSC = tPortSC
-                Quit
-            }
-        } ElseIf tSource.%Get("port") = ..#SOURCEANALYTICS {
-            ; The namespace's cubes, term lists and folder items (Story 20.11): the route's own scope travels as the port's
-            ; namespace, and the port's gate runs before any row. A parent-scoped list (a cube's tabs, a term list's entries)
-            ; takes its parent's route id as its one criterion, required as a single-object read's is.
-            Set tQuery("maxRows") = tMax + 1
-            Set tQuery("namespace") = ##class(OcuPilot.Kernel.Scope).Current()
-            Set tRouteParam = ""
-            If $ClassMethod(pDescriptor, "ParentScope") '= "" Set tRouteParam = ..ObjectCriterionParam(tRead)
-            If (tRouteParam '= "") && ($Get(pCriteria(tRouteParam)) = "") {
-                Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#READCRITERION, tRouteParam _ " is required", .pHttpStatus, .pFault)
-                Quit
-            }
-            Set tCriterionProblem = ..SeedCriteria(tRead, .pCriteria, .tQuery, .tApplied, .tCutoffs)
-            If tCriterionProblem '= "" {
-                Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#READCRITERION, tCriterionProblem, .pHttpStatus, .pFault)
-                Quit
-            }
-            Set tPortSC = $ClassMethod(..AnalyticsPortClass(), "Invoke", tSource.%Get("endpoint"), ..#READTYPE, .tQuery, "", .tAnswer, .pHttpStatus, .pFault)
             If $$$ISERR(tPortSC) {
                 Set tSC = tPortSC
                 Quit
