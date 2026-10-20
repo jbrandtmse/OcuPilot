@@ -225,7 +225,7 @@ Rebuild and redeploy before reading any browser result you intend to report:
 ```bash
 cd ui && npm run build                       # the bundle the spec will actually load
 docker cp dist/ocupilot-ui/browser/. \
-  <throwaway-container>:/durable/iris/csp/ocupilot/     # then re-run npm run test:browser
+  <throwaway-container>:/durable/iris/csp/ocupilot/     # then re-run the spec with both browser variables set
 ```
 
 This is the client-side twin of *A mutation means nothing until the whole tree is recompiled*
