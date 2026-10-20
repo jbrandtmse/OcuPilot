@@ -1013,3 +1013,10 @@
 2026-10-20T15:29:14Z	Story 20.12	hold_saved	story=20-12-the-agent-gains-guided-workflows-and-investigate stage=implement patch=none tree=clean note=implement_committed_aea95053;resume_at=qa
 2026-10-20T15:29:14Z	Story 20.12	pushed	sha=aea95053 ci=pending runs=39448740616 note=implement_head_pushed_alone_at_the_hold(unreviewed;QA_and_review_follow)
 2026-10-20T15:29:14Z	Epic 20	hold_complete	shas=origin_code=aea95053(run_39448740616),set-aside=fc783169(green_39426802603),bookkeeping_head=this_commit throwaway=ocupilot-b-ci_up(this_run,src_of_aea95053) inbox=U-1(stopped_20.11)
+2026-10-20T19:06:40Z	Epic 20	lead_model_gate	model=claude-opus-5-5 action=proceed
+2026-10-20T19:06:40Z	Epic 20	runtime_gate	bmad=6.12.1 uv=0.12.9 ci=gh
+2026-10-20T19:06:40Z	Epic 20	launch_env	depth=4 watchdog=default bash_max_ms=default
+2026-10-20T19:06:40Z	Epic 20	runner_unattended_start	run=20261020T0940Z-20,23 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03 doctrine=3d11cec98d91c1d4d9c225fe3b265e1af418abe4 state=/Users/jbrandt/git/OcuPilot/.worktrees/.coordination/unattended hold_at=none note=re-dispatch_after_account_switch;answer_to_apply=U-1_at=2026-10-20T18:22:28Z#8(A)
+2026-10-20T19:06:40Z	Epic 20	epic_branch_checked_out	repos=. head=042efa9f slot=b binding=ok(docker_port_52775,profile_ocupilot-slot-b_baseUrl_52775) bootstrap_check=ok inbox_verify=ok hold=none throwaway=ocupilot-b-ci_up_healthy(this_run,src_aea95053)
+2026-10-20T19:06:40Z	Story 20.12	ci_resolved	story=20.12 sha=aea95053 runs=39448740616 result=success failed=none via=none resolved_at=resume note=implement_head(unreviewed)
+2026-10-20T19:06:40Z	Story 20.12	stage_spawned	stage=qa spawn_at=2026-10-20T19:06:40Z model=sonnet agent_name=20-12-qa-2 cycle_iteration=1 note=replaces_withdrawn_20-12-qa-1
