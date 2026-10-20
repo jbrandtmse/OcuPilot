@@ -985,3 +985,10 @@
 2026-10-15T23:50:35Z	Story 20.36	stage_spawned	stage=plan spawn_at=2026-10-15T23:50:35Z model=opus agent_name=20-36-plan-1 cycle_iteration=1 inbox=none note=planned_while_20.10_CI_runs
 2026-10-16T00:03:20Z	Story 20.36	story_created	spawn_at=(see_stage_spawned) model=opus agent_name=20-36-plan-1 path=_bmad-output/implementation-artifacts/spec-20-36-investigate.md build_status=ready-for-dev(gate_pending:3_spine_drafts_AD-24,AD-11,AD-66) depends_on=20.12_merged(Task_0_halts_otherwise)
 2026-10-16T00:03:27Z	Epic 20	hold	by=orchestrator(owner_account_switch_quota) local_head=pending origin=7ea72020 in_flight_ci=38825425215(20.10_code_head_5f40b92f) throwaway=ocupilot-b-ci_up_healthy(rebuilt_21:32Z_from_20.10,merged_23.5d_src_and_bundle_loaded) next=resolve_38825425215;report_20.10_boundary;20.11_implement;then_20.32,20.33,20.35,20.34,20.12,20.36,20.25,20.26,burndown
+2026-10-20T10:16:05Z	Epic 20	lead_model_gate	model=claude-opus-5-5[1m] action=proceed
+2026-10-20T10:16:05Z	Epic 20	runtime_gate	bmad=6.12.1 uv=0.12.9 ci=gh kit=2026-10-19.3
+2026-10-20T10:16:05Z	Epic 20	launch_env	depth=4 watchdog=1 bash_max_ms=default
+2026-10-20T10:16:05Z	Epic 20	runner_unattended_start	run=20261020T0940Z-20,23 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03 doctrine=3d11cec98d91c1d4d9c225fe3b265e1af418abe4 state=/Users/jbrandt/git/OcuPilot/.worktrees/.coordination/unattended hold_at=none
+2026-10-20T10:16:05Z	Epic 20	epic_branch_checked_out	repos=. head=bab8157f slot=b binding=ok(docker_port_52775,profile_ocupilot-slot-b_baseUrl_52775) bootstrap_check=ok ledger_entry_check=0(1926) dup_ids=none throwaway=down(torn_down_by_orchestrator;first_fresh_check_runs_up_alone)
+2026-10-20T10:16:05Z	Epic 20	ci_pending	sha=bab8157f runs=39401232457 note=forward_merge_of_feature_6a467d36(kit_upgrade)
+2026-10-20T10:16:54Z	Epic 20	throwaway_up	run=20261020T0940Z-20,23 container=ocupilot-b-ci dir=/Users/jbrandt/.ocupilot-throwaways/ocupilot-b-ci project=ocupilot-b-ci web=52777 super=1976 src=bab8157f result=healthy started_by=epic-20-runner
