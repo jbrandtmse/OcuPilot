@@ -1008,3 +1008,8 @@
 2026-10-20T15:26:48Z	Story 20.12	dev_complete	spawn_at=2026-10-20T13:35:28Z model=sonnet agent_name=20-12-implement-1 build_sha=aea95053 baseline_revision=1a99c536 story_base=7b510226 review_loop_iteration=0 followup_review_recommended=false deferred=1(DW-2468) loc_added=2988 loc_removed=96 files=51 nfr_tripwires=0 adr_violations_surfaced=0 bundle_initial=1969kB self_review=2_layers_23_findings_0_high_0_med_5_low_patched cycle_iteration=1
 2026-10-20T15:26:48Z	Story 20.12	adr_verifications_complete	tool=none acs= result=none_required evidence= mutations=none model=claude-opus-5-5
 2026-10-20T15:27:31Z	Story 20.12	stage_spawned	stage=qa spawn_at=2026-10-20T15:27:31Z model=sonnet agent_name=20-12-qa-1 cycle_iteration=1
+2026-10-20T15:29:14Z	Epic 20	hold_ordered	reason=owner_2026-10-20:almost_out_of_quota,switching_accounts requested_at=2026-10-20T14:35:36Z seen_at=2026-10-20T15:29:14Z(first_stage_boundary_after_20.12_implement)
+2026-10-20T15:29:14Z	Story 20.12	stage_withdrawn	stage=qa agent_name=20-12-qa-1 reason=hold note=stage_spawned_written_but_the_Agent_call_was_never_made;no_qa_ran
+2026-10-20T15:29:14Z	Story 20.12	hold_saved	story=20-12-the-agent-gains-guided-workflows-and-investigate stage=implement patch=none tree=clean note=implement_committed_aea95053;resume_at=qa
+2026-10-20T15:29:14Z	Story 20.12	pushed	sha=aea95053 ci=pending runs=39448740616 note=implement_head_pushed_alone_at_the_hold(unreviewed;QA_and_review_follow)
+2026-10-20T15:29:14Z	Epic 20	hold_complete	shas=origin_code=aea95053(run_39448740616),set-aside=fc783169(green_39426802603),bookkeeping_head=this_commit throwaway=ocupilot-b-ci_up(this_run,src_of_aea95053) inbox=U-1(stopped_20.11)
