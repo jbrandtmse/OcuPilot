@@ -135,6 +135,12 @@ export const SKIP = {
   'interoperability/messages/contents': 'a fresh instance holds no message; interop-messages.browser-spec.mjs walks them on the headers it creates',
   // Story 20.30: a message's Trace tab is reached from the same row; interop-message-trace.browser-spec.mjs walks it on the session it plants.
   'interoperability/messages/trace': 'a fresh instance holds no message; interop-message-trace.browser-spec.mjs walks it on the session it plants',
+  // Story 20.11: a cube's three tabs and a term list's entries need a cube or a term list to open, and HSCUSTOM is not analytics-enabled, so
+  // its Cubes and Term lists open on the refusal; analytics.browser-spec.mjs walks them in USER on its probe.
+  'analytics/cubes/document': 'HSCUSTOM is not analytics-enabled; analytics.browser-spec.mjs walks them in USER on its probe',
+  'analytics/cubes/dimensions': 'HSCUSTOM is not analytics-enabled; analytics.browser-spec.mjs walks them in USER on its probe',
+  'analytics/cubes/relationships': 'HSCUSTOM is not analytics-enabled; analytics.browser-spec.mjs walks them in USER on its probe',
+  'analytics/term-lists/entries': 'HSCUSTOM is not analytics-enabled; analytics.browser-spec.mjs walks them in USER on its probe',
 };
 
 /** The limits class the seeded entry is capped by, as the turn's own append is. */

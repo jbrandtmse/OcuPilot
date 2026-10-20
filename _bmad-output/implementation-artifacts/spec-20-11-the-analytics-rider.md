@@ -2,9 +2,10 @@
 title: 'Story 20.11: The Analytics rider'
 type: 'feature'
 created: '2026-10-14'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '673ced36dc780d0d546622f006a03ac444cfb83f'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
   - '{project-root}/_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md'
@@ -343,6 +344,42 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Line numbe
 
 ## Review Triage Log
 
+### 2026-10-20 - Review pass
+
+- verdicts: 30 findings - high 0, medium 7, low 16, false 7, maybe-false 0 (two layers; the intent-alignment layer is descriptive, and each divergence it listed is a row)
+- findings:
+  - `[medium]` `[patch]` `LocalStamp` (Folder items `Modified`, UTC to local) unpinned, and its instant leg one-sided - the throwaway runs in UTC, so the conversion could vanish unseen; patched: the instant leg is two-sided and two sessions started with `TZ` set (Los Angeles, Tokyo) read fixed UTC stamps; the conversion was also measured by hand in three zones (LA winter and summer, Tokyo); mutation line written.
+  - `[medium]` `[patch]` The port's fault mapping (`Statused`, `Mapped`, `Fail`, `LogFault`) unpinned - vendor text could reach the wire unseen; patched: `AnalyticsGateSeam` arms a vendor failure and captures the log, and `AnalyticsPort` gains a test for five failure shapes; mutation line written.
+  - `[medium]` `[patch]` The routines-database READ half of `Admit` never executes (USER keeps both in one database) - patched: `PortGate` drives it in HSLIB through the seam's `routines` answer (named resource refused by name; unnameable one 400); mutation line written.
+  - `[medium]` `[patch]` The cap is pinned on three of seven endpoints - patched for Measures and Folder items (the unbounded one); mutation line written.
+  - `[low]` `[reject]` The cap on TermLists and Relationships has no leg - both need a second probe row, and the loop is the shape the four covered endpoints share; not worth a fixture change (reopen_if: a cap regression ships in either).
+  - `[medium]` `[patch]` `Snapshot` returns the digest of its own error text, so a throwing snapshot compares equal to itself - patched: it returns the error unhashed and the test asserts the snapshot was taken.
+  - `[low]` `[reject]` Three of `TestTheReadsWriteNothing`'s five node groups (cache, term list, folder) have no mutation line - Rule 19 asks one demonstrated mutation per acceptance criterion, and AC1 has two (session node, favorites).
+  - `[low]` `[reject]` The tab arm of `RowTargetProblem` is outside `RowTargetCorpus` - the corpus overrides `archetype` and `table` only, so a tab case means changing both engines' declaration builders; the supported shape (Relationships passes `Registry.Validate` and the mirror) and the refused shape (a detail that is no tab) are pinned in `AnalyticsDescriptor` and `screen-mirror.test.mjs`.
+  - `[low]` `[reject]` The `Facts` JSON-null branch is never read - it needs a cube whose count fails; the branch is two lines (reopen_if: a failing count is seen drawn as 0).
+  - `[medium]` `[patch]` AC6 says the two flags read their recorded values, and `Gone` checks only that analytics is not reported - patched: `Remove` reads both flags back and returns an error naming the mismatch; mutation line written.
+  - `[low]` `[patch]` Header mutation claims with no recorded run (the descriptor, mirror and navigation tests) - each was run: the descriptor test's four, the mirror test's two, the navigation test's two demonstrated, and one claim the mirror's own tab check makes unreachable was reworded.
+  - `[low]` `[reject]` Pinning tests with no `mutation:` line of their own (cube tab rows, navigation, pair legs, floors) - each AC has at least one recorded mutation, which is the bar.
+  - `[low]` `[patch]` `AnalyticsDescriptor.TestTheAnalyticsSourceRefusals` claimed the corpus's criteria case pins the parent-only rule; the case is refused either way - the claim now names the test that pins it.
+  - `[low]` `[patch]` `analytics.test.mjs`'s second test is titled as if it read the descriptors and reads only the port's source - retitled.
+  - `[medium]` `[patch]` The browser spec sets `created` only after `Create` succeeds, so a part-way `Enable` or `Create` leaves USER analytics-enabled until the next run - `created` is now set before `Enable`, so `after` always removes the probe.
+  - `[low]` `[patch]` The time test's docstring says "within two seconds" and asserts one side - fixed with the first row.
+  - `[false]` `[reject]` Intent alignment, model tabs: HTTP asserts only non-empty or zero rows - the port test pins each tab's rows and order, and the browser pins the related-cube click.
+  - `[low]` `[reject]` `Fields` joins with `; ` and the probe term list has one extra field, so the separator is never read - the fixture is the spec's (three keys, one field); the join is one loop line.
+  - `[false]` `[reject]` Guarded rows pinned only over HTTP for a caller lacking the resource - the spec places that pin in `AnalyticsGate`, and the port test runs as `%All`, which sees them.
+  - `[low]` `[reject]` An unknown or hidden cube's empty sentence is not drawn in a browser leg - the sentence is the shared page's `emptyStateKey`, and the spec lists no such leg.
+  - `[false]` `[reject]` `READ.CRITERION` is asserted through the tool roster only - that code is `Screen/Read`'s own branch, which the tool path executes; the port's missing-criterion refusal is a different code, `PORT.VALIDATION`, pinned in the port test.
+  - `[low]` `[reject]` The browser draws the shell's `request refused`, not the 409 sentence, in HSCUSTOM - the wire carries the sentence (pinned), the Analytics area is not offered where analytics is off, and drawing it is page code the spec's Weight section rules out; interop's namespace refusal is the same.
+  - `[false]` `[reject]` Pair-missing is asserted over HTTP with the same code the port gives - `PortGate` and the gate class's child-process `Invoke` pin the port's own refusal.
+  - `[false]` `[reject]` Database READ missing over HTTP is the router's `NS.DENIED`, not the port's - both name `%DB_USER:READ`, and `AnalyticsGate` pins the port's own through a child process.
+  - `[low]` `[patch]` `truncated` is asserted once, over HTTP on Cubes - closed before this review by the Matrix audit: the leg exists and its mutation line is written.
+  - `[low]` `[reject]` Contended files are edited in four places beyond add-only - the allowed list and the criteria rule are what Tasks name, and the tab `rowTarget` relaxation is what the Relationships descriptor needs; AD-5's sentence is left unedited and offered to the lead (Auto Run Result).
+  - `[false]` `[reject]` Classic-page links declared on each descriptor - the spec's design (AD-44): a link, never loaded or framed.
+  - `[low]` `[reject]` The "all" level is not listed - the spec keeps type `l` entries.
+  - `[low]` `[reject]` No test feeds markup-bearing names - rows reach the screen through the shared table renderer, which interpolates (AD-11); the port adds no rendering.
+  - `[false]` `[reject]` Seven agent read tools the intent does not name - every descriptor with a `toolIdentifier` yields one, and the spec's table names them.
+
+
 ## Design Notes
 
 **Governing ADs (Rule 6).**
@@ -605,9 +642,52 @@ The port therefore calls the classes themselves, as `InteropPort` does (AD-62).
 | AC5 | A pale color in a list cell | The browser structural test |
 | AC6 | `Remove` skips the flag restore | `AnalyticsProbe.Gone()` in each suite's `OnAfterAllTests`, and the browser `after` |
 
+**Mutations run (Rule 19), each reverted byte-identical and reloaded or redeployed before the next (`ocupilot-b-ci`).**
+
+- mutation: the Cubes read answers `Facts` as 0 -> `AnalyticsPort.TestCubesEqualTheVendorsAnswer` and the browser AC1.
+- mutation: the Dimensions read also calls `%GetMemberTree` -> `AnalyticsPort.TestTheReadsWriteNothing`, alone (it ends the process's DeepSee session first, because the vendor writes the session node only once per process).
+- mutation: Folder items reads favorites through `%DeepSee.UserPortal.Utils.%GetFavoritesForUser` -> `AnalyticsPort.TestTheReadsWriteNothing` and `TestFolderItemsAnswerTheVendorsList`.
+- mutation: the Relationships tab drops `rowTarget` (mirror regenerated, bundle rebuilt and redeployed) -> the browser AC2 related-cube leg ("the row carries no .ocu-data-table-link").
+- mutation: `%ToObj`'s extra fields are not joined into `Fields` -> `AnalyticsPort.TestTermListsAndEntriesAnswerTheVendorsList` and the browser AC2.
+- mutation: `Admit` omits the analytics check -> `AnalyticsPort.TestANamespaceWithoutAnalyticsIsRefusedOnEveryEndpoint` and the browser AC3.
+- mutation: `Admit` omits the globals-database READ check, so the vendor call raises first -> `AnalyticsGate.TestAPrincipalWithoutTheDatabaseIsRefusedNamingIt` (the port's refusal is unnamed `PORT.ACCESSDENIED`).
+- mutation: `TERMLISTPAIRS` loses `%DeepSee_PortalEdit:USE` -> `AnalyticsGate.TestTermListsNeedTheTermListManagersPair`, `PortGate.TestEveryPortEvaluatesItsDeclaredGate` and `analytics.test.mjs`.
+- mutation: the tabs skip `%CubeExists` and `%CheckPrivilege` -> `AnalyticsGate.TestTheVendorsOwnResourceChecksStillHideWhatTheyHide`; dropping `%CheckPrivilege` alone reddens nothing, because the vendor's `%CubeExists` already answers false for a cube its resource check hides.
+- mutation: `Screen/Tool/Read.View` removes `LastBuild` from each row -> `AnalyticsGate.TestTheAgentsCubesReadAnswersTheScreensRows`.
+- mutation: the `AnalyticsCubeList` `Elsewhere` row removed -> `StageTwoTools.TestTheRosterAndElsewhereAreEveryRegisteredScreen`, alone.
+- mutation: `.ocu-data-table-cell` takes `color: var(--ocu-surface-container-high)` (a hard-coded color is refused by `client-lint`) -> the browser AC5 (`analytics/cubes|contrast|dark ... 1.43:1`).
+- mutation: `Remove` skips the flag restore -> `OnAfterAllTests` of `AnalyticsPort` and `AnalyticsGate` ("left probe state in USER: analytics reported") and the browser `after`.
+- mutation: the analytics branch of `Screen/Read` asks the port for `maxRows` rows instead of one more -> `AnalyticsGate.TestTheVendorsOwnResourceChecksStillHideWhatTheyHide` (the matrix's Cap row: two cubes, `truncated` true).
+- mutation: `AnalyticsPort.LocalStamp` answers its input without converting it -> `AnalyticsPort.TestTheTimeShapesAreTheInstancesLocalTime`, its two zone legs (sessions started with `TZ` set; the throwaway itself runs in UTC).
+- mutation: `AnalyticsPort.Fail` puts the vendor's status text into the fault's reason -> `AnalyticsPort.TestAVendorFailureIsAnsweredInThePortsWordsAndLoggedWhole` (the 500 cases).
+- mutation: `Admit` omits the routines-database READ check -> `PortGate.TestEveryPortEvaluatesItsDeclaredGate` (the routines leg, in HSLIB through the seam).
+- mutation: `Remove` restores `DeepSeeEnabled` and not `iKnowEnabled` -> `OnAfterAllTests` of `AnalyticsPort` ("the two flags ... did not read back as recorded"; the next unmutated `Remove` restored USER).
+- mutation: the FolderItems loop in `Collect` ignores `maxRows` -> `AnalyticsPort.TestTheRequestShapesTheGateAndThePortRefuse` (Folder items to two).
+
+**In-stage decisions and measurements (implement, 2026-10-20).**
+
+- Task 0 measured on `ocupilot-b-ci`: after the fixture's `Modify`, the same process reads `Reports("analytics","USER")` 1. `GetLastUpdate` is the server's local time (`UTCtoLocalWithZTIMEZONE`, unaffected by the process's `$ZTIMEZONE`) and answers the same for a principal holding no SQL privilege; `FolderItem.timeModified` is UTC, so Folder items converts it to local. `%ToObj`, `%GetCubeFactCount`, `GetLastUpdate`, the cube, term list and folder reads write no `^DeepSee*` or `^OBJ*` node (4,175 nodes unchanged, `%GetMemberTree` as the control adds one), each under 0.5 ms once warm (the first `GetLastUpdate` 17 ms). `NormalizePage` of the three `.zen` pages is the three class names. Cube `Resource` as the caller: a caller lacking `%DeepSee_Admin` has the guarded cube absent from `%GetCubeList`, refused by `%CubeExists`, `%CheckPrivilege` and `%GetCubeMeasures`, yet `%GetDimensionList` still answers it, so every tab asks first.
+- A tab of a tabbed group may declare `rowTarget` (`RowTargetProblem` in `Registry.cls` and `rowTargetProblem` in `screen-mirror.mjs`), because this spec's descriptor table gives the Relationships tab a `rowTarget` and both validators refused a row target on any archetype but `list`. A `detail` screen that is no tab is still refused. AD-5's row-target sentence names lists only and is left unedited (an AD amendment is the lead's, Rule 20; veto-window item); the lead may extend it with: "A tab of a tabbed group (a `detail` screen drawing a table) may declare one too: a cube's Relationships tab opens the related cube's Measures tab (Story 20.11)."
+- The Dimensions tab's name column is `Level`; the Cubes list and its tabs omit `ownPrivileges`, as every descriptor without an own pair does; `Facts` is JSON null when the vendor's count fails; the Cubes cap is applied to the cube list, so a failing cube is not hidden.
+- `analyticsRefusalNamespace` joins `strings.test.mjs`'s namespace-key roster, and `AnalyticsTermListEntryList`'s `Key` joins its credential-name exemptions, as the lookup entries' do.
+- The page does not draw the refusal sentence for a failed list read (the shell draws `request refused` and Retry); browser AC3 therefore pins the 409 body's code and sentence and the shell's refusal, not a drawn sentence.
+- Deferred: the `(once)` line and the full browser suite (the lead's and CI's); drawing the refusal sentence on a failed list read (a client change this spec forbids); Parts B, C and D.
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-Planned as Part A of a recommended four-way split. Q1 (split) and Q2 (Folder items' pair) are for the orchestrator at the spec gate. The Rule 5 and Rule 20 drafts are in Design Notes.
+- **Implemented (Part A):** `AnalyticsPort` (gate in the AD-29 order, then the listed `%DeepSee` reads, switched by save and restore), the `analytics` read source kind, `AnalyticsError`, four entity types, and seven descriptors (Cubes with its Measures, Dimensions and Relationships tabs, Term lists with entries, Folder items), with strings, the regenerated mirror, EXPERIENCE.md :159 and :604, and the rosters.
+- **Files:** new `Port/AnalyticsPort.cls`, `Api/AnalyticsError.cls`, seven `Screen/Descriptor/Analytics*.cls`, `Test/Analytics{Probe,Port,Gate,Descriptor,GateSeam}.cls`, `ui/tools/analytics.test.mjs`, `ui/browser/analytics.browser-spec.mjs`; edited `Screen/Read.cls`, `Screen/Registry.cls`, `Kernel/EntityType.cls`, `Api/Error.cls` (two delegation lines), `ui/tools/screen-mirror.mjs`, the mirror, `strings.ts`, `structural-walk.mjs`, `scripts/ci-throwaway.sh` (arming roster), and the roster and sentence tests named in Verification.
+- **Review:** 30 findings (medium 7, low 16, false 7): 12 patched, 18 rejected with reasons, none deferred (`deferred:` is empty). Patched: the UTC-to-local conversion now has two `TZ` session legs; the fault mapping, the routines-database READ half, the cap on Measures and Folder items, the snapshot's own failure, the flag read-back (AC6) and the browser spec's cleanup are each pinned and mutation-proved.
+- **Follow-up review recommended: true.** Seven medium findings were patched (all test-side). The unverified risk: the two `TZ` session legs start `iris session` children and need the container's zone data, which this throwaway has; CI's instance legs run them for the first time (inference).
+- **Verification (on `ocupilot-b-ci`, after the last edit):**
+  - the 4 analytics classes (21 tests) and 16 sweep classes (203 tests) green; `AdminPairCorpus` is a corpus and runs no method;
+  - `npm run test:tools` 2040, `npm run test:components` 3272, `npm run build` green with no new lazy chunk, initial total 1.98 MB (351.88 kB transfer; under the 1992 kB expectation and the fixed 2500/4000 kB budgets);
+  - `check-objectscript.py` 0 problems, `lint-docs.sh` 0; `analytics.browser-spec.mjs` 4/4, `namespace-categories` 4/4, `a11y-structural-invariants` 13/13 (run before the test-only patches; the bundle is unchanged since).
+  - The `(once)` line and the full browser suite are the runner's and CI's.
+- **For the lead:**
+  - **Veto-window item:** the tab arm of `RowTargetProblem` and `rowTargetProblem` (the Relationships tab's `rowTarget`, which the descriptor table requires) is outside AD-5's sentence, which names lists. The sentence is left unedited; suggested text is in the in-stage decisions above.
+  - Browser AC3 pins the 409 body and the shell's generic refusal, not a drawn sentence (page code is out of this part).
+  - `ProductionProbe.Remove` deletes the whole `OcuPilotProbe` package, so it would remove the analytics fixture if it ran mid-suite; the analytics probe heals its own leftovers.

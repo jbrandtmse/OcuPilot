@@ -10,7 +10,7 @@
  * declarations disagree.
  */
 
-export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'screen-permission' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping' | 'database-configuration' | 'language-server' | 'class' | 'routine' | 'journal-file' | 'journal-file-database' | 'journal-settings' | 'journal-record' | 'license-key' | 'license-server' | 'ecp-data-server' | 'ecp-settings' | 'ecp-ssl-connection' | 'encryption-key-file' | 'database-encryption-keys' | 'data-element-encryption-keys' | 'encryption-startup' | 'docdb-database' | 'sql-statement' | 'authentication-options' | 'superserver' | 'mft-connection' | 'production' | 'pct-class-access' | 'docdb-application' | 'routine-application' | 'production-item' | 'production-item-setting' | 'interop-queue' | 'interop-message' | 'interop-job' | 'lookup-table' | 'lookup-entry' | 'business-partner';
+export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'audit-user-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch' | 'agent-policy' | 'allowed-directory' | 'screen-permission' | 'namespace' | 'web-session' | 'background-task' | 'global-mapping' | 'routine-mapping' | 'package-mapping' | 'database-configuration' | 'language-server' | 'class' | 'routine' | 'journal-file' | 'journal-file-database' | 'journal-settings' | 'journal-record' | 'license-key' | 'license-server' | 'ecp-data-server' | 'ecp-settings' | 'ecp-ssl-connection' | 'encryption-key-file' | 'database-encryption-keys' | 'data-element-encryption-keys' | 'encryption-startup' | 'docdb-database' | 'sql-statement' | 'authentication-options' | 'superserver' | 'mft-connection' | 'production' | 'pct-class-access' | 'docdb-application' | 'routine-application' | 'production-item' | 'production-item-setting' | 'interop-queue' | 'interop-message' | 'interop-job' | 'lookup-table' | 'lookup-entry' | 'business-partner' | 'cube' | 'term-list' | 'term-list-entry' | 'folder-item';
 
 /**
  * The closed archetype vocabulary, mirrored from OcuPilot.Screen.Archetype. A screen's
@@ -170,7 +170,7 @@ export interface ReadSourcePart {
  * `timeline` source's fields and criterion are fixed.
  */
 export interface ReadSource {
-  readonly port: 'admin' | 'state' | 'mgmnt' | 'logsource' | 'path' | 'timeline' | 'background' | 'atelier' | 'encryption' | 'docdb' | 'sqlactivity' | 'interop' | 'access' | 'monitor';
+  readonly port: 'admin' | 'state' | 'mgmnt' | 'logsource' | 'path' | 'timeline' | 'background' | 'atelier' | 'encryption' | 'docdb' | 'sqlactivity' | 'interop' | 'access' | 'monitor' | 'analytics';
   readonly endpoint: string;
   /**
    * `LIST` reads rows; `GET` reads one object as the one row, and a 404 reads as none;
@@ -544,7 +544,11 @@ export const ENTITY_TYPES: readonly EntityTypeKey[] = [
   "interop-job",
   "lookup-table",
   "lookup-entry",
-  "business-partner"
+  "business-partner",
+  "cube",
+  "term-list",
+  "term-list-entry",
+  "folder-item"
 ];
 
 /**
@@ -1772,6 +1776,976 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": "allowedDirectoriesAgentHint"
     },
     "toolIdentifier": "security.alloweddirectories",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.AnalyticsCubeDimensionsTab",
+    "route": "analytics/cubes/dimensions",
+    "area": "analytics",
+    "labelKey": "analyticsTabDimensions",
+    "sideBarPosition": 0,
+    "archetype": "detail",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%DeepSee_Portal",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "cube",
+    "secondaryEntityTypes": [],
+    "scope": "namespace",
+    "parentScope": "analytics/cubes",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Position",
+        "Dimension",
+        "Hierarchy",
+        "Level"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "analyticsCubeDimensionsEmpty",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "analyticsCubeDimensionsPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "analyticsCubeDimensionsPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "analyticsCubeDimensionsPrompt3"
+      }
+    ],
+    "classicPage": "%DeepSee.UI.ModelBrowser",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "analytics",
+        "endpoint": "Dimensions",
+        "type": "LIST"
+      },
+      "fields": [
+        "Position",
+        "Dimension",
+        "Hierarchy",
+        "Level"
+      ],
+      "filter": [
+        "Dimension",
+        "Hierarchy",
+        "Level"
+      ],
+      "sort": {
+        "fields": [
+          "Position",
+          "Dimension",
+          "Hierarchy",
+          "Level"
+        ],
+        "default": "Position",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "cube",
+            "labelKey": "analyticsCubeCriterion",
+            "kind": "text",
+            "maxLength": 255,
+            "hint": "One cube, spelled as analytics.cubes.read answers its Name."
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Position",
+          "labelKey": "analyticsColumnPosition",
+          "kind": "number"
+        },
+        {
+          "field": "Dimension",
+          "labelKey": "analyticsColumnDimension",
+          "kind": "text"
+        },
+        {
+          "field": "Hierarchy",
+          "labelKey": "analyticsColumnHierarchy",
+          "kind": "text"
+        },
+        {
+          "field": "Level",
+          "labelKey": "errorLogColumnLevel",
+          "kind": "name"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "tab": {
+      "group": "analytics/cubes/document",
+      "position": 2,
+      "labelKey": "analyticsTabDimensions"
+    },
+    "toolIdentifier": "analytics.cubedimensions",
+    "refreshDefault": 0,
+    "banner": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.AnalyticsCubeList",
+    "route": "analytics/cubes",
+    "area": "analytics",
+    "labelKey": "analyticsCubesLabel",
+    "sideBarPosition": 1,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%DeepSee_Portal",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "cube",
+    "secondaryEntityTypes": [],
+    "scope": "namespace",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Name",
+        "Caption",
+        "Class",
+        "LastBuild",
+        "Facts"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "analyticsCubesEmpty",
+    "commandAliases": [
+      "cubes",
+      "cube"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupCapacity",
+        "textKey": "analyticsCubesPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "analyticsCubesPrompt2"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "analyticsCubesPrompt3"
+      }
+    ],
+    "classicPage": "%DeepSee.UI.ModelBrowser",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "analytics",
+        "endpoint": "Cubes",
+        "type": "LIST"
+      },
+      "fields": [
+        "Name",
+        "Caption",
+        "Class",
+        "LastBuild",
+        "Facts"
+      ],
+      "filter": [
+        "Name",
+        "Caption",
+        "Class"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "Caption",
+          "Class",
+          "LastBuild",
+          "Facts"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "Caption",
+          "labelKey": "analyticsColumnCaption",
+          "kind": "text"
+        },
+        {
+          "field": "Class",
+          "labelKey": "explorerClassDocumentLabel",
+          "kind": "identifier"
+        },
+        {
+          "field": "LastBuild",
+          "labelKey": "analyticsColumnLastBuild",
+          "kind": "text"
+        },
+        {
+          "field": "Facts",
+          "labelKey": "analyticsColumnFacts",
+          "kind": "number"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "analytics.cubes",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.AnalyticsCubeMeasuresTab",
+    "route": "analytics/cubes/document",
+    "area": "analytics",
+    "labelKey": "analyticsTabMeasures",
+    "sideBarPosition": 0,
+    "archetype": "detail",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%DeepSee_Portal",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "cube",
+    "secondaryEntityTypes": [],
+    "scope": "namespace",
+    "parentScope": "analytics/cubes",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Name",
+        "Caption",
+        "Type",
+        "Hidden"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "analyticsCubeMeasuresEmpty",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "analyticsCubeMeasuresPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "analyticsCubeMeasuresPrompt2"
+      },
+      {
+        "groupKey": "promptGroupCapacity",
+        "textKey": "analyticsCubeMeasuresPrompt3"
+      }
+    ],
+    "classicPage": "%DeepSee.UI.ModelBrowser",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "analytics",
+        "endpoint": "Measures",
+        "type": "LIST"
+      },
+      "fields": [
+        "Name",
+        "Caption",
+        "Type",
+        "Hidden"
+      ],
+      "filter": [
+        "Name",
+        "Caption",
+        "Type"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "Caption",
+          "Type",
+          "Hidden"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "cube",
+            "labelKey": "analyticsCubeCriterion",
+            "kind": "text",
+            "maxLength": 255,
+            "hint": "One cube, spelled as analytics.cubes.read answers its Name."
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "Caption",
+          "labelKey": "analyticsColumnCaption",
+          "kind": "text"
+        },
+        {
+          "field": "Type",
+          "labelKey": "tableColumnType",
+          "kind": "text"
+        },
+        {
+          "field": "Hidden",
+          "labelKey": "explorerSqlColumnHidden",
+          "kind": "status"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "tab": {
+      "group": "analytics/cubes/document",
+      "position": 1,
+      "labelKey": "analyticsTabMeasures"
+    },
+    "toolIdentifier": "analytics.cubemeasures",
+    "refreshDefault": 0,
+    "banner": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.AnalyticsCubeRelationshipsTab",
+    "route": "analytics/cubes/relationships",
+    "area": "analytics",
+    "labelKey": "analyticsTabRelationships",
+    "sideBarPosition": 0,
+    "archetype": "detail",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%DeepSee_Portal",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "cube",
+    "secondaryEntityTypes": [],
+    "scope": "namespace",
+    "parentScope": "analytics/cubes",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Name",
+        "RelatedCube"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "analyticsCubeRelationshipsEmpty",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "analyticsCubeRelationshipsPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "analyticsCubeRelationshipsPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "analyticsCubeRelationshipsPrompt3"
+      }
+    ],
+    "classicPage": "%DeepSee.UI.ModelBrowser",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "analytics",
+        "endpoint": "Relationships",
+        "type": "LIST"
+      },
+      "fields": [
+        "Name",
+        "RelatedCube"
+      ],
+      "filter": [
+        "Name",
+        "RelatedCube"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "RelatedCube"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "cube",
+            "labelKey": "analyticsCubeCriterion",
+            "kind": "text",
+            "maxLength": 255,
+            "hint": "One cube, spelled as analytics.cubes.read answers its Name."
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "RelatedCube",
+          "labelKey": "analyticsColumnRelatedCube",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "tab": {
+      "group": "analytics/cubes/document",
+      "position": 3,
+      "labelKey": "analyticsTabRelationships"
+    },
+    "rowTarget": {
+      "route": "analytics/cubes/document",
+      "field": "RelatedCube"
+    },
+    "toolIdentifier": "analytics.cuberelationships",
+    "refreshDefault": 0,
+    "banner": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.AnalyticsFolderItemList",
+    "route": "analytics/folder-items",
+    "area": "analytics",
+    "labelKey": "analyticsFolderItemsLabel",
+    "sideBarPosition": 3,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%DeepSee_Portal",
+        "permission": "USE"
+      },
+      {
+        "resource": "%Development",
+        "permission": "USE"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Development",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "folder-item",
+    "secondaryEntityTypes": [],
+    "scope": "namespace",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Name",
+        "Type",
+        "Owner",
+        "Modified",
+        "Favorite"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "analyticsFolderItemsEmpty",
+    "commandAliases": [
+      "folder items",
+      "folder item"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "analyticsFolderItemsPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "analyticsFolderItemsPrompt2"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "analyticsFolderItemsPrompt3"
+      }
+    ],
+    "classicPage": "%DeepSee.UI.FolderManager",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "analytics",
+        "endpoint": "FolderItems",
+        "type": "LIST"
+      },
+      "fields": [
+        "Name",
+        "Type",
+        "Owner",
+        "Modified",
+        "Favorite"
+      ],
+      "filter": [
+        "Name",
+        "Type",
+        "Owner"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "Type",
+          "Owner",
+          "Modified",
+          "Favorite"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "Type",
+          "labelKey": "tableColumnType",
+          "kind": "text"
+        },
+        {
+          "field": "Owner",
+          "labelKey": "explorerSqlColumnOwner",
+          "kind": "text"
+        },
+        {
+          "field": "Modified",
+          "labelKey": "analyticsColumnModified",
+          "kind": "text"
+        },
+        {
+          "field": "Favorite",
+          "labelKey": "analyticsColumnFavorite",
+          "kind": "status"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "analytics.folderitems",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.AnalyticsTermListEntryList",
+    "route": "analytics/term-lists/entries",
+    "area": "analytics",
+    "labelKey": "analyticsTermListEntriesLabel",
+    "sideBarPosition": 0,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%DeepSee_Portal",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DeepSee_PortalEdit",
+        "permission": "USE"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%DeepSee_PortalEdit",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "term-list-entry",
+    "secondaryEntityTypes": [
+      "term-list"
+    ],
+    "scope": "namespace",
+    "parentScope": "analytics/term-lists",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "TermList",
+        "Key"
+      ]
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "TermList",
+        "Key",
+        "Value",
+        "Fields"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "analyticsTermListEntriesEmpty",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "analyticsTermListEntriesPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "analyticsTermListEntriesPrompt2"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "analyticsTermListEntriesPrompt3"
+      }
+    ],
+    "classicPage": "%DeepSee.UI.TermListManager",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "analytics",
+        "endpoint": "TermListEntries",
+        "type": "LIST"
+      },
+      "fields": [
+        "TermList",
+        "Key",
+        "Value",
+        "Fields"
+      ],
+      "filter": [
+        "Key",
+        "Value",
+        "Fields"
+      ],
+      "sort": {
+        "fields": [
+          "Key",
+          "Value"
+        ],
+        "default": "Key",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "termlist",
+            "labelKey": "analyticsTermListCriterion",
+            "kind": "text",
+            "maxLength": 255,
+            "hint": "One term list, spelled as analytics.termlists.read answers its Name."
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Key",
+          "labelKey": "oauthClientAlgKey",
+          "kind": "name"
+        },
+        {
+          "field": "Value",
+          "labelKey": "errorLogColumnValue",
+          "kind": "text"
+        },
+        {
+          "field": "Fields",
+          "labelKey": "explorerSqlTabFields",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "analytics.termlistentries",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.AnalyticsTermListList",
+    "route": "analytics/term-lists",
+    "area": "analytics",
+    "labelKey": "analyticsTermListsLabel",
+    "sideBarPosition": 2,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%DeepSee_Portal",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DeepSee_PortalEdit",
+        "permission": "USE"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%DeepSee_PortalEdit",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "term-list",
+    "secondaryEntityTypes": [
+      "term-list-entry"
+    ],
+    "scope": "namespace",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Name",
+        "Caption",
+        "Modified"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "analyticsTermListsEmpty",
+    "commandAliases": [
+      "term lists",
+      "term list"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "analyticsTermListsPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "analyticsTermListsPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "analyticsTermListsPrompt3"
+      }
+    ],
+    "classicPage": "%DeepSee.UI.TermListManager",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "analytics",
+        "endpoint": "TermLists",
+        "type": "LIST"
+      },
+      "fields": [
+        "Name",
+        "Caption",
+        "Modified"
+      ],
+      "filter": [
+        "Name",
+        "Caption"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "Caption",
+          "Modified"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "Caption",
+          "labelKey": "analyticsColumnCaption",
+          "kind": "text"
+        },
+        {
+          "field": "Modified",
+          "labelKey": "analyticsColumnModified",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "analytics.termlists",
     "refreshDefault": 0,
     "banner": null,
     "tab": null,

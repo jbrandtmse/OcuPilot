@@ -508,6 +508,10 @@ services:
       # classes: StampRetention
       # The provider TLS callers class signs in as probe principals holding %Developer, %Operator and %All (Story 18.40).
       # classes: ProviderSslCallers
+      # The analytics classes turn analytics on for USER's default web application, compile cubes there and write a term list and folder
+      # items (Story 20.11): the port class reads them as the unit-test process, and the gate class also signs in as probe principals
+      # each missing a pair or the database READ the analytics port requires.
+      # classes: AnalyticsGate, AnalyticsPort
       OCUPILOT_ALLOW_PRINCIPALS: "1"
       # Writes an application error to a namespace's own ^ERRORS. Same reasoning again, and one
       # degree worse: an application error cannot be un-logged, so a runner pointed elsewhere

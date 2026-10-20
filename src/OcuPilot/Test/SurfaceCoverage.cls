@@ -255,6 +255,13 @@ XData Coverage
 <screen name="InteropMessageHeaderTab" class="OcuPilot.Test.InteropMessageDescriptor" method="TestTheThreeDeclarationsRegister" corpus="one declaration test pins all three Story 20.9 message screens in one loop"/>
 <screen name="InteropMessageContentsTab" class="OcuPilot.Test.InteropMessageDescriptor" method="TestTheThreeDeclarationsRegister" corpus="one declaration test pins all three Story 20.9 message screens in one loop"/>
 <screen name="InteropMessageTraceTab" class="OcuPilot.Test.InteropMessageDescriptor" method="TestTheTraceTabJoinsTheMessageGroup"/>
+<screen name="AnalyticsCubeList" class="OcuPilot.Test.AnalyticsDescriptor" method="TestTheSevenDeclarationsRegister" corpus="one declaration test pins all seven Story 20.11 screens in one loop"/>
+<screen name="AnalyticsCubeMeasuresTab" class="OcuPilot.Test.AnalyticsDescriptor" method="TestTheSevenDeclarationsRegister" corpus="one declaration test pins all seven Story 20.11 screens in one loop"/>
+<screen name="AnalyticsCubeDimensionsTab" class="OcuPilot.Test.AnalyticsDescriptor" method="TestTheSevenDeclarationsRegister" corpus="one declaration test pins all seven Story 20.11 screens in one loop"/>
+<screen name="AnalyticsCubeRelationshipsTab" class="OcuPilot.Test.AnalyticsDescriptor" method="TestTheSevenDeclarationsRegister" corpus="one declaration test pins all seven Story 20.11 screens in one loop"/>
+<screen name="AnalyticsTermListList" class="OcuPilot.Test.AnalyticsDescriptor" method="TestTheSevenDeclarationsRegister" corpus="one declaration test pins all seven Story 20.11 screens in one loop"/>
+<screen name="AnalyticsTermListEntryList" class="OcuPilot.Test.AnalyticsDescriptor" method="TestTheSevenDeclarationsRegister" corpus="one declaration test pins all seven Story 20.11 screens in one loop"/>
+<screen name="AnalyticsFolderItemList" class="OcuPilot.Test.AnalyticsDescriptor" method="TestTheSevenDeclarationsRegister" corpus="one declaration test pins all seven Story 20.11 screens in one loop"/>
 <tool name="permissions.users.create" class="OcuPilot.Test.UserCreate" method="TestTheSchemaCarriesNoSecretAndThePermittedSetIsTheSets"/>
 <tool name="permissions.users.copy" class="OcuPilot.Test.UserCopy" method="TestTheCopyToolPinsItsInputSchemaAndSnippetForm"/>
 <tool name="permissions.roles.create" class="OcuPilot.Test.RoleCreate" method="TestTheSchemaCarriesNoEscalationOnlyAndThePermittedSetIsTheSets"/>

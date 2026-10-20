@@ -980,7 +980,9 @@ export const ACCESS_ENDPOINT = 'Screens';
 export const ACCESS_READ_TYPE = 'LIST';
 /** The instance's Prometheus metrics read through `OcuPilot.Port.MonitorPort` (AD-29, Story 18.11). */
 export const SOURCE_MONITOR = 'monitor';
-export const READ_SOURCE_PORTS = [SOURCE_ADMIN, SOURCE_STATE, SOURCE_MGMNT, SOURCE_LOGSOURCE, SOURCE_PATH, SOURCE_TIMELINE, SOURCE_BACKGROUND, SOURCE_ATELIER, SOURCE_ENCRYPTION, SOURCE_DOCDB, SOURCE_SQLACTIVITY, SOURCE_INTEROP, SOURCE_ACCESS, SOURCE_MONITOR];
+/** The namespace's cubes, term lists and folder items read through `OcuPilot.Port.AnalyticsPort` (AD-65, AD-36, Story 20.11). */
+export const SOURCE_ANALYTICS = 'analytics';
+export const READ_SOURCE_PORTS = [SOURCE_ADMIN, SOURCE_STATE, SOURCE_MGMNT, SOURCE_LOGSOURCE, SOURCE_PATH, SOURCE_TIMELINE, SOURCE_BACKGROUND, SOURCE_ATELIER, SOURCE_ENCRYPTION, SOURCE_DOCDB, SOURCE_SQLACTIVITY, SOURCE_INTEROP, SOURCE_ACCESS, SOURCE_MONITOR, SOURCE_ANALYTICS];
 
 /** Where `OcuPilot.Port.PathPort` declares the source keys a `path` read may name. */
 export const PATH_PORT_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Port', 'PathPort.cls');
@@ -1098,6 +1100,22 @@ export function monitorEndpoints() {
 
 /** The one request type a `monitor` source declares. */
 export const MONITOR_READ_TYPE = 'LIST';
+
+/** Where `OcuPilot.Port.AnalyticsPort` declares the seven endpoints an `analytics` read names. */
+export const ANALYTICS_PORT_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Port', 'AnalyticsPort.cls');
+
+let analyticsEndpointsCache;
+
+/** The endpoints `OcuPilot.Port.AnalyticsPort`'s `ENDPOINTS` parameter declares, read from its own class, or `null` when it is missing. */
+export function analyticsEndpoints() {
+  if (analyticsEndpointsCache === undefined) {
+    analyticsEndpointsCache = parseInteropEndpoints(readFileSync(ANALYTICS_PORT_SOURCE, 'utf8'));
+  }
+  return analyticsEndpointsCache;
+}
+
+/** The one request type an `analytics` source declares. */
+export const ANALYTICS_READ_TYPE = 'LIST';
 
 /** Where `OcuPilot.Port.InteropPort` declares the four endpoints an `interop` read names. */
 export const INTEROP_PORT_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Port', 'InteropPort.cls');
@@ -1341,8 +1359,8 @@ export function readProblem(declaration) {
   if (!READ_SOURCE_PORTS.includes(source.port)) {
     return (
       `read.source.port '${shown(source.port)}' is not one of '${SOURCE_ADMIN}', '${SOURCE_STATE}', ` +
-      `'${SOURCE_MGMNT}', '${SOURCE_LOGSOURCE}', '${SOURCE_PATH}', '${SOURCE_TIMELINE}', '${SOURCE_BACKGROUND}', '${SOURCE_ATELIER}', '${SOURCE_ENCRYPTION}', '${SOURCE_DOCDB}', '${SOURCE_SQLACTIVITY}', '${SOURCE_INTEROP}', '${SOURCE_ACCESS}' or '${SOURCE_MONITOR}', ` +
-      'the fourteen sources a declared read names (AD-36)'
+      `'${SOURCE_MGMNT}', '${SOURCE_LOGSOURCE}', '${SOURCE_PATH}', '${SOURCE_TIMELINE}', '${SOURCE_BACKGROUND}', '${SOURCE_ATELIER}', '${SOURCE_ENCRYPTION}', '${SOURCE_DOCDB}', '${SOURCE_SQLACTIVITY}', '${SOURCE_INTEROP}', '${SOURCE_ACCESS}', '${SOURCE_MONITOR}' or '${SOURCE_ANALYTICS}', ` +
+      'the fifteen sources a declared read names (AD-36)'
     );
   }
   if (typeof source.endpoint !== 'string' || !ENDPOINT_RE.test(source.endpoint)) {
@@ -1468,6 +1486,24 @@ export function readProblem(declaration) {
     const declared = PATH_REFUSED_SOURCE_KEYS.find((key) => source[key] !== undefined && source[key] !== null);
     if (declared !== undefined) {
       return `read.source.${declared} is declared on an interop source, which answers its list whole (AD-36)`;
+    }
+  }
+  // An analytics source lists the namespace's cubes, a cube's measures, levels or relationships, its term lists, a term list's
+  // entries or its folder items through `OcuPilot.Port.AnalyticsPort`, which answers each endpoint whole behind its own gate (AD-65,
+  // AD-36, Story 20.11): one of the port's endpoints, a LIST, and nothing the port would have to issue per row, per parent, under a
+  // fixed query or in parts.
+  if (source.port === SOURCE_ANALYTICS) {
+    const endpoints = analyticsEndpoints();
+    if (endpoints === null) return `${ANALYTICS_PORT_SOURCE} declares no 'Parameter ENDPOINTS'`;
+    if (!endpoints.includes(source.endpoint)) {
+      return `read.source.endpoint '${source.endpoint}' is not one of the analytics port's endpoints ('${endpoints.join("', '")}') (AD-65)`;
+    }
+    if (source.type !== ANALYTICS_READ_TYPE) {
+      return `read.source.type '${source.type}' is declared on an analytics source, which lists the namespace's cubes, term lists and folder items (AD-36)`;
+    }
+    const declared = PATH_REFUSED_SOURCE_KEYS.find((key) => source[key] !== undefined && source[key] !== null);
+    if (declared !== undefined) {
+      return `read.source.${declared} is declared on an analytics source, which answers its list whole (AD-36)`;
     }
   }
   // An access source lists the screens' required permissions, composed by `OcuPilot.Screen.Access` in
@@ -1945,7 +1981,9 @@ export function criteriaProblem(declaration) {
   // AD-36 as amended (Story 20.3): an interop read takes criteria only as its parent's route id, on a parent-scoped list;
   // except an endpoint the port declares searchable (Story 20.9's Messages), whose criteria are its own.
   const searches = port === SOURCE_INTEROP && isObject(read.source) && interopSearchEndpoints().includes(read.source.endpoint);
-  if (port !== SOURCE_ADMIN && port !== SOURCE_MGMNT && port !== SOURCE_ATELIER && port !== SOURCE_TIMELINE && port !== SOURCE_ENCRYPTION && (port !== SOURCE_INTEROP || (!parented && !searches))) {
+  // AD-36 as amended (Story 20.11): an analytics read takes criteria only as its parent's route id, on a parent-scoped list.
+  const parentOnly = port === SOURCE_INTEROP || port === SOURCE_ANALYTICS;
+  if (port !== SOURCE_ADMIN && port !== SOURCE_MGMNT && port !== SOURCE_ATELIER && port !== SOURCE_TIMELINE && port !== SOURCE_ENCRYPTION && (!parentOnly || (!parented && !searches))) {
     return `read.criteria is declared on a '${shown(port)}' source, and server criteria travel on the admin, mgmnt, atelier, timeline and encryption ports alone (AD-21)`;
   }
 
@@ -2732,8 +2770,9 @@ export const ROW_TARGET_KEYS = ['route', 'field', 'unless'];
  * linked entity (the Locks list's removal id, say) would otherwise link its own id route, which
  * names the wrong thing.
  *
- * Declarable only on a `list` archetype that also declares a `table`, since exactly one column's
- * `kind` is `name` and a row target replaces what that column would otherwise link to. Its
+ * Declarable only on a `list` archetype, or a `detail` archetype that declares a `tab`, that also
+ * declares a `table`, since exactly one column's `kind` is `name` and a row target replaces what
+ * that column would otherwise link to. Its
  * `route` is a non-empty string other than the declaring screen's own route, and its `field` is a
  * non-empty string that is one of `read.fields`. Its optional `unless`, where declared, is a
  * non-empty string that is one of `read.fields` too: a row where that field reads `true` renders its
@@ -2747,7 +2786,8 @@ export function rowTargetProblem(declaration) {
   if (!isObject(rowTarget)) return 'rowTarget is not an object naming its route and field (AD-5)';
   const keysFault = unknownKeyProblem('rowTarget', rowTarget, ROW_TARGET_KEYS);
   if (keysFault !== null) return keysFault;
-  if (declaration.archetype !== 'list') {
+  // A tab of a tabbed group is a detail screen drawing a table, so it may declare one too (Story 20.11).
+  if (declaration.archetype !== 'list' && !(declaration.archetype === 'detail' && isObject(declaration.tab))) {
     return `rowTarget is declared on a '${shown(declaration.archetype)}' archetype, and a row target is a list's own row link (AD-5)`;
   }
   if (!isObject(declaration.table)) {

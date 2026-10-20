@@ -37,15 +37,17 @@ Parameter NOTRACEGRANTS = "%Ens_Portal:U,%Ens_MessageHeader:U";
 Parameter DESCRIPTORPACKAGE = "OcuPilot.Screen.Descriptor.";
 
 /// <p>What the <code>%Ens_Portal</code> holder and the Monitor role open on the floor alone: the
-/// agent's owner-scoped screens, Home (an empty classic <code>RESOURCE</code>) and the analytics log
-/// (the public <code>%DeepSee_Portal</code>).</p>
-Parameter BASESCREENS = "AgentGuardrails,AgentLedger,AgentTranscript,AgentTranscripts,Home,LogAnalyticsViewer";
+/// agent's owner-scoped screens, Home (an empty classic <code>RESOURCE</code>), the analytics log
+/// (the public <code>%DeepSee_Portal</code>) and Analytics' Cubes with its three tabs (Story 20.11), whose one pair is that
+/// public one. These principals hold no <code>%Development:USE</code>, so they do not open Folder items, and none holds
+/// <code>%DeepSee_PortalEdit:USE</code>, so none opens Term lists.</p>
+Parameter BASESCREENS = "AgentGuardrails,AgentLedger,AgentTranscript,AgentTranscripts,AnalyticsCubeDimensionsTab,AnalyticsCubeList,AnalyticsCubeMeasuresTab,AnalyticsCubeRelationshipsTab,Home,LogAnalyticsViewer";
 
 /// <p>See <parameter>BASESCREENS</parameter>.</p>
 Parameter BASEAREAS = "agent,analytics,home,logs";
 
 /// <p>See <parameter>BASESCREENS</parameter>.</p>
-Parameter BASETOOLS = "agent.transcripts.read,logs.analytics.read,shell.instance.read,shell.namespaces.read,shell.privileges.read,shell.screen.open,shell.tools.find";
+Parameter BASETOOLS = "agent.transcripts.read,analytics.cubedimensions.read,analytics.cubemeasures.read,analytics.cuberelationships.read,analytics.cubes.read,logs.analytics.read,shell.instance.read,shell.namespaces.read,shell.privileges.read,shell.screen.open,shell.tools.find";
 
 /// <p>What the Monitor role adds: the Production monitor, through the <code>%Ens_Dashboard:USE</code> the role holds (Story
 /// 20.4). The Operator and Administrator roles hold it too.</p>
