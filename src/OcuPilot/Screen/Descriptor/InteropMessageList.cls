@@ -43,7 +43,9 @@ XData Declaration
   "suggestedPrompts": [
     {"groupKey": "promptGroupTroubleshooting", "textKey": "interopMessagesPrompt1"},
     {"groupKey": "promptGroupTroubleshooting", "textKey": "interopMessagesPrompt2"},
-    {"groupKey": "promptGroupTroubleshooting", "textKey": "interopMessagesPrompt3"}
+    {"groupKey": "promptGroupTroubleshooting", "textKey": "interopMessagesPrompt3"},
+    {"groupKey": "promptGroupTroubleshooting", "textKey": "interopMessagesWorkflowResend", "workflow": "resendmessages"},
+    {"groupKey": "promptGroupTroubleshooting", "textKey": "interopMessagesWorkflowTrace", "workflow": "tracemessage"}
   ],
   "classicPage": "EnsPortal.MessageViewer",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},

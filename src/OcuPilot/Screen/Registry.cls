@@ -622,10 +622,11 @@ ClassMethod TabProblem(pDeclaration As %DynamicObject) As %String
 /// <p>What is wrong with <var>pDeclaration</var>'s <code>suggestedPrompts</code>, or
 /// <code>""</code> (Story 11.3, AD-5). A built screen declares them; an unbuilt one may leave them
 /// absent or <code>null</code>. Otherwise it is an array of at least
-/// <parameter>SUGGESTEDPROMPTSMIN</parameter> objects, each carrying only <code>groupKey</code> and
+/// <parameter>SUGGESTEDPROMPTSMIN</parameter> objects, each carrying <code>groupKey</code> and
 /// <code>textKey</code>, both non-empty string keys, the group one of
-/// <parameter>PROMPTGROUPKEYS</parameter>. That each key resolves is the build's check, over the
-/// string source this class cannot read. <file>ui/tools/screen-mirror.mjs</file>'s
+/// <parameter>PROMPTGROUPKEYS</parameter>, and optionally <code>workflow</code>, a guided workflow's
+/// catalog id (<method>OcuPilot.Kernel.Agent.Workflow.Ids</method>, Story 20.12, AD-66). That each
+/// key resolves is the build's check, over the string source this class cannot read. <file>ui/tools/screen-mirror.mjs</file>'s
 /// <code>suggestedPromptsProblem</code> returns the same sentence for every case.</p>
 ClassMethod SuggestedPromptsProblem(pDeclaration As %DynamicObject) As %String
 {
@@ -656,7 +657,7 @@ ClassMethod SuggestedPromptsProblem(pDeclaration As %DynamicObject) As %String
                 Set tProblem = tWhere _ " is not an object declaring its groupKey and textKey"
                 Quit
             }
-            Set tProblem = ..UnknownKeyProblem(tPrompt, tWhere, $ListBuild("groupKey", "textKey"))
+            Set tProblem = ..UnknownKeyProblem(tPrompt, tWhere, $ListBuild("groupKey", "textKey", "workflow"))
             If tProblem '= "" Quit
             For tKey = "groupKey", "textKey" {
                 If (tPrompt.%GetTypeOf(tKey) '= "string") || (tPrompt.%Get(tKey) = "") {
@@ -669,6 +670,13 @@ ClassMethod SuggestedPromptsProblem(pDeclaration As %DynamicObject) As %String
             If '$ListFind($ListFromString(..#PROMPTGROUPKEYS), tGroup) {
                 Set tProblem = tWhere _ ".groupKey '" _ tGroup _ "' is not one of the declared prompt groups"
                 Quit
+            }
+            If tPrompt.%GetTypeOf("workflow") '= "unassigned" {
+                Set tWorkflow = $Select(tPrompt.%GetTypeOf("workflow") = "string": tPrompt.%Get("workflow"), 1: "")
+                If (tWorkflow = "") || '$ListFind(##class(OcuPilot.Kernel.Agent.Workflow).Ids(), tWorkflow) {
+                    Set tProblem = tWhere _ " names the unknown workflow '" _ tWorkflow _ "'"
+                    Quit
+                }
             }
         }
     } Catch ex {

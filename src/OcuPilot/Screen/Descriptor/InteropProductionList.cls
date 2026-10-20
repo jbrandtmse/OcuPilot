@@ -43,7 +43,8 @@ XData Declaration
   "suggestedPrompts": [
     {"groupKey": "promptGroupTroubleshooting", "textKey": "interopProductionsPrompt1"},
     {"groupKey": "promptGroupTroubleshooting", "textKey": "interopProductionsPrompt2"},
-    {"groupKey": "promptGroupTroubleshooting", "textKey": "interopProductionsPrompt3"}
+    {"groupKey": "promptGroupTroubleshooting", "textKey": "interopProductionsPrompt3"},
+    {"groupKey": "promptGroupTroubleshooting", "textKey": "interopProductionsWorkflowRecover", "workflow": "recoverproduction"}
   ],
   "classicPage": "EnsPortal.Productions",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},

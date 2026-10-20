@@ -2277,7 +2277,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:645 */
+  /** EXPERIENCE.md:648 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -7476,6 +7476,34 @@ export const STRINGS = {
   interopResendFailed: 'not resent',
   /** EXPERIENCE.md:604 */
   interopMessagesEmptyAgent: 'find and resend messages',
+  /** EXPERIENCE.md:605 */
+  agentWorkflowLabel: 'Guided workflow',
+  /** EXPERIENCE.md:605 */
+  agentWorkflowContinue: 'Continue',
+  /** EXPERIENCE.md:605 */
+  agentWorkflowEnd: 'End workflow',
+  /** EXPERIENCE.md:605 */
+  agentWorkflowContinueMessage: 'Continue the guided workflow.',
+  /** EXPERIENCE.md:605 */
+  agentWorkflowContinueWait: 'Confirm or cancel the open proposal first.',
+  /** EXPERIENCE.md:606 */
+  interopProductionsWorkflowRecover: 'Recover a stuck production, step by step',
+  /** EXPERIENCE.md:606 */
+  interopMessagesWorkflowResend: 'Resend failed messages, step by step',
+  /** EXPERIENCE.md:606 */
+  interopMessagesWorkflowTrace: 'Trace a message through its session, step by step',
+  /** EXPERIENCE.md:606 */
+  dashboardWorkflowHealth: 'Check this instance\'s health, step by step',
+  /** EXPERIENCE.md:606 */
+  roleListWorkflowSecurity: 'Review the security posture, step by step',
+  /** EXPERIENCE.md:606 */
+  explorerSqlQueryWorkflowSlow: 'Find out why a query is slow, step by step',
+  /** EXPERIENCE.md:606 */
+  explorerClassListWorkflowCompile: 'Fix a class until it compiles, step by step',
+  /** EXPERIENCE.md:606 */
+  explorerClassListWorkflowReview: 'Review a class\'s ObjectScript, step by step',
+  /** EXPERIENCE.md:606 */
+  namespaceListWorkflowProject: 'Set up a new project\'s namespace, step by step',
 } as const;
 
 /**

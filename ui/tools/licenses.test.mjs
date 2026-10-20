@@ -58,16 +58,28 @@ test('an absent or empty extracted file still fails the step', () => {
   }
 });
 
-test("iris-table-editor's notice carries its MIT copyright line and full text, and ATTRIBUTIONS.md names it", () => {
-  const notice = readFileSync(join(NOTICES_DIR, 'iris-table-editor.txt'), 'utf8');
-  const license = notice.slice(notice.indexOf('MIT License'));
-  assert.ok(notice.startsWith('Package: iris-table-editor\nLicense: "MIT"\n'), 'headed as the extractor heads a package');
-  assert.ok(license.includes(COPYRIGHT), 'its copyright line');
-  assert.ok(license.includes('Permission is hereby granted, free of charge'), 'the grant');
-  assert.ok(license.includes('THE SOFTWARE IS PROVIDED "AS IS"'), 'and the disclaimer');
-  const attributions = readFileSync(join(repoRoot, 'ATTRIBUTIONS.md'), 'utf8');
-  const row = attributions.split('\n').find((line) => line.startsWith('| iris-table-editor v0.2.3'));
-  assert.ok(row !== undefined, 'ATTRIBUTIONS.md has a Harvested code row for iris-table-editor');
-  assert.ok(row.includes(COPYRIGHT) && row.includes('MIT') && row.includes('ui/licenses/iris-table-editor.txt'), row);
-  assert.ok(attributions.includes(license.trim().split('\n').slice(0, 3).join('\n')), 'and carries the license text');
-});
+/** The ported projects ATTRIBUTIONS.md's Harvested code table names, each with its notice file (Stories 19.7, 20.12). */
+const PORTED = [
+  { project: 'iris-table-editor', rowStart: '| iris-table-editor v0.2.3', copyright: COPYRIGHT },
+  { project: 'iris-execute-mcp-v2', rowStart: '| iris-execute-mcp-v2', copyright: 'Copyright (c) 2026 jbrandtmse' },
+];
+
+// Mutation (Rule 19): delete a row from ATTRIBUTIONS.md's Harvested code table, or a notice's copyright line,
+// and the check for that project goes red naming it.
+for (const { project, rowStart, copyright } of PORTED) {
+  test(`${project}'s notice carries its MIT copyright line and full text, and ATTRIBUTIONS.md names it`, () => {
+    const noticeFile = `ui/licenses/${project}.txt`;
+    const notice = readFileSync(join(NOTICES_DIR, `${project}.txt`), 'utf8');
+    const license = notice.slice(notice.indexOf('MIT License'));
+    assert.ok(notice.startsWith(`Package: ${project}\nLicense: "MIT"\n`), 'headed as the extractor heads a package');
+    assert.ok(license.includes(copyright), 'its copyright line');
+    assert.ok(license.includes('Permission is hereby granted, free of charge'), 'the grant');
+    assert.ok(license.includes('THE SOFTWARE IS PROVIDED "AS IS"'), 'and the disclaimer');
+    const attributions = readFileSync(join(repoRoot, 'ATTRIBUTIONS.md'), 'utf8');
+    const row = attributions.split('\n').find((line) => line.startsWith(rowStart));
+    assert.ok(row !== undefined, `ATTRIBUTIONS.md has a Harvested code row for ${project}`);
+    assert.ok(row.includes(copyright) && row.includes('MIT') && row.includes(noticeFile), row);
+    assert.ok(attributions.includes(license.trim().split('\n').slice(0, 3).join('\n')), 'and carries the license text');
+    assert.ok(harvestedNotices(NOTICES_DIR).includes(notice), 'and the build appends the notice to the served file');
+  });
+}

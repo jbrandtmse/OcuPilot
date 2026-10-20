@@ -1240,6 +1240,7 @@ ClassMethod ReasonForToolCode(pCode As %String) As %String
     If $Extract(pCode, 1, 12) = "RESTSERVICE." Set tReason = ##class(OcuPilot.Api.RestServiceError).ReasonFor(pCode)
     If $Extract(pCode, 1, 10) = "ALLOWLIST." Set tReason = ##class(OcuPilot.Api.AllowListError).ReasonFor(pCode)
     If $Extract(pCode, 1, 11) = "WALLETRUNG." Set tReason = ##class(OcuPilot.Api.WalletRungError).ReasonFor(pCode)
+    If $Extract(pCode, 1, 9) = "WORKFLOW." Set tReason = ##class(OcuPilot.Api.WorkflowError).ReasonFor(pCode)
     If tReason '= "" Quit tReason
     Quit ..#REASONTOOLUNAVAILABLE
 }

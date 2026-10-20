@@ -430,6 +430,8 @@ export interface ScreenDeclaration {
 export interface SuggestedPrompt {
   readonly groupKey: string;
   readonly textKey: string;
+  /** The catalog id of the guided workflow choosing this prompt starts, where it names one (Story 20.12, AD-66). */
+  readonly workflow?: string;
 }
 
 /**
@@ -2912,6 +2914,11 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       {
         "groupKey": "promptGroupTroubleshooting",
         "textKey": "dashboardPrompt3"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "dashboardWorkflowHealth",
+        "workflow": "systemhealth"
       }
     ],
     "classicPage": "%cspapp.op.utildashboard",
@@ -7227,6 +7234,16 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       {
         "groupKey": "webAppPromptGroupCode",
         "textKey": "explorerClassListPrompt3"
+      },
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "explorerClassListWorkflowCompile",
+        "workflow": "compileclass"
+      },
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "explorerClassListWorkflowReview",
+        "workflow": "reviewclass"
       }
     ],
     "classicPage": "%CSP.UI.Portal.ClassList",
@@ -9963,6 +9980,11 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       {
         "groupKey": "webAppPromptGroupCode",
         "textKey": "explorerSqlQueryPrompt3"
+      },
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "explorerSqlQueryWorkflowSlow",
+        "workflow": "slowquery"
       }
     ],
     "classicPage": "%CSP.UI.Portal.SQL.Home",
@@ -14247,6 +14269,16 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       {
         "groupKey": "promptGroupTroubleshooting",
         "textKey": "interopMessagesPrompt3"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "interopMessagesWorkflowResend",
+        "workflow": "resendmessages"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "interopMessagesWorkflowTrace",
+        "workflow": "tracemessage"
       }
     ],
     "classicPage": "EnsPortal.MessageViewer",
@@ -15172,6 +15204,11 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       {
         "groupKey": "promptGroupTroubleshooting",
         "textKey": "interopProductionsPrompt3"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "interopProductionsWorkflowRecover",
+        "workflow": "recoverproduction"
       }
     ],
     "classicPage": "EnsPortal.Productions",
@@ -21007,6 +21044,11 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       {
         "groupKey": "promptGroupGettingStarted",
         "textKey": "namespaceListPrompt3"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "namespaceListWorkflowProject",
+        "workflow": "newproject"
       }
     ],
     "classicPage": "%CSP.UI.Portal.Namespaces",
@@ -23883,6 +23925,11 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       {
         "groupKey": "userPromptGroupAccess",
         "textKey": "roleListPrompt3"
+      },
+      {
+        "groupKey": "userPromptGroupAccess",
+        "textKey": "roleListWorkflowSecurity",
+        "workflow": "securityposture"
       }
     ],
     "classicPage": "%CSP.UI.Portal.Roles",

@@ -4027,6 +4027,70 @@ app-interop-message-contents {
   padding: 0 var(--ocu-space-2);
 }
 
+// --- The guided-workflow chip (Story 20.12) ---------------------------------------------------
+//
+// DESIGN.md `workflow-chip`: the context chip's surface above the composer, holding the label and
+// the starting prompt's text and, beside them, Continue and End workflow as `button-text`. It uses
+// the context chip's surface tokens only, so both themes hold. Continue unavailable is
+// `aria-disabled`, never `disabled`: `restrained` at full opacity with no state layer, as
+// "Explain this screen" is.
+
+.ocu-workflow-chip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ocu-space-1) var(--ocu-space-2);
+  padding: 6px 8px 6px 10px;
+  border: 1px solid var(--ocu-outline-variant);
+  border-radius: var(--ocu-radius-md);
+  background: var(--ocu-surface-container);
+}
+
+.ocu-workflow-chip-text {
+  @include typo.ocu-type('caption');
+
+  display: flex;
+  flex: 1 1 8rem;
+  flex-direction: column;
+  min-width: 0;
+  margin: 0;
+  color: var(--ocu-on-surface);
+}
+
+.ocu-workflow-chip-label {
+  @include typo.ocu-type('label');
+
+  color: var(--ocu-on-surface-variant);
+}
+
+.ocu-workflow-chip-name {
+  overflow-wrap: anywhere;
+}
+
+.ocu-workflow-chip-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: var(--ocu-space-1);
+}
+
+.ocu-workflow-chip-action {
+  height: auto;
+  min-height: 24px;
+  padding: 0 var(--ocu-space-2);
+}
+
+.ocu-workflow-chip-continue[aria-disabled='true'] {
+  color: var(--ocu-restrained);
+  cursor: default;
+}
+
+.ocu-workflow-chip-continue[aria-disabled='true']:hover,
+.ocu-workflow-chip-continue[aria-disabled='true']:active {
+  background: transparent;
+}
+
 // --- The transcript: messages, cards and the turn error banner (Story 4.5) --------------------
 //
 // DESIGN.md `message-user`, `message-agent` and `tool-call-card`. The transcript itself already

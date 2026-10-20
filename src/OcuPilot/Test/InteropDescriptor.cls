@@ -150,7 +150,9 @@ Method TestTheFourDeclarationsRegister()
         Do $$$AssertEquals(tDeclaration.ownPrivileges.%ToJSON(), "[{""resource"":""" _ $Piece(tOwn, ":", 1) _ """,""permission"":""" _ $Piece(tOwn, ":", 2) _ """}]", tClass _ ": its own pair is the classic page's resource")
         Do $$$AssertEquals(tDeclaration.privileges.%Get(0).resource _ ":" _ tDeclaration.privileges.%Get(0).permission _ "|" _ tDeclaration.privileges.%Size(), "%Ens_Portal:USE|2", tClass _ ": the Interoperability menu's pair, then its own")
         Do $$$AssertEquals(tDeclaration.read.source.port _ "|" _ tDeclaration.read.source.endpoint _ "|" _ tDeclaration.read.source.type, "interop|" _ $Piece(tRow, "|", 5) _ "|LIST", tClass _ ": read through the interop port")
-        Do $$$AssertEquals(tDeclaration.suggestedPrompts.%Size(), 3, tClass _ ": three suggested prompts")
+        ; Productions also offers the recover-a-production guided workflow as a fourth prompt (Story 20.12).
+        Set tPromptCount = $Select($Piece(tRow, "|", 1) = "InteropProductionList": 4, 1: 3)
+        Do $$$AssertEquals(tDeclaration.suggestedPrompts.%Size(), tPromptCount, tClass _ ": its suggested prompts, at least three")
         Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ReadProblem(tDeclaration), "", tClass _ ": its read passes the registry")
         Set tActions = ""
         Set tIterator = tDeclaration.rowActions.%GetIterator()
@@ -160,6 +162,8 @@ Method TestTheFourDeclarationsRegister()
         If $Piece(tRow, "|", 1) = "InteropProductionList" {
             Do $$$AssertEquals(tDeclaration.entityType _ "|" _ tActions _ "|" _ tDeclaration.read.fields.%ToJSON(), "production|start,stop,restart,update,recover|[""Name"",""Status"",""LastStartTime"",""LastStopTime""]", "Productions: the production entity, its five row actions and its four fields")
             Do $$$AssertEquals(tDeclaration.suggestedPrompts.%Get(0).groupKey, "promptGroupTroubleshooting", "Productions: prompts in the Troubleshooting group")
+            Set tWorkflowPrompt = tDeclaration.suggestedPrompts.%Get(3)
+            Do $$$AssertEquals(tWorkflowPrompt.groupKey _ "|" _ tWorkflowPrompt.textKey _ "|" _ tWorkflowPrompt.workflow, "promptGroupTroubleshooting|interopProductionsWorkflowRecover|recoverproduction", "Productions: the fourth prompt starts the recover workflow")
         } ElseIf $Piece(tRow, "|", 1) = "InteropTransformList" {
             Do $$$AssertEquals(tDeclaration.entityType _ "|" _ tActions _ "|" _ tDeclaration.table.emptyNextKey _ "|" _ tDeclaration.table.emptyAgentKey, "class|test||interopTransformsEmptyAgent", "Transforms: class rows, the one Test action (Story 20.27) and its own empty state")
             Do $$$AssertEquals(tDeclaration.suggestedPrompts.%Get(0).groupKey, "promptGroupGettingStarted", tClass _ ": prompts in the Getting started group")

@@ -5463,3 +5463,259 @@ describe('Story 19.11: the agent picker in the header', () => {
     expect(turn.entries().length).toBe(0);
   });
 });
+
+// --- Story 20.12: the guided workflow chip ---------------------------------------------------------
+
+describe('Story 20.12: the guided workflow chip', () => {
+  const CLASSES_URL = '/system-explorer/classes';
+  const COMPILE = 'Fix a class until it compiles, step by step';
+  const REVIEW = "Review a class's ObjectScript, step by step";
+  const WAIT_ID = 'ocu-panel-workflow-wait-reason';
+
+  /** A poll answer for `turnId`: the progress body of `progressWith`, under its own id. */
+  function progressFor(turnId: string, proposals: unknown[], reply = 'Done for now.') {
+    const answer = progressWith(proposals, 'completed', reply);
+    return { ...answer, body: { ...answer.body, turnId } };
+  }
+
+  const confirmedAnswer = {
+    kind: 'ok',
+    status: 200,
+    body: { proposalId: 'p1', state: 'confirmed', closedReason: '', confirmedAt: '2026-09-19T10:31:04Z' },
+  };
+
+  /**
+   * The panel on the Classes list over a transport that accepts three turns, the first minting `p1`, and a
+   * conversation mint that answers twice, with the schedule held so each turn ends when the test says.
+   */
+  async function mountWorkflow(options: { turnAnswers?: unknown[]; restraint?: Partial<Restraint> } = {}) {
+    const { schedule, scheduled } = fakeTurnSchedule();
+    const api = fakeTurnApi({
+      [CONVERSATION_PATH]: [
+        { kind: 'ok', status: 201, body: { conversationId: 'convo-1' } },
+        { kind: 'ok', status: 201, body: { conversationId: 'convo-2' } },
+      ],
+      [TURN_PATH]: options.turnAnswers ?? [
+        { kind: 'ok', status: 202, body: { turnId: 'turn-1' } },
+        { kind: 'ok', status: 202, body: { turnId: 'turn-2' } },
+        { kind: 'ok', status: 202, body: { turnId: 'turn-3' } },
+        { kind: 'ok', status: 202, body: { turnId: 'turn-4' } },
+      ],
+      [turnProgressPath('turn-1')]: [progressFor('turn-1', [wireProposal({ proposalId: 'p1', tool: 'explorer.classes.save' })])],
+      [turnProgressPath('turn-2')]: [progressFor('turn-2', [])],
+      [turnProgressPath('turn-3')]: [progressFor('turn-3', [])],
+      [turnProgressPath('turn-4')]: [progressFor('turn-4', [])],
+      [proposalConfirmPath('p1')]: [confirmedAnswer],
+    });
+    const turn = stubTurnStore({ api: api as never, schedule });
+    await turn.restore();
+    const agentContext = stubAgentContext({ share: true, contextRowCap: 200 });
+    await agentContext.load();
+    const mounted = await mount({
+      rows: [{ enabled: true }],
+      turn,
+      url: CLASSES_URL,
+      agentContext,
+      ...(options.restraint !== undefined ? { restraint: options.restraint } : {}),
+    });
+    return { ...mounted, api, scheduled };
+  }
+
+  const posts = (api: ReturnType<typeof fakeTurnApi>) =>
+    api.calls.filter((call) => call.path === TURN_PATH).map((call) => JSON.parse(call.body ?? '{}') as Record<string, unknown>);
+
+  const starter = (root: Element, text: string) =>
+    [...root.querySelectorAll('.ocu-suggested-starter')].find(
+      (node) => node.querySelector('span')?.textContent?.trim() === text
+    ) as HTMLButtonElement;
+
+  const chip = (host: HTMLElement) => host.querySelector('[data-ocu-workflow-chip]') as HTMLElement | null;
+  const continueButton = (host: HTMLElement) => host.querySelector('.ocu-workflow-chip-continue') as HTMLButtonElement;
+  const endButton = (host: HTMLElement) => host.querySelector('.ocu-workflow-chip-end') as HTMLButtonElement;
+
+  /**
+   * End the running turn the way the poll loop does, then let the panel draw it. An ended turn with a live card
+   * leaves a re-read tick in the schedule ahead of the next turn's poll, so ticks run until the turn is done.
+   */
+  async function endTurn(mounted: Awaited<ReturnType<typeof mountWorkflow>>) {
+    for (let guard = 0; guard < 6 && mounted.turn.busy(); guard += 1) {
+      mounted.scheduled.shift()?.run();
+      await turnSettle();
+    }
+    mounted.fixture.detectChanges();
+  }
+
+  // Mutation (Rule 19): `onSuggestedPrompt` passes no workflow -> the body and the chip assertions go red.
+  it('Choose: a workflow prompt sends its id with its text, and the chip shows the label and the text above the composer', async () => {
+    const { host, fixture, api } = await mountWorkflow();
+    expect(chip(host)).toBeNull();
+    starter(host, COMPILE).click();
+    await turnSettle();
+    fixture.detectChanges();
+    const body = posts(api)[0] as { message: string; workflow: string; context: { route: string } };
+    expect(body.message).toBe(COMPILE);
+    expect(body.workflow).toBe('compileclass');
+    expect(body.context.route).toBe('system-explorer/classes');
+    expect(chip(host)).not.toBeNull();
+    expect(host.querySelector('.ocu-workflow-chip-label')?.textContent?.trim()).toBe('Guided workflow');
+    expect(host.querySelector('.ocu-workflow-chip-name')?.textContent?.trim()).toBe(COMPILE);
+    const slot = host.querySelector('.ocu-panel-warning-slot') as HTMLElement;
+    const label = host.querySelector('.ocu-panel-footer > label') as HTMLElement;
+    expect(slot.compareDocumentPosition(chip(host) as Node) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect((chip(host) as Node).compareDocumentPosition(label) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  // Mutation (Rule 19): Continue is not gated on `busy` -> the busy leg goes red; not gated on the live
+  // cards -> the card leg goes red.
+  it('Gated: Continue is aria-disabled while a turn runs and while a card is live, names why, and posts nothing', async () => {
+    const mounted = await mountWorkflow();
+    const { host, fixture, api } = mounted;
+    starter(host, COMPILE).click();
+    await turnSettle();
+    fixture.detectChanges();
+    expect(continueButton(host).getAttribute('aria-disabled')).toBe('true');
+    expect(continueButton(host).hasAttribute('disabled')).toBe(false);
+    expect(continueButton(host).getAttribute('aria-describedby')).toBe(BUSY_REASON_ID);
+    expect(host.querySelector(`#${BUSY_REASON_ID}`)).not.toBeNull();
+    continueButton(host).click();
+    await turnSettle();
+    expect(posts(api)).toHaveLength(1);
+
+    await endTurn(mounted);
+    expect(host.querySelector('app-proposal-card')).not.toBeNull();
+    expect(continueButton(host).getAttribute('aria-disabled')).toBe('true');
+    expect(continueButton(host).getAttribute('aria-describedby')).toBe(WAIT_ID);
+    expect(host.querySelector(`#${WAIT_ID}`)?.textContent?.trim()).toBe('Confirm or cancel the open proposal first.');
+    continueButton(host).click();
+    await turnSettle();
+    fixture.detectChanges();
+    expect(posts(api)).toHaveLength(1);
+    expect(host.querySelector('app-proposal-card')).not.toBeNull();
+    expect(chip(host)).not.toBeNull();
+  });
+
+  // Mutation (Rule 19): `workflowContinueDisabled` without `composerUnavailable` -> this goes red.
+  it('Gated: under the kill switch Continue is aria-disabled, names the switch, and posts nothing', async () => {
+    const restraint: { -readonly [K in keyof Restraint]?: Restraint[K] } = {};
+    const mounted = await mountWorkflow({ restraint });
+    const { host, fixture, api, agentStatus } = mounted;
+    starter(host, COMPILE).click();
+    await turnSettle();
+    await endTurn(mounted);
+    (host.querySelector('.ocu-proposal-card-confirm') as HTMLButtonElement).click();
+    await turnSettle();
+    fixture.detectChanges();
+    expect(continueButton(host).hasAttribute('aria-disabled')).toBe(false);
+
+    restraint.killSwitch = true;
+    restraint.killSwitchAudience = 'everyone';
+    restraint.killSwitchReason = 'Paused during the change freeze';
+    restraint.blocked = true;
+    await agentStatus.load();
+    fixture.detectChanges();
+    expect(continueButton(host).getAttribute('aria-disabled')).toBe('true');
+    expect(continueButton(host).getAttribute('aria-describedby')).toBe(KILL_SWITCH_ID);
+    continueButton(host).click();
+    await turnSettle();
+    expect(posts(api)).toHaveLength(1);
+  });
+
+  // Mutation (Rule 19): `onWorkflowContinue` sends no message of its own -> this goes red; Continue confirms
+  // the card itself -> the confirm-route assertion goes red.
+  it('Continue: once the card is decided it sends the fixed sentence with the workflow, and decides nothing itself', async () => {
+    const mounted = await mountWorkflow();
+    const { host, fixture, api } = mounted;
+    starter(host, COMPILE).click();
+    await turnSettle();
+    await endTurn(mounted);
+    expect(api.calls.some((call) => call.path === proposalConfirmPath('p1'))).toBe(false);
+
+    (host.querySelector('.ocu-proposal-card-confirm') as HTMLButtonElement).click();
+    await turnSettle();
+    fixture.detectChanges();
+    expect(api.calls.filter((call) => call.path === proposalConfirmPath('p1'))).toHaveLength(1);
+    expect(continueButton(host).hasAttribute('aria-disabled')).toBe(false);
+    expect(continueButton(host).hasAttribute('aria-describedby')).toBe(false);
+
+    continueButton(host).click();
+    await turnSettle();
+    fixture.detectChanges();
+    const sent = posts(api);
+    expect(sent).toHaveLength(2);
+    expect(sent[1]['message']).toBe('Continue the guided workflow.');
+    expect(sent[1]['workflow']).toBe('compileclass');
+    expect((sent[1]['context'] as { route: string }).route).toBe('system-explorer/classes');
+    expect(api.calls.filter((call) => call.path === proposalConfirmPath('p1'))).toHaveLength(1);
+    expect(chip(host)).not.toBeNull();
+    expect(host.querySelector('.ocu-workflow-chip-name')?.textContent?.trim()).toBe(COMPILE);
+  });
+
+  // Mutation (Rule 19): `TurnStore.send` sends the workflow only on a prompt -> the typed leg goes red;
+  // `endWorkflow` keeps it -> the End leg goes red.
+  it('Typed: a typed message keeps the workflow, End workflow removes the chip and the next body names none', async () => {
+    const mounted = await mountWorkflow();
+    const { host, fixture, api } = mounted;
+    starter(host, COMPILE).click();
+    await turnSettle();
+    await endTurn(mounted);
+    // The first turn's card is closed by the next message, so type once it has ended.
+    await typeDraft(host, fixture, 'and then?');
+    (host.querySelector('.ocu-panel-send') as HTMLButtonElement).click();
+    await turnSettle();
+    fixture.detectChanges();
+    expect(posts(api)[1]['workflow']).toBe('compileclass');
+    await endTurn(mounted);
+
+    endButton(host).click();
+    await turnSettle();
+    fixture.detectChanges();
+    expect(chip(host)).toBeNull();
+    expect(document.activeElement).toBe(host.querySelector('.ocu-panel-composer'));
+    await typeDraft(host, fixture, 'a plain message');
+    (host.querySelector('.ocu-panel-send') as HTMLButtonElement).click();
+    await turnSettle();
+    fixture.detectChanges();
+    expect('workflow' in posts(api)[2]).toBe(false);
+  });
+
+  // Mutation (Rule 19): `newConversation` keeps `workflowValue` -> this goes red.
+  it('New conversation ends the workflow, and the next body names none', async () => {
+    const mounted = await mountWorkflow();
+    const { host, fixture, api } = mounted;
+    starter(host, REVIEW).click();
+    await turnSettle();
+    expect(posts(api)[0]['workflow']).toBe('reviewclass');
+    await endTurn(mounted);
+    expect(chip(host)).not.toBeNull();
+    expect(host.querySelector('.ocu-workflow-chip-name')?.textContent?.trim()).toBe(REVIEW);
+
+    (host.querySelector(`[aria-label="${STRINGS.actionNewConversation}"]`) as HTMLButtonElement).click();
+    await turnSettle();
+    fixture.detectChanges();
+    expect(chip(host)).toBeNull();
+    await typeDraft(host, fixture, 'a fresh start');
+    (host.querySelector('.ocu-panel-send') as HTMLButtonElement).click();
+    await turnSettle();
+    expect('workflow' in posts(api)[1]).toBe(false);
+  });
+
+  // Mutation (Rule 19): `send` activates the workflow before the instance answers -> this goes red.
+  it('A refused send changes nothing: no chip appears', async () => {
+    const { host, fixture, api } = await mountWorkflow({
+      turnAnswers: [
+        {
+          kind: 'error',
+          status: 422,
+          code: 'WORKFLOW.UNKNOWN',
+          reason: 'That guided workflow is not one OcuPilot offers.',
+          detail: null,
+        },
+      ],
+    });
+    starter(host, COMPILE).click();
+    await turnSettle();
+    fixture.detectChanges();
+    expect(posts(api)[0]['workflow']).toBe('compileclass');
+    expect(chip(host)).toBeNull();
+  });
+});

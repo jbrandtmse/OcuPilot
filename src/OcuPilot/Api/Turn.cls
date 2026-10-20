@@ -20,6 +20,10 @@ Parameter CONTEXTFIELD = "context";
 /// (Story 4.5).</p>
 Parameter CONVERSATIONFIELD = "conversationId";
 
+/// <p>The body member a start's guided workflow arrives on, and the field its violation lands on
+/// (Story 20.12, AD-66).</p>
+Parameter WORKFLOWFIELD = "workflow";
+
 /// <p>The loop whose limits class every bound here is read from.</p>
 Parameter LOOPCLASS = "OcuPilot.Kernel.Agent.Loop";
 
@@ -33,6 +37,9 @@ ClassMethod CallerUsername() As %String
 /// with no definition in force, reserve the caller's one slot, spawn the job, and answer 202 with
 /// the opaque turn id. Nothing is reserved when a refusal answers before the reserve; a turn whose
 /// job could not be spawned is finished <code>failed</code> and answers 503.</p>
+/// <p>The body carries four members: <code>message</code>, <code>conversationId</code>, an optional
+/// <code>context</code> and an optional <code>workflow</code>, a guided workflow's catalog id
+/// (<method>WorkflowViolation</method>) that is recorded on the turn row when the job begins.</p>
 /// <p>The reserve refuses a busy caller 409 <code>TURN.BUSY</code> first, then a caller at the
 /// Switches limit of turns an hour 403 <code>TURN.LIMITHOUR</code> (AD-41, Story 14.6), with
 /// <code>detail</code> <code>{limit, retryAt}</code> and the banner sentence filled with the limit
@@ -69,6 +76,11 @@ ClassMethod HandleStart() As %Status
         Set tConversationViolation = ..ConversationViolation(tBody)
         If tConversationViolation '= "" {
             Set tSC = ..RenderViolation(..#CONVERSATIONFIELD, tConversationViolation, ##class(OcuPilot.Api.Error).ReasonForTurn(tConversationViolation))
+            Quit
+        }
+        Set tWorkflowViolation = ..WorkflowViolation(tBody)
+        If tWorkflowViolation '= "" {
+            Set tSC = ..RenderViolation(..#WORKFLOWFIELD, tWorkflowViolation, ##class(OcuPilot.Api.WorkflowError).ReasonFor(tWorkflowViolation))
             Quit
         }
         Set tConversationId = tBody.%Get(..#CONVERSATIONFIELD)
@@ -152,6 +164,7 @@ ClassMethod HandleStart() As %Status
         Set tValues("context") = tContextJson
         Set tValues("contextRowCap") = tRowCap
         Set tValues("conversationId") = tConversationId
+        Set tValues("workflow") = $Select(tBody.%GetTypeOf(..#WORKFLOWFIELD) = "string": tBody.%Get(..#WORKFLOWFIELD), 1: "")
         ; EXPERIENCE.md's cancel step, as a fact of the instance: a typed message closes every live
         ; proposal of this conversation before the turn that carries it is spawned, so a confirm
         ; arriving afterwards meets a row that is no longer live. Recorded, never optimistic -- the
@@ -448,6 +461,18 @@ ClassMethod ConversationViolation(pBody As %DynamicObject) As %String
         Quit ##class(OcuPilot.Api.Error).#TURNCONVERSATIONREQUIRED
     }
     Quit ""
+}
+
+/// <p>The violation code <var>pBody</var>'s <code>workflow</code> earns, or <code>""</code>
+/// (Story 20.12, AD-66): an absent member or a JSON <code>null</code> passes, and a member that is
+/// not a string, or a string that is no id of
+/// <method>OcuPilot.Kernel.Agent.Workflow.Ids</method>, is <code>WORKFLOW.UNKNOWN</code>.</p>
+ClassMethod WorkflowViolation(pBody As %DynamicObject) As %String
+{
+    Set tType = pBody.%GetTypeOf(..#WORKFLOWFIELD)
+    If (tType = "unassigned") || (tType = "null") Quit ""
+    If (tType = "string") && $ListFind(##class(OcuPilot.Kernel.Agent.Workflow).Ids(), pBody.%Get(..#WORKFLOWFIELD)) Quit ""
+    Quit ##class(OcuPilot.Api.WorkflowError).#UNKNOWN
 }
 
 /// <p>The violation code <var>pBody</var>'s <code>context</code> earns, or <code>""</code>

@@ -32,7 +32,8 @@ ClassMethod LoopClass() As %String
 /// (the already-bounded screen-context payload JSON, or <code>""</code>),
 /// <code>contextRowCap</code> (<code>Switch.ContextRowCap</code> as the handler resolved it) and
 /// <code>conversationId</code> (Story 4.5: the caller-owned conversation
-/// <class>OcuPilot.Api.Turn</class> has already verified).
+/// <class>OcuPilot.Api.Turn</class> has already verified) and <code>workflow</code> (the guided
+/// workflow catalog id the handler validated, or <code>""</code>, AD-66).
 /// <var>pStarted</var> is 1 when the spawn was accepted; when it was not, the turn is finished
 /// <code>failed</code> with <code>TURN.UNAVAILABLE</code> here.</p>
 /// <p><b>Caller contract:</b> no <code>New $ROLES</code> escalation is in effect in any frame of
@@ -45,7 +46,7 @@ ClassMethod Start(ByRef pValues, Output pStarted As %Boolean) As %Status
     Set tUser = $Get(pValues("user"))
     Try {
         Set tNamespace = $Get(pValues("namespace"))
-        Job ##class(OcuPilot.Kernel.Agent.Job).Run(tKey, tUser, $Get(pValues("definitionId")), tNamespace, $Get(pValues("message")), ''$Get(pValues("readOnly")), $Get(pValues("resources")), $Get(pValues("scope")), $Get(pValues("context")), +$Get(pValues("contextRowCap")), $Get(pValues("conversationId"))):(tNamespace):..#SPAWNTIMEOUT
+        Job ##class(OcuPilot.Kernel.Agent.Job).Run(tKey, tUser, $Get(pValues("definitionId")), tNamespace, $Get(pValues("message")), ''$Get(pValues("readOnly")), $Get(pValues("resources")), $Get(pValues("scope")), $Get(pValues("context")), +$Get(pValues("contextRowCap")), $Get(pValues("conversationId")), $Get(pValues("workflow"))):(tNamespace):..#SPAWNTIMEOUT
         Set pStarted = $Test
     } Catch ex {
         Set tSC = ex.AsStatus()
@@ -76,7 +77,10 @@ ClassMethod Start(ByRef pValues, Output pStarted As %Boolean) As %Status
 /// turn row says which screen it ran from after its progress has been swept. That method is the one
 /// reading of the payload's <code>route</code>, so the turn row and the loop's ledger rows agree by
 /// construction; each frame calls it for itself rather than passing the value along.</p>
-ClassMethod Run(pKey As %String, pUser As %String, pDefinitionId As %String, pNamespace As %String, pMessage As %String, pReadOnly As %Boolean, pResources As %String, pScope As %String = "", pContext As %String = "", pContextRowCap As %Integer = 0, pConversationId As %String = "")
+/// <p><b>The turn's guided workflow (AD-66)</b> is recorded at begin from <var>pWorkflow</var>; the
+/// loop and the dispatcher read it back from the turn row, so it travels no further than this
+/// call.</p>
+ClassMethod Run(pKey As %String, pUser As %String, pDefinitionId As %String, pNamespace As %String, pMessage As %String, pReadOnly As %Boolean, pResources As %String, pScope As %String = "", pContext As %String = "", pContextRowCap As %Integer = 0, pConversationId As %String = "", pWorkflow As %String = "")
 {
     Set tBegun = 0
     Set tLimits = ""
@@ -92,7 +96,7 @@ ClassMethod Run(pKey As %String, pUser As %String, pDefinitionId As %String, pNa
             Quit
         }
         Do ##class(OcuPilot.Kernel.Scope).Set(pScope)
-        Set tSC = ##class(OcuPilot.Kernel.State.Turn).GuardedBegin(pKey, pUser, tLimits, .tBegun, .tStarted, $ClassMethod(tLoop, "ContextRoute", pContext))
+        Set tSC = ##class(OcuPilot.Kernel.State.Turn).GuardedBegin(pKey, pUser, tLimits, .tBegun, .tStarted, $ClassMethod(tLoop, "ContextRoute", pContext), pWorkflow)
         If $$$ISERR(tSC) || 'tBegun {
             Do ..Log("the turn could not be begun", $Select($$$ISERR(tSC): tSC, 1: $$$ERROR($$$GeneralError, "the slot stayed held past the queued limit, or the turn was no longer queued for this user")))
             Do ..Finish(pKey, pUser, tFailed, tUnavailable, "", "", 0, tLimits)

@@ -67,11 +67,12 @@ import { Session } from '../core/session';
 import { ShellState } from '../core/shell-state';
 import { STRINGS, stringFor } from '../core/strings';
 import { changeSentenceTemplate, formatChangeSentence } from '../core/toasts';
-import { promptGroups, type PromptGroup } from '../core/suggested-prompts';
+import { promptGroups, type GroupPrompt, type PromptGroup } from '../core/suggested-prompts';
 import { SuggestedView, type SuggestedLine } from '../core/suggested-view';
 import {
   TURN_PATH,
   TurnStore,
+  type ActiveWorkflow,
   type ProposalOutcome,
   type TurnProposal,
   type TurnStep,
@@ -94,6 +95,7 @@ import { ProposalCard, type ProposalConfirmRequest } from './proposal-card';
 import { ReadOnlyToggle } from './read-only-toggle';
 import { Reply } from './reply';
 import { ToolCallCard } from './tool-call-card';
+import { WorkflowChip } from './workflow-chip';
 
 /** The composer's control id: its label, both `aria-describedby` wires and the Ctrl/Cmd+I target. */
 export const COMPOSER_ID = 'ocu-panel-composer';
@@ -126,6 +128,9 @@ const READ_ONLY_ID = 'ocu-panel-read-only';
 
 /** New conversation's reason while a turn runs (Story 4.5). */
 const NEW_CONVERSATION_REASON_ID = 'ocu-panel-new-conversation-reason';
+
+/** The sentence that names why the workflow chip's Continue waits while a proposal card is live (Story 20.12). */
+const WORKFLOW_WAIT_REASON_ID = 'ocu-panel-workflow-wait-reason';
 
 /**
  * One suggested-view row's rendered view, precomputed once per read so the template does no
@@ -233,8 +238,8 @@ interface PanelTurnView {
  * made, not about the state the panel is in; the context chip, filled in by Story 4.11;
  * the transcript, a
  * polite `role="log"` named "Conversation" that scrolls by itself; and the footer with the
- * read-only line, the inline paste warning (Story 4.11), the composer and Send. There is no
- * close control.
+ * read-only line, the inline paste warning (Story 4.11), the guided-workflow chip while a workflow
+ * is active (Story 20.12), the composer and Send. There is no close control.
  *
  * **Every fact is read, none remembered here.** Whether a definition is enabled and the restraint
  * verdict come from `AgentStatus`; whether this caller may configure one is the navigation map's
@@ -265,7 +270,7 @@ interface PanelTurnView {
 @Component({
   selector: 'app-panel',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ProposalCard, PanelResizeHandle, ToolCallCard, ContextChip, Reply, CodeBlock, ReadOnlyToggle, AgentPicker, LongBlock],
+  imports: [ProposalCard, PanelResizeHandle, ToolCallCard, ContextChip, Reply, CodeBlock, ReadOnlyToggle, AgentPicker, LongBlock, WorkflowChip],
   template: `<aside class="ocu-panel" [class.ocu-panel-full-screen]="fullScreen" [attr.aria-label]="panelName">
     @if (docked) {
       <app-panel-resize-handle />
@@ -417,7 +422,7 @@ interface PanelTurnView {
               <div class="ocu-prompt-group" role="group" [attr.aria-labelledby]="'ocu-block-prompt-group-' + group.key">
                 <p class="ocu-prompt-group-label" [id]="'ocu-block-prompt-group-' + group.key">{{ group.label }}</p>
                 <ul class="ocu-suggested-lines" role="list">
-                  @for (prompt of group.prompts; track prompt) {
+                  @for (prompt of group.prompts; track prompt.text) {
                     <li class="ocu-suggested-line">
                       <button
                         type="button"
@@ -426,7 +431,7 @@ interface PanelTurnView {
                         [attr.aria-describedby]="promptDescribedBy"
                         (click)="onSuggestedPrompt(prompt)"
                       >
-                        <span>{{ prompt }}</span>
+                        <span>{{ prompt.text }}</span>
                         <span class="ocu-suggested-send-glyph" aria-hidden="true">{{ sendGlyph }}</span>
                       </button>
                     </li>
@@ -469,7 +474,7 @@ interface PanelTurnView {
                 <div class="ocu-prompt-group" role="group" [attr.aria-labelledby]="'ocu-greeting-prompt-group-' + group.key">
                   <p class="ocu-prompt-group-label" [id]="'ocu-greeting-prompt-group-' + group.key">{{ group.label }}</p>
                   <ul class="ocu-suggested-lines" role="list">
-                    @for (prompt of group.prompts; track prompt) {
+                    @for (prompt of group.prompts; track prompt.text) {
                       <li class="ocu-suggested-line">
                         <button
                           type="button"
@@ -478,7 +483,7 @@ interface PanelTurnView {
                           [attr.aria-describedby]="promptDescribedBy"
                           (click)="onSuggestedPrompt(prompt)"
                         >
-                          <span>{{ prompt }}</span>
+                          <span>{{ prompt.text }}</span>
                           <span class="ocu-suggested-send-glyph" aria-hidden="true">{{ sendGlyph }}</span>
                         </button>
                       </li>
@@ -595,6 +600,18 @@ interface PanelTurnView {
           </p>
         }
       </div>
+      @if (activeWorkflow) {
+        <app-workflow-chip
+          [text]="workflowText"
+          [continueDisabled]="workflowContinueDisabled"
+          [reasonId]="workflowReasonId"
+          (continue)="onWorkflowContinue()"
+          (end)="onWorkflowEnd()"
+        />
+        @if (workflowWaiting) {
+          <span [id]="workflowWaitReasonId" class="ocu-visually-hidden">{{ STRINGS.agentWorkflowContinueWait }}</span>
+        }
+      }
       <label class="ocu-field-label" [attr.for]="composerId">{{ STRINGS.agentComposerLabel }}</label>
       <div class="ocu-panel-composer-row">
         <textarea
@@ -675,6 +692,9 @@ export class Panel {
   protected readonly readOnlyId = READ_ONLY_ID;
 
   protected readonly busyReasonId = BUSY_REASON_ID;
+
+  /** The id of the sentence that names why the workflow chip's Continue waits on a live card (Story 20.12). */
+  protected readonly workflowWaitReasonId = WORKFLOW_WAIT_REASON_ID;
 
   protected readonly newConversationReasonId = NEW_CONVERSATION_REASON_ID;
 
@@ -1682,6 +1702,35 @@ export class Panel {
     return null;
   }
 
+  /** The guided workflow every send carries, or `null` (Story 20.12). */
+  protected get activeWorkflow(): ActiveWorkflow | null {
+    this.generation();
+    return this.turn.workflow();
+  }
+
+  /** The text of the prompt that started the active workflow, which the chip shows. */
+  protected get workflowText(): string {
+    return this.activeWorkflow?.text ?? '';
+  }
+
+  /** Whether a proposal card is live, which holds the workflow chip's Continue until the person decides it. */
+  protected get workflowWaiting(): boolean {
+    this.generation();
+    return this.liveCards.length > 0;
+  }
+
+  /** Continue waits exactly while Send's own gates hold, and while a proposal card is live (Story 20.12). */
+  protected get workflowContinueDisabled(): boolean {
+    return this.busy || this.workflowWaiting || this.composerUnavailable;
+  }
+
+  /** The element that names why Continue waits: Send's own topmost reason, else the live-card sentence. */
+  protected get workflowReasonId(): string | null {
+    const topmost = this.describedBy;
+    if (topmost !== null) return topmost;
+    return this.workflowWaiting ? WORKFLOW_WAIT_REASON_ID : null;
+  }
+
   /**
    * Whether the conversation has been restored and holds no turn. `restored()` is what keeps the
    * greeting from flashing before the transcript loads.
@@ -1756,9 +1805,28 @@ export class Panel {
    * screen's context through Send's own path, leaving the draft as it is (AD-11 rule 1). A click
    * while it is `aria-disabled` sends nothing; sharing off sends a `null` context, as Send does.
    */
-  protected onSuggestedPrompt(text: string): void {
+  protected onSuggestedPrompt(prompt: GroupPrompt): void {
     if (this.promptAriaDisabled !== null) return;
-    void this.sendWithContext(text, this.assembleContext());
+    // A prompt that names a guided workflow starts it, replacing any active one, once the instance
+    // accepts the send (Story 20.12, AD-66).
+    const workflow = prompt.workflow === null ? null : { id: prompt.workflow, text: prompt.text };
+    void this.sendWithContext(prompt.text, this.assembleContext(), workflow);
+  }
+
+  /**
+   * Continue was pressed (Story 20.12): send the fixed sentence with this screen's context through
+   * the same path as every other send, which carries the active workflow. A press while Continue
+   * is `aria-disabled` sends nothing, and it never confirms, cancels or closes a proposal itself.
+   */
+  protected onWorkflowContinue(): void {
+    if (this.workflowContinueDisabled) return;
+    void this.sendWithContext(STRINGS.agentWorkflowContinueMessage, this.assembleContext());
+  }
+
+  /** End workflow was pressed: the next send names none, and the composer takes focus. */
+  protected onWorkflowEnd(): void {
+    this.turn.endWorkflow();
+    this.composerEl()?.nativeElement.focus();
   }
 
   /**
@@ -2042,8 +2110,12 @@ export class Panel {
    * the turn; this draws the same transition without waiting for a poll. Recorded only on an
    * accepted send, because a refused one cancelled nothing (DW-1231).
    */
-  private async sendWithContext(text: string, context: ScreenContextPayload | null): Promise<boolean> {
-    const outcome = await this.turn.send(text, context);
+  private async sendWithContext(
+    text: string,
+    context: ScreenContextPayload | null,
+    workflow: ActiveWorkflow | null = null
+  ): Promise<boolean> {
+    const outcome = await this.turn.send(text, context, workflow);
     if (outcome !== 'sent') return false;
     this.cancelLiveCards('canceled-by-message');
     this.followNewest();
