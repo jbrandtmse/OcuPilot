@@ -556,8 +556,8 @@ Method TestTheAgentAreaNeverGatesWhileItsScreensGateOnOcuPilotsOwnResource()
 /// <file>ui/src/app/shell/rail-wire.spec.ts</file> carry the same entry in their captured
 /// payloads.</p>
 /// <p>Mutation: declare <code>"privileges": []</code> in
-/// <class>OcuPilot.Screen.Descriptor.WebAppList</class> -> the entry is allowed and the read answers
-/// 200, so the entry and the <code>failedPair</code> assertions go red.</p>
+/// <class>OcuPilot.Screen.Descriptor.WebAppList</class> -> the read answers 200, so the refusal
+/// assertions go red. The entry comparison reads the declaration on both sides, so it stays green.</p>
 Method TestTheWebApplicationsListIsDeniedToAPrincipalWithoutAdminSecure()
 {
     Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the two principals differ on the administrative resource")
@@ -622,16 +622,11 @@ Method TestTheUsersListIsDeniedToAPrincipalWithoutAdminSecure()
 /// it with <code>AUTH.NOPRIVILEGE</code>. The entry is compared whole, as the captured payloads in
 /// <file>ui/tools/navigation-wire.test.mjs</file> and <file>ui/src/app/shell/rail-wire.spec.ts</file>
 /// carry it.</p>
-/// <p>Story 6.3 and 6.4 -- the Security and secrets area lists twenty-eight built screens: the unlisted
-/// audit event lists, key file administrators and create form (Story 18.7), OAuth 2.0 tabs, SSL/TLS
-/// configuration form (Story 9.5), wallet secret form (Story 8.6), Secrets list and X.509 credential
-/// form (Story 8.5) first, at position 0, then SSL/TLS, X.509, LDAP / Kerberos, Wallet, OAuth 2.0,
-/// Auditing, Allowed directories (Story 18.1), Encryption key files (Story 18.7), Database encryption and
-/// Data element encryption (Story 18.22).
-/// Each is denied on the first pair it declares: the wallet pair for the three wallet screens, an
-/// OAuth resource for four OAuth tabs, <code>%Admin_FileSystemAccess:USE</code> for Allowed
-/// directories, and <code>%Admin_Secure:USE</code> for the rest, which is also the first pair the
-/// area declares.</p>
+/// <p>Story 6.3 and 6.4 -- the Security and secrets area's built screens are compared whole with
+/// <method>ExpectedScreens</method>, the unlisted ones at position 0 first. Each is denied on the
+/// first pair it declares: the wallet pair for the wallet screens, an OAuth resource for the OAuth
+/// tabs, <code>%Admin_FileSystemAccess:USE</code> for Allowed directories, and
+/// <code>%Admin_Secure:USE</code> for the rest, which is also the first pair the area declares.</p>
 Method TestTheSslConfigurationsListIsDeniedToAPrincipalWithoutAdminSecure()
 {
     Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the two principals differ on the administrative resource")
@@ -684,8 +679,9 @@ Method TestTheSslConfigurationsListIsDeniedToAPrincipalWithoutAdminSecure()
 /// each hold <code>%Admin_Task</code>, for which <code>%DB_IRISSYS:READ</code> is the first unheld
 /// pair under either ordering.</p>
 /// <p>Mutation: swap the two pairs in
-/// <class>OcuPilot.Screen.Descriptor.TaskScheduleList</class> -> the entry's
-/// <code>failedPair</code> reads <code>%DB_IRISSYS:READ</code> and both assertions below go red.</p>
+/// <class>OcuPilot.Screen.Descriptor.TaskScheduleList</class> -> the read's
+/// <code>failedPair</code> reads <code>%DB_IRISSYS:READ</code>, so its assertion goes red. The entry
+/// comparison reads the declaration on both sides, so it stays green.</p>
 Method TestTheTaskScheduleIsDeniedToAPrincipalWithoutAdminTask()
 {
     Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the two principals differ on the administrative resource")
@@ -729,10 +725,9 @@ Method TestTheTaskScheduleIsDeniedToAPrincipalWithoutAdminTask()
 /// pair would answer allowed and the read would then fail with an
 /// <code>&lt;INVALID OREF&gt;</code> 500 out of the vendor's own class-query helper.</p>
 /// <p>Mutation: remove <code>%Admin_Manage:USE</code> from
-/// <class>OcuPilot.Screen.Descriptor.ProcessList</class> -> the entry reads denied on
-/// <code>%DB_IRISSYS:READ</code> instead and the entry assertion goes red; remove it from the
-/// screen and the area both -> the entry reads allowed and the read answers 500 rather than a named
-/// 403, so every assertion below goes red.
+/// <class>OcuPilot.Screen.Descriptor.ProcessList</class> -> the read is refused naming
+/// <code>%DB_IRISSYS:READ</code> instead, so its <code>failedPair</code> assertion goes red. The entry
+/// comparison reads the declaration on both sides, so it stays green.
 /// <method>OcuPilot.Test.WireSecurityRead.TestTheProcessesListsPairSetIsEnforcedForARealPrincipal</method>
 /// carries the declared order, with a principal that holds none of the three.</p>
 Method TestTheProcessesListIsDeniedToAPrincipalWithoutAdminManage()
@@ -754,81 +749,35 @@ Method TestTheProcessesListIsDeniedToAPrincipalWithoutAdminManage()
             }
         }
     }
-    ; The routes the splices below take out of the roster. The comparison at the end leaves them out of its expectation too.
-    Set tSpliced = "os-management/interoperability-usage,os-management/interoperability-usage/impact,os-management/interoperability-usage/volume,os-management/metrics,os-management/sql-activity,os-management/ecp-settings,os-management/ecp-application-servers,os-management/ecp-application-servers/ssl,os-management/ecp-data-servers,os-management/ecp-data-servers/edit,os-management/license-key,os-management/license-servers,os-management/license-servers/edit,os-management/journal-settings,os-management/ecp-statistics,os-management/global-statistics,os-management/active-processes,os-management/resource-statistics"
-    ; Story 6.11 took the roster from four screens to eight, Story 6.12 to nine, Story 8.8 to ten,
-    ; Story 18.2 to twelve, Story 18.14 to eighteen, Story 16.7 to twenty-three, Story 18.3 to
-    ; twenty-five, Story 16.10 to twenty-seven, Story 18.4 to twenty-nine and Story 16.25 to thirty, in
-    ; ScreensForArea's own (sideBarPosition, class name) collation: the unlisted sideBarPosition-0
-    ; screens sort first, alphabetically by descriptor class name, ahead of the listed ones in position
-    ; order (Processes, Locks, System usage, Databases, the Integrity log, Devices, Namespaces, License
-    ; usage, Dashboard, External language servers, Local databases last).
-    ; Story 18.16 took it to thirty-two: the remote database form sorts among the unlisted ones, and
-    ; Remote databases is listed last, after Local databases.
-    ; Story 18.5 took it to thirty-five: the journal file databases and details sort among the unlisted
-    ; ones, and Journals is listed last, after Remote databases.
-    ; Story 18.18 lists Journal settings last, after Journals, denied on its first pair; it is asserted
-    ; here and taken off the end, so the roster below stays the one before it.
-    ; Story 18.19's unlisted Journal records sorts after the journal file details, denied on
-    ; %DB_IRISSYS:READ as they are.
-    ; Story 18.6 lists License key and License servers last, after Journal settings, and its unlisted
-    ; license server editor sorts between License usage's By process and By user tabs, each denied on
-    ; %Admin_Manage:USE; each is asserted here and taken out, so the roster below stays the one before it.
-    ; Story 18.20 lists ECP data servers last, after License servers, and its unlisted ECP data server
-    ; editor sorts between the device editor and the global mapping editor, each denied on
-    ; %Admin_Manage:USE; each is asserted here and taken out, so the roster below stays the one before it.
-    ; Story 18.21 lists ECP settings and ECP application servers last, after ECP data servers, and its
-    ; unlisted SSL/TLS authorizations tab sorts between the ECP data server editor and the global
-    ; mapping editor, each denied on %Admin_Manage:USE; each is asserted here and taken out, so the
-    ; roster below stays the one before it.
-    ; Story 18.37 lists Interoperability usage last, after Prometheus metrics, denied on %DB_IRISSYS:READ,
-    ; the second of its pairs, and its unlisted Database impact and Message volume tabs sort between the
-    ; global mappings list and the journal file databases, denied on the same pair; each is asserted here
-    ; and taken out, so the roster below stays the one before it.
-    Set tInteropUsage = ",{""route"":""os-management/interoperability-usage"",""labelKey"":""interopUsageLabel"",""sideBarPosition"":22,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""}]"
-    Do $$$AssertEquals($Extract(tScreens, *-$Length(tInteropUsage)+1, *), tInteropUsage, "Interoperability usage is listed last, after Prometheus metrics, denied on %DB_IRISSYS:READ")
-    Set tScreens = $Extract(tScreens, 1, *-$Length(tInteropUsage)) _ "]"
+    ; Each screen below is asserted whole, with the pair this principal is denied on, and each unlisted
+    ; tab or editor is placed between its neighbours. The comparison after them holds the whole roster,
+    ; these included, in ScreensForArea's (sideBarPosition, class name) order: the unlisted screens at
+    ; position 0 first, by descriptor class name, then the listed ones in position order.
+    Set tInteropUsage = "{""route"":""os-management/interoperability-usage"",""labelKey"":""interopUsageLabel"",""sideBarPosition"":22,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""}"
+    Do $$$AssertTrue(tScreens [ tInteropUsage, "Interoperability usage is listed at position 22, denied on %DB_IRISSYS:READ, the second of its pairs")
     Set tInteropTabs = ",{""route"":""os-management/interoperability-usage/impact"",""labelKey"":""interopUsageImpactLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""},{""route"":""os-management/interoperability-usage/volume"",""labelKey"":""interopUsageVolumeLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""}"
     Do $$$AssertTrue(($Find(tScreens, "os-management/namespaces/global-mappings/edit") < $Find(tScreens, tInteropTabs)) && ($Find(tScreens, tInteropTabs) < $Find(tScreens, "os-management/journals/databases")), "the unlisted Database impact and Message volume tabs sort between the global mappings list and the journal file databases, denied on %DB_IRISSYS:READ")
-    Set tScreens = $Replace(tScreens, tInteropTabs, "")
-    ; Story 18.11 lists Prometheus metrics last, after SQL activity, denied on %DB_IRISSYS:READ, the
-    ; second of its pairs; it is asserted here and taken off the end.
-    Set tMetrics = ",{""route"":""os-management/metrics"",""labelKey"":""metricsLabel"",""sideBarPosition"":21,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""}]"
-    Do $$$AssertEquals($Extract(tScreens, *-$Length(tMetrics)+1, *), tMetrics, "Prometheus metrics is listed last, after SQL activity, denied on %DB_IRISSYS:READ")
-    Set tScreens = $Extract(tScreens, 1, *-$Length(tMetrics)) _ "]"
-    ; Story 19.10 lists SQL activity last, after ECP application servers, denied on %DB_IRISSYS:READ,
-    ; the second of its pairs; it is asserted here and taken off the end.
-    Set tSqlActivity = ",{""route"":""os-management/sql-activity"",""labelKey"":""sqlActivityLabel"",""sideBarPosition"":20,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""}]"
-    Do $$$AssertEquals($Extract(tScreens, *-$Length(tSqlActivity)+1, *), tSqlActivity, "SQL activity is listed last, after ECP application servers, denied on %DB_IRISSYS:READ")
-    Set tScreens = $Extract(tScreens, 1, *-$Length(tSqlActivity)) _ "]"
-    Set tEcpSettings = ",{""route"":""os-management/ecp-settings"",""labelKey"":""ecpSettingsLabel"",""sideBarPosition"":18,""allowed"":false,""failedPair"":""%Admin_Manage:USE""},{""route"":""os-management/ecp-application-servers"",""labelKey"":""ecpAppServersLabel"",""sideBarPosition"":19,""allowed"":false,""failedPair"":""%Admin_Manage:USE""}]"
-    Do $$$AssertEquals($Extract(tScreens, *-$Length(tEcpSettings)+1, *), tEcpSettings, "ECP settings and ECP application servers are listed last, after ECP data servers, denied on %Admin_Manage:USE")
-    Set tScreens = $Extract(tScreens, 1, *-$Length(tEcpSettings)) _ "]"
+    Set tMetrics = "{""route"":""os-management/metrics"",""labelKey"":""metricsLabel"",""sideBarPosition"":21,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""}"
+    Do $$$AssertTrue(tScreens [ tMetrics, "Prometheus metrics is listed at position 21, denied on %DB_IRISSYS:READ, the second of its pairs")
+    Set tSqlActivity = "{""route"":""os-management/sql-activity"",""labelKey"":""sqlActivityLabel"",""sideBarPosition"":20,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""}"
+    Do $$$AssertTrue(tScreens [ tSqlActivity, "SQL activity is listed at position 20, denied on %DB_IRISSYS:READ, the second of its pairs")
+    Set tEcpSettings = "{""route"":""os-management/ecp-settings"",""labelKey"":""ecpSettingsLabel"",""sideBarPosition"":18,""allowed"":false,""failedPair"":""%Admin_Manage:USE""},{""route"":""os-management/ecp-application-servers"",""labelKey"":""ecpAppServersLabel"",""sideBarPosition"":19,""allowed"":false,""failedPair"":""%Admin_Manage:USE""}"
+    Do $$$AssertTrue(tScreens [ tEcpSettings, "ECP settings and ECP application servers are listed at positions 18 and 19, denied on %Admin_Manage:USE")
     Set tEcpTab = ",{""route"":""os-management/ecp-application-servers/ssl"",""labelKey"":""ecpSslConnectionsLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Manage:USE""}"
     Do $$$AssertTrue(($Find(tScreens, "os-management/ecp-data-servers/edit") < $Find(tScreens, tEcpTab)) && ($Find(tScreens, tEcpTab) < $Find(tScreens, "os-management/namespaces/global-mappings/edit")), "the unlisted SSL/TLS authorizations tab sorts between the ECP data server editor and the global mapping editor, denied on %Admin_Manage:USE")
-    Set tScreens = $Replace(tScreens, tEcpTab, "")
-    Set tEcp = ",{""route"":""os-management/ecp-data-servers"",""labelKey"":""ecpDataServerListLabel"",""sideBarPosition"":17,""allowed"":false,""failedPair"":""%Admin_Manage:USE""}]"
-    Do $$$AssertEquals($Extract(tScreens, *-$Length(tEcp)+1, *), tEcp, "ECP data servers is listed last, after License servers, denied on %Admin_Manage:USE")
-    Set tScreens = $Extract(tScreens, 1, *-$Length(tEcp)) _ "]"
+    Set tEcp = "{""route"":""os-management/ecp-data-servers"",""labelKey"":""ecpDataServerListLabel"",""sideBarPosition"":17,""allowed"":false,""failedPair"":""%Admin_Manage:USE""}"
+    Do $$$AssertTrue(tScreens [ tEcp, "ECP data servers is listed at position 17, denied on %Admin_Manage:USE")
     Set tEcpEditor = ",{""route"":""os-management/ecp-data-servers/edit"",""labelKey"":""aboutEcpDataServer"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Manage:USE""}"
     Do $$$AssertTrue(($Find(tScreens, "os-management/devices/edit") < $Find(tScreens, tEcpEditor)) && ($Find(tScreens, tEcpEditor) < $Find(tScreens, "os-management/namespaces/global-mappings/edit")), "the unlisted ECP data server editor sorts between the device editor and the global mapping editor, denied on %Admin_Manage:USE")
-    Set tScreens = $Replace(tScreens, tEcpEditor, "")
-    Set tLicensing = ",{""route"":""os-management/license-key"",""labelKey"":""licenseKeyLabel"",""sideBarPosition"":15,""allowed"":false,""failedPair"":""%Admin_Manage:USE""},{""route"":""os-management/license-servers"",""labelKey"":""licenseServerListLabel"",""sideBarPosition"":16,""allowed"":false,""failedPair"":""%Admin_Manage:USE""}]"
-    Do $$$AssertEquals($Extract(tScreens, *-$Length(tLicensing)+1, *), tLicensing, "License key and License servers are listed last, after Journal settings, denied on %Admin_Manage:USE")
-    Set tScreens = $Extract(tScreens, 1, *-$Length(tLicensing)) _ "]"
+    Set tLicensing = "{""route"":""os-management/license-key"",""labelKey"":""licenseKeyLabel"",""sideBarPosition"":15,""allowed"":false,""failedPair"":""%Admin_Manage:USE""},{""route"":""os-management/license-servers"",""labelKey"":""licenseServerListLabel"",""sideBarPosition"":16,""allowed"":false,""failedPair"":""%Admin_Manage:USE""}"
+    Do $$$AssertTrue(tScreens [ tLicensing, "License key and License servers are listed at positions 15 and 16, denied on %Admin_Manage:USE")
     Set tEditor = ",{""route"":""os-management/license-servers/edit"",""labelKey"":""aboutLicenseServer"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Manage:USE""}"
     Do $$$AssertTrue(($Find(tScreens, "license-usage/processes") < $Find(tScreens, tEditor)) && ($Find(tScreens, tEditor) < $Find(tScreens, "license-usage/users")), "the unlisted license server editor sorts between By process and By user, denied on %Admin_Manage:USE")
-    Set tScreens = $Replace(tScreens, tEditor, "")
-    Set tSettings = ",{""route"":""os-management/journal-settings"",""labelKey"":""journalSettingsLabel"",""sideBarPosition"":14,""allowed"":false,""failedPair"":""%Admin_Manage:USE""}]"
-    Do $$$AssertEquals($Extract(tScreens, *-$Length(tSettings)+1, *), tSettings, "Journal settings is listed last, after Journals, denied on %Admin_Manage:USE")
-    Set tScreens = $Extract(tScreens, 1, *-$Length(tSettings)) _ "]"
-    ; Story 18.36 lists the Dashboard's four unlisted drill-downs first, ahead of the database details, each denied on
-    ; %DB_IRISSYS:READ, the second of its pairs, since this principal holds %Admin_Operate:USE; they are asserted here and
-    ; taken off the front, so the roster below stays the one before them.
-    Set tDrillDowns = "[{""route"":""os-management/ecp-statistics"",""labelKey"":""ecpStatisticsLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""},{""route"":""os-management/global-statistics"",""labelKey"":""globalStatisticsLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""},{""route"":""os-management/active-processes"",""labelKey"":""activeProcessesLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""},{""route"":""os-management/resource-statistics"",""labelKey"":""resourceStatisticsLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""}"
-    Do $$$AssertEquals($Extract(tScreens, 1, $Length(tDrillDowns)), tDrillDowns, "the four Dashboard drill-downs lead the area, denied on %DB_IRISSYS:READ")
-    Set tScreens = "[" _ $Extract(tScreens, $Length(tDrillDowns) + 2, *)
-    Do $$$AssertEquals(tScreens, ..ExpectedScreens("os-management", tSpliced), "the os-management area lists its built screens in side-bar order, less the screens asserted and taken out above, each with the verdict the gate answers for a holder of %Admin_Operate:USE alone")
+    Set tSettings = "{""route"":""os-management/journal-settings"",""labelKey"":""journalSettingsLabel"",""sideBarPosition"":14,""allowed"":false,""failedPair"":""%Admin_Manage:USE""}"
+    Do $$$AssertTrue(tScreens [ tSettings, "Journal settings is listed at position 14, denied on %Admin_Manage:USE")
+    Set tDrillDowns = "{""route"":""os-management/ecp-statistics"",""labelKey"":""ecpStatisticsLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""},{""route"":""os-management/global-statistics"",""labelKey"":""globalStatisticsLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""},{""route"":""os-management/active-processes"",""labelKey"":""activeProcessesLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""},{""route"":""os-management/resource-statistics"",""labelKey"":""resourceStatisticsLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""}"
+    Do $$$AssertTrue(tScreens [ tDrillDowns, "the Dashboard's four unlisted drill-downs sit together, each denied on %DB_IRISSYS:READ, the second of its pairs")
+    Do $$$AssertEquals(tScreens, ..ExpectedScreens("os-management"), "the os-management area lists its built screens in side-bar order, these included, each with the verdict the gate answers for a holder of %Admin_Operate:USE alone")
     Do $$$AssertEquals(tArea, "false:%Admin_Manage:USE", "and the area itself is denied on the same pair")
 
     Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", "/api/ocupilot/screens/osmgmt.processes/read?maxRows=5", ..#ADMINUSER, ..PreparedPassword, .tStatus2, .tBody2, .tHeaders2)

@@ -351,7 +351,6 @@ describe('LogViewerPage', () => {
     // fails the count; its message counts the fake timers pending and the real `Timeout`s active, at
     // the count and when the clock was faked.
     await awaitRealTimersIdle();
-    const realAtFake = activeRealTimers();
     // jsdom supplies both constructors, so "opens no EventSource and no WebSocket" is counted at
     // construction rather than asserted as their absence, which would pass on any page.
     const globals = globalThis as { EventSource?: unknown; WebSocket?: unknown };
@@ -378,6 +377,11 @@ describe('LogViewerPage', () => {
     ];
     // A one-shot chain up to this many links deep drains; the request assertions repeat after it.
     const DRAIN_PASSES = 5;
+    // A foreign real timer, forced: this interval is armed after the idle wait so nothing drains it, and
+    // each time it fires it arms a timer on whichever clock is global. Any yield to the real loop below
+    // lets it reach the fake clock and fails the count.
+    const foreignTimer = setInterval(() => setInterval(() => undefined, 1000), 5);
+    const realAtFake = activeRealTimers();
     vi.useFakeTimers();
     try {
       vi.clearAllTimers();
@@ -411,6 +415,7 @@ describe('LogViewerPage', () => {
       }
     } finally {
       vi.useRealTimers();
+      clearInterval(foreignTimer);
       globals.EventSource = heldSource;
       globals.WebSocket = heldSocket;
     }

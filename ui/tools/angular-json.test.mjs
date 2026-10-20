@@ -303,7 +303,8 @@ test('DW-159: the browser spec drives the instance own origin, never a second on
     assert.ok(!code(spec.text).includes('52774'), `nor in ${spec.name}`);
   }
   // A spec that runs commands inside a container reaches it by name, so the name is guarded the
-  // way the port is: the default is the throwaway's, and the live one is refused before any command.
+  // way the port is: the example the refusal names is the throwaway's, and the live one is refused
+  // before any command.
   assert.match(config, /DEFAULT_CONTAINER = 'ocupilot-ci'/, 'the default container is the throwaway');
   for (const spec of specs.filter((s) => /docker/.test(code(s.text)))) {
     assert.match(

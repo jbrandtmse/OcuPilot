@@ -36,7 +36,7 @@
  * A spec that is **about** this state surviving (`preferences-integration`,
  * `ui-state-survives-sign-out`) arranges and clears its own rows and does not call this.
  *
- * Refuses the live container's origin, the way every write-driving spec here does. The run's
+ * Refuses the live container, the way every write-driving spec here does. The run's
  * configuration is resolved on first use inside each exported function, never at import, so
  * importing this file needs neither browser variable.
  */

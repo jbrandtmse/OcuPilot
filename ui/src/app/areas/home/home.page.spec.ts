@@ -45,9 +45,9 @@ import {
 /**
  * Home's rendered contract (DESIGN.md `:896`, `:1102`; EXPERIENCE.md "One tile per applying area in daily-use order").
  *
- * The area roster is the **shipped** mirror through the real `orderedAreas()`, because the nine
- * tiles and the two absences are exactly what the declaration says and a stubbed roster would
- * assert the stub. The verdicts are stubbed, because a denial needs a principal the suite must
+ * The area roster is the **shipped** mirror through the real `orderedAreas()`, because the tiles
+ * and the two absences are exactly what the declaration says and a stubbed roster would assert the
+ * stub. The verdicts are stubbed, because a denial needs a principal the suite must
  * not mint, and the screen roster is stubbed for the reason `NavigationService` carries that
  * seam at all: at the end of Epic 1 only Home carries a descriptor, so a caption with two
  * screen names in it would otherwise have nothing to render.
@@ -313,6 +313,12 @@ describe('Home', () => {
 
   const tiles = (): HTMLButtonElement[] =>
     Array.from(fixture.nativeElement.querySelectorAll('.ocu-area-tile'));
+  /** The tile drawn for `key`, found by its place in `TILE_AREAS` rather than by a literal index. */
+  const tileOf = (key: string): HTMLButtonElement => {
+    const index = TILE_AREAS.findIndex((area) => area.key === key);
+    expect(index, `${key} draws a tile`).toBeGreaterThanOrEqual(0);
+    return tiles()[index];
+  };
   const tileNames = (): string[] =>
     tiles().map((tile) => tile.querySelector('.ocu-area-tile-name')?.textContent?.trim() ?? '');
   const lineParts = (): HTMLElement[] =>
@@ -454,7 +460,7 @@ describe('Home', () => {
         tile.querySelector('.ocu-area-tile-name')?.textContent?.trim()
       );
     }
-    expect(tiles()[0].textContent?.trim()).toBe(STRINGS.navAreaLogs);
+    expect(tileOf('logs').textContent?.trim()).toBe(STRINGS.navAreaLogs);
   });
 
   it("a tile's caption is its area's built screen names, joined by aria-hidden separators", () => {
@@ -469,7 +475,7 @@ describe('Home', () => {
     navigation.notify();
     fixture.detectChanges();
 
-    const osTile = tiles()[1];
+    const osTile = tileOf('os-management');
     expect(
       Array.from(osTile.querySelectorAll('.ocu-area-tile-screen')).map((part) =>
         part.textContent?.trim()
@@ -493,7 +499,7 @@ describe('Home', () => {
     navigation.notify();
     fixture.detectChanges();
 
-    const gated = tiles()[3];
+    const gated = tileOf('permissions');
     expect(gated.querySelector('.ocu-area-tile-name')?.textContent?.trim()).toBe(
       STRINGS.navAreaPermissions
     );
@@ -513,7 +519,7 @@ describe('Home', () => {
     expect(reason.getAttribute('role')).toBe('tooltip');
 
     // Only the gated tile is described by one.
-    expect(tiles()[0].getAttribute('aria-describedby')).toBeNull();
+    expect(tileOf('logs').getAttribute('aria-describedby')).toBeNull();
     expect(fixture.nativeElement.querySelectorAll('.ocu-area-tile-reason')).toHaveLength(1);
   });
 
@@ -529,7 +535,7 @@ describe('Home', () => {
     navigation.notify();
     fixture.detectChanges();
 
-    tiles()[3].click();
+    tileOf('permissions').click();
     await fixture.whenStable();
 
     expect(router.url).toBe('/');
@@ -542,7 +548,7 @@ describe('Home', () => {
     navigation.notify();
     fixture.detectChanges();
 
-    tiles()[1].click();
+    tileOf('os-management').click();
     await fixture.whenStable();
 
     // The namespace travels: `?ns=` is data scope, and a tile click that dropped it would move
@@ -568,7 +574,7 @@ describe('Home', () => {
     navigation.notify();
     fixture.detectChanges();
 
-    const tile = tiles()[1];
+    const tile = tileOf('os-management');
     expect(tile.getAttribute('aria-disabled')).toBeNull();
 
     tile.click();
@@ -589,7 +595,7 @@ describe('Home', () => {
     navigation.notify();
     fixture.detectChanges();
 
-    const tile = tiles()[1];
+    const tile = tileOf('os-management');
     expect(tile.getAttribute('aria-disabled')).toBe('true');
     expect(tile.hasAttribute('disabled')).toBe(false);
     expect(tile.tabIndex).toBe(0);
@@ -621,13 +627,13 @@ describe('Home', () => {
     navigation.notify();
     fixture.detectChanges();
 
-    const permissions = tiles()[3];
+    const permissions = tileOf('permissions');
     expect(permissions.getAttribute('aria-disabled')).toBe('true');
     expect(
       fixture.nativeElement.querySelector(`#${permissions.getAttribute('aria-describedby')}`)?.textContent?.trim()
     ).toBe('Requires %Admin_Secure:USE');
 
-    const osManagement = tiles()[1];
+    const osManagement = tileOf('os-management');
     expect(osManagement.getAttribute('aria-disabled')).toBeNull();
     osManagement.click();
     await fixture.whenStable();
@@ -667,7 +673,7 @@ describe('Home', () => {
     await router.navigateByUrl('/logs');
     fixture.detectChanges();
 
-    tiles()[0].click();
+    tileOf('logs').click();
     await fixture.whenStable();
 
     expect(router.url).toBe('/logs');
@@ -679,13 +685,13 @@ describe('Home', () => {
     await router.navigateByUrl('/');
     fixture.detectChanges();
 
-    tiles()[0].click();
+    tileOf('logs').click();
     await fixture.whenStable();
     expect(shell.open()).toBe(true);
 
     // The rail's own item collapses the list it is already showing; a tile is not the rail
     // item and must not inherit that (ShellState.showArea, not activateArea).
-    tiles()[0].click();
+    tileOf('logs').click();
     await fixture.whenStable();
     expect(shell.open()).toBe(true);
     expect(shell.visibleArea()).toBe('logs');
@@ -1134,7 +1140,7 @@ describe('Home', () => {
 
     // An open side bar showing another area, so "moved to the shortcut's own" is observable at
     // all; a collapsed one is left collapsed and would prove nothing either way.
-    tiles()[0].click();
+    tileOf('logs').click();
     await fixture.whenStable();
     expect(shell.visibleArea()).toBe('logs');
     expect(shell.open()).toBe(true);
@@ -1350,32 +1356,23 @@ describe('Home', () => {
     // product would plausibly use, and `vi.getTimerCount()` makes "registers no timer" an
     // observation rather than an absence of evidence -- `log-viewer.spec.ts`'s idiom.
     //
-    // The count is environment-global, so what it reports has to be made this component's, in two
-    // steps. **Real timers are still pending when this row begins** -- earlier rows in this file
-    // leave them -- and `advanceTimersByTimeAsync` yields to the real event loop between its
-    // steps, so one of them can fire inside the measurement window and schedule onto the fake
-    // clock, where the count reports it as the second HomePage's. Observed as `4` on node 26 and
-    // `1` on node 24 while node 22 stayed green, which is the shape of contamination rather than
-    // of a timer the component registers: a component's own count would not vary by band.
-    //
-    // So: wait for the real loop to be **verifiably** empty rather than for a guessed duration (a
-    // fixed 100 ms held on node 26 and did not on node 24), and then advance the window
-    // **synchronously**, which yields to the real loop not at all. A repeating timer still fires
-    // and still re-registers under a synchronous advance, and a read it issues still lands in
-    // `systemInfo.calls`. The framework's own tick is held by this spec's `schedule` seam and never
-    // fires here; the Story 16.18 AC2 case below fires it and pins that it leaves the panel alone.
-    //
-    // The synchronous advance is what makes the measurement sound; the drain only narrows the one
-    // remaining yield, the `advanceTimersByTimeAsync(0)` settle. So the drain is best-effort and
-    // is deliberately not asserted on: a real timer still pending is the environment's business,
-    // and failing here for it would report an earlier row's leak as this component's defect.
+    // The count is environment-global, and a real timer an earlier row left can still be pending.
+    // So the row waits for the real loop to empty, then arms a foreign real timer that arms another
+    // on whichever clock is global each time it fires, and from there never yields to the real loop:
+    // `advanceTimersByTime` is synchronous and the settle turns microtasks only. A yield would let
+    // the foreign timer reach the fake clock and fail the count. A repeating timer the page arms
+    // still fires and re-registers under the synchronous advance, and a read it issues still lands
+    // in `systemInfo.calls`. The framework's own tick is held by this spec's `schedule` seam; the
+    // Story 16.18 AC2 case below fires it.
     await awaitRealTimersIdle();
+    const foreignTimer = setInterval(() => setInterval(() => undefined, 1000), 1);
     vi.useFakeTimers();
     let second: ReturnType<typeof TestBed.createComponent<HomePage>> | null = null;
     try {
       second = TestBed.createComponent(HomePage);
       second.detectChanges();
-      await vi.advanceTimersByTimeAsync(0);
+      vi.advanceTimersByTime(0);
+      for (let turn = 0; turn < 8; turn += 1) await Promise.resolve();
       const issued = systemInfo.calls.length;
 
       vi.advanceTimersByTime(10 * 60 * 1000);
@@ -1386,6 +1383,7 @@ describe('Home', () => {
       // HomePage mounted against the fake timers for every row that follows.
       second?.destroy();
       vi.useRealTimers();
+      clearInterval(foreignTimer);
     }
   });
 

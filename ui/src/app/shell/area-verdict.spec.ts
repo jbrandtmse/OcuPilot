@@ -93,6 +93,34 @@ interface MapScreen {
   readonly failedPair?: string;
 }
 
+/** The side-bar entries as the side bar draws them. */
+const sideBarEntries = (sideBar: ComponentFixture<SideBar>) =>
+  Array.from((sideBar.nativeElement as HTMLElement).querySelectorAll<HTMLButtonElement>('.ocu-side-bar-item')).map((item) => ({
+    label: item.querySelector('.ocu-side-bar-label')?.textContent?.trim() ?? '',
+    gated: item.getAttribute('aria-disabled'),
+    reason: item.querySelector('.ocu-side-bar-reason')?.textContent?.trim() ?? '',
+  }));
+
+/**
+ * The entries the side bar draws for `areaKey` under `map`: one per screen the area lists, in
+ * side-bar order, each with its label, gated and naming its pair when the map refuses it. A listed
+ * screen the map does not name is open, as `NavigationService.screenVerdict` answers it, and so is
+ * each route in `opensThroughATab`: a listed tab whose group the test claims opens through another
+ * of its tabs (DW-1852).
+ */
+const expectedEntries = (map: { readonly areas: readonly { readonly screens: readonly MapScreen[] }[] }, areaKey: string, opensThroughATab: readonly string[] = []) => {
+  const mapped = map.areas.flatMap((area) => area.screens);
+  const entries = listedScreensForArea(areaKey).map((listed) => {
+    const label = STRINGS[listed.labelKey as keyof typeof STRINGS];
+    const verdict = mapped.find((screen) => screen.route === listed.route);
+    return opensThroughATab.includes(listed.route) || verdict === undefined || verdict.allowed
+      ? { label, gated: null, reason: '' }
+      : { label, gated: 'true', reason: `Requires ${verdict.failedPair}` };
+  });
+  expect(entries.length, `${areaKey} lists screens`).toBeGreaterThan(0);
+  return entries;
+};
+
 describe('an area opens when any screen it lists is allowed (AD-8, DW-1768)', () => {
   let rail: ComponentFixture<Rail>;
   let sideBar: ComponentFixture<SideBar>;
@@ -100,29 +128,6 @@ describe('an area opens when any screen it lists is allowed (AD-8, DW-1768)', ()
 
   const railItem = (label: string): HTMLButtonElement =>
     rail.nativeElement.querySelector(`.ocu-rail-item[aria-label="${label}"]`);
-
-  const sideBarEntries = () =>
-    Array.from((sideBar.nativeElement as HTMLElement).querySelectorAll<HTMLButtonElement>('.ocu-side-bar-item')).map((item) => ({
-      gated: item.getAttribute('aria-disabled'),
-      reason: item.querySelector('.ocu-side-bar-reason')?.textContent?.trim() ?? '',
-    }));
-
-  /**
-   * The entries the side bar draws for `areaKey`: one per screen the area lists, in side-bar order,
-   * each gated and naming its pair when the map refuses it. A listed screen the map does not name
-   * is open, as `NavigationService.screenVerdict` answers it.
-   */
-  const expectedEntries = (areaKey: string) => {
-    const mapped = OPERATOR_MAP.areas.flatMap((area) => area.screens as readonly MapScreen[]);
-    const entries = listedScreensForArea(areaKey).map((listed) => {
-      const verdict = mapped.find((screen) => screen.route === listed.route);
-      return verdict === undefined || verdict.allowed
-        ? { gated: null, reason: '' }
-        : { gated: 'true', reason: `Requires ${verdict.failedPair}` };
-    });
-    expect(entries.length, `${areaKey} lists screens`).toBeGreaterThan(0);
-    return entries;
-  };
 
   beforeEach(async () => {
     const api = { requestJson: async () => ({ kind: 'ok' as const, status: 200, body: OPERATOR_MAP }) };
@@ -163,15 +168,15 @@ describe('an area opens when any screen it lists is allowed (AD-8, DW-1768)', ()
     rail.detectChanges();
     sideBar.detectChanges();
     expect(shell.visibleArea()).toBe('logs');
-    expect(sideBarEntries()).toEqual(expectedEntries('logs'));
-    expect(sideBarEntries().some((entry) => entry.gated === 'true')).toBe(true);
+    expect(sideBarEntries(sideBar)).toEqual(expectedEntries(OPERATOR_MAP, 'logs'));
+    expect(sideBarEntries(sideBar).some((entry) => entry.gated === 'true')).toBe(true);
 
     railItem(STRINGS.navAreaOsManagement).click();
     rail.detectChanges();
     sideBar.detectChanges();
     expect(shell.visibleArea()).toBe('os-management');
-    expect(sideBarEntries()).toEqual(expectedEntries('os-management'));
-    expect(sideBarEntries().some((entry) => entry.gated === 'true')).toBe(true);
+    expect(sideBarEntries(sideBar)).toEqual(expectedEntries(OPERATOR_MAP, 'os-management'));
+    expect(sideBarEntries(sideBar).some((entry) => entry.gated === 'true')).toBe(true);
   });
 });
 
@@ -256,30 +261,12 @@ describe('a tab group opens its area and its entry through any of its tabs (AD-8
     sideBar.detectChanges();
     expect(shell.visibleArea()).toBe('security');
 
-    const items = Array.from((sideBar.nativeElement as HTMLElement).querySelectorAll<HTMLButtonElement>('.ocu-side-bar-item'));
-    const entries = items.map((entry) => ({
-      label: entry.querySelector('.ocu-side-bar-label')?.textContent?.trim() ?? '',
-      gated: entry.getAttribute('aria-disabled'),
-      reason: entry.querySelector('.ocu-side-bar-reason')?.textContent?.trim() ?? '',
-    }));
-    const requires = (pair: string) => `Requires ${pair}`;
-    expect(entries).toEqual([
-      { label: STRINGS.sslListLabel, gated: 'true', reason: requires('%Admin_Secure:USE') },
-      { label: STRINGS.x509ListLabel, gated: 'true', reason: requires('%Admin_Secure:USE') },
-      { label: STRINGS.ldapListLabel, gated: 'true', reason: requires('%Admin_Secure:USE') },
-      { label: STRINGS.walletListLabel, gated: 'true', reason: requires('%Admin_Wallet:USE') },
-      { label: STRINGS.oauthLabel, gated: null, reason: '' },
-      { label: STRINGS.auditingConfigurationLink, gated: 'true', reason: requires('%Admin_Secure:USE') },
-      { label: STRINGS.allowedDirectoriesLabel, gated: 'true', reason: requires('%Admin_FileSystemAccess:USE') },
-      { label: STRINGS.encryptionKeyFileLabel, gated: 'true', reason: requires('%Admin_Secure:USE') },
-      { label: STRINGS.databaseEncryptionLabel, gated: 'true', reason: requires('%Admin_Secure:USE') },
-      { label: STRINGS.dataElementEncryptionLabel, gated: 'true', reason: requires('%Admin_Secure:USE') },
-      { label: STRINGS.authOptionsLabel, gated: 'true', reason: requires('%Admin_Secure:USE') },
-      { label: STRINGS.superserverListLabel, gated: 'true', reason: requires('%Admin_Secure:USE') },
-      { label: STRINGS.mftConnectionListLabel, gated: 'true', reason: requires('%Admin_Secure:USE') },
-    ]);
+    const entries = sideBarEntries(sideBar);
+    const oauth = 'security/oauth';
+    expect(entries).toEqual(expectedEntries(AUTHORIZATION_SERVER_MAP, 'security', [oauth]));
 
-    items[4].click();
+    const items = (sideBar.nativeElement as HTMLElement).querySelectorAll<HTMLButtonElement>('.ocu-side-bar-item');
+    items[listedScreensForArea('security').findIndex((listed) => listed.route === oauth)].click();
     await sideBar.whenStable();
     expect(router.url).toBe('/security/oauth/server');
   });

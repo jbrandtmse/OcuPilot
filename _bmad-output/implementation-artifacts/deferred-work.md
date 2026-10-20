@@ -10672,6 +10672,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-12T02:40:03Z occurrence=18-36-dashboard-drill-downs
 - 2026-10-13T04:27:20Z occurrence=18-42-allowed-directories-a-person-s-write
 - 2026-10-14T22:47:27Z status=routed owner=23-11-the-range-end-cleanup-part-10 by=lead note=orchestrator 2026-10-14: chartered 23.11 for 23.5's later routings
+- 2026-10-20T14:30:04Z occurrence=23-11-the-range-end-cleanup-part-10 by=cr note=uncensused: WireSecurityRead 15 + WireOAuthRead 5 full-area roster literals; fix-risk high (per-principal pins); adjudicate at batch d
+- 2026-10-20T14:30:22Z status=routed owner=23-11-the-range-end-cleanup-part-10 by=cr note=correction to the 14:30 occurrence: WireSecurityRead holds 19 such literals, not 15 (24 with WireOAuthRead)
 
 ### DW-2204: IRIS defect candidate: the admin API's Security.SQLPrivilege.Column LIST and REVOKE match the object's case exactly while GRANT accepts any case, so a revoke in another case answers 200 and removes nothing
 - source: spec-18-28-sql-column-and-admin-privileges.md | severity: low | fix-risk: high | footprint: out-of-footprint
@@ -12182,3 +12184,4 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-23-11-the-range-end-cleanup-part-10.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: browserConfig throws unless OCUPILOT_BROWSER_ORIGIN and OCUPILOT_BROWSER_CONTAINER are both set (ui/browser.config.mjs, pinned by ui/tools/browser-config.test.mjs at 7aceb0c1)
 - 2026-10-20T11:46:15Z status=decision-pending owner=burndown by=harvest note=human=the owner or orchestrator edits the parallel.yaml:54 comment (_bmad is owner_only under --unattended)
+- 2026-10-20T14:30:04Z occurrence=23-11-the-range-end-cleanup-part-10 by=cr note=also parallel.yaml:67 (slot B's browser_container comment): a missing variable is now refused, not exec'd into slot A

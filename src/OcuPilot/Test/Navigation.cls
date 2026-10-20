@@ -221,8 +221,8 @@ Method TestAnAreaOpensWhenAnyScreenItListsIsAllowed()
     Do $$$AssertStatusOK(##class(OcuPilot.Screen.Area).List(.tDeclared), "the declared areas read")
     Do $$$AssertTrue(tDeclared.%Size() > 0, "and there are some, so the verdict strings below are not compared over nothing")
 
-    ; Nothing held: the two areas that declare no pair never gate, and every other area is refused
-    ; on the first pair of its declared set.
+    ; Nothing held: the areas that declare no pair never gate, and every other area is refused on
+    ; the first pair of its declared set.
     Do $$$AssertEquals(..AreaVerdicts(), ..ExpectedAreaVerdicts(""), "a holder of nothing opens the areas that declare no pair alone, each other area naming its set's first pair")
 
     ; %Operator's six grants on a stock instance: %Admin_Operate:U, %DB_IRISLOCALDATA:R,
@@ -409,11 +409,13 @@ ClassMethod AreaVerdicts() As %String
     Quit tOut
 }
 
-/// <p>What <method>AreaVerdicts</method> answers for a holder of nothing but the areas in
-/// <var>pOpened</var> (a <class>%List</class> of keys): every declared area, in rail order, reads
-/// <code>open</code> when it is listed there or declares no pair, and otherwise names the first pair
-/// of its declared set as <code>resource:permission</code>. Derived from
-/// <method>OcuPilot.Screen.Area.List</method>, so an added area changes no expectation here.</p>
+/// <p>What <method>AreaVerdicts</method> answers when the areas in <var>pOpened</var> (a
+/// <class>%List</class> of keys) open and every other area is refused on the first pair of its
+/// declared set: every declared area, in rail order, reads <code>open</code> when it is listed there
+/// or declares no pair, and otherwise names that first pair as <code>resource:permission</code>.
+/// Derived from <method>OcuPilot.Screen.Area.List</method>. For a holder of nothing that is the
+/// gate's answer for any area; for a holder of some pairs it holds while each area outside
+/// <var>pOpened</var> starts with a pair the holder lacks.</p>
 ClassMethod ExpectedAreaVerdicts(pOpened As %List) As %String
 {
     Set tSC = ##class(OcuPilot.Screen.Area).List(.tAreas)
