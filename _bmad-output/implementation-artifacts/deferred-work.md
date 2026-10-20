@@ -10804,6 +10804,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: A 20.17 handoff subagent ran panel-collapse, stream-reply and agent-sql with both unset between 15:48Z and ~16:35Z 10-08; they arm and disarm a probe agent definition on ocupilot-ci; ui/tools/browser-config.test.mjs pins the one-unset refusals but allows both unset
 - 2026-10-08T16:35:45Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=orchestrator note=CI sets both per shard, so a both-unset refusal costs CI nothing; update browser-config.test.mjs and the README/DEVELOPMENT browser-run lines that rely on the default
 - 2026-10-14T22:47:28Z status=routed owner=23-11-the-range-end-cleanup-part-10 by=lead note=orchestrator 2026-10-14: chartered 23.11 for 23.5's later routings
+- 2026-10-20T15:18:46Z status=resolved-by:23-11-the-range-end-cleanup-part-10 owner=23-11-the-range-end-cleanup-part-10 by=adjudication note=batch b 7aceb0c1: browserConfig refuses unless both variables set; browser-config.test.mjs pins it; CI 39441988834 green
 
 ### DW-2230: UserCopy tool's ReadBackFields has no mismatch leg and no per-field check; the outcome is pinned only by stored-state asserts
 - source: spec-18-29-role-members-admin-option-user-copy-from-and-password-valida.md | severity: low | fix-risk: low | footprint: in-story
@@ -12136,6 +12137,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-15T17:29:10Z occurrence=20-31-message-resend-and-edit-and-resend
 - 2026-10-15T18:17:28Z occurrence=23-5-the-range-end-cleanup-part-5
 - 2026-10-19T11:51:14Z occurrence=23-11-the-range-end-cleanup-part-10
+- 2026-10-20T15:18:46Z status=resolved-by:23-11-the-range-end-cleanup-part-10 owner=23-11-the-range-end-cleanup-part-10 by=adjudication note=batch b 7aceb0c1+66a17632: AC6 advances and drains synchronously (real-timers.ts); seeded foreign interval pin; CI 39441988834 gates 3 bands green
 
 ### DW-2460: flake: OcuPilot.Test.SqlBackgroundJob TestAnEarlyCancelIsSentAgainUntilTheQueryRuns failed once in a local full sweep and passed on the shard's re-run
 - source: lead full ObjectScript sweep, Story 23.5 batch d | severity: med | fix-risk: low | footprint: out-of-footprint
