@@ -3,14 +3,21 @@ title: 'Story 23.11: The range-end cleanup, part 10'
 type: 'bugfix'
 created: '2026-10-15'
 status: 'done'
-baseline_revision: '4dba7011b5b40b35401c6c68304698470b109e0e'
-baseline_commit: '4dba7011b5b40b35401c6c68304698470b109e0e'
+baseline_revision: '66c76ae38816b6c0d56b64c04078eef3b7e11922'
+baseline_commit: '66c76ae38816b6c0d56b64c04078eef3b7e11922'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
 warnings: ['multiple-goals', 'oversized']
-deferred: []
+deferred:
+  - summary: >-
+      `_bmad/custom/parallel.yaml:54` still says `ui/browser.config.mjs` defaults to `ocupilot-ci`; the config now has no default for either browser variable.
+    evidence: |-
+      `browserConfig` throws unless `OCUPILOT_BROWSER_ORIGIN` and `OCUPILOT_BROWSER_CONTAINER` are both set (`ui/browser.config.mjs`, pinned by `ui/tools/browser-config.test.mjs`). An implement pass never edits `_bmad/custom/*`.
+    location: >-
+      _bmad/custom/parallel.yaml:54
+    severity: low
 ---
 
 <intent-contract>
@@ -213,11 +220,11 @@ Rejected:
 
 ### Batch b: the client test harness
 
-- [ ] **DW-2458: AC6 never yields to the real loop while it counts.**
+- [x] **DW-2458: AC6 never yields to the real loop while it counts.**
   - New `ui/src/app/testing/real-timers.ts` exports `activeRealTimers()` and `awaitRealTimersIdle()` (the bounded 50 × 20 ms wait). Both `log-viewer.spec.ts` and `home.page.spec.ts` import them in place of their copies.
   - In AC6, the advance is `vi.advanceTimersByTime(10 * 60 * 1000)` followed by `await settle()`. Each drain pass is `vi.runOnlyPendingTimers()` followed by `await settle()`. The count and its message are unchanged.
   - The comment states this contract in at most eight lines.
-- [ ] **DW-2221: the browser tier needs both variables.**
+- [x] **DW-2221: the browser tier needs both variables.**
   - `browser.config.mjs`: `browserConfig` throws unless `OCUPILOT_BROWSER_ORIGIN` and `OCUPILOT_BROWSER_CONTAINER` are both set and not empty. The message names both, with slot A's pair (`DEFAULT_ORIGIN`, `DEFAULT_CONTAINER`) as the example. The live and slot refusal is kept. The two half-set branches go, because the new check covers them. The doc says the constants are slot A's throwaway pair, named in the refusal and never a fallback.
   - `preferences-reset.mjs`: resolve the config on first use inside the exported functions, not at import.
   - `preferences-reset.test.mjs`: set both variables to slot A's pair for its own calls and restore them after; its header changes to match.
@@ -228,7 +235,7 @@ Rejected:
     - the live and slot cases are unchanged.
   - `ci.test.mjs:1655-1656`: the comment says the config has no default.
   - `docs/DEVELOPMENT.md:483`, in place: "`npm run test:browser` needs `OCUPILOT_BROWSER_ORIGIN` and `OCUPILOT_BROWSER_CONTAINER` both set."
-- [ ] **DW-2202, part 1: derive the counts outside their roster.**
+- [x] **DW-2202, part 1: derive the counts outside their roster.**
   - `ui/tools/screen-mirror.test.mjs:116`: `areas.length` equals `AREAS.length` from the generated mirror, never `11`.
   - `ui/tools/strings.test.mjs:457-469`: the area names come from `orderedAreas()`'s label keys.
   - `src/OcuPilot/Test/Navigation.cls`: `:431` and `:354` take their sizes from `Area.List` and `ListedScreensForArea("permissions")`. The area loop at `:399` (and its expected strings at `:224`, `:237`) takes its keys from `Area.List`.
@@ -245,6 +252,39 @@ Rejected:
 - Given AC6 runs after a test that left a real timer arming fake timers, when it counts, then it reads only the page's own timers, and it is green on Node 22.22.3, 24.15.0 and 26.0.0 (CI `gates`).
 - Given either browser variable unset or empty, when any browser spec or tool resolves its config, then it refuses before touching an instance; `npm run test:tools` still runs with neither set.
 - Given a story adds an area, a screen or a tile, when the batch's changed tests run, then none of them needs editing.
+
+### Review Findings (batch b)
+
+Code review 2026-10-20, layers `blind-hunter`, `edge-case-hunter`, `verification-gap`, `acceptance-auditor` (full-opus). 37 rows, 25 entries: 12 patch, 2 defer, 11 rejected. Rule 3 exempt: test harness and tooling, no user-facing surface.
+
+- [x] [Review][Patch] Home's Story 15.4 timer count still yields to the real loop through `await vi.advanceTimersByTimeAsync(0)`, so a foreign real timer can reach the fake clock, against `real-timers.ts`'s own contract (med, Rule 19 hermeticity; fix-risk low: one test) [ui/src/app/areas/home/home.page.spec.ts:1374]. Fixed: a synchronous `advanceTimersByTime(0)` and microtask turns, with a seeded 1 ms foreign interval cleared in `finally`. Mutation line under Verification.
+- [x] [Review][Patch] `Wire`'s os-management leg asserted seven listed screens "listed last" and the drill-downs "lead the area", so an added os-management screen reddens a batch-b test, against AC3 (med; fix-risk low: one test) [src/OcuPilot/Test/Wire.cls:752]. Fixed: each entry is asserted whole by containment and stays in the derived comparison; `tSpliced` and the story-history narration are gone. Mutation line under Verification.
+- [x] [Review][Patch] The DW-1852 block in `area-verdict.spec.ts` pinned the 13 Security entries as a literal and clicked `items[4]`, so an added Security screen reddens it (med, DW-2202, Rule 30; fix-risk low) [ui/src/app/shell/area-verdict.spec.ts:266]. Fixed: `expectedEntries` now takes the map and the routes a tab opens, and both describes use it; the click finds OAuth 2.0 by route. Mutation line under Verification.
+- [x] [Review][Patch] Three `Wire` doc mutations (WebAppList `[]`, TaskScheduleList swapped, ProcessList less `%Admin_Manage`) still claimed the entry assertion goes red; the entry is derived from the same declaration now (low; fix-risk low: comments) [src/OcuPilot/Test/Wire.cls:558]. Fixed: each names the read's refusal assertion, observed red alone on `ocupilot-ci` (runs 710, 711, 712), reverted, green (run 713).
+- [x] [Review][Patch] `ExpectedAreaVerdicts`' doc said "an added area changes no expectation here"; it names an area's first declared pair, which is the gate's answer only while the holder lacks it (low; fix-risk low: comment) [src/OcuPilot/Test/Navigation.cls:419]. Fixed: the doc states that scope, and the "two areas" comment no longer counts.
+- [x] [Review][Patch] `real-timers.spec.ts`'s bounded test held the wait on its 6 s guard timer, so its interval and "still pending" assertion were not load-bearing (low; fix-risk low) [ui/src/app/testing/real-timers.spec.ts:28]. Fixed: the interval ends itself and is the only timer armed; clearing it must drop the count by one. Mutation line corrected under Verification.
+- [x] [Review][Patch] AC6's `realAtFake` was sampled before QA's foreign interval was armed, so its message counted one real timer too few (low; fix-risk low) [ui/src/app/areas/logs/log-viewer.spec.ts:384]. Fixed: sampled after the interval, just before the clock is faked.
+- [x] [Review][Patch] Home's tile tests picked tiles by literal index (`tiles()[0]`, `[1]`, `[3]`), so an area inserted ahead of Logs reddens them (low; fix-risk low) [ui/src/app/areas/home/home.page.spec.ts:317]. Fixed: `tileOf(key)` finds each by its place in `TILE_AREAS`. `ExplorerDescriptor`'s rail position 8 stays literal: it is that area's own declaration.
+- [x] [Review][Patch] Count prose left beside derived assertions: Home's header "the nine tiles", and `Wire`'s Security doc "twenty-eight built screens" with its story list (low; fix-risk low: comments) [src/OcuPilot/Test/Wire.cls:625]. Fixed.
+- [x] [Review][Patch] Stale "default" comments: `angular-json.test.mjs` said the container default is the throwaway's, and `ci.test.mjs`'s rewritten comment kept the 2026-09-16 date (low; fix-risk low) [ui/tools/angular-json.test.mjs:306]. Fixed.
+- [x] [Review][Patch] `preferences-reset.mjs` said it refuses the live container's origin; it checks the container name (low; fix-risk low: comment) [ui/browser/preferences-reset.mjs:39]. Fixed. The origin guard itself is rejected below.
+- [x] [Review][Patch] `Wire`'s os-management `tSpliced` was an 18-route hand list kept in step with the splices, and the comments above it narrated the roster's history (low) [src/OcuPilot/Test/Wire.cls:752]. Fixed with the os-management patch above.
+- [x] [Review][Defer] `WireSecurityRead` (19) and `WireOAuthRead` (5) compare whole-area screen rosters as literals per principal, so an added Permissions, Security, Logs or Tasks screen still needs editing; the DW-2202 census missed them (med; fix-risk high: deriving per-principal verdicts would weaken the real-principal pins) [src/OcuPilot/Test/WireSecurityRead.cls:426] -- deferred: DW-2202 occurrence, owner this story, for its adjudication at batch d
+- [x] [Review][Defer] `_bmad/custom/parallel.yaml:67` also says a missing browser container execs into slot A's throwaway [_bmad/custom/parallel.yaml:67] -- deferred: DW-2467 occurrence (`_bmad/` is owner-only)
+
+Rejected:
+
+- `low` Derived counts no longer force a real-wire assertion for an added area or agent screen (`Wire.cls:420`, `:518`). AC3 asks for exactly this; the per-key verdicts stay the test's own pins (by-design).
+- `low` `ExpectedScreens` holds only `%Admin_Operate:USE`, while `ADMINUSER` also holds its code database's read. No descriptor declares that resource or a public pair, and a mismatch fails red.
+- `low` A refused tab-group head with an allowed tab would make `expectedEntries` disagree with the side bar. No Logs or OS management group does that in the map, and modelling it would re-implement `openableEntry`.
+- `low` The origin is never checked against the live and slot ports. This predates the batch, every refusal names slot A's pair, and the guard would be a third copy of the slot port list.
+- `low` A whitespace-only variable passes the empty check and fails at the first fetch.
+- `low` A throw inside `ExpectedScreens` leaves its held pair armed. Every descriptor has the three members it calls, and a throw already reddens the test.
+- `low` `awaitRealTimersIdle` hangs under fake timers, and does not count unref'd timers or immediates. Both callers wait before faking, and nothing yields while counting.
+- `low` Removing the literal rosters from `Wire` and `area-verdict.spec.ts` drops their membership pins. The task directs the derivation; `navigation.test.mjs` and `Navigation.cls` keep the rosters' own pins (by-design).
+- `low` The Auto Run Result predates QA (component count, residual risk, paths). The fix edits the spec outside Verification.
+- `false` No CI run covers QA's and this review's changes. They are uncommitted; the lead's push runs CI on them.
+- `false` `preferences-reset.test.mjs` restores `undefined` as a string. Each case restores the value the `before` hook set, and the `after` hook deletes a variable the shell had not set.
 
 ### Batch c: styles and fault rendering
 
@@ -319,6 +359,27 @@ Rejected:
   - `[low]` `[reject]` DW-2182: no test makes the history exceed 1,000 rows -- same root cause and route as the third row.
   - `[false]` `[reject]` DW-2460: `SqlBackgroundDelayed` is untouched and the slow check phase is only a transient mutation -- the test waits for the job inside the delayed port, so it is independent of the check phase; the `Hang 1.5` mutation shows the old leg red and the new leg green.
 - own checks: `AwaitInDelayedPort` opens `%SYS.ProcessQuery` from `HSCUSTOM` with no namespace switch, and it resolved on this build (the leg's seen-in-port assertion green, and red under `CANCELTRIES` 1); it sets `tProcess` to `""` after each poll, so no reference survives a pass. `WireSecurityRead.cls` is large and no defect was found in it.
+
+### 2026-10-20 -- Review pass (batch b)
+
+- verdicts: 15 findings -- high 0, medium 1, low 12, false 2, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` `preferences-reset.test.mjs` cleared the browser variables only in a hook that runs after its top-level import, so a shell exporting both hid a module-scope `browserConfig()` -- the file now clears both before the import and restores them after; the mutation is red with both exported and with neither.
+  - `[low]` `[patch]` `Navigation.AreaVerdicts` and `ExpectedAreaVerdicts` return the same sentence when `Area.List` fails -- the test asserts the status and a non-empty list first.
+  - `[false]` `[reject]` `rail.spec.ts` count literals -- its `AREAS` is the spec's own 11-entry stub (`:83`), not the shipped mirror, so a new area changes none of them.
+  - `[low]` `[patch]` The Logs half of `area-verdict.spec.ts` could no longer observe a gated entry -- it asserts one, as the OS management half does; red with the gated routes opened.
+  - `[low]` `[patch]` `Wire` `ExpectedScreens`, the agent leg and the area counts had no non-empty floor -- `ExpectedScreens` answers a sentence for an area with no built screen, and each count asserts a non-empty list; red when raised to 1000.
+  - `[low]` `[reject]` The recorded Wire mutations leave the permissions and security legs unreddened -- Rule 19 asks one mutation per acceptance criterion, and `ExpectedScreens("tasks")` named `"nosuch"` reddens a leg of the same shape.
+  - `[low]` `[patch]` The refusal test matched `new RegExp(name)`, which the message always satisfies -- it matches `must both be set and not empty`, and `requests === 0` stays the discriminating check.
+  - `[low]` `[reject]` Four `.cls` test classes sit in a batch the intent calls the client harness -- the spec's Tasks place them in batch b.
+  - `[low]` `[reject]` `ci.yml` and `preferences-integration.browser-spec.mjs` carry comment-only edits outside the Footprint list -- each replaced a sentence the batch made wrong, and both are reported.
+  - `[low]` `[reject]` No committed test loads a browser spec or the runner with the variables unset -- `browserConfig` is the one resolver all 201 specs call, pinned at the function and at the one tools-tier importer.
+  - `[low]` `[defer]` `_bmad/custom/parallel.yaml:54` still says the config defaults to `ocupilot-ci` -- an implement pass never edits `_bmad/custom/*`; the lead corrects it at origin.
+  - `[low]` `[reject]` The `DEFAULT_*` assertion messages in `angular-json.test.mjs` and `ci.test.mjs` still say "default" -- they name the constants, which the spec keeps.
+  - `[false]` `[reject]` The recorded band run is 26.8.1, not the 26.0.0 floor -- AC6's specs also ran green on 26.0.0 in this pass.
+  - `[low]` `[reject]` No committed test forces a foreign timer, the named mutation reddened nothing, and the idle wait asserts nothing -- AC6 is the pin, the `mutation:` line records the construction that reddens, and the spec states the wait asserts nothing.
+  - `[low]` `[reject]` No committed test adds a member, `Wire` shares the gate's logic, and part 2 is absent -- the spec asks for derived expectations pinned by an off-by-one mutation, the real check still runs on the wire, and part 2 is batch d.
+- own checks: the gap layer's `rail.spec.ts` claim read `AREAS` as the mirror; line 83 declares it locally. The intent layer's 26.0.0 point was run: `log-viewer`, `home.page` and `area-verdict` 153 of 153.
 
 ## Design Notes
 
@@ -460,12 +521,29 @@ Every test added or changed passes on a fresh environment, in either order.
 **Batch b (loop):**
 
 - Run Checks; Load, then Class `Navigation`, `NamespaceFeatures`, `Wire` and `ExplorerDescriptor`. Run Spec for one browser spec with both variables set, and confirm `npm run test:tools` runs with neither set.
-- `mutation:` a `setInterval(() => {}, 1000)` armed in `LogViewerPage`'s constructor. Expected red: AC6's count.
-- `mutation:` a self-re-arming `setTimeout` poll. Expected red: AC6's count after the drain.
-- `mutation:` a real `setInterval(() => setTimeout(() => {}, 1), 5)` started before AC6 and left running. Expected: with the async advance restored, AC6 red; with the fix, green.
-- `mutation:` `env.OCUPILOT_BROWSER_ORIGIN ?? DEFAULT_ORIGIN` restored. Expected red: `browser-config.test.mjs`'s both-unset case.
-- `mutation:` `const config = browserConfig();` restored at module scope in `preferences-reset.mjs`. Expected: `npm run test:tools` red at loading `preferences-reset.test.mjs`.
-- `mutation:` in each DW-2202 file, its derived expectation off by one. Expected: that file's site red.
+- `mutation:` a `setInterval(() => {}, 1000)` armed in `LogViewerPage`'s constructor. Expected red: AC6's count. Observed (Node 26.8.1): red at AC6's count ("1 fake timers pending, 8 real timers active, 8 when the clock was faked") and at Story 18.38 AC1's timer count, the only two failing tests of 78. Reverted, file byte-identical.
+- `mutation:` a self-re-arming `setTimeout` poll in the same constructor. Expected red: AC6's count after the drain. Observed: red at the same two tests; reverted.
+- `mutation:` a real `setInterval(() => setTimeout(() => {}, 1), 5)` started before AC6 and left running. Expected: with the async advance restored, AC6 red; with the fix, green. Observed: as written it reddens nothing, even on the spec as it stood before this pass (three runs green), because the drain passes clear the one-shot fake timers it arms. Applied as `setInterval(() => setInterval(() => {}, 1000), 5)`, which arms a fake interval no drain clears: the spec as it stood was red in both runs at AC6's count (2 fake timers pending, about 175 real timers active), the only failing test of 78, and the fixed spec was green in three. `log-viewer.spec.ts`, `home.page.spec.ts` and `area-verdict.spec.ts` ran green on Node 22.22.3, 24.15.0 and 26.8.1 (153 tests each).
+- `mutation:` `env.OCUPILOT_BROWSER_ORIGIN ?? DEFAULT_ORIGIN` restored. Expected red: `browser-config.test.mjs`'s both-unset case. Observed: with one fallback restored alone, both-unset still refuses (the other variable is still unset); the red is "either variable alone, or an empty value, is refused" and `preferences-reset.test.mjs`'s "refused before any request", for the origin fallback and for the container's alike. With both fallbacks restored, the both-unset case is red too. Reverted.
+- `mutation:` `const config = browserConfig();` restored at module scope in `preferences-reset.mjs`. Expected: `npm run test:tools` red at loading `preferences-reset.test.mjs`. Observed on that file alone, with both variables exported in the shell and with neither: it fails at load with the `browser.config` refusal, because the file clears both before its import. Reverted; the whole suite ran green with neither variable on Node 22.22.3, 24.15.0 and 26.8.1 (2,036 tests).
+- `mutation:` in each DW-2202 file, its derived expectation off by one. Expected: that file's site red. Observed, each reverted byte-identical:
+  - `screen-mirror.test.mjs` (`AREAS.length + 1`) -> "the mirror carries the kernel vocabulary, the areas and every descriptor"; `strings.test.mjs` (first area dropped) -> "the table's area-names row lists the navArea keys' values, in rail order".
+  - `Navigation.cls` (`tDeclared.%Size() + 1`; `ExpectedAreaVerdicts` skipping the first area; the `> 0` floor raised to 1000) -> `TestThePayloadCarriesEveryAreaWithAVerdict`, both verdict rows of `TestAnAreaOpensWhenAnyScreenItListsIsAllowed` and `TestAGatedAreaNamesItsSetsFirstUnheldPairThenItsFirstListedScreens` (run 5, 3 of 14).
+  - `NamespaceFeatures.cls` (`+ 1`) -> `TestThePayloadCarriesApplies` (run 6). `ExplorerDescriptor.cls` (`+ 1`) -> `TestTheAreaIsTheEighthRailItem` (run 7).
+  - `Wire.cls` (area count `+ 1`; agent built count `+ 1`; `ExpectedScreens` skipping the first tasks screen) -> `TestTheNavigationMapGatesEveryAreaForARealPrincipal`, `TestTheAgentAreaNeverGatesWhileItsScreensGateOnOcuPilotsOwnResource` and `TestTheTaskScheduleIsDeniedToAPrincipalWithoutAdminTask` (run 8). `ExpectedScreens` without its `Hold` -> the web applications, tasks and processes legs (run 9).
+  - `home.page.spec.ts` (`TILE_AREAS.slice(1)`) -> five tile tests; `area-verdict.spec.ts` (`expectedEntries` dropping its first entry) -> "a rail click on Logs and on OS management ...". With the two gated Logs routes opened in the map, the equality alone stays green and the Logs `some(gated)` assertion goes red; reverted.
+  - The `> 0` floors added to `Navigation`, `NamespaceFeatures` and `Wire`, each raised to 1000 -> `TestAnAreaOpensWhenAnyScreenItListsIsAllowed` and `TestThePayloadCarriesEveryAreaWithAVerdict` (run 22), `TestThePayloadCarriesApplies` (run 23), `TestTheNavigationMapGatesEveryAreaForARealPrincipal` and `TestTheAgentAreaNeverGatesWhileItsScreensGateOnOcuPilotsOwnResource` (run 24). `ExpectedScreens("tasks")` named `"nosuch"` -> `TestTheTaskScheduleIsDeniedToAPrincipalWithoutAdminTask` (run 24). Reverted byte-identical; runs 25 to 27 green, confirmed in `%UnitTest_Result` on `ocupilot-ci`.
+  - After the reverts, `Navigation`, `NamespaceFeatures`, `ExplorerDescriptor` and `Wire` were green (runs 10 to 13: 14, 5, 16 and 20 tests; `Wire` again in run 14 after a comment move), confirmed in `%UnitTest_Result` on `ocupilot-ci`.
+- (QA) `ui/src/app/testing/real-timers.spec.ts` (new): pins `activeRealTimers` and `awaitRealTimersIdle` (3 tests, each arms and clears its own timers).
+- (QA) `ui/src/app/areas/logs/log-viewer.spec.ts`: AC6 arms a real interval that arms a timer on the global clock whenever it fires, after the idle wait and before the clock is faked, and clears it in `finally`, so the foreign timer the Given names is constructed rather than left to test order.
+- `mutation:` (QA) AC6's advance restored to `await vi.advanceTimersByTimeAsync(10 * 60 * 1000)`, the seeded interval in place. Expected red: AC6's count. Observed red in three runs of three, the only failing test of 78 (4 fake timers pending, 1 real timer active); the committed form is green on Node 22.22.3, 24.15.0 and 26.0.0 (156 of 156 with the new spec). Restored byte-identical (`cmp`).
+- `mutation:` (QA) `activeRealTimers` counting `'Immediate'` in place of `'Timeout'` -> all three `real-timers.spec.ts` tests red. `awaitRealTimersIdle`'s loop made a no-op (`attempt < 0`) -> its due-timer and bounded tests red. Its `attempt < 50` bound dropped -> the bounded test red (CR: 7.3 s, at "the interval was still pending", once the interval ended itself). (CR) The bounded test's interval replaced by a no-op -> red at the same assertion. QA's reverted with `git checkout`; the review's restored byte-identical (`cmp`).
+- `mutation:` (CR) Home's Story 15.4 settle restored to `await vi.advanceTimersByTimeAsync(0)`, its 1 ms foreign interval seeded. Expected: red. Observed: red in 5 of 5 runs ("expected 1 to be +0"); the committed form green in 5 of 5, and red when `HomePage`'s constructor arms an interval. `home.page`, `log-viewer`, `area-verdict` and `real-timers` specs green on Node 22.22.3, 24.15.0 and 26.0.0 (156 of 156). Restored (`cmp`).
+- `mutation:` (CR) a member added: a listed os-management probe at position 23 (a copy of `MetricsList`) on `ocupilot-ci`. Expected: the reviewed `Wire` green, the batch's `Wire` red. Observed: green (run 708); the batch's `Wire.cls` red at the seven "listed last" splices of `TestTheProcessesListIsDeniedToAPrincipalWithoutAdminManage` (run 709). Probe deleted, `src` reloaded with 0 errors, `Wire` 20 of 20 and `Navigation` 14 of 14 green (runs 713, 714).
+- `mutation:` (CR) `openableEntry`'s tab branch made unreachable. Expected red: the DW-1852 test. Observed: red at the entries' equality, the only failing test of 3; restored (`cmp`).
+- `mutation:` (QA) `env.OCUPILOT_BROWSER_ORIGIN ?? DEFAULT_ORIGIN` restored -> `browser-config.test.mjs` "either variable alone, or an empty value, is refused" and `preferences-reset.test.mjs` "refused before any request" red, both-unset still refuses (the container is still unset); reverted. `developer-floor.browser-spec.mjs` with neither or only the origin set exits with the refusal (1 of 1 failed); with both set it passes.
+- `mutation:` (QA) a member added, expected green, then the pre-batch files as the control. Area `zz-probe` (rail position 11, Agent moved to 12) added to `Area.cls` with its string, its EXPERIENCE.md name, a rail icon and a regenerated mirror. With no edit to any test: `screen-mirror.test.mjs` and `strings.test.mjs` (98 of 98), `home.page.spec.ts`, `area-verdict.spec.ts` and `log-viewer.spec.ts` (153 of 153), and `Navigation`, `NamespaceFeatures`, `ExplorerDescriptor` and `Wire` (runs 693 to 696: 14, 5, 16, 20) green. The pre-batch versions of those eight files against the same probe: red at the two tools tests, three `home.page.spec.ts` tests, `TestThePayloadCarriesEveryAreaWithAVerdict`, `TestThePayloadCarriesApplies`, `TestTheAreaIsTheEighthRailItem` and `TestTheNavigationMapGatesEveryAreaForARealPrincipal` (runs 697 to 700); `area-verdict.spec.ts` stayed green because the probe area lists no Logs or OS management screen.
+- `mutation:` (QA) two built screens added, `permissions/zz-probe` listed at 5 and `logs/zz-probe` listed at 12 (copies of `ServiceList` and `LogMessageViewer`). `Wire` (run 703) and `area-verdict.spec.ts` green. `Navigation` red only at the Logs roster's own count ("which carries its eleven built screens", run 702), the roster pin the matrix row names; `log-viewer.spec.ts` and the read-note roster in `screen-mirror.test.mjs` also went red on the probe's route and note, rosters outside this batch's changed assertions. Probe files deleted, their two compiled classes deleted from `ocupilot-ci`, `src` reloaded with 0 errors (11 areas, 4 Permissions and 11 Logs listed screens), `Navigation` and `Wire` green (runs 704, 705).
 
 **Batch c (loop):**
 
@@ -488,9 +566,10 @@ Every test added or changed passes on a fresh environment, in either order.
 Status: done
 Blocking condition: none
 
-Batch a (DW-2246, DW-2182, DW-2460, DW-2462), review and finalize. Batches b, c and d are later passes.
+Batch b (DW-2458, DW-2221, DW-2202 part 1), review and finalize. Batches c and d are later passes.
 
-- **Change.** `Bound.Apply` step 3 writes the kept rows with the count they report and drops the last kept row while the written payload is over the ceiling, so the class read answers whole rows at any share. Three ObjectScript tests are made deterministic: the both-pairs task history reads one task's runs (`WireSecurityRead`), the early-cancel leg waits for the job inside the delayed port (`SqlBackgroundJob`, `SqlPortDelayed`), and the absent-file leg arms its gap between looks (`LogSourceFixture.ArmTailGap`, `LogTail`). New tests: `ContextBound.TestTheTotalCutMeasuresTheCountItWrites`, `ExplorerWire.TestALargeClassViewIsCutByWholeRows`, with `ExplorerProbe.MakeLargeClass`.
-- **Review.** Layers: verification-gap and intent-alignment. 13 findings: low 6, false 7. Patched 3 lows (the `LogTail` header, the DW-2182 `mutation:` line, the `ContextBound` answered-count assertion), rejected 10 with reasons in the Review Triage Log, deferred none. `followup_review_recommended` is false.
-- **Verification.** On `ocupilot-ci` after reloading `src` (0 errors): `ContextBound` 15 of 15 (run 27, green), `LogTail` 11 of 11 (run 28), confirmed by SQL on `%UnitTest_Result`. The patched assertion was falsified with the loop's exit made unconditional: red in run 26, the only failing test, then `Bound.cls` restored from git and reloaded. `ExplorerWire`, `ToolDispatch`, `Sanitize`, `WireSecurityRead`, `SqlBackgroundJob`, `TurnContext` and `ScreenGrounding` were run green by the implement pass and are untouched since. `uv run scripts/check-objectscript.py` on the nine changed classes: 0 problems.
-- **Residual risk.** On a fresh throwaway with little task history, the scoped read is pinned only by its `TaskId` assertion, which fails only where another task has history. On `ocupilot-ci` after three days up, the unscoped read answers 1,000 rows, truncated (QA, run 701).
+- **Change.** AC6 advances and drains fake time synchronously, with `real-timers.ts` shared by `log-viewer.spec.ts` and `home.page.spec.ts`. `browserConfig` throws unless both browser variables are set and not empty; `preferences-reset.mjs` resolves it on first use. The area, screen and tile counts in eight files now derive from `Area.List`, `ScreensForArea`, `AREAS`, `orderedAreas()` and `listedScreensForArea`, with `Navigation.ExpectedAreaVerdicts` and `Wire.ExpectedScreens` as the derived sides.
+- **Review.** Layers: verification-gap and intent-alignment. 15 findings: medium 1, low 12, false 2. Patched 5 (1 medium, 4 lows), rejected 9 with reasons in the Review Triage Log, deferred 1 low (`_bmad/custom/parallel.yaml:54`). `followup_review_recommended` is false.
+- **Verification.** `npm run test:tools` with neither variable set: 2,036 of 2,036. `npm run test:components`: 3,272 of 3,272. `log-viewer`, `home.page` and `area-verdict` green on Node 22.22.3, 24.15.0 and 26.0.0; `preferences-reset` and `browser-config` green on 22.22.3, 24.15.0 and 26.8.1. On `ocupilot-ci` after loading `src` (0 errors): `Navigation` 14, `NamespaceFeatures` 5, `Wire` 20 (runs 25 to 27) and `ExplorerDescriptor` 16 (run 17), confirmed by SQL on `%UnitTest_Result`. `developer-floor.browser-spec.mjs` green with both variables and refused with neither. `check-objectscript.py` and `lint-docs.sh` clean. Every `mutation:` line was observed red and reverted.
+- **Paths beyond the Footprint list.** `.github/workflows/ci.yml` and `ui/browser/preferences-integration.browser-spec.mjs`, one comment each; `ui/src/app/testing/real-timers.ts` is new, as named.
+- **Residual risk.** None of this batch's guards was run against a registry that holds one more area than today's.

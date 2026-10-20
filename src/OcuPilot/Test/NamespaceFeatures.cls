@@ -131,13 +131,15 @@ Method TestAnAreaWithAnUnknownFeatureIsRefused()
 /// <class>OcuPilot.Test.ToolShell</class> through the closed schema.</p>
 Method TestThePayloadCarriesApplies()
 {
+    Do $$$AssertStatusOK(##class(OcuPilot.Screen.Area).List(.tDeclared), "the declared areas read")
+    Do $$$AssertTrue(tDeclared.%Size() > 0, "and there are some, so the count below is not of two empty lists")
     For tCase = "%SYS|0|0", "HSCUSTOM|1|0" {
         Set tNamespace = $Piece(tCase, "|", 1)
         Do ##class(OcuPilot.Kernel.Scope).Set(tNamespace)
         Set tSC = ##class(OcuPilot.Kernel.Shell.Navigation).Payload(.tObject)
         Do $$$AssertStatusOK(tSC, tNamespace _ ": the payload builds")
         If $$$ISERR(tSC) Continue
-        Do $$$AssertEquals(tObject.areas.%Size(), 11, tNamespace _ ": every area is emitted, none omitted for not applying")
+        Do $$$AssertEquals(tObject.areas.%Size(), tDeclared.%Size(), tNamespace _ ": every declared area is emitted, none omitted for not applying")
         Set tIterator = tObject.areas.%GetIterator()
         While tIterator.%GetNext(.tIndex, .tArea) {
             Do $$$AssertTrue(tArea.%IsDefined("applies"), tNamespace _ ": " _ tArea.key _ " carries applies")

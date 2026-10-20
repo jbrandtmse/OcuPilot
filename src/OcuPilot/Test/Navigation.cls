@@ -218,11 +218,12 @@ Method TestAnAreaOpensWhenAnyScreenItListsIsAllowed()
 {
     Set tGate = "OcuPilot.Test.ScreenGate"
     Set tDescriptor = "OcuPilot.Screen.Descriptor."
+    Do $$$AssertStatusOK(##class(OcuPilot.Screen.Area).List(.tDeclared), "the declared areas read")
+    Do $$$AssertTrue(tDeclared.%Size() > 0, "and there are some, so the verdict strings below are not compared over nothing")
 
-    ; Nothing held: the two areas that declare no pair never gate, and every other area is refused
-    ; on the first pair of its declared set.
-    Set tExpected = "home=open logs=%Admin_Operate:USE os-management=%Admin_Operate:USE tasks=%Admin_Task:USE permissions=%Admin_Secure:USE web-applications=%Admin_Secure:USE security=%Admin_Secure:USE system-explorer=%Development:USE interoperability=%Ens_Portal:USE analytics=%DeepSee_Portal:USE agent=open"
-    Do $$$AssertEquals(..AreaVerdicts(), tExpected, "a holder of nothing opens Home and Agent co-pilot alone, each other area naming its set's first pair")
+    ; Nothing held: the areas that declare no pair never gate, and every other area is refused on
+    ; the first pair of its declared set.
+    Do $$$AssertEquals(..AreaVerdicts(), ..ExpectedAreaVerdicts(""), "a holder of nothing opens the areas that declare no pair alone, each other area naming its set's first pair")
 
     ; %Operator's six grants on a stock instance: %Admin_Operate:U, %DB_IRISLOCALDATA:R,
     ; %DB_IRISSYS:RW, %DB_IRISTEMP:RW, %Service_DocDB:U and %Service_WebGateway:U.
@@ -234,8 +235,8 @@ Method TestAnAreaOpensWhenAnyScreenItListsIsAllowed()
     Do $ClassMethod(tGate, "Hold", "%DB_IRISTEMP", "WRITE")
     Do $ClassMethod(tGate, "Hold", "%Service_DocDB", "USE")
     Do $ClassMethod(tGate, "Hold", "%Service_WebGateway", "USE")
-    Set tExpected = "home=open logs=open os-management=open tasks=open permissions=%Admin_Secure:USE web-applications=open security=%Admin_Secure:USE system-explorer=%Development:USE interoperability=%Ens_Portal:USE analytics=%DeepSee_Portal:USE agent=open"
-    Do $$$AssertEquals(..AreaVerdicts(), tExpected, "%Operator's grants open Logs, OS management, Tasks and Web applications, and not Permissions or Security")
+    Set tOpened = $ListBuild("logs", "os-management", "tasks", "web-applications")
+    Do $$$AssertEquals(..AreaVerdicts(), ..ExpectedAreaVerdicts(tOpened), "%Operator's grants open Logs, OS management, Tasks and Web applications, and not Permissions or Security")
     Do $$$AssertEquals(..ScreenVerdict(tDescriptor _ "LogMessageViewer"), "open", "messages.log opens for them")
     Do $$$AssertEquals(..ScreenVerdict(tDescriptor _ "AuditList"), "%Admin_Secure:USE", "while the audit database viewer keeps its own gate")
     Do $$$AssertEquals(..ScreenVerdict(tDescriptor _ "LogEventViewer"), "%Ens_EventLog:USE", "and so does the interoperability event log")
@@ -351,7 +352,7 @@ Method TestAGatedAreaNamesItsSetsFirstUnheldPairThenItsFirstListedScreens()
     Do $ClassMethod(tGate, "Hold", "%DB_IRISSYS", "READ")
     Set tSC = ##class(OcuPilot.Screen.Registry).ListedScreensForArea("permissions", .tListed)
     Do $$$AssertStatusOK(tSC, "the Permissions side bar reads")
-    Do $$$AssertEquals($ListLength(tListed), 4, "and lists its four screens")
+    Do $$$AssertTrue($ListLength(tListed) > 0, "and lists screens, so the loop below is not over nothing")
     For tI = 1:1:$ListLength(tListed) {
         Set tPage = $ClassMethod($List(tListed, tI), "ClassicPage")
         Do $$$AssertTrue(tPage '= "", $List(tListed, tI) _ " replaces a classic page")
@@ -395,11 +396,40 @@ Method TestAnAreaListingNoScreenIsAnsweredByItsSet()
 /// <code>key=open</code> or <code>key=failedPair</code>.</p>
 ClassMethod AreaVerdicts() As %String
 {
+    Set tSC = ##class(OcuPilot.Screen.Area).List(.tAreas)
+    If $$$ISERR(tSC) Quit "the declared areas do not read: " _ $System.Status.GetErrorText(tSC)
     Set tOut = ""
-    For tArea = "home", "logs", "os-management", "tasks", "permissions", "web-applications", "security", "system-explorer", "interoperability", "analytics", "agent" {
+    Set tIterator = tAreas.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tDeclaredArea) {
+        Set tArea = tDeclaredArea.key
         Set tFailed = ""
         Set tAllowed = ##class(OcuPilot.Test.ScreenGate).Evaluate(tArea, .tFailed)
         Set tOut = tOut _ $Select(tOut = "": "", 1: " ") _ tArea _ "=" _ $Select(tAllowed: "open", 1: tFailed)
+    }
+    Quit tOut
+}
+
+/// <p>What <method>AreaVerdicts</method> answers when the areas in <var>pOpened</var> (a
+/// <class>%List</class> of keys) open and every other area is refused on the first pair of its
+/// declared set: every declared area, in rail order, reads <code>open</code> when it is listed there
+/// or declares no pair, and otherwise names that first pair as <code>resource:permission</code>.
+/// Derived from <method>OcuPilot.Screen.Area.List</method>. For a holder of nothing that is the
+/// gate's answer for any area; for a holder of some pairs it holds while each area outside
+/// <var>pOpened</var> starts with a pair the holder lacks.</p>
+ClassMethod ExpectedAreaVerdicts(pOpened As %List) As %String
+{
+    Set tSC = ##class(OcuPilot.Screen.Area).List(.tAreas)
+    If $$$ISERR(tSC) Quit "the declared areas do not read: " _ $System.Status.GetErrorText(tSC)
+    Set tOut = ""
+    Set tIterator = tAreas.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tArea) {
+        Set tPairs = ##class(OcuPilot.Screen.Area).PairsFrom(tArea.privileges)
+        Set tVerdict = "open"
+        If ($ListFind(pOpened, tArea.key) = 0) && (tPairs '= "") {
+            Set tFirst = $List(tPairs, 1)
+            Set tVerdict = $List(tFirst, 1) _ ":" _ $List(tFirst, 2)
+        }
+        Set tOut = tOut _ $Select(tOut = "": "", 1: " ") _ tArea.key _ "=" _ tVerdict
     }
     Quit tOut
 }
@@ -428,7 +458,9 @@ Method TestThePayloadCarriesEveryAreaWithAVerdict()
 {
     Set tSC = ##class(OcuPilot.Api.Navigation).Payload(.tObject)
     Do $$$AssertStatusOK(tSC, "the payload builds")
-    Do $$$AssertEquals(tObject.areas.%Size(), 11, "every area is emitted, never a partial list")
+    Do $$$AssertStatusOK(##class(OcuPilot.Screen.Area).List(.tDeclared), "the declared areas read")
+    Do $$$AssertTrue(tDeclared.%Size() > 0, "and there are some, so the count below is not of two empty lists")
+    Do $$$AssertEquals(tObject.areas.%Size(), tDeclared.%Size(), "every declared area is emitted, never a partial list")
 
     Set tIterator = tObject.areas.%GetIterator()
     Set tPosition = 0

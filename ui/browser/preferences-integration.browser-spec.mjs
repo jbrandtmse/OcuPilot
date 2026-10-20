@@ -40,8 +40,7 @@
  *
  * Both values come from your own slot's `throwaway` block in `_bmad/custom/parallel.yaml`; the
  * spec itself reads them through `browserConfig()` and hardcodes no port, so it runs on any slot.
- * Setting only the origin execs into another slot's throwaway -- `browser.config.mjs` carries its
- * own container default.
+ * Setting only one of the two is refused -- `browser.config.mjs` has no default for either.
  */
 
 import { test, before, after } from 'node:test';

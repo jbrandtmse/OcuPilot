@@ -481,7 +481,8 @@ weighs the median. A test must not depend on what an earlier class or spec file 
 because a leg's neighbours change whenever the split does. When the estimates drift, run
 `cd ui && node tools/ci-shards.mjs refresh --run <run-id>` against a green run and commit the
 rewritten file. Without a shard option, `ci-runner.mjs` and `npm run test:browser` still run the
-whole suite.
+whole suite. `npm run test:browser` needs `OCUPILOT_BROWSER_ORIGIN` and `OCUPILOT_BROWSER_CONTAINER`
+both set.
 
 **Every tool is pinned, and every script runs under its own shell.** Each action is pinned to the
 full commit SHA its tag resolved to, every job runs on `ubuntu-24.04`, `setup-uv` installs uv

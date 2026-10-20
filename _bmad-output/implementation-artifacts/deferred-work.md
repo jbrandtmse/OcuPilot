@@ -10672,6 +10672,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-12T02:40:03Z occurrence=18-36-dashboard-drill-downs
 - 2026-10-13T04:27:20Z occurrence=18-42-allowed-directories-a-person-s-write
 - 2026-10-14T22:47:27Z status=routed owner=23-11-the-range-end-cleanup-part-10 by=lead note=orchestrator 2026-10-14: chartered 23.11 for 23.5's later routings
+- 2026-10-20T14:30:04Z occurrence=23-11-the-range-end-cleanup-part-10 by=cr note=uncensused: WireSecurityRead 15 + WireOAuthRead 5 full-area roster literals; fix-risk high (per-principal pins); adjudicate at batch d
+- 2026-10-20T14:30:22Z status=routed owner=23-11-the-range-end-cleanup-part-10 by=cr note=correction to the 14:30 occurrence: WireSecurityRead holds 19 such literals, not 15 (24 with WireOAuthRead)
 
 ### DW-2204: IRIS defect candidate: the admin API's Security.SQLPrivilege.Column LIST and REVOKE match the object's case exactly while GRANT accepts any case, so a revoke in another case answers 200 and removes nothing
 - source: spec-18-28-sql-column-and-admin-privileges.md | severity: low | fix-risk: high | footprint: out-of-footprint
@@ -10802,6 +10804,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: A 20.17 handoff subagent ran panel-collapse, stream-reply and agent-sql with both unset between 15:48Z and ~16:35Z 10-08; they arm and disarm a probe agent definition on ocupilot-ci; ui/tools/browser-config.test.mjs pins the one-unset refusals but allows both unset
 - 2026-10-08T16:35:45Z status=routed owner=23-5-the-range-end-cleanup-part-5 by=orchestrator note=CI sets both per shard, so a both-unset refusal costs CI nothing; update browser-config.test.mjs and the README/DEVELOPMENT browser-run lines that rely on the default
 - 2026-10-14T22:47:28Z status=routed owner=23-11-the-range-end-cleanup-part-10 by=lead note=orchestrator 2026-10-14: chartered 23.11 for 23.5's later routings
+- 2026-10-20T15:18:46Z status=resolved-by:23-11-the-range-end-cleanup-part-10 owner=23-11-the-range-end-cleanup-part-10 by=adjudication note=batch b 7aceb0c1: browserConfig refuses unless both variables set; browser-config.test.mjs pins it; CI 39441988834 green
 
 ### DW-2230: UserCopy tool's ReadBackFields has no mismatch leg and no per-field check; the outcome is pinned only by stored-state asserts
 - source: spec-18-29-role-members-admin-option-user-copy-from-and-password-valida.md | severity: low | fix-risk: low | footprint: in-story
@@ -12134,6 +12137,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-15T17:29:10Z occurrence=20-31-message-resend-and-edit-and-resend
 - 2026-10-15T18:17:28Z occurrence=23-5-the-range-end-cleanup-part-5
 - 2026-10-19T11:51:14Z occurrence=23-11-the-range-end-cleanup-part-10
+- 2026-10-20T15:18:46Z status=resolved-by:23-11-the-range-end-cleanup-part-10 owner=23-11-the-range-end-cleanup-part-10 by=adjudication note=batch b 7aceb0c1+66a17632: AC6 advances and drains synchronously (real-timers.ts); seeded foreign interval pin; CI 39441988834 gates 3 bands green
 
 ### DW-2460: flake: OcuPilot.Test.SqlBackgroundJob TestAnEarlyCancelIsSentAgainUntilTheQueryRuns failed once in a local full sweep and passed on the shard's re-run
 - source: lead full ObjectScript sweep, Story 23.5 batch d | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -12188,3 +12192,9 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-20-12-the-agent-gains-guided-workflows-and-investigate.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: Loop.WorkflowResult takes the newest Entry.GuardedTurnKeys turn and never reads that turn's Turn.Workflow; unreachable in 20.12 (workflow prompts render only in an empty conversation's greeting), reachable once 20.36's Investigate starts a workflow beside Explain mid-conversation
 - 2026-10-20T19:52:55Z status=routed owner=20-36-investigate by=cr note=theoretical in 20.12; guard: report previous only when the turn before ran the same workflow
+### DW-2467: _bmad/custom/parallel.yaml:54 still says ui/browser.config.mjs defaults to ocupilot-ci; since 23.11 batch b the config has no default for either browser variable
+- source: spec-23-11-the-range-end-cleanup-part-10.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: browserConfig throws unless OCUPILOT_BROWSER_ORIGIN and OCUPILOT_BROWSER_CONTAINER are both set (ui/browser.config.mjs, pinned by ui/tools/browser-config.test.mjs at 7aceb0c1)
+- 2026-10-20T11:46:15Z status=decision-pending owner=burndown by=harvest note=human=the owner or orchestrator edits the parallel.yaml:54 comment (_bmad is owner_only under --unattended)
+- 2026-10-20T14:30:04Z occurrence=23-11-the-range-end-cleanup-part-10 by=cr note=also parallel.yaml:67 (slot B's browser_container comment): a missing variable is now refused, not exec'd into slot A
+- 2026-10-20T18:43:27Z status=resolved-by:373e5b68 owner=burndown by=owner note=owner OK 2026-10-20 (relayed by the Planner ocupilot-2d): both stale comments fixed in 373e5b68 (parallel.yaml slot A and B browser_container), diff verified by the orchestrator

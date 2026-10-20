@@ -9,23 +9,27 @@
  * one by reading it, so this derives both sides: the cleared set from the helper's own POSTs, and
  * the expected set from the ObjectScript parameters.
  *
- * Reaches no instance -- `fetch` is stubbed. It does read the browser tier's configuration at
- * import, because `browser/preferences-reset.mjs` calls `browserConfig()` at module scope, so
- * `OCUPILOT_BROWSER_ORIGIN` and `OCUPILOT_BROWSER_CONTAINER` must be set together or not at all --
- * a half-set pair throws there and this file then fails to load rather than failing an assertion.
+ * Reaches no instance -- `fetch` is stubbed. `browser/preferences-reset.mjs` resolves
+ * `browserConfig()` on first use inside each exported function, so importing it needs neither
+ * browser variable; this file clears `OCUPILOT_BROWSER_ORIGIN` and `OCUPILOT_BROWSER_CONTAINER`
+ * before the import, sets them to slot A's pair for its own calls, and restores them after.
  *
  * Mutations (Rule 19), each applied, observed red and reverted:
  * - restore `VALUE_KINDS = ['view','refresh','shell']` in place of `PREFERENCE_KINDS` -> "the reset
  *   clears every kind the roster holds" goes red, naming `favorite` and `recent` as uncleared.
  * - drop `SHELL_KIND` from `PREFERENCE_VALUE_KINDS` -> "the roster is the five kinds Pref.cls
  *   declares" goes red.
+ * - resolve `browserConfig()` at module scope in `browser/preferences-reset.mjs` -> this file fails
+ *   to load with neither variable set.
  */
 
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import test from 'node:test';
+import test, { after, before } from 'node:test';
 import { fileURLToPath } from 'node:url';
+
+import { DEFAULT_CONTAINER, DEFAULT_ORIGIN } from '../browser.config.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(here, '..', '..');
@@ -33,9 +37,34 @@ const REPO_ROOT = join(here, '..', '..');
 const { PREFERENCE_KINDS, PREFERENCE_MEMBERSHIP_KINDS } = await import(
   new URL('../src/app/core/account-preferences.ts', import.meta.url).href
 );
+/** The browser variables this file sets for its own calls, and what each held before. */
+const BROWSER_VARIABLES = {
+  OCUPILOT_BROWSER_ORIGIN: DEFAULT_ORIGIN,
+  OCUPILOT_BROWSER_CONTAINER: DEFAULT_CONTAINER,
+};
+const heldVariables = {};
+
+// The import below meets neither variable, whatever the shell exports, so a module-scope
+// `browserConfig()` in the helper fails this file's load.
+for (const name of Object.keys(BROWSER_VARIABLES)) {
+  heldVariables[name] = process.env[name];
+  delete process.env[name];
+}
+
 const { resetRememberedState } = await import(
   new URL('../browser/preferences-reset.mjs', import.meta.url).href
 );
+
+before(() => {
+  for (const [name, value] of Object.entries(BROWSER_VARIABLES)) process.env[name] = value;
+});
+
+after(() => {
+  for (const name of Object.keys(BROWSER_VARIABLES)) {
+    if (heldVariables[name] === undefined) delete process.env[name];
+    else process.env[name] = heldVariables[name];
+  }
+});
 
 /**
  * The `Kind` the preferences route never serves: the per-user read-only choice (Story 14.5), which
@@ -82,6 +111,31 @@ async function sentByReset(options) {
   }
   return { posted, put };
 }
+
+test('with either browser variable unset or empty the reset is refused before any request', async () => {
+  // Mutation (Rule 19): fall back to `DEFAULT_CONTAINER` or `DEFAULT_ORIGIN` in `browserConfig` ->
+  // this goes red, and the reset would write to an instance the run never named.
+  for (const name of Object.keys(BROWSER_VARIABLES)) {
+    for (const value of [undefined, '']) {
+      const held = process.env[name];
+      const real = globalThis.fetch;
+      let requests = 0;
+      globalThis.fetch = async () => {
+        requests += 1;
+        return { status: 200, text: async () => '{}' };
+      };
+      if (value === undefined) delete process.env[name];
+      else process.env[name] = value;
+      try {
+        await assert.rejects(() => resetRememberedState(), /must both be set and not empty/, `${name} ${value === undefined ? 'unset' : 'empty'}`);
+        assert.equal(requests, 0, `no request is sent with ${name} ${value === undefined ? 'unset' : 'empty'}`);
+      } finally {
+        globalThis.fetch = real;
+        process.env[name] = held;
+      }
+    }
+  }
+});
 
 test('the roster is the five route kinds Pref.cls declares -- neither side hand-listed against the other', () => {
   const declared = declaredKinds();

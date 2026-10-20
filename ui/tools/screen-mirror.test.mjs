@@ -63,6 +63,8 @@ import { isCredentialName } from './credential-pattern.mjs';
 
 const toolsDir = dirname(fileURLToPath(import.meta.url));
 
+const { AREAS } = await import(join(toolsDir, '..', 'src', 'app', 'core', 'screens.generated.ts'));
+
 /** The `XData <name>` body of a `.cls` under `src/OcuPilot/`, parsed. */
 function testCorpus(file, name) {
   const body = extractXData(readFileSync(join(toolsDir, '..', '..', 'src', 'OcuPilot', ...file), 'utf8'), name);
@@ -115,7 +117,8 @@ test('the checked-in mirror is exactly what the descriptor declarations produce'
 test('the mirror carries the kernel vocabulary, the areas and every descriptor', () => {
   const { entityTypes, areas, screens } = readSources();
   assert.ok(entityTypes.length >= 20, `expected the closed vocabulary, read ${entityTypes.length}`);
-  assert.equal(areas.length, 11);
+  assert.equal(areas.length, AREAS.length, 'the sources declare exactly the areas the checked-in mirror carries');
+  assert.ok(AREAS.length >= 1, 'and the mirror carries at least one, so equality is not of two empty lists');
   assert.ok(screens.length >= 1, 'at least Home is declared');
   for (const screen of screens) {
     assert.ok(screen.className.startsWith('OcuPilot.Screen.Descriptor.'), screen.file);
