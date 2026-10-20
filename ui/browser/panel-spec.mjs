@@ -117,6 +117,104 @@ export async function setDarkTheme(page, dark) {
   await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
 }
 
+/** The four type tokens text-only resizing scales, as DESIGN.md `:912` names them. */
+export const SCALED_TYPE_TOKENS = [
+  '--ocu-type-caption-size',
+  '--ocu-type-caption-line-height',
+  '--ocu-type-body-size',
+  '--ocu-type-body-line-height',
+];
+
+/**
+ * Multiply `tokens` (default `SCALED_TYPE_TOKENS`) by `factor` on the document element and let two
+ * frames render the result, as text-only resizing does. Answers `{ scaled, unparsed }`: the value each
+ * token now holds, and one message per token whose computed value is not a number with an optional
+ * unit, which is left as it was.
+ *
+ * The values are inline on `<html>`, so they outlast a theme change and are gone with the page.
+ */
+export async function scaleTypeTokens(page, factor, tokens = SCALED_TYPE_TOKENS) {
+  return page.evaluate(
+    async (names, by) => {
+      const root = document.documentElement;
+      const scaled = {};
+      const unparsed = [];
+      for (const token of names) {
+        const read = getComputedStyle(root).getPropertyValue(token).trim();
+        const match = /^(-?\d*\.?\d+)([a-z%]*)$/.exec(read);
+        if (match === null) {
+          unparsed.push(`${token} reads ${JSON.stringify(read)}`);
+          continue;
+        }
+        scaled[token] = `${parseFloat(match[1]) * by}${match[2]}`;
+        root.style.setProperty(token, scaled[token]);
+      }
+      const frame = () => new Promise((resolve) => requestAnimationFrame(() => resolve()));
+      await frame();
+      await frame();
+      return { scaled, unparsed };
+    },
+    tokens,
+    factor
+  );
+}
+
+/**
+ * Fail the reads whose URL contains `control.path` for as long as `control.mode` says so: `'abort'` is a
+ * transport failure (the browser's status 0), `'absent'` an instance that answers 404 with its envelope, and
+ * `null` lets the read through. `control.hits` counts the reads that were failed, which is the signal that the page
+ * has asked. Every other request goes on untouched. Passed as a `prepare` argument, so it is armed before the first
+ * request.
+ */
+export function interceptRead(control) {
+  return async (page) => {
+    await page.setRequestInterception(true);
+    page.on('request', (request) => {
+      if (!request.url().includes(control.path) || control.mode === null) {
+        void request.continue();
+        return;
+      }
+      control.hits += 1;
+      if (control.mode === 'abort') {
+        void request.abort('failed');
+        return;
+      }
+      void request.respond({
+        status: 404,
+        contentType: 'application/json',
+        body: JSON.stringify({ error: 'not_found', reason: 'Not found', code: 'ROUTE.NOTFOUND' }),
+      });
+    });
+  };
+}
+
+/** Two animation frames, so a change the page has already decided on is on screen. */
+export function framesGoBy(page) {
+  return page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+}
+
+/**
+ * Every alert in the document that holds a sentence, each with where it stands (`surface` when it is inside the
+ * element `surfaceSelector` names, `shell` otherwise), its sentence and its actions. The shell mounts empty
+ * assertive regions that announce only once they receive text, so an alert with no text is a region standing by and
+ * not something a person is told.
+ */
+export function readAlerts(page, surfaceSelector) {
+  return page.evaluate(
+    (wanted) => {
+      const surface = document.querySelector(wanted);
+      return Array.from(document.querySelectorAll('[role="alert"]'))
+        .filter((alert) => alert.textContent.trim() !== '')
+        .map((alert) => ({
+          where: surface?.contains(alert) ? 'surface' : 'shell',
+          message: alert.querySelector('.ocu-fault-banner-message')?.textContent.trim() ?? alert.textContent.trim(),
+          actions: Array.from(alert.querySelectorAll('button')).map((button) => button.textContent.trim()),
+        }));
+    },
+    surfaceSelector
+  );
+}
+
 /**
  * Give a fire-and-forget preference write time to arrive, for an assertion that it does not.
  *

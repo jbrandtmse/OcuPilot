@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { ApiService, type ApiRequestInit, type JsonResult } from '../../core/api';
 import { ChangeBus, type ChangeEvent } from '../../core/change-bus';
+import { ConnectivityService } from '../../core/connectivity';
 import { encodeEntityId } from '../../core/entity-id';
 import { FormDirty } from '../../core/form-dirty';
 import { OverlayStack } from '../../core/overlay-stack';
@@ -97,6 +98,10 @@ async function mount(
       const method = init.method ?? 'GET';
       calls.push({ path, method, body: init.body ?? '' });
       if (method === 'PUT') return save as JsonResult<T>;
+      // The class-access tab's list read, answered in its own shape so the tab draws an empty list.
+      if (path.includes('/screens/webapp.pctaccess/read')) {
+        return { kind: 'ok', status: 200, body: { fields: [], rows: [], truncated: false, banner: '', bannerRequires: '' } } as JsonResult<T>;
+      }
       if (method === 'POST') {
         return { kind: 'ok', status: 200, body: { action: 'updated', target: { type: 'web-application', scope: 'instance', id: name } } } as JsonResult<T>;
       }
@@ -120,6 +125,8 @@ async function mount(
     providers: [
       provideRouter([{ path: '**', children: [] }]),
       { provide: ApiService, useValue: api as unknown as ApiService },
+      // The class-access tab parks a failed read with it; no probe timer, so nothing runs behind the test.
+      { provide: ConnectivityService, useValue: new ConnectivityService({ api: () => api as unknown as ApiService, schedule: () => {} }) },
       { provide: FormDirty, useValue: new FormDirty() },
       { provide: ChangeBus, useValue: bus },
       { provide: OverlayStack, useValue: new OverlayStack() },

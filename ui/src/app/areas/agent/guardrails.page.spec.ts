@@ -1,9 +1,12 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 import { describe, expect, it } from 'vitest';
 
 import type { ApiService } from '../../core/api';
+import { ConnectivityService } from '../../core/connectivity';
 import { Guardrails } from '../../core/guardrails';
-import { screenForDescriptor } from '../../core/navigation';
+import { NavigationService, screenForDescriptor } from '../../core/navigation';
+import { ShellState } from '../../core/shell-state';
 import { STRINGS, stringFor } from '../../core/strings';
 import { guardrailsBody, stubGuardrails, type StubbedGuardrails } from '../../testing/guardrails';
 import { GuardrailsPage } from './guardrails.page';
@@ -11,8 +14,34 @@ import { GuardrailsPage } from './guardrails.page';
 /**
  * The Guardrails screen over a stubbed `GET /ui/guardrails` and the real store: the five sections in
  * page order, the refused rows exactly as answered, the Confirm groups under their screens' labels,
- * the three kill-switch lines, and the fault line in place of every section when the read fails.
+ * the three kill-switch lines, and no section when the read fails. A transport fault or a 5xx adds no
+ * alert, since the shell's banner says it; any other failure is `FaultBanner`'s in-place alert with
+ * Retry.
  */
+
+/** The members the in-place banner reads from the shell; none of them is about this page. */
+class StubNavigation {
+  builtScreens(): readonly never[] {
+    return [];
+  }
+
+  screenVerdict(): { allowed: boolean; failedPair: string } {
+    return { allowed: true, failedPair: '' };
+  }
+
+  subscribe(): () => void {
+    return () => {};
+  }
+}
+
+class StubShell {
+  showArea(): void {}
+}
+
+/** The real connectivity service with no probe timer, so a parked read runs when a spec says an answer arrived. */
+function quietConnectivity(): ConnectivityService {
+  return new ConnectivityService({ api: () => ({}) as unknown as ApiService, schedule: () => {} });
+}
 
 async function settle(fixture: ComponentFixture<unknown>): Promise<void> {
   for (let pass = 0; pass < 4; pass += 1) {
@@ -22,9 +51,20 @@ async function settle(fixture: ComponentFixture<unknown>): Promise<void> {
   }
 }
 
-async function mount(store: StubbedGuardrails): Promise<{ fixture: ComponentFixture<GuardrailsPage>; root: HTMLElement }> {
+async function mount(
+  store: StubbedGuardrails,
+  connectivity: ConnectivityService = quietConnectivity()
+): Promise<{ fixture: ComponentFixture<GuardrailsPage>; root: HTMLElement }> {
   TestBed.resetTestingModule();
-  TestBed.configureTestingModule({ providers: [{ provide: Guardrails, useValue: store }] });
+  TestBed.configureTestingModule({
+    providers: [
+      provideRouter([]),
+      { provide: Guardrails, useValue: store },
+      { provide: ConnectivityService, useValue: connectivity },
+      { provide: NavigationService, useValue: new StubNavigation() as unknown as NavigationService },
+      { provide: ShellState, useValue: new StubShell() as unknown as ShellState },
+    ],
+  });
   const fixture = TestBed.createComponent(GuardrailsPage);
   fixture.detectChanges();
   await settle(fixture);
@@ -47,7 +87,7 @@ describe('GuardrailsPage', () => {
       STRINGS.agentGuardrailsNeverHeading,
       STRINGS.agentGuardrailsLimitsHeading,
     ]);
-    expect(root.querySelector('.ocu-guardrails-fault')).toBeNull();
+    expect(root.querySelector('[role="alert"]')).toBeNull();
     expect(root.querySelector('.ocu-guardrails')?.getAttribute('aria-busy')).toBe('false');
   });
 
@@ -64,7 +104,7 @@ describe('GuardrailsPage', () => {
     fixture.detectChanges();
     const root = fixture.nativeElement as HTMLElement;
     expect(root.querySelector('.ocu-guardrails')?.getAttribute('aria-busy')).toBe('true');
-    expect(root.querySelector('.ocu-guardrails-fault')).toBeNull();
+    expect(root.querySelector('[role="alert"]')).toBeNull();
     expect(root.querySelectorAll('h2').length).toBe(0);
     release({ kind: 'ok', status: 200, body: guardrailsBody() });
     await settle(fixture);
@@ -166,10 +206,57 @@ describe('GuardrailsPage', () => {
     }
   });
 
-  it('shows the fault line and no section when the read fails', async () => {
-    const { root } = await mount(stubGuardrails({ unreachable: true }));
-    expect(texts(root, '.ocu-guardrails-fault')).toEqual([STRINGS.connectivityServerFault]);
-    expect(root.querySelectorAll('h2').length).toBe(0);
-    expect(root.querySelector('.ocu-guardrails-refused')).toBeNull();
+  // Mutation (Rule 19): make `inPlaceFault` answer the banner fault too -> the status 0 and 503 legs go
+  // red, the page drawing an alert of its own beside the shell's banner.
+  it('draws no alert and no section when the instance is unreachable or answers a 5xx, and reads again once it answers', async () => {
+    for (const status of [0, 503]) {
+      const connectivity = quietConnectivity();
+      const store = stubGuardrails({ connectivity });
+      store.setStatus(status);
+      const { fixture, root } = await mount(store, connectivity);
+      expect(store.fault()?.kind, `status ${status}`).toBe(status === 0 ? 'unreachable' : 'server-fault');
+      expect(root.querySelector('[role="alert"]'), `status ${status} adds no alert of its own`).toBeNull();
+      expect(root.querySelector('app-fault-banner .ocu-fault-banner')).toBeNull();
+      expect(root.querySelectorAll('h2').length).toBe(0);
+      expect(root.querySelector('.ocu-guardrails-refused')).toBeNull();
+
+      // The instance answers again: the shell's drain runs the parked read and the sections replace the empty page.
+      store.setStatus(null);
+      connectivity.note(null);
+      await settle(fixture);
+      expect(store.calls.length, `status ${status} is read again`).toBe(2);
+      expect(root.querySelectorAll('h2').length).toBe(5);
+      expect(root.querySelector('[role="alert"]')).toBeNull();
+    }
+  });
+
+  // Mutation (Rule 19): record an unreadable answer as `server-fault` in `Guardrails.load` -> the unreadable leg
+  // goes red, the page drawing nothing; make `inPlaceFault` answer `null` for every fault -> the 404 leg goes red.
+  it('draws the in-place banner with Retry for a 403, a 404 and an unreadable answer, and Retry reads again', async () => {
+    const cases: [string, (store: StubbedGuardrails) => void][] = [
+      ['403', (store) => store.setStatus(403)],
+      ['404', (store) => store.setStatus(404)],
+      ['unreadable', (store) => store.setBody({ prohibited: 'not a list' })],
+    ];
+    for (const [name, arm] of cases) {
+      const store = stubGuardrails();
+      arm(store);
+      const { fixture, root } = await mount(store);
+      const alerts = [...root.querySelectorAll('[role="alert"]')];
+      expect(alerts.length, `${name}: one alert, the banner's own`).toBe(1);
+      expect(alerts[0].querySelector('.ocu-fault-banner-message')?.textContent?.trim(), name).toBe(STRINGS.connectivityServerFault);
+      const actions = [...alerts[0].querySelectorAll('button')].map((button) => button.textContent?.trim());
+      expect(actions, name).toEqual([STRINGS.actionRetry, STRINGS.actionOpenMessagesLog]);
+      expect(root.querySelectorAll('h2').length, `${name}: no section beside it`).toBe(0);
+
+      // The instance answers again; Retry reads again and the sections replace the alert.
+      store.setStatus(null);
+      store.setBody(guardrailsBody());
+      (alerts[0].querySelector('button') as HTMLButtonElement).click();
+      await settle(fixture);
+      expect(store.calls.length, `${name}: Retry reads again`).toBe(2);
+      expect(root.querySelector('[role="alert"]'), name).toBeNull();
+      expect(root.querySelectorAll('h2').length, name).toBe(5);
+    }
   });
 });

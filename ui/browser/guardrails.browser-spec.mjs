@@ -11,9 +11,13 @@
  * 3. **Story 18.12**: the last section is headed "Limits" and, with no turns-an-hour limit set, reads that
  *    turns are not limited (AC1); with turns an hour set to 7 on Switches, the line beneath the limits
  *    line names 7.
+ * 4. **A failed read draws one alert (Story 23.11, DW-2449).** A read that cannot reach the instance is the shell's
+ *    banner to say once, and the page adds nothing and reads again once the instance answers. A 404 is the page's own
+ *    `FaultBanner` with Retry, and Retry reads again. The alert count is taken over the whole document.
  *
  * **It refuses the live container**: it writes the instance's switches, and restores them through
- * the shipped route in `after` and at the end of the leg that changed them.
+ * the shipped route in `after` and at the end of the leg that changed them. The fault legs only intercept their own
+ * page's read.
  *
  * Run: `npm run test:browser` (after `npm run build` and `sh scripts/ci-throwaway.sh up`).
  */
@@ -26,7 +30,7 @@ import puppeteer from 'puppeteer';
 
 import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
 import { leaveFirstLoginGate } from './shell-entry.mjs';
-import { authHeader as sharedAuthHeader } from './panel-spec.mjs';
+import { authHeader as sharedAuthHeader, framesGoBy, interceptRead, readAlerts } from './panel-spec.mjs';
 import { requireFreeSlot } from './turnprobe-spec.mjs';
 import { resetRememberedState } from './preferences-reset.mjs';
 
@@ -89,12 +93,13 @@ async function guardrailsAnswer() {
   return answer.json();
 }
 
-/** A fresh context signed in through the shell's own form, landed at `url`. */
-async function signedInAt(url) {
+/** A fresh context signed in through the shell's own form, landed at `url`; `prepare` runs against the page first. */
+async function signedInAt(url, { prepare = null } = {}) {
   await resetRememberedState();
   const context = await browser.createBrowserContext();
   const page = await context.newPage();
   page.setDefaultNavigationTimeout(config.navigationTimeoutMs);
+  if (prepare !== null) await prepare(page);
   await page.goto(`${config.origin}${url}`, { waitUntil: 'networkidle2' });
   await page.waitForSelector('#ocu-signin-user', { visible: true, timeout: config.navigationTimeoutMs });
   await page.type('#ocu-signin-user', config.username);
@@ -136,7 +141,7 @@ test('AC1: opened from the side bar after Switches, the page lists every refused
     const codes = await textsOf(page, 'app-guardrails-page .ocu-guardrails-refused .ocu-guardrails-code');
     assert.deepEqual(codes, answer.prohibited.map((row) => row.code), 'one item per code, in the answer\'s order');
     assert.deepEqual(reasons, answer.prohibited.map((row) => row.reason), 'each with that row\'s sentence');
-    assert.equal(await page.$('app-guardrails-page .ocu-guardrails-fault'), null, 'and no fault line');
+    assert.deepEqual(await readAlerts(page, 'app-guardrails-page'), [], 'and no alert, in the page or the shell');
     const headings = await textsOf(page, 'app-guardrails-page h2');
     assert.equal(headings.at(-1), STRINGS.agentGuardrailsLimitsHeading, 'the last section is headed Limits');
     assert.deepEqual(await textsOf(page, 'app-guardrails-page .ocu-guardrails-turns'), [STRINGS.agentGuardrailsTurnsNone], 'and with no turns-an-hour limit set it reads that turns are not limited');
@@ -208,5 +213,75 @@ test('Story 18.12: with turns an hour set to 7 on Switches, the Limits section n
   } finally {
     await context.close();
     await restoreSwitches();
+  }
+});
+
+const GUARDRAILS_URL = '/ocupilot/agent/guardrails?ns=HSCUSTOM';
+
+/** The page's own sections, which a failed read leaves undrawn. */
+const SECTION = 'app-guardrails-page .ocu-guardrails-refused';
+
+test('a Guardrails read that cannot reach the instance leaves the shell\'s banner as the one alert, and reads again once the instance answers', async () => {
+  // Mutation (Rule 19): answer the banner fault from `inPlaceFault` in `guardrails.page.ts`, rebuild and redeploy ->
+  // the page draws an alert of its own beside the shell's banner and the count below reads two. Drop the
+  // `retryWhenReachable` park from `Guardrails.load`, or the `connectivity` argument from `main.ts` -> the sections
+  // never return once the instance answers, and the last wait times out.
+  const control = { path: GUARDRAILS_PATH, mode: 'abort', hits: 0 };
+  const { context, page } = await signedInAt(GUARDRAILS_URL, { prepare: interceptRead(control) });
+  try {
+    // The shell's banner is the answered signal: the failed read reports to it before the page learns of the failure.
+    await page.waitForSelector('app-fault-banner .ocu-fault-banner', { timeout: config.navigationTimeoutMs });
+    await page.waitForSelector('app-guardrails-page .ocu-guardrails-intro', { timeout: config.navigationTimeoutMs });
+    await framesGoBy(page);
+    assert.ok(control.hits >= 1, 'the page asked for the read this leg fails');
+
+    assert.deepEqual(
+      await readAlerts(page, 'app-guardrails-page'),
+      [{ where: 'shell', message: STRINGS.connectivityBannerUnreachable, actions: [STRINGS.actionRetry] }],
+      'one alert in the whole document, and it is the shell\'s unreachable banner'
+    );
+    assert.equal(await page.$('app-guardrails-page .ocu-fault-banner'), null, 'and the page draws no banner of its own');
+    assert.equal(await page.$(SECTION), null, 'and no section, since nothing the instance said is on screen');
+
+    // The instance answers again: the parked read runs at the next answer and the sections replace the empty page.
+    control.mode = null;
+    await page.waitForSelector(SECTION, { timeout: config.navigationTimeoutMs });
+    // The shell's banner stays mounted for a moment after its fault clears, so the count is taken once it is gone.
+    await page.waitForSelector('app-fault-banner .ocu-fault-banner', { hidden: true, timeout: config.navigationTimeoutMs });
+    assert.deepEqual(await readAlerts(page, 'app-guardrails-page'), [], 'no alert stands once the read answers');
+  } finally {
+    await context.close();
+  }
+});
+
+test('a Guardrails read the instance answers with a 404 shows the page\'s own alert, and Retry reads again', async () => {
+  // Mutation (Rule 19): make `inPlaceFault` answer `null` for every fault, rebuild and redeploy -> the page draws
+  // no banner and the first wait below times out.
+  const control = { path: GUARDRAILS_PATH, mode: 'absent', hits: 0 };
+  const { context, page } = await signedInAt(GUARDRAILS_URL, { prepare: interceptRead(control) });
+  try {
+    // The page's own banner is the answered signal: a 404 raises nothing in the shell.
+    await page.waitForSelector('app-guardrails-page .ocu-fault-banner', { timeout: config.navigationTimeoutMs });
+    await framesGoBy(page);
+    assert.ok(control.hits >= 1, 'the page asked for the read this leg fails');
+    assert.deepEqual(
+      await readAlerts(page, 'app-guardrails-page'),
+      [{ where: 'surface', message: STRINGS.connectivityServerFault, actions: [STRINGS.actionRetry, STRINGS.actionOpenMessagesLog] }],
+      'one alert in the whole document, inside the page, with the generic sentence and both actions'
+    );
+    assert.equal(await page.$(SECTION), null, 'and no section beside it');
+
+    // The instance answers again; Retry reads again and the sections replace the alert.
+    control.mode = null;
+    await page.evaluate((retry) => {
+      const button = Array.from(document.querySelectorAll('app-guardrails-page .ocu-fault-banner button')).find((candidate) => candidate.textContent.trim() === retry);
+      button.click();
+    }, STRINGS.actionRetry);
+    await page.waitForSelector(SECTION, { timeout: config.navigationTimeoutMs });
+    await framesGoBy(page);
+    assert.deepEqual(await readAlerts(page, 'app-guardrails-page'), [], 'the alert is gone once the read answers');
+    assert.equal(await page.$('app-guardrails-page .ocu-fault-banner'), null, 'and so is the banner');
+  } finally {
+    await context.close();
   }
 });

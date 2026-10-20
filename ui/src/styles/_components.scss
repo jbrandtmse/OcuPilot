@@ -179,7 +179,7 @@
   box-sizing: border-box;
   flex: 1 1 auto;
   min-width: 0;
-  height: var(--ocu-input-height);
+  min-height: var(--ocu-input-height);
   padding: 0 var(--ocu-space-3);
   border: 1px solid var(--ocu-outline);
   border-radius: var(--ocu-radius-md);
@@ -203,7 +203,7 @@
   justify-content: center;
   flex: 0 0 auto;
   width: var(--ocu-icon-button-size);
-  height: var(--ocu-input-height);
+  min-height: var(--ocu-input-height);
   padding: 0;
   border: 1px solid transparent;
   border-radius: var(--ocu-radius-md);
@@ -229,7 +229,7 @@
   align-items: center;
   justify-content: center;
   width: 100%;
-  height: var(--ocu-control-height);
+  min-height: var(--ocu-control-height);
   padding: 0 var(--ocu-space-4);
   border: none;
   border-radius: var(--ocu-radius-full);
@@ -267,7 +267,7 @@
   align-items: center;
   justify-content: center;
   gap: var(--ocu-space-1);
-  height: var(--ocu-control-height);
+  min-height: var(--ocu-control-height);
   padding: 0 var(--ocu-space-4);
   border-radius: var(--ocu-radius-full);
   background: transparent;
@@ -291,7 +291,7 @@
   align-items: center;
   justify-content: center;
   width: 100%;
-  height: var(--ocu-control-height);
+  min-height: var(--ocu-control-height);
   padding: 0 var(--ocu-space-4);
   border: none;
   border-radius: var(--ocu-radius-full);
@@ -503,7 +503,7 @@
   display: inline-flex;
   align-items: center;
   gap: var(--ocu-space-1);
-  height: var(--ocu-control-height);
+  min-height: var(--ocu-control-height);
   padding: 0 var(--ocu-space-2);
   border: 1px solid transparent;
   border-radius: var(--ocu-radius-sm);
@@ -548,7 +548,7 @@
   display: flex;
   align-items: center;
   width: 100%;
-  height: var(--ocu-control-height);
+  min-height: var(--ocu-control-height);
   padding: 0 14px;
   border: none;
   background: transparent;
@@ -782,7 +782,7 @@ app-source-viewer-page {
   z-index: 5;
   display: inline-flex;
   align-items: center;
-  height: var(--ocu-control-height);
+  min-height: var(--ocu-control-height);
   padding: 0 var(--ocu-space-4);
   border-radius: var(--ocu-radius-full);
   background: var(--ocu-secondary);
@@ -998,7 +998,7 @@ app-source-viewer-page {
   align-items: center;
   gap: var(--ocu-space-2);
   width: calc(100% - (2 * 6px));
-  height: 28px;
+  min-height: 28px;
   margin: 0 6px;
   padding: 0 var(--ocu-space-2);
   border: none;
@@ -1095,7 +1095,7 @@ app-source-viewer-page {
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
   gap: var(--ocu-space-4);
-  height: var(--ocu-header-height);
+  min-height: var(--ocu-header-height);
   padding: 0 var(--ocu-space-3) 0 var(--ocu-space-2);
   background: linear-gradient(
     90deg,
@@ -1224,7 +1224,7 @@ app-source-viewer-page {
   @include typo.ocu-type('body');
 
   display: flex;
-  height: var(--ocu-control-height);
+  min-height: var(--ocu-control-height);
   align-items: center;
   padding: 0 14px;
   cursor: pointer;
@@ -1278,7 +1278,7 @@ app-source-viewer-page {
 
   box-sizing: border-box;
   width: 100%;
-  height: 30px;
+  min-height: 30px;
   padding: 0 60px 0 var(--ocu-space-2);
   border: 1px solid color-mix(in srgb, var(--ocu-on-shell) 45%, transparent);
   border-radius: var(--ocu-radius-md);
@@ -1342,7 +1342,7 @@ app-source-viewer-page {
   display: flex;
   align-items: center;
   gap: var(--ocu-space-2);
-  height: var(--ocu-control-height);
+  min-height: var(--ocu-control-height);
   padding: 0 var(--ocu-space-3);
   cursor: pointer;
 }
@@ -1439,7 +1439,7 @@ app-source-viewer-page {
   flex: 0 0 auto;
   align-items: center;
   gap: var(--ocu-space-2);
-  height: var(--ocu-locator-height);
+  min-height: var(--ocu-locator-height);
   padding: 0 var(--ocu-gutter);
   border-bottom: 1px solid var(--ocu-outline-variant);
   background: var(--ocu-surface);
@@ -1559,7 +1559,7 @@ app-source-viewer-page {
 
   box-sizing: border-box;
   width: 220px;
-  height: var(--ocu-control-height);
+  min-height: var(--ocu-control-height);
   padding: 0 var(--ocu-space-2);
   border: 1px solid var(--ocu-outline);
   border-radius: var(--ocu-radius-md);
@@ -1679,7 +1679,7 @@ app-source-viewer-page {
   display: flex;
   align-items: center;
   width: 100%;
-  height: var(--ocu-control-height);
+  min-height: var(--ocu-control-height);
   padding: 0 14px;
   border: none;
   background: transparent;
@@ -1743,7 +1743,7 @@ app-source-viewer-page {
   flex: 0 1 auto;
   max-width: 100%;
   min-width: 0;
-  height: calc(var(--ocu-control-height) + 2px);
+  min-height: calc(var(--ocu-control-height) + 2px);
   line-height: var(--ocu-control-height);
   white-space: nowrap;
   overflow: hidden;
@@ -1774,7 +1774,7 @@ app-source-viewer-page {
   gap: var(--ocu-space-3);
   min-width: 0;
   overflow-x: clip;
-  height: var(--ocu-status-bar-height);
+  min-height: var(--ocu-status-bar-height);
   padding: 0 var(--ocu-space-3);
   background: var(--ocu-shell);
   color: var(--ocu-on-shell);
@@ -1895,13 +1895,13 @@ app-server-flag {
   display: inline-block;
   max-width: 100%;
   min-width: 0;
-  height: 18px;
+  min-height: 18px;
   padding: 0 var(--ocu-space-2);
   border: 1px solid var(--ocu-server-flag-edge);
   border-radius: var(--ocu-radius-full);
   background: var(--ocu-restrained-container);
   color: var(--ocu-restrained);
-  line-height: 16px;
+  line-height: max(16px, calc(var(--ocu-type-label-line-height) * 1em));
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2137,7 +2137,7 @@ app-server-flag[data-unbounded] .ocu-server-flag {
 .ocu-classic-link-card-action {
   box-sizing: border-box;
   max-width: 100%;
-  height: calc(var(--ocu-control-height) + 2px);
+  min-height: calc(var(--ocu-control-height) + 2px);
 }
 
 // The label shrinks and ellipsizes inside the pill, the recipe the server-flag pill uses; the
@@ -2688,7 +2688,7 @@ app-interop-message-contents {
 .ocu-data-table-menu-item {
   @include typo.ocu-type('body');
 
-  height: var(--ocu-control-height);
+  min-height: var(--ocu-control-height);
   padding: 0 14px;
   border: none;
   background: transparent;
@@ -2728,7 +2728,7 @@ app-interop-message-contents {
 
   box-sizing: border-box;
   width: 80px;
-  height: var(--ocu-control-height);
+  min-height: var(--ocu-control-height);
   padding: 0 var(--ocu-space-2);
   border: 1px solid var(--ocu-outline);
   border-radius: var(--ocu-radius-md);
@@ -2903,7 +2903,7 @@ app-interop-message-contents {
 
   box-sizing: border-box;
   width: 100%;
-  height: var(--ocu-control-height);
+  min-height: var(--ocu-control-height);
   padding: 0 var(--ocu-space-2);
   border: 1px solid var(--ocu-outline);
   border-radius: var(--ocu-radius-md);
@@ -3159,7 +3159,7 @@ app-interop-message-contents {
   align-items: center;
   justify-content: space-between;
   gap: var(--ocu-space-3);
-  height: var(--ocu-form-bar-height);
+  min-height: var(--ocu-form-bar-height);
   margin-top: auto;
   padding: 0 var(--ocu-space-3);
   border-top: 1px solid var(--ocu-outline-variant);
@@ -3559,6 +3559,7 @@ app-interop-message-contents {
 // The reminder banner's link, `button-text`-shaped at the banner's end (DESIGN.md banner).
 .ocu-panel-banner-link {
   height: auto;
+  min-height: 0;
   padding: 0 var(--ocu-space-2);
 }
 
@@ -4024,6 +4025,7 @@ app-interop-message-contents {
 .ocu-panel-warning-send,
 .ocu-panel-warning-edit {
   height: auto;
+  min-height: 0;
   padding: 0 var(--ocu-space-2);
 }
 
@@ -5524,6 +5526,7 @@ app-interop-message-contents {
 
 .ocu-log-explain {
   height: calc(var(--ocu-log-row-height) - 4px);
+  min-height: 0;
   padding: 0 var(--ocu-space-2);
 }
 
@@ -5649,7 +5652,7 @@ app-interop-message-contents {
   align-items: center;
   gap: var(--ocu-space-2);
   min-width: 0;
-  height: var(--ocu-control-height);
+  min-height: var(--ocu-control-height);
   padding: 0;
   border: none;
   background: transparent;
@@ -6033,7 +6036,7 @@ app-resource-list-page {
   @include typo.ocu-type('body');
 
   width: 100%;
-  height: var(--ocu-control-height);
+  min-height: var(--ocu-control-height);
   box-sizing: border-box;
   padding: 0 10px;
   border: 1px solid var(--ocu-outline);
@@ -7352,7 +7355,7 @@ app-data-table:has(> .ocu-data-table-long) > .ocu-data-table-frame {
   @include typo.ocu-type('label');
 
   min-width: var(--ocu-icon-button-size);
-  height: var(--ocu-control-height);
+  min-height: var(--ocu-control-height);
   padding: 0 var(--ocu-space-3);
   border: 1px solid var(--ocu-outline);
   border-radius: var(--ocu-radius-sm);
@@ -8819,7 +8822,7 @@ app-agent-picker {
   box-sizing: border-box;
   min-width: 0;
   max-width: 100%;
-  height: var(--ocu-icon-button-size);
+  min-height: var(--ocu-icon-button-size);
   padding: 0 var(--ocu-space-2);
   border: none;
   border-radius: var(--ocu-radius-md);

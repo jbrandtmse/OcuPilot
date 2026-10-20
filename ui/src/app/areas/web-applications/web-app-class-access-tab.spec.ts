@@ -1,9 +1,13 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { ApiService, type ApiRequestInit, type JsonResult } from '../../core/api';
 import { ChangeBus } from '../../core/change-bus';
+import { ConnectivityService } from '../../core/connectivity';
 import { joinCompositeId } from '../../core/entity-id';
+import { NavigationService } from '../../core/navigation';
+import { ShellState } from '../../core/shell-state';
 import { STRINGS } from '../../core/strings';
 import { ScreenActionHandler, type ActionSink } from '../../shell/screen-action-handler';
 import { WebAppClassAccessTab } from './web-app-class-access-tab';
@@ -11,8 +15,32 @@ import { WebAppClassAccessTab } from './web-app-class-access-tab';
 /**
  * The percent-class access editor tab over stubs of the API and of the screen action handler (Story 18.10). A system
  * entry's Delete is `aria-disabled` and names its sentence; any other Delete goes through `startFor`; the list is read
- * again after an applied Delete, a change on the bus, and a change of application.
+ * again after an applied Delete, a change on the bus, and a change of application. A failed read draws no rows: a
+ * transport fault or a 5xx adds no alert, since the shell's banner says it, and any other failure is `FaultBanner`'s
+ * in-place alert with Retry.
  */
+
+/** The members the in-place banner reads from the shell; none of them is about this tab. */
+class StubNavigation {
+  builtScreens(): readonly never[] {
+    return [];
+  }
+
+  screenVerdict(): { allowed: boolean; failedPair: string } {
+    return { allowed: true, failedPair: '' };
+  }
+
+  subscribe(): () => void {
+    return () => {};
+  }
+}
+
+class StubShell {
+  showArea(): void {}
+}
+
+/** A read answered once, or by a function of how many reads came before it. */
+type Answer = JsonResult<unknown> | Promise<JsonResult<unknown>> | ((reads: number) => JsonResult<unknown>);
 
 const ROWS = [
   { Name: '/csp/probe', AllowType: 'AllowClass', Class: '%Api.Admin', AllowAccess: true, System: false },
@@ -21,15 +49,17 @@ const ROWS = [
 
 const planted: HTMLElement[] = [];
 
-function mount(read: JsonResult<unknown> | Promise<JsonResult<unknown>>, options: { applies?: boolean } = {}) {
+function mount(read: Answer, options: { applies?: boolean } = {}) {
   TestBed.resetTestingModule();
+  // No probe timer: a read parked with the connectivity service runs when a spec says the instance answered.
+  const connectivity = new ConnectivityService({ api: () => ({}) as unknown as ApiService, schedule: () => {} });
   const paths: string[] = [];
   const started: { descriptor: string; action: string; target: string }[] = [];
   const bus = new ChangeBus();
   const api = {
     requestJson: async <T,>(path: string, _init: ApiRequestInit = {}): Promise<JsonResult<T>> => {
       paths.push(path);
-      return (await read) as JsonResult<T>;
+      return (typeof read === 'function' ? read(paths.length - 1) : await read) as JsonResult<T>;
     },
   };
   const handler = {
@@ -46,13 +76,17 @@ function mount(read: JsonResult<unknown> | Promise<JsonResult<unknown>>, options
       { provide: ApiService, useValue: api as unknown as ApiService },
       { provide: ScreenActionHandler, useValue: handler as unknown as ScreenActionHandler },
       { provide: ChangeBus, useValue: bus },
+      provideRouter([]),
+      { provide: ConnectivityService, useValue: connectivity },
+      { provide: NavigationService, useValue: new StubNavigation() as unknown as NavigationService },
+      { provide: ShellState, useValue: new StubShell() as unknown as ShellState },
     ],
   });
   const fixture: ComponentFixture<WebAppClassAccessTab> = TestBed.createComponent(WebAppClassAccessTab);
   fixture.componentRef.setInput('application', '/csp/probe');
   document.body.appendChild(fixture.nativeElement);
   planted.push(fixture.nativeElement);
-  return { fixture, paths, started, bus, host: fixture.nativeElement as HTMLElement };
+  return { fixture, paths, started, bus, connectivity, host: fixture.nativeElement as HTMLElement };
 }
 
 async function settle(fixture: ComponentFixture<unknown>): Promise<void> {
@@ -158,10 +192,77 @@ describe('the percent class access editor tab (Story 18.10)', () => {
     expect(host.querySelector('.ocu-pct-access-empty')?.textContent?.trim()).toBe(STRINGS.webAppPctAccessListEmpty);
   });
 
-  it('answers a failed read with the server fault sentence and no rows', async () => {
-    const { fixture, host } = mount({ kind: 'error', status: 500, code: null, reason: null, detail: null });
+  // Mutation (Rule 19): make `inPlaceFault` answer the banner fault too -> this goes red, the tab drawing an alert
+  // of its own beside the shell's banner. Drop the `retryWhenReachable` park from `load` -> the second read never runs.
+  it('draws no alert and no rows when the instance is unreachable or answers a 5xx, and reads again once it answers', async () => {
+    for (const status of [0, 500]) {
+      const ok = { kind: 'ok', status: 200, body: { fields: [], rows: ROWS, truncated: false, banner: '', bannerRequires: '' } } as const;
+      const { fixture, paths, host, connectivity } = mount((reads) =>
+        reads === 0 ? { kind: 'error', status, code: null, reason: null, detail: null } : ok
+      );
+      await settle(fixture);
+      expect(host.querySelector('[role="alert"]'), `status ${status} adds no alert of its own`).toBeNull();
+      expect(host.querySelector('app-fault-banner')).toBeNull();
+      expect(host.querySelectorAll('tbody tr').length).toBe(0);
+      expect(host.querySelector('.ocu-pct-access-empty'), 'and no empty sentence either').toBeNull();
+
+      connectivity.note(null); // an unrelated call answered, which clears the shell's banner
+      await settle(fixture);
+      expect(paths.length, `status ${status} is read again`).toBe(2);
+      expect(host.querySelectorAll('tbody tr').length).toBe(2);
+      expect(host.querySelector('[role="alert"]')).toBeNull();
+      fixture.destroy();
+    }
+  });
+
+  // Mutation (Rule 19): make `inPlaceFault` answer `null` for every fault -> every case goes red, no alert standing.
+  // Record an answer that is not the read's shape as a `server-fault` in `load` -> the unreadable case goes red, the
+  // tab drawing no alert and parking a read the shell never announced. Drop the `(retried)` binding -> Retry reads nothing.
+  it('draws the in-place banner with Retry for a 403, a 404 and an unreadable answer, and Retry reads again', async () => {
+    const ok = { kind: 'ok', status: 200, body: { fields: [], rows: ROWS, truncated: false, banner: '', bannerRequires: '' } } as const;
+    const failures: [string, JsonResult<unknown>][] = [
+      ['403', { kind: 'error', status: 403, code: 'AUTH.REFUSED', reason: 'refused', detail: null }],
+      ['404', { kind: 'error', status: 404, code: 'ROUTE.NOTFOUND', reason: 'gone', detail: null }],
+      ['unreadable', { kind: 'ok', status: 200, body: {} }],
+    ];
+    for (const [name, failure] of failures) {
+      const { fixture, paths, host, connectivity } = mount((reads) => (reads === 0 ? failure : ok));
+      await settle(fixture);
+      const alerts = [...host.querySelectorAll('[role="alert"]')];
+      expect(alerts.length, `${name}: one alert, the banner's own`).toBe(1);
+      expect(alerts[0].querySelector('.ocu-fault-banner-message')?.textContent?.trim(), name).toBe(STRINGS.connectivityServerFault);
+      expect([...alerts[0].querySelectorAll('button')].map((button) => button.textContent?.trim()), name).toEqual([
+        STRINGS.actionRetry,
+        STRINGS.actionOpenMessagesLog,
+      ]);
+      expect(host.querySelectorAll('tbody tr').length, name).toBe(0);
+      expect(host.querySelector('.ocu-pct-access-empty'), `${name}: a failed read is not an empty list`).toBeNull();
+
+      connectivity.note(null);
+      await settle(fixture);
+      expect(paths.length, `${name} is not parked`).toBe(1);
+
+      (alerts[0].querySelector('button') as HTMLButtonElement).click();
+      await settle(fixture);
+      expect(paths.length, `${name}: Retry reads again`).toBe(2);
+      expect(host.querySelector('[role="alert"]'), name).toBeNull();
+      expect(host.querySelectorAll('tbody tr').length, name).toBe(2);
+      fixture.destroy();
+    }
+  });
+
+  // Mutation (Rule 19): delete the `destroyed` guard from the parked read -> this goes red, a tab that has gone
+  // reading again when the instance answers.
+  it('does not read again for a tab that has gone when the instance answers', async () => {
+    const ok = { kind: 'ok', status: 200, body: { fields: [], rows: ROWS, truncated: false, banner: '', bannerRequires: '' } } as const;
+    const { fixture, paths, connectivity } = mount((reads) =>
+      reads === 0 ? { kind: 'error', status: 0, code: null, reason: null, detail: null } : ok
+    );
     await settle(fixture);
-    expect(host.querySelector('[role="alert"]')?.textContent?.trim()).toBe(STRINGS.connectivityServerFault);
-    expect(host.querySelectorAll('tbody tr').length).toBe(0);
+    expect(paths.length).toBe(1);
+    fixture.destroy();
+    connectivity.note(null);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(paths.length, 'the parked read does not run for a departed tab').toBe(1);
   });
 });
