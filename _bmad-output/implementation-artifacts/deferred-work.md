@@ -12177,3 +12177,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-23-11-the-range-end-cleanup-part-10.md | severity: low | fix-risk: med | footprint: out-of-footprint
 - evidence: Run 12 (23.11 batch a): cancel at startedAt with a 1.5 s check phase read neither canceled nor within 3 s (12.18 s); CANCELTRIES 1 reds the same (runs 13, 703). Product reach needs a check phase over ~2 s (inference)
 - 2026-10-19T11:30:01Z status=wontfix-accepted owner=23-11-the-range-end-cleanup-part-10 by=adjudication note=reopen_if=a person reports a background SQL run that completed after Cancel, or Area/Explorer/SqlBackground Run is changed to start the port later
+
+### DW-2468: A guided workflow's step tools are not added to the turn's starting tool set, so on a screen without a step's tool the model reaches it through shell_tools_find
+- source: _bmad-output/implementation-artifacts/spec-20-12-the-agent-gains-guided-workflows-and-investigate.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: Loop.Scope marks the shell area's and the screen context's tools as the starting set and reads nothing from the workflow result; scripted turns call step tools by wire name, which dispatch does not scope
+- 2026-10-20T15:26:39Z status=open owner=20-12-the-agent-gains-guided-workflows-and-investigate by=harvest note=implement self-review deferral; adjudicate at 20.12's gate

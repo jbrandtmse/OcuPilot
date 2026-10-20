@@ -1005,3 +1005,6 @@
 2026-10-20T13:13:56Z	Epic 20	throwaway_rebuilt	run=20261020T0940Z-20,23 container=ocupilot-b-ci src=7b510226(code=bab8157f) reason=drop_20.11_compiled_classes smoke=50/50
 2026-10-20T13:35:28Z	Story 20.11	ci_resolved	story=20.11 sha=fc783169 runs=39426802603 result=success failed=none via=none resolved_at=next_implement note=set-aside_head
 2026-10-20T13:35:28Z	Story 20.12	stage_spawned	stage=implement spawn_at=2026-10-20T13:35:28Z model=sonnet agent_name=20-12-implement-1 cycle_iteration=1 story_base=7b510226
+2026-10-20T15:26:48Z	Story 20.12	dev_complete	spawn_at=2026-10-20T13:35:28Z model=sonnet agent_name=20-12-implement-1 build_sha=aea95053 baseline_revision=1a99c536 story_base=7b510226 review_loop_iteration=0 followup_review_recommended=false deferred=1(DW-2468) loc_added=2988 loc_removed=96 files=51 nfr_tripwires=0 adr_violations_surfaced=0 bundle_initial=1969kB self_review=2_layers_23_findings_0_high_0_med_5_low_patched cycle_iteration=1
+2026-10-20T15:26:48Z	Story 20.12	adr_verifications_complete	tool=none acs= result=none_required evidence= mutations=none model=claude-opus-5-5
+2026-10-20T15:27:31Z	Story 20.12	stage_spawned	stage=qa spawn_at=2026-10-20T15:27:31Z model=sonnet agent_name=20-12-qa-1 cycle_iteration=1
