@@ -12177,3 +12177,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-23-11-the-range-end-cleanup-part-10.md | severity: low | fix-risk: med | footprint: out-of-footprint
 - evidence: Run 12 (23.11 batch a): cancel at startedAt with a 1.5 s check phase read neither canceled nor within 3 s (12.18 s); CANCELTRIES 1 reds the same (runs 13, 703). Product reach needs a check phase over ~2 s (inference)
 - 2026-10-19T11:30:01Z status=wontfix-accepted owner=23-11-the-range-end-cleanup-part-10 by=adjudication note=reopen_if=a person reports a background SQL run that completed after Cancel, or Area/Explorer/SqlBackground Run is changed to start the port later
+
+### DW-2467: _bmad/custom/parallel.yaml:54 still says ui/browser.config.mjs defaults to ocupilot-ci; since 23.11 batch b the config has no default for either browser variable
+- source: spec-23-11-the-range-end-cleanup-part-10.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: browserConfig throws unless OCUPILOT_BROWSER_ORIGIN and OCUPILOT_BROWSER_CONTAINER are both set (ui/browser.config.mjs, pinned by ui/tools/browser-config.test.mjs at 7aceb0c1)
+- 2026-10-20T11:46:15Z status=decision-pending owner=burndown by=harvest note=human=the owner or orchestrator edits the parallel.yaml:54 comment (_bmad is owner_only under --unattended)
