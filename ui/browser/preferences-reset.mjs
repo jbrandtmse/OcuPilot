@@ -36,7 +36,9 @@
  * A spec that is **about** this state surviving (`preferences-integration`,
  * `ui-state-survives-sign-out`) arranges and clears its own rows and does not call this.
  *
- * Refuses the live container's origin, the way every write-driving spec here does.
+ * Refuses the live container's origin, the way every write-driving spec here does. The run's
+ * configuration is resolved on first use inside each exported function, never at import, so
+ * importing this file needs neither browser variable.
  */
 
 import assert from 'node:assert/strict';
@@ -48,8 +50,6 @@ const { PREFERENCE_KINDS } = await import(
   new URL('../src/app/core/account-preferences.ts', import.meta.url).href
 );
 
-const config = browserConfig();
-
 const PREFERENCES_PATH = '/api/ocupilot/account/preferences';
 
 const RESTRAINT_PATH = '/api/ocupilot/agent/restraint';
@@ -58,13 +58,14 @@ const GOVERNANCE_PATH = '/api/ocupilot/agent/governance';
 
 const SWITCHES_PATH = '/api/ocupilot/agent/switches';
 
-function authHeader() {
+function authHeader(config) {
   return 'Basic ' + Buffer.from(`${config.username}:${config.password}`).toString('base64');
 }
 
 /** What the instance holds for one shell member of the signing-in account, or `null` for none. */
 export async function rememberedShellMember(name) {
-  const answer = await fetch(`${config.origin}${PREFERENCES_PATH}`, { headers: { Authorization: authHeader() } });
+  const config = browserConfig();
+  const answer = await fetch(`${config.origin}${PREFERENCES_PATH}`, { headers: { Authorization: authHeader(config) } });
   const text = await answer.text();
   assert.equal(answer.status, 200, `the preferences read answers: ${text}`);
   const row = JSON.parse(text).shell.find((entry) => entry.name === name);
@@ -76,11 +77,12 @@ export async function rememberedShellMember(name) {
  * its read-only choice off unless `keepReadOnlyForYou` is set.
  */
 export async function resetRememberedState({ keepReadOnlyForYou = false } = {}) {
+  const config = browserConfig();
   assert.notEqual(config.container, LIVE_CONTAINER, 'this helper writes the account\'s preferences, so it never runs against the live container');
   for (const kind of PREFERENCE_KINDS) {
     const answer = await fetch(`${config.origin}${PREFERENCES_PATH}`, {
       method: 'POST',
-      headers: { Authorization: authHeader(), 'Content-Type': 'application/json' },
+      headers: { Authorization: authHeader(config), 'Content-Type': 'application/json' },
       body: JSON.stringify({ kind, action: 'clear' }),
     });
     assert.equal(answer.status, 200, `the ${kind} kind cleared: ${await answer.text()}`);
@@ -96,8 +98,9 @@ export async function resetRememberedState({ keepReadOnlyForYou = false } = {}) 
  * is left alone, so the reset writes nothing.
  */
 export async function resetTurnLimit() {
+  const config = browserConfig();
   assert.notEqual(config.container, LIVE_CONTAINER, 'this helper writes the instance\'s switches, so it never runs against the live container');
-  const read = await fetch(`${config.origin}${SWITCHES_PATH}`, { headers: { Authorization: authHeader() } });
+  const read = await fetch(`${config.origin}${SWITCHES_PATH}`, { headers: { Authorization: authHeader(config) } });
   const text = await read.text();
   assert.equal(read.status, 200, `the switches read: ${text}`);
   const switches = JSON.parse(text);
@@ -105,7 +108,7 @@ export async function resetTurnLimit() {
   const rowVersion = typeof switches.rowVersion === 'number' ? switches.rowVersion : 0;
   const answer = await fetch(`${config.origin}${SWITCHES_PATH}`, {
     method: 'PUT',
-    headers: { Authorization: authHeader(), 'Content-Type': 'application/json' },
+    headers: { Authorization: authHeader(config), 'Content-Type': 'application/json' },
     body: JSON.stringify({ turnsPerHour: 0, rowVersion }),
   });
   assert.equal(answer.status, 200, `the turns-an-hour limit was put back to none: ${await answer.text()}`);
@@ -113,7 +116,8 @@ export async function resetTurnLimit() {
 
 /** The stored governance policy's version: 0 while no policy is stored. */
 export async function governanceRowVersion() {
-  const read = await fetch(`${config.origin}${GOVERNANCE_PATH}`, { headers: { Authorization: authHeader() } });
+  const config = browserConfig();
+  const read = await fetch(`${config.origin}${GOVERNANCE_PATH}`, { headers: { Authorization: authHeader(config) } });
   const text = await read.text();
   assert.equal(read.status, 200, `the governance policy reads: ${text}`);
   const policy = JSON.parse(text);
@@ -126,8 +130,9 @@ export async function governanceRowVersion() {
  * default is left alone, so the reset adds no audit row and does not move the version.
  */
 export async function resetGovernancePolicy() {
+  const config = browserConfig();
   assert.notEqual(config.container, LIVE_CONTAINER, 'this helper writes the instance\'s governance policy, so it never runs against the live container');
-  const read = await fetch(`${config.origin}${GOVERNANCE_PATH}`, { headers: { Authorization: authHeader() } });
+  const read = await fetch(`${config.origin}${GOVERNANCE_PATH}`, { headers: { Authorization: authHeader(config) } });
   const text = await read.text();
   assert.equal(read.status, 200, `the governance policy reads: ${text}`);
   const policy = JSON.parse(text);
@@ -138,7 +143,7 @@ export async function resetGovernancePolicy() {
   const rowVersion = typeof policy.rowVersion === 'number' ? policy.rowVersion : 0;
   const answer = await fetch(`${config.origin}${GOVERNANCE_PATH}`, {
     method: 'PUT',
-    headers: { Authorization: authHeader(), 'Content-Type': 'application/json' },
+    headers: { Authorization: authHeader(config), 'Content-Type': 'application/json' },
     body: JSON.stringify({ preset: '', settings, rowVersion }),
   });
   assert.equal(answer.status, 200, `the governance policy was put back to the default: ${await answer.text()}`);
@@ -150,8 +155,9 @@ export async function resetGovernancePolicy() {
  * the default, so a spec calls this after it signs in.
  */
 export async function setGovernanceKey(key, setting) {
+  const config = browserConfig();
   assert.notEqual(config.container, LIVE_CONTAINER, 'this helper writes the instance\'s governance policy, so it never runs against the live container');
-  const read = await fetch(`${config.origin}${GOVERNANCE_PATH}`, { headers: { Authorization: authHeader() } });
+  const read = await fetch(`${config.origin}${GOVERNANCE_PATH}`, { headers: { Authorization: authHeader(config) } });
   const text = await read.text();
   assert.equal(read.status, 200, `the governance policy reads: ${text}`);
   const policy = JSON.parse(text);
@@ -163,7 +169,7 @@ export async function setGovernanceKey(key, setting) {
   const rowVersion = typeof policy.rowVersion === 'number' ? policy.rowVersion : 0;
   const answer = await fetch(`${config.origin}${GOVERNANCE_PATH}`, {
     method: 'PUT',
-    headers: { Authorization: authHeader(), 'Content-Type': 'application/json' },
+    headers: { Authorization: authHeader(config), 'Content-Type': 'application/json' },
     body: JSON.stringify({ preset: policy.preset ?? '', settings, rowVersion }),
   });
   assert.equal(answer.status, 200, `the key ${key} was stored as ${setting}: ${await answer.text()}`);
@@ -171,10 +177,11 @@ export async function setGovernanceKey(key, setting) {
 
 /** Turn the signing-in account's own read-only choice off (Story 14.5), asserting the answer. */
 export async function resetReadOnlyForYou() {
+  const config = browserConfig();
   assert.notEqual(config.container, LIVE_CONTAINER, 'this helper writes the account\'s read-only choice, so it never runs against the live container');
   const answer = await fetch(`${config.origin}${RESTRAINT_PATH}`, {
     method: 'PUT',
-    headers: { Authorization: authHeader(), 'Content-Type': 'application/json' },
+    headers: { Authorization: authHeader(config), 'Content-Type': 'application/json' },
     body: JSON.stringify({ readOnly: false }),
   });
   assert.equal(answer.status, 200, `the read-only choice was turned off: ${await answer.text()}`);

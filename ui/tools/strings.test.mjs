@@ -34,6 +34,8 @@ const experienceMdRaw = readFileSync(experienceMdPath, 'utf8');
 
 const stringsValues = loadStrings(stringsTsRaw);
 
+const { orderedAreas } = await import(join(here, '..', 'src', 'app', 'core', 'navigation.ts'));
+
 /**
  * Re-derives the canonical rows from EXPERIENCE.md's Fixed strings table: each row's
  * literals are every double-quoted span in its *String* column -- exactly the rule the
@@ -452,22 +454,18 @@ test('no literal extracted from prose is also a Fixed strings literal', () => {
   assert.deepEqual(overlap, [], `already a Fixed strings literal: ${JSON.stringify(overlap)}`);
 });
 
-test("the table's area-names row lists the eleven navArea keys' values, in rail order", () => {
+test("the table's area-names row lists the navArea keys' values, in rail order", () => {
   const rows = fixedStringsRows.filter((row) => row.where.startsWith('area names'));
   assert.equal(rows.length, 1, 'the Fixed strings table carries one area-names row');
-  assert.deepEqual(rows[0].literals, [
-    stringsValues.navAreaHome,
-    stringsValues.navAreaLogs,
-    stringsValues.navAreaOsManagement,
-    stringsValues.navAreaTasks,
-    stringsValues.navAreaPermissions,
-    stringsValues.navAreaWebApplications,
-    stringsValues.navAreaSecurity,
-    stringsValues.navAreaSystemExplorer,
-    stringsValues.navAreaInteroperability,
-    stringsValues.navAreaAnalytics,
-    stringsValues.navAreaAgent,
-  ]);
+  const areas = orderedAreas();
+  assert.ok(areas.length >= 1, 'the mirror declares areas, so the comparison is not of two empty lists');
+  assert.deepEqual(
+    rows[0].literals,
+    areas.map((area) => {
+      assert.ok(area.labelKey in stringsValues, `area ${area.key} names a string key that does not exist`);
+      return stringsValues[area.labelKey];
+    })
+  );
 });
 
 test("EXPERIENCE.md's Fixed strings table itself holds roughly 200 distinct literals -- a sanity check on the extractor before trusting it", () => {

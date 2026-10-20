@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import { AgentStatus } from '../core/agent-status';
 import type { ApiService } from '../core/api';
-import { NavigationService } from '../core/navigation';
+import { NavigationService, listedScreensForArea } from '../core/navigation';
 import { OverlayStack } from '../core/overlay-stack';
 import { PanelState } from '../core/panel-layout';
 import { ShellState } from '../core/shell-state';
@@ -86,6 +86,13 @@ const OPERATOR_MAP = {
   ],
 };
 
+/** One screen of the map above, as the instance answers it. */
+interface MapScreen {
+  readonly route: string;
+  readonly allowed: boolean;
+  readonly failedPair?: string;
+}
+
 describe('an area opens when any screen it lists is allowed (AD-8, DW-1768)', () => {
   let rail: ComponentFixture<Rail>;
   let sideBar: ComponentFixture<SideBar>;
@@ -99,6 +106,23 @@ describe('an area opens when any screen it lists is allowed (AD-8, DW-1768)', ()
       gated: item.getAttribute('aria-disabled'),
       reason: item.querySelector('.ocu-side-bar-reason')?.textContent?.trim() ?? '',
     }));
+
+  /**
+   * The entries the side bar draws for `areaKey`: one per screen the area lists, in side-bar order,
+   * each gated and naming its pair when the map refuses it. A listed screen the map does not name
+   * is open, as `NavigationService.screenVerdict` answers it.
+   */
+  const expectedEntries = (areaKey: string) => {
+    const mapped = OPERATOR_MAP.areas.flatMap((area) => area.screens as readonly MapScreen[]);
+    const entries = listedScreensForArea(areaKey).map((listed) => {
+      const verdict = mapped.find((screen) => screen.route === listed.route);
+      return verdict === undefined || verdict.allowed
+        ? { gated: null, reason: '' }
+        : { gated: 'true', reason: `Requires ${verdict.failedPair}` };
+    });
+    expect(entries.length, `${areaKey} lists screens`).toBeGreaterThan(0);
+    return entries;
+  };
 
   beforeEach(async () => {
     const api = { requestJson: async () => ({ kind: 'ok' as const, status: 200, body: OPERATOR_MAP }) };
@@ -135,64 +159,19 @@ describe('an area opens when any screen it lists is allowed (AD-8, DW-1768)', ()
   });
 
   it('a rail click on Logs and on OS management opens a side bar listing every screen, the unavailable ones naming their pair', () => {
-    const requires = (pair: string) => `Requires ${pair}`;
     railItem(STRINGS.navAreaLogs).click();
     rail.detectChanges();
     sideBar.detectChanges();
     expect(shell.visibleArea()).toBe('logs');
-    const open = { gated: null, reason: '' };
-    expect(sideBarEntries()).toEqual([
-      open,
-      open,
-      open,
-      { gated: 'true', reason: requires('%Admin_Secure:USE') },
-      open,
-      open,
-      open,
-      open,
-      { gated: 'true', reason: requires('%Ens_EventLog:USE') },
-      open,
-      open,
-    ]);
+    expect(sideBarEntries()).toEqual(expectedEntries('logs'));
+    expect(sideBarEntries().some((entry) => entry.gated === 'true')).toBe(true);
 
     railItem(STRINGS.navAreaOsManagement).click();
     rail.detectChanges();
     sideBar.detectChanges();
     expect(shell.visibleArea()).toBe('os-management');
-    const manage = { gated: 'true', reason: requires('%Admin_Manage:USE') };
-    expect(sideBarEntries()).toEqual([
-      manage,
-      open,
-      open,
-      manage,
-      open,
-      manage,
-      manage,
-      open,
-      open,
-      { gated: 'true', reason: requires('%Admin_ExternalLanguageServerEdit:USE') },
-      manage,
-      // Story 18.16: Remote databases, the twelfth entry.
-      manage,
-      // Story 18.5: Journals, the thirteenth.
-      open,
-      // Story 18.18: Journal settings, the fourteenth.
-      manage,
-      // Story 18.6: License key and License servers, the fifteenth and sixteenth.
-      manage,
-      manage,
-      // Story 18.20: ECP data servers, the seventeenth.
-      manage,
-      // Story 18.21: ECP settings and ECP application servers, the eighteenth and nineteenth.
-      manage,
-      manage,
-      // Story 19.10: SQL activity, the twentieth, open on Operate and the system database's read.
-      open,
-      // Story 18.11: Prometheus metrics, the twenty-first, open on the same two pairs.
-      open,
-      // Story 18.37: Interoperability usage, the twenty-second, open on the same two pairs.
-      open,
-    ]);
+    expect(sideBarEntries()).toEqual(expectedEntries('os-management'));
+    expect(sideBarEntries().some((entry) => entry.gated === 'true')).toBe(true);
   });
 });
 

@@ -1644,8 +1644,8 @@ test("the throwaway's port and name are one fact, not six declarations of one", 
   assert.ok(browserOrigin, "the browser step sets OCUPILOT_BROWSER_ORIGIN -- the one setting runCommands() cannot see");
   assert.equal(browserOrigin[1], `http://localhost:${browserPort[1]}`, "the browser step drives its own throwaway's port");
 
-  // Both variables or neither: browser.config.mjs carries its own container default, so a step
-  // that overrides only the origin execs into the OTHER throwaway's container (2026-09-16).
+  // Both variables, always: browser.config.mjs has no default for either, so a step that set only
+  // the origin is refused rather than exec'ing into the OTHER throwaway's container (2026-09-16).
   const browserContainer = /OCUPILOT_BROWSER_CONTAINER:\s*(\S+)/.exec(workflow);
   assert.ok(browserContainer, 'the browser step sets OCUPILOT_BROWSER_CONTAINER beside the origin');
   assert.equal(browserContainer[1], browserProject[1], "and it names its own throwaway, whose container_name follows --project");

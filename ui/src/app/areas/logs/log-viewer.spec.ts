@@ -13,6 +13,7 @@ import { SCREENS } from '../../core/screens.generated';
 import { STRINGS } from '../../core/strings';
 import { stubAccountPreferences } from '../../testing/account-preferences';
 import { explainContext, narrowedEntry, stubExplainEntry, type ExplainEntryState } from '../../testing/explain-entry';
+import { activeRealTimers, awaitRealTimersIdle } from '../../testing/real-timers';
 import { fileOptionText } from './log-line';
 import { LogViewerPage } from './log-viewer.page';
 import { LogViewerStore, MESSAGES_SOURCE } from './log-viewer.store';
@@ -342,39 +343,17 @@ describe('LogViewerPage', () => {
   });
 
   it('AC6: with Live tail off, nothing streams -- ten minutes of fake time issues no request, draws a toggle only where a source opts in, and no timer outlives a bounded drain', async () => {
-    // The clock is faked and restored in this test; `vi.getTimerCount()` is what makes "registers no
-    // interval" an observation rather than an absence of evidence, and it needs no spy on a global
-    // the fake clock has already replaced.
+    // `vi.getTimerCount()` makes "registers no interval" an observation. Neither the advance nor a
+    // drain pass yields to the real event loop -- `advanceTimersByTime` and `runOnlyPendingTimers` are
+    // synchronous and `settle()` turns microtasks only -- so a real timer another test left pending
+    // cannot fire and arm the fake clock while this test counts. `awaitRealTimersIdle()` runs before
+    // the clock is faked. An interval, or a poll that re-arms itself, survives every drain pass and
+    // fails the count; its message counts the fake timers pending and the real `Timeout`s active, at
+    // the count and when the clock was faked.
+    await awaitRealTimersIdle();
+    const realAtFake = activeRealTimers();
     // jsdom supplies both constructors, so "opens no EventSource and no WebSocket" is counted at
-    // construction rather than asserted as their absence -- which would pass on any page.
-    //
-    // The timer count is taken after a bounded wait and a bounded drain, and neither is asserted.
-    // `advanceTimersByTimeAsync` yields to the real event loop between its steps, so a real timer an
-    // earlier test left pending -- in this file, or in another one, since Angular's vitest runner
-    // defaults to `isolate: false` and spec files share a worker -- can fire inside this test and arm
-    // a timer on its fake clock (inference). The wait lets such a timer fire before the fake clock
-    // exists, so it ends once no real `Timeout` is active or after 50 polls of 20 ms; it is a copy of
-    // `home.page.spec.ts`'s. The test therefore needs no leftover real timer that re-arms itself, or
-    // that comes due after the wait and before this test ends: either still reaches the fake clock.
-    // `vi.clearAllTimers()` clears only the fake clock, which
-    // `vi.useFakeTimers()` has just installed empty; a real timer is out of its reach. Each drain pass
-    // (at most DRAIN_PASSES `vi.runOnlyPendingTimersAsync()` calls) runs to the last timer pending
-    // when it starts, so a one-shot chain up to that many links deep drains however far out it
-    // reaches, and the request and Live-tail assertions are repeated after it so a drained timer that
-    // issues a request is still counted. An interval, or a poll that re-arms itself, survives every
-    // pass, so the count still fails on it; its message counts the fake timers pending and the real
-    // `Timeout`s active, at the count and when the clock was faked.
-    //
-    // Story 18.38: alerts.log and messages.log on their current files opt into the live tail and
-    // draw the toggle, off. Every other log -- a rotated messages.log file, the six secondary logs,
-    // the Integrity log and a language server's Activity log -- is derived from the mirror, draws
-    // no toggle and requests no tail.
-    const realTimers = () =>
-      (process as unknown as { getActiveResourcesInfo(): string[] }).getActiveResourcesInfo().filter((resource) => resource === 'Timeout').length;
-    for (let attempt = 0; attempt < 50 && realTimers() > 0; attempt += 1) {
-      await new Promise((resolve) => setTimeout(resolve, 20));
-    }
-    const realAtFake = realTimers();
+    // construction rather than asserted as their absence, which would pass on any page.
     const globals = globalThis as { EventSource?: unknown; WebSocket?: unknown };
     const heldSource = globals.EventSource;
     const heldSocket = globals.WebSocket;
@@ -385,6 +364,10 @@ describe('LogViewerPage', () => {
     globals.WebSocket = function WebSocketProbe() {
       opened += 1;
     };
+    // Story 18.38: alerts.log and messages.log on their current files opt into the live tail and draw
+    // the toggle, off. Every other log -- a rotated messages.log file, the six secondary logs, the
+    // Integrity log and a language server's Activity log -- is derived from the mirror, draws no toggle
+    // and requests no tail.
     const others = SCREENS.filter((screen) => screen.archetype === 'log-viewer' && screen.built && screen.route !== 'logs/alerts' && screen.route !== 'logs/messages');
     expect(others.length).toBeGreaterThan(7);
     const cases = [
@@ -393,6 +376,7 @@ describe('LogViewerPage', () => {
       { screen: MESSAGES_SCREEN, address: '/logs/messages?ns=HSCUSTOM&file=messages.old_20260926_5', offers: false },
       ...others.map((screen) => ({ screen, address: '', offers: false })),
     ];
+    // A one-shot chain up to this many links deep drains; the request assertions repeat after it.
     const DRAIN_PASSES = 5;
     vi.useFakeTimers();
     try {
@@ -407,7 +391,8 @@ describe('LogViewerPage', () => {
         const issued = api.paths.length;
         expect(issued, named).toBeGreaterThan(0);
 
-        await vi.advanceTimersByTimeAsync(10 * 60 * 1000);
+        vi.advanceTimersByTime(10 * 60 * 1000);
+        await settle();
         fixture.detectChanges();
 
         expect(api.paths.length, named).toBe(issued);
@@ -415,10 +400,13 @@ describe('LogViewerPage', () => {
         const toggle = fixture.nativeElement.querySelector('[data-ocu-log="live"]') as HTMLButtonElement | null;
         expect(toggle !== null, `${named}: the toggle is drawn only where a source opts in`).toBe(offers);
         if (toggle !== null) expect(toggle.getAttribute('aria-pressed'), named).toBe('false');
-        for (let pass = 0; pass < DRAIN_PASSES && vi.getTimerCount() > 0; pass += 1) await vi.runOnlyPendingTimersAsync();
+        for (let pass = 0; pass < DRAIN_PASSES && vi.getTimerCount() > 0; pass += 1) {
+          vi.runOnlyPendingTimers();
+          await settle();
+        }
         expect(api.paths.length, named).toBe(issued);
         expect(api.liveAsked, named).toEqual([]);
-        expect(vi.getTimerCount(), `${named}: ${vi.getTimerCount()} fake timers pending, ${realTimers()} real timers active, ${realAtFake} when the clock was faked`).toBe(0);
+        expect(vi.getTimerCount(), `${named}: ${vi.getTimerCount()} fake timers pending, ${activeRealTimers()} real timers active, ${realAtFake} when the clock was faked`).toBe(0);
         expect(opened, named).toBe(0);
       }
     } finally {

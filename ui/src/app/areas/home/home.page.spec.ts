@@ -33,6 +33,7 @@ import { FixFinding } from '../../core/fix-finding';
 import { KILL_SWITCH_ID } from '../../core/explain-entry';
 import { cleanFindingsBody, stubFindings, stubFixFinding, type StubbedFindings } from '../../testing/findings';
 import type { ExplainEntryState } from '../../testing/explain-entry';
+import { awaitRealTimersIdle } from '../../testing/real-timers';
 import { FINDINGS_CHANGE_TYPES } from './home.page';
 import {
   homeRefresh,
@@ -116,8 +117,11 @@ function screen(route: string, labelKey: string, area: string, position: number)
 const PROCESSES = screen('os-management/processes', 'navAreaOsManagement', 'os-management', 1);
 const LOCKS = screen('os-management/locks', 'navAreaTasks', 'os-management', 2);
 
-/** The shipped mirror: the nine tiles and the two absences are the declaration's, not a stub's. */
+/** The shipped mirror: the tiles and the two absences are the declaration's, not a stub's. */
 const REAL_AREAS = orderedAreas();
+
+/** The areas that draw a tile: not Home, the surface the tiles sit on, and not the pinned Agent co-pilot. */
+const TILE_AREAS = REAL_AREAS.filter((area) => !area.navigates && !area.pinBottom);
 
 class StubNavigation {
   readonly areaVerdicts = new Map<string, Verdict>();
@@ -407,18 +411,9 @@ describe('Home', () => {
   });
 
   it('renders one tile per area in rail order, with Home and Agent co-pilot absent', () => {
-    expect(tiles()).toHaveLength(9);
-    expect(tileNames()).toEqual([
-      STRINGS.navAreaLogs,
-      STRINGS.navAreaOsManagement,
-      STRINGS.navAreaTasks,
-      STRINGS.navAreaPermissions,
-      STRINGS.navAreaWebApplications,
-      STRINGS.navAreaSecurity,
-      STRINGS.navAreaSystemExplorer,
-      STRINGS.navAreaInteroperability,
-      STRINGS.navAreaAnalytics,
-    ]);
+    expect(TILE_AREAS.length).toBeGreaterThan(0);
+    expect(tiles()).toHaveLength(TILE_AREAS.length);
+    expect(tileNames()).toEqual(TILE_AREAS.map((area) => STRINGS[area.labelKey as keyof typeof STRINGS]));
     // Home is the surface the tiles sit on and Agent co-pilot is reached from the rail, so
     // neither gets one (EXPERIENCE.md "One tile per applying area in daily-use order") -- and neither name appears anywhere on the page.
     expect(tileNames()).not.toContain(STRINGS.navAreaHome);
@@ -431,17 +426,16 @@ describe('Home', () => {
     expect(REAL_AREAS.filter((area) => area.pinBottom).map((area) => area.key)).toEqual(['agent']);
   });
 
-  it('the grid is a list of nine items, so the set has size and boundaries announced', () => {
+  it('the grid is a list with one item per tile, so the set has size and boundaries announced', () => {
     const grid = fixture.nativeElement.querySelector('.ocu-area-tile-grid');
     expect(grid.getAttribute('role')).toBe('list');
-    expect(grid.querySelectorAll('[role="listitem"]')).toHaveLength(9);
+    expect(grid.querySelectorAll('[role="listitem"]')).toHaveLength(TILE_AREAS.length);
   });
 
   it("each tile's aria-hidden icon slot holds its area's 24x24 drawing and adds nothing to its name (Story 15.7)", () => {
-    const tileAreas = REAL_AREAS.filter((area) => !area.navigates && !area.pinBottom);
-    expect(tiles()).toHaveLength(tileAreas.length);
+    expect(tiles()).toHaveLength(TILE_AREAS.length);
     for (const [index, tile] of tiles().entries()) {
-      const key = tileAreas[index].key;
+      const key = TILE_AREAS[index].key;
       const icon = tile.querySelector('.ocu-area-tile-icon');
       expect(icon).not.toBeNull();
       expect(icon?.getAttribute('aria-hidden')).toBe('true');
@@ -656,8 +650,10 @@ describe('Home', () => {
     navigation.notify();
     fixture.detectChanges();
 
-    const security = tiles()[5];
-    expect(tileNames()[5]).toBe(STRINGS.navAreaSecurity);
+    const securityIndex = TILE_AREAS.findIndex((area) => area.key === 'security');
+    expect(securityIndex).toBeGreaterThanOrEqual(0);
+    const security = tiles()[securityIndex];
+    expect(tileNames()[securityIndex]).toBe(STRINGS.navAreaSecurity);
     expect(security.getAttribute('aria-disabled')).toBeNull();
     security.click();
     await fixture.whenStable();
@@ -1373,13 +1369,7 @@ describe('Home', () => {
     // remaining yield, the `advanceTimersByTimeAsync(0)` settle. So the drain is best-effort and
     // is deliberately not asserted on: a real timer still pending is the environment's business,
     // and failing here for it would report an earlier row's leak as this component's defect.
-    const pendingRealTimers = () =>
-      (process as unknown as { getActiveResourcesInfo(): string[] })
-        .getActiveResourcesInfo()
-        .filter((resource) => resource === 'Timeout').length;
-    for (let attempt = 0; attempt < 50 && pendingRealTimers() > 0; attempt += 1) {
-      await new Promise((resolve) => setTimeout(resolve, 20));
-    }
+    await awaitRealTimersIdle();
     vi.useFakeTimers();
     let second: ReturnType<typeof TestBed.createComponent<HomePage>> | null = null;
     try {
@@ -1548,7 +1538,7 @@ describe('Home', () => {
     expect(refresh.fault()).toBeNull();
     expect(stores.for(HOME_DESCRIPTOR, []).data()).toEqual([]);
     // The rest of Home is as it was.
-    expect(tiles()).toHaveLength(9);
+    expect(tiles()).toHaveLength(TILE_AREAS.length);
     expect(fixedBlocks().length).toBeGreaterThan(0);
   });
 
