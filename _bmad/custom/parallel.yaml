@@ -51,7 +51,7 @@ slots:
       web: 52776
       super: 1975
       browser_origin: http://localhost:52776
-      browser_container: ocupilot-ci        # OCUPILOT_BROWSER_CONTAINER for npm run test:browser (ui/browser.config.mjs defaults to ocupilot-ci)
+      browser_container: ocupilot-ci        # OCUPILOT_BROWSER_CONTAINER for npm run test:browser; ui/browser.config.mjs refuses to start unless it and browser_origin are both set
   - name: b
     mcp_profile: ocupilot-slot-b          # ../OcuPilot-slot-b/compose.yml, owner-managed
     dev_container: ocupilot-slot-b
@@ -64,7 +64,7 @@ slots:
       web: 52777
       super: 1976
       browser_origin: http://localhost:52777
-      browser_container: ocupilot-b-ci      # OCUPILOT_BROWSER_CONTAINER -- without it a slot B browser run execs into slot A's throwaway (2026-09-16)
+      browser_container: ocupilot-b-ci      # OCUPILOT_BROWSER_CONTAINER for npm run test:browser; ui/browser.config.mjs refuses to start unless it and browser_origin are both set
   - name: c                             # RETIRED 2026-09-20 (rate limits); never a holder while max_parallel_epics is 2
     mcp_profile: ocupilot-slot-c          # ../OcuPilot-slot-c/compose.yml, owner-managed (added 2026-09-19)
     dev_container: ocupilot-slot-c

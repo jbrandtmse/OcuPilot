@@ -102,7 +102,7 @@ The MCP-server rule above and the container detail below this block are the oper
 
 - Read
   `_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md`
-  in full before writing code — all 65 ADs, not the ones that look relevant. It is a contract:
+  in full before writing code — all 66 ADs, not the ones that look relevant. It is a contract:
   change an AD there rather than working around it in a slice. Read it once and keep it: re-read
   only a region that changed since (Rule 26 in `_bmad/custom/skill-rules.md`).
 - Epics and stories: `_bmad-output/planning-artifacts/epics.md` (22 epics). PRD, UX and research sit
@@ -126,8 +126,9 @@ The MCP-server rule above and the container detail below this block are the oper
 - Build and test the client from `ui/`: `npm run build` (its `prebuild` chains seven checkers —
   version guard, `client-lint.mjs`, `screen-mirror.mjs --check`, `classic-links.mjs`,
   `ipm-manifest.mjs --check`, `field-lists.mjs --check`, `browser-reset.mjs`) and `npm test`
-  (`node --test tools/*.test.mjs` then the Angular component runner on vitest+jsdom). `npm run test:browser` drives a pinned headless Chrome — jsdom
-  computes no layout, so anything about geometry belongs there. The spine pins Angular 22.1.x,
+  (`node --test tools/*.test.mjs` then the Angular component runner on vitest+jsdom). `npm run test:browser` drives a pinned headless Chrome
+  against the throwaway that `OCUPILOT_BROWSER_ORIGIN` and `OCUPILOT_BROWSER_CONTAINER` name, and refuses
+  to start unless both are set — jsdom computes no layout, so anything about geometry belongs there. The spine pins Angular 22.1.x,
   TypeScript 6.0.x exactly, and Node `^22.22.3 || ^24.15.0 || ^26.0.0`; Node 20 and TypeScript 5.9
   or 7 are refused by the toolchain.
 - Check ObjectScript with `uv run scripts/check-objectscript.py` (21 rules; the `.githooks/pre-commit`
