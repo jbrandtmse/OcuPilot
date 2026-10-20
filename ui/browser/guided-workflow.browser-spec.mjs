@@ -5,8 +5,9 @@
  * and the scripted save mints one card; Continue waits, `aria-disabled` and naming why, while that card is live; Confirm
  * saves the class; Continue then sends "Continue the guided workflow." and the second turn's first request reads the
  * first proposal as `confirmed` in `previous`; its scripted save mints a second card, confirmed on its own, so no
- * control ever confirms two cards. The chip with a live card passes the DW-1337 invariants in light and dark at both
- * widths; End workflow and New conversation remove the chip.
+ * control ever confirms two cards. The chip with a live card passes the DW-1337 invariants `cardViolations` measures
+ * (light at both widths, dark at the wide one); End workflow and New conversation remove the chip, a typed message
+ * while the chip shows carries the workflow, and the first message after either names none.
  *
  * The probe is a class `OcuProbe2012.BrowserFlow` in `USER`, written and removed by this file. `before` puts the
  * governance policy back to its default, so the save's key reads enabled; `after` removes its proposals and the class
@@ -156,6 +157,14 @@ async function choosePrompt(page, text) {
   }, text);
 }
 
+/** Type `text` into the composer, send it, and wait until the panel shows the scripted reply `reply`. */
+async function sendTyped(page, text, reply) {
+  await page.waitForFunction(() => !document.querySelector('#ocu-panel-composer').hasAttribute('aria-disabled'), { timeout: config.navigationTimeoutMs });
+  await page.type('#ocu-panel-composer', text);
+  await page.click('.ocu-panel-send');
+  await page.waitForFunction((wanted) => document.querySelector('app-panel')?.textContent.includes(wanted), { timeout: config.navigationTimeoutMs }, reply);
+}
+
 /** The chip's facts: its label, its text and Continue's wiring, or `null` when it is not drawn. */
 function readChip(page) {
   return page.evaluate(() => {
@@ -188,6 +197,7 @@ test('a workflow runs as a sequence of confirmations: two turns, two cards, each
   scriptReply(tag, `##class(OcuPilot.Test.TurnProvider).TextReply("first")`);
   scriptReply(tag, saveReply('toolu_two', '    Quit 2', '    Quit 3'));
   scriptReply(tag, `##class(OcuPilot.Test.TurnProvider).TextReply("second")`);
+  scriptReply(tag, `##class(OcuPilot.Test.TurnProvider).TextReply("AFTERENDREPLY")`);
   const { context, page } = await signedInAt(browser, config, CLASSES_URL);
   try {
     assert.equal(await readChip(page), null, 'no chip before a workflow starts');
@@ -201,17 +211,15 @@ test('a workflow runs as a sequence of confirmations: two turns, two cards, each
     assert.equal(chip?.endText, STRINGS.agentWorkflowEnd);
     assert.equal(workflowSummary(tag, 1), 'compileclass|1|0||', 'the first request holds the compileclass result, its steps naming the save, with no previous');
 
-    assert.equal(chip?.disabled, 'true', 'Continue is aria-disabled while the card is live');
-    assert.equal(chip?.nativelyDisabled, false, 'never natively disabled');
-    assert.ok(typeof chip?.reason === 'string' && chip.reason !== '', 'and names its reason');
-    await page.waitForFunction(
-      (id, sentence) => document.getElementById(id)?.textContent.trim() === sentence,
-      { timeout: config.navigationTimeoutMs },
-      WAIT_ID,
-      STRINGS.agentWorkflowContinueWait
-    );
+    // The turn has ended (the composer is available again), so only the live card can be holding Continue.
+    await page.waitForFunction(() => !document.querySelector('#ocu-panel-composer').hasAttribute('aria-disabled'), { timeout: config.navigationTimeoutMs });
+    const waiting = await readChip(page);
+    assert.equal(waiting?.disabled, 'true', 'Continue is aria-disabled while the card is live');
+    assert.equal(waiting?.nativelyDisabled, false, 'never natively disabled');
+    assert.equal(waiting?.reasonId, WAIT_ID, 'and is described by the live-card reason');
+    assert.equal(waiting?.reason, STRINGS.agentWorkflowContinueWait, 'which names it');
     assert.equal(await page.$$eval('app-proposal-card .ocu-proposal-card-confirm', (nodes) => nodes.length), 1, 'one card, one Confirm');
-    assert.deepEqual(await cardViolations(page, ROUTE, config.navigationTimeoutMs), [], 'the chip beside the live card adds no structural violation in light or dark, at either width');
+    assert.deepEqual(await cardViolations(page, ROUTE, config.navigationTimeoutMs), [], 'the chip beside the live card adds no structural violation cardViolations measures');
 
     await page.click('.ocu-proposal-card-confirm');
     await page.waitForSelector('app-proposal-card .ocu-proposal-card-status', { timeout: config.navigationTimeoutMs });
@@ -239,6 +247,8 @@ test('a workflow runs as a sequence of confirmations: two turns, two cards, each
     await page.click('.ocu-workflow-chip-end');
     await page.waitForFunction(() => document.querySelector('[data-ocu-workflow-chip]') === null, { timeout: config.navigationTimeoutMs });
     assert.equal(await page.evaluate(() => document.activeElement?.id), 'ocu-panel-composer', 'End workflow removes the chip and focuses the composer');
+    await sendTyped(page, 'a plain message', 'AFTERENDREPLY');
+    assert.equal(workflowSummary(tag, 5), 'none', 'the first request after End workflow holds no workflow result');
   } finally {
     await context.close();
     forgetTag(tag);
@@ -247,11 +257,14 @@ test('a workflow runs as a sequence of confirmations: two turns, two cards, each
 });
 
 test('New conversation removes the chip of a workflow that proposes nothing', async () => {
-  // Mutation (Rule 19): `newConversation` keeps the workflow -> the chip assertion goes red.
+  // Mutation (Rule 19): `newConversation` keeps the workflow -> the chip assertion goes red; a store that sends the
+  // workflow it last carried after the chip is gone -> the `none` assertions go red (the bundle rebuilt and redeployed first).
   await requireFreeSlot(config);
   const tag = nextTag();
   setTag(tag);
   scriptReply(tag, `##class(OcuPilot.Test.TurnProvider).TextReply("reviewed")`);
+  scriptReply(tag, `##class(OcuPilot.Test.TurnProvider).TextReply("TYPEDREPLY")`);
+  scriptReply(tag, `##class(OcuPilot.Test.TurnProvider).TextReply("FRESHREPLY")`);
   const { context, page } = await signedInAt(browser, config, CLASSES_URL);
   try {
     await choosePrompt(page, STRINGS.explorerClassListWorkflowReview);
@@ -262,9 +275,15 @@ test('New conversation removes the chip of a workflow that proposes nothing', as
     assert.equal(chip?.name, STRINGS.explorerClassListWorkflowReview);
     assert.equal(chip?.disabled, null, 'Continue is available once the turn has ended with nothing to decide');
 
+    await sendTyped(page, 'and what else?', 'TYPEDREPLY');
+    assert.equal(workflowSummary(tag, 2), 'reviewclass|0|0||', 'a typed message while the chip shows carries the workflow to the instance');
+    assert.notEqual(await readChip(page), null, 'and the chip stays');
+
     await page.click(`button[aria-label="${STRINGS.actionNewConversation}"]`);
     await page.waitForFunction(() => document.querySelector('[data-ocu-workflow-chip]') === null, { timeout: config.navigationTimeoutMs });
     assert.equal(await readChip(page), null, 'a new conversation ends the workflow');
+    await sendTyped(page, 'a fresh start', 'FRESHREPLY');
+    assert.equal(workflowSummary(tag, 3), 'none', 'the first request of the new conversation holds no workflow result');
   } finally {
     await context.close();
     forgetTag(tag);

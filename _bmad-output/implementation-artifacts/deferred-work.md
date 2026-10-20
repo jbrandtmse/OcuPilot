@@ -12182,3 +12182,9 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: _bmad-output/implementation-artifacts/spec-20-12-the-agent-gains-guided-workflows-and-investigate.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: Loop.Scope marks the shell area's and the screen context's tools as the starting set and reads nothing from the workflow result; scripted turns call step tools by wire name, which dispatch does not scope
 - 2026-10-20T15:26:39Z status=open owner=20-12-the-agent-gains-guided-workflows-and-investigate by=harvest note=implement self-review deferral; adjudicate at 20.12's gate
+- 2026-10-20T19:55:32Z status=routed owner=20-36-investigate by=adjudication note=not covered by 20.12; a step tool off the screen costs one shell_tools_find search; Investigate starts workflows anywhere
+
+### DW-2469: A workflow turn's previous reports the conversation's newest earlier turn whatever workflow it ran, so a workflow started mid-conversation reads unrelated proposals as its own earlier steps
+- source: spec-20-12-the-agent-gains-guided-workflows-and-investigate.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: Loop.WorkflowResult takes the newest Entry.GuardedTurnKeys turn and never reads that turn's Turn.Workflow; unreachable in 20.12 (workflow prompts render only in an empty conversation's greeting), reachable once 20.36's Investigate starts a workflow beside Explain mid-conversation
+- 2026-10-20T19:52:55Z status=routed owner=20-36-investigate by=cr note=theoretical in 20.12; guard: report previous only when the turn before ran the same workflow

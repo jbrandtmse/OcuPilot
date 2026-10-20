@@ -45,7 +45,7 @@ Method TestTheThreeDeclarationsRegister()
         Do $$$AssertEquals(tDeclaration.emptyStateKey, $Piece(tRow, "|", 11), tClass _ ": its empty sentence")
         ; The search also offers the resend and trace guided workflows after its three own prompts (Story 20.12).
         Set tPromptCount = $Select($Piece(tRow, "|", 1) = "InteropMessageList": 5, 1: 3)
-        Do $$$AssertEquals(tDeclaration.suggestedPrompts.%Size(), tPromptCount, tClass _ ": its suggested prompts, at least three")
+        Do $$$AssertEquals(tDeclaration.suggestedPrompts.%Size(), tPromptCount, tClass _ ": its suggested prompts")
         For tJ = 1:1:3 {
             Set tPrompt = tDeclaration.suggestedPrompts.%Get(tJ - 1)
             Do $$$AssertEquals($Select($IsObject(tPrompt): tPrompt.groupKey _ "|" _ tPrompt.textKey, 1: ""), "promptGroupTroubleshooting|" _ $Piece(tRow, "|", 12) _ tJ, tClass _ ": prompt " _ tJ _ " is its own")

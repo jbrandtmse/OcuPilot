@@ -152,7 +152,7 @@ Method TestTheFourDeclarationsRegister()
         Do $$$AssertEquals(tDeclaration.read.source.port _ "|" _ tDeclaration.read.source.endpoint _ "|" _ tDeclaration.read.source.type, "interop|" _ $Piece(tRow, "|", 5) _ "|LIST", tClass _ ": read through the interop port")
         ; Productions also offers the recover-a-production guided workflow as a fourth prompt (Story 20.12).
         Set tPromptCount = $Select($Piece(tRow, "|", 1) = "InteropProductionList": 4, 1: 3)
-        Do $$$AssertEquals(tDeclaration.suggestedPrompts.%Size(), tPromptCount, tClass _ ": its suggested prompts, at least three")
+        Do $$$AssertEquals(tDeclaration.suggestedPrompts.%Size(), tPromptCount, tClass _ ": its suggested prompts")
         Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ReadProblem(tDeclaration), "", tClass _ ": its read passes the registry")
         Set tActions = ""
         Set tIterator = tDeclaration.rowActions.%GetIterator()

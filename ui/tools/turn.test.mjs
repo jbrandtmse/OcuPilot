@@ -2517,9 +2517,6 @@ test('newConversation and endSession clear the workflow, and a refused newConver
   assert.equal(await turn.newConversation(), true);
   assert.equal(turn.workflow(), null, 'a new conversation ends the workflow');
 
-  turn.endSession();
-  assert.equal(turn.workflow(), null);
-
   const again = new TurnStore({ api: fakeApi({ [CONVERSATION_PATH]: [ok({ conversationId: 'convo-9' }, 201)], [TURN_PATH]: [ok({ turnId: 'turn-9' }, 202)] }), storage: memoryStorage(), navigationType: freshTab() });
   await again.send(compileWorkflow.text, null, compileWorkflow);
   assert.deepEqual(again.workflow(), compileWorkflow);

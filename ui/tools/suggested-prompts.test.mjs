@@ -72,6 +72,48 @@ test('the generated mirror offers each of the nine catalog workflows through a b
   );
 });
 
+/** The spec's catalog table: each workflow, the screen that offers it, the prompt's task group and string key, and its text. */
+const WORKFLOW_OFFERS = [
+  ['InteropProductionList', 'promptGroupTroubleshooting', 'interopProductionsWorkflowRecover', 'recoverproduction', 'Recover a stuck production, step by step'],
+  ['InteropMessageList', 'promptGroupTroubleshooting', 'interopMessagesWorkflowResend', 'resendmessages', 'Resend failed messages, step by step'],
+  ['InteropMessageList', 'promptGroupTroubleshooting', 'interopMessagesWorkflowTrace', 'tracemessage', 'Trace a message through its session, step by step'],
+  ['Dashboard', 'promptGroupTroubleshooting', 'dashboardWorkflowHealth', 'systemhealth', "Check this instance's health, step by step"],
+  ['RoleList', 'userPromptGroupAccess', 'roleListWorkflowSecurity', 'securityposture', 'Review the security posture, step by step'],
+  ['ExplorerSqlQuery', 'webAppPromptGroupCode', 'explorerSqlQueryWorkflowSlow', 'slowquery', 'Find out why a query is slow, step by step'],
+  ['ExplorerClassList', 'webAppPromptGroupCode', 'explorerClassListWorkflowCompile', 'compileclass', 'Fix a class until it compiles, step by step'],
+  ['ExplorerClassList', 'webAppPromptGroupCode', 'explorerClassListWorkflowReview', 'reviewclass', "Review a class's ObjectScript, step by step"],
+  ['NamespaceList', 'promptGroupGettingStarted', 'namespaceListWorkflowProject', 'newproject', "Set up a new project's namespace, step by step"],
+];
+
+test('each workflow is offered by the screen, group and text the catalog names, and by no other screen (Story 20.12)', () => {
+  // Mutation (Rule 19): move a workflow prompt to another screen's descriptor, or give it another workflow id in
+  // `screens.generated.ts` -> this goes red naming the row; the server-side pins cover only three of the seven
+  // descriptors, so this is the one place the other four are held.
+  const built = SCREENS.filter((screen) => screen.built);
+  for (const [name, groupKey, textKey, workflow, text] of WORKFLOW_OFFERS) {
+    const screen = built.find((candidate) => candidate.descriptor === `OcuPilot.Screen.Descriptor.${name}`);
+    assert.ok(screen !== undefined, `${name} is a built screen`);
+    const group = promptGroups(screen).find((candidate) => candidate.key === groupKey);
+    assert.ok(group !== undefined, `${name} has the '${groupKey}' task group`);
+    assert.deepEqual(
+      group.prompts.filter((prompt) => prompt.workflow === workflow),
+      [{ text, workflow }],
+      `${name} offers '${workflow}' once, as "${text}", under '${groupKey}'`
+    );
+    assert.equal(STRINGS[textKey], text, `'${textKey}' is the prompt's text`);
+  }
+  const offeredOn = new Map();
+  for (const screen of built) {
+    for (const prompt of promptGroups(screen).flatMap((group) => group.prompts)) {
+      if (prompt.workflow !== null) offeredOn.set(prompt.workflow, [...(offeredOn.get(prompt.workflow) ?? []), screen.descriptor]);
+    }
+  }
+  for (const [name, , , workflow] of WORKFLOW_OFFERS) {
+    assert.deepEqual(offeredOn.get(workflow), [`OcuPilot.Screen.Descriptor.${name}`], `'${workflow}' is offered on ${name} alone`);
+  }
+  assert.equal(offeredOn.size, WORKFLOW_OFFERS.length, 'and no screen offers a workflow the table does not name');
+});
+
 test('no declaration, or one declaring no prompts, yields no groups', () => {
   assert.deepEqual(promptGroups(null), []);
   assert.deepEqual(promptGroups({}), []);

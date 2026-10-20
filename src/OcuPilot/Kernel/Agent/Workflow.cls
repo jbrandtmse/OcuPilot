@@ -5,7 +5,9 @@
 /// <code>id</code>, a <code>purpose</code>, ordered <code>steps</code> and a <code>finish</code>; a
 /// step says what to do and names the read tools (<code>reads</code>) and write tools
 /// (<code>writes</code>) it uses by canonical name. A new workflow is a new entry, never a code
-/// path. Every text is ASCII and names no tool the model cannot call.</p>
+/// path. Every text is ASCII and names no tool the model cannot call. The steps are adapted from
+/// iris-execute-mcp-v2's MCP prompts (<code>packages/*/src/prompts/*.ts</code>, MIT, Copyright (c) 2026
+/// jbrandtmse, <code>ui/licenses/iris-execute-mcp-v2.txt</code>).</p>
 /// <p><b>The result is OcuPilot's own data</b> (AD-11 rule 1): <method>Exchange</method> builds it from
 /// the catalog's constants and from <code>previous</code>, the closed-vocabulary facts about the
 /// proposals of the conversation's turn before (<method>Previous</method>). It holds no instance
@@ -264,10 +266,10 @@ XData Catalog [ MimeType = application/json ]
  {"id": "compileclass", "purpose": "Fix a class until it compiles, one confirmed change at a time.",
   "steps": [
    {"say": "Read the class and its source.", "reads": ["explorer.classes.read", "explorer.class.source"]},
-   {"say": "Find what stops it compiling and propose a save of the class with the smallest fix.", "writes": ["explorer.classes.save"]},
-   {"say": "After the person confirms the save, propose a compile of the class.", "writes": ["explorer.classes.compile"]},
-   {"say": "Read the class again; when the compile reported errors, go back to the second step with what they say.", "reads": ["explorer.class.source"]}],
-  "finish": "Say whether the class compiles and what was changed."},
+   {"say": "Find what stops it compiling and propose a save of the class with the smallest fix. Confirm saves it and then compiles it, and the card shows the person the compiler's output, which you do not see.", "writes": ["explorer.classes.save"]},
+   {"say": "After the person confirms, ask what the card's compile output says unless they have said; when it reports errors, read the class again and go back to the second step with them.", "reads": ["explorer.class.source"]},
+   {"say": "When the person asks to compile it again, or to compile the classes that use it, propose that compile.", "writes": ["explorer.classes.compile"]}],
+  "finish": "Say what was changed and whether the person reported that the class compiles."},
  {"id": "reviewclass", "purpose": "Review a class's ObjectScript for faults and style.",
   "steps": [
    {"say": "Read the class and its source.", "reads": ["explorer.classes.read", "explorer.class.source"]},

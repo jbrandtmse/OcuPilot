@@ -153,8 +153,7 @@ Method TestADisabledKeyRefusesTheCallAndMintsNothing()
 }
 
 /// <p>AC3, the shipped policy: a <code>resendmessages</code> turn calls the resend with the policy at its defaults,
-/// where that key ships off, and the call answers <code>GOVERNANCE.DISABLED</code> and mints nothing. Sorts before the
-/// own-principal test, which removes the principal.</p>
+/// where that key ships off, and the call answers <code>GOVERNANCE.DISABLED</code> and mints nothing.</p>
 /// <p>Mutation (Rule 19): the dispatcher's governance gate is skipped for a workflow turn -> this goes red.</p>
 Method TestTheResendKeyShipsOffSoItsCallMintsNothing()
 {

@@ -3,8 +3,10 @@
 /// HTTP, the second turn's first request reading the first proposal as <code>confirmed</code> in
 /// <code>previous</code>; a turn that calls a tool no step names, then a step's write, then a second one, meeting
 /// <code>WORKFLOW.NOTASTEP</code>, a minted proposal and <code>WORKFLOW.ONECHANGE</code> with exactly one proposal
-/// held; and a start naming an unknown workflow answering 422 <code>WORKFLOW.UNKNOWN</code> on its field and
-/// reserving nothing, while a JSON <code>null</code> workflow starts an ordinary turn.</p>
+/// held; a write call that mints nothing leaving the turn's one change unused; <code>previous</code> reading the turn
+/// before's proposal whether it was canceled, confirmed or closed by a typed message; and a start naming an unknown
+/// workflow answering 422 <code>WORKFLOW.UNKNOWN</code> on its field and reserving nothing, while a JSON
+/// <code>null</code> workflow starts an ordinary turn.</p>
 /// <p>The harness is <class>OcuPilot.Test.WorkflowTurnCase</class>'s. <b>It needs</b> OcuPilot installed and
 /// serving over HTTP on a throwaway, a <code>USER</code> namespace, and both <parameter>ARMINGVARIABLE</parameter>
 /// and <parameter>PROVIDERVARIABLE</parameter> reading <code>1</code>.</p>
@@ -106,6 +108,84 @@ Method TestOnlyTheStepsWritesAndOneChangePerTurn()
     Do $$$AssertEquals(..Answer(), "    Quit 1", "and the class is unchanged until it is confirmed")
 }
 
+/// <p>AC1's matrix row (Continue), over four turns of one conversation: each turn's first request reads the
+/// proposals of the turn before it and no other turn's. The first save is canceled, so the second turn reads
+/// <code>canceled</code> with the reason <code>you</code> and no read-back; the second save is confirmed, so the
+/// third turn reads exactly that one row, <code>confirmed</code> with its read-back verdict, and not the canceled
+/// one; the third save is left live and a typed message follows it, so the fourth turn reads it closed by that
+/// message.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Kernel.Agent.Loop.WorkflowResult</method> reads the conversation's oldest
+/// turn instead of its newest -> the third and fourth legs go red.</p>
+Method TestPreviousReadsTheTurnBeforeWhateverItsOutcome()
+{
+    Do $$$AssertStatusOK(..MakeProbe(), "the probe class is saved")
+    Set tProvider = "OcuPilot.Test.TurnProvider"
+    Do $ClassMethod(tProvider, "Script", ..#TAG, 0, $ClassMethod(tProvider, "ToolUseReply", [(..SaveCall("toolu_one", "    Quit 1", "    Quit 2"))]))
+    Do $ClassMethod(tProvider, "Script", ..#TAG, 0, $ClassMethod(tProvider, "TextReply", "PREVIOUSONE"))
+    Do $ClassMethod(tProvider, "Script", ..#TAG, 0, $ClassMethod(tProvider, "ToolUseReply", [(..SaveCall("toolu_two", "    Quit 1", "    Quit 2"))]))
+    Do $ClassMethod(tProvider, "Script", ..#TAG, 0, $ClassMethod(tProvider, "TextReply", "PREVIOUSTWO"))
+    Do $ClassMethod(tProvider, "Script", ..#TAG, 0, $ClassMethod(tProvider, "ToolUseReply", [(..SaveCall("toolu_three", "    Quit 2", "    Quit 3"))]))
+    Do $ClassMethod(tProvider, "Script", ..#TAG, 0, $ClassMethod(tProvider, "TextReply", "PREVIOUSTHREE"))
+    Do $ClassMethod(tProvider, "Script", ..#TAG, 0, $ClassMethod(tProvider, "TextReply", "PREVIOUSFOUR"))
+    Set tConvId = ..NewConversation()
+
+    Set tState = ..RunTurn(tConvId, "Fix a class until it compiles, step by step", "compileclass", .tView)
+    Do $$$AssertEquals(tState, "completed", "the first turn completes")
+    Do $$$AssertEquals(..PreviousAt(1), "[]", "and reads no earlier proposal")
+    Set tKey = ..FirstProposal(tView)
+    Do $$$AssertNotEquals(tKey, "", "it mints a proposal")
+    If tKey = "" Quit
+    Do ..Cancel(tKey, .tStatus, .tBody)
+    Do $$$AssertEquals(tStatus, 200, "which the person cancels: " _ $Select($IsObject(tBody): tBody.%ToJSON(), 1: ""))
+
+    Set tState = ..RunTurn(tConvId, "Continue the guided workflow.", "compileclass", .tView)
+    Do $$$AssertEquals(tState, "completed", "the second turn completes")
+    Do $$$AssertEquals(..PreviousAt(3), "[{""tool"":""explorer.classes.save"",""state"":""canceled"",""closedReason"":""you"",""readBack"":null}]", "and reads the canceled save, closed by the person, with no read-back")
+    Set tKey = ..FirstProposal(tView)
+    Do $$$AssertNotEquals(tKey, "", "it mints a proposal of its own")
+    If tKey = "" Quit
+    Do ..Confirm(tKey, .tStatus, .tBody)
+    Do $$$AssertEquals(tStatus, 200, "which the person confirms")
+    Do $$$AssertEquals(..Answer(), "    Quit 2", "and the class holds that save")
+
+    Set tState = ..RunTurn(tConvId, "Continue the guided workflow.", "compileclass", .tView)
+    Do $$$AssertEquals(tState, "completed", "the third turn completes")
+    Set tThird = ..Parsed(..PreviousAt(5))
+    Do $$$AssertEquals($IsObject(tThird) && (tThird.%Size() = 1), 1, "it reads one row, the turn before's: " _ ..PreviousAt(5))
+    If $IsObject(tThird) && (tThird.%Size() = 1) {
+        Set tRow = tThird.%Get(0)
+        Do $$$AssertEquals(tRow.%Get("tool") _ "|" _ tRow.%Get("state") _ "|" _ tRow.%Get("closedReason"), "explorer.classes.save|confirmed|", "the confirmed save, not the canceled one before it")
+        Do $$$AssertEquals((tRow.%GetTypeOf("readBack") = "string") && (tRow.%Get("readBack") '= ""), 1, "with its read-back verdict")
+    }
+    Do $$$AssertNotEquals(..FirstProposal(tView), "", "it mints a proposal that nobody decides")
+
+    Set tState = ..RunTurn(tConvId, "and then?", "compileclass", .tView)
+    Do $$$AssertEquals(tState, "completed", "a typed message follows, and its turn completes")
+    Do $$$AssertEquals(..PreviousAt(7), "[{""tool"":""explorer.classes.save"",""state"":""canceled"",""closedReason"":""message"",""readBack"":null}]", "it reads the undecided save as closed by the message")
+}
+
+/// <p>AC2's edge: a write call that mints nothing does not use up the turn's one change. A reply that calls the
+/// class save with an <code>Old</code> the class does not hold, then with a valid edit, then with a second valid edit
+/// is answered <code>TOOL.ARGUMENTS</code>, a minted proposal and <code>WORKFLOW.ONECHANGE</code>.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Kernel.Agent.Dispatch.AnswerOne</method> counts the turn's write calls instead
+/// of its proposals -> the second leg goes red.</p>
+Method TestARefusedWriteDoesNotUseUpTheTurnsOneChange()
+{
+    Do $$$AssertStatusOK(..MakeProbe(), "the probe class is saved")
+    Do ##class(OcuPilot.Test.TurnProvider).Script(..#TAG, 0, ##class(OcuPilot.Test.TurnProvider).ToolUseReply([(..SaveCall("toolu_bad", "    Quit 99", "    Quit 2")), (..SaveCall("toolu_good", "    Quit 1", "    Quit 2")), (..SaveCall("toolu_again", "    Quit 1", "    Quit 3"))]))
+    Do ##class(OcuPilot.Test.TurnProvider).Script(..#TAG, 0, ##class(OcuPilot.Test.TurnProvider).TextReply("WORKFLOWREFUSEDWRITE"))
+    Set tState = ..RunTurn(..NewConversation(), "Fix a class until it compiles, step by step", "compileclass", .tView)
+    Do $$$AssertEquals(tState, "completed", "the turn completes")
+    Do ..ResultsOf(2, .tResults, .tWrapped)
+    Set tBad = ..Parsed($Get(tResults("toolu_bad")))
+    Do $$$AssertEquals(($IsObject(tBad) && (tBad.%Get("code") = "TOOL.ARGUMENTS")), 1, "a save of text the class does not hold is TOOL.ARGUMENTS: " _ $Extract($Get(tResults("toolu_bad")), 1, 200))
+    Set tGood = ..Parsed($Get(tResults("toolu_good")))
+    Do $$$AssertEquals(($IsObject(tGood) && (tGood.%GetTypeOf("changed") = "array") && (tGood.changed.%Size() = 1)), 1, "the refused call did not use up the turn's change, so the valid edit mints: " _ $Extract($Get(tResults("toolu_good")), 1, 200))
+    Set tAgain = ..Parsed($Get(tResults("toolu_again")))
+    Do $$$AssertEquals(($IsObject(tAgain) && (tAgain.%Get("code") = "WORKFLOW.ONECHANGE")), 1, "and a second valid edit is WORKFLOW.ONECHANGE: " _ $Extract($Get(tResults("toolu_again")), 1, 200))
+    Do $$$AssertEquals(($IsObject(tView.%Get("proposals")) && (tView.proposals.%Size() = 1)), 1, "the turn holds exactly one proposal")
+}
+
 /// <p>AC4: a start naming a workflow outside the catalog, or a workflow that is no string, answers 422
 /// <code>WORKFLOW.UNKNOWN</code> with the sentence on the <code>workflow</code> field and reserves nothing -- no
 /// turn row, no provider call; a JSON <code>null</code> workflow passes and starts an ordinary turn.</p>
@@ -115,7 +195,7 @@ Method TestAnUnknownWorkflowIsRefusedAndReservesNothing()
 {
     Do ##class(OcuPilot.Test.TurnProvider).Script(..#TAG, 0, ##class(OcuPilot.Test.TurnProvider).TextReply("ORDINARYTURN"))
     Set tConvId = ..NewConversation()
-    Do $ClassMethod("OcuPilot.Test.TurnFixture", "Keys", .tBefore)
+    Do $$$AssertStatusOK($ClassMethod("OcuPilot.Test.TurnFixture", "Keys", .tBefore), "the turns are counted before")
     For tCase = 1:1:3 {
         Set tBody = {"message": "go"}
         Do tBody.%Set("conversationId", tConvId, "string")
@@ -130,7 +210,7 @@ Method TestAnUnknownWorkflowIsRefusedAndReservesNothing()
         Do $$$AssertEquals(($IsObject(tViolation) && (tViolation.%Get("field") = "workflow") && (tViolation.%Get("code") = "WORKFLOW.UNKNOWN") && (tViolation.%Get("reason") = "That guided workflow is not one OcuPilot offers.")), 1, "case " _ tCase _ " names WORKFLOW.UNKNOWN on workflow with its sentence: " _ $Extract(tText, 1, 300))
         Do $$$AssertEquals(($IsObject(tAnswer) && (tAnswer.%Get("code") = "WORKFLOW.UNKNOWN")), 1, "case " _ tCase _ " carries the code on the envelope")
     }
-    Do $ClassMethod("OcuPilot.Test.TurnFixture", "Keys", .tAfter)
+    Do $$$AssertStatusOK($ClassMethod("OcuPilot.Test.TurnFixture", "Keys", .tAfter), "and after")
     Do $$$AssertEquals(tAfter, tBefore, "no turn was reserved")
     Do $$$AssertEquals(##class(OcuPilot.Test.TurnProvider).Calls(..#TAG), 0, "and no provider call was made")
 

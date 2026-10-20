@@ -238,6 +238,35 @@ Method TestExchangeCarriesTheCatalogAndPrevious()
     Do $$$AssertEquals($ClassMethod(..#WORKFLOW, "Exchange", "nosuch", []), "", "an unknown id has no result")
 }
 
+/// <p>Each workflow's result at its fullest -- the catalog's text and a <code>previous</code> at the cap -- counts within
+/// AD-24's bound and reaches the model through <method>OcuPilot.Kernel.Agent.Sanitize.Results</method> framed as data,
+/// uncut and with its text unchanged, so a catalog that grows past the bound, or gains a text the sanitizer redacts,
+/// fails here and not as a cut or altered result in a turn.</p>
+/// <p>Mutation: a step's text longer than <code>Limits.TOOLRESULTMAXLENGTH</code> -> the bound leg goes red.</p>
+Method TestEveryResultStaysWithinTheBoundAndTheSanitizerLeavesItWhole()
+{
+    Set tMax = +$Parameter("OcuPilot.Kernel.Agent.Limits", "TOOLRESULTMAXLENGTH")
+    Do $$$AssertTrue(tMax > 0, "the bound is " _ tMax _ " characters")
+    Set tRows = []
+    For tI = 1:1:$Parameter(..#WORKFLOW, "PREVIOUSMAX") + 2 Do tRows.%Push({"tool": "osmgmt.localdatabases.delete", "state": "canceled", "closedReason": "message", "readBack": {"verdict": "matches"}})
+    Set tPrevious = $ClassMethod(..#WORKFLOW, "Previous", tRows)
+    Do $$$AssertEquals(tPrevious.%Size(), $Parameter(..#WORKFLOW, "PREVIOUSMAX"), "previous is at its cap")
+    Set tCut = $Parameter("OcuPilot.Kernel.Agent.Sanitize", "CUTOPENTAG")
+    Set tIds = $ClassMethod(..#WORKFLOW, "Ids")
+    For tI = 1:1:$ListLength(tIds) {
+        Set tId = $List(tIds, tI)
+        Set tJson = $ClassMethod(..#WORKFLOW, "Exchange", tId, tPrevious)
+        Do $$$AssertTrue(($Length(tJson) > 0) && ($Length(tJson) < tMax), tId _ "'s result is " _ $Length(tJson) _ " characters, within the bound")
+        Set tBlocks = [{"type": "tool_result", "tool_use_id": "ocupilot_workflow", "content": (tJson)}]
+        Do ##class(OcuPilot.Kernel.Agent.Sanitize).Results(tBlocks)
+        Set tContent = tBlocks.%Get(0).content
+        Set tBody = ##class(OcuPilot.Test.TurnWireFixture).Unwrapped(tContent, .tWrapped)
+        Do $$$AssertEquals(tWrapped, 1, tId _ "'s result is framed as data")
+        Do $$$AssertEquals($Extract(tContent, 1, $Length(tCut)) = tCut, 0, tId _ "'s result is not cut by the sanitizer")
+        Do $$$AssertEquals(tBody = tJson, 1, tId _ "'s text passes the sanitizer unchanged")
+    }
+}
+
 /// <p>The synthetic <code>workflow</code> call is OcuPilot's own, so a model call by that name is unknown (AD-11 rule 1)
 /// only while the production tool registry holds no tool whose wire name is <code>workflow</code>: it resolves none,
 /// and none of its listed tools spells that name.</p>

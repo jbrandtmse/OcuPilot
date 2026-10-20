@@ -13,7 +13,7 @@ Class OcuPilot.Kernel.Agent.Prompt Extends %RegisteredObject
 /// what to do while read-only, which tools a turn starts with, how to find the rest and to use only the tools
 /// offered or found, how to explain the screen when
 /// asked, naming its read tool and proposing no change, and how to explain the entry its marker
-/// identifies when asked, proposing no change. The next describes the synthetic <code>workflow</code>
+/// identifies when asked, proposing no change. The next two describe the synthetic <code>workflow</code>
 /// result a turn may also open with (AD-66): its steps, how the previous turn's proposals were
 /// decided, and the one change a workflow turn proposes. The next three say how rows are
 /// named and how the navigation tool moves the user. The next says to open the screen under

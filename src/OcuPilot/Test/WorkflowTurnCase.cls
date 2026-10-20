@@ -7,9 +7,10 @@
 /// <parameter>PROVIDERVARIABLE</parameter>, which is what <code>scripts/ci-throwaway.sh</code>'s rosters hold equal
 /// to the classes that arm.</p>
 /// <p><b>What a subclass needs from the environment:</b> OcuPilot installed and serving over HTTP on a throwaway,
-/// a <code>USER</code> namespace, and both variables reading <code>1</code>. It creates a turn principal, the
-/// probe class and the definition, runs turn jobs, and removes all of it in <method>OnAfterAllTests</method> and
-/// after each test.</p>
+/// a <code>USER</code> namespace, and both variables reading <code>1</code>. It creates the definition once, the
+/// turn principal afresh before each test so that no test meets another's leftover account, and the probe class
+/// inside the tests that need it; it removes the probe class, the policy and the switches after each test, and the
+/// principal and the definition in <method>OnAfterAllTests</method>.</p>
 Class OcuPilot.Test.WorkflowTurnCase Extends %UnitTest.TestCase [ Abstract ]
 {
 
@@ -38,6 +39,9 @@ Property PreparedDefinitionId As %String;
 
 Property PreparedPrior As %String;
 
+/// <p>The turn principal's grants beyond the fixture's own (<method>Grants</method>), resolved once.</p>
+Property PreparedGrants As %String;
+
 /// <p>The policy found before the test, put back after it.</p>
 Property StoredPolicy [ MultiDimensional ];
 
@@ -48,6 +52,7 @@ Method %OnNew(initvalue As %String = "") As %Status
     Set ..PreparedTurnPassword = ""
     Set ..PreparedDefinitionId = ""
     Set ..PreparedPrior = ""
+    Set ..PreparedGrants = ""
     Quit $$$OK
 }
 
@@ -73,9 +78,7 @@ Method OnBeforeAllTests() As %Status
     Set ..PreparedTurnPassword = $ClassMethod(..#FIXTURE, "NewPassword")
     Do ##class(OcuPilot.Port.AtelierPort).DatabaseResources(..#NAMESPACE, .tCode, .tGlobals, .tMapped, .tResolved)
     If 'tResolved || (tCode = "") Quit $$$ERROR($$$GeneralError, "the " _ ..#NAMESPACE _ " namespace's code database could not be resolved")
-    Set tUser = $Parameter(..#FIXTURE, "USERA")
-    Set tSC = $ClassMethod(..#FIXTURE, "EnsurePrincipal", tUser, ..PreparedTurnPassword, $ClassMethod(..#FIXTURE, "Resources", 0), ..Grants(tCode))
-    If $$$ISERR(tSC) Quit tSC
+    Set ..PreparedGrants = ..Grants(tCode)
     Set ..PreparedPrior = $ClassMethod(..#FIXTURE, "MarkedDefault")
     Set tSC = $ClassMethod(..#FIXTURE, "EnsureDefinition", ..#TAG, .tId)
     If $$$ISOK(tSC) Set ..PreparedDefinitionId = tId
@@ -92,9 +95,17 @@ Method OnAfterAllTests() As %Status
     Quit tSC
 }
 
+/// <p>Create the turn principal with <method>Grants</method>, replacing any account of that name.</p>
+Method EnsureTurnPrincipal() As %Status
+{
+    Quit $ClassMethod(..#FIXTURE, "EnsurePrincipal", $Parameter(..#FIXTURE, "USERA"), ..PreparedTurnPassword, $ClassMethod(..#FIXTURE, "Resources", 0), ..PreparedGrants)
+}
+
 Method OnBeforeOneTest() As %Status
 {
     Do ##class(OcuPilot.Kernel.Scope).Clear()
+    Set tSC = ..EnsureTurnPrincipal()
+    If $$$ISERR(tSC) Quit tSC
     Kill ..StoredPolicy
     Set tSC = ##class(OcuPilot.Test.GovernanceFixture).Snapshot(.tRows)
     If $$$ISERR(tSC) Quit tSC
@@ -198,6 +209,17 @@ ClassMethod ResultsFor(pTag As %String, pCall As %Integer, Output pResults, Outp
     }
 }
 
+/// <p>The <code>previous</code> array of the workflow result in provider request <var>pCall</var> of
+/// <parameter>TAG</parameter>'s script, as JSON text, or <code>none</code> when the request holds no workflow
+/// result.</p>
+Method PreviousAt(pCall As %Integer) As %String
+{
+    Do ..ResultsOf(pCall, .tResults, .tWrapped)
+    Set tResult = ..Parsed($Get(tResults("ocupilot_workflow")))
+    If '$IsObject(tResult) || (tResult.%GetTypeOf("previous") '= "array") Quit "none"
+    Quit tResult.previous.%ToJSON()
+}
+
 /// <p>A one-line summary of the workflow result in provider request <var>pCall</var> of script tag <var>pTag</var>,
 /// for a browser spec: <code>&lt;workflow&gt;|&lt;1 when its steps name the class save&gt;|&lt;proposals reported by
 /// previous&gt;|&lt;previous' first tool&gt;|&lt;its state&gt;</code>, or <code>none</code> when the request holds
@@ -244,7 +266,20 @@ Method NewConversation() As %String
 /// the status is <var>pStatus</var> and the body, parsed, <var>pBody</var> (<code>""</code> when none parsed).</p>
 Method Confirm(pKey As %String, Output pStatus As %Integer, Output pBody)
 {
-    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("POST", "/api/ocupilot/proposal/" _ pKey _ "/confirm?ns=" _ ..#NAMESPACE, $Parameter(..#FIXTURE, "USERA"), ..PreparedTurnPassword, .pStatus, .tText, .tHeaders, "", "application/json")
+    Do ..Decide(pKey, "confirm", .pStatus, .pBody)
+}
+
+/// <p>Cancel proposal <var>pKey</var> over HTTP as the principal, answering as <method>Confirm</method> does.</p>
+Method Cancel(pKey As %String, Output pStatus As %Integer, Output pBody)
+{
+    Do ..Decide(pKey, "cancel", .pStatus, .pBody)
+}
+
+/// <p>Post <var>pVerb</var> (<code>confirm</code> or <code>cancel</code>) for proposal <var>pKey</var> as the principal,
+/// scoped to <parameter>NAMESPACE</parameter>.</p>
+Method Decide(pKey As %String, pVerb As %String, Output pStatus As %Integer, Output pBody) [ Private ]
+{
+    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("POST", "/api/ocupilot/proposal/" _ pKey _ "/" _ pVerb _ "?ns=" _ ..#NAMESPACE, $Parameter(..#FIXTURE, "USERA"), ..PreparedTurnPassword, .pStatus, .tText, .tHeaders, "", "application/json")
     Set pBody = ..Parsed($Get(tText))
 }
 
