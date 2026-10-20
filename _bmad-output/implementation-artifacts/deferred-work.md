@@ -12187,3 +12187,4 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: browserConfig throws unless OCUPILOT_BROWSER_ORIGIN and OCUPILOT_BROWSER_CONTAINER are both set (ui/browser.config.mjs, pinned by ui/tools/browser-config.test.mjs at 7aceb0c1)
 - 2026-10-20T11:46:15Z status=decision-pending owner=burndown by=harvest note=human=the owner or orchestrator edits the parallel.yaml:54 comment (_bmad is owner_only under --unattended)
 - 2026-10-20T14:30:04Z occurrence=23-11-the-range-end-cleanup-part-10 by=cr note=also parallel.yaml:67 (slot B's browser_container comment): a missing variable is now refused, not exec'd into slot A
+- 2026-10-20T18:43:27Z status=resolved-by:373e5b68 owner=burndown by=owner note=owner OK 2026-10-20 (relayed by the Planner ocupilot-2d): both stale comments fixed in 373e5b68 (parallel.yaml slot A and B browser_container), diff verified by the orchestrator

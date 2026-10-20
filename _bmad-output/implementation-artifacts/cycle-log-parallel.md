@@ -1519,3 +1519,15 @@
 2026-10-20T15:31:05Z	Epic 20	runner_ended	reason=hold head=042efa9f(local=origin;nothing_unpushed;above_aea95053_only__bmad-output) story=20.12(implemented_aea95053;CI_39448740616_pending;next_QA) 20.11=set_aside(U-1) throwaway=ocupilot-b-ci_up(started_by_this_run) inbox=U-1
 2026-10-20T15:31:05Z	orchestrator	unattended_report	inbox=U-2 merged=23.11b(a37b190d) held=epic20@042efa9f,epic23@f0ac0e9d stopped=20.11(U-1) vetoes_open=0 rulings=2 ci=healthy new_ledger=DW-2467,DW-2468
 2026-10-20T15:31:05Z	orchestrator	hold_complete	shas=feature:b2bd14fb(+this_commit),epic20:042efa9f,epic23:f0ac0e9d runners=none_live throwaways=ocupilot-ci,ocupilot-b-ci_up(this_run) dev=ocupilot,ocupilot-slot-b_healthy inbox=U-1(stopped),U-2(report),U-3(hold) resume=<state>/resume/orchestrator.md
+2026-10-20T18:43:27Z	orchestrator	lead_model_gate	model=claude-opus-5-5 action=proceed session=fresh(after_account_switch)
+2026-10-20T18:43:27Z	orchestrator	runtime_gate	bmad=6.12.1 uv=0.12.9 ci=gh
+2026-10-20T18:43:27Z	orchestrator	launch_env	depth=4 watchdog=1 bash_max_ms=default
+2026-10-20T18:43:27Z	orchestrator	telemetry_gate	pending=0 action=none
+2026-10-20T18:43:27Z	orchestrator	permission_mode_attested	mode=bypassPermissions via=launch_attestation_reused(2026-10-20T09:40:42Z)+session_system_prompt_states_bypass session=interactive_reinvocation
+2026-10-20T18:43:27Z	orchestrator	unattended_resumed	run=20261020T0940Z-20,23 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03 doctrine=3d11cec98d91c1d4d9c225fe3b265e1af418abe4 lock_token=1792521764-88280 lock=run-start(released_at_hold) hold=cleared(resumed_by_the_owner) hashes=unchanged runtime_locks=none_to_sweep
+2026-10-20T18:43:27Z	orchestrator	feature_moved	from=96523d6d to=e488231c commits=373e5b68(CLAUDE.md_66_ADs,objectscript-testing.md_redeploy_line,parallel.yaml_slot_comments),e488231c(stale_root_kit_copy_removed) by=Planner(ocupilot-2d)_on_the_owner_word_during_the_hold ci=39475152137(in_progress) note=policy_and_doctrine_hashes_unchanged
+2026-10-20T18:43:27Z	orchestrator	owner_decision	id=U-1 at=2026-10-20T18:22:28Z#8 via=attended by=owner answer=A(amend_AD-5_one_sentence;pick_up_20.11) routed=epic-20(re-dispatch_prompt_apply_line) resolve=on_runner_applied
+2026-10-20T18:43:27Z	orchestrator	ledger_owner_trailer	entry=DW-2467 status=resolved-by:373e5b68 by=owner(relayed_by_Planner) verified=git_show_373e5b68(parallel.yaml:54,:67)
+2026-10-20T19:04:35Z	feature	ci_green_verified	runs=39475152137 head=e488231c result=success gate=ci-gate(missing=none) purpose=re-dispatch_gate(Rule_32)
+2026-10-20T19:04:35Z	Epic 23	runner_dispatched	model=opus slot=a mode=redispatch_after_hold prompt=prompts/e23-unattended-20261020-prompt.md+<state>/resume/epic-23.md head=f0ac0e9d next=23.11_batch_c
+2026-10-20T19:04:35Z	Epic 20	runner_dispatched	model=opus slot=b mode=redispatch_after_hold prompt=prompts/e20-unattended-20261020-prompt.md+<state>/resume/epic-20.md head=042efa9f next=20.12_QA(CI_39448740616_first) apply=U-1@2026-10-20T18:22:28Z#8
