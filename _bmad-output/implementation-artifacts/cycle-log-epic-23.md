@@ -556,3 +556,11 @@ spawn_at=2026-10-06T16:01:05Z	Story 23.4	cr_complete	batch=b 2026-10-06T20:34:58
 2026-10-20T15:20:14Z	Story 23.11	hold_saved	story=23-11-the-range-end-cleanup-part-10 stage=none(batch_b_committed_66a17632,batch_c_not_opened) patch=none tree=clean
 2026-10-20T15:20:14Z	Epic 23	throwaway_left_up	container=ocupilot-ci project=ocupilot-ci dir=/Users/jbrandt/.ocupilot-throwaways/ocupilot-ci web=52776 super=1975 health=healthy started=2026-10-20T14:34:19Z up_by=this_run(20261020T0940Z-20,23) src=batch_b_tree(66a17632) bundle=1.96MB reason=hold
 2026-10-20T15:20:14Z	Epic 23	hold_complete	shas=head_after_this_commit(origin=local),code_head=66a17632(green_39441988834) open_question=batch_c_contended_path(_components.scss;runner_clarification_requested_unanswered,ask_again_on_resume) next=23.11_batch_c
+2026-10-20T19:06:21Z	Epic 23	runner_unattended_start	run=20261020T0940Z-20,23 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03 doctrine=3d11cec98d91c1d4d9c225fe3b265e1af418abe4 hashes=match(main_checkout) resume=after_account_switch(orchestrator_redispatch_~18:45Z)
+2026-10-20T19:06:21Z	Epic 23	lead_model_gate	model=claude-opus-5-5 action=proceed
+2026-10-20T19:06:21Z	Epic 23	runtime_gate	bmad=6.12.1 uv=0.12.9 ci=gh
+2026-10-20T19:06:21Z	Epic 23	launch_env	depth=4 watchdog=unset bash_max_ms=default
+2026-10-20T19:06:21Z	Epic 23	slot_binding_verified	docker_port_ocupilot_52773=52774 mcp_profile=ocupilot-slot-a_baseUrl=http://localhost:52774 bootstrap_check=ok inbox_verify=ok hold=none throwaway=ocupilot-ci_up_healthy(up_by_this_run_14:34Z,same_run_id)
+2026-10-20T19:06:21Z	Story 23.11	ci_resolved	story=23.11 batch=b sha=66a17632 runs=39441988834 result=success failed=none via=none resolved_at=resume
+2026-10-20T19:06:21Z	Story 23.11	ruling_received	question=batch_c_contended_path(ui/src/styles/_components.scss) choice=proceed(28_height_to_min-height_lines) from=orchestrator category=decide why=epic20_64-line_add-only_insertion_after_4029_does_not_overlap;second_merger_resolves_plain_union epic20_now=committed(042efa9f) policy=b9ff703e
+2026-10-20T19:06:21Z	Epic 23	epic_resumed	mode=RESUME head=f0ac0e9d origin=f0ac0e9d feature=dee8f832(docs+bookkeeping+timings;no_product_code) hold_patch=none tree=clean next=23.11_batch_c
