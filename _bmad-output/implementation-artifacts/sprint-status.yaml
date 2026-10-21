@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-09-2026 07:49
-last_updated: '10-21-2026 21:30'
+last_updated: '10-21-2026 21:46'
 project: OcuPilot
 project_key: NOKEY
 tracking_system: file-system
@@ -377,7 +377,7 @@ development_status:
   20-30-the-session-trace: done
   20-31-message-resend-and-edit-and-resend: done
   20-32-the-analytics-links: done
-  20-33-the-mdx-query-tool: review
+  20-33-the-mdx-query-tool: done
   20-34-the-cube-manager-s-build-and-synchronize: ready-for-dev
   20-35-the-agent-s-mdx-read: ready-for-dev
   20-36-investigate: backlog

@@ -427,7 +427,23 @@ Rejected:
 
 ### Rework (smoke)
 
-- [x] [Smoke] The runner's full ObjectScript sweep (merged tree `96eaf715`, `ocupilot-b-ci` run 611): `OcuPilot.Test.SaveHoldCoverage.TestEveryWriteRouteTakesTheHoldOrIsExempt` reds on the two new write routes this story added, `POST /analytics/mdx/background` and `POST /analytics/mdx/background/:id/cancel`. Neither takes a target hold, and neither is listed in `SaveHoldCoverage.Exemptions`. What the fix must do: add one exemption row for each, with its reason, mirroring the SQL console's two rows (`POST /explorer/sql/background`: runs only a statement in the caller's own background run; `.../:id/cancel`: stops the caller's own background run, which is OcuPilot's own state). The MDX start writes nothing to the instance (AC5) and the cancel stops only the caller's own run. Confirm with `cd ui && node tools/ci-runner.mjs --container ocupilot-b-ci --class OcuPilot.Test.SaveHoldCoverage` green. Record a `mutation:` line: drop one of the two rows, and that test goes red naming its route.
+- [x] [Smoke] The runner's full ObjectScript sweep (merged tree `96eaf715`, `ocupilot-b-ci` run 611): `OcuPilot.Test.SaveHoldCoverage.TestEveryWriteRouteTakesTheHoldOrIsExempt` reds on the two new write routes this story added, `POST /analytics/mdx/background` and `POST /analytics/mdx/background/:id/cancel`. Neither takes a target hold, and neither is listed in `SaveHoldCoverage.Exemptions`. What the fix must do: add one exemption row for each, with its reason, mirroring the SQL console's two rows (`POST /explorer/sql/background`: runs only a statement in the caller's own background run; `.../:id/cancel`: stops the caller's own background run, which is OcuPilot's own state). OcuPilot's own code behind the MDX start writes no instance object a write tool targets (AC5; the vendor writes only its own session and result-cache nodes), and the cancel stops only the caller's own run. Confirm with `cd ui && node tools/ci-runner.mjs --container ocupilot-b-ci --class OcuPilot.Test.SaveHoldCoverage` green. Record a `mutation:` line: drop one of the two rows, and that test goes red naming its route.
+
+### Review Findings (rework 1)
+
+Code review of the rework, 2026-10-21 (four layers, diff `41223097..9c198ed5`). The `[Smoke]` item is fixed: both rows are listed, the class is green (`ocupilot-b-ci` runs 730 and, after the patch, 731), and runs 723 and 728 match its two `mutation:` lines. The start row's reason holds: OcuPilot itself writes only its run row; the vendor's own session and result-cache nodes, which its prepare and execute write, and a confirmed statement's own code are no object a write tool targets, and no MDX write tool exists to hold a key for (AD-34, AD-53, AD-55, AD-65).
+
+- [x] [Review][Patch] The cancel row's reason said only "the caller's own background run": the job's `%CancelQuery` also stops the vendor's query for that text, which every run of it shares (named limit) [src/OcuPilot/Test/SaveHoldCoverage.cls:22]
+
+Rejected:
+
+- `low`: the `[Smoke]` item's "the MDX start writes nothing to the instance" omits the vendor's cache writes -- the code row's reason is about OcuPilot's own writes and is true; the fix is a spec edit.
+- `low`: the rework's Auto Run Result tallies 7 of its 9 triage entries and points only to the first triage entry for the earlier passes -- spec tracking text; the fix is a spec edit.
+- `low`: "dropping only the cancel row stays green" cites no run -- the class's slash rule settles it; the fix is a spec edit.
+- `low`: the rework's triage block records non-findings, and the plan's roster lists never named `SaveHoldCoverage` -- spec text; the fix is a spec edit.
+- `low`: a row without a trailing slash exempts every later route under it and is marked used by them, so a new write route there, or a removed start route with its cancel kept, goes unnoticed -- the class's matching rule, shared by every row; unlikely, and the fix adds a branch.
+- `low`: the roster is one line of about 1,850 characters, which parallel stories collide on -- the class's existing form; restructuring it is a refactor of a file other epics edit.
+- `false`: `followup_review_recommended: false` dropped a review of the listing-bound code -- the round-1 four-layer review (baseline `053c1b15`) covered it and patched in it (`MdxQuery.cls:366`, `:437`).
 
 ## Spec Change Log
 
