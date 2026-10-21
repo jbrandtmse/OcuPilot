@@ -365,6 +365,8 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Line numbe
   - **When** it ends.
   - **Then** `AnalyticsProbe.Gone()` is true: no probe cube or class, the hidden cube included, no probe `CubeEvent` row and none of the residue Design Notes › Measured names, and USER's analytics flags read their recorded values.
 
+- [ ] **DW-2485 (ledger; routed by Story 20.33's harvest, 2026-10-21):** `Test/AnalyticsPort.Snapshot` joins every `^DeepSee.Cache*` node into one string, so cache residue over about 3.6 MB (a cube build's likeliest effect) raises `<MAXSTRING>` and `TestTheReadsWriteNothing` reddens on state it did not make. Digest each global separately (a hash per global) so the snapshot's size no longer grows with the residue; keep its `pRuntime` argument's meaning; pin it with a demonstrated mutation.
+
 ## Spec Change Log
 
 - 2026-10-15, spec gate (runner): Q1, Q2 and Q3 ruled as recommended (A each; none conflicts with an AD); the spine carries the Story 20.34 clauses in AD-65, AD-51, AD-7, AD-15, AD-22, AD-8, AD-44 and AD-10.

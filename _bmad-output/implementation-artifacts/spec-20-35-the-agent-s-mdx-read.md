@@ -189,6 +189,8 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Line numbe
 - **AC8 (Integration: the extended siblings).** **Given** `MdxRun` and the masking helpers, **when** 20.33's screen runs and cancels and the SQL read runs, **then** 20.33's job, routes and browser tests pass, and so do `SqlAgentRead` and `SqlCredentialMask`.
 - **AC9 (structural).** **Given** the refused card on MDX query, **when** the structural check runs, **then** it finds no fresh entry in either theme.
 
+- [ ] **DW-2490 (ledger; routed by Story 20.33's review, 2026-10-21; unverified):** `MdxStatus` reads the vendor's status 100 as done without its pending-results flag, so a plugin-computed cell may be read before it is computed. This story polls `MdxStatus` too. Measure it first: run a statement over a `%KPI("%DeepSee.Median")` measure through the run and read its cell at the first status 100. If the cell can be read before it is computed, honor the pending flag in `MdxStatus` and pin it with a demonstrated mutation. If it cannot, record the measurement under `## Verification`, and the lead closes the entry at adjudication.
+
 ## Spec Change Log
 
 - 2026-10-15, lead: the orchestrator ruled Q1 (B, fail closed): 20.33's `MdxConstructs` reads tokens and quoted strings' tokens, covers the four plus `%PARM`, runs again on the variable-resolved text after prepare, and fails closed (the agent refuses with `ANALYTICS.MDX.SQL`); this story reuses it and builds no copy; stored definitions are a named limit (DW-2451). Q2 applied: no `SurfaceCoverage` row (that roster compares write tools only); `ReadTool`, `ToolRoundTrip`, `ToolEmit` and `DeveloperFloor` carry the tool. Back to `draft` for a re-plan after 20.33's amendment.
