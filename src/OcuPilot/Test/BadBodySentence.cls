@@ -45,7 +45,7 @@ Method TestAnAbsentBodyWhereOneIsRequiredIsNamedAsMissing()
     Do ..AssertBadBody(tStatus, tBody, .tHeaders, "an absent body on the license key check")
 }
 
-/// <p>A route that accepts no body at all still refuses an unreadable one with the same sentence.</p>
+/// <p>A route that admits an absent body still refuses an unreadable one with the same sentence.</p>
 Method TestAnUnreadableBodyWhereNoneIsRequiredIsRefusedWithTheSameSentence()
 {
     Set tSC = ..Call("/agent/definitions", "{not json", .tStatus, .tBody, .tHeaders)

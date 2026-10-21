@@ -12290,3 +12290,18 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-23-7-the-range-end-cleanup-part-6.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: Refuse (Mint.cls:986) returns $$$ERROR(TOOLARGUMENTS: problem) before Mint's exit pass rewrites detail.problem; Dispatch.AnswerOne logs a tool status only at HTTP 500+ or with no fault code, and Refuse answers 400 TOOL.ARGUMENTS
 - 2026-10-21T14:49:09Z status=wontfix-theoretical owner=23-7-the-range-end-cleanup-part-6 by=cr note=real if a caller logs or shows a 400 mint refusal's status text; today only detail.problem reaches the agent
+
+### DW-2486: AGENTBADBODY's doc says the body could not be read or parsed at all, while the code also answers an absent body and a wrong-shape object
+- source: spec-23-7-the-range-end-cleanup-part-6.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Error.cls:486-488 doc vs the ruled REASONAGENTBADBODY; BadBodySentence (absent body) and BadBodyWrongShape (three wrong-shape routes) pin the code on bodies that are not unreadable
+- 2026-10-21T18:35:59Z status=open owner=23-7-the-range-end-cleanup-part-6 by=cr note=outside the four Error.cls edits the contention ruling cleared; reword the doc when Error.cls is next cleared
+
+### DW-2487: BadBodyWrongShape repeats BadBodySentence's envelope assertions and POST wrapper
+- source: spec-23-7-the-range-end-cleanup-part-6.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: BadBodyWrongShape.Post and AssertWrongShape repeat BadBodySentence.Call and AssertBadBody's status, JSON, code and ruled-sentence legs, about eight lines; its stated reason is other routes
+- 2026-10-21T18:35:59Z status=wontfix-accepted owner=23-7-the-range-end-cleanup-part-6 by=cr note=reopen_if=AssertBadBody and AssertWrongShape stop asserting the same envelope legs
+
+### DW-2488: ReasonForViolation has no WORKFLOW. arm, so it answers the field code WORKFLOW.UNKNOWN with an empty sentence
+- source: spec-23-7-the-range-end-cleanup-part-6.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: Turn.WorkflowViolation renders WORKFLOW.UNKNOWN on workflow with WorkflowError.ReasonFor's sentence; ReasonForToolCode has a WORKFLOW. arm and ReasonForViolation does not
+- 2026-10-21T18:35:59Z status=wontfix-theoretical owner=23-7-the-range-end-cleanup-part-6 by=cr note=no caller resolves WORKFLOW.* through ReasonForViolation; real once one does, e.g. ViolationsJson with no reason
