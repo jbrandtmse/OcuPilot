@@ -7504,6 +7504,100 @@ export const STRINGS = {
   explorerClassListWorkflowReview: 'Review a class\'s ObjectScript, step by step',
   /** EXPERIENCE.md:606 */
   namespaceListWorkflowProject: 'Set up a new project\'s namespace, step by step',
+  /** EXPERIENCE.md:604 */
+  analyticsCubesLabel: 'Cubes',
+  /** EXPERIENCE.md:604 */
+  analyticsTermListsLabel: 'Term lists',
+  /** EXPERIENCE.md:604 */
+  analyticsTermListEntriesLabel: 'Term list entries',
+  /** EXPERIENCE.md:604 */
+  analyticsFolderItemsLabel: 'Folder items',
+  /** EXPERIENCE.md:604 */
+  analyticsTabMeasures: 'Measures',
+  /** EXPERIENCE.md:604 */
+  analyticsTabDimensions: 'Dimensions',
+  /** EXPERIENCE.md:604 */
+  analyticsTabRelationships: 'Relationships',
+  /** EXPERIENCE.md:604 */
+  analyticsColumnCaption: 'Caption',
+  /** EXPERIENCE.md:604 */
+  analyticsColumnLastBuild: 'Last build',
+  /** EXPERIENCE.md:604 */
+  analyticsColumnFacts: 'Facts',
+  /** EXPERIENCE.md:604 */
+  analyticsColumnPosition: 'Position',
+  /** EXPERIENCE.md:604 */
+  analyticsColumnDimension: 'Dimension',
+  /** EXPERIENCE.md:604 */
+  analyticsColumnHierarchy: 'Hierarchy',
+  /** EXPERIENCE.md:604 */
+  analyticsColumnRelatedCube: 'Related cube',
+  /** EXPERIENCE.md:604 */
+  analyticsColumnModified: 'Modified',
+  /** EXPERIENCE.md:604 */
+  analyticsColumnFavorite: 'Favorite',
+  /** EXPERIENCE.md:604 */
+  analyticsCubeCriterion: 'Cube',
+  /** EXPERIENCE.md:604 */
+  analyticsTermListCriterion: 'Term list',
+  /** EXPERIENCE.md:604 */
+  analyticsCubesEmpty: 'No cube is defined in this namespace.',
+  /** EXPERIENCE.md:604 */
+  analyticsCubeMeasuresEmpty: 'This cube no longer exists, or it has no measures.',
+  /** EXPERIENCE.md:604 */
+  analyticsCubeDimensionsEmpty: 'This cube no longer exists, or it has no dimensions.',
+  /** EXPERIENCE.md:604 */
+  analyticsCubeRelationshipsEmpty: 'This cube no longer exists, or it has no relationships.',
+  /** EXPERIENCE.md:604 */
+  analyticsTermListsEmpty: 'No term list is defined in this namespace.',
+  /** EXPERIENCE.md:604 */
+  analyticsTermListEntriesEmpty: 'This term list no longer exists, or it has no entries.',
+  /** EXPERIENCE.md:604 */
+  analyticsFolderItemsEmpty: 'No folder item in this namespace is visible to you.',
+  /** EXPERIENCE.md:604 */
+  analyticsRefusalNamespace: 'Analytics is not enabled in this namespace.',
+  /** EXPERIENCE.md:604 */
+  analyticsCubesPrompt1: 'Which cube holds the most facts?',
+  /** EXPERIENCE.md:604 */
+  analyticsCubesPrompt2: 'When was each cube last built?',
+  /** EXPERIENCE.md:604 */
+  analyticsCubesPrompt3: 'Which cubes have never been built?',
+  /** EXPERIENCE.md:604 */
+  analyticsCubeMeasuresPrompt1: 'Summarize what this cube measures.',
+  /** EXPERIENCE.md:604 */
+  analyticsCubeMeasuresPrompt2: 'Which measures of this cube are hidden?',
+  /** EXPERIENCE.md:604 */
+  analyticsCubeMeasuresPrompt3: 'Which measures could I compare across a dimension?',
+  /** EXPERIENCE.md:604 */
+  analyticsCubeDimensionsPrompt1: 'Which dimensions can I filter this cube by?',
+  /** EXPERIENCE.md:604 */
+  analyticsCubeDimensionsPrompt2: 'Which levels does each hierarchy of this cube have?',
+  /** EXPERIENCE.md:604 */
+  analyticsCubeDimensionsPrompt3: 'Does this cube have a time dimension?',
+  /** EXPERIENCE.md:604 */
+  analyticsCubeRelationshipsPrompt1: 'Which cubes does this cube relate to?',
+  /** EXPERIENCE.md:604 */
+  analyticsCubeRelationshipsPrompt2: 'Which related cube must be built first?',
+  /** EXPERIENCE.md:604 */
+  analyticsCubeRelationshipsPrompt3: 'How do I use this relationship in a query?',
+  /** EXPERIENCE.md:604 */
+  analyticsTermListsPrompt1: 'Summarize the term lists in this namespace.',
+  /** EXPERIENCE.md:604 */
+  analyticsTermListsPrompt2: 'Which term list changed most recently?',
+  /** EXPERIENCE.md:604 */
+  analyticsTermListsPrompt3: 'Which term lists could a cube use to translate codes?',
+  /** EXPERIENCE.md:604 */
+  analyticsTermListEntriesPrompt1: 'Summarize what this term list maps.',
+  /** EXPERIENCE.md:604 */
+  analyticsTermListEntriesPrompt2: 'Which keys map to the same value?',
+  /** EXPERIENCE.md:604 */
+  analyticsTermListEntriesPrompt3: 'Are any values in this term list empty?',
+  /** EXPERIENCE.md:604 */
+  analyticsFolderItemsPrompt1: 'Which dashboards are in this namespace?',
+  /** EXPERIENCE.md:604 */
+  analyticsFolderItemsPrompt2: 'Which items are my favorites?',
+  /** EXPERIENCE.md:604 */
+  analyticsFolderItemsPrompt3: 'Which folder items changed most recently?',
 } as const;
 
 /**
