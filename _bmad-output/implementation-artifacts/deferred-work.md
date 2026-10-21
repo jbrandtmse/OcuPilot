@@ -4884,6 +4884,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-26T09:53:49Z status=routed owner=burndown by=spec_gate note=fixture duplication (ProviderStub.IssueHttpsPost vs ProviderStubTransport.Transport); AD-35 half closed
 - 2026-09-30T03:32:45Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down decision sheet 2026-09-29: into Story 23.3 (after the following release)
 - 2026-10-11T00:42:31Z status=routed owner=23-7-the-range-end-cleanup-part-6 by=load note=re-own from range-end-cleanup: kit 2026-10-10.1 owners are story keys or burndown
+- 2026-10-21T23:16:28Z status=resolved-by:23-7-the-range-end-cleanup-part-6 by=adjudication note=38a899b5: stubs share ProviderStubTransport.Transport; forced error-log leg kept; ProviderStubSeam pins it; CI 39687291168
 
 ### DW-1192: A stored Gemini endpoint carrying no {model} placeholder calls a model the definition does not name, and nothing at save time refuses a model that cannot enter Gemini's URL path
 - source: spec-10-2-the-openai-and-google-gemini-adapters.md | severity: med | fix-risk: med | footprint: in-footprint
@@ -12298,6 +12299,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-23-7-the-range-end-cleanup-part-6.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: Error.cls:486-488 doc vs the ruled REASONAGENTBADBODY; BadBodySentence (absent body) and BadBodyWrongShape (three wrong-shape routes) pin the code on bodies that are not unreadable
 - 2026-10-21T18:35:59Z status=open owner=23-7-the-range-end-cleanup-part-6 by=cr note=outside the four Error.cls edits the contention ruling cleared; reword the doc when Error.cls is next cleared
+- 2026-10-21T23:16:28Z status=resolved-by:23-7-the-range-end-cleanup-part-6 by=adjudication note=ba76b401+38a899b5: AGENTBADBODY doc now matches the ruled sentence; CI 39687291168 green
 
 ### DW-2487: BadBodyWrongShape repeats BadBodySentence's envelope assertions and POST wrapper
 - source: spec-23-7-the-range-end-cleanup-part-6.md | severity: low | fix-risk: low | footprint: in-story
