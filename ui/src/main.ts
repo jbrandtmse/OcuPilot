@@ -234,7 +234,7 @@ const findings = new Findings({ api, connectivity });
 const fixFinding = new FixFinding({ explainEntry });
 
 // The Guardrails page's answer (Story 16.22), the caller's own; the page loads it when it opens.
-const guardrails = new Guardrails({ api });
+const guardrails = new Guardrails({ api, connectivity });
 
 // Home's performance row (Story 16.18). Its read is Home's refresh read, so the one refresh
 // framework times it (AD-43); it holds the last answer and the answers this Home view received.

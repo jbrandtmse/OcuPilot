@@ -188,8 +188,10 @@ export class FaultBanner {
    * Whether the generic sentence and Open messages.log are drawn. The connectivity service raises
    * only `unreachable` and `server-fault`; an in-place fault of any other kind reads as the generic
    * sentence (EXPERIENCE.md "Generic internal"). A 403 has a row of its own ("Request refused"),
-   * which this banner does not draw: the reads it is mounted for in place (About, System
-   * Information, Findings) are caller-own and ungated beyond the router.
+   * which this banner does not draw, so in place a 403 reads as the generic sentence. The reads it
+   * is mounted for in place are caller-own (About, System Information, Findings, Guardrails) or
+   * declare the same pairs as the screen that hosts them (the web application editor's
+   * class-access tab).
    */
   protected get serverFault(): boolean {
     const kind = this.current()?.kind;

@@ -12006,6 +12006,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Story 23.5's plan read the sites at head 6c58e1c9; DW-1392 fixes only the System Information row
 - 2026-10-14T22:44:29Z status=routed owner=burndown by=spec_gate note=sibling_of_DW-1392;proposed_for_Story_23.11_with_DW-2182,2202,2221,2246
 - 2026-10-14T22:47:28Z status=routed owner=23-11-the-range-end-cleanup-part-10 by=lead note=orchestrator 2026-10-14: chartered 23.11 for 23.5's later routings
+- 2026-10-21T01:57:49Z status=resolved-by:23-11-the-range-end-cleanup-part-10 by=adjudication note=dba8275c+a4e71fe8: 28 rules min-height, text-reflow pins light+dark at 2x type; CI 39527072274 green
 
 ### DW-2440: The proposal card's confirm spinner (.ocu-proposal-card-confirm-spinner, _components.scss:4794) has the rotating 16px spinner's shape whose bounding box DW-2282 measured 3.3px past its box, so a structural gate may read it as overflow
 - source: spec-23-5-the-range-end-cleanup-part-5.md | severity: low | fix-risk: low | footprint: in-epic
@@ -12059,6 +12060,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: guardrails.page.ts:60 and web-app-class-access-tab.ts:49 render STRINGS.connectivityServerFault under a failed() boolean; api.ts reports every requestJson to the shell's banner (EXPERIENCE.md:769 one banner); DW-1401's root cause on two surfaces Batch b did not touch
 - 2026-10-15T06:35:45Z status=escalated owner=burndown by=cr note=pre-existing; fix is DW-1401's shape (classified Fault, in-place FaultBanner for non-banner kinds)
 - 2026-10-15T11:12:48Z status=routed owner=23-11-the-range-end-cleanup-part-10 by=lead note=orchestrator: same root cause as DW-1401, two more surfaces
+- 2026-10-21T01:57:49Z status=resolved-by:23-11-the-range-end-cleanup-part-10 by=adjudication note=dba8275c+a4e71fe8: one alert at 0/5xx, in-place FaultBanner+Retry at 403/404/unreadable; CI 39527072274
 
 ### DW-2450: flake: suggested-view.browser-spec.mjs AC8 (Home settles at DESIGN.md's published panel width at each of five viewports) failed once in a local fresh-throwaway shard and passed alone and on a re-run of the same shard order
 - source: lead fresh check, Story 23.5 batch b | severity: med | fix-risk: low | footprint: in-epic
@@ -12217,3 +12219,17 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-20-11-the-analytics-rider.md | severity: low | fix-risk: med | footprint: in-story
 - evidence: deleting AnalyticsPort.cls:303 keeps every test green: TestAFailedFactCountIsNullAndAnEmptyCubeIsZero shapes rows through AnalyticsGateSeam.CubeRowFor; the vendor answers 0 with an error status
 - 2026-10-21T03:24:31Z status=wontfix-accepted owner=20-11-the-analytics-rider by=cr note=reopen_if=a cube whose fact count fails is seen answering Facts 0 on Cubes
+### DW-2470: The dead selector .ocu-guardrails-fault stays in a shared rule in ui/src/styles/_components.scss after the Guardrails page moved to FaultBanner
+- source: spec-23-11-the-range-end-cleanup-part-10.md (batch c implement) | severity: low | fix-risk: low | footprint: in-story
+- evidence: grep -rn ocu-guardrails-fault ui/src ui/browser ui/tools finds only _components.scss:7415; no template or spec uses the class since batch c (dba8275c)
+- 2026-10-20T23:46:11Z status=open owner=23-11-the-range-end-cleanup-part-10 by=harvest note=batch d: removing it is a non-add-only edit in the stylesheet Epic 20 has changed; re-check Epic 20's diff first
+
+### DW-2471: A 200 answer that is not a screen read's shape leaves a read-state screen with no alert: screen-read.ts classifies it server-fault, ApiService reports a success so no shell banner rises, and showRefusal hides banner faults
+- source: spec-23-11-the-range-end-cleanup-part-10.md | severity: med | fix-risk: high | footprint: out-of-footprint
+- evidence: screen-read.ts:231-234 turns an ok answer of the wrong shape into status 200, which classifyFault reads as server-fault; api.ts reports the ok answer as no fault; read-state.ts draws neither refusal nor empty for it. Batch c fixed only the class-access tab and Guardrails (Design Notes).
+- 2026-10-21T00:46:32Z status=escalated owner=burndown by=cr note=decision sheet: map a success-status unreadable answer to rejected in the shared read, or keep server-fault
+
+### DW-2472: audit-copy-purge.browser-spec.mjs AC2 reads today before the dialog does, so a run that crosses local midnight between the two is red
+- source: spec-23-11-the-range-end-cleanup-part-10.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: CI run 39517085403 (dba8275c), browser shard 1/5 at 2026-10-21T00:00:01Z: the consequence named 2026-10-21 where the test expected 2026-10-20 (audit-copy-purge.browser-spec.mjs:214, :229). A pin needs a forced day turn, which the browser tier cannot stage without a clock seam.
+- 2026-10-21T00:46:37Z status=wontfix-accepted owner=23-11-the-range-end-cleanup-part-10 by=cr note=reopen_if=audit-copy-purge AC2 red again with the expected and drawn cut-off one day apart

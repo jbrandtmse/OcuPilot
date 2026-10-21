@@ -344,8 +344,8 @@ test('every rejected pair computes below its floor and never appears in a drawn 
 // the shipped stylesheet rather than the document, and go red the moment a band stops reading
 // its token and hardcodes a height instead.
 //
-// Mutations (Rule 19): replace `height: var(--ocu-header-height)` in `_components.scss` with
-// `height: 48px` -> the consumer test below goes red naming that token. Delete
+// Mutations (Rule 19): replace `min-height: var(--ocu-header-height)` in `_components.scss` with
+// `min-height: 48px` -> the consumer test below goes red naming that token. Delete
 // `--ocu-motion-tooltip-delay` from the reduced-motion block -> the reduced-motion row goes
 // red, and the rail tooltip would still wait 300ms for a user who asked for instant state
 // changes.
@@ -488,7 +488,7 @@ test('the header band is the documented gradient, and nothing in it is drawn bel
     /linear-gradient\(\s*90deg,\s*var\(--ocu-shell\)\s*0%,\s*var\(--ocu-shell\)\s*55%,\s*var\(--ocu-shell-edge\)\s*100%\s*\)/,
     "the header's own gradient, transcribed from DESIGN.md"
   );
-  assert.match(header[1], /height:\s*var\(--ocu-header-height\)/);
+  assert.match(header[1], /min-height:\s*var\(--ocu-header-height\)/, 'the band is a minimum, DESIGN.md `:912`');
 
   // Story 1.11 moved the value into the switch's own trigger; the eyebrow stayed in the band.
   // Both still draw at full strength, which is the rule this row exists for.
@@ -755,17 +755,22 @@ test('DW-173: .ocu-command-bar-refresh is bounded and ellipsizes, and its row ca
   // where the last declaration wins and the ellipsis goes quietly dead again.
   assert.doesNotMatch(chip[1], /display:\s*inline-flex/, 'DW-173: and nothing re-flexes it');
   // Losing `inline-flex` loses `align-items: center` with it, so the single line has to be
-  // centred by its own rule -- the content box the restated height leaves, not a number of its
-  // own.
-  assert.match(chip[1], /line-height:\s*var\(--ocu-control-height\)/, 'DW-173: centred by rule');
+  // centred by its own rule -- the content box the restated minimum leaves, not a number of its
+  // own -- and that line is a minimum as well, or the chip could never grow with its text.
+  // Mutation (Rule 19): `line-height: var(--ocu-control-height)` -> this goes red.
+  assert.match(
+    chip[1],
+    /line-height:\s*max\(var\(--ocu-control-height\),\s*calc\(var\(--ocu-type-body-line-height\) \* 1em\)\)/,
+    'DW-173: centred by rule, on a line that grows with the text (DESIGN.md `:912`)'
+  );
   // `box-sizing: border-box` on this chip alone would make it 2px shorter than the pill beside
   // it, which is the same shared `.ocu-button-text` rule at a content-box control height plus
   // its 1px border on each side. jsdom computes no layout, so the restated height is the only
   // place that regression can be caught.
   assert.match(
     chip[1],
-    /height:\s*calc\(var\(--ocu-control-height\) \+ 2px\)/,
-    'DW-173: and stays the height of the pill beside it, which is content-box'
+    /min-height:\s*calc\(var\(--ocu-control-height\) \+ 2px\)/,
+    'DW-173: and stays the minimum height of the pill beside it, which is content-box'
   );
 
   // The bound that lets the row narrow at all is the shell column's, not the bar's: this rule
@@ -808,8 +813,8 @@ test("the classic-link card's action is bounded by the card, and its label ellip
   assert.match(action[1], /box-sizing:\s*border-box/, 'on the box the card contains');
   assert.match(
     action[1],
-    /height:\s*calc\(var\(--ocu-control-height\) \+ 2px\)/,
-    "and keeps the content-box secondary button's outer height"
+    /min-height:\s*calc\(var\(--ocu-control-height\) \+ 2px\)/,
+    "and keeps the content-box secondary button's outer minimum height"
   );
 
   const label = /\.ocu-classic-link-card-label\s*\{([\s\S]*?)\n\}/.exec(componentsRaw);
@@ -823,6 +828,23 @@ test("the classic-link card's action is bounded by the card, and its label ellip
   const glyph = /\.ocu-classic-link-card-action \.ocu-external-glyph\s*\{([\s\S]*?)\n\}/.exec(componentsRaw);
   assert.ok(glyph, 'expected a rule for the glyph inside the action');
   assert.match(glyph[1], /flex-shrink:\s*0/, 'the glyph keeps its width');
+});
+
+test('a rule that restates the height of a minimum-height control restates its minimum too', () => {
+  // A control's height is a minimum (DESIGN.md `:912`), so a rule that gives a `.ocu-button-text` link its own
+  // `height: auto`, or the log row's explain button its fixed row height, loses to the base rule's `min-height`
+  // unless it resets that.
+  // Mutation (Rule 19): delete `min-height: 0` from `.ocu-panel-banner-link` -> this goes red, and so does the
+  // reminder-banner leg of `suggested-view.browser-spec.mjs` once the bundle is rebuilt and redeployed.
+  for (const [name, selector] of [
+    ['.ocu-panel-banner-link', '\\.ocu-panel-banner-link'],
+    ['.ocu-panel-warning-send, .ocu-panel-warning-edit', '\\.ocu-panel-warning-send,\\n\\.ocu-panel-warning-edit'],
+    ['.ocu-log-explain', '\\.ocu-log-explain'],
+  ]) {
+    const rule = new RegExp(`\\n${selector}\\s*\\{([\\s\\S]*?)\\n\\}`).exec(componentsRaw);
+    assert.ok(rule, `expected a ${name} rule`);
+    assert.match(rule[1], /\n\s*min-height:\s*0;/, `${name} resets the minimum the button rule it overrides carries`);
+  }
 });
 
 test('the secondary and text buttons carry the secondary state layer: 8% on hover, 12% pressed', () => {

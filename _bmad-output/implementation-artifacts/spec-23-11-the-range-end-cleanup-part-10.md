@@ -3,8 +3,8 @@ title: 'Story 23.11: The range-end cleanup, part 10'
 type: 'bugfix'
 created: '2026-10-15'
 status: 'done'
-baseline_revision: '66c76ae38816b6c0d56b64c04078eef3b7e11922'
-baseline_commit: '66c76ae38816b6c0d56b64c04078eef3b7e11922'
+baseline_revision: '0bba64fffdcc5597cd9eaec2540db1c6ab7b380d'
+baseline_commit: '0bba64fffdcc5597cd9eaec2540db1c6ab7b380d'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -17,6 +17,13 @@ deferred:
       `browserConfig` throws unless `OCUPILOT_BROWSER_ORIGIN` and `OCUPILOT_BROWSER_CONTAINER` are both set (`ui/browser.config.mjs`, pinned by `ui/tools/browser-config.test.mjs`). An implement pass never edits `_bmad/custom/*`.
     location: >-
       _bmad/custom/parallel.yaml:54
+    severity: low
+  - summary: >-
+      `.ocu-guardrails-fault` is still named in a shared selector in `ui/src/styles/_components.scss`, and no template or spec uses the class since the Guardrails page draws `FaultBanner`.
+    evidence: |-
+      `grep -rn "ocu-guardrails-fault" ui/src ui/browser ui/tools` finds the stylesheet only. The batch's stylesheet clearance covered the 28 height rules and the clipping declaration, so the dead selector stays.
+    location: >-
+      ui/src/styles/_components.scss:7415
     severity: low
 ---
 
@@ -288,7 +295,7 @@ Rejected:
 
 ### Batch c: styles and fault rendering
 
-- [ ] **DW-2449: a banner fault adds no alert of its own.**
+- [x] **DW-2449: a banner fault adds no alert of its own.**
   - `core/guardrails.ts`: keep a `fault(): Fault | null` beside `failed()`.
     - Use `classifyFailure`, and record an unreadable ok answer as `rejected`, as `Findings.load` does.
     - Park a banner fault with `connectivity.retryWhenReachable(GUARDRAILS_PATH, …)`. `GuardrailsOptions` gains an optional `connectivity`, and `main.ts:237` passes it.
@@ -301,7 +308,7 @@ Rejected:
     - `ui/tools/guardrails.test.mjs` and `guardrails.page.spec.ts`: status 0, 503, 404 and an unreadable answer.
     - `web-app-class-access-tab.spec.ts`: status 0 and 404.
     - `guardrails.browser-spec.mjs` and `web-applications-class-access.browser-spec.mjs`, each with a status-0 leg and a 404 leg. Each counts every `role="alert"` in the document: one (the shell's banner) at status 0, and the in-place banner with Retry at 404. Use the interception idiom at `home-system-information.browser-spec.mjs:315-323`.
-- [ ] **DW-2439: text-bearing heights are minimums.**
+- [x] **DW-2439: text-bearing heights are minimums.**
   - `_components.scss`: each of the 28 sites in the Code Map becomes `min-height:` with its value.
   - Where the doubled-type pass still finds that element clipping, fix the clipping declaration in the same rule (a px `line-height`, or a clipping `overflow`).
   - The fixed rows of the virtualized lists stay as they are.
@@ -317,6 +324,34 @@ Rejected:
 - Given the instance is unreachable, when the Guardrails page or a web application's class-access tab reads, then the document holds one alert, the shell's banner, and once the instance answers the surface reads again.
 - Given a 403, a 404 or an unreadable answer on either surface, when it renders, then `FaultBanner`'s in-place mode draws its sentence for that kind with Retry, and Retry reads again.
 - Given caption and body type doubled, when any of the 28 controls renders, in light or dark, then it grows and does not clip.
+
+### Review Findings (batch c)
+
+Code review 2026-10-21, layers `blind-hunter`, `edge-case-hunter`, `verification-gap`, `acceptance-auditor` (full-opus). 27 rows, 20 entries: 6 patch, 2 defer, 12 rejected. Rule 3 met: `guardrails`, `web-applications-class-access` and `text-reflow` drive the deployed bundle in a real browser.
+
+- [x] [Review][Patch] `.ocu-command-bar-refresh` never grows: its `line-height` is a fixed 32 px under `nowrap` and `overflow: hidden`, so `min-height` changes nothing and the chip clips from about 3x type, against DESIGN.md `:912` (low; fix-risk low: one declaration inside a ruled rule, unchanged at 1x) [ui/src/styles/_components.scss:1746]. Fixed: `line-height: max(var(--ocu-control-height), calc(var(--ocu-type-body-line-height) * 1em))`, as `.ocu-server-flag` does; `text-reflow` now sees the chip's `height:` revert, and `design-tokens.test.mjs` pins the line. Mutation lines under Verification.
+- [x] [Review][Patch] Comments the batch made wrong: the account section says its items are a "fixed" `control-height` and padding "would overflow", the chip's comment says `height` is restated, and a tools assertion message names "the fault line" (low; fix-risk low: comments) [ui/src/styles/_components.scss:481]. Fixed: each states the minimum; `text-reflow`'s note on the chip as an exception is gone with the exception.
+- [x] [Review][Patch] `FaultBanner`'s note on why it draws no refused row lists only About, System Information and Findings as caller-own and ungated; the Guardrails page and the class-access tab now mount it too, and the tab's read is gated (low; fix-risk low: comment) [ui/src/app/shell/fault-banner.ts:186]. Fixed: it names both mounts and says a 403 in place reads as the generic sentence. Epic 20 has not changed the file.
+- [x] [Review][Patch] `stubGuardrails`' `setUnreachable` and `unreachable` seed have no caller left, beside the new `setStatus` that overrides them (low; fix-risk low: deletion) [ui/src/app/testing/guardrails.ts:16]. Fixed: both removed; `setStatus(0)` is the one way to fail a read.
+- [x] [Review][Patch] Three mutation comments name legs that cannot go red: each loop stops at its first failing case (low; fix-risk low: comments) [ui/src/app/areas/agent/guardrails.page.spec.ts:209]. Fixed: each names the loop's first case, as the recorded observations do.
+- [x] [Review][Patch] `text-reflow`'s clip report reads a button's `value`, which is `''`, so every clipped button entry names no text (low; fix-risk low: one expression) [ui/browser/text-reflow.browser-spec.mjs:283]. Fixed: only an input reports its value; the chip's mutation run named "Auto-refresh: off".
+- [x] [Review][Defer] A 200 answer that is not the read's shape leaves every `read-state` screen with no alert: `screen-read.ts` classifies it `server-fault`, `ApiService` reports a success so no shell banner rises, and `showRefusal` hides banner faults (med; fix-risk high: the classifier is shared by every screen's read) [ui/src/app/core/screen-read.ts:231] -- deferred: pre-existing outside batch c, which fixed it in the tab only (Design Notes); DW-2471, `escalated` to the decision sheet
+- [x] [Review][Defer] `audit-copy-purge`'s AC2 reads today before the dialog does, so a run across local midnight is red; it reddened CI run 39517085403 on `dba8275c` (low; fix-risk low) [ui/browser/audit-copy-purge.browser-spec.mjs:214] -- deferred: DW-2472, `wontfix-accepted`; a pin needs a forced day turn the browser tier cannot stage without a clock seam
+
+Rejected:
+
+- `low` The form bar can now grow, but the toast lift and the form page's `scroll-padding-bottom` still add its 56 px token (`_components.scss:6179`, `:6227`). It needs a caption wrapping past 72 px at enlarged type with a toast or a bottom field at once, and a fix must measure the bar from script.
+- `low` (by-design) A 403 on either surface draws the generic sentence with Open messages.log rather than EXPERIENCE.md's refusal row. AC2 names `FaultBanner`'s in-place sentence and no `strings.ts` change; the tab's read declares the editor's own pairs.
+- `low` The Auto Run Result's counts predate QA (6, 6 and 4 tests now) and miscount the triage log. The fix edits the spec outside Verification; this review's final runs are recorded below.
+- `false` (by-design) Buttons whose labels already wrapped now grow at normal type (log viewer bar, SQL query). DESIGN.md `:912` makes every height a minimum, and CI run 39517085403 ran the full browser suite with no other red.
+- `low` Local `signedInAt` copies gain `prepare`, the two component specs declare their own `StubNavigation` and `StubShell`, and Home keeps its own `readAlerts`. The local helpers predate the batch, per-spec stubs are the house pattern across twenty specs, and Home's variant locates its block by heading and reports three places.
+- `low` A destroyed tab whose read fails after a newer tab parked replaces that park. It needs two tabs and an outage that answers out of order, and the fix is a new guard.
+- `low` Overlapping tab reads that settle out of order let an older failure win. Pre-existing, and the fix is request sequencing.
+- `false` `text-reflow` cannot see a clipped `<select>`. The criteria rule's `height:` mutation reported `.ocu-criteria-select` clipped in both themes, so a select's `scrollHeight` does exceed its box.
+- `low` The dead `.ocu-guardrails-fault` selector. Already DW-2470, owned by this story for batch d.
+- `low` (by-design) The tab holds its read's fault in a component signal (AD-19). Its rows have lived there since Story 18.10, as in the other pages that call `createScreenRead` directly, and the Task names the field.
+- `false` The guardrails and class-access specs have no dark leg. AC1 and AC2 name no theme, and the banner draws bare roles (Conventions › Theme).
+- `false` The spec reads `status: done` with batch d open. It is build-auto's per-batch machine state.
 
 ### Batch d: the narrow-pass settle sweep and the browser-spec literals
 
@@ -381,6 +416,30 @@ Rejected:
   - `[low]` `[reject]` No committed test adds a member, `Wire` shares the gate's logic, and part 2 is absent -- the spec asks for derived expectations pinned by an off-by-one mutation, the real check still runs on the wire, and part 2 is batch d.
 - own checks: the gap layer's `rail.spec.ts` claim read `AREAS` as the mirror; line 83 declares it locally. The intent layer's 26.0.0 point was run: `log-viewer`, `home.page` and `area-verdict` 153 of 153.
 
+### 2026-10-20 -- Review pass (batch c)
+
+- verdicts: 18 findings -- high 0, medium 2, low 12, false 4, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` The class-access tab drew nothing for a 200 answer that is not the read's shape -- `screen-read.ts` classifies it `server-fault`, a banner fault the tab leaves to a shell banner that never rises -- the tab records a success-status failure as `rejected` and draws it in place; its spec now covers 403, 404 and the unreadable answer.
+  - `[low]` `[patch]` The tab's `destroyed` guard had no test -- a departed-tab case was added.
+  - `[low]` `[reject]` The `min-height: 0` resets on `.ocu-log-explain` and the warning pair are pinned by source text only -- `design-tokens.test.mjs` reads the shipped stylesheet by this file's own convention, the mutation reddened it each time, and no acceptance criterion asks for a rendered measurement.
+  - `[low]` `[reject]` `text-reflow`'s `CHANGED` roster is hand-listed -- 27 of 28 rules were observed red when put back, and a derivation from the stylesheet is not possible in the other direction.
+  - `[low]` `[patch]` Acceptance criterion 2 and the `main.ts` wiring had no mutation line, and two test comments named mutations that were not run -- the Retry binding, `inPlaceFault` answering `null`, and the dropped `main.ts` argument were applied, observed red and reverted.
+  - `[low]` `[patch]` `text-reflow`'s header said it writes nothing -- `signedInAt` resets the account's remembered screen state; the header says so.
+  - `[low]` `[defer]` `.ocu-guardrails-fault` is a dead selector in a shared rule -- the stylesheet clearance covers the 28 heights and the clipping declaration; deferred to the frontmatter list.
+  - `[low]` `[reject]` Doubling the unitless line-height tokens makes a fourfold line box -- it is the established technique (`home-system-information`), and the header states what the helper does to the tokens.
+  - `[false]` `[reject]` The component specs prove only the surface's half of "the shell's banner is the one alert" -- the browser legs count every alert in the document.
+  - `[false]` `[reject]` Browser coverage is status 0 and 404 only -- the spec's Tasks name those two legs, and 503, 403 and the unreadable answer run in the tools and component tiers.
+  - `[medium]` `[patch]` The unreadable answer on the tab is handled differently from the Guardrails store -- the same root cause as the first row, fixed there.
+  - `[low]` `[reject]` The Guardrails park lives in the store and has no destroyed guard, the tab's lives in the component -- each follows its sibling (`Findings`, `HomePage.systemFault`), and a store outlives its page.
+  - `[low]` `[defer]` The leftover `.ocu-guardrails-fault` selector -- the same entry as above.
+  - `[low]` `[reject]` `.ocu-command-bar-refresh` is pinned by source text only -- its 32 px line height holds the doubled text either way, and the mutation line records the one test that reddens.
+  - `[false]` `[reject]` Four selectors are measured on inserted markup -- the spec names this for a selector no screen draws without a write.
+  - `[low]` `[reject]` The pass doubles six roles, not caption and body -- a superset of the stated stimulus; the Design Notes record it.
+  - `[low]` `[reject]` "Doubled" is about a fourfold line box -- the same as the line-height row above.
+  - `[false]` `[reject]` The clip check is vertical and at 1,440 x 900 only -- the spec asks for that viewport and that comparison.
+- own checks: the tab's unreadable-answer claim was traced through `createScreenRead` and `classifyFailure` (status 200 reaches the last branch) and then reproduced by mutation. Fixing it reddened `web-app-editor.page.spec.ts`, whose stub answered the list read with the form's body; the stub now answers the list in its shape.
+
 ## Design Notes
 
 **Verdicts at head `a69613d2`** (Rule 17 inbox):
@@ -427,6 +486,9 @@ Counts: 10 confirmed, 0 refuted, 0 already fixed (DW-2202's two named sites refu
 - **DW-2221: keep the constants.** `DEFAULT_ORIGIN` and `DEFAULT_CONTAINER` stay as slot A's pair: the refusal names them, and `ci.test.mjs` holds the origin equal to `ci-throwaway.sh`'s port.
 - **DW-2460, DW-2462: the race moves out of the test.** The product is unchanged. A cancel the retries miss is lost and the run completes (DW-2466, `wontfix-accepted`). A file deleted mid-look reads as a change, which the viewer's next page read reports.
 - **Batches:** DW-2455 and DW-2202's browser-spec sites share batch d, because both are browser-spec sweeps over overlapping files.
+- **DW-2439: a rule that overrides a changed rule's height restates its minimum.** `.ocu-panel-banner-link`, `.ocu-panel-warning-send`/`-edit` and `.ocu-log-explain` gain `min-height: 0`, because the button rule's new minimum beats their `height: auto` and fixed log-row height; `.ocu-server-flag`'s `line-height: 16px` becomes `max(16px, 1em of the label line height)`, the one clip the pass found. All four are outside the 28 sites, and add-only except that `line-height`.
+- **DW-2449: the tab records an answer with a success status that is not the read's shape as `rejected`**, as `Guardrails.load` and `Findings.load` do; `screen-read.ts` stays as it is because every screen's read shares it. The editor page spec's stub answers the list read in that shape.
+- **DW-2439: `text-reflow` doubles all six type roles, measures a text input by its one line and a menu's items alone while open.** An input reports `scrollHeight` equal to `clientHeight`, and a popup counts toward its host's `scrollHeight`. `ClassicLinkCard` is mounted by no template, so its action is measured on an inserted card.
 
 **Governing ADs (Rule 6):**
 
@@ -548,11 +610,28 @@ Every test added or changed passes on a fresh environment, in either order.
 **Batch c (loop):**
 
 - Run Checks and Deploy. Then run Spec for `guardrails`, `web-applications-class-access`, `home-system-information` and `text-reflow`, each in light and dark.
-- `mutation:` `inPlaceFault` answering the banner fault too. Expected red: `guardrails.page.spec.ts`'s status-0 case and `guardrails.browser-spec.mjs`'s status-0 leg (two alerts).
-- `mutation:` the same in the tab. Expected red: `web-app-class-access-tab.spec.ts` and the class-access status-0 leg.
-- `mutation:` the `retryWhenReachable` park dropped. Expected red: `ui/tools/guardrails.test.mjs`'s park case.
-- `mutation:` the unreadable answer recorded as `server-fault`. Expected red: its tools case and its page case.
-- `mutation:` each changed rule back to `height:`, one at a time (bundle rebuilt and redeployed). Expected red: `text-reflow`, naming that selector, in light and in dark.
+- `mutation:` `inPlaceFault` answering the banner fault too. Expected red: `guardrails.page.spec.ts`'s status-0 case and `guardrails.browser-spec.mjs`'s status-0 leg (two alerts). Observed red, each the only failing test of its file: the page spec ("status 0 adds no alert of its own") and the browser leg, whose document held two alerts, the shell's and the page's; the 404 leg stayed green. Reverted (`cmp`).
+- `mutation:` the same in the tab. Expected red: `web-app-class-access-tab.spec.ts` and the class-access status-0 leg. Observed red, each the only failing test of its file ("status 0 adds no alert of its own"; two alerts); the 404 leg stayed green. Reverted (`cmp`).
+- `mutation:` the `retryWhenReachable` park dropped. Expected red: `ui/tools/guardrails.test.mjs`'s park case. Observed red: that case (1 of 13), and also `guardrails.page.spec.ts` ("status 0 is read again", 1 read for 2) and `guardrails.browser-spec.mjs`'s status-0 leg at its last wait (30 s). Dropped in the tab: `web-app-class-access-tab.spec.ts` and the class-access status-0 leg (30 s), each the only red in its file. Reverted (`cmp`).
+- `mutation:` the unreadable answer recorded as `server-fault`. Expected red: its tools case and its page case. Observed red, each the only failing test of its file: `guardrails.test.mjs`'s classification case (1 of 13) and `guardrails.page.spec.ts`'s in-place case ("unreadable: one alert, the banner's own", 0 of 1). Reverted (`cmp`).
+- `mutation:` each changed rule back to `height:`, one at a time (bundle rebuilt and redeployed). Expected red: `text-reflow`, naming that selector, in light and in dark. Observed: 27 of 28 red in both the light leg and the dark leg, each naming the rule's own selector. A rule with two selectors names both, and a rule whose element carries both classes names both (`.ocu-button-secondary`'s rule names `.ocu-classic-link-card-action`, and the card's own rule names `.ocu-button-secondary`). `.ocu-command-bar-refresh` (`:1746`) stayed green while its `line-height` was a fixed 32 px, which held its doubled 26 px text; code review made that line a minimum, and `text-reflow` now sees the chip (the (CR) line below). `design-tokens.test.mjs`'s DW-173 assertion, which now names `min-height`, reddens on it alone, as it does on `.ocu-header` (`:1098`) and the card action (`:2140`). Reverted (`cmp`).
+- `mutation:` `.ocu-server-flag`'s `line-height` back to `16px`. Expected red: `text-reflow`, naming `.ocu-server-flag`. Observed red in both themes (content 21 px in a 16 px box), the only entry. Reverted (`cmp`).
+- `mutation:` the agent picker fixture's host renamed. Expected red: `text-reflow`'s measured-selector assertion. Observed red in both themes, naming `.ocu-agent-picker-button` alone (0 elements). Reverted (`cmp`).
+- `mutation:` `min-height: 0` deleted from `.ocu-panel-banner-link`, `.ocu-panel-warning-send`/`-edit` and `.ocu-log-explain`, one at a time. Expected red: `design-tokens.test.mjs`'s reset case. Observed red, the only failing test, each time; for the banner link the bundle was rebuilt and `suggested-view.browser-spec.mjs`'s DW-1154 leg read 34 px against the 32 px bound. Reverted (`cmp`).
+- `mutation:` (CR) the tab's success-status unreadable answer left as `server-fault` (the `rejected` mapping dropped from `load`). Expected red: the tab's in-place case. Observed red, the only failing test of 12: "unreadable: one alert, the banner's own: expected 0 to be 1". Reverted (`cmp`).
+- `mutation:` (CR) the tab's `destroyed` guard deleted. Expected red: its departed-tab case. Observed red, the only failing test of 12: "the parked read does not run for a departed tab: expected 2 to be 1". Reverted (`cmp`).
+- `mutation:` (CR) `inPlaceFault` answering `null` for every fault, in the page and in the tab, each alone. Expected red: each component spec's in-place case. Observed red at "403: one alert, the banner's own", the only failing test of each. With both applied and the bundle rebuilt and redeployed, `guardrails` and `web-applications-class-access` were each red at their 404 leg's first wait (30 s), the other four green. Reverted (`cmp`).
+- `mutation:` (CR) the `(retried)` binding dropped, in the page and in the tab, each alone. Expected red: each in-place case. Observed red at "403: Retry reads again: expected 1 to be 2", the only failing test of each. Reverted (`cmp`).
+- `mutation:` (CR) the `connectivity` argument dropped at `main.ts:237` (bundle rebuilt and redeployed). Expected red: `guardrails.browser-spec.mjs`'s status-0 leg. Observed red at its last wait (30 s), the other four green. Reverted (`cmp`), bundle rebuilt and redeployed.
+- `mutation:` (QA) `inPlaceFault` in the page and in the tab answering every fault but an unreachable one (bundle rebuilt and redeployed). Expected red: the two new 500 legs. Observed red, each the only failing test of its file (two alerts, the shell's and the surface's); the status 0 and 404 legs stayed green. Reverted (`git checkout`; the tree equals its pre-mutation diff).
+- `mutation:` (QA) the `retryWhenReachable` park dropped in `Guardrails.load` and in the tab (bundle rebuilt and redeployed). Expected red: the 500 legs' last wait. Observed red at that wait (30 s) in the 500 leg and the status 0 leg of each file; the 404 leg stayed green. Reverted.
+- `mutation:` (QA) `.ocu-side-bar-item` and `.ocu-command-bar-refresh` back to `height:` (bundle rebuilt and redeployed). Expected red: `text-reflow` for the side bar alone, `design-tokens.test.mjs` for the refresh chip alone. Observed: `text-reflow` red in both themes with 40 entries, all `.ocu-side-bar-item`, none for the chip; `design-tokens.test.mjs` red at its DW-173 case, the only failing test of 40. That held while the chip's `line-height` was a fixed 32 px (client 32 px, scroll 32/32/39/47 px at 1x to 4x); see the (CR) line below. Reverted.
+- `mutation:` (QA) the dark leg of `text-reflow` drawn with `setDarkTheme(page, false)`. Expected red: the dark leg. Observed red, the only failing test, at "Home is drawn in the dark theme when it is measured" (`light` read); the light leg stayed green. Restored (`cmp`).
+- `mutation:` (QA) `.ocu-data-table-row` and then `.ocu-log-row` on `min-height:` in place of `height:` (bundle rebuilt and redeployed each time). Expected red: `text-reflow`'s fixed-rows test. Observed red in both themes, naming the data-table row (73.8 px read, 36 px expected) and the log row (73.8 px, 28 px); the control test stayed green. Reverted.
+- (QA) `ui/browser/text-reflow.browser-spec.mjs`: `drawnTheme` asserts the theme each leg claims is the one drawn, and a fixed-rows test pair (light, dark) pins `:912`'s virtualized rows at doubled type. `ui/browser/panel-spec.mjs`: `interceptRead` gains a `'fault'` mode (500). `ui/browser/guardrails.browser-spec.mjs` and `ui/browser/web-applications-class-access.browser-spec.mjs`: one 500 leg each (the shell's banner is the one alert; the shell's Retry reads again). No file created.
+- `mutation:` (CR) `.ocu-command-bar-refresh` back to `height:`, its `line-height` now `max(var(--ocu-control-height), calc(var(--ocu-type-body-line-height) * 1em))` (bundle rebuilt and redeployed). Expected red: `text-reflow`, naming the chip. Observed red in both themes (2 of 4, the fixed-rows pair green): the chip, which is also `.ocu-button-text`, read 73 px of content in a 32 px box on Home, before and after the fixtures went in, and on Task schedule. Reverted (`cmp`), rebuilt and redeployed.
+- `mutation:` (CR) the chip's `line-height` back to `var(--ocu-control-height)`. Expected red: `design-tokens.test.mjs`'s DW-173 case. Observed red, the only failing test of 40. Reverted (`cmp`).
+- (CR) Final state on `ocupilot-ci`, bundle rebuilt and redeployed: `guardrails` 6 of 6, `web-applications-class-access` 6 of 6, `home-system-information` 8 of 8, `text-reflow` 4 of 4. `npm run test:tools` with neither variable set 2,039 of 2,039; `npm run test:components` 3,278 of 3,278; initial bundle 1.96 MB, under the budgets.
 
 **Batch d (loop):**
 
@@ -566,10 +645,13 @@ Every test added or changed passes on a fresh environment, in either order.
 Status: done
 Blocking condition: none
 
-Batch b (DW-2458, DW-2221, DW-2202 part 1), review and finalize. Batches c and d are later passes.
+Batch c (DW-2449, DW-2439), review and finalize. Batch d is the next pass.
 
-- **Change.** AC6 advances and drains fake time synchronously, with `real-timers.ts` shared by `log-viewer.spec.ts` and `home.page.spec.ts`. `browserConfig` throws unless both browser variables are set and not empty; `preferences-reset.mjs` resolves it on first use. The area, screen and tile counts in eight files now derive from `Area.List`, `ScreensForArea`, `AREAS`, `orderedAreas()` and `listedScreensForArea`, with `Navigation.ExpectedAreaVerdicts` and `Wire.ExpectedScreens` as the derived sides.
-- **Review.** Layers: verification-gap and intent-alignment. 15 findings: medium 1, low 12, false 2. Patched 5 (1 medium, 4 lows), rejected 9 with reasons in the Review Triage Log, deferred 1 low (`_bmad/custom/parallel.yaml:54`). `followup_review_recommended` is false.
-- **Verification.** `npm run test:tools` with neither variable set: 2,036 of 2,036. `npm run test:components`: 3,272 of 3,272. `log-viewer`, `home.page` and `area-verdict` green on Node 22.22.3, 24.15.0 and 26.0.0; `preferences-reset` and `browser-config` green on 22.22.3, 24.15.0 and 26.8.1. On `ocupilot-ci` after loading `src` (0 errors): `Navigation` 14, `NamespaceFeatures` 5, `Wire` 20 (runs 25 to 27) and `ExplorerDescriptor` 16 (run 17), confirmed by SQL on `%UnitTest_Result`. `developer-floor.browser-spec.mjs` green with both variables and refused with neither. `check-objectscript.py` and `lint-docs.sh` clean. Every `mutation:` line was observed red and reverted.
-- **Paths beyond the Footprint list.** `.github/workflows/ci.yml` and `ui/browser/preferences-integration.browser-spec.mjs`, one comment each; `ui/src/app/testing/real-timers.ts` is new, as named.
-- **Residual risk.** None of this batch's guards was run against a registry that holds one more area than today's.
+- **Change.**
+  - DW-2449: `Guardrails` keeps `fault()` and parks a banner fault with `connectivity` (passed at `main.ts:237`). The Guardrails page and the class-access tab draw `FaultBanner` in place for any other fault and nothing for a banner fault. The tab records a success-status answer that is not the read's shape as `rejected`.
+  - DW-2439: the 28 `height:` rules in `_components.scss` are `min-height:`, and `.ocu-server-flag`'s `line-height` follows the label token. Four add-only `min-height: 0` lines keep the three override rules (`.ocu-panel-banner-link`, `.ocu-panel-warning-send`/`-edit`, `.ocu-log-explain`) as they were; they lie outside the cleared 28 and merge cleanly with Epic 20's hunk (`patch --dry-run`).
+  - `panel-spec.mjs` exports `scaleTypeTokens`, `interceptRead`, `framesGoBy` and `readAlerts`; `text-reflow.browser-spec.mjs` is new.
+- **Review.** Layers: verification-gap and intent-alignment. 18 findings: medium 2, low 12, false 4. Patched 4 entries (1 medium, 3 lows), rejected 12 with reasons in the Review Triage Log, deferred 1 low (the dead `.ocu-guardrails-fault` selector). `followup_review_recommended` is false.
+- **Verification.** `npm run test:tools` with neither variable set: 2,039 of 2,039; `guardrails` and `design-tokens` also green on Node 22.22.3 and 24.15.0 (53 of 53). `npm run test:components`: 3,278 of 3,278. On `ocupilot-ci` with the final bundle: `guardrails` 5, `web-applications-class-access` 5, `home-system-information` 8, `text-reflow` 2, and `web-applications-editor` 7, `screen-height` 15, `header-lockup` 5, `toast` 3 as regression. The build is under the budgets (initial 1.96 MB). `lint-docs.sh` is clean. Every `mutation:` line was observed red and reverted.
+- **Paths beyond the Footprint list.** `web-app-editor.page.spec.ts` (its stub answers the list read in its shape, and it provides `ConnectivityService`) and `ui/tools/design-tokens.test.mjs`; Epic 20 has changed neither.
+- **Residual risk.** Buttons whose labels already wrapped at normal size now grow instead of overflowing: four in the log viewer's bar (32 to 38.4 px) and two on the SQL query page, found by comparing 16 screens.

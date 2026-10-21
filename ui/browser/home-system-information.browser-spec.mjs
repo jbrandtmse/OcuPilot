@@ -44,6 +44,7 @@ import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '..
 import { loadStrings } from '../tools/strings.mjs';
 import { leaveFirstLoginGate } from './shell-entry.mjs';
 import { resetRememberedState } from './preferences-reset.mjs';
+import { framesGoBy, interceptRead, scaleTypeTokens } from './panel-spec.mjs';
 
 const config = browserConfig();
 const STRINGS = loadStrings();
@@ -237,14 +238,6 @@ test('AC2: with five blocks present the row wraps, at 1,440 px and at the 720 px
   }
 });
 
-/** The four type tokens text-only resizing scales, as DESIGN.md `:912` names them. */
-const SCALED_TOKENS = [
-  '--ocu-type-caption-size',
-  '--ocu-type-caption-line-height',
-  '--ocu-type-body-size',
-  '--ocu-type-body-line-height',
-];
-
 /**
  * Text-only resizing grows a System Information row rather than clipping it. The tokens
  * are doubled on the document element, two animation frames are let go by, and every row must
@@ -259,22 +252,8 @@ for (const theme of ['light', 'dark']) {
         (dark) => document.documentElement.classList.toggle('ocu-theme-dark', dark),
         theme === 'dark'
       );
-      const scaled = await page.evaluate(async (tokens) => {
-        const root = document.documentElement;
-        const doubled = {};
-        for (const token of tokens) {
-          const read = getComputedStyle(root).getPropertyValue(token).trim();
-          const match = /^(-?\d*\.?\d+)([a-z%]*)$/.exec(read);
-          if (match === null) return { error: `${token} reads ${JSON.stringify(read)}` };
-          doubled[token] = `${parseFloat(match[1]) * 2}${match[2]}`;
-          root.style.setProperty(token, doubled[token]);
-        }
-        const frame = () => new Promise((resolve) => requestAnimationFrame(() => resolve()));
-        await frame();
-        await frame();
-        return { doubled };
-      }, SCALED_TOKENS);
-      assert.equal(scaled.error, undefined, `every token reads as a number: ${JSON.stringify(scaled)}`);
+      const scaled = await scaleTypeTokens(page, 2);
+      assert.deepEqual(scaled.unparsed, [], `every token reads as a number: ${JSON.stringify(scaled)}`);
 
       const rows = await page.evaluate(() =>
         Array.from(document.querySelectorAll('.ocu-home-system-row')).map((row) => {
@@ -304,34 +283,6 @@ for (const theme of ['light', 'dark']) {
   });
 }
 
-/**
- * Fail the reads whose URL contains `control.path` for as long as `control.mode` says so:
- * `'abort'` is a transport failure (the browser's status 0), `'absent'` an instance that answers
- * 404 with its envelope, and `null` lets the read through. `control.hits` counts the reads that
- * were failed, which is the signal that the page has asked. Every other request goes on untouched.
- */
-function interceptRead(control) {
-  return async (page) => {
-    await page.setRequestInterception(true);
-    page.on('request', (request) => {
-      if (!request.url().includes(control.path) || control.mode === null) {
-        void request.continue();
-        return;
-      }
-      control.hits += 1;
-      if (control.mode === 'abort') {
-        void request.abort('failed');
-        return;
-      }
-      void request.respond({
-        status: 404,
-        contentType: 'application/json',
-        body: JSON.stringify({ error: 'not_found', reason: 'Not found', code: 'ROUTE.NOTFOUND' }),
-      });
-    });
-  };
-}
-
 /** The two Home blocks that read from the instance and draw a failed read in place. */
 const FAULT_SURFACES = [
   {
@@ -349,11 +300,6 @@ const FAULT_SURFACES = [
     answered: '.ocu-home-findings-group',
   },
 ];
-
-/** Two animation frames, so a change the page has already decided on is on screen. */
-function framesGoBy(page) {
-  return page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
-}
 
 /**
  * Every alert in the document that holds a sentence, each with where it stands (`shell` outside

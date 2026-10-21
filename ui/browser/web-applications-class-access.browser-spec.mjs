@@ -11,8 +11,13 @@
  * 3. **Delete on a non-system entry** is confirmed in its typed-name dialog, which asks for the entry's class, and the
  *    entry is gone on the instance and from the tab's list.
  *
+ * 4. **A failed read draws one alert (Story 23.11, DW-2449).** A read that cannot reach the instance is the shell's
+ *    banner to say once, and the tab adds nothing and reads again once the instance answers. A 404 is the tab's own
+ *    `FaultBanner` with Retry, and Retry reads again. The alert count is taken over the whole document.
+ *
  * It creates one entry, `%OcuProbe1810.Browser` on the existing application `/csp/user`, and removes it through the
- * instance's own port in `after`, whether or not a test failed. It writes nothing else.
+ * instance's own port in `after`, whether or not a test failed. It writes nothing else; the fault legs only intercept
+ * their own page's read.
  *
  * Run: `npm run test:browser` after `npm run build` and the bundle copy into the throwaway.
  */
@@ -27,6 +32,7 @@ import puppeteer from 'puppeteer';
 import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
 import { leaveFirstLoginGate } from './shell-entry.mjs';
 import { resetRememberedState } from './preferences-reset.mjs';
+import { framesGoBy, interceptRead, readAlerts } from './panel-spec.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const { STRINGS } = await import(join(uiRoot, 'src', 'app', 'core', 'strings.ts'));
@@ -85,12 +91,13 @@ after(async () => {
   assert.equal(entryStatus('CHECK'), '404', 'the probe entry is gone');
 });
 
-/** A fresh context signed in through the shell's own form, landed at `url`. */
-async function signedInAt(url) {
+/** A fresh context signed in through the shell's own form, landed at `url`; `prepare` runs against the page first. */
+async function signedInAt(url, { prepare = null } = {}) {
   await resetRememberedState();
   const context = await browser.createBrowserContext();
   const page = await context.newPage();
   page.setDefaultNavigationTimeout(config.navigationTimeoutMs);
+  if (prepare !== null) await prepare(page);
   await page.goto(`${config.origin}${url}`, { waitUntil: 'networkidle2' });
   await page.waitForSelector('#ocu-signin-user', { visible: true, timeout: config.navigationTimeoutMs });
   await page.type('#ocu-signin-user', config.username);
@@ -101,8 +108,11 @@ async function signedInAt(url) {
   return { context, page };
 }
 
-/** Open the editor on the application and select its percent-class access tab; the tab's table has drawn. */
-async function openAccessTab(page) {
+/**
+ * Open the editor on the application and select its percent-class access tab; the tab's table has drawn, unless
+ * `settled` is false, for a leg that fails the tab's read on purpose and waits for its own signal.
+ */
+async function openAccessTab(page, { settled = true } = {}) {
   await page.goto(`${config.origin}${editUrl(APPLICATION)}`, { waitUntil: 'networkidle2' });
   await page.waitForFunction(
     (wanted) => document.querySelector('#ocu-web-app-edit-Name')?.value === wanted,
@@ -113,6 +123,7 @@ async function openAccessTab(page) {
     const tabs = Array.from(document.querySelectorAll('app-form-tabs [role="tab"]'));
     tabs.find((tab) => tab.querySelector('.ocu-form-tab-label')?.textContent.trim() === label).click();
   }, STRINGS.webAppPctAccessListLabel);
+  if (!settled) return;
   await page.waitForSelector('.ocu-pct-access-table tbody tr', { timeout: config.navigationTimeoutMs });
 }
 
@@ -203,6 +214,117 @@ test('Delete on a non-system entry is confirmed in its typed-name dialog, and th
       { timeout: config.navigationTimeoutMs },
       PROBE_CLASS
     );
+  } finally {
+    await context.close();
+  }
+});
+
+/** The tab's list read, whose URL the fault legs fail. */
+const READ_PATH = '/screens/webapp.pctaccess/read';
+
+test('a class-access read that cannot reach the instance leaves the shell\'s banner as the one alert, and reads again once the instance answers', async () => {
+  // Mutation (Rule 19): answer the banner fault from `inPlaceFault` in `web-app-class-access-tab.ts`, rebuild and
+  // redeploy -> the tab draws an alert of its own beside the shell's banner and the count below reads two. Drop the
+  // `retryWhenReachable` park from `load` -> the table never returns once the instance answers, and the last wait
+  // times out.
+  const control = { path: READ_PATH, mode: 'abort', hits: 0 };
+  const { context, page } = await signedInAt(editUrl(APPLICATION), { prepare: interceptRead(control) });
+  try {
+    await openAccessTab(page, { settled: false });
+    // The shell's banner is the answered signal: the failed read reports to it before the tab learns of the failure.
+    await page.waitForSelector('app-fault-banner .ocu-fault-banner', { timeout: config.navigationTimeoutMs });
+    await page.waitForSelector('.ocu-pct-access', { timeout: config.navigationTimeoutMs });
+    await framesGoBy(page);
+    assert.ok(control.hits >= 1, 'the tab asked for the read this leg fails');
+
+    assert.deepEqual(
+      await readAlerts(page, '.ocu-pct-access'),
+      [{ where: 'shell', message: STRINGS.connectivityBannerUnreachable, actions: [STRINGS.actionRetry] }],
+      'one alert in the whole document, and it is the shell\'s unreachable banner'
+    );
+    assert.equal(await page.$('.ocu-pct-access .ocu-fault-banner'), null, 'and the tab draws no banner of its own');
+    assert.equal(await page.$('.ocu-pct-access-table'), null, 'and no table, since nothing the instance said is on screen');
+    assert.equal(await page.$('.ocu-pct-access-empty'), null, 'and no empty sentence either');
+
+    // The instance answers again: the parked read runs at the next answer and the table replaces the empty tab.
+    control.mode = null;
+    await page.waitForSelector('.ocu-pct-access-table tbody tr', { timeout: config.navigationTimeoutMs });
+    // The shell's banner stays mounted for a moment after its fault clears, so the count is taken once it is gone.
+    await page.waitForSelector('app-fault-banner .ocu-fault-banner', { hidden: true, timeout: config.navigationTimeoutMs });
+    assert.deepEqual(await readAlerts(page, '.ocu-pct-access'), [], 'no alert stands once the read answers');
+  } finally {
+    await context.close();
+  }
+});
+
+test('a class-access read the instance answers with a 500 leaves the shell\'s banner as the one alert, and the banner\'s Retry reads again', async () => {
+  // Mutation (Rule 19): make `inPlaceFault` in `web-app-class-access-tab.ts` draw every fault but an unreachable one,
+  // rebuild and redeploy -> the tab draws a banner of its own beside the shell's and the count below reads two. Drop
+  // the `retryWhenReachable` park from `load` -> the table never returns after the shell's Retry, and the last wait
+  // times out.
+  const control = { path: READ_PATH, mode: 'fault', hits: 0 };
+  const { context, page } = await signedInAt(editUrl(APPLICATION), { prepare: interceptRead(control) });
+  try {
+    await openAccessTab(page, { settled: false });
+    // A 5xx arms no probe, so the shell's banner stays until something answers; its own Retry is what asks.
+    await page.waitForSelector('app-fault-banner .ocu-fault-banner[data-fault="server-fault"]', { timeout: config.navigationTimeoutMs });
+    await page.waitForSelector('.ocu-pct-access', { timeout: config.navigationTimeoutMs });
+    await framesGoBy(page);
+    assert.ok(control.hits >= 1, 'the tab asked for the read this leg fails');
+
+    assert.deepEqual(
+      await readAlerts(page, '.ocu-pct-access'),
+      [{ where: 'shell', message: STRINGS.connectivityServerFault, actions: [STRINGS.actionRetry, STRINGS.actionOpenMessagesLog] }],
+      'one alert in the whole document, and it is the shell\'s generic banner'
+    );
+    assert.equal(await page.$('.ocu-pct-access .ocu-fault-banner'), null, 'and the tab draws no banner of its own');
+    assert.equal(await page.$('.ocu-pct-access-table'), null, 'and no table, since nothing the instance said is on screen');
+    assert.equal(await page.$('.ocu-pct-access-empty'), null, 'and no empty sentence either');
+
+    // The instance answers again; the shell's Retry probes, and the answer runs the parked read.
+    control.mode = null;
+    await page.evaluate((retry) => {
+      const tab = document.querySelector('.ocu-pct-access');
+      const banner = Array.from(document.querySelectorAll('app-fault-banner .ocu-fault-banner')).find((candidate) => !tab.contains(candidate));
+      Array.from(banner.querySelectorAll('button')).find((button) => button.textContent.trim() === retry).click();
+    }, STRINGS.actionRetry);
+    await page.waitForSelector('.ocu-pct-access-table tbody tr', { timeout: config.navigationTimeoutMs });
+    await page.waitForSelector('app-fault-banner .ocu-fault-banner', { hidden: true, timeout: config.navigationTimeoutMs });
+    assert.deepEqual(await readAlerts(page, '.ocu-pct-access'), [], 'no alert stands once the read answers');
+  } finally {
+    await context.close();
+  }
+});
+
+test('a class-access read the instance answers with a 404 shows the tab\'s own alert, and Retry reads again', async () => {
+  // Mutation (Rule 19): make `inPlaceFault` answer `null` for every fault, rebuild and redeploy -> the tab draws
+  // no banner and the first wait below times out.
+  const control = { path: READ_PATH, mode: 'absent', hits: 0 };
+  const { context, page } = await signedInAt(editUrl(APPLICATION), { prepare: interceptRead(control) });
+  try {
+    await openAccessTab(page, { settled: false });
+    // The tab's own banner is the answered signal: a 404 raises nothing in the shell.
+    await page.waitForSelector('.ocu-pct-access .ocu-fault-banner', { timeout: config.navigationTimeoutMs });
+    await framesGoBy(page);
+    assert.ok(control.hits >= 1, 'the tab asked for the read this leg fails');
+    assert.deepEqual(
+      await readAlerts(page, '.ocu-pct-access'),
+      [{ where: 'surface', message: STRINGS.connectivityServerFault, actions: [STRINGS.actionRetry, STRINGS.actionOpenMessagesLog] }],
+      'one alert in the whole document, inside the tab, with the generic sentence and both actions'
+    );
+    assert.equal(await page.$('.ocu-pct-access-table'), null, 'and no table beside it');
+    assert.equal(await page.$('.ocu-pct-access-empty'), null, 'and a failed read is not an empty list');
+
+    // The instance answers again; Retry reads again and the table replaces the alert.
+    control.mode = null;
+    await page.evaluate((retry) => {
+      const button = Array.from(document.querySelectorAll('.ocu-pct-access .ocu-fault-banner button')).find((candidate) => candidate.textContent.trim() === retry);
+      button.click();
+    }, STRINGS.actionRetry);
+    await page.waitForSelector('.ocu-pct-access-table tbody tr', { timeout: config.navigationTimeoutMs });
+    await framesGoBy(page);
+    assert.deepEqual(await readAlerts(page, '.ocu-pct-access'), [], 'the alert is gone once the read answers');
+    assert.equal(await page.$('.ocu-pct-access .ocu-fault-banner'), null, 'and so is the banner');
   } finally {
     await context.close();
   }

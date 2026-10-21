@@ -12,8 +12,10 @@ import {
   type GuardrailsAnswer,
   type ProhibitedRow,
 } from '../../core/guardrails';
+import { isBannerFault, type Fault } from '../../core/fault';
 import { screenForDescriptor } from '../../core/navigation';
 import { STRINGS, stringFor } from '../../core/strings';
+import { FaultBanner } from '../../shell/fault-banner';
 
 /** One Confirm group, resolved for drawing. */
 interface ConfirmGroupView {
@@ -45,8 +47,9 @@ function screenLabel(descriptor: string): string | null {
  *
  * **It renders the instance's answer and decides nothing** (AD-10, AD-30). Every refusal sentence,
  * code, tool name and field name comes from `GET /ui/guardrails` and is rendered as text (AD-11);
- * the only published copy here is the page's own labels. A read that fails shows the fault line
- * and no section.
+ * the only published copy here is the page's own labels. A read that fails draws no section: a
+ * connectivity-banner fault is the shell's banner's to say once, and any other is drawn in place by
+ * `FaultBanner` with Retry, which reads again.
  *
  * Every control-flow condition is a paren-free member reference, for the reason `sign-in.ts`
  * records.
@@ -54,10 +57,11 @@ function screenLabel(descriptor: string): string | null {
 @Component({
   selector: 'app-guardrails-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [FaultBanner],
   template: `<section class="ocu-form-page ocu-guardrails" [attr.aria-busy]="busy">
     <p class="ocu-guardrails-intro">{{ STRINGS.agentGuardrailsIntro }}</p>
-    @if (faultShown) {
-      <p class="ocu-guardrails-fault" role="alert">{{ STRINGS.connectivityServerFault }}</p>
+    @if (inPlaceFault) {
+      <app-fault-banner [fault]="inPlaceFault" (retried)="retry()" />
     }
     @if (answered) {
       <section class="ocu-guardrails-section" aria-labelledby="ocu-guardrails-refused">
@@ -129,14 +133,14 @@ export class GuardrailsPage {
   /** The store mirrored into a signal, so the template re-reads it under `OnPush`. */
   private readonly answer = signal<GuardrailsAnswer | null>(null);
 
-  private readonly failedFlag = signal(false);
+  private readonly faultFlag = signal<Fault | null>(null);
 
   private readonly loadingFlag = signal(false);
 
   constructor() {
     const mirror = (): void => {
       this.answer.set(this.store.data());
-      this.failedFlag.set(this.store.failed());
+      this.faultFlag.set(this.store.fault());
       this.loadingFlag.set(this.store.loading());
     };
     const stop = this.store.subscribe(mirror);
@@ -149,12 +153,22 @@ export class GuardrailsPage {
     return this.loadingFlag();
   }
 
-  protected get faultShown(): boolean {
-    return this.failedFlag();
+  /**
+   * The fault drawn in place: a failed read with something other than a connectivity-banner fault.
+   * A banner fault is the shell's banner's to say, so the page adds no alert of its own.
+   */
+  protected get inPlaceFault(): Fault | null {
+    const fault = this.faultFlag();
+    return isBannerFault(fault) ? null : fault;
+  }
+
+  /** Retry on the in-place banner: read the guardrails again. */
+  protected retry(): void {
+    void this.store.load();
   }
 
   protected get answered(): boolean {
-    return this.answer() !== null && !this.failedFlag();
+    return this.answer() !== null && this.faultFlag() === null;
   }
 
   protected get prohibited(): readonly ProhibitedRow[] {
