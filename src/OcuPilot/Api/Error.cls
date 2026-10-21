@@ -491,7 +491,7 @@ Parameter AGENTBADBODY = "AGENT.BADBODY";
 /// <p>Written sentence for <parameter>AGENTBADBODY</parameter> (AD-39). The raw
 /// <class>%Status</class> the read reported is written to the log and never to the wire, because
 /// it is vendor-shaped text naming internal classes.</p>
-Parameter REASONAGENTBADBODY = "The request body could not be read as JSON. Send a JSON object, or no body at all.";
+Parameter REASONAGENTBADBODY = "The request body is missing or is not the JSON object this request expects.";
 
 /// <p>Machine code (Story 4.4, AD-39): <code>PUT /agent/context</code>'s body carries anything
 /// other than exactly the boolean member <code>share</code> -- an absent, badly typed or extra
@@ -1459,6 +1459,7 @@ ClassMethod ReasonForViolation(pCode As %String) As %String
     If $Extract(pCode, 1, 10) = "ALLOWLIST." Quit ##class(OcuPilot.Api.AllowListError).ReasonFor(pCode)
     If $Extract(pCode, 1, 7) = "EGRESS." Quit ##class(OcuPilot.Api.EgressError).ReasonFor(pCode)
     If $Extract(pCode, 1, 11) = "WALLETRUNG." Quit ##class(OcuPilot.Api.WalletRungError).ReasonFor(pCode)
+    If $Extract(pCode, 1, 6) = "DOCDB." Quit ##class(OcuPilot.Api.DocDbError).ReasonFor(pCode)
     Quit ""
 }
 
@@ -1621,12 +1622,37 @@ ClassMethod ReasonForNamespace(pCode As %String) As %String
 /// <p>Every <code>AGENT.*</code> field-level violation code that carries a sentence, as a
 /// <class>%List</class>. Exists so a test can hold <method>ReasonForViolation</method> to the code
 /// vocabulary without re-spelling either, which is what catches a code added with no sentence
-/// behind it. The list is <code>AGENT.*</code> only because its test sweeps that prefix; the two
-/// <code>ACCOUNT.*</code> field codes are held instead by
-/// <class>OcuPilot.Test.AccountPasswordWire</class>, which asserts each sentence over the wire.</p>
+/// behind it. The list is <code>AGENT.*</code> only because its test sweeps that prefix; the
+/// <code>ACCOUNT.*</code>, <code>PREFERENCES.*</code> and <code>HELP.*</code> field codes are held
+/// by <method>AccountViolationCodes</method>, <method>PreferencesViolationCodes</method> and
+/// <method>HelpViolationCodes</method>, and <class>OcuPilot.Test.ViolationSentenceCoverage</class>
+/// sweeps every such list.</p>
 ClassMethod ViolationCodes() As %List
 {
     Quit $ListBuild(..#AGENTNAMEREQUIRED, ..#AGENTNAMEDUPLICATE, ..#AGENTPROVIDERUNKNOWN, ..#AGENTMAXTOKENSRANGE, ..#AGENTTEMPERATURERANGE, ..#AGENTCREDTYPEUNKNOWN, ..#AGENTCREDTYPEUNAVAILABLE, ..#AGENTENVVARREQUIRED, ..#AGENTCREDNAMEREQUIRED, ..#AGENTCREDNAMELENGTH, ..#AGENTENDPOINTREQUIRED, ..#AGENTENDPOINTSCHEME, ..#AGENTENDPOINTADDRESS, ..#AGENTENDPOINTLINKLOCAL, ..#AGENTHTTPACKREQUIRED, ..#AGENTLOCALUNSUPPORTED, ..#AGENTSYSTEMPROMPTLENGTH, ..#AGENTRETENTIONRANGE, ..#AGENTITERATIONSRANGE, ..#AGENTENABLEUNVERIFIED, ..#AGENTDEFAULTDISABLED, ..#AGENTCREDENTIALREQUIRED, ..#AGENTCREDENTIALENVUNWRITABLE, ..#AGENTCREDENTIALRUNGUNAVAILABLE, ..#AGENTKEYSHAPE, ..#AGENTCREDENTIALNOTOWNED, ..#AGENTCREDENTIALNOPRIVILEGE, ..#AGENTSWITCHREASONREQUIRED, ..#AGENTSWITCHCONTEXTROWCAP, ..#AGENTSWITCHTURNSPERHOUR, ..#AGENTSWITCHCONCURRENTTURNS, ..#AGENTHOLDUSERREQUIRED, ..#AGENTHOLDREASONREQUIRED, ..#AGENTHOLDDUPLICATE)
+}
+
+/// <p>Every <code>ACCOUNT.*</code> field-level violation code, as a <class>%List</class>, for the
+/// reason <method>ViolationCodes</method> exists. <parameter>ACCOUNTPASSWORDBODY</parameter> is an
+/// envelope code with no field, and is not in it.</p>
+ClassMethod AccountViolationCodes() As %List
+{
+    Quit $ListBuild(..#ACCOUNTPASSWORDCURRENT, ..#ACCOUNTPASSWORDPOLICY)
+}
+
+/// <p>Every <code>PREFERENCES.*</code> field-level violation code, as a <class>%List</class>, for
+/// the reason <method>ViolationCodes</method> exists. <parameter>PREFERENCESBODY</parameter> is an
+/// envelope code with no field, and is not in it.</p>
+ClassMethod PreferencesViolationCodes() As %List
+{
+    Quit $ListBuild(..#PREFERENCESROUTE, ..#PREFERENCESLIMIT, ..#PREFERENCESVALUE, ..#PREFERENCESNAME, ..#PREFERENCESCHOICE)
+}
+
+/// <p>Every <code>HELP.*</code> field-level violation code, as a <class>%List</class>, for the
+/// reason <method>ViolationCodes</method> exists.</p>
+ClassMethod HelpViolationCodes() As %List
+{
+    Quit $ListBuild(..#HELPROUTE)
 }
 
 /// <p>Refusal sentence for <parameter>AGENTNAMEREQUIRED</parameter>.</p>

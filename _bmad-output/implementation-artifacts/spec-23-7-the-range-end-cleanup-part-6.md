@@ -2,8 +2,8 @@
 title: 'Story 23.7: The range-end cleanup, part 6'
 type: 'bugfix'
 created: '2026-10-21'
-status: 'in-progress'
-baseline_revision: '77e27af66afd6e30e2526ca0ab107dbcdd4cff54'
+status: 'done'
+baseline_revision: '8e8266d9c23e40ea0a4afa9dd8974880395e1676'
 baseline_commit: '77e27af66afd6e30e2526ca0ab107dbcdd4cff54'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -345,11 +345,11 @@ Rejected:
 
 ### Batch 3: errors and copy
 
-- [ ] **DW-1170.** In `src/OcuPilot/Api/Error.cls:494`, `REASONAGENTBADBODY` becomes "The request body is missing or is not the JSON object this request expects.", or the wording the lead rules under Design Notes › Wording for the lead. The code is unchanged.
+- [x] **DW-1170.** In `src/OcuPilot/Api/Error.cls:494`, `REASONAGENTBADBODY` becomes "The request body is missing or is not the JSON object this request expects.", or the wording the lead rules under Design Notes › Wording for the lead. The code is unchanged.
   - **Red first:** new `src/OcuPilot/Test/BadBodySentence.cls` (unarmed; HTTP; writes nothing).
     - `POST /api/ocupilot/license/key/validate` with no body answers 400 `AGENT.BADBODY` as JSON. The reason equals the parameter and does not contain "no body".
     - `POST /api/ocupilot/agent/definitions` with `{not json` answers 400 with the same reason.
-- [ ] **DW-1377.** Create `src/OcuPilot/Test/ViolationSentenceCoverage.cls` (unarmed, in process). Observe both methods red first.
+- [x] **DW-1377.** Create `src/OcuPilot/Test/ViolationSentenceCoverage.cls` (unarmed, in process). Observe both methods red first.
   - **`TestEveryListedCodeHasASentence`.**
     - The population is every class method under `OcuPilot.Api.` whose name ends `ViolationCodes`, read from `%Dictionary.CompiledMethod`.
     - Each list is non-empty.
@@ -359,7 +359,7 @@ Rejected:
     - Every `pCode = ..#<NAME>` arm in `ReasonForViolation`'s stored implementation resolves to a code in the union of those lists.
     - Floor: at least 100 arms.
     - It is red today on the eight codes listed in the Code Map.
-- [ ] **DW-1377.** Edit `src/OcuPilot/Api/Error.cls` in three places.
+- [x] **DW-1377.** Edit `src/OcuPilot/Api/Error.cls` in three places.
   - Add `If $Extract(pCode, 1, 6) = "DOCDB." Quit ##class(OcuPilot.Api.DocDbError).ReasonFor(pCode)` immediately before `ReasonForViolation`'s final `Quit ""` (:1460).
   - Directly after `ViolationCodes()`, add `AccountViolationCodes()`, `PreferencesViolationCodes()` and `HelpViolationCodes()`. Each is a `%List` of its family's codes, read from the router.
   - In `ViolationCodes()`'s doc, replace the sentence about `AccountPasswordWire` with one that names the three lists and the sweep.
@@ -430,6 +430,28 @@ Rejected:
   - `[low]` `[reject]` Intent alignment: only the missing-pair refusal is counted - spec-bound by the entry's two refused calls and `RequiredPairs` assertion.
   - `[false]` `[reject]` Intent alignment: the turn key has an `x` the entry does not list - the separator keeps two jobs from making one key; recorded as an in-stage decision, and the key stays under 64 characters.
 
+### 2026-10-21 - Review pass (batch 3)
+
+- verdicts: 17 findings - high 0, medium 0, low 16, false 1, maybe-false 0
+- findings:
+  - `[low]` `[patch]` The sweep's list floor (38) sat below the population (41), so three lists could drop out unnoticed - floor set to 41; the list read and the arm read each observed red (runs 37, 38).
+  - `[low]` `[patch]` `BadBodySentence` compared the reason with the parameter it was editing, so a reworded sentence stayed green - the ruled sentence is asserted verbatim; red on that leg alone (run 36).
+  - `[low]` `[patch]` The DocDB equality leg passed when both sides were empty - a non-empty assertion on the family's sentence; red when `DocDbError.ReasonFor` answers `""` (run 39).
+  - `[low]` `[reject]` The Account list, four Preferences rows and the `tReason '= tCode` leg have no red of their own - the discipline is one mutation per pinning test, and the `HELPROUTE` and `PREFERENCESCHOICE` reds hold the router leg.
+  - `[low]` `[patch]` The sweep's header said a code the router answers cannot escape the first check - it reads only the arms that compare a declared parameter; reworded, with the prefix arms named.
+  - `[low]` `[reject]` The `tCode '= ""` leg on a router arm probably cannot fail - it guards the test's own `$Parameter` read, as the batch-2 construction checks do, and removing it adds nothing.
+  - `[low]` `[reject]` `RouterArms` reads one arm per line - all 147 arms sit alone on their line, and the fix adds a loop for a form no arm uses.
+  - `[low]` `[patch]` `UiAboutWire`'s doc still said `ViolationCodes` sweeps `AGENT.*` alone as the reason for its wire pin - reworded to name `ViolationSentenceCoverage`.
+  - `[low]` `[reject]` The DW-1377 task still says "both methods red first" while the class has three - the fix is to edit this spec, and the two named methods were observed red first (runs 1, 2).
+  - `[low]` `[reject]` Nine prefix-routed families have no `ViolationCodes` list, so neither leg reaches them - spec-bound ("a later family is covered by adding its list"); the fix is a list in each family. `reopen_if` a prefix arm is deleted from `ReasonForViolation` and no test reddens.
+  - `[low]` `[patch]` The ruled sentence is asserted nowhere, only the parameter's equality - same root as the second row; closed by the same assertion.
+  - `[low]` `[reject]` The absent-body case is observed on one route - the matrix's first CHANGED row names that route and the second names the other; the wrong-shape path at `LicenseRules.cls:209` is untouched by this diff.
+  - `[false]` `[reject]` The unchanged row (absent body on `/agent/definitions` answers 422) has no test - `AgentWire.TestAnAbsentBodyIsAdmittedFallsToTheRulesOnCreateAndChangesNothingOnUpdate` pins it, green in run 43.
+  - `[low]` `[reject]` The DocDB fix is not observable over HTTP, and the tests are in process - the matrix row names `ReasonForViolation` in process and says the wire already carries the sentence; no divergence to act on.
+  - `[low]` `[reject]` The `DOCDB.` arm answers all five family codes, wider than the matrix row - the task prescribes the prefix arm, as `ReasonForToolCode` has.
+  - `[low]` `[reject]` The sweep has two blind spots, the prefix families and the single-line arm form - same root as the prefix-family and one-arm-per-line rows; no new claim.
+  - `[low]` `[patch]` The list floor and the arm floor sit below today's counts - same root as the first row; closed by the same floor.
+
 ## Design Notes
 
 **Verdicts at `f0ec693f`.** Every entry is addressed and none is declined (Ledger inbox: 12 of 12). The intended disposition for all twelve is `resolved-by` 23.7, with the batch's commit. Two follow-ups for the lead:
@@ -489,6 +511,10 @@ No acceptance criterion contradicts an AD's Rule, and no NFR is in play.
 - **Batch 2, DW-2266.** `EncryptionKeyFileRead.TestAnAbsentKeyFileIsNamedReadably` asserts the status 400 and the problem text, not the code: `EncryptionProbe.Mint` answers the problem text and not the code, and only the mint's own refusal carries that text.
 - **Batch 2, DW-1308.** The turn key joins `$Job` and the counter with an `x`, so two jobs cannot make the same key.
 - **Batch 2, DW-1258.** A `License.Key/VALIDATE` leg pins `HttpMethodFor`'s check-type branch, the one non-mutating pair that sends its suffix.
+- **Batch 3, DW-1377.** The three new lists hold only the codes the router names, which are field-level codes. `ACCOUNT.PASSWORD.BODY` and `PREFERENCES.BODY` are envelope codes with no field and no router arm, so neither is listed.
+- **Batch 3, DW-1377.** The sweep's list floor is the population it was written against (41), so a list that drops out of the sweep reads red.
+- **Batch 3, DW-1170.** `BadBodySentence` also asserts the ruled sentence verbatim: the acceptance line names it, and equality with the parameter cannot see a reword.
+- **Batch 3, DW-1377.** A third method, `TestTheRouterAnswersTheDocDbFamilysOwnSentences`, pins the matrix row's equality: the router answers the family's own sentence, not merely a non-empty one.
 
 **Wording for the lead** (the lead rules at the spec gate):
 
@@ -602,8 +628,18 @@ Epic 20 has not changed any other file in the Code Map. Its working tree holds o
 - (QA) After the reverts and a full reload (0 errors), on `ocupilot-ci`: CompositeMintSweep 5 (run 765), LedgerClock 6 (766), CompositeMintReadable 1 (767), WebAppPctAccess 11 (768), LedgerSearch 10 (769), EncryptionKeyFileRead 6 (770), ErrorDeleteScope 8 (771). `check-objectscript.py` 0 problems; `npm run test:tools` 2081 of 2081.
 - `mutation:` (DW-1783, review) `TestTheShippedOffsetIsTheInstancesOwn` now compares the shipped and the vendor's conversions over `CORPUS` in the zone child. `OffsetAtUtc` reading `$ZDateTime(pUtcH, -3)` → that test red on all twelve corpus `LocalFromUtc` legs, and the zone test red on its six (ocupilot-ci run 773). Reverted; `Ledger.cls` byte-identical (sha1 equal to before).
 - (review) Files: new `src/OcuPilot/Test/ZoneSession.cls` (the child-session launcher, not a test); `InteropHostEdges.ReadInZone` and `LedgerClock.ReadInZone` call it, so `InteropHostEdges` joins the batch-2 Class loop. After the review patches and a reload (0 errors), on `ocupilot-ci`: LedgerClock 6 (run 774), InteropHostEdges 9 (775), AdminPortMutatingPath 2 (776), DenialParity 3 (777), EncryptionKeyFileRead 6 (778), CompositeMintSweep 5 (779), CompositeMintReadable 1 (780). `check-objectscript.py` 0 problems; `npm run test:tools` 2081 of 2081.
-- `mutation:` (DW-1170) record the before-fix red of `BadBodySentence`. After the fix, put ", or no body at all" back → it goes red.
-- `mutation:` (DW-1377) record the before-fix red of both methods. After the fix, delete the `DOCDB.` arm → `TestEveryListedCodeHasASentence` goes red. Remove `HELPROUTE` from `HelpViolationCodes()` → `TestEveryCodeTheRouterNamesIsListed` goes red.
+- `mutation:` (DW-1170) before the fix: `BadBodySentence` red on both methods, on the "no body" leg (ocupilot-ci run 1). After the fix, `, or no body at all` put back at the end of `REASONAGENTBADBODY` and the tree reloaded → both methods red on the same leg (run 5). Reverted; `Error.cls` byte-identical to the fixed copy. After the review patch added the ruled-wording leg, `REASONAGENTBADBODY` set to "Send a JSON object." → both methods red on that leg alone (run 36); reverted, byte-identical.
+- `mutation:` (DW-1377) before the fix: `ViolationSentenceCoverage` red on both methods (run 2). `TestEveryListedCodeHasASentence` names `DOCDB.NAME.INVALID` and `DOCDB.NAME.MAPPED`; `TestEveryCodeTheRouterNamesIsListed` names the eight router codes (`ACCOUNT.PASSWORD.CURRENT`, `ACCOUNT.PASSWORD.POLICY`, `PREFERENCES.ROUTE`, `PREFERENCES.LIMIT`, `HELP.ROUTE`, `PREFERENCES.VALUE`, `PREFERENCES.NAME`, `PREFERENCES.CHOICE`). After the fix:
+  - the `DOCDB.` arm deleted → `TestEveryListedCodeHasASentence` red alone, on those two codes (run 6);
+  - `HelpViolationCodes()` answering `""` → `TestEveryCodeTheRouterNamesIsListed` red on `HELP.ROUTE`, and `TestEveryListedCodeHasASentence` red on its non-empty leg, because `HELPROUTE` is that list's only code (run 8). A `Quit $ListBuild()` body is a one-element list of a null, not an empty list, and raises `<NULL VALUE>` in both methods (run 7);
+  - `PREFERENCESCHOICE` dropped from `PreferencesViolationCodes()` → `TestEveryCodeTheRouterNamesIsListed` red alone, on that code (run 9).
+  - the `DOCDB.` arm answering `DocDbError.ReasonFor("DOCDB.NAME.INVALID")` for every code → `TestTheRouterAnswersTheDocDbFamilysOwnSentences` (matrix row 4's equality leg) red alone, the other two green (run 33);
+  - `Parameter SUFFIX` set so the list query reads nothing → `TestEveryListedCodeHasASentence` red on its list-floor leg (found 0) and the router test red (run 37);
+  - `Parameter ROUTERMETHOD` naming no method → `TestEveryCodeTheRouterNamesIsListed` red alone on its arm-floor leg (found 0) (run 38);
+  - `DocDbError.ReasonFor` answering `""` for both field codes → `TestTheRouterAnswersTheDocDbFamilysOwnSentences` red on its non-empty leg, which equality alone would pass, and `TestEveryListedCodeHasASentence` red (run 39).
+
+  Each reverted; `Error.cls`, `DocDbError.cls` and `ViolationSentenceCoverage.cls` byte-identical (sha1 equal).
+- (batch 3) After the review patches, the reverts and a reload (0 errors), each batch-3 class is green on `ocupilot-ci`: BadBodySentence 2 (run 40), ViolationSentenceCoverage 3 (41), AgentViolation 8 (42), AgentWire 18 (43), RestServiceSave 8 (44), DocDbAppDescriptor 11 (45), DocDbPort 8 (46), DocDbWrite 8 (47), UiAboutWire 7 (48), PreferencesWire 12 (49), AccountPasswordWire 6 (50). `check-objectscript.py` 0 problems; `npm run test:tools` 2087 of 2087.
 - `mutation:` (DW-1191) drop the `connectrefused` branch from `Transport` → `ProviderTransportRetry` goes red. Pass no key header from `IssueHttpsPost` → a `keyMatches` leg goes red (expected `WalletRungWire`; record the class observed). No test can fail on the duplication itself; the pinning evidence is the batch-4 list, green before and after.
 
 ## Auto Run Result
@@ -611,13 +647,12 @@ Epic 20 has not changed any other file in the Code Map. Its working tree holds o
 Status: done
 Blocking condition: none
 
-**This pass (implement, batch 2).** Batch 2 only; batches 3 and 4 are untouched and unchecked. Batch 1 closed in its own pass.
+**This pass (implement, batch 3).** Batch 3 only (DW-1170, DW-1377); batch 4 is untouched and unchecked. Batches 1 and 2 closed in their own passes.
 
 - **Changed:**
-  - `Kernel/Proposal/Mint.cls`: one readable-id pass at `Mint`'s exit and `ReadableId` moved here; the four mint classes lose their copies (DW-2266).
-  - `Kernel/Audit/Ledger.cls`: `OffsetAtUtc` and `OffsetAtLocal`, used by both converters (DW-1783).
-  - New tests: `CompositeMintReadable`, `AdminPortMutatingPath`, `LedgerClock`; new fixtures: `AdminPortTypeSeam`, `LedgerClockProbe`.
-  - Edited tests: `InteropFloorTurn` (DW-1306), `DenialParity` (DW-1308), `EncryptionKeyFileRead` and `WebAppPctAccess` (DW-2266).
-- **Review:** 18 findings; 6 patched (all low): the default-begin echo leg, the unobserved `AdminPortMutatingPath` legs, the check-type leg, the leftover turn row, the stale-row guard and the empty-floor initialization. None deferred; 12 rejected with reasons in the triage log. Follow-up review recommended: false.
-- **Verified on `ocupilot-ci`:** Load with 0 errors; each `Batch 2 (loop)` class green in its own run after the patches (runs 65-77, counts on the `(batch 2)` line). `check-objectscript.py` 0 problems, `npm run test:tools` 2081 of 2081, `lint-docs.sh` 0 issues. Every batch-2 `mutation:` line records the observed red and the byte-identical revert.
-- **Residual:** DW-1783's two helpers cannot be falsified on this UTC instance (`reopen_if` on its `mutation:` line); `Mint.Refuse` still builds its `%Status` text from the unreadable problem, so that text can hold U+0001 while `detail.problem` cannot.
+  - `Api/Error.cls`: `REASONAGENTBADBODY` reworded to the ruled sentence; a `DOCDB.` arm in `ReasonForViolation`; `AccountViolationCodes`, `PreferencesViolationCodes` and `HelpViolationCodes`; `ViolationCodes()`'s doc.
+  - New tests: `BadBodySentence`, `ViolationSentenceCoverage` (three methods).
+  - `Test/UiAboutWire.cls`: one doc sentence made true.
+- **Review:** 17 findings; 5 entries patched from 7 rows (all low): the list floor, the verbatim ruled sentence, the DocDB non-empty leg, the sweep header, the `UiAboutWire` doc. None deferred; 10 rejected with reasons in the triage log. Follow-up review recommended: false.
+- **Verified on `ocupilot-ci`:** Load with 0 errors; each `Batch 3 (loop)` class green in its own run after the patches (runs 40-50, counts on the `(batch 3)` line). `check-objectscript.py` 0 problems, `npm run test:tools` 2087 of 2087, `lint-docs.sh` 0 issues. Both `mutation:` lines record the before-fix reds and the observed mutations, each reverted byte-identical.
+- **Residual:** prefix-routed families with no `ViolationCodes` list are outside the sweep (triage log, `reopen_if` there).
