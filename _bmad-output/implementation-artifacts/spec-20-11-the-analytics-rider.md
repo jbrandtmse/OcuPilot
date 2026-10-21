@@ -224,6 +224,25 @@ Rejected:
 
 - [x] [CI] browser shard 1/5: `panel.browser-spec.mjs` test 7 ("Signing out clears the panel draft and full screen; the next sign-in starts fresh") times out waiting for `app-panel aside.ocu-panel` — https://github.com/jbrandtmse/OcuPilot/actions/runs/39549375345 (attempts 1 and 2) — the defect is in `ui/src/app/core/session.ts`, not in the test or this story's code. `signOut()` settles the tab and shows the sign-in card, then awaits `/turn/abandon` (up to `SIGN_OUT_ABANDON_WAIT_MS`) and posts `/logout` with `credentials: 'include'`. A sign-in submitted in that window is answered first, and the late cookie-carrying `/logout` ends the new login: on a freshly rebuilt `ocupilot-b-ci`, `/login` answered 200 at 07:01:31.767 and `/logout` at .779, then `/agent/restraint`, `/refresh` and `/login` answered 401 and the card came back. It reproduces with feature's code alone. What the fix must do: a form submit, and every other `/login` the session client posts, waits for an in-flight sign-out's `/logout` to settle before it posts. The wait is bounded, so a hung logout cannot hold a sign-in forever (a named bound). The tab still clears and settles locally first (DW-5's order is unchanged). Pin it in `ui/tools/session.test.mjs`: with a sign-out whose `/logout` is held, a submit posts `/login` only after the logout settles; mutation: drop the wait, and that test goes red. `panel.browser-spec.mjs` stays unchanged as the browser-level pin; the lead re-runs it on a freshly rebuilt throwaway, where it failed before the fix. The wait is bounded by `LOGIN_AFTER_SIGN_OUT_WAIT_MS` (8,000 ms: the abandon's 3,000 ms plus 5,000 ms for the `/logout`).
 
+### Review Findings (rework 1)
+
+Code review 2026-10-21 of `6a8fd1f0..d9867ad8` (full-opus; four layers): 12 entries from 17 layer rows (high 0, medium 0, low 11, false 1); 4 patched, 0 ledgered, 8 rejected. The `[CI]` item is met clause by clause; AD-28 (`/logout` carries Bearer and cookie, `/refresh` unchanged) and AD-31 (abandon before `/logout`) hold; `settleWithin` is shared by both waits, not copied (Rule 2). Rule 3: `panel.browser-spec.mjs` test 7 is the browser pin, green 13 of 13 on a freshly rebuilt throwaway (the lead's run).
+
+- [x] [Review][Patch] Low: the bound's doc did not say a `/logout` slower than it can still end the sign-in it lets through [ui/src/app/core/session.ts:46] - the trade the item's named bound makes; one sentence.
+- [x] [Review][Patch] Low: two comments left wrong by the restructure - `signOut`'s "nothing the tab shows is waiting on it" and `post()`'s "`signOut()` posts `/logout`" [ui/src/app/core/session.ts:692, :1031].
+- [x] [Review][Patch] Low: the settled-sign-out test lacked the inline mutation note its four siblings carry [ui/tools/session.test.mjs:1435] - the marker mutation run here, red on that test alone.
+- [x] [Review][Patch] Low (Rule 19): the item's DW-5 clause had no `mutation:` line - applied, five tests red, reverted byte-identical; appended to the `(CI)` line.
+
+Rejected:
+
+- low: `formLogin` adopts after a sign-out that lands during its wait - needs a pre-sign-out data call answering 503 `INSTALL.UNREADABLE` mid-wait and Sign out on the notice; pre-existing shape, and the fix adds a guard (wontfix-theoretical; real if a tab is seen signed in after that Sign out).
+- low: while a `/logout` stays unanswered, each later `/login` waits the full bound again - the safer behavior, since that logout can still end a login (wontfix-accepted; reopen_if: one sign-out is seen to cost a sign-in the full bound twice with an answering instance).
+- low: the marker is per tab, so another tab's sign-in, or a reload's probe, in the `/logout` window is not held - outside the item's scope (the session client); it needs a cross-tab mechanism (wontfix-theoretical; real if a second tab's sign-in is seen ended by the first tab's `/logout`).
+- low: the bound test pins a floor, not the magnitude - the item asks for a named bound; the constant is the contract.
+- spec edit: the item and the Auto Run Result restate the bound's derivation in an oversized spec.
+- spec edit: the Spec Change Log has no entry for the CI re-open - the lead's bookkeeping.
+- false: the item was ticked before its fresh-throwaway run - the lead ran it, 13 of 13, where it failed 4 of 4 before.
+
 ## Spec Change Log
 
 - 2026-10-14, spec gate (runner): the orchestrator ruled Q1 A (Parts B, C and D are Stories 20.32, 20.33 and 20.34, chartered in `epics.md` with their criteria verbatim; order 20.11, 20.32, 20.33, 20.34, then 20.12) and Q2 A (Folder items on `%Development:USE`, a named narrower audience in AD-8). `epics.md` Story 20.11 is amended under Rule 5 (the split, and the first criterion's API reworded to the vendor's classes, apply-and-report). The new AD is AD-65 (claimed from the coordination counter), with the AD-29, AD-36, AD-8, AD-44, AD-13 and AD-7 clauses. Task 0 gains the cube `Resource` check measurement (the orchestrator's). The REST layer finding is DW-2416, decision-pending under the owner's hold.
@@ -305,7 +324,7 @@ Rejected:
   - `[false]` `[reject]` The defect lies outside the intent's surfaces - the same claim, from the other side; the Analytics rows are pinned by their own classes.
   - `[false]` `[reject]` The diff's tests are unit-level - the item names them, and the browser-level pin (`panel.browser-spec.mjs`, unchanged) ran green, 13 of 13, on the redeployed bundle.
   - `[false]` `[reject]` `signOut` and `abandonTurns` are restructured, not add-only - the add-only rule is for shared rosters; `session.ts` is on no contended list, and Epic 23 does not touch it.
-  - `[false]` `[reject]` The Auto Run Result still reads done and the mutation line seems to count five - this pass rewrites the result at finalize, and the line names four mutations.
+  - `[false]` `[reject]` The Auto Run Result still reads done and the mutation line seems to count five - this pass rewrites the result at finalize, and the line names seven mutations.
 
 ## Design Notes
 
@@ -552,7 +571,7 @@ Checked and not engaged:
 - mutation: **(CR)** the entries read increments a node under the probe term list -> `AnalyticsPort.TestTheReadsWriteNothing`, alone, at its TermListEntries leg (run 804); a write of an unchanged value is not seen, since the snapshot compares values.
 - mutation: **(CR)** `AnalyticsProbe.Remove` deletes build events through `%SQLUPPER(CubeKey) %STARTSWITH` -> `OnAfterAllTests` of `AnalyticsPort`, naming "build events" (run 805).
 - mutation: **(CR)** `AnalyticsProbe.Remove` keeps the probe favorites -> `OnAfterAllTests` of `AnalyticsPort`, naming the favorite's user (run 806).
-- mutation: **(CI)** `Session.postLogin` drops the wait on the in-flight sign-out -> `session.test.mjs`' four hold tests (submit, silent probe, abandon window, bound); `probeAndSettle` posting `/login` without the wait -> the silent-probe test, alone; the in-flight marker never cleared -> the settled-sign-out test, alone; `postLogin` waiting on the sign-out with no bound, or `LOGIN_AFTER_SIGN_OUT_WAIT_MS` shrunk to the abandon wait plus 1 ms -> the bound test, alone in each; the in-flight marker counted only once the `/logout` is sent -> the abandon-window test, alone.
+- mutation: **(CI)** `Session.postLogin` drops the wait on the in-flight sign-out -> `session.test.mjs`' four hold tests (submit, silent probe, abandon window, bound); `probeAndSettle` posting `/login` without the wait -> the silent-probe test, alone; the in-flight marker never cleared -> the settled-sign-out test, alone; `postLogin` waiting on the sign-out with no bound, or `LOGIN_AFTER_SIGN_OUT_WAIT_MS` shrunk to the abandon wait plus 1 ms -> the bound test, alone in each; the in-flight marker counted only once the `/logout` is sent -> the abandon-window test, alone; **(CR)** `signOut` running its instance half before its local half (DW-5's order) -> the two DW-5 sign-out tests, the abandon-bound test and the submit and silent-probe hold tests.
 
 **(QA) test files changed** (none created; the four analytics classes, the helper, the seam and the browser spec):
 

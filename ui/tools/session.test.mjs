@@ -1432,6 +1432,8 @@ test('a logout that never answers holds a submit only until the wait bound fires
   assert.equal(calls.filter((c) => c.path === LOGOUT_PATH).length, 1, 'and the logout is still the one');
 });
 
+// Mutation (Rule 19): the in-flight marker is never cleared when the sign-out settles -> this test
+// goes red, alone.
 test('a sign-out that has settled leaves nothing to wait for: the submit posts at once and arms no wait', async () => {
   const { session, scheduled, releaseLogout, loginCount } = await signedInWithHeldSignOut();
 

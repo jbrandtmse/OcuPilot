@@ -46,7 +46,9 @@ export const SIGN_OUT_ABANDON_WAIT_MS = 3_000;
 /**
  * How long a `/login` waits for a sign-out still in flight -- its abandon, then its `/logout` --
  * before it posts anyway: the abandon's own bound plus five seconds for the `/logout` round trip.
- * Unbounded, a logout that never answers would hold every later sign-in forever.
+ * Unbounded, a logout that never answers would hold every later sign-in forever. Past the bound
+ * the `/login` posts anyway, so a `/logout` slower than that can still end the sign-in it lets
+ * through.
  */
 export const LOGIN_AFTER_SIGN_OUT_WAIT_MS = SIGN_OUT_ABANDON_WAIT_MS + 5_000;
 
@@ -687,7 +689,7 @@ export class Session {
    * leaves it alive from any other, and a tab cannot know which it is.
    *
    * The method awaits the request, so a caller that awaits it sees the round trip complete --
-   * but nothing the tab shows is waiting on it.
+   * but the signed-out tab is not waiting on it; only a `/login` posted meanwhile is (below).
    *
    * **Before `/logout`, the caller's running turns are abandoned** (AD-31): the instance
    * observes no token sign-out, so a turn would otherwise run on until its lease lapses. The
@@ -1026,7 +1028,7 @@ export class Session {
       // A network fault is not a credential failure (DW-1), and it is not a response either
       // (DW-104): nothing answered, which is the one outcome with its own published copy and
       // its own recovery. Reported here, once, for both token endpoints that go through this
-      // method -- `/login` and `/refresh`. `signOut()` posts `/logout` with `this.http`
+      // method -- `/login` and `/refresh`. `endOnInstance()` posts `/logout` with `this.http`
       // directly and swallows its throw on purpose: the tab is already cleared and settled, so
       // there is no outcome there that should change what the user sees.
       this.report(path);

@@ -1070,3 +1070,5 @@
 2026-10-21T07:25:54Z	Story 20.11	adr_verifications_complete	tool=none acs= result=none_required evidence= mutations=none model=claude-opus-5-5
 2026-10-21T07:25:54Z	Story 20.11	rework_check	env=fresh_ocupilot-b-ci(3bd3aa31_src_and_bundle) test=panel.browser-spec.mjs result=13/13(was_red_4_of_4_on_fresh_before_the_fix)
 2026-10-21T07:25:54Z	Story 20.11	stage_spawned	stage=code-review spawn_at=2026-10-21T07:25:54Z model=opus agent_name=20-11-code-review-2 cycle_iteration=3 baseline=6a8fd1f0(rework_scoped)
+2026-10-21T07:39:53Z	Story 20.11	cr_complete	spawn_at=(see_stage_spawned) model=opus agent_name=20-11-code-review-2 cycle_iteration=3 scope=rework(6a8fd1f0..) resolved=4 dismissed=8 high=0 med=0 low=11 rows=12 unresolved_high_med=0 review_tier=full-opus status=done closing_sections_present=true note=CI_item_confirmed_fixed;comments_and_one_mutation_line_patched
+2026-10-21T07:39:53Z	Story 20.11	ledger_adjudicated	owned=0 resolved=0 reowned=0 terminal=0 slice_after=empty model=claude-opus-5-5
