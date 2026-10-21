@@ -32,7 +32,7 @@ import puppeteer from 'puppeteer';
 import { LIVE_CONTAINER, browserConfig, launchOptions } from '../browser.config.mjs';
 import { FILTER_SELECTOR, ROW_SELECTOR, clickRowCentre, waitForRows } from './list-spec.mjs';
 import { signedInAt } from './panel-spec.mjs';
-import { sideBarLabels } from './side-bar-spec.mjs';
+import { assertDrawnAtDeclaredIndex, sideBarLabels } from './side-bar-spec.mjs';
 import { assertThrowaway } from './structural-walk.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -110,7 +110,7 @@ after(async () => {
 
 // Mutation (Rule 19): drop the entry from the Security area's declared list, regenerate, rebuild and
 // redeploy -> the label assertion goes red.
-test('B1, B5: Security lists Superservers twelfth and the list shows 1972', async () => {
+test('B1, B5: Security lists Superservers and the list shows 1972', async () => {
   const { context, page } = await signedInAt(browser, config, LIST_URL);
   try {
     if ((await page.$('app-side-bar nav.ocu-side-bar')) === null) {
@@ -121,7 +121,7 @@ test('B1, B5: Security lists Superservers twelfth and the list shows 1972', asyn
     await page.waitForSelector('app-side-bar nav.ocu-side-bar', { timeout: config.navigationTimeoutMs });
     const labels = await page.$$eval('app-side-bar .ocu-side-bar-item .ocu-side-bar-label', (nodes) => nodes.map((node) => node.textContent.trim()));
     assert.deepEqual(labels, sideBarLabels('security'), 'the side bar lists its entries in their declared order');
-    assert.equal(labels[11], STRINGS.superserverListLabel, 'Superservers is the twelfth');
+    assertDrawnAtDeclaredIndex(labels, 'security', STRINGS.superserverListLabel);
     await waitForRows(page, config.navigationTimeoutMs);
     const rows = await page.$$eval(ROW_SELECTOR, (nodes) => nodes.map((node) => node.textContent));
     assert.ok(rows.some((text) => text.includes('1972') && text.includes('0.0.0.0')), 'the system default is listed on 1972');

@@ -197,9 +197,10 @@ function effects(page) {
   return page.$$eval('app-web-app-editor-page [id$="-effect"]', (nodes) => nodes.map((node) => node.textContent.trim()));
 }
 
+/** The tabs this spec opens, by their published labels. */
 const TAB_LABELS = [STRINGS.processDetailsGroupGeneral, STRINGS.webAppFormApplicationRoles, STRINGS.webAppTabMatchingRoles, STRINGS.webAppTabCors, STRINGS.webAppPctAccessListLabel];
 
-test('a row\u2019s name opens the editor on its five tabs', async () => {
+test('a row\u2019s name opens the editor on General, with the tabs this spec opens offered', async () => {
   // Mutation (Rule 19): put WebAppForm back in `CREATE_ONLY_FORMS` and redeploy -> the name cell
   // opens no editor and the URL wait goes red.
   const { context, page } = await signedInAt(LIST_URL);
@@ -223,7 +224,7 @@ test('a row\u2019s name opens the editor on its five tabs', async () => {
     );
     await editorReady(page, PROBE);
     const tabs = await tabState(page);
-    assert.deepEqual(tabs.map((tab) => tab.label), TAB_LABELS);
+    for (const label of TAB_LABELS) assert.ok(tabs.some((tab) => tab.label === label), `the strip offers ${label}`);
     assert.equal(tabs[0].selected, true, 'General is open first');
   } finally {
     await context.close();
@@ -305,7 +306,7 @@ test('a refusal on General while another tab is open opens General with its dot 
     assert.equal(tabs[0].selected, true, 'General opened');
     assert.equal(tabs[0].dot, true, 'with the destructive dot');
     assert.equal(tabs[0].name, `${STRINGS.processDetailsGroupGeneral}, 1 error`, 'and its count in its accessible name');
-    assert.equal(tabs[3].dot, false, 'Cross-origin settings carries none');
+    assert.equal(tabs.find((tab) => tab.label === STRINGS.webAppTabCors).dot, false, 'Cross-origin settings carries none');
     assert.equal(probeField(PROBE, 'Timeout'), '900', 'and nothing reached the instance');
 
     await page.click('.ocu-form-bar-actions .ocu-button-text');

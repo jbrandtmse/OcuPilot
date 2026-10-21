@@ -35,7 +35,7 @@ import puppeteer from 'puppeteer';
 import { LIVE_CONTAINER, browserConfig, launchOptions } from '../browser.config.mjs';
 import { saveAndSettle, signedInAt } from './panel-spec.mjs';
 import { INVARIANTS, VIEWPORTS, assertThrowaway, collapse, compare, componentMinimums, detectScreen, readBaseline } from './structural-walk.mjs';
-import { sideBarLabels } from './side-bar-spec.mjs';
+import { assertDrawnAtDeclaredIndex, sideBarLabels } from './side-bar-spec.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const repoRoot = join(uiRoot, '..');
@@ -219,14 +219,14 @@ async function assertStructure(page, route) {
 
 // C1, C8. Mutation (Rule 19): give EcpSettings `sideBarPosition` 0 and regenerate the mirror, rebuild
 // and redeploy -> the side-bar assertion goes red.
-test('C1, C8: ECP settings is the eighteenth OS management entry and shows the six settings, the restart sentence and the license line', async () => {
+test('C1, C8: ECP settings is an OS management entry and shows the six settings, the restart sentence and the license line', async () => {
   const { context, page } = await signedInAt(browser, config, URL_AT, VIEWPORTS.wide);
   try {
     await formDrawn(page);
     const bar = await sideBarOf(page);
     assert.equal(bar.area, STRINGS.navAreaOsManagement);
     assert.deepEqual(bar.entries, sideBarLabels('os-management'), 'the OS management entries in their declared order');
-    assert.equal(bar.entries[17], STRINGS.ecpSettingsLabel, 'ECP settings is the eighteenth');
+    assertDrawnAtDeclaredIndex(bar.entries, 'os-management', STRINGS.ecpSettingsLabel);
     const legends = await page.$$eval('fieldset[data-group] > legend', (nodes) => nodes.map((node) => node.textContent.trim()));
     assert.deepEqual(legends, [STRINGS.ecpSettingsAppServerLegend, STRINGS.ecpSettingsDataServerLegend]);
     const shown = [];

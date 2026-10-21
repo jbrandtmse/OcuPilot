@@ -2,9 +2,9 @@
 title: 'Story 23.11: The range-end cleanup, part 10'
 type: 'bugfix'
 created: '2026-10-15'
-status: 'in-progress'
-baseline_revision: '0bba64fffdcc5597cd9eaec2540db1c6ab7b380d'
-baseline_commit: '0bba64fffdcc5597cd9eaec2540db1c6ab7b380d'
+status: 'done'
+baseline_revision: '9b9274439800f6a9259e935d4ce0db42d3575478'
+baseline_commit: '9b9274439800f6a9259e935d4ce0db42d3575478'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -17,13 +17,6 @@ deferred:
       `browserConfig` throws unless `OCUPILOT_BROWSER_ORIGIN` and `OCUPILOT_BROWSER_CONTAINER` are both set (`ui/browser.config.mjs`, pinned by `ui/tools/browser-config.test.mjs`). An implement pass never edits `_bmad/custom/*`.
     location: >-
       _bmad/custom/parallel.yaml:54
-    severity: low
-  - summary: >-
-      `.ocu-guardrails-fault` is still named in a shared selector in `ui/src/styles/_components.scss`, and no template or spec uses the class since the Guardrails page draws `FaultBanner`.
-    evidence: |-
-      `grep -rn "ocu-guardrails-fault" ui/src ui/browser ui/tools` finds the stylesheet only. The batch's stylesheet clearance covered the 28 height rules and the clipping declaration, so the dead selector stays.
-    location: >-
-      ui/src/styles/_components.scss:7415
     severity: low
 ---
 
@@ -355,19 +348,19 @@ Rejected:
 
 ### Batch d: the narrow-pass settle sweep and the browser-spec literals
 
-- [ ] **DW-2455: every structural pass measures the settled layout.**
+- [x] **DW-2455: every structural pass measures the settled layout.**
   - In each of the 42 files, the pass loop sets its viewport with `settleViewport(page, viewport)`. After the theme toggle it awaits `transitionsSettled(page, config.navigationTimeoutMs)` before `detectScreen`. Both helpers are imported from `panel-spec.mjs`.
   - The same applies to `cardViolations` (drop its ignored edge wait), the local loop in `agent-code-save:305-310`, and `header-lockup:231`.
   - `read-back:102` and `permissions-effective:148` call the shared `transitionsSettled`.
   - Any overflow a settled pass exposes is fixed in this batch, in CSS, and that pass is its pin.
   - New `ui/tools/browser-settle.test.mjs` scans each `ui/browser/*.mjs` that calls `detectScreen(`. Between the last viewport change (`setViewport(` or `settleViewport(`) and each `detectScreen(` call, in text order, there must be a `transitionsSettled(` or `panelSettlesAt(` call. A file it flags beyond the 47 is settled the same way.
-- [ ] **DW-2202, part 2: derive the browser specs' positions.**
+- [x] **DW-2202, part 2: derive the browser specs' positions.**
   - Each positional pin reads its index as `sideBarLabels(area).indexOf(<label>)`, asserts it is at least 0, and asserts the drawn entry at that index carries the label.
   - Each prefix pin compares against `sideBarLabels(area).slice(0, n)`, or is dropped where the spec's derived full-list check already covers the side bar. Record which.
   - `system-explorer:132` takes the area's index in `AREAS`' rail order. `system-explorer:143-145` joins `sideBarLabels('system-explorer')`.
   - The three editor specs stop pinning the whole strip and assert only the tabs they open, by their `STRINGS` label. The page specs stay the strips' one pin.
   - Not in this pass: the `WireSecurityRead` (19) and `WireOAuthRead` (5) per-principal roster literals, batch b review's DW-2202 occurrence. MED with high fix-risk, so the lead escalates that residual at this batch's adjudication (Rule 15).
-- [ ] **DW-2470: drop the dead `.ocu-guardrails-fault` selector.** Remove it from its shared selector list in `_components.scss` (around `:7480` after the 20.12 merge); the rule's other selectors and declarations stay. No pin: a deleted unused selector has no behavior to pin; `grep -rn ocu-guardrails-fault ui/` reads empty after it.
+- [x] **DW-2470: drop the dead `.ocu-guardrails-fault` selector.** Remove it from its shared selector list in `_components.scss` (around `:7480` after the 20.12 merge); the rule's other selectors and declarations stay. No pin: a deleted unused selector has no behavior to pin; `grep -rn ocu-guardrails-fault ui/` reads empty after it.
 
 **Acceptance criteria:**
 
@@ -442,6 +435,28 @@ Rejected:
   - `[false]` `[reject]` The clip check is vertical and at 1,440 x 900 only -- the spec asks for that viewport and that comparison.
 - own checks: the tab's unreadable-answer claim was traced through `createScreenRead` and `classifyFailure` (status 200 reaches the last branch) and then reproduced by mutation. Fixing it reddened `web-app-editor.page.spec.ts`, whose stub answered the list read with the form's body; the stub now answers the list in its shape.
 
+### 2026-10-20 -- Review pass (batch d)
+
+- verdicts: 16 findings -- high 0, medium 1, low 14, false 1, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` The settle scan keys on `detectScreen(`, so `agent-code-save` and `header-lockup`, two of the 47 swept files, were held by convention -- a `LOCAL_PASSES` rule now requires a settle after each of their viewport changes; it flagged their bare restores (`agent-code-save` `:327`, `header-lockup` `:244`), which now settle; red when `header-lockup`'s restore settle is removed.
+  - `[low]` `[patch]` The scan did not order a theme toggle against the settle, against AC1's "no CSS transition runs" -- a toggle now resets the settle; it flagged `agent-picker` `:141`, whose settle moved after its toggle; red when the reset is dropped and when `agent-picker` is put back.
+  - `[low]` `[patch]` AC2 had no insertion evidence -- a mid-list shift of 14 entries was run on `ocupilot-ci`: the batch's 13 os-management specs green unedited, the pre-batch versions red.
+  - `[low]` `[patch]` `side-bar-pins` leg 2 passed `entries.slice(0, 7)` against a literal list, the shape this batch removes -- `MAPPED` takes `.slice(...)`; red with HEAD's `oauth` line back.
+  - `[low]` `[patch]` `system-explorer` compared an index within the applying areas with an index within all areas, both from `AREAS`, so an area not applying in HSCUSTOM would fail it falsely -- the assertion is gone and the page-observing ones stay; red when the neighbour read is off by one.
+  - `[low]` `[patch]` The scan's floor was 40 against 82 scanned specs -- raised to 75.
+  - `[low]` `[patch]` `oauth`, `namespaces` and `local-databases` titles and one `routine-applications` comment still carried ordinals nothing pins -- removed.
+  - `[low]` `[patch]` `agent-code-save` `:327` measured row edges straight after a bare viewport restore -- same root and fix as the first row.
+  - `[low]` `[reject]` The scan checks token order in text, takes a raw `setViewport(` in 35 untouched files, and counts `panelSettlesAt(` as a settle -- the task specifies exactly this lexical rule and those two waits; its theme-toggle half is the second row.
+  - `[low]` `[reject]` 27 other files change the viewport without calling `detectScreen` -- they are not structural passes, and the task scopes the scan to files that call it; the two that measure otherwise are the first row.
+  - `[low]` `[reject]` "Settled" now means the viewport taken, two frames, no running transition, where `agent-code-save` and `cardViolations` waited for the panel edge with errors swallowed -- the task names the shared helpers and says to drop that ignored wait, and a swallowed wait asserted nothing.
+  - `[false]` `[reject]` No test pins "an overflow present only once the panel settles turns the 720 px pass red" -- `.ocu-proposal-card-title`'s fix is pinned by the settled passes of `agent-code-create`, `agent-code-save` and `guided-workflow`, with a recorded mutation and a Decisions line for its origin.
+  - `[low]` `[reject]` Leg 4 covers four spellings, the helper test one area, and the helper restates the full-list compare in most files -- the helper names the one entry a spec is about, the full-list compare is the order pin, and the insertion evidence is the second row; `rest-apis` asserts the explorer's place because that is its subject.
+  - `[low]` `[reject]` Five specs lost their literal published-word lists -- the task drops a prefix pin where the spec's derived full-list check covers the side bar, and the verification-gap layer found the wording still pinned at `navigation.test.mjs:717` and `ssl.browser-spec.mjs:230` (not re-checked here word by word).
+  - `[low]` `[patch]` The `system-explorer` rail comparison reaches past side-bar pins -- same root and fix as the fifth row.
+  - `[low]` `[reject]` The three editor specs assert tab membership, not the strip -- the task says they assert only the tabs they open, and the page specs keep the strips' one pin.
+- own checks: the `LOCAL_PASSES` and theme rules were run against the shipped tree before the fixes (they named exactly `agent-picker:141`, `agent-code-save:327` and `header-lockup:244`); the 8 specs the patches touched ran 42 of 42 on `ocupilot-ci`; the probe bundle was replaced by a full `npm run build` (prebuild checkers included) and redeployed.
+
 ## Design Notes
 
 **Verdicts at head `a69613d2`** (Rule 17 inbox):
@@ -491,6 +506,11 @@ Counts: 10 confirmed, 0 refuted, 0 already fixed (DW-2202's two named sites refu
 - **DW-2439: a rule that overrides a changed rule's height restates its minimum.** `.ocu-panel-banner-link`, `.ocu-panel-warning-send`/`-edit` and `.ocu-log-explain` gain `min-height: 0`, because the button rule's new minimum beats their `height: auto` and fixed log-row height; `.ocu-server-flag`'s `line-height: 16px` becomes `max(16px, 1em of the label line height)`, the one clip the pass found. All four are outside the 28 sites, and add-only except that `line-height`.
 - **DW-2449: the tab records an answer with a success status that is not the read's shape as `rejected`**, as `Guardrails.load` and `Findings.load` do; `screen-read.ts` stays as it is because every screen's read shares it. The editor page spec's stub answers the list read in that shape.
 - **DW-2439: `text-reflow` doubles all six type roles, measures a text input by its one line and a menu's items alone while open.** An input reports `scrollHeight` equal to `clientHeight`, and a popup counts toward its host's `scrollHeight`. `ClassicLinkCard` is mounted by no template, so its action is measured on an inserted card.
+- **DW-2455: the settled 720 px pass of `cardViolations` read the countdown 20 to 47 px past the card header** (the title's longest word held its minimum width), so `.ocu-proposal-card-title` gains `min-width: 0` and `overflow-wrap: anywhere`; the settled passes of the 4 specs that use it are its pin.
+- **DW-2455: the scan is lexical, so `read-back` and `permissions-effective` keep a literal `transitionsSettled(` call in each pass loop beside their local helpers, which now call the shared one; `openapi-try-it` (flagged beyond the 47) is settled the same way.**
+- **DW-2202: prefix pins in `permissions`, `security`, `oauth`, `tasks` and `definitions` are dropped (the derived full-list check beside each covers them); `local-databases` and `namespaces` compare `sideBarLabels('os-management').slice(0, n)`; `rest-apis` asserts the explorer through `assertDrawnAtDeclaredIndex`, because its subject is the explorer's place.** Test titles lose their ordinals; the files' header comments keep theirs.
+- **DW-2202: positional pins call `assertDrawnAtDeclaredIndex` (new, in `side-bar-spec.mjs`), and `side-bar-pins.test.mjs` gains a no-literal-index leg and a helper leg**; the editor specs look up a non-General tab by label and keep `tabs[0]` for General.
+- **DW-2455: the scan also resets on a theme toggle and covers `agent-code-save` and `header-lockup` (`LOCAL_PASSES`), which measure without `detectScreen`**; `agent-picker`'s settle moved after its toggle, and the two files settle their restores. `system-explorer` takes the rail index from `appliedAreas` alone.
 
 **Governing ADs (Rule 6):**
 
@@ -638,22 +658,27 @@ Every test added or changed passes on a fresh environment, in either order.
 **Batch d (loop):**
 
 - Run Checks and Deploy. Then run Spec for every batch-d file, in calls of about 8 minutes.
-- `mutation:` the diff-row wrap rule after `.ocu-diff-arrow` deleted (bundle rebuilt and redeployed). Expected: `impact`'s settled AC2 pass red; with its settle removed, green.
-- `mutation:` one swept file's `transitionsSettled` call removed. Expected red: `browser-settle.test.mjs`, naming the file and line.
-- `mutation:` in each DW-2202 part-2 file, the derived index off by one. Expected: that file red.
+- `mutation:` the diff-row wrap rule after `.ocu-diff-arrow` deleted (bundle rebuilt and redeployed). Expected: `impact`'s settled AC2 pass red; with its settle removed, green. Observed: red at the agent's role delete test (`app-long-block>span.ocu-diff-before: 127px past its containing block`), the only failing test of 5; with its `transitionsSettled` call also removed, green (5 of 5). Reverted (`cmp`), bundle rebuilt and redeployed.
+- `mutation:` one swept file's `transitionsSettled` call removed. Expected red: `browser-settle.test.mjs`, naming the file and line. Observed red, the only failing test, naming `locks.browser-spec.mjs:205`, and for `proposal-card-spec.mjs` `:46`; the scan's reset on a viewport change dropped -> "a viewport change after the settle asks for a new one" red; its reset on a theme toggle dropped -> "a theme toggle after the settle asks for a new one" red; `agent-picker`'s settle put back before its theme toggle -> the shipped-specs test names `agent-picker.browser-spec.mjs:141`; `header-lockup`'s restore settle removed -> "the specs that measure without detectScreen settle after every viewport change" names `:244`. Reverted (`cmp`).
+- `mutation:` in each DW-2202 part-2 file, the derived index off by one. Expected: that file red. Observed, each reverted (`cmp`):
+  - `indexOf(label) + 1` in `assertDrawnAtDeclaredIndex`: the 20 files that call it each red at one test (14 of 47 and 6 of 21 tests); `side-bar-pins.test.mjs`'s helper leg red.
+  - `slice(1, n + 1)` on the derived side in `local-databases` and `namespaces`; the previous rail neighbour read from `applied[explorerIndex]` and the caption's `.slice(1)` in `system-explorer`; an offered tab label the strip lacks in the three editors (web applications also reddens its visual gate): each red at its own test.
+  - A literal `bar.entries[12]` back in `journals`: `side-bar-pins.test.mjs` names `journals.browser-spec.mjs:281`. HEAD's `entries.slice(0, 7)` against a literal list back in `oauth`: leg 2 names `oauth.browser-spec.mjs:298`.
+- `mutation:` `.ocu-proposal-card-title`'s `min-width: 0` and `overflow-wrap: anywhere` removed (bundle rebuilt and redeployed). Expected red: the 720 px pass of `cardViolations`. Observed red: `agent-code-create` (`countdown: 20px past its containing block`), `agent-code-save` (2 tests, 47 px) and `guided-workflow` (45 px), before the fix and again under this mutation (`agent-code-create`); green with it (16 of 16). Reverted (`cmp`), bundle rebuilt and redeployed.
+- `mutation:` (CR) AC2: `os-management/license-usage` moved to the end of the mirror (`sideBarPosition` 99, built with `ng build` to skip the mirror check, bundle redeployed), which shifts 14 entries. Expected: the batch's os-management specs green with no edit, their pre-batch versions red. Observed: `journals`, `journal-settings`, `license-key`, `license-servers`, `license-usage`, `ecp-settings`, `ecp-application-servers`, `ecp-data-servers`, `remote-databases`, `prometheus-metrics`, `interop-usage`, `local-databases` and `namespaces` green, 54 of 54; the HEAD versions of eight of them red in 7 of 38 tests at their literal positions (`namespaces` sits before the moved entry and stayed green). Mirror restored (`cmp`), bundle rebuilt and redeployed.
 
 ## Auto Run Result
 
 Status: done
 Blocking condition: none
 
-Batch c (DW-2449, DW-2439), review and finalize. Batch d is the next pass.
+Batch d (DW-2455, DW-2202 part 2, DW-2470), implement, review and finalize. It is the story's last batch.
 
 - **Change.**
-  - DW-2449: `Guardrails` keeps `fault()` and parks a banner fault with `connectivity` (passed at `main.ts:237`). The Guardrails page and the class-access tab draw `FaultBanner` in place for any other fault and nothing for a banner fault. The tab records a success-status answer that is not the read's shape as `rejected`.
-  - DW-2439: the 28 `height:` rules in `_components.scss` are `min-height:`, and `.ocu-server-flag`'s `line-height` follows the label token. Four add-only `min-height: 0` lines keep the three override rules (`.ocu-panel-banner-link`, `.ocu-panel-warning-send`/`-edit`, `.ocu-log-explain`) as they were; they lie outside the cleared 28 and merge cleanly with Epic 20's hunk (`patch --dry-run`).
-  - `panel-spec.mjs` exports `scaleTypeTokens`, `interceptRead`, `framesGoBy` and `readAlerts`; `text-reflow.browser-spec.mjs` is new.
-- **Review.** Layers: verification-gap and intent-alignment. 18 findings: medium 2, low 12, false 4. Patched 4 entries (1 medium, 3 lows), rejected 12 with reasons in the Review Triage Log, deferred 1 low (the dead `.ocu-guardrails-fault` selector). `followup_review_recommended` is false.
-- **Verification.** `npm run test:tools` with neither variable set: 2,039 of 2,039; `guardrails` and `design-tokens` also green on Node 22.22.3 and 24.15.0 (53 of 53). `npm run test:components`: 3,278 of 3,278. On `ocupilot-ci` with the final bundle: `guardrails` 5, `web-applications-class-access` 5, `home-system-information` 8, `text-reflow` 2, and `web-applications-editor` 7, `screen-height` 15, `header-lockup` 5, `toast` 3 as regression. The build is under the budgets (initial 1.96 MB). `lint-docs.sh` is clean. Every `mutation:` line was observed red and reverted.
-- **Paths beyond the Footprint list.** `web-app-editor.page.spec.ts` (its stub answers the list read in its shape, and it provides `ConnectivityService`) and `ui/tools/design-tokens.test.mjs`; Epic 20 has changed neither.
-- **Residual risk.** Buttons whose labels already wrapped at normal size now grow instead of overflowing: four in the log viewer's bar (32 to 38.4 px) and two on the SQL query page, found by comparing 16 screens.
+  - DW-2455: 49 passes in 46 files settle their viewport with `settleViewport` and wait on `transitionsSettled` after the theme toggle; `cardViolations` lost its ignored edge wait. The settled 720 px pass exposed one overflow, `.ocu-proposal-card-countdown` 20 to 47 px past the card header, fixed in `.ocu-proposal-card-title` (`min-width: 0`, `overflow-wrap: anywhere`). New `ui/tools/browser-settle.test.mjs` scans the 82 specs that call `detectScreen(` and the two `LOCAL_PASSES`.
+  - DW-2202 part 2: `assertDrawnAtDeclaredIndex` (new, `side-bar-spec.mjs`) is called by 20 specs in place of their literal indexes; five prefix pins are dropped and two derived; `system-explorer` and the three editor specs derive or lose their positions, and titles lose their ordinals. `side-bar-pins.test.mjs` gains a no-literal-index leg, a helper leg and a `.slice` form in leg 2.
+  - DW-2470: `.ocu-guardrails-fault` is out of its shared selector; `grep -rn ocu-guardrails-fault ui/` is empty.
+- **Review.** Layers: verification-gap and intent-alignment. 16 findings: medium 1, low 14, false 1. Patched 7 entries (1 medium, 6 lows), rejected 7 with reasons in the Review Triage Log, deferred none. `followup_review_recommended` is false. The frontmatter's `.ocu-guardrails-fault` deferral is removed, since this batch fixed it.
+- **Verification.** `npm run test:tools` with neither variable set: 2,060 of 2,060. `npm run test:components`: 3,290 of 3,290. On `ocupilot-ci`, every changed spec file ran green on the built bundle (333 tests in 8 calls), the 8 files the patches touched ran 42 of 42, and 7 files re-ran 25 of 25 on the rebuilt final bundle. The final `npm run build` passes its checkers and the budgets. `lint-docs.sh` is clean. Every `mutation:` line was observed red and reverted.
+- **Paths beyond the Footprint list.** `ui/browser/side-bar-spec.mjs`, `ui/tools/side-bar-pins.test.mjs`, `ui/browser/agent-picker.browser-spec.mjs` and `ui/browser/openapi-try-it.browser-spec.mjs`; none is among Epic 20's uncommitted files (`structural-walk.mjs`, `analytics.browser-spec.mjs`, `screen-mirror.mjs` and four `ui/tools` tests).
+- **Residual risk.** After Epic 20 merges, `browser-settle.test.mjs` scans its new `analytics.browser-spec.mjs`; a pass there that measures after a viewport change without a settle reddens it, and the fix is the same two calls.

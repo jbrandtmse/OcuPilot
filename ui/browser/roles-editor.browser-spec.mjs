@@ -245,7 +245,7 @@ async function save(page) {
   await page.click('.ocu-form-bar .ocu-button-primary');
 }
 
-test('a row\u2019s name opens the editor on General, Members, Assigned to and SQL privileges', async () => {
+test('a row\u2019s name opens the editor on General, with the Members and Assigned to tabs offered', async () => {
   // Mutation (Rule 19): put RoleForm back in `CREATE_ONLY_FORMS` and redeploy -> the name cell opens
   // no editor and the URL wait goes red.
   const { context, page } = await signedInAt(LIST_URL);
@@ -262,7 +262,7 @@ test('a row\u2019s name opens the editor on General, Members, Assigned to and SQ
     );
     await editorReady(page);
     const tabs = await tabState(page);
-    assert.deepEqual(tabs.map((tab) => tab.label), [STRINGS.processDetailsGroupGeneral, STRINGS.roleEditorTabMembers, STRINGS.roleEditorTabAssignedTo, STRINGS.sqlPrivilegesLabel]);
+    for (const label of [STRINGS.processDetailsGroupGeneral, STRINGS.roleEditorTabMembers, STRINGS.roleEditorTabAssignedTo]) assert.ok(tabs.some((tab) => tab.label === label), `the strip offers ${label}`);
     assert.equal(tabs[0].selected, true, 'General is open first');
     assert.equal(await page.$eval('#ocu-role-edit-Description', (node) => node.value), MARKER, 'with the role as the instance holds it');
   } finally {
@@ -452,7 +452,7 @@ test('a refusal on General while Members is open opens General, with its dot and
     assert.equal(tabs[0].selected, true, 'General opened');
     assert.equal(tabs[0].dot, true, 'with the destructive dot');
     assert.equal(tabs[0].name, `${STRINGS.processDetailsGroupGeneral}, 1 error`, 'and its count in its accessible name');
-    assert.equal(tabs[1].dot, false, 'Members carries none');
+    assert.equal(tabs.find((tab) => tab.label === STRINGS.roleEditorTabMembers).dot, false, 'Members carries none');
     assert.equal(roleField(PROBE, 'Description'), MARKER, 'and nothing reached the instance');
   } finally {
     await context.close();

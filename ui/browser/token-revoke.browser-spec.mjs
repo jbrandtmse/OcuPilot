@@ -28,6 +28,7 @@ import { FILTER_SELECTOR, ROW_SELECTOR, clickRowCentre, waitForRows } from './li
 import { leaveFirstLoginGate } from './shell-entry.mjs';
 import { resetRememberedState } from './preferences-reset.mjs';
 import { INVARIANTS, VIEWPORTS, collapse, compare, componentMinimums, detectScreen, readBaseline } from './structural-walk.mjs';
+import { settleViewport, transitionsSettled } from './panel-spec.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const { STRINGS } = await import(join(uiRoot, 'src', 'app', 'core', 'strings.ts'));
@@ -181,9 +182,10 @@ test('AC1, AC4: the row action revokes exactly the account\'s tokens behind the 
     const minimums = componentMinimums();
     const surfaces = {};
     for (const { viewport, theme, checks } of passes) {
-      await page.setViewport(viewport);
+      await settleViewport(page, viewport);
       await page.evaluate((dark) => document.documentElement.classList.toggle('ocu-theme-dark', dark), theme === 'dark');
       await frames(page);
+      await transitionsSettled(page, config.navigationTimeoutMs);
       surfaces[theme] = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
       const { entries } = await detectScreen(page, { route: ROUTE, checks, viewport: viewport.width, theme, minimums });
       found.push(...entries);

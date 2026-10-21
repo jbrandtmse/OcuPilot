@@ -38,7 +38,7 @@ import puppeteer from 'puppeteer';
 import { LIVE_CONTAINER, browserConfig, launchOptions } from '../browser.config.mjs';
 import { FILTER_SELECTOR, ROW_SELECTOR, clickRowCentre } from './list-spec.mjs';
 import { signedInAt } from './panel-spec.mjs';
-import { sideBarLabels } from './side-bar-spec.mjs';
+import { assertDrawnAtDeclaredIndex, sideBarLabels } from './side-bar-spec.mjs';
 import { assertThrowaway } from './structural-walk.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -134,9 +134,9 @@ after(async () => {
 });
 
 // Mutation (Rule 19): give the list a `sideBarPosition` of 0, regenerate the mirror, rebuild and redeploy -> the
-// fifth-place assertion goes red; drop the `ocupilot-routine-application` branch from `selfProtectionReason`, rebuild
+// declared-index assertion goes red; drop the `ocupilot-routine-application` branch from `selfProtectionReason`, rebuild
 // and redeploy -> the aria-disabled assertion goes red.
-test("C4, C3: Web applications lists Privileged routine applications fifth, its entry opens the list, and OcuPilot's own application is drawn with its Delete refused", async () => {
+test("C4, C3: Web applications lists Privileged routine applications, its entry opens the list, and OcuPilot's own application is drawn with its Delete refused", async () => {
   const { context, page } = await signedInAt(browser, config, LIST_URL);
   try {
     if ((await page.$('app-side-bar nav.ocu-side-bar')) === null) {
@@ -147,7 +147,7 @@ test("C4, C3: Web applications lists Privileged routine applications fifth, its 
     await page.waitForSelector('app-side-bar nav.ocu-side-bar', { timeout: config.navigationTimeoutMs });
     const labels = await page.$$eval('app-side-bar .ocu-side-bar-item .ocu-side-bar-label', (nodes) => nodes.map((node) => node.textContent.trim()));
     assert.deepEqual(labels, sideBarLabels('web-applications'), 'the side bar lists its entries in their declared order');
-    assert.equal(labels[4], STRINGS.routineAppListLabel, 'Privileged routine applications is the fifth');
+    assertDrawnAtDeclaredIndex(labels, 'web-applications', STRINGS.routineAppListLabel);
     await page.goto(`${config.origin}/ocupilot/web-applications/list?ns=HSCUSTOM`, { waitUntil: 'networkidle2' });
     await page.waitForFunction(
       (label) => Array.from(document.querySelectorAll('app-side-bar .ocu-side-bar-item')).some((item) => item.textContent.trim() === label),

@@ -34,7 +34,7 @@ import puppeteer from 'puppeteer';
 
 import { LIVE_CONTAINER, browserConfig, launchOptions } from '../browser.config.mjs';
 import { FILTER_SELECTOR, ROW_SELECTOR, clickRowCentre, waitForRows } from './list-spec.mjs';
-import { signedInAt } from './panel-spec.mjs';
+import { settleViewport, signedInAt, transitionsSettled } from './panel-spec.mjs';
 import { INVARIANTS, VIEWPORTS, assertThrowaway, collapse, compare, componentMinimums, detectScreen, readBaseline } from './structural-walk.mjs';
 import {
   armProbeDefinition,
@@ -141,13 +141,12 @@ function createProbes() {
 }
 
 /**
- * Two rendered frames, then every running animation and transition finished, so a resize, a theme
- * flip or the tab strip's own indicator and label transitions have landed before anything is
- * measured.
+ * Two rendered frames, then every running transition finished, so a resize, a theme flip or the tab
+ * strip's own indicator and label transitions have landed before anything is measured.
  */
 async function frames(page) {
   await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
-  await page.waitForFunction(() => document.getAnimations().every((animation) => animation.playState !== 'running'), { timeout: config.navigationTimeoutMs });
+  await transitionsSettled(page, config.navigationTimeoutMs);
 }
 
 /** The Security rail item's state: allowed, it carries the area's own tooltip rather than a pair. */
@@ -325,9 +324,10 @@ test('AC1, AC9, DW-1337, DW-1837: the chained account\u2019s tab renders its sec
     const minimums = componentMinimums();
     const surfaces = {};
     for (const { viewport, theme, checks } of passes) {
-      await page.setViewport(viewport);
+      await settleViewport(page, viewport);
       await page.evaluate((isDark) => document.documentElement.classList.toggle('ocu-theme-dark', isDark), theme === 'dark');
       await frames(page);
+      await transitionsSettled(page, config.navigationTimeoutMs);
       surfaces[theme] = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
       assert.equal((await sections(page)).lead, STRINGS.userEffectiveIntro, `the tab is showing at ${viewport.width}px ${theme}`);
       const { entries } = await detectScreen(page, { route: EDITOR_ROUTE, checks, viewport: viewport.width, theme, minimums });
@@ -511,6 +511,7 @@ test('AC7 (DW-1018), AC3: a principal holding only the Security pairs is offered
         entries.filter((entry) => entry.disabled === 'true').map((entry) => ({ label: entry.label, lines: 1, after: true })),
         `${theme}: every gated name is on one line with its reason after it`
       );
+      await transitionsSettled(page, config.navigationTimeoutMs);
       const { entries: walked } = await detectScreen(page, { route: 'security/ssl', checks: theme === 'light' ? INVARIANTS : ['contrast'], viewport: VIEWPORTS.wide.width, theme, minimums });
       found.push(...walked);
     }

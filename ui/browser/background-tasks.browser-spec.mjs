@@ -25,10 +25,10 @@ import puppeteer from 'puppeteer';
 import { browserConfig, launchOptions } from '../browser.config.mjs';
 import { loadStrings } from '../tools/strings.mjs';
 import { FILTER_SELECTOR, ROW_SELECTOR, clickRowCentre, waitForRows } from './list-spec.mjs';
-import { signedInAt } from './panel-spec.mjs';
+import { settleViewport, signedInAt, transitionsSettled } from './panel-spec.mjs';
 import { INVARIANTS, VIEWPORTS, assertThrowaway, collapse, compare, componentMinimums, detectScreen, readBaseline } from './structural-walk.mjs';
 import { markerValue, runIris } from './turnprobe-spec.mjs';
-import { sideBarLabels } from './side-bar-spec.mjs';
+import { assertDrawnAtDeclaredIndex, sideBarLabels } from './side-bar-spec.mjs';
 
 const config = browserConfig();
 const STRINGS = loadStrings();
@@ -81,9 +81,10 @@ async function structural(page, dialog = false) {
   const minimums = componentMinimums();
   const surfaces = {};
   for (const { viewport, theme, checks } of passes) {
-    await page.setViewport(viewport);
+    await settleViewport(page, viewport);
     await page.evaluate((dark) => document.documentElement.classList.toggle('ocu-theme-dark', dark), theme === 'dark');
     await frames(page);
+    await transitionsSettled(page, config.navigationTimeoutMs);
     surfaces[theme] = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
     const { entries } = await detectScreen(page, { route: ROUTE, checks, viewport: viewport.width, theme, minimums });
     found.push(...entries);
@@ -166,7 +167,7 @@ after(async () => {
 });
 
 // AC1. Mutation (Rule 19): declare Background tasks' sideBarPosition 4 -> the side-bar order goes red.
-test('AC1: Background tasks is the fifth Tasks entry, and a seeded compact is listed as the portal reports it', async () => {
+test('AC1: Background tasks is a Tasks entry, and a seeded compact is listed as the portal reports it', async () => {
   seedPausedCompact();
   const { context, page } = await atList();
   try {
@@ -179,7 +180,7 @@ test('AC1: Background tasks is the fifth Tasks entry, and a seeded compact is li
     );
     const labels = await page.$$eval('.ocu-side-bar-item .ocu-side-bar-label', (items) => items.map((item) => item.textContent.trim()));
     assert.deepEqual(labels, sideBarLabels('tasks'), 'the side bar lists the Tasks entries in their declared order');
-    assert.equal(labels[4], STRINGS.backgroundTaskListLabel, 'Background tasks fifth');
+    assertDrawnAtDeclaredIndex(labels, 'tasks', STRINGS.backgroundTaskListLabel);
     const headers = await page.$$eval('.ocu-data-table-header-label', (items) => items.map((item) => item.textContent.trim()));
     assert.deepEqual(
       headers.slice(0, 7),

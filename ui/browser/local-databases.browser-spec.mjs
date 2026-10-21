@@ -56,6 +56,7 @@ import puppeteer from 'puppeteer';
 import { LIVE_CONTAINER, browserConfig, launchOptions } from '../browser.config.mjs';
 import { FILTER_SELECTOR, ROW_SELECTOR, clickRowCentre, waitForRows } from './list-spec.mjs';
 import { authHeader, saveAndSettle, signedInAt } from './panel-spec.mjs';
+import { sideBarLabels } from './side-bar-spec.mjs';
 import { INVARIANTS, VIEWPORTS, assertThrowaway, collapse, compare, componentMinimums, detectScreen, readBaseline } from './structural-walk.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -484,7 +485,7 @@ async function nextTo(page, label) {
 
 // AC1. Mutation (Rule 19): make the wizard store drop `path` violations, rebuild and redeploy -> the
 // PATH.MANAGERDIR reason never renders under the picker and this goes red.
-test('AC1: Local databases is the eleventh OS management entry; the wizard refuses the manager directory itself on the picker, then creates a mounted, journaled database guarded by its own resource', async () => {
+test('AC1: Local databases is an OS management entry; the wizard refuses the manager directory itself on the picker, then creates a mounted, journaled database guarded by its own resource', async () => {
   const user = configured('USER');
   assert.ok(user !== null, 'the instance configures USER');
   const { context, page } = await signedInAt(browser, config, LIST_URL, VIEWPORTS.wide);
@@ -497,19 +498,7 @@ test('AC1: Local databases is the eleventh OS management entry; the wizard refus
     await waitForRows(page, config.navigationTimeoutMs);
     const bar = await sideBarOf(page);
     assert.equal(bar.area, STRINGS.navAreaOsManagement);
-    assert.deepEqual(bar.entries.slice(0, 11), [
-      STRINGS.processListLabel,
-      STRINGS.lockListLabel,
-      STRINGS.systemUsageLabel,
-      STRINGS.databaseListLabel,
-      STRINGS.databaseIntegrityLogLabel,
-      STRINGS.deviceListLabel,
-      STRINGS.namespaceListLabel,
-      STRINGS.licenseUsageLabel,
-      STRINGS.dashboardLabel,
-      STRINGS.languageServersLabel,
-      STRINGS.localDatabaseListLabel,
-    ]);
+    assert.deepEqual(bar.entries.slice(0, 11), sideBarLabels('os-management').slice(0, 11), 'the leading OS management entries in their declared order');
     const headers = await page.$$eval('.ocu-data-table-header-label', (labels) => labels.map((label) => label.textContent.trim()));
     assert.deepEqual(headers.slice(0, 3), [STRINGS.tableColumnName, STRINGS.lockColumnDirectory, STRINGS.taskHistoryColumnStatus]);
     const userRow = await rowCells(page, 'USER');
