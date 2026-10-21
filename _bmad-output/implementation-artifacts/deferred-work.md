@@ -12002,6 +12002,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Story 23.5's plan read the sites at head 6c58e1c9; DW-1392 fixes only the System Information row
 - 2026-10-14T22:44:29Z status=routed owner=burndown by=spec_gate note=sibling_of_DW-1392;proposed_for_Story_23.11_with_DW-2182,2202,2221,2246
 - 2026-10-14T22:47:28Z status=routed owner=23-11-the-range-end-cleanup-part-10 by=lead note=orchestrator 2026-10-14: chartered 23.11 for 23.5's later routings
+- 2026-10-21T01:57:49Z status=resolved-by:23-11-the-range-end-cleanup-part-10 by=adjudication note=dba8275c+a4e71fe8: 28 rules min-height, text-reflow pins light+dark at 2x type; CI 39527072274 green
 
 ### DW-2440: The proposal card's confirm spinner (.ocu-proposal-card-confirm-spinner, _components.scss:4794) has the rotating 16px spinner's shape whose bounding box DW-2282 measured 3.3px past its box, so a structural gate may read it as overflow
 - source: spec-23-5-the-range-end-cleanup-part-5.md | severity: low | fix-risk: low | footprint: in-epic
@@ -12055,6 +12056,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: guardrails.page.ts:60 and web-app-class-access-tab.ts:49 render STRINGS.connectivityServerFault under a failed() boolean; api.ts reports every requestJson to the shell's banner (EXPERIENCE.md:769 one banner); DW-1401's root cause on two surfaces Batch b did not touch
 - 2026-10-15T06:35:45Z status=escalated owner=burndown by=cr note=pre-existing; fix is DW-1401's shape (classified Fault, in-place FaultBanner for non-banner kinds)
 - 2026-10-15T11:12:48Z status=routed owner=23-11-the-range-end-cleanup-part-10 by=lead note=orchestrator: same root cause as DW-1401, two more surfaces
+- 2026-10-21T01:57:49Z status=resolved-by:23-11-the-range-end-cleanup-part-10 by=adjudication note=dba8275c+a4e71fe8: one alert at 0/5xx, in-place FaultBanner+Retry at 403/404/unreadable; CI 39527072274
 
 ### DW-2450: flake: suggested-view.browser-spec.mjs AC8 (Home settles at DESIGN.md's published panel width at each of five viewports) failed once in a local fresh-throwaway shard and passed alone and on a re-run of the same shard order
 - source: lead fresh check, Story 23.5 batch b | severity: med | fix-risk: low | footprint: in-epic
