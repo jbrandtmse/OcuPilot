@@ -479,10 +479,10 @@
 // is styled as `row-overflow-menu` (`:1058`): the sheet colour, a 1px `outline-variant`
 // border, `rounded.sm`, elevation 2, min-width 140px, 6px of vertical padding, items at
 // `control-height` with a 14px horizontal inset and a `surface-container-low` hover.
-// DESIGN.md writes the item box as "32px, 8px 14px padding"; here the 32px is the fixed
-// `control-height` and the vertical half is left to it, which is how every other fixed-height
-// control in this file is drawn (`.ocu-button-primary`) -- there is no global `border-box`,
-// so vertical padding on top of a set height would overflow the control.
+// DESIGN.md writes the item box as "32px, 8px 14px padding"; here the 32px is the
+// `control-height` minimum and the vertical half is left to it, which is how every other control
+// in this file is drawn (`.ocu-button-primary`) -- there is no global `border-box`, so vertical
+// padding would add to that minimum rather than sit inside it.
 //
 // Story 15.9 moved the component to the header's right end, so the trigger is drawn for the
 // shell band it sits on: `on-shell` text, `on-shell` at 8% hover, and DESIGN.md's
@@ -1728,15 +1728,16 @@ app-source-viewer-page {
 // rule's `inline-flex`. `box-sizing: border-box` is not hygiene: with no global reset,
 // `max-width: 100%` would cap the content box and the chip's border box would overrun the row by
 // its own padding and 1px border -- the row clips exactly there, taking the ellipsis with it. And
-// `height` and `line-height` are restated together, and neither is a new number. The shared
-// button rule sets `height: var(--ocu-control-height)` content-box, so the pill beside this one
-// -- `.ocu-command-bar-action`, the same `.ocu-button-text` -- renders a border box of the
-// control height plus its 1px border on each side; switching this chip alone to `border-box`
-// would leave it 2px shorter than its neighbour, a visible step between two adjacent pills that
-// jsdom cannot see. Restating the height as the control height plus those 2px makes the border
-// boxes equal again and leaves the content box exactly the control height, which is what the
-// `line-height` then fills: it centres the single line that `align-items: center` centred while
-// the chip was still a flex container.
+// `min-height` and `line-height` are restated together, and neither is a new number. The shared
+// button rule sets `min-height: var(--ocu-control-height)` content-box, so the pill beside this
+// one -- `.ocu-command-bar-action`, the same `.ocu-button-text` -- renders a border box of at
+// least the control height plus its 1px border on each side; switching this chip alone to
+// `border-box` would leave it 2px shorter than its neighbour, a visible step between two adjacent
+// pills that jsdom cannot see. Restating the minimum as the control height plus those 2px makes
+// the border boxes equal again and leaves a content box of at least the control height, which
+// the `line-height` then fills: it centres the single line that `align-items: center` centred
+// while the chip was still a flex container, and it is a minimum too, the body line once that is
+// taller, so the chip grows with its text rather than clipping it (DESIGN.md `:912`).
 .ocu-command-bar-refresh {
   box-sizing: border-box;
   display: inline-block;
@@ -1744,7 +1745,7 @@ app-source-viewer-page {
   max-width: 100%;
   min-width: 0;
   min-height: calc(var(--ocu-control-height) + 2px);
-  line-height: var(--ocu-control-height);
+  line-height: max(var(--ocu-control-height), calc(var(--ocu-type-body-line-height) * 1em));
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

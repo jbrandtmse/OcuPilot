@@ -12193,3 +12193,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-23-11-the-range-end-cleanup-part-10.md (batch c implement) | severity: low | fix-risk: low | footprint: in-story
 - evidence: grep -rn ocu-guardrails-fault ui/src ui/browser ui/tools finds only _components.scss:7415; no template or spec uses the class since batch c (dba8275c)
 - 2026-10-20T23:46:11Z status=open owner=23-11-the-range-end-cleanup-part-10 by=harvest note=batch d: removing it is a non-add-only edit in the stylesheet Epic 20 has changed; re-check Epic 20's diff first
+
+### DW-2471: A 200 answer that is not a screen read's shape leaves a read-state screen with no alert: screen-read.ts classifies it server-fault, ApiService reports a success so no shell banner rises, and showRefusal hides banner faults
+- source: spec-23-11-the-range-end-cleanup-part-10.md | severity: med | fix-risk: high | footprint: out-of-footprint
+- evidence: screen-read.ts:231-234 turns an ok answer of the wrong shape into status 200, which classifyFault reads as server-fault; api.ts reports the ok answer as no fault; read-state.ts draws neither refusal nor empty for it. Batch c fixed only the class-access tab and Guardrails (Design Notes).
+- 2026-10-21T00:46:32Z status=escalated owner=burndown by=cr note=decision sheet: map a success-status unreadable answer to rejected in the shared read, or keep server-fault
+
+### DW-2472: audit-copy-purge.browser-spec.mjs AC2 reads today before the dialog does, so a run that crosses local midnight between the two is red
+- source: spec-23-11-the-range-end-cleanup-part-10.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: CI run 39517085403 (dba8275c), browser shard 1/5 at 2026-10-21T00:00:01Z: the consequence named 2026-10-21 where the test expected 2026-10-20 (audit-copy-purge.browser-spec.mjs:214, :229). A pin needs a forced day turn, which the browser tier cannot stage without a clock seam.
+- 2026-10-21T00:46:37Z status=wontfix-accepted owner=23-11-the-range-end-cleanup-part-10 by=cr note=reopen_if=audit-copy-purge AC2 red again with the expected and drawn cut-off one day apart

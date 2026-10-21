@@ -12,8 +12,6 @@ export type StubbedGuardrails = Guardrails & {
   readonly calls: readonly StubbedGuardrailsCall[];
   /** Change what the next `load()` answers. */
   setBody(body: unknown): void;
-  /** Flip the transport after construction. */
-  setUnreachable(unreachable: boolean): void;
   /** Make every read answer with this failing HTTP status (0 is unreachable), or `null` to answer. */
   setStatus(status: number | null): void;
 };
@@ -40,17 +38,15 @@ export function guardrailsBody(): Record<string, unknown> {
  * shell. The real class over a stubbed transport, so its narrowing runs unchanged.
  */
 export function stubGuardrails(
-  seed: { readonly body?: unknown; readonly unreachable?: boolean; readonly connectivity?: ConnectivityService } = {}
+  seed: { readonly body?: unknown; readonly connectivity?: ConnectivityService } = {}
 ): StubbedGuardrails {
   const calls: StubbedGuardrailsCall[] = [];
   let body: unknown = seed.body ?? guardrailsBody();
-  let unreachable = seed.unreachable === true;
   let failing: number | null = null;
   const api = {
     requestJson: async (path: string, init: { method?: string } = {}) => {
       calls.push({ path, method: init.method ?? 'GET' });
       if (failing !== null) return { kind: 'error', status: failing, code: null, reason: null, detail: null };
-      if (unreachable) return { kind: 'error', status: 0, code: null, reason: null, detail: null };
       return { kind: 'ok', status: 200, body: JSON.parse(JSON.stringify(body)) };
     },
   };
@@ -58,9 +54,6 @@ export function stubGuardrails(
     calls: calls as readonly StubbedGuardrailsCall[],
     setBody(next: unknown) {
       body = next;
-    },
-    setUnreachable(next: boolean) {
-      unreachable = next;
     },
     setStatus(next: number | null) {
       failing = next;

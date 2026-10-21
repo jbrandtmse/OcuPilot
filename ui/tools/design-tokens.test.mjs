@@ -755,9 +755,14 @@ test('DW-173: .ocu-command-bar-refresh is bounded and ellipsizes, and its row ca
   // where the last declaration wins and the ellipsis goes quietly dead again.
   assert.doesNotMatch(chip[1], /display:\s*inline-flex/, 'DW-173: and nothing re-flexes it');
   // Losing `inline-flex` loses `align-items: center` with it, so the single line has to be
-  // centred by its own rule -- the content box the restated height leaves, not a number of its
-  // own.
-  assert.match(chip[1], /line-height:\s*var\(--ocu-control-height\)/, 'DW-173: centred by rule');
+  // centred by its own rule -- the content box the restated minimum leaves, not a number of its
+  // own -- and that line is a minimum as well, or the chip could never grow with its text.
+  // Mutation (Rule 19): `line-height: var(--ocu-control-height)` -> this goes red.
+  assert.match(
+    chip[1],
+    /line-height:\s*max\(var\(--ocu-control-height\),\s*calc\(var\(--ocu-type-body-line-height\) \* 1em\)\)/,
+    'DW-173: centred by rule, on a line that grows with the text (DESIGN.md `:912`)'
+  );
   // `box-sizing: border-box` on this chip alone would make it 2px shorter than the pill beside
   // it, which is the same shared `.ocu-button-text` rule at a content-box control height plus
   // its 1px border on each side. jsdom computes no layout, so the restated height is the only

@@ -215,7 +215,8 @@ describe('the percent class access editor tab (Story 18.10)', () => {
     }
   });
 
-  // Mutation (Rule 19): make `inPlaceFault` answer `null` for every fault -> every case goes red, no alert standing.
+  // Mutation (Rule 19): make `inPlaceFault` answer `null` for every fault -> the 403 case, the loop's first, goes red,
+  // no alert standing.
   // Record an answer that is not the read's shape as a `server-fault` in `load` -> the unreadable case goes red, the
   // tab drawing no alert and parking a read the shell never announced. Drop the `(retried)` binding -> Retry reads nothing.
   it('draws the in-place banner with Retry for a 403, a 404 and an unreadable answer, and Retry reads again', async () => {

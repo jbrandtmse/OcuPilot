@@ -86,7 +86,7 @@ test('a failed read is cleared by the next read that answers', async () => {
   await store.load();
   assert.equal(store.failed(), true);
   await store.load();
-  assert.equal(store.failed(), false, 'the page shows its sections again, not the fault line');
+  assert.equal(store.failed(), false, 'the page shows its sections again, not a fault');
   assert.equal(store.fault(), null, 'and no fault');
   assert.ok(store.data(), 'and holds the new answer');
 });

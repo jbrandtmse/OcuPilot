@@ -254,6 +254,43 @@ test('a Guardrails read that cannot reach the instance leaves the shell\'s banne
   }
 });
 
+test('a Guardrails read the instance answers with a 500 leaves the shell\'s banner as the one alert, and the banner\'s Retry reads again', async () => {
+  // Mutation (Rule 19): make `inPlaceFault` in `guardrails.page.ts` draw every fault but an unreachable one, rebuild and
+  // redeploy -> the page draws a banner of its own beside the shell's and the count below reads two. Drop the
+  // `retryWhenReachable` park from `Guardrails.load` -> the sections never return after the shell's Retry, and the last
+  // wait times out.
+  const control = { path: GUARDRAILS_PATH, mode: 'fault', hits: 0 };
+  const { context, page } = await signedInAt(GUARDRAILS_URL, { prepare: interceptRead(control) });
+  try {
+    // A 5xx arms no probe, so the shell's banner stays until something answers; its own Retry is what asks.
+    await page.waitForSelector('app-fault-banner .ocu-fault-banner[data-fault="server-fault"]', { timeout: config.navigationTimeoutMs });
+    await page.waitForSelector('app-guardrails-page .ocu-guardrails-intro', { timeout: config.navigationTimeoutMs });
+    await framesGoBy(page);
+    assert.ok(control.hits >= 1, 'the page asked for the read this leg fails');
+
+    assert.deepEqual(
+      await readAlerts(page, 'app-guardrails-page'),
+      [{ where: 'shell', message: STRINGS.connectivityServerFault, actions: [STRINGS.actionRetry, STRINGS.actionOpenMessagesLog] }],
+      'one alert in the whole document, and it is the shell\'s generic banner'
+    );
+    assert.equal(await page.$('app-guardrails-page .ocu-fault-banner'), null, 'and the page draws no banner of its own');
+    assert.equal(await page.$(SECTION), null, 'and no section, since nothing the instance said is on screen');
+
+    // The instance answers again; the shell's Retry probes, and the answer runs the parked read.
+    control.mode = null;
+    await page.evaluate((retry) => {
+      const page = document.querySelector('app-guardrails-page');
+      const banner = Array.from(document.querySelectorAll('app-fault-banner .ocu-fault-banner')).find((candidate) => !page.contains(candidate));
+      Array.from(banner.querySelectorAll('button')).find((button) => button.textContent.trim() === retry).click();
+    }, STRINGS.actionRetry);
+    await page.waitForSelector(SECTION, { timeout: config.navigationTimeoutMs });
+    await page.waitForSelector('app-fault-banner .ocu-fault-banner', { hidden: true, timeout: config.navigationTimeoutMs });
+    assert.deepEqual(await readAlerts(page, 'app-guardrails-page'), [], 'no alert stands once the read answers');
+  } finally {
+    await context.close();
+  }
+});
+
 test('a Guardrails read the instance answers with a 404 shows the page\'s own alert, and Retry reads again', async () => {
   // Mutation (Rule 19): make `inPlaceFault` answer `null` for every fault, rebuild and redeploy -> the page draws
   // no banner and the first wait below times out.

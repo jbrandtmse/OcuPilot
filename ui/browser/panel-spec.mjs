@@ -161,10 +161,10 @@ export async function scaleTypeTokens(page, factor, tokens = SCALED_TYPE_TOKENS)
 
 /**
  * Fail the reads whose URL contains `control.path` for as long as `control.mode` says so: `'abort'` is a
- * transport failure (the browser's status 0), `'absent'` an instance that answers 404 with its envelope, and
- * `null` lets the read through. `control.hits` counts the reads that were failed, which is the signal that the page
- * has asked. Every other request goes on untouched. Passed as a `prepare` argument, so it is armed before the first
- * request.
+ * transport failure (the browser's status 0), `'absent'` an instance that answers 404 with its envelope, `'fault'`
+ * one that answers 500 with its envelope, and `null` lets the read through. `control.hits` counts the reads that were
+ * failed, which is the signal that the page has asked. Every other request goes on untouched. Passed as a `prepare`
+ * argument, so it is armed before the first request.
  */
 export function interceptRead(control) {
   return async (page) => {
@@ -177,6 +177,14 @@ export function interceptRead(control) {
       control.hits += 1;
       if (control.mode === 'abort') {
         void request.abort('failed');
+        return;
+      }
+      if (control.mode === 'fault') {
+        void request.respond({
+          status: 500,
+          contentType: 'application/json',
+          body: JSON.stringify({ error: 'server_error', reason: 'Internal error', code: 'INTERNAL' }),
+        });
         return;
       }
       void request.respond({

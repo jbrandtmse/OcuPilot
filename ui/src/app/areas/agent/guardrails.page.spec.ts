@@ -206,8 +206,8 @@ describe('GuardrailsPage', () => {
     }
   });
 
-  // Mutation (Rule 19): make `inPlaceFault` answer the banner fault too -> the status 0 and 503 legs go
-  // red, the page drawing an alert of its own beside the shell's banner.
+  // Mutation (Rule 19): make `inPlaceFault` answer the banner fault too -> the status 0 leg, the loop's first,
+  // goes red, the page drawing an alert of its own beside the shell's banner.
   it('draws no alert and no section when the instance is unreachable or answers a 5xx, and reads again once it answers', async () => {
     for (const status of [0, 503]) {
       const connectivity = quietConnectivity();
@@ -231,7 +231,8 @@ describe('GuardrailsPage', () => {
   });
 
   // Mutation (Rule 19): record an unreadable answer as `server-fault` in `Guardrails.load` -> the unreadable leg
-  // goes red, the page drawing nothing; make `inPlaceFault` answer `null` for every fault -> the 404 leg goes red.
+  // goes red, the page drawing nothing; make `inPlaceFault` answer `null` for every fault -> the 403 leg, the
+  // loop's first, goes red.
   it('draws the in-place banner with Retry for a 403, a 404 and an unreadable answer, and Retry reads again', async () => {
     const cases: [string, (store: StubbedGuardrails) => void][] = [
       ['403', (store) => store.setStatus(403)],
