@@ -25,6 +25,7 @@ import { ServiceEditorPage } from '../areas/permissions/service-editor.page';
 import { LdapEditorPage } from '../areas/security/ldap-editor.page';
 import { CodeListPage } from '../areas/system-explorer/code-list.page';
 import { DetailPage } from './detail-page';
+import { ExternalPage } from './external-page';
 import { ListPage } from './list-page';
 import {
   ARCHETYPE_PAGES,
@@ -577,6 +578,14 @@ describe('the descriptor map (DW-369)', () => {
       }
     }
     expect(loaders).toBeGreaterThan(100);
+  });
+
+  // Mutation (Rule 19): point the `external` entry of `ARCHETYPE_PAGES` at another page, such as `list-page` -> this goes red, naming the page.
+  it('Story 20.32: the three analytics links resolve to the external page, by their archetype alone', async () => {
+    for (const descriptor of ['AnalyticsArchitectLink', 'AnalyticsAnalyzerLink', 'AnalyticsUserPortalLink']) {
+      expect(DESCRIPTOR_LOADERS[`OcuPilot.Screen.Descriptor.${descriptor}`], `${descriptor} names no page of its own`).toBeUndefined();
+      expect(await pageOf(resolveScreenPage(DESCRIPTOR_LOADERS, ARCHETYPE_LOADERS, `OcuPilot.Screen.Descriptor.${descriptor}`, 'external'))).toBe(ExternalPage);
+    }
   });
 
   it('Story 9.7: the New Task wizard\'s descriptor resolves to its own stepped page, not the generic form page', async () => {

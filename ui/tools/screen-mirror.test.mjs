@@ -2473,7 +2473,7 @@ test('externalProblem refuses an external screen that declares a read, table, ac
   assert.ok(registry.includes(EXTERNAL_SENTENCE), 'and Registry.ExternalProblem returns the same sentence');
 });
 
-test('buildMirror refuses an external screen that declares a read, and every shipped link passes', () => {
+test('buildMirror refuses an external screen that declares a parentScope, and every shipped link passes', () => {
   const { screens } = readSources();
   const links = screens.filter((screen) => screen.declaration.archetype === 'external');
   assert.deepEqual(

@@ -19,10 +19,16 @@ const ADDRESS = '/csp/user/_DeepSee.UI.Architect.zen?$NAMESPACE=USER';
 
 class StubNavigation {
   readonly hrefs = new Map<string, string>();
+  /** Whether the map read under the current namespace has answered; `false` stands for a read still in flight. */
+  answeredHere = true;
   private readonly listeners = new Set<() => void>();
 
   screenForUrl(): ScreenDeclaration | null {
     return ARCHITECT;
+  }
+
+  appliesAnswered(): boolean {
+    return this.answeredHere;
   }
 
   screenHref(route: string): string {
@@ -92,6 +98,22 @@ describe('the external page', () => {
     expect(host.querySelector('.ocu-external-page-sentence')?.textContent?.trim()).toBe('Analytics is not enabled in this namespace.');
     expect(host.querySelectorAll('a').length).toBe(0);
     expect(host.querySelector('.ocu-classic-link-card')).toBeNull();
+  });
+
+  // Mutation (Rule 19): show the sentence whenever there is no address, dropping the `appliesAnswered()` test in `external-page.ts` -> this goes red.
+  it('before the map for this namespace has answered it shows its title alone, and says nothing about the area', async () => {
+    navigation.answeredHere = false;
+    const fixture = await mount();
+    const host = fixture.nativeElement as HTMLElement;
+
+    expect(host.querySelector('.ocu-external-page-title')?.textContent?.trim()).toBe(STRINGS.analyticsArchitectLabel);
+    expect(host.querySelector('.ocu-external-page-sentence')).toBeNull();
+    expect(host.querySelectorAll('a').length).toBe(0);
+
+    navigation.answeredHere = true;
+    navigation.notify();
+    fixture.detectChanges();
+    expect(host.querySelector('.ocu-external-page-sentence')?.textContent?.trim()).toBe('Analytics is not enabled in this namespace.');
   });
 
   it('follows the map: an address that arrives after the page mounted draws the card, and one that goes draws the sentence', async () => {

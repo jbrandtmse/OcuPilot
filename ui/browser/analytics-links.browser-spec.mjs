@@ -54,6 +54,8 @@ let created = false;
 /** The browser-level session whose `Fetch.enable` answers the vendor pages, and what it saw. */
 let interception = null;
 const vendor = { requests: [], answered: 0, failures: [] };
+/** The instance's license units in use before any leg opened a tab, so the Count leg's clause covers the whole run. */
+let unitsAtStart = Number.NaN;
 
 /** Run one probe call in the throwaway and answer its marker. */
 function probe(name, expression) {
@@ -141,6 +143,17 @@ async function opensTab(context, page, link, gesture) {
   return result;
 }
 
+/** Give the side bar's entry named `label` focus, so the next key press reaches it. */
+async function focusEntry(page, label) {
+  const focused = await page.evaluate((wanted) => {
+    const node = [...document.querySelectorAll('.ocu-side-bar-item')].find((candidate) => candidate.querySelector('.ocu-side-bar-label').textContent.trim() === wanted);
+    if (node === undefined) return false;
+    node.focus();
+    return document.activeElement === node;
+  }, label);
+  assert.ok(focused, `the side bar's ${label} entry takes focus`);
+}
+
 /** Click the side bar's entry named `label` with a real pointer. */
 async function clickEntry(page, label) {
   const index = await page.evaluate(
@@ -160,6 +173,7 @@ before(async () => {
   created = true; // from here on, `after` removes whatever the probe made, even when Enable fails part-way
   const enabled = probe('ALENABLE', `$System.Status.IsOK(##class(${PROBE}).Enable())`);
   assert.equal(enabled.value, '1', `analytics is turned on for USER: ${enabled.output}`);
+  unitsAtStart = Number(probe('ALLUSTART', '$System.License.LUConsumed()').value);
   browser = await puppeteer.launch(launchOptions(config));
   // Armed before any click: a vendor page is never loaded. Every request for one is paused, recorded and answered with a stub.
   interception = await browser.target().createCDPSession();
@@ -237,6 +251,49 @@ test('AC1: the side bar lists the three links after Folder items, and each, with
   }
 });
 
+// AC1 (the key press). Mutation (Rule 19): drop the external branch from `open()` in `side-bar.ts` -> Enter routes onto the page and no tab
+// opens, so each key leg times out waiting for its target; remove the glyph or the `aria-description` binding from the side bar's template -> the
+// marks clause goes red; rebuild and redeploy first.
+test('AC1 (keyboard): Enter and Space on a focused link entry open its address in a new tab with no opener, and only the link entries carry the new-tab marks', async () => {
+  const { context, page } = await signedInAt(browser, config, url('analytics/cubes'), VIEWPORTS.wide, REDUCED_MOTION);
+  try {
+    await analyticsSideBar(page);
+    const marks = await page.$$eval('.ocu-side-bar-item', (nodes) =>
+      nodes.map((node) => ({
+        label: node.querySelector('.ocu-side-bar-label').textContent.trim(),
+        glyphWidth: node.querySelector('.ocu-external-glyph')?.getBoundingClientRect().width ?? null,
+        description: node.getAttribute('aria-description'),
+        disabled: node.getAttribute('aria-disabled'),
+      }))
+    );
+    const linkLabels = LINKS.map((link) => link.label);
+    for (const link of LINKS) {
+      const mark = marks.find((candidate) => candidate.label === link.label);
+      assert.ok(mark !== undefined, `the side bar draws ${link.label}`);
+      assert.ok(mark.glyphWidth !== null && mark.glyphWidth > 0, `${link.label}: the new-tab glyph is drawn`);
+      assert.equal(mark.description, STRINGS.classicRowLinkDescription.split('<page>').join(link.label), `${link.label}: a screen reader hears that it opens a new tab`);
+      assert.equal(mark.disabled, null, `${link.label}: and to _SYSTEM it is not drawn unavailable`);
+    }
+    for (const mark of marks.filter((candidate) => !linkLabels.includes(candidate.label))) {
+      assert.equal(mark.glyphWidth, null, `${mark.label}: a screen that routes carries no new-tab glyph`);
+      assert.equal(mark.description, null, `${mark.label}: nor a new-tab description`);
+    }
+
+    const shellUrl = page.url();
+    for (const [link, key] of [[ARCHITECT, 'Enter'], [ANALYZER, 'Space'], [USER_PORTAL, 'Enter']]) {
+      await focusEntry(page, link.label);
+      const opened = await opensTab(context, page, link, () => page.keyboard.press(key));
+      assert.equal(opened.address, addressOf(link), `${link.label}: ${key} opens the instance's address in a new tab`);
+      assert.equal(opened.openerNull, true, `${link.label}: with no opener`);
+      assert.equal(opened.pair, null, `${link.label}: and no token pair`);
+      assert.equal(opened.shellUnchanged, true, `${link.label}: and the shell tab's URL is unchanged`);
+    }
+    assert.equal(page.url(), shellUrl, 'the shell tab stays where it was after the three key presses');
+  } finally {
+    await context.close();
+  }
+});
+
 // AC3. Mutation (Rule 19): draw the card whatever the map answered in `external-page.ts` -> HSCUSTOM draws an anchor and this goes red;
 // set `href` in `Navigation.Payload` without the `applies` test -> the map assertion goes red; rebuild and redeploy first.
 test('AC3: in a namespace without analytics the map carries no address and a link\'s route says why, with no anchor', async () => {
@@ -246,8 +303,12 @@ test('AC3: in a namespace without analytics the map carries no address and a lin
   const { context, page } = await signedInAt(browser, config, url(ARCHITECT.route, 'HSCUSTOM'), VIEWPORTS.wide, REDUCED_MOTION);
   try {
     await waitForMapAnswered(page, config.navigationTimeoutMs);
-    await page.waitForSelector('.ocu-external-page', { timeout: config.navigationTimeoutMs });
-    assert.equal(await page.$eval('.ocu-external-page-sentence', (node) => node.textContent.trim()), STRINGS.analyticsRefusalNamespace, 'the page says Analytics is not enabled in this namespace');
+    await page.waitForSelector('.ocu-external-page .ocu-external-page-sentence', { timeout: config.navigationTimeoutMs });
+    assert.equal(
+      await page.$eval('.ocu-external-page-sentence', (node) => node.textContent.trim()),
+      STRINGS.externalAreaNotEnabled.split('<area>').join(STRINGS.navAreaAnalytics),
+      'the page says Analytics is not enabled in this namespace'
+    );
     assert.equal((await page.$$('.ocu-external-page a')).length, 0, 'and draws no anchor');
     assert.equal(await page.$('.ocu-classic-link-card'), null, 'and no card');
   } finally {
@@ -299,9 +360,7 @@ test('AC5: each of the three link routes passes the structural and contrast chec
 // itself, the click makes two vendor requests, both answered by the stub, and the one-request clause goes red; rebuild and redeploy first.
 // Never demonstrate it by letting a request through to the instance: that loads a vendor page and holds a license unit for 900 s.
 test('Count: a vendor request the run makes is answered by the stub, and the instance\'s license use does not rise', async () => {
-  const licenseUnits = () => Number(probe('ALLUREAD', '$System.License.LUConsumed()').value);
-  const unitsBefore = licenseUnits();
-  assert.ok(Number.isInteger(unitsBefore), 'the license units in use read as a number');
+  assert.ok(Number.isInteger(unitsAtStart), 'the license units in use before the first leg read as a number');
   const requestsBefore = vendor.requests.length;
   const answeredBefore = vendor.answered;
   const { context, page } = await signedInAt(browser, config, url('analytics/cubes'), VIEWPORTS.wide, REDUCED_MOTION);
@@ -320,5 +379,6 @@ test('Count: a vendor request the run makes is answered by the stub, and the ins
   for (const address of vendor.requests) {
     assert.match(new URL(address).pathname, /^\/csp\/user\/_DeepSee\./, `every vendor request the run made asked for a USER vendor page: ${address}`);
   }
-  assert.ok(licenseUnits() <= unitsBefore, `the license units in use did not rise (${unitsBefore} before)`);
+  const unitsNow = Number(probe('ALLUREAD', '$System.License.LUConsumed()').value);
+  assert.ok(unitsNow <= unitsAtStart, `the license units in use did not rise over the run (${unitsAtStart} before the first leg, ${unitsNow} now)`);
 });

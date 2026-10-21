@@ -2,10 +2,12 @@
 /// <code>USER</code>, <code>GET /api/ocupilot/navigation?ns=USER</code> as <code>_SYSTEM</code> carries <code>href</code> on exactly the three
 /// <code>external</code> screens, each the address <class>OcuPilot.Screen.ExternalPage</class> composes (the default application, a slash, the page file and the
 /// namespace); the same request for <code>HSCUSTOM</code> carries none; a principal holding the developer floor and nothing of DeepSee is refused Architect and
-/// Analyzer naming each one's own pair and is offered the User Portal, and a principal that also holds <code>%DeepSee_Architect:USE</code> is refused Analyzer alone.</p>
+/// Analyzer naming each one's own pair and is offered the User Portal, a principal that also holds <code>%DeepSee_Architect:USE</code> is refused Analyzer alone, and a
+/// principal holding only the <code>%DeepSee_ArchitectEdit</code> and <code>%DeepSee_AnalyzerEdit</code> resources the vendor pages also admit is refused both naming the
+/// narrower pairs (Story 20.32's named limit); and <code>shell.privileges.read</code>, which answers the same map, conforms to its result schema there.</p>
 /// <p><b>What it needs from the environment:</b> <parameter>ARMINGVARIABLE</parameter> reading <code>1</code>, because it creates and deletes users and roles named
 /// <code>OcuP2032*</code> and, through <class>OcuPilot.Test.AnalyticsProbe</class>, turns analytics on for <code>USER</code>. The principals and the probe are removed
-/// after the last test.</p>
+/// after the last test. <code>HSCUSTOM</code> is read as the instance ships it, with analytics off; nothing in the suite turns it on.</p>
 Class OcuPilot.Test.AnalyticsLinkMap Extends %UnitTest.TestCase
 {
 
@@ -16,12 +18,14 @@ Parameter PROBE = "OcuPilot.Test.AnalyticsProbe";
 Parameter NAMESPACE = "USER";
 
 /// <p>The principals, each <code>&lt;user&gt;:&lt;the pairs it holds beyond the code database's READ&gt;</code>, separated by <code>;</code>: the developer
-/// floor and READ on <code>USER</code>, and the same with the Architect's pair.</p>
-Parameter PRINCIPALS = "OcuP2032Floor:%Development:U,%DB_USER:R;OcuP2032Architect:%Development:U,%DB_USER:R,%DeepSee_Architect:U";
+/// floor and READ on <code>USER</code>, the same with the Architect's pair, and the same with the two <code>*Edit</code> resources and neither narrower pair.</p>
+Parameter PRINCIPALS = "OcuP2032Floor:%Development:U,%DB_USER:R;OcuP2032Architect:%Development:U,%DB_USER:R,%DeepSee_Architect:U;OcuP2032Edit:%Development:U,%DB_USER:R,%DeepSee_ArchitectEdit:U,%DeepSee_AnalyzerEdit:U";
 
 Parameter FLOOR = "OcuP2032Floor";
 
 Parameter ARCHITECT = "OcuP2032Architect";
+
+Parameter EDITONLY = "OcuP2032Edit";
 
 /// <p>The three links, <code>&lt;route&gt;|&lt;tool identifier&gt;|&lt;page file&gt;</code>, separated by <code>;</code>, in position order.</p>
 Parameter LINKS = "analytics/architect|analytics.architect|_DeepSee.UI.Architect.zen;analytics/analyzer|analytics.analyzer|_DeepSee.UI.Analyzer.zen;analytics/user-portal|analytics.userportal|_DeepSee.UserPortal.Home.zen";
@@ -47,7 +51,7 @@ Method OnBeforeAllTests() As %Status
     If $$$ISOK(tSC) Set tSC = $ClassMethod(..#PROBE, "Enable")
     If $$$ISOK(tSC) Set tSC = ##class(OcuPilot.Test.InteropTestGate).CreatePrincipals(..#PRINCIPALS, ..PreparedPassword, "OcuPilot.Test.AnalyticsLinkMap")
     If $$$ISOK(tSC) {
-        For tCase = $ListBuild(..#FLOOR, "%Development", "USE", 1), $ListBuild(..#FLOOR, "%DeepSee_Architect", "USE", 0), $ListBuild(..#FLOOR, "%DeepSee_Analyzer", "USE", 0), $ListBuild(..#ARCHITECT, "%DeepSee_Architect", "USE", 1), $ListBuild(..#ARCHITECT, "%DeepSee_Analyzer", "USE", 0) {
+        For tCase = $ListBuild(..#FLOOR, "%Development", "USE", 1), $ListBuild(..#FLOOR, "%DeepSee_Architect", "USE", 0), $ListBuild(..#FLOOR, "%DeepSee_Analyzer", "USE", 0), $ListBuild(..#ARCHITECT, "%DeepSee_Architect", "USE", 1), $ListBuild(..#ARCHITECT, "%DeepSee_Analyzer", "USE", 0), $ListBuild(..#EDITONLY, "%DeepSee_ArchitectEdit", "USE", 1), $ListBuild(..#EDITONLY, "%DeepSee_AnalyzerEdit", "USE", 1), $ListBuild(..#EDITONLY, "%DeepSee_Architect", "USE", 0), $ListBuild(..#EDITONLY, "%DeepSee_Analyzer", "USE", 0) {
             If $SYSTEM.Security.CheckUserPermission($List(tCase, 1), $List(tCase, 2), $List(tCase, 3)) '= $List(tCase, 4) {
                 Set tSC = $$$ERROR($$$GeneralError, "the principal " _ $List(tCase, 1) _ "'s " _ $List(tCase, 2) _ ":" _ $List(tCase, 3) _ " did not read back as declared")
                 Quit
@@ -191,6 +195,46 @@ Method TestAPrincipalWithoutAnOwnPairIsRefusedNamingIt()
     Set tAnalyzer = ..EntryFor(tMap, "analytics/analyzer")
     Do $$$AssertEquals($Select($IsObject(tArchitect): tArchitect.allowed _ "|" _ tArchitect.%Get("failedPair"), 1: ""), "1|", "Architect is allowed once its own pair is held")
     Do $$$AssertEquals($Select($IsObject(tAnalyzer): tAnalyzer.allowed _ "|" _ tAnalyzer.failedPair, 1: ""), "0|%DeepSee_Analyzer:USE", "and Analyzer stays refused naming its own")
+}
+
+/// <p>AC2, Story 20.32's named limit: a principal holding the developer floor and only <code>%DeepSee_ArchitectEdit:USE</code> and <code>%DeepSee_AnalyzerEdit:USE</code>,
+/// the resources the vendor pages' own <code>RESOURCE</code> lists also admit, is refused Architect and Analyzer naming the narrower pair each screen declares
+/// (<code>%DeepSee_Architect:USE</code>, <code>%DeepSee_Analyzer:USE</code>), is offered the User Portal with its address, and a refused entry stays on the map with its
+/// address, so the side bar draws it unavailable rather than hiding it.</p>
+/// <p>Mutation (Rule 19): declare <code>%DeepSee_ArchitectEdit:USE</code> in place of <code>%DeepSee_Architect:USE</code> as <code>AnalyticsArchitectLink</code>'s own pair -- the
+/// Architect leg goes red, because the Edit-only principal then opens it.</p>
+Method TestAnEditOnlyHolderIsRefusedNamingTheNarrowerPair()
+{
+    Set tMap = ..MapFor(..#NAMESPACE, ..#EDITONLY)
+    Do $$$AssertTrue($IsObject(tMap), "the map for USER answers the principal holding only the Edit resources")
+    If '$IsObject(tMap) Quit
+    Set tArchitect = ..EntryFor(tMap, "analytics/architect")
+    Set tAnalyzer = ..EntryFor(tMap, "analytics/analyzer")
+    Set tPortal = ..EntryFor(tMap, "analytics/user-portal")
+    Do $$$AssertEquals($Select($IsObject(tArchitect): tArchitect.allowed _ "|" _ tArchitect.failedPair _ "|" _ tArchitect.href, 1: ""), "0|%DeepSee_Architect:USE|" _ ..Expected("_DeepSee.UI.Architect.zen", ..#NAMESPACE), "Architect is refused naming the narrower pair, though %DeepSee_ArchitectEdit:USE is held, and stays on the map with its address")
+    Do $$$AssertEquals($Select($IsObject(tAnalyzer): tAnalyzer.allowed _ "|" _ tAnalyzer.failedPair _ "|" _ tAnalyzer.href, 1: ""), "0|%DeepSee_Analyzer:USE|" _ ..Expected("_DeepSee.UI.Analyzer.zen", ..#NAMESPACE), "Analyzer is refused naming the narrower pair, though %DeepSee_AnalyzerEdit:USE is held, and stays on the map with its address")
+    Do $$$AssertEquals($Select($IsObject(tPortal): tPortal.allowed _ "|" _ tPortal.%Get("failedPair") _ "|" _ tPortal.href, 1: ""), "1||" _ ..Expected("_DeepSee.UserPortal.Home.zen", ..#NAMESPACE), "and the User Portal, whose pair is the Analytics menu's alone, is allowed with its address")
+}
+
+/// <p>AC6: <code>shell.privileges.read</code>, which answers the navigation map, conforms to its declared result schema where the links carry
+/// addresses: scoped to <code>USER</code>, its answer carries the three <code>href</code>s and passes the schema the tool registry holds for it.</p>
+/// <p>Mutation (Rule 19): drop <code>href</code> from the screen items of <method>OcuPilot.Kernel.Shell.PrivilegesRead.ResultSchema</method> -- the
+/// conformance leg goes red, naming the undeclared property.</p>
+Method TestThePrivilegesToolConformsWhereLinksCarryAddresses()
+{
+    Set tRegistry = "OcuPilot.Screen.Tool.Registry"
+    Do ##class(OcuPilot.Kernel.Scope).Set(..#NAMESPACE)
+    Try {
+        Do $$$AssertStatusOK($ClassMethod(tRegistry, "Resolve", "shell.privileges.read", .tTool), "the registry lists shell.privileges.read")
+        If '$IsObject($Get(tTool)) Quit
+        Do $$$AssertStatusOK($ClassMethod(tRegistry, "InvokeTool", tTool, {}, 200, .tResult, .tHttp, .tFault), "it answers in USER")
+        If '$IsObject($Get(tResult)) Quit
+        Do $$$AssertEquals($Length(..Addresses(tResult), ";"), 3, "its answer carries the three links' addresses: " _ ..Addresses(tResult))
+        Do $$$AssertStatusOK($ClassMethod(tRegistry, "ValidateArguments", $ClassMethod(tRegistry, "ResultSchemaOf", tTool), tResult, .tProblem), "and conforms to its declared result schema " _ $Get(tProblem))
+    } Catch ex {
+        Do $$$AssertStatusOK(ex.AsStatus(), "the tool runs in USER")
+    }
+    Do ##class(OcuPilot.Kernel.Scope).Clear()
 }
 
 }

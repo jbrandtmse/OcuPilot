@@ -14,7 +14,8 @@ ClassMethod Payload(Output pObject As %DynamicObject) As %Status
 }
 
 /// <p><code>{areas}</code>, each area carrying its screens and <code>applies</code>, and each area and screen carrying
-/// <code>allowed</code> plus <code>failedPair</code> where it is refused.</p>
+/// <code>allowed</code> plus <code>failedPair</code> where it is refused. An <code>external</code> screen whose area applies also carries
+/// <code>href</code>, the address of the vendor page it opens in a new tab (AD-5, AD-47).</p>
 ClassMethod ResultSchema(pDescriptor As %String = "") As %DynamicObject
 {
     Quit {
@@ -43,7 +44,8 @@ ClassMethod ResultSchema(pDescriptor As %String = "") As %DynamicObject
                                     "labelKey": {"type": "string"},
                                     "sideBarPosition": {"type": "integer"},
                                     "allowed": {"type": "boolean"},
-                                    "failedPair": {"type": "string"}
+                                    "failedPair": {"type": "string"},
+                                    "href": {"type": "string"}
                                 },
                                 "required": ["route", "labelKey", "sideBarPosition", "allowed"],
                                 "additionalProperties": false

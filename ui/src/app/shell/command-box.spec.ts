@@ -345,6 +345,25 @@ describe('the command box', () => {
       expect(document.activeElement).toBe(elsewhere);
     });
 
+    // Mutation (Rule 19): drop the `aria-description` binding or the glyph from the screen rows in `command-box.ts` -> this goes red.
+    it('an allowed row with an address says it opens a new tab and carries the glyph, and one without carries neither', async () => {
+      navigation.roster = [USERS, LOGS, ANALYZER];
+      navigation.hrefs.set('analytics/analyzer', ANALYZER_ADDRESS);
+      await TestBed.inject(Router).navigateByUrl('/permissions/users?ns=USER');
+
+      chord();
+      type('analyzer');
+      expect(options()).toHaveLength(1);
+      expect(options()[0].getAttribute('aria-description')).toBe(STRINGS.classicRowLinkDescription.split('<page>').join(STRINGS.analyticsAnalyzerLabel));
+      expect(options()[0].querySelector('.ocu-external-glyph')?.getAttribute('aria-hidden')).toBe('true');
+
+      navigation.hrefs.clear();
+      type('analyze');
+      expect(options()).toHaveLength(1);
+      expect(options()[0].getAttribute('aria-description')).toBeNull();
+      expect(options()[0].querySelector('.ocu-external-glyph')).toBeNull();
+    });
+
     it('a gated row stays listed, names its pair and opens nothing', async () => {
       navigation.roster = [USERS, LOGS, ANALYZER];
       navigation.hrefs.set('analytics/analyzer', ANALYZER_ADDRESS);

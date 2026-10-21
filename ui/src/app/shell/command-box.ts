@@ -39,8 +39,8 @@ import { selfProtectionReason } from '../core/self-protection';
 import { Session } from '../core/session';
 import { ShellState } from '../core/shell-state';
 import { STRINGS, stringFor } from '../core/strings';
-import { entityKeyOf, rowFor } from '../core/table-model';
-import { openInNewTab } from './new-tab';
+import { entityKeyOf, formatClassicRowLinkDescription, rowFor } from '../core/table-model';
+import { NEW_TAB_GLYPH, openInNewTab } from './new-tab';
 
 /** The command box's name on the overlay stack (DW-137). */
 export const COMMAND_BOX_OVERLAY_ID = 'command-box';
@@ -101,6 +101,8 @@ interface CommandRow {
    * routes onto its own page and says why.
    */
   readonly href: string;
+  /** What a screen reader hears of a row that opens a new tab, `null` for every other. */
+  readonly description: string | null;
   readonly ariaDisabled: string | null;
 }
 
@@ -203,9 +205,13 @@ interface CommandRow {
                 [class.ocu-command-box-option-gated]="row.gated"
                 [attr.aria-selected]="row.id === activeDescendant"
                 [attr.aria-disabled]="row.ariaDisabled"
+                [attr.aria-description]="row.description"
                 (click)="choose(row)"
               >
                 <span class="ocu-command-box-option-label">{{ row.label }}</span>
+                @if (row.href) {
+                  <span class="ocu-external-glyph" aria-hidden="true">{{ externalGlyph }}</span>
+                }
                 @if (row.detail) {
                   <span class="ocu-command-box-option-detail">{{ row.detail }}</span>
                 }
@@ -260,6 +266,9 @@ export class CommandBox {
   private readonly host: ElementRef<HTMLElement> = inject(ElementRef);
 
   protected readonly STRINGS = STRINGS;
+
+  /** The new-tab glyph a row that opens a new tab carries (`NEW_TAB_GLYPH`). */
+  protected readonly externalGlyph = NEW_TAB_GLYPH;
 
   /**
    * The chord, spelled the way the platform spells it. The command glyph is an escape, never
@@ -488,6 +497,7 @@ export class CommandBox {
       const area = areaByKey(screen.area);
       const verdict = this.navigation.screenVerdict(screen.route);
       const opens = openableEntry(screen, (route) => this.navigation.screenVerdict(route));
+      const href = opens !== null && screen.archetype === 'external' ? this.navigation.screenHref(screen.route) : '';
       rows.push({
         id: `ocu-command-box-screen-${screen.route.replace(/\//g, '-') || 'root'}`,
         kind: 'screen',
@@ -500,7 +510,8 @@ export class CommandBox {
         area: screen.area,
         descriptor: '',
         actionId: '',
-        href: opens !== null && screen.archetype === 'external' ? this.navigation.screenHref(screen.route) : '',
+        href,
+        description: href === '' ? null : formatClassicRowLinkDescription(STRINGS.classicRowLinkDescription, label),
         ariaDisabled: opens !== null ? null : 'true',
       });
     }
@@ -614,6 +625,7 @@ export class CommandBox {
         descriptor: screen.descriptor,
         actionId: action.id,
         href: '',
+        description: null,
         ariaDisabled: (action.reason ?? '') !== '' ? 'true' : null,
       }));
   }
@@ -651,6 +663,7 @@ export class CommandBox {
         descriptor: '',
         actionId: '',
         href: '',
+        description: null,
         ariaDisabled: null,
       },
     ];

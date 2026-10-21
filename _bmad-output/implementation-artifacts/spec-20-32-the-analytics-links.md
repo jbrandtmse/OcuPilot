@@ -284,6 +284,33 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Lines were
   - **When** `GET /api/ocupilot/navigation?ns=USER` is served.
   - **Then** `Navigation.Payload` answers exactly the three `external` entries with `href` from `ExternalPage.Href`, and the side bar opens that `href` (AC1).
 
+### Review Findings
+
+Code review, 2026-10-21 (four layers, full-opus). 22 layer findings grouped to 19: 0 decision-needed, 9 patch (2 medium, 7 low), 0 defer, 10 rejected; four rejected rows close on the ledger (DW-2480 to DW-2483).
+
+- [x] [Review][Patch] `shell.privileges.read` answered `href`, which its result schema forbade (`additionalProperties: false`), in any namespace whose Analytics area applies; the schema now declares it, pinned in `USER` (medium) [src/OcuPilot/Kernel/Shell/PrivilegesRead.cls:48, src/OcuPilot/Test/AnalyticsLinkMap.cls:223]
+- [x] [Review][Patch] The external page said "Analytics is not enabled in this namespace." while the map for the namespace had not answered (a cold deep link, a namespace switch, a failed read); it now shows its title alone until then (medium) [ui/src/app/shell/external-page.ts:75]
+- [x] [Review][Patch] The command box's `external` row gave no warning that it opens a new tab; it now carries the side bar's glyph and description, the glyph shared as `NEW_TAB_GLYPH` [ui/src/app/shell/command-box.ts:208, ui/src/app/shell/new-tab.ts:19]
+- [x] [Review][Patch] The Count leg read its license baseline after the other legs had opened their tabs; it now reads it in `before` [ui/browser/analytics-links.browser-spec.mjs:176]
+- [x] [Review][Patch] The AC3 browser leg compared the page's sentence with 20.11's `analyticsRefusalNamespace` and read it before it could render; it now waits for the sentence and compares `externalAreaNotEnabled` with the area named [ui/browser/analytics-links.browser-spec.mjs:309]
+- [x] [Review][Patch] A `screen-mirror.test.mjs` case named a read while it doctors `parentScope` [ui/tools/screen-mirror.test.mjs:2476]
+- [x] [Review][Patch] `AnalyticsLinkDescriptor` and `AnalyticsLinkMap` read `HSCUSTOM` with analytics off, the instance's shipped default that nothing in the suite writes, and their headers did not say so; the Verification sentence "no test asserts on an analytics state it did not make" is the lead's to correct [src/OcuPilot/Test/AnalyticsLinkDescriptor.cls:8, src/OcuPilot/Test/AnalyticsLinkMap.cls:10]
+- [x] [Review][Patch] EXPERIENCE.md's classic-link-card rows named reduced forms only; they now name an `external` screen's route too [_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md:305, :655]
+- [x] [Review][Patch] A browser leg's comment named the stage that wrote it [ui/browser/analytics-links.browser-spec.mjs:254]
+
+Rejected:
+
+- `false` -- `ExternalProblem` checks less than the descriptors' doc comments promise: the comments describe each descriptor, and the rule refuses exactly AD-5's Story 20.32 list (read, table, action, tab, parentScope).
+- `false` -- an array `parentScope` is refused against the doc comment: both `ExternalProblem` and `externalProblem` refuse it alike, and "an empty array declares nothing" is said of `rowActions`.
+- `false` -- the mirror refuses only the over-declared half: the vocabulary half is server-only by Design Notes, as `CLASSICPAGES` is.
+- `low` -- an applying area whose address cannot be composed shows the not-enabled sentence: Design Notes' one generic sentence, reachable only with an empty or non-root-relative default application (DW-2480, wontfix-theoretical).
+- `low` -- a policy-blocked `window.open` is silent: a click-initiated tab is not blocked by default, and `noopener` makes the result unreadable (DW-2481, wontfix-theoretical).
+- `low` -- the Count leg's license clause has never been observed red: the spec's Never clause forbids the only demonstration; the request count is the pinning clause (DW-2482, by-design).
+- `low` -- two Rule 11 files carry in-place line edits: no concurrent epic touches either line (DW-2483, wontfix-accepted).
+- `low` -- no browser leg drives a non-admin principal through a gated link: rejected at the implement review on the same evidence; the wire and component halves pin it.
+- `reject` -- the Verification results predate QA's additions (`AnalyticsLinkDescriptor` 4 tests, `AnalyticsLinkMap` 3, the keyboard leg): the fix edits this spec's results, which the runner records.
+- `reject` -- "Decided in-stage" says `ExternalProblem` reads `Identifiers()`; it reads `Has()` and `ClassicPage()`: the fix edits this spec, and no code relies on the claim.
+
 ## Spec Change Log
 
 - 2026-10-14, spec gate (runner): the orchestrator ruled Q1 (A); the spine carries the four Story 20.32 clauses (AD-8's names the `*Edit`-only holder's refusal).
@@ -449,7 +476,7 @@ Checked and not engaged: AD-29 and AD-36 (no port, no read), AD-51 to AD-53 (no 
 - the built-screen count that Screen permissions derives (+3) and the structural walk's count (+3);
 - the strings table, and EXPERIENCE.md :72, :159, :604, :838 and :887.
 
-*Every test added or changed passes on a fresh environment, in either order.* `AnalyticsProbe` restores USER's flags, and no test asserts on an analytics state it did not make.
+*Every test added or changed passes on a fresh environment, in either order.* `AnalyticsProbe` restores USER's flags; the link tests read `HSCUSTOM` with analytics off, the instance's shipped default, which no test writes.
 
 **Setup (slot B; never the dev instance `ocupilot-slot-b`):**
 
@@ -536,6 +563,23 @@ Checked and not engaged: AD-29 and AD-36 (no port, no read), AD-51 to AD-53 (no 
   - mutation: `openInNewTab` also calls `fetch(href)` -> the browser Count leg: "the click made one vendor request", 2 !== 1, both answered by the stub and license use unchanged (AC1)
   - mutation: one `SurfaceCoverage` link row removed -> `TestEveryDeclaredScreenHasACoverageRowAndBack`, alone (AC5)
   - mutation: `AnalyticsUserPortalLink` removed from `InteropFloor.BASESCREENS` -> `TestEachPrincipalSignsInAndOpensExactlyItsRoster` and `TestEveryOpenScreenMatchesItsClassicPage` (AC2)
+  - QA pass (each applied, observed red, reverted; `git status --short` and the `git diff HEAD` hash read the same before and after each):
+  - mutation: `AnalyticsArchitectLink` declares `%DeepSee_ArchitectEdit:USE` in place of `%DeepSee_Architect:USE` -> `AnalyticsLinkMap.TestAnEditOnlyHolderIsRefusedNamingTheNarrowerPair` and `TestAPrincipalWithoutAnOwnPairIsRefusedNamingIt` (AC2)
+  - mutation: `firstOpenableEntry` stops skipping links -> the four Story 20.32 cases of `home.page.spec.ts` and `locator-bar.spec.ts` (AC5)
+  - mutation: the `external` entry of `ARCHETYPE_PAGES` loads `list-page` -> `screen-outlet.spec.ts`' external-page resolution case, alone (AC4)
+  - mutation: `side-bar.ts` `onKeydown` swallows Enter -> the browser keyboard leg times out waiting for its target (AC1)
+  - mutation: `side-bar.ts` drops its `aria-description` binding -> the browser keyboard leg: "Architect: a screen reader hears that it opens a new tab" (AC1)
+  - mutation: `Navigate.Directive` refuses an `external` screen -> `AnalyticsLinkDescriptor.TestTheAgentOpensEachLinkRouteUnderTheScreensPairs`, alone (AC4)
+  - Code review pass (each applied, observed red, reverted; `git status --short` and the `git diff HEAD` hash read the same before and after each):
+  - mutation: `PrivilegesRead.ResultSchema` drops `href` from its screen items -> `AnalyticsLinkMap.TestThePrivilegesToolConformsWhereLinksCarryAddresses`, alone: "'areas[9].screens[7].href' is not a declared property" (AC6)
+  - mutation: `external-page.ts` shows the sentence without the `appliesAnswered()` test -> `external-page.spec.ts`' before-the-map case, alone (AC3)
+  - mutation: `command-box.ts` drops the screen rows' `aria-description` binding -> `command-box.spec.ts`' new-tab marks case, alone (AC1)
+- **QA files (QA), all extending a file above:**
+  - (QA) `src/OcuPilot/Test/AnalyticsLinkMap.cls`: a third principal holding only the two `*Edit` resources, and `TestAnEditOnlyHolderIsRefusedNamingTheNarrowerPair`.
+  - (QA) `src/OcuPilot/Test/AnalyticsLinkDescriptor.cls`: `TestTheAgentOpensEachLinkRouteUnderTheScreensPairs`.
+  - (QA) `ui/src/app/areas/home/home.page.spec.ts` and `ui/src/app/shell/locator-bar.spec.ts`: a caller who may open only the links, and a link listed ahead of a screen.
+  - (QA) `ui/src/app/shell/screen-outlet.spec.ts`: the three links resolve to the external page.
+  - (QA) `ui/browser/analytics-links.browser-spec.mjs`: the key-press leg and the new-tab marks.
 
 ## Auto Run Result
 

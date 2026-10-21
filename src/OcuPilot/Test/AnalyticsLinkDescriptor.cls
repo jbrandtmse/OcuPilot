@@ -2,10 +2,10 @@
 /// declared as the story names them, each classic page the portal's own and compiled, each compiled <code>RESOURCE</code> naming a pair its
 /// screen declares; <class>OcuPilot.Screen.ExternalPage</class> closed, composing the address the instance composes and nothing else;
 /// <method>OcuPilot.Screen.Registry.ExternalProblem</method>'s four refusals, on doctored values and through <method>OcuPilot.Screen.Registry.Validate</method>;
-/// and a namespace that does not report analytics carrying no address on the navigation map.</p>
+/// a namespace that does not report analytics carrying no address on the navigation map; and the agent's navigation tool opening each route under the screen's pairs.</p>
 /// <p><b>What it needs from the environment:</b> the compiled registries and the instance's classic DeepSee pages. It reads declarations and the page
 /// dictionary, writes nothing and needs no armed variable. <method>TestHscustomCarriesNoAddress</method> stashes a request scope in this process and
-/// clears it.</p>
+/// clears it, and reads <code>HSCUSTOM</code> as the instance ships it, with analytics off; nothing in the suite turns it on.</p>
 Class OcuPilot.Test.AnalyticsLinkDescriptor Extends %UnitTest.TestCase
 {
 
@@ -19,6 +19,9 @@ Parameter SCREENS = "AnalyticsArchitectLink|analytics/architect|4|analyticsArchi
 Parameter REGISTRY = "OcuPilot.Test.ExternalLinkRegistry";
 
 Parameter FIXTURE = "OcuPilot.Test.ExternalLink.Doctored";
+
+/// <p>The agent's navigation tool.</p>
+Parameter NAVIGATE = "OcuPilot.Screen.Tool.Navigate";
 
 /// <p>The sentence <method>OcuPilot.Screen.Registry.ExternalProblem</method> ends the declaration half with, which
 /// <file>ui/tools/screen-mirror.mjs</file>'s <code>externalProblem</code> returns too.</p>
@@ -169,6 +172,37 @@ Method TestTheVocabularyIsClosed()
     Do $ClassMethod(..#FIXTURE, "Arm", tBase)
     Set tSC = $ClassMethod(..#REGISTRY, "Validate", .tProblem)
     Do $$$AssertStatusOK(tSC, "the undoctored declaration is a sound roster: " _ $Get(tProblem))
+}
+
+/// <p>AC4: the agent opens each link's route. <code>shell.screen.open</code>'s directive for the route resolves to it with no entity, criterion or fault, and the
+/// tool requires the pairs the screen itself requires (AD-8), each of the pairs the screen declares among them, so a caller the side bar refuses a link is
+/// refused the link's page when the agent offers it.</p>
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Screen.Tool.Navigate.Directive</method> refuse a screen whose archetype is <code>external</code> -- the directive leg
+/// goes red here alone, because the tool's route enum is derived from the built roster and still names the three.</p>
+Method TestTheAgentOpensEachLinkRouteUnderTheScreensPairs()
+{
+    For tI = 1:1:$Length(..#SCREENS, ";") {
+        Set tRow = $Piece(..#SCREENS, ";", tI)
+        Set tClass = ..#PACKAGE _ $Piece(tRow, "|", 1)
+        Set tRoute = $Piece(tRow, "|", 2)
+        Set tArgs = {}
+        Do tArgs.%Set("route", tRoute)
+        Kill tOpened, tEntity, tFault
+        Set tSC = $ClassMethod(..#NAVIGATE, "Directive", "", tArgs, .tOpened, .tEntity, .tFault)
+        Do $$$AssertStatusOK(tSC, tRoute _ ": the directive is not refused")
+        Do $$$AssertEquals($Get(tOpened) _ "|" _ $Get(tEntity), tRoute _ "|", tRoute _ ": it opens the route, with no entity")
+        Set tPairs = $ClassMethod(..#NAVIGATE, "ArgumentPairs", "", tArgs, .tResolved)
+        Do $$$AssertEquals(tResolved, 1, tRoute _ ": the tool's pairs resolve")
+        Do $$$AssertEquals(tPairs, ##class(OcuPilot.Screen.Gate).RequiredPairs(tClass), tRoute _ ": the tool requires exactly the screen's own pairs")
+        Set tSpelled = ""
+        For tJ = 1:1:$ListLength(tPairs) {
+            Set tSpelled = tSpelled _ $ListBuild($List($List(tPairs, tJ), 1) _ ":" _ $List($List(tPairs, tJ), 2))
+        }
+        For tJ = 1:1:$Length($Piece(tRow, "|", 8), "/") {
+            Set tDeclared = $Piece($Piece(tRow, "|", 8), "/", tJ)
+            Do $$$AssertTrue($ListFind(tSpelled, tDeclared) > 0, tRoute _ ": the tool requires " _ tDeclared)
+        }
+    }
 }
 
 /// <p>A namespace that does not report analytics carries no address: with <code>HSCUSTOM</code> as the request's scope, the navigation payload still lists

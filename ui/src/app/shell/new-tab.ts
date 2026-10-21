@@ -11,3 +11,9 @@
 export function openInNewTab(href: string): void {
   window.open(href, '_blank', 'noopener,noreferrer');
 }
+
+/**
+ * The north-east arrow DESIGN.md's external-link action carries, beside an entry that opens a new tab, written as its escape
+ * so no non-ASCII byte enters a source file (Rule 14). It is drawn `aria-hidden`: the entry's description says it opens a new tab.
+ */
+export const NEW_TAB_GLYPH = '\u2197';

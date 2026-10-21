@@ -15,8 +15,10 @@ import { ClassicLinkCard, type ClassicLink } from './classic-link-card';
  * the navigation map answered an address for the screen (`NavigationService.screenHref`, composed on
  * the instance and answered only while the screen's area applies in the namespace), it shows the
  * classic-link card with that address, whose anchor opens a new tab. Where the map answered none, it
- * says the area is not enabled in this namespace and draws no link. The client composes no address
- * and OcuPilot loads, frames and draws nothing of the vendor page.
+ * says the area is not enabled in this namespace and draws no link. Until the map read under the
+ * namespace the shell is scoped to has answered (`NavigationService.appliesAnswered`: a cold sign-in, a
+ * namespace switch in flight, a failed read), it shows its title alone, because it does not yet know
+ * which. The client composes no address and OcuPilot loads, frames and draws nothing of the vendor page.
  *
  * The page issues no request: it reads the map the shell already holds, and re-reads it as the map
  * changes (a namespace switch). Styling uses tokens only.
@@ -32,7 +34,8 @@ import { ClassicLinkCard, type ClassicLink } from './classic-link-card';
     <h3 class="ocu-external-page-title">{{ title }}</h3>
     @if (linked; as card) {
       <app-classic-link-card [link]="card" />
-    } @else {
+    }
+    @if (explained) {
       <p class="ocu-external-page-sentence">{{ sentence }}</p>
     }
   </section>`,
@@ -63,6 +66,19 @@ export class ExternalPage {
 
   protected get linked(): ClassicLink | null {
     return this.link();
+  }
+
+  /**
+   * Whether the page says why it draws no link: the map read under the current namespace has answered and carries no
+   * address for the screen. Before that answer a missing address means nothing yet.
+   */
+  private readonly unlinked = computed(() => {
+    this.generation();
+    return this.navigation.appliesAnswered() && this.link() === null;
+  });
+
+  protected get explained(): boolean {
+    return this.unlinked();
   }
 
   /** `<area> is not enabled in this namespace.` with the screen's area named. */

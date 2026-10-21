@@ -25,7 +25,7 @@ import { PanelState } from '../core/panel-layout';
 import { ShellState } from '../core/shell-state';
 import { STRINGS, stringFor } from '../core/strings';
 import { formatClassicRowLinkDescription } from '../core/table-model';
-import { openInNewTab } from './new-tab';
+import { NEW_TAB_GLYPH, openInNewTab } from './new-tab';
 import { railItemDomId } from './rail';
 
 /** The side bar's name on the overlay stack. It is the stack's bottom-most member (DW-137). */
@@ -261,12 +261,8 @@ export class SideBar {
     return this.resolved();
   }
 
-  /**
-   * The north-east arrow DESIGN.md's external-link action carries, written as its escape so no
-   * non-ASCII byte enters a source file (Rule 14). `aria-hidden`: the entry's description says it
-   * opens a new tab.
-   */
-  protected readonly externalGlyph = '\u2197';
+  /** The new-tab glyph an `external` entry carries (`NEW_TAB_GLYPH`). */
+  protected readonly externalGlyph = NEW_TAB_GLYPH;
 
   /**
    * Open a screen. A gated entry does nothing; it is refused here, not by the DOM. An `external`
