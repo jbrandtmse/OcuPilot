@@ -344,6 +344,25 @@ ClassMethod SeedProposal(ByRef pValues, Output pKey As %String, Output pToken As
     Quit ##class(OcuPilot.Kernel.State.Propose).GuardedMint(.pValues, "OcuPilot.Kernel.Agent.Limits", .pKey, .pToken, .tExpiresAt)
 }
 
+/// <p>Seed one live <code>webapp.list.update</code> proposal of <var>pUser</var> in conversation
+/// <var>pConvKey</var>, minted by turn <var>pTurnKey</var> and naming <var>pTargetRef</var>, with
+/// an empty payload and diff, through <method>SeedProposal</method>; the new row's id comes back
+/// in <var>pKey</var>.</p>
+ClassMethod SeedMinimal(pUser As %String, pConvKey As %String, pTurnKey As %String, pTargetRef As %String, Output pKey As %String) As %Status
+{
+    Set tValues("user") = pUser
+    Set tValues("convKey") = pConvKey
+    Set tValues("turnKey") = pTurnKey
+    Set tValues("toolName") = "webapp.list.update"
+    Set tValues("targetRef") = pTargetRef
+    Set tValues("fingerprint") = "0"
+    Set tValues("arguments") = "{}"
+    Set tValues("payload") = "{}"
+    Set tValues("diff") = "[]"
+    Set tValues("unchangedCount") = 0
+    Quit ..SeedProposal(.tValues, .pKey, .tToken)
+}
+
 /// <p>Insert a turn row for <var>pUser</var> in <var>pState</var>, as a job that has already
 /// finished would have left it, and answer its key in <var>pKey</var>.</p>
 /// <p><var>pJobId</var> is the pid the row records as the job that began the turn, which

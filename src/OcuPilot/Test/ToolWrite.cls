@@ -1,4 +1,4 @@
-/// <p>Pins the first write tool (Story 5.1, AD-3, AD-10, AD-22, AD-40): the registry advertises it
+/// <p>Pins the first write tool (Story 5.1, AD-3, AD-10, AD-22): the registry advertises it
 /// as a <code>write</code> tool fulfilled on the instance, its schema is derived and admits no
 /// privilege subtree, and the dispatcher's write branch is exercised through the <b>real</b>
 /// restraint verdict.</p>

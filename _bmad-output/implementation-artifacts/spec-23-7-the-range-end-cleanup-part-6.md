@@ -227,6 +227,32 @@ Each batch is one implement pass and one code commit, with CI green on its own h
   - The header says the rows with a site are the scan's positive control.
   - In the same pass, delete `ToolWrite.TestNoPathFromAWriteToolsViewReachesTheClaimGate` (`ToolWrite.cls:297-307`).
 
+### Review Findings (batch 1)
+
+Code review, 2026-10-21, `full-opus` tier: blind-hunter, edge-case-hunter, verification-gap and acceptance-auditor. 34 raw findings make 11 entries (2 medium, 9 low). All 11 are patched; 7 are rejected. Rule 3 does not apply: batch 1 changes tests only.
+
+- [x] [Review][Patch] (medium) `ClaimReach` missed five static spellings that reach the claim, and its header said only names assembled at run time escape. The five: a shipped subclass of `Confirm`; `##class(Confirm)` by short name; `ClaimById` called through an object; `GuardedClaimAndClose` called through an object or from inside the store; a new `Write` object. The rows were widened or added, and `Confirm` joined the subclass leg [src/OcuPilot/Test/ClaimReach.cls:60]
+- [x] [Review][Patch] (medium) The seed value array was copied from `ProposalClose.Seed` into two new helpers (Rule 31). It is now `ProposalFixture.SeedMinimal`, which all three use [src/OcuPilot/Test/ProposalFixture.cls:351]
+- [x] [Review][Patch] (low) The subclass leg counted test classes, against its own doc and `Write.StoreClass`'s fixture seam. It now counts shipped classes only [src/OcuPilot/Test/ClaimReach.cls:84]
+- [x] [Review][Patch] (low) Both seed helpers discarded `EntityRef.Key`'s status [src/OcuPilot/Test/ConversationRestore.cls:105]
+- [x] [Review][Patch] (low) `TestALargeConversationRestoresInOneEnvelope` repeated `NewConversation` inline with its own limits literal, which made `LIMITS`'s doc untrue [src/OcuPilot/Test/ConversationRestore.cls:131]
+- [x] [Review][Patch] (low) `ConversationRestore`'s header said the log leg writes nothing, but each unreadable-store read logs one error line [src/OcuPilot/Test/ConversationRestore.cls:1]
+- [x] [Review][Patch] (low) `ConversationRestore.Read`'s doc promised `""` for a 200 that is not JSON [src/OcuPilot/Test/ConversationRestore.cls:117]
+- [x] [Review][Patch] (low) `TurnConversation`'s header did not mention the new pin or its proposal rows [src/OcuPilot/Test/TurnConversation.cls:1]
+- [x] [Review][Patch] (low) The DW-1255 test's doc claimed the close precedes the job spawn. The test asserts state at the 202, and the ordering cannot be observed without a product seam [src/OcuPilot/Test/TurnConversation.cls:188]
+- [x] [Review][Patch] (low) `ToolWrite`'s header still cited AD-40 after its only AD-40 test moved to `ClaimReach` [src/OcuPilot/Test/ToolWrite.cls:1]
+- [x] [Review][Patch] (low) `TurnConversation` was 511 lines. It is 499 with the shared seed helper [src/OcuPilot/Test/TurnConversation.cls]
+
+Rejected:
+
+- (false) A homonym of `Claim` would trip the `"Claim"` and `).Claim(` rows. No shipped class matches either row today: `Registry`'s own `Claim` is called as `..Claim(`. A red would name its class.
+- (low) The reach chain stops one hop past `Confirm`. No shipped class names `Install.Smoke`, `Confirm` refuses a call that comes from a turn (AD-40), and closing the gap adds rows.
+- (low, an edit to this spec) The implement pass's Auto Run Result and triage row say the log is not asserted, and they give counts from before QA. They record that pass. QA's `TestAnUnreadableProposalStoreIsLogged` (run 715) closes the residual.
+- (low) The log poll would pass a second marker line written after its first read. The product logs once, synchronously, through `WriteToConsoleLog`, and pinning a duplicate would add a branch.
+- (low) A `messages.log` rollover inside the poll window would read red. The window is about six seconds, and the fix adds a guard.
+- (false) The log loop copies `EcpProbe.CountContaining`. It also keeps the first matching line, which that helper cannot.
+- (false) `$ClassMethod(..#LOGPROBE, ...)` hides a dependency. The parameter names the class in the source.
+
 ### Batch 2: gate, port and ledger
 
 - [ ] **DW-1306.** Edit `src/OcuPilot/Test/InteropFloorTurn.cls`.
@@ -490,6 +516,19 @@ Epic 20 has not changed any other file in the Code Map. Its working tree holds o
 - `mutation:` (DW-1234) applied: `Conversation.cls:119` `Kill tByTurn` to `Quit` → `ConversationRestore.TestAnUnreadableProposalStoreDegradesToEmptyProposals` red alone (run 13): neither turn carries a `proposals` array. Reverted; tree byte-identical.
 - `mutation:` (DW-1255) applied: deleted the `GuardedCloseLiveForConvo` block in `Turn.HandleStart` (`Turn.cls:172-176`) → `TurnConversation.TestATypedMessageClosesThatConversationsLiveProposalsAtTheHandler` red alone, 10 of 11 green (run 15): conversation A's proposal stayed live. Reverted; tree byte-identical.
 - `mutation:` (DW-1211) applied: `If 0 Do ##class(OcuPilot.Kernel.Proposal.Write).ClaimById("", "", .tR, .tC)` as the first line of `Kernel.Proposal.Caller.Clear` → `ClaimReach` red on its first token (run 16: `Caller,Confirm` where `Confirm` was expected). A second mutation put a quoted `$ClassMethod("OcuPilot.Kernel.Proposal.Write", ...)`, a static `Propose.GuardedClaimAndClose()` and a quoted `"OcuPilot.Kernel.Proposal.Confirm"` call in the same method → the three expected-empty rows go red, each naming `Caller` (run 34). Both reverted; tree byte-identical.
+- `mutation:` (DW-1234, QA) delete the `Fault.LogRaw` call in `Conversation.AttachProposals`'s proposal-read failure branch → `ConversationRestore.TestAnUnreadableProposalStoreIsLogged` red alone, 3 of 4 green (ocupilot-ci run 715: no new `messages.log` line carries the request's marker). Reverted; tree byte-identical.
+- `mutation:` (DW-1211, QA) add a shipped class outside the six rows, `Kernel.Proposal.ReachProbe`:
+  - it calls `Write.ClaimById` statically → `ClaimReach.TestOnlyTheConfirmPathNamesTheClaim` red, naming the new class (run 716), and `TestNoOtherSpellingOrSubclassReachesTheClaim` red on its `ClaimById` call row;
+  - it calls `$ClassMethod(pClass, "ClaimById", ...)` → only `TestNoOtherSpellingOrSubclassReachesTheClaim` red, on the quoted-name row, while the first test stays green (run 717);
+  - it `Extends OcuPilot.Kernel.Proposal.Write` and calls `..ClaimById` → only `TestNoOtherSpellingOrSubclassReachesTheClaim` red, on the subclass query (run 718).
+  - Reverted; the class is deleted from the instance and the tree is byte-identical.
+- `mutation:` (QA re-observed, batch 1) `tKeys(+tTurn.%Get("seq"))` → `tKeys(tI + 1)`: `ConversationRestore.TestARetentionGapStillAttachesEachTurnsOwnProposals` red alone (run 720). `Kill tByTurn` → `Quit`: `TestAnUnreadableProposalStoreDegradesToEmptyProposals` red alone (run 721). Delete the close block in `Turn.HandleStart`: `TurnConversation.TestATypedMessageClosesThatConversationsLiveProposalsAtTheHandler` red alone, 10 of 11 green (run 722). Each reverted; tree byte-identical.
+- (QA) Files extended in place, no new file: `src/OcuPilot/Test/ConversationRestore.cls` (`TestAnUnreadableProposalStoreIsLogged`, four parameters) and `src/OcuPilot/Test/ClaimReach.cls` (`TestNoOtherSpellingOrSubclassReachesTheClaim`, `SubclassesOf`). After the reverts, each batch-1 class is green on `ocupilot-ci`: ConversationRestore 4 (run 725), TurnConversation 11 (run 726), ClaimReach 2 (run 727).
+- `mutation:` (DW-1211, review) The mutation has two parts:
+  - In `Kernel.Proposal.Caller.Clear`, add `If 0` lines that make a `Write` object and call `tW.ClaimById(...)`, call `tP.GuardedClaimAndClose(...)`, and call `##class(Confirm).Confirm(...)`.
+  - Add a shipped `Kernel.Proposal.ReachProbe` that extends `Kernel.Proposal.Confirm`.
+
+  Result: `TestNoOtherSpellingOrSubclassReachesTheClaim` is red on exactly its five review legs: `.ClaimById(`, `.GuardedClaimAndClose(`, `Proposal.Write).%New(`, `(Confirm).` and the `Confirm` subclass. `TestOnlyTheConfirmPathNamesTheClaim` stays green (ocupilot-ci run 729). Reverted, the class deleted from the instance, and the tree byte-identical. After the review patches: ClaimReach 2 (run 730), ConversationRestore 4 (731), TurnConversation 11 (732), ProposalClose 7 (733), ToolWrite 33 (734); `check-objectscript.py` 0 problems; `npm run test:tools` 2072 of 2072.
 - `mutation:` (DW-1306) make `GateAnyOfForUser` require every pair → the `USERA` leg goes red. Make `HoldsPairForUser` answer 1 → the `USERB` leg goes red.
 - `mutation:` (DW-1258) make `HttpMethodFor` answer `"PUT"` for every mutating pair → the method legs go red. Drop `'..IsMutating(...)` from `EndpointType`'s admission → the type leg goes red. Remove `WebApp.PctClassAccess/DELETE` from `MUTATINGTYPES`, and recompile the seam → its legs go red.
 - `mutation:` (DW-1308) add a second `..RecordLedger(...)` in `AnswerOne`'s `MissingPair` branch → the count reads 2 and goes red. Delete the common-exit `RecordLedger` → the count reads 0 and goes red.

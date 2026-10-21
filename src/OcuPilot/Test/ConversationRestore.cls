@@ -3,10 +3,12 @@
 /// envelope (ten entries of about 420 KB of step text, one carrying a non-ASCII character that must
 /// round-trip); each turn carries its own proposals by the entry's <code>seq</code> across a gap
 /// retention left; and a proposal store the read cannot parse degrades to empty
-/// <code>proposals</code> rather than failing the read.</p>
+/// <code>proposals</code> rather than failing the read, and is logged.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed and serving, and the suite's HTTP
 /// account owning the conversations it seeds. Each test creates one conversation and removes it
-/// again, with the proposals it seeded under GUID-suffixed turn keys.</p>
+/// again, with the proposals it seeded under GUID-suffixed turn keys. Each unreadable-store read
+/// makes the product log one error line to the manager directory's <file>messages.log</file>,
+/// which the log leg reads and nothing removes.</p>
 Class OcuPilot.Test.ConversationRestore Extends %UnitTest.TestCase
 {
 
@@ -25,6 +27,23 @@ Property SeededTurns As %String;
 
 /// <p>The limits class every append names.</p>
 Parameter LIMITS = "OcuPilot.Kernel.Agent.Limits";
+
+/// <p>The helper whose <method>LineCount</method> and <method>LinesAfter</method> read the manager
+/// directory's <file>messages.log</file>.</p>
+Parameter LOGPROBE = "OcuPilot.Test.EcpProbe";
+
+/// <p>The file the console log is written to, in the manager directory.</p>
+Parameter LOGFILE = "messages.log";
+
+/// <p>The message <method>OcuPilot.Api.Conversation.AttachProposals</method> logs when the
+/// proposal read fails.</p>
+Parameter PROPOSALSLOGGED = "a conversation's proposals could not be read";
+
+/// <p>How many times the log leg reads the console log for the line, and how long it waits
+/// between reads: up to five seconds in all.</p>
+Parameter LOGTRIES = 25;
+
+Parameter LOGPOLLSECONDS = 0.2;
 
 Method %OnNew(initvalue As %String = "") As %Status
 {
@@ -85,27 +104,16 @@ Method Append(pConvKey As %String, pOrdinal As %Integer, pTurnKey As %String, pD
 /// its id, or <code>""</code>.</p>
 Method SeedProposal(pConvKey As %String, pTurnKey As %String, pTargetRef As %String = "") As %String
 {
-    If pTargetRef = "" Do ##class(OcuPilot.Kernel.EntityRef).Key("web-application", "instance", "/csp/ocupilotproberestore", .pTargetRef)
-    Kill tValues
-    Set tValues("user") = ##class(OcuPilot.Test.Http).GetTestUsername()
-    Set tValues("convKey") = pConvKey
-    Set tValues("turnKey") = pTurnKey
-    Set tValues("toolName") = "webapp.list.update"
-    Set tValues("targetRef") = pTargetRef
-    Set tValues("fingerprint") = "0"
-    Set tValues("arguments") = "{}"
-    Set tValues("payload") = "{}"
-    Set tValues("diff") = "[]"
-    Set tValues("unchangedCount") = 0
-    Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedProposal(.tValues, .tKey, .tToken)
+    Set tSC = $$$OK
+    If pTargetRef = "" Set tSC = ##class(OcuPilot.Kernel.EntityRef).Key("web-application", "instance", "/csp/ocupilotproberestore", .pTargetRef)
+    If $$$ISOK(tSC) Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedMinimal(##class(OcuPilot.Test.Http).GetTestUsername(), pConvKey, pTurnKey, pTargetRef, .tKey)
     Do $$$AssertStatusOK(tSC, "a proposal is seeded on " _ pTurnKey)
-    If $$$ISERR(tSC) Quit ""
-    Quit tKey
+    Quit $Select($$$ISOK(tSC): tKey, 1: "")
 }
 
 /// <p>Read conversation <var>pConvKey</var> as the HTTP account and answer its parsed body, or
-/// <code>""</code> when the read was not a 200 carrying JSON; the status and content type are
-/// asserted here, so a caller that gets <code>""</code> has already failed one.</p>
+/// <code>""</code> when the read was not a 200; the status and the JSON content type are asserted
+/// here, so a caller that gets <code>""</code> has already failed one.</p>
 Method Read(pConvKey As %String) As %DynamicObject
 {
     Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", "/api/ocupilot/conversation/" _ pConvKey, ##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), .tStatus, .tText, .tHeaders)
@@ -122,19 +130,13 @@ Method Read(pConvKey As %String) As %DynamicObject
 /// <method>OcuPilot.Api.Response.JSON</method> -> the status is 500.</p>
 Method TestALargeConversationRestoresInOneEnvelope()
 {
-    Set tUser = ##class(OcuPilot.Test.Http).GetTestUsername()
-    Set tConvo = ##class(OcuPilot.Kernel.State.Convo).LoadOrCreate("", tUser, 5, .tStatus, .tConflict)
-    Do $$$AssertStatusOK(tStatus, "a conversation is created")
-    If '$IsObject(tConvo) Quit
-    Set tKey = tConvo.ConvKey
-    Set tConvo = ""
-    Set ..SeededKey = tKey
-    Set tLimits = "OcuPilot.Kernel.Agent.Limits"
+    Set tKey = ..NewConversation()
+    If tKey = "" Quit
     Set tText = $Extract($Justify("", ..#STEPCHARS), 1, ..#STEPCHARS - 1) _ $Char(233)
     Set tText = $Translate(tText, " ", "x")
     Set tSteps = "[{""seq"":1,""kind"":""tool"",""name"":""probe"",""text"":""" _ tText _ """}]"
     For tI = 1:1:..#ENTRIES {
-        Set tAppendSC = ##class(OcuPilot.Kernel.State.Entry).GuardedAppend(tKey, "message " _ tI, "done", "reply " _ tI, "", 0, tSteps, 0, tLimits)
+        Set tAppendSC = ##class(OcuPilot.Kernel.State.Entry).GuardedAppend(tKey, "message " _ tI, "done", "reply " _ tI, "", 0, tSteps, 0, ..#LIMITS)
         Do $$$AssertStatusOK(tAppendSC, "entry " _ tI _ " is appended")
     }
     Set tReq = ##class(%Net.HttpRequest).%New()
@@ -230,4 +232,58 @@ Method TestAnUnreadableProposalStoreDegradesToEmptyProposals()
         Do $$$AssertEquals($Select($IsObject(tProposals): tProposals.%Size(), 1: -1), 0, "which is empty, the valid proposal included")
     }
 }
+
+/// <p>The same unreadable proposal store is logged: the read still answers 200, and exactly one new
+/// <file>messages.log</file> line records that the conversation's proposals could not be read, as
+/// an error from the <code>turn</code> subsystem carrying the raw reason
+/// <method>OcuPilot.Kernel.EntityRef.Parse</method> gave.</p>
+/// <p><b>The target reference carries a GUID-suffixed entity type, which that reason echoes.</b>
+/// The console log folds a line identical to the one before it into a later
+/// <code>(repeated n times)</code> line, so a failure whose text is the same on every run would
+/// vanish from this leg whenever another test had just logged it. The marker makes the line unique to
+/// this request and ties it to this seed. The log is the instance's console log, so the leg compares
+/// the file's line count before and after the one request and polls for the line briefly.</p>
+/// <p>Mutation (Rule 19): delete the <method>OcuPilot.Kernel.Fault.LogRaw</method> call in
+/// <method>OcuPilot.Api.Conversation.AttachProposals</method>'s proposal-read failure branch --
+/// this goes red: no line carries the marker, while the read still answers 200.</p>
+Method TestAnUnreadableProposalStoreIsLogged()
+{
+    Set tKey = ..NewConversation()
+    If tKey = "" Quit
+    Set tTurn = ..NewTurnKey()
+    Do ..Append(tKey, 1, tTurn)
+    Set tSeparator = $Char(##class(OcuPilot.Kernel.EntityRef).#REFSEPARATOR)
+    Set tMarker = "probe-unparseable-" _ $Translate($System.Util.CreateGUID(), "-", "")
+    If ..SeedProposal(tKey, tTurn, tMarker _ tSeparator _ "instance" _ tSeparator _ "/csp/ocupilotproberestore") = "" Quit
+    Set tFrom = $ClassMethod(..#LOGPROBE, "LineCount", ..#LOGFILE)
+    Do $$$AssertTrue(tFrom > 0, "the console log is readable: " _ tFrom)
+    If tFrom < 1 Quit
+
+    Set tBody = ..Read(tKey)
+    If '$IsObject(tBody) Quit
+    Do $$$AssertEquals(tBody.%Get("turns").%Size(), 1, "the one turn is read")
+
+    Set tCount = 0
+    For tTry = 1:1:..#LOGTRIES {
+        Set tLines = $ClassMethod(..#LOGPROBE, "LinesAfter", ..#LOGFILE, tFrom)
+        Set tCount = 0
+        Set tLogged = ""
+        Set tIterator = tLines.%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tLine) {
+            If tLine [ tMarker {
+                Set tCount = tCount + 1
+                If tLogged = "" Set tLogged = tLine
+            }
+        }
+        If tCount Quit
+        Hang ..#LOGPOLLSECONDS
+    }
+    Do $$$AssertEquals(tCount, 1, "exactly one new console log line carries this request's marker, of " _ tLines.%Size() _ " new")
+    Do $$$AssertTrue(tLogged [ "[OcuPilot]", "it is an OcuPilot line: " _ $Extract(tLogged, 1, 300))
+    Do $$$AssertTrue(tLogged [ """subsystem"":""turn""", "from the turn subsystem")
+    Do $$$AssertTrue(tLogged [ """level"":""error""", "at error level")
+    Do $$$AssertTrue(tLogged [ ..#PROPOSALSLOGGED, "saying the conversation's proposals could not be read")
+    Do $$$AssertTrue(tLogged [ ("entity type '" _ tMarker _ "'"), "and carrying the raw reason the target reference was refused")
+}
+
 }

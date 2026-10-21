@@ -1,8 +1,9 @@
 /// <p>The two conversation routes and <code>/turn/:id/stop</code> over HTTP (Story 4.5, AD-7,
-/// AD-9, AD-33, AD-41), plus the tool-step fields DW-451 added and the history a second turn on
-/// the same conversation replays -- driven the way <class>OcuPilot.Test.TurnWire</class> drives
-/// the three original turn routes: two principals, a real <code>turnprobe</code> row, real turn
-/// jobs.</p>
+/// AD-9, AD-33, AD-41), plus the tool-step fields DW-451 added, the history a second turn on the
+/// same conversation replays, and the close of that conversation's live proposals a typed message
+/// makes -- driven the way <class>OcuPilot.Test.TurnWire</class> drives the three original turn
+/// routes: two principals, a real <code>turnprobe</code> row, real turn jobs, and proposal rows
+/// seeded under marker turn keys that each method removes.</p>
 /// <p><b>It spawns turn jobs, so <method>OnBeforeAllTests</method> refuses to run unless both
 /// <parameter>ARMINGVARIABLE</parameter> and <parameter>PROVIDERVARIABLE</parameter> read 1.</b>
 /// Only <file>scripts/ci-throwaway.sh</file> sets them.</p>
@@ -117,22 +118,10 @@ Method AwaitEnd(pTurnId As %String, pUser As %String, pSeconds As %Integer, Outp
 Method SeedProposal(pUser As %String, pConversationId As %String, pMarker As %String) As %String
 {
     Set ..PreparedMarkers = ..PreparedMarkers _ $ListBuild(pMarker)
-    Do ##class(OcuPilot.Kernel.EntityRef).Key("web-application", "instance", "/csp/ocupilotprobeturnconvo", .tTarget)
-    Kill tValues
-    Set tValues("user") = pUser
-    Set tValues("convKey") = pConversationId
-    Set tValues("turnKey") = pMarker
-    Set tValues("toolName") = "webapp.list.update"
-    Set tValues("targetRef") = tTarget
-    Set tValues("fingerprint") = "0"
-    Set tValues("arguments") = "{}"
-    Set tValues("payload") = "{}"
-    Set tValues("diff") = "[]"
-    Set tValues("unchangedCount") = 0
-    Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedProposal(.tValues, .tKey, .tToken)
+    Set tSC = ##class(OcuPilot.Kernel.EntityRef).Key("web-application", "instance", "/csp/ocupilotprobeturnconvo", .tTarget)
+    If $$$ISOK(tSC) Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedMinimal(pUser, pConversationId, pMarker, tTarget, .tKey)
     Do $$$AssertStatusOK(tSC, "a proposal is seeded on " _ pMarker)
-    If $$$ISERR(tSC) Quit ""
-    Quit tKey
+    Quit $Select($$$ISOK(tSC): tKey, 1: "")
 }
 
 Method StopPath(pTurnId As %String) As %String
@@ -196,9 +185,8 @@ Method TestAStartRequiresAnOwnedConversation()
     Do $$$AssertEquals(##class(OcuPilot.Test.TurnFixture).TurnCount(tUser), 0, "no turn was reserved by any of the three refusals")
 }
 
-/// <p>A typed message closes that conversation's live proposals before its turn job is spawned,
-/// as the instance's own fact: at the 202, the live proposal of the conversation the message names
-/// reads <code>canceled</code> with the reason <code>message</code>, and the same user's live
+/// <p>A typed message closes that conversation's live proposals by the time its start answers
+/// 202: the live proposal of the conversation the message names reads <code>canceled</code> with the reason <code>message</code>, and the same user's live
 /// proposal on another conversation is still <code>live</code>. Both conversations are created
 /// first, because creating one closes the caller's live proposals.</p>
 /// <p>Mutation (Rule 19): delete the <method>GuardedCloseLiveForConvo</method> block from
