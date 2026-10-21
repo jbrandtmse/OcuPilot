@@ -1,8 +1,9 @@
 /// <p>The two conversation routes and <code>/turn/:id/stop</code> over HTTP (Story 4.5, AD-7,
-/// AD-9, AD-33, AD-41), plus the tool-step fields DW-451 added and the history a second turn on
-/// the same conversation replays -- driven the way <class>OcuPilot.Test.TurnWire</class> drives
-/// the three original turn routes: two principals, a real <code>turnprobe</code> row, real turn
-/// jobs.</p>
+/// AD-9, AD-33, AD-41), plus the tool-step fields DW-451 added, the history a second turn on the
+/// same conversation replays, and the close of that conversation's live proposals a typed message
+/// makes -- driven the way <class>OcuPilot.Test.TurnWire</class> drives the three original turn
+/// routes: two principals, a real <code>turnprobe</code> row, real turn jobs, and proposal rows
+/// seeded under marker turn keys that each method removes.</p>
 /// <p><b>It spawns turn jobs, so <method>OnBeforeAllTests</method> refuses to run unless both
 /// <parameter>ARMINGVARIABLE</parameter> and <parameter>PROVIDERVARIABLE</parameter> read 1.</b>
 /// Only <file>scripts/ci-throwaway.sh</file> sets them.</p>
@@ -27,6 +28,10 @@ Property PreparedDefinitionId As %String;
 
 Property PreparedPrior As %String;
 
+/// <p>The turn keys whose proposals a test seeded, as a <code>$ListBuild</code> list, which
+/// <method>OnAfterOneTest</method> removes the proposals of.</p>
+Property PreparedMarkers As %String;
+
 Method %OnNew(initvalue As %String = "") As %Status
 {
     Set tSC = ##super(initvalue)
@@ -34,6 +39,7 @@ Method %OnNew(initvalue As %String = "") As %Status
     Set ..PreparedPassword = ""
     Set ..PreparedDefinitionId = ""
     Set ..PreparedPrior = ""
+    Set ..PreparedMarkers = ""
     Quit $$$OK
 }
 
@@ -73,6 +79,10 @@ Method OnBeforeOneTest() As %Status
 
 Method OnAfterOneTest() As %Status
 {
+    For tI = 1:1:$ListLength(..PreparedMarkers) {
+        Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Propose).GuardedDeleteForTurn($List(..PreparedMarkers, tI)), "the marker turn's proposals are removed")
+    }
+    Set ..PreparedMarkers = ""
     Quit $$$AssertEquals($ClassMethod(..#FIXTURE, "Sweep", $ListBuild(..#TAG)), "", "no probe job, turn, slot or stub node survives the method")
 }
 
@@ -100,6 +110,18 @@ Method Start(pUser As %String, pMessage As %String, pConversationId As %String, 
 Method AwaitEnd(pTurnId As %String, pUser As %String, pSeconds As %Integer, Output pView) As %String
 {
     Quit $ClassMethod(..#FIXTURE, "AwaitEnd", pTurnId, pUser, ..PreparedPassword, pSeconds, .pView)
+}
+
+/// <p>Seed one live proposal of <var>pUser</var> in conversation <var>pConversationId</var>, minted
+/// by the marker turn key <var>pMarker</var>, which <method>OnAfterOneTest</method> removes the
+/// proposals of; its id, or <code>""</code>.</p>
+Method SeedProposal(pUser As %String, pConversationId As %String, pMarker As %String) As %String
+{
+    Set ..PreparedMarkers = ..PreparedMarkers _ $ListBuild(pMarker)
+    Set tSC = ##class(OcuPilot.Kernel.EntityRef).Key("web-application", "instance", "/csp/ocupilotprobeturnconvo", .tTarget)
+    If $$$ISOK(tSC) Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedMinimal(pUser, pConversationId, pMarker, tTarget, .tKey)
+    Do $$$AssertStatusOK(tSC, "a proposal is seeded on " _ pMarker)
+    Quit $Select($$$ISOK(tSC): tKey, 1: "")
 }
 
 Method StopPath(pTurnId As %String) As %String
@@ -161,6 +183,34 @@ Method TestAStartRequiresAnOwnedConversation()
     Do $$$AssertEquals(tStatus, 404, "an unknown conversation is the same 404")
 
     Do $$$AssertEquals(##class(OcuPilot.Test.TurnFixture).TurnCount(tUser), 0, "no turn was reserved by any of the three refusals")
+}
+
+/// <p>A typed message closes that conversation's live proposals by the time its start answers
+/// 202: the live proposal of the conversation the message names reads <code>canceled</code> with the reason <code>message</code>, and the same user's live
+/// proposal on another conversation is still <code>live</code>. Both conversations are created
+/// first, because creating one closes the caller's live proposals.</p>
+/// <p>Mutation (Rule 19): delete the <method>GuardedCloseLiveForConvo</method> block from
+/// <method>OcuPilot.Api.Turn.HandleStart</method> -- this goes red, while every test that calls
+/// the store directly stays green.</p>
+Method TestATypedMessageClosesThatConversationsLiveProposalsAtTheHandler()
+{
+    Set tUser = $Parameter(..#FIXTURE, "USERA")
+    Set tConvA = ..NewConversation(tUser)
+    Set tConvB = ..NewConversation(tUser)
+    Do $$$AssertTrue((tConvA '= "") && (tConvB '= ""), "both conversations are created")
+    If (tConvA = "") || (tConvB = "") Quit
+    Set tGuid = $Translate($System.Util.CreateGUID(), "-", "")
+    Set tProposalA = ..SeedProposal(tUser, tConvA, "probe-turnconvo-a-" _ tGuid)
+    Set tProposalB = ..SeedProposal(tUser, tConvB, "probe-turnconvo-b-" _ tGuid)
+    If (tProposalA = "") || (tProposalB = "") Quit
+
+    Do ##class(OcuPilot.Test.TurnProvider).Script(..#TAG, 0, ##class(OcuPilot.Test.TurnProvider).TextReply("done"))
+    Set tId = ..Start(tUser, "close my proposals", tConvA, .tStatus, .tText)
+    Do $$$AssertEquals(tStatus, 202, "the start is accepted: " _ tText)
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tProposalA, "State"), "canceled", "the named conversation's live proposal is closed")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tProposalA, "ClosedReason"), "message", "with the reason the typed message carries")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tProposalB, "State"), "live", "and the same user's proposal on the other conversation is untouched")
+    If tId '= "" Do $$$AssertEquals(..AwaitEnd(tId, tUser, 30, .tView), "completed", "the turn completes")
 }
 
 /// <p>A completed turn's step carries the real tool's <code>target</code>, redacted

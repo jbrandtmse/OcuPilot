@@ -1,0 +1,567 @@
+---
+title: 'Story 23.7: The range-end cleanup, part 6'
+type: 'bugfix'
+created: '2026-10-21'
+status: 'done'
+baseline_revision: 'f673f28ff7cf9f76668bee8b1b59e29162cdf646'
+baseline_commit: 'f673f28ff7cf9f76668bee8b1b59e29162cdf646'
+review_loop_iteration: 0
+followup_review_recommended: false
+context:
+  - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
+warnings: ['multiple-goals', 'oversized']
+deferred: []
+---
+
+<intent-contract>
+
+## Intent
+
+**Problem:** This story owns twelve medium-severity ledger entries. They cover test gaps and contract mismatches in four areas: the proposal and conversation kernel; the gates, ports and agent ledger; the error copy; and the provider test fixtures. Checked at `f0ec693f`, three entries are live defects:
+
+- a bad-body sentence tells the caller to send no body, on routes that refuse an absent body;
+- the violation router answers no sentence for two field codes;
+- two mints put a raw U+0001 in their refusal text.
+
+The other nine are behaviors that no test can fail on, or a duplicated fixture.
+
+**Approach:** Four area batches, in this order:
+
+1. Proposal and conversation kernel.
+2. Gate, port and ledger.
+3. Errors and copy.
+4. Provider test fixtures.
+
+Each batch is one implement pass and one code commit, with CI green on its own head. Each entry gets a pinning test that reddens under a named mutation of product code, or a fix whose test reddens before it (Rule 19). The verdict and action for each entry are in Design Notes.
+
+## Boundaries & Constraints
+
+**Always:**
+
+- **Where to work.** Work in `/Users/jbrandt/git/OcuPilot/.worktrees/epic-23` on `OCU-1-epic23`, and check `git rev-parse --show-toplevel` first. Every IRIS MCP call carries `server: "ocupilot-slot-a"`.
+- **Where tests run.** Tests, probes and mutations run only on `ocupilot-ci` (52776/1975), and only once `docker inspect -f '{{.State.Health.Status}}' ocupilot-ci` reads `healthy`.
+  - Keep one test run in flight, and wait for each to appear in `%UnitTest_Result`.
+  - Never re-submit after a client-side timeout.
+  - Run every command in the foreground with `timeout: 600000`.
+- **Batches.** One implement pass per batch. The lead integrates forward from the feature branch, re-opens the spec for each batch and scopes the pass to that batch's unchecked items. A red batch is reopened alone.
+- **Locating code.** Find code by method name. The line numbers below are at `f0ec693f`.
+- **What may change.** Wire codes and HTTP statuses stay byte-identical. Only the reasons and problem texts in the I/O matrix's CHANGED rows change.
+- **Writing code.** Extend the sibling named under Design Notes (Rule 31). Comments state the contract (Rule 14). Write non-ASCII in source as `$Char(n)`.
+- **Before editing `src/OcuPilot/Api/Error.cls`.** Re-run the two read-only Epic 20 checks under Design Notes › Contended files. If Epic 20's hunks have moved next to this story's lines, stop and report.
+
+**Never:**
+
+- A 22nd rule in `scripts/check-objectscript.py`. Its count is pinned in `CLAUDE.md` and in its harness.
+- Any edit to `CLAUDE.md`, `.claude/**`, `_bmad/**`, `scripts/ci-throwaway.sh` or `.github/workflows/ci.yml`.
+- A new or reworded error `code`.
+- A write, load or compile on the `ocupilot` dev instance.
+- The full ObjectScript sweep (the lead runs it) or the full browser suite (CI runs it).
+- Anything inside the epic-20 worktree beyond the two read-only git checks.
+- A process-level `$ZTIMEZONE` change used to simulate a time zone. Measured on `ocupilot-ci`: it moves `$H` but not the `-3` conversions.
+
+## I/O & Edge-Case Matrix
+
+| Scenario | Input / State | Expected Output / Behavior | Error Handling |
+|---|---|---|---|
+| CHANGED: absent body where one is required (DW-1170) | `POST /api/ocupilot/license/key/validate`, no body | 400 `AGENT.BADBODY`, reason "The request body is missing or is not the JSON object this request expects." (or the wording the lead rules at the spec gate) | Today the reason ends "Send a JSON object, or no body at all." |
+| CHANGED: unreadable body where none is required | `POST /api/ocupilot/agent/definitions`, body `{not json` | 400 `AGENT.BADBODY` with the same new reason | — |
+| Unchanged: absent body where none is required | `POST /api/ocupilot/agent/definitions`, no body | 422 `AGENT.VALIDATION`, as today | — |
+| CHANGED: DocDB field codes through the router (DW-1377) | `Error.ReasonForViolation("DOCDB.NAME.INVALID")`, `("DOCDB.NAME.MAPPED")` | `DocDbError.ReasonFor`'s sentence for each code | Today both answer `""`. The wire already carries the sentence, because `DocDbPort` and `DocDbSave` pass it themselves. |
+| CHANGED: absent composite id (DW-2266) | A `tasks.background.cancel` mint with source `Management Portal` and id `999999999`; an encryption key-file tool on an absent file | 400 `TOOL.ARGUMENTS`. `detail.problem` reads `'Management Portal › 999999999' is not present on this instance`: the parts are joined by ` › ` (U+203A) and there is no `$Char(1)`. | Today the parts are joined by a raw U+0001. |
+| Unchanged: mints that are already readable | Superserver, ErrorDelete and WebAppPctAccess presence refusals, and Mapping's (with its subclasses) | Same text as today | — |
+| Unchanged: ledger times (DW-1783) | Any conversion between UTC and local time on this instance | `LocalFromUtc` and `LocalToUtc` answer exactly what the `-3` forms of `$ZDateTimeH` and `$ZDateTime` give today | — |
+| Pinned, unchanged: retention gap (DW-1233) | Retention has removed a conversation's seq-1 entry; seq 2 and seq 3 each have a proposal | `GET /conversation/:id` answers 200. `turns[0]` (seq 2) carries only its own proposal, and `turns[1]` (seq 3) only its own. | — |
+| Pinned, unchanged: unreadable proposal store (DW-1234) | One of the conversation's proposals has a target reference that cannot be parsed | 200 JSON. Every turn's messages are intact and its `proposals` is `[]`. | The read logs the failure. No 500. |
+
+</intent-contract>
+
+## Code Map
+
+### Kernel (batch 1)
+
+- `src/OcuPilot/Api/Conversation.cls` (read-only), `AttachProposals` (:110):
+  - store read at :116;
+  - degradation `Kill tByTurn` at :119;
+  - the seq join `tKeys(+tTurn.%Get("seq"))` at :129.
+
+  `HandleRead` is routed at `Router.cls:1131` (`GET /conversation/:id`).
+- `src/OcuPilot/Kernel/State/Entry.cls` (read-only):
+  - `GuardedAppend` (:104) sets `Seq` to `MAX(Seq)+1` (:108-112).
+  - `GuardedTurnKeys` (:259) subscripts by `Seq` (:265).
+  - `GuardedPurge(.pCutoffs, .pRemoved)` (:279): when the top node is undefined, it purges only entries whose `DefinitionId` is subscripted.
+- `src/OcuPilot/Kernel/State/Propose.cls` (read-only):
+  - `GuardedRowsForConvo` (:772) fails the whole read when `WireRow` cannot parse a row's target (`EntityRef.Parse`, :880).
+  - `GuardedMint` only length-checks `targetRef` (:283).
+  - Also used: `GuardedCloseLiveForConvo` (:651) and `GuardedDeleteForTurn` (:808).
+- `src/OcuPilot/Api/Turn.cls` (read-only): `HandleStart` closes the conversation's live proposals (`REASONMESSAGE`) at :172-176, before `Job.Start`.
+- `src/OcuPilot/Test/ConversationRestore.cls` (75 lines, unarmed). Extend it: it owns its conversation as `Test.Http.GetTestUsername()` and reads `GET /conversation/:id` over HTTP. Helpers to use:
+  - `Test.Http.AbsoluteRequest` (`Http.cls:207`), which answers `pHeaders("CONTENT-TYPE")`;
+  - `Test.ProposalFixture.SeedProposal` (:342) and `.Field` (:413);
+  - the value shape in `ProposalClose.Seed` (`ProposalClose.cls:51-68`).
+- `src/OcuPilot/Test/TurnConversation.cls` (449 lines; armed by `OCUPILOT_ALLOW_PRINCIPALS` and by the provider variable; on both rosters). Extend it with `NewConversation` (:86), `Start` (:93) and `AwaitEnd` (:100).
+- `src/OcuPilot/Test/ProposalClose.cls:145` already drives `Api.Conversation.HandleCreate`'s close at the handler.
+- `src/OcuPilot/Test/TurnWire.cls:201-204`: this doc paragraph says `Seq` is `COUNT(*) + 1` and that no fixture can force the two joins apart. Both claims are wrong.
+- `src/OcuPilot/Test/ToolWrite.cls:297-307`: `TestNoPathFromAWriteToolsViewReachesTheClaimGate`, the five-file scan. No roster references it.
+- `src/OcuPilot/Test/AsTheUser.cls:160`: `SitesNaming(pToken, pPrefixes, pIncludeTests)`.
+  - It answers every compiled `OcuPilot.*` class whose stored source names the token, ignoring case. Tests are excluded by default.
+  - It reports a source it cannot read; it never counts it as no match.
+- **The claim.** The claim symbols are `Kernel/Proposal/Write.cls` `Claim` (:126) and `ClaimById` (:181), and `Kernel/State/Propose.cls` `GuardedClaimAndClose` (:523).
+  - Product code names them only at `Kernel/Proposal/Confirm.cls:166` and `:415`.
+  - `Kernel.Proposal.Confirm` is called only by `Api/Confirm.cls:43,63` and `Install/Smoke.cls:1488,1624`.
+
+### Gate, port and ledger (batch 2)
+
+- `src/OcuPilot/Port/ProviderPort.cls` (read-only):
+  - `Invoke` (:107) gates at :118 through `GateAnyOfForUser` (:535, private). Any one pair admits; an empty or unreadable set admits nobody.
+  - The pair set is `InvokePairs()` (:595): the floor pairs, from `Screen.Gate.FloorPairSpec`. Each pair is answered by `HoldsPairForUser` (:564, `CheckUserPermission`).
+  - A refusal is `RefusePair` (:578), which answers `Kernel.Denial`'s status, code, reason and detail.
+  - `Screen.Gate.EvaluateAnyOf` no longer exists.
+- `src/OcuPilot/Test/InteropFloorTurn.cls` (148 lines; armed; on both rosters). Extend it.
+  - It creates `TurnWireFixture.USERA` with `Resources(0)` plus `INTEROPGRANT`. That grant includes `%Ens_Portal:U`, the floor's last member.
+  - It reads `USERA` back through `InteropFloorFixture`.
+  - `TurnWireFixture.EnsurePrincipal` (:77), given no second resources, grants only `ROLE`.
+- `src/OcuPilot/Port/AdminPort.cls` (read-only):
+  - `MUTATINGTYPES` (:492), `IsMutating` (:2941), `HttpMethodFor` (:3357, private), `EndpointType` (:3373, private) and `EndpointClass` (:1579).
+  - **Already pinned.** `ToolWrite.TestEveryWriteToolsRequestTypeAgreesWithThePortsBodylessRoster` pins the roster and the 501 refusals of `Process/DELETE` and `Device.Settings/PUT`. `AdminPortAsync` pins more.
+  - **Not pinned.** `HttpMethodFor` has no direct pin.
+  - **Test seams of the same kind.** `Test/RoleDeletePort.cls` and `Test/AsTheUserProbe/Port.cls`. `Test/PortFixture.cls` overrides `MUTATINGTYPES`, so it cannot see a mutation of the shipped list.
+- `src/OcuPilot/Test/DenialParity.cls` (285 lines; armed).
+  - `ToolRefusal` (:211) calls `ToolDispatchProbe.Answer` under the fixed key `"parity"` and never removes its rows.
+  - The refused call's row is written along this chain: `Kernel/Agent/Dispatch.cls` `AnswerOne` → `RecordLedger` (:391) → `Kernel/Audit/Ledger.RecordToolCall` (:266) → `Kernel/State/Ledger.GuardedAppend` (:234).
+  - The row reads `Kind` `tool`, `Status` `error`, `Code` `AUTH.NOPRIVILEGE`, and `TurnKey` the key.
+  - Cleanup: `Kernel/State/Ledger.GuardedDeleteForTurn` (:491).
+- `src/OcuPilot/Kernel/Proposal/Mint.cls`: `Mint` (:131) writes "'<id>' is already present" (:180) and "is not present" (:184) through `Refuse` (:973), and exits at `Quit tSC` (:387).
+- **The readable-id pass.**
+  - It lives in `src/OcuPilot/Screen/Tool/ErrorDeleteMint.cls`: `ReadableId` at :26 and the pass at :73-75.
+  - The same three-line pass appears in `SuperserverMint.cls:45-47`, `MappingMint.cls:93-95` and `WebAppPctAccessMint.cls:49-51`.
+  - `InteropItemMint`, `InteropSettingMint`, `InteropLookupEntryMint` and `DocDbAppMint` inherit `MappingMint`'s pass.
+  - `BackgroundTaskMint.cls:31` and `EncryptionKeyFileMint.cls:51` join a composite id with no pass.
+- **Existing pins of the pass.**
+  - `Test/WebAppPctAccess.cls:367-405`; its doc's mutation (:370-371) names `ErrorDeleteMint.ReadableId`.
+  - `Test/ErrorDeleteScope.cls` and `Test/AuthOptionsDescriptor.cls`.
+- **Fixtures.**
+  - Background tasks: `Test/BackgroundTaskFixture` (`Clear` and `ArmPortal`, process-private) and `Test/BackgroundTaskMintFixture.Mint`.
+  - Encryption: `Test/EncryptionProbe.Mint` (:652) and `.Root` (:65).
+  - `Test/BackgroundTasks.cls` is 513 lines. `Test/EncryptionKeyFileRead.cls` is 196 lines, armed by `OCUPILOT_ALLOW_ENCRYPTION_CONFIG`, and on the roster at `ci-throwaway.sh:760`.
+- `src/OcuPilot/Kernel/Audit/Ledger.cls`:
+  - **The converters.** `LocalToUtc` (:920) uses `$ZDateTime(localH,-3)`; `LocalFromUtc` (:937) uses `$ZDateTimeH(utcH,-3)`.
+  - **Callers through `..`.** `ViewForUser` criteria (:646, :653), the `AppliedCriteria` echo (:900, :904, :910) and the `RowObject` row `time` (:989).
+  - **Other callers.** `Api/Ledger.cls:126,134` (through `LedgerClass()`) and `Port/InteropPort.cls:3490`.
+  - **Probe subclasses of the same kind.** `Test/LedgerGateProbe`, `LedgerFaultProbe`, `LedgerLogProbe` and `LedgerRouteProbe`.
+  - **Seeding.** `Test/LedgerSearch.Seed` (:98, `RecordToolCall`).
+  - **Today's only pin.** `LedgerSearch.TestTheLocalConversionRoundTripsAndRefusesANonInstant` (:233). On a UTC instance it is an identity.
+
+### Errors and copy (batch 3)
+
+- `src/OcuPilot/Api/Error.cls`:
+  - `REASONAGENTBADBODY` (:494) is named at 68 lines in 49 classes (by grep for `#REASONAGENTBADBODY`).
+  - `ReasonForViolation` (:1281-1461): its last arm is `WALLETRUNG.` and its final `Quit ""` is at :1460. It has no `DOCDB.` arm, though `ReasonForToolCode` has one.
+  - `ViolationCodes()` (:1625). Its doc (:1619-1624) says the `ACCOUNT.*` codes are held by `AccountPasswordWire`.
+  - Family lists are class methods named `<Family>ViolationCodes()`. They live in this class (:1467-4265) and in the `OcuPilot.Api.<X>Error` classes.
+- **Router arms that no list holds** (probed on `ocupilot-ci`): `ACCOUNTPASSWORDCURRENT`, `ACCOUNTPASSWORDPOLICY`, `HELPROUTE`, `PREFERENCESROUTE`, `PREFERENCESLIMIT`, `PREFERENCESVALUE`, `PREFERENCESNAME` and `PREFERENCESCHOICE`.
+- `src/OcuPilot/Api/DocDbError.cls`: `ViolationCodes()` holds `DOCDB.NAME.INVALID` and `DOCDB.NAME.MAPPED`. Its `ReasonFor` answers their sentences.
+- `src/OcuPilot/Test/AgentViolation.cls` (240 lines; kept): `TestViolationCodesHoldsEveryDeclaredFieldLevelCode` (:72) filters parameters on the `AGENT` prefix (:85).
+- **What pins the bad-body sentence today.**
+  - `src/OcuPilot/Test/AgentWire.cls:273` compares the reason with the parameter, so it survives the reword.
+  - `Test/RestServiceSave.cls:227` pins only the code.
+  - No `ui/` file and no `EXPERIENCE.md` row carries the sentence.
+
+### Provider fixtures (batch 4)
+
+- `src/OcuPilot/Test/ProviderStub.cls`:
+  - `IssueHttpsPost` (:292-354) is reached from `Provider/Base.Attempts` (:387).
+  - Private helpers: `HeaderNames`, `BodyOf`, `MoveArmedRow`, `Advance` and `ForceErrorLog` (an instance method; `ProviderStubShapeLeak:32` calls it).
+  - Subclasses: `AdapterProvider`, `ResidueStub`, `ProviderStubAlt` and `ProviderStubShapeLeak`.
+- `src/OcuPilot/Test/ProviderStubTransport.cls`: `Transport` (:40-95), a class method.
+  - Callers: `OpenAIStub:41`, `GeminiStub:39` (and so `ProviderOriginProbe`) and `CompatibleStub:40`.
+  - It shares 42 of its 48 code lines with the stub's body. The stub differs in four ways:
+    - identity and watched headers are parameters there, arguments here;
+    - it has an `x-api-key` `keyMatches` line;
+    - it answers a minimal Anthropic reply for an empty script;
+    - it has a `connectrefused` script kind.
+
+## Tasks & Acceptance
+
+**Execution:**
+
+- One implement pass per batch leaves the tree for one commit: `fix(23.7): batch <n> - <area>`.
+- Each task names its pinning test. Its `mutation:` line goes under Verification, with the observed run.
+- In the same pass, update every test that asserts a shared surface's old shape (Verification › Shared surfaces).
+- The lead writes ledger trailers once the batch's commit is green.
+
+### Batch 1: proposal and conversation kernel
+
+- [x] **DW-1233.** In `src/OcuPilot/Test/ConversationRestore.cls`, add `TestARetentionGapStillAttachesEachTurnsOwnProposals`.
+  - **Setup:**
+    1. Append three entries with turn keys K1, K2 and K3. Only the first carries a marker `pDefinitionId` of 32 characters or fewer.
+    2. Remove that entry with `Entry.GuardedPurge`, given only `tCutoffs(marker) = NowSeconds() + 60`.
+    3. Seed one live proposal on K2 and one on K3, for the HTTP account.
+    4. Read `GET /api/ocupilot/conversation/:id`.
+  - **Assert:** 200; JSON content type; two turns; seq 2 carries exactly the K2 proposal and seq 3 exactly the K3 one.
+  - **Header:** widen it to cover the conversation read's restore and its attachment of proposals.
+  - **Teardown and markers:** teardown removes the conversation (`Convo.GuardedDelete`) and each marker turn's proposals (`Propose.GuardedDeleteForTurn`). Markers are GUID-suffixed.
+- [x] **DW-1233.** In `src/OcuPilot/Test/TurnWire.cls:201-204`, replace the paragraph with one sentence: the seq join is pinned across a retention gap by `ConversationRestore.TestARetentionGapStillAttachesEachTurnsOwnProposals`.
+- [x] **DW-1234.** In `src/OcuPilot/Test/ConversationRestore.cls`, add `TestAnUnreadableProposalStoreDegradesToEmptyProposals`.
+  - **Setup:** two entries, K1 and K2. Seed a valid proposal on K1, and one on K2 with `targetRef` `"probe-unparseable"`. Then make the HTTP read.
+  - **Assert:** 200; JSON content type; both turns with their messages; each turn's `proposals` an array of size 0.
+  - **No product seam:** the unparseable row makes the real store refuse.
+- [x] **DW-1255.** In `src/OcuPilot/Test/TurnConversation.cls`, add `TestATypedMessageClosesThatConversationsLiveProposalsAtTheHandler`.
+  - **Setup:**
+    1. Create conversations A and B for `USERA`. Do this before seeding, because `POST /conversation` closes the user's live proposals.
+    2. Seed live proposals PA (on A) and PB (on B) for `USERA`, under marker turn keys.
+    3. `Start` a turn on A and expect 202.
+  - **Assert at once:** PA reads `State` `canceled` and `ClosedReason` `message`, and PB reads `live`. Then `AwaitEnd`.
+  - **Teardown:** remove both markers' proposals explicitly.
+- [x] **DW-1211.** Create `src/OcuPilot/Test/ClaimReach.cls` (unarmed) with `TestOnlyTheConfirmPathNamesTheClaim`.
+  - For each token, `AsTheUser.SitesNaming(token)` must equal its expected site list. Read the expected lists from the instance before writing them in:
+
+    | Token | Expected sites |
+    |---|---|
+    | `Proposal.Write).Claim` | `OcuPilot.Kernel.Proposal.Confirm` |
+    | `"OcuPilot.Kernel.Proposal.Write"` | none |
+    | `"GuardedClaimAndClose"` | `OcuPilot.Kernel.Proposal.Confirm` |
+    | `).GuardedClaimAndClose(` | none |
+    | `Kernel.Proposal.Confirm)` | `OcuPilot.Api.Confirm,OcuPilot.Install.Smoke` |
+    | `"OcuPilot.Kernel.Proposal.Confirm"` | none |
+
+  - The header says the rows with a site are the scan's positive control.
+  - In the same pass, delete `ToolWrite.TestNoPathFromAWriteToolsViewReachesTheClaimGate` (`ToolWrite.cls:297-307`).
+
+### Review Findings (batch 1)
+
+Code review, 2026-10-21, `full-opus` tier: blind-hunter, edge-case-hunter, verification-gap and acceptance-auditor. 34 raw findings make 11 entries (2 medium, 9 low). All 11 are patched; 7 are rejected. Rule 3 does not apply: batch 1 changes tests only.
+
+- [x] [Review][Patch] (medium) `ClaimReach` missed five static spellings that reach the claim, and its header said only names assembled at run time escape. The five: a shipped subclass of `Confirm`; `##class(Confirm)` by short name; `ClaimById` called through an object; `GuardedClaimAndClose` called through an object or from inside the store; a new `Write` object. The rows were widened or added, and `Confirm` joined the subclass leg [src/OcuPilot/Test/ClaimReach.cls:60]
+- [x] [Review][Patch] (medium) The seed value array was copied from `ProposalClose.Seed` into two new helpers (Rule 31). It is now `ProposalFixture.SeedMinimal`, which all three use [src/OcuPilot/Test/ProposalFixture.cls:351]
+- [x] [Review][Patch] (low) The subclass leg counted test classes, against its own doc and `Write.StoreClass`'s fixture seam. It now counts shipped classes only [src/OcuPilot/Test/ClaimReach.cls:84]
+- [x] [Review][Patch] (low) Both seed helpers discarded `EntityRef.Key`'s status [src/OcuPilot/Test/ConversationRestore.cls:105]
+- [x] [Review][Patch] (low) `TestALargeConversationRestoresInOneEnvelope` repeated `NewConversation` inline with its own limits literal, which made `LIMITS`'s doc untrue [src/OcuPilot/Test/ConversationRestore.cls:131]
+- [x] [Review][Patch] (low) `ConversationRestore`'s header said the log leg writes nothing, but each unreadable-store read logs one error line [src/OcuPilot/Test/ConversationRestore.cls:1]
+- [x] [Review][Patch] (low) `ConversationRestore.Read`'s doc promised `""` for a 200 that is not JSON [src/OcuPilot/Test/ConversationRestore.cls:117]
+- [x] [Review][Patch] (low) `TurnConversation`'s header did not mention the new pin or its proposal rows [src/OcuPilot/Test/TurnConversation.cls:1]
+- [x] [Review][Patch] (low) The DW-1255 test's doc claimed the close precedes the job spawn. The test asserts state at the 202, and the ordering cannot be observed without a product seam [src/OcuPilot/Test/TurnConversation.cls:188]
+- [x] [Review][Patch] (low) `ToolWrite`'s header still cited AD-40 after its only AD-40 test moved to `ClaimReach` [src/OcuPilot/Test/ToolWrite.cls:1]
+- [x] [Review][Patch] (low) `TurnConversation` was 511 lines. It is 499 with the shared seed helper [src/OcuPilot/Test/TurnConversation.cls]
+
+Rejected:
+
+- (false) A homonym of `Claim` would trip the `"Claim"` and `).Claim(` rows. No shipped class matches either row today: `Registry`'s own `Claim` is called as `..Claim(`. A red would name its class.
+- (low) The reach chain stops one hop past `Confirm`. No shipped class names `Install.Smoke`, `Confirm` refuses a call that comes from a turn (AD-40), and closing the gap adds rows.
+- (low, an edit to this spec) The implement pass's Auto Run Result and triage row say the log is not asserted, and they give counts from before QA. They record that pass. QA's `TestAnUnreadableProposalStoreIsLogged` (run 715) closes the residual.
+- (low) The log poll would pass a second marker line written after its first read. The product logs once, synchronously, through `WriteToConsoleLog`, and pinning a duplicate would add a branch.
+- (low) A `messages.log` rollover inside the poll window would read red. The window is about six seconds, and the fix adds a guard.
+- (false) The log loop copies `EcpProbe.CountContaining`. It also keeps the first matching line, which that helper cannot.
+- (false) `$ClassMethod(..#LOGPROBE, ...)` hides a dependency. The parameter names the class in the source.
+
+### Batch 2: gate, port and ledger
+
+- [ ] **DW-1306.** Edit `src/OcuPilot/Test/InteropFloorTurn.cls`.
+  - **Setup.** In `OnBeforeAllTests`, create `TurnWireFixture.USERB` with `Resources(0)` and no second resources. Read back that it holds no member of `Screen.Gate.FloorResources()` at `USE`; otherwise the setup check fails the class.
+  - **New test.** Add `TestTheShippedProviderGateAdmitsByTheLastFloorPairAndRefusesNone`. It calls `ProviderPort.Invoke("OcuPilotProbeNoSuchDefinition", ..., pUser)` in process.
+    - For `USERA`, the answer is not the gate's: the HTTP status differs from `Kernel.Denial.#STATUS` and the code differs from `Kernel.Denial.Code()`. Record what it does answer.
+    - For `USERB`, the answer is `Kernel.Denial.#STATUS`, with `Code()` and `Reason()`.
+  - **Header.** Add the class's in-process leg.
+- [ ] **DW-1258.** Create two classes.
+  - **`src/OcuPilot/Test/AdminPortTypeSeam.cls`** (`Extends OcuPilot.Port.AdminPort`, overrides nothing). It holds `MethodFor(e, s)`, which answers `..HttpMethodFor(e, s)`, and `TypeFor(e, s)`, which answers `..EndpointType(e, ..EndpointClass(e), s)`.
+  - **`src/OcuPilot/Test/AdminPortMutatingPath.cls`** (unarmed):
+    - `MethodFor` answers the suffix for `WebApp.App/PUT`, `WebApp.PctClassAccess/DELETE`, `Security.User/POST` and `Task.CRUD/RESUME`. Read each pair from `MUTATINGTYPES` on the instance first.
+    - `MethodFor` answers `GET` for `Process/DELETE`, `Device.Settings/PUT` and `WebApp.App/LIST`.
+    - `TypeFor` answers, for each of those four mutating pairs, the non-empty `TYPE<suffix>` parameter of the pair's `EndpointClass`.
+    - `TypeFor` answers `""` for `Device.Settings/PUT` and `Process/DELETE`. Control legs show that both classes declare that parameter.
+- [ ] **DW-1308.** Edit `src/OcuPilot/Test/DenialParity.cls`.
+  - **Keys.** `ToolRefusal` takes a fresh turn key for each call and records it. The key is `"ocupilotprobeparity"`, then `$Job`, then an increment, and is at most 64 characters.
+  - **Cleanup.** `OnAfterOneTest` deletes each recorded key's rows (`State.Ledger.GuardedDeleteForTurn`).
+  - **New test.** Add `TestEachRefusedCallWritesExactlyOneRefusedLedgerRow`. Make two refused calls. For each key, a SQL count on `OcuPilot_Kernel_State.Ledger` by `%EXACT(TurnKey)` reads 1. The row reads `Kind` `tool`, `Status` `error` and `Code` `AUTH.NOPRIVILEGE`, and its `RequiredPairs` names `%Admin_Secure:USE`.
+- [ ] **DW-2266.** One readable-id pass, in the base mint.
+  - **Red first.** Write both tests below and observe them red before the fix.
+    - **New `src/OcuPilot/Test/CompositeMintReadable.cls`** (unarmed). Arm with `BackgroundTaskFixture.ArmPortal("[]")`, then mint `tasks.background.cancel` with `BackgroundTaskMintFixture.Mint`, source `Management Portal` and id `999999999`. Assert:
+      - 400 `TOOL.ARGUMENTS`;
+      - "is not present";
+      - no `$Char(1)`;
+      - the text `"Management Portal" _ " " _ $Char(8250) _ " " _ "999999999"`.
+    - **New method in `src/OcuPilot/Test/EncryptionKeyFileRead.cls`:** `TestAnAbsentKeyFileIsNamedReadably`, the same assertions through `EncryptionProbe.Mint` on an absent file under `Root()`.
+  - **The fix, in `src/OcuPilot/Kernel/Proposal/Mint.cls`.**
+    - Move `ReadableId` here from `ErrorDeleteMint`, with the same body. Its doc says what a refused composite id reads as.
+    - In `Mint`, after the `Try`/`Catch` and before `Quit tSC`, apply the siblings' three-line pass to a string `detail.problem`.
+  - **Remove the copies.**
+    - Delete the pass from `ErrorDeleteMint`, `SuperserverMint`, `MappingMint` and `WebAppPctAccessMint`, and delete `ErrorDeleteMint.ReadableId`.
+    - Repoint each doc to `OcuPilot.Kernel.Proposal.Mint.ReadableId`.
+    - `Mint`'s doc says the problem is made readable for every mint.
+    - Repoint `WebAppPctAccess.cls:370-371`'s mutation text to the base pass.
+- [ ] **DW-1783.** Edit `src/OcuPilot/Kernel/Audit/Ledger.cls`, then add a probe and a test class.
+  - **New methods.**
+    - `OffsetAtUtc(pUtcH)`: the seconds east of UTC the instance applies at that UTC instant, that is `$ZDateTimeH(pUtcH, -3)` minus `pUtcH`.
+    - `OffsetAtLocal(pLocalH)`: `pLocalH` minus `$ZDateTime(pLocalH, -3)`.
+  - **Converters.** `LocalFromUtc` answers the UTC instant plus `..OffsetAtUtc(...)`, and `LocalToUtc` answers the local instant minus `..OffsetAtLocal(...)`. Formats and refusals are unchanged.
+  - **Probe.** New `src/OcuPilot/Test/LedgerClockProbe.cls` extends `Kernel.Audit.Ledger`. Both offset methods answer a fixed `Parameter OFFSET = 7200`.
+  - **Tests.** New `src/OcuPilot/Test/LedgerClock.cls` (unarmed):
+    - `TestTheConversionsMoveOppositeWays` (probe):
+      - `LocalFromUtc("2026-10-21T23:30:00Z")` answers `"2026-10-22 01:30:00"`;
+      - `LocalToUtc` of that answers the UTC value;
+      - the two round-trip;
+      - a value that names no instant answers `""`.
+    - `TestTheShippedOffsetIsTheInstancesOwn` (shipped class), over a corpus of instants:
+      - `LocalFromUtc` equals `$ZDateTime($ZDateTimeH(utcH, -3), 3, 1)`;
+      - `LocalToUtc` equals `State.Turn.Timestamp($ZDateTime(localH, -3))`.
+
+      These are the formulas the change replaces.
+    - `TestTheReadConvertsItsCriteriaAndRowsTheOneWay` (probe):
+      1. Seed a row with `LedgerSearch.Seed` under a marker.
+      2. Call `LedgerClockProbe.ViewForUser($Username, "", "", "", <the read's maximum>, .view, .fault, 0, "", begin, end)`. `begin` and `end` are the probe's local times five minutes either side of now.
+      3. Assert that the marker's row is in the view, its `time` is `loggedAt` plus two hours, and `criteria.begin` and `criteria.end` echo the values sent.
+      4. Remove the marker's rows afterwards.
+
+### Batch 3: errors and copy
+
+- [ ] **DW-1170.** In `src/OcuPilot/Api/Error.cls:494`, `REASONAGENTBADBODY` becomes "The request body is missing or is not the JSON object this request expects.", or the wording the lead rules under Design Notes › Wording for the lead. The code is unchanged.
+  - **Red first:** new `src/OcuPilot/Test/BadBodySentence.cls` (unarmed; HTTP; writes nothing).
+    - `POST /api/ocupilot/license/key/validate` with no body answers 400 `AGENT.BADBODY` as JSON. The reason equals the parameter and does not contain "no body".
+    - `POST /api/ocupilot/agent/definitions` with `{not json` answers 400 with the same reason.
+- [ ] **DW-1377.** Create `src/OcuPilot/Test/ViolationSentenceCoverage.cls` (unarmed, in process). Observe both methods red first.
+  - **`TestEveryListedCodeHasASentence`.**
+    - The population is every class method under `OcuPilot.Api.` whose name ends `ViolationCodes`, read from `%Dictionary.CompiledMethod`.
+    - Each list is non-empty.
+    - Each code gets a non-empty sentence from `Error.ReasonForViolation`, other than the code itself.
+    - It is red today on the two `DOCDB.NAME.*` codes.
+  - **`TestEveryCodeTheRouterNamesIsListed`.**
+    - Every `pCode = ..#<NAME>` arm in `ReasonForViolation`'s stored implementation resolves to a code in the union of those lists.
+    - Floor: at least 100 arms.
+    - It is red today on the eight codes listed in the Code Map.
+- [ ] **DW-1377.** Edit `src/OcuPilot/Api/Error.cls` in three places.
+  - Add `If $Extract(pCode, 1, 6) = "DOCDB." Quit ##class(OcuPilot.Api.DocDbError).ReasonFor(pCode)` immediately before `ReasonForViolation`'s final `Quit ""` (:1460).
+  - Directly after `ViolationCodes()`, add `AccountViolationCodes()`, `PreferencesViolationCodes()` and `HelpViolationCodes()`. Each is a `%List` of its family's codes, read from the router.
+  - In `ViolationCodes()`'s doc, replace the sentence about `AccountPasswordWire` with one that names the three lists and the sweep.
+
+### Batch 4: provider test fixtures
+
+- [ ] **DW-1191.** Consolidate the scripted transport body. Run the batch-4 class list before editing and again after; behavior is unchanged.
+  - **`src/OcuPilot/Test/ProviderStubTransport.cls`:** `Transport` gains two optional trailing arguments, one for the empty-script reply and one for the key header that sets `keyMatches`. It also gains the `connectrefused` script kind.
+  - **`src/OcuPilot/Test/ProviderStub.cls`:**
+    - `IssueHttpsPost` becomes one call to `Transport`, with `..#STUBIDENTITY`, `..#WATCHEDHEADERS`, the minimal Anthropic reply and `"x-api-key"`.
+    - Delete the stub's `HeaderNames`, `BodyOf` and `MoveArmedRow`.
+    - Keep `ForceErrorLog`, `Advance` and `Wait` while callers remain.
+  - **Docs:** update both class docs.
+
+**Acceptance Criteria:**
+
+- **Every entry.** Given each entry in Design Notes' verdict table, when its batch lands, then:
+  - its pinning test was observed red under the named mutation, or before the fix, and green after;
+  - the run is recorded on its `mutation:` line;
+  - the batch's commit is green on CI on its own head.
+- **Base pass (integration, Rule 1).** Given a background-task cancel minted by the agent for an absent task, when the base mint refuses it, then `detail.problem` names `Management Portal › 999999999` with no U+0001. The four mints that were already readable keep the same text.
+- **Offset helpers (integration; their consumer is `ViewForUser`).** Given the ledger read run through the probe's fixed two-hour offset, when a seeded row is read inside a local window, then the window, the row's `time` and the criteria echo each move the right way. The shipped converters still equal the vendor formulas.
+- **Bad body.** Given a request that reaches `AGENT.BADBODY`, when it is refused, then the reason is the ruled sentence, both on routes that refuse an absent body and on routes that accept one.
+- **Violation sentences.** Given every `OcuPilot.Api.*` class method whose name ends `ViolationCodes`, when the sweep runs, then every listed code has a sentence and every code the router names is listed. A later family is then covered by adding its list.
+- **Provider stubs.** Given the provider stubs after batch 4, when the batch-4 class list runs, then each class is green before and after the edit, and one copy of the scripted transport body remains.
+- **Dispositions.** Given the story completes, then each of the twelve entries has a disposition written by the ledger tool.
+
+## Spec Change Log
+
+## Review Triage Log
+
+### 2026-10-21 - Review pass (batch 1)
+
+- verdicts: 11 findings - high 0, medium 0, low 7, false 4, maybe-false 0
+- findings:
+  - `[low]` `[patch]` ClaimReach's expected-empty rows 2, 4 and 6 had no observed red - a second mutation in `Kernel.Proposal.Caller.Clear` (a quoted `$ClassMethod` name, a static `GuardedClaimAndClose()` call, a quoted `Confirm` name) reddened exactly those three rows, each naming `Caller` (run 34); the DW-1211 `mutation:` line now records it.
+  - `[low]` `[reject]` `Conversation.cls:119` `Kill tByTurn` is redundant with `GuardedRowsForConvo`'s own kill - the spec-named mutation (`Kill` to `Quit`) is observed red, the redundancy is product defense in depth, and no named harm follows; closing it would change product code.
+  - `[low]` `[reject]` DW-1234's seeding is unproven inside the test - both rows invisible would be needed, the sibling gap test shares the seed helper and would redden first, and an in-test control is more than a direct correction.
+  - `[low]` `[reject]` The matrix's "the read logs the failure" is not asserted - the log goes to the IRIS console log, so no HTTP-visible seam exists, and a regression there loses a diagnostic line, not behavior.
+  - `[false]` `[reject]` DW-1234 asserts only `message` for "messages intact" - the attach step sets only `proposals`, so no other turn field can change on that path.
+  - `[low]` `[reject]` The recorded DW-1234 mutation replaces the line the Code Map names rather than deleting it - same root cause as the redundancy row above; no new claim.
+  - `[low]` `[patch]` ClaimReach's header said it pins who may reach the claim, while it measures which classes' source names it - reworded to "which shipped classes name the proposal claim", with the run-time-name limit stated.
+  - `[false]` `[reject]` ClaimReach's tokens are narrower than the deleted scan's (any `Write` member) - AD-40 concerns the claim, `Write.ReasonFor` and `Write.ProhibitedClass` are legitimately called widely, and the token table is the spec's.
+  - `[low]` `[patch]` DW-1211 has one recorded mutation, on row 1 only - same root cause as the first row; closed by the same second mutation.
+  - `[false]` `[reject]` The retention gap comes from `Entry.GuardedPurge`, not the retention task - the spec names that method, `Kernel.Retention` calls it, and the remaining state (seq 2 and 3 at array positions 0 and 1) is the matrix's.
+  - `[false]` `[reject]` The mutation evidence lives only in the spec - Rule 19 records it there by design.
+
+## Design Notes
+
+**Verdicts at `f0ec693f`.** Every entry is addressed and none is declined (Ledger inbox: 12 of 12). The intended disposition for all twelve is `resolved-by` 23.7, with the batch's commit. Two follow-ups for the lead:
+
+- DW-1783's note should record the residual and its reopen condition (see the DW-1783 row).
+- Where the verdict below says an entry's evidence is wrong, correct it in that entry's trailer note.
+
+| Entry | Verdict | Evidence | Action | Batch |
+|---|---|---|---|---|
+| DW-1233 | Confirmed. The entry's evidence is wrong. | `Seq` is `MAX(Seq)+1` (`Entry.cls:108-112`), not `COUNT(*)+1`. It diverges from the ordinal once retention removes an early entry. `TurnWire`'s only proposal test uses seqs 1 and 2. | Gap fixture plus HTTP read. Correct `TurnWire`'s doc at its origin. | 1 |
+| DW-1234 | Confirmed. The entry's location is wrong. | The source scan is `ProposalWire.TestTheConversationHandlerAttachesThemInsideItsOwnerGate` (:468), not in `Convo.cls`. | An executing test, driven by a real store failure. | 1 |
+| DW-1255 | Partly fixed. | `HandleCreate`'s close is already driven at its handler (`ProposalClose.cls:145`). The turn-start close in `Api.Turn.HandleStart` (:172) is driven only through the store (`ProposalClose.cls:109-121`, `ProposalConfirm.cls:764`). | A handler test of the turn-start close. | 1 |
+| DW-1211 | Confirmed. | The test scans five classes. `Kernel.Proposal.Caller`, which `View` calls, is not one of them. | A tree test. The five-file scan is deleted. | 1 |
+| DW-1306 | Partly fixed. The entry's evidence is stale. | `Screen.Gate.EvaluateAnyOf` was deleted (`e27ff3c4`); the OR gate is now `ProviderPort.GateAnyOfForUser`. `DeveloperFloorTurn` and `InteropFloorTurn` admit principals holding a single floor pair through real turns; the AND mutation was not run (inference). `PortGate` and `ProviderPortOwner` substitute the gate. No class-level test has the shipped gate refuse a real principal. | Admit and refuse legs with real principals. | 2 |
+| DW-1258 | Partly fixed. | `ToolWrite` and `AdminPortAsync` pin, through `AdminPort.Invoke`, the list, its width and `EndpointType`'s widening. `HttpMethodFor`'s only witness runs through `PortFixture`'s own copy of `MUTATINGTYPES`. | A seam plus direct legs. | 2 |
+| DW-1308 | Confirmed. | `DenialParity` never counts rows. Its fixed key `"parity"` also leaves rows behind. | Per-call keys, a row count, and cleanup. | 2 |
+| DW-2266 | Confirmed by probe. | On `ocupilot-ci`, `tasks.background.cancel` for an absent id answered a `detail.problem` with a raw U+0001 between the parts. `EncryptionKeyFileMint` has the same shape; that a missing file reaches it is inference until the red test runs. | One base pass; the four copies deleted. | 2 |
+| DW-1783 | Confirmed. | On `ocupilot-ci`, `/etc/localtime` points to `Etc/UTC` and `$ZTIMEZONE` is 0. A process-level `$ZTIMEZONE` moves `$H` but not the `-3` conversions. | Explicit offset helpers plus a probe. **Residual:** which `-3` function each helper uses still cannot be falsified on a UTC instance. `reopen_if`: a non-UTC throwaway or CI leg exists. | 2 |
+| DW-1170 | Confirmed, and wider. The entry's evidence is partly wrong. | 68 lines in 49 classes name it (by grep); most refuse an absent body with this very sentence (probed on `POST /rest-service` and `/license/key/validate`). `PUT /agent/context` answers 422 `AGENT.CONTEXT.SHARE`, not this sentence, and Definitions and Switches accept an absent body. | Reword the reason. | 3 |
+| DW-1377 | Confirmed, with one live defect. | 38 lists hold 552 codes. `ReasonForViolation` answers `""` for `DOCDB.NAME.INVALID` and `DOCDB.NAME.MAPPED`. Eight router arms (the ACCOUNT, PREFERENCES and HELP codes) belong to no list. | A derived sweep, a `DOCDB.` arm and three lists. | 3 |
+| DW-1191 | Confirmed. The entry's evidence is overstated. | There are 8 stub classes, not ten or more. 42 of 48 code lines are shared. | Consolidate into `Transport`. | 4 |
+
+**Governing ADs:**
+
+- **AD-6, AD-34 and AD-40.** Only confirm reaches the claim, and a proposal belongs to its turn (DW-1211, DW-1233, DW-1234, DW-1255).
+- **AD-37.** Retention purges entries; DW-1233's fixture is that purge.
+- **AD-12 and AD-39.** There is one envelope. A `code` never changes, a reason is written once in `Error.cls`, and a field code with no published reason is a defect (DW-1170, DW-1377, and DW-1234's 200).
+- **AD-13.** Refusal text never carries a raw U+0001 (DW-2266).
+- **AD-8 and AD-29.** The gate is evaluated in the calling process at call time, for the named principal, and a denial names the failed pair. A denial test uses a purpose-built principal (DW-1306, DW-1308).
+- **AD-2.** `AdminPort` invokes the vendor's endpoint objects, and the request method feeds the vendor's sequence (DW-1258).
+- **AD-41 and Conventions › Dates.** A refused call writes one ledger row. A row's `time` and the read's criteria are in instance local time, converted on the instance (DW-1308, DW-1783).
+- **AD-35 and AD-48.** The stub's forced error-log leg must survive the consolidation (DW-1191).
+- **AD-17.** Probes and test seams live under `OcuPilot.Test`.
+- **Conventions › Tests and › ObjectScript naming.**
+
+No acceptance criterion contradicts an AD's Rule, and no NFR is in play.
+
+**Decided in-stage:**
+
+- **Batch order and grouping** follow the epic context's areas.
+- **DW-1211.** An ObjectScript tree test reusing `AsTheUser.SitesNaming`, not a 22nd `check-objectscript.py` rule, so the pinned count in `CLAUDE.md` stands. The scan it supersedes is deleted.
+- **DW-1783.**
+  - Rejected: a non-UTC throwaway. That means editing `ci-throwaway.sh` (contended) or CI, which is large for one entry.
+  - Rejected: an explicit offset argument with no probe. It would pin only new arithmetic.
+  - Chosen: overridable offset helpers, plus a probe, which make `ViewForUser`'s callers (window, row time, echo) falsifiable on a UTC instance.
+- **DW-2266.** `ReadableId` moves into the kernel's `Mint`. This keeps the dependency pointing from `Screen.Tool` to `Kernel`, and replaces four copies of the pass with one instead of adding a fifth and sixth. The pass sits at `Mint`'s exit, not in `Refuse`, so it covers every `detail.problem` the siblings' passes covered.
+- **DW-1306.** Extend `InteropFloorTurn`, which already makes a `%Ens_Portal`-only principal, rather than add an armed class. That keeps `scripts/ci-throwaway.sh` (contended) untouched.
+- **DW-1233 and DW-1234.** Extend `ConversationRestore` (Rule 31). The store failure comes from data, so no product seam is needed. `ProposalWire`'s scan is left as it is.
+- **DW-1255.** Only the turn-start close is added; the New-conversation close is already pinned at its handler.
+- **DW-1170.** One sentence fits every site that names it, so no second parameter.
+- **DW-1377.** Lists are found by naming convention, so no family is listed by hand. `AgentViolation`'s `AGENT.*` parameter check stays.
+- **DW-1191.** Consolidate rather than decline. The change is about 95 lines net, all in test fixtures, and the class list below pins it.
+- **Batch 1 teardown.** `ConversationRestore` and `TurnConversation` keep the marker turn keys on the test instance and remove their proposals in `OnAfterOneTest`, so a method that raises still cleans up.
+- **Batch 1 header.** `ToolWrite`'s header drops the sentence about the claim-gate scan that moved to `ClaimReach`.
+
+**Wording for the lead** (the lead rules at the spec gate):
+
+- **`REASONAGENTBADBODY`.**
+  - Now: "The request body could not be read as JSON. Send a JSON object, or no body at all."
+  - Proposed: "The request body is missing or is not the JSON object this request expects."
+  - Why this wording: it is true on routes that refuse an absent body. It is true on routes that accept one, where the sentence fires only for a body that is not an object. It is also true at the four sites that show it for a well-formed object of the wrong shape: `LicenseRules.cls:209`, `DatabaseRules.cls:476,481` and `PctAccessSave.cls:90`.
+  - A shorter alternative: "Send a JSON object as the request body." This one is misleading at those four sites.
+- **Composite-id refusal**, the `detail.problem` the model reads:
+  - Now: `'Management Portal<U+0001>999999999' is not present on this instance`.
+  - Proposed: `'Management Portal › 999999999' is not present on this instance`, as the four sibling mints already answer.
+- **DocDB codes.** No new sentence. The router answers with `DocDbError`'s existing sentences.
+
+**Contended files** (Rule 11). Checked against Epic 20's head `6a8fd1f0`. Before editing, re-check with:
+
+- `git -C /Users/jbrandt/git/OcuPilot/.worktrees/epic-20 diff --stat origin/feature/OCU-1_ocupilot-mvp...HEAD -- <path>`
+- `git -C /Users/jbrandt/git/OcuPilot/.worktrees/epic-20 status -s --untracked-files=all -- <path>`
+
+| File | Epic 20's change | This story's edit | Add-only |
+|---|---|---|---|
+| `src/OcuPilot/Api/Error.cls` | One `ANALYTICS.` arm in `ReasonForToolCode` (after :1235), and one in `ReasonForViolation` (after :1452) | (a) `REASONAGENTBADBODY`'s value, :494. (b) A `DOCDB.` arm before `ReasonForViolation`'s final `Quit ""` (:1460), eight lines below Epic 20's arm. (c) Three list methods after `ViolationCodes()` (about :1628). (d) `ViolationCodes()`'s doc, :1619-1624. | **No.** (a) and (d) rewrite existing lines, 740 or more and 160 or more lines away from Epic 20's hunks. (b) and (c) are add-only. A clean textual merge is (inference). |
+
+Epic 20 has not changed any other file in the Code Map. Its working tree holds only `spec-20-11…`, `ui/src/app/core/session.ts` and `ui/tools/session.test.mjs`.
+
+**Consumed-by and Consumes (Rules 1 and 2).** Every consumer is in this story.
+
+- **`Kernel.Proposal.Mint.ReadableId` and the base pass.** Every mint consumes them through `##super`. Observed by `CompositeMintReadable`, `EncryptionKeyFileRead`, `WebAppPctAccess`, `ErrorDeleteScope` and `AuthOptionsDescriptor`.
+- **`Kernel.Audit.Ledger.OffsetAtUtc` and `OffsetAtLocal`.** Consumed by `LocalFromUtc` and `LocalToUtc`, and through them by `ViewForUser`, `AppliedCriteria`, `RowObject`, `Api.Ledger` and `InteropPort`. Observed by `LedgerClock`.
+- **`Error.AccountViolationCodes`, `PreferencesViolationCodes` and `HelpViolationCodes`.** Consumed by `ViolationSentenceCoverage`.
+- **`ProviderStubTransport.Transport`'s new arguments.** Consumed by `ProviderStub.IssueHttpsPost`.
+- **Seams.** `AdminPortTypeSeam` is consumed by `AdminPortMutatingPath`, and `LedgerClockProbe` by `LedgerClock`.
+
+**Extend, don't copy (Rule 31).**
+
+- **`ClaimReach`** calls `AsTheUser.SitesNaming`. It is a new class because `ToolWrite` is 1,431 lines.
+- **`AdminPortTypeSeam`** follows the `AdminPort` test seams (`RoleDeletePort`). No existing seam exposes these two private methods, and `PortFixture` overrides the very list under test. `AdminPortMutatingPath` is new for the same size reason as `ClaimReach`.
+- **`CompositeMintReadable`** uses `BackgroundTasks`' fixtures. It is new because that class is 513 lines.
+- **`LedgerClockProbe`** follows `LedgerGateProbe` and `LedgerFaultProbe`. `LedgerClock` uses `LedgerSearch.Seed`, and is new because `LedgerSearch` is 515 lines.
+- **`BadBodySentence`** follows `AgentViolation.Call`'s HTTP pattern. It is new because `AgentWire` is 721 lines.
+- **`ViolationSentenceCoverage`** generalizes `AgentViolation`'s sweep to every family.
+
+**Filing candidate, not absorbed** (Rule 27 cap). `LogSourcePort.LocalFromUtc` (:1871), used by `Timeline` and `InteropPort`, has the same unfalsifiable direction on a UTC instance.
+
+## Verification
+
+**Shared steps**, run on slot A with `ocupilot-ci` (52776/1975; directory `/Users/jbrandt/.ocupilot-throwaways/ocupilot-ci`):
+
+- **Load (loop).** Run `rsync -a --delete src/ /Users/jbrandt/.ocupilot-throwaways/ocupilot-ci/src/`, then `Do $System.OBJ.LoadDir("/opt/ocupilot/src","ck-d",.e,1)` in `docker exec -i ocupilot-ci iris session iris -U HSCUSTOM`. Expected: 0 errors.
+- **Class (loop).** Run `cd ui && node tools/ci-runner.mjs --container ocupilot-ci --class OcuPilot.Test.<C>`, one class per call. Expected: 0 failed, confirmed in `%UnitTest_Result`.
+- **Checks (loop).** Expected: each is clean or green.
+  - `uv run scripts/check-objectscript.py <changed .cls>`
+  - `cd ui && npm run test:tools`
+  - `bash scripts/lint-docs.sh` (only when Markdown changes)
+
+**Commands:** the Class step for each batch's list, after Load. There are no `(once)` lines: the full ObjectScript sweep and Rule 30's fresh check are the lead's, and the full browser suite is CI's.
+
+- **Batch 1 (loop):** ConversationRestore, TurnConversation, TurnWire, ClaimReach, ToolWrite, ProposalClose, ProposalWire.
+- **Batch 2 (loop):**
+  - Gate, port and denial: InteropFloorTurn, AdminPortMutatingPath, AdminPortAsync, DenialParity.
+  - Mints: CompositeMintReadable, EncryptionKeyFileRead, WebAppPctAccess, ErrorDeleteScope, AuthOptionsDescriptor, BackgroundTasks.
+  - Ledger: LedgerClock, LedgerSearch, LedgerSearchWire.
+- **Batch 3 (loop):**
+  - New: BadBodySentence, ViolationSentenceCoverage.
+  - Affected: AgentViolation, AgentWire, RestServiceSave, DocDbAppDescriptor, DocDbPort, DocDbWrite, UiAboutWire, PreferencesWire, AccountPasswordWire.
+- **Batch 4 (loop, run before the edit and after):**
+  - Transport and secrets: ProviderTransportRetry, ProviderSecret, SecretLeak, WalletRungWire, AgentConnection.
+  - Streams and retries: ProviderStream, ProviderStreamFamilies, ProviderRetry, ProviderProxy, Provider.
+  - Adapters: OpenAIAdapter, GeminiAdapter, CompatibleAdapter.
+
+**Shared surfaces:**
+
+- **The `AGENT.BADBODY` reason.** `AgentWire.cls:273` compares it with the parameter.
+- **The base mint's presence text.** `WebAppPctAccess`, `ErrorDeleteScope` and `AuthOptionsDescriptor` assert the readable form. `LockRemoveLive`, `LanguageServerEditorWire` and `RoutineAppWrite` assert presence text for ids that are not composite, which stays unchanged.
+- **`ReasonForViolation`'s answers and the violation-code lists.** Asserted by `AgentViolation`, `DocDbAppDescriptor:245`, `DocDbAppWrite`, `UiAboutWire`, `PreferencesWire` and `AccountPasswordWire`.
+- **The ObjectScript test-class roster.**
+  - New test classes: `ClaimReach`, `AdminPortMutatingPath`, `CompositeMintReadable`, `LedgerClock`, `BadBodySentence` and `ViolationSentenceCoverage`.
+  - New classes that are not tests: `AdminPortTypeSeam` and `LedgerClockProbe`.
+  - `ToolWrite` loses one method.
+  - No arming roster changes.
+- **Standing criterion.** Every test added or changed passes on a fresh environment, in either order. Each test creates and removes its own rows, users and markers.
+
+**Mutations (Rule 19).** Implement records the observed run, and the red test, on each line.
+
+- `mutation:` (DW-1233) applied: `Conversation.cls:129` `tKeys(+tTurn.%Get("seq"))` to `tKeys(tI + 1)` → `ConversationRestore.TestARetentionGapStillAttachesEachTurnsOwnProposals` red alone (ocupilot-ci run 14: seq 2 read no proposal, seq 3 read seq 2's); `TurnWire` green, 15 of 15 (run 9). Reverted; tree byte-identical.
+- `mutation:` (DW-1234) applied: `Conversation.cls:119` `Kill tByTurn` to `Quit` → `ConversationRestore.TestAnUnreadableProposalStoreDegradesToEmptyProposals` red alone (run 13): neither turn carries a `proposals` array. Reverted; tree byte-identical.
+- `mutation:` (DW-1255) applied: deleted the `GuardedCloseLiveForConvo` block in `Turn.HandleStart` (`Turn.cls:172-176`) → `TurnConversation.TestATypedMessageClosesThatConversationsLiveProposalsAtTheHandler` red alone, 10 of 11 green (run 15): conversation A's proposal stayed live. Reverted; tree byte-identical.
+- `mutation:` (DW-1211) applied: `If 0 Do ##class(OcuPilot.Kernel.Proposal.Write).ClaimById("", "", .tR, .tC)` as the first line of `Kernel.Proposal.Caller.Clear` → `ClaimReach` red on its first token (run 16: `Caller,Confirm` where `Confirm` was expected). A second mutation put a quoted `$ClassMethod("OcuPilot.Kernel.Proposal.Write", ...)`, a static `Propose.GuardedClaimAndClose()` and a quoted `"OcuPilot.Kernel.Proposal.Confirm"` call in the same method → the three expected-empty rows go red, each naming `Caller` (run 34). Both reverted; tree byte-identical.
+- `mutation:` (DW-1234, QA) delete the `Fault.LogRaw` call in `Conversation.AttachProposals`'s proposal-read failure branch → `ConversationRestore.TestAnUnreadableProposalStoreIsLogged` red alone, 3 of 4 green (ocupilot-ci run 715: no new `messages.log` line carries the request's marker). Reverted; tree byte-identical.
+- `mutation:` (DW-1211, QA) add a shipped class outside the six rows, `Kernel.Proposal.ReachProbe`:
+  - it calls `Write.ClaimById` statically → `ClaimReach.TestOnlyTheConfirmPathNamesTheClaim` red, naming the new class (run 716), and `TestNoOtherSpellingOrSubclassReachesTheClaim` red on its `ClaimById` call row;
+  - it calls `$ClassMethod(pClass, "ClaimById", ...)` → only `TestNoOtherSpellingOrSubclassReachesTheClaim` red, on the quoted-name row, while the first test stays green (run 717);
+  - it `Extends OcuPilot.Kernel.Proposal.Write` and calls `..ClaimById` → only `TestNoOtherSpellingOrSubclassReachesTheClaim` red, on the subclass query (run 718).
+  - Reverted; the class is deleted from the instance and the tree is byte-identical.
+- `mutation:` (QA re-observed, batch 1) `tKeys(+tTurn.%Get("seq"))` → `tKeys(tI + 1)`: `ConversationRestore.TestARetentionGapStillAttachesEachTurnsOwnProposals` red alone (run 720). `Kill tByTurn` → `Quit`: `TestAnUnreadableProposalStoreDegradesToEmptyProposals` red alone (run 721). Delete the close block in `Turn.HandleStart`: `TurnConversation.TestATypedMessageClosesThatConversationsLiveProposalsAtTheHandler` red alone, 10 of 11 green (run 722). Each reverted; tree byte-identical.
+- (QA) Files extended in place, no new file: `src/OcuPilot/Test/ConversationRestore.cls` (`TestAnUnreadableProposalStoreIsLogged`, four parameters) and `src/OcuPilot/Test/ClaimReach.cls` (`TestNoOtherSpellingOrSubclassReachesTheClaim`, `SubclassesOf`). After the reverts, each batch-1 class is green on `ocupilot-ci`: ConversationRestore 4 (run 725), TurnConversation 11 (run 726), ClaimReach 2 (run 727).
+- `mutation:` (DW-1211, review) The mutation has two parts:
+  - In `Kernel.Proposal.Caller.Clear`, add `If 0` lines that make a `Write` object and call `tW.ClaimById(...)`, call `tP.GuardedClaimAndClose(...)`, and call `##class(Confirm).Confirm(...)`.
+  - Add a shipped `Kernel.Proposal.ReachProbe` that extends `Kernel.Proposal.Confirm`.
+
+  Result: `TestNoOtherSpellingOrSubclassReachesTheClaim` is red on exactly its five review legs: `.ClaimById(`, `.GuardedClaimAndClose(`, `Proposal.Write).%New(`, `(Confirm).` and the `Confirm` subclass. `TestOnlyTheConfirmPathNamesTheClaim` stays green (ocupilot-ci run 729). Reverted, the class deleted from the instance, and the tree byte-identical. After the review patches: ClaimReach 2 (run 730), ConversationRestore 4 (731), TurnConversation 11 (732), ProposalClose 7 (733), ToolWrite 33 (734); `check-objectscript.py` 0 problems; `npm run test:tools` 2072 of 2072.
+- `mutation:` (DW-1306) make `GateAnyOfForUser` require every pair → the `USERA` leg goes red. Make `HoldsPairForUser` answer 1 → the `USERB` leg goes red.
+- `mutation:` (DW-1258) make `HttpMethodFor` answer `"PUT"` for every mutating pair → the method legs go red. Drop `'..IsMutating(...)` from `EndpointType`'s admission → the type leg goes red. Remove `WebApp.PctClassAccess/DELETE` from `MUTATINGTYPES`, and recompile the seam → its legs go red.
+- `mutation:` (DW-1308) add a second `..RecordLedger(...)` in `AnswerOne`'s `MissingPair` branch → the count reads 2 and goes red. Delete the common-exit `RecordLedger` → the count reads 0 and goes red.
+- `mutation:` (DW-2266) record the before-fix red of both new tests. After the fix, remove the base pass → `CompositeMintReadable`, `EncryptionKeyFileRead.TestAnAbsentKeyFileIsNamedReadably` and `WebAppPctAccess.TestAPresenceRefusalNamesTheEntryReadably` go red.
+- `mutation:` (DW-1783)
+  - Swap the sign in `LocalFromUtc` → `TestTheConversionsMoveOppositeWays` and the read's `time` leg go red.
+  - `ViewForUser` (:646) calls `LocalFromUtc` → the window leg goes red.
+  - `AppliedCriteria` (:900) calls `LocalToUtc` → the echo leg goes red.
+- `mutation:` (DW-1170) record the before-fix red of `BadBodySentence`. After the fix, put ", or no body at all" back → it goes red.
+- `mutation:` (DW-1377) record the before-fix red of both methods. After the fix, delete the `DOCDB.` arm → `TestEveryListedCodeHasASentence` goes red. Remove `HELPROUTE` from `HelpViolationCodes()` → `TestEveryCodeTheRouterNamesIsListed` goes red.
+- `mutation:` (DW-1191) drop the `connectrefused` branch from `Transport` → `ProviderTransportRetry` goes red. Pass no key header from `IssueHttpsPost` → a `keyMatches` leg goes red (expected `WalletRungWire`; record the class observed). No test can fail on the duplication itself; the pinning evidence is the batch-4 list, green before and after.
+
+## Auto Run Result
+
+Status: done
+Blocking condition: none
+
+**This pass (plan).** I verified all twelve owned entries at `f0ec693f`, using three read-only investigations and read-only probes on `ocupilot-ci`; none ran a test.
+
+- Verdicts: four confirmed, four confirmed with wrong or overstated evidence, three partly fixed, one confirmed by a probe. Each is in the Design Notes table.
+- All twelve are addressed and none is declined.
+- Contended files: `Error.cls` is the only file Epic 20 has changed that this story edits, and two of its four edits there are not add-only. `scripts/ci-throwaway.sh` is avoided.
+- Open for the lead at the spec gate: the `REASONAGENTBADBODY` wording, and the edits to `Error.cls` that are not add-only.
+
+**This pass (implement, batch 1).** Batch 1 only; batches 2, 3 and 4 are untouched and unchecked.
+
+- **Changed:**
+  - `src/OcuPilot/Test/ConversationRestore.cls`: the retention-gap test (DW-1233) and the unreadable-proposal-store test (DW-1234), with helpers and a cleanup that removes each marker turn's proposals.
+  - `src/OcuPilot/Test/TurnConversation.cls`: the turn-start close test at the handler (DW-1255).
+  - `src/OcuPilot/Test/ClaimReach.cls`: new, unarmed; six `SitesNaming` token rows (DW-1211).
+  - `src/OcuPilot/Test/ToolWrite.cls`: the five-file claim-gate scan deleted.
+  - `src/OcuPilot/Test/TurnWire.cls`: the wrong `Seq` paragraph replaced by one pointer sentence.
+  - No product code changed.
+- **Review:** 11 findings, 3 patched over 2 root causes (all low: the second DW-1211 mutation, the header wording), none deferred, 8 rejected with their reasons in the triage log. Follow-up review recommended: false.
+- **Verified on `ocupilot-ci`:** Load with 0 errors; each `Batch 1 (loop)` class green in its own call after the patches, read from the runner's `%UnitTest_Result` line (ConversationRestore 3, TurnConversation 11, TurnWire 15, ClaimReach 1, ToolWrite 33, ProposalClose 7, ProposalWire 17; runs 35-41). `check-objectscript.py` 0 problems, `npm run test:tools` 2072 of 2072, `lint-docs.sh` 0 issues. Four `mutation:` lines record the observed reds and the byte-identical reverts.
+- **Residual:** the matrix's "the read logs the failure" is not asserted, because the log is the IRIS console log and no HTTP-visible seam exists. `TurnConversation` is now 511 lines.

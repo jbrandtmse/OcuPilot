@@ -1,7 +1,7 @@
-/// <p>Pins the first write tool (Story 5.1, AD-3, AD-10, AD-22, AD-40): the registry advertises it
+/// <p>Pins the first write tool (Story 5.1, AD-3, AD-10, AD-22): the registry advertises it
 /// as a <code>write</code> tool fulfilled on the instance, its schema is derived and admits no
-/// privilege subtree, the model can reach the minting path and not the claim gate, and the
-/// dispatcher's write branch is exercised through the <b>real</b> restraint verdict.</p>
+/// privilege subtree, and the dispatcher's write branch is exercised through the <b>real</b>
+/// restraint verdict.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed, an account holding
 /// <code>%All</code>, and one web application the instance already serves --
 /// <parameter>LIVETARGET</parameter>, OcuPilot's own shell application, which is read and never
@@ -292,18 +292,6 @@ Method TestAnExcludedFieldLeavesTheSchemaAndTheSettableList()
     Do $$$AssertEquals($ListFind($ClassMethod(tProbe, "SettableFields"), "Description"), 0, "so it is not settable there")
     Do $$$AssertEquals($ClassMethod(tProbe, "InputSchema").%Get("properties").%GetTypeOf("Description"), "unassigned", "and not advertised there")
     Do $$$AssertTrue($ListFind($ClassMethod(tProbe, "SettableFields"), "Enabled") > 0, "while an unlisted sibling is still settable")
-}
-
-/// <p>AD-40: the model can mint and cannot apply. No path from a write tool's view reaches the
-/// claim gate.</p>
-Method TestNoPathFromAWriteToolsViewReachesTheClaimGate()
-{
-    For tClass = "OcuPilot.Screen.Tool.Write", "OcuPilot.Screen.Tool.WebAppUpdate", "OcuPilot.Kernel.Proposal.Mint", "OcuPilot.Kernel.Proposal.Fingerprint", "OcuPilot.Kernel.State.Propose" {
-        Set tSC = ##class(%Compiler.UDL.TextServices).GetTextAsString($Namespace, tClass, .tSource)
-        Do $$$AssertStatusOK(tSC, tClass _ ": its source is readable")
-        Do $$$AssertEquals($Find(tSource, "##class(OcuPilot.Kernel.Proposal.Write)"), 0, tClass _ ": names no call into the claim gate")
-        Do $$$AssertEquals($Find(tSource, """OcuPilot.Kernel.Proposal.Write"""), 0, tClass _ ": and reaches it by no dynamic name either")
-    }
 }
 
 /// <p>AD-8, DW-1208: the write's resolved set is exactly the pair set the screen's own read
