@@ -2,7 +2,8 @@
 title: 'Story 23.7: The range-end cleanup, part 6'
 type: 'bugfix'
 created: '2026-10-21'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: 'f673f28ff7cf9f76668bee8b1b59e29162cdf646'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -189,7 +190,7 @@ Each batch is one implement pass and one code commit, with CI green on its own h
 
 ### Batch 1: proposal and conversation kernel
 
-- [ ] **DW-1233.** In `src/OcuPilot/Test/ConversationRestore.cls`, add `TestARetentionGapStillAttachesEachTurnsOwnProposals`.
+- [x] **DW-1233.** In `src/OcuPilot/Test/ConversationRestore.cls`, add `TestARetentionGapStillAttachesEachTurnsOwnProposals`.
   - **Setup:**
     1. Append three entries with turn keys K1, K2 and K3. Only the first carries a marker `pDefinitionId` of 32 characters or fewer.
     2. Remove that entry with `Entry.GuardedPurge`, given only `tCutoffs(marker) = NowSeconds() + 60`.
@@ -198,19 +199,19 @@ Each batch is one implement pass and one code commit, with CI green on its own h
   - **Assert:** 200; JSON content type; two turns; seq 2 carries exactly the K2 proposal and seq 3 exactly the K3 one.
   - **Header:** widen it to cover the conversation read's restore and its attachment of proposals.
   - **Teardown and markers:** teardown removes the conversation (`Convo.GuardedDelete`) and each marker turn's proposals (`Propose.GuardedDeleteForTurn`). Markers are GUID-suffixed.
-- [ ] **DW-1233.** In `src/OcuPilot/Test/TurnWire.cls:201-204`, replace the paragraph with one sentence: the seq join is pinned across a retention gap by `ConversationRestore.TestARetentionGapStillAttachesEachTurnsOwnProposals`.
-- [ ] **DW-1234.** In `src/OcuPilot/Test/ConversationRestore.cls`, add `TestAnUnreadableProposalStoreDegradesToEmptyProposals`.
+- [x] **DW-1233.** In `src/OcuPilot/Test/TurnWire.cls:201-204`, replace the paragraph with one sentence: the seq join is pinned across a retention gap by `ConversationRestore.TestARetentionGapStillAttachesEachTurnsOwnProposals`.
+- [x] **DW-1234.** In `src/OcuPilot/Test/ConversationRestore.cls`, add `TestAnUnreadableProposalStoreDegradesToEmptyProposals`.
   - **Setup:** two entries, K1 and K2. Seed a valid proposal on K1, and one on K2 with `targetRef` `"probe-unparseable"`. Then make the HTTP read.
   - **Assert:** 200; JSON content type; both turns with their messages; each turn's `proposals` an array of size 0.
   - **No product seam:** the unparseable row makes the real store refuse.
-- [ ] **DW-1255.** In `src/OcuPilot/Test/TurnConversation.cls`, add `TestATypedMessageClosesThatConversationsLiveProposalsAtTheHandler`.
+- [x] **DW-1255.** In `src/OcuPilot/Test/TurnConversation.cls`, add `TestATypedMessageClosesThatConversationsLiveProposalsAtTheHandler`.
   - **Setup:**
     1. Create conversations A and B for `USERA`. Do this before seeding, because `POST /conversation` closes the user's live proposals.
     2. Seed live proposals PA (on A) and PB (on B) for `USERA`, under marker turn keys.
     3. `Start` a turn on A and expect 202.
   - **Assert at once:** PA reads `State` `canceled` and `ClosedReason` `message`, and PB reads `live`. Then `AwaitEnd`.
   - **Teardown:** remove both markers' proposals explicitly.
-- [ ] **DW-1211.** Create `src/OcuPilot/Test/ClaimReach.cls` (unarmed) with `TestOnlyTheConfirmPathNamesTheClaim`.
+- [x] **DW-1211.** Create `src/OcuPilot/Test/ClaimReach.cls` (unarmed) with `TestOnlyTheConfirmPathNamesTheClaim`.
   - For each token, `AsTheUser.SitesNaming(token)` must equal its expected site list. Read the expected lists from the instance before writing them in:
 
     | Token | Expected sites |
@@ -331,6 +332,22 @@ Each batch is one implement pass and one code commit, with CI green on its own h
 
 ## Review Triage Log
 
+### 2026-10-21 - Review pass (batch 1)
+
+- verdicts: 11 findings - high 0, medium 0, low 7, false 4, maybe-false 0
+- findings:
+  - `[low]` `[patch]` ClaimReach's expected-empty rows 2, 4 and 6 had no observed red - a second mutation in `Kernel.Proposal.Caller.Clear` (a quoted `$ClassMethod` name, a static `GuardedClaimAndClose()` call, a quoted `Confirm` name) reddened exactly those three rows, each naming `Caller` (run 34); the DW-1211 `mutation:` line now records it.
+  - `[low]` `[reject]` `Conversation.cls:119` `Kill tByTurn` is redundant with `GuardedRowsForConvo`'s own kill - the spec-named mutation (`Kill` to `Quit`) is observed red, the redundancy is product defense in depth, and no named harm follows; closing it would change product code.
+  - `[low]` `[reject]` DW-1234's seeding is unproven inside the test - both rows invisible would be needed, the sibling gap test shares the seed helper and would redden first, and an in-test control is more than a direct correction.
+  - `[low]` `[reject]` The matrix's "the read logs the failure" is not asserted - the log goes to the IRIS console log, so no HTTP-visible seam exists, and a regression there loses a diagnostic line, not behavior.
+  - `[false]` `[reject]` DW-1234 asserts only `message` for "messages intact" - the attach step sets only `proposals`, so no other turn field can change on that path.
+  - `[low]` `[reject]` The recorded DW-1234 mutation replaces the line the Code Map names rather than deleting it - same root cause as the redundancy row above; no new claim.
+  - `[low]` `[patch]` ClaimReach's header said it pins who may reach the claim, while it measures which classes' source names it - reworded to "which shipped classes name the proposal claim", with the run-time-name limit stated.
+  - `[false]` `[reject]` ClaimReach's tokens are narrower than the deleted scan's (any `Write` member) - AD-40 concerns the claim, `Write.ReasonFor` and `Write.ProhibitedClass` are legitimately called widely, and the token table is the spec's.
+  - `[low]` `[patch]` DW-1211 has one recorded mutation, on row 1 only - same root cause as the first row; closed by the same second mutation.
+  - `[false]` `[reject]` The retention gap comes from `Entry.GuardedPurge`, not the retention task - the spec names that method, `Kernel.Retention` calls it, and the remaining state (seq 2 and 3 at array positions 0 and 1) is the matrix's.
+  - `[false]` `[reject]` The mutation evidence lives only in the spec - Rule 19 records it there by design.
+
 ## Design Notes
 
 **Verdicts at `f0ec693f`.** Every entry is addressed and none is declined (Ledger inbox: 12 of 12). The intended disposition for all twelve is `resolved-by` 23.7, with the batch's commit. Two follow-ups for the lead:
@@ -383,6 +400,8 @@ No acceptance criterion contradicts an AD's Rule, and no NFR is in play.
 - **DW-1170.** One sentence fits every site that names it, so no second parameter.
 - **DW-1377.** Lists are found by naming convention, so no family is listed by hand. `AgentViolation`'s `AGENT.*` parameter check stays.
 - **DW-1191.** Consolidate rather than decline. The change is about 95 lines net, all in test fixtures, and the class list below pins it.
+- **Batch 1 teardown.** `ConversationRestore` and `TurnConversation` keep the marker turn keys on the test instance and remove their proposals in `OnAfterOneTest`, so a method that raises still cleans up.
+- **Batch 1 header.** `ToolWrite`'s header drops the sentence about the claim-gate scan that moved to `ClaimReach`.
 
 **Wording for the lead** (the lead rules at the spec gate):
 
@@ -466,10 +485,10 @@ Epic 20 has not changed any other file in the Code Map. Its working tree holds o
 
 **Mutations (Rule 19).** Implement records the observed run, and the red test, on each line.
 
-- `mutation:` (DW-1233) in `Conversation.cls:129`, change `tKeys(+tTurn.%Get("seq"))` to `tKeys(tI + 1)` → `ConversationRestore.TestARetentionGapStillAttachesEachTurnsOwnProposals` goes red; `TurnWire` stays green.
-- `mutation:` (DW-1234) in `Conversation.cls:119`, change `Kill tByTurn` to `Quit` → `TestAnUnreadableProposalStoreDegradesToEmptyProposals` goes red: no `proposals` key.
-- `mutation:` (DW-1255) delete the close at `Turn.cls:172-176` → `TurnConversation.TestATypedMessageClosesThatConversationsLiveProposalsAtTheHandler` goes red.
-- `mutation:` (DW-1211) add `If 0 Do ##class(OcuPilot.Kernel.Proposal.Write).ClaimById("", "", .tR, .tC)` to a `Kernel.Proposal.Caller` method → `ClaimReach` goes red on its first token.
+- `mutation:` (DW-1233) applied: `Conversation.cls:129` `tKeys(+tTurn.%Get("seq"))` to `tKeys(tI + 1)` → `ConversationRestore.TestARetentionGapStillAttachesEachTurnsOwnProposals` red alone (ocupilot-ci run 14: seq 2 read no proposal, seq 3 read seq 2's); `TurnWire` green, 15 of 15 (run 9). Reverted; tree byte-identical.
+- `mutation:` (DW-1234) applied: `Conversation.cls:119` `Kill tByTurn` to `Quit` → `ConversationRestore.TestAnUnreadableProposalStoreDegradesToEmptyProposals` red alone (run 13): neither turn carries a `proposals` array. Reverted; tree byte-identical.
+- `mutation:` (DW-1255) applied: deleted the `GuardedCloseLiveForConvo` block in `Turn.HandleStart` (`Turn.cls:172-176`) → `TurnConversation.TestATypedMessageClosesThatConversationsLiveProposalsAtTheHandler` red alone, 10 of 11 green (run 15): conversation A's proposal stayed live. Reverted; tree byte-identical.
+- `mutation:` (DW-1211) applied: `If 0 Do ##class(OcuPilot.Kernel.Proposal.Write).ClaimById("", "", .tR, .tC)` as the first line of `Kernel.Proposal.Caller.Clear` → `ClaimReach` red on its first token (run 16: `Caller,Confirm` where `Confirm` was expected). A second mutation put a quoted `$ClassMethod("OcuPilot.Kernel.Proposal.Write", ...)`, a static `Propose.GuardedClaimAndClose()` and a quoted `"OcuPilot.Kernel.Proposal.Confirm"` call in the same method → the three expected-empty rows go red, each naming `Caller` (run 34). Both reverted; tree byte-identical.
 - `mutation:` (DW-1306) make `GateAnyOfForUser` require every pair → the `USERA` leg goes red. Make `HoldsPairForUser` answer 1 → the `USERB` leg goes red.
 - `mutation:` (DW-1258) make `HttpMethodFor` answer `"PUT"` for every mutating pair → the method legs go red. Drop `'..IsMutating(...)` from `EndpointType`'s admission → the type leg goes red. Remove `WebApp.PctClassAccess/DELETE` from `MUTATINGTYPES`, and recompile the seam → its legs go red.
 - `mutation:` (DW-1308) add a second `..RecordLedger(...)` in `AnswerOne`'s `MissingPair` branch → the count reads 2 and goes red. Delete the common-exit `RecordLedger` → the count reads 0 and goes red.
@@ -484,7 +503,7 @@ Epic 20 has not changed any other file in the Code Map. Its working tree holds o
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
 **This pass (plan).** I verified all twelve owned entries at `f0ec693f`, using three read-only investigations and read-only probes on `ocupilot-ci`; none ran a test.
@@ -493,3 +512,16 @@ Blocking condition: none
 - All twelve are addressed and none is declined.
 - Contended files: `Error.cls` is the only file Epic 20 has changed that this story edits, and two of its four edits there are not add-only. `scripts/ci-throwaway.sh` is avoided.
 - Open for the lead at the spec gate: the `REASONAGENTBADBODY` wording, and the edits to `Error.cls` that are not add-only.
+
+**This pass (implement, batch 1).** Batch 1 only; batches 2, 3 and 4 are untouched and unchecked.
+
+- **Changed:**
+  - `src/OcuPilot/Test/ConversationRestore.cls`: the retention-gap test (DW-1233) and the unreadable-proposal-store test (DW-1234), with helpers and a cleanup that removes each marker turn's proposals.
+  - `src/OcuPilot/Test/TurnConversation.cls`: the turn-start close test at the handler (DW-1255).
+  - `src/OcuPilot/Test/ClaimReach.cls`: new, unarmed; six `SitesNaming` token rows (DW-1211).
+  - `src/OcuPilot/Test/ToolWrite.cls`: the five-file claim-gate scan deleted.
+  - `src/OcuPilot/Test/TurnWire.cls`: the wrong `Seq` paragraph replaced by one pointer sentence.
+  - No product code changed.
+- **Review:** 11 findings, 3 patched over 2 root causes (all low: the second DW-1211 mutation, the header wording), none deferred, 8 rejected with their reasons in the triage log. Follow-up review recommended: false.
+- **Verified on `ocupilot-ci`:** Load with 0 errors; each `Batch 1 (loop)` class green in its own call after the patches, read from the runner's `%UnitTest_Result` line (ConversationRestore 3, TurnConversation 11, TurnWire 15, ClaimReach 1, ToolWrite 33, ProposalClose 7, ProposalWire 17; runs 35-41). `check-objectscript.py` 0 problems, `npm run test:tools` 2072 of 2072, `lint-docs.sh` 0 issues. Four `mutation:` lines record the observed reds and the byte-identical reverts.
+- **Residual:** the matrix's "the read logs the failure" is not asserted, because the log is the IRIS console log and no HTTP-visible seam exists. `TurnConversation` is now 511 lines.
