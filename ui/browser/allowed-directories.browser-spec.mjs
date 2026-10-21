@@ -20,7 +20,7 @@ import puppeteer from 'puppeteer';
 import { browserConfig, launchOptions } from '../browser.config.mjs';
 import { loadStrings } from '../tools/strings.mjs';
 import { ROW_SELECTOR, viewCount, waitForRows } from './list-spec.mjs';
-import { authHeader, signedInAt } from './panel-spec.mjs';
+import { authHeader, settleViewport, signedInAt, transitionsSettled } from './panel-spec.mjs';
 import { INVARIANTS, VIEWPORTS, assertThrowaway, collapse, compare, componentMinimums, detectScreen, readBaseline } from './structural-walk.mjs';
 import { allowList as arrangeAllowList, instanceValue as readInstanceValue } from './allow-list-spec.mjs';
 
@@ -145,9 +145,10 @@ test('AC4 (DW-1337): the list passes the structural walk at wide light, narrow l
   try {
     await waitForRows(page, config.navigationTimeoutMs);
     for (const { viewport, theme, checks } of passes) {
-      await page.setViewport(viewport);
+      await settleViewport(page, viewport);
       await page.evaluate((isDark) => document.documentElement.classList.toggle('ocu-theme-dark', isDark), theme === 'dark');
       await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+      await transitionsSettled(page, config.navigationTimeoutMs);
       const { entries } = await detectScreen(page, { route: ROUTE, checks, viewport: viewport.width, theme, minimums });
       found.push(...entries);
     }

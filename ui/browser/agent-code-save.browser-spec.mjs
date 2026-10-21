@@ -20,7 +20,7 @@ import puppeteer from 'puppeteer';
 
 import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
 import { loadStrings } from '../tools/strings.mjs';
-import { signedInAt } from './panel-spec.mjs';
+import { settleViewport, signedInAt, transitionsSettled } from './panel-spec.mjs';
 import { resetGovernancePolicy, resetRememberedState } from './preferences-reset.mjs';
 import { VIEWPORTS } from './structural-walk.mjs';
 import { cardViolations, proposeFromPanel, slotText } from './proposal-card-spec.mjs';
@@ -303,11 +303,8 @@ test('(QA) a long changed line in an opened diff scrolls inside it, widens neith
     await page.click('app-proposal-card .ocu-proposal-card-diff .ocu-long-block-toggle');
     await page.waitForFunction(() => document.querySelector('app-proposal-card .ocu-proposal-card-diff .ocu-long-block-toggle')?.getAttribute('aria-expanded') === 'true', { timeout: config.navigationTimeoutMs });
     for (const viewport of [VIEWPORTS.wide, VIEWPORTS.narrow]) {
-      await page.setViewport(viewport);
-      await page.waitForFunction((width) => {
-        const panel = document.querySelector('app-panel');
-        return panel === null || panel.getBoundingClientRect().right <= width + 1;
-      }, { timeout: 3000 }, viewport.width).catch(() => {});
+      await settleViewport(page, viewport);
+      await transitionsSettled(page, config.navigationTimeoutMs);
       const fit = await page.evaluate(() => {
         const root = document.documentElement;
         const card = document.querySelector('app-proposal-card .ocu-proposal-card').getBoundingClientRect();
@@ -327,7 +324,8 @@ test('(QA) a long changed line in an opened diff scrolls inside it, widens neith
       assert.ok(fit.scrollerRight <= fit.cardRight + 1, `the diff stays inside the card at ${viewport.width}px: ${JSON.stringify(fit)}`);
       assert.ok(fit.scrolls > 100 && ['auto', 'scroll'].includes(fit.overflowX), `the long line scrolls inside the diff at ${viewport.width}px: ${JSON.stringify(fit)}`);
     }
-    await page.setViewport(VIEWPORTS.wide);
+    await settleViewport(page, VIEWPORTS.wide);
+    await transitionsSettled(page, config.navigationTimeoutMs);
     const rows = await page.$$eval('app-proposal-card app-text-diff .ocu-line-diff-line', (nodes) =>
       nodes.map((node) => ({ right: node.getBoundingClientRect().right, text: node.querySelector('.ocu-line-diff-text').getBoundingClientRect().right }))
     );

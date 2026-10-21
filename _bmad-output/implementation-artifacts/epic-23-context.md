@@ -4,7 +4,7 @@
 
 ## Goal
 
-Epic 23 holds the cleanup stories chartered between releases. Each takes an owner-approved slice of the deferred-work ledger and gives every entry a recorded disposition, so the ledger stays honest and the code it names stays right. Stories 23.1 to 23.6 are done. Story 23.11, dispatched now on slot A ahead of 23.7, takes ten entries. The first is the agent's inability to read a large class's view. The rest are two screens that raise a second, wrong alert when the instance is unreachable, fixed heights that clip under a text-only resize, and test-harness defects: literal counts, an assertion that depends on how many rows the instance holds, a browser config that falls back to slot A, 720 px passes that measure before the layout settles, and three flakes. The aim is that the agent can read any class it can list, and that the suites stay green as the product grows or runs on another slot.
+Epic 23 holds the cleanup stories chartered after each release. Each one takes an owner-approved slice of the deferred-work ledger, at most twelve entries, and gives every entry a disposition, so the ledger stays honest and the code it names stays right. Stories 23.1 to 23.6 and 23.11 are done. Story 23.7 is next. It closes twelve medium-severity test gaps and contract mismatches in the kernel, the agent and the ports, so that the behavior each entry describes is pinned by a test that can fail. Stories 23.8 to 23.10 follow it.
 
 ## Stories
 
@@ -14,108 +14,98 @@ Epic 23 holds the cleanup stories chartered between releases. Each takes an owne
 - Story 23.4: The range-end cleanup, part 4 (done)
 - Story 23.5: The range-end cleanup, part 5 (done)
 - Story 23.6: The Haiku-story cleanup (done)
-- Story 23.7: The range-end cleanup, part 6 (backlog)
+- Story 23.7: The range-end cleanup, part 6 (next)
 - Story 23.8: The range-end cleanup, part 7 (backlog)
 - Story 23.9: The range-end cleanup, part 8 (backlog)
 - Story 23.10: The range-end cleanup, part 9: two sweeps (backlog)
-- Story 23.11: The range-end cleanup, part 10 (dispatched)
+- Story 23.11: The range-end cleanup, part 10 (done)
 
 ## Requirements & Constraints
 
 **Every cleanup story.**
 
-- Every owned entry ends with a disposition the ledger tool writes (`bash _bmad/scripts/ledger.sh <ledger> slice|show|append`): `resolved-by` the story with the commit, or `wontfix-accepted` or `by-design` with a reason and any condition that would reopen it. Never read or edit the ledger whole.
-- Each entry is a finding, not a fact. Verify it at head and record it as confirmed, refuted or already fixed.
-- A story takes at most 12 entries, in this priority order: CI flakes, security, repeat occurrences, then the lowest fix-risk (Rule 27).
-- Every fix needs a test that reddens on the defect before the fix, recorded on a Rule 19 `mutation:` line. If no test can, the entry says why.
-- Fixes land in batches by area, each green in CI on its own head, so a failing batch is reopened alone.
-- A fix that contradicts a planning document corrects that document at its origin. A CLAUDE.md line changes only through the Planner, with the owner's OK.
+- The ledger tool writes each owned entry's disposition: `resolved-by` the story with its commit, or `wontfix-accepted` or `by-design` with a reason and any condition that would reopen it. Use `bash _bmad/scripts/ledger.sh <ledger> slice|show|append` and never read the ledger whole.
+- An entry is a finding, not a fact. Verify it at head and record whether it is confirmed, refuted or already fixed.
+- Every fix gets a test that reddens on the defect before the fix, with a Rule 19 `mutation:` line. For an entry that is only a missing test, that means the new pinning test goes red under a mutation of the product code. If no test can go red, the entry says why.
+- Fixes land in batches grouped by area. Each batch needs CI green on its own head, so a failing batch is reopened alone.
+- A change a user can see is named in the plan beside its entry. A fix that contradicts a planning document corrects that document at its origin.
 
-**Story 23.11** (`23-11-the-range-end-cleanup-part-10`): 10 entries. DW-2246 goes in the first batch.
+**Story 23.7's entries, by area** (owner `23-7-the-range-end-cleanup-part-6`)
 
-- **DW-2246.** `explorer.class.read` answers `TOOL.RESULTTOOLARGE` for a large class (`OcuPilot.Port.AdminPort.cls`, about 248 KB).
-  - Measure the cause before fixing it. A test over a class larger than the result cap reddens before the fix and passes after it.
-  - 23.5's plan traced it to the kernel's total bound (inference): the bound measures its base with `rowsSent` 0 but writes the kept count, so a kept set within two characters of the cap is refused.
-- **DW-2449.** On the Guardrails page and a web application's class-access tab, every failed read draws the generic server-fault sentence as `role="alert"`, status 0 included. An unreachable instance therefore shows a second alert, with the wrong sentence, beside the shell's banner. The root cause is DW-1401's, so the fix takes DW-1401's shape.
-- **DW-2439.** About twenty text-bearing controls and rows set a fixed `height` where the height should be a minimum, so a text-only resize clips them. DW-1392 fixed only the System Information row.
-- **DW-2182.** `WireSecurityRead`'s task-history pair-set test asserts that nothing is cut at 1,000 rows, so it reddens on an instance holding more history. Assert the pair-set refusal and a row instead.
-- **DW-2202.** Some tests outside their roster's own test assert literal shared-surface counts.
-  - 23.5's plan found an area count of 11 written out in 7 files, and the entity-type count in the descriptor tests. Its estimate was 15 to 18 sites in all.
-  - Derive each count from the registry, a descriptor or the mirror.
-  - The roster pins stay literal: `SurfaceCoverage`, `EndpointCoverage` and the floor-only roster.
-- **DW-2221.** `browserConfig` falls back to slot A's throwaway when `OCUPILOT_BROWSER_ORIGIN` and `OCUPILOT_BROWSER_CONTAINER` are both unset.
-  - Make it refuse unless both are set. CI sets both per shard, so CI is unaffected.
-  - Update `browser-config.test.mjs` and the browser-run lines in README and DEVELOPMENT.
-  - Report the CLAUDE.md wording the change needs; do not edit CLAUDE.md.
-- **DW-2455.** About 44 of the 81 specs that use the narrow viewport measure right after a bare `setViewport` (a grep count, inference).
-  - Settle the layout before each narrow pass.
-  - Settling can expose an overflow it was hiding, as it exposed DW-2454. Any overflow it exposes gets fixed too.
-- **DW-2458.** `log-viewer.spec.ts` AC6 counts pending fake timers, and it has gone red on node 24 and node 26. This is DW-2415 coming back after Story 20.8's fix.
-  - Drain or clear the timers before the count, on all three Node bands.
-  - Prove the fix with an interval mutation and a self-re-arming-poll mutation.
-- **DW-2460.** `SqlBackgroundJob`'s early-cancel test failed once in a full sweep and passed when re-run.
-- **DW-2462.** `LogTail`'s absent-file test found the file present in a full sweep, and passes alone. The ledger suspects an earlier class leaves the file behind (inference).
+- **Proposal and conversation kernel**
+  - DW-1233: no executing test tells `AttachProposals`' seq join from a join by ordinal. Telling them apart needs a fixture that writes entries out of order.
+  - DW-1234: the conversation read's unreadable-proposal-store degradation is pinned only by a scan of the handler's source.
+  - DW-1255: the proactive close at turn start (`Api.Conversation.HandleCreate`) is driven only through the store, never through the handler.
+  - DW-1211: the rule that no path from a write tool's View reaches the claim is guarded by a five-filename source scan. It needs a tree rule.
+- **Gate, port and ledger**
+  - DW-1306: the class-level port-gate assertions substitute a stub for the gate class. The OR semantics are already pinned by `refused-tool.browser-spec.mjs`.
+  - DW-1258: `AdminPort`'s mutating path (`MUTATINGTYPES`, `HttpMethodFor`, `EndpointType`) has no class-level test.
+  - DW-1308: nothing asserts exactly one refused ledger row per refused call. `DenialParity` asserts only the sentence.
+  - DW-2266: `BackgroundTaskMint` and `EncryptionKeyFileMint` pass a raw U+0001 composite id into `detail.problem`.
+  - DW-1783: on UTC instances, a reversed local-to-UTC conversion in the agent ledger cannot be caught. Fix-risk is high.
+- **Errors and copy**
+  - DW-1170: `REASONAGENTBADBODY` offers "or no body at all" on routes that refuse an absent body. This is user-visible copy.
+  - DW-1377: the gate that checks every field-level code has a published sentence filters on the prefix `AGENT`, so `HELP.*`, `ACCOUNT*` and `PREFERENCES*` escape it.
+- **Provider test fixtures**
+  - DW-1191: `ProviderStub` and `ProviderStubTransport` hold two copies of the scripted transport body. The AD-35 half of this entry is closed.
 
 ## Technical Decisions
 
-- **Read bounds (AD-24, AD-36).**
-  - One declared read serves a screen and its tool. The tool's view is rows only; a document's whole text goes to the screen alone.
-  - The kernel bounds every tool result:
-    - a row cap, 200 by default;
-    - 65,536 characters in total, cut by whole rows from the end;
-    - 1,000 characters a field, a cut value ending in U+2026.
-  - The result reports `rowsSent`, `rowsAvailable`, `truncated` and `truncatedFields`.
-  - The only named field exception is the source reads' 60,000-character whole-line text. The total bound still applies to it, and the tool results of one turn share 262,144 characters.
-  - A fix inside the bound keeps this contract. Paging or cutting the class view changes the contract, so the spine is amended first (Rule 20).
-- **Errors (AD-12, AD-39).**
-  - The envelope is flat: `{error, reason, code, detail}`.
-  - The client classifies a failure's kind with `classifyFault` and `isBannerFault` in `core/fault.ts`. When the kind is one the shell's banner shows, a non-modal surface adds no alert of its own. Other kinds use `FaultBanner`'s in-place mode.
-  - Extend `FaultBanner` rather than copying it (Rule 31). The About dialog is the exception and shows its own alert, because it is modal.
-- **Test hermeticity (Conventions › Tests, Rule 30).**
-  - A test class or spec depends on nothing another left behind, on run order, or on instance age.
-  - A red that depends on how the shards are composed is fixed in the test, never by pinning a test to a shard.
-  - A test asserts on its own rows by marker. A count asserted outside its roster's own test is derived.
-- **Browser harness.** `ui/browser/panel-spec.mjs` shares two waits:
-  - `settleViewport` sets the viewport, waits for `clientWidth`, then waits two frames. It does not wait for the panel's 120 ms width transition.
-  - `transitionsSettled` waits for that transition.
-  - Reuse these two rather than adding another wait.
-- **Client.**
-  - The client is zoneless, signal-based and `OnPush`.
-  - Strings live only in `core/strings.ts`, each with its EXPERIENCE.md row cite and its entry in the Fixed strings table.
-  - Colors come from design tokens only.
-  - The theme is `ocu-theme-dark` on `<html>`, and components never select on it.
-- **Verification (slot A).**
+- **Proposals and confirm.** These come from AD-6, AD-34 and AD-40.
+  - A proposal is server-minted, single-use and fingerprinted, and it expires after 10 minutes.
+  - Confirm is a user-originated request only. It is not a tool, and it refuses whenever the turn's "on behalf of the model" marker is set.
+  - The claim burns the token and commits the write in one atomic transition, under the target's lock. Every gate is evaluated at the write.
+  - A proposal is bound to its turn's lifetime.
+- **Privilege.** This comes from AD-8 and AD-29.
+  - Gates are pair sets of `(resource, permission)`, checked in the calling process at call time and never cached. A denial names the failed pair.
+  - `AdminPort` inherits the vendor's `ResourcesOR()` gate, which is only a lower bound. Every other port checks with `$System.Security.Check` before it calls anything.
+  - A test that proves a denial uses a purpose-built principal, never `%Operator`.
+- **Errors.** This comes from AD-12 and AD-39.
+  - The envelope is flat: `{error, reason, code, detail}`. A `code` is never reworded, while a `reason` may be.
+  - Fixed refusal sentences are written once, on the server, in `Api/Error.cls`.
+  - A field refusal is `detail.violations[] {field, code, reason}`. A field code with no published reason is a defect.
+  - Code families are routed by prefix through `ReasonForViolation` and `ReasonForToolCode`, and Epic 20 is still adding families. A sweep should therefore derive the families rather than list them.
+- **Ledger.** This comes from AD-41 and the Dates convention.
+  - The ledger row is finalized after the write and records what actually ran. Secret-typed fields are excluded when the row is written.
+  - A row's `time` and the audit viewer's criteria are the instance's local time, `YYYY-MM-DD HH:MM:SS`, converted on the instance. `loggedAt` stays in ISO UTC.
+  - `ocupilot-ci` and the CI throwaways run `Etc/UTC`, according to the entry's probe.
+- **Secrets.** This comes from AD-35 and AD-48.
+  - `ProviderPort` never lets a credential reach an exception, a status or a log line.
+  - A test forces a provider failure and checks that the error log, read through `SYS.ApplicationError`, holds no credential.
+- **Composite ids.** These come from AD-13.
+  - Refusal text never carries a raw U+0001. `ErrorDeleteMint.ReadableId` cleans the id, as `SuperserverMint`, `MappingMint` and `WebAppPctAccessMint` already do.
+  - Prefer one shared helper over a fifth copy (Rule 31).
+- **Static checks.**
+  - `scripts/check-objectscript.py` already holds rules of the same shape as DW-1211 needs: `check_restraint_containment` and `check_tool_dispatch`.
+  - Its harness pins the rule count that CLAUDE.md states (21 today) to `CHECKS`. A new rule therefore moves that count.
+- **Tests.**
+  - Every handler gets an HTTP integration test covering status, content type and body shape.
+  - Tests are hermetic: no leftovers, no dependence on run order or on the instance's age. Each asserts on its own rows by marker.
+  - A count asserted outside its own roster test is derived, not written as a literal. Each plan carries a `Shared surfaces:` line.
+- **Verification on slot A.**
   - Every MCP call passes `server: "ocupilot-slot-a"`.
-  - The throwaway is `ocupilot-ci` (52776/1975). This runner brings it up and tears it down at its close.
-  - Every browser command sets both browser variables inline.
+  - The throwaway is `ocupilot-ci` (52776/1975).
   - Run one ObjectScript test class per call, and take totals from `%UnitTest_Result`.
-  - Rebuild and redeploy the bundle before reading any browser result. Check geometry in both themes.
-  - Rule 29: the implement stage runs only the targeted classes and specs. The full ObjectScript sweep runs once, before `dev_complete`.
-  - Rule 30: because the story touches many screens, the fresh check runs the full browser suite before the push.
+  - Rule 29: the `(loop)` set is the story's own classes. The full ObjectScript sweep runs once, before `dev_complete`, and the full browser suite is left to CI.
+  - Rule 30: run the fresh check, forward and then in reverse, before the push.
 - **Prose and Git.**
-  - Comments state the contract and never narrate stories, runs or mutations. Non-ASCII characters are written as `\uXXXX` escapes.
+  - Comments state the contract and never narrate. Non-ASCII characters are written as `\uXXXX` escapes.
   - Stage by path.
-  - Push the code head alone, without `[skip ci]`, and confirm its run by `headSha`.
+  - Push the code head alone, without `[skip ci]`.
   - Never touch `main` or a release branch.
 
 ## UX & Interaction Patterns
 
-- **Reflow.** Every height is a `min-height`, except the rows of the virtualized `data-table` and `log-viewer`. A text-only zoom grows a row and never clips it.
-  - DW-1392's test shape: double the caption and body type-size and line-height tokens on `documentElement`, wait two frames, then assert `scrollHeight <= clientHeight + 1`, in light and in dark.
-- **Unreachable instance.** Exactly one banner, `role="alert"`, at the top of the content: "The instance is unreachable. Check that IRIS is running, then retry.", with Retry.
-- **Generic error (5xx).** "Something failed on the instance. Retry; if it keeps failing, check messages.log.", as `role="alert"`, with Retry and Open messages.log.
-- **A 403.** An inline alert names the missing resource, and the screen's data stays.
-- **Narrow width.** At 720 px (a 1,440 px laptop at 200% zoom), the panel settles at its 320 px minimum, and the page never scrolls sideways.
+- The server's refusal sentence is what a person reads under the field or in the panel. Rewording `REASONAGENTBADBODY` (DW-1170) is therefore a visible change: the plan names the new wording, and the machine `code` stays unchanged.
 
 ## Cross-Story Dependencies
 
-- **Order.** 23.11 runs alone on slot A, ahead of 23.7. Stories 23.7, 23.8, 23.9 and 23.10 follow it; this dispatch does not touch them. Implement runs on Sonnet.
-- **Epic 20 alongside.** Epic 20 runs at the same time on slot B, from Story 20.9 on (interoperability messages and the analytics rider).
-  - Most of DW-2202's sites are in Epic 20's tests. `strings.ts`, `screen-actions.ts` and the interop areas are the likely contended files.
-  - Check Epic 20's diff before editing any of them (Rule 11). An add-only edit is fine; anything else asks the orchestrator.
-  - Forward-merge before implement and at each boundary. Regenerate `screens.generated.ts` after a merge; never hand-merge it.
-- **What 23.11 builds on.**
-  - DW-2449 and DW-2439 follow Story 23.5's DW-1401 and DW-1392 fixes.
-  - DW-2455 uses 23.5's settle helpers.
-  - DW-2458 follows Story 20.8's fix for DW-2415. Read that entry's remaining risk: a real timer that re-arms for the worker's whole life.
-- **Files this story does not edit.** `_bmad/custom/*.yaml` and `CLAUDE.md` belong to the orchestrator and the Planner. Report any change they need.
+- **Order.** Story 23.7 runs on slot A. Stories 23.8, 23.9 and 23.10 follow it in that order, each filling a slot that would otherwise sit idle.
+- **Integrate forward first.** The feature branch (`fa0dd517`) carries Story 23.11's batch c, so integrate forward before implement and again at each batch boundary.
+- **Epic 20 alongside.** Epic 20 runs at the same time on slot B.
+  - When this context was compiled, Epic 20's branch held edits not yet on feature to three files: `Api/Error.cls` (a new `ANALYTICS.` family in both reason routers), `scripts/ci-throwaway.sh` and `Kernel/EntityType.cls`.
+  - These are likely contended with DW-1170, DW-1377 and DW-1783 (inference).
+  - Rule 11: check Epic 20's diff before editing any of these files. An add-only edit is fine; anything else goes to the orchestrator.
+- **CLAUDE.md.** DW-1211's new rule makes CLAUDE.md's rule count stale in the same commit. A CLAUDE.md line changes only through the Planner, with the owner's OK, so report the wording the change needs. `_bmad/custom/*.yaml` belongs to the orchestrator.
+- **DW-1783 needs a non-UTC instance.** Pinning it needs one run on a throwaway started in a non-UTC time zone, which means a change to `ci-throwaway.sh` or to CI. If neither fits, the entry takes a disposition that says why no test can go red.
+- **DW-2266 builds on Story 23.6.** It repeats the root cause of Story 23.6's `WebAppPctAccessMint` fix (18.10 item 1). Extend that fix rather than adding another copy.

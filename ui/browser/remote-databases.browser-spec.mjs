@@ -43,7 +43,7 @@ import { LIVE_CONTAINER, browserConfig, launchOptions } from '../browser.config.
 import { FILTER_SELECTOR, ROW_SELECTOR, clickRowCentre, waitForRows } from './list-spec.mjs';
 import { signedInAt } from './panel-spec.mjs';
 import { INVARIANTS, VIEWPORTS, assertThrowaway, collapse, compare, componentMinimums, detectScreen, readBaseline } from './structural-walk.mjs';
-import { sideBarLabels } from './side-bar-spec.mjs';
+import { assertDrawnAtDeclaredIndex, sideBarLabels } from './side-bar-spec.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const repoRoot = join(uiRoot, '..');
@@ -292,14 +292,14 @@ async function assertStructure(page, route, dialog = false) {
 
 // AC1, AC8. Mutation (Rule 19): give RemoteDatabaseList `sideBarPosition` 0 and regenerate the
 // mirror, rebuild and redeploy -> the side-bar assertion goes red.
-test('AC1, AC8: Remote databases is the twelfth OS management entry and lists the seeded configuration with its data server', async () => {
+test('AC1, AC8: Remote databases is an OS management entry and lists the seeded configuration with its data server', async () => {
   const { context, page } = await signedInAt(browser, config, LIST_URL, VIEWPORTS.wide);
   try {
     await waitForRows(page, config.navigationTimeoutMs);
     const bar = await sideBarOf(page);
     assert.equal(bar.area, STRINGS.navAreaOsManagement);
     assert.deepEqual(bar.entries, sideBarLabels('os-management'), 'the OS management entries in their declared order');
-    assert.equal(bar.entries[11], STRINGS.remoteDatabaseListLabel, 'Remote databases is the twelfth');
+    assertDrawnAtDeclaredIndex(bar.entries, 'os-management', STRINGS.remoteDatabaseListLabel);
     const headers = await page.$$eval('.ocu-data-table-header-label', (labels) => labels.map((label) => label.textContent.trim()));
     assert.deepEqual(headers.slice(0, 4), [STRINGS.tableColumnName, STRINGS.remoteDatabaseServer, STRINGS.lockColumnDirectory, STRINGS.taskHistoryColumnStatus]);
     assert.deepEqual(await rowCells(page, REMOTE), [REMOTE, SERVER, REMOTE_DIRECTORY], 'the row shows its data server and directory');

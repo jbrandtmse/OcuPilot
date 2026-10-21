@@ -38,7 +38,7 @@ import puppeteer from 'puppeteer';
 import { LIVE_CONTAINER, browserConfig, launchOptions } from '../browser.config.mjs';
 import { signedInAt } from './panel-spec.mjs';
 import { INVARIANTS, VIEWPORTS, assertThrowaway, collapse, compare, componentMinimums, detectScreen, readBaseline } from './structural-walk.mjs';
-import { sideBarLabels } from './side-bar-spec.mjs';
+import { assertDrawnAtDeclaredIndex, sideBarLabels } from './side-bar-spec.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const repoRoot = join(uiRoot, '..');
@@ -212,14 +212,14 @@ async function openActivate(page) {
 
 // B8. Mutation (Rule 19): give DataElementEncryption `sideBarPosition` 0 and regenerate the mirror,
 // rebuild and redeploy -> the side-bar assertion goes red.
-test('B1, B8: Database encryption and Data element encryption are the ninth and tenth Security entries, state no active key, and pass DW-1337', async () => {
+test('B1, B8: Database encryption and Data element encryption are Security entries, state no active key, and pass DW-1337', async () => {
   const { context, page } = await signedInAt(browser, config, `/ocupilot/${DATABASE_ROUTE}?ns=HSCUSTOM`, VIEWPORTS.wide);
   try {
     const bar = await sideBarOf(page);
     assert.equal(bar.area, STRINGS.navAreaSecurity);
     assert.deepEqual(bar.entries, sideBarLabels('security'), 'the Security entries in their declared order');
-    assert.equal(bar.entries[8], STRINGS.databaseEncryptionLabel, 'Database encryption is the ninth');
-    assert.equal(bar.entries[9], STRINGS.dataElementEncryptionLabel, 'Data element encryption is the tenth');
+    assertDrawnAtDeclaredIndex(bar.entries, 'security', STRINGS.databaseEncryptionLabel);
+    assertDrawnAtDeclaredIndex(bar.entries, 'security', STRINGS.dataElementEncryptionLabel);
     await page.waitForSelector('[data-encryption-keys="empty"]', { visible: true, timeout: config.navigationTimeoutMs });
     assert.equal(await page.$eval('[data-encryption-keys="empty"]', (node) => node.textContent.trim()), STRINGS.databaseEncryptionEmpty, 'no database key is listed, as the instance holds none');
     await assertStructure(page, DATABASE_ROUTE);

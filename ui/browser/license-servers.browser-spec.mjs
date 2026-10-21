@@ -36,7 +36,7 @@ import { LIVE_CONTAINER, browserConfig, launchOptions } from '../browser.config.
 import { FILTER_SELECTOR, ROW_SELECTOR, clickRowCentre, waitForRows } from './list-spec.mjs';
 import { signedInAt } from './panel-spec.mjs';
 import { INVARIANTS, VIEWPORTS, assertThrowaway, collapse, compare, componentMinimums, detectScreen, readBaseline } from './structural-walk.mjs';
-import { sideBarLabels } from './side-bar-spec.mjs';
+import { assertDrawnAtDeclaredIndex, sideBarLabels } from './side-bar-spec.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const { STRINGS } = await import(join(uiRoot, 'src', 'app', 'core', 'strings.ts'));
@@ -241,7 +241,7 @@ test('A6: a create with port 0 is refused on the Port field and nothing reaches 
 
 // A7. Mutation (Rule 19): give LicenseServerList `sideBarPosition` 0 and regenerate the mirror,
 // rebuild and redeploy -> the side-bar assertion goes red.
-test('A7: License servers is the sixteenth OS management entry, lists its four columns, and passes DW-1337', async () => {
+test('A7: License servers is an OS management entry, lists its four columns, and passes DW-1337', async () => {
   const { context, page } = await signedInAt(browser, config, LIST_URL, VIEWPORTS.wide);
   try {
     await page.waitForSelector('.ocu-data-table-header-label', { visible: true, timeout: config.navigationTimeoutMs });
@@ -249,7 +249,7 @@ test('A7: License servers is the sixteenth OS management entry, lists its four c
     assert.equal(bar.area, STRINGS.navAreaOsManagement);
     // Story 18.20: ECP data servers follows it, and Story 18.21's two follow that.
     assert.deepEqual(bar.entries, sideBarLabels('os-management'), 'the OS management entries in their declared order');
-    assert.equal(bar.entries[15], STRINGS.licenseServerListLabel, 'License servers is the sixteenth');
+    assertDrawnAtDeclaredIndex(bar.entries, 'os-management', STRINGS.licenseServerListLabel);
     const headers = await page.$$eval('.ocu-data-table-header-label', (labels) => labels.map((label) => label.textContent.trim()));
     assert.deepEqual(headers.slice(0, 4), [STRINGS.tableColumnName, STRINGS.languageServerFieldAddress, STRINGS.sslTestPort, STRINGS.licenseServerKeyDirectory]);
     await assertStructure(page, LIST_ROUTE);

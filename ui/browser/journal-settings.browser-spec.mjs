@@ -34,7 +34,7 @@ import puppeteer from 'puppeteer';
 import { LIVE_CONTAINER, browserConfig, launchOptions } from '../browser.config.mjs';
 import { saveAndSettle, signedInAt } from './panel-spec.mjs';
 import { INVARIANTS, VIEWPORTS, assertThrowaway, collapse, compare, componentMinimums, detectScreen, readBaseline } from './structural-walk.mjs';
-import { sideBarLabels } from './side-bar-spec.mjs';
+import { assertDrawnAtDeclaredIndex, sideBarLabels } from './side-bar-spec.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const repoRoot = join(uiRoot, '..');
@@ -219,7 +219,7 @@ async function assertStructure(page, route) {
 
 // AC1, AC9. Mutation (Rule 19): give JournalSettings `sideBarPosition` 0 and regenerate the mirror,
 // rebuild and redeploy -> the side-bar assertion goes red.
-test('AC1, AC9: Journal settings is the fourteenth OS management entry and shows the thirteen settings, three read-only with the shown-only hint', async () => {
+test('AC1, AC9: Journal settings is an OS management entry and shows the thirteen settings, three read-only with the shown-only hint', async () => {
   const { context, page } = await signedInAt(browser, config, URL_AT, VIEWPORTS.wide);
   try {
     await formDrawn(page);
@@ -228,8 +228,8 @@ test('AC1, AC9: Journal settings is the fourteenth OS management entry and shows
     // Story 18.6: License key and License servers follow it; Story 18.20: ECP data servers follows them,
     // and Story 18.21: ECP settings and ECP application servers follow that.
     assert.deepEqual(bar.entries, sideBarLabels('os-management'), 'the OS management entries in their declared order');
-    assert.equal(bar.entries[12], STRINGS.journalListLabel, 'Journals is the thirteenth');
-    assert.equal(bar.entries[13], STRINGS.journalSettingsLabel, 'Journal settings is the fourteenth');
+    assertDrawnAtDeclaredIndex(bar.entries, 'os-management', STRINGS.journalListLabel);
+    assertDrawnAtDeclaredIndex(bar.entries, 'os-management', STRINGS.journalSettingsLabel);
     for (const id of FIELD_IDS) assert.notEqual(await page.$(id), null, `${id} is drawn`);
     assert.equal(await page.$eval('#ocu-journal-settings-CurrentDirectory', (input) => input.value), found.settings.CurrentDirectory, 'the primary directory the instance holds');
     assert.equal(await page.$eval('#ocu-journal-settings-FileSizeLimit', (input) => input.value), found.settings.FileSizeLimit, 'and its file size');

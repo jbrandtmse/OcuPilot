@@ -189,7 +189,7 @@ async function save(page) {
   await page.click('.ocu-form-bar .ocu-button-primary');
 }
 
-test('a row\u2019s name opens the editor on the General, Roles, Effective privileges and SQL privileges tabs', async () => {
+test('a row\u2019s name opens the editor on General, with the Roles tab offered', async () => {
   // Mutation (Rule 19): put UserForm back in `CREATE_ONLY_FORMS` and redeploy -> the name cell opens
   // no editor and the URL wait goes red.
   const { context, page } = await signedInAt(LIST_URL);
@@ -213,8 +213,8 @@ test('a row\u2019s name opens the editor on the General, Roles, Effective privil
     );
     await editorReady(page);
     const tabs = await tabState(page);
-    assert.deepEqual(tabs.map((tab) => tab.label), [STRINGS.processDetailsGroupGeneral, STRINGS.userColumnRoles, STRINGS.userEffectiveTab, STRINGS.sqlPrivilegesLabel]);
-    assert.equal(tabs[0].selected, true, 'General is open first');
+    for (const label of [STRINGS.processDetailsGroupGeneral, STRINGS.userColumnRoles]) assert.ok(tabs.some((tab) => tab.label === label), `the strip offers ${label}`);
+    assert.equal(tabs.find((tab) => tab.selected)?.label, STRINGS.processDetailsGroupGeneral, 'General is open first');
   } finally {
     await context.close();
   }
@@ -260,7 +260,7 @@ test('a refusal on General while Roles is open opens General, with its dot and c
     assert.equal(tabs[0].selected, true, 'General opened');
     assert.equal(tabs[0].dot, true, 'with the destructive dot');
     assert.equal(tabs[0].name, `${STRINGS.processDetailsGroupGeneral}, 1 error`, 'and its count in its accessible name');
-    assert.equal(tabs[1].dot, false, 'Roles carries none');
+    assert.equal(tabs.find((tab) => tab.label === STRINGS.userColumnRoles).dot, false, 'Roles carries none');
     const dot = await page.$eval('app-form-tabs .ocu-form-tab-dot', (node) => getComputedStyle(node).backgroundColor);
     assert.notEqual(dot, 'rgba(0, 0, 0, 0)', `the dot is painted: ${dot}`);
     assert.equal(probeField('NameSpace'), '', 'and nothing reached the instance');

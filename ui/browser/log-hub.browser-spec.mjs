@@ -22,7 +22,7 @@ import puppeteer from 'puppeteer';
 
 import { LIVE_CONTAINER, browserConfig, launchOptions } from '../browser.config.mjs';
 import { loadStrings } from '../tools/strings.mjs';
-import { authHeader, signedInAt } from './panel-spec.mjs';
+import { authHeader, settleViewport, signedInAt, transitionsSettled } from './panel-spec.mjs';
 import { SECONDARY_MARKER, removeSecondaryLogs, seedSecondaryLogs } from './secondary-log-spec.mjs';
 import { INVARIANTS, VIEWPORTS, assertThrowaway, collapse, compare, componentMinimums, detectScreen, readBaseline } from './structural-walk.mjs';
 import {
@@ -422,9 +422,10 @@ test('AC10 (DW-1337): the hub passes the structural walk at wide light, narrow l
   try {
     await waitForTimelineText(page, `${SECONDARY_MARKER} eventlog entry`);
     for (const { viewport, theme, checks } of passes) {
-      await page.setViewport(viewport);
+      await settleViewport(page, viewport);
       await page.evaluate((isDark) => document.documentElement.classList.toggle('ocu-theme-dark', isDark), theme === 'dark');
       await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+      await transitionsSettled(page, config.navigationTimeoutMs);
       const { entries } = await detectScreen(page, { route: 'logs/hub', checks, viewport: viewport.width, theme, minimums });
       found.push(...entries);
     }

@@ -27,7 +27,7 @@ import puppeteer from 'puppeteer';
 import { LIVE_CONTAINER, browserConfig, launchOptions } from '../browser.config.mjs';
 import { FILTER_SELECTOR, ROW_SELECTOR, clickRowCentre } from './list-spec.mjs';
 import { signedInAt } from './panel-spec.mjs';
-import { sideBarLabels } from './side-bar-spec.mjs';
+import { assertDrawnAtDeclaredIndex, sideBarLabels } from './side-bar-spec.mjs';
 import { assertThrowaway } from './structural-walk.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -114,7 +114,7 @@ after(async () => {
 
 // Mutation (Rule 19): drop the entry from the Web applications area's declared list, regenerate, rebuild and
 // redeploy -> the label assertion goes red.
-test('C6: Web applications lists Doc DB applications fourth and its entry opens the list', async () => {
+test('C6: Web applications lists Doc DB applications and its entry opens the list', async () => {
   const { context, page } = await signedInAt(browser, config, LIST_URL);
   try {
     if ((await page.$('app-side-bar nav.ocu-side-bar')) === null) {
@@ -125,7 +125,7 @@ test('C6: Web applications lists Doc DB applications fourth and its entry opens 
     await page.waitForSelector('app-side-bar nav.ocu-side-bar', { timeout: config.navigationTimeoutMs });
     const labels = await page.$$eval('app-side-bar .ocu-side-bar-item .ocu-side-bar-label', (nodes) => nodes.map((node) => node.textContent.trim()));
     assert.deepEqual(labels, sideBarLabels('web-applications'), 'the side bar lists its entries in their declared order');
-    assert.equal(labels[3], STRINGS.docDbAppListLabel, 'Doc DB applications is the fourth');
+    assertDrawnAtDeclaredIndex(labels, 'web-applications', STRINGS.docDbAppListLabel);
     await page.goto(`${config.origin}/ocupilot/web-applications/list?ns=HSCUSTOM`, { waitUntil: 'networkidle2' });
     await page.evaluate((label) => {
       Array.from(document.querySelectorAll('app-side-bar .ocu-side-bar-item')).find((item) => item.textContent.trim() === label).click();

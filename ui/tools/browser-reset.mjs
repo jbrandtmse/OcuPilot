@@ -225,7 +225,8 @@ function parameterListEnd(code, openParen) {
 }
 
 /**
- * The top-level function units in `code`, as `[{ name, body }]`. Arrow consts count.
+ * The top-level function units in `code`, as `[{ name, index, body }]`, `index` being where the
+ * declaration starts. Arrow consts count.
  *
  * A `function NAME(` match ends at the parameter list's own `(`, and a destructured or defaulted
  * parameter puts a `{` inside that list -- so the body brace is the first one after the list
@@ -234,7 +235,7 @@ function parameterListEnd(code, openParen) {
  * scans to nothing: an exported helper written that way resolves to `{creates:false}` and every
  * spec importing it is charged zero contexts and waved through.
  */
-function functionUnits(code) {
+export function functionUnits(code) {
   const units = [];
   const pattern = /(?:export\s+)?(?:async\s+)?function\s+([A-Za-z0-9_$]+)\s*\(|(?:export\s+)?const\s+([A-Za-z0-9_$]+)\s*=\s*(?:async\s*)?\([^)]*\)\s*=>\s*\{/g;
   let match = pattern.exec(code);
@@ -261,7 +262,7 @@ function functionUnits(code) {
           }
         }
       }
-      if (end !== -1) units.push({ name, body: code.slice(open, end + 1) });
+      if (end !== -1) units.push({ name, index: match.index, body: code.slice(open, end + 1) });
     }
     match = pattern.exec(code);
   }

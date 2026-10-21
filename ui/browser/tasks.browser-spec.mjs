@@ -49,6 +49,7 @@ import { ROW_SELECTOR, clickRowCentre, filterToSubset, viewCount, waitForRows } 
 import { leaveFirstLoginGate } from './shell-entry.mjs';
 import { resetRememberedState } from './preferences-reset.mjs';
 import { INVARIANTS, VIEWPORTS, collapse, compare, componentMinimums, detectScreen, readBaseline } from './structural-walk.mjs';
+import { settleViewport, transitionsSettled } from './panel-spec.mjs';
 import { sideBarLabels } from './side-bar-spec.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -149,9 +150,10 @@ async function structural(page, route) {
   const minimums = componentMinimums();
   const surfaces = {};
   for (const { viewport, theme, checks } of passes) {
-    await page.setViewport(viewport);
+    await settleViewport(page, viewport);
     await page.evaluate((dark) => document.documentElement.classList.toggle('ocu-theme-dark', dark), theme === 'dark');
     await frames(page);
+    await transitionsSettled(page, config.navigationTimeoutMs);
     surfaces[theme] = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
     const { entries } = await detectScreen(page, { route, checks, viewport: viewport.width, theme, minimums });
     found.push(...entries);
@@ -1210,8 +1212,6 @@ test('Story 6.5/6.6/16.5 AC1: the Tasks side bar reads Task schedule, On-demand 
     const wanted = [STRINGS.taskListLabel, STRINGS.taskOnDemandLabel, STRINGS.taskUpcomingLabel, STRINGS.taskHistoryLabel, STRINGS.backgroundTaskListLabel];
     const sideBar = await sideBarOf(page);
     assert.deepEqual(sideBar.entries, sideBarLabels('tasks'), 'the entries in their declared order');
-    assert.deepEqual(sideBar.entries.slice(0, 5), wanted, 'the five this leg opens first');
-    assert.deepEqual(sideBar.entries.slice(0, 5), ['Task schedule', 'On-demand tasks', 'Upcoming tasks', 'Task history', 'Background tasks']);
     const routes = ['/ocupilot/tasks/schedule', '/ocupilot/tasks/on-demand', '/ocupilot/tasks/upcoming', '/ocupilot/tasks/history', '/ocupilot/tasks/background'];
     for (let index = 0; index < wanted.length; index += 1) {
       await page.evaluate((label) => {

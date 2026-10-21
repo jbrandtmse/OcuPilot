@@ -38,6 +38,7 @@ import puppeteer from 'puppeteer';
 import { LIVE_CONTAINER, browserConfig, launchOptions } from '../browser.config.mjs';
 import { FILTER_SELECTOR, ROW_SELECTOR, clickRowCentre, waitForRows } from './list-spec.mjs';
 import { authHeader, saveAndSettle, signedInAt } from './panel-spec.mjs';
+import { assertDrawnAtDeclaredIndex, sideBarLabels } from './side-bar-spec.mjs';
 import { INVARIANTS, VIEWPORTS, assertThrowaway, collapse, compare, componentMinimums, detectScreen, readBaseline } from './structural-walk.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -367,7 +368,7 @@ async function assertStructure(page, route, dialog = false) {
 
 // AC1. Mutation (Rule 19): give NamespaceList `sideBarPosition` 0, regenerate the mirror, rebuild and
 // redeploy -> the side-bar assertion goes red; so does DatabaseIntegrityLog back at 0 (Story 18.17).
-test('AC1: Namespaces is the seventh OS management entry, after Devices, and HSCUSTOM and USER show the databases the instance holds', async () => {
+test('AC1: Namespaces is an OS management entry, and HSCUSTOM and USER show the databases the instance holds', async () => {
   const hscustom = stored('HSCUSTOM');
   const user = stored('USER');
   assert.ok(hscustom !== null && user !== null, 'the instance holds both namespaces');
@@ -376,15 +377,9 @@ test('AC1: Namespaces is the seventh OS management entry, after Devices, and HSC
     await waitForRows(page, config.navigationTimeoutMs);
     const bar = await sideBarOf(page);
     assert.equal(bar.area, STRINGS.navAreaOsManagement);
-    assert.deepEqual(bar.entries.slice(0, 7), [
-      STRINGS.processListLabel,
-      STRINGS.lockListLabel,
-      STRINGS.systemUsageLabel,
-      STRINGS.databaseListLabel,
-      STRINGS.databaseIntegrityLogLabel,
-      STRINGS.deviceListLabel,
-      STRINGS.namespaceListLabel,
-    ]);
+    assert.deepEqual(bar.entries.slice(0, 7), sideBarLabels('os-management').slice(0, 7), 'the leading OS management entries in their declared order');
+    assertDrawnAtDeclaredIndex(bar.entries, 'os-management', STRINGS.namespaceListLabel);
+    assertDrawnAtDeclaredIndex(bar.entries, 'os-management', STRINGS.databaseIntegrityLogLabel);
     const headers = await page.$$eval('.ocu-data-table-header-label', (labels) => labels.map((label) => label.textContent.trim()));
     assert.deepEqual(headers.slice(0, 4), [STRINGS.tableColumnName, STRINGS.namespaceColumnGlobals, STRINGS.namespaceColumnRoutines, STRINGS.namespaceColumnTemp]);
     assert.deepEqual(await rowCells(page, 'HSCUSTOM'), ['HSCUSTOM', hscustom.Globals, hscustom.Routines, hscustom.TempGlobals]);

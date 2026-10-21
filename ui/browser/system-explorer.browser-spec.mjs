@@ -24,7 +24,9 @@ import { ROW_SELECTOR, clickRowCentre, waitForRows } from './list-spec.mjs';
 import { resetRememberedState } from './preferences-reset.mjs';
 import { appliedAreas, readNamespaceFeatures, tileAreasOf, waitForMapAnswered } from './namespace-features.mjs';
 import { leaveFirstLoginGate } from './shell-entry.mjs';
+import { sideBarLabels } from './side-bar-spec.mjs';
 import { INVARIANTS, VIEWPORTS, assertThrowaway, collapse, compare, componentMinimums, detectScreen, readBaseline } from './structural-walk.mjs';
+import { settleViewport, transitionsSettled } from './panel-spec.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const { encodeEntityId } = await import(join(uiRoot, 'src', 'app', 'core', 'entity-id.ts'));
@@ -97,9 +99,10 @@ async function structural(page, route) {
   const minimums = componentMinimums();
   const surfaces = {};
   for (const { viewport, theme, checks } of passes) {
-    await page.setViewport(viewport);
+    await settleViewport(page, viewport);
     await page.evaluate((dark) => document.documentElement.classList.toggle('ocu-theme-dark', dark), theme === 'dark');
     await frames(page);
+    await transitionsSettled(page, config.navigationTimeoutMs);
     surfaces[theme] = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
     const { entries } = await detectScreen(page, { route, checks, viewport: viewport.width, theme, minimums });
     found.push(...entries);
@@ -117,7 +120,7 @@ async function view(page, key) {
   await page.waitForFunction((k) => document.querySelector(`[data-ocu-source-view="${k}"]`)?.getAttribute('aria-pressed') === 'true', {}, key);
 }
 
-test('AC4: System Explorer is the eighth rail item with its own icon, Home draws its tile, and the command box finds both lists', async () => {
+test('AC4: System Explorer is a rail item with its own icon, Home draws its tile, and the command box finds both lists', async () => {
   const { context, page } = await at('/ocupilot/?ns=HSCUSTOM');
   try {
     await waitForMapAnswered(page, config.navigationTimeoutMs);
@@ -129,9 +132,9 @@ test('AC4: System Explorer is the eighth rail item with its own icon, Home draws
       items.map((item) => ({ label: item.getAttribute('aria-label'), shapes: item.querySelectorAll('svg > *').length }))
     );
     assert.equal(rail.length, applied.length, `a rail item per applying area: ${JSON.stringify(rail)}`);
-    assert.equal(explorerIndex, 7, 'System Explorer keeps the eighth position');
-    assert.equal(rail[explorerIndex].label, STRINGS.navAreaSystemExplorer, 'the eighth is System Explorer, after Security and secrets');
-    assert.equal(rail[explorerIndex - 1].label, STRINGS.navAreaSecurity);
+    assert.ok(explorerIndex > 0, 'System Explorer applies in HSCUSTOM, after at least one other area');
+    assert.equal(rail[explorerIndex].label, STRINGS.navAreaSystemExplorer, 'System Explorer is drawn at its declared rail position');
+    assert.equal(rail[explorerIndex - 1].label, STRINGS[applied[explorerIndex - 1].labelKey], 'and the item before it is the area declared before it');
     assert.equal(rail[explorerIndex].shapes, 3, 'drawn with its own three-shape icon');
     const bottom = await page.$eval('.ocu-rail-slot-bottom .ocu-rail-item', (item) => item.getAttribute('aria-label'));
     assert.equal(bottom, STRINGS.navAreaAgent, 'Agent co-pilot stays pinned at the bottom');
@@ -141,8 +144,8 @@ test('AC4: System Explorer is the eighth rail item with its own icon, Home draws
     assert.equal(tiles.length, tileAreasOf(applied).length, `a tile per applying area: ${JSON.stringify(tiles)}`);
     assert.equal(
       tiles[tileIndex],
-      `${STRINGS.navAreaSystemExplorer}${[STRINGS.explorerClassListLabel, STRINGS.explorerRoutineListLabel, STRINGS.auditCriteriaSearch, STRINGS.explorerCompareLabel, STRINGS.explorerMacroLabel, STRINGS.explorerSqlSchemasLabel, STRINGS.explorerSqlTablesLabel, STRINGS.explorerSqlViewsLabel, STRINGS.explorerSqlProceduresLabel, STRINGS.explorerSqlQueryLabel, STRINGS.explorerSqlDataLabel, STRINGS.explorerDocDbListLabel].join('\u00b7')}`.replace(/\s+/g, ''),
-      'the System Explorer tile is captioned by its twelve listed screens (Stories 19.4, 19.5, 19.6, 19.7 and 19.17)'
+      `${STRINGS.navAreaSystemExplorer}${sideBarLabels('system-explorer').join('\u00b7')}`.replace(/\s+/g, ''),
+      'the System Explorer tile is captioned by its listed screens'
     );
 
     // Words only an alias carries: neither list's label nor route holds them.

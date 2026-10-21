@@ -10,6 +10,7 @@
  * TypeScript sources as `gate.browser-spec.mjs` imports `STRINGS` and `SCREENS`.
  */
 
+import assert from 'node:assert/strict';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -20,6 +21,19 @@ const { listedScreensForArea } = await import(join(uiRoot, 'src', 'app', 'core',
 /** The labels `areaKey`'s side bar lists, in side-bar order. */
 export function sideBarLabels(areaKey) {
   return listedScreensForArea(areaKey).map((screen) => STRINGS[screen.labelKey]);
+}
+
+/**
+ * Assert that `label` is one of `areaKey`'s declared side-bar entries and that `drawn`, the labels the
+ * page draws in order, carries it at the index the declaration gives it. A spec that names one entry's
+ * place calls this in place of a literal index, so an entry added ahead of it moves both sides together.
+ * Answers that index.
+ */
+export function assertDrawnAtDeclaredIndex(drawn, areaKey, label) {
+  const at = sideBarLabels(areaKey).indexOf(label);
+  assert.ok(at >= 0, `"${label}" is declared in the ${areaKey} side bar`);
+  assert.equal(drawn[at], label, `"${label}" is drawn at its declared index ${at} of the ${areaKey} side bar`);
+  return at;
 }
 
 /**

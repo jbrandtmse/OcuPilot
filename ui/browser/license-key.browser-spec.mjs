@@ -35,7 +35,7 @@ import puppeteer from 'puppeteer';
 import { LIVE_CONTAINER, browserConfig, launchOptions } from '../browser.config.mjs';
 import { signedInAt } from './panel-spec.mjs';
 import { INVARIANTS, VIEWPORTS, assertThrowaway, collapse, compare, componentMinimums, detectScreen, readBaseline } from './structural-walk.mjs';
-import { sideBarLabels } from './side-bar-spec.mjs';
+import { assertDrawnAtDeclaredIndex, sideBarLabels } from './side-bar-spec.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const repoRoot = join(uiRoot, '..');
@@ -210,7 +210,7 @@ async function assertStructure(page, route, dialog = false) {
 
 // A1, A7. Mutation (Rule 19): give LicenseKey `sideBarPosition` 0 and regenerate the mirror, rebuild
 // and redeploy -> the side-bar assertion goes red.
-test('A1, A7: License key is the fifteenth OS management entry, shows the thirteen fields and never the authorization key, and passes DW-1337', async () => {
+test('A1, A7: License key is an OS management entry, shows the thirteen fields and never the authorization key, and passes DW-1337', async () => {
   const { context, page } = await signedInAt(browser, config, URL_AT, VIEWPORTS.wide);
   try {
     await fieldsDrawn(page);
@@ -218,7 +218,7 @@ test('A1, A7: License key is the fifteenth OS management entry, shows the thirte
     assert.equal(bar.area, STRINGS.navAreaOsManagement);
     // Story 18.20: ECP data servers follows License servers, and Story 18.21's two follow it.
     assert.deepEqual(bar.entries, sideBarLabels('os-management'), 'the OS management entries in their declared order');
-    assert.equal(bar.entries[14], STRINGS.licenseKeyLabel, 'License key is the fifteenth');
+    assertDrawnAtDeclaredIndex(bar.entries, 'os-management', STRINGS.licenseKeyLabel);
     const labels = await page.$$eval('[data-license="fields"] .ocu-details-field-label', (nodes) => nodes.map((node) => node.textContent.trim()));
     assert.deepEqual(labels, [
       STRINGS.licenseKeyLicenseCapacity,
