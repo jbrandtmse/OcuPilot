@@ -1117,3 +1117,6 @@
 2026-10-21T19:01:18Z	Story 20.33	spine_updated	ad=AD-42(text_correction_to_match_its_2026-10-14_amendment) reason=correction_at_origin by=runner story=20-33 lint=ok(preexisting_low_placeholder_line215_only) memlog=appended(490)
 2026-10-21T19:01:18Z	Story 20.33	ledger_adjudicated	owned=1 resolved=1(DW-2489) reowned=0 terminal=0 slice_after=empty model=claude-opus-5-5
 2026-10-21T19:03:15Z	Epic 20	integrated_forward	feature=1c15efa2(23.7_batch_2;20.32_merged_3b22fea8) head=this_merge_commit conflicts_resolved=sprint-status.yaml(last_updated_only;regenerated;validate_ok) ledger_dup_check=0 ledger_trailers_moved=0(4080_checked) test:tools=2112/2112 story=20.33(d280ee5f)
+2026-10-21T19:05:23Z	Epic 20	throwaway_rebuilt	run=20261020T0940Z-20,23 container=ocupilot-b-ci src=96eaf715 reason=rule30_fresh_check_20.33
+2026-10-21T19:19:52Z	Story 20.33	smoke_complete	method=instance+browser result=pass iterations=1 defects_caught=0 evidence=smoke_on_fresh_ocupilot-b-ci(96eaf715) model=claude-opus-5-5
+2026-10-21T19:19:52Z	Story 20.33	fresh_check	env=recipe(down+up_from_96eaf715) tests=18_classes_141_forward_and_reverse_green+browser_4_specs_25_together_then_each_alone_reversed+a11y-structural-invariants_13/13+smoke result=pass order=forward,reverse merged=1c15efa2 bundle_initial=2.00MB
