@@ -1,21 +1,21 @@
-/// <p>The scripted, recording transport as class methods, for a stub that cannot inherit it.</p>
-/// <p><class>OcuPilot.Test.ProviderStub</class> carries the same transport as an instance method
-/// on an <class>OcuPilot.Kernel.Provider.Anthropic</class> subclass, so every stub below it gets
-/// it for free. <class>OcuPilot.Test.OpenAIStub</class> and
-/// <class>OcuPilot.Test.GeminiStub</class> extend the two <b>shipped</b> adapters instead --
-/// which is the whole point of them, since it is the shipped adapter's own body, headers and
-/// response mapping that are under test -- so they reach it here.</p>
-/// <p><b>Same script, same recording, same fake clock, and the same two arming legs.</b> A run
-/// armed through <method>OcuPilot.Test.ProviderStub.ArmErrorLog</method> forces its application
-/// error here as well, so AD-48's forced-error-log sweep reaches the two families whose stubs
-/// cannot inherit it. The row-move leg is present for parity and <b>no test arms it through this
-/// class</b> -- the only caller of <method>OcuPilot.Test.ProviderStub.ArmRowMove</method> drives
-/// the canonical stub -- so it is capability here, not coverage. This class reads and writes
-/// <class>OcuPilot.Test.ProviderStub</class>'s own process-private globals, so a test arms the run
-/// with <method>OcuPilot.Test.ProviderStub.Reset</method>,
+/// <p>The scripted, recording transport as class methods: the one body behind every provider stub.</p>
+/// <p><class>OcuPilot.Test.ProviderStub</class>, an <class>OcuPilot.Kernel.Provider.Anthropic</class>
+/// subclass, answers <method>IssueHttpsPost</method> with one call to <method>Transport</method>, so
+/// every stub below it gets it for free. <class>OcuPilot.Test.OpenAIStub</class>,
+/// <class>OcuPilot.Test.GeminiStub</class> and <class>OcuPilot.Test.CompatibleStub</class> extend the
+/// three other <b>shipped</b> adapters instead -- which is the whole point of them, since it is the
+/// shipped adapter's own body, headers and response mapping that are under test -- and reach it here
+/// the same way.</p>
+/// <p><b>Same script, same recording, same fake clock, and the same two arming legs, for every
+/// stub.</b> A run armed through <method>OcuPilot.Test.ProviderStub.ArmErrorLog</method> forces its
+/// application error here, so AD-48's forced-error-log sweep reaches every family. A run armed
+/// through <method>OcuPilot.Test.ProviderStub.ArmRowMove</method> moves its row here. This class
+/// reads and writes <class>OcuPilot.Test.ProviderStub</class>'s own process-private globals, so a
+/// test arms the run with <method>OcuPilot.Test.ProviderStub.Reset</method>,
 /// <method>OcuPilot.Test.ProviderStub.QueueAnswer</method>,
 /// <method>OcuPilot.Test.ProviderStub.QueueThrow</method>,
 /// <method>OcuPilot.Test.ProviderStub.QueueTransportFailure</method>,
+/// <method>OcuPilot.Test.ProviderStub.QueueConnectRefused</method> (a connect that never opened),
 /// <method>OcuPilot.Test.ProviderStub.QueueBrokenAfterStatus</method> (a connection that broke after
 /// its status line), <method>OcuPilot.Test.ProviderStub.QueueStream</method> (a streamed body) and
 /// <method>OcuPilot.Test.ProviderStub.ScriptElapsed</method>, and reads it back with
@@ -34,10 +34,15 @@ Class OcuPilot.Test.ProviderStubTransport Extends %RegisteredObject
 /// call.</p>
 /// <p><var>pWatchedHeaders</var> is the comma-separated header list
 /// <method>HeaderNames</method> reports the presence of, so each family watches its own.</p>
-/// <p>An empty script answers a 200 with an empty body, which is a body no family's
-/// <method>OcuPilot.Kernel.Provider.Base.MapResponse</method> can read: a test that cares about
-/// the reply queues one, and a test that queues none is asserting about the request.</p>
-ClassMethod Transport(pIdentity As %String, pWatchedHeaders As %String, pRequest As %Net.HttpRequest, pUrl As %String, Output pStatus As %Integer, Output pBody As %String, Output pRetryAfter As %String) As %Status
+/// <p>An empty script answers a 200 whose body is <var>pEmptyReply</var>, empty by default, which
+/// is a body no family's <method>OcuPilot.Kernel.Provider.Base.MapResponse</method> can read: a test
+/// that cares about the reply queues one, and a test that queues none is asserting about the
+/// request. A stub whose family has a minimal well-formed reply passes it here.</p>
+/// <p><var>pKeyHeader</var> names the request header that holds the credential. Given one, and
+/// armed through <method>OcuPilot.Test.ProviderStub.ArmKeyCompare</method>, the call records
+/// whether that header equalled the expected text (<code>keyMatches</code>); the value is read
+/// inside the comparison and never named, and no recording holds it. Left empty, nothing is compared.</p>
+ClassMethod Transport(pIdentity As %String, pWatchedHeaders As %String, pRequest As %Net.HttpRequest, pUrl As %String, Output pStatus As %Integer, Output pBody As %String, Output pRetryAfter As %String, pEmptyReply As %String = "", pKeyHeader As %String = "") As %Status
 {
     Set pStatus = 0
     Set pBody = ""
@@ -62,11 +67,13 @@ ClassMethod Transport(pIdentity As %String, pWatchedHeaders As %String, pRequest
     Set ^||OcuPilotProviderStub("call", tCall, "headerNames") = ..HeaderNames(pRequest, pWatchedHeaders)
     Set ^||OcuPilotProviderStub("call", tCall, "contentType") = pRequest.ContentType
     Set ^||OcuPilotProviderStub("call", tCall, "body") = ..BodyOf(pRequest)
+    If (pKeyHeader '= "") && $Data(^||OcuPilotProviderStub("keyExpected")) Set ^||OcuPilotProviderStub("call", tCall, "keyMatches") = (pRequest.GetHeader(pKeyHeader) = ^||OcuPilotProviderStub("keyExpected"))
     Do ..RecordStreaming(pRequest, tCall)
     Set tIndex = tCall
     If tIndex > +$Get(^||OcuPilotProviderStub("script")) Set tIndex = +$Get(^||OcuPilotProviderStub("script"))
     If tIndex < 1 {
         Set pStatus = 200
+        Set pBody = pEmptyReply
         Quit $$$OK
     }
     Set tKind = $Get(^||OcuPilotProviderStub("script", tIndex, "kind"))
@@ -78,6 +85,9 @@ ClassMethod Transport(pIdentity As %String, pWatchedHeaders As %String, pRequest
     }
     If tKind = "failure" {
         Quit $$$ERROR($$$GeneralError, "the stand-in transport could not reach the provider")
+    }
+    If tKind = "connectrefused" {
+        Quit $$$ERROR($$$HttpRequestConnect, "127.0.0.1:1")
     }
     If tKind = "brokenafterstatus" {
         Set pStatus = +$Get(^||OcuPilotProviderStub("script", tIndex, "status"))
