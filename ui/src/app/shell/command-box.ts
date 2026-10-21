@@ -40,6 +40,7 @@ import { Session } from '../core/session';
 import { ShellState } from '../core/shell-state';
 import { STRINGS, stringFor } from '../core/strings';
 import { entityKeyOf, rowFor } from '../core/table-model';
+import { openInNewTab } from './new-tab';
 
 /** The command box's name on the overlay stack (DW-137). */
 export const COMMAND_BOX_OVERLAY_ID = 'command-box';
@@ -94,6 +95,12 @@ interface CommandRow {
   /** The descriptor and declared id an action row runs. Both `''` for a screen row. */
   readonly descriptor: string;
   readonly actionId: string;
+  /**
+   * The address choosing an available `external` screen row opens in a new tab (AD-47, Story 20.32);
+   * `''` for every other row, including an `external` screen the map carries no address for, which
+   * routes onto its own page and says why.
+   */
+  readonly href: string;
   readonly ariaDisabled: string | null;
 }
 
@@ -402,7 +409,8 @@ export class CommandBox {
    * Open a row. A gated or unavailable row does nothing: `aria-disabled` carries no behaviour
    * of its own, so the refusal has to be here. An available action row closes the box and runs
    * the action's registered handler once, the same `ScreenActions.run` the command bar's button
-   * calls.
+   * calls. An available `external` screen row opens its address in a new tab with no opener and
+   * routes nowhere (AD-47, Story 20.32).
    *
    * A screen navigation carries the current query, because `?ns=` is data scope and the box
    * reaches every screen in the product (AD-44, DW-134). Before it navigates, an open side bar is
@@ -419,6 +427,13 @@ export class CommandBox {
       this.returnFocus = null;
       this.close();
       void this.session?.signOut();
+      return;
+    }
+    if (row.kind === 'screen' && row.href !== '') {
+      // A link opens beside this tab, in this key press or click, and the screen stays where it is:
+      // focus goes back to where it was and nothing routes.
+      openInNewTab(row.href);
+      this.close();
       return;
     }
     if (row.kind === 'screen') {
@@ -485,6 +500,7 @@ export class CommandBox {
         area: screen.area,
         descriptor: '',
         actionId: '',
+        href: opens !== null && screen.archetype === 'external' ? this.navigation.screenHref(screen.route) : '',
         ariaDisabled: opens !== null ? null : 'true',
       });
     }
@@ -597,6 +613,7 @@ export class CommandBox {
         area: '',
         descriptor: screen.descriptor,
         actionId: action.id,
+        href: '',
         ariaDisabled: (action.reason ?? '') !== '' ? 'true' : null,
       }));
   }
@@ -633,6 +650,7 @@ export class CommandBox {
         area: '',
         descriptor: '',
         actionId: '',
+        href: '',
         ariaDisabled: null,
       },
     ];

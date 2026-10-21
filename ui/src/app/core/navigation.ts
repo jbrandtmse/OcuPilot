@@ -57,6 +57,8 @@ interface ScreenVerdictWire {
   route?: unknown;
   allowed?: unknown;
   failedPair?: unknown;
+  /** An `external` screen's address, composed on the instance (AD-5, AD-47, Story 20.32). */
+  href?: unknown;
 }
 
 interface AreaVerdictWire {
@@ -200,13 +202,15 @@ export function firstAllowedScreen(
  * Where the first of an area's side-bar entries `screens` the caller may open lands, or `null` when
  * none opens: the first non-`null` `openableEntry`, which for a tab group is the first of its tabs
  * the caller may open (AD-8 as amended for DW-1852). Home's tile and the locator's area segment open
- * an area here, so they land where its side bar would.
+ * an area here, so they land where its side bar would. An `external` entry is skipped: it opens a
+ * page in a new tab, so an area never routes onto a link (AD-5, Story 20.32).
  */
 export function firstOpenableEntry(
   screens: readonly ScreenDeclaration[],
   verdictFor: (route: string) => Verdict
 ): ScreenDeclaration | null {
   for (const screen of screens) {
+    if (screen.archetype === 'external') continue;
     const opens = openableEntry(screen, verdictFor);
     if (opens !== null) return opens;
   }
@@ -696,6 +700,14 @@ export function formatArea(template: string, areaName: string): string {
   return template.split(AREA_PLACEHOLDER).join(areaName);
 }
 
+/** The placeholder the Fixed strings table leaves for the area's name in an `external` screen's refusal sentence. */
+export const EXTERNAL_AREA_PLACEHOLDER = '<area>';
+
+/** `<area> is not enabled in this namespace.` with `<area>` resolved to the area's name (Story 20.32). */
+export function formatExternalArea(template: string, areaName: string): string {
+  return template.split(EXTERNAL_AREA_PLACEHOLDER).join(areaName);
+}
+
 /**
  * `Requires <resource>` resolved to the `(resource, permission)` pair that failed, spelled
  * `resource:permission` -- which is what "a denial names the pair that failed" means at the
@@ -855,6 +867,8 @@ export class NavigationService {
 
   private areaVerdicts = new Map<string, Verdict>();
   private screenVerdicts = new Map<string, Verdict>();
+  /** The address each `external` screen's entry carried, by route (AD-5, Story 20.32). */
+  private screenHrefs = new Map<string, string>();
   private appliesByArea = new Map<string, boolean>();
   /** The namespace the stored `applies` answers were read under; `null` before any answer. */
   private appliesKey: string | null = null;
@@ -988,6 +1002,17 @@ export class NavigationService {
   }
 
   /**
+   * The address of an `external` screen, by its declared route, or `''` when the map carries none: the
+   * instance composes it and answers it only while the screen's area applies in the namespace (AD-5,
+   * AD-47, Story 20.32). The client never composes one. It is **fail closed** like `applies()`: while
+   * the map on hand was read under a namespace the shell has left, no address is offered.
+   */
+  screenHref(route: string): string {
+    if (!this.appliesAnswered()) return '';
+    return this.screenHrefs.get(route) ?? '';
+  }
+
+  /**
    * Fetch the map. One request however many callers in the same namespace, for the reason
    * `Session.refresh()` is single-flight: the rail, the side bar and the routed screen all want
    * it as the shell paints.
@@ -1042,6 +1067,7 @@ export class NavigationService {
     this.generation += 1;
     this.areaVerdicts = new Map();
     this.screenVerdicts = new Map();
+    this.screenHrefs = new Map();
     this.appliesByArea = new Map();
     this.appliesKey = null;
     this.loadedOnce = false;
@@ -1093,6 +1119,7 @@ export class NavigationService {
     const nextAreas = new Map<string, Verdict>();
     const nextApplies = new Map<string, boolean>();
     const nextScreens = new Map<string, Verdict>();
+    const nextHrefs = new Map<string, string>();
     for (const raw of areas) {
       if (typeof raw !== 'object' || raw === null) continue;
       const area = raw as AreaVerdictWire;
@@ -1109,11 +1136,13 @@ export class NavigationService {
         // that carries no route at all would otherwise take Home's slot and gate Home.
         if (typeof screen.route !== 'string') continue;
         nextScreens.set(screen.route, verdictFrom(screen));
+        if (typeof screen.href === 'string' && screen.href !== '') nextHrefs.set(screen.route, screen.href);
       }
     }
 
     this.areaVerdicts = nextAreas;
     this.screenVerdicts = nextScreens;
+    this.screenHrefs = nextHrefs;
     this.appliesByArea = nextApplies;
     this.appliesKey = key;
     this.loadedOnce = true;

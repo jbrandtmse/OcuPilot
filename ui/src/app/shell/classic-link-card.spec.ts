@@ -136,6 +136,36 @@ describe('ClassicLinkCard', () => {
     expect(render(noLabel).querySelectorAll('a').length).toBe(0);
   });
 
+  // Story 20.32: the `external` page hands the card the address the instance composed.
+  //
+  // Mutation (Rule 19): make `present`, `href` and `label` ignore the `link` input in `classic-link-card.ts` -> the first two rows go red.
+  it('Story 20.32: a given link stands in for the exemption -- its address, its label, one new-tab anchor', () => {
+    const link = { href: '/csp/user/_DeepSee.UI.Architect.zen?$NAMESPACE=USER', label: 'Architect' };
+    fixture.componentRef.setInput('link', link);
+
+    const alone = render(null);
+    expect(alone.querySelector('.ocu-classic-link-card-title')?.textContent?.trim()).toBe(STRINGS.classicLinkCardTitle);
+    expect(alone.querySelector('.ocu-classic-link-card-caption')?.textContent?.trim()).toBe(STRINGS.classicLinkCardCaption);
+    const anchors = alone.querySelectorAll('a');
+    expect(anchors.length).toBe(1);
+    expect(anchors[0].getAttribute('href')).toBe(link.href);
+    expect(anchors[0].getAttribute('target')).toBe('_blank');
+    expect(anchors[0].getAttribute('rel')).toBe('noreferrer');
+    expect(anchors[0].textContent).toContain('Architect');
+
+    // It stands in for an honored exemption rather than joining it: one anchor, the link's.
+    const beside = render(EXEMPT);
+    expect(beside.querySelectorAll('a').length).toBe(1);
+    expect(beside.querySelector('a')?.getAttribute('href')).toBe(link.href);
+    expect(beside.innerHTML).not.toContain(EXEMPT.classicLinkExemption.label);
+
+    // A link with no address or no label is a dead control, so nothing draws, whatever the screen declares.
+    fixture.componentRef.setInput('link', { href: '', label: 'Architect' });
+    expect(render(EXEMPT).querySelectorAll('a').length).toBe(0);
+    fixture.componentRef.setInput('link', { href: link.href, label: '' });
+    expect(render(EXEMPT).querySelectorAll('a').length).toBe(0);
+  });
+
   it('derives no URL from classicPage: the anchor is the declared href and nothing else', () => {
     // AD-44's "never a URL" is scoped to the resource key, and the card is where that scoping
     // could quietly be broken. The classic page's class name must appear nowhere in the

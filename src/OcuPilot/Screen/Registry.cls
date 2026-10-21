@@ -22,7 +22,9 @@
 /// <method>AreaCoverageProblem</method>),
 /// whose banner is not the declared grammar (<method>BannerProblem</method>),
 /// whose archetype or classic link-out is not a permitted shape (AD-44,
-/// <method>ClassicLinkProblem</method>), whose <code>tab</code> is not the declared grammar (AD-5,
+/// <method>ClassicLinkProblem</method>), whose <code>external</code> screen is not one
+/// <class>OcuPilot.Screen.ExternalPage</class> names or declares more than a page to open (AD-44,
+/// <method>ExternalProblem</method>), whose <code>tab</code> is not the declared grammar (AD-5,
 /// <method>TabProblem</method>), whose <code>rowTarget</code> is not the declared grammar (AD-5,
 /// <method>RowTargetProblem</method>), or whose route or tool identifier collides with
 /// another's; and, over the whole roster, whose tab groups do not fit together
@@ -312,6 +314,13 @@ ClassMethod Validate(Output pProblem As %String) As %Status
             Set tClassicProblem = ..ClassicLinkProblem(tObject)
             If tClassicProblem '= "" {
                 Set pProblem = tClass _ ": " _ tClassicProblem
+                Quit
+            }
+            ; AD-5, AD-44, Story 20.32: an external screen names a page in ExternalPage's closed
+            ; vocabulary and declares nothing a screen with something to read or do would.
+            Set tExternalProblem = ..ExternalProblem(tObject)
+            If tExternalProblem '= "" {
+                Set pProblem = tClass _ ": " _ tExternalProblem
                 Quit
             }
             ; AD-5: a tabbed screen is one descriptor per tab, grouped by a declared tab.
@@ -3640,6 +3649,64 @@ ClassMethod ClassicHrefProblem(pHref As %String) As %String
     If pHref [ ".." Quit "classicLinkExemption href """ _ pHref _ """ traverses, and a descriptor is not an egress primitive (AD-47)"
     If '$Match(pHref, "^/[A-Za-z0-9._~%!$&'()*+,;=:@/?#-]*$") Quit "classicLinkExemption href """ _ pHref _ """ is not a root-relative same-origin path (AD-47)"
     Quit ""
+}
+
+/// <p>What is wrong with <var>pDeclaration</var> as an <code>external</code> screen, or as a screen that claims an
+/// <code>external</code> screen's page, or <code>""</code> when nothing is (AD-5, AD-44, Story 20.32).</p>
+/// <p>An <code>external</code> screen's <code>toolIdentifier</code> names an entry of
+/// <class>OcuPilot.Screen.ExternalPage</class>'s closed vocabulary, and its <code>classicPage</code> is that entry's. A screen
+/// of any other archetype names none. An <code>external</code> screen opens a page in a new tab and so declares no
+/// <code>read</code>, <code>table</code>, action, <code>tab</code> or <code>parentScope</code>
+/// (<method>ExternalFaultProblem</method>). The vocabulary half is the instance's alone; <file>ui/tools/screen-mirror.mjs</file>'s
+/// <code>externalProblem</code> returns the same sentences for the declaration half.</p>
+/// <p><b>Public and value-driven</b> for the reason <method>RefreshProblem</method> is.</p>
+ClassMethod ExternalProblem(pDeclaration As %DynamicObject) As %String
+{
+    Set tProblem = ""
+    Try {
+        If '$IsObject(pDeclaration) {
+            Set tProblem = "the declaration is not an object"
+            Quit
+        }
+        Set tExternal = (pDeclaration.%Get("archetype") = "external")
+        Set tTool = pDeclaration.%Get("toolIdentifier")
+        Set tListed = ##class(OcuPilot.Screen.ExternalPage).Has(tTool)
+        If 'tExternal {
+            If tListed Set tProblem = "toolIdentifier '" _ tTool _ "' names a page in OcuPilot.Screen.ExternalPage's vocabulary, and only an external screen may (AD-44)"
+            Quit
+        }
+        If 'tListed {
+            Set tProblem = "external screen's toolIdentifier '" _ tTool _ "' is not in OcuPilot.Screen.ExternalPage's vocabulary, and an external screen opens only a page the vocabulary names (AD-44)"
+            Quit
+        }
+        Set tWant = ##class(OcuPilot.Screen.ExternalPage).ClassicPage(tTool)
+        If pDeclaration.%Get("classicPage") '= tWant {
+            Set tProblem = "external screen's classicPage '" _ pDeclaration.%Get("classicPage") _ "' is not '" _ tWant _ "', the page OcuPilot.Screen.ExternalPage names for '" _ tTool _ "' (AD-44)"
+            Quit
+        }
+        Set tProblem = ..ExternalFaultProblem(pDeclaration)
+    } Catch ex {
+        Set tProblem = "the external screen declaration could not be read: " _ ex.DisplayString()
+    }
+    Quit tProblem
+}
+
+/// <p>The first of <code>read</code>, <code>table</code>, an action, <code>tab</code> and <code>parentScope</code> that
+/// <var>pDeclaration</var>, an <code>external</code> screen, declares, as a refusal, or <code>""</code> (AD-44, Story 20.32).
+/// An absent key, a <code>null</code>, an empty string and an empty array declare nothing. <file>ui/tools/screen-mirror.mjs</file>'s
+/// <code>externalProblem</code> returns the same sentence for each.</p>
+ClassMethod ExternalFaultProblem(pDeclaration As %DynamicObject) As %String [ Private ]
+{
+    Set tDeclares = ""
+    For tKey = "read", "table", "tab" {
+        If pDeclaration.%GetTypeOf(tKey) = "object" Set tDeclares = tKey
+        If tDeclares '= "" Quit
+    }
+    If (tDeclares = "") && (pDeclaration.%GetTypeOf("primaryAction") = "object") && (pDeclaration.primaryAction.%Get("id") '= "") Set tDeclares = "primaryAction"
+    If (tDeclares = "") && (pDeclaration.%GetTypeOf("rowActions") = "array") && (pDeclaration.rowActions.%Size() > 0) Set tDeclares = "rowActions"
+    If (tDeclares = "") && (pDeclaration.%Get("parentScope") '= "") Set tDeclares = "parentScope"
+    If tDeclares = "" Quit ""
+    Quit "external screen declares " _ tDeclares _ ", and an external screen opens a page in a new tab with no read, table, action, tab or parentScope (AD-44)"
 }
 
 /// <p>The 1-based position of the first declared privilege entry missing a resource or a

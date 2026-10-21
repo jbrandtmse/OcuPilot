@@ -2,7 +2,8 @@
 title: 'Story 20.32: The analytics links'
 type: 'feature'
 created: '2026-10-14'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: 'a0e965cd6b70c9fcbdc01533254fa6c6153b52d3'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -154,7 +155,7 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Lines were
 
 **Execution:**
 
-- [ ] **Task 0 (re-anchor and measure, no product code).** First run `git rev-parse --show-toplevel`.
+- [x] **Task 0 (re-anchor and measure, no product code).** First run `git rev-parse --show-toplevel`.
   - **Re-anchor.** After 20.11 merges, re-anchor every (20.11, planned) symbol above. If 20.11's listed positions are not 1-3, the links take the next three.
   - **Contention.** Run `git diff --stat $(git merge-base HEAD origin/OCU-1-epic18) origin/OCU-1-epic18` over the Rule 11 files. It was empty at plan; a non-empty result goes to the lead.
   - **Measure on `ocupilot-b-ci`.** Read `$System.License.LUConsumed()` first, and load no vendor page.
@@ -162,20 +163,20 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Lines were
     2. **The browser recipe.** A browser-level `Fetch.enable` pauses the first request of a `noopener` tab, and `LUConsumed()` reads unchanged afterwards. If it does not pause it, use the fallback in Design Notes.
     3. **The strings.** The new values are unique in `strings.ts`, and the Fixed strings count stays more than 50 under its bound.
   - A measurement that contradicts this spec halts the stage, with its evidence.
-- [ ] `src/OcuPilot/Screen/ExternalPage.cls` (new) -- the closed vocabulary, keyed by tool identifier:
+- [x] `src/OcuPilot/Screen/ExternalPage.cls` (new) -- the closed vocabulary, keyed by tool identifier:
   - `analytics.architect` → `_DeepSee.UI.Architect.zen` and `%DeepSee.UI.Architect`;
   - `analytics.analyzer` → `_DeepSee.UI.Analyzer.zen` and `%DeepSee.UI.Analyzer`;
   - `analytics.userportal` → `_DeepSee.UserPortal.Home.zen` and `%DeepSee.UserPortal.Home`.
 
   It has `File(pScreen)`, `ClassicPage(pScreen)` and `Href(pScreen, pNamespace)`, composed as Always says. It is pure: no gate, no namespace switch, no write. The doc comment names AD-44, AD-47 and AD-65.
-- [ ] `src/OcuPilot/Screen/Registry.cls` (add-only) -- add `ExternalProblem(pDescriptor)`, called from `Validate` beside `ClassicLinkProblem`. It refuses, each with a message naming AD-44:
+- [x] `src/OcuPilot/Screen/Registry.cls` (add-only) -- add `ExternalProblem(pDescriptor)`, called from `Validate` beside `ClassicLinkProblem`. It refuses, each with a message naming AD-44:
   - an `external` screen with no vocabulary entry;
   - a vocabulary identifier on any other archetype;
   - a `classicPage` other than the vocabulary's;
   - an `external` screen that declares a `read`, a `table`, an action, a `tab` or a `parentScope`.
-- [ ] `ui/tools/screen-mirror.mjs` -- an `externalProblem` that refuses the read, table, action, tab and parentScope half with `Registry`'s exact message. The vocabulary half is server-only (Design Notes).
-- [ ] `src/OcuPilot/Kernel/Shell/Navigation.cls` -- in the screen loop, after `SetVerdict`: when the screen's `Archetype()` is `external` and its area applies, set `href` to `ExternalPage.Href(ToolIdentifier(), Scope.Current())` if it is not empty. Add one doc-comment sentence on `href`.
-- [ ] `src/OcuPilot/Screen/Descriptor/AnalyticsArchitectLink.cls`, `AnalyticsAnalyzerLink.cls`, `AnalyticsUserPortalLink.cls` (new; sibling `InteropSchemaViewer`).
+- [x] `ui/tools/screen-mirror.mjs` -- an `externalProblem` that refuses the read, table, action, tab and parentScope half with `Registry`'s exact message. The vocabulary half is server-only (Design Notes).
+- [x] `src/OcuPilot/Kernel/Shell/Navigation.cls` -- in the screen loop, after `SetVerdict`: when the screen's `Archetype()` is `external` and its area applies, set `href` to `ExternalPage.Href(ToolIdentifier(), Scope.Current())` if it is not empty. Add one doc-comment sentence on `href`.
+- [x] `src/OcuPilot/Screen/Descriptor/AnalyticsArchitectLink.cls`, `AnalyticsAnalyzerLink.cls`, `AnalyticsUserPortalLink.cls` (new; sibling `InteropSchemaViewer`).
   - Each has area `analytics`, archetype `external`, `built` true, `refreshes` false, scope `namespace`, id `none`, `entityType` `""`, no read and no actions, `classicLinkExemption` all-false, and empty `context.fields`.
   - Three prompts in `promptGroupGettingStarted`.
   - Doc comments name AD-5, AD-8, AD-44, AD-47 and AD-65.
@@ -186,36 +187,36 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Lines were
   | `AnalyticsAnalyzerLink` | `analytics/analyzer` · 5 | `analytics.analyzer` | Portal + `%DeepSee_Analyzer:USE` (own) | `%DeepSee.UI.Analyzer` | analyzer, pivot tables, deepsee analyzer |
   | `AnalyticsUserPortalLink` | `analytics/user-portal` · 6 | `analytics.userportal` | Portal | `%DeepSee.UserPortal.Home` | user portal, dashboards, deepsee portal |
 
-- [ ] `ui/src/app/core/strings.ts` (add-only) -- the literals in Design Notes › Strings. Then regenerate the mirror with `cd ui && node tools/screen-mirror.mjs`.
-- [ ] `ui/src/app/core/navigation.ts`:
+- [x] `ui/src/app/core/strings.ts` (add-only) -- the literals in Design Notes › Strings. Then regenerate the mirror with `cd ui && node tools/screen-mirror.mjs`.
+- [x] `ui/src/app/core/navigation.ts`:
   - Parse an optional string `href` per screen entry, held with the verdicts and reset with the map.
   - Add `screenHref(route): string`, answering `''` when there is none.
   - `firstOpenableEntry` skips `archetype === 'external'`, so Home's tile and the locator never route onto a link.
-- [ ] `ui/src/app/shell/new-tab.ts` (new) -- `openInNewTab(href)`, the one `window.open(href, '_blank', 'noopener,noreferrer')` call.
-- [ ] `ui/src/app/shell/side-bar.ts`:
+- [x] `ui/src/app/shell/new-tab.ts` (new) -- `openInNewTab(href)`, the one `window.open(href, '_blank', 'noopener,noreferrer')` call.
+- [x] `ui/src/app/shell/side-bar.ts`:
   - An allowed `external` entry with an `href` carries the glyph and an `aria-description` from `formatClassicRowLinkDescription(STRINGS.classicRowLinkDescription, label)`.
   - `open()` calls `openInNewTab` and does not route.
   - An `external` entry with no `href` routes as today, onto its page, which says why.
-- [ ] `ui/src/app/shell/command-box.ts` -- `CommandRow` gains `href`, and `choose()` makes the same branch for a `screen` row.
-- [ ] `ui/src/app/shell/classic-link-card.ts` -- an optional input `link` (`{href, label}`) that, when given, stands in for the exemption in `present`, `href` and `label`.
-- [ ] `ui/src/app/shell/external-page.ts` (new) -- the `external` page.
+- [x] `ui/src/app/shell/command-box.ts` -- `CommandRow` gains `href`, and `choose()` makes the same branch for a `screen` row.
+- [x] `ui/src/app/shell/classic-link-card.ts` -- an optional input `link` (`{href, label}`) that, when given, stands in for the exemption in `present`, `href` and `label`.
+- [x] `ui/src/app/shell/external-page.ts` (new) -- the `external` page.
   - It resolves its screen as `ListPage` does and is headed by its title.
   - With `screenHref` set it shows `<app-classic-link-card [link]>`. Without it, it shows `externalAreaNotEnabled` with the area's label.
   - It issues no request and uses tokens only.
-- [ ] `ui/src/app/shell/screen-outlet.ts` -- the one line `external: () => import('./external-page').then((m) => m.ExternalPage)`.
-- [ ] **Server tests.**
+- [x] `ui/src/app/shell/screen-outlet.ts` -- the one line `external: () => import('./external-page').then((m) => m.ExternalPage)`.
+- [x] **Server tests.**
   - `src/OcuPilot/Test/AnalyticsLinkDescriptor.cls` (new, unarmed, read-only):
     - `TestTheLinkScreensRegister`: the table's values; `Validate` passes; each `classicPage` equals `NormalizePage` of its file and is compiled; Architect's and Analyzer's compiled `RESOURCE` (`DeveloperFloor.ClassicResource`) names their own pair.
     - `TestTheVocabularyIsClosed`: `""` for an unknown identifier and for an empty namespace. `Href("analytics.architect","USER")` equals the normalized `GetDefaultApp("USER")` + file + `?$NAMESPACE=USER`. Each of `ExternalProblem`'s four refusals fires on a doctored declaration.
     - `TestHscustomCarriesNoAddress`: `Scope.Set("HSCUSTOM")`, then `Payload`. No entry carries `href`. `Scope.Clear()` after.
   - `src/OcuPilot/Test/AnalyticsLinkMap.cls` (new, armed `OCUPILOT_ALLOW_PRINCIPALS`; `AnalyticsProbe` `Remove` and `Enable` before all, `Remove` and `Gone` after all) -- `TestTheMapAnswersEachAddress`: over HTTP (`Http.AbsoluteRequest`) as `_SYSTEM`, `GET /api/ocupilot/navigation?ns=USER` gives exactly three entries with `href`, each equal to `Href`. `?ns=HSCUSTOM` gives none.
-- [ ] **Rosters, each name read from the instance:**
+- [x] **Rosters, each name read from the instance:**
   - `StageTwoTools` `Elsewhere`: three rows;
   - `SurfaceCoverage`: three `<screen>` rows naming `AnalyticsLinkDescriptor` `TestTheLinkScreensRegister`;
   - `Navigation.cls`: the analytics block goes from 7 to 10, the links last in position order;
   - `InteropFloor` `BASESCREENS` and `DeveloperFloor` `SCREENS`: add `AnalyticsUserPortalLink` and update their comments;
   - `scripts/ci-throwaway.sh`: a `# classes:` entry for `AnalyticsLinkMap` under `OCUPILOT_ALLOW_PRINCIPALS`.
-- [ ] **Client tests.**
+- [x] **Client tests.**
   - `ui/tools/navigation.test.mjs`:
     - the three routes in the roster;
     - `firstOpenableEntry` skips an `external` entry;
@@ -227,7 +228,7 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Lines were
     - one with no `href` routes.
   - `classic-link-card.spec.ts`: the `link` input.
   - `external-page.spec.ts` (new): the card with an `href`; the sentence with none.
-- [ ] `ui/browser/analytics-links.browser-spec.mjs` (new).
+- [x] `ui/browser/analytics-links.browser-spec.mjs` (new).
   - **`before`:** refuse the live container, require readiness, then `runIris` `AnalyticsProbe.Remove` and `Enable`. Arm the interception (Design Notes): every `*/_DeepSee.*` request is answered with a stub and counted.
   - **`after`:** `Remove`, then assert `Gone`.
   - **Legs, each with its mutation comment:**
@@ -236,13 +237,13 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Lines were
     - **AC4.** `analytics/architect?ns=USER` shows the card, whose anchor `href` equals the map's.
     - **AC5.** `structural` on the three routes in USER: no fresh entry.
     - **Count.** Every vendor request was answered by the stub.
-- [ ] `EXPERIENCE.md`:
+- [x] `EXPERIENCE.md`:
   - :159: after 20.11's Analytics sentence, "then Architect · Analyzer · User Portal, each opening the namespace's own classic page in a new tab (Story 20.32)".
   - :604: one Fixed strings row with the literals.
   - :838 and :72: `external` "opens a new tab from the side bar and the command box; its route shows the classic-link card, or why the page cannot open (Story 20.32)".
   - :887: the new-tab exceptions gain "an `external` screen's side-bar entry and command-box result (Story 20.32)".
   - Then run `cd ui && npm run test:tools`.
-- [ ] **Roster sweep (Rule 30).** Search `src/OcuPilot/Test`, `ui/tools`, `ui/browser` and the `ui/src` specs for the analytics side bar, the built-screen and route counts, `BASESCREENS`/`SCREENS` and the map's screen-entry keys. Each file changed joins `(loop)`.
+- [x] **Roster sweep (Rule 30).** Search `src/OcuPilot/Test`, `ui/tools`, `ui/browser` and the `ui/src` specs for the analytics side bar, the built-screen and route counts, `BASESCREENS`/`SCREENS` and the map's screen-entry keys. Each file changed joins `(loop)`.
 
 **Acceptance Criteria:**
 
@@ -287,6 +288,35 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Lines were
 - 2026-10-14, spec gate (runner): the orchestrator ruled Q1 (A); the spine carries the four Story 20.32 clauses (AD-8's names the `*Edit`-only holder's refusal).
 
 ## Review Triage Log
+
+### 2026-10-21 -- Review pass
+
+- verdicts: 24 findings -- high 0, medium 0, low 14, false 10, maybe-false 0
+- findings:
+  - `[low]` `[patch]` `Href`'s empty-default-application guard has no test -- `GetDefaultApp("NOSUCHNS")` reads `""` and without the guard `Href` answers `/_DeepSee.UI.Architect.zen?$NAMESPACE=NOSUCHNS`; added the assertion to `TestTheVocabularyIsClosed`, and dropping the guard reddens it alone.
+  - `[low]` `[reject]` `Href`'s leading-slash prepend and `ClassicHrefProblem` refusal are untested -- reaching either needs a web application whose path lacks a leading slash or fails the root-relative check, `GetDefaultApp` answers a leading slash on this build, and creating one writes web-application state for a branch `Payload` cannot reach.
+  - `[low]` `[patch]` AC5's mirror half (`externalProblem` and its `buildMirror` call) has no recorded mutation -- ran it: `buildMirror` no longer calling `externalProblem` reddens the buildMirror case alone; line written.
+  - `[low]` `[reject]` AC5's "10 screens in the pinned order" has no recorded mutation -- Rule 19 asks one demonstrated mutation per AC and AC5 now carries seven; a position swap reddens the same pinned list.
+  - `[low]` `[reject]` AC5's "three prompts" has no recorded mutation -- the floor is the existing `SuggestedPromptsProblem` that every `Validate` call runs, and the new tests assert the three keys; a dropped prompt reddens `Validate` before any new assertion.
+  - `[low]` `[patch]` AC2's client half (gated side-bar and command-box entries open nothing) has no recorded mutation -- ran it: removing the gated refusal from `open()` and `choose()` reddens both gated external cases; line written.
+  - `[low]` `[reject]` The no-address fallback tests have no mutation -- the fallback is the unmodified routing an entry without `href` takes, AC3 carries two recorded mutations, and any mutation that reddens it also reddens the existing routing tests.
+  - `[low]` `[patch]` The Count leg's mutation comment named a mutation that lets a request reach the instance and none was recorded -- rewrote it to a stub-only mutation, ran it (`openInNewTab` also fetching the address: "2 !== 1", every request stubbed, license use unchanged) and wrote the line.
+  - `[low]` `[patch]` The `SurfaceCoverage` rows and `AnalyticsUserPortalLink` in the floor rosters have no mutation -- ran both: a removed `SurfaceCoverage` row reddens `TestEveryDeclaredScreenHasACoverageRowAndBack` alone, and the floor row reddens two `InteropFloor` tests; lines written.
+  - `[low]` `[patch]` `screenHref` is not tied to `appliesAnswered()` -- read `reload()`: after a namespace move the stored addresses stay until the re-read lands, so a mounted external page could offer the previous namespace's link; `screenHref` now fails closed, with a moved-namespace case that its guard reddens alone.
+  - `[low]` `[patch]` `externalProblem` counts `primaryAction: {"id": null}` as an action and `Registry` does not -- `%Get("id")` reads a JSON null as `""`; the mirror now treats null as absent, with a case its old condition reddens.
+  - `[false]` `[reject]` The parity check "Registry returns the same sentence" is a source-text include -- the chain holds: the JS sentence must appear in `Registry.cls`, and `AnalyticsLinkDescriptor` compares `ExternalProblem`'s runtime output with its `DECLARES` literal, so drift on any one side reddens a test.
+  - `[false]` `[reject]` Gated entries carry `href` on the map (reading A1) -- the spec's Always clause sets `href` whenever the area applies and the address is not empty, the side bar and command box compute `href` only for an openable entry, and Design Notes record that `shell.privileges.read` shows the addresses.
+  - `[false]` `[reject]` `firstOpenableEntry` skipping links is a rail and Home effect the intent does not mention -- Tasks and Design Notes require it, and "Decided in-stage" records its one consequence.
+  - `[false]` `[reject]` The browser legs read opener and storage from a stub document -- the intent's Never clause requires the stub, and Task 0 measured that it pauses the `noopener` tab's first request; the address, opener and storage read are the tab's own.
+  - `[low]` `[reject]` No browser leg signs in as a non-admin principal for the gated path -- the spec plans none; the wire half (`AnalyticsLinkMap`, two probe principals) and the component half pin it, the gated drawing is existing behavior (`namespace-categories`), and a principal-creating browser leg is more than a direct correction.
+  - `[false]` `[reject]` "The Analytics area is not drawn" in HSCUSTOM has no new test -- it is Story 20.11's behavior, pinned by `namespace-categories` and `analytics.browser-spec`, both green.
+  - `[false]` `[reject]` No new test drives the route through `shell.screen.open` -- Design Notes decide the agent needs no new code and `BuiltRoutes` is unchanged; `ToolNavigate` derives its routes from the built roster and ran green with the three added.
+  - `[low]` `[patch]` Only four shapes of the Undeclared row ran through `Validate` -- probed: tab, parentScope and rowActions through `Validate` give the exact AD-44 sentence, so the loop now runs cases 1 to 7; read and table stay on values because an earlier rule refuses a doctored read's missing parts.
+  - `[false]` `[reject]` Server and mirror messages are tied by a source-text include -- the same claim as the parity row above.
+  - `[false]` `[reject]` `Href` also answers `""` for a namespace with no default application, a fourth empty case -- not a defect; the first row now pins it.
+  - `[low]` `[reject]` One generic "not enabled" sentence covers every empty-`href` cause, including an applying area whose address could not be composed -- Design Notes decide one generic sentence, and the composed-failure case needs an applying area whose real default application fails `ClassicHrefProblem`.
+  - `[false]` `[reject]` Several existing lines were rewritten in `Navigation.cls`, `Registry.cls`, `command-box.ts` and `side-bar.ts` -- Epic 23's branch changes five `Test/*.cls` classes (checked 2026-10-21), none of these files, and each rewrite is the minimal edit: a local variable, one doc-comment sentence, one row field.
+  - `[false]` `[reject]` `scripts/ci-throwaway.sh` and EXPERIENCE.md are in the diff and not on the intent's list -- both are Tasks of this spec, and neither is in the intent's no-edit list.
 
 ## Design Notes
 
@@ -394,6 +424,16 @@ Checked and not engaged: AD-29 and AD-36 (no port, no read), AD-51 to AD-53 (no 
 
 **Size.** One story; no seam is worth a split.
 
+**Decided in-stage.**
+
+- **`openInNewTab` is stubbed through `window.open`.** The Angular unit-test builder refuses `vi.mock` of a relative import, so `side-bar.spec.ts` and `command-box.spec.ts` spy on the one `window.open` call and assert its arguments, and `new-tab.spec.ts` pins the exact feature string.
+- **`ExternalPage` also answers `Identifiers()` and `Has()`,** which `Registry.ExternalProblem` reads; `File`, `ClassicPage` and `Href` are as specified.
+- **The `<area>` placeholder has its own formatter,** `formatExternalArea`, because `formatArea`'s placeholder is `<Area>` and the Fixed strings literal is lowercase.
+- **The page is headed by an `h3`,** under the locator's `h2`, which already carries the screen's title.
+- **Two additions beyond the listed tests:** `AnalyticsLinkMap.TestAPrincipalWithoutAnOwnPairIsRefusedNamingIt` pins AC2 over HTTP for a developer-floor principal and one holding only the Architect's pair; `Test/ExternalLink/Doctored` and `Test/ExternalLinkRegistry` run `ExternalProblem`'s shapes through `Validate`, so dropping its call reddens a test.
+- **A caller whose only openable Analytics entries are links** (reachable only through an AD-64 adjustment) sees Home's Analytics tile gated in place, naming Cubes' pair, because `firstOpenableEntry` skips links.
+- **`NavigationService.screenHref` is fail closed like `applies()`:** it offers no address while the map on hand was read under a namespace the shell has left, so the external page never shows a link for the previous namespace.
+
 ## Verification
 
 **Shared surfaces:**
@@ -422,7 +462,7 @@ Checked and not engaged: AD-29 and AD-36 (no port, no read), AD-51 to AD-53 (no 
 - `(loop)` `cd ui && node tools/ci-runner.mjs --container ocupilot-b-ci --class OcuPilot.Test.AnalyticsLinkDescriptor --class OcuPilot.Test.AnalyticsLinkMap --class OcuPilot.Test.StageTwoTools --class OcuPilot.Test.SurfaceCoverage --class OcuPilot.Test.Navigation --class OcuPilot.Test.ToolNavigate`. Expected: green.
 - `(loop)` The same runner with `InteropFloor`, `DeveloperFloor`, `Descriptor`, `Wire`, `WireAreaAnyScreen`, `ScreenAccessWire`, `CompileWithoutInterop` and every class the sweep changes. Their recorded total is about 1.5 minutes (`ci-timings.json`). Expected: green.
 - `(loop)` `cd ui && npm run test:tools`, then `cd ui && npm run test:components`. Expected: green.
-- `(loop)` `cd ui && npm run build -- --verbose`. Expected: the prebuild chain is green, the external page chunk is under 88 kB, and the initial total is under 1992 kB. Record both.
+- `(loop)` `cd ui && npm run build -- --verbose`. Expected: the prebuild chain is green and the external page chunk is under 88 kB. The initial total is bound by the owner-fixed budget in `ui/angular.json` (warning 2500 kB, error 4000 kB), not by the 1992 kB planning estimate, which predates Story 20.11; a total above 1992 kB and under 2500 kB is a recorded measurement, not a failure. Record the measured initial total and the external page chunk size.
 - `(loop)` `uv run scripts/check-objectscript.py <each changed .cls>` and `bash scripts/lint-docs.sh`. Expected: clean.
 - `(loop)` `cd ui && OCUPILOT_BROWSER_ORIGIN=http://localhost:52777 OCUPILOT_BROWSER_CONTAINER=ocupilot-b-ci node --test --test-concurrency=1 browser/<file>`, one file per call, after the redeploy. Expected: green.
   - `analytics-links.browser-spec.mjs`
@@ -455,9 +495,73 @@ Checked and not engaged: AD-29 and AD-36 (no port, no read), AD-51 to AD-53 (no 
 | AC5 | A pale color on the external page | The browser `structural` leg |
 | AC6 | `Payload` sets `href` on every screen | `AnalyticsLinkMap` (exactly three) |
 
+**Results (implement pass, `ocupilot-b-ci`).**
+
+- **Task 0.**
+  - *Re-anchor.* 20.11's listed positions are 1 to 3, so the links take 4 to 6. Every (20.11, planned) symbol exists. EXPERIENCE.md's cited lines moved: `external` is at :72 and :841, the new-tab ban at :890.
+  - *Contention.* `origin/OCU-1-epic18` no longer exists, so the epic-18 diff could not be run. Epic 23's branch changes only five `Test/*.cls` classes, none of them mine.
+  - *Measured.* After `AnalyticsProbe.Enable`, `ExternalPage.Href` for USER is `/csp/user/<file>?$NAMESPACE=USER` from `GetDefaultApp("USER")`, `%IsDeepSeeEnabled("USER")` reads 1, and `NormalizePage` of each address answers `%DeepSee.UI.Architect`, `%DeepSee.UI.Analyzer` and `%DeepSee.UserPortal.Home`.
+  - *Browser recipe.* A browser-level `Fetch.enable` on `*_DeepSee.*` paused the first request of the `noopener` tab, a stub answered it, the tab read `window.opener === null` and no `ocupilot.token-pair`, and `LUConsumed()` read 1 before and after. The fallback was not needed.
+  - *Strings.* All 13 values are unique in `strings.ts`; the Fixed strings table now holds 3,572 literals against the 3,800 bound.
+- **ObjectScript.**
+  - `AnalyticsLinkDescriptor` 3 tests, `AnalyticsLinkMap` 2, `StageTwoTools` 4, `SurfaceCoverage` 4, `Navigation` 14, `ToolNavigate` 23: green.
+  - `InteropFloor` 8, `DeveloperFloor` 10, `Descriptor` 60, `Wire` 20, `WireAreaAnyScreen` 3, `ScreenAccessWire` 8, `CompileWithoutInterop` 7: green.
+  - Sweep: `ScreenAccessDescriptor`, `InteropFloorOwnPairs`, `InteropFloorRoutes`, `DeveloperFloorRoutes`, `RosterWant`, `LedgerEmptyPairs`, `PreferencesWire`, `ReadTool`, `ClassicPageGate`: green.
+- **Client.** `npm run test:tools` 2,087 pass; `npm run test:components` 258 files and 3,302 tests pass; `npm run build -- --verbose` runs the seven checkers green.
+- **Browser.** `analytics-links` 5 of 5, `analytics` 5 of 5, `namespace-categories` 4 of 4, `a11y-structural-invariants` 13 of 13 (369 s). License use read 1 before and after.
+- **Static.** `check-objectscript.py` over the 16 changed classes and `lint-docs.sh`: clean.
+- **Review pass.** After the patches the tree was rebuilt and redeployed and re-run on `ocupilot-b-ci`: `AnalyticsLinkDescriptor`, `AnalyticsLinkMap`, `StageTwoTools`, `SurfaceCoverage`, `Navigation`, `ToolNavigate` and `DeveloperFloor` green (60 tests); browser `analytics-links` 5 of 5, `analytics` 5 of 5, `namespace-categories` 4 of 4 and `a11y-structural-invariants` 13 of 13; initial total 1.99 MB (354.44 kB transferred). The throwaway ended with no probe state, no `OcuP2032*` principals and license use at 1.
+- **Bundle.** Initial total 1,991.67 kB raw (354.50 kB transferred) against the owner-fixed warning of 2,500 kB and error of 4,000 kB. The external page chunk is 2.80 kB raw (1.10 kB transferred), under the 88 kB ceiling.
+- **Mutations (Rule 19).** Each applied, observed red, and reverted; `git status --short` and `git diff HEAD` read the same hash before the first and after the last.
+  - mutation: `Validate` stops calling `ExternalProblem` -> `AnalyticsLinkDescriptor.TestTheVocabularyIsClosed`, alone (AC5)
+  - mutation: `Payload` sets `href` without the `applies` test -> `AnalyticsLinkDescriptor.TestHscustomCarriesNoAddress` and `AnalyticsLinkMap.TestTheMapAnswersEachAddress` (AC3)
+  - mutation: `Payload` sets `href` on every screen entry -> `AnalyticsLinkMap.TestTheMapAnswersEachAddress`, the exactly-three leg (AC6)
+  - mutation: `Href` omits the trailing `/` normalization -> `TestTheVocabularyIsClosed`, and both `AnalyticsLinkMap` tests (AC1, AC6)
+  - mutation: `AnalyticsArchitectLink` loses `%DeepSee_Architect:USE` -> `TestTheLinkScreensRegister`, `AnalyticsLinkMap.TestAPrincipalWithoutAnOwnPairIsRefusedNamingIt`, and the roster and classic-page tests of `InteropFloor` and `DeveloperFloor` (AC2)
+  - mutation: one link's `Elsewhere` row removed -> `StageTwoTools.TestTheRosterAndElsewhereAreEveryRegisteredScreen`, alone (AC5)
+  - mutation: `side-bar.ts` `open()` loses the external branch -> `side-bar.spec.ts`, and the browser AC1 leg timing out for its target (AC1)
+  - mutation: `openInNewTab` drops `noopener,noreferrer` -> `new-tab.spec.ts`, `side-bar.spec.ts`, `command-box.spec.ts`, and the browser AC1 leg: "Architect: the tab has no opener" (AC1)
+  - mutation: `command-box.ts` `choose()` loses the branch -> `command-box.spec.ts`, and the browser AC1 command-box clause timing out for its target (AC1)
+  - mutation: `ExternalPage` hands the card a link whatever the map answered -> `external-page.spec.ts` (2 tests), and the browser AC3 leg: no sentence (AC3)
+  - mutation: the card ignores its `link` input -> `classic-link-card.spec.ts` and `external-page.spec.ts` (3 tests), and the browser AC4 leg waiting for the anchor (AC4)
+  - mutation: `firstOpenableEntry` stops skipping links -> `navigation.test.mjs`' skip case, alone (AC5)
+  - mutation: `.ocu-external-page-title` coloured `var(--ocu-surface-container-high)` -> the browser AC5 leg: contrast 1.2:1 light and 1.33:1 dark on `analytics/architect` (AC5)
+  - Review pass (each applied, observed red, reverted; the tree fingerprint read the same before the first and after the last):
+  - mutation: `Href` drops the empty-default-application guard -> `AnalyticsLinkDescriptor.TestTheVocabularyIsClosed`, alone (AC1)
+  - mutation: `screenHref` drops its `appliesAnswered()` test -> `navigation.test.mjs`' moved-namespace case, alone (AC4)
+  - mutation: `buildMirror` stops calling `externalProblem` -> `screen-mirror.test.mjs`' buildMirror case, alone (AC5)
+  - mutation: `externalProblem` counts a null action id as an action -> `screen-mirror.test.mjs`' externalProblem case, alone (AC5)
+  - mutation: the gated refusal removed from `side-bar.ts` `open()` and `command-box.ts` `choose()` -> the gated external cases of `side-bar.spec.ts` and `command-box.spec.ts`, beside the existing gated cases (AC2)
+  - mutation: `openInNewTab` also calls `fetch(href)` -> the browser Count leg: "the click made one vendor request", 2 !== 1, both answered by the stub and license use unchanged (AC1)
+  - mutation: one `SurfaceCoverage` link row removed -> `TestEveryDeclaredScreenHasACoverageRowAndBack`, alone (AC5)
+  - mutation: `AnalyticsUserPortalLink` removed from `InteropFloor.BASESCREENS` -> `TestEachPrincipalSignsInAndOpensExactlyItsRoster` and `TestEveryOpenScreenMatchesItsClassicPage` (AC2)
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-Planned against Story 20.11's spec, with Task 0 re-anchoring on 20.11 as built. Q1 (the either-of lists) is for the orchestrator; the spec is planned on (A). The Rule 20 drafts are in Design Notes.
+**Summary.** Analytics gains three `external` screens, Architect, Analyzer and User Portal, at listed positions 4 to 6. The instance composes each address in `Screen/ExternalPage` (the namespace's default application, the vocabulary's page file, `?$NAMESPACE=`, the encoded namespace) and `Navigation.Payload` answers it as `href` on an applying area's entry. The side bar and the command box open it with `openInNewTab` (`noopener,noreferrer`) and route nowhere. The route shows the classic-link card with the same address, or says the area is not enabled in this namespace. `Registry.ExternalProblem` and the mirror's `externalProblem` refuse an undeclared or over-declared `external` screen. Nothing of a vendor page is loaded, framed or fetched.
+
+**Files changed.**
+
+- Server: `Screen/ExternalPage.cls` (new vocabulary and `Href`), `Screen/Registry.cls` (`ExternalProblem`, `ExternalFaultProblem`, one `Validate` call), `Kernel/Shell/Navigation.cls` (`href`), three `Screen/Descriptor/Analytics*Link.cls`.
+- Client: `new-tab.ts`, `external-page.ts` (new), `navigation.ts` (`href` parse, `screenHref`, `firstOpenableEntry` skip), `side-bar.ts`, `command-box.ts`, `classic-link-card.ts` (`link` input), `screen-outlet.ts` (one loader line), `strings.ts` (13 literals), `screens.generated.ts` (regenerated), `_components.scss`, `screen-mirror.mjs`.
+- Tests and rosters: `AnalyticsLinkDescriptor`, `AnalyticsLinkMap`, `ExternalLink/Doctored`, `ExternalLinkRegistry` (new); `StageTwoTools`, `SurfaceCoverage`, `Navigation`, `InteropFloor`, `DeveloperFloor`; `scripts/ci-throwaway.sh`; client specs and tool tests; `analytics-links.browser-spec.mjs` (new) and `analytics.browser-spec.mjs`.
+- Planning: EXPERIENCE.md rows for `external`, the side-bar prose, the Fixed strings and the new-tab exceptions.
+
+**Review.** 24 findings: 14 low, 10 false, none high or medium. Eight low findings were patched in this pass and 16 were rejected, each with its reason in the Review Triage Log. Nothing is deferred.
+
+- Patched: the empty-application case of `Href` is pinned; `screenHref` fails closed after a namespace move; the mirror reads a null action id as the instance does; `Validate` runs seven refusal shapes; the Count leg's comment no longer prescribes a vendor load; and eight `mutation:` lines were demonstrated for the client halves, the mirror, the Count leg and the roster rows.
+- Rejected: two untested defensive branches of `Href`; AC5 mutations beyond one per AC; the no-address fallback; a non-admin browser leg the spec does not plan; the parity-by-source-text claim; and nine readings and additions that the spec, Design Notes or Epic 23's branch settle.
+
+**Follow-up review recommended: false.** Patched this pass: high 0, medium 0, low 8.
+
+**Verification.** On `ocupilot-b-ci` after the patches: seven ObjectScript classes green (60 tests), earlier lists green (166 tests), `npm run test:tools` 2,087 and `npm run test:components` 3,302 pass, the build runs the seven checkers (initial total 1.99 MB, external page chunk 2.80 kB), `check-objectscript.py` and `lint-docs.sh` clean, and the four browser specs green (`analytics-links` 5, `analytics` 5, `namespace-categories` 4, `a11y-structural-invariants` 13). Every mutation was applied, observed red and reverted. The full ObjectScript sweep, `npm test`, smoke and Rule 30's fresh check are the runner's.
+
+**Residual risks.**
+
+- A caller whose only openable Analytics entries are links (reachable only through an AD-64 adjustment) sees Home's Analytics tile gated in place, naming Cubes' pair.
+- A custom role holding only an `*Edit` resource is refused Architect or Analyzer here, though the vendor admits it (Q1 (A)).
+- The classic page may ask the person to sign in again; whether a session carries over is unmeasured.
+- The Epic 18 contention diff could not be run because `origin/OCU-1-epic18` no longer exists; Epic 23's branch touches no file this story edits.

@@ -11,6 +11,9 @@
 /// (<class>OcuPilot.Kernel.Shell.NamespaceFeatures</class>), true for an area that declares none.
 /// It is not a privilege verdict: an area that applies and is refused stays on the map with its
 /// <code>failedPair</code>.</p>
+/// <p>A screen entry carries <code>href</code> only when its archetype is <code>external</code>, its area applies in the route's
+/// namespace and <method>OcuPilot.Screen.ExternalPage.Href</method> answers an address for it: the root-relative path of the
+/// vendor page the screen opens in a new tab (AD-5, AD-47, Story 20.32). No other entry carries the key.</p>
 /// <p><b>Recomputed on every call</b> (AD-8). Nothing here is resolved at startup or cached
 /// between requests, which is the server half of "privileges change after load": a role revoked
 /// after the map was fetched is reflected the next time the client asks, and the client asks
@@ -38,7 +41,8 @@ ClassMethod Payload(Output pObject As %DynamicObject) As %Status
             Do tEntry.%Set("railPosition", +tArea.railPosition, "number")
             Do tEntry.%Set("navigates", ''tArea.navigates, "boolean")
             Do tEntry.%Set("pinBottom", ''tArea.pinBottom, "boolean")
-            Do tEntry.%Set("applies", ''##class(OcuPilot.Kernel.Shell.NamespaceFeatures).Applies(tArea.appliesWhen, ##class(OcuPilot.Kernel.Scope).Current()), "boolean")
+            Set tApplies = ''##class(OcuPilot.Kernel.Shell.NamespaceFeatures).Applies(tArea.appliesWhen, ##class(OcuPilot.Kernel.Scope).Current())
+            Do tEntry.%Set("applies", tApplies, "boolean")
             Do ..SetVerdict(tEntry, tArea.key)
 
             Set tScreens = []
@@ -49,6 +53,10 @@ ClassMethod Payload(Output pObject As %DynamicObject) As %Status
                 Do tScreenEntry.%Set("labelKey", tScreen.labelKey)
                 Do tScreenEntry.%Set("sideBarPosition", +tScreen.sideBarPosition, "number")
                 Do ..SetVerdict(tScreenEntry, tScreen.descriptor)
+                If tApplies && ($ClassMethod(tScreen.descriptor, "Archetype") = "external") {
+                    Set tHref = ##class(OcuPilot.Screen.ExternalPage).Href($ClassMethod(tScreen.descriptor, "ToolIdentifier"), ##class(OcuPilot.Kernel.Scope).Current())
+                    If tHref '= "" Do tScreenEntry.%Set("href", tHref)
+                }
                 Do tScreens.%Push(tScreenEntry)
             }
             Do tEntry.%Set("screens", tScreens)

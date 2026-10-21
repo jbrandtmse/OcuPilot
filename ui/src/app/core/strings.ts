@@ -7598,6 +7598,32 @@ export const STRINGS = {
   analyticsFolderItemsPrompt2: 'Which items are my favorites?',
   /** EXPERIENCE.md:604 */
   analyticsFolderItemsPrompt3: 'Which folder items changed most recently?',
+  /** EXPERIENCE.md:604 */
+  analyticsArchitectLabel: 'Architect',
+  /** EXPERIENCE.md:604 */
+  analyticsAnalyzerLabel: 'Analyzer',
+  /** EXPERIENCE.md:604 */
+  analyticsUserPortalLabel: 'User Portal',
+  /** EXPERIENCE.md:604 */
+  externalAreaNotEnabled: '<area> is not enabled in this namespace.',
+  /** EXPERIENCE.md:604 */
+  analyticsArchitectPrompt1: 'What can I change about a cube in Architect?',
+  /** EXPERIENCE.md:604 */
+  analyticsArchitectPrompt2: 'Which cubes here could I open in Architect?',
+  /** EXPERIENCE.md:604 */
+  analyticsArchitectPrompt3: 'What do I need before Architect can build a cube?',
+  /** EXPERIENCE.md:604 */
+  analyticsAnalyzerPrompt1: 'What can I explore in Analyzer?',
+  /** EXPERIENCE.md:604 */
+  analyticsAnalyzerPrompt2: 'Which cubes here could I analyze?',
+  /** EXPERIENCE.md:604 */
+  analyticsAnalyzerPrompt3: 'How do I save a pivot table from Analyzer?',
+  /** EXPERIENCE.md:604 */
+  analyticsUserPortalPrompt1: 'What will I find in the User Portal?',
+  /** EXPERIENCE.md:604 */
+  analyticsUserPortalPrompt2: 'Which dashboards could I open in the User Portal?',
+  /** EXPERIENCE.md:604 */
+  analyticsUserPortalPrompt3: 'Which of my favorites does the User Portal show?',
 } as const;
 
 /**

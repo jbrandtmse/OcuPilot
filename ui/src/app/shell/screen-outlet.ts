@@ -61,6 +61,7 @@ export const ARCHETYPE_PAGES: ArchetypePages = {
   'viewer (source)': () => import('../areas/system-explorer/document-viewer.page').then((m) => m.SourceViewerPage),
   detail: () => import('./detail-page').then((m) => m.DetailPage),
   meters: () => import('../areas/os-management/system-usage.page').then((m) => m.SystemUsagePage),
+  external: () => import('./external-page').then((m) => m.ExternalPage),
 };
 
 /**

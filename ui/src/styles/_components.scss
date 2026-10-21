@@ -1047,6 +1047,12 @@ app-source-viewer-page {
   color: var(--ocu-restrained);
 }
 
+// An `external` entry opens a new tab (Story 20.32): its glyph sits at the entry's right edge and never shrinks.
+.ocu-side-bar-item .ocu-external-glyph {
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
 .ocu-side-bar-item:focus-visible {
   @include ocu-focus-ring;
 
@@ -1076,6 +1082,33 @@ app-source-viewer-page {
 
   margin: 0;
   color: var(--ocu-restrained);
+}
+
+// --- The external page (Story 20.32) ---------------------------------------------------------
+//
+// An `external` screen's route: its title, then the classic-link card, or the sentence that says the
+// page cannot open in this namespace. Tokens only; the card keeps its own shape.
+
+.ocu-external-page {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--ocu-space-3);
+  padding: var(--ocu-space-6) var(--ocu-gutter);
+}
+
+.ocu-external-page-title {
+  @include typo.ocu-type('title');
+
+  margin: 0;
+  color: var(--ocu-on-surface);
+}
+
+.ocu-external-page-sentence {
+  @include typo.ocu-type('body');
+
+  margin: 0;
+  color: var(--ocu-on-surface-variant);
 }
 
 // --- The header band (Story 1.10) ----------------------------------------------------------
