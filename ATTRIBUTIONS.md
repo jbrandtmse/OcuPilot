@@ -43,6 +43,7 @@ it ports in its header.
 | Project | What is ported | Copyright | License | Notice |
 | --- | --- | --- | --- | --- |
 | iris-table-editor v0.2.3 (commit 29971a9) | System Explorer's Data browser (Story 19.7): the filter and sort rules, the cell formatting by kind, the grid's keyboard navigation, the filter row with its tri-state sort, and the pagination | Copyright (c) 2026 InterSystems Community | MIT | `ui/licenses/iris-table-editor.txt` |
+| iris-execute-mcp-v2 | The agent's guided workflows (Story 20.12): the catalog's steps, adapted from its eleven prompts, and the session-trace diagram rules of Story 20.30 | Copyright (c) 2026 jbrandtmse | MIT | `ui/licenses/iris-execute-mcp-v2.txt` |
 
 The full text of iris-table-editor's license:
 
@@ -50,6 +51,32 @@ The full text of iris-table-editor's license:
 MIT License
 
 Copyright (c) 2026 InterSystems Community
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+The full text of iris-execute-mcp-v2's license:
+
+```text
+MIT License
+
+Copyright (c) 2026 jbrandtmse
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

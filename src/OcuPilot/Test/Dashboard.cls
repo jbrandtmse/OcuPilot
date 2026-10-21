@@ -122,7 +122,7 @@ Method TestTheDeclarationIsTheDashboardsThirtyFieldsOverTwoParts()
     While tIterator.%GetNext(.tIndex, .tPrompt) {
         Set tPrompts = tPrompts _ $Select(tPrompts = "": "", 1: ",") _ tPrompt.groupKey _ ":" _ tPrompt.textKey
     }
-    Do $$$AssertEquals(tPrompts, "promptGroupTroubleshooting:dashboardPrompt1,promptGroupCapacity:dashboardPrompt2,promptGroupTroubleshooting:dashboardPrompt3", "its three prompts in their groups")
+    Do $$$AssertEquals(tPrompts, "promptGroupTroubleshooting:dashboardPrompt1,promptGroupCapacity:dashboardPrompt2,promptGroupTroubleshooting:dashboardPrompt3,promptGroupTroubleshooting:dashboardWorkflowHealth", "its three prompts and the health workflow's, in their groups")
 
     Set tSource = tDeclaration.read.source
     Do $$$AssertEquals(tSource.port _ "|" _ tSource.endpoint _ "|" _ tSource.type, "admin|Monitor|GET", "a parts GET of Monitor")

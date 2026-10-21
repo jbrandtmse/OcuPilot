@@ -505,6 +505,10 @@ services:
       # classes: ExplorerSourceTurn
       # classes: ExplorerSaveTurn
       # classes: ExplorerCreateTurn
+      # The guided-workflow classes run scripted turns on a probe class (Story 20.12): the turn class confirms two workflow
+      # proposals over HTTP and meets the one-change rule and the unknown workflow, and the gates class disables a key, sets
+      # read-only and the kill switch, or proposes deleting its own principal, between a workflow proposal and its confirm.
+      # classes: WorkflowTurn, WorkflowGates
       # classes: StampRetention
       # The provider TLS callers class signs in as probe principals holding %Developer, %Operator and %All (Story 18.40).
       # classes: ProviderSslCallers
@@ -652,6 +656,7 @@ services:
       # classes: ExplorerSourceTurn
       # classes: ExplorerSaveTurn
       # classes: ExplorerCreateTurn
+      # classes: WorkflowTurn, WorkflowGates
       # classes: WalletRungRoles
       # classes: InteropEditorSaveTurn
       OCUPILOT_ALLOW_TEST_PROVIDER: "1"

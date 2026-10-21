@@ -1110,9 +1110,10 @@ The docked agent co-pilot: its chrome and resize handle, the transcript's messag
 
 The agent co-pilot panel, docked right of every screen on `{colors.surface-container-lowest}` with a 1px `{colors.outline-variant}` left edge and the `panel-resize-handle` on that edge. Width `{spacing.panel-default}`, never below `{spacing.panel-min}`, `{spacing.panel-home}` on Home (120ms width transition; none under reduced motion); a full-screen toggle in its header; no close control. Anatomy top to bottom: header (44px: `avatar-agent` at 20px, "Agent co-pilot" in `{typography.title}` `{colors.primary}`, and at the right two `{spacing.icon-button-size}` icon buttons with 20px glyphs in `{colors.on-surface-variant}` — **New conversation**, then **Full screen** — hover `{colors.surface-container-high}`, focus `focus-ring`; a 2px bottom rule `linear-gradient(90deg, {colors.shell}, {colors.shell-edge}, #2090A0)`), then any `banner`s, the `context-chip`, the transcript (`{spacing.3} {spacing.panel-gutter} {spacing.2} {spacing.4}` padding, `{spacing.2}` between messages and cards; it reflows at any width), and the footer.
 
-The footer sits behind a 1px `{colors.outline-variant}` top edge with `{spacing.2} {spacing.3} 10px {spacing.4}` padding, and holds three things top to bottom:
+The footer sits behind a 1px `{colors.outline-variant}` top edge with `{spacing.2} {spacing.3} 10px {spacing.4}` padding, and holds three things top to bottom, with a fourth between the first and the second while a guided workflow is active:
 
 - the read-only status line in `{typography.caption}` `{colors.on-surface-variant}` — always present, so the mode is learnable, and `{colors.restrained}` while a read-only state applies;
+- the `workflow-chip` — present only while a guided workflow is active, above the composer's label (Story 20.12);
 - the composer — a `{spacing.input-height}` Material outlined field, 1px `{colors.outline}`, `{rounded.md}`, growing to four lines — beside the Send control;
 - a `{typography.caption}` `{colors.on-surface-variant}` caption line beneath, for the send hint and the panel chord.
 
@@ -1142,6 +1143,10 @@ A 6px strip on the panel's left edge (8px hit area), carrying the panel's docked
 #### `context-chip`
 
 Under the panel header: a `{colors.surface-container}` box with a 1px `{colors.outline-variant}` border, `{rounded.md}`, 8px 8px 8px 10px padding, `{typography.caption}` `{colors.on-surface}`, and a Material switch at its right (track `{colors.secondary}` on, `{colors.outline}` off). Content when on: the screen and namespace (the `<Screen>, <NAMESPACE>` pattern), the provider and endpoint host, and — when the host is not on a private network — the egress pill: "leaves the instance" in `{typography.label}` `{colors.egress-warning}` on `{colors.egress-warning-container}`, `{rounded.full}`, 0 6px, with a tooltip explaining it (words: EXPERIENCE.md). When off: the text says no screen data is being sent, in `{colors.restrained}`, and the pill goes. On a screen with secret-typed fields the chip gains a 14px key glyph in `{colors.on-surface-variant}` (the secret-like message warning itself is inline above the composer, per EXPERIENCE.md). Focus: `focus-ring` on the switch. The chip's text carries a row count after the screen segment: the rows the next turn would send.
+
+#### `workflow-chip`
+
+Above the composer while a guided workflow is active (Story 20.12): the context chip's surface — a `{colors.surface-container}` box with a 1px `{colors.outline-variant}` border, `{rounded.md}`, 6px 8px 6px 10px padding — holding, left to right, the label "Guided workflow" in `{typography.label}` `{colors.on-surface-variant}` above the starting prompt's text in `{typography.caption}` `{colors.on-surface}` (long text wraps), and at the right Continue and End workflow as `button-text`. Continue unavailable — a turn running, a proposal card live, or Send unavailable — is `aria-disabled` and reads `{colors.restrained}` at full opacity with no state layer, named by the sentence the panel offers (words: EXPERIENCE.md); it is never hidden. The chip adds no color of its own, so both themes hold, and it wraps its two controls under the text at the narrow panel width.
 
 #### `message-user`
 

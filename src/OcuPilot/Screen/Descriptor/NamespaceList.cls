@@ -46,7 +46,8 @@ XData Declaration
   "suggestedPrompts": [
     {"groupKey": "promptGroupGettingStarted", "textKey": "namespaceListPrompt1"},
     {"groupKey": "promptGroupGettingStarted", "textKey": "namespaceListPrompt2"},
-    {"groupKey": "promptGroupGettingStarted", "textKey": "namespaceListPrompt3"}
+    {"groupKey": "promptGroupGettingStarted", "textKey": "namespaceListPrompt3"},
+    {"groupKey": "promptGroupGettingStarted", "textKey": "namespaceListWorkflowProject", "workflow": "newproject"}
   ],
   "classicPage": "%CSP.UI.Portal.Namespaces",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},

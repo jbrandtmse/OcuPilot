@@ -42,7 +42,8 @@ XData Declaration
   "suggestedPrompts": [
     {"groupKey": "webAppPromptGroupCode", "textKey": "explorerSqlQueryPrompt1"},
     {"groupKey": "webAppPromptGroupCode", "textKey": "explorerSqlQueryPrompt2"},
-    {"groupKey": "webAppPromptGroupCode", "textKey": "explorerSqlQueryPrompt3"}
+    {"groupKey": "webAppPromptGroupCode", "textKey": "explorerSqlQueryPrompt3"},
+    {"groupKey": "webAppPromptGroupCode", "textKey": "explorerSqlQueryWorkflowSlow", "workflow": "slowquery"}
   ],
   "classicPage": "%CSP.UI.Portal.SQL.Home",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},

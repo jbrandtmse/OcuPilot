@@ -10,6 +10,10 @@
 /// <li>for a write tool, the restraint verdict (<class>OcuPilot.Kernel.Restraint</class>) -- blocked
 /// is the verdict's own code, and a verdict that could not be read is
 /// <code>TOOL.UNAVAILABLE</code> whatever it says;</li>
+/// <li>for a write tool in a guided-workflow turn (AD-66), the workflow's refusal
+/// (<method>OcuPilot.Kernel.Agent.Workflow.WriteRefusal</method>) -- <code>WORKFLOW.NOTASTEP</code>
+/// for a tool no step names, <code>WORKFLOW.ONECHANGE</code> once the turn holds a proposal -- and a
+/// turn whose workflow or proposal count could not be read is <code>TOOL.UNAVAILABLE</code>;</li>
 /// <li>every declared pair against the user's <b>current</b> grants
 /// (<code>$SYSTEM.Security.CheckUserPermission</code>, not the job's frozen <code>$ROLES</code>) --
 /// <code>AUTH.NOPRIVILEGE</code> with <code>detail.failedPair</code>, never retried; pairs that
@@ -260,6 +264,24 @@ ClassMethod AnswerOne(pKey As %String, pUser As %String, pDefinitionId As %Strin
                     Set pReason = ##class(OcuPilot.Api.Error).ReasonForToolCode(tVerdict("code"))
                 }
                 Quit
+            }
+            Set tSC = ##class(OcuPilot.Kernel.State.Turn).GuardedWorkflowOf(pKey, .tWorkflow)
+            If $$$ISERR(tSC) {
+                Do ..LogFault("turn " _ pKey _ ": the turn's guided workflow could not be read for " _ pName, tSC, tUnavailable)
+                Quit
+            }
+            If tWorkflow '= "" {
+                Set tSC = ##class(OcuPilot.Kernel.State.Propose).GuardedCountForTurn(pKey, .tMinted)
+                If $$$ISERR(tSC) {
+                    Do ..LogFault("turn " _ pKey _ ": the turn's proposals could not be counted for " _ pName, tSC, tUnavailable)
+                    Quit
+                }
+                Set tRefusal = ##class(OcuPilot.Kernel.Agent.Workflow).WriteRefusal(tWorkflow, pName, tMinted)
+                If tRefusal '= "" {
+                    Set pContent = ..ErrorContent(tRefusal)
+                    Set pReason = ##class(OcuPilot.Api.Error).ReasonForToolCode(tRefusal)
+                    Quit
+                }
             }
         }
 

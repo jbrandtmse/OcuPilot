@@ -2,14 +2,20 @@
 title: 'Story 20.12: The agent gains guided workflows and Investigate'
 type: 'feature'
 created: '2026-10-15'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '1a99c5369db07f9fe353f6c0ba35e045df9cc947'
+baseline_commit: '1a99c5369db07f9fe353f6c0ba35e045df9cc947'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
   - '{project-root}/_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md'
 warnings: [multiple-goals, oversized]
-deferred: []
+deferred:
+  - summary: >-
+      A guided workflow's step tools are not added to the turn's starting tool set, so on a screen whose tools do not include a step's tool the model reaches it through shell_tools_find.
+    evidence: |-
+      Loop.Scope marks the shell area's tools and the screen context's tools as the starting set and reads nothing from the workflow result; the scripted turns call the step tools by wire name, which dispatch does not scope, so no test observes the search.
 ---
 
 <intent-contract>
@@ -317,11 +323,76 @@ Its license is MIT, "Copyright (c) 2026 jbrandtmse". `ATTRIBUTIONS.md`:35-45 has
     - Continue is `aria-disabled` and names its reason, never hidden;
     - the panel with the chip and a live card passes `cardViolations` (the DW-1337 invariants) at 1280 and 720 in light and dark.
 
+### Review Findings
+
+Code review 2026-10-20 (full-opus; blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor). 27 rows, 14 entries kept (med 3, low 11), 15 rejected.
+
+- [x] [Review][Patch] (med) `compileclass` asked for a second compile and for compile errors the model never sees: Confirm of `explorer.classes.save` already compiles, and the compiler's output reaches only the card. Steps now say so, ask the person what the card reports, and keep `explorer.classes.compile` for a compile they ask for [src/OcuPilot/Kernel/Agent/Workflow.cls:269]
+- [x] [Review][Patch] (med) The armed harness shared one principal per class, so `WorkflowGates`' own-principal leg, red, deleted it under every later method; `OnBeforeOneTest` now recreates it, and the harness header and the resend test's comment say what each test owns [src/OcuPilot/Test/WorkflowTurnCase.cls:107]
+- [x] [Review][Patch] The browser leg read Continue's gating while the turn could still be busy; it now waits for the turn to end and asserts the live-card reason id [ui/browser/guided-workflow.browser-spec.mjs:219]
+- [x] [Review][Patch] The browser spec claimed dark at both widths; it now says what `cardViolations` measures [ui/browser/guided-workflow.browser-spec.mjs:8]
+- [x] [Review][Patch] The roster comment said the gates class deletes its own principal; it proposes the delete [scripts/ci-throwaway.sh:510]
+- [x] [Review][Patch] Two descriptor pins said "at least three" over an exact count [src/OcuPilot/Test/InteropDescriptor.cls:155]
+- [x] [Review][Patch] EXPERIENCE.md and DESIGN.md omitted Continue's third wait, Send unavailable, which the code and the Task have [EXPERIENCE.md:630]
+- [x] [Review][Patch] `Prompt`'s header counted one workflow sentence for two [src/OcuPilot/Kernel/Agent/Prompt.cls:16]
+- [x] [Review][Patch] `WorkflowTurn`'s header did not name QA's two tests [src/OcuPilot/Test/WorkflowTurn.cls:4]
+- [x] [Review][Patch] `Workflow`'s header did not name the harvest source, as ATTRIBUTIONS.md requires of a ported file [src/OcuPilot/Kernel/Agent/Workflow.cls:8]
+- [x] [Review][Patch] `turn.test.mjs` asserted `endSession` cleared a workflow `newConversation` had already cleared; removed (the second store's sign-out leg pins it) [ui/tools/turn.test.mjs:2518]
+- [x] [Review][Patch] The unknown-workflow test discarded `TurnFixture.Keys`' status, so a failed count read 0 = 0 [src/OcuPilot/Test/WorkflowTurn.cls:198]
+- [x] [Review][Patch] AC3's read-only and kill-switch Confirm legs had no observed red; mutation recorded under Verification [src/OcuPilot/Test/WorkflowGates.cls:84]
+- [x] [Review][Defer] (med) `previous` reads the newest earlier turn whatever workflow it ran; unreachable here (workflow prompts show only in an empty conversation), real once Investigate starts a workflow mid-conversation [src/OcuPilot/Kernel/Agent/Loop.cls:418] -- deferred: DW-2469, routed to 20-36-investigate
+
+Rejected:
+
+- `false` AD-24's "total bound" left uncharged: AD-24 names the per-result bound the screen context is cut to (`TOOLRESULTMAXLENGTH`, bounded apart from the turn budget), and `WorkflowCatalog`'s bound test pins every result within it.
+- `false` A refused 404 send keeps the workflow: "a send that is not accepted changes nothing" (Boundaries).
+- `false` The three `WORKFLOW.*` sentences are not in Fixed strings: Design Notes › Strings keeps them in `WorkflowError`, and every Fixed-strings literal must be a `strings.ts` value.
+- `false` Contended-file edits beyond the allowance: `readSources`/`buildMirror` carry the catalog reader, and DESIGN.md's count sentence had to change for the new bullet.
+- `low` Step tools named by dotted names: AC1 pins steps naming `explorer.classes.save`, the Tool naming convention keeps the dotted name where OcuPilot shows it, and `shell.tools.find` scores the dotted name's words.
+- `low` The prompt sentence does not name `finish`: the sentence is fixed in Design Notes › Prompt.
+- `low` A workflow starts only in an empty conversation: suggested prompts render in the greeting (Story 11.3); New conversation reaches them.
+- `low` An active workflow refuses Fix it's and Re-propose's writes `WORKFLOW.NOTASTEP`: Boundaries name both as sends that carry the workflow, and the card shows the reason.
+- `low` The attribution row pins no version: the row was approved at the spec gate.
+- `low` The spec's Auto Run Result counts predate QA: the fix edits the spec.
+- `low` `previous` can name the turn two back when the turn between has no entry: fault paths only, and that turn minted nothing.
+- `low` `PREVIOUSMAX` keeps the oldest ten: a workflow turn holds at most one proposal, so the turn before a workflow turn never reaches the cap.
+- `low` A carried id the instance no longer knows answers 422 on every send: needs the catalog changed under an open tab, and End workflow is on screen.
+- `low` An unreadable catalog answers 422, not 503: the catalog is compiled XData of a shipped class.
+- `low` A fault reading `Turn.Workflow` fails an ordinary turn: fail-closed on the turn's own row is intended.
+
 ## Spec Change Log
 
 - 2026-10-15, spec gate (runner): the orchestrator ruled Q1 (A, Story 20.36 chartered) and Q2 (A); attribution approved (the iris-execute-mcp-v2 row also credits Story 20.30's diagram port); the spine carries AD-66 and the Story 20.12 clauses in AD-5, AD-11 and AD-24.
 
 ## Review Triage Log
+
+### 2026-10-20 - Review pass
+
+- verdicts: 23 findings - high 0, medium 0, low 9, false 14, maybe-false 0
+- findings:
+  - `[low]` `[patch]` Continue's composer-unavailable arm and its reason ids have no test - added the kill-switch gating case to `panel.spec.ts`; mutation recorded.
+  - `[low]` `[patch]` The `workflow` key's empty, null and non-string rejections are pinned in one engine each - three cases added to `PromptCorpus`, run by both engines; mutation recorded.
+  - `[low]` `[reject]` The fail-closed branches in `Dispatch` and `Loop` (a failed workflow or count read, a catalog id gone) have no test - they fire only on a store fault or a catalog changed mid-turn, a start validates the id first, and a test needs a fault seam `ToolDispatchProbe` lacks; every gate still runs at the write. reopen_if: a workflow turn is seen to continue after a failed read.
+  - `[low]` `[patch]` The model-call-named-`workflow` test runs on the fixture registry - `WorkflowCatalog` now asserts the production registry resolves and lists no tool spelled `workflow`; mutation recorded.
+  - `[low]` `[patch]` `Exchange`'s `purpose` is asserted only as non-empty - compared with the catalog entry now; mutation recorded.
+  - `[false]` `[reject]` Mutation claims in test comments are not all recorded as run - Rule 19 asks one demonstrated mutation per AC, and all five ACs carry recorded lines (AC3 four gates' worth, AC5 three); the per-test notes are the planned `Mutation` notes the Tasks ask for.
+  - `[low]` `[reject]` `cardViolations` measures dark at the wide width only, AC5 reads both widths - the helper is the shared DW-1337 check every card spec names, and the chip uses surface tokens only, so no rule differs by theme or width; extending the helper edits every card spec. reopen_if: a chip rule differs between themes or widths.
+  - `[low]` `[patch]` The browser spec's reason assertion passes for a missing chip - now requires a non-empty reason string.
+  - `[low]` `[reject]` `WorkflowGates`' own-principal test deletes the class's shared principal when its guarded defect is present, so the class relies on method-name order - a green run is unaffected and the test is named to sort last; a per-test principal is a harness rework. reopen_if: a method is added that sorts after it.
+  - `[false]` `[reject]` The spec's Auto Run Result still reads ready-for-dev - it is rewritten in Finalize below.
+  - `[low]` `[reject]` AD-24's "counts within the total bound" is not applied in code - the largest workflow result measures 2,134 characters with ten `previous` rows, against 65,536; bounded by construction (catalog constants and at most ten closed-vocabulary rows).
+  - `[false]` `[reject]` Intent auditor, model behavior versus the wire: every test drives a scripted provider - the spec names it a limit (the model follows the steps; the instance enforces the write set and one change per turn), and CI stays stub-based.
+  - `[false]` `[reject]` Intent auditor, "Choose" ordering pinned only in process - `WorkflowLoop` runs the real `Loop.Run` builder with context and asserts the order; the browser tier asserts the workflow result.
+  - `[false]` `[reject]` Intent auditor, `previous` reports the turn before only - the spec's named limit and its stated reading.
+  - `[false]` `[reject]` Intent auditor, Explain, Fix it and Re-propose are not named in tests - the only `POST /turn` in the client is `TurnStore.send` (`core/turn.ts`), and `turn.test.mjs` pins that every send carries the active workflow.
+  - `[false]` `[reject]` Intent auditor, the chip does not survive a reload - the spec's named limit.
+  - `[false]` `[reject]` Intent auditor, `BUILTIN` carries the workflow sentence on every turn - the spec's Task, and the Ordinary turn row concerns the opening messages and dispatch, which are unchanged.
+  - `[false]` `[reject]` Intent auditor, the gate-at-write tests pin existing behavior as reached from a workflow turn - that is the surface the row names.
+  - `[false]` `[reject]` Intent auditor, the read-only row uses a fixture write tool in process - the registered-tool leg is `WriteRefusal`'s pure test and the HTTP not-a-step leg.
+  - `[false]` `[reject]` Intent auditor, additions beyond the intent text (notice file, attribution row, rosters, UX documents) - each is a Task of the spec and was approved at the gate.
+  - `[false]` `[reject]` Intent auditor, some shared-file edits modify existing lines - the prompt shape, the descriptor pins, the generalized license test and the two in-place UX rows are the spec's own list; the `strings.ts` citation follows the inserted EXPERIENCE.md rows.
+  - `[false]` `[reject]` Intent auditor, the bundle budget is unmeasured in the diff - measured at 1.97 MB (1,969 kB) in Verify.
+  - `[false]` `[reject]` Intent auditor, the spec title still names Investigate - the fix edits the spec; Part B is Story 20.36.
 
 ## Design Notes
 
@@ -551,9 +622,65 @@ Checked and not engaged: AD-51 and AD-52 (no new write tools), AD-58 (only its v
 | AC5 | `newConversation` keeps the workflow | `turn.test.mjs`, and `panel.spec.ts` |
 | AC5 | `.ocu-workflow-chip` takes its surface color as its text | the browser `cardViolations` leg |
 
+**Pinning mutations (Rule 19), on `ocupilot-b-ci`.** Each was applied, observed red and reverted byte-identical (`cmp` against a copy), with the tree reloaded or the bundle rebuilt and redeployed before the next.
+
+- mutation: `Loop.Run` adds no `workflow` pair -> `WorkflowLoop`'s two opening-message tests and `WorkflowTurn`'s two-turn test.
+- mutation: `previous` reads the current turn (`Proposal.Caller.TurnKey()`) -> `WorkflowTurn`'s two-turn test, at its second-turn `previous`.
+- mutation: `TurnStore.send` drops `workflow` from the body -> `turn.test.mjs`'s send and replace tests, and both tests of `guided-workflow.browser-spec.mjs` (bundle rebuilt and redeployed).
+- mutation: the dispatcher's workflow step removed (`If tRefusal '= ""` made `If 0`) -> `WorkflowLoop`'s read-only test and `WorkflowTurn`'s one-change-per-turn test.
+- mutation: `WriteRefusal` tests `pMinted > 1` -> `WorkflowCatalog`'s refusal test and `WorkflowTurn`'s one-change-per-turn test, at its `WORKFLOW.ONECHANGE` and one-proposal clauses.
+- mutation: `Confirm`'s governance check skipped -> `WorkflowGates`' disabled-key test alone.
+- mutation: `Prohibited.User` without its current-user arm -> `WorkflowGates`' own-principal delete test alone (it runs last, because with the arm gone the confirm deletes the principal).
+- mutation: the dispatcher's governance gate skipped (`If '$Get(tDecision("allowed"))` made `If 0`, `AnswerOne`) -> `WorkflowGates`' disabled-key-call test and its resend-key test (the matrix's Disabled key row), and no other.
+- mutation: a step names `interop.productions.recoverx` -> `WorkflowCatalog`'s resolution test.
+- mutation: both `SuggestedPromptsProblem` engines accept any `workflow` -> `Descriptor`'s corpus test, and `screen-mirror.test.mjs`'s corpus test and its catalog-id test.
+- mutation: `WorkflowViolation` always passes -> `WorkflowTurn`'s unknown-workflow test.
+- mutation: Continue not gated on live cards (`workflowContinueDisabled` without `workflowWaiting`) -> `panel.spec.ts`'s gating test and the browser spec's two-card test, at "Continue is aria-disabled while the card is live", read after the turn ends (re-run at code review; bundle rebuilt and redeployed, reverted byte-identical and redeployed).
+- mutation: `Confirm`'s restraint verdict skipped (`If +$Get(tVerdict("blocked"))` made `If 0`, throwaway copy only, recompiled with subclasses) -> `WorkflowGates`' read-only and kill-switch Confirm tests alone (code review, run 114; restored byte-identical, run 115 green).
+- mutation: `newConversation` keeps the workflow -> `turn.test.mjs`'s clearing test and `panel.spec.ts`'s New conversation test.
+- mutation: `.ocu-workflow-chip-text` takes `--ocu-surface-container` as its color -> the browser spec's `cardViolations` leg, a 1:1 contrast on the chip's name in light and dark (bundle rebuilt and redeployed).
+- mutation: `workflowContinueDisabled` without `composerUnavailable` -> `panel.spec.ts`'s kill-switch gating test alone.
+- mutation: `SuggestedPromptsProblem` reports a non-string `workflow` by its value -> `Descriptor`'s corpus test, at the no-string case alone.
+- mutation: `Exchange` answers the finish as the purpose -> `WorkflowCatalog`'s Exchange test alone.
+- mutation: `Registry.WireName` answers `workflow` for `shell.tools.find` -> `WorkflowCatalog`'s registry test alone (with the Exchange mutation applied beside it, exactly these two went red).
+- (QA) `src/OcuPilot/Test/WorkflowTurn.cls`: `TestPreviousReadsTheTurnBeforeWhateverItsOutcome` (four turns: canceled, confirmed, closed by a typed message) and `TestARefusedWriteDoesNotUseUpTheTurnsOneChange`; `src/OcuPilot/Test/WorkflowTurnCase.cls`: `Cancel`, `Decide` (`Confirm` now delegates) and `PreviousAt`.
+- (QA) `src/OcuPilot/Test/WorkflowCatalog.cls`: `TestEveryResultStaysWithinTheBoundAndTheSanitizerLeavesItWhole`.
+- (QA) `ui/tools/suggested-prompts.test.mjs`: the offered-on table, nine workflows on seven screens.
+- (QA) `ui/browser/guided-workflow.browser-spec.mjs`: a typed message while the chip shows carries the workflow, and the first message after End workflow and after New conversation holds none.
+- mutation: `Loop.WorkflowResult` reads the conversation's oldest turn (`$Order(tKeys(""))`) -> `WorkflowTurn`'s previous-chain test alone; the two-turn test stays green, because with two turns the oldest is the newest.
+- mutation: `Dispatch.AnswerOne` counts a turn's write calls, not its proposals -> `WorkflowTurn`'s refused-write test and its one-change-per-turn test.
+- mutation: a catalog entry's text grows past `Limits.TOOLRESULTMAXLENGTH` -> `WorkflowCatalog`'s bound test alone.
+- mutation: the Roles prompt moves to another task group in `screens.generated.ts` -> `suggested-prompts.test.mjs`'s offered-on test alone.
+- mutation: `ci-throwaway.sh`'s provider roster drops `WorkflowGates` -> `ci.test.mjs`'s DW-1276 roster test.
+- mutation: ATTRIBUTIONS.md loses the iris-execute-mcp-v2 row -> `licenses.test.mjs`'s iris-execute-mcp-v2 check.
+- mutation: `TurnStore.send` falls back to the workflow it last carried (`lastCarriedValue`) -> both tests of `guided-workflow.browser-spec.mjs`, at the two new `none` assertions (bundle rebuilt and redeployed; reverted byte-identical and redeployed).
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-Planned as Part A under the recommended answers to Design Notes › Gate questions Q1 (split) and Q2 (the set), which await the orchestrator at the spec gate.
+Summary: Part A of Story 20.12 is built. A workflow catalog (`Kernel/Agent/Workflow`, nine entries as data) is offered through a new `workflow` key on seven screens' suggested prompts, validated alike by `Registry` and `screen-mirror.mjs`. A start with an unknown id answers 422 `WORKFLOW.UNKNOWN` before the reserve. The id is recorded on the turn row. The loop opens a workflow turn with a synthetic `workflow` call and result beside screen context, `previous` being the turn before's proposals as `{tool, state, closedReason, readBack}`. The dispatcher refuses a write no step names and a second proposal in the turn. The panel carries the workflow on every send and shows the chip with Continue (gated) and End workflow. Investigate is Story 20.36, not built here. The gate questions Q1 (split, A) and Q2 (the nine, A) were answered by the orchestrator on 2026-10-15; the attribution rows and the footprint extensions are approved.
+
+Files changed:
+
+- Server: `Kernel/Agent/Workflow.cls` and `Api/WorkflowError.cls` (new); `Api/Error`, `Api/Turn`, `Kernel/State/Turn`, `Kernel/Agent/{Job,Loop,Prompt,Dispatch}` wired for the workflow; `Screen/Registry` accepts and checks `workflow`; seven descriptors gain their prompts.
+- Client: `screen-mirror.mjs` and the regenerated `screens.generated.ts`; `strings.ts`; `suggested-prompts.ts`; `turn.ts`; `workflow-chip.ts` (new); `panel.ts`; `_components.scss`.
+- Documents and rosters: EXPERIENCE.md, DESIGN.md, `ATTRIBUTIONS.md`, `ui/licenses/iris-execute-mcp-v2.txt` (new), `scripts/ci-throwaway.sh`.
+- Tests: `WorkflowCatalog`, `WorkflowLoop`, `WorkflowTurn`, `WorkflowGates` and their base `WorkflowTurnCase` (new); descriptor pins, `PromptCorpus`, `ScreenGrounding`, `TurnToolsCase` and `TurnWireFixture`; `workflow-chip.spec.ts`, `panel.spec.ts`, `guided-workflow.browser-spec.mjs`, and the tools tests for turn, prompts, mirror, strings and licenses.
+
+Review: 23 findings, high 0, medium 0, low 9, false 14. Five low patches applied (Continue's kill-switch gating test, three corpus cases for a non-string `workflow`, the production-registry guard for a tool spelled `workflow`, `purpose` compared with the catalog, the browser spec's reason assertion). Four low rejected with `reopen_if` (fail-closed branches untested, `cardViolations` dark at narrow width, the own-principal test's method-name order, AD-24's bound unpinned at 2,134 of 65,536 characters). Fourteen false rejected with their refutations in the Review Triage Log. One item deferred, recorded in the frontmatter (a workflow's step tools are not in the turn's starting tool set).
+
+Follow-up review recommended: false (no high patched, no medium patched).
+
+Verification, on `ocupilot-b-ci` after the last patch:
+
+- ObjectScript, one class per run: `WorkflowCatalog` 8, `WorkflowLoop` 5, `WorkflowTurn` 3, `WorkflowGates` 6, `Descriptor` 60, `ScreenGrounding` 16, `SurfaceCoverage` 4 green; and, before the patches, `InteropDescriptor`, `InteropMessageDescriptor`, `Dashboard`, `ExplorerDescriptor`, `TurnLoop`, `TurnTools`, `TurnGrounding`, `TurnWire`, `ToolEmit`, `Governance`, `ExplorerSaveTurn`, `CompileWithoutInterop`, `TurnBudget`, `TurnScope`, `TurnScopeFamilies` green.
+- `npm run test:tools` 2044 of 2044; `npm run test:components` 3284 of 3284.
+- `npm run build`: the prebuild chain green; initial total 1.97 MB (1,969 kB) against the fixed 2,500 kB warning.
+- `guided-workflow.browser-spec.mjs` 2 of 2 and `suggested-prompts.browser-spec.mjs` 2 of 2, against the redeployed bundle.
+- `uv run scripts/check-objectscript.py` and `bash scripts/lint-docs.sh` clean.
+- Eighteen pinning mutations applied, each observed red and reverted byte-identical (Verification, Pinning mutations).
+- Not run, the runner's: the full ObjectScript sweep, `npm test`, `smoke.sh` and Rule 30's fresh check. Left to CI: the full browser suite.
+
+Residual risks: forward merges may conflict with Epic 23 in EXPERIENCE.md, DESIGN.md, `screen-mirror.mjs` and `_components.scss` (add-only edits). The model's following of the steps is observed only on scripted providers.

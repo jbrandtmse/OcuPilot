@@ -1,4 +1,4 @@
-/// <p>Stories 11.9, 11.10, 11.1, 11.2, 18.39, 18.45 and 20.18 in process: the built-in prompt's ten screen statements, the tools each
+/// <p>Stories 11.9, 11.10, 11.1, 11.2, 18.39, 18.45, 20.18 and 20.12 in process: the built-in prompt's eleven screen statements, the tools each
 /// kind of screen names (<method>OcuPilot.Screen.Context.ScreenTools</method>), the refusal of a
 /// request that supplies a derived member (<method>OcuPilot.Api.Turn.ContextViolation</method>),
 /// Home's empty route, the error read tool's input schema, the four members <method>OcuPilot.Api.Turn.BoundedContext</method> adds on both payload
@@ -16,7 +16,7 @@ Parameter LIMITS = "OcuPilot.Kernel.Agent.Limits";
 /// behind its five row actions, in name order.</p>
 Parameter PROCESSTOOLS = "[""osmgmt_processes_read"",""osmgmt_processes_broadcast"",""osmgmt_processes_resume"",""osmgmt_processes_suspend"",""osmgmt_processes_terminate"",""osmgmt_processes_terminatewitherror""]";
 
-/// <p>The prompt's statement at <var>pIndex</var> (1 to 10), verbatim.</p>
+/// <p>The prompt's statement at <var>pIndex</var> (1 to 11), verbatim.</p>
 ClassMethod Statement(pIndex As %Integer) As %String
 {
     Quit $Case(pIndex,
@@ -30,6 +30,7 @@ ClassMethod Statement(pIndex As %Integer) As %String
         8: "When the user asks you to explain the selected entry, screen_context marks the entry they chose: selected is its index in rows, the first row being 0, or focus holds it when rows does not; that marker, not entity, names the entry, and the other rows are the rest of the screen, context for that entry. Explain that one entry: what it records, what likely caused it and what to check next, and propose no change.",
         9: "When a tool answers AUTH.NOPRIVILEGE, it names the permission the user lacks (failedPair) and, when the user cannot open that tool's screen, the screen (screen): say that the user cannot access that screen and which permission they would need, propose nothing on it, and do not call it again; do not call a tool that unavailable names, and say which permission it needs instead.",
         10: "When a tool answers TOOL.RESULTTOOLARGE, this turn can carry no more tool results: answer from the results you already have, or ask the user to narrow the request.",
+        11: "A turn may also open with a workflow result: the guided workflow the user chose, with its purpose, its steps, each naming the read tools (reads) and write tools (writes) it uses, and previous, how the user decided the proposals of the turn before (tool, state, closedReason, readBack). Follow its steps in order from where previous leaves off; propose at most one change in a turn, and only with a tool that a step's writes names, then end the turn by saying what Confirm will change and that Continue resumes the workflow; when the steps are done, or a step finds nothing to change, say what you found and that the workflow is complete.",
         : "")
 }
 
@@ -44,7 +45,7 @@ Method ToolsFor(pRoute As %String) As %String
     Quit tTools.%ToJSON()
 }
 
-/// <p>The prompt is the class parameter, whole, and carries each of the ten screen statements
+/// <p>The prompt is the class parameter, whole, and carries each of the eleven screen statements
 /// verbatim, one assertion each.</p>
 Method TestThePromptCarriesTheScreenStatements()
 {
@@ -60,6 +61,7 @@ Method TestThePromptCarriesTheScreenStatements()
     Do $$$AssertTrue(tPrompt [ ..Statement(8), "the explain-entry statement, which says what the marker means")
     Do $$$AssertTrue(tPrompt [ ..Statement(9), "the AUTH.NOPRIVILEGE statement, which names failedPair and screen")
     Do $$$AssertTrue(tPrompt [ ..Statement(10), "the TOOL.RESULTTOOLARGE statement, which says the turn can carry no more tool results")
+    Do $$$AssertTrue(tPrompt [ ..Statement(11), "the workflow statement, which names the result's members and the one change a workflow turn proposes (Story 20.12)")
     Set tOutside = 0
     For tI = 1:1:$Length(tPrompt) If ($Ascii(tPrompt, tI) < 32) || ($Ascii(tPrompt, tI) > 126) Set tOutside = tOutside + 1
     Do $$$AssertEquals(tOutside, 0, "the prompt is printable ASCII throughout")

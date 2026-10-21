@@ -54,6 +54,7 @@ export const NAMESPACE_FEATURES_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Ker
 export const MIRROR_PATH = join(REPO_ROOT, 'ui', 'src', 'app', 'core', 'screens.generated.ts');
 export const TOOL_FIELDS_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Tool', 'ToolFields.cls');
 export const SCREEN_REGISTRY_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Registry.cls');
+export const WORKFLOW_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Kernel', 'Agent', 'Workflow.cls');
 
 /** The abstract base lives in the descriptor package and declares no screen. */
 const BASE_FILE = 'Base.cls';
@@ -408,6 +409,38 @@ export function parseArchetypes(text) {
   return archetypes.length === 0 ? null : archetypes;
 }
 
+/**
+ * The guided-workflow ids, from `OcuPilot.Kernel.Agent.Workflow`'s own `XData Catalog` block, in
+ * catalog order, or `null` when the block is missing, unparseable, or not the shape it declares
+ * (Story 20.12, AD-66). `null` rather than `[]`, for `parseArchetypes`' reason: an empty vocabulary
+ * would make every prompt's workflow unknown, and an absent check would make every one fine.
+ */
+export function parseWorkflowIds(text) {
+  const body = extractXData(text, 'Catalog');
+  if (body === null) return null;
+  let parsed;
+  try {
+    parsed = JSON.parse(body);
+  } catch {
+    return null;
+  }
+  if (parsed === null || typeof parsed !== 'object' || !Array.isArray(parsed.workflows)) return null;
+  const ids = [];
+  for (const entry of parsed.workflows) {
+    if (entry === null || typeof entry !== 'object') return null;
+    if (typeof entry.id !== 'string' || entry.id === '') return null;
+    ids.push(entry.id);
+  }
+  return ids.length === 0 ? null : ids;
+}
+
+/** The ids `WORKFLOW_SOURCE` declares; throws when its catalog cannot be read. */
+export function readWorkflowIds() {
+  const ids = parseWorkflowIds(readFileSync(WORKFLOW_SOURCE, 'utf8'));
+  if (ids === null) throw new Error(`${WORKFLOW_SOURCE} carries no readable 'XData Catalog' block`);
+  return ids;
+}
+
 /** Every entity type a declaration names: the primary first, then the secondaries. */
 export function entityTypesIn(declaration) {
   const named = [];
@@ -481,6 +514,8 @@ export function readSources({ descriptorDir = DESCRIPTOR_DIR, areaSource = AREA_
     throw new Error(`${ARCHETYPE_SOURCE} carries no readable 'XData Archetypes' block`);
   }
 
+  const workflowIds = readWorkflowIds();
+
   const areaText = readFileSync(areaSource, 'utf8');
   const areaBody = extractXData(areaText, 'Areas');
   if (areaBody === null) throw new Error(`${areaSource} carries no 'XData Areas' block`);
@@ -515,7 +550,7 @@ export function readSources({ descriptorDir = DESCRIPTOR_DIR, areaSource = AREA_
   if (toolFieldsBody === null) throw new Error(`${TOOL_FIELDS_SOURCE} carries no 'XData Tools' block`);
   const toolFields = parseXDataJson(toolFieldsBody, TOOL_FIELDS_SOURCE, 'Tools');
 
-  return { entityTypes, idRules, idRuleNames, refSeparator, singletonId, declaredNameKinds, selfProtectionRules, scopeWords, features, archetypes, areas, screens, toolFields };
+  return { entityTypes, idRules, idRuleNames, refSeparator, singletonId, declaredNameKinds, selfProtectionRules, scopeWords, features, archetypes, workflowIds, areas, screens, toolFields };
 }
 
 /**
@@ -2564,12 +2599,12 @@ export const PROMPT_GROUP_KEYS = [
 /**
  * What is wrong with a declaration's `suggestedPrompts`, or `null` (Story 11.3, AD-5). A built
  * screen declares them; an unbuilt one may leave them absent or `null`. Otherwise it is an array of
- * at least `SUGGESTED_PROMPTS_MIN` objects, each carrying only `groupKey` and `textKey`, both
- * non-empty string keys, the group one of `PROMPT_GROUP_KEYS`; that each resolves is
- * `declaredStringKeys`'s. `OcuPilot.Screen.Registry.SuggestedPromptsProblem` returns the same
- * sentence for every case.
+ * at least `SUGGESTED_PROMPTS_MIN` objects, each carrying `groupKey` and `textKey`, both non-empty
+ * string keys, the group one of `PROMPT_GROUP_KEYS`, and optionally `workflow`, one of `workflowIds`
+ * (the catalog's, Story 20.12); that each key resolves is `declaredStringKeys`'s.
+ * `OcuPilot.Screen.Registry.SuggestedPromptsProblem` returns the same sentence for every case.
  */
-export function suggestedPromptsProblem(declaration) {
+export function suggestedPromptsProblem(declaration, workflowIds = readWorkflowIds()) {
   const prompts = declaration.suggestedPrompts;
   if (prompts === undefined || prompts === null) {
     return declaration.built === true ? `a built screen declares at least ${SUGGESTED_PROMPTS_MIN} suggestedPrompts` : null;
@@ -2581,7 +2616,7 @@ export function suggestedPromptsProblem(declaration) {
   for (const [index, prompt] of prompts.entries()) {
     const where = `suggestedPrompts[${index}]`;
     if (!isObject(prompt)) return `${where} is not an object declaring its groupKey and textKey`;
-    const keysFault = unknownKeyProblem(where, prompt, ['groupKey', 'textKey']);
+    const keysFault = unknownKeyProblem(where, prompt, ['groupKey', 'textKey', 'workflow']);
     if (keysFault !== null) return keysFault;
     for (const key of ['groupKey', 'textKey']) {
       if (typeof prompt[key] !== 'string' || prompt[key] === '') {
@@ -2590,6 +2625,10 @@ export function suggestedPromptsProblem(declaration) {
     }
     if (!PROMPT_GROUP_KEYS.includes(prompt.groupKey)) {
       return `${where}.groupKey '${prompt.groupKey}' is not one of the declared prompt groups`;
+    }
+    if ('workflow' in prompt) {
+      const workflow = typeof prompt.workflow === 'string' ? prompt.workflow : '';
+      if (!workflowIds.includes(workflow)) return `${where} names the unknown workflow '${workflow}'`;
     }
   }
   return null;
@@ -3223,6 +3262,7 @@ export function buildMirror({
   scopeWords,
   features = ['interoperability', 'analytics'],
   archetypes,
+  workflowIds = readWorkflowIds(),
   areas,
   screens,
   toolFields = {},
@@ -3366,7 +3406,7 @@ export function buildMirror({
     if (tabFault !== null) {
       throw new Error(`src/OcuPilot/Screen/Descriptor/${screen.file} (${screen.className}): ${tabFault}`);
     }
-    const promptsFault = suggestedPromptsProblem(screen.declaration);
+    const promptsFault = suggestedPromptsProblem(screen.declaration, workflowIds);
     if (promptsFault !== null) {
       throw new Error(`src/OcuPilot/Screen/Descriptor/${screen.file} (${screen.className}): ${promptsFault}`);
     }
@@ -3859,6 +3899,8 @@ export interface ScreenDeclaration {
 export interface SuggestedPrompt {
   readonly groupKey: string;
   readonly textKey: string;
+  /** The catalog id of the guided workflow choosing this prompt starts, where it names one (Story 20.12, AD-66). */
+  readonly workflow?: string;
 }
 
 /**

@@ -9022,6 +9022,9 @@ So that I start from a recap and ranked hypotheses rather than a blank page.
 - **When** the user chooses Investigate
 - **Then** a multistep run returns a recap and ranked hypotheses, citing the rows it used.
 
+- DW-2469: A workflow turn's previous reports the conversation's newest earlier turn whatever workflow it ran, so a workflow started mid-conversation reads unrelated proposals as its own earlier steps (ledger; routed by cr 2026-10-20)
+- DW-2468: A guided workflow's step tools are not added to the turn's starting tool set, so on a screen without a step's tool the model reaches it through shell_tools_find (ledger; routed by adjudication 2026-10-20)
+
 ## Epic 21: Stage 5 - custom-REST parity from the MCP suite's handlers
 
 Every remaining classic portal leaf with a backing class but no route becomes reachable: backup and mirroring, startup and memory tables, NLS locales, SQL settings, globals and the whole SQL tuning track, interoperability credentials, purge, deployment, record maps, workflow, the analytics editors, and a developer-tools set. The agent gains the 28 harvested inspection tools and undo by snapshot and revert.

@@ -2428,3 +2428,110 @@ test('outputLinesOf reads a confirmed SQL run as its status line, and an error a
   assert.deepEqual(outputLinesOf({ lines: ['Compiling class A', 7] }), ['Compiling class A'], 'a compile still answers its lines');
   assert.deepEqual(outputLinesOf(null), []);
 });
+
+// --- Story 20.12: a guided workflow rides every send until it is ended ---------------------------
+//
+// Mutations (Rule 19): drop `workflow` from the POST body in `TurnStore.send` -> the first test goes red;
+// keep `workflowValue` in `newConversation` -> the clearing test goes red; make an unaccepted send
+// activate its workflow -> the refusal test goes red.
+
+const completedProgress = (turnId) => ok({ turnId, state: 'completed', steps: [], stepsDropped: 0, reply: 'ok', error: null });
+const compileWorkflow = { id: 'compileclass', text: 'Fix a class until it compiles, step by step' };
+
+test('send(message, context, workflow): the body names the workflow, the next send keeps it, and an ordinary store names none', async () => {
+  const api = fakeApi({
+    [CONVERSATION_PATH]: [ok({ conversationId: 'convo-1' }, 201)],
+    [TURN_PATH]: [ok({ turnId: 'turn-1' }, 202), ok({ turnId: 'turn-2' }, 202), ok({ turnId: 'turn-3' }, 202)],
+    [turnProgressPath('turn-1')]: [completedProgress('turn-1')],
+    [turnProgressPath('turn-2')]: [completedProgress('turn-2')],
+    [turnProgressPath('turn-3')]: [completedProgress('turn-3')],
+  });
+  const { schedule, scheduled } = fakeSchedule();
+  const turn = new TurnStore({ api, storage: memoryStorage(), navigationType: freshTab(), schedule });
+  assert.equal(turn.workflow(), null, 'no workflow before a prompt starts one');
+
+  assert.equal(await turn.send('plain'), 'sent');
+  assert.equal('workflow' in JSON.parse(api.calls.filter((c) => c.path === TURN_PATH)[0].body), false, 'an ordinary send omits the key');
+  scheduled.shift().run();
+  await settle();
+
+  assert.equal(await turn.send(compileWorkflow.text, null, compileWorkflow), 'sent');
+  assert.equal(JSON.parse(api.calls.filter((c) => c.path === TURN_PATH)[1].body).workflow, 'compileclass', 'the prompt names its workflow');
+  assert.deepEqual(turn.workflow(), compileWorkflow, 'an accepted workflow send makes it active');
+  scheduled.shift().run();
+  await settle();
+
+  assert.equal(await turn.send('a typed message'), 'sent');
+  assert.equal(JSON.parse(api.calls.filter((c) => c.path === TURN_PATH)[2].body).workflow, 'compileclass', 'a later send keeps the active workflow');
+});
+
+test('a workflow prompt replaces the active workflow, and endWorkflow clears it so the next body names none', async () => {
+  const api = fakeApi({
+    [CONVERSATION_PATH]: [ok({ conversationId: 'convo-1' }, 201)],
+    [TURN_PATH]: [ok({ turnId: 'turn-1' }, 202), ok({ turnId: 'turn-2' }, 202), ok({ turnId: 'turn-3' }, 202)],
+    [turnProgressPath('turn-1')]: [completedProgress('turn-1')],
+    [turnProgressPath('turn-2')]: [completedProgress('turn-2')],
+    [turnProgressPath('turn-3')]: [completedProgress('turn-3')],
+  });
+  const { schedule, scheduled } = fakeSchedule();
+  const turn = new TurnStore({ api, storage: memoryStorage(), navigationType: freshTab(), schedule });
+  const seen = [];
+  turn.subscribe(() => seen.push(turn.workflow()));
+
+  await turn.send(compileWorkflow.text, null, compileWorkflow);
+  scheduled.shift().run();
+  await settle();
+  const review = { id: 'reviewclass', text: "Review a class's ObjectScript, step by step" };
+  await turn.send(review.text, null, review);
+  assert.deepEqual(turn.workflow(), review, 'the newest workflow prompt replaces the older');
+  scheduled.shift().run();
+  await settle();
+
+  turn.endWorkflow();
+  assert.equal(turn.workflow(), null, 'End workflow clears it');
+  assert.equal(seen.at(-1), null, 'and tells the subscribers');
+  const before = seen.length;
+  turn.endWorkflow();
+  assert.equal(seen.length, before, 'ending when none is active notifies nobody');
+
+  await turn.send('after the end');
+  const bodies = api.calls.filter((c) => c.path === TURN_PATH).map((c) => JSON.parse(c.body));
+  assert.equal(bodies[1].workflow, 'reviewclass');
+  assert.equal('workflow' in bodies[2], false, 'the body after End workflow names none');
+});
+
+test('newConversation and endSession clear the workflow, and a refused newConversation keeps it', async () => {
+  const api = fakeApi({
+    [CONVERSATION_PATH]: [ok({ conversationId: 'convo-1' }, 201), err(500, 'INTERNAL'), ok({ conversationId: 'convo-2' }, 201)],
+    [TURN_PATH]: [ok({ turnId: 'turn-1' }, 202)],
+    [turnProgressPath('turn-1')]: [completedProgress('turn-1')],
+  });
+  const { schedule, scheduled } = fakeSchedule();
+  const turn = new TurnStore({ api, storage: memoryStorage(), navigationType: freshTab(), schedule });
+  await turn.send(compileWorkflow.text, null, compileWorkflow);
+  scheduled.shift().run();
+  await settle();
+
+  assert.equal(await turn.newConversation(), false, 'a refused new conversation changes nothing');
+  assert.deepEqual(turn.workflow(), compileWorkflow, 'so the workflow stays');
+  assert.equal(await turn.newConversation(), true);
+  assert.equal(turn.workflow(), null, 'a new conversation ends the workflow');
+
+  const again = new TurnStore({ api: fakeApi({ [CONVERSATION_PATH]: [ok({ conversationId: 'convo-9' }, 201)], [TURN_PATH]: [ok({ turnId: 'turn-9' }, 202)] }), storage: memoryStorage(), navigationType: freshTab() });
+  await again.send(compileWorkflow.text, null, compileWorkflow);
+  assert.deepEqual(again.workflow(), compileWorkflow);
+  again.endSession();
+  assert.equal(again.workflow(), null, 'sign-out ends it');
+});
+
+test('a send the instance did not accept does not activate its workflow', async () => {
+  const api = fakeApi({
+    [CONVERSATION_PATH]: [ok({ conversationId: 'convo-1' }, 201)],
+    [TURN_PATH]: [err(422, 'WORKFLOW.UNKNOWN', 'That guided workflow is not one OcuPilot offers.'), err(409, 'TURN.BUSY')],
+  });
+  const turn = new TurnStore({ api, storage: memoryStorage(), navigationType: freshTab() });
+  assert.equal(await turn.send(compileWorkflow.text, null, compileWorkflow), 'error');
+  assert.equal(turn.workflow(), null, 'a refusal activates nothing');
+  assert.equal(await turn.send(compileWorkflow.text, null, compileWorkflow), 'locked');
+  assert.equal(turn.workflow(), null, 'neither does a 409');
+});

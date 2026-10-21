@@ -688,7 +688,8 @@ test('Story 1.11 adds no string: the switch and its refusal are named by keys th
   // one by one; so do Story 18.14's Copy mappings and Story 18.15's Enable interoperability row actions
   // on that list, and Story 18.3's four
   // phrases of a database delete's impact that name the namespaces using the database. Story 16.14's
-  // LDAP editor adds two field labels, its namespace ID prefix and its default-namespace attribute.
+  // LDAP editor adds two field labels, its namespace ID prefix and its default-namespace attribute. Story 20.12's
+  // Namespaces list offers a guided workflow through a prompt named `namespaceListWorkflowProject`.
   const namespaceSentences = Object.entries(stringsValues).filter(([key]) =>
     key.toLowerCase().includes('namespace')
   );
@@ -728,6 +729,7 @@ test('Story 1.11 adds no string: the switch and its refusal are named by keys th
       'namespaceListPrompt1',
       'namespaceListPrompt2',
       'namespaceListPrompt3',
+      'namespaceListWorkflowProject',
       'namespaceRefusalOcuPilot',
       'userFormNamespace',
     ],

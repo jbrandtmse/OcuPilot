@@ -107,15 +107,16 @@ Method NewDefinition(pProvider As %String = "probe-local", pModel As %String = "
 /// takes it. With <var>pStopFirst</var> the turn is asked to stop after it begins and before the
 /// loop runs; <var>pContext</var> and <var>pConvo</var> pass through to the loop unchanged. A turn
 /// runs under the definition <var>pDefinitionId</var> when a test made one with
-/// <method>NewDefinition</method>, else under a new canonical-family one.</p>
-Method RunTurn(Output pOutcome, pReadOnly As %String = "", pContextRowCap As %Integer = 0, pStopFirst As %Boolean = 0, pContext As %String = "", pConvo As OcuPilot.Kernel.State.Convo = "", pDefinitionId As %String = "") As %String
+/// <method>NewDefinition</method>, else under a new canonical-family one. <var>pWorkflow</var>, a
+/// guided workflow's catalog id, is recorded on the turn at begin (Story 20.12, AD-66).</p>
+Method RunTurn(Output pOutcome, pReadOnly As %String = "", pContextRowCap As %Integer = 0, pStopFirst As %Boolean = 0, pContext As %String = "", pConvo As OcuPilot.Kernel.State.Convo = "", pDefinitionId As %String = "", pWorkflow As %String = "") As %String
 {
     Set tId = $Select(pDefinitionId '= "": pDefinitionId, 1: ..NewDefinition())
     Set tLimits = $ClassMethod(..#LOOP, "LimitsClass")
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Turn).GuardedReserve($Username, tId, "TURN.ABANDONED.JOBLOST", tLimits, .tKey, .tBusy, .tSweep), "the turn is reserved")
     If $Get(tKey) = "" Quit ""
     Set ..PreparedKeys(tKey) = ""
-    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Turn).GuardedBegin(tKey, $Username, tLimits, .tBegun, .tStarted), "the turn begins")
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Turn).GuardedBegin(tKey, $Username, tLimits, .tBegun, .tStarted, "", pWorkflow), "the turn begins")
     Set tReadOnly = ''pReadOnly
     If pStopFirst Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Turn).GuardedRequestStop(tKey, $Username, .tFound), "a stop is requested")
     Set tSC = $ClassMethod(..#LOOP, "Run", tKey, $Username, tId, "what is on this instance", tReadOnly, ##class(OcuPilot.Api.Router).#ADMINRESOURCES, tStarted, .pOutcome, pContext, pContextRowCap, pConvo)

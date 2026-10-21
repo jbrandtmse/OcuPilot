@@ -10874,6 +10874,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-10T16:05:46Z status=open owner=20-3-production-items by=lead note=reopened: run 38047135210 attempts 1 and 2 (9a8f2b2e) failed the Resume-Pause leg with all three seeded compacts reading Done before the screen's Pause; 6557da7e holds only where the compact outlives the Pause round trip. Suspending the portal job does not stop the work (measured). Fix shape asked of the orchestrator (hold model, session reuse, larger seed)
 - 2026-10-10T17:58:49Z occurrence=18-30-doc-db-applications(run_38069670607_instance_shard_2/5;head_94ba7fa4;'and_the_row_re-reads_Paused')
 - 2026-10-10T16:42:52Z status=resolved-by:20-3-production-items by=lead note=31babb36: the live leg accepts an ended compact's state refusal per compact (no at-least-one-200), the 200 mapping pinned at the port by BackgroundTaskPortSeam through a fake vendor task; the hold model measured and rejected (a cross-process Pause blocks 30 s); named limit in spec-20-3
+- 2026-10-20T23:33:34Z status=routed owner=burndown by=lead note=flake recurred: 20.12 local sweep 313b3401 shard 6/20 run 212, row re-reads Paused; green on unchanged rerun
 
 ### DW-2239: The web-application tools can reach OcuPilot's own privileged routine applications (OcuPilotState, OcuPilotIdentity): no AD-10 arm refuses a delete or a MatchRoles :%All update, and the vendor's privileged-routine endpoint also writes any application type
 - source: spec-18-10-web-application-extras-and-spec-based-rest-services.md | severity: high | fix-risk: low | footprint: out-of-footprint
@@ -12184,6 +12185,16 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Run 12 (23.11 batch a): cancel at startedAt with a 1.5 s check phase read neither canceled nor within 3 s (12.18 s); CANCELTRIES 1 reds the same (runs 13, 703). Product reach needs a check phase over ~2 s (inference)
 - 2026-10-19T11:30:01Z status=wontfix-accepted owner=23-11-the-range-end-cleanup-part-10 by=adjudication note=reopen_if=a person reports a background SQL run that completed after Cancel, or Area/Explorer/SqlBackground Run is changed to start the port later
 
+### DW-2468: A guided workflow's step tools are not added to the turn's starting tool set, so on a screen without a step's tool the model reaches it through shell_tools_find
+- source: _bmad-output/implementation-artifacts/spec-20-12-the-agent-gains-guided-workflows-and-investigate.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: Loop.Scope marks the shell area's and the screen context's tools as the starting set and reads nothing from the workflow result; scripted turns call step tools by wire name, which dispatch does not scope
+- 2026-10-20T15:26:39Z status=open owner=20-12-the-agent-gains-guided-workflows-and-investigate by=harvest note=implement self-review deferral; adjudicate at 20.12's gate
+- 2026-10-20T19:55:32Z status=routed owner=20-36-investigate by=adjudication note=not covered by 20.12; a step tool off the screen costs one shell_tools_find search; Investigate starts workflows anywhere
+
+### DW-2469: A workflow turn's previous reports the conversation's newest earlier turn whatever workflow it ran, so a workflow started mid-conversation reads unrelated proposals as its own earlier steps
+- source: spec-20-12-the-agent-gains-guided-workflows-and-investigate.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: Loop.WorkflowResult takes the newest Entry.GuardedTurnKeys turn and never reads that turn's Turn.Workflow; unreachable in 20.12 (workflow prompts render only in an empty conversation's greeting), reachable once 20.36's Investigate starts a workflow beside Explain mid-conversation
+- 2026-10-20T19:52:55Z status=routed owner=20-36-investigate by=cr note=theoretical in 20.12; guard: report previous only when the turn before ran the same workflow
 ### DW-2467: _bmad/custom/parallel.yaml:54 still says ui/browser.config.mjs defaults to ocupilot-ci; since 23.11 batch b the config has no default for either browser variable
 - source: spec-23-11-the-range-end-cleanup-part-10.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: browserConfig throws unless OCUPILOT_BROWSER_ORIGIN and OCUPILOT_BROWSER_CONTAINER are both set (ui/browser.config.mjs, pinned by ui/tools/browser-config.test.mjs at 7aceb0c1)

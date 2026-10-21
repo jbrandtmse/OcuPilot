@@ -43,10 +43,18 @@ Method TestTheThreeDeclarationsRegister()
         ; Story 20.31: the search resends its checked rows, and the Header tab resends and edits and resends the message it shows.
         Do $$$AssertEquals(tDeclaration.rowActions.%Size() _ "|" _ tDeclaration.primaryAction.id _ "|" _ tDeclaration.commandAliases.%Size(), $Case($Piece(tRow, "|", 1), "InteropMessageList": "1||0", "InteropMessageHeaderTab": "2|resend|0", : "0||0"), tClass _ ": its actions and no command alias")
         Do $$$AssertEquals(tDeclaration.emptyStateKey, $Piece(tRow, "|", 11), tClass _ ": its empty sentence")
-        Do $$$AssertEquals(tDeclaration.suggestedPrompts.%Size(), 3, tClass _ ": three suggested prompts")
+        ; The search also offers the resend and trace guided workflows after its three own prompts (Story 20.12).
+        Set tPromptCount = $Select($Piece(tRow, "|", 1) = "InteropMessageList": 5, 1: 3)
+        Do $$$AssertEquals(tDeclaration.suggestedPrompts.%Size(), tPromptCount, tClass _ ": its suggested prompts")
         For tJ = 1:1:3 {
             Set tPrompt = tDeclaration.suggestedPrompts.%Get(tJ - 1)
             Do $$$AssertEquals($Select($IsObject(tPrompt): tPrompt.groupKey _ "|" _ tPrompt.textKey, 1: ""), "promptGroupTroubleshooting|" _ $Piece(tRow, "|", 12) _ tJ, tClass _ ": prompt " _ tJ _ " is its own")
+        }
+        If tPromptCount = 5 {
+            Set tResend = tDeclaration.suggestedPrompts.%Get(3)
+            Set tTrace = tDeclaration.suggestedPrompts.%Get(4)
+            Do $$$AssertEquals(tResend.groupKey _ "|" _ tResend.textKey _ "|" _ tResend.workflow, "promptGroupTroubleshooting|interopMessagesWorkflowResend|resendmessages", tClass _ ": the fourth prompt starts the resend workflow")
+            Do $$$AssertEquals(tTrace.groupKey _ "|" _ tTrace.textKey _ "|" _ tTrace.workflow, "promptGroupTroubleshooting|interopMessagesWorkflowTrace|tracemessage", tClass _ ": the fifth starts the trace workflow")
         }
         Set tParams = ""
         Set tFields = tDeclaration.read.criteria.fields.%GetIterator()

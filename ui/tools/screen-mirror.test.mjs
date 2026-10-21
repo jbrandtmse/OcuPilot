@@ -50,6 +50,8 @@ import {
   suggestedPromptsProblem,
   PROMPT_GROUP_KEYS,
   SCREEN_REGISTRY_SOURCE,
+  WORKFLOW_SOURCE,
+  parseWorkflowIds,
   tabProblem,
   timelineMemberProblem,
   READ_SOURCE_PORTS,
@@ -852,6 +854,46 @@ test('every shipped built screen declares at least three suggested prompts that 
       assert.ok(prompt.textKey in strings && strings[prompt.textKey] !== '', `${screen.className}: '${prompt.textKey}' resolves`);
     }
   }
+});
+
+// Story 20.12, AD-66: a suggested prompt's `workflow` is a catalog id, read from `Workflow.cls`'s own
+// `XData Catalog`; every emitted `workflow` in the mirror is one, the nine catalog ids are exactly the
+// ones the instance's `WorkflowCatalog` test holds, and an unknown id reaches the generator as a refusal.
+//
+// Mutation (Rule 19): accept any `workflow` in `suggestedPromptsProblem` -> the corpus test above and
+// the hostile-id assertion here go red. Rename one catalog id in `Workflow.cls` -> the roster and the
+// emitted-id assertions go red.
+test('every workflow a prompt names is a catalog id, and the generator refuses an unknown one', () => {
+  const ids = parseWorkflowIds(readFileSync(WORKFLOW_SOURCE, 'utf8'));
+  assert.deepEqual(
+    ids,
+    ['recoverproduction', 'resendmessages', 'tracemessage', 'systemhealth', 'securityposture', 'slowquery', 'compileclass', 'reviewclass', 'newproject'],
+    'the catalog holds the nine workflows, in order'
+  );
+  const sources = readSources();
+  assert.deepEqual(sources.workflowIds, ids, 'readSources reads the same ids');
+  const emitted = new Set();
+  for (const screen of sources.screens) {
+    for (const prompt of screen.declaration.suggestedPrompts ?? []) {
+      if (prompt.workflow === undefined) continue;
+      assert.ok(ids.includes(prompt.workflow), `${screen.className}: workflow '${prompt.workflow}' is a catalog id`);
+      emitted.add(prompt.workflow);
+    }
+  }
+  assert.deepEqual([...emitted].sort(), [...ids].sort(), 'every catalog workflow is offered by a screen prompt');
+  const checkedIn = readCheckedInMirror();
+  for (const id of ids) assert.ok(checkedIn.includes(`"workflow": "${id}"`), `the checked-in mirror emits '${id}'`);
+
+  const userForm = sources.screens.find((screen) => screen.className === 'OcuPilot.Screen.Descriptor.UserForm');
+  const hostile = structuredClone(userForm.declaration);
+  hostile.suggestedPrompts[1] = { ...hostile.suggestedPrompts[1], workflow: 'nosuch' };
+  assert.equal(suggestedPromptsProblem(hostile), "suggestedPrompts[1] names the unknown workflow 'nosuch'");
+  assert.throws(
+    () => buildMirror({ ...sources, screens: [{ file: 'Hostile.cls', className: 'OcuPilot.Screen.Descriptor.Hostile', declaration: hostile }] }),
+    /names the unknown workflow 'nosuch'/
+  );
+  hostile.suggestedPrompts[1].workflow = 7;
+  assert.equal(suggestedPromptsProblem(hostile), "suggestedPrompts[1] names the unknown workflow ''", 'a non-string workflow is unknown');
 });
 
 // Story 6.4, AD-5: every case in `OcuPilot.Test.TabCorpus` gets its exact sentence or `null` from
