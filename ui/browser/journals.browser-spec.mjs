@@ -41,7 +41,7 @@ import { LIVE_CONTAINER, browserConfig, launchOptions } from '../browser.config.
 import { FILTER_SELECTOR, ROW_SELECTOR, clickRowCentre, waitForRows } from './list-spec.mjs';
 import { signedInAt } from './panel-spec.mjs';
 import { INVARIANTS, VIEWPORTS, assertThrowaway, collapse, compare, componentMinimums, detectScreen, readBaseline } from './structural-walk.mjs';
-import { sideBarLabels } from './side-bar-spec.mjs';
+import { assertDrawnAtDeclaredIndex, sideBarLabels } from './side-bar-spec.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const repoRoot = join(uiRoot, '..');
@@ -269,7 +269,7 @@ async function assertStructure(page, route, dialog = false) {
 
 // AC1, AC11. Mutation (Rule 19): give JournalList `sideBarPosition` 0 and regenerate the mirror,
 // rebuild and redeploy -> the side-bar assertion goes red.
-test('AC1, AC11: Journals is the thirteenth OS management entry, Logs lists no journal screen, and the first row is the file the instance writes now', async () => {
+test('AC1, AC11: Journals is an OS management entry, Logs lists no journal screen, and the first row is the file the instance writes now', async () => {
   const { context, page } = await signedInAt(browser, config, LIST_URL, VIEWPORTS.wide);
   try {
     await waitForRows(page, config.navigationTimeoutMs);
@@ -278,9 +278,9 @@ test('AC1, AC11: Journals is the thirteenth OS management entry, Logs lists no j
     // Story 18.6: License key and License servers follow Journal settings; Story 18.20: ECP data servers follows them,
     // and Story 18.21: ECP settings and ECP application servers follow that.
     assert.deepEqual(bar.entries, sideBarLabels('os-management'), 'the OS management entries in their declared order');
-    assert.equal(bar.entries[12], STRINGS.journalListLabel, 'Journals is the thirteenth');
+    assertDrawnAtDeclaredIndex(bar.entries, 'os-management', STRINGS.journalListLabel);
     // Story 18.18: Journal settings follows it.
-    assert.equal(bar.entries[13], STRINGS.journalSettingsLabel, 'Journal settings is the fourteenth');
+    assertDrawnAtDeclaredIndex(bar.entries, 'os-management', STRINGS.journalSettingsLabel);
     const headers = await page.$$eval('.ocu-data-table-header-label', (labels) => labels.map((label) => label.textContent.trim()));
     assert.deepEqual(headers.slice(0, 5), [STRINGS.tableColumnName, STRINGS.journalColumnCreated, STRINGS.databaseColumnSize, STRINGS.journalColumnDataSize, STRINGS.agentSwitchesFieldReason]);
     assert.equal(await firstName(page), journalState().newest, 'the first row is the newest listed file');

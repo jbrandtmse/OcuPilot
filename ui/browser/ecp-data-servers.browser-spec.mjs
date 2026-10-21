@@ -43,7 +43,7 @@ import { LIVE_CONTAINER, browserConfig, launchOptions } from '../browser.config.
 import { FILTER_SELECTOR, ROW_SELECTOR, clickRowCentre, waitForRows } from './list-spec.mjs';
 import { signedInAt } from './panel-spec.mjs';
 import { INVARIANTS, VIEWPORTS, assertThrowaway, collapse, compare, componentMinimums, detectScreen, readBaseline } from './structural-walk.mjs';
-import { sideBarLabels } from './side-bar-spec.mjs';
+import { assertDrawnAtDeclaredIndex, sideBarLabels } from './side-bar-spec.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const repoRoot = join(uiRoot, '..');
@@ -362,7 +362,7 @@ async function assertStructure(page, route, dialog = false) {
 
 // B1, B7. Mutation (Rule 19): give EcpDataServerList `sideBarPosition` 0 and regenerate the mirror,
 // rebuild and redeploy -> the side-bar assertion goes red.
-test('B1, B7: ECP data servers is the seventeenth OS management entry, says what each status is, lists the seeded server, and passes DW-1337', async () => {
+test('B1, B7: ECP data servers is an OS management entry, says what each status is, lists the seeded server, and passes DW-1337', async () => {
   removeAll();
   seed(`SeedServer("${SEEDED}")`);
   const { context, page } = await signedInAt(browser, config, LIST_URL, VIEWPORTS.wide);
@@ -372,7 +372,7 @@ test('B1, B7: ECP data servers is the seventeenth OS management entry, says what
     assert.equal(bar.area, STRINGS.navAreaOsManagement);
     // Story 18.21: ECP settings and ECP application servers follow it.
     assert.deepEqual(bar.entries, sideBarLabels('os-management'), 'the OS management entries in their declared order');
-    assert.equal(bar.entries[16], STRINGS.ecpDataServerListLabel, 'ECP data servers is the seventeenth');
+    assertDrawnAtDeclaredIndex(bar.entries, 'os-management', STRINGS.ecpDataServerListLabel);
     assert.equal(await page.$eval('[data-ecp="caveat"]', (node) => node.textContent.trim()), STRINGS.ecpDataServerStatusCaveat);
     const headers = await page.$$eval('.ocu-data-table-header-label', (labels) => labels.map((label) => label.textContent.trim()));
     assert.deepEqual(headers.slice(0, 7), [

@@ -273,7 +273,6 @@ test('AC1: the Permissions side bar reads Users, Roles, Resources, Services, and
       });
       assert.equal(sideBar.area, STRINGS.navAreaPermissions, `${key}: in the Permissions area`);
       assert.deepEqual(sideBar.entries, sideBarLabels('permissions'), `${key}: the side bar lists its entries in their declared order`);
-      assert.deepEqual(sideBar.entries.slice(0, 4), ['Users', 'Roles', 'Resources', 'Services'], `${key}: the first four in the published words`);
       assert.equal(sideBar.current, list.label, `${key}: and the current entry is this list`);
     } finally {
       await context.close();

@@ -134,10 +134,10 @@ async function openMenuViolations(page, route) {
     { viewport: VIEWPORTS.wide, theme: 'dark' },
   ]) {
     await settleViewport(page, viewport);
-    await transitionsSettled(page, config.navigationTimeoutMs);
     if (theme === 'dark') await toggleThemeThroughMenu(page, requests, config.navigationTimeoutMs);
     try {
       await openMenu(page);
+      await transitionsSettled(page, config.navigationTimeoutMs);
       const { entries } = await detectScreen(page, { route, checks: INVARIANTS, viewport: viewport.width, theme, minimums });
       found.push(...entries);
       await closeMenu(page);

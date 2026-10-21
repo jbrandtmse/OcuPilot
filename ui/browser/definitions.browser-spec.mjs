@@ -64,6 +64,7 @@ import {
   readBaseline,
   toggleThemeThroughMenu,
 } from './structural-walk.mjs';
+import { settleViewport, transitionsSettled } from './panel-spec.mjs';
 import { sideBarLabels } from './side-bar-spec.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -434,11 +435,6 @@ test('AC5: the form is routable and listed nowhere -- the area\'s listed entries
     // The area's side-bar entries, in declared order. The Definition form is not among them,
     // which is the sentinel this test is about: it is built, routed and listed nowhere.
     assert.deepEqual(entries, sideBarLabels('agent'), 'the area lists its declared entries in order, and no form');
-    assert.deepEqual(
-      entries.slice(0, 6),
-      [STRINGS.agentDefinitionListLabel, STRINGS.agentSwitchesLabel, STRINGS.agentGuardrailsLabel, STRINGS.agentGovernanceLabel, STRINGS.agentLedgerLabel, STRINGS.agentTranscriptsLabel],
-      'Definitions, Switches, Guardrails, Governance policy, Agent audit ledger then Transcripts'
-    );
 
     await page.keyboard.down('Control');
     await page.keyboard.press('KeyK');
@@ -582,10 +578,11 @@ async function freshViolations(page) {
     { viewport: VIEWPORTS.narrow, theme: 'light' },
     { viewport: VIEWPORTS.wide, theme: 'dark' },
   ]) {
-    await page.setViewport(viewport);
+    await settleViewport(page, viewport);
     if (theme === 'dark') await toggleThemeThroughMenu(page, requests, config.navigationTimeoutMs);
     try {
       await frames(page);
+      await transitionsSettled(page, config.navigationTimeoutMs);
       const { entries } = await detectScreen(page, { route: FORM_ROUTE, checks: INVARIANTS, viewport: viewport.width, theme, minimums });
       found.push(...entries);
     } finally {

@@ -13,6 +13,7 @@ import {
   readBaseline,
   toggleThemeThroughMenu,
 } from './structural-walk.mjs';
+import { settleViewport, transitionsSettled } from './panel-spec.mjs';
 
 /** Wait for the composer, send one prompt, and wait for the card's Confirm button. */
 export async function proposeFromPanel(page, prompt, timeoutMs) {
@@ -38,20 +39,17 @@ export async function cardViolations(page, route, timeoutMs) {
     { viewport: VIEWPORTS.narrow, theme: 'light' },
     { viewport: VIEWPORTS.wide, theme: 'dark' },
   ]) {
-    await page.setViewport(viewport);
-    // The docked panel re-lays out on the resize; measure once its right edge has come inside the viewport.
-    await page.waitForFunction((width) => {
-      const panel = document.querySelector('app-panel');
-      return panel === null || panel.getBoundingClientRect().right <= width + 1;
-    }, { timeout: 3000 }, viewport.width).catch(() => {});
+    await settleViewport(page, viewport);
     if (theme === 'dark') await toggleThemeThroughMenu(page, requests, timeoutMs);
     try {
+      // The docked panel re-lays out on the resize over a width transition; measure once it has finished.
+      await transitionsSettled(page, timeoutMs);
       const { entries } = await detectScreen(page, { route, checks: INVARIANTS, viewport: viewport.width, theme, minimums });
       found.push(...entries);
     } finally {
       if (theme === 'dark') await toggleThemeThroughMenu(page, requests, timeoutMs);
     }
   }
-  await page.setViewport(VIEWPORTS.wide);
+  await settleViewport(page, VIEWPORTS.wide);
   return compare(found, baseline).fresh.map((entry) => `${entry.key}: ${entry.measured}`);
 }

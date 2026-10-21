@@ -236,8 +236,9 @@ test('AC6, AC1: the Roles list\u2019s Delete states the impact read as it opens,
     const minimums = componentMinimums();
     const surfaces = {};
     for (const { viewport, theme, checks } of passes) {
-      await page.setViewport(viewport);
+      await settleViewport(page, viewport);
       await setDarkTheme(page, theme === 'dark');
+      await transitionsSettled(page, config.navigationTimeoutMs);
       surfaces[theme] = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
       assert.equal(await advisory(page), roleLine(HOLDERS), `the line reads the same at ${viewport.width}px ${theme}`);
       const { entries } = await detectScreen(page, { route: ROLES_ROUTE, checks, viewport: viewport.width, theme, minimums });
@@ -321,8 +322,9 @@ test('AC2: the Users list\u2019s Remove role states what the account loses under
     ];
     const minimums = componentMinimums();
     for (const { viewport, theme, checks } of passes) {
-      await page.setViewport(viewport);
+      await settleViewport(page, viewport);
       await setDarkTheme(page, theme === 'dark');
+      await transitionsSettled(page, config.navigationTimeoutMs);
       const caption = await page.$eval('[role="dialog"] [data-slot="impact"]', (node) => node.textContent.trim());
       assert.equal(caption, expected, `the caption reads the same at ${viewport.width}px ${theme}`);
       const { entries } = await detectScreen(page, { route: 'permissions/users', checks, viewport: viewport.width, theme, minimums });

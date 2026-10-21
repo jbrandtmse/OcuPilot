@@ -4682,6 +4682,8 @@ app-interop-message-contents {
 .ocu-proposal-card-title {
   @include typo.ocu-type('title');
 
+  min-width: 0;
+  overflow-wrap: anywhere;
   color: var(--ocu-primary);
 }
 
@@ -7477,7 +7479,6 @@ app-data-table:has(> .ocu-data-table-long) > .ocu-data-table-frame {
   color: var(--ocu-on-surface);
 }
 
-.ocu-guardrails-fault,
 .ocu-guardrails-note {
   @include typo.ocu-type('caption');
 

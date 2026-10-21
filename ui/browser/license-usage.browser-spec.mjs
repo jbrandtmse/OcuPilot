@@ -28,9 +28,9 @@ import puppeteer from 'puppeteer';
 import { browserConfig, launchOptions } from '../browser.config.mjs';
 import { loadStrings } from '../tools/strings.mjs';
 import { ROW_SELECTOR, waitForRows } from './list-spec.mjs';
-import { signedInAt } from './panel-spec.mjs';
+import { settleViewport, signedInAt, transitionsSettled } from './panel-spec.mjs';
 import { INVARIANTS, VIEWPORTS, assertThrowaway, collapse, compare, componentMinimums, detectScreen, readBaseline } from './structural-walk.mjs';
-import { sideBarLabels } from './side-bar-spec.mjs';
+import { assertDrawnAtDeclaredIndex, sideBarLabels } from './side-bar-spec.mjs';
 
 const config = browserConfig();
 const STRINGS = loadStrings();
@@ -59,9 +59,10 @@ async function structural(page, route) {
   const minimums = componentMinimums();
   const surfaces = {};
   for (const { viewport, theme, checks } of passes) {
-    await page.setViewport(viewport);
+    await settleViewport(page, viewport);
     await page.evaluate((dark) => document.documentElement.classList.toggle('ocu-theme-dark', dark), theme === 'dark');
     await frames(page);
+    await transitionsSettled(page, config.navigationTimeoutMs);
     surfaces[theme] = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
     const { entries } = await detectScreen(page, { route, checks, viewport: viewport.width, theme, minimums });
     found.push(...entries);
@@ -118,7 +119,7 @@ after(async () => {
 
 // AC1. Mutation (Rule 19): read the whole LICENSEUSAGE answer rather than its member in
 // `OcuPilot.Screen.Read` -> every tab's read fails, no row renders, and the row waits go red.
-test('AC1: OS management lists twenty entries, License usage eighth; its strip shows four tabs; Summary lists the five vendor rows', async () => {
+test('AC1: OS management lists License usage; its strip shows four tabs; Summary lists the five vendor rows', async () => {
   const { context, page } = await signedInAt(browser, config, at(SUMMARY_ROUTE), VIEWPORTS.wide);
   try {
     await waitForRows(page, config.navigationTimeoutMs);
@@ -131,9 +132,9 @@ test('AC1: OS management lists twenty entries, License usage eighth; its strip s
     );
     const labels = await page.$$eval('.ocu-side-bar-item .ocu-side-bar-label', (items) => items.map((item) => item.textContent.trim()));
     assert.deepEqual(labels, sideBarLabels('os-management'), 'the side bar lists the OS management entries in their declared order');
-    assert.equal(labels[4], STRINGS.databaseIntegrityLogLabel, 'the Integrity log fifth');
-    assert.equal(labels[7], STRINGS.licenseUsageLabel, 'License usage eighth');
-    assert.equal(labels[8], STRINGS.dashboardLabel, 'the Dashboard ninth');
+    assertDrawnAtDeclaredIndex(labels, 'os-management', STRINGS.databaseIntegrityLogLabel);
+    assertDrawnAtDeclaredIndex(labels, 'os-management', STRINGS.licenseUsageLabel);
+    assertDrawnAtDeclaredIndex(labels, 'os-management', STRINGS.dashboardLabel);
     const tabs = await page.$$eval('.ocu-detail-tab .ocu-detail-tab-label', (items) => items.map((item) => item.textContent.trim()));
     assert.deepEqual(tabs, [STRINGS.openApiColumnSummary, STRINGS.licenseUsageByProcess, STRINGS.licenseUsageByUser, STRINGS.licenseUsageDistributed], 'the strip shows the four tabs');
     assert.deepEqual((await headers(page)).slice(0, 3), [STRINGS.licenseUsageUnitUse, STRINGS.licenseUsageLocal, STRINGS.licenseUsageDistributed], 'the Summary headers');

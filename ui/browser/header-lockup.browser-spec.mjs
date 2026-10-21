@@ -27,6 +27,7 @@ import puppeteer from 'puppeteer';
 import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
 import { leaveFirstLoginGate } from './shell-entry.mjs';
 import { resetRememberedState } from './preferences-reset.mjs';
+import { settleViewport, transitionsSettled } from './panel-spec.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const { STRINGS } = await import(join(uiRoot, 'src', 'app', 'core', 'strings.ts'));
@@ -228,9 +229,9 @@ test('AC2: the tile\'s color, box, padding, radius and pixels are the same in li
 });
 
 test('AC1: at 720 px the tile stays inside the header and clear of the command box', async () => {
-  await page.setViewport(NARROW);
+  await settleViewport(page, NARROW);
   try {
-    await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    await transitionsSettled(page, config.navigationTimeoutMs);
     const tile = await tileFigures();
     assertInside(tile.box, tile.header, 'at 720 px, the tile inside the header band');
     const clear =
@@ -240,7 +241,8 @@ test('AC1: at 720 px the tile stays inside the header and clear of the command b
       tile.box.top >= tile.commandBox.bottom;
     assert.ok(clear, `the tile ${JSON.stringify(tile.box)} intersects the command box ${JSON.stringify(tile.commandBox)}`);
   } finally {
-    await page.setViewport(WIDE);
+    await settleViewport(page, WIDE);
+    await transitionsSettled(page, config.navigationTimeoutMs);
   }
 });
 

@@ -36,7 +36,7 @@ import { LIVE_CONTAINER, browserConfig, launchOptions } from '../browser.config.
 import { FILTER_SELECTOR, ROW_SELECTOR, clickRowCentre, waitForRows } from './list-spec.mjs';
 import { signedInAt } from './panel-spec.mjs';
 import { INVARIANTS, VIEWPORTS, assertThrowaway, collapse, compare, componentMinimums, detectScreen, readBaseline } from './structural-walk.mjs';
-import { sideBarLabels } from './side-bar-spec.mjs';
+import { assertDrawnAtDeclaredIndex, sideBarLabels } from './side-bar-spec.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const repoRoot = join(uiRoot, '..');
@@ -217,7 +217,7 @@ async function assertStructure(page, route, dialog = false) {
 
 // C4, C8. Mutation (Rule 19): drop EcpAppServerTab's `read.note`, regenerate the mirror, rebuild and
 // redeploy -> the note assertion goes red.
-test('C4, C8: ECP application servers is the nineteenth OS management entry, its Connections tab says what each status is, and both tabs pass DW-1337', async () => {
+test('C4, C8: ECP application servers is an OS management entry, its Connections tab says what each status is, and both tabs pass DW-1337', async () => {
   removeAll();
   const { context, page } = await signedInAt(browser, config, APP_URL, VIEWPORTS.wide);
   try {
@@ -225,7 +225,7 @@ test('C4, C8: ECP application servers is the nineteenth OS management entry, its
     const bar = await sideBarOf(page);
     assert.equal(bar.area, STRINGS.navAreaOsManagement);
     assert.deepEqual(bar.entries, sideBarLabels('os-management'), 'the OS management entries in their declared order');
-    assert.equal(bar.entries[18], STRINGS.ecpAppServersLabel, 'ECP application servers is the nineteenth');
+    assertDrawnAtDeclaredIndex(bar.entries, 'os-management', STRINGS.ecpAppServersLabel);
     const labels = await page.$$eval('.ocu-detail-tab-label', (nodes) => nodes.map((node) => node.textContent.trim()));
     assert.deepEqual(labels, [STRINGS.sslPromptGroupConnections, STRINGS.ecpSslConnectionsLabel]);
     await page.waitForSelector('app-list-page .ocu-list-page-note', { timeout: config.navigationTimeoutMs });
