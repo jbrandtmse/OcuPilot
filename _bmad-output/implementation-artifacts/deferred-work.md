@@ -12260,3 +12260,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-23-7-the-range-end-cleanup-part-6.md (plan) | severity: med | fix-risk: med | footprint: in-epic
 - evidence: LogSourcePort.cls:1871 LocalFromUtc, used by Timeline and InteropPort; ocupilot-ci and CI throwaways run Etc/UTC, so a swapped direction keeps every assertion green
 - 2026-10-21T07:40:07Z status=routed owner=burndown by=spec_gate note=23.7's DW-1783 technique (overridable offset helpers plus a probe) applies; filed, not absorbed (Rule 27 cap)
+
+### DW-2484: Kernel.Proposal.Mint.Refuse builds its %Status text from the raw problem, so a composite-id refusal's status text can hold U+0001
+- source: spec-23-7-the-range-end-cleanup-part-6.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Refuse (Mint.cls:986) returns $$$ERROR(TOOLARGUMENTS: problem) before Mint's exit pass rewrites detail.problem; Dispatch.AnswerOne logs a tool status only at HTTP 500+ or with no fault code, and Refuse answers 400 TOOL.ARGUMENTS
+- 2026-10-21T14:49:09Z status=wontfix-theoretical owner=23-7-the-range-end-cleanup-part-6 by=cr note=real if a caller logs or shows a 400 mint refusal's status text; today only detail.problem reaches the agent

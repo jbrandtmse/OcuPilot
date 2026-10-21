@@ -236,7 +236,7 @@ Method ToolRefusal(pWire As %String, Output pReason As %String, Output pKey As %
     Set ..PreparedKeyCount = ..PreparedKeyCount + 1
     Set pKey = ..#KEYPREFIX _ $Job _ "x" _ ..PreparedKeyCount
     Set ..PreparedKeys = ..PreparedKeys _ $ListBuild(pKey)
-    Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(pKey)
+    If $$$ISERR(##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(pKey)) Quit "clearfailed"
     Set tUses = []
     Set tUse = {"type": "tool_use", "id": "toolu_parity"}
     Do tUse.%Set("name", pWire, "string")

@@ -138,7 +138,7 @@ Each batch is one implement pass and one code commit, with CI green on its own h
   - `BackgroundTaskMint.cls:31` and `EncryptionKeyFileMint.cls:51` join a composite id with no pass.
 - **Existing pins of the pass.**
   - `Test/WebAppPctAccess.cls:367-405`; its doc's mutation (:370-371) names `ErrorDeleteMint.ReadableId`.
-  - `Test/ErrorDeleteScope.cls` and `Test/AuthOptionsDescriptor.cls`.
+  - `Test/ErrorDeleteScope.cls`.
 - **Fixtures.**
   - Background tasks: `Test/BackgroundTaskFixture` (`Clear` and `ArmPortal`, process-private) and `Test/BackgroundTaskMintFixture.Mint`.
   - Encryption: `Test/EncryptionProbe.Mint` (:652) and `.Root` (:65).
@@ -311,6 +311,38 @@ Rejected:
       3. Assert that the marker's row is in the view, its `time` is `loggedAt` plus two hours, and `criteria.begin` and `criteria.end` echo the values sent.
       4. Remove the marker's rows afterwards.
 
+### Review Findings (batch 2)
+
+Code review, 2026-10-21, `full-opus` tier: blind-hunter, edge-case-hunter, verification-gap and acceptance-auditor. 37 raw findings make 10 entries (2 medium, 8 low). 9 are patched, 1 is closed `wontfix-theoretical` (DW-2484), and 15 raw findings are rejected. Rule 3 holds: `CompositeMintSweep` runs the shipped mints in process on the instance (AD-1), and `LedgerSearchWire` reads the ledger route over HTTP (run 77).
+
+- [x] [Review][Patch] (medium) `LedgerClock.ReadInZone` copied `InteropHostEdges.ReadInZone` line for line (Rule 31). Both now call the new fixture `ZoneSession.Signalled`; `InteropHostEdges` is green, 9 of 9 (run 775) [src/OcuPilot/Test/ZoneSession.cls:15]
+- [x] [Review][Patch] (medium) The DW-1783 residual ("cannot be falsified on a UTC instance") stood beside QA's zone leg, which falsifies both helpers (runs 763, 764). Replaced under Verification. The same claim in Design Notes' DW-1783 row and follow-up, and in the Auto Run Result, is the lead's to correct [spec ## Verification]
+- [x] [Review][Patch] (low) `TestTheShippedOffsetIsTheInstancesOwn` compared two identities on UTC and had no mutation line. It now compares the shipped and the vendor's conversions in the zone child, with a control that the zone moved the instants; its mutation is red (run 773) [src/OcuPilot/Test/LedgerClock.cls:84]
+- [x] [Review][Patch] (low) No leg put the hour the zone's clock skips or repeats through `LocalToUtc`. Two corpus instants now do, against the vendor [src/OcuPilot/Test/LedgerClock.cls:33]
+- [x] [Review][Patch] (low) `AdminPortMutatingPath`'s control legs checked only a parameter every endpoint class inherits, and its docs said the class declares it. The seam exposes `ImplementsFor`, and the unlisted legs assert the class implements the operation [src/OcuPilot/Test/AdminPortTypeSeam.cls:28]
+- [x] [Review][Patch] (low) `Mint`'s doc said no composite id reaches the agent, but a minted proposal's `target.id` carries one, and a subclass's refusal before `##super` skips the pass. `Mint`'s doc and `TestNoShippedMintBypassesTheBasePass`'s now say what the pass covers [src/OcuPilot/Kernel/Proposal/Mint.cls:131]
+- [x] [Review][Patch] (low) `CompositeMintSweep`'s header said any later mint with no row fails; the derivation finds only mints whose own or inherited `Mint` names the id's builder. The header says so [src/OcuPilot/Test/CompositeMintSweep.cls:6]
+- [x] [Review][Patch] (low) Two cleanup calls discarded their status: `EncryptionKeyFileRead.OnAfterOneTest`'s `RemoveSeeded` and `DenialParity.ToolRefusal`'s clear before the call. Both are checked [src/OcuPilot/Test/EncryptionKeyFileRead.cls:52]
+- [x] [Review][Patch] (low) The spec named `AuthOptionsDescriptor` as an observer of the base pass; it asserts nothing about it. Shared surfaces now names the two classes that do. The Code Map and Consumed-by lines are the lead's [spec ## Verification]
+- [x] [Review][Defer] (low) `Mint.Refuse` builds its `%Status` text from the raw problem [src/OcuPilot/Kernel/Proposal/Mint.cls:986] — closed `wontfix-theoretical` (DW-2484): no consumer shows or logs a 400 mint refusal's status text.
+
+Rejected:
+
+- (low) `ShippedMints` walks `Super` lists rather than one `PrimarySuper` query. No shipped class names a superclass by short name, and the walk also finds a mint whose base is not its primary superclass.
+- (low, spec-bound) `...AndRefusesNone` reads as "refuses nobody". The task names the method, and the mutation lines cite it.
+- (low) Both converters truncate a negative seconds total toward zero, which only 1840-12-31 can produce. The window bound refuses such a begin first, and no ledger row is that old.
+- (low, spec-bound) A superserver mint with no bind address reads `'51999 › '`. The matrix's "Unchanged" row keeps that text.
+- (low) A failed `InteropFloorTurn` setup check leaves its principals. The class is already red, and its earlier check has the same shape.
+- (low) A child that signals after the 120-second wait lingers. The parent clears its event queue before each launch, and the test is already red.
+- (low) A spawn that fails at once still waits 120 seconds before it reads red. `/usr/bin/env` is in the image.
+- (false) An empty `EndpointClass` aborts `AdminPortMutatingPath`'s method. Its `AssertNotEquals` has already failed, so the method is red.
+- (false) The zone legs should be armed. The arming variables gate writes to the instance, and the child writes nothing.
+- (false) `DenialParity`'s key checks and `CompositeMintSweep`'s roster-size check cannot fail under a product mutation. They check the test's own construction; the pinning legs were observed red (runs 21, 22, 756).
+- (false) QA's files have not run on CI. The lead commits and pushes them before the batch closes.
+- (low, spec-bound) DW-1308's refusals come from `ToolDispatchProbe.DenyPair`, not a purpose-built principal. The task prescribes `ToolRefusal`, and the row count does not depend on how the pair is denied.
+- (low, spec-bound) The base-pass criterion says "minted by the agent" while the tests call the mint. The task prescribes the call, and `Write.Invoke`'s path to the mint is unchanged.
+- (false) Run 757 applied three mutations at once. Each reddens a different test, naming its own class.
+
 ### Batch 3: errors and copy
 
 - [ ] **DW-1170.** In `src/OcuPilot/Api/Error.cls:494`, `REASONAGENTBADBODY` becomes "The request body is missing or is not the JSON object this request expects.", or the wording the lead rules under Design Notes › Wording for the lead. The code is unchanged.
@@ -402,7 +434,7 @@ Rejected:
 
 **Verdicts at `f0ec693f`.** Every entry is addressed and none is declined (Ledger inbox: 12 of 12). The intended disposition for all twelve is `resolved-by` 23.7, with the batch's commit. Two follow-ups for the lead:
 
-- DW-1783's note should record the residual and its reopen condition (see the DW-1783 row).
+- DW-1783 has no residual: QA's zone test falsifies both offset helpers (see the DW-1783 row).
 - Where the verdict below says an entry's evidence is wrong, correct it in that entry's trailer note.
 
 | Entry | Verdict | Evidence | Action | Batch |
@@ -415,7 +447,7 @@ Rejected:
 | DW-1258 | Partly fixed. | `ToolWrite` and `AdminPortAsync` pin, through `AdminPort.Invoke`, the list, its width and `EndpointType`'s widening. `HttpMethodFor`'s only witness runs through `PortFixture`'s own copy of `MUTATINGTYPES`. | A seam plus direct legs. | 2 |
 | DW-1308 | Confirmed. | `DenialParity` never counts rows. Its fixed key `"parity"` also leaves rows behind. | Per-call keys, a row count, and cleanup. | 2 |
 | DW-2266 | Confirmed by probe. | On `ocupilot-ci`, `tasks.background.cancel` for an absent id answered a `detail.problem` with a raw U+0001 between the parts. `EncryptionKeyFileMint` has the same shape; that a missing file reaches it is inference until the red test runs. | One base pass; the four copies deleted. | 2 |
-| DW-1783 | Confirmed. | On `ocupilot-ci`, `/etc/localtime` points to `Etc/UTC` and `$ZTIMEZONE` is 0. A process-level `$ZTIMEZONE` moves `$H` but not the `-3` conversions. | Explicit offset helpers plus a probe. **Residual:** which `-3` function each helper uses still cannot be falsified on a UTC instance. `reopen_if`: a non-UTC throwaway or CI leg exists. | 2 |
+| DW-1783 | Confirmed. | On `ocupilot-ci`, `/etc/localtime` points to `Etc/UTC` and `$ZTIMEZONE` is 0. A process-level `$ZTIMEZONE` moves `$H` but not the `-3` conversions. | Explicit offset helpers plus a probe. A zone test (a child session under a real zone, `LedgerClock`) falsifies which `-3` function each helper uses, so no residual remains. | 2 |
 | DW-1170 | Confirmed, and wider. The entry's evidence is partly wrong. | 68 lines in 49 classes name it (by grep); most refuse an absent body with this very sentence (probed on `POST /rest-service` and `/license/key/validate`). `PUT /agent/context` answers 422 `AGENT.CONTEXT.SHARE`, not this sentence, and Definitions and Switches accept an absent body. | Reword the reason. | 3 |
 | DW-1377 | Confirmed, with one live defect. | 38 lists hold 552 codes. `ReasonForViolation` answers `""` for `DOCDB.NAME.INVALID` and `DOCDB.NAME.MAPPED`. Eight router arms (the ACCOUNT, PREFERENCES and HELP codes) belong to no list. | A derived sweep, a `DOCDB.` arm and three lists. | 3 |
 | DW-1191 | Confirmed. The entry's evidence is overstated. | There are 8 stub classes, not ten or more. 42 of 48 code lines are shared. | Consolidate into `Transport`. | 4 |
@@ -483,7 +515,7 @@ Epic 20 has not changed any other file in the Code Map. Its working tree holds o
 
 **Consumed-by and Consumes (Rules 1 and 2).** Every consumer is in this story.
 
-- **`Kernel.Proposal.Mint.ReadableId` and the base pass.** Every mint consumes them through `##super`. Observed by `CompositeMintReadable`, `EncryptionKeyFileRead`, `WebAppPctAccess`, `ErrorDeleteScope` and `AuthOptionsDescriptor`.
+- **`Kernel.Proposal.Mint.ReadableId` and the base pass.** Every mint consumes them through `##super`. Observed by `CompositeMintReadable`, `EncryptionKeyFileRead`, `WebAppPctAccess`, `ErrorDeleteScope` and `CompositeMintSweep`.
 - **`Kernel.Audit.Ledger.OffsetAtUtc` and `OffsetAtLocal`.** Consumed by `LocalFromUtc` and `LocalToUtc`, and through them by `ViewForUser`, `AppliedCriteria`, `RowObject`, `Api.Ledger` and `InteropPort`. Observed by `LedgerClock`.
 - **`Error.AccountViolationCodes`, `PreferencesViolationCodes` and `HelpViolationCodes`.** Consumed by `ViolationSentenceCoverage`.
 - **`ProviderStubTransport.Transport`'s new arguments.** Consumed by `ProviderStub.IssueHttpsPost`.
@@ -529,7 +561,7 @@ Epic 20 has not changed any other file in the Code Map. Its working tree holds o
 **Shared surfaces:**
 
 - **The `AGENT.BADBODY` reason.** `AgentWire.cls:273` compares it with the parameter.
-- **The base mint's presence text.** `WebAppPctAccess`, `ErrorDeleteScope` and `AuthOptionsDescriptor` assert the readable form. `LockRemoveLive`, `LanguageServerEditorWire` and `RoutineAppWrite` assert presence text for ids that are not composite, which stays unchanged.
+- **The base mint's presence text.** `WebAppPctAccess`, `ErrorDeleteScope`, `CompositeMintReadable` and `CompositeMintSweep` assert the readable form. `LockRemoveLive`, `LanguageServerEditorWire` and `RoutineAppWrite` assert presence text for ids that are not composite, which stays unchanged.
 - **`ReasonForViolation`'s answers and the violation-code lists.** Asserted by `AgentViolation`, `DocDbAppDescriptor:245`, `DocDbAppWrite`, `UiAboutWire`, `PreferencesWire` and `AccountPasswordWire`.
 - **The ObjectScript test-class roster.**
   - New test classes: `ClaimReach`, `AdminPortMutatingPath`, `CompositeMintReadable`, `LedgerClock`, `BadBodySentence` and `ViolationSentenceCoverage`.
@@ -562,8 +594,14 @@ Epic 20 has not changed any other file in the Code Map. Its working tree holds o
 - `mutation:` (DW-1308) applied: a second `..RecordLedger(...)` in `AnswerOne`'s `MissingPair` branch → `DenialParity.TestEachRefusedCallWritesExactlyOneRefusedLedgerRow` red alone, on both keys' count legs (run 21). The common-exit `RecordLedger` deleted → red alone, on both keys' count legs and both keys' "has a ledger row to read" legs (run 22). Each reverted; `Dispatch.cls` byte-identical to HEAD. After the class: no ledger row with a `parity` or `ocupilotprobeparity` turn key survives.
 - `mutation:` (DW-2266) before the fix: `CompositeMintReadable` red on its three U+0001, breadcrumb and sentence legs (run 1), and `EncryptionKeyFileRead.TestAnAbsentKeyFileIsNamedReadably` red on its U+0001 and breadcrumb legs (run 2), so a missing key file does reach the mint's presence check. After the fix, the base pass removed from `Kernel.Proposal.Mint.Mint` → `CompositeMintReadable` red (run 23), `TestAnAbsentKeyFileIsNamedReadably` red (run 24) and `WebAppPctAccess.TestAPresenceRefusalNamesTheEntryReadably` red on both its legs (run 25). Reverted; `Mint.cls` byte-identical to the pre-mutation copy.
 - `mutation:` (DW-1783) applied: the sign swapped in `LocalFromUtc` → `LedgerClock.TestTheConversionsMoveOppositeWays` red on its forward and round-trip legs, and `TestTheReadConvertsItsCriteriaAndRowsTheOneWay` red on its `time` and both echo legs (run 26). `ViewForUser` converting `pBegin` with `LocalFromUtc` → the read test red, the windowed read refused (run 27). The sign swapped in `LocalToUtc` → the read test red on "the seeded row is inside the local window" and both echo legs, and `TestTheConversionsMoveOppositeWays` red on its backward and round-trip legs (run 28). `AppliedCriteria` converting `begin` with `LocalToUtc` → the read test red on the begin echo alone (run 29). `AppliedCriteria`'s default-begin branch converting with `LocalToUtc` → `TestTheDefaultWindowsBeginIsEchoedInLocalTime` red alone (run 61). Each reverted; `Ledger.cls` byte-identical to the pre-mutation copy.
-  - **Residual:** on a UTC instance (`/etc/localtime` is `Etc/UTC`, `$ZTIMEZONE` is 0) which `-3` form each helper reads cannot be falsified, so `TestTheShippedOffsetIsTheInstancesOwn` pins only that the converters equal the vendor formulas where the offset is 0. `reopen_if`: a non-UTC throwaway or CI leg exists.
+  - Which `-3` form each helper reads is falsified on this UTC instance by `LedgerClock`'s zone legs, which run the shipped helpers in a child session under `TZ=EST5EDT,M3.2.0,M11.1.0` (QA and review lines below).
 - (batch 2) After the review patches and a reload, each batch-2 class is green on `ocupilot-ci`: InteropFloorTurn 2 (run 66), AdminPortMutatingPath 2 (67), AdminPortAsync 6 (68), DenialParity 3 (69), CompositeMintReadable 1 (70), EncryptionKeyFileRead 6 (65), WebAppPctAccess 11 (71), ErrorDeleteScope 8 (72), AuthOptionsDescriptor 10 (73), BackgroundTasks 13 (74), LedgerClock 4 (75), LedgerSearch 10 (76), LedgerSearchWire 3 (77). `check-objectscript.py` 0 problems; `npm run test:tools` 2081 of 2081.
+- (QA) Batch-2 files: new `src/OcuPilot/Test/CompositeMintSweep.cls` (5 tests, a new test class, unarmed) and `src/OcuPilot/Test/CompositeMintProbe.cls` (the tool class and port every mint is handed, not a test); extended in place `src/OcuPilot/Test/LedgerClock.cls` (`TestTheFormsRefusalsAndCalendarBoundariesAreUnchanged`, `TestTheShippedConversionsFollowTheZoneOfTheProcess`, `ReadInZone`, `ZoneChild`). The batch-2 Class loop also runs `CompositeMintSweep`. No arming roster changes: `CompositeMintSweep` is unarmed, and `LedgerClock`'s child session needs `%System_CallOut:USE` and a password-less sign-in, as `InteropHostEdges`'s zone leg does.
+- `mutation:` (DW-2266, QA) The readable-id block deleted from `Kernel.Proposal.Mint.Mint`'s exit → `CompositeMintSweep.TestEveryCompositeMintNamesAnAbsentTargetReadably` red on the text legs of all ten rows, the other four tests green (ocupilot-ci run 756). The separator put back after `##super` in `SuperserverMint` → that test red on the Superserver row's three legs alone (run 757). The pass moved into the absence branch alone → `TestEveryCompositeMintNamesAnAlreadyPresentTargetReadably` and `TestEveryCompositeMintNamesAPortRefusalsTargetReadably` red, the absence test green (run 760). The pass moved into `Refuse` → `TestEveryCompositeMintNamesAPortRefusalsTargetReadably` red alone (run 761). A shipped `QaBypassProbeMint` that declares its own `Mint` and never calls `##super` → `TestNoShippedMintBypassesTheBasePass` red naming it; a shipped `QaRosterProbeMint extends MappingMint` with no row → `TestTheRosterIsEveryCompositeIdMint` red naming it (both in run 757). Each reverted; `Mint.cls` and `SuperserverMint.cls` byte-identical (sha1 equal to before), the two probe classes deleted from the tree and from the instance.
+- `mutation:` (DW-1783, QA) The fractional-second group dropped from `LocalFromUtc`'s pattern → `LedgerClock.TestTheFormsRefusalsAndCalendarBoundariesAreUnchanged` red alone (run 758). `OffsetAtUtc` reading `$ZDateTime(pUtcH, -3)` → `TestTheShippedConversionsFollowTheZoneOfTheProcess` red on its six `LocalFromUtc` legs alone, every other `LedgerClock` test green (run 763). `OffsetAtLocal` reading `$ZDateTimeH(pLocalH, -3)` → the same test red on its five `LocalToUtc` legs alone (run 764). The zone leg runs the shipped converters in a child session with `TZ=EST5EDT,M3.2.0,M11.1.0`, which a UTC instance's own process cannot do. Each reverted; `Ledger.cls` byte-identical (sha1 equal to before).
+- (QA) After the reverts and a full reload (0 errors), on `ocupilot-ci`: CompositeMintSweep 5 (run 765), LedgerClock 6 (766), CompositeMintReadable 1 (767), WebAppPctAccess 11 (768), LedgerSearch 10 (769), EncryptionKeyFileRead 6 (770), ErrorDeleteScope 8 (771). `check-objectscript.py` 0 problems; `npm run test:tools` 2081 of 2081.
+- `mutation:` (DW-1783, review) `TestTheShippedOffsetIsTheInstancesOwn` now compares the shipped and the vendor's conversions over `CORPUS` in the zone child. `OffsetAtUtc` reading `$ZDateTime(pUtcH, -3)` → that test red on all twelve corpus `LocalFromUtc` legs, and the zone test red on its six (ocupilot-ci run 773). Reverted; `Ledger.cls` byte-identical (sha1 equal to before).
+- (review) Files: new `src/OcuPilot/Test/ZoneSession.cls` (the child-session launcher, not a test); `InteropHostEdges.ReadInZone` and `LedgerClock.ReadInZone` call it, so `InteropHostEdges` joins the batch-2 Class loop. After the review patches and a reload (0 errors), on `ocupilot-ci`: LedgerClock 6 (run 774), InteropHostEdges 9 (775), AdminPortMutatingPath 2 (776), DenialParity 3 (777), EncryptionKeyFileRead 6 (778), CompositeMintSweep 5 (779), CompositeMintReadable 1 (780). `check-objectscript.py` 0 problems; `npm run test:tools` 2081 of 2081.
 - `mutation:` (DW-1170) record the before-fix red of `BadBodySentence`. After the fix, put ", or no body at all" back → it goes red.
 - `mutation:` (DW-1377) record the before-fix red of both methods. After the fix, delete the `DOCDB.` arm → `TestEveryListedCodeHasASentence` goes red. Remove `HELPROUTE` from `HelpViolationCodes()` → `TestEveryCodeTheRouterNamesIsListed` goes red.
 - `mutation:` (DW-1191) drop the `connectrefused` branch from `Transport` → `ProviderTransportRetry` goes red. Pass no key header from `IssueHttpsPost` → a `keyMatches` leg goes red (expected `WalletRungWire`; record the class observed). No test can fail on the duplication itself; the pinning evidence is the batch-4 list, green before and after.

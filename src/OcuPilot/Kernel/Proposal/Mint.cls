@@ -129,8 +129,9 @@ ClassMethod RegistryClass() As %String
 /// <code>GET</code>'s 404 and an answer that is not an object are the same "target gone", and both
 /// name the target.</p>
 /// <p><b>The problem is made readable for every mint</b> (AD-13): the <code>detail.problem</code> of a
-/// refusal this answers is passed through <method>ReadableId</method> on the way out, so a composite
-/// target id never reaches the agent with its separator in it, whichever mint built the id.</p>
+/// refusal this method answers is passed through <method>ReadableId</method> on the way out, so a refusal
+/// it answers never names a composite target id with its separator in it, whichever subclass built the id.
+/// A subclass's own refusal made before it calls this method does not pass through it.</p>
 ClassMethod Mint(pDescriptor As %String, pToolName As %String, pUser As %String, pConvKey As %String, pTurnKey As %String, pArgs As %DynamicObject, pLimitsClass As %String, Output pProposal As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pEndpoint As %String = "", pIdParam As %String = "", pIdValue As %String = "", pIdArgument As %String = "", pSettable As %List = "", pToolClass As %String = "") As %Status
 {
     Set tSC = $$$OK

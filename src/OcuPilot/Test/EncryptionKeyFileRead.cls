@@ -49,7 +49,8 @@ Method OnAfterOneTest() As %Status
     Set tFacts = $ClassMethod(..#PROBE, "EncryptionFacts")
     Do $$$AssertTrue('tFacts.%IsDefined("error") && (..PreparedFacts '[ """error"":"), "the encryption facts were read whole before and after the test")
     Do $$$AssertEquals(tFacts.%ToJSON(), ..PreparedFacts, "no key is activated and no encryption setting moved")
-    Do ##class(OcuPilot.Test.ProposalFixture).RemoveSeeded(.tSeeded)
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.ProposalFixture).RemoveSeeded(.tRemaining), "the seeded turns are removed")
+    Do $$$AssertEquals(tRemaining, 0, "and no proposal on them survives the method")
     Quit $$$OK
 }
 
