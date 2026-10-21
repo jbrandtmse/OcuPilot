@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest';
 
 import { NavigationService, screenForRoute, type Verdict } from '../core/navigation';
 import { OverlayStack } from '../core/overlay-stack';
@@ -51,6 +51,13 @@ const USERS = screen('permissions/users', 'navAreaPermissions', 'permissions', {
 const LOGS = screen('logs/messages', 'navAreaLogs', 'logs', { commandAliases: ['tail'] });
 const HOME = screen('', 'navAreaHome', 'home', { commandAliases: ['start'] });
 
+// Story 20.32: an `external` screen, whose row opens its address in a new tab.
+const ANALYZER = screen('analytics/analyzer', 'analyticsAnalyzerLabel', 'analytics', {
+  archetype: 'external',
+  commandAliases: ['analyzer', 'pivot tables'],
+});
+const ANALYZER_ADDRESS = '/csp/user/_DeepSee.UI.Analyzer.zen?$NAMESPACE=USER';
+
 // Four ways the needle `class` meets a screen, declared in the reverse of the order they rank in:
 // through an alias alone, elsewhere in the name, the start of the name, the whole name.
 const ALIAS_ONLY = screen('system-explorer/routines', 'explorerRoutineListLabel', 'system-explorer', {
@@ -70,6 +77,8 @@ const DEFINITIONS = screenForRoute('agent/definitions') as ScreenDeclaration;
 
 class StubNavigation {
   readonly verdicts = new Map<string, Verdict>();
+  /** The address the map carries for an `external` screen, by route (Story 20.32). */
+  readonly hrefs = new Map<string, string>();
   current: ScreenDeclaration | null = USERS;
   roster: readonly ScreenDeclaration[] = [USERS, LOGS];
   private readonly listeners = new Set<() => void>();
@@ -84,6 +93,10 @@ class StubNavigation {
 
   screenVerdict(route: string): Verdict {
     return this.verdicts.get(route) ?? ALLOWED;
+  }
+
+  screenHref(route: string): string {
+    return this.hrefs.get(route) ?? '';
   }
 
   subscribe(listener: () => void): () => void {
@@ -120,6 +133,8 @@ describe('the command box', () => {
   let signOuts: number;
   let unregisterCreate: () => void;
   const planted: HTMLElement[] = [];
+  /** Story 20.32: `openInNewTab`'s one `window.open` call, stubbed so no tab opens. */
+  let windowOpen: MockInstance<typeof window.open>;
 
   const field = (): HTMLInputElement => fixture.nativeElement.querySelector('[role="combobox"]');
   const listbox = (): HTMLElement | null => fixture.nativeElement.querySelector('[role="listbox"]');
@@ -144,6 +159,7 @@ describe('the command box', () => {
   };
 
   beforeEach(() => {
+    windowOpen = vi.spyOn(window, 'open').mockImplementation(() => null);
     navigation = new StubNavigation();
     accountPreferences = stubAccountPreferences();
     shell = new ShellState({ account: accountPreferences });
@@ -167,6 +183,8 @@ describe('the command box', () => {
           { path: '', children: [] },
           { path: 'permissions/users', children: [] },
           { path: 'logs/messages', children: [] },
+          // Story 20.32: where an external row lands when the map carries no address for it.
+          { path: 'analytics/analyzer', children: [] },
           // DW-1852: where the OAuth 2.0 row lands for a holder of only the authorization server tab.
           { path: 'security/oauth/server', children: [] },
           // Where Enter lands when the ranking puts the whole-name match first.
@@ -195,6 +213,7 @@ describe('the command box', () => {
   });
 
   afterEach(() => {
+    windowOpen.mockRestore();
     for (const element of planted.splice(0)) element.remove();
   });
 
@@ -295,6 +314,89 @@ describe('the command box', () => {
     row.click();
     await fixture.whenStable();
     expect(router.url).toBe('/security/oauth/server');
+  });
+
+  describe('Story 20.32: an external screen row', () => {
+    const enter = () => field().dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+
+    // Mutation (Rule 19): drop the external branch from `choose()` in `command-box.ts` -> Enter routes onto the page, so the call count
+    // reads 0 and the URL moves.
+    it('Enter on an allowed row opens its address in a new tab once, routes nowhere and returns focus', async () => {
+      navigation.roster = [USERS, LOGS, ANALYZER];
+      navigation.hrefs.set('analytics/analyzer', ANALYZER_ADDRESS);
+      const router = TestBed.inject(Router);
+      await router.navigateByUrl('/permissions/users?ns=USER');
+      const elsewhere = document.createElement('button');
+      document.body.appendChild(elsewhere);
+      planted.push(elsewhere);
+      elsewhere.focus();
+
+      chord();
+      type('analyzer');
+      expect(options()).toHaveLength(1);
+      enter();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(windowOpen).toHaveBeenCalledTimes(1);
+      expect(windowOpen).toHaveBeenCalledWith(ANALYZER_ADDRESS, '_blank', 'noopener,noreferrer');
+      expect(router.url).toBe('/permissions/users?ns=USER');
+      expect(field().getAttribute('aria-expanded')).toBe('false');
+      expect(document.activeElement).toBe(elsewhere);
+    });
+
+    // Mutation (Rule 19): drop the `aria-description` binding or the glyph from the screen rows in `command-box.ts` -> this goes red.
+    it('an allowed row with an address says it opens a new tab and carries the glyph, and one without carries neither', async () => {
+      navigation.roster = [USERS, LOGS, ANALYZER];
+      navigation.hrefs.set('analytics/analyzer', ANALYZER_ADDRESS);
+      await TestBed.inject(Router).navigateByUrl('/permissions/users?ns=USER');
+
+      chord();
+      type('analyzer');
+      expect(options()).toHaveLength(1);
+      expect(options()[0].getAttribute('aria-description')).toBe(STRINGS.classicRowLinkDescription.split('<page>').join(STRINGS.analyticsAnalyzerLabel));
+      expect(options()[0].querySelector('.ocu-external-glyph')?.getAttribute('aria-hidden')).toBe('true');
+
+      navigation.hrefs.clear();
+      type('analyze');
+      expect(options()).toHaveLength(1);
+      expect(options()[0].getAttribute('aria-description')).toBeNull();
+      expect(options()[0].querySelector('.ocu-external-glyph')).toBeNull();
+    });
+
+    it('a gated row stays listed, names its pair and opens nothing', async () => {
+      navigation.roster = [USERS, LOGS, ANALYZER];
+      navigation.hrefs.set('analytics/analyzer', ANALYZER_ADDRESS);
+      navigation.verdicts.set('analytics/analyzer', { allowed: false, failedPair: '%DeepSee_Analyzer:USE' });
+      const router = TestBed.inject(Router);
+      await router.navigateByUrl('/permissions/users?ns=USER');
+
+      chord();
+      type('analyzer');
+      expect(options()).toHaveLength(1);
+      expect(options()[0].getAttribute('aria-disabled')).toBe('true');
+      expect(options()[0].textContent).toContain('Requires %DeepSee_Analyzer:USE');
+      enter();
+      await fixture.whenStable();
+
+      expect(windowOpen).not.toHaveBeenCalled();
+      expect(router.url).toBe('/permissions/users?ns=USER');
+    });
+
+    it('a row the map carries no address for routes onto its own page, which says why', async () => {
+      navigation.roster = [USERS, LOGS, ANALYZER];
+      const router = TestBed.inject(Router);
+      await router.navigateByUrl('/permissions/users?ns=USER');
+
+      chord();
+      type('analyzer');
+      enter();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(windowOpen).not.toHaveBeenCalled();
+      expect(router.url).toBe('/analytics/analyzer?ns=USER');
+    });
   });
 
   it('arrow keys move the active descendant and Enter opens the highlighted screen', async () => {

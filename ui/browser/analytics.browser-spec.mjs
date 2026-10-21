@@ -3,7 +3,8 @@
  * list's entries, and Folder items (AD-5, AD-8, AD-29, AD-36, AD-44, AD-65).
  *
  * What it pins: in `USER`, whose probe analytics objects this spec creates (and for which it turns analytics on), the side bar's
- * Analytics entries are Cubes, Term lists and Folder items, and each list's rows equal what the vendor's own classes answer; a Cubes
+ * Analytics entries are Cubes, Term lists and Folder items, then the three links Story 20.32 adds (`analytics-links.browser-spec.mjs` pins
+ * them), and each list's rows equal what the vendor's own classes answer; a Cubes
  * name cell opens the cube's Measures tab under a strip of Measures, Dimensions and Relationships, the Relationships row opens the
  * related cube's Measures tab, and a Term lists name cell opens the list's entries with the `Note` field shown; a cube or term list no
  * one holds draws its tab's own empty sentence and no row; in `HSCUSTOM`, which
@@ -191,13 +192,17 @@ after(async () => {
 // AC1. Mutation (Rule 19): make the Cubes read answer `Facts` as 0 -> the Facts cell of every probe row reads 0 and the Cubes leg goes red;
 // drop `Favorite` from the Folder items read -> its favorite cell reads No and the Folder items leg goes red; rebuild and redeploy first
 // for a client mutation.
-test('AC1: the side bar lists Cubes, Term lists and Folder items, and each list\'s rows equal the instance\'s', async () => {
+test('AC1: the side bar lists Cubes, Term lists, Folder items and the three links, and each list\'s rows equal the instance\'s', async () => {
   const { context, page } = await signedInAt(browser, config, url(CUBES), VIEWPORTS.wide, REDUCED_MOTION);
   try {
     await answered(page);
     if ((await page.$('.ocu-side-bar-item')) === null) await page.click('#ocu-rail-item-analytics');
     await page.waitForSelector('.ocu-side-bar-item', { timeout: config.navigationTimeoutMs });
-    assert.deepEqual(await sideBarLabels(page), [STRINGS.analyticsCubesLabel, STRINGS.analyticsTermListsLabel, STRINGS.analyticsFolderItemsLabel], 'the Analytics side bar lists Cubes, Term lists and Folder items');
+    assert.deepEqual(
+      await sideBarLabels(page),
+      [STRINGS.analyticsCubesLabel, STRINGS.analyticsTermListsLabel, STRINGS.analyticsFolderItemsLabel, STRINGS.analyticsArchitectLabel, STRINGS.analyticsAnalyzerLabel, STRINGS.analyticsUserPortalLabel],
+      'the Analytics side bar lists Cubes, Term lists and Folder items, then the Architect, Analyzer and User Portal links (Story 20.32)'
+    );
 
     const cubes = inUser('ANCUBES', [
       'Set sc=##class(%DeepSee.Utils).%GetCubeList(.l,"cubes",1),k="",out=""',

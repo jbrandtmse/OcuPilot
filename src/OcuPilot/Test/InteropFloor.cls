@@ -38,10 +38,12 @@ Parameter DESCRIPTORPACKAGE = "OcuPilot.Screen.Descriptor.";
 
 /// <p>What the <code>%Ens_Portal</code> holder and the Monitor role open on the floor alone: the
 /// agent's owner-scoped screens, Home (an empty classic <code>RESOURCE</code>), the analytics log
-/// (the public <code>%DeepSee_Portal</code>) and Analytics' Cubes with its three tabs (Story 20.11), whose one pair is that
-/// public one. These principals hold no <code>%Development:USE</code>, so they do not open Folder items, and none holds
-/// <code>%DeepSee_PortalEdit:USE</code>, so none opens Term lists.</p>
-Parameter BASESCREENS = "AgentGuardrails,AgentLedger,AgentTranscript,AgentTranscripts,AnalyticsCubeDimensionsTab,AnalyticsCubeList,AnalyticsCubeMeasuresTab,AnalyticsCubeRelationshipsTab,Home,LogAnalyticsViewer";
+/// (the public <code>%DeepSee_Portal</code>), Analytics' Cubes with its three tabs (Story 20.11), whose one pair is that
+/// public one, and Analytics' User Portal link (Story 20.32), whose one pair it is too. These principals hold no
+/// <code>%Development:USE</code>, so they do not open Folder items, none holds <code>%DeepSee_PortalEdit:USE</code>, so none
+/// opens Term lists, and none holds <code>%DeepSee_Architect:USE</code> or <code>%DeepSee_Analyzer:USE</code>, so none opens
+/// the Architect or Analyzer links.</p>
+Parameter BASESCREENS = "AgentGuardrails,AgentLedger,AgentTranscript,AgentTranscripts,AnalyticsCubeDimensionsTab,AnalyticsCubeList,AnalyticsCubeMeasuresTab,AnalyticsCubeRelationshipsTab,AnalyticsUserPortalLink,Home,LogAnalyticsViewer";
 
 /// <p>See <parameter>BASESCREENS</parameter>.</p>
 Parameter BASEAREAS = "agent,analytics,home,logs";

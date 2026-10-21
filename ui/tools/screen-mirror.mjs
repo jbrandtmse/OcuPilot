@@ -2614,6 +2614,28 @@ export function tabProblem(declaration) {
   return null;
 }
 
+/**
+ * What is wrong with an `external` declaration, or `null` (AD-5, AD-44, Story 20.32). An `external` screen
+ * opens a page in a new tab, so it declares no `read`, `table`, action, `tab` or `parentScope`; an absent
+ * key, a `null`, an empty string and an empty array declare nothing. A declaration of any other archetype is
+ * not this check's. `OcuPilot.Screen.Registry.ExternalProblem` returns the same sentence, and also refuses the
+ * vocabulary half (a tool identifier `OcuPilot.Screen.ExternalPage` does not name, and a `classicPage` other
+ * than its entry's), which only the instance can read.
+ */
+export function externalProblem(declaration) {
+  if (declaration.archetype !== 'external') return null;
+  let declares = ['read', 'table', 'tab'].find((key) => isObject(declaration[key])) ?? null;
+  if (declares === null && isObject(declaration.primaryAction) && ![undefined, null, ''].includes(declaration.primaryAction.id)) {
+    declares = 'primaryAction';
+  }
+  if (declares === null && Array.isArray(declaration.rowActions) && declaration.rowActions.length > 0) declares = 'rowActions';
+  if (declares === null && declaration.parentScope !== undefined && declaration.parentScope !== null && declaration.parentScope !== '') {
+    declares = 'parentScope';
+  }
+  if (declares === null) return null;
+  return `external screen declares ${declares}, and an external screen opens a page in a new tab with no read, table, action, tab or parentScope (AD-44)`;
+}
+
 /** The fewest suggested prompts a declaration that declares any may carry, `SUGGESTEDPROMPTSMIN`'s value. */
 export const SUGGESTED_PROMPTS_MIN = 3;
 
@@ -3445,6 +3467,11 @@ export function buildMirror({
     const tabFault = tabProblem(screen.declaration);
     if (tabFault !== null) {
       throw new Error(`src/OcuPilot/Screen/Descriptor/${screen.file} (${screen.className}): ${tabFault}`);
+    }
+    // AD-5, AD-44, Story 20.32: an external screen declares a page to open and nothing to read or do.
+    const externalFault = externalProblem(screen.declaration);
+    if (externalFault !== null) {
+      throw new Error(`src/OcuPilot/Screen/Descriptor/${screen.file} (${screen.className}): ${externalFault}`);
     }
     const promptsFault = suggestedPromptsProblem(screen.declaration, workflowIds);
     if (promptsFault !== null) {

@@ -516,6 +516,9 @@ services:
       # items (Story 20.11): the port class reads them as the unit-test process, and the gate class also signs in as probe principals
       # each missing a pair or the database READ the analytics port requires.
       # classes: AnalyticsGate, AnalyticsPort
+      # The analytics link map class turns analytics on for USER's default web application and reads the navigation map as _SYSTEM and as
+      # probe principals each missing a DeepSee pair the Architect or Analyzer link requires (Story 20.32).
+      # classes: AnalyticsLinkMap
       OCUPILOT_ALLOW_PRINCIPALS: "1"
       # Writes an application error to a namespace's own ^ERRORS. Same reasoning again, and one
       # degree worse: an application error cannot be un-logged, so a runner pointed elsewhere

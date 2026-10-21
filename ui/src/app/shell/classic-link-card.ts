@@ -4,6 +4,16 @@ import type { ScreenDeclaration } from '../core/screens.generated';
 import { STRINGS } from '../core/strings';
 
 /**
+ * A link a caller hands the card in place of a descriptor's exemption: the address and the page name
+ * it opens. The `external` page passes the address the navigation map answered for its screen (AD-47,
+ * Story 20.32); the card draws no address of its own making.
+ */
+export interface ClassicLink {
+  readonly href: string;
+  readonly label: string;
+}
+
+/**
  * The "More in the classic portal" card a reduced form ends with (FR-9, AD-44; DESIGN.md
  * `:662-671` and `:1096-1098`, EXPERIENCE.md "end of every reduced").
  *
@@ -16,6 +26,9 @@ import { STRINGS } from '../core/strings';
  * one that stands between a bad declaration and this component. Over a descriptor with no
  * honored exemption this renders nothing at all: no card, no anchor, so a list screen cannot
  * grow one.
+ *
+ * **A caller may hand it the link instead** (Story 20.32): where the `link` input is given it stands in
+ * for the exemption in every place the card reads it, and the card draws when both parts are non-empty.
  *
  * **The target is declared, never derived.** `classicPage` is a class name -- the AD-8
  * privilege-union key -- and no code path anywhere turns one into a URL, because the portal
@@ -64,6 +77,9 @@ export class ClassicLinkCard {
   /** The descriptor this card ends the screen of, read from the generated mirror (AD-5). */
   readonly screen = input<ScreenDeclaration | null>(null);
 
+  /** A link that stands in for the descriptor's exemption when given (Story 20.32). */
+  readonly link = input<ClassicLink | null>(null);
+
   protected readonly STRINGS = STRINGS;
 
   /**
@@ -79,6 +95,8 @@ export class ClassicLinkCard {
    * one with no label would have to invent its own.
    */
   protected get present(): boolean {
+    const given = this.link();
+    if (given !== null) return given.href !== '' && given.label !== '';
     const declared = this.screen();
     if (declared === null) return false;
     const exemption = declared.classicLinkExemption;
@@ -86,10 +104,10 @@ export class ClassicLinkCard {
   }
 
   protected get href(): string {
-    return this.screen()?.classicLinkExemption.href ?? '';
+    return this.link()?.href ?? this.screen()?.classicLinkExemption.href ?? '';
   }
 
   protected get label(): string {
-    return this.screen()?.classicLinkExemption.label ?? '';
+    return this.link()?.label ?? this.screen()?.classicLinkExemption.label ?? '';
   }
 }

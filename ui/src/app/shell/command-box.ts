@@ -39,7 +39,8 @@ import { selfProtectionReason } from '../core/self-protection';
 import { Session } from '../core/session';
 import { ShellState } from '../core/shell-state';
 import { STRINGS, stringFor } from '../core/strings';
-import { entityKeyOf, rowFor } from '../core/table-model';
+import { entityKeyOf, formatClassicRowLinkDescription, rowFor } from '../core/table-model';
+import { NEW_TAB_GLYPH, openInNewTab } from './new-tab';
 
 /** The command box's name on the overlay stack (DW-137). */
 export const COMMAND_BOX_OVERLAY_ID = 'command-box';
@@ -94,6 +95,14 @@ interface CommandRow {
   /** The descriptor and declared id an action row runs. Both `''` for a screen row. */
   readonly descriptor: string;
   readonly actionId: string;
+  /**
+   * The address choosing an available `external` screen row opens in a new tab (AD-47, Story 20.32);
+   * `''` for every other row, including an `external` screen the map carries no address for, which
+   * routes onto its own page and says why.
+   */
+  readonly href: string;
+  /** What a screen reader hears of a row that opens a new tab, `null` for every other. */
+  readonly description: string | null;
   readonly ariaDisabled: string | null;
 }
 
@@ -196,9 +205,13 @@ interface CommandRow {
                 [class.ocu-command-box-option-gated]="row.gated"
                 [attr.aria-selected]="row.id === activeDescendant"
                 [attr.aria-disabled]="row.ariaDisabled"
+                [attr.aria-description]="row.description"
                 (click)="choose(row)"
               >
                 <span class="ocu-command-box-option-label">{{ row.label }}</span>
+                @if (row.href) {
+                  <span class="ocu-external-glyph" aria-hidden="true">{{ externalGlyph }}</span>
+                }
                 @if (row.detail) {
                   <span class="ocu-command-box-option-detail">{{ row.detail }}</span>
                 }
@@ -253,6 +266,9 @@ export class CommandBox {
   private readonly host: ElementRef<HTMLElement> = inject(ElementRef);
 
   protected readonly STRINGS = STRINGS;
+
+  /** The new-tab glyph a row that opens a new tab carries (`NEW_TAB_GLYPH`). */
+  protected readonly externalGlyph = NEW_TAB_GLYPH;
 
   /**
    * The chord, spelled the way the platform spells it. The command glyph is an escape, never
@@ -402,7 +418,8 @@ export class CommandBox {
    * Open a row. A gated or unavailable row does nothing: `aria-disabled` carries no behaviour
    * of its own, so the refusal has to be here. An available action row closes the box and runs
    * the action's registered handler once, the same `ScreenActions.run` the command bar's button
-   * calls.
+   * calls. An available `external` screen row opens its address in a new tab with no opener and
+   * routes nowhere (AD-47, Story 20.32).
    *
    * A screen navigation carries the current query, because `?ns=` is data scope and the box
    * reaches every screen in the product (AD-44, DW-134). Before it navigates, an open side bar is
@@ -419,6 +436,13 @@ export class CommandBox {
       this.returnFocus = null;
       this.close();
       void this.session?.signOut();
+      return;
+    }
+    if (row.kind === 'screen' && row.href !== '') {
+      // A link opens beside this tab, in this key press or click, and the screen stays where it is:
+      // focus goes back to where it was and nothing routes.
+      openInNewTab(row.href);
+      this.close();
       return;
     }
     if (row.kind === 'screen') {
@@ -473,6 +497,7 @@ export class CommandBox {
       const area = areaByKey(screen.area);
       const verdict = this.navigation.screenVerdict(screen.route);
       const opens = openableEntry(screen, (route) => this.navigation.screenVerdict(route));
+      const href = opens !== null && screen.archetype === 'external' ? this.navigation.screenHref(screen.route) : '';
       rows.push({
         id: `ocu-command-box-screen-${screen.route.replace(/\//g, '-') || 'root'}`,
         kind: 'screen',
@@ -485,6 +510,8 @@ export class CommandBox {
         area: screen.area,
         descriptor: '',
         actionId: '',
+        href,
+        description: href === '' ? null : formatClassicRowLinkDescription(STRINGS.classicRowLinkDescription, label),
         ariaDisabled: opens !== null ? null : 'true',
       });
     }
@@ -597,6 +624,8 @@ export class CommandBox {
         area: '',
         descriptor: screen.descriptor,
         actionId: action.id,
+        href: '',
+        description: null,
         ariaDisabled: (action.reason ?? '') !== '' ? 'true' : null,
       }));
   }
@@ -633,6 +662,8 @@ export class CommandBox {
         area: '',
         descriptor: '',
         actionId: '',
+        href: '',
+        description: null,
         ariaDisabled: null,
       },
     ];

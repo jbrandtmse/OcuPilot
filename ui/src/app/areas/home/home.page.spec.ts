@@ -377,6 +377,9 @@ describe('Home', () => {
           { path: 'tasks/schedule', children: [] },
           // DW-1852: the Security tile's target for a holder of only the authorization-server tab.
           { path: 'security/oauth/server', children: [] },
+          // Story 20.32: Cubes, and the link a tile must never open onto.
+          { path: 'analytics/cubes', children: [] },
+          { path: 'analytics/architect', children: [] },
         ]),
         { provide: NavigationService, useValue: navigation as unknown as NavigationService },
         { provide: ConnectivityService, useValue: new StubConnectivity() as unknown as ConnectivityService },
@@ -611,6 +614,45 @@ describe('Home', () => {
     await fixture.whenStable();
     expect(router.url).toBe('/');
     expect(shell.visibleArea()).toBe('');
+  });
+
+  describe('Story 20.32: an area that lists links beside its screens', () => {
+    const CUBES = screenForRoute('analytics/cubes') as ScreenDeclaration;
+    const ARCHITECT = screenForRoute('analytics/architect') as ScreenDeclaration;
+    const USER_PORTAL = screenForRoute('analytics/user-portal') as ScreenDeclaration;
+
+    // Mutation (Rule 19): drop the `external` skip from `firstOpenableEntry` in `navigation.ts` -> the tile is no longer gated and
+    // opens `/analytics/architect`, so both rows go red.
+    it('a caller who may open only the links finds the Analytics tile gated in place, naming the first screen\'s pair, and it opens nothing', async () => {
+      await router.navigateByUrl('/');
+      navigation.screens.set('analytics', [CUBES, ARCHITECT, USER_PORTAL]);
+      navigation.screenVerdicts.set(CUBES.route, { allowed: false, failedPair: '%DeepSee_PortalEdit:USE' });
+      navigation.notify();
+      fixture.detectChanges();
+
+      const tile = tileOf('analytics');
+      expect(tile.getAttribute('aria-disabled')).toBe('true');
+      expect(tile.hasAttribute('disabled')).toBe(false);
+      expect(fixture.nativeElement.querySelector(`#${tile.getAttribute('aria-describedby')}`)?.textContent?.trim()).toBe('Requires %DeepSee_PortalEdit:USE');
+
+      tile.click();
+      await fixture.whenStable();
+      expect(router.url).toBe('/');
+    });
+
+    it('a link listed ahead of an openable screen is skipped: the tile opens the screen, not the link', async () => {
+      await router.navigateByUrl('/');
+      navigation.screens.set('analytics', [ARCHITECT, CUBES]);
+      navigation.notify();
+      fixture.detectChanges();
+
+      const tile = tileOf('analytics');
+      expect(tile.getAttribute('aria-disabled')).toBeNull();
+
+      tile.click();
+      await fixture.whenStable();
+      expect(router.url).toBe('/analytics/cubes');
+    });
   });
 
   it('AD-8 as amended for DW-1768: the map a holder of the %Operator role is served opens OS management on Locks and gates Permissions naming its pair', async () => {

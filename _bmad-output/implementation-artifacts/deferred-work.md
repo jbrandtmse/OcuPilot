@@ -12168,6 +12168,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: lead CI resolution, Story 20.31 | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: CI run 38782509360 attempt 1: 'Waiting for selector #ocu-encryption-startup-DBEncStartMode-None failed' after 34 s; ocupilot-b-ci on the same tree: 3 of 3 green; the spec is Story 18.48's, untouched by 20.31
 - 2026-10-15T18:44:49Z status=routed owner=burndown by=lead note=flake priority: rerun once; a second red on the same head is a story red
+- 2026-10-21T13:30:19Z occurrence=20-32-the-analytics-links note=run 39603456840 browser shard 2/5 attempt 1, same selector timeout
 
 ### DW-2463: The interop-editor browser specs keep local copies of the helpers interop-editor-spec.mjs now shares (answered, editorShows, the frame selector) and of 20.7's readSettings, settingsNode and shellAt
 - source: spec-20-10-source-control-hooks.md (code review) | severity: low | fix-risk: low | footprint: in-epic
@@ -12256,6 +12257,25 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: background-tasks:5 reads 'What it pins: Background tasks is the fifth Tasks side-bar entry'; journals:7, license-usage:4-9, interop-usage:3 and 17 more keep theirs; remote-databases' 'twelfth and last' is already false
 - 2026-10-21T05:18:30Z status=wontfix-accepted owner=23-11-the-range-end-cleanup-part-10 by=cr note=reopen_if=a review or a story acts on a header ordinal that the mirror no longer declares
 
+### DW-2480: An external screen whose area applies but whose address cannot be composed routes to a page that says the area is not enabled
+- source: spec-20-32-the-analytics-links.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: ExternalPage.Href answers empty when GetDefaultApp(ns) is empty or ClassicHrefProblem refuses; Navigation.Payload then sets no href and external-page.ts shows externalAreaNotEnabled
+- 2026-10-21T10:55:17Z status=wontfix-theoretical owner=20-32-the-analytics-links by=cr note=real only if a namespace reports analytics while its default CSP application is empty or not root-relative
+
+### DW-2481: A browser policy that blocks a gesture-initiated window.open leaves a side-bar or command-box link choice silent
+- source: spec-20-32-the-analytics-links.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: openInNewTab passes noopener, so window.open answers null whether or not a tab opened and the caller cannot tell a blocked tab
+- 2026-10-21T10:55:17Z status=wontfix-theoretical owner=20-32-the-analytics-links by=cr note=real if a managed browser blocks popups from a click on the instance origin; the route's card stays the fallback
+
+### DW-2482: The Count leg's license clause in analytics-links.browser-spec.mjs has never been observed red
+- source: spec-20-32-the-analytics-links.md | severity: low | fix-risk: high | footprint: in-story
+- evidence: the only way to redden it is to let a vendor page load, which holds a license unit for 900 s; the spec's Never clause forbids that
+- 2026-10-21T10:55:17Z status=by-design owner=20-32-the-analytics-links by=cr note=the same leg's vendor request count is the pinning clause, its mutation recorded; the license clause is a sanity check
+
+### DW-2483: Two Rule 11 files carry in-place line edits rather than add-only ones (side-bar.spec.ts import line, a Registry.cls class doc line)
+- source: spec-20-32-the-analytics-links.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: git diff a0e965cd: side-bar.spec.ts rewrites its vitest import, Registry.cls rewrites one class doc-comment line; Epic 23's branch touches neither file
+- 2026-10-21T10:55:17Z status=wontfix-accepted owner=20-32-the-analytics-links by=cr note=reopen_if=a concurrent epic's branch edits either line before Story 20.32 merges
 ### DW-2479: LogSourcePort.LocalFromUtc's conversion direction cannot be falsified on the UTC test instances, as DW-1783 found for the agent ledger
 - source: spec-23-7-the-range-end-cleanup-part-6.md (plan) | severity: med | fix-risk: med | footprint: in-epic
 - evidence: LogSourcePort.cls:1871 LocalFromUtc, used by Timeline and InteropPort; ocupilot-ci and CI throwaways run Etc/UTC, so a swapped direction keeps every assertion green

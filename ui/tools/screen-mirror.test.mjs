@@ -22,6 +22,7 @@ import {
   IMPLEMENTED_DECLARED_NAME_KINDS,
   criteriaProblem,
   entityTypesIn,
+  externalProblem,
   ENTITY_REF_SOURCE,
   extractClassName,
   extractXData,
@@ -2432,6 +2433,64 @@ test('AD-44: classicLinkExemption carries its label and href through the generat
   assert.match(readCheckedInMirror(), /"label": ""/, 'the checked-in mirror carries the defaulted parts');
 });
 
+// --- External screens (Story 20.32) --------------------------------------------------------
+//
+// An `external` screen opens a vendor page in a new tab, so it declares no read, table, action, tab or parentScope. The mirror
+// refuses that half with the sentence `OcuPilot.Screen.Registry.ExternalProblem` returns; the vocabulary half (a tool identifier
+// `OcuPilot.Screen.ExternalPage` names, and its classic page) is the instance's alone.
+//
+// Mutation (Rule 19): delete the `externalProblem` call from `buildMirror` -> the "reaches the generator" assertion goes red while the
+// declaration cases stay green; make `externalProblem` skip `parentScope` -> its case goes red.
+
+const EXTERNAL_SENTENCE = 'and an external screen opens a page in a new tab with no read, table, action, tab or parentScope (AD-44)';
+
+test('externalProblem refuses an external screen that declares a read, table, action, tab or parentScope, and no other screen', () => {
+  const shipped = readSources().screens.find((screen) => screen.className === 'OcuPilot.Screen.Descriptor.AnalyticsArchitectLink');
+  assert.ok(shipped !== undefined, 'the Architect link is declared');
+  const link = () => structuredClone(shipped.declaration);
+  assert.equal(link().archetype, 'external');
+  assert.equal(externalProblem(link()), null, 'a link that declares nothing to read or do passes');
+  const cases = [
+    ['read', { read: { source: { port: 'analytics', endpoint: 'Cubes', type: 'LIST' } } }],
+    ['table', { table: { columns: [] } }],
+    ['tab', { tab: { group: 'analytics/architect', position: 1, labelKey: 'analyticsArchitectLabel' } }],
+    ['primaryAction', { primaryAction: { id: 'open', selfProtection: '' } }],
+    ['rowActions', { rowActions: [{ id: 'open', selfProtection: '' }] }],
+    ['parentScope', { parentScope: 'analytics/cubes' }],
+  ];
+  for (const [key, extra] of cases) {
+    assert.equal(
+      externalProblem({ ...link(), ...extra }),
+      `external screen declares ${key}, ${EXTERNAL_SENTENCE}`,
+      `an external screen that declares ${key}`
+    );
+  }
+  assert.equal(externalProblem({ ...link(), read: null, table: null, tab: null }), null, 'a null declares nothing');
+  assert.equal(externalProblem({ ...link(), primaryAction: { id: null, selfProtection: '' } }), null, 'a null action id declares nothing, as the instance reads it');
+  assert.equal(externalProblem({ archetype: 'list', read: { source: {} }, table: {} }), null, 'a screen of another archetype is not this check\'s');
+
+  const registry = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'src', 'OcuPilot', 'Screen', 'Registry.cls'), 'utf8');
+  assert.ok(registry.includes(EXTERNAL_SENTENCE), 'and Registry.ExternalProblem returns the same sentence');
+});
+
+test('buildMirror refuses an external screen that declares a parentScope, and every shipped link passes', () => {
+  const { screens } = readSources();
+  const links = screens.filter((screen) => screen.declaration.archetype === 'external');
+  assert.deepEqual(
+    links.map((screen) => screen.declaration.toolIdentifier).sort(),
+    ['analytics.analyzer', 'analytics.architect', 'analytics.userportal'],
+    'the three shipped links'
+  );
+  for (const screen of links) assert.equal(externalProblem(screen.declaration), null, `${screen.className} passes`);
+  const doctored = structuredClone(links[0]);
+  doctored.declaration.parentScope = 'analytics/cubes';
+  assert.throws(
+    () => buildMirror({ ...readSources(), screens: [doctored] }),
+    new RegExp(`${links[0].className}\\): external screen declares parentScope, `),
+    'which reaches the generator'
+  );
+});
+
 // --- The gates (Story 1.17, DW-184) -------------------------------------------------------
 //
 // A checker wired into no gate blocks nothing. `screen-mirror.mjs --check` was named in
@@ -2589,11 +2648,14 @@ test('ownPrivilegesProblem returns every sentence OwnPrivilegeCases declares, an
   // %Ens_TestingService:USE. Story 20.8's Schema viewer owns %Ens_EDISchema:READ and its Configuration diagram
   // %Ens_ProductionConfig:READ. Story 20.9's Messages and its Header tab own %Ens_MessageHeader:USE, and its Contents tab
   // that and %Ens_MessageContent:USE. Story 20.11's Term lists and a term list's entries own %DeepSee_PortalEdit:USE, and Folder items
-  // %Development:USE, beside the Analytics area's %DeepSee_Portal.
+  // %Development:USE, beside the Analytics area's %DeepSee_Portal. Story 20.32's Architect and Analyzer links own
+  // %DeepSee_Architect:USE and %DeepSee_Analyzer:USE, and the User Portal link owns none.
   assert.deepEqual(
     owners.sort(),
     [
       'OcuPilot.Screen.Descriptor.AllowedDirectoryList',
+      'OcuPilot.Screen.Descriptor.AnalyticsAnalyzerLink',
+      'OcuPilot.Screen.Descriptor.AnalyticsArchitectLink',
       'OcuPilot.Screen.Descriptor.AnalyticsFolderItemList',
       'OcuPilot.Screen.Descriptor.AnalyticsTermListEntryList',
       'OcuPilot.Screen.Descriptor.AnalyticsTermListList',

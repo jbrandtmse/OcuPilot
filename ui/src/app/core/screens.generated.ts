@@ -52,7 +52,8 @@ export type BuiltArchetypeKey =
   | 'meters'
   | 'viewer (OpenAPI)'
   | 'viewer (source)'
-  | 'home';
+  | 'home'
+  | 'external';
 
 export interface PrivilegePair {
   readonly resource: string;
@@ -1788,6 +1789,170 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "entityLabelKey": ""
   },
   {
+    "descriptor": "OcuPilot.Screen.Descriptor.AnalyticsAnalyzerLink",
+    "route": "analytics/analyzer",
+    "area": "analytics",
+    "labelKey": "analyticsAnalyzerLabel",
+    "sideBarPosition": 5,
+    "archetype": "external",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%DeepSee_Portal",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DeepSee_Analyzer",
+        "permission": "USE"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%DeepSee_Analyzer",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "",
+    "secondaryEntityTypes": [],
+    "scope": "namespace",
+    "parentScope": "",
+    "id": {
+      "kind": "none",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [],
+      "secretFields": []
+    },
+    "emptyStateKey": "",
+    "commandAliases": [
+      "analyzer",
+      "pivot tables",
+      "deepsee analyzer"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "analyticsAnalyzerPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "analyticsAnalyzerPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "analyticsAnalyzerPrompt3"
+      }
+    ],
+    "classicPage": "%DeepSee.UI.Analyzer",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "toolIdentifier": "analytics.analyzer",
+    "refreshDefault": 0,
+    "read": null,
+    "table": null,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.AnalyticsArchitectLink",
+    "route": "analytics/architect",
+    "area": "analytics",
+    "labelKey": "analyticsArchitectLabel",
+    "sideBarPosition": 4,
+    "archetype": "external",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%DeepSee_Portal",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DeepSee_Architect",
+        "permission": "USE"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%DeepSee_Architect",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "",
+    "secondaryEntityTypes": [],
+    "scope": "namespace",
+    "parentScope": "",
+    "id": {
+      "kind": "none",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [],
+      "secretFields": []
+    },
+    "emptyStateKey": "",
+    "commandAliases": [
+      "architect",
+      "cube designer",
+      "deepsee architect"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "analyticsArchitectPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "analyticsArchitectPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "analyticsArchitectPrompt3"
+      }
+    ],
+    "classicPage": "%DeepSee.UI.Architect",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "toolIdentifier": "analytics.architect",
+    "refreshDefault": 0,
+    "read": null,
+    "table": null,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
     "descriptor": "OcuPilot.Screen.Descriptor.AnalyticsCubeDimensionsTab",
     "route": "analytics/cubes/dimensions",
     "area": "analytics",
@@ -2749,6 +2914,78 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     },
     "toolIdentifier": "analytics.termlists",
     "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.AnalyticsUserPortalLink",
+    "route": "analytics/user-portal",
+    "area": "analytics",
+    "labelKey": "analyticsUserPortalLabel",
+    "sideBarPosition": 6,
+    "archetype": "external",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%DeepSee_Portal",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "",
+    "secondaryEntityTypes": [],
+    "scope": "namespace",
+    "parentScope": "",
+    "id": {
+      "kind": "none",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [],
+      "secretFields": []
+    },
+    "emptyStateKey": "",
+    "commandAliases": [
+      "user portal",
+      "dashboards",
+      "deepsee portal"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "analyticsUserPortalPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "analyticsUserPortalPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "analyticsUserPortalPrompt3"
+      }
+    ],
+    "classicPage": "%DeepSee.UserPortal.Home",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "toolIdentifier": "analytics.userportal",
+    "refreshDefault": 0,
+    "read": null,
+    "table": null,
     "banner": null,
     "tab": null,
     "rowTarget": null,

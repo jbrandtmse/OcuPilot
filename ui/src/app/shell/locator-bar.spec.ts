@@ -63,6 +63,7 @@ class StubNavigation {
     if (path.startsWith('web-applications/rest-apis/document/')) return screenForRoute('web-applications/rest-apis/document');
     if (path.startsWith('security/oauth/clients')) return screenForRoute('security/oauth/clients');
     if (/^security\/oauth\/server(\/|$)/.test(path)) return screenForRoute('security/oauth/server');
+    if (path === 'analytics/architect') return screenForRoute('analytics/architect');
     return null;
   }
 
@@ -72,7 +73,11 @@ class StubNavigation {
   /** DW-1852: the Security side bar's roster, empty unless a spec about its tab group sets it. */
   securityScreens: readonly ScreenDeclaration[] = [];
 
+  /** Story 20.32: the Analytics side bar's roster, empty unless a spec about a link's page sets it. */
+  analyticsScreens: readonly ScreenDeclaration[] = [];
+
   screensForArea(areaKey: string): readonly ScreenDeclaration[] {
+    if (areaKey === 'analytics') return this.analyticsScreens;
     if (areaKey === 'security') return this.securityScreens;
     return areaKey === 'permissions' ? this.areaScreens : areaKey === 'home' ? [HOME] : [];
   }
@@ -460,6 +465,40 @@ describe('the locator bar', () => {
     area.click();
     await fixture.whenStable();
     expect(router.url).toBe('/permissions/users/_SYSTEM');
+  });
+
+  describe('Story 20.32: on a link\'s own page', () => {
+    const CUBES = screenForRoute('analytics/cubes') as ScreenDeclaration;
+    const ARCHITECT = screenForRoute('analytics/architect') as ScreenDeclaration;
+
+    // Mutation (Rule 19): drop the `external` skip from `firstOpenableEntry` in `navigation.ts` -> the segment is no longer gated and
+    // opens `/analytics/architect`, and the second row lands there instead of on Cubes.
+    it('the area segment is gated in place when only the links open, naming the first screen\'s pair', async () => {
+      navigation.analyticsScreens = [CUBES, ARCHITECT];
+      navigation.verdicts.set(CUBES.route, { allowed: false, failedPair: '%DeepSee_PortalEdit:USE' });
+      await go('/analytics/architect');
+
+      const area: HTMLButtonElement = fixture.nativeElement.querySelector('.ocu-locator-link');
+      expect(area.getAttribute('aria-disabled')).toBe('true');
+      expect(area.hasAttribute('disabled')).toBe(false);
+      expect(fixture.nativeElement.querySelector(`#${area.getAttribute('aria-describedby')}`)?.textContent?.trim()).toBe('Requires %DeepSee_PortalEdit:USE');
+
+      area.click();
+      await fixture.whenStable();
+      expect(router.url).toBe('/analytics/architect');
+    });
+
+    it('the area segment opens the first screen that is not a link', async () => {
+      navigation.analyticsScreens = [ARCHITECT, CUBES];
+      await go('/analytics/architect');
+
+      const area: HTMLButtonElement = fixture.nativeElement.querySelector('.ocu-locator-link');
+      expect(area.getAttribute('aria-disabled')).toBeNull();
+
+      area.click();
+      await fixture.whenStable();
+      expect(router.url).toBe('/analytics/cubes');
+    });
   });
 
   it('an allowed area segment carries no refusal wiring at all', async () => {

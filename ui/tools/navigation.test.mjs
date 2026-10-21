@@ -421,6 +421,10 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'analytics/cubes',
       'analytics/term-lists',
       'analytics/folder-items',
+      // Story 20.32: Architect, Analyzer and User Portal, the three links, listed after them in position order.
+      'analytics/architect',
+      'analytics/analyzer',
+      'analytics/user-portal',
       'agent/definitions/edit',
       'agent/transcripts/details',
       'agent/definitions',
@@ -1468,6 +1472,82 @@ test('reset forgets the map, so the next principal in this tab is asked about af
   assert.equal(service.loaded(), false, 'a second principal inherits no verdict (AD-8)');
   assert.deepEqual(service.areaVerdict('logs'), UNGATED);
   assert.equal(notified, 1, 'and the shell is told, so the rail stops showing the old gating');
+});
+
+// Story 20.32 (AC1, AC3, AC6): an `external` screen's entry carries the address the instance composed, and the client
+// holds it beside the verdicts; it never composes one.
+//
+// Mutation (Rule 19): drop the `href` parse from `runLoad` -> the kept-address row goes red, and the side bar has nothing to open.
+test('the map keeps an external screen\'s href, answers an empty one for every other route, and forgets it on reset', async () => {
+  const href = '/csp/user/_DeepSee.UI.Architect.zen?$NAMESPACE=USER';
+  const api = stubApi([
+    ok(
+      mapBody([
+        {
+          key: 'analytics',
+          applies: true,
+          allowed: true,
+          screens: [
+            { route: 'analytics/cubes', allowed: true },
+            { route: 'analytics/architect', allowed: true, href },
+            { route: 'analytics/analyzer', allowed: true, href: '' },
+            { route: 'analytics/user-portal', allowed: true, href: 7 },
+          ],
+        },
+      ])
+    ),
+  ]);
+  const service = new NavigationService({ api });
+  assert.equal(service.screenHref('analytics/architect'), '', 'before the map answers there is no address');
+  await service.load();
+  assert.equal(service.screenHref('analytics/architect'), href, 'the address the entry carried');
+  assert.equal(service.screenHref('analytics/cubes'), '', 'an entry that carries none answers an empty string');
+  assert.equal(service.screenHref('analytics/analyzer'), '', 'an empty address is none');
+  assert.equal(service.screenHref('analytics/user-portal'), '', 'and so is one that is not a string');
+  assert.equal(service.screenHref('nowhere'), '', 'a route the map never mentioned has none');
+  service.reset();
+  assert.equal(service.screenHref('analytics/architect'), '', 'a second principal inherits no address');
+});
+
+test('a re-read replaces the addresses: the namespace that stopped applying carries none', async () => {
+  const href = '/csp/user/_DeepSee.UI.Analyzer.zen?$NAMESPACE=USER';
+  const api = stubApi([
+    ok(mapBody([{ key: 'analytics', applies: true, allowed: true, screens: [{ route: 'analytics/analyzer', allowed: true, href }] }])),
+    ok(mapBody([{ key: 'analytics', applies: false, allowed: true, screens: [{ route: 'analytics/analyzer', allowed: true }] }])),
+  ]);
+  const service = new NavigationService({ api });
+  await service.load();
+  assert.equal(service.screenHref('analytics/analyzer'), href);
+  service.reload();
+  await service.load();
+  assert.equal(service.screenHref('analytics/analyzer'), '', 'the second answer carried no address, so none is held');
+});
+
+// Mutation (Rule 19): drop the `appliesAnswered()` test from `screenHref` -> the moved-namespace row goes red.
+test('screenHref offers no address while the map on hand was read under a namespace the shell has left (Story 20.32)', async () => {
+  const href = '/csp/user/_DeepSee.UI.Architect.zen?$NAMESPACE=USER';
+  let namespace = 'USER';
+  const api = stubApi([ok(mapBody([{ key: 'analytics', applies: true, allowed: true, screens: [{ route: 'analytics/architect', allowed: true, href }] }]))]);
+  const service = new NavigationService({ api, namespace: () => namespace });
+  await service.load();
+  assert.equal(service.screenHref('analytics/architect'), href, 'read under USER, offered under USER');
+  namespace = 'SAMPLES';
+  assert.equal(service.screenHref('analytics/architect'), '', 'the shell moved to SAMPLES, so USER\'s address is not offered there');
+  namespace = 'USER';
+  assert.equal(service.screenHref('analytics/architect'), href, 'and it is offered again under the namespace it was read under');
+});
+
+// Mutation (Rule 19): drop the `external` skip from `firstOpenableEntry` -> the first row goes red, and Home's Analytics tile
+// would route onto a link page.
+test('firstOpenableEntry skips an external entry: an area never routes onto a link (Story 20.32)', () => {
+  const allow = (allowed) => (route) => ({ allowed: allowed.includes(route), failedPair: allowed.includes(route) ? '' : 'R:USE' });
+  const screens = listedScreensForArea('analytics');
+  const links = screens.filter((screen) => screen.archetype === 'external').map((screen) => screen.route);
+  assert.deepEqual(links, ['analytics/architect', 'analytics/analyzer', 'analytics/user-portal'], 'the area lists its three links');
+  assert.equal(firstOpenableEntry(screens, allow(links))?.route ?? null, null, 'a caller who may open only the links lands on none of them');
+  assert.equal(firstOpenableEntry(screens, allow([...links, 'analytics/cubes']))?.route, 'analytics/cubes', 'and one who may open Cubes lands there');
+  // The side bar's own entry still opens a link: openableEntry answers the screen itself.
+  assert.equal(openableEntry(screenForRoute('analytics/architect'), allow(links))?.route, 'analytics/architect');
 });
 
 test('the listing seams delegate to the mirror, so a component test can substitute a roster', () => {
