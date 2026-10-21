@@ -2,11 +2,11 @@
 title: 'Story 20.33: The MDX query tool'
 type: 'feature'
 created: '2026-10-14'
-status: 'in-progress'
-baseline_revision: '053c1b15118bbb1efe1925a65949a21eb7552000'
+status: 'done'
+baseline_revision: '4122309739f3405c0f7717546514c781c54cca7c'
 baseline_commit: '053c1b15118bbb1efe1925a65949a21eb7552000'
 review_loop_iteration: 0
-followup_review_recommended: true
+followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
   - '{project-root}/_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md'
@@ -427,7 +427,7 @@ Rejected:
 
 ### Rework (smoke)
 
-- [ ] [Smoke] The runner's full ObjectScript sweep (merged tree `96eaf715`, `ocupilot-b-ci` run 611): `OcuPilot.Test.SaveHoldCoverage.TestEveryWriteRouteTakesTheHoldOrIsExempt` reds on the two new write routes this story added, `POST /analytics/mdx/background` and `POST /analytics/mdx/background/:id/cancel`. Neither takes a target hold, and neither is listed in `SaveHoldCoverage.Exemptions`. What the fix must do: add one exemption row for each, with its reason, mirroring the SQL console's two rows (`POST /explorer/sql/background`: runs only a statement in the caller's own background run; `.../:id/cancel`: stops the caller's own background run, which is OcuPilot's own state). The MDX start writes nothing to the instance (AC5) and the cancel stops only the caller's own run. Confirm with `cd ui && node tools/ci-runner.mjs --container ocupilot-b-ci --class OcuPilot.Test.SaveHoldCoverage` green. Record a `mutation:` line: drop one of the two rows, and that test goes red naming its route.
+- [x] [Smoke] The runner's full ObjectScript sweep (merged tree `96eaf715`, `ocupilot-b-ci` run 611): `OcuPilot.Test.SaveHoldCoverage.TestEveryWriteRouteTakesTheHoldOrIsExempt` reds on the two new write routes this story added, `POST /analytics/mdx/background` and `POST /analytics/mdx/background/:id/cancel`. Neither takes a target hold, and neither is listed in `SaveHoldCoverage.Exemptions`. What the fix must do: add one exemption row for each, with its reason, mirroring the SQL console's two rows (`POST /explorer/sql/background`: runs only a statement in the caller's own background run; `.../:id/cancel`: stops the caller's own background run, which is OcuPilot's own state). The MDX start writes nothing to the instance (AC5) and the cancel stops only the caller's own run. Confirm with `cd ui && node tools/ci-runner.mjs --container ocupilot-b-ci --class OcuPilot.Test.SaveHoldCoverage` green. Record a `mutation:` line: drop one of the two rows, and that test goes red naming its route.
 
 ## Spec Change Log
 
@@ -457,6 +457,20 @@ Rejected:
   - `[false]` `[reject]` The input 400 precedes the pair 403s, and a busy 409 follows a prepare (intent-alignment) -- the order is the Tasks' `Admit` order: body, `MdxAdmit`, detection, prepare, then reserve.
   - `[false]` `[reject]` Two users running the same text share the vendor's cancel (intent-alignment) -- a named limit (measured), not a defect.
   - `[false]` `[reject]` The confirmation is a flag in the start body, enforced by the client and the flag (intent-alignment) -- the spec's reading: the carrier is `confirmed: true` in the same body (Design Notes), pinned by the route, page-spec and browser legs.
+
+### 2026-10-21 -- Review pass (rework, the smoke item)
+
+- verdicts: 9 findings -- high 0, medium 0, low 5, false 4, maybe-false 0
+- findings:
+  - `[low]` `[patch]` Dropping the cancel row cannot redden `SaveHoldCoverage` and no mutation names that row (verification-gap) -- verified: with only the cancel row dropped the class stays green, because the start row's slash boundary exempts the cancel route. Patched: the cancel route's `Url` renamed on the throwaway reddens the stale-row assertion for the cancel row alone (run 728); reverted byte-identical, reloaded, green (run 729). Both mutations are in `## Verification`.
+  - `[low]` `[reject]` The start row's slash boundary exempts every later write route under `/analytics/mdx/background/` (verification-gap, other) -- the class's documented rule (a row exempts its own url and every url continuing it after a slash), shared by every row including the SQL console's pair; narrowing it changes the roster's mechanism, which is not this item.
+  - `[low]` `[patch]` The new mutation line sat under the "(code review) mutations" heading (verification-gap, other) -- verified. Patched at its origin: the line is its own "(smoke rework) mutations" bullet.
+  - `[false]` `[reject]` The start reason's "SELECT or DRILLTHROUGH" claim (verification-gap, other) -- the layer reported it checked and true (`MdxPrepare` refuses CREATE and DROP, with tests); nothing to fix.
+  - `[false]` `[reject]` The start reason is silent on the confirmed path and the vendor's own writes (intent-alignment) -- the reason's subject is OcuPilot, as AC5 and the contract word it ("OcuPilot writes nothing to the instance of its own"); a confirmed statement is the person's own server-side code under the confirmation that names it, and only SELECT and DRILLTHROUGH run either way.
+  - `[low]` `[patch]` The cancel row is not load-bearing for the route check (intent-alignment) -- the same root cause as the first row; closed there.
+  - `[low]` `[patch]` The mutation line covers one row (intent-alignment) -- the same root cause as the first row; closed there.
+  - `[false]` `[reject]` The box is ticked with no run record in the diff (intent-alignment) -- the runs are recorded in this pass's `## Auto Run Result` and the mutation lines; a spec's tracking carries no run record in a diff.
+  - `[false]` `[reject]` The `DeveloperFloorRoutes` and `EndpointCoverage` rosters already carry the MDX routes and only `SaveHoldCoverage` lacked them (intent-alignment) -- a description, not a defect: the sweep's red named this class alone.
 
 ## Design Notes
 
@@ -804,31 +818,17 @@ A split needs the orchestrator's ruling.
   - mutation: AC10 (client), `drill` and `drillable` ignore the namespace -> `mdx-query.page.spec.ts`' namespace-drill case red.
   - mutation: AC1 (client), `drillLabel` drops the value -> `mdx-query.page.spec.ts`' grid case red.
   - mutation: Never list, `CACHE_REFERENCE` drops the bracket form -> `analytics.test.mjs`' scanner test red.
+- (smoke rework) mutations on `OcuPilot.Test.SaveHoldCoverage.TestEveryWriteRouteTakesTheHoldOrIsExempt`, each reverted byte-identical (`git diff` digest equal before and after) and the throwaway reloaded:
+  - mutation: the `POST /analytics/mdx/background` row dropped from `Exemptions` -> red, naming `POST /analytics/mdx/background` (`BackgroundRun.HandleStart`).
+  - mutation: the cancel route's `Url` in `Router.UrlMap` renamed `.../:id/cancelx` -> red, on "the exemption 'POST /analytics/mdx/background/:id/cancel' names a route in the map". Dropping only the cancel row stays green: the start row's slash boundary already exempts the cancel route, so the cancel row is a mirror of the SQL console's pair that the stale-row check holds to a real route.
 
 ## Auto Run Result
 
 Status: done
 Blocking condition: none
 
-**Summary.** MDX query ships as a listed Analytics screen at side-bar position 7: one statement, an owner-scoped background run (Kind `mdx` beside the SQL console's `sql` in the same run table, one live run per kind, five of all kinds), a grid of labels and cells whose value cells drill through, a typed DRILLTHROUGH listing, cancel, a 120 s bound and the five caps, and an ask-first confirmation for text that runs server-side code or SQL (one detector, `AnalyticsPort.MdxConstructs`, before and after prepare, failing closed). The SQL console's route and job machinery, client polling, result grid and fetch loop moved into shared classes, and its behavior and DOM are unchanged.
+**This pass (rework iteration 1, the one `[Smoke]` item).** `SaveHoldCoverage.Exemptions` gains one row for each MDX write route, `POST /analytics/mdx/background` and `POST /analytics/mdx/background/:id/cancel`, beside the SQL console's pair. Files changed: `src/OcuPilot/Test/SaveHoldCoverage.cls` and this spec (the item ticked, the `mutation:` lines, the triage entry). The earlier passes closed in the first 2026-10-21 entry of the Review Triage Log, committed at `d280ee5f`.
 
-**Files changed.**
+**Review.** Two layers ran: 9 findings, high 0, medium 0, low 5, false 4. Patched: two low entries (the cancel row's own mutation, and the mutation line's placement). Deferred: none new. Rejected: one low and four false, each with its reason in the Review Triage Log. Follow-up review recommended: false (no high patched).
 
-- Server: `Kernel/Shell/BackgroundRun.cls` (new, the shared run and its one `JOB`), `Kernel/RowFetch.cls` (new, the shared fetch loop), `Kernel/State/SqlRun.cls` (`Kind`), `Area/Explorer/SqlBackground.cls` (now the SQL kind), `Area/Analytics/MdxQuery.cls` (new, the MDX kind), `Port/AnalyticsPort.cls` (the `Mdx*` calls and limits), `Port/SqlPort.cls`, `Api/AnalyticsError.cls`, `Api/Router.cls`, `Screen/Descriptor/AnalyticsMdxQuery.cls`, `scripts/check-objectscript.py` and its harness, `scripts/ci-throwaway.sh`.
-- Server tests: `AnalyticsMdx`, `AnalyticsMdxJob`, `AnalyticsMdxRoutes`, `AnalyticsMdxGate`, `AnalyticsMdxDescriptor` and the fixtures `AnalyticsMdxFixture`, `AnalyticsMdxFailing`, `AnalyticsMdxQuick`; `AnalyticsProbe` (the grid cube); `SqlRunStore`, `PortGate`, `ClassicPageGate` and the roster classes.
-- Client: `core/background-run.ts`, `core/mdx-answer.ts`, `shell/result-grid.ts`, `areas/analytics/mdx-query.{store,page}.ts`, the SQL page and store (delegating), strings, the loader line and mirror, `_components.scss`, EXPERIENCE.md, the unit specs, `ui/tools/*.test.mjs` and `ui/browser/analytics-mdx.browser-spec.mjs`.
-
-**Review.** Two layers ran (the blind and edge-case layers are disabled by the project's configuration): 15 findings, high 0, medium 3, low 4, false 8, maybe-false 0. Patches applied: five entries (two medium, three low): the slow-listing bound (the one real defect: a DRILLTHROUGH listing runs when its rows are fetched, outside the alarm; now bounded, with the alarm rounded up), two `SqlRunStore` kind pins, a page-spec title, and a fixed sleep. Deferred: none new (the implement pass's one item stays in the frontmatter). Rejected, each with its reason in the Review Triage Log: one low and eight false.
-
-**Follow-up review recommended: true.** The listing-bound code (`MdxAnswer`'s `pBound`, `MdxQuery.AlarmSeconds` and the listing branch of `Process`) was written in the review pass and is pinned by three new job tests and their mutations; its `<ALARM>`-as-exception form (the SQL engine answered -450 in every measurement) is handled but unmeasured.
-
-**Verified.**
-
-- Bundle: initial total 2.00 MB (1,995.5 kB), under the fixed 2,500 kB warning; the MDX page is its own lazy chunk of 16.08 kB.
-- ObjectScript on `ocupilot-b-ci`, each class run alone and green: 20 classes, 146 tests, including `AnalyticsMdxJob` 9 (the listing's bound, a sub-second bound and the listing's cancel added in review).
-- `npm run test:tools` 2,110 and `npm run test:components` 3,337 green; `check-objectscript` (2,148 files, 0 problems), its harness (146) and `lint-docs` clean.
-- Browser, each file alone: `analytics-mdx` 5, `system-explorer-sql-query` 3, `analytics` 5, `analytics-links` 6, `a11y-structural-invariants` 13, all green.
-- Matrix Test Audit: every row of the I/O matrix has a covering test that ran and passed. Rule 19: each acceptance criterion has a mutation observed red (Verification), five of them added in review.
-- Not run here, left to the lead: the full ObjectScript sweep, `scripts/smoke.sh` and Rule 30's fresh check.
-
-**Residual risks.** The vendor's cancel stops every run of the same text, the classic tool's included, and a run leaves the vendor's cache behind (named limits). `%MaxListingRows` is an internal vendor property; a build that removes it fails a DRILLTHROUGH start.
+**Verified.** The reloaded `src` loaded with `IsOK` 1. `node tools/ci-runner.mjs --container ocupilot-b-ci --class OcuPilot.Test.SaveHoldCoverage` reds on the two routes before the rows (run 721) and is green after (runs 722 and 726, 2 tests). The start-row mutation reddens it (run 723) and so does the cancel route's rename (run 728); each was reverted byte-identical (`git diff` digest equal) and the class is green again on the reloaded tree (run 729). `check-objectscript` (2,159 files, 0 problems) and `lint-docs` are clean. No matrix row is touched, so the Matrix Test Audit was not re-run. Not run here, left to the lead: the full ObjectScript sweep, `scripts/smoke.sh` and Rule 30's fresh check.
