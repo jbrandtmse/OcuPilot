@@ -2,7 +2,7 @@
 title: 'Story 20.11: The Analytics rider'
 type: 'feature'
 created: '2026-10-14'
-status: 'ready-for-dev'
+status: 'draft'
 baseline_revision: '673ced36dc780d0d546622f006a03ac444cfb83f'
 baseline_commit: '673ced36dc780d0d546622f006a03ac444cfb83f'
 review_loop_iteration: 0
@@ -342,6 +342,7 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Line numbe
 
 - 2026-10-14, spec gate (runner): the orchestrator ruled Q1 A (Parts B, C and D are Stories 20.32, 20.33 and 20.34, chartered in `epics.md` with their criteria verbatim; order 20.11, 20.32, 20.33, 20.34, then 20.12) and Q2 A (Folder items on `%Development:USE`, a named narrower audience in AD-8). `epics.md` Story 20.11 is amended under Rule 5 (the split, and the first criterion's API reworded to the vendor's classes, apply-and-report). The new AD is AD-65 (claimed from the coordination counter), with the AD-29, AD-36, AD-8, AD-44, AD-13 and AD-7 clauses. Task 0 gains the cube `Resource` check measurement (the orchestrator's). The REST layer finding is DW-2416, decision-pending under the owner's hold.
 - 2026-10-14, lead (20.33's spec gate, orchestrator rulings Q1 A and Q2 C): Part C's splice limits become the screen's ask-first confirmation and the agent's refusal; the agent's MDX read is Story 20.35.
+- 2026-10-21, runner (owner answer U-1 A): AD-5 amended (`bf8bc8b7`); the pick-up's three-way apply conflicted in `strings.ts`, so the story is re-planned from the set-aside patches (Design Notes › Owner answer U-1).
 
 ## Review Triage Log
 
@@ -382,6 +383,8 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Line numbe
 
 
 ## Design Notes
+
+**Owner answer U-1 and the re-plan (2026-10-21).** The owner answered U-1 with A, and AD-5's row-target bullet now lets a tab of a tabbed group (a `detail` screen drawing a table) declare one (`bf8bc8b7`). The Relationships tab's `rowTarget` and the tab arm of `RowTargetProblem` / `rowTargetProblem` are therefore within AD-5, and the veto-window item in Auto Run Result is settled. The pick-up (`git apply --whitespace=nowarn --3way` of `set-aside/20-11-the-analytics-rider-1.patch` on `bf8bc8b7`) exited 1. Its one conflict was an append-only union at the end of `ui/src/app/core/strings.ts`: Story 20.12's workflow keys beside this story's analytics keys. The source was restored and the story re-planned. The two set-aside patches (the code patch and `20-11-the-analytics-rider-1.planning.patch`, EXPERIENCE.md rows) are this story's implementation as its implement stage left it (`11bcb1fa`, self-reviewed). The re-planned implement stage starts by applying both with `git apply --whitespace=nowarn --3way`. It keeps both sides of every append-only union, re-anchors the `EXPERIENCE.md:<line>` citations against the current file (Story 20.12 added rows near :604), and then runs verification and review as usual.
 
 **Governing ADs (Rule 6).**
 
