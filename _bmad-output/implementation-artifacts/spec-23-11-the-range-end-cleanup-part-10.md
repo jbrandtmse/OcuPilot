@@ -2,7 +2,7 @@
 title: 'Story 23.11: The range-end cleanup, part 10'
 type: 'bugfix'
 created: '2026-10-15'
-status: 'done'
+status: 'in-progress'
 baseline_revision: '0bba64fffdcc5597cd9eaec2540db1c6ab7b380d'
 baseline_commit: '0bba64fffdcc5597cd9eaec2540db1c6ab7b380d'
 review_loop_iteration: 0
@@ -366,6 +366,8 @@ Rejected:
   - Each prefix pin compares against `sideBarLabels(area).slice(0, n)`, or is dropped where the spec's derived full-list check already covers the side bar. Record which.
   - `system-explorer:132` takes the area's index in `AREAS`' rail order. `system-explorer:143-145` joins `sideBarLabels('system-explorer')`.
   - The three editor specs stop pinning the whole strip and assert only the tabs they open, by their `STRINGS` label. The page specs stay the strips' one pin.
+  - Not in this pass: the `WireSecurityRead` (19) and `WireOAuthRead` (5) per-principal roster literals, batch b review's DW-2202 occurrence. MED with high fix-risk, so the lead escalates that residual at this batch's adjudication (Rule 15).
+- [ ] **DW-2470: drop the dead `.ocu-guardrails-fault` selector.** Remove it from its shared selector list in `_components.scss` (around `:7480` after the 20.12 merge); the rule's other selectors and declarations stay. No pin: a deleted unused selector has no behavior to pin; `grep -rn ocu-guardrails-fault ui/` reads empty after it.
 
 **Acceptance criteria:**
 
