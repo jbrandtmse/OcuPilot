@@ -1120,3 +1120,6 @@
 2026-10-21T19:05:23Z	Epic 20	throwaway_rebuilt	run=20261020T0940Z-20,23 container=ocupilot-b-ci src=96eaf715 reason=rule30_fresh_check_20.33
 2026-10-21T19:19:52Z	Story 20.33	smoke_complete	method=instance+browser result=pass iterations=1 defects_caught=0 evidence=smoke_on_fresh_ocupilot-b-ci(96eaf715) model=claude-opus-5-5
 2026-10-21T19:19:52Z	Story 20.33	fresh_check	env=recipe(down+up_from_96eaf715) tests=18_classes_141_forward_and_reverse_green+browser_4_specs_25_together_then_each_alone_reversed+a11y-structural-invariants_13/13+smoke result=pass order=forward,reverse merged=1c15efa2 bundle_initial=2.00MB
+2026-10-21T21:03:17Z	Story 20.33	full_sweep	env=ocupilot-b-ci(96eaf715) shards=20 classes=689 tests=5323 failed=1(SaveHoldCoverage.TestEveryWriteRouteTakesTheHoldOrIsExempt:new_MDX_write_routes_lack_exemption_rows) test:components=3338/3338
+2026-10-21T21:03:17Z	Story 20.33	rework_opened	cycle_iteration=2 iteration=1 trigger=smoke items=Smoke:SaveHoldCoverage_exemptions_for_POST_/analytics/mdx/background(+/:id/cancel) scope_baseline=2df27927
+2026-10-21T21:03:17Z	Story 20.33	stage_spawned	stage=implement spawn_at=2026-10-21T21:03:17Z model=sonnet agent_name=20-33-implement-2 cycle_iteration=2 note=rework_1_of_3(trigger=smoke)

@@ -2,7 +2,7 @@
 title: 'Story 20.33: The MDX query tool'
 type: 'feature'
 created: '2026-10-14'
-status: 'done'
+status: 'in-progress'
 baseline_revision: '053c1b15118bbb1efe1925a65949a21eb7552000'
 baseline_commit: '053c1b15118bbb1efe1925a65949a21eb7552000'
 review_loop_iteration: 0
@@ -424,6 +424,10 @@ Rejected:
 - `low`: a drill cell clips a value wider than its column with no ellipsis (`display: flex`) -- cells are short values; the fix changes the cell's layout under the structural walk.
 - `low`: a busy refusal attaching another tab's run that ends with cells reads a row count with no grid -- rare, and the fix adds a branch.
 - `low`: a query with no rows axis names its cells "Drill through , <column>" -- the string's shape is specified; the value now leads the name.
+
+### Rework (smoke)
+
+- [ ] [Smoke] The runner's full ObjectScript sweep (merged tree `96eaf715`, `ocupilot-b-ci` run 611): `OcuPilot.Test.SaveHoldCoverage.TestEveryWriteRouteTakesTheHoldOrIsExempt` reds on the two new write routes this story added, `POST /analytics/mdx/background` and `POST /analytics/mdx/background/:id/cancel`. Neither takes a target hold, and neither is listed in `SaveHoldCoverage.Exemptions`. What the fix must do: add one exemption row for each, with its reason, mirroring the SQL console's two rows (`POST /explorer/sql/background`: runs only a statement in the caller's own background run; `.../:id/cancel`: stops the caller's own background run, which is OcuPilot's own state). The MDX start writes nothing to the instance (AC5) and the cancel stops only the caller's own run. Confirm with `cd ui && node tools/ci-runner.mjs --container ocupilot-b-ci --class OcuPilot.Test.SaveHoldCoverage` green. Record a `mutation:` line: drop one of the two rows, and that test goes red naming its route.
 
 ## Spec Change Log
 
