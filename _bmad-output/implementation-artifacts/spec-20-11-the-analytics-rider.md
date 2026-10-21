@@ -2,7 +2,7 @@
 title: 'Story 20.11: The Analytics rider'
 type: 'feature'
 created: '2026-10-14'
-status: 'done'
+status: 'in-progress'
 baseline_revision: 'f0a2e888a239e56e691b2686b998a6d0d40e6194'
 baseline_commit: 'f0a2e888a239e56e691b2686b998a6d0d40e6194'
 review_loop_iteration: 0
@@ -219,6 +219,10 @@ Rejected:
 - low: the entries' Key column borrows `oauthClientAlgKey` - strings are reused by value across areas (`errorLogColumnValue` in six descriptors).
 - spec edit: the Auto Run Result's counts predate QA's tests - this review re-ran them (AnalyticsPort 11, AnalyticsGate 8, AnalyticsDescriptor 5, PortGate 4, browser 5 of 5).
 - spec edit: the add-only list does not name the row-target tab arm - AD-5 as amended at `bf8bc8b7` sanctions it.
+
+### Rework (CI)
+
+- [ ] [CI] browser shard 1/5: `panel.browser-spec.mjs` test 7 ("Signing out clears the panel draft and full screen; the next sign-in starts fresh") times out waiting for `app-panel aside.ocu-panel` — https://github.com/jbrandtmse/OcuPilot/actions/runs/39549375345 (attempts 1 and 2) — the defect is in `ui/src/app/core/session.ts`, not in the test or this story's code. `signOut()` settles the tab and shows the sign-in card, then awaits `/turn/abandon` (up to `SIGN_OUT_ABANDON_WAIT_MS`) and posts `/logout` with `credentials: 'include'`. A sign-in submitted in that window is answered first, and the late cookie-carrying `/logout` ends the new login: on a freshly rebuilt `ocupilot-b-ci`, `/login` answered 200 at 07:01:31.767 and `/logout` at .779, then `/agent/restraint`, `/refresh` and `/login` answered 401 and the card came back. It reproduces with feature's code alone. What the fix must do: a form submit, and every other `/login` the session client posts, waits for an in-flight sign-out's `/logout` to settle before it posts. The wait is bounded, so a hung logout cannot hold a sign-in forever (a named bound). The tab still clears and settles locally first (DW-5's order is unchanged). Pin it in `ui/tools/session.test.mjs`: with a sign-out whose `/logout` is held, a submit posts `/login` only after the logout settles; mutation: drop the wait, and that test goes red. `panel.browser-spec.mjs` stays unchanged as the browser-level pin; the lead re-runs it on a freshly rebuilt throwaway, where it failed before the fix.
 
 ## Spec Change Log
 
