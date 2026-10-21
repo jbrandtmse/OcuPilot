@@ -12234,3 +12234,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-23-11-the-range-end-cleanup-part-10.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: background-tasks:5 reads 'What it pins: Background tasks is the fifth Tasks side-bar entry'; journals:7, license-usage:4-9, interop-usage:3 and 17 more keep theirs; remote-databases' 'twelfth and last' is already false
 - 2026-10-21T05:18:30Z status=wontfix-accepted owner=23-11-the-range-end-cleanup-part-10 by=cr note=reopen_if=a review or a story acts on a header ordinal that the mirror no longer declares
+
+### DW-2479: LogSourcePort.LocalFromUtc's conversion direction cannot be falsified on the UTC test instances, as DW-1783 found for the agent ledger
+- source: spec-23-7-the-range-end-cleanup-part-6.md (plan) | severity: med | fix-risk: med | footprint: in-epic
+- evidence: LogSourcePort.cls:1871 LocalFromUtc, used by Timeline and InteropPort; ocupilot-ci and CI throwaways run Etc/UTC, so a swapped direction keeps every assertion green
+- 2026-10-21T07:40:07Z status=routed owner=burndown by=spec_gate note=23.7's DW-1783 technique (overridable offset helpers plus a probe) applies; filed, not absorbed (Rule 27 cap)
