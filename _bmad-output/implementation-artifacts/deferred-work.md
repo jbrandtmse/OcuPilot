@@ -10674,6 +10674,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-14T22:47:27Z status=routed owner=23-11-the-range-end-cleanup-part-10 by=lead note=orchestrator 2026-10-14: chartered 23.11 for 23.5's later routings
 - 2026-10-20T14:30:04Z occurrence=23-11-the-range-end-cleanup-part-10 by=cr note=uncensused: WireSecurityRead 15 + WireOAuthRead 5 full-area roster literals; fix-risk high (per-principal pins); adjudicate at batch d
 - 2026-10-20T14:30:22Z status=routed owner=23-11-the-range-end-cleanup-part-10 by=cr note=correction to the 14:30 occurrence: WireSecurityRead holds 19 such literals, not 15 (24 with WireOAuthRead)
+- 2026-10-21T07:05:48Z status=escalated owner=burndown by=adjudication note=parts 1-2 done (66a17632,47a160cd); residual: WireSecurityRead 19+WireOAuthRead 5 per-principal roster literals
 
 ### DW-2204: IRIS defect candidate: the admin API's Security.SQLPrivilege.Column LIST and REVOKE match the object's case exactly while GRANT accepts any case, so a revoke in another case answers 200 and removes nothing
 - source: spec-18-28-sql-column-and-admin-privileges.md | severity: low | fix-risk: high | footprint: out-of-footprint
@@ -12131,6 +12132,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: 44 of 81 specs using VIEWPORTS.narrow carry no settle wait (settleViewport, transitionsSettled, panelSettlesAt or a clientWidth wait; by grep, inference), e.g. allowed-directories.browser-spec.mjs:147-151 and impact AC2/AC6. DW-2454 is one overflow this hid; DW-2163, DW-2282 and DW-2450 were flakes of the same shape.
 - 2026-10-15T11:56:49Z status=escalated owner=burndown by=cr note=sweep: settleViewport plus transitionsSettled before each narrow pass; settling may surface hidden overflows (fix-risk)
 - 2026-10-15T16:32:23Z status=routed owner=23-11-the-range-end-cleanup-part-10 by=lead note=orchestrator: test hygiene, beside DW-2449
+- 2026-10-21T07:05:48Z status=resolved-by:23-11-the-range-end-cleanup-part-10 by=adjudication note=151ab942+47a160cd: 49 passes settle; browser-settle.test.mjs refuses early measures; CI 39555489527 green
 
 ### DW-2458: CI flake: log-viewer.spec.ts AC6 (with Live tail off nothing streams) read 10 fake timers pending on gates (node 24.15.0) only, green on node 22 and 26 in the same run
 - source: lead CI resolution, Story 23.5 batch c | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -12206,6 +12208,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-23-11-the-range-end-cleanup-part-10.md (batch c implement) | severity: low | fix-risk: low | footprint: in-story
 - evidence: grep -rn ocu-guardrails-fault ui/src ui/browser ui/tools finds only _components.scss:7415; no template or spec uses the class since batch c (dba8275c)
 - 2026-10-20T23:46:11Z status=open owner=23-11-the-range-end-cleanup-part-10 by=harvest note=batch d: removing it is a non-add-only edit in the stylesheet Epic 20 has changed; re-check Epic 20's diff first
+- 2026-10-21T07:05:48Z status=resolved-by:23-11-the-range-end-cleanup-part-10 by=adjudication note=151ab942: .ocu-guardrails-fault removed (orchestrator ruling); grep reads empty; CI 39555489527 green
 
 ### DW-2471: A 200 answer that is not a screen read's shape leaves a read-state screen with no alert: screen-read.ts classifies it server-fault, ApiService reports a success so no shell banner rises, and showRefusal hides banner faults
 - source: spec-23-11-the-range-end-cleanup-part-10.md | severity: med | fix-risk: high | footprint: out-of-footprint
