@@ -697,3 +697,5 @@ spawn_at=2026-10-06T16:01:05Z	Story 23.4	cr_complete	batch=b 2026-10-06T20:34:58
 2026-10-21T18:39:26Z	Story 23.7	fresh_check	batch=3 env=recipe(down+up_ocupilot-ci,STARTPATH-OK,src_parity) tests=14_classes(batch_3_loop+QA_3) result=pass order=forward(98/98),reverse(98/98) one_at_a_time=ci-runner(serialized) probe_leftovers=0
 2026-10-21T18:39:26Z	Story 23.7	smoke_complete	batch=3 method=cli result=pass iterations=1 defects_caught=0 evidence=smoke.sh_ocupilot-ci_executed=50_passed=50_skipped=0 model=claude-opus-5-5
 2026-10-21T18:39:26Z	Story 23.7	lead_spec_edit	batch=3 appended=DW-2486_item_to_batch_4(open_item) replaced=none
+2026-10-21T18:41:23Z	Story 23.7	committed	batch=3 sha=f74e5331 code=ef83d652(implement)+f74e5331(QA+review) submodules= ci=pending runs=39654904051 missing=none head_confirmed_by=ls-remote trial_merge=clean(origin/OCU-1-epic20) error_cls_vs_feature=4_ruled_edits(3_hunks) amendments=none footprint_extensions=none
+2026-10-21T18:41:23Z	Story 23.7	story_cycle	batch=3 plan_to_commit_min=185(open_15:35Z_to_commit_18:40Z) implement_passes=1 reviews=1 rework=0 first_ci=success(39632330717) models=plan:opus,implement:sonnet,qa:sonnet,cr:opus
