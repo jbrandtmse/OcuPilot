@@ -2,8 +2,8 @@
 title: 'Story 20.11: The Analytics rider'
 type: 'feature'
 created: '2026-10-14'
-status: 'in-progress'
-baseline_revision: 'f0a2e888a239e56e691b2686b998a6d0d40e6194'
+status: 'done'
+baseline_revision: '6a8fd1f06c43a82bf989f24990c3fa267a91cd62'
 baseline_commit: 'f0a2e888a239e56e691b2686b998a6d0d40e6194'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -222,7 +222,7 @@ Rejected:
 
 ### Rework (CI)
 
-- [ ] [CI] browser shard 1/5: `panel.browser-spec.mjs` test 7 ("Signing out clears the panel draft and full screen; the next sign-in starts fresh") times out waiting for `app-panel aside.ocu-panel` — https://github.com/jbrandtmse/OcuPilot/actions/runs/39549375345 (attempts 1 and 2) — the defect is in `ui/src/app/core/session.ts`, not in the test or this story's code. `signOut()` settles the tab and shows the sign-in card, then awaits `/turn/abandon` (up to `SIGN_OUT_ABANDON_WAIT_MS`) and posts `/logout` with `credentials: 'include'`. A sign-in submitted in that window is answered first, and the late cookie-carrying `/logout` ends the new login: on a freshly rebuilt `ocupilot-b-ci`, `/login` answered 200 at 07:01:31.767 and `/logout` at .779, then `/agent/restraint`, `/refresh` and `/login` answered 401 and the card came back. It reproduces with feature's code alone. What the fix must do: a form submit, and every other `/login` the session client posts, waits for an in-flight sign-out's `/logout` to settle before it posts. The wait is bounded, so a hung logout cannot hold a sign-in forever (a named bound). The tab still clears and settles locally first (DW-5's order is unchanged). Pin it in `ui/tools/session.test.mjs`: with a sign-out whose `/logout` is held, a submit posts `/login` only after the logout settles; mutation: drop the wait, and that test goes red. `panel.browser-spec.mjs` stays unchanged as the browser-level pin; the lead re-runs it on a freshly rebuilt throwaway, where it failed before the fix.
+- [x] [CI] browser shard 1/5: `panel.browser-spec.mjs` test 7 ("Signing out clears the panel draft and full screen; the next sign-in starts fresh") times out waiting for `app-panel aside.ocu-panel` — https://github.com/jbrandtmse/OcuPilot/actions/runs/39549375345 (attempts 1 and 2) — the defect is in `ui/src/app/core/session.ts`, not in the test or this story's code. `signOut()` settles the tab and shows the sign-in card, then awaits `/turn/abandon` (up to `SIGN_OUT_ABANDON_WAIT_MS`) and posts `/logout` with `credentials: 'include'`. A sign-in submitted in that window is answered first, and the late cookie-carrying `/logout` ends the new login: on a freshly rebuilt `ocupilot-b-ci`, `/login` answered 200 at 07:01:31.767 and `/logout` at .779, then `/agent/restraint`, `/refresh` and `/login` answered 401 and the card came back. It reproduces with feature's code alone. What the fix must do: a form submit, and every other `/login` the session client posts, waits for an in-flight sign-out's `/logout` to settle before it posts. The wait is bounded, so a hung logout cannot hold a sign-in forever (a named bound). The tab still clears and settles locally first (DW-5's order is unchanged). Pin it in `ui/tools/session.test.mjs`: with a sign-out whose `/logout` is held, a submit posts `/login` only after the logout settles; mutation: drop the wait, and that test goes red. `panel.browser-spec.mjs` stays unchanged as the browser-level pin; the lead re-runs it on a freshly rebuilt throwaway, where it failed before the fix. The wait is bounded by `LOGIN_AFTER_SIGN_OUT_WAIT_MS` (8,000 ms: the abandon's 3,000 ms plus 5,000 ms for the `/logout`).
 
 ## Spec Change Log
 
@@ -292,6 +292,20 @@ Rejected:
   - `[false]` `[reject]` carried: a classic-page link on each descriptor - AD-44 (a link, never loaded or framed), and none is to Architect, Analyzer or the User Portal.
   - `[low]` `[reject]` The Never list's negatives (no forbidden vendor call, no SQL, no `OcuPilot.*` call while switched) have no static test - the observable, no changed node, is pinned by `TestTheReadsWriteNothing` with two recorded mutations.
   - `[low]` `[reject]` carried: no test feeds markup-bearing names - rows reach the screen through the shared table renderer, which interpolates (AD-11).
+
+### 2026-10-21 - Review pass (the CI rework)
+
+- verdicts: 9 findings - high 0, medium 0, low 3, false 6, maybe-false 0 (two layers; the intent-alignment layer is descriptive, and each divergence it listed is a row)
+- findings:
+  - `[low]` `[reject]` The identity guard that stops a settled first sign-out clearing a later one's marker is unpinned - it needs a logout that hangs past the bound and a second sign-out, and a test needs per-call logout releases (about 30 lines, past Rule 15's fifteen); reopen_if: a login is seen ended by a late first logout.
+  - `[low]` `[patch]` The bound's magnitude is unpinned (shrunk to the abandon wait plus 1 ms, all green) - patched: the bound test asserts it leaves the logout five seconds after the abandon wait; the shrink mutation reddens it alone.
+  - `[low]` `[patch]` The abandon-window test has no `mutation:` line of its own - the marker counted only once the logout is sent was applied and reddens that test alone; line written.
+  - `[false]` `[reject]` The wait's 8,000 ms equals `BACKOFF_MAX_MS`, so delay-matched timers could be mis-read - no new test arms a backoff, and each finds its one timer; nothing fails or can fail as written.
+  - `[false]` `[reject]` Part A's behavior is untouched by the diff - the dispatched item is the CI rework of the client's sign-out, and the spec names the defect as outside this story's code.
+  - `[false]` `[reject]` The defect lies outside the intent's surfaces - the same claim, from the other side; the Analytics rows are pinned by their own classes.
+  - `[false]` `[reject]` The diff's tests are unit-level - the item names them, and the browser-level pin (`panel.browser-spec.mjs`, unchanged) ran green, 13 of 13, on the redeployed bundle.
+  - `[false]` `[reject]` `signOut` and `abandonTurns` are restructured, not add-only - the add-only rule is for shared rosters; `session.ts` is on no contended list, and Epic 23 does not touch it.
+  - `[false]` `[reject]` The Auto Run Result still reads done and the mutation line seems to count five - this pass rewrites the result at finalize, and the line names four mutations.
 
 ## Design Notes
 
@@ -538,6 +552,7 @@ Checked and not engaged:
 - mutation: **(CR)** the entries read increments a node under the probe term list -> `AnalyticsPort.TestTheReadsWriteNothing`, alone, at its TermListEntries leg (run 804); a write of an unchanged value is not seen, since the snapshot compares values.
 - mutation: **(CR)** `AnalyticsProbe.Remove` deletes build events through `%SQLUPPER(CubeKey) %STARTSWITH` -> `OnAfterAllTests` of `AnalyticsPort`, naming "build events" (run 805).
 - mutation: **(CR)** `AnalyticsProbe.Remove` keeps the probe favorites -> `OnAfterAllTests` of `AnalyticsPort`, naming the favorite's user (run 806).
+- mutation: **(CI)** `Session.postLogin` drops the wait on the in-flight sign-out -> `session.test.mjs`' four hold tests (submit, silent probe, abandon window, bound); `probeAndSettle` posting `/login` without the wait -> the silent-probe test, alone; the in-flight marker never cleared -> the settled-sign-out test, alone; `postLogin` waiting on the sign-out with no bound, or `LOGIN_AFTER_SIGN_OUT_WAIT_MS` shrunk to the abandon wait plus 1 ms -> the bound test, alone in each; the in-flight marker counted only once the `/logout` is sent -> the abandon-window test, alone.
 
 **(QA) test files changed** (none created; the four analytics classes, the helper, the seam and the browser spec):
 
@@ -560,19 +575,13 @@ Checked and not engaged:
 Status: done
 Blocking condition: none
 
-- **This pass (implement, 2026-10-20).**
-  - Task 0: both set-aside patches re-applied on `f0a2e888`. The code patch conflicted only in `strings.ts` and the planning patch only at EXPERIENCE.md :604; each is an append-only union that keeps 20.12's keys and rows. `screens.generated.ts` was regenerated and `screen-mirror.mjs --check` reports no drift. The 47 citations stay :604. `origin/OCU-1-epic23` (`9b927443`) touches none of the 44 paths.
-  - The AD-5 tab-arm pin: `DeclarationFor` and `rowTargetDeclarationFor` take a case's `tab`, and `Cases` holds the tab case.
-  - Five review patches: the `ANALYTICS.` resolver pin, the honest guarded-cube leg, the AC3 browser read, and two doc-comment corrections.
-- **Files changed (44 plus this spec):** the set-aside patch's 42 paths (the port, its error class, seven descriptors, the read source kind in `Screen/Read`, `Screen/Registry` and `screen-mirror.mjs`, the rosters and sentence tests, the mirror, 47 strings, the browser spec, `ci-throwaway.sh`), `Test/RowTargetCorpus.cls` and `ui/tools/screen-mirror.test.mjs` (the tab case), and EXPERIENCE.md :159 and :604.
-- **Review:** 20 findings, 5 patched (1 medium, 4 low), 0 deferred, 15 rejected with their reasons in the triage log. Follow-up review recommended: false (one medium patched, no high).
-- **Verification (throwaway `ocupilot-b-ci`, src reloaded and bundle rebuilt and redeployed):**
-  - `AnalyticsPort` 9, `AnalyticsGate` 4, `AnalyticsDescriptor` 5 and `PortGate` 4 tests green; the 16-class sweep 203 tests green, run before and after the patches.
-  - `test:tools` 2,049 and `test:components` 3,287 green; the build is green at 1.98 MB initial (353.10 kB transfer), with no new lazy chunk.
-  - `check-objectscript.py` and `lint-docs.sh` report 0 problems.
-  - Browser specs `analytics` (4 of 4, re-run after the AC3 patch), `namespace-categories` (4 of 4) and `a11y-structural-invariants` (13 of 13) green; `AnalyticsProbe.Gone()` is true afterwards.
-  - Mutations (Rule 19), each reverted byte-identical: the tab arm dropped from `RowTargetProblem` and from `rowTargetProblem`, one word of `analyticsRefusalNamespace`, the Relationships `rowTarget`, and `.ocu-data-table-cell`'s color were run by the handoff subagent and reported red; the stage re-ran the `strings.ts` word, `rowTargetProblem`, both `Error.cls` resolver lines and the tab guard, each red on the named test.
-- **Residual risks:**
-  - The two browser mutations (Relationships `rowTarget`, cell color) rest on the subagent's report.
-  - The guarded cube's Relationships guard is pinned on the link pair by `AnalyticsGate.TestAGuardedCubesRelationshipsAreHiddenFromWhoLacksItsResource`.
-  - The full ObjectScript sweep, `npm test`, `smoke.sh`, Rule 30's fresh check and the full browser suite are the runner's.
+- **This pass (implement, 2026-10-21): the `[CI]` rework, now ticked.**
+  - `Session.postLogin` holds every `/login` until a sign-out still in flight settles, for at most `LOGIN_AFTER_SIGN_OUT_WAIT_MS` (8,000 ms: the abandon's 3,000 plus 5,000 for the `/logout`). The form submit (`formLogin`) and the silent probe (`probeAndSettle`, which the backoff and refused-refresh re-probes share) both post through it; `/refresh` does not.
+  - The sign-out is in flight from its `/turn/abandon` until its `/logout` settles (`signOutInFlight`). The tab still clears and settles first (DW-5). The abandon's settle-or-bound logic is now `settleWithin`, shared by both waits.
+- **Files changed (3):** `ui/src/app/core/session.ts`; `ui/tools/session.test.mjs` (five tests, one helper, the constant's import); this spec (the item ticked, one `mutation:` line, the triage entry).
+- **Review:** 9 findings, 2 patched (both low), 0 deferred, 7 rejected with their reasons in the triage log. Follow-up review recommended: false (a follow-up pass that patched no high).
+- **Verification (slot B):**
+  - `session.test.mjs` 125 of 125; `test:tools` 2,057 and `test:components` 3,290 green; `tsc --noEmit -p tsconfig.app.json` clean; `npm run build` green.
+  - The bundle was redeployed to `ocupilot-b-ci` and `panel.browser-spec.mjs` passed, 13 of 13.
+  - Mutations (Rule 19), each red on the named test and reverted byte-identical: the line under Verification.
+- **Residual risk:** the panel spec failed before the fix only on a freshly started throwaway, and this one was already up, so its pass shows no regression and does not show the race closed; the runner's fresh-throwaway re-run is that check.

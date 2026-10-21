@@ -31,6 +31,7 @@ const {
   LOGOUT_PATH,
   TURN_ABANDON_PATH,
   SIGN_OUT_ABANDON_WAIT_MS,
+  LOGIN_AFTER_SIGN_OUT_WAIT_MS,
   classifyLoginStatus,
   isInstallInFlight,
   isInstallUnreadable,
@@ -1272,6 +1273,179 @@ test('a refresh already in flight when sign-out happens adopts nothing', async (
   assert.equal(await refreshing, false, 'the refresh reports that it settled nothing');
   assert.equal(tokens.read(), null, 'the rotated pair is not adopted behind a sign-out');
   assert.equal(session.state(), 'signed-out');
+});
+
+// --- A /login waits for the sign-out still in flight (AD-28) --------------------------------------
+//
+// The `/logout` carries the browser-level cookie, so one that lands after a new login ends that
+// login too. A sign-in posted while the sign-out is still on the wire is answered first and then
+// ended by it, which is what the browser spec's sign-out-then-sign-in leg met on a fresh instance.
+// The tab is signed out locally before any of this (DW-5); only the next `/login` is held.
+
+/**
+ * A signed-in session whose `/login` answers a numbered pair, whose `/logout` is answered only once
+ * `releaseLogout` runs (or never, with `holdLogout: 'forever'`), and whose `/turn/abandon` hangs
+ * when `holdAbandon` is set. `events` records the order the wire saw.
+ */
+async function signedInWithHeldSignOut({ holdAbandon = false, holdLogout = 'until-released' } = {}) {
+  const events = [];
+  let logins = 0;
+  let releaseLogout = () => {};
+  const logoutHeld = new Promise((resolve) => {
+    releaseLogout = resolve;
+  });
+  const made = makeSession(async (path) => {
+    if (path === TURN_ABANDON_PATH) {
+      events.push('abandon-sent');
+      if (holdAbandon) await new Promise(() => {});
+      return response(200, '');
+    }
+    if (path === LOGOUT_PATH) {
+      events.push('logout-sent');
+      if (holdLogout === 'forever') await new Promise(() => {});
+      await logoutHeld;
+      events.push('logout-answered');
+      return response(200, '');
+    }
+    if (path === LOGIN_PATH) {
+      logins += 1;
+      events.push(`login-${logins}`);
+      return response(200, pairBody(`a${logins}`, `r${logins}`));
+    }
+    return response(200, '');
+  });
+  made.session.start();
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(made.session.state(), 'signed-in');
+  return { ...made, events, releaseLogout, loginCount: () => logins };
+}
+
+// Mutation (Rule 19): drop the wait from `postLogin` (always `post(LOGIN_PATH, body)`) -> this
+// test, the probe test, the abandon-window test and the bound test go red.
+test('a submit posted while the /logout is held waits for it, then posts /login', async () => {
+  const { session, tokens, calls, events, releaseLogout, loginCount } =
+    await signedInWithHeldSignOut();
+
+  const signingOut = session.signOut();
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(session.state(), 'signed-out', 'the tab is signed out locally while the logout is held');
+  assert.deepEqual(events, ['login-1', 'abandon-sent', 'logout-sent']);
+
+  session.setUserName('bob');
+  session.setPassword('hunter2');
+  const submitting = session.submitForm();
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(loginCount(), 1, 'no /login goes out while the logout is held');
+  assert.equal(session.state(), 'probing', 'the form shows the signing-in presentation meanwhile');
+
+  releaseLogout();
+  await signingOut;
+  assert.equal(await submitting, true, 'the submit then signs in');
+  assert.deepEqual(
+    events,
+    ['login-1', 'abandon-sent', 'logout-sent', 'logout-answered', 'login-2'],
+    'the /login is posted after the /logout settled, so that logout cannot end the new login'
+  );
+  const login = calls.filter((c) => c.path === LOGIN_PATH)[1];
+  assert.deepEqual(JSON.parse(login.init.body), { user: 'bob', password: 'hunter2' });
+  assert.equal(tokens.read().accessToken, 'a2');
+  assert.equal(session.state(), 'signed-in');
+});
+
+// Mutation (Rule 19): `probeAndSettle` posts `this.post(LOGIN_PATH, null)` instead of
+// `this.postLogin(null)` -> this test goes red alone; the submit tests stay green.
+test('a silent probe posted while the /logout is held waits for it, then posts /login', async () => {
+  const { session, tokens, events, releaseLogout, loginCount } = await signedInWithHeldSignOut();
+
+  const signingOut = session.signOut();
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.deepEqual(events, ['login-1', 'abandon-sent', 'logout-sent']);
+
+  const probing = session.silentProbe();
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(loginCount(), 1, 'the probe posts no /login while the logout is held');
+
+  releaseLogout();
+  await signingOut;
+  assert.equal(await probing, true, 'the probe then mints');
+  assert.deepEqual(
+    events,
+    ['login-1', 'abandon-sent', 'logout-sent', 'logout-answered', 'login-2'],
+    'after the /logout settled'
+  );
+  assert.equal(tokens.read().accessToken, 'a2');
+});
+
+// Mutation (Rule 19): the in-flight marker only counts once the `/logout` has been sent -> this test
+// goes red, alone.
+test('the sign-out is in flight from the abandon on, so a submit during the abandon wait waits too', async () => {
+  const { session, scheduled, events, releaseLogout, loginCount } = await signedInWithHeldSignOut({
+    holdAbandon: true,
+  });
+
+  const signingOut = session.signOut();
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.deepEqual(events, ['login-1', 'abandon-sent'], 'the abandon is hung and no logout is sent yet');
+
+  session.setUserName('bob');
+  session.setPassword('hunter2');
+  const submitting = session.submitForm();
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(loginCount(), 1, 'the submit waits although the /logout has not even been sent');
+
+  // The abandon's own bound fires and the logout goes out, still unanswered.
+  scheduled.find((entry) => entry.delayMs === SIGN_OUT_ABANDON_WAIT_MS).run();
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.deepEqual(events, ['login-1', 'abandon-sent', 'logout-sent']);
+  assert.equal(loginCount(), 1, 'and the submit still waits for it');
+
+  releaseLogout();
+  await signingOut;
+  assert.equal(await submitting, true);
+  assert.deepEqual(events, ['login-1', 'abandon-sent', 'logout-sent', 'logout-answered', 'login-2']);
+});
+
+// Mutation (Rule 19): `LOGIN_AFTER_SIGN_OUT_WAIT_MS` shrinks to `SIGN_OUT_ABANDON_WAIT_MS + 1`, or
+// `postLogin` waits on the sign-out with no bound -> this test goes red, alone, in each.
+test('a logout that never answers holds a submit only until the wait bound fires', async () => {
+  const { session, calls, scheduled, loginCount } = await signedInWithHeldSignOut({
+    holdLogout: 'forever',
+  });
+
+  void session.signOut();
+  await new Promise((resolve) => setImmediate(resolve));
+  session.setUserName('bob');
+  session.setPassword('hunter2');
+  const submitting = session.submitForm();
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(loginCount(), 1, 'held while the logout is on the wire');
+
+  assert.ok(
+    LOGIN_AFTER_SIGN_OUT_WAIT_MS >= SIGN_OUT_ABANDON_WAIT_MS + 5_000,
+    'the bound outlasts the abandon wait and leaves the logout five seconds after it'
+  );
+  const bound = scheduled.find((entry) => entry.delayMs === LOGIN_AFTER_SIGN_OUT_WAIT_MS);
+  assert.ok(bound, 'the wait is bounded through the injected scheduler');
+  bound.run();
+  assert.equal(await submitting, true, 'a hung logout cannot hold a sign-in forever');
+  assert.equal(loginCount(), 2);
+  assert.equal(calls.filter((c) => c.path === LOGOUT_PATH).length, 1, 'and the logout is still the one');
+});
+
+test('a sign-out that has settled leaves nothing to wait for: the submit posts at once and arms no wait', async () => {
+  const { session, scheduled, releaseLogout, loginCount } = await signedInWithHeldSignOut();
+
+  releaseLogout();
+  await session.signOut();
+  session.setUserName('bob');
+  session.setPassword('hunter2');
+  const submitting = session.submitForm();
+  assert.equal(loginCount(), 2, 'the /login is on the wire in the same turn as the submit');
+  assert.equal(await submitting, true);
+  assert.ok(
+    !scheduled.some((entry) => entry.delayMs === LOGIN_AFTER_SIGN_OUT_WAIT_MS),
+    'no wait was armed'
+  );
 });
 
 // --- The mapping app.ts gates on -------------------------------------------------------------
