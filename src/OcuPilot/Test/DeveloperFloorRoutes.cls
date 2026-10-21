@@ -91,8 +91,8 @@ Method OnAfterAllTests() As %Status
 /// <code>%Development</code>).</p>
 ClassMethod Roster() As %List
 {
-    Set tGets = "/agent/definitions,/agent/restraint,/agent/context,/agent/ledger,/turn/:id/progress,/conversation/:id,/transcripts/:id,/instance,/namespaces,/navigation,/account/preferences,/ui/about,/ui/help,/ui/system,/ui/findings,/ui/guardrails,/logs/analytics,/explorer/sql/background/:id"
-    Set tOthers = "PUT /agent/restraint,PUT /agent/context,POST /turn,POST /turn/:id/stop,POST /turn/:id/navigation,POST /turn/abandon,POST /proposal/:id/confirm,POST /proposal/:id/cancel,POST /proposal/:id/draft,POST /conversation,POST /account/password,POST /account/preferences,POST /explorer/sql/run,POST /explorer/sql/plan,POST /explorer/sql/background,POST /explorer/sql/background/:id/cancel,POST /explorer/sql/data"
+    Set tGets = "/agent/definitions,/agent/restraint,/agent/context,/agent/ledger,/turn/:id/progress,/conversation/:id,/transcripts/:id,/instance,/namespaces,/navigation,/account/preferences,/ui/about,/ui/help,/ui/system,/ui/findings,/ui/guardrails,/logs/analytics,/explorer/sql/background/:id,/analytics/mdx/background/:id"
+    Set tOthers = "PUT /agent/restraint,PUT /agent/context,POST /turn,POST /turn/:id/stop,POST /turn/:id/navigation,POST /turn/abandon,POST /proposal/:id/confirm,POST /proposal/:id/cancel,POST /proposal/:id/draft,POST /conversation,POST /account/password,POST /account/preferences,POST /explorer/sql/run,POST /explorer/sql/plan,POST /explorer/sql/background,POST /explorer/sql/background/:id/cancel,POST /explorer/sql/data,POST /analytics/mdx/background,POST /analytics/mdx/background/:id/cancel"
     Set tRoster = ""
     For tI = 1:1:$Length(tGets, ",") Set tRoster = tRoster _ $ListBuild($ListBuild("GET", $Piece(tGets, ",", tI)))
     For tI = 1:1:$Length(tOthers, ",") Set tRoster = tRoster _ $ListBuild($ListBuild($Piece($Piece(tOthers, ",", tI), " ", 1), $Piece($Piece(tOthers, ",", tI), " ", 2)))

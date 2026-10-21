@@ -11,6 +11,10 @@
 /// <b>guarded</b> side defines a relationship, and <method>CreateTermListTwo</method> adds a second term list with two extra fields.</p>
 /// <p>The probe keeps one record, <code>^OcuPilotProbeAnalytics</code> in <code>USER</code>'s globals: the flags
 /// <method>Enable</method> changed. It outlives the process that wrote it, so a run that died is cleaned up by the next one.</p>
+/// <p>Story 20.33 adds the <b>grid</b> cube (<parameter>GRID</parameter>) over <parameter>GRIDROWS</parameter> deterministic rows
+/// whose two dimensions give a crossjoin slow enough to cancel, and the cleanup of what an MDX query leaves: each probe cube's
+/// subtree of <code>^DeepSee.Cache.Results</code>, <parameter>SPLICE</parameter>, a <code>^DeepSee.ComputedSQL</code> that names
+/// a probe class and the local caches of result sets (<method>LocalCaches</method>). <method>Gone</method> checks all four.</p>
 /// <p>The vendor bookkeeping a first build creates in a namespace (<code>^DeepSee.Agents</code>, <code>Tasks</code> and
 /// <code>TaskGroups</code>) is not removed: it belongs to the namespace, not to a cube.</p>
 /// <p><b>Not a <class>%UnitTest.TestCase</class></b>: it holds no assertions and runs no tests. Every entry point acts on
@@ -27,6 +31,20 @@ Parameter PACKAGE = "OcuPilotProbe.Analytics";
 Parameter CATEGORYCLASS = "OcuPilotProbe.Analytics.Category";
 
 Parameter VISITCLASS = "OcuPilotProbe.Analytics.Visit";
+
+/// <p>The grid cube (Story 20.33): its logical name, the class that defines it, its source class and how many facts the source
+/// holds.</p>
+Parameter GRID = "OcuPilotProbeGrid";
+
+Parameter GRIDCLASS = "OcuPilotProbe.Analytics.GridCube";
+
+Parameter GRIDSOURCE = "OcuPilotProbe.Analytics.Grid";
+
+Parameter GRIDROWS = 50000;
+
+/// <p>The global an ask-first statement's braces increment, in <code>USER</code>: <code>^OcuPilotProbeMdxSplice(&lt;n&gt;)</code>.
+/// Each test that runs such a statement takes its own subscript.</p>
+Parameter SPLICE = "^OcuPilotProbeMdxSplice";
 
 /// <p>The probe cubes' logical names, and the classes that define them.</p>
 Parameter VISITS = "OcuPilotProbeVisits";
@@ -97,8 +115,8 @@ Parameter VISITROWS = 1000;
 
 Parameter CATEGORYROWS = 5;
 
-/// <p>The text of one probe class: <code>Category</code>, <code>Visit</code>, <code>VisitsCube</code>,
-/// <code>CategoriesCube</code>, <code>GuardedCube</code>, <code>LinkOneCube</code> or <code>LinkManyCube</code>. A single quote in
+/// <p>The text of one probe class: <code>Category</code>, <code>Visit</code>, <code>Grid</code>, <code>VisitsCube</code>,
+/// <code>CategoriesCube</code>, <code>GuardedCube</code>, <code>GridCube</code>, <code>LinkOneCube</code> or <code>LinkManyCube</code>. A single quote in
 /// the cube XML stands for a double one.</p>
 ClassMethod ClassText(pName As %String) As %String [ Private ]
 {
@@ -113,6 +131,12 @@ ClassMethod ClassText(pName As %String) As %String [ Private ]
             "Property Day As %Date;" _ tNL _
             "Property Amount As %Numeric;" _ tNL _
             "Property Minutes As %Integer;" _ tNL _ "}" _ tNL
+    }
+    If pName = "Grid" {
+        Quit tHead _ "%Persistent" _ tNL _ "{" _ tNL _
+            "Property Sub As %Integer;" _ tNL _
+            "Property Sub2 As %Integer;" _ tNL _
+            "Property Amount As %Integer;" _ tNL _ "}" _ tNL
     }
     If pName = "CategoriesCube" {
         Set tCube = "<cube xmlns='http://www.intersystems.com/deepsee' name='" _ ..#CATEGORIES _ "' displayName='OcuPilot probe categories' sourceClass='" _ ..#CATEGORYCLASS _ "'>" _
@@ -131,6 +155,14 @@ ClassMethod ClassText(pName As %String) As %String [ Private ]
             "</cube>"
         ; The "one" side of a relationship compiles first.
         Set tDepends = ..#VISITCLASS _ "," _ ..#CATEGORIESCLASS
+    } ElseIf pName = "GridCube" {
+        Set tCube = "<cube xmlns='http://www.intersystems.com/deepsee' name='" _ ..#GRID _ "' displayName='OcuPilot probe grid' sourceClass='" _ ..#GRIDSOURCE _ "'>" _
+            "<dimension name='Sub' hasAll='false'><hierarchy name='H1'><level name='Sub' sourceProperty='Sub'/></hierarchy></dimension>" _
+            "<dimension name='Sub2' hasAll='false'><hierarchy name='H1'><level name='Sub2' sourceProperty='Sub2'/></hierarchy></dimension>" _
+            "<measure name='Amount' sourceProperty='Amount' aggregate='SUM'/>" _
+            "<listing name='Detail' fieldList='Sub,Sub2,Amount'/>" _
+            "</cube>"
+        Set tDepends = ..#GRIDSOURCE
     } ElseIf pName = "LinkOneCube" {
         Set tCube = "<cube xmlns='http://www.intersystems.com/deepsee' name='" _ ..#LINKONE _ "' displayName='OcuPilot probe link one' sourceClass='" _ ..#CATEGORYCLASS _ "'>" _
             "<dimension name='Label' hasAll='false'><hierarchy name='H1'><level name='Name' sourceProperty='Name'/></hierarchy></dimension>" _
@@ -224,7 +256,7 @@ ClassMethod Create(pFavoriteUser As %String) As %Status
             Set tSC = $$$ERROR($$$GeneralError, "OcuPilot.Test.AnalyticsProbe.Create needs the user whose favorites it writes")
             Quit
         }
-        For tName = "Category", "Visit", "VisitsCube", "CategoriesCube", "GuardedCube" {
+        For tName = "Category", "Visit", "Grid", "VisitsCube", "CategoriesCube", "GuardedCube", "GridCube" {
             Set tSC = ##class(%Compiler.UDL.TextServices).SetTextFromString(..#NAMESPACE, ..#PACKAGE _ "." _ tName, ..ClassText(tName))
             If $$$ISERR(tSC) Quit
         }
@@ -234,10 +266,14 @@ ClassMethod Create(pFavoriteUser As %String) As %Status
         If $$$ISERR(tSC) Quit
         Set tSC = ..Fill()
         If $$$ISERR(tSC) Quit
+        Set tSC = ..FillGrid()
+        If $$$ISERR(tSC) Quit
         ; The "one" side first: building it rebuilds the cube that depends on it.
         Set tSC = ##class(%DeepSee.Utils).%BuildCube(..#CATEGORIES, 0, 0)
         If $$$ISERR(tSC) Quit
         Set tSC = ##class(%DeepSee.Utils).%BuildCube(..#GUARDED, 0, 0)
+        If $$$ISERR(tSC) Quit
+        Set tSC = ##class(%DeepSee.Utils).%BuildCube(..#GRID, 0, 0)
         If $$$ISERR(tSC) Quit
         Set tSC = ..CreateTermList()
         If $$$ISERR(tSC) Quit
@@ -357,6 +393,23 @@ ClassMethod Fill() As %Status [ Private ]
     Quit tSC
 }
 
+/// <p>Write the grid source's <parameter>GRIDROWS</parameter> rows, in <code>USER</code>, deterministically: row <var>i</var>
+/// holds <code>Sub = i#2000</code>, <code>Sub2 = (i\7)#2000</code> and <code>Amount = i#100</code>.</p>
+ClassMethod FillGrid() As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Do $ClassMethod(..#GRIDSOURCE, "%KillExtent")
+    For tI = 1:1:..#GRIDROWS {
+        Set tRow = $ClassMethod(..#GRIDSOURCE, "%New")
+        Set tRow.Sub = tI # 2000
+        Set tRow.Sub2 = (tI \ 7) # 2000
+        Set tRow.Amount = tI # 100
+        Set tSC = tRow.%Save()
+        If $$$ISERR(tSC) Quit
+    }
+    Quit tSC
+}
+
 /// <p>Create the probe term list in <code>USER</code>: its keys, their values, and the one extra field.</p>
 ClassMethod CreateTermList() As %Status [ Private ]
 {
@@ -395,6 +448,39 @@ ClassMethod CreateFolderItems() As %Status [ Private ]
     Quit tGuarded.%Save()
 }
 
+/// <p>How many result sets' local caches <code>USER</code> holds: the entries of <code>^DeepSee.Cache.LocalResults</code> other than the vendor's session
+/// counter, and the entries of <code>^DeepSee.Cache.LocalAxis</code>. A result set closed in the namespace it was made in clears its own, so a count
+/// that grows across a run says a result set was released elsewhere. Reads <code>USER</code> whatever namespace the caller is in.</p>
+ClassMethod LocalCaches() As %Integer
+{
+    Set tCount = 0
+    Set tKey = $Order(^|"USER"|DeepSee.Cache.LocalResults(""))
+    While tKey '= "" {
+        If tKey '= "session" Set tCount = tCount + 1
+        Set tKey = $Order(^|"USER"|DeepSee.Cache.LocalResults(tKey))
+    }
+    Set tKey = $Order(^|"USER"|DeepSee.Cache.LocalAxis(""))
+    While tKey '= "" {
+        Set tCount = tCount + 1
+        Set tKey = $Order(^|"USER"|DeepSee.Cache.LocalAxis(tKey))
+    }
+    Quit tCount
+}
+
+/// <p>Whether <var>pKey</var>, a subscript of <code>^DeepSee.Cache.Results</code>, names one of the probe cubes, in any case: the vendor keys the
+/// cache by the cube name as the query spelled it.</p>
+ClassMethod IsProbeCube(pKey As %String) As %Boolean [ Private ]
+{
+    Quit $ListFind($ListBuild($ZConvert(..#LINKMANY, "U"), $ZConvert(..#LINKONE, "U"), $ZConvert(..#VISITS, "U"), $ZConvert(..#CATEGORIES, "U"), $ZConvert(..#GUARDED, "U"), $ZConvert(..#GRID, "U")), $ZConvert(pKey, "U")) > 0
+}
+
+/// <p>Whether <var>pText</var>, the SQL a <code>%SEARCH</code> run leaves in <code>^DeepSee.ComputedSQL</code>, names a probe class, spelled as a class
+/// (<parameter>PACKAGE</parameter>) or as the table of its generated fact class.</p>
+ClassMethod NamesProbeClass(pText As %String) As %Boolean [ Private ]
+{
+    Quit (pText [ ..#PACKAGE) || (pText [ $Translate(..#PACKAGE, ".", "_"))
+}
+
 /// <p>Leave <code>USER</code> as found: kill the probe cubes, delete the probe classes and their extents and the probe's
 /// <code>^OBJ.DSTIME</code> nodes, both term lists, the folder items and the folder, both favorites of every user and the cubes'
 /// build events, then restore the two flags <method>Enable</method> recorded, read them back and kill the probe node. It works
@@ -406,10 +492,28 @@ ClassMethod Remove() As %Status
     Set tOrigNS = $NAMESPACE
     Try {
         Set $NAMESPACE = ..#NAMESPACE
-        For tCube = ..#LINKMANY, ..#LINKONE, ..#VISITS, ..#CATEGORIES, ..#GUARDED {
+        For tCube = ..#LINKMANY, ..#LINKONE, ..#VISITS, ..#CATEGORIES, ..#GUARDED, ..#GRID {
             If ##class(%DeepSee.Utils).%IsDeepSeeEnabled() && ##class(%DeepSee.Utils).%CubeExists(tCube) Do ##class(%DeepSee.Utils).%KillCube(tCube, 1)
         }
-        For tClass = ..#VISITCLASS, ..#CATEGORYCLASS {
+        ; An MDX query leaves its result cache: %KillCube clears the axes and cells but keeps one activeChunk node per query key.
+        Set tKey = $Order(^DeepSee.Cache.Results(""))
+        While tKey '= "" {
+            Set tNext = $Order(^DeepSee.Cache.Results(tKey))
+            If ..IsProbeCube(tKey) Kill ^DeepSee.Cache.Results(tKey)
+            Set tKey = tNext
+        }
+        ; A result set a process closed outside this namespace leaves its local cache here, keyed by the vendor's session counter.
+        Set tKey = $Order(^DeepSee.Cache.LocalResults(""))
+        While tKey '= "" {
+            Set tNext = $Order(^DeepSee.Cache.LocalResults(tKey))
+            If tKey '= "session" Kill ^DeepSee.Cache.LocalResults(tKey)
+            Set tKey = tNext
+        }
+        Kill ^DeepSee.Cache.LocalAxis
+        Set tSplice = ..#SPLICE
+        Kill @tSplice
+        If $Data(^DeepSee.ComputedSQL) && ..NamesProbeClass($Get(^DeepSee.ComputedSQL)) Kill ^DeepSee.ComputedSQL
+        For tClass = ..#VISITCLASS, ..#CATEGORYCLASS, ..#GRIDSOURCE {
             If ##class(%Dictionary.CompiledClass).%ExistsId(tClass) Do $ClassMethod(tClass, "%KillExtent")
         }
         Do $System.OBJ.DeletePackage(..#PACKAGE, "-d")
@@ -483,7 +587,7 @@ ClassMethod Left() As %String
         Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT COUNT(*) FROM %Dictionary.ClassDefinition WHERE Name %STARTSWITH ?", ..#PACKAGE _ ".")
         If tRS.%Next() && (+tRS.%GetData(1) > 0) Set tLeft = tLeft _ ",classes"
         ; %CubeExists reads the cube registry, which answers whether or not USER reports analytics.
-        For tCube = ..#VISITS, ..#CATEGORIES, ..#GUARDED, ..#LINKONE, ..#LINKMANY {
+        For tCube = ..#VISITS, ..#CATEGORIES, ..#GUARDED, ..#GRID, ..#LINKONE, ..#LINKMANY {
             If ##class(%DeepSee.Utils).%CubeExists(tCube) Set tLeft = tLeft _ ",cube " _ tCube
         }
         If ##class(%DeepSee.TermList).%TermListExists(..#TERMLIST) Set tLeft = tLeft _ ",term list"
@@ -504,6 +608,15 @@ ClassMethod Left() As %String
         Set tGlobal = $Order(^$GLOBAL($Extract(tPrefix, 1, *-1)))
         If (tGlobal '= "") && ($Extract(tGlobal, 1, $Length(tPrefix)) = tPrefix) Set tLeft = tLeft _ ",data globals"
         If $Data(^OcuPilotProbeAnalytics) Set tLeft = tLeft _ ",probe node"
+        Set tKey = $Order(^DeepSee.Cache.Results(""))
+        While tKey '= "" {
+            If ..IsProbeCube(tKey) Set tLeft = tLeft _ ",cache of " _ tKey
+            Set tKey = $Order(^DeepSee.Cache.Results(tKey))
+        }
+        If ..LocalCaches() > 0 Set tLeft = tLeft _ ",local result caches"
+        Set tSplice = ..#SPLICE
+        If $Data(@tSplice) Set tLeft = tLeft _ ",splice node"
+        If $Data(^DeepSee.ComputedSQL) && ..NamesProbeClass($Get(^DeepSee.ComputedSQL)) Set tLeft = tLeft _ ",computed sql"
         Set $NAMESPACE = tOrigNS
         If ..Reports() Set tLeft = tLeft _ ",analytics reported"
     } Catch ex {

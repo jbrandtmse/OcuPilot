@@ -425,6 +425,8 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'analytics/architect',
       'analytics/analyzer',
       'analytics/user-portal',
+      // Story 20.33: MDX query, listed after them at position 7.
+      'analytics/mdx-query',
       'agent/definitions/edit',
       'agent/transcripts/details',
       'agent/definitions',

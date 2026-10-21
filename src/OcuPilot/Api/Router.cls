@@ -245,6 +245,9 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/explorer/sql/background/:id/cancel" Method="POST" Call="ExplorerSqlBackgroundCancel"/>
   <Route Url="/explorer/sql/background/:id" Method="GET" Call="ExplorerSqlBackgroundPoll"/>
   <Route Url="/explorer/sql/background" Method="POST" Call="ExplorerSqlBackgroundStart"/>
+  <Route Url="/analytics/mdx/background/:id/cancel" Method="POST" Call="AnalyticsMdxBackgroundCancel"/>
+  <Route Url="/analytics/mdx/background/:id" Method="GET" Call="AnalyticsMdxBackgroundPoll"/>
+  <Route Url="/analytics/mdx/background" Method="POST" Call="AnalyticsMdxBackgroundStart"/>
   <Route Url="/ecp-settings/form" Method="GET" Call="EcpSettingsFormRead"/>
   <Route Url="/ecp-settings" Method="PUT" Call="EcpSettingsUpdate"/>
   <Route Url="/explorer/sql/data" Method="POST" Call="ExplorerSqlData"/>
@@ -1837,6 +1840,28 @@ ClassMethod ExplorerSqlBackgroundPoll(pId As %String) As %Status
 ClassMethod ExplorerSqlBackgroundStart() As %Status
 {
     Quit ##class(OcuPilot.Area.Explorer.SqlBackground).HandleStart()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /analytics/mdx/background/:id/cancel</code> (Story
+/// 20.33): an MDX run's cancel, delegating to <class>OcuPilot.Area.Analytics.MdxQuery</class>. The two
+/// <code>:id</code> routes precede <code>/analytics/mdx/background</code>.</p>
+ClassMethod AnalyticsMdxBackgroundCancel(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.Analytics.MdxQuery).HandleCancel(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /analytics/mdx/background/:id</code>: an MDX run's
+/// poll.</p>
+ClassMethod AnalyticsMdxBackgroundPoll(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.Analytics.MdxQuery).HandlePoll(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /analytics/mdx/background</code>: an MDX run's
+/// start.</p>
+ClassMethod AnalyticsMdxBackgroundStart() As %Status
+{
+    Quit ##class(OcuPilot.Area.Analytics.MdxQuery).HandleStart()
 }
 
 /// <p>Thin <code>Call=</code> target for <code>GET /ecp-settings/form</code> (Story 18.21): ECP settings'

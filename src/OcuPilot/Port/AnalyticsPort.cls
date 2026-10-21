@@ -35,9 +35,18 @@
 /// writes <code>^DeepSee.Session</code>, <code>%GetDimensionMembers</code>, which writes the MDX cache, or
 /// <code>%GetFavoritesForUser</code>, which deletes a favorite whose item is gone. It prepares no statement of its own.</p>
 /// <p><b>Every refusal is a written reason</b> (AD-39): the vendor's text goes to <method>LogFault</method> and nowhere else.</p>
+/// <p><b>MDX (Story 20.33, AD-65).</b> The <code>Mdx*</code> methods run one MDX statement through
+/// <code>%DeepSee.ResultSet</code> for the MDX query screen and, later, the agent's MDX read, behind <parameter>MDXPAIRS</parameter>
+/// and WRITE on the database the vendor's result cache lives in (<method>MdxAdmit</method>). The statement is untrusted text: it
+/// reaches only <code>%PrepareMDX</code>; <method>MdxConstructs</method> is the one detection of the five constructs the vendor
+/// splices into SQL or evaluates as ObjectScript (<parameter>MDXCONSTRUCTS</parameter>), read from the vendor's own tokens, run before
+/// prepare on the statement and after it on the variable-resolved text (<method>MdxPrepare</method>), and failing closed. Only SELECT
+/// (at most two axes) and DRILLTHROUGH run. A drill-through is composed here from the vendor's own filters for one cell
+/// (<method>MdxDrill</method>); nothing from a client enters it. The caps are this class's <code>MDX*</code> parameters, each with
+/// its reason. The vendor's <code>%CancelQuery</code> checks no owner, so the caller's run row is the owner check.</p>
 /// <p>Seams a test subclass overrides: <method>GateClass</method>, <method>RoutineResource</method>, <method>Collect</method> and
 /// <method>LogFault</method>. Production overrides none.</p>
-Class OcuPilot.Port.AnalyticsPort Extends %RegisteredObject
+Class OcuPilot.Port.AnalyticsPort Extends (%RegisteredObject, OcuPilot.Kernel.RowFetch)
 {
 
 /// <p>The class the pair sets are evaluated through.</p>
@@ -97,6 +106,57 @@ Parameter CUBEKEY = "cube";
 
 /// <p>The query key naming a term list, for its entries.</p>
 Parameter TERMLISTKEY = "termlist";
+
+/// <p>The permission a write needs on a database's resource.</p>
+Parameter WRITEPERMISSION = "WRITE";
+
+/// <p>MDX query's own pairs (Story 20.33): the portal's, and the developer resource of the classic MDX Query Tool's either-of list.</p>
+Parameter MDXPAIRS = "%DeepSee_Portal:USE,%Development:USE";
+
+/// <p>The longest statement the MDX calls take, in characters: the SQL console's own bound.</p>
+Parameter MDXMAXSTATEMENT As INTEGER = 100000;
+
+/// <p>The row positions an answer reads: the SQL console's Max rows and the vendor's default listing size.</p>
+Parameter MDXMAXROWS As INTEGER = 1000;
+
+/// <p>The column positions an answer reads: a wider grid cannot be read on a screen (inference).</p>
+Parameter MDXMAXCOLUMNS As INTEGER = 100;
+
+/// <p>The rows a listing reads: the vendor's default <code>MAXROWS</code>.</p>
+Parameter MDXMAXLISTINGROWS As INTEGER = 1000;
+
+/// <p>The characters of one cell or label, and of the whole answer: AD-36's screen-only bounds.</p>
+Parameter MDXMAXCELL As INTEGER = 1000;
+
+Parameter MDXMAXANSWER As INTEGER = 1000000;
+
+/// <p>The seconds a run is bounded to: longer than the slowest query measured at Story 20.33's plan stops, and a forgotten run frees
+/// its slot of the instance's five within two minutes.</p>
+Parameter MDXSECONDS As INTEGER = 120;
+
+/// <p>The seconds a canceled or stopped run waits for the vendor to report its query finished: twice the slowest settle measured.</p>
+Parameter MDXSETTLESECONDS As INTEGER = 10;
+
+/// <p>The constructs the vendor splices into SQL or evaluates as ObjectScript (AD-65): <code>%SEARCH</code> and
+/// <code>%SQLRESTRICT</code> reach <code>ComputedDimension.SQL</code>, <code>RETURN</code> and <code>%ORDER</code> are spliced into the
+/// listing's SQL, and <code>%PARM</code> evaluates a braced value. In the order <method>MdxConstructs</method> lists them.</p>
+Parameter MDXCONSTRUCTS = "%SEARCH,%SQLRESTRICT,RETURN,%ORDER,%PARM";
+
+/// <p>How many levels of string literal <method>MdxConstructs</method> reads inside one another: a literal in a literal in a literal is
+/// more than a <code>%MDX("...")</code> nesting needs (inference); deeper text is unreadable and asks first.</p>
+Parameter MDXSTRINGDEPTH As INTEGER = 3;
+
+/// <p>The plain-words consequence of a statement with a finding, published once (EXPERIENCE.md's Fixed strings) and pinned equal to
+/// its <file>ui/src/app/core/strings.ts</file> key.</p>
+Parameter MDXCONSEQUENCE = "This query runs server-side code or SQL with your rights.";
+
+/// <p>The SQLCODE the instance answers a statement its alarm stopped with.</p>
+Parameter MDXALARMSQLCODE As INTEGER = -450;
+
+/// <p>The cell and answer bounds <method>FetchRows</method> applies are the MDX ones.</p>
+Parameter MAXCELL As INTEGER = {..#MDXMAXCELL};
+
+Parameter MAXANSWER As INTEGER = {..#MDXMAXANSWER};
 
 /// <p>The vendor's own privilege refusal.</p>
 Parameter CODEPRIVILEGE = 940;
@@ -253,6 +313,17 @@ ClassMethod Admit(pEndpoint As %String, pNamespace As %String, Output pHttpStatu
     Set tFailedPair = ""
     ; EvaluateRequired, not EvaluatePairs: a pair list mis-edited to empty fails closed.
     If '$ClassMethod(..GateClass(), "EvaluateRequired", ..Pairs(pEndpoint), .tFailedPair) Quit ..Deny(tFailedPair, .pHttpStatus, .pFault)
+    Quit ..AdmitNamespace(pNamespace, .pHttpStatus, .pFault)
+}
+
+/// <p>The namespace half of the gate, after the pairs (AD-29, AD-65), shared by every endpoint and by the MDX calls: the namespace's
+/// shape; the namespace reporting analytics; READ on its globals database; READ on its routines database. A refusal is an error
+/// status with <var>pHttpStatus</var> and <var>pFault</var>. Names no vendor class.</p>
+ClassMethod AdmitNamespace(pNamespace As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pHttpStatus = 0
+    Set pFault = ""
+    Set tFailedPair = ""
     If '$Match(pNamespace, ##class(OcuPilot.Port.AtelierPort).#NAMESPACEPATTERN) Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONNAMESPACESHAPE, .pHttpStatus, .pFault)
     If '##class(OcuPilot.Kernel.Shell.NamespaceFeatures).Reports("analytics", pNamespace) Quit ..Conflict(##class(OcuPilot.Api.AnalyticsError).#NAMESPACE, .pHttpStatus, .pFault)
     Set tGlobals = ""
@@ -552,6 +623,524 @@ ClassMethod Fail(pMessage As %String, pStatus As %Status, Output pHttpStatus As 
     Set pFault = ##class(OcuPilot.Kernel.Fault).Build(##class(OcuPilot.Api.Error).#SERVERERROR, ##class(OcuPilot.Api.Error).#INTERNAL, ##class(OcuPilot.Kernel.Fault).#DEFAULTREASON)
     Do ..LogFault(pMessage, pStatus, pFault.code)
     Quit $$$ERROR($$$GeneralError, pFault.code _ ": " _ pFault.reason)
+}
+
+/// <p>The MDX gate (AD-29, AD-65), evaluated before any vendor call, in this order: <parameter>MDXPAIRS</parameter>; the namespace's
+/// shape; the namespace reporting analytics; READ on its globals and routines databases (<method>AdmitNamespace</method>); WRITE on
+/// the database <code>^DeepSee.Cache.Results</code> maps to in the namespace, which a prepare and an execute write (measured: even
+/// creating a result set writes its session node), and that database mounted read-write. A refusal is an error status with
+/// <var>pHttpStatus</var> and <var>pFault</var>: 403 naming the failed pair; 400 <code>PORT.VALIDATION</code> for a namespace of the
+/// wrong shape or whose databases cannot be named; 409 <parameter>OcuPilot.Api.AnalyticsError.NAMESPACE</parameter> for a namespace
+/// that does not report analytics; 409 <parameter>OcuPilot.Api.AnalyticsError.MDXREADONLY</parameter> for a cache database that is
+/// read-only or not mounted. The screen's own pairs are the caller's to check first. Names no vendor class.</p>
+ClassMethod MdxAdmit(pNamespace As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+{
+    Set pHttpStatus = 0
+    Set pFault = ""
+    Set tFailedPair = ""
+    If '$ClassMethod(..GateClass(), "EvaluateRequired", ##class(OcuPilot.Screen.Gate).ParsePairSpec(..#MDXPAIRS), .tFailedPair) Quit ..Deny(tFailedPair, .pHttpStatus, .pFault)
+    Set tSC = ..AdmitNamespace(pNamespace, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    Set tCache = ""
+    Set tReadOnly = 0
+    Set tMounted = 0
+    If '..CacheDatabase(pNamespace, .tCache, .tReadOnly, .tMounted) || (tCache = "") Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONNAMESPACEUNKNOWN, .pHttpStatus, .pFault)
+    If '$ClassMethod(..GateClass(), "EvaluateRequired", $ListBuild($ListBuild(tCache, ..#WRITEPERMISSION)), .tFailedPair) Quit ..Deny(tFailedPair, .pHttpStatus, .pFault)
+    If tReadOnly || 'tMounted Quit ..Conflict(##class(OcuPilot.Api.AnalyticsError).#MDXREADONLY, .pHttpStatus, .pFault)
+    Quit $$$OK
+}
+
+/// <p>The guarding resource and mount state of the database <code>^DeepSee.Cache.Results</code> maps to in <var>pNamespace</var>, as
+/// <method>%SYS.Namespace.GetGlobalDest</method> and <method>%SYS.Namespace.GetNSInfo</method> report them; 0 when the instance reports
+/// none, which a caller refuses rather than admits. A <code>%</code>-class that answers in any namespace, so no switch is taken
+/// (AD-16). Overridable so a fixture can name another database; production never overrides it.</p>
+ClassMethod CacheDatabase(pNamespace As %String, Output pResource As %String, Output pReadOnly As %Boolean, Output pMounted As %Boolean) As %Boolean
+{
+    Set pResource = ""
+    Set pReadOnly = 0
+    Set pMounted = 0
+    Set tResolved = 0
+    Try {
+        Set tDest = ##class(%SYS.Namespace).GetGlobalDest($ZConvert(pNamespace, "U"), "^DeepSee.Cache.Results")
+        Kill tInfo
+        If tDest '= "" Do ##class(%SYS.Namespace).GetNSInfo("^" _ tDest, .tInfo, 1)
+        Set pResource = $Get(tInfo("Resource"))
+        Set pReadOnly = ''$Get(tInfo("ReadOnly"))
+        Set pMounted = ''$Get(tInfo("Mounted"))
+        Set tResolved = (pResource '= "") && ($Get(tInfo("Status")) = 1)
+    } Catch {
+        Set pResource = ""
+        Set pReadOnly = 0
+        Set pMounted = 0
+        Set tResolved = 0
+    }
+    Quit tResolved
+}
+
+/// <p>Whether <var>pText</var> holds a construct the vendor splices into SQL or evaluates as ObjectScript, or cannot be read: the one
+/// detection of AD-65's splice clause, which the MDX query screen asks first on and the agent's MDX read refuses. It writes nothing
+/// and switches no namespace.</p>
+/// <p>It answers 1 when a token of <code>%DeepSee.Query.Parser.%Tokenize</code>, a <code>[...]</code> token unquoted as the parser
+/// unquotes it and then upper-cased, equals a member of <parameter>MDXCONSTRUCTS</parameter>; or a token of a string literal does,
+/// each literal's value tokenized the same way to <parameter>MDXSTRINGDEPTH</parameter> levels, so a comment inside a word
+/// (<code>%SE/**/ARCH</code>) is found; or, <b>failing closed</b> with <var>pUnread</var> 1, the text is blank, a tokenize answers an
+/// error or raises, or a literal lies deeper than the depth read. <var>pFound</var> is a <code>$ListBuild</code> of the names found,
+/// in <parameter>MDXCONSTRUCTS</parameter> order, without repeats; it is empty when only <var>pUnread</var> is set. A single-quoted
+/// span needs no rule: <code>'</code> is a token by itself, so its content is in the stream.</p>
+ClassMethod MdxConstructs(pText As %String, Output pFound As %List, Output pUnread As %Boolean) As %Boolean
+{
+    Set pFound = ""
+    Set pUnread = 0
+    Kill tHit
+    Try {
+        If ..MdxBlank(pText) {
+            Set pUnread = 1
+            Quit
+        }
+        Do ..ScanTokens(pText, 0, .tHit, .pUnread)
+    } Catch {
+        Set pUnread = 1
+    }
+    Set tConstructs = $ListFromString(..#MDXCONSTRUCTS)
+    For tI = 1:1:$ListLength(tConstructs) {
+        If $Data(tHit($List(tConstructs, tI))) Set pFound = pFound _ $ListBuild($List(tConstructs, tI))
+    }
+    Quit ''pUnread || ($ListLength(pFound) > 0)
+}
+
+/// <p>Whether <var>pText</var> holds nothing but white space: blanks, tabs, line ends and the no-break space.</p>
+ClassMethod MdxBlank(pText As %String) As %Boolean
+{
+    Quit $ZStrip($Get(pText), "*", $Char(9, 10, 11, 12, 13, 32, 160)) = ""
+}
+
+/// <p>Tokenize <var>pText</var> and record each construct it names in <var>pHit</var>, recursing into each string literal until
+/// <var>pDepth</var> reaches <parameter>MDXSTRINGDEPTH</parameter>. <var>pUnread</var> is set when a tokenize fails or a literal is
+/// too deep.</p>
+ClassMethod ScanTokens(pText As %String, pDepth As %Integer, ByRef pHit, ByRef pUnread As %Boolean) [ Private ]
+{
+    Kill tTokens
+    Set tSC = $$$OK
+    Try {
+        Set tSC = ##class(%DeepSee.Query.Parser).%Tokenize(pText, .tTokens)
+    } Catch {
+        Set tSC = $$$ERROR($$$GeneralError, "the tokenizer raised")
+    }
+    If $$$ISERR(tSC) {
+        Set pUnread = 1
+        Quit
+    }
+    Set tConstructs = $ListFromString(..#MDXCONSTRUCTS)
+    Set tAt = ""
+    For {
+        Set tAt = $Order(tTokens(tAt))
+        If tAt = "" Quit
+        Set tType = $List(tTokens(tAt), 1)
+        Set tValue = $List(tTokens(tAt), 2)
+        If tType = "LIT" {
+            If pDepth >= ..#MDXSTRINGDEPTH {
+                Set pUnread = 1
+            } Else {
+                Do ..ScanTokens(tValue, pDepth + 1, .pHit, .pUnread)
+            }
+            Continue
+        }
+        Set tWord = $ZConvert(##class(%DeepSee.Query.Parser).%UnquoteIdent(tValue), "U")
+        If $ListFind(tConstructs, tWord) Set pHit(tWord) = 1
+    }
+}
+
+/// <p>Prepare the statement <var>pText</var> in <var>pNamespace</var> with <code>%PrepareMDX</code>, which resolves pivot variables
+/// from <var>pVariables</var> alone, and classify it; nothing is executed. <var>pRS</var> is the prepared result set.</p>
+/// <ul>
+/// <li>A statement the vendor will not prepare is not a refusal: the status is OK and <var>pAnswer</var> is
+/// <code>{outcome: "error", message}</code> with the vendor's text.</li>
+/// <li>A statement that is neither SELECT nor DRILLTHROUGH is 422 <parameter>OcuPilot.Api.AnalyticsError.MDXKIND</parameter>, and a
+/// SELECT with more than two axes 422 <parameter>OcuPilot.Api.AnalyticsError.MDXAXES</parameter>, each an error status with
+/// <var>pHttpStatus</var> and <var>pFault</var>.</li>
+/// <li>Then <method>MdxConstructs</method> runs on the variable-resolved text, so a text the vendor could not resolve reads blank and
+/// asks: <var>pAsk</var> is that answer and <var>pFound</var> the names found.</li>
+/// </ul>
+/// <p>No production caller hands <var>pVariables</var>. The vendor writes its query-text cache node while preparing, which
+/// <method>MdxAdmit</method>'s WRITE check covers. <var>pRS</var> is handed back only with an OK status and no <var>pAnswer</var>; the caller
+/// releases it with <method>MdxRelease</method>. The caller's namespace is unchanged on return.</p>
+ClassMethod MdxPrepare(pNamespace As %String, pText As %String, Output pRS, Output pAnswer As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, Output pAsk As %Boolean, Output pFound As %List, ByRef pVariables) As %Status
+{
+    Set pRS = ""
+    Set pAnswer = ""
+    Set pHttpStatus = 0
+    Set pFault = ""
+    Set pAsk = 0
+    Set pFound = ""
+    Set tCaught = ""
+    Set tPrepareSC = $$$OK
+    Set tType = ""
+    Set tAxes = 0
+    Set tResolved = ""
+    Do ..Prepared(pNamespace, pText, .pVariables, .pRS, .tPrepareSC, .tType, .tAxes, .tResolved, .tCaught)
+    If $IsObject(tCaught) {
+        Do ..MdxRelease(pNamespace, .pRS)
+        Quit ..Mapped(tCaught, "the MDX prepare failed", .pHttpStatus, .pFault)
+    }
+    If $$$ISERR(tPrepareSC) {
+        Do ..MdxRelease(pNamespace, .pRS)
+        Set pAnswer = ..ErrorAnswer(tPrepareSC)
+        Quit $$$OK
+    }
+    If '$ListFind($ListBuild("SELECT", "DRILLTHROUGH"), tType) {
+        Do ..MdxRelease(pNamespace, .pRS)
+        Quit ..Refuse(422, ##class(OcuPilot.Api.Error).#VALIDATIONFAILED, ##class(OcuPilot.Api.AnalyticsError).#MDXKIND, ##class(OcuPilot.Api.AnalyticsError).#REASONMDXKIND, .pHttpStatus, .pFault)
+    }
+    If (tType = "SELECT") && (tAxes > 2) {
+        Do ..MdxRelease(pNamespace, .pRS)
+        Quit ..Refuse(422, ##class(OcuPilot.Api.Error).#VALIDATIONFAILED, ##class(OcuPilot.Api.AnalyticsError).#MDXAXES, ##class(OcuPilot.Api.AnalyticsError).#REASONMDXAXES, .pHttpStatus, .pFault)
+    }
+    Set pAsk = ..MdxConstructs(tResolved, .pFound, .tUnread)
+    Quit $$$OK
+}
+
+/// <p>The vendor half of <method>MdxPrepare</method>, in <var>pNamespace</var>: a new result set prepared with <var>pText</var>, its
+/// query type and axis count, and the variable-resolved text. Everything between the switch and the restore names only vendor and
+/// system classes (AD-16); a raised error is <var>pCaught</var>.</p>
+ClassMethod Prepared(pNamespace As %String, pText As %String, ByRef pVariables, Output pRS, Output pStatus As %Status, Output pType As %String, Output pAxes As %Integer, Output pResolved As %String, Output pCaught As %Exception.AbstractException) [ Private ]
+{
+    Set pRS = ""
+    Set pStatus = $$$OK
+    Set pType = ""
+    Set pAxes = 0
+    Set pResolved = ""
+    Set pCaught = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set pRS = ##class(%DeepSee.ResultSet).%New()
+        Set pStatus = pRS.%PrepareMDX(pText, .pVariables, .pResolved)
+        If $$$ISOK(pStatus) {
+            Set pType = pRS.%Query.queryType
+            Set pAxes = pRS.%Query.axes.Count()
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+}
+
+/// <p>Release the result set <var>pRS</var> in <var>pNamespace</var>: the vendor's destructor clears the result set's local cache in the namespace it
+/// runs in, so a caller that holds one in its own namespace would leave that cache behind in <var>pNamespace</var>. Every caller of
+/// <method>MdxPrepare</method> and <method>MdxDrill</method> that is handed a result set releases it here once it has read what it needs; the port
+/// releases the ones it does not hand back. The caller holds no other reference to it. The caller's namespace is unchanged on return.</p>
+ClassMethod MdxRelease(pNamespace As %String, ByRef pRS)
+{
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set pRS = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch {
+        Set $NAMESPACE = tOrigNS
+        Set pRS = ""
+    }
+}
+
+/// <p>The query type of the prepared result set <var>pRS</var>: <code>SELECT</code> or <code>DRILLTHROUGH</code> for a result set
+/// <method>MdxPrepare</method> accepted. Reads the object only.</p>
+ClassMethod MdxKind(pRS) As %String
+{
+    Quit $Select($IsObject(pRS): pRS.%Query.queryType, 1: "")
+}
+
+/// <p>Start the prepared result set <var>pRS</var> in <var>pNamespace</var>: <code>%ExecuteAsynch</code> with no wait, so a SELECT
+/// answers at once and runs on the vendor's agents, in the caller's security context. A DRILLTHROUGH forces the wait and its listing
+/// runs in the caller, so it returns when its listing is ready, or when the caller's alarm stops it. <var>pCube</var> and
+/// <var>pKey</var> name the query for <method>MdxCancel</method> and are set before the vendor runs anything. The vendor's status is
+/// the answer; a raised error is its status.</p>
+ClassMethod MdxStart(pNamespace As %String, pRS, Output pCube As %String, Output pKey As %String) As %Status
+{
+    Set pCube = ""
+    Set pKey = ""
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set pCube = pRS.%GetCubeName()
+        Set pKey = pRS.%GetQueryKey()
+        ; The listing reads one row past the cap so the answer can say whether more exist.
+        If (pRS.%Query.queryType = "DRILLTHROUGH") && (pRS.%Query.%MaxListingRows >= ..#MDXMAXLISTINGROWS) Set pRS.%Query.%MaxListingRows = ..#MDXMAXLISTINGROWS + 1
+        Set tSC = pRS.%ExecuteAsynch(.tKey, , 0)
+        If $Get(tKey) '= "" Set pKey = tKey
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>The vendor's status of the started result set <var>pRS</var>: 0 to 99 while it works, 100 when it is done or failed. When it
+/// has failed, <var>pError</var> is the vendor's status, which reads as an error; a canceled query is 100 with the vendor's
+/// "Query cancelled". A raised error reads as done with that error.</p>
+ClassMethod MdxStatus(pNamespace As %String, pRS, Output pError As %Status) As %Integer
+{
+    Set pError = $$$OK
+    Set tStatus = 0
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tStatus = pRS.%GetStatus(, .pError)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pError = ex.AsStatus()
+        Set tStatus = 100
+    }
+    Quit tStatus
+}
+
+/// <p>Cancel the query <var>pKey</var> of cube <var>pCube</var> in <var>pNamespace</var> (<code>%CancelQuery</code>, a class method
+/// that checks no owner: the caller's own run row is the owner check). The vendor stops every run of that statement text, the
+/// classic tool's included (named limit).</p>
+ClassMethod MdxCancel(pNamespace As %String, pCube As %String, pKey As %String) As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tSC = ##class(%DeepSee.ResultSet).%CancelQuery(pCube, pKey)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Compose and prepare the drill-through of one cell of the executed result set <var>pRS</var>: <var>pRow</var> and
+/// <var>pColumn</var> are the cell's 1-based positions as <method>MdxAnswer</method> lists them. A position past its axis's size is
+/// refused 400 <parameter>OcuPilot.Api.AnalyticsError.MDXINPUT</parameter>. Otherwise it reads the vendor's own
+/// <code>%GetFiltersForCellRange</code> for that one cell and prepares <code>DRILLTHROUGH MAXROWS</code>
+/// <parameter>MDXMAXLISTINGROWS</parameter> <code>SELECT FROM [&lt;cube&gt;] %FILTER &lt;filter&gt;...</code>, the cube name
+/// bracket-quoted with <code>]</code> doubled and each filter the vendor's, slicer first. <var>pDrill</var> is that prepared result
+/// set, for <method>MdxStart</method>, which the caller releases with <method>MdxRelease</method>; nothing from a client enters the text. When
+/// the vendor will not prepare it, <var>pAnswer</var> is <code>{outcome: "error", message}</code>, the status is OK and <var>pDrill</var> is
+/// released.</p>
+ClassMethod MdxDrill(pNamespace As %String, pRS, pRow As %Integer, pColumn As %Integer, Output pDrill, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, Output pAnswer As %DynamicObject) As %Status
+{
+    Set pDrill = ""
+    Set pHttpStatus = 0
+    Set pFault = ""
+    Set pAnswer = ""
+    Set tCaught = ""
+    Set tRefused = 0
+    Set tFilterSC = $$$OK
+    Set tPrepareSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tCube = pRS.%GetCubeName()
+        If (pRow > pRS.%GetRowCount()) || (pColumn > pRS.%GetColumnCount()) {
+            Set tRefused = 1
+        } Else {
+            Set tFilterSC = pRS.%GetFiltersForCellRange(.tFilters, pRow, pColumn, pRow, pColumn, .tMeasure)
+            If $$$ISOK(tFilterSC) {
+                Set tText = "DRILLTHROUGH MAXROWS " _ ..#MDXMAXLISTINGROWS _ " SELECT FROM [" _ $Replace(tCube, "]", "]]") _ "]"
+                For tSlot = 0, 1, 2 {
+                    If $Get(tFilters(tSlot)) '= "" Set tText = tText _ " %FILTER " _ tFilters(tSlot)
+                }
+                Set pDrill = ##class(%DeepSee.ResultSet).%New()
+                Set tPrepareSC = pDrill.%PrepareMDX(tText)
+            }
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tCaught = ex
+    }
+    If $IsObject(tCaught) {
+        Do ..MdxRelease(pNamespace, .pDrill)
+        Quit ..Mapped(tCaught, "the MDX drill-through failed", .pHttpStatus, .pFault)
+    }
+    If tRefused Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.AnalyticsError).#MDXINPUT, ##class(OcuPilot.Api.AnalyticsError).#REASONMDXINPUT, .pHttpStatus, .pFault)
+    If $$$ISERR(tFilterSC) Quit ..Statused(tFilterSC, "the MDX cell filters could not be read", .pHttpStatus, .pFault)
+    If $$$ISERR(tPrepareSC) {
+        Do ..MdxRelease(pNamespace, .pDrill)
+        Set pAnswer = ..ErrorAnswer(tPrepareSC)
+    }
+    Quit $$$OK
+}
+
+/// <p>The answer of the finished result set <var>pRS</var> of <var>pNamespace</var>, after <method>MdxStatus</method> read 100 without
+/// an error: <var>pSeconds</var> is how long the run took. A DRILLTHROUGH's listing is not read until its rows are fetched, so that read is
+/// where a slow listing waits: with <var>pBound</var> above zero it runs under an alarm of that many seconds, and a listing the alarm
+/// stops answers <code>{outcome: "stopped"}</code>.</p>
+/// <ul>
+/// <li>A SELECT is <code>{outcome: "cells", cube, columns, rows: [{label, cells}], rowsAvailable, columnsAvailable, truncated,
+/// seconds}</code>. Each column header, and each row's <code>label</code>, joins the labels of that position with
+/// <code>" / "</code>, outer to inner (the vendor lists a tuple's labels innermost first); a query with no rows axis answers one row
+/// with an empty label, and no axes one cell. Values are the vendor's own, as text. At most <parameter>MDXMAXROWS</parameter> rows
+/// and <parameter>MDXMAXCOLUMNS</parameter> columns are read, each label and cell is cut at <parameter>MDXMAXCELL</parameter>
+/// characters, and rows are kept while their JSON text totals at most <parameter>MDXMAXANSWER</parameter>; <code>truncated</code>
+/// says any of it was cut.</li>
+/// <li>A DRILLTHROUGH is <code>{outcome: "rows", columns, rows, truncated, seconds}</code>, the listing read through
+/// <method>FetchRows</method> to <parameter>MDXMAXLISTINGROWS</parameter> rows.</li>
+/// <li>A listing the vendor cannot read is <code>{outcome: "error", message}</code>.</li>
+/// </ul>
+/// <p>Everything between the switch and the restore is in this one method and names only vendor and system classes and this class's
+/// own methods, which are compiled into it (AD-16). The caller's namespace is unchanged on return.</p>
+ClassMethod MdxAnswer(pNamespace As %String, pRS, pSeconds As %Numeric, Output pAnswer As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pBound As %Integer = 0) As %Status
+{
+    Set pAnswer = ""
+    Set pHttpStatus = 0
+    Set pFault = ""
+    Set tCaught = ""
+    Set tAlarmed = 0
+    Set tStopped = 0
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        If pRS.%Query.queryType = "DRILLTHROUGH" {
+            Set tListSC = pRS.%GetListingResultSet(.tSet)
+            If $$$ISERR(tListSC) || '$IsObject(tSet) {
+                Set pAnswer = ..ErrorAnswer($Select($$$ISERR(tListSC): tListSC, 1: $$$ERROR($$$GeneralError, "No listing result available")))
+            } Else {
+                Set tMeta = tSet.%GetMetadata()
+                Set tColumns = []
+                For tI = 1:1:tMeta.columns.Count() {
+                    Do tColumns.%Push(tMeta.columns.GetAt(tI).colName, "string")
+                }
+                If pBound > 0 {
+                    Do $System.Alarm.Set(pBound)
+                    Set tAlarmed = 1
+                }
+                Do ..FetchRows(tSet, tColumns, ..#MDXMAXLISTINGROWS, .tRows, .tTruncated, .tMore, .tCut)
+                If tAlarmed {
+                    Do $System.Alarm.Clear()
+                    Set tAlarmed = 0
+                }
+                If (tSet.%SQLCODE = ..#MDXALARMSQLCODE) || ((tSet.%SQLCODE < 0) && (tSet.%Message [ "<ALARM>")) {
+                    Set tStopped = 1
+                } ElseIf tSet.%SQLCODE < 0 {
+                    Set pAnswer = {"outcome": "error", "message": (..Cut(tSet.%Message))}
+                } Else {
+                    Set pAnswer = {}
+                    Do pAnswer.%Set("outcome", "rows", "string")
+                    Do pAnswer.%Set("columns", tColumns)
+                    Do pAnswer.%Set("rows", tRows)
+                    Do pAnswer.%Set("truncated", ''tTruncated, "boolean")
+                    Do pAnswer.%Set("seconds", +pSeconds, "number")
+                }
+                Set (tSet, tMeta) = ""
+            }
+        } Else {
+            Set tAxes = pRS.%GetAxisCount()
+            Set tColsAvail = pRS.%GetColumnCount()
+            Set tRowsAvail = pRS.%GetRowCount()
+            Set tColsShown = $Select(tColsAvail > ..#MDXMAXCOLUMNS: ..#MDXMAXCOLUMNS, 1: tColsAvail)
+            Set tRowsShown = $Select(tRowsAvail > ..#MDXMAXROWS: ..#MDXMAXROWS, 1: tRowsAvail)
+            Set tTruncated = (tColsShown < tColsAvail) || (tRowsShown < tRowsAvail)
+            Set tTotal = 0
+            Set tHeaders = []
+            For tC = 1:1:tColsShown {
+                Set tLabel = ""
+                If tAxes >= 1 {
+                    Kill tL
+                    Set tN = pRS.%GetOrdinalLabel(.tL, 1, tC)
+                    For tI = tN:-1:1 {
+                        Set tLabel = tLabel _ $Select(tLabel = "": "", 1: " / ") _ $Get(tL(tI))
+                    }
+                }
+                If $Length(tLabel) > ..#MDXMAXCELL {
+                    Set tLabel = $Extract(tLabel, 1, ..#MDXMAXCELL - 1) _ $Char(8230)
+                    Set tTruncated = 1
+                }
+                Do tHeaders.%Push(tLabel, "string")
+                Set tTotal = tTotal + $Length(tLabel) + 3
+            }
+            Set tRowObjects = []
+            For tR = 1:1:tRowsShown {
+                Set tLabel = ""
+                If tAxes >= 2 {
+                    Kill tL
+                    Set tN = pRS.%GetOrdinalLabel(.tL, 2, tR)
+                    For tI = tN:-1:1 {
+                        Set tLabel = tLabel _ $Select(tLabel = "": "", 1: " / ") _ $Get(tL(tI))
+                    }
+                }
+                If $Length(tLabel) > ..#MDXMAXCELL {
+                    Set tLabel = $Extract(tLabel, 1, ..#MDXMAXCELL - 1) _ $Char(8230)
+                    Set tTruncated = 1
+                }
+                Set tCells = []
+                For tC = 1:1:tColsShown {
+                    Set tValue = pRS.%GetOrdinalValue(tC, tR)
+                    If $IsObject(tValue) Set tValue = ""
+                    If $Length(tValue) > ..#MDXMAXCELL {
+                        Set tValue = $Extract(tValue, 1, ..#MDXMAXCELL - 1) _ $Char(8230)
+                        Set tTruncated = 1
+                    }
+                    Do tCells.%Push(tValue, "string")
+                }
+                Set tRowObject = {}
+                Do tRowObject.%Set("label", tLabel, "string")
+                Do tRowObject.%Set("cells", tCells)
+                Set tLength = $Length(tRowObject.%ToJSON())
+                If tTotal + tLength > ..#MDXMAXANSWER {
+                    Set tTruncated = 1
+                    Quit
+                }
+                Set tTotal = tTotal + tLength
+                Do tRowObjects.%Push(tRowObject)
+            }
+            Set pAnswer = {}
+            Do pAnswer.%Set("outcome", "cells", "string")
+            Do pAnswer.%Set("cube", pRS.%GetCubeName(), "string")
+            Do pAnswer.%Set("columns", tHeaders)
+            Do pAnswer.%Set("rows", tRowObjects)
+            Do pAnswer.%Set("rowsAvailable", tRowsAvail, "number")
+            Do pAnswer.%Set("columnsAvailable", tColsAvail, "number")
+            Do pAnswer.%Set("truncated", ''tTruncated, "boolean")
+            Do pAnswer.%Set("seconds", +pSeconds, "number")
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        If tAlarmed Do $System.Alarm.Clear()
+        If ex.Name = "<ALARM>" {
+            Set tStopped = 1
+        } Else {
+            Set tCaught = ex
+        }
+    }
+    If tStopped {
+        Set pAnswer = {"outcome": "stopped"}
+        Quit $$$OK
+    }
+    If $IsObject(tCaught) {
+        Set pAnswer = ""
+        Quit ..Mapped(tCaught, "the MDX answer could not be read", .pHttpStatus, .pFault)
+    }
+    Quit $$$OK
+}
+
+/// <p>The <code>{outcome: "error", message}</code> answer for the vendor status <var>pStatus</var>: the vendor's text, cut at
+/// <parameter>MDXMAXCELL</parameter> characters. The text can quote part of the statement and reaches the screen alone (AD-36's sixth
+/// exception).</p>
+ClassMethod ErrorAnswer(pStatus As %Status) As %DynamicObject
+{
+    Set tText = ""
+    Try {
+        Set tText = $System.Status.GetErrorText(pStatus)
+    } Catch {
+        Set tText = ""
+    }
+    Quit {"outcome": "error", "message": (..Cut(tText))}
+}
+
+/// <p><var>pText</var> cut at <parameter>MDXMAXCELL</parameter> characters with an ellipsis.</p>
+ClassMethod Cut(pText As %String) As %String [ Private ]
+{
+    If $Length(pText) > ..#MDXMAXCELL Quit $Extract(pText, 1, ..#MDXMAXCELL - 1) _ $Char(8230)
+    Quit pText
 }
 
 /// <p>No script form: this port carries no write (AD-59).</p>

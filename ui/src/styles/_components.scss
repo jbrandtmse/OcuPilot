@@ -9127,3 +9127,58 @@ app-agent-picker {
   stroke: var(--ocu-focus-ring);
   stroke-width: 2;
 }
+
+// A result grid's host element (Story 20.33, `shell/result-grid.ts`) draws nothing of its own: the grid's
+// frame lays out in its parent as it did when the page held the template itself.
+app-result-grid {
+  display: contents;
+}
+
+// Analytics' MDX query (Story 20.33): a form page as wide as its column, on the SQL query's form and grid
+// classes. A value cell of the cells grid is a button that fills its cell and reads as a link, so a
+// drill-through is reachable by keyboard; the Drill-through listing sits below the grid, as the SQL
+// query's Background run section sits below its answer.
+.ocu-mdx-query {
+  max-width: none;
+}
+
+.ocu-mdx-drill {
+  @include typo.ocu-type('code');
+
+  box-sizing: border-box;
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  align-self: stretch;
+  min-width: 0;
+  max-width: 100%;
+  padding: 0;
+  overflow: hidden;
+  border: none;
+  background: transparent;
+  color: var(--ocu-secondary);
+  text-align: start;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.ocu-mdx-drill:hover {
+  text-decoration: underline;
+}
+
+.ocu-mdx-drill:focus-visible {
+  @include ocu-focus-ring;
+}
+
+.ocu-mdx-drill[aria-disabled='true'] {
+  cursor: default;
+  text-decoration: none;
+}
+
+.ocu-mdx-query-listing {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ocu-space-2);
+  margin-block-start: var(--ocu-space-4);
+}

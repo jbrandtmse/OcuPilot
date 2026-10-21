@@ -478,6 +478,40 @@ Method TestAnAssignedPageGatesTheBackgroundRun()
     Do ##class(OcuPilot.Kernel.State.SqlRun).GuardedForgetUser(..#HOLDINGUSER)
 }
 
+/// <p>Story 20.33 AC7: with the probe resource assigned to the classic MDX Query Tool, the principal lacking it is refused 403
+/// <code>AUTH.NOPRIVILEGE</code> naming <code>OcuProbe1814Page:USE</code> on MDX query's start, poll and cancel, and the one holding it passes
+/// the screen's gate: its start is answered by the analytics port or by the namespace's own refusal, never by the page's resource. The job's
+/// own repeat of the gate is the kernel run's, pinned for the SQL kind by <method>TestAnAssignedPageGatesTheBackgroundRun</method>.</p>
+/// <p>Mutation (Rule 19): drop the screen gate from <method>OcuPilot.Kernel.Shell.BackgroundRun.Gate</method> -- the lacking principal's poll is
+/// answered 404 and its leg goes red.</p>
+Method TestAnAssignedPageGatesTheMdxRun()
+{
+    Set tPage = "%DeepSee.UI.MDXQuery"
+    Set tBase = $Parameter("OcuPilot.Test.Http", "BASEPATH") _ "/analytics/mdx/background"
+    Set tScope = "?ns=" _ $NAMESPACE
+    Kill tOne
+    Set tOne(tPage) = ""
+    If '$Data(..PreparedPages(tPage)) Set ..PreparedPages(tPage) = ##class(%CSP.Portal.Utils).%GetCustomResource($ZConvert(tPage, "O", "URL"))
+    Do $$$AssertStatusOK(..RestorePages(), tPage _ ": every page reads its recorded resource first")
+    Do $$$AssertStatusOK(..Assign(.tOne), "the probe resource is assigned to " _ tPage _ " alone")
+    Set tAbsent = "0123456789abcdef0123456789abcdef"
+    Set tBody = "{""statement"":""SELECT FROM [OcuPilotProbeVisits]""}"
+    For tLeg = $ListBuild("POST", tBase _ tScope, tBody), $ListBuild("GET", tBase _ "/" _ tAbsent _ tScope, ""), $ListBuild("POST", tBase _ "/" _ tAbsent _ "/cancel" _ tScope, "") {
+        Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest($List(tLeg, 1), $List(tLeg, 2), ..#LACKINGUSER, ..PreparedPassword, .tStatus, .tText, .tHeaders, $List(tLeg, 3), "application/json")
+        Set tAnswer = ""
+        Try { Set tAnswer = ##class(%DynamicObject).%FromJSON($Get(tText)) } Catch {}
+        Set tSaid = $Get(tStatus) _ " " _ $Select($IsObject(tAnswer): tAnswer.%Get("code") _ " " _ $Select(tAnswer.%GetTypeOf("detail") = "object": tAnswer.detail.%Get("failedPair"), 1: ""), 1: $Get(tText))
+        Do $$$AssertEquals(tSaid, "403 AUTH.NOPRIVILEGE " _ ..#RESOURCE _ ":USE", ..#LACKINGUSER _ ": " _ $List(tLeg, 1) _ " " _ $List(tLeg, 2) _ " with " _ tPage _ " assigned")
+    }
+    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("POST", tBase _ tScope, ..#HOLDINGUSER, ..PreparedPassword, .tStatus, .tText, .tHeaders, tBody, "application/json")
+    Set tAnswer = ""
+    Try { Set tAnswer = ##class(%DynamicObject).%FromJSON($Get(tText)) } Catch {}
+    Set tFailedPair = $Select($IsObject(tAnswer) && (tAnswer.%GetTypeOf("detail") = "object"): tAnswer.detail.%Get("failedPair"), 1: "")
+    Do $$$AssertTrue($IsObject(tAnswer) && (tAnswer.%Get("code") '= "") && (tFailedPair '= (..#RESOURCE _ ":USE")), ..#HOLDINGUSER _ ": the start passes the screen's gate and is answered by the port or the namespace: " _ $Get(tStatus) _ " " _ $Get(tText))
+    Do ##class(OcuPilot.Kernel.State.SqlRun).GuardedForgetUser(..#HOLDINGUSER)
+    Do ##class(OcuPilot.Kernel.State.SqlRun).GuardedForgetUser(..#LACKINGUSER)
+}
+
 /// <p>Story 19.7 AC9: with the probe resource assigned to either classic Open Table page alone -- the
 /// table page the screen declares, or the view page its route unions -- the principal lacking it is
 /// refused 403 <code>AUTH.NOPRIVILEGE</code> naming <code>OcuProbe1814Page:USE</code> on Data

@@ -1,9 +1,9 @@
 /**
- * Story 20.11's Analytics sentence, held to the instance's own source (AD-29, AD-39, AD-65).
+ * Story 20.11's Analytics sentence and Story 20.33's MDX sentences, held to the instance's own source (AD-29, AD-39, AD-65).
  *
- * `OcuPilot.Api.AnalyticsError`'s sentence is one published string on three surfaces: the server sends it, the client's strings table
- * holds it, and EXPERIENCE.md's Fixed strings publish it. The port also declares the pair sets its screens' descriptors repeat, and the
- * endpoint list the mirror generator reads.
+ * `OcuPilot.Api.AnalyticsError`'s sentences are each one published string on three surfaces: the server sends it, the client's strings
+ * table holds it, and EXPERIENCE.md's Fixed strings publish it. The port also declares the pair sets its screens' descriptors repeat, the
+ * endpoint list the mirror generator reads, and the consequence the MDX query's confirmation names.
  */
 
 import assert from 'node:assert/strict';
@@ -24,6 +24,18 @@ const EXPERIENCE = join(REPO_ROOT, '_bmad-output', 'planning-artifacts', 'ux-des
 
 /** Every `<parameter>` sentence `AnalyticsError` declares, and the `strings.ts` key it is pinned equal to. */
 const SENTENCES = [['REASONNAMESPACE', 'analyticsRefusalNamespace']];
+
+/** The eight sentences of MDX query's refusals (Story 20.33), each pinned to its `strings.ts` key. */
+const MDX_SENTENCES = [
+  ['REASONMDXINPUT', 'analyticsRefusalMdxInput'],
+  ['REASONMDXKIND', 'analyticsRefusalMdxKind'],
+  ['REASONMDXAXES', 'analyticsRefusalMdxAxes'],
+  ['REASONMDXREADONLY', 'analyticsRefusalMdxReadonly'],
+  ['REASONMDXBUSY', 'analyticsRefusalMdxBusy'],
+  ['REASONMDXFULL', 'analyticsRefusalMdxFull'],
+  ['REASONMDXNOTFOUND', 'analyticsRefusalMdxNotFound'],
+  ['REASONMDXLOST', 'analyticsRefusalMdxLost'],
+];
 
 /** The value `key` holds in `strings.ts`, which may sit on the line after its key. */
 function stringValue(key) {
@@ -64,4 +76,26 @@ test('Story 20.11: the port declares its three pair sets and the endpoints the m
   assert.equal(parameter('FOLDERPAIRS'), '%DeepSee_Portal:USE,%Development:USE');
   assert.equal(parameter('ENDPOINTS'), 'Cubes,Measures,Dimensions,Relationships,TermLists,TermListEntries,FolderItems');
   assert.equal(parameter('TYPELIST'), 'LIST');
+});
+
+test('Story 20.33: each MDX refusal is one sentence on both surfaces, published in Fixed strings', () => {
+  // Mutation (Rule 19): change one word of REASONMDXAXES in AnalyticsError.cls (or of analyticsRefusalMdxAxes in strings.ts) -> this goes
+  // red naming both.
+  const experience = readFileSync(EXPERIENCE, 'utf8');
+  for (const [parameter, key] of MDX_SENTENCES) {
+    const server = serverSentence(parameter);
+    assert.equal(server, stringValue(key), `${parameter} and ${key} are one published sentence`);
+    assert.ok(experience.includes(`"${server}"`), `${parameter}'s sentence is published in EXPERIENCE.md's Fixed strings`);
+    assert.ok(!server.toLowerCase().includes('agent'), `${parameter} names no caller: ${server}`);
+  }
+});
+
+test("Story 20.33: the confirmation's consequence is one sentence on the port, the strings table and Fixed strings", () => {
+  // Mutation (Rule 19): change one word of MDXCONSEQUENCE in AnalyticsPort.cls (or of analyticsMdxConfirmConsequence in strings.ts) -> this
+  // goes red naming both.
+  const match = /^Parameter MDXCONSEQUENCE = "([^"]+)";/m.exec(readFileSync(PORT, 'utf8'));
+  assert.notEqual(match, null, 'AnalyticsPort.cls declares MDXCONSEQUENCE');
+  const consequence = match[1];
+  assert.equal(consequence, stringValue('analyticsMdxConfirmConsequence'), 'MDXCONSEQUENCE and analyticsMdxConfirmConsequence are one published sentence');
+  assert.ok(readFileSync(EXPERIENCE, 'utf8').includes(`"${consequence}"`), "MDXCONSEQUENCE's sentence is published in EXPERIENCE.md's Fixed strings");
 });

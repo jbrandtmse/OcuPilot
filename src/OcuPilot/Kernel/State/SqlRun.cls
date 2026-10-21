@@ -1,8 +1,13 @@
-/// <p>One background SQL run (Story 19.15, AD-7, AD-9, AD-36, AD-41): who started it, in which
-/// namespace, where it stands and, once it has ended, the answer its owner's poll reads. Held in
+/// <p>One background run (Story 19.15, AD-7, AD-9, AD-36, AD-41): who started it, of which kind, in
+/// which namespace, where it stands and, once it has ended, the answer its owner's poll reads. Held in
 /// OcuPilot's protected database and reached only through
 /// <class>OcuPilot.Kernel.State.Base</class>'s guarded methods. The statement and its values are
 /// never stored here.</p>
+/// <p><b>Two kinds share the table</b> (Story 20.33): <parameter>KINDSQL</parameter>, the SQL console's
+/// query, and <parameter>KINDMDX</parameter>, the MDX query tool's. A user has at most one live run of
+/// each kind, the instance's cap counts the live runs of every kind together, and a lookup by id
+/// matches the kind it is asked for. A row stored before <property>Kind</property> existed reads as
+/// <parameter>KINDSQL</parameter>.</p>
 /// <p><b>Writers.</b> <method>GuardedReserve</method> inserts the row <code>queued</code>. After
 /// <method>GuardedBegin</method> the job that began it writes its terminal state through
 /// <method>GuardedFinish</method>; meanwhile <method>GuardedCancel</method> may set the cancel flag,
@@ -28,6 +33,12 @@ Parameter STATECANCELED = "canceled";
 
 Parameter STATEFAILED = "failed";
 
+/// <p>The kind of a SQL console run, and of a row with no kind stored.</p>
+Parameter KINDSQL = "sql";
+
+/// <p>The kind of an MDX query run.</p>
+Parameter KINDMDX = "mdx";
+
 /// <p>The run lock's key for the reserve section; a run key is 32 hex characters and never this.</p>
 Parameter RESERVEKEY = "reserve";
 
@@ -44,6 +55,9 @@ Property UserName As %String(MAXLEN = 160);
 
 /// <p>The namespace the statement runs in.</p>
 Property Namespace As %String(MAXLEN = 64);
+
+/// <p>The run's kind: <parameter>KINDSQL</parameter> or <parameter>KINDMDX</parameter>.</p>
+Property Kind As %String(MAXLEN = 16) [ InitialExpression = "sql" ];
 
 /// <p>One of the five <code>STATE*</code> parameter values.</p>
 Property State As %String(MAXLEN = 16);
@@ -78,17 +92,18 @@ ClassMethod IsTerminal(pState As %String) As %Boolean
     Quit $ListFind($ListBuild(..#STATEENDED, ..#STATECANCELED, ..#STATEFAILED), pState) > 0
 }
 
-/// <p>Reserve a run of <var>pUser</var> in <var>pNamespace</var> and insert its <code>queued</code>
-/// row; <var>pKey</var> is the new run's id. In the reserve section, and in this order: every
-/// <code>queued</code> or <code>running</code> row is reconciled (<method>Reconcile</method>);
-/// <var>pBusyKey</var> is set to the user's live run's id when one remains; <var>pFull</var> is 1
-/// when the live rows number <var>pMaxRunning</var> or more; otherwise the user's ended rows are
-/// deleted and the row inserted. Neither refusal inserts anything. The section is released before the
+/// <p>Reserve a run of kind <var>pKind</var> for <var>pUser</var> in <var>pNamespace</var> and insert
+/// its <code>queued</code> row; <var>pKey</var> is the new run's id. In the reserve section, and in
+/// this order: every <code>queued</code> or <code>running</code> row is reconciled
+/// (<method>Reconcile</method>); <var>pBusyKey</var> is set to the user's live run of that kind when
+/// one remains; <var>pFull</var> is 1 when the live rows of every kind number <var>pMaxRunning</var>
+/// or more; otherwise the user's ended rows of that kind are deleted and the row inserted. Neither
+/// refusal inserts anything. The section is released before the
 /// expired rows are swept (<method>GuardedSweep</method>), whether or not a row was inserted; the
 /// sweep's status is <var>pSweepStatus</var>, and it never fails the reserve.</p>
 /// <p>A reserve section another process holds past <parameter>CAPLOCKTIMEOUT</parameter> seconds is
 /// an error status, with nothing inserted.</p>
-ClassMethod GuardedReserve(pUser As %String, pNamespace As %String, pMaxRunning As %Integer, pLimitsClass As %String, Output pKey As %String, Output pBusyKey As %String, Output pFull As %Boolean, Output pSweepStatus As %Status) As %Status
+ClassMethod GuardedReserve(pUser As %String, pNamespace As %String, pMaxRunning As %Integer, pLimitsClass As %String, Output pKey As %String, Output pBusyKey As %String, Output pFull As %Boolean, Output pSweepStatus As %Status, pKind As %String = "sql") As %Status
 {
     Set pKey = ""
     Set pBusyKey = ""
@@ -102,11 +117,11 @@ ClassMethod GuardedReserve(pUser As %String, pNamespace As %String, pMaxRunning 
         If $$$ISERR(tSC) Quit
         Set tLive = 0
         For tI = 1:1:+$Get(tIds) {
-            Set tSC = ..Reconcile(tIds(tI), pLimitsClass, .tState, .tOwner, .tRunKey)
+            Set tSC = ..Reconcile(tIds(tI), pLimitsClass, .tState, .tOwner, .tRunKey, .tKind)
             If $$$ISERR(tSC) Quit
             If '..IsTerminal(tState) && (tState '= "") {
                 Set tLive = tLive + 1
-                If (tOwner = pUser) && (pBusyKey = "") Set pBusyKey = tRunKey
+                If (tOwner = pUser) && (tKind = pKind) && (pBusyKey = "") Set pBusyKey = tRunKey
             }
         }
         If $$$ISERR(tSC) Quit
@@ -115,11 +130,15 @@ ClassMethod GuardedReserve(pUser As %String, pNamespace As %String, pMaxRunning 
             Set pFull = 1
             Quit
         }
-        Set tSC = ..GuardedExecuteOneParam("DELETE FROM OcuPilot_Kernel_State.SqlRun WHERE %EXACT(UserName) = ? AND State IN ('ended', 'canceled', 'failed')", pUser)
+        Set tParams = []
+        Do tParams.%Push(pUser, "string")
+        Do tParams.%Push(pKind, "string")
+        Set tSC = ..GuardedExecuteRows("DELETE FROM OcuPilot_Kernel_State.SqlRun WHERE %EXACT(UserName) = ? AND State IN ('ended', 'canceled', 'failed') AND COALESCE(Kind, 'sql') = ?", .tParams)
         If $$$ISERR(tSC) Quit
         Set tRow = ..%New()
         Set tRow.RunKey = ..NewKey()
         Set tRow.UserName = pUser
+        Set tRow.Kind = pKind
         Set tRow.Namespace = pNamespace
         Set tRow.State = ..#STATEQUEUED
         Set tRow.QueuedAt = ##class(OcuPilot.Kernel.State.Turn).Timestamp()
@@ -212,13 +231,14 @@ ClassMethod GuardedFinish(pKey As %String, pState As %String, pAnswerJson As %St
     Quit tSC
 }
 
-/// <p>Ask run <var>pKey</var> to stop, when <var>pUser</var> owns it; both are matched exactly.
+/// <p>Ask run <var>pKey</var> of kind <var>pKind</var> to stop, when <var>pUser</var> owns it; all
+/// three are matched exactly.
 /// <var>pFound</var> is 0 for an unknown key and for another user's run alike, and nothing is set. A
 /// <code>queued</code> or <code>running</code> row gains its cancel flag; a terminal row is left as it
 /// is. <var>pLive</var> is 1 only while the row reads <code>running</code> and its job holds the run
 /// lock, and <var>pJobId</var> is then that job's process id: the one moment a cancel may be sent to
 /// it, since a process id is reused once its process has ended.</p>
-ClassMethod GuardedCancel(pKey As %String, pUser As %String, Output pFound As %Boolean, Output pJobId As %String, Output pLive As %Boolean) As %Status
+ClassMethod GuardedCancel(pKey As %String, pUser As %String, Output pFound As %Boolean, Output pJobId As %String, Output pLive As %Boolean, pKind As %String = "sql") As %Status
 {
     Set pFound = 0
     Set pJobId = ""
@@ -227,7 +247,7 @@ ClassMethod GuardedCancel(pKey As %String, pUser As %String, Output pFound As %B
     Set tSC = $$$OK
     Try {
         For tTry = 1:1:..#WRITETRIES {
-            Set tSC = ..IdForOwner(pKey, pUser, .tId)
+            Set tSC = ..IdForOwner(pKey, pUser, .tId, pKind)
             If $$$ISERR(tSC) || (tId = "") Quit
             Set pFound = 1
             Set tRow = ""
@@ -256,18 +276,19 @@ ClassMethod GuardedCancel(pKey As %String, pUser As %String, Output pFound As %B
     Quit tSC
 }
 
-/// <p>Run <var>pKey</var> as its owner <var>pUser</var> reads it, both matched exactly in the
-/// statement's literal SQL, after a lost run is ended (<method>Reconcile</method>).
+/// <p>Run <var>pKey</var> of kind <var>pKind</var> as its owner <var>pUser</var> reads it, all three
+/// matched exactly in the statement's literal SQL, after a lost run is ended
+/// (<method>Reconcile</method>).
 /// <var>pFound</var> is 0 for an unknown key and for another user's run alike. <var>pView</var> is
 /// <code>{id, status, startedAt, endedAt, cancelRequested, result?, refusal?}</code>:
 /// <code>status</code> is <code>running</code> for a queued or running row, else the row's state;
 /// <code>result</code> is an ended run's stored answer, and <code>refusal</code> a failed run's stored
 /// envelope, each present only when one is stored.</p>
-ClassMethod GuardedViewForOwner(pKey As %String, pUser As %String, pLimitsClass As %String, Output pFound As %Boolean, Output pView As %DynamicObject) As %Status
+ClassMethod GuardedViewForOwner(pKey As %String, pUser As %String, pLimitsClass As %String, Output pFound As %Boolean, Output pView As %DynamicObject, pKind As %String = "sql") As %Status
 {
     Set pFound = 0
     Set pView = ""
-    Set tSC = ..IdForOwner(pKey, pUser, .tId)
+    Set tSC = ..IdForOwner(pKey, pUser, .tId, pKind)
     If $$$ISERR(tSC) || (tId = "") Quit tSC
     Set tSC = ..Reconcile(tId, pLimitsClass, .tState, .tOwner, .tRunKey)
     If $$$ISERR(tSC) Quit tSC
@@ -294,6 +315,17 @@ ClassMethod GuardedViewForOwner(pKey As %String, pUser As %String, pLimitsClass 
     Set pView = tView
     Set pFound = 1
     Quit $$$OK
+}
+
+/// <p>Whether the owner has asked run <var>pKey</var> to stop, read from the stored row by one
+/// statement and never from an object held across the call, so a job that polls it sees a cancel
+/// written by another process. <var>pRequested</var> is 0 for an unknown key.</p>
+ClassMethod GuardedCancelRequested(pKey As %String, Output pRequested As %Boolean) As %Status
+{
+    Set pRequested = 0
+    Set tSC = ..GuardedIdsWhere("SELECT CancelRequested FROM OcuPilot_Kernel_State.SqlRun WHERE %EXACT(RunKey) = ?", pKey, .tFlags)
+    If $$$ISOK(tSC) Set pRequested = ''+$Get(tFlags(1))
+    Quit tSC
 }
 
 /// <p>Delete every terminal run that ended more than the retention seconds of <var>pLimitsClass</var>
@@ -337,16 +369,18 @@ ClassMethod GuardedForgetUser(pUser As %String) As %Status
 /// stop, as <method>GuardedFinish</method> ends it, and <parameter>STATEFAILED</parameter> otherwise. A row another writer changed
 /// meanwhile is left as that writer left it. <var>pState</var>, <var>pOwner</var> and
 /// <var>pRunKey</var> are the row's state, owner and key as this call leaves them; <var>pState</var> is
-/// <code>""</code> when the row is gone.</p>
-ClassMethod Reconcile(pId As %String, pLimitsClass As %String, Output pState As %String, Output pOwner As %String, Output pRunKey As %String) As %Status [ Private ]
+/// <code>""</code> when the row is gone. <var>pKind</var> is the row's kind, <parameter>KINDSQL</parameter>
+/// for a row that stores none.</p>
+ClassMethod Reconcile(pId As %String, pLimitsClass As %String, Output pState As %String, Output pOwner As %String, Output pRunKey As %String, Output pKind As %String) As %Status [ Private ]
 {
-    Set (pState, pOwner, pRunKey) = ""
+    Set (pState, pOwner, pRunKey, pKind) = ""
     Set tRow = ""
     Set tSC = ..GuardedOpenId(pId, .tRow)
     If $$$ISERR(tSC) || '$IsObject(tRow) Quit $$$OK
     Set pState = tRow.State
     Set pOwner = tRow.UserName
     Set pRunKey = tRow.RunKey
+    Set pKind = $Select(..Text(tRow.Kind) = "": ..#KINDSQL, 1: tRow.Kind)
     Set tSuspect = (pState = ..#STATERUNNING)
     If pState = ..#STATEQUEUED {
         Set tQueued = ##class(OcuPilot.Kernel.State.Turn).SecondsOf(..Text(tRow.QueuedAt))
@@ -391,13 +425,15 @@ ClassMethod LockHeld(pKey As %String, Output pHeld As %Boolean) As %Status [ Pri
     Quit tSC
 }
 
-/// <p>The id of run <var>pKey</var> when <var>pUser</var> owns it, both matched exactly, or
-/// <code>""</code>.</p>
-ClassMethod IdForOwner(pKey As %String, pUser As %String, Output pId As %String) As %Status [ Private ]
+/// <p>The id of run <var>pKey</var> of kind <var>pKind</var> when <var>pUser</var> owns it, all three
+/// matched exactly, or <code>""</code>. A row that stores no kind is a <parameter>KINDSQL</parameter>
+/// run.</p>
+ClassMethod IdForOwner(pKey As %String, pUser As %String, Output pId As %String, pKind As %String = "sql") As %Status [ Private ]
 {
     Set pId = ""
-    Set tSC = ..GuardedIdsWhereTwoParam("SELECT ID FROM OcuPilot_Kernel_State.SqlRun WHERE %EXACT(RunKey) = ? AND %EXACT(UserName) = ?", pKey, pUser, .tIds)
-    If $$$ISOK(tSC) Set pId = $Get(tIds(1))
+    Set tSC = ..GuardedOpenOneWhereThreeParam("SELECT ID FROM OcuPilot_Kernel_State.SqlRun WHERE %EXACT(RunKey) = ? AND %EXACT(UserName) = ? AND COALESCE(Kind, 'sql') = ?", pKey, pUser, pKind, .tRow)
+    If $$$ISOK(tSC) && $IsObject(tRow) Set pId = tRow.%Id()
+    Set tRow = ""
     Quit tSC
 }
 

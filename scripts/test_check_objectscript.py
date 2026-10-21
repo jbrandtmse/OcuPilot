@@ -1051,12 +1051,12 @@ class TestAgentJobReachRule(FixtureTreeCase):
         co.check_agent_job_reach(problems)
         self.assertTrue(any("Port/AdminPort.cls" in p and "'JOB'" in p for p in problems), f"got {problems}")
 
-    def test_the_sql_consoles_background_run_may_spawn_its_job(self):
-        # Story 19.15: the background run's job is the fourth spawn site AD-42 names.
+    def test_the_background_run_may_spawn_its_job(self):
+        # Stories 19.15 and 20.33: the background run's job is the fourth spawn site AD-42 names, and the one class both kinds extend.
         self.write(
-            "src/OcuPilot/Area/Explorer/SqlBackground.cls",
-            "Class OcuPilot.Area.Explorer.SqlBackground Extends %RegisteredObject\n{\n\nClassMethod Spawn()\n{\n    "
-            "Job ##class(OcuPilot.Area.Explorer.SqlBackground).Run(1)::5\n}\n\n}\n",
+            "src/OcuPilot/Kernel/Shell/BackgroundRun.cls",
+            "Class OcuPilot.Kernel.Shell.BackgroundRun Extends %RegisteredObject\n{\n\nClassMethod Spawn()\n{\n    "
+            "Job ##class(OcuPilot.Kernel.Shell.BackgroundRun).Enter(1)::5\n}\n\n}\n",
         )
         problems: list[str] = []
         co.check_agent_job_reach(problems)
@@ -1070,6 +1070,15 @@ class TestAgentJobReachRule(FixtureTreeCase):
         problems = []
         co.check_agent_job_reach(problems)
         self.assertTrue(any("Area/Explorer/SqlConsole.cls" in p and "'JOB'" in p for p in problems), f"got {problems}")
+        # A kind extends the base and spawns nothing of its own: the SQL kind's class is not an allowed spawn site.
+        self.write(
+            "src/OcuPilot/Area/Explorer/SqlBackground.cls",
+            "Class OcuPilot.Area.Explorer.SqlBackground Extends OcuPilot.Kernel.Shell.BackgroundRun\n{\n\nClassMethod Spawn()\n{\n    "
+            "Job ##class(OcuPilot.Area.Explorer.SqlBackground).Run(1)::5\n}\n\n}\n",
+        )
+        problems = []
+        co.check_agent_job_reach(problems)
+        self.assertTrue(any("Area/Explorer/SqlBackground.cls" in p and "'JOB'" in p for p in problems), f"got {problems}")
 
     def test_a_state_class_naming_the_agent_package_is_refused(self):
         # Rule 7: the loop reaches the provider port, so a storage method naming it could re-enter

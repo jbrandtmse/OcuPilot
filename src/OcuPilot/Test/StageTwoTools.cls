@@ -137,6 +137,7 @@ XData Elsewhere
 <screen name="AnalyticsCubeMeasuresTab"/>
 <screen name="AnalyticsCubeRelationshipsTab"/>
 <screen name="AnalyticsFolderItemList"/>
+<screen name="AnalyticsMdxQuery"/>
 <screen name="AnalyticsTermListEntryList"/>
 <screen name="AnalyticsTermListList"/>
 <screen name="AnalyticsUserPortalLink"/>

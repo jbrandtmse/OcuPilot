@@ -129,7 +129,7 @@ Method TestCubesEqualTheVendorsAnswer()
         Set tExpected = tExpected _ $Select(tExpected = "": "", 1: ";") _ tName _ "|" _ ..Vendor("class", tName) _ "|" _ ..Vendor("facts", tName) _ "|" _ ..Vendor("build", tName)
     }
     Do $$$AssertEquals(..Flatten(tRows, "Name", "OcuPilotProbe", "Name,Class,Facts,LastBuild"), tExpected, "the probe cubes are the vendor's, with its class, fact count and last build")
-    Do $$$AssertEquals(..Flatten(tRows, "Name", "OcuPilotProbe", "Name,Class,Facts"), "OcuPilotProbeCategories|OcuPilotProbe.Analytics.CategoriesCube|5;OcuPilotProbeGuarded|OcuPilotProbe.Analytics.GuardedCube|5;OcuPilotProbeVisits|OcuPilotProbe.Analytics.VisitsCube|1000", "and the probe built three cubes of 5, 5 and 1,000 facts; the guarded one is visible to a caller holding %All")
+    Do $$$AssertEquals(..Flatten(tRows, "Name", "OcuPilotProbe", "Name,Class,Facts"), "OcuPilotProbeCategories|OcuPilotProbe.Analytics.CategoriesCube|5;OcuPilotProbeGrid|OcuPilotProbe.Analytics.GridCube|50000;OcuPilotProbeGuarded|OcuPilotProbe.Analytics.GuardedCube|5;OcuPilotProbeVisits|OcuPilotProbe.Analytics.VisitsCube|1000", "and the probe built four cubes of 5, 50,000, 5 and 1,000 facts; the guarded one is visible to a caller holding %All")
     Set tVisits = ""
     Set tIterator = tRows.%GetIterator()
     While tIterator.%GetNext(.tIndex, .tRow) {
