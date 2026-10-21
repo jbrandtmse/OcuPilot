@@ -3831,6 +3831,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-19T09:05:21Z status=routed owner=10-1-the-message-and-tool-definition-adapters by=spec_gate note=declined by the 5.1 plan because its only fix site is Api/Error.cls:375, contended by Epic 10, and AD-39 confines every fixed refusal sentence to that file so it cannot be fixed elsewhere. Routed to the Epic 10 story already editing Error.cls rather than to range-end-cleanup: that story is in the file anyway, so this costs no cleanup slot
 - 2026-09-30T03:32:46Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down decision sheet 2026-09-29: into Story 23.3 (after the following release)
 - 2026-10-11T00:42:30Z status=routed owner=23-7-the-range-end-cleanup-part-6 by=load note=re-own from range-end-cleanup: kit 2026-10-10.1 owners are story keys or burndown
+- 2026-10-21T19:44:05Z status=resolved-by:23-7-the-range-end-cleanup-part-6 by=adjudication note=f74e5331: ruled sentence (U-4) on every site, pinned by BadBodySentence+BadBodyWrongShape; CI 39654904051
 
 ### DW-1171: A dropped SecurityChange audit emission is logged as a configuration change
 - source: spec-4-12-epic-4-burn-down.md (code review) | severity: med | fix-risk: low | footprint: in-story
@@ -5956,6 +5957,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-26T09:53:52Z status=routed owner=burndown by=spec_gate note=a field-code to sentence sweep over every family needs a per-family resolver map; HELP.ROUTE pinned meanwhile
 - 2026-09-30T03:32:46Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down decision sheet 2026-09-29: into Story 23.3 (after the following release)
 - 2026-10-11T00:42:32Z status=routed owner=23-7-the-range-end-cleanup-part-6 by=load note=re-own from range-end-cleanup: kit 2026-10-10.1 owners are story keys or burndown
+- 2026-10-21T19:44:05Z status=resolved-by:23-7-the-range-end-cleanup-part-6 by=adjudication note=f74e5331: DOCDB. arm, 3 lists, sweeps of lists, router arms, prefix arms, declared codes; CI green
 
 ### DW-1387: Running the full browser suite twice against one throwaway reddens two messages-log tests, because that spec's seeded entries fall out of the rendered tail window
 - source: spec-15-4-home-s-system-information-panel.md | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -9505,6 +9507,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-18-6-licensing-and-ecp.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: LicenseRules.HandleValidate refuses any body other than {Key: string} with REASONAGENTBADBODY (:191-193); the page never sends one
 - 2026-10-03T22:14:52Z status=wontfix-accepted owner=18-6-licensing-and-ecp by=cr note=reopen_if=a client or API consumer is seen sending {Key} with another member
+- 2026-10-21T19:44:05Z status=resolved-by:23-7-the-range-end-cleanup-part-6 by=adjudication note=f74e5331: the reworded AGENT.BADBODY sentence is true for a wrong-shape body; BadBodyWrongShape pins it
 
 ### DW-1994: EXPERIENCE.md:375 and strings.ts's Story 18.6 comment say 'thirteen field labels beyond License units'; there are twelve
 - source: spec-18-6-licensing-and-ecp.md | severity: low | fix-risk: low | footprint: in-story
@@ -12305,3 +12308,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-23-7-the-range-end-cleanup-part-6.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: Turn.WorkflowViolation renders WORKFLOW.UNKNOWN on workflow with WorkflowError.ReasonFor's sentence; ReasonForToolCode has a WORKFLOW. arm and ReasonForViolation does not
 - 2026-10-21T18:35:59Z status=wontfix-theoretical owner=23-7-the-range-end-cleanup-part-6 by=cr note=no caller resolves WORKFLOW.* through ReasonForViolation; real once one does, e.g. ViolationsJson with no reason
+
+### DW-2493: flake: context-chip.browser-spec.mjs test 7 (Fresh at Send) timed out waiting 30 s for the second turn's stub reply
+- source: CI run 39654904051 (f74e5331), browser shard 3/5 | severity: med | fix-risk: med | footprint: in-epic
+- evidence: attempt 1 red at line 535 (second reply never drawn); --failed rerun green; same spec 9/9 locally on the same tree; batch 3 changed no client or turn code
+- 2026-10-21T19:44:05Z status=routed owner=burndown by=ci note=flake class per CI Is a Gate; priority for the burn-down
