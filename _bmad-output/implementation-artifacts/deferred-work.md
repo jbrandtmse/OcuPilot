@@ -11042,6 +11042,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-20-3-production-items.md | severity: low | fix-risk: med | footprint: out-of-footprint
 - evidence: Screen/Registry.cls:1685 and ui/tools/screen-mirror.mjs:1887; the sentence is pinned in CriteriaCorpus, InteropDescriptor, InteropItemDescriptor, SqlActivityDescriptor and DocDbDescriptor, across three epics
 - 2026-10-10T08:25:19Z status=wontfix-accepted owner=20-3-production-items by=cr note=reopen_if=a descriptor author is misled by it, or the next story that edits the AD-36 criteria arm
+- 2026-10-21T03:24:36Z occurrence=20-11-the-analytics-rider
+- 2026-10-21T03:24:36Z status=wontfix-accepted owner=20-11-the-analytics-rider by=cr note=reopen_if=a descriptor author is misled by it, or a story edits the criteria arm while Registry.cls is uncontended
 ### DW-2256: ExplorerSaveMint.Mint answers REASONNOTFOUND for a document the instance keeps no source for
 - source: spec-23-6-the-haiku-story-cleanup.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: ExplorerSaveMint.cls:70-74 at a3455ddb answers REASONNOTFOUND when the read's available is false; Story 23.6 adds AtelierPort.REASONNOSOURCE for that case
@@ -11686,6 +11688,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-20-27-transformations-tested.md (cr) | severity: low | fix-risk: low | footprint: in-epic
 - evidence: InteropTransformTestGate.cls ExpectedFor, ProbeAs and OnAfterAllTests against InteropTestGate.cls:82-101, :122-130, :272-296; ProbeAs is copied across 17 gate classes, the project's convention, and a shared form is past a fix-pack item.
 - 2026-10-13T10:11:55Z status=wontfix-accepted owner=20-27-transformations-tested by=cr note=reopen_if=the two classes' ExpectedFor, ProbeAs or principal removal are found to behave differently
+- 2026-10-21T03:24:36Z occurrence=20-11-the-analytics-rider
 
 ### DW-2382: Story 20.6's send reads an EDI XML request through PastedXmlHere (AD-21), pinned only through its script form, because no probe production item accepts an EDI XML document
 - source: spec-20-27-transformations-tested.md (cr) | severity: low | fix-risk: low | footprint: in-epic
@@ -12204,6 +12207,20 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-20T14:30:04Z occurrence=23-11-the-range-end-cleanup-part-10 by=cr note=also parallel.yaml:67 (slot B's browser_container comment): a missing variable is now refused, not exec'd into slot A
 - 2026-10-20T18:43:27Z status=resolved-by:373e5b68 owner=burndown by=owner note=owner OK 2026-10-20 (relayed by the Planner ocupilot-2d): both stale comments fixed in 373e5b68 (parallel.yaml slot A and B browser_container), diff verified by the orchestrator
 
+### DW-2473: Screen/Read.Execute's analytics branch repeats the interop branch line for line (route criterion, seeding, port call), differing only in the port class
+- source: spec-20-11-the-analytics-rider.md | severity: med | fix-risk: high | footprint: in-story
+- evidence: Read.cls :590-:611 against :567-:589 at review; merging them rewrites the interop branch's ElseIf in Read.cls, a roster Epics 20 and 23 both extend, where this run admits add-only edits
+- 2026-10-21T03:24:26Z status=escalated owner=burndown by=cr note=Rule 2: merge into one ElseIf naming both ports once Read.cls is not contended; decide at the decision sheet
+
+### DW-2474: Cubes' empty sentence says no cube is defined, and the cube tabs' that the cube no longer exists, when cubes are present but hidden from the caller by their resource
+- source: spec-20-11-the-analytics-rider.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: strings.ts analyticsCubesEmpty and analyticsCube*Empty, EXPERIENCE.md :604; %GetCubeList and the tabs' %CheckPrivilege hide a guarded cube, and a Relationships row links to one
+- 2026-10-21T03:24:31Z status=decision-pending owner=burndown by=cr note=user-facing wording; recommended 'No cube in this namespace is visible to you.', as Folder items words it
+
+### DW-2475: A failed fact count's JSON null is pinned only in AnalyticsPort.Rows; Collect's mapping of the vendor's failed status to an empty count is unpinned
+- source: spec-20-11-the-analytics-rider.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: deleting AnalyticsPort.cls:303 keeps every test green: TestAFailedFactCountIsNullAndAnEmptyCubeIsZero shapes rows through AnalyticsGateSeam.CubeRowFor; the vendor answers 0 with an error status
+- 2026-10-21T03:24:31Z status=wontfix-accepted owner=20-11-the-analytics-rider by=cr note=reopen_if=a cube whose fact count fails is seen answering Facts 0 on Cubes
 ### DW-2470: The dead selector .ocu-guardrails-fault stays in a shared rule in ui/src/styles/_components.scss after the Guardrails page moved to FaultBanner
 - source: spec-23-11-the-range-end-cleanup-part-10.md (batch c implement) | severity: low | fix-risk: low | footprint: in-story
 - evidence: grep -rn ocu-guardrails-fault ui/src ui/browser ui/tools finds only _components.scss:7415; no template or spec uses the class since batch c (dba8275c)

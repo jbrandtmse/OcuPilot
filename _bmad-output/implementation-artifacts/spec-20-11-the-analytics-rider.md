@@ -2,9 +2,9 @@
 title: 'Story 20.11: The Analytics rider'
 type: 'feature'
 created: '2026-10-14'
-status: 'ready-for-dev'
-baseline_revision: '673ced36dc780d0d546622f006a03ac444cfb83f'
-baseline_commit: '673ced36dc780d0d546622f006a03ac444cfb83f'
+status: 'done'
+baseline_revision: '6a8fd1f06c43a82bf989f24990c3fa267a91cd62'
+baseline_commit: '6a8fd1f06c43a82bf989f24990c3fa267a91cd62'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -123,7 +123,7 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20` (HEAD `1615
 
 **Execution:**
 
-- [ ] **Task 0: re-apply the set-aside implementation (no new product code).** Work from `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Check `git rev-parse --show-toplevel` and a clean tree first.
+- [x] **Task 0: re-apply the set-aside implementation (no new product code).** Work from `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Check `git rev-parse --show-toplevel` and a clean tree first.
   1. Run `git apply --whitespace=nowarn --3way _bmad-output/implementation-artifacts/set-aside/20-11-the-analytics-rider-1.patch`, then the same for `20-11-the-analytics-rider-1.planning.patch`. Judge each by its exit code: 1 means it left conflicts.
   2. Resolve every conflict as an append-only union that keeps both sides, then mark each path resolved with `git add -- <path>`:
      - **`ui/src/app/core/strings.ts`** (known): HEAD's 20.12 keys unmoved, then the patch's `analytics*` block, then `} as const;`.
@@ -137,7 +137,7 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20` (HEAD `1615
      - A path that shows up takes an add-only union. Any other kind of change is a `## Clarification Needed`.
   6. **Run Verification.** A red that is not a stale shared-surface assertion halts the stage with its evidence.
   - Steps 1 and 2 belong to the implement stage itself. If its handoff prompt forbids `git apply`, the stage runs them before the handoff.
-- [ ] **Pin AD-5's tab arm** in `src/OcuPilot/Test/RowTargetCorpus.cls` and `ui/tools/screen-mirror.test.mjs`. This answers the rejected-low the 2026-10-20 review left open; Decided in-stage 1 says why.
+- [x] **Pin AD-5's tab arm** in `src/OcuPilot/Test/RowTargetCorpus.cls` and `ui/tools/screen-mirror.test.mjs`. This answers the rejected-low the 2026-10-20 review left open; Decided in-stage 1 says why.
   - `DeclarationFor` and `rowTargetDeclarationFor` each take a case's `tab` object, one line each. Their doc comments name `tab` beside `archetype` and `table`.
   - `Cases` gains this case: `{"name": "a tab of a tabbed group may declare one (AD-5)", "archetype": "detail", "tab": {"group": "os-management/row-target-corpus", "position": 1, "labelKey": "lockListLabel"}, "expected": null}`.
   - The existing case "a detail archetype is not a list" keeps pinning the refusal of a `detail` screen that is no tab.
@@ -190,6 +190,59 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20` (HEAD `1615
     - USER's two flags read their recorded values;
     - USER reports no analytics.
 
+### Review Findings
+
+Code review 2026-10-21 (full-opus; blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor): 16 entries from 32 layer rows plus two of the reviewer's own (high 1, medium 5, low 10); 12 patched, 4 ledgered, 6 rejected.
+
+- [x] [Review][Patch] High: the Measures read raised `<NULL VALUE>` (500) for any cube with a calculated measure, which the vendor lists as `$LB(name, caption, type)` [src/OcuPilot/Port/AnalyticsPort.cls:318] - `$ListGet`; the guarded probe cube defines one and `TestTheCubeTabsAnswerTheModel` reads it (AC1).
+- [x] [Review][Patch] Medium: the probe's build-event delete and its `Left` count used `%SQLUPPER(CubeKey) %STARTSWITH`, which never matches, so 155 probe `CubeEvent` rows had leaked into USER on the throwaway and AC6's check could not fail [src/OcuPilot/Test/AnalyticsProbe.cls:440] - plain `CubeKey %STARTSWITH`.
+- [x] [Review][Patch] Medium: `Left`'s favorite check read the user from the probe node `Remove` kills, and its cube check ran only while USER reported analytics, so neither could fail after `Remove` [src/OcuPilot/Test/AnalyticsProbe.cls:499] - favorites are removed and checked for every user; the cube check is unguarded.
+- [x] [Review][Patch] Medium: `AnalyticsPort.Under` always answered 0, so `TestTheReadsWriteNothing` never compared a node below a root [src/OcuPilot/Test/AnalyticsPort.cls:332] - `Return 0` on a mismatch.
+- [x] [Review][Patch] Medium: `AnalyticsGate.EnsurePrincipals` copied the creation loop of the shared `InteropTestGate.CreatePrincipals` (Rule 2) [src/OcuPilot/Test/AnalyticsGate.cls:432] - it calls the shared helper.
+- [x] [Review][Patch] Low: the entries read ignored `%ToObj`'s status, so a vendor fault part-way answered 200 with a partial list [src/OcuPilot/Port/AnalyticsPort.cls:364].
+- [x] [Review][Patch] Low: `Mapped` answered a raised #940 status 500 while its doc said it answers as `Statused` does [src/OcuPilot/Port/AnalyticsPort.cls:513] - it delegates to `Statused`.
+- [x] [Review][Patch] Low: `Remove`'s doc said the first failure is the status returned; its removal steps' statuses are not kept [src/OcuPilot/Test/AnalyticsProbe.cls:401] - the doc says `Left` names what a failed step leaves.
+- [x] [Review][Patch] Low: `analytics.test.mjs`' header said the client draws the refusal sentence [ui/tools/analytics.test.mjs:4].
+- [x] [Review][Patch] Low: the AC5 mutation note named a token that does not exist [ui/browser/analytics.browser-spec.mjs:333].
+- [x] [Review][Patch] Low: the mirror test's note said the corpus criteria case reddens when `SOURCE_ANALYTICS` leaves the parent-only rule; the tabs' "criteria pass" legs do (run here) [ui/tools/screen-mirror.test.mjs:3259].
+- [x] [Review][Defer] Medium: `Screen/Read.Execute`'s analytics branch repeats the interop branch line for line (Rule 2) [src/OcuPilot/Screen/Read.cls:590] - deferred: DW-2473 escalated; merging them rewrites the interop branch in a contended roster file.
+- [x] [Review][Defer] Low: Cubes' empty sentence, and the cube tabs', are untrue when cubes are hidden by their resource [ui/src/app/core/strings.ts:7544] - deferred: DW-2474 decision-pending (user-facing wording in EXPERIENCE.md :604).
+- [x] [Review][Defer] Low: a failed fact count's null is pinned in `Rows` only, not through `Collect` [src/OcuPilot/Port/AnalyticsPort.cls:303] - deferred: DW-2475 wontfix-accepted.
+- [x] [Review][Defer] Low: the criteria refusal sentence still names five ports [src/OcuPilot/Screen/Registry.cls:1745] - deferred: DW-2277 (occurrence; re-closed).
+- [x] [Review][Defer] Low: `AnalyticsGate.ProbeAs` copies the gate classes' child-probe wrapper [src/OcuPilot/Test/AnalyticsGate.cls:336] - deferred: DW-2381 (occurrence; the project's convention).
+
+Rejected:
+
+- false: hidden levels and relationships are left out of the tabs - the classic Model Browser's `%GetMemberTree` leaves out hidden dimensions and levels too (`%DeepSee.Utils` :4400-:4607).
+- false: a `%DeepSee` call runs before the database READ checks - the analytics check before database READ is AD-65's order and the spec's.
+- low: a cube tab declared unparented, or with another criterion, passes both registries and reads 400 - developer-only, the seven declarations are pinned, and the fix adds a branch to two engines.
+- low: the entries' Key column borrows `oauthClientAlgKey` - strings are reused by value across areas (`errorLogColumnValue` in six descriptors).
+- spec edit: the Auto Run Result's counts predate QA's tests - this review re-ran them (AnalyticsPort 11, AnalyticsGate 8, AnalyticsDescriptor 5, PortGate 4, browser 5 of 5).
+- spec edit: the add-only list does not name the row-target tab arm - AD-5 as amended at `bf8bc8b7` sanctions it.
+
+### Rework (CI)
+
+- [x] [CI] browser shard 1/5: `panel.browser-spec.mjs` test 7 ("Signing out clears the panel draft and full screen; the next sign-in starts fresh") times out waiting for `app-panel aside.ocu-panel` — https://github.com/jbrandtmse/OcuPilot/actions/runs/39549375345 (attempts 1 and 2) — the defect is in `ui/src/app/core/session.ts`, not in the test or this story's code. `signOut()` settles the tab and shows the sign-in card, then awaits `/turn/abandon` (up to `SIGN_OUT_ABANDON_WAIT_MS`) and posts `/logout` with `credentials: 'include'`. A sign-in submitted in that window is answered first, and the late cookie-carrying `/logout` ends the new login: on a freshly rebuilt `ocupilot-b-ci`, `/login` answered 200 at 07:01:31.767 and `/logout` at .779, then `/agent/restraint`, `/refresh` and `/login` answered 401 and the card came back. It reproduces with feature's code alone. What the fix must do: a form submit, and every other `/login` the session client posts, waits for an in-flight sign-out's `/logout` to settle before it posts. The wait is bounded, so a hung logout cannot hold a sign-in forever (a named bound). The tab still clears and settles locally first (DW-5's order is unchanged). Pin it in `ui/tools/session.test.mjs`: with a sign-out whose `/logout` is held, a submit posts `/login` only after the logout settles; mutation: drop the wait, and that test goes red. `panel.browser-spec.mjs` stays unchanged as the browser-level pin; the lead re-runs it on a freshly rebuilt throwaway, where it failed before the fix. The wait is bounded by `LOGIN_AFTER_SIGN_OUT_WAIT_MS` (8,000 ms: the abandon's 3,000 ms plus 5,000 ms for the `/logout`).
+
+### Review Findings (rework 1)
+
+Code review 2026-10-21 of `6a8fd1f0..d9867ad8` (full-opus; four layers): 12 entries from 17 layer rows (high 0, medium 0, low 11, false 1); 4 patched, 0 ledgered, 8 rejected. The `[CI]` item is met clause by clause; AD-28 (`/logout` carries Bearer and cookie, `/refresh` unchanged) and AD-31 (abandon before `/logout`) hold; `settleWithin` is shared by both waits, not copied (Rule 2). Rule 3: `panel.browser-spec.mjs` test 7 is the browser pin, green 13 of 13 on a freshly rebuilt throwaway (the lead's run).
+
+- [x] [Review][Patch] Low: the bound's doc did not say a `/logout` slower than it can still end the sign-in it lets through [ui/src/app/core/session.ts:46] - the trade the item's named bound makes; one sentence.
+- [x] [Review][Patch] Low: two comments left wrong by the restructure - `signOut`'s "nothing the tab shows is waiting on it" and `post()`'s "`signOut()` posts `/logout`" [ui/src/app/core/session.ts:692, :1031].
+- [x] [Review][Patch] Low: the settled-sign-out test lacked the inline mutation note its four siblings carry [ui/tools/session.test.mjs:1435] - the marker mutation run here, red on that test alone.
+- [x] [Review][Patch] Low (Rule 19): the item's DW-5 clause had no `mutation:` line - applied, five tests red, reverted byte-identical; appended to the `(CI)` line.
+
+Rejected:
+
+- low: `formLogin` adopts after a sign-out that lands during its wait - needs a pre-sign-out data call answering 503 `INSTALL.UNREADABLE` mid-wait and Sign out on the notice; pre-existing shape, and the fix adds a guard (wontfix-theoretical; real if a tab is seen signed in after that Sign out).
+- low: while a `/logout` stays unanswered, each later `/login` waits the full bound again - the safer behavior, since that logout can still end a login (wontfix-accepted; reopen_if: one sign-out is seen to cost a sign-in the full bound twice with an answering instance).
+- low: the marker is per tab, so another tab's sign-in, or a reload's probe, in the `/logout` window is not held - outside the item's scope (the session client); it needs a cross-tab mechanism (wontfix-theoretical; real if a second tab's sign-in is seen ended by the first tab's `/logout`).
+- low: the bound test pins a floor, not the magnitude - the item asks for a named bound; the constant is the contract.
+- spec edit: the item and the Auto Run Result restate the bound's derivation in an oversized spec.
+- spec edit: the Spec Change Log has no entry for the CI re-open - the lead's bookkeeping.
+- false: the item was ticked before its fresh-throwaway run - the lead ran it, 13 of 13, where it failed 4 of 4 before.
+
 ## Spec Change Log
 
 - 2026-10-14, spec gate (runner): the orchestrator ruled Q1 A (Parts B, C and D are Stories 20.32, 20.33 and 20.34, chartered in `epics.md` with their criteria verbatim; order 20.11, 20.32, 20.33, 20.34, then 20.12) and Q2 A (Folder items on `%Development:USE`, a named narrower audience in AD-8). `epics.md` Story 20.11 is amended under Rule 5 (the split, and the first criterion's API reworded to the vendor's classes, apply-and-report). The new AD is AD-65 (claimed from the coordination counter), with the AD-29, AD-36, AD-8, AD-44, AD-13 and AD-7 clauses. Task 0 gains the cube `Resource` check measurement (the orchestrator's). The REST layer finding is DW-2416, decision-pending under the owner's hold.
@@ -233,6 +286,45 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20` (HEAD `1615
   - `[low]` `[reject]` No test feeds markup-bearing names - rows reach the screen through the shared table renderer, which interpolates (AD-11); the port adds no rendering.
   - `[false]` `[reject]` Seven agent read tools the intent does not name - every descriptor with a `toolIdentifier` yields one, and the spec's table names them.
 
+
+### 2026-10-20 - Review pass (the re-applied patch)
+
+- verdicts: 20 findings - high 0, medium 1, low 13, false 6, maybe-false 0 (two layers; the intent-alignment layer is descriptive, and each divergence it listed is a row)
+- findings:
+  - `[medium]` `[patch]` The `ANALYTICS.` lines of `Error.ReasonForToolCode` and `ReasonForViolation` are exercised by no test (siblings pin theirs, e.g. the Journal family) - patched: `AnalyticsDescriptor.TestTheAnalyticsCodeReadsItsOwnSentence` asserts the sentence and both resolvers; each line dropped in turn reddened it alone; mutation line written.
+  - `[low]` `[patch]` The guarded cube's Relationships-tab zero-rows leg cannot fail (the cube defines no relationship) - patched: the leg asserts the visible cube's tab only, and the doc comment says so; the other two tabs share the guard branch and still redden (mutation re-run). A second relationship would change the shared fixture's other counts (reopen_if: the Relationships guard is split from the Measures and Dimensions branch).
+  - `[low]` `[reject]` The gate's analytics-before-database-READ order has no leg for a caller lacking READ in a namespace without analytics - the difference shows only on the in-process tool path as a different refusal code, and the router's `NS.DENIED` hides it over HTTP (reopen_if: a no-analytics namespace refusal is seen naming a database pair).
+  - `[low]` `[reject]` carried: sub-clauses with no `mutation:` line of their own (strip order, navigation order, floors, the other six tools' rows) - Rule 19 asks one demonstrated mutation per AC, and each AC has at least one.
+  - `[low]` `[reject]` No record that the [re-demonstrate] and [new] mutation lines were run - the run record is this section's Auto Run Result, and the stage re-ran the [new] `strings.ts` and `rowTargetProblem` mutations itself.
+  - `[false]` `[reject]` Tests depend on environment they do not create (zoneinfo, `/usr/bin/env`, the install namespace reporting no analytics, HSLIB reporting analytics) - each asserts its precondition and fails loudly; none can pass falsely.
+  - `[low]` `[patch]` The AC3 browser leg fills `reads` after `await response.text()` and reads it as soon as the refusal draws - patched: `reads` holds the pending body, and the leg awaits it.
+  - `[low]` `[patch]` `analytics.test.mjs`' header claims the strings and tools the descriptors name must exist, which neither test checks - patched: the header names the endpoint list the mirror generator reads.
+  - `[low]` `[patch]` The `AnalyticsPort` class comment lists three test seams and `AnalyticsGateSeam` overrides `Collect` too - patched: the comment names four.
+  - `[false]` `[reject]` carried: Missing criterion is asserted through the tool roster only - `READ.CRITERION` is `Screen/Read`'s own branch, which the tool path executes.
+  - `[low]` `[reject]` carried: the cap has no leg on TermLists and Relationships, and `truncated` is read over HTTP on Cubes only - the loop is the shape the covered endpoints share.
+  - `[low]` `[reject]` carried: the browser draws the shell's `request refused`, not the 409 sentence - the sentence travels on the wire and is pinned there.
+  - `[false]` `[reject]` Folder items' pair has no real principal that lacks it - `PortGate` denies `FolderItems` naming `%Development:USE` through the gate, and the descriptor's pairs hide the screen from floors without it.
+  - `[false]` `[reject]` The database READ refusal is reached only through a child process and the seam - `AnalyticsGate` and `PortGate` pin the port's own refusal; the HTTP route answers `NS.DENIED` naming the same pair.
+  - `[low]` `[reject]` The entries table omits the `TermList` column the row carries - `InteropLookupEntryList` omits its `Table` column the same way, and the route and the id carry the list name.
+  - `[false]` `[reject]` `LastBuild` and `Modified` zones are untested against an independent source - the spec measured `GetLastUpdate` as local time and `timeModified` as UTC, and `TestTheTimeShapesAreTheInstancesLocalTime` pins the conversion in two zones.
+  - `[low]` `[reject]` carried: shared validators change in both engines beyond add-only - Decided in-stage 4 and AD-5 as amended cover the tab arm, the allowed list and the criteria rule; `origin/OCU-1-epic23` (`9b927443`) touches none of the 44 paths.
+  - `[false]` `[reject]` carried: a classic-page link on each descriptor - AD-44 (a link, never loaded or framed), and none is to Architect, Analyzer or the User Portal.
+  - `[low]` `[reject]` The Never list's negatives (no forbidden vendor call, no SQL, no `OcuPilot.*` call while switched) have no static test - the observable, no changed node, is pinned by `TestTheReadsWriteNothing` with two recorded mutations.
+  - `[low]` `[reject]` carried: no test feeds markup-bearing names - rows reach the screen through the shared table renderer, which interpolates (AD-11).
+
+### 2026-10-21 - Review pass (the CI rework)
+
+- verdicts: 9 findings - high 0, medium 0, low 3, false 6, maybe-false 0 (two layers; the intent-alignment layer is descriptive, and each divergence it listed is a row)
+- findings:
+  - `[low]` `[reject]` The identity guard that stops a settled first sign-out clearing a later one's marker is unpinned - it needs a logout that hangs past the bound and a second sign-out, and a test needs per-call logout releases (about 30 lines, past Rule 15's fifteen); reopen_if: a login is seen ended by a late first logout.
+  - `[low]` `[patch]` The bound's magnitude is unpinned (shrunk to the abandon wait plus 1 ms, all green) - patched: the bound test asserts it leaves the logout five seconds after the abandon wait; the shrink mutation reddens it alone.
+  - `[low]` `[patch]` The abandon-window test has no `mutation:` line of its own - the marker counted only once the logout is sent was applied and reddens that test alone; line written.
+  - `[false]` `[reject]` The wait's 8,000 ms equals `BACKOFF_MAX_MS`, so delay-matched timers could be mis-read - no new test arms a backoff, and each finds its one timer; nothing fails or can fail as written.
+  - `[false]` `[reject]` Part A's behavior is untouched by the diff - the dispatched item is the CI rework of the client's sign-out, and the spec names the defect as outside this story's code.
+  - `[false]` `[reject]` The defect lies outside the intent's surfaces - the same claim, from the other side; the Analytics rows are pinned by their own classes.
+  - `[false]` `[reject]` The diff's tests are unit-level - the item names them, and the browser-level pin (`panel.browser-spec.mjs`, unchanged) ran green, 13 of 13, on the redeployed bundle.
+  - `[false]` `[reject]` `signOut` and `abandonTurns` are restructured, not add-only - the add-only rule is for shared rosters; `session.ts` is on no contended list, and Epic 23 does not touch it.
+  - `[false]` `[reject]` The Auto Run Result still reads done and the mutation line seems to count five - this pass rewrites the result at finalize, and the line names seven mutations.
 
 ## Design Notes
 
@@ -447,24 +539,47 @@ Checked and not engaged:
 - mutation: the Cubes read answers `Facts` as 0 -> `AnalyticsPort.TestCubesEqualTheVendorsAnswer` and the browser AC1.
 - mutation: the Dimensions read also calls `%GetMemberTree` -> `AnalyticsPort.TestTheReadsWriteNothing`, alone.
 - mutation: Folder items reads favorites through `%GetFavoritesForUser` -> `AnalyticsPort.TestTheReadsWriteNothing` and `TestFolderItemsAnswerTheVendorsList`.
-- mutation: **[re-demonstrate]** the Relationships tab drops `rowTarget` (mirror regenerated, bundle redeployed) -> the browser AC2 related-cube leg. The registry, the mirror generator and the mirror all moved.
+- mutation: **[re-demonstrated by QA]** the Relationships tab drops `rowTarget` (mirror regenerated, bundle redeployed) -> the browser AC2 related-cube leg (`clickRowCentre: the row carries no .ocu-data-table-link`). The registry, the mirror generator and the mirror all moved.
 - mutation: `%ToObj`'s extra fields are not joined into `Fields` -> `AnalyticsPort.TestTermListsAndEntriesAnswerTheVendorsList` and the browser AC2.
 - mutation: `Admit` omits the analytics check -> `AnalyticsPort.TestANamespaceWithoutAnalyticsIsRefusedOnEveryEndpoint` and the browser AC3.
 - mutation: `Admit` omits the globals-database READ check -> `AnalyticsGate.TestAPrincipalWithoutTheDatabaseIsRefusedNamingIt`.
 - mutation: `Admit` omits the routines-database READ check -> `PortGate.TestEveryPortEvaluatesItsDeclaredGate`, in its routines leg.
 - mutation: `TERMLISTPAIRS` loses `%DeepSee_PortalEdit:USE` -> `AnalyticsGate.TestTermListsNeedTheTermListManagersPair`, `PortGate.TestEveryPortEvaluatesItsDeclaredGate` and `analytics.test.mjs`.
-- mutation: the tabs skip `%CubeExists` and `%CheckPrivilege` -> `AnalyticsGate.TestTheVendorsOwnResourceChecksStillHideWhatTheyHide`.
+- mutation: the tabs skip `%CubeExists` and `%CheckPrivilege` (the guard reads `If 1`) -> `AnalyticsGate.TestTheVendorsOwnResourceChecksStillHideWhatTheyHide`, at the reader's Measures and Dimensions legs, and `AnalyticsGate.TestAGuardedCubesRelationshipsAreHiddenFromWhoLacksItsResource`, at the Relationships leg.
 - mutation: `Screen/Tool/Read.View` drops `LastBuild` -> `AnalyticsGate.TestTheAgentsCubesReadAnswersTheScreensRows`.
 - mutation: the analytics branch of `Screen/Read` asks for `maxRows` rows rather than one more -> `AnalyticsGate.TestTheVendorsOwnResourceChecksStillHideWhatTheyHide`, at the Cap row.
 - mutation: the FolderItems loop ignores `maxRows` -> `AnalyticsPort.TestTheRequestShapesTheGateAndThePortRefuse`.
 - mutation: `LocalStamp` answers its input unconverted -> `AnalyticsPort.TestTheTimeShapesAreTheInstancesLocalTime`, in its two `TZ` legs.
 - mutation: `Fail` puts the vendor's text into the reason -> `AnalyticsPort.TestAVendorFailureIsAnsweredInThePortsWordsAndLoggedWhole`.
+- mutation: the `ANALYTICS.` line is dropped from `Error.ReasonForToolCode`, or from `ReasonForViolation` -> `AnalyticsDescriptor.TestTheAnalyticsCodeReadsItsOwnSentence`, alone, each.
 - mutation: the `AnalyticsCubeList` `Elsewhere` row is removed -> `StageTwoTools.TestTheRosterAndElsewhereAreEveryRegisteredScreen`, alone.
-- mutation: **[re-demonstrate]** `.ocu-data-table-cell` takes `color: var(--ocu-surface-container-high)` -> the browser AC5 (`analytics/cubes|contrast|dark`). The bundle it inspects changed with 20.12.
-- mutation: **[new]** the tab arm is dropped from `RowTargetProblem` -> `Descriptor.TestEveryRowTargetCorpusCaseGetsItsSentence`, at the tab case. Then the same from `rowTargetProblem` -> `screen-mirror.test.mjs`' corpus test.
+- mutation: **[re-demonstrated by QA]** `.ocu-data-table-cell` takes `color: var(--ocu-surface-container-high)` -> the browser AC5 (`analytics/cubes|contrast|dark`, also `|light`). The bundle it inspects changed with 20.12.
+- mutation: **[new]** the tab arm is dropped from `RowTargetProblem` -> `Descriptor.TestEveryRowTargetCorpusCaseGetsItsSentence`, at the tab case (the shipped Relationships tab also reddens the roster tests beside it). Then the same from `rowTargetProblem` -> `screen-mirror.test.mjs`' corpus test, at the tab case (the mirror build tests redden beside it).
 - mutation: **[new]** one word of `analyticsRefusalNamespace` changes in `strings.ts` -> `analytics.test.mjs`. `strings.ts` and EXPERIENCE.md :604 are the union's two files.
 - mutation: `Remove` skips the flag restore -> `OnAfterAllTests` of `AnalyticsPort` and `AnalyticsGate`, and the browser `after`.
 - mutation: `Remove` restores `DeepSeeEnabled` and not `iKnowEnabled` -> `OnAfterAllTests` of `AnalyticsPort`.
+- mutation: **(QA)** the Relationships endpoint alone skips the `%CubeExists` and `%CheckPrivilege` test -> `AnalyticsGate.TestAGuardedCubesRelationshipsAreHiddenFromWhoLacksItsResource`, alone.
+- mutation: **(QA)** the analytics branch of `Screen/Read` skips its required-criterion check -> `AnalyticsGate.TestAMissingCriterionIsRefusedBeforeThePort`, alone, in all six legs (the port answers `PORT.VALIDATION` instead).
+- mutation: **(QA)** `Screen/Tool/Read.View` drops the criteria it was given -> `AnalyticsGate.TestEveryReadToolAnswersItsScreensRows`, in the four tools that take one.
+- mutation: **(QA)** `Screen/Tool/Read.View` drops `LastBuild` (re-run: the tool probe now runs through `ToolLeg`) -> `AnalyticsGate.TestTheAgentsCubesReadAnswersTheScreensRows` and `TestEveryReadToolAnswersItsScreensRows`.
+- mutation: **(QA)** `FOLDERPAIRS` loses `%Development:USE` -> `AnalyticsGate.TestFolderItemsNeedTheDeveloperResource`, alone, at the viewer's port leg.
+- mutation: **(QA)** the entries join their fields with `, ` -> `AnalyticsPort.TestAMultiFieldTermListJoinsItsFieldsInOrderAndTheCapBoundsTermLists`, alone.
+- mutation: **(QA)** the TermLists loop ignores the cap -> the same test, alone, at its cap leg.
+- mutation: **(QA)** `Rows` answers a failed fact count as 0 -> `AnalyticsPort.TestAFailedFactCountIsNullAndAnEmptyCubeIsZero`, alone.
+- mutation: **(QA)** `AnalyticsCubeMeasuresTab` names `analyticsCubesEmpty` as its `emptyStateKey` (mirror regenerated, bundle redeployed) -> the browser Matrix leg, at the Measures screen.
+- mutation: **(CR)** `Collect` reads a measure's caption, type and hidden flag with `$List`, not `$ListGet` -> `AnalyticsPort.TestTheCubeTabsAnswerTheModel`, alone, at the guarded cube's calculated-measure leg (run 802).
+- mutation: **(CR)** the entries read increments a node under the probe term list -> `AnalyticsPort.TestTheReadsWriteNothing`, alone, at its TermListEntries leg (run 804); a write of an unchanged value is not seen, since the snapshot compares values.
+- mutation: **(CR)** `AnalyticsProbe.Remove` deletes build events through `%SQLUPPER(CubeKey) %STARTSWITH` -> `OnAfterAllTests` of `AnalyticsPort`, naming "build events" (run 805).
+- mutation: **(CR)** `AnalyticsProbe.Remove` keeps the probe favorites -> `OnAfterAllTests` of `AnalyticsPort`, naming the favorite's user (run 806).
+- mutation: **(CI)** `Session.postLogin` drops the wait on the in-flight sign-out -> `session.test.mjs`' four hold tests (submit, silent probe, abandon window, bound); `probeAndSettle` posting `/login` without the wait -> the silent-probe test, alone; the in-flight marker never cleared -> the settled-sign-out test, alone; `postLogin` waiting on the sign-out with no bound, or `LOGIN_AFTER_SIGN_OUT_WAIT_MS` shrunk to the abandon wait plus 1 ms -> the bound test, alone in each; the in-flight marker counted only once the `/logout` is sent -> the abandon-window test, alone; **(CR)** `signOut` running its instance half before its local half (DW-5's order) -> the two DW-5 sign-out tests, the abandon-bound test and the submit and silent-probe hold tests.
+
+**(QA) test files changed** (none created; the four analytics classes, the helper, the seam and the browser spec):
+
+- `src/OcuPilot/Test/AnalyticsProbe.cls` (QA): `CreateLinks` makes a guarded cube that defines a relationship, `CreateTermListTwo` and `DeleteTermListTwo` a second term list; `Remove` and `Left` cover both.
+- `src/OcuPilot/Test/AnalyticsGate.cls` (QA): the viewer principal, `TestAGuardedCubesRelationshipsAreHiddenFromWhoLacksItsResource`, `TestAMissingCriterionIsRefusedBeforeThePort`, `TestEveryReadToolAnswersItsScreensRows`, `TestFolderItemsNeedTheDeveloperResource`; the cube-name lists of the existing guard test count the link pair.
+- `src/OcuPilot/Test/AnalyticsPort.cls` (QA): `TestAMultiFieldTermListJoinsItsFieldsInOrderAndTheCapBoundsTermLists`, `TestAFailedFactCountIsNullAndAnEmptyCubeIsZero`, and an `OnAfterOneTest` that deletes the second term list.
+- `src/OcuPilot/Test/AnalyticsGateSeam.cls` (QA): `CubeRowFor`.
+- `ui/browser/analytics.browser-spec.mjs` (QA): the Matrix test for a cube or term list no one holds.
 
 **Evidence from the set-aside pass (`11bcb1fa`, before the merge):**
 
@@ -476,18 +591,16 @@ Checked and not engaged:
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-- **Re-plan (plan stage, 2026-10-20).**
-  - The intent contract is kept verbatim.
-  - The Code Map, Tasks, Design Notes and Verification are re-derived around the two set-aside patches; Task 0 re-applies them on `1615a2d0`.
-  - This summary replaces the earlier pass's.
-  - One addition: the tab-arm pin in `RowTargetCorpus` (Decided in-stage 1).
-- **Measured at plan:**
-  - no source path changed since `bf8bc8b7`;
-  - 10 of the patch's 42 paths moved since `eb2479f8`;
-  - the planning patch's two target lines are byte-identical at :159 and :604;
-  - `origin/OCU-1-epic23` (`132bd11f`) touches none of the 42 paths;
-  - the ledger slice is empty;
-  - the Fixed strings table holds 3,490 literals.
+- **This pass (implement, 2026-10-21): the `[CI]` rework, now ticked.**
+  - `Session.postLogin` holds every `/login` until a sign-out still in flight settles, for at most `LOGIN_AFTER_SIGN_OUT_WAIT_MS` (8,000 ms: the abandon's 3,000 plus 5,000 for the `/logout`). The form submit (`formLogin`) and the silent probe (`probeAndSettle`, which the backoff and refused-refresh re-probes share) both post through it; `/refresh` does not.
+  - The sign-out is in flight from its `/turn/abandon` until its `/logout` settles (`signOutInFlight`). The tab still clears and settles first (DW-5). The abandon's settle-or-bound logic is now `settleWithin`, shared by both waits.
+- **Files changed (3):** `ui/src/app/core/session.ts`; `ui/tools/session.test.mjs` (five tests, one helper, the constant's import); this spec (the item ticked, one `mutation:` line, the triage entry).
+- **Review:** 9 findings, 2 patched (both low), 0 deferred, 7 rejected with their reasons in the triage log. Follow-up review recommended: false (a follow-up pass that patched no high).
+- **Verification (slot B):**
+  - `session.test.mjs` 125 of 125; `test:tools` 2,057 and `test:components` 3,290 green; `tsc --noEmit -p tsconfig.app.json` clean; `npm run build` green.
+  - The bundle was redeployed to `ocupilot-b-ci` and `panel.browser-spec.mjs` passed, 13 of 13.
+  - Mutations (Rule 19), each red on the named test and reverted byte-identical: the line under Verification.
+- **Residual risk:** the panel spec failed before the fix only on a freshly started throwaway, and this one was already up, so its pass shows no regression and does not show the race closed; the runner's fresh-throwaway re-run is that check.

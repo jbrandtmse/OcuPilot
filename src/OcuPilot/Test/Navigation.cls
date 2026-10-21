@@ -575,6 +575,20 @@ Method TestThePayloadCarriesEveryAreaWithAVerdict()
             Do $$$AssertEquals($Select($IsObject(tScreen): tScreen.route _ "|" _ tScreen.labelKey, 1: ""), $List(tOrder, tAt), "interoperability position " _ tAt _ " is its declared screen, under its own label key")
         }
     }
+
+    ; Analytics (Story 20.11): its three listed screens, Cubes, Term lists and Folder items, are the area's side bar; the roster also carries the
+    ; unlisted cube tabs and a term list's entries, which sort first at position 0, by class name; an added Analytics screen updates this
+    ; count and the order with it.
+    Set tAnalytics = ##class(OcuPilot.Test.Descriptor).AreaEntry(tObject.areas, "analytics")
+    Do $$$AssertTrue($IsObject(tAnalytics), "the payload carries the analytics area")
+    If $IsObject(tAnalytics) {
+        Do $$$AssertEquals(tAnalytics.screens.%Size(), 7, "which carries its seven built screens -- an added Analytics screen updates this count and the order below with it")
+        Set tOrder = $ListBuild("analytics/cubes/dimensions|analyticsTabDimensions", "analytics/cubes/document|analyticsTabMeasures", "analytics/cubes/relationships|analyticsTabRelationships", "analytics/term-lists/entries|analyticsTermListEntriesLabel", "analytics/cubes|analyticsCubesLabel", "analytics/term-lists|analyticsTermListsLabel", "analytics/folder-items|analyticsFolderItemsLabel")
+        For tAt = 1:1:$ListLength(tOrder) {
+            Set tScreen = tAnalytics.screens.%Get(tAt - 1)
+            Do $$$AssertEquals($Select($IsObject(tScreen): tScreen.route _ "|" _ tScreen.labelKey, 1: ""), $List(tOrder, tAt), "analytics position " _ tAt _ " is its declared screen, under its own label key")
+        }
+    }
 }
 
 }

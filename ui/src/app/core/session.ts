@@ -44,6 +44,15 @@ export const TURN_ABANDON_PATH = `${API_ROOT}/turn/abandon`;
 export const SIGN_OUT_ABANDON_WAIT_MS = 3_000;
 
 /**
+ * How long a `/login` waits for a sign-out still in flight -- its abandon, then its `/logout` --
+ * before it posts anyway: the abandon's own bound plus five seconds for the `/logout` round trip.
+ * Unbounded, a logout that never answers would hold every later sign-in forever. Past the bound
+ * the `/login` posts anyway, so a `/logout` slower than that can still end the sign-in it lets
+ * through.
+ */
+export const LOGIN_AFTER_SIGN_OUT_WAIT_MS = SIGN_OUT_ABANDON_WAIT_MS + 5_000;
+
+/**
  * The states EXPERIENCE.md "Cold start, silent probe in flight" names.
  *
  * `password-expired` has **no trigger on this build**, and that is a verified negative
@@ -371,6 +380,12 @@ export class Session {
    * DW-5's failure with an extra step.
    */
   private signOutGeneration = 0;
+  /**
+   * The sign-out whose `/turn/abandon` and `/logout` are still on the wire, or null. A `/login`
+   * posted while it is set waits for it (`postLogin`): the `/logout` carries the browser-level
+   * cookie, so one that lands after a new login ends that login too (AD-28).
+   */
+  private signOutInFlight: Promise<void> | null = null;
   /** Which state a 401 settles on next -- `form` on a cold start, `session-ended` after a refresh. */
   private refusalState: SessionState = 'form';
 
@@ -614,7 +629,7 @@ export class Session {
     this.currentUserName = user;
     this.submitUnanswered = false;
     this.setState('probing');
-    const outcome = await this.post(LOGIN_PATH, JSON.stringify({ user, password }));
+    const outcome = await this.postLogin(JSON.stringify({ user, password }));
     if (outcome.kind === 'ok' && outcome.pair !== null) {
       this.adopt(outcome.pair, true);
       return true;
@@ -674,12 +689,18 @@ export class Session {
    * leaves it alive from any other, and a tab cannot know which it is.
    *
    * The method awaits the request, so a caller that awaits it sees the round trip complete --
-   * but nothing the tab shows is waiting on it.
+   * but the signed-out tab is not waiting on it; only a `/login` posted meanwhile is (below).
    *
    * **Before `/logout`, the caller's running turns are abandoned** (AD-31): the instance
    * observes no token sign-out, so a turn would otherwise run on until its lease lapses. The
    * abandon carries the same Bearer, its outcome is not read, and it is waited for at most
    * `SIGN_OUT_ABANDON_WAIT_MS` -- whichever comes first, `/logout` is posted next.
+   *
+   * **A `/login` waits for the whole of it.** The sign-out is in flight from the abandon until the
+   * `/logout` settles, and every `/login` this client posts in that window waits for it, for at
+   * most `LOGIN_AFTER_SIGN_OUT_WAIT_MS` (`postLogin`). Posted first, a sign-in would be answered
+   * and then ended by the late cookie-carrying `/logout`. The tab itself is not waiting: it is
+   * already cleared and settled.
    */
   async signOut(): Promise<void> {
     const pair = this.tokens.read();
@@ -698,6 +719,19 @@ export class Session {
     this.setState('signed-out');
 
     if (access === '') return;
+    const ended: Promise<void> = this.endOnInstance(access).finally(() => {
+      if (this.signOutInFlight === ended) this.signOutInFlight = null;
+    });
+    this.signOutInFlight = ended;
+    await ended;
+  }
+
+  /**
+   * The instance half of a sign-out: abandon the turns, then post `/logout`. Never rejects, and
+   * reads no outcome -- the tab was already cleared and settled, so there is nothing a result
+   * should change on screen.
+   */
+  private async endOnInstance(access: string): Promise<void> {
     await this.abandonTurns(access);
     try {
       await this.http(LOGOUT_PATH, {
@@ -706,18 +740,33 @@ export class Session {
         credentials: 'include',
       });
     } catch {
-      // Deliberately unread. The tab was already cleared and settled above; there is no
-      // outcome here that should change what the user sees.
+      // Deliberately unread, for the reason above.
     }
   }
 
   /**
    * Post `/turn/abandon` with `access` and no cookie (it is a data route, AD-28), and settle when
-   * it answers, fails, or
-   * `SIGN_OUT_ABANDON_WAIT_MS` passes on the injected scheduler -- whichever is first. Never
-   * rejects, and reads no outcome.
+   * it answers, fails, or `SIGN_OUT_ABANDON_WAIT_MS` passes on the injected scheduler --
+   * whichever is first. Never rejects, and reads no outcome.
    */
   private abandonTurns(access: string): Promise<void> {
+    return this.settleWithin(
+      () =>
+        this.http(TURN_ABANDON_PATH, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${access}` },
+          credentials: 'omit',
+        }),
+      SIGN_OUT_ABANDON_WAIT_MS
+    );
+  }
+
+  /**
+   * Run `work`, and settle when it settles -- resolved, rejected or thrown -- or when `boundMs`
+   * passes on the injected scheduler, whichever is first. Never rejects, and reads no outcome. The
+   * bound is armed before `work` starts.
+   */
+  private settleWithin(work: () => PromiseLike<unknown>, boundMs: number): Promise<void> {
     return new Promise<void>((resolve) => {
       let settled = false;
       const settle = () => {
@@ -725,17 +774,26 @@ export class Session {
         settled = true;
         resolve();
       };
-      this.schedule(settle, SIGN_OUT_ABANDON_WAIT_MS);
+      this.schedule(settle, boundMs);
       try {
-        this.http(TURN_ABANDON_PATH, {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${access}` },
-          credentials: 'omit',
-        }).then(settle, settle);
+        work().then(settle, settle);
       } catch {
         settle();
       }
     });
+  }
+
+  /**
+   * `POST /login` -- the form's body or the empty-body probe -- after any sign-out still in flight
+   * has settled, for at most `LOGIN_AFTER_SIGN_OUT_WAIT_MS`. With none in flight it posts at once,
+   * in the same turn, and arms no timer.
+   */
+  private postLogin(body: string | null): Promise<LoginOutcome> {
+    const pending = this.signOutInFlight;
+    if (pending === null) return this.post(LOGIN_PATH, body);
+    return this.settleWithin(() => pending, LOGIN_AFTER_SIGN_OUT_WAIT_MS).then(() =>
+      this.post(LOGIN_PATH, body)
+    );
   }
 
   private async runRefresh(): Promise<boolean> {
@@ -794,7 +852,7 @@ export class Session {
   private async probeAndSettle(authenticating: boolean): Promise<boolean> {
     const generation = this.signOutGeneration;
     if (this.currentState !== 'installing') this.setState('probing');
-    const outcome = await this.post(LOGIN_PATH, null);
+    const outcome = await this.postLogin(null);
     if (generation !== this.signOutGeneration) return false;
     if (outcome.kind === 'ok' && outcome.pair !== null) {
       this.adopt(outcome.pair, authenticating);
@@ -970,7 +1028,7 @@ export class Session {
       // A network fault is not a credential failure (DW-1), and it is not a response either
       // (DW-104): nothing answered, which is the one outcome with its own published copy and
       // its own recovery. Reported here, once, for both token endpoints that go through this
-      // method -- `/login` and `/refresh`. `signOut()` posts `/logout` with `this.http`
+      // method -- `/login` and `/refresh`. `endOnInstance()` posts `/logout` with `this.http`
       // directly and swallows its throw on purpose: the tab is already cleared and settled, so
       // there is no outcome there that should change what the user sees.
       this.report(path);
