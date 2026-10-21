@@ -4481,6 +4481,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-26T09:53:49Z status=routed owner=burndown by=spec_gate note=rule designed (check_claim_gate_containment); its count pin needs a CLAUDE.md edit in the same commit
 - 2026-09-30T03:32:45Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down decision sheet 2026-09-29: into Story 23.3 (after the following release)
 - 2026-10-11T00:42:30Z status=routed owner=23-7-the-range-end-cleanup-part-6 by=load note=re-own from range-end-cleanup: kit 2026-10-10.1 owners are story keys or burndown
+- 2026-10-21T11:29:31Z status=resolved-by:23-7-the-range-end-cleanup-part-6 by=adjudication note=2f813866: ClaimReach tree test (spellings, subclasses); five-file scan removed; no new lint rule; CI green
 
 ### DW-1212: The merge writes the model's JSON type over the instance's, so a changed value on the five WebApp.App fields the instance answers as numbers is sent back as a string
 - source: spec-5-1-the-proposal-is-minted-on-the-instance-from-a-fresh-read.md | severity: med | fix-risk: med | footprint: src/OcuPilot/Kernel/Proposal/Mint.cls
@@ -4562,6 +4563,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-28T05:08:17Z status=routed owner=range-end-cleanup by=burndown note=Epic 13 gate at 13.5: 13.2 is done; a test-coverage gap that blocks no floor or downstream story, Rule 27 overflow
 - 2026-09-30T06:34:05Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p4
 - 2026-10-11T00:42:31Z status=routed owner=23-7-the-range-end-cleanup-part-6 by=load note=re-own from range-end-cleanup: kit 2026-10-10.1 owners are story keys or burndown
+- 2026-10-21T11:29:31Z status=resolved-by:23-7-the-range-end-cleanup-part-6 by=adjudication note=2f813866: retention-gap HTTP pin; Seq is MAX(Seq)+1 (not COUNT(*)+1); CI 39588160797
 
 ### DW-1234: The conversation read's unreadable-proposal-store contract is pinned only by a scan of the handler's source text
 - source: spec-5-2-the-proposal-card-the-diff-the-user-reviews.md | severity: med | fix-risk: med | footprint: in-epic
@@ -4570,6 +4572,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-28T05:08:17Z status=routed owner=range-end-cleanup by=burndown note=Epic 13 gate at 13.5: 13.2 is done; a test-coverage gap that blocks no floor or downstream story, Rule 27 overflow
 - 2026-09-30T06:34:05Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p4
 - 2026-10-11T00:42:31Z status=routed owner=23-7-the-range-end-cleanup-part-6 by=load note=re-own from range-end-cleanup: kit 2026-10-10.1 owners are story keys or burndown
+- 2026-10-21T11:29:31Z status=resolved-by:23-7-the-range-end-cleanup-part-6 by=adjudication note=2f813866: real store failure pinned + logged; the scan was ProposalWire's, not Convo's; CI 39588160797
 
 ### DW-1235: A new index on the Proposal table is not built for rows stored before it, and nothing in the install path builds it
 - source: spec-5-2-the-proposal-card-the-diff-the-user-reviews.md | severity: low | fix-risk: low | footprint: in-epic
@@ -4700,6 +4703,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-28T05:08:17Z status=routed owner=range-end-cleanup by=burndown note=Epic 13 gate at 13.5: 13.2 is done; a test-coverage gap that blocks no floor or downstream story, Rule 27 overflow
 - 2026-09-30T06:34:05Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p4
 - 2026-10-11T00:42:31Z status=routed owner=23-7-the-range-end-cleanup-part-6 by=load note=re-own from range-end-cleanup: kit 2026-10-10.1 owners are story keys or burndown
+- 2026-10-21T11:29:31Z status=resolved-by:23-7-the-range-end-cleanup-part-6 by=adjudication note=2f813866: turn-start close driven at POST /turn (HandleCreate's was pinned already); CI 39588160797
 
 ### DW-1256: DW-412's rollback restore ships unpinned
 - source: spec-5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at.md | severity: low | fix-risk: low | footprint: in-epic
