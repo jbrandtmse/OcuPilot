@@ -1090,3 +1090,4 @@
 2026-10-21T10:58:47Z	Story 20.32	protocol_violation	stage=code-review depth=1 agent=20-32-code-review-1 violation=hand-edited_its_own_new_ledger_trailer_notes_to_shorten_them consequence=none(adds_only;ids_from_counter;ledger_loads;owner_unknown=0) detected_by=lead(review_report) outcome=accepted_as_is
 2026-10-21T10:58:47Z	Story 20.32	ledger_adjudicated	owned=0 resolved=0 reowned=0 terminal=0 slice_after=empty note=review_entries_born_terminal(DW-2480..2483) model=claude-opus-5-5
 2026-10-21T10:58:47Z	Epic 20	orchestrator_task_done	ci-timings.json_refreshed_from_run_39565299206(672_objectscript,204_browser) browser-shard_timeout-minutes=47->49(AC9_needs_47.4) test:tools=2087/2087 footprint_extensions=.github/workflows/ci.yml
+2026-10-21T11:00:20Z	Epic 20	integrated_forward	feature=a39e88c8(bookkeeping_only:20.11_merge_record) head=this_merge_commit conflicts_resolved=none story=20.32(b9107171)
