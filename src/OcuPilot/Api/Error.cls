@@ -484,8 +484,8 @@ Parameter AGENTVALIDATION = "AGENT.VALIDATION";
 Parameter AGENTNOTFOUND = "AGENT.NOTFOUND";
 
 /// <p>Machine code (AD-12, AD-39): the request body is missing, is not readable as JSON, or is not
-/// the object the request expects, so there is nothing to validate. Rendered on the <parameter>BADREQUEST</parameter> slug with
-/// <parameter>REASONAGENTBADBODY</parameter> alone.</p>
+/// the object the request expects, so there is nothing to validate. Rendered on the
+/// <parameter>BADREQUEST</parameter> slug with <parameter>REASONAGENTBADBODY</parameter> alone.</p>
 Parameter AGENTBADBODY = "AGENT.BADBODY";
 
 /// <p>Written sentence for <parameter>AGENTBADBODY</parameter> (AD-39). The raw

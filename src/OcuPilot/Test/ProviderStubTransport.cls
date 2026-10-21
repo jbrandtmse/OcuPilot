@@ -1,4 +1,6 @@
-/// <p>The scripted, recording transport as class methods: the one body behind every provider stub.</p>
+/// <p>The scripted, recording transport as class methods: the one body behind
+/// <class>OcuPilot.Test.ProviderStub</class> and the three family stubs below.
+/// <class>OcuPilot.Test.TurnProvider</class> answers turn jobs from its own instance-wide script.</p>
 /// <p><class>OcuPilot.Test.ProviderStub</class>, an <class>OcuPilot.Kernel.Provider.Anthropic</class>
 /// subclass, answers <method>IssueHttpsPost</method> with one call to <method>Transport</method>, so
 /// every stub below it gets it for free. <class>OcuPilot.Test.OpenAIStub</class>,
@@ -59,9 +61,8 @@ ClassMethod Transport(pIdentity As %String, pWatchedHeaders As %String, pRequest
     Set ^||OcuPilotProviderStub("call", tCall, "proxyPort") = pRequest.ProxyPort
     Set ^||OcuPilotProviderStub("call", tCall, "proxyHttps") = ''pRequest.ProxyHTTPS
     Set ^||OcuPilotProviderStub("call", tCall, "proxyTunnel") = ''pRequest.ProxyTunnel
-    ; Recorded raw rather than normalized with '', as the inherited stub records it: an unset
-    ; FollowRedirect reads "" and ''"" is 0, which would make "nobody set it" and "set to 0
-    ; deliberately" the same recorded value.
+    ; Recorded raw rather than normalized with '': an unset FollowRedirect reads "" and ''"" is 0,
+    ; which would make "nobody set it" and "set to 0 deliberately" the same recorded value.
     Set ^||OcuPilotProviderStub("call", tCall, "followRedirect") = $Select(pRequest.FollowRedirect = "": "unset", 1: ''pRequest.FollowRedirect)
     Set ^||OcuPilotProviderStub("call", tCall, "socketTimeout") = pRequest.SocketTimeout
     Set ^||OcuPilotProviderStub("call", tCall, "headerNames") = ..HeaderNames(pRequest, pWatchedHeaders)
@@ -183,15 +184,14 @@ ClassMethod Advance(pSeconds As %Numeric) [ Private ]
 /// <method>OcuPilot.Test.ProviderStub.ErrorLogCount</method> and
 /// <method>OcuPilot.Test.ProviderStub.ErrorLogEntry</method> read every entry a run wrote
 /// whichever stub served the call.</p>
-/// <p>The shape is <method>OcuPilot.Test.ProviderStub.ForceErrorLog</method>'s: a real
-/// <code>&lt;DIVIDE&gt;</code> rather than a <code>Throw</code>, because a <code>Throw</code>
-/// leaves <code>$ZError</code> empty and records the useless <code>&lt;LOG ENTRY&gt;</code>
-/// placeholder; the divisor comes out of a variable because the compiler folds the literal
-/// form.</p>
-/// <p><b>Public, and a class method, so a stub's own <method>ApplyAuth</method> can call it</b> as
-/// well as <method>Transport</method> -- which is what puts an entry on a run whose transport
-/// raises before reaching its own leg. That is the only reason it is not
-/// <code>[ Private ]</code> as its twin on <class>OcuPilot.Test.ProviderStub</class> is.
+/// <p>The shape is a real <code>&lt;DIVIDE&gt;</code> rather than a <code>Throw</code>, because a
+/// <code>Throw</code> leaves <code>$ZError</code> empty and records the useless
+/// <code>&lt;LOG ENTRY&gt;</code> placeholder; the divisor comes out of a variable because the
+/// compiler folds the literal form.</p>
+/// <p><b>Public, and a class method, so every stub's own <method>ApplyAuth</method> can call
+/// it</b> as well as <method>Transport</method> -- which is what puts an entry on a run whose
+/// transport raises before reaching its own leg.
+/// <method>OcuPilot.Test.ProviderStub.ForceErrorLog</method> is a call to it.
 /// <b>Guarded here as well as at its arming point</b>:
 /// <code>OCUPILOT_ALLOW_ERROR_SEED</code> must read 1, because a class-level check protects the
 /// class that declares it and not a caller that reached this another way. An application error

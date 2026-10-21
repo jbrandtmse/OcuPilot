@@ -30,9 +30,10 @@ Class OcuPilot.Test.ProviderStub Extends OcuPilot.Kernel.Provider.Anthropic
 /// adapter class actually served a call.</p>
 Parameter STUBIDENTITY = "stub";
 
-/// <p>The headers <method>OcuPilot.Test.ProviderStubTransport.HeaderNames</method> reports the presence of, comma-separated. The two
-/// the Anthropic adapter's <method>ApplyAuth</method> must set; the content type is recorded from
-/// its own property, because <method>%Net.HttpRequest.SetHeader</method> diverts that one.</p>
+/// <p>The headers <method>OcuPilot.Test.ProviderStubTransport.HeaderNames</method> reports the
+/// presence of, comma-separated. The two the Anthropic adapter's <method>ApplyAuth</method> must
+/// set; the content type is recorded from its own property, because
+/// <method>%Net.HttpRequest.SetHeader</method> diverts that one.</p>
 Parameter WATCHEDHEADERS = "x-api-key,anthropic-version";
 
 /// <p>Forget any queued script and any recording, and arm the stub for a fresh run.</p>
@@ -156,15 +157,11 @@ Method NowSeconds() As %Numeric
     Quit ..Clock()
 }
 
-/// <p>Advance the fake clock by <var>pSeconds</var>.</p>
-ClassMethod Advance(pSeconds As %Numeric) [ Private ]
-{
-    Set ^||OcuPilotProviderStub("clock") = +$Get(^||OcuPilotProviderStub("clock")) + +pSeconds
-}
-
 /// <p>Arm the transport to <b>move agent definition <var>pId</var> while it is in flight</b>: on
-/// the next call and no other, the stub edits that definition through the ordinary update path
-/// before answering.</p>
+/// the next call that serves a queued answer, and no other,
+/// <method>OcuPilot.Test.ProviderStubTransport.Transport</method> edits that definition through the
+/// ordinary update path before answering. A call that fails, times out, raises, streams or finds
+/// no script leaves the move armed.</p>
 /// <p>It exists so a test can stand where a second administrator would: the window a conditional
 /// write closes is the one between a handler's read and its save, and on Test connection that
 /// window is exactly the provider round trip. Nothing else in this suite can get inside it.</p>
@@ -266,11 +263,11 @@ ClassMethod ServedBy() As %String
 }
 
 /// <p>Record the wait and advance the fake clock by it rather than taking it, so the retry path runs
-/// at full speed and still costs the attempt deadline what a real sleep would.</p>
+/// at full speed and still costs the attempt deadline what a real sleep would. The recording is
+/// <method>OcuPilot.Test.ProviderStubTransport.Wait</method>'s, which every stub shares.</p>
 Method Wait(pSeconds As %Numeric)
 {
-    Set ^||OcuPilotProviderStub("waits") = $Get(^||OcuPilotProviderStub("waits")) _ $Select($Get(^||OcuPilotProviderStub("waits")) = "": "", 1: "|") _ +pSeconds
-    Do ..Advance(pSeconds)
+    Do ##class(OcuPilot.Test.ProviderStubTransport).Wait(pSeconds)
 }
 
 /// <p>Answer the next queued triple instead of issuing the request, through
@@ -284,26 +281,17 @@ Method IssueHttpsPost(pRequest As %Net.HttpRequest, pUrl As %String, Output pSta
     Quit ##class(OcuPilot.Test.ProviderStubTransport).Transport(..#STUBIDENTITY, ..#WATCHEDHEADERS, pRequest, pUrl, .pStatus, .pBody, .pRetryAfter, "{""content"":[{""type"":""text"",""text"":""ok""}],""stop_reason"":""end_turn"",""usage"":{""input_tokens"":1,""output_tokens"":1}}", "x-api-key")
 }
 
-/// <p>Raise one genuine, controlled runtime error inside this frame and log it to this namespace's
-/// <code>^ERRORS</code>. The shape is
-/// <method>OcuPilot.Test.ErrorLogSeed.SeedInto</method>'s: a real <code>&lt;DIVIDE&gt;</code>
-/// rather than a <code>Throw</code>, because a <code>Throw</code> leaves <code>$ZError</code> empty
-/// and records the useless <code>&lt;LOG ENTRY&gt;</code> placeholder; the divisor comes out of a
-/// variable because the compiler folds the literal form.</p>
-/// <p><b>Guarded here as well as at its queue point</b>: a class-level check protects the class
-/// that declares it, not a caller that reached this another way.</p>
+/// <p>Raise and log one application error through
+/// <method>OcuPilot.Test.ProviderStubTransport.ForceErrorLog</method>, which holds the shape and
+/// both guards, with this method's caller live on the stack. <method>ApplyAuth</method> and
+/// <class>OcuPilot.Test.ProviderStubShapeLeak</class> call it here.</p>
 Method ForceErrorLog() [ Private ]
 {
-    If $System.Util.GetEnviron("OCUPILOT_ALLOW_ERROR_SEED") '= 1 Quit
-    Try {
-        Set tZero = 0
-        Set tUnreachable = 1 / tZero
-    } Catch inner {
-        Set ^||OcuPilotProviderStubLog("entry", $Increment(^||OcuPilotProviderStubLog("entry"))) = $$LOG^%ETN()
-    }
+    Do ##class(OcuPilot.Test.ProviderStubTransport).ForceErrorLog()
 }
 
-/// <p>How many <code>^ERRORS</code> entries <method>ForceErrorLog</method> wrote.</p>
+/// <p>How many <code>^ERRORS</code> entries the run forced, through any stub: every entry
+/// <method>OcuPilot.Test.ProviderStubTransport.ForceErrorLog</method> wrote.</p>
 ClassMethod ErrorLogCount() As %Integer
 {
     Quit +$Get(^||OcuPilotProviderStubLog("entry"))
