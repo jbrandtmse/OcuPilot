@@ -4,14 +4,17 @@
 /// hidden cube's three tabs as zero rows, and is refused Term lists and a term list's entries naming
 /// <code>%DeepSee_PortalEdit:USE</code>; the same principal without READ on <code>USER</code>'s database is refused naming
 /// <code>%DB_USER:READ</code>, before any vendor call would have answered an unnamed <code>&lt;PROTECT&gt;</code>; a principal that also holds
-/// <code>%DeepSee_Admin:USE</code> and <code>%DeepSee_PortalEdit:USE</code> (the <b>editor</b>) reads all of it; and the agent's
-/// <code>analytics.cubes.read</code>, run as the reader, answers the rows the Cubes screen answers.</p>
-/// <p>The screen legs run over HTTP as each principal; the tool leg runs in a child process (<method>Probe</method>) that logs in as the
-/// reader, so this process never changes identity.</p>
+/// <code>%DeepSee_Admin:USE</code> and <code>%DeepSee_PortalEdit:USE</code> (the <b>editor</b>) reads all of it; a principal without
+/// <code>%Development:USE</code> (the <b>viewer</b>) is refused Folder items naming it; the guarded side of
+/// a relationship hides its Relationships tab from the reader; a tab or entries read with no route id is refused before the port; and
+/// each of the seven agent read tools, run as the editor, answers the rows its screen answers.</p>
+/// <p>The screen legs run over HTTP as each principal; the tool legs run in a child process (<method>Probe</method>) that logs in as the
+/// principal, so this process never changes identity.</p>
 /// <p><b>What it needs from the environment:</b> <parameter>ARMINGVARIABLE</parameter> reading <code>1</code>, because it creates and
 /// deletes users and roles named <code>OcuP2011*</code> and, through <class>OcuPilot.Test.AnalyticsProbe</class>, turns analytics on for
 /// <code>USER</code> and writes cubes, a term list and folder items there. Each principal also holds READ on the install namespace's
-/// code database, as every caller of a route must. The principals and the probe are removed after the last test.</p>
+/// code database, as every caller of a route must. The probe also makes its link pair of cubes
+/// (<method>OcuPilot.Test.AnalyticsProbe.CreateLinks</method>). The principals and the probe are removed after the last test.</p>
 Class OcuPilot.Test.AnalyticsGate Extends %UnitTest.TestCase
 {
 
@@ -22,15 +25,22 @@ Parameter PROBE = "OcuPilot.Test.AnalyticsProbe";
 Parameter NAMESPACE = "USER";
 
 /// <p>The principals, each <code>&lt;user&gt;:&lt;the pairs it holds beyond the code database's READ&gt;</code>, separated by
-/// <code>;</code>: the reader (the developer floor and READ on USER), the reader without READ on USER, and the editor, which adds the
-/// guarded resource and the term list editor's.</p>
-Parameter PRINCIPALS = "OcuP2011Reader:%Development:U,%DB_USER:R;OcuP2011NoDb:%Development:U;OcuP2011Editor:%Development:U,%DB_USER:R,%DeepSee_Admin:U,%DeepSee_PortalEdit:U";
+/// <code>;</code>: the reader (the developer floor and READ on USER), the reader without READ on USER, the editor, which adds the
+/// guarded resource and the term list editor's, and the viewer, which holds the interoperability floor (<code>%Ens_Portal:USE</code>)
+/// and READ on USER, and nothing of the developer floor.</p>
+Parameter PRINCIPALS = "OcuP2011Reader:%Development:U,%DB_USER:R;OcuP2011NoDb:%Development:U;OcuP2011Editor:%Development:U,%DB_USER:R,%DeepSee_Admin:U,%DeepSee_PortalEdit:U;OcuP2011Viewer:%Ens_Portal:U,%DB_USER:R";
 
 Parameter READER = "OcuP2011Reader";
 
 Parameter NODB = "OcuP2011NoDb";
 
 Parameter EDITOR = "OcuP2011Editor";
+
+Parameter VIEWER = "OcuP2011Viewer";
+
+/// <p>The seven agent read tools, each <code>&lt;tool&gt;|&lt;its criterion as name=value&gt;</code>, separated by <code>;</code>. A tool's
+/// screen is <code>/screens/&lt;the tool without its verb&gt;/read</code> under the same criterion.</p>
+Parameter TOOLCASES = "analytics.cubes.read|;analytics.cubemeasures.read|cube=OcuPilotProbeVisits;analytics.cubedimensions.read|cube=OcuPilotProbeVisits;analytics.cuberelationships.read|cube=OcuPilotProbeVisits;analytics.termlists.read|;analytics.termlistentries.read|termlist=OcuPilotProbeTerms;analytics.folderitems.read|";
 
 /// <p>The principals' password for this run.</p>
 Property PreparedPassword As %String;
@@ -52,6 +62,7 @@ Method OnBeforeAllTests() As %Status
     Set tSC = $ClassMethod(..#PROBE, "Remove")
     If $$$ISOK(tSC) Set tSC = $ClassMethod(..#PROBE, "Enable")
     If $$$ISOK(tSC) Set tSC = $ClassMethod(..#PROBE, "Create", ..#READER)
+    If $$$ISOK(tSC) Set tSC = $ClassMethod(..#PROBE, "CreateLinks")
     If $$$ISOK(tSC) Set tSC = ..EnsurePrincipals()
     If $$$ISERR(tSC) Set tSC = $$$ADDSC(tSC, ..OnAfterAllTests())
     Quit tSC
@@ -111,12 +122,12 @@ ClassMethod Refusal(pRaw As %String) As %String
     Quit tBody.%Get("code") _ "|" _ $Select($IsObject(tBody.%Get("detail")): tBody.detail.%Get("failedPair"), 1: "")
 }
 
-/// <p>AC3, AC1: the reader is answered the probe cubes the vendor's own resource check admits it to, and not the guarded one;
+/// <p>AC3, AC1: the reader is answered the probe cubes the vendor's own resource check admits it to, and not the guarded ones;
 /// reads each of the three tabs of a cube it may see as rows, and the guarded cube's Measures and Dimensions tabs as zero rows (the
-/// vendor's check, applied by the port before the model is read; the three tabs share that one test, and the guarded cube defines
-/// no relationship, so its Relationships tab reads none with or without it); and is answered the probe folder items less the guarded dashboard, the pivot it favorited
-/// marked. The editor, holding the guarded resource, is answered all three cubes and all three items, and the guarded cube's
-/// tabs as rows.</p>
+/// vendor's check, applied by the port before the model is read; the guarded cube defines no relationship, so the Relationships
+/// tab's guard is pinned on the link pair by <method>TestAGuardedCubesRelationshipsAreHiddenFromWhoLacksItsResource</method>); and is
+/// answered the probe folder items less the guarded dashboard, the pivot it favorited marked. The editor, holding the guarded resource,
+/// is answered all five cubes and all three items, and the guarded cube's tabs as rows.</p>
 /// <p>Mutation (Rule 19): drop the <code>%CubeExists</code> and <code>%CheckPrivilege</code> test from the tabs in
 /// <method>OcuPilot.Port.AnalyticsPort.Collect</method> -- the reader's guarded-cube tab legs go red. Dropping <code>%CheckPrivilege</code> alone
 /// does not, because the vendor's <code>%CubeExists</code> answers false for a cube its resource check hides.</p>
@@ -124,9 +135,9 @@ Method TestTheVendorsOwnResourceChecksStillHideWhatTheyHide()
 {
     Set tStatus = ..Get("/screens/analytics.cubes/read?maxRows=100", ..#READER, .tRaw)
     Do $$$AssertEquals(tStatus, 200, "the reader reads Cubes: " _ $Extract(tRaw, 1, 200))
-    Do $$$AssertEquals(..Names(tRaw, "Name", "OcuPilotProbe"), "OcuPilotProbeCategories,OcuPilotProbeVisits", "and is answered the probe cubes less the guarded one")
+    Do $$$AssertEquals(..Names(tRaw, "Name", "OcuPilotProbe"), "OcuPilotProbeCategories,OcuPilotProbeLinkOne,OcuPilotProbeVisits", "and is answered the probe cubes less the two guarded ones")
     Set tStatus = ..Get("/screens/analytics.cubes/read?maxRows=100", ..#EDITOR, .tRaw)
-    Do $$$AssertEquals(..Names(tRaw, "Name", "OcuPilotProbe"), "OcuPilotProbeCategories,OcuPilotProbeGuarded,OcuPilotProbeVisits", "the editor, holding the guarded resource, is answered all three")
+    Do $$$AssertEquals(..Names(tRaw, "Name", "OcuPilotProbe"), "OcuPilotProbeCategories,OcuPilotProbeGuarded,OcuPilotProbeLinkMany,OcuPilotProbeLinkOne,OcuPilotProbeVisits", "the editor, holding the guarded resource, is answered all five")
     Set tStatus = ..Get("/screens/analytics.cubes/read?maxRows=2", ..#EDITOR, .tRaw)
     Set tCapped = ##class(%DynamicObject).%FromJSON(tRaw)
     Do $$$AssertEquals(tStatus _ "|" _ tCapped.rows.%Size() _ "|" _ tCapped.truncated, "200|2|1", "a cap of two answers the first two cubes and says it truncated: " _ $Extract(tRaw, 1, 160))
@@ -175,6 +186,25 @@ Method TestTermListsNeedTheTermListManagersPair()
     Do $$$AssertEquals(tProbe.legs.%Get("TermLists"), "403|AUTH.NOPRIVILEGE|%DeepSee_PortalEdit:USE", "the port refuses the reader Term lists naming the pair")
     Do $$$AssertEquals(tProbe.legs.%Get("TermListEntries"), "403|AUTH.NOPRIVILEGE|%DeepSee_PortalEdit:USE", "and the entries")
     Do $$$AssertEquals(tProbe.legs.%Get("Cubes") _ ";" _ tProbe.legs.%Get("Measures") _ ";" _ tProbe.legs.%Get("FolderItems"), "200||;200||;200||", "while Cubes, a cube's tab and Folder items answer the reader")
+}
+
+/// <p>AC3: Folder items needs the Folder Manager's narrower pair: the viewer, holding the interoperability floor, the portal's pair and READ on
+/// <code>USER</code> but not <code>%Development:USE</code>, is refused 403 <code>AUTH.NOPRIVILEGE</code> naming it, on the screen and through the port, while it
+/// reads Cubes; the reader, who holds it, reads Folder items.</p>
+/// <p>Mutation (Rule 19): drop <code>%Development:USE</code> from <parameter>OcuPilot.Port.AnalyticsPort.FOLDERPAIRS</parameter> -- the viewer's
+/// port leg goes red.</p>
+Method TestFolderItemsNeedTheDeveloperResource()
+{
+    Set tStatus = ..Get("/screens/analytics.folderitems/read", ..#VIEWER, .tRaw)
+    Do $$$AssertEquals(tStatus _ "|" _ ..Refusal(tRaw), "403|AUTH.NOPRIVILEGE|%Development:USE", "the viewer is refused Folder items naming the pair: " _ $Extract(tRaw, 1, 200))
+    Set tStatus = ..Get("/screens/analytics.cubes/read", ..#VIEWER, .tRaw)
+    Do $$$AssertEquals(tStatus, 200, "while it reads Cubes: " _ $Extract(tRaw, 1, 200))
+    Set tProbe = ..ProbeAs(..#VIEWER)
+    Do $$$AssertEquals(tProbe.%Get("error") _ "|" _ tProbe.%Get("username"), "|" _ ..#VIEWER, "the port probe ran as the viewer: " _ tProbe.%ToJSON())
+    Do $$$AssertEquals(tProbe.legs.%Get("FolderItems"), "403|AUTH.NOPRIVILEGE|%Development:USE", "the port refuses the viewer Folder items naming the pair")
+    Do $$$AssertEquals(tProbe.legs.%Get("Cubes"), "200||", "and answers it Cubes")
+    Set tStatus = ..Get("/screens/analytics.folderitems/read", ..#READER, .tRaw)
+    Do $$$AssertEquals(tStatus, 200, "the reader, holding the pair, reads Folder items: " _ $Extract(tRaw, 1, 200))
 }
 
 /// <p>AC3: the reader without READ on <code>USER</code>'s database is refused by the port 403 <code>AUTH.NOPRIVILEGE</code> naming
@@ -228,6 +258,79 @@ Method TestTheAgentsCubesReadAnswersTheScreensRows()
     Do $$$AssertEquals(tToolProbe, tScreenProbe, "and the tool answers the same rows, last build and fact count included")
 }
 
+/// <p>AC3, AC1: the Relationships tab asks the vendor first too. The probe's <code>OcuPilotProbeLinkMany</code> carries the guarded
+/// resource and defines a relationship, so a caller lacking the resource reads its Relationships tab as zero rows, while the editor
+/// who holds the resource reads the relationship and the cube it relates to. The visible side's tab is read by the reader and still
+/// names the guarded cube (the named limit), so the empty tab is the guard's answer and not an empty cube.</p>
+/// <p>Mutation (Rule 19): let <method>OcuPilot.Port.AnalyticsPort.Collect</method> skip the <code>%CubeExists</code> and
+/// <code>%CheckPrivilege</code> test for the Relationships endpoint alone -- the reader's leg goes red, and the guarded-cube legs of
+/// <method>TestTheVendorsOwnResourceChecksStillHideWhatTheyHide</method> stay green.</p>
+Method TestAGuardedCubesRelationshipsAreHiddenFromWhoLacksItsResource()
+{
+    Set tMany = $Parameter(..#PROBE, "LINKMANY")
+    Set tOne = $Parameter(..#PROBE, "LINKONE")
+    Set tRel = $Parameter(..#PROBE, "LINKREL")
+    Set tInverse = $Parameter(..#PROBE, "LINKINVERSE")
+    Set tStatus = ..Get("/screens/analytics.cuberelationships/read?cube=" _ tMany, ..#EDITOR, .tRaw)
+    Do $$$AssertEquals(tStatus _ "|" _ ..Names(tRaw, "Name", "") _ "|" _ ..Names(tRaw, "RelatedCube", ""), "200|" _ tRel _ "|" _ tOne, "the editor, holding the guarded resource, reads the guarded cube's relationship: " _ $Extract(tRaw, 1, 200))
+    Set tStatus = ..Get("/screens/analytics.cuberelationships/read?cube=" _ tMany, ..#READER, .tRaw)
+    Do $$$AssertEquals(tStatus _ "|" _ ..Names(tRaw, "Name", ""), "200|", "the reader reads the guarded cube's Relationships tab as zero rows: " _ $Extract(tRaw, 1, 200))
+    Set tStatus = ..Get("/screens/analytics.cuberelationships/read?cube=" _ tOne, ..#READER, .tRaw)
+    Do $$$AssertEquals(tStatus _ "|" _ ..Names(tRaw, "Name", "") _ "|" _ ..Names(tRaw, "RelatedCube", ""), "200|" _ tInverse _ "|" _ tMany, "while the visible side's tab is read, and still names the guarded cube: " _ $Extract(tRaw, 1, 200))
+}
+
+/// <p>Matrix, Missing criterion: a cube tab or an entries read with no route id, or an empty one, is refused 400
+/// <code>READ.CRITERION</code> by the screen read before the port is called. The port's own refusal of the same shape is
+/// <code>PORT.VALIDATION</code>, so the code tells the two apart.</p>
+/// <p>Mutation (Rule 19): make the analytics branch of <method>OcuPilot.Screen.Read.Execute</method> skip its required-criterion
+/// check -- the port refuses instead, with <code>PORT.VALIDATION</code>, and every leg goes red.</p>
+Method TestAMissingCriterionIsRefusedBeforeThePort()
+{
+    For tPath = "/screens/analytics.cubemeasures/read", "/screens/analytics.cubemeasures/read?cube=", "/screens/analytics.cubedimensions/read", "/screens/analytics.cuberelationships/read" {
+        Set tStatus = ..Get(tPath, ..#READER, .tRaw)
+        Do $$$AssertEquals(tStatus _ "|" _ ..Refusal(tRaw), "400|READ.CRITERION|", "the reader's " _ tPath _ " is refused before the port: " _ $Extract(tRaw, 1, 200))
+    }
+    For tPath = "/screens/analytics.termlistentries/read", "/screens/analytics.termlistentries/read?termlist=" {
+        Set tStatus = ..Get(tPath, ..#EDITOR, .tRaw)
+        Do $$$AssertEquals(tStatus _ "|" _ ..Refusal(tRaw), "400|READ.CRITERION|", "and the editor's " _ tPath _ ": " _ $Extract(tRaw, 1, 200))
+    }
+}
+
+/// <p>AC1, AD-36: each of the seven agent read tools, run as the editor, answers the rows its screen answers the editor over HTTP,
+/// in the same order, and answers at least one, so the comparison is never of two empty reads. The four tools that take a criterion
+/// carry it as the screen's route does.</p>
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Screen.Tool.Read.View</method> drop the criteria it was given -- the four tools that take one
+/// are refused 400 and this goes red.</p>
+Method TestEveryReadToolAnswersItsScreensRows()
+{
+    Set tProbe = ..ProbeAs(..#EDITOR)
+    Do $$$AssertEquals(tProbe.%Get("error") _ "|" _ tProbe.%Get("username"), "|" _ ..#EDITOR, "the tool probe ran as the editor: " _ tProbe.%ToJSON())
+    Set tTools = tProbe.%Get("tools")
+    Do $$$AssertTrue($IsObject(tTools), "the probe answered its tools")
+    If '$IsObject(tTools) Quit
+    Do $$$AssertEquals($Length(..#TOOLCASES, ";"), 7, "the roster names the seven tools")
+    For tI = 1:1:$Length(..#TOOLCASES, ";") {
+        Set tCase = $Piece(..#TOOLCASES, ";", tI)
+        Set tTool = $Piece(tCase, "|", 1)
+        Set tCriterion = $Piece(tCase, "|", 2)
+        Set tLeg = tTools.%Get(tTool)
+        Do $$$AssertTrue($IsObject(tLeg), tTool _ ": the probe ran it")
+        If '$IsObject(tLeg) Continue
+        Do $$$AssertEquals(tLeg.%Get("http") _ "|" _ tLeg.%Get("error"), "200|", tTool _ ": the tool answers: " _ tLeg.%ToJSON())
+        Set tStatus = ..Get("/screens/" _ $Piece(tTool, ".", 1, 2) _ "/read" _ $Select(tCriterion = "": "", 1: "?" _ tCriterion), ..#EDITOR, .tRaw)
+        Do $$$AssertEquals(tStatus, 200, tTool _ ": its screen answers: " _ $Extract(tRaw, 1, 200))
+        Set tScreen = ""
+        Try { Set tScreen = ##class(%DynamicObject).%FromJSON(tRaw) } Catch {}
+        Set tToolRows = tLeg.%Get("rows")
+        If '$IsObject(tScreen) || '$IsObject(tScreen.%Get("rows")) || '$IsObject(tToolRows) {
+            Do $$$AssertTrue(0, tTool _ ": both sides carry rows")
+            Continue
+        }
+        Do $$$AssertTrue(tToolRows.%Size() > 0, tTool _ ": the tool answers at least one row")
+        Do $$$AssertEquals(tToolRows.%ToJSON(), tScreen.rows.%ToJSON(), tTool _ ": the tool's rows are its screen's")
+    }
+}
+
 /// <p>Run <method>Probe</method> as <var>pUser</var> in a child process and answer what it signalled, or an object carrying
 /// <code>error</code>.</p>
 ClassMethod ProbeAs(pUser As %String) As %DynamicObject
@@ -255,8 +358,10 @@ ClassMethod ProbeAs(pUser As %String) As %DynamicObject
 
 /// <p>The child process <method>ProbeAs</method> starts: log in as <var>pUsername</var>, read Cubes, the probe cube's measures, Term lists, the
 /// probe term list's entries and Folder items through <class>OcuPilot.Port.AnalyticsPort</class> in <var>pNamespace</var>, run the agent's
-/// <code>analytics.cubes.read</code> scoped to it, and signal <code>{loggedIn, username, legs, toolHttp, toolRows}</code> (each port leg
-/// as <code>&lt;http&gt;|&lt;code&gt;|&lt;failed pair&gt;</code>) to process <var>pParent</var>, or <code>{error}</code> when something raised.</p>
+/// seven read tools (<parameter>TOOLCASES</parameter>) scoped to it, and signal <code>{loggedIn, username, legs, tools, toolHttp,
+/// toolRows}</code> (each port leg as <code>&lt;http&gt;|&lt;code&gt;|&lt;failed pair&gt;</code>, each tool as <method>ToolLeg</method>'s
+/// answer, and <code>toolHttp</code> and <code>toolRows</code> those of <code>analytics.cubes.read</code>) to process <var>pParent</var>,
+/// or <code>{error}</code> when something raised.</p>
 ClassMethod Probe(pParent As %Integer, pUsername As %String, pNamespace As %String)
 {
     Set tOut = {}
@@ -280,56 +385,62 @@ ClassMethod Probe(pParent As %Integer, pUsername As %String, pNamespace As %Stri
         }
         Do tOut.%Set("legs", tLegs)
         Do ##class(OcuPilot.Kernel.Scope).Set(pNamespace)
-        Set tSC = ##class(OcuPilot.Screen.Tool.Registry).Resolve("analytics.cubes.read", .tTool)
-        If $$$ISERR(tSC) || '$IsObject(tTool) {
-            Do tOut.%Set("toolError", "analytics.cubes.read does not resolve")
-        } Else {
-            Set tCap = $Parameter("OcuPilot.Kernel.Agent.Limits", "TOOLROWS")
-            Set tSC = ##class(OcuPilot.Screen.Tool.Registry).InvokeTool(tTool, {}, tCap, .tResult, .tToolHttp, .tToolFault)
-            Do tOut.%Set("toolHttp", +tToolHttp, "number")
-            If $IsObject($Get(tToolFault)) Do tOut.%Set("toolError", tToolFault.%ToJSON())
-            If $IsObject($Get(tResult)) && $IsObject(tResult.%Get("rows")) Do tOut.%Set("toolRows", tResult.rows)
+        Set tCap = $Parameter("OcuPilot.Kernel.Agent.Limits", "TOOLROWS")
+        Set tTools = {}
+        For tI = 1:1:$Length(..#TOOLCASES, ";") {
+            Set tCase = $Piece(..#TOOLCASES, ";", tI)
+            Set tArgs = {}
+            If $Piece(tCase, "|", 2) '= "" Do tArgs.%Set($Piece($Piece(tCase, "|", 2), "=", 1), $Piece($Piece(tCase, "|", 2), "=", 2))
+            Do tTools.%Set($Piece(tCase, "|", 1), ..ToolLeg($Piece(tCase, "|", 1), tArgs, tCap))
         }
+        Do tOut.%Set("tools", tTools)
+        Set tCubes = tTools.%Get("analytics.cubes.read")
+        Do tOut.%Set("toolHttp", +tCubes.%Get("http"), "number")
+        If tCubes.%Get("error") '= "" Do tOut.%Set("toolError", tCubes.%Get("error"))
+        If $IsObject(tCubes.%Get("rows")) Do tOut.%Set("toolRows", tCubes.rows)
     } Catch ex {
         Do tOut.%Set("error", ex.DisplayString())
     }
     Do $System.Event.Signal(pParent, tOut.%ToJSON())
 }
 
-/// <p>Create each of <parameter>PRINCIPALS</parameter> with a role of its own holding its pairs and READ on the install namespace's
-/// code database, then read the decisive grants back.</p>
-Method EnsurePrincipals() As %Status
+/// <p>Run the agent's read tool <var>pName</var> with the arguments <var>pArgs</var>, the context cap <var>pCap</var>, as the process's
+/// user; <code>{http, rows}</code> (with <code>error</code> when the tool answered a fault), or <code>{error}</code> when it does not
+/// resolve or raised.</p>
+ClassMethod ToolLeg(pName As %String, pArgs As %DynamicObject, pCap As %Integer) As %DynamicObject
 {
-    Set tSC = $$$OK
-    Set tOrigNS = $NAMESPACE
+    Set tLeg = {}
     Try {
-        Do ##class(OcuPilot.Port.AtelierPort).DatabaseResources(tOrigNS, .tHome, .tGlobals, .tMapped, .tResolved)
-        If 'tResolved || (tHome = "") {
-            Set tSC = $$$ERROR($$$GeneralError, "the install namespace's code database could not be resolved")
+        Set tSC = ##class(OcuPilot.Screen.Tool.Registry).Resolve(pName, .tTool)
+        If $$$ISERR(tSC) || '$IsObject($Get(tTool)) {
+            Do tLeg.%Set("error", pName _ " does not resolve")
             Quit
         }
-        Set $NAMESPACE = "%SYS"
-        For tI = 1:1:$Length(..#PRINCIPALS, ";") {
-            Set tEntry = $Piece(..#PRINCIPALS, ";", tI)
-            Set tUser = $Piece(tEntry, ":", 1)
-            Set tRole = tUser _ "Role"
-            If ##class(Security.Users).Exists(tUser) Do ##class(Security.Users).Delete(tUser)
-            If ##class(Security.Roles).Exists(tRole) Do ##class(Security.Roles).Delete(tRole)
-            Set tSC = ##class(Security.Roles).Create(tRole, "OcuPilot test: the analytics gate (throwaway)", tHome _ ":R," _ $Piece(tEntry, ":", 2, *), "")
-            If $$$ISERR(tSC) Quit
-            Set tSC = ##class(Security.Users).Create(tUser, tRole, ..PreparedPassword, "OcuPilot analytics gate test principal (throwaway)", "", "", "", 0, 1, "Created by OcuPilot.Test.AnalyticsGate; deleted in OnAfterAllTests")
-            If $$$ISERR(tSC) Quit
-        }
-        Set $NAMESPACE = tOrigNS
+        Set tSC = ##class(OcuPilot.Screen.Tool.Registry).InvokeTool(tTool, pArgs, pCap, .tResult, .tHttp, .tFault)
+        Do tLeg.%Set("http", +$Get(tHttp), "number")
+        If $IsObject($Get(tFault)) Do tLeg.%Set("error", tFault.%ToJSON())
+        If $IsObject($Get(tResult)) && $IsObject(tResult.%Get("rows")) Do tLeg.%Set("rows", tResult.rows)
+    } Catch ex {
+        Do tLeg.%Set("error", ex.DisplayString())
+    }
+    Quit tLeg
+}
+
+/// <p>Create each of <parameter>PRINCIPALS</parameter> through the shared
+/// <method>OcuPilot.Test.InteropTestGate.CreatePrincipals</method> (a role of its own holding its pairs and READ on the install
+/// namespace's code database), then read the decisive grants back.</p>
+Method EnsurePrincipals() As %Status
+{
+    Set tSC = ##class(OcuPilot.Test.InteropTestGate).CreatePrincipals(..#PRINCIPALS, ..PreparedPassword, "OcuPilot.Test.AnalyticsGate")
+    Try {
         If $$$ISERR(tSC) Quit
-        For tCase = $ListBuild(..#READER, "%DB_USER", "READ", 1), $ListBuild(..#READER, "%DeepSee_PortalEdit", "USE", 0), $ListBuild(..#READER, "%DeepSee_Admin", "USE", 0), $ListBuild(..#NODB, "%DB_USER", "READ", 0), $ListBuild(..#NODB, "%Development", "USE", 1), $ListBuild(..#EDITOR, "%DeepSee_Admin", "USE", 1), $ListBuild(..#EDITOR, "%DeepSee_PortalEdit", "USE", 1) {
+        For tCase = $ListBuild(..#READER, "%DB_USER", "READ", 1), $ListBuild(..#READER, "%DeepSee_PortalEdit", "USE", 0), $ListBuild(..#READER, "%DeepSee_Admin", "USE", 0), $ListBuild(..#NODB, "%DB_USER", "READ", 0), $ListBuild(..#NODB, "%Development", "USE", 1), $ListBuild(..#EDITOR, "%DeepSee_Admin", "USE", 1), $ListBuild(..#EDITOR, "%DeepSee_PortalEdit", "USE", 1), $ListBuild(..#VIEWER, "%DB_USER", "READ", 1), $ListBuild(..#VIEWER, "%Ens_Portal", "USE", 1), $ListBuild(..#VIEWER, "%Development", "USE", 0) {
             If $SYSTEM.Security.CheckUserPermission($List(tCase, 1), $List(tCase, 2), $List(tCase, 3)) '= $List(tCase, 4) {
                 Set tSC = $$$ERROR($$$GeneralError, "the principal " _ $List(tCase, 1) _ "'s " _ $List(tCase, 2) _ ":" _ $List(tCase, 3) _ " did not read back as declared")
                 Quit
             }
         }
     } Catch ex {
-        Set $NAMESPACE = tOrigNS
         Set tSC = ex.AsStatus()
     }
     Quit tSC

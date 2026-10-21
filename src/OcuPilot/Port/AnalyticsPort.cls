@@ -314,7 +314,8 @@ ClassMethod Collect(pNamespace As %String, pEndpoint As %String, pCriterion As %
                         If tAt = "" Quit
                         If (pMax > 0) && (pData >= pMax) Quit
                         Set pData = pData + 1
-                        Set pData(pData) = $ListBuild($List(tMeasures(tAt), 1), $List(tMeasures(tAt), 2), $List(tMeasures(tAt), 3), ''$List(tMeasures(tAt), 4))
+                        ; A calculated measure is $LB(name, caption, type): it has no hidden flag.
+                        Set pData(pData) = $ListBuild($List(tMeasures(tAt), 1), $ListGet(tMeasures(tAt), 2), $ListGet(tMeasures(tAt), 3), ''$ListGet(tMeasures(tAt), 4))
                     }
                 } Else {
                     Set pVendorStatus = ##class(%DeepSee.Utils).%GetDimensionList(pCriterion, .tInfo)
@@ -357,9 +358,12 @@ ClassMethod Collect(pNamespace As %String, pEndpoint As %String, pCriterion As %
                 Set pData(pData) = $ListBuild($List(tTermLists(tAt), 1), $List(tTermLists(tAt), 2), $List(tTermLists(tAt), 3))
             }
         } ElseIf pEndpoint = ..#ENDPOINTTERMLISTENTRIES {
-            ; An unknown term list answers a status and no object: no rows, not a failure.
+            ; An unknown term list answers no object and no status: no rows, not a failure. A fault part-way sets the status and
+            ; answers the part it built, which is a failure, not a shorter list.
+            Kill tObjectStatus
             Set tObject = ##class(%DeepSee.TermList).%ToObj(pCriterion, .tObjectStatus)
-            If $IsObject(tObject) {
+            Set pVendorStatus = $Get(tObjectStatus, $$$OK)
+            If $$$ISOK(pVendorStatus) && $IsObject(tObject) {
                 For tAt = 1:1:tObject.keyList.Count() {
                     If (pMax > 0) && (pData >= pMax) Quit
                     Set tKey = tObject.keyList.GetAt(tAt)
@@ -505,22 +509,10 @@ ClassMethod Statused(pStatus As %Status, pMessage As %String, Output pHttpStatus
     Quit ..Fail(pMessage, pStatus, .pHttpStatus, .pFault)
 }
 
-/// <p>A vendor exception <var>pException</var> in this port's own words, as <method>Statused</method> answers a status.</p>
+/// <p>A vendor exception <var>pException</var> in this port's own words: its status, as <method>Statused</method> answers it.</p>
 ClassMethod Mapped(pException As %Exception.AbstractException, pMessage As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
-    Set tProtect = 0
-    Try {
-        Set tProtect = (pException.Name [ "<PROTECT>")
-    } Catch {
-        Set tProtect = 0
-    }
-    If tProtect {
-        Do ##class(OcuPilot.Kernel.Fault).Outcome(403, $$$OK, .pFault, .tDetail)
-        Set pHttpStatus = 403
-        Do ..LogFault(pMessage, pException.AsStatus(), ##class(OcuPilot.Api.Error).#PORTACCESSDENIED)
-        Quit $$$ERROR($$$GeneralError, ##class(OcuPilot.Api.Error).#PORTACCESSDENIED)
-    }
-    Quit ..Fail(pMessage, pException.AsStatus(), .pHttpStatus, .pFault)
+    Quit ..Statused(pException.AsStatus(), pMessage, .pHttpStatus, .pFault)
 }
 
 /// <p>Send a raw status to the log, and nowhere else (AD-39). Overridable so a fixture can capture the line; production never

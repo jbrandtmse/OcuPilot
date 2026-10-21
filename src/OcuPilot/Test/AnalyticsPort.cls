@@ -39,6 +39,12 @@ Method OnAfterAllTests() As %Status
     Quit tSC
 }
 
+/// <p>Delete the second term list a test may have made and left, so no test sees another's list.</p>
+Method OnAfterOneTest() As %Status
+{
+    Quit $ClassMethod(..#PROBE, "DeleteTermListTwo")
+}
+
 /// <p>One read of <var>pEndpoint</var> in <var>pNamespace</var>: the rows in <var>pRows</var>, the HTTP status and the fault.
 /// <var>pKey</var> and <var>pValue</var> name the criterion of a cube tab or a term list's entries.</p>
 ClassMethod Read(pEndpoint As %String, pNamespace As %String, pKey As %String = "", pValue As %String = "", pMax As %String = 100, Output pRows, Output pHttp As %Integer, Output pFault) As %Status
@@ -140,7 +146,9 @@ Method TestCubesEqualTheVendorsAnswer()
 /// <p>AC1, AC2: a cube's three tabs answer from the vendor's model: the Visits cube's three measures (the count, an amount and a
 /// hidden average), its three levels in model order from position 1, and its relationship to the Categories cube, which
 /// <code>%GetRelatedCube</code> names; the Categories cube names the inverse. A cube the vendor does not know, or a name in another letter
-/// case, reads as the vendor reads it.</p>
+/// case, reads as the vendor reads it. The guarded cube's calculated measure reads as a measure that is not hidden.</p>
+/// <p>Mutation (Rule 19): read a measure's hidden flag with <code>$List</code> rather than <code>$ListGet</code> in
+/// <method>OcuPilot.Port.AnalyticsPort.Collect</method> -- the calculated measure's leg goes red, answered 500.</p>
 /// <p>The tabs' refusal of a cube the vendor hides is pinned by <class>OcuPilot.Test.AnalyticsGate</class>: the guarded cube is visible
 /// to this process, which holds <code>%All</code>.</p>
 Method TestTheCubeTabsAnswerTheModel()
@@ -159,6 +167,8 @@ Method TestTheCubeTabsAnswerTheModel()
     Do $$$AssertEquals(..Flatten(tRows, "Name", "", "Name,RelatedCube"), "Visits|OcuPilotProbeVisits", "the Categories cube names the inverse")
     Set tSC = ..Read("Measures", ..#NAMESPACE, "cube", "ocupilotprobevisits", , .tRows, .tHttp, .tFault)
     Do $$$AssertEquals(..Flatten(tRows, "Name", "", "Name"), "%COUNT;Amount;Minutes", "a cube name in another letter case reads as the vendor reads it")
+    Set tSC = ..Read("Measures", ..#NAMESPACE, "cube", "OcuPilotProbeGuarded", , .tRows, .tHttp, .tFault)
+    Do $$$AssertEquals(tHttp _ "|" _ ..Flatten(tRows, "Name", "", "Name,Type,Hidden"), "200|%COUNT|integer|0;Twice|numeric|0", "a calculated measure, which the vendor lists with no hidden flag, reads as a measure that is not hidden")
     For tEndpoint = "Measures", "Dimensions", "Relationships" {
         Set tSC = ..Read(tEndpoint, ..#NAMESPACE, "cube", "NoSuchCube", , .tRows, .tHttp, .tFault)
         Do $$$AssertEquals(tHttp _ "|" _ tRows.%Size(), "200|0", tEndpoint _ ": a cube no one holds reads zero rows")
@@ -185,6 +195,46 @@ Method TestTermListsAndEntriesAnswerTheVendorsList()
     Do $$$AssertEquals(..Flatten(tRows, "Key", "", "TermList,Key,Value,Fields"), "OcuPilotProbeTerms|k1|Alpha|Note: first note;OcuPilotProbeTerms|k2|Beta|Note: second note;OcuPilotProbeTerms|k3|Gamma|Note: third note", "three entries, each with its value and its Note field")
     Set tSC = ..Read("TermListEntries", ..#NAMESPACE, "termlist", "NoSuchTermList", , .tRows, .tHttp, .tFault)
     Do $$$AssertEquals(tHttp _ "|" _ tRows.%Size(), "200|0", "a term list no one holds reads zero rows")
+}
+
+/// <p>AC1: a term list with two extra fields answers each entry's <code>Fields</code> as the fields in the list's own order, each as
+/// <code>&lt;field&gt;: &lt;value&gt;</code> and the fields joined with <code>; </code>; and a cap of one bounds Term lists to one row
+/// while two lists exist. The second list exists for this test alone, created by
+/// <method>OcuPilot.Test.AnalyticsProbe.CreateTermListTwo</method> and deleted before it ends.</p>
+/// <p>Mutation (Rule 19): join the fields with <code>, </code> in <method>OcuPilot.Port.AnalyticsPort.Collect</method> -- the entries leg
+/// goes red; make the Term lists loop ignore the cap -- the cap leg goes red.</p>
+Method TestAMultiFieldTermListJoinsItsFieldsInOrderAndTheCapBoundsTermLists()
+{
+    Set tSC = $ClassMethod(..#PROBE, "CreateTermListTwo")
+    Do $$$AssertStatusOK(tSC, "the second term list is created")
+    If $$$ISOK(tSC) {
+        Set tTwo = $Parameter(..#PROBE, "TERMLISTTWO")
+        Set tSC = ..Read("TermLists", ..#NAMESPACE, , , , .tRows, .tHttp, .tFault)
+        Do $$$AssertEquals(tHttp _ "|" _ ..Flatten(tRows, "Name", "OcuPilotProbe", "Name"), "200|OcuPilotProbeTerms;" _ tTwo, "Term lists reads both probe lists")
+        Set tSC = ..Read("TermLists", ..#NAMESPACE, , , 1, .tRows, .tHttp, .tFault)
+        Do $$$AssertEquals(tHttp _ "|" _ tRows.%Size(), "200|1", "and a cap of one bounds it to one row")
+        Set tSC = ..Read("TermListEntries", ..#NAMESPACE, "termlist", tTwo, , .tRows, .tHttp, .tFault)
+        Do $$$AssertEquals(tHttp _ "|" _ ..Flatten(tRows, "Key", "", "TermList,Key,Value,Fields"), "200|" _ tTwo _ "|z1|Zed|Note: zed note; Tag: zed tag", "the entry joins its two fields in the list's order, with a semicolon and a space")
+    }
+    Set tSC = $ClassMethod(..#PROBE, "DeleteTermListTwo")
+    Do $$$AssertStatusOK(tSC, "and it is deleted")
+    Set tSC = ..Read("TermLists", ..#NAMESPACE, , , , .tRows, .tHttp, .tFault)
+    Do $$$AssertEquals(..Flatten(tRows, "Name", "OcuPilotProbe", "Name"), "OcuPilotProbeTerms", "leaving the probe's first list alone")
+}
+
+/// <p>AC1: a cube whose fact count failed answers <code>Facts</code> as JSON null, and a cube with no facts answers 0, so an empty cube
+/// and an unreadable count are told apart. The rows are shaped from raw values through
+/// <method>OcuPilot.Test.AnalyticsGateSeam.CubeRowFor</method>, without a vendor call.</p>
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Port.AnalyticsPort.Rows</method> answer a failed count as 0 -- the null leg goes red.</p>
+Method TestAFailedFactCountIsNullAndAnEmptyCubeIsZero()
+{
+    Set tSeam = "OcuPilot.Test.AnalyticsGateSeam"
+    Set tFailed = $ClassMethod(tSeam, "CubeRowFor", "")
+    Do $$$AssertEquals(tFailed.%GetTypeOf("Facts"), "null", "a count that failed is JSON null")
+    Set tEmpty = $ClassMethod(tSeam, "CubeRowFor", 0)
+    Do $$$AssertEquals(tEmpty.%GetTypeOf("Facts") _ "|" _ tEmpty.Facts, "number|0", "a cube with no facts is the number 0")
+    Set tFull = $ClassMethod(tSeam, "CubeRowFor", 1000)
+    Do $$$AssertEquals(tFull.%GetTypeOf("Facts") _ "|" _ tFull.Facts, "number|1000", "and a cube with facts is its count")
 }
 
 /// <p>AC1: Folder items answers the probe's three items with their types, owner and local modified time, and marks as a favorite the
@@ -279,9 +329,9 @@ ClassMethod Under(pNode As %String, pRoot As %String) As %Boolean
 {
     If $QLength(pNode) < $QLength(pRoot) Quit 0
     For tI = 0:1:$QLength(pRoot) {
-        If $QSubscript(pNode, tI) '= $QSubscript(pRoot, tI) Quit
+        If $QSubscript(pNode, tI) '= $QSubscript(pRoot, tI) Return 0
     }
-    Quit (tI > $QLength(pRoot))
+    Quit 1
 }
 
 /// <p>AC1: the two time shapes the port answers are the instance's local <code>YYYY-MM-DD HH:MM:SS</code>. A last build is the vendor's

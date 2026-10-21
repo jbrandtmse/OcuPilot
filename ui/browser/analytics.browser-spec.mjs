@@ -5,7 +5,8 @@
  * What it pins: in `USER`, whose probe analytics objects this spec creates (and for which it turns analytics on), the side bar's
  * Analytics entries are Cubes, Term lists and Folder items, and each list's rows equal what the vendor's own classes answer; a Cubes
  * name cell opens the cube's Measures tab under a strip of Measures, Dimensions and Relationships, the Relationships row opens the
- * related cube's Measures tab, and a Term lists name cell opens the list's entries with the `Note` field shown; in `HSCUSTOM`, which
+ * related cube's Measures tab, and a Term lists name cell opens the list's entries with the `Note` field shown; a cube or term list no
+ * one holds draws its tab's own empty sentence and no row; in `HSCUSTOM`, which
  * is not analytics-enabled, a direct Cubes route shows the refusal sentence; and each of the seven screens passes the structural and
  * contrast checks at 1280 light, 720 light and 1280 dark, with no entry beyond the baseline (DW-1337).
  *
@@ -280,6 +281,30 @@ test('AC2: a Cubes name cell opens the cube\'s model, a Relationships row the re
   }
 });
 
+// Matrix, Unknown cube. Mutation (Rule 19): point the Measures tab's `emptyStateKey` at `analyticsCubesEmpty` in `AnalyticsCubeMeasuresTab.cls`
+// (mirror regenerated, bundle rebuilt and redeployed) -> the Measures leg draws the Cubes sentence and goes red.
+test('Matrix: a cube or term list no one holds draws its tab\'s empty sentence and no row', async () => {
+  const unknown = 'OcuPilotProbeNoSuchOne';
+  const screens = [
+    { route: GROUP, empty: STRINGS.analyticsCubeMeasuresEmpty },
+    { route: DIMENSIONS, empty: STRINGS.analyticsCubeDimensionsEmpty },
+    { route: RELATIONSHIPS, empty: STRINGS.analyticsCubeRelationshipsEmpty },
+    { route: ENTRIES, empty: STRINGS.analyticsTermListEntriesEmpty },
+  ];
+  assert.equal(new Set(screens.map((screen) => screen.empty)).size, screens.length, 'the four screens have four sentences of their own');
+  for (const screen of screens) {
+    const { context, page } = await signedInAt(browser, config, `/ocupilot/${screen.route}/${encodeEntityId(unknown)}?ns=USER`, VIEWPORTS.wide, REDUCED_MOTION);
+    try {
+      await waitForMapAnswered(page, config.navigationTimeoutMs);
+      await page.waitForSelector('.ocu-data-table-empty-title', { timeout: config.navigationTimeoutMs });
+      assert.equal(await page.$eval('.ocu-data-table-empty-title', (node) => node.textContent.trim()), screen.empty, `${screen.route}: the tab draws its own empty sentence`);
+      assert.equal((await allRows(page)).length, 0, `${screen.route}: and no row`);
+    } finally {
+      await context.close();
+    }
+  }
+});
+
 // AC3. Mutation (Rule 19): drop the analytics check from `AnalyticsPort.Admit` -> the read answers 200 with no rows, the 409 wait
 // goes red; reload the class first. The page draws the shell's own read refusal, not the sentence: a read refusal's text is the shell's
 // (`ReadRefusal`), and the sentence travels on the wire.
@@ -305,8 +330,8 @@ test('AC3: a direct Cubes route in a namespace without analytics is refused 409 
   }
 });
 
-// AC5. Mutation (Rule 19): give a list cell a pale colour (`--ocu-color-text-muted` to `#cccccc` in `_components.scss`) -> the contrast
-// entry is fresh and this goes red; rebuild and redeploy first.
+// AC5. Mutation (Rule 19): give `.ocu-data-table-cell` the colour `var(--ocu-surface-container-high)` in `shell/data-table.ts` -> the
+// `analytics/cubes|contrast` entries are fresh and this goes red; rebuild and redeploy first.
 test('AC5: each of the seven screens passes the structural and contrast checks at 1280 light, 720 light and 1280 dark', async () => {
   const screens = [
     { route: CUBES, url: url(CUBES) },

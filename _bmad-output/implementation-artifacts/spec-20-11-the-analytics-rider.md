@@ -190,6 +190,36 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20` (HEAD `1615
     - USER's two flags read their recorded values;
     - USER reports no analytics.
 
+### Review Findings
+
+Code review 2026-10-21 (full-opus; blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor): 16 entries from 32 layer rows plus two of the reviewer's own (high 1, medium 5, low 10); 12 patched, 4 ledgered, 6 rejected.
+
+- [x] [Review][Patch] High: the Measures read raised `<NULL VALUE>` (500) for any cube with a calculated measure, which the vendor lists as `$LB(name, caption, type)` [src/OcuPilot/Port/AnalyticsPort.cls:318] - `$ListGet`; the guarded probe cube defines one and `TestTheCubeTabsAnswerTheModel` reads it (AC1).
+- [x] [Review][Patch] Medium: the probe's build-event delete and its `Left` count used `%SQLUPPER(CubeKey) %STARTSWITH`, which never matches, so 155 probe `CubeEvent` rows had leaked into USER on the throwaway and AC6's check could not fail [src/OcuPilot/Test/AnalyticsProbe.cls:440] - plain `CubeKey %STARTSWITH`.
+- [x] [Review][Patch] Medium: `Left`'s favorite check read the user from the probe node `Remove` kills, and its cube check ran only while USER reported analytics, so neither could fail after `Remove` [src/OcuPilot/Test/AnalyticsProbe.cls:499] - favorites are removed and checked for every user; the cube check is unguarded.
+- [x] [Review][Patch] Medium: `AnalyticsPort.Under` always answered 0, so `TestTheReadsWriteNothing` never compared a node below a root [src/OcuPilot/Test/AnalyticsPort.cls:332] - `Return 0` on a mismatch.
+- [x] [Review][Patch] Medium: `AnalyticsGate.EnsurePrincipals` copied the creation loop of the shared `InteropTestGate.CreatePrincipals` (Rule 2) [src/OcuPilot/Test/AnalyticsGate.cls:432] - it calls the shared helper.
+- [x] [Review][Patch] Low: the entries read ignored `%ToObj`'s status, so a vendor fault part-way answered 200 with a partial list [src/OcuPilot/Port/AnalyticsPort.cls:364].
+- [x] [Review][Patch] Low: `Mapped` answered a raised #940 status 500 while its doc said it answers as `Statused` does [src/OcuPilot/Port/AnalyticsPort.cls:513] - it delegates to `Statused`.
+- [x] [Review][Patch] Low: `Remove`'s doc said the first failure is the status returned; its removal steps' statuses are not kept [src/OcuPilot/Test/AnalyticsProbe.cls:401] - the doc says `Left` names what a failed step leaves.
+- [x] [Review][Patch] Low: `analytics.test.mjs`' header said the client draws the refusal sentence [ui/tools/analytics.test.mjs:4].
+- [x] [Review][Patch] Low: the AC5 mutation note named a token that does not exist [ui/browser/analytics.browser-spec.mjs:333].
+- [x] [Review][Patch] Low: the mirror test's note said the corpus criteria case reddens when `SOURCE_ANALYTICS` leaves the parent-only rule; the tabs' "criteria pass" legs do (run here) [ui/tools/screen-mirror.test.mjs:3259].
+- [x] [Review][Defer] Medium: `Screen/Read.Execute`'s analytics branch repeats the interop branch line for line (Rule 2) [src/OcuPilot/Screen/Read.cls:590] - deferred: DW-2473 escalated; merging them rewrites the interop branch in a contended roster file.
+- [x] [Review][Defer] Low: Cubes' empty sentence, and the cube tabs', are untrue when cubes are hidden by their resource [ui/src/app/core/strings.ts:7544] - deferred: DW-2474 decision-pending (user-facing wording in EXPERIENCE.md :604).
+- [x] [Review][Defer] Low: a failed fact count's null is pinned in `Rows` only, not through `Collect` [src/OcuPilot/Port/AnalyticsPort.cls:303] - deferred: DW-2475 wontfix-accepted.
+- [x] [Review][Defer] Low: the criteria refusal sentence still names five ports [src/OcuPilot/Screen/Registry.cls:1745] - deferred: DW-2277 (occurrence; re-closed).
+- [x] [Review][Defer] Low: `AnalyticsGate.ProbeAs` copies the gate classes' child-probe wrapper [src/OcuPilot/Test/AnalyticsGate.cls:336] - deferred: DW-2381 (occurrence; the project's convention).
+
+Rejected:
+
+- false: hidden levels and relationships are left out of the tabs - the classic Model Browser's `%GetMemberTree` leaves out hidden dimensions and levels too (`%DeepSee.Utils` :4400-:4607).
+- false: a `%DeepSee` call runs before the database READ checks - the analytics check before database READ is AD-65's order and the spec's.
+- low: a cube tab declared unparented, or with another criterion, passes both registries and reads 400 - developer-only, the seven declarations are pinned, and the fix adds a branch to two engines.
+- low: the entries' Key column borrows `oauthClientAlgKey` - strings are reused by value across areas (`errorLogColumnValue` in six descriptors).
+- spec edit: the Auto Run Result's counts predate QA's tests - this review re-ran them (AnalyticsPort 11, AnalyticsGate 8, AnalyticsDescriptor 5, PortGate 4, browser 5 of 5).
+- spec edit: the add-only list does not name the row-target tab arm - AD-5 as amended at `bf8bc8b7` sanctions it.
+
 ## Spec Change Log
 
 - 2026-10-14, spec gate (runner): the orchestrator ruled Q1 A (Parts B, C and D are Stories 20.32, 20.33 and 20.34, chartered in `epics.md` with their criteria verbatim; order 20.11, 20.32, 20.33, 20.34, then 20.12) and Q2 A (Folder items on `%Development:USE`, a named narrower audience in AD-8). `epics.md` Story 20.11 is amended under Rule 5 (the split, and the first criterion's API reworded to the vendor's classes, apply-and-report). The new AD is AD-65 (claimed from the coordination counter), with the AD-29, AD-36, AD-8, AD-44, AD-13 and AD-7 clauses. Task 0 gains the cube `Resource` check measurement (the orchestrator's). The REST layer finding is DW-2416, decision-pending under the owner's hold.
@@ -472,13 +502,13 @@ Checked and not engaged:
 - mutation: the Cubes read answers `Facts` as 0 -> `AnalyticsPort.TestCubesEqualTheVendorsAnswer` and the browser AC1.
 - mutation: the Dimensions read also calls `%GetMemberTree` -> `AnalyticsPort.TestTheReadsWriteNothing`, alone.
 - mutation: Folder items reads favorites through `%GetFavoritesForUser` -> `AnalyticsPort.TestTheReadsWriteNothing` and `TestFolderItemsAnswerTheVendorsList`.
-- mutation: **[re-demonstrate]** the Relationships tab drops `rowTarget` (mirror regenerated, bundle redeployed) -> the browser AC2 related-cube leg. The registry, the mirror generator and the mirror all moved.
+- mutation: **[re-demonstrated by QA]** the Relationships tab drops `rowTarget` (mirror regenerated, bundle redeployed) -> the browser AC2 related-cube leg (`clickRowCentre: the row carries no .ocu-data-table-link`). The registry, the mirror generator and the mirror all moved.
 - mutation: `%ToObj`'s extra fields are not joined into `Fields` -> `AnalyticsPort.TestTermListsAndEntriesAnswerTheVendorsList` and the browser AC2.
 - mutation: `Admit` omits the analytics check -> `AnalyticsPort.TestANamespaceWithoutAnalyticsIsRefusedOnEveryEndpoint` and the browser AC3.
 - mutation: `Admit` omits the globals-database READ check -> `AnalyticsGate.TestAPrincipalWithoutTheDatabaseIsRefusedNamingIt`.
 - mutation: `Admit` omits the routines-database READ check -> `PortGate.TestEveryPortEvaluatesItsDeclaredGate`, in its routines leg.
 - mutation: `TERMLISTPAIRS` loses `%DeepSee_PortalEdit:USE` -> `AnalyticsGate.TestTermListsNeedTheTermListManagersPair`, `PortGate.TestEveryPortEvaluatesItsDeclaredGate` and `analytics.test.mjs`.
-- mutation: the tabs skip `%CubeExists` and `%CheckPrivilege` (the guard reads `If 1`) -> `AnalyticsGate.TestTheVendorsOwnResourceChecksStillHideWhatTheyHide`, at the reader's Measures and Dimensions legs. The guarded cube defines no relationship, so its Relationships leg is not asserted.
+- mutation: the tabs skip `%CubeExists` and `%CheckPrivilege` (the guard reads `If 1`) -> `AnalyticsGate.TestTheVendorsOwnResourceChecksStillHideWhatTheyHide`, at the reader's Measures and Dimensions legs, and `AnalyticsGate.TestAGuardedCubesRelationshipsAreHiddenFromWhoLacksItsResource`, at the Relationships leg.
 - mutation: `Screen/Tool/Read.View` drops `LastBuild` -> `AnalyticsGate.TestTheAgentsCubesReadAnswersTheScreensRows`.
 - mutation: the analytics branch of `Screen/Read` asks for `maxRows` rows rather than one more -> `AnalyticsGate.TestTheVendorsOwnResourceChecksStillHideWhatTheyHide`, at the Cap row.
 - mutation: the FolderItems loop ignores `maxRows` -> `AnalyticsPort.TestTheRequestShapesTheGateAndThePortRefuse`.
@@ -486,11 +516,32 @@ Checked and not engaged:
 - mutation: `Fail` puts the vendor's text into the reason -> `AnalyticsPort.TestAVendorFailureIsAnsweredInThePortsWordsAndLoggedWhole`.
 - mutation: the `ANALYTICS.` line is dropped from `Error.ReasonForToolCode`, or from `ReasonForViolation` -> `AnalyticsDescriptor.TestTheAnalyticsCodeReadsItsOwnSentence`, alone, each.
 - mutation: the `AnalyticsCubeList` `Elsewhere` row is removed -> `StageTwoTools.TestTheRosterAndElsewhereAreEveryRegisteredScreen`, alone.
-- mutation: **[re-demonstrate]** `.ocu-data-table-cell` takes `color: var(--ocu-surface-container-high)` -> the browser AC5 (`analytics/cubes|contrast|dark`). The bundle it inspects changed with 20.12.
+- mutation: **[re-demonstrated by QA]** `.ocu-data-table-cell` takes `color: var(--ocu-surface-container-high)` -> the browser AC5 (`analytics/cubes|contrast|dark`, also `|light`). The bundle it inspects changed with 20.12.
 - mutation: **[new]** the tab arm is dropped from `RowTargetProblem` -> `Descriptor.TestEveryRowTargetCorpusCaseGetsItsSentence`, at the tab case (the shipped Relationships tab also reddens the roster tests beside it). Then the same from `rowTargetProblem` -> `screen-mirror.test.mjs`' corpus test, at the tab case (the mirror build tests redden beside it).
 - mutation: **[new]** one word of `analyticsRefusalNamespace` changes in `strings.ts` -> `analytics.test.mjs`. `strings.ts` and EXPERIENCE.md :604 are the union's two files.
 - mutation: `Remove` skips the flag restore -> `OnAfterAllTests` of `AnalyticsPort` and `AnalyticsGate`, and the browser `after`.
 - mutation: `Remove` restores `DeepSeeEnabled` and not `iKnowEnabled` -> `OnAfterAllTests` of `AnalyticsPort`.
+- mutation: **(QA)** the Relationships endpoint alone skips the `%CubeExists` and `%CheckPrivilege` test -> `AnalyticsGate.TestAGuardedCubesRelationshipsAreHiddenFromWhoLacksItsResource`, alone.
+- mutation: **(QA)** the analytics branch of `Screen/Read` skips its required-criterion check -> `AnalyticsGate.TestAMissingCriterionIsRefusedBeforeThePort`, alone, in all six legs (the port answers `PORT.VALIDATION` instead).
+- mutation: **(QA)** `Screen/Tool/Read.View` drops the criteria it was given -> `AnalyticsGate.TestEveryReadToolAnswersItsScreensRows`, in the four tools that take one.
+- mutation: **(QA)** `Screen/Tool/Read.View` drops `LastBuild` (re-run: the tool probe now runs through `ToolLeg`) -> `AnalyticsGate.TestTheAgentsCubesReadAnswersTheScreensRows` and `TestEveryReadToolAnswersItsScreensRows`.
+- mutation: **(QA)** `FOLDERPAIRS` loses `%Development:USE` -> `AnalyticsGate.TestFolderItemsNeedTheDeveloperResource`, alone, at the viewer's port leg.
+- mutation: **(QA)** the entries join their fields with `, ` -> `AnalyticsPort.TestAMultiFieldTermListJoinsItsFieldsInOrderAndTheCapBoundsTermLists`, alone.
+- mutation: **(QA)** the TermLists loop ignores the cap -> the same test, alone, at its cap leg.
+- mutation: **(QA)** `Rows` answers a failed fact count as 0 -> `AnalyticsPort.TestAFailedFactCountIsNullAndAnEmptyCubeIsZero`, alone.
+- mutation: **(QA)** `AnalyticsCubeMeasuresTab` names `analyticsCubesEmpty` as its `emptyStateKey` (mirror regenerated, bundle redeployed) -> the browser Matrix leg, at the Measures screen.
+- mutation: **(CR)** `Collect` reads a measure's caption, type and hidden flag with `$List`, not `$ListGet` -> `AnalyticsPort.TestTheCubeTabsAnswerTheModel`, alone, at the guarded cube's calculated-measure leg (run 802).
+- mutation: **(CR)** the entries read increments a node under the probe term list -> `AnalyticsPort.TestTheReadsWriteNothing`, alone, at its TermListEntries leg (run 804); a write of an unchanged value is not seen, since the snapshot compares values.
+- mutation: **(CR)** `AnalyticsProbe.Remove` deletes build events through `%SQLUPPER(CubeKey) %STARTSWITH` -> `OnAfterAllTests` of `AnalyticsPort`, naming "build events" (run 805).
+- mutation: **(CR)** `AnalyticsProbe.Remove` keeps the probe favorites -> `OnAfterAllTests` of `AnalyticsPort`, naming the favorite's user (run 806).
+
+**(QA) test files changed** (none created; the four analytics classes, the helper, the seam and the browser spec):
+
+- `src/OcuPilot/Test/AnalyticsProbe.cls` (QA): `CreateLinks` makes a guarded cube that defines a relationship, `CreateTermListTwo` and `DeleteTermListTwo` a second term list; `Remove` and `Left` cover both.
+- `src/OcuPilot/Test/AnalyticsGate.cls` (QA): the viewer principal, `TestAGuardedCubesRelationshipsAreHiddenFromWhoLacksItsResource`, `TestAMissingCriterionIsRefusedBeforeThePort`, `TestEveryReadToolAnswersItsScreensRows`, `TestFolderItemsNeedTheDeveloperResource`; the cube-name lists of the existing guard test count the link pair.
+- `src/OcuPilot/Test/AnalyticsPort.cls` (QA): `TestAMultiFieldTermListJoinsItsFieldsInOrderAndTheCapBoundsTermLists`, `TestAFailedFactCountIsNullAndAnEmptyCubeIsZero`, and an `OnAfterOneTest` that deletes the second term list.
+- `src/OcuPilot/Test/AnalyticsGateSeam.cls` (QA): `CubeRowFor`.
+- `ui/browser/analytics.browser-spec.mjs` (QA): the Matrix test for a cube or term list no one holds.
 
 **Evidence from the set-aside pass (`11bcb1fa`, before the merge):**
 
@@ -519,5 +570,5 @@ Blocking condition: none
   - Mutations (Rule 19), each reverted byte-identical: the tab arm dropped from `RowTargetProblem` and from `rowTargetProblem`, one word of `analyticsRefusalNamespace`, the Relationships `rowTarget`, and `.ocu-data-table-cell`'s color were run by the handoff subagent and reported red; the stage re-ran the `strings.ts` word, `rowTargetProblem`, both `Error.cls` resolver lines and the tab guard, each red on the named test.
 - **Residual risks:**
   - The two browser mutations (Relationships `rowTarget`, cell color) rest on the subagent's report.
-  - The guarded cube's Relationships guard has no independent leg (triage log).
+  - The guarded cube's Relationships guard is pinned on the link pair by `AnalyticsGate.TestAGuardedCubesRelationshipsAreHiddenFromWhoLacksItsResource`.
   - The full ObjectScript sweep, `npm test`, `smoke.sh`, Rule 30's fresh check and the full browser suite are the runner's.

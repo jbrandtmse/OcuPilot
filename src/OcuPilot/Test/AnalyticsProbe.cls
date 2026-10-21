@@ -6,9 +6,11 @@
 /// <p>The objects are named for <parameter>PACKAGE</parameter>, <parameter>VISITS</parameter>, <parameter>CATEGORIES</parameter>,
 /// <parameter>GUARDED</parameter>, <parameter>TERMLIST</parameter> and <parameter>FOLDER</parameter>. The guarded cube and the
 /// guarded dashboard carry the resource <parameter>RESOURCE</parameter>.</p>
+/// <p>Two sets are made on demand, by a test that needs them, and removed by <method>Remove</method> with the rest:
+/// <method>CreateLinks</method> adds a pair of cubes (<parameter>LINKONE</parameter> and <parameter>LINKMANY</parameter>) whose
+/// <b>guarded</b> side defines a relationship, and <method>CreateTermListTwo</method> adds a second term list with two extra fields.</p>
 /// <p>The probe keeps one record, <code>^OcuPilotProbeAnalytics</code> in <code>USER</code>'s globals: the flags
-/// <method>Enable</method> changed and the user whose favorites <method>Create</method> wrote. It outlives the process that
-/// wrote it, so a run that died is cleaned up by the next one.</p>
+/// <method>Enable</method> changed. It outlives the process that wrote it, so a run that died is cleaned up by the next one.</p>
 /// <p>The vendor bookkeeping a first build creates in a namespace (<code>^DeepSee.Agents</code>, <code>Tasks</code> and
 /// <code>TaskGroups</code>) is not removed: it belongs to the namespace, not to a cube.</p>
 /// <p><b>Not a <class>%UnitTest.TestCase</class></b>: it holds no assertions and runs no tests. Every entry point acts on
@@ -42,8 +44,26 @@ Parameter GUARDEDCLASS = "OcuPilotProbe.Analytics.GuardedCube";
 /// <p>The relationship the Visits cube names to the Categories cube.</p>
 Parameter RELATIONSHIP = "CategoryRel";
 
+/// <p>The calculated measure the guarded cube defines, which the vendor lists without a hidden flag.</p>
+Parameter CALCULATED = "Twice";
+
 /// <p>The resource the guarded cube and the guarded dashboard carry.</p>
 Parameter RESOURCE = "%DeepSee_Admin";
+
+/// <p>The link pair <method>CreateLinks</method> makes: <parameter>LINKMANY</parameter> carries <parameter>RESOURCE</parameter> and
+/// defines the relationship <parameter>LINKREL</parameter> to <parameter>LINKONE</parameter>, which names the inverse
+/// <parameter>LINKINVERSE</parameter>.</p>
+Parameter LINKONE = "OcuPilotProbeLinkOne";
+
+Parameter LINKMANY = "OcuPilotProbeLinkMany";
+
+Parameter LINKONECLASS = "OcuPilotProbe.Analytics.LinkOneCube";
+
+Parameter LINKMANYCLASS = "OcuPilotProbe.Analytics.LinkManyCube";
+
+Parameter LINKREL = "OneRef";
+
+Parameter LINKINVERSE = "ManyRefs";
 
 /// <p>The probe term list, its field, and its keys with the value and field value of each.</p>
 Parameter TERMLIST = "OcuPilotProbeTerms";
@@ -51,6 +71,14 @@ Parameter TERMLIST = "OcuPilotProbeTerms";
 Parameter TERMFIELD = "Note";
 
 Parameter TERMS = "k1=Alpha=first note;k2=Beta=second note;k3=Gamma=third note";
+
+/// <p>The second term list <method>CreateTermListTwo</method> makes, its two extra fields (<code>^</code>-separated, as the vendor
+/// keeps them) and its one entry: <code>key=value=first field=second field</code>.</p>
+Parameter TERMLISTTWO = "OcuPilotProbeTermsTwo";
+
+Parameter TERMFIELDSTWO = "Note^Tag";
+
+Parameter TERMSTWO = "z1=Zed=zed note=zed tag";
 
 /// <p>The folder and the folder items in it, by full name.</p>
 Parameter FOLDER = "OcuPilotProbe";
@@ -70,7 +98,8 @@ Parameter VISITROWS = 1000;
 Parameter CATEGORYROWS = 5;
 
 /// <p>The text of one probe class: <code>Category</code>, <code>Visit</code>, <code>VisitsCube</code>,
-/// <code>CategoriesCube</code> or <code>GuardedCube</code>. A single quote in the cube XML stands for a double one.</p>
+/// <code>CategoriesCube</code>, <code>GuardedCube</code>, <code>LinkOneCube</code> or <code>LinkManyCube</code>. A single quote in
+/// the cube XML stands for a double one.</p>
 ClassMethod ClassText(pName As %String) As %String [ Private ]
 {
     Set tNL = $Char(13, 10)
@@ -102,9 +131,23 @@ ClassMethod ClassText(pName As %String) As %String [ Private ]
             "</cube>"
         ; The "one" side of a relationship compiles first.
         Set tDepends = ..#VISITCLASS _ "," _ ..#CATEGORIESCLASS
+    } ElseIf pName = "LinkOneCube" {
+        Set tCube = "<cube xmlns='http://www.intersystems.com/deepsee' name='" _ ..#LINKONE _ "' displayName='OcuPilot probe link one' sourceClass='" _ ..#CATEGORYCLASS _ "'>" _
+            "<dimension name='Label' hasAll='false'><hierarchy name='H1'><level name='Name' sourceProperty='Name'/></hierarchy></dimension>" _
+            "<relationship name='" _ ..#LINKINVERSE _ "' relatedCube='" _ ..#LINKMANY _ "' cardinality='many' inverse='" _ ..#LINKREL _ "'/>" _
+            "</cube>"
+        Set tDepends = ..#CATEGORYCLASS
+    } ElseIf pName = "LinkManyCube" {
+        Set tCube = "<cube xmlns='http://www.intersystems.com/deepsee' name='" _ ..#LINKMANY _ "' displayName='OcuPilot probe link many' resource='" _ ..#RESOURCE _ "' sourceClass='" _ ..#VISITCLASS _ "'>" _
+            "<dimension name='Place' hasAll='false'><hierarchy name='H1'><level name='Category' sourceProperty='Category.Name'/></hierarchy></dimension>" _
+            "<relationship name='" _ ..#LINKREL _ "' sourceProperty='Category' relatedCube='" _ ..#LINKONE _ "' cardinality='one' inverse='" _ ..#LINKINVERSE _ "'/>" _
+            "</cube>"
+        ; The "one" side of a relationship compiles first.
+        Set tDepends = ..#VISITCLASS _ "," _ ..#LINKONECLASS
     } Else {
         Set tCube = "<cube xmlns='http://www.intersystems.com/deepsee' name='" _ ..#GUARDED _ "' displayName='OcuPilot probe guarded' resource='" _ ..#RESOURCE _ "' sourceClass='" _ ..#CATEGORYCLASS _ "'>" _
             "<dimension name='Label' hasAll='false'><hierarchy name='H1'><level name='Name' sourceProperty='Name'/></hierarchy></dimension>" _
+            "<calculatedMember name='" _ ..#CALCULATED _ "' dimension='Measures' valueExpression='[Measures].[%COUNT]*2'/>" _
             "</cube>"
         Set tDepends = ..#CATEGORYCLASS
     }
@@ -200,11 +243,86 @@ ClassMethod Create(pFavoriteUser As %String) As %Status
         If $$$ISERR(tSC) Quit
         Set tSC = ..CreateFolderItems()
         If $$$ISERR(tSC) Quit
-        Set ^OcuPilotProbeAnalytics("favorite") = pFavoriteUser
         For tFavorite = ..#PIVOT, ..#DANGLING {
             ; The vendor's %AddFavorite writes this node for the calling user; the probe names the user.
             Set ^DeepSee.UserPreferences(pFavoriteUser, "favorite", tFavorite) = $ZDateTime($Horolog, 3)
         }
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tSC
+}
+
+/// <p>Compile and build the link pair in <code>USER</code>: <parameter>LINKONE</parameter> over the Category rows, and
+/// <parameter>LINKMANY</parameter> over the Visit rows, which carries <parameter>RESOURCE</parameter> and defines the relationship
+/// <parameter>LINKREL</parameter> to it. It refuses, changing nothing, unless <method>Create</method> has run, because the Visit
+/// rows are its source.</p>
+ClassMethod CreateLinks() As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set tCreated = ..Reports()
+        If tCreated {
+            Set $NAMESPACE = ..#NAMESPACE
+            Set tCreated = ##class(%Dictionary.CompiledClass).%ExistsId(..#VISITCLASS)
+            Set $NAMESPACE = tOrigNS
+        }
+        If 'tCreated {
+            Set tSC = $$$ERROR($$$GeneralError, "OcuPilot.Test.AnalyticsProbe.CreateLinks needs the probe created in " _ ..#NAMESPACE _ ": call Enable and Create first")
+            Quit
+        }
+        For tName = "LinkOneCube", "LinkManyCube" {
+            Set tSC = ##class(%Compiler.UDL.TextServices).SetTextFromString(..#NAMESPACE, ..#PACKAGE _ "." _ tName, ..ClassText(tName))
+            If $$$ISERR(tSC) Quit
+        }
+        If $$$ISERR(tSC) Quit
+        Set $NAMESPACE = ..#NAMESPACE
+        Set tSC = $System.OBJ.Compile(..#LINKONECLASS _ "," _ ..#LINKMANYCLASS, "ck-d")
+        If $$$ISERR(tSC) Quit
+        ; The "one" side first: building it rebuilds the cube that depends on it.
+        Set tSC = ##class(%DeepSee.Utils).%BuildCube(..#LINKONE, 0, 0)
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tSC
+}
+
+/// <p>Create, in <code>USER</code>, the second term list: <parameter>TERMFIELDSTWO</parameter> as its extra fields and
+/// <parameter>TERMSTWO</parameter> as its entry. <method>Remove</method> deletes it.</p>
+ClassMethod CreateTermListTwo() As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = ..#NAMESPACE
+        Set tSC = ##class(%DeepSee.TermList).%CreateTermList(..#TERMLISTTWO, "OcuPilot probe terms two", ..#TERMFIELDSTWO, "", "OcuPilot probe term list with two fields")
+        For tI = 1:1:$Length(..#TERMSTWO, ";") {
+            If $$$ISERR(tSC) Quit
+            Set tTerm = $Piece(..#TERMSTWO, ";", tI)
+            Set tSC = ##class(%DeepSee.TermList).%SetValue(..#TERMLISTTWO, $Piece(tTerm, "=", 1), $Piece(tTerm, "=", 2))
+            For tField = 1:1:$Length(..#TERMFIELDSTWO, "^") {
+                If $$$ISERR(tSC) Quit
+                Set tSC = ##class(%DeepSee.TermList).%SetValue(..#TERMLISTTWO, $Piece(tTerm, "=", 1), $Piece(tTerm, "=", 2 + tField), $Piece(..#TERMFIELDSTWO, "^", tField))
+            }
+        }
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tSC
+}
+
+/// <p>Delete the second term list from <code>USER</code>; nothing happens when there is none.</p>
+ClassMethod DeleteTermListTwo() As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = ..#NAMESPACE
+        Set tSC = ##class(%DeepSee.TermList).%DeleteTermList(..#TERMLISTTWO)
     } Catch ex {
         Set tSC = ex.AsStatus()
     }
@@ -278,16 +396,17 @@ ClassMethod CreateFolderItems() As %Status [ Private ]
 }
 
 /// <p>Leave <code>USER</code> as found: kill the probe cubes, delete the probe classes and their extents and the probe's
-/// <code>^OBJ.DSTIME</code> nodes, the term list, the folder items and the folder, both favorites and the cubes' build
-/// events, then restore the two flags <method>Enable</method> recorded, read them back and kill the probe node. It works whatever was
-/// created, so a run that died is cleaned up. The first failure is the status returned; the rest still run.</p>
+/// <code>^OBJ.DSTIME</code> nodes, both term lists, the folder items and the folder, both favorites of every user and the cubes'
+/// build events, then restore the two flags <method>Enable</method> recorded, read them back and kill the probe node. It works
+/// whatever was created, so a run that died is cleaned up. A removal step that fails leaves its object for <method>Left</method> to
+/// name; the status returned is the flags' restore or a raised error.</p>
 ClassMethod Remove() As %Status
 {
     Set tSC = $$$OK
     Set tOrigNS = $NAMESPACE
     Try {
         Set $NAMESPACE = ..#NAMESPACE
-        For tCube = ..#VISITS, ..#CATEGORIES, ..#GUARDED {
+        For tCube = ..#LINKMANY, ..#LINKONE, ..#VISITS, ..#CATEGORIES, ..#GUARDED {
             If ##class(%DeepSee.Utils).%IsDeepSeeEnabled() && ##class(%DeepSee.Utils).%CubeExists(tCube) Do ##class(%DeepSee.Utils).%KillCube(tCube, 1)
         }
         For tClass = ..#VISITCLASS, ..#CATEGORYCLASS {
@@ -303,15 +422,22 @@ ClassMethod Remove() As %Status
             Set tGlobal = $Order(^$GLOBAL(tGlobal))
         }
         Do ##class(%DeepSee.TermList).%DeleteTermList(..#TERMLIST)
+        Do ##class(%DeepSee.TermList).%DeleteTermList(..#TERMLISTTWO)
         For tItem = ..#PIVOT, ..#DASHBOARD, ..#GUARDEDDASHBOARD {
             Do ##class(%DeepSee.UserLibrary.Utils).%DeleteFolderItem(tItem)
         }
         Set tFolder = ##class(%DeepSee.UserLibrary.Utils).%FindFolder(..#FOLDER)
         If $IsObject(tFolder) Do ##class(%DeepSee.UserLibrary.Folder).%DeleteId(tFolder.%Id())
         Set tFolder = ""
-        Set tUser = $Get(^OcuPilotProbeAnalytics("favorite"))
-        If tUser '= "" Kill ^DeepSee.UserPreferences(tUser, "favorite", ..#PIVOT), ^DeepSee.UserPreferences(tUser, "favorite", ..#DANGLING)
-        Set tRS = ##class(%SQL.Statement).%ExecDirect(, "DELETE FROM %DeepSee_CubeManager.CubeEvent WHERE %SQLUPPER(CubeKey) %STARTSWITH ?", "OCUPILOTPROBE")
+        ; Every user's: a run that died may have written them for a user the probe node no longer names.
+        Set tUser = ""
+        For {
+            Set tUser = $Order(^DeepSee.UserPreferences(tUser))
+            If tUser = "" Quit
+            Kill ^DeepSee.UserPreferences(tUser, "favorite", ..#PIVOT), ^DeepSee.UserPreferences(tUser, "favorite", ..#DANGLING)
+        }
+        ; CubeKey collates SQLUPPER, so a plain %STARTSWITH matches the upper-case keys.
+        Set tRS = ##class(%SQL.Statement).%ExecDirect(, "DELETE FROM %DeepSee_CubeManager.CubeEvent WHERE CubeKey %STARTSWITH ?", "OCUPILOTPROBE")
         Set tFlags = $Get(^OcuPilotProbeAnalytics("flags"))
         Set $NAMESPACE = tOrigNS
         If tFlags '= "" {
@@ -356,19 +482,23 @@ ClassMethod Left() As %String
         Set $NAMESPACE = ..#NAMESPACE
         Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT COUNT(*) FROM %Dictionary.ClassDefinition WHERE Name %STARTSWITH ?", ..#PACKAGE _ ".")
         If tRS.%Next() && (+tRS.%GetData(1) > 0) Set tLeft = tLeft _ ",classes"
-        If ##class(%DeepSee.Utils).%IsDeepSeeEnabled() {
-            For tCube = ..#VISITS, ..#CATEGORIES, ..#GUARDED {
-                If ##class(%DeepSee.Utils).%CubeExists(tCube) Set tLeft = tLeft _ ",cube " _ tCube
-            }
+        ; %CubeExists reads the cube registry, which answers whether or not USER reports analytics.
+        For tCube = ..#VISITS, ..#CATEGORIES, ..#GUARDED, ..#LINKONE, ..#LINKMANY {
+            If ##class(%DeepSee.Utils).%CubeExists(tCube) Set tLeft = tLeft _ ",cube " _ tCube
         }
         If ##class(%DeepSee.TermList).%TermListExists(..#TERMLIST) Set tLeft = tLeft _ ",term list"
+        If ##class(%DeepSee.TermList).%TermListExists(..#TERMLISTTWO) Set tLeft = tLeft _ ",second term list"
         For tItem = ..#PIVOT, ..#DASHBOARD, ..#GUARDEDDASHBOARD {
             If ##class(%DeepSee.UserLibrary.Utils).%FolderItemExists(tItem) Set tLeft = tLeft _ ",folder item " _ tItem
         }
         If $IsObject(##class(%DeepSee.UserLibrary.Utils).%FindFolder(..#FOLDER)) Set tLeft = tLeft _ ",folder"
-        Set tUser = $Get(^OcuPilotProbeAnalytics("favorite"))
-        If (tUser '= "") && ($Data(^DeepSee.UserPreferences(tUser, "favorite", ..#PIVOT)) || $Data(^DeepSee.UserPreferences(tUser, "favorite", ..#DANGLING))) Set tLeft = tLeft _ ",favorite"
-        Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT COUNT(*) FROM %DeepSee_CubeManager.CubeEvent WHERE %SQLUPPER(CubeKey) %STARTSWITH ?", "OCUPILOTPROBE")
+        Set tUser = ""
+        For {
+            Set tUser = $Order(^DeepSee.UserPreferences(tUser))
+            If tUser = "" Quit
+            If $Data(^DeepSee.UserPreferences(tUser, "favorite", ..#PIVOT)) || $Data(^DeepSee.UserPreferences(tUser, "favorite", ..#DANGLING)) Set tLeft = tLeft _ ",favorite of " _ tUser
+        }
+        Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT COUNT(*) FROM %DeepSee_CubeManager.CubeEvent WHERE CubeKey %STARTSWITH ?", "OCUPILOTPROBE")
         If tRS.%Next() && (+tRS.%GetData(1) > 0) Set tLeft = tLeft _ ",build events"
         Set tPrefix = "^" _ ..#PACKAGE _ "."
         Set tGlobal = $Order(^$GLOBAL($Extract(tPrefix, 1, *-1)))

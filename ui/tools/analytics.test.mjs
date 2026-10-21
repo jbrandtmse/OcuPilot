@@ -1,8 +1,8 @@
 /**
  * Story 20.11's Analytics sentence, held to the instance's own source (AD-29, AD-39, AD-65).
  *
- * `OcuPilot.Api.AnalyticsError`'s sentence is one published string on three surfaces: the server sends it, the client draws it, and
- * EXPERIENCE.md's Fixed strings publish it. The port also declares the pair sets its screens' descriptors repeat, and the
+ * `OcuPilot.Api.AnalyticsError`'s sentence is one published string on three surfaces: the server sends it, the client's strings table
+ * holds it, and EXPERIENCE.md's Fixed strings publish it. The port also declares the pair sets its screens' descriptors repeat, and the
  * endpoint list the mirror generator reads.
  */
 

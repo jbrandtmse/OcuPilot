@@ -3256,7 +3256,8 @@ test('Story 20.15: Screen permissions reads through the access source, the thirt
 // list's route id. Every case in `OcuPilot.Test.AnalyticsDescriptor`'s corpus gets its exact sentence, or none, here as the
 // instance's registry gives it there.
 // Mutation (Rule 19): drop the analytics arm from `readProblem` -> the endpoint, type and key cases go red; drop
-// `SOURCE_ANALYTICS` from the parent-only rule in `criteriaProblem` -> the criteria case goes red.
+// `SOURCE_ANALYTICS` from the parent-only rule in `criteriaProblem` -> the parent-scoped tabs' "criteria pass" legs go red (the
+// corpus's criteria case is refused either way).
 test('Story 20.11: the Analytics screens read through the analytics port, the fifteenth read source, and the corpus agrees', () => {
   assert.ok(READ_SOURCE_PORTS.includes('analytics'), 'the analytics port is a read source');
   const corpus = testCorpus(['Test', 'AnalyticsDescriptor.cls'], 'Cases');

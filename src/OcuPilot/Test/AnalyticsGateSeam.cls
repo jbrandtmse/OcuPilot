@@ -74,6 +74,16 @@ ClassMethod Collect(pNamespace As %String, pEndpoint As %String, pCriterion As %
     }
 }
 
+/// <p>The Cubes row <method>OcuPilot.Port.AnalyticsPort.Rows</method> shapes from one raw cube whose fact count is <var>pFacts</var>
+/// (<code>""</code> for a count that failed), so a test reads the shaping without a vendor call.</p>
+ClassMethod CubeRowFor(pFacts As %String) As %DynamicObject
+{
+    Kill tData
+    Set tData = 1
+    Set tData(1) = $ListBuild("OcuPilotProbeSeam", "caption", "class", "", pFacts)
+    Quit ..Rows(..#ENDPOINTCUBES, .tData).%Get(0)
+}
+
 /// <p>Keep the logged fault where a test reads it when <code>capture</code> is armed, else log as shipped.</p>
 ClassMethod LogFault(pMessage As %String, pStatus As %Status, pCode As %String = "")
 {
