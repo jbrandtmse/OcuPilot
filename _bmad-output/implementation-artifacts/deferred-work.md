@@ -12280,3 +12280,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-23-7-the-range-end-cleanup-part-6.md (plan) | severity: med | fix-risk: med | footprint: in-epic
 - evidence: LogSourcePort.cls:1871 LocalFromUtc, used by Timeline and InteropPort; ocupilot-ci and CI throwaways run Etc/UTC, so a swapped direction keeps every assertion green
 - 2026-10-21T07:40:07Z status=routed owner=burndown by=spec_gate note=23.7's DW-1783 technique (overridable offset helpers plus a probe) applies; filed, not absorbed (Rule 27 cap)
+
+### DW-2485: Test/AnalyticsPort's Snapshot joins every ^DeepSee.Cache* node into one string, so cache residue over about 3.6 MB raises MAXSTRING and TestTheReadsWriteNothing reddens on state it did not make
+- source: spec-20-33-the-mdx-query-tool.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: 20.33's implement saw TestTheReadsWriteNothing redden on its own measurement residue until the probe cleaned it; a hash per global would remove the dependence
+- 2026-10-21T17:35:13Z status=routed owner=20-34-the-cube-manager-s-build-and-synchronize by=harvest note=20.34 builds cubes, the likeliest source of cache residue; hash per global in Snapshot
