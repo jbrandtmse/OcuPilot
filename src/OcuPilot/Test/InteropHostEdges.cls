@@ -628,28 +628,11 @@ ClassMethod StampsRead(pHeaderId As %String, pLogId As %String) As %DynamicObjec
 }
 
 /// <p>Run <method>StampsRead</method> in a new session, in the caller's namespace, whose environment sets <code>TZ</code>
-/// to <var>pZone</var>, and answer what it signalled, or an object carrying <code>error</code>.</p>
+/// to <var>pZone</var> (<method>OcuPilot.Test.ZoneSession.Signalled</method>), and answer what it signalled, or an
+/// object carrying <code>error</code>.</p>
 ClassMethod ReadInZone(pZone As %String, pHeaderId As %String, pLogId As %String) As %DynamicObject
 {
-    Set tOut = {}
-    Set tFile = ##class(%File).TempFilename("txt")
-    Try {
-        Do $System.Event.Clear($Job)
-        Set tCommand = "##class(" _ $ClassName() _ ").ZoneChild(" _ $Job _ "," _ pHeaderId _ "," _ pLogId _ ")"
-        Set tCode = $ZF(-100, "/ASYNC /STDOUT=""" _ tFile _ """ /STDERR=""" _ tFile _ ".err""", "/usr/bin/env", "TZ=" _ pZone, $System.Util.BinaryDirectory() _ "iris", "session", ##class(%SYS.System).GetInstanceName(), "-U", $NAMESPACE, tCommand)
-        Set tMessage = $System.Event.WaitMsg("", 120)
-        If $ListGet(tMessage, 1) '= 1 {
-            Do tOut.%Set("error", "the child session signalled nothing within 120 seconds, code " _ tCode)
-            Quit
-        }
-        Set tOut = ##class(%DynamicObject).%FromJSON($ListGet(tMessage, 2))
-    } Catch ex {
-        Set tOut = {}
-        Do tOut.%Set("error", ex.DisplayString())
-    }
-    Set tDeleted = ##class(%File).Delete(tFile)
-    Set tDeleted = ##class(%File).Delete(tFile _ ".err")
-    Quit tOut
+    Quit ##class(OcuPilot.Test.ZoneSession).Signalled(pZone, "##class(" _ $ClassName() _ ").ZoneChild(" _ $Job _ "," _ pHeaderId _ "," _ pLogId _ ")")
 }
 
 /// <p>The session <method>ReadInZone</method> starts: signal <method>StampsRead</method>'s object to process

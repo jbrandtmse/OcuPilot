@@ -4726,6 +4726,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-28T05:08:17Z status=routed owner=range-end-cleanup by=burndown note=Epic 13 gate at 13.5: 13.2 is done; a test-coverage gap that blocks no floor or downstream story, Rule 27 overflow
 - 2026-09-30T06:34:05Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p4
 - 2026-10-11T00:42:31Z status=routed owner=23-7-the-range-end-cleanup-part-6 by=load note=re-own from range-end-cleanup: kit 2026-10-10.1 owners are story keys or burndown
+- 2026-10-21T15:33:27Z status=resolved-by:23-7-the-range-end-cleanup-part-6 by=adjudication note=5b410e00: AdminPortMutatingPath pins HttpMethodFor, IsMutating and MUTATINGTYPES via a seam; CI 39621279445
 
 ### DW-1259: A mutating endpoint that queues its own work would be reported by AwaitTask, which consults no pair table
 - source: spec-5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at.md | severity: low | fix-risk: low | footprint: in-epic
@@ -5048,6 +5049,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-28T05:08:17Z status=routed owner=range-end-cleanup by=burndown note=Epic 13 gate at 13.5: 13.2 is done; a test-coverage gap that blocks no floor or downstream story, Rule 27 overflow
 - 2026-09-30T06:34:05Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p4
 - 2026-10-11T00:42:31Z status=routed owner=23-7-the-range-end-cleanup-part-6 by=load note=re-own from range-end-cleanup: kit 2026-10-10.1 owners are story keys or burndown
+- 2026-10-21T15:33:27Z status=resolved-by:23-7-the-range-end-cleanup-part-6 by=adjudication note=5b410e00: shipped GateAnyOfForUser admits/refuses real principals (EvaluateAnyOf was deleted, e27ff3c4); CI green
 
 ### DW-1307: TurnSecretResidue sweeps no log line although its class header and AC5 both name one
 - source: spec-5-4-execution-strictly-as-the-user.md | severity: med | fix-risk: low | footprint: in-epic
@@ -5065,6 +5067,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-28T05:08:18Z status=routed owner=range-end-cleanup by=burndown note=Epic 13 gate at 13.5: 13.2 is done; a test-coverage gap that blocks no floor or downstream story, Rule 27 overflow
 - 2026-09-30T06:34:05Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p4
 - 2026-10-11T00:42:31Z status=routed owner=23-7-the-range-end-cleanup-part-6 by=load note=re-own from range-end-cleanup: kit 2026-10-10.1 owners are story keys or burndown
+- 2026-10-21T15:33:27Z status=resolved-by:23-7-the-range-end-cleanup-part-6 by=adjudication note=5b410e00: DenialParity counts one refused ledger row per refused call, per-call keys, cleanup; CI green
 
 ### DW-1309: The provider port's new gate evaluates the calling process where the matrix row describes the turn owner's live grants
 - source: spec-5-4-execution-strictly-as-the-user.md | severity: med | fix-risk: med | footprint: in-epic
@@ -8217,6 +8220,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-28T14:49:57Z status=routed owner=range-end-cleanup by=merge_gate note=recommended: one run on a throwaway started in a non-UTC time zone
 - 2026-09-30T06:34:06Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p4
 - 2026-10-11T00:42:32Z status=routed owner=23-7-the-range-end-cleanup-part-6 by=load note=re-own from range-end-cleanup: kit 2026-10-10.1 owners are story keys or burndown
+- 2026-10-21T15:33:28Z status=resolved-by:23-7-the-range-end-cleanup-part-6 by=adjudication note=5b410e00: offset helpers + LedgerClock zone test (child session under a real TZ) falsify direction; no residual
 
 ### DW-1789: A user named in the agent audit viewer in another letter case than the stored account name reads an empty list with no refusal, because a named ledger read matches UserName exactly
 - source: spec-16-16-the-agent-audit-viewer.md | severity: low | fix-risk: med | footprint: in-story
@@ -11121,6 +11125,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-10T01:01:44Z status=routed owner=range-end-cleanup by=harvest note=same root cause as 23.6's 18.10-1; not absorbed (dispatch)
 - 2026-10-10T01:48:35Z status=routed owner=range-end-cleanup by=cr note=one shared fault helper for the ReadableId pass (Superserver, Mapping, ErrorDelete, WebAppPctAccess mints) would close this too
 - 2026-10-11T02:15:09Z owner=23-7-the-range-end-cleanup-part-6 by=load note=re-own from range-end-cleanup
+- 2026-10-21T15:33:27Z status=resolved-by:23-7-the-range-end-cleanup-part-6 by=adjudication note=5b410e00: base Mint exit pass, 4 copies removed; CompositeMintSweep pins all 10 mints; CI 39621279445
 
 ### DW-2281: Write.cls's ScreenActionEmptyNames and ScreenActionOptionalNames parse the same SCREENOPTIONAL grammar twice; 20.22's planned unification of the older method was not done
 - source: spec-20-22-production-item-settings.md | severity: low | fix-risk: low | footprint: in-epic
@@ -12306,3 +12311,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-20-33-the-mdx-query-tool.md | severity: low | fix-risk: high | footprint: in-story
 - evidence: %ExecuteAsynch forces a DRILLTHROUGH's wait in the job (%WaitForTaskGroup), where no statement runs for CancelQuery to reach; the job reads its flag after the start (inference: not measured)
 - 2026-10-21T18:58:10Z status=wontfix-accepted owner=20-33-the-mdx-query-tool by=cr note=reopen_if=a typed DRILLTHROUGH whose %FILTER computes for over 12 s ignores Cancel in the browser until it ends
+### DW-2484: Kernel.Proposal.Mint.Refuse builds its %Status text from the raw problem, so a composite-id refusal's status text can hold U+0001
+- source: spec-23-7-the-range-end-cleanup-part-6.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Refuse (Mint.cls:986) returns $$$ERROR(TOOLARGUMENTS: problem) before Mint's exit pass rewrites detail.problem; Dispatch.AnswerOne logs a tool status only at HTTP 500+ or with no fault code, and Refuse answers 400 TOOL.ARGUMENTS
+- 2026-10-21T14:49:09Z status=wontfix-theoretical owner=23-7-the-range-end-cleanup-part-6 by=cr note=real if a caller logs or shows a 400 mint refusal's status text; today only detail.problem reaches the agent

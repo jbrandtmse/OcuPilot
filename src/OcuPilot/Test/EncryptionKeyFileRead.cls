@@ -2,7 +2,8 @@
 /// read tools answer the same rows of a seeded key file; missing criteria, a missing file and a file
 /// that is not a key file are refused; a key file whose last key was removed reads as holding none; a
 /// raw <code>file</code> sent to <class>OcuPilot.Port.AdminPort</class> is refused before any vendor
-/// call; and no answer carries key material.</p>
+/// call; no answer carries key material; and an agent's write on a key file that is not there is refused
+/// naming it readably.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed, and
 /// <parameter>ARMINGVARIABLE</parameter> reading <code>1</code>, because the class seeds probe key files
 /// under <code>&lt;ManagerDirectory&gt;ocuprobe187/</code> (<class>OcuPilot.Test.EncryptionProbe</class>),
@@ -20,6 +21,8 @@ Parameter PROBE = "OcuPilot.Test.EncryptionProbe";
 Parameter KEYSSCREEN = "OcuPilot.Screen.Descriptor.EncryptionKeyFile";
 
 Parameter ADMINSSCREEN = "OcuPilot.Screen.Descriptor.EncryptionKeyFileAdminList";
+
+Parameter ADDKEYTOOL = "OcuPilot.Screen.Tool.EncryptionKeyFileAddKey";
 
 /// <p>The encryption facts before each test.</p>
 Property PreparedFacts As %String(MAXLEN = "") [ InitialExpression = "" ];
@@ -46,6 +49,8 @@ Method OnAfterOneTest() As %Status
     Set tFacts = $ClassMethod(..#PROBE, "EncryptionFacts")
     Do $$$AssertTrue('tFacts.%IsDefined("error") && (..PreparedFacts '[ """error"":"), "the encryption facts were read whole before and after the test")
     Do $$$AssertEquals(tFacts.%ToJSON(), ..PreparedFacts, "no key is activated and no encryption setting moved")
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.ProposalFixture).RemoveSeeded(.tRemaining), "the seeded turns are removed")
+    Do $$$AssertEquals(tRemaining, 0, "and no proposal on them survives the method")
     Quit $$$OK
 }
 
@@ -182,6 +187,25 @@ Method TestARawFileToTheAdminPortIsRefusedBeforeTheVendor()
     }
     Do ##class(OcuPilot.Test.PortFixture).Clear()
     Do ##class(OcuPilot.Test.EndpointFixture).Clear()
+}
+
+/// <p>An agent's write on a key file that is not there is refused 400, and its problem says the file is
+/// not present, naming it by the allowed directory and the path with the breadcrumb between them, <code>$Char(8250)</code>,
+/// and holding no composite separator, <code>$Char(1)</code>.</p>
+/// <p>Mutation (Rule 19): remove the readable-id pass from <method>OcuPilot.Kernel.Proposal.Mint.Mint</method>
+/// -- the problem carries <code>$Char(1)</code> and this goes red.</p>
+Method TestAnAbsentKeyFileIsNamedReadably()
+{
+    Set tP = ..#PROBE
+    Set tName = "probe-absent.key"
+    Set tSeparator = $Char(##class(OcuPilot.Kernel.EntityId).#COMPOSITESEPARATOR)
+    Set tReadable = $ClassMethod(tP, "Root") _ " " _ $Char(8250) _ " " _ $ClassMethod(tP, "RelativeName", tName)
+    Set tSC = $ClassMethod(tP, "Mint", ..#ADDKEYTOOL, tName, {"AdminName": ($Parameter(tP, "ADMIN")), "KeyLen": 128, "Description": "OCUPROBE187 ABSENT"}, .tProposal, .tHttp, .tProblem)
+    Do $$$AssertStatusNotOK(tSC, "the add of a key to a file that is not there does not mint")
+    Do $$$AssertEquals(tHttp, 400, "it is refused as a tool arguments refusal")
+    Do $$$AssertTrue(tProblem [ "is not present", "and says the file is not present: " _ tProblem)
+    Do $$$AssertTrue(tProblem '[ tSeparator, "its problem holds no U+0001")
+    Do $$$AssertTrue(tProblem [ tReadable, "and names the file's parts with the breadcrumb: " _ tProblem)
 }
 
 /// <p>A fault's code, or the first violation's <code>field:code</code>.</p>
