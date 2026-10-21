@@ -1,6 +1,8 @@
 /// <p>Pins <class>OcuPilot.Port.AnalyticsPort</class>'s MDX calls (AD-65, Story 20.33) against the probe cubes in <code>USER</code>: the
-/// cells answer equals the vendor's own labels and values, outer to inner; a cell's drill-through equals the vendor's listing for the
-/// composed statement, and a position past its axis is refused; a typed DRILLTHROUGH reads its listing to the cap and says when more
+/// cells answer equals the vendor's own labels and values, outer to inner, and every answer carries the contract's fields in its order; a
+/// cell's drill-through equals the vendor's listing for the composed statement, and a position past its axis, a position of an axis the
+/// vendor answered empty and a drill of a DRILLTHROUGH are refused; an empty axis lists no positions; a run writes none of
+/// the user data, term lists, folders or folder items; a typed DRILLTHROUGH reads its listing to the cap and says when more
 /// exist; the row, column, cell and total caps cut and say so; <method>OcuPilot.Port.AnalyticsPort.MdxConstructs</method> finds each of
 /// the five constructs in the vendor's tokens and in a string literal's, through each comment obfuscation measured, and fails closed;
 /// <method>OcuPilot.Port.AnalyticsPort.MdxPrepare</method> checks the variable-resolved text too and executes nothing; CREATE, DROP and
@@ -269,9 +271,12 @@ Method TestATypedDrillThroughReadsToTheCapAndSaysWhenMoreExist()
     Do $$$AssertEquals(tAnswer.outcome _ " " _ tAnswer.rows.%Size(), "rows 5", "a MAXROWS below the cap is the person's own and is kept")
 }
 
-/// <p>AC4: the row, column, cell and total caps each cut the answer and say so.</p>
+/// <p>AC4: the row, column, cell and total caps each cut the answer and say so. The total leg stays under the row and cell caps, so its
+/// cut is the total cap's alone, and the answer's JSON text is at most <parameter>OcuPilot.Port.AnalyticsPort.MDXMAXANSWER</parameter>
+/// characters, filled to within a row.</p>
 /// <p>Mutation (Rule 19): do not apply <parameter>OcuPilot.Port.AnalyticsPort.MDXMAXROWS</parameter> in
-/// <method>OcuPilot.Port.AnalyticsPort.MdxAnswer</method> -- the row leg goes red.</p>
+/// <method>OcuPilot.Port.AnalyticsPort.MdxAnswer</method> -- the row leg goes red; drop the total cap's <code>truncated</code> -- the total
+/// leg goes red.</p>
 Method TestTheRowColumnCellAndTotalCapsCutAndSaySo()
 {
     Do ..RunMdx("SELECT {[Measures].[Amount]} ON 0, [Sub].[H1].[Sub].Members ON 1 FROM [OcuPilotProbeGrid]", .tAnswer)
@@ -283,10 +288,83 @@ Method TestTheRowColumnCellAndTotalCapsCutAndSaySo()
     Do ..RunMdx(tCell, .tAnswer)
     Set tValue = tAnswer.rows.%Get(0).cells.%Get(0)
     Do $$$AssertEquals($Length(tValue) _ " " _ ($Extract(tValue, *) = $Char(8230)) _ " " _ tAnswer.truncated, "1000 1 1", "a cell of 1,100 characters is cut at 1,000, ends in an ellipsis and the answer says so")
-    Set tWide = "WITH MEMBER [Measures].[Long] AS '""" _ tLong _ """' SELECT {[Measures].[Long]} ON 0, [Sub].[H1].[Sub].Members ON 1 FROM [OcuPilotProbeGrid]"
+    Set tWide = "WITH MEMBER [Measures].[Long] AS '""" _ $Extract(tLong, 1, 1000) _ """' SELECT {[Measures].[Long]} ON 0, HEAD([Sub].[H1].[Sub].Members, 1000) ON 1 FROM [OcuPilotProbeGrid]"
     Do ..RunMdx(tWide, .tAnswer)
-    Do $$$AssertTrue(tAnswer.rows.%Size() < 1000, "1,000 rows of 1,000 characters pass the answer's 1,000,000 and are cut by whole rows: " _ tAnswer.rows.%Size())
-    Do $$$AssertTrue(tAnswer.truncated && $Length(tAnswer.%ToJSON()) <= 1100000, "and the answer says so")
+    Set tMax = ##class(OcuPilot.Port.AnalyticsPort).#MDXMAXANSWER
+    Set tLength = $Length(tAnswer.%ToJSON())
+    Do $$$AssertEquals(tAnswer.rowsAvailable _ " " _ (tAnswer.rows.%Size() < 1000) _ " " _ tAnswer.truncated, "1000 1 1", "1,000 rows of 1,000-character cells, under the row and cell caps, are cut by whole rows at the answer's cap and say so: " _ tAnswer.rows.%Size() _ " rows")
+    Do $$$AssertTrue((tLength <= tMax) && (tLength > (tMax - 2000)), "and the answer's JSON text is at most 1,000,000 characters, filled to within a row: " _ tLength)
+}
+
+/// <p>AC1, AC2: an axis the vendor answers empty has no positions: a NON EMPTY rows set with nothing under the slicer answers no rows
+/// beside its one column, as the vendor's axis sizes read. A drill names a cell the answer has, so position 1 of that empty answer is
+/// refused, and so is any drill of a DRILLTHROUGH's result set, whose answer has no cells.</p>
+/// <p>Mutation (Rule 19): count positions with the vendor's <code>%GetRowCount</code> and <code>%GetColumnCount</code>, which answer 1 for
+/// an empty axis, in <method>OcuPilot.Port.AnalyticsPort.Positions</method> -- the empty answer reads one blank row and the drill runs.</p>
+Method TestAnEmptyAxisHasNoPositionsAndADrillNamesACellTheAnswerHas()
+{
+    Set tEmpty = "SELECT {[Measures].[Amount]} ON 0, NON EMPTY {[Sub].[H1].[Sub].&[0]} ON 1 FROM [OcuPilotProbeGrid] WHERE [Sub2].[H1].[Sub2].&[1]"
+    Do ..RunMdx(tEmpty, .tAnswer, 1, 1, .tDrill)
+    Do $$$AssertEquals(tAnswer.rows.%Size() _ " of " _ tAnswer.rowsAvailable _ ", " _ tAnswer.columns.%Size() _ " of " _ tAnswer.columnsAvailable, "0 of 0, 1 of 1", "the empty rows axis lists no positions")
+    Do $$$AssertEquals($Select($IsObject(tDrill): tDrill.%Get("code"), 1: "no refusal"), "ANALYTICS.MDX.INPUT", "and a drill of its position 1 is refused")
+    Set tSC = $ClassMethod(..#PORT, "MdxPrepare", ..#NAMESPACE, "DRILLTHROUGH SELECT FROM [OcuPilotProbeVisits]", .tRS, .tAnswer, .tHttp, .tFault, .tAsk, .tFound)
+    Do $$$AssertStatusOK(tSC, "a DRILLTHROUGH prepares")
+    Set tSC = $ClassMethod(..#PORT, "MdxDrill", ..#NAMESPACE, tRS, 1, 1, .tListing, .tHttp, .tFault, .tError)
+    Do $ClassMethod(..#PORT, "MdxRelease", ..#NAMESPACE, .tRS)
+    Do $$$AssertEquals($Get(tHttp) _ " " _ $Select($IsObject($Get(tFault)): tFault.%Get("code"), 1: "no refusal"), "400 ANALYTICS.MDX.INPUT", "and a drill of its result set is refused")
+}
+
+/// <p>The keys of <var>pObject</var>, comma-joined in the order they were set.</p>
+ClassMethod Keys(pObject As %DynamicObject) As %String
+{
+    Set tKeys = ""
+    Set tIterator = pObject.%GetIterator()
+    While tIterator.%GetNext(.tKey, .tValue) {
+        Set tKeys = tKeys _ $Select(tKeys = "": "", 1: ",") _ tKey
+    }
+    Quit tKeys
+}
+
+/// <p>AC1, AC2: each answer carries the fields the contract names, in its order and of its types: a cells answer the cube, the headers and each
+/// row's label and cells as text, the available counts and the seconds as numbers and the cut flag as a boolean; a listing its columns, its rows as
+/// arrays of text, the cut flag and the seconds; and a statement the vendor will not prepare its text alone.</p>
+/// <p>Mutation (Rule 19): leave the cube out of the cells answer in <method>OcuPilot.Port.AnalyticsPort.MdxAnswer</method> -- the first leg goes
+/// red.</p>
+Method TestTheAnswersCarryTheContractsFieldsInOrder()
+{
+    Do ..RunMdx("SELECT {[Measures].[Amount]} ON 0, [Place].[H1].[Category].Members ON 1 FROM [OcuPilotProbeVisits]", .tAnswer)
+    Do $$$AssertEquals(..Keys(tAnswer), "outcome,cube,columns,rows,rowsAvailable,columnsAvailable,truncated,seconds", "a cells answer's fields, in order")
+    Do $$$AssertEquals($ZConvert(tAnswer.cube, "U") _ " " _ tAnswer.%GetTypeOf("rowsAvailable") _ " " _ tAnswer.%GetTypeOf("columnsAvailable") _ " " _ tAnswer.%GetTypeOf("truncated") _ " " _ tAnswer.%GetTypeOf("seconds") _ " " _ tAnswer.seconds, "OCUPILOTPROBEVISITS number number boolean number 1", "its cube, its counts, its flag and its seconds, as typed")
+    Set tRow = tAnswer.rows.%Get(0)
+    Do $$$AssertEquals(..Keys(tRow) _ " " _ tRow.%GetTypeOf("label") _ " " _ tRow.%GetTypeOf("cells") _ " " _ tRow.cells.%GetTypeOf(0) _ " " _ tAnswer.columns.%GetTypeOf(0), "label,cells string array string string", "a row is a label and its cells, and a header is text")
+    Do ..RunMdx("DRILLTHROUGH MAXROWS 5 SELECT FROM [OcuPilotProbeGrid]", .tListing)
+    Do $$$AssertEquals(..Keys(tListing) _ " " _ tListing.%GetTypeOf("columns") _ " " _ tListing.%GetTypeOf("rows") _ " " _ tListing.rows.%GetTypeOf(0) _ " " _ tListing.rows.%Get(0).%GetTypeOf(0) _ " " _ tListing.%GetTypeOf("truncated") _ " " _ tListing.%GetTypeOf("seconds"), "outcome,columns,rows,truncated,seconds array array array string boolean number", "a listing's fields, in order, its rows arrays of text")
+    Set tSC = $ClassMethod(..#PORT, "MdxPrepare", ..#NAMESPACE, "SELEKT FROM [OcuPilotProbeVisits]", .tRS, .tError, .tHttp, .tFault, .tAsk, .tFound)
+    Do $$$AssertEquals(..Keys(tError) _ " " _ tError.%GetTypeOf("message"), "outcome,message string", "an error answer is the outcome and the vendor's text")
+}
+
+/// <p>AC5: a run writes nothing of OcuPilot's own to the instance. The signed-in user's favorites, the probe's term list and the folder and folder item
+/// globals are as they were after a cells query, a cell's drill-through, a typed DRILLTHROUGH, a refused CREATE and a statement the vendor will not
+/// prepare. The vendor's own result cache and session nodes, which a query writes, are left out of the digest. The first leg proves the favorites
+/// node holds something, so the comparison does not pass having read nothing.</p>
+/// <p>Mutation (Rule 19): set a favorite for the signed-in user in <method>OcuPilot.Port.AnalyticsPort.MdxStart</method> -- the digest differs and this
+/// goes red.</p>
+Method TestAnMdxRunWritesNothingOfItsOwn()
+{
+    Set tOrigNS = $NAMESPACE
+    Set $NAMESPACE = ..#NAMESPACE
+    Set tFavorites = $Order(^DeepSee.UserPreferences($USERNAME, "favorite", ""))
+    Set $NAMESPACE = tOrigNS
+    Do $$$AssertNotEquals(tFavorites, "", "the signed-in user holds a favorite, so the favorites node is not empty")
+    Set tBefore = ##class(OcuPilot.Test.AnalyticsPort).Snapshot(0)
+    Do $$$AssertTrue($Extract(tBefore, 1, 5) '= "ERROR", "the snapshot before was taken: " _ tBefore)
+    Do ..RunMdx(..#CROSSJOIN, .tAnswer, 2, 1, .tDrill)
+    Do ..RunMdx("DRILLTHROUGH SELECT FROM [OcuPilotProbeVisits]", .tListing)
+    Do $$$AssertEquals(tAnswer.outcome _ " " _ tDrill.outcome _ " " _ tListing.outcome, "cells rows rows", "the runs answered")
+    Set tSC = $ClassMethod(..#PORT, "MdxPrepare", ..#NAMESPACE, "CREATE MEMBER [OcuPilotProbeVisits].[Measures].[X] AS '1'", .tRS, .tCreate, .tHttp, .tFault, .tAsk, .tFound)
+    Do $$$AssertStatusNotOK(tSC, "a CREATE is refused")
+    Do ..RunMdx("SELEKT FROM [OcuPilotProbeVisits]", .tError)
+    Do $$$AssertEquals(##class(OcuPilot.Test.AnalyticsPort).Snapshot(0), tBefore, "none of the user data, term list, folder or folder item nodes changed")
 }
 
 /// <p>The detector's answer for <var>pText</var> as <code>&lt;1 or 0&gt;|&lt;the names found&gt;|&lt;unread&gt;</code>.</p>

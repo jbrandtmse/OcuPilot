@@ -12285,3 +12285,24 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-20-33-the-mdx-query-tool.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: 20.33's implement saw TestTheReadsWriteNothing redden on its own measurement residue until the probe cleaned it; a hash per global would remove the dependence
 - 2026-10-21T17:35:13Z status=routed owner=20-34-the-cube-manager-s-build-and-synchronize by=harvest note=20.34 builds cubes, the likeliest source of cache residue; hash per global in Snapshot
+
+### DW-2489: Spine AD-42 still names Area/Explorer/SqlBackground as the SQL console's spawn site at :963, while :965 moves it to Kernel/Shell/BackgroundRun
+- source: spec-20-33-the-mdx-query-tool.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: ARCHITECTURE-SPINE.md:963's parenthetical names Area/Explorer/SqlBackground; :965 names Kernel/Shell/BackgroundRun, the only JOB site now (BackgroundRun.Spawn)
+- 2026-10-21T18:58:09Z status=open owner=20-33-the-mdx-query-tool by=cr note=lead: replace :963's SqlBackground parenthetical with Kernel/Shell/BackgroundRun at origin (Rule 20)
+- 2026-10-21T19:00:57Z status=resolved-by:20-33-the-mdx-query-tool by=adjudication note=spine AD-42 :963 now names Kernel/Shell/BackgroundRun, matching its 10-14 amendment
+
+### DW-2490: MdxStatus reads the vendor's status 100 as done without its pending-results flag, so a plugin-computed cell may be read before it is computed (unverified)
+- source: spec-20-33-the-mdx-query-tool.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: irislib %DeepSee/ResultSet.cls: %GetStatus answers 100 with pPendingResults 1 and only the waited %Execute path calls %UpdatePendingResults; the MDX job polls %GetStatus alone
+- 2026-10-21T18:58:10Z status=routed owner=20-35-the-agent-s-mdx-read by=cr note=unverified: run a %KPI("%DeepSee.Median") measure through MdxQuery, read its cell; 20.35 polls MdxStatus too
+
+### DW-2491: MdxStart and MdxStatus answer a vendor <PROTECT> as the run's error text, not with 20.11's 403 mapping
+- source: spec-20-33-the-mdx-query-tool.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: AnalyticsPort.MdxStart and MdxStatus return the vendor status unmapped and MdxQuery stores its ErrorAnswer; reachable only when the cube's globals map to a third database the caller cannot READ (inference)
+- 2026-10-21T18:58:10Z status=wontfix-accepted owner=20-33-the-mdx-query-tool by=cr note=reopen_if=a cube whose fact globals the caller cannot READ shows <PROTECT> text on MDX query; 20.35 maps it for the model
+
+### DW-2492: A cancel that arrives while the vendor computes a DRILLTHROUGH's MDX portion is acted on only when that wait ends or at the bound
+- source: spec-20-33-the-mdx-query-tool.md | severity: low | fix-risk: high | footprint: in-story
+- evidence: %ExecuteAsynch forces a DRILLTHROUGH's wait in the job (%WaitForTaskGroup), where no statement runs for CancelQuery to reach; the job reads its flag after the start (inference: not measured)
+- 2026-10-21T18:58:10Z status=wontfix-accepted owner=20-33-the-mdx-query-tool by=cr note=reopen_if=a typed DRILLTHROUGH whose %FILTER computes for over 12 s ignores Cancel in the browser until it ends

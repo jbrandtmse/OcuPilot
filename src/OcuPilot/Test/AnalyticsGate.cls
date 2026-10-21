@@ -127,7 +127,7 @@ ClassMethod Refusal(pRaw As %String) As %String
 /// vendor's check, applied by the port before the model is read; the guarded cube defines no relationship, so the Relationships
 /// tab's guard is pinned on the link pair by <method>TestAGuardedCubesRelationshipsAreHiddenFromWhoLacksItsResource</method>); and is
 /// answered the probe folder items less the guarded dashboard, the pivot it favorited marked. The editor, holding the guarded resource,
-/// is answered all five cubes and all three items, and the guarded cube's tabs as rows.</p>
+/// is answered all six cubes and all three items, and the guarded cube's tabs as rows.</p>
 /// <p>Mutation (Rule 19): drop the <code>%CubeExists</code> and <code>%CheckPrivilege</code> test from the tabs in
 /// <method>OcuPilot.Port.AnalyticsPort.Collect</method> -- the reader's guarded-cube tab legs go red. Dropping <code>%CheckPrivilege</code> alone
 /// does not, because the vendor's <code>%CubeExists</code> answers false for a cube its resource check hides.</p>

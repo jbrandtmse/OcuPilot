@@ -1,7 +1,9 @@
 /// <p>Pins MDX query's three background routes over the wire (Story 20.33): <code>POST /analytics/mdx/background</code>,
 /// <code>GET /analytics/mdx/background/:id</code> and <code>POST /analytics/mdx/background/:id/cancel</code>, each answering one JSON
-/// envelope -- a run id at once and the run polled to its cells or its listing; a cell's drill-through and a typed one; every refusal by its
-/// code before anything is spawned; a statement that runs server-side code or SQL, or that the detector cannot read, answered
+/// envelope -- a run id at once and the run polled to its cells, its listing or the vendor's error; a cell's drill-through and a typed one,
+/// and a drill of a cell the answer does not have ended refused; every refusal by its code before anything is spawned, a drill of a
+/// DRILLTHROUGH statement among them; a statement kept in no run row, answer or
+/// poll; a statement that runs server-side code or SQL, or that the detector cannot read, answered
 /// <code>confirm</code> with nothing prepared, reserved or run until the same body carries <code>confirmed: true</code>; the screen's gate on
 /// all three routes; the same 404 for another user's run, an unknown id and a malformed one; a busy owner named its run; an MDX run that
 /// does not block the owner's SQL run, and the instance cap that counts both kinds.</p>
@@ -215,8 +217,9 @@ ClassMethod NodeDefined(pNode As %Integer) As %Boolean
 }
 
 /// <p>AC1: the start answers 202 with a run id within a second, while the slow query runs on; the poll reads it running; the owner's
-/// cancel answers 200 as JSON and the run reads canceled. A plain query is then polled to its cells; a drill-through, run as the suite's
-/// account because a listing reads the source table, which the owner principal holds no SELECT on, to its listing.</p>
+/// cancel answers 200 as JSON and the run reads canceled. A plain query is then polled to its cells, and one the vendor fails as it runs
+/// to the vendor's text; a drill-through, run as the suite's account because a listing reads the source table, which the owner principal
+/// holds no SELECT on, to its listing.</p>
 /// <p>Mutation (Rule 19): make <method>OcuPilot.Kernel.Shell.BackgroundRun.HandleStart</method> wait for the run -- the within-a-second leg
 /// goes red.</p>
 Method TestTheStartAnswersARunIdAtOnceAndAPollReadsItsAnswer()
@@ -244,6 +247,8 @@ Method TestTheStartAnswersARunIdAtOnceAndAPollReadsItsAnswer()
     Do $$$AssertEquals(tAnswer.%Get("status"), "canceled", "and the run reads canceled")
     Set tView = ..RunToEnd({"statement": "SELECT {[Measures].[Amount]} ON 0, [Place].[H1].[Category].Members ON 1 FROM [OcuPilotProbeVisits]"}, tOwner)
     Do $$$AssertEquals($Select($IsObject(tView): tView.%Get("status") _ " " _ tView.result.outcome _ " " _ tView.result.columns.%Get(0) _ " " _ tView.result.rows.%Size() _ " " _ tView.result.rows.%Get(0).label, 1: ""), "ended cells Amount 5 Category 1", "a plain query polls to its cells")
+    Set tView = ..RunToEnd({"statement": "SELECT [Measures].[NoSuchMeasure] ON 0 FROM [OcuPilotProbeVisits]"}, tOwner)
+    Do $$$AssertTrue($IsObject(tView) && (tView.%Get("status") = "ended") && (tView.result.outcome = "error") && (tView.result.message [ "Measure not found"), "a statement that prepares and fails as it runs polls to the vendor's text: " _ ..Line(200, tView))
     Set tSuite = ##class(OcuPilot.Test.Http).GetTestUsername()
     Set tView = ..RunToEnd({"statement": (..#CROSSJOIN), "drill": {"row": 2, "column": 1}}, tSuite)
     Do $$$AssertEquals($Select($IsObject(tView): tView.%Get("status") _ " " _ tView.result.outcome _ " " _ tView.result.rows.%ToJSON(), 1: ""), "ended rows [[""2"",""0"",""2""],[""2"",""0"",""2""],[""2"",""0"",""2""],[""2"",""0"",""2""]]", "a cell's drill-through polls to that cell's listing")
@@ -272,6 +277,8 @@ Method TestEveryRefusalIsAnsweredByItsCodeAndNothingIsSpawned()
     }
     Do ..Send("POST", ..#START, tOwner, .tStatus, .tAnswer, .tType, {"statement": "SELEKT FROM [OcuPilotProbeVisits]"})
     Do $$$AssertTrue((tStatus = 200) && (tAnswer.outcome = "error") && (tAnswer.message [ "Unknown term at start of query: SELEKT"), "a syntax error is answered with the vendor's text, with no confirmation: " _ ..Line(tStatus, tAnswer))
+    Do ..Send("POST", ..#START, tOwner, .tStatus, .tAnswer, .tType, {"statement": "DRILLTHROUGH MAXROWS 3 SELECT FROM [OcuPilotProbeVisits]", "drill": {"row": 1, "column": 1}})
+    Do $$$AssertEquals(..Code(tStatus, tAnswer), "400 ANALYTICS.MDX.INPUT", "a drill of a DRILLTHROUGH statement, whose answer has no cells, is refused")
     Do ..Send("POST", ..#START, tOwner, .tStatus, .tAnswer, .tType, {"statement": "SELECT FROM [OcuPilotProbeVisits]"}, "HSCUSTOM")
     Do $$$AssertEquals(..Code(tStatus, tAnswer), "409 ANALYTICS.NAMESPACE", "a namespace without analytics is refused before any vendor call")
     Do ..Send("POST", ..#START, ##class(OcuPilot.Test.Http).GetTestUsername(), .tStatus, .tAnswer, .tType, {"statement": "SELECT FROM [OcuPilotProbeVisits]"}, "HSLIB")
@@ -393,6 +400,59 @@ Method TestTheInstanceCapCountsBothKinds()
     Do ..Send("POST", ..#SQLSTART, tOwner, .tStatus, .tAnswer, .tType, {"statement": "SELECT 1 AS One"})
     Do $$$AssertEquals(..Code(tStatus, tAnswer), "503 EXPLORER.SQL.BACKGROUND.FULL", "whichever kind it is")
     Do $$$AssertEquals(..Rows(tOwner), 0, "and neither reserved a run")
+}
+
+/// <p>AC2, AC7: a drill of a cell the answer does not have -- a position inside the caps the start checks, past the statement's rows or columns --
+/// is accepted at the start and ends the run <code>failed</code> with the <code>ANALYTICS.MDX.INPUT</code> refusal and no answer; each ended run is
+/// replaced by the owner's next start, which is not refused busy.</p>
+/// <p>Mutation (Rule 19): end the run <code>ended</code> with no answer in the drill branch of <method>OcuPilot.Area.Analytics.MdxQuery.Process</method>
+/// instead of refusing -- the run reads ended and this goes red.</p>
+Method TestADrillOfACellPastTheAnswerEndsTheRunFailedAndRefused()
+{
+    Set tOwner = ..#OWNER
+    For tCase = $ListBuild(3, 1), $ListBuild(1, 2), $ListBuild(1000, 100) {
+        Set tView = ..RunToEnd({"statement": (..#CROSSJOIN), "drill": {"row": ($List(tCase, 1)), "column": ($List(tCase, 2))}}, tOwner)
+        Set tLine = $Select($IsObject(tView): tView.%Get("status") _ " " _ $Select(tView.%GetTypeOf("refusal") = "object": tView.refusal.code _ " " _ (tView.refusal.reason = ##class(OcuPilot.Api.AnalyticsError).#REASONMDXINPUT), 1: "no refusal") _ " " _ tView.%GetTypeOf("result"), 1: "no answer")
+        Do $$$AssertEquals(tLine, "failed ANALYTICS.MDX.INPUT 1 unassigned", "cell (" _ $List(tCase, 1) _ ", " _ $List(tCase, 2) _ ") of a two-row, one-column answer is refused, with its sentence and no answer")
+    }
+}
+
+/// <p>The text of every node of the run store's globals (the data, index and stream locations of <class>OcuPilot.Kernel.State.Base</class>) that
+/// holds <var>pText</var> in a subscript or a value, as the global names that do, comma-joined; empty when none does.</p>
+ClassMethod StoredIn(pText As %String) As %String
+{
+    Set tHits = ""
+    Set tLocations = ##class(%SQL.Statement).%ExecDirect(, "SELECT DataLocation, IndexLocation, StreamLocation FROM %Dictionary.CompiledStorage WHERE parent = 'OcuPilot.Kernel.State.Base'")
+    While tLocations.%Next() {
+        For tI = 1:1:3 {
+            Set tRoot = tLocations.%GetData(tI)
+            If tRoot = "" Continue
+            Set tNode = $Query(@tRoot)
+            While tNode '= "" {
+                If $Find(tNode, pText) || $Find(@tNode, pText) {
+                    If '$ListFind($ListFromString(tHits), tRoot) Set tHits = tHits _ $Select(tHits = "": "", 1: ",") _ tRoot
+                }
+                Set tNode = $Query(@tNode)
+            }
+        }
+    }
+    Quit tHits
+}
+
+/// <p>AD-7, AD-36: the statement is kept nowhere OcuPilot holds. A statement carrying a marker in a comment runs to its cells; the owner's poll
+/// does not carry the marker, and no node of the run store's globals does. The scan finds the run's own id in those globals, so it reads the right
+/// ones.</p>
+/// <p>Mutation (Rule 19): add the statement to the cells answer in <method>OcuPilot.Area.Analytics.MdxQuery.Process</method> before it is stored --
+/// the poll and the store both carry the marker and this goes red.</p>
+Method TestTheStatementIsKeptNowhereTheRunStores()
+{
+    Set tOwner = ..#OWNER
+    Set tMark = "OcuProbe2033Kept" _ $Translate($ZTimeStamp, ",.", "")
+    Set tView = ..RunToEnd({"statement": ("SELECT {[Measures].[Amount]} ON 0 FROM [OcuPilotProbeGrid] /* " _ tMark _ " */")}, tOwner)
+    Do $$$AssertEquals($Select($IsObject(tView): tView.%Get("status") _ " " _ tView.result.outcome, 1: ""), "ended cells", "the statement runs to its cells")
+    Do $$$AssertEquals($Find(tView.%ToJSON(), tMark), 0, "the owner's poll does not carry the statement")
+    Do $$$AssertEquals(..StoredIn(tMark), "", "no node of the run store holds it")
+    Do $$$AssertNotEquals(..StoredIn(tView.%Get("id")), "", "though the scan finds the run's own id")
 }
 
 }

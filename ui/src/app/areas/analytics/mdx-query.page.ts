@@ -141,7 +141,7 @@ interface RowView {
                         type="button"
                         class="ocu-mdx-drill"
                         data-ocu-mdx="drill-cell"
-                        [attr.aria-label]="drillLabel(row.label, $index)"
+                        [attr.aria-label]="drillLabel(row.label, $index, cell)"
                         [attr.aria-disabled]="drillBlocked"
                         (click)="onDrill(row.key + 1, $index + 1)"
                       >{{ cell }}</button>
@@ -329,9 +329,10 @@ export class MdxQueryPage {
     return this.state.confirm() !== null;
   }
 
-  /** A value cell's accessible name: the row's label and the column's header. */
-  protected drillLabel(label: string, index: number): string {
-    return STRINGS.analyticsMdxDrillCell.split('<row>').join(label).split('<column>').join(this.gridColumns[index] ?? '');
+  /** A value cell's accessible name: its value as shown, then the drill-through of the row's label and the column's header. */
+  protected drillLabel(label: string, index: number, value: string): string {
+    const drill = STRINGS.analyticsMdxDrillCell.split('<row>').join(label).split('<column>').join(this.gridColumns[index] ?? '');
+    return value === '' ? drill : `${value}, ${drill}`;
   }
 
   protected onText(event: Event): void {

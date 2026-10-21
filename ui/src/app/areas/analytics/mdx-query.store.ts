@@ -20,7 +20,8 @@
  * **A drill-through re-runs the last-run statement.** Each value cell of the grid starts a run of the
  * statement that produced the grid, with the cell's 1-based row and column positions in the grid shown
  * (the instance composes the drill from them), carrying the confirmation that statement's run was
- * given. The grid stays shown while the drill runs; its listing replaces the last one.
+ * given, in the namespace it ran in: after a namespace change the grid stays shown and is not drilled.
+ * The grid stays shown while the drill runs; its listing replaces the last one.
  *
  * **The answer is screen-only** (AD-39's sixth exception): cells, labels, a listing and the vendor's
  * error text live in this state and are rendered as text; none of it enters the screen's store, so none
@@ -90,11 +91,12 @@ export interface MdxConfirm {
   readonly namespace: string;
 }
 
-/** One run a start was sent for: its statement, whether the person confirmed it, and whether it is a cell's drill. */
+/** One run a start was sent for: its statement, whether the person confirmed it, whether it is a cell's drill, and the namespace it ran in. */
 interface Intent {
   readonly statement: string;
   readonly confirmed: boolean;
   readonly drill: boolean;
+  readonly namespace: string;
 }
 
 /** The text of a cube read's row: its `Name`, or `''`. */
@@ -112,7 +114,7 @@ export class MdxQueryState {
   /** Which cube read is current; an answer to an older one is dropped. */
   private cubesGeneration = 0;
 
-  /** The namespace the cubes on offer were read for, or `null` before any read. */
+  /** The namespace the page is in: the one the cubes on offer were read for, or `null` before any read. */
   private cubesScope: string | null = null;
 
   private readonly run: BackgroundRun<MdxAnswer> = new BackgroundRun<MdxAnswer>(
@@ -198,9 +200,9 @@ export class MdxQueryState {
     return answer !== null && answer.outcome === 'error' ? answer.message : '';
   }
 
-  /** Whether the grid on screen can be drilled: the statement that produced it is known. */
+  /** Whether the grid on screen can be drilled: the statement that produced it is known, and it ran in the namespace the page is in. */
   drillable(): boolean {
-    return this.cellsValue !== null && this.shownRun !== null;
+    return this.cellsValue !== null && this.shownRun !== null && this.shownRun.namespace === this.cubesScope;
   }
 
   /** The statement a confirmation waits on, or `null`. */
@@ -266,7 +268,7 @@ export class MdxQueryState {
   async runStatement(deps: MdxQueryDeps): Promise<void> {
     const statement = this.textValue;
     if (this.run.busy() || statement.trim() === '') return;
-    await this.send(deps, { statement }, { statement, confirmed: false, drill: false });
+    await this.send(deps, { statement }, { statement, confirmed: false, drill: false, namespace: deps.scope() });
   }
 
   /** Proceed: send the statement the confirmation was asked for, once more, with the confirmation. */
@@ -276,7 +278,7 @@ export class MdxQueryState {
     this.confirmValue = null;
     this.notify();
     if (pending.namespace !== deps.scope() || this.run.busy()) return;
-    await this.send(deps, { statement: pending.statement, confirmed: true }, { statement: pending.statement, confirmed: true, drill: false });
+    await this.send(deps, { statement: pending.statement, confirmed: true }, { statement: pending.statement, confirmed: true, drill: false, namespace: pending.namespace });
   }
 
   /** Cancel: the confirmation closes and nothing is sent. */
@@ -288,14 +290,15 @@ export class MdxQueryState {
 
   /**
    * Drill through the cell at `row` and `column` (1-based, as the grid shows them): the statement that
-   * produced the grid is run again as a drill of that cell, with the confirmation that run was given.
+   * produced the grid is run again as a drill of that cell, with the confirmation that run was given, and
+   * only in the namespace it ran in.
    */
   async drill(deps: MdxQueryDeps, row: number, column: number): Promise<void> {
     const shown = this.shownRun;
-    if (this.run.busy() || this.cellsValue === null || shown === null) return;
+    if (this.run.busy() || this.cellsValue === null || shown === null || shown.namespace !== deps.scope()) return;
     const request: Record<string, unknown> = { statement: shown.statement, drill: { row, column } };
     if (shown.confirmed) request['confirmed'] = true;
-    await this.send(deps, request, { statement: shown.statement, confirmed: shown.confirmed, drill: true });
+    await this.send(deps, request, { statement: shown.statement, confirmed: shown.confirmed, drill: true, namespace: shown.namespace });
   }
 
   /** Poll the run on screen once, and again every second while it runs. */

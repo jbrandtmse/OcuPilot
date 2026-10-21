@@ -8,7 +8,8 @@
 /// <parameter>OcuPilot.Port.AnalyticsPort.MDXMAXSTATEMENT</parameter> characters; <code>drill</code>, <code>{row, column}</code>, the
 /// positive whole 1-based positions of one cell of the statement's answer within <parameter>OcuPilot.Port.AnalyticsPort.MDXMAXROWS</parameter>
 /// and <parameter>OcuPilot.Port.AnalyticsPort.MDXMAXCOLUMNS</parameter>; and <code>confirmed</code>, absent or <code>true</code>. Any other
-/// key or shape is 400 <code>ANALYTICS.MDX.INPUT</code> before anything is prepared.</p>
+/// key or shape is 400 <code>ANALYTICS.MDX.INPUT</code> before anything is prepared, and so, once it is prepared, is a drill of a
+/// DRILLTHROUGH statement, whose answer has no cells.</p>
 /// <p><b>The start's order</b> is: the screen gate; the body; <method>OcuPilot.Port.AnalyticsPort.MdxAdmit</method>; the detection of text
 /// that runs server-side code or SQL (<method>OcuPilot.Port.AnalyticsPort.MdxConstructs</method>); the prepare
 /// (<method>OcuPilot.Port.AnalyticsPort.MdxPrepare</method>), whose refusals and error answer are rendered; and the detection again on the
@@ -16,11 +17,13 @@
 /// and nothing is reserved or spawned for it, for a refusal or for an error answer. The confirmation is the person's own step on their own
 /// query (AD-65), carried in the same body as the text it confirms.</p>
 /// <p><b>The job</b> repeats the gate, both detections and the prepare in its own process (<method>Work</method>): a finding the flag does
-/// not confirm ends the run <code>failed</code> with <code>ANALYTICS.MDX.LOST</code>, executing nothing. It starts the query on the vendor's
-/// agents and polls it every <parameter>POLLPAUSE</parameter> seconds, for its owner's cancel and for the time bound
-/// (<method>BoundSeconds</method>); at either it cancels the vendor's query and waits for the vendor to report it finished. A drill-through
-/// runs the statement, then the cell's listing, and a typed DRILLTHROUGH runs its listing, each under an alarm of the time that remains. The
-/// statement is handed to the job as one <code>JOB</code> argument and is stored nowhere.</p>
+/// not confirm ends the run <code>failed</code> with <code>ANALYTICS.MDX.LOST</code>, executing nothing. Each start runs under an alarm of
+/// the time that remains (<method>BoundSeconds</method>), because the vendor resolves the statement's members, and runs any SQL they name,
+/// in the start itself. A SELECT then runs on the vendor's agents and the job polls it every <parameter>POLLPAUSE</parameter> seconds, for
+/// its owner's cancel and for the time bound; at either it cancels the vendor's query and waits for the vendor to report it finished. A
+/// drill-through runs the statement, then the cell's listing, and a typed DRILLTHROUGH runs its listing, each read under an alarm of the
+/// time that remains. The job reads its owner's cancel before each start and before a listing is read. The statement is handed to the
+/// job as one <code>JOB</code> argument and is stored nowhere.</p>
 /// <p>Seams a fixture subclass overrides: <method>BoundSeconds</method>, <method>Variables</method>, <method>MaxRunning</method>,
 /// <method>LimitsClass</method>, <method>PortClass</method> and <method>Spawn</method>. Production overrides none.</p>
 Class OcuPilot.Area.Analytics.MdxQuery Extends OcuPilot.Kernel.Shell.BackgroundRun
@@ -80,6 +83,7 @@ ClassMethod Admit(Output pNamespace As %String, Output pRequest As %List, Output
         }
         Set tNamespace = ##class(OcuPilot.Kernel.Scope).Current()
         Set tCheckSC = ..Check(tNamespace, tStatement, tConfirmed, .tAnswer, .tHttp, .tFault, .tRS)
+        Set tListing = ($ClassMethod(..PortClass(), "MdxKind", $Get(tRS)) = "DRILLTHROUGH")
         Do $ClassMethod(..PortClass(), "MdxRelease", tNamespace, .tRS)
         If $$$ISERR(tCheckSC) {
             Set tSC = ..RenderPortFault(tCheckSC, $Get(tHttp), $Get(tFault))
@@ -87,6 +91,10 @@ ClassMethod Admit(Output pNamespace As %String, Output pRequest As %List, Output
         }
         If $IsObject($Get(tAnswer)) {
             Set tSC = ..Reply(200, tAnswer)
+            Quit
+        }
+        If tListing && (tRow '= "") {
+            Set tSC = ..RenderInput()
             Quit
         }
         Set pNamespace = tNamespace
@@ -278,6 +286,7 @@ ClassMethod Process(pKey As %String, pNamespace As %String, pRequest As %List, B
         Do ..Execute(tPort, pNamespace, pRS, pKey, tDeadline, 0, .tOutcome, .tError)
     }
     Set tResultRS = pRS
+    If (tOutcome = "done") && (tRow '= "") && ..Asked(pKey) Set tOutcome = "canceled"
     If (tOutcome = "done") && (tRow '= "") {
         Set tSC = $ClassMethod(tPort, "MdxDrill", pNamespace, pRS, tRow, tColumn, .pDrill, .tHttp, .tFault, .tAnswer)
         If $$$ISERR(tSC) {
@@ -305,6 +314,11 @@ ClassMethod Process(pKey As %String, pNamespace As %String, pRequest As %List, B
     }
     Set tListed = 0
     If $ClassMethod(tPort, "MdxKind", tResultRS) = "DRILLTHROUGH" {
+        ; The listing's statement runs when its rows are read, so a cancel that reached no statement yet is read here.
+        If ..Asked(pKey) {
+            Do ..Finish(pKey, tEnded, "")
+            Quit
+        }
         Set tRemaining = tDeadline - $ZHorolog
         If tRemaining <= 0 {
             Do ..FinishStopped(pKey, tBound)
@@ -343,50 +357,49 @@ ClassMethod AlarmSeconds(pRemaining As %Numeric) As %Integer [ Private ]
 
 /// <p>Run the prepared result set <var>pRS</var> of run <var>pKey</var> to its end, its owner's cancel or <var>pDeadline</var>
 /// (<code>$ZHorolog</code> units); <var>pOutcome</var> is <code>done</code>, <code>error</code> (with the vendor's status in
-/// <var>pError</var>), <code>canceled</code> or <code>stopped</code>. With <var>pBlocking</var> the start itself waits for the vendor, as
-/// a DRILLTHROUGH's does, under an alarm of the time that remains, and an alarm is a <code>stopped</code> run. Whenever the run is
-/// canceled or stopped, the vendor's query is canceled and the vendor given up to
-/// <parameter>OcuPilot.Port.AnalyticsPort.MDXSETTLESECONDS</parameter> seconds to report it finished.</p>
+/// <var>pError</var>), <code>canceled</code> or <code>stopped</code>. A cancel already asked is read before the start. The start runs
+/// under an alarm of the time that remains, because the vendor resolves the statement's members, and runs any SQL they name, in the start
+/// itself; the alarm is a <code>stopped</code> run (<method>Alarmed</method>). With <var>pBlocking</var>, a DRILLTHROUGH's, the start
+/// is the whole run here; otherwise the job polls the vendor's agents. Whenever the run is canceled or stopped, the vendor's query is
+/// canceled and the vendor given up to <parameter>OcuPilot.Port.AnalyticsPort.MDXSETTLESECONDS</parameter> seconds to report it
+/// finished.</p>
 ClassMethod Execute(pPort As %String, pNamespace As %String, pRS, pKey As %String, pDeadline As %Numeric, pBlocking As %Boolean, Output pOutcome As %String, Output pError As %Status) [ Private ]
 {
     Set pOutcome = "done"
     Set pError = $$$OK
     Set tCube = ""
     Set tQueryKey = ""
-    If pBlocking {
-        Set tRemaining = pDeadline - $ZHorolog
-        If tRemaining <= 0 {
-            Set pOutcome = "stopped"
-            Quit
-        }
+    If ..Asked(pKey) {
+        Set pOutcome = "canceled"
+        Quit
+    }
+    Set tRemaining = pDeadline - $ZHorolog
+    If tRemaining <= 0 {
+        Set pOutcome = "stopped"
+        Quit
+    }
+    Set tAlarmed = 0
+    Try {
+        Do $System.Alarm.Set(..AlarmSeconds(tRemaining))
+        Set tAlarmed = 1
+        Set tSC = $ClassMethod(pPort, "MdxStart", pNamespace, pRS, .tCube, .tQueryKey)
+        Do $System.Alarm.Clear()
         Set tAlarmed = 0
-        Try {
-            Do $System.Alarm.Set(..AlarmSeconds(tRemaining))
-            Set tAlarmed = 1
-            Set tSC = $ClassMethod(pPort, "MdxStart", pNamespace, pRS, .tCube, .tQueryKey)
-            Do $System.Alarm.Clear()
-            Set tAlarmed = 0
-        } Catch ex {
-            If tAlarmed Do $System.Alarm.Clear()
-            Set tSC = ex.AsStatus()
-        }
-        If $$$ISERR(tSC) {
-            If $System.Status.GetErrorText(tSC) [ "<ALARM>" {
-                Set pOutcome = "stopped"
-                Do ..Stop(pPort, pNamespace, pRS, tCube, tQueryKey)
-            } Else {
-                Set pOutcome = "error"
-                Set pError = tSC
-            }
-        }
-        Quit
+    } Catch ex {
+        If tAlarmed Do $System.Alarm.Clear()
+        Set tSC = ex.AsStatus()
     }
-    Set tSC = $ClassMethod(pPort, "MdxStart", pNamespace, pRS, .tCube, .tQueryKey)
     If $$$ISERR(tSC) {
-        Set pOutcome = "error"
-        Set pError = tSC
+        If ..Alarmed(tSC) {
+            Set pOutcome = "stopped"
+            Do ..Stop(pPort, pNamespace, pRS, tCube, tQueryKey)
+        } Else {
+            Set pOutcome = "error"
+            Set pError = tSC
+        }
         Quit
     }
+    If pBlocking Quit
     For {
         Set tStatus = $ClassMethod(pPort, "MdxStatus", pNamespace, pRS, .tVendorError)
         If tStatus = 100 {
@@ -396,8 +409,7 @@ ClassMethod Execute(pPort As %String, pNamespace As %String, pRS, pKey As %Strin
             }
             Quit
         }
-        Set tCheckSC = $ClassMethod(..#STORECLASS, "GuardedCancelRequested", pKey, .tRequested)
-        If $$$ISOK(tCheckSC) && tRequested {
+        If ..Asked(pKey) {
             Set pOutcome = "canceled"
             Do ..Stop(pPort, pNamespace, pRS, tCube, tQueryKey)
             Quit
@@ -409,6 +421,32 @@ ClassMethod Execute(pPort As %String, pNamespace As %String, pRS, pKey As %Strin
         }
         Hang ..#POLLPAUSE
     }
+}
+
+/// <p>Whether run <var>pKey</var>'s owner has asked it to stop, read fresh from the store; 0 when the store cannot answer.</p>
+ClassMethod Asked(pKey As %String) As %Boolean [ Private ]
+{
+    Set tRequested = 0
+    Set tSC = $ClassMethod(..#STORECLASS, "GuardedCancelRequested", pKey, .tRequested)
+    Quit $$$ISOK(tSC) && tRequested
+}
+
+/// <p>Whether the error status <var>pStatus</var> is the run's alarm: an <code>&lt;ALARM&gt;</code> that interrupted code, or the SQL
+/// engine's SQLCODE <parameter>OcuPilot.Port.AnalyticsPort.MDXALARMSQLCODE</parameter>, the form an alarm takes when it interrupts a
+/// statement (measured: a member's <code>%SEARCH</code> SQL in a start answers #5540 with that SQLCODE).</p>
+ClassMethod Alarmed(pStatus As %Status) As %Boolean [ Private ]
+{
+    If $System.Status.GetErrorText(pStatus) [ "<ALARM>" Quit 1
+    Set tAlarmed = 0
+    Try {
+        Do $System.Status.DecomposeStatus(pStatus, .tErrors)
+        For tI = 1:1:+$Get(tErrors) {
+            If ($Get(tErrors(tI, "code")) = 5540) && ($Get(tErrors(tI, "param", 1)) = ##class(OcuPilot.Port.AnalyticsPort).#MDXALARMSQLCODE) Set tAlarmed = 1
+        }
+    } Catch {
+        Set tAlarmed = 0
+    }
+    Quit tAlarmed
 }
 
 /// <p>Cancel the vendor's query <var>pQueryKey</var> of cube <var>pCube</var>, and wait up to
@@ -432,9 +470,11 @@ ClassMethod FinishUnconfirmed(pKey As %String) [ Private ]
     Do ..Finish(pKey, $Parameter(..#STORECLASS, "STATEFAILED"), ..Envelope(..Lost(.tHttp)).%ToJSON())
 }
 
-/// <p>What a cancel sends to the job: one <code>$SYSTEM.SQL.CancelQuery</code>, which reaches a listing statement; the job's own
-/// polling sees the owner's flag and cancels the vendor's query. A job that runs no SQL answers an error status at once, which is not a
-/// failure.</p>
+/// <p>What a cancel sends to the job: one <code>$SYSTEM.SQL.CancelQuery</code>, which reaches a statement the job runs, a listing's or the
+/// SQL a start runs for a member. A job that runs no statement answers an error status at once, which is not a failure: the job reads its
+/// owner's flag while it polls the vendor's agents and before each start and each listing's read, so it acts on the cancel at its next
+/// step. A cancel that arrives while the vendor computes a DRILLTHROUGH's MDX portion is acted on when that wait ends, or at the
+/// bound.</p>
 ClassMethod CancelJob(pId As %String, pUser As %String, pJobId As %String, pLive As %Boolean) As %Status
 {
     If pLive && (pJobId '= "") Do $SYSTEM.SQL.CancelQuery(pJobId, , 0)

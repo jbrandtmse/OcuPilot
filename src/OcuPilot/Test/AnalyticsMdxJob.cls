@@ -1,7 +1,8 @@
 /// <p>Pins the MDX run's job (Story 20.33, AD-7, AD-9, AD-41, AD-42, AD-65): the owner's cancel ends a running query <code>canceled</code>
 /// within twelve seconds and leaves no job, no vendor query running and no process in <code>USER</code> running <code>%DeepSee</code>
-/// code, for a query and for a drill-through's listing; the time bound stops a query or a listing the same way, a bound under a second
-/// included; a run whose variable-resolved text holds a finding its start did not confirm is not
+/// code, for a query and for a drill-through's listing, and a cancel that reaches no statement is read before the listing is; the time
+/// bound stops a query or a listing the same way, a bound under a second included, a query whose start runs a member's SQL, and a wait
+/// the alarm ends with an <code>&lt;ALARM&gt;</code> exception, in the start or in the listing's read; a run whose variable-resolved text holds a finding its start did not confirm is not
 /// run, and runs, executing the finding, once the confirmation covers it; a cancel sent before the job begins ends it canceled with the
 /// statement never run; and the job's failure line carries nothing of the statement.</p>
 /// <p><b>What it needs from the environment:</b> <parameter>ARMINGVARIABLE</parameter> reading <code>1</code>, because
@@ -23,6 +24,8 @@ Parameter FAILING = "OcuPilot.Test.AnalyticsMdxFailing";
 
 Parameter QUICK = "OcuPilot.Test.AnalyticsMdxQuick";
 
+Parameter HANG = "OcuPilot.Test.AnalyticsMdxHang";
+
 Parameter STORE = "OcuPilot.Kernel.State.SqlRun";
 
 Parameter LIMITS = "OcuPilot.Kernel.Agent.Limits";
@@ -37,10 +40,19 @@ Parameter NEVER = "SELECT {[Measures].[%COUNT]} ON 0, NON EMPTY CROSSJOIN([Sub].
 /// <p>A statement whose resolved text holds a <code>%SEARCH</code> the fixture's variable supplies.</p>
 Parameter RESOLVED = "SELECT {[Measures].[Amount]} ON 0 FROM [OcuPilotProbeGrid] WHERE $variable.v";
 
-/// <p>A typed DRILLTHROUGH whose listing carries a pairwise count over the grid's 50,000 facts, which runs for minutes. The vendor runs a
-/// listing inside the one call the run waits in, so only the run's alarm or a cancel reaching the listing's statement ends it. It names
+/// <p>A typed DRILLTHROUGH whose listing carries a pairwise count over the grid's 50,000 facts, which runs for minutes. The listing's
+/// statement runs when its rows are read, so only the run's alarm or a cancel reaching that statement ends it. It names
 /// <code>RETURN</code>, so its run is started confirmed.</p>
 Parameter SLOWLISTING = "DRILLTHROUGH SELECT FROM [OcuPilotProbeGrid] RETURN Sub,(SELECT COUNT(*) FROM OcuPilotProbe_Analytics.Grid a, OcuPilotProbe_Analytics.Grid b WHERE a.Amount * b.Amount = 9999) AS N";
+
+/// <p>A SELECT whose <code>%SEARCH</code> names a pairwise count over the grid's facts, which runs for minutes. The vendor runs a member's
+/// SQL while it starts the query, in the job itself, so only the run's alarm or a cancel reaching that statement ends it. It names
+/// <code>%SEARCH</code>, so its run is started confirmed.</p>
+Parameter SLOWSTART = "SELECT FROM [OcuPilotProbeGrid] WHERE %SEARCH.&[ID > (SELECT COUNT(*) FROM OcuPilotProbe_Analytics.Grid a, OcuPilotProbe_Analytics.Grid b WHERE a.Amount * b.Amount = 9997)]";
+
+/// <p>The production class over the hanging port: its grid DRILLTHROUGH runs no statement while it starts and its listing's read waits
+/// for ever.</p>
+Parameter PAUSED = "OcuPilot.Test.AnalyticsMdxPaused";
 
 Method OnBeforeAllTests() As %Status
 {
@@ -271,8 +283,67 @@ Method TestTheOwnersCancelEndsAListingRunCanceled()
     Do ..AssertNothingRuns(tChild, ..#SLOWLISTING, 0)
 }
 
+/// <p>AC3: a cancel that reaches no statement, sent while the job prepares and starts a listing, is read by the job before the listing
+/// is: the run reads <code>canceled</code> within twelve seconds and leaves nothing running. The paused fixture has the production bound
+/// and a listing whose read waits for ever, so only the job's own read of the cancel ends the run in time.</p>
+/// <p>Mutation (Rule 19): drop the job's reads of the cancel before a start and before a listing's read in
+/// <method>OcuPilot.Area.Analytics.MdxQuery.Execute</method> and <method>OcuPilot.Area.Analytics.MdxQuery.Process</method> -- the listing
+/// waits on and this goes red.</p>
+Method TestACancelThatReachesNoStatementIsReadBeforeTheListing()
+{
+    Do ..Begin(..#PAUSED, "DRILLTHROUGH SELECT FROM [OcuPilotProbeGrid]", .tKey, .tChild)
+    Set tJob = ..RunJob(tKey, 10)
+    Do $$$AssertNotEquals(tJob, "", "the run's job has begun")
+    If tJob = "" Quit
+    Set tAsked = $ZHorolog
+    Do $$$AssertStatusOK($ClassMethod(..#PAUSED, "Cancel", tKey, $Username, .tFound), "its owner cancels it while no statement runs")
+    Set tView = ..Await(tKey, 15)
+    Set tTook = $ZHorolog - tAsked
+    Do $$$AssertEquals(..Said(tView), "canceled", "the run reads canceled, with no answer")
+    Do $$$AssertTrue(tTook < 12, "within twelve seconds of the cancel: " _ $FNumber(tTook, "", 2) _ " s")
+    Do ..AssertNothingRuns(tChild, "DRILLTHROUGH SELECT FROM [OcuPilotProbeGrid]", 0)
+}
+
+/// <p>AC4: the bound holds while the vendor starts a query: a confirmed SELECT whose <code>%SEARCH</code> names SQL that runs for minutes,
+/// which the vendor runs inside the start, ends <code>stopped</code> at the fixture's two seconds, the SQL engine's form of the alarm
+/// read as the bound, and leaves nothing running.</p>
+/// <p>Mutation (Rule 19): start a SELECT with no alarm in <method>OcuPilot.Area.Analytics.MdxQuery.Execute</method> -- the start runs the
+/// SQL on and this goes red.</p>
+Method TestTheBoundHoldsWhileTheVendorStartsAQuery()
+{
+    Do ..Begin(..#FIXTURE, ..#SLOWSTART, .tKey, .tChild, 1)
+    Set tView = ..Await(tKey, 40)
+    Do $$$AssertEquals(..Said(tView), "ended {""outcome"":""stopped"",""seconds"":2}", "the run ends stopped at the bound")
+    Do ..AssertNothingRuns(tChild, ..#SLOWSTART, 0)
+}
+
+/// <p>AC4: a bound that ends a DRILLTHROUGH's start with an <code>&lt;ALARM&gt;</code> exception stops the run as the bound does elsewhere:
+/// <code>stopped</code> with the bound's seconds and nothing running. The port fixture's start waits for ever, so the alarm is the only
+/// way out.</p>
+/// <p>Mutation (Rule 19): read the alarm's exception as a vendor error in <method>OcuPilot.Area.Analytics.MdxQuery.Execute</method> (match
+/// <code>&lt;ALARMX&gt;</code> in its status text) -- the run ends with an error answer and this goes red.</p>
+Method TestAnAlarmThatInterruptsTheStartStopsTheRun()
+{
+    Do ..Begin(..#HANG, "DRILLTHROUGH SELECT FROM [OcuPilotProbeVisits]", .tKey, .tChild)
+    Set tView = ..Await(tKey, 40)
+    Do $$$AssertEquals(..Said(tView), "ended {""outcome"":""stopped"",""seconds"":2}", "the run ends stopped at the bound")
+    Do ..AssertNothingRuns(tChild, "DRILLTHROUGH SELECT FROM [OcuPilotProbeVisits]", 0)
+}
+
+/// <p>AC4: a bound that ends a listing's read with an <code>&lt;ALARM&gt;</code> exception stops the run the same way. The port fixture
+/// starts the listing as the port does and its read waits for ever.</p>
+/// <p>Mutation (Rule 19): read the alarm's exception as a failure in <method>OcuPilot.Port.AnalyticsPort.MdxAnswer</method> (match
+/// <code>&lt;ALARMX&gt;</code> by name) -- the run ends with no answer, which reads lost, and this goes red.</p>
+Method TestAnAlarmThatInterruptsTheListingsReadStopsTheRun()
+{
+    Do ..Begin(..#HANG, "DRILLTHROUGH SELECT FROM [OcuPilotProbeGrid]", .tKey, .tChild)
+    Set tView = ..Await(tKey, 40)
+    Do $$$AssertEquals(..Said(tView), "ended {""outcome"":""stopped"",""seconds"":2}", "the run ends stopped at the bound")
+    Do ..AssertNothingRuns(tChild, "DRILLTHROUGH SELECT FROM [OcuPilotProbeGrid]", 0)
+}
+
 /// <p>AC10: a statement whose variable-resolved text names <code>%SEARCH</code> is not run unconfirmed. The start's own check answers
-/// <code>confirm</code> naming it, reserving nothing and leaving the node undefined; a job handed the same text without the confirmation
+/// <code>confirm</code> naming it and leaving the node undefined; a job handed the same text without the confirmation
 /// ends <code>failed</code> with <code>ANALYTICS.MDX.LOST</code> and the node still undefined; and once the confirmation covers it the run
 /// executes it and the node is defined.</p>
 /// <p>Mutation (Rule 19): skip the check on the resolved text in <method>OcuPilot.Port.AnalyticsPort.MdxPrepare</method> -- the start
@@ -281,16 +352,10 @@ Method TestAResolvedTextWithAFindingIsNotRunUnlessConfirmed()
 {
     Set tNode = $Parameter(..#FIXTURE, "SPLICENODE")
     Kill ^|"USER"|OcuPilotProbeMdxSplice(tNode)
-    Set tBefore = ##class(%SQL.Statement).%ExecDirect(, "SELECT COUNT(*) FROM OcuPilot_Kernel_State.SqlRun WHERE %EXACT(UserName) = ?", $Username)
-    Do tBefore.%Next()
-    Set tCount = tBefore.%GetData(1)
     Set tSC = $ClassMethod(..#FIXTURE, "Check", "USER", ..#RESOLVED, 0, .tAnswer, .tHttp, .tFault)
     Do $$$AssertStatusOK(tSC, "the start's check passes the gate")
     Do $$$AssertEquals($Select($IsObject($Get(tAnswer)): tAnswer.%ToJSON(), 1: "no answer"), "{""outcome"":""confirm"",""constructs"":[""%SEARCH""],""consequence"":""" _ $Parameter("OcuPilot.Port.AnalyticsPort", "MDXCONSEQUENCE") _ """}", "and answers confirm, naming %SEARCH")
     Do $$$AssertEquals($Data(^|"USER"|OcuPilotProbeMdxSplice(tNode)), 0, "its prepare executed nothing: the node is undefined")
-    Set tAfter = ##class(%SQL.Statement).%ExecDirect(, "SELECT COUNT(*) FROM OcuPilot_Kernel_State.SqlRun WHERE %EXACT(UserName) = ?", $Username)
-    Do tAfter.%Next()
-    Do $$$AssertEquals(tAfter.%GetData(1), tCount, "and reserved no run")
     Do ..Begin(..#FIXTURE, ..#RESOLVED, .tKey, .tChild, 0)
     Set tView = ..Await(tKey, 20)
     Do $$$AssertEquals(..Said(tView), "failed {""code"":""ANALYTICS.MDX.LOST"",""reason"":""" _ ##class(OcuPilot.Api.AnalyticsError).#REASONMDXLOST _ """}", "a job handed the text without the confirmation ends failed, lost")

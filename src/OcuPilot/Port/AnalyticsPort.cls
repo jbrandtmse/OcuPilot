@@ -850,11 +850,12 @@ ClassMethod MdxKind(pRS) As %String
     Quit $Select($IsObject(pRS): pRS.%Query.queryType, 1: "")
 }
 
-/// <p>Start the prepared result set <var>pRS</var> in <var>pNamespace</var>: <code>%ExecuteAsynch</code> with no wait, so a SELECT
-/// answers at once and runs on the vendor's agents, in the caller's security context. A DRILLTHROUGH forces the wait and its listing
-/// runs in the caller, so it returns when its listing is ready, or when the caller's alarm stops it. <var>pCube</var> and
-/// <var>pKey</var> name the query for <method>MdxCancel</method> and are set before the vendor runs anything. The vendor's status is
-/// the answer; a raised error is its status.</p>
+/// <p>Start the prepared result set <var>pRS</var> in <var>pNamespace</var>: <code>%ExecuteAsynch</code> with no wait, so a SELECT's
+/// axes and cells run on the vendor's agents, in the caller's security context. The vendor resolves the statement's members in the
+/// caller first, running any SQL they name (<code>%SEARCH</code>, a computed dimension), so a start can take as long as that SQL. A
+/// DRILLTHROUGH forces the wait for its MDX portion; its listing's SQL runs when its rows are fetched (<method>MdxAnswer</method>).
+/// <var>pCube</var> and <var>pKey</var> name the query for <method>MdxCancel</method> and are set before the vendor runs anything. The
+/// vendor's status is the answer; a raised error is its status.</p>
 ClassMethod MdxStart(pNamespace As %String, pRS, Output pCube As %String, Output pKey As %String) As %Status
 {
     Set pCube = ""
@@ -916,8 +917,9 @@ ClassMethod MdxCancel(pNamespace As %String, pCube As %String, pKey As %String) 
 }
 
 /// <p>Compose and prepare the drill-through of one cell of the executed result set <var>pRS</var>: <var>pRow</var> and
-/// <var>pColumn</var> are the cell's 1-based positions as <method>MdxAnswer</method> lists them. A position past its axis's size is
-/// refused 400 <parameter>OcuPilot.Api.AnalyticsError.MDXINPUT</parameter>. Otherwise it reads the vendor's own
+/// <var>pColumn</var> are the cell's 1-based positions as <method>MdxAnswer</method> lists them. A result set that is not a SELECT, whose
+/// answer has no cells, and a position past the positions its answer lists (<method>Positions</method>) are refused 400
+/// <parameter>OcuPilot.Api.AnalyticsError.MDXINPUT</parameter>. Otherwise it reads the vendor's own
 /// <code>%GetFiltersForCellRange</code> for that one cell and prepares <code>DRILLTHROUGH MAXROWS</code>
 /// <parameter>MDXMAXLISTINGROWS</parameter> <code>SELECT FROM [&lt;cube&gt;] %FILTER &lt;filter&gt;...</code>, the cube name
 /// bracket-quoted with <code>]</code> doubled and each filter the vendor's, slicer first. <var>pDrill</var> is that prepared result
@@ -934,11 +936,13 @@ ClassMethod MdxDrill(pNamespace As %String, pRS, pRow As %Integer, pColumn As %I
     Set tRefused = 0
     Set tFilterSC = $$$OK
     Set tPrepareSC = $$$OK
+    If ..MdxKind(pRS) '= "SELECT" Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.AnalyticsError).#MDXINPUT, ##class(OcuPilot.Api.AnalyticsError).#REASONMDXINPUT, .pHttpStatus, .pFault)
     Set tOrigNS = $NAMESPACE
     Try {
         Set $NAMESPACE = pNamespace
         Set tCube = pRS.%GetCubeName()
-        If (pRow > pRS.%GetRowCount()) || (pColumn > pRS.%GetColumnCount()) {
+        Do ..Positions(pRS, pRS.%GetAxisCount(), .tColumns, .tRows)
+        If (pRow > tRows) || (pColumn > tColumns) {
             Set tRefused = 1
         } Else {
             Set tFilterSC = pRS.%GetFiltersForCellRange(.tFilters, pRow, pColumn, pRow, pColumn, .tMeasure)
@@ -977,10 +981,10 @@ ClassMethod MdxDrill(pNamespace As %String, pRS, pRow As %Integer, pColumn As %I
 /// <li>A SELECT is <code>{outcome: "cells", cube, columns, rows: [{label, cells}], rowsAvailable, columnsAvailable, truncated,
 /// seconds}</code>. Each column header, and each row's <code>label</code>, joins the labels of that position with
 /// <code>" / "</code>, outer to inner (the vendor lists a tuple's labels innermost first); a query with no rows axis answers one row
-/// with an empty label, and no axes one cell. Values are the vendor's own, as text. At most <parameter>MDXMAXROWS</parameter> rows
-/// and <parameter>MDXMAXCOLUMNS</parameter> columns are read, each label and cell is cut at <parameter>MDXMAXCELL</parameter>
-/// characters, and rows are kept while their JSON text totals at most <parameter>MDXMAXANSWER</parameter>; <code>truncated</code>
-/// says any of it was cut.</li>
+/// with an empty label, and no axes one cell; an axis the vendor answered empty has no positions (<method>Positions</method>). Values
+/// are the vendor's own, as text. At most <parameter>MDXMAXROWS</parameter> rows and <parameter>MDXMAXCOLUMNS</parameter> columns are
+/// read, each label and cell is cut at <parameter>MDXMAXCELL</parameter> characters, and rows are kept while the answer's JSON text is
+/// at most <parameter>MDXMAXANSWER</parameter> characters; <code>truncated</code> says any of it was cut.</li>
 /// <li>A DRILLTHROUGH is <code>{outcome: "rows", columns, rows, truncated, seconds}</code>, the listing read through
 /// <method>FetchRows</method> to <parameter>MDXMAXLISTINGROWS</parameter> rows.</li>
 /// <li>A listing the vendor cannot read is <code>{outcome: "error", message}</code>.</li>
@@ -1033,12 +1037,10 @@ ClassMethod MdxAnswer(pNamespace As %String, pRS, pSeconds As %Numeric, Output p
             }
         } Else {
             Set tAxes = pRS.%GetAxisCount()
-            Set tColsAvail = pRS.%GetColumnCount()
-            Set tRowsAvail = pRS.%GetRowCount()
+            Do ..Positions(pRS, tAxes, .tColsAvail, .tRowsAvail)
             Set tColsShown = $Select(tColsAvail > ..#MDXMAXCOLUMNS: ..#MDXMAXCOLUMNS, 1: tColsAvail)
             Set tRowsShown = $Select(tRowsAvail > ..#MDXMAXROWS: ..#MDXMAXROWS, 1: tRowsAvail)
             Set tTruncated = (tColsShown < tColsAvail) || (tRowsShown < tRowsAvail)
-            Set tTotal = 0
             Set tHeaders = []
             For tC = 1:1:tColsShown {
                 Set tLabel = ""
@@ -1054,8 +1056,19 @@ ClassMethod MdxAnswer(pNamespace As %String, pRS, pSeconds As %Numeric, Output p
                     Set tTruncated = 1
                 }
                 Do tHeaders.%Push(tLabel, "string")
-                Set tTotal = tTotal + $Length(tLabel) + 3
             }
+            ; The answer with no rows, its flag at its longer value, measures everything but the rows.
+            Set tFrame = {}
+            Do tFrame.%Set("outcome", "cells", "string")
+            Do tFrame.%Set("cube", pRS.%GetCubeName(), "string")
+            Do tFrame.%Set("columns", tHeaders)
+            Do tFrame.%Set("rows", [])
+            Do tFrame.%Set("rowsAvailable", tRowsAvail, "number")
+            Do tFrame.%Set("columnsAvailable", tColsAvail, "number")
+            Do tFrame.%Set("truncated", 0, "boolean")
+            Do tFrame.%Set("seconds", +pSeconds, "number")
+            Set tTotal = $Length(tFrame.%ToJSON())
+            Set tFrame = ""
             Set tRowObjects = []
             For tR = 1:1:tRowsShown {
                 Set tLabel = ""
@@ -1083,7 +1096,7 @@ ClassMethod MdxAnswer(pNamespace As %String, pRS, pSeconds As %Numeric, Output p
                 Set tRowObject = {}
                 Do tRowObject.%Set("label", tLabel, "string")
                 Do tRowObject.%Set("cells", tCells)
-                Set tLength = $Length(tRowObject.%ToJSON())
+                Set tLength = $Length(tRowObject.%ToJSON()) + 1
                 If tTotal + tLength > ..#MDXMAXANSWER {
                     Set tTruncated = 1
                     Quit
@@ -1120,6 +1133,15 @@ ClassMethod MdxAnswer(pNamespace As %String, pRS, pSeconds As %Numeric, Output p
         Quit ..Mapped(tCaught, "the MDX answer could not be read", .pHttpStatus, .pFault)
     }
     Quit $$$OK
+}
+
+/// <p>The column and row positions the answer of the executed SELECT <var>pRS</var>, of <var>pAxes</var> axes, lists: each named axis's
+/// own size, so an axis the vendor answered empty has none, and one for an axis the statement does not name. The caller has switched to
+/// the result set's namespace.</p>
+ClassMethod Positions(pRS, pAxes As %Integer, Output pColumns As %Integer, Output pRows As %Integer) [ Private ]
+{
+    Set pColumns = $Select(pAxes >= 1: pRS.%GetAxisSize(1), 1: 1)
+    Set pRows = $Select(pAxes >= 2: pRS.%GetAxisSize(2), 1: 1)
 }
 
 /// <p>The <code>{outcome: "error", message}</code> answer for the vendor status <var>pStatus</var>: the vendor's text, cut at

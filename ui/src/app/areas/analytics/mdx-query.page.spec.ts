@@ -279,11 +279,12 @@ describe('MDX query', () => {
     const buttons = all(grid, 'drill-cell');
     expect(buttons.map((button) => button.textContent?.trim())).toEqual(['3', '9', '<b>5</b>', '15']);
     expect(buttons.every((button) => button.tagName === 'BUTTON' && button.getAttribute('type') === 'button')).toBe(true);
+    // Mutation (Rule 19): drop the value from `drillLabel` -> the names read only the drill-through and this goes red.
     expect(buttons.map((button) => button.getAttribute('aria-label'))).toEqual([
-      'Drill through North, Visits',
-      'Drill through North, Cost',
-      'Drill through South, Visits',
-      'Drill through South, Cost',
+      '3, Drill through North, Visits',
+      '9, Drill through North, Cost',
+      '<b>5</b>, Drill through South, Visits',
+      '15, Drill through South, Cost',
     ]);
     expect(grid.querySelector('b')).toBeNull();
     expect(status(mounted.host)).toBe('Rows: 2 of 2. Columns: 2 of 2.');
@@ -627,6 +628,23 @@ describe('MDX query', () => {
     await run(mounted);
     expect(dialog()).not.toBeNull();
     expect(starts(mounted)[1].scope).toBe('HSCUSTOM');
+  });
+
+  it('drills a grid only in the namespace it ran in: after a namespace change its cells are unavailable and a click sends nothing', async () => {
+    // Mutation (Rule 19): drop the namespace test from the store's `drill` and `drillable` -> the click posts a drill in HSCUSTOM and this goes red.
+    const mounted = await mount();
+    await runToEnd(mounted, CELLS);
+    expect(all(mounted.host, 'drill-cell')[0].getAttribute('aria-disabled')).toBe('false');
+    mounted.scope.change('HSCUSTOM');
+    await settle(mounted.fixture);
+    expect(all(mounted.host, 'drill-cell').length).toBe(4);
+    expect(all(mounted.host, 'drill-cell')[0].getAttribute('aria-disabled')).toBe('true');
+    all(mounted.host, 'drill-cell')[0].click();
+    await settle(mounted.fixture);
+    expect(starts(mounted).length).toBe(1);
+    mounted.scope.change('USER');
+    await settle(mounted.fixture);
+    expect(all(mounted.host, 'drill-cell')[0].getAttribute('aria-disabled')).toBe('false');
   });
 
   it('stops polling when the page goes, and follows a run still running again on its return', async () => {

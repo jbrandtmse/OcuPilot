@@ -1,7 +1,7 @@
 /// <p>Test-only helper for Story 20.11's suites: probe analytics objects in <code>USER</code> that the
 /// tests read through <class>OcuPilot.Port.AnalyticsPort</class>. <method>Enable</method> turns analytics on for
 /// <code>USER</code>'s default web application, recording the two flags it changes; <method>Create</method> compiles
-/// two source classes and three cubes, builds them, and writes a term list, a folder of folder items and two favorites;
+/// three source classes and four cubes, builds them, and writes a term list, a folder of folder items and two favorites;
 /// <method>Remove</method> deletes all of it and restores the flags; <method>Gone</method> says whether nothing is left.</p>
 /// <p>The objects are named for <parameter>PACKAGE</parameter>, <parameter>VISITS</parameter>, <parameter>CATEGORIES</parameter>,
 /// <parameter>GUARDED</parameter>, <parameter>TERMLIST</parameter> and <parameter>FOLDER</parameter>. The guarded cube and the

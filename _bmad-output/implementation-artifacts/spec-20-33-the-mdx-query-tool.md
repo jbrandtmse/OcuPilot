@@ -391,6 +391,40 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Line numbe
   - **When** the person runs it, then cancels the confirmation, then runs it again and proceeds.
   - **Then** the first run opens the warning "This query runs server-side code or SQL with your rights." with nothing started and the node undefined; Cancel sends nothing; Proceed starts it with the confirmation, the run ends, and the node is defined. A start without the confirmation answers `confirm` naming the consequence, reserving and preparing nothing. Each of the five constructs is detected in the vendor's tokens and in a string literal's, a comment inside a word included. A statement the detector cannot read is asked the same way; one whose variable-resolved text names a construct is asked after a prepare that executes nothing. A statement without them runs with no dialog.
 
+### Review Findings
+
+Code review, 2026-10-21 (four layers; each patch verified on `ocupilot-b-ci`, mutations in Verification).
+
+- [x] [Review][Patch] HIGH: a SELECT's start had no alarm, and the vendor runs a member's SQL inside the start, so a confirmed `%SEARCH` (or a cube's SQL computed dimension) escaped the 120 s bound (AD-42, AD-7; measured: its SQL ran in the job until an alarm ended it with SQLCODE -450) [src/OcuPilot/Area/Analytics/MdxQuery.cls:366]
+- [x] [Review][Patch] The alarm in a start reads as SQLCODE -450 (#5540), which `Execute` answered as an error; `Alarmed` reads it as the bound (QA item b) [src/OcuPilot/Area/Analytics/MdxQuery.cls:437]
+- [x] [Review][Patch] A cancel that reached no statement (during the job's checks, a start or between a drill's steps) was lost until the listing ended or the bound; the job now reads its flag before each start and each listing's read [src/OcuPilot/Area/Analytics/MdxQuery.cls:289]
+- [x] [Review][Patch] A typed DRILLTHROUGH sent with a `drill` was re-composed as a cell drill, dropping the person's `MAXROWS`; refused 400 `ANALYTICS.MDX.INPUT` at the start and in `MdxDrill` (QA item a) [src/OcuPilot/Area/Analytics/MdxQuery.cls:96]
+- [x] [Review][Patch] An axis the vendor answered empty read as one blank position (`%GetRowCount` floors at 1), and its blank cell drilled to the slicer's facts; positions now come from `%GetAxisSize` [src/OcuPilot/Port/AnalyticsPort.cls:1141]
+- [x] [Review][Patch] A drill after a namespace change ran the old grid's statement, with its confirmation, in the new namespace; a grid is drilled only in the namespace it ran in [ui/src/app/areas/analytics/mdx-query.store.ts:298]
+- [x] [Review][Patch] A drill cell's accessible name replaced its value, so a screen reader never read the grid's values; the name is the value, then the drill label [ui/src/app/areas/analytics/mdx-query.page.ts:333]
+- [x] [Review][Patch] The total cap's assertion could not fail (`a && b <= c` reads `(a && b) <= c`) and its leg was cut by the row and cell caps first; the leg now stays under them [src/OcuPilot/Test/AnalyticsMdx.cls:291]
+- [x] [Review][Patch] The total cap counted headers approximately and no envelope, so a full answer reached 1,000,163 characters; the answer's frame is measured by its own JSON [src/OcuPilot/Port/AnalyticsPort.cls:1070]
+- [x] [Review][Patch] An execute-time vendor error (an unknown measure) had no test; the route leg polls it to the vendor's text [src/OcuPilot/Test/AnalyticsMdxRoutes.cls:250]
+- [x] [Review][Patch] The resolved-text test's "reserved no run" assertion called `Check`, which cannot reserve; removed (the route's ask-first test pins the shared no-reserve branch) [src/OcuPilot/Test/AnalyticsMdxJob.cls:351]
+- [x] [Review][Patch] The Never-list scanner missed a `^["ns"]` extended reference to the vendor's cache [ui/tools/analytics.test.mjs:144]
+- [x] [Review][Patch] Stale doc text: `MdxStart` (listing runs in the start), `Execute`, `CancelJob`, `SLOWLISTING`, `AnalyticsProbe` (cube count) and `AnalyticsGate` (cube count) [src/OcuPilot/Port/AnalyticsPort.cls:859]
+- [x] [Review][Defer] Spine AD-42 :963 still names `Area/Explorer/SqlBackground` as the spawn site [ARCHITECTURE-SPINE.md:963] — deferred: DW-2489, open for the lead (spine is lead-owned)
+- [x] [Review][Defer] `MdxStatus` reads 100 as done without the pending-results flag, so a plugin cell may be read early [src/OcuPilot/Port/AnalyticsPort.cls:884] — deferred: DW-2490, maybe-false, routed to 20.35; settled by a `%KPI("%DeepSee.Median")` run
+- [x] [Review][Defer] A `<PROTECT>` from `MdxStart`/`MdxStatus` shows as the run's error text, not a 403 [src/OcuPilot/Port/AnalyticsPort.cls:859] — deferred: DW-2491, wontfix-accepted (low)
+- [x] [Review][Defer] A cancel during a DRILLTHROUGH's MDX portion waits for that wait or the bound [src/OcuPilot/Area/Analytics/MdxQuery.cls:478] — deferred: DW-2492, wontfix-accepted (low)
+
+Rejected:
+
+- `false`: `MdxStatus` below 100 with an error loops to the deadline -- `%GetQueryStatus` answers 100 whenever an error is recorded (`ResultSet.cls`, `%GetQueryStatus`).
+- `false`: the job's prepare runs outside the bound -- `%PrepareMDX` resolves no member; member resolution is in the start, now under the alarm.
+- `false`: a run can outlast 120 s by the settle -- `MDXSETTLESECONDS` is the named settle after the bound.
+- `false`: the port's fault log lines carry vendor text that quotes the statement -- only raised exceptions are logged; statement errors are answers, never logged (`TestTheJobsFailureLineCarriesNoStatement`).
+- `false`: the SQL console's DOM changed -- the `app-result-grid` host is `display: contents`; its slots and the SQL specs are unchanged.
+- `false`: an earlier error stays beside a later refusal or confirmation -- the last answer stays until a new run is accepted, as the grid does (Decided in-stage).
+- `low`: a drill cell clips a value wider than its column with no ellipsis (`display: flex`) -- cells are short values; the fix changes the cell's layout under the structural walk.
+- `low`: a busy refusal attaching another tab's run that ends with cells reads a row count with no grid -- rare, and the fix adds a branch.
+- `low`: a query with no rows axis names its cells "Drill through , <column>" -- the string's shape is specified; the value now leads the name.
+
 ## Spec Change Log
 
 - 2026-10-14, spec gate (runner): the orchestrator ruled Q1 (A, the agent's read is Story 20.35, chartered) and Q2 (C: the screen asks first and runs on confirmation; the agent refuses). The intent contract carries Q2 C; status reset to `draft` for a re-plan around it. The spine's AD-65 clause is written.
@@ -734,6 +768,38 @@ A split needs the orchestrator's ruling.
   - mutation (review pass): AC3, `CancelJob` sends no `$SYSTEM.SQL.CancelQuery` -> `AnalyticsMdxJob.TestTheOwnersCancelEndsAListingRunCanceled` red (the listing runs on; the leftover job also reddened the next cancel test, and nothing was left running after the revert).
   - mutation (review pass): AC6, `GuardedReserve`'s ended-row delete ignores the kind -> `SqlRunStore.TestAnOwnerHasOneLiveRunOfEachKind` red.
   - mutation (review pass): AC6, `Reconcile` answers the row's raw kind -> `SqlRunStore.TestLookupsMatchTheKindAndARowWithNoKindReadsAsSql` red.
+
+- (QA) pass, files (a fixture is marked `fixture`):
+  - (QA) `src/OcuPilot/Test/AnalyticsPortHang.cls` (fixture) and `src/OcuPilot/Test/AnalyticsMdxHang.cls` (fixture): the port and the MDX kind whose DRILLTHROUGH waits end only by the run's alarm.
+  - (QA) `src/OcuPilot/Test/AnalyticsMdx.cls` (`TestTheAnswersCarryTheContractsFieldsInOrder`, `TestAnMdxRunWritesNothingOfItsOwn`), `src/OcuPilot/Test/AnalyticsMdxJob.cls` (`TestAnAlarmThatInterruptsTheStartStopsTheRun`, `TestAnAlarmThatInterruptsTheListingsReadStopsTheRun`) and `src/OcuPilot/Test/AnalyticsMdxRoutes.cls` (`TestADrillOfACellPastTheAnswerEndsTheRunFailedAndRefused`, `TestTheStatementIsKeptNowhereTheRunStores`).
+  - (QA) `src/OcuPilot/Test/AnalyticsPort.cls`: `Snapshot` takes an optional `pRuntime` (default 1, as before); 0 leaves out the vendor's cache and session nodes.
+  - (QA) `ui/browser/analytics-mdx.browser-spec.mjs`: six legs (a keyboard drill with the grid and listing in the structural walk, a typed DRILLTHROUGH, the vendor's error text in the walk, an unreadable statement asking first, the cube picker, and the HSCUSTOM and HSLIB refusals).
+  - (QA) `ui/tools/analytics.test.mjs`: the Never list held to the product source, and its scanner.
+- (QA) mutations, each applied, observed red, reverted byte-identical (`git status` and `git diff` digest equal before and after), the tree reloaded or rebuilt and redeployed before the next:
+  - mutation: AC1, `MdxAnswer` leaves the cube out of the cells answer -> `AnalyticsMdx.TestTheAnswersCarryTheContractsFieldsInOrder` red, alone.
+  - mutation: AC5, `MdxStart` increments a favorite of the signed-in user (an idempotent write stayed green, because earlier tests had made it) -> `AnalyticsMdx.TestAnMdxRunWritesNothingOfItsOwn` red, alone.
+  - mutation: AC4, `MdxQuery.Execute` matches `<ALARMX>` in the start's status text -> `AnalyticsMdxJob.TestAnAlarmThatInterruptsTheStartStopsTheRun` red, alone.
+  - mutation: AC4, `MdxAnswer` matches `ex.Name = "<ALARMX>"` -> `AnalyticsMdxJob.TestAnAlarmThatInterruptsTheListingsReadStopsTheRun` red, alone.
+  - mutation: AC2/AC7, the drill branch of `MdxQuery.Process` ends the run `ended` with no answer instead of refusing -> `AnalyticsMdxRoutes.TestADrillOfACellPastTheAnswerEndsTheRunFailedAndRefused` red, alone, in all three legs.
+  - mutation: AD-7/AD-36, `MdxQuery.Process` adds the statement to the answer it stores -> `AnalyticsMdxRoutes.TestTheStatementIsKeptNowhereTheRunStores` red, alone, in the poll and the store legs.
+  - mutation: AC10, `AnalyticsPort.ScanTokens` answers unread 0 when a tokenize fails -> the browser `AC10 (QA)` leg red (no warning opens).
+  - mutation: AC8, `AnalyticsPort.ErrorAnswer` carries no message -> the browser `AC8 (QA)` vendor-error leg red.
+  - mutation: AC7, `AnalyticsPort.MdxAdmit` skips the read-only refusal -> the browser `AC7 (QA)` leg red (HSLIB shows the generic access sentence).
+  - mutation: AC2, `AnalyticsPort.MdxAnswer` reads one listing row -> the browser `AC2 (QA)` typed DRILLTHROUGH leg red.
+  - mutation: AC2/AC8, the drill cell is a `div` with the click handler -> the browser keyboard leg red alone (the mouse `AC2` leg stays green); rebuilt and redeployed.
+  - mutation: AC1, `onCube` writes no pick -> the browser `AC1 (QA)` picker leg red; rebuilt and redeployed.
+  - mutation: Never list, `Set tX = $System.Process.Terminate(1)` in `AnalyticsPort.cls` -> `analytics.test.mjs`'s Never-list test red (no instance needed).
+- (code review) mutations, each observed red by its own named assertion and reverted (the hash of `git diff` and the untracked fixtures equal before and after), the tree reloaded with the mutated class recompiled with its subclasses, or the spec re-run; two pairs and one triple were applied together, each reddening a different assertion:
+  - mutation: AC4, `Execute` arms no alarm for a SELECT's start -> `AnalyticsMdxJob.TestTheBoundHoldsWhileTheVendorStartsAQuery` red.
+  - mutation: AC3, `Execute` and `Process` drop their cancel reads before a start and before a listing's read -> `AnalyticsMdxJob.TestACancelThatReachesNoStatementIsReadBeforeTheListing` red.
+  - mutation: AC2, `Admit` accepts a drill of a DRILLTHROUGH -> `AnalyticsMdxRoutes.TestEveryRefusalIsAnsweredByItsCodeAndNothingIsSpawned` red (202, and a run reserved).
+  - mutation: AC1, `Execute` reads a start's error as done -> `AnalyticsMdxRoutes.TestTheStartAnswersARunIdAtOnceAndAPollReadsItsAnswer` red (the unknown measure polls to a blank grid).
+  - mutation: AC2, `MdxDrill` drops its SELECT check -> `AnalyticsMdx.TestAnEmptyAxisHasNoPositionsAndADrillNamesACellTheAnswerHas` red (its DRILLTHROUGH leg).
+  - mutation: AC1, AC2, `Positions` counts with `%GetRowCount` and `%GetColumnCount` -> the same test red (its empty-answer and drill legs).
+  - mutation: AC4, the total cap sets no `truncated` -> `AnalyticsMdx.TestTheRowColumnCellAndTotalCapsCutAndSaySo` red (its total leg).
+  - mutation: AC10 (client), `drill` and `drillable` ignore the namespace -> `mdx-query.page.spec.ts`' namespace-drill case red.
+  - mutation: AC1 (client), `drillLabel` drops the value -> `mdx-query.page.spec.ts`' grid case red.
+  - mutation: Never list, `CACHE_REFERENCE` drops the bracket form -> `analytics.test.mjs`' scanner test red.
 
 ## Auto Run Result
 
