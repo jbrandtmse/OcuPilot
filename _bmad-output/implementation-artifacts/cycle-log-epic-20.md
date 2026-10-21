@@ -1094,3 +1094,6 @@
 2026-10-21T11:01:11Z	Epic 20	throwaway_rebuilt	run=20261020T0940Z-20,23 container=ocupilot-b-ci src=f8056597 reason=rule30_fresh_check_20.32
 2026-10-21T11:12:40Z	Story 20.32	smoke_complete	method=instance+browser result=pass iterations=1 defects_caught=0 evidence=smoke_on_fresh_ocupilot-b-ci(f8056597) model=claude-opus-5-5
 2026-10-21T11:12:40Z	Story 20.32	fresh_check	env=recipe(down+up_from_f8056597) tests=15_classes_173_forward_and_reverse_green+browser_3_specs_15_together_then_each_alone_reversed+a11y-structural-invariants_13/13+smoke result=pass order=forward,reverse bundle_initial=1.99MB
+2026-10-21T12:55:33Z	Story 20.32	full_sweep	env=ocupilot-b-ci(f8056597) shards=20 classes=674 tests=5203 failed=0 test:tools=2087/2087 test:components=3309/3309
+2026-10-21T12:55:33Z	Story 20.32	committed	sha=f8056597 story_commit=b9107171 build_sha=bd8593f8 submodules= ci=pending runs=39603456840 amendments=spec-20-32_Verification_bundle_line(owner-fixed_budget),EXPERIENCE.md(:305,:655_link_route) footprint_extensions=.github/workflows/ci.yml(browser-shard_timeout_47->49,orchestrator_task),scripts/ci-throwaway.sh(roster) bundle_initial=1.99MB
+2026-10-21T12:55:33Z	Story 20.32	story_cycle	plan_to_commit_min=n/a(planned_10-14) implement_passes=1 reviews=1 rework=0 first_ci=pending models=plan:opus,implement:sonnet,qa:sonnet,cr:opus
