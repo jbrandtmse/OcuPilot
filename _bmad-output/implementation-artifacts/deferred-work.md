@@ -12216,3 +12216,18 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-23-11-the-range-end-cleanup-part-10.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: CI run 39517085403 (dba8275c), browser shard 1/5 at 2026-10-21T00:00:01Z: the consequence named 2026-10-21 where the test expected 2026-10-20 (audit-copy-purge.browser-spec.mjs:214, :229). A pin needs a forced day turn, which the browser tier cannot stage without a clock seam.
 - 2026-10-21T00:46:37Z status=wontfix-accepted owner=23-11-the-range-end-cleanup-part-10 by=cr note=reopen_if=audit-copy-purge AC2 red again with the expected and drawn cut-off one day apart
+
+### DW-2476: 36 browser specs keep word-for-word local copies of transitionsSettled beside panel-spec.mjs's shared export, and browser-settle.test.mjs polices the copies rather than replacing them
+- source: spec-23-11-the-range-end-cleanup-part-10.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: grep -l 'function transitionsSettled' ui/browser/*.mjs lists 36 files, one being panel-spec.mjs's export; SETTLE_BODIES checks each copy's body; the spec's Design Notes named the copies for filing
+- 2026-10-21T05:18:23Z status=routed owner=burndown by=cr note=Rule 2 copy: import the shared helper in each spec and run that spec
+
+### DW-2477: browser-settle.test.mjs refuses an unsettled measure only in detectScreen passes and the two LOCAL_PASSES specs, so a spec that reads geometry after a viewport change any other way is not held
+- source: spec-23-11-the-range-end-cleanup-part-10.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: web-applications-create:431 reads the form column straight after setViewport(1600); roles-editor:532, ssl-editor:438, task-editor:366 and task-wizard:389 widen, then measure; none is a narrow pass and none has gone red
+- 2026-10-21T05:18:30Z status=wontfix-accepted owner=23-11-the-range-end-cleanup-part-10 by=cr note=reopen_if=a spec measures a narrow pass off LOCAL_PASSES without detectScreen, or one of the five reds on a pre-resize read
+
+### DW-2478: The DW-2202 browser specs' header comments still name the side-bar ordinals the specs no longer pin, so a header says a spec pins a position it does not hold
+- source: spec-23-11-the-range-end-cleanup-part-10.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: background-tasks:5 reads 'What it pins: Background tasks is the fifth Tasks side-bar entry'; journals:7, license-usage:4-9, interop-usage:3 and 17 more keep theirs; remote-databases' 'twelfth and last' is already false
+- 2026-10-21T05:18:30Z status=wontfix-accepted owner=23-11-the-range-end-cleanup-part-10 by=cr note=reopen_if=a review or a story acts on a header ordinal that the mirror no longer declares

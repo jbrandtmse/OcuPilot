@@ -166,7 +166,8 @@ after(async () => {
   }
 });
 
-// AC1. Mutation (Rule 19): declare Background tasks' sideBarPosition 4 -> the side-bar order goes red.
+// AC1. Mutation (Rule 19): give Background tasks `sideBarPosition` 0, regenerate the mirror, rebuild and
+// redeploy -> the wait for its side-bar entry goes red.
 test('AC1: Background tasks is a Tasks entry, and a seeded compact is listed as the portal reports it', async () => {
   seedPausedCompact();
   const { context, page } = await atList();

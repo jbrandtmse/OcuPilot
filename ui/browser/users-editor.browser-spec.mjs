@@ -214,7 +214,7 @@ test('a row\u2019s name opens the editor on General, with the Roles tab offered'
     await editorReady(page);
     const tabs = await tabState(page);
     for (const label of [STRINGS.processDetailsGroupGeneral, STRINGS.userColumnRoles]) assert.ok(tabs.some((tab) => tab.label === label), `the strip offers ${label}`);
-    assert.equal(tabs[0].selected, true, 'General is open first');
+    assert.equal(tabs.find((tab) => tab.selected)?.label, STRINGS.processDetailsGroupGeneral, 'General is open first');
   } finally {
     await context.close();
   }

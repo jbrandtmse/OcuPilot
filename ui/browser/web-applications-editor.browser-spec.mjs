@@ -225,7 +225,7 @@ test('a row\u2019s name opens the editor on General, with the tabs this spec ope
     await editorReady(page, PROBE);
     const tabs = await tabState(page);
     for (const label of TAB_LABELS) assert.ok(tabs.some((tab) => tab.label === label), `the strip offers ${label}`);
-    assert.equal(tabs[0].selected, true, 'General is open first');
+    assert.equal(tabs.find((tab) => tab.selected)?.label, STRINGS.processDetailsGroupGeneral, 'General is open first');
   } finally {
     await context.close();
   }

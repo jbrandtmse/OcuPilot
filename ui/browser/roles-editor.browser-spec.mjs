@@ -263,7 +263,7 @@ test('a row\u2019s name opens the editor on General, with the Members and Assign
     await editorReady(page);
     const tabs = await tabState(page);
     for (const label of [STRINGS.processDetailsGroupGeneral, STRINGS.roleEditorTabMembers, STRINGS.roleEditorTabAssignedTo]) assert.ok(tabs.some((tab) => tab.label === label), `the strip offers ${label}`);
-    assert.equal(tabs[0].selected, true, 'General is open first');
+    assert.equal(tabs.find((tab) => tab.selected)?.label, STRINGS.processDetailsGroupGeneral, 'General is open first');
     assert.equal(await page.$eval('#ocu-role-edit-Description', (node) => node.value), MARKER, 'with the role as the instance holds it');
   } finally {
     await context.close();

@@ -56,7 +56,7 @@ import puppeteer from 'puppeteer';
 import { LIVE_CONTAINER, browserConfig, launchOptions } from '../browser.config.mjs';
 import { FILTER_SELECTOR, ROW_SELECTOR, clickRowCentre, waitForRows } from './list-spec.mjs';
 import { authHeader, saveAndSettle, signedInAt } from './panel-spec.mjs';
-import { sideBarLabels } from './side-bar-spec.mjs';
+import { assertDrawnAtDeclaredIndex, sideBarLabels } from './side-bar-spec.mjs';
 import { INVARIANTS, VIEWPORTS, assertThrowaway, collapse, compare, componentMinimums, detectScreen, readBaseline } from './structural-walk.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -499,6 +499,7 @@ test('AC1: Local databases is an OS management entry; the wizard refuses the man
     const bar = await sideBarOf(page);
     assert.equal(bar.area, STRINGS.navAreaOsManagement);
     assert.deepEqual(bar.entries.slice(0, 11), sideBarLabels('os-management').slice(0, 11), 'the leading OS management entries in their declared order');
+    assertDrawnAtDeclaredIndex(bar.entries, 'os-management', STRINGS.localDatabaseListLabel);
     const headers = await page.$$eval('.ocu-data-table-header-label', (labels) => labels.map((label) => label.textContent.trim()));
     assert.deepEqual(headers.slice(0, 3), [STRINGS.tableColumnName, STRINGS.lockColumnDirectory, STRINGS.taskHistoryColumnStatus]);
     const userRow = await rowCells(page, 'USER');

@@ -209,7 +209,8 @@ after(async () => {
   }
 });
 
-// AC1. Mutation (Rule 19): declare Web sessions' sideBarPosition 1 -> the side-bar order goes red.
+// AC1. Mutation (Rule 19): give Web sessions `sideBarPosition` 0, regenerate the mirror, rebuild and
+// redeploy -> the wait for its side-bar entry goes red.
 test('AC1: a seeded session is listed with its user, application and no process, and Web sessions is a Web applications entry', async () => {
   const id = await seed();
   const { context, page } = await atList();
