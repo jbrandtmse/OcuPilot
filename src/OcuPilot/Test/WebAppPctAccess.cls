@@ -367,8 +367,8 @@ Method TestAgentCreateAndDeleteMintConfirmAndReadBack()
 /// <p>A mint refused because the entry is absent (a delete) or already present (a create) names the entry's parts with
 /// the breadcrumb between them, <code>$Char(8250)</code>, and holds no composite separator, <code>$Char(1)</code>. The
 /// probe entry is removed first, so the delete leg's absence is the test's own.</p>
-/// <p>Mutation (Rule 19): drop the <method>OcuPilot.Screen.Tool.ErrorDeleteMint.ReadableId</method> pass from
-/// <method>OcuPilot.Screen.Tool.WebAppPctAccessMint.Mint</method> -- both legs go red.</p>
+/// <p>Mutation (Rule 19): drop the <method>OcuPilot.Kernel.Proposal.Mint.ReadableId</method> pass from
+/// <method>OcuPilot.Kernel.Proposal.Mint.Mint</method> -- both legs go red.</p>
 Method TestAPresenceRefusalNamesTheEntryReadably()
 {
     Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedTurn($Username, "completed", .tTurn)

@@ -916,7 +916,8 @@ ClassMethod AppliedCriteria(pSubject As %String, pEvery As %Boolean, pRoute As %
 /// ledger's own UTC form <code>YYYY-MM-DDTHH:MM:SSZ</code>, a fractional second dropped; or
 /// <code>""</code> when <var>pLocal</var> is not that form or names no calendar instant. Pure: it
 /// reads no state and writes nothing. The one conversion the route's validation and
-/// <method>ViewForUser</method> both use.</p>
+/// <method>ViewForUser</method> both use. The offset it subtracts is
+/// <method>OffsetAtLocal</method>'s.</p>
 ClassMethod LocalToUtc(pLocal As %String) As %String
 {
     Set tUtc = ""
@@ -924,7 +925,8 @@ ClassMethod LocalToUtc(pLocal As %String) As %String
         If '$Match(pLocal, $Parameter("OcuPilot.Screen.Read", "DATETIMEFORM")) Quit
         ; $ZDateTimeH raises on a value that names no calendar instant (2026-02-30, 24:00:00).
         Set tLocalH = $ZDateTimeH($Extract(pLocal, 1, 19), 3)
-        Set tUtc = ##class(OcuPilot.Kernel.State.Turn).Timestamp($ZDateTime(tLocalH, -3))
+        Set tUtcSeconds = ##class(OcuPilot.Kernel.State.Turn).NowSeconds(tLocalH) - ..OffsetAtLocal(tLocalH)
+        Set tUtc = ##class(OcuPilot.Kernel.State.Turn).Timestamp((tUtcSeconds \ 86400) _ "," _ (tUtcSeconds # 86400))
     } Catch ex {
         Set tUtc = ""
     }
@@ -933,18 +935,37 @@ ClassMethod LocalToUtc(pLocal As %String) As %String
 
 /// <p>The ledger's UTC form <var>pIso</var> (<code>YYYY-MM-DDTHH:MM:SSZ</code>) as the instance's
 /// local <code>YYYY-MM-DD HH:MM:SS</code>, or <code>""</code> for a value that is not that
-/// form.</p>
+/// form. The offset it adds is <method>OffsetAtUtc</method>'s.</p>
 ClassMethod LocalFromUtc(pIso As %String) As %String
 {
     Set tLocal = ""
     Try {
         If '$Match(pIso, "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]+)?Z$") Quit
         Set tUtcH = $ZDateTimeH($Translate($Extract(pIso, 1, 19), "T", " "), 3)
-        Set tLocal = $ZDateTime($ZDateTimeH(tUtcH, -3), 3, 1)
+        Set tLocalSeconds = ##class(OcuPilot.Kernel.State.Turn).NowSeconds(tUtcH) + ..OffsetAtUtc(tUtcH)
+        Set tLocal = $ZDateTime((tLocalSeconds \ 86400) _ "," _ (tLocalSeconds # 86400), 3, 1)
     } Catch ex {
         Set tLocal = ""
     }
     Quit tLocal
+}
+
+/// <p>The seconds east of UTC that the instance applies at the UTC instant <var>pUtcH</var>
+/// (<code>days,seconds</code>): the local instant <code>$ZDateTimeH(pUtcH, -3)</code> less
+/// <var>pUtcH</var>. It is where the instance's zone enters <method>LocalFromUtc</method>, so a subclass
+/// that fixes it fixes every conversion that direction.</p>
+ClassMethod OffsetAtUtc(pUtcH As %String) As %Integer
+{
+    Quit ##class(OcuPilot.Kernel.State.Turn).NowSeconds($ZDateTimeH(pUtcH, -3)) - ##class(OcuPilot.Kernel.State.Turn).NowSeconds(pUtcH)
+}
+
+/// <p>The seconds east of UTC that the instance applies at the local instant <var>pLocalH</var>
+/// (<code>days,seconds</code>): <var>pLocalH</var> less the UTC instant <code>$ZDateTime(pLocalH, -3)</code>.
+/// It is where the instance's zone enters <method>LocalToUtc</method>, so a subclass that fixes it
+/// fixes every conversion that direction.</p>
+ClassMethod OffsetAtLocal(pLocalH As %String) As %Integer
+{
+    Quit ##class(OcuPilot.Kernel.State.Turn).NowSeconds(pLocalH) - ##class(OcuPilot.Kernel.State.Turn).NowSeconds($ZDateTime(pLocalH, -3))
 }
 
 /// <p>The window, in whole hours, a read beginning at <var>pBeginUtc</var> runs over: the hours

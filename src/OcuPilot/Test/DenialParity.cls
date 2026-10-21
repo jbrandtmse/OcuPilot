@@ -14,6 +14,9 @@
 /// <parameter>ARMINGVARIABLE</parameter> does not arm it. The account's password is generated for
 /// the run and never written to source; the account and its role are removed in
 /// <method>OnAfterAllTests</method>.</p>
+/// <p>Each tool call runs under a turn key of its own, and the ledger row it writes is counted and read
+/// by <method>TestEachRefusedCallWritesExactlyOneRefusedLedgerRow</method> and deleted in
+/// <method>OnAfterOneTest</method>.</p>
 Class OcuPilot.Test.DenialParity Extends %UnitTest.TestCase
 {
 
@@ -45,6 +48,9 @@ Parameter PROBE = "OcuPilot.Test.ToolDispatchProbe";
 /// <p>The shipped bounds.</p>
 Parameter LIMITS = "OcuPilot.Kernel.Agent.Limits";
 
+/// <p>The prefix of every turn key a tool call here runs under; the job number and a counter follow.</p>
+Parameter KEYPREFIX = "ocupilotprobeparity";
+
 /// <p>The account's password for this run. Prefix deliberately not "Test".</p>
 Property PreparedPassword As %String;
 
@@ -52,12 +58,20 @@ Property PreparedPassword As %String;
 /// does not hold <parameter>MISSINGPAIR</parameter>.</p>
 Property PreparedSetupOk As %Boolean [ InitialExpression = 0 ];
 
+/// <p>The turn keys <method>ToolRefusal</method> has used, as a <code>%List</code>.</p>
+Property PreparedKeys As %String;
+
+/// <p>How many keys <method>ToolRefusal</method> has made.</p>
+Property PreparedKeyCount As %Integer [ InitialExpression = 0 ];
+
 Method %OnNew(initvalue As %String = "") As %Status
 {
     Set tSC = ##super(initvalue)
     If $$$ISERR(tSC) Quit tSC
     Set ..PreparedPassword = ""
     Set ..PreparedSetupOk = 0
+    Set ..PreparedKeys = ""
+    Set ..PreparedKeyCount = 0
     Quit $$$OK
 }
 
@@ -157,7 +171,12 @@ Method OnBeforeOneTest() As %Status
 Method OnAfterOneTest() As %Status
 {
     Do $ClassMethod(..#PROBE, "Reset")
-    Quit $$$OK
+    Set tSC = $$$OK
+    For tI = 1:1:$ListLength(..PreparedKeys) {
+        Set tSC = $$$ADDSC(tSC, ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn($List(..PreparedKeys, tI)))
+    }
+    Set ..PreparedKeys = ""
+    Quit tSC
 }
 
 /// <p>The screen half: the denied principal's own read of
@@ -208,15 +227,22 @@ ClassMethod ReadToolWire() As %String
 /// <parameter>MISSINGPAIR</parameter> denied, as
 /// <code>&lt;isError&gt;|&lt;code&gt;|&lt;failedPair&gt;|&lt;screen&gt;</code> with the step's written sentence in
 /// <var>pReason</var>.</p>
-Method ToolRefusal(pWire As %String, Output pReason As %String) As %String
+/// <p>The call runs under a turn key made for it alone, answered in <var>pKey</var> and recorded in
+/// <property>PreparedKeys</property> for <method>OnAfterOneTest</method> to clear; a row under that key before the call
+/// is cleared first.</p>
+Method ToolRefusal(pWire As %String, Output pReason As %String, Output pKey As %String) As %String
 {
     Set pReason = ""
+    Set ..PreparedKeyCount = ..PreparedKeyCount + 1
+    Set pKey = ..#KEYPREFIX _ $Job _ "x" _ ..PreparedKeyCount
+    Set ..PreparedKeys = ..PreparedKeys _ $ListBuild(pKey)
+    Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(pKey)
     Set tUses = []
     Set tUse = {"type": "tool_use", "id": "toolu_parity"}
     Do tUse.%Set("name", pWire, "string")
     Do tUse.%Set("input", {"ns": ($Namespace)})
     Do tUses.%Push(tUse)
-    Set tSC = $ClassMethod(..#PROBE, "Answer", "parity", $Username, "", tUses, ..#LIMITS, .tResults, .tNames, 0, 0, .tDetails)
+    Set tSC = $ClassMethod(..#PROBE, "Answer", pKey, $Username, "", tUses, ..#LIMITS, .tResults, .tNames, 0, 0, .tDetails)
     If $$$ISERR(tSC) Quit "dispatchfailed"
     If '$IsObject($Get(tResults)) || (tResults.%Size() '= 1) Quit "noresult"
     Set tResult = tResults.%Get(0)
@@ -280,6 +306,42 @@ Method TestTheRefusalNamesTheFailedPair()
     ; "dispatchfailed" when Answer returns an error status, and it did not. The pair seam was
     ; asked on both attempts, which is what "checked at call time, never cached" means (AD-8).
     Do $$$AssertTrue($ClassMethod(..#PROBE, "Count", "pair") >= 2, "the pair was checked on each attempt, never cached: " _ $ClassMethod(..#PROBE, "Count", "pair"))
+}
+
+/// <p><b>AD-41</b> -- a refused call writes one ledger row, no more and no fewer: two refused calls
+/// under two turn keys leave one row each, of kind <code>tool</code>, status <code>error</code> and code
+/// <code>AUTH.NOPRIVILEGE</code>, whose required pairs name <parameter>MISSINGPAIR</parameter>.</p>
+/// <p>Mutations (Rule 19): a second <code>RecordLedger</code> in <method>OcuPilot.Kernel.Agent.Dispatch.AnswerOne</method>'s
+/// refused-pair branch -> the count reads 2 and this goes red; deleting the common-exit
+/// <code>RecordLedger</code> -> the count reads 0 and this goes red.</p>
+Method TestEachRefusedCallWritesExactlyOneRefusedLedgerRow()
+{
+    Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the principal is refused " _ ..#MISSINGPAIR)
+    Set tWire = ..ReadToolWire()
+    Do $$$AssertNotEquals(tWire, "", ..#SCREENTOOL _ " has a read tool in the shipped registry")
+    If tWire = "" Quit
+
+    Do $ClassMethod(..#PROBE, "SetRegistryClass", ..#REGISTRY)
+    Do $ClassMethod(..#PROBE, "DenyPair", $Piece(..#MISSINGPAIR, ":", 1), $Piece(..#MISSINGPAIR, ":", 2))
+    Set tExpected = "1|" _ ##class(OcuPilot.Kernel.Denial).Code() _ "|" _ ..#MISSINGPAIR _ "|" _ ..#SCREENTOOL
+    Do $$$AssertEquals(..ToolRefusal(tWire, , .tKeyA), tExpected, "the first call is refused")
+    Do $$$AssertEquals(..ToolRefusal(tWire, , .tKeyB), tExpected, "the second call is refused")
+    Do $$$AssertNotEquals(tKeyA, tKeyB, "each call ran under its own turn key")
+    Do $$$AssertTrue($Length(tKeyA) <= 64 && ($Length(tKeyB) <= 64), "and each key fits the ledger's turn key column")
+
+    For tKey = tKeyA, tKeyB {
+        Set tCount = ""
+        Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT COUNT(*) FROM OcuPilot_Kernel_State.Ledger WHERE %EXACT(TurnKey) = ?", tKey)
+        If tRS.%Next() Set tCount = tRS.%GetData(1)
+        Do $$$AssertEquals(tCount, 1, "turn " _ tKey _ " holds exactly one ledger row")
+        Set tRow = ##class(%SQL.Statement).%ExecDirect(, "SELECT Kind, Status, Code, RequiredPairs FROM OcuPilot_Kernel_State.Ledger WHERE %EXACT(TurnKey) = ?", tKey)
+        If '(tRow.%Next()) {
+            Do $$$AssertTrue(0, "turn " _ tKey _ " has a ledger row to read")
+            Continue
+        }
+        Do $$$AssertEquals(tRow.%GetData(1) _ "|" _ tRow.%GetData(2) _ "|" _ tRow.%GetData(3), "tool|error|" _ ##class(OcuPilot.Kernel.Denial).Code(), "the row is a refused tool call")
+        Do $$$AssertTrue(("," _ tRow.%GetData(4) _ ",") [ ("," _ ..#MISSINGPAIR _ ","), "and its required pairs name " _ ..#MISSINGPAIR _ ": " _ tRow.%GetData(4))
+    }
 }
 
 }

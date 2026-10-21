@@ -2,8 +2,8 @@
 title: 'Story 23.7: The range-end cleanup, part 6'
 type: 'bugfix'
 created: '2026-10-21'
-status: 'in-progress'
-baseline_revision: 'f673f28ff7cf9f76668bee8b1b59e29162cdf646'
+status: 'done'
+baseline_revision: '77e27af66afd6e30e2526ca0ab107dbcdd4cff54'
 baseline_commit: 'f673f28ff7cf9f76668bee8b1b59e29162cdf646'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -255,24 +255,24 @@ Rejected:
 
 ### Batch 2: gate, port and ledger
 
-- [ ] **DW-1306.** Edit `src/OcuPilot/Test/InteropFloorTurn.cls`.
+- [x] **DW-1306.** Edit `src/OcuPilot/Test/InteropFloorTurn.cls`.
   - **Setup.** In `OnBeforeAllTests`, create `TurnWireFixture.USERB` with `Resources(0)` and no second resources. Read back that it holds no member of `Screen.Gate.FloorResources()` at `USE`; otherwise the setup check fails the class.
   - **New test.** Add `TestTheShippedProviderGateAdmitsByTheLastFloorPairAndRefusesNone`. It calls `ProviderPort.Invoke("OcuPilotProbeNoSuchDefinition", ..., pUser)` in process.
     - For `USERA`, the answer is not the gate's: the HTTP status differs from `Kernel.Denial.#STATUS` and the code differs from `Kernel.Denial.Code()`. Record what it does answer.
     - For `USERB`, the answer is `Kernel.Denial.#STATUS`, with `Code()` and `Reason()`.
   - **Header.** Add the class's in-process leg.
-- [ ] **DW-1258.** Create two classes.
+- [x] **DW-1258.** Create two classes.
   - **`src/OcuPilot/Test/AdminPortTypeSeam.cls`** (`Extends OcuPilot.Port.AdminPort`, overrides nothing). It holds `MethodFor(e, s)`, which answers `..HttpMethodFor(e, s)`, and `TypeFor(e, s)`, which answers `..EndpointType(e, ..EndpointClass(e), s)`.
   - **`src/OcuPilot/Test/AdminPortMutatingPath.cls`** (unarmed):
     - `MethodFor` answers the suffix for `WebApp.App/PUT`, `WebApp.PctClassAccess/DELETE`, `Security.User/POST` and `Task.CRUD/RESUME`. Read each pair from `MUTATINGTYPES` on the instance first.
     - `MethodFor` answers `GET` for `Process/DELETE`, `Device.Settings/PUT` and `WebApp.App/LIST`.
     - `TypeFor` answers, for each of those four mutating pairs, the non-empty `TYPE<suffix>` parameter of the pair's `EndpointClass`.
     - `TypeFor` answers `""` for `Device.Settings/PUT` and `Process/DELETE`. Control legs show that both classes declare that parameter.
-- [ ] **DW-1308.** Edit `src/OcuPilot/Test/DenialParity.cls`.
+- [x] **DW-1308.** Edit `src/OcuPilot/Test/DenialParity.cls`.
   - **Keys.** `ToolRefusal` takes a fresh turn key for each call and records it. The key is `"ocupilotprobeparity"`, then `$Job`, then an increment, and is at most 64 characters.
   - **Cleanup.** `OnAfterOneTest` deletes each recorded key's rows (`State.Ledger.GuardedDeleteForTurn`).
   - **New test.** Add `TestEachRefusedCallWritesExactlyOneRefusedLedgerRow`. Make two refused calls. For each key, a SQL count on `OcuPilot_Kernel_State.Ledger` by `%EXACT(TurnKey)` reads 1. The row reads `Kind` `tool`, `Status` `error` and `Code` `AUTH.NOPRIVILEGE`, and its `RequiredPairs` names `%Admin_Secure:USE`.
-- [ ] **DW-2266.** One readable-id pass, in the base mint.
+- [x] **DW-2266.** One readable-id pass, in the base mint.
   - **Red first.** Write both tests below and observe them red before the fix.
     - **New `src/OcuPilot/Test/CompositeMintReadable.cls`** (unarmed). Arm with `BackgroundTaskFixture.ArmPortal("[]")`, then mint `tasks.background.cancel` with `BackgroundTaskMintFixture.Mint`, source `Management Portal` and id `999999999`. Assert:
       - 400 `TOOL.ARGUMENTS`;
@@ -288,7 +288,7 @@ Rejected:
     - Repoint each doc to `OcuPilot.Kernel.Proposal.Mint.ReadableId`.
     - `Mint`'s doc says the problem is made readable for every mint.
     - Repoint `WebAppPctAccess.cls:370-371`'s mutation text to the base pass.
-- [ ] **DW-1783.** Edit `src/OcuPilot/Kernel/Audit/Ledger.cls`, then add a probe and a test class.
+- [x] **DW-1783.** Edit `src/OcuPilot/Kernel/Audit/Ledger.cls`, then add a probe and a test class.
   - **New methods.**
     - `OffsetAtUtc(pUtcH)`: the seconds east of UTC the instance applies at that UTC instant, that is `$ZDateTimeH(pUtcH, -3)` minus `pUtcH`.
     - `OffsetAtLocal(pLocalH)`: `pLocalH` minus `$ZDateTime(pLocalH, -3)`.
@@ -375,6 +375,29 @@ Rejected:
   - `[false]` `[reject]` The retention gap comes from `Entry.GuardedPurge`, not the retention task - the spec names that method, `Kernel.Retention` calls it, and the remaining state (seq 2 and 3 at array positions 0 and 1) is the matrix's.
   - `[false]` `[reject]` The mutation evidence lives only in the spec - Rule 19 records it there by design.
 
+### 2026-10-21 - Review pass (batch 2)
+
+- verdicts: 18 findings - high 0, medium 0, low 14, false 4, maybe-false 0
+- findings:
+  - `[low]` `[reject]` The shipped `OffsetAtUtc` and `OffsetAtLocal` have no test that can fail on a UTC instance - the recorded Residual, known at plan time; closing it needs a non-UTC throwaway or CI leg, and the lead writes the ledger note.
+  - `[low]` `[patch]` `AppliedCriteria`'s default-begin echo was never exercised under the probe's offset - added `LedgerClock.TestTheDefaultWindowsBeginIsEchoedInLocalTime`; its mutation is red alone (run 61).
+  - `[low]` `[patch]` `AdminPortMutatingPath`'s `GET` and empty-type legs had no observed mutation - two mutations observed red and recorded (runs 62, 64).
+  - `[low]` `[patch]` `HttpMethodFor`'s check-type branch had no leg - added the `License.Key/VALIDATE` leg; dropping the branch is red (run 63).
+  - `[low]` `[patch]` `EncryptionKeyFileRead.TestAnAbsentKeyFileIsNamedReadably` left the seeded turn row - `OnAfterOneTest` now calls `ProposalFixture.RemoveSeeded`; the turn count on `ocupilot-ci` is unchanged across a class run.
+  - `[low]` `[patch]` `DenialParity`'s per-key row count could read a row an aborted earlier run left under the same job and counter - `ToolRefusal` clears the key before the call.
+  - `[low]` `[patch]` `InteropFloorTurn.FloorMemberHeld` read an unset `tResource` for an empty floor - initialized before the loop.
+  - `[low]` `[reject]` Intent alignment: the "unchanged" ledger-time claim lives at a real zone and the probe's constant offset ignores the instant - the same Residual as the first row; the call-site wiring is what the probe falsifies.
+  - `[low]` `[reject]` Intent alignment: `LogSourcePort.LocalFromUtc` and the route's own converter calls are untested here - the first is the spec's recorded filing candidate; the route calls the same helpers, so the same Residual.
+  - `[low]` `[reject]` Intent alignment: the key-file leg asserts the status and substrings, not the code or the full sentence - the code is not reachable without widening a shared fixture (in-stage decision), and removing the base pass reddens it (run 24).
+  - `[false]` `[reject]` Intent alignment: nothing asserts across the whole set of composite-id mints - the pass is one method at `Mint`'s exit, so every mint takes it, and the three already-readable families' tests stay green.
+  - `[low]` `[reject]` Intent alignment: `AdminPort.Call`'s consuming sites of the two helpers are not exercised by the seam classes - spec-bound: the entry's action is a seam plus direct legs, and `AdminPortAsync` and `ToolWrite` already run the call.
+  - `[low]` `[reject]` Intent alignment: `TypeFor`'s read-suffix and connection-test terms are not asserted - the entry names the mutating path; every read tool's test resolves a read type.
+  - `[false]` `[reject]` Intent alignment: the provider gate's admit is observed only as the 503 after it - the AND mutation reddens the `USERA` legs (run 16), which a gate that did not admit could not do.
+  - `[false]` `[reject]` Intent alignment: the test never reads `InvokePairs()` - `USERA` holds only the last floor pair and `USERB` none, so a port set that dropped the first or added a pair `USERB` holds reddens a leg (inference).
+  - `[low]` `[reject]` Intent alignment: the gate leg runs in process, not through a turn job - spec-bound; `TestATurnCallsAHeldToolAndIsRefusedALackedOne` runs the turn path.
+  - `[low]` `[reject]` Intent alignment: only the missing-pair refusal is counted - spec-bound by the entry's two refused calls and `RequiredPairs` assertion.
+  - `[false]` `[reject]` Intent alignment: the turn key has an `x` the entry does not list - the separator keeps two jobs from making one key; recorded as an in-stage decision, and the key stays under 64 characters.
+
 ## Design Notes
 
 **Verdicts at `f0ec693f`.** Every entry is addressed and none is declined (Ledger inbox: 12 of 12). The intended disposition for all twelve is `resolved-by` 23.7, with the batch's commit. Two follow-ups for the lead:
@@ -429,6 +452,11 @@ No acceptance criterion contradicts an AD's Rule, and no NFR is in play.
 - **DW-1191.** Consolidate rather than decline. The change is about 95 lines net, all in test fixtures, and the class list below pins it.
 - **Batch 1 teardown.** `ConversationRestore` and `TurnConversation` keep the marker turn keys on the test instance and remove their proposals in `OnAfterOneTest`, so a method that raises still cleans up.
 - **Batch 1 header.** `ToolWrite`'s header drops the sentence about the claim-gate scan that moved to `ClaimReach`.
+- **Batch 2, DW-1258.** `Device.Settings` and `Process` do not declare `TYPEPUT` and `TYPEDELETE`; both inherit them from `%Api.Admin.Endpoint`, so the control legs read the inherited parameter.
+- **Batch 2, DW-1783.** `LedgerClock` seeds and reads as the probe user `LedgerSearch.User("A")` rather than `$Username`, so the five-minute window holds only its own row; its begin and end are formatted without a zone conversion, so they do not ask the code under test.
+- **Batch 2, DW-2266.** `EncryptionKeyFileRead.TestAnAbsentKeyFileIsNamedReadably` asserts the status 400 and the problem text, not the code: `EncryptionProbe.Mint` answers the problem text and not the code, and only the mint's own refusal carries that text.
+- **Batch 2, DW-1308.** The turn key joins `$Job` and the counter with an `x`, so two jobs cannot make the same key.
+- **Batch 2, DW-1258.** A `License.Key/VALIDATE` leg pins `HttpMethodFor`'s check-type branch, the one non-mutating pair that sends its suffix.
 
 **Wording for the lead** (the lead rules at the spec gate):
 
@@ -529,14 +557,13 @@ Epic 20 has not changed any other file in the Code Map. Its working tree holds o
   - Add a shipped `Kernel.Proposal.ReachProbe` that extends `Kernel.Proposal.Confirm`.
 
   Result: `TestNoOtherSpellingOrSubclassReachesTheClaim` is red on exactly its five review legs: `.ClaimById(`, `.GuardedClaimAndClose(`, `Proposal.Write).%New(`, `(Confirm).` and the `Confirm` subclass. `TestOnlyTheConfirmPathNamesTheClaim` stays green (ocupilot-ci run 729). Reverted, the class deleted from the instance, and the tree byte-identical. After the review patches: ClaimReach 2 (run 730), ConversationRestore 4 (731), TurnConversation 11 (732), ProposalClose 7 (733), ToolWrite 33 (734); `check-objectscript.py` 0 problems; `npm run test:tools` 2072 of 2072.
-- `mutation:` (DW-1306) make `GateAnyOfForUser` require every pair → the `USERA` leg goes red. Make `HoldsPairForUser` answer 1 → the `USERB` leg goes red.
-- `mutation:` (DW-1258) make `HttpMethodFor` answer `"PUT"` for every mutating pair → the method legs go red. Drop `'..IsMutating(...)` from `EndpointType`'s admission → the type leg goes red. Remove `WebApp.PctClassAccess/DELETE` from `MUTATINGTYPES`, and recompile the seam → its legs go red.
-- `mutation:` (DW-1308) add a second `..RecordLedger(...)` in `AnswerOne`'s `MissingPair` branch → the count reads 2 and goes red. Delete the common-exit `RecordLedger` → the count reads 0 and goes red.
-- `mutation:` (DW-2266) record the before-fix red of both new tests. After the fix, remove the base pass → `CompositeMintReadable`, `EncryptionKeyFileRead.TestAnAbsentKeyFileIsNamedReadably` and `WebAppPctAccess.TestAPresenceRefusalNamesTheEntryReadably` go red.
-- `mutation:` (DW-1783)
-  - Swap the sign in `LocalFromUtc` → `TestTheConversionsMoveOppositeWays` and the read's `time` leg go red.
-  - `ViewForUser` (:646) calls `LocalFromUtc` → the window leg goes red.
-  - `AppliedCriteria` (:900) calls `LocalToUtc` → the echo leg goes red.
+- `mutation:` (DW-1306) applied: `ProviderPort.GateAnyOfForUser` made to require every pair → `InteropFloorTurn.TestTheShippedProviderGateAdmitsByTheLastFloorPairAndRefusesNone` red on its three `USERA` legs (a 403 `AUTH.NOPRIVILEGE` answers the floor-last holder), and the existing `TestATurnCallsAHeldToolAndIsRefusedALackedOne` red too (the turn fails `AUTH.NOPRIVILEGE`), so the AND mutation the Design Notes left unrun is now observed (ocupilot-ci run 16). `HoldsPairForUser` made to answer 1 → the new test red alone on its three `USERB` legs, the turn test green (run 17). Each reverted; `ProviderPort.cls` byte-identical to HEAD.
+- `mutation:` (DW-1258) applied: `AdminPort.HttpMethodFor` answering `"PUT"` for every mutating pair → `AdminPortMutatingPath.TestAMutatingPairSendsItsSuffixAndAnyOtherSendsGet` red on the `WebApp.PctClassAccess/DELETE`, `Security.User/POST` and `Task.CRUD/RESUME` legs (run 18). `'..IsMutating(...)` dropped from `EndpointType`'s admission → `TestAMutatingPairResolvesItsTypeAndAnUnlistedWriteSuffixResolvesNone` red on all four type legs (run 19). `WebApp.PctClassAccess/DELETE` removed from `MUTATINGTYPES` with the tree reloaded and recompiled → that pair's list, method and type legs red in both methods (run 20). `HttpMethodFor` answering its suffix for every pair → `TestAMutatingPairSendsItsSuffixAndAnyOtherSendsGet` red on its `GET` legs (run 62). `HttpMethodFor` without its `IsCheckType` line → the same test red on the `License.Key/VALIDATE` leg (run 63). `EndpointType` without its unlisted-suffix `Quit ""` → `TestAMutatingPairResolvesItsTypeAndAnUnlistedWriteSuffixResolvesNone` red on the unlisted legs (run 64). Each reverted; `AdminPort.cls` byte-identical to HEAD.
+- `mutation:` (DW-1308) applied: a second `..RecordLedger(...)` in `AnswerOne`'s `MissingPair` branch → `DenialParity.TestEachRefusedCallWritesExactlyOneRefusedLedgerRow` red alone, on both keys' count legs (run 21). The common-exit `RecordLedger` deleted → red alone, on both keys' count legs and both keys' "has a ledger row to read" legs (run 22). Each reverted; `Dispatch.cls` byte-identical to HEAD. After the class: no ledger row with a `parity` or `ocupilotprobeparity` turn key survives.
+- `mutation:` (DW-2266) before the fix: `CompositeMintReadable` red on its three U+0001, breadcrumb and sentence legs (run 1), and `EncryptionKeyFileRead.TestAnAbsentKeyFileIsNamedReadably` red on its U+0001 and breadcrumb legs (run 2), so a missing key file does reach the mint's presence check. After the fix, the base pass removed from `Kernel.Proposal.Mint.Mint` → `CompositeMintReadable` red (run 23), `TestAnAbsentKeyFileIsNamedReadably` red (run 24) and `WebAppPctAccess.TestAPresenceRefusalNamesTheEntryReadably` red on both its legs (run 25). Reverted; `Mint.cls` byte-identical to the pre-mutation copy.
+- `mutation:` (DW-1783) applied: the sign swapped in `LocalFromUtc` → `LedgerClock.TestTheConversionsMoveOppositeWays` red on its forward and round-trip legs, and `TestTheReadConvertsItsCriteriaAndRowsTheOneWay` red on its `time` and both echo legs (run 26). `ViewForUser` converting `pBegin` with `LocalFromUtc` → the read test red, the windowed read refused (run 27). The sign swapped in `LocalToUtc` → the read test red on "the seeded row is inside the local window" and both echo legs, and `TestTheConversionsMoveOppositeWays` red on its backward and round-trip legs (run 28). `AppliedCriteria` converting `begin` with `LocalToUtc` → the read test red on the begin echo alone (run 29). `AppliedCriteria`'s default-begin branch converting with `LocalToUtc` → `TestTheDefaultWindowsBeginIsEchoedInLocalTime` red alone (run 61). Each reverted; `Ledger.cls` byte-identical to the pre-mutation copy.
+  - **Residual:** on a UTC instance (`/etc/localtime` is `Etc/UTC`, `$ZTIMEZONE` is 0) which `-3` form each helper reads cannot be falsified, so `TestTheShippedOffsetIsTheInstancesOwn` pins only that the converters equal the vendor formulas where the offset is 0. `reopen_if`: a non-UTC throwaway or CI leg exists.
+- (batch 2) After the review patches and a reload, each batch-2 class is green on `ocupilot-ci`: InteropFloorTurn 2 (run 66), AdminPortMutatingPath 2 (67), AdminPortAsync 6 (68), DenialParity 3 (69), CompositeMintReadable 1 (70), EncryptionKeyFileRead 6 (65), WebAppPctAccess 11 (71), ErrorDeleteScope 8 (72), AuthOptionsDescriptor 10 (73), BackgroundTasks 13 (74), LedgerClock 4 (75), LedgerSearch 10 (76), LedgerSearchWire 3 (77). `check-objectscript.py` 0 problems; `npm run test:tools` 2081 of 2081.
 - `mutation:` (DW-1170) record the before-fix red of `BadBodySentence`. After the fix, put ", or no body at all" back → it goes red.
 - `mutation:` (DW-1377) record the before-fix red of both methods. After the fix, delete the `DOCDB.` arm → `TestEveryListedCodeHasASentence` goes red. Remove `HELPROUTE` from `HelpViolationCodes()` → `TestEveryCodeTheRouterNamesIsListed` goes red.
 - `mutation:` (DW-1191) drop the `connectrefused` branch from `Transport` → `ProviderTransportRetry` goes red. Pass no key header from `IssueHttpsPost` → a `keyMatches` leg goes red (expected `WalletRungWire`; record the class observed). No test can fail on the duplication itself; the pinning evidence is the batch-4 list, green before and after.
@@ -546,22 +573,13 @@ Epic 20 has not changed any other file in the Code Map. Its working tree holds o
 Status: done
 Blocking condition: none
 
-**This pass (plan).** I verified all twelve owned entries at `f0ec693f`, using three read-only investigations and read-only probes on `ocupilot-ci`; none ran a test.
-
-- Verdicts: four confirmed, four confirmed with wrong or overstated evidence, three partly fixed, one confirmed by a probe. Each is in the Design Notes table.
-- All twelve are addressed and none is declined.
-- Contended files: `Error.cls` is the only file Epic 20 has changed that this story edits, and two of its four edits there are not add-only. `scripts/ci-throwaway.sh` is avoided.
-- Open for the lead at the spec gate: the `REASONAGENTBADBODY` wording, and the edits to `Error.cls` that are not add-only.
-
-**This pass (implement, batch 1).** Batch 1 only; batches 2, 3 and 4 are untouched and unchecked.
+**This pass (implement, batch 2).** Batch 2 only; batches 3 and 4 are untouched and unchecked. Batch 1 closed in its own pass.
 
 - **Changed:**
-  - `src/OcuPilot/Test/ConversationRestore.cls`: the retention-gap test (DW-1233) and the unreadable-proposal-store test (DW-1234), with helpers and a cleanup that removes each marker turn's proposals.
-  - `src/OcuPilot/Test/TurnConversation.cls`: the turn-start close test at the handler (DW-1255).
-  - `src/OcuPilot/Test/ClaimReach.cls`: new, unarmed; six `SitesNaming` token rows (DW-1211).
-  - `src/OcuPilot/Test/ToolWrite.cls`: the five-file claim-gate scan deleted.
-  - `src/OcuPilot/Test/TurnWire.cls`: the wrong `Seq` paragraph replaced by one pointer sentence.
-  - No product code changed.
-- **Review:** 11 findings, 3 patched over 2 root causes (all low: the second DW-1211 mutation, the header wording), none deferred, 8 rejected with their reasons in the triage log. Follow-up review recommended: false.
-- **Verified on `ocupilot-ci`:** Load with 0 errors; each `Batch 1 (loop)` class green in its own call after the patches, read from the runner's `%UnitTest_Result` line (ConversationRestore 3, TurnConversation 11, TurnWire 15, ClaimReach 1, ToolWrite 33, ProposalClose 7, ProposalWire 17; runs 35-41). `check-objectscript.py` 0 problems, `npm run test:tools` 2072 of 2072, `lint-docs.sh` 0 issues. Four `mutation:` lines record the observed reds and the byte-identical reverts.
-- **Residual:** the matrix's "the read logs the failure" is not asserted, because the log is the IRIS console log and no HTTP-visible seam exists. `TurnConversation` is now 511 lines.
+  - `Kernel/Proposal/Mint.cls`: one readable-id pass at `Mint`'s exit and `ReadableId` moved here; the four mint classes lose their copies (DW-2266).
+  - `Kernel/Audit/Ledger.cls`: `OffsetAtUtc` and `OffsetAtLocal`, used by both converters (DW-1783).
+  - New tests: `CompositeMintReadable`, `AdminPortMutatingPath`, `LedgerClock`; new fixtures: `AdminPortTypeSeam`, `LedgerClockProbe`.
+  - Edited tests: `InteropFloorTurn` (DW-1306), `DenialParity` (DW-1308), `EncryptionKeyFileRead` and `WebAppPctAccess` (DW-2266).
+- **Review:** 18 findings; 6 patched (all low): the default-begin echo leg, the unobserved `AdminPortMutatingPath` legs, the check-type leg, the leftover turn row, the stale-row guard and the empty-floor initialization. None deferred; 12 rejected with reasons in the triage log. Follow-up review recommended: false.
+- **Verified on `ocupilot-ci`:** Load with 0 errors; each `Batch 2 (loop)` class green in its own run after the patches (runs 65-77, counts on the `(batch 2)` line). `check-objectscript.py` 0 problems, `npm run test:tools` 2081 of 2081, `lint-docs.sh` 0 issues. Every batch-2 `mutation:` line records the observed red and the byte-identical revert.
+- **Residual:** DW-1783's two helpers cannot be falsified on this UTC instance (`reopen_if` on its `mutation:` line); `Mint.Refuse` still builds its `%Status` text from the unreadable problem, so that text can hold U+0001 while `detail.problem` cannot.
