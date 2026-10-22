@@ -11240,6 +11240,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-11T14:41:26Z occurrence=18-33-privileged-routine-application-roles-and-routines
 - 2026-10-11T17:41:40Z occurrence=18-34-the-person-s-rest-service-create
 - 2026-10-12T19:22:36Z status=routed owner=23-8-the-range-end-cleanup-part-7 by=merge_gate note=owner 2026-10-12 released 23.7's 32 (Release Story 23.7); split by priority, 12 at most each (Rule 27)
+- 2026-10-22T20:44:43Z status=resolved-by:23-8-the-range-end-cleanup-part-7 by=adjudication note=30396e07+79202e69: Kernel.Proposal.ScreenSave and ScreenSaveRules carry the shared Save shape in AD-53/AD-55 order; the Superserver, MFT connection and Doc DB Saves and Rules keep only their hooks, routine applications inherit through Doc DB; 19 classes equal before and after, ScreenSaveOrder pins the order; client forms stay copies (spec); CI 39845859986
 
 ### DW-2279: MappingMint's empty-namespace refusal names a 'mapping' for the Doc DB application tools
 - source: spec-18-30-doc-db-applications.md | severity: low | fix-risk: low | footprint: in-epic
