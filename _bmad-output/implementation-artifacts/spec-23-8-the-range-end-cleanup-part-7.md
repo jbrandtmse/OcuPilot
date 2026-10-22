@@ -262,7 +262,7 @@ Each batch is one implement pass and one code commit, with CI green on its own h
   - `ui/tools/ipm-archive.test.mjs` :365: add `//` and `/./`.
 - [ ] **DW-1762.** In the `iris` service the `ci-throwaway.sh` here-doc writes, add `stop_grace_period: 60s` after `restart:`.
   - Pin it in `ci.test.mjs`: the generated compose's `iris` service carries `stop_grace_period: 60s`. Red before.
-  - Conditional: if the lead admits the For-the-lead change, also apply it to `docker-compose.yml`. Then add `['stop grace period', 'iris', /stop_grace_period:\s*(\S+)/]` to the key list at :2175, add a `ui/tools/compose.test.mjs` assertion on that line, and name the key in `ci-throwaway.sh`'s header list of keys copied from `docker-compose.yml`.
+  - Admitted at the spec gate: also apply it to `docker-compose.yml`. Then add `['stop grace period', 'iris', /stop_grace_period:\s*(\S+)/]` to the key list at :2175, add a `ui/tools/compose.test.mjs` assertion on that line, and name the key in `ci-throwaway.sh`'s header list of keys copied from `docker-compose.yml`.
 - [ ] **DW-432.** In `docs/DEVELOPMENT.md`, after the paragraph at :467, add the "Armed test classes" paragraph under Wording, naming all 20 variables.
   - Pin, in `ui/tools/ci.test.mjs` beside the arming tests: every variable `declaredArmingRosters(ci-throwaway.sh)` reads is named in `docs/DEVELOPMENT.md`, and every `OCUPILOT_ALLOW_[A-Z_]+` the doc names is one of them. Red before.
 - [ ] **DW-432.** `ui/tools/ci-runner.mjs` `classifyFailureDetail` :210: when a class-level action names `OCUPILOT_ALLOW_[A-Z_]+`, append the hint under Wording, naming the variable.
@@ -270,7 +270,7 @@ Each batch is one implement pass and one code commit, with CI green on its own h
 - [ ] **DW-216.** Document the constraint where the smoke is offered:
   - `src/OcuPilot/Install/Smoke.cls`: the class header, `Host()` and `Port()` docs get the sentence under Wording.
   - `docs/DEVELOPMENT.md` "The smoke script": add the paragraph under Wording, after the "A run that executed nothing is a failure" paragraph.
-  - `README.md` changes only if the lead admits the sentence under For the lead.
+  - `README.md` :555-557: append the sentence under For the lead to the smoke bullet (admitted at the spec gate).
   - No test (the entry says why).
 
 ### Batch 3: client lint
@@ -497,6 +497,13 @@ No AC contradicts an AD's Rule, and no NFR is in play.
   - "ci-throwaway: '$DIR' must name its directory plainly, with no '//', '/./' or trailing '/.'; a throwaway's directory is removed recursively"
   - "ci-throwaway: '$DIR' is a symbolic link; a throwaway's directory is removed recursively, so it must be a real directory under its scratch root"
   - The same two lines, prefixed `ci-ipm-archive:`, in that script.
+
+**Spec-gate rulings (lead, 2026-10-22).**
+
+- `docker-compose.yml` `stop_grace_period: 60s` (DW-1762): **admitted** (decide). The conditional Batch 2 task applies. It is a release-upgrade trigger, reported at the batch-2 boundary.
+- `README.md` sentence (DW-216): **admitted as written** (veto U-6). The Batch 2 task applies it.
+- Wording for the lead: **admitted as written.** `shell.screen.open`'s texts and `REASONNAVENTITYNOTALLOWED` are one veto (U-7). The docs paragraphs, the runner hint, the `Smoke.cls` note and the guard lines are developer-facing (decide).
+- The two Rule 20 spine lines are the orchestrator's (U7, U14): implement does not edit the spine.
 
 **For the lead** (outside the footprint, or the lead's own steps):
 
