@@ -382,7 +382,7 @@ Shared surfaces: `ReadTool`'s count and names, `REFUSEEMPTY`, `ToolEmit`'s branc
 
 - (review) mutation: `AnalyticsMdxRead.MdxStopRequested` answers 0 for a turn never renewed -> `AnalyticsMdxReadJob` hook leg ("a turn that was never renewed asks"), alone in its class (run 203).
 - (review) mutation: `AnalyticsMdxRead.MdxStopRequested` answers 0 -> `AnalyticsMdxReadJob` Stop leg (`seconds` 2: the stop, posted once the vendor reported the query started, never reached it) and hook leg (run 204).
-- (review) QA's turn Stop leg now waits on the vendor's status too; its `mutation:` line above was not re-run.
+- (review) QA's turn Stop leg now waits on the vendor's status too. mutation: `MdxStopRequested` answers 0 → `AnalyticsMdxReadTurn` Stop leg red (the turn still `running` 40 s after the stop), re-run by the lead on the fresh `ocupilot-b-ci` after the forward merge; reverted, blob hash equal, green again.
 - (review) `Settle`'s wait on the vendor's own status has no pin of its own: landing a Stop inside a plug-in's pending window is timing-bound.
 - (review) Final runs on the reloaded tree: `AnalyticsMdxReadJob` 3 (run 202), `AnalyticsMdxReadTurn` 4 (205), `AnalyticsMdxJob` 13 (206), `AnalyticsMdx` 15 (207), `AnalyticsMdxRead` 15 (208), all green.
 
