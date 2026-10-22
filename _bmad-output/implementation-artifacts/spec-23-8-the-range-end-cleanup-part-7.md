@@ -503,7 +503,7 @@ No AC contradicts an AD's Rule, and no NFR is in play.
 - `docker-compose.yml` `stop_grace_period: 60s` (DW-1762): **admitted** (decide). The conditional Batch 2 task applies. It is a release-upgrade trigger, reported at the batch-2 boundary.
 - `README.md` sentence (DW-216): **admitted as written** (veto U-6). The Batch 2 task applies it.
 - Wording for the lead: **admitted as written.** `shell.screen.open`'s texts and `REASONNAVENTITYNOTALLOWED` are one veto (U-7). The docs paragraphs, the runner hint, the `Smoke.cls` note and the guard lines are developer-facing (decide).
-- The two Rule 20 spine lines are the orchestrator's (U7, U14): implement does not edit the spine.
+- The two Rule 20 spine lines: **no spine edit in this run** (orchestrator ruling 2026-10-22, decide). Batches 4 and 5 comply with the ADs as they stand. Both lines below are kept verbatim for the owner's attended bmad-architecture Update after the run. Implement does not edit the spine.
 
 **For the lead** (outside the footprint, or the lead's own steps):
 
@@ -516,8 +516,8 @@ No AC contradicts an AD's Rule, and no NFR is in play.
   2. Run `docker compose -f /Users/jbrandt/.ocupilot-throwaways/ocupilot-ci/compose.yml restart iris`.
   3. Then `/Users/jbrandt/.ocupilot-throwaways/ocupilot-ci/data/iris/mgr/messages.log` gains no "Previous system shutdown was abnormal".
 - **Epic 20 and family 7.** Epic 20's runner meets family 7 at its next integrate-forward. A new unstyled class needs a style or an allow-list line.
-- **Rule 20, DW-1462.** The orchestrator's 2026-09-22 convention is not yet in the spine. Proposed line for AD-11's navigation paragraph: "`shell.screen.open` takes `entityId` for a row of a screen's own and `parentId` for the item a parent-scoped screen belongs to. Each is accepted by the registry's declaration (the screen's id shape, or its parent screen's) and otherwise refused `NAV.ENTITYNOTALLOWED` before any announcement [AMENDED <date>, Story 23.8 spec gate, Rule 20, DW-1462]."
-- **Rule 20, DW-2278 (inference that it has weight).** `Kernel/Proposal/ScreenSave` is the first Kernel class to name `Api.Response`. It may merit one clause in the spine's dependency paragraph.
+- **Rule 20, DW-1462** (for the owner's attended bmad-architecture Update after the run). The orchestrator's 2026-09-22 convention is not yet in the spine. Proposed line for AD-11's navigation paragraph: "`shell.screen.open` takes `entityId` for a row of a screen's own and `parentId` for the item a parent-scoped screen belongs to. Each is accepted by the registry's declaration (the screen's id shape, or its parent screen's) and otherwise refused `NAV.ENTITYNOTALLOWED` before any announcement [AMENDED <date>, Story 23.8 spec gate, Rule 20, DW-1462]."
+- **Rule 20, DW-2278** (for the owner's attended bmad-architecture Update after the run; inference that it has weight). `Kernel/Proposal/ScreenSave` is the first Kernel class to name `Api.Response`. It may merit one clause in the spine's dependency paragraph.
 - **Batch 4's `Kernel/State/Nav.cls` edit is a doc comment only,** with no property and no storage change. The merge's `Kernel/State` release-upgrade trigger reads it as doc-only.
 - **The epic context.** Its DW-2256 UX line says the refusal "reads the viewer's sentence". On the agent path the model gets the code alone; the sentence is the mint's `pFault.reason`.
 
