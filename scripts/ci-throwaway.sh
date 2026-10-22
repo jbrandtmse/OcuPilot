@@ -134,8 +134,9 @@ case "$DIR" in
     /tmp/?*|/private/tmp/?*|"$SCRATCH_TMPDIR"/?*|"${HOME_ROOT:-/nonexistent-home}/.ocupilot-throwaways"/?*) ;;
     *) echo "ci-throwaway: '$DIR' is not under a scratch root; a throwaway's directory is removed recursively, so it must be under /tmp, /private/tmp, \$TMPDIR or \$HOME/.ocupilot-throwaways"; exit 2 ;;
 esac
-# A link as the directory, or as its data directory, would carry the recursive removals below out
-# of the scratch root. A link further up the path is not refused.
+# A link as the directory would carry the removal of its data directory below out of the scratch
+# root, and a link as the data directory would hand a recreated container a directory outside it to
+# mount and write. A link further up the path is not refused.
 for LINK in "$DIR" "$DIR/data"; do
     if [ -L "$LINK" ]; then
         echo "ci-throwaway: '$LINK' is a symbolic link; a throwaway's directory is removed recursively, so it must be a real directory under its scratch root"

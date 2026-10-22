@@ -1154,9 +1154,20 @@ test('DW-432: a class-level error that names an arming variable says the class i
     ...classLevel('OnBeforeAllTests', 'OCUPILOT_ALLOW_PRINCIPALS'),
     ...classLevel('OnAfterAllTests', 'OCUPILOT_ALLOW_PRINCIPALS'),
   ]);
-  assert.equal(twice[0].match(/it names /g).length, 1, 'a variable is named once however many records name it');
+  assert.equal(twice[0].match(/OCUPILOT_ALLOW_PRINCIPALS/g).length, 1, 'a variable is named once however many records name it');
 
-  const unarmed = classifyFailureDetail('X', landed, classLevel('OnAfterAllTests', ' ERROR #5001: uninstall refused'));
+  const both = classifyFailureDetail(
+    'X',
+    landed,
+    classLevel('OnBeforeAllTests', ' ERROR #5001: OCUPILOT_ALLOW_ECP_CONFIG and OCUPILOT_ALLOW_DATABASE_CONFIG must both read 1 here, so nothing was created.')
+  );
+  assert.match(
+    both[0],
+    /; it names OCUPILOT_ALLOW_ECP_CONFIG and OCUPILOT_ALLOW_DATABASE_CONFIG, arming variables only scripts\/ci-throwaway\.sh sets, so this class runs on a throwaway/,
+    'a class armed by two variables names both, in the plural'
+  );
+
+  const unarmed =classifyFailureDetail('X', landed, classLevel('OnAfterAllTests', ' ERROR #5001: uninstall refused'));
   assert.equal(unarmed.length, 1);
   assert.doesNotMatch(unarmed[0], /arming variable|OCUPILOT_ALLOW_/, 'a class-level error that names none gets no hint');
   assert.match(unarmed[0], /class-level error \(OnAfterAllTests\) -- which is a failure, never a pass$/);
@@ -2048,22 +2059,27 @@ test("the scratch-root guard refuses a root reached through TMPDIR=/, a sibling,
   assert.match(asData.output, /\/data' is a symbolic link/, 'naming the link and not its parent');
   assert.equal(asData.calls, '', 'and no docker command ran');
 
-  // The spellings the matrix keeps admitting. The /tmp name is one no earlier run left a compose file in.
-  const absent = `/tmp/ocupilot-dw235-absent-${process.pid}`;
-  for (const [label, dir, env] of [
-    ['a directory under /tmp', absent, {}],
-    ['a directory under the local root', `${home}/.ocupilot-throwaways/ocupilot-ci`, {}],
-    ['a directory under TMPDIR', `${tmp}/x`, { TMPDIR: tmp }],
-    ['a directory under a TMPDIR with a trailing slash', `${tmp}/x`, { TMPDIR: `${tmp}/` }],
-  ]) {
-    const run = runThrowaway(['logs', '--dir', dir], { env: { HOME: home, TMPDIR: tmp, ...env } });
-    assert.equal(run.status, 0, `${label} is admitted: ${run.output}`);
-    assert.equal(run.calls, '', `${label}: no compose file, so no docker command`);
+  // The spellings the matrix keeps admitting. The /tmp directory is a real one this test makes, with
+  // no compose file in it, so the admitted half is held against a guard that refuses real directories.
+  const absent = mkdtempSync('/tmp/ocupilot-dw235-');
+  try {
+    for (const [label, dir, env] of [
+      ['a directory under /tmp', absent, {}],
+      ['a directory under the local root', `${home}/.ocupilot-throwaways/ocupilot-ci`, {}],
+      ['a directory under TMPDIR', `${tmp}/x`, { TMPDIR: tmp }],
+      ['a directory under a TMPDIR with a trailing slash', `${tmp}/x`, { TMPDIR: `${tmp}/` }],
+    ]) {
+      const run = runThrowaway(['logs', '--dir', dir], { env: { HOME: home, TMPDIR: tmp, ...env } });
+      assert.equal(run.status, 0, `${label} is admitted: ${run.output}`);
+      assert.equal(run.calls, '', `${label}: no compose file, so no docker command`);
+    }
+    // One trailing slash is admitted and comes off, so the compose file's path is the one Compose lists.
+    const slash = runThrowaway(['logs', '--dir', `${absent}/`], { env: { HOME: home, TMPDIR: tmp } });
+    assert.equal(slash.status, 0, `a directory with one trailing slash is admitted: ${slash.output}`);
+    assert.ok(slash.output.includes(`no compose file at ${absent}/compose.yml;`), 'and names its compose file with a single separator');
+  } finally {
+    rmSync(absent, { recursive: true, force: true });
   }
-  // One trailing slash is admitted and comes off, so the compose file's path is the one Compose lists.
-  const slash = runThrowaway(['logs', '--dir', `${absent}/`], { env: { HOME: home, TMPDIR: tmp } });
-  assert.equal(slash.status, 0, `a directory with one trailing slash is admitted: ${slash.output}`);
-  assert.ok(slash.output.includes(`no compose file at ${absent}/compose.yml;`), 'and names its compose file with a single separator');
 });
 
 // Mutation (Rule 19): drop `stop_grace_period` from the compose file the here-doc writes -> red.
@@ -2586,6 +2602,27 @@ test('DW-432: docs/DEVELOPMENT.md names every arming variable the throwaway sets
     named.filter((variable) => !declared.includes(variable)),
     [],
     'and every OCUPILOT_ALLOW_* name the document carries is one ci-throwaway.sh sets'
+  );
+});
+
+// Mutations (Rule 19): rename the paragraph's bold lead in docs/DEVELOPMENT.md, or end the paragraph
+// before its variable list -> red, while the whole-document pin above stays green.
+test('DW-432: the section the runner hint cites is the paragraph of docs/DEVELOPMENT.md that names the arming variables', () => {
+  const [line] = classifyFailureDetail('X', { runIndex: 44, total: 0, failed: 0, landed: true }, [
+    { class: 'OcuPilot.Test.Armed', method: '', action: 'OnBeforeAllTests', error: 'OCUPILOT_ALLOW_PRINCIPALS', asserts: [] },
+  ]);
+  const cited = /\(docs\/DEVELOPMENT\.md, ([^)]+)\)/.exec(line);
+  assert.ok(cited, `the hint cites a section of docs/DEVELOPMENT.md: ${line}`);
+  const doc = readFileSync(join(REPO_ROOT, 'docs', 'DEVELOPMENT.md'), 'utf8');
+  const at = doc.indexOf(`**${cited[1]}`);
+  assert.ok(at >= 0, `docs/DEVELOPMENT.md has a paragraph led by "${cited[1]}", the section the hint cites`);
+  const paragraph = doc.slice(at).split(/\n[ \t]*\n/, 1)[0];
+  const inParagraph = new Set(paragraph.match(/OCUPILOT_ALLOW_[A-Z_]+/g) ?? []);
+  const declared = declaredArmingRosters(readFileSync(join(REPO_ROOT, 'scripts', 'ci-throwaway.sh'), 'utf8')).map((roster) => roster.variable);
+  assert.deepEqual(
+    declared.filter((variable) => !inParagraph.has(variable)),
+    [],
+    'and that paragraph, not some other part of the document, names every variable ci-throwaway.sh sets'
   );
 });
 

@@ -131,8 +131,8 @@ case "$DIR" in
     /tmp/?*|/private/tmp/?*|"$SCRATCH_TMPDIR"/?*) ;;
     *) echo "ci-ipm-archive: '$DIR' is not under a scratch root; this directory is removed recursively, so it must be under /tmp, /private/tmp or \$TMPDIR"; exit 2 ;;
 esac
-# A link as the directory would carry the recursive removal out of the scratch root. A link further
-# up the path is not refused.
+# A link as the directory is refused, so the removal below never depends on how `rm` treats a
+# link. A link further up the path is not refused.
 if [ -L "$DIR" ]; then
     echo "ci-ipm-archive: '$DIR' is a symbolic link; a throwaway's directory is removed recursively, so it must be a real directory under its scratch root"
     exit 2

@@ -543,6 +543,7 @@ services:
     image: intersystems/irishealth-community:2026.2
     container_name: ocupilot-fresh
     restart: on-failure:3
+    stop_grace_period: 60s
     ports:
       - "1975:1972"
       - "52776:52773"
