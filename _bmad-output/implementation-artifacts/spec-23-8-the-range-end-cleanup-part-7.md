@@ -2,7 +2,7 @@
 title: 'Story 23.8: The range-end cleanup, part 7'
 type: 'bugfix'
 created: '2026-10-21'
-status: 'done'
+status: 'in-progress'
 baseline_revision: '0253a3253af9f5d60d0adf3c5339dc062c661727'
 baseline_commit: '0253a3253af9f5d60d0adf3c5339dc062c661727'
 review_loop_iteration: 0
@@ -274,6 +274,8 @@ Each batch is one implement pass and one code commit, with CI green on its own h
   - `docs/DEVELOPMENT.md` "The smoke script": add the paragraph under Wording, after the "A run that executed nothing is a failure" paragraph.
   - `README.md` :555-557: append the sentence under For the lead to the smoke bullet (admitted at the spec gate).
   - No test (the entry says why).
+
+- [ ] [CI] gates (all three Node bands), run 39738366345: `ui/tools/ipm-archive.test.mjs` :379, the DW-235 trailing-slash legs. On Linux `os.tmpdir()` is `/tmp`, so the test's root is itself under the script's fixed `/tmp/?*` arm, and `${scratch}//` (stripped to `${scratch}`) is admitted. Give the test a root that no fixed arm admits (for example `mkdtemp` under `os.homedir()`), so every leg is refused on every platform and a regressed guard still writes only inside it. Check `ci.test.mjs`'s DW-235 legs for the same assumption.
 
 ### Batch 3: client lint
 
