@@ -483,9 +483,9 @@ Parameter AGENTVALIDATION = "AGENT.VALIDATION";
 /// <class>OcuPilot.Api.Definitions</class> -- never a 500, and never an empty 200.</p>
 Parameter AGENTNOTFOUND = "AGENT.NOTFOUND";
 
-/// <p>Machine code (AD-12, AD-39): the request body could not be read or parsed at all, so there
-/// is nothing to validate. Rendered on the <parameter>BADREQUEST</parameter> slug with
-/// <parameter>REASONAGENTBADBODY</parameter> alone.</p>
+/// <p>Machine code (AD-12, AD-39): the request body is missing, is not readable as JSON, or is not
+/// the object the request expects, so there is nothing to validate. Rendered on the
+/// <parameter>BADREQUEST</parameter> slug with <parameter>REASONAGENTBADBODY</parameter> alone.</p>
 Parameter AGENTBADBODY = "AGENT.BADBODY";
 
 /// <p>Written sentence for <parameter>AGENTBADBODY</parameter> (AD-39). The raw

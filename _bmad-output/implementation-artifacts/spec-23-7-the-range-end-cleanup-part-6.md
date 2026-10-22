@@ -3,8 +3,8 @@ title: 'Story 23.7: The range-end cleanup, part 6'
 type: 'bugfix'
 created: '2026-10-21'
 status: 'done'
-baseline_revision: '8e8266d9c23e40ea0a4afa9dd8974880395e1676'
-baseline_commit: '8e8266d9c23e40ea0a4afa9dd8974880395e1676'
+baseline_revision: '1b56201ae2c0aba42a8c12ef6f5a77a32be9f52a'
+baseline_commit: '1b56201ae2c0aba42a8c12ef6f5a77a32be9f52a'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -398,14 +398,14 @@ Rejected:
 
 ### Batch 4: provider test fixtures
 
-- [ ] **DW-1191.** Consolidate the scripted transport body. Run the batch-4 class list before editing and again after; behavior is unchanged.
+- [x] **DW-1191.** Consolidate the scripted transport body. Run the batch-4 class list before editing and again after; behavior is unchanged.
   - **`src/OcuPilot/Test/ProviderStubTransport.cls`:** `Transport` gains two optional trailing arguments, one for the empty-script reply and one for the key header that sets `keyMatches`. It also gains the `connectrefused` script kind.
   - **`src/OcuPilot/Test/ProviderStub.cls`:**
     - `IssueHttpsPost` becomes one call to `Transport`, with `..#STUBIDENTITY`, `..#WATCHEDHEADERS`, the minimal Anthropic reply and `"x-api-key"`.
     - Delete the stub's `HeaderNames`, `BodyOf` and `MoveArmedRow`.
     - Keep `ForceErrorLog`, `Advance` and `Wait` while callers remain.
   - **Docs:** update both class docs.
-- [ ] **DW-2486.** In `src/OcuPilot/Api/Error.cls`, `AGENTBADBODY`'s doc says the body "could not be read or parsed at all"; replace that clause with what `REASONAGENTBADBODY` now covers (missing, unreadable as JSON, or not the object the request expects). Doc only; `Error.cls` is no longer in Epic 20's changes (lead check), but re-run the Rule 11 check before editing.
+- [x] **DW-2486.** In `src/OcuPilot/Api/Error.cls`, `AGENTBADBODY`'s doc says the body "could not be read or parsed at all"; replace that clause with what `REASONAGENTBADBODY` now covers (missing, unreadable as JSON, or not the object the request expects). Doc only; `Error.cls` is no longer in Epic 20's changes (lead check), but re-run the Rule 11 check before editing.
 
 **Acceptance Criteria:**
 
@@ -419,6 +419,28 @@ Rejected:
 - **Violation sentences.** Given every `OcuPilot.Api.*` class method whose name ends `ViolationCodes`, when the sweep runs, then every listed code has a sentence and every code the router names is listed. A later family is then covered by adding its list.
 - **Provider stubs.** Given the provider stubs after batch 4, when the batch-4 class list runs, then each class is green before and after the edit, and one copy of the scripted transport body remains.
 - **Dispositions.** Given the story completes, then each of the twelve entries has a disposition written by the ledger tool.
+
+### Review Findings (batch 4)
+
+Code review, 2026-10-21, `full-opus` tier: blind-hunter, edge-case-hunter, verification-gap and acceptance-auditor. 25 raw findings make 11 entries, all low; 3 are rejected. Rule 3 does not apply: batch 4 changes test fixtures and one doc comment. AD-35 and AD-48 hold: the canonical stub's forced entry is raised in `Transport` under `IssueHttpsPost`, and the key is compared inline. `ProviderStubSeam` declares no arming variable, so it needs no roster row.
+
+- [x] [Review][Patch] (low) `TestEveryStubServesEveryScriptKindTheSameWay`'s doc said dropping any kind's branch reddens that kind's legs. With no chunk reader, the stream leg reads the same status and body from the answer path. The doc now names the row-move test's stream leg, observed red (run 25) [src/OcuPilot/Test/ProviderStubSeam.cls:100]
+- [x] [Review][Patch] (low) The row move's spend rule was misstated: `ArmRowMove` said "the next call and no other", and the seam test said the first answer spends it and a later one finds nothing armed. Only a queued answer spends it. Both docs now say so, and an unscripted leg pins that a 200 with no script leaves it armed [src/OcuPilot/Test/ProviderStub.cls:165]
+- [x] [Review][Patch] (low) `ProviderSecret`'s header counted only the sweep's eleven failures, and `REFUSALENTRIES` named the new families alone; QA's canonical test asserts the same counts. Both docs now cover it [src/OcuPilot/Test/ProviderSecret.cls:1]
+- [x] [Review][Patch] (low) `ProviderStub.ErrorLogCount` and `ProviderSecret.AssertErrorEntriesAreClean` named the stub's private `ForceErrorLog` as the writer; the transport leg's entries come from `ProviderStubTransport.ForceErrorLog` [src/OcuPilot/Test/ProviderStub.cls:306]
+- [x] [Review][Patch] (low) A comment in `Transport` still pointed at the inherited stub's recording, which this batch deleted [src/OcuPilot/Test/ProviderStubTransport.cls:62]
+- [x] [Review][Patch] (low) `Transport`'s doc and `ProviderStubSeam`'s header called it the body behind every provider stub; `TurnProvider` keeps its own, instance-wide. The seam header also said every call is on a bare request [src/OcuPilot/Test/ProviderStubTransport.cls:1]
+- [x] [Review][Patch] (low) `TestEachStubReportsItsOwnWatchedHeadersAndNoOthers` claimed a leg for a header set without a value, and its "none of the other families'" message cannot fail on the canonical stub, which watches only its own two [src/OcuPilot/Test/ProviderStubSeam.cls:168]
+- [x] [Review][Patch] (low) `ProviderStub` kept copies of `ProviderStubTransport`'s `Wait`, `Advance` and `ForceErrorLog` bodies, which the other three stubs reach by delegation (Rule 31). `Wait` and `ForceErrorLog` now delegate; `Advance`, left with no caller, is deleted [src/OcuPilot/Test/ProviderStub.cls:160]
+- [x] [Review][Patch] (low) `ProviderStubSeam`'s header said it needs nothing of the environment; its unarmed test can go red only where the error-seed variable reads 1 [src/OcuPilot/Test/ProviderStubSeam.cls:9]
+- [x] [Review][Patch] (low) Two doc lines this batch wrote ran to 128 and 133 columns; rewrapped [src/OcuPilot/Api/Error.cls:487]
+- [x] [Review][Patch] (low) `Transport.BodyOf`, consolidated from the stub, had no observed mutation, though the commit says each consolidated piece has one. Observed red (run 26) and recorded under Verification [src/OcuPilot/Test/ProviderStubTransport.cls:254]
+
+Rejected:
+
+- (false) The empty `Catch` blocks in the row-move and unarmed tests hide unexpected errors. Each asserts a property (the arm's survival, a zero entry count) that does not depend on whether the call threw, and `TestEveryStubServesEveryScriptKindTheSameWay` pins which kinds throw.
+- (low, spec edit) The `Batch 4 (loop)` roster and Shared surfaces lack `ProviderStubSeam` (and `ProviderPort` and `Adapter`, which the review runs used). The Auto Run Result keeps the 13-class count, "Residual: none" and runs 33-45. The QA line says "bare request", though 3 of 7 tests use `ApplyAuth`-built requests, and names an undefined "M8". The new class has no Rule 31 note; it has no sibling at the seam. The lead's.
+- (low, spec edit) The frontmatter reads `done` while QA's files are uncommitted. It is build-auto's state, and the lead commits.
 
 ## Spec Change Log
 
@@ -484,6 +506,21 @@ Rejected:
   - `[low]` `[reject]` The `DOCDB.` arm answers all five family codes, wider than the matrix row - the task prescribes the prefix arm, as `ReasonForToolCode` has.
   - `[low]` `[reject]` The sweep has two blind spots, the prefix families and the single-line arm form - same root as the prefix-family and one-arm-per-line rows; no new claim.
   - `[low]` `[patch]` The list floor and the arm floor sit below today's counts - same root as the first row; closed by the same floor.
+
+### 2026-10-21 - Review pass (batch 4)
+
+- verdicts: 10 findings - high 0, medium 0, low 9, false 1, maybe-false 0
+- findings:
+  - `[low]` `[patch]` `Transport`'s `pEmptyReply` and `MoveArmedRow` call and `IssueHttpsPost`'s `..#STUBIDENTITY` argument had no recorded mutation - three mutations observed red and written on the DW-1191 line (runs 58, 59, 60); reverted byte-identical.
+  - `[low]` `[reject]` The canonical stub's `IssueHttpsPost` error-log leg is not pinned apart from `Transport`'s - it is the same line `ProviderSecret`'s exact new-family counts pin, and the canonical legs assert `> 0` as before the change.
+  - `[false]` `[reject]` `ProviderStubShapeLeak`'s header is stale about the stub's forced entries - `IssueHttpsPost` is still a live frame when `Transport` raises, so "raised from `ApplyAuth` and `IssueHttpsPost`" holds.
+  - `[low]` `[reject]` `WATCHEDHEADERS`' doc names `Transport`'s private `HeaderNames` - the sentence is true, and the same class docs already name private methods.
+  - `[low]` `[reject]` The other three families gain the `connectrefused` kind - the task names it, and no test queues it there.
+  - `[low]` `[reject]` `Transport`'s `HeaderNames` skips an empty name where the deleted copy did not - no watched list holds an empty name, so no recording differs.
+  - `[low]` `[reject]` `Advance`, `Wait` and `ForceErrorLog` remain on both classes - the task keeps them while callers remain.
+  - `[low]` `[reject]` DW-2486 has no pinning test - the task is a doc-only clause.
+  - `[low]` `[reject]` The three-way clause sits beside a two-way reason sentence - the cases are compatible, and the task names the three.
+  - `[low]` `[reject]` The Rule 11 check and the before and after runs are not visible in the diff - the runs are on the DW-1191 line (1-26), and the check printed nothing.
 
 ## Design Notes
 
@@ -683,19 +720,38 @@ Epic 20 has not changed any other file in the Code Map. Its working tree holds o
 - `mutation:` (DW-1377, QA) `DocDbFieldSentenceWire`: the `DOCDB.` arm deleted → both tests red (run 12). `DocDbSave.NameRefusal`'s and `DocDbPort.Violation`'s reason set to "Use another name." → both red, the invalid-name test on the first and the mapped-name test on the second (run 14); `DocDbWrite` asserts the sentence over the wire for `DOCDB.NAME.INVALID` only, and status, code and field for `DOCDB.NAME.MAPPED`.
 - `mutation:` (DW-1377 prefix arms, QA) `ViolationPrefixArms`: `If $Extract(pCode, 1, 8) = "JOURNAL." Quit ""` ahead of the `JOURNAL.` arm → `ViolationSentenceCoverage` green (run 19) and `ViolationPrefixArms` red on each Journal code (run 20). The arm comparing 7 characters → red on its length leg and each Journal code (run 17). The arm deleted → red on the arm floor alone (found 20; run 15), and the `DOCDB.` arm deleted → the same floor (run 13). Every mutation above was reverted from git: `git hash-object` of `Error.cls`, `LicenseRules.cls`, `DatabaseRules.cls`, `PctAccessSave.cls`, `DocDbSave.cls` and `DocDbPort.cls` equals its value before the first mutation, and `git status --short` lists only the three new files.
 - `mutation:` (DW-1377, review) `Parameter HELPPROBE = "HELP.PROBE"` added to `Error.cls` and nothing else → `ViolationSentenceCoverage.TestEveryDeclaredFieldCodeOfTheNamedFamiliesIsListed` red alone, naming `HELP.PROBE`, the other three green (ocupilot-ci run 28). With `ViolationPrefixArms` reading the router through `ViolationSentenceCoverage.RouterMatches`, QA's `JOURNAL.` `Quit ""` mutation → red on each Journal code (run 29). Each reverted from git; `Error.cls` byte-identical (`git hash-object` `1dc6bdff`). After a clean reload (0 errors): ViolationSentenceCoverage 4 (run 30), ViolationPrefixArms 1 (31), BadBodySentence 2 (32), BadBodyWrongShape 3 (33), DocDbFieldSentenceWire 2 (34). `check-objectscript.py` 0 problems; `npm run test:tools` 2087 of 2087.
-- `mutation:` (DW-1191) drop the `connectrefused` branch from `Transport` → `ProviderTransportRetry` goes red. Pass no key header from `IssueHttpsPost` → a `keyMatches` leg goes red (expected `WalletRungWire`; record the class observed). No test can fail on the duplication itself; the pinning evidence is the batch-4 list, green before and after.
+- `mutation:` (DW-1191) applied: the `connectrefused` branch dropped from `Transport` → `ProviderTransportRetry.TestAConnectThatNeverOpenedIsNotRetried` red alone, 8 of 9 green (ocupilot-ci run 27). `IssueHttpsPost` passing no key header → `WalletRungWire.TestAListedHostIsServedAndAnUnlistedOneFaultsTheCall` and `TestTheStoredValueIsTheKeyTheRequestCarries` red, 8 of 10 green (run 28). `Transport`'s `ForceErrorLog` call dropped → `ProviderSecret` red on the two new-family legs' entry counts (run 29). Review: `Transport` answering `""` instead of `pEmptyReply` → `ProviderProxy` red on 2 of 4 (run 58); `Transport`'s `MoveArmedRow` call deleted → `AgentConnection.TestARowMovedDuringTheCallRefusesTheVerification` red alone (run 59); `IssueHttpsPost` passing the literal `"stub"` for `..#STUBIDENTITY` → `ProviderPort.TestTheAdapterComesFromTheRowsOwnColumn` red alone (run 60); after the reverts ProviderProxy, AgentConnection, ProviderPort and Adapter are green (runs 61-64). Each reverted; `ProviderStubTransport.cls` and `ProviderStub.cls` byte-identical (`git hash-object` equal). No test can fail on the duplication itself; the pinning evidence is the batch-4 list, green before (runs 1-13) and after (runs 14-26) with the same totals: ProviderTransportRetry 9, ProviderSecret 1, SecretLeak 2, WalletRungWire 10, AgentConnection 20, ProviderStream 11, ProviderStreamFamilies 5, ProviderRetry 12, ProviderProxy 4, Provider 20, OpenAIAdapter 6, GeminiAdapter 4, CompatibleAdapter 6.
+- (QA) Batch-4 files: new `src/OcuPilot/Test/ProviderStubSeam.cls` (7 tests, in process, no socket, unarmed: it calls each stub's `IssueHttpsPost` on a bare request and does not read `OCUPILOT_ALLOW_ERROR_SEED`), extended in place `src/OcuPilot/Test/ProviderSecret.cls` (`TestTheCanonicalFamilyWritesBothForcedEntriesThroughTheSharedTransportAndNoneCarriesTheKey`, one `Reset` line in `OnAfterOneTest`; already armed, no roster change). `ProviderStubSeam` joins the batch-4 Class loop; `ci.test.mjs` 87 of 87 and `ci-shards.test.mjs` 34 of 34 green.
+- `mutation:` (DW-1191, QA) each applied to the Transport body on `ocupilot-ci`, reverted from git, `git hash-object` equal to HEAD after every revert:
+  - the empty-script reply answers the Anthropic body for every family → `ProviderStubSeam.TestAnEmptyScriptAnswersTheCanonicalFamilyAReplyAndTheOthersNone` red on the three other families (run 4);
+  - the `timeout` branch dropped → `TestEveryStubServesEveryScriptKindTheSameWay` red on all four stubs, and `TestAnArmedRowMoveIsKeptThroughACallThatDoesNotAnswerAndSpentByOneThatDoes` red on its timeout leg (run 5);
+  - `HeaderNames` without its empty-value skip → `TestEachStubReportsItsOwnWatchedHeadersAndNoOthers` red on the bare-request leg of all four stubs (run 6); the canonical stub's `WATCHEDHEADERS` without `anthropic-version` → the same test red on the canonical leg and its partial-request leg (run 12);
+  - `keyMatches` recorded as a constant 1 → `TestTheKeyCompareRecordsAnEqualityAndNeverTheKey` red on its mismatch and no-key legs (run 7); the compared header's value also recorded under `call(n, "key")` → the same test red on its recording walk alone (run 8);
+  - `MoveArmedRow` called before the script kind is read → `TestAnArmedRowMoveIsKeptThroughACallThatDoesNotAnswerAndSpentByOneThatDoes` red on all six non-answer legs (run 9); its disarming `Kill` dropped → the same test red on both answer legs (run 10);
+  - the literal `"stub"` for `..#STUBIDENTITY` in `ProviderStub.IssueHttpsPost` (full reload) → `TestOneRecordingAndOneClockServeEveryStub` red on the `ProviderStubAlt` call and the last-identity leg (run 11);
+  - the armed check dropped from `Transport`'s `ForceErrorLog` → `TestAnUnarmedRunForcesNoErrorLogEntryThroughAnyStub` red on all four stubs (run 17).
+- `mutation:` (DW-1191, AD-48, QA) `ProviderSecret`, the canonical family through the shared transport:
+  - `Transport` skipping its forced entry for the canonical stub alone (`If pIdentity '= "stub"`) → `TestTheCanonicalFamilyWritesBothForcedEntriesThroughTheSharedTransportAndNoneCarriesTheKey` red on its refusal count (1 of 2), raise count and read-back count, while `TestNoCredentialMaterialReachesTheLogsOrTheEnvelope` stays green on its `> 0` canonical legs (run 14); dropping the call for every stub reddens both tests (run 13);
+  - the compared `x-api-key` bound to a local inside the compare's own branch → the new test red on the refusal's entries, "no local at any stack level carries credential material", the sweep above green because it arms no compare (run 15).
+- (QA) After the reverts and a full reload (0 errors), on `ocupilot-ci`: ProviderStubSeam 7 (run 18), ProviderSecret 2 (19), SecretLeak 2 (20), WalletRungWire 10 (21), AgentConnection 20 (22), ProviderTransportRetry 9 (23), ProviderProxy 4 (24). `check-objectscript.py` 0 problems on both changed `.cls`; `git hash-object` of `ProviderStubTransport.cls` and `ProviderStub.cls` equals HEAD. The M8 mutation wrote application-error entries into the throwaway's own `^ERRORS`, which cannot be un-logged.
+- `mutation:` (DW-1191, review) Each applied to `Transport` at HEAD on `ocupilot-ci`:
+  - the stream branch dropped → `ProviderStubSeam.TestAnArmedRowMoveIsKeptThroughACallThatDoesNotAnswerAndSpentByOneThatDoes` red on its stream leg alone, and `TestEveryStubServesEveryScriptKindTheSameWay` green (run 25);
+  - `BodyOf` answering `""` → `TestOneRecordingAndOneClockServeEveryStub` red on its five body legs alone (run 26).
+  - Each was reverted from git; `ProviderStubTransport.cls` is byte-identical (`cfe6e4bd`).
+  - After the review patches and a reload (0 errors), all green: ProviderStubSeam 7 (run 27), ProviderSecret 2 (28), SecretLeak 2 (29), ProviderRetry 12 (30), ProviderTransportRetry 9 (31), Provider 20 (32), AgentConnection 20 (33), WalletRungWire 10 (34), ProviderStream 11 (35), ProviderStreamFamilies 5 (36), ProviderProxy 4 (37), OpenAIAdapter 6 (38), GeminiAdapter 4 (39), CompatibleAdapter 6 (40), ProviderPort 20 (41), Adapter 25 (42).
+  - `check-objectscript.py` 0 problems; `npm run test:tools` 2087 of 2087.
 
 ## Auto Run Result
 
 Status: done
 Blocking condition: none
 
-**This pass (implement, batch 3).** Batch 3 only (DW-1170, DW-1377); batch 4 is untouched and unchecked. Batches 1 and 2 closed in their own passes.
+**This pass (implement, batch 4).** DW-1191 and DW-2486 only. Batches 1 to 3 closed in their own passes.
 
 - **Changed:**
-  - `Api/Error.cls`: `REASONAGENTBADBODY` reworded to the ruled sentence; a `DOCDB.` arm in `ReasonForViolation`; `AccountViolationCodes`, `PreferencesViolationCodes` and `HelpViolationCodes`; `ViolationCodes()`'s doc.
-  - New tests: `BadBodySentence`, `ViolationSentenceCoverage` (three methods).
-  - `Test/UiAboutWire.cls`: one doc sentence made true.
-- **Review:** 17 findings; 5 entries patched from 7 rows (all low): the list floor, the verbatim ruled sentence, the DocDB non-empty leg, the sweep header, the `UiAboutWire` doc. None deferred; 10 rejected with reasons in the triage log. Follow-up review recommended: false.
-- **Verified on `ocupilot-ci`:** Load with 0 errors; each `Batch 3 (loop)` class green in its own run after the patches (runs 40-50, counts on the `(batch 3)` line). `check-objectscript.py` 0 problems, `npm run test:tools` 2087 of 2087, `lint-docs.sh` 0 issues. Both `mutation:` lines record the before-fix reds and the observed mutations, each reverted byte-identical.
-- **Residual:** prefix-routed families with no `ViolationCodes` list are outside the sweep (triage log, `reopen_if` there).
+  - `Test/ProviderStubTransport.cls`: `Transport` takes `pEmptyReply` and `pKeyHeader` and answers the `connectrefused` kind; the class doc says it is the one body behind every stub.
+  - `Test/ProviderStub.cls`: `IssueHttpsPost` is one call to `Transport`; `HeaderNames`, `BodyOf` and `MoveArmedRow` are deleted (427 to 319 lines); the docs name `Transport`.
+  - `Api/Error.cls`: one doc clause on `AGENTBADBODY`.
+- **Review:** 10 findings (verification-gap, intent-alignment); 1 patched (low: three mutation lines), 9 rejected with reasons in the triage log, none deferred. Follow-up review recommended: false.
+- **Verified on `ocupilot-ci`:** Load with 0 errors; the 13-class `Batch 4` list green before the edit (runs 1-13) and after (14-26, and again 33-45) with the same totals; the mutations on the `mutation:` line each red and reverted byte-identical. `check-objectscript.py` 0 problems, `npm run test:tools` 2087 of 2087, `lint-docs.sh` 0 issues.
+- **Residual:** none.

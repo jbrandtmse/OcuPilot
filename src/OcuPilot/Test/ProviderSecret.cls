@@ -8,6 +8,9 @@
 /// renders, the console log and the application error log, are read afterwards and asserted to carry
 /// no part of it, alongside every returned <code>reason</code>, <code>code</code> and
 /// <code>detail</code>.</p>
+/// <p>A second test drives a refusal and a raise on the canonical family alone, with the key
+/// compare armed, and asserts its forced-entry counts exactly, as the sweep does for the other
+/// two families.</p>
 /// <p><b>It forces a real <code>^ERRORS</code> entry, so it runs on a throwaway container only</b>
 /// (<file>scripts/ci-throwaway.sh</file>, <code>ocupilot-ci</code>).
 /// <method>OnBeforeAllTests</method> refuses anywhere <parameter>ARMINGVARIABLE</parameter> does
@@ -59,7 +62,7 @@ Parameter SHIPPEDFAMILIES = "openai:OcuPilot.Test.OpenAIStub,gemini:OcuPilot.Tes
 /// <code>error.message</code>, and none of it is credential material.</p>
 Parameter VENDORERRORBODY = "{""error"":{""code"":401,""status"":""UNAUTHENTICATED"",""message"":""the vendor's own words""}}";
 
-/// <p>How many forced entries one refusal leg on a new family must write: the stub's
+/// <p>How many forced entries one refusal leg must write, on any family: the stub's
 /// <method>ApplyAuth</method> leg and the transport's own, one attempt each, because a 401 is not
 /// retryable. <b>Asserted exactly</b>, so removing either leg reddens rather than leaving the other
 /// to satisfy a "grew" test.</p>
@@ -92,6 +95,7 @@ Method OnBeforeAllTests() As %Status
 Method OnAfterOneTest() As %Status
 {
     Do $ClassMethod(..#PORT, "Reset")
+    Do ##class(OcuPilot.Test.ProviderStub).Reset()
     Do ##class(OcuPilot.Test.ProviderStub).ResetErrorLog()
     Do ##class(OcuPilot.Test.CredentialFixture).Remove(..#CREDSNAME)
     Do $ClassMethod(..#WALLETPROBE, "RemoveAll", .tWalletRemaining)
@@ -243,6 +247,43 @@ Method TestNoCredentialMaterialReachesTheLogsOrTheEnvelope()
     Do $$$AssertTrue(tErrorsAfter > tErrorsBefore, "the application error log grew, from " _ tErrorsBefore _ " to " _ tErrorsAfter)
     Set tChecked = ..AssertErrorEntriesAreClean(tDate)
     Do $$$AssertTrue(tChecked > 0, "and every entry the run recorded was read back in full: " _ tChecked)
+}
+
+/// <p>AD-48 for the canonical family, through the transport every stub shares: a refusal writes
+/// <b>both</b> forced entries -- the stub's <method>ApplyAuth</method> leg and
+/// <method>OcuPilot.Test.ProviderStubTransport.Transport</method>'s own -- and a mid-flight raise
+/// writes the <method>ApplyAuth</method> leg alone, so the canonical family's counts are asserted
+/// exactly as the other two families' are, rather than as "at least one".</p>
+/// <p>The key compare is armed for the refusal, so the compare in <code>Transport</code> has run in
+/// the frame the forced entry captures: an entry that read back clean is then clean of whatever that
+/// line held. Every entry the two legs wrote is read back in full.</p>
+/// <p>Mutation: drop the <code>ForceErrorLog</code> call from <code>Transport</code> -- the refusal
+/// count goes red, at 1 of 2. Bind the header the compare reads to a local inside the compare's own
+/// branch -- the entries' variable-table assertion goes red on the refusal's entries alone, which the
+/// sweep above, arming no compare, cannot see.</p>
+Method TestTheCanonicalFamilyWritesBothForcedEntriesThroughTheSharedTransportAndNoneCarriesTheKey()
+{
+    Do $ClassMethod(..#PORT, "Reset")
+    Do ##class(OcuPilot.Test.ProviderStub).Reset()
+    Do ##class(OcuPilot.Test.ProviderStub).ResetErrorLog()
+    Do $ClassMethod(..#PORT, "SetSecretClass", "OcuPilot.Test.SecretProbe")
+    Do $ClassMethod(..#PORT, "SetSslState", "present")
+    Do ##class(OcuPilot.Test.SecretProbe).SetValue(..#CANARY)
+    Do ##class(OcuPilot.Test.ProviderStub).ArmErrorLog(.tArmed)
+    Do $$$AssertTrue(tArmed, "the stub is armed to force a real application-error entry")
+    If 'tArmed Quit
+    Do ##class(OcuPilot.Test.ProviderStub).ArmKeyCompare(..#CANARY)
+    Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(401, "{""type"":""error"",""error"":{""type"":""authentication_error"",""message"":""invalid x-api-key""}}")
+    Do ..DriveAndAssert("a provider refusal on the canonical family")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).ServedBy(), "stub", "the refusal was served by the canonical stub")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Recorded("keyMatches"), 1, "the transport's key compare ran, and the header it read is the canary")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).ErrorLogCount(), ..#REFUSALENTRIES, "and the refusal wrote both its forced entries, the stub's ApplyAuth leg and the transport's")
+    Do ##class(OcuPilot.Test.ProviderStub).Reset()
+    Do ##class(OcuPilot.Test.ProviderStub).QueueThrow()
+    Do ..DriveAndAssert("a transport that raised mid-flight on the canonical family")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).ErrorLogCount(), ..#REFUSALENTRIES + ..#RAISEENTRIES, "and the raise wrote its ApplyAuth entry alone")
+    Set tChecked = ..AssertErrorEntriesAreClean($ZDate($Horolog, 1))
+    Do $$$AssertEquals(tChecked, ..#REFUSALENTRIES + ..#RAISEENTRIES, "every entry the two legs wrote was read back in full")
 }
 
 /// <p>Legs seven and eight: drive a provider refusal on each family whose adapter writes its own
@@ -398,8 +439,8 @@ ClassMethod ErrorCount(pDate As %String) As %Integer
     Quit tResult.rows.%Size()
 }
 
-/// <p>Read every entry <method>OcuPilot.Test.ProviderStub.ForceErrorLog</method> recorded, in full
-/// -- its logged expressions, its stack and <b>every local variable at every stack level</b> -- and
+/// <p>Read every entry the run forced (<method>OcuPilot.Test.ProviderStub.ErrorLogCount</method>),
+/// in full -- its logged expressions, its stack and <b>every local variable at every stack level</b> -- and
 /// assert none of it carries credential material. Answers how many entries were actually read, so
 /// an assertion over nothing is visible as such.</p>
 Method AssertErrorEntriesAreClean(pDate As %String) As %Integer

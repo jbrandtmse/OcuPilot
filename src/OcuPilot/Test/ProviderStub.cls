@@ -15,6 +15,9 @@
 /// header names it was given are
 /// captured per call, which is what makes AC3's configured-request assertions an observation of the
 /// real request object rather than a restatement of the settings the test supplied.</p>
+/// <p>The scripted body is <method>OcuPilot.Test.ProviderStubTransport.Transport</method>'s, which
+/// the other three families' stubs call too: this class holds the arming, the reading back and the
+/// two seams, and <method>IssueHttpsPost</method> is one call into it.</p>
 /// <p>The script and the recording live in <b>process-private globals</b> rather than on the
 /// instance: the port constructs the adapter itself, so a test has no reference to set a property
 /// on, and a process-private global is the one channel that survives that without leaking between
@@ -27,9 +30,10 @@ Class OcuPilot.Test.ProviderStub Extends OcuPilot.Kernel.Provider.Anthropic
 /// adapter class actually served a call.</p>
 Parameter STUBIDENTITY = "stub";
 
-/// <p>The headers <method>HeaderNames</method> reports the presence of, comma-separated. The two
-/// the Anthropic adapter's <method>ApplyAuth</method> must set; the content type is recorded from
-/// its own property, because <method>%Net.HttpRequest.SetHeader</method> diverts that one.</p>
+/// <p>The headers <method>OcuPilot.Test.ProviderStubTransport.HeaderNames</method> reports the
+/// presence of, comma-separated. The two the Anthropic adapter's <method>ApplyAuth</method> must
+/// set; the content type is recorded from its own property, because
+/// <method>%Net.HttpRequest.SetHeader</method> diverts that one.</p>
 Parameter WATCHEDHEADERS = "x-api-key,anthropic-version";
 
 /// <p>Forget any queued script and any recording, and arm the stub for a fresh run.</p>
@@ -153,15 +157,11 @@ Method NowSeconds() As %Numeric
     Quit ..Clock()
 }
 
-/// <p>Advance the fake clock by <var>pSeconds</var>.</p>
-ClassMethod Advance(pSeconds As %Numeric) [ Private ]
-{
-    Set ^||OcuPilotProviderStub("clock") = +$Get(^||OcuPilotProviderStub("clock")) + +pSeconds
-}
-
 /// <p>Arm the transport to <b>move agent definition <var>pId</var> while it is in flight</b>: on
-/// the next call and no other, the stub edits that definition through the ordinary update path
-/// before answering.</p>
+/// the next call that serves a queued answer, and no other,
+/// <method>OcuPilot.Test.ProviderStubTransport.Transport</method> edits that definition through the
+/// ordinary update path before answering. A call that fails, times out, raises, streams or finds
+/// no script leaves the move armed.</p>
 /// <p>It exists so a test can stand where a second administrator would: the window a conditional
 /// write closes is the one between a handler's read and its save, and on Test connection that
 /// window is exactly the provider round trip. Nothing else in this suite can get inside it.</p>
@@ -173,25 +173,10 @@ ClassMethod ArmRowMove(pId As %String, pModel As %String)
     Set ^||OcuPilotProviderStub("rowMove", "model") = pModel
 }
 
-/// <p>Perform the armed edit, once, and disarm. Answers 0 when nothing was armed.</p>
-ClassMethod MoveArmedRow() As %Boolean [ Private ]
-{
-    Set tId = $Get(^||OcuPilotProviderStub("rowMove", "id"))
-    If tId = "" Quit 0
-    Set tModel = $Get(^||OcuPilotProviderStub("rowMove", "model"))
-    Kill ^||OcuPilotProviderStub("rowMove")
-    Set tSC = ##class(OcuPilot.Kernel.State.Agent).GuardedOpenId(tId, .tRow)
-    If $$$ISERR(tSC) || '$IsObject(tRow) Quit 0
-    Do ##class(OcuPilot.Kernel.State.Agent).SnapshotSecurityFields(tRow, .tSnapshot)
-    Set tRow.Model = tModel
-    Set tMoveSC = ##class(OcuPilot.Kernel.State.Agent).GuardedUpdate(tRow, .tSnapshot)
-    Set tRow = ""
-    Quit $$$ISOK(tMoveSC)
-}
-
 /// <p>Force a real application-error entry (<code>$$LOG^%ETN()</code>) on every call from now on,
 /// raised from <b>two</b> frames of the adapter's own call stack: inside
-/// <method>ApplyAuth</method>, and inside <method>IssueHttpsPost</method>.</p>
+/// <method>ApplyAuth</method>, and under <method>IssueHttpsPost</method>, in
+/// <method>OcuPilot.Test.ProviderStubTransport.Transport</method>.</p>
 /// <p><b>What the two legs cover, and what no leg can cover.</b> An <code>^%ETN</code> entry records
 /// every local at every <i>live</i> stack level, so what an entry can see is the chain from
 /// <method>OcuPilot.Kernel.Provider.Base.Invoke</method> down to wherever it was raised. Both legs
@@ -278,101 +263,35 @@ ClassMethod ServedBy() As %String
 }
 
 /// <p>Record the wait and advance the fake clock by it rather than taking it, so the retry path runs
-/// at full speed and still costs the attempt deadline what a real sleep would.</p>
+/// at full speed and still costs the attempt deadline what a real sleep would. The recording is
+/// <method>OcuPilot.Test.ProviderStubTransport.Wait</method>'s, which every stub shares.</p>
 Method Wait(pSeconds As %Numeric)
 {
-    Set ^||OcuPilotProviderStub("waits") = $Get(^||OcuPilotProviderStub("waits")) _ $Select($Get(^||OcuPilotProviderStub("waits")) = "": "", 1: "|") _ +pSeconds
-    Do ..Advance(pSeconds)
+    Do ##class(OcuPilot.Test.ProviderStubTransport).Wait(pSeconds)
 }
 
-/// <p>Answer the next queued triple instead of issuing the request, having first recorded what
-/// <var>pRequest</var> carried.</p>
+/// <p>Answer the next queued triple instead of issuing the request, through
+/// <method>OcuPilot.Test.ProviderStubTransport.Transport</method>: this stub's
+/// <parameter>STUBIDENTITY</parameter> and <parameter>WATCHEDHEADERS</parameter>, and
+/// <code>x-api-key</code> as the header <method>ArmKeyCompare</method> compares.</p>
 /// <p>An empty script answers a 200 with a minimal well-formed reply, so a test that only cares
 /// about the configured request does not have to queue one.</p>
 Method IssueHttpsPost(pRequest As %Net.HttpRequest, pUrl As %String, Output pStatus As %Integer, Output pBody As %String, Output pRetryAfter As %String) As %Status
 {
-    Set pStatus = 0
-    Set pBody = ""
-    Set pRetryAfter = ""
-    Set tCall = $Increment(^||OcuPilotProviderStub("calls"))
-    Do ..Advance($Get(^||OcuPilotProviderStub("elapsed")))
-    Set ^||OcuPilotProviderStub("servedBy") = ..#STUBIDENTITY
-    Set ^||OcuPilotProviderStub("call", tCall, "servedBy") = ..#STUBIDENTITY
-    Set ^||OcuPilotProviderStub("call", tCall, "url") = pUrl
-    Set ^||OcuPilotProviderStub("call", tCall, "sslConfiguration") = pRequest.SSLConfiguration
-    Set ^||OcuPilotProviderStub("call", tCall, "sslCheckServerIdentity") = ''pRequest.SSLCheckServerIdentity
-    Set ^||OcuPilotProviderStub("call", tCall, "timeout") = pRequest.Timeout
-    Set ^||OcuPilotProviderStub("call", tCall, "proxyServer") = pRequest.ProxyServer
-    Set ^||OcuPilotProviderStub("call", tCall, "proxyPort") = pRequest.ProxyPort
-    Set ^||OcuPilotProviderStub("call", tCall, "proxyHttps") = ''pRequest.ProxyHTTPS
-    Set ^||OcuPilotProviderStub("call", tCall, "proxyTunnel") = ''pRequest.ProxyTunnel
-    ; Recorded raw rather than normalized with '': %Net.HttpRequest declares FollowRedirect with no
-    ; InitialExpression, so an unset property reads "" and ''"" is 0 -- which would make "nobody set
-    ; it" and "set to 0 deliberately" the same recorded value, and the assertion on it vacuous.
-    Set ^||OcuPilotProviderStub("call", tCall, "followRedirect") = $Select(pRequest.FollowRedirect = "": "unset", 1: ''pRequest.FollowRedirect)
-    Set ^||OcuPilotProviderStub("call", tCall, "socketTimeout") = pRequest.SocketTimeout
-    Set ^||OcuPilotProviderStub("call", tCall, "headerNames") = ..HeaderNames(pRequest)
-    Set ^||OcuPilotProviderStub("call", tCall, "contentType") = pRequest.ContentType
-    Set ^||OcuPilotProviderStub("call", tCall, "body") = ..BodyOf(pRequest)
-    If $Data(^||OcuPilotProviderStub("keyExpected")) Set ^||OcuPilotProviderStub("call", tCall, "keyMatches") = (pRequest.GetHeader("x-api-key") = ^||OcuPilotProviderStub("keyExpected"))
-    Do ##class(OcuPilot.Test.ProviderStubTransport).RecordStreaming(pRequest, tCall)
-    Set tIndex = tCall
-    If tIndex > +$Get(^||OcuPilotProviderStub("script")) Set tIndex = +$Get(^||OcuPilotProviderStub("script"))
-    If tIndex < 1 {
-        Set pStatus = 200
-        Set pBody = "{""content"":[{""type"":""text"",""text"":""ok""}],""stop_reason"":""end_turn"",""usage"":{""input_tokens"":1,""output_tokens"":1}}"
-        Quit $$$OK
-    }
-    Set tKind = $Get(^||OcuPilotProviderStub("script", tIndex, "kind"))
-    If tKind = "throw" {
-        Throw ##class(%Exception.StatusException).CreateFromStatus($$$ERROR($$$GeneralError, "the stand-in transport raised mid-flight"))
-    }
-    If tKind = "timeout" {
-        Quit $$$ERROR($$$CSPTimeout)
-    }
-    If tKind = "failure" {
-        Quit $$$ERROR($$$GeneralError, "the stand-in transport could not reach the provider")
-    }
-    If tKind = "connectrefused" {
-        Quit $$$ERROR($$$HttpRequestConnect, "127.0.0.1:1")
-    }
-    If tKind = "brokenafterstatus" {
-        Set pStatus = +$Get(^||OcuPilotProviderStub("script", tIndex, "status"))
-        Quit $$$ERROR($$$TCPIPError, "<READ>", 0)
-    }
-    If tKind = "stream" Quit ##class(OcuPilot.Test.ProviderStubTransport).Stream(pRequest, tIndex, .pStatus, .pBody)
-    If +$Get(^||OcuPilotProviderStubLog("armed")) {
-        Do ..ForceErrorLog()
-    }
-    ; Mid-flight by construction: the caller is inside its own read-then-write window while this
-    ; runs, which is the only place a second writer can stand.
-    Do ..MoveArmedRow()
-    Set pStatus = +$Get(^||OcuPilotProviderStub("script", tIndex, "status"))
-    Set pBody = $Get(^||OcuPilotProviderStub("script", tIndex, "body"))
-    Set pRetryAfter = $Get(^||OcuPilotProviderStub("script", tIndex, "retryAfter"))
-    Quit $$$OK
+    Quit ##class(OcuPilot.Test.ProviderStubTransport).Transport(..#STUBIDENTITY, ..#WATCHEDHEADERS, pRequest, pUrl, .pStatus, .pBody, .pRetryAfter, "{""content"":[{""type"":""text"",""text"":""ok""}],""stop_reason"":""end_turn"",""usage"":{""input_tokens"":1,""output_tokens"":1}}", "x-api-key")
 }
 
-/// <p>Raise one genuine, controlled runtime error inside this frame and log it to this namespace's
-/// <code>^ERRORS</code>. The shape is
-/// <method>OcuPilot.Test.ErrorLogSeed.SeedInto</method>'s: a real <code>&lt;DIVIDE&gt;</code>
-/// rather than a <code>Throw</code>, because a <code>Throw</code> leaves <code>$ZError</code> empty
-/// and records the useless <code>&lt;LOG ENTRY&gt;</code> placeholder; the divisor comes out of a
-/// variable because the compiler folds the literal form.</p>
-/// <p><b>Guarded here as well as at its queue point</b>: a class-level check protects the class
-/// that declares it, not a caller that reached this another way.</p>
+/// <p>Raise and log one application error through
+/// <method>OcuPilot.Test.ProviderStubTransport.ForceErrorLog</method>, which holds the shape and
+/// both guards, with this method's caller live on the stack. <method>ApplyAuth</method> and
+/// <class>OcuPilot.Test.ProviderStubShapeLeak</class> call it here.</p>
 Method ForceErrorLog() [ Private ]
 {
-    If $System.Util.GetEnviron("OCUPILOT_ALLOW_ERROR_SEED") '= 1 Quit
-    Try {
-        Set tZero = 0
-        Set tUnreachable = 1 / tZero
-    } Catch inner {
-        Set ^||OcuPilotProviderStubLog("entry", $Increment(^||OcuPilotProviderStubLog("entry"))) = $$LOG^%ETN()
-    }
+    Do ##class(OcuPilot.Test.ProviderStubTransport).ForceErrorLog()
 }
 
-/// <p>How many <code>^ERRORS</code> entries <method>ForceErrorLog</method> wrote.</p>
+/// <p>How many <code>^ERRORS</code> entries the run forced, through any stub: every entry
+/// <method>OcuPilot.Test.ProviderStubTransport.ForceErrorLog</method> wrote.</p>
 ClassMethod ErrorLogCount() As %Integer
 {
     Quit +$Get(^||OcuPilotProviderStubLog("entry"))
@@ -383,45 +302,6 @@ ClassMethod ErrorLogCount() As %Integer
 ClassMethod ErrorLogEntry(pIndex As %Integer = 1) As %String
 {
     Quit $Get(^||OcuPilotProviderStubLog("entry", pIndex))
-}
-
-/// <p>The header names the request was given a non-empty value for, out of
-/// <parameter>WATCHEDHEADERS</parameter>, comma-separated in that order.</p>
-/// <p><b>Names only, and no value is ever bound to a variable.</b> The credential is a header
-/// value: <method>%Net.HttpRequest.ReturnHeaders</method> would answer a string carrying it, and
-/// assigning that to a local would put the key into the symbol table an <code>^%ETN</code> entry
-/// captures -- in the very class AC6 uses to prove it is not there. Each value is therefore tested
-/// inside the comparison and never named.</p>
-ClassMethod HeaderNames(pRequest As %Net.HttpRequest) As %String [ Private ]
-{
-    Set tNames = ""
-    Try {
-        For tI = 1:1:$Length(..#WATCHEDHEADERS, ",") {
-            Set tHeader = $Piece(..#WATCHEDHEADERS, ",", tI)
-            If pRequest.GetHeader(tHeader) = "" Continue
-            Set tNames = tNames _ $Select(tNames = "": "", 1: ",") _ tHeader
-        }
-    } Catch ex {
-        Set tNames = ""
-    }
-    Quit tNames
-}
-
-/// <p><var>pRequest</var>'s entity body as a string, so a test can assert the canonical shape the
-/// adapter built.</p>
-ClassMethod BodyOf(pRequest As %Net.HttpRequest) As %String [ Private ]
-{
-    Set tBody = ""
-    Try {
-        If '$IsObject(pRequest.EntityBody) Quit
-        Do pRequest.EntityBody.Rewind()
-        While 'pRequest.EntityBody.AtEnd {
-            Set tBody = tBody _ pRequest.EntityBody.Read(32000)
-        }
-    } Catch ex {
-        Set tBody = ""
-    }
-    Quit tBody
 }
 
 }
