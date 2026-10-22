@@ -382,6 +382,30 @@ Rejected:
 - A read-only probe ran on `ocupilot` during implement: process, already in the cycle log.
 - QA's tests are outside the batch commit: the lead's post-smoke commit and its CI carry them.
 
+Code review, batch 2 (2026-10-22; full-opus; four layers): 23 rows, 5 entries (1 medium, 4 low), all patched; 14 rejected.
+
+- [x] [Review][Patch] (medium) The `ci-ipm-archive.sh` DW-235 test spelled every `--dir` under the host's `/tmp`, so a regressed guard would stage into `/tmp/x` or `/tmp/module` (`mkdir` is not stubbed) and its outcome depended on what the host holds there [`ui/tools/ipm-archive.test.mjs`] -- every leg is now under a root the test makes and passes as `TMPDIR`; the whole-guard revert is red and leaves the host's `/tmp` unchanged.
+- [x] [Review][Patch] (low) The admitted `/tmp` leg of the `ci-throwaway.sh` DW-235 test named a path it did not make, so the admitted half was unpinned there [`ui/tools/ci.test.mjs`] -- it is a real directory made under `/tmp` and removed; a link test refusing it reddens it.
+- [x] [Review][Patch] (low) A class armed by two variables got "it names A, B, an arming variable", untested [`ui/tools/ci-runner.mjs`] -- two or more read "A and B, arming variables"; the one-variable text is unchanged. A two-variable leg pins it.
+- [x] [Review][Patch] (low) The link refusals' comments claimed a removal `rm` does not make: a link at `$DIR/data`, or at `--dir` in `ci-ipm-archive.sh` once its slashes are off, is unlinked, not followed [`scripts/ci-throwaway.sh`, `scripts/ci-ipm-archive.sh`] -- the comments say what each link would do.
+- [x] [Review][Patch] (low) The hand-written throwaway compose in `docs/DEVELOPMENT.md` lacked the `stop_grace_period` the paragraph below it says to copy [`docs/DEVELOPMENT.md`] -- added.
+
+Rejected:
+
+- "Only `scripts/ci-throwaway.sh` sets them" is false because two browser specs `docker exec -e` the variable: false -- that arms one seeding session of the spec's own on the throwaway; a class the runner runs takes the container's environment, which only that script's compose file arms.
+- `scripts/smoke.sh`'s usage omits the own-web-server constraint: low -- the task names the three sites (`Smoke.cls`, `DEVELOPMENT.md`, `README.md`).
+- The README sentence lacks the "only" the other two carry: low -- ruled text (U-6); it errs toward a failure that does not happen, and the precise form is in `DEVELOPMENT.md` and `Smoke.cls`.
+- The `Smoke.cls` paragraph appears three times: low -- the task places it in the header, `Host()` and `Port()`.
+- A `TMPDIR` as shallow as `/Users` admits a home directory: low -- the caller names that root scratch; nothing in the tooling sets it.
+- A link in an ancestor of `--dir` is admitted: low -- Design Notes leaves it (filing candidate 4).
+- `down` refuses when `$DIR/data` is a link, leaving the container up: false -- a loud refusal of a hand-planted link, naming its path, is the designed outcome.
+- An arming refusal at method level gets no hint: low -- the matrix row is class-level, and the runner already prints that method's raised text, which names the variable and the script.
+- The "Armed test classes" bold lead departs from the ruled lead, and the ruled hint cites a label the ruled paragraph lacks: low -- kept. The Task and the Wording both call the paragraph "Armed test classes"; with the ruled lead verbatim the ruled hint cites nothing in the document. Every other word is as ruled.
+- The link line names `$LINK`, not `$DIR`: low -- for `--dir` it is `$DIR`; for the data link the ruled `$DIR` would name the wrong path (Decided in-stage).
+- `docker-compose.yml` carries a comment beside the admitted key: low -- it gives the key's measured reason, in the comment-per-key form the file already uses.
+- A failing `OnAfterAllTests` would overwrite the class record and drop the hint: maybe-false -- needs an armed class whose teardown fails unarmed; the line would still say failure.
+- "Red by design on `ocupilot`" contradicts AD-17: false -- AD-17 governs what a product start compiles, and the sentence says what such a class does when run there.
+
 ## Spec Change Log
 
 ## Review Triage Log
@@ -725,6 +749,20 @@ No AC contradicts an AD's Rule, and no NFR is in play.
 - `mutation:` (DW-432):
   - `OCUPILOT_ALLOW_JOURNAL` removed from `docs/DEVELOPMENT.md`: the doc pin is red on the missing name. `OCUPILOT_ALLOW_BOGUS` added: red on the unknown name.
   - The hint dropped from `classifyFailureDetail`: the runner test is red on the armed legs. The hint on every class-level line: red on the unarmed leg. Each reverted.
+- (QA) Test added to an existing file, no new file: `ui/tools/ci.test.mjs`, `DW-432: the section the runner hint cites is the paragraph of docs/DEVELOPMENT.md that names the arming variables`. The runner-hint test's "named once" assertion now counts the variable, not the phrase "it names", which a deduplicated and an undeduplicated hint both carry once.
+- `mutation:` (DW-432, QA, `node --test`, each reverted, `cmp` and `git diff` clean):
+  - The cited label renamed to "Armed classes" in `docs/DEVELOPMENT.md`: the two earlier DW-432 tests stay green, and the new test is the one red.
+  - A blank line ends the paragraph before its variable list: the new test the one red.
+  - The `new Set` deduplication removed from `classifyFailureDetail`: "a variable is named once however many records name it" the one red, and green before the assertion counted the variable.
+- `mutation:` (DW-235, DW-1762, DW-432, QA, the recorded mutations re-run, each reverted, `cmp` and `git diff` clean):
+  - `ci-throwaway.sh`: the guard reverted, the raw `TMPDIR` arm alone, no link check, the link check on `$DIR` only, no `TMPDIR` separator, no plain-spelling case, each of the three plain arms alone, the absolute check relaxed, no strip of `--dir`, no strip of `TMPDIR`. Each reddens the one DW-235 test on its own leg: `TMPDIR=/`, the link legs, the sibling, `/tmp/./x`, `/tmp//x`, `/tmp/x/.`, the relative `TMPDIR`, the slash-spelled link. Without the `TMPDIR` strip the link legs are the first red, since the host's `TMPDIR` ends in a slash.
+  - `ci-ipm-archive.sh`: no link check, no plain-spelling case, each plain arm alone, no strip each redden the one DW-235 test (the strip on the slash-spelled link leg only). A link check that refuses every directory reddens the SIGTERM test and the unbuilt-bundle test, so the admitted half is pinned. The whole-guard revert is recorded under the review line below.
+  - DW-1762: the key dropped from the here-doc, set to 30s there, or moved to `durable-init`: the here-doc pin and `the throwaway start path is the one docker-compose.yml ships` red. Dropped from `docker-compose.yml` or set to 30s: the `compose.test.mjs` pin and the same equality test red.
+  - DW-432: `OCUPILOT_ALLOW_JOURNAL` removed from the document, or `OCUPILOT_ALLOW_BOGUS` added: the doc pin red. The hint dropped, on every line, read from the action only, or from the error only: the runner-hint test red on its own leg.
+- `mutation:` (DW-235, DW-432, code review, `node --test`, each reverted, `cmp`, `git status` and `git diff --stat` unchanged):
+  - `ci-throwaway.sh`'s link test also refusing a real directory under `/tmp`: the DW-235 test red on "a directory under /tmp is admitted". As `-e`: red, on the data-link leg first.
+  - `ci-ipm-archive.sh`'s guard reverted whole: its DW-235 test red on its first leg, and the host's `/tmp` listing unchanged, since every `--dir` is under a root the test makes.
+  - The hint's plural form dropped: the runner-hint test red on its two-variable leg.
 - `mutation:` (DW-1188):
   - Remove one group-A name from `UNSTYLED_CLASS_HOOKS` → the real-tree clean run red, naming its sites.
   - Add a styled name to the list → the stale rule red.
