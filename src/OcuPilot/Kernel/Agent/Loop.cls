@@ -897,7 +897,7 @@ ClassMethod AnswerClientCall(pKey As %String, pUser As %String, pReadOnly As %Bo
     Set pTurnState = ""
     Set pTurnCode = ""
     Try {
-        Set tSC = $ClassMethod(..DispatchClass(), "ResolveClientCall", pUser, pBlock, pLimitsClass, .tPending, .tToolName, .tRoute, .tEntityId, .tCTarget, .tCArguments, .tCArgsTruncated, .tIsError, .tContent, .tReason, .tFailedPair, pKey, .tCInput, .tCDeclaredPairs, .tCCallPairs, .tCSecretNames, .tCSecretDeclared, .tCPairsResolved, .tCriterion, .tCriteria)
+        Set tSC = $ClassMethod(..DispatchClass(), "ResolveClientCall", pUser, pBlock, pLimitsClass, .tPending, .tToolName, .tRoute, .tEntityId, .tCTarget, .tCArguments, .tCArgsTruncated, .tIsError, .tContent, .tReason, .tFailedPair, pKey, .tCInput, .tCDeclaredPairs, .tCCallPairs, .tCSecretNames, .tCSecretDeclared, .tCPairsResolved, .tCriterion, .tCriteria, .tParentId)
         If $$$ISERR(tSC) Quit
         Set pToolName = tToolName
 
@@ -921,7 +921,16 @@ ClassMethod AnswerClientCall(pKey As %String, pUser As %String, pReadOnly As %Bo
             Quit
         }
 
-        Set tAnnounceSC = ##class(OcuPilot.Kernel.State.Step).GuardedAppend(pKey, "announce", tToolName, "running", "", tEntityId, "", pLimitsClass, .tAnnounceSeq, .tAnnounceStored, tRoute, "", "", "", "", 0)
+        ; The route's one id: the selected row's, or the parent's on a parent-scoped screen. The
+        ; call carries at most one of the two (Navigate.Directive), and the settled detail names
+        ; whichever it carried.
+        Set tRouteId = tEntityId
+        Set tRouteIdKey = "entityId"
+        If (tRouteId = "") && ($Get(tParentId) '= "") {
+            Set tRouteId = tParentId
+            Set tRouteIdKey = "parentId"
+        }
+        Set tAnnounceSC = ##class(OcuPilot.Kernel.State.Step).GuardedAppend(pKey, "announce", tToolName, "running", "", tRouteId, "", pLimitsClass, .tAnnounceSeq, .tAnnounceStored, tRoute, "", "", "", "", 0)
         If $$$ISERR(tAnnounceSC) {
             Set tSC = tAnnounceSC
             Quit
@@ -934,7 +943,7 @@ ClassMethod AnswerClientCall(pKey As %String, pUser As %String, pReadOnly As %Bo
             Set tDroppedCode = ##class(OcuPilot.Api.Error).#NAVUNAVAILABLE
             Set tDroppedDetail = {}
             Do tDroppedDetail.%Set("route", tRoute, "string")
-            Do tDroppedDetail.%Set("entityId", tEntityId, "string")
+            Do tDroppedDetail.%Set(tRouteIdKey, tRouteId, "string")
             Set tDroppedJson = ""
             Do $ClassMethod(..DispatchClass(), "SettleClient", tDroppedDetail, "unavailable", tDroppedCode, .tDroppedJson)
             Set pCode = tDroppedCode
@@ -949,7 +958,7 @@ ClassMethod AnswerClientCall(pKey As %String, pUser As %String, pReadOnly As %Bo
         }
         Set pLastSeq = tAnnounceSeq
 
-        Set tRequestSC = ##class(OcuPilot.Kernel.State.Nav).GuardedRequest(pKey, tAnnounceSeq, tRoute, tEntityId, $Get(tCriterion), $Get(tCriteria))
+        Set tRequestSC = ##class(OcuPilot.Kernel.State.Nav).GuardedRequest(pKey, tAnnounceSeq, tRoute, tRouteId, $Get(tCriterion), $Get(tCriteria))
         If $$$ISERR(tRequestSC) {
             Set tSC = tRequestSC
             Quit
@@ -1015,12 +1024,12 @@ ClassMethod AnswerClientCall(pKey As %String, pUser As %String, pReadOnly As %Bo
 
         Set tAnnounceStatus = $Select(tOutcome = "opened": "ok", 1: "error")
         Set tAnnounceCode = $Select(tOutcome = "opened": "", 1: tOutcomeCode)
-        ; The entity id is carried through unchanged on settle (pText) -- GuardedUpdate's own
-        ; ApplyContent unconditionally overwrites Text, so passing "" here would erase the row
-        ; selection an "opened" announcement already recorded, and any later read (a poll before
-        ; the next render, a reload) would then render the no-entity phrasing for a navigation
-        ; that did select a row.
-        Set tUpdateSC = ##class(OcuPilot.Kernel.State.Step).GuardedUpdate(pKey, tAnnounceSeq, tAnnounceStatus, "", tEntityId, tAnnounceCode, pLimitsClass)
+        ; The route id is carried through unchanged on settle (pText) -- GuardedUpdate's own
+        ; ApplyContent unconditionally overwrites Text, so passing "" here would erase the id an
+        ; "opened" announcement already recorded, and any later read (a poll before the next
+        ; render, a reload) would then render the no-entity phrasing for a navigation that did
+        ; name one.
+        Set tUpdateSC = ##class(OcuPilot.Kernel.State.Step).GuardedUpdate(pKey, tAnnounceSeq, tAnnounceStatus, "", tRouteId, tAnnounceCode, pLimitsClass)
         If $$$ISERR(tUpdateSC) {
             Set tSC = tUpdateSC
             Quit
@@ -1028,7 +1037,7 @@ ClassMethod AnswerClientCall(pKey As %String, pUser As %String, pReadOnly As %Bo
 
         Set tDetail = {}
         Do tDetail.%Set("route", tRoute, "string")
-        Do tDetail.%Set("entityId", tEntityId, "string")
+        Do tDetail.%Set(tRouteIdKey, tRouteId, "string")
         Set tContentJson = ""
         Do $ClassMethod(..DispatchClass(), "SettleClient", tDetail, tOutcome, tOutcomeCode, .tContentJson)
 

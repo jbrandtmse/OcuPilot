@@ -32,8 +32,10 @@ export type CitationPresence = 'present' | 'absent' | 'unknown';
 const NAME_PLACEHOLDER = '<name>';
 
 /**
- * Whether `screen` can be opened on one row: its id is `single`, or `composite` over exactly one
- * part -- the client mirror of `OcuPilot.Screen.Tool.Navigate.AcceptsEntityId`.
+ * Whether `screen`'s id fits the one route segment an agent-named id may occupy: `single`, or
+ * `composite` over exactly one part -- the client mirror of
+ * `OcuPilot.Screen.Tool.Navigate.IdShapeAccepted`. A sub-resource screen is refused separately, in
+ * `citationScreen`, as `AcceptsEntityId` refuses one.
  */
 export function acceptsEntityId(screen: Pick<ScreenDeclaration, 'id'>): boolean {
   if (screen.id.kind === 'single') return true;
