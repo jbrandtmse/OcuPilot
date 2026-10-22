@@ -2,10 +2,11 @@
 /// moves the browser, whether opening a screen or selecting a row -- opening a screen with an id is
 /// the same argument pair. Client-fulfilled (<parameter>FULFILMENT</parameter> = <code>client</code>):
 /// this class validates the call and, through <method>Directive</method>, answers the allow-listed
-/// <code>route</code> and optional <code>entityId</code> the browser is asked to open, but its own
-/// <method>View</method> never runs on the instance -- <class>OcuPilot.Kernel.Agent.Dispatch</class>
-/// calls <method>Directive</method> in place of <code>InvokeTool</code>, records a pending
-/// directive, and the browser is what actually navigates.</p>
+/// <code>route</code> and the optional <code>entityId</code> or <code>parentId</code> the browser is
+/// asked to open, but its own <method>View</method> never runs on the instance --
+/// <class>OcuPilot.Kernel.Agent.Dispatch</class> calls <method>Directive</method> in place of
+/// <code>InvokeTool</code>, records a pending directive, and the browser is what actually
+/// navigates.</p>
 /// <p><b>The allow-list is the descriptor registry, twice</b> (AD-5). <code>route</code>'s
 /// <code>enum</code> is built from every built screen's own <method>OcuPilot.Screen.Descriptor.Base.Route</method>,
 /// so an off-list value is refused by <method>OcuPilot.Screen.Tool.Registry.ValidateArguments</method>
@@ -15,12 +16,21 @@
 /// and refuses <code>NAV.ROUTEUNKNOWN</code> on the rare disagreement between the two: a route that
 /// exists as an enum member at build time but is no longer a built screen when the call actually
 /// runs.</p>
-/// <p><b>No second composite grammar</b> (AD-5, DW-1419). <code>entityId</code> is accepted when
-/// the target's <code>id.kind</code> is <code>single</code>, and when it is <code>composite</code>
-/// over exactly <b>one</b> part -- a composite of one part occupies the same single route segment
-/// a <code>single</code> id does, through the same shared encoder, so admitting it invents no
-/// grammar. A screen whose id is <code>none</code>, and a composite of two or more parts, are
-/// openable only without one and refused <code>NAV.ENTITYNOTALLOWED</code>.</p>
+/// <p><b>Two id arguments, one route segment</b> (AD-5, AD-13, DW-1462). A screen's route id is
+/// its own row's on a screen of its own rows, and an entity of its parent's primary type on a
+/// screen that declares a <code>parentScope</code> (a task's history is not a task). The call names
+/// which it means: <code>entityId</code> selects a row of a screen that has no parent scope, and
+/// <code>parentId</code> names the item a parent-scoped screen belongs to. Each is accepted only
+/// by the screen kind it describes (<method>AcceptsEntityId</method>,
+/// <method>AcceptsParentId</method>) and otherwise refused <code>NAV.ENTITYNOTALLOWED</code>,
+/// naming the argument in <code>detail.argument</code>.</p>
+/// <p><b>No second composite grammar</b> (AD-5, DW-1419). An id is accepted when the declaration
+/// that owns it -- the target's own for <code>entityId</code>, its parent screen's for
+/// <code>parentId</code> -- has <code>id.kind</code> <code>single</code>, or <code>composite</code>
+/// over exactly <b>one</b> part: a composite of one part occupies the same single route segment a
+/// <code>single</code> id does, through the same shared encoder, so admitting it invents no
+/// grammar. An id of kind <code>none</code>, and a composite of two or more parts, are openable
+/// only without one.</p>
 /// <p><b>Two arguments carry a search to the arriving screen</b> (AD-11, AD-21, AD-36), and neither
 /// travels in the URL: <code>withQuery</code> in <file>ui/src/app/core/navigation.ts</file> carries
 /// only <code>ns</code>, and both ride the directive.</p>
@@ -55,7 +65,7 @@ Parameter FULFILMENT = "client";
 /// <code>criteria</code> are refused rather than announced and ignored.</p>
 Parameter ARRIVALARCHETYPE = "list (server criteria)";
 
-Parameter DESCRIPTION = "Open a screen for the user, optionally selecting one row by its id. Announces the move before it happens, then waits about a second before the browser moves; the departing screen may refuse the move (for example, unsaved changes), and the user may always return with Back.";
+Parameter DESCRIPTION = "Open a screen for the user: optionally select one of its rows by the row's id, or open a screen that belongs to one item (such as a task's history) for that item. Announces the move before it happens, then waits about a second before the browser moves; the departing screen may refuse the move (for example, unsaved changes), and the user may always return with Back.";
 
 /// <p>The screen registry the allow-list and the re-check are built from. Overridable for a
 /// fixture; production never overrides it.</p>
@@ -86,8 +96,9 @@ ClassMethod BuiltRoutes() As %List
 
 /// <p><var>pDescriptor</var> is ignored: this is a class tool of its own, not descriptor-derived.
 /// <code>route</code> is required and closed to <method>BuiltRoutes</method>; <code>entityId</code>
-/// is optional, at most 256 characters -- the encoded form <code>encodeEntityId</code> produces,
-/// never a URL or a filesystem path. <code>criteria</code> is a bare object, because the emitted
+/// and <code>parentId</code> are optional, at most 256 characters each -- the encoded form
+/// <code>encodeEntityId</code> produces, never a URL or a filesystem path.
+/// <code>criteria</code> is a bare object, because the emitted
 /// schema subset admits no nested <code>properties</code>; <method>Directive</method> checks each
 /// key.</p>
 ClassMethod InputSchema(pDescriptor As %String = "") As %DynamicObject
@@ -102,7 +113,12 @@ ClassMethod InputSchema(pDescriptor As %String = "") As %DynamicObject
             "entityId": {
                 "type": "string",
                 "maxLength": 256,
-                "description": "The row to select, once resolved from the row's own identifying value. Refused on a screen whose id is none or composite."
+                "description": "The row to select, once resolved from the row's own identifying value, on a screen of its own rows. Refused on a screen that belongs to an item (send parentId there), and on a screen whose id is none or has more than one part."
+            },
+            "parentId": {
+                "type": "string",
+                "maxLength": 256,
+                "description": "The item a screen belongs to, by that item's own identifying value: a task's id for its history or details, a database's directory for its volumes. Accepted only on a screen that belongs to an item, and refused where that item's id is none or has more than one part."
             },
             "criterion": {
                 "type": "string",
@@ -131,7 +147,7 @@ ClassMethod SecretArguments(pDescriptor As %String = "", Output pDeclared As %Bo
     Quit ""
 }
 
-/// <p><code>{navigated, route, entityId, code}</code> -- what the browser answers once the wait
+/// <p><code>{navigated, route, entityId, parentId, code}</code> -- what the browser answers once the wait
 /// settles (<method>OcuPilot.Kernel.Agent.Dispatch.SettleClient</method> builds it; this schema is
 /// documentation and shape validation only, since a client-fulfilled tool's result never passes
 /// through this class's own <method>View</method>).</p>
@@ -143,6 +159,7 @@ ClassMethod ResultSchema(pDescriptor As %String = "") As %DynamicObject
             "navigated": {"type": "boolean", "description": "Whether the browser actually moved."},
             "route": {"type": "string", "description": "The route that was requested."},
             "entityId": {"type": "string", "description": "The row that was requested, when one was."},
+            "parentId": {"type": "string", "description": "The item the screen was opened for, when one was."},
             "code": {"type": "string", "description": "The machine code the browser or the wait answered; present only when navigated is false."}
         },
         "required": ["navigated", "route"],
@@ -184,8 +201,9 @@ ClassMethod ArgumentPairs(pDescriptor As %String = "", pArgs As %DynamicObject, 
 }
 
 /// <p>Validate a call's <var>pArgs</var> and answer the directive the browser is asked to carry
-/// out: <var>pRoute</var>, <var>pEntityId</var>, <var>pCriterion</var> and <var>pCriteria</var>
-/// (an object, empty when the call carries none), or <var>pFault</var> naming the refusal.
+/// out: <var>pRoute</var>, <var>pEntityId</var>, <var>pCriterion</var>, <var>pCriteria</var>
+/// (an object, empty when the call carries none) and <var>pParentId</var>, or <var>pFault</var>
+/// naming the refusal.
 /// <var>pDescriptor</var> is ignored. <b>Caller contract:</b> <var>pArgs</var> has already passed
 /// <method>InputSchema</method>'s validation, so <code>route</code> is present and, but for the
 /// defensive re-check below, one of <method>BuiltRoutes</method>.</p>
@@ -193,15 +211,18 @@ ClassMethod ArgumentPairs(pDescriptor As %String = "", pArgs As %DynamicObject, 
 /// resolves to a built screen -- the enum and the registry have disagreed, which the enum
 /// construction at advertise time (AC1) makes rare rather than impossible between one turn's
 /// advertisement and the next. Refuses <code>NAV.ENTITYNOTALLOWED</code> when <code>entityId</code>
-/// is supplied against a screen <method>AcceptsEntityId</method> refuses (AD-5),
+/// is supplied against a screen <method>AcceptsEntityId</method> refuses, or <code>parentId</code>
+/// against a screen <method>AcceptsParentId</method> refuses (AD-5); the fault's
+/// <code>detail.argument</code> names the refused argument. Refuses
 /// <code>NAV.CRITERIONUNKNOWN</code> when <code>criterion</code> names anything but a flag
 /// criterion that screen declares or a <code>criteria</code> key names no criterion it declares
 /// (AD-21), and <code>NAV.CRITERIONINVALID</code> when a <code>criteria</code> value is not a
 /// string or the read would refuse it (AD-11); those two carry <code>detail.criterion</code>.</p>
-ClassMethod Directive(pDescriptor As %String, pArgs As %DynamicAbstractObject, Output pRoute As %String, Output pEntityId As %String, Output pFault As %DynamicObject, Output pCriterion As %String, Output pCriteria As %DynamicObject) As %Status
+ClassMethod Directive(pDescriptor As %String, pArgs As %DynamicAbstractObject, Output pRoute As %String, Output pEntityId As %String, Output pFault As %DynamicObject, Output pCriterion As %String, Output pCriteria As %DynamicObject, Output pParentId As %String) As %Status
 {
     Set pRoute = ""
     Set pEntityId = ""
+    Set pParentId = ""
     Set pCriterion = ""
     Set pCriteria = ""
     Set pFault = ""
@@ -218,7 +239,14 @@ ClassMethod Directive(pDescriptor As %String, pArgs As %DynamicAbstractObject, O
         Set tEntityId = ""
         If tArgs.%IsDefined("entityId") && (tArgs.%GetTypeOf("entityId") = "string") Set tEntityId = tArgs.%Get("entityId")
         If (tEntityId '= "") && '..AcceptsEntityId(tTargetDescriptor) {
-            Set pFault = ..RefusalFault(##class(OcuPilot.Api.Error).#NAVENTITYNOTALLOWED)
+            Set pFault = ..RefusalFault(##class(OcuPilot.Api.Error).#NAVENTITYNOTALLOWED, "", "entityId")
+            Set tSC = $$$ERROR($$$GeneralError, ##class(OcuPilot.Api.Error).#NAVENTITYNOTALLOWED)
+            Quit
+        }
+        Set tParentId = ""
+        If tArgs.%IsDefined("parentId") && (tArgs.%GetTypeOf("parentId") = "string") Set tParentId = tArgs.%Get("parentId")
+        If (tParentId '= "") && '..AcceptsParentId(tTargetDescriptor) {
+            Set pFault = ..RefusalFault(##class(OcuPilot.Api.Error).#NAVENTITYNOTALLOWED, "", "parentId")
             Set tSC = $$$ERROR($$$GeneralError, ##class(OcuPilot.Api.Error).#NAVENTITYNOTALLOWED)
             Quit
         }
@@ -244,6 +272,7 @@ ClassMethod Directive(pDescriptor As %String, pArgs As %DynamicAbstractObject, O
         }
         Set pRoute = tRoute
         Set pEntityId = tEntityId
+        Set pParentId = tParentId
         Set pCriterion = tCriterion
         Set pCriteria = tCriteria
     } Catch ex {
@@ -253,12 +282,48 @@ ClassMethod Directive(pDescriptor As %String, pArgs As %DynamicAbstractObject, O
     Quit tSC
 }
 
-/// <p>Whether the screen <var>pDescriptor</var> declares can be opened on one row (AD-5,
-/// DW-1419): its id is <code>single</code>, or <code>composite</code> over exactly one part.</p>
-/// <p><b>Both refusals are kept.</b> A screen whose id is <code>none</code> has no segment for a
-/// row to occupy, and a composite of two or more parts would need the agent to compose the shared
-/// encoder's join -- which is the second grammar AD-5 forbids. One part needs no join at all.</p>
+/// <p>Whether the screen <var>pDescriptor</var> declares can be opened on one of its own rows (AD-5,
+/// DW-1419, DW-1462): it has no <code>parentScope</code>, and its id is <code>single</code> or
+/// <code>composite</code> over exactly one part (<method>IdShapeAccepted</method>). On a
+/// parent-scoped screen the route's one id segment is its parent's, which only
+/// <method>AcceptsParentId</method> admits.</p>
 ClassMethod AcceptsEntityId(pDescriptor As %String) As %Boolean
+{
+    Set tAccepts = 0
+    Try {
+        If $ClassMethod(pDescriptor, "ParentScope") '= "" Quit
+        Set tAccepts = ..IdShapeAccepted(pDescriptor)
+    } Catch {
+        Set tAccepts = 0
+    }
+    Quit tAccepts
+}
+
+/// <p>Whether the screen <var>pDescriptor</var> declares can be opened for one item of its parent
+/// (AD-5, DW-1462): it has a <code>parentScope</code>, and the screen that names -- whose primary
+/// entity type the route id identifies -- has an id of the shape <method>IdShapeAccepted</method>
+/// admits. A parent route no built screen declares is refused.</p>
+ClassMethod AcceptsParentId(pDescriptor As %String) As %Boolean
+{
+    Set tAccepts = 0
+    Try {
+        Set tParentRoute = $ClassMethod(pDescriptor, "ParentScope")
+        If tParentRoute = "" Quit
+        Set tParent = $ClassMethod(..RegistryClass(), "DescriptorForRoute", tParentRoute)
+        If tParent = "" Quit
+        Set tAccepts = ..IdShapeAccepted(tParent)
+    } Catch {
+        Set tAccepts = 0
+    }
+    Quit tAccepts
+}
+
+/// <p>Whether the id <var>pDescriptor</var> declares fits the one route segment a model-supplied id
+/// may occupy: <code>single</code>, or <code>composite</code> over exactly one part.</p>
+/// <p><b>Both refusals are kept.</b> A screen whose id is <code>none</code> has no segment for an
+/// id to occupy, and a composite of two or more parts would need the agent to compose the shared
+/// encoder's join -- which is the second grammar AD-5 forbids. One part needs no join at all.</p>
+ClassMethod IdShapeAccepted(pDescriptor As %String) As %Boolean [ Private ]
 {
     Set tAccepts = 0
     Try {
@@ -311,14 +376,16 @@ ClassMethod CriteriaRefusal(pTarget As %String, pGiven As %DynamicObject, pAccep
 
 /// <p>One <code>{code}</code> fault object, the shape
 /// <method>OcuPilot.Kernel.Agent.Dispatch.ResolveClientCall</method> reads, carrying
-/// <code>detail.criterion</code> when <var>pCriterion</var> names one.</p>
-ClassMethod RefusalFault(pCode As %String, pCriterion As %String = "") As %DynamicObject [ Private ]
+/// <code>detail.criterion</code> when <var>pCriterion</var> names one and
+/// <code>detail.argument</code> when <var>pArgument</var> names the refused argument.</p>
+ClassMethod RefusalFault(pCode As %String, pCriterion As %String = "", pArgument As %String = "") As %DynamicObject [ Private ]
 {
     Set tFault = {}
     Do tFault.%Set("code", pCode, "string")
-    If pCriterion '= "" {
+    If (pCriterion '= "") || (pArgument '= "") {
         Set tDetail = {}
-        Do tDetail.%Set("criterion", pCriterion, "string")
+        If pCriterion '= "" Do tDetail.%Set("criterion", pCriterion, "string")
+        If pArgument '= "" Do tDetail.%Set("argument", pArgument, "string")
         Do tFault.%Set("detail", tDetail)
     }
     Quit tFault

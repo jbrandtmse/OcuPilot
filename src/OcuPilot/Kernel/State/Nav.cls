@@ -27,7 +27,8 @@ Property Seq As %Integer;
 
 Property Route As %String(MAXLEN = "");
 
-/// <p><code>""</code> for a screen opened with no row selected.</p>
+/// <p>The route's one id: the selected row's on a screen of its own rows, or the parent item's on a
+/// parent-scoped screen. <code>""</code> for a screen opened with no id.</p>
 Property EntityId As %String(MAXLEN = "");
 
 /// <p>The name of a flag criterion the target screen declares, applied on arrival (Story 5.8,

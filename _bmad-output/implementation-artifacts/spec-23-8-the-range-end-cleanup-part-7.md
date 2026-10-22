@@ -2,9 +2,9 @@
 title: 'Story 23.8: The range-end cleanup, part 7'
 type: 'bugfix'
 created: '2026-10-21'
-status: 'in-progress'
-baseline_revision: '0c62d06a6b5af73b364bb085c3eaaa06c7d3e4ee'
-baseline_commit: '0c62d06a6b5af73b364bb085c3eaaa06c7d3e4ee'
+status: 'done'
+baseline_revision: '5efc7e290bd662b3721362b17bcb62ff2e986964'
+baseline_commit: '5efc7e290bd662b3721362b17bcb62ff2e986964'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -297,7 +297,7 @@ Each batch is one implement pass and one code commit, with CI green on its own h
 
 ### Batch 4: navigation contract
 
-- [ ] **DW-1462.** `src/OcuPilot/Screen/Tool/Navigate.cls`:
+- [x] **DW-1462.** `src/OcuPilot/Screen/Tool/Navigate.cls`:
   - Split `AcceptsEntityId`'s body into `IdShapeAccepted(pDescriptor)` (`single`, or `composite` of one part). `AcceptsEntityId` = `ParentScope() = ""` and `IdShapeAccepted`.
   - New `AcceptsParentId` = `ParentScope() '= ""` and `IdShapeAccepted(DescriptorForRoute(ParentScope()))`.
   - `InputSchema` gains `parentId` (string, `maxLength` 256). `entityId` and `DESCRIPTION` are reworded (Wording).
@@ -305,23 +305,23 @@ Each batch is one implement pass and one code commit, with CI green on its own h
   - `Directive` gains a trailing `Output pParentId`.
   - `ResultSchema` gains `parentId`.
   - The class header's composite paragraph covers both arguments.
-- [ ] **DW-1462.** Thread `parentId` through the dispatcher and the turn:
+- [x] **DW-1462.** Thread `parentId` through the dispatcher and the turn:
   - `Kernel/Agent/Dispatch.cls`: `ResolveClientCall` gets a trailing `Output pParentId` from `Directive`. `SettleClient` emits `parentId` when the detail carries it.
   - `Kernel/Agent/Loop.cls`: take `tParentId`. The announce target and `Nav.GuardedRequest` get the route's id, `$Select(tEntityId '= "": tEntityId, 1: tParentId)`. The dropped and settled details carry `parentId` instead of `entityId` when it is set.
   - `Kernel/State/Nav.cls`: doc only. `EntityId` holds the route's id: the selected row's, or the parent's on a parent-scoped screen.
-- [ ] **DW-1462.** `src/OcuPilot/Api/Error.cls` :1048: `REASONNAVENTITYNOTALLOWED` takes the sentence under Wording.
-- [ ] **DW-1462.** `src/OcuPilot/Test/ToolNavigate.cls`:
+- [x] **DW-1462.** `src/OcuPilot/Api/Error.cls` :1048: `REASONNAVENTITYNOTALLOWED` takes the sentence under Wording.
+- [x] **DW-1462.** `src/OcuPilot/Test/ToolNavigate.cls`:
   - Rewrite the sweep (:94-138) to the two-way partition, derived from the declarations. For every built route, `entityId` "1" is accepted exactly when `AcceptsEntityId`'s rule says so, and `parentId` "1" exactly when the parent's id shape says so. Each half has a floor above 0.
   - Rewrite the header's parent-scoped paragraph.
   - `TestTheSchemaAdmitsCriterionAndNothingElse` expects five names.
-- [ ] **DW-1462.** Create `src/OcuPilot/Test/ToolNavigateParent.cls` (unarmed), with literal pins:
+- [x] **DW-1462.** Create `src/OcuPilot/Test/ToolNavigateParent.cls` (unarmed), with literal pins:
   - `tasks/schedule/details` takes `parentId` and refuses `entityId`, with `detail.argument`.
   - `tasks/schedule` refuses `parentId`.
   - `interoperability/productions/items/jobs` refuses both.
   - `tasks/schedule/history` takes `parentId`.
   - `SettleClient` echoes `parentId`.
   - A turn through `TurnLoopProbe`, in `TurnNavigate`'s pattern, whose scripted call names `parentId` stores the route's id on the Nav row and settles with `parentId`.
-- [ ] **DW-1462.** `ui/browser/task-resume.browser-spec.mjs:228`: `entityId` becomes `parentId`.
+- [x] **DW-1462.** `ui/browser/task-resume.browser-spec.mjs:228`: `entityId` becomes `parentId`.
 
 ### Batch 5: shared Save
 
@@ -521,6 +521,25 @@ Rejected:
   - `[false]` `[reject]` Intent audit: the diff has five failure conditions where the matrix row has one -- the Task lists each; no bad outcome is described.
   - `[low]` `[reject]` Intent audit: the 49 template edits have no rendering test -- the Task prescribes the grep proof; the component suite (3338) and the reviewers' own searches show no reader, and no selector can reach the 44.
   - `[false]` `[reject]` Intent audit: the removal and the group of four live in the tasks and Design Notes, not the intent contract -- a description of where the text is, with no bad outcome.
+
+### 2026-10-22 -- Review pass (batch 4)
+
+- verdicts: 14 findings -- high 0, medium 1, low 13, false 0, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` Verification gap: the announce step's text at append time is unpinned for a `parentId` call -- the settle rewrites it, so the post-turn read cannot tell. Patched: `TestTheAnnouncementCarriesTheParentIdWhileTheBrowserWaits` stops the turn during the wait and reads the append; red under the `tEntityId` append (run 45).
+  - `[low]` `[patch]` Verification gap: the dropped (step-cap) detail has no test for a `parentId` call (the intent audit's untested dropped branch is the same root cause) -- patched: `TestADroppedAnnouncementNamesTheParentInTheLapse`, red under the `entityId` key (run 46). Rare: a turn at its step cap.
+  - `[low]` `[patch]` Verification gap: `AcceptsParentId`'s no-parent leg, `ResultSchema`'s `parentId` and the `maxLength` had no recorded mutation, and 256 was asserted only as above 0 -- patched: the three mutations run and recorded (runs 40-44), and the bound asserted as 256.
+  - `[low]` `[patch]` Verification gap, other: `Error.NAVENTITYNOTALLOWED`'s doc comment still described only `entityId` against a none or composite id -- reworded at the origin.
+  - `[low]` `[patch]` Verification gap, other: `ToolNavigateParent`'s header said it writes only its own turn, but it also makes and removes a probe agent definition -- reworded.
+  - `[low]` `[reject]` Intent audit: the browser spec and the turn tests exercise one route (`tasks/schedule/details`), the other seven newly openable screens only through `Directive`, and the sweep's floor is above 0 rather than a count -- the spec derives the partition from the declarations with a floor above 0, and every route shares the one dispatch path.
+  - `[low]` `[reject]` Intent audit: the stored row, the announce text and the client's `entityId` keep one name for a parent's id -- Design Notes decides this (no stored change, AD-9).
+  - `[low]` `[reject]` Intent audit: the advertised contract is class-level, and the model learns the per-route answer from `detail.argument` -- the texts are the owner's ruling (U-7); a per-route list would be a new model-read string.
+  - `[low]` `[reject]` Intent audit: the reason sentence is generic and serves both refusals -- ruled text (U-7).
+  - `[low]` `[reject]` Intent audit: the reason sentence changed though the matrix is silent -- ruled text (U-7), and the spec-gate ruling lists it.
+  - `[low]` `[reject]` Intent audit: the spine's AD-5, AD-13 and AD-11 text is untouched -- the orchestrator's ruling is no spine edit in this run, and Design Notes holds the proposed line for the owner.
+  - `[low]` `[reject]` Intent audit: the client mirror keeps the name `acceptsEntityId` beside a comment naming `IdShapeAccepted` -- a naming divergence with no behavior change, and a rename would widen into Epic 20's `ui/src/app/**`.
+  - `[low]` `[reject]` Intent audit: the mutation runs appear in the spec and not in code -- Rule 19 puts the `mutation:` lines under Verification, and each test's header carries its own.
+  - `[low]` `[reject]` Intent audit: the dropped-announcement branch has no test -- same root cause as the second row.
 
 ## Design Notes
 
@@ -861,10 +880,26 @@ No AC contradicts an AD's Rule, and no NFR is in play.
   - The 44 tokens as whole tokens in `ui/src`, `ui/browser` and `ui/tools`, and in the rest of the repository: three hits, all an id or a `name` (`ocu-log-hub-source`, `ocu-ecp-settings-ssl`, `ocu-oauth-server-metadata`), none a class context. No `[class*=]` selector, no `&-` nesting, and no `#{}` in a selector builds a class.
   - `npm run build` in the mirror with `ocu-not-styled` added to `typed-name-dialog.ts`: it stops at `client-lint` with `src/app/shell/typed-name-dialog.ts:54: [no-unstyled-template-class]`, exit 1, the later checkers and `ng build` never run. The unmodified mirror runs `npm run prebuild` through all seven checkers, exit 0.
 - `mutation:` (DW-1188, code review, `node --test tools/client-lint.test.mjs` on a scratch mirror of `ui/`, each restored, the mirror's `client-lint.mjs` `cmp`-identical to the tree's, 86 of 86 after): a literal name under a declared prefix exempt in any file: the literal-name test the one red, on its other-file leg. The builder check without `{{`: the composed-prefix test the one red. A `*.spec.ts` or `src/app/testing/` file's `styles:` counted as styled: the collection test the one red. The owed group exempt from the styled check: the styled-stale test the one red.
-- `mutation:` (DW-1462):
-  - `AcceptsEntityId` without its `ParentScope` clause → the sweep red on the 37 parent-scoped routes.
-  - `AcceptsParentId` reading the screen's own id shape → red on the 4 item tabs and the 8 newly openable.
-  - `SettleClient` without the `parentId` echo → `ToolNavigateParent` red.
+- **Batch 4, measured at `5efc7e29`:** 209 built routes. Of 160 screens of their own rows, 99 take `entityId` and 61 do not. Of 48 parent-scoped screens, 41 take `parentId` (33 as before, 8 newly) and 7 do not: the four item tabs and the items' `settings`, `document` and `test`, whose parent id has two parts. Before the change 37 parent-scoped screens took an `entityId`. The spec's four counts reproduce.
+- (Shared surfaces, batch 4) The two probes that mirror `Navigate.Directive`'s signature, `Test/LedgerClientTool/Probe` and `Test/ClientCallFault/Probe`, gain the trailing `pParentId`, since `ResolveClientCall` now passes it positionally. No other test asserts the old shape: the other `Directive` callers send no `entityId`, and the roster tests name the tool only. `ui/src/app/core/citations.ts`'s comment now says its function mirrors `IdShapeAccepted`, the id-shape half of `AcceptsEntityId`.
+- `mutation:` (DW-1462, `ocupilot-ci`, every mutated class and each descendant recompiled, each reverted byte-identical and the tree re-checked):
+  - The four production files at their pre-batch text: `ToolNavigate` red 3 of 23 (the sweep, the none-id `detail.argument`, the schema count; run 10) and `ToolNavigateParent` red 7 of 7 (run 11).
+  - `AcceptsEntityId` without its `ParentScope` clause: the sweep the one red in `ToolNavigate` (run 12); `ToolNavigateParent` red 3 of 7 (run 13).
+  - `AcceptsParentId` reading the screen's own id shape: the sweep red (run 14); `ToolNavigateParent` red on the composite-parent and task-history pins (run 15).
+  - `RefusalFault` without `detail.argument`: `ToolNavigate` red 2 of 23 (run 16); `ToolNavigateParent` red 4 of 7 (run 17).
+  - `SettleClient` without the `parentId` echo: `ToolNavigateParent` red on the echo and the turn (run 18).
+  - `Loop` handing `GuardedRequest` `tEntityId` in place of the route's id: the turn test the one red (run 19). The settled detail always naming `entityId`: the turn test the one red (run 20). `ResolveClientCall` answering no parent id: the turn test the one red (run 21).
+  - `InputSchema` without `parentId`: `ToolNavigate`'s schema test the one red (run 22), and the turn test (run 23), since the argument validation refuses the call.
+  - `REASONNAVENTITYNOTALLOWED` at its old sentence: the refused-turn test the one red (run 24).
+  - `task-resume.browser-spec.mjs` sending `entityId` in place of `parentId`: its first test red on the 30 s wait for the URL, the other two green. Reverted.
+  - Reverted: `ToolNavigate` 23 of 23, `ToolNavigateParent` 9 of 9, `TurnNavigate` 15 of 15, `ToolRoundTrip` 2 of 2, `ToolDispatchClientFault` 3 of 3, `LedgerClientRows` 3 of 3, confirmed in `%UnitTest_Result`; `task-resume.browser-spec.mjs` 3 of 3 and `navigate.browser-spec.mjs` 6 of 6 against the rebuilt bundle; `npm run test:tools` 2146 of 2146; `check-objectscript.py` 0 problems.
+- `mutation:` (DW-1462, review pass, `ocupilot-ci`, the mutated class and its subclasses recompiled, each reverted `cmp`-identical):
+  - `AcceptsParentId` answering 1 for a screen with no parent scope: `TestAScreenWithNoParentRefusesParentId` the one red in `ToolNavigateParent` (run 40) and the sweep the one red in `ToolNavigate` (run 42).
+  - `ResultSchema` without `parentId`: `TestSettledResultEmitsOnlyDeclaredKeysWithDeclaredTypes` the one red (run 43).
+  - `InputSchema` `parentId` `maxLength` 255: `TestTheSchemaAdmitsCriterionAndNothingElse` the one red (run 44).
+  - `Loop` appending the announce step with `tEntityId` in place of the route's id: the new `TestTheAnnouncementCarriesTheParentIdWhileTheBrowserWaits` the one red, and `TestAParentIdTurnStoresTheRouteIdAndSettlesWithParentId` stays green because the settle rewrites the text (run 45).
+  - `Loop`'s dropped detail naming `entityId`: the new `TestADroppedAnnouncementNamesTheParentInTheLapse` the one red (run 46).
+  - Reverted: `ToolNavigate` 23 of 23 (run 47), `ToolNavigateParent` 9 of 9 (run 48), `TurnNavigate` 15 of 15, `ToolRoundTrip` 2 of 2.
 - `mutation:` (DW-2278):
   - `ScreenSave.Prohibited` answers `$$$OK` always → the prohibited legs of SuperserverProhibited, MftConnectionWrite and DocDbAppWrite red.
   - `HandleUpdate` without `Release` → SaveHoldCoverage red.
@@ -875,16 +910,12 @@ No AC contradicts an AD's Rule, and no NFR is in play.
 Status: done
 Blocking condition: none
 
-**Batch 3 (client lint), this pass only.** Batches 1 and 2 closed in their own passes; batches 4 and 5 are untouched and unchecked.
+**Batch 4 (navigation contract), this pass only.** Batches 1-3 closed in their own passes; batch 5 is untouched and unchecked.
 
-- **Implemented.**
-  - DW-1188, family 7: `checkTemplateClasses` in `ui/tools/client-lint.mjs` (rules `no-unstyled-template-class` and `stale-unstyled-class-hook`), with `UNSTYLED_CLASS_HOOKS` (90 hooks, 4 owed a style), `COMPOSED_CLASS_PREFIXES` (`ocu-banner-`, `ocu-reply-heading-`), wired into `lintClient` and `RULE_FAMILIES` (seven).
-  - The 44 dead tokens (49 sites) are removed from 27 templates. Family 7's first run at `0c62d06a` reproduced the Design Notes lists exactly, so Epic 20's 20.33 and 20.35 added no unstyled name.
-  - No style or user-facing string was added or changed.
-- **Files.** `ui/tools/client-lint.mjs`, `ui/tools/client-lint.test.mjs` (24 new tests, 82 in the file), 27 templates under `ui/src/app/areas/` and `ui/src/app/shell/`, and this spec.
-- **Review.** 18 findings from two layers (low 16, false 2): 9 low patched, 9 rejected (see the Triage Log). Patched: pins for the file line, the `[class]` prefix scope, the literal-name exemption and the quote variants, the derived hook name in the CLI test, the removal's `mutation:` line, the wrong mutation sentence, and one sentence on what the family does not read. Deferred: none.
-- **In-stage decisions.** A hook's reader is any whole-name mention in `ui/browser` or a `*.spec.ts` file, as the Task words it, so `ocu-command-box-list` and `ocu-oauth-client-metadata` stay on an id-only mention (`reopen_if`: a class-context reader check is added). A stale entry is reported at `tools/client-lint.mjs:1`.
-- **Follow-up review recommended: false.** Only low entries were patched, and each patch has its mutation observed red.
-- **Verification.**
-  - `node tools/client-lint.mjs` exit 0 (1037 files, seven families); `npm run test:tools` 2142 of 2142 with neither browser variable set; `npm run test:components` 3338 of 3338; `npm run build` succeeds, initial total 2.00 MB, under the 2500 kB warning.
-  - Every mutation under Verification was reverted and the tree re-checked byte-identical.
+- **Implemented.** DW-1462: `shell.screen.open` takes `entityId` for a row of a screen's own and `parentId` for the item a parent-scoped screen belongs to; each is accepted by the registry's declaration and otherwise refused `NAV.ENTITYNOTALLOWED` before any announcement, with `detail.argument` naming it. The route's one id rides the announce step, the Nav row and the settled result as before; the settled and dropped results name `parentId` when it was the argument. The ruled model-read texts and `REASONNAVENTITYNOTALLOWED` are used as written. No stored schema changed.
+- **Files.** `Screen/Tool/Navigate.cls`, `Kernel/Agent/Dispatch.cls`, `Kernel/Agent/Loop.cls`, `Kernel/State/Nav.cls` (doc only), `Api/Error.cls`, `Test/ToolNavigate.cls`, new `Test/ToolNavigateParent.cls` (9 tests), the two `Directive`-mirroring probes `Test/LedgerClientTool/Probe.cls` and `Test/ClientCallFault/Probe.cls`, `ui/browser/task-resume.browser-spec.mjs`, a comment in `ui/src/app/core/citations.ts`, and this spec.
+- **Counts at HEAD** (Verification): 99 of 160 own-row screens take `entityId`, 41 of 48 parent-scoped screens take `parentId` (8 newly), and the 37 that took an `entityId` before no longer do.
+- **Review.** 14 findings from two layers (medium 1, low 13): 5 patched, 9 rejected (see the Triage Log). Patched: pins for the announce append and the dropped lapse, the three missing `mutation:` runs and the 256 bound, a stale doc comment and one test header. Deferred: none.
+- **Follow-up review recommended: false.** One medium and four lows were patched, each patch with its mutation observed red.
+- **Verification.** Load 0 errors. `ToolNavigate` 23, `ToolNavigateParent` 9, `TurnNavigate` 15, `ToolRoundTrip` 2, `ToolDispatchClientFault` 3 and `LedgerClientRows` 3, all green on `ocupilot-ci`. After rebuilding and redeploying the bundle, `task-resume.browser-spec.mjs` 3 of 3 and `navigate.browser-spec.mjs` 6 of 6. `npm run test:tools` 2146 of 2146 and `check-objectscript.py` 0 problems.
+- **Residual risk.** The full ObjectScript sweep and the full browser suite are not run here; they belong to the lead and to CI.
