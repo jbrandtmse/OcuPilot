@@ -139,6 +139,9 @@ The MCP-server rule above and the container detail below this block are the oper
   `ocupilot-slot-b`, and under `/epic-cycle` the name comes from your spawn prompt, never from this line. The assertions live in `OcuPilot.Install.Smoke` inside the
   instance, so CI and a local run ask the same question; zero executed checks is a failure, never
   a pass.
+- Test classes armed by an `OCUPILOT_ALLOW_*` variable run only on a throwaway, since
+  `scripts/ci-throwaway.sh` is the only thing that sets them. They are red by design on `ocupilot`
+  or a slot instance; see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md), Armed test classes.
 - **CI runs all of the above on every push** (`.github/workflows/ci.yml`, seven jobs: `gates`,
   `instance-shard`, `instance`, `browser-shard`, `browser`, `images`, `package`). The ObjectScript
   suite runs as eight shard legs and the browser specs as five, every leg on its own fresh throwaway and

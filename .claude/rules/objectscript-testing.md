@@ -177,6 +177,9 @@ leftover, not a regression.
 - Compile before running; a stale class produces confusing results.
 - Round-trip anything with a format or encoding (timestamps, Base64, JSON) rather than
   asserting only on the encode direction.
+- Test classes armed by an `OCUPILOT_ALLOW_*` variable run only on a throwaway, since
+  `scripts/ci-throwaway.sh` is the only thing that sets them. They are red by design on `ocupilot`
+  or a slot instance; see `docs/DEVELOPMENT.md`, Armed test classes.
 
 ## A completeness test can carry an assertion written to be deleted later
 
