@@ -3,7 +3,8 @@
 /// class extends this one, names its screen and its violation codes in <parameter>DESCRIPTORCLASS</parameter> and
 /// <parameter>ERRORCLASS</parameter>, and declares <code>Check</code> and <code>Taken</code>, which differ by the
 /// target's identity. <class>OcuPilot.Kernel.Proposal.ScreenSave</class> reaches them through its
-/// <code>RulesCheck</code> and <code>RulesTaken</code> adapters.</p>
+/// <code>RulesCheck</code> and <code>RulesTaken</code> adapters, whose defaults pass <code>Check</code> the identity's
+/// first part and <code>Taken</code> the target's id.</p>
 Class OcuPilot.Kernel.Proposal.ScreenSaveRules Extends %RegisteredObject [ Abstract ]
 {
 

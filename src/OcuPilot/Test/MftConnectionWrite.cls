@@ -263,7 +263,7 @@ Method TestADeleteOverAnAbsentClientIsAnsweredAsDeleted()
 /// <p>C5: every row of the rules is refused on its field before any <code>PUT</code>, by the form's Save as a 422
 /// <code>MFT.VALIDATION</code> carrying the violation and by the agent's mint as its problem, naming the field and
 /// the published sentence.</p>
-/// <p>A name that is not text is refused on <code>Name</code> as <code>PORT.FIELDSHAPE</code>.</p>
+/// <p>A name that is not text is refused on <code>Name</code> as <code>PORT.FIELD.SHAPE</code>.</p>
 /// <p>Mutation (Rule 19): drop the <code>Service</code> rule from
 /// <method>OcuPilot.Area.Security.MftConnectionRules.Valid</method> -- its legs send the <code>PUT</code> and go
 /// red; drop the shape violation from <method>OcuPilot.Area.Security.MftConnectionSave.CreateIdentity</method> -- the

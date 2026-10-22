@@ -46,7 +46,8 @@ ClassMethod IdentityMembers() As %List
 }
 
 /// <p>The identity is <code>$ListBuild(namespace, name)</code>, the namespace as typed and empty when the records are
-/// not keyed by one. A member that is not text is a <code>PORT.FIELDSHAPE</code> violation.</p>
+/// not keyed by one. A member that is not text is a <parameter>OcuPilot.Api.Error.PORTFIELDSHAPE</parameter>
+/// violation.</p>
 ClassMethod CreateIdentity(pBody As %DynamicObject, Output pId As %String, Output pParts As %List, ByRef pShape)
 {
     Set tNamespace = ""
@@ -100,11 +101,6 @@ ClassMethod RulesCheck(pMode As %String, pParts As %List, pBody As %DynamicObjec
 ClassMethod RulesTaken(pParts As %List, pId As %String, Output pTaken As %Boolean) As %Status
 {
     Quit $ClassMethod(..#RULES, "Taken", ..PortClass(), $ListGet(pParts, 1), $ListGet(pParts, 2), .pTaken)
-}
-
-ClassMethod TakenField() As %String
-{
-    Quit ..#NAMEMEMBER
 }
 
 /// <p>The answer is <code>{id, namespace, name}</code>, the namespace upper-cased as the instance stores it and

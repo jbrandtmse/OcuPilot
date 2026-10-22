@@ -5,12 +5,14 @@
 /// answers its identity, its rules' argument lists and its answer body in the hooks below; every step the two callers
 /// share is this class's.</p>
 /// <p>Each Save runs, in this order: the caller's pairs (AD-8); the body; the target's identity; the per-target lock
-/// (AD-34); the rules over the arguments (<method>RulesCheck</method>); for a create, whether the target is taken
-/// (<method>RulesTaken</method>), and for an edit the fresh read, the merge and the rules over what it would send;
-/// AD-10's prohibited set, after the state read and before the port write; the write; and the read-back (AD-58), with
-/// the lock kept through the answer. A merge whose diff has no row sends nothing. A body key the tool does not admit is
-/// 400 <parameter>OcuPilot.Api.Error.PORTFIELDUNEXPECTED</parameter>. No proposal is minted, and neither the enforced
-/// read-only state nor the kill switch is read (AD-53).</p>
+/// (AD-34); the body keys the tool does not admit, each 400
+/// <parameter>OcuPilot.Api.Error.PORTFIELDUNEXPECTED</parameter>; the rules over the arguments
+/// (<method>RulesCheck</method>); for a create, whether the target is taken (<method>RulesTaken</method>), and for an
+/// edit the fresh read and the merge (<method>Merge</method>), then the rules over what it would send where
+/// <method>CheckMerged</method> says so; AD-10's prohibited set, after the state read and before the port write; the
+/// write; and the read-back (AD-58), with the lock kept through the answer and released on every exit. A merge whose
+/// diff has no row sends nothing. No proposal is minted, and neither the enforced read-only state nor the kill switch
+/// is read (AD-53).</p>
 /// <p>Every port call goes through <method>PortClass</method> and every rule through <parameter>RULES</parameter>, whose
 /// class extends <class>OcuPilot.Kernel.Proposal.ScreenSaveRules</class>. Seams a subclass may override:
 /// <method>PortClass</method> and <method>ProhibitedClass</method>; production overrides neither.</p>
@@ -55,8 +57,9 @@ ClassMethod IdentityMembers() As %List
 
 /// <p>Read a create's identity from <var>pBody</var>: its target's id, the one the mint names, in
 /// <var>pId</var>, and the parts the rules' adapters take, as a <class>%List</class>, in <var>pParts</var>. An
-/// identifying member that is neither absent nor of the type it must have is added to <var>pShape</var> as a
-/// <code>PORT.FIELDSHAPE</code> violation (<method>Add</method>), and the handler answers it before taking the lock.</p>
+/// identifying member whose type the Save refuses is added to <var>pShape</var> as a
+/// <parameter>OcuPilot.Api.Error.PORTFIELDSHAPE</parameter> violation (<method>Add</method>), and the handler answers
+/// it before taking the lock.</p>
 ClassMethod CreateIdentity(pBody As %DynamicObject, Output pId As %String, Output pParts As %List, ByRef pShape)
 {
     Set pId = ""
@@ -92,20 +95,19 @@ ClassMethod SaveFields(pToolClass As %String) As %List
 /// <code>pViolations(n) = $ListBuild(field, code)</code> with the count in <code>pViolations</code>). <var>pMode</var> is
 /// <code>create</code>, with the identity's <var>pParts</var>, or <code>update</code>, where <var>pParts</var> is empty;
 /// <var>pFresh</var> is the read an edit merged over, and <code>""</code> before it; <var>pFull</var> 0 judges only what
-/// needs no read.</p>
+/// needs no read. The default calls <code>Check(id, body, fresh, mode, port, .violations, full)</code> with the
+/// identity's first part as the id; a Save whose rules take another identity overrides it.</p>
 ClassMethod RulesCheck(pMode As %String, pParts As %List, pBody As %DynamicObject, pFresh As %DynamicObject, pFull As %Boolean, Output pViolations) As %Status
 {
-    Kill pViolations
-    Set pViolations = 0
-    Quit $$$OK
+    Quit $ClassMethod(..#RULES, "Check", $ListGet(pParts, 1), pBody, pFresh, pMode, ..PortClass(), .pViolations, pFull)
 }
 
 /// <p>Whether the create's target <var>pId</var>, of identity <var>pParts</var>, already exists, in
-/// <var>pTaken</var>: the rules' <code>Taken</code>, read through <method>PortClass</method> as the caller.</p>
+/// <var>pTaken</var>: the rules' <code>Taken(port, id, .taken)</code>, read through <method>PortClass</method> as the
+/// caller. A Save whose rules take another identity overrides it.</p>
 ClassMethod RulesTaken(pParts As %List, pId As %String, Output pTaken As %Boolean) As %Status
 {
-    Set pTaken = 0
-    Quit $$$OK
+    Quit $ClassMethod(..#RULES, "Taken", ..PortClass(), pId, .pTaken)
 }
 
 /// <p>The member a taken target's violation names.</p>

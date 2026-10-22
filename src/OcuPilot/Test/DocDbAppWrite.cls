@@ -216,7 +216,7 @@ Method TestADeleteRemovesTheRecordOnBothCallers()
 /// 422 <code>DOCDBAPP.VALIDATION</code> carrying the violation and by the agent's mint as its problem naming the field
 /// and the published sentence, an empty name or namespace as 400 <code>TOOL.ARGUMENTS</code> at the mint; no record is
 /// created.</p>
-/// <p>A namespace that is not text is refused on <code>Namespace</code> as <code>PORT.FIELDSHAPE</code>.</p>
+/// <p>A namespace that is not text is refused on <code>Namespace</code> as <code>PORT.FIELD.SHAPE</code>.</p>
 /// <p>Mutation (Rule 19): drop the <code>Description</code> length rule from
 /// <method>OcuPilot.Area.WebApp.DocDbAppRules.Valid</method> -- its legs create the record and go red; drop the shape
 /// violation from <method>OcuPilot.Area.WebApp.DocDbAppSave.CreateIdentity</method> -- the non-text namespace leg is

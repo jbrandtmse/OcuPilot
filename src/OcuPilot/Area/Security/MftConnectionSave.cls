@@ -28,7 +28,7 @@ ClassMethod IdentityMembers() As %List
 }
 
 /// <p>The identity is <code>$ListBuild(name)</code>, and the name is the id. A name that is not text is a
-/// <code>PORT.FIELDSHAPE</code> violation.</p>
+/// <parameter>OcuPilot.Api.Error.PORTFIELDSHAPE</parameter> violation.</p>
 ClassMethod CreateIdentity(pBody As %DynamicObject, Output pId As %String, Output pParts As %List, ByRef pShape)
 {
     Set tName = ""
@@ -37,17 +37,6 @@ ClassMethod CreateIdentity(pBody As %DynamicObject, Output pId As %String, Outpu
     If (tType '= "string") && (tType '= "unassigned") Do ..Add(.pShape, ..#NAMEMEMBER, ##class(OcuPilot.Api.Error).#PORTFIELDSHAPE)
     Set pParts = $ListBuild(tName)
     Set pId = tName
-}
-
-ClassMethod RulesCheck(pMode As %String, pParts As %List, pBody As %DynamicObject, pFresh As %DynamicObject, pFull As %Boolean, Output pViolations) As %Status
-{
-    If pMode = "create" Quit $ClassMethod(..#RULES, "Check", $ListGet(pParts, 1), pBody, pFresh, pMode, ..PortClass(), .pViolations, pFull)
-    Quit $ClassMethod(..#RULES, "Check", "", pBody, pFresh, pMode, ..PortClass(), .pViolations, pFull)
-}
-
-ClassMethod RulesTaken(pParts As %List, pId As %String, Output pTaken As %Boolean) As %Status
-{
-    Quit $ClassMethod(..#RULES, "Taken", ..PortClass(), pId, .pTaken)
 }
 
 ClassMethod Subject() As %String

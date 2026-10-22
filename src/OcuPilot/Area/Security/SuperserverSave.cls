@@ -33,8 +33,8 @@ ClassMethod IdentityMembers() As %List
 }
 
 /// <p>The identity is <code>$ListBuild(port, bind address)</code>, the port as text whether the body sends text or a
-/// number, and the id is their composite. A bind address that is not text is a <code>PORT.FIELDSHAPE</code>
-/// violation.</p>
+/// number and empty for any other type, which the rules refuse as no port, and the id is their composite. A bind
+/// address that is not text is a <parameter>OcuPilot.Api.Error.PORTFIELDSHAPE</parameter> violation.</p>
 ClassMethod CreateIdentity(pBody As %DynamicObject, Output pId As %String, Output pParts As %List, ByRef pShape)
 {
     Set tPort = ""
@@ -47,15 +47,10 @@ ClassMethod CreateIdentity(pBody As %DynamicObject, Output pId As %String, Outpu
     Set pId = ##class(OcuPilot.Kernel.EntityId).JoinComposite(pParts)
 }
 
+/// <p>The rules' <code>Check</code> with the bind address after its other arguments.</p>
 ClassMethod RulesCheck(pMode As %String, pParts As %List, pBody As %DynamicObject, pFresh As %DynamicObject, pFull As %Boolean, Output pViolations) As %Status
 {
-    If pMode = "create" Quit $ClassMethod(..#RULES, "Check", $ListGet(pParts, 1), pBody, pFresh, pMode, ..PortClass(), .pViolations, pFull, $ListGet(pParts, 2))
-    Quit $ClassMethod(..#RULES, "Check", "", pBody, pFresh, pMode, ..PortClass(), .pViolations, pFull)
-}
-
-ClassMethod RulesTaken(pParts As %List, pId As %String, Output pTaken As %Boolean) As %Status
-{
-    Quit $ClassMethod(..#RULES, "Taken", ..PortClass(), pId, .pTaken)
+    Quit $ClassMethod(..#RULES, "Check", $ListGet(pParts, 1), pBody, pFresh, pMode, ..PortClass(), .pViolations, pFull, $ListGet(pParts, 2))
 }
 
 ClassMethod TakenField() As %String

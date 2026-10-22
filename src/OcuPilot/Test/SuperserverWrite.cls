@@ -194,7 +194,9 @@ Method TestADeleteRemovesTheSuperserverOnBothCallers()
 /// the field and the published sentence.</p>
 /// <p>Mutation (Rule 19): drop the <code>SYSTEMONLY</code> rule from
 /// <method>OcuPilot.Area.Security.SuperserverRules.Check</method> -- its three legs send the <code>PUT</code> and
-/// go red; drop the bind address rule -- the bind address legs go red.</p>
+/// go red; drop the bind address rule -- the bind address legs go red; render the violations in
+/// <method>OcuPilot.Kernel.Proposal.ScreenSaveRules.RenderViolations</method> under another rule set's
+/// <code>VALIDATION</code> -- every leg's envelope code goes red.</p>
 Method TestEveryRulesRowIsRefusedBeforeAnyPutOnBothCallers()
 {
     Set tTooLong = $Translate($Justify("", 257), " ", "x")
@@ -225,6 +227,7 @@ Method TestEveryRulesRowIsRefusedBeforeAnyPutOnBothCallers()
         Set tSC = $ClassMethod(..#SAVE, "Handle", "", tBody, .tAnswer, .tStatus)
         Set tWhy = ..ViolationOf(tAnswer, $List(tCase, 3))
         Do $$$AssertEquals(tStatus _ " " _ tWhy, "422 " _ $List(tCase, 4), $List(tCase, 1) _ ": the Save is refused on " _ $List(tCase, 3) _ ": " _ $Extract(tAnswer, 1, 200))
+        Do $$$AssertEquals(##class(OcuPilot.Test.LicenseKey).Parsed(tAnswer).%Get("code"), $Parameter(tErrors, "VALIDATION"), $List(tCase, 1) _ ": under the validation envelope")
         Do $$$AssertEquals($ClassMethod(..#SEAM, "Writes"), "", $List(tCase, 1) _ ": before any PUT")
         Set tMinted = ##class(%DynamicObject).%FromJSON($List(tCase, 2))
         Do tMinted.%Set("BindAddress", "")
