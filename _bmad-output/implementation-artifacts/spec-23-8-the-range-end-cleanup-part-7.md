@@ -358,6 +358,30 @@ Each batch is one implement pass and one code commit, with CI green on its own h
 - **Integration (Rule 1).** Given the Kernel `ScreenSave` base, when `SuperserverSave`, `MftConnectionSave`, `DocDbAppSave` and `RoutineAppSave` serve their routes over HTTP, then each Save answers exactly as before. Observed by their `*Write` classes over HTTP, with `SaveHoldCoverage` green.
 - **Batches.** Given the five batches, when each lands, then it is its own commit with CI green on its own head.
 
+### Review Findings
+
+Code review, batch 1 (2026-10-22; full-opus; four layers): 24 rows, 7 entries (1 medium, 6 low), all patched; 9 rejected.
+
+- [x] [Review][Patch] (medium) DW-2256's pin reached the mint through a guard-lifting test subclass, a hand-copied `Mint` call and the vendor's `EnsJob.mac`: not self-contained, and no product path shown [`src/OcuPilot/Test/ExplorerSaveFlow.cls`] -- a `USER` routine compiled and stripped of its `^rMAC` source reads `200 0 objectonly` and reaches the mint through the real `ExplorerRoutineSave.View`. Both DW-2256 tests call `View`, and the object-only one makes and removes its routine. `ExplorerRoutineSaveUnguarded` is deleted. This supersedes Design Notes › "DW-2256, the pin".
+- [x] [Review][Patch] (low) `ExplorerSaveFlow`'s header and the two tests' docs over-claimed the object-only case and misnamed its environment [`ExplorerSaveFlow.cls`] -- rewritten with the patch above.
+- [x] [Review][Patch] (low) The bound-figure pin was a substring check, so "160,000" passed for 60,000 [`ExplorerSource.cls` `TestTheReadDescriptionStatesTheBoundItCutsTo`] -- it now matches the whole figure.
+- [x] [Review][Patch] (low) `TestAFailedKeyIsKeptAndTheOthersAreSwept` derived its expected count from the rows it read back [`ProposalFixtureSweep.cls`] -- it asserts `1 0` and 1.
+- [x] [Review][Patch] (low) The same test repeated `SeedPair` inline [`ProposalFixtureSweep.cls`] -- it calls `SeedPair`.
+- [x] [Review][Patch] (low) `TestAnUnreadableCountIsAnErrorAndKeepsTheKey` was wholly covered by the pair test's `unreadable` legs [`ProposalFixtureSweep.cls`] -- removed; its mutation reddens the pair test.
+- [x] [Review][Patch] (low) `ProposalCountForTurn`/`TurnCountForTurn` copied `ProposalCount`/`TurnCount`, and the stated reason did not hold, since a private counter changes no caller [`ProposalFixture.cls`] -- all four go through `CountRows`.
+
+Rejected:
+
+- The sweep's pre-clean ignores its count: low -- it needs a delete that succeeds while a row of the same key survives, under one predicate.
+- The turn delete's status is unpinned: low -- a failed turn delete leaves a turn, which every caller's remaining-count assertion reports.
+- The surrogate test's `..Limit() - 1` holds only for an even bound under 70,001: low -- the task prescribes the form, and a bound change fails it loudly.
+- Verification's run numbers span two instance lifetimes: a spec edit outside the mutation lines.
+- Auto Run Result's "12 changed classes": a spec edit.
+- "No proposal is added" cannot fail: low -- the task asks for it, and the reason assertions are the pins.
+- The real count helpers' -1 branch never runs: low -- it needs a delete that succeeds and a count on the same table that fails.
+- A read-only probe ran on `ocupilot` during implement: process, already in the cycle log.
+- QA's tests are outside the batch commit: the lead's post-smoke commit and its CI carry them.
+
 ## Spec Change Log
 
 ## Review Triage Log
@@ -641,24 +665,36 @@ No AC contradicts an AD's Rule, and no NFR is in play.
 - `OcuProbe2021Obj.mac` made, compiled, then `Delete(name, 2)`: `AgentProblem("USER", name)` is `""`, and `AtelierPort.Invoke("Routine", "LIST", ...)` answers 404 `PORT.NOTFOUND` with `REASONNOTFOUND`, not `available` 0 with `objectonly`. `^rINDEX(name, "MAC")` is gone and `^rOBJ` stays (the index read finds no MAC node, an inference).
 - A deployed `.obj` export, `Delete(name, 0)` and reload: `^rINDEX` holds the `OBJ` type only. `.mac` and `.int` answer 404 `REASONNOTFOUND`, `.obj` 400.
 - The one object-only shape on the instance is `EnsJob.mac` (`^rINDEX` holds `MAC`, `^rMAC` does not), and `AgentProblem` refuses it as stored in ENSLIB before the read. The mint names `AtelierPort` itself, so `AtelierPortFixture`'s fake routes cannot answer its read.
-- Outcome: neither shape reaches the read. A third does: with `AgentProblem` lifted by a test subclass, `EnsJob.mac` (`200 0 objectonly`) reaches the mint's read, and `TestAnObjectOnlyRoutineIsRefusedAsKeepingNoSource` pins it. The probe routine and export file are removed.
+- Outcome: neither shape reaches the read. A third does, through the real Routines save: a `USER` routine compiled and then stripped of its `^rMAC` source reads `200 0 objectonly` (code review), and `TestAnObjectOnlyRoutineIsRefusedAsKeepingNoSource` makes it, pins it and removes it. The probe routine and export file are removed.
 
 **Mutations (Rule 19)**, each to be applied, observed and recorded with its run:
 
-- `mutation:` (DW-2256) the mint answers `REASONNOTFOUND` again → `ExplorerSaveFlow.TestAnObjectOnlyRoutineIsRefusedAsKeepingNoSource` red (run 38, 1 of 16). Reverted: runs 39 and 45 green.
+- `mutation:` (DW-2256, code review, `ocupilot-ci`; both pins call the real `ExplorerRoutineSave.View`):
+  - The mint answers `REASONNOTFOUND` for an unavailable document: `TestAnObjectOnlyRoutineIsRefusedAsKeepingNoSource` the one red (run 51, 16 of 17).
+  - The mint answers `REASONNOSOURCE` for a read the port refused: `TestAMissingRoutineIsRefusedWithTheReasonOfAnAbsentDocument` the one red (run 52, 16 of 17). Reverted: run 59 green 17 of 17.
 - `mutation:` (DW-2257) `ExplorerSourceRead.Escaped` answers `$Length(pText)`. On the unfixed mint `ExplorerSaveFlow` stays green 15 of 15 (run 1). On the fixed mint `TestAnEditPastThePortsBoundIsRefused` is red on both legs, the first included (run 2, 14 of 15). Reverted: run 16 green.
 - `mutation:` (DW-2258) `RemoveKeyed` ends with `Quit $$$ERROR($$$GeneralError,"m")`. Unfixed: the test method stays green and only `OnAfterAllTests` reddens the class (run 3, 1 test, 0 failed). Fixed: the method is red on "the probe package is removed" (run 4, 1 failed). Reverted: run 18 green.
 - `mutation:` (DW-2261):
   - `SOURCEMAXLENGTH` 50000 with `CUTTEXT` "50,000": before the fix `ExplorerSource` is red 2 of 10 (run 5) and `ExplorerSourceEdges` 2 of 12 (run 6); after it, green 11 of 11 (run 7) and 12 of 12 (run 8).
   - `SOURCEMAXLENGTH` 50000 alone: `TestTheReadDescriptionStatesTheBoundItCutsTo` is the one red (run 9, 1 of 11).
   - `ExplorerSourceRead.ResultSchema`'s `text` description states 50,000: `TestTheReadDescriptionStatesTheBoundItCutsTo` is the one red (run 42). Reverted: run 43 green.
+  - `CUTTEXT` states 160,000 (code review, whole-figure match): `TestTheReadDescriptionStatesTheBoundItCutsTo` the one red (run 53, 10 of 11). Reverted: run 54 green.
   - `SOURCEMAXLENGTH` 600000: `ExplorerSourceEdges` red 5 of 12, `TestALongRoutineIsCutAtWholeLines` among them (run 10), so its mutation note holds. Reverted: runs 19 and 20 green.
 - `mutation:` (DW-1267):
   - Unfixed `RemoveSeeded`: both tests red (run 12), the other key left unswept when the failed key is reached first.
   - Post-loop `Kill ^||OcuPilotProposalFixtureTurns` restored: both red (run 14).
   - Turn count dropped from `pRemaining`: `TestASurvivingTurnIsCounted` alone red (run 15).
-  - `RemoveSeeded` without its unreadable-count branch: `TestAnUnreadableCountIsAnErrorAndKeepsTheKey` alone red (run 41, 1 of 3). Reverted: run 44 green 3 of 3.
+  - `RemoveSeeded` without its unreadable-count branch: `TestAnUnreadableCountKeepsItsKeyAndSweepsTheOtherKey` the one red, on its status assertion in all four legs (code review, run 57, 3 of 4).
+  - `RemoveSeeded` skips a key's turn delete once its proposal delete failed: `TestAFailedKeyIsKeptAndTheOthersAreSwept` red on `1 0` and the count of 1, with `TestAKeyWhoseDeleteReportedAFailureIsKeptEvenWithItsRowsGone` (code review, run 56, 2 of 4). Reverted: run 58 green 4 of 4.
   - Fixed: run 22 green 2 of 2. The rows the red runs left were deleted by key.
+- `mutation:` (DW-1267, QA, `ocupilot-ci`; each reverted and the class green, run 16):
+  - A key is forgotten without asking whether its removal succeeded: the new `TestAKeyWhoseDeleteReportedAFailureIsKeptEvenWithItsRowsGone` the one red (run 10, 1 of 5).
+  - A key is forgotten once its removal succeeded, rows or not: `TestASurvivingTurnIsCounted` the one red (run 13).
+  - The unreadable branch ends the loop instead of continuing: the new `TestAnUnreadableCountKeepsItsKeyAndSweepsTheOtherKey` the one red (run 11); the single-key test stays green.
+  - The turn count is not asked whether it could be read: the same new test the one red (run 12).
+  - An unreadable count is clamped to 0: `TestAnUnreadableCountKeepsItsKeyAndSweepsTheOtherKey` red on every assertion (run 14).
+- `mutation:` (DW-2257, DW-2258, DW-2261, QA, re-run on `ocupilot-ci`, each reverted): the recorded mutations reproduce. `Escaped` answers `$Length(pText)`: `TestAnEditPastThePortsBoundIsRefused` the one red, on its "says why" assertion, since the card-width limit refuses the edit under the same code (run 19). `RemoveKeyed` ends in an error: the method is red on "the probe package is removed" (run 18). `SOURCEMAXLENGTH` 50000 alone: `TestTheReadDescriptionStatesTheBoundItCutsTo` the one red (run 20). `ExplorerRoutineSource` declaring `SOURCEMAXLENGTH` 600000: `TestALongRoutineIsCutAtWholeLines` the one red (run 22), so the note at `ExplorerSourceEdges` holds.
+- (QA) Tests added to existing files, no new file: `src/OcuPilot/Test/ExplorerSaveFlow.cls` (`MintUnguarded`, `TestAMissingRoutineIsRefusedWithTheReasonOfAnAbsentDocument`), `src/OcuPilot/Test/ProposalFixtureFaultProbe.cls` (modes `failafter` and `unreadableturn`) and `src/OcuPilot/Test/ProposalFixtureSweep.cls` (`TestAKeyWhoseDeleteReportedAFailureIsKeptEvenWithItsRowsGone`, `TestAnUnreadableCountKeepsItsKeyAndSweepsTheOtherKey`).
 - `mutation:` (DW-235) revert the guard → the new `ci.test.mjs` test and the `ipm-archive.test.mjs` legs red.
 - `mutation:` (DW-1762) drop `stop_grace_period` from the here-doc → its `ci.test.mjs` pin red.
 - `mutation:` (DW-432):
