@@ -12378,3 +12378,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-23-8-the-range-end-cleanup-part-7.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: Prompt.BUILTIN: 'its route, namespace and selected row (entity)'; panel.ts currentEntityId sends the :id segment, the parent's id on a parent-scoped screen. A model that copies it into entityId for such a screen is refused once (detail.argument entityId; the text says send parentId). Changing it is a new model-read text.
 - 2026-10-22T14:11:37Z status=wontfix-accepted owner=23-8-the-range-end-cleanup-part-7 by=cr note=reopen_if=a ledger row shows NAV.ENTITYNOTALLOWED with argument entityId on a parent-scoped route the turn was on
+
+### DW-2499: Rule 31: the Area screen-editor Rules classes repeat Problem's violation sentence (29 files), Taken's probe (12) and HandleForm's read (30), ScreenSaveRules' three adopters among them
+- source: spec-23-8-the-range-end-cleanup-part-7.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: The Problem loop in Superserver/MftConnection/DocDbAppRules is byte-identical (29 files hold it); MftConnectionRules.Taken equals DocDbAppRules.Taken but the id; HandleForm's gate, read and RenderRead skeleton is in 30 Area classes; MftConnectionRules.ClientConfiguration equals SuperserverRules.ServerConfiguration but the type test
+- 2026-10-22T19:50:32Z status=escalated owner=burndown by=cr note=one helper beside AgentRules.ViolationsJson or a ScreenSaveRules template; Rules twin of 23.8 filing candidate 1
