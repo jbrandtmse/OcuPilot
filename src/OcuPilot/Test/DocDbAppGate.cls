@@ -126,7 +126,7 @@ Method OnAfterAllTests() As %Status
 
 /// <p>The holder reads the list and the form, creates, changes and deletes a probe record over the wire, and confirms
 /// the agent's change in a process of its own; the side bar lists the screen for it.</p>
-/// <p>Mutation (Rule 19): make <method>OcuPilot.Area.WebApp.DocDbAppSave.Gate</method> refuse every caller -- the
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Kernel.Proposal.ScreenSave.Gate</method> refuse every caller -- the
 /// holder's write legs go red.</p>
 Method TestTheDeclaredPairsReadAndWrite()
 {
@@ -150,7 +150,7 @@ Method TestTheDeclaredPairsReadAndWrite()
 
 /// <p>Without <code>%Admin_Secure:USE</code>, both reads, the three writes over the wire and the confirm are refused
 /// naming the pair, nothing is written, and the screen is unavailable.</p>
-/// <p>Mutation (Rule 19): let <method>OcuPilot.Area.WebApp.DocDbAppSave.Gate</method> pass every caller -- the create
+/// <p>Mutation (Rule 19): let <method>OcuPilot.Kernel.Proposal.ScreenSave.Gate</method> pass every caller -- the create
 /// leg writes the record and goes red.</p>
 Method TestWithoutTheAreasResourceEveryReadAndWriteIsRefused()
 {
@@ -173,7 +173,7 @@ Method TestWithoutTheAreasResourceEveryReadAndWriteIsRefused()
 
 /// <p>Without <code>%DB_IRISSYS:READ</code>, every write and the confirm are refused naming it, and nothing is
 /// written.</p>
-/// <p>Mutation (Rule 19): let <method>OcuPilot.Area.WebApp.DocDbAppSave.Gate</method> pass every caller -- its create and
+/// <p>Mutation (Rule 19): let <method>OcuPilot.Kernel.Proposal.ScreenSave.Gate</method> pass every caller -- its create and
 /// change legs go red.</p>
 Method TestWithoutTheSystemDatabaseReadEveryWriteIsRefused()
 {
