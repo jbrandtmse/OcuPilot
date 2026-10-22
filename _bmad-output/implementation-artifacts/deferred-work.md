@@ -11854,6 +11854,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-20-16-the-agent-edits-rule-dtl-and-bpl-content-behind-the-embedded.md code review | severity: med | fix-risk: low | footprint: in-epic
 - evidence: Sweep and RemoveTurns delete no ledger rows; TurnWireFixture.SweepSince's owner pass reads SELECT DISTINCT TurnKey, which returns the collated uppercase key, so GuardedDeleteForTurn's exact match misses it (measured: 7 rows left).
 - 2026-10-14T00:51:43Z status=routed owner=burndown by=cr note=20.16's InteropEditorSaveTurn calls SweepSince before Sweep; fix SweepSince with %EXACT and sweep the others
+- 2026-10-22T14:11:37Z occurrence=23-8-the-range-end-cleanup-part-7 note=Test/TurnNavigate's teardown deletes its turns but not their ledger rows (seen in 23.8 batch 4 code review)
 
 ### DW-2405: OcuPilot's create and delete of a class or routine drop the source-control class's follow-up user action (an 'add to source control?' question for a new document or after a delete is never asked and AfterUserAction never runs)
 - source: spec-20-10-source-control-hooks.md (plan, harvested at the spec gate) | severity: med | fix-risk: med | footprint: out-of-footprint
@@ -12366,3 +12367,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-20-35-the-agent-s-mdx-read.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: src/OcuPilot/Screen/Tool/AnalyticsMdxRead.cls:171-177 repeats ExplorerSqlRead.cls:131-137 and ExplorerSourceRead's block (Kernel.Denial status, Fault.Build, Detail(tFailedPair)); Base.cls has no helper for it
 - 2026-10-22T02:51:38Z status=wontfix-accepted owner=20-35-the-agent-s-mdx-read by=cr note=reopen_if=grep -l 'Denial).Detail(tFailedPair)' src/OcuPilot/Screen/Tool lists a fourth tool class
+
+### DW-2497: shell.screen.open's ruled entityId text says to send parentId on every parent-scoped screen, but the seven whose parent id has two parts refuse parentId too
+- source: spec-23-8-the-range-end-cleanup-part-7.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Navigate.InputSchema entityId: 'Refused on a screen that belongs to an item (send parentId there)'. On interoperability/productions/items/{jobs,log,messages,queue,settings,document,test} parentId is refused as well, so the model learns it from a second refusal (detail.argument parentId); the ruled parentId text does say so.
+- 2026-10-22T14:11:31Z status=decision-pending owner=burndown by=cr note=U-7 ruled text, owner's call; recommend keep as ruled: one extra refused call on seven item screens
+
+### DW-2498: The prompt calls screen_context's entity the selected row, but on a parent-scoped screen it is the parent's id, which shell.screen.open now takes only as parentId
+- source: spec-23-8-the-range-end-cleanup-part-7.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: Prompt.BUILTIN: 'its route, namespace and selected row (entity)'; panel.ts currentEntityId sends the :id segment, the parent's id on a parent-scoped screen. A model that copies it into entityId for such a screen is refused once (detail.argument entityId; the text says send parentId). Changing it is a new model-read text.
+- 2026-10-22T14:11:37Z status=wontfix-accepted owner=23-8-the-range-end-cleanup-part-7 by=cr note=reopen_if=a ledger row shows NAV.ENTITYNOTALLOWED with argument entityId on a parent-scoped route the turn was on
