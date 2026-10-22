@@ -6280,6 +6280,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-30T03:32:46Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down decision sheet 2026-09-29: into Story 23.3 (after the following release)
 - 2026-10-11T00:42:32Z status=routed owner=23-7-the-range-end-cleanup-part-6 by=load note=re-own from range-end-cleanup: kit 2026-10-10.1 owners are story keys or burndown
 - 2026-10-12T19:22:36Z status=routed owner=23-8-the-range-end-cleanup-part-7 by=merge_gate note=owner 2026-10-12 released 23.7's 32 (Release Story 23.7); split by priority, 12 at most each (Rule 27)
+- 2026-10-22T15:08:58Z status=resolved-by:23-8-the-range-end-cleanup-part-7 by=adjudication note=a193b3c1+a36d34b3: shell.screen.open takes entityId for a screen's own row and parentId for the item a parent-scoped screen belongs to, each accepted by the declaration and otherwise refused NAV.ENTITYNOTALLOWED before any announcement with detail.argument; ToolNavigate's two-way sweep, ToolNavigateParent and ToolNavigateContract pin it; task-resume spec sends parentId; CI 39794972267
 
 ### DW-1463: Two of Story 5.11's epic clauses about what the agent's reply says are unimplemented, and one never reached the spec
 - source: spec-5-11-tasks-resume-a-task-suspended-after-an-error.md | severity: med | fix-risk: med | footprint: in-story
