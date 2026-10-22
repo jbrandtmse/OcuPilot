@@ -345,7 +345,7 @@ interface LineSegment {
                     [attr.aria-label]="row.removeLabel"
                     (click)="removeRemembered(block, row)"
                   >
-                    <span class="ocu-home-block-glyph" aria-hidden="true">{{ removeGlyph }}</span>
+                    <span aria-hidden="true">{{ removeGlyph }}</span>
                   </button>
                 </span>
               }

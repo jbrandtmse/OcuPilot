@@ -44,7 +44,7 @@ const WHOLE_NUMBER = /^[0-9]{1,9}$/;
   template: `<app-dialog [heading]="verb()" [closeLabel]="STRINGS.actionCancel" (closed)="cancelled.emit()">
     <p class="ocu-warning-consequence">{{ consequence() }}</p>
     @if (advisoryVisible) {
-      <p class="ocu-banner ocu-banner-warning ocu-warning-advisory" data-slot="advisory">
+      <p class="ocu-banner ocu-banner-warning" data-slot="advisory">
         <span class="ocu-banner-glyph" aria-hidden="true">{{ bannerGlyph }}</span>
         <span class="ocu-banner-message">{{ advisory() }}</span>
       </p>
@@ -72,7 +72,7 @@ const WHOLE_NUMBER = /^[0-9]{1,9}$/;
       </div>
     }
     @if (flagVisible) {
-      <label class="ocu-criteria-marker ocu-warning-flag" data-slot="flag">
+      <label class="ocu-criteria-marker" data-slot="flag">
         <input #flagInput type="checkbox" />
         {{ flagLabel() }}
       </label>

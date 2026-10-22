@@ -232,7 +232,7 @@ interface FieldView {
       }
 
       @if (isKey) {
-      <fieldset class="ocu-field ocu-wallet-key" id="ocu-wallet-Source" tabindex="-1" [attr.aria-describedby]="lengthField.describedBy">
+      <fieldset class="ocu-field" id="ocu-wallet-Source" tabindex="-1" [attr.aria-describedby]="lengthField.describedBy">
         <legend class="ocu-field-label">{{ keyLegend }}</legend>
         @if (showSourceChoice) {
           <label class="ocu-field-checkbox">

@@ -171,7 +171,7 @@ interface PathView {
   ],
   template: `<section class="ocu-openapi-viewer" [attr.aria-busy]="busy">
     @if (showRefusal) {
-      <div class="ocu-data-table-refusal ocu-openapi-refusal" role="alert" data-ocu-openapi="refusal">
+      <div class="ocu-data-table-refusal" role="alert" data-ocu-openapi="refusal">
         <span class="ocu-data-table-refusal-message">{{ refusalMessage }}</span>
       </div>
     }
@@ -217,7 +217,7 @@ interface PathView {
             <li class="ocu-openapi-path">
               <button
                 type="button"
-                class="ocu-form-disclosure ocu-openapi-path-toggle"
+                class="ocu-form-disclosure"
                 data-ocu-openapi="path"
                 [attr.aria-expanded]="path.open"
                 [attr.aria-controls]="path.panelId"
@@ -262,7 +262,7 @@ interface PathView {
                       @if (operation.tryIt; as tryIt) {
                         <button
                           type="button"
-                          class="ocu-form-disclosure ocu-try-it-toggle"
+                          class="ocu-form-disclosure"
                           data-ocu-try-it="toggle"
                           [id]="tryIt.toggleId"
                           [attr.aria-expanded]="tryIt.open"

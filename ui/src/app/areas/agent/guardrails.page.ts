@@ -92,7 +92,7 @@ function screenLabel(descriptor: string): string | null {
             @if (group.hasLabel) {
               <h3 class="ocu-guardrails-group-heading" [id]="group.headingId">{{ group.label }}</h3>
             }
-            <ul class="ocu-guardrails-list ocu-guardrails-tools">
+            <ul class="ocu-guardrails-list">
               @for (tool of group.tools; track tool) {
                 <li class="ocu-guardrails-item"><code class="ocu-guardrails-code">{{ tool }}</code></li>
               }

@@ -59,7 +59,7 @@ let dialogCount = 0;
     }
     <p class="ocu-typed-name-consequence">{{ consequence() }}</p>
     @if (advisoryVisible) {
-      <p class="ocu-banner ocu-banner-warning ocu-typed-name-advisory" data-slot="advisory">
+      <p class="ocu-banner ocu-banner-warning" data-slot="advisory">
         <span class="ocu-banner-glyph" aria-hidden="true">{{ bannerGlyph }}</span>
         <span class="ocu-banner-message">{{ advisory() }}</span>
       </p>
@@ -79,7 +79,7 @@ let dialogCount = 0;
       (keydown.enter)="onEnter($event)"
     />
     @if (flagVisible) {
-      <label class="ocu-criteria-marker ocu-typed-name-flag" data-slot="flag">
+      <label class="ocu-criteria-marker" data-slot="flag">
         <input #flagInput type="checkbox" />
         {{ flagLabel() }}
       </label>

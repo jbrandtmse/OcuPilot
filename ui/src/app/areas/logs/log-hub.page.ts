@@ -106,7 +106,7 @@ interface OptionView {
           </thead>
           <tbody>
             @for (source of sourceRows; track source.route) {
-              <tr class="ocu-log-hub-tr" [attr.data-ocu-source]="source.route">
+              <tr [attr.data-ocu-source]="source.route">
                 <td class="ocu-log-hub-td">
                   @if (source.shown) {
                     <a class="ocu-data-table-link" data-ocu-hub="source-link" [href]="source.href" (click)="onOpenSource($event, source)">{{
@@ -136,7 +136,7 @@ interface OptionView {
                     @if (last.hasSeverity) {
                       <span class="ocu-log-chip ocu-log-chip-static" [attr.data-ocu-chip]="last.chip">{{ last.severityWord }}</span>
                     }
-                    <span class="ocu-log-hub-last-text">{{ last.row.text }}</span>
+                    <span>{{ last.row.text }}</span>
                   } @else {
                     <span class="ocu-log-hub-none" [id]="source.noEntryId">{{ STRINGS.logViewerEmpty }}</span>
                   }
@@ -205,14 +205,14 @@ interface OptionView {
           </select>
         </div>
         @if (showClear) {
-          <button type="button" class="ocu-button-text ocu-log-hub-clear" data-ocu-hub="clear" (click)="onClear()">
+          <button type="button" class="ocu-button-text" data-ocu-hub="clear" (click)="onClear()">
             {{ STRINGS.logViewerClearFilter }}
           </button>
         }
       </div>
 
       @if (showNotice) {
-        <div class="ocu-banner ocu-banner-info ocu-log-hub-notice" data-ocu-hub="notice">
+        <div class="ocu-banner ocu-banner-info" data-ocu-hub="notice">
           @for (line of notices; track line) {
             <p class="ocu-log-hub-notice-line">{{ line }}</p>
           }
@@ -241,8 +241,8 @@ interface OptionView {
                     entry.row.time
                   }}</a>
                 </span>
-                <span class="ocu-log-cell ocu-log-hub-source" data-ocu-hub="source">{{ entry.sourceLabel }}</span>
-                <span class="ocu-log-cell ocu-log-cell-severity">
+                <span class="ocu-log-cell" data-ocu-hub="source">{{ entry.sourceLabel }}</span>
+                <span class="ocu-log-cell">
                   @if (entry.hasSeverity) {
                     <span class="ocu-log-chip ocu-log-chip-static" [attr.data-ocu-chip]="entry.chip">{{ entry.severityWord }}</span>
                   }

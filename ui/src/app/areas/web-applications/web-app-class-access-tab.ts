@@ -51,7 +51,7 @@ export type PctAccessRow = Readonly<Record<string, unknown>>;
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [FaultBanner, ScreenActionDialogs, WebAppClassAccessDialog],
   template: `<div class="ocu-pct-access">
-    <div class="ocu-pct-access-bar">
+    <div>
       <button type="button" class="ocu-button-secondary ocu-pct-access-add" (click)="openAdd()">{{ STRINGS.webAppPctAccessAdd }}</button>
     </div>
     @if (inPlaceFault) {

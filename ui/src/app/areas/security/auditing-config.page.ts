@@ -117,7 +117,7 @@ const RELOAD_ENTITIES: readonly string[] = [AUDITING_CONFIG_ENTITY, AUDIT_EVENT_
   selector: 'app-auditing-config-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [AuditCopyDialog, AuditPurgeDialog, SqlAuditDialog, WarningDialog],
-  template: `<section class="ocu-details-page ocu-auditing-page">
+  template: `<section class="ocu-details-page">
     @if (refusalText) {
       <p class="ocu-banner ocu-banner-warning" role="alert">
         <span class="ocu-banner-message">{{ refusalText }}</span>
@@ -131,7 +131,7 @@ const RELOAD_ENTITIES: readonly string[] = [AUDITING_CONFIG_ENTITY, AUDIT_EVENT_
     }
     @if (control; as action) {
       <section class="ocu-details-group">
-        <p class="ocu-auditing-status" data-auditing-status>{{ status }}</p>
+        <p data-auditing-status>{{ status }}</p>
         <button
           #controlButton
           type="button"
@@ -166,7 +166,7 @@ const RELOAD_ENTITIES: readonly string[] = [AUDITING_CONFIG_ENTITY, AUDIT_EVENT_
             {{ STRINGS.auditDatabasePurgeAction }}
           </button>
         </div>
-        <p class="ocu-auditing-status" role="status" data-audit-operation>{{ operationLine }}</p>
+        <p role="status" data-audit-operation>{{ operationLine }}</p>
       </section>
     }
     <nav class="ocu-details-links">
