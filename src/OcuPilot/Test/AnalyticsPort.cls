@@ -129,7 +129,7 @@ Method TestCubesEqualTheVendorsAnswer()
         Set tExpected = tExpected _ $Select(tExpected = "": "", 1: ";") _ tName _ "|" _ ..Vendor("class", tName) _ "|" _ ..Vendor("facts", tName) _ "|" _ ..Vendor("build", tName)
     }
     Do $$$AssertEquals(..Flatten(tRows, "Name", "OcuPilotProbe", "Name,Class,Facts,LastBuild"), tExpected, "the probe cubes are the vendor's, with its class, fact count and last build")
-    Do $$$AssertEquals(..Flatten(tRows, "Name", "OcuPilotProbe", "Name,Class,Facts"), "OcuPilotProbeCategories|OcuPilotProbe.Analytics.CategoriesCube|5;OcuPilotProbeGuarded|OcuPilotProbe.Analytics.GuardedCube|5;OcuPilotProbeVisits|OcuPilotProbe.Analytics.VisitsCube|1000", "and the probe built three cubes of 5, 5 and 1,000 facts; the guarded one is visible to a caller holding %All")
+    Do $$$AssertEquals(..Flatten(tRows, "Name", "OcuPilotProbe", "Name,Class,Facts"), "OcuPilotProbeCategories|OcuPilotProbe.Analytics.CategoriesCube|5;OcuPilotProbeGrid|OcuPilotProbe.Analytics.GridCube|50000;OcuPilotProbeGuarded|OcuPilotProbe.Analytics.GuardedCube|5;OcuPilotProbeVisits|OcuPilotProbe.Analytics.VisitsCube|1000", "and the probe built four cubes of 5, 50,000, 5 and 1,000 facts; the guarded one is visible to a caller holding %All")
     Set tVisits = ""
     Set tIterator = tRows.%GetIterator()
     While tIterator.%GetNext(.tIndex, .tRow) {
@@ -396,8 +396,9 @@ ClassMethod InZone(pZone As %String) As %String
 
 /// <p>The nodes the reads must leave as they found them, in <code>USER</code>, as one digest: every <code>^DeepSee.Cache</code>
 /// global, this process's <code>^DeepSee.Session</code> node, the signed-in user's favorites, the probe's term list, and the folder
-/// and folder item globals.</p>
-ClassMethod Snapshot() As %String
+/// and folder item globals. With <var>pRuntime</var> 0 the digest leaves out the first two, the vendor's own runtime nodes that a query's
+/// run writes.</p>
+ClassMethod Snapshot(pRuntime As %Boolean = 1) As %String
 {
     Set tOrigNS = $NAMESPACE
     Set tText = ""
@@ -405,7 +406,7 @@ ClassMethod Snapshot() As %String
     Try {
         Set $NAMESPACE = ..#NAMESPACE
         Kill tRefs
-        Set tRefs("^DeepSee.Session(" _ $Job _ ")") = ""
+        If pRuntime Set tRefs("^DeepSee.Session(" _ $Job _ ")") = ""
         Set tRefs("^DeepSee.UserPreferences(""" _ $USERNAME _ """,""favorite"")") = ""
         Set tRefs("^DeepSee.TermList(""OCUPILOTPROBETERMS"")") = ""
         Set tRefs("^DeepSee.FolderItemD") = ""
@@ -414,7 +415,7 @@ ClassMethod Snapshot() As %String
         Set tRefs("^DeepSee.FolderI") = ""
         Set tGlobal = "^DeepSee.Cache"
         Set tGlobal = $Order(^$GLOBAL(tGlobal))
-        While (tGlobal '= "") && ($Extract(tGlobal, 1, 14) = "^DeepSee.Cache") {
+        While pRuntime && (tGlobal '= "") && ($Extract(tGlobal, 1, 14) = "^DeepSee.Cache") {
             Set tRefs(tGlobal) = ""
             Set tGlobal = $Order(^$GLOBAL(tGlobal))
         }

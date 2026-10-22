@@ -4,7 +4,7 @@
  *
  * What it pins: in `USER`, whose probe analytics objects this spec creates (and for which it turns analytics on), the side bar's
  * Analytics entries are Cubes, Term lists and Folder items, then the three links Story 20.32 adds (`analytics-links.browser-spec.mjs` pins
- * them), and each list's rows equal what the vendor's own classes answer; a Cubes
+ * them), then MDX query (Story 20.33, `analytics-mdx.browser-spec.mjs`), and each list's rows equal what the vendor's own classes answer; a Cubes
  * name cell opens the cube's Measures tab under a strip of Measures, Dimensions and Relationships, the Relationships row opens the
  * related cube's Measures tab, and a Term lists name cell opens the list's entries with the `Note` field shown; a cube or term list no
  * one holds draws its tab's own empty sentence and no row; in `HSCUSTOM`, which
@@ -192,7 +192,7 @@ after(async () => {
 // AC1. Mutation (Rule 19): make the Cubes read answer `Facts` as 0 -> the Facts cell of every probe row reads 0 and the Cubes leg goes red;
 // drop `Favorite` from the Folder items read -> its favorite cell reads No and the Folder items leg goes red; rebuild and redeploy first
 // for a client mutation.
-test('AC1: the side bar lists Cubes, Term lists, Folder items and the three links, and each list\'s rows equal the instance\'s', async () => {
+test('AC1: the side bar lists Cubes, Term lists, Folder items, the three links and MDX query, and each list\'s rows equal the instance\'s', async () => {
   const { context, page } = await signedInAt(browser, config, url(CUBES), VIEWPORTS.wide, REDUCED_MOTION);
   try {
     await answered(page);
@@ -200,8 +200,16 @@ test('AC1: the side bar lists Cubes, Term lists, Folder items and the three link
     await page.waitForSelector('.ocu-side-bar-item', { timeout: config.navigationTimeoutMs });
     assert.deepEqual(
       await sideBarLabels(page),
-      [STRINGS.analyticsCubesLabel, STRINGS.analyticsTermListsLabel, STRINGS.analyticsFolderItemsLabel, STRINGS.analyticsArchitectLabel, STRINGS.analyticsAnalyzerLabel, STRINGS.analyticsUserPortalLabel],
-      'the Analytics side bar lists Cubes, Term lists and Folder items, then the Architect, Analyzer and User Portal links (Story 20.32)'
+      [
+        STRINGS.analyticsCubesLabel,
+        STRINGS.analyticsTermListsLabel,
+        STRINGS.analyticsFolderItemsLabel,
+        STRINGS.analyticsArchitectLabel,
+        STRINGS.analyticsAnalyzerLabel,
+        STRINGS.analyticsUserPortalLabel,
+        STRINGS.analyticsMdxQueryLabel,
+      ],
+      'the Analytics side bar lists Cubes, Term lists and Folder items, then the Architect, Analyzer and User Portal links (Story 20.32), then MDX query (Story 20.33)'
     );
 
     const cubes = inUser('ANCUBES', [
@@ -209,9 +217,9 @@ test('AC1: the side bar lists Cubes, Term lists, Folder items and the three link
       'For { Set k=$Order(l(k))  Quit:k=""  Set n=$List(l(k),1)  If $Extract(n,1,13)="OcuPilotProbe" Set out=out_n_"~"_$List(l(k),2)_"~"_##class(%DeepSee.Utils).%GetCubeClass(n)_"~"_$Extract(##class(%DeepSee.CubeManager.Utils).GetLastUpdate(n,"build"),1,19)_"~"_##class(%DeepSee.Utils).%GetCubeFactCount(n)_"|" }',
     ]);
     const expectedCubes = cubes.value.split('|').filter((entry) => entry !== '').map((entry) => entry.split('~'));
-    assert.equal(expectedCubes.length, 3, `the instance holds the three probe cubes: ${cubes.output}`);
+    assert.equal(expectedCubes.length, 4, `the instance holds the four probe cubes: ${cubes.output}`);
     assert.deepEqual(await rowsStartingWith(page, 'OcuPilotProbe'), expectedCubes, 'Cubes shows each probe cube with the caption, class, last build and fact count the vendor answers');
-    assert.deepEqual(expectedCubes.map((entry) => entry[4]).sort(), ['1000', '5', '5'], 'the Visits cube holds 1,000 facts');
+    assert.deepEqual(expectedCubes.map((entry) => entry[4]).sort(), ['1000', '5', '5', '50000'], 'the Visits cube holds 1,000 facts and the grid cube 50,000');
 
     await openEntry(page, STRINGS.analyticsTermListsLabel);
     await pathHolds(page, `/${TERM_LISTS}`);

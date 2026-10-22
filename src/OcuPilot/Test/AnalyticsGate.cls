@@ -127,7 +127,7 @@ ClassMethod Refusal(pRaw As %String) As %String
 /// vendor's check, applied by the port before the model is read; the guarded cube defines no relationship, so the Relationships
 /// tab's guard is pinned on the link pair by <method>TestAGuardedCubesRelationshipsAreHiddenFromWhoLacksItsResource</method>); and is
 /// answered the probe folder items less the guarded dashboard, the pivot it favorited marked. The editor, holding the guarded resource,
-/// is answered all five cubes and all three items, and the guarded cube's tabs as rows.</p>
+/// is answered all six cubes and all three items, and the guarded cube's tabs as rows.</p>
 /// <p>Mutation (Rule 19): drop the <code>%CubeExists</code> and <code>%CheckPrivilege</code> test from the tabs in
 /// <method>OcuPilot.Port.AnalyticsPort.Collect</method> -- the reader's guarded-cube tab legs go red. Dropping <code>%CheckPrivilege</code> alone
 /// does not, because the vendor's <code>%CubeExists</code> answers false for a cube its resource check hides.</p>
@@ -135,9 +135,9 @@ Method TestTheVendorsOwnResourceChecksStillHideWhatTheyHide()
 {
     Set tStatus = ..Get("/screens/analytics.cubes/read?maxRows=100", ..#READER, .tRaw)
     Do $$$AssertEquals(tStatus, 200, "the reader reads Cubes: " _ $Extract(tRaw, 1, 200))
-    Do $$$AssertEquals(..Names(tRaw, "Name", "OcuPilotProbe"), "OcuPilotProbeCategories,OcuPilotProbeLinkOne,OcuPilotProbeVisits", "and is answered the probe cubes less the two guarded ones")
+    Do $$$AssertEquals(..Names(tRaw, "Name", "OcuPilotProbe"), "OcuPilotProbeCategories,OcuPilotProbeGrid,OcuPilotProbeLinkOne,OcuPilotProbeVisits", "and is answered the probe cubes less the two guarded ones")
     Set tStatus = ..Get("/screens/analytics.cubes/read?maxRows=100", ..#EDITOR, .tRaw)
-    Do $$$AssertEquals(..Names(tRaw, "Name", "OcuPilotProbe"), "OcuPilotProbeCategories,OcuPilotProbeGuarded,OcuPilotProbeLinkMany,OcuPilotProbeLinkOne,OcuPilotProbeVisits", "the editor, holding the guarded resource, is answered all five")
+    Do $$$AssertEquals(..Names(tRaw, "Name", "OcuPilotProbe"), "OcuPilotProbeCategories,OcuPilotProbeGrid,OcuPilotProbeGuarded,OcuPilotProbeLinkMany,OcuPilotProbeLinkOne,OcuPilotProbeVisits", "the editor, holding the guarded resource, is answered all six")
     Set tStatus = ..Get("/screens/analytics.cubes/read?maxRows=2", ..#EDITOR, .tRaw)
     Set tCapped = ##class(%DynamicObject).%FromJSON(tRaw)
     Do $$$AssertEquals(tStatus _ "|" _ tCapped.rows.%Size() _ "|" _ tCapped.truncated, "200|2|1", "a cap of two answers the first two cubes and says it truncated: " _ $Extract(tRaw, 1, 160))

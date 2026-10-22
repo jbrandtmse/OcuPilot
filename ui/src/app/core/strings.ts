@@ -7624,6 +7624,50 @@ export const STRINGS = {
   analyticsUserPortalPrompt2: 'Which dashboards could I open in the User Portal?',
   /** EXPERIENCE.md:604 */
   analyticsUserPortalPrompt3: 'Which of my favorites does the User Portal show?',
+  /** EXPERIENCE.md:604 */
+  analyticsMdxQueryLabel: 'MDX query',
+  /** EXPERIENCE.md:604 */
+  analyticsMdxCubeLabel: 'Start from cube',
+  /** EXPERIENCE.md:604 */
+  analyticsMdxEmpty: 'Write one MDX statement, then Run.',
+  /** EXPERIENCE.md:604 */
+  analyticsMdxDrillHeading: 'Drill-through',
+  /** EXPERIENCE.md:604 */
+  analyticsMdxRowHeader: 'Row members',
+  /** EXPERIENCE.md:604 */
+  analyticsMdxDrillCell: 'Drill through <row>, <column>',
+  /** EXPERIENCE.md:604 */
+  analyticsMdxCellsLine: 'Rows: <r> of <R>. Columns: <c> of <C>.',
+  /** EXPERIENCE.md:604 */
+  analyticsMdxCut: 'This answer was cut; the rest is not shown.',
+  /** EXPERIENCE.md:604 */
+  analyticsMdxErrorLine: 'The instance answered this statement with an error.',
+  /** EXPERIENCE.md:604 */
+  analyticsMdxConfirmTitle: 'Run this query?',
+  /** EXPERIENCE.md:604 */
+  analyticsMdxConfirmConsequence: 'This query runs server-side code or SQL with your rights.',
+  /** EXPERIENCE.md:604 */
+  analyticsMdxQueryPrompt1: 'How do I put one dimension on rows and another on columns?',
+  /** EXPERIENCE.md:604 */
+  analyticsMdxQueryPrompt2: 'How do I filter an MDX query to one member?',
+  /** EXPERIENCE.md:604 */
+  analyticsMdxQueryPrompt3: 'What does a drill-through show for a cell?',
+  /** EXPERIENCE.md:604 */
+  analyticsRefusalMdxInput: 'Send one MDX statement of up to 100,000 characters; a drill-through names one cell of its answer.',
+  /** EXPERIENCE.md:604 */
+  analyticsRefusalMdxKind: 'Only SELECT and DRILLTHROUGH statements run here; CREATE and DROP change only a session, which this tool does not keep.',
+  /** EXPERIENCE.md:604 */
+  analyticsRefusalMdxAxes: 'A query here uses at most two axes: columns and rows.',
+  /** EXPERIENCE.md:604 */
+  analyticsRefusalMdxReadonly: 'This namespace keeps its analytics cache in a read-only database, so MDX cannot run here.',
+  /** EXPERIENCE.md:604 */
+  analyticsRefusalMdxBusy: 'An MDX query you started is still running; cancel it or wait for it to end.',
+  /** EXPERIENCE.md:604 */
+  analyticsRefusalMdxFull: 'As many background queries as this instance allows are running, SQL and MDX together; try again when one ends.',
+  /** EXPERIENCE.md:604 */
+  analyticsRefusalMdxNotFound: 'No MDX run of yours has this id; an ended run is kept for 15 minutes.',
+  /** EXPERIENCE.md:604 */
+  analyticsRefusalMdxLost: 'The MDX run ended without an answer; run it again.',
 } as const;
 
 /**

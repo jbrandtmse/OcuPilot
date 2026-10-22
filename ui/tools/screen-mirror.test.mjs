@@ -2650,6 +2650,7 @@ test('ownPrivilegesProblem returns every sentence OwnPrivilegeCases declares, an
   // that and %Ens_MessageContent:USE. Story 20.11's Term lists and a term list's entries own %DeepSee_PortalEdit:USE, and Folder items
   // %Development:USE, beside the Analytics area's %DeepSee_Portal. Story 20.32's Architect and Analyzer links own
   // %DeepSee_Architect:USE and %DeepSee_Analyzer:USE, and the User Portal link owns none.
+  // Story 20.33's MDX query owns %Development:USE beside the Analytics area's %DeepSee_Portal.
   assert.deepEqual(
     owners.sort(),
     [
@@ -2657,6 +2658,7 @@ test('ownPrivilegesProblem returns every sentence OwnPrivilegeCases declares, an
       'OcuPilot.Screen.Descriptor.AnalyticsAnalyzerLink',
       'OcuPilot.Screen.Descriptor.AnalyticsArchitectLink',
       'OcuPilot.Screen.Descriptor.AnalyticsFolderItemList',
+      'OcuPilot.Screen.Descriptor.AnalyticsMdxQuery',
       'OcuPilot.Screen.Descriptor.AnalyticsTermListEntryList',
       'OcuPilot.Screen.Descriptor.AnalyticsTermListList',
       'OcuPilot.Screen.Descriptor.BackgroundTaskList',

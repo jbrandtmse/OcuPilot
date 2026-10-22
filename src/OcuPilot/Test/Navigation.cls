@@ -582,8 +582,8 @@ Method TestThePayloadCarriesEveryAreaWithAVerdict()
     Set tAnalytics = ##class(OcuPilot.Test.Descriptor).AreaEntry(tObject.areas, "analytics")
     Do $$$AssertTrue($IsObject(tAnalytics), "the payload carries the analytics area")
     If $IsObject(tAnalytics) {
-        Do $$$AssertEquals(tAnalytics.screens.%Size(), 10, "which carries its ten built screens -- an added Analytics screen updates this count and the order below with it")
-        Set tOrder = $ListBuild("analytics/cubes/dimensions|analyticsTabDimensions", "analytics/cubes/document|analyticsTabMeasures", "analytics/cubes/relationships|analyticsTabRelationships", "analytics/term-lists/entries|analyticsTermListEntriesLabel", "analytics/cubes|analyticsCubesLabel", "analytics/term-lists|analyticsTermListsLabel", "analytics/folder-items|analyticsFolderItemsLabel", "analytics/architect|analyticsArchitectLabel", "analytics/analyzer|analyticsAnalyzerLabel", "analytics/user-portal|analyticsUserPortalLabel")
+        Do $$$AssertEquals(tAnalytics.screens.%Size(), 11, "which carries its eleven built screens -- an added Analytics screen updates this count and the order below with it")
+        Set tOrder = $ListBuild("analytics/cubes/dimensions|analyticsTabDimensions", "analytics/cubes/document|analyticsTabMeasures", "analytics/cubes/relationships|analyticsTabRelationships", "analytics/term-lists/entries|analyticsTermListEntriesLabel", "analytics/cubes|analyticsCubesLabel", "analytics/term-lists|analyticsTermListsLabel", "analytics/folder-items|analyticsFolderItemsLabel", "analytics/architect|analyticsArchitectLabel", "analytics/analyzer|analyticsAnalyzerLabel", "analytics/user-portal|analyticsUserPortalLabel", "analytics/mdx-query|analyticsMdxQueryLabel")
         For tAt = 1:1:$ListLength(tOrder) {
             Set tScreen = tAnalytics.screens.%Get(tAt - 1)
             Do $$$AssertEquals($Select($IsObject(tScreen): tScreen.route _ "|" _ tScreen.labelKey, 1: ""), $List(tOrder, tAt), "analytics position " _ tAt _ " is its declared screen, under its own label key")

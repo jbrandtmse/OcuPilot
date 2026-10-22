@@ -3,7 +3,7 @@
  * AD-44, AD-47, AD-65).
  *
  * What it pins: in `USER`, for which this spec turns analytics on, the side bar's Analytics entries end with Architect, Analyzer and
- * User Portal; choosing each in the side bar, or typing "analyzer" in the command box and pressing Enter, opens a new tab at the
+ * User Portal, then MDX query (Story 20.33); choosing each in the side bar, or typing "analyzer" in the command box and pressing Enter, opens a new tab at the
  * address the instance composed for that page in `USER`, with no opener and no token pair, and leaves the shell tab where it was; in
  * `HSCUSTOM`, which is not analytics-enabled, a link's route says "Analytics is not enabled in this namespace." and draws no
  * anchor; in `USER` the route shows the classic-link card whose anchor is the map's address; and each of the three routes passes the
@@ -218,9 +218,9 @@ test('AC1: the side bar lists the three links after Folder items, and each, with
     await analyticsSideBar(page);
     const labels = await sideBarLabels(page);
     assert.deepEqual(
-      labels.slice(-3),
-      [STRINGS.analyticsArchitectLabel, STRINGS.analyticsAnalyzerLabel, STRINGS.analyticsUserPortalLabel],
-      'the Analytics side bar ends with Architect, Analyzer and User Portal'
+      labels.slice(-4),
+      [STRINGS.analyticsArchitectLabel, STRINGS.analyticsAnalyzerLabel, STRINGS.analyticsUserPortalLabel, STRINGS.analyticsMdxQueryLabel],
+      'the Analytics side bar ends with Architect, Analyzer and User Portal, then MDX query (Story 20.33)'
     );
     const shellUrl = page.url();
     for (const link of LINKS) {

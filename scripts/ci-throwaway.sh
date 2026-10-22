@@ -519,6 +519,11 @@ services:
       # The analytics link map class turns analytics on for USER's default web application and reads the navigation map as _SYSTEM and as
       # probe principals each missing a DeepSee pair the Architect or Analyzer link requires (Story 20.32).
       # classes: AnalyticsLinkMap
+      # The MDX query classes turn analytics on for USER's default web application and compile cubes there, one of 50,000 facts (Story 20.33): the
+      # port class runs MDX through the analytics port and reads the detector's answers, the job class starts runs past the route and cancels,
+      # stops and fails them, the routes class drives the three routes over HTTP as probe principals, and the gate class signs in as probe
+      # principals each missing a pair or the cache database's WRITE.
+      # classes: AnalyticsMdx, AnalyticsMdxGate, AnalyticsMdxJob, AnalyticsMdxRoutes
       OCUPILOT_ALLOW_PRINCIPALS: "1"
       # Writes an application error to a namespace's own ^ERRORS. Same reasoning again, and one
       # degree worse: an application error cannot be un-logged, so a runner pointed elsewhere
