@@ -1143,3 +1143,10 @@
 2026-10-22T00:29:43Z	Story 20.35	pushed	sha=9bb06926 ci=pending runs=see_CI_status note=implement_head_pushed_alone_at_the_hold(unreviewed;QA_and_review_follow)
 2026-10-22T00:29:43Z	Story 20.35	hold_saved	story=20-35-the-agent-s-mdx-read stage=implement patch=none tree=clean note=implement_committed_9bb06926;resume_at=adr_gate_then_qa
 2026-10-22T00:29:43Z	Epic 20	hold_complete	shas=origin_code=9bb06926(20.35_implement,unreviewed),2a8fcbc3(20.33_green,merged),bookkeeping_head=this_commit throwaway=ocupilot-b-ci_up(this_run,src_2a8fcbc3+20.35_loaded_by_its_implement) inbox=none_new
+2026-10-22T01:36:24Z	Epic 20	lead_model_gate	model=claude-opus-5-5 action=proceed note=runner_redispatched_after_quota
+2026-10-22T01:36:24Z	Epic 20	runtime_gate	bmad=6.12.1 uv=0.12.9 ci=gh bootstrap_check=ok slot=b(docker_port_52775,profile_ocupilot-slot-b_baseUrl_52775)
+2026-10-22T01:36:24Z	Epic 20	launch_env	depth=4 watchdog=1 bash_max_ms=default
+2026-10-22T01:36:24Z	Epic 20	runner_unattended_start	run=20261020T0940Z-20,23 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03 doctrine=3d11cec98d91c1d4d9c225fe3b265e1af418abe4 note=redispatch_after_quota;tree_clean;HEAD=origin=4edd2ed5;inbox_verify=ok;no_HOLD
+2026-10-22T01:36:24Z	Story 20.35	ci_resolved	story=20.35 sha=9bb06926 runs=39699971168 result=success failed=none via=none resolved_at=resume note=implement_head(unreviewed)
+2026-10-22T01:36:24Z	Story 20.35	adr_verifications_complete	tool=none acs= result=none_required evidence= mutations=none model=claude-opus-5-5 note=user_facing_sentence_REASONMDXSQL_was_planned_in_the_spec_Design_Notes_at_3d032313(no_escalation)
+2026-10-22T01:36:24Z	Story 20.35	stage_spawned	stage=qa spawn_at=2026-10-22T01:36:24Z model=sonnet agent_name=20-35-qa-1 cycle_iteration=1
