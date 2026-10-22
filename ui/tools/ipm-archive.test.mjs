@@ -373,7 +373,8 @@ test('a --dir outside a scratch root is refused, because the script removes it r
 });
 
 // Mutation (Rule 19): revert the guard to the scratch-root case alone, with no trailing-slash strip,
-// no plain-spelling case and no link test -> every refusal below exits 0 or goes on to stage.
+// no plain-spelling case and no link test -> every refusal below but `${scratch}/`, which that case still
+// refuses, exits 0 or goes on to stage.
 // Every --dir is spelled under a root this test makes under the home directory, which no fixed scratch
 // arm (`/tmp/?*`, `/private/tmp/?*`) admits, and passes as TMPDIR: the root itself is refused on every
 // platform, and a regressed guard that goes on to stage (`mkdir` is not stubbed) writes only inside it.
