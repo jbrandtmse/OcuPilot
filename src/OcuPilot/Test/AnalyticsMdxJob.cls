@@ -207,7 +207,7 @@ Method AssertNothingRuns(pChild As %Integer, pStatement As %String, pRan As %Boo
 /// <p>AC3: the owner's cancel of a running query ends the run <code>canceled</code> within twelve seconds with no answer, and leaves
 /// nothing running.</p>
 /// <p>Mutation (Rule 19): end the run <code>canceled</code> without calling <method>OcuPilot.Port.AnalyticsPort.MdxCancel</method> in
-/// <method>OcuPilot.Area.Analytics.MdxQuery.Stop</method> -- the worker keeps running and the nothing-runs leg goes red.</p>
+/// <method>OcuPilot.Port.AnalyticsPort.Settle</method> -- the worker keeps running and the nothing-runs leg goes red.</p>
 Method TestTheOwnersCancelEndsTheRunAndLeavesNothingRunning()
 {
     Do ..Begin(..#PRODUCTION, ..#SLOW, .tKey, .tChild)
@@ -227,7 +227,7 @@ Method TestTheOwnersCancelEndsTheRunAndLeavesNothingRunning()
 
 /// <p>AC4: a query past the time bound is stopped: the run ends with the outcome <code>stopped</code> and the bound's seconds, and leaves
 /// nothing running. The fixture's bound is two seconds.</p>
-/// <p>Mutation (Rule 19): let <method>OcuPilot.Area.Analytics.MdxQuery.Execute</method> ignore its deadline -- the query runs on and this
+/// <p>Mutation (Rule 19): let <method>OcuPilot.Port.AnalyticsPort.Waited</method> ignore its deadline -- the query runs on and this
 /// goes red.</p>
 Method TestAQueryPastTheBoundIsStoppedAndLeavesNothingRunning()
 {
@@ -241,7 +241,7 @@ Method TestAQueryPastTheBoundIsStoppedAndLeavesNothingRunning()
 
 /// <p>AC4: the time bound stops a listing as it stops a query: a typed DRILLTHROUGH whose listing outlasts the fixture's two seconds ends
 /// <code>stopped</code> with the bound's seconds, and leaves nothing running.</p>
-/// <p>Mutation (Rule 19): drop the alarm from <method>OcuPilot.Area.Analytics.MdxQuery.Execute</method>'s waiting branch -- the listing runs on
+/// <p>Mutation (Rule 19): pass <method>OcuPilot.Port.AnalyticsPort.MdxAnswer</method> a bound of 0 in <method>OcuPilot.Port.AnalyticsPort.Ran</method>, so the listing's read has no alarm -- the listing runs on
 /// and this goes red.</p>
 Method TestAListingPastTheBoundIsStoppedAndLeavesNothingRunning()
 {
@@ -253,7 +253,7 @@ Method TestAListingPastTheBoundIsStoppedAndLeavesNothingRunning()
 
 /// <p>AC4: a bound under a second still stops a listing: the time left is rounded up to a whole second for the alarm, because an alarm of zero
 /// seconds never fires. The quick fixture's bound is half a second.</p>
-/// <p>Mutation (Rule 19): round the alarm down in <method>OcuPilot.Area.Analytics.MdxQuery.AlarmSeconds</method> -- the listing gets no alarm,
+/// <p>Mutation (Rule 19): round the alarm down in <method>OcuPilot.Port.AnalyticsPort.AlarmSeconds</method> -- the listing gets no alarm,
 /// runs on and this goes red.</p>
 Method TestABoundUnderASecondStillStopsAListing()
 {
@@ -287,7 +287,7 @@ Method TestTheOwnersCancelEndsAListingRunCanceled()
 /// is: the run reads <code>canceled</code> within twelve seconds and leaves nothing running. The paused fixture has the production bound
 /// and a listing whose read waits for ever, so only the job's own read of the cancel ends the run in time.</p>
 /// <p>Mutation (Rule 19): drop the job's reads of the cancel before a start and before a listing's read in
-/// <method>OcuPilot.Area.Analytics.MdxQuery.Execute</method> and <method>OcuPilot.Area.Analytics.MdxQuery.Process</method> -- the listing
+/// <method>OcuPilot.Port.AnalyticsPort.Waited</method> and <method>OcuPilot.Port.AnalyticsPort.Ran</method> -- the listing
 /// waits on and this goes red.</p>
 Method TestACancelThatReachesNoStatementIsReadBeforeTheListing()
 {
@@ -307,7 +307,7 @@ Method TestACancelThatReachesNoStatementIsReadBeforeTheListing()
 /// <p>AC4: the bound holds while the vendor starts a query: a confirmed SELECT whose <code>%SEARCH</code> names SQL that runs for minutes,
 /// which the vendor runs inside the start, ends <code>stopped</code> at the fixture's two seconds, the SQL engine's form of the alarm
 /// read as the bound, and leaves nothing running.</p>
-/// <p>Mutation (Rule 19): start a SELECT with no alarm in <method>OcuPilot.Area.Analytics.MdxQuery.Execute</method> -- the start runs the
+/// <p>Mutation (Rule 19): start a SELECT with no alarm in <method>OcuPilot.Port.AnalyticsPort.Waited</method> -- the start runs the
 /// SQL on and this goes red.</p>
 Method TestTheBoundHoldsWhileTheVendorStartsAQuery()
 {
@@ -320,7 +320,7 @@ Method TestTheBoundHoldsWhileTheVendorStartsAQuery()
 /// <p>AC4: a bound that ends a DRILLTHROUGH's start with an <code>&lt;ALARM&gt;</code> exception stops the run as the bound does elsewhere:
 /// <code>stopped</code> with the bound's seconds and nothing running. The port fixture's start waits for ever, so the alarm is the only
 /// way out.</p>
-/// <p>Mutation (Rule 19): read the alarm's exception as a vendor error in <method>OcuPilot.Area.Analytics.MdxQuery.Execute</method> (match
+/// <p>Mutation (Rule 19): read the alarm's exception as a vendor error in <method>OcuPilot.Port.AnalyticsPort.Alarmed</method> (match
 /// <code>&lt;ALARMX&gt;</code> in its status text) -- the run ends with an error answer and this goes red.</p>
 Method TestAnAlarmThatInterruptsTheStartStopsTheRun()
 {

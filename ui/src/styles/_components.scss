@@ -4522,6 +4522,19 @@ app-interop-message-contents {
 
 .ocu-tool-call-status-warning {
   color: var(--ocu-destructive);
+  overflow-wrap: anywhere;
+  text-align: right;
+}
+
+// A failed card's reason can be a whole sentence (the agent's MDX read answers one of 140 characters): the status gives way first, to the room the
+// name leaves, and wraps there instead of running past the card.
+.ocu-tool-call-status:has(.ocu-tool-call-status-warning) {
+  flex: 0 100 auto;
+  min-width: 0;
+}
+
+.ocu-tool-call-toggle:has(.ocu-tool-call-status-warning) {
+  padding-block: 6px;
 }
 
 .ocu-tool-call-spinner {

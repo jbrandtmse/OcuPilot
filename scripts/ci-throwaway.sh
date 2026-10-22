@@ -524,6 +524,10 @@ services:
       # stops and fails them, the routes class drives the three routes over HTTP as probe principals, and the gate class signs in as probe
       # principals each missing a pair or the cache database's WRITE.
       # classes: AnalyticsMdx, AnalyticsMdxGate, AnalyticsMdxJob, AnalyticsMdxRoutes
+      # The agent's MDX read classes use the same probe (Story 20.35): the read class runs the tool in this process and counts what it prepares, the
+      # job class bounds and stops a slow query and reads the turn's stop hook, the gate class signs in as MDX query's probe principals and as an
+      # adjusted screen, and the turn class runs scripted turns against the turnprobe row.
+      # classes: AnalyticsMdxRead, AnalyticsMdxReadGate, AnalyticsMdxReadJob, AnalyticsMdxReadTurn
       OCUPILOT_ALLOW_PRINCIPALS: "1"
       # Writes an application error to a namespace's own ^ERRORS. Same reasoning again, and one
       # degree worse: an application error cannot be un-logged, so a runner pointed elsewhere
@@ -671,6 +675,7 @@ services:
       # classes: WorkflowTurn, WorkflowGates
       # classes: WalletRungRoles
       # classes: InteropEditorSaveTurn
+      # classes: AnalyticsMdxReadTurn
       OCUPILOT_ALLOW_TEST_PROVIDER: "1"
       # Purges the instance's own audit database through the shipped screen route: every record
       # dated before today is removed, the agent's audit markers among them, and nothing puts one

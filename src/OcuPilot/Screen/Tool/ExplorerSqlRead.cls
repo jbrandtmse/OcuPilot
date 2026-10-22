@@ -207,15 +207,7 @@ ClassMethod Projected(pNamespace As %String, pGuard As %DynamicObject, pAnswer A
     If pAnswer.%GetTypeOf("rows") = "array" {
         Set tColumns = $Select(pAnswer.%GetTypeOf("columns") = "array": pAnswer.%Get("columns"), 1: [])
         Do tResult.%Set("columns", tColumns)
-        Set tMasked = ""
-        Set tRedacted = []
-        Set tColumnIterator = tColumns.%GetIterator()
-        While tColumnIterator.%GetNext(.tIndex, .tName) {
-            If ##class(OcuPilot.Kernel.Audit.Log).IsCredentialName(tName) {
-                Set tMasked = tMasked _ $ListBuild(tIndex)
-                Do tRedacted.%Push(tName)
-            }
-        }
+        Set tRedacted = ..RedactedColumns(tColumns, .tMasked)
         Set tRows = ..MaskedRows(pAnswer.%Get("rows"), tMasked)
         Do tResult.%Set("rows", tRows)
         Do tResult.%Set("redactedColumns", tRedacted)
@@ -223,11 +215,30 @@ ClassMethod Projected(pNamespace As %String, pGuard As %DynamicObject, pAnswer A
     Quit tResult
 }
 
+/// <p>The names in <var>pColumns</var> that the credential pattern matches
+/// (<method>OcuPilot.Kernel.Audit.Log.IsCredentialName</method>), as an array, in column order.
+/// <var>pMasked</var> is the zero-based positions of those columns, the <var>pMasked</var> list
+/// <method>MaskedRows</method> takes. The agent's MDX read masks its listings through this and
+/// <method>MaskedRows</method> too (Story 20.35).</p>
+ClassMethod RedactedColumns(pColumns As %DynamicArray, Output pMasked As %List) As %DynamicArray
+{
+    Set pMasked = ""
+    Set tRedacted = []
+    Set tColumnIterator = pColumns.%GetIterator()
+    While tColumnIterator.%GetNext(.tIndex, .tName) {
+        If ##class(OcuPilot.Kernel.Audit.Log).IsCredentialName(tName) {
+            Set pMasked = pMasked _ $ListBuild(tIndex)
+            Do tRedacted.%Push(tName)
+        }
+    }
+    Quit tRedacted
+}
+
 /// <p><var>pRows</var> with each cell at a position listed in <var>pMasked</var> (zero-based column
 /// positions) replaced by <parameter>MASK</parameter>, and a credential value in any other text cell
 /// masked (<method>OcuPilot.Port.SqlPort.MaskCredentials</method>): a query over the instance's
 /// statement tables reads statement text.</p>
-ClassMethod MaskedRows(pRows As %DynamicArray, pMasked As %List) As %DynamicArray [ Private ]
+ClassMethod MaskedRows(pRows As %DynamicArray, pMasked As %List) As %DynamicArray
 {
     Set tOut = []
     Set tRowIterator = pRows.%GetIterator()

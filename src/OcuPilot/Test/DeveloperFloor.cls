@@ -6,7 +6,7 @@
 /// floor is refused naming each member of it, and an administrator without <code>%All</code> is
 /// still answered the dashboard. Two derived legs hold the rosters: every screen the
 /// map opens to the principal is a declared one whose classic page's compiled <code>RESOURCE</code>
-/// admits it, and the tools whose required pairs it holds are exactly the declared fifty-two,
+/// admits it, and the tools whose required pairs it holds are exactly the declared fifty-three,
 /// whose writes are the two exports, the SQL console's run, the data browser's save, Screen permissions' three,
 /// and the saves and creates, whose WRITE pair is an argument pair the developer lacks in the install namespace
 /// (Story 20.20, DW-2242).</p>
@@ -35,14 +35,14 @@ Parameter DESCRIPTORPACKAGE = "OcuPilot.Screen.Descriptor.";
 /// databases (Story 19.17), whose DocDB pairs <code>%Developer</code> grants, the analytics log
 /// (Story 19.12's audit) and Screen permissions with its three writes (Story 20.15), which admit
 /// <code>%Development:USE</code> or <code>%Admin_Secure:USE</code>, and Analytics' Cubes with its three tabs (the public
-/// <code>%DeepSee_Portal:USE</code>), Folder items and MDX query (<code>%Development:USE</code> beside it, Story 20.33), but not Term lists
+/// <code>%DeepSee_Portal:USE</code>), Folder items and MDX query (<code>%Development:USE</code> beside it, Story 20.33) with its agent read (Story 20.35), but not Term lists
 /// (<code>%DeepSee_PortalEdit:USE</code>, Story 20.11); and its User Portal link, whose one pair is the public
 /// <code>%DeepSee_Portal:USE</code>, but not the Architect or Analyzer links (<code>%DeepSee_Architect:USE</code> and
 /// <code>%DeepSee_Analyzer:USE</code>, Story 20.32).</p>
 Parameter SCREENS = "AgentGuardrails,AgentLedger,AgentScreenPermissions,AgentTranscript,AgentTranscripts,ExplorerClassDocument,ExplorerClassEditor,ExplorerClassList,ExplorerCompare,ExplorerDocDbList,ExplorerMacro,ExplorerRoutineDocument,ExplorerRoutineEditor,ExplorerRoutineList,ExplorerSearch,ExplorerSqlCachedQueries,ExplorerSqlConstraints,ExplorerSqlData,ExplorerSqlFields,ExplorerSqlIndices,ExplorerSqlPartitionMappings,ExplorerSqlPartitions,ExplorerSqlProcedure,ExplorerSqlProcedureStatements,ExplorerSqlProcedures,ExplorerSqlQuery,ExplorerSqlSchemas,ExplorerSqlTable,ExplorerSqlTableStatements,ExplorerSqlTables,ExplorerSqlTriggers,ExplorerSqlView,ExplorerSqlViewFields,ExplorerSqlViewStatements,ExplorerSqlViews,Home,LogAnalyticsViewer,AnalyticsCubeDimensionsTab,AnalyticsCubeList,AnalyticsCubeMeasuresTab,AnalyticsCubeRelationshipsTab,AnalyticsFolderItemList,AnalyticsMdxQuery,AnalyticsUserPortalLink";
 
 /// <p>The tools whose required pairs it holds.</p>
-Parameter TOOLS = "agent.screenpermissions.addpair,agent.screenpermissions.read,agent.screenpermissions.removepair,agent.screenpermissions.reset,agent.transcripts.read,explorer.class.read,explorer.class.source,explorer.classes.create,explorer.classes.export,explorer.classes.read,explorer.classes.save,explorer.docdb.read,explorer.macro.read,explorer.routine.read,explorer.routine.source,explorer.routines.create,explorer.routines.export,explorer.routines.read,explorer.routines.save,explorer.search.read,explorer.sqlcachedqueries.read,explorer.sqlconstraints.read,explorer.sqldata.save,explorer.sqlfields.read,explorer.sqlindices.read,explorer.sqlpartitionmappings.read,explorer.sqlpartitions.read,explorer.sqlprocedure.read,explorer.sqlprocedures.read,explorer.sqlprocedurestatements.read,explorer.sqlquery.read,explorer.sqlquery.run,explorer.sqlschemas.read,explorer.sqltable.read,explorer.sqltables.read,explorer.sqltablestatements.read,explorer.sqltriggers.read,explorer.sqlview.read,explorer.sqlviewfields.read,explorer.sqlviews.read,explorer.sqlviewstatements.read,logs.analytics.read,shell.instance.read,shell.namespaces.read,shell.privileges.read,shell.screen.open,shell.tools.find,analytics.cubedimensions.read,analytics.cubemeasures.read,analytics.cuberelationships.read,analytics.cubes.read,analytics.folderitems.read";
+Parameter TOOLS = "agent.screenpermissions.addpair,agent.screenpermissions.read,agent.screenpermissions.removepair,agent.screenpermissions.reset,agent.transcripts.read,explorer.class.read,explorer.class.source,explorer.classes.create,explorer.classes.export,explorer.classes.read,explorer.classes.save,explorer.docdb.read,explorer.macro.read,explorer.routine.read,explorer.routine.source,explorer.routines.create,explorer.routines.export,explorer.routines.read,explorer.routines.save,explorer.search.read,explorer.sqlcachedqueries.read,explorer.sqlconstraints.read,explorer.sqldata.save,explorer.sqlfields.read,explorer.sqlindices.read,explorer.sqlpartitionmappings.read,explorer.sqlpartitions.read,explorer.sqlprocedure.read,explorer.sqlprocedures.read,explorer.sqlprocedurestatements.read,explorer.sqlquery.read,explorer.sqlquery.run,explorer.sqlschemas.read,explorer.sqltable.read,explorer.sqltables.read,explorer.sqltablestatements.read,explorer.sqltriggers.read,explorer.sqlview.read,explorer.sqlviewfields.read,explorer.sqlviews.read,explorer.sqlviewstatements.read,logs.analytics.read,shell.instance.read,shell.namespaces.read,shell.privileges.read,shell.screen.open,shell.tools.find,analytics.cubedimensions.read,analytics.cubemeasures.read,analytics.cuberelationships.read,analytics.cubes.read,analytics.folderitems.read,analytics.mdxquery.read";
 
 /// <p>The write tools among <parameter>TOOLS</parameter>: an export needs the read pairs alone; SQL
 /// query's run and the data browser's save declare no pair beyond their screens' (Stories 19.6 and 19.8);
@@ -500,7 +500,7 @@ Method TestTheToolsTheDeveloperHoldsAreTheDeclaredRoster()
         Set tHeld = tHeld _ $Select(tHeld = "": "", 1: ",") _ tTool.name
         If tTool.kind = "write" Set tHeldWrites = tHeldWrites _ $Select(tHeldWrites = "": "", 1: ",") _ tTool.name
     }
-    Do $$$AssertEquals(..Sorted(tHeld), ..Sorted(..#TOOLS), "the tools the developer holds are the declared fifty-two")
+    Do $$$AssertEquals(..Sorted(tHeld), ..Sorted(..#TOOLS), "the tools the developer holds are the declared fifty-three")
     Do $$$AssertEquals(..Sorted(tHeldWrites), ..Sorted(..#HELDWRITES), "and the writes it holds are exactly the two exports, the SQL run, the data browser save, Screen permissions' three writes and the saves and creates")
 }
 

@@ -18,12 +18,13 @@ const PORT = join(REPO_ROOT, 'src', 'OcuPilot', 'Port', 'AnalyticsPort.cls');
 
 const ERROR = join(REPO_ROOT, 'src', 'OcuPilot', 'Api', 'AnalyticsError.cls');
 
-/** The product classes that run an MDX statement: the port, the MDX kind, and the run and the row reader they share. */
+/** The product classes that run an MDX statement: the port, the MDX kind, the run and the row reader they share, and the agent's read. */
 const MDX_CODE = [
   PORT,
   join(REPO_ROOT, 'src', 'OcuPilot', 'Area', 'Analytics', 'MdxQuery.cls'),
   join(REPO_ROOT, 'src', 'OcuPilot', 'Kernel', 'Shell', 'BackgroundRun.cls'),
   join(REPO_ROOT, 'src', 'OcuPilot', 'Kernel', 'RowFetch.cls'),
+  join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Tool', 'AnalyticsMdxRead.cls'),
 ];
 
 const STRINGS_SOURCE = join(REPO_ROOT, 'ui', 'src', 'app', 'core', 'strings.ts');
@@ -96,6 +97,18 @@ test('Story 20.33: each MDX refusal is one sentence on both surfaces, published 
     assert.ok(experience.includes(`"${server}"`), `${parameter}'s sentence is published in EXPERIENCE.md's Fixed strings`);
     assert.ok(!server.toLowerCase().includes('agent'), `${parameter} names no caller: ${server}`);
   }
+});
+
+test("Story 20.35: the agent's MDX refusal is one sentence on the server, the strings table and Fixed strings", () => {
+  // Mutation (Rule 19): change one word of REASONMDXSQL in AnalyticsError.cls (or of analyticsMdxSqlReason in strings.ts) -> this goes red
+  // naming both. It is the one sentence that names the agent, so it is not in MDX_SENTENCES.
+  const server = serverSentence('REASONMDXSQL');
+  assert.equal(server, stringValue('analyticsMdxSqlReason'), 'REASONMDXSQL and analyticsMdxSqlReason are one published sentence');
+  assert.ok(readFileSync(EXPERIENCE, 'utf8').includes(`"${server}"`), "REASONMDXSQL's sentence is published in EXPERIENCE.md's Fixed strings");
+  assert.match(server, /agent/, 'and it says whose read refuses');
+  const code = /^Parameter MDXSQL = "([^"]+)";/m.exec(readFileSync(ERROR, 'utf8'));
+  assert.notEqual(code, null, 'AnalyticsError.cls declares MDXSQL');
+  assert.equal(code[1], 'ANALYTICS.MDX.SQL', 'the code is the one the card and the model are sent');
 });
 
 test("Story 20.33: the confirmation's consequence is one sentence on the port, the strings table and Fixed strings", () => {

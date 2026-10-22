@@ -17,13 +17,14 @@
 /// and nothing is reserved or spawned for it, for a refusal or for an error answer. The confirmation is the person's own step on their own
 /// query (AD-65), carried in the same body as the text it confirms.</p>
 /// <p><b>The job</b> repeats the gate, both detections and the prepare in its own process (<method>Work</method>): a finding the flag does
-/// not confirm ends the run <code>failed</code> with <code>ANALYTICS.MDX.LOST</code>, executing nothing. Each start runs under an alarm of
-/// the time that remains (<method>BoundSeconds</method>), because the vendor resolves the statement's members, and runs any SQL they name,
-/// in the start itself. A SELECT then runs on the vendor's agents and the job polls it every <parameter>POLLPAUSE</parameter> seconds, for
-/// its owner's cancel and for the time bound; at either it cancels the vendor's query and waits for the vendor to report it finished. A
-/// drill-through runs the statement, then the cell's listing, and a typed DRILLTHROUGH runs its listing, each read under an alarm of the
-/// time that remains. The job reads its owner's cancel before each start and before a listing is read. The statement is handed to the
-/// job as one <code>JOB</code> argument and is stored nowhere.</p>
+/// not confirm ends the run <code>failed</code> with <code>ANALYTICS.MDX.LOST</code>, executing nothing. The run itself is
+/// <method>OcuPilot.Port.AnalyticsPort.MdxRun</method>, the loop the agent's MDX read shares: under an alarm of the time that remains
+/// (<method>BoundSeconds</method>), because the vendor resolves the statement's members, and runs any SQL they name, in the start itself;
+/// it polls the vendor's agents and this class's <method>MdxStopRequested</method>, its owner's cancel, and at either, or at the time
+/// bound, cancels the vendor's query and waits for the vendor to report it finished. A drill-through runs the statement, then the cell's
+/// listing, and a typed DRILLTHROUGH runs its listing, each read under an alarm of the time that remains. The run ends <code>canceled</code>
+/// on its owner's cancel and <code>stopped</code> at the bound. The statement is handed to the job as one <code>JOB</code> argument and is
+/// stored nowhere.</p>
 /// <p>Seams a fixture subclass overrides: <method>BoundSeconds</method>, <method>Variables</method>, <method>MaxRunning</method>,
 /// <method>LimitsClass</method>, <method>PortClass</method> and <method>Spawn</method>. Production overrides none.</p>
 Class OcuPilot.Area.Analytics.MdxQuery Extends OcuPilot.Kernel.Shell.BackgroundRun
@@ -40,9 +41,6 @@ Parameter LOGSUBSYSTEM = "mdxbackground";
 
 /// <p>The answer to a start whose text needs the person's confirmation first.</p>
 Parameter OUTCOMECONFIRM = "confirm";
-
-/// <p>The seconds between the job's looks at the vendor's query and at its owner's cancel.</p>
-Parameter POLLPAUSE = 0.1;
 
 /// <p>The port the job runs its statement through.</p>
 ClassMethod PortClass() As %String
@@ -234,28 +232,25 @@ ClassMethod RenderInput() As %Status [ Private ]
 ClassMethod Work(pKey As %String, pUser As %String, pNamespace As %String, pRequest As %List, pClass As %String)
 {
     Set tRS = ""
-    Set tDrill = ""
     Try {
-        Do ..Process(pKey, pNamespace, pRequest, .tRS, .tDrill)
+        Do ..Process(pKey, pNamespace, pRequest, .tRS)
     } Catch ex {
-        Do ..Release(pNamespace, .tRS, .tDrill)
+        Do ..Release(pNamespace, .tRS)
         Throw ex
     }
-    Do ..Release(pNamespace, .tRS, .tDrill)
+    Do ..Release(pNamespace, .tRS)
 }
 
-/// <p>Release the run's two result sets in <var>pNamespace</var>, where the vendor's destructor clears their local caches
+/// <p>Release the run's result set in <var>pNamespace</var>, where the vendor's destructor clears its local cache
 /// (<method>OcuPilot.Port.AnalyticsPort.MdxRelease</method>).</p>
-ClassMethod Release(pNamespace As %String, ByRef pRS, ByRef pDrill) [ Private ]
+ClassMethod Release(pNamespace As %String, ByRef pRS) [ Private ]
 {
-    Set tPort = ..PortClass()
-    Do $ClassMethod(tPort, "MdxRelease", pNamespace, .pRS)
-    Do $ClassMethod(tPort, "MdxRelease", pNamespace, .pDrill)
+    Do $ClassMethod(..PortClass(), "MdxRelease", pNamespace, .pRS)
 }
 
-/// <p>The work of <method>Work</method>, holding the statement's result set in <var>pRS</var> and a drill-through's in <var>pDrill</var> so
-/// that <method>Work</method> releases them on every path.</p>
-ClassMethod Process(pKey As %String, pNamespace As %String, pRequest As %List, ByRef pRS, ByRef pDrill) [ Private ]
+/// <p>The work of <method>Work</method>, holding the statement's result set in <var>pRS</var> so that <method>Work</method> releases it on
+/// every path.</p>
+ClassMethod Process(pKey As %String, pNamespace As %String, pRequest As %List, ByRef pRS) [ Private ]
 {
     Set tPort = ..PortClass()
     Set tStatement = $ListGet(pRequest, 1)
@@ -276,191 +271,25 @@ ClassMethod Process(pKey As %String, pNamespace As %String, pRequest As %List, B
         }
         Quit
     }
-    Set tStart = $ZHorolog
-    Set tBound = ..BoundSeconds()
-    Set tDeadline = tStart + tBound
-    Set tTyped = ($ClassMethod(tPort, "MdxKind", pRS) = "DRILLTHROUGH")
-    If tTyped {
-        Do ..Execute(tPort, pNamespace, pRS, pKey, tDeadline, 1, .tOutcome, .tError)
-    } Else {
-        Do ..Execute(tPort, pNamespace, pRS, pKey, tDeadline, 0, .tOutcome, .tError)
-    }
-    Set tResultRS = pRS
-    If (tOutcome = "done") && (tRow '= "") && ..Asked(pKey) Set tOutcome = "canceled"
-    If (tOutcome = "done") && (tRow '= "") {
-        Set tSC = $ClassMethod(tPort, "MdxDrill", pNamespace, pRS, tRow, tColumn, .pDrill, .tHttp, .tFault, .tAnswer)
-        If $$$ISERR(tSC) {
-            Do ..FinishRefused(pKey, tSC, $Get(tFault))
-            Quit
-        }
-        If $IsObject($Get(tAnswer)) {
-            Do ..Finish(pKey, tEnded, tAnswer.%ToJSON())
-            Quit
-        }
-        Do ..Execute(tPort, pNamespace, pDrill, pKey, tDeadline, 1, .tOutcome, .tError)
-        Set tResultRS = pDrill
-    }
-    If tOutcome = "canceled" {
-        Do ..Finish(pKey, tEnded, "")
-        Quit
-    }
-    If tOutcome = "stopped" {
-        Do ..FinishStopped(pKey, tBound)
-        Quit
-    }
-    If tOutcome = "error" {
-        Do ..Finish(pKey, tEnded, $ClassMethod(tPort, "ErrorAnswer", tError).%ToJSON())
-        Quit
-    }
-    Set tListed = 0
-    If $ClassMethod(tPort, "MdxKind", tResultRS) = "DRILLTHROUGH" {
-        ; The listing's statement runs when its rows are read, so a cancel that reached no statement yet is read here.
-        If ..Asked(pKey) {
-            Do ..Finish(pKey, tEnded, "")
-            Quit
-        }
-        Set tRemaining = tDeadline - $ZHorolog
-        If tRemaining <= 0 {
-            Do ..FinishStopped(pKey, tBound)
-            Quit
-        }
-        Set tListed = ..AlarmSeconds(tRemaining)
-    }
-    Set tSC = $ClassMethod(tPort, "MdxAnswer", pNamespace, tResultRS, +$FNumber($ZHorolog - tStart, "", 2), .tResult, .tHttp, .tFault, tListed)
+    Set tSC = $ClassMethod(tPort, "MdxRun", pNamespace, pRS, tRow, tColumn, ..BoundSeconds(), $ClassName(), pKey, .tResult, .tStopped, .tHttp, .tFault)
     If $$$ISERR(tSC) {
         Do ..FinishRefused(pKey, tSC, $Get(tFault))
         Quit
     }
-    If tResult.%Get("outcome") = "stopped" {
-        Do ..FinishStopped(pKey, tBound)
+    If tStopped = "request" {
+        Do ..Finish(pKey, tEnded, "")
         Quit
     }
     Do ..Finish(pKey, tEnded, tResult.%ToJSON())
 }
 
-/// <p>End run <var>pKey</var> <code>ended</code> with the answer <code>{outcome: "stopped", seconds}</code>, <var>pBound</var> being the
-/// seconds the run was bounded to.</p>
-ClassMethod FinishStopped(pKey As %String, pBound As %Numeric) [ Private ]
-{
-    Set tStopped = {}
-    Do tStopped.%Set("outcome", "stopped", "string")
-    Do tStopped.%Set("seconds", +pBound, "number")
-    Do ..Finish(pKey, $Parameter(..#STORECLASS, "STATEENDED"), tStopped.%ToJSON())
-}
-
-/// <p>The whole seconds an alarm is set for when <var>pRemaining</var> seconds are left: the next whole second, and at least one, because an
-/// alarm of zero seconds never fires.</p>
-ClassMethod AlarmSeconds(pRemaining As %Numeric) As %Integer [ Private ]
-{
-    Quit $Select(pRemaining <= 1: 1, 1: (pRemaining \ 1) + ((pRemaining # 1) > 0))
-}
-
-/// <p>Run the prepared result set <var>pRS</var> of run <var>pKey</var> to its end, its owner's cancel or <var>pDeadline</var>
-/// (<code>$ZHorolog</code> units); <var>pOutcome</var> is <code>done</code>, <code>error</code> (with the vendor's status in
-/// <var>pError</var>), <code>canceled</code> or <code>stopped</code>. A cancel already asked is read before the start. The start runs
-/// under an alarm of the time that remains, because the vendor resolves the statement's members, and runs any SQL they name, in the start
-/// itself; the alarm is a <code>stopped</code> run (<method>Alarmed</method>). With <var>pBlocking</var>, a DRILLTHROUGH's, the start
-/// is the whole run here; otherwise the job polls the vendor's agents. Whenever the run is canceled or stopped, the vendor's query is
-/// canceled and the vendor given up to <parameter>OcuPilot.Port.AnalyticsPort.MDXSETTLESECONDS</parameter> seconds to report it
-/// finished.</p>
-ClassMethod Execute(pPort As %String, pNamespace As %String, pRS, pKey As %String, pDeadline As %Numeric, pBlocking As %Boolean, Output pOutcome As %String, Output pError As %Status) [ Private ]
-{
-    Set pOutcome = "done"
-    Set pError = $$$OK
-    Set tCube = ""
-    Set tQueryKey = ""
-    If ..Asked(pKey) {
-        Set pOutcome = "canceled"
-        Quit
-    }
-    Set tRemaining = pDeadline - $ZHorolog
-    If tRemaining <= 0 {
-        Set pOutcome = "stopped"
-        Quit
-    }
-    Set tAlarmed = 0
-    Try {
-        Do $System.Alarm.Set(..AlarmSeconds(tRemaining))
-        Set tAlarmed = 1
-        Set tSC = $ClassMethod(pPort, "MdxStart", pNamespace, pRS, .tCube, .tQueryKey)
-        Do $System.Alarm.Clear()
-        Set tAlarmed = 0
-    } Catch ex {
-        If tAlarmed Do $System.Alarm.Clear()
-        Set tSC = ex.AsStatus()
-    }
-    If $$$ISERR(tSC) {
-        If ..Alarmed(tSC) {
-            Set pOutcome = "stopped"
-            Do ..Stop(pPort, pNamespace, pRS, tCube, tQueryKey)
-        } Else {
-            Set pOutcome = "error"
-            Set pError = tSC
-        }
-        Quit
-    }
-    If pBlocking Quit
-    For {
-        Set tStatus = $ClassMethod(pPort, "MdxStatus", pNamespace, pRS, .tVendorError)
-        If tStatus = 100 {
-            If $$$ISERR(tVendorError) {
-                Set pOutcome = "error"
-                Set pError = tVendorError
-            }
-            Quit
-        }
-        If ..Asked(pKey) {
-            Set pOutcome = "canceled"
-            Do ..Stop(pPort, pNamespace, pRS, tCube, tQueryKey)
-            Quit
-        }
-        If $ZHorolog > pDeadline {
-            Set pOutcome = "stopped"
-            Do ..Stop(pPort, pNamespace, pRS, tCube, tQueryKey)
-            Quit
-        }
-        Hang ..#POLLPAUSE
-    }
-}
-
-/// <p>Whether run <var>pKey</var>'s owner has asked it to stop, read fresh from the store; 0 when the store cannot answer.</p>
-ClassMethod Asked(pKey As %String) As %Boolean [ Private ]
+/// <p>Whether run <var>pKey</var>'s owner has asked it to stop, read fresh from the store; 0 when the store cannot answer. It is the stop
+/// hook <method>OcuPilot.Port.AnalyticsPort.MdxRun</method> asks.</p>
+ClassMethod MdxStopRequested(pKey As %String) As %Boolean
 {
     Set tRequested = 0
     Set tSC = $ClassMethod(..#STORECLASS, "GuardedCancelRequested", pKey, .tRequested)
     Quit $$$ISOK(tSC) && tRequested
-}
-
-/// <p>Whether the error status <var>pStatus</var> is the run's alarm: an <code>&lt;ALARM&gt;</code> that interrupted code, or the SQL
-/// engine's SQLCODE <parameter>OcuPilot.Port.AnalyticsPort.MDXALARMSQLCODE</parameter>, the form an alarm takes when it interrupts a
-/// statement (measured: a member's <code>%SEARCH</code> SQL in a start answers #5540 with that SQLCODE).</p>
-ClassMethod Alarmed(pStatus As %Status) As %Boolean [ Private ]
-{
-    If $System.Status.GetErrorText(pStatus) [ "<ALARM>" Quit 1
-    Set tAlarmed = 0
-    Try {
-        Do $System.Status.DecomposeStatus(pStatus, .tErrors)
-        For tI = 1:1:+$Get(tErrors) {
-            If ($Get(tErrors(tI, "code")) = 5540) && ($Get(tErrors(tI, "param", 1)) = ##class(OcuPilot.Port.AnalyticsPort).#MDXALARMSQLCODE) Set tAlarmed = 1
-        }
-    } Catch {
-        Set tAlarmed = 0
-    }
-    Quit tAlarmed
-}
-
-/// <p>Cancel the vendor's query <var>pQueryKey</var> of cube <var>pCube</var>, and wait up to
-/// <parameter>OcuPilot.Port.AnalyticsPort.MDXSETTLESECONDS</parameter> seconds for the vendor to report <var>pRS</var> finished.</p>
-ClassMethod Stop(pPort As %String, pNamespace As %String, pRS, pCube As %String, pQueryKey As %String) [ Private ]
-{
-    If (pCube = "") || (pQueryKey = "") Quit
-    Do $ClassMethod(pPort, "MdxCancel", pNamespace, pCube, pQueryKey)
-    Set tUntil = $ZHorolog + $Parameter(pPort, "MDXSETTLESECONDS")
-    For {
-        If $ClassMethod(pPort, "MdxStatus", pNamespace, pRS, .tError) = 100 Quit
-        If $ZHorolog > tUntil Quit
-        Hang ..#POLLPAUSE
-    }
 }
 
 /// <p>End run <var>pKey</var> <code>failed</code> with <code>ANALYTICS.MDX.LOST</code>'s envelope: the statement, or its

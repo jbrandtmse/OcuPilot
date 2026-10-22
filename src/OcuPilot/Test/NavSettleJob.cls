@@ -48,4 +48,14 @@ ClassMethod StopWhenPending(pKey As %String, pUser As %String, pTimeoutSeconds A
     Quit
 }
 
+/// <p>Wait <var>pSeconds</var>, then request a stop for <var>pUser</var>'s turn <var>pKey</var> (Story 20.35): the agent's MDX read polls the
+/// turn's stop signal while a query runs, so a test starts this beside the read instead of waiting for a navigation directive as
+/// <method>StopWhenPending</method> does.</p>
+ClassMethod StopAfter(pKey As %String, pUser As %String, pSeconds As %Numeric) [ ProcedureBlock = 1 ]
+{
+    Hang pSeconds
+    Do ##class(OcuPilot.Kernel.State.Turn).GuardedRequestStop(pKey, pUser, .tFound)
+    Quit
+}
+
 }

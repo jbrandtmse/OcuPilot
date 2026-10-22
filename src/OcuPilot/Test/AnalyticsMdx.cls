@@ -4,7 +4,8 @@
 /// vendor answered empty and a drill of a DRILLTHROUGH are refused; an empty axis lists no positions; a run writes none of
 /// the user data, term lists, folders or folder items; a typed DRILLTHROUGH reads its listing to the cap and says when more
 /// exist; the row, column, cell and total caps cut and say so; <method>OcuPilot.Port.AnalyticsPort.MdxConstructs</method> finds each of
-/// the five constructs in the vendor's tokens and in a string literal's, through each comment obfuscation measured, and fails closed;
+/// the five constructs in the vendor's tokens and in a string literal's, through each comment obfuscation measured, and fails closed; a plug-in's
+/// cells are computed before the status reads done;
 /// <method>OcuPilot.Port.AnalyticsPort.MdxPrepare</method> checks the variable-resolved text too and executes nothing; CREATE, DROP and
 /// three axes are refused and a syntax error answers the vendor's text; and the gate names a namespace without analytics and one whose
 /// cache database is read-only.</p>
@@ -312,6 +313,22 @@ Method TestAnEmptyAxisHasNoPositionsAndADrillNamesACellTheAnswerHas()
     Set tSC = $ClassMethod(..#PORT, "MdxDrill", ..#NAMESPACE, tRS, 1, 1, .tListing, .tHttp, .tFault, .tError)
     Do $ClassMethod(..#PORT, "MdxRelease", ..#NAMESPACE, .tRS)
     Do $$$AssertEquals($Get(tHttp) _ " " _ $Select($IsObject($Get(tFault)): tFault.%Get("code"), 1: "no refusal"), "400 ANALYTICS.MDX.INPUT", "and a drill of its result set is refused")
+}
+
+/// <p>AC1: the cells a plug-in computes hold their values by the time <method>OcuPilot.Port.AnalyticsPort.MdxStatus</method> reads 100. A
+/// statement over <code>%KPI("%DeepSee.Median", ...)</code> is reported finished while the vendor flags its cells pending and they read
+/// <code>@Computing 0.00%</code> (measured); the status asks the vendor to update them and reads 99 until none is. The answer carries no placeholder and
+/// is the vendor's own synchronous answer for the statement.</p>
+/// <p>Mutation (Rule 19): drop the pending branch from <method>OcuPilot.Port.AnalyticsPort.MdxStatus</method> (read 100 as done whatever the pending
+/// flag says) -- every cell reads <code>@Computing 0.00%</code> and this goes red.</p>
+Method TestAPlugInsCellsAreComputedBeforeTheStatusReadsDone()
+{
+    Set tMedian = "SELECT %KPI(""%DeepSee.Median"",""MEDIAN"",1,""%measure"",""Amount"",""%CONTEXT"") ON 0, [Place].[H1].[Category].Members ON 1 FROM [OcuPilotProbeVisits]"
+    Do ..RunMdx(tMedian, .tAnswer)
+    Set tFlat = ..Flatten(tAnswer)
+    Do $$$AssertTrue(tFlat '[ "@Computing", "no cell still reads the plug-in's placeholder: " _ tFlat)
+    Do $$$AssertEquals(tFlat, ..VendorCells(tMedian), "and the answer is the vendor's own computed one: " _ tFlat)
+    Do $$$AssertTrue($Length(tFlat, ";") = 6, "over the five categories: " _ tFlat)
 }
 
 /// <p>The keys of <var>pObject</var>, comma-joined in the order they were set.</p>
