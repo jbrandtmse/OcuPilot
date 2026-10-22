@@ -193,6 +193,33 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Line numbe
 
 - [x] **DW-2490 (ledger; routed by Story 20.33's review, 2026-10-21; unverified):** `MdxStatus` reads the vendor's status 100 as done without its pending-results flag, so a plugin-computed cell may be read before it is computed. This story polls `MdxStatus` too. Measure it first: run a statement over a `%KPI("%DeepSee.Median")` measure through the run and read its cell at the first status 100. If the cell can be read before it is computed, honor the pending flag in `MdxStatus` and pin it with a demonstrated mutation. If it cannot, record the measurement under `## Verification`, and the lead closes the entry at adjudication.
 
+### Review Findings
+
+Code review, 2026-10-21 (four layers on the full-opus tier, diff `3d032313` to the working tree; each patch verified on `ocupilot-b-ci`, mutations in Verification).
+
+- [x] [Review][Patch] MED: after a bound or a Stop, `Settle` waited on `MdxStatus`, which now updates a plug-in's pending cells and answers 99, while the vendor's `%CancelQuery` returns at once for a query it already reports 100; a Stop or the bound in the pending phase waited up to `MDXSETTLESECONDS` while the cells went on computing, for the read and for MDX query's Cancel. `Settle` now reads the vendor's own status (`MdxStatus(..., 0)`) [src/OcuPilot/Port/AnalyticsPort.cls:1330]
+- [x] [Review][Patch] MED (Rule 19, hermeticity): the read-level Stop leg posted its stop on a fixed one-second timer, and a stop that lands before `MdxStart` ends the read unstarted, so `VendorStatus` reads 0 on correct code; QA's turn Stop leg waited for any `%DeepSee` process in USER, which the turn job's own prepare satisfies. Both now wait until the vendor reports the query started (status 10 to 99) [src/OcuPilot/Test/NavSettleJob.cls:56]
+- [x] [Review][Patch] The hook leg's never-renewed assertion ran with the stop signal set, so it could not fail; it now runs before the stop is requested [src/OcuPilot/Test/AnalyticsMdxReadJob.cls:173]
+- [x] [Review][Patch] `columnsAvailable`'s description did not say the label column is not counted, while `columns` carries it [src/OcuPilot/Screen/Tool/AnalyticsMdxRead.cls:121]
+- [x] [Review][Patch] `ToolRoundTrip`'s `REFUSEEMPTY` doc block had no line for this story's row [src/OcuPilot/Test/ToolRoundTrip.cls:98]
+- [x] [Review][Patch] The browser AC9 leg's mutation comment named the contrast mutation only, not the wrap rules' [ui/browser/agent-mdx.browser-spec.mjs:214]
+- [x] [Review][Defer] The stop hook reads no kill switch, enforced read-only or privilege, so those act at the next step [src/OcuPilot/Screen/Tool/AnalyticsMdxRead.cls:252] — deferred: DW-2494, by-design (AD-30 re-reads them between steps; the Seams bullet names stop, abandon and lease)
+- [x] [Review][Defer] One `ANALYTICS.MDX.SQL` with no detail answers a construct, an unreadable text and a blank one alike [src/OcuPilot/Screen/Tool/AnalyticsMdxRead.cls:185] — deferred: DW-2495, by-design (ruling Q1 B and Design Notes › Strings fix the refusal and the description)
+- [x] [Review][Defer] Rule 2: the `Screen.Gate.Evaluate` refusal block is its third copy, beside `ExplorerSqlRead` and `ExplorerSourceRead` [src/OcuPilot/Screen/Tool/AnalyticsMdxRead.cls:171] — deferred: DW-2496, wontfix-accepted (the sibling's six-line idiom; unifying it edits `Base.cls` and two other tools)
+
+Rejected:
+
+- `low`: one `%UpdatePendingResults` pass runs with no alarm, so a large plug-in answer can overrun the bound by a pass -- the vendor's own synchronous execute loops the same call, an alarm inside the vendor's update could lose a cell (inference), and the Auto Run Result's residual risk names it; the fix adds an alarm path.
+- `low`: a pending plug-in cell that never completes keeps `MdxStatus` at 99 until the bound -- `%GetKPIValue` answers a plug-in's error as the cell's value with `$$$OK` (`%DeepSee.AbstractKPI`), which clears the pending node; only a lost KPI agent leaves it, and the read still ends at its bound.
+- `low` (maybe-false): a stopped plug-in read leaves the KPI's queued `COMPUTEKPI` task running on the vendor's agents -- that task group is the vendor's, outside the query's own groups, MDX query's Cancel left it the same before this story, and `%KPI` is a named limit; it would only be low.
+- `low`: an exception in the poll loop unwinds `MdxRun` without canceling the vendor's query -- `MdxStatus` traps its errors and both hooks read through status-returning guarded methods; unlikely, and the fix adds a guard.
+- `low`: the stop hook reads `Limits.#LEASESECONDS` where `Loop.Boundary` reads its overridable `LimitsClass()` -- equal in production; only a test limits class tells them apart.
+- `false`: a typed DRILLTHROUGH's start and a listing's read do not poll Stop -- Design Notes names it a limit and `MdxRun`'s doc says so; the bound's alarm ends both.
+- `false`: the failed-card wrap rules change every failed card with no DESIGN.md amendment and no Shared surfaces entry -- DESIGN.md's `tool-call-card` (status at the right, label type) still holds and says nothing of a long reason's overflow, which every failed card had; the specs that read the warning status (`proposal-privilege`, `auditing-write`, `users-write`, `proposal-demo`, `refused-tool`, `turn`) assert its text, never its geometry; the Auto Run Result reports the file.
+- `false`: a bound stop answers the bound, not the seconds run -- at the bound they are equal to the poll's tenth of a second, and the matrix's Bound row pins `seconds: 2`, as 20.33's run answers.
+- `false`: the EXPERIENCE.md sentence joined the shared Fixed strings row, not a new row -- it is in Fixed strings, in the row 20.33's MDX strings and `strings.ts`'s `EXPERIENCE.md:604` citations name.
+- `low`: the intent's "new `ANALYTICS.` branch" and Rule 11's `Api/Error.cls` entries, the Change Log's missing Tasks rewrites, the Auto Run Result's pre-QA counts, and the Tasks bullet's "whole seconds run" for a bound stop -- the fix is a spec edit.
+
 ## Spec Change Log
 
 - 2026-10-15, lead: the orchestrator ruled Q1 (B, fail closed): 20.33's `MdxConstructs` reads tokens and quoted strings' tokens, covers the four plus `%PARM`, runs again on the variable-resolved text after prepare, and fails closed (the agent refuses with `ANALYTICS.MDX.SQL`); this story reuses it and builds no copy; stored definitions are a named limit (DW-2451). Q2 applied: no `SurfaceCoverage` row (that roster compares write tools only); `ReadTool`, `ToolRoundTrip`, `ToolEmit` and `DeveloperFloor` carry the tool. Back to `draft` for a re-plan after 20.33's amendment.
@@ -341,6 +368,23 @@ Shared surfaces: `ReadTool`'s count and names, `REFUSEEMPTY`, `ToolEmit`'s branc
 | AC9 | The wrap rules are removed from `_components.scss` (`overflow-wrap`, `text-align`, and the `:has` rule's `flex` and `min-width`) | browser AC9 (`app-tool-call-card>span.ocu-tool-call-status: 474px past its containing block`) |
 | DW-2490 | `MdxStatus` drops the pending branch | `AnalyticsMdx` and `AnalyticsMdxRead` plug-in legs (`@Computing 0.00%`) |
 | - | `RedactedColumns` dropped; `DrillProblem` skipped, or only its integer and maximum checks; schema check skipped; `MdxPrepare`'s error answer ignored; the sentence changed on one side | the credential, drill, argument, syntax and `analytics.test.mjs` legs |
+
+**QA additions (Rule 19), each demonstrated on `ocupilot-b-ci` with the whole `src` tree reloaded and the file's blob hash equal before and after.**
+
+- (QA) `src/OcuPilot/Test/AnalyticsMdxReadTurn.cls`: `TestATurnDrillsIntoACellAndAListingIsCutToTheContextRowCap` and `TestThePersonsStopEndsAReadInATurnAndLeavesNothingRunning` (the class holds 4 tests).
+- (QA) `src/OcuPilot/Test/AnalyticsMdxRead.cls`: `TestAVendorErrorLongerThanTheCellBoundIsCut` (the class holds 15 tests).
+- mutation: `MdxRun` ignores `drill` (`Set pRow = ""`) -> `AnalyticsMdxReadTurn` drill leg, alone in its class.
+- mutation: `AnalyticsMdxRead.MdxStopRequested` answers 0 -> `AnalyticsMdxReadTurn` stop leg, alone in its class (the turn is still running 41 s after the stop is posted).
+- mutation: `AnalyticsPort.ErrorAnswer` answers the vendor's whole text -> `AnalyticsMdxRead` long-error leg, alone in its class.
+- Final runs on the reloaded tree: `AnalyticsMdxRead` 15, `AnalyticsMdxReadGate` 4, `AnalyticsMdxReadTurn` 4, `AnalyticsMdxReadJob` 3, `AnalyticsMdx` 15, `AnalyticsMdxJob` 13, `AnalyticsMdxRoutes` 9, `AnalyticsMdxGate` 2, the roster batch 84, `npm run test:tools` 2,113, browser `agent-mdx` 3 and `analytics-mdx` 11, all green.
+
+**Code review additions (Rule 19), on `ocupilot-b-ci` with the whole `src` tree reloaded and the tool's blob hash equal before and after each mutation.**
+
+- (review) mutation: `AnalyticsMdxRead.MdxStopRequested` answers 0 for a turn never renewed -> `AnalyticsMdxReadJob` hook leg ("a turn that was never renewed asks"), alone in its class (run 203).
+- (review) mutation: `AnalyticsMdxRead.MdxStopRequested` answers 0 -> `AnalyticsMdxReadJob` Stop leg (`seconds` 2: the stop, posted once the vendor reported the query started, never reached it) and hook leg (run 204).
+- (review) QA's turn Stop leg now waits on the vendor's status too; its `mutation:` line above was not re-run.
+- (review) `Settle`'s wait on the vendor's own status has no pin of its own: landing a Stop inside a plug-in's pending window is timing-bound.
+- (review) Final runs on the reloaded tree: `AnalyticsMdxReadJob` 3 (run 202), `AnalyticsMdxReadTurn` 4 (205), `AnalyticsMdxJob` 13 (206), `AnalyticsMdx` 15 (207), `AnalyticsMdxRead` 15 (208), all green.
 
 **Implement record (slot B, HEAD `3d032313`).**
 

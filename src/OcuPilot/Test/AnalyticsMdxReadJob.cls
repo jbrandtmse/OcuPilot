@@ -124,9 +124,10 @@ Method TestAQueryPastTheBoundIsStoppedAndLeavesNothingRunning()
     Do $$$AssertEquals(##class(OcuPilot.Test.AnalyticsMdxRead).Runs(), tRuns, "and no background run was reserved")
 }
 
-/// <p>AC4: the turn's Stop reaches a query the read is polling: with a turn begun and the read made on its behalf, a stop requested after a second
-/// ends the read <code>stopped</code> within <parameter>OcuPilot.Port.AnalyticsPort.MDXSETTLESECONDS</parameter> plus two seconds of it, with
-/// seconds below the bound, and leaves nothing running.</p>
+/// <p>AC4: the turn's Stop reaches a query the read is polling: with a turn begun and the read made on its behalf, a stop requested after a second,
+/// once the vendor reports the query started, ends the read <code>stopped</code> within
+/// <parameter>OcuPilot.Port.AnalyticsPort.MDXSETTLESECONDS</parameter> plus two seconds of it, with seconds below the bound, and leaves nothing
+/// running.</p>
 /// <p>Mutation (Rule 19): answer 0 from <method>OcuPilot.Screen.Tool.AnalyticsMdxRead.MdxStopRequested</method> -- the read runs to the bound, answers
 /// two seconds and this goes red.</p>
 Method TestTheTurnsStopEndsTheReadAndLeavesNothingRunning()
@@ -134,7 +135,7 @@ Method TestTheTurnsStopEndsTheReadAndLeavesNothingRunning()
     Set tKey = ..BeginTurn()
     If tKey = "" Quit
     Do ##class(OcuPilot.Kernel.Proposal.Caller).Set(tKey)
-    Job ##class(OcuPilot.Test.NavSettleJob).StopAfter(tKey, $Username, 1)::10
+    Job ##class(OcuPilot.Test.NavSettleJob).StopAfter(tKey, $Username, 1, ..#SLOWSTOP)::10
     Do $$$AssertTrue($Test, "the stop job starts")
     Set tChild = $ZChild
     Set tSaid = ..Read(..#SLOWSTOP, .tResult, .tTook)
@@ -153,7 +154,7 @@ Method TestTheTurnsStopEndsTheReadAndLeavesNothingRunning()
 /// asked to stop, and one whose stop or abandon signal is set, whose lease is at least
 /// <parameter>OcuPilot.Kernel.Agent.Limits.LEASESECONDS</parameter> old or which was never renewed is; a call outside a turn never is.</p>
 /// <p>Mutation (Rule 19): drop the lease test from <method>OcuPilot.Screen.Tool.AnalyticsMdxRead.MdxStopRequested</method> -- the lapsed-lease leg goes
-/// red.</p>
+/// red; answer 0 there for a turn never renewed -- the never-renewed leg goes red.</p>
 Method TestTheStopHookReadsTheTurnsStopAbandonAndLease()
 {
     Set tTool = "OcuPilot.Screen.Tool.AnalyticsMdxRead"
@@ -169,10 +170,12 @@ Method TestTheStopHookReadsTheTurnsStopAbandonAndLease()
     Do $$$AssertEquals($ClassMethod(tTool, "MdxStopRequested", tKey), 1, "an abandon signal asks")
     Kill ^OcuPilotTurnSignal(tKey, "abandon")
     Do $$$AssertEquals($ClassMethod(tTool, "MdxStopRequested", tKey), 0, "which stops asking once it is gone")
+    Kill ^OcuPilotTurnSignal(tKey, "renewed")
+    Do $$$AssertEquals($ClassMethod(tTool, "MdxStopRequested", tKey), 1, "a turn that was never renewed asks")
+    Do $$$AssertStatusOK($ClassMethod(..#TURN, "GuardedRenew", tKey), "the lease is renewed again")
+    Do $$$AssertEquals($ClassMethod(tTool, "MdxStopRequested", tKey), 0, "and stops asking")
     Do $$$AssertStatusOK($ClassMethod(..#TURN, "GuardedRequestStop", tKey, $Username, .tFound), "the turn is asked to stop")
     Do $$$AssertEquals($ClassMethod(tTool, "MdxStopRequested", tKey), 1, "a stop signal asks")
-    Kill ^OcuPilotTurnSignal(tKey, "renewed")
-    Do $$$AssertEquals($ClassMethod(tTool, "MdxStopRequested", tKey), 1, "and so does a turn that was never renewed")
     Do ..Finish(tKey)
 }
 

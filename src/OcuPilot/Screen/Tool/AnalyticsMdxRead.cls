@@ -118,7 +118,7 @@ ClassMethod ResultSchema(pDescriptor As %String = "") As %DynamicObject
             "columns": {"type": "array", "items": {"type": "string"}, "description": "For cells, an empty label for the row-label column and then each column's label. For rows, the listing's column names."},
             "rows": {"type": "array", "items": {"type": "array", "items": {"type": "string"}}, "description": "One array of text for each row. For cells, the row's label and then its cells, as the instance computed them, an empty text for an empty cell. For rows, the listing's cells."},
             "rowsAvailable": {"type": "integer", "description": "How many rows the answer holds before this result was bounded."},
-            "columnsAvailable": {"type": "integer", "description": "How many columns the answer holds, for a cells outcome."},
+            "columnsAvailable": {"type": "integer", "description": "How many columns of cells the answer holds before this result was bounded, the label column not counted, for a cells outcome."},
             "truncated": {"type": "boolean", "description": "True when rows, columns or cells were cut by a cap."},
             "message": {"type": "string", "description": "The instance's message, for an error outcome."},
             "seconds": {"type": "number", "description": "The seconds the statement ran before it was stopped, for a stopped outcome."},

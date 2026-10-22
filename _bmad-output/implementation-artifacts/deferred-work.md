@@ -12304,6 +12304,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-20-33-the-mdx-query-tool.md | severity: med | fix-risk: med | footprint: in-epic
 - evidence: irislib %DeepSee/ResultSet.cls: %GetStatus answers 100 with pPendingResults 1 and only the waited %Execute path calls %UpdatePendingResults; the MDX job polls %GetStatus alone
 - 2026-10-21T18:58:10Z status=routed owner=20-35-the-agent-s-mdx-read by=cr note=unverified: run a %KPI("%DeepSee.Median") measure through MdxQuery, read its cell; 20.35 polls MdxStatus too
+- 2026-10-22T02:54:10Z status=resolved-by:20-35-the-agent-s-mdx-read by=adjudication note=measured_real_and_fixed_in_9bb06926:MdxStatus_runs_%UpdatePendingResults_and_answers_99_until_none_remain;pinned_by_AnalyticsMdx_and_AnalyticsMdxRead_plug-in_legs(mutation:MdxStatus_drops_the_pending_branch->@Computing_0.00%);code_review_kept_the_update_out_of_Settle(pUpdate=0)
 
 ### DW-2491: MdxStart and MdxStatus answer a vendor <PROTECT> as the run's error text, not with 20.11's 403 mapping
 - source: spec-20-33-the-mdx-query-tool.md | severity: low | fix-risk: med | footprint: in-story
@@ -12338,3 +12339,18 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: CI run 39654904051 (f74e5331), browser shard 3/5 | severity: med | fix-risk: med | footprint: in-epic
 - evidence: attempt 1 red at line 535 (second reply never drawn); --failed rerun green; same spec 9/9 locally on the same tree; batch 3 changed no client or turn code
 - 2026-10-21T19:44:05Z status=routed owner=burndown by=ci note=flake class per CI Is a Gate; priority for the burn-down
+
+### DW-2494: The agent's MDX read polls only the turn's stop, abandon and lease, so a kill switch, enforced read-only or lost privilege set mid-read acts at the next step
+- source: spec-20-35-the-agent-s-mdx-read.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: AnalyticsMdxRead.MdxStopRequested reads GuardedSignals only; Loop.Boundary also reads Restraint and HoldsAnyResource, between steps (AD-30); the spec's Seams bullet names stop, abandon and lease
+- 2026-10-22T02:51:37Z status=by-design owner=20-35-the-agent-s-mdx-read by=cr note=AD-30 re-reads the switches between steps and the read mutates nothing; reopens only by amending AD-30 or the Seams bullet
+
+### DW-2495: The agent's MDX read answers one ANALYTICS.MDX.SQL with no detail for a construct, an unreadable text and a blank one, so the model cannot tell a typo it could fix
+- source: spec-20-35-the-agent-s-mdx-read.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: AnalyticsMdxRead.View discards MdxConstructs' found and unread, RefuseFor(sql) takes no detail, and DESCRIPTION says to ask the person in every case (spec Approach bullet 2, Design Notes Strings, ruling Q1 B)
+- 2026-10-22T02:51:37Z status=by-design owner=20-35-the-agent-s-mdx-read by=cr note=the spec fixes one refusal and its description (ruling Q1 B); reopens by a spec amendment adding a detail
+
+### DW-2496: The Screen.Gate.Evaluate refusal block is copied a third time, into AnalyticsMdxRead.View, beside ExplorerSqlRead and ExplorerSourceRead
+- source: spec-20-35-the-agent-s-mdx-read.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: src/OcuPilot/Screen/Tool/AnalyticsMdxRead.cls:171-177 repeats ExplorerSqlRead.cls:131-137 and ExplorerSourceRead's block (Kernel.Denial status, Fault.Build, Detail(tFailedPair)); Base.cls has no helper for it
+- 2026-10-22T02:51:38Z status=wontfix-accepted owner=20-35-the-agent-s-mdx-read by=cr note=reopen_if=grep -l 'Denial).Detail(tFailedPair)' src/OcuPilot/Screen/Tool lists a fourth tool class

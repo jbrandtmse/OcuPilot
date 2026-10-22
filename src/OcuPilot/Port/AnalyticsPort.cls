@@ -901,7 +901,9 @@ ClassMethod MdxStart(pNamespace As %String, pRS, Output pCube As %String, Output
 /// <p><b>A query whose cells a plug-in computes</b> (<code>%KPI("%DeepSee.Median", ...)</code>) reports 100 while those cells still read
 /// <code>@Computing 0.00%</code>, and flags them pending (measured). This asks the vendor to update them, as its own synchronous execute does,
 /// and answers 99 until none is pending, so 100 means every cell holds its value. A failed update is 100 with its error.</p>
-ClassMethod MdxStatus(pNamespace As %String, pRS, Output pError As %Status) As %Integer
+/// <p>With <var>pUpdate</var> 0 it updates nothing and answers the vendor's own status, 100 with cells still pending included: a stopped
+/// run's wait (<method>Settle</method>) computes no cell, and the vendor's cancel does not reach a query it already reports 100.</p>
+ClassMethod MdxStatus(pNamespace As %String, pRS, Output pError As %Status, pUpdate As %Boolean = 1) As %Integer
 {
     Set pError = $$$OK
     Set tStatus = 0
@@ -909,7 +911,7 @@ ClassMethod MdxStatus(pNamespace As %String, pRS, Output pError As %Status) As %
     Try {
         Set $NAMESPACE = pNamespace
         Set tStatus = pRS.%GetStatus(, .pError, .tPending)
-        If (tStatus = 100) && tPending && $$$ISOK(pError) {
+        If pUpdate && (tStatus = 100) && tPending && $$$ISOK(pError) {
             Set tUpdateSC = pRS.%UpdatePendingResults(.tPending)
             If $$$ISERR(tUpdateSC) {
                 Set pError = tUpdateSC
@@ -1317,14 +1319,15 @@ ClassMethod StopAsked(pStopClass As %String, pStopKey As %String) As %Boolean [ 
 }
 
 /// <p>Cancel the vendor's query <var>pQueryKey</var> of cube <var>pCube</var>, and wait up to <parameter>MDXSETTLESECONDS</parameter>
-/// seconds for the vendor to report <var>pRS</var> finished. Nothing happens for a run that never named its query.</p>
+/// seconds for the vendor to report <var>pRS</var> finished, a plug-in's pending cells left uncomputed. Nothing happens for a run that never
+/// named its query.</p>
 ClassMethod Settle(pNamespace As %String, pRS, pCube As %String, pQueryKey As %String) [ Private ]
 {
     If (pCube = "") || (pQueryKey = "") Quit
     Do ..MdxCancel(pNamespace, pCube, pQueryKey)
     Set tUntil = $ZHorolog + ..#MDXSETTLESECONDS
     For {
-        If ..MdxStatus(pNamespace, pRS, .tError) = 100 Quit
+        If ..MdxStatus(pNamespace, pRS, .tError, 0) = 100 Quit
         If $ZHorolog > tUntil Quit
         Hang ..#MDXPOLLPAUSE
     }

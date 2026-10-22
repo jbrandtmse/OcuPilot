@@ -211,8 +211,9 @@ test('AC3: a scripted %SEARCH call shows the failed card with the published sent
   }
 });
 
-// AC9. Mutation (Rule 19): give the failed status word a pale color (`.ocu-tool-call-status-warning` in `components.scss`; rebuild and redeploy the bundle first)
-// -> the dark-theme contrast entry is fresh and this goes red.
+// AC9. Mutation (Rule 19): give the failed status word a pale color (`.ocu-tool-call-status-warning` in `_components.scss`; rebuild and redeploy the bundle first)
+// -> the dark-theme contrast entry is fresh and this goes red; or remove the failed card's wrap rules there (`overflow-wrap`, `text-align`, and the `:has`
+// rule's `flex` and `min-width`) -> the status runs past its containing block and this goes red.
 test('AC9: the refused card on MDX query passes the structural and contrast checks at 1280 in both themes', async () => {
   await requireFreeSlot(config);
   const tag = nextTag();

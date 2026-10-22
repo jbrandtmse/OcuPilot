@@ -2,7 +2,7 @@
 /// in <code>USER</code>: a SELECT answers its labels and cells as the vendor's own result set gives them, the label column first; a typed
 /// DRILLTHROUGH and a cell's drill answer the vendor's listing within its cap; a listing column named like a credential reads
 /// <code>[redacted]</code>; CREATE, DROP and three axes are refused by their codes with no background run reserved; a syntax error answers
-/// the vendor's text; a namespace without analytics and a read-only cache are refused before any vendor call; and every spelling of a
+/// the vendor's text, cut at the port's cell bound when it is longer; a namespace without analytics and a read-only cache are refused before any vendor call; and every spelling of a
 /// construct that runs server-side code or SQL (<code>%SEARCH</code>, <code>%SQLRESTRICT</code>, <code>RETURN</code>, <code>%ORDER</code>
 /// and <code>%PARM</code>, through comments, literals and single-quoted spans), a text the lexer refuses, and a statement whose
 /// variable-resolved text holds one are refused 422 <code>ANALYTICS.MDX.SQL</code> before anything runs, the first two before a prepare,
@@ -244,6 +244,20 @@ Method TestASyntaxErrorAnswersTheVendorsText()
     Do $$$AssertTrue((tResult.message [ "Unknown term at start of query: SELEKT") && ($Length(tResult.message) <= 1000), "with the vendor's text: " _ tResult.message)
     Do $$$AssertEquals(tResult.%GetTypeOf("rows"), "unassigned", "and no rows")
     Do $$$AssertStatusOK(##class(OcuPilot.Screen.Tool.Registry).ValidateArguments(##class(OcuPilot.Screen.Tool.AnalyticsMdxRead).ResultSchema(), tResult, .tProblem), "the error answer conforms to the tool's result schema: " _ $Get(tProblem))
+}
+
+/// <p>AC1: a vendor message longer than the port's cell bound is cut to exactly that bound and ends in an ellipsis: a first word of 1,500 characters is echoed
+/// in the vendor's "Unknown term" text, which runs past 3,000 characters uncut.</p>
+/// <p>Mutation (Rule 19): drop the cut from <method>OcuPilot.Port.AnalyticsPort.ErrorAnswer</method> (answer the vendor's whole text) -- the message runs past the
+/// bound and this goes red.</p>
+Method TestAVendorErrorLongerThanTheCellBoundIsCut()
+{
+    Set tMax = $Parameter(..#PORT, "MDXMAXCELL")
+    Set tWord = $Translate($Justify("", tMax + 500), " ", "A")
+    Do $$$AssertEquals(..Ends(..#TOOL, tWord _ " FROM [OcuPilotProbeVisits]", .tResult), "200 error", "a first word the vendor cannot read is an outcome, not a fault")
+    If '$IsObject(tResult) Quit
+    Do $$$AssertTrue($Extract(tResult.message, 1, 80) [ "Unknown term at start of query: AAAA", "the message is the vendor's: " _ $Extract(tResult.message, 1, 80))
+    Do $$$AssertEquals($Length(tResult.message) _ " " _ ($Extract(tResult.message, *) = $Char(8230)), tMax _ " 1", "cut to the port's cell bound, ending in an ellipsis")
 }
 
 /// <p>AC6: a namespace that reports no analytics is refused 409 <code>ANALYTICS.NAMESPACE</code>, and one whose analytics cache lives in a read-only
