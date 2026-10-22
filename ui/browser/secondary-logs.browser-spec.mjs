@@ -112,7 +112,7 @@ async function seededRow(page, marker = SECONDARY_MARKER) {
     (rows, wanted) => {
       const row = rows.find((candidate) => candidate.textContent.includes(wanted));
       const cell = (name) => row.querySelector(`.ocu-log-cell-${name}`)?.textContent.trim() ?? '';
-      return { time: cell('time'), pid: cell('pid'), text: cell('text'), chip: row.getAttribute('data-ocu-severity') ?? '', index: rows.indexOf(row), total: rows.length };
+      return { time: cell('time'), text: cell('text'), chip: row.getAttribute('data-ocu-severity') ?? '', index: rows.indexOf(row), total: rows.length };
     },
     marker
   );

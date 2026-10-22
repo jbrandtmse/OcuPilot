@@ -43,7 +43,8 @@
  *   second passes by accident of the corpus.
  * - `checkTemplateClasses({templates, stylesheets, references})` -- an `ocu-` class a template
  *   uses that no stylesheet selects, unless it is on `UNSTYLED_CLASS_HOOKS` (a hook a test reads,
- *   or a style someone owes) or carries a prefix on `COMPOSED_CLASS_PREFIXES`. An allow-list entry
+ *   or a style someone owes) or, in the file that builds it, carries a prefix on
+ *   `COMPOSED_CLASS_PREFIXES`. An allow-list entry
  *   that no longer earns its place fails too, so the list cannot outlive the reason for it.
  *
  * Scope, stated plainly: this is a regex-based scanner over source text, not an
@@ -594,9 +595,12 @@ export function checkFilterAssertions({ path, text }) {
 //
 // Class contexts only. What decides whether a name is read is where it stands: `class="..."`,
 // `[class.ocu-x]`, the string literals of `[class]="..."`, `host: { class }` and a `*_CLASS = '...'`
-// constant. An `ocu-` id (`id="ocu-x"`, a `*Id` field) is never a class and is never read. A class
-// that code sets on an element (`className =`, `classList`, an `elementNode` list, `[ngClass]`) is
-// not one of those contexts, so this family does not see it.
+// constant. An `ocu-` id (`id="ocu-x"`, a `*Id` field) is never a class and is never read. Nothing
+// else is a class context here, so this family does not see a class set any other way:
+// `[ngClass]`, `[attr.class]`, `[className]`, a host `'[class]'` key, `@HostBinding`, a whole
+// interpolation inside `class="..."`, the variable half of a `[class]` expression that also holds a
+// literal, or a class that code sets on an element (`className =`, `classList`, an `elementNode`
+// list).
 
 /** Where a finding about the allow-lists themselves is reported. */
 const LINT_PATH = 'tools/client-lint.mjs';
@@ -872,8 +876,8 @@ export function extractStyledClasses({ path, text }) {
  * `references` the files that may read a hook: `ui/browser` and the `*.spec.ts` files, each as
  * `{path, text}`.
  *
- * Reported: a used class that is not styled, not on `hooks` and not under a declared prefix, at each
- * use; a class name built at run time that no declared prefix covers; a `[class]` binding with no
+ * Reported: a used class that is not styled, not on `hooks` and not under a prefix its own file
+ * declares, at each use; a class name built at run time that no declared prefix covers; a `[class]` binding with no
  * literal name in a file that declares no prefix; and, as `stale-unstyled-class-hook`, an entry
  * whose reason has gone. The checks that need the whole tree (an entry no template uses, a hook
  * nothing references, a prefix nothing styles or builds) run only when `src/styles/` is among the
@@ -903,7 +907,8 @@ export function checkTemplateClasses({
     const uses = extractTemplateClassUses(template);
     for (const { name, line } of uses.names) {
       used.add(name);
-      if (styled.has(name) || hookNames.has(name) || composedPrefixes.some((c) => name.startsWith(c.prefix))) continue;
+      if (styled.has(name) || hookNames.has(name)) continue;
+      if (composedPrefixes.some((c) => c.file === template.path && name.startsWith(c.prefix))) continue;
       unstyled(template.path, line, `${name} -- no stylesheet selects it; style it, or list it in UNSTYLED_CLASS_HOOKS with the reason`);
     }
     for (const { prefix, line } of uses.prefixes) {
@@ -936,7 +941,7 @@ export function checkTemplateClasses({
         unstyled(file, 1, `${prefix}... -- no stylesheet selects a class that starts with this prefix`);
       }
       const owner = templates.find((template) => template.path === file);
-      const builds = owner !== undefined && new RegExp(`${prefix}(?:\\$\\{|['"\`]\\s*\\+)`).test(owner.text);
+      const builds = owner !== undefined && new RegExp(`${prefix}(?:\\$\\{|\\{\\{|['"\`]\\s*\\+)`).test(owner.text);
       if (!builds) stale(prefix, `${file} no longer builds a class name that starts with it; remove it from COMPOSED_CLASS_PREFIXES`);
     }
   }
