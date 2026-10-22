@@ -73,7 +73,7 @@ export class FormTabBody {
         </button>
       }
     </nav>
-    <mat-tab-nav-panel #panel class="ocu-form-tab-panel">
+    <mat-tab-nav-panel #panel>
       @for (tab of viewList; track tab.key) {
         @if (tab.body; as body) {
           <div class="ocu-form-tab-body" [hidden]="tab.hidden" [attr.data-tab-body]="tab.key">

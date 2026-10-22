@@ -224,7 +224,7 @@ interface SortOption {
       </span>
     }
     @if (hasViewControl) {
-      <span #viewControl class="ocu-command-bar-sort ocu-command-bar-view" (focusout)="onViewFocusOut($event)">
+      <span #viewControl class="ocu-command-bar-sort" (focusout)="onViewFocusOut($event)">
         <button
           #viewTrigger
           type="button"

@@ -178,7 +178,7 @@ const UNGATED_SEGMENT = {
             rel="noreferrer"
             [attr.aria-label]="STRINGS.helpForScreen"
           >
-            <span class="ocu-locator-help-word">{{ STRINGS.helpLabel }}</span>
+            <span>{{ STRINGS.helpLabel }}</span>
             <span class="ocu-external-glyph" aria-hidden="true">{{ externalGlyph }}</span>
           </a>
         }

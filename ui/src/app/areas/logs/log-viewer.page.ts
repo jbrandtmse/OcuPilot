@@ -207,7 +207,7 @@ const SOURCES: Readonly<Record<string, LogViewerSource>> = {
       </button>
       <button
         type="button"
-        class="ocu-button-text ocu-log-viewer-raw"
+        class="ocu-button-text"
         data-ocu-log="raw"
         [attr.aria-pressed]="raw"
         (click)="onRaw()"
@@ -279,8 +279,8 @@ const SOURCES: Readonly<Record<string, LogViewerSource>> = {
                 [attr.data-ocu-severity]="row.chip"
               >
                 <span class="ocu-log-cell ocu-log-cell-time">{{ row.stamp }}</span>
-                <span class="ocu-log-cell ocu-log-cell-pid">{{ row.pid }}</span>
-                <span class="ocu-log-cell ocu-log-cell-severity">
+                <span class="ocu-log-cell">{{ row.pid }}</span>
+                <span class="ocu-log-cell">
                   <span class="ocu-log-chip ocu-log-chip-static" [attr.data-ocu-chip]="row.chip">{{
                     row.severityWord
                   }}</span>

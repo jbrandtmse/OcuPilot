@@ -418,7 +418,7 @@ function choices(values: readonly string[], labels: readonly string[]): readonly
               }
               @if (view.field === 'RunAsUser') {
                 @if (runsAsOther) {
-                  <p class="ocu-field-caption ocu-field-effect" [id]="view.id + '-effect'">{{ STRINGS.taskRunAsOtherEffect }}</p>
+                  <p class="ocu-field-caption" [id]="view.id + '-effect'">{{ STRINGS.taskRunAsOtherEffect }}</p>
                 }
               }
               @if (view.invalid) {

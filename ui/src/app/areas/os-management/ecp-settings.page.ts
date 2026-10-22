@@ -141,7 +141,7 @@ interface ChoiceView {
           }
         </div>
       }
-      <fieldset class="ocu-field ocu-form-authe ocu-ecp-settings-ssl" [attr.data-field]="sslField">
+      <fieldset class="ocu-field ocu-form-authe" [attr.data-field]="sslField">
         <legend class="ocu-field-label">{{ STRINGS.ecpSettingsSslSupport }}</legend>
         @for (choice of sslViews; track choice.value) {
           <label class="ocu-field-checkbox" [attr.data-ssl]="choice.value">

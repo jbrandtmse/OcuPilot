@@ -258,7 +258,7 @@ function tabIdOf(target: EventTarget | null): string | null {
               <button type="button" class="ocu-button-text" data-ocu-data="next" [attr.aria-disabled]="atEnd" (click)="onNext()">{{ STRINGS.explorerSqlDataNextPage }}</button>
               <button type="button" class="ocu-button-text" data-ocu-data="last" [attr.aria-disabled]="lastBlocked" (click)="onLast()">{{ STRINGS.explorerSqlDataLastPage }}</button>
               <label class="ocu-criteria-label" for="ocu-data-size">{{ STRINGS.explorerSqlDataRowsPerPage }}</label>
-              <select id="ocu-data-size" class="ocu-criteria-input ocu-data-browser-size" data-ocu-data="size" (change)="onSize($event)">
+              <select id="ocu-data-size" class="ocu-criteria-input" data-ocu-data="size" (change)="onSize($event)">
                 @for (size of sizes; track size) {
                   <option [value]="size" [selected]="size === pageSize">{{ size }}</option>
                 }

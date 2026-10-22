@@ -74,7 +74,7 @@ function fill(template: string, placeholder: string, value: string): string {
             (click)="onChoiceClick($event, model)"
             (change)="onChoiceChange(model)"
           />
-          <span class="ocu-ecp-status-choice-label">{{ model.label }}</span>
+          <span>{{ model.label }}</span>
         </label>
         @if (model.refused) {
           <p class="ocu-field-caption ocu-ecp-status-choice-reason" [id]="model.reasonId">{{ model.reason }}</p>

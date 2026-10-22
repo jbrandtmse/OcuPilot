@@ -192,7 +192,7 @@ interface CommandRow {
       <div class="ocu-command-box-sheet">
         <div id="ocu-command-box-list" class="ocu-command-box-list" role="listbox">
           <div
-            class="ocu-command-box-group ocu-command-box-group-screens"
+            class="ocu-command-box-group-screens"
             role="group"
             aria-label="{{ STRINGS.commandBoxGroupScreens }}"
           >
@@ -222,7 +222,7 @@ interface CommandRow {
             }
           </div>
           <div
-            class="ocu-command-box-group ocu-command-box-group-actions"
+            class="ocu-command-box-group-actions"
             role="group"
             aria-label="{{ STRINGS.commandBoxGroupActions }}"
           >

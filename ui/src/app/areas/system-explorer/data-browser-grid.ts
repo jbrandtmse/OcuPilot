@@ -230,7 +230,7 @@ let gridCount = 0;
           <div class="ocu-data-table-row ocu-data-table-header-row" role="row" aria-rowindex="1" [style.grid-template-columns]="template()">
             @if (statusColumn) {
               <div
-                class="ocu-data-table-header-cell ocu-data-browser-header-cell ocu-data-browser-status-head"
+                class="ocu-data-table-header-cell ocu-data-browser-status-head"
                 role="columnheader"
                 data-ocu-data="status-head"
                 [id]="statusHeadId"
@@ -242,7 +242,7 @@ let gridCount = 0;
             }
             @for (header of headerList; track header.id) {
               <div
-                class="ocu-data-table-header-cell ocu-data-browser-header-cell"
+                class="ocu-data-table-header-cell"
                 role="columnheader"
                 data-ocu-data="header"
                 [id]="header.id"

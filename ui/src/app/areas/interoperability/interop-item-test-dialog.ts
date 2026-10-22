@@ -193,7 +193,7 @@ interface FieldView extends TestFieldRow {
       }
     </div>
     @if (hasAnswer) {
-      <div class="ocu-test-result" data-interop-test-result>
+      <div data-interop-test-result>
         <p class="ocu-field-caption" data-interop-test-status [class.ocu-form-error]="failed">{{ statusLine }}</p>
         @if (hasTraceLink) {
           <a class="ocu-details-link" data-interop-test-trace [href]="traceHref" (click)="onTrace($event)">{{ STRINGS.interopTestTraceLink }}</a>

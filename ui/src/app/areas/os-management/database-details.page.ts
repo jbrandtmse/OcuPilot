@@ -226,7 +226,7 @@ interface TasksReadBody {
       <section class="ocu-details-group ocu-details-tasks">
         <h2 class="ocu-details-heading">{{ STRINGS.backgroundTaskListLabel }}</h2>
         @if (tasksUnchecked) {
-          <p class="ocu-data-table-empty-title ocu-details-tasks-unchecked">{{ tasksUncheckedText }}</p>
+          <p class="ocu-data-table-empty-title">{{ tasksUncheckedText }}</p>
         }
         @if (tasksFault) {
           <div class="ocu-data-table-refusal" role="alert">
@@ -258,7 +258,7 @@ interface TasksReadBody {
           <p class="ocu-data-table-empty-title ocu-details-tasks-none">{{ STRINGS.databaseTasksNone }}</p>
         }
         @if (showTasksTruncated) {
-          <p class="ocu-data-table-empty-title ocu-details-tasks-truncated">{{ tasksTruncatedText }}</p>
+          <p class="ocu-data-table-empty-title">{{ tasksTruncatedText }}</p>
         }
       </section>
     }
