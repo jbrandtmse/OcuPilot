@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { homedir, tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
@@ -374,12 +374,14 @@ test('a --dir outside a scratch root is refused, because the script removes it r
 
 // Mutation (Rule 19): revert the guard to the scratch-root case alone, with no trailing-slash strip,
 // no plain-spelling case and no link test -> every refusal below exits 0 or goes on to stage.
-// Every --dir is spelled under a root this test makes and passes as TMPDIR, so a regressed guard
-// that goes on to stage (`mkdir` is not stubbed) writes only inside it.
+// Every --dir is spelled under a root this test makes under the home directory, which no fixed scratch
+// arm (`/tmp/?*`, `/private/tmp/?*`) admits, and passes as TMPDIR: the root itself is refused on every
+// platform, and a regressed guard that goes on to stage (`mkdir` is not stubbed) writes only inside it.
 test("a --dir spelled with '//' or '/./', or that is a symbolic link, is refused before anything is removed (DW-235)", () => {
-  const scratch = mkdtempSync(join(tmpdir(), 'ocupilot-ipm-dw235-'));
+  const scratch = mkdtempSync(join(homedir(), 'ocupilot-ipm-dw235-'));
   const env = { TMPDIR: scratch };
   try {
+    assert.ok(!/^\/(private\/)?tmp\//.test(scratch), `the root must sit outside every fixed scratch arm: ${scratch}`);
     for (const dir of [`${scratch}//x`, `${scratch}/./x`, `${scratch}/x/.`]) {
       const refused = runRefused(['--image', PINNED_IMAGE, '--dir', dir], { env });
       assert.equal(refused.status, 2, `${dir} was not refused: ${refused.output}`);

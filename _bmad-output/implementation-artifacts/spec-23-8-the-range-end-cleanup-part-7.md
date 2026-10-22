@@ -2,9 +2,9 @@
 title: 'Story 23.8: The range-end cleanup, part 7'
 type: 'bugfix'
 created: '2026-10-21'
-status: 'in-progress'
-baseline_revision: '0253a3253af9f5d60d0adf3c5339dc062c661727'
-baseline_commit: '0253a3253af9f5d60d0adf3c5339dc062c661727'
+status: 'done'
+baseline_revision: 'e2459b1e6fdb05d1c54ec8fcffb3dcefeae4c004'
+baseline_commit: 'e2459b1e6fdb05d1c54ec8fcffb3dcefeae4c004'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -275,7 +275,7 @@ Each batch is one implement pass and one code commit, with CI green on its own h
   - `README.md` :555-557: append the sentence under For the lead to the smoke bullet (admitted at the spec gate).
   - No test (the entry says why).
 
-- [ ] [CI] gates (all three Node bands), run 39738366345: `ui/tools/ipm-archive.test.mjs` :379, the DW-235 trailing-slash legs. On Linux `os.tmpdir()` is `/tmp`, so the test's root is itself under the script's fixed `/tmp/?*` arm, and `${scratch}//` (stripped to `${scratch}`) is admitted. Give the test a root that no fixed arm admits (for example `mkdtemp` under `os.homedir()`), so every leg is refused on every platform and a regressed guard still writes only inside it. Check `ci.test.mjs`'s DW-235 legs for the same assumption.
+- [x] [CI] gates (all three Node bands), run 39738366345: `ui/tools/ipm-archive.test.mjs` :379, the DW-235 trailing-slash legs. On Linux `os.tmpdir()` is `/tmp`, so the test's root is itself under the script's fixed `/tmp/?*` arm, and `${scratch}//` (stripped to `${scratch}`) is admitted. Give the test a root that no fixed arm admits (for example `mkdtemp` under `os.homedir()`), so every leg is refused on every platform and a regressed guard still writes only inside it. Check `ci.test.mjs`'s DW-235 legs for the same assumption.
 
 ### Batch 3: client lint
 
@@ -445,6 +445,18 @@ Rejected:
   - `[false]` `[reject]` Intent audit: "fails every HTTP check" is not shown by a run -- it follows from the checks all going to `localhost` over HTTP; no external web server exists here to run one, as Dispositions says.
   - `[false]` `[reject]` Intent audit: the diff carries no compile result for `Smoke.cls` -- the doc-only class loads with 0 errors and `OcuPilot.Test.Smoke` passes 43 of 43 on `ocupilot-ci`.
   - `[false]` `[reject]` Intent audit: the spec-gate rulings are not in the diff -- they are in Design Notes, outside this batch's diff.
+
+### 2026-10-22 -- Review pass (batch 2, CI rework 1)
+
+- verdicts: 7 findings -- high 0, medium 0, low 6, false 1, maybe-false 0
+- findings:
+  - `[low]` `[reject]` Verification gap, other: the test needs a writable `$HOME` outside `/tmp` -- the placement assertion fails loudly rather than skipping, the gates job has `HOME=/home/runner`, and a fallback root adds a branch for an environment nobody runs.
+  - `[low]` `[reject]` Verification gap, other: the placement assertion hand-copies the script's two fixed arms -- a new arm that covered `$HOME` would also need this regex changed; the test's own comment names the arms, and no such arm is planned.
+  - `[low]` `[reject]` Verification gap, other: `## Auto Run Result` carries the earlier pass's figures -- this pass's block is appended at finalize, below.
+  - `[low]` `[reject]` Intent audit: the `ci.test.mjs` DW-235 check has no recorded outcome -- recorded in this pass's Auto Run Result: its refusal legs use literal `/nonexistent-*` and `/tmp//` spellings, and its link legs read their root from the same `os.tmpdir()` the script reads as `TMPDIR`.
+  - `[false]` `[reject]` Intent audit: nothing in the diff runs on Linux -- the only platform difference for this test is where `os.tmpdir()` points, and `TMPDIR=/tmp` reproduces it (red before, green after); CI on the new head is the lead's gate.
+  - `[low]` `[reject]` Intent audit: the test writes into the real home directory -- a `finally` removes the root; a stray directory remains only if the process is killed mid-test.
+  - `[low]` `[reject]` Intent audit: the test depends on `homedir()` -- the same finding as the first row.
 
 ## Design Notes
 
@@ -765,6 +777,7 @@ No AC contradicts an AD's Rule, and no NFR is in play.
   - `ci-throwaway.sh`'s link test also refusing a real directory under `/tmp`: the DW-235 test red on "a directory under /tmp is admitted". As `-e`: red, on the data-link leg first.
   - `ci-ipm-archive.sh`'s guard reverted whole: its DW-235 test red on its first leg, and the host's `/tmp` listing unchanged, since every `--dir` is under a root the test makes.
   - The hint's plural form dropped: the runner-hint test red on its two-variable leg.
+- `mutation:` (DW-235, CI rework, `node --test` under the default environment and `TMPDIR=/tmp`, each reverted, `cmp`, `git status` and `git diff --stat` unchanged): the root under `/tmp` is the defect, red before and green after (`TMPDIR=/tmp`, `${scratch}//` leg, exit 1 where 2 was expected). `ci-ipm-archive.sh` without the `$DIR` trailing-slash strip: red on the slash-spelled link leg. Its `$TMPDIR` arm as `"$SCRATCH_TMPDIR"*`: red on the `${scratch}//` leg. `HOME` under `/private/tmp`: red on the root's placement assertion, with nothing left behind.
 - `mutation:` (DW-1188):
   - Remove one group-A name from `UNSTYLED_CLASS_HOOKS` → the real-tree clean run red, naming its sites.
   - Add a styled name to the list → the stale rule red.
@@ -801,3 +814,15 @@ Blocking condition: none
   - `bash scripts/lint-docs.sh`: 0 issues. `check-objectscript.py` on `Smoke.cls`: 0 problems.
   - Every mutation under Verification was reverted and the tree re-checked byte-identical.
 - **For the lead.** `docker-compose.yml` is a release-upgrade trigger. The DW-1762 restart measurement waits for the next `up` of `ocupilot-ci`; the slot instances' own compose files, outside this repository, take the key only when the owner adds it.
+
+**Batch 2 CI rework 1 (run 39738366345), this pass only.**
+
+- **Implemented.** The DW-235 test in `ui/tools/ipm-archive.test.mjs` makes its root with `mkdtempSync` under `os.homedir()`, which no fixed `/tmp/?*` or `/private/tmp/?*` arm admits; it is still passed as `TMPDIR` and removed in a `finally`, and an assertion fails if the root lands under those arms. Both scripts are unchanged. `ci.test.mjs` is unchanged: its refusal legs use literal `/nonexistent-*` and `/tmp//` spellings, and its link legs read their root from the same `os.tmpdir()` the script reads as `TMPDIR`.
+- **Files.** `ui/tools/ipm-archive.test.mjs`; this spec (the `[CI]` box, the baseline, one `mutation:` line).
+- **Review.** 7 findings from two layers (low 6, false 1): none patched, none deferred (see the Triage Log).
+- **Follow-up review recommended: false.** Nothing was patched.
+- **Verification.**
+  - Red before: the previous test under `TMPDIR=/tmp` fails at the `${scratch}//` leg ("was not refused"). Green after: `ipm-archive.test.mjs` 33 of 33 under the default environment and under `TMPDIR=/tmp`; with `ci.test.mjs`, 125 of 125 under both.
+  - `npm run test:tools` 2120 of 2120 with neither browser variable set; `bash scripts/lint-docs.sh` 0 issues.
+  - Mutations (the two on `scripts/ci-ipm-archive.sh` re-run here under both environments): the `$TMPDIR` arm without its separator and the `$DIR` strip deleted each went red, and each was reverted byte-identical.
+  - `/tmp` and `$HOME` listings equal before and after.
