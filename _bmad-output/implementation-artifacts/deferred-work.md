@@ -4392,6 +4392,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-30T03:32:45Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down decision sheet 2026-09-29: into Story 23.3 (after the following release)
 - 2026-10-11T00:42:30Z status=routed owner=23-7-the-range-end-cleanup-part-6 by=load note=re-own from range-end-cleanup: kit 2026-10-10.1 owners are story keys or burndown
 - 2026-10-12T19:22:35Z status=routed owner=23-8-the-range-end-cleanup-part-7 by=merge_gate note=owner 2026-10-12 released 23.7's 32 (Release Story 23.7); split by priority, 12 at most each (Rule 27)
+- 2026-10-22T11:59:34Z status=resolved-by:23-8-the-range-end-cleanup-part-7 by=adjudication note=65cac70c+60fef87a: client-lint family 7 fails an unstyled template class at each use site unless it is styled, allow-listed (90 test hooks, 4 owed a style, with a stale check) or under a declared composed prefix; npm run build's prebuild stops on it; 44 dead tokens removed with no visual change; CI 39762998258 (attempt 2)
 
 ### DW-1176: Epic 3's entry in the epics.md Epic List is an h2 where all 21 siblings are h3, so the file carries two '## Epic 3:' headings and the sprint-planning readiness gate's duplicate-epic halt condition is one stricter check away from firing
 - source: cycle-log-epic-10.md | severity: med | fix-risk: low | footprint: out-of-footprint
