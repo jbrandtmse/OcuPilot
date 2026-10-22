@@ -2,7 +2,8 @@
 /// AD-15, AD-22, AD-41, AD-53, DW-2228): each refusal that comes before the document is read (OcuPilot's own
 /// code, a <code>%</code> name, <code>%SYS</code>, a class or routine stored in another database) answers its
 /// code for a document that does not exist, while a missing document of the namespace's own database answers
-/// <code>PORT.NOTFOUND</code>; a name set or another kind of document is refused; the closed schema refuses a
+/// <code>PORT.NOTFOUND</code>, and a routine the instance keeps only as object code answers it with the reason
+/// that the instance keeps no source; a name set or another kind of document is refused; the closed schema refuses a
 /// text, a version or a compile choice; the proposal is destructive, requires WRITE on the routines
 /// database, shows the model its hunk and not the document, and writes and compiles nothing before Confirm; a
 /// routine and an include file are saved and compiled on Confirm; a routine header rename and a text past the
@@ -25,6 +26,8 @@ Parameter PROBE = "OcuPilot.Test.ExplorerSaveAgentProbe";
 Parameter CLASSTOOL = "explorer.classes.save";
 
 Parameter ROUTINETOOL = "explorer.routines.save";
+
+Parameter UNGUARDEDTOOL = "OcuPilot.Test.ExplorerRoutineSaveUnguarded";
 
 Parameter ALPHA = "OcuProbe2021.Flow";
 
@@ -126,6 +129,34 @@ Method TestARefusalComesBeforeTheReadOfTheDocument()
     Do ..Refused(..#PROBENAMESPACE, ..#ROUTINETOOL, "%OcuProbe2021.mac", tArguments, "begins with %")
     Do ..Refused(..#PROBENAMESPACE, ..#CLASSTOOL, "OcuProbe2021.Missing.cls", "PORT.NOTFOUND", "")
     Do ..Refused(..#PROBENAMESPACE, ..#ROUTINETOOL, "OcuProbe2021Missing.mac", "PORT.NOTFOUND", "")
+}
+
+/// <p>A routine the instance keeps only as object code, once the agent guard is lifted so the mint reads it, is
+/// refused 404 <code>PORT.NOTFOUND</code> with the reason that the instance keeps no source, which is not the
+/// reason an absent document answers, and adds no proposal. The vendor routine <code>EnsJob.mac</code> is the
+/// instance's own example (<class>OcuPilot.Test.ExplorerSourceEdges</class> reads it the same way); the first
+/// assertion fails the leg, and ends it, if the instance no longer holds it that way.</p>
+/// <p>Mutation (Rule 19): <class>OcuPilot.Screen.Tool.ExplorerSaveMint</class> answers
+/// <parameter>OcuPilot.Port.AtelierPort.REASONNOTFOUND</parameter> for an unavailable document -- this goes red.</p>
+Method TestAnObjectOnlyRoutineIsRefusedAsKeepingNoSource()
+{
+    Set tName = "EnsJob.mac"
+    Kill tQuery
+    Set tQuery("namespace") = ..#PROBENAMESPACE
+    Set tQuery("name") = tName
+    Set tSC = ##class(OcuPilot.Port.AtelierPort).Invoke("Routine", "LIST", .tQuery, "", .tRows, .tHttp, .tFault, .tDocument)
+    Set tHeld = $Select($IsObject($Get(tDocument)): tHttp _ " " _ tDocument.available _ " " _ tDocument.%Get("reason"), 1: tHttp)
+    Do $$$AssertEquals(tHeld, "200 0 objectonly", "the instance keeps EnsJob.mac as object code alone")
+    If tHeld '= "200 0 objectonly" Quit
+    Set tTool = ..#UNGUARDEDTOOL
+    Set tBefore = ##class(OcuPilot.Test.ExplorerSave).ProposalRows(..#ROUTINETOOL)
+    Do ##class(OcuPilot.Kernel.Scope).Set(..#PROBENAMESPACE)
+    Set tArgs = {"Names": (tName), "Edits": [{"Old": "    Quit 1", "New": "    Quit 2"}]}
+    Set tSC = $ClassMethod($ClassMethod(tTool, "MintClass"), "Mint", $Parameter(tTool, "DESCRIPTORCLASS"), $Parameter(tTool, "TOOLNAME"), $Username, "", "", tArgs, "OcuPilot.Kernel.Agent.Limits", .tProposal, .tHttp, .tFault, $ClassMethod(tTool, "Endpoint"), $ClassMethod(tTool, "IdParam"), tName, $ClassMethod(tTool, "IdArgument"), $ClassMethod(tTool, "SettableFields"), tTool)
+    Do $$$AssertStatusNotOK(tSC, "the mint refuses the routine")
+    Do $$$AssertEquals(tHttp _ " " _ $Select($IsObject(tFault): tFault.%Get("code"), 1: ""), "404 PORT.NOTFOUND", "it answers 404 PORT.NOTFOUND")
+    Do $$$AssertEquals($Select($IsObject(tFault): tFault.%Get("reason"), 1: ""), ##class(OcuPilot.Port.AtelierPort).#REASONNOSOURCE, "whose reason says the instance keeps no source")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ExplorerSave).ProposalRows(..#ROUTINETOOL), tBefore, "and no proposal is added")
 }
 
 /// <p>Exactly one document of the tool's own kind: a set of two names, a routine named to the Classes tool and a
@@ -327,9 +358,10 @@ Method TestASecondProposalIsRefusedOnceTheFirstIsConfirmed()
 /// <p>A result past the port's bound is refused at the mint: 1,700,000 quotation marks escape to more
 /// characters than one save takes, and 2,200,000 escape past the longest string the instance can build, which
 /// counts as over too.</p>
-/// <p>Mutation (Rule 19): <class>OcuPilot.Screen.Tool.ExplorerSaveMint</class> measures the unescaped text -- the
-/// first leg goes red; it measures without its <code>Try</code>, so the escape's throw reaches the mint's own
-/// <code>Catch</code> -- the second leg goes red (500 <code>INTERNAL</code>).</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Screen.Tool.ExplorerSourceRead.Escaped</method> answers the unescaped
+/// length, which the mint measures through -- the first leg goes red; the mint measures without its
+/// <code>Try</code>, so the escape's throw reaches the mint's own <code>Catch</code> -- the second leg goes red
+/// (500 <code>INTERNAL</code>).</p>
 Method TestAnEditPastThePortsBoundIsRefused()
 {
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "MakeClass", ..#PROBENAMESPACE, ..#ALPHA), "a probe class is saved")
