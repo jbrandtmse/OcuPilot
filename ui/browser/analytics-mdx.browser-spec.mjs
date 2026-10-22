@@ -301,7 +301,7 @@ test('AC2: a value cell\'s drill-through shows the listing the instance answers 
   }
 });
 
-// AC3. Mutation (Rule 19): end the run `canceled` without `MdxCancel` in `MdxQuery.Stop`, recompiled on the throwaway -> a worker keeps running
+// AC3. Mutation (Rule 19): end the run `canceled` without `MdxCancel` in `AnalyticsPort.Settle`, recompiled on the throwaway -> a worker keeps running
 // and the last assertion goes red.
 test('AC3: Cancel on the slow query reads Canceled and leaves nothing of the query running', async () => {
   const { context, page } = await signedInAt(browser, config, PAGE_URL, VIEWPORTS.wide, REDUCED_MOTION);

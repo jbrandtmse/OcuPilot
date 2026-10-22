@@ -171,8 +171,8 @@ ClassMethod ProjectRow(pRow, pFieldList As %List, ByRef pDroppedFields As %List)
 /// action (<code>Creates()</code>), or declares <code>SCREENLISTED</code> 1 (an agent-only write the screen
 /// lists although no action carries it, Story 20.16). A declared row action no tool bound to
 /// <var>pDescriptor</var> carries is resolved against the descriptor its <code>parentScope</code>
-/// route names. A screen that declares no read, no action and no parent -- a form page -- answers
-/// <code>[]</code>. An unadvertised tool is never listed (AD-53).</p>
+/// route names. A form page lists only the read tools bound to it (Stories 19.11 and 20.35). An
+/// unadvertised tool is never listed (AD-53).</p>
 /// <p>A tool list that cannot be built returns its error, with <var>pTools</var> empty.
 /// <var>pList</var> is the tool list it read, for a caller that would otherwise build it again
 /// (<method>Unavailable</method>), and <code>""</code> on an error.</p>

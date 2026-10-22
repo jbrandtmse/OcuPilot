@@ -2,7 +2,9 @@
 title: 'Story 20.35: The agent''s MDX read'
 type: 'feature'
 created: '2026-10-14'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '3d0323131ca3db453abb5e1193395de04c9f5dd5'
+baseline_commit: '3d0323131ca3db453abb5e1193395de04c9f5dd5'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -135,47 +137,47 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Line numbe
 
 **Execution:**
 
-- [ ] **Task 0 (re-anchor and measure; no product code).** Run `git rev-parse --show-toplevel` and confirm `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`.
+- [x] **Task 0 (re-anchor and measure; no product code).** Run `git rev-parse --show-toplevel` and confirm `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`.
   - **Re-anchor** every planned symbol above after 20.11, 20.32 and 20.33 merge, plus `ReadTool`'s count and names, `DeveloperFloor`'s `TOOLS` and `REFUSEEMPTY`.
   - **Confirm the detector.** 20.33 shipped `MdxConstructs(text, .found, .unread)` and `MdxPrepare`'s `ask`, `found` and `variables` as its cycle 3 spec says, with `AnalyticsMdx`'s obfuscation and fail-closed cases green. If it did not, halt to the lead with the evidence: this story builds no copy.
   - **Contention.** Run `git diff --stat origin/feature/OCU-1_ocupilot-mvp...origin/OCU-1-epic23`. A file this story edits beyond add-only lines goes to the lead before Task 1.
   - **Measure on `ocupilot-b-ci`**, removing what you create: the slow statement 20.33 recorded still runs at least 10 s through `MdxRun`; record each test text and its node.
 
   A measurement that contradicts this spec halts the stage with its evidence.
-- [ ] **`src/OcuPilot/Port/AnalyticsPort.cls`** (extends 20.33's port):
+- [x] **`src/OcuPilot/Port/AnalyticsPort.cls`** (extends 20.33's port):
   - **`MdxRun(ns, rs, row, column, boundSeconds, stopClass, stopKey, .answer, .stopped, .http, .fault)`.** 20.33's `Work` steps 1-3 move here unchanged but for the hook: each 0.1 s pass calls `MdxStatus`, then, unswitched (AD-16), `$ClassMethod(stopClass, "MdxStopRequested", stopKey)`. At the bound or on the hook it calls `MdxCancel`, waits up to `MDXSETTLESECONDS` for 100, answers `{outcome: "stopped", seconds}` (whole seconds run), and sets `stopped` to `"bound"` or `"request"` (else `""`). A drill's listing call keeps 20.33's `$System.Alarm` bound.
-  - **`RefuseFor(which, .http, .fault)`** (public, over the private `Refuse`; sibling `SqlPort.RefuseFor` :1226): `"sql"` builds 422 `ANALYTICS.MDX.SQL`.
+  - **`RefuseFor(which, .http, .fault)`** (public, over the private `Refuse`; sibling `SqlPort.RefuseFor` :1226): `"sql"` builds 422 `ANALYTICS.MDX.SQL`, and `"input"` 400 `ANALYTICS.MDX.INPUT` (a drill of a statement whose answer has no cells).
   - **The class doc** names the 20.35 clause.
-- [ ] **`src/OcuPilot/Api/AnalyticsError.cls`** (add): `MDXSQL` `"ANALYTICS.MDX.SQL"`, 422, with `REASONMDXSQL` (Design Notes › Strings), and `ReasonFor(pCode)`, sibling of `InteropError.ReasonFor` :590, answering every `ANALYTICS.*` reason (extend it if 20.33 added one).
-- [ ] **`src/OcuPilot/Api/Error.cls`** (add-only): after :1242, `If $Extract(pCode, 1, 10) = "ANALYTICS." Set tReason = ##class(OcuPilot.Api.AnalyticsError).ReasonFor(pCode)`.
-- [ ] **`src/OcuPilot/Area/Analytics/MdxQuery.cls`** (20.33): `Work` calls `AnalyticsPort.MdxRun` with `$ClassName()` and the run key; `stopped` `"request"` ends `canceled`, `"bound"` ends `stopped`. Add `MdxStopRequested(pKey)`, answering `SqlRun.GuardedCancelRequested`. Behavior and 20.33's tests are unchanged.
-- [ ] **`src/OcuPilot/Screen/Tool/ExplorerSqlRead.cls`**: `MaskedRows` becomes public; the scan at :207-222 becomes the public `RedactedColumns(columns, .masked) As %DynamicArray`, which `Projected` calls. Output is unchanged.
-- [ ] **`src/OcuPilot/Screen/Tool/AnalyticsMdxRead.cls`** (new; sibling `ExplorerSqlRead`):
+- [x] **`src/OcuPilot/Api/AnalyticsError.cls`** (add): `MDXSQL` `"ANALYTICS.MDX.SQL"`, 422, with `REASONMDXSQL` (Design Notes › Strings), and `ReasonFor(pCode)`, sibling of `InteropError.ReasonFor` :590, answering every `ANALYTICS.*` reason (extend it if 20.33 added one).
+- [x] **`src/OcuPilot/Api/Error.cls`**: no edit; Story 20.33 shipped the `ANALYTICS.` branch of `ReasonForToolCode` and `AnalyticsError.ReasonFor`.
+- [x] **`src/OcuPilot/Area/Analytics/MdxQuery.cls`** (20.33): `Work` calls `AnalyticsPort.MdxRun` with `$ClassName()` and the run key; `stopped` `"request"` ends `canceled`, `"bound"` ends `stopped`. Add `MdxStopRequested(pKey)`, answering `SqlRun.GuardedCancelRequested`. Behavior and 20.33's tests are unchanged.
+- [x] **`src/OcuPilot/Screen/Tool/ExplorerSqlRead.cls`**: `MaskedRows` becomes public; the scan at :207-222 becomes the public `RedactedColumns(columns, .masked) As %DynamicArray`, which `Projected` calls. Output is unchanged.
+- [x] **`src/OcuPilot/Screen/Tool/AnalyticsMdxRead.cls`** (new; sibling `ExplorerSqlRead`):
   - **Parameters:** `TOOLNAME` `analytics.mdxquery.read`; `KIND` `read`; `DESCRIPTORCLASS` `OcuPilot.Screen.Descriptor.AnalyticsMdxQuery`; `PORTCLASS` `OcuPilot.Port.AnalyticsPort`; `DESCRIPTION` (Design Notes › Strings).
-  - **`InputSchema`:** `statement` (required string, `maxLength` 100,000); `drill`, an object `{row, column}` of integers from 1 to `MDXMAXROWS` and from 1 to `MDXMAXCOLUMNS`, both required, `additionalProperties` false.
+  - **`InputSchema`:** `statement` (required string, `maxLength` 100,000); `drill`, a bare object (an advertised schema admits no nested `properties`, which refused every turn when tried) whose `row` and `column` are whole numbers from 1 to `MDXMAXROWS` and from 1 to `MDXMAXCOLUMNS`, both required and nothing else, checked by the public `DrillProblem` before the gate (400 `TOOL.ARGUMENTS`).
   - **`ResultSchema`:** `namespace`, `outcome` (enum `cells`, `rows`, `error`, `stopped`), `cube`, `columns` (strings), `rows` (arrays of strings), `rowsAvailable`, `columnsAvailable`, `truncated`, `message`, `seconds`, `redactedColumns`, `rowsSent` and `truncatedFields`; `required` `[namespace, outcome]`, closed.
   - **`PrivilegePairs`** through `Gate.RequiredPairs(DESCRIPTORCLASS)`; **`SecretArguments`** declares none.
   - **`View`.** The Always order, every port call through `$ClassMethod(..#PORTCLASS, …)`: `MdxConstructs` answering 1 is `RefuseFor("sql")`; `MdxPrepare` with `..Variables()`, whose error answer returns 200 with `namespace`, and whose `ask` 1 is `RefuseFor("sql")`; then `MdxRun` with `..BoundSeconds()`, `$ClassName()` and `Caller.TurnKey()`; then `Projected`.
   - **`Projected(ns, answer)`** (public): cells give `columns` `[""]` then the column labels, and each row `[label]` then its cells as text (`""` when empty), one row labeled `""` when there is no rows axis; `rows` are masked through `ExplorerSqlRead.RedactedColumns` and `MaskedRows`; `error` and `stopped` pass through.
-  - **Seams:** `BoundSeconds()` answers `AnalyticsPort.#MDXSECONDS`; `Variables(.variables)` answers none; `MdxStopRequested(pKey)` answers 1 when `GuardedSignals` reads stop or abandon or the renewal is at least the limits class's `LEASESECONDS` old, and 0 for `""`.
+  - **Seams:** `BoundSeconds()` answers `AnalyticsPort.#MDXSECONDS`; `Variables(.variables)` answers none; `MdxStopRequested(pKey)` answers 1 when `GuardedSignals` reads stop or abandon, the renewal is at least the limits class's `LEASESECONDS` old or absent, or the signals cannot be read (as `Loop.Boundary` stops), and 0 for `""`.
   - **The class doc** names AD-7, AD-24, AD-36, AD-39, AD-60 and AD-65.
-- [ ] **`src/OcuPilot/Screen/Context.cls`** (doc only): :174-175's "a form page … answers `[]`" becomes "a form page lists only the read tools bound to it (Stories 19.11 and 20.35)".
-- [ ] **Server tests** (each probe class: `AnalyticsProbe` `Remove`, `Enable`, `Create` before all; `Remove` and `Gone` after all; each splice leg its own node):
+- [x] **`src/OcuPilot/Screen/Context.cls`** (doc only): :174-175's "a form page … answers `[]`" becomes "a form page lists only the read tools bound to it (Stories 19.11 and 20.35)".
+- [x] **Server tests** (each probe class: `AnalyticsProbe` `Remove`, `Enable`, `Create` before all; `Remove` and `Gone` after all; each splice leg its own node):
   - **`Test/AnalyticsMdxRead.cls`** (new; sibling `SqlAgentRead`; armed `OCUPILOT_ALLOW_PRINCIPALS`): the Cells, Typed drill, Cell drill, Kind/axes, Syntax, No-analytics and Read-only rows; the Spliced, Unreadable, Resolved and Not-a-construct rows through `Test/AnalyticsMdxReadFixture` (asserting the recorder's prepare count and each node); `Projected` on a synthetic listing with a `Password` column; MDX query's context lists `analytics_mdxquery_read`; `Api.Error.ReasonForToolCode("ANALYTICS.MDX.SQL")` equals `REASONMDXSQL`.
   - **`Test/AnalyticsMdxReadFixture.cls`** (new; extends the tool): `PORTCLASS` `OcuPilot.Test.AnalyticsPortRecorder`, `BoundSeconds()` 2, `Variables()` handing `v` the node-358 `%SEARCH` text.
   - **`Test/AnalyticsPortRecorder.cls`** (new; sibling `SqlPortFixture`): counts `MdxPrepare` calls in `^||OcuPilotMdxPrepares`, then calls the port's own.
   - **`Test/AnalyticsMdxReadTurn.cls`** (new; armed `OCUPILOT_ALLOW_PRINCIPALS` and `OCUPILOT_ALLOW_TEST_PROVIDER`; the `SqlAgentRead` :299-336 pattern, `/turn?ns=USER`): the Cells and Row cap reads arrive framed as data; a `%SEARCH` call (node 359) answers code `ANALYTICS.MDX.SQL`, the step's `reason` is the sentence, and the node stays undefined.
   - **`Test/AnalyticsMdxReadJob.cls`** (new; armed `OCUPILOT_ALLOW_PRINCIPALS`; sibling `AnalyticsMdxJob`): Bound through the fixture; Stop with a turn begun (`Turn.GuardedBegin`, as `TurnToolsCase` :118), `Caller.Set`, and `JOB` `NavSettleJob.StopAfter`. Each checks `stopped`, `%GetQueryStatus` 100, and no USER `%SYS.ProcessQuery` row whose `Routine` starts with `%DeepSee`.
   - **`Test/NavSettleJob.cls`**: add `StopAfter(pKey, pUser, pSeconds)` beside `StopWhenPending` :35.
-  - **`Test/AnalyticsMdxReadGate.cls`** (new; armed `OCUPILOT_ALLOW_PRINCIPALS`): P1, P3 and P4 through 20.33's `AnalyticsMdxGate` principals and child-process probe (made reachable), with an op that calls `View` after `Scope.Set("USER")`.
+  - **`Test/AnalyticsMdxReadGate.cls`** (new; armed `OCUPILOT_ALLOW_PRINCIPALS`): P1, P3 and P4 on `AnalyticsMdxGate`'s principals (read from its parameters), through a child-process probe of its own after `AnalyticsGate`'s (`AnalyticsMdxGate` has none), which calls `View` after `Scope.Set("USER")`; plus an AD-64 adjustment leg.
   - **Rosters**, each name read from the instance: `Test/ReadTool.cls` :93-94 (+1, the name in sorted place); `Test/ToolRoundTrip.cls` `REFUSEEMPTY` gains `analytics.mdxquery.read:TOOL.ARGUMENTS`; `Test/ToolEmit.cls` :380's condition admits `OcuPilot.Screen.Tool.AnalyticsMdxRead`; `Test/DeveloperFloor.cls` `TOOLS` +1 (20.33 puts MDX query in `SCREENS`, so the developer holds its pairs) and :499's count.
-- [ ] **`scripts/ci-throwaway.sh`**: a PRINCIPALS `# classes: AnalyticsMdxRead, AnalyticsMdxReadGate, AnalyticsMdxReadJob, AnalyticsMdxReadTurn` line and a TEST_PROVIDER `# classes: AnalyticsMdxReadTurn` line.
-- [ ] **Client (add-only):** `ui/src/app/core/strings.ts` `analyticsMdxSqlReason`; one Fixed strings row in `_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md`; `ui/tools/analytics.test.mjs` pins `REASONMDXSQL` to both; then `cd ui && npm run test:tools`.
-- [ ] **`ui/browser/agent-mdx.browser-spec.mjs`** (new; sibling `agent-sql.browser-spec.mjs`). `before` refuses the live container, requires readiness and a free slot, and runs `AnalyticsProbe`; `after` removes it and asserts `Gone`. On `analytics/mdx-query?ns=USER`, each leg with its mutation comment:
+- [x] **`scripts/ci-throwaway.sh`**: a PRINCIPALS `# classes: AnalyticsMdxRead, AnalyticsMdxReadGate, AnalyticsMdxReadJob, AnalyticsMdxReadTurn` line and a TEST_PROVIDER `# classes: AnalyticsMdxReadTurn` line.
+- [x] **Client (add-only):** `ui/src/app/core/strings.ts` `analyticsMdxSqlReason`; one Fixed strings row in `_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md`; `ui/tools/analytics.test.mjs` pins `REASONMDXSQL` to both; then `cd ui && npm run test:tools`.
+- [x] **`ui/browser/agent-mdx.browser-spec.mjs`** (new; sibling `agent-sql.browser-spec.mjs`). `before` refuses the live container, requires readiness and a free slot, and runs `AnalyticsProbe`; `after` removes it and asserts `Gone`. On `analytics/mdx-query?ns=USER`, each leg with its mutation comment:
   - **AC1:** a scripted turn calls the read; the card shows the rows line and a probe category label.
   - **AC3:** a scripted `%SEARCH` call (node 360); the card reads "failed — " then `analyticsMdxSqlReason`, and `runIris` reads node 360 undefined.
   - **AC9:** `structural` with the refused card shown finds no fresh entry at 1280 light and 1280 dark.
-- [ ] **Roster sweep (Rule 30).** Search `src/OcuPilot/Test`, `ui/tools`, `ui/browser` and the `ui/src` specs for the tool count, `REFUSEEMPTY`, `TOOLS`, `MdxQuery.Work`, `MaskedRows` and `analytics_mdxquery`. Each changed file joins `(loop)`.
+- [x] **Roster sweep (Rule 30).** Search `src/OcuPilot/Test`, `ui/tools`, `ui/browser` and the `ui/src` specs for the tool count, `REFUSEEMPTY`, `TOOLS`, `MdxQuery.Work`, `MaskedRows` and `analytics_mdxquery`. Each changed file joins `(loop)`.
 
 **Acceptance Criteria:**
 
@@ -189,14 +191,69 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Line numbe
 - **AC8 (Integration: the extended siblings).** **Given** `MdxRun` and the masking helpers, **when** 20.33's screen runs and cancels and the SQL read runs, **then** 20.33's job, routes and browser tests pass, and so do `SqlAgentRead` and `SqlCredentialMask`.
 - **AC9 (structural).** **Given** the refused card on MDX query, **when** the structural check runs, **then** it finds no fresh entry in either theme.
 
-- [ ] **DW-2490 (ledger; routed by Story 20.33's review, 2026-10-21; unverified):** `MdxStatus` reads the vendor's status 100 as done without its pending-results flag, so a plugin-computed cell may be read before it is computed. This story polls `MdxStatus` too. Measure it first: run a statement over a `%KPI("%DeepSee.Median")` measure through the run and read its cell at the first status 100. If the cell can be read before it is computed, honor the pending flag in `MdxStatus` and pin it with a demonstrated mutation. If it cannot, record the measurement under `## Verification`, and the lead closes the entry at adjudication.
+- [x] **DW-2490 (ledger; routed by Story 20.33's review, 2026-10-21; unverified):** `MdxStatus` reads the vendor's status 100 as done without its pending-results flag, so a plugin-computed cell may be read before it is computed. This story polls `MdxStatus` too. Measure it first: run a statement over a `%KPI("%DeepSee.Median")` measure through the run and read its cell at the first status 100. If the cell can be read before it is computed, honor the pending flag in `MdxStatus` and pin it with a demonstrated mutation. If it cannot, record the measurement under `## Verification`, and the lead closes the entry at adjudication.
+
+### Review Findings
+
+Code review, 2026-10-21 (four layers on the full-opus tier, diff `3d032313` to the working tree; each patch verified on `ocupilot-b-ci`, mutations in Verification).
+
+- [x] [Review][Patch] MED: after a bound or a Stop, `Settle` waited on `MdxStatus`, which now updates a plug-in's pending cells and answers 99, while the vendor's `%CancelQuery` returns at once for a query it already reports 100; a Stop or the bound in the pending phase waited up to `MDXSETTLESECONDS` while the cells went on computing, for the read and for MDX query's Cancel. `Settle` now reads the vendor's own status (`MdxStatus(..., 0)`) [src/OcuPilot/Port/AnalyticsPort.cls:1330]
+- [x] [Review][Patch] MED (Rule 19, hermeticity): the read-level Stop leg posted its stop on a fixed one-second timer, and a stop that lands before `MdxStart` ends the read unstarted, so `VendorStatus` reads 0 on correct code; QA's turn Stop leg waited for any `%DeepSee` process in USER, which the turn job's own prepare satisfies. Both now wait until the vendor reports the query started (status 10 to 99) [src/OcuPilot/Test/NavSettleJob.cls:56]
+- [x] [Review][Patch] The hook leg's never-renewed assertion ran with the stop signal set, so it could not fail; it now runs before the stop is requested [src/OcuPilot/Test/AnalyticsMdxReadJob.cls:173]
+- [x] [Review][Patch] `columnsAvailable`'s description did not say the label column is not counted, while `columns` carries it [src/OcuPilot/Screen/Tool/AnalyticsMdxRead.cls:121]
+- [x] [Review][Patch] `ToolRoundTrip`'s `REFUSEEMPTY` doc block had no line for this story's row [src/OcuPilot/Test/ToolRoundTrip.cls:98]
+- [x] [Review][Patch] The browser AC9 leg's mutation comment named the contrast mutation only, not the wrap rules' [ui/browser/agent-mdx.browser-spec.mjs:214]
+- [x] [Review][Defer] The stop hook reads no kill switch, enforced read-only or privilege, so those act at the next step [src/OcuPilot/Screen/Tool/AnalyticsMdxRead.cls:252] — deferred: DW-2494, by-design (AD-30 re-reads them between steps; the Seams bullet names stop, abandon and lease)
+- [x] [Review][Defer] One `ANALYTICS.MDX.SQL` with no detail answers a construct, an unreadable text and a blank one alike [src/OcuPilot/Screen/Tool/AnalyticsMdxRead.cls:185] — deferred: DW-2495, by-design (ruling Q1 B and Design Notes › Strings fix the refusal and the description)
+- [x] [Review][Defer] Rule 2: the `Screen.Gate.Evaluate` refusal block is its third copy, beside `ExplorerSqlRead` and `ExplorerSourceRead` [src/OcuPilot/Screen/Tool/AnalyticsMdxRead.cls:171] — deferred: DW-2496, wontfix-accepted (the sibling's six-line idiom; unifying it edits `Base.cls` and two other tools)
+
+Rejected:
+
+- `low`: one `%UpdatePendingResults` pass runs with no alarm, so a large plug-in answer can overrun the bound by a pass -- the vendor's own synchronous execute loops the same call, an alarm inside the vendor's update could lose a cell (inference), and the Auto Run Result's residual risk names it; the fix adds an alarm path.
+- `low`: a pending plug-in cell that never completes keeps `MdxStatus` at 99 until the bound -- `%GetKPIValue` answers a plug-in's error as the cell's value with `$$$OK` (`%DeepSee.AbstractKPI`), which clears the pending node; only a lost KPI agent leaves it, and the read still ends at its bound.
+- `low` (maybe-false): a stopped plug-in read leaves the KPI's queued `COMPUTEKPI` task running on the vendor's agents -- that task group is the vendor's, outside the query's own groups, MDX query's Cancel left it the same before this story, and `%KPI` is a named limit; it would only be low.
+- `low`: an exception in the poll loop unwinds `MdxRun` without canceling the vendor's query -- `MdxStatus` traps its errors and both hooks read through status-returning guarded methods; unlikely, and the fix adds a guard.
+- `low`: the stop hook reads `Limits.#LEASESECONDS` where `Loop.Boundary` reads its overridable `LimitsClass()` -- equal in production; only a test limits class tells them apart.
+- `false`: a typed DRILLTHROUGH's start and a listing's read do not poll Stop -- Design Notes names it a limit and `MdxRun`'s doc says so; the bound's alarm ends both.
+- `false`: the failed-card wrap rules change every failed card with no DESIGN.md amendment and no Shared surfaces entry -- DESIGN.md's `tool-call-card` (status at the right, label type) still holds and says nothing of a long reason's overflow, which every failed card had; the specs that read the warning status (`proposal-privilege`, `auditing-write`, `users-write`, `proposal-demo`, `refused-tool`, `turn`) assert its text, never its geometry; the Auto Run Result reports the file.
+- `false`: a bound stop answers the bound, not the seconds run -- at the bound they are equal to the poll's tenth of a second, and the matrix's Bound row pins `seconds: 2`, as 20.33's run answers.
+- `false`: the EXPERIENCE.md sentence joined the shared Fixed strings row, not a new row -- it is in Fixed strings, in the row 20.33's MDX strings and `strings.ts`'s `EXPERIENCE.md:604` citations name.
+- `low`: the intent's "new `ANALYTICS.` branch" and Rule 11's `Api/Error.cls` entries, the Change Log's missing Tasks rewrites, the Auto Run Result's pre-QA counts, and the Tasks bullet's "whole seconds run" for a bound stop -- the fix is a spec edit.
 
 ## Spec Change Log
 
 - 2026-10-15, lead: the orchestrator ruled Q1 (B, fail closed): 20.33's `MdxConstructs` reads tokens and quoted strings' tokens, covers the four plus `%PARM`, runs again on the variable-resolved text after prepare, and fails closed (the agent refuses with `ANALYTICS.MDX.SQL`); this story reuses it and builds no copy; stored definitions are a named limit (DW-2451). Q2 applied: no `SurfaceCoverage` row (that roster compares write tools only); `ReadTool`, `ToolRoundTrip`, `ToolEmit` and `DeveloperFloor` carry the tool. Back to `draft` for a re-plan after 20.33's amendment.
 - 2026-10-15, spec gate (runner, cycle 2): the plan's intent-contract edits carry ruling Q1 B and are accepted as written (Approach bullet 2, the gate steps and detection bullet, the pivot-variable Never bullet, the Spliced, Unreadable, Resolved and Syntax rows); the spine carries the Story 20.35 clauses (AD-65, AD-36, AD-39, AD-7, AD-21, and AD-24 corrected at origin).
 
+- 2026-10-21, implement (slot B): `drill` made a bare object (the emitted subset admits no nested `properties`), `Api.Error` left unedited (shipped by 20.33), and the mutation table replaced with the demonstrated one (AC6 and AC8 rows corrected).
+
 ## Review Triage Log
+
+### 2026-10-21 -- Review pass
+
+- verdicts: 21 findings (the verification-gap layer 9, the intent-alignment layer 11, the lead's own read 1) -- high 0, medium 0, low 12, false 9, maybe-false 0
+- findings:
+  - `[low]` `[patch]` `DrillProblem`'s integer, type and maximum branches have no test -- real: the drill cases sent only a missing column, a row of 0 and a stray key. Fixed: `TestTheArgumentsAreValidatedFirst` gains 1.5, `"1"`, and a row and a column one above the port's caps (derived from the port); removing the integer and maximum checks reddens that test alone, and the tool file's blob hash is identical after the revert.
+  - `[low]` `[reject]` `MdxStatus`'s pending update runs outside the bound and Stop, and its error branch is untested -- measured on `ocupilot-b-ci`: one pass over 2,000 `%DeepSee.Median` cells of the 50,000-fact grid took 1.11 s (6.4 s from start to status 100), so a bound or Stop waits one pass; the vendor's own synchronous execute loops the same call, and a plug-in's code is the person's, a named limit. A seam for the error branch costs more than the branch.
+  - `[low]` `[reject]` AC6's HSCUSTOM and P4 legs, and AC7's context-listing leg, have no mutation of their own -- Rule 19 asks one demonstrated mutation per AC: AC6 has three (`Evaluate`, the cache WRITE check, the read-only check) and AC7 has the roster row. Skipping `View`'s `MdxAdmit` would prepare the HSCUSTOM statement and redden the recorder count; the P4 test's header says why no single mutation reddens it (two layers refuse).
+  - `[low]` `[patch]` AC9's mutation row pins contrast, not the wrap rules the story added -- real: the shared card's rules had no mutation of their own. Fixed: the wrap rules were removed, the bundle rebuilt and redeployed, and browser AC9 went red (`474px past its containing block`); reverted (blob hash identical), rebuilt and redeployed, green. The row is in `## Verification`.
+  - `[low]` `[reject]` The Stop leg is armed by a fixed one-second timer on a hand-built turn -- the matrix row says "requested after 1 s"; either landing (before the start, or in the poll) ends `stopped` with seconds below the bound, nothing running, and `AnalyticsMdxJob`'s cancel legs pin the shared loop.
+  - `[low]` `[reject]` `MdxStopRequested`'s unreadable-signal branch is untested -- reaching it needs a broken turn store; the branch copies `Loop.Boundary`'s stop on a failed read, and a seam costs more than the branch.
+  - `[low]` `[reject]` The blank statement's "before the gate" ordering is not pinned -- moot: the blank pre-check was removed (see the intent-alignment blank row).
+  - `[low]` `[reject]` `AnalyticsMdxReadJob` and `AnalyticsMdxReadGate` do not sweep stale state before each test -- each test creates and removes its own turn or adjustment; a crashed earlier run leaves state that turns the next run red, never green.
+  - `[low]` `[reject]` The `request` branch of `MdxQuery.Process` is an equivalent mutant -- the store ends a row whose cancel flag is set `canceled` whatever `Work` finishes it with; 20.33's behavior is unchanged.
+  - `[false]` `[reject]` Only three statements run through a real turn -- the matrix runs its rows "through the tool's `View`" and asks a real turn only for the row cap; AC1 and AC3 add turn legs.
+  - `[false]` `[reject]` The Stop test begins its turn by hand -- the stop hook reads the signals a real turn sets (`GuardedSignals`), and `Loop.Run` stashes the key `Caller.TurnKey()` returns.
+  - `[false]` `[reject]` Stop does not reach a listing's read or a DRILLTHROUGH's start -- a named limit in Design Notes; the bound's alarm ends both, and `AnalyticsMdxJob` pins them.
+  - `[false]` `[reject]` The credential-column leg feeds `Projected` a synthetic answer -- the matrix row reads "a listing answer with a column named `Password`", and the probe cubes have no such column.
+  - `[low]` `[patch]` A blank statement answers 400 `ANALYTICS.MDX.INPUT` before the gate, where the intent's fail-closed text refuses it as a construct (422 `ANALYTICS.MDX.SQL`) -- real deviation, cosmetic effect. Fixed: the pre-check is removed, so a blank text reaches the detector after the gate; `RefuseFor("input")` stays for a drill of a statement with no cells; the test, the class docs and this spec's text now say so.
+  - `[false]` `[reject]` `drill` is a bare object checked by `DrillProblem`, a second layer beside the schema -- forced: the registry's emitted subset admits no nested `properties` (tried: every turn failed `TURN.UNAVAILABLE`); the check runs in the argument step before the gate.
+  - `[false]` `[reject]` `MdxStatus` waits for plug-in cells, a change outside the intent -- the DW-2490 item in Tasks directs it, and the measurement showed `@Computing 0.00%` cells at status 100.
+  - `[low]` `[reject]` The failed-card wrap rules in `_components.scss` apply to every failed tool card -- needed for AC9 (a 140-character sentence ran 474 px past the card), scoped to the warning status, and `turn` (10) and `refused-tool` (1) browser specs are green; the rest of the browser suite is CI's. Reported as a footprint extension.
+  - `[false]` `[reject]` `MaskedRows` is public and `RedactedColumns` is new -- both are Tasks items (Rule 31).
+  - `[false]` `[reject]` No `Api/Error.cls` edit for the new `ANALYTICS.` branch -- Story 20.33 shipped the branch; the task records "no edit".
+  - `[false]` `[reject]` None of the files the intent forbids is touched; `scripts/ci-throwaway.sh` gains the four classes' arming lines, as Tasks says.
+  - `[low]` `[patch]` (lead) `AnalyticsPort.Settle` kept `MdxCancel`'s status in a variable it never read -- replaced by `Do ..MdxCancel(...)`, as 20.33's `Stop` called it.
 
 ## Design Notes
 
@@ -289,27 +346,70 @@ Shared surfaces: `ReadTool`'s count and names, `REFUSEEMPTY`, `ToolEmit`'s branc
 - `(loop)` After the redeploy, one file per call: `cd ui && OCUPILOT_BROWSER_ORIGIN=http://localhost:52777 OCUPILOT_BROWSER_CONTAINER=ocupilot-b-ci node --test --test-concurrency=1 browser/agent-mdx.browser-spec.mjs`, then the same for `browser/analytics-mdx.browser-spec.mjs`. Expected: green.
 - **Lead-owned (the runner's):** the full ObjectScript sweep, `bash scripts/smoke.sh --container ocupilot-b-ci --user _SYSTEM --password SYS`, and Rule 30's fresh check. **Left to CI:** the full browser suite.
 
-**Planned pinning mutations (Rule 19).** Revert each byte-identical; reload, or rebuild and redeploy, the whole tree before the next.
+**Pinning mutations (Rule 19), each demonstrated on `ocupilot-b-ci`:** applied, the whole `src` tree reloaded (the bundle rebuilt and redeployed for the client one), the named test red, then reverted with the file's git blob hash equal before and after.
 
-| AC | Mutation | Expected red |
+| AC | Mutation | Red |
 |---|---|---|
-| AC1 | `Projected` drops the label column | `AnalyticsMdxRead`'s cells leg, `AnalyticsMdxReadTurn`, browser AC1 |
-| AC2 | `MdxRun` ignores `drill` | `AnalyticsMdxRead`'s cell-drill leg |
-| AC3 | `View` skips `MdxConstructs` | the Spliced and Unreadable legs (a prepare recorded; Unreadable answers `error`) |
+| AC1 | `Projected` drops the label column | `AnalyticsMdxRead` cells and plug-in legs, `AnalyticsMdxReadTurn`, browser AC1 |
+| AC2 | `MdxRun` ignores `drill` | `AnalyticsMdxRead` cell-drill leg, `AnalyticsMdxReadGate` writer leg |
+| AC3 | `View` skips `MdxConstructs` | all 15 spellings, the unreadable and the blank legs (a prepare recorded) |
 | AC3 | `View` ignores `MdxPrepare`'s `ask` | the Resolved leg (node 358 defined, no 422) |
-| AC3 | `View` refuses on `found` only, not `unread` | the Unreadable leg |
-| AC3 | `ReasonForToolCode` loses the `ANALYTICS.` branch | the reason leg, `AnalyticsMdxReadTurn`, browser AC3 |
-| AC4 | `MdxRun` ignores the deadline | `AnalyticsMdxReadJob`'s bound leg |
-| AC4 | `MdxStopRequested` answers 0 | `AnalyticsMdxReadJob`'s Stop leg |
-| AC5 | Kind accepts CREATE | `AnalyticsMdxRead`'s kind leg |
-| AC6 | `View` skips `Screen.Gate.Evaluate` | `AnalyticsMdxReadGate` P4 |
+| AC3 | `View` refuses on `found` only | the Unreadable legs |
+| AC3 | `ReasonForToolCode` loses the `ANALYTICS.` branch | the sentence leg, `AnalyticsMdxReadTurn`, browser AC3 |
+| AC3 | the tool also refuses the text `[%SE/**/ARCH]` | the Not-a-construct leg |
+| AC4 | `Waited` ignores the deadline | `AnalyticsMdxReadJob` bound leg (150 s) |
+| AC4 | `AnalyticsMdxRead.MdxStopRequested` answers 0, or loses its lease test | `AnalyticsMdxReadJob` Stop leg and hook leg |
+| AC5 | Kind accepts CREATE and DROP | `AnalyticsMdxRead` kind leg |
+| AC6 | `View` skips `Screen.Gate.Evaluate` | `AnalyticsMdxReadGate` adjustment leg only: P4 stays green because `MdxAdmit` repeats `MDXPAIRS` |
+| AC6 | `MdxAdmit` skips the cache WRITE check; skips the read-only check | `AnalyticsMdxReadGate` P1 leg; `AnalyticsMdxRead` HSLIB leg |
 | AC7 | The `ToolRoundTrip` row is removed | `ToolRoundTrip`, alone |
-| AC8 | `Work` maps `stopped` `"request"` to `stopped` | `AnalyticsMdxJob`'s cancel leg |
-| AC9 | A pale color on the failed line | browser AC9 |
+| AC8 | `MdxQuery.MdxStopRequested` answers 0 | `AnalyticsMdxJob` cancel legs (6 red). `Work` mapping `request` to `stopped` reddens nothing: the store ends a row whose cancel flag is set `canceled` whatever `Work` finishes it with |
+| AC9 | The failed status word takes the card's own background color | browser AC9 (contrast, both themes) |
+| AC9 | The wrap rules are removed from `_components.scss` (`overflow-wrap`, `text-align`, and the `:has` rule's `flex` and `min-width`) | browser AC9 (`app-tool-call-card>span.ocu-tool-call-status: 474px past its containing block`) |
+| DW-2490 | `MdxStatus` drops the pending branch | `AnalyticsMdx` and `AnalyticsMdxRead` plug-in legs (`@Computing 0.00%`) |
+| - | `RedactedColumns` dropped; `DrillProblem` skipped, or only its integer and maximum checks; schema check skipped; `MdxPrepare`'s error answer ignored; the sentence changed on one side | the credential, drill, argument, syntax and `analytics.test.mjs` legs |
+
+**QA additions (Rule 19), each demonstrated on `ocupilot-b-ci` with the whole `src` tree reloaded and the file's blob hash equal before and after.**
+
+- (QA) `src/OcuPilot/Test/AnalyticsMdxReadTurn.cls`: `TestATurnDrillsIntoACellAndAListingIsCutToTheContextRowCap` and `TestThePersonsStopEndsAReadInATurnAndLeavesNothingRunning` (the class holds 4 tests).
+- (QA) `src/OcuPilot/Test/AnalyticsMdxRead.cls`: `TestAVendorErrorLongerThanTheCellBoundIsCut` (the class holds 15 tests).
+- mutation: `MdxRun` ignores `drill` (`Set pRow = ""`) -> `AnalyticsMdxReadTurn` drill leg, alone in its class.
+- mutation: `AnalyticsMdxRead.MdxStopRequested` answers 0 -> `AnalyticsMdxReadTurn` stop leg, alone in its class (the turn is still running 41 s after the stop is posted).
+- mutation: `AnalyticsPort.ErrorAnswer` answers the vendor's whole text -> `AnalyticsMdxRead` long-error leg, alone in its class.
+- Final runs on the reloaded tree: `AnalyticsMdxRead` 15, `AnalyticsMdxReadGate` 4, `AnalyticsMdxReadTurn` 4, `AnalyticsMdxReadJob` 3, `AnalyticsMdx` 15, `AnalyticsMdxJob` 13, `AnalyticsMdxRoutes` 9, `AnalyticsMdxGate` 2, the roster batch 84, `npm run test:tools` 2,113, browser `agent-mdx` 3 and `analytics-mdx` 11, all green.
+
+**Code review additions (Rule 19), on `ocupilot-b-ci` with the whole `src` tree reloaded and the tool's blob hash equal before and after each mutation.**
+
+- (review) mutation: `AnalyticsMdxRead.MdxStopRequested` answers 0 for a turn never renewed -> `AnalyticsMdxReadJob` hook leg ("a turn that was never renewed asks"), alone in its class (run 203).
+- (review) mutation: `AnalyticsMdxRead.MdxStopRequested` answers 0 -> `AnalyticsMdxReadJob` Stop leg (`seconds` 2: the stop, posted once the vendor reported the query started, never reached it) and hook leg (run 204).
+- (review) QA's turn Stop leg now waits on the vendor's status too. mutation: `MdxStopRequested` answers 0 → `AnalyticsMdxReadTurn` Stop leg red (the turn still `running` 40 s after the stop), re-run by the lead on the fresh `ocupilot-b-ci` after the forward merge; reverted, blob hash equal, green again.
+- (review) `Settle`'s wait on the vendor's own status has no pin of its own: landing a Stop inside a plug-in's pending window is timing-bound.
+- (review) Final runs on the reloaded tree: `AnalyticsMdxReadJob` 3 (run 202), `AnalyticsMdxReadTurn` 4 (205), `AnalyticsMdxJob` 13 (206), `AnalyticsMdx` 15 (207), `AnalyticsMdxRead` 15 (208), all green.
+
+**Implement record (slot B, HEAD `3d032313`).**
+
+- **Task 0.** `MdxConstructs`, `MdxPrepare`'s `ask`, `found` and `variables`, and `AnalyticsMdx` (14 green) are as 20.33 shipped them. The plan's `Work` steps 1-3 are `MdxQuery.Process`, `Execute`, `Stop` and the drill and listing branches, now `AnalyticsPort.Ran`, `Waited`, `Settle` and `StoppedAnswer` (`Alarmed`, `AlarmSeconds`, `MDXPOLLPAUSE` moved with them). `Asked` is `MdxQuery.MdxStopRequested`. `AnalyticsError.ReasonFor` and `Api.Error`'s branch were shipped; the tool count was 399, now 400; `DeveloperFloor`'s declared tools were fifty-two, now fifty-three. A stop reports `seconds` as the bound for `bound` (20.33's tests read 2 and 0.5) and the whole seconds run for `request`. The slow grid statement ran 150 s with the deadline mutated. Probe nodes: 351-356 the `%SEARCH` spellings, 357 `%PARM`, 358 the resolved text, 359 the turn leg, 360 the browser leg.
+- **Decisions.** (1) `drill` is a bare object (see Tasks). (2) A signal read that fails stops the read, as `Loop.Boundary` stops the turn. (3) A failed card's status wraps (`_components.scss`, scoped to `.ocu-tool-call-status-warning`): the 140-character sentence ran 474 px past the card in the structural walk, so AC9 failed before the change. (4) The stop leg's statement is the bound leg's crossjoin with its dimensions swapped, because a completed run is answered from the vendor's cache.
+- **DW-2490: real.** A `%KPI("%DeepSee.Median", ...)` statement is reported 100 with `pPendingResults` 1, its cells reading `@Computing 0.00%`; `%UpdatePendingResults` cleared it in three passes to 47.5. `MdxStatus` now updates the pending results and answers 99 until none remain.
+- **Bundle.** Initial total 2.00 MB raw, 355.04 kB estimated transfer, under the 2,500 kB warning.
+- **Runs (all green).** `AnalyticsMdxRead` 14, `AnalyticsMdxReadGate` 4, `AnalyticsMdxReadJob` 3, `AnalyticsMdxReadTurn` 2, `AnalyticsMdx` 15, `AnalyticsMdxJob` 13, `AnalyticsMdxRoutes` 9, `AnalyticsMdxGate` 2, the roster batch (84 tests), 22 registry-dependent classes, `npm run test:tools` 2,113, `agent-mdx` and `analytics-mdx` browser specs (3 and 11), the checker (146 harness tests) and `lint-docs.sh`.
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-Re-plan (cycle 2) under ruling Q1 B. Changed: the refusal calls 20.33's `MdxConstructs` and reads `MdxPrepare`'s `ask` (cycle 1's port detection task and its conditional 20.33 test legs are gone); `unread` and a resolved-text `ask` refuse too, with new Unreadable and Resolved legs on the agent path; the turn and browser refusal legs use `%SEARCH`, because a braced `%PARM` never prepares on this build; the real-turn legs move to `AnalyticsMdxReadTurn`; `MdxRun` reports `stopped` so `Work` keeps `canceled`; spine drafts updated; anchors re-read at `c079f81c`. No instance measurement: 20.33's plans measured every vendor behavior relied on. For the lead, intent-contract edits made to carry the ruling (please validate at the gate): Approach bullet 2; Always' gate steps 4-5 and the detection bullet (Q1 B, fail closed, DW-2451); Never's pivot-variable bullet (production only); the matrix's Spliced row (five words, each measured obfuscation, nodes 351-357), the new Unreadable and Resolved rows, and the Syntax row's input `SELEKT FROM [OcuPilotProbeVisits]` (the old text fails the lexer, so under Q1 B it is refused).
+**Summary.** `analytics.mdxquery.read` is a read tool bound to MDX query. It runs one MDX statement in the turn job through the new `AnalyticsPort.MdxRun`, which the screen's background run now shares (`MdxQuery.Work` calls it with a stop hook). It refuses with 422 `ANALYTICS.MDX.SQL` a statement `MdxConstructs` finds a construct in or cannot read, before the prepare, and one whose resolved text `MdxPrepare` asks for, after it. The run polls the vendor, the turn's stop and abandon signals and the lease, and a bound or a stop leaves nothing running. DW-2490 was real and is fixed: `MdxStatus` now updates a plug-in's pending cells and answers 99 until none remain.
+
+**Files changed.**
+
+- Product: `Port/AnalyticsPort.cls` (`MdxRun`, `RefuseFor`, the pending update in `MdxStatus`), `Api/AnalyticsError.cls` (`MDXSQL`), `Area/Analytics/MdxQuery.cls` (calls `MdxRun`, `MdxStopRequested`), `Screen/Tool/AnalyticsMdxRead.cls` (new), `Screen/Tool/ExplorerSqlRead.cls` (`RedactedColumns`, public `MaskedRows`), `Screen/Context.cls` and `Screen/Descriptor/AnalyticsMdxQuery.cls` (docs).
+- Tests: `AnalyticsMdxRead`, `AnalyticsMdxReadFixture`, `AnalyticsPortRecorder`, `AnalyticsMdxReadGate`, `AnalyticsMdxReadJob`, `AnalyticsMdxReadTurn` (new); `AnalyticsMdx` (plug-in leg), `AnalyticsMdxJob` (mutation lines), `NavSettleJob` (`StopAfter`), the `ReadTool`, `ToolRoundTrip`, `ToolEmit` and `DeveloperFloor` rosters.
+- Client and scripts: `strings.ts`, EXPERIENCE.md (one Fixed strings row), `ui/tools/analytics.test.mjs`, `ui/browser/agent-mdx.browser-spec.mjs` (new), one comment in `ui/browser/analytics-mdx.browser-spec.mjs`, `scripts/ci-throwaway.sh` (arming lines), `ui/src/styles/_components.scss` (the failed card's wrap).
+- Footprint extensions beyond the spec's list: `ui/src/styles/_components.scss`, `Screen/Descriptor/AnalyticsMdxQuery.cls` (doc), `Test/AnalyticsMdxJob.cls` (mutation lines), `Test/AnalyticsMdx.cls` (one test).
+
+**Review.** 21 findings: 4 low patched, 8 low rejected, 9 false rejected, none deferred (`deferred: []`); rows and reasons are in the triage log. Follow-up review recommended: false (no high, no medium patched).
+
+**Verification.** On `ocupilot-b-ci` after the last reload, one class per call and each run read from `ci-runner`: `AnalyticsMdxRead` 14, `AnalyticsMdxReadGate` 4, `AnalyticsMdxReadJob` 3, `AnalyticsMdxReadTurn` 2, `AnalyticsMdx` 15, `AnalyticsMdxJob` 13, `AnalyticsMdxRoutes` 9, `AnalyticsMdxGate` 2, all green; the roster batch (`ReadTool`, `ToolRoundTrip`, `ToolEmit`, `DeveloperFloor`, `SurfaceCoverage`, `SqlAgentRead`, `SqlCredentialMask`, `ExplorerDescriptor`, `AnalyticsMdxDescriptor`) 84 green before the blank-statement patch, which touches none of them. `npm run test:tools` 2,113 pass; `npm run build` passes its prebuild chain with an initial total of 2.00 MB (355.04 kB estimated transfer), under the 2,500 kB warning; `check-objectscript` 0 problems, `test_check_objectscript` 146 pass, `lint-docs.sh` clean; browser `agent-mdx` 3, `analytics-mdx` 11, `refused-tool` 1 green on the final bundle. Mutations are in `## Verification`. The full ObjectScript sweep, `smoke.sh`, Rule 30's fresh check and the full browser suite are the runner's and CI's.
+
+**Residual risk.** A plug-in pass longer than a second delays a bound or a Stop by that pass (measured 1.11 s for 2,000 Median cells; a plug-in's code is the person's). `MdxQuery.Process`'s `request` branch ends the row as before, but the store would end it `canceled` anyway, so that branch is not separately testable.

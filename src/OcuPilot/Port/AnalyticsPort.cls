@@ -35,8 +35,8 @@
 /// writes <code>^DeepSee.Session</code>, <code>%GetDimensionMembers</code>, which writes the MDX cache, or
 /// <code>%GetFavoritesForUser</code>, which deletes a favorite whose item is gone. It prepares no statement of its own.</p>
 /// <p><b>Every refusal is a written reason</b> (AD-39): the vendor's text goes to <method>LogFault</method> and nowhere else.</p>
-/// <p><b>MDX (Story 20.33, AD-65).</b> The <code>Mdx*</code> methods run one MDX statement through
-/// <code>%DeepSee.ResultSet</code> for the MDX query screen and, later, the agent's MDX read, behind <parameter>MDXPAIRS</parameter>
+/// <p><b>MDX (Stories 20.33 and 20.35, AD-65).</b> The <code>Mdx*</code> methods run one MDX statement through
+/// <code>%DeepSee.ResultSet</code> for the MDX query screen and the agent's MDX read, behind <parameter>MDXPAIRS</parameter>
 /// and WRITE on the database the vendor's result cache lives in (<method>MdxAdmit</method>). The statement is untrusted text: it
 /// reaches only <code>%PrepareMDX</code>; <method>MdxConstructs</method> is the one detection of the five constructs the vendor
 /// splices into SQL or evaluates as ObjectScript (<parameter>MDXCONSTRUCTS</parameter>), read from the vendor's own tokens, run before
@@ -44,6 +44,10 @@
 /// (at most two axes) and DRILLTHROUGH run. A drill-through is composed here from the vendor's own filters for one cell
 /// (<method>MdxDrill</method>); nothing from a client enters it. The caps are this class's <code>MDX*</code> parameters, each with
 /// its reason. The vendor's <code>%CancelQuery</code> checks no owner, so the caller's run row is the owner check.</p>
+/// <p><b>The agent's MDX read (Story 20.35).</b> <method>MdxRun</method> is the one run loop of the screen's background run and of the agent's
+/// read tool: it starts the prepared result set, polls the vendor and the caller's stop hook, and on the bound or a stop cancels the vendor's
+/// query and waits for it to finish. <method>RefuseFor</method> publishes <code>ANALYTICS.MDX.SQL</code>, the refusal of a statement
+/// <method>MdxConstructs</method> finds a construct in or cannot read, to a tool that may not name the error class.</p>
 /// <p>Seams a test subclass overrides: <method>GateClass</method>, <method>RoutineResource</method>, <method>Collect</method> and
 /// <method>LogFault</method>. Production overrides none.</p>
 Class OcuPilot.Port.AnalyticsPort Extends (%RegisteredObject, OcuPilot.Kernel.RowFetch)
@@ -152,6 +156,9 @@ Parameter MDXCONSEQUENCE = "This query runs server-side code or SQL with your ri
 
 /// <p>The SQLCODE the instance answers a statement its alarm stopped with.</p>
 Parameter MDXALARMSQLCODE As INTEGER = -450;
+
+/// <p>The seconds between the run loop's looks at the vendor's query and at the caller's stop hook.</p>
+Parameter MDXPOLLPAUSE = 0.1;
 
 /// <p>The cell and answer bounds <method>FetchRows</method> applies are the MDX ones.</p>
 Parameter MAXCELL As INTEGER = {..#MDXMAXCELL};
@@ -616,6 +623,16 @@ ClassMethod Conflict(pCode As %String, Output pHttpStatus As %Integer, Output pF
     Quit ..Refuse(409, ##class(OcuPilot.Api.Error).#CONFLICT, pCode, ##class(OcuPilot.Api.AnalyticsError).ReasonFor(pCode), .pHttpStatus, .pFault)
 }
 
+/// <p>The refusal a tool names by <var>pWhich</var>, so that a tool, which may not name the error class, can publish it:
+/// <code>sql</code> (422 <code>ANALYTICS.MDX.SQL</code>, a statement <method>MdxConstructs</method> finds a construct in or cannot read) and
+/// <code>input</code> (400 <code>ANALYTICS.MDX.INPUT</code>, a drill of a statement whose answer has no cells). Any other name is 500 <code>INTERNAL</code>, logged.</p>
+ClassMethod RefuseFor(pWhich As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+{
+    If pWhich = "sql" Quit ..Refuse(422, ##class(OcuPilot.Api.Error).#VALIDATIONFAILED, ##class(OcuPilot.Api.AnalyticsError).#MDXSQL, ##class(OcuPilot.Api.AnalyticsError).#REASONMDXSQL, .pHttpStatus, .pFault)
+    If pWhich = "input" Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.AnalyticsError).#MDXINPUT, ##class(OcuPilot.Api.AnalyticsError).#REASONMDXINPUT, .pHttpStatus, .pFault)
+    Quit ..Fail("an agent tool asked for a refusal the port does not publish", $$$ERROR($$$GeneralError, pWhich), .pHttpStatus, .pFault)
+}
+
 /// <p>An unexpected failure: the generic internal fault on the wire, the raw status to the log.</p>
 ClassMethod Fail(pMessage As %String, pStatus As %Status, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
@@ -881,14 +898,29 @@ ClassMethod MdxStart(pNamespace As %String, pRS, Output pCube As %String, Output
 /// <p>The vendor's status of the started result set <var>pRS</var>: 0 to 99 while it works, 100 when it is done or failed. When it
 /// has failed, <var>pError</var> is the vendor's status, which reads as an error; a canceled query is 100 with the vendor's
 /// "Query cancelled". A raised error reads as done with that error.</p>
-ClassMethod MdxStatus(pNamespace As %String, pRS, Output pError As %Status) As %Integer
+/// <p><b>A query whose cells a plug-in computes</b> (<code>%KPI("%DeepSee.Median", ...)</code>) reports 100 while those cells still read
+/// <code>@Computing 0.00%</code>, and flags them pending (measured). This asks the vendor to update them, as its own synchronous execute does,
+/// and answers 99 until none is pending, so 100 means every cell holds its value. A failed update is 100 with its error.</p>
+/// <p>With <var>pUpdate</var> 0 it updates nothing and answers the vendor's own status, 100 with cells still pending included: a stopped
+/// run's wait (<method>Settle</method>) computes no cell, and the vendor's cancel does not reach a query it already reports 100.</p>
+ClassMethod MdxStatus(pNamespace As %String, pRS, Output pError As %Status, pUpdate As %Boolean = 1) As %Integer
 {
     Set pError = $$$OK
     Set tStatus = 0
     Set tOrigNS = $NAMESPACE
     Try {
         Set $NAMESPACE = pNamespace
-        Set tStatus = pRS.%GetStatus(, .pError)
+        Set tStatus = pRS.%GetStatus(, .pError, .tPending)
+        If pUpdate && (tStatus = 100) && tPending && $$$ISOK(pError) {
+            Set tUpdateSC = pRS.%UpdatePendingResults(.tPending)
+            If $$$ISERR(tUpdateSC) {
+                Set pError = tUpdateSC
+            } Else {
+                ; Read again: the vendor switches a finished query to its local cache only when none is pending.
+                Set tStatus = pRS.%GetStatus(, .pError, .tPending)
+                If (tStatus = 100) && tPending && $$$ISOK(pError) Set tStatus = 99
+            }
+        }
         Set $NAMESPACE = tOrigNS
     } Catch ex {
         Set $NAMESPACE = tOrigNS
@@ -1132,6 +1164,209 @@ ClassMethod MdxAnswer(pNamespace As %String, pRS, pSeconds As %Numeric, Output p
         Set pAnswer = ""
         Quit ..Mapped(tCaught, "the MDX answer could not be read", .pHttpStatus, .pFault)
     }
+    Quit $$$OK
+}
+
+/// <p>Run the prepared result set <var>pRS</var> of <var>pNamespace</var> to its answer, bounded by <var>pBound</var> seconds and by the
+/// caller's stop hook: the one run loop of MDX query's background run and of the agent's MDX read (Story 20.35).</p>
+/// <ol>
+/// <li>The statement: <method>MdxStart</method> under an alarm of the time that remains, because the vendor resolves the statement's members,
+/// and runs any SQL they name, inside the start. A DRILLTHROUGH's start is its whole wait; a SELECT is then polled every
+/// <parameter>MDXPOLLPAUSE</parameter> seconds.</li>
+/// <li>A cell's drill, when <var>pRow</var> and <var>pColumn</var> are not empty: <method>MdxDrill</method>, then the same wait on its
+/// listing.</li>
+/// <li>The answer: <method>MdxAnswer</method>, a listing's read under an alarm of the time that remains.</li>
+/// </ol>
+/// <p>The stop hook is <code>$ClassMethod(pStopClass, "MdxStopRequested", pStopKey)</code>, answering 1 to stop. It is asked before a start,
+/// on each poll, before a drill and before a listing is read, and only unswitched (AD-16). It does not reach a listing's read, which waits
+/// in the caller: the alarm ends that at the bound. An empty <var>pStopClass</var> never stops. Whenever the run is stopped, the vendor's
+/// query is canceled (<method>MdxCancel</method>) and the vendor given up to <parameter>MDXSETTLESECONDS</parameter> seconds to report it
+/// finished.</p>
+/// <p><var>pAnswer</var> is <method>MdxAnswer</method>'s; the vendor's error answer (<method>ErrorAnswer</method>) when the query or its
+/// drill failed; or <code>{outcome: "stopped", seconds}</code> with <var>pStopped</var> <code>bound</code> (<code>seconds</code> is
+/// <var>pBound</var>) or <code>request</code> (<code>seconds</code> is the whole seconds run). Otherwise <var>pStopped</var> is
+/// <code>""</code>. A refusal is an error status with <var>pHttpStatus</var> and <var>pFault</var>. The drill's result set is released
+/// here; <var>pRS</var> is the caller's to release (<method>MdxRelease</method>). The caller's namespace is unchanged on return.</p>
+ClassMethod MdxRun(pNamespace As %String, pRS, pRow As %Integer, pColumn As %Integer, pBound As %Numeric, pStopClass As %String, pStopKey As %String, Output pAnswer As %DynamicObject, Output pStopped As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+{
+    Set pAnswer = ""
+    Set pStopped = ""
+    Set pHttpStatus = 0
+    Set pFault = ""
+    Set tDrill = ""
+    Try {
+        Set tSC = ..Ran(pNamespace, pRS, pRow, pColumn, pBound, pStopClass, pStopKey, .tDrill, .pAnswer, .pStopped, .pHttpStatus, .pFault)
+    } Catch ex {
+        Do ..MdxRelease(pNamespace, .tDrill)
+        Throw ex
+    }
+    Do ..MdxRelease(pNamespace, .tDrill)
+    Quit tSC
+}
+
+/// <p>The work of <method>MdxRun</method>, holding a drill's result set in <var>pDrill</var> so that <method>MdxRun</method> releases it on
+/// every path.</p>
+ClassMethod Ran(pNamespace As %String, pRS, pRow As %Integer, pColumn As %Integer, pBound As %Numeric, pStopClass As %String, pStopKey As %String, ByRef pDrill, Output pAnswer As %DynamicObject, Output pStopped As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tStart = $ZHorolog
+    Set tDeadline = tStart + pBound
+    Do ..Waited(pNamespace, pRS, pStopClass, pStopKey, tDeadline, (..MdxKind(pRS) = "DRILLTHROUGH"), .tOutcome, .tError)
+    Set tResultRS = pRS
+    If (tOutcome = "done") && (pRow '= "") && ..StopAsked(pStopClass, pStopKey) Set tOutcome = "canceled"
+    If (tOutcome = "done") && (pRow '= "") {
+        Set tSC = ..MdxDrill(pNamespace, pRS, pRow, pColumn, .pDrill, .pHttpStatus, .pFault, .tDrillAnswer)
+        If $$$ISERR(tSC) Quit tSC
+        If $IsObject($Get(tDrillAnswer)) {
+            Set pAnswer = tDrillAnswer
+            Quit $$$OK
+        }
+        Do ..Waited(pNamespace, pDrill, pStopClass, pStopKey, tDeadline, 1, .tOutcome, .tError)
+        Set tResultRS = pDrill
+    }
+    If tOutcome = "canceled" Quit ..StoppedAnswer("request", $ZHorolog - tStart, pBound, .pAnswer, .pStopped)
+    If tOutcome = "stopped" Quit ..StoppedAnswer("bound", $ZHorolog - tStart, pBound, .pAnswer, .pStopped)
+    If tOutcome = "error" {
+        Set pAnswer = ..ErrorAnswer(tError)
+        Quit $$$OK
+    }
+    Set tListed = 0
+    If ..MdxKind(tResultRS) = "DRILLTHROUGH" {
+        ; The listing's statement runs when its rows are read, so a stop that reached no statement yet is read here.
+        If ..StopAsked(pStopClass, pStopKey) Quit ..StoppedAnswer("request", $ZHorolog - tStart, pBound, .pAnswer, .pStopped)
+        Set tRemaining = tDeadline - $ZHorolog
+        If tRemaining <= 0 Quit ..StoppedAnswer("bound", $ZHorolog - tStart, pBound, .pAnswer, .pStopped)
+        Set tListed = ..AlarmSeconds(tRemaining)
+    }
+    Set tSC = ..MdxAnswer(pNamespace, tResultRS, +$FNumber($ZHorolog - tStart, "", 2), .tResult, .pHttpStatus, .pFault, tListed)
+    If $$$ISERR(tSC) Quit tSC
+    If tResult.%Get("outcome") = "stopped" Quit ..StoppedAnswer("bound", $ZHorolog - tStart, pBound, .pAnswer, .pStopped)
+    Set pAnswer = tResult
+    Quit $$$OK
+}
+
+/// <p>Run the prepared result set <var>pRS</var> to its end, the stop hook or <var>pDeadline</var> (<code>$ZHorolog</code> units);
+/// <var>pOutcome</var> is <code>done</code>, <code>error</code> (with the vendor's status in <var>pError</var>), <code>canceled</code>
+/// (the hook) or <code>stopped</code> (the bound). A stop already asked is read before the start. The start runs under an alarm of the
+/// time that remains, and the alarm is a <code>stopped</code> run (<method>Alarmed</method>). With <var>pBlocking</var>, a DRILLTHROUGH's,
+/// the start is the whole run here; otherwise this polls the vendor's agents. Whenever the run is canceled or stopped, the vendor's query
+/// is canceled and given up to <parameter>MDXSETTLESECONDS</parameter> seconds to report finished.</p>
+ClassMethod Waited(pNamespace As %String, pRS, pStopClass As %String, pStopKey As %String, pDeadline As %Numeric, pBlocking As %Boolean, Output pOutcome As %String, Output pError As %Status) [ Private ]
+{
+    Set pOutcome = "done"
+    Set pError = $$$OK
+    Set tCube = ""
+    Set tQueryKey = ""
+    If ..StopAsked(pStopClass, pStopKey) {
+        Set pOutcome = "canceled"
+        Quit
+    }
+    Set tRemaining = pDeadline - $ZHorolog
+    If tRemaining <= 0 {
+        Set pOutcome = "stopped"
+        Quit
+    }
+    Set tAlarmed = 0
+    Try {
+        Do $System.Alarm.Set(..AlarmSeconds(tRemaining))
+        Set tAlarmed = 1
+        Set tSC = ..MdxStart(pNamespace, pRS, .tCube, .tQueryKey)
+        Do $System.Alarm.Clear()
+        Set tAlarmed = 0
+    } Catch ex {
+        If tAlarmed Do $System.Alarm.Clear()
+        Set tSC = ex.AsStatus()
+    }
+    If $$$ISERR(tSC) {
+        If ..Alarmed(tSC) {
+            Set pOutcome = "stopped"
+            Do ..Settle(pNamespace, pRS, tCube, tQueryKey)
+        } Else {
+            Set pOutcome = "error"
+            Set pError = tSC
+        }
+        Quit
+    }
+    If pBlocking Quit
+    For {
+        Set tStatus = ..MdxStatus(pNamespace, pRS, .tVendorError)
+        If tStatus = 100 {
+            If $$$ISERR(tVendorError) {
+                Set pOutcome = "error"
+                Set pError = tVendorError
+            }
+            Quit
+        }
+        If ..StopAsked(pStopClass, pStopKey) {
+            Set pOutcome = "canceled"
+            Do ..Settle(pNamespace, pRS, tCube, tQueryKey)
+            Quit
+        }
+        If $ZHorolog > pDeadline {
+            Set pOutcome = "stopped"
+            Do ..Settle(pNamespace, pRS, tCube, tQueryKey)
+            Quit
+        }
+        Hang ..#MDXPOLLPAUSE
+    }
+}
+
+/// <p>Whether the caller's stop hook asks the run to stop: <code>$ClassMethod(pStopClass, "MdxStopRequested", pStopKey)</code>, run
+/// unswitched; 0 for an empty <var>pStopClass</var>.</p>
+ClassMethod StopAsked(pStopClass As %String, pStopKey As %String) As %Boolean [ Private ]
+{
+    If pStopClass = "" Quit 0
+    Quit ''$ClassMethod(pStopClass, "MdxStopRequested", pStopKey)
+}
+
+/// <p>Cancel the vendor's query <var>pQueryKey</var> of cube <var>pCube</var>, and wait up to <parameter>MDXSETTLESECONDS</parameter>
+/// seconds for the vendor to report <var>pRS</var> finished, a plug-in's pending cells left uncomputed. Nothing happens for a run that never
+/// named its query.</p>
+ClassMethod Settle(pNamespace As %String, pRS, pCube As %String, pQueryKey As %String) [ Private ]
+{
+    If (pCube = "") || (pQueryKey = "") Quit
+    Do ..MdxCancel(pNamespace, pCube, pQueryKey)
+    Set tUntil = $ZHorolog + ..#MDXSETTLESECONDS
+    For {
+        If ..MdxStatus(pNamespace, pRS, .tError, 0) = 100 Quit
+        If $ZHorolog > tUntil Quit
+        Hang ..#MDXPOLLPAUSE
+    }
+}
+
+/// <p>Whether the error status <var>pStatus</var> is the run's alarm: an <code>&lt;ALARM&gt;</code> that interrupted code, or the SQL
+/// engine's SQLCODE <parameter>MDXALARMSQLCODE</parameter>, the form an alarm takes when it interrupts a statement (measured: a member's
+/// <code>%SEARCH</code> SQL in a start answers #5540 with that SQLCODE).</p>
+ClassMethod Alarmed(pStatus As %Status) As %Boolean [ Private ]
+{
+    If $System.Status.GetErrorText(pStatus) [ "<ALARM>" Quit 1
+    Set tAlarmed = 0
+    Try {
+        Do $System.Status.DecomposeStatus(pStatus, .tErrors)
+        For tI = 1:1:+$Get(tErrors) {
+            If ($Get(tErrors(tI, "code")) = 5540) && ($Get(tErrors(tI, "param", 1)) = ..#MDXALARMSQLCODE) Set tAlarmed = 1
+        }
+    } Catch {
+        Set tAlarmed = 0
+    }
+    Quit tAlarmed
+}
+
+/// <p>The whole seconds an alarm is set for when <var>pRemaining</var> seconds are left: the next whole second, and at least one, because an
+/// alarm of zero seconds never fires.</p>
+ClassMethod AlarmSeconds(pRemaining As %Numeric) As %Integer [ Private ]
+{
+    Quit $Select(pRemaining <= 1: 1, 1: (pRemaining \ 1) + ((pRemaining # 1) > 0))
+}
+
+/// <p>The stopped answer: <var>pAnswer</var> is <code>{outcome: "stopped", seconds}</code> and <var>pStopped</var> is <var>pWhy</var>,
+/// <code>bound</code> or <code>request</code>. <code>seconds</code> is <var>pBound</var> for the bound and the whole seconds
+/// <var>pElapsed</var> for a request.</p>
+ClassMethod StoppedAnswer(pWhy As %String, pElapsed As %Numeric, pBound As %Numeric, Output pAnswer As %DynamicObject, Output pStopped As %String) As %Status [ Private ]
+{
+    Set pStopped = pWhy
+    Set pAnswer = {}
+    Do pAnswer.%Set("outcome", "stopped", "string")
+    Do pAnswer.%Set("seconds", $Select(pWhy = "bound": +pBound, 1: pElapsed \ 1), "number")
     Quit $$$OK
 }
 

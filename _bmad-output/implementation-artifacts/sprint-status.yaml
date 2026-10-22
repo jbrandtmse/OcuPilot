@@ -379,7 +379,7 @@ development_status:
   20-32-the-analytics-links: done
   20-33-the-mdx-query-tool: done
   20-34-the-cube-manager-s-build-and-synchronize: ready-for-dev
-  20-35-the-agent-s-mdx-read: ready-for-dev
+  20-35-the-agent-s-mdx-read: done
   20-36-investigate: backlog
   epic-20-retrospective: optional
 

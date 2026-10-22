@@ -6,7 +6,8 @@
 /// parameters (ERROR #5290).</p>
 /// <p>Every refusal is rendered on the <parameter>OcuPilot.Api.Error.CONFLICT</parameter> slug with 409: the
 /// vendor's analytics classes check no <code>%DeepSee_*</code> resource, so the port decides before any call. The
-/// <code>ANALYTICS.MDX.*</code> codes (Story 20.33) are MDX query's, each on the slug and status its comment names.</p>
+/// <code>ANALYTICS.MDX.*</code> codes (Story 20.33) are MDX query's, each on the slug and status its comment names;
+/// <code>ANALYTICS.MDX.SQL</code> (Story 20.35) is the agent's MDX read's.</p>
 Class OcuPilot.Api.AnalyticsError Extends %RegisteredObject
 {
 
@@ -55,6 +56,11 @@ Parameter MDXLOST = "ANALYTICS.MDX.LOST";
 
 Parameter REASONMDXLOST = "The MDX run ended without an answer; run it again.";
 
+/// <p>422: the agent's MDX read refuses a statement that may run server-side code or SQL, or that cannot be read as MDX.</p>
+Parameter MDXSQL = "ANALYTICS.MDX.SQL";
+
+Parameter REASONMDXSQL = "This query may run server-side code or SQL, which the agent's read never runs; you can run it yourself on MDX query after confirming.";
+
 /// <p>The sentence for <var>pCode</var>, or <code>""</code> for a code this class does not hold.</p>
 ClassMethod ReasonFor(pCode As %String) As %String
 {
@@ -67,6 +73,7 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#MDXFULL Quit ..#REASONMDXFULL
     If pCode = ..#MDXNOTFOUND Quit ..#REASONMDXNOTFOUND
     If pCode = ..#MDXLOST Quit ..#REASONMDXLOST
+    If pCode = ..#MDXSQL Quit ..#REASONMDXSQL
     Quit ""
 }
 

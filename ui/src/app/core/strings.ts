@@ -7668,6 +7668,8 @@ export const STRINGS = {
   analyticsRefusalMdxNotFound: 'No MDX run of yours has this id; an ended run is kept for 15 minutes.',
   /** EXPERIENCE.md:604 */
   analyticsRefusalMdxLost: 'The MDX run ended without an answer; run it again.',
+  /** EXPERIENCE.md:604 */
+  analyticsMdxSqlReason: 'This query may run server-side code or SQL, which the agent\'s read never runs; you can run it yourself on MDX query after confirming.',
 } as const;
 
 /**
