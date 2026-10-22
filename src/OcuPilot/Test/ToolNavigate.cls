@@ -114,7 +114,6 @@ Method TestAC2EntityNotAllowedOnACompositeOfMoreThanOnePart()
     Set (tOwnAccept, tOwnRefuse, tParentAccept, tParentRefuse) = 0
     Set tPointer = 0
     While $ListNext(tRoutes, tPointer, tRoute) {
-        If tRoute = "" Continue
         Set tDescriptor = ##class(OcuPilot.Screen.Registry).DescriptorForRoute(tRoute)
         If tDescriptor = "" Continue
         Set tParentRoute = $ClassMethod(tDescriptor, "ParentScope")

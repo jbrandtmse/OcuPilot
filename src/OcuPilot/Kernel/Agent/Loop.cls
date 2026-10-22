@@ -924,8 +924,12 @@ ClassMethod AnswerClientCall(pKey As %String, pUser As %String, pReadOnly As %Bo
         ; The route's one id: the selected row's, or the parent's on a parent-scoped screen. The
         ; call carries at most one of the two (Navigate.Directive), and the settled detail names
         ; whichever it carried.
-        Set tRouteId = $Select(tEntityId '= "": tEntityId, 1: $Get(tParentId))
-        Set tRouteIdKey = $Select($Get(tParentId) '= "": "parentId", 1: "entityId")
+        Set tRouteId = tEntityId
+        Set tRouteIdKey = "entityId"
+        If (tRouteId = "") && ($Get(tParentId) '= "") {
+            Set tRouteId = tParentId
+            Set tRouteIdKey = "parentId"
+        }
         Set tAnnounceSC = ##class(OcuPilot.Kernel.State.Step).GuardedAppend(pKey, "announce", tToolName, "running", "", tRouteId, "", pLimitsClass, .tAnnounceSeq, .tAnnounceStored, tRoute, "", "", "", "", 0)
         If $$$ISERR(tAnnounceSC) {
             Set tSC = tAnnounceSC
@@ -1021,10 +1025,10 @@ ClassMethod AnswerClientCall(pKey As %String, pUser As %String, pReadOnly As %Bo
         Set tAnnounceStatus = $Select(tOutcome = "opened": "ok", 1: "error")
         Set tAnnounceCode = $Select(tOutcome = "opened": "", 1: tOutcomeCode)
         ; The route id is carried through unchanged on settle (pText) -- GuardedUpdate's own
-        ; ApplyContent unconditionally overwrites Text, so passing "" here would erase the row
-        ; selection an "opened" announcement already recorded, and any later read (a poll before
-        ; the next render, a reload) would then render the no-entity phrasing for a navigation
-        ; that did select a row.
+        ; ApplyContent unconditionally overwrites Text, so passing "" here would erase the id an
+        ; "opened" announcement already recorded, and any later read (a poll before the next
+        ; render, a reload) would then render the no-entity phrasing for a navigation that did
+        ; name one.
         Set tUpdateSC = ##class(OcuPilot.Kernel.State.Step).GuardedUpdate(pKey, tAnnounceSeq, tAnnounceStatus, "", tRouteId, tAnnounceCode, pLimitsClass)
         If $$$ISERR(tUpdateSC) {
             Set tSC = tUpdateSC

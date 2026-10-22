@@ -1,6 +1,6 @@
 /// <p><code>shell.screen.open</code> (AD-5, AD-11 rule 3, DW-1084): the one tool by which the agent
-/// moves the browser, whether opening a screen or selecting a row -- opening a screen with an id is
-/// the same argument pair. Client-fulfilled (<parameter>FULFILMENT</parameter> = <code>client</code>):
+/// moves the browser, whether opening a screen, selecting one of its rows or opening it for the
+/// item it belongs to. Client-fulfilled (<parameter>FULFILMENT</parameter> = <code>client</code>):
 /// this class validates the call and, through <method>Directive</method>, answers the allow-listed
 /// <code>route</code> and the optional <code>entityId</code> or <code>parentId</code> the browser is
 /// asked to open, but its own <method>View</method> never runs on the instance --
@@ -302,7 +302,7 @@ ClassMethod AcceptsEntityId(pDescriptor As %String) As %Boolean
 /// <p>Whether the screen <var>pDescriptor</var> declares can be opened for one item of its parent
 /// (AD-5, DW-1462): it has a <code>parentScope</code>, and the screen that names -- whose primary
 /// entity type the route id identifies -- has an id of the shape <method>IdShapeAccepted</method>
-/// admits. A parent route no built screen declares is refused.</p>
+/// admits. A parent route no descriptor declares is refused.</p>
 ClassMethod AcceptsParentId(pDescriptor As %String) As %Boolean
 {
     Set tAccepts = 0

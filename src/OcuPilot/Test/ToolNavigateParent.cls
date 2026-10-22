@@ -3,61 +3,33 @@
 /// which refuse both, then a turn through <class>OcuPilot.Test.TurnLoopProbe</class> in
 /// <class>OcuPilot.Test.TurnNavigate</class>'s pattern. The registry-wide partition is
 /// <class>OcuPilot.Test.ToolNavigate</class>'s sweep.</p>
-/// <p>Every turn reserved here runs as <code>$Username</code>, writes nothing but its own turn and a
-/// probe agent definition, and removes both. Needs no arming variable.</p>
-Class OcuPilot.Test.ToolNavigateParent Extends %UnitTest.TestCase
+/// <p>Every turn reserved here runs as <code>$Username</code> on
+/// <class>OcuPilot.Test.TurnToolsCase</class>'s harness, whose teardown removes each turn, its
+/// ledger rows and the probe definitions. Needs no arming variable.</p>
+Class OcuPilot.Test.ToolNavigateParent Extends OcuPilot.Test.TurnToolsCase
 {
 
 Parameter TOOL = "OcuPilot.Screen.Tool.Navigate";
-
-Parameter LOOP = "OcuPilot.Test.TurnLoopProbe";
-
-Parameter PORT = "OcuPilot.Test.ProviderPortProbe";
-
-Parameter PROBEKEY = "probe-local-abcdefghijklmnop";
 
 /// <p>A parent-scoped screen whose parent's id is one part (a task's id): it takes
 /// <code>parentId</code>.</p>
 Parameter DETAILS = "tasks/schedule/details";
 
-Property PreparedKeys [ MultiDimensional ];
-
-Method %OnNew(initvalue As %String = "") As %Status
-{
-    Set tSC = ##super(initvalue)
-    If $$$ISERR(tSC) Quit tSC
-    Kill ..PreparedKeys
-    Quit $$$OK
-}
-
+/// <p>The base's setup, then the navigation limits: a navigating turn's model, tool and announce
+/// steps need more than the base probe's step cap.</p>
 Method OnBeforeOneTest() As %Status
 {
-    Do $ClassMethod(..#PORT, "Reset")
-    Do $ClassMethod(..#PORT, "SetSecretClass", "OcuPilot.Test.SecretProbe")
-    Do $ClassMethod(..#PORT, "SetSslState", "present")
-    Do ##class(OcuPilot.Test.SecretProbe).SetValue(..#PROBEKEY)
-    Do $ClassMethod(..#LOOP, "Reset")
+    Set tSC = ##super()
     Do $ClassMethod(..#LOOP, "SetLimitsClass", "OcuPilot.Test.TurnLimitsNav")
-    Kill ..PreparedKeys
-    Quit ##class(OcuPilot.Test.AgentFixture).RemoveProbeDefinitions(.tRemaining)
+    Quit tSC
 }
 
+/// <p>A turn stopped during the wait is never finished, and a reserve holds the user's slot lock
+/// until a finish releases it, so the slot is handed back before the base's teardown checks it.</p>
 Method OnAfterOneTest() As %Status
 {
-    Do $ClassMethod(..#PORT, "Reset")
-    Do $ClassMethod(..#LOOP, "Reset")
-    Set tKey = ""
-    For {
-        Set tKey = $Order(..PreparedKeys(tKey))
-        If tKey = "" Quit
-        Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Turn).GuardedDelete(tKey), "turn " _ tKey _ " is removed")
-    }
-    ; A reserve holds the user's slot lock until a finish releases it.
     Lock -^OcuPilotTurnSlot($Username)
-    Do $$$AssertEquals(##class(OcuPilot.Test.TurnFixture).SlotOwner($Username), "", "no turn slot is left held")
-    Do $$$AssertStatusOK(##class(OcuPilot.Test.AgentFixture).RemoveProbeDefinitions(.tRemaining), "the probe definitions are removed")
-    Do $$$AssertEquals(tRemaining, 0, "and none survives")
-    Quit $$$OK
+    Quit ##super()
 }
 
 /// <p>The directive's answer for a call of <var>pArgs</var>: the status, then the route, the row id,
@@ -153,33 +125,12 @@ ClassMethod NavReply(pRoute As %String, pArgument As %String, pId As %String) As
 {
     Set tInput = {"route": (pRoute)}
     Do tInput.%Set(pArgument, pId, "string")
-    Set tBody = {"content": [], "usage": {"input_tokens": 1, "output_tokens": 0}}
-    Do tBody.%Set("stop_reason", "tool_use", "string")
-    Do tBody.content.%Push({"type": "tool_use", "id": "toolu_nav", "name": "shell_screen_open", "input": (tInput)})
-    Quit tBody.%ToJSON()
+    Quit ..Reply("", [{"id": "toolu_nav", "name": "shell_screen_open", "input": (tInput)}])
 }
 
-/// <p>An enabled probe definition on the stub transport.</p>
-Method Definition() As %String
-{
-    Set tRow = ##class(OcuPilot.Kernel.State.Agent).%New()
-    Set tRow.Name = "OcuPilotProbeAgentToolNavigateParent"
-    Set tRow.Provider = "probe-local"
-    Set tRow.Model = "probe-local-model-1"
-    Set tRow.EndpointUrl = "https://api.anthropic.com/v1/messages"
-    Set tRow.CredType = "env"
-    Set tRow.EnvVarName = "OCUPILOT_PROBE_LOCAL_KEY"
-    Set tRow.MaxTokens = 4000
-    Set tRow.MaxIterationsPerTurn = 10
-    Set tRow.Enabled = 1
-    Set tRow.ConnectionVerified = 1
-    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Agent).GuardedCreate(tRow), "a probe definition is created")
-    Set tId = tRow.%Id()
-    Set tRow = ""
-    Quit tId
-}
-
-/// <p>Reserve and begin a turn for <var>pDefinitionId</var>, answering its key and start time.</p>
+/// <p>Reserve and begin a turn for <var>pDefinitionId</var>, answering its key and start time. Apart
+/// from the base's <method>RunTurn</method>, so a test can start the browser's settle job between
+/// the begin and the run.</p>
 Method Begin(pDefinitionId As %String, Output pStarted As %Integer) As %String
 {
     Set tLimits = $ClassMethod(..#LOOP, "LimitsClass")
@@ -192,13 +143,51 @@ Method Begin(pDefinitionId As %String, Output pStarted As %Integer) As %String
     Quit tKey
 }
 
-/// <p>Run the scripted turn <var>pKey</var> to its end and finish it.</p>
-Method RunTurn(pKey As %String, pDefinitionId As %String, pStarted As %Integer)
+/// <p>Run the scripted turn <var>pKey</var>, begun by <method>Begin</method>, to its end and
+/// finish it.</p>
+Method RunBegun(pKey As %String, pDefinitionId As %String, pStarted As %Integer)
 {
     Set tSC = $ClassMethod(..#LOOP, "Run", pKey, $Username, pDefinitionId, "open it", 0, ##class(OcuPilot.Api.Router).#ADMINRESOURCES, pStarted, .tOutcome)
     Do $$$AssertStatusOK(tSC, "the loop returns")
     Do $$$AssertEquals(tOutcome("state"), "completed", "the turn completes")
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Turn).GuardedFinish(pKey, $Username, tOutcome("state"), tOutcome("code"), tOutcome("limit"), tOutcome("reply"), tOutcome("errorSeq"), $ClassMethod(..#LOOP, "LimitsClass")), "and finished")
+}
+
+/// <p>Run a scripted turn whose call names <var>pArgument</var> (<code>entityId</code> or
+/// <code>parentId</code>) as <var>pId</var> on <var>pRoute</var>, and the browser opens it: the
+/// pending navigation and the announce step carry the route's one id, and the model is told the
+/// screen opened under the argument it named, with no member for the other.</p>
+Method OpenedTurn(pRoute As %String, pArgument As %String, pId As %String)
+{
+    Set tOther = $Select(pArgument = "parentId": "entityId", 1: "parentId")
+    Set tId = ..NewDefinition()
+    Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(200, ..NavReply(pRoute, pArgument, pId))
+    Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(200, ..Reply("opened"))
+    Set tKey = ..Begin(tId, .tStarted)
+    Job ##class(OcuPilot.Test.NavSettleJob).SettleWhenPending(tKey, "opened", "", 10)
+    Do ..RunBegun(tKey, tId, tStarted)
+
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Nav).GuardedPending(tKey, .tPSeq, .tPRoute, .tPEntity, .tPSettled, .tPOutcome, .tPCode), "the directive reads")
+    Do $$$AssertEquals(tPRoute, pRoute, "the pending navigation names the route")
+    Do $$$AssertEquals(tPEntity, pId, "and holds the route's id")
+    Do $$$AssertEquals(tPOutcome, "opened", "and settled opened")
+
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Step).GuardedRows(tKey, .tRows), "the steps read")
+    Set tAnnounceText = "unset"
+    Set tIterator = tRows.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tRow) {
+        If tRow.kind = "announce" Set tAnnounceText = tRow.text
+    }
+    Do $$$AssertEquals(tAnnounceText, pId, "the announce step carries the route's id, and settling keeps it")
+
+    Set tSettled = ##class(OcuPilot.Test.TurnNavigate).NavToolResult(2)
+    Do $$$AssertTrue($IsObject(tSettled), "the settled tool_result reached the next provider call")
+    Set tBody = ##class(OcuPilot.Test.TurnWireFixture).Unwrapped(tSettled.content, .tWrapped)
+    Set tContent = ##class(%DynamicAbstractObject).%FromJSON(tBody)
+    Do $$$AssertEquals(tContent.%Get(pArgument), pId, "the model is told the " _ pArgument _ " it opened for: " _ tSettled.content)
+    Do $$$AssertEquals(tContent.%IsDefined(tOther), 0, "and no " _ tOther)
+    Do $$$AssertEquals(tContent.route, pRoute, "on the route it asked for")
+    Do $$$AssertEquals(''tContent.navigated, 1, "reporting the navigation as performed")
 }
 
 /// <p>A turn whose scripted call names <code>parentId</code>: the announce step and the pending
@@ -212,49 +201,20 @@ Method RunTurn(pKey As %String, pDefinitionId As %String, pStarted As %Integer)
 /// red.</p>
 Method TestAParentIdTurnStoresTheRouteIdAndSettlesWithParentId()
 {
-    Set tId = ..Definition()
-    Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(200, ..NavReply(..#DETAILS, "parentId", "7"))
-    Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(200, ##class(OcuPilot.Test.TurnNavigate).EndReply("opened"))
-    Set tKey = ..Begin(tId, .tStarted)
-    Job ##class(OcuPilot.Test.NavSettleJob).SettleWhenPending(tKey, "opened", "", 10)
-    Do ..RunTurn(tKey, tId, tStarted)
-
-    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Nav).GuardedPending(tKey, .tPSeq, .tPRoute, .tPEntity, .tPSettled, .tPOutcome, .tPCode), "the directive reads")
-    Do $$$AssertEquals(tPRoute, ..#DETAILS, "the pending navigation names the route")
-    Do $$$AssertEquals(tPEntity, "7", "and holds the parent's id as the route's id")
-    Do $$$AssertEquals(tPOutcome, "opened", "and settled opened")
-
-    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Step).GuardedRows(tKey, .tRows), "the steps read")
-    Set tAnnounceText = "unset"
-    Set tIterator = tRows.%GetIterator()
-    While tIterator.%GetNext(.tIndex, .tRow) {
-        If tRow.kind = "announce" Set tAnnounceText = tRow.text
-    }
-    Do $$$AssertEquals(tAnnounceText, "7", "the announce step carries the parent's id, and settling keeps it")
-
-    Set tSettled = ##class(OcuPilot.Test.TurnNavigate).NavToolResult(2)
-    Do $$$AssertTrue($IsObject(tSettled), "the settled tool_result reached the next provider call")
-    Set tBody = ##class(OcuPilot.Test.TurnWireFixture).Unwrapped(tSettled.content, .tWrapped)
-    Set tContent = ##class(%DynamicAbstractObject).%FromJSON(tBody)
-    Do $$$AssertEquals(tContent.parentId, "7", "the model is told the parent it opened for: " _ tSettled.content)
-    Do $$$AssertEquals(tContent.%IsDefined("entityId"), 0, "and no row")
-    Do $$$AssertEquals(tContent.route, ..#DETAILS, "on the route it asked for")
+    Do ..OpenedTurn(..#DETAILS, "parentId", "7")
 }
 
-/// <p>A turn whose scripted call names <code>entityId</code> on a parent-scoped screen is refused
-/// before any announcement, and the model's result names the argument it must send differently.</p>
-/// <p>Mutation (Rule 19): drop the <code>entityId</code> refusal's <code>detail.argument</code> --
-/// the result assertion goes red; let <method>OcuPilot.Screen.Tool.Navigate.AcceptsEntityId</method>
-/// ignore the parent scope -- the refusal assertions go red; reword
-/// <parameter>OcuPilot.Api.Error.REASONNAVENTITYNOTALLOWED</parameter> -- the sentence assertion
-/// goes red.</p>
-Method TestAnEntityIdOnAParentScopedScreenIsRefusedBeforeAnyAnnouncement()
+/// <p>A turn whose scripted call names <var>pArgument</var> as <var>pId</var> on <var>pRoute</var>
+/// is refused before any announcement: no announce step, no directive, the tool step carries the
+/// code and the written sentence, and the model's result names the code and the refused
+/// argument.</p>
+Method RefusedTurn(pRoute As %String, pArgument As %String, pId As %String)
 {
-    Set tId = ..Definition()
-    Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(200, ..NavReply(..#DETAILS, "entityId", "7"))
-    Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(200, ##class(OcuPilot.Test.TurnNavigate).EndReply("refused"))
+    Set tId = ..NewDefinition()
+    Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(200, ..NavReply(pRoute, pArgument, pId))
+    Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(200, ..Reply("refused"))
     Set tKey = ..Begin(tId, .tStarted)
-    Do ..RunTurn(tKey, tId, tStarted)
+    Do ..RunBegun(tKey, tId, tStarted)
 
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Step).GuardedRows(tKey, .tRows), "the steps read")
     Set tHasAnnounce = 0
@@ -279,7 +239,109 @@ Method TestAnEntityIdOnAParentScopedScreenIsRefusedBeforeAnyAnnouncement()
     Set tBody = ##class(OcuPilot.Test.TurnWireFixture).Unwrapped(tResult.content, .tWrapped)
     Set tContent = ##class(%DynamicAbstractObject).%FromJSON(tBody)
     Do $$$AssertEquals(tContent.code, "NAV.ENTITYNOTALLOWED", "the model is told the code: " _ tResult.content)
-    Do $$$AssertEquals(tContent.detail.argument, "entityId", "and the argument it must send differently")
+    Do $$$AssertEquals(tContent.detail.argument, pArgument, "and the argument it must send differently")
+}
+
+/// <p>A turn whose scripted call names <code>entityId</code> on a parent-scoped screen is refused
+/// before any announcement, and the model's result names the argument it must send differently.</p>
+/// <p>Mutation (Rule 19): drop the <code>entityId</code> refusal's <code>detail.argument</code> --
+/// the result assertion goes red; let <method>OcuPilot.Screen.Tool.Navigate.AcceptsEntityId</method>
+/// ignore the parent scope -- the refusal assertions go red; reword
+/// <parameter>OcuPilot.Api.Error.REASONNAVENTITYNOTALLOWED</parameter> -- the sentence assertion
+/// goes red.</p>
+Method TestAnEntityIdOnAParentScopedScreenIsRefusedBeforeAnyAnnouncement()
+{
+    Do ..RefusedTurn(..#DETAILS, "entityId", "7")
+}
+
+/// <p>The same refusal for <code>parentId</code> on a screen with no parent, naming
+/// <code>parentId</code>.</p>
+/// <p>Mutation (Rule 19): build the <code>parentId</code> refusal's fault with the argument
+/// <code>entityId</code> -- this goes red on the argument the model is told.</p>
+Method TestAParentIdOnAScreenWithNoParentIsRefusedBeforeAnyAnnouncement()
+{
+    Do ..RefusedTurn("tasks/schedule", "parentId", "7")
+}
+
+/// <p>The same refusal for a model-composed two-part id on an item tab, as <code>entityId</code>
+/// and as <code>parentId</code>: the second composite grammar the four item tabs used to accept
+/// (AD-5).</p>
+/// <p>Mutation (Rule 19): let <method>OcuPilot.Screen.Tool.Navigate.AcceptsEntityId</method> ignore
+/// the parent scope -- the <code>entityId</code> turn goes red; let
+/// <method>OcuPilot.Screen.Tool.Navigate.AcceptsParentId</method> read the screen's own id shape --
+/// the <code>parentId</code> turn goes red.</p>
+Method TestAComposedIdOnAnItemTabIsRefusedBeforeAnyAnnouncementAsEntityId()
+{
+    Do ..RefusedTurn("interoperability/productions/items/jobs", "entityId", "Prod||Item")
+}
+
+Method TestAComposedIdOnAnItemTabIsRefusedBeforeAnyAnnouncementAsParentId()
+{
+    Do ..RefusedTurn("interoperability/productions/items/jobs", "parentId", "Prod||Item")
+}
+
+/// <p>A row of a screen's own still travels as <code>entityId</code>: the pending navigation and
+/// the announce step hold it, and the model is told <code>entityId</code> with no
+/// <code>parentId</code>.</p>
+/// <p>Mutation (Rule 19): hand <method>OcuPilot.Kernel.State.Nav.GuardedRequest</method> the parent
+/// id alone in <method>OcuPilot.Kernel.Agent.Loop.AnswerClientCall</method> -- the pending
+/// assertion goes red.</p>
+Method TestAnOwnRowTurnStillStoresTheRowAndSettlesWithEntityId()
+{
+    Do ..OpenedTurn("permissions/users", "entityId", "_SYSTEM")
+}
+
+/// <p>A parent-scoped call the browser answers, or that no browser answers before the wait lapses,
+/// settles with <code>parentId</code> and no <code>entityId</code>: the Nav row settles to
+/// <var>pOutcome</var>, the announce step ends in error with the code and still holds the parent's
+/// id, and the model is told the code with the parent.</p>
+Method SettledTurn(pBrowserAnswers As %Boolean, pOutcome As %String, pCode As %String)
+{
+    Set tId = ..NewDefinition()
+    Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(200, ..NavReply(..#DETAILS, "parentId", "7"))
+    Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(200, ..Reply("settled"))
+    Set tKey = ..Begin(tId, .tStarted)
+    If pBrowserAnswers Job ##class(OcuPilot.Test.NavSettleJob).SettleWhenPending(tKey, pOutcome, pCode, 10)
+    Do ..RunBegun(tKey, tId, tStarted)
+
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Nav).GuardedPending(tKey, .tPSeq, .tPRoute, .tPEntity, .tPSettled, .tPOutcome, .tPCode), "the directive reads")
+    Do $$$AssertEquals(tPSettled _ "|" _ tPOutcome _ "|" _ tPCode, "1|" _ pOutcome _ "|" _ pCode, "the navigation settled " _ pOutcome)
+    Do $$$AssertEquals(tPEntity, "7", "and still holds the parent's id")
+
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Step).GuardedRows(tKey, .tRows), "the steps read")
+    Set tAnnounce = "unset"
+    Set tIterator = tRows.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tRow) {
+        If tRow.kind = "announce" Set tAnnounce = tRow.status _ "|" _ tRow.code _ "|" _ tRow.text
+    }
+    Do $$$AssertEquals(tAnnounce, "error|" _ pCode _ "|7", "the announce step ends in error with the code and keeps the parent's id")
+
+    Set tSettled = ##class(OcuPilot.Test.TurnNavigate).NavToolResult(2)
+    Do $$$AssertTrue($IsObject(tSettled), "the result reached the next provider call")
+    Set tBody = ##class(OcuPilot.Test.TurnWireFixture).Unwrapped(tSettled.content, .tWrapped)
+    Set tContent = ##class(%DynamicAbstractObject).%FromJSON(tBody)
+    Do $$$AssertEquals(''tContent.navigated, 0, "reporting that nothing moved")
+    Do $$$AssertEquals(tContent.code, pCode, "with the code: " _ tSettled.content)
+    Do $$$AssertEquals(tContent.parentId, "7", "naming the parent it was for")
+    Do $$$AssertEquals(tContent.%IsDefined("entityId"), 0, "and no row")
+}
+
+/// <p>The departing screen refuses a navigation to a parent-scoped screen.</p>
+/// <p>Mutation (Rule 19): emit <code>parentId</code> from
+/// <method>OcuPilot.Kernel.Agent.Dispatch.SettleClient</method> for an opened outcome only -- this
+/// goes red.</p>
+Method TestAParentIdCallTheBrowserRefusesSettlesWithParentId()
+{
+    Do ..SettledTurn(1, "refused", "NAV.REFUSEDUNSAVED")
+}
+
+/// <p>No browser answers a navigation to a parent-scoped screen before the wait lapses.</p>
+/// <p>Mutation (Rule 19): hand <method>OcuPilot.Kernel.State.Step.GuardedUpdate</method> an empty
+/// text in the settle in <method>OcuPilot.Kernel.Agent.Loop.AnswerClientCall</method> -- the announce
+/// assertion goes red.</p>
+Method TestAParentIdCallWhoseWaitLapsesSettlesWithParentId()
+{
+    Do ..SettledTurn(0, "unavailable", "NAV.UNAVAILABLE")
 }
 
 /// <p>While a navigation to a parent-scoped screen waits for the browser, the announce step already
@@ -290,7 +352,7 @@ Method TestAnEntityIdOnAParentScopedScreenIsRefusedBeforeAnyAnnouncement()
 /// this goes red.</p>
 Method TestTheAnnouncementCarriesTheParentIdWhileTheBrowserWaits()
 {
-    Set tId = ..Definition()
+    Set tId = ..NewDefinition()
     Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(200, ..NavReply(..#DETAILS, "parentId", "7"))
     Set tKey = ..Begin(tId, .tStarted)
     Job ##class(OcuPilot.Test.NavSettleJob).StopWhenPending(tKey, $Username, 10)
@@ -315,11 +377,11 @@ Method TestTheAnnouncementCarriesTheParentIdWhileTheBrowserWaits()
 Method TestADroppedAnnouncementNamesTheParentInTheLapse()
 {
     Do $ClassMethod(..#LOOP, "SetLimitsClass", "OcuPilot.Test.TurnLimitsNavCapped")
-    Set tId = ..Definition()
+    Set tId = ..NewDefinition()
     Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(200, ..NavReply(..#DETAILS, "parentId", "7"))
-    Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(200, ##class(OcuPilot.Test.TurnNavigate).EndReply("nothing was announced"))
+    Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(200, ..Reply("nothing was announced"))
     Set tKey = ..Begin(tId, .tStarted)
-    Do ..RunTurn(tKey, tId, tStarted)
+    Do ..RunBegun(tKey, tId, tStarted)
 
     Set tLapse = ##class(OcuPilot.Test.TurnNavigate).NavToolResult(2)
     Do $$$AssertTrue($IsObject(tLapse), "the lapse reached the next provider call as a tool result")
