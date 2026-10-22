@@ -2,26 +2,6 @@
 
 Answer an item with `bash _bmad/scripts/unattended-inbox.sh <this directory> answer U-<n> "<answer>" --by owner`, or run `/epic-cycle --review`. This file is generated: a hand edit is saved aside and never applied.
 
-**Hold requested 2026-10-20T14:35:36Z: owner 2026-10-20: almost out of quota, switching accounts**
-
-## Stopped
-
-### U-1 | stopped | Story 20.11 | 2026-10-20T12:57:25Z
-question: Story 20.11 (Analytics, Part A) needs a cube's Relationships tab to link each row to the related cube's Measures tab (I/O matrix, AC2). AD-5 allows a cross-screen row target on a list only; every tab is a detail screen, and a tab group's members share one archetype while only the detail page draws the tab strip, so no shape the current text allows delivers the link. The implementation relaxed the two row-target validators; the orchestrator ruled an AD-5 amendment out of this run (U7(c): AD-5 is cited by done specs and by Epic 23's in-flight 23.11 spec). The story is set aside with its code in _bmad-output/implementation-artifacts/set-aside/20-11-the-analytics-rider-1.patch (implement commit 11bcb1fa, unreviewed, no QA yet).
-options: (A) Amend AD-5 with one sentence: 'A tab of a tabbed group (a detail screen drawing a table) may declare one too: a cube's Relationships tab opens the related cube's Measures tab (Story 20.11).' The run then picks the patch up, keeps the validator relaxation, and continues with QA and code review. (B) Drop the tab's row target, so AC2's link becomes the related cube's name as plain text (an AC change). (C) Re-plan 20.11.
-recommendation: (A): the amendment only adds a case; lists keep their behaviour, no merged descriptor changes, and Epic 23's two AD-5 citations are about tests.
-blocks: Stories 20.32, 20.33, 20.35 and 20.34 (they build on 20.11's AnalyticsPort); 20.36 via 20.12
-answer: (none yet -- answer with the script or --review)
-
-## Holds
-
-### U-3 | hold | Run 20261020T0940Z-20,23 | 2026-10-20T15:30:42Z
-question: Hold complete for the owner's account switch: both runners ended at stage boundaries, everything pushed, throwaways ocupilot-ci and ocupilot-b-ci left up (started by this run).
-options: Resume: in a fresh session run /epic-cycle 20,23 --unattended (it clears the hold, takes the run over and re-dispatches both epics)
-recommendation: Answer U-1 first so 20.11 is picked up on resume
-blocks: Epics 20 and 23
-answer: (none yet -- answer with the script or --review)
-
 ## Run reports
 
 ### U-2 | report | Run 20261020T0940Z-20,23 | 2026-10-20T15:30:42Z
@@ -31,4 +11,13 @@ recommendation: Answer U-1 (A recommended) before resuming
 blocks: Nothing
 answer: (none yet -- answer with the script or --review)
 
-<!-- journal: 6 lines -->
+## Resolved
+- U-1 | stopped | Story 20.11: Story 20.11 (Analytics, Part A) needs a cube's Relationships tab to link each row to the related cube's Measures tab (I/O matrix, AC2). AD-5 allows a cross-screen row target on a list only; every tab is a detail screen, and a tab group's members share one archetype while only the detail page draws the tab strip, so no shape the current text allows delivers the link. The implementation relaxed the two row-target validators; the orchestrator ruled an AD-5 amendment out of this run (U7(c): AD-5 is cited by done specs and by Epic 23's in-flight 23.11 spec). The story is set aside with its code in _bmad-output/implementation-artifacts/set-aside/20-11-the-analytics-rider-1.patch (implement commit 11bcb1fa, unreviewed, no QA yet). -> A: amend AD-5 with the one sentence 'A tab of a tabbed group (a detail screen drawing a table) may declare one too: a cube's Relationships tab opens the related cube's Measures tab (Story 20.11).' The run picks up 20.11's set-aside patch, keeps the validator relaxation, and continues with QA and code review. (by owner via attended, 2026-10-20T18:22:28Z#8; quoting the owner: "A"); resolved by orchestrator, 2026-10-21T01:23:04Z -- epic 20: AD-5 amended (bf8bc8b7, on feature in 404294a8); 20.11 re-planned per U4 step 3, Task 0 re-applies the set-aside patches
+- U-3 | hold | Run 20261020T0940Z-20,23: Hold complete for the owner's account switch: both runners ended at stage boundaries, everything pushed, throwaways ocupilot-ci and ocupilot-b-ci left up (started by this run). -> (no answer); resolved by orchestrator, 2026-10-22T01:48:42Z -- the 2026-10-20 hold was resumed at 18:43Z (unattended_resumed)
+- U-4 | veto | Story 23.7 (DW-1170): Ruled: the agent's bad-body refusal sentence (code AGENT.BADBODY, unchanged) now reads 'The request body is missing or is not the JSON object this request expects.' instead of 'The request body could not be read as JSON. Send a JSON object, or no body at all.' The old sentence told callers an empty body was fine on routes that refuse one. -> keep the new sentence (by planner, 2026-10-21T13:06:19Z#13; quoting the owner: "keep"); resolved by orchestrator, 2026-10-21T14:01:58Z -- veto kept (relayed by the Planner, quote: keep); 23.7 batch 3 carries the sentence as ruled
+- U-5 | veto | Story 20.33 (MDX query screen strings): Ruled: two strings the UX did not specify, chosen during 20.33's implement and kept by the orchestrator. The MDX grid's row header reads 'Row members' (plain 'Members' is already the role editor's tab), and a truncated MDX answer shows 'This answer was cut; the rest is not shown.' -> keep both (by planner, 2026-10-22T04:59:31Z#22; quoting the owner: "Accept all recommendations (Recommended)"); resolved by orchestrator, 2026-10-22T05:00:22Z -- veto kept (relayed by the Planner, quoting the owner)
+- U-6 | veto | Story 23.8 (DW-216): Ruled: the README's smoke bullet gains one sentence: 'It asks the instance's own web server at localhost, so behind an external web server its HTTP checks fail even on a correct install.' The smoke's HTTP checks only ever ask localhost on the instance's own web-server port, and nothing said so where the README offers the smoke to operators. -> keep the sentence (by planner, 2026-10-22T04:59:31Z#23; quoting the owner: "Accept all recommendations (Recommended)"); resolved by orchestrator, 2026-10-22T05:00:22Z -- veto kept (relayed by the Planner, quoting the owner)
+- U-7 | veto | Story 23.8 (DW-1462): Ruled: the agent's open-a-screen tool takes a new parentId for a screen that belongs to one item (a task's history, a database's volumes) and keeps entityId for a screen's own rows; today entityId means either. Visible effects: the agent can open 8 more such screens for their item; it no longer opens the 4 production item tabs (jobs, log, messages, queue) on an id it composed itself; and the refusal sentence a person may see in the trace changes from 'This screen does not take a selected row.' to 'This screen cannot be opened on that item.' -> keep (by planner, 2026-10-22T04:59:32Z#24; quoting the owner: "Accept all recommendations (Recommended)"); resolved by orchestrator, 2026-10-22T05:00:22Z -- veto kept (relayed by the Planner, quoting the owner)
+- U-8 | parked | DW-432 (owner-only files): A one-sentence addition to CLAUDE.md 'Running and verifying' and to .claude/rules/objectscript-testing.md 'Practices', proposed by Story 23.8 (owner-only files under the policy, so the run will not edit them): 'Test classes armed by an OCUPILOT_ALLOW_* variable run only on a throwaway, since scripts/ci-throwaway.sh is the only thing that sets them. They are red by design on ocupilot or a slot instance; see docs/DEVELOPMENT.md, Armed test classes.' -> apply as worded; the Planner applies it to CLAUDE.md and .claude/rules/objectscript-testing.md once 23.8 batch 2 is on feature (by planner, 2026-10-22T04:59:32Z#25; quoting the owner: "Accept all recommendations (Recommended)"); resolved by orchestrator, 2026-10-22T09:02:21Z -- 23.8 batch 2 (DEVELOPMENT.md Armed test classes) is on feature at a314ca08; the Planner applies the sentence to CLAUDE.md and objectscript-testing.md
+
+<!-- journal: 29 lines -->
