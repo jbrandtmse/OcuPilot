@@ -423,6 +423,32 @@ Rejected:
 - A killed run leaves `~/ocupilot-ipm-dw235-*` behind: low -- this happens only on an external kill, and a sweep at the start of the run would delete a concurrent slot run's live root.
 - The `[CI]` box and `done` were set before CI ran on `5db54c67`: false -- the lead's CI gate reads that run.
 
+Code review, batch 3 (2026-10-22; full-opus; four layers): 35 rows, 7 entries (1 medium, 6 low), all patched; 13 rejected.
+
+- [x] [Review][Patch] (medium) A literal name under a declared prefix passed unstyled in any file, so a new or mistyped `ocu-banner-*` in any of the 75 files using one would install unstyled [`ui/tools/client-lint.mjs` `checkTemplateClasses`] -- the exemption holds only in the prefix's own file, as the run-time prefix and the `[class]` binding already did. The literal-name test gains an other-file leg. Every literal `ocu-banner-*` in the tree is styled.
+- [x] [Review][Patch] (low) `ocu-log-cell-pid` had a reader the whole-token search could not see: `secondary-logs.browser-spec.mjs` builds `.ocu-log-cell-${name}` and called `cell('pid')`, a value no assertion read [`ui/browser/secondary-logs.browser-spec.mjs`] -- the unread `pid` field is removed and the class stays removed. A search of every removed name's stems for a built selector found no other class reader.
+- [x] [Review][Patch] (low) A prefix built only by a template interpolation (`class="ocu-x-{{ n }}"`) could never pass: the use check accepts it, the builder check read only `${` and `' +` [`client-lint.mjs`] -- `{{` counts as a builder; the composed-prefix test gains the leg.
+- [x] [Review][Patch] (low) Nothing pinned that a `*.spec.ts` or `src/app/testing/` file's `styles:` styles nothing that ships [`client-lint.test.mjs`] -- the collection test gains a second tree.
+- [x] [Review][Patch] (low) Nothing pinned that a name owed a style is stale once styled [`client-lint.test.mjs`] -- the styled-stale test gains an owed leg.
+- [x] [Review][Patch] (low) The family's scope comment named four class forms it does not read and left out the rest [`client-lint.mjs`] -- it names each.
+- [x] [Review][Patch] (low) A `mutation:` line said the whole-tree CLI test reddens when a hook leaves group A; it takes the first hook name, so only the two real-tree tests do [this spec, Verification] -- corrected.
+
+Rejected:
+
+- `class="{{ c }}"`, `class="ocu-a {{ c }}"`, `[class]="'ocu-a ' + c"`, a host `'[class]'` key, `@HostBinding`, `[attr.class]`, `[className]` and `panelClass` go unread: low -- none is in the tree, reading them takes expression parsing, and the scope comment names each.
+- `[class]="expr"` with no `ocu-` fragment fails: low -- it fails closed on names the scan cannot see; none outside a declaring file, and Epic 20 has no client change beyond feature.
+- A TypeScript comment holding `template:` or a builder is read as code: low -- `templateRegions` is family 2's shared reader; none in the tree.
+- A quoted `template:`, `styles:` through a constant, SCSS `&-` nesting, `#{}` selectors and `.css` files are not read: low -- none in the tree, styles are SCSS (spine, Client asset homes), and each fails loudly.
+- `blankComments` reads `/*` or ` //` inside a string as a comment: low -- family 1's shared helper; no such string in a styles, host or constant region.
+- A prefix's style check is met by any styled name under it: low -- the Task's words.
+- Readers are `ui/browser` and `*.spec.ts` only; shipped code, a testing harness and a selector built from a template literal do not count: low -- the Task names the readers, and a miss fails loudly.
+- A builder through `.concat` or `.join`: low -- not a form the tree uses.
+- The whole-tree gate is a `src/styles/` path: low -- the Task states it.
+- A `[class]` object binding comparing an `ocu-` id: low -- none in the tree; it fails loudly.
+- `ocu-oauth-client-metadata`'s id is on the inner table, and its twin `ocu-oauth-server-metadata` was removed: low -- the recorded in-stage decision and its `reopen_if`; the class is harmless.
+- Auto Run Result's "24 new tests" (22): a spec edit.
+- QA's tests are uncommitted: false -- the lead's commit carries them.
+
 ## Spec Change Log
 
 ## Review Triage Log
@@ -818,12 +844,23 @@ No AC contradicts an AD's Rule, and no NFR is in play.
 - `mutation:` (DW-235, CI rework, `node --test` under the default environment and `TMPDIR=/tmp`, each reverted, `cmp`, `git status` and `git diff --stat` unchanged): the root under `/tmp` is the defect, red before and green after (`TMPDIR=/tmp`, `${scratch}//` leg, exit 1 where 2 was expected). `ci-ipm-archive.sh` without the `$DIR` trailing-slash strip: red on the slash-spelled link leg. Its `$TMPDIR` arm as `"$SCRATCH_TMPDIR"*`: red on the `${scratch}//` leg. `HOME` under `/private/tmp`: red on the root's placement assertion, with nothing left behind.
 - **Batch 3, measured at `0c62d06a` (family 7's first run, equal to the Design Notes lists):** 961 used names, 841 styled, 138 used and unstyled = 90 hooks (67 read by `ui/browser`, 23 by `*.spec.ts` only) + 4 owed a style + 44 dead. The 44 (49 sites) are removed: a whole-token search of `ui/src`, `ui/browser` and `ui/tools` found no reader, only three id or name strings that are not class contexts (`ocu-log-hub-source`, `ocu-ecp-settings-ssl`, `ocu-oauth-server-metadata`).
 - `mutation:` (DW-1188, `node --test tools/client-lint.test.mjs`, each reverted and `tools/client-lint.mjs` byte-identical by `cmp`):
-  - `ocu-copy-status` removed from group A: the CLI exits 1 naming `src/app/shell/copy-control.ts:19`, and both real-tree tests and the whole-tree CLI test are red.
+  - `ocu-copy-status` removed from group A: the CLI exits 1 naming `src/app/shell/copy-control.ts:19`, and the two real-tree tests are red (84 of 86).
   - `ocu-banner`, a styled name, added to group A: `stale-unstyled-class-hook` ("a stylesheet selects it now"), and both real-tree tests are red.
   - Each of these reddens at least one fixture or CLI test: the `src/styles/` gate on the whole-tree checks removed; `id=` read as a class; an unreported dynamic `[class]`; the reader check on a hook removed or matched by substring; a prefix honored for a `[class]` binding in a file other than its own, or for a built name in any file; a composed prefix with no style or no builder; a literal name under a declared prefix no longer exempt; the stale checks for a styled or an unused hook; `styles:` read from the whole `.ts` file; stylesheet comments not blanked; `*_CLASS`, host `class`, `[class.x]` or `[class]` literals not read; an unstyled use not reported; an interpolated prefix read as a name; the family not wired into `lintClient` or `RULE_FAMILIES`. The styled-stale test first stayed green because the hook was also unread, so it now pins the reason; re-run red.
   - Re-added `ocu-auditing-page` to `auditing-config.page.ts` (one of the 44): the CLI exits 1 at `auditing-config.page.ts:120`, and the two real-tree tests are red. Reverted `cmp`-identical.
   - Code review, each on its own: `lineOf` read from the template instead of the file: `a use is reported at its line in the file, not at its line in the template` the one red. A `[class]` binding exempt when any prefix is declared: `a [class] binding with no literal name needs a declared prefix in its file` the one red. The literal-name prefix exemption deleted: `a literal name under a declared prefix needs no style of its own...` the one red. No single-quoted `class`, no single-quoted `[class]`, an unquoted-only host key, or a bracket scan that reads quotes: `single-quoted attributes, a quoted host key and a closing brace inside a host string are read as written` the one red in each of the four.
   - Reverted: `client-lint.test.mjs` 82 of 82, `npm run test:tools` 2142 of 2142.
+- (QA) Four tests added to an existing file, no new file: `ui/tools/client-lint.test.mjs` (82 to 86): the composed-prefix roster, the whole-name hook reader, `.html` collection by `lintClient`, and the `*.spec.ts` and `src/app/testing/` exclusion. Each builds its own scratch tree and removes it.
+- `mutation:` (DW-1188, QA, `node --test`; run on a scratch mirror of `ui/` with `tools/client-lint.mjs` mutated, so the real tree was never edited and `git status` read the same before and after). 69 mutations of family 7 and its lists, 5 green before the new tests, all red after:
+  - `ocu-reply-heading-` dropped from `COMPOSED_CLASS_PREFIXES`: the roster test the one red; `ocu-banner-` dropped: both real-tree tests and the roster test red.
+  - `CLASS_REFERENCE_RE` without its lookbehind: the whole-name reader test the one red.
+  - `.html` not collected in `lintClient`: the `.html` test the one red. A `*.spec.ts` collected as a template, or `src/app/testing/`: the exclusion test the one red in each.
+  - Re-run, recorded: `ocu-copy-status` removed (the CLI names `src/app/shell/copy-control.ts:19`), `ocu-banner` added to group A, `ocu-auditing-page` and `ocu-guardrails-tools` re-added to their templates: both real-tree tests red in each. The four quote variants and the unread `[class]` literals of the code-review line: the one quote test red in each of the four, and three tests red for the literals.
+- (QA) Red first, no visual change and the wiring, observed on the scratch mirror (DW-1188):
+  - The 27 templates restored to `0c62d06a` under the new family: 49 violations over 44 names, equal to the 44 removed tokens, no stale entry; both real-tree tests red.
+  - The 44 tokens as whole tokens in `ui/src`, `ui/browser` and `ui/tools`, and in the rest of the repository: three hits, all an id or a `name` (`ocu-log-hub-source`, `ocu-ecp-settings-ssl`, `ocu-oauth-server-metadata`), none a class context. No `[class*=]` selector, no `&-` nesting, and no `#{}` in a selector builds a class.
+  - `npm run build` in the mirror with `ocu-not-styled` added to `typed-name-dialog.ts`: it stops at `client-lint` with `src/app/shell/typed-name-dialog.ts:54: [no-unstyled-template-class]`, exit 1, the later checkers and `ng build` never run. The unmodified mirror runs `npm run prebuild` through all seven checkers, exit 0.
+- `mutation:` (DW-1188, code review, `node --test tools/client-lint.test.mjs` on a scratch mirror of `ui/`, each restored, the mirror's `client-lint.mjs` `cmp`-identical to the tree's, 86 of 86 after): a literal name under a declared prefix exempt in any file: the literal-name test the one red, on its other-file leg. The builder check without `{{`: the composed-prefix test the one red. A `*.spec.ts` or `src/app/testing/` file's `styles:` counted as styled: the collection test the one red. The owed group exempt from the styled check: the styled-stale test the one red.
 - `mutation:` (DW-1462):
   - `AcceptsEntityId` without its `ParentScope` clause → the sweep red on the 37 parent-scoped routes.
   - `AcceptsParentId` reading the screen's own id shape → red on the 4 item tabs and the 8 newly openable.
