@@ -4784,6 +4784,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-30T06:34:04Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p4
 - 2026-10-11T00:42:31Z status=routed owner=23-7-the-range-end-cleanup-part-6 by=load note=re-own from range-end-cleanup: kit 2026-10-10.1 owners are story keys or burndown
 - 2026-10-12T19:22:36Z status=routed owner=23-8-the-range-end-cleanup-part-7 by=merge_gate note=owner 2026-10-12 released 23.7's 32 (Release Story 23.7); split by priority, 12 at most each (Rule 27)
+- 2026-10-22T05:45:56Z status=resolved-by:23-8-the-range-end-cleanup-part-7 by=adjudication note=6af19198+4ecca91d: RemoveSeeded attempts every key, keeps a key until its removal succeeded and no row remains, counts proposals plus turns (-1 when unreadable); ProposalFixtureSweep pins it (4 tests); CI 39726382094
 
 ### DW-1278: ChannelProblem's accept arm and its structured-secret guard are executed by no test, because no shipped descriptor declares a secret
 - source: spec-5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at.md | severity: med | fix-risk: low | footprint: in-epic
@@ -11062,6 +11063,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-09T17:02:33Z status=routed owner=range-end-cleanup by=spec_gate note=23.6 plan filing candidate 1; not absorbed (dispatch)
 - 2026-10-11T00:42:33Z status=routed owner=23-7-the-range-end-cleanup-part-6 by=load note=re-own from range-end-cleanup: kit 2026-10-10.1 owners are story keys or burndown
 - 2026-10-12T19:22:36Z status=routed owner=23-8-the-range-end-cleanup-part-7 by=merge_gate note=owner 2026-10-12 released 23.7's 32 (Release Story 23.7); split by priority, 12 at most each (Rule 27)
+- 2026-10-22T05:45:56Z status=resolved-by:23-8-the-range-end-cleanup-part-7 by=adjudication note=6af19198+4ecca91d: the save mint answers REASONNOSOURCE for a document with no source; ExplorerSaveFlow pins it through the real Routines save on a routine the test makes object-only; CI 39726382094
 
 ### DW-2257: ExplorerSaveMint measures a line's escaped length inline, duplicating ExplorerSourceRead.Escaped
 - source: spec-23-6-the-haiku-story-cleanup.md | severity: low | fix-risk: low | footprint: out-of-footprint
@@ -11069,6 +11071,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-09T17:02:33Z status=routed owner=range-end-cleanup by=spec_gate note=23.6 plan filing candidate 2; not absorbed (dispatch)
 - 2026-10-11T00:42:33Z status=routed owner=23-7-the-range-end-cleanup-part-6 by=load note=re-own from range-end-cleanup: kit 2026-10-10.1 owners are story keys or burndown
 - 2026-10-12T19:22:36Z status=routed owner=23-8-the-range-end-cleanup-part-7 by=merge_gate note=owner 2026-10-12 released 23.7's 32 (Release Story 23.7); split by priority, 12 at most each (Rule 27)
+- 2026-10-22T05:45:56Z status=resolved-by:23-8-the-range-end-cleanup-part-7 by=adjudication note=6af19198: the mint measures through ExplorerSourceRead.Escaped; TestAnEditPastThePortsBoundIsRefused (its problem-text assertion) pins it; CI 39726382094
 
 ### DW-2258: ExplorerSaveTurn discards RemoveKeyed()'s status three times
 - source: spec-23-6-the-haiku-story-cleanup.md | severity: low | fix-risk: low | footprint: out-of-footprint
@@ -11076,6 +11079,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-09T17:02:33Z status=routed owner=range-end-cleanup by=spec_gate note=23.6 plan filing candidate 3; not absorbed (dispatch)
 - 2026-10-11T00:42:33Z status=routed owner=23-7-the-range-end-cleanup-part-6 by=load note=re-own from range-end-cleanup: kit 2026-10-10.1 owners are story keys or burndown
 - 2026-10-12T19:22:36Z status=routed owner=23-8-the-range-end-cleanup-part-7 by=merge_gate note=owner 2026-10-12 released 23.7's 32 (Release Story 23.7); split by priority, 12 at most each (Rule 27)
+- 2026-10-22T05:45:56Z status=resolved-by:23-8-the-range-end-cleanup-part-7 by=adjudication note=6af19198: ExplorerSaveTurn asserts RemoveKeyed's status at its three sites; CI 39726382094
 
 ### DW-2259: ci-runner testClassesOnDisk misses a test class that reaches TestCase through a project base class
 - source: spec-23-6-the-haiku-story-cleanup.md | severity: low | fix-risk: low | footprint: out-of-footprint
@@ -11100,6 +11104,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-09T17:02:33Z status=routed owner=range-end-cleanup by=spec_gate note=23.6 plan filing candidate 6; not absorbed (dispatch)
 - 2026-10-11T00:42:34Z status=routed owner=23-7-the-range-end-cleanup-part-6 by=load note=re-own from range-end-cleanup: kit 2026-10-10.1 owners are story keys or burndown
 - 2026-10-12T19:22:37Z status=routed owner=23-8-the-range-end-cleanup-part-7 by=merge_gate note=owner 2026-10-12 released 23.7's 32 (Release Story 23.7); split by priority, 12 at most each (Rule 27)
+- 2026-10-22T05:45:56Z status=resolved-by:23-8-the-range-end-cleanup-part-7 by=adjudication note=6af19198+4ecca91d: the explorer source tests derive the bound from ExplorerSourceTestCase.Limit(); TestTheReadDescriptionStatesTheBoundItCutsTo holds the published figure equal to it; CI 39726382094
 
 ### DW-2262: PRIVROUTINE.TYPE lives in PctAccessError rather than a privileged-routine home
 - source: spec-23-6-the-haiku-story-cleanup.md | severity: low | fix-risk: low | footprint: out-of-footprint
