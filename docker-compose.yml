@@ -15,6 +15,11 @@ services:
     # Verified on Docker 29.7.2 / Compose v5.5.0: HostConfig.RestartPolicy reads
     # {"Name":"on-failure","MaximumRetryCount":3}.
     restart: on-failure:3
+    # IRIS needs up to about five seconds to stop its user jobs. Docker Desktop killed it about
+    # three seconds after the stop signal (measured), mid-shutdown, so every stop was logged as
+    # "Previous system shutdown was abnormal". The grace period only bounds the wait: a clean
+    # shutdown ends the stop as soon as it finishes.
+    stop_grace_period: 60s
     # Starts only once durable-init has made /durable writable by IRIS's own user (DW-234).
     depends_on:
       durable-init:
