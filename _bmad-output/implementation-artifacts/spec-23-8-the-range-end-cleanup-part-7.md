@@ -2,8 +2,8 @@
 title: 'Story 23.8: The range-end cleanup, part 7'
 type: 'bugfix'
 created: '2026-10-21'
-status: 'in-progress'
-baseline_revision: '0228ba8d39f98e12e33c5a81cdbf519fcc5281e8'
+status: 'done'
+baseline_revision: '0253a3253af9f5d60d0adf3c5339dc062c661727'
 baseline_commit: '0228ba8d39f98e12e33c5a81cdbf519fcc5281e8'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -138,7 +138,7 @@ Each batch is one implement pass and one code commit, with CI green on its own h
   - 20 `OCUPILOT_ALLOW_*` variables are set only by `ci-throwaway.sh` (:233-781).
   - `PRODUCTION_INSTALL` arms 29 classes at head.
   - An unarmed class returns a class-level error from `OnBeforeAllTests` and runs no method; `Test/Installer.cls` :21-33 is representative.
-  - The error text names the variable through `..#ARMINGVARIABLE`. That the runner's class-level `action` carries this text is (inference); the hint test uses a fixture of that shape.
+  - The error text names the variable through `..#ARMINGVARIABLE`. The runner's class-level record carries the hook's name as `action` and this text as `error` (`ci-unit-test.sh`).
 - **DW-1762, measured.**
   - Entrypoint `/tini -- /iris-main`. `StopTimeout` is null and `StopSignal` empty on `ocupilot` and `ocupilot-ci`.
   - Every abnormal stop died about 3.0-3.4 s after the first shutdown line, inside "Stopping User Jobs".
@@ -254,22 +254,22 @@ Each batch is one implement pass and one code commit, with CI green on its own h
 
 ### Batch 2: scripts, install and container
 
-- [ ] **DW-235.** `scripts/ci-throwaway.sh` guard (:109-115):
+- [x] **DW-235.** `scripts/ci-throwaway.sh` guard (:109-115):
   - Normalize `TMPDIR` into `SCRATCH_TMPDIR` as `ci-ipm-archive.sh` :108-120 does, and use `"$SCRATCH_TMPDIR"/?*` in the case.
   - Strip trailing slashes from `DIR`, then refuse `*//*`, `*/./*` and `*/.`, with the message under Wording.
   - Refuse when `[ -L "$DIR" ]` or `[ -L "$DIR/data" ]`.
   - In `scripts/ci-ipm-archive.sh`, add the same plain-spelling and symbolic-link refusals.
-- [ ] **DW-235.** Tests, each through `logs --dir` only and each exiting 0 before the fix:
+- [x] **DW-235.** Tests, each through `logs --dir` only and each exiting 0 before the fix:
   - `ui/tools/ci.test.mjs`: add `the scratch-root guard refuses a root reached through TMPDIR=/, a sibling, '//', '/./' or a symbolic link (DW-235)` beside :1945, with the six inputs of the matrix row expecting exit 2. Keep the existing admitted cases.
   - `ui/tools/ipm-archive.test.mjs` :365: add `//` and `/./`.
-- [ ] **DW-1762.** In the `iris` service the `ci-throwaway.sh` here-doc writes, add `stop_grace_period: 60s` after `restart:`.
+- [x] **DW-1762.** In the `iris` service the `ci-throwaway.sh` here-doc writes, add `stop_grace_period: 60s` after `restart:`.
   - Pin it in `ci.test.mjs`: the generated compose's `iris` service carries `stop_grace_period: 60s`. Red before.
   - Admitted at the spec gate: also apply it to `docker-compose.yml`. Then add `['stop grace period', 'iris', /stop_grace_period:\s*(\S+)/]` to the key list at :2175, add a `ui/tools/compose.test.mjs` assertion on that line, and name the key in `ci-throwaway.sh`'s header list of keys copied from `docker-compose.yml`.
-- [ ] **DW-432.** In `docs/DEVELOPMENT.md`, after the paragraph at :467, add the "Armed test classes" paragraph under Wording, naming all 20 variables.
+- [x] **DW-432.** In `docs/DEVELOPMENT.md`, after the paragraph at :467, add the "Armed test classes" paragraph under Wording, naming all 20 variables.
   - Pin, in `ui/tools/ci.test.mjs` beside the arming tests: every variable `declaredArmingRosters(ci-throwaway.sh)` reads is named in `docs/DEVELOPMENT.md`, and every `OCUPILOT_ALLOW_[A-Z_]+` the doc names is one of them. Red before.
-- [ ] **DW-432.** `ui/tools/ci-runner.mjs` `classifyFailureDetail` :210: when a class-level action names `OCUPILOT_ALLOW_[A-Z_]+`, append the hint under Wording, naming the variable.
+- [x] **DW-432.** `ui/tools/ci-runner.mjs` `classifyFailureDetail` :210: when a class-level action names `OCUPILOT_ALLOW_[A-Z_]+`, append the hint under Wording, naming the variable.
   - Pin, in `ci.test.mjs` beside :1102: one class-level failure whose action names `OCUPILOT_ALLOW_PRINCIPALS` gets the hint, and one that names none does not. Red before.
-- [ ] **DW-216.** Document the constraint where the smoke is offered:
+- [x] **DW-216.** Document the constraint where the smoke is offered:
   - `src/OcuPilot/Install/Smoke.cls`: the class header, `Host()` and `Port()` docs get the sentence under Wording.
   - `docs/DEVELOPMENT.md` "The smoke script": add the paragraph under Wording, after the "A run that executed nothing is a failure" paragraph.
   - `README.md` :555-557: append the sentence under For the lead to the smoke bullet (admitted at the spec gate).
@@ -401,6 +401,25 @@ Rejected:
   - `[medium]` `[patch]` Intent audit: DW-1267's unreadable-count branch is untested -- same root cause as the second row. The claim that a kept failed key harms `InteropEditorProbe` is false: `ForgetLedger` deletes ledger rows per key and a retained key is deleted again harmlessly.
   - `[low]` `[reject]` Intent audit: the new `ProposalCountForTurn`/`TurnCountForTurn` copy `Remove`'s count pair -- they filter by one turn key where the pair filters by user-name prefix, and 242 files call the pair, so a parameterized helper would touch all of them for no behavior gain. The reason is in Design Notes.
 
+### 2026-10-22 -- Review pass (batch 2)
+
+- verdicts: 14 findings -- high 0, medium 0, low 9, false 5, maybe-false 0
+- findings:
+  - `[low]` `[patch]` The absolute-`TMPDIR` clause of the scratch-root guard has no test -- relaxed to non-empty, the suite stayed green. Patched: a relative `TMPDIR` leg in the DW-235 test, red under that mutation.
+  - `[low]` `[patch]` The recorded no-strip mutation for `ci-ipm-archive.sh` did not reproduce, and the strip itself was unpinned in both scripts: every refused input is refused without it, but a link spelled `link/` slips past `[ -L ]`. Patched: a trailing-slash link leg in both tests, red without the strip; the mutation line is corrected.
+  - `[low]` `[patch]` The admitted `/tmp/ocupilot-ci` legs read a compose file the host may hold. Patched: a name made for the run.
+  - `[low]` `[reject]` Intent audit: a link in an ancestor of `--dir` is admitted -- Design Notes decides this and files it as a candidate; the fix edits the spec.
+  - `[low]` `[reject]` Intent audit: DW-1762's pins read compose text and nothing observes a stop -- the restart measurement is the lead's, as Design Notes assigns it.
+  - `[low]` `[reject]` Intent audit: the owner-managed slot compose files outside the repository carry no `stop_grace_period` -- they are the owner's; the change reaches the shipped and throwaway files.
+  - `[false]` `[reject]` Intent audit: the compose comment's baseline differs from the spec's measurement -- the comment states the Docker Desktop log's 3 s after signal 15, which is the Code Map's measurement.
+  - `[low]` `[reject]` Intent audit: the hint reaches the runner and not the MCP test path -- the matrix row names the runner; a class's own error text already names the variable on the MCP path.
+  - `[low]` `[reject]` Intent audit: the hint does not use the word "armed" -- the wording is admitted as written.
+  - `[false]` `[reject]` Intent audit: the doc pin does not check the paragraph's claim about the `# classes:` comments -- the arming tests already hold each list equal to the classes that read the variable.
+  - `[low]` `[reject]` Intent audit: the DW-216 sentence omits `Port()`'s fallback to `DEFAULTPORT` -- the sentence is admitted as written, and `Port()`'s first paragraph states the fallback.
+  - `[false]` `[reject]` Intent audit: "fails every HTTP check" is not shown by a run -- it follows from the checks all going to `localhost` over HTTP; no external web server exists here to run one, as Dispositions says.
+  - `[false]` `[reject]` Intent audit: the diff carries no compile result for `Smoke.cls` -- the doc-only class loads with 0 errors and `OcuPilot.Test.Smoke` passes 43 of 43 on `ocupilot-ci`.
+  - `[false]` `[reject]` Intent audit: the spec-gate rulings are not in the diff -- they are in Design Notes, outside this batch's diff.
+
 ## Design Notes
 
 **Verdicts at `06c2f491`** (Ledger inbox: 12 of 12 addressed, none declined):
@@ -459,6 +478,9 @@ No AC contradicts an AD's Rule, and no NFR is in play.
   - A symbolic link in an ancestor of `--dir` is left (filing candidate).
 - **DW-1762: 60 s.** Measured clean shutdowns take 0.4-5.0 s, so this gives more than ten times headroom.
 - **DW-432.** Add a docs paragraph, a doc-pin test both ways, and a runner hint, so the reds explain themselves where they appear.
+- **DW-432, the hint's source.** The framework stores a class-level record's hook name as `action` and the refusal text as `error` (`%SYS.UNITTEST` `LogStateStatusPrivate`), so the hint reads both; the Wording's "action names" is read as "record names".
+- **DW-432, the cited heading.** The Wording's hint cites "Armed test classes", so the paragraph's bold lead carries that label.
+- **DW-235, the link line.** For a link at `$DIR/data` the line names that path, not `$DIR`; the sentence is the Wording's.
 - **DW-216.** A documented constraint. See Dispositions.
 - **DW-1188.**
   - Remove the 44 dead tokens rather than allow-list them, because the allow-list is for intentional hooks. This changes nothing visible.
@@ -695,11 +717,14 @@ No AC contradicts an AD's Rule, and no NFR is in play.
   - An unreadable count is clamped to 0: `TestAnUnreadableCountKeepsItsKeyAndSweepsTheOtherKey` red on every assertion (run 14).
 - `mutation:` (DW-2257, DW-2258, DW-2261, QA, re-run on `ocupilot-ci`, each reverted): the recorded mutations reproduce. `Escaped` answers `$Length(pText)`: `TestAnEditPastThePortsBoundIsRefused` the one red, on its "says why" assertion, since the card-width limit refuses the edit under the same code (run 19). `RemoveKeyed` ends in an error: the method is red on "the probe package is removed" (run 18). `SOURCEMAXLENGTH` 50000 alone: `TestTheReadDescriptionStatesTheBoundItCutsTo` the one red (run 20). `ExplorerRoutineSource` declaring `SOURCEMAXLENGTH` 600000: `TestALongRoutineIsCutAtWholeLines` the one red (run 22), so the note at `ExplorerSourceEdges` holds.
 - (QA) Tests added to existing files, no new file: `src/OcuPilot/Test/ExplorerSaveFlow.cls` (`MintUnguarded`, `TestAMissingRoutineIsRefusedWithTheReasonOfAnAbsentDocument`), `src/OcuPilot/Test/ProposalFixtureFaultProbe.cls` (modes `failafter` and `unreadableturn`) and `src/OcuPilot/Test/ProposalFixtureSweep.cls` (`TestAKeyWhoseDeleteReportedAFailureIsKeptEvenWithItsRowsGone`, `TestAnUnreadableCountKeepsItsKeyAndSweepsTheOtherKey`).
-- `mutation:` (DW-235) revert the guard → the new `ci.test.mjs` test and the `ipm-archive.test.mjs` legs red.
-- `mutation:` (DW-1762) drop `stop_grace_period` from the here-doc → its `ci.test.mjs` pin red.
+- `mutation:` (DW-235, `node --test`, each reverted and the file byte-identical by `cmp`):
+  - `ci-throwaway.sh` guard reverted to the raw `TMPDIR` arm: the new test is red on its first leg, exit 0 with "no compose file" where 2 was expected. Alone: no link check, red on the `--dir` link leg; link check on `$DIR` only, red on the data-link leg; `TMPDIR` arm without its separator, red on the sibling leg; no plain-spelling case, red on `/tmp/./x`; the absolute check on `TMPDIR` relaxed to non-empty, red on the relative `TMPDIR` leg; no trailing-slash strip, red on the trailing-slash link leg.
+  - `ci-ipm-archive.sh` guard reverted: the new test is red on `/tmp//x`. Alone: no link check and no plain-spelling case each redden it; no trailing-slash strip reddens it on the trailing-slash link leg only (the other legs are refused without the strip).
+  - Reverted: `ci.test.mjs` 91 of 91, `ipm-archive.test.mjs` 33 of 33, `npm run test:tools` 2119 of 2119.
+- `mutation:` (DW-1762) `stop_grace_period` dropped from the here-doc: the new pin and the compose-equality test are red. Dropped from `docker-compose.yml`: the equality test and the `compose.test.mjs` pin are red. `docker-compose.yml` reading `30s`: the same two are red. Each reverted.
 - `mutation:` (DW-432):
-  - Remove one variable's name from `docs/DEVELOPMENT.md` → the doc pin red.
-  - Drop the hint → the runner test red.
+  - `OCUPILOT_ALLOW_JOURNAL` removed from `docs/DEVELOPMENT.md`: the doc pin is red on the missing name. `OCUPILOT_ALLOW_BOGUS` added: red on the unknown name.
+  - The hint dropped from `classifyFailureDetail`: the runner test is red on the armed legs. The hint on every class-level line: red on the unarmed leg. Each reverted.
 - `mutation:` (DW-1188):
   - Remove one group-A name from `UNSTYLED_CLASS_HOOKS` → the real-tree clean run red, naming its sites.
   - Add a styled name to the list → the stale rule red.
@@ -717,39 +742,22 @@ No AC contradicts an AD's Rule, and no NFR is in play.
 Status: done
 Blocking condition: none
 
-**Batch 1 (explorer save and fixture), this pass only.** Batches 2 to 5 are untouched and unchecked.
+**Batch 2 (scripts, install and container), this pass only.** Batches 3 to 5 are untouched and unchecked; batch 1 closed in its own pass.
 
 - **Implemented.**
-  - DW-2256: the mint answers `REASONNOSOURCE` for an unavailable document.
-  - DW-2257: the mint measures through `ExplorerSourceRead.Escaped`.
-  - DW-2258: `ExplorerSaveTurn` asserts `RemoveKeyed`'s status at its three sites.
-  - DW-2261: the explorer source tests derive the bound from `ExplorerSourceTestCase.Limit()`, and a new test holds the published cut sentence and the result schema's text description equal to it.
-  - DW-1267: `RemoveSeeded` attempts every key, keeps a key until its removal succeeded and no row remains, and counts proposals plus turns (-1 and an error when unreadable).
+  - DW-235: both throwaway scripts normalize `--dir` (trailing slashes off), refuse `//`, `/./` and a trailing `/.`, and refuse a symbolic link; `ci-throwaway.sh` also refuses a link at `$DIR/data` and reads `TMPDIR` as an absolute, slash-stripped root.
+  - DW-1762: `stop_grace_period: 60s` on the `iris` service in the throwaway here-doc and in `docker-compose.yml`.
+  - DW-432: the runner's class-level line names an arming variable it finds in the record and says only `scripts/ci-throwaway.sh` sets it; `docs/DEVELOPMENT.md` carries the Armed test classes paragraph.
+  - DW-216: the own-web-server constraint is documented in `Smoke.cls` (header, `Host()`, `Port()`), `docs/DEVELOPMENT.md` and the `README.md` smoke bullet.
 - **Files.**
-  - `src/OcuPilot/Screen/Tool/ExplorerSaveMint.cls`: reason, measure and header.
-  - `src/OcuPilot/Test/ExplorerSaveFlow.cls`: the object-only pin, and the Rule 19 note on the bound test.
-  - `ExplorerSaveTurn.cls`, `ExplorerSource.cls`, `ExplorerSourceEdges.cls`, `ExplorerSourceTestCase.cls`, `ProposalFixture.cls`: as above.
-  - New: `ExplorerRoutineSaveUnguarded.cls` (a test subclass of the Routines save that lifts the agent guard), `ProposalFixtureFaultProbe.cls`, `ProposalFixtureSweep.cls`.
-- **Review.** 10 findings from two layers: 4 medium and 6 low, in 4 entries patched and 3 rejected (see the Triage Log).
-  - Patched, 2 medium and 2 low entries: the DW-2256 pin, the unreadable-count test, the schema-text assertion and the sweep's pre-clean.
-  - Rejected, 3 low: DW-2257's and DW-2258's pins are spec-bound (Red-first criterion names that shape), and the count helpers differ in predicate from `Remove`'s pair.
-  - Deferred: none.
-- **Follow-up review recommended: true.** Two medium entries were patched in this review pass, so the classes and tests written during it have had no second read: `ExplorerRoutineSaveUnguarded`, `TestAnObjectOnlyRoutineIsRefusedAsKeepingNoSource` (it needs the vendor `EnsJob.mac` to stay object-only, and its first assertion ends the leg if not), the probe's `unreadable` mode, and `TestAnUnreadableCountIsAnErrorAndKeepsTheKey`.
-- **Verification.** Load into `ocupilot-ci`: 0 errors. Classes, 0 failed, run numbers from `%UnitTest_Result`:
-
-  | Class | Tests | Run |
-  |---|---|---|
-  | ExplorerSaveFlow | 16 | 45 |
-  | ExplorerSaveMintUnit | 13 | 46 |
-  | ExplorerSaveTurn | 1 | 29 |
-  | ExplorerSource | 11 | 43 |
-  | ExplorerSourceEdges | 12 | 31 |
-  | ExplorerSourceTurn | 1 | 32 |
-  | ProposalFixtureSweep | 3 | 44 |
-  | ConfirmRoute | 7 | 34 |
-  | ProposalConfirm | 24 | 35 |
-  | EncryptionKeyFileRead | 6 | 36 |
-  | DraftExecute | 2 | 37 |
-
-  `check-objectscript.py` over the 12 changed classes: 0 problems. `npm run test:tools`: 2112 of 2112. `bash scripts/lint-docs.sh`: 0 issues. Every mutation under Verification was reverted and the tree re-checked byte-identical, with no probe rows left on the throwaway.
-- **Residual risks.** `RemoveSeeded` now counts turns and keeps a failed key, and has about 240 caller files beyond the four run here, so the lead's full sweep is the check. `ProposalFixtureSweep` is not in `ui/tools/ci-timings.json` until the merge refresh.
+  - `scripts/ci-throwaway.sh`, `scripts/ci-ipm-archive.sh`, `docker-compose.yml`, `src/OcuPilot/Install/Smoke.cls` (doc comments only), `docs/DEVELOPMENT.md`, `README.md`, `ui/tools/ci-runner.mjs`.
+  - Tests: `ui/tools/ci.test.mjs`, `ui/tools/ipm-archive.test.mjs`, `ui/tools/compose.test.mjs`. No new file.
+- **Review.** 14 findings from two layers (low 9, false 5): 3 low patched, 11 rejected (see the Triage Log). Patched: the relative-`TMPDIR` leg, the trailing-slash link legs that pin the strip (the recorded no-strip mutation for `ci-ipm-archive.sh` had not reproduced), and a run-made name for the admitted `/tmp` legs. Deferred: none.
+- **In-stage decisions (Design Notes).** The hint reads the record's `error` as well as its `action`; the link line names the path it found; the paragraph's lead carries the "Armed test classes" label the hint cites.
+- **Follow-up review recommended: false.** Only low entries were patched, and each patch has its mutation observed red.
+- **Verification.**
+  - `ocupilot-ci`: `Smoke.cls` loaded with 0 errors, `OcuPilot.Test.Smoke` 43 of 43 (handoff run 1).
+  - `npm run test:tools` 2119 of 2119 with neither browser variable set; `ci.test.mjs` 91 of 91, `ipm-archive.test.mjs` 33 of 33.
+  - `bash scripts/lint-docs.sh`: 0 issues. `check-objectscript.py` on `Smoke.cls`: 0 problems.
+  - Every mutation under Verification was reverted and the tree re-checked byte-identical.
+- **For the lead.** `docker-compose.yml` is a release-upgrade trigger. The DW-1762 restart measurement waits for the next `up` of `ocupilot-ci`; the slot instances' own compose files, outside this repository, take the key only when the owner adds it.

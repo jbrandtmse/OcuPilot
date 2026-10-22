@@ -449,6 +449,11 @@ agent write and the audit row it leaves (Epic 3) — naming the epic that makes 
 non-zero and says so. A gate that reports "found nothing wrong" when it looked at nothing is
 indistinguishable from one that passed, and a smoke script is exactly the gate a release leans on.
 
+**It asks the instance's own web server.** The HTTP checks go to `localhost`, over plain HTTP, on
+the port `Config.Startup` reports as the instance's web-server port. An instance that serves
+OcuPilot only through an external web server fails every HTTP check even when it is installed
+correctly.
+
 ### What CI runs (Story 1.17)
 
 [.github/workflows/ci.yml](../.github/workflows/ci.yml) is the first place in this repository where a
@@ -473,6 +478,22 @@ and the probe database was left mounted over a deleted directory until a human r
 instance. Around each class it also sets the stored governance policy aside and puts it back
 (`GovernanceFixture.SetAside` and `PutBack`), so a class runs under the baseline policy there; a
 class run any other way runs under whatever policy is stored.
+
+**Armed test classes: some refuse to run outside a throwaway.** A class that creates principals, installs
+OcuPilot's production profile, changes the instance's configuration or calls a provider stub reads
+an arming variable in `OnBeforeAllTests`, and unless it reads `1` the class records an error and
+runs no method. Only `scripts/ci-throwaway.sh` sets them, in the compose file it writes, so these
+classes are red by design on `ocupilot` or a slot instance. The variables are
+`OCUPILOT_ALLOW_LOG_ROTATION`, `OCUPILOT_ALLOW_PRINCIPALS`, `OCUPILOT_ALLOW_ERROR_SEED`,
+`OCUPILOT_ALLOW_AUDIT_EVENTS`, `OCUPILOT_ALLOW_PRODUCTION_INSTALL`, `OCUPILOT_ALLOW_SSL_CONFIG`,
+`OCUPILOT_ALLOW_AUDIT_TOGGLE`, `OCUPILOT_ALLOW_PROCESS_CONTROL`, `OCUPILOT_ALLOW_TASK_CONTROL`,
+`OCUPILOT_ALLOW_ERROR_DELETE`, `OCUPILOT_ALLOW_SERVICE_CONFIG`, `OCUPILOT_ALLOW_TEST_PROVIDER`,
+`OCUPILOT_ALLOW_AUDIT_PURGE`, `OCUPILOT_ALLOW_ACCOUNT_PREFERENCES`,
+`OCUPILOT_ALLOW_NAMESPACE_CONFIG`, `OCUPILOT_ALLOW_DATABASE_CONFIG`, `OCUPILOT_ALLOW_JOURNAL`,
+`OCUPILOT_ALLOW_LICENSE_CONFIG`, `OCUPILOT_ALLOW_ECP_CONFIG`, and
+`OCUPILOT_ALLOW_ENCRYPTION_CONFIG`. The `# classes:` comment above each one in
+`scripts/ci-throwaway.sh` lists the classes it arms, and `ui/tools/ci.test.mjs` holds each list
+equal to the classes that read the variable.
 
 **The ObjectScript suite is split across eight containers and the browser specs across five, never run in parallel inside one.**
 `ui/tools/ci-shards.mjs` gives every leg its share from `ui/tools/ci-timings.json`, longest first,
@@ -574,8 +595,8 @@ docker compose -f <scratch-dir>/compose.yml up -d --wait
 docker compose -f <scratch-dir>/compose.yml down -v
 ```
 
-Copy the `restart` policy, `depends_on`, `healthcheck`, `command` and the `durable-init` service
-from `docker-compose.yml` when they change,
+Copy the `restart` policy, `stop_grace_period`, `depends_on`, `healthcheck`, `command` and the
+`durable-init` service from `docker-compose.yml` when they change,
 so a failing start behaves on the throwaway as it would here, and remove the scratch directory
 afterwards.
 

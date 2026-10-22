@@ -184,6 +184,17 @@ test('the restart policy retries a failed start a bounded number of times, then 
   assert.ok(!/^\s*restart_policy:/m.test(raw), 'a deploy.restart_policy block would override the restart key -- none is expected');
 });
 
+// DW-1762: IRIS needs up to about five seconds to stop its user jobs, and Docker Desktop killed it
+// about three seconds after the stop signal, so every stop was logged as an abnormal shutdown.
+// What a restart then logs is observed on a throwaway container, not here.
+// Mutation (Rule 19): delete the `stop_grace_period` line, or give it another value -> this goes red.
+test('the iris service waits 60 s for IRIS to stop before Docker kills it (DW-1762)', () => {
+  const iris = serviceBlock(raw, 'iris');
+  assert.ok(iris, 'docker-compose.yml declares the iris service');
+  const keys = [...iris.matchAll(/^\s*stop_grace_period:\s*(.*?)\s*$/gm)].map((m) => m[1].replace(/\s+#.*$/, '').replace(/^["']|["']$/g, ''));
+  assert.deepEqual(keys, ['60s'], 'expected exactly one stop_grace_period: key on iris, reading 60s');
+});
+
 test('the two hook scripts this compose file names actually exist', () => {
   assert.ok(existsSync(join(repoRoot, 'scripts', 'container-start.sh')), 'scripts/container-start.sh must exist');
   assert.ok(existsSync(join(repoRoot, 'scripts', 'container-health.sh')), 'scripts/container-health.sh must exist');

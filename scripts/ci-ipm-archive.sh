@@ -118,10 +118,25 @@ case "$SCRATCH_TMPDIR" in
     /?*) ;;
     *) SCRATCH_TMPDIR=/nonexistent-tmpdir ;;
 esac
+# Every trailing slash comes off, so a root spelled `/tmp//` is the root and not a directory under
+# it. Then the spelling must be plain: `//` and `/./` name a directory the case below reads as
+# inside a root, and `/.` at the end is the root itself.
+while [ "$DIR" != "${DIR%/}" ]; do
+    DIR="${DIR%/}"
+done
+case "$DIR" in
+    *//*|*/./*|*/.) echo "ci-ipm-archive: '$DIR' must name its directory plainly, with no '//', '/./' or trailing '/.'; a throwaway's directory is removed recursively"; exit 2 ;;
+esac
 case "$DIR" in
     /tmp/?*|/private/tmp/?*|"$SCRATCH_TMPDIR"/?*) ;;
     *) echo "ci-ipm-archive: '$DIR' is not under a scratch root; this directory is removed recursively, so it must be under /tmp, /private/tmp or \$TMPDIR"; exit 2 ;;
 esac
+# A link as the directory would carry the recursive removal out of the scratch root. A link further
+# up the path is not refused.
+if [ -L "$DIR" ]; then
+    echo "ci-ipm-archive: '$DIR' is a symbolic link; a throwaway's directory is removed recursively, so it must be a real directory under its scratch root"
+    exit 2
+fi
 
 # Only now, with both names known to be this script's own.
 cleanup() {

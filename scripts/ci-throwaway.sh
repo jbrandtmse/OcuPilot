@@ -8,9 +8,9 @@
 # its own project name, its own container name, its own host ports (never 52774 or 1973) and its
 # own data directory, and `down` takes `-v` so nothing of it survives.
 #
-# The `restart`, `depends_on`, `healthcheck` and `command` keys, and the one-shot `durable-init`
-# service, are copied from docker-compose.yml on purpose, so a start behaves on the throwaway as it
-# would there. Copy them again when they change; `ui/tools/ci.test.mjs` holds the two equal.
+# The `restart`, `stop_grace_period`, `depends_on`, `healthcheck` and `command` keys, and the one-shot
+# `durable-init` service, are copied from docker-compose.yml on purpose, so a start behaves on the
+# throwaway as it would there. Copy them again when they change; `ui/tools/ci.test.mjs` holds the two equal.
 #
 # Beside the arming variables, its environment carries OCUPILOT_LOAD_TESTS: "1", which
 # docker-compose.yml does not: it makes container-start.sh compile the roster's test-scope package
@@ -109,10 +109,39 @@ fi
 case "$DIR" in
     *..*) echo "ci-throwaway: '$DIR' contains '..', which walks out of any root this could check; a throwaway's directory is removed recursively, so it must name its scratch root directly"; exit 2 ;;
 esac
+# Every trailing slash comes off, so a root spelled `/tmp//` is the root and not a directory under
+# it. Then the spelling must be plain: `//` and `/./` name a directory the case below reads as
+# inside a root, and `/.` at the end is the root itself.
+while [ "$DIR" != "${DIR%/}" ]; do
+    DIR="${DIR%/}"
+done
 case "$DIR" in
-    /tmp/?*|/private/tmp/?*|"${TMPDIR:-/nonexistent-tmpdir}"?*|"${HOME_ROOT:-/nonexistent-home}/.ocupilot-throwaways"/?*) ;;
+    *//*|*/./*|*/.) echo "ci-throwaway: '$DIR' must name its directory plainly, with no '//', '/./' or trailing '/.'; a throwaway's directory is removed recursively"; exit 2 ;;
+esac
+# The $TMPDIR arm is written with its own separator and from a TMPDIR stripped of its trailing
+# slashes: a TMPDIR of `/` would otherwise make the arm `/?*`, which passes every absolute path,
+# and a TMPDIR of `/tmp` would make `/tmpanything` a sibling that passes as if it were inside. A
+# TMPDIR that is not absolute admits nothing.
+SCRATCH_TMPDIR="${TMPDIR:-/nonexistent-tmpdir}"
+while [ "$SCRATCH_TMPDIR" != "${SCRATCH_TMPDIR%/}" ]; do
+    SCRATCH_TMPDIR="${SCRATCH_TMPDIR%/}"
+done
+case "$SCRATCH_TMPDIR" in
+    /?*) ;;
+    *) SCRATCH_TMPDIR=/nonexistent-tmpdir ;;
+esac
+case "$DIR" in
+    /tmp/?*|/private/tmp/?*|"$SCRATCH_TMPDIR"/?*|"${HOME_ROOT:-/nonexistent-home}/.ocupilot-throwaways"/?*) ;;
     *) echo "ci-throwaway: '$DIR' is not under a scratch root; a throwaway's directory is removed recursively, so it must be under /tmp, /private/tmp, \$TMPDIR or \$HOME/.ocupilot-throwaways"; exit 2 ;;
 esac
+# A link as the directory, or as its data directory, would carry the recursive removals below out
+# of the scratch root. A link further up the path is not refused.
+for LINK in "$DIR" "$DIR/data"; do
+    if [ -L "$LINK" ]; then
+        echo "ci-throwaway: '$LINK' is a symbolic link; a throwaway's directory is removed recursively, so it must be a real directory under its scratch root"
+        exit 2
+    fi
+done
 
 COMPOSE_FILE="$DIR/compose.yml"
 
@@ -199,6 +228,7 @@ services:
     image: $IMAGE
     container_name: $PROJECT
     restart: on-failure:3
+    stop_grace_period: 60s
     depends_on:
       durable-init:
         condition: service_completed_successfully

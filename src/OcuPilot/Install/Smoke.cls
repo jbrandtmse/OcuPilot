@@ -25,6 +25,10 @@
 /// <p><b>It uses <class>%Net.HttpRequest</class> directly.</b>
 /// <class>OcuPilot.Test.Http</class> is the suite's over-the-wire client and is test-scope: it
 /// does not ship, so this class cannot depend on it.</p>
+/// <p><b>It asks the instance's own web server.</b> The HTTP checks go to <code>localhost</code>, over
+/// plain HTTP, on the port <code>Config.Startup</code> reports as the instance's web-server port. An
+/// instance that serves OcuPilot only through an external web server fails every HTTP check even when
+/// it is installed correctly.</p>
 /// <p><b>It never <code>Write</code>s</b> (AD-12). The report comes back as one string and the
 /// caller prints it.</p>
 Class OcuPilot.Install.Smoke Extends %RegisteredObject
@@ -271,6 +275,10 @@ ClassMethod Run(pUsername As %String = "", pPassword As %String = "", pDemo As %
 /// <p>The host every check addresses. Always the loopback interface: this class runs inside the
 /// instance it is asking about, and a smoke run that could be pointed at another host would be
 /// answering for the wrong one.</p>
+/// <p><b>It asks the instance's own web server.</b> The HTTP checks go to <code>localhost</code>, over
+/// plain HTTP, on the port <code>Config.Startup</code> reports as the instance's web-server port. An
+/// instance that serves OcuPilot only through an external web server fails every HTTP check even when
+/// it is installed correctly.</p>
 ClassMethod Host() As %String
 {
     Quit "localhost"
@@ -279,6 +287,10 @@ ClassMethod Host() As %String
 /// <p>The instance's own configured web-server port, falling back to
 /// <parameter>DEFAULTPORT</parameter> when it cannot be read. Switches to <code>%SYS</code> and
 /// restores (AD-16), restoring first on the error path.</p>
+/// <p><b>It asks the instance's own web server.</b> The HTTP checks go to <code>localhost</code>, over
+/// plain HTTP, on the port <code>Config.Startup</code> reports as the instance's web-server port. An
+/// instance that serves OcuPilot only through an external web server fails every HTTP check even when
+/// it is installed correctly.</p>
 ClassMethod Port() As %Integer
 {
     Set tPort = ""

@@ -207,7 +207,14 @@ export function classifyFailureDetail(className, marker, failures) {
   }
   const classLevel = failures.filter((failure) => failure.method === '');
   if (classLevel.length > 0) {
-    problems.push(`${className}: the class recorded a class-level error (${classLevel.map((failure) => failure.action).join(', ')}) -- which is a failure, never a pass`);
+    // An armed class refuses in OnBeforeAllTests with the variable's name in the error text; the
+    // action is the hook's name. Both are read, so a record that carries the name in either says so.
+    const armedBy = [...new Set(classLevel.flatMap((failure) => `${failure.action} ${failure.error}`.match(/OCUPILOT_ALLOW_[A-Z_]+/g) ?? []))];
+    const hint =
+      armedBy.length === 0
+        ? ''
+        : `; it names ${armedBy.join(', ')}, an arming variable only scripts/ci-throwaway.sh sets, so this class runs on a throwaway and not on a development instance (docs/DEVELOPMENT.md, Armed test classes)`;
+    problems.push(`${className}: the class recorded a class-level error (${classLevel.map((failure) => failure.action).join(', ')}) -- which is a failure, never a pass${hint}`);
   }
   return problems;
 }

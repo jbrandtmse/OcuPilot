@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -369,6 +369,48 @@ test('a --dir outside a scratch root is refused, because the script removes it r
     assert.ok(refused.output.includes(dir), `the refusal names the directory: ${refused.output}`);
     assert.deepEqual(refused.docker, []);
     assertNothingRemovedOrCopied(refused);
+  }
+});
+
+// Mutation (Rule 19): revert the guard to the scratch-root case alone, with no trailing-slash strip,
+// no plain-spelling case and no link test -> every refusal below exits 0 or goes on to stage.
+test("a --dir spelled with '//' or '/./', or that is a symbolic link, is refused before anything is removed (DW-235)", () => {
+  for (const dir of ['/tmp//x', '/tmp/./x', '/tmp/x/.', '/private/tmp//x']) {
+    const refused = runRefused(['--image', PINNED_IMAGE, '--dir', dir]);
+    assert.equal(refused.status, 2, `${dir} was not refused: ${refused.output}`);
+    assert.ok(refused.output.includes(dir), `the refusal names the directory: ${refused.output}`);
+    assert.match(refused.output, /must name its directory plainly/, `${dir}: the refusal says why`);
+    assert.deepEqual(refused.docker, []);
+    assertNothingRemovedOrCopied(refused);
+  }
+
+  // Trailing slashes come off first, so a root spelled with them is the root and not inside it.
+  for (const dir of ['/tmp//', '/tmp/', '/private/tmp//']) {
+    const refused = runRefused(['--image', PINNED_IMAGE, '--dir', dir]);
+    assert.equal(refused.status, 2, `${dir} was not refused: ${refused.output}`);
+    assert.match(refused.output, /is not under a scratch root|must name its directory plainly/, `${dir}: the refusal says why`);
+    assert.deepEqual(refused.docker, []);
+    assertNothingRemovedOrCopied(refused);
+  }
+
+  // The fixture is a link in a directory this test makes and removes.
+  const scratch = mkdtempSync(join(tmpdir(), 'ocupilot-ipm-link-'));
+  try {
+    mkdirSync(join(scratch, 'real'));
+    symlinkSync(join(scratch, 'real'), join(scratch, 'link'));
+    const refused = runRefused(['--image', PINNED_IMAGE, '--dir', join(scratch, 'link')]);
+    assert.equal(refused.status, 2, `a --dir that is a symbolic link was not refused: ${refused.output}`);
+    assert.match(refused.output, /is a symbolic link/, 'the refusal says why');
+    assert.deepEqual(refused.docker, []);
+    assertNothingRemovedOrCopied(refused);
+    // A trailing slash comes off first, or the link test would read the directory the link points to.
+    const slashed = runRefused(['--image', PINNED_IMAGE, '--dir', `${join(scratch, 'link')}/`]);
+    assert.equal(slashed.status, 2, `a symbolic link spelled with a trailing slash was not refused: ${slashed.output}`);
+    assert.match(slashed.output, /is a symbolic link/, 'and the refusal says why');
+    assert.deepEqual(slashed.docker, []);
+    assertNothingRemovedOrCopied(slashed);
+  } finally {
+    rmSync(scratch, { recursive: true, force: true });
   }
 });
 
