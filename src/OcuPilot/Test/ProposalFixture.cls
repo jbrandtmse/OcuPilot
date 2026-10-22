@@ -440,15 +440,20 @@ ClassMethod Field(pKey As %String, pField As %String) As %String
 /// <p>How many proposal rows name a user starting with <var>pPrefix</var>.</p>
 ClassMethod ProposalCount(pPrefix As %String = {..#PROBEPREFIX}) As %Integer
 {
-    Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT COUNT(*) FROM OcuPilot_Kernel_State.Proposal WHERE UserName %STARTSWITH ?", pPrefix)
-    If (tRS.%SQLCODE < 0) || 'tRS.%Next() Quit -1
-    Quit +tRS.%GetData(1)
+    Quit ..CountRows("SELECT COUNT(*) FROM OcuPilot_Kernel_State.Proposal WHERE UserName %STARTSWITH ?", pPrefix)
 }
 
 /// <p>How many turn rows name a user starting with <var>pPrefix</var>.</p>
 ClassMethod TurnCount(pPrefix As %String = {..#PROBEPREFIX}) As %Integer
 {
-    Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT COUNT(*) FROM OcuPilot_Kernel_State.Turn WHERE UserName %STARTSWITH ?", pPrefix)
+    Quit ..CountRows("SELECT COUNT(*) FROM OcuPilot_Kernel_State.Turn WHERE UserName %STARTSWITH ?", pPrefix)
+}
+
+/// <p>The one count the fixed statement <var>pSql</var> answers for the bound value <var>pValue</var>;
+/// <code>-1</code> when it could not be read.</p>
+ClassMethod CountRows(pSql As %String, pValue As %String) As %Integer [ Private ]
+{
+    Set tRS = ##class(%SQL.Statement).%ExecDirect(, pSql, pValue)
     If (tRS.%SQLCODE < 0) || 'tRS.%Next() Quit -1
     Quit +tRS.%GetData(1)
 }
@@ -474,18 +479,14 @@ ClassMethod Remove(Output pRemaining As %Integer, pPrefix As %String = {..#PROBE
 /// be read.</p>
 ClassMethod ProposalCountForTurn(pTurnKey As %String) As %Integer
 {
-    Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT COUNT(*) FROM OcuPilot_Kernel_State.Proposal WHERE %EXACT(TurnKey) = ?", pTurnKey)
-    If (tRS.%SQLCODE < 0) || 'tRS.%Next() Quit -1
-    Quit +tRS.%GetData(1)
+    Quit ..CountRows("SELECT COUNT(*) FROM OcuPilot_Kernel_State.Proposal WHERE %EXACT(TurnKey) = ?", pTurnKey)
 }
 
 /// <p>How many turn rows name the turn key <var>pTurnKey</var>; <code>-1</code> when that could not be
 /// read.</p>
 ClassMethod TurnCountForTurn(pTurnKey As %String) As %Integer
 {
-    Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT COUNT(*) FROM OcuPilot_Kernel_State.Turn WHERE %EXACT(TurnKey) = ?", pTurnKey)
-    If (tRS.%SQLCODE < 0) || 'tRS.%Next() Quit -1
-    Quit +tRS.%GetData(1)
+    Quit ..CountRows("SELECT COUNT(*) FROM OcuPilot_Kernel_State.Turn WHERE %EXACT(TurnKey) = ?", pTurnKey)
 }
 
 /// <p>Remove every proposal minted on a turn <method>SeedTurn</method> seeded in this process, and

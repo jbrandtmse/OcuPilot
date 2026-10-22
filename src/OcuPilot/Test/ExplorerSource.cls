@@ -128,17 +128,19 @@ Method TestCutCountsEscapedCharactersAndLineFeeds()
 
 /// <p>The cut sentence every source read's description carries, and the description of the result's
 /// <code>text</code>, state the bound the read cuts to: each holds <parameter>SOURCEMAXLENGTH</parameter>
-/// written with thousands separators.</p>
+/// written with thousands separators, as a whole figure rather than the tail or head of a longer one.</p>
 /// <p>Mutation (Rule 19): <parameter>OcuPilot.Screen.Tool.ExplorerSourceRead.SOURCEMAXLENGTH</parameter> 50000
 /// with <parameter>CUTTEXT</parameter> left as it is -- this goes red; the <code>text</code> description of
-/// <method>OcuPilot.Screen.Tool.ExplorerSourceRead.ResultSchema</method> stating another figure -- this goes red.</p>
+/// <method>OcuPilot.Screen.Tool.ExplorerSourceRead.ResultSchema</method> stating another figure -- this goes red;
+/// <parameter>CUTTEXT</parameter> stating 160,000 -- this goes red.</p>
 Method TestTheReadDescriptionStatesTheBoundItCutsTo()
 {
     Set tStated = $FNumber(..Limit(), ",")
+    Set tWhole = "(?<![0-9,])" _ tStated _ "(?!,?[0-9])"
     Set tCutText = ##class(OcuPilot.Screen.Tool.ExplorerSourceRead).#CUTTEXT
-    Do $$$AssertTrue(tCutText [ tStated, "the cut sentence states " _ tStated _ ": " _ tCutText)
+    Do $$$AssertTrue($Locate(tCutText, tWhole) > 0, "the cut sentence states " _ tStated _ ": " _ tCutText)
     Set tTextHint = ##class(OcuPilot.Screen.Tool.ExplorerSourceRead).ResultSchema().%Get("properties").%Get("text").%Get("description")
-    Do $$$AssertTrue(tTextHint [ tStated, "and so does the result's text description: " _ tTextHint)
+    Do $$$AssertTrue($Locate(tTextHint, tWhole) > 0, "and so does the result's text description: " _ tTextHint)
 }
 
 /// <p>A routine the instance keeps only as object code answers 404 <code>PORT.NOTFOUND</code> with the reason that the
