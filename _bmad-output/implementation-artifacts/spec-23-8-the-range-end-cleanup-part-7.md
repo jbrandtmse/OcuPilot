@@ -2,11 +2,11 @@
 title: 'Story 23.8: The range-end cleanup, part 7'
 type: 'bugfix'
 created: '2026-10-21'
-status: 'done'
+status: 'in-progress'
 baseline_revision: '0228ba8d39f98e12e33c5a81cdbf519fcc5281e8'
 baseline_commit: '0228ba8d39f98e12e33c5a81cdbf519fcc5281e8'
 review_loop_iteration: 0
-followup_review_recommended: true
+followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
 warnings: ['multiple-goals', 'oversized']
