@@ -97,8 +97,10 @@ Method OnAfterAllTests() As %Status
 /// <p>B2: a create on both callers sends one <code>PUT</code> carrying only the settings supplied and never
 /// <code>SystemDefault</code>; the instance listens on the port at once, the id is the canonical composite, and
 /// the read-back matches.</p>
+/// <p>A port the body sends as a JSON number is the same port as its text.</p>
 /// <p>Mutation (Rule 19): make <method>OcuPilot.Port.SuperserverPort.SplitId</method> drop the port -- both
-/// legs reach the vendor with no port and go red.</p>
+/// legs reach the vendor with no port and go red; stop <method>OcuPilot.Area.Security.SuperserverSave.CreateIdentity</method>
+/// reading a numeric port -- the numeric leg is refused on <code>Port</code> and goes red.</p>
 Method TestACreateSendsOnlyTheSuppliedSettingsOnBothCallers()
 {
     Set tSC = $ClassMethod(..#SAVE, "Handle", "", {"Port": "21825", "BindAddress": "", "EnableCSP": true, "Description": "a probe"}, .tAnswer, .tStatus)
@@ -119,13 +121,20 @@ Method TestACreateSendsOnlyTheSuppliedSettingsOnBothCallers()
     Do $$$AssertEquals(##class(OcuPilot.Test.EncryptionStartupDescriptor).Keys(##class(OcuPilot.Test.LicenseKey).Parsed($ClassMethod(..#SEAM, "BodyOf", ..#PUT))), "EnableCSP", "carrying the one setting supplied")
     Do $$$AssertEquals(..Verdict($Get(tResult)), "matches", "its read-back matches")
     Do $$$AssertTrue($IsObject($ClassMethod(..#PROBE, "Stored", 21826)), "and the instance holds it")
+
+    Do $ClassMethod(..#SEAM, "Clear")
+    Set tSC = $ClassMethod(..#SAVE, "Handle", "", {"Port": 21827, "BindAddress": ""}, .tAnswer, .tStatus)
+    Do $$$AssertEquals(tStatus _ " " _ $ClassMethod(..#SEAM, "Writes"), "201 PUT:21827", "a port sent as a number creates the superserver on that port: " _ $Extract(tAnswer, 1, 200))
+    Do $$$AssertTrue($IsObject($ClassMethod(..#PROBE, "Stored", 21827)), "and the instance holds it")
 }
 
 /// <p>B2: a change on both callers sends the complete set less <code>SystemDefault</code> -- fifteen keys, the
-/// others as the instance held them -- and nothing else moves; the form's own change of nothing sends nothing.</p>
+/// others as the instance held them -- and nothing else moves; the form's own change of nothing sends nothing; the
+/// port and bind address a change body repeats are ignored, not refused.</p>
 /// <p>Mutation (Rule 19): drop <code>SystemDefault</code> from
 /// <parameter>OcuPilot.Screen.Tool.SuperserverUpdate.UNSENTFIELDS</parameter> -- both legs send it and go
-/// red.</p>
+/// red; make <method>OcuPilot.Kernel.Proposal.ScreenSave.UpdateArguments</method> pass the body as it is -- the leg
+/// repeating the id's members is refused 400 and goes red.</p>
 Method TestAChangeSendsTheCompleteSetLessSystemDefaultOnBothCallers()
 {
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Seed", 21825, {"EnableCSP": true, "Description": "before"}), "a probe superserver")
@@ -139,6 +148,10 @@ Method TestAChangeSendsTheCompleteSetLessSystemDefaultOnBothCallers()
     Do $ClassMethod(..#SEAM, "Clear")
     Set tSC = $ClassMethod(..#SAVE, "Handle", tId, {"Description": "by the form"}, .tAnswer, .tStatus)
     Do $$$AssertEquals(tStatus _ " " _ $ClassMethod(..#SEAM, "Writes"), "200 ", "a change that changes nothing sends nothing")
+    Do $ClassMethod(..#SEAM, "Clear")
+    Set tSC = $ClassMethod(..#SAVE, "Handle", tId, {"Port": "21825", "BindAddress": "0.0.0.0", "Description": "by the form again"}, .tAnswer, .tStatus)
+    Do $$$AssertEquals(tStatus _ " " _ $ClassMethod(..#SEAM, "Writes"), "200 PUT:21825", "the id's own members repeated in a change body are ignored: " _ $Extract(tAnswer, 1, 200))
+    Do $ClassMethod(..#SEAM, "Clear")
 
     Set tSC = $ClassMethod(..#PROBE, "Mint", ..#UPDATETOOL, {"Port": "21825", "BindAddress": "0.0.0.0", "Description": "by the agent"}, .tProposal, .tHttp, .tProblem)
     Do $$$AssertStatusOK(tSC, "the agent's change is minted (" _ tProblem _ ")")
@@ -285,7 +298,7 @@ Method TestTheRulesThatReadTheSuperserverRefuseAChange()
 /// since the mint refuses the confirm as changed, and a target another write holds answers 409
 /// <code>WRITE.TARGETBUSY</code> after the wait, with no write.</p>
 /// <p>Mutation (Rule 19): drop the <code>HoldTool</code> from
-/// <method>OcuPilot.Area.Security.SuperserverSave.HandleUpdate</method> -- the busy leg writes and goes red; let
+/// <method>OcuPilot.Kernel.Proposal.ScreenSave.HandleUpdate</method> -- the busy leg writes and goes red; let
 /// a create's confirm re-read match whatever it finds -- the taken-since leg writes and goes red.</p>
 Method TestATakenNameAMovedTargetAndABusyTargetAreRefused()
 {
@@ -405,7 +418,7 @@ Method TestAProbeOnTheServingPortIsRefusedTheSameFourChanges()
 /// superserver with 201 and <code>PUT /superserver/:id</code> changes it with 200, each answering the
 /// canonical id and the read-back, and a body key outside the settings is 400
 /// <code>PORT.FIELD.UNEXPECTED</code>. The write reaches the real port, for a probe port alone.</p>
-/// <p>Mutation (Rule 19): stop <method>OcuPilot.Area.Security.SuperserverSave.HandleUpdate</method> decoding the
+/// <p>Mutation (Rule 19): stop <method>OcuPilot.Kernel.Proposal.ScreenSave.HandleUpdate</method> decoding the
 /// id -- the change answers 404 and this goes red.</p>
 Method TestTheWriteRoutesAnswerOverTheWire()
 {

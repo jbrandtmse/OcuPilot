@@ -2,8 +2,8 @@
 title: 'Story 23.8: The range-end cleanup, part 7'
 type: 'bugfix'
 created: '2026-10-21'
-status: 'in-progress'
-baseline_revision: '5efc7e290bd662b3721362b17bcb62ff2e986964'
+status: 'done'
+baseline_revision: '60bceb233e9d5f5a1d3b7cd39e53cd22e641d8cb'
 baseline_commit: '5efc7e290bd662b3721362b17bcb62ff2e986964'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -325,7 +325,7 @@ Each batch is one implement pass and one code commit, with CI green on its own h
 
 ### Batch 5: shared Save
 
-- [ ] **DW-2278.** Create `src/OcuPilot/Kernel/Proposal/ScreenSave.cls` [Abstract], lifting `DocDbAppSave`'s generalized shape.
+- [x] **DW-2278.** Create `src/OcuPilot/Kernel/Proposal/ScreenSave.cls` [Abstract], lifting `DocDbAppSave`'s generalized shape.
   - **Parameters:** `CREATETOOL`, `UPDATETOOL`, `DESCRIPTORCLASS` and `RULES`.
   - **Template methods:** `HandleCreate`, `HandleUpdate`, `Create`, `Update` and `Answer`. `HandleCreate`/`HandleUpdate` keep `.HoldTool(` and `.Release(` in their own source.
   - **The identical helpers:** `PortClass`, `ProhibitedClass`, `Unexpected`, `Prohibited`, `Send`, `Body`, `Add` and `Gate`.
@@ -343,8 +343,8 @@ Each batch is one implement pass and one code commit, with CI green on its own h
     - compose or merge, then the prohibited set, then the port write, then `ReadBack.ForSave`, with the hold kept through the answer.
   - It mints no proposal and does not read the read-only or kill-switch state.
   - Every call goes through `..#RULES` and `..PortClass()`.
-- [ ] **DW-2278.** Create `src/OcuPilot/Kernel/Proposal/ScreenSaveRules.cls` [Abstract]: `RenderRead`, `Gate`, `Text`, `Add`, and `RenderViolations` through `ERRORCLASS`.
-- [ ] **DW-2278.** `SuperserverSave`, `MftConnectionSave` and `DocDbAppSave` extend `ScreenSave` and keep only their hooks and parameters. Their Rules classes extend `ScreenSaveRules`, and Superserver and MFT gain `ERRORCLASS`. `RoutineAppSave` and `RoutineAppRules` inherit through Doc DB unchanged.
+- [x] **DW-2278.** Create `src/OcuPilot/Kernel/Proposal/ScreenSaveRules.cls` [Abstract]: `RenderRead`, `Gate`, `Text`, `Add`, and `RenderViolations` through `ERRORCLASS`.
+- [x] **DW-2278.** `SuperserverSave`, `MftConnectionSave` and `DocDbAppSave` extend `ScreenSave` and keep only their hooks and parameters. Their Rules classes extend `ScreenSaveRules`, and Superserver and MFT gain `ERRORCLASS`. `RoutineAppSave` and `RoutineAppRules` inherit through Doc DB unchanged.
   - Keep every behavior the Write tests pin: Doc DB's 400 on an identity key in an update body, Superserver's numeric port, `MergeRaw` with the post-merge `Check` and the consequence, and Superserver's `Taken` endpoint.
   - The client forms are not touched.
 
@@ -560,6 +560,28 @@ Rejected:
   - `[low]` `[reject]` Intent audit: the client mirror keeps the name `acceptsEntityId` beside a comment naming `IdShapeAccepted` -- a naming divergence with no behavior change, and a rename would widen into Epic 20's `ui/src/app/**`.
   - `[low]` `[reject]` Intent audit: the mutation runs appear in the spec and not in code -- Rule 19 puts the `mutation:` lines under Verification, and each test's header carries its own.
   - `[low]` `[reject]` Intent audit: the dropped-announcement branch has no test -- same root cause as the second row.
+
+### 2026-10-22 -- Review pass (batch 5)
+
+- verdicts: 17 findings -- high 0, medium 0, low 9, false 8, maybe-false 0
+- findings:
+  - `low` `reject` A create's AD-10 call in `ScreenSave.Create` is observed by no test; only an update on a superserver is -- the shipped set judges these four targets by the reviewed-few sweep alone (`Prohibited.cls:649-657`), which `SaveFields` already keeps a create inside, so no arm can refuse a create today and a double would need a new class and a fixture seam (about 35 lines); reopen_if an AD-10 arm refuses a create of a superserver, MFT connection, Doc DB application or routine application.
+  - `low` `patch` The numeric-port arm of `SuperserverSave.CreateIdentity` has no test -- a numeric-port create leg is added to `SuperserverWrite`, red under the arm's removal (run 99).
+  - `low` `patch` A non-text MFT `Name` and a non-text Doc DB `Namespace` are unpinned -- one leg each in `MftConnectionWrite` and `DocDbAppWrite`, red under the shape violation's removal (runs 100, 101).
+  - `low` `reject` `Release` is verified only by `SaveHoldCoverage`'s source scan -- a `Release` present but misplaced is not a failure any current caller can produce, and a lock-introspection leg is more than a direct correction.
+  - `low` `patch` The default `UpdateArguments` (strip the identity members) is unpinned for Superserver and MFT -- one leg each repeats the id's members in a change body, red under a pass-through default (runs 111, 112).
+  - `low` `patch` Six re-pointed test headers name mutations with no recorded run -- each run against `ScreenSave` and recorded under Verification (runs 102-107).
+  - `low` `reject` Acceptance criteria without a `mutation:` line of their own for the MFT and Doc DB hooks and the `ScreenSaveRules` methods -- Rule 19 asks one demonstrated mutation per AC, and the AC has twelve recorded; the one unpinned fact the layer found, the routine application answer's missing `namespace`, was true of the three copies before the lift.
+  - `low` `reject` The base's `RulesCheck`, `RulesTaken` and `CreateIdentity` defaults fail open -- all four Saves override each, and an adopter that forgets one fails its own `*Write` rules legs; no current caller reaches it.
+  - `false` `reject` The diff adds hooks the spec's list omits (`CheckMerged`, `IdentityMembers`, `TakenField`, `Subject`) -- they carry the spec's "`MergeRaw` with the post-merge `Check`", `CallerFields` and the taken field and status wording that differed per Save; no status, code or body differs.
+  - `false` `reject` `Create` and `Update` changed their public signatures -- a search of `src`, `ui` and `scripts` finds no caller beyond `Router`'s `HandleCreate` and `HandleUpdate` and the fixtures.
+  - `low` `reject` The prohibited-set step is pinned through one subclass only -- the same root as the first finding above.
+  - `false` `reject` Nothing pins the hierarchy, `ERRORCLASS` on Superserver and MFT, or the abstractness -- `ERRORCLASS` is read by every 422 the `*Write` classes assert (`SUPERSERVER.VALIDATION`, `MFT.VALIDATION`), and an abstract class is not instantiable.
+  - `false` `reject` The equivalence has no before-and-after wire comparison -- the AC fixes the evidence as equal class totals plus the base mutations, and the 131 tests ran before and after.
+  - `false` `reject` `ScreenSaveRules` says a concrete class declares `Check` and `Taken`, though the base declares neither -- the two take different argument lists per class, so a base declaration could not fit them; the doc states the contract.
+  - `false` `reject` "Unchanged" for `RoutineAppSave` may mean its behavior -- both readings hold: the file is untouched and its answers are as before (`RoutineAppWrite` 15 of 15).
+  - `false` `reject` `HandleUpdate` passes `$Get(tFault)` to `RenderRead` where Superserver and MFT passed `""` -- the 404 branch reads neither the fault nor the status text.
+  - `false` `reject` `SuperserverRules.Text` went from private to public -- the spec lifts `Text` into `ScreenSaveRules`, where Doc DB's was already public; it names no harm.
 
 ## Design Notes
 
@@ -932,22 +954,31 @@ No AC contradicts an AD's Rule, and no NFR is in play.
   - End to end: `AcceptsParentId` answering 0, against the rebuilt bundle: `task-resume.browser-spec.mjs` red on its first test (the URL wait, 37.9 s), the other two green.
   - Reverted: `ToolNavigate` 23 of 23 (run 318), `ToolNavigateParent` 15 of 15 (runs 319 and 323), `ToolNavigateContract` 3 of 3 (run 320), `TurnNavigate` 15 of 15 (run 321), `ToolRoundTrip` 2 of 2 (run 322), confirmed in `%UnitTest_Result`; `task-resume.browser-spec.mjs` 3 of 3 and `navigate.browser-spec.mjs` 6 of 6; `npm run test:tools` 2146 of 2146; `check-objectscript.py` 0 problems.
 - `mutation:` (DW-1462, code review, `ocupilot-ci`, on the source mount only, every class recompiled by `LoadDir`, reverted `diff -r`-identical to `src/`): `Loop`'s `parentId` branch keying the detail `entityId`: `ToolNavigateParent` red 4 of 15, on the opened, browser-refused, lapsed and dropped `parentId` turns (run 329). Reverted, after the review patches: `ToolNavigateParent` 15 of 15 on `TurnToolsCase` (runs 324, 330), `ToolNavigate` 23 of 23 with Home in the sweep (62 own-row refusals, run 325), `ToolNavigateContract` 3 of 3 (326), `TurnNavigate` 15 of 15 (327), `ToolRoundTrip` 2 of 2 (328), `ToolDispatchClientFault` 3 of 3 (331), `LedgerClientRows` 3 of 3 (332), confirmed in `^UnitTest.Result`; `task-resume.browser-spec.mjs` 3 of 3 and `navigate.browser-spec.mjs` 6 of 6 on the rebuilt bundle; `npm run test:tools` 2146 of 2146; `check-objectscript.py` 0 problems. Ledger rows naming `parentId` read 142 before and after a 15-test `ToolNavigateParent` run.
-- `mutation:` (DW-2278):
-  - `ScreenSave.Prohibited` answers `$$$OK` always → the prohibited legs of SuperserverProhibited, MftConnectionWrite and DocDbAppWrite red.
-  - `HandleUpdate` without `Release` → SaveHoldCoverage red.
-  - The default merge skipping the problem `Check` → MftConnectionWrite and DocDbAppWrite red.
+- **Batch 5, equal totals.** The 19 classes read 131 tests, 0 failed, before the edit (the lead's run) and after it (runs 20-38): SuperserverWrite 9, SuperserverGate 3, SuperserverRead 5, SuperserverProhibited 6, SuperserverDescriptor 7; MftConnectionWrite 9, MftConnectionGate 3, MftConnectionRead 4, MftConnectionDescriptor 8; DocDbAppWrite 11, DocDbAppGate 3, DocDbAppRead 5, DocDbAppDescriptor 11; RoutineAppWrite 15, RoutineAppGate 6, RoutineAppRead 4, RoutineAppMembers 7, RoutineAppDescriptor 13; SaveHoldCoverage 2. `SaveHoldCoverage` resolves each route's handler to `ScreenSave.HandleCreate` and `HandleUpdate` (`CompiledMethod.Origin`). `npm run test:tools` 2146 of 2146, `check-objectscript.py` 0 problems, `ipm-manifest.mjs --check` up to date.
+- `mutation:` (DW-2278, `ocupilot-ci`, applied to the instance's source mount only, `ScreenSave` and each Save and fixture descendant recompiled, each reverted `diff -r`-identical to `src/`):
+  - `ScreenSave.Prohibited` answers `$$$OK` always: `SuperserverProhibited` red 2 of 6 (run 39). `MftConnectionWrite` 9 of 9, `DocDbAppWrite` 11 of 11 and `RoutineAppWrite` 15 of 15 stay green (runs 40-42): AD-10's set names no refusal for an MFT connection or a Doc DB application, and a routine application's own-application refusal is the port's as well.
+  - `HandleUpdate` without `Release`: `SaveHoldCoverage` red 1 of 2, on the four `PUT` routes, each resolved to `ScreenSave.HandleUpdate` (run 43).
+  - The default `Merge` skipping the problem `Check`: `MftConnectionWrite.TestEveryRulesRowIsRefusedBeforeAnyPutOnBothCallers` (run 44), `DocDbAppWrite.TestEveryChangeRuleIsRefusedBeforeAnyPutOnBothCallers` (run 45) and `RoutineAppWrite.TestEveryChangeRuleIsRefusedBeforeAnyPutOnBothCallers` (run 46), each the one red.
+  - The hooks: `SuperserverSave.Consequence` empty: `SuperserverWrite.TestAProbeOnTheServingPortIsRefusedTheSameFourChanges` the one red (run 47). Its `Merge` calling `MergeUpdate` in place of `MergeRaw`: that test and `TestTheRulesThatReadTheSuperserverRefuseAChange` red (run 48). Its `CheckMerged` 0: `TestTheRulesThatReadTheSuperserverRefuseAChange` the one red (run 49). Its `TakenField` `Name`: `TestATakenNameAMovedTargetAndABusyTargetAreRefused` the one red (run 50). `DocDbAppSave.UpdateArguments` as `CallerFields`: `TestTheWriteRoutesAnswerOverTheWire` the one red in `DocDbAppWrite` and in `RoutineAppWrite` (runs 51, 52). `DocDbAppSave.CreateIdentity` answering the name alone as the id: `SaveHoldCoverage.TestACreateSaveHoldsTheKeyItsMintComputes` red on its `/docdb-application` leg (run 53). `ScreenSave.Gate` passing every caller: the two `TestWithout...` tests red in each of `SuperserverGate`, `MftConnectionGate`, `DocDbAppGate` and `RoutineAppGate` (runs 54-57).
+  - Reverted: the 19 classes green, 131 tests, runs 58-76.
+- `mutation:` (DW-2278, review pass, `ocupilot-ci`, source mount only, every class recompiled by `LoadDir`, each reverted and the mount `diff -r`-identical to `src/`):
+  - `SuperserverSave.CreateIdentity` not reading a numeric port: `SuperserverWrite.TestACreateSendsOnlyTheSuppliedSettingsOnBothCallers` the one red, on its numeric-port leg (run 99).
+  - `MftConnectionSave.CreateIdentity` without its shape violation: `MftConnectionWrite.TestEveryRulesRowIsRefusedBeforeAnyPutOnBothCallers` the one red, on the non-text name leg (run 100). `DocDbAppSave.CreateIdentity` likewise: `DocDbAppWrite.TestEveryCreateRuleIsRefusedBeforeAnyPutOnBothCallers` the one red, on the non-text namespace leg (run 101).
+  - `ScreenSave.UpdateArguments` passing the body as it is: `SuperserverWrite.TestAChangeSendsTheCompleteSetLessSystemDefaultOnBothCallers` (run 111) and `MftConnectionWrite.TestAChangeSendsTheFreshFiveFieldsOnBothCallers` (run 112), each the one red in its class.
+  - The mutations the six re-pointed test headers name, now run against `ScreenSave`: `Gate` refusing every caller reddens `TestTheDeclaredPairsReadAndWrite` in `SuperserverGate`, `MftConnectionGate` and `DocDbAppGate` (runs 102-104). `HandleUpdate` without `HoldTool` reddens `TestATakenNameAMovedTargetAndABusyTargetAreRefused`, the one red in `SuperserverWrite` and in `MftConnectionWrite` (runs 105, 106). `HandleUpdate` not decoding the id reddens `SuperserverWrite.TestTheWriteRoutesAnswerOverTheWire` among six (run 107).
+  - Reverted: the 19 classes green, 131 tests, runs 113-131.
 
 ## Auto Run Result
 
 Status: done
 Blocking condition: none
 
-**Batch 4 (navigation contract), this pass only.** Batches 1-3 closed in their own passes; batch 5 is untouched and unchecked.
+**Batch 5 (shared Save), this pass only.** Batches 1-4 closed in their own passes.
 
-- **Implemented.** DW-1462: `shell.screen.open` takes `entityId` for a row of a screen's own and `parentId` for the item a parent-scoped screen belongs to; each is accepted by the registry's declaration and otherwise refused `NAV.ENTITYNOTALLOWED` before any announcement, with `detail.argument` naming it. The route's one id rides the announce step, the Nav row and the settled result as before; the settled and dropped results name `parentId` when it was the argument. The ruled model-read texts and `REASONNAVENTITYNOTALLOWED` are used as written. No stored schema changed.
-- **Files.** `Screen/Tool/Navigate.cls`, `Kernel/Agent/Dispatch.cls`, `Kernel/Agent/Loop.cls`, `Kernel/State/Nav.cls` (doc only), `Api/Error.cls`, `Test/ToolNavigate.cls`, new `Test/ToolNavigateParent.cls` (9 tests), the two `Directive`-mirroring probes `Test/LedgerClientTool/Probe.cls` and `Test/ClientCallFault/Probe.cls`, `ui/browser/task-resume.browser-spec.mjs`, a comment in `ui/src/app/core/citations.ts`, and this spec.
-- **Counts at HEAD** (Verification): 99 of 161 own-row screens take `entityId`, 41 of 48 parent-scoped screens take `parentId` (8 newly), and the 37 that took an `entityId` before no longer do.
-- **Review.** 14 findings from two layers (medium 1, low 13): 5 patched, 9 rejected (see the Triage Log). Patched: pins for the announce append and the dropped lapse, the three missing `mutation:` runs and the 256 bound, a stale doc comment and one test header. Deferred: none.
-- **Follow-up review recommended: false.** One medium and four lows were patched, each patch with its mutation observed red.
-- **Verification.** Load 0 errors. `ToolNavigate` 23, `ToolNavigateParent` 9, `TurnNavigate` 15, `ToolRoundTrip` 2, `ToolDispatchClientFault` 3 and `LedgerClientRows` 3, all green on `ocupilot-ci`. After rebuilding and redeploying the bundle, `task-resume.browser-spec.mjs` 3 of 3 and `navigate.browser-spec.mjs` 6 of 6. `npm run test:tools` 2146 of 2146 and `check-objectscript.py` 0 problems.
-- **Residual risk.** The full ObjectScript sweep and the full browser suite are not run here; they belong to the lead and to CI.
+- **Implemented.** DW-2278: `Kernel/Proposal/ScreenSave` and `ScreenSaveRules` carry the shared Save shape; `SuperserverSave`, `MftConnectionSave` and `DocDbAppSave` (and `RoutineAppSave` through it) keep only their parameters and hooks, and the three Rules classes extend `ScreenSaveRules` (Superserver and MFT gain `ERRORCLASS`). Wire statuses, codes and bodies are unchanged. The client forms are untouched.
+- **Decided in-stage.** The base adds four hooks the task list does not name: `IdentityMembers`, `TakenField`, `Subject` (each replaced a per-Save difference) and `CheckMerged` (Superserver's post-merge `Check`). `Create` and `Update` now take `(pId, pParts, ...)`; nothing but `HandleCreate` and `HandleUpdate` calls them.
+- **Files.** New `Kernel/Proposal/ScreenSave.cls` (455 lines) and `ScreenSaveRules.cls` (65). The three Saves shrink from 332-390 lines to 58-123; each Rules class loses five methods. Six test headers point at the moved methods, and `SuperserverWrite`, `MftConnectionWrite` and `DocDbAppWrite` gain four legs (numeric port, non-text name, non-text namespace, id members repeated in a change body). This spec.
+- **Review.** 17 findings from two layers (low 9, false 8): 4 patched (the four legs above, plus the recorded runs of six header mutations), 13 rejected with their reasons in the Triage Log. Deferred: none.
+- **Follow-up review recommended: false.** Only lows were patched, each with its mutation observed red.
+- **Verification.** Load 0 errors. The 19 classes read 131 tests, 0 failed, before the edit and after it, and again after the review patches (runs 113-131). `npm run test:tools` 2146 of 2146, `check-objectscript.py` 0 problems, `ipm-manifest.mjs --check` up to date, `lint-docs.sh` clean.
+- **Residual risk.** The full ObjectScript sweep and the full browser suite are not run here; they belong to the lead and to CI. The 25-35 other `Area/*Save.cls` copies stay filing candidate 1. The handoff pass read the spine selectively (AD-52 to AD-58); AD-10 and AD-34 were checked in review against the unchanged order and the hold's span.
