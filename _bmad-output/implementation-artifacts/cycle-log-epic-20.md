@@ -1166,3 +1166,11 @@
 2026-10-22T05:28:18Z	Epic 20	throwaway_removed	run=20261020T0940Z-20,23 container=ocupilot-b-ci cmd=ci-throwaway.sh_down(--dir_/Users/jbrandt/.ocupilot-throwaways/ocupilot-b-ci_--project_ocupilot-b-ci_--web_52777_--super_1976) reason=orchestrator_hold_1-2_weeks result=removed(dir_removed) dev_instance=ocupilot-slot-b_untouched
 2026-10-22T05:28:18Z	Epic 20	hold_saved	story=none stage=none patch=none tree=clean note=20.35_committed_and_green(f25687f8);no_stage_in_flight;no_story_opened_after_it
 2026-10-22T05:28:18Z	Epic 20	hold_complete	shas=origin_code=f25687f8(20.35,green_39724737296,reported_to_main),bookkeeping_head=this_commit throwaway=ocupilot-b-ci_torn_down dev_instance=untouched inbox=none_new next=20.34_implement
+2026-10-23T03:40:52Z	Epic 20	lead_model_gate	model=claude-opus-5-5 action=proceed note=runner_redispatched_for_fix_forward_20.37
+2026-10-23T03:40:52Z	Epic 20	runtime_gate	bmad=6.12.1 uv=0.12.9 ci=gh bootstrap_check=ok slot=b(profile_ocupilot-slot-b)
+2026-10-23T03:40:52Z	Epic 20	launch_env	depth=4 watchdog=default bash_max_ms=default
+2026-10-23T03:40:52Z	Epic 20	runner_unattended_start	run=20261020T0940Z-20,23 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03 doctrine=3d11cec98d91c1d4d9c225fe3b265e1af418abe4 note=redispatch_2026-10-23_one_fix-forward_story_20.37_then_hold;tree_clean;HEAD=origin=99947f6b;inbox_verify=ok;no_HOLD
+2026-10-23T03:40:52Z	Epic 20	integrated_forward	feature=de356ecd(code=c576e2ce_green_39891784451;23.8_batches_3-5) head=a103d357 conflicts_resolved=none(epic_head_was_ancestor;--no-ff) ci=pending runs=39896148804 note=pushed_alone_as_code_head
+2026-10-23T03:40:52Z	Story 20.37	ledger_routed_planned	story=20-37-sqlrun-stored-slot-order entries=1(DW-2500) excess=0 by=load note=fix_forward_story_inserted_after_20.36(orchestrator_re-records_graph_hash_reason=fix_forward);DW-2500_re-owned_by=load
+2026-10-23T03:43:29Z	Epic 20	epic_context_compiled	sha=this_commit reason=planning_artifact_newer(20.37_inserted) model=opus tokens~2900
+2026-10-23T03:43:29Z	Story 20.37	stage_spawned	stage=plan spawn_at=2026-10-23T03:43:29Z model=opus agent_name=20-37-plan-1 cycle_iteration=1

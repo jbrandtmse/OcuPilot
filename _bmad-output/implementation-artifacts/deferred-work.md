@@ -12389,6 +12389,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: upgrade-1013-check | severity: high | fix-risk: low | footprint: out-of-footprint
 - evidence: 1.0.13 upgrade check (candidate 3fedf80c): pre-update SqlRun row read Kind=ended, State=old JobId; GET /explorer/sql/background/<id> 200 before, 404 after
 - 2026-10-23T02:50:27Z status=routed owner=burndown by=orchestrator note=owner decision 2026-10-22 (relayed by the Planner): fix before the 1.0.13 cut by declaring Kind after Answer; first task on resume, as a fix-forward story in Epic 20
+- 2026-10-23T03:40:38Z status=routed owner=20-37-sqlrun-stored-slot-order by=load note=fix_forward 20.37
 
 ### DW-2501: No check fails when a new stored property on a %Persistent class without a source Storage section is declared anywhere but last, compared with the previous release
 - source: upgrade-1013-check | severity: med | fix-risk: low | footprint: out-of-footprint

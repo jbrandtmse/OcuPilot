@@ -9029,6 +9029,24 @@ So that I start from a recap and ranked hypotheses rather than a blank page.
 - DW-2469: A workflow turn's previous reports the conversation's newest earlier turn whatever workflow it ran, so a workflow started mid-conversation reads unrelated proposals as its own earlier steps (ledger; routed by cr 2026-10-20)
 - DW-2468: A guided workflow's step tools are not added to the turn's starting tool set, so on a screen without a step's tool the model reaches it through shell_tools_find (ledger; routed by adjudication 2026-10-20)
 
+### Story 20.37: SqlRun stored slot order
+
+[CHARTERED 2026-10-23, orchestrator re-dispatch on the owner's word, fix-forward] The 1.0.13 upgrade check found that `Kernel/State/SqlRun` (Story 20.33) declares `Kind` between `Namespace` and `State`, and the class has no source Storage section. An update from 1.0.12 therefore regenerates its storage with stored slots 4-10 shifted, so a background SQL run saved before the update reads 404 afterwards and is never swept. Declaring `Kind` after `Answer` keeps release 1.0.12's slots and appends `Kind`. After Story 20.35, before Story 20.34.
+
+As an administrator updating OcuPilot from 1.0.12,
+I want a background SQL run saved before the update to stay readable and swept after it,
+So that an update never strands a run.
+
+**Acceptance Criteria:**
+
+- **Given** `Kernel/State/SqlRun` compiled from source
+- **When** its storage map is read
+- **Then** RunKey, UserName, Namespace, State, JobId, CancelRequested, QueuedAt, StartedAt, EndedAt and Answer keep release 1.0.12's slots 1-10, and Kind is slot 11.
+- **And** nothing else in product code changes: the code that reads and writes Kind, and the existing tests, stay as they are.
+- **And** one small test reads the compiled storage map and asserts those eleven slots; its mutation (Kind moved back between Namespace and State) is demonstrated red and reverted.
+
+- DW-2500: Kernel/State/SqlRun declares Kind between Namespace and State with no source Storage section, so an update from 1.0.12 shifts stored slots 4-10 and a pre-update background run reads 404 and is never swept (ledger; routed by load 2026-10-23)
+
 ## Epic 21: Stage 5 - custom-REST parity from the MCP suite's handlers
 
 Every remaining classic portal leaf with a backing class but no route becomes reachable: backup and mirroring, startup and memory tables, NLS locales, SQL settings, globals and the whole SQL tuning track, interoperability credentials, purge, deployment, record maps, workflow, the analytics editors, and a developer-tools set. The agent gains the 28 harvested inspection tools and undo by snapshot and revert.
