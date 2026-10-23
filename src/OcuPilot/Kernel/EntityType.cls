@@ -31,6 +31,8 @@
 /// Governance policy screen administers and its audit row targets.</p>
 /// <p><code>allowed-directory</code> is one root of the instance's directory allow-list, keyed by
 /// the path exactly as the instance answers it; it needs no spelling rule of its own.</p>
+/// <p>A write of the list targets the whole list, keyed by its purpose, <code>%GUIFileSelector</code>
+/// (AD-13).</p>
 /// <p><code>namespace</code> is one of the instance's namespaces, keyed by its name, which the
 /// instance resolves without case (Story 18.2).</p>
 /// <p><code>web-session</code> is one CSP session the instance holds, keyed by its session id as
@@ -110,13 +112,18 @@
 /// <code>lookup-entry</code> is one entry of a lookup table, keyed by the composite <code>[Table, Key]</code>, each part kept
 /// exactly. <code>business-partner</code> is one business partner of a namespace, keyed by its name, kept exactly. Each is
 /// namespace-scoped and has no <code>IDRULES</code> row.</p>
+/// <p><code>cube</code> is one analytics cube of a namespace, keyed by its logical name, kept exactly (AD-13, AD-65, Story 20.11), and
+/// <code>term-list</code> is one term list, keyed by its name. <code>term-list-entry</code> is one entry of a term list, keyed by the
+/// composite <code>[TermList, Key]</code>, each part kept exactly. <code>folder-item</code> is one pivot, dashboard or other folder
+/// item, keyed by its full name, folder and extension included, kept exactly. Each is namespace-scoped and has no <code>IDRULES</code>
+/// row.</p>
 Class OcuPilot.Kernel.EntityType Extends %RegisteredObject
 {
 
 /// <p>The vocabulary, comma-separated and in no significant order. Lower-case with hyphens,
 /// the same spelling shape route and area keys use, so a key is never confused with a class
 /// name.</p>
-Parameter TYPES = "web-application,rest-service,user,role,resource,service,ssl-configuration,x509-credential,ldap-configuration,wallet-collection,wallet-secret,oauth2-client-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,oauth2-server-client,audit-event,audit-user-event,auditing-configuration,task,task-history-entry,process,lock,database,device,audit-record,application-error,log-entry,agent-definition,agent-switch,agent-policy,allowed-directory,screen-permission,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,database-configuration,language-server,class,routine,journal-file,journal-file-database,journal-settings,journal-record,license-key,license-server,ecp-data-server,ecp-settings,ecp-ssl-connection,encryption-key-file,database-encryption-keys,data-element-encryption-keys,encryption-startup,docdb-database,sql-statement,authentication-options,superserver,mft-connection,production,pct-class-access,docdb-application,routine-application,production-item,production-item-setting,interop-queue,interop-message,interop-job,lookup-table,lookup-entry,business-partner";
+Parameter TYPES = "web-application,rest-service,user,role,resource,service,ssl-configuration,x509-credential,ldap-configuration,wallet-collection,wallet-secret,oauth2-client-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,oauth2-server-client,audit-event,audit-user-event,auditing-configuration,task,task-history-entry,process,lock,database,device,audit-record,application-error,log-entry,agent-definition,agent-switch,agent-policy,allowed-directory,screen-permission,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,database-configuration,language-server,class,routine,journal-file,journal-file-database,journal-settings,journal-record,license-key,license-server,ecp-data-server,ecp-settings,ecp-ssl-connection,encryption-key-file,database-encryption-keys,data-element-encryption-keys,encryption-startup,docdb-database,sql-statement,authentication-options,superserver,mft-connection,production,pct-class-access,docdb-application,routine-application,production-item,production-item-setting,interop-queue,interop-message,interop-job,lookup-table,lookup-entry,business-partner,cube,term-list,term-list-entry,folder-item";
 
 /// <p>Whether <var>pType</var> is one of the declared values. An empty string is <b>not</b>
 /// known: a screen with no entity type declares the empty string and its descriptor is

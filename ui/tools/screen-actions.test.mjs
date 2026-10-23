@@ -165,6 +165,46 @@ test("a screen's row action draws its own published words", () => {
     assert.equal(actionLabel(descriptor, 'activate'), STRINGS.encryptionKeyActivateAction, `${descriptor}'s Activate key`);
     assert.equal(actionLabel(descriptor, 'deactivate'), STRINGS.encryptionKeyDeactivateAction, `${descriptor}'s Deactivate`);
   }
+  // Story 18.46: the Allowed directories screen's Add and Change are its own words, and its Remove the shared one.
+  // Mutation (Rule 19): drop the AllowedDirectoryList entry from DESCRIPTOR_ACTION_LABELS -> this goes red.
+  const allowed = 'OcuPilot.Screen.Descriptor.AllowedDirectoryList';
+  assert.equal(actionLabel(allowed, 'add'), STRINGS.allowedDirectoryAddAction);
+  assert.equal(actionLabel(allowed, 'change'), STRINGS.allowedDirectoryChangeAction);
+  assert.equal(actionLabel(allowed, 'remove'), STRINGS.actionRemove);
+  assert.equal(actionLabel(DEFINITIONS, 'add'), 'add');
+  assert.equal(actionLabel(DEFINITIONS, 'change'), 'change');
+});
+
+test("Story 18.46: a registrant's reason is read at call time, runs nothing while it stands, and is announced by changed()", () => {
+  // Mutation (Rule 19): make `run` ignore the reason -> the refused leg runs the handler and this goes red; make `reason` answer ''
+  // -> the first assertion goes red.
+  const actions = new ScreenActions();
+  let runs = 0;
+  let sentence = 'Changing the allowed directories is switched off.';
+  let heard = 0;
+  actions.subscribe(() => (heard += 1));
+  const remove = actions.register(DESCRIPTOR, 'add', () => (runs += 1), () => sentence);
+  const registered = heard;
+
+  assert.equal(actions.has(DESCRIPTOR, 'add'), true, 'a held-back action is still registered, so a surface draws it');
+  assert.equal(actions.reason(DESCRIPTOR, 'add'), sentence, 'and the surfaces read its reason');
+  assert.equal(actions.run(DESCRIPTOR, 'add'), false, 'run reports that nothing ran');
+  assert.equal(runs, 0, 'and the handler did not');
+
+  sentence = '';
+  assert.equal(actions.reason(DESCRIPTOR, 'add'), '', 'the reason is read at call time, so it clears when the registrant says so');
+  assert.equal(actions.run(DESCRIPTOR, 'add'), true);
+  assert.equal(runs, 1);
+
+  actions.changed();
+  assert.equal(heard, registered + 1, 'changed() notifies every listener once');
+
+  assert.equal(actions.reason(DESCRIPTOR, 'unregistered'), '', 'an unregistered action has no reason');
+  assert.equal(actions.reason(DESCRIPTOR, ''), '', 'nor does an empty id');
+  actions.register(DESCRIPTOR, 'plain', () => {});
+  assert.equal(actions.reason(DESCRIPTOR, 'plain'), '', 'a registration with no reason has none');
+  remove();
+  assert.equal(actions.reason(DESCRIPTOR, 'add'), '', 'a removed registration has none');
 });
 
 test("Story 16.11: a banner's actions are the ids its cases name, once each and in case order", () => {

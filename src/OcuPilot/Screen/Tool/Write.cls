@@ -166,6 +166,12 @@ Parameter CREATES As BOOLEAN = 0;
 /// the field twice.</p>
 Parameter SCREENACTIONS = "";
 
+/// <p>Whether this agent-only write is listed in its bound screen's context although no screen action carries
+/// it (AD-24, Story 20.16): <code>0</code> here, so a write is listed only through a declared row action or a
+/// primary action it creates for. A tool that declares <code>1</code> is also bound to its screen through
+/// <parameter>DESCRIPTORCLASS</parameter> and advertised.</p>
+Parameter SCREENLISTED As BOOLEAN = 0;
+
 /// <p>Whether this tool's fresh read is composed from the values the write itself carries, which
 /// <method>PortQuery</method> turns into the port's query (AD-51, Story 19.11). <code>0</code> here:
 /// the read identifies the target alone. A tool that declares <code>1</code> has the mint pass its
@@ -174,6 +180,12 @@ Parameter SCREENACTIONS = "";
 /// asks its <method>ScreenActionDelta</method> twice: before the fresh read, with no fresh object,
 /// for the values the read is composed from, and again with the fresh read.</p>
 Parameter READSVALUES As BOOLEAN = 0;
+
+/// <p>Whether this tool's screen action is reviewed by a person before it is sent (AD-53, Story 20.31):
+/// <code>0</code> here. A tool that declares <code>1</code> answers <code>POST /screens/:screen/dryrun</code>
+/// (<method>OcuPilot.Api.ScreenAction.DryRun</method>), which resolves the action as the action route does and stops
+/// before the write, answering the rows the agent's proposal card shows and <method>DryRunReview</method>.</p>
+Parameter DRYRUN As BOOLEAN = 0;
 
 /// <p>The top-level names this tool's own <parameter>READTYPE</parameter> read answers,
 /// comma-separated, or <code>""</code> where the screen's declared read is the whole record of
@@ -385,6 +397,14 @@ ClassMethod CreatedId(pWritten) As %String
 ClassMethod TargetName(pFresh, pId As %String, pArgs) As %String
 {
     Quit ""
+}
+
+/// <p>What a reviewed screen action (<parameter>DRYRUN</parameter>) answers beside its rows, from the fresh read
+/// <var>pFresh</var>: <code>{}</code> here. The dry-run route answers it as <code>review</code>, and the person's
+/// action carries back what the tool names in it.</p>
+ClassMethod DryRunReview(pFresh As %DynamicObject) As %DynamicObject
+{
+    Quit {}
 }
 
 /// <p>The row-action ids <parameter>SCREENACTIONS</parameter> names, as a <class>%List</class>.</p>

@@ -124,10 +124,10 @@ Method TestTheHelpReadAnswersUnavailableForAClassicPageWithNoHelpAddress()
 /// <p><b>A route no screen declares is refused 422 on <code>route</code></b> under
 /// <parameter>OcuPilot.Api.Error.HELPROUTE</parameter>, carrying the sentence the server writes
 /// for that code.</p>
-/// <p>This is where the code and its reason are pinned over the wire, because
-/// <method>OcuPilot.Api.Error.ViolationCodes</method> sweeps <code>AGENT.*</code> alone -- the same
-/// division <class>OcuPilot.Test.AccountPasswordWire</class> holds for the
-/// <code>ACCOUNT.*</code> pair.</p>
+/// <p>This is where the code and its reason are pinned over the wire, as
+/// <class>OcuPilot.Test.AccountPasswordWire</class> does for the <code>ACCOUNT.*</code> pair;
+/// <class>OcuPilot.Test.ViolationSentenceCoverage</class> holds that the router answers the code a
+/// sentence.</p>
 /// <p>Mutation: make <method>OcuPilot.Api.UiAbout.IsRosterRoute</method> answer 1 unconditionally
 /// -- the refusal becomes a 200 and this goes red.</p>
 Method TestAnUnknownRouteIsRefusedWithTheHelpRouteCode()

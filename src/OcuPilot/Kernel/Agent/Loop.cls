@@ -202,6 +202,12 @@ ClassMethod DispatchTools(pKey As %String, pUser As %String, pDefinitionId As %S
 /// with a reply seed the messages this turn opens with, ahead of the screen-context pair and the
 /// caller's own message. Optional and trailing so a caller with no conversation -- every test that
 /// predates Story 4.5 -- keeps calling this unchanged.</p>
+/// <p><b>A guided-workflow turn (AD-66).</b> The turn's workflow id is read once from its row
+/// (<method>OcuPilot.Kernel.State.Turn.GuardedWorkflowOf</method>). With one, the opening messages
+/// carry a second synthetic exchange, <code>workflow</code>, after <code>screen_context</code> when
+/// the turn has context and alone when it has none (<method>WorkflowResult</method>), and the
+/// preamble is the workflow's when there is no context. A turn with no workflow opens exactly as
+/// before.</p>
 ClassMethod Run(pKey As %String, pUser As %String, pDefinitionId As %String, pMessage As %String, pReadOnly As %Boolean, pResources As %String, pStartedSeconds As %Integer, Output pOutcome, pContext As %String = "", pContextRowCap As %Integer = 0, pConvo As OcuPilot.Kernel.State.Convo = "") As %Status
 {
     Set tSC = $$$OK
@@ -227,6 +233,13 @@ ClassMethod Run(pKey As %String, pUser As %String, pDefinitionId As %String, pMe
         ; and carried: a turn's route cannot change while it runs, and neither can its definition.
         Set tContextRoute = ..ContextRoute(pContext)
         Do ..Definition(pDefinitionId, .tProviderKey, .tProviderModel)
+        ; The turn's guided workflow (AD-66) is read once, from the row it was recorded on at begin.
+        ; A turn that cannot read it ends failed rather than running as an ordinary turn.
+        Set tWorkflowSC = ##class(OcuPilot.Kernel.State.Turn).GuardedWorkflowOf(pKey, .tWorkflow)
+        If $$$ISERR(tWorkflowSC) {
+            Do ..LogFault("the turn's guided workflow could not be read", tWorkflowSC, pOutcome("code"))
+            Quit
+        }
         Kill tMessages
         Set tHistoryCount = 0
         If $IsObject(pConvo) {
@@ -242,25 +255,24 @@ ClassMethod Run(pKey As %String, pUser As %String, pDefinitionId As %String, pMe
                 Do ..LogFault("the conversation's history could not be read; the turn runs without it", tHistorySC, pOutcome("code"))
             }
         }
-        If pContext '= "" {
+        Set tWorkflowResult = ""
+        If tWorkflow '= "" {
+            Set tWorkflowResult = ..WorkflowResult(tWorkflow, pUser, pConvo, pOutcome("code"))
+            If tWorkflowResult = "" {
+                Do ..LogFault("the turn's guided workflow is not in the catalog", $$$ERROR($$$GeneralError, "no workflow result for the turn's workflow"), pOutcome("code"))
+                Quit
+            }
+        }
+        If (pContext '= "") || (tWorkflow '= "") {
             Set tMessages = tHistoryCount + 3
             Set tMessages(tHistoryCount + 1, "role") = "user"
-            Set tMessages(tHistoryCount + 1, "content") = ##class(OcuPilot.Kernel.Agent.Prompt).ContextPreamble()
+            Set tMessages(tHistoryCount + 1, "content") = $Select(pContext '= "": ##class(OcuPilot.Kernel.Agent.Prompt).ContextPreamble(), 1: ##class(OcuPilot.Kernel.Agent.Prompt).WorkflowPreamble())
             Set tUseBlocks = []
-            Set tUseBlock = {}
-            Do tUseBlock.%Set("type", "tool_use", "string")
-            Do tUseBlock.%Set("id", "ocupilot_screen_context", "string")
-            Do tUseBlock.%Set("name", "screen_context", "string")
-            Do tUseBlock.%Set("input", {})
-            Do tUseBlocks.%Push(tUseBlock)
+            Set tUserBlocks = []
+            If pContext '= "" Do ..AddOpeningExchange(tUseBlocks, tUserBlocks, "screen_context", pContext)
+            If tWorkflow '= "" Do ..AddOpeningExchange(tUseBlocks, tUserBlocks, "workflow", tWorkflowResult)
             Set tMessages(tHistoryCount + 2, "role") = "assistant"
             Set tMessages(tHistoryCount + 2, "blocks") = tUseBlocks.%ToJSON()
-            Set tUserBlocks = []
-            Set tResultBlock = {}
-            Do tResultBlock.%Set("type", "tool_result", "string")
-            Do tResultBlock.%Set("tool_use_id", "ocupilot_screen_context", "string")
-            Do tResultBlock.%Set("content", pContext, "string")
-            Do tUserBlocks.%Push(tResultBlock)
             Set tTextBlock = {}
             Do tTextBlock.%Set("type", "text", "string")
             Do tTextBlock.%Set("text", pMessage, "string")
@@ -373,6 +385,59 @@ ClassMethod Run(pKey As %String, pUser As %String, pDefinitionId As %String, pMe
     }
     Do ##class(OcuPilot.Kernel.Proposal.Caller).Clear()
     Quit tSC
+}
+
+/// <p>Add one synthetic tool exchange to a turn's opening messages (AD-11 rule 1): a <code>tool_use</code>
+/// block named <var>pName</var> onto <var>pUseBlocks</var> and its <code>tool_result</code> block
+/// holding <var>pContent</var> onto <var>pUserBlocks</var>. The id is <code>ocupilot_</code> and the
+/// name, so the two blocks of one exchange pair by it; a caller adds the exchanges in the order the
+/// model reads them.</p>
+ClassMethod AddOpeningExchange(pUseBlocks As %DynamicArray, pUserBlocks As %DynamicArray, pName As %String, pContent As %String) [ Private ]
+{
+    Set tId = "ocupilot_" _ pName
+    Set tUseBlock = {}
+    Do tUseBlock.%Set("type", "tool_use", "string")
+    Do tUseBlock.%Set("id", tId, "string")
+    Do tUseBlock.%Set("name", pName, "string")
+    Do tUseBlock.%Set("input", {})
+    Do pUseBlocks.%Push(tUseBlock)
+    Set tResultBlock = {}
+    Do tResultBlock.%Set("type", "tool_result", "string")
+    Do tResultBlock.%Set("tool_use_id", tId, "string")
+    Do tResultBlock.%Set("content", pContent, "string")
+    Do pUserBlocks.%Push(tResultBlock)
+}
+
+/// <p>The synthetic <code>workflow</code> result of workflow <var>pWorkflow</var> for
+/// <var>pUser</var>'s turn in conversation <var>pConvo</var> (AD-66), as JSON text:
+/// <method>OcuPilot.Kernel.Agent.Workflow.Exchange</method> over the facts about the proposals of the
+/// conversation's newest entry, which is the turn before this one because the current turn's entry is
+/// appended after the loop ends. A turn with no conversation, no earlier entry or no earlier proposal
+/// reports an empty <code>previous</code>; a read that fails is logged under <var>pCode</var> and
+/// reports the same.</p>
+ClassMethod WorkflowResult(pWorkflow As %String, pUser As %String, pConvo As OcuPilot.Kernel.State.Convo, pCode As %String) As %String
+{
+    Set tRows = []
+    Try {
+        If '$IsObject(pConvo) Quit
+        Set tKeysSC = ##class(OcuPilot.Kernel.State.Entry).GuardedTurnKeys(pConvo.ConvKey, .tKeys)
+        If $$$ISERR(tKeysSC) {
+            Do ..LogFault("the conversation's turns could not be read for the guided workflow; it reports no earlier proposals", tKeysSC, pCode)
+            Quit
+        }
+        Set tSeq = $Order(tKeys(""), -1)
+        If (tSeq = "") || (tKeys(tSeq) = "") Quit
+        Set tRowsSC = ##class(OcuPilot.Kernel.State.Propose).GuardedRowsForTurn(tKeys(tSeq), pUser, .tTurnRows)
+        If $$$ISERR(tRowsSC) {
+            Do ..LogFault("the earlier turn's proposals could not be read for the guided workflow; it reports none", tRowsSC, pCode)
+            Quit
+        }
+        Set tRows = tTurnRows
+    } Catch ex {
+        Do ..LogFault("the guided workflow's earlier proposals could not be read; it reports none", ex.AsStatus(), pCode)
+        Set tRows = []
+    }
+    Quit ##class(OcuPilot.Kernel.Agent.Workflow).Exchange(pWorkflow, ##class(OcuPilot.Kernel.Agent.Workflow).Previous(tRows))
 }
 
 /// <p>The egress fact a turn keeps once a provider call answered <var>pEgress</var>
@@ -832,7 +897,7 @@ ClassMethod AnswerClientCall(pKey As %String, pUser As %String, pReadOnly As %Bo
     Set pTurnState = ""
     Set pTurnCode = ""
     Try {
-        Set tSC = $ClassMethod(..DispatchClass(), "ResolveClientCall", pUser, pBlock, pLimitsClass, .tPending, .tToolName, .tRoute, .tEntityId, .tCTarget, .tCArguments, .tCArgsTruncated, .tIsError, .tContent, .tReason, .tFailedPair, pKey, .tCInput, .tCDeclaredPairs, .tCCallPairs, .tCSecretNames, .tCSecretDeclared, .tCPairsResolved, .tCriterion, .tCriteria)
+        Set tSC = $ClassMethod(..DispatchClass(), "ResolveClientCall", pUser, pBlock, pLimitsClass, .tPending, .tToolName, .tRoute, .tEntityId, .tCTarget, .tCArguments, .tCArgsTruncated, .tIsError, .tContent, .tReason, .tFailedPair, pKey, .tCInput, .tCDeclaredPairs, .tCCallPairs, .tCSecretNames, .tCSecretDeclared, .tCPairsResolved, .tCriterion, .tCriteria, .tParentId)
         If $$$ISERR(tSC) Quit
         Set pToolName = tToolName
 
@@ -856,7 +921,16 @@ ClassMethod AnswerClientCall(pKey As %String, pUser As %String, pReadOnly As %Bo
             Quit
         }
 
-        Set tAnnounceSC = ##class(OcuPilot.Kernel.State.Step).GuardedAppend(pKey, "announce", tToolName, "running", "", tEntityId, "", pLimitsClass, .tAnnounceSeq, .tAnnounceStored, tRoute, "", "", "", "", 0)
+        ; The route's one id: the selected row's, or the parent's on a parent-scoped screen. The
+        ; call carries at most one of the two (Navigate.Directive), and the settled detail names
+        ; whichever it carried.
+        Set tRouteId = tEntityId
+        Set tRouteIdKey = "entityId"
+        If (tRouteId = "") && ($Get(tParentId) '= "") {
+            Set tRouteId = tParentId
+            Set tRouteIdKey = "parentId"
+        }
+        Set tAnnounceSC = ##class(OcuPilot.Kernel.State.Step).GuardedAppend(pKey, "announce", tToolName, "running", "", tRouteId, "", pLimitsClass, .tAnnounceSeq, .tAnnounceStored, tRoute, "", "", "", "", 0)
         If $$$ISERR(tAnnounceSC) {
             Set tSC = tAnnounceSC
             Quit
@@ -869,7 +943,7 @@ ClassMethod AnswerClientCall(pKey As %String, pUser As %String, pReadOnly As %Bo
             Set tDroppedCode = ##class(OcuPilot.Api.Error).#NAVUNAVAILABLE
             Set tDroppedDetail = {}
             Do tDroppedDetail.%Set("route", tRoute, "string")
-            Do tDroppedDetail.%Set("entityId", tEntityId, "string")
+            Do tDroppedDetail.%Set(tRouteIdKey, tRouteId, "string")
             Set tDroppedJson = ""
             Do $ClassMethod(..DispatchClass(), "SettleClient", tDroppedDetail, "unavailable", tDroppedCode, .tDroppedJson)
             Set pCode = tDroppedCode
@@ -884,7 +958,7 @@ ClassMethod AnswerClientCall(pKey As %String, pUser As %String, pReadOnly As %Bo
         }
         Set pLastSeq = tAnnounceSeq
 
-        Set tRequestSC = ##class(OcuPilot.Kernel.State.Nav).GuardedRequest(pKey, tAnnounceSeq, tRoute, tEntityId, $Get(tCriterion), $Get(tCriteria))
+        Set tRequestSC = ##class(OcuPilot.Kernel.State.Nav).GuardedRequest(pKey, tAnnounceSeq, tRoute, tRouteId, $Get(tCriterion), $Get(tCriteria))
         If $$$ISERR(tRequestSC) {
             Set tSC = tRequestSC
             Quit
@@ -950,12 +1024,12 @@ ClassMethod AnswerClientCall(pKey As %String, pUser As %String, pReadOnly As %Bo
 
         Set tAnnounceStatus = $Select(tOutcome = "opened": "ok", 1: "error")
         Set tAnnounceCode = $Select(tOutcome = "opened": "", 1: tOutcomeCode)
-        ; The entity id is carried through unchanged on settle (pText) -- GuardedUpdate's own
-        ; ApplyContent unconditionally overwrites Text, so passing "" here would erase the row
-        ; selection an "opened" announcement already recorded, and any later read (a poll before
-        ; the next render, a reload) would then render the no-entity phrasing for a navigation
-        ; that did select a row.
-        Set tUpdateSC = ##class(OcuPilot.Kernel.State.Step).GuardedUpdate(pKey, tAnnounceSeq, tAnnounceStatus, "", tEntityId, tAnnounceCode, pLimitsClass)
+        ; The route id is carried through unchanged on settle (pText) -- GuardedUpdate's own
+        ; ApplyContent unconditionally overwrites Text, so passing "" here would erase the id an
+        ; "opened" announcement already recorded, and any later read (a poll before the next
+        ; render, a reload) would then render the no-entity phrasing for a navigation that did
+        ; name one.
+        Set tUpdateSC = ##class(OcuPilot.Kernel.State.Step).GuardedUpdate(pKey, tAnnounceSeq, tAnnounceStatus, "", tRouteId, tAnnounceCode, pLimitsClass)
         If $$$ISERR(tUpdateSC) {
             Set tSC = tUpdateSC
             Quit
@@ -963,7 +1037,7 @@ ClassMethod AnswerClientCall(pKey As %String, pUser As %String, pReadOnly As %Bo
 
         Set tDetail = {}
         Do tDetail.%Set("route", tRoute, "string")
-        Do tDetail.%Set("entityId", tEntityId, "string")
+        Do tDetail.%Set(tRouteIdKey, tRouteId, "string")
         Set tContentJson = ""
         Do $ClassMethod(..DispatchClass(), "SettleClient", tDetail, tOutcome, tOutcomeCode, .tContentJson)
 

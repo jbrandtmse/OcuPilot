@@ -54,7 +54,9 @@ XData Declaration
   "suggestedPrompts": [
     {"groupKey": "webAppPromptGroupCode", "textKey": "explorerClassListPrompt1"},
     {"groupKey": "webAppPromptGroupCode", "textKey": "explorerClassListPrompt2"},
-    {"groupKey": "webAppPromptGroupCode", "textKey": "explorerClassListPrompt3"}
+    {"groupKey": "webAppPromptGroupCode", "textKey": "explorerClassListPrompt3"},
+    {"groupKey": "webAppPromptGroupCode", "textKey": "explorerClassListWorkflowCompile", "workflow": "compileclass"},
+    {"groupKey": "webAppPromptGroupCode", "textKey": "explorerClassListWorkflowReview", "workflow": "reviewclass"}
   ],
   "classicPage": "%CSP.UI.Portal.ClassList",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},

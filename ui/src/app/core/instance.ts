@@ -23,7 +23,7 @@
 
 // Type-only, and it must stay type-only: `connectivity.ts` imports `INSTANCE_PATH` from this
 // module at runtime, so a value import back would be a cycle. A type import is erased.
-import type { ApiService } from './api';
+import type { ApiService, JsonResult } from './api';
 import type { ConnectivityService } from './connectivity';
 
 /** Absolute from the origin root, through the one API service (AD-20). */
@@ -97,6 +97,17 @@ export function serverFlagKind(value: string): ServerFlagKind {
   return known ?? 'unknown';
 }
 
+/** The seven fields of an `ok` answer, each coerced to the type it is read as. */
+interface InstanceFields {
+  readonly adminApiVersion: number;
+  readonly instanceName: string;
+  readonly instanceVersion: string;
+  readonly buildIdentity: string;
+  readonly serverFlag: string;
+  readonly licensedTo: string;
+  readonly serverName: string;
+}
+
 export interface InstanceOptions {
   readonly api: ApiService;
   /**
@@ -139,6 +150,9 @@ export class InstanceService {
 
   /** Whether a conclusive answer has been had. An inconclusive one is retried. */
   private settled = false;
+
+  /** One build-identity re-read however many callers, on the same footing as `verifyInFlight`. */
+  private recheckInFlight: Promise<void> | null = null;
 
   /**
    * Bumped by `reset()`. A verify captures the value it started under and settles nothing
@@ -215,6 +229,7 @@ export class InstanceService {
     this.generation += 1;
     this.settled = false;
     this.verifyInFlight = null;
+    this.recheckInFlight = null;
     this.currentVersion = 0;
     this.currentName = '';
     this.currentInstanceVersion = '';
@@ -240,22 +255,72 @@ export class InstanceService {
     return started;
   }
 
+  /**
+   * Re-read which bundle the instance has installed, for a tab whose next screen's code could not
+   * load (the stale-bundle notice's cue). It publishes the new `buildIdentity()` and nothing else:
+   * the verdict, the version and every other field stay as the last `verify()` left them, and the
+   * status never moves.
+   *
+   * A no-op until a `verify()` has settled for this principal -- before that the tab is not
+   * signed in to a conclusive answer, and after `reset()` it is another principal's -- and
+   * single-flight, so a burst of failed navigations costs one request.
+   */
+  recheckBuild(): Promise<void> {
+    if (!this.settled) return Promise.resolve();
+    const inFlight = this.recheckInFlight;
+    if (inFlight !== null) return inFlight;
+    const started: Promise<void> = this.runRecheck().finally(() => {
+      if (this.recheckInFlight === started) this.recheckInFlight = null;
+    });
+    this.recheckInFlight = started;
+    return started;
+  }
+
+  private async runRecheck(): Promise<void> {
+    const generation = this.generation;
+    const { fields } = await this.readInstance();
+    if (generation !== this.generation || fields === null) return;
+    this.currentBuildIdentity = fields.buildIdentity;
+    this.notify();
+  }
+
+  /** The one `GET /instance`: the result as the API answered it, and the fields when it was `ok`. */
+  private async readInstance(): Promise<{
+    readonly result: JsonResult<InstanceIdentity>;
+    readonly fields: InstanceFields | null;
+  }> {
+    const result = await this.api.requestJson<InstanceIdentity>(INSTANCE_PATH);
+    if (result.kind !== 'ok') return { result, fields: null };
+    const body = result.body ?? {};
+    return {
+      result,
+      fields: {
+        adminApiVersion: asNumber(body.adminApiVersion),
+        instanceName: asString(body.instanceName),
+        instanceVersion: asString(body.instanceVersion),
+        buildIdentity: asString(body.buildIdentity),
+        serverFlag: asString(body.serverFlag),
+        licensedTo: asString(body.licensedTo),
+        serverName: asString(body.serverName),
+      },
+    };
+  }
+
   private async runVerify(): Promise<InstanceStatus> {
     const generation = this.generation;
-    const result = await this.api.requestJson<InstanceIdentity>(INSTANCE_PATH);
+    const { result, fields } = await this.readInstance();
     // A reset happened while this was on the wire: the answer is about a principal who is
     // no longer here, so none of it is kept.
     if (generation !== this.generation) return this.currentStatus;
 
-    if (result.kind === 'ok') {
-      const body = result.body ?? {};
-      this.currentVersion = asNumber(body.adminApiVersion);
-      this.currentName = asString(body.instanceName);
-      this.currentInstanceVersion = asString(body.instanceVersion);
-      this.currentBuildIdentity = asString(body.buildIdentity);
-      this.currentServerFlag = asString(body.serverFlag);
-      this.currentLicensedTo = asString(body.licensedTo);
-      this.currentServerName = asString(body.serverName);
+    if (fields !== null) {
+      this.currentVersion = fields.adminApiVersion;
+      this.currentName = fields.instanceName;
+      this.currentInstanceVersion = fields.instanceVersion;
+      this.currentBuildIdentity = fields.buildIdentity;
+      this.currentServerFlag = fields.serverFlag;
+      this.currentLicensedTo = fields.licensedTo;
+      this.currentServerName = fields.serverName;
       this.settle(
         this.currentVersion === REQUIRED_ADMIN_API_VERSION ? 'ready' : 'version-mismatch'
       );
@@ -292,6 +357,10 @@ export class InstanceService {
   private set(next: InstanceStatus): void {
     if (this.currentStatus === next) return;
     this.currentStatus = next;
+    this.notify();
+  }
+
+  private notify(): void {
     for (const listener of this.listeners) listener();
   }
 }

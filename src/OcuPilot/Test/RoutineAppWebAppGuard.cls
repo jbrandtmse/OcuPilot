@@ -6,7 +6,7 @@
 /// routine application's empty record fails, or 409 by the port if it passes. The port-level guard is
 /// <class>OcuPilot.Test.RoutineAppWrite</class>'s; this class asks what each caller shows.</p>
 /// <p>Every write is real for an application named <code>OcuProbe1831...</code> and the class touches no other, removing
-/// each by exact name. <b>It never names <code>OcuPilotState</code> or <code>OcuPilotIdentity</code>.</b></p>
+/// each by exact name. <b>It never names <code>OcuPilotState</code>, <code>OcuPilotIdentity</code> or <code>OcuPilotSslRead</code>.</b></p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed and serving and
 /// <parameter>ARMINGVARIABLE</parameter> reading <code>1</code>, because the class creates, and (under a broken guard)
 /// changes or deletes, a probe privileged routine application and sets the governance policy. After each test the

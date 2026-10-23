@@ -22,6 +22,7 @@ import {
   IMPLEMENTED_DECLARED_NAME_KINDS,
   criteriaProblem,
   entityTypesIn,
+  externalProblem,
   ENTITY_REF_SOURCE,
   extractClassName,
   extractXData,
@@ -50,15 +51,20 @@ import {
   suggestedPromptsProblem,
   PROMPT_GROUP_KEYS,
   SCREEN_REGISTRY_SOURCE,
+  WORKFLOW_SOURCE,
+  parseWorkflowIds,
   tabProblem,
   timelineMemberProblem,
   READ_SOURCE_PORTS,
+  monitorEndpoints,
 } from './screen-mirror.mjs';
 import { loadStrings } from './strings.mjs';
 import { CREDENTIAL_RE } from './field-lists.mjs';
 import { isCredentialName } from './credential-pattern.mjs';
 
 const toolsDir = dirname(fileURLToPath(import.meta.url));
+
+const { AREAS } = await import(join(toolsDir, '..', 'src', 'app', 'core', 'screens.generated.ts'));
 
 /** The `XData <name>` body of a `.cls` under `src/OcuPilot/`, parsed. */
 function testCorpus(file, name) {
@@ -112,7 +118,8 @@ test('the checked-in mirror is exactly what the descriptor declarations produce'
 test('the mirror carries the kernel vocabulary, the areas and every descriptor', () => {
   const { entityTypes, areas, screens } = readSources();
   assert.ok(entityTypes.length >= 20, `expected the closed vocabulary, read ${entityTypes.length}`);
-  assert.equal(areas.length, 11);
+  assert.equal(areas.length, AREAS.length, 'the sources declare exactly the areas the checked-in mirror carries');
+  assert.ok(AREAS.length >= 1, 'and the mirror carries at least one, so equality is not of two empty lists');
   assert.ok(screens.length >= 1, 'at least Home is declared');
   for (const screen of screens) {
     assert.ok(screen.className.startsWith('OcuPilot.Screen.Descriptor.'), screen.file);
@@ -204,6 +211,12 @@ test('every read note\'s text is the string its key names, and the three SQL sta
       'OcuPilot.Screen.Descriptor.ExplorerSqlProcedureStatements',
       'OcuPilot.Screen.Descriptor.ExplorerSqlTableStatements',
       'OcuPilot.Screen.Descriptor.ExplorerSqlViewStatements',
+      // Story 20.30: the Trace tab states that the classic Visual Trace also shows the session's event, rule and I/O log entries.
+      'OcuPilot.Screen.Descriptor.InteropMessageTraceTab',
+      // Story 18.37: Interoperability usage's three tabs state that the counts have no date range.
+      'OcuPilot.Screen.Descriptor.InteropUsageImpactTab',
+      'OcuPilot.Screen.Descriptor.InteropUsageTab',
+      'OcuPilot.Screen.Descriptor.InteropUsageVolumeTab',
       // Story 18.11: Prometheus metrics states that each read shortens an external scraper's intervals.
       'OcuPilot.Screen.Descriptor.MetricsList',
       // Story 23.4: the Services list states what an empty Allowed IP addresses list means.
@@ -211,7 +224,7 @@ test('every read note\'s text is the string its key names, and the three SQL sta
       // Story 19.10: SQL activity states whose statement text it shows.
       'OcuPilot.Screen.Descriptor.SqlActivityList',
     ],
-    'the three SQL statements reads, the ECP Connections tab, Services, SQL activity and Prometheus metrics declare a note'
+    'the three SQL statements reads, the ECP Connections tab, Services, SQL activity, Prometheus metrics, the three Interoperability usage tabs and the message Trace tab declare a note'
   );
   for (const screen of noted) {
     const { key, text } = screen.declaration.read.note;
@@ -285,6 +298,8 @@ test('AD-13: the id-rule table is read from the kernel and is what the mirror em
     ['docdb-application', 'foldcase'],
     // Story 18.31: a privileged routine application is keyed by its name, which the instance resolves in any case.
     ['routine-application', 'foldcase'],
+    // Story 20.31: a message header's id may name the set of messages a resend names, each once and ascending.
+    ['interop-message', 'integerset'],
   ]);
   assert.deepEqual(parseIdRuleNames(text), ['foldcase-striptrailingslash', 'foldcase', 'singleton', 'integer', 'foldcase-firstpart', 'integerset', 'directoryset', 'documentset', 'portbind']);
   // `null`, never `[]`, when the parameter is missing: an absent table and a table that declares
@@ -704,7 +719,21 @@ test('readProblem returns every rowGet sentence OcuPilot.Test.RowGetCorpus decla
   assert.deepEqual(emitted.read.source.rowGet, {
     key: 'Name',
     param: 'name',
-    fields: ['Roles', 'ExpirationDate'],
+    fields: [
+      'Roles',
+      'ExpirationDate',
+      'AccountNeverExpires',
+      'AutheEnabled',
+      'ChangePassword',
+      'Comment',
+      'EmailAddress',
+      'HOTPKeyDisplay',
+      'NameSpace',
+      'PasswordNeverExpires',
+      'PhoneNumber',
+      'PhoneProvider',
+      'EscalationRoles',
+    ],
     derived: [{ field: 'Expired', rule: 'beforeToday', from: 'ExpirationDate' }],
   });
 
@@ -828,6 +857,46 @@ test('every shipped built screen declares at least three suggested prompts that 
   }
 });
 
+// Story 20.12, AD-66: a suggested prompt's `workflow` is a catalog id, read from `Workflow.cls`'s own
+// `XData Catalog`; every emitted `workflow` in the mirror is one, the nine catalog ids are exactly the
+// ones the instance's `WorkflowCatalog` test holds, and an unknown id reaches the generator as a refusal.
+//
+// Mutation (Rule 19): accept any `workflow` in `suggestedPromptsProblem` -> the corpus test above and
+// the hostile-id assertion here go red. Rename one catalog id in `Workflow.cls` -> the roster and the
+// emitted-id assertions go red.
+test('every workflow a prompt names is a catalog id, and the generator refuses an unknown one', () => {
+  const ids = parseWorkflowIds(readFileSync(WORKFLOW_SOURCE, 'utf8'));
+  assert.deepEqual(
+    ids,
+    ['recoverproduction', 'resendmessages', 'tracemessage', 'systemhealth', 'securityposture', 'slowquery', 'compileclass', 'reviewclass', 'newproject'],
+    'the catalog holds the nine workflows, in order'
+  );
+  const sources = readSources();
+  assert.deepEqual(sources.workflowIds, ids, 'readSources reads the same ids');
+  const emitted = new Set();
+  for (const screen of sources.screens) {
+    for (const prompt of screen.declaration.suggestedPrompts ?? []) {
+      if (prompt.workflow === undefined) continue;
+      assert.ok(ids.includes(prompt.workflow), `${screen.className}: workflow '${prompt.workflow}' is a catalog id`);
+      emitted.add(prompt.workflow);
+    }
+  }
+  assert.deepEqual([...emitted].sort(), [...ids].sort(), 'every catalog workflow is offered by a screen prompt');
+  const checkedIn = readCheckedInMirror();
+  for (const id of ids) assert.ok(checkedIn.includes(`"workflow": "${id}"`), `the checked-in mirror emits '${id}'`);
+
+  const userForm = sources.screens.find((screen) => screen.className === 'OcuPilot.Screen.Descriptor.UserForm');
+  const hostile = structuredClone(userForm.declaration);
+  hostile.suggestedPrompts[1] = { ...hostile.suggestedPrompts[1], workflow: 'nosuch' };
+  assert.equal(suggestedPromptsProblem(hostile), "suggestedPrompts[1] names the unknown workflow 'nosuch'");
+  assert.throws(
+    () => buildMirror({ ...sources, screens: [{ file: 'Hostile.cls', className: 'OcuPilot.Screen.Descriptor.Hostile', declaration: hostile }] }),
+    /names the unknown workflow 'nosuch'/
+  );
+  hostile.suggestedPrompts[1].workflow = 7;
+  assert.equal(suggestedPromptsProblem(hostile), "suggestedPrompts[1] names the unknown workflow ''", 'a non-string workflow is unknown');
+});
+
 // Story 6.4, AD-5: every case in `OcuPilot.Test.TabCorpus` gets its exact sentence or `null` from
 // `tabProblem`, and every roster there from `tabGroupProblem`; and both refusals reach the generator.
 //
@@ -878,6 +947,8 @@ test('tabProblem and tabGroupProblem return every sentence OcuPilot.Test.TabCorp
   // Story 19.5's SQL table tabs, a parent-scoped group whose head is unlisted, beside both.
   // Story 19.14's nine table tabs in the classic page's order, and its view and procedure groups too.
   assert.deepEqual(members, [
+    // Story 20.11: a cube's three tabs, a parent-scoped group whose head is unlisted.
+    ['analytics/cubes/document', 'analytics/cubes/document', 1, 0],
     // Story 18.21: ECP application servers' two tabs, a listed group whose head is its first tab.
     ['os-management/ecp-application-servers', 'os-management/ecp-application-servers', 1, 19],
     ['system-explorer/sql-procedures/document', 'system-explorer/sql-procedures/document', 1, 0],
@@ -885,18 +956,29 @@ test('tabProblem and tabGroupProblem return every sentence OcuPilot.Test.TabCorp
     ['system-explorer/sql-views/document', 'system-explorer/sql-views/document', 1, 0],
     // Story 20.4: a production item's six tabs, a parent-scoped group whose head is unlisted.
     ['interoperability/productions/items/document', 'interoperability/productions/items/document', 1, 0],
+    // Story 20.9: a message's two tabs, Header and Contents, a parent-scoped group whose head is unlisted.
+    ['interoperability/messages/document', 'interoperability/messages/document', 1, 0],
+    // Story 18.37: Interoperability usage's three tabs, a listed group whose head is its first tab.
+    ['os-management/interoperability-usage', 'os-management/interoperability-usage', 1, 22],
     ['os-management/license-usage', 'os-management/license-usage', 1, 8],
     ['security/oauth', 'security/oauth', 1, 5],
+    ['analytics/cubes/dimensions', 'analytics/cubes/document', 2, 0],
     ['os-management/ecp-application-servers/ssl', 'os-management/ecp-application-servers', 2, 0],
     ['system-explorer/sql-tables/fields', 'system-explorer/sql-tables/document', 2, 0],
     ['system-explorer/sql-procedures/statements', 'system-explorer/sql-procedures/document', 2, 0],
     ['system-explorer/sql-views/fields', 'system-explorer/sql-views/document', 2, 0],
     ['interoperability/productions/items/settings', 'interoperability/productions/items/document', 2, 0],
+    ['interoperability/messages/contents', 'interoperability/messages/document', 2, 0],
+    ['os-management/interoperability-usage/volume', 'os-management/interoperability-usage', 2, 0],
     ['os-management/license-usage/processes', 'os-management/license-usage', 2, 0],
     ['security/oauth/clients', 'security/oauth', 2, 0],
+    ['analytics/cubes/relationships', 'analytics/cubes/document', 3, 0],
     ['system-explorer/sql-tables/indices', 'system-explorer/sql-tables/document', 3, 0],
     ['system-explorer/sql-views/statements', 'system-explorer/sql-views/document', 3, 0],
     ['interoperability/productions/items/queue', 'interoperability/productions/items/document', 3, 0],
+    // Story 20.30: a message's Trace tab, the third of the message group.
+    ['interoperability/messages/trace', 'interoperability/messages/document', 3, 0],
+    ['os-management/interoperability-usage/impact', 'os-management/interoperability-usage', 3, 0],
     ['os-management/license-usage/users', 'os-management/license-usage', 3, 0],
     ['security/oauth/resource-servers', 'security/oauth', 3, 0],
     ['system-explorer/sql-tables/partitions', 'system-explorer/sql-tables/document', 4, 0],
@@ -952,13 +1034,15 @@ test('multiSelectProblem returns every sentence OcuPilot.Test.MultiSelectCorpus 
   const declaring = sources.screens.filter((screen) => screen.declaration.multiSelect !== undefined);
   assert.deepEqual(
     declaring.map((screen) => screen.className).sort(),
-    ['OcuPilot.Screen.Descriptor.ExplorerClassList', 'OcuPilot.Screen.Descriptor.ExplorerRoutineList', 'OcuPilot.Screen.Descriptor.ProcessList'],
-    'Processes and, since Story 19.2, the Classes and Routines lists are the lists that declare a multi-select'
+    ['OcuPilot.Screen.Descriptor.ExplorerClassList', 'OcuPilot.Screen.Descriptor.ExplorerRoutineList', 'OcuPilot.Screen.Descriptor.InteropMessageList', 'OcuPilot.Screen.Descriptor.ProcessList'],
+    'Processes and, since Story 19.2, the Classes and Routines lists and, since Story 20.31, Messages are the lists that declare a multi-select'
   );
   for (const screen of declaring) assert.equal(multiSelectProblem(screen.declaration), null, `${screen.className}'s declaration passes`);
   const processes = declaring.find((screen) => screen.className === 'OcuPilot.Screen.Descriptor.ProcessList');
   assert.ok(declaredStringKeys(processes.declaration).includes('processBroadcastIneligible'), 'its ineligible reason is a key the string check resolves');
-  for (const screen of declaring.filter((entry) => entry !== processes)) {
+  const messages = declaring.find((screen) => screen.className === 'OcuPilot.Screen.Descriptor.InteropMessageList');
+  assert.deepEqual(messages.declaration.multiSelect, { action: 'resend', max: 100 }, 'Messages checks every row for resend, at most the port\'s cap (Story 20.31)');
+  for (const screen of declaring.filter((entry) => entry !== processes && entry !== messages)) {
     assert.deepEqual(screen.declaration.multiSelect, { action: 'compile', max: 100, extraActions: ['delete', 'export'] }, `${screen.className} checks every row for compile and, as its extra actions, delete and export (Story 19.13)`);
   }
 
@@ -971,12 +1055,13 @@ test('multiSelectProblem returns every sentence OcuPilot.Test.MultiSelectCorpus 
   assert.match(generate(), /"multiSelect": \{\s*"action": "broadcast"/, 'the mirror emits it');
 });
 
-/** The corpus declaration with `testCase`'s own `rowTarget`, `archetype` or `table`, mirroring `OcuPilot.Test.RowTargetCorpus.DeclarationFor`. */
+/** The corpus declaration with `testCase`'s own `rowTarget`, `archetype`, `table` or `tab`, mirroring `OcuPilot.Test.RowTargetCorpus.DeclarationFor`. */
 function rowTargetDeclarationFor(corpus, testCase) {
   const declaration = structuredClone(corpus.declaration);
   if ('rowTarget' in testCase) declaration.rowTarget = structuredClone(testCase.rowTarget);
   if (testCase.archetype !== undefined) declaration.archetype = testCase.archetype;
   if ('table' in testCase) declaration.table = testCase.table;
+  if (testCase.tab !== undefined) declaration.tab = structuredClone(testCase.tab);
   return declaration;
 }
 
@@ -986,7 +1071,7 @@ function rowTargetDeclarationFor(corpus, testCase) {
 //
 // Mutation (Rule 19): drop the "screen's own route" arm from `rowTargetProblem` -> the
 // self-route case goes red. Drop the `rowTargetResolutionProblem` call from `buildMirror` -> the
-// roster-refusal assertion goes red.
+// roster-refusal assertion goes red. Drop the tab arm from `rowTargetProblem` -> the tab case goes red.
 test('rowTargetProblem and rowTargetResolutionProblem return every sentence OcuPilot.Test.RowTargetCorpus declares', () => {
   const corpus = testCorpus(['Test', 'RowTargetCorpus.cls'], 'Cases');
   assert.ok(corpus.cases.length > 0, 'the corpus carries cases');
@@ -1239,8 +1324,9 @@ test('readProblem returns every admin-privilege sentence OcuPilot.Test.AdminPair
 // one reaches the generator naming the file and the class.
 //
 // Mutation (Rule 19): drop the `emptyKey` arm from `tableProblem` -> the corpus run goes red on its
-// first refusing value case, "an empty emptyKey is refused".
-test('readProblem returns every column emptyKey sentence OcuPilot.Test.ColumnCorpus declares', () => {
+// first refusing value case, "an empty emptyKey is refused"; drop the `long` arm -> it goes red on
+// its first refusing `long` case, "a string long is refused".
+test('readProblem returns every column emptyKey and long sentence OcuPilot.Test.ColumnCorpus declares', () => {
   const corpus = testCorpus(['Test', 'ColumnCorpus.cls'], 'Cases');
   assert.ok(corpus.cases.length > 0, `the corpus carries cases (read ${corpus.cases.length})`);
   let refusals = 0;
@@ -1279,6 +1365,50 @@ test('readProblem returns every column emptyKey sentence OcuPilot.Test.ColumnCor
   );
 });
 
+// The view's Text, the procedure's Description and the trigger's Code columns declare
+// `long`, the checked-in mirror carries it, and a `long` that is not a boolean reaches the
+// generator naming the file and the class.
+//
+// Mutation (Rule 19): drop `long` from `ExplorerSqlView`'s Text column and regenerate -> the first
+// loop goes red on the view; drop the `long` arm from `tableProblem` -> the hostile build stops
+// throwing.
+test('the SQL view, procedure and trigger long-text columns declare long and the mirror carries it', () => {
+  const sources = readSources();
+  const mirror = JSON.parse(
+    readCheckedInMirror().match(/export const SCREENS: readonly ScreenDeclaration\[\] = (\[[\s\S]*?\n\]);/)[1]
+  );
+  const longColumns = [
+    ['ExplorerSqlView', 'Text'],
+    ['ExplorerSqlProcedure', 'Description'],
+    ['ExplorerSqlTriggers', 'Code'],
+  ];
+  for (const [name, field] of longColumns) {
+    const className = `OcuPilot.Screen.Descriptor.${name}`;
+    const declared = sources.screens.find((screen) => screen.className === className);
+    assert.ok(declared !== undefined, `${name} is declared`);
+    assert.equal(declared.declaration.table.columns.find((column) => column.field === field).long, true, `${name} declares ${field} long`);
+    const emitted = mirror.find((screen) => screen.descriptor === className);
+    assert.equal(emitted.table.columns.find((column) => column.field === field).long, true, `and the checked-in mirror carries it`);
+    assert.deepEqual(
+      emitted.table.columns.filter((column) => column.long === true).map((column) => column.field),
+      [field],
+      `${name} declares no other long column`
+    );
+  }
+
+  const hostile = structuredClone(sources.screens.find((screen) => screen.className === 'OcuPilot.Screen.Descriptor.ExplorerSqlView').declaration);
+  hostile.table.columns.find((column) => column.field === 'Text').long = 'yes';
+  assert.throws(
+    () => buildMirror({ ...sources, screens: [{ file: 'Hostile.cls', className: 'OcuPilot.Screen.Descriptor.Hostile', declaration: hostile }] }),
+    (error) => {
+      assert.match(error.message, /Hostile\.cls/, 'the refusal names the file');
+      assert.match(error.message, /OcuPilot\.Screen\.Descriptor\.Hostile/, 'and the class');
+      assert.match(error.message, /entry #8 long is not a boolean/);
+      return true;
+    }
+  );
+});
+
 // AD-21, Story 2.10: every case in `OcuPilot.Test.CriteriaCorpus`, read off disk from the XData
 // block `OcuPilot.Test.ReadTool` reads through the class dictionary, gets its exact sentence or
 // `null` from `criteriaProblem`; every shipped descriptor passes; and the one that declares a
@@ -1297,6 +1427,7 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
     declaration.read.criteria = structuredClone(testCase.criteria);
     if (typeof testCase.refreshes === 'boolean') declaration.refreshes = testCase.refreshes;
     if (typeof testCase.port === 'string') declaration.read.source.port = testCase.port;
+    if (typeof testCase.endpoint === 'string') declaration.read.source.endpoint = testCase.endpoint;
     if (typeof testCase.parentScope === 'string') declaration.parentScope = testCase.parentScope;
     assert.equal(criteriaProblem(declaration), testCase.expected, testCase.name);
     if (testCase.expected !== null) refusals += 1;
@@ -1361,10 +1492,17 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
   // the production the route id names. Story 20.4's six item tabs, whose one criterion is the item the route id names,
   // and Queue messages, whose one criterion is the queue. Story 20.5's lookup table entries, whose one criterion is the table.
   // Story 18.12's privileged routine application roles and routines lists, whose one criterion is the application the route id names.
+  // Story 20.9's Messages search, whose nine criteria are its own, and its Header and Contents tabs, whose one criterion is the message.
+  // Story 20.30's Trace tab, whose one criterion is the message too.
+  // Story 20.11's three cube tabs, whose one criterion is the cube, and a term list's entries, whose one criterion is the term list.
   const withCriteria = emittedScreens.filter((screen) => (screen.read?.criteria ?? null) !== null);
   assert.deepEqual(
     withCriteria.map((screen) => screen.descriptor),
     [
+      'OcuPilot.Screen.Descriptor.AnalyticsCubeDimensionsTab',
+      'OcuPilot.Screen.Descriptor.AnalyticsCubeMeasuresTab',
+      'OcuPilot.Screen.Descriptor.AnalyticsCubeRelationshipsTab',
+      'OcuPilot.Screen.Descriptor.AnalyticsTermListEntryList',
       'OcuPilot.Screen.Descriptor.AuditList',
       'OcuPilot.Screen.Descriptor.DatabaseDetails',
       'OcuPilot.Screen.Descriptor.DatabaseVolumeList',
@@ -1404,6 +1542,10 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
       'OcuPilot.Screen.Descriptor.InteropItemStatusTab',
       'OcuPilot.Screen.Descriptor.InteropItemTestTab',
       'OcuPilot.Screen.Descriptor.InteropLookupEntryList',
+      'OcuPilot.Screen.Descriptor.InteropMessageContentsTab',
+      'OcuPilot.Screen.Descriptor.InteropMessageHeaderTab',
+      'OcuPilot.Screen.Descriptor.InteropMessageList',
+      'OcuPilot.Screen.Descriptor.InteropMessageTraceTab',
       'OcuPilot.Screen.Descriptor.InteropQueueMessageList',
       'OcuPilot.Screen.Descriptor.JournalFileDatabaseList',
       'OcuPilot.Screen.Descriptor.JournalFileDetails',
@@ -1425,6 +1567,7 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
       'OcuPilot.Screen.Descriptor.TaskUpcomingList',
       'OcuPilot.Screen.Descriptor.WalletSecretList',
       'OcuPilot.Screen.Descriptor.WebAppPctAccessList',
+      'OcuPilot.Screen.Descriptor.WebAppRoleList',
     ]
   );
   for (const descriptor of ['GlobalMappingList', 'RoutineMappingList', 'PackageMappingList']) {
@@ -1571,6 +1714,9 @@ test('every declared banner severity has a .ocu-banner- rule in the stylesheet, 
 // value. Each exemption names the descriptor and the surface it is declared on, so the field on any other screen or
 // surface is still an offender. An item's Test tab (Story 20.6) lists each field of a request class with a `Secret` flag, set
 // true for a field the port finds named like a credential, which a test sends no value for; the flag holds no credential.
+// A term list's entries (Story 20.11) carry `Key`, the entry's lookup key, which is not key material.
+// The users list (Story 18.48) carries `ChangePassword`, the account's "change password at next login" flag, which is a
+// boolean on the user record and holds no credential; the copy form's own password stays write-only and is not read.
 //
 // Mutation (Rule 19): rename a production column field to `ApiKey` -> this goes red naming the
 // descriptor and the field.
@@ -1587,6 +1733,13 @@ const CREDENTIAL_FLAG_FIELDS = new Set([
   'InteropLookupEntryList.cls table.columns: Secret',
   'InteropLookupEntryList.cls context.fields: Key',
   'InteropLookupEntryList.cls context.fields: Secret',
+  'AnalyticsTermListEntryList.cls read.fields: Key',
+  'AnalyticsTermListEntryList.cls read.filter: Key',
+  'AnalyticsTermListEntryList.cls read.sort.fields: Key',
+  'AnalyticsTermListEntryList.cls table.columns: Key',
+  'AnalyticsTermListEntryList.cls context.fields: Key',
+  'UserList.cls read.fields: ChangePassword',
+  'UserList.cls context.fields: ChangePassword',
 ]);
 
 test('AD-35: no production descriptor names a read, filter, sort, column or context field matching the credential pattern', () => {
@@ -2280,6 +2433,64 @@ test('AD-44: classicLinkExemption carries its label and href through the generat
   assert.match(readCheckedInMirror(), /"label": ""/, 'the checked-in mirror carries the defaulted parts');
 });
 
+// --- External screens (Story 20.32) --------------------------------------------------------
+//
+// An `external` screen opens a vendor page in a new tab, so it declares no read, table, action, tab or parentScope. The mirror
+// refuses that half with the sentence `OcuPilot.Screen.Registry.ExternalProblem` returns; the vocabulary half (a tool identifier
+// `OcuPilot.Screen.ExternalPage` names, and its classic page) is the instance's alone.
+//
+// Mutation (Rule 19): delete the `externalProblem` call from `buildMirror` -> the "reaches the generator" assertion goes red while the
+// declaration cases stay green; make `externalProblem` skip `parentScope` -> its case goes red.
+
+const EXTERNAL_SENTENCE = 'and an external screen opens a page in a new tab with no read, table, action, tab or parentScope (AD-44)';
+
+test('externalProblem refuses an external screen that declares a read, table, action, tab or parentScope, and no other screen', () => {
+  const shipped = readSources().screens.find((screen) => screen.className === 'OcuPilot.Screen.Descriptor.AnalyticsArchitectLink');
+  assert.ok(shipped !== undefined, 'the Architect link is declared');
+  const link = () => structuredClone(shipped.declaration);
+  assert.equal(link().archetype, 'external');
+  assert.equal(externalProblem(link()), null, 'a link that declares nothing to read or do passes');
+  const cases = [
+    ['read', { read: { source: { port: 'analytics', endpoint: 'Cubes', type: 'LIST' } } }],
+    ['table', { table: { columns: [] } }],
+    ['tab', { tab: { group: 'analytics/architect', position: 1, labelKey: 'analyticsArchitectLabel' } }],
+    ['primaryAction', { primaryAction: { id: 'open', selfProtection: '' } }],
+    ['rowActions', { rowActions: [{ id: 'open', selfProtection: '' }] }],
+    ['parentScope', { parentScope: 'analytics/cubes' }],
+  ];
+  for (const [key, extra] of cases) {
+    assert.equal(
+      externalProblem({ ...link(), ...extra }),
+      `external screen declares ${key}, ${EXTERNAL_SENTENCE}`,
+      `an external screen that declares ${key}`
+    );
+  }
+  assert.equal(externalProblem({ ...link(), read: null, table: null, tab: null }), null, 'a null declares nothing');
+  assert.equal(externalProblem({ ...link(), primaryAction: { id: null, selfProtection: '' } }), null, 'a null action id declares nothing, as the instance reads it');
+  assert.equal(externalProblem({ archetype: 'list', read: { source: {} }, table: {} }), null, 'a screen of another archetype is not this check\'s');
+
+  const registry = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'src', 'OcuPilot', 'Screen', 'Registry.cls'), 'utf8');
+  assert.ok(registry.includes(EXTERNAL_SENTENCE), 'and Registry.ExternalProblem returns the same sentence');
+});
+
+test('buildMirror refuses an external screen that declares a parentScope, and every shipped link passes', () => {
+  const { screens } = readSources();
+  const links = screens.filter((screen) => screen.declaration.archetype === 'external');
+  assert.deepEqual(
+    links.map((screen) => screen.declaration.toolIdentifier).sort(),
+    ['analytics.analyzer', 'analytics.architect', 'analytics.userportal'],
+    'the three shipped links'
+  );
+  for (const screen of links) assert.equal(externalProblem(screen.declaration), null, `${screen.className} passes`);
+  const doctored = structuredClone(links[0]);
+  doctored.declaration.parentScope = 'analytics/cubes';
+  assert.throws(
+    () => buildMirror({ ...readSources(), screens: [doctored] }),
+    new RegExp(`${links[0].className}\\): external screen declares parentScope, `),
+    'which reaches the generator'
+  );
+});
+
 // --- The gates (Story 1.17, DW-184) -------------------------------------------------------
 //
 // A checker wired into no gate blocks nothing. `screen-mirror.mjs --check` was named in
@@ -2434,11 +2645,22 @@ test('ownPrivilegesProblem returns every sentence OwnPrivilegeCases declares, an
   // item's six tabs %Ens_ProductionConfig:READ and each its tab's, Production monitor %Ens_Dashboard:USE, Queues and
   // Queue messages %Ens_Queues:READ, and Jobs %Ens_Jobs:READ. Story 20.5's Lookup tables and a table's entries own
   // %Ens_LookupTables:READ, and Business partners %Ens_ProductionConfig:READ. Story 20.6's item Test tab owns
-  // %Ens_TestingService:USE.
+  // %Ens_TestingService:USE. Story 20.8's Schema viewer owns %Ens_EDISchema:READ and its Configuration diagram
+  // %Ens_ProductionConfig:READ. Story 20.9's Messages and its Header tab own %Ens_MessageHeader:USE, and its Contents tab
+  // that and %Ens_MessageContent:USE. Story 20.11's Term lists and a term list's entries own %DeepSee_PortalEdit:USE, and Folder items
+  // %Development:USE, beside the Analytics area's %DeepSee_Portal. Story 20.32's Architect and Analyzer links own
+  // %DeepSee_Architect:USE and %DeepSee_Analyzer:USE, and the User Portal link owns none.
+  // Story 20.33's MDX query owns %Development:USE beside the Analytics area's %DeepSee_Portal.
   assert.deepEqual(
     owners.sort(),
     [
       'OcuPilot.Screen.Descriptor.AllowedDirectoryList',
+      'OcuPilot.Screen.Descriptor.AnalyticsAnalyzerLink',
+      'OcuPilot.Screen.Descriptor.AnalyticsArchitectLink',
+      'OcuPilot.Screen.Descriptor.AnalyticsFolderItemList',
+      'OcuPilot.Screen.Descriptor.AnalyticsMdxQuery',
+      'OcuPilot.Screen.Descriptor.AnalyticsTermListEntryList',
+      'OcuPilot.Screen.Descriptor.AnalyticsTermListList',
       'OcuPilot.Screen.Descriptor.BackgroundTaskList',
       'OcuPilot.Screen.Descriptor.EcpSettings',
       'OcuPilot.Screen.Descriptor.EncryptionKeyFile',
@@ -2457,12 +2679,21 @@ test('ownPrivilegesProblem returns every sentence OwnPrivilegeCases declares, an
       'OcuPilot.Screen.Descriptor.InteropJobList',
       'OcuPilot.Screen.Descriptor.InteropLookupEntryList',
       'OcuPilot.Screen.Descriptor.InteropLookupTableList',
+      'OcuPilot.Screen.Descriptor.InteropMessageContentsTab',
+      'OcuPilot.Screen.Descriptor.InteropMessageHeaderTab',
+      'OcuPilot.Screen.Descriptor.InteropMessageList',
+      'OcuPilot.Screen.Descriptor.InteropMessageTraceTab',
       'OcuPilot.Screen.Descriptor.InteropMonitorList',
+      'OcuPilot.Screen.Descriptor.InteropProcessEditor',
       'OcuPilot.Screen.Descriptor.InteropProcessList',
+      'OcuPilot.Screen.Descriptor.InteropProductionDiagram',
       'OcuPilot.Screen.Descriptor.InteropProductionList',
       'OcuPilot.Screen.Descriptor.InteropQueueList',
       'OcuPilot.Screen.Descriptor.InteropQueueMessageList',
+      'OcuPilot.Screen.Descriptor.InteropRuleEditor',
       'OcuPilot.Screen.Descriptor.InteropRuleList',
+      'OcuPilot.Screen.Descriptor.InteropSchemaViewer',
+      'OcuPilot.Screen.Descriptor.InteropTransformEditor',
       'OcuPilot.Screen.Descriptor.InteropTransformList',
       'OcuPilot.Screen.Descriptor.JournalSettings',
       'OcuPilot.Screen.Descriptor.LanguageServerActivity',
@@ -2809,7 +3040,7 @@ test('timelineMemberProblem refuses a timeline member that declares a timeline i
 // Mutation (Rule 19): drop SOURCE_BACKGROUND from READ_SOURCE_PORTS -> the roster pin goes red and
 // the list's read is refused.
 test('Story 16.5: the Background tasks list reads through the background port, the seventh read source', () => {
-  assert.deepEqual(READ_SOURCE_PORTS, ['admin', 'state', 'mgmnt', 'logsource', 'path', 'timeline', 'background', 'atelier', 'encryption', 'docdb', 'sqlactivity', 'interop', 'access', 'monitor']);
+  assert.deepEqual(READ_SOURCE_PORTS, ['admin', 'state', 'mgmnt', 'logsource', 'path', 'timeline', 'background', 'atelier', 'encryption', 'docdb', 'sqlactivity', 'interop', 'access', 'monitor', 'analytics']);
   const { screens } = readSources();
   const background = screens.find((candidate) => candidate.className === 'OcuPilot.Screen.Descriptor.BackgroundTaskList');
   assert.ok(background !== undefined, 'the Background tasks list is declared');
@@ -2975,6 +3206,53 @@ test('Story 18.11: Prometheus metrics reads through the monitor port, the fourte
   assert.equal(screen.declaration.sideBarPosition, 21, 'OS management lists it at position 21');
 });
 
+// Story 18.37: the monitor source names one of four endpoints, the metrics and the three Interoperability usage
+// lists, with no criteria, per-row call, parent list, query, parts or rows, under the port's two pairs. Every
+// case in `OcuPilot.Test.InteropUsageDescriptor`'s corpus gets its exact sentence, or none, here as the
+// instance's registry gives it there.
+// Mutation (Rule 19): let the monitor arm of `readProblem` admit any endpoint -> the endpoint cases go red.
+test('Story 18.37: the monitor source admits its four endpoints and refuses another endpoint, type and key, and the corpus agrees', () => {
+  assert.deepEqual(monitorEndpoints(), ['Metrics', 'Interfaces', 'MessageVolume', 'DatabaseImpact'], 'the port declares its four endpoints');
+  const corpus = testCorpus(['Test', 'InteropUsageDescriptor.cls'], 'Cases');
+  let refusals = 0;
+  let sound = 0;
+  for (const testCase of corpus.cases) {
+    const declaration = structuredClone(corpus.declaration);
+    declaration.read.source = structuredClone(testCase.source);
+    if (testCase.criteria !== undefined) declaration.read.criteria = structuredClone(testCase.criteria);
+    if (testCase.privileges !== undefined) declaration.privileges = structuredClone(testCase.privileges);
+    const problem = testCase.check === 'criteria' ? criteriaProblem(declaration) : readProblem(declaration);
+    assert.equal(problem, testCase.expected, testCase.name);
+    if (testCase.expected !== null) refusals += 1;
+    else if (testCase.check === 'read') sound += 1;
+  }
+  assert.equal(sound, 4, 'the four endpoints are sound');
+  assert.ok(refusals >= 8, `the corpus refuses its shapes (${refusals})`);
+  const { screens } = readSources();
+  const expected = [
+    ['InteropUsageTab', 'Interfaces', 22, 1],
+    ['InteropUsageVolumeTab', 'MessageVolume', 0, 2],
+    ['InteropUsageImpactTab', 'DatabaseImpact', 0, 3],
+  ];
+  for (const [name, endpoint, position, tabPosition] of expected) {
+    const screen = screens.find((candidate) => candidate.className === `OcuPilot.Screen.Descriptor.${name}`);
+    assert.ok(screen !== undefined, `${name} is declared`);
+    assert.deepEqual(screen.declaration.read.source, { port: 'monitor', endpoint, type: 'LIST' }, `${name} reads the monitor port's ${endpoint}`);
+    assert.equal(readProblem(screen.declaration), null, `${name}'s read passes`);
+    assert.equal(screen.declaration.ownPrivileges, undefined, `${name} declares no own pair`);
+    assert.equal(screen.declaration.refreshes, false, `${name} never refreshes`);
+    assert.equal(screen.declaration.sideBarPosition, position, `${name}'s side-bar position`);
+    assert.deepEqual(screen.declaration.tab, { group: 'os-management/interoperability-usage', position: tabPosition, labelKey: screen.declaration.tab.labelKey }, `${name} is tab ${tabPosition} of one group`);
+    assert.equal(screen.declaration.classicPage, '%CSP.UI.Portal.InteroperabilityUsage', `${name} replaces the classic page`);
+  }
+  const first = screens.find((candidate) => candidate.className === 'OcuPilot.Screen.Descriptor.InteropUsageTab');
+  assert.deepEqual(
+    first.declaration.table.columns.filter((column) => column.emptyKey !== undefined).map((column) => [column.field, column.emptyKey]),
+    [['Namespace', 'interopUsageAll'], ['Protocol', 'interopUsageAll']],
+    'a totals row reads All in its namespace and protocol cells'
+  );
+});
+
 // Story 20.2: the four Interoperability lists read through the interop port, the twelfth read source,
 // which both engines admit as one LIST of the port's four endpoints with no criteria, per-row call,
 // parent list, query or parts. Every case in `OcuPilot.Test.InteropDescriptor`'s corpus gets its exact
@@ -3035,4 +3313,55 @@ test('Story 20.15: Screen permissions reads through the access source, the thirt
   assert.equal(readProblem(screen.declaration), null, "its read passes");
   assert.deepEqual(screen.declaration.privileges, [{ resource: '%Development', permission: 'USE' }]);
   assert.equal(screen.declaration.classicPage, '', 'and it replaces no classic page');
+});
+
+// Story 20.11: the Analytics screens read through the analytics port, the fifteenth read source, which both engines admit as one
+// LIST of the port's seven endpoints with no per-row call, parent list, query or parts, and with criteria only as a parent-scoped
+// list's route id. Every case in `OcuPilot.Test.AnalyticsDescriptor`'s corpus gets its exact sentence, or none, here as the
+// instance's registry gives it there.
+// Mutation (Rule 19): drop the analytics arm from `readProblem` -> the endpoint, type and key cases go red; drop
+// `SOURCE_ANALYTICS` from the parent-only rule in `criteriaProblem` -> the parent-scoped tabs' "criteria pass" legs go red (the
+// corpus's criteria case is refused either way).
+test('Story 20.11: the Analytics screens read through the analytics port, the fifteenth read source, and the corpus agrees', () => {
+  assert.ok(READ_SOURCE_PORTS.includes('analytics'), 'the analytics port is a read source');
+  const corpus = testCorpus(['Test', 'AnalyticsDescriptor.cls'], 'Cases');
+  let refusals = 0;
+  for (const testCase of corpus.cases) {
+    const declaration = structuredClone(corpus.declaration);
+    declaration.read.source = structuredClone(testCase.source);
+    if (testCase.criteria !== undefined) declaration.read.criteria = structuredClone(testCase.criteria);
+    const problem = testCase.check === 'criteria' ? criteriaProblem(declaration) : readProblem(declaration);
+    assert.equal(problem, testCase.expected, testCase.name);
+    if (testCase.expected !== null) refusals += 1;
+  }
+  assert.ok(refusals >= 7, `the corpus refuses its shapes (${refusals})`);
+  const { screens } = readSources();
+  const expected = [
+    ['AnalyticsCubeList', 'Cubes'],
+    ['AnalyticsCubeMeasuresTab', 'Measures'],
+    ['AnalyticsCubeDimensionsTab', 'Dimensions'],
+    ['AnalyticsCubeRelationshipsTab', 'Relationships'],
+    ['AnalyticsTermListList', 'TermLists'],
+    ['AnalyticsTermListEntryList', 'TermListEntries'],
+    ['AnalyticsFolderItemList', 'FolderItems'],
+  ];
+  for (const [name, endpoint] of expected) {
+    const screen = screens.find((candidate) => candidate.className === `OcuPilot.Screen.Descriptor.${name}`);
+    assert.ok(screen !== undefined, `${name} is declared`);
+    assert.deepEqual(screen.declaration.read.source, { port: 'analytics', endpoint, type: 'LIST' });
+    assert.equal(readProblem(screen.declaration), null, `${name}'s read passes`);
+    assert.equal(criteriaProblem(screen.declaration), null, `${name}'s criteria pass`);
+    assert.equal(screen.declaration.area, 'analytics', `${name} lives in the analytics area`);
+  }
+  // A parent-scoped list may declare its route id as the one criterion, and the same declaration without a parent may not.
+  const tab = screens.find((candidate) => candidate.className === 'OcuPilot.Screen.Descriptor.AnalyticsCubeMeasuresTab').declaration;
+  assert.equal(criteriaProblem(tab), null, 'a parent-scoped analytics list declares its route id');
+  const orphan = structuredClone(tab);
+  orphan.parentScope = '';
+  assert.match(criteriaProblem(orphan), /^read\.criteria is declared on a 'analytics' source, and server criteria travel on the admin/, 'and without its parent it is refused');
+  // A tab of a tabbed group may declare a row target; a detail screen that is no tab may not.
+  assert.equal(rowTargetProblem(screens.find((candidate) => candidate.className === 'OcuPilot.Screen.Descriptor.AnalyticsCubeRelationshipsTab').declaration), null, 'the Relationships tab declares one');
+  const untabbed = structuredClone(screens.find((candidate) => candidate.className === 'OcuPilot.Screen.Descriptor.AnalyticsCubeRelationshipsTab').declaration);
+  delete untabbed.tab;
+  assert.equal(rowTargetProblem(untabbed), "rowTarget is declared on a 'detail' archetype, and a row target is a list's own row link (AD-5)", 'a detail screen that is no tab may not');
 });

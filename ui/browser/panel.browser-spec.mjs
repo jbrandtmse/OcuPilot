@@ -28,9 +28,12 @@ import {
   DEFINITIONS_PATH,
   authHeader as sharedAuthHeader,
   definitions as sharedDefinitions,
+  setDarkTheme,
+  settleViewport,
+  settleWrites,
   signedInAt as sharedSignedInAt,
 } from './panel-spec.mjs';
-import { rememberedShellMember } from './preferences-reset.mjs';
+import { rememberedShellMember, resetRememberedState } from './preferences-reset.mjs';
 
 const config = browserConfig();
 const STRINGS = loadStrings();
@@ -242,17 +245,6 @@ function commandBarBox(page) {
  * for seconds. Each `page.evaluate` binds to the live execution context, which is what makes the
  * poll see the page the reload produced.
  */
-/**
- * Give a fire-and-forget preference write time to arrive, for an assertion that it does not.
- *
- * A poll is the right shape for a value that must appear (`panelSettlesAt`); a value that must
- * stay absent has nothing to poll for, so this bounds how long "absent" was given to become
- * "present".
- */
-async function settleWrites() {
-  await new Promise((resolve) => setTimeout(resolve, 500));
-}
-
 async function panelSettlesAt(page, width) {
   const deadline = Date.now() + config.navigationTimeoutMs;
   let seen = null;
@@ -322,9 +314,10 @@ test('AC3: the handle resizes by keyboard and pointer between 320 and the 640px 
     await page.mouse.down();
     await page.mouse.move(edge.x - 2000, edge.y, { steps: 8 });
     shown = await geometry(page);
-    const max = shown.viewport - 48 - 240 - 640;
-    assert.equal(shown.valueMax, max, 'the maximum is the width that leaves content at 640 beside the open side bar');
+    const max = shown.viewport - 48 - 640;
+    assert.equal(shown.valueMax, max, 'the maximum is the width that leaves content at 640 once the side bar yields');
     assert.equal(shown.valueNow, max, 'dragging past the stop holds at it');
+    assert.equal(shown.sideBar, 0, 'and the side bar has yielded to the width');
     assert.equal(shown.atStop, true, 'and the grip is restrained there');
     await page.mouse.move(edge.x + 2000, edge.y, { steps: 8 });
     await page.mouse.up();
@@ -343,6 +336,41 @@ test('AC3: the handle resizes by keyboard and pointer between 320 and the 640px 
     assert.equal(sideBarSash, 0, 'the side bar carries no sash, grip or resize cursor');
   } finally {
     await context.close();
+    await resetRememberedState();
+  }
+});
+
+test('DW-458: at 1,280 a panel narrowed until the side bar returns is drawn out again, and the bar yields to it, in light and in dark', async () => {
+  // Mutation (Rule 19): restore `available - CONTENT_MIN_WIDTH` as `panelMax` in `resolveLayout`
+  // (bundle rebuilt and redeployed) -> the bar caps the maximum at 352 once the panel is 336, and
+  // the `aria-valuemax` assertion goes red.
+  const { context, page } = await signedInAt(USERS_URL, { width: 1280, height: 900 });
+  try {
+    const row = async () => {
+      const shown = await geometry(page);
+      return { columns: [shown.sideBar, Math.round(shown.panelWidth), Math.round(shown.contentWidth)], max: shown.valueMax };
+    };
+    for (const dark of [false, true]) {
+      const theme = dark ? 'dark' : 'light';
+      await setDarkTheme(page, dark);
+      await panelSettlesAt(page, 400);
+      assert.deepEqual(await row(), { columns: [0, 400, 832], max: 592 }, `the bar has yielded at 400 (${theme})`);
+
+      await pressOnHandle(page, 'ArrowRight', 4);
+      await panelSettlesAt(page, 336);
+      assert.deepEqual(
+        await row(),
+        { columns: [240, 336, 656], max: 592 },
+        `the narrowed panel leaves room for the bar, and the bar does not cap the drag (${theme})`
+      );
+
+      await pressOnHandle(page, 'ArrowLeft', 4);
+      await panelSettlesAt(page, 400);
+      assert.deepEqual(await row(), { columns: [0, 400, 832], max: 592 }, `the panel takes its width back and the bar yields (${theme})`);
+    }
+  } finally {
+    await context.close();
+    await resetRememberedState();
   }
 });
 
@@ -724,18 +752,17 @@ test('Yield order at 1,920, 1,280 (and reopened), 1,024 and 900px; the page body
   const { context, page } = await signedInAt(USERS_URL, { width: 1920, height: 900 });
   try {
     const measured = [];
-    const at = async (width) => {
-      await page.setViewport({ width, height: 900 });
-      await page.waitForFunction((w) => document.documentElement.clientWidth === w, {}, width);
-      await new Promise((resolve) => setTimeout(resolve, 250));
+    const at = async (width, panel) => {
+      await settleViewport(page, { width, height: 900 });
+      await panelSettlesAt(page, panel);
       const row = await geometry(page);
       measured.push(row);
       return row;
     };
-    let shown = await at(1920);
+    let shown = await at(1920, 400);
     assert.deepEqual([shown.sideBar, Math.round(shown.panelWidth), Math.round(shown.contentWidth)], [240, 400, 1232]);
 
-    shown = await at(1280);
+    shown = await at(1280, 400);
     assert.deepEqual([shown.sideBar, Math.round(shown.panelWidth), Math.round(shown.contentWidth)], [0, 400, 832]);
     // Story 15.5 (DW-134): the open state is the instance's now, so reading `localStorage` here
     // asserted nothing -- the key is banned everywhere under `ui/src` and is null whatever the
@@ -762,10 +789,10 @@ test('Yield order at 1,920, 1,280 (and reopened), 1,024 and 900px; the page body
     await settleWrites();
     assert.equal(await rememberedShellMember('sideBarOpen'), null);
 
-    shown = await at(1024);
+    shown = await at(1024, 336);
     assert.deepEqual([shown.sideBar, Math.round(shown.panelWidth), Math.round(shown.contentWidth)], [0, 336, 640]);
 
-    shown = await at(900);
+    shown = await at(900, 320);
     assert.deepEqual([shown.sideBar, Math.round(shown.panelWidth), Math.round(shown.contentWidth)], [0, 320, 532]);
     assert.ok(shown.contentScrollWidth >= 640, `the content region scrolls its 640px floor: ${shown.contentScrollWidth}`);
     assert.equal(Math.round(shown.floorWidth), 640);

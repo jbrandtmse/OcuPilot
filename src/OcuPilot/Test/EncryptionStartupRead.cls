@@ -107,6 +107,29 @@ Method TestTheFormReadAnswersTheConfiguredKmipServers()
     Do $$$AssertEquals(tStatus _ " " _ tAnswer, "200 {""kmipServers"":[""OCUPROBESTARTKMSA"",""OCUPROBESTARTKMSB""],""encryptedDatabases"":[]}", "it answers the two configured servers")
 }
 
+/// <p>AD-10, AD-27 (Story 18.48): the port's own read of whether the journal allows key activation at startup to be
+/// turned off, the one the Interactive arm makes, answers 200 and the vendor's own verdict,
+/// <code>%SYS.Journal.System.OKNoDBEncKeyAtStartup()</code> read here in <code>%SYS</code>.</p>
+/// <p>Mutation (Rule 19): negate the verdict in <method>OcuPilot.Port.EncryptionPort.JournalStartup</method> -- this goes
+/// red.</p>
+Method TestThePortsOwnJournalStartupReadAnswersTheVendorsVerdict()
+{
+    Set tVendor = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set tVendor = $$$ISOK(##class(%SYS.Journal.System).OKNoDBEncKeyAtStartup())
+    } Catch ex {
+        Set tVendor = "threw"
+    }
+    Set $NAMESPACE = tOrigNS
+    Kill tQuery
+    Set tSC = $ClassMethod(..#PORT, "Invoke", "Security.Encryption.Settings", "JOURNALSTARTUP", .tQuery, "", .tResult, .tHttp, .tFault)
+    Do $$$AssertStatusOK(tSC, "the read runs")
+    Do $$$AssertEquals(tHttp, 200, "at 200")
+    Do $$$AssertEquals($Select($IsObject($Get(tResult)): tResult.%GetTypeOf("Allowed") _ " " _ tResult.%Get("Allowed"), 1: ""), "boolean " _ tVendor, "and answers the vendor's own verdict")
+}
+
 /// <p>AD-10, AD-27: the form read answers which startup databases are encrypted on disk, through the port's
 /// own read: two armed on the seam are answered in order, and a read that fails fails the form read. The
 /// instance's own read names a database exactly when its directory is among the encrypted databases

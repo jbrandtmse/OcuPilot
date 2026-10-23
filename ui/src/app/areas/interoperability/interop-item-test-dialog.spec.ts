@@ -1,5 +1,7 @@
+import { APP_BASE_HREF } from '@angular/common';
 import { Component, signal, viewChild, type WritableSignal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { Router, provideRouter } from '@angular/router';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { OverlayStack } from '../../core/overlay-stack';
@@ -73,7 +75,13 @@ describe('the Send test dialog (Story 20.6)', () => {
   let host: HTMLElement;
 
   beforeEach(() => {
-    TestBed.configureTestingModule({ providers: [{ provide: OverlayStack, useValue: new OverlayStack() }] });
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter([{ path: '**', children: [] }]),
+        { provide: APP_BASE_HREF, useValue: '/ocupilot' },
+        { provide: OverlayStack, useValue: new OverlayStack() },
+      ],
+    });
     fixture = TestBed.createComponent(Host);
     host = fixture.nativeElement as HTMLElement;
     document.body.appendChild(host);
@@ -105,6 +113,15 @@ describe('the Send test dialog (Story 20.6)', () => {
     control.dispatchEvent(new Event(control.tagName === 'SELECT' ? 'change' : 'input'));
     fixture.detectChanges();
   }
+
+  // Mutation (Rule 19): fill `STRINGS.interopTestMaxLength` alone in `fields` -> the one-character caption goes red.
+  it('reads "At most 1 character." for a field bounded at one', () => {
+    const oneChar = 'OcuPilotProbe.Interop.OneChar';
+    fixture.componentInstance.rows.set([...ROWS, row(oneChar, 'Code', { MaxLength: 1 })]);
+    fixture.detectChanges();
+    choose(oneChar);
+    expect(fieldNamed('Code').querySelector('[data-interop-test-caption]')?.textContent?.trim()).toBe('At most 1 character.');
+  });
 
   it('reads the tab rows as typed rows and leaves out one with no class', () => {
     const typed = testRowsOf([...ROWS, 'text', null, row('', 'X')]);
@@ -230,6 +247,60 @@ describe('the Send test dialog (Story 20.6)', () => {
     fixture.detectChanges();
     expect(text('[data-interop-test-status]')).toBe(STRINGS.interopTestDoneNoResponse.replace('<session>', '43'));
     expect(host.querySelector('[data-interop-test-result] pre')).toBeNull();
+  });
+
+  // Mutation (Rule 19): build the link from `responseClass` in place of `sessionId` -> the href leg goes red; drop the digits check from
+  // `hasTraceLink` -> the no-session leg goes red.
+  it('Story 20.30: an answer that names a session links to its trace in the tab\'s namespace, and follows it in the app on a plain click', async () => {
+    const router = TestBed.inject(Router);
+    await router.navigateByUrl('/interoperability/productions/items/test/P.Prod%7C%7COp?ns=USER');
+    expect(host.querySelector('[data-interop-test-trace]')).toBeNull();
+    fixture.componentInstance.answer.set({ status: 'done', sessionId: '41', responseClass: 'Ens.StringResponse', lines: [], errors: false });
+    fixture.detectChanges();
+    const link = host.querySelector('[data-interop-test-trace]') as HTMLAnchorElement;
+    expect(link.textContent?.trim()).toBe(STRINGS.interopTestTraceLink);
+    expect(link.getAttribute('href')).toBe('/ocupilot/interoperability/messages/trace/41?ns=USER');
+    expect(link.previousElementSibling?.hasAttribute('data-interop-test-status')).toBe(true);
+
+    // What the click had done by the time it reached the document, which then stops jsdom following the href.
+    const seen: boolean[] = [];
+    const spy = (event: Event): void => {
+      seen.push(event.defaultPrevented);
+      event.preventDefault();
+    };
+    document.addEventListener('click', spy);
+    try {
+      link.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, ctrlKey: true }));
+      await fixture.whenStable();
+      expect(seen).toEqual([false]);
+      expect(router.url).toBe('/interoperability/productions/items/test/P.Prod%7C%7COp?ns=USER');
+
+      link.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+      await fixture.whenStable();
+      expect(seen).toEqual([false, true]);
+      expect(router.url).toBe('/interoperability/messages/trace/41?ns=USER');
+    } finally {
+      document.removeEventListener('click', spy);
+    }
+  });
+
+  // Mutation (Rule 19): widen the pattern to nineteen digits after the first (`{0,19}`) -> the twenty-digit leg goes red; drop its leading
+  // `[1-9]` for `[0-9]` -> the leading-zero leg goes red.
+  it('Story 20.30: an answer with no session offers no link', () => {
+    for (const sessionId of ['', '0', '012', '12ab', '-3', ' 41', '12345678901234567890']) {
+      fixture.componentInstance.answer.set({ status: 'error', sessionId, responseClass: '', lines: ['boom'], errors: true });
+      fixture.detectChanges();
+      expect(host.querySelector('[data-interop-test-result]'), `a result block for '${sessionId}'`).not.toBeNull();
+      expect(host.querySelector('[data-interop-test-trace]'), `no link for '${sessionId}'`).toBeNull();
+    }
+  });
+
+  // Mutation (Rule 19): narrow the pattern to seventeen digits after the first (`{0,17}`) -> this goes red.
+  it('Story 20.30: the link is offered for a session id of nineteen digits, the longest a message id can be', async () => {
+    await TestBed.inject(Router).navigateByUrl('/interoperability/productions/items/test/P.Prod%7C%7COp?ns=USER');
+    fixture.componentInstance.answer.set({ status: 'done', sessionId: '1234567890123456789', responseClass: 'Ens.StringResponse', lines: [], errors: false });
+    fixture.detectChanges();
+    expect(host.querySelector('[data-interop-test-trace]')?.getAttribute('href')).toBe('/ocupilot/interoperability/messages/trace/1234567890123456789?ns=USER');
   });
 
   it('emits cancelled once, from the dismissing button', () => {

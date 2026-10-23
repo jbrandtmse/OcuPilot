@@ -315,7 +315,10 @@ ClassMethod SettingsWrite(ByRef pQuery, pBody As %DynamicAbstractObject, Output 
 /// directory, whose refusals name <var>pRootField</var> or <var>pPathField</var>, and refused 422
 /// <parameter>OcuPilot.Api.JournalError.VALIDATION</parameter> with
 /// <parameter>OcuPilot.Api.JournalError.DIRECTORYABSENT</parameter> on <var>pPathField</var> when the
-/// instance holds no such directory. The settings write, its tool and its Save each call this.</p>
+/// instance holds no such directory, and with <parameter>OcuPilot.Api.JournalError.DIRECTORYDATABASE</parameter>
+/// when it is a database's directory or one of its volume directories, compared normalized and without regard
+/// to case (<method>DatabaseDirectories</method>); a database list that cannot be read is 500. The settings
+/// write, its tool and its Save each call this.</p>
 ClassMethod ResolveDirectory(pRoot As %String, pPath As %String, pRootField As %String, pPathField As %String, Output pDirectory As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
 {
     Set pDirectory = ""
@@ -324,8 +327,31 @@ ClassMethod ResolveDirectory(pRoot As %String, pPath As %String, pRootField As %
     Set tSC = ##class(OcuPilot.Port.PathPort).Resolve(pRoot, pPath, ##class(OcuPilot.Port.PathPort).#KINDDIRECTORY, pRootField, pPathField, .tDirectory, .pHttpStatus, .pFault, 0, 1)
     If $$$ISERR(tSC) Quit tSC
     If (tDirectory = "") || '##class(%File).DirectoryExists(tDirectory) Quit ..Refused(pPathField, ##class(OcuPilot.Api.JournalError).#DIRECTORYABSENT, .pHttpStatus, .pFault)
+    Set tListSC = ..DatabaseDirectories(.tDatabases)
+    If $$$ISERR(tListSC) {
+        Set tSC = ..Refuse(500, ##class(OcuPilot.Api.Error).#SERVERERROR, ##class(OcuPilot.Api.Error).#INTERNAL, ##class(OcuPilot.Kernel.Fault).#DEFAULTREASON, .pHttpStatus, .pFault)
+        Do ..LogFault("the databases' directories could not be read for a journal directory", tListSC, pFault.code)
+        Quit tSC
+    }
+    Set tNormal = $ZConvert(##class(%File).NormalizeDirectory(tDirectory), "L")
+    Set tHeld = 0
+    For tI = 1:1:$ListLength(tDatabases) {
+        If $ZConvert(##class(%File).NormalizeDirectory($List(tDatabases, tI)), "L") = tNormal {
+            Set tHeld = 1
+            Quit
+        }
+    }
+    If tHeld Quit ..Refused(pPathField, ##class(OcuPilot.Api.JournalError).#DIRECTORYDATABASE, .pHttpStatus, .pFault)
     Set pDirectory = tDirectory
     Quit $$$OK
+}
+
+/// <p>The configured local databases' directories and their volume directories, in <var>pDirectories</var>
+/// (<method>OcuPilot.Port.PathPort.DatabaseDirectories</method>). Overridable so a fixture can fail the read;
+/// production never overrides it.</p>
+ClassMethod DatabaseDirectories(Output pDirectories As %List) As %Status
+{
+    Quit ##class(OcuPilot.Port.PathPort).DatabaseDirectories(.pDirectories, .tStreams)
 }
 
 /// <p>The classic Journal Settings page's purge rule over <var>pBody</var>, which carries

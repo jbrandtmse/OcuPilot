@@ -48,17 +48,17 @@ XData Cases
   "cases": [
     {"name": "a monitor LIST of Metrics is sound", "check": "read", "source": {"port": "monitor", "endpoint": "Metrics", "type": "LIST"}, "expected": null},
     {"name": "and declares no criteria", "check": "criteria", "source": {"port": "monitor", "endpoint": "Metrics", "type": "LIST"}, "expected": null},
-    {"name": "the sensors endpoint a part names", "check": "read", "source": {"port": "monitor", "endpoint": "Sensors", "type": "LIST"}, "expected": "read.source.endpoint 'Sensors' is not the monitor port's endpoint ('Metrics') (AD-29)"},
-    {"name": "a single-object type", "check": "read", "source": {"port": "monitor", "endpoint": "Metrics", "type": "GET"}, "expected": "read.source.type 'GET' is declared on a monitor source, which lists the instance's Prometheus metrics (AD-36)"},
-    {"name": "the volume list type", "check": "read", "source": {"port": "monitor", "endpoint": "Metrics", "type": "VOLUMELIST"}, "expected": "read.source.type 'VOLUMELIST' is declared on a monitor source, which lists the instance's Prometheus metrics (AD-36)"},
-    {"name": "a per-row detail call", "check": "read", "source": {"port": "monitor", "endpoint": "Metrics", "type": "LIST", "rowGet": {"key": "Metric", "param": "name", "fields": ["Help"], "derived": []}}, "expected": "read.source.rowGet is declared on a monitor source, which answers the metrics whole (AD-36)"},
-    {"name": "a parent list", "check": "read", "source": {"port": "monitor", "endpoint": "Metrics", "type": "LIST", "forEach": {"endpoint": "Metrics", "key": "Metric", "param": "name", "fields": []}}, "expected": "read.source.forEach is declared on a monitor source, which answers the metrics whole (AD-36)"},
-    {"name": "a fixed query", "check": "read", "source": {"port": "monitor", "endpoint": "Metrics", "type": "LIST", "query": {"prefix": "iris"}}, "expected": "read.source.query is declared on a monitor source, which answers the metrics whole (AD-36)"},
-    {"name": "parts", "check": "read", "source": {"port": "monitor", "endpoint": "Metrics", "type": "LIST", "parts": [{"type": "LIST", "as": "x"}]}, "expected": "read.source.parts is declared on a monitor source, which answers the metrics whole (AD-36)"},
+    {"name": "the sensors endpoint a part names", "check": "read", "source": {"port": "monitor", "endpoint": "Sensors", "type": "LIST"}, "expected": "read.source.endpoint 'Sensors' is not one of the monitor port's endpoints ('Metrics', 'Interfaces', 'MessageVolume', 'DatabaseImpact') (AD-29)"},
+    {"name": "a single-object type", "check": "read", "source": {"port": "monitor", "endpoint": "Metrics", "type": "GET"}, "expected": "read.source.type 'GET' is declared on a monitor source, which lists the instance's metrics and interoperability usage (AD-36)"},
+    {"name": "the volume list type", "check": "read", "source": {"port": "monitor", "endpoint": "Metrics", "type": "VOLUMELIST"}, "expected": "read.source.type 'VOLUMELIST' is declared on a monitor source, which lists the instance's metrics and interoperability usage (AD-36)"},
+    {"name": "a per-row detail call", "check": "read", "source": {"port": "monitor", "endpoint": "Metrics", "type": "LIST", "rowGet": {"key": "Metric", "param": "name", "fields": ["Help"], "derived": []}}, "expected": "read.source.rowGet is declared on a monitor source, which answers its list whole (AD-36)"},
+    {"name": "a parent list", "check": "read", "source": {"port": "monitor", "endpoint": "Metrics", "type": "LIST", "forEach": {"endpoint": "Metrics", "key": "Metric", "param": "name", "fields": []}}, "expected": "read.source.forEach is declared on a monitor source, which answers its list whole (AD-36)"},
+    {"name": "a fixed query", "check": "read", "source": {"port": "monitor", "endpoint": "Metrics", "type": "LIST", "query": {"prefix": "iris"}}, "expected": "read.source.query is declared on a monitor source, which answers its list whole (AD-36)"},
+    {"name": "parts", "check": "read", "source": {"port": "monitor", "endpoint": "Metrics", "type": "LIST", "parts": [{"type": "LIST", "as": "x"}]}, "expected": "read.source.parts is declared on a monitor source, which answers its list whole (AD-36)"},
     {"name": "a list over one member", "check": "read", "source": {"port": "monitor", "endpoint": "Metrics", "type": "LIST", "rows": "rows"}, "expected": "read.source.rows is declared on a 'monitor' source, and a list over one member reads an admin endpoint's one-object answer (AD-36)"},
     {"name": "server criteria", "check": "criteria", "source": {"port": "monitor", "endpoint": "Metrics", "type": "LIST"}, "criteria": {"fields": [{"param": "pattern", "labelKey": "metricsColumnMetric", "kind": "text", "maxLength": 64}]}, "expected": "read.criteria is declared on a 'monitor' source, and server criteria travel on the admin, mgmnt, atelier, timeline and encryption ports alone (AD-21)"},
-    {"name": "no read of the system database", "check": "read", "source": {"port": "monitor", "endpoint": "Metrics", "type": "LIST"}, "privileges": [{"resource": "%Admin_Operate", "permission": "USE"}], "expected": "read.source.port 'monitor' requires the declared privileges to include %DB_IRISSYS:READ, because the port takes its collection in %SYS (AD-29)"},
-    {"name": "an unknown port", "check": "read", "source": {"port": "monitors", "endpoint": "Metrics", "type": "LIST"}, "expected": "read.source.port 'monitors' is not one of 'admin', 'state', 'mgmnt', 'logsource', 'path', 'timeline', 'background', 'atelier', 'encryption', 'docdb', 'sqlactivity', 'interop', 'access' or 'monitor', the fourteen sources a declared read names (AD-36)"}
+    {"name": "no read of the system database", "check": "read", "source": {"port": "monitor", "endpoint": "Metrics", "type": "LIST"}, "privileges": [{"resource": "%Admin_Operate", "permission": "USE"}], "expected": "read.source.port 'monitor' requires the declared privileges to include %DB_IRISSYS:READ, because the port reads in %SYS (AD-29)"},
+    {"name": "an unknown port", "check": "read", "source": {"port": "monitors", "endpoint": "Metrics", "type": "LIST"}, "expected": "read.source.port 'monitors' is not one of 'admin', 'state', 'mgmnt', 'logsource', 'path', 'timeline', 'background', 'atelier', 'encryption', 'docdb', 'sqlactivity', 'interop', 'access', 'monitor' or 'analytics', the fifteen sources a declared read names (AD-36)"}
   ]
 }
 }
@@ -174,20 +174,19 @@ Method TestTheReadAnswersTheSamplesInOrderAndReportsTheCut()
     Do $$$AssertEquals(tExact.rows.%Size() _ "|" _ tExact.truncated, "4|0", "a cap equal to the sample count is not a cut")
 }
 
-/// <p>A malformed sample fails the screen's read 500 <code>INTERNAL</code>, logged once, with no rows;
-/// a caller missing either pair is refused 403 naming it and no collection is taken.</p>
-/// <p>Mutation (Rule 19): skip the sample with no value in
-/// <method>OcuPilot.Port.MonitorPort.Samples</method> -- the failure leg goes red; drop
+/// <p>A sample with no value is skipped and counted (Story 18.47, DW-2329): the screen's read answers 200 with the other
+/// rows and logs one line; a caller missing either pair is refused 403 naming it and no collection is taken.</p>
+/// <p>Mutation (Rule 19): fail the read on a skipped sample in
+/// <method>OcuPilot.Port.MonitorPort.Invoke</method> -- the first leg goes red; drop
 /// <code>%DB_IRISSYS:READ</code> from <parameter>OcuPilot.Port.MonitorPort.PAIRS</parameter> -- the
 /// refusal legs go red.</p>
-Method TestAMalformedSampleAndAMissingPairFailTheRead()
+Method TestAMalformedSampleIsSkippedAndAMissingPairFailsTheRead()
 {
     Do ##class(OcuPilot.Test.MonitorPortFixture).SetText($ListToString($ListBuild("probe_a 1", "probe_b"), $Char(10)))
     Set tSC = ##class(OcuPilot.Test.Read.ReadFixture).Execute(..#DESCRIPTOR, "", .tAnswer, .tHttp, .tFault)
-    Do $$$AssertStatusNotOK(tSC, "a sample with no value fails the read")
-    Do $$$AssertEquals(tHttp _ " " _ $Select($IsObject(tFault): tFault.code, 1: ""), "500 INTERNAL", "as the generic internal fault")
-    Do $$$AssertEquals($Get(tAnswer), "", "answering no rows")
-    Do $$$AssertEquals(##class(OcuPilot.Test.MonitorPortFixture).LogCalls(), 1, "logged once")
+    Do $$$AssertStatusOK(tSC, "a sample with no value does not fail the read")
+    Do $$$AssertEquals(tHttp _ " " _ $Select($IsObject($Get(tAnswer)): tAnswer.rows.%Size(), 1: "no rows"), "200 1", "it answers the sample that reads")
+    Do $$$AssertEquals(##class(OcuPilot.Test.MonitorPortFixture).LogCalls(), 1, "and logs one line for the one it skipped")
 
     Do ##class(OcuPilot.Test.MonitorPortFixture).Clear()
     Do ##class(OcuPilot.Test.MonitorPortFixture).SetText("probe_a 1")

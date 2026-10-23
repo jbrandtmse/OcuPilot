@@ -26,6 +26,13 @@ ClassMethod Arm(pMethod As %String, pStatus As %String, pJson As %String = "", p
     Set ^||OcuPilotMgmntImpl("arm", pMethod) = $ListBuild(pStatus, pJson, pMode)
 }
 
+/// <p>Arm <var>pMethod</var> as <method>Arm</method> does, for calls naming the namespace <var>pNamespace</var> alone;
+/// a call naming another namespace is answered as <method>Arm</method> armed it.</p>
+ClassMethod ArmIn(pNamespace As %String, pMethod As %String, pStatus As %String, pJson As %String = "", pMode As %String = "")
+{
+    Set ^||OcuPilotMgmntImpl("arm", pMethod, pNamespace) = $ListBuild(pStatus, pJson, pMode)
+}
+
 /// <p>Forget every armed answer and every recorded call.</p>
 ClassMethod Clear()
 {
@@ -131,7 +138,8 @@ ClassMethod Answer(pMethod As %String, pNamespace As %String, pName As %String, 
     Set tDocument = $Select($IsObject(pDocument): pDocument.%ClassName(1) _ " " _ pDocument.%ToJSON(), pDocument = "": "none", 1: "string " _ pDocument)
     Set ^||OcuPilotMgmntImpl("call", tCount) = $ListBuild(pMethod, pNamespace, pName, tDocument)
     Set %session = ""
-    Set tArm = $Get(^||OcuPilotMgmntImpl("arm", pMethod))
+    Set tArm = $Get(^||OcuPilotMgmntImpl("arm", pMethod, pNamespace))
+    If tArm = "" Set tArm = $Get(^||OcuPilotMgmntImpl("arm", pMethod))
     If tArm = "" {
         Set %response.Status = "500 Internal Server Error"
         Quit ""

@@ -20,7 +20,7 @@ import puppeteer from 'puppeteer';
 
 import { LIVE_CONTAINER, browserConfig, launchOptions } from '../browser.config.mjs';
 import { loadStrings } from '../tools/strings.mjs';
-import { signedInAt } from './panel-spec.mjs';
+import { settleViewport, signedInAt, transitionsSettled } from './panel-spec.mjs';
 import { INVARIANTS, VIEWPORTS, assertThrowaway, collapse, compare, componentMinimums, detectScreen, readBaseline } from './structural-walk.mjs';
 import { markerValue, runIris } from './turnprobe-spec.mjs';
 
@@ -70,9 +70,10 @@ async function structural(page, route) {
   const minimums = componentMinimums();
   const surfaces = {};
   for (const { viewport, theme, checks } of passes) {
-    await page.setViewport(viewport);
+    await settleViewport(page, viewport);
     await page.evaluate((dark) => document.documentElement.classList.toggle('ocu-theme-dark', dark), theme === 'dark');
     await frames(page);
+    await transitionsSettled(page, config.navigationTimeoutMs);
     surfaces[theme] = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
     const { entries } = await detectScreen(page, { route, checks, viewport: viewport.width, theme, minimums });
     found.push(...entries);
@@ -150,7 +151,20 @@ test("AC4: Compare draws two probe classes' line diff from the viewers' reads", 
     const lines = await page.$$eval('[data-ocu-diff="removed"], [data-ocu-diff="added"]', (nodes) => nodes.map((node) => `${node.dataset.ocuDiff}:${node.querySelector('.ocu-line-diff-text').textContent}`));
     assert.ok(lines.includes('removed:Include OcuProbe194Inc') && lines.some((line) => line.startsWith('added:Class OcuProbe194.Child')), `the Parent's lines removed and the Child's added: ${JSON.stringify(lines)}`);
     const status = await page.$eval('[data-ocu-compare="status"]', (node) => node.textContent.trim());
-    assert.match(status, /^\d+ lines removed \u00b7 \d+ lines added$/, `the one-line result counts both: ${status}`);
+    // Every removed and added line is drawn (only unchanged lines collapse), so the drawn rows are the counts the sentence states.
+    // Mutation (Rule 19): fill the plural `explorerCompareSummary` alone in `code-compare.page.ts` -> "1 lines added" and this goes red.
+    const removed = lines.filter((line) => line.startsWith('removed:')).length;
+    const added = lines.filter((line) => line.startsWith('added:')).length;
+    const template =
+      removed === 1
+        ? added === 1
+          ? STRINGS.explorerCompareSummaryOneBoth
+          : STRINGS.explorerCompareSummaryOneFirst
+        : added === 1
+          ? STRINGS.explorerCompareSummaryOneSecond
+          : STRINGS.explorerCompareSummary;
+    const expected = template.replace('<n>', String(removed)).replace('<m>', String(added));
+    assert.equal(status, expected, `the one-line result counts both rows drawn, singular at one: ${status}`);
     assert.deepEqual(await structural(page, COMPARE_ROUTE), [], 'Compare with its diff adds no structural entry');
   } finally {
     await context.close();

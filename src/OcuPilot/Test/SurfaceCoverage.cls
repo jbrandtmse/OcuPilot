@@ -218,11 +218,15 @@ XData Coverage
 <screen name="RoutineAppForm" class="OcuPilot.Test.RoutineAppDescriptor" method="TestTheEditorIsAnUnlistedFormPage"/>
 <screen name="RoutineAppRoleList" class="OcuPilot.Test.RoutineAppListsRead" method="TestBothListsAnswerOneRowPerEntryByRouteAndTool" corpus="one test method pins both lists Story 18.12 adds, the roles and the routines, in one loop"/>
 <screen name="RoutineAppRoutineList" class="OcuPilot.Test.RoutineAppListsRead" method="TestBothListsAnswerOneRowPerEntryByRouteAndTool" corpus="one test method pins both lists Story 18.12 adds, the roles and the routines, in one loop"/>
+<screen name="WebAppRoleList" class="OcuPilot.Test.WebAppRolesRead" method="TestTheRolesListAnswersOneRowPerEntryByRouteAndTool"/>
 <screen name="SqlPrivilegeList" class="OcuPilot.Test.SqlPrivilegeDescriptor" method="TestTheScreenIsDeclaredAsTheSpecPlacesIt"/>
 <screen name="SqlColumnPrivilegeList" class="OcuPilot.Test.SqlPrivilegeDescriptor" method="TestTheColumnAndAdminScreensAreDeclared" corpus="one declaration test pins both Story 18.28 sub-resource screens in one loop"/>
 <screen name="SqlAdminPrivilegeList" class="OcuPilot.Test.SqlPrivilegeDescriptor" method="TestTheColumnAndAdminScreensAreDeclared" corpus="one declaration test pins both Story 18.28 sub-resource screens in one loop"/>
 <screen name="SqlActivityList" class="OcuPilot.Test.SqlActivityDescriptor" method="TestTheDescriptorShape"/>
 <screen name="MetricsList" class="OcuPilot.Test.MetricsDescriptor" method="TestTheDescriptorShape"/>
+<screen name="InteropUsageTab" class="OcuPilot.Test.InteropUsageDescriptor" method="TestTheThreeTabsDeclareTheirReadsAndFormOneGroup" corpus="the three Interoperability usage tabs are asserted together in one loop"/>
+<screen name="InteropUsageVolumeTab" class="OcuPilot.Test.InteropUsageDescriptor" method="TestTheThreeTabsDeclareTheirReadsAndFormOneGroup" corpus="the three Interoperability usage tabs are asserted together in one loop"/>
+<screen name="InteropUsageImpactTab" class="OcuPilot.Test.InteropUsageDescriptor" method="TestTheThreeTabsDeclareTheirReadsAndFormOneGroup" corpus="the three Interoperability usage tabs are asserted together in one loop"/>
 <screen name="InteropProductionList" class="OcuPilot.Test.InteropDescriptor" method="TestTheFourDeclarationsRegister" corpus="one declaration test pins all four Story 20.2 Interoperability screens in one loop"/>
 <screen name="InteropProcessList" class="OcuPilot.Test.InteropDescriptor" method="TestTheFourDeclarationsRegister" corpus="one declaration test pins all four Story 20.2 Interoperability screens in one loop"/>
 <screen name="InteropTransformList" class="OcuPilot.Test.InteropDescriptor" method="TestTheFourDeclarationsRegister" corpus="one declaration test pins all four Story 20.2 Interoperability screens in one loop"/>
@@ -242,6 +246,26 @@ XData Coverage
 <screen name="InteropLookupTableList" class="OcuPilot.Test.InteropLookupDescriptor" method="TestTheThreeDeclarationsRegister" corpus="one declaration test pins all three Story 20.5 screens in one loop"/>
 <screen name="InteropLookupEntryList" class="OcuPilot.Test.InteropLookupDescriptor" method="TestTheThreeDeclarationsRegister" corpus="one declaration test pins all three Story 20.5 screens in one loop"/>
 <screen name="InteropBusinessPartnerList" class="OcuPilot.Test.InteropLookupDescriptor" method="TestTheThreeDeclarationsRegister" corpus="one declaration test pins all three Story 20.5 screens in one loop"/>
+<screen name="InteropRuleEditor" class="OcuPilot.Test.InteropEditorDescriptor" method="TestTheThreeEditorScreensRegister" corpus="one declaration test pins all three Story 20.7 editor screens in one loop"/>
+<screen name="InteropProcessEditor" class="OcuPilot.Test.InteropEditorDescriptor" method="TestTheThreeEditorScreensRegister" corpus="one declaration test pins all three Story 20.7 editor screens in one loop"/>
+<screen name="InteropTransformEditor" class="OcuPilot.Test.InteropEditorDescriptor" method="TestTheThreeEditorScreensRegister" corpus="one declaration test pins all three Story 20.7 editor screens in one loop"/>
+<screen name="InteropSchemaViewer" class="OcuPilot.Test.InteropEditorDescriptor" method="TestTheViewerScreensRegister" corpus="one declaration test pins both Story 20.8 viewer screens in one loop"/>
+<screen name="InteropProductionDiagram" class="OcuPilot.Test.InteropEditorDescriptor" method="TestTheViewerScreensRegister" corpus="one declaration test pins both Story 20.8 viewer screens in one loop"/>
+<screen name="InteropMessageList" class="OcuPilot.Test.InteropMessageDescriptor" method="TestTheThreeDeclarationsRegister" corpus="one declaration test pins all three Story 20.9 message screens in one loop"/>
+<screen name="InteropMessageHeaderTab" class="OcuPilot.Test.InteropMessageDescriptor" method="TestTheThreeDeclarationsRegister" corpus="one declaration test pins all three Story 20.9 message screens in one loop"/>
+<screen name="InteropMessageContentsTab" class="OcuPilot.Test.InteropMessageDescriptor" method="TestTheThreeDeclarationsRegister" corpus="one declaration test pins all three Story 20.9 message screens in one loop"/>
+<screen name="InteropMessageTraceTab" class="OcuPilot.Test.InteropMessageDescriptor" method="TestTheTraceTabJoinsTheMessageGroup"/>
+<screen name="AnalyticsCubeList" class="OcuPilot.Test.AnalyticsDescriptor" method="TestTheSevenDeclarationsRegister" corpus="one declaration test pins all seven Story 20.11 screens in one loop"/>
+<screen name="AnalyticsCubeMeasuresTab" class="OcuPilot.Test.AnalyticsDescriptor" method="TestTheSevenDeclarationsRegister" corpus="one declaration test pins all seven Story 20.11 screens in one loop"/>
+<screen name="AnalyticsCubeDimensionsTab" class="OcuPilot.Test.AnalyticsDescriptor" method="TestTheSevenDeclarationsRegister" corpus="one declaration test pins all seven Story 20.11 screens in one loop"/>
+<screen name="AnalyticsCubeRelationshipsTab" class="OcuPilot.Test.AnalyticsDescriptor" method="TestTheSevenDeclarationsRegister" corpus="one declaration test pins all seven Story 20.11 screens in one loop"/>
+<screen name="AnalyticsTermListList" class="OcuPilot.Test.AnalyticsDescriptor" method="TestTheSevenDeclarationsRegister" corpus="one declaration test pins all seven Story 20.11 screens in one loop"/>
+<screen name="AnalyticsTermListEntryList" class="OcuPilot.Test.AnalyticsDescriptor" method="TestTheSevenDeclarationsRegister" corpus="one declaration test pins all seven Story 20.11 screens in one loop"/>
+<screen name="AnalyticsFolderItemList" class="OcuPilot.Test.AnalyticsDescriptor" method="TestTheSevenDeclarationsRegister" corpus="one declaration test pins all seven Story 20.11 screens in one loop"/>
+<screen name="AnalyticsArchitectLink" class="OcuPilot.Test.AnalyticsLinkDescriptor" method="TestTheLinkScreensRegister" corpus="one declaration test pins all three Story 20.32 link screens in one loop"/>
+<screen name="AnalyticsAnalyzerLink" class="OcuPilot.Test.AnalyticsLinkDescriptor" method="TestTheLinkScreensRegister" corpus="one declaration test pins all three Story 20.32 link screens in one loop"/>
+<screen name="AnalyticsUserPortalLink" class="OcuPilot.Test.AnalyticsLinkDescriptor" method="TestTheLinkScreensRegister" corpus="one declaration test pins all three Story 20.32 link screens in one loop"/>
+<screen name="AnalyticsMdxQuery" class="OcuPilot.Test.AnalyticsMdxDescriptor" method="TestTheDeclarationsValues"/>
 <tool name="permissions.users.create" class="OcuPilot.Test.UserCreate" method="TestTheSchemaCarriesNoSecretAndThePermittedSetIsTheSets"/>
 <tool name="permissions.users.copy" class="OcuPilot.Test.UserCopy" method="TestTheCopyToolPinsItsInputSchemaAndSnippetForm"/>
 <tool name="permissions.roles.create" class="OcuPilot.Test.RoleCreate" method="TestTheSchemaCarriesNoEscalationOnlyAndThePermittedSetIsTheSets"/>
@@ -411,6 +435,12 @@ XData Coverage
 <tool name="interop.lookuptables.export" class="OcuPilot.Test.InteropLookupTransfer" method="TestTheAgentsExportConfirmsOverHttp"/>
 <tool name="interop.lookuptables.import" class="OcuPilot.Test.InteropLookupTransfer" method="TestTheAgentsImportConfirmsOverHttp"/>
 <tool name="interop.itemtest.send" class="OcuPilot.Test.InteropHostTest" method="TestTheAgentsSendConfirmsOverHttp"/>
+<tool name="interop.transforms.test" class="OcuPilot.Test.InteropTransformTest" method="TestTheAgentsRunConfirmsOverHttp"/>
+<tool name="interop.ruleeditor.save" class="OcuPilot.Test.InteropEditorSave" method="TestEachEditorSaveIsMintedAndConfirmed" corpus="one loop pins all three Story 20.16 editor saves"/>
+<tool name="interop.processeditor.save" class="OcuPilot.Test.InteropEditorSave" method="TestEachEditorSaveIsMintedAndConfirmed" corpus="one loop pins all three Story 20.16 editor saves"/>
+<tool name="interop.transformeditor.save" class="OcuPilot.Test.InteropEditorSave" method="TestEachEditorSaveIsMintedAndConfirmed" corpus="one loop pins all three Story 20.16 editor saves"/>
+<tool name="interop.messages.resend" class="OcuPilot.Test.InteropResend" method="TestTheAgentsResendConfirmsOverHttp"/>
+<tool name="interop.messageheader.editresend" class="OcuPilot.Test.InteropEditResend" method="TestTheAgentsEditAndResendConfirmsOverHttp"/>
 <tool name="osmgmt.remotedatabases.create" class="OcuPilot.Test.RemoteDatabaseDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the three remote database tools are asserted together in one loop"/>
 <tool name="osmgmt.remotedatabases.update" class="OcuPilot.Test.RemoteDatabaseDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the three remote database tools are asserted together in one loop"/>
 <tool name="osmgmt.remotedatabases.delete" class="OcuPilot.Test.RemoteDatabaseDescriptor" method="TestTheToolsDeclareTheirFieldsKindsAndPairs" corpus="the three remote database tools are asserted together in one loop"/>
@@ -464,6 +494,7 @@ XData Coverage
 <member name="state-protection" class="OcuPilot.Test.State" method="TestDeniedUserCannotReachAnyStateClass"/>
 <member name="audit-round-trip-record" class="OcuPilot.Test.AuditRecord" method="TestACreateRecordsTheFieldsItCreatedAtTheirDefaults"/>
 <member name="audit-round-trip-verbs" class="OcuPilot.Test.AuditVerbs" method="TestADeleteIsRecordedWithWhatBecameOfItsCredentialEntry"/>
+<tool name="security.alloweddirectories.update" class="OcuPilot.Test.AllowedDirectorySave" method="TestAnAddAChangeAndARemoveAreWrittenAndReadBack"/>
 </coverage>
 }
 

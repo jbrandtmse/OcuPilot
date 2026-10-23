@@ -145,14 +145,24 @@ Parameter PRIVILEGEGRANT = "PROHIBITED.PRIVILEGEGRANT";
 /// <code>webAppPrivilegeGrantRefusal</code> (AD-53).</p>
 Parameter PRIVILEGEGRANTREASON = "OcuPilot's own web applications carry only the roles its installer gives them. A role set there would run every OcuPilot request with it.";
 
-/// <p>Any write to one of OcuPilot's own privileged routine applications, <code>OcuPilotState</code> or
-/// <code>OcuPilotIdentity</code> (<method>OwnRoutineApplication</method>): a delete, a disable, a change to any field.
-/// OcuPilot reads its own protected state through them (AD-9, AD-10, DW-2239, Story 18.10).</p>
+/// <p>Any write to one of OcuPilot's own privileged routine applications, <code>OcuPilotState</code>,
+/// <code>OcuPilotIdentity</code> or <code>OcuPilotSslRead</code> (<method>OwnRoutineApplication</method>): a delete, a
+/// disable, a change to any field. OcuPilot reads its own protected state, an account's enabled flag and the provider's
+/// TLS configuration through them (AD-9, AD-10, DW-2239, Story 18.10).</p>
 Parameter OCUPILOTROUTINEAPP = "PROHIBITED.OCUPILOTROUTINEAPP";
 
 /// <p>The one sentence <parameter>OCUPILOTROUTINEAPP</parameter> carries, caller-neutral, published in EXPERIENCE.md's
 /// Fixed strings and pinned equal to <code>routineAppRefusalOcuPilot</code> by <file>ui/tools/self-protection.test.mjs</file>.</p>
 Parameter OCUPILOTROUTINEAPPREASON = "OcuPilot reads its own protected state through this privileged routine application, so it cannot be deleted, disabled or changed.";
+
+/// <p>A write of the directory allow-list through a tool the agent can reach (<method>AgentReachable</method>, AD-10 as
+/// amended by Story 18.42): the list is the fence around every server path, and only a person's own route changes it.
+/// The person's route is a tool that is never advertised, so it is not refused.</p>
+Parameter ALLOWLISTAGENT = "PROHIBITED.ALLOWLISTAGENT";
+
+/// <p>The one sentence <parameter>ALLOWLISTAGENT</parameter> carries, caller-neutral, published in EXPERIENCE.md's Fixed
+/// strings and pinned equal to <code>allowListRefusalAgent</code> by <file>ui/tools/self-protection.test.mjs</file>.</p>
+Parameter ALLOWLISTAGENTREASON = "The allowed directories fence every server path OcuPilot reads or writes, so they are changed on the Allowed directories screen alone.";
 
 /// <p>The write would remove the account the caller is signed in as, or its administration
 /// (<method>RemovesAdministration</method>).</p>
@@ -229,15 +239,28 @@ Parameter OCUPILOTRESOURCEREASON = "This resource guards OcuPilot's own data or 
 
 /// <p>The write would delete OcuPilot's own provider SSL/TLS configuration
 /// (<parameter>OcuPilot.Kernel.State.Base.SSLCONFIG</parameter>), or change its type, its peer
-/// verification, its trusted certificates or whether it is enabled
+/// verification, its trusted certificates, its minimum TLS version, its cipher list or whether it is enabled
 /// (<method>OcuPilotSslFields</method>): the installer sets those for AD-32 and restores them at
-/// every start, and peer verification off would send the provider key over unverified TLS (AD-10 as
-/// amended 2026-09-24). Every other field of it may change.</p>
+/// every start, and peer verification off, or a floor below TLS 1.2, would send the provider key over TLS nobody
+/// verified or over a protocol no longer sound (AD-10 as amended 2026-09-24 and 2026-10-14). Every other field of it may
+/// change.</p>
 Parameter OCUPILOTSSL = "PROHIBITED.OCUPILOTSSL";
 
 /// <p>The one sentence <parameter>OCUPILOTSSL</parameter> carries, caller-neutral, published and
 /// pinned as <parameter>UNCOVEREDFIELDREASON</parameter> is.</p>
 Parameter OCUPILOTSSLREASON = "OcuPilot's installer sets this setting of its own provider configuration and restores it at every start, so it cannot be changed here.";
+
+/// <p>The write would delete the SSL/TLS configuration the egress row names for provider calls
+/// (<method>ProviderSsl</method>), create one under its name, or change its type, its peer verification, its trusted
+/// certificates, its minimum TLS version, its cipher list or whether it is enabled (<method>OcuPilotSslFields</method>):
+/// peer verification off, or the configuration gone and made again unverified, would send the provider key over TLS
+/// nobody verified (AD-10 as amended 2026-10-13 and 2026-10-14). A failed read of the egress row refuses too. Every other field of it may change, and once another
+/// configuration is named it is not refused.</p>
+Parameter PROVIDERSSL = "PROHIBITED.PROVIDERSSL";
+
+/// <p>The one sentence <parameter>PROVIDERSSL</parameter> carries, caller-neutral, published and pinned as
+/// <parameter>UNCOVEREDFIELDREASON</parameter> is.</p>
+Parameter PROVIDERSSLREASON = "Provider calls are made through this SSL/TLS configuration, so while Switches names it, or while it is OcuPilot's own, it cannot be deleted, created, or have its type, peer verification, trusted certificates, minimum TLS version, cipher list or enablement changed.";
 
 /// <p>The effect <method>WeakensByEffect</method> answers for an SSL/TLS configuration that is not
 /// OcuPilot's own whose peer verification a write turns off: the server's certificate is no longer
@@ -256,7 +279,7 @@ Parameter WRITETOOLBASE = "OcuPilot.Screen.Tool.Write";
 /// <p>The entity types this release evaluates predicates for, comma-separated
 /// (<class>OcuPilot.Kernel.EntityType</class>'s spelling). A type outside this list is
 /// <parameter>UNCOVERED</parameter>.</p>
-Parameter COVEREDTYPES = "screen-permission,web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,database-configuration,database,language-server,lock,class,routine,journal-file,journal-settings,license-key,license-server,ecp-data-server,ecp-settings,ecp-ssl-connection,encryption-key-file,database-encryption-keys,data-element-encryption-keys,encryption-startup,docdb-database,authentication-options,superserver,mft-connection,production,pct-class-access,docdb-application,routine-application,production-item,production-item-setting,interop-queue,interop-message,interop-job,rest-service,lookup-table,lookup-entry";
+Parameter COVEREDTYPES = "screen-permission,web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,database-configuration,database,language-server,lock,class,routine,journal-file,journal-settings,license-key,license-server,ecp-data-server,ecp-settings,ecp-ssl-connection,encryption-key-file,database-encryption-keys,data-element-encryption-keys,encryption-startup,docdb-database,authentication-options,superserver,mft-connection,production,pct-class-access,docdb-application,routine-application,production-item,production-item-setting,interop-queue,interop-message,interop-job,rest-service,lookup-table,lookup-entry,allowed-directory";
 
 /// <p>The covered types, each named once so the dispatch and the list cannot drift apart.</p>
 Parameter TYPEWEBAPPLICATION = "web-application";
@@ -521,6 +544,40 @@ Parameter STARTUPMODEFIELD = "DBEncStartMode";
 
 Parameter STARTUPREQUIREDFLAGS = "AuditEncrypt,DBEncIRISSecurity,DBEncIRISTemp";
 
+/// <p>The effect <method>WeakensByEffect</method> answers for an activation of database encryption keys while none is
+/// active (AD-10 as amended 2026-10-14, Story 18.48): the first activation also sets key activation at startup to
+/// Interactive, which no deactivation undoes (measured), so the proposal is permitted, destructive, and keeps its
+/// tool's own consequence. Its governance key ships disabled all the same.</p>
+Parameter EFFECTFIRSTKEY = "ENCRYPTION.KEY.ACTIVATE";
+
+/// <p>The write would leave key activation at startup Interactive while journal encryption is on, or while
+/// <code>%SYS.Journal.System.OKNoDBEncKeyAtStartup()</code> answers an error (AD-10 as amended 2026-10-14, Story
+/// 18.48): a start nobody answers on the console then aborts into single-user mode (measured), taking down the
+/// path that serves OcuPilot. Judged over the resolved settings, <code>DBEncJournal</code> set in the payload or
+/// the stored settings, before any write and from either caller; a failed read refuses.</p>
+Parameter STARTUPJOURNAL = "PROHIBITED.STARTUPJOURNAL";
+
+/// <p>The one sentence <parameter>STARTUPJOURNAL</parameter> carries, caller-neutral, published in EXPERIENCE.md's
+/// Fixed strings and pinned equal to <code>encryptionStartupJournalRefusal</code> by
+/// <file>ui/tools/self-protection.test.mjs</file>.</p>
+Parameter STARTUPJOURNALREASON = "Journal encryption is on, or a journal file the instance still needs is encrypted, so every start must activate its key, and with Interactive a start nobody answers on the console does not finish. Keep Unattended, or turn journal encryption off and switch the journal file on Journals first.";
+
+/// <p>The write would choose, or keep, KMIP key activation at startup while the audit log, IRISSECURITY or
+/// IRISTEMP is encrypted, now or at the next start (AD-10 as amended 2026-10-14, Story 18.48), read as the
+/// Interactive arm reads it: OcuPilot cannot judge a KMIP server's reach or key list, and a start that cannot
+/// activate their keys does not finish (measured).</p>
+Parameter STARTUPKMIP = "PROHIBITED.STARTUPKMIP";
+
+/// <p>The one sentence <parameter>STARTUPKMIP</parameter> carries, published and pinned as
+/// <parameter>STARTUPJOURNALREASON</parameter> is, against <code>encryptionStartupKmipRefusal</code>.</p>
+Parameter STARTUPKMIPREASON = "The audit log, IRISSECURITY or IRISTEMP is encrypted, and OcuPilot cannot check that the KMIP server is reachable and holds their keys, so a start that cannot activate them does not finish. Keep Unattended, or make this change on the classic Database Encryption page.";
+
+/// <p>The mode <parameter>STARTUPKMIP</parameter> judges, and the journal setting
+/// <parameter>STARTUPJOURNAL</parameter> reads.</p>
+Parameter STARTUPKMIPMODE = "KMIP";
+
+Parameter STARTUPJOURNALFIELD = "DBEncJournal";
+
 /// <p>The instance's authentication and web session options (Story 18.8), a singleton whose one merge
 /// write <method>AuthOptions</method> judges: a change that leaves one of OcuPilot's own web applications
 /// or the web gateway with no authentication method is refused <parameter>OCUPILOTSIGNIN</parameter>,
@@ -598,6 +655,10 @@ Parameter TYPEDOCDBAPPLICATION = "docdb-application";
 /// <p>A privileged routine application (Story 18.31), whose create, change and delete the reviewed-few sweep judges
 /// after the own-application arm (<method>OwnRoutineApplication</method>): AD-10 names no other effect on one.</p>
 Parameter TYPEROUTINEAPPLICATION = "routine-application";
+
+/// <p>The directory allow-list (Story 18.42), whose every write is a person's own: the one arm judges the tool that carries
+/// it (<method>AgentReachable</method>) and reads no target.</p>
+Parameter TYPEALLOWEDDIRECTORY = "allowed-directory";
 
 /// <p>A web application's percent-class access entry (Story 18.10): its one settable field is the access it grants.</p>
 Parameter TYPEPCTACCESS = "pct-class-access";
@@ -988,10 +1049,10 @@ Parameter READTYPE = "GET";
 /// <method>Mapping</method> adds, the one <method>Database</method> adds, and the one
 /// <method>Lock</method> adds, and the one <method>Code</method> adds, and the one
 /// <method>SqlStatement</method> adds, the key arm's and the encryption start arm's, and the two
-/// <method>AuthOptions</method> adds, and the one <method>Superserver</method> adds, and the SQL privilege arm's, and the one <method>ScreenPermission</method> adds last, and the one <method>OwnRoutineApplication</method> arm adds after it -- thirty-four in all.</p>
+/// <method>AuthOptions</method> adds, and the one <method>Superserver</method> adds, and the SQL privilege arm's, and the one <method>ScreenPermission</method> adds last, and the one <method>OwnRoutineApplication</method> arm adds after it, and the one <method>AgentReachable</method> judges, and the one <method>ProviderSsl</method> judges, and the start arm's journal and KMIP codes last -- thirty-eight in all.</p>
 ClassMethod Codes() As %List
 {
-    Quit $ListBuild(..#SERVINGPATH, ..#UNAUTHENTICATED, ..#AUTHORIZATION, ..#DISPATCH, ..#SYSTEMACCOUNT, ..#SERVICEACCOUNT, ..#CURRENTUSER, ..#LASTALLHOLDER, ..#PRIVILEGEGRANT, ..#OCUPILOTPROCESS, ..#SYSTEMPROCESS, ..#UNCOVEREDFIELD, ..#UNCOVERED, ..#OCUPILOTROLE, ..#OCUPILOTRESOURCE, ..#SERVICEACCOUNTSIGNIN, ..#OCUPILOTSSL, ..#SERVINGSERVICE, ..#OCUPILOTNAMESPACE, ..#OCUPILOTSESSION, ..#PRESERVEDSESSION, ..#OCUPILOTMAPPING, ..#OCUPILOTDATABASE, ..#OCUPILOTLOCK, ..#OCUPILOTCODE, ..#OCUPILOTSQL, ..#OCUPILOTKEY, ..#STARTUPINTERACTIVE, ..#OCUPILOTSIGNIN, ..#OCUPILOTSTART, ..#SERVINGSUPERSERVER, ..#OCUPILOTSQLPRIVILEGE, ..#OCUPILOTSCREEN, ..#OCUPILOTROUTINEAPP)
+    Quit $ListBuild(..#SERVINGPATH, ..#UNAUTHENTICATED, ..#AUTHORIZATION, ..#DISPATCH, ..#SYSTEMACCOUNT, ..#SERVICEACCOUNT, ..#CURRENTUSER, ..#LASTALLHOLDER, ..#PRIVILEGEGRANT, ..#OCUPILOTPROCESS, ..#SYSTEMPROCESS, ..#UNCOVEREDFIELD, ..#UNCOVERED, ..#OCUPILOTROLE, ..#OCUPILOTRESOURCE, ..#SERVICEACCOUNTSIGNIN, ..#OCUPILOTSSL, ..#SERVINGSERVICE, ..#OCUPILOTNAMESPACE, ..#OCUPILOTSESSION, ..#PRESERVEDSESSION, ..#OCUPILOTMAPPING, ..#OCUPILOTDATABASE, ..#OCUPILOTLOCK, ..#OCUPILOTCODE, ..#OCUPILOTSQL, ..#OCUPILOTKEY, ..#STARTUPINTERACTIVE, ..#OCUPILOTSIGNIN, ..#OCUPILOTSTART, ..#SERVINGSUPERSERVER, ..#OCUPILOTSQLPRIVILEGE, ..#OCUPILOTSCREEN, ..#OCUPILOTROUTINEAPP, ..#ALLOWLISTAGENT, ..#PROVIDERSSL, ..#STARTUPJOURNAL, ..#STARTUPKMIP)
 }
 
 /// <p>The written sentence a <code>PROHIBITED.*</code> code carries, or <code>""</code> for any
@@ -1037,6 +1098,10 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#OCUPILOTSQLPRIVILEGE Quit ..#OCUPILOTSQLPRIVILEGEREASON
     If pCode = ..#OCUPILOTSCREEN Quit ..#OCUPILOTSCREENREASON
     If pCode = ..#OCUPILOTROUTINEAPP Quit ..#OCUPILOTROUTINEAPPREASON
+    If pCode = ..#ALLOWLISTAGENT Quit ..#ALLOWLISTAGENTREASON
+    If pCode = ..#PROVIDERSSL Quit ..#PROVIDERSSLREASON
+    If pCode = ..#STARTUPJOURNAL Quit ..#STARTUPJOURNALREASON
+    If pCode = ..#STARTUPKMIP Quit ..#STARTUPKMIPREASON
     Quit ""
 }
 
@@ -1104,8 +1169,8 @@ ClassMethod CoveredTypes() As %List
 /// <p>An SSL/TLS configuration's are the thirteen settings its editor sets
 /// (<method>SslFields</method>) and its private key password, a template field the edit declares
 /// secret. Its file locations are not among them: no caller names a path (AD-21). A change to
-/// OcuPilot's own provider configuration's type, peer verification, trusted certificates or
-/// enablement is refused (<method>Ssl</method>).</p>
+/// OcuPilot's own provider configuration's type, peer verification, trusted certificates, minimum TLS version, cipher
+/// list or enablement is refused (<method>Ssl</method>).</p>
 /// <p>The auditing configuration's one is <code>Enabled</code>, and it carries <b>no</b> asymmetric
 /// predicate: AD-10 does not forbid turning auditing off, and the product's answer to it is the
 /// card's warning, the recorded drop and the banner rather than a refusal (AD-15 as amended
@@ -1372,7 +1437,7 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
         }
-        If (tType '= ..#TYPESCREENPERMISSION) && (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) && (tType '= ..#TYPEAPPLICATIONERROR) && (tType '= ..#TYPEROLE) && (tType '= ..#TYPERESOURCE) && (tType '= ..#TYPEX509) && (tType '= ..#TYPEWALLETSECRET) && (tType '= ..#TYPEDEVICE) && (tType '= ..#TYPEOAUTHCLIENT) && (tType '= ..#TYPEOAUTHSERVERCLIENT) && (tType '= ..#TYPEAUDITEVENT) && (tType '= ..#TYPEAUDITUSEREVENT) && (tType '= ..#TYPESSL) && (tType '= ..#TYPESERVICE) && (tType '= ..#TYPELDAP) && (tType '= ..#TYPEOAUTHSERVERDEF) && (tType '= ..#TYPEOAUTHRESOURCESERVER) && (tType '= ..#TYPEOAUTHAUTHSERVER) && (tType '= ..#TYPENAMESPACE) && (tType '= ..#TYPEWEBSESSION) && (tType '= ..#TYPEBACKGROUNDTASK) && (tType '= ..#TYPEDATABASECONFIG) && (tType '= ..#TYPEDATABASE) && '..IsMappingType(tType) && (tType '= ..#TYPELANGUAGESERVER) && (tType '= ..#TYPELOCK) && (tType '= ..#TYPECLASS) && (tType '= ..#TYPEROUTINE) && (tType '= ..#TYPEJOURNALFILE) && (tType '= ..#TYPEJOURNALSETTINGS) && (tType '= ..#TYPELICENSEKEY) && (tType '= ..#TYPELICENSESERVER) && (tType '= ..#TYPEECPDATASERVER) && (tType '= ..#TYPEECPSETTINGS) && (tType '= ..#TYPEECPSSLCONNECTION) && (tType '= ..#TYPEENCRYPTIONKEYFILE) && (tType '= ..#TYPEDATABASEKEYS) && (tType '= ..#TYPEDATAELEMENTKEYS) && (tType '= ..#TYPEENCRYPTIONSTARTUP) && (tType '= ..#TYPEAUTHOPTIONS) && (tType '= ..#TYPESUPERSERVER) && (tType '= ..#TYPEMFTCONNECTION) && (tType '= ..#TYPEDOCDBDATABASE) && (tType '= ..#TYPEPRODUCTION) && (tType '= ..#TYPEPRODUCTIONITEM) && (tType '= ..#TYPEPRODUCTIONITEMSETTING) && (tType '= ..#TYPEPCTACCESS) && (tType '= ..#TYPEDOCDBAPPLICATION) && (tType '= ..#TYPEROUTINEAPPLICATION) && (tType '= ..#TYPEINTEROPQUEUE) && (tType '= ..#TYPEINTEROPMESSAGE) && (tType '= ..#TYPEINTEROPJOB) && (tType '= ..#TYPERESTSERVICE) && (tType '= ..#TYPELOOKUPTABLE) && (tType '= ..#TYPELOOKUPENTRY) {
+        If (tType '= ..#TYPESCREENPERMISSION) && (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) && (tType '= ..#TYPEAPPLICATIONERROR) && (tType '= ..#TYPEROLE) && (tType '= ..#TYPERESOURCE) && (tType '= ..#TYPEX509) && (tType '= ..#TYPEWALLETSECRET) && (tType '= ..#TYPEDEVICE) && (tType '= ..#TYPEOAUTHCLIENT) && (tType '= ..#TYPEOAUTHSERVERCLIENT) && (tType '= ..#TYPEAUDITEVENT) && (tType '= ..#TYPEAUDITUSEREVENT) && (tType '= ..#TYPESSL) && (tType '= ..#TYPESERVICE) && (tType '= ..#TYPELDAP) && (tType '= ..#TYPEOAUTHSERVERDEF) && (tType '= ..#TYPEOAUTHRESOURCESERVER) && (tType '= ..#TYPEOAUTHAUTHSERVER) && (tType '= ..#TYPENAMESPACE) && (tType '= ..#TYPEWEBSESSION) && (tType '= ..#TYPEBACKGROUNDTASK) && (tType '= ..#TYPEDATABASECONFIG) && (tType '= ..#TYPEDATABASE) && '..IsMappingType(tType) && (tType '= ..#TYPELANGUAGESERVER) && (tType '= ..#TYPELOCK) && (tType '= ..#TYPECLASS) && (tType '= ..#TYPEROUTINE) && (tType '= ..#TYPEJOURNALFILE) && (tType '= ..#TYPEJOURNALSETTINGS) && (tType '= ..#TYPELICENSEKEY) && (tType '= ..#TYPELICENSESERVER) && (tType '= ..#TYPEECPDATASERVER) && (tType '= ..#TYPEECPSETTINGS) && (tType '= ..#TYPEECPSSLCONNECTION) && (tType '= ..#TYPEENCRYPTIONKEYFILE) && (tType '= ..#TYPEDATABASEKEYS) && (tType '= ..#TYPEDATAELEMENTKEYS) && (tType '= ..#TYPEENCRYPTIONSTARTUP) && (tType '= ..#TYPEAUTHOPTIONS) && (tType '= ..#TYPESUPERSERVER) && (tType '= ..#TYPEMFTCONNECTION) && (tType '= ..#TYPEDOCDBDATABASE) && (tType '= ..#TYPEPRODUCTION) && (tType '= ..#TYPEPRODUCTIONITEM) && (tType '= ..#TYPEPRODUCTIONITEMSETTING) && (tType '= ..#TYPEPCTACCESS) && (tType '= ..#TYPEDOCDBAPPLICATION) && (tType '= ..#TYPEROUTINEAPPLICATION) && (tType '= ..#TYPEINTEROPQUEUE) && (tType '= ..#TYPEINTEROPMESSAGE) && (tType '= ..#TYPEINTEROPJOB) && (tType '= ..#TYPERESTSERVICE) && (tType '= ..#TYPELOOKUPTABLE) && (tType '= ..#TYPELOOKUPENTRY) && (tType '= ..#TYPEALLOWEDDIRECTORY) {
             ; A type COVEREDTYPES lists and no branch evaluates. Fail closed rather than write.
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
@@ -1459,6 +1524,12 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
         ; Story 18.31: the same refusal for the routine applications' own type, whose tools name an application by its name.
         If (tType = ..#TYPEROUTINEAPPLICATION) && ..OwnRoutineApplication(tId) {
             Do ..Refuse(..#OCUPILOTROUTINEAPP, .pProhibits, .pCode)
+            Quit
+        }
+        ; Story 18.42: the allow-list is a person's to change, never through a tool the agent can reach, so the arm judges the tool and
+        ; reads no target.
+        If tType = ..#TYPEALLOWEDDIRECTORY {
+            If ..AgentReachable(pToolName) Do ..Refuse(..#ALLOWLISTAGENT, .pProhibits, .pCode)
             Quit
         }
         ; Story 20.5: a lookup table import names the table its file holds, or the literal import id for a server file the
@@ -1802,8 +1873,10 @@ ClassMethod UncoveredWriteTools(Output pTools As %List) As %Status
 /// registering before its type's list exists is the shape this fails closed against.</p>
 /// <p><var>pId</var> is the intended name, canonical under AD-13. A resource create that gives one of
 /// OcuPilot's own resources (<method>OcuPilotResources</method>) a public permission is refused
-/// <parameter>OCUPILOTRESOURCE</parameter>, and a mapping create of one of OcuPilot's own mappings
-/// (<method>IsOwnMapping</method>) <parameter>OCUPILOTMAPPING</parameter>.</p>
+/// <parameter>OCUPILOTRESOURCE</parameter>, a mapping create of one of OcuPilot's own mappings
+/// (<method>IsOwnMapping</method>) <parameter>OCUPILOTMAPPING</parameter>, and an SSL/TLS configuration create under
+/// the name the egress row names (<method>ProviderSsl</method>) or under OcuPilot's own provider configuration's name
+/// <parameter>PROVIDERSSL</parameter>.</p>
 ClassMethod Created(pType As %String, pServes As %Boolean, pPayload As %DynamicObject, Output pProhibits As %Boolean, Output pCode As %String, pId As %String = "") As %Status [ Private ]
 {
     Set pProhibits = 0
@@ -1829,6 +1902,18 @@ ClassMethod Created(pType As %String, pServes As %Boolean, pPayload As %DynamicO
         }
         If ..IsMappingType(pType) && ..IsOwnMapping(pId, pType) {
             Do ..Refuse(..#OCUPILOTMAPPING, .pProhibits, .pCode)
+            Quit
+        }
+        ; Story 18.40: a create under the name the egress row names, whatever the payload carries, since the configuration
+        ; it makes is one provider calls would then go through.
+        If (pType = ..#TYPESSL) && ..ProviderSsl(pId) {
+            Do ..Refuse(..#PROVIDERSSL, .pProhibits, .pCode)
+            Quit
+        }
+        ; And a create under OcuPilot's own provider configuration's name, which exists unless it was deleted outside OcuPilot
+        ; and which the installer restores at the next start.
+        If (pType = ..#TYPESSL) && (pId = ##class(OcuPilot.Kernel.State.Base).#SSLCONFIG) {
+            Do ..Refuse(..#PROVIDERSSL, .pProhibits, .pCode)
             Quit
         }
         Set tPermitted = ..PermittedCreateFields(pType)
@@ -2011,6 +2096,8 @@ ClassMethod LowersScreenPermission(pTarget As %DynamicObject) As %Boolean
 /// <code>%</code>) or <code>*</code> reaches the <code>%</code> globals too, and answers the same effect.</p>
 /// <p>For a screen permission, <parameter>EFFECTSCREENLOWERED</parameter> when <method>LowersScreenPermission</method>
 /// answers true over <var>pTarget</var>.</p>
+/// <p>For the active database encryption keys, <parameter>EFFECTFIRSTKEY</parameter> for a write that removes nothing
+/// while <var>pTarget</var> lists no active key.</p>
 ClassMethod WeakensByEffect(pType As %String, pPayload As %DynamicObject, pTarget As %DynamicObject, Output pEffect As %String, pId As %String = "", pRemoves As %Boolean = 0) As %Status
 {
     Set pEffect = ""
@@ -2030,6 +2117,10 @@ ClassMethod WeakensByEffect(pType As %String, pPayload As %DynamicObject, pTarge
         }
         If pType = ..#TYPEENCRYPTIONSTARTUP {
             If ..ChangesAuditEncryption(pPayload, pTarget) Set pEffect = ..#EFFECTAUDITENCRYPTION
+            Quit
+        }
+        If pType = ..#TYPEDATABASEKEYS {
+            If 'pRemoves && (..ActiveKeyCount(pTarget) = 0) Set pEffect = ..#EFFECTFIRSTKEY
             Quit
         }
         If pType = ..#TYPEAUTHOPTIONS {
@@ -2238,7 +2329,7 @@ ClassMethod Role(pId As %String, pToolClass As %String, pPayload As %DynamicObje
 }
 
 /// <p>OcuPilot's own roles, each in <method>NormalizedRole</method>'s spelling, in
-/// <var>pRoles</var>: the administrative role and the identity role
+/// <var>pRoles</var>: the administrative role, the identity role and the TLS read role
 /// (<class>OcuPilot.Kernel.State.Base</class>), and every non-empty <code>matchRole</code> the
 /// install roster declares. Read from those declarations, never transcribed. A roster that cannot
 /// be read is an error, never an empty list.</p>
@@ -2247,7 +2338,7 @@ ClassMethod OcuPilotRoles(Output pRoles As %List) As %Status
     Set pRoles = ""
     Set tSC = $$$OK
     Try {
-        Set tNames = $ListBuild(##class(OcuPilot.Kernel.State.Base).#ADMINRESOURCE, ##class(OcuPilot.Kernel.State.Base).#IDENTITYAPPLICATION)
+        Set tNames = $ListBuild(##class(OcuPilot.Kernel.State.Base).#ADMINRESOURCE, ##class(OcuPilot.Kernel.State.Base).#IDENTITYAPPLICATION, ##class(OcuPilot.Kernel.State.Base).#SSLREADAPPLICATION)
         Set tKeys = ##class(OcuPilot.Install.Roster).Keys()
         If tKeys = "" {
             Set tSC = $$$ERROR($$$GeneralError, "the install roster's application keys could not be read, so which roles are OcuPilot's own is unknown")
@@ -3001,11 +3092,12 @@ ClassMethod EncryptionKeyFileFields(pKind As %String) As %List [ Private ]
 }
 
 /// <p>An activation's and a deactivation's reviewed few (Story 18.22): the key file's location, its
-/// administrator and the administrator's password. A deactivation's <code>KeyId</code> names its row and
-/// is fingerprinted, never swept.</p>
+/// administrator and the administrator's password, and the key ids the activation's mint read from the file
+/// (<code>FileKeys</code>, Story 18.48). A deactivation's <code>KeyId</code> names its row and is
+/// fingerprinted, never swept.</p>
 ClassMethod EncryptionKeyFields() As %List [ Private ]
 {
-    Quit $ListBuild("root", "path", "AdminName", "AdminPassword")
+    Quit $ListBuild("root", "path", "AdminName", "AdminPassword", "FileKeys")
 }
 
 /// <p>The startup settings' reviewed few (Story 18.23): the start mode, the four encryption settings, the
@@ -3017,24 +3109,41 @@ ClassMethod EncryptionStartupFields() As %List [ Private ]
     Quit $ListBuild("DBEncStartMode", "DBEncJournal", "DBEncIRISSecurity", "DBEncIRISTemp", "AuditEncrypt", "DBEncStartKMIPServer", "DBEncDefaultKeyID", "DBEncJournalKeyID", "AdminName", "root", "path", "AdminPassword")
 }
 
-/// <p>The startup settings write's verdict (AD-10 as amended 2026-10-05, Story 18.23): when the settings
-/// the write leaves (<method>LeavesInteractiveRequired</method>) are Interactive key activation with the
-/// audit log, IRISSECURITY or IRISTEMP encrypted, now or at the next start, it is refused
-/// <parameter>STARTUPINTERACTIVE</parameter>; every write then passes the reviewed-few sweep. A write that
-/// leaves Interactive also reads, through <var>pToolClass</var>'s port as the caller, whether one of their
-/// databases is still encrypted on disk (<method>StartupDatabasesEncrypted</method>); a read that fails
-/// refuses.</p>
+/// <p>The startup settings write's verdict (AD-10 as amended 2026-10-05, Story 18.23, and 2026-10-14, Story 18.48):
+/// when the settings the write leaves (<method>LeavesInteractiveRequired</method>) are Interactive key activation
+/// with the audit log, IRISSECURITY or IRISTEMP encrypted, now or at the next start, it is refused
+/// <parameter>STARTUPINTERACTIVE</parameter>; when they are KMIP key activation with one of them encrypted
+/// (<method>LeavesKmipRequired</method>), <parameter>STARTUPKMIP</parameter>; and when they are Interactive with
+/// journal encryption on (<method>LeavesInteractiveJournal</method>), <parameter>STARTUPJOURNAL</parameter>.
+/// Every write then passes the reviewed-few sweep. A write that leaves Interactive or KMIP also reads, through
+/// <var>pToolClass</var>'s port as the caller, whether one of their databases is still encrypted on disk
+/// (<method>StartupDatabasesEncrypted</method>), and a write that leaves Interactive with journal encryption
+/// not set whether the journal allows no key at startup (<method>StartupJournalRefused</method>); a read that
+/// fails refuses.</p>
 ClassMethod EncryptionStartup(pToolClass As %String, pPayload As %DynamicObject, pTarget As %DynamicObject, ByRef pChanged, Output pProhibits As %Boolean, Output pCode As %String) As %Status [ Private ]
 {
     Set pProhibits = 0
     Set pCode = ""
     Set tSC = $$$OK
     Try {
+        Set tMode = ..StartupSetting(pPayload, pTarget, ..#STARTUPMODEFIELD)
         Set tOnDisk = 0
-        If ..StartupSetting(pPayload, pTarget, ..#STARTUPMODEFIELD) = "Interactive" Set tOnDisk = ..StartupDatabasesEncrypted(..PortClassOf(pToolClass))
+        If (tMode = "Interactive") || (tMode = ..#STARTUPKMIPMODE) Set tOnDisk = ..StartupDatabasesEncrypted(..PortClassOf(pToolClass))
         If ..LeavesInteractiveRequired(pPayload, pTarget, tOnDisk) {
             Do ..Refuse(..#STARTUPINTERACTIVE, .pProhibits, .pCode)
             Quit
+        }
+        If ..LeavesKmipRequired(pPayload, pTarget, tOnDisk) {
+            Do ..Refuse(..#STARTUPKMIP, .pProhibits, .pCode)
+            Quit
+        }
+        If tMode = "Interactive" {
+            Set tJournalRefused = 0
+            If '..SetsJournalEncryption(pPayload, pTarget) Set tJournalRefused = ..StartupJournalRefused(..PortClassOf(pToolClass))
+            If ..LeavesInteractiveJournal(pPayload, pTarget, tJournalRefused) {
+                Do ..Refuse(..#STARTUPJOURNAL, .pProhibits, .pCode)
+                Quit
+            }
         }
         Set tSC = ..ReviewedFewOnly(..#TYPEENCRYPTIONSTARTUP, .pChanged, .pProhibits, .pCode)
     } Catch ex {
@@ -3055,9 +3164,23 @@ ClassMethod EncryptionStartup(pToolClass As %String, pPayload As %DynamicObject,
 /// off leaves until the next start converts it.</p>
 ClassMethod LeavesInteractiveRequired(pPayload As %DynamicObject, pTarget As %DynamicObject, pEncryptedOnDisk As %Boolean = 0) As %Boolean
 {
-    If ..StartupSetting(pPayload, pTarget, ..#STARTUPMODEFIELD) '= "Interactive" Quit 0
+    Quit ..LeavesModeRequired("Interactive", pPayload, pTarget, pEncryptedOnDisk)
+}
+
+/// <p><method>LeavesInteractiveRequired</method>'s judgement for KMIP key activation at startup.</p>
+ClassMethod LeavesKmipRequired(pPayload As %DynamicObject, pTarget As %DynamicObject, pEncryptedOnDisk As %Boolean = 0) As %Boolean
+{
+    Quit ..LeavesModeRequired(..#STARTUPKMIPMODE, pPayload, pTarget, pEncryptedOnDisk)
+}
+
+/// <p>Whether a write leaves start mode <var>pMode</var> with one of
+/// <parameter>STARTUPREQUIREDFLAGS</parameter> set or one of their databases encrypted on disk, as
+/// <method>LeavesInteractiveRequired</method> reads it.</p>
+ClassMethod LeavesModeRequired(pMode As %String, pPayload As %DynamicObject, pTarget As %DynamicObject, pEncryptedOnDisk As %Boolean = 0) As %Boolean [ Private ]
+{
+    If ..StartupSetting(pPayload, pTarget, ..#STARTUPMODEFIELD) '= pMode Quit 0
     If pEncryptedOnDisk Quit 1
-    Set tChoosing = (..StartupSetting("", pTarget, ..#STARTUPMODEFIELD) '= "Interactive")
+    Set tChoosing = (..StartupSetting("", pTarget, ..#STARTUPMODEFIELD) '= pMode)
     Set tRequired = 0
     For tI = 1:1:$Length(..#STARTUPREQUIREDFLAGS, ",") {
         Set tFlag = $Piece(..#STARTUPREQUIREDFLAGS, ",", tI)
@@ -3067,21 +3190,73 @@ ClassMethod LeavesInteractiveRequired(pPayload As %DynamicObject, pTarget As %Dy
     Quit tRequired
 }
 
+/// <p>Whether the write leaves journal encryption set: <parameter>STARTUPJOURNALFIELD</parameter> true in
+/// <var>pPayload</var> or in <var>pTarget</var>, the instance's settings at the write.</p>
+ClassMethod SetsJournalEncryption(pPayload As %DynamicObject, pTarget As %DynamicObject) As %Boolean [ Private ]
+{
+    If ..StartupSetting(pPayload, "", ..#STARTUPJOURNALFIELD) = "true" Quit 1
+    Quit (..StartupSetting("", pTarget, ..#STARTUPJOURNALFIELD) = "true")
+}
+
+/// <p>Whether a write leaves key activation at startup Interactive while journal encryption is on:
+/// <parameter>STARTUPMODEFIELD</parameter> read from <var>pPayload</var> where it carries one and from
+/// <var>pTarget</var> otherwise, and either <parameter>STARTUPJOURNALFIELD</parameter> set in the payload or the
+/// stored settings (<method>SetsJournalEncryption</method>) or <var>pJournalRefused</var>, the vendor's own
+/// answer that the journal allows no key activation to be turned off, set.</p>
+ClassMethod LeavesInteractiveJournal(pPayload As %DynamicObject, pTarget As %DynamicObject, pJournalRefused As %Boolean = 0) As %Boolean
+{
+    If ..StartupSetting(pPayload, pTarget, ..#STARTUPMODEFIELD) '= "Interactive" Quit 0
+    If ..SetsJournalEncryption(pPayload, pTarget) Quit 1
+    Quit ''pJournalRefused
+}
+
+/// <p>Whether the journal forbids a start without its key, read through <var>pPort</var> as the caller
+/// (<code>Security.Encryption.Settings</code> <code>JOURNALSTARTUP</code>, the vendor's
+/// <code>OKNoDBEncKeyAtStartup()</code>, AD-27's named case): 1 when it answers an error. A read that fails, or
+/// answers anything but its boolean, answers 1.</p>
+ClassMethod StartupJournalRefused(pPort As %String) As %Boolean [ Private ]
+{
+    If '..ReadMember(pPort, "Security.Encryption.Settings", "JOURNALSTARTUP", "", "Allowed", "boolean", .tAllowed) Quit 1
+    Quit 'tAllowed
+}
+
 /// <p>Whether the audit log's, IRISSECURITY's or IRISTEMP's database is encrypted on disk, read through
 /// <var>pPort</var> as the caller (<code>Security.Encryption.Settings</code> <code>ENCRYPTEDDATABASES</code>,
 /// AD-27's named case). A read that fails, or answers anything but a list, answers 1.</p>
 ClassMethod StartupDatabasesEncrypted(pPort As %String) As %Boolean [ Private ]
 {
-    Set tEncrypted = 1
+    If '..ReadMember(pPort, "Security.Encryption.Settings", "ENCRYPTEDDATABASES", "", "Encrypted", "array", .tEncrypted) Quit 1
+    Quit (tEncrypted.%Size() > 0)
+}
+
+/// <p>Member <var>pMember</var> of <var>pPort</var>'s <var>pEndpoint</var> <var>pType</var> read, made as the caller
+/// with <code>name</code> <var>pName</var> when it is not empty, in <var>pValue</var>: 1 when the read answers an object
+/// whose member is of JSON type <var>pKind</var>, and 0 for a read that fails, throws or answers anything else, which
+/// each caller counts against the write.</p>
+ClassMethod ReadMember(pPort As %String, pEndpoint As %String, pType As %String, pName As %String, pMember As %String, pKind As %String, Output pValue) As %Boolean [ Private ]
+{
+    Set pValue = ""
+    Set tAnswered = 0
     Try {
         Kill tQuery
-        Set tReadSC = $ClassMethod(pPort, "Invoke", "Security.Encryption.Settings", "ENCRYPTEDDATABASES", .tQuery, "", .tRead, .tHttp, .tFault)
-        If $$$ISERR(tReadSC) || '$IsObject($Get(tRead)) || 'tRead.%IsA("%Library.DynamicObject") || (tRead.%GetTypeOf("Encrypted") '= "array") Quit
-        Set tEncrypted = (tRead.%Get("Encrypted").%Size() > 0)
+        If pName '= "" Set tQuery("name") = pName
+        Set tReadSC = $ClassMethod(pPort, "Invoke", pEndpoint, pType, .tQuery, "", .tRead, .tHttp, .tFault)
+        If $$$ISERR(tReadSC) || '$IsObject($Get(tRead)) || 'tRead.%IsA("%Library.DynamicObject") || (tRead.%GetTypeOf(pMember) '= pKind) Quit
+        Set pValue = tRead.%Get(pMember)
+        Set tAnswered = 1
     } Catch {
-        Set tEncrypted = 1
+        Set pValue = ""
+        Set tAnswered = 0
     }
-    Quit tEncrypted
+    Quit tAnswered
+}
+
+/// <p>How many keys <var>pTarget</var>, the active-keys read, lists in its <code>Keys</code>; 0 for a target that is
+/// not an object or lists none.</p>
+ClassMethod ActiveKeyCount(pTarget As %DynamicObject) As %Integer [ Private ]
+{
+    If '$IsObject(pTarget) || (pTarget.%GetTypeOf("Keys") '= "array") Quit 0
+    Quit pTarget.%Get("Keys").%Size()
 }
 
 /// <p>Whether <var>pPayload</var> carries an <code>AuditEncrypt</code> other than <var>pTarget</var>'s.</p>
@@ -3551,12 +3726,12 @@ ClassMethod DatabaseChangeFields() As %List [ Private ]
     Quit $ListBuild("MountAtStartup", "MountRequired", "ClusterMountMode", "MaxSize", "ExpansionSize", "ResourceName", "NewGlobalIsKeep", "GlobalJournalState", "ReadOnly", "NewVolumeThreshold", "volumeRoot", "volumePath", "Server", "Directory")
 }
 
-/// <p>A database create's fields: its five declared arguments.</p>
+/// <p>A database create's fields: its six declared arguments.</p>
 /// <p>Story 18.16's remote create adds the data server and the directory; the local tools' derived
 /// lists exclude both, so they never send them.</p>
 ClassMethod DatabaseCreateFields() As %List [ Private ]
 {
-    Quit $ListBuild("root", "path", "Size", "GlobalJournalState", "ResourceName", "Server", "Directory")
+    Quit $ListBuild("root", "path", "Size", "GlobalJournalState", "ResourceName", "Encrypted", "Server", "Directory")
 }
 
 /// <p>Whether <var>pType</var> is one of the three mapping types (Story 18.14).</p>
@@ -4522,7 +4697,9 @@ ClassMethod ResourceNames(pObject As %DynamicObject, Output pNames) [ Private ]
 /// server configuration's <code>CustomizationRoles</code> grants privilege when it adds a privileged
 /// role (<method>AddsPrivilegedCustomizationRole</method>). Any other type grants nothing here.</p>
 /// <p>A privileged routine application's <code>MatchRoles</code> is judged as a web application's, and a routine it
-/// adds while a target role escalates is a grant too (<method>AddsRoutineUnderPrivilege</method>, Story 18.33).</p>
+/// adds while a target role escalates is a grant too (<method>AddsRoutineUnderPrivilege</method>, Story 18.33), as is
+/// clearing its <code>Resource</code> or enabling it while one does (<method>WidensPrivilegedReach</method>), which a web
+/// application's enabling, or its <code>Resource</code> pointed at a publicly held one, is too (Story 18.48).</p>
 ClassMethod GrantsPrivilegeByEffect(pType As %String, pPayload As %DynamicObject, pTarget As %DynamicObject, Output pGrants As %Boolean, pId As %String = "") As %Status
 {
     Set pGrants = 0
@@ -4588,6 +4765,7 @@ ClassMethod GrantsPrivilegeByEffect(pType As %String, pPayload As %DynamicObject
             ; target role in MatchRoles escalates is a grant too.
             Set tSC = ..GrantsPrivilegeByEffect(..#TYPEWEBAPPLICATION, pPayload, tTarget, .pGrants, pId)
             If $$$ISOK(tSC) && 'pGrants Set tSC = ..AddsRoutineUnderPrivilege(pPayload, tTarget, .pGrants)
+            If $$$ISOK(tSC) && 'pGrants Set tSC = ..WidensPrivilegedReach(pPayload, tTarget, .pGrants)
             Quit
         }
         If pType = ..#TYPEWEBAPPLICATION {
@@ -4602,6 +4780,9 @@ ClassMethod GrantsPrivilegeByEffect(pType As %String, pPayload As %DynamicObject
                 If $$$ISERR(tSC) Quit
                 If tEscalates Set pGrants = 1 Quit
             }
+            ; Story 18.48 (DW-2425): enabling it, or pointing its Resource at a publicly held one, while a granted role
+            ; escalates. Clearing the Resource has its own effect (EFFECTNORESOURCE).
+            If $$$ISOK(tSC) && 'pGrants Set tSC = ..WidensPrivilegedReach(pPayload, tTarget, .pGrants, 0)
         }
     } Catch ex {
         Set pGrants = 0
@@ -4611,12 +4792,12 @@ ClassMethod GrantsPrivilegeByEffect(pType As %String, pPayload As %DynamicObject
     Quit tSC
 }
 
-/// <p>The target roles <var>pObject</var>'s <parameter>APPLICATIONROLEFIELDS</parameter> grant, as
-/// <var>pNames(&lt;upper-cased name&gt;) = &lt;name as written&gt;</var>. The member is an array of
-/// <code>{MatchRole, TargetRoles}</code> entries on the vendor's own body; the stored
-/// <code>&lt;match&gt;:&lt;target&gt;[:&lt;target&gt;...]</code> string, entries comma-separated,
-/// is read too. A matching role is not collected: it names who receives the grant, not what is
-/// granted.</p>
+/// <p>The (matching role, target role) pairs <var>pObject</var>'s <parameter>APPLICATIONROLEFIELDS</parameter> grant, as
+/// <var>pNames(&lt;upper-cased matching role&gt; _ $Char(1) _ &lt;upper-cased target&gt;) = &lt;target as written&gt;</var>.
+/// The member is an array of <code>{MatchRole, TargetRoles}</code> entries on the vendor's own body; the stored
+/// <code>&lt;match&gt;:&lt;target&gt;[:&lt;target&gt;...]</code> string, entries comma-separated, is read too. The key
+/// carries the matching role because it names who receives the grant: a held target moved to another matching role
+/// (an empty one grants it to every caller) is a new pair.</p>
 ClassMethod ApplicationRoleNames(pObject As %DynamicObject, Output pNames) [ Private ]
 {
     Kill pNames
@@ -4630,11 +4811,13 @@ ClassMethod ApplicationRoleNames(pObject As %DynamicObject, Output pNames) [ Pri
             While tIterator.%GetNext(.tIndex, .tEntry) {
                 If '$IsObject(tEntry) || 'tEntry.%IsA("%Library.DynamicObject") Continue
                 If tEntry.%GetTypeOf("TargetRoles") '= "array" Continue
+                Set tMatch = ""
+                If tEntry.%GetTypeOf("MatchRole") = "string" Set tMatch = $ZConvert($ZStrip(tEntry.%Get("MatchRole"), "<>W"), "U")
                 Set tTargets = tEntry.%Get("TargetRoles").%GetIterator()
                 While tTargets.%GetNext(.tTargetIndex, .tRole) {
                     If $IsObject(tRole) Continue
                     Set tOne = $ZStrip(tRole, "<>W")
-                    If tOne '= "" Set pNames($ZConvert(tOne, "U")) = tOne
+                    If tOne '= "" Set pNames(tMatch _ $Char(1) _ $ZConvert(tOne, "U")) = tOne
                 }
             }
             Continue
@@ -4643,9 +4826,10 @@ ClassMethod ApplicationRoleNames(pObject As %DynamicObject, Output pNames) [ Pri
         Set tRaw = pObject.%Get(tField)
         For tI = 1:1:$Length(tRaw, ",") {
             Set tEntryText = $Piece(tRaw, ",", tI)
+            Set tMatch = $ZConvert($ZStrip($Piece(tEntryText, ":", 1), "<>W"), "U")
             For tJ = 2:1:$Length(tEntryText, ":") {
                 Set tOne = $ZStrip($Piece(tEntryText, ":", tJ), "<>W")
-                If tOne '= "" Set pNames($ZConvert(tOne, "U")) = tOne
+                If tOne '= "" Set pNames(tMatch _ $Char(1) _ $ZConvert(tOne, "U")) = tOne
             }
         }
     }
@@ -4666,14 +4850,14 @@ ClassMethod IsPrivilegedRole(pRole As %String) As %Boolean [ Private ]
 }
 
 /// <p>Whether <var>pPath</var> names one of OcuPilot's own privileged routine applications (<class>OcuPilot.Kernel.State.Base</class>'s
-/// <parameter>APPLICATION</parameter> and <parameter>IDENTITYAPPLICATION</parameter>), compared through
+/// <parameter>APPLICATION</parameter>, <parameter>IDENTITYAPPLICATION</parameter> and <parameter>SSLREADAPPLICATION</parameter>), compared through
 /// <method>NormalizedPath</method> so that a re-cased or slash-suffixed spelling earns the same verdict. Every write to
 /// one is refused <parameter>OCUPILOTROUTINEAPP</parameter>, whatever its type or field.</p>
 ClassMethod OwnRoutineApplication(pPath As %String) As %Boolean
 {
     Set tPath = ..NormalizedPath(pPath)
     If tPath = "" Quit 0
-    Quit (tPath = ..NormalizedPath(##class(OcuPilot.Kernel.State.Base).#APPLICATION)) || (tPath = ..NormalizedPath(##class(OcuPilot.Kernel.State.Base).#IDENTITYAPPLICATION))
+    Quit (tPath = ..NormalizedPath(##class(OcuPilot.Kernel.State.Base).#APPLICATION)) || (tPath = ..NormalizedPath(##class(OcuPilot.Kernel.State.Base).#IDENTITYAPPLICATION)) || (tPath = ..NormalizedPath(##class(OcuPilot.Kernel.State.Base).#SSLREADAPPLICATION))
 }
 
 /// <p>The early refusal of a write to one of OcuPilot's own privileged routine applications, answered before a write tool's
@@ -5563,7 +5747,9 @@ ClassMethod AuditEvent(pType As %String, ByRef pChanged, Output pProhibits As %B
 /// <p>The SSL/TLS configuration predicates, in declared order, first hit wins: for OcuPilot's own
 /// provider configuration (<parameter>OcuPilot.Kernel.State.Base.SSLCONFIG</parameter>), a
 /// <code>DELETE</code> and a change to any of <method>OcuPilotSslFields</method> are refused
-/// <parameter>OCUPILOTSSL</parameter>; then, for every write, the reviewed-few sweep.</p>
+/// <parameter>OCUPILOTSSL</parameter>; for the configuration the egress row names (<method>ProviderSsl</method>), the
+/// same delete and change are refused <parameter>PROVIDERSSL</parameter>; then, for every write, the reviewed-few
+/// sweep.</p>
 /// <p><var>pId</var> is the target's id as the reference carries it, compared exactly because the
 /// instance resolves a configuration's name exactly; <var>pToolClass</var> the proposal's tool. A
 /// delete's card rows are its declared fingerprint subject, so it reaches the sweep with nothing
@@ -5587,6 +5773,16 @@ ClassMethod Ssl(pId As %String, pToolClass As %String, ByRef pChanged, Output pP
                 Quit
             }
         }
+        ; Story 18.40: the configuration the egress row names is held to the same fields and its delete.
+        Set tMovesNamed = tDelete
+        Set tOwnFields = ..OcuPilotSslFields()
+        For tI = 1:1:$ListLength(tOwnFields) {
+            If $Data(pChanged($List(tOwnFields, tI))) Set tMovesNamed = 1
+        }
+        If tMovesNamed && ..ProviderSsl(pId) {
+            Do ..Refuse(..#PROVIDERSSL, .pProhibits, .pCode)
+            Quit
+        }
         Set tSC = ..ReviewedFewOnly(..#TYPESSL, .pChanged, .pProhibits, .pCode)
     } Catch ex {
         Set pProhibits = 0
@@ -5596,12 +5792,12 @@ ClassMethod Ssl(pId As %String, pToolClass As %String, ByRef pChanged, Output pP
     Quit tSC
 }
 
-/// <p>The four settings of OcuPilot's own provider configuration the installer sets and restores at
+/// <p>The six settings of OcuPilot's own provider configuration the installer sets and restores at
 /// every start (<method>OcuPilot.Install.Installer.EnsureSslConfiguration</method>), which no caller
-/// changes.</p>
+/// changes, and which hold for the configuration the egress row names too.</p>
 ClassMethod OcuPilotSslFields() As %List
 {
-    Quit $ListBuild("Type", "VerifyPeer", "CAFile", "Enabled")
+    Quit $ListBuild("Type", "VerifyPeer", "CAFile", "Enabled", "TLSMinVersion", "CipherList")
 }
 
 /// <p>An SSL/TLS configuration's settable fields, create and change alike: the thirteen settings of
@@ -5891,24 +6087,119 @@ ClassMethod AddsRoutineUnderPrivilege(pPayload As %DynamicObject, pTarget As %Dy
             }
         }
         If 'tAdds Quit
-        Do ..ApplicationRoleNames($Select(pPayload.%GetTypeOf("MatchRoles") = "array": pPayload, 1: pTarget), .tRoles)
-        Set tKey = ""
-        For {
-            Set tKey = $Order(tRoles(tKey))
-            If tKey = "" Quit
-            Set tSC = ..RoleEscalates(tRoles(tKey), .tEscalates)
-            If $$$ISERR(tSC) Quit
-            If tEscalates {
-                Set pGrants = 1
-                Quit
-            }
-        }
+        Set tSC = ..ApplicationRolesEscalate(pPayload, pTarget, .pGrants)
     } Catch ex {
         Set pGrants = 0
         Set tSC = ex.AsStatus()
     }
     If $$$ISERR(tSC) Set pGrants = 0
     Quit tSC
+}
+
+/// <p>Whether a target role of the application's <code>MatchRoles</code> escalates (<method>RoleEscalates</method>), in
+/// <var>pEscalates</var>. The roles are <var>pPayload</var>'s when it sends them and <var>pTarget</var>'s otherwise.</p>
+ClassMethod ApplicationRolesEscalate(pPayload As %DynamicObject, pTarget As %DynamicObject, Output pEscalates As %Boolean) As %Status [ Private ]
+{
+    Set pEscalates = 0
+    Set tSC = $$$OK
+    Do ..ApplicationRoleNames($Select(pPayload.%GetTypeOf("MatchRoles") = "array": pPayload, 1: pTarget), .tRoles)
+    Set tKey = ""
+    For {
+        Set tKey = $Order(tRoles(tKey))
+        If tKey = "" Quit
+        Set tSC = ..RoleEscalates(tRoles(tKey), .tOne)
+        If $$$ISERR(tSC) Quit
+        If tOne {
+            Set pEscalates = 1
+            Quit
+        }
+    }
+    Quit tSC
+}
+
+/// <p>Whether <var>pPayload</var> clears <var>pTarget</var>'s <code>Resource</code> (<method>ClearsResource</method>, only
+/// when <var>pClears</var>), turns <code>Enabled</code> on while <var>pTarget</var> holds it off, or points
+/// <code>Resource</code> at another resource whose public permission holds USE
+/// (<method>RepointsToPublicResource</method>), in <var>pGrants</var>, with a target role of the application's
+/// <code>MatchRoles</code> that escalates (<method>ApplicationRolesEscalate</method>) (Story 18.47 and 18.48, AD-10).
+/// An application with no <code>Resource</code>, or one anyone holds, runs for anyone, and a disabled one for no one, so
+/// each change hands the roles' privilege to more callers. <code>Enabled</code> reads in the forms the routine application
+/// rules admit: a boolean, the number 1 or 0, the text <code>"1"</code> or <code>"0"</code>.</p>
+ClassMethod WidensPrivilegedReach(pPayload As %DynamicObject, pTarget As %DynamicObject, Output pGrants As %Boolean, pClears As %Boolean = 1) As %Status [ Private ]
+{
+    Set pGrants = 0
+    If '((pClears && ..ClearsResource(pPayload, pTarget)) || (..EnabledOn(pPayload) && '..EnabledOn(pTarget)) || ..RepointsToPublicResource(pPayload, pTarget)) Quit $$$OK
+    Quit ..ApplicationRolesEscalate(pPayload, pTarget, .pGrants)
+}
+
+/// <p>Whether <var>pPayload</var> carries a <code>Resource</code> other than <var>pTarget</var>'s, compared without
+/// regard to case, that is not empty and whose public permission holds USE (<method>ResourcePublicUse</method>).</p>
+ClassMethod RepointsToPublicResource(pPayload As %DynamicObject, pTarget As %DynamicObject) As %Boolean [ Private ]
+{
+    If '$IsObject(pPayload) || (pPayload.%GetTypeOf("Resource") = "unassigned") Quit 0
+    Set tNew = ..Rendered(pPayload, "Resource")
+    If tNew = "" Quit 0
+    If $ZConvert(tNew, "U") = $ZConvert(..Rendered(pTarget, "Resource"), "U") Quit 0
+    Quit ..ResourcePublicUse(tNew)
+}
+
+/// <p>Whether the public permission of resource <var>pName</var> holds USE, read through <method>PortClass</method>'s
+/// <code>Security.Resource</code> <code>GET</code> as the caller. <b>A read that fails answers 1</b>, so a question the
+/// instance cannot answer is counted rather than passed.</p>
+ClassMethod ResourcePublicUse(pName As %String) As %Boolean [ Private ]
+{
+    If '..ReadMember(..PortClass(), "Security.Resource", "GET", pName, "PublicPermission", "string", .tLetters) Quit 1
+    Quit ($ZConvert(tLetters, "U") [ "U")
+}
+
+/// <p>Whether <var>pObject</var>'s <code>Enabled</code> reads as on: the boolean <code>true</code>, the number 1 or the
+/// text <code>"1"</code>. A member of any other form, or none, reads as off.</p>
+ClassMethod EnabledOn(pObject As %DynamicObject) As %Boolean [ Private ]
+{
+    If '$IsObject(pObject) Quit 0
+    Set tType = pObject.%GetTypeOf("Enabled")
+    If (tType '= "boolean") && (tType '= "number") && (tType '= "string") Quit 0
+    Quit (pObject.%Get("Enabled") = 1)
+}
+
+/// <p>Whether the agent can reach the tool <var>pToolName</var>: <method>RegistryClass</method>'s <code>Resolve</code>, which
+/// leaves an unadvertised tool out, finds it. A resolve that fails answers 1, so a question the registry cannot answer is
+/// refused rather than passed.</p>
+ClassMethod AgentReachable(pToolName As %String) As %Boolean
+{
+    Set tReachable = 1
+    Try {
+        Set tSC = $ClassMethod(..RegistryClass(), "Resolve", pToolName, .tTool)
+        If $$$ISOK(tSC) Set tReachable = $IsObject($Get(tTool))
+    } Catch {
+        Set tReachable = 1
+    }
+    Quit tReachable
+}
+
+/// <p>The class whose <code>Resolve</code> answers the instance's outbound settings, which
+/// <method>ProviderSsl</method> reads. Overridable so a test can arm a read that fails; production never overrides
+/// it.</p>
+ClassMethod EgressStateClass() As %String
+{
+    Quit "OcuPilot.Kernel.State.Egress"
+}
+
+/// <p>Whether the SSL/TLS configuration <var>pId</var> is one provider calls are made through (Story 18.40): the egress
+/// row names exactly it, compared as the instance resolves a name, and it is not OcuPilot's own provider configuration,
+/// which <parameter>OCUPILOTSSL</parameter> holds. <b>A read that fails answers 1</b>, so a question the instance cannot
+/// answer is refused rather than passed.</p>
+ClassMethod ProviderSsl(pId As %String) As %Boolean
+{
+    Set tNamed = 1
+    Try {
+        Set tSC = $ClassMethod(..EgressStateClass(), "Resolve", .tSettings)
+        If $$$ISERR(tSC) Quit
+        Set tNamed = ($Get(tSettings("sslConfiguration")) = pId) && (pId '= ##class(OcuPilot.Kernel.State.Base).#SSLCONFIG)
+    } Catch {
+        Set tNamed = 1
+    }
+    Quit tNamed
 }
 
 }

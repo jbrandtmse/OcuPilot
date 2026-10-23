@@ -268,6 +268,31 @@ Method TestThePortMapsTheVendorsStateAnswers()
     Do $$$AssertEquals($ClassMethod(tP, "Contents", "probe-v.key").%ToJSON(), tBefore, "and the file unchanged")
 }
 
+/// <p>DW-2427: a key added with a wrong administrator password (the vendor's #1219) is 422
+/// <code>ENCRYPTION.KEYFILE.CREDENTIALS</code> on the password, and a key list of a file whose last key was removed
+/// (#5022) is an empty list; the file is left unchanged by the first, and neither logs a line.</p>
+/// <p>Mutation (Rule 19): drop <code>Security.Encryption.KeyInFile/POST/500/#1219</code> from
+/// <parameter>OcuPilot.Port.AdminPort.UNLOGGEDREFUSALS</parameter> -- the first leg logs a line and goes red; drop
+/// <code>Security.Encryption.KeyInFile/LIST/500/#5022</code> -- the second does.</p>
+Method TestAFieldRefusalOfTheVendorLogsNoLine()
+{
+    Set tP = ..#PROBE
+    Do $$$AssertStatusOK($ClassMethod(tP, "SeedKeyFile", "probe-u.key", , , 256, "OCUPROBE187 U", .tKey), "a key file")
+    Set tBefore = $ClassMethod(tP, "Contents", "probe-u.key").%ToJSON()
+    Set tKeyFile = $ClassMethod(tP, "KeyFileId", "probe-u.key")
+    Set tMessages = $ClassMethod(tP, "LineCount", "messages.log")
+    Set tWrong = "OcuProbe187Wrong" _ $Translate($System.Encryption.Base64Encode($System.Encryption.GenCryptRand(9), 1), "+/=", "")
+    Set tAdd = $ClassMethod(tP, "Run", "Security.Encryption.KeyInFile", "POST", {"keyfile": (tKeyFile), "AdminName": ($Parameter(tP, "ADMIN")), "KeyLen": 256, "Description": "wrong"}, {"AdminPassword": (tWrong)}, "OcuPilot.Port.EncryptionPort")
+    Set tViolation = $Select($IsObject(tAdd.%Get("fault")) && $IsObject(tAdd.%Get("fault").%Get("detail")): tAdd.%Get("fault").%Get("detail").%Get("violations").%Get(0), 1: "")
+    Do $$$AssertEquals(tAdd.%Get("http") _ " " _ $Select($IsObject(tViolation): tViolation.%Get("field") _ ":" _ tViolation.%Get("code"), 1: ""), "422 AdminPassword:ENCRYPTION.KEYFILE.CREDENTIALS", "the wrong password is refused on the password")
+    Do $$$AssertEquals($ClassMethod(tP, "Contents", "probe-u.key").%ToJSON(), tBefore, "with the file unchanged")
+    Do $$$AssertEquals($ClassMethod(tP, "LinesAfter", "messages.log", tMessages).%Size(), 0, "and no line logged")
+    Do $$$AssertStatusOK($ClassMethod(tP, "RemoveFromFile", "probe-u.key", tKey), "the file's last key is removed by another writer")
+    Set tList = $ClassMethod(tP, "Run", "Security.Encryption.KeyInFile", "LIST", {"keyfile": (tKeyFile)}, "", "OcuPilot.Port.EncryptionPort")
+    Do $$$AssertEquals(tList.%Get("http") _ " " _ tList.%Get("result").%ToJSON(), "200 []", "its key list is empty")
+    Do $$$AssertEquals($ClassMethod(tP, "LinesAfter", "messages.log", tMessages).%Size(), 0, "with no line logged")
+}
+
 /// <p>A <method>OcuPilot.Test.EncryptionProbe.Run</method> answer as <code>http code</code>, then
 /// <code>detail.problem</code> when there is one.</p>
 ClassMethod Answer(pRun As %DynamicObject) As %String

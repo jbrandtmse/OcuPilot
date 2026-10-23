@@ -32,14 +32,14 @@ Parameter WIREKEYS = "proposalId,target,targetName,expiresAt,tool,changed,unchan
 /// the classified one, so the masking tests below name the shipped tool's entry.</p>
 Parameter CLASSIFIEDTOOL = "webapp.list.update";
 
-/// <p>Story 5.9's write tool, whose field list classifies its two arrays <code>opaque</code>. It
-/// is the only classified entry with an <code>opaque</code> row, so it is the only one that can
-/// show a classified array masked rather than a merely unnamed one.</p>
+/// <p>Story 5.9's write tool, whose field list classifies its two arrays <code>opaque</code>: the
+/// disclosure reads each as its member count.</p>
 Parameter USERTOOL = "permissions.users.update";
 
 /// <p>A fresh <code>Security.User</code> read carrying one <code>ordinary</code> literal, the two
-/// <code>opaque</code> arrays, and the <code>ordinary</code> literal the proposal changes.</p>
-Parameter FRESHUSER = "{""FullName"":""before"",""Roles"":[""%EnsRole_Operator""],""EscalationRoles"":[""%EnsRole_Administrator""],""Enabled"":false}";
+/// <code>opaque</code> arrays -- of one member and of two, so a count cannot be mistaken for a
+/// constant -- and the <code>ordinary</code> literal the proposal changes.</p>
+Parameter FRESHUSER = "{""FullName"":""before"",""Roles"":[""%EnsRole_Operator""],""EscalationRoles"":[""%EnsRole_Administrator"",""%EnsRole_Developer""],""Enabled"":false}";
 
 /// <p>A fresh read carrying one <code>ordinary</code> literal, one <code>ordinary</code>
 /// <b>array</b> of literals (<code>CorsAllowlist</code>, declared <code>CorsAllowlist[]</code>),
@@ -264,17 +264,16 @@ Method TestAnOrdinaryLiteralIsDisclosedWithItsValue()
     Do $$$AssertNotEquals($Get(tValue("CorsAllowlist")), ##class(OcuPilot.Kernel.Proposal.Disclosure).Mask(), "and is not masked as though nobody had classified it")
 }
 
-/// <p>Story 5.9, DW-1223, AD-3: the users write tool's disclosure. Its rows equal
+/// <p>Story 5.9, AD-3, AD-35: the users write tool's disclosure. Its rows equal
 /// <code>unchangedCount</code>, an <code>ordinary</code> literal carries its value, and both role
-/// arrays carry the mask because the reviewed classification calls them <code>opaque</code> -- the
-/// endpoint's template answers <code>[]</code> for each, so nothing types a member and
-/// <code>ordinary</code> is a class neither row can carry.</p>
-/// <p>Mutation (Rule 19): classify <code>Roles</code> <code>ordinary</code> in
-/// <class>OcuPilot.Screen.Tool.Classification</class> -- <code>node tools/field-lists.mjs</code>
-/// refuses it, which is the generator half; reaching past that by hand-editing
-/// <class>OcuPilot.Screen.Tool.ToolFields</class> reddens the masking assertion here and
-/// <method>OcuPilot.Test.DerivedFields</method>'s drift check.</p>
-Method TestTheUserToolsDisclosureMasksBothRoleArrays()
+/// arrays carry <code>count</code>, the size of the array the minted payload stores, because the
+/// reviewed classification calls them <code>opaque</code> -- the endpoint's template answers
+/// <code>[]</code> for each, so nothing types a member and <code>ordinary</code> is a class
+/// neither row can carry. No role name reaches the wire, and neither value is the mask.</p>
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Kernel.Proposal.Disclosure.Rows</method> write
+/// <method>OcuPilot.Kernel.Proposal.Disclosure.Mask</method> for an opaque property again -- the
+/// count and mask assertions go red.</p>
+Method TestTheUserToolsDisclosureCountsBothRoleArrays()
 {
     Do $$$AssertStatusOK(##class(OcuPilot.Test.ProposalFixture).SeedTurn(..#PROBEUSER, "completed", .tTurn), "a turn is seeded")
     Do ##class(OcuPilot.Test.ProposalFixture).Arm(..#FRESHUSER)
@@ -288,17 +287,69 @@ Method TestTheUserToolsDisclosureMasksBothRoleArrays()
     Set tUnchangedRows = tRow.%Get("unchanged")
     Do $$$AssertEquals(tRow.%Get("unchangedCount"), 3, "three of the four properties are sent unchanged")
     Do $$$AssertEquals(tUnchangedRows.%Size(), tRow.%Get("unchangedCount"), "and the disclosure has exactly that many rows")
-    Kill tValue
+    Kill tValue, tCount, tCountType
     Set tIterator = tUnchangedRows.%GetIterator()
     While tIterator.%GetNext(.tIndex, .tUnchanged) {
         Set tValue(tUnchanged.%Get("field")) = tUnchanged.%Get("value")
+        Set tCount(tUnchanged.%Get("field")) = tUnchanged.%Get("count")
+        Set tCountType(tUnchanged.%Get("field")) = tUnchanged.%GetTypeOf("count")
     }
+    ; The expected sizes come from the payload the mint stored, never from a literal here.
+    Set tSC = ##class(OcuPilot.Kernel.State.Propose).GuardedByKey(tProposal.%Get("proposalId"), .tFound, .tStored)
+    Do $$$AssertStatusOK(tSC, "the stored row reads back")
+    Do $$$AssertEquals(tFound, 1, "and it is there")
+    If 'tFound Quit
+    Set tStoredPayload = ##class(%DynamicAbstractObject).%FromJSON($Get(tStored("payload")))
+    Set tRoles = tStoredPayload.%Get("Roles").%Size()
+    Set tEscalation = tStoredPayload.%Get("EscalationRoles").%Size()
+    Do $$$AssertNotEquals(tRoles, tEscalation, "the two stored arrays differ in size, so a count read from the wrong one fails")
     Set tMask = ##class(OcuPilot.Kernel.Proposal.Disclosure).Mask()
     Do $$$AssertEquals($Get(tValue("FullName")), "before", "the ordinary literal carries its own value")
-    Do $$$AssertEquals($Get(tValue("Roles")), tMask, "the roles array is disclosed masked because it is classified opaque")
-    Do $$$AssertEquals($Get(tValue("EscalationRoles")), tMask, "and so is the escalation array")
+    Do $$$AssertEquals($Get(tCountType("Roles")), "number", "the roles array carries a numeric count")
+    Do $$$AssertEquals($Get(tCount("Roles")), tRoles, "equal to the size of the stored roles array")
+    Do $$$AssertNotEquals($Get(tValue("Roles")), tMask, "and its value is not the mask")
+    Do $$$AssertEquals($Get(tCountType("EscalationRoles")), "number", "the escalation array carries a numeric count")
+    Do $$$AssertEquals($Get(tCount("EscalationRoles")), tEscalation, "equal to the size of the stored escalation array")
+    Do $$$AssertNotEquals($Get(tValue("EscalationRoles")), tMask, "and its value is not the mask")
+    Do $$$AssertEquals($Get(tCountType("FullName")), "unassigned", "an ordinary literal carries no count")
     Set tJson = tRows.%ToJSON()
     Do $$$AssertEquals(tJson [ "%EnsRole", 0, "no role name from either array reaches the wire")
+}
+
+/// <p>The disclosure's count is the size of an <code>opaque</code> array or object, and only of one:
+/// a language server's <code>Custom</code> object of two members reads <code>count</code> 2 with an
+/// empty <code>value</code>, while the same property stored as a string or as <code>null</code> reads
+/// the mask with no <code>count</code>, and the other rows survive it.</p>
+/// <p>Mutation (Rule 19): drop the <code>"object"</code> arm of the type test in
+/// <method>OcuPilot.Kernel.Proposal.Disclosure.Rows</method> -> the object case goes red; drop the
+/// type test -> the scalar and <code>null</code> cases go red.</p>
+Method TestAnOpaqueObjectReadsItsMemberCountAndAScalarReadsTheMask()
+{
+    Set tTool = "osmgmt.languageservers.update"
+    Set tMask = ##class(OcuPilot.Kernel.Proposal.Disclosure).Mask()
+    Set tPayloads(1) = {"LogFile": "a.log", "Custom": {"first": 1, "second": 2}}
+    Set tPayloads(2) = {"LogFile": "a.log", "Custom": "text"}
+    Set tPayloads(3) = {"LogFile": "a.log", "Custom": null}
+    For tCase = 1:1:3 {
+        Set tRows = ##class(OcuPilot.Kernel.Proposal.Disclosure).Rows(tTool, tPayloads(tCase).%ToJSON(), "[]")
+        Do $$$AssertEquals(tRows.%Size(), 2, "case " _ tCase _ ": both unchanged properties are disclosed")
+        Kill tByField
+        Set tIterator = tRows.%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tRow) {
+            Set tByField(tRow.%Get("field")) = tRow.%Get("value")
+            Set tCountOf(tRow.%Get("field")) = tRow.%Get("count")
+            Set tCountTypeOf(tRow.%Get("field")) = tRow.%GetTypeOf("count")
+        }
+        Do $$$AssertEquals($Get(tByField("LogFile")), "a.log", "case " _ tCase _ ": the ordinary literal keeps its value")
+        If tCase = 1 {
+            Do $$$AssertEquals($Get(tByField("Custom")), "", "the object's value is empty")
+            Do $$$AssertEquals($Get(tCountTypeOf("Custom")), "number", "and it carries a numeric count")
+            Do $$$AssertEquals($Get(tCountOf("Custom")), tPayloads(1).Custom.%Size(), "equal to the size of the stored object")
+        } Else {
+            Do $$$AssertEquals($Get(tByField("Custom")), tMask, "case " _ tCase _ ": a stored value that is not an array or object reads the mask")
+            Do $$$AssertEquals($Get(tCountTypeOf("Custom")), "unassigned", "and carries no count")
+        }
+    }
 }
 
 /// <p>AD-33: a poll for a turn the caller does not own answers nothing, and the store's own

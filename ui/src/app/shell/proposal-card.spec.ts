@@ -8,8 +8,11 @@ import {
   MASKED_VALUE,
   type ProposalPhase,
   formatRemovalResidue,
+  toCardView,
 } from '../core/proposal-view';
 import { STRINGS } from '../core/strings';
+import { testOutcomeLines, transformOutcomeLines } from '../core/test-answer';
+import { PROPOSAL_LIVE_STATE, outputErrorsOf, parseProposals } from '../core/turn';
 import { EXAMPLE_PROPOSAL, type ProposalCardView } from './example-proposal';
 import { ProposalCard } from './proposal-card';
 
@@ -162,6 +165,52 @@ describe('the proposal card', () => {
     const line = card.querySelector('.ocu-proposal-card-unchanged') as HTMLElement;
     expect(line.textContent).toContain('44 unchanged fields');
     expect(line.querySelector('.ocu-proposal-card-chevron')?.getAttribute('aria-hidden')).toBe('true');
+  });
+
+  it('reads "1 unchanged field" at a count of one, and the plural at 2', () => {
+    // Mutation (Rule 19): fill `STRINGS.proposalUnchangedFieldsDisclosure` alone in `unchangedCaption` -> the first case goes red.
+    const captionOf = (count: number): string =>
+      (mount(liveView({ unchangedCount: count, unchanged: [] }), { phase: 'live' }).card.querySelector('.ocu-proposal-card-unchanged') as HTMLElement).textContent?.trim() ?? '';
+    expect(captionOf(1)).toContain('1 unchanged field');
+    expect(captionOf(1)).not.toContain('1 unchanged fields');
+    expect(captionOf(2)).toContain('2 unchanged fields');
+  });
+
+  it('reads a classified-opaque unchanged value as its member count, never the mask', () => {
+    // Mutations (Rule 19): render `shown(row.value, row.emptyKey)` for every row in `unchangedValue` -> the
+    // count rows read "(none)"; drop `count` from `parseProposalUnchanged` in `core/turn.ts` -> the same. Either
+    // way this goes red, because the view is parsed from the wire shape rather than written here.
+    const [parsed] = parseProposals([
+      {
+        proposalId: 'p9',
+        target: { type: 'user', scope: 'instance', id: 'Probe' },
+        expiresAt: '2026-09-19T10:00:00Z',
+        tool: 'permissions.users.update',
+        changed: [{ field: 'Enabled', before: 'false', after: 'true' }],
+        unchangedCount: 3,
+        unchanged: [
+          { field: 'Roles', value: '', count: 1 },
+          { field: 'EscalationRoles', value: '', count: 2 },
+          { field: 'Password', value: '\u2022'.repeat(8) },
+        ],
+        rationale: 'why',
+        expectedImpact: 'what',
+        reverse: 'how',
+        state: PROPOSAL_LIVE_STATE,
+        auditWarning: false,
+      },
+    ]);
+    const { fixture, card } = mount(toCardView(parsed, 'User'), { phase: 'live' });
+    (card.querySelector('.ocu-proposal-card-disclosure') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    const rows = Array.from(card.querySelectorAll('.ocu-proposal-card-unchanged-rows .ocu-diff-row-unchanged')) as HTMLElement[];
+    const valueOf = (field: string): string =>
+      rows.find((row) => row.querySelector('.ocu-diff-field')?.textContent?.trim() === field)?.querySelector('.ocu-diff-value')?.textContent?.trim() ?? '';
+    expect(valueOf('Roles')).toBe('1 item');
+    expect(valueOf('EscalationRoles')).toBe('2 items');
+    expect(valueOf('Roles')).not.toContain('\u2022');
+    expect(valueOf('EscalationRoles')).not.toContain('\u2022');
+    expect(valueOf('Password')).toBe('\u2022'.repeat(8));
   });
 
   it('carries no unchanged-fields line at all when the proposal reports none', () => {
@@ -386,6 +435,15 @@ describe('the proposal card', () => {
       formatRemovalResidue(STRINGS.proposalResidue, DELETE_PROPOSAL.changed.length)
     );
     expect(residue?.textContent).toContain(String(DELETE_PROPOSAL.changed.length));
+
+    // One listed row reads the singular, with both facts intact.
+    const { card: single } = mount(
+      { ...DELETE_PROPOSAL, changed: [DELETE_PROPOSAL.changed[0]], proposalId: 'p4', expiresAt: NOW_MS + 60_000 },
+      { phase: 'live' }
+    );
+    expect(single.querySelector('.ocu-proposal-card-residue')?.textContent?.trim()).toBe(
+      'Removes exactly the error listed here. Any logged since the proposal will remain.'
+    );
 
     // A card with no removal row says nothing about residue.
     const { card: ordinary } = mount(liveView(), { phase: 'live' });
@@ -963,6 +1021,15 @@ describe('the proposal card', () => {
     expect(lines[0].textContent).toContain(STRINGS.interopTestSendsConsequence);
   });
 
+  // Mutation (Rule 19): drop the INTEROP.TRANSFORM.RUNS code from `consequenceSentence` -> this goes red.
+  it('Story 20.27: a data transformation test states that its code runs here as the person, and is not drawn destructive', () => {
+    const { card } = mount(liveView({ consequence: 'INTEROP.TRANSFORM.RUNS', destructive: false, maskedFields: [] }), { phase: 'live' });
+    expect(card.classList.contains('ocu-proposal-card-destructive')).toBe(false);
+    const lines = card.querySelectorAll('[data-slot="consequence"]');
+    expect(lines.length).toBe(1);
+    expect(lines[0].textContent).toContain(STRINGS.interopTransformRunsConsequence);
+  });
+
   it('AD-10, Story 9.5: a change turning an SSL/TLS configuration\'s peer verification off is drawn destructive and states its effect', () => {
     // Mutation (Rule 19): drop the NOPEERCHECK code from `consequenceSentence` -> this goes red.
     const { card } = mount(liveView({ consequence: 'SSL.NOPEERCHECK', destructive: true, maskedFields: [] }), { phase: 'live' });
@@ -1497,5 +1564,60 @@ describe('the proposal card with a long block (Story 20.17)', () => {
     fixture.componentRef.setInput('outputErrors', null);
     fixture.detectChanges();
     expect(summary(card)?.querySelector('.ocu-proposal-card-summary-outcome')).toBeNull();
+  });
+
+  // A host or data transformation test's answer also carries `lines` and `errors`, which is not a compile's outcome. The card is handed
+  // what `outputErrorsOf` reads from the confirm's own answer; the panel itself passes `null` for every tool but an explorer one.
+  // Mutation (Rule 19): make `outputErrorsOf` read a test answer's `errors` as a compile's again -> the outcome span appears and this goes red.
+  it('Story 20.27: a confirmed test card with a long output shows its summary line and no compile outcome', () => {
+    const transform = {
+      status: 'transform',
+      sourceClass: 'Ens.StringRequest',
+      targetClass: 'Ens.StringResponse',
+      lines: Array.from({ length: 10 }, (_, index) => `error line ${index}`),
+      console: [],
+      errors: true,
+    };
+    const hostTest = { status: 'error', sessionId: '41', responseClass: '', lines: Array.from({ length: 10 }, (_, index) => `error line ${index}`), errors: true };
+    for (const [name, answer, shown] of [
+      ['a data transformation test', transform, transformOutcomeLines(transform)],
+      ['a host test', hostTest, testOutcomeLines(hostTest)],
+    ] as const) {
+      const { fixture, card } = mountKeyed(liveView({ name: 'Orders', changed: rows(2) }), 'confirmed');
+      fixture.componentRef.setInput('output', shown);
+      fixture.componentRef.setInput('outputErrors', outputErrorsOf(answer));
+      fixture.detectChanges();
+
+      expect(summary(card), name).not.toBeNull();
+      expect(summary(card)?.querySelector('.ocu-proposal-card-summary-outcome'), name).toBeNull();
+      expect((card.querySelector('[data-slot="output"]') as HTMLElement).closest('.ocu-long-block')?.classList.contains('ocu-long-block-collapsed'), name).toBe(true);
+      TestBed.resetTestingModule();
+    }
+  });
+
+  // The instance holds a test's lines to one million characters and ends the last in the cut marker (`InteropPort.TESTCUT`). The card is
+  // handed that answer and draws every line of it, so what the person reads is what the instance sent, to the marker, and as text.
+  // Mutation (Rule 19): cut the output step's text at 100,000 characters in `outputSteps` of `proposal-card.ts` -> the length and marker legs go red.
+  it('Story 20.27: a confirmed transformation test card draws an answer at the output bound whole, its cut marker last, as one collapsed text block', () => {
+    const cut = ' ... [cut]';
+    const lines = Array.from({ length: 10_000 }, (_, index) => `<row n="${String(index).padStart(92, '0')}"/>`);
+    lines.push(`last${cut}`);
+    const answer = { status: 'done', sourceClass: 'Ens.StringRequest', targetClass: 'Ens.StringResponse', lines, console: ['probe-device-line'], errors: false };
+    const text = [STRINGS.interopTransformDone, ...lines, STRINGS.interopTransformConsole, 'probe-device-line'].join('\n');
+    expect(text.length).toBeGreaterThan(990_000);
+
+    const { fixture, card } = mountKeyed(liveView({ name: 'Orders', changed: rows(2) }), 'confirmed');
+    fixture.componentRef.setInput('output', transformOutcomeLines(answer));
+    fixture.componentRef.setInput('outputErrors', outputErrorsOf(answer));
+    fixture.detectChanges();
+
+    const blocks = card.querySelectorAll('[data-slot="output"] pre');
+    expect(blocks.length).toBe(1);
+    const drawn = blocks[0].textContent ?? '';
+    expect(drawn.length).toBe(text.length);
+    expect(drawn.endsWith(`last${cut}\n${STRINGS.interopTransformConsole}\nprobe-device-line`)).toBe(true);
+    expect(blocks[0].querySelector('row')).toBeNull();
+    expect((card.querySelector('[data-slot="output"]') as HTMLElement).closest('.ocu-long-block')?.classList.contains('ocu-long-block-collapsed')).toBe(true);
+    expect(summary(card)).not.toBeNull();
   });
 });

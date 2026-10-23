@@ -65,7 +65,6 @@ Method OnBeforeAllTests() As %Status
     Set ..PreparedPassword = "OcuP205Gate" _ $Translate($System.Encryption.Base64Encode($System.Encryption.GenCryptRand(18), 1), "+/=", "") _ "!Aa9"
     Set tSC = $ClassMethod(..#FIXTURE, "Clear")
     If $$$ISOK(tSC) Set tSC = ..EnsurePrincipals()
-    ; %UnitTest skips OnAfterAllTests when this method fails, so a failed setup removes what it made here.
     If $$$ISERR(tSC) Set tSC = $$$ADDSC(tSC, ..OnAfterAllTests())
     Quit tSC
 }

@@ -34,6 +34,8 @@ const experienceMdRaw = readFileSync(experienceMdPath, 'utf8');
 
 const stringsValues = loadStrings(stringsTsRaw);
 
+const { orderedAreas } = await import(join(here, '..', 'src', 'app', 'core', 'navigation.ts'));
+
 /**
  * Re-derives the canonical rows from EXPERIENCE.md's Fixed strings table: each row's
  * literals are every double-quoted span in its *String* column -- exactly the rule the
@@ -452,22 +454,18 @@ test('no literal extracted from prose is also a Fixed strings literal', () => {
   assert.deepEqual(overlap, [], `already a Fixed strings literal: ${JSON.stringify(overlap)}`);
 });
 
-test("the table's area-names row lists the eleven navArea keys' values, in rail order", () => {
+test("the table's area-names row lists the navArea keys' values, in rail order", () => {
   const rows = fixedStringsRows.filter((row) => row.where.startsWith('area names'));
   assert.equal(rows.length, 1, 'the Fixed strings table carries one area-names row');
-  assert.deepEqual(rows[0].literals, [
-    stringsValues.navAreaHome,
-    stringsValues.navAreaLogs,
-    stringsValues.navAreaOsManagement,
-    stringsValues.navAreaTasks,
-    stringsValues.navAreaPermissions,
-    stringsValues.navAreaWebApplications,
-    stringsValues.navAreaSecurity,
-    stringsValues.navAreaSystemExplorer,
-    stringsValues.navAreaInteroperability,
-    stringsValues.navAreaAnalytics,
-    stringsValues.navAreaAgent,
-  ]);
+  const areas = orderedAreas();
+  assert.ok(areas.length >= 1, 'the mirror declares areas, so the comparison is not of two empty lists');
+  assert.deepEqual(
+    rows[0].literals,
+    areas.map((area) => {
+      assert.ok(area.labelKey in stringsValues, `area ${area.key} names a string key that does not exist`);
+      return stringsValues[area.labelKey];
+    })
+  );
 });
 
 test("EXPERIENCE.md's Fixed strings table itself holds roughly 200 distinct literals -- a sanity check on the extractor before trusting it", () => {
@@ -607,9 +605,11 @@ test("EXPERIENCE.md's Fixed strings table itself holds roughly 200 distinct lite
   // drift tripwire, not a budget; raised once to 3400; the next raise when the count is within 50 of the bound.
   // Story 20.3's Production items literals take the table past 3000; the bound moves to 3400 under the same protocol
   // (approved at its spec gate).
+  // Story 18.38's Live tail and Story 20.16's two literals, merged together, take the table within 50 of 3400; the
+  // bound moves to 3800 under the same protocol (approved at both spec gates).
   assert.ok(
-    expectedLiterals.length >= 150 && expectedLiterals.length <= 3400,
-    `expected between 150 and 3400 distinct literals, extracted ${expectedLiterals.length} -- the extractor's row range or quote-matching may have drifted from the table`
+    expectedLiterals.length >= 150 && expectedLiterals.length <= 3800,
+    `expected between 150 and 3800 distinct literals, extracted ${expectedLiterals.length} -- the extractor's row range or quote-matching may have drifted from the table`
   );
 });
 
@@ -688,13 +688,15 @@ test('Story 1.11 adds no string: the switch and its refusal are named by keys th
   // one by one; so do Story 18.14's Copy mappings and Story 18.15's Enable interoperability row actions
   // on that list, and Story 18.3's four
   // phrases of a database delete's impact that name the namespaces using the database. Story 16.14's
-  // LDAP editor adds two field labels, its namespace ID prefix and its default-namespace attribute.
+  // LDAP editor adds two field labels, its namespace ID prefix and its default-namespace attribute. Story 20.12's
+  // Namespaces list offers a guided workflow through a prompt named `namespaceListWorkflowProject`.
   const namespaceSentences = Object.entries(stringsValues).filter(([key]) =>
     key.toLowerCase().includes('namespace')
   );
   assert.deepEqual(
     namespaceSentences.map(([key]) => key).sort(),
     [
+      'analyticsRefusalNamespace',
       'errorLogEmptyNamespace',
       'errorLogRefusedNamespace',
       'headerNamespaceLabel',
@@ -728,10 +730,11 @@ test('Story 1.11 adds no string: the switch and its refusal are named by keys th
       'namespaceListPrompt1',
       'namespaceListPrompt2',
       'namespaceListPrompt3',
+      'namespaceListWorkflowProject',
       'namespaceRefusalOcuPilot',
       'userFormNamespace',
     ],
-    'the namespace-named keys are the switch\'s accessible name, one drilled-scope empty state, one named refusal, three field labels and the Namespaces screens\' own copy'
+    'the namespace-named keys are the switch\'s accessible name, one drilled-scope empty state, two named refusals, three field labels and the Namespaces screens\' own copy'
   );
 });
 

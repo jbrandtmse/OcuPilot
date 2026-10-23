@@ -61,7 +61,8 @@ XData Declaration
   "suggestedPrompts": [
     {"groupKey": "userPromptGroupAccess", "textKey": "roleListPrompt1"},
     {"groupKey": "userPromptGroupAccess", "textKey": "roleListPrompt2"},
-    {"groupKey": "userPromptGroupAccess", "textKey": "roleListPrompt3"}
+    {"groupKey": "userPromptGroupAccess", "textKey": "roleListPrompt3"},
+    {"groupKey": "userPromptGroupAccess", "textKey": "roleListWorkflowSecurity", "workflow": "securityposture"}
   ],
   "classicPage": "%CSP.UI.Portal.Roles",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},

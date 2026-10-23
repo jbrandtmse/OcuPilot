@@ -209,6 +209,14 @@ test('AC10: Confirm writes to the instance, and the list re-fetched shows the va
     await page.waitForSelector('app-proposal-card .ocu-proposal-card-status', {
       timeout: config.navigationTimeoutMs,
     });
+    // The status line is drawn before the outgoing buttons leave and Send returns to primary, and
+    // focus moves with them: read focus only once both have happened.
+    await page.waitForFunction(
+      () =>
+        document.querySelector('.ocu-proposal-card-confirm') === null &&
+        (document.querySelector('.ocu-panel-send')?.className ?? '').includes('ocu-button-primary'),
+      { timeout: config.navigationTimeoutMs }
+    );
 
     const settled = await page.evaluate(() => ({
       status: document.querySelector('.ocu-proposal-card-status').textContent.trim(),

@@ -1,7 +1,7 @@
 /// <p>What <class>OcuPilot.Test.ExplorerSource</class> and <class>OcuPilot.Test.ExplorerSourceEdges</class>
 /// share: the namespace their probe documents live in, the fixture that answers the fake routes, one call
-/// of a source read, and an index answer and a document answer armed on those routes. It declares no test
-/// of its own.</p>
+/// of a source read, the bound a read cuts to, and an index answer and a document answer armed on those routes.
+/// It declares no test of its own.</p>
 /// <p>Needs the Atelier fixture free for the fake-route legs. <method>ArmDocument</method> arms the fixture and
 /// clears nothing; each subclass clears it after each test.</p>
 Class OcuPilot.Test.ExplorerSourceTestCase Extends %UnitTest.TestCase [ Abstract ]
@@ -12,6 +12,14 @@ Parameter NAMESPACE = "USER";
 
 /// <p>The fixture that answers the Atelier routes in place of the instance's.</p>
 Parameter FAKE = "OcuPilot.Test.AtelierPortFixture";
+
+/// <p>The most characters the text of one read may escape to: the reads' own
+/// <parameter>OcuPilot.Screen.Tool.ExplorerSourceRead.SOURCEMAXLENGTH</parameter>, so every figure a test
+/// derives from the bound follows it.</p>
+ClassMethod Limit() As %Integer
+{
+    Quit ##class(OcuPilot.Screen.Tool.ExplorerSourceRead).#SOURCEMAXLENGTH
+}
 
 /// <p>One call of the source read <var>pTool</var> on <var>pName</var> in <var>pNamespace</var>: the
 /// status, the answer and, for a refusal, the HTTP status and the wire fault.</p>

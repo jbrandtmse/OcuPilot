@@ -26,6 +26,16 @@ Parameter OPERATEUSER = "OcuPilotAgentOperate";
 /// <p>See <parameter>OPERATEUSER</parameter>.</p>
 Parameter OPERATEROLE = "OcuPilotAgentOperateRole";
 
+/// <p>The principal holding OcuPilot's administrative resource but not <code>%Admin_Secure:USE</code>, the SSL/TLS
+/// form's first pair (Story 18.40).</p>
+Parameter ADMINUSER = "OcuPilotAgentAdminNoSecure";
+
+/// <p>See <parameter>ADMINUSER</parameter>.</p>
+Parameter ADMINROLE = "OcuPilotAgentAdminNoSecureRole";
+
+/// <p>A configuration name no configuration holds, which the egress row is seeded with and a naming is aimed at.</p>
+Parameter NAMEDPROBE = "OcuPilotProbeAgentSecNamed";
+
 /// <p>The prefix every definition this class creates is named with.</p>
 Parameter PROBEPREFIX = "OcuPilotProbeAgent";
 
@@ -44,6 +54,13 @@ Property PreparedSetupOk As %Boolean [ InitialExpression = 0 ];
 /// <p>The definition the refusals below are aimed at, created as the suite's own account.</p>
 Property PreparedDefinitionId As %String;
 
+/// <p>The password of <parameter>ADMINUSER</parameter> for this run, generated in <method>OnBeforeAllTests</method>.</p>
+Property PreparedAdminPassword As %String;
+
+/// <p>Whether <method>OnBeforeAllTests</method> read back that <parameter>ADMINUSER</parameter> holds OcuPilot's
+/// administrative resource and not <code>%Admin_Secure:USE</code>.</p>
+Property PreparedAdminSetupOk As %Boolean [ InitialExpression = 0 ];
+
 Method %OnNew(initvalue As %String = "") As %Status
 {
     Set tSC = ##super(initvalue)
@@ -51,6 +68,8 @@ Method %OnNew(initvalue As %String = "") As %Status
     Set ..PreparedPassword = ""
     Set ..PreparedSetupOk = 0
     Set ..PreparedDefinitionId = ""
+    Set ..PreparedAdminPassword = ""
+    Set ..PreparedAdminSetupOk = 0
     Quit $$$OK
 }
 
@@ -117,6 +136,29 @@ Method OnBeforeAllTests() As %Status
         If '..PreparedSetupOk {
             Set tSC = $$$ERROR($$$GeneralError, "Setup could not confirm the principal's pairs: holds %Admin_Operate " _ tHoldsOperate _ ", lacks " _ tAdminResource _ " " _ tLacksOcuPilot _ ", definition id '" _ ..PreparedDefinitionId _ "'")
         }
+        If $$$ISERR(tSC) Quit
+
+        ; Story 18.40: an administrator without the SSL/TLS form's first pair.
+        Set ..PreparedAdminPassword = "OcuPilotAdm" _ $Translate($System.Encryption.Base64Encode($System.Encryption.GenCryptRand(18), 1), "+/=", "") _ "!Aa9"
+        If ##class(Security.Roles).Exists(..#ADMINROLE, .tAR, .tARS) {
+            Set tAdminProps("Resources") = tResources _ "," _ tAdminResource _ ":U"
+            Set tAdminProps("GrantedRoles") = ""
+            Set tAdminProps("ForceSave") = 2
+            Set tSC = ##class(Security.Roles).Modify(..#ADMINROLE, .tAdminProps)
+        } Else {
+            Set tSC = ##class(Security.Roles).Create(..#ADMINROLE, "OcuPilot test: administrator without Secure principal role (throwaway)", tResources _ "," _ tAdminResource _ ":U", "")
+        }
+        If $$$ISERR(tSC) Quit
+        If ##class(Security.Users).Exists(..#ADMINUSER, .tAU, .tAUS) {
+            Set tSC = ##class(Security.Users).Delete(..#ADMINUSER)
+            If $$$ISERR(tSC) Quit
+        }
+        Set tSC = ##class(Security.Users).Create(..#ADMINUSER, ..#ADMINROLE, ..PreparedAdminPassword, "OcuPilot administrator without Secure test principal (throwaway)", "", "", "", 0, 1, "Created by OcuPilot.Test.AgentWireSecurity; deleted in OnAfterAllTests")
+        If $$$ISERR(tSC) Quit
+        Set ..PreparedAdminSetupOk = ($SYSTEM.Security.CheckUserPermission(..#ADMINUSER, tAdminResource, "USE") = 1) && ($SYSTEM.Security.CheckUserPermission(..#ADMINUSER, "%Admin_Secure", "USE") '= 1)
+        If '..PreparedAdminSetupOk {
+            Set tSC = $$$ERROR($$$GeneralError, "Setup could not confirm the administrator principal's pairs: it must hold " _ tAdminResource _ " and not %Admin_Secure:USE")
+        }
     } Catch ex {
         Set $NAMESPACE = tOrigNS
         Set tSC = ex.AsStatus()
@@ -144,6 +186,10 @@ Method OnAfterAllTests() As %Status
         If ##class(Security.Users).Exists(..#OPERATEUSER, .tU2, .tUS2) Set tLeft = tLeft _ $Select(tLeft = "": "", 1: ", ") _ "user " _ ..#OPERATEUSER
         If ##class(Security.Roles).Exists(..#OPERATEROLE, .tR, .tRS) Do ##class(Security.Roles).Delete(..#OPERATEROLE)
         If ##class(Security.Roles).Exists(..#OPERATEROLE, .tR2, .tRS2) Set tLeft = tLeft _ $Select(tLeft = "": "", 1: ", ") _ "role " _ ..#OPERATEROLE
+        If ##class(Security.Users).Exists(..#ADMINUSER, .tAU, .tAUS) Do ##class(Security.Users).Delete(..#ADMINUSER)
+        If ##class(Security.Users).Exists(..#ADMINUSER, .tAU2, .tAUS2) Set tLeft = tLeft _ $Select(tLeft = "": "", 1: ", ") _ "user " _ ..#ADMINUSER
+        If ##class(Security.Roles).Exists(..#ADMINROLE, .tAR, .tARS) Do ##class(Security.Roles).Delete(..#ADMINROLE)
+        If ##class(Security.Roles).Exists(..#ADMINROLE, .tAR2, .tARS2) Set tLeft = tLeft _ $Select(tLeft = "": "", 1: ", ") _ "role " _ ..#ADMINROLE
         If tLeft '= "" {
             Set tSC = $$$ERROR($$$GeneralError, "OcuPilot.Test.AgentWireSecurity teardown left throwaway objects on the instance: " _ tLeft)
         }
@@ -312,6 +358,56 @@ Method TestTheSwitchRoutesAreRefusedToANonAdministrator()
     If tStatus '= 200 Quit
     Set tAnswer = ##class(%DynamicObject).%FromJSON(tBody)
     Do $$$AssertEquals(tAnswer.blocked, 0, "which on this instance restrains nothing")
+}
+
+/// <p>Remove the egress row a leg wrote, so a run leaves the defaults in force.</p>
+Method OnAfterOneTest() As %Status
+{
+    Quit ##class(OcuPilot.Kernel.State.Egress).DeleteGuarded()
+}
+
+/// <p><b>Story 18.40: the provider connection's routes.</b> A principal holding no OcuPilot administrative resource is
+/// refused both, by name, and the row is as it was; an administrator without <code>%Admin_Secure:USE</code> naming a
+/// configuration is refused 403 naming that pair, before any read -- the name need not even exist -- and writes nothing,
+/// and may still clear a name and set a proxy.</p>
+/// <p>Mutation: skip <method>OcuPilot.Area.Security.SslRules.Gate</method> in
+/// <method>OcuPilot.Api.Switches.HandleEgressUpdate</method> -- the naming answers 422 <code>EGRESS.SSLABSENT</code> and
+/// this goes red; delete its <code>IsAdministrator()</code> arm -- the first leg goes red; stop storing OcuPilot's own name as
+/// <code>""</code> in <method>OcuPilot.Api.Switches.EgressMerge</method> -- the last leg goes red.</p>
+Method TestTheEgressRoutesAreRefusedToANonAdministratorAndANamingNeedsTheSslPairs()
+{
+    Do $$$AssertTrue(..PreparedSetupOk && ..PreparedAdminSetupOk, "setup confirmed both principals' pairs")
+    Set tRoute = ..#APIBASE _ "/agent/switches/egress"
+    Set tAdminPair = ##class(OcuPilot.Kernel.State.Base).#ADMINRESOURCE _ ":USE"
+    ; SetGuarded merges, so the row starts from none and holds only what this method writes.
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Egress).DeleteGuarded(), "the method starts from no egress row")
+    Set tSeed("sslConfiguration") = ..#NAMEDPROBE
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Egress).SetGuarded(.tSeed), "the egress row names a configuration")
+    For tMethod = "GET", "PUT" {
+        Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest(tMethod, tRoute, ..#OPERATEUSER, ..PreparedPassword, .tStatus, .tBody, .tHeaders, $Select(tMethod = "PUT": "{""proxyServer"":""192.0.2.10"",""proxyPort"":3128,""sslConfiguration"":""""}", 1: ""), "application/json")
+        Do $$$AssertEquals(tStatus, 403, tMethod _ " by a non-administrator is refused (" _ tBody _ ")")
+        If tStatus '= 403 Continue
+        Set tRefusal = ##class(%DynamicObject).%FromJSON(tBody)
+        Do $$$AssertEquals(tRefusal.code _ " " _ $Select($IsObject(tRefusal.detail): tRefusal.detail.failedPair, 1: ""), "AUTH.NOPRIVILEGE " _ tAdminPair, tMethod _ ": on the screen-privilege code, naming " _ tAdminPair)
+    }
+    Do ##class(OcuPilot.Kernel.State.Egress).Resolve(.tNow)
+    Do $$$AssertEquals(tNow("sslConfiguration") _ "|" _ tNow("proxyServer"), ..#NAMEDPROBE _ "|", "and the row is as it was")
+
+    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("PUT", tRoute, ..#ADMINUSER, ..PreparedAdminPassword, .tStatus, .tBody, .tHeaders, "{""sslConfiguration"":""" _ ..#NAMEDPROBE _ "x""}", "application/json")
+    Do $$$AssertEquals(tStatus, 403, "an administrator without %Admin_Secure:USE naming a configuration is refused (" _ tBody _ ")")
+    If tStatus = 403 {
+        Set tRefusal = ##class(%DynamicObject).%FromJSON(tBody)
+        Do $$$AssertEquals(tRefusal.code _ " " _ $Select($IsObject(tRefusal.detail): tRefusal.detail.failedPair, 1: ""), "AUTH.NOPRIVILEGE %Admin_Secure:USE", "naming the first of the SSL/TLS form's pairs, before any read")
+    }
+    Do ##class(OcuPilot.Kernel.State.Egress).Resolve(.tNow)
+    Do $$$AssertEquals(tNow("sslConfiguration"), ..#NAMEDPROBE, "and nothing was stored")
+
+    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("PUT", tRoute, ..#ADMINUSER, ..PreparedAdminPassword, .tStatus, .tBody, .tHeaders, "{""proxyServer"":""192.0.2.10"",""proxyPort"":3128,""sslConfiguration"":""""}", "application/json")
+    Do $$$AssertEquals(tStatus, 200, "the same administrator may clear the name and set a proxy (" _ tBody _ ")")
+    Do ##class(OcuPilot.Kernel.State.Egress).Resolve(.tNow)
+    Do $$$AssertEquals(tNow("sslConfiguration") _ "|" _ tNow("proxyServer") _ "|" _ tNow("proxyPort"), ##class(OcuPilot.Kernel.State.Base).#SSLCONFIG _ "|192.0.2.10|3128", "which are stored")
+    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("PUT", tRoute, ..#ADMINUSER, ..PreparedAdminPassword, .tStatus, .tBody, .tHeaders, "{""sslConfiguration"":""" _ ##class(OcuPilot.Kernel.State.Base).#SSLCONFIG _ """}", "application/json")
+    Do $$$AssertEquals(tStatus, 200, "and may name OcuPilot's own provider configuration, which asks for no pair (" _ tBody _ ")")
 }
 
 /// <p>Whether a definition named <var>pName</var> exists, read by SQL as the suite's own account

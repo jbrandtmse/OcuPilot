@@ -10,6 +10,10 @@
 //   grouped, above it" goes red.
 // - `reset()` bumps neither `generation` nor `request` -> "a read in flight across reset() never
 //   lands" goes red.
+// - The `retryWhenReachable` park dropped from `load()` -> "a banner fault is parked and read again once
+//   the instance answers" goes red.
+// - An ok answer the client cannot read recorded as `server-fault` in place of `rejected` -> "a failed read
+//   is classified" goes red.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -22,6 +26,7 @@ const core = (name) => join(uiRoot, 'src', 'app', 'core', name);
 const { Guardrails, GUARDRAILS_PATH, narrowGuardrails, confirmGroups, killSwitchLine, readOnlyLine, limitsLine, turnsLine } =
   await import(core('guardrails.ts'));
 const { STRINGS } = await import(core('strings.ts'));
+const { ConnectivityService } = await import(core('connectivity.ts'));
 
 function body(overrides = {}) {
   return {
@@ -37,7 +42,10 @@ function body(overrides = {}) {
   };
 }
 
-/** A transport answering `answers` in order, each `{body}` or `{error: true}`, or a pending promise. */
+/**
+ * A transport answering `answers` in order, each `{body}`, `{error: true}` (a 500), `{status}` (that failing
+ * status, 0 for a transport fault), or a pending promise.
+ */
 function stubApi(answers) {
   const calls = [];
   return {
@@ -47,6 +55,7 @@ function stubApi(answers) {
       const next = answers.shift();
       if (next instanceof Promise) return next;
       if (next === undefined || next.error) return Promise.resolve({ kind: 'error', status: 500, code: null, reason: null, detail: null });
+      if (next.status !== undefined) return Promise.resolve({ kind: 'error', status: next.status, code: null, reason: null, detail: null });
       return Promise.resolve({ kind: 'ok', status: 200, body: next.body });
     },
   };
@@ -77,8 +86,55 @@ test('a failed read is cleared by the next read that answers', async () => {
   await store.load();
   assert.equal(store.failed(), true);
   await store.load();
-  assert.equal(store.failed(), false, 'the page shows its sections again, not the fault line');
+  assert.equal(store.failed(), false, 'the page shows its sections again, not a fault');
+  assert.equal(store.fault(), null, 'and no fault');
   assert.ok(store.data(), 'and holds the new answer');
+});
+
+test('a failed read is classified: a transport fault and a 5xx are banner faults, a 403 and a 404 are not, and an unreadable answer is a rejected read', async () => {
+  // Mutation (Rule 19): record an ok answer the client cannot read as `server-fault` in `load()` -> the
+  // unreadable row reads a banner fault, which the page would leave to the shell's banner and say nothing.
+  const cases = [
+    [{ status: 0 }, 'unreachable', 0],
+    [{ status: 503 }, 'server-fault', 503],
+    [{ status: 403 }, 'refused', 403],
+    [{ status: 404 }, 'absent', 404],
+    [{ body: { prohibited: 'not a list' } }, 'rejected', 200],
+  ];
+  for (const [answer, kind, status] of cases) {
+    const store = new Guardrails({ api: stubApi([{ body: body() }, answer]) });
+    await store.load();
+    assert.equal(store.fault(), null, 'an answer holds no fault');
+    await store.load();
+    assert.equal(store.fault()?.kind, kind, `status ${status} is ${kind}`);
+    assert.equal(store.fault()?.status, status);
+    assert.equal(store.fault()?.path, GUARDRAILS_PATH);
+    assert.equal(store.failed(), true);
+    assert.equal(store.data(), null, 'and fails closed');
+  }
+});
+
+test('a banner fault is parked and read again once the instance answers; a 404 is not parked', async () => {
+  // Mutation (Rule 19): drop the `retryWhenReachable` park from `Guardrails.load` -> this goes red, the page
+  // left empty once the shell's banner clears.
+  const connectivity = new ConnectivityService({ api: () => null, schedule: () => {} });
+  const api = stubApi([{ status: 0 }, { body: body() }]);
+  const store = new Guardrails({ api, connectivity });
+  await store.load();
+  assert.equal(store.fault()?.kind, 'unreachable');
+
+  connectivity.note(null); // an unrelated call answered, which clears the shell's banner
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.equal(api.calls.length, 2, 'the parked read ran when the instance answered');
+  assert.equal(store.failed(), false);
+  assert.ok(store.data(), 'and the answer landed');
+
+  const absent = stubApi([{ status: 404 }, { body: body() }]);
+  const held = new Guardrails({ api: absent, connectivity });
+  await held.load();
+  connectivity.note(null);
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.equal(absent.calls.length, 1, "a 404 is the page's own alert, whose Retry reads again");
 });
 
 test('a malformed answer counts as a failed read', async () => {
@@ -175,12 +231,16 @@ test('the limits line groups each number en-US', () => {
     STRINGS.agentGuardrailsContextLimits.replace('<rows>', '150').replace('<total>', '65,536').replace('<field>', '1,000')
   );
   assert.ok(!line.includes('<'), 'no placeholder survives');
+  const one = limitsLine({ contextRowCap: 1, totalMaxLength: 65536, fieldMaxLength: 1000, turnsPerHour: 0 });
+  assert.equal(one, STRINGS.agentGuardrailsContextLimitsOne.replace('<total>', '65,536').replace('<field>', '1,000'));
+  assert.ok(one.includes('at most 1 row of the screen'), 'a cap of one reads the singular');
 });
 
 test('the turns line reads no limit at 0 and the limit, grouped, above it', () => {
   const limits = { contextRowCap: 200, totalMaxLength: 65536, fieldMaxLength: 1000 };
   assert.equal(turnsLine({ ...limits, turnsPerHour: 0 }), STRINGS.agentGuardrailsTurnsNone);
-  assert.equal(turnsLine({ ...limits, turnsPerHour: 1 }), STRINGS.agentGuardrailsTurnsLimit.replace('<n>', '1'));
+  assert.equal(turnsLine({ ...limits, turnsPerHour: 1 }), STRINGS.agentGuardrailsTurnsLimitOne);
+  assert.equal(turnsLine({ ...limits, turnsPerHour: 2 }), STRINGS.agentGuardrailsTurnsLimit.replace('<n>', '2'));
   const grouped = turnsLine({ ...limits, turnsPerHour: 1200 });
   assert.equal(grouped, STRINGS.agentGuardrailsTurnsLimit.replace('<n>', '1,200'));
   assert.ok(!grouped.includes('<'), 'no placeholder survives');

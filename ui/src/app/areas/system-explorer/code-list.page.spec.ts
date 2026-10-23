@@ -537,7 +537,7 @@ describe('System Explorer export and import (Story 19.13)', () => {
       await settle(fixture);
       expect(saved.map((file) => [file.name, file.type])).toEqual([['HSCUSTOM-export.xml', 'application/xml']]);
       expect(await saved[0].text).toBe('<?xml version="1.0"?>\n<Export>\n</Export>');
-      expect(status(host)).toBe('Saved 1 documents as HSCUSTOM-export.xml.');
+      expect(status(host)).toBe('Saved 1 document as HSCUSTOM-export.xml.');
     } finally {
       URL.createObjectURL = realCreate;
       URL.revokeObjectURL = realRevoke;
@@ -611,7 +611,7 @@ describe('System Explorer export and import (Story 19.13)', () => {
     expect(calls[0].body).toEqual({ action: 'import-local', id: 'import', values: { fileName: 'B.cls', content: 'Class A.B\n{\n}\n', Compile: 'true' } });
     calls[0].answer({ kind: 'ok', status: 200, body: { action: 'created', target: { type: 'class', scope: 'HSCUSTOM', id: 'import' }, output: { imported: ['A.B.cls'], lines: ['ERROR: probe compile error'], errors: true } } });
     await settle(fixture);
-    expect(status(host)).toBe('Imported 1 documents, with compile errors.');
+    expect(status(host)).toBe('Imported 1 document, with compile errors.');
   });
 
   it('a local file read before the source was switched away and back is not sent: Import waits for a file again', async () => {
@@ -695,5 +695,74 @@ describe('System Explorer export and import (Story 19.13)', () => {
     expect(host.querySelector('app-explorer-export-dialog')).toBeNull();
     expect(host.querySelector('app-explorer-compile-dialog')).toBeNull();
     expect(calls).toHaveLength(0);
+  });
+});
+
+describe('System Explorer counted documents (Story 23.5)', () => {
+  it('one compiled document reads the singular in its summary', async () => {
+    // Mutation (Rule 19): choose the compile summary on the plural alone in `CodeListWrite.runCompile` -> red.
+    const { fixture, host, calls, store, actions } = await mount(CLASSES, [row('A.cls')]);
+    store.setChecked(['A.cls']);
+    actions.run(CLASSES.descriptor, COMPILE_ACTION);
+    await settle(fixture);
+    expect(host.querySelector('.ocu-dialog-title')?.textContent?.trim()).toBe('Compile 1 document');
+    (host.querySelector('[data-explorer-compile-confirm]') as HTMLButtonElement).click();
+    await settle(fixture);
+    calls[0].answer(compiled('A.cls', ['Compiling class A']));
+    await settle(fixture);
+    expect(status(host)).toBe('Compiled 1 of 1 document, 0 with errors.');
+  });
+
+  it('one deleted document reads the singular while it runs and in its summary', async () => {
+    // Mutation (Rule 19): choose the delete lines on the plural alone in `CodeListWrite` -> red.
+    const { fixture, host, calls, store, actions } = await mount(CLASSES, [row('A.cls')]);
+    store.setChecked(['A.cls']);
+    actions.run(CLASSES.descriptor, DELETE_ACTION);
+    await settle(fixture);
+    const field = host.querySelector('.ocu-typed-name-field') as HTMLInputElement;
+    field.value = 'A.cls';
+    field.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    (host.querySelector('.ocu-button-destructive') as HTMLButtonElement).click();
+    await settle(fixture);
+    expect(status(host)).toBe('Deleting 1 document');
+    calls[0].answer({
+      kind: 'ok',
+      status: 200,
+      body: {
+        action: 'deleted',
+        target: { type: 'class', scope: 'HSCUSTOM', id: 'A.cls' },
+        output: { documents: [{ name: 'A.cls', deleted: true, reason: '' }] },
+      },
+    });
+    await settle(fixture);
+    expect(status(host)).toBe('Deleted 1 of 1 document.');
+  });
+
+  it('one exported document reads the singular in its server-file summary', async () => {
+    // Mutation (Rule 19): choose the export summary on the plural alone in `onExport` -> red.
+    const { fixture, host, calls, store, actions } = await mount(CLASSES, [row('A.cls')]);
+    store.setChecked(['A.cls']);
+    actions.run(CLASSES.descriptor, EXPORT_ACTION);
+    await settle(fixture);
+    await typePath(fixture, host, 'out/one.xml');
+    (host.querySelector('[data-explorer-export-confirm]') as HTMLButtonElement).click();
+    await settle(fixture);
+    calls[0].answer({ kind: 'ok', status: 200, body: { action: 'updated', target: { type: 'class', scope: 'HSCUSTOM', id: 'A.cls' }, output: { root: ROOT, path: 'out/one.xml' } } });
+    await settle(fixture);
+    expect(status(host)).toBe(`Exported 1 document to ${ROOT}out/one.xml.`);
+  });
+
+  it('one imported document reads the singular', async () => {
+    // Mutation (Rule 19): choose the import summary on the plural alone in `CodeListWrite.runImport` -> red.
+    const { fixture, host, calls, actions } = await mount(ROUTINES, [row('A.mac')]);
+    actions.run(ROUTINES.descriptor, TASK_IMPORT_ACTION_ID);
+    await settle(fixture);
+    await typePath(fixture, host, 'in/one.xml');
+    (host.querySelector('[data-explorer-import-confirm]') as HTMLButtonElement).click();
+    await settle(fixture);
+    calls[0].answer({ kind: 'ok', status: 200, body: { action: 'created', target: { type: 'routine', scope: 'HSCUSTOM', id: 'import' }, output: { imported: ['A.MAC'], lines: ['Load finished successfully.'], errors: false } } });
+    await settle(fixture);
+    expect(status(host)).toBe('Imported 1 document.');
   });
 });

@@ -180,6 +180,71 @@ Method TestEachDirectoryRefusalLandsOnItsField()
     Do $$$AssertTrue('##class(%File).DirectoryExists(tAbsent), "and the absent directory was not created")
 }
 
+/// <p>DW-1966, AD-21: a directory that is a database's own -- the USER database's and OcuPilot's, each sent as
+/// the primary and as the alternate -- is refused <code>JOURNAL.DIRECTORY.DATABASE</code> on its path field with its
+/// sentence, on the Save before the settings are read and at the agent's mint, whatever the case it is sent in,
+/// and no write is sent; a list of the databases' directories that cannot be read is 500 <code>INTERNAL</code> with
+/// no write; a directory no database holds is not refused.</p>
+/// <p>Mutation (Rule 19): drop the database check from <method>OcuPilot.Port.JournalPort.ResolveDirectory</method>
+/// -- every refused leg writes and goes red; compare the directories without lower-casing them -- the case leg
+/// alone; answer a failed read as an empty list -- the 500 leg alone.</p>
+Method TestADatabasesDirectoryIsRefusedOnEachPathField()
+{
+    Set tRoot = $ClassMethod(..#PROBE, "Manager")
+    Set tCode = "JOURNAL.DIRECTORY.DATABASE"
+    For tName = "USER", ##class(OcuPilot.Kernel.State.Base).#DATABASENAME {
+        Set tDirectory = ..DatabaseDirectory(tName)
+        Do $$$AssertTrue((tDirectory '= "") && ($Extract(tDirectory, 1, $Length(tRoot)) = tRoot), tName _ "'s directory is under the manager directory: " _ tDirectory)
+        Set tPath = $Extract(tDirectory, $Length(tRoot) + 1, *-1)
+        For tWhich = "primary", "alternate" {
+            Set tArgs = {}
+            Do tArgs.%Set(tWhich _ "Root", tRoot, "string")
+            Do tArgs.%Set(tWhich _ "Path", tPath, "string")
+            Do $ClassMethod(..#SEAM, "Clear")
+            Do $ClassMethod(..#SEAM, "Hold")
+            Set tSC = $ClassMethod(..#WRITE, "Save", tArgs, .tHttp, .tRefusal, .tFields, .tReadBack)
+            Do $$$AssertEquals(tHttp _ " " _ tFields, "422 " _ tWhich _ "Path:" _ tCode, tName _ " as the " _ tWhich _ " directory is refused on its path field by the Save")
+            Do $$$AssertEquals($ClassMethod(..#SEAM, "Calls") _ " " _ $ClassMethod(..#SEAM, "Puts"), "0 0", "before the settings are read, and nothing is sent")
+            Do tArgs.%Set("Name", "SYSTEM", "string")
+            Set tSC = $ClassMethod(..#WRITE, "Mint", tArgs, .tProposal, .tHttp, .tProblem)
+            Do $$$AssertEquals(tHttp, 400, tName _ " as the " _ tWhich _ " directory is refused at the agent's mint")
+            Do $$$AssertTrue(tProblem [ ("'" _ tWhich _ "Path': " _ ##class(OcuPilot.Api.Error).ReasonForViolation(tCode)), "naming its path field and the published sentence: " _ tProblem)
+        }
+    }
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "SeedDirectory", ..#GONESUFFIX, .tProbe), "a probe directory no database holds")
+    Set tName = $Piece(tProbe, "/", *-1)
+    Set tArgs = {"primaryRoot": (tRoot), "primaryPath": (tName)}
+    Do $ClassMethod(..#SEAM, "Clear")
+    Do $ClassMethod(..#SEAM, "Hold")
+    Set tSC = $ClassMethod(..#WRITE, "Save", tArgs, .tHttp, .tRefusal, .tFields, .tReadBack)
+    Do $$$AssertEquals(tHttp _ " " _ tFields, "200 ", "is not refused")
+    Do $ClassMethod(..#SEAM, "ArmDatabases", $ListBuild($ZConvert(tProbe, "U")))
+    Set tSC = $ClassMethod(..#WRITE, "Save", tArgs, .tHttp, .tRefusal, .tFields, .tReadBack)
+    Do $$$AssertEquals(tHttp _ " " _ tFields, "422 primaryPath:" _ tCode, "but is, once a database holds it, whatever the case the instance names it in")
+    Do $ClassMethod(..#SEAM, "Clear")
+    Do $ClassMethod(..#SEAM, "Hold")
+    Do $ClassMethod(..#SEAM, "FailDatabases")
+    Set tSC = $ClassMethod(..#WRITE, "Save", tArgs, .tHttp, .tRefusal, .tFields, .tReadBack)
+    Do $$$AssertEquals(tHttp _ " " _ tRefusal, "500 INTERNAL", "a list of the databases' directories that cannot be read is a 500")
+    Do $$$AssertEquals($ClassMethod(..#SEAM, "Puts"), 0, "with nothing sent")
+}
+
+/// <p>The configured directory of database <var>pName</var>, normalized, read in <code>%SYS</code>; <code>""</code>
+/// when none is configured.</p>
+ClassMethod DatabaseDirectory(pName As %String) As %String
+{
+    Set tDirectory = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        If $$$ISOK(##class(Config.Databases).Get(pName, .tProps)) Set tDirectory = ##class(%File).NormalizeDirectory($Get(tProps("Directory")))
+        Set $NAMESPACE = tOrigNS
+    } Catch {
+        Set $NAMESPACE = tOrigNS
+    }
+    Quit tDirectory
+}
+
 /// <p>AC4: a key outside the tool's settable fields -- the three shown-only keys, a directory named
 /// as a path, an unknown key -- is refused 400 <code>PORT.FIELD.UNEXPECTED</code> on that key by the
 /// Save with nothing read, and the agent's closed schema refuses the shown-only keys 400

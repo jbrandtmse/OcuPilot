@@ -62,8 +62,8 @@ export const SYSTEM_RESOURCE_RULE = 'system-resource';
 
 /**
  * The rule that protects OcuPilot's own provider SSL/TLS configuration (Story 9.5, AD-10): the
- * instance refuses its delete, and a change to its type, peer verification, trusted certificates
- * or enablement, whoever asks.
+ * instance refuses its delete, and a change to its type, peer verification, trusted certificates,
+ * minimum TLS version, cipher list or enablement, whoever asks.
  */
 export const OCUPILOT_SSL_RULE = 'ocupilot-ssl';
 
@@ -90,7 +90,7 @@ export const OCUPILOT_SESSION_RULE = 'ocupilot-session';
 export const SYSTEM_PCT_ACCESS_RULE = 'system-pct-access';
 
 /**
- * The rule that explains OcuPilot's own two privileged routine applications (Story 18.31, AD-10): the instance refuses
+ * The rule that explains OcuPilot's own three privileged routine applications (Story 18.31, AD-10): the instance refuses
  * every write to either whoever asks, so a surface draws Delete and Save disabled with this rule's sentence.
  */
 export const OCUPILOT_ROUTINE_APPLICATION_RULE = 'ocupilot-routine-application';
@@ -102,7 +102,14 @@ const ROUTINE_APPLICATION = 'routine-application';
  * OcuPilot's own privileged routine applications, as `OcuPilot.Kernel.State.Base` names them -- mirrored, and pinned
  * equal to it by `ui/tools/self-protection.test.mjs`.
  */
-export const OCUPILOT_ROUTINE_APPLICATIONS: readonly string[] = ['OcuPilotState', 'OcuPilotIdentity'];
+export const OCUPILOT_ROUTINE_APPLICATIONS: readonly string[] = ['OcuPilotState', 'OcuPilotIdentity', 'OcuPilotSslRead'];
+
+/**
+ * The rule that explains the allow-list's unrestricted fallback row (Story 18.46): while the list is unrestricted its one
+ * entry is the manager directory, which the allow-list port refuses to change or remove (`ALLOWLIST.FALLBACK`). The row
+ * reads `Restricted` false; with no row the instance alone refuses.
+ */
+export const ALLOWED_DIRECTORY_FALLBACK_RULE = 'allowed-directory-fallback';
 
 /**
  * The ECP SSL/TLS authorization rules (Story 18.21): Authorize and Reject need a row whose `Status`
@@ -155,8 +162,10 @@ export const SERVICE_ACCOUNTS: readonly string[] = ['CSPSystem', '_Ensemble', 'i
  * than the signed-in one. `ocupilot-application-roles` answers for the applications
  * `serves-ocupilot` does, with the privilege-grant sentence.
  *
+ * `allowed-directory-fallback` reads the row's `Restricted` and answers the fallback sentence for a row reading false, `''` otherwise
+ * and with no row.
  * `ocupilot-ssl` answers for OcuPilot's own provider SSL/TLS configuration, compared exactly.
- * `ocupilot-routine-application` answers for OcuPilot's own two privileged routine applications, compared as the
+ * `ocupilot-routine-application` answers for OcuPilot's own three privileged routine applications, compared as the
  * instance resolves a routine application's name, in any case.
  *
  * `row` is the row's own fields where the caller holds them. `system-role` reads the key alone;
@@ -189,6 +198,11 @@ export function selfProtectionReason(
     if (row === null) return '';
     const system = row['System'];
     return system === true || system === 'true' || system === 1 || system === '1' ? STRINGS.pctAccessRefusalSystem : '';
+  }
+  if (rule === ALLOWED_DIRECTORY_FALLBACK_RULE) {
+    if (row === null) return '';
+    const restricted = row['Restricted'];
+    return restricted === false || restricted === 'false' || restricted === 0 || restricted === '0' ? STRINGS.allowListRefusalFallback : '';
   }
   if (rule === OCUPILOT_ROUTINE_APPLICATION_RULE) {
     const canonical = normalizeEntityId(ROUTINE_APPLICATION, rowKey);

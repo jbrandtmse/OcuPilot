@@ -13,9 +13,10 @@ import { SCREENS } from '../../core/screens.generated';
 import { STRINGS } from '../../core/strings';
 import { stubAccountPreferences } from '../../testing/account-preferences';
 import { explainContext, narrowedEntry, stubExplainEntry, type ExplainEntryState } from '../../testing/explain-entry';
+import { activeRealTimers, awaitRealTimersIdle } from '../../testing/real-timers';
 import { fileOptionText } from './log-line';
 import { LogViewerPage } from './log-viewer.page';
-import { LogViewerStore } from './log-viewer.store';
+import { LogViewerStore, MESSAGES_SOURCE } from './log-viewer.store';
 
 /** The screens this page renders, resolved from the mirror as the shell's outlet resolves it. */
 const ALERTS_SCREEN = SCREENS.find((screen) => screen.route === 'logs/alerts')!;
@@ -34,6 +35,9 @@ function entriesPage(texts: readonly string[], truncated = false) {
 
 const TAIL_PATH = '/api/ocupilot/logs/alerts';
 const MESSAGES_TAIL_PATH = '/api/ocupilot/logs/messages';
+/** The live tail routes (Story 18.38), which hold a request until the file moves. */
+const LIVE_PATH = '/api/ocupilot/logs/alerts/tail';
+const MESSAGES_LIVE_PATH = '/api/ocupilot/logs/messages/tail';
 const FILES_PATH = '/api/ocupilot/logs/messages/files';
 
 /** `GET /logs/messages/files`' answer: messages.log first, then the rotated files newest first. */
@@ -72,6 +76,46 @@ class StubApi {
 
   private filesRefused = false;
 
+  /** The live tail's requests, in order (Story 18.38). */
+  readonly liveAsked: string[] = [];
+
+  /** The abort signal each live tail request carried, in order. */
+  readonly liveSignals: Array<AbortSignal | undefined> = [];
+
+  private liveScript: unknown[] = [];
+
+  private liveHeld: Array<(body: unknown) => void> = [];
+
+  private liveRefusal: { status: number; code: string | null; detail: Record<string, unknown> | null } | null = null;
+
+  private pageHold = false;
+
+  private pageHeld: Array<(body: unknown) => void> = [];
+
+  /** Script the live tail's answers in order; every tail after the script is held until `releaseLive`. */
+  live(...answers: unknown[]): void {
+    this.liveScript = answers;
+  }
+
+  /** Answer the oldest held tail with `body`. */
+  releaseLive(body: unknown): void {
+    this.liveHeld.shift()?.(body);
+  }
+
+  refuseLive(status: number, code: string | null, detail: Record<string, unknown> | null = null): void {
+    this.liveRefusal = { status, code, detail };
+  }
+
+  /** Hold the next page read until `releasePage`. */
+  holdPage(): void {
+    this.pageHold = true;
+  }
+
+  /** Answer the oldest held page read with `body`. */
+  releasePage(body: unknown): void {
+    this.pageHeld.shift()?.(body);
+  }
+
   /** Answer the file list with `files`. */
   listFiles(files: unknown[]): void {
     this.filesBody = { source: 'messages', files, truncated: false };
@@ -90,11 +134,33 @@ class StubApi {
     this.tailRefusal = { status, code, detail };
   }
 
-  async requestJson<T>(path: string): Promise<JsonResult<T>> {
+  async requestJson<T>(path: string, init: { signal?: AbortSignal } = {}): Promise<JsonResult<T>> {
     this.paths.push(path);
     if (path === FILES_PATH) {
       if (this.filesRefused) return { kind: 'error', status: 403, code: 'AUTH.NOPRIVILEGE', reason: null, detail: null };
       return { kind: 'ok', status: 200, body: this.filesBody as T };
+    }
+    if (path.includes('/tail?')) {
+      this.liveAsked.push(path);
+      this.liveSignals.push(init.signal);
+      if (this.liveRefusal !== null) {
+        return { kind: 'error', status: this.liveRefusal.status, code: this.liveRefusal.code, reason: null, detail: this.liveRefusal.detail };
+      }
+      const scripted = this.liveScript.shift();
+      if (scripted !== undefined) return { kind: 'ok', status: 200, body: scripted as T };
+      return new Promise<JsonResult<T>>((resolve, reject) => {
+        this.liveHeld.push((body) => resolve({ kind: 'ok', status: 200, body: body as T }));
+        // As the API service answers a held call whose caller aborts it: a rejection, never a result.
+        init.signal?.addEventListener('abort', () => {
+          reject(new DOMException('The request was aborted.', 'AbortError'));
+        });
+      });
+    }
+    if (this.pageHold) {
+      this.pageHold = false;
+      return new Promise<JsonResult<T>>((resolve) => {
+        this.pageHeld.push((body) => resolve({ kind: 'ok', status: 200, body: body as T }));
+      });
     }
     if (this.tailRefusal !== null) {
       return {
@@ -276,12 +342,17 @@ describe('LogViewerPage', () => {
     expect(asked).toHaveLength(1);
   });
 
-  it('AC6: nothing streams -- ten minutes of fake time issues no request and registers no timer', async () => {
-    // The clock is faked and restored here and nowhere else in this file; `vi.getTimerCount()` is
-    // what makes "registers no interval" an observation rather than an absence of evidence, and it
-    // needs no spy on a global the fake clock has already replaced.
+  it('AC6: with Live tail off, nothing streams -- ten minutes of fake time issues no request, draws a toggle only where a source opts in, and no timer outlives a bounded drain', async () => {
+    // `vi.getTimerCount()` makes "registers no interval" an observation. Neither the advance nor a
+    // drain pass yields to the real event loop -- `advanceTimersByTime` and `runOnlyPendingTimers` are
+    // synchronous and `settle()` turns microtasks only -- so a real timer another test left pending
+    // cannot fire and arm the fake clock while this test counts. `awaitRealTimersIdle()` runs before
+    // the clock is faked. An interval, or a poll that re-arms itself, survives every drain pass and
+    // fails the count; its message counts the fake timers pending and the real `Timeout`s active, at
+    // the count and when the clock was faked.
+    await awaitRealTimersIdle();
     // jsdom supplies both constructors, so "opens no EventSource and no WebSocket" is counted at
-    // construction rather than asserted as their absence -- which would pass on any page.
+    // construction rather than asserted as their absence, which would pass on any page.
     const globals = globalThis as { EventSource?: unknown; WebSocket?: unknown };
     const heldSource = globals.EventSource;
     const heldSocket = globals.WebSocket;
@@ -292,20 +363,59 @@ describe('LogViewerPage', () => {
     globals.WebSocket = function WebSocketProbe() {
       opened += 1;
     };
+    // Story 18.38: alerts.log and messages.log on their current files opt into the live tail and draw
+    // the toggle, off. Every other log -- a rotated messages.log file, the six secondary logs, the
+    // Integrity log and a language server's Activity log -- is derived from the mirror, draws no toggle
+    // and requests no tail.
+    const others = SCREENS.filter((screen) => screen.archetype === 'log-viewer' && screen.built && screen.route !== 'logs/alerts' && screen.route !== 'logs/messages');
+    expect(others.length).toBeGreaterThan(7);
+    const cases = [
+      { screen: ALERTS_SCREEN, address: '', offers: true },
+      { screen: MESSAGES_SCREEN, address: '/logs/messages?ns=HSCUSTOM', offers: true },
+      { screen: MESSAGES_SCREEN, address: '/logs/messages?ns=HSCUSTOM&file=messages.old_20260926_5', offers: false },
+      ...others.map((screen) => ({ screen, address: '', offers: false })),
+    ];
+    // A one-shot chain up to this many links deep drains; the request assertions repeat after it.
+    const DRAIN_PASSES = 5;
+    // A foreign real timer, forced: this interval is armed after the idle wait so nothing drains it, and
+    // each time it fires it arms a timer on whichever clock is global. Any yield to the real loop below
+    // lets it reach the fake clock and fails the count.
+    const foreignTimer = setInterval(() => setInterval(() => undefined, 1000), 5);
+    const realAtFake = activeRealTimers();
     vi.useFakeTimers();
     try {
-      const { fixture } = await mount();
-      const issued = api.paths.length;
-      expect(issued).toBeGreaterThan(0);
+      vi.clearAllTimers();
+      for (const { screen, address, offers } of cases) {
+        TestBed.inject(LogViewerStore).reset();
+        TestBed.resetTestingModule();
+        api = new StubApi();
+        api.tail(tailPage(FILE_LINES));
+        const { fixture } = await mount(screen, address);
+        const named = `${screen.route} ${address}`;
+        const issued = api.paths.length;
+        expect(issued, named).toBeGreaterThan(0);
 
-      await vi.advanceTimersByTimeAsync(10 * 60 * 1000);
-      fixture.detectChanges();
+        vi.advanceTimersByTime(10 * 60 * 1000);
+        await settle();
+        fixture.detectChanges();
 
-      expect(api.paths.length).toBe(issued);
-      expect(vi.getTimerCount()).toBe(0);
-      expect(opened).toBe(0);
+        expect(api.paths.length, named).toBe(issued);
+        expect(api.liveAsked, named).toEqual([]);
+        const toggle = fixture.nativeElement.querySelector('[data-ocu-log="live"]') as HTMLButtonElement | null;
+        expect(toggle !== null, `${named}: the toggle is drawn only where a source opts in`).toBe(offers);
+        if (toggle !== null) expect(toggle.getAttribute('aria-pressed'), named).toBe('false');
+        for (let pass = 0; pass < DRAIN_PASSES && vi.getTimerCount() > 0; pass += 1) {
+          vi.runOnlyPendingTimers();
+          await settle();
+        }
+        expect(api.paths.length, named).toBe(issued);
+        expect(api.liveAsked, named).toEqual([]);
+        expect(vi.getTimerCount(), `${named}: ${vi.getTimerCount()} fake timers pending, ${activeRealTimers()} real timers active, ${realAtFake} when the clock was faked`).toBe(0);
+        expect(opened, named).toBe(0);
+      }
     } finally {
       vi.useRealTimers();
+      clearInterval(foreignTimer);
       globals.EventSource = heldSource;
       globals.WebSocket = heldSocket;
     }
@@ -739,6 +849,354 @@ describe('LogViewerPage', () => {
     await settle();
     fixture.detectChanges();
     expect(api.paths.slice(before).sort()).toEqual([FILES_PATH, MESSAGES_TAIL_PATH].sort());
+  });
+
+  // --- Story 18.38: the live log tail ----------------------------------------------------------
+
+  /** The Live tail toggle, or `null` where none is drawn. */
+  function toggle(fixture: ComponentFixture<LogViewerPage>): HTMLButtonElement | null {
+    return fixture.nativeElement.querySelector('[data-ocu-log="live"]');
+  }
+
+  /** Let a chain of awaits -- a held tail, the page read it asks for, the next tail -- run to rest. */
+  async function settleChain(fixture: ComponentFixture<LogViewerPage>): Promise<void> {
+    for (let turn = 0; turn < 80; turn += 1) await Promise.resolve();
+    fixture.detectChanges();
+  }
+
+  /** The page reads the live loop issued: the alerts.log route with a cursor. */
+  const pageReads = (): string[] => api.paths.filter((path) => path.startsWith(`${TAIL_PATH}?offset=`));
+
+  it('Story 18.38 AC1: Live tail is drawn on alerts.log and messages.log current files, off, with the published word', async () => {
+    const alerts = await mount();
+    expect(toggle(alerts.fixture)?.textContent?.trim()).toBe(STRINGS.logViewerLiveTail);
+    expect(toggle(alerts.fixture)?.getAttribute('aria-pressed')).toBe('false');
+    expect(toggle(alerts.fixture)?.classList.contains('ocu-button-secondary')).toBe(true);
+
+    TestBed.resetTestingModule();
+    const messages = await mount(MESSAGES_SCREEN, ADDRESS);
+    expect(toggle(messages.fixture)?.textContent?.trim()).toBe(STRINGS.logViewerLiveTail);
+    expect(toggle(messages.fixture)?.getAttribute('aria-pressed')).toBe('false');
+    expect(api.liveAsked).toEqual([]);
+  });
+
+  // Mutation (Rule 19): drop the `fileValue === ''` test from `canLive` -> the rotated-file leg goes red.
+  it('Story 18.38 AC2: a rotated file, and a log with no file yet, draw no Live tail', async () => {
+    const rotated = await mount(MESSAGES_SCREEN, `${ADDRESS}&file=${OLDER}`);
+    expect(toggle(rotated.fixture)).toBeNull();
+    expect(rotated.store.canLive()).toBe(false);
+
+    TestBed.inject(LogViewerStore).reset();
+    TestBed.resetTestingModule();
+    api = new StubApi();
+    api.refuseTail(404, 'LOG.ABSENT');
+    const absent = await mount();
+    expect(toggle(absent.fixture)).toBeNull();
+    expect(absent.store.canLive()).toBe(false);
+  });
+
+  // Mutation (Rule 19): drop `loadNewer` from the live loop's `changed` branch -> the appended-row and
+  // page-read assertions go red; drop the `continue` for `changed: false` -> the unchanged answer reads a
+  // page and the page-read assertion goes red; tail at `offset - 1` instead of the page's `size` -> the
+  // second and third tails' size goes red, because the second page ends on a partial line.
+  it('Story 18.38 AC1: Live tail tails with the page cursor, appends the page when the file changed and tails again when it did not', async () => {
+    vi.useFakeTimers();
+    try {
+      const { fixture, store } = await mount();
+      api.live({ source: 'alerts', changed: true }, { source: 'alerts', changed: false });
+      api.tail(tailPage(['09/18/26-07:40:00:000 (1) 1 a line the instance wrote'], 500, 'first-line', { size: 512 }));
+
+      toggle(fixture)!.click();
+      await settleChain(fixture);
+
+      expect(api.liveAsked).toEqual([
+        `${LIVE_PATH}?identity=first-line&size=399`,
+        `${LIVE_PATH}?identity=first-line&size=512`,
+        `${LIVE_PATH}?identity=first-line&size=512`,
+      ]);
+      expect(pageReads()).toEqual([`${TAIL_PATH}?offset=400&identity=first-line`]);
+      expect(rows(fixture).some((cells) => cells[3].includes('a line the instance wrote'))).toBe(true);
+      expect(store.live()).toBe(true);
+      expect(toggle(fixture)?.getAttribute('aria-pressed')).toBe('true');
+      expect(vi.getTimerCount()).toBe(0);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('Story 18.38 AC1: a changed answer reads pages until one is not truncated, then tails at the new size', async () => {
+    const { fixture } = await mount(MESSAGES_SCREEN, ADDRESS);
+    api.live({ source: 'messages', changed: true });
+    api.tail(
+      tailPage(['09/18/26-07:40:00:000 (1) 1 first of two'], 500, 'first-line', { truncated: true }),
+      tailPage(['09/18/26-07:41:00:000 (1) 1 second of two'], 600, 'first-line')
+    );
+
+    toggle(fixture)!.click();
+    await settleChain(fixture);
+
+    expect(api.paths.filter((path) => path.startsWith(`${MESSAGES_TAIL_PATH}?offset=`))).toEqual([
+      `${MESSAGES_TAIL_PATH}?offset=400&identity=first-line`,
+      `${MESSAGES_TAIL_PATH}?offset=500&identity=first-line`,
+    ]);
+    expect(api.liveAsked).toEqual([
+      `${MESSAGES_LIVE_PATH}?identity=first-line&size=399`,
+      `${MESSAGES_LIVE_PATH}?identity=first-line&size=599`,
+    ]);
+    expect(rows(fixture).map((cells) => cells[3])).toEqual(expect.arrayContaining(['first of two', 'second of two']));
+  });
+
+  it('Story 18.38 AC4: turning Live tail off draws it off and requests nothing more', async () => {
+    const { fixture, store } = await mount();
+    toggle(fixture)!.click();
+    await settleChain(fixture);
+    expect(api.liveAsked).toHaveLength(1);
+    const before = api.paths.length;
+
+    toggle(fixture)!.click();
+    fixture.detectChanges();
+    expect(store.live()).toBe(false);
+    expect(toggle(fixture)?.getAttribute('aria-pressed')).toBe('false');
+
+    await settleChain(fixture);
+
+    expect(api.paths.length).toBe(before);
+    expect(rows(fixture)).toHaveLength(2);
+  });
+
+  // Mutation (Rule 19): the loop without its `generation !== this.liveGeneration` return after the tail await, or `stopLive` keeping the live generation -> this goes red at the page read.
+  it('Story 18.38 AC4: a tail answered before Live tail is turned off is dropped, and requests nothing more', async () => {
+    const { fixture, store } = await mount();
+    toggle(fixture)!.click();
+    await settleChain(fixture);
+    expect(api.liveAsked).toHaveLength(1);
+    const before = api.paths.length;
+
+    // The answer settles first and the abort lands after it, so only the loop's own generation check can drop it.
+    api.releaseLive({ source: 'alerts', changed: true });
+    toggle(fixture)!.click();
+    await settleChain(fixture);
+
+    expect(store.live()).toBe(false);
+    expect(api.paths.length).toBe(before);
+  });
+
+  it('Story 18.38 AC4: turning Live tail off drops a page read in flight, and the rows stay as they were', async () => {
+    const { fixture, store } = await mount();
+    api.live({ source: 'alerts', changed: true });
+    api.holdPage();
+    toggle(fixture)!.click();
+    await settleChain(fixture);
+    expect(pageReads()).toHaveLength(1);
+    expect(store.loading()).toBe(true);
+
+    toggle(fixture)!.click();
+    expect(store.live()).toBe(false);
+    expect(store.loading()).toBe(false);
+    api.releasePage(tailPage(['09/18/26-07:40:00:000 (1) 1 a late line'], 500, 'first-line'));
+    await settleChain(fixture);
+
+    expect(rows(fixture).some((cells) => cells[3].includes('a late line'))).toBe(false);
+    expect(api.liveAsked).toHaveLength(1);
+  });
+
+  it('Story 18.38 AC4: choosing another file turns Live tail off and asks for nothing more', async () => {
+    const { fixture, store } = await mount(MESSAGES_SCREEN, ADDRESS);
+    toggle(fixture)!.click();
+    await settleChain(fixture);
+    expect(store.live()).toBe(true);
+
+    choose(fixture, OLDER);
+    await settleNavigation(fixture);
+    expect(store.live()).toBe(false);
+    expect(toggle(fixture)).toBeNull();
+    const before = api.paths.length;
+
+    await settleChain(fixture);
+
+    expect(api.paths.length).toBe(before);
+    expect(api.liveAsked).toHaveLength(1);
+  });
+
+  it('Story 18.38 AC4: leaving the screen turns Live tail off and a tail answered just before asks for nothing', async () => {
+    const { fixture, store } = await mount();
+    toggle(fixture)!.click();
+    await settleChain(fixture);
+    expect(store.live()).toBe(true);
+    const before = api.paths.length;
+
+    // Answered first, so the abort that leaving sends lands too late and the loop's own check must drop it.
+    api.releaseLive({ source: 'alerts', changed: true });
+    fixture.destroy();
+    expect(store.live()).toBe(false);
+    await settle();
+
+    expect(api.paths.length).toBe(before);
+  });
+
+  it('Story 18.38 AC4: a sign-out reset turns Live tail off, and a tail answered just before asks for nothing', async () => {
+    const { fixture, store } = await mount();
+    toggle(fixture)!.click();
+    await settleChain(fixture);
+    const before = api.paths.length;
+
+    // Answered first, so the reset's abort lands too late; the loop must still ask for nothing.
+    api.releaseLive({ source: 'alerts', changed: true });
+    store.reset();
+    expect(store.live()).toBe(false);
+    await settleChain(fixture);
+
+    expect(api.paths.length).toBe(before);
+  });
+
+  it('Story 18.38: a refused tail stops Live tail and shows the fault as a refused read is shown', async () => {
+    const { fixture, store } = await mount();
+    api.refuseLive(403, 'AUTH.NOPRIVILEGE', { failedPair: '%Admin_Operate:USE' });
+
+    toggle(fixture)!.click();
+    await settleChain(fixture);
+
+    expect(store.live()).toBe(false);
+    expect(store.fault()?.kind).toBe('refused');
+    expect(store.failedPair()).toBe('%Admin_Operate:USE');
+    expect(textOf(fixture, '[data-ocu-log="refusal"]')).toContain('%Admin_Operate:USE');
+    expect(toggle(fixture)?.getAttribute('aria-pressed')).toBe('false');
+    expect(api.liveAsked).toHaveLength(1);
+  });
+
+  it('Story 18.38: a page read that is refused ends Live tail with that fault, and one that finds no file ends it quietly', async () => {
+    const { fixture, store } = await mount();
+    api.live({ source: 'alerts', changed: true });
+    api.refuseTail(403, 'AUTH.NOPRIVILEGE', { failedPair: '%Admin_Operate:USE' });
+
+    toggle(fixture)!.click();
+    await settleChain(fixture);
+    expect(store.live()).toBe(false);
+    expect(store.fault()?.kind).toBe('refused');
+    expect(api.liveAsked).toHaveLength(1);
+
+    TestBed.inject(LogViewerStore).reset();
+    TestBed.resetTestingModule();
+    api = new StubApi();
+    api.tail(tailPage(FILE_LINES));
+    const second = await mount();
+    api.live({ source: 'alerts', changed: true });
+    api.refuseTail(404, 'LOG.ABSENT');
+    toggle(second.fixture)!.click();
+    await settleChain(second.fixture);
+    expect(second.store.live()).toBe(false);
+    expect(second.store.fault()).toBeNull();
+    expect(toggle(second.fixture)).toBeNull();
+  });
+
+  it('Story 18.38: an answer that is not the {source, changed} envelope ends Live tail rather than repeating at once', async () => {
+    const { fixture, store } = await mount();
+    api.live({ source: 'alerts' });
+
+    toggle(fixture)!.click();
+    await settleChain(fixture);
+
+    expect(store.live()).toBe(false);
+    expect(store.fault()?.kind).toBe('server-fault');
+    expect(api.liveAsked).toHaveLength(1);
+  });
+
+  // --- DW-2392: an abandoned live tail is aborted, so its connection is released ---------------
+
+  /**
+   * Turn Live tail on and return the abort signal its held tail request carries, still unaborted.
+   * The held answer is dropped by generation as well, so each leg below also pins that an abort is
+   * not read as a fault and asks for nothing more.
+   */
+  async function holdTail(
+    screen = ALERTS_SCREEN,
+    address = ''
+  ): Promise<{ fixture: ComponentFixture<LogViewerPage>; store: LogViewerStore; signal: AbortSignal }> {
+    const mounted = await mount(screen, address);
+    toggle(mounted.fixture)!.click();
+    await settleChain(mounted.fixture);
+    expect(api.liveSignals).toHaveLength(1);
+    const signal = api.liveSignals[0];
+    expect(signal, 'the held tail carries an abort signal').toBeDefined();
+    expect(signal!.aborted, 'and it is not aborted while the tail is wanted').toBe(false);
+    return { ...mounted, signal: signal! };
+  }
+
+  // Mutation (Rule 19): `stopLive` without `this.liveAbort?.abort()` -> all four DW-2392 legs go red at the aborted signal (observed).
+  it('DW-2392: turning Live tail off aborts the held tail request, and nothing reads it as a fault', async () => {
+    const { fixture, store, signal } = await holdTail();
+    const before = api.paths.length;
+
+    toggle(fixture)!.click();
+    await settleChain(fixture);
+
+    expect(signal.aborted).toBe(true);
+    expect(store.live()).toBe(false);
+    expect(store.fault()).toBeNull();
+    expect(api.paths.length).toBe(before);
+  });
+
+  // Mutation (Rule 19): `clearWindow` without `stopLive` -> the file leg goes red at 'another file' (observed), with the two earlier AC4 legs.
+  it('DW-2392: choosing another file, another source and a sign-out reset each abort the held tail request', async () => {
+    const file = await holdTail(MESSAGES_SCREEN, ADDRESS);
+    choose(file.fixture, OLDER);
+    await settleNavigation(file.fixture);
+    expect(file.signal.aborted, 'another file').toBe(true);
+    expect(file.store.fault()).toBeNull();
+
+    TestBed.inject(LogViewerStore).reset();
+    TestBed.resetTestingModule();
+    api = new StubApi();
+    api.tail(tailPage(FILE_LINES));
+    const source = await holdTail();
+    source.store.setSource(MESSAGES_SOURCE);
+    await settleChain(source.fixture);
+    expect(source.signal.aborted, 'another source').toBe(true);
+    expect(source.store.fault()).toBeNull();
+
+    TestBed.inject(LogViewerStore).reset();
+    TestBed.resetTestingModule();
+    api = new StubApi();
+    api.tail(tailPage(FILE_LINES));
+    const reset = await holdTail();
+    reset.store.reset();
+    await settleChain(reset.fixture);
+    expect(reset.signal.aborted, 'a sign-out reset').toBe(true);
+    expect(reset.store.fault()).toBeNull();
+  });
+
+  // Mutation (Rule 19): the page's `onDestroy` without `setLive(false)` -> this leg goes red at the aborted signal (observed), with the AC4 leaving leg.
+  it('DW-2392: leaving the screen aborts the held tail request', async () => {
+    const { fixture, store, signal } = await holdTail();
+    const before = api.paths.length;
+
+    fixture.destroy();
+    await settle();
+
+    expect(signal.aborted).toBe(true);
+    expect(store.fault()).toBeNull();
+    expect(api.paths.length).toBe(before);
+  });
+
+  // Mutation (Rule 19): drop `{ signal: held.signal }` from the live loop's request -> the signal-defined assertion goes red in all four DW-2392 legs (observed).
+  it('DW-2392: a tail answered unchanged is left alone, and the next tail the loop holds has a signal of its own', async () => {
+    const { fixture, store } = await mount();
+    api.live({ source: 'alerts', changed: false });
+
+    toggle(fixture)!.click();
+    await settleChain(fixture);
+
+    expect(api.liveAsked).toHaveLength(2);
+    const [answered, held] = api.liveSignals;
+    expect(held, 'the tail the loop holds carries a signal').toBeDefined();
+    expect(held).not.toBe(answered);
+
+    toggle(fixture)!.click();
+    await settleChain(fixture);
+
+    expect(held!.aborted).toBe(true);
+    expect(answered!.aborted, 'the answered tail was already done with').toBe(false);
+    expect(store.live()).toBe(false);
   });
 });
 

@@ -54,6 +54,7 @@ export const NAMESPACE_FEATURES_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Ker
 export const MIRROR_PATH = join(REPO_ROOT, 'ui', 'src', 'app', 'core', 'screens.generated.ts');
 export const TOOL_FIELDS_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Tool', 'ToolFields.cls');
 export const SCREEN_REGISTRY_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Registry.cls');
+export const WORKFLOW_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Kernel', 'Agent', 'Workflow.cls');
 
 /** The abstract base lives in the descriptor package and declares no screen. */
 const BASE_FILE = 'Base.cls';
@@ -312,7 +313,7 @@ function oneActionProblem(action, where, rules) {
  * no explanation, which is the divergence `checkedDeclaredNameKinds` exists to prevent for its own
  * vocabulary (AD-5, AD-53).
  */
-export const IMPLEMENTED_SELF_PROTECTION_RULES = ['serves-ocupilot', 'protected-account', 'service-account-sign-in', 'ocupilot-application-roles', 'system-role', 'system-resource', 'ocupilot-ssl', 'ocupilot-session', 'ecp-ssl-pending', 'ecp-ssl-authorized', 'system-pct-access', 'ocupilot-routine-application'];
+export const IMPLEMENTED_SELF_PROTECTION_RULES = ['serves-ocupilot', 'protected-account', 'service-account-sign-in', 'ocupilot-application-roles', 'system-role', 'system-resource', 'ocupilot-ssl', 'ocupilot-session', 'ecp-ssl-pending', 'ecp-ssl-authorized', 'system-pct-access', 'ocupilot-routine-application', 'allowed-directory-fallback'];
 
 /**
  * The projection names this module's `declaredNames` fills, for the roster check against
@@ -408,6 +409,38 @@ export function parseArchetypes(text) {
   return archetypes.length === 0 ? null : archetypes;
 }
 
+/**
+ * The guided-workflow ids, from `OcuPilot.Kernel.Agent.Workflow`'s own `XData Catalog` block, in
+ * catalog order, or `null` when the block is missing, unparseable, or not the shape it declares
+ * (Story 20.12, AD-66). `null` rather than `[]`, for `parseArchetypes`' reason: an empty vocabulary
+ * would make every prompt's workflow unknown, and an absent check would make every one fine.
+ */
+export function parseWorkflowIds(text) {
+  const body = extractXData(text, 'Catalog');
+  if (body === null) return null;
+  let parsed;
+  try {
+    parsed = JSON.parse(body);
+  } catch {
+    return null;
+  }
+  if (parsed === null || typeof parsed !== 'object' || !Array.isArray(parsed.workflows)) return null;
+  const ids = [];
+  for (const entry of parsed.workflows) {
+    if (entry === null || typeof entry !== 'object') return null;
+    if (typeof entry.id !== 'string' || entry.id === '') return null;
+    ids.push(entry.id);
+  }
+  return ids.length === 0 ? null : ids;
+}
+
+/** The ids `WORKFLOW_SOURCE` declares; throws when its catalog cannot be read. */
+export function readWorkflowIds() {
+  const ids = parseWorkflowIds(readFileSync(WORKFLOW_SOURCE, 'utf8'));
+  if (ids === null) throw new Error(`${WORKFLOW_SOURCE} carries no readable 'XData Catalog' block`);
+  return ids;
+}
+
 /** Every entity type a declaration names: the primary first, then the secondaries. */
 export function entityTypesIn(declaration) {
   const named = [];
@@ -481,6 +514,8 @@ export function readSources({ descriptorDir = DESCRIPTOR_DIR, areaSource = AREA_
     throw new Error(`${ARCHETYPE_SOURCE} carries no readable 'XData Archetypes' block`);
   }
 
+  const workflowIds = readWorkflowIds();
+
   const areaText = readFileSync(areaSource, 'utf8');
   const areaBody = extractXData(areaText, 'Areas');
   if (areaBody === null) throw new Error(`${areaSource} carries no 'XData Areas' block`);
@@ -515,7 +550,7 @@ export function readSources({ descriptorDir = DESCRIPTOR_DIR, areaSource = AREA_
   if (toolFieldsBody === null) throw new Error(`${TOOL_FIELDS_SOURCE} carries no 'XData Tools' block`);
   const toolFields = parseXDataJson(toolFieldsBody, TOOL_FIELDS_SOURCE, 'Tools');
 
-  return { entityTypes, idRules, idRuleNames, refSeparator, singletonId, declaredNameKinds, selfProtectionRules, scopeWords, features, archetypes, areas, screens, toolFields };
+  return { entityTypes, idRules, idRuleNames, refSeparator, singletonId, declaredNameKinds, selfProtectionRules, scopeWords, features, archetypes, workflowIds, areas, screens, toolFields };
 }
 
 /**
@@ -980,7 +1015,9 @@ export const ACCESS_ENDPOINT = 'Screens';
 export const ACCESS_READ_TYPE = 'LIST';
 /** The instance's Prometheus metrics read through `OcuPilot.Port.MonitorPort` (AD-29, Story 18.11). */
 export const SOURCE_MONITOR = 'monitor';
-export const READ_SOURCE_PORTS = [SOURCE_ADMIN, SOURCE_STATE, SOURCE_MGMNT, SOURCE_LOGSOURCE, SOURCE_PATH, SOURCE_TIMELINE, SOURCE_BACKGROUND, SOURCE_ATELIER, SOURCE_ENCRYPTION, SOURCE_DOCDB, SOURCE_SQLACTIVITY, SOURCE_INTEROP, SOURCE_ACCESS, SOURCE_MONITOR];
+/** The namespace's cubes, term lists and folder items read through `OcuPilot.Port.AnalyticsPort` (AD-65, AD-36, Story 20.11). */
+export const SOURCE_ANALYTICS = 'analytics';
+export const READ_SOURCE_PORTS = [SOURCE_ADMIN, SOURCE_STATE, SOURCE_MGMNT, SOURCE_LOGSOURCE, SOURCE_PATH, SOURCE_TIMELINE, SOURCE_BACKGROUND, SOURCE_ATELIER, SOURCE_ENCRYPTION, SOURCE_DOCDB, SOURCE_SQLACTIVITY, SOURCE_INTEROP, SOURCE_ACCESS, SOURCE_MONITOR, SOURCE_ANALYTICS];
 
 /** Where `OcuPilot.Port.PathPort` declares the source keys a `path` read may name. */
 export const PATH_PORT_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Port', 'PathPort.cls');
@@ -1080,33 +1117,52 @@ export function sqlActivityEndpoint() {
 /** The one request type a `sqlactivity` source declares. */
 export const SQLACTIVITY_READ_TYPE = 'LIST';
 
-/** Where `OcuPilot.Port.MonitorPort` declares the one endpoint a `monitor` read names. */
+/** Where `OcuPilot.Port.MonitorPort` declares the endpoints a `monitor` read names. */
 export const MONITOR_PORT_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Port', 'MonitorPort.cls');
 
-let monitorEndpointCache;
+let monitorEndpointsCache;
 
 /**
- * The endpoint `OcuPilot.Port.MonitorPort`'s `ENDPOINT` parameter declares, read from its own class as
- * the background port's is, or `null` when the parameter is missing.
+ * The endpoints `OcuPilot.Port.MonitorPort`'s `ENDPOINTS` parameter declares, read from its own class as
+ * the interop port's are, or `null` when the parameter is missing.
  */
-export function monitorEndpoint() {
-  if (monitorEndpointCache === undefined) {
-    monitorEndpointCache = parseBackgroundEndpoint(readFileSync(MONITOR_PORT_SOURCE, 'utf8'));
+export function monitorEndpoints() {
+  if (monitorEndpointsCache === undefined) {
+    monitorEndpointsCache = parseInteropEndpoints(readFileSync(MONITOR_PORT_SOURCE, 'utf8'));
   }
-  return monitorEndpointCache;
+  return monitorEndpointsCache;
 }
 
 /** The one request type a `monitor` source declares. */
 export const MONITOR_READ_TYPE = 'LIST';
+
+/** Where `OcuPilot.Port.AnalyticsPort` declares the seven endpoints an `analytics` read names. */
+export const ANALYTICS_PORT_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Port', 'AnalyticsPort.cls');
+
+let analyticsEndpointsCache;
+
+/** The endpoints `OcuPilot.Port.AnalyticsPort`'s `ENDPOINTS` parameter declares, read from its own class, or `null` when it is missing. */
+export function analyticsEndpoints() {
+  if (analyticsEndpointsCache === undefined) {
+    analyticsEndpointsCache = parseInteropEndpoints(readFileSync(ANALYTICS_PORT_SOURCE, 'utf8'));
+  }
+  return analyticsEndpointsCache;
+}
+
+/** The one request type an `analytics` source declares. */
+export const ANALYTICS_READ_TYPE = 'LIST';
 
 /** Where `OcuPilot.Port.InteropPort` declares the four endpoints an `interop` read names. */
 export const INTEROP_PORT_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Port', 'InteropPort.cls');
 
 const INTEROP_ENDPOINTS_PARAM_RE = /^Parameter\s+ENDPOINTS\s*=\s*"([^"]*)"\s*;/m;
 
-/** The endpoints `InteropPort`'s `ENDPOINTS` parameter declares in `text`, or `null` when it is missing. */
-export function parseInteropEndpoints(text) {
-  const match = INTEROP_ENDPOINTS_PARAM_RE.exec(text);
+/**
+ * The endpoints `InteropPort`'s `ENDPOINTS` parameter declares in `text` -- or the list parameter `pattern` matches, such as
+ * `SEARCHENDPOINTS` -- or `null` when it is missing.
+ */
+export function parseInteropEndpoints(text, pattern = INTEROP_ENDPOINTS_PARAM_RE) {
+  const match = pattern.exec(text);
   return match === null ? null : match[1].split(',').filter((name) => name !== '');
 }
 
@@ -1118,6 +1174,18 @@ export function interopEndpoints() {
     interopEndpointsCache = parseInteropEndpoints(readFileSync(INTEROP_PORT_SOURCE, 'utf8'));
   }
   return interopEndpointsCache;
+}
+
+const INTEROP_SEARCH_PARAM_RE = /^Parameter\s+SEARCHENDPOINTS\s*=\s*"([^"]*)"\s*;/m;
+
+let interopSearchEndpointsCache;
+
+/** The endpoints `InteropPort`'s `SEARCHENDPOINTS` parameter declares: the ones whose list takes search criteria of its own (Story 20.9). */
+export function interopSearchEndpoints() {
+  if (interopSearchEndpointsCache === undefined) {
+    interopSearchEndpointsCache = parseInteropEndpoints(readFileSync(INTEROP_PORT_SOURCE, 'utf8'), INTEROP_SEARCH_PARAM_RE) ?? [];
+  }
+  return interopSearchEndpointsCache;
 }
 
 /** The one request type an `interop` source declares. */
@@ -1326,8 +1394,8 @@ export function readProblem(declaration) {
   if (!READ_SOURCE_PORTS.includes(source.port)) {
     return (
       `read.source.port '${shown(source.port)}' is not one of '${SOURCE_ADMIN}', '${SOURCE_STATE}', ` +
-      `'${SOURCE_MGMNT}', '${SOURCE_LOGSOURCE}', '${SOURCE_PATH}', '${SOURCE_TIMELINE}', '${SOURCE_BACKGROUND}', '${SOURCE_ATELIER}', '${SOURCE_ENCRYPTION}', '${SOURCE_DOCDB}', '${SOURCE_SQLACTIVITY}', '${SOURCE_INTEROP}', '${SOURCE_ACCESS}' or '${SOURCE_MONITOR}', ` +
-      'the fourteen sources a declared read names (AD-36)'
+      `'${SOURCE_MGMNT}', '${SOURCE_LOGSOURCE}', '${SOURCE_PATH}', '${SOURCE_TIMELINE}', '${SOURCE_BACKGROUND}', '${SOURCE_ATELIER}', '${SOURCE_ENCRYPTION}', '${SOURCE_DOCDB}', '${SOURCE_SQLACTIVITY}', '${SOURCE_INTEROP}', '${SOURCE_ACCESS}', '${SOURCE_MONITOR}' or '${SOURCE_ANALYTICS}', ` +
+      'the fifteen sources a declared read names (AD-36)'
     );
   }
   if (typeof source.endpoint !== 'string' || !ENDPOINT_RE.test(source.endpoint)) {
@@ -1419,22 +1487,22 @@ export function readProblem(declaration) {
       return `read.source.${declared} is declared on a sqlactivity source, which answers the running statements whole (AD-36)`;
     }
   }
-  // A monitor source lists the instance's Prometheus metrics through `OcuPilot.Port.MonitorPort`, which
-  // answers every sample of one collection whole behind its own gate (AD-29, AD-36, Story 18.11): the
-  // port's own endpoint, a LIST, and nothing the port would have to issue per row, per parent, under a
-  // fixed query or in parts.
+  // A monitor source lists the instance's Prometheus metrics or its interoperability usage through
+  // `OcuPilot.Port.MonitorPort`, which answers each endpoint whole behind its own gate (AD-29, AD-36,
+  // Stories 18.11 and 18.37): one of the port's endpoints, a LIST, and nothing the port would have to
+  // issue per row, per parent, under a fixed query or in parts.
   if (source.port === SOURCE_MONITOR) {
-    const endpoint = monitorEndpoint();
-    if (endpoint === null) return `${MONITOR_PORT_SOURCE} declares no 'Parameter ENDPOINT'`;
-    if (source.endpoint !== endpoint) {
-      return `read.source.endpoint '${source.endpoint}' is not the monitor port's endpoint ('${endpoint}') (AD-29)`;
+    const endpoints = monitorEndpoints();
+    if (endpoints === null) return `${MONITOR_PORT_SOURCE} declares no 'Parameter ENDPOINTS'`;
+    if (!endpoints.includes(source.endpoint)) {
+      return `read.source.endpoint '${source.endpoint}' is not one of the monitor port's endpoints ('${endpoints.join("', '")}') (AD-29)`;
     }
     if (source.type !== MONITOR_READ_TYPE) {
-      return `read.source.type '${source.type}' is declared on a monitor source, which lists the instance's Prometheus metrics (AD-36)`;
+      return `read.source.type '${source.type}' is declared on a monitor source, which lists the instance's metrics and interoperability usage (AD-36)`;
     }
     const declared = PATH_REFUSED_SOURCE_KEYS.find((key) => source[key] !== undefined && source[key] !== null);
     if (declared !== undefined) {
-      return `read.source.${declared} is declared on a monitor source, which answers the metrics whole (AD-36)`;
+      return `read.source.${declared} is declared on a monitor source, which answers its list whole (AD-36)`;
     }
   }
   // An interop source lists the namespace's productions or interoperability classes through
@@ -1453,6 +1521,24 @@ export function readProblem(declaration) {
     const declared = PATH_REFUSED_SOURCE_KEYS.find((key) => source[key] !== undefined && source[key] !== null);
     if (declared !== undefined) {
       return `read.source.${declared} is declared on an interop source, which answers its list whole (AD-36)`;
+    }
+  }
+  // An analytics source lists the namespace's cubes, a cube's measures, levels or relationships, its term lists, a term list's
+  // entries or its folder items through `OcuPilot.Port.AnalyticsPort`, which answers each endpoint whole behind its own gate (AD-65,
+  // AD-36, Story 20.11): one of the port's endpoints, a LIST, and nothing the port would have to issue per row, per parent, under a
+  // fixed query or in parts.
+  if (source.port === SOURCE_ANALYTICS) {
+    const endpoints = analyticsEndpoints();
+    if (endpoints === null) return `${ANALYTICS_PORT_SOURCE} declares no 'Parameter ENDPOINTS'`;
+    if (!endpoints.includes(source.endpoint)) {
+      return `read.source.endpoint '${source.endpoint}' is not one of the analytics port's endpoints ('${endpoints.join("', '")}') (AD-65)`;
+    }
+    if (source.type !== ANALYTICS_READ_TYPE) {
+      return `read.source.type '${source.type}' is declared on an analytics source, which lists the namespace's cubes, term lists and folder items (AD-36)`;
+    }
+    const declared = PATH_REFUSED_SOURCE_KEYS.find((key) => source[key] !== undefined && source[key] !== null);
+    if (declared !== undefined) {
+      return `read.source.${declared} is declared on an analytics source, which answers its list whole (AD-36)`;
     }
   }
   // An access source lists the screens' required permissions, composed by `OcuPilot.Screen.Access` in
@@ -1692,7 +1778,7 @@ export function readProblem(declaration) {
   if (source.port === SOURCE_MONITOR && !declaresSystemRead(declaration.privileges)) {
     return (
       "read.source.port 'monitor' requires the declared privileges to include %DB_IRISSYS:READ, " +
-      'because the port takes its collection in %SYS (AD-29)'
+      'because the port reads in %SYS (AD-29)'
     );
   }
   return null;
@@ -1927,8 +2013,12 @@ export function criteriaProblem(declaration) {
   if (keysFault !== null) return keysFault;
 
   const port = isObject(read.source) ? read.source.port : undefined;
-  // AD-36 as amended (Story 20.3): an interop read takes criteria only as its parent's route id, on a parent-scoped list.
-  if (port !== SOURCE_ADMIN && port !== SOURCE_MGMNT && port !== SOURCE_ATELIER && port !== SOURCE_TIMELINE && port !== SOURCE_ENCRYPTION && (port !== SOURCE_INTEROP || !parented)) {
+  // AD-36 as amended (Story 20.3): an interop read takes criteria only as its parent's route id, on a parent-scoped list;
+  // except an endpoint the port declares searchable (Story 20.9's Messages), whose criteria are its own.
+  const searches = port === SOURCE_INTEROP && isObject(read.source) && interopSearchEndpoints().includes(read.source.endpoint);
+  // AD-36 as amended (Story 20.11): an analytics read takes criteria only as its parent's route id, on a parent-scoped list.
+  const parentOnly = port === SOURCE_INTEROP || port === SOURCE_ANALYTICS;
+  if (port !== SOURCE_ADMIN && port !== SOURCE_MGMNT && port !== SOURCE_ATELIER && port !== SOURCE_TIMELINE && port !== SOURCE_ENCRYPTION && (!parentOnly || (!parented && !searches))) {
     return `read.criteria is declared on a '${shown(port)}' source, and server criteria travel on the admin, mgmnt, atelier, timeline and encryption ports alone (AD-21)`;
   }
 
@@ -2524,6 +2614,28 @@ export function tabProblem(declaration) {
   return null;
 }
 
+/**
+ * What is wrong with an `external` declaration, or `null` (AD-5, AD-44, Story 20.32). An `external` screen
+ * opens a page in a new tab, so it declares no `read`, `table`, action, `tab` or `parentScope`; an absent
+ * key, a `null`, an empty string and an empty array declare nothing. A declaration of any other archetype is
+ * not this check's. `OcuPilot.Screen.Registry.ExternalProblem` returns the same sentence, and also refuses the
+ * vocabulary half (a tool identifier `OcuPilot.Screen.ExternalPage` does not name, and a `classicPage` other
+ * than its entry's), which only the instance can read.
+ */
+export function externalProblem(declaration) {
+  if (declaration.archetype !== 'external') return null;
+  let declares = ['read', 'table', 'tab'].find((key) => isObject(declaration[key])) ?? null;
+  if (declares === null && isObject(declaration.primaryAction) && ![undefined, null, ''].includes(declaration.primaryAction.id)) {
+    declares = 'primaryAction';
+  }
+  if (declares === null && Array.isArray(declaration.rowActions) && declaration.rowActions.length > 0) declares = 'rowActions';
+  if (declares === null && declaration.parentScope !== undefined && declaration.parentScope !== null && declaration.parentScope !== '') {
+    declares = 'parentScope';
+  }
+  if (declares === null) return null;
+  return `external screen declares ${declares}, and an external screen opens a page in a new tab with no read, table, action, tab or parentScope (AD-44)`;
+}
+
 /** The fewest suggested prompts a declaration that declares any may carry, `SUGGESTEDPROMPTSMIN`'s value. */
 export const SUGGESTED_PROMPTS_MIN = 3;
 
@@ -2547,12 +2659,12 @@ export const PROMPT_GROUP_KEYS = [
 /**
  * What is wrong with a declaration's `suggestedPrompts`, or `null` (Story 11.3, AD-5). A built
  * screen declares them; an unbuilt one may leave them absent or `null`. Otherwise it is an array of
- * at least `SUGGESTED_PROMPTS_MIN` objects, each carrying only `groupKey` and `textKey`, both
- * non-empty string keys, the group one of `PROMPT_GROUP_KEYS`; that each resolves is
- * `declaredStringKeys`'s. `OcuPilot.Screen.Registry.SuggestedPromptsProblem` returns the same
- * sentence for every case.
+ * at least `SUGGESTED_PROMPTS_MIN` objects, each carrying `groupKey` and `textKey`, both non-empty
+ * string keys, the group one of `PROMPT_GROUP_KEYS`, and optionally `workflow`, one of `workflowIds`
+ * (the catalog's, Story 20.12); that each key resolves is `declaredStringKeys`'s.
+ * `OcuPilot.Screen.Registry.SuggestedPromptsProblem` returns the same sentence for every case.
  */
-export function suggestedPromptsProblem(declaration) {
+export function suggestedPromptsProblem(declaration, workflowIds = readWorkflowIds()) {
   const prompts = declaration.suggestedPrompts;
   if (prompts === undefined || prompts === null) {
     return declaration.built === true ? `a built screen declares at least ${SUGGESTED_PROMPTS_MIN} suggestedPrompts` : null;
@@ -2564,7 +2676,7 @@ export function suggestedPromptsProblem(declaration) {
   for (const [index, prompt] of prompts.entries()) {
     const where = `suggestedPrompts[${index}]`;
     if (!isObject(prompt)) return `${where} is not an object declaring its groupKey and textKey`;
-    const keysFault = unknownKeyProblem(where, prompt, ['groupKey', 'textKey']);
+    const keysFault = unknownKeyProblem(where, prompt, ['groupKey', 'textKey', 'workflow']);
     if (keysFault !== null) return keysFault;
     for (const key of ['groupKey', 'textKey']) {
       if (typeof prompt[key] !== 'string' || prompt[key] === '') {
@@ -2573,6 +2685,10 @@ export function suggestedPromptsProblem(declaration) {
     }
     if (!PROMPT_GROUP_KEYS.includes(prompt.groupKey)) {
       return `${where}.groupKey '${prompt.groupKey}' is not one of the declared prompt groups`;
+    }
+    if ('workflow' in prompt) {
+      const workflow = typeof prompt.workflow === 'string' ? prompt.workflow : '';
+      if (!workflowIds.includes(workflow)) return `${where} names the unknown workflow '${workflow}'`;
     }
   }
   return null;
@@ -2715,8 +2831,9 @@ export const ROW_TARGET_KEYS = ['route', 'field', 'unless'];
  * linked entity (the Locks list's removal id, say) would otherwise link its own id route, which
  * names the wrong thing.
  *
- * Declarable only on a `list` archetype that also declares a `table`, since exactly one column's
- * `kind` is `name` and a row target replaces what that column would otherwise link to. Its
+ * Declarable only on a `list` archetype, or a `detail` archetype that declares a `tab`, that also
+ * declares a `table`, since exactly one column's `kind` is `name` and a row target replaces what
+ * that column would otherwise link to. Its
  * `route` is a non-empty string other than the declaring screen's own route, and its `field` is a
  * non-empty string that is one of `read.fields`. Its optional `unless`, where declared, is a
  * non-empty string that is one of `read.fields` too: a row where that field reads `true` renders its
@@ -2730,7 +2847,8 @@ export function rowTargetProblem(declaration) {
   if (!isObject(rowTarget)) return 'rowTarget is not an object naming its route and field (AD-5)';
   const keysFault = unknownKeyProblem('rowTarget', rowTarget, ROW_TARGET_KEYS);
   if (keysFault !== null) return keysFault;
-  if (declaration.archetype !== 'list') {
+  // A tab of a tabbed group is a detail screen drawing a table, so it may declare one too (Story 20.11).
+  if (declaration.archetype !== 'list' && !(declaration.archetype === 'detail' && isObject(declaration.tab))) {
     return `rowTarget is declared on a '${shown(declaration.archetype)}' archetype, and a row target is a list's own row link (AD-5)`;
   }
   if (!isObject(declaration.table)) {
@@ -3025,7 +3143,8 @@ export function isWriteCapable(declaration) {
  * and `emptyAgentKey`; `columns` is non-empty, each column carries only `field` (one of `fields`,
  * none of `secrets`, unique), a non-empty `labelKey`, a kind from `TABLE_COLUMN_KINDS` and an
  * optional non-empty `emptyKey` (the string key an empty cell in that column reads instead of
- * "(none)"), and exactly one is `name`;
+ * "(none)") and an optional boolean `long` (the column's value can run past its cell, so the
+ * selected or only row's value shows whole beneath the rows), and exactly one is `name`;
  * `emptyStateKey` is non-empty; a composite id names only parts in `fields`; and a write-capable
  * declaration names `emptyAgentKey` with `emptyNextKey` empty, any other the reverse.
  */
@@ -3047,7 +3166,7 @@ export function tableProblem(declaration, fields, secrets) {
     if (column === null || typeof column !== 'object' || Array.isArray(column)) {
       return `${where} is not an object declaring its field, labelKey and kind`;
     }
-    const columnKeysFault = unknownKeyProblem(where, column, ['field', 'labelKey', 'kind', 'emptyKey']);
+    const columnKeysFault = unknownKeyProblem(where, column, ['field', 'labelKey', 'kind', 'emptyKey', 'long']);
     if (columnKeysFault !== null) return columnKeysFault;
     if (typeof column.field !== 'string' || !fields.includes(column.field)) {
       return `${where} field '${column.field}' is not one of read.fields`;
@@ -3065,6 +3184,9 @@ export function tableProblem(declaration, fields, secrets) {
     }
     if (Object.hasOwn(column, 'emptyKey') && (typeof column.emptyKey !== 'string' || column.emptyKey === '')) {
       return `${where} emptyKey is not a non-empty string key, and an empty cell in that column reads the string it names`;
+    }
+    if (Object.hasOwn(column, 'long') && typeof column.long !== 'boolean') {
+      return `${where} long is not a boolean, and a long column shows the selected row's whole value beneath the rows`;
     }
     if (column.kind === 'name') names += 1;
   }
@@ -3202,6 +3324,7 @@ export function buildMirror({
   scopeWords,
   features = ['interoperability', 'analytics'],
   archetypes,
+  workflowIds = readWorkflowIds(),
   areas,
   screens,
   toolFields = {},
@@ -3345,7 +3468,12 @@ export function buildMirror({
     if (tabFault !== null) {
       throw new Error(`src/OcuPilot/Screen/Descriptor/${screen.file} (${screen.className}): ${tabFault}`);
     }
-    const promptsFault = suggestedPromptsProblem(screen.declaration);
+    // AD-5, AD-44, Story 20.32: an external screen declares a page to open and nothing to read or do.
+    const externalFault = externalProblem(screen.declaration);
+    if (externalFault !== null) {
+      throw new Error(`src/OcuPilot/Screen/Descriptor/${screen.file} (${screen.className}): ${externalFault}`);
+    }
+    const promptsFault = suggestedPromptsProblem(screen.declaration, workflowIds);
     if (promptsFault !== null) {
       throw new Error(`src/OcuPilot/Screen/Descriptor/${screen.file} (${screen.className}): ${promptsFault}`);
     }
@@ -3768,6 +3896,8 @@ export interface TableColumn {
   readonly labelKey: string;
   readonly kind: TableColumnKind;
   readonly emptyKey?: string;
+  /** The value can run past its cell, so the selected or only row's value shows whole beneath the rows. */
+  readonly long?: boolean;
 }
 
 /**
@@ -3836,6 +3966,8 @@ export interface ScreenDeclaration {
 export interface SuggestedPrompt {
   readonly groupKey: string;
   readonly textKey: string;
+  /** The catalog id of the guided workflow choosing this prompt starts, where it names one (Story 20.12, AD-66). */
+  readonly workflow?: string;
 }
 
 /**

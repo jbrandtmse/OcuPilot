@@ -464,7 +464,7 @@ ClassMethod EncryptionFacts() As %DynamicObject
 
 /// <p>A canonical snapshot of what a key file write can reach, as a sorted array of lines: the
 /// encryption facts (<method>EncryptionFacts</method>); each process with its job type; the line counts
-/// of <code>messages.log</code> and <code>alerts.log</code>; the monitor state; whether the probe
+/// of <code>messages.log</code> and <code>alerts.log</code>; whether the probe
 /// directory exists; and OcuPilot's own applications, roles and resources and the probe accounts.</p>
 ClassMethod Snapshot() As %DynamicArray
 {
@@ -517,7 +517,6 @@ ClassMethod Snapshot() As %DynamicArray
             }
         }
         Set tRS = ""
-        Set tLines("monitor|" _ $SYSTEM.Monitor.State()) = ""
         Set tPid = ""
         For {
             Set tPid = $Order(^$JOB(tPid))

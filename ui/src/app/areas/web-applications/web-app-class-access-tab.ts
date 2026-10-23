@@ -2,12 +2,15 @@ import { ChangeDetectionStrategy, Component, DestroyRef, effect, inject, input, 
 
 import { ApiService } from '../../core/api';
 import { ChangeBus } from '../../core/change-bus';
+import { ConnectivityService } from '../../core/connectivity';
 import { joinCompositeId } from '../../core/entity-id';
+import { isBannerFault, type Fault } from '../../core/fault';
 import { createScreenRead, type ScreenReadCriteria } from '../../core/screen-read';
 import { selfProtectionReason, SYSTEM_PCT_ACCESS_RULE } from '../../core/self-protection';
 import { STRINGS } from '../../core/strings';
 import { SCREENS, type ScreenDeclaration } from '../../core/screens.generated';
 import { cellView } from '../../core/table-model';
+import { FaultBanner } from '../../shell/fault-banner';
 import { ScreenActionDialogs } from '../../shell/screen-action-dialogs';
 import { ScreenActionHandler, type ActionSink } from '../../shell/screen-action-handler';
 import { WebAppClassAccessDialog } from './web-app-class-access-dialog';
@@ -24,6 +27,9 @@ export const PCT_ACCESS_ENTITY = 'pct-class-access';
 /** The most rows the tab reads. */
 export const PCT_ACCESS_MAX_ROWS = 200;
 
+/** The key a banner fault of the list's read is parked under with the connectivity service. */
+const PCT_ACCESS_PARK_KEY = 'web-app-pct-access';
+
 /** One entry as the screen read answers it. */
 export type PctAccessRow = Readonly<Record<string, unknown>>;
 
@@ -36,17 +42,20 @@ export type PctAccessRow = Readonly<Record<string, unknown>>;
  * Delete is `aria-disabled` and names the rule's sentence through `aria-describedby`, and the instance refuses it
  * again on the call. Add opens `WebAppClassAccessDialog`; a success re-reads the list, and so do an applied Delete and a
  * confirmed change to any entry on the change bus (AD-14).
+ *
+ * A read that fails draws no list. A connectivity-banner fault is the shell's banner's to say once, so the tab adds no
+ * alert and reads again once the instance answers; any other fault is drawn in place by `FaultBanner` with Retry.
  */
 @Component({
   selector: 'app-web-app-class-access-tab',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ScreenActionDialogs, WebAppClassAccessDialog],
+  imports: [FaultBanner, ScreenActionDialogs, WebAppClassAccessDialog],
   template: `<div class="ocu-pct-access">
-    <div class="ocu-pct-access-bar">
+    <div>
       <button type="button" class="ocu-button-secondary ocu-pct-access-add" (click)="openAdd()">{{ STRINGS.webAppPctAccessAdd }}</button>
     </div>
-    @if (loadFailed) {
-      <p role="alert">{{ STRINGS.connectivityServerFault }}</p>
+    @if (inPlaceFault) {
+      <app-fault-banner [fault]="inPlaceFault" (retried)="load()" />
     }
     @if (hasRefusal) {
       <p class="ocu-broadcast-refusal" role="alert">{{ refusal() }}</p>
@@ -105,7 +114,12 @@ export class WebAppClassAccessTab {
 
   private readonly actions = inject(ScreenActionHandler);
 
+  private readonly connectivity = inject(ConnectivityService);
+
   private readonly destroyRef = inject(DestroyRef);
+
+  /** Set on destroy, so a read parked with the connectivity service does not run for a departed tab. */
+  private destroyed = false;
 
   /** The web application whose entries the tab lists. */
   readonly application = input.required<string>();
@@ -116,7 +130,7 @@ export class WebAppClassAccessTab {
 
   protected readonly rows = signal<readonly PctAccessRow[]>([]);
 
-  protected readonly loadFailedSignal = signal(false);
+  protected readonly faultSignal = signal<Fault | null>(null);
 
   /** Whether a read has answered, so the empty sentence is not drawn before the first one does. */
   protected readonly loaded = signal(false);
@@ -148,8 +162,10 @@ export class WebAppClassAccessTab {
     });
   }
 
-  protected get loadFailed(): boolean {
-    return this.loadFailedSignal();
+  /** The fault drawn in place: a failed read other than a connectivity-banner fault, which the shell's banner says. */
+  protected get inPlaceFault(): Fault | null {
+    const fault = this.faultSignal();
+    return isBannerFault(fault) ? null : fault;
   }
 
   protected get hasRows(): boolean {
@@ -157,7 +173,7 @@ export class WebAppClassAccessTab {
   }
 
   protected get isEmpty(): boolean {
-    return this.loaded() && this.rows().length === 0 && !this.loadFailedSignal();
+    return this.loaded() && this.rows().length === 0 && this.faultSignal() === null;
   }
 
   protected get hasRefusal(): boolean {
@@ -180,6 +196,7 @@ export class WebAppClassAccessTab {
       if (event.kind === 'changed' && event.type === PCT_ACCESS_ENTITY) void this.load();
     });
     this.destroyRef.onDestroy(() => {
+      this.destroyed = true;
       stopChanges?.();
       this.rows.set([]);
     });
@@ -191,11 +208,21 @@ export class WebAppClassAccessTab {
     const result = await this.read({ maxRows: PCT_ACCESS_MAX_ROWS });
     this.loaded.set(true);
     if (result.kind !== 'ok') {
-      this.loadFailedSignal.set(true);
+      // An answer that arrived with a success status but not the read's shape raised no connectivity fault, so it
+      // is recorded as a rejected read: the tab then says so itself rather than leaving no alert at all.
+      const fault: Fault =
+        result.fault.status >= 200 && result.fault.status < 300 ? { ...result.fault, kind: 'rejected' } : result.fault;
+      this.faultSignal.set(fault);
       this.rows.set([]);
+      // A banner fault is parked, and the list reads again once the instance answers.
+      if (isBannerFault(fault)) {
+        this.connectivity.retryWhenReachable(PCT_ACCESS_PARK_KEY, () => {
+          if (!this.destroyed) void this.load();
+        });
+      }
       return;
     }
-    this.loadFailedSignal.set(false);
+    this.faultSignal.set(null);
     this.rows.set(result.rows as readonly PctAccessRow[]);
   }
 

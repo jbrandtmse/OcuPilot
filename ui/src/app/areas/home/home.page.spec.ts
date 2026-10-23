@@ -2,6 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { ConnectivityService } from '../../core/connectivity';
 import { InstanceService } from '../../core/instance';
 import { NavigationService, orderedAreas, screenForRoute, type Verdict } from '../../core/navigation';
 import { ScopeService } from '../../core/scope';
@@ -32,6 +33,7 @@ import { FixFinding } from '../../core/fix-finding';
 import { KILL_SWITCH_ID } from '../../core/explain-entry';
 import { cleanFindingsBody, stubFindings, stubFixFinding, type StubbedFindings } from '../../testing/findings';
 import type { ExplainEntryState } from '../../testing/explain-entry';
+import { awaitRealTimersIdle } from '../../testing/real-timers';
 import { FINDINGS_CHANGE_TYPES } from './home.page';
 import {
   homeRefresh,
@@ -43,9 +45,9 @@ import {
 /**
  * Home's rendered contract (DESIGN.md `:896`, `:1102`; EXPERIENCE.md "One tile per applying area in daily-use order").
  *
- * The area roster is the **shipped** mirror through the real `orderedAreas()`, because the nine
- * tiles and the two absences are exactly what the declaration says and a stubbed roster would
- * assert the stub. The verdicts are stubbed, because a denial needs a principal the suite must
+ * The area roster is the **shipped** mirror through the real `orderedAreas()`, because the tiles
+ * and the two absences are exactly what the declaration says and a stubbed roster would assert the
+ * stub. The verdicts are stubbed, because a denial needs a principal the suite must
  * not mint, and the screen roster is stubbed for the reason `NavigationService` carries that
  * seam at all: at the end of Epic 1 only Home carries a descriptor, so a caption with two
  * screen names in it would otherwise have nothing to render.
@@ -115,8 +117,11 @@ function screen(route: string, labelKey: string, area: string, position: number)
 const PROCESSES = screen('os-management/processes', 'navAreaOsManagement', 'os-management', 1);
 const LOCKS = screen('os-management/locks', 'navAreaTasks', 'os-management', 2);
 
-/** The shipped mirror: the nine tiles and the two absences are the declaration's, not a stub's. */
+/** The shipped mirror: the tiles and the two absences are the declaration's, not a stub's. */
 const REAL_AREAS = orderedAreas();
+
+/** The areas that draw a tile: not Home, the surface the tiles sit on, and not the pinned Agent co-pilot. */
+const TILE_AREAS = REAL_AREAS.filter((area) => !area.navigates && !area.pinBottom);
 
 class StubNavigation {
   readonly areaVerdicts = new Map<string, Verdict>();
@@ -126,6 +131,11 @@ class StubNavigation {
 
   areas(): readonly AreaDeclaration[] {
     return REAL_AREAS;
+  }
+
+  /** None built: the in-place fault banner's Open messages.log reads this and gates itself. */
+  builtScreens(): readonly ScreenDeclaration[] {
+    return [];
   }
 
   screensForArea(areaKey: string): readonly ScreenDeclaration[] {
@@ -148,6 +158,19 @@ class StubNavigation {
 
   notify(): void {
     for (const listener of this.listeners) listener();
+  }
+}
+
+/** What the in-place fault banner reads from the shell; Home is not about connectivity. */
+class StubConnectivity {
+  fault(): null {
+    return null;
+  }
+
+  retry(): void {}
+
+  subscribe(): () => void {
+    return () => {};
   }
 }
 
@@ -290,6 +313,12 @@ describe('Home', () => {
 
   const tiles = (): HTMLButtonElement[] =>
     Array.from(fixture.nativeElement.querySelectorAll('.ocu-area-tile'));
+  /** The tile drawn for `key`, found by its place in `TILE_AREAS` rather than by a literal index. */
+  const tileOf = (key: string): HTMLButtonElement => {
+    const index = TILE_AREAS.findIndex((area) => area.key === key);
+    expect(index, `${key} draws a tile`).toBeGreaterThanOrEqual(0);
+    return tiles()[index];
+  };
   const tileNames = (): string[] =>
     tiles().map((tile) => tile.querySelector('.ocu-area-tile-name')?.textContent?.trim() ?? '');
   const lineParts = (): HTMLElement[] =>
@@ -348,8 +377,12 @@ describe('Home', () => {
           { path: 'tasks/schedule', children: [] },
           // DW-1852: the Security tile's target for a holder of only the authorization-server tab.
           { path: 'security/oauth/server', children: [] },
+          // Story 20.32: Cubes, and the link a tile must never open onto.
+          { path: 'analytics/cubes', children: [] },
+          { path: 'analytics/architect', children: [] },
         ]),
         { provide: NavigationService, useValue: navigation as unknown as NavigationService },
+        { provide: ConnectivityService, useValue: new StubConnectivity() as unknown as ConnectivityService },
         { provide: InstanceService, useValue: instance as unknown as InstanceService },
         { provide: ScopeService, useValue: scope as unknown as ScopeService },
         { provide: Session, useValue: session as unknown as Session },
@@ -387,18 +420,9 @@ describe('Home', () => {
   });
 
   it('renders one tile per area in rail order, with Home and Agent co-pilot absent', () => {
-    expect(tiles()).toHaveLength(9);
-    expect(tileNames()).toEqual([
-      STRINGS.navAreaLogs,
-      STRINGS.navAreaOsManagement,
-      STRINGS.navAreaTasks,
-      STRINGS.navAreaPermissions,
-      STRINGS.navAreaWebApplications,
-      STRINGS.navAreaSecurity,
-      STRINGS.navAreaSystemExplorer,
-      STRINGS.navAreaInteroperability,
-      STRINGS.navAreaAnalytics,
-    ]);
+    expect(TILE_AREAS.length).toBeGreaterThan(0);
+    expect(tiles()).toHaveLength(TILE_AREAS.length);
+    expect(tileNames()).toEqual(TILE_AREAS.map((area) => STRINGS[area.labelKey as keyof typeof STRINGS]));
     // Home is the surface the tiles sit on and Agent co-pilot is reached from the rail, so
     // neither gets one (EXPERIENCE.md "One tile per applying area in daily-use order") -- and neither name appears anywhere on the page.
     expect(tileNames()).not.toContain(STRINGS.navAreaHome);
@@ -411,17 +435,16 @@ describe('Home', () => {
     expect(REAL_AREAS.filter((area) => area.pinBottom).map((area) => area.key)).toEqual(['agent']);
   });
 
-  it('the grid is a list of nine items, so the set has size and boundaries announced', () => {
+  it('the grid is a list with one item per tile, so the set has size and boundaries announced', () => {
     const grid = fixture.nativeElement.querySelector('.ocu-area-tile-grid');
     expect(grid.getAttribute('role')).toBe('list');
-    expect(grid.querySelectorAll('[role="listitem"]')).toHaveLength(9);
+    expect(grid.querySelectorAll('[role="listitem"]')).toHaveLength(TILE_AREAS.length);
   });
 
   it("each tile's aria-hidden icon slot holds its area's 24x24 drawing and adds nothing to its name (Story 15.7)", () => {
-    const tileAreas = REAL_AREAS.filter((area) => !area.navigates && !area.pinBottom);
-    expect(tiles()).toHaveLength(tileAreas.length);
+    expect(tiles()).toHaveLength(TILE_AREAS.length);
     for (const [index, tile] of tiles().entries()) {
-      const key = tileAreas[index].key;
+      const key = TILE_AREAS[index].key;
       const icon = tile.querySelector('.ocu-area-tile-icon');
       expect(icon).not.toBeNull();
       expect(icon?.getAttribute('aria-hidden')).toBe('true');
@@ -440,7 +463,7 @@ describe('Home', () => {
         tile.querySelector('.ocu-area-tile-name')?.textContent?.trim()
       );
     }
-    expect(tiles()[0].textContent?.trim()).toBe(STRINGS.navAreaLogs);
+    expect(tileOf('logs').textContent?.trim()).toBe(STRINGS.navAreaLogs);
   });
 
   it("a tile's caption is its area's built screen names, joined by aria-hidden separators", () => {
@@ -455,7 +478,7 @@ describe('Home', () => {
     navigation.notify();
     fixture.detectChanges();
 
-    const osTile = tiles()[1];
+    const osTile = tileOf('os-management');
     expect(
       Array.from(osTile.querySelectorAll('.ocu-area-tile-screen')).map((part) =>
         part.textContent?.trim()
@@ -479,7 +502,7 @@ describe('Home', () => {
     navigation.notify();
     fixture.detectChanges();
 
-    const gated = tiles()[3];
+    const gated = tileOf('permissions');
     expect(gated.querySelector('.ocu-area-tile-name')?.textContent?.trim()).toBe(
       STRINGS.navAreaPermissions
     );
@@ -499,7 +522,7 @@ describe('Home', () => {
     expect(reason.getAttribute('role')).toBe('tooltip');
 
     // Only the gated tile is described by one.
-    expect(tiles()[0].getAttribute('aria-describedby')).toBeNull();
+    expect(tileOf('logs').getAttribute('aria-describedby')).toBeNull();
     expect(fixture.nativeElement.querySelectorAll('.ocu-area-tile-reason')).toHaveLength(1);
   });
 
@@ -515,7 +538,7 @@ describe('Home', () => {
     navigation.notify();
     fixture.detectChanges();
 
-    tiles()[3].click();
+    tileOf('permissions').click();
     await fixture.whenStable();
 
     expect(router.url).toBe('/');
@@ -528,7 +551,7 @@ describe('Home', () => {
     navigation.notify();
     fixture.detectChanges();
 
-    tiles()[1].click();
+    tileOf('os-management').click();
     await fixture.whenStable();
 
     // The namespace travels: `?ns=` is data scope, and a tile click that dropped it would move
@@ -554,7 +577,7 @@ describe('Home', () => {
     navigation.notify();
     fixture.detectChanges();
 
-    const tile = tiles()[1];
+    const tile = tileOf('os-management');
     expect(tile.getAttribute('aria-disabled')).toBeNull();
 
     tile.click();
@@ -575,7 +598,7 @@ describe('Home', () => {
     navigation.notify();
     fixture.detectChanges();
 
-    const tile = tiles()[1];
+    const tile = tileOf('os-management');
     expect(tile.getAttribute('aria-disabled')).toBe('true');
     expect(tile.hasAttribute('disabled')).toBe(false);
     expect(tile.tabIndex).toBe(0);
@@ -593,6 +616,45 @@ describe('Home', () => {
     expect(shell.visibleArea()).toBe('');
   });
 
+  describe('Story 20.32: an area that lists links beside its screens', () => {
+    const CUBES = screenForRoute('analytics/cubes') as ScreenDeclaration;
+    const ARCHITECT = screenForRoute('analytics/architect') as ScreenDeclaration;
+    const USER_PORTAL = screenForRoute('analytics/user-portal') as ScreenDeclaration;
+
+    // Mutation (Rule 19): drop the `external` skip from `firstOpenableEntry` in `navigation.ts` -> the tile is no longer gated and
+    // opens `/analytics/architect`, so both rows go red.
+    it('a caller who may open only the links finds the Analytics tile gated in place, naming the first screen\'s pair, and it opens nothing', async () => {
+      await router.navigateByUrl('/');
+      navigation.screens.set('analytics', [CUBES, ARCHITECT, USER_PORTAL]);
+      navigation.screenVerdicts.set(CUBES.route, { allowed: false, failedPair: '%DeepSee_PortalEdit:USE' });
+      navigation.notify();
+      fixture.detectChanges();
+
+      const tile = tileOf('analytics');
+      expect(tile.getAttribute('aria-disabled')).toBe('true');
+      expect(tile.hasAttribute('disabled')).toBe(false);
+      expect(fixture.nativeElement.querySelector(`#${tile.getAttribute('aria-describedby')}`)?.textContent?.trim()).toBe('Requires %DeepSee_PortalEdit:USE');
+
+      tile.click();
+      await fixture.whenStable();
+      expect(router.url).toBe('/');
+    });
+
+    it('a link listed ahead of an openable screen is skipped: the tile opens the screen, not the link', async () => {
+      await router.navigateByUrl('/');
+      navigation.screens.set('analytics', [ARCHITECT, CUBES]);
+      navigation.notify();
+      fixture.detectChanges();
+
+      const tile = tileOf('analytics');
+      expect(tile.getAttribute('aria-disabled')).toBeNull();
+
+      tile.click();
+      await fixture.whenStable();
+      expect(router.url).toBe('/analytics/cubes');
+    });
+  });
+
   it('AD-8 as amended for DW-1768: the map a holder of the %Operator role is served opens OS management on Locks and gates Permissions naming its pair', async () => {
     // The instance opens an area when any screen it lists is allowed, and each screen keeps its own
     // gate: OS management is allowed while Processes is refused, and Permissions, none of whose
@@ -607,13 +669,13 @@ describe('Home', () => {
     navigation.notify();
     fixture.detectChanges();
 
-    const permissions = tiles()[3];
+    const permissions = tileOf('permissions');
     expect(permissions.getAttribute('aria-disabled')).toBe('true');
     expect(
       fixture.nativeElement.querySelector(`#${permissions.getAttribute('aria-describedby')}`)?.textContent?.trim()
     ).toBe('Requires %Admin_Secure:USE');
 
-    const osManagement = tiles()[1];
+    const osManagement = tileOf('os-management');
     expect(osManagement.getAttribute('aria-disabled')).toBeNull();
     osManagement.click();
     await fixture.whenStable();
@@ -636,8 +698,10 @@ describe('Home', () => {
     navigation.notify();
     fixture.detectChanges();
 
-    const security = tiles()[5];
-    expect(tileNames()[5]).toBe(STRINGS.navAreaSecurity);
+    const securityIndex = TILE_AREAS.findIndex((area) => area.key === 'security');
+    expect(securityIndex).toBeGreaterThanOrEqual(0);
+    const security = tiles()[securityIndex];
+    expect(tileNames()[securityIndex]).toBe(STRINGS.navAreaSecurity);
     expect(security.getAttribute('aria-disabled')).toBeNull();
     security.click();
     await fixture.whenStable();
@@ -651,7 +715,7 @@ describe('Home', () => {
     await router.navigateByUrl('/logs');
     fixture.detectChanges();
 
-    tiles()[0].click();
+    tileOf('logs').click();
     await fixture.whenStable();
 
     expect(router.url).toBe('/logs');
@@ -663,13 +727,13 @@ describe('Home', () => {
     await router.navigateByUrl('/');
     fixture.detectChanges();
 
-    tiles()[0].click();
+    tileOf('logs').click();
     await fixture.whenStable();
     expect(shell.open()).toBe(true);
 
     // The rail's own item collapses the list it is already showing; a tile is not the rail
     // item and must not inherit that (ShellState.showArea, not activateArea).
-    tiles()[0].click();
+    tileOf('logs').click();
     await fixture.whenStable();
     expect(shell.open()).toBe(true);
     expect(shell.visibleArea()).toBe('logs');
@@ -1118,7 +1182,7 @@ describe('Home', () => {
 
     // An open side bar showing another area, so "moved to the shortcut's own" is observable at
     // all; a collapsed one is left collapsed and would prove nothing either way.
-    tiles()[0].click();
+    tileOf('logs').click();
     await fixture.whenStable();
     expect(shell.visibleArea()).toBe('logs');
     expect(shell.open()).toBe(true);
@@ -1219,19 +1283,71 @@ describe('Home', () => {
     expect(rowValuesOf(systemPanel())[0]).toBe('uptime-value');
   });
 
-  it('Story 15.4: a panel whose read has never answered shows the fault, not seven confident rows', async () => {
+  it('Story 15.4: a panel whose read has never answered adds no alert for a banner fault, and no confident rows', async () => {
     // The state `stubSystemInfo({ unreachable: true })` mounts in -- no answer held and the last
-    // read failed -- arranged on the mounted store, because this spec has one mount point.
+    // read failed -- arranged on the mounted store, because this spec has one mount point. Status
+    // 0 is a banner fault: the shell's banner is the one alert, so the block adds none of its own.
+    //
+    // Mutation (Rule 19): render the in-place banner for a banner fault (return `fault` from
+    // `systemFault` unfiltered) -> this goes red, and the sentence is drawn twice on one page.
     systemInfo.reset();
     systemInfo.setUnreachable(true);
     await systemInfo.load();
     fixture.detectChanges();
 
     const panel = systemPanel();
-    expect(panel.querySelector('.ocu-home-block-empty')?.textContent?.trim()).toBe(
-      STRINGS.connectivityServerFault
-    );
+    expect(panel.querySelector('app-fault-banner')).toBeNull();
+    expect(panel.querySelector('[role="alert"]')).toBeNull();
+    expect(panel.textContent).not.toContain(STRINGS.connectivityServerFault);
+    expect(panel.textContent).not.toContain(STRINGS.connectivityBannerUnreachable);
     expect(panel.querySelectorAll('.ocu-home-system-row')).toHaveLength(0);
+
+    // A 5xx is a banner fault too.
+    systemInfo.setStatus(503);
+    await systemInfo.load();
+    fixture.detectChanges();
+    expect(panel.querySelector('[role="alert"]')).toBeNull();
+  });
+
+  it('Story 15.4: a panel whose read was refused or absent says so in place, and Retry reads again', async () => {
+    systemInfo.reset();
+    systemInfo.setStatus(404);
+    await systemInfo.load();
+    fixture.detectChanges();
+
+    const panel = systemPanel();
+    const alert = panel.querySelector('.ocu-fault-banner[role="alert"]') as HTMLElement;
+    expect(alert).not.toBeNull();
+    expect(alert.textContent).toContain(STRINGS.connectivityServerFault);
+    expect(panel.querySelectorAll('.ocu-home-system-row')).toHaveLength(0);
+    const retry = Array.from(alert.querySelectorAll('button')).find(
+      (button) => button.textContent?.trim() === STRINGS.actionRetry
+    ) as HTMLButtonElement;
+
+    systemInfo.setStatus(null);
+    const before = systemInfo.calls.length;
+    retry.click();
+    await settle();
+    fixture.detectChanges();
+
+    expect(systemInfo.calls.length - before).toBe(1);
+    expect(panel.querySelector('.ocu-fault-banner')).toBeNull();
+    expect(panel.querySelectorAll('.ocu-home-system-row').length).toBeGreaterThan(0);
+  });
+
+  it('Story 15.4: a later failure of another kind replaces the in-place alert with the shell\'s banner alone', async () => {
+    // Mutation (Rule 19): return from `SystemInfo.load` before it assigns a new fault while one is
+    // held -> this goes red, a 404's alert left standing beside the shell's unreachable banner.
+    systemInfo.reset();
+    systemInfo.setStatus(404);
+    await systemInfo.load();
+    fixture.detectChanges();
+    expect(systemPanel().querySelector('.ocu-fault-banner[role="alert"]')).not.toBeNull();
+
+    systemInfo.setStatus(0);
+    await systemInfo.load();
+    fixture.detectChanges();
+    expect(systemPanel().querySelector('[role="alert"]')).toBeNull();
   });
 
   it('Story 15.4: a panel whose read has not answered yet renders no rows at all', async () => {
@@ -1245,7 +1361,9 @@ describe('Home', () => {
 
     const panel = systemPanel();
     expect(panel.querySelectorAll('.ocu-home-system-row')).toHaveLength(0);
-    expect(panel.querySelector('.ocu-home-block-empty')).toBeNull();
+    // Mutation (Rule 19): mount the block's banner on `!systemAnswered` rather than on
+    // `systemFault` -> this goes red, a fault drawn before the read has failed.
+    expect(panel.querySelector('app-fault-banner')).toBeNull();
 
     await systemInfo.load();
     fixture.detectChanges();
@@ -1280,38 +1398,23 @@ describe('Home', () => {
     // product would plausibly use, and `vi.getTimerCount()` makes "registers no timer" an
     // observation rather than an absence of evidence -- `log-viewer.spec.ts`'s idiom.
     //
-    // The count is environment-global, so what it reports has to be made this component's, in two
-    // steps. **Real timers are still pending when this row begins** -- earlier rows in this file
-    // leave them -- and `advanceTimersByTimeAsync` yields to the real event loop between its
-    // steps, so one of them can fire inside the measurement window and schedule onto the fake
-    // clock, where the count reports it as the second HomePage's. Observed as `4` on node 26 and
-    // `1` on node 24 while node 22 stayed green, which is the shape of contamination rather than
-    // of a timer the component registers: a component's own count would not vary by band.
-    //
-    // So: wait for the real loop to be **verifiably** empty rather than for a guessed duration (a
-    // fixed 100 ms held on node 26 and did not on node 24), and then advance the window
-    // **synchronously**, which yields to the real loop not at all. A repeating timer still fires
-    // and still re-registers under a synchronous advance, and a read it issues still lands in
-    // `systemInfo.calls`. The framework's own tick is held by this spec's `schedule` seam and never
-    // fires here; the Story 16.18 AC2 case below fires it and pins that it leaves the panel alone.
-    //
-    // The synchronous advance is what makes the measurement sound; the drain only narrows the one
-    // remaining yield, the `advanceTimersByTimeAsync(0)` settle. So the drain is best-effort and
-    // is deliberately not asserted on: a real timer still pending is the environment's business,
-    // and failing here for it would report an earlier row's leak as this component's defect.
-    const pendingRealTimers = () =>
-      (process as unknown as { getActiveResourcesInfo(): string[] })
-        .getActiveResourcesInfo()
-        .filter((resource) => resource === 'Timeout').length;
-    for (let attempt = 0; attempt < 50 && pendingRealTimers() > 0; attempt += 1) {
-      await new Promise((resolve) => setTimeout(resolve, 20));
-    }
+    // The count is environment-global, and a real timer an earlier row left can still be pending.
+    // So the row waits for the real loop to empty, then arms a foreign real timer that arms another
+    // on whichever clock is global each time it fires, and from there never yields to the real loop:
+    // `advanceTimersByTime` is synchronous and the settle turns microtasks only. A yield would let
+    // the foreign timer reach the fake clock and fail the count. A repeating timer the page arms
+    // still fires and re-registers under the synchronous advance, and a read it issues still lands
+    // in `systemInfo.calls`. The framework's own tick is held by this spec's `schedule` seam; the
+    // Story 16.18 AC2 case below fires it.
+    await awaitRealTimersIdle();
+    const foreignTimer = setInterval(() => setInterval(() => undefined, 1000), 1);
     vi.useFakeTimers();
     let second: ReturnType<typeof TestBed.createComponent<HomePage>> | null = null;
     try {
       second = TestBed.createComponent(HomePage);
       second.detectChanges();
-      await vi.advanceTimersByTimeAsync(0);
+      vi.advanceTimersByTime(0);
+      for (let turn = 0; turn < 8; turn += 1) await Promise.resolve();
       const issued = systemInfo.calls.length;
 
       vi.advanceTimersByTime(10 * 60 * 1000);
@@ -1322,6 +1425,7 @@ describe('Home', () => {
       // HomePage mounted against the fake timers for every row that follows.
       second?.destroy();
       vi.useRealTimers();
+      clearInterval(foreignTimer);
     }
   });
 
@@ -1474,7 +1578,7 @@ describe('Home', () => {
     expect(refresh.fault()).toBeNull();
     expect(stores.for(HOME_DESCRIPTOR, []).data()).toEqual([]);
     // The rest of Home is as it was.
-    expect(tiles()).toHaveLength(9);
+    expect(tiles()).toHaveLength(TILE_AREAS.length);
     expect(fixedBlocks().length).toBeGreaterThan(0);
   });
 
@@ -1681,11 +1785,65 @@ describe('Home', () => {
     expect(task.querySelector('.ocu-home-finding-open')?.getAttribute('href')).toContain('tasks/schedule/details/1002');
   });
 
-  it('Story 16.21: a first read that fails shows the panel with the server-fault line and no group claims', async () => {
+  it('Story 16.21: a first read that fails with a banner fault shows the panel with no alert of its own and no group claims', async () => {
     findings.reset();
     findings.setUnreachable(true);
     await remount();
-    expect(findingsPanel()?.textContent).toContain(STRINGS.connectivityServerFault);
+    expect(findingsPanel()).not.toBeNull();
+    expect(findingsPanel()?.querySelector('app-fault-banner')).toBeNull();
+    expect(findingsPanel()?.querySelector('[role="alert"]')).toBeNull();
+    expect(findingsPanel()?.textContent).not.toContain(STRINGS.connectivityServerFault);
+    expect(findingsPanel()?.textContent).not.toContain(STRINGS.connectivityBannerUnreachable);
+    expect(groupTexts()).toEqual([]);
+  });
+
+  it('Story 16.21: a first read answered 404 says so in place, and Retry reads again', async () => {
+    findings.reset();
+    findings.setStatus(404);
+    await remount();
+    const alert = findingsPanel()?.querySelector('.ocu-fault-banner[role="alert"]') as HTMLElement;
+    expect(alert).not.toBeNull();
+    expect(alert.textContent).toContain(STRINGS.connectivityServerFault);
+    expect(groupTexts()).toEqual([]);
+
+    findings.setStatus(null);
+    const before = findings.calls.length;
+    (
+      Array.from(alert.querySelectorAll('button')).find(
+        (button) => button.textContent?.trim() === STRINGS.actionRetry
+      ) as HTMLButtonElement
+    ).click();
+    await settle();
+    fixture.detectChanges();
+
+    expect(findings.calls.length - before).toBe(1);
+    expect(findingsPanel()?.querySelector('.ocu-fault-banner')).toBeNull();
+    expect(groupTexts().length).toBeGreaterThan(0);
+  });
+
+  it('Story 16.21: a later failure of another kind replaces the in-place alert with the shell\'s banner alone', async () => {
+    // Mutation (Rule 19): return from `Findings.load` before it assigns a new fault while one is
+    // held -> this goes red, a 404's alert left standing beside the shell's unreachable banner.
+    findings.reset();
+    findings.setStatus(404);
+    await remount();
+    expect(findingsPanel()?.querySelector('.ocu-fault-banner[role="alert"]')).not.toBeNull();
+
+    findings.setStatus(0);
+    await findings.load();
+    fixture.detectChanges();
+    expect(findingsPanel()?.querySelector('[role="alert"]')).toBeNull();
+  });
+
+  it('Story 16.21: an answer the client cannot read is said in place, never an empty panel', async () => {
+    // Mutation (Rule 19): record an unreadable ok answer as no fault (drop the `rejected` arm in
+    // `Findings.load`) -> this goes red, a panel with no groups and no alert at all.
+    findings.reset();
+    findings.setBody({ checks: {} });
+    await remount();
+    const alert = findingsPanel()?.querySelector('.ocu-fault-banner[role="alert"]') as HTMLElement;
+    expect(alert).not.toBeNull();
+    expect(alert.textContent).toContain(STRINGS.connectivityServerFault);
     expect(groupTexts()).toEqual([]);
   });
 

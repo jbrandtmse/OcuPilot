@@ -8,10 +8,12 @@ import { actionLabel, ScreenActions } from '../core/screen-actions';
 import { ScreenStores } from '../core/screen-store';
 import { ENTITY_SINGLETON_ID, SCREENS } from '../core/screens.generated';
 import { STRINGS } from '../core/strings';
-import { rowKey } from '../core/table-model';
+import { VIEW_KEY_SEPARATOR, rowKey } from '../core/table-model';
 import { stubAccountPreferences } from '../testing/account-preferences';
 import { Session } from '../core/session';
 import {
+  ALLOWED_DIRECTORIES_PATH,
+  ALLOWED_DIRECTORY_LIST,
   ADD_APPLICATION_ROLE,
   ADD_GRANTED_ROLE,
   ADD_MATCHING_ROLE,
@@ -150,6 +152,22 @@ describe('the generic screen-action handler', () => {
     expect(events[0].action).toBe('deleted');
     expect(events[0].type).toBe('web-application');
     expect(events[0].id).toBe(ORDINARY_ROW);
+  });
+
+  it('Story 18.47, DW-2328: a repeated row selected by its view key is sent as its entity key', async () => {
+    // Mutation (Rule 19): drop `entityKeyOf` from `selected()` -> the request id carries the ordinal and this goes red.
+    const { actions, store, calls } = mount({
+      kind: 'ok',
+      status: 200,
+      body: { action: 'enabled', target: { type: 'web-application', scope: 'instance', id: ORDINARY_ROW } },
+    });
+    store.setSelection([`${ORDINARY_ROW}${VIEW_KEY_SEPARATOR}2`]);
+
+    actions.run(WEB_APPS.descriptor, 'enable');
+    await settle();
+
+    expect(calls).toHaveLength(1);
+    expect(JSON.parse(calls[0].body)).toEqual({ action: 'enable', id: ORDINARY_ROW });
   });
 
   it('carries the instance\u2019s read-back onto the change event, and none it did not answer', async () => {
@@ -1721,7 +1739,7 @@ describe('the Doc DB applications list\u2019s Delete (Story 18.30)', () => {
 
 /**
  * Story 18.31: the privileged routine applications list's Delete types the application's name under its published
- * consequence and sends the row key; OcuPilot's own two applications are refused at the click with the rule's sentence,
+ * consequence and sends the row key; OcuPilot's own three applications are refused at the click with the rule's sentence,
  * in any case, and nothing is sent.
  */
 describe('the privileged routine applications list\u2019s Delete (Story 18.31)', () => {
@@ -1750,10 +1768,10 @@ describe('the privileged routine applications list\u2019s Delete (Story 18.31)',
     expect(JSON.parse(calls[0].body)).toEqual({ action: 'delete', id: target });
   });
 
-  it('refuses OcuPilot\u2019s own two applications at the click, in any case, with the rule\u2019s sentence and sends nothing', async () => {
+  it('refuses OcuPilot\u2019s own three applications at the click, in any case, with the rule\u2019s sentence and sends nothing', async () => {
     // Mutation (Rule 19): drop the `ocupilot-routine-application` branch from `selfProtectionReason` -> each leg opens
     // the typed-name dialog instead and goes red.
-    for (const own of ['OcuPilotState', 'OcuPilotIdentity', 'ocupilotstate', 'OCUPILOTIDENTITY']) {
+    for (const own of ['OcuPilotState', 'OcuPilotIdentity', 'OcuPilotSslRead', 'ocupilotstate', 'OCUPILOTIDENTITY']) {
       const { handler, store, calls } = mount(undefined, descriptor);
       handler.startFor(descriptor, 'delete', own, { Name: own, Enabled: true, Resource: '', Description: '' }, store);
       expect(handler.pending()).toBeNull();
@@ -2549,5 +2567,57 @@ describe('Queue and job row actions (Story 20.23)', () => {
       expect(events, code).toEqual([]);
       TestBed.resetTestingModule();
     }
+  });
+});
+
+describe('the Allowed directories list\u2019s own route (Story 18.46)', () => {
+  const TARGET = { type: 'allowed-directory', scope: 'instance', id: '%GUIFileSelector' };
+  const READ_BACK = { verdict: 'verified', fields: [] };
+
+  it('sends Add, Change and Remove to the allow-list route in its own body, and publishes the one change event it answers', async () => {
+    // Mutation (Rule 19): drop the `OWN_ROUTES` entry -> each send goes to the screen action route with the generic body and
+    // this goes red on the path and the body; drop `...values` from the entry's body -> the Change leg loses `NewDirectory`.
+    for (const [action, target, values, body] of [
+      ['add', '/data/a/', undefined, { Action: 'add', Directory: '/data/a/' }],
+      ['change', '/data/a/', { NewDirectory: '/data/b/' }, { Action: 'change', Directory: '/data/a/', NewDirectory: '/data/b/' }],
+      ['remove', '/data/b/', undefined, { Action: 'remove', Directory: '/data/b/' }],
+    ] as const) {
+      const verb = action === 'add' ? 'created' : action === 'change' ? 'updated' : 'deleted';
+      const { handler, calls, events } = mount({ kind: 'ok', status: 200, body: { action: verb, target: TARGET, readBack: READ_BACK } }, ALLOWED_DIRECTORY_LIST);
+      const applied = await handler.sendFor(ALLOWED_DIRECTORY_LIST, action, target, values);
+      await settle();
+      expect(applied, action).toBe(true);
+      expect(calls, action).toHaveLength(1);
+      expect(calls[0].path, action).toBe(ALLOWED_DIRECTORIES_PATH);
+      expect(calls[0].method, action).toBe('POST');
+      expect(JSON.parse(calls[0].body), action).toEqual(body);
+      expect(events, action).toHaveLength(1);
+      expect(events[0], action).toMatchObject({ kind: 'changed', type: 'allowed-directory', scope: 'instance', id: '%GUIFileSelector', action: verb });
+      TestBed.resetTestingModule();
+    }
+  });
+
+  it('puts the route\u2019s refusal on the list\u2019s banner and publishes nothing', async () => {
+    const refused = { kind: 'error', status: 403, code: 'ALLOWLIST.OFF', reason: STRINGS.allowListRefusalOff, detail: null } as unknown as JsonResult<unknown>;
+    const { handler, store, events } = mount(refused, ALLOWED_DIRECTORY_LIST);
+    const applied = await handler.sendFor(ALLOWED_DIRECTORY_LIST, 'add', '/data/a/');
+    await settle();
+    expect(applied).toBe(false);
+    expect(store.refusal()).toBe(STRINGS.allowListRefusalOff);
+    expect(events).toEqual([]);
+  });
+
+  it('leaves the descriptor off the roster whose actions this handler registers, and registers none of them', () => {
+    const { actions } = mount(undefined, ALLOWED_DIRECTORY_LIST);
+    expect(SCREEN_ACTION_DESCRIPTORS).not.toContain(ALLOWED_DIRECTORY_LIST);
+    for (const id of ['add', 'change', 'remove']) expect(actions.has(ALLOWED_DIRECTORY_LIST, id), id).toBe(false);
+  });
+
+  it('keeps a descriptor with no route of its own on the screen action route', async () => {
+    const { actions, store, calls } = mount({ kind: 'ok', status: 200, body: {} });
+    store.setSelection([ORDINARY_ROW]);
+    actions.run(WEB_APPS.descriptor, 'enable');
+    await settle();
+    expect(calls[0].path).toBe(`/api/ocupilot/screens/${WEB_APPS.toolIdentifier}/action`);
   });
 });

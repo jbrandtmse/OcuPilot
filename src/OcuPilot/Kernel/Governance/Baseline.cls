@@ -90,6 +90,7 @@ XData Keys [ MimeType = application/json ]
   "permissions.users.revokesql": true,
   "permissions.users.revoketokens": true,
   "permissions.users.update": true,
+  "security.alloweddirectories.update": false,
   "security.auditing.copy": true,
   "security.auditing.purge": false,
   "security.auditing.update": true,
@@ -238,7 +239,13 @@ XData Keys [ MimeType = application/json ]
   "interop.lookuptables.delete": false,
   "interop.lookuptables.export": true,
   "interop.lookuptables.import": false,
-  "interop.itemtest.send": true
+  "interop.itemtest.send": true,
+  "interop.transforms.test": true,
+  "interop.ruleeditor.save": true,
+  "interop.processeditor.save": true,
+  "interop.transformeditor.save": true,
+  "interop.messages.resend": false,
+  "interop.messageheader.editresend": false
 }
 }
 

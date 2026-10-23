@@ -22,7 +22,7 @@
  * browser/proposal-card.browser-spec.mjs`. The build output is `dist/ocupilot-ui`, never
  * `dist/ocupilot` -- the path spelled in `.claude/rules/objectscript-testing.md`'s otherwise
  * applicable "a browser spec runs against the deployed bundle" section copies nothing, and these
- * three tests would then read a stale bundle and pass.
+ * tests would then read a stale bundle and pass.
  */
 
 import { test, before, after } from 'node:test';
@@ -31,7 +31,7 @@ import puppeteer from 'puppeteer';
 
 import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
 import { loadStrings } from '../tools/strings.mjs';
-import { signedInAt } from './panel-spec.mjs';
+import { setDarkTheme, signedInAt, transitionsSettled } from './panel-spec.mjs';
 import {
   armProbeDefinition,
   disarmProbeDefinition,
@@ -373,6 +373,58 @@ test('(c) a card the user cancels is restrained by role at opacity 1, and its di
     const agent = await measure(page, 'app-proposal-card .ocu-proposal-card-agent');
     assert.equal(agent.opacity, '1');
     assert.notEqual(agent.backgroundColor, card.backgroundColor, 'the agent tint is still drawn');
+  } finally {
+    await context.close();
+    forgetTag(tag);
+    dropProposals();
+  }
+});
+
+test('(d) a value with no space in it wraps inside its row, in the before cell, the after cell and an unchanged row, in both themes', async () => {
+  // Mutation (Rule 19): drop a selector from the `overflow-wrap: anywhere` rule after
+  // `.ocu-diff-arrow` in `_components.scss`, rebuild and redeploy the bundle -> the probe for that
+  // cell runs past its row and this goes red; the other probes stay inside theirs.
+  const { context, page, tag } = await withLiveCard(0);
+  try {
+    // The unchanged rows are drawn only once the disclosure is open; the card's own state, not a
+    // remembered one, so closing the context resets it.
+    await page.click('app-proposal-card .ocu-proposal-card-disclosure');
+    await page.waitForSelector('app-proposal-card .ocu-proposal-card-unchanged-rows .ocu-diff-row-unchanged', {
+      timeout: config.navigationTimeoutMs,
+    });
+    await transitionsSettled(page, config.navigationTimeoutMs);
+    for (const dark of [false, true]) {
+      await setDarkTheme(page, dark);
+      // Each probe is a copy of a row the card drew, with one value replaced, added beside that row
+      // in its own container, so the rule is read on the template's markup where the card draws it.
+      // Each reports how far its widest descendant runs past the row.
+      const past = await page.evaluate((unbroken) => {
+        const changed = document.querySelector(
+          'app-proposal-card .ocu-diff-row:not(.ocu-diff-row-removed):not(.ocu-diff-row-unchanged)'
+        );
+        const unchanged = document.querySelector('app-proposal-card .ocu-proposal-card-unchanged-rows .ocu-diff-row-unchanged');
+        const probe = (row, valueSelector) => {
+          const copy = row.cloneNode(true);
+          copy.querySelector(valueSelector).textContent = unbroken;
+          return [row.parentElement, copy];
+        };
+        const probes = {
+          before: probe(changed, '.ocu-diff-before .ocu-diff-value'),
+          after: probe(changed, '.ocu-diff-after .ocu-diff-value'),
+          unchanged: probe(unchanged, '.ocu-diff-value'),
+        };
+        const result = {};
+        for (const [name, [host, row]] of Object.entries(probes)) {
+          host.appendChild(row);
+          const edge = row.getBoundingClientRect().right;
+          result[name] = Math.max(...[...row.querySelectorAll('*')].map((node) => node.getBoundingClientRect().right)) - edge;
+          row.remove();
+        }
+        return result;
+      }, 'x'.repeat(600));
+      const runningPast = Object.entries(past).filter(([, pixels]) => pixels > 1);
+      assert.deepEqual(runningPast, [], `every value wraps inside its row (${dark ? 'dark' : 'light'}), or runs this many px past it`);
+    }
   } finally {
     await context.close();
     forgetTag(tag);

@@ -33,8 +33,6 @@ Parameter REGISTRY = "OcuPilot.Screen.Tool.Registry";
 
 Parameter DISPATCH = "OcuPilot.Test.ToolDispatchProbe";
 
-Parameter LIMIT = 60000;
-
 Method OnBeforeOneTest() As %Status
 {
     Do ..Reset()
@@ -143,8 +141,8 @@ Method TestAOneLineDocumentOverTheCapKeepsItsOneLine()
     If $$$ISERR(tSC) Quit
     Set tCut = tResult.%Get("text")
     Do $$$AssertEquals(tResult.%Get("lines") _ "|" _ tResult.%Get("linesSent") _ "|" _ tResult.%Get("truncated"), "1|1|1", "one line held, one line sent, and the cut is reported")
-    Do $$$AssertEquals($Length(tCut), 30000, "the cut keeps the 30,000 quotes that escape to 60,000 characters")
-    Do $$$AssertTrue(##class(OcuPilot.Screen.Tool.ExplorerSourceRead).Escaped(tCut) <= ..#LIMIT, "the text escapes to at most 60,000 characters")
+    Do $$$AssertEquals($Length(tCut), ..Limit() \ 2, "the cut keeps the quotes that escape to the bound, two characters each")
+    Do $$$AssertTrue(##class(OcuPilot.Screen.Tool.ExplorerSourceRead).Escaped(tCut) <= ..Limit(), "the text escapes to at most the bound")
     Do $$$AssertEquals(tCut, $Extract(tWide, 1, $Length(tCut)), "the text is a prefix of the line")
 }
 
@@ -166,11 +164,11 @@ Method TestALongRoutineIsCutAtWholeLines()
     Do $$$AssertEquals(tResult.%Get("truncated"), 1, "the cut is reported")
     Do $$$AssertTrue(tSent < tTotal, "fewer lines than the routine holds are sent: " _ tSent _ " of " _ tTotal)
     Do $$$AssertEquals(tTotal, 2003, "the routine holds its ROUTINE line, its label line, 2000 rows and its quit")
-    Do $$$AssertTrue(##class(OcuPilot.Screen.Tool.ExplorerSourceRead).Escaped(tCut) <= ..#LIMIT, "the text escapes to at most 60,000 characters: " _ ##class(OcuPilot.Screen.Tool.ExplorerSourceRead).Escaped(tCut))
+    Do $$$AssertTrue(##class(OcuPilot.Screen.Tool.ExplorerSourceRead).Escaped(tCut) <= ..Limit(), "the text escapes to at most the bound: " _ ##class(OcuPilot.Screen.Tool.ExplorerSourceRead).Escaped(tCut))
     Do $$$AssertEquals($Length(tCut, $Char(10)), tSent, "the text is exactly the lines it reports")
     Set tSource = $ClassMethod(..#PROBE, "Source", ..#NAMESPACE, tName)
     Do $$$AssertEquals(tCut, $Piece(tSource, $Char(10), 1, tSent), "the text is the routine's first lines, verbatim")
-    Do $$$AssertTrue(##class(OcuPilot.Screen.Tool.ExplorerSourceRead).Escaped(tCut _ $Char(10) _ $Piece(tSource, $Char(10), tSent + 1)) > ..#LIMIT, "the next line would not have fit")
+    Do $$$AssertTrue(##class(OcuPilot.Screen.Tool.ExplorerSourceRead).Escaped(tCut _ $Char(10) _ $Piece(tSource, $Char(10), tSent + 1)) > ..Limit(), "the next line would not have fit")
 }
 
 /// <p>An include file and an intermediate routine read whole through the routine tool, as the viewer's name
@@ -299,7 +297,7 @@ Method TestANumberTypedLineIsMeasuredAsAString()
 }
 
 /// <p>A first line cut at the cap never ends on the high half of a UTF-16 surrogate pair: a first line of
-/// <code>a</code> and 35,000 pairs, whose 60,000-unit prefix would end between the halves of a pair, is
+/// <code>a</code> and 35,000 pairs, whose prefix at the bound would end between the halves of a pair, is
 /// cut one unit short, on the low half of the last whole pair.</p>
 /// <p>Mutation (Rule 19): <method>OcuPilot.Screen.Tool.ExplorerSourceRead.CutFirst</method> without its
 /// surrogate guard -- this goes red.</p>
@@ -312,12 +310,12 @@ Method TestACutFirstLineNeverEndsOnAHighSurrogate()
     }
     Set tLines = []
     Do tLines.%Push(tFirst, "string")
-    Set tText = ##class(OcuPilot.Screen.Tool.ExplorerSourceRead).Cut(tLines, ..#LIMIT, .tSent, .tTruncated)
+    Set tText = ##class(OcuPilot.Screen.Tool.ExplorerSourceRead).Cut(tLines, ..Limit(), .tSent, .tTruncated)
     Set tLast = $Ascii($Extract(tText, *))
     Do $$$AssertEquals(tSent _ "|" _ tTruncated, "1|1", "the first line is the one line sent, and the cut is reported")
     Do $$$AssertTrue('((tLast >= 55296) && (tLast <= 56319)), "the text does not end on a high surrogate: last unit " _ tLast)
     Do $$$AssertEquals(tLast, 56832, "it ends on the low half of the last whole pair")
-    Do $$$AssertEquals($Length(tText), 59999, "one unit short of the 60,000 allowance")
+    Do $$$AssertEquals($Length(tText), ..Limit() - 1, "one unit short of the allowance")
 }
 
 /// <p>A document that holds no lines reads as none: <code>lines</code> and <code>linesSent</code> 0, not
@@ -360,7 +358,7 @@ Method TestAFullSizeCutReadFitsAReplyAloneAndIsRefusedWhenTheReplyHasLess()
     If $IsObject(tParsed) {
         Do $$$AssertEquals(tParsed.%Get("truncated"), 1, "the cut is reported")
         Do $$$AssertTrue(tParsed.%Get("linesSent") < tParsed.%Get("lines"), "fewer lines than the class holds are sent")
-        Do $$$AssertTrue(##class(OcuPilot.Screen.Tool.ExplorerSourceRead).Escaped(tParsed.%Get("text")) <= ..#LIMIT, "the text escapes to at most 60,000 characters")
+        Do $$$AssertTrue(##class(OcuPilot.Screen.Tool.ExplorerSourceRead).Escaped(tParsed.%Get("text")) <= ..Limit(), "the text escapes to at most the bound")
         Set tSource = $ClassMethod(..#PROBE, "Source", ..#NAMESPACE, tName)
         Do $$$AssertEquals(tParsed.%Get("text"), $Piece(tSource, $Char(10), 1, tParsed.%Get("linesSent")), "the text dispatch delivers is the class's first lines, uncut by the per-field bound")
         Do $$$AssertTrue($Length(tParsed.%Get("text")) > 1000, "and longer than the 1,000-character field bound: " _ $Length(tParsed.%Get("text")))

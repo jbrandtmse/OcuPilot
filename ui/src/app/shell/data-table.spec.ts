@@ -14,6 +14,7 @@ import { ScreenStores, type ScreenStore } from '../core/screen-store';
 import { Session } from '../core/session';
 import { SCREENS, type ScreenDeclaration } from '../core/screens.generated';
 import { STRINGS, stringFor } from '../core/strings';
+import { entityKeyOf } from '../core/table-model';
 import { tableDeclaration } from '../testing/table-declaration';
 import { DataTable, TABLE_STRING_LOOKUP } from './data-table';
 import { stubAccountPreferences } from '../testing/account-preferences';
@@ -544,6 +545,35 @@ describe('the data table', () => {
     expect(first.host().querySelector('.ocu-data-table-empty')).toBeNull();
   });
 
+  // DW-2434: `core/read-state.ts` decides the states this table draws, and the detail tabs' bodies decide them the same way.
+  // Mutation (Rule 19): drop the descriptor comparison from `ReadState.boundHere` -> the table keeps drawing its rows after the
+  // framework is bound to another screen, and this goes red; read `ReadState.fault` without it -> another screen's refusal is drawn
+  // in this table, and the last leg goes red.
+  it('Story 20.30, DW-2434: a table whose screen the framework is no longer bound to draws the skeleton in place of the rows it drew', async () => {
+    const wired = await wire(tableDeclaration(), ok(rows(3)));
+    await wired.refresh.readNow();
+    await settle(wired.fixture);
+    expect(wired.host().querySelectorAll('[role="row"][aria-rowindex]').length).toBe(4);
+
+    wired.refresh.bind({ ...tableDeclaration(), descriptor: 'OcuPilot.Screen.Descriptor.Other' }, async () => ({ kind: 'ok', rows: [], truncated: false }));
+    await wired.refresh.readNow();
+    await settle(wired.fixture);
+    expect(wired.refresh.hasLoaded()).toBe(true);
+
+    expect(wired.host().querySelector('.ocu-data-table-frame')?.getAttribute('aria-busy')).toBe('true');
+    expect(wired.host().querySelector('.ocu-data-table-skeleton')).not.toBeNull();
+    expect(wired.host().querySelector('[role="grid"]')).toBeNull();
+    expect(wired.host().querySelector('.ocu-data-table-empty')).toBeNull();
+
+    // A refusal of the screen the framework is bound to is that screen's, not this table's.
+    wired.refresh.bind({ ...tableDeclaration(), descriptor: 'OcuPilot.Screen.Descriptor.Third' }, async () => ({ kind: 'fault', fault: REFUSED }));
+    await wired.refresh.readNow();
+    await settle(wired.fixture);
+    expect(wired.refresh.fault()).toEqual(REFUSED);
+    expect(wired.host().querySelector('.ocu-data-table-refusal')).toBeNull();
+    expect(wired.host().querySelector('.ocu-data-table-skeleton')).not.toBeNull();
+  });
+
   it('the grid is one Tab stop; Down selects, Right steps into the cells, Alt+Down opens the menu and closing it returns focus', async () => {
     const declaration = tableDeclaration({ rowActions: [{ id: 'disable', selfProtection: '' }] });
     const wired = await wire(declaration, ok(rows(3)));
@@ -711,6 +741,89 @@ describe('the data table', () => {
     expect(runs).toBe(1);
   });
 
+  it("Story 18.46: a registrant's reason draws a menu entry aria-disabled with that sentence inline, ahead of the row's own, and runs nothing", async () => {
+    // The Allowed directories screen registers Change with the instance's verdict on the write's key; the row menu draws it
+    // as the command bar does. The first row is also protected by its own rule, and the registrant's sentence outranks it.
+    //
+    // Mutation (Rule 19): drop the `this.actions.reason(...)` read from `DataTable.menuItems`, or order it after
+    // `selfProtectionReason(...)` -> the protected row's entry names its own sentence, red.
+    const declaration = tableDeclaration({ rowActions: [{ id: 'delete', selfProtection: 'serves-ocupilot' }] });
+    const listed = [
+      { Name: '/api/ocupilot', NameSpace: 'USER', Count: 0, Enabled: true, Note: 'n' },
+      { Name: '/csp/myapp', NameSpace: 'USER', Count: 1, Enabled: true, Note: 'n' },
+    ];
+    const wired = await wire(declaration, ok(listed), ['delete']);
+    let runs = 0;
+    let sentence: string = STRINGS.allowListRefusalOff;
+    wired.actions.register(declaration.descriptor, 'delete', () => (runs += 1), () => sentence);
+    await wired.refresh.readNow();
+    await settle(wired.fixture);
+
+    const entry = async (rowIndex: number): Promise<HTMLButtonElement> => {
+      (wired.host().querySelector(`[aria-rowindex="${rowIndex}"] .ocu-data-table-trigger`) as HTMLButtonElement).click();
+      await settle(wired.fixture);
+      return wired.host().querySelector('[role="menu"] [role="menuitem"]') as HTMLButtonElement;
+    };
+
+    for (const rowIndex of [2, 3]) {
+      const refused = await entry(rowIndex);
+      expect(refused.querySelector('.ocu-data-table-menu-reason')?.textContent?.trim(), `row ${rowIndex}`).toBe(STRINGS.allowListRefusalOff);
+      expect(refused.getAttribute('aria-label'), `row ${rowIndex}`).toBe(`${STRINGS.actionDelete} ${STRINGS.allowListRefusalOff}`);
+      expect(refused.getAttribute('aria-disabled'), `row ${rowIndex}`).toBe('true');
+      refused.click();
+      await settle(wired.fixture);
+    }
+    expect(runs).toBe(0);
+
+    sentence = '';
+    wired.actions.changed();
+    const own = await entry(2);
+    expect(own.querySelector('.ocu-data-table-menu-reason')?.textContent?.trim(), 'the row falls back to its own rule').toBe(STRINGS.webAppServesOcuPilotRefusal);
+    own.click();
+    await settle(wired.fixture);
+    expect(runs).toBe(0);
+    const offered = await entry(3);
+    expect(offered.hasAttribute('aria-disabled')).toBe(false);
+    offered.click();
+    await settle(wired.fixture);
+    expect(runs).toBe(1);
+  });
+
+  it("Story 18.46: the empty state's action is labeled through actionLabel, and a registrant's reason draws it aria-disabled with the sentence beside it", async () => {
+    // Mutation (Rule 19): make `primaryActionLabel` answer the bare id again -> the label leg goes red; drop the
+    // `this.actions.reason(...)` read from `DataTable.primaryReason` -> the held-back legs go red.
+    const declaration = tableDeclaration({
+      descriptor: 'OcuPilot.Screen.Descriptor.AllowedDirectoryList',
+      primaryAction: { id: 'add', selfProtection: '' },
+      table: { ...tableDeclaration().table!, emptyNextKey: '', emptyAgentKey: 'classicLinkCardTitle' },
+    });
+    const wired = await wire(declaration, ok([]));
+    let runs = 0;
+    let sentence: string = STRINGS.allowListRefusalOff;
+    wired.actions.register(declaration.descriptor, 'add', () => (runs += 1), () => sentence);
+    await wired.refresh.readNow();
+    await settle(wired.fixture);
+
+    const action = (): HTMLButtonElement => wired.host().querySelector('.ocu-data-table-empty-action') as HTMLButtonElement;
+    expect(action().textContent?.trim()).toBe(STRINGS.allowedDirectoryAddAction);
+    expect(action().getAttribute('aria-disabled')).toBe('true');
+    expect(action().hasAttribute('disabled')).toBe(false);
+    const reason = wired.host().querySelector(`#${action().getAttribute('aria-describedby')}`);
+    expect(reason?.textContent?.trim()).toBe(STRINGS.allowListRefusalOff);
+    action().click();
+    await settle(wired.fixture);
+    expect(runs).toBe(0);
+
+    sentence = '';
+    wired.actions.changed();
+    await settle(wired.fixture);
+    expect(action().hasAttribute('aria-disabled')).toBe(false);
+    expect(action().hasAttribute('aria-describedby')).toBe(false);
+    expect(wired.host().querySelector('.ocu-data-table-empty-reason')).toBeNull();
+    action().click();
+    expect(runs).toBe(1);
+  });
+
   it("Story 7.2: the signed-in account's protected-account entry carries its published sentence and runs nothing", async () => {
     // Mutation (Rule 19): drop `this.signedIn()` from `menuItems`' call -> the entry is offered, red.
     const declaration = tableDeclaration({ rowActions: [{ id: 'delete', selfProtection: 'protected-account' }] });
@@ -774,6 +887,93 @@ describe('the data table', () => {
     await settle(wired.fixture);
     expect(TestBed.inject(Router).url).toBe('/web-applications/probe/%252Fcsp%252Fapp02?ns=HSCUSTOM');
     expect(wired.store.selection()).toEqual(['/csp/app01']);
+  });
+
+  it('Story 18.47, DW-2328: rows whose names repeat or are empty each select alone, and ArrowDown walks every row', async () => {
+    // Mutation (Rule 19): make `viewKeys` answer `rowKey` for every row -> a click selects every row of a name and
+    // ArrowDown stops at a group's first row, so the selection and the walk both go red.
+    const base = rows(1)[0];
+    const repeated = [
+      { ...base, Name: 'Metric', Count: 1 },
+      { ...base, Name: 'Metric', Count: 2 },
+      { ...base, Name: '', Count: 3 },
+      { ...base, Name: 'Other', Count: 4 },
+      { ...base, Name: '', Count: 5 },
+      { ...base, Name: 'Metric', Count: 6 },
+    ];
+    const wired = await wire(tableDeclaration(), ok(repeated));
+    await wired.refresh.readNow();
+    await settle(wired.fixture);
+    const rowElements = (): HTMLElement[] => Array.from(wired.host().querySelectorAll('[role="row"][aria-rowindex]')).filter((row) => Number(row.getAttribute('aria-rowindex')) > 1) as HTMLElement[];
+    expect(rowElements()).toHaveLength(6);
+    const selectedRows = (): number => rowElements().filter((row) => row.getAttribute('aria-selected') === 'true').length;
+
+    // A click on the second row of a repeated name selects that row and no other.
+    const metricRows = rowElements().filter((row) => row.textContent?.includes('Metric'));
+    expect(metricRows).toHaveLength(3);
+    (metricRows[1].querySelectorAll('[role="gridcell"]')[2] as HTMLElement).click();
+    await settle(wired.fixture);
+    expect(selectedRows()).toBe(1);
+    expect(metricRows[1].getAttribute('aria-selected')).toBe('true');
+    expect(entityKeyOf(wired.store.selection()[0] ?? 'unset')).toBe('Metric');
+
+    // ArrowDown walks every row, the empty-named ones included.
+    const grid = wired.host().querySelector('[role="grid"]') as HTMLElement;
+    grid.focus();
+    wired.store.setActive('');
+    wired.store.setSelection([]);
+    await settle(wired.fixture);
+    const walked: string[] = [];
+    for (let step = 0; step < 6; step += 1) {
+      grid.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+      await settle(wired.fixture);
+      expect(selectedRows()).toBe(1);
+      walked.push(grid.getAttribute('aria-activedescendant') ?? '');
+    }
+    expect(walked).toEqual(rowElements().map((row) => row.id));
+    expect(new Set(walked).size).toBe(6);
+  });
+
+  it("Story 18.47, DW-2328: a menu opened on a repeated row judges the row's entity key", async () => {
+    // Mutation (Rule 19): drop `entityKeyOf` from `menuItems`' self-protection call -> the second row's key carries its
+    // ordinal, the signed-in account is not recognised and the entry is offered, red.
+    const declaration = tableDeclaration({ rowActions: [{ id: 'delete', selfProtection: 'protected-account' }] });
+    const dana = { Name: 'dana', NameSpace: 'USER', Count: 0, Enabled: true, Note: 'n' };
+    const wired = await wire(declaration, ok([dana, { ...dana, Count: 1 }]), ['delete']);
+    wired.actions.register(declaration.descriptor, 'delete', () => undefined);
+    await wired.refresh.readNow();
+    await settle(wired.fixture);
+    (wired.host().querySelector('[aria-rowindex="3"] .ocu-data-table-trigger') as HTMLButtonElement).click();
+    await settle(wired.fixture);
+    const entry = wired.host().querySelector('[role="menu"] [role="menuitem"]') as HTMLButtonElement;
+    expect(entry.querySelector('.ocu-data-table-menu-reason')?.textContent?.trim()).toBe(STRINGS.userRefusalCurrentUser);
+    expect(entry.getAttribute('aria-disabled')).toBe('true');
+  });
+
+  it('Story 18.47, DW-2328: a menu opened on a repeated row reads that row, not the first of its key', async () => {
+    // Mutation (Rule 19): resolve `menuItems`' row as the first row of the selection's entity key -> the second row's
+    // entry reads the first row's AllowDelete and is refused, red.
+    const base = tableDeclaration();
+    const declaration = tableDeclaration({
+      rowActions: [{ id: 'delete', selfProtection: 'system-resource' }],
+      read: base.read === null ? null : { ...base.read, fields: [...base.read.fields, 'AllowDelete'] },
+    });
+    const listed = [
+      { Name: 'alpha', NameSpace: 'USER', Count: 0, Enabled: true, Note: 'n', AllowDelete: false },
+      { Name: 'alpha', NameSpace: 'USER', Count: 1, Enabled: true, Note: 'n', AllowDelete: true },
+    ];
+    const wired = await wire(declaration, ok(listed), ['delete']);
+    wired.actions.register(declaration.descriptor, 'delete', () => undefined);
+    await wired.refresh.readNow();
+    await settle(wired.fixture);
+    (wired.host().querySelector('[aria-rowindex="3"] .ocu-data-table-trigger') as HTMLButtonElement).click();
+    await settle(wired.fixture);
+    const offered = wired.host().querySelector('[role="menu"] [role="menuitem"]') as HTMLButtonElement;
+    expect(offered.hasAttribute('aria-disabled')).toBe(false);
+    (wired.host().querySelector('[aria-rowindex="2"] .ocu-data-table-trigger') as HTMLButtonElement).click();
+    await settle(wired.fixture);
+    const refused = wired.host().querySelector('[role="menu"] [role="menuitem"]') as HTMLButtonElement;
+    expect(refused.querySelector('.ocu-data-table-menu-reason')?.textContent?.trim()).toBe(STRINGS.resourceRefusalSystem);
   });
 
   it('Story 5.7: a marked row is announced once, politely, naming the row and what happened', async () => {
@@ -1084,6 +1284,110 @@ describe('the data table', () => {
     expect(wired.host().querySelector('.ocu-data-table-cap-notice')?.textContent?.trim()).toBe(
       'Showing the first 3 rows. Narrow the filter or raise the max rows.'
     );
+  });
+
+  it('one row reads "1 row" in the footer, and a cap of one reads "first row" in the notice', async () => {
+    const wired = await wire(tableDeclaration(), ok(rows(1), true));
+    wired.store.setMaxRows(1);
+    await wired.refresh.readNow();
+    await settle(wired.fixture);
+    expect(wired.host().querySelector('.ocu-data-table-count')?.textContent?.trim()).toBe('1 row');
+    expect(wired.host().querySelector('.ocu-data-table-cap-notice')?.textContent?.trim()).toBe(
+      'Showing the first row. Narrow the filter or raise the max rows.'
+    );
+  });
+
+  // A `long` column's value shows whole beneath the rows, in the panel's long block, for the only
+  // row or the selected one.
+  //
+  // Mutation (Rule 19): project `''` in place of `{{ block.text }}` in the long block -> all four
+  // cases go red.
+  describe('a long column', () => {
+    const longDeclaration = (): ScreenDeclaration => {
+      const base = tableDeclaration();
+      const table = base.table;
+      if (table === null) throw new Error('the probe declares a table');
+      return tableDeclaration({
+        table: { ...table, columns: table.columns.map((column) => (column.field === 'Note' ? { ...column, long: true } : column)) },
+      });
+    };
+    const withNotes = (...notes: (string | null)[]) => notes.map((note, index) => ({ ...rows(notes.length)[index], Note: note }));
+    const block = (wired: Wired) => wired.host().querySelector('.ocu-data-table-long') as HTMLElement | null;
+
+    it('shows the only row\'s 5,000-character value whole in a long block named by the column header, the cell unchanged', async () => {
+      const value = `${'select '.repeat(713)}${'z'.repeat(9)}`;
+      expect(value.length).toBe(5000);
+      const wired = await wire(longDeclaration(), ok(withNotes(value)));
+      await wired.refresh.readNow();
+      await settle(wired.fixture);
+
+      const region = block(wired)?.querySelector('.ocu-long-block-region') as HTMLElement;
+      expect(region.textContent).toBe(value);
+      const labelId = block(wired)?.querySelector('section')?.getAttribute('aria-labelledby') ?? '';
+      expect(labelId).not.toBe('');
+      expect(document.getElementById(labelId)?.textContent?.trim()).toBe(STRINGS.statusSegmentServer);
+      expect(block(wired)?.querySelector('.ocu-long-block-collapsed')).not.toBeNull();
+      expect(block(wired)?.querySelector('.ocu-long-block-toggle')?.textContent?.trim()).toBe(STRINGS.longBlockShowMore);
+      const cell = wired.host().querySelector('[aria-rowindex="2"]')?.querySelectorAll('[role="gridcell"]')[4] as HTMLElement;
+      expect(cell.textContent?.trim()).toBe(value);
+    });
+
+    it('shows a short value without the control, and draws no block for an empty value or a column that is not long', async () => {
+      const wired = await wire(longDeclaration(), ok(withNotes('one line')));
+      await wired.refresh.readNow();
+      await settle(wired.fixture);
+      expect(block(wired)?.querySelector('.ocu-long-block-region')?.textContent).toBe('one line');
+      expect(block(wired)?.querySelector('.ocu-long-block-toggle')).toBeNull();
+
+      wired.answer(ok(withNotes(null)));
+      await wired.refresh.readNow();
+      await settle(wired.fixture);
+      expect(block(wired)).toBeNull();
+
+      const plain = await wire(tableDeclaration(), ok(withNotes('one line')));
+      await plain.refresh.readNow();
+      await settle(plain.fixture);
+      expect(block(plain)).toBeNull();
+    });
+
+    it('draws no block for several rows with none selected, and the selected row\'s value once one is', async () => {
+      const wired = await wire(longDeclaration(), ok(withNotes('first value', 'second value')));
+      await wired.refresh.readNow();
+      await settle(wired.fixture);
+      expect(wired.store.selection()).toEqual([]);
+      expect(block(wired)).toBeNull();
+
+      const second = wired.host().querySelector('[aria-rowindex="3"]') as HTMLElement;
+      (second.querySelectorAll('[role="gridcell"]')[2] as HTMLElement).click();
+      await settle(wired.fixture);
+      expect(block(wired)?.querySelector('.ocu-long-block-region')?.textContent).toBe('second value');
+
+      const first = wired.host().querySelector('[aria-rowindex="2"]') as HTMLElement;
+      (first.querySelectorAll('[role="gridcell"]')[2] as HTMLElement).click();
+      await settle(wired.fixture);
+      expect(block(wired)?.querySelector('.ocu-long-block-region')?.textContent).toBe('first value');
+    });
+
+    it('shows the only row of a filtered view, and another row\'s block starts collapsed', async () => {
+      const long = 'x'.repeat(2000);
+      const other = 'y'.repeat(2000);
+      const wired = await wire(longDeclaration(), ok(withNotes(long, other)));
+      await wired.refresh.readNow();
+      await settle(wired.fixture);
+      wired.store.setFilter('app00');
+      await settle(wired.fixture);
+      expect(block(wired)?.querySelector('.ocu-long-block-region')?.textContent).toBe(long);
+
+      (block(wired)?.querySelector('.ocu-long-block-toggle') as HTMLButtonElement).click();
+      await settle(wired.fixture);
+      expect(block(wired)?.querySelector('.ocu-long-block-collapsed')).toBeNull();
+      expect(block(wired)?.querySelector('.ocu-long-block-toggle')?.textContent?.trim()).toBe(STRINGS.longBlockShowLess);
+
+      wired.store.setFilter('app01');
+      await settle(wired.fixture);
+      expect(block(wired)?.querySelector('.ocu-long-block-region')?.textContent).toBe(other);
+      expect(block(wired)?.querySelector('.ocu-long-block-collapsed')).not.toBeNull();
+    });
   });
 
   it('DW-18 Emptied: a focused grid whose re-fetch answers zero rows hands focus to the empty state', async () => {

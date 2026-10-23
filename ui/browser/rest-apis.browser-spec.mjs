@@ -22,6 +22,7 @@ import { READINESS_PATH, browserConfig, launchOptions } from '../browser.config.
 import { clickRowCentre, filterToSubset, viewCount, waitForRows } from './list-spec.mjs';
 import { leaveFirstLoginGate } from './shell-entry.mjs';
 import { resetRememberedState } from './preferences-reset.mjs';
+import { assertDrawnAtDeclaredIndex } from './side-bar-spec.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const { STRINGS } = await import(join(uiRoot, 'src', 'app', 'core', 'strings.ts'));
@@ -94,7 +95,7 @@ async function answerFor(page, answers, prefix) {
 }
 
 /** The side bar's entry labels, opening it first when it is closed. */
-async function sideBarLabels(page) {
+async function drawnLabels(page) {
   if ((await page.$('app-side-bar nav.ocu-side-bar')) === null) {
     await page.keyboard.down('Control');
     await page.keyboard.press('b');
@@ -106,12 +107,12 @@ async function sideBarLabels(page) {
   );
 }
 
-test('the explorer is the second side-bar entry, and its /api/ocupilot name cell opens the unlisted document viewer', async () => {
+test('the explorer is a side-bar entry, and its /api/ocupilot name cell opens the unlisted document viewer', async () => {
   const { context, page, reads } = await signedInAt(EXPLORER_URL);
   try {
     await waitForRows(page, config.navigationTimeoutMs);
-    const labels = await sideBarLabels(page);
-    assert.deepEqual(labels.slice(0, 2), [STRINGS.webAppListLabel, STRINGS.restApiListLabel], 'REST API explorer is the area\'s second entry');
+    const labels = await drawnLabels(page);
+    assertDrawnAtDeclaredIndex(labels, 'web-applications', STRINGS.restApiListLabel);
     assert.equal(labels.includes(STRINGS.openApiViewerLabel), false, 'and the document viewer is never listed');
     assert.ok(reads.some((read) => read.startsWith(`${READ_PREFIX}webapp.restapis/read?`) && read.includes('ns=HSCUSTOM')), `the explorer was read in HSCUSTOM: ${JSON.stringify(reads)}`);
 
@@ -122,7 +123,7 @@ test('the explorer is the second side-bar entry, and its /api/ocupilot name cell
     await page.waitForFunction((path) => window.location.pathname === path, { timeout: config.navigationTimeoutMs }, wanted);
     assert.equal(new URL(page.url()).search, '?ns=HSCUSTOM', 'the viewer keeps the namespace scope');
     await page.waitForSelector('[data-ocu-openapi="path"]', { timeout: config.navigationTimeoutMs });
-    assert.equal((await sideBarLabels(page)).includes(STRINGS.openApiViewerLabel), false, 'and the viewer is still not listed once open');
+    assert.equal((await drawnLabels(page)).includes(STRINGS.openApiViewerLabel), false, 'and the viewer is still not listed once open');
   } finally {
     await context.close();
   }

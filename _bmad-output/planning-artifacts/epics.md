@@ -7820,6 +7820,7 @@ So that removing or checking OcuPilot never damages or hides what others set up.
 
 - DW-219: Uninstall's contract on an instance OcuPilot does not wholly own has three half-state paths (ledger; re-owned by lead 2026-10-12 at Story 18.13's spec gate). From source at `fe132688`: path 1 is open (the shell bundle directory is removed unconditionally); path 2 is open (an unreadable provenance record warns and continues); path 3 looks closed by the role loop (inference; a pinning test settles it).
 - DW-2172: DW-236's detection half - a SQL grant on OcuPilot's own schemas widened outside OcuPilot (another role or _PUBLIC holding it) is detected beside install's schema-grant read-back (ledger; re-owned by lead 2026-10-12 at Story 18.13's spec gate). The grantee source is a Task 0 measurement.
+- DW-2365: A refused IPM install in a second namespace may leave IPM's own state there, and a `zpm uninstall` run there may delete the live install's web applications and bundle (inference; ledger; routed by Story 18.13's code review 2026-10-12): measure first, then fix by an uninstall-phase guard invoke or document the cleanup.
 
 ### Story 18.45: The agent's tool roster scoped per turn
 
@@ -7854,6 +7855,55 @@ So that the person's write Story 18.42 adds is reachable where the list is shown
 - **Given** the key disabled (as shipped)
 - **When** the screen is shown
 - **Then** the actions are shown off with the reason, and nothing is written.
+- DW-2334: The allow-list's write has its server half (Story 18.42's route, tool and port); the screen's add, change and remove dialog is the surface still missing (ledger; routed by adjudication 2026-10-13)
+
+### Story 18.47: Epic 18 burn-down, part 1
+
+As a developer-administrator,
+I want Epic 18's routed grant, provider, shell and monitor defects fixed,
+So that the stage closes with its own debt paid. [AMENDED 2026-10-14, Epic 18 burn-down gate, orchestrator ruling: grants, providers, the shell and the monitor; DW-2329 handles both backslash forms; DW-2327 audits the 48 two-argument %GetNext sites and fixes those reading caller-controlled JSON, or charters one sweep entry if more than about 10 need it]
+
+**Acceptance Criteria:**
+
+- **Given** each entry below
+- **When** the story is done
+- **Then** it is fixed with a pinning test, or closed on evidence in its ledger trailer.
+- DW-2311: The REST service delete's deployed check sees only a web application of the same namespace dispatching to <Name>.disp: a service reached through another dispatch class's  (ledger; chartered by the burn-down gate 2026-10-14)
+- DW-2322: Clearing a privileged routine application's Resource, or enabling it, while it grants a privileged role is not treated as a grant (ledger; chartered by the burn-down gate 2026-10-14)
+- DW-2320: The MatchRoles grant classifier compares target role names only, so moving a held privileged target to another MatchRole (to every caller via an empty one) is not a grant (ledger; chartered by the burn-down gate 2026-10-14)
+- DW-2333: webapp.list.update takes a web application's MatchRoles whole, and no read tool answers that list, so the agent cannot send it with one entry changed (ledger; chartered by the burn-down gate 2026-10-14)
+- DW-2400: CipherList and TLSMinVersion are settable on the provider's SSL/TLS configurations (OcuPilotProvider and an egress-named one), and neither OCUPILOTSSL nor PROVIDERSSL cov (ledger; chartered by the burn-down gate 2026-10-14)
+- DW-2167: AdminPort answers the vendor's 404 #822 Access Denied as PORT.NOTFOUND, so a refused read reads as an absent target (inference: no LDAP surface reaches it today, each gat (ledger; chartered by the burn-down gate 2026-10-14)
+- DW-2328: Rows of an id-none list share one key when its name column repeats: MetricsList's 942 rows hold 115 Metric values, so a click selects every row of a metric and the arrow  (ledger; chartered by the burn-down gate 2026-10-14)
+- DW-2329: MonitorPort.Samples would fail the whole metrics table on an instance whose label value ends in an unescaped backslash (a Windows dir); unverified (ledger; chartered by the burn-down gate 2026-10-14)
+- DW-2340: The Dashboard's drill-down links draw live for a screen the caller is refused (AD-44 classic-page resource or AD-64 adjustment), not gated with the reason as EXPERIENCE.m (ledger; chartered by the burn-down gate 2026-10-14)
+- DW-2007: A data server Save with SSL/TLS and no %ECPClient raises the instance alert state: AdminPort logs the vendor's #1454 at severity 2 before EcpPort maps it to ECP.DATASERVE (ledger; chartered by the burn-down gate 2026-10-14)
+- DW-2149: Five test probes (EcpProbe, EncryptionProbe, JournalProbe, LicenseProbe, RemoteDatabaseProbe) include $SYSTEM.Monitor.State() in their before/after Snapshot; an earlier c (ledger; chartered by the burn-down gate 2026-10-14)
+- DW-2327: Area Saves and Rules iterate request bodies with a two-argument %GetNext: a value past the longest string or largest number raises and answers 500, not the field refusal (ledger; chartered by the burn-down gate 2026-10-14)
+
+### Story 18.48: Epic 18 burn-down, part 2
+
+As a developer-administrator,
+I want Epic 18's routed encryption, journal, LDAP and agent-read defects fixed,
+So that the stage closes with its own debt paid. [AMENDED 2026-10-14, Epic 18 burn-down gate, orchestrator ruling: DW-2100 first (measure on the throwaway in Task 0, then decide AD-10's start arm); DW-1896 the AD-27 named case through Modify in %SYS, then lift the LASTONE refusal]
+
+**Acceptance Criteria:**
+
+- **Given** each entry below
+- **When** the story is done
+- **Then** it is fixed with a pinning test, or closed on evidence in its ledger trailer.
+- DW-2100: AD-10's start arm refuses only Interactive over the three databases: an Unattended key file or KMIP server that cannot activate the key encrypting IRISAUDIT, IRISSECURITY (ledger; chartered by the burn-down gate 2026-10-14)
+- DW-2085: The database create omits the classic wizard's Encrypt database? (Encrypted and EncryptionKeyID on POST /database-dir, offered while a database key is active); Story 18.3 (ledger; chartered by the burn-down gate 2026-10-14)
+- DW-2086: An encryption key activation's card lists the key file's keys, but its confirm activates whatever the file holds then: FileKeys is neither fingerprinted nor compared at t (ledger; chartered by the burn-down gate 2026-10-14)
+- DW-2087: A first database key activation takes no destructive treatment, though Task 0 measured that its startup-mode change (DBEncStartMode Interactive) outlives every deactivati (ledger; chartered by the burn-down gate 2026-10-14)
+- DW-2126: An RSA key regenerated over a secret holding a certificate drops the certificate, and WALLETKEY.REPLACE.RSA and the card do not say so (ledger; chartered by the burn-down gate 2026-10-14)
+- DW-1966: Journal settings accept an existing database's directory, OcuPilot's own included, as a journal directory, where the vendor then writes its iris.lck (ledger; chartered by the burn-down gate 2026-10-14)
+- DW-1896: The LDAP editor cannot remove a configuration's last retrieved attribute through the admin API (its Security.LDAP PUT ignores LDAPAttributes []); an AD-27 named case writ (ledger; chartered by the burn-down gate 2026-10-14)
+- DW-2335: Several Stage 2 editor forms show fields no read tool answers (superservers 14, local databases 10, user copy 12), so the agent cannot read what the person sees (ledger; chartered by the burn-down gate 2026-10-14)
+- DW-2427: The encryption key-file field refusals #5022, #1219 and #1204 are still logged at severity 2, so a mistyped key-file entry raises the instance alert state (ledger; routed by cr 2026-10-14)
+- DW-2429: EncryptionPort answers the vendor's startup-settings refusals #1231 and #1233 as 500 INTERNAL, logged at severity 2; each maps to an unlogged field refusal beside #1217's (ledger; routed by lead 2026-10-14, orchestrator: folded beside DW-2427)
+- DW-2424: Switches saves an egress SSL/TLS configuration whose minimum TLS version is below 1.2, which every provider call then refuses; the save-time rule matches the call-time floor with one new EGRESS code (ledger; routed by lead 2026-10-14, orchestrator)
+- DW-2425: AD-10's widened-reach arm extends to web applications as DW-2322 did: enabling one that grants a privileged role, or pointing its Resource at a public one, gets the privileged-grant treatment (ledger; decided by the orchestrator 2026-10-14)
 
 ## Epic 19: Stage 3 - System Explorer over the Atelier API
 
@@ -8312,9 +8362,9 @@ So that the editors InterSystems already built are reused rather than rebuilt.
 - **When** it opens
 - **Then** it loads **in place from the instance**, signed in through the hand-off, and is never copied or redistributed.
 
-- **Given** the editors' own messages - saved, compiled, invalid
-- **When** they are exchanged
-- **Then** the contract is established against a live editor, because it was never exercised.
+- **Given** a rule, BPL or DTL editor on its OcuPilot screen, in normal mode
+- **When** the person saves, compiles, or compiles a class that does not compile
+- **Then** the editor reports it in its own notice inside the frame, no message reaches OcuPilot's shell or the frame, and OcuPilot shows the result only through its own reads (the list's Modified after its next fetch); and a class OcuPilot's read does not answer, or a process or transformation written as a class, opens no editor and shows the screen's own sentence. [AMENDED 2026-10-13 - see the story change log]
 - DW-2347: The interoperability editor frame component first runs in a real browser here; re-run interop-editor-spec.mjs against the real screens (ledger; routed by lead 2026-10-12)
 - DW-2350: Changing an embedded editor's document re-sets src on the drawn frame, which pushes a joint history entry so Back moves the frame and not the screen; a new frame instead skips the editor's unsaved-changes alert; choose per the document switch (ledger; routed by cr 2026-10-12)
 - DW-2351: A framed vendor editor can move away from what its screen shows, unseen by OcuPilot: its logo and Back to standard UI navigate the frame, DTL and BPL push history entries, and the rule editor's Settings switches its namespace (ledger; routed by cr 2026-10-12)
@@ -8337,6 +8387,8 @@ So that understanding an unfamiliar production is visual.
 
 ### Story 20.9: Messages - search, view, resend and trace
 
+[AMENDED 2026-10-13, orchestrator ruling Q1 A at this story's spec gate, Rule 5] Split for size: this story keeps message search and the viewer's Header and Contents tabs over OcuPilot's own read-only renderer (its first and fourth criteria). Its trace criterion moved to Story 20.30 and its resend criterion to Story 20.31, each verbatim; order 20.9, 20.30, 20.31, then 20.10. Saved searches are not offered: each vendor store belongs to its own search engine (a named limit).
+
 As an interoperability operator,
 I want to find a message and follow what happened to it,
 So that incident investigation is possible here.
@@ -8346,14 +8398,6 @@ So that incident investigation is possible here.
 - **Given** message search and the viewer
 - **When** they run
 - **Then** they read through the port, with saved searches where the API offers them.
-
-- **Given** resend and edit-and-resend
-- **When** they run
-- **Then** they use a **dry-run then confirm** double gate with a bounded cap on how many messages one action may resend.
-
-- **Given** a session
-- **When** its trace is opened
-- **Then** it renders as a visual trace, with a generated sequence diagram as the alternative.
 
 - **Given** message contents
 - **When** they render
@@ -8368,10 +8412,12 @@ So that edits go through the same hooks they would elsewhere.
 **Acceptance Criteria:**
 
 - **Given** source control is enabled on the namespace
-- **When** an embedded editor saves
-- **Then** the hooks, menus, user actions and status are exchanged through the port.
+- **When** a person saves, compiles or uses the Source Control menu in an embedded rule, BPL or DTL editor, in normal mode
+- **Then** the editor exchanges the hooks, menus, user actions and status with the instance itself, through the vendor's interoperability API inside the frame, as the signed-in person and as it does outside OcuPilot, and nothing reaches OcuPilot's shell; and OcuPilot's own saves of classes and routines, the agent's edits behind these editors included, run the same save and compile hooks through `AtelierPort` and refuse by name a document source control has not released for editing. [AMENDED 2026-10-14 - see the story change log]
 
 ### Story 20.11: The Analytics rider
+
+[AMENDED 2026-10-14, orchestrator rulings Q1 A and Q2 A at this story's spec gate, Rule 5] Split for size: this story keeps the analytics port and the cube list, model browser, term list viewer and folder browser (its first criterion, its API reworded to what it calls). Its links criterion moved to Story 20.32, its MDX criterion to Story 20.33 and its cube manager criterion to Story 20.34, each verbatim; order 20.11, 20.32, 20.33, 20.34, then 20.12. Folder items require `%Development:USE` (a named narrower audience).
 
 As an analytics developer,
 I want cubes, the model browser, the MDX tool and the cube manager,
@@ -8381,21 +8427,11 @@ So that the analytics category is not empty.
 
 - **Given** the cube list, model browser, term list viewer and folder browser
 - **When** each loads
-- **Then** it reads through the analytics API.
-
-- **Given** the MDX query tool
-- **When** a query runs
-- **Then** results render, with drill-through and cancel.
-
-- **Given** the cube manager
-- **When** a build, synchronize or repair runs
-- **Then** it is a confirmed write - the one analytics write in this stage.
-
-- **Given** Architect, Analyzer and the User Portal
-- **When** they are reached
-- **Then** they are **linked**, not rebuilt.
+- **Then** it reads through the vendor's analytics classes in process, behind OcuPilot's own gate (the methods `/api/deepsee`'s Info routes call). [AMENDED 2026-10-14 - see the story change log]
 
 ### Story 20.12: The agent gains guided workflows and Investigate
+
+[AMENDED 2026-10-15, orchestrator rulings Q1 A and Q2 A at this story's spec gate, Rule 5] Its Investigate criterion moved verbatim to Story 20.36. The harvested prompt set is all nine workflows, renamed; the two whose tools do not exist yet (Story 21.2's backup, Story 21.9's promote) get none until those stories land (named limit).
 
 As a developer-administrator facing a stuck production,
 I want the agent to run a known procedure rather than a single call,
@@ -8406,10 +8442,6 @@ So that recovery follows a rehearsed path.
 - **Given** the harvested prompt set
 - **When** a guided workflow is run
 - **Then** it executes its steps, each write still an individually confirmed proposal - a workflow is a sequence of confirmations, **never a batch approval**.
-
-- **Given** an alert or a log entry
-- **When** the user chooses Investigate
-- **Then** a multistep run returns a recap and ranked hypotheses, citing the rows it used.
 
 - **Given** any workflow
 - **When** it reaches a write
@@ -8792,6 +8824,7 @@ So that the classic per-host Actions tab is not needed for them.
 - **Then** its destructiveness, its governance key's default and its audit record are stated (AD-22).
 
 - DW-2298: the classic per-host Actions tab's remaining item actions (temporary stop, start and restart of one item, change class, copy) have no story (ledger; routed by spec_gate 2026-10-11)
+- DW-2407: a story that adds a write reaching its target through another port updates ToolWrite's other-port count (49 after 20.16) in the same pass (ledger; routed by cr 2026-10-14)
 
 ---
 
@@ -8889,6 +8922,130 @@ So that OcuPilot opens faster and the bundle stays under its limit as screens ar
 - **Then** each edit that is not add-only goes to the orchestrator as a Rule 11 ask before it lands.
 
 ---
+
+### Story 20.30: The session trace
+
+[AMENDED 2026-10-13, orchestrator ruling Q1 A at Story 20.9's spec gate, Rule 5] Split from Story 20.9, carrying its trace criterion verbatim. Its charter, as measured at 20.9's plan, is in that spec's Design Notes › Split (Part B): OcuPilot's own SVG sequence diagram, with Mermaid text as the generated alternative. After Story 20.9, before Story 20.31.
+
+As an interoperability operator,
+I want to see what happened in a message's session,
+So that I can follow a message through the production.
+
+**Acceptance Criteria:**
+
+- **Given** a session
+- **When** its trace is opened
+- **Then** it renders as a visual trace, with a generated sequence diagram as the alternative.
+- DW-2434: Rule 31: interop-message-contents.ts copies DataTable's state getters and its skeleton, refusal and empty markup; share one state helper when the Trace tab adds the second body component (ledger; routed by cr 2026-10-14)
+
+### Story 20.31: Message resend and edit-and-resend
+
+[AMENDED 2026-10-13, orchestrator ruling Q1 A at Story 20.9's spec gate, Rule 5] Split from Story 20.9, carrying its resend criterion verbatim. Its charter, as measured at 20.9's plan, is in that spec's Design Notes › Split (Part C): the proposal is the dry run, Confirm executes, and one action resends at most 100 messages. Its key posture is settled at its own spec gate (a destructive key defaults to disabled under the baseline rule; edit-and-resend is at least as guarded as resend). After Story 20.30, before Story 20.10; Story 20.12 needs it.
+
+As an interoperability operator,
+I want to resend a message, or edit one and resend it,
+So that a failed exchange can be retried here.
+
+**Acceptance Criteria:**
+
+- **Given** resend and edit-and-resend
+- **When** they run
+- **Then** they use a **dry-run then confirm** double gate with a bounded cap on how many messages one action may resend.
+
+### Story 20.32: The analytics links
+
+[AMENDED 2026-10-14, orchestrator ruling Q1 A at Story 20.11's spec gate, Rule 5] Split from Story 20.11, carrying its criterion verbatim. Its charter, as measured at 20.11's plan, is in that spec's Design Notes › Split (Part B): Architect, Analyzer and the User Portal open the namespace's own page in a new tab, never rebuilt; its browser test does not load those classic pages repeatedly (each load holds a license unit). After Story 20.11, before Story 20.33.
+
+As an analytics developer,
+I want to reach Architect, Analyzer and the User Portal from OcuPilot,
+So that the analytics tools OcuPilot does not rebuild are one step away.
+
+**Acceptance Criteria:**
+
+- **Given** Architect, Analyzer and the User Portal
+- **When** they are reached
+- **Then** they are **linked**, not rebuilt.
+
+### Story 20.33: The MDX query tool
+
+[AMENDED 2026-10-14, orchestrator ruling Q1 A at Story 20.11's spec gate, Rule 5] Split from Story 20.11, carrying its criterion verbatim. Its charter, as measured at 20.11's plan, is in that spec's Design Notes › Split (Part C): an owner-scoped asynchronous run with a row cap, a time bound, cancel and drill-through, never a write. After Story 20.32, before Story 20.34. [AMENDED 2026-10-14, orchestrator rulings Q1 A and Q2 C at this story's spec gate, Rule 5] A query whose text runs server-side code or SQL (`%SEARCH`, `%SQLRESTRICT`, `RETURN`, `%ORDER`) runs only after the person confirms a plain-words warning (AD-65); the agent's MDX read is Story 20.35.
+
+As an analytics developer,
+I want to run an MDX query and see its results,
+So that a cube can be explored here.
+
+**Acceptance Criteria:**
+
+- **Given** the MDX query tool
+- **When** a query runs
+- **Then** results render, with drill-through and cancel.
+
+### Story 20.34: The cube manager's build and synchronize
+
+[AMENDED 2026-10-14, orchestrator ruling Q1 A at Story 20.11's spec gate, Rule 5] Split from Story 20.11, carrying its criterion verbatim. Its charter, as measured at 20.11's plan, is in that spec's Design Notes › Split (Part D): Build is destructive and its key ships `false`; Synchronize is not and its key ships `true`; Repair is the vendor's same build call and is offered as Build (Rule 5 apply-and-report). After Story 20.33, before Story 20.12.
+
+As an analytics developer,
+I want to build or synchronize a cube from OcuPilot,
+So that a changed cube can be brought up to date here.
+
+**Acceptance Criteria:**
+
+- **Given** the cube manager
+- **When** a build, synchronize or repair runs
+- **Then** it is a confirmed write - the one analytics write in this stage.
+
+- DW-2485: Test/AnalyticsPort's Snapshot joins every ^DeepSee.Cache* node into one string, so cache residue over about 3.6 MB raises MAXSTRING and TestTheReadsWriteNothing reddens on state it did not make (ledger; routed by harvest 2026-10-21)
+
+### Story 20.35: The agent's MDX read
+
+[CHARTERED 2026-10-14, orchestrator ruling Q1 A at Story 20.33's spec gate, Rule 5] Split from the Analytics rider's read tools: the MDX query tool's agent read, which Story 20.33 does not build. Synchronous in the turn job through `AnalyticsPort`, with Story 20.33's caps (row cap, time bound, drill-through cap) and AD-60. It refuses `%SEARCH`, `%SQLRESTRICT`, `RETURN` and `%ORDER` with `ANALYTICS.MDX.SQL`, because an agent read tool never executes code (AD-65, orchestrator ruling Q2 C). It carries its own `ReadTool`, `ToolRoundTrip`, `ToolEmit` and `DeveloperFloor` rows [AMENDED 2026-10-15, orchestrator ruling Q2 at its plan gate, Rule 5: no `SurfaceCoverage` row, a roster of write tools only]. Its refusal reuses Story 20.33's one detector, which reads the vendor's tokens and quoted strings, covers `%PARM` too, re-checks the variable-resolved text and fails closed (orchestrator ruling Q1 B). After Story 20.33, before Story 20.34.
+
+As an analytics developer,
+I want the agent to run an MDX query for me and read its results,
+So that I can ask about a cube's numbers in the conversation.
+
+**Acceptance Criteria:**
+
+- **Given** the agent's MDX read
+- **When** it runs a query
+- **Then** it answers the results within the MDX query tool's caps, and refuses a query that would run server-side code or SQL.
+
+- DW-2490: MdxStatus reads the vendor's status 100 as done without its pending-results flag, so a plugin-computed cell may be read before it is computed (unverified) (ledger; routed by cr 2026-10-21)
+
+### Story 20.36: Investigate
+
+[CHARTERED 2026-10-15, orchestrator ruling Q1 A at Story 20.12's spec gate, Rule 5] Split from Story 20.12, carrying its second criterion verbatim. It reuses 20.12's workflow catalog, its synthetic workflow call and its refusals; the outline is in Story 20.12's spec, Design Notes › Split. After Story 20.12, before Story 20.25.
+
+As a developer-administrator facing a stuck production,
+I want the agent to investigate an alert or a log entry for me,
+So that I start from a recap and ranked hypotheses rather than a blank page.
+
+**Acceptance Criteria:**
+
+- **Given** an alert or a log entry
+- **When** the user chooses Investigate
+- **Then** a multistep run returns a recap and ranked hypotheses, citing the rows it used.
+
+- DW-2469: A workflow turn's previous reports the conversation's newest earlier turn whatever workflow it ran, so a workflow started mid-conversation reads unrelated proposals as its own earlier steps (ledger; routed by cr 2026-10-20)
+- DW-2468: A guided workflow's step tools are not added to the turn's starting tool set, so on a screen without a step's tool the model reaches it through shell_tools_find (ledger; routed by adjudication 2026-10-20)
+
+### Story 20.37: SqlRun stored slot order
+
+[CHARTERED 2026-10-23, orchestrator re-dispatch on the owner's word, fix-forward] The 1.0.13 upgrade check found that `Kernel/State/SqlRun` (Story 20.33) declares `Kind` between `Namespace` and `State`, and the class has no source Storage section. An update from 1.0.12 therefore regenerates its storage with stored slots 4-10 shifted, so a background SQL run saved before the update reads 404 afterwards and is never swept. Declaring `Kind` after `Answer` keeps release 1.0.12's slots and appends `Kind`. After Story 20.35, before Story 20.34.
+
+As an administrator updating OcuPilot from 1.0.12,
+I want a background SQL run saved before the update to stay readable and swept after it,
+So that an update never strands a run.
+
+**Acceptance Criteria:**
+
+- **Given** `Kernel/State/SqlRun` compiled from source
+- **When** its storage map is read
+- **Then** RunKey, UserName, Namespace, State, JobId, CancelRequested, QueuedAt, StartedAt, EndedAt and Answer keep release 1.0.12's slots 1-10, and Kind is slot 11.
+- **And** nothing else in product code changes: the code that reads and writes Kind, and the existing tests, stay as they are.
+- **And** one small test reads the compiled storage map and asserts those eleven slots; its mutation (Kind moved back between Namespace and State) is demonstrated red and reverted.
+
+- DW-2500: Kernel/State/SqlRun declares Kind between Namespace and State with no source Storage section, so an update from 1.0.12 shifts stored slots 4-10 and a pre-update background run reads 404 and is never swept (ledger; routed by load 2026-10-23)
 
 ## Epic 21: Stage 5 - custom-REST parity from the MCP suite's handlers
 
@@ -9272,6 +9429,10 @@ So that the screens read cleanly at every common width and say what they mean.
 - **When** this story completes
 - **Then** each has a disposition written by the ledger tool: `resolved-by` this story with the commit, or `wontfix-accepted` or `by-design` with a reason and, where a condition would reopen it, that condition.
 
+- **Given** the three entries routed to this story since its charter that its plan kept, each a CI flake in one of its area batches: DW-2163, DW-2227 and DW-2282 [AMENDED 2026-10-14, Story 23.5 spec gate, Rule 5 tier 1: the four other later routings, DW-2182, DW-2202, DW-2221 and DW-2246, are proposed for a new Story 23.11]
+- **When** this story completes
+- **Then** each has a disposition written by the ledger tool, as above.
+
 - **Given** a layout or copy entry
 - **When** it is fixed
 - **Then** a test reddens on the defect before the fix: a component spec for copy and state, or a browser spec for anything about geometry, run against a rebuilt and redeployed bundle in both themes.
@@ -9398,7 +9559,7 @@ So that the scripts, the install checks and the explorer's save path say and do 
 
 ### Story 23.9: The range-end cleanup, part 8
 
-Chartered by the orchestrator on 2026-10-12 from the 32 entries the owner released out of Story 23.7. This part takes the last eight low-severity entries: doc comments and CLAUDE.md lines that no longer match the code, two pair-validation edges, a duplicated client constant and the CI runner's test-class floor. A slot that would otherwise sit idle runs it, after Story 23.8. A CLAUDE.md line changes only through the Planner, with the owner's OK.
+Chartered by the orchestrator on 2026-10-12 from the 32 entries the owner released out of Story 23.7. This part takes the last eight low-severity entries: doc comments and CLAUDE.md lines that no longer match the code, two pair-validation edges, a duplicated client constant and the CI runner's test-class floor. Three more joined from Epic 18 on 2026-10-14: the delete tools' repeated state-diff body, lifted once into the shared write base, and the journal record browser's Newest first order and input lengths. A slot that would otherwise sit idle runs it, after Story 23.8. A CLAUDE.md line changes only through the Planner, with the owner's OK.
 
 As a maintainer of OcuPilot,
 I want the stale comments, duplicated constants and small validation edges fixed,
@@ -9406,10 +9567,55 @@ So that the next reader is not misled by text the code no longer matches.
 
 **Acceptance Criteria:**
 
-- **Given** the entries re-owned to this story: DW-446, DW-1177, DW-1706, DW-1760, DW-1761, DW-2060, DW-2259 and DW-2260
+- **Given** the entries re-owned to this story: DW-446, DW-1177, DW-1706, DW-1760, DW-1761, DW-2060, DW-2259, DW-2260, DW-2299, DW-1979 and DW-1981
 - **When** this story completes
 - **Then** each has a disposition written by the ledger tool: `resolved-by` this story with the commit, or `wontfix-accepted` or `by-design` with a reason and, where a condition would reopen it, that condition.
 
 - **Given** a fix to code or a test
 - **When** it lands
 - **Then** a test reddens on the defect before the fix, or the entry says why none can, and the fixes land in batches grouped by area, each with CI green on its own head.
+
+### Story 23.10: The range-end cleanup, part 9: two sweeps
+
+Chartered by the orchestrator on 2026-10-14 from two Epic 18 entries too wide for a burn-down. The first is the two-argument `%GetNext` loops over request bodies: 109 sites in 54 Area files. The second is the test classes whose `OnAfterAllTests` deletes shared rows, such as governance overrides and the egress row, on an instance not armed for tests: 48 classes. Each is one mechanical change repeated, so each lands as its own batch. Two refusal-classifier edges from Story 18.48's review joined the same day: KMIP start mode with journal encryption, to be measured on a throwaway before the start arm is widened, and a resource edit that opens a privileged application to everyone, which takes the privileged-grant treatment as Story 18.48 gave the application edit. A slot that would otherwise sit idle runs it, after Story 23.9.
+
+As a maintainer of OcuPilot,
+I want each repeated defect fixed at every site at once,
+So that an out-of-range request value answers its field refusal and a test run never deletes shared state it did not arrange.
+
+**Acceptance Criteria:**
+
+- **Given** the entries re-owned to this story: DW-2417, DW-2426, DW-2431 and DW-2432
+- **When** this story completes
+- **Then** each has a disposition written by the ledger tool: `resolved-by` this story with the commit, or `wontfix-accepted` or `by-design` with a reason and, where a condition would reopen it, that condition.
+
+- **Given** a sweep
+- **When** it lands
+- **Then** a test reddens on a representative site before the fix, the story says how a new site written in the old form is caught or why none can be, and each sweep lands as its own batch with CI green on its own head.
+
+### Story 23.11: The range-end cleanup, part 10
+
+Chartered by the orchestrator on 2026-10-14 from five entries routed to Story 23.5 after its charter that fit neither its area batches nor the twelve-entry cap (Rule 27). The agent cannot read a large class's view at all, so that entry goes first. The others are a task-history test that reddens on a busy instance, literal shared-surface counts asserted outside their roster's own test, the browser configuration falling back to slot A's throwaway when its two variables are unset, and fixed heights that should be minimums. A slot that would otherwise sit idle runs it, ahead of Story 23.7. A CLAUDE.md line it makes stale changes only through the Planner, with the owner's OK.
+
+As a maintainer of OcuPilot,
+I want the agent able to read any class it can list, and the test harness free of counts and fallbacks that break as the product grows,
+So that a large class is readable and the suites stay green when a story adds a member or runs on another slot.
+
+**Acceptance Criteria:**
+
+- **Given** the entries re-owned to this story: DW-2246, DW-2182, DW-2202, DW-2221 and DW-2439
+- **When** this story completes
+- **Then** each has a disposition written by the ledger tool: `resolved-by` this story with the commit, or `wontfix-accepted` or `by-design` with a reason and, where a condition would reopen it, that condition.
+
+- **Given** the large-class read (DW-2246)
+- **When** it is fixed
+- **Then** the cause is measured before the fix, and a test over a class larger than the result cap reddens before the fix and passes after.
+
+- **Given** a fix to code or a test
+- **When** it lands
+- **Then** a test reddens on the defect before the fix, or the entry says why none can, and the fixes land in batches grouped by area, each with CI green on its own head.
+- DW-2449: The Guardrails page and a web application's class-access tab draw the generic server-fault sentence as role=alert for any failed read, status 0 included, so an unreachable instance shows a second alert with the wrong sentence beside the shell's banner (ledger; routed by cr 2026-10-15)
+- DW-2455: Browser specs' 720px structural passes measure right after a bare setViewport, while the panel's width transition still runs, so an overflow at the settled 320px panel can read clean and a pass can flake (ledger; routed by cr 2026-10-15)
+- DW-2458: CI flake: log-viewer.spec.ts AC6 (with Live tail off nothing streams) reads fake timers pending on gates (node 24 and node 26), DW-2415 recurring after Story 20.8's fix (ledger; routed by lead 2026-10-15)
+- DW-2460: flake: OcuPilot.Test.SqlBackgroundJob TestAnEarlyCancelIsSentAgainUntilTheQueryRuns failed once in a local full sweep and passed on the shard's re-run (ledger; routed by lead 2026-10-15)
+- DW-2462: flake: OcuPilot.Test.LogTail TestAnAbsentFileIsWaitedOutAndReportedAtTheBound found the file present in a full sweep, green alone (ledger; routed by lead 2026-10-15)

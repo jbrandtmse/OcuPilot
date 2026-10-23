@@ -31,6 +31,7 @@ const {
   LOGOUT_PATH,
   TURN_ABANDON_PATH,
   SIGN_OUT_ABANDON_WAIT_MS,
+  LOGIN_AFTER_SIGN_OUT_WAIT_MS,
   classifyLoginStatus,
   isInstallInFlight,
   isInstallUnreadable,
@@ -1274,6 +1275,181 @@ test('a refresh already in flight when sign-out happens adopts nothing', async (
   assert.equal(session.state(), 'signed-out');
 });
 
+// --- A /login waits for the sign-out still in flight (AD-28) --------------------------------------
+//
+// The `/logout` carries the browser-level cookie, so one that lands after a new login ends that
+// login too. A sign-in posted while the sign-out is still on the wire is answered first and then
+// ended by it, which is what the browser spec's sign-out-then-sign-in leg met on a fresh instance.
+// The tab is signed out locally before any of this (DW-5); only the next `/login` is held.
+
+/**
+ * A signed-in session whose `/login` answers a numbered pair, whose `/logout` is answered only once
+ * `releaseLogout` runs (or never, with `holdLogout: 'forever'`), and whose `/turn/abandon` hangs
+ * when `holdAbandon` is set. `events` records the order the wire saw.
+ */
+async function signedInWithHeldSignOut({ holdAbandon = false, holdLogout = 'until-released' } = {}) {
+  const events = [];
+  let logins = 0;
+  let releaseLogout = () => {};
+  const logoutHeld = new Promise((resolve) => {
+    releaseLogout = resolve;
+  });
+  const made = makeSession(async (path) => {
+    if (path === TURN_ABANDON_PATH) {
+      events.push('abandon-sent');
+      if (holdAbandon) await new Promise(() => {});
+      return response(200, '');
+    }
+    if (path === LOGOUT_PATH) {
+      events.push('logout-sent');
+      if (holdLogout === 'forever') await new Promise(() => {});
+      await logoutHeld;
+      events.push('logout-answered');
+      return response(200, '');
+    }
+    if (path === LOGIN_PATH) {
+      logins += 1;
+      events.push(`login-${logins}`);
+      return response(200, pairBody(`a${logins}`, `r${logins}`));
+    }
+    return response(200, '');
+  });
+  made.session.start();
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(made.session.state(), 'signed-in');
+  return { ...made, events, releaseLogout, loginCount: () => logins };
+}
+
+// Mutation (Rule 19): drop the wait from `postLogin` (always `post(LOGIN_PATH, body)`) -> this
+// test, the probe test, the abandon-window test and the bound test go red.
+test('a submit posted while the /logout is held waits for it, then posts /login', async () => {
+  const { session, tokens, calls, events, releaseLogout, loginCount } =
+    await signedInWithHeldSignOut();
+
+  const signingOut = session.signOut();
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(session.state(), 'signed-out', 'the tab is signed out locally while the logout is held');
+  assert.deepEqual(events, ['login-1', 'abandon-sent', 'logout-sent']);
+
+  session.setUserName('bob');
+  session.setPassword('hunter2');
+  const submitting = session.submitForm();
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(loginCount(), 1, 'no /login goes out while the logout is held');
+  assert.equal(session.state(), 'probing', 'the form shows the signing-in presentation meanwhile');
+
+  releaseLogout();
+  await signingOut;
+  assert.equal(await submitting, true, 'the submit then signs in');
+  assert.deepEqual(
+    events,
+    ['login-1', 'abandon-sent', 'logout-sent', 'logout-answered', 'login-2'],
+    'the /login is posted after the /logout settled, so that logout cannot end the new login'
+  );
+  const login = calls.filter((c) => c.path === LOGIN_PATH)[1];
+  assert.deepEqual(JSON.parse(login.init.body), { user: 'bob', password: 'hunter2' });
+  assert.equal(tokens.read().accessToken, 'a2');
+  assert.equal(session.state(), 'signed-in');
+});
+
+// Mutation (Rule 19): `probeAndSettle` posts `this.post(LOGIN_PATH, null)` instead of
+// `this.postLogin(null)` -> this test goes red alone; the submit tests stay green.
+test('a silent probe posted while the /logout is held waits for it, then posts /login', async () => {
+  const { session, tokens, events, releaseLogout, loginCount } = await signedInWithHeldSignOut();
+
+  const signingOut = session.signOut();
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.deepEqual(events, ['login-1', 'abandon-sent', 'logout-sent']);
+
+  const probing = session.silentProbe();
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(loginCount(), 1, 'the probe posts no /login while the logout is held');
+
+  releaseLogout();
+  await signingOut;
+  assert.equal(await probing, true, 'the probe then mints');
+  assert.deepEqual(
+    events,
+    ['login-1', 'abandon-sent', 'logout-sent', 'logout-answered', 'login-2'],
+    'after the /logout settled'
+  );
+  assert.equal(tokens.read().accessToken, 'a2');
+});
+
+// Mutation (Rule 19): the in-flight marker only counts once the `/logout` has been sent -> this test
+// goes red, alone.
+test('the sign-out is in flight from the abandon on, so a submit during the abandon wait waits too', async () => {
+  const { session, scheduled, events, releaseLogout, loginCount } = await signedInWithHeldSignOut({
+    holdAbandon: true,
+  });
+
+  const signingOut = session.signOut();
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.deepEqual(events, ['login-1', 'abandon-sent'], 'the abandon is hung and no logout is sent yet');
+
+  session.setUserName('bob');
+  session.setPassword('hunter2');
+  const submitting = session.submitForm();
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(loginCount(), 1, 'the submit waits although the /logout has not even been sent');
+
+  // The abandon's own bound fires and the logout goes out, still unanswered.
+  scheduled.find((entry) => entry.delayMs === SIGN_OUT_ABANDON_WAIT_MS).run();
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.deepEqual(events, ['login-1', 'abandon-sent', 'logout-sent']);
+  assert.equal(loginCount(), 1, 'and the submit still waits for it');
+
+  releaseLogout();
+  await signingOut;
+  assert.equal(await submitting, true);
+  assert.deepEqual(events, ['login-1', 'abandon-sent', 'logout-sent', 'logout-answered', 'login-2']);
+});
+
+// Mutation (Rule 19): `LOGIN_AFTER_SIGN_OUT_WAIT_MS` shrinks to `SIGN_OUT_ABANDON_WAIT_MS + 1`, or
+// `postLogin` waits on the sign-out with no bound -> this test goes red, alone, in each.
+test('a logout that never answers holds a submit only until the wait bound fires', async () => {
+  const { session, calls, scheduled, loginCount } = await signedInWithHeldSignOut({
+    holdLogout: 'forever',
+  });
+
+  void session.signOut();
+  await new Promise((resolve) => setImmediate(resolve));
+  session.setUserName('bob');
+  session.setPassword('hunter2');
+  const submitting = session.submitForm();
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(loginCount(), 1, 'held while the logout is on the wire');
+
+  assert.ok(
+    LOGIN_AFTER_SIGN_OUT_WAIT_MS >= SIGN_OUT_ABANDON_WAIT_MS + 5_000,
+    'the bound outlasts the abandon wait and leaves the logout five seconds after it'
+  );
+  const bound = scheduled.find((entry) => entry.delayMs === LOGIN_AFTER_SIGN_OUT_WAIT_MS);
+  assert.ok(bound, 'the wait is bounded through the injected scheduler');
+  bound.run();
+  assert.equal(await submitting, true, 'a hung logout cannot hold a sign-in forever');
+  assert.equal(loginCount(), 2);
+  assert.equal(calls.filter((c) => c.path === LOGOUT_PATH).length, 1, 'and the logout is still the one');
+});
+
+// Mutation (Rule 19): the in-flight marker is never cleared when the sign-out settles -> this test
+// goes red, alone.
+test('a sign-out that has settled leaves nothing to wait for: the submit posts at once and arms no wait', async () => {
+  const { session, scheduled, releaseLogout, loginCount } = await signedInWithHeldSignOut();
+
+  releaseLogout();
+  await session.signOut();
+  session.setUserName('bob');
+  session.setPassword('hunter2');
+  const submitting = session.submitForm();
+  assert.equal(loginCount(), 2, 'the /login is on the wire in the same turn as the submit');
+  assert.equal(await submitting, true);
+  assert.ok(
+    !scheduled.some((entry) => entry.delayMs === LOGIN_AFTER_SIGN_OUT_WAIT_MS),
+    'no wait was armed'
+  );
+});
+
 // --- The mapping app.ts gates on -------------------------------------------------------------
 
 test('Integration AC: only signed-in renders the routed screen; every other state renders sign-in', () => {
@@ -2289,6 +2465,127 @@ test('AC4: an identity answer that arrives after a reset settles nothing', async
 
   assert.equal(harness.instance.status(), 'checking', 'the late answer is discarded');
   assert.equal(harness.instance.adminApiVersion(), 0, 'and none of its fields are kept');
+});
+
+// --- Re-checking which bundle the instance has installed (Story 20.29) ---------------------
+
+/** The identity calls a harness has seen. */
+function identityCalls(harness) {
+  return harness.calls.filter((c) => c.path === INSTANCE_PATH);
+}
+
+// Mutation (Rule 19): make `recheckBuild` a no-op -> this and the single-flight test go red; drop its `settled` guard -> the
+// "before a verify" test; drop the generation check in `runRecheck` -> the "after a reset" test; let it copy any other field,
+// or settle the verdict again from the re-read's version -> this one.
+test('Story 20.29: recheckBuild reads /instance once, publishes the new build identity and moves nothing else', async () => {
+  // The re-read answers a different value for every field, and a version that would settle `version-mismatch`.
+  const reread = {
+    buildIdentity: 'main-BBBB2222.js',
+    instanceName: 'CHANGED',
+    instanceVersion: 'IRIS for UNIX 2027.1',
+    serverFlag: 'Production',
+    licensedTo: 'Someone Else',
+    serverName: 'ANOTHERHOST',
+  };
+  let answers = 0;
+  const harness = withInstance(() => {
+    answers += 1;
+    return answers === 1
+      ? response(200, identityBody(2, { buildIdentity: 'main-AAAA1111.js' }))
+      : response(200, identityBody(3, reread));
+  });
+  await harness.ready();
+  assert.equal(await harness.instance.verify(), 'ready');
+  const before = {
+    instanceName: harness.instance.instanceName(),
+    instanceVersion: harness.instance.instanceVersion(),
+    serverFlag: harness.instance.serverFlag(),
+    licensedTo: harness.instance.licensedTo(),
+    serverName: harness.instance.serverName(),
+  };
+  assert.equal(harness.instance.buildIdentity(), 'main-AAAA1111.js');
+
+  const heard = [];
+  harness.instance.subscribe(() => heard.push(harness.instance.buildIdentity()));
+  await harness.instance.recheckBuild();
+
+  assert.equal(identityCalls(harness).length, 2, 'one request for the verify and one for the re-check');
+  assert.equal(harness.instance.buildIdentity(), 'main-BBBB2222.js', 'the new identity is published');
+  assert.deepEqual(heard, ['main-BBBB2222.js'], 'and listeners hear it once');
+  assert.equal(harness.instance.status(), 'ready', 'the status never moves, though the re-read names another version');
+  assert.equal(harness.instance.adminApiVersion(), 2, 'and the version stays the verified one');
+  assert.deepEqual(
+    {
+      instanceName: harness.instance.instanceName(),
+      instanceVersion: harness.instance.instanceVersion(),
+      serverFlag: harness.instance.serverFlag(),
+      licensedTo: harness.instance.licensedTo(),
+      serverName: harness.instance.serverName(),
+    },
+    before,
+    'and no other field is replaced'
+  );
+});
+
+test('Story 20.29: recheckBuild is single-flight, and a refused or failed re-read changes nothing', async () => {
+  let answers = 0;
+  const harness = withInstance(() => {
+    answers += 1;
+    if (answers === 1) return response(200, identityBody(2, { buildIdentity: 'main-AAAA1111.js' }));
+    if (answers === 2) return response(500, JSON.stringify({ code: 'SOMETHING.UNEXPECTED' }));
+    return response(200, identityBody(2, { buildIdentity: 'main-BBBB2222.js' }));
+  });
+  await harness.ready();
+  await harness.instance.verify();
+
+  await Promise.all([harness.instance.recheckBuild(), harness.instance.recheckBuild()]);
+  assert.equal(identityCalls(harness).length, 2, 'concurrent callers share one request');
+  assert.equal(harness.instance.buildIdentity(), 'main-AAAA1111.js', 'a failed re-read keeps the identity it had');
+  assert.equal(harness.instance.status(), 'ready', 'and never unsettles the verdict');
+
+  await harness.instance.recheckBuild();
+  assert.equal(identityCalls(harness).length, 3, 'a finished re-check does not block the next one');
+  assert.equal(harness.instance.buildIdentity(), 'main-BBBB2222.js');
+});
+
+test('Story 20.29: recheckBuild asks nothing before a verify has settled, or after a reset', async () => {
+  const harness = withInstance(() => response(200, identityBody(2, { buildIdentity: 'main-AAAA1111.js' })));
+  await harness.ready();
+
+  await harness.instance.recheckBuild();
+  assert.equal(identityCalls(harness).length, 0, 'before any verify there is no principal to ask on behalf of');
+
+  await harness.instance.verify();
+  assert.equal(identityCalls(harness).length, 1);
+
+  harness.instance.reset();
+  await harness.instance.recheckBuild();
+  assert.equal(identityCalls(harness).length, 1, 'after a reset the verdict is another principal\'s to make');
+  assert.equal(harness.instance.buildIdentity(), '', 'and the identity stays forgotten');
+});
+
+test('Story 20.29: a re-check answer that arrives after a reset is discarded', async () => {
+  let release;
+  const gate = new Promise((resolve) => {
+    release = resolve;
+  });
+  let answers = 0;
+  const harness = withInstance(async () => {
+    answers += 1;
+    if (answers === 1) return response(200, identityBody(2, { buildIdentity: 'main-AAAA1111.js' }));
+    await gate;
+    return response(200, identityBody(2, { buildIdentity: 'main-BBBB2222.js' }));
+  });
+  await harness.ready();
+  await harness.instance.verify();
+
+  const inFlight = harness.instance.recheckBuild();
+  harness.instance.reset();
+  release();
+  await inFlight;
+
+  assert.equal(harness.instance.buildIdentity(), '', 'the previous principal\'s late answer lands on nobody');
+  assert.equal(harness.instance.status(), 'checking');
 });
 
 // --- The Angular layer's wiring, read out of its own source --------------------------------

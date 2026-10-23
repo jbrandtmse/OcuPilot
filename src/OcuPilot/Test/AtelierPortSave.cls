@@ -224,25 +224,39 @@ Method TestTheVersionIsSentAsIfNoneMatch()
 /// <p>A soft refusal under 200 is 422 <code>EXPLORER.SAVE.REFUSED</code> and an access refusal 403
 /// <code>PORT.ACCESSDENIED</code>, each logged as a fault; the vendor's 409 and 423 are
 /// <code>CONFLICT</code>, unlogged, and <code>LOCKED</code>, its text logged at information severity
-/// (AD-61 rule 6); nothing is compiled after any of them (canned routes).</p>
+/// (AD-61 rule 6); the source-control edit check (#5845, #5865, #6151), under 400 or under 200, is 409
+/// <code>EXPLORER.DOCUMENT.SOURCECONTROL</code>, logged the same way, while any other 400 stays
+/// <code>PORT.VALIDATION</code>, a fault; nothing is compiled after any of them (canned routes).</p>
 /// <p>Mutation (Rule 19): log the 423 through <method>OcuPilot.Port.AtelierPort.LogFault</method> --
-/// the <code>LOCKED</code> leg goes red.</p>
+/// the <code>LOCKED</code> leg goes red. Remove the source-control branches from
+/// <method>OcuPilot.Port.AtelierPort.Outcome</method> -- the four source-control rows go red. Drop 5845 from
+/// <parameter>OcuPilot.Port.AtelierPort.SOURCECONTROLCODES</parameter> -- the 5845 row alone goes red. Test the source-control codes
+/// ahead of the access codes in the 2xx path of <method>OcuPilot.Port.AtelierPort.Outcome</method> -- the row naming #5883 and #5865
+/// alone goes red.</p>
 Method TestTheVendorsRefusalsAreAnsweredByName()
 {
     Set tText = "Class Probe.A Extends %RegisteredObject" _ $Char(10) _ "{" _ $Char(10) _ "}"
     Set tSoft = "{""status"":{""errors"":[],""summary"":""""},""console"":[],""result"":{""name"":""Probe.A.cls"",""ts"":"""",""status"":""ERROR #CODE: probe refusal""}}"
-    For tCase = $ListBuild("200 OK", $Replace(tSoft, "CODE", "16021"), "422 EXPLORER.SAVE.REFUSED", "2"), $ListBuild("200 OK", $Replace(tSoft, "CODE", "5883"), "403 PORT.ACCESSDENIED", "2"), $ListBuild("409 Conflict", "{""status"":{""errors"":[],""summary"":""""},""console"":[],""result"":{""name"":""Probe.A.cls"",""status"":"""",""content"":[""Class Probe.A""]}}", "409 EXPLORER.DOCUMENT.CONFLICT", ""), $ListBuild("423 Locked", $Replace(tSoft, "CODE", "5864"), "409 EXPLORER.DOCUMENT.LOCKED", "0") {
+    Set tSourceControl = "409 EXPLORER.DOCUMENT.SOURCECONTROL"
+    Set tCases = $ListBuild($ListBuild("200 OK", $Replace(tSoft, "CODE", "16021"), "422 EXPLORER.SAVE.REFUSED", "2"), $ListBuild("200 OK", $Replace(tSoft, "CODE", "5883"), "403 PORT.ACCESSDENIED", "2"), $ListBuild("409 Conflict", "{""status"":{""errors"":[],""summary"":""""},""console"":[],""result"":{""name"":""Probe.A.cls"",""status"":"""",""content"":[""Class Probe.A""]}}", "409 EXPLORER.DOCUMENT.CONFLICT", ""), $ListBuild("423 Locked", $Replace(tSoft, "CODE", "5864"), "409 EXPLORER.DOCUMENT.LOCKED", "0"))
+    Set tCases = tCases _ $ListBuild($ListBuild("400 Bad Request", $Replace(tSoft, "CODE", "5865"), tSourceControl, "0"), $ListBuild("400 Bad Request", $Replace(tSoft, "CODE", "5845"), tSourceControl, "0"), $ListBuild("400 Bad Request", $Replace(tSoft, "CODE", "6151"), tSourceControl, "0"), $ListBuild("200 OK", $Replace(tSoft, "CODE", "5865"), tSourceControl, "0"), $ListBuild("400 Bad Request", $Replace(tSoft, "CODE", "16021"), "400 PORT.VALIDATION", "2"))
+    ; An answer naming an access code and a source-control code is the access refusal, which is checked first.
+    Set tCases = tCases _ $ListBuild($ListBuild("200 OK", $Replace(tSoft, "CODE", "5883: refused ERROR #5865"), "403 PORT.ACCESSDENIED", "2"))
+    For tIndex = 1:1:$ListLength(tCases) {
+        Set tCase = $List(tCases, tIndex)
+        Set tLabel = $List(tCase, 1) _ $Select($List(tCase, 2) [ "#": " with #" _ $Piece($Piece($List(tCase, 2), "#", 2), ":", 1) _ $Select($Length($List(tCase, 2), "#") > 2: " and #" _ $Piece($Piece($List(tCase, 2), "#", 3), ":", 1), 1: ""), 1: "")
         Do ..ClearFixtures()
         Do $ClassMethod(..#FIXTURE, "UseFakeRoutes")
         Do $ClassMethod(..#FIXTURE, "SetVersion", 8)
         Do $ClassMethod(..#FIXTURE, "Arm", "GetDocNames", "200 OK", ..#CANNEDDOCS)
         Do $ClassMethod(..#FIXTURE, "Arm", "PutDoc", $List(tCase, 1), $List(tCase, 2))
         Do ..Save("Classes", "Probe.A.cls", tText, "v", 1, .tResult, .tHttp, .tFault, $Namespace)
-        Do $$$AssertEquals(..Said(.tHttp, .tResult, .tFault) _ " " _ $ClassMethod(..#FIXTURE, "CallCount"), $List(tCase, 3) _ " 2", $List(tCase, 1) _ " is " _ $List(tCase, 3) _ ", with nothing compiled")
+        Do $$$AssertEquals(..Said(.tHttp, .tResult, .tFault) _ " " _ $ClassMethod(..#FIXTURE, "CallCount"), $List(tCase, 3) _ " 2", tLabel _ " is " _ $List(tCase, 3) _ ", with nothing compiled")
         Set tLogged = ##class(OcuPilot.Test.LogProbe).Captured("message")
-        Do $$$AssertEquals(##class(OcuPilot.Test.LogProbe).Captured("severity"), $List(tCase, 4), $List(tCase, 3) _ $Case($List(tCase, 4), "": " is not logged", "0": " is logged at information severity", : " is logged as a fault") _ ": " _ tLogged)
-        If $List(tCase, 4) '= "" Do $$$AssertTrue(tLogged [ $Piece($Piece($List(tCase, 2), "#", 2), ":", 1), "with the vendor's text: " _ tLogged)
+        Do $$$AssertEquals(##class(OcuPilot.Test.LogProbe).Captured("severity"), $List(tCase, 4), tLabel _ " answers " _ $List(tCase, 3) _ $Case($List(tCase, 4), "": " and is not logged", "0": " and is logged at information severity", : " and is logged as a fault") _ ": " _ tLogged)
+        If $List(tCase, 4) '= "" Do $$$AssertTrue(tLogged [ $Piece($Piece($List(tCase, 2), "#", 2), ":", 1), tLabel _ " logs the vendor's text: " _ tLogged)
         If $IsObject($Get(tFault)) Do $$$AssertTrue(tFault.reason '[ "#", "and its reason carries no vendor text: " _ tFault.reason)
+        If $IsObject($Get(tFault)) Do $$$AssertEquals(tFault.%GetTypeOf("detail"), "unassigned", tLabel _ " carries its sentence alone, with no detail")
     }
 }
 
@@ -368,6 +382,40 @@ Method TestTheSaveRendersItsScript()
     Do $$$AssertEquals(tText, tExpect, "a routine renders its stored lines without its ROUTINE line, and is not compiled when Compile is off")
     Do $$$AssertTrue((tText '[ "2026-10-02") && (tText '[ "ROUTINE Name"), "and the version is never rendered, nor the header line")
     Do $$$AssertEquals($ClassMethod(tPort, "Snippet", "Classes", "SAVEDOCS", .tQuery).%Size(), 0, "a read renders no step")
+}
+
+/// <p>AD-61 rule 6: a compile's console that reads <code>Detected &lt;n&gt; errors during compilation</code> with <code>n</code> above
+/// zero counts as failed, though the call answers 200 with no status error (a BPL whose generated class fails does over the Atelier HTTP route); a
+/// console that finished successfully, reads no such line, reports zero errors, is empty or is not an array does not. The lines take
+/// the shape a BPL and a DTL compile failure and a success answer.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Port.AtelierPort.ConsoleCountsErrors</method> answers 0 -- the failure legs go red.</p>
+Method TestTheCompileVerdictReadsTheConsole()
+{
+    Set tPort = "OcuPilot.Port.AtelierPort"
+    Set tBpl = ["", "Compilation started on 10/13/2026 21:30:01 with qualifiers 'cuk'", "Compiling class OcuProbe2016.Process", "Compiling class OcuProbe2016.Process.Thread1", "ERROR: OcuProbe2016.Process.Thread1.cls(OnResponse+3) : Expected a space", "Detected 1 errors during compilation in 0.191s."]
+    Set tDtl = ["", "Compilation started on 10/13/2026 21:30:02 with qualifiers 'cuk'", "Compiling class OcuProbe2016.Transform", "ERROR #5475: Error compiling routine : OcuProbe2016.Transform.1", "Detected 1 errors during compilation in 0.020s."]
+    Set tSuccess = ["", "Compilation started on 10/13/2026 21:30:03 with qualifiers 'cuk'", "Compiling class OcuProbe2016.Transform", "Compilation finished successfully in 0.018s."]
+    Do $$$AssertEquals($ClassMethod(tPort, "ConsoleCountsErrors", tBpl), 1, "a BPL whose generated class fails counts as failed")
+    Do $$$AssertEquals($ClassMethod(tPort, "ConsoleCountsErrors", tDtl), 1, "a DTL whose code fails counts as failed")
+    Do $$$AssertEquals($ClassMethod(tPort, "ConsoleCountsErrors", tSuccess), 0, "a console that finished successfully does not")
+    Do $$$AssertEquals($ClassMethod(tPort, "ConsoleCountsErrors", ["Detected 12 errors during compilation in 1.5s."]) _ $ClassMethod(tPort, "ConsoleCountsErrors", ["Detected 1 error during compilation"]), "11", "any count above zero, in the plural or not, counts")
+    Do $$$AssertEquals($ClassMethod(tPort, "ConsoleCountsErrors", ["Detected 0 errors during compilation in 0.1s."]) _ $ClassMethod(tPort, "ConsoleCountsErrors", ["Detected errors during compilation"]) _ $ClassMethod(tPort, "ConsoleCountsErrors", ["The log says Detected 1 errors during compilation"]), "000", "a zero count, a line with no count and a line that merely holds the words do not")
+    Do $$$AssertEquals($ClassMethod(tPort, "ConsoleCountsErrors", []) _ $ClassMethod(tPort, "ConsoleCountsErrors", [7]) _ $ClassMethod(tPort, "ConsoleCountsErrors", "Detected 1 errors during compilation") _ $ClassMethod(tPort, "ConsoleCountsErrors", {"a": "Detected 1 errors during compilation"}) _ $ClassMethod(tPort, "ConsoleCountsErrors", ""), "00000", "an empty console, a number, text, an object and nothing do not")
+}
+
+/// <p>AD-61 rule 6, Story 20.16: a save whose compile answers no status error but whose console reads
+/// <code>Detected 1 errors during compilation</code> answers <code>errors</code> true with the console's lines (canned routes).</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Port.AtelierPort.Outcome</method> leaves the console out of <code>pErrors</code> -- this goes
+/// red.</p>
+Method TestASaveWhoseCompileConsoleReportsErrorsReportsThem()
+{
+    Do $ClassMethod(..#FIXTURE, "UseFakeRoutes")
+    Do $ClassMethod(..#FIXTURE, "SetVersion", 8)
+    Do $ClassMethod(..#FIXTURE, "Arm", "GetDocNames", "200 OK", ..#CANNEDDOCS)
+    Do $ClassMethod(..#FIXTURE, "Arm", "Compile", "200 OK", "{""status"":{""errors"":[],""summary"":""""},""console"":[""Compiling class Probe.A"",""Detected 1 errors during compilation in 0.191s.""],""result"":{""content"":[]}}")
+    Set tText = "Class Probe.A Extends %RegisteredObject" _ $Char(10) _ "{" _ $Char(10) _ "}" _ $Char(10)
+    Do ..Save("Classes", "Probe.A.cls", tText, "2026-10-02 09:00:00.120", 1, .tResult, .tHttp, .tFault, $Namespace)
+    Do $$$AssertEquals(..Said(.tHttp, .tResult, .tFault), "200 {""lines"":[""Compiling class Probe.A"",""Detected 1 errors during compilation in 0.191s.""],""errors"":true}", "a save whose compile console reports an error answers errors true")
 }
 
 }

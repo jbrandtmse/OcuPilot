@@ -4,7 +4,7 @@
 
 ## Goal
 
-Bring the classic portal's Interoperability work into OcuPilot for namespaces that support it, with Analytics riding along, so the largest area the classic portal still owns is usable here. Shipped so far: category gating, production control, items and their settings, per-host tabs, the monitor, queue and job reads and actions, lookup tables, read-only business partners, the host Test tab, the interoperability floor, per-screen permissions, the panel collapse, the agent's source reads, saves and creates, the shared tool-listing cache, and the sign-in hand-off every embedded vendor editor needs. Next is 20.28, which lets OcuPilot compile and install in a namespace without interoperability. Still to come after it: the rule, BPL and DTL editors in place and the agent's edits behind them, the schema viewers and configuration diagram, source-control hooks, message search, resend and trace, item runtime actions, partner writes, the transformation test, the Analytics rider, and guided workflows with Investigate.
+Bring the classic portal's Interoperability work into OcuPilot for namespaces that support it, with Analytics riding along, and give the agent guided multistep workflows and Investigate, so the largest area the classic portal still owns can be used here. Most of the epic has shipped: productions, items, settings, per-host tabs, queues and jobs, lookup tables, read-only partners, host and transformation tests, messages with trace and resend, the embedded vendor editors and the agent's edits behind them, per-screen permissions, the agent's source reads, saves and creates, guided workflows, and the analytics port with its lists, links, MDX tool and the agent's MDX read. What remains is 20.37, a fix-forward that keeps release 1.0.12's stored layout for background runs so the 1.0.13 update strands nothing. The current dispatch covers 20.37 alone, followed by an upgrade re-check, a report and a hold. After that come 20.34 (cube manager), 20.36 (Investigate), 20.25 (item runtime actions), 20.26 (partner writes), then the burn-down.
 
 ## Stories
 
@@ -36,111 +36,72 @@ Bring the classic portal's Interoperability work into OcuPilot for namespaces th
 - Story 20.26: Business partners saved and removed
 - Story 20.27: Transformations tested
 - Story 20.28: OcuPilot compiles in a namespace without interoperability
+- Story 20.29: Screens load on demand
+- Story 20.30: The session trace
+- Story 20.31: Message resend and edit-and-resend
+- Story 20.32: The analytics links
+- Story 20.33: The MDX query tool
+- Story 20.34: The cube manager's build and synchronize
+- Story 20.35: The agent's MDX read
+- Story 20.36: Investigate
+- Story 20.37: SqlRun stored slot order
 
 ## Requirements & Constraints
 
-- **Every write** is a server-minted proposal with a diff the instance computes, an explicit Confirm and an agent marker. A new write key joins the checked-in governance baseline in the same change, and a destructive key ships `false`. Each new action's plan states its destructiveness, its key's default and its audit record.
-- **No compile-time dependency on interoperability (20.28).** An IPM install admits any non-system namespace, so OcuPilot must compile and install where interoperability is absent. That means no `Ensemble` include and no interoperability class named as a type (today, `Ens.Config` argument types). Such an argument takes `%RegisteredObject` or `%String` and reaches the vendor class through `$ClassMethod` or `$Method`, with behavior unchanged where interoperability exists. In such a namespace the Interoperability category simply stays hidden.
-- **The guard.** A CI guard installs every shipped class through IPM into a non-interoperability namespace on the throwaway, the same shape as the release's upgrade check, so every later interoperability class is held to the same rule. The `OcuPilot.Test` classes are a test-scoped resource in `module.xml` and are out of its scope.
-- **Vendor bundles are never copied or redistributed.** They load in place from the instance.
-- **Embeds.** 20.7 re-scopes its "saved, compiled, invalid" criterion at its spec gate, because the editors send none of those messages in normal mode. Each embed story's first task establishes its vendor contract on the instance: the schema browsers' document-selection parameter for 20.8, and the source-control hook exchange for 20.10.
-- **Rule, DTL and BPL edits (20.16)** run in five steps, and the key ships enabled:
-  1. Warn the user to save the editor, because OcuPilot cannot read the frame's unsaved state.
-  2. Read the stored content.
-  3. Propose the edit with its diff and the agent marker.
-  4. Refuse if the stored content changed after the mint.
-  5. Reload the editor.
-- **Transformation test (20.27).** It runs a transformation on pasted input and renders the output. It is a confirmed write because it executes code, and it is not destructive.
-- **Messages (20.9).**
-  - Search and the viewer read through the port, with saved searches where the API offers them.
-  - Resend and edit-and-resend take a dry run, then a Confirm, with a bounded cap per action.
-  - A session trace renders visually, with a generated sequence diagram as the alternative.
-  - The message-contents renderer is the custom half.
-- **Item runtime actions (20.25).** A temporary stop, start or restart of one item is followed by the production update the vendor requires. Each is refused by name where the vendor would answer success while doing nothing: a stopped production, a disabled item. Copy and change of class run as the classic page does, and the vendor audits them.
-- **Partner writes (20.26)** on `Ens.Config.BusinessPartner`:
-  - Each is confirmed over a fresh read and records OcuPilot's own audit row.
-  - The vendor renames by deleting and then creating, with no transaction, so a rename is refused or done in one transaction.
-  - Before removing a partner that an item's `BusinessPartner` setting names, the port reads those items, then refuses or warns.
-  - The pair posture goes to the orchestrator. 20.5's plan recommends `%Ens_ProductionConfig:WRITE`.
-- **Analytics (20.11).** Cube build, synchronize and repair are the only analytics writes. MDX results render with drill-through and cancel. Architect, Analyzer and the User Portal are linked, not rebuilt. Anything beyond those links needs a DeepSee-enabled namespace.
-- **Workflows and Investigate (20.12).** A workflow is a sequence of individually confirmed proposals, never a batch approval. Each write still evaluates the prohibited set, both agent switches and governance. Investigate starts from an alert or a log entry and returns a recap and ranked hypotheses that cite the rows used. Harvested prompts take OcuPilot's names.
-- **Secrets and paths.** A Secrets-pattern setting answers an empty value and default, with `Secret` true. Setting it is refused before any vendor call, from both callers. A secret under a non-matching name is a named limit. No endpoint accepts a path outside a case AD-21 names, and pasted content is never a path.
-- **Posture questions** go to the orchestrator, with options and a recommendation.
+### 20.37: stored slot order (current)
+
+- **The defect.** `Kernel/State/SqlRun` gained `Kind` between `Namespace` and `State`. The class has no source Storage section, so the compiler numbers data slots by declaration order, and an update from 1.0.12 shifts slots 4 to 10. A background run saved before the update then reads 404 and is never swept. The release upgrade check found this, and the owner chose to fix it before the 1.0.13 cut.
+- **The fix is declaration order only.** RunKey, UserName, Namespace, State, JobId, CancelRequested, QueuedAt, StartedAt, EndedAt and Answer keep slots 1 to 10, and Kind becomes slot 11. No other product code changes: the code that reads and writes Kind and the existing tests stay as they are. Never hand-write a Storage section.
+- **One small test** reads the compiled storage map and asserts the eleven slots. Show it red under the mutation (Kind moved back between Namespace and State), then revert the mutation.
+- **Out of scope.** A general check that compares every persistent class's stored property order against the previous release is backlog (DW-2501), not built now. `SCHEMAVERSION` does not move, because no stored row's meaning changes.
+- A dev or throwaway instance may hold SqlRun rows written under the shifted layout. After the fix such a row's `State` holds its kind, which no reconcile, reserve or sweep selects, so it stays: no reserve counts it against a cap and no sweep removes it (inference, from the code). No migration is planned.
+
+### Rest of the epic
+
+- **Every write** is a server-minted proposal with a diff the instance computes, an explicit Confirm and an agent marker. A new write key joins the governance baseline in the same change, and a destructive key ships `false`. Each plan states the action's destructiveness, its key's default and its audit record. Posture questions go to the orchestrator with options and a recommendation.
+- **No compile-time dependency on interoperability.** No shipped class names an `Ens.*`, `EnsLib.*` or `EnsPortal.*` class anywhere the compiler resolves it. Such values are typed `%RegisteredObject` or `%String` and reached at run time.
+- **Secrets.** A secret-named setting reads as empty, and an attempt to set one is refused.
+- **20.34, the cube manager** (Analytics side bar position 8, `%DeepSee_Admin:USE`). Build and Synchronize run through `AnalyticsPort`'s `CubeManager` `BUILD`/`SYNCHRONIZE`, behind `MANAGERPAIRS` plus WRITE on `^DeepSee.Fact`'s database (read-only: 409 `ANALYTICS.CUBE.READONLY`), over a port-composed `STATE` that spans the cube and its dependents.
+  - **Refused by name** before any vendor call: `ANALYTICS.CUBE.BUSY`; for a synchronize, also `ANALYTICS.CUBE.NODSTIME` and `ANALYTICS.CUBE.NOTBUILT`.
+  - **Keys.** Build's key ships `false` (it kills facts first) and Synchronize's ships `true`. Repair is offered as Build.
+  - **Running and audit.** The vendor calls run inside an output capture. The vendor audits nothing, so OcuPilot records its own `ConfigChange`. A build that outlasts the gateway timeout loses its answer.
+- **20.36, Investigate.** Investigate is one more catalog entry in `Kernel/Agent/Workflow`'s `XData Catalog`, with no new mechanism.
+  - **The entry:** no `writes`, `entry: true`, offered by no suggested prompt, and every `reads` name resolves as a read.
+  - **Writes.** Every write in the turn answers `WORKFLOW.NOTASTEP`.
+  - **The answer** is a recap and hypotheses ranked most likely first, citing the rows used.
+  - **Never added:** a new route, tool, governance key, screen, descriptor, entity type, suggested prompt or system-prompt sentence.
+  - **Owns DW-2468 and DW-2469.** A step's tools join the turn's starting tool set, and `previous` reports a turn only when it ran the same workflow.
+- **20.25, item runtime actions.** Temporary stop, start and restart of one item, copy, and change of class, each over a fresh read through the interoperability port. A runtime action is followed by the production update the vendor requires. A vendor no-op (a stopped production, a disabled item) is refused by name. The vendor audits copy and change of class.
+- **20.26, partner writes** on `Ens.Config.BusinessPartner`, each confirmed over a fresh read and recording OcuPilot's own audit row.
+  - **Rename** is either refused or run in one transaction.
+  - **Remove** first reads the items that name the partner.
+  - **Pairs** go to the orchestrator (`%Ens_ProductionConfig:WRITE` recommended).
 
 ## Technical Decisions
 
-- **Embedded editors (AD-63).** This is a named exception to two rules: that tokens are never within an embedded frame's reach, and that an embedded vendor page is inert.
-  - **The source.** Only `interopEditorSource` (`ui/src/app/core/vendor-frame.ts`) builds it: `/ui/interop/<editor>/index.html` on the instance's origin.
-    - **Vocabulary.** It is closed: `rule-editor` takes `rule`, `dtl-editor` takes `DTL`, `bpl-editor` takes `BP`, and the namespace goes in `$NAMESPACE`.
-    - **Values.** They come from OcuPilot's own reads and are percent-encoded. Anything else answers `null`, and no frame is drawn.
-    - **New apps.** A new `/ui/interop` app (20.8) joins the vocabulary once its parameter is read on the instance.
-  - **The frame.** `app-interop-editor-frame` draws one unsandboxed `<iframe>`, because a sandboxed frame never signs in.
-    - `src` is set through `Renderer2`, never through a binding or a sanitizer bypass.
-    - The frame takes no `sandbox`, `allow`, `srcdoc` or `credentialless` attribute.
-    - Its per-editor title is its accessible name.
-  - **Normal mode only.** Never use `?VSCODE=1`, whose message sign-in takes a password from any sender, and never pre-write tokens.
-  - **Nothing crosses.** OcuPilot posts nothing into the frame and reads nothing from it: not `contentWindow`, `contentDocument` or `frames`, not its messages, and not the vendor's storage keys. So 20.16's reload cannot be a message (inference). Unchanged: the token store, sign-in and sign-out, the content-security policy, `index.html` and the response headers. CORS stays off.
-  - **Sign-in and sign-out.** The editor signs itself in from the browser-level login. OcuPilot's sign-out ends that sign-in and revokes each editor's own pair. The shell withholds every screen, and so every frame, while signed out.
-  - **Named consequences.**
-    - The frame can read the tab's `ocupilot.token-pair` and script the shell, which is no more than any same-origin code gets.
-    - The editor's own Logout ends OcuPilot's pair too. OcuPilot shows its session-ended card at the next request, and never fills or reads the editor's own sign-in form.
-    - A tab the editor opens without `noopener` gets a copy of the tab's storage, and sign-out revokes it.
-- **Interoperability port (`Port/InteropPort`).** It is the only class that starts, stops, restarts, updates or recovers a production, and the only source of declared interoperability reads. It calls the documented vendor classes the classic pages call, in the caller's process as the signed-in user, and never calls `%Api.InteropEditors.*`. A new read or write extends this port and names its case in AD-62 at its spec gate, and in AD-36 too for a read.
-- **Gate first.** The vendor's production, lookup, partner and test calls check no privilege (measured), so the port's gate is the whole gate.
-  - **Order.** The endpoint's pairs come first, then READ on the namespace's globals database, or WRITE for a write. A refusal names the failed pair.
-  - **Settling pairs.** Start from the classic page's check, then run a least-privileged principal on a throwaway. An extra pair is declared only where measured, refused by name before any port call, and pinned by a test that removes it.
-  - **The floor.** The API floor admits `%Ens_Portal:USE`, so every new surface declares its own pair, and the `InteropFloor*` rosters pin it.
-  - **Adjustment.** `Screen.Gate.RequiredPairs` is the one reader of a screen's requirement. A port's pairs and the vendor's are never adjustable.
-- **Namespace and elevation.**
-  - `appliesWhen` (`IsEnsembleNamespace`, and `%IsDeepSeeEnabled` for Analytics) decides whether a surface applies, not who can open it.
-  - The port switches namespace by explicit save and restore, and calls no `OcuPilot.*` class while switched.
-  - OcuPilot adds no elevation of its own.
-  - A namespace under source control refuses item and lookup writes.
-- **Write shape.**
-  - **Action-style.** Each write declares its request type, sends no body or a port-built one, and fingerprints a port-composed fresh read. Before any vendor call it refuses, by name, whatever the vendor would answer as a silent success. A create fingerprints the target's absence.
-  - **Two callers, one operation.** A screen action and the agent's write share the fresh read, the prohibited set inside the per-target lock, the gate, the change event and the read-back. Only the agent's caller mints, writes the marker and is gated by the agent switches.
-  - **Its own request.** Each write finishes in its own request, capped at 15 s, with no spawn site. A troubled production gets Recover, never Clean.
-  - **After OK.** The write re-reads its target (`readBack`). Every port that defines `Invoke` also defines a pure `Snippet` that mirrors each branch, with secrets as placeholders.
-- **Audit.** Item and setting changes go through `Ens.Util.Auditing.AuditModifyProductionConfig`, never with a value. Writes the vendor does not audit record OcuPilot's own `ConfigChange` from either caller. A new unaudited vendor operation is either named in AD-15 or audited by the port.
-- **Transformation test (20.27).** `Transforms` gains `TRANSFORM` and `TRANSFORMTEST`.
-  - **Parsing.** Pasted text is parsed with a virtual document's `ImportFromString` or `Ens.Util.XML.Reader.ObjectFromString`, never with the `[Hidden]` serialized reader.
-  - **Running.** It runs `Transform` in process, with empty `process` and `context`, refused by name before any vendor call, and makes its vendor calls inside the output capture.
-  - **Pairs and pages.** It needs `%Ens_DTLTest:USE`, WRITE on the globals database and `%Ens_Code:READ`. Its `CLASSICPAGES` entry is `EnsPortal.Dialog.TestTransform`.
-  - **Named limits.** The HL7 parse writes the per-process `^EnsHL7.Segment` node, and a transformation's own code has no cap beyond the gateway timeout.
-- **AD-39's seventh exception.** A test's response, output, error and console lines reach the screen and the proposal card only, as text. They never reach the model, a tool result, a ledger row, an audit payload, a log line or screen context.
-- **Reads and ids.**
-  - Reads use source kind `interop`. A parent-scoped list takes its parent's route id as its one criterion and answers the parent key on each row.
-  - Every read has a row cap and reports when it truncates.
-  - An id keeps every part exactly, never uses the vendor's integer id, and is percent-encoded in one path segment; `production-item` is `[Production, Name]`.
-- **Tools.**
-  - Each tool declares its `CLASSICPAGES`, and each new write type is reviewed against AD-10's prohibited set.
-  - `InteropAction` is the parent of `InteropProductionAction` and `InteropItemAction`. A new interoperability tool extends that hierarchy rather than copying a sibling, and tools are named `<area>.<screen>.<verb>`.
-- **Untrusted content.** Message bodies, log text, names, settings, lookup values, test inputs and outputs, and rule, DTL or BPL content reach the model only through the one sanitizer. No gate or test relies on the sanitizer as its defense.
-- **Measure on the instance**, and amend the spine at the spec gate rather than working around it.
+- **New stored properties are declared after every existing one** on any `%Persistent` class of OcuPilot's own state. A rename or removal needs a migration step. `SCHEMAVERSION` moves only when a stored row's meaning changes. Upgrade is "install again", and downgrade is not supported.
+- **Ports are the whole gate.** The vendor's production, partner, test, resend and analytics calls check no privilege. Each port therefore gates first, in this order: the endpoint's pairs, the tool's pairs, then database READ (WRITE for a write). A refusal names the failed pair. Every new surface declares its own pair.
+- **`InteropPort`** is the only class that controls a production. A new read or write names its case in the interoperability AD at its spec gate. Each write is action-style over a port-composed read, finishes in its own request, and refuses vendor silent successes by name. Namespace switches use explicit save and restore and call no `OcuPilot.*` class while switched.
+- **`AnalyticsPort`** calls `%DeepSee` in process as the signed-in person, never `/api/deepsee`. Before any vendor call it checks, in order: the pairs, the namespace's shape, that the namespace reports analytics (else 409 `ANALYTICS.NAMESPACE`), then database READ. It uses only reads measured to write nothing.
+- **Background runs** (`Kernel/Shell/BackgroundRun`, shared by the SQL console and MDX, stored in `SqlRun`). A run never mutates. Each user gets one live run per kind, and the instance allows five. The answer is held for its owner alone and swept 900 s after the run ends, and another user's run reads as 404.
+- **Client.** Zoneless and `OnPush`. `screens.generated.ts` is generated and never hand-edited. Bundle limits are a 2,500 kB warning and a 4,000 kB hard stop. A crossing is reported to the owner, never re-based.
+- **Untrusted content** (vendor text, names, MDX, message bodies) reaches the screen only as interpolated text, and reaches the model only through the one sanitizer.
+- **Tests.** No test class depends on state another class left. Run one test class at a time and wait for each run to land in `%UnitTest_Result`. Read results from that global.
 
 ## UX & Interaction Patterns
 
-- **Rail and tabs.** Interoperability and Analytics follow System Explorer, and appear only where the namespace reports the feature. A screen joins the side bar only once it has shipped. An item opens on these tabs: Status, Settings, Queue, Log, Messages, Jobs, Test.
-- **Embeds and viewers.** The editors render in place inside the shell. The configuration diagram renders in place, and its sibling editors open in new tabs. The HL7, X12 and ASTM schema browsers are read-only.
-- **Gated controls are never hidden.** They stay focusable and `aria-disabled`, and name the failed pair.
-- **Strings.**
-  - Each list has a title, an empty state and three suggested prompts. A write-capable list's empty state adds the line inviting the agent.
-  - Every new string, frame titles included, goes into EXPERIENCE.md's Fixed strings and into `strings.ts`, whose values are unique.
-  - A refusal sentence lives once, on the server, pinned equal to its fixed string.
-- **Dialogs.** A dialog exists only where EXPERIENCE.md's dialog list names one, and a new dialog or pre-write warning amends that list at the spec gate. Dialogs never stack. A destructive screen action uses the typed-name confirm.
-- **Auto-refresh** is opt-in per screen, off by default, and declared in the screen's descriptor and in EXPERIENCE.md's roster.
-- **Cards.** Proposal cards follow the standard lifecycle. Production cards carry the guidance to recover before cleaning. An agent's destructive proposal carries no typed name. A block over about eight lines starts collapsed with a summary line, and Confirm never requires expanding it.
+- **Gated controls are never hidden.** They stay focusable and `aria-disabled`, and they name the failed pair or reason. Investigate is gated exactly like Explain this and sits beside every Explain this entry.
+- **The workflow chip** above the composer reads "Guided workflow", followed by the starting text, then Continue and End workflow.
+- **Destructive actions.** A person's destructive screen action, such as the cube manager's Build, uses the typed-name confirm. An agent's destructive card carries no typed-name confirm. Dialogs never stack.
+- **New strings** go into EXPERIENCE.md's Fixed strings and `strings.ts` with unique values, with no internal ids in user-facing copy.
 
 ## Cross-Story Dependencies
 
-- **Done:** 20.1 to 20.6, 20.13 to 20.15, and 20.17 to 20.24.
-- **20.28 is next**, and it is on the 1.0.12 release's critical path: the cut waits for 20.28 and Epic 18's 18.39. Plan and gate it now. Implement it once 20.13's code head is pushed, and push it only after 20.13 is green. It reworks `InteropPort` code from 20.3 (the `Ens.Config` argument types) and from 20.6 (the `Ensemble` include).
-- **20.13 unblocks 20.7, 20.8 and 20.10.** 20.7 is the frame component's first real-browser host, and it owns three follow-ups:
-  - It re-runs the frame browser spec against its real screens.
-  - On a document switch, it chooses between re-setting `src` and drawing a new frame. Re-setting adds a history entry, so Back moves the frame; a new frame skips the editor's unsaved-changes alert.
-  - It handles a frame that moves away from what its screen shows, unseen by OcuPilot: the logo and Back to standard UI navigate the frame, DTL and BPL push history entries, and the rule editor's Settings switches its namespace.
-- **The editing and test stories.** 20.16 follows 20.7 and builds on 20.21's agent source saves. 20.27 is ordered after 20.13 and consumes three things: 20.6's shared test helper (`IsTestWrite`, the test code family, `test-answer.ts`), the seventh exception, and the Data transformations list.
-- **Other links.** 20.9's trace reuses `interop-message` (inference). 20.8's diagram shows 20.3's items. 20.12 can run a guided disable followed by Update.
-- **20.25 and 20.26.** 20.25 consumes 20.3's items and 20.4's per-host tabs, and 20.26 consumes 20.5's Business partners screen and read. The orchestrator places both in the order.
-- **Epic 18 runs beside this epic.** Shared rosters take add-only edits, summed at the forward merge: the entity types, the screen mirror, `strings.ts`, the navigation tests and EXPERIENCE.md's rows. Anything else is asked first. Every new Epic 20 screen also needs a row in `Test/StageTwoTools`'s `Elsewhere` block.
-- **Into Epic 21.** Epic 21 reuses 20.12's diagnose-slow-query workflow. It owns interoperability credentials, purge, deployment, record maps, workflow and the analytics editors, so those stay out of this epic.
+- **Status.** Done: 20.1 to 20.24, 20.27 to 20.33, and 20.35. Ready for development: 20.34 and 20.36 (spec written). Backlog: 20.37, 20.25 and 20.26.
+- **Order.** 20.37, then 20.34, 20.36, 20.25, 20.26 and the burn-down.
+- **20.37** touches only `SqlRun`, which 20.33's MDX runs and the SQL console share. The 1.0.13 upgrade check from release 1.0.12 is re-run after it lands.
+- **20.34** consumes 20.11's port, error and probe types, 20.33's checks and 20.23's action-write shape. DW-2485 (the cache-snapshot `MAXSTRING`) rides with it.
+- **20.36** consumes 20.12's catalog, workflow call, refusals and chip.
+- **Shared rosters take add-only edits.** These include the governance baseline, `strings.ts`, the screen mirror, `ReadTool`, `ToolRoundTrip`, `ToolEmit`, `SurfaceCoverage` and the floor rosters. `ToolWrite`'s other-port write count (51) moves with 20.34, 20.25 and 20.26. Ask first before any non-add-only edit to `Screen/Registry.cls`, `Kernel/EntityType.cls`, the prohibited set, `Kernel/Proposal/*`, `app.routes.ts` or the CI files.
+- **Known flakes:** DW-2461, DW-2472 and DW-2493. Re-run a failed job once; a second red on the same head is a story red.
+- **Epic 21 waits on this epic.** 21.8 waits on 20.11, and 21.7 and 21.11 wait on all of Epic 20.

@@ -179,7 +179,7 @@
   box-sizing: border-box;
   flex: 1 1 auto;
   min-width: 0;
-  height: var(--ocu-input-height);
+  min-height: var(--ocu-input-height);
   padding: 0 var(--ocu-space-3);
   border: 1px solid var(--ocu-outline);
   border-radius: var(--ocu-radius-md);
@@ -203,7 +203,7 @@
   justify-content: center;
   flex: 0 0 auto;
   width: var(--ocu-icon-button-size);
-  height: var(--ocu-input-height);
+  min-height: var(--ocu-input-height);
   padding: 0;
   border: 1px solid transparent;
   border-radius: var(--ocu-radius-md);
@@ -229,7 +229,7 @@
   align-items: center;
   justify-content: center;
   width: 100%;
-  height: var(--ocu-control-height);
+  min-height: var(--ocu-control-height);
   padding: 0 var(--ocu-space-4);
   border: none;
   border-radius: var(--ocu-radius-full);
@@ -267,7 +267,7 @@
   align-items: center;
   justify-content: center;
   gap: var(--ocu-space-1);
-  height: var(--ocu-control-height);
+  min-height: var(--ocu-control-height);
   padding: 0 var(--ocu-space-4);
   border-radius: var(--ocu-radius-full);
   background: transparent;
@@ -291,7 +291,7 @@
   align-items: center;
   justify-content: center;
   width: 100%;
-  height: var(--ocu-control-height);
+  min-height: var(--ocu-control-height);
   padding: 0 var(--ocu-space-4);
   border: none;
   border-radius: var(--ocu-radius-full);
@@ -479,10 +479,10 @@
 // is styled as `row-overflow-menu` (`:1058`): the sheet colour, a 1px `outline-variant`
 // border, `rounded.sm`, elevation 2, min-width 140px, 6px of vertical padding, items at
 // `control-height` with a 14px horizontal inset and a `surface-container-low` hover.
-// DESIGN.md writes the item box as "32px, 8px 14px padding"; here the 32px is the fixed
-// `control-height` and the vertical half is left to it, which is how every other fixed-height
-// control in this file is drawn (`.ocu-button-primary`) -- there is no global `border-box`,
-// so vertical padding on top of a set height would overflow the control.
+// DESIGN.md writes the item box as "32px, 8px 14px padding"; here the 32px is the
+// `control-height` minimum and the vertical half is left to it, which is how every other control
+// in this file is drawn (`.ocu-button-primary`) -- there is no global `border-box`, so vertical
+// padding would add to that minimum rather than sit inside it.
 //
 // Story 15.9 moved the component to the header's right end, so the trigger is drawn for the
 // shell band it sits on: `on-shell` text, `on-shell` at 8% hover, and DESIGN.md's
@@ -503,7 +503,7 @@
   display: inline-flex;
   align-items: center;
   gap: var(--ocu-space-1);
-  height: var(--ocu-control-height);
+  min-height: var(--ocu-control-height);
   padding: 0 var(--ocu-space-2);
   border: 1px solid transparent;
   border-radius: var(--ocu-radius-sm);
@@ -548,7 +548,7 @@
   display: flex;
   align-items: center;
   width: 100%;
-  height: var(--ocu-control-height);
+  min-height: var(--ocu-control-height);
   padding: 0 14px;
   border: none;
   background: transparent;
@@ -782,7 +782,7 @@ app-source-viewer-page {
   z-index: 5;
   display: inline-flex;
   align-items: center;
-  height: var(--ocu-control-height);
+  min-height: var(--ocu-control-height);
   padding: 0 var(--ocu-space-4);
   border-radius: var(--ocu-radius-full);
   background: var(--ocu-secondary);
@@ -998,7 +998,7 @@ app-source-viewer-page {
   align-items: center;
   gap: var(--ocu-space-2);
   width: calc(100% - (2 * 6px));
-  height: 28px;
+  min-height: 28px;
   margin: 0 6px;
   padding: 0 var(--ocu-space-2);
   border: none;
@@ -1047,6 +1047,12 @@ app-source-viewer-page {
   color: var(--ocu-restrained);
 }
 
+// An `external` entry opens a new tab (Story 20.32): its glyph sits at the entry's right edge and never shrinks.
+.ocu-side-bar-item .ocu-external-glyph {
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
 .ocu-side-bar-item:focus-visible {
   @include ocu-focus-ring;
 
@@ -1078,6 +1084,33 @@ app-source-viewer-page {
   color: var(--ocu-restrained);
 }
 
+// --- The external page (Story 20.32) ---------------------------------------------------------
+//
+// An `external` screen's route: its title, then the classic-link card, or the sentence that says the
+// page cannot open in this namespace. Tokens only; the card keeps its own shape.
+
+.ocu-external-page {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--ocu-space-3);
+  padding: var(--ocu-space-6) var(--ocu-gutter);
+}
+
+.ocu-external-page-title {
+  @include typo.ocu-type('title');
+
+  margin: 0;
+  color: var(--ocu-on-surface);
+}
+
+.ocu-external-page-sentence {
+  @include typo.ocu-type('body');
+
+  margin: 0;
+  color: var(--ocu-on-surface-variant);
+}
+
 // --- The header band (Story 1.10) ----------------------------------------------------------
 //
 // DESIGN.md `:1007-1017`. A three-column grid rather than a flex row: the command box is
@@ -1095,7 +1128,7 @@ app-source-viewer-page {
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
   gap: var(--ocu-space-4);
-  height: var(--ocu-header-height);
+  min-height: var(--ocu-header-height);
   padding: 0 var(--ocu-space-3) 0 var(--ocu-space-2);
   background: linear-gradient(
     90deg,
@@ -1224,7 +1257,7 @@ app-source-viewer-page {
   @include typo.ocu-type('body');
 
   display: flex;
-  height: var(--ocu-control-height);
+  min-height: var(--ocu-control-height);
   align-items: center;
   padding: 0 14px;
   cursor: pointer;
@@ -1278,7 +1311,7 @@ app-source-viewer-page {
 
   box-sizing: border-box;
   width: 100%;
-  height: 30px;
+  min-height: 30px;
   padding: 0 60px 0 var(--ocu-space-2);
   border: 1px solid color-mix(in srgb, var(--ocu-on-shell) 45%, transparent);
   border-radius: var(--ocu-radius-md);
@@ -1342,7 +1375,7 @@ app-source-viewer-page {
   display: flex;
   align-items: center;
   gap: var(--ocu-space-2);
-  height: var(--ocu-control-height);
+  min-height: var(--ocu-control-height);
   padding: 0 var(--ocu-space-3);
   cursor: pointer;
 }
@@ -1439,7 +1472,7 @@ app-source-viewer-page {
   flex: 0 0 auto;
   align-items: center;
   gap: var(--ocu-space-2);
-  height: var(--ocu-locator-height);
+  min-height: var(--ocu-locator-height);
   padding: 0 var(--ocu-gutter);
   border-bottom: 1px solid var(--ocu-outline-variant);
   background: var(--ocu-surface);
@@ -1559,7 +1592,7 @@ app-source-viewer-page {
 
   box-sizing: border-box;
   width: 220px;
-  height: var(--ocu-control-height);
+  min-height: var(--ocu-control-height);
   padding: 0 var(--ocu-space-2);
   border: 1px solid var(--ocu-outline);
   border-radius: var(--ocu-radius-md);
@@ -1608,14 +1641,31 @@ app-source-viewer-page {
   clip-path: none;
 }
 
-// Download CSV's description at the cap (Story 16.23), on keyboard focus. The control is a view
-// control and never takes `.ocu-command-bar-action`, so the rule above reveals it on hover only.
+// Download CSV's description at the cap (Story 16.23), and the primary action's held-back reason (Story 18.46), on
+// keyboard focus. Neither control takes `.ocu-command-bar-action`, so the rule above reveals them on hover only.
+.ocu-command-bar-primary:focus-visible + .ocu-command-bar-reason,
 .ocu-command-bar-download:focus-visible + .ocu-command-bar-reason {
   width: auto;
   height: auto;
   padding: 5px 8px;
   overflow: visible;
   clip-path: none;
+}
+
+// The primary action held back by its registrant (Story 18.46): drawn as the Send control is when it is gated, `restrained`
+// and never faded.
+.ocu-command-bar-primary[aria-disabled='true'],
+.ocu-data-table-empty-action[aria-disabled='true'] {
+  background: var(--ocu-restrained-container);
+  color: var(--ocu-restrained);
+  cursor: default;
+}
+
+.ocu-command-bar-primary[aria-disabled='true']:hover,
+.ocu-command-bar-primary[aria-disabled='true']:active,
+.ocu-data-table-empty-action[aria-disabled='true']:hover,
+.ocu-data-table-empty-action[aria-disabled='true']:active {
+  background: var(--ocu-restrained-container);
 }
 
 .ocu-command-bar-spacer {
@@ -1662,7 +1712,7 @@ app-source-viewer-page {
   display: flex;
   align-items: center;
   width: 100%;
-  height: var(--ocu-control-height);
+  min-height: var(--ocu-control-height);
   padding: 0 14px;
   border: none;
   background: transparent;
@@ -1711,23 +1761,24 @@ app-source-viewer-page {
 // rule's `inline-flex`. `box-sizing: border-box` is not hygiene: with no global reset,
 // `max-width: 100%` would cap the content box and the chip's border box would overrun the row by
 // its own padding and 1px border -- the row clips exactly there, taking the ellipsis with it. And
-// `height` and `line-height` are restated together, and neither is a new number. The shared
-// button rule sets `height: var(--ocu-control-height)` content-box, so the pill beside this one
-// -- `.ocu-command-bar-action`, the same `.ocu-button-text` -- renders a border box of the
-// control height plus its 1px border on each side; switching this chip alone to `border-box`
-// would leave it 2px shorter than its neighbour, a visible step between two adjacent pills that
-// jsdom cannot see. Restating the height as the control height plus those 2px makes the border
-// boxes equal again and leaves the content box exactly the control height, which is what the
-// `line-height` then fills: it centres the single line that `align-items: center` centred while
-// the chip was still a flex container.
+// `min-height` and `line-height` are restated together, and neither is a new number. The shared
+// button rule sets `min-height: var(--ocu-control-height)` content-box, so the pill beside this
+// one -- `.ocu-command-bar-action`, the same `.ocu-button-text` -- renders a border box of at
+// least the control height plus its 1px border on each side; switching this chip alone to
+// `border-box` would leave it 2px shorter than its neighbour, a visible step between two adjacent
+// pills that jsdom cannot see. Restating the minimum as the control height plus those 2px makes
+// the border boxes equal again and leaves a content box of at least the control height, which
+// the `line-height` then fills: it centres the single line that `align-items: center` centred
+// while the chip was still a flex container, and it is a minimum too, the body line once that is
+// taller, so the chip grows with its text rather than clipping it (DESIGN.md `:912`).
 .ocu-command-bar-refresh {
   box-sizing: border-box;
   display: inline-block;
   flex: 0 1 auto;
   max-width: 100%;
   min-width: 0;
-  height: calc(var(--ocu-control-height) + 2px);
-  line-height: var(--ocu-control-height);
+  min-height: calc(var(--ocu-control-height) + 2px);
+  line-height: max(var(--ocu-control-height), calc(var(--ocu-type-body-line-height) * 1em));
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1757,7 +1808,7 @@ app-source-viewer-page {
   gap: var(--ocu-space-3);
   min-width: 0;
   overflow-x: clip;
-  height: var(--ocu-status-bar-height);
+  min-height: var(--ocu-status-bar-height);
   padding: 0 var(--ocu-space-3);
   background: var(--ocu-shell);
   color: var(--ocu-on-shell);
@@ -1878,13 +1929,13 @@ app-server-flag {
   display: inline-block;
   max-width: 100%;
   min-width: 0;
-  height: 18px;
+  min-height: 18px;
   padding: 0 var(--ocu-space-2);
   border: 1px solid var(--ocu-server-flag-edge);
   border-radius: var(--ocu-radius-full);
   background: var(--ocu-restrained-container);
   color: var(--ocu-restrained);
-  line-height: 16px;
+  line-height: max(16px, calc(var(--ocu-type-label-line-height) * 1em));
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2120,7 +2171,7 @@ app-server-flag[data-unbounded] .ocu-server-flag {
 .ocu-classic-link-card-action {
   box-sizing: border-box;
   max-width: 100%;
-  height: calc(var(--ocu-control-height) + 2px);
+  min-height: calc(var(--ocu-control-height) + 2px);
 }
 
 // The label shrinks and ellipsizes inside the pill, the recipe the server-flag pill uses; the
@@ -2147,7 +2198,8 @@ app-server-flag[data-unbounded] .ocu-server-flag {
 // trigger, the tag's 2px 6px padding and the menu's 140px minimum width and 14px item inset.
 
 app-list-page,
-app-data-table {
+app-data-table,
+app-interop-message-contents {
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -2158,7 +2210,8 @@ app-list-page {
   height: 100%;
 }
 
-app-data-table {
+app-data-table,
+app-interop-message-contents {
   flex: 1 1 auto;
 }
 
@@ -2236,6 +2289,12 @@ app-data-table {
   margin-left: var(--ocu-space-2);
   color: var(--ocu-restrained);
   white-space: nowrap;
+}
+
+// A strip wider than its column wraps onto further rows rather than paging: Material's links row is
+// a flex row that would otherwise keep every tab on one line.
+.ocu-detail-tabs .mat-mdc-tab-links {
+  flex-wrap: wrap;
 }
 
 // The banner strip above the table (Story 2.8). `.ocu-list-page` is a column flex whose table takes
@@ -2577,6 +2636,46 @@ app-data-table {
   color: var(--ocu-on-surface);
 }
 
+// A message's Contents tab (Story 20.9): the frame the data table's own frame is, holding one block of text that wraps long lines
+// and scrolls inside the panel as a flex item. Tokens only, so both themes hold.
+.ocu-message-contents-frame {
+  position: relative;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid var(--ocu-outline-variant);
+  border-radius: var(--ocu-radius-md);
+  background: var(--ocu-surface-container-lowest);
+  color: var(--ocu-on-surface);
+}
+
+.ocu-message-contents {
+  @include typo.ocu-type('code');
+
+  box-sizing: border-box;
+  flex: 1 1 auto;
+  min-height: 0;
+  margin: 0;
+  padding: var(--ocu-space-3);
+  overflow: auto;
+  background: var(--ocu-code-surface);
+  color: var(--ocu-on-code-surface);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.ocu-message-contents-frame .ocu-list-page-note {
+  margin: 0;
+  padding: var(--ocu-space-2) var(--ocu-space-3);
+  border-bottom: 1px solid var(--ocu-outline-variant);
+}
+
+.ocu-message-contents:focus-visible {
+  @include ocu-focus-ring;
+}
+
 .ocu-data-table-empty:focus-visible {
   @include ocu-focus-ring;
 }
@@ -2590,6 +2689,15 @@ app-data-table {
 
 .ocu-data-table-empty-next {
   @include typo.ocu-type('body');
+
+  margin: 0;
+  color: var(--ocu-on-surface-variant);
+}
+
+// The reason an empty state's held-back action carries (Story 18.46): a sentence beside the button, not a tooltip, because
+// the empty state has the room and a sentence a person must read should not wait on a hover.
+.ocu-data-table-empty-reason {
+  @include typo.ocu-type('caption');
 
   margin: 0;
   color: var(--ocu-on-surface-variant);
@@ -2614,7 +2722,7 @@ app-data-table {
 .ocu-data-table-menu-item {
   @include typo.ocu-type('body');
 
-  height: var(--ocu-control-height);
+  min-height: var(--ocu-control-height);
   padding: 0 14px;
   border: none;
   background: transparent;
@@ -2654,7 +2762,7 @@ app-data-table {
 
   box-sizing: border-box;
   width: 80px;
-  height: var(--ocu-control-height);
+  min-height: var(--ocu-control-height);
   padding: 0 var(--ocu-space-2);
   border: 1px solid var(--ocu-outline);
   border-radius: var(--ocu-radius-md);
@@ -2767,6 +2875,30 @@ app-data-table {
   overflow-wrap: anywhere;
 }
 
+// A review dialog's lines (Story 20.31): one list item for each message or changed field the person is
+// about to act on, scrolling inside the surface so a long set never grows the dialog past the viewport.
+.ocu-dialog-review {
+  @include typo.ocu-type('body');
+
+  margin: 0 0 var(--ocu-space-4);
+  padding: var(--ocu-space-2);
+  border-radius: var(--ocu-radius-sm);
+  background: var(--ocu-surface-container-low);
+  color: var(--ocu-on-surface);
+  max-height: 200px;
+  overflow: auto;
+  list-style: none;
+}
+
+.ocu-dialog-review > li {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.ocu-dialog-review > li + li {
+  margin-top: var(--ocu-space-1);
+}
+
 // --- The server-criteria list's form (Story 2.10) -----------------------------------------------
 //
 // The criteria form sits above the table (DESIGN.md `:1080`). It inherits `form-page`'s outlined
@@ -2805,7 +2937,7 @@ app-data-table {
 
   box-sizing: border-box;
   width: 100%;
-  height: var(--ocu-control-height);
+  min-height: var(--ocu-control-height);
   padding: 0 var(--ocu-space-2);
   border: 1px solid var(--ocu-outline);
   border-radius: var(--ocu-radius-md);
@@ -3061,7 +3193,7 @@ app-data-table {
   align-items: center;
   justify-content: space-between;
   gap: var(--ocu-space-3);
-  height: var(--ocu-form-bar-height);
+  min-height: var(--ocu-form-bar-height);
   margin-top: auto;
   padding: 0 var(--ocu-space-3);
   border-top: 1px solid var(--ocu-outline-variant);
@@ -3199,6 +3331,24 @@ app-data-table {
   align-items: flex-end;
   gap: var(--ocu-space-2);
   margin-top: var(--ocu-space-2);
+}
+
+// --- The Switches screen's provider connection section (Story 18.40) -------------------------
+//
+// Three fields over the instance's one outbound-call row, saved on their own: they are a different write from the
+// switches above, with their own route and their own refusals.
+.ocu-switches-connection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ocu-space-2);
+  margin-top: var(--ocu-space-4);
+}
+
+.ocu-switches-connection-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ocu-space-2);
 }
 
 // --- The Governance policy screen (Story 14.2) -----------------------------------------------
@@ -3443,6 +3593,7 @@ app-data-table {
 // The reminder banner's link, `button-text`-shaped at the banner's end (DESIGN.md banner).
 .ocu-panel-banner-link {
   height: auto;
+  min-height: 0;
   padding: 0 var(--ocu-space-2);
 }
 
@@ -3908,7 +4059,72 @@ app-data-table {
 .ocu-panel-warning-send,
 .ocu-panel-warning-edit {
   height: auto;
+  min-height: 0;
   padding: 0 var(--ocu-space-2);
+}
+
+// --- The guided-workflow chip (Story 20.12) ---------------------------------------------------
+//
+// DESIGN.md `workflow-chip`: the context chip's surface above the composer, holding the label and
+// the starting prompt's text and, beside them, Continue and End workflow as `button-text`. It uses
+// the context chip's surface tokens only, so both themes hold. Continue unavailable is
+// `aria-disabled`, never `disabled`: `restrained` at full opacity with no state layer, as
+// "Explain this screen" is.
+
+.ocu-workflow-chip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ocu-space-1) var(--ocu-space-2);
+  padding: 6px 8px 6px 10px;
+  border: 1px solid var(--ocu-outline-variant);
+  border-radius: var(--ocu-radius-md);
+  background: var(--ocu-surface-container);
+}
+
+.ocu-workflow-chip-text {
+  @include typo.ocu-type('caption');
+
+  display: flex;
+  flex: 1 1 8rem;
+  flex-direction: column;
+  min-width: 0;
+  margin: 0;
+  color: var(--ocu-on-surface);
+}
+
+.ocu-workflow-chip-label {
+  @include typo.ocu-type('label');
+
+  color: var(--ocu-on-surface-variant);
+}
+
+.ocu-workflow-chip-name {
+  overflow-wrap: anywhere;
+}
+
+.ocu-workflow-chip-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: var(--ocu-space-1);
+}
+
+.ocu-workflow-chip-action {
+  height: auto;
+  min-height: 24px;
+  padding: 0 var(--ocu-space-2);
+}
+
+.ocu-workflow-chip-continue[aria-disabled='true'] {
+  color: var(--ocu-restrained);
+  cursor: default;
+}
+
+.ocu-workflow-chip-continue[aria-disabled='true']:hover,
+.ocu-workflow-chip-continue[aria-disabled='true']:active {
+  background: transparent;
 }
 
 // --- The transcript: messages, cards and the turn error banner (Story 4.5) --------------------
@@ -4306,6 +4522,19 @@ app-data-table {
 
 .ocu-tool-call-status-warning {
   color: var(--ocu-destructive);
+  overflow-wrap: anywhere;
+  text-align: right;
+}
+
+// A failed card's reason can be a whole sentence (the agent's MDX read answers one of 140 characters): the status gives way first, to the room the
+// name leaves, and wraps there instead of running past the card.
+.ocu-tool-call-status:has(.ocu-tool-call-status-warning) {
+  flex: 0 100 auto;
+  min-width: 0;
+}
+
+.ocu-tool-call-toggle:has(.ocu-tool-call-status-warning) {
+  padding-block: 6px;
 }
 
 .ocu-tool-call-spinner {
@@ -4499,6 +4728,8 @@ app-data-table {
 .ocu-proposal-card-title {
   @include typo.ocu-type('title');
 
+  min-width: 0;
+  overflow-wrap: anywhere;
   color: var(--ocu-primary);
 }
 
@@ -4559,6 +4790,15 @@ app-data-table {
 
 .ocu-diff-arrow {
   color: var(--ocu-on-surface-variant);
+}
+
+// A value with no space in it, such as a role's `Resources` JSON, may break anywhere, so it wraps
+// inside its row at any panel width, the narrowest included, instead of running past it. The after
+// cell and an unchanged row's value follow the before cell.
+.ocu-diff-before,
+.ocu-diff-after,
+.ocu-diff-row-unchanged .ocu-diff-value {
+  overflow-wrap: anywhere;
 }
 
 // The unchanged-fields line. Story 5.2 turns this element into a `<button aria-expanded>` when
@@ -5118,6 +5358,20 @@ app-data-table {
   @include ocu-focus-ring;
 }
 
+// A drill-down the caller is refused (Story 18.47): listed and focusable like the side bar's gated entry, with the reason
+// inline after the label at full opacity in `restrained`.
+.ocu-details-link-gated {
+  color: var(--ocu-restrained);
+  cursor: default;
+}
+
+.ocu-details-link-reason {
+  @include typo.ocu-type('caption');
+
+  margin-inline-start: var(--ocu-space-2);
+  color: var(--ocu-restrained);
+}
+
 // --- Meter (Story 6.9) -- shared by System usage and, from 6.11, Database details -------------
 //
 // EXPERIENCE.md's meter row: "never animates the needle". A 6px fully-rounded track over
@@ -5385,6 +5639,7 @@ app-data-table {
 
 .ocu-log-explain {
   height: calc(var(--ocu-log-row-height) - 4px);
+  min-height: 0;
   padding: 0 var(--ocu-space-2);
 }
 
@@ -5430,6 +5685,28 @@ app-data-table {
 .ocu-log-load-newer {
   align-self: flex-start;
   margin: var(--ocu-space-2) var(--ocu-space-4);
+}
+
+// The row under the window that holds Load newer and, on a source that tails live, the Live tail
+// toggle beside it (Story 18.38). Load newer keeps its own margin inside the row; the toggle's
+// pressed state is the secondary container, as the Raw toggle's is.
+.ocu-log-tail-bar {
+  display: flex;
+  align-items: center;
+  align-self: flex-start;
+}
+
+.ocu-log-tail-bar .ocu-log-live {
+  margin: var(--ocu-space-2) var(--ocu-space-4) var(--ocu-space-2) 0;
+}
+
+.ocu-log-tail-bar .ocu-log-live:first-child {
+  margin-left: var(--ocu-space-4);
+}
+
+.ocu-log-live[aria-pressed='true'] {
+  background: var(--ocu-secondary-container);
+  color: var(--ocu-on-secondary-container);
 }
 
 // --- Home's remembered-screen blocks and the locator bar's favorite toggle (Story 15.2) -------
@@ -5488,7 +5765,7 @@ app-data-table {
   align-items: center;
   gap: var(--ocu-space-2);
   min-width: 0;
-  height: var(--ocu-control-height);
+  min-height: var(--ocu-control-height);
   padding: 0;
   border: none;
   background: transparent;
@@ -5685,13 +5962,6 @@ app-data-table {
   overflow-wrap: anywhere;
 }
 
-.ocu-about-fault {
-  @include typo.ocu-type('body');
-
-  margin: 0;
-  color: var(--ocu-on-surface-variant);
-}
-
 // DW-3's stale-bundle prompt: a polite strip above the frame, offering Reload and blocking
 // nothing.
 .ocu-stale-bundle {
@@ -5710,12 +5980,12 @@ app-data-table {
 
 // Story 15.4. Home's System Information block reuses `.ocu-home-block*` wholesale; only the
 // label/value row inside it is new. A row is a label and the word the instance reported, so it
-// takes the remembered row's own 32px height and insets and lays the two out at opposite ends --
-// no new token, and `_tokens.scss` is untouched (Story 15.6 owns it).
+// takes the remembered row's 32px height as a minimum, and its insets, and lays the two out at
+// opposite ends -- no new token, and `_tokens.scss` is untouched (Story 15.6 owns it).
 .ocu-home-system-row {
   justify-content: space-between;
   gap: var(--ocu-space-3);
-  height: var(--ocu-control-height);
+  min-height: var(--ocu-control-height);
 }
 
 .ocu-home-system-label {
@@ -5879,7 +6149,7 @@ app-resource-list-page {
   @include typo.ocu-type('body');
 
   width: 100%;
-  height: var(--ocu-control-height);
+  min-height: var(--ocu-control-height);
   box-sizing: border-box;
   padding: 0 10px;
   border: 1px solid var(--ocu-outline);
@@ -6377,6 +6647,49 @@ app-data-table .ocu-data-table-header-cell {
 
 .ocu-data-table-tooltip-placed {
   visibility: visible;
+}
+
+// A `long` column's value, whole, beneath the table (DESIGN.md `data-table`). The wrapper takes at
+// most half the table's column and scrolls, so an opened long block is reachable at any height, the
+// table keeps the other half, and the block's own region is never clipped.
+.ocu-data-table-long {
+  box-sizing: border-box;
+  flex: 0 1 auto;
+  min-height: 0;
+  max-height: 50%;
+  padding-top: var(--ocu-space-3);
+  overflow-y: auto;
+}
+
+// While a long block shows, the frame keeps its header and one row (with 16px for a classic
+// horizontal scrollbar) wherever half the column holds them, and half the column below that: the
+// long blocks' wrapper yields the room, so neither the rows nor the block shrink to a sliver.
+app-data-table:has(> .ocu-data-table-long) > .ocu-data-table-frame {
+  min-height: min(calc(2 * var(--ocu-row-height) + 2px + 16px), 50%);
+}
+
+.ocu-data-table-long-block {
+  min-width: 0;
+}
+
+.ocu-data-table-long-block + .ocu-data-table-long-block {
+  margin-top: var(--ocu-space-3);
+}
+
+.ocu-data-table-long-label {
+  @include typo.ocu-type('label');
+
+  display: block;
+  color: var(--ocu-on-surface-variant);
+}
+
+.ocu-data-table-long-text {
+  @include typo.ocu-type('body');
+
+  margin: 0;
+  color: var(--ocu-on-surface);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 // Home's Shortcuts block lists the column-resize binding as text after its screen rows.
@@ -7155,7 +7468,7 @@ app-data-table .ocu-data-table-header-cell {
   @include typo.ocu-type('label');
 
   min-width: var(--ocu-icon-button-size);
-  height: var(--ocu-control-height);
+  min-height: var(--ocu-control-height);
   padding: 0 var(--ocu-space-3);
   border: 1px solid var(--ocu-outline);
   border-radius: var(--ocu-radius-sm);
@@ -7212,7 +7525,6 @@ app-data-table .ocu-data-table-header-cell {
   color: var(--ocu-on-surface);
 }
 
-.ocu-guardrails-fault,
 .ocu-guardrails-note {
   @include typo.ocu-type('caption');
 
@@ -8588,6 +8900,14 @@ app-ecp-data-server-form-page .ocu-field-checkbox input[aria-disabled='true'] {
 // (`.ocu-command-bar-sort-menu`) of the enabled definitions. With one definition the name is plain
 // text. Never colour alone: the one in use is `aria-checked` and its weight is the third reading, as
 // the sort menu's is.
+
+// The host element draws no box of its own, so `.ocu-agent-picker`'s `max-width: 50%` resolves against
+// the panel header it sits in. As a content-sized flex item the host would be the percentage's base,
+// and the name would be cut at half of its own width.
+app-agent-picker {
+  display: contents;
+}
+
 .ocu-agent-picker {
   display: inline-flex;
   flex: 0 1 auto;
@@ -8614,7 +8934,7 @@ app-ecp-data-server-form-page .ocu-field-checkbox input[aria-disabled='true'] {
   box-sizing: border-box;
   min-width: 0;
   max-width: 100%;
-  height: var(--ocu-icon-button-size);
+  min-height: var(--ocu-icon-button-size);
   padding: 0 var(--ocu-space-2);
   border: none;
   border-radius: var(--ocu-radius-md);
@@ -8718,4 +9038,160 @@ app-ecp-data-server-form-page .ocu-field-checkbox input[aria-disabled='true'] {
   color: var(--ocu-on-surface-variant);
   font-weight: 400;
   overflow-wrap: anywhere;
+}
+
+// A message's Trace tab (Story 20.30): the session as a sequence diagram, drawn as SVG inside a scroll region. Tokens only, so both
+// themes hold. Heads and lifelines are the participants; an arrow is a link whose line and head take the arrow's class -- dashed for a
+// response, the error token for an error -- and whose band is its hit area.
+.ocu-trace-frame {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: var(--ocu-space-2);
+  min-height: 0;
+}
+
+.ocu-trace-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  border: 1px solid var(--ocu-outline-variant);
+  border-radius: var(--ocu-radius-md);
+  background: var(--ocu-surface-container-lowest);
+  color: var(--ocu-on-surface);
+}
+
+.ocu-trace-svg {
+  display: block;
+}
+
+.ocu-trace-lifeline {
+  stroke: var(--ocu-outline-variant);
+  stroke-width: 1;
+}
+
+.ocu-trace-head {
+  fill: var(--ocu-surface-container);
+  stroke: var(--ocu-outline);
+  stroke-width: 1;
+}
+
+.ocu-trace-head-text {
+  @include typo.ocu-type('caption');
+
+  fill: var(--ocu-on-surface);
+}
+
+.ocu-trace-hit {
+  fill: none;
+  stroke: none;
+  pointer-events: all;
+}
+
+.ocu-trace-id {
+  @include typo.ocu-type('caption');
+
+  fill: var(--ocu-on-surface-variant);
+}
+
+.ocu-trace-label {
+  @include typo.ocu-type('caption');
+
+  fill: var(--ocu-on-surface);
+}
+
+.ocu-trace-line {
+  fill: none;
+  stroke: var(--ocu-on-surface-variant);
+  stroke-width: 1.5;
+}
+
+.ocu-trace-mark {
+  fill: var(--ocu-on-surface-variant);
+  stroke: none;
+}
+
+.ocu-trace-response .ocu-trace-line {
+  stroke-dasharray: 6 4;
+}
+
+.ocu-trace-error .ocu-trace-line {
+  stroke: var(--ocu-error);
+}
+
+.ocu-trace-error .ocu-trace-mark {
+  fill: var(--ocu-error);
+}
+
+.ocu-trace-link {
+  cursor: pointer;
+}
+
+.ocu-trace-link:hover .ocu-trace-hit {
+  fill: color-mix(in srgb, var(--ocu-on-surface) 8%, transparent);
+}
+
+.ocu-trace-link:focus {
+  outline: none;
+}
+
+.ocu-trace-link:focus-visible .ocu-trace-hit {
+  fill: none;
+  stroke: var(--ocu-focus-ring);
+  stroke-width: 2;
+}
+
+// A result grid's host element (Story 20.33, `shell/result-grid.ts`) draws nothing of its own: the grid's
+// frame lays out in its parent as it did when the page held the template itself.
+app-result-grid {
+  display: contents;
+}
+
+// Analytics' MDX query (Story 20.33): a form page as wide as its column, on the SQL query's form and grid
+// classes. A value cell of the cells grid is a button that fills its cell and reads as a link, so a
+// drill-through is reachable by keyboard; the Drill-through listing sits below the grid, as the SQL
+// query's Background run section sits below its answer.
+.ocu-mdx-query {
+  max-width: none;
+}
+
+.ocu-mdx-drill {
+  @include typo.ocu-type('code');
+
+  box-sizing: border-box;
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  align-self: stretch;
+  min-width: 0;
+  max-width: 100%;
+  padding: 0;
+  overflow: hidden;
+  border: none;
+  background: transparent;
+  color: var(--ocu-secondary);
+  text-align: start;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.ocu-mdx-drill:hover {
+  text-decoration: underline;
+}
+
+.ocu-mdx-drill:focus-visible {
+  @include ocu-focus-ring;
+}
+
+.ocu-mdx-drill[aria-disabled='true'] {
+  cursor: default;
+  text-decoration: none;
+}
+
+.ocu-mdx-query-listing {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ocu-space-2);
+  margin-block-start: var(--ocu-space-4);
 }

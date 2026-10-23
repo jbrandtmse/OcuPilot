@@ -1,10 +1,21 @@
-import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
+import { LocationStrategy } from '@angular/common';
+import { ChangeDetectionStrategy, Component, computed, inject, input, output, signal } from '@angular/core';
+import { Router } from '@angular/router';
 
+import { pickCount } from '../../core/count-phrase';
+import { entityUrl } from '../../core/navigation';
 import { STRINGS } from '../../core/strings';
 import { type TestAnswer, testStatusLine } from '../../core/test-answer';
 import type { Violation } from '../../core/violations';
 import { CodeBlock } from '../../shell/code-block';
 import { Dialog } from '../../shell/dialog';
+import { followInAppLink } from '../../shell/in-app-link';
+
+/** The route of a session's trace, which a message id opens (Story 20.30). */
+const TRACE_ROUTE = 'interoperability/messages/trace';
+
+/** The shape of a session id a test answers: digits, not beginning with zero, as a message id is. */
+const SESSION_ID = /^[1-9][0-9]{0,18}$/;
 
 /** How many Test dialogs have been constructed, which makes each one's field ids its own. */
 let dialogCount = 0;
@@ -87,15 +98,16 @@ interface FieldView extends TestFieldRow {
  * instance's refusal, drawn on that field.
  *
  * **The result stays in the dialog.** After a send the status sentence, the session and the response's lines show beneath the
- * fields as text, never as markup, and a further send replaces them. A refusal the instance gives a field is drawn under it, and
- * any other is drawn above the fields as an alert; both are the server's sentences.
+ * fields as text, never as markup, and a further send replaces them. When the answer names a session, a link under the status line
+ * opens that session's trace in the namespace the tab is scoped to (Story 20.30). A refusal the instance gives a field is drawn under
+ * it, and any other is drawn above the fields as an alert; both are the server's sentences.
  */
 @Component({
   selector: 'app-interop-item-test-dialog',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [Dialog, CodeBlock],
-  template: `<app-dialog [heading]="heading()" [closeLabel]="STRINGS.actionCancel" (closed)="onClosed()">
-    <p class="ocu-banner" data-interop-test-consequence>{{ STRINGS.interopTestSendsConsequence }}</p>
+  template: `<app-dialog [heading]="title()" [closeLabel]="STRINGS.actionCancel" (closed)="onClosed()">
+    <p class="ocu-banner" data-interop-test-consequence>{{ consequenceText }}</p>
     @if (hasRefusal) {
       <p class="ocu-banner ocu-banner-warning" role="alert" data-interop-test-reason>{{ refusal() }}</p>
     }
@@ -181,8 +193,11 @@ interface FieldView extends TestFieldRow {
       }
     </div>
     @if (hasAnswer) {
-      <div class="ocu-test-result" data-interop-test-result>
+      <div data-interop-test-result>
         <p class="ocu-field-caption" data-interop-test-status [class.ocu-form-error]="failed">{{ statusLine }}</p>
+        @if (hasTraceLink) {
+          <a class="ocu-details-link" data-interop-test-trace [href]="traceHref" (click)="onTrace($event)">{{ STRINGS.interopTestTraceLink }}</a>
+        }
         @if (hasLines) {
           <app-code-block [steps]="steps" />
         }
@@ -196,13 +211,35 @@ interface FieldView extends TestFieldRow {
       [attr.aria-disabled]="sending() ? 'true' : null"
       (click)="submit()"
     >
-      {{ STRINGS.interopItemTestAction }}
+      {{ submitText }}
     </button>
   </app-dialog>`,
 })
 export class InteropItemTestDialog {
   /** The item's name, which titles the dialog. */
   readonly item = input<string>('');
+
+  /**
+   * The dialog's title where it is not a test's (Story 20.31: Edit and resend message), or `''` for "Test <item>". With `submitLabel`,
+   * `values`, `consequence` and `secretCaption` it lets the message edit form reuse the form's fields; each default leaves the Test
+   * dialog exactly as it was.
+   */
+  readonly heading = input<string>('');
+
+  /** The send button's label where it is not "Send test", or `''` (the edit form's Review). */
+  readonly submitLabel = input<string>('');
+
+  /** The sentence above the fields where it is not a test's, or `''` (the edit and resend consequence). */
+  readonly consequence = input<string>('');
+
+  /** The caption under a credential-named field where it is not a test's, or `''`. */
+  readonly secretCaption = input<string>('');
+
+  /**
+   * The value each field holds when the dialog opens, keyed by the field's path, or `null` for a form that starts empty. A form given
+   * values is an edit: every field that is not a credential is handed on, an emptied one as `''`, so a cleared field is a change.
+   */
+  readonly values = input<Readonly<Record<string, string>> | null>(null);
 
   /** The Test tab's rows, as the screen's store holds them. */
   readonly rows = input<readonly unknown[]>([]);
@@ -226,6 +263,9 @@ export class InteropItemTestDialog {
   readonly cancelled = output<void>();
 
   protected readonly STRINGS = STRINGS;
+
+  private readonly router = inject(Router);
+  private readonly location = inject(LocationStrategy);
 
   private readonly instance = ++dialogCount;
 
@@ -253,7 +293,7 @@ export class InteropItemTestDialog {
     return chosen !== null && names.includes(chosen) ? chosen : (names[0] ?? '');
   });
 
-  protected readonly heading = computed(() => fill(STRINGS.interopTestDialogTitle, 'item', this.item()));
+  protected readonly title = computed(() => (this.heading() !== '' ? this.heading() : fill(STRINGS.interopTestDialogTitle, 'item', this.item())));
 
   /** The chosen class's fields as drawn. A class with no settable field has one row with an empty field name, which draws none. */
   protected readonly fields = computed<readonly FieldView[]>(() => {
@@ -267,9 +307,9 @@ export class InteropItemTestDialog {
       const document = row.kind === 'document';
       const violation = refused.get(row.field) ?? '';
       const caption = row.secret
-        ? STRINGS.interopTestRefusalSecret
+        ? this.secretCaptionText
         : row.maxLength !== null && !document
-          ? fill(STRINGS.interopTestMaxLength, 'n', String(row.maxLength))
+          ? fill(pickCount(row.maxLength, STRINGS.interopTestMaxLengthOne, STRINGS.interopTestMaxLength), 'n', String(row.maxLength))
           : '';
       const ids = [caption !== '' ? `${id}-caption` : '', violation !== '' ? `${id}-reason` : ''].filter((entry) => entry !== '');
       views.push({
@@ -310,6 +350,18 @@ export class InteropItemTestDialog {
     return this.refusal() !== '';
   }
 
+  protected get consequenceText(): string {
+    return this.consequence() !== '' ? this.consequence() : STRINGS.interopTestSendsConsequence;
+  }
+
+  protected get submitText(): string {
+    return this.submitLabel() !== '' ? this.submitLabel() : STRINGS.interopItemTestAction;
+  }
+
+  private get secretCaptionText(): string {
+    return this.secretCaption() !== '' ? this.secretCaption() : STRINGS.interopTestRefusalSecret;
+  }
+
   protected get hasAnswer(): boolean {
     return this.answer() !== null;
   }
@@ -323,6 +375,24 @@ export class InteropItemTestDialog {
     return answer === null ? '' : testStatusLine(answer);
   }
 
+  /** The answer names a session, whose trace the link opens: a test that sent nothing answers none. */
+  protected get hasTraceLink(): boolean {
+    return SESSION_ID.test(this.answer()?.sessionId ?? '');
+  }
+
+  /** The router URL of the session's trace, in the namespace the Test tab is scoped to. */
+  private get traceUrl(): string {
+    return entityUrl(TRACE_ROUTE, this.answer()?.sessionId ?? '', '', this.router.url);
+  }
+
+  protected get traceHref(): string {
+    return this.location.prepareExternalUrl(this.traceUrl);
+  }
+
+  protected onTrace(event: MouseEvent): void {
+    followInAppLink(event, this.router, this.traceUrl);
+  }
+
   protected get hasLines(): boolean {
     return (this.answer()?.lines.length ?? 0) > 0;
   }
@@ -332,9 +402,9 @@ export class InteropItemTestDialog {
     return [{ kind: 'text', text: (this.answer()?.lines ?? []).join('\n') }];
   }
 
-  /** The text typed for `field`, or `''`. */
+  /** The text typed for `field`, else the value the dialog opened with, or `''`. */
   protected typedFor(field: string): string {
-    return this.typed()[field] ?? '';
+    return this.typed()[field] ?? this.values()?.[field] ?? '';
   }
 
   protected onClass(event: Event): void {
@@ -351,9 +421,10 @@ export class InteropItemTestDialog {
   protected submit(): void {
     if (this.sending() || this.activeClass() === '') return;
     const fields: Record<string, string> = {};
+    const editing = this.values() !== null;
     for (const view of this.fields()) {
       const value = this.typedFor(view.field);
-      if (!view.secret && value !== '') fields[view.field] = value;
+      if (!view.secret && (value !== '' || editing)) fields[view.field] = value;
     }
     this.submitted.emit({ requestClass: this.activeClass(), fields });
   }

@@ -141,10 +141,9 @@ Method TestAStartModeChangeIsOnePutOnBothCallers()
     Do $$$AssertEquals(..Puts() _ " " _ $ClassMethod(..#SEAM, "KeysOf", ..#PUT) _ " " _ $ClassMethod(..#SEAM, "SentOf", "DBEncStartKeyFile"), "1 " _ tSeven _ " " _ tFile, "one PUT keeping the stored key file, with no credential")
 }
 
-/// <p>Matrix rows 3 and 4: IRISSECURITY and IRISTEMP turned on under Unattended and journal encryption under
-/// Interactive (Decision 8 leaves Interactive open to the journal alone), each with a seam-active key, and the
-/// default and journal key moved between two seam-active keys, each send one <code>PUT</code>, a key id only
-/// when it changed, and name their consequence.</p>
+/// <p>Matrix rows 3 and 4: IRISSECURITY, IRISTEMP and journal encryption turned on under Unattended, each with a
+/// seam-active key, and the default and journal key moved between two seam-active keys, each send one
+/// <code>PUT</code>, a key id only when it changed, and name their consequence.</p>
 /// <p>Mutation (Rule 19): keep an unchanged key id in both
 /// <method>OcuPilot.Screen.Tool.EncryptionStartupUpdate.MergeUpdate</method> and
 /// <method>OcuPilot.Port.EncryptionPort.StartupBody</method> -- the key id legs go red; either alone is
@@ -156,9 +155,7 @@ Method TestFlagsAndKeyIdsChangeOnBothCallers()
     Set tHeld = {"DBEncStartMode": "Unattended", "DBEncStartKeyFile": "/ocuprobestart/held.key", "DBEncDefaultKeyID": (..#KEYONE), "DBEncJournalKeyID": (..#KEYONE)}
     For tCase = $ListBuild("save", "DBEncIRISSecurity", "ENCRYPTION.STARTUP.RESTART"), $ListBuild("agent", "DBEncIRISTemp", "ENCRYPTION.STARTUP.RESTART"), $ListBuild("save", "DBEncJournal", "ENCRYPTION.STARTUP.JOURNAL"), $ListBuild("agent", "DBEncJournal", "ENCRYPTION.STARTUP.JOURNAL") {
         Set tField = $List(tCase, 2)
-        Set tHeldNow = ##class(%DynamicObject).%FromJSON(tHeld.%ToJSON())
-        If tField = "DBEncJournal" Do tHeldNow.%Set("DBEncStartMode", "Interactive", "string"), tHeldNow.%Set("DBEncStartKeyFile", "", "string")
-        Do ..Hold(tHeldNow)
+        Do ..Hold(tHeld)
         Do $ClassMethod(..#SEAM, "ClearCalls")
         Set tArgs = {}
         Do tArgs.%Set(tField, 1, "boolean")
@@ -214,15 +211,14 @@ Method TestAuditEncryptionIsDestructiveAndConfirmsTheReviewedValue()
 Method TestTheWriteReadsAuditEncryptionAtTheWrite()
 {
     Set tP = ..#PROBE
-    Do $ClassMethod(..#SEAM, "Arm", "kmip")
-    Do $ClassMethod(..#SEAM, "ArmKmip", "OCUPROBESTARTKMS")
+    Do $ClassMethod(..#SEAM, "Arm", "startup")
     Do $ClassMethod(..#SEAM, "Hold", "database", [{"Id": (..#KEYONE), "KeyLen": 256, "IsDefault": true}])
-    Do ..Hold({"DBEncStartMode": "Unattended", "DBEncStartKeyFile": "/ocuprobestart/held.key", "AuditEncrypt": false})
-    Do $$$AssertEquals(..Propose({"DBEncStartMode": "KMIP", "DBEncStartKMIPServer": "OCUPROBESTARTKMS"}, .tProposal), "", "a mode change is minted")
+    Do ..Hold({"DBEncStartMode": "Interactive", "DBEncStartKeyFile": "/ocuprobestart/held.key", "AuditEncrypt": false})
+    Do $$$AssertEquals(..Propose({"DBEncStartMode": "Unattended"}, .tProposal), "", "a mode change is minted")
     Do $$$AssertTrue(##class(OcuPilot.Test.EncryptionKeyWrite).Stored(tProposal, "payload") '[ "AuditEncrypt", "its payload carries no AuditEncrypt")
     Do $ClassMethod(..#SEAM, "SetHeld", "AuditEncrypt", 1)
     Do $$$AssertEquals($ClassMethod(tP, "Confirm", tProposal, "", .tResult), "200 ", "another writer's change does not move the reviewed payload")
-    Do $$$AssertEquals(..Puts() _ " " _ $ClassMethod(..#SEAM, "SentOf", "AuditEncrypt") _ " " _ $ClassMethod(..#SEAM, "SentOf", "DBEncStartMode"), "1 true KMIP", "the PUT sends AuditEncrypt as read at the write")
+    Do $$$AssertEquals(..Puts() _ " " _ $ClassMethod(..#SEAM, "SentOf", "AuditEncrypt") _ " " _ $ClassMethod(..#SEAM, "SentOf", "DBEncStartMode"), "1 true Unattended", "the PUT sends AuditEncrypt as read at the write")
 }
 
 /// <p>C5: every rule refuses on its field with no <code>PUT</code>, on the Save and at the mint, and a start
@@ -342,6 +338,81 @@ Method TestInteractiveIsRefusedWhileADatabaseIsStillEncryptedOnDisk()
     Do $$$AssertEquals(..Save({"DBEncStartMode": "Interactive"}, .tAnswer) _ " " _ ..Puts(), "200  1", "with nothing encrypted on disk, Interactive is written: " _ $Extract(tAnswer, 1, 200))
 }
 
+/// <p>AD-10 as amended 2026-10-14 (Story 18.48, DW-2100): Interactive is refused <code>PROHIBITED.STARTUPJOURNAL</code>
+/// while journal encryption is on in the stored settings, when the same write sets it, while the journal forbids a
+/// start without its key, and while that answer cannot be read, on the Save and at the confirm, each with the
+/// refusal's sentence and no <code>PUT</code>; with journal encryption off and the journal free it is written.</p>
+/// <p>Mutation (Rule 19): drop the <code>STARTUPJOURNAL</code> branch from
+/// <method>OcuPilot.Kernel.Proposal.Prohibited.EncryptionStartup</method> -- every refused leg goes red; ignore the
+/// stored settings in <method>OcuPilot.Kernel.Proposal.Prohibited.SetsJournalEncryption</method> -- the first leg
+/// alone; ignore <var>pJournalRefused</var> in
+/// <method>OcuPilot.Kernel.Proposal.Prohibited.LeavesInteractiveJournal</method> -- the forbidden leg alone; let
+/// <method>OcuPilot.Kernel.Proposal.Prohibited.StartupJournalRefused</method> answer a failed read as allowed -- the
+/// unreadable leg alone.</p>
+Method TestInteractiveIsRefusedWhileTheJournalNeedsItsKeyOnBothCallers()
+{
+    Set tP = ..#PROBE
+    Set tCode = "PROHIBITED.STARTUPJOURNAL"
+    Set tUnattended = {"DBEncStartMode": "Unattended", "DBEncStartKeyFile": "/ocuprobestart/held.key"}
+    Set tJournalHeld = ##class(%DynamicObject).%FromJSON(tUnattended.%ToJSON())
+    Do tJournalHeld.%Set("DBEncJournal", 1, "boolean")
+    For tCase = $ListBuild(tJournalHeld.%ToJSON(), "{""DBEncStartMode"":""Interactive""}", "startup", 0, "Interactive while journal encryption is on"), $ListBuild("{""DBEncStartMode"":""Interactive""}", "{""DBEncJournal"":true}", "startup", 0, "journal encryption set under Interactive"), $ListBuild(tUnattended.%ToJSON(), "{""DBEncStartMode"":""Interactive""}", "startup", 1, "Interactive while the journal forbids a start without its key"), $ListBuild(tUnattended.%ToJSON(), "{""DBEncStartMode"":""Interactive""}", "journalstartupfails", 0, "Interactive while the journal's answer cannot be read") {
+        Do $ClassMethod(..#SEAM, "Arm", $List(tCase, 3))
+        Do $ClassMethod(..#SEAM, "ArmJournalRefused", $List(tCase, 4))
+        Do $ClassMethod(..#SEAM, "Hold", "database", [{"Id": (..#KEYONE), "KeyLen": 256, "IsDefault": true}])
+        Do ..Hold(##class(%DynamicObject).%FromJSON($List(tCase, 1)))
+        Do $ClassMethod(..#SEAM, "ClearCalls")
+        Set tChange = ##class(%DynamicObject).%FromJSON($List(tCase, 2))
+        Do $$$AssertEquals(..Save(tChange, .tAnswer), "403 " _ tCode, $List(tCase, 5) _ " is refused on the Save")
+        Do $$$AssertEquals(..Parsed(tAnswer, "reason"), $Parameter("OcuPilot.Kernel.Proposal.Prohibited", "STARTUPJOURNALREASON"), "with its sentence")
+        Do $$$AssertEquals(..Puts(), 0, $List(tCase, 5) _ ": no PUT from the Save")
+        Do ..Hold(##class(%DynamicObject).%FromJSON($List(tCase, 1)))
+        Do $$$AssertEquals(..Propose(tChange, .tProposal), "", $List(tCase, 5) _ " is minted")
+        Do $$$AssertEquals($ClassMethod(tP, "Confirm", tProposal, "", .tResult), "403 " _ tCode, $List(tCase, 5) _ " is refused at the confirm")
+        Do $$$AssertEquals(..Puts(), 0, $List(tCase, 5) _ ": no PUT from the confirm")
+    }
+    Do $ClassMethod(..#SEAM, "Arm", "startup")
+    Do $ClassMethod(..#SEAM, "ArmJournalRefused", 0)
+    Do ..Hold({"DBEncStartMode": "None"})
+    Do $ClassMethod(..#SEAM, "ClearCalls")
+    Do $$$AssertEquals(..Save({"DBEncStartMode": "Interactive"}, .tAnswer) _ " " _ ..Puts(), "200  1", "with journal encryption off and the journal free, Interactive is written: " _ $Extract(tAnswer, 1, 200))
+}
+
+/// <p>AD-10 as amended 2026-10-14 (Story 18.48, DW-2100): KMIP is refused <code>PROHIBITED.STARTUPKMIP</code> while the
+/// audit log, IRISSECURITY or IRISTEMP is encrypted or being encrypted, when one is set under KMIP, while one of their
+/// databases is still encrypted on disk, and while that read fails, on the Save and at the confirm, each with the
+/// refusal's sentence and no <code>PUT</code>.</p>
+/// <p>Mutation (Rule 19): drop the <code>STARTUPKMIP</code> branch from
+/// <method>OcuPilot.Kernel.Proposal.Prohibited.EncryptionStartup</method> -- every leg goes red; read the on-disk
+/// databases only for Interactive there -- the two on-disk legs go red.</p>
+Method TestKmipIsRefusedWhileADatabaseNeedsItsKeyOnBothCallers()
+{
+    Set tP = ..#PROBE
+    Set tCode = "PROHIBITED.STARTUPKMIP"
+    Set tServer = "OCUPROBESTARTKMS"
+    Set tUnattended = {"DBEncStartMode": "Unattended", "DBEncStartKeyFile": "/ocuprobestart/held.key"}
+    Set tTempHeld = ##class(%DynamicObject).%FromJSON(tUnattended.%ToJSON())
+    Do tTempHeld.%Set("DBEncIRISTemp", 1, "boolean")
+    Set tKmipHeld = {"DBEncStartMode": "KMIP", "DBEncStartKMIPServer": (tServer)}
+    Set tChoose = {"DBEncStartMode": "KMIP", "DBEncStartKMIPServer": (tServer)}
+    For tCase = $ListBuild(tTempHeld.%ToJSON(), tChoose.%ToJSON(), "kmip", "", "KMIP chosen while IRISTEMP is encrypted"), $ListBuild(tKmipHeld.%ToJSON(), "{""DBEncIRISSecurity"":true}", "kmip", "", "IRISSECURITY set under KMIP"), $ListBuild(tUnattended.%ToJSON(), tChoose.%ToJSON(), "kmip", "IRISAUDIT", "KMIP while IRISAUDIT is still encrypted on disk"), $ListBuild(tUnattended.%ToJSON(), tChoose.%ToJSON(), "ondiskfails", "", "KMIP while the on-disk read fails") {
+        Do $ClassMethod(..#SEAM, "Arm", $List(tCase, 3))
+        Do $ClassMethod(..#SEAM, "ArmKmip", tServer)
+        Do $ClassMethod(..#SEAM, "ArmOnDisk", $List(tCase, 4))
+        Do $ClassMethod(..#SEAM, "Hold", "database", [{"Id": (..#KEYONE), "KeyLen": 256, "IsDefault": true}])
+        Do ..Hold(##class(%DynamicObject).%FromJSON($List(tCase, 1)))
+        Do $ClassMethod(..#SEAM, "ClearCalls")
+        Set tChange = ##class(%DynamicObject).%FromJSON($List(tCase, 2))
+        Do $$$AssertEquals(..Save(tChange, .tAnswer), "403 " _ tCode, $List(tCase, 5) _ " is refused on the Save: " _ $Extract(tAnswer, 1, 200))
+        Do $$$AssertEquals(..Parsed(tAnswer, "reason"), $Parameter("OcuPilot.Kernel.Proposal.Prohibited", "STARTUPKMIPREASON"), "with its sentence")
+        Do $$$AssertEquals(..Puts(), 0, $List(tCase, 5) _ ": no PUT from the Save")
+        Do ..Hold(##class(%DynamicObject).%FromJSON($List(tCase, 1)))
+        Do $$$AssertEquals(..Propose(tChange, .tProposal), "", $List(tCase, 5) _ " is minted")
+        Do $$$AssertEquals($ClassMethod(tP, "Confirm", tProposal, "", .tResult), "403 " _ tCode, $List(tCase, 5) _ " is refused at the confirm")
+        Do $$$AssertEquals(..Puts(), 0, $List(tCase, 5) _ ": no PUT from the confirm")
+    }
+}
+
 /// <p>C6, AD-26: with a settings template that carries no administrator and password, the Save, the mint and
 /// the confirm of a proposal minted before are refused 501 <code>PORT.NOTIMPLEMENTED</code> with no
 /// <code>PUT</code>.</p>
@@ -363,13 +434,16 @@ Method TestTheVersionGateRefusesEveryCaller()
 }
 
 /// <p>Matrix row 8: the vendor's measured refusals arrive as OcuPilot's: turning startup activation off while
-/// something depends on it (#1217, and #1212 and #1213 by their text) is 409 with its sentence; a new key
-/// file's wrong password (#5001) is 422 on the password; the same #5001 with no credentials sent is the
-/// generic 500.</p>
+/// something depends on it (#1217, and #1212 and #1213 by their text) is 409 with its sentence; a KMIP server
+/// with no startup key list (#1231) and an Unattended key file other than the stored one (#1233) are 422 on the
+/// start mode with their own sentences; a new key file's wrong password (#5001) is 422 on the password; the same
+/// #5001 with no credentials sent is the generic 500. #1217, #1231 and #1233 log nothing, and #1212 does.</p>
 /// <p>Mutation (Rule 19): drop the credentials branch from
 /// <method>OcuPilot.Port.EncryptionPort.StartupMapped</method> -- the password leg answers 500 and goes red;
-/// drop #1212 and #1213 from <parameter>OcuPilot.Port.AdminPort.PROPERTYFAULTS</parameter> -- their legs
-/// answer 500 and go red.</p>
+/// drop its start-mode branch -- the #1231 and #1233 legs answer 500; drop #1212 and #1213 from
+/// <parameter>OcuPilot.Port.AdminPort.PROPERTYFAULTS</parameter> -- their legs answer 500 and go red; drop a
+/// <code>Security.Encryption.Settings</code> entry from <parameter>OcuPilot.Port.AdminPort.UNLOGGEDREFUSALS</parameter>
+/// -- its code's logged leg goes red.</p>
 Method TestAVendorRefusalArrivesAsOcuPilotsSentence()
 {
     Set tP = ..#PROBE
@@ -378,11 +452,23 @@ Method TestAVendorRefusalArrivesAsOcuPilotsSentence()
     Do $ClassMethod(..#SEAM, "Arm", "startupfails")
     Do ..Hold({"DBEncStartMode": "Unattended", "DBEncStartKeyFile": "/ocuprobestart/held.key"})
     Do $ClassMethod(..#SEAM, "ArmFailure", 1217)
+    Do $ClassMethod(..#SEAM, "ClearCalls")
     Do $$$AssertEquals(..Save({"DBEncStartMode": "None"}, .tAnswer), "409 ENCRYPTION.STARTUP.REQUIRED", "#1217 is the startup-required refusal")
     Do $$$AssertEquals(..Parsed(tAnswer, "reason"), $Parameter("OcuPilot.Api.EncryptionError", "REASONSTARTUPREQUIRED"), "in OcuPilot's sentence")
+    Do $$$AssertEquals($ClassMethod(..#SEAM, "Logged"), 0, "and #1217 logs nothing")
+    For tCase = $ListBuild(1231, "ENCRYPTION.STARTUP.KMIPUNCONFIGURED", "REASONSTARTUPKMIPUNCONFIGURED"), $ListBuild(1233, "ENCRYPTION.STARTUP.KEYFILEDIFFERENT", "REASONSTARTUPKEYFILEDIFFERENT") {
+        Do $ClassMethod(..#SEAM, "ArmFailure", $List(tCase, 1))
+        Do $ClassMethod(..#SEAM, "ClearCalls")
+        Do $$$AssertEquals(..Save({"DBEncStartMode": "Interactive"}, .tAnswer), "422 DBEncStartMode:" _ $List(tCase, 2), "#" _ $List(tCase, 1) _ " is a refusal on the start mode")
+        Do $$$AssertEquals(..Parsed(tAnswer, "reason"), $Parameter("OcuPilot.Api.EncryptionError", $List(tCase, 3)), "in OcuPilot's sentence")
+        Do $$$AssertEquals($ClassMethod(..#SEAM, "Logged"), 0, "and logs nothing")
+        Do $$$AssertTrue(tAnswer '[ $List(tCase, 1), "and no vendor text is sent")
+    }
     For tCode = 1212, 1213 {
         Do $ClassMethod(..#SEAM, "ArmFailure", tCode)
+        Do $ClassMethod(..#SEAM, "ClearCalls")
         Do $$$AssertEquals(..Save({"DBEncStartMode": "None"}, .tAnswer), "409 ENCRYPTION.STARTUP.REQUIRED", "#" _ tCode _ ", read in its message text, is the same refusal")
+        Do $$$AssertEquals($ClassMethod(..#SEAM, "Logged"), 1, "and, unlike #1217, it is logged")
     }
     Do $ClassMethod(..#SEAM, "ArmFailure", 5001)
     Do $$$AssertEquals(..Save({"DBEncStartMode": "Unattended", "root": ($ClassMethod(tP, "Root")), "path": ($ClassMethod(tP, "RelativeName", "start-v.key")), "AdminName": ($Parameter(tP, "ADMIN")), "AdminPassword": (tPassword)}, .tAnswer), "422 AdminPassword:ENCRYPTION.KEYFILE.CREDENTIALS", "#5001 on a write carrying credentials is the password's refusal")

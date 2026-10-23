@@ -80,6 +80,8 @@ XData Probes
 <probe class="Api.Router" method="POST" url="/agent/switches/holds" path="/api/ocupilot/agent/switches/holds" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="GET" url="/agent/switches" path="/api/ocupilot/agent/switches" disposition="envelope"/>
 <probe class="Api.Router" method="PUT" url="/agent/switches" path="/api/ocupilot/agent/switches" disposition="envelope" refusal="1"/>
+<probe class="Api.Router" method="GET" url="/agent/switches/egress" path="/api/ocupilot/agent/switches/egress" disposition="envelope"/>
+<probe class="Api.Router" method="PUT" url="/agent/switches/egress" path="/api/ocupilot/agent/switches/egress" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="GET" url="/agent/restraint" path="/api/ocupilot/agent/restraint" disposition="envelope"/>
 <probe class="Api.Router" method="PUT" url="/agent/restraint" path="/api/ocupilot/agent/restraint" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="GET" url="/agent/governance" path="/api/ocupilot/agent/governance" disposition="envelope"/>
@@ -106,6 +108,7 @@ XData Probes
 <probe class="Api.Router" method="POST" url="/web-applications" path="/api/ocupilot/web-applications" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="POST" url="/web-app/pct-access" path="/api/ocupilot/web-app/pct-access" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="POST" url="/screens/:screen/action" path="/api/ocupilot/screens/osmgmt.locks/action" disposition="envelope" refusal="1" substitute="osmgmt.locks" substitutewhy="a screen identifier that resolves to nothing answers ROUTE.NOTFOUND, indistinguishable from the router's own, so this route probes a real screen; the body is the unreadable one every write-verb probe sends, which the handler refuses before any write"/>
+<probe class="Api.Router" method="POST" url="/screens/:screen/dryrun" path="/api/ocupilot/screens/osmgmt.locks/dryrun" disposition="envelope" refusal="1" substitute="osmgmt.locks" substitutewhy="a screen identifier that resolves to nothing answers ROUTE.NOTFOUND, indistinguishable from the router's own, so this route probes a real screen; the body is the unreadable one every write-verb probe sends, which the handler refuses before any read"/>
 <probe class="Api.Router" method="GET" url="/screens/:screen/read" path="/api/ocupilot/screens/osmgmt.locks/read" disposition="envelope" substitute="osmgmt.locks" substitutewhy="a screen identifier that resolves to nothing answers ROUTE.NOTFOUND, indistinguishable from the router's own, so this one route probes a real screen"/>
 <probe class="Api.Router" method="GET" url="/screens/:screen/impact" path="/api/ocupilot/screens/osmgmt.locks/impact" disposition="envelope" substitute="osmgmt.locks" expect="code=TOOL.ARGUMENTS" substitutewhy="a screen identifier that resolves to nothing answers ROUTE.NOTFOUND, indistinguishable from the router's own, so this route probes a real screen; the path carries no action parameter, which the handler refuses 400 TOOL.ARGUMENTS as malformed before any read, and expect asserts that code"/>
 <probe class="Api.Router" method="GET" url="/logs/errors/namespaces" path="/api/ocupilot/logs/errors/namespaces" disposition="envelope"/>
@@ -115,6 +118,10 @@ XData Probes
 <probe class="Api.Router" method="GET" url="/logs/alerts" path="/api/ocupilot/logs/alerts" disposition="envelope"/>
 <probe class="Api.Router" method="GET" url="/logs/messages" path="/api/ocupilot/logs/messages" disposition="envelope"/>
 <probe class="Api.Router" method="GET" url="/logs/messages/files" path="/api/ocupilot/logs/messages/files" disposition="envelope"/>
+<!-- The two live tails carry no query string here, so each draws the 400 LOG.OFFSET that a tail with no
+     cursor is refused with, at once, rather than a request held to the bound. -->
+<probe class="Api.Router" method="GET" url="/logs/alerts/tail" path="/api/ocupilot/logs/alerts/tail" disposition="envelope" expect="code=LOG.OFFSET"/>
+<probe class="Api.Router" method="GET" url="/logs/messages/tail" path="/api/ocupilot/logs/messages/tail" disposition="envelope" expect="code=LOG.OFFSET"/>
 <probe class="Api.Router" method="GET" url="/logs/integrity" path="/api/ocupilot/logs/integrity" disposition="envelope"/>
 <probe class="Api.Router" method="GET" url="/logs/integrity/files" path="/api/ocupilot/logs/integrity/files" disposition="envelope"/>
 <probe class="Api.Router" method="GET" url="/logs/systemmonitor" path="/api/ocupilot/logs/systemmonitor" disposition="envelope"/>
@@ -252,6 +259,9 @@ XData Probes
 <probe class="Api.Router" method="POST" url="/explorer/sql/background/:id/cancel" path="/api/ocupilot/explorer/sql/background/ocupilot-coverage-probe/cancel" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="GET" url="/explorer/sql/background/:id" path="/api/ocupilot/explorer/sql/background/ocupilot-coverage-probe" disposition="envelope"/>
 <probe class="Api.Router" method="POST" url="/explorer/sql/background" path="/api/ocupilot/explorer/sql/background" disposition="envelope" refusal="1"/>
+<probe class="Api.Router" method="POST" url="/analytics/mdx/background/:id/cancel" path="/api/ocupilot/analytics/mdx/background/ocupilot-coverage-probe/cancel" disposition="envelope" refusal="1"/>
+<probe class="Api.Router" method="GET" url="/analytics/mdx/background/:id" path="/api/ocupilot/analytics/mdx/background/ocupilot-coverage-probe" disposition="envelope"/>
+<probe class="Api.Router" method="POST" url="/analytics/mdx/background" path="/api/ocupilot/analytics/mdx/background" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="GET" url="/ecp-settings/form" path="/api/ocupilot/ecp-settings/form" disposition="envelope"/>
 <probe class="Api.Router" method="PUT" url="/ecp-settings" path="/api/ocupilot/ecp-settings" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="POST" url="/explorer/sql/data" path="/api/ocupilot/explorer/sql/data" disposition="envelope" refusal="1"/>
@@ -276,6 +286,8 @@ XData Probes
 <probe class="Api.Router" method="POST" url="/interop/items" path="/api/ocupilot/interop/items" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="POST" url="/interop/lookup-entries" path="/api/ocupilot/interop/lookup-entries" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="POST" url="/rest-service" path="/api/ocupilot/rest-service" disposition="envelope" refusal="1"/>
+<probe class="Api.Router" method="POST" url="/allowed-directories" path="/api/ocupilot/allowed-directories" disposition="envelope" refusal="1"/>
+<probe class="Api.Router" method="GET" url="/allowed-directories" path="/api/ocupilot/allowed-directories" disposition="envelope"/>
 <probe class="Api.Readiness" method="GET" url="/" path="/api/ocupilot/readiness/" disposition="envelope"/>
 <probe class="Api.StaticHandler" method="GET" url="/(.*)" path="/ocupilot/index.html" disposition="bytes"/>
 <probe class="Api.StaticHandler" method="HEAD" url="/(.*)" path="/ocupilot/index.html" disposition="bytes"/>

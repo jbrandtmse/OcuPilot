@@ -157,21 +157,30 @@ ClassMethod ScreenActionDelta(pActionId As %String, pValues As %DynamicObject, p
         Set pProblem = "'" _ $Parameter(tPort, "REQUESTCLASSKEY") _ "' names the request class, 1 to " _ ..#CLASSBOUND _ " characters"
         Quit $$$OK
     }
-    Set tFields = ""
-    If $Length(tText) <= ##class(OcuPilot.Port.AtelierPort).#MAXIMPORTCHARACTERS {
-        Try {
-            Set tFields = ##class(%DynamicAbstractObject).%FromJSON(tText)
-        } Catch {
-            Set tFields = ""
-        }
-    }
-    If '$IsObject(tFields) || 'tFields.%IsA("%Library.DynamicObject") {
-        Set pProblem = "'" _ $Parameter(tPort, "FIELDSKEY") _ "' is a JSON object of text values, at most " _ ##class(OcuPilot.Port.AtelierPort).#MAXIMPORTCHARACTERS _ " characters"
-        Quit $$$OK
-    }
+    Set pProblem = ..FieldsFromText(tText, .tFields)
+    If pProblem '= "" Quit $$$OK
     Do pArgs.%Set(..#CLASSARGUMENT, tClass, "string")
     Do pArgs.%Set(..#FIELDSARGUMENT, tFields)
     Quit $$$OK
+}
+
+/// <p>The field values a screen sent as the JSON object text <var>pText</var>, as an object in <var>pFields</var>, and
+/// <code>""</code>; or the sentence that refuses the text, with <var>pFields</var> <code>""</code>: it is at most
+/// <parameter>OcuPilot.Port.AtelierPort.MAXIMPORTCHARACTERS</parameter> characters and parses to an object. Shared by the host test
+/// and the message edit (<class>OcuPilot.Screen.Tool.InteropMessageEditResend</class>).</p>
+ClassMethod FieldsFromText(pText As %String, Output pFields) As %String
+{
+    Set pFields = ""
+    If $Length(pText) <= ##class(OcuPilot.Port.AtelierPort).#MAXIMPORTCHARACTERS {
+        Try {
+            Set pFields = ##class(%DynamicAbstractObject).%FromJSON(pText)
+        } Catch {
+            Set pFields = ""
+        }
+    }
+    If $IsObject(pFields) && pFields.%IsA("%Library.DynamicObject") Quit ""
+    Set pFields = ""
+    Quit "'" _ $Parameter("OcuPilot.Port.InteropPort", "FIELDSKEY") _ "' is a JSON object of text values, at most " _ ##class(OcuPilot.Port.AtelierPort).#MAXIMPORTCHARACTERS _ " characters"
 }
 
 /// <p>The request class and the field values, from the payload <var>pPayload</var> -- the call's arguments, or a stored payload,
@@ -184,14 +193,21 @@ ClassMethod PortQuery(pPayload As %DynamicObject, ByRef pQuery)
     If '$IsObject(pPayload) Quit
     Set tPort = "OcuPilot.Port.InteropPort"
     If pPayload.%GetTypeOf(..#CLASSARGUMENT) = "string" Set pQuery($Parameter(tPort, "REQUESTCLASSKEY")) = pPayload.%Get(..#CLASSARGUMENT)
-    Set tType = pPayload.%GetTypeOf(..#FIELDSARGUMENT)
-    If tType = "string" Set pQuery($Parameter(tPort, "FIELDSKEY")) = pPayload.%Get(..#FIELDSARGUMENT)
-    If tType = "object" Set pQuery($Parameter(tPort, "FIELDSKEY")) = pPayload.%Get(..#FIELDSARGUMENT).%ToJSON()
+    Do ..FieldsQuery(pPayload, ..#FIELDSARGUMENT, .pQuery)
+}
+
+/// <p>The fields <var>pPayload</var> carries as <var>pName</var> -- an object in a call's arguments, JSON text in a stored payload --
+/// in <var>pQuery</var> under the port's fields key, as JSON text. Shared by the host test and the message edit.</p>
+ClassMethod FieldsQuery(pPayload As %DynamicObject, pName As %String, ByRef pQuery)
+{
+    Set tKey = $Parameter("OcuPilot.Port.InteropPort", "FIELDSKEY")
+    Set tType = pPayload.%GetTypeOf(pName)
+    If tType = "string" Set pQuery(tKey) = pPayload.%Get(pName)
+    If tType = "object" Set pQuery(tKey) = pPayload.%Get(pName).%ToJSON()
 }
 
 /// <p>What is wrong with the call's own arguments, as one sentence, or <code>""</code>: the request class is 1 to
-/// <parameter>CLASSBOUND</parameter> characters, and the fields are an object of text values whose JSON is at most the agent's
-/// bound for a card-sized argument (<parameter>OcuPilot.Screen.Tool.ExplorerSave.CHANGEMAXLENGTH</parameter>). The port judges the
+/// <parameter>CLASSBOUND</parameter> characters, and the fields are as <method>FieldsProblem</method> requires. The port judges the
 /// rest, from the instance.</p>
 ClassMethod ArgumentProblem(pIdValue As %String, pArgs As %DynamicObject, Output pProblem As %String) As %Status
 {
@@ -202,24 +218,28 @@ ClassMethod ArgumentProblem(pIdValue As %String, pArgs As %DynamicObject, Output
         Set pProblem = "'" _ ..#CLASSARGUMENT _ "' names the request class, 1 to " _ ..#CLASSBOUND _ " characters"
         Quit $$$OK
     }
-    If pArgs.%GetTypeOf(..#FIELDSARGUMENT) '= "object" {
-        Set pProblem = "'" _ ..#FIELDSARGUMENT _ "' is an object of text values"
-        Quit $$$OK
-    }
-    Set tFields = pArgs.%Get(..#FIELDSARGUMENT)
+    Set pProblem = ..FieldsProblem(pArgs, ..#FIELDSARGUMENT)
+    Quit $$$OK
+}
+
+/// <p>What is wrong with the argument <var>pName</var> of <var>pArgs</var> as a call's field values, as one sentence, or
+/// <code>""</code>: an object of text values whose JSON is at most the agent's bound for a card-sized argument
+/// (<parameter>OcuPilot.Screen.Tool.ExplorerSave.CHANGEMAXLENGTH</parameter>). Shared by the host test and the message edit.</p>
+ClassMethod FieldsProblem(pArgs As %DynamicObject, pName As %String) As %String
+{
+    If pArgs.%GetTypeOf(pName) '= "object" Quit "'" _ pName _ "' is an object of text values"
+    Set tFields = pArgs.%Get(pName)
     Set tBound = ##class(OcuPilot.Screen.Tool.ExplorerSave).#CHANGEMAXLENGTH
-    If $Length(tFields.%ToJSON()) > tBound {
-        Set pProblem = "'" _ ..#FIELDSARGUMENT _ "' is at most " _ tBound _ " characters of JSON"
-        Quit $$$OK
-    }
+    If $Length(tFields.%ToJSON()) > tBound Quit "'" _ pName _ "' is at most " _ tBound _ " characters of JSON"
+    Set tProblem = ""
     Set tIterator = tFields.%GetIterator()
     While tIterator.%GetNext(.tKey, .tValue, .tType) {
         If tType '= "string" {
-            Set pProblem = "'" _ ..#FIELDSARGUMENT _ "' holds text values only, and '" _ $Extract(tKey, 1, 100) _ "' is not text"
+            Set tProblem = "'" _ pName _ "' holds text values only, and '" _ $Extract(tKey, 1, 100) _ "' is not text"
             Quit
         }
     }
-    Quit $$$OK
+    Quit tProblem
 }
 
 /// <p>The same rules again at the write, so a confirm is refused what the mint would now refuse before the claim, leaving the

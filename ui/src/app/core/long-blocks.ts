@@ -2,6 +2,7 @@
  * Long blocks in the agent panel (Story 20.17): the estimate that decides whether a block starts
  * collapsed, the id of its region, and the framework-free store that remembers which blocks a
  * person opened (AD-19).
+ * A data table's `long` column uses the same estimate for the block it draws beneath its rows.
  */
 
 /** A block estimated at more lines than this starts collapsed. */

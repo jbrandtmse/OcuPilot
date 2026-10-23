@@ -221,3 +221,23 @@ describe('the tool-call card long blocks (Story 20.17)', () => {
     expect(toggle.getAttribute('aria-expanded')).toBe('true');
   });
 });
+
+describe('the tool-call card rows line (Story 23.5)', () => {
+  beforeEach(() => {
+    TestBed.configureTestingModule({ imports: [ToolCallCard] });
+  });
+
+  const rowsLine = (rowsReturned: number, rowsSent: number): string => {
+    const fixture = TestBed.createComponent(ToolCallCard);
+    fixture.componentRef.setInput('step', { ...BASE, status: 'running', result: { rowsReturned, rowsSent, truncated: false } });
+    fixture.detectChanges();
+    return (fixture.nativeElement as HTMLElement).querySelector('.ocu-tool-call-rows')?.textContent?.trim() ?? '';
+  };
+
+  it('reads "1 row returned" at one row, and "<n> rows returned" at none and at several', () => {
+    // Mutation (Rule 19): fill `STRINGS.toolCallReadResultLine` alone in `rowsLine` -> the first case goes red.
+    expect(rowsLine(1, 1)).toBe('1 row returned \u00b7 1 sent');
+    expect(rowsLine(0, 0)).toBe('0 rows returned \u00b7 0 sent');
+    expect(rowsLine(7, 5)).toBe('7 rows returned \u00b7 5 sent');
+  });
+});

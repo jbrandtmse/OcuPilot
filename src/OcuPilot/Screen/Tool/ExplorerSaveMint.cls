@@ -6,7 +6,9 @@
 /// <li>the document is not one of OcuPilot's own (<method>OcuPilot.Kernel.Proposal.Prohibited.IsOcuPilotCode</method>);</li>
 /// <li>the document may be saved by the agent (<method>OcuPilot.Screen.Tool.ExplorerSave.AgentProblem</method>);</li>
 /// <li>each replacement is well formed, and its <code>New</code> carries no character the sanitizer would strip;</li>
-/// <li>the document's stored text is read through the port;</li>
+/// <li>the document's stored text is read through the port (a document the port reports as unavailable, one
+/// the instance holds with no source, is 404 <code>PORT.NOTFOUND</code> with
+/// <parameter>OcuPilot.Port.AtelierPort.REASONNOSOURCE</parameter>);</li>
 /// <li>each <code>Old</code> occurs exactly once in the text the earlier replacements left, compared exactly;</li>
 /// <li>the result saves as different lines from the stored text, fits the port's save (a length that cannot
 /// be measured counts as over), and keeps the document's name;</li>
@@ -69,7 +71,7 @@ ClassMethod Mint(pDescriptor As %String, pToolName As %String, pUser As %String,
         }
         If '$IsObject($Get(tDocument)) || 'tDocument.%Get("available") {
             Set pHttpStatus = 404
-            Set pFault = ##class(OcuPilot.Kernel.Fault).Build(##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.Error).#PORTNOTFOUND, ##class(OcuPilot.Port.AtelierPort).#REASONNOTFOUND)
+            Set pFault = ##class(OcuPilot.Kernel.Fault).Build(##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.Error).#PORTNOTFOUND, ##class(OcuPilot.Port.AtelierPort).#REASONNOSOURCE)
             Set tSC = $$$ERROR($$$GeneralError, "the instance keeps no text for " _ tId)
             Quit
         }
@@ -85,10 +87,8 @@ ClassMethod Mint(pDescriptor As %String, pToolName As %String, pUser As %String,
             Set tSC = ..Refuse("the edits change nothing: the result saves as the stored text", .pHttpStatus, .pFault)
             Quit
         }
-        Set tOneLine = []
-        Do tOneLine.%Push(tNew, "string")
         Try {
-            Set tTooLarge = ($Length(tOneLine.%ToJSON()) - 4) > ##class(OcuPilot.Port.AtelierPort).#MAXIMPORTCHARACTERS
+            Set tTooLarge = ##class(OcuPilot.Screen.Tool.ExplorerSourceRead).Escaped(tNew) > ##class(OcuPilot.Port.AtelierPort).#MAXIMPORTCHARACTERS
         } Catch {
             Set tTooLarge = 1
         }

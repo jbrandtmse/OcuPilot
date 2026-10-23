@@ -85,7 +85,6 @@ Method CreateSplit() As %Status
     Set tHaveGlobals = ##class(OcuPilot.Kernel.Shell.Namespaces).GlobalDatabase(..#SPLITNAMESPACE, .tGlobals, .tReadOnly)
     Set tHaveRoutines = ##class(OcuPilot.Kernel.Shell.Namespaces).RoutineDatabase(..#SPLITNAMESPACE, .tRoutines, .tReadOnly)
     If 'tHaveGlobals || 'tHaveRoutines || (tGlobals '= "%DB_USER") || (tRoutines '= "%DB_HSCUSTOM") {
-        ; %UnitTest skips OnAfterAllTests when setup fails, so the namespace just made is deleted here.
         Quit $$$ADDSC($$$ERROR($$$GeneralError, "the split namespace's databases read " _ tGlobals _ " and " _ tRoutines _ ", not %DB_USER and %DB_HSCUSTOM"), ..DeleteSplit())
     }
     Quit $$$OK

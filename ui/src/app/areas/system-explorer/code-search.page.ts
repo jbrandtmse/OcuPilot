@@ -3,6 +3,7 @@ import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '
 import { Router } from '@angular/router';
 
 import { ApiService } from '../../core/api';
+import { capNoticePhrase } from '../../core/count-phrase';
 import { isBannerFault } from '../../core/fault';
 import { NavigationService, entityUrl } from '../../core/navigation';
 import { RefreshService } from '../../core/refresh';
@@ -303,7 +304,7 @@ export class CodeSearchPage {
     this.generation();
     const store = this.view?.store;
     if (store === undefined || !this.state.searched() || this.fault !== null || !store.truncated()) return '';
-    return STRINGS.tableRowCapNotice.replace('<n>', store.maxRows().toLocaleString('en-US'));
+    return capNoticePhrase(store.maxRows());
   }
 
   protected onText(event: Event): void {

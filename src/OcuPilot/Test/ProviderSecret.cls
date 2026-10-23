@@ -1,12 +1,16 @@
-/// <p><b>AC6, the credential-never-leaks proof.</b> A canary credential is driven through ten
+/// <p><b>AC6, the credential-never-leaks proof.</b> A canary credential is driven through eleven
 /// forced provider failures -- eight on the environment rung, one on the credentials rung, out of
-/// a real credential entry resolved by the shipped ladder, and one as a key a Test connection body
-/// carries. Four of the eight drive the canonical family; the other four are a refusal and a
+/// a real credential entry resolved by the shipped ladder, one on the wallet rung, out of a real
+/// wallet secret, and one as a key a Test connection body carries. Four of the eight drive the
+/// canonical family; the other four are a refusal and a
 /// mid-flight raise on each of the two families whose adapters write their own authentication
 /// header -- and the two logs OcuPilot itself
 /// renders, the console log and the application error log, are read afterwards and asserted to carry
 /// no part of it, alongside every returned <code>reason</code>, <code>code</code> and
 /// <code>detail</code>.</p>
+/// <p>A second test drives a refusal and a raise on the canonical family alone, with the key
+/// compare armed, and asserts its forced-entry counts exactly, as the sweep does for the other
+/// two families.</p>
 /// <p><b>It forces a real <code>^ERRORS</code> entry, so it runs on a throwaway container only</b>
 /// (<file>scripts/ci-throwaway.sh</file>, <code>ocupilot-ci</code>).
 /// <method>OnBeforeAllTests</method> refuses anywhere <parameter>ARMINGVARIABLE</parameter> does
@@ -39,6 +43,9 @@ Parameter CANARYMARK = "ocupilotleakcanary";
 /// <p>The credential entry leg five puts the canary into, and removes again.</p>
 Parameter CREDSNAME = "OcuPilotProbeCanaryCredential";
 
+/// <p>The class that creates and removes the wallet objects leg nine puts the canary into.</p>
+Parameter WALLETPROBE = "OcuPilot.Test.WalletRungProbe";
+
 /// <p>The port the failures are driven through.</p>
 Parameter PORT = "OcuPilot.Test.ProviderPortProbe";
 
@@ -55,7 +62,7 @@ Parameter SHIPPEDFAMILIES = "openai:OcuPilot.Test.OpenAIStub,gemini:OcuPilot.Tes
 /// <code>error.message</code>, and none of it is credential material.</p>
 Parameter VENDORERRORBODY = "{""error"":{""code"":401,""status"":""UNAUTHENTICATED"",""message"":""the vendor's own words""}}";
 
-/// <p>How many forced entries one refusal leg on a new family must write: the stub's
+/// <p>How many forced entries one refusal leg must write, on any family: the stub's
 /// <method>ApplyAuth</method> leg and the transport's own, one attempt each, because a 401 is not
 /// retryable. <b>Asserted exactly</b>, so removing either leg reddens rather than leaving the other
 /// to satisfy a "grew" test.</p>
@@ -88,8 +95,11 @@ Method OnBeforeAllTests() As %Status
 Method OnAfterOneTest() As %Status
 {
     Do $ClassMethod(..#PORT, "Reset")
+    Do ##class(OcuPilot.Test.ProviderStub).Reset()
     Do ##class(OcuPilot.Test.ProviderStub).ResetErrorLog()
     Do ##class(OcuPilot.Test.CredentialFixture).Remove(..#CREDSNAME)
+    Do $ClassMethod(..#WALLETPROBE, "RemoveAll", .tWalletRemaining)
+    Do $$$AssertEquals(tWalletRemaining, 0, "no wallet object this class created survives it")
     Do $$$AssertEquals(##class(OcuPilot.Test.CredentialFixture).Exists(..#CREDSNAME), 0, "no credential entry this class created survives it")
     ; Leg five puts the canary into a real entry, so its removal has to be asserted where the
     ; vendor actually keeps the value as well: the row's delete trigger clears
@@ -108,14 +118,16 @@ Method OnAfterOneTest() As %Status
 /// <p><var>pUseRowEndpoint</var> leaves the endpoint empty, so the call goes to the provider row's
 /// own canonical endpoint as a create would resolve it
 /// (<method>OcuPilot.Port.ProviderPort.EndpointOf</method>).</p>
-ClassMethod Definition(Output pValues, pProvider As %String = "", pCredentialName As %String = "", pUseRowEndpoint As %Boolean = 0)
+/// <p><var>pCredType</var>, when it is given, is the rung the reference names instead of the one
+/// <var>pCredentialName</var> implies -- <code>wallet</code>, whose reference is a wallet secret's name.</p>
+ClassMethod Definition(Output pValues, pProvider As %String = "", pCredentialName As %String = "", pUseRowEndpoint As %Boolean = 0, pCredType As %String = "")
 {
     Kill pValues
     Set pValues("provider") = $Select(pProvider = "": ##class(OcuPilot.Test.CatalogProbe).#CANARYKEY, 1: pProvider)
     Set pValues("model") = "probe-canary-model-1"
     Set pValues("endpointUrl") = $Select(pUseRowEndpoint: "", 1: "https://api.anthropic.com/v1/messages")
     Set pValues("markedLocal") = 0
-    Set pValues("credType") = $Select(pCredentialName = "": "env", 1: "creds")
+    Set pValues("credType") = $Select(pCredType '= "": pCredType, pCredentialName = "": "env", 1: "creds")
     Set pValues("envVarName") = $Select(pCredentialName = "": "OCUPILOT_PROBE_CANARY_KEY", 1: "")
     Set pValues("credentialName") = pCredentialName
     Set pValues("maxTokens") = 4000
@@ -124,10 +136,10 @@ ClassMethod Definition(Output pValues, pProvider As %String = "", pCredentialNam
 
 /// <p>Drive one turn through the port and assert that everything it handed back is canary-free.
 /// <var>pKeyBody</var>, when it is an object, is a request body whose <code>apiKey</code> the call
-/// carries instead of any resolved key.</p>
-Method DriveAndAssert(pWhat As %String, pProvider As %String = "", pCredentialName As %String = "", pKeyBody As %DynamicObject = "", pUseRowEndpoint As %Boolean = 0)
+/// carries instead of any resolved key. <var>pCredType</var> is <method>Definition</method>'s.</p>
+Method DriveAndAssert(pWhat As %String, pProvider As %String = "", pCredentialName As %String = "", pKeyBody As %DynamicObject = "", pUseRowEndpoint As %Boolean = 0, pCredType As %String = "")
 {
-    Do ..Definition(.tValues, pProvider, pCredentialName, pUseRowEndpoint)
+    Do ..Definition(.tValues, pProvider, pCredentialName, pUseRowEndpoint, pCredType)
     If $IsObject(pKeyBody) {
         Set tValues("keySource") = ##class(OcuPilot.Kernel.Provider.Base).#KEYSOURCEBODY
         Set tValues("keyBody") = pKeyBody
@@ -208,6 +220,10 @@ Method TestNoCredentialMaterialReachesTheLogsOrTheEnvelope()
     ; vendor frame -- would be claimed rather than measured.
     Do ..DriveTheCredentialsRung()
 
+    ; Leg nine: the same canary on the WALLET rung, resolved by the shipped ladder out of a real
+    ; wallet secret.
+    Do ..DriveTheWalletRung()
+
     ; Leg six: the canary as a key a Test connection body carries, with nothing resolvable behind the
     ; definition's own reference, so the only copy in play is the body's.
     Do ##class(OcuPilot.Test.ProviderStub).Reset()
@@ -231,6 +247,43 @@ Method TestNoCredentialMaterialReachesTheLogsOrTheEnvelope()
     Do $$$AssertTrue(tErrorsAfter > tErrorsBefore, "the application error log grew, from " _ tErrorsBefore _ " to " _ tErrorsAfter)
     Set tChecked = ..AssertErrorEntriesAreClean(tDate)
     Do $$$AssertTrue(tChecked > 0, "and every entry the run recorded was read back in full: " _ tChecked)
+}
+
+/// <p>AD-48 for the canonical family, through the transport every stub shares: a refusal writes
+/// <b>both</b> forced entries -- the stub's <method>ApplyAuth</method> leg and
+/// <method>OcuPilot.Test.ProviderStubTransport.Transport</method>'s own -- and a mid-flight raise
+/// writes the <method>ApplyAuth</method> leg alone, so the canonical family's counts are asserted
+/// exactly as the other two families' are, rather than as "at least one".</p>
+/// <p>The key compare is armed for the refusal, so the compare in <code>Transport</code> has run in
+/// the frame the forced entry captures: an entry that read back clean is then clean of whatever that
+/// line held. Every entry the two legs wrote is read back in full.</p>
+/// <p>Mutation: drop the <code>ForceErrorLog</code> call from <code>Transport</code> -- the refusal
+/// count goes red, at 1 of 2. Bind the header the compare reads to a local inside the compare's own
+/// branch -- the entries' variable-table assertion goes red on the refusal's entries alone, which the
+/// sweep above, arming no compare, cannot see.</p>
+Method TestTheCanonicalFamilyWritesBothForcedEntriesThroughTheSharedTransportAndNoneCarriesTheKey()
+{
+    Do $ClassMethod(..#PORT, "Reset")
+    Do ##class(OcuPilot.Test.ProviderStub).Reset()
+    Do ##class(OcuPilot.Test.ProviderStub).ResetErrorLog()
+    Do $ClassMethod(..#PORT, "SetSecretClass", "OcuPilot.Test.SecretProbe")
+    Do $ClassMethod(..#PORT, "SetSslState", "present")
+    Do ##class(OcuPilot.Test.SecretProbe).SetValue(..#CANARY)
+    Do ##class(OcuPilot.Test.ProviderStub).ArmErrorLog(.tArmed)
+    Do $$$AssertTrue(tArmed, "the stub is armed to force a real application-error entry")
+    If 'tArmed Quit
+    Do ##class(OcuPilot.Test.ProviderStub).ArmKeyCompare(..#CANARY)
+    Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(401, "{""type"":""error"",""error"":{""type"":""authentication_error"",""message"":""invalid x-api-key""}}")
+    Do ..DriveAndAssert("a provider refusal on the canonical family")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).ServedBy(), "stub", "the refusal was served by the canonical stub")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Recorded("keyMatches"), 1, "the transport's key compare ran, and the header it read is the canary")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).ErrorLogCount(), ..#REFUSALENTRIES, "and the refusal wrote both its forced entries, the stub's ApplyAuth leg and the transport's")
+    Do ##class(OcuPilot.Test.ProviderStub).Reset()
+    Do ##class(OcuPilot.Test.ProviderStub).QueueThrow()
+    Do ..DriveAndAssert("a transport that raised mid-flight on the canonical family")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).ErrorLogCount(), ..#REFUSALENTRIES + ..#RAISEENTRIES, "and the raise wrote its ApplyAuth entry alone")
+    Set tChecked = ..AssertErrorEntriesAreClean($ZDate($Horolog, 1))
+    Do $$$AssertEquals(tChecked, ..#REFUSALENTRIES + ..#RAISEENTRIES, "every entry the two legs wrote was read back in full")
 }
 
 /// <p>Legs seven and eight: drive a provider refusal on each family whose adapter writes its own
@@ -314,6 +367,31 @@ Method DriveTheCredentialsRung()
     Do $$$AssertEquals(##class(OcuPilot.Test.CredentialFixture).Exists(..#CREDSNAME), 0, "and the entry is removed again")
 }
 
+/// <p>Leg nine: put the canary into a real key-value wallet secret, drive a provider refusal through the
+/// <b>shipped</b> ladder's <code>wallet</code> rung, and remove every wallet object again.</p>
+/// <p>The port's credential seam is set to <code>""</code> for the duration, as leg five does, so the resolution
+/// measured here is production's, vendor frames and all. The canary reaches the secret as a parameter and an argument
+/// object member, never a local of this method.</p>
+/// <p>Mutation: bind the resolved key to a local in <method>OcuPilot.Kernel.Provider.Base.Invoke</method> on the
+/// <code>wallet</code> path alone (<code>If $Get(pValues("credType")) = "wallet" Set tLeaked = ..ApiKey</code>) -- the
+/// variable-table assertion goes red on this leg's forced entries and on no other. A local inside
+/// <method>OcuPilot.Kernel.Secret.Ladder.Wallet</method> is not a falsifier, for the reason leg five's note gives.</p>
+Method DriveTheWalletRung()
+{
+    Set tName = $Parameter(..#WALLETPROBE, "DEFAULTSECRET")
+    Do $$$AssertStatusOK($ClassMethod(..#WALLETPROBE, "EnsureResource"), "the probe wallet resource exists")
+    Do $$$AssertStatusOK($ClassMethod(..#WALLETPROBE, "EnsureCollection"), "and its collection")
+    Do $$$AssertStatusOK($ClassMethod(..#WALLETPROBE, "AddKeyValue", tName, {"Secret": (..#CANARY), "Usage": 15}), "the canary is put into a real wallet secret")
+    Do ##class(OcuPilot.Test.ProviderStub).Reset()
+    Do $ClassMethod(..#PORT, "SetSecretClass", "")
+    Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(401, "{""type"":""error"",""error"":{""type"":""authentication_error"",""message"":""invalid x-api-key""}}")
+    Do ..DriveAndAssert("a provider refusal on the wallet rung", "", tName, "", 0, "wallet")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Calls(), 1, "the wallet leg's call resolved the secret and reached the provider, so the canary was in play")
+    Do $ClassMethod(..#PORT, "SetSecretClass", "OcuPilot.Test.SecretProbe")
+    Do $$$AssertStatusOK($ClassMethod(..#WALLETPROBE, "RemoveAll", .tRemaining), "every probe wallet object is removed again")
+    Do $$$AssertEquals(tRemaining, 0, "and none survives")
+}
+
 /// <p>The console log's current end, as the offset and identity a later page is asked for. Answers
 /// 0 when the log could not be read at all.</p>
 ClassMethod MarkConsoleLog(Output pOffset As %Integer, Output pIdentity As %String) As %Boolean
@@ -361,8 +439,8 @@ ClassMethod ErrorCount(pDate As %String) As %Integer
     Quit tResult.rows.%Size()
 }
 
-/// <p>Read every entry <method>OcuPilot.Test.ProviderStub.ForceErrorLog</method> recorded, in full
-/// -- its logged expressions, its stack and <b>every local variable at every stack level</b> -- and
+/// <p>Read every entry the run forced (<method>OcuPilot.Test.ProviderStub.ErrorLogCount</method>),
+/// in full -- its logged expressions, its stack and <b>every local variable at every stack level</b> -- and
 /// assert none of it carries credential material. Answers how many entries were actually read, so
 /// an assertion over nothing is visible as such.</p>
 Method AssertErrorEntriesAreClean(pDate As %String) As %Integer

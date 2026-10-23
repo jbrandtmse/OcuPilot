@@ -2,7 +2,8 @@
 /// against real principals (AD-8, AD-29, AD-44, AD-62, Story 20.4): a principal holding every pair the reads name but one
 /// is refused 403 naming that pair, before any vendor call, by every endpoint that requires it and admitted by every
 /// endpoint that does not; and a principal holding exactly one endpoint's pairs and READ on <code>USER</code>'s database
-/// reads its rows, the log and message reads included, though it holds no SQL privilege on the interoperability tables
+/// reads its rows, the log and message reads included, on their first read after the namespace's cached queries are
+/// dropped as well, though it holds no SQL privilege on the interoperability tables
 /// (its own <code>%ExecDirect</code> on them is refused, so the port's <code>%ExecDirectNoPriv</code> is what reads them
 /// after its gate).</p>
 /// <p>The port legs run in a child process (<method>Probe</method>) that logs in as the principal, so this process never
@@ -16,8 +17,8 @@
 /// <p><b>What it needs from the environment:</b> a <code>USER</code> namespace that runs interoperability and
 /// <parameter>ARMINGVARIABLE</parameter> reading <code>1</code>, because it <b>compiles a probe production in
 /// <code>USER</code></b> (<class>OcuPilot.Test.ProductionProbe</class>), hangs its operation and sends it three messages,
-/// and creates eighteen users and roles named <code>OcuP204*</code>. The probe and the principals are removed after the
-/// last test. One class per run.</p>
+/// and creates eighteen users and roles named <code>OcuP204*</code>, and drops <code>USER</code>'s cached queries in one
+/// test. The probe and the principals are removed after the last test. One class per run.</p>
 Class OcuPilot.Test.InteropHostGate Extends %UnitTest.TestCase
 {
 
@@ -71,7 +72,6 @@ Method OnBeforeAllTests() As %Status
     If $$$ISOK(tSC) Set tSC = $ClassMethod(..#PROBE, "Create")
     If $$$ISOK(tSC) Set tSC = $ClassMethod(..#READ, "ArmProbe", .tIds)
     If $$$ISOK(tSC) Set tSC = ..EnsurePrincipals()
-    ; %UnitTest skips OnAfterAllTests when this method fails, so a failed setup removes what it made here.
     If $$$ISERR(tSC) Set tSC = $$$ADDSC(tSC, ..OnAfterAllTests())
     Quit tSC
 }
@@ -213,6 +213,43 @@ Method TestAPrincipalHoldingExactlyAnEndpointsPairsReadsItsRows()
         Do $$$AssertTrue(tProbe.%Get("headerSql") < 0, tUser _ ": it holds no SQL privilege on the message headers (SQLCODE " _ tProbe.%Get("headerSql") _ ")")
         Do $$$AssertTrue(tProbe.%Get("logSql") < 0, tUser _ ": nor on the event log (SQLCODE " _ tProbe.%Get("logSql") _ ")")
     }
+}
+
+/// <p>AC4: with the namespace's cached queries dropped, the principal holding exactly the Log endpoint's pairs and the
+/// one holding exactly the Messages endpoint's each read their rows on the first read, though neither holds SQL
+/// privilege on the table. The test drops the cached queries itself before each read, so it depends on no earlier
+/// read's having compiled the statement.</p>
+/// <p>Mutation (Rule 19): put <parameter>OcuPilot.Port.InteropPort:MESSAGESQL</parameter> back to
+/// <code>WHERE ID IN (SELECT TOP ? ID ... UNION SELECT TOP ? ID ...)</code>, with <method>ListItemMessages</method>'s
+/// arguments, and recompile the port and its descendants -- the Messages principal's leg is answered 500 and goes red,
+/// and the Log principal's stays green.</p>
+Method TestAStatementDroppedFromTheCacheIsReadByAPrincipalWithNoSqlPrivilege()
+{
+    For tEndpoint = "ItemLog", "ItemMessages" {
+        Set tUser = ..UserAt(1 + $ListLength(..Universe()) + $ListFind($ListFromString(..#ENDPOINTS, ","), tEndpoint))
+        Do $$$AssertStatusOK(..DropCachedQueries(), tEndpoint _ ": the cached queries are dropped")
+        Set tProbe = ..ProbeAs(tUser)
+        Do $$$AssertEquals(tProbe.%Get("error") _ "|" _ tProbe.%Get("username"), "|" _ tUser, tUser _ ": the probe ran as the principal: " _ tProbe.%ToJSON())
+        Do $$$AssertTrue((tProbe.%Get("headerSql") < 0) && (tProbe.%Get("logSql") < 0), tUser _ ": it holds no SQL privilege on the message headers or the event log: " _ tProbe.%ToJSON())
+        Do $$$AssertEquals($ClassMethod(..#ITEMGATE, "LegText", tProbe.%Get("legs"), tEndpoint), "200  ", tUser _ ": " _ tEndpoint _ " is admitted on its first read")
+        Do $$$AssertTrue(tProbe.%Get("rows").%Get(tEndpoint) > 0, tUser _ ": " _ tEndpoint _ " answers rows: " _ tProbe.%Get("rows").%Get(tEndpoint))
+    }
+}
+
+/// <p>Drop every cached query in <parameter>NAMESPACE</parameter>, so that the next statement is compiled afresh.</p>
+ClassMethod DropCachedQueries() As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = ..#NAMESPACE
+        Set tSC = $SYSTEM.SQL.PurgeQueries()
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
 }
 
 /// <p>AC4: on the screens' read routes each principal is refused naming the pair its screen's read needs, in the order the

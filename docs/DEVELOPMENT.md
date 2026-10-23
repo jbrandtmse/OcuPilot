@@ -214,7 +214,12 @@ class dictionary and reads every table's grant back, failing at `EnsureSqlPrivil
 not take. The grant is idempotent, so a repeat install changes nothing, but it does mean the
 installing account needs `GRANT` on that schema: install fails loudly rather than leaving the gate
 wedged. `Uninstall` issues no matching
-revoke — the grantee is the protected database's own role, which uninstall removes.
+revoke — the grantee is the protected database's own role, which uninstall removes. Install also
+reads the instance's SQL privilege catalog and warns, once, naming every other grantee (a role, a
+user or `_PUBLIC`) that holds a grant on OcuPilot's schema, tables or columns, or warns that it
+could not check when the catalog cannot be read. It never refuses install over such a grant or
+revokes it, and OcuPilot's own tools refuse to revoke it, so revoke it with SQL `REVOKE` or the
+classic portal.
 
 Install does not wait for the demo task fixture (`OcuPilotDemo nightly purge`). It schedules the
 task and asks the Task Manager for one run, and the Task Manager runs it at its next once-a-minute
@@ -338,7 +343,11 @@ it dispatches to the class the roster declares. Anything else at one of those pa
 else's, and install refuses naming the path, the class the roster declares and the class it
 found, creating and repairing nothing. `Uninstall` is the other half: it removes only what the
 record says install created, and reports anything else it finds at those paths rather than
-deleting it.
+deleting it. It also keeps the shell's bundle directory while an application sits at the shell's
+path and a matching role while a surviving application's `MatchRoles` names it, naming each in a
+warn, and it refuses, removing nothing, when it cannot read the record while the profile's routine
+application exists (run `Install` with no profile, then `Uninstall` again) or cannot read the roles
+the web applications carry.
 
 **Two things an API caller needs.** Read on that same database, or the framework's own
 `%CSP.REST.AccessCheck` refuses the request before any OcuPilot code runs and answers a bare `403`
@@ -440,6 +449,11 @@ agent write and the audit row it leaves (Epic 3) — naming the epic that makes 
 non-zero and says so. A gate that reports "found nothing wrong" when it looked at nothing is
 indistinguishable from one that passed, and a smoke script is exactly the gate a release leans on.
 
+**It asks the instance's own web server.** The HTTP checks go to `localhost`, over plain HTTP, on
+the port `Config.Startup` reports as the instance's web-server port. An instance that serves
+OcuPilot only through an external web server fails every HTTP check even when it is installed
+correctly.
+
 ### What CI runs (Story 1.17)
 
 [.github/workflows/ci.yml](../.github/workflows/ci.yml) is the first place in this repository where a
@@ -465,6 +479,22 @@ instance. Around each class it also sets the stored governance policy aside and 
 (`GovernanceFixture.SetAside` and `PutBack`), so a class runs under the baseline policy there; a
 class run any other way runs under whatever policy is stored.
 
+**Armed test classes: some refuse to run outside a throwaway.** A class that creates principals, installs
+OcuPilot's production profile, changes the instance's configuration or calls a provider stub reads
+an arming variable in `OnBeforeAllTests`, and unless it reads `1` the class records an error and
+runs no method. Only `scripts/ci-throwaway.sh` sets them, in the compose file it writes, so these
+classes are red by design on `ocupilot` or a slot instance. The variables are
+`OCUPILOT_ALLOW_LOG_ROTATION`, `OCUPILOT_ALLOW_PRINCIPALS`, `OCUPILOT_ALLOW_ERROR_SEED`,
+`OCUPILOT_ALLOW_AUDIT_EVENTS`, `OCUPILOT_ALLOW_PRODUCTION_INSTALL`, `OCUPILOT_ALLOW_SSL_CONFIG`,
+`OCUPILOT_ALLOW_AUDIT_TOGGLE`, `OCUPILOT_ALLOW_PROCESS_CONTROL`, `OCUPILOT_ALLOW_TASK_CONTROL`,
+`OCUPILOT_ALLOW_ERROR_DELETE`, `OCUPILOT_ALLOW_SERVICE_CONFIG`, `OCUPILOT_ALLOW_TEST_PROVIDER`,
+`OCUPILOT_ALLOW_AUDIT_PURGE`, `OCUPILOT_ALLOW_ACCOUNT_PREFERENCES`,
+`OCUPILOT_ALLOW_NAMESPACE_CONFIG`, `OCUPILOT_ALLOW_DATABASE_CONFIG`, `OCUPILOT_ALLOW_JOURNAL`,
+`OCUPILOT_ALLOW_LICENSE_CONFIG`, `OCUPILOT_ALLOW_ECP_CONFIG`, and
+`OCUPILOT_ALLOW_ENCRYPTION_CONFIG`. The `# classes:` comment above each one in
+`scripts/ci-throwaway.sh` lists the classes it arms, and `ui/tools/ci.test.mjs` holds each list
+equal to the classes that read the variable.
+
 **The ObjectScript suite is split across eight containers and the browser specs across five, never run in parallel inside one.**
 `ui/tools/ci-shards.mjs` gives every leg its share from `ui/tools/ci-timings.json`, longest first,
 so the legs finish close together and each derives the same split; an item with no recorded time
@@ -472,7 +502,8 @@ weighs the median. A test must not depend on what an earlier class or spec file 
 because a leg's neighbours change whenever the split does. When the estimates drift, run
 `cd ui && node tools/ci-shards.mjs refresh --run <run-id>` against a green run and commit the
 rewritten file. Without a shard option, `ci-runner.mjs` and `npm run test:browser` still run the
-whole suite.
+whole suite. `npm run test:browser` needs `OCUPILOT_BROWSER_ORIGIN` and `OCUPILOT_BROWSER_CONTAINER`
+both set.
 
 **Every tool is pinned, and every script runs under its own shell.** Each action is pinned to the
 full commit SHA its tag resolved to, every job runs on `ubuntu-24.04`, `setup-uv` installs uv
@@ -512,6 +543,7 @@ services:
     image: intersystems/irishealth-community:2026.2
     container_name: ocupilot-fresh
     restart: on-failure:3
+    stop_grace_period: 60s
     ports:
       - "1975:1972"
       - "52776:52773"
@@ -564,8 +596,8 @@ docker compose -f <scratch-dir>/compose.yml up -d --wait
 docker compose -f <scratch-dir>/compose.yml down -v
 ```
 
-Copy the `restart` policy, `depends_on`, `healthcheck`, `command` and the `durable-init` service
-from `docker-compose.yml` when they change,
+Copy the `restart` policy, `stop_grace_period`, `depends_on`, `healthcheck`, `command` and the
+`durable-init` service from `docker-compose.yml` when they change,
 so a failing start behaves on the throwaway as it would here, and remove the scratch directory
 afterwards.
 
@@ -585,10 +617,24 @@ zpm "install ocupilot"              ; once a registry carries it -- none does ye
 
 Three things follow from that single entry point, and each is deliberate:
 
-- **The install namespace is the namespace you install from.** `zpm install` runs the lifecycle
-  in your current namespace, and install accepts it. It refuses only a system namespace (`%SYS`,
-  any `%`-prefixed name, and the vendor's own library namespaces), and it refuses outright on an
-  instance carrying neither `HSCUSTOM` nor `USER`, naming both candidates rather than guessing.
+- **The install namespace is the namespace you install from, and an instance has one.** `zpm
+  install` runs the lifecycle in your current namespace, and install accepts it unless it is a
+  system namespace (`%SYS`, any `%`-prefixed name, and the vendor's own library namespaces), the
+  instance carries neither `HSCUSTOM` nor `USER` (refused naming both candidates rather than
+  guessing), the `OcuPilot` package resolves from a database other than the namespace's own routine
+  database (AD-9), the IRIS is older than the roster's `systemRequirements.version` (the installer
+  enforces it, since IPM's exporter drops `<SystemRequirements>`), or another namespace already holds
+  the profile's `OcuPilot*` globals mapping while this one does not. That last refusal names the
+  namespace, applies to uninstall as well, and the installer changes nothing in either namespace; a
+  namespace holding the mapping itself is never refused for another, so an instance an earlier
+  release left with two can be upgraded or uninstalled from either. The manifest runs these
+  checks in a guard `<Invoke>` after `Compile`, because IPM updates a module's web applications at
+  the start of `Activate` and would otherwise re-point the live ones before the install's own
+  `<Invoke>` could refuse. A refused `zpm load` still leaves the module registered in that
+  namespace, and `zpm uninstall ocupilot` there would delete the live web applications and the
+  client files (IPM removes them in its `Clean` phase, ahead of any `<Invoke>`, so no guard can
+  intercept it; measured on IPM 0.10.5): remove the registration instead, in that namespace, with
+  `##class(%IPM.Storage.Module).NameDelete("ocupilot")`.
 - **An IPM install never unexpires an account.** The `<Invoke>` carries no `<Arg>`, so
   `Install()`'s `pUnexpire` keeps its `0` default. A fresh Community instance expires `_SYSTEM`
   on first login and the container start path clears that; on an instance reached through IPM an
@@ -608,6 +654,7 @@ does need the bundle built first** (`cd ui && npm run build`), because the copy'
 | IPM | whichever namespace `zpm` runs in | run `zpm` from the namespace you want |
 | Container start | `HSCUSTOM` if it exists, else `USER` | `OCUPILOT_NAMESPACE` |
 | Either, on an instance with neither `HSCUSTOM` nor `USER` | none — install refuses, naming both | create one of them |
+| Either, on an instance where another namespace already holds the install | none — install, uninstall and the container start refuse, naming that namespace | run it there, or uninstall there first with `Installer.Uninstall("", 1)` |
 
 `OCUPILOT_NAMESPACE` is an optional environment variable on the container, the same shape as
 `OCUPILOT_DEMO`: nothing is required to run. Set it in `docker-compose.yml`'s `environment:`

@@ -11,6 +11,7 @@ import {
 } from '@angular/core';
 import { Router } from '@angular/router';
 
+import { downloadCappedPhrase, rowCountPhrase } from '../core/count-phrase';
 import { NavigationService } from '../core/navigation';
 import { OverlayStack } from '../core/overlay-stack';
 import { RefreshService } from '../core/refresh';
@@ -32,7 +33,7 @@ import { ScreenStores, type SortDirection } from '../core/screen-store';
 import { selfProtectionReason } from '../core/self-protection';
 import { Session } from '../core/session';
 import { STRINGS, stringFor } from '../core/strings';
-import { formatCapNotice, formatRowCount, rowFor } from '../core/table-model';
+import { entityKeyOf, rowFor } from '../core/table-model';
 import { ViewOptions } from '../core/view-options';
 
 /**
@@ -176,13 +177,20 @@ interface SortOption {
   template: `@if (hasContent) {
   <div class="ocu-command-bar">
     @if (hasPrimaryAction) {
-      <button
-        type="button"
-        class="ocu-button-primary ocu-command-bar-primary"
-        (click)="onPrimaryAction()"
-      >
-        {{ primaryActionLabel }}
-      </button>
+      <span class="ocu-command-bar-action-slot">
+        <button
+          type="button"
+          class="ocu-button-primary ocu-command-bar-primary"
+          [attr.aria-disabled]="primaryAriaDisabled"
+          [attr.aria-describedby]="primaryDescribedBy"
+          (click)="onPrimaryAction()"
+        >
+          {{ primaryActionLabel }}
+        </button>
+        @if (primaryReason) {
+          <span class="ocu-command-bar-reason" role="tooltip" [id]="primaryReasonId">{{ primaryReason }}</span>
+        }
+      </span>
     }
     @if (hasFilter) {
       <input
@@ -216,7 +224,7 @@ interface SortOption {
       </span>
     }
     @if (hasViewControl) {
-      <span #viewControl class="ocu-command-bar-sort ocu-command-bar-view" (focusout)="onViewFocusOut($event)">
+      <span #viewControl class="ocu-command-bar-sort" (focusout)="onViewFocusOut($event)">
         <button
           #viewTrigger
           type="button"
@@ -468,7 +476,7 @@ export class CommandBar {
     // depend on a fact that has nothing to do with it.
     const selected = screen.rowActions.length === 0
       ? ''
-      : this.stores.for(screen.descriptor, screen.refreshRates).selection()[0] ?? '';
+      : entityKeyOf(this.stores.for(screen.descriptor, screen.refreshRates).selection()[0] ?? '');
     const row = selected === '' ? null : rowFor(this.stores.for(screen.descriptor, screen.refreshRates).data(), screen, selected);
     const checked = screen.multiSelect === null ? 0 : this.stores.for(screen.descriptor, screen.refreshRates).checked().size;
     const onBanner = bannerActionIds(screen);
@@ -483,16 +491,20 @@ export class CommandBar {
       // it is not drawn at all -- the same test the primary action above already applies.
       .filter((action) => this.actions.has(screen.descriptor, action.id))
       .map((action) => {
-        // Two reasons, in this order: with nothing selected the action has no target, and with a
-        // self-protected row selected the instance would refuse it -- with this very sentence
-        // (AD-10, AD-53). Neither is enforcement: the route refuses it identically if it is
-        // pressed anyway. A multi-select action (Story 16.6) acts on the checked rows instead, so
-        // its reason is theirs: none checked, or more than it takes.
-        const reason = isCheckedSetAction(screen, action.id)
-          ? checkedSetReason(screen, checked)
-          : selected === ''
-            ? STRINGS.privilegeSelectRowFirst
-            : selfProtectionReason(action.selfProtection, selected, this.signedIn(), row);
+        // Three reasons, in this order: a registrant's own (the Allowed directories verdict, Story
+        // 18.46), which holds for every row and for none; with nothing selected the action has no
+        // target; and with a self-protected row selected the instance would refuse it -- with this
+        // very sentence (AD-10, AD-53). None is enforcement: the route refuses it identically if it
+        // is pressed anyway. A multi-select action (Story 16.6) acts on the checked rows instead, so
+        // its reason after a registrant's is theirs: none checked, or more than it takes.
+        const registered = this.actions.reason(screen.descriptor, action.id);
+        const reason = registered !== ''
+          ? registered
+          : isCheckedSetAction(screen, action.id)
+            ? checkedSetReason(screen, checked)
+            : selected === ''
+              ? STRINGS.privilegeSelectRowFirst
+              : selfProtectionReason(action.selfProtection, selected, this.signedIn(), row);
         return {
           id: action.id,
           // Resolved through the one label map, as the command box already does (Story 3.5), and
@@ -659,6 +671,30 @@ export class CommandBar {
   }
 
   /**
+   * Why the primary action cannot be taken now, or `''`: its registrant's own reason (Story 18.46). It is drawn as a row
+   * action's is -- `aria-disabled`, the sentence as a tooltip and as the button's description -- and never as the
+   * `disabled` attribute.
+   */
+  protected get primaryReason(): string {
+    this.generation();
+    const screen = this.screen();
+    if (screen === null || screen.primaryAction.id === '') return '';
+    return this.actions.reason(screen.descriptor, screen.primaryAction.id);
+  }
+
+  protected get primaryReasonId(): string {
+    return 'ocu-command-bar-reason-primary';
+  }
+
+  protected get primaryAriaDisabled(): string | null {
+    return this.primaryReason === '' ? null : 'true';
+  }
+
+  protected get primaryDescribedBy(): string | null {
+    return this.primaryReason === '' ? null : this.primaryReasonId;
+  }
+
+  /**
    * Whether the screen declares a read, which is what the filter and its count filter. A route no
    * declaration answers has no read either.
    */
@@ -704,7 +740,7 @@ export class CommandBar {
       sort: store.sort(),
       direction: store.direction(),
     });
-    return formatRowCount(STRINGS.tableRowCount, view.length);
+    return rowCountPhrase(view.length);
   }
 
   /** The current screen's filter, or `''` on a screen with no read. */
@@ -869,7 +905,7 @@ export class CommandBar {
     const screen = this.screen();
     if (screen === null) return '';
     const store = this.stores.for(screen.descriptor, screen.refreshRates);
-    return store.truncated() ? formatCapNotice(STRINGS.tableDownloadCsvCapped, store.maxRows()) : '';
+    return store.truncated() ? downloadCappedPhrase(store.maxRows()) : '';
   }
 
   protected get downloadDescribedBy(): string | null {
@@ -1106,6 +1142,7 @@ export class CommandBar {
   protected onPrimaryAction(): void {
     const screen = this.screen();
     if (screen === null) return;
+    // `run` itself runs nothing while the registrant holds a reason, so a refused click only keeps its focus.
     this.actions.run(screen.descriptor, screen.primaryAction.id);
   }
 

@@ -17,6 +17,8 @@ export type StubbedSystemInfo = SystemInfo & {
   setFields(fields: Partial<Record<SystemInfoField, string>>): void;
   /** Flip the transport after construction, so one store can answer and then stop answering. */
   setUnreachable(unreachable: boolean): void;
+  /** Make every read answer with this failing HTTP status (0 is unreachable), or `null` to answer. */
+  setStatus(status: number | null): void;
 };
 
 /** What one stub answers, defaulted per member so a spec names only what it is about. */
@@ -39,9 +41,13 @@ export function stubSystemInfo(seed: StubbedSystemInfoSeed = {}): StubbedSystemI
   for (const field of SYSTEM_INFO_FIELDS) fields[field] = seed.fields?.[field] ?? `${field}-value`;
 
   let unreachable = seed.unreachable === true;
+  let failing: number | null = null;
   const api = {
     requestJson: async (path: string, init: { method?: string } = {}) => {
       calls.push({ path, method: init.method ?? 'GET' });
+      if (failing !== null) {
+        return { kind: 'error', status: failing, code: null, reason: null, detail: null };
+      }
       if (unreachable) {
         return { kind: 'error', status: 0, code: null, reason: null, detail: null };
       }
@@ -56,6 +62,9 @@ export function stubSystemInfo(seed: StubbedSystemInfoSeed = {}): StubbedSystemI
     },
     setUnreachable(next: boolean) {
       unreachable = next;
+    },
+    setStatus(next: number | null) {
+      failing = next;
     },
   });
 }

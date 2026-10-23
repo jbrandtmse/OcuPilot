@@ -150,7 +150,7 @@ function firstCells(page) {
 /** The chip's row count, or `null` while it shows none. */
 function chipRows(page) {
   return page.evaluate(() => {
-    const match = /(\d+) rows/.exec(document.querySelector('.ocu-context-chip-text')?.textContent ?? '');
+    const match = /(\d+) rows?\b/.exec(document.querySelector('.ocu-context-chip-text')?.textContent ?? '');
     return match ? Number(match[1]) : null;
   });
 }
@@ -174,7 +174,7 @@ test('the error list sends the errors it shows: the chip counts them, and the tu
 
     try {
       await page.waitForFunction(
-        (expected) => /(\d+) rows/.exec(document.querySelector('.ocu-context-chip-text')?.textContent ?? '')?.[1] === String(expected),
+        (expected) => /(\d+) rows?\b/.exec(document.querySelector('.ocu-context-chip-text')?.textContent ?? '')?.[1] === String(expected),
         { timeout: config.navigationTimeoutMs },
         errorsShown
       );

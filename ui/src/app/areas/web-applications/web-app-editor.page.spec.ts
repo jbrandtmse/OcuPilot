@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { ApiService, type ApiRequestInit, type JsonResult } from '../../core/api';
 import { ChangeBus, type ChangeEvent } from '../../core/change-bus';
+import { ConnectivityService } from '../../core/connectivity';
 import { encodeEntityId } from '../../core/entity-id';
 import { FormDirty } from '../../core/form-dirty';
 import { OverlayStack } from '../../core/overlay-stack';
@@ -97,6 +98,10 @@ async function mount(
       const method = init.method ?? 'GET';
       calls.push({ path, method, body: init.body ?? '' });
       if (method === 'PUT') return save as JsonResult<T>;
+      // The class-access tab's list read, answered in its own shape so the tab draws an empty list.
+      if (path.includes('/screens/webapp.pctaccess/read')) {
+        return { kind: 'ok', status: 200, body: { fields: [], rows: [], truncated: false, banner: '', bannerRequires: '' } } as JsonResult<T>;
+      }
       if (method === 'POST') {
         return { kind: 'ok', status: 200, body: { action: 'updated', target: { type: 'web-application', scope: 'instance', id: name } } } as JsonResult<T>;
       }
@@ -120,6 +125,8 @@ async function mount(
     providers: [
       provideRouter([{ path: '**', children: [] }]),
       { provide: ApiService, useValue: api as unknown as ApiService },
+      // The class-access tab parks a failed read with it; no probe timer, so nothing runs behind the test.
+      { provide: ConnectivityService, useValue: new ConnectivityService({ api: () => api as unknown as ApiService, schedule: () => {} }) },
       { provide: FormDirty, useValue: new FormDirty() },
       { provide: ChangeBus, useValue: bus },
       { provide: OverlayStack, useValue: new OverlayStack() },
@@ -258,6 +265,20 @@ describe('the web application editor (Story 9.2)', () => {
       await settle(fixture);
       expect(effects(host)).toEqual([]);
     }
+  });
+
+  it('Story 18.48: states the privilege line at Enabled and Resource while a granted role is privileged, and the cleared resource\u2019s own line over it', async () => {
+    // Mutation (Rule 19): drop the `grantsPrivileged` condition from `generalFields` -> the first two lines go red.
+    const { fixture, host } = await mount('/csp/probe', undefined, { MatchRoles: [{ MatchRole: '', TargetRoles: ['%Manager'] }] });
+    expect(host.querySelector('#ocu-web-app-edit-Enabled-effect')?.textContent?.trim()).toBe(STRINGS.privilegedGrantEffect);
+    expect(host.querySelector('#ocu-web-app-edit-Resource-effect')?.textContent?.trim()).toBe(STRINGS.privilegedGrantEffect);
+    type(fixture, host, 'ocu-web-app-edit-Resource', '');
+    await settle(fixture);
+    expect(host.querySelector('#ocu-web-app-edit-Resource-effect')?.textContent?.trim()).toBe(STRINGS.webAppNoResourceEffect);
+    expect(host.querySelector('#ocu-web-app-edit-Enabled-effect')?.textContent?.trim()).toBe(STRINGS.privilegedGrantEffect);
+    const plain = await mount('/csp/probe');
+    expect(plain.host.querySelector('#ocu-web-app-edit-Enabled-effect')).toBeNull();
+    expect(plain.host.querySelector('#ocu-web-app-edit-Resource-effect')).toBeNull();
   });
 
   it('draws OcuPilot\u2019s own application refused: its fields and Save, and its role controls with the privilege-grant sentence', async () => {

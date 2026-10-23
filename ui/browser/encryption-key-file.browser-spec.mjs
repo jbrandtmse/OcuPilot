@@ -35,7 +35,7 @@ import puppeteer from 'puppeteer';
 import { LIVE_CONTAINER, browserConfig, launchOptions } from '../browser.config.mjs';
 import { signedInAt } from './panel-spec.mjs';
 import { INVARIANTS, VIEWPORTS, assertThrowaway, collapse, compare, componentMinimums, detectScreen, readBaseline } from './structural-walk.mjs';
-import { sideBarLabels } from './side-bar-spec.mjs';
+import { assertDrawnAtDeclaredIndex, sideBarLabels } from './side-bar-spec.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const repoRoot = join(uiRoot, '..');
@@ -257,13 +257,13 @@ async function confirmTypedName(page, name) {
 
 // A6. Mutation (Rule 19): give EncryptionKeyFile `sideBarPosition` 0 and regenerate the mirror,
 // rebuild and redeploy -> the side-bar assertion goes red.
-test('A6: Encryption key files is the eighth Security entry, lists an opened key file, and passes DW-1337', async () => {
+test('A6: Encryption key files is a Security entry, lists an opened key file, and passes DW-1337', async () => {
   const { context, page } = await signedInAt(browser, config, URL_AT, VIEWPORTS.wide);
   try {
     const bar = await sideBarOf(page);
     assert.equal(bar.area, STRINGS.navAreaSecurity);
     assert.deepEqual(bar.entries, sideBarLabels('security'), 'the Security entries in their declared order');
-    assert.equal(bar.entries[7], STRINGS.encryptionKeyFileLabel, 'Encryption key files is the eighth');
+    assertDrawnAtDeclaredIndex(bar.entries, 'security', STRINGS.encryptionKeyFileLabel);
     assert.equal(await page.$eval('[data-key-file="admins-empty"]', (node) => node.textContent.trim()), STRINGS.encryptionKeyFileAdminsEmpty);
     await openKeyFile(page, SEEDED);
     const shown = await listed(page);

@@ -49,6 +49,13 @@ Parameter DIRECTORYABSENT = "JOURNAL.DIRECTORY.ABSENT";
 
 Parameter REASONDIRECTORYABSENT = "That directory does not exist on the instance. Create it, then choose it.";
 
+/// <p>Violation code (Story 18.48): a journal directory that is a database's own directory or one of its
+/// volume directories, on the path field. The vendor writes its lock file in a journal directory, and a
+/// database's directory holds the database's own.</p>
+Parameter DIRECTORYDATABASE = "JOURNAL.DIRECTORY.DATABASE";
+
+Parameter REASONDIRECTORYDATABASE = "That directory belongs to a database, and the journal would write its lock file there. Choose another directory.";
+
 /// <p>Violation code: <code>FileSizeLimit</code> is not a whole number of megabytes from 0 to 4079,
 /// the range <code>Config.Journal</code> declares and the vendor stores.</p>
 Parameter FILESIZESHAPE = "JOURNAL.FILESIZE.SHAPE";
@@ -100,7 +107,7 @@ Parameter REASONRECORDUNREADABLE = "That record is not in this file, or its data
 /// <p>Every <code>JOURNAL.*</code> code, as a <class>%List</class>.</p>
 ClassMethod Codes() As %List
 {
-    Quit $ListBuild(..#FILEUNLISTED, ..#SWITCHDIRNOOTHER, ..#SWITCHDIRUNMOVED, ..#VALIDATION, ..#DIRECTORYABSENT, ..#FILESIZESHAPE, ..#PURGESHAPE, ..#PREFIXSHAPE, ..#BOOLEANSHAPE, ..#FILTERSHAPE, ..#OFFSETSHAPE, ..#RECORDUNREADABLE)
+    Quit $ListBuild(..#FILEUNLISTED, ..#SWITCHDIRNOOTHER, ..#SWITCHDIRUNMOVED, ..#VALIDATION, ..#DIRECTORYABSENT, ..#DIRECTORYDATABASE, ..#FILESIZESHAPE, ..#PURGESHAPE, ..#PREFIXSHAPE, ..#BOOLEANSHAPE, ..#FILTERSHAPE, ..#OFFSETSHAPE, ..#RECORDUNREADABLE)
 }
 
 /// <p><parameter>REASONSWITCHDIRUNMOVED</parameter> naming <var>pDirectory</var>, inserted as it is.</p>
@@ -118,6 +125,7 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#SWITCHDIRUNMOVED Quit ..#REASONSWITCHDIRUNMOVED
     If pCode = ..#VALIDATION Quit ..#REASONVALIDATION
     If pCode = ..#DIRECTORYABSENT Quit ..#REASONDIRECTORYABSENT
+    If pCode = ..#DIRECTORYDATABASE Quit ..#REASONDIRECTORYDATABASE
     If pCode = ..#FILESIZESHAPE Quit ..#REASONFILESIZESHAPE
     If pCode = ..#PURGESHAPE Quit ..#REASONPURGESHAPE
     If pCode = ..#PREFIXSHAPE Quit ..#REASONPREFIXSHAPE

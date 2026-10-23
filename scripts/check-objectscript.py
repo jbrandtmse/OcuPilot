@@ -156,8 +156,8 @@ prose into one checker.
     -- appears in shipped code only in `OcuPilot/Kernel/Agent/Job.cls`, in
     `OcuPilot/Kernel/Provider/TestCall.cls`, Test connection's child job (AD-42, Story 10.5), in
     `OcuPilot/Port/RemoteDatabasePort.cls`, the remote-directory listing's child job (AD-21's seventh
-    case, AD-42, Story 18.16), and in `OcuPilot/Area/Explorer/SqlBackground.cls`, the SQL console's
-    background run (AD-42, Story 19.15). Test classes under `Test/` may spawn their own helpers.
+    case, AD-42, Story 18.16), and in `OcuPilot/Kernel/Shell/BackgroundRun.cls`, the background run
+    the SQL console and the MDX query share (AD-42, Stories 19.15 and 20.33). Test classes under `Test/` may spawn their own helpers.
 
 20. **Tool dispatch (AD-1, AD-22, Story 4.2).** Outside `Test/`, `InvokeTool` is named only in
     `Screen/Tool/Registry.cls`, which defines it, and `Kernel/Agent/Dispatch.cls`, its one caller;
@@ -855,12 +855,12 @@ def check_state_package_isolation(problems: list[str]) -> None:
 # screen, and no handler -- `OcuPilot.Api.Error` is the vocabulary, not a handler. And the four
 # spawns in shipped code are the job's own, Test connection's child (`Kernel.Provider.TestCall`,
 # AD-42), the remote-directory listing's child (`Port.RemoteDatabasePort`, AD-21's seventh case) and
-# the SQL console's background run (`Area.Explorer.SqlBackground`, AD-42, Story 19.15), so a fifth
+# the background run the SQL console and the MDX query share (`Kernel.Shell.BackgroundRun`, AD-42, Stories 19.15 and 20.33), so a fifth
 # `JOB` cannot quietly start a process from a frame nobody checked for escalation. Test classes spawn
 # their own helpers and are outside it.
 
 AGENT_PACKAGE_PREFIX = "src/OcuPilot/Kernel/Agent/"
-JOB_ALLOWED = frozenset({"src/OcuPilot/Kernel/Agent/Job.cls", "src/OcuPilot/Kernel/Provider/TestCall.cls", "src/OcuPilot/Port/RemoteDatabasePort.cls", "src/OcuPilot/Area/Explorer/SqlBackground.cls"})
+JOB_ALLOWED = frozenset({"src/OcuPilot/Kernel/Agent/Job.cls", "src/OcuPilot/Kernel/Provider/TestCall.cls", "src/OcuPilot/Port/RemoteDatabasePort.cls", "src/OcuPilot/Kernel/Shell/BackgroundRun.cls"})
 AGENT_REACH_RE = re.compile(
     r"OcuPilot\.Port\.(?!ProviderPort\b)\w+(?:\.\w+)*"
     r"|OcuPilot\.Area\.\w+(?:\.\w+)*"

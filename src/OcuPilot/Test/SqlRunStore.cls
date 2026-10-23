@@ -3,8 +3,9 @@
 /// instance cap, ends the owner's lost run before it counts, replaces the owner's ended run and sweeps
 /// even when it refuses; begin, finish and the cancel flag; the owner's view and nobody else's; a lost
 /// run ended <code>failed</code> while a held one stays live; a cancel of a lost run reported not live,
-/// naming no job, and the run ended <code>canceled</code>; and the sweep, through its clock seam
-/// and never ahead of the instance's clock, deleting only a run past retention.</p>
+/// naming no job, and the run ended <code>canceled</code>; the sweep, through its clock seam
+/// and never ahead of the instance's clock, deleting only a run past retention;
+/// and the data slots a row stored by release 1.0.12 is read from (Story 20.37).</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed. It writes rows for three owner
 /// names no account holds (<parameter>USERA</parameter>, <parameter>USERB</parameter>,
 /// <parameter>USERC</parameter>) and removes every row of theirs after each test; one test starts a
@@ -71,11 +72,11 @@ ClassMethod Reserve(pUser As %String, pCap As %Integer, Output pKey As %String, 
     Quit $ClassMethod(..#STORE, "GuardedReserve", pUser, "USER", pCap, ..#LIMITS, .pKey, .pBusy, .pFull, .tSweep)
 }
 
-/// <p>Run <var>pKey</var> as <var>pUser</var> reads it, as one line: <code>found status
+/// <p>Run <var>pKey</var> of kind <var>pKind</var> as <var>pUser</var> reads it, as one line: <code>found status
 /// cancelRequested</code>, then the result or the refusal as JSON when one is present.</p>
-ClassMethod Seen(pKey As %String, pUser As %String) As %String
+ClassMethod Seen(pKey As %String, pUser As %String, pKind As %String = "sql") As %String
 {
-    Set tSC = $ClassMethod(..#STORE, "GuardedViewForOwner", pKey, pUser, ..#LIMITS, .tFound, .tView)
+    Set tSC = $ClassMethod(..#STORE, "GuardedViewForOwner", pKey, pUser, ..#LIMITS, .tFound, .tView, pKind)
     If $$$ISERR(tSC) Quit "error " _ $System.Status.GetErrorText(tSC)
     If 'tFound Quit "0"
     Set tLine = "1 " _ tView.status _ " " _ $Select(tView.cancelRequested: "true", 1: "false")
@@ -289,6 +290,94 @@ Method TestTheSweepDeletesOnlyARunPastRetention()
     Do $$$AssertEquals($Piece(..Seen(tKey, ..#USERA), " ", 1, 2), "1 ended", "and keeps the run")
     Do $$$AssertStatusOK($ClassMethod(..#STORE, "GuardedSweep", ..#LIMITS, tNow), "a sweep at the instance's clock runs")
     Do $$$AssertEquals(..Seen(tKey, ..#USERA), "0", "and deletes the run past retention")
+}
+
+/// <p>Reserve a run of kind <var>pKind</var> for <var>pUser</var> in USER under the cap <var>pCap</var>.</p>
+ClassMethod ReserveKind(pUser As %String, pKind As %String, pCap As %Integer, Output pKey As %String, Output pBusy As %String, Output pFull As %Boolean) As %Status
+{
+    Quit $ClassMethod(..#STORE, "GuardedReserve", pUser, "USER", pCap, ..#LIMITS, .pKey, .pBusy, .pFull, .tSweep, pKind)
+}
+
+/// <p>Story 20.33: an owner has one live run of each kind. A live SQL run does not make the same owner's MDX reserve busy, nor the
+/// reverse, a second reserve of one kind names that kind's live run, and a reserve replaces only the owner's ended runs of its own kind.</p>
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Kernel.State.SqlRun.GuardedReserve</method>'s busy check ignore the kind -- the MDX reserve is
+/// named busy and this goes red. Drop the kind from its ended-row delete -- the other kind's ended run is deleted and this goes red.</p>
+Method TestAnOwnerHasOneLiveRunOfEachKind()
+{
+    Do $$$AssertStatusOK(..ReserveKind(..#USERA, "sql", 1000, .tSql, .tBusy, .tFull), "a SQL run is reserved")
+    Do $$$AssertStatusOK(..ReserveKind(..#USERA, "mdx", 1000, .tMdx, .tBusy, .tFull), "and the same owner's MDX run")
+    Do $$$AssertEquals(($Match(tMdx, "^[0-9a-f]{32}$") && (tMdx '= tSql)) _ "|" _ tBusy _ "|" _ tFull, "1||0", "a new run, not named busy by the SQL run")
+    Do $$$AssertEquals(..Rows(..#USERA), 2, "so the owner holds two rows")
+    Do $$$AssertStatusOK(..ReserveKind(..#USERA, "mdx", 1000, .tAgain, .tBusy, .tFull), "a second MDX reserve answers")
+    Do $$$AssertEquals(tAgain _ "|" _ tBusy, "|" _ tMdx, "naming the live MDX run")
+    Do $$$AssertStatusOK(..ReserveKind(..#USERA, "sql", 1000, .tAgain, .tBusy, .tFull), "a second SQL reserve answers")
+    Do $$$AssertEquals(tAgain _ "|" _ tBusy, "|" _ tSql, "naming the live SQL run")
+    Do $ClassMethod(..#STORE, "GuardedFinish", tMdx, "ended", "{""outcome"":""done""}")
+    Do $ClassMethod(..#STORE, "GuardedFinish", tSql, "ended", "{""outcome"":""done""}")
+    Do $$$AssertStatusOK(..ReserveKind(..#USERA, "mdx", 1000, .tNext, .tBusy, .tFull), "an MDX reserve after both runs ended")
+    Do $$$AssertEquals(($Match(tNext, "^[0-9a-f]{32}$") && (tNext '= tMdx)) _ "|" _ ..Seen(tMdx, ..#USERA, "mdx"), "1|0", "replaces the owner's ended MDX run")
+    Do $$$AssertEquals(..Rows(..#USERA) _ " " _ $Piece(..Seen(tSql, ..#USERA, "sql"), " ", 1, 2), "2 1 ended", "and leaves the owner's ended SQL run")
+    Do $ClassMethod(..#STORE, "GuardedFinish", tNext, "ended", "{""outcome"":""done""}")
+    Do $$$AssertStatusOK(..ReserveKind(..#USERA, "sql", 1000, .tSqlNext, .tBusy, .tFull), "a SQL reserve after both runs ended")
+    Do $$$AssertEquals(($Match(tSqlNext, "^[0-9a-f]{32}$") && (tSqlNext '= tSql)) _ "|" _ ..Seen(tSql, ..#USERA, "sql") _ "|" _ $Piece(..Seen(tNext, ..#USERA, "mdx"), " ", 1, 2), "1|0|1 ended", "replaces the owner's ended SQL run and leaves the ended MDX run")
+}
+
+/// <p>Story 20.33: the instance cap counts the live runs of every kind together, so a reserve of either kind is refused at it.</p>
+/// <p>Mutation (Rule 19): count only the requested kind's live rows against the cap in
+/// <method>OcuPilot.Kernel.State.SqlRun.GuardedReserve</method> -- the second leg is reserved and this goes red.</p>
+Method TestTheInstanceCapCountsEveryKind()
+{
+    Set tCap = ..ForeignLive() + 2
+    Do $$$AssertStatusOK(..ReserveKind(..#USERA, "sql", tCap, .tA, .tBusy, .tFull), "an owner's SQL run is reserved")
+    Do $$$AssertStatusOK(..ReserveKind(..#USERB, "mdx", tCap, .tB, .tBusy, .tFull), "another owner's MDX run is reserved")
+    Do $$$AssertStatusOK(..ReserveKind(..#USERC, "mdx", tCap, .tC, .tBusy, .tFull), "a third owner's MDX reserve answers")
+    Do $$$AssertEquals(tC _ "|" _ tBusy _ "|" _ tFull, "||1", "refused at the cap")
+    Do $$$AssertStatusOK(..ReserveKind(..#USERC, "sql", tCap, .tC, .tBusy, .tFull), "and so does its SQL reserve")
+    Do $$$AssertEquals(tC _ "|" _ tBusy _ "|" _ tFull, "||1", "refused at the cap too")
+    Do $$$AssertEquals(..Rows(..#USERC), 0, "with no row inserted")
+}
+
+/// <p>A run's id is read in the kind it was reserved in: a view, a cancel and a lookup of the other kind find nothing, a row stored before kinds
+/// existed (no <code>Kind</code>) reads as SQL, and the owner is still matched.</p>
+/// <p>Mutation (Rule 19): drop the kind from <method>OcuPilot.Kernel.State.SqlRun.IdForOwner</method>'s statement -- the MDX view of a SQL run
+/// answers it and this goes red. Make <method>OcuPilot.Kernel.State.SqlRun.Reconcile</method> answer the row's raw kind -- a live row with no kind
+/// is not named busy by a SQL reserve and this goes red.</p>
+Method TestLookupsMatchTheKindAndARowWithNoKindReadsAsSql()
+{
+    Do ..ReserveKind(..#USERA, "mdx", 1000, .tMdx)
+    Do ..ReserveKind(..#USERB, "sql", 1000, .tSql)
+    Do $$$AssertEquals(..Seen(tMdx, ..#USERA, "mdx"), "1 running false", "an MDX run is seen as MDX")
+    Do $$$AssertEquals(..Seen(tMdx, ..#USERA, "sql"), "0", "and not as SQL")
+    Do $$$AssertEquals(..Seen(tSql, ..#USERB, "sql") _ " " _ ..Seen(tSql, ..#USERB, "mdx"), "1 running false 0", "a SQL run is seen as SQL and not as MDX")
+    Do $$$AssertEquals(..Seen(tMdx, ..#USERB, "mdx"), "0", "another owner is not found in the right kind either")
+    Do $ClassMethod(..#STORE, "GuardedCancel", tMdx, ..#USERA, .tFound, .tJob, .tLive, "sql")
+    Do $$$AssertEquals(tFound, 0, "a cancel in the other kind finds nothing")
+    Do $ClassMethod(..#STORE, "GuardedCancel", tMdx, ..#USERA, .tFound, .tJob, .tLive, "mdx")
+    Do $$$AssertEquals(tFound _ " " _ ..Seen(tMdx, ..#USERA, "mdx"), "1 1 running true", "a cancel in its own kind sets its flag")
+    Do $$$AssertEquals(..Exec("UPDATE OcuPilot_Kernel_State.SqlRun SET Kind = NULL WHERE %EXACT(RunKey) = ?", tSql), 0, "a row stored with no kind")
+    Do $$$AssertEquals(..Seen(tSql, ..#USERB, "sql") _ " " _ ..Seen(tSql, ..#USERB, "mdx"), "1 running false 0", "reads as SQL")
+    Do $$$AssertStatusOK(..ReserveKind(..#USERB, "sql", 1000, .tAgain, .tBusy, .tFull), "a SQL reserve while that run lives answers")
+    Do $$$AssertEquals(tAgain _ "|" _ tBusy, "|" _ tSql, "naming it busy, as a SQL run")
+    Do $$$AssertStatusOK($ClassMethod(..#STORE, "GuardedCancelRequested", tMdx, .tRequested), "the cancel flag is read fresh")
+    Do $$$AssertEquals(tRequested, 1, "and reads as asked")
+    Do $$$AssertStatusOK($ClassMethod(..#STORE, "GuardedCancelRequested", tSql, .tRequested), "a row nobody canceled")
+    Do $$$AssertEquals(tRequested, 0, "reads as not asked")
+}
+
+/// <p>Consistency Conventions, new properties on a stored class: the run row's data slots hold, in order, the ten columns a row stored by
+/// release 1.0.12 was written with, and then <code>Kind</code>, so such a row reads each column where it wrote it and reads <code>Kind</code>
+/// empty. A slot after the 11th, a property added later, is not checked.</p>
+/// <p>Mutation (Rule 19): declare <code>Kind</code> directly after <code>Namespace</code> in
+/// <class>OcuPilot.Kernel.State.SqlRun</class> -- every slot after <code>Namespace</code> moves and this goes red.</p>
+Method TestARunStoredBeforeKindKeepsEachColumnInItsSlot()
+{
+    Set tExpected = $ListBuild("RunKey", "UserName", "Namespace", "State", "JobId", "CancelRequested", "QueuedAt", "StartedAt", "EndedAt", "Answer", "Kind")
+    Set tActual = ""
+    For tSlot = 1:1:$ListLength(tExpected) {
+        Set tValue = ##class(%Dictionary.CompiledStorageDataValue).%OpenId(..#STORE _ "||Default||SqlRunDefaultData||" _ tSlot)
+        Set tActual = tActual _ $ListBuild($Select($IsObject(tValue): tValue.Value, 1: ""))
+    }
+    Do $$$AssertEquals($ListToString(tActual), $ListToString(tExpected), "the first 11 data slots of a run row")
 }
 
 }

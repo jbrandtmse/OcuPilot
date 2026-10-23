@@ -12,25 +12,34 @@
 import type { ScreenDeclaration } from './screens.generated.ts';
 import { stringFor } from './strings.ts';
 
-/** One task group: its string key, its resolved label, and its prompts' resolved text. */
+/**
+ * One suggested prompt: its resolved text and, where choosing it starts a guided workflow, that
+ * workflow's catalog id (Story 20.12, AD-66); `null` for an ordinary prompt.
+ */
+export interface GroupPrompt {
+  readonly text: string;
+  readonly workflow: string | null;
+}
+
+/** One task group: its string key, its resolved label, and its prompts. */
 export interface PromptGroup {
   readonly key: string;
   readonly label: string;
-  readonly prompts: readonly string[];
+  readonly prompts: readonly GroupPrompt[];
 }
 
 /** The declaration's prompts grouped by task, or `[]` for no declaration or no prompts. */
 export function promptGroups(
   declaration: Pick<ScreenDeclaration, 'suggestedPrompts'> | null
 ): readonly PromptGroup[] {
-  const groups: { key: string; label: string; prompts: string[] }[] = [];
+  const groups: { key: string; label: string; prompts: GroupPrompt[] }[] = [];
   for (const prompt of declaration?.suggestedPrompts ?? []) {
     let group = groups.find((candidate) => candidate.key === prompt.groupKey);
     if (group === undefined) {
       group = { key: prompt.groupKey, label: stringFor(prompt.groupKey), prompts: [] };
       groups.push(group);
     }
-    group.prompts.push(stringFor(prompt.textKey));
+    group.prompts.push({ text: stringFor(prompt.textKey), workflow: prompt.workflow ?? null });
   }
   return groups;
 }

@@ -83,7 +83,7 @@ interface Option {
  * roles, Matching roles, and Routines and classes (Story 18.33); they are not this form's fields, and each act on them
  * is one of the list's row actions (`RoutineAppMemberTabs`). A create shows General alone.
  *
- * **OcuPilot's own two applications are drawn refused**: their fields are read-only and Save is `aria-disabled`,
+ * **OcuPilot's own three applications are drawn refused**: their fields are read-only and Save is `aria-disabled`,
  * described by the sentence the instance would answer with (AD-10, AD-53); so is every control of the member tabs.
  *
  * It composes no payload and authors no field sentence; the unsaved-changes guard is the `form-page` route guard,
@@ -173,6 +173,9 @@ interface Option {
           />
           <span>{{ STRINGS.tableColumnEnabled }}</span>
         </label>
+        @if (hasReachEffect) {
+          <p class="ocu-field-caption" [id]="enabledEffectId">{{ STRINGS.privilegedGrantEffect }}</p>
+        }
         @if (enabledView.invalid) {
           <p class="ocu-form-error" [id]="enabledView.id + '-reason'">{{ enabledView.violation }}</p>
         }
@@ -192,6 +195,9 @@ interface Option {
           }
         </select>
         <p class="ocu-field-caption" [id]="resourceHintId">{{ STRINGS.routineAppResourceHint }}</p>
+        @if (hasReachEffect) {
+          <p class="ocu-field-caption" [id]="resourceEffectId">{{ STRINGS.privilegedGrantEffect }}</p>
+        }
         @if (resourceView.invalid) {
           <p class="ocu-form-error" [id]="resourceView.id + '-reason'">{{ resourceView.violation }}</p>
         }
@@ -263,6 +269,10 @@ export class RoutineAppFormPage {
 
   protected readonly ownRefusalId = 'ocu-routine-app-own-refusal';
 
+  protected readonly enabledEffectId = 'ocu-routine-app-enabled-effect';
+
+  protected readonly resourceEffectId = 'ocu-routine-app-resource-effect';
+
   /** The key of the tab on screen. */
   protected readonly selectedTab = signal(GENERAL_TAB);
 
@@ -332,13 +342,13 @@ export class RoutineAppFormPage {
     return this.store.mode() === 'edit' || !this.store.editable();
   }
 
-  /** Whether the fields refuse input: an edit whose fresh read has not landed, or one of OcuPilot's own two. */
+  /** Whether the fields refuse input: an edit whose fresh read has not landed, or one of OcuPilot's own three. */
   protected get locked(): boolean {
     this.generation();
     return !this.store.editable() || this.ownRefusal !== '';
   }
 
-  /** The sentence OcuPilot's own two applications are drawn refused with, or `''` for any other. */
+  /** The sentence OcuPilot's own three applications are drawn refused with, or `''` for any other. */
   protected get ownRefusal(): string {
     this.generation();
     if (this.store.mode() !== 'edit') return '';
@@ -446,12 +456,18 @@ export class RoutineAppFormPage {
     return this.inputView(DESCRIPTION_FIELD, null);
   }
 
+  /** Whether a role the application grants is privileged, so enabling it or clearing its resource widens that grant (AD-10). */
+  protected get hasReachEffect(): boolean {
+    this.generation();
+    return this.store.grantsPrivileged();
+  }
+
   protected get enabledView(): InputView {
-    return this.inputView(ENABLED_FIELD, null);
+    return this.inputView(ENABLED_FIELD, this.hasReachEffect ? this.enabledEffectId : null);
   }
 
   protected get resourceView(): InputView {
-    return this.inputView(RESOURCE_FIELD, this.resourceHintId);
+    return this.inputView(RESOURCE_FIELD, this.hasReachEffect ? `${this.resourceHintId} ${this.resourceEffectId}` : this.resourceHintId);
   }
 
   // --- intents ---------------------------------------------------------------------------------

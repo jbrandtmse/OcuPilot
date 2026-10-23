@@ -9,6 +9,10 @@
  *
  * It needs an instance with no enabled definition, so the dot is lit for `_SYSTEM`.
  *
+ * The rail stays beside the full-screen cover, so a pointer reaches it there: with the panel full
+ * screen no rail item acts (DW-460). That is pinned here because only a hit-tested page shows the
+ * click arriving, and only the instance shows that no preference is stored.
+ *
  * Run: `npm run test:browser` (after `npm run build`, the bundle copied into the throwaway).
  */
 
@@ -18,8 +22,12 @@ import puppeteer from 'puppeteer';
 
 import { READINESS_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
 import { loadStrings } from '../tools/strings.mjs';
+import { waitForMapAnswered } from './namespace-features.mjs';
+import { setDarkTheme, settleWrites, signedInAt } from './panel-spec.mjs';
 import { leaveFirstLoginGate } from './shell-entry.mjs';
 import { rememberedShellMember, resetRememberedState } from './preferences-reset.mjs';
+
+const { ACCOUNT_PREFERENCES_PATH } = await import(new URL('../src/app/core/account-preferences.ts', import.meta.url).href);
 
 const config = browserConfig();
 const STRINGS = loadStrings();
@@ -155,5 +163,91 @@ test('Yield order: clicking the visible area\'s rail item reopens a yielded side
     assert.equal(afterRelease, afterReopen, 'releasing the reopened bar back to the yield does not rewrite the preference');
   } finally {
     await context.close();
+  }
+});
+
+const FULL_SCREEN_TOGGLE = '.ocu-panel-full-screen-toggle';
+const railItem = (label) => `.ocu-rail-item[aria-label="${label}"]`;
+
+/** What a rail click could move: the route, the side bar's area and entries, and the item the rail marks current. */
+function shellView(page) {
+  return page.evaluate(() => ({
+    path: window.location.pathname + window.location.search,
+    eyebrow: document.querySelector('app-side-bar .ocu-side-bar-eyebrow')?.textContent.trim() ?? null,
+    entries: [...document.querySelectorAll('app-side-bar .ocu-side-bar-label')].map((node) => node.textContent.trim()),
+    current: document.querySelector('.ocu-rail-item[aria-current]')?.getAttribute('aria-label') ?? null,
+  }));
+}
+
+/** Whether the item acts at all (not gated) and whether a pointer at its centre lands on it rather than on the cover. */
+function reachability(page, selector) {
+  return page.evaluate((wanted) => {
+    const button = document.querySelector(wanted);
+    const box = button.getBoundingClientRect();
+    const target = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
+    return { acts: button.getAttribute('aria-disabled') !== 'true', onButton: target === button || button.contains(target) };
+  }, selector);
+}
+
+test('DW-460: with the panel full screen a rail click changes neither the route, the side bar nor any stored preference, in light and in dark; the first click after leaving it acts again (QA)', async () => {
+  // Mutation (Rule 19, QA): drop the `panel.fullScreen()` guard from `Rail.activate` (bundle rebuilt
+  // and redeployed) -> the Logs click moves the side bar to the Logs list, and the first shell-view
+  // assertion goes red.
+  const { context, page } = await signedInAt(browser, config, USERS_URL);
+  const writes = [];
+  try {
+    await waitForMapAnswered(page, config.navigationTimeoutMs);
+    await page.waitForSelector('app-side-bar nav.ocu-side-bar', { timeout: config.navigationTimeoutMs });
+    const before = await shellView(page);
+    assert.ok(before.entries.length > 0, `the side bar lists the Permissions screens: ${JSON.stringify(before)}`);
+    const storedBefore = await rememberedShellMember('sideBarOpen');
+
+    await page.click(FULL_SCREEN_TOGGLE);
+    await page.waitForFunction(() => document.querySelector('.ocu-shell-content').hasAttribute('inert'), {
+      timeout: config.navigationTimeoutMs,
+    });
+    page.on('request', (request) => {
+      if (request.method() !== 'GET' && request.url().includes(ACCOUNT_PREFERENCES_PATH)) writes.push(`${request.method()} ${request.postData() ?? ''}`);
+    });
+
+    for (const dark of [false, true]) {
+      const theme = dark ? 'dark' : 'light';
+      await setDarkTheme(page, dark);
+      for (const label of [STRINGS.navAreaLogs, STRINGS.navAreaHome]) {
+        assert.deepEqual(
+          await reachability(page, railItem(label)),
+          { acts: true, onButton: true },
+          `the ${label} item is live beside the cover, so its click arrives (${theme})`
+        );
+        await page.click(railItem(label));
+        await settleWrites();
+        assert.deepEqual(await shellView(page), before, `the ${label} click moved nothing behind the cover (${theme})`);
+      }
+    }
+    assert.deepEqual(writes, [], 'and no click reached the preferences route');
+    assert.equal(await rememberedShellMember('sideBarOpen'), storedBefore, 'and the instance holds the side bar state it held before');
+
+    // The same click, once full screen is left, acts: the clicks above were delivered and refused.
+    await page.click(FULL_SCREEN_TOGGLE);
+    await page.waitForFunction(() => !document.querySelector('.ocu-shell-content').hasAttribute('inert'), {
+      timeout: config.navigationTimeoutMs,
+    });
+    await page.click(railItem(STRINGS.navAreaLogs));
+    await page.waitForFunction(
+      (eyebrow) => document.querySelector('app-side-bar .ocu-side-bar-eyebrow')?.textContent.trim() !== eyebrow,
+      { timeout: config.navigationTimeoutMs },
+      before.eyebrow
+    );
+    // The write is fire and forget, so the instance is read until it holds the open state.
+    const deadline = Date.now() + config.navigationTimeoutMs;
+    let stored = await rememberedShellMember('sideBarOpen');
+    while (stored !== '1' && Date.now() < deadline) {
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      stored = await rememberedShellMember('sideBarOpen');
+    }
+    assert.equal(stored, '1', 'the click that acts stores the open state, which is the write full screen withheld');
+  } finally {
+    await context.close();
+    await resetRememberedState();
   }
 });

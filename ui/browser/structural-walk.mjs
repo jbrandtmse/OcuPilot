@@ -88,6 +88,10 @@ const SOURCE_VIEWER_ARCHETYPE = 'viewer (source)';
 const SOURCE_VIEWER_IDS = {
   'system-explorer/classes/document': 'OcuPilot.Port.AtelierPort.cls',
   'system-explorer/routines/document': 'HS.HC.Info.mac',
+  // Story 20.7: a process written in BPL and a transformation written in DTL, both vendor classes every interoperability
+  // namespace holds, which the list answers with `Coded` false and the editor opens (measured 200).
+  'interoperability/processes/document': 'EnsLib.Background.Process.ExportMessageSearch.cls',
+  'interoperability/transforms/document': 'Ens.Util.DTL.Audit.MessageView.cls',
 };
 
 /**
@@ -119,6 +123,24 @@ export const SKIP = {
   // Story 20.5: a table's entries are reached from a Lookup tables name cell and need that table's name as their id, which the
   // walk does not create; interop-lookup-tables.browser-spec.mjs walks them on the probe table it creates.
   'interoperability/lookup-tables/entries': 'the entries route needs a lookup table to open, and the walk creates none',
+  // Story 20.7: HSCUSTOM holds no business rule, so the walk has no rule to open; interop-editors.browser-spec.mjs walks it on the
+  // probe rule it creates.
+  'interoperability/rules/document': 'HSCUSTOM holds no business rule, so the walk has no rule to open',
+  // Story 20.8: the Configuration diagram is reached from a Production items screen; interop-viewers.browser-spec.mjs walks it on the
+  // probe production it creates.
+  'interoperability/productions/diagram': 'HSCUSTOM holds no production, so the walk has no production to open',
+  // Story 20.9: a message's Header and Contents tabs are reached from a Messages row; interop-messages.browser-spec.mjs walks them on the
+  // headers it creates.
+  'interoperability/messages/document': 'a fresh instance holds no message; interop-messages.browser-spec.mjs walks them on the headers it creates',
+  'interoperability/messages/contents': 'a fresh instance holds no message; interop-messages.browser-spec.mjs walks them on the headers it creates',
+  // Story 20.30: a message's Trace tab is reached from the same row; interop-message-trace.browser-spec.mjs walks it on the session it plants.
+  'interoperability/messages/trace': 'a fresh instance holds no message; interop-message-trace.browser-spec.mjs walks it on the session it plants',
+  // Story 20.11: a cube's three tabs and a term list's entries need a cube or a term list to open, and HSCUSTOM is not analytics-enabled, so
+  // its Cubes and Term lists open on the refusal; analytics.browser-spec.mjs walks them in USER on its probe.
+  'analytics/cubes/document': 'HSCUSTOM is not analytics-enabled; analytics.browser-spec.mjs walks them in USER on its probe',
+  'analytics/cubes/dimensions': 'HSCUSTOM is not analytics-enabled; analytics.browser-spec.mjs walks them in USER on its probe',
+  'analytics/cubes/relationships': 'HSCUSTOM is not analytics-enabled; analytics.browser-spec.mjs walks them in USER on its probe',
+  'analytics/term-lists/entries': 'HSCUSTOM is not analytics-enabled; analytics.browser-spec.mjs walks them in USER on its probe',
 };
 
 /** The limits class the seeded entry is capped by, as the turn's own append is. */
@@ -158,7 +180,7 @@ export function removeConversation(config, key) {
 /** How long a screen may take to settle before the walk records it as unsettled. */
 const SETTLE_TIMEOUT_MS = 20000;
 
-/** A screen is settled once no `/api/ocupilot` request has been in flight for this long. */
+/** A screen is settled once no `/api/ocupilot` request or shell script has been in flight for this long. */
 const QUIET_MS = 500;
 
 /**
@@ -200,9 +222,10 @@ export function componentMinimums() {
   return tokenSizedClasses(readFileSync(join(uiRoot, 'src', 'styles', '_components.scss'), 'utf8'));
 }
 
-/** Whether a declared screen can only be opened at `<route>/<id>`. */
+/** Whether a declared screen can only be opened at `<route>/<id>`: a parent-scoped one, or a viewer that takes an id. */
 export function needsId(screen) {
-  return screen.parentScope !== '' || screen.archetype === VIEWER_ARCHETYPE || screen.archetype === SOURCE_VIEWER_ARCHETYPE;
+  const viewer = screen.archetype === VIEWER_ARCHETYPE || screen.archetype === SOURCE_VIEWER_ARCHETYPE;
+  return screen.parentScope !== '' || (viewer && screen.id.kind !== 'none');
 }
 
 /** The key's route: the declared route, `/` for Home, and `/:id` where the screen takes an id. */
@@ -597,11 +620,31 @@ export async function detectScreen(page, { route, checks, viewport, theme, minim
 
 // --- Driving the shell ------------------------------------------------------------------------
 
-/** Count `/api/ocupilot` requests in flight on `page`, and when the count last moved. */
+/**
+ * Whether `request` fetches one of the shell's own script files: a `.js` under `/ocupilot/` on the
+ * page's origin. A screen's page code arrives this way when the person first opens it.
+ */
+function isShellScript(page, request) {
+  let url;
+  try {
+    url = new URL(request.url());
+  } catch {
+    return false;
+  }
+  if (!url.pathname.startsWith('/ocupilot/') || !url.pathname.endsWith('.js')) return false;
+  const here = page.url();
+  return !/^https?:/.test(here) || url.origin === new URL(here).origin;
+}
+
+/**
+ * Count `/api/ocupilot` requests, and the shell's own `.js` requests, in flight on `page`, and when
+ * the count last moved. The scripts are counted so a screen is never judged settled before its code
+ * has arrived.
+ */
 function trackRequests(page) {
   const state = { inflight: new Set(), last: Date.now() };
   page.on('request', (request) => {
-    if (!request.url().includes('/api/ocupilot')) return;
+    if (!request.url().includes('/api/ocupilot') && !isShellScript(page, request)) return;
     state.inflight.add(request);
     state.last = Date.now();
   });
@@ -614,7 +657,7 @@ function trackRequests(page) {
 }
 
 /**
- * Wait until the screen is settled: no `/api/ocupilot` request in flight for `QUIET_MS`, no
+ * Wait until the screen is settled: no `/api/ocupilot` request or shell script in flight for `QUIET_MS`, no
  * `[aria-busy="true"]` left, and the fonts loaded. Answers false when it never settles.
  */
 async function settle(page, requests) {

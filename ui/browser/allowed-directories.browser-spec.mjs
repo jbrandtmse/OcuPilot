@@ -20,32 +20,23 @@ import puppeteer from 'puppeteer';
 import { browserConfig, launchOptions } from '../browser.config.mjs';
 import { loadStrings } from '../tools/strings.mjs';
 import { ROW_SELECTOR, viewCount, waitForRows } from './list-spec.mjs';
-import { authHeader, signedInAt } from './panel-spec.mjs';
+import { authHeader, settleViewport, signedInAt, transitionsSettled } from './panel-spec.mjs';
 import { INVARIANTS, VIEWPORTS, assertThrowaway, collapse, compare, componentMinimums, detectScreen, readBaseline } from './structural-walk.mjs';
-import { markerValue, runIris } from './turnprobe-spec.mjs';
+import { allowList as arrangeAllowList, instanceValue as readInstanceValue } from './allow-list-spec.mjs';
 
 const config = browserConfig();
 const STRINGS = loadStrings();
 const ROUTE = 'security/allowed-directories';
 const LIST_URL = `/ocupilot/${ROUTE}?ns=HSCUSTOM`;
 const READ_PATH = '/api/ocupilot/screens/security.alloweddirectories/read';
-const FIXTURE = 'OcuPilot.Test.PathPortFixture';
 
 let browser = null;
 
 /** Run one allow-list helper inside the throwaway and require it to answer OK. */
-function allowList(call) {
-  const output = runIris(config.container, [`Set sc=##class(${FIXTURE}).${call} Write "OCU-PATHSC-START:",$Select($System.Status.IsOK(sc):"ok",1:$System.Status.GetErrorText(sc)),":OCU-PATHSC-END",!`]);
-  assert.equal(markerValue(output, 'PATHSC'), 'ok', `${call} answered: ${output}`);
-}
+const allowList = (call) => arrangeAllowList(config, call);
 
 /** One value the instance computes, read through a marker. */
-function instanceValue(expression) {
-  const output = runIris(config.container, [`Write "OCU-PATHVAL-START:",${expression},":OCU-PATHVAL-END",!`]);
-  const value = markerValue(output, 'PATHVAL');
-  assert.ok(value, `${expression} answered: ${output}`);
-  return value;
-}
+const instanceValue = (expression) => readInstanceValue(config, expression);
 
 before(async () => {
   await assertThrowaway(config);
@@ -96,7 +87,8 @@ test('AC1, fresh: with no allow-list the one row is the manager directory, unres
   assert.deepEqual(await routeRows(), [{ Directory: manager, Restricted: false }], 'the read route answers the one root');
   const { context, page } = await atList();
   try {
-    assert.deepEqual(await headers(page), [STRINGS.lockColumnDirectory, STRINGS.allowedDirectoriesColumnRestricted]);
+    // The third is the visually hidden name of the row-action trigger column, which the list draws since Story 18.46 gave it row actions.
+    assert.deepEqual(await headers(page), [STRINGS.lockColumnDirectory, STRINGS.allowedDirectoriesColumnRestricted, STRINGS.commandBoxGroupActions]);
     assert.equal(await viewCount(page), 1, 'one root');
     const rows = await describeRows(page);
     assert.deepEqual(rows.map((cells) => cells.slice(0, 2)), [[manager, STRINGS.tableStatusNo]], `the manager directory, not restricted: ${JSON.stringify(rows)}`);
@@ -132,7 +124,7 @@ test('Matrix "Restricted, empty": an allow-list restricted to no root shows the 
   try {
     await page.waitForSelector('.ocu-data-table-empty-title', { timeout: config.navigationTimeoutMs });
     const title = await page.$eval('.ocu-data-table-empty-title', (element) => element.textContent.trim());
-    assert.equal(title, STRINGS.allowedDirectoriesEmpty, 'the empty state names the allow-list');
+    assert.equal(title, STRINGS.allowedDirectoriesEmptyNone, 'the empty state says no file or directory field can choose a location (Story 18.46)');
     assert.equal((await page.$$(ROW_SELECTOR)).length, 0, 'and no row is drawn');
   } finally {
     await context.close();
@@ -153,9 +145,10 @@ test('AC4 (DW-1337): the list passes the structural walk at wide light, narrow l
   try {
     await waitForRows(page, config.navigationTimeoutMs);
     for (const { viewport, theme, checks } of passes) {
-      await page.setViewport(viewport);
+      await settleViewport(page, viewport);
       await page.evaluate((isDark) => document.documentElement.classList.toggle('ocu-theme-dark', isDark), theme === 'dark');
       await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+      await transitionsSettled(page, config.navigationTimeoutMs);
       const { entries } = await detectScreen(page, { route: ROUTE, checks, viewport: viewport.width, theme, minimums });
       found.push(...entries);
     }

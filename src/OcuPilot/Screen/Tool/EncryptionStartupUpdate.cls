@@ -29,7 +29,7 @@ Parameter TOOLNAME = "security.encryptionstartup.update";
 
 Parameter DESCRIPTORCLASS = "OcuPilot.Screen.Descriptor.EncryptionStartup";
 
-Parameter DESCRIPTION = "Propose a change to this instance's encryption startup settings: how database encryption keys are activated at each start (None, Interactive, Unattended or KMIP), whether journal files, IRISSECURITY, IRISTEMP and the audit log are encrypted, the KMIP server, and which active key is the default and the journal key. It changes nothing by itself: it answers a proposal the user reviews and confirms. Send the literal 'SYSTEM' as the name and only the settings to change. Unattended with a new key file names it by root and path and an administrator the file lists as AdminName; the person types that administrator's password when confirming. A change to the audit log's encryption takes effect at the next start. Interactive is refused while the audit log, IRISSECURITY or IRISTEMP is encrypted.";
+Parameter DESCRIPTION = "Propose a change to this instance's encryption startup settings: how database encryption keys are activated at each start (None, Interactive, Unattended or KMIP), whether journal files, IRISSECURITY, IRISTEMP and the audit log are encrypted, the KMIP server, and which active key is the default and the journal key. It changes nothing by itself: it answers a proposal the user reviews and confirms. Send the literal 'SYSTEM' as the name and only the settings to change. Unattended with a new key file names it by root and path and an administrator the file lists as AdminName; the person types that administrator's password when confirming. A change to the audit log's encryption takes effect at the next start. Interactive is refused while journal encryption is on or the audit log, IRISSECURITY or IRISTEMP is encrypted, and KMIP while one of those three is.";
 
 /// <p>The port that composes the settings read and write (AD-52).</p>
 Parameter PORTCLASS = "OcuPilot.Port.EncryptionPort";
@@ -122,7 +122,7 @@ ClassMethod InputSchema(pDescriptor As %String = "") As %DynamicObject
     If tProperties.%GetTypeOf(..IdArgument()) = "object" Do tProperties.%Get(..IdArgument()).%Set("description", "Send the literal '" _ ##class(OcuPilot.Kernel.EntityRef).#RULESINGLETONID _ "': the instance has one set of encryption startup settings.", "string")
     If tProperties.%GetTypeOf("DBEncStartMode") = "object" {
         Set tMode = tProperties.%Get("DBEncStartMode")
-        Do tMode.%Set("description", "How database encryption keys are activated at each start: None, Interactive (each start asks for a key file on the console), Unattended (each start activates from a key file with no one present; not recommended) or KMIP (each start activates from a configured KMIP server). Interactive is refused while the audit log, IRISSECURITY or IRISTEMP is encrypted.", "string")
+        Do tMode.%Set("description", "How database encryption keys are activated at each start: None, Interactive (each start asks for a key file on the console), Unattended (each start activates from a key file with no one present; not recommended) or KMIP (each start activates from a configured KMIP server). Interactive is refused while journal encryption is on or the audit log, IRISSECURITY or IRISTEMP is encrypted, and KMIP while one of those three is.", "string")
         Set tEnum = []
         For tI = 1:1:$Length(##class(OcuPilot.Port.EncryptionPort).#STARTMODES, ",") Do tEnum.%Push($Piece(##class(OcuPilot.Port.EncryptionPort).#STARTMODES, ",", tI))
         Do tMode.%Set("enum", tEnum)

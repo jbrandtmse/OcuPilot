@@ -21,9 +21,9 @@ import puppeteer from 'puppeteer';
 
 import { LIVE_CONTAINER, browserConfig, launchOptions } from '../browser.config.mjs';
 import { loadStrings } from '../tools/strings.mjs';
-import { ROW_SELECTOR, filterToSubset, viewCount, waitForRows } from './list-spec.mjs';
-import { authHeader, signedInAt } from './panel-spec.mjs';
-import { sideBarLabels } from './side-bar-spec.mjs';
+import { ROW_SELECTOR, clickRowCentre, filterToSubset, viewCount, waitForRows } from './list-spec.mjs';
+import { authHeader, settleViewport, signedInAt, transitionsSettled } from './panel-spec.mjs';
+import { assertDrawnAtDeclaredIndex, sideBarLabels } from './side-bar-spec.mjs';
 import { INVARIANTS, VIEWPORTS, assertThrowaway, collapse, compare, componentMinimums, detectScreen, readBaseline } from './structural-walk.mjs';
 
 const config = browserConfig();
@@ -95,14 +95,14 @@ async function atMetrics() {
 
 // C4. Mutation (Rule 19): give MetricsList `sideBarPosition` 0 and regenerate the mirror, rebuild and
 // redeploy -> the side-bar assertion goes red; set `refreshes` true -> the chip leg goes red.
-test('C4: OS management lists Prometheus metrics at position 21, its entry opens the table under the note, and it offers no refresh', async () => {
+test('C4: OS management lists Prometheus metrics, its entry opens the table under the note, and it offers no refresh', async () => {
   const { context, page } = await signedInAt(browser, config, START_URL, VIEWPORTS.wide);
   try {
     await waitForRows(page, config.navigationTimeoutMs);
     const bar = await sideBarOf(page);
     assert.equal(bar.area, STRINGS.navAreaOsManagement);
     assert.deepEqual(bar.entries, sideBarLabels('os-management'), 'the OS management entries in their declared order');
-    assert.equal(bar.entries[20], STRINGS.metricsLabel, 'Prometheus metrics is the twenty-first');
+    assertDrawnAtDeclaredIndex(bar.entries, 'os-management', STRINGS.metricsLabel);
 
     const handles = await page.$$('app-side-bar .ocu-side-bar-item');
     let target = null;
@@ -171,6 +171,55 @@ test('C4: a labeled row shows its labels as the instance answers them', async ()
   }
 });
 
+/** The `aria-rowindex` of every row the table draws selected, in document order. */
+function selectedRowIndexes(page) {
+  return page.evaluate(
+    (rowSelector) =>
+      Array.from(document.querySelectorAll(rowSelector))
+        .filter((row) => row.getAttribute('aria-selected') === 'true')
+        .map((row) => Number(row.getAttribute('aria-rowindex'))),
+    ROW_SELECTOR
+  );
+}
+
+// Story 18.47, DW-2328. Mutation (Rule 19): make `viewKeys` answer `rowKey` for every row, rebuild and redeploy -> the
+// click selects every row of the metric and the arrow keys stop at the first of them, so both assertions go red.
+test('DW-2328: a click selects one row of a metric that repeats, and ArrowDown walks every row of it', async () => {
+  const { context, page } = await atMetrics();
+  try {
+    const rows = await routeRows();
+    const counts = new Map();
+    for (const row of rows) counts.set(row.Metric, (counts.get(row.Metric) ?? 0) + 1);
+    const haystack = (row) => `${row.Metric}\n${row.Labels}\n${row.Help}`.toLowerCase();
+    const repeated = [...counts].find(
+      ([metric, count]) => count >= 3 && rows.every((row) => row.Metric === metric || !haystack(row).includes(metric.toLowerCase()))
+    );
+    assert.ok(repeated !== undefined, 'the instance answers a metric of three rows or more that no other row mentions');
+    const [metric, expected] = repeated;
+    const total = await viewCount(page);
+    const kept = await filterToSubset(page, { text: metric, expectRow: metric, total, timeoutMs: config.navigationTimeoutMs });
+    assert.equal(kept, expected, `only ${metric}'s ${expected} rows are left`);
+
+    await clickRowCentre(page, { index: 1, cell: 3 });
+    await page.waitForFunction((rowSelector) => document.querySelectorAll(`${rowSelector}[aria-selected="true"]`).length > 0, { timeout: config.navigationTimeoutMs }, ROW_SELECTOR);
+    assert.deepEqual(await selectedRowIndexes(page), [3], 'the click selects the second row alone');
+
+    for (let step = 1; step < expected - 1; step += 1) {
+      await page.keyboard.press('ArrowDown');
+      const want = 3 + step;
+      await page.waitForFunction(
+        (rowSelector, wanted) => document.querySelector(`${rowSelector}[aria-selected="true"]`)?.getAttribute('aria-rowindex') === String(wanted),
+        { timeout: config.navigationTimeoutMs },
+        ROW_SELECTOR,
+        want
+      );
+      assert.deepEqual(await selectedRowIndexes(page), [want], `ArrowDown ${step} selects the next row alone`);
+    }
+  } finally {
+    await context.close();
+  }
+});
+
 // The DW-1337 gate, with no new allowance.
 test('Prometheus metrics passes DW-1337 wide and narrow, light and dark, with no entry beyond the baseline', async () => {
   const { context, page } = await atMetrics();
@@ -184,9 +233,10 @@ test('Prometheus metrics passes DW-1337 wide and narrow, light and dark, with no
     const minimums = componentMinimums();
     const surfaces = {};
     for (const { viewport, theme, checks } of passes) {
-      await page.setViewport(viewport);
+      await settleViewport(page, viewport);
       await page.evaluate((dark) => document.documentElement.classList.toggle('ocu-theme-dark', dark), theme === 'dark');
       await frames(page);
+      await transitionsSettled(page, config.navigationTimeoutMs);
       surfaces[theme] = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
       const { entries } = await detectScreen(page, { route: ROUTE, checks, viewport: viewport.width, theme, minimums });
       found.push(...entries);

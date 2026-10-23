@@ -44,6 +44,8 @@ const {
   CONSEQUENCE_EXPLOREREXPORTREPLACES,
   CONSEQUENCE_EXPLORERIMPORTREPLACES,
   CONSEQUENCE_EXPLORERSAVECOMPILES,
+  CONSEQUENCE_INTEROPEDITORRELOADS,
+  CODESAVECONSEQUENCES,
   CONSEQUENCE_RESTSERVICECREATE,
   CONSEQUENCE_SQLCHANGESROWS,
   CONSEQUENCE_SQLCHANGESSCHEMA,
@@ -339,7 +341,7 @@ test("the task export's consequence code resolves to the export dialog's replace
 
 // Story 19.13: a System Explorer export to a server file replaces a file already at its name, and an
 // import each document of the same name. Story 20.21: an agent's class or routine save compiles on
-// Confirm. Story 18.32: so does an agent's REST service create. Each code is the tool's own, read from its
+// Confirm. Story 20.16: an agent's editor save compiles on Confirm and opens the document again. Story 18.32: so does an agent's REST service create. Each code is the tool's own, read from its
 // class rather than restated, and its card states the published line.
 //
 // Mutation (Rule 19): drop the EXPLORER.IMPORT.REPLACES branch from `consequenceSentence` -> this goes red;
@@ -349,6 +351,7 @@ test("the System Explorer export's and import's consequence codes are the tools'
     ['ExplorerExport.cls', CONSEQUENCE_EXPLOREREXPORTREPLACES, STRINGS.taskExportReplaces],
     ['ExplorerImport.cls', CONSEQUENCE_EXPLORERIMPORTREPLACES, STRINGS.explorerImportReplaces],
     ['ExplorerSave.cls', CONSEQUENCE_EXPLORERSAVECOMPILES, STRINGS.explorerSaveCompilesOnConfirm],
+    ['InteropEditorSave.cls', CONSEQUENCE_INTEROPEDITORRELOADS, STRINGS.interopEditorSaveOnConfirm],
     ['RestServiceCreate.cls', CONSEQUENCE_RESTSERVICECREATE, STRINGS.restServiceCreateEffect],
   ]) {
     const source = readFileSync(join(uiRoot, '..', 'src', 'OcuPilot', 'Screen', 'Tool', file), 'utf8');
@@ -743,6 +746,29 @@ test('a wire row with no unchanged array parses to no rows rather than to undefi
   ]);
 });
 
+test('an unchanged row carries a classified-opaque value\'s member count through the parse and onto the card view', () => {
+  // Mutation (Rule 19): drop `count` from `parseProposalUnchanged` in `core/turn.ts` -> this goes red.
+  const [parsed] = parseProposals([
+    wireProposal({
+      unchanged: [
+        { field: 'Roles', value: '', count: 2 },
+        { field: 'Empty', value: '', count: 0 },
+        { field: 'Negative', value: '', count: -1 },
+        { field: 'Fractional', value: '', count: 1.5 },
+        { field: 'Text', value: '', count: '2' },
+      ],
+    }),
+  ]);
+  assert.deepEqual(parsed.unchanged, [
+    { field: 'Roles', value: '', count: 2 },
+    { field: 'Empty', value: '', count: 0 },
+    { field: 'Negative', value: '' },
+    { field: 'Fractional', value: '' },
+    { field: 'Text', value: '' },
+  ]);
+  assert.deepEqual(toCardView(parsed, 'Web application').unchanged, parsed.unchanged);
+});
+
 test('no generated field list makes a container disclosable while classifying a member secret', () => {
   // The one fail-OPEN shape `Kernel/Proposal/Disclosure.OrdinaryPaths` has. It admits a top-level
   // property by a row whose path is the name itself or the name with `[]`, and skips every dotted
@@ -1107,4 +1133,11 @@ test('Story 18.26: a connection delete and a token revoke state their consequenc
   const tool = (name) => readFileSync(join(uiRoot, '..', 'src', 'OcuPilot', 'Screen', 'Tool', `${name}.cls`), 'utf8');
   assert.equal(/Parameter CONSEQUENCECODE = "([^"]+)";/.exec(tool('MftConnectionDelete'))?.[1], CONSEQUENCE_MFTDELETE, 'MftConnectionDelete.cls declares the delete code the card reads');
   assert.equal(/Parameter CONSEQUENCECODE = "([^"]+)";/.exec(tool('MftConnectionRevoke'))?.[1], CONSEQUENCE_MFTREVOKE, 'MftConnectionRevoke.cls declares the revoke code the card reads');
+});
+
+// Story 20.16: the two consequences whose confirmed card reports the compile are the explorer save's and the editor save's, and no other.
+// Mutation (Rule 19): add a third code to the set -> this goes red.
+test('the code-save consequences are the explorer save\'s and the editor save\'s alone', () => {
+  assert.deepEqual([...CODESAVECONSEQUENCES].sort(), [CONSEQUENCE_EXPLORERSAVECOMPILES, CONSEQUENCE_INTEROPEDITORRELOADS].sort());
+  assert.equal(CONSEQUENCE_INTEROPEDITORRELOADS, 'INTEROP.EDITOR.RELOADS');
 });

@@ -151,11 +151,11 @@ Method TestANoOpIsRefusedAtTheMint()
     }
 }
 
-/// <p>AD-10, AD-53: a change to the type, peer verification, trusted certificates or enablement of
-/// OcuPilot's own provider configuration is refused at the mint with the sentence the kernel refuses
+/// <p>AD-10, AD-53: a change to the type, peer verification, trusted certificates, minimum TLS version, cipher list or
+/// enablement of OcuPilot's own provider configuration is refused at the mint with the sentence the kernel refuses
 /// its write with, while its description is proposed.</p>
 /// <p>Mutation (Rule 19): drop the own-configuration check from
-/// <method>OcuPilot.Screen.Tool.SslUpdate.ArgumentProblem</method> -- the four fields are minted and
+/// <method>OcuPilot.Screen.Tool.SslUpdate.ArgumentProblem</method> -- the six fields are minted and
 /// this goes red.</p>
 /// <p>Mutation (Rule 19, QA): the fresh read's precondition is itself asserted, not a silent
 /// <code>Quit</code> -- point <var>tOwn</var> at a name the instance does not hold and the read's
@@ -170,7 +170,7 @@ Method TestOcuPilotsOwnConfigurationIsRefusedAtTheMint()
     Do $$$AssertTrue($IsObject($Get(tHeld)), "and the read answers an object -- OcuPilotProvider must exist on this instance for this test to prove anything")
     If '$IsObject($Get(tHeld)) Quit
     Do ##class(OcuPilot.Test.ProposalFixture).Arm(tHeld.%ToJSON())
-    For tArgs = {"VerifyPeer": 0}, {"Enabled": false}, {"CAFile": ""}, {"Type": 1} {
+    For tArgs = {"VerifyPeer": 0}, {"Enabled": false}, {"CAFile": ""}, {"Type": 1}, {"TLSMinVersion": 8}, {"CipherList": ["ALL"]} {
         Do tArgs.%Set("Name", tOwn, "string")
         Set tSC = ..Mint(..#UPDATE, tArgs, .tProposal, .tHttp, .tFault)
         Do $$$AssertEquals(tHttp, 400, tArgs.%ToJSON() _ " is refused at the mint")

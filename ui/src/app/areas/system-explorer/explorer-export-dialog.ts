@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, input, output, signal } from '@angular/core';
 
 import type { AllowedDirectoriesStore } from '../../core/allowed-directories';
+import { pickCount } from '../../core/count-phrase';
 import { STRINGS } from '../../core/strings';
 import { Dialog } from '../../shell/dialog';
 import { ServerPathPicker, type ServerPath } from '../../shell/server-path-picker';
@@ -105,7 +106,7 @@ export class ExplorerExportDialog {
   protected get heading(): string {
     if (this.title() !== '') return this.title();
     const count = this.count();
-    return count === 1 ? STRINGS.explorerExportTitleOne : fillPlaceholders(STRINGS.explorerExportTitle, { n: count });
+    return pickCount(count, STRINGS.explorerExportTitleOne, fillPlaceholders(STRINGS.explorerExportTitle, { n: count }));
   }
 
   protected get note(): string {

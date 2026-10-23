@@ -49,7 +49,8 @@ XData Declaration
   "suggestedPrompts": [
     {"groupKey": "promptGroupTroubleshooting", "textKey": "dashboardPrompt1"},
     {"groupKey": "promptGroupCapacity", "textKey": "dashboardPrompt2"},
-    {"groupKey": "promptGroupTroubleshooting", "textKey": "dashboardPrompt3"}
+    {"groupKey": "promptGroupTroubleshooting", "textKey": "dashboardPrompt3"},
+    {"groupKey": "promptGroupTroubleshooting", "textKey": "dashboardWorkflowHealth", "workflow": "systemhealth"}
   ],
   "classicPage": "%cspapp.op.utildashboard",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},

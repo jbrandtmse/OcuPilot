@@ -483,15 +483,15 @@ Parameter AGENTVALIDATION = "AGENT.VALIDATION";
 /// <class>OcuPilot.Api.Definitions</class> -- never a 500, and never an empty 200.</p>
 Parameter AGENTNOTFOUND = "AGENT.NOTFOUND";
 
-/// <p>Machine code (AD-12, AD-39): the request body could not be read or parsed at all, so there
-/// is nothing to validate. Rendered on the <parameter>BADREQUEST</parameter> slug with
-/// <parameter>REASONAGENTBADBODY</parameter> alone.</p>
+/// <p>Machine code (AD-12, AD-39): the request body is missing, is not readable as JSON, or is not
+/// the object the request expects, so there is nothing to validate. Rendered on the
+/// <parameter>BADREQUEST</parameter> slug with <parameter>REASONAGENTBADBODY</parameter> alone.</p>
 Parameter AGENTBADBODY = "AGENT.BADBODY";
 
 /// <p>Written sentence for <parameter>AGENTBADBODY</parameter> (AD-39). The raw
 /// <class>%Status</class> the read reported is written to the log and never to the wire, because
 /// it is vendor-shaped text naming internal classes.</p>
-Parameter REASONAGENTBADBODY = "The request body could not be read as JSON. Send a JSON object, or no body at all.";
+Parameter REASONAGENTBADBODY = "The request body is missing or is not the JSON object this request expects.";
 
 /// <p>Machine code (Story 4.4, AD-39): <code>PUT /agent/context</code>'s body carries anything
 /// other than exactly the boolean member <code>share</code> -- an absent, badly typed or extra
@@ -920,10 +920,12 @@ Parameter TOOLRESULTTOOLARGE = "TOOL.RESULTTOOLARGE";
 /// no directive are ever written.</p>
 Parameter NAVROUTEUNKNOWN = "NAV.ROUTEUNKNOWN";
 
-/// <p>Tool-result code (Story 4.7, AD-5): the call named an <code>entityId</code> against a
-/// screen whose <code>id.kind</code> is <code>none</code> or <code>composite</code>. Refused by
-/// the tool body before any announcement exists, because the tool never invents a second composite
-/// id grammar (AD-5).</p>
+/// <p>Tool-result code (Story 4.7, AD-5, DW-1462): the call named an <code>entityId</code> against a
+/// screen that takes none of its own (one with a <code>parentScope</code>, or an id of kind
+/// <code>none</code> or <code>composite</code> over several parts), or a <code>parentId</code>
+/// against a screen with no parent or whose parent's id is not one part. <code>detail.argument</code>
+/// names the refused argument. Refused by the tool body before any announcement exists, because the
+/// tool never invents a second composite id grammar (AD-5).</p>
 Parameter NAVENTITYNOTALLOWED = "NAV.ENTITYNOTALLOWED";
 
 /// <p>Tool-result code (Story 5.8, AD-21): the call named a <code>criterion</code> the target
@@ -1045,7 +1047,7 @@ Parameter REASONTOOLRESULTTOOLARGE = "The tool's result is larger than a tool re
 Parameter REASONNAVROUTEUNKNOWN = "That route is not one this instance's screens declare.";
 
 /// <p>Written sentence for <parameter>NAVENTITYNOTALLOWED</parameter>.</p>
-Parameter REASONNAVENTITYNOTALLOWED = "This screen does not take a selected row.";
+Parameter REASONNAVENTITYNOTALLOWED = "This screen cannot be opened on that item.";
 
 /// <p>Written sentence for <parameter>NAVCRITERIONUNKNOWN</parameter>.</p>
 Parameter REASONNAVCRITERIONUNKNOWN = "This screen declares no such filter.";
@@ -1233,11 +1235,15 @@ ClassMethod ReasonForToolCode(pCode As %String) As %String
     If $Extract(pCode, 1, 8) = "SQLPRIV." Set tReason = ##class(OcuPilot.Api.SqlPrivilegeError).ReasonFor(pCode)
     If $Extract(pCode, 1, 6) = "DOCDB." Set tReason = ##class(OcuPilot.Api.DocDbError).ReasonFor(pCode)
     If $Extract(pCode, 1, 8) = "INTEROP." Set tReason = ##class(OcuPilot.Api.InteropError).ReasonFor(pCode)
+    If $Extract(pCode, 1, 10) = "ANALYTICS." Set tReason = ##class(OcuPilot.Api.AnalyticsError).ReasonFor(pCode)
     If $Extract(pCode, 1, 7) = "ACCESS." Set tReason = ##class(OcuPilot.Api.AccessError).ReasonFor(pCode)
     If $Extract(pCode, 1, 9) = "USERCOPY." Set tReason = ##class(OcuPilot.Api.UserCopyError).ReasonFor(pCode)
     If $Extract(pCode, 1, 10) = "PCTACCESS." Set tReason = ##class(OcuPilot.Api.PctAccessError).ReasonFor(pCode)
     If $Extract(pCode, 1, 12) = "PRIVROUTINE." Set tReason = ##class(OcuPilot.Api.RoutineAppError).ReasonFor(pCode)
     If $Extract(pCode, 1, 12) = "RESTSERVICE." Set tReason = ##class(OcuPilot.Api.RestServiceError).ReasonFor(pCode)
+    If $Extract(pCode, 1, 10) = "ALLOWLIST." Set tReason = ##class(OcuPilot.Api.AllowListError).ReasonFor(pCode)
+    If $Extract(pCode, 1, 11) = "WALLETRUNG." Set tReason = ##class(OcuPilot.Api.WalletRungError).ReasonFor(pCode)
+    If $Extract(pCode, 1, 9) = "WORKFLOW." Set tReason = ##class(OcuPilot.Api.WorkflowError).ReasonFor(pCode)
     If tReason '= "" Quit tReason
     Quit ..#REASONTOOLUNAVAILABLE
 }
@@ -1254,6 +1260,7 @@ ClassMethod ReasonForTurnError(pCode As %String) As %String
     Set tReason = ..ReasonForRestraint(pCode)
     If tReason '= "" Quit tReason
     If $Extract(pCode, 1, 9) = "PROVIDER." Quit ##class(OcuPilot.Kernel.Provider.Base).ReasonFor(pCode)
+    If $Extract(pCode, 1, 11) = "WALLETRUNG." Quit ##class(OcuPilot.Api.WalletRungError).ReasonFor(pCode)
     Quit ..#REASONTURNUNAVAILABLE
 }
 
@@ -1445,11 +1452,16 @@ ClassMethod ReasonForViolation(pCode As %String) As %String
     If $Extract(pCode, 1, 9) = "DOCDBAPP." Quit ##class(OcuPilot.Api.DocDbAppError).ReasonFor(pCode)
     If $Extract(pCode, 1, 8) = "SQLPRIV." Quit ##class(OcuPilot.Api.SqlPrivilegeError).ReasonFor(pCode)
     If $Extract(pCode, 1, 8) = "INTEROP." Quit ##class(OcuPilot.Api.InteropError).ReasonFor(pCode)
+    If $Extract(pCode, 1, 10) = "ANALYTICS." Quit ##class(OcuPilot.Api.AnalyticsError).ReasonFor(pCode)
     If $Extract(pCode, 1, 7) = "ACCESS." Quit ##class(OcuPilot.Api.AccessError).ReasonFor(pCode)
     If $Extract(pCode, 1, 9) = "USERCOPY." Quit ##class(OcuPilot.Api.UserCopyError).ReasonFor(pCode)
     If $Extract(pCode, 1, 10) = "PCTACCESS." Quit ##class(OcuPilot.Api.PctAccessError).ReasonFor(pCode)
     If $Extract(pCode, 1, 12) = "PRIVROUTINE." Quit ##class(OcuPilot.Api.RoutineAppError).ReasonFor(pCode)
     If $Extract(pCode, 1, 12) = "RESTSERVICE." Quit ##class(OcuPilot.Api.RestServiceError).ReasonFor(pCode)
+    If $Extract(pCode, 1, 10) = "ALLOWLIST." Quit ##class(OcuPilot.Api.AllowListError).ReasonFor(pCode)
+    If $Extract(pCode, 1, 7) = "EGRESS." Quit ##class(OcuPilot.Api.EgressError).ReasonFor(pCode)
+    If $Extract(pCode, 1, 11) = "WALLETRUNG." Quit ##class(OcuPilot.Api.WalletRungError).ReasonFor(pCode)
+    If $Extract(pCode, 1, 6) = "DOCDB." Quit ##class(OcuPilot.Api.DocDbError).ReasonFor(pCode)
     Quit ""
 }
 
@@ -1612,12 +1624,37 @@ ClassMethod ReasonForNamespace(pCode As %String) As %String
 /// <p>Every <code>AGENT.*</code> field-level violation code that carries a sentence, as a
 /// <class>%List</class>. Exists so a test can hold <method>ReasonForViolation</method> to the code
 /// vocabulary without re-spelling either, which is what catches a code added with no sentence
-/// behind it. The list is <code>AGENT.*</code> only because its test sweeps that prefix; the two
-/// <code>ACCOUNT.*</code> field codes are held instead by
-/// <class>OcuPilot.Test.AccountPasswordWire</class>, which asserts each sentence over the wire.</p>
+/// behind it. The list is <code>AGENT.*</code> only because its test sweeps that prefix; the
+/// <code>ACCOUNT.*</code>, <code>PREFERENCES.*</code> and <code>HELP.*</code> field codes are held
+/// by <method>AccountViolationCodes</method>, <method>PreferencesViolationCodes</method> and
+/// <method>HelpViolationCodes</method>, and <class>OcuPilot.Test.ViolationSentenceCoverage</class>
+/// sweeps every such list.</p>
 ClassMethod ViolationCodes() As %List
 {
     Quit $ListBuild(..#AGENTNAMEREQUIRED, ..#AGENTNAMEDUPLICATE, ..#AGENTPROVIDERUNKNOWN, ..#AGENTMAXTOKENSRANGE, ..#AGENTTEMPERATURERANGE, ..#AGENTCREDTYPEUNKNOWN, ..#AGENTCREDTYPEUNAVAILABLE, ..#AGENTENVVARREQUIRED, ..#AGENTCREDNAMEREQUIRED, ..#AGENTCREDNAMELENGTH, ..#AGENTENDPOINTREQUIRED, ..#AGENTENDPOINTSCHEME, ..#AGENTENDPOINTADDRESS, ..#AGENTENDPOINTLINKLOCAL, ..#AGENTHTTPACKREQUIRED, ..#AGENTLOCALUNSUPPORTED, ..#AGENTSYSTEMPROMPTLENGTH, ..#AGENTRETENTIONRANGE, ..#AGENTITERATIONSRANGE, ..#AGENTENABLEUNVERIFIED, ..#AGENTDEFAULTDISABLED, ..#AGENTCREDENTIALREQUIRED, ..#AGENTCREDENTIALENVUNWRITABLE, ..#AGENTCREDENTIALRUNGUNAVAILABLE, ..#AGENTKEYSHAPE, ..#AGENTCREDENTIALNOTOWNED, ..#AGENTCREDENTIALNOPRIVILEGE, ..#AGENTSWITCHREASONREQUIRED, ..#AGENTSWITCHCONTEXTROWCAP, ..#AGENTSWITCHTURNSPERHOUR, ..#AGENTSWITCHCONCURRENTTURNS, ..#AGENTHOLDUSERREQUIRED, ..#AGENTHOLDREASONREQUIRED, ..#AGENTHOLDDUPLICATE)
+}
+
+/// <p>Every <code>ACCOUNT.*</code> field-level violation code, as a <class>%List</class>, for the
+/// reason <method>ViolationCodes</method> exists. <parameter>ACCOUNTPASSWORDBODY</parameter> is an
+/// envelope code with no field, and is not in it.</p>
+ClassMethod AccountViolationCodes() As %List
+{
+    Quit $ListBuild(..#ACCOUNTPASSWORDCURRENT, ..#ACCOUNTPASSWORDPOLICY)
+}
+
+/// <p>Every <code>PREFERENCES.*</code> field-level violation code, as a <class>%List</class>, for
+/// the reason <method>ViolationCodes</method> exists. <parameter>PREFERENCESBODY</parameter> is an
+/// envelope code with no field, and is not in it.</p>
+ClassMethod PreferencesViolationCodes() As %List
+{
+    Quit $ListBuild(..#PREFERENCESROUTE, ..#PREFERENCESLIMIT, ..#PREFERENCESVALUE, ..#PREFERENCESNAME, ..#PREFERENCESCHOICE)
+}
+
+/// <p>Every <code>HELP.*</code> field-level violation code, as a <class>%List</class>, for the
+/// reason <method>ViolationCodes</method> exists.</p>
+ClassMethod HelpViolationCodes() As %List
+{
+    Quit $ListBuild(..#HELPROUTE)
 }
 
 /// <p>Refusal sentence for <parameter>AGENTNAMEREQUIRED</parameter>.</p>
@@ -1636,7 +1673,7 @@ Parameter REASONAGENTMAXTOKENSRANGE = "Maximum tokens is a whole number from 1 t
 Parameter REASONAGENTTEMPERATURERANGE = "Temperature is a number from 0 to 2.";
 
 /// <p>Refusal sentence for <parameter>AGENTCREDTYPEUNKNOWN</parameter>.</p>
-Parameter REASONAGENTCREDTYPEUNKNOWN = "Choose where the key is read from: an environment variable, or a credential entry.";
+Parameter REASONAGENTCREDTYPEUNKNOWN = "Choose where the key is read from: an environment variable, a credential entry, or a wallet secret.";
 
 /// <p>Refusal sentence for <parameter>AGENTCREDTYPEUNAVAILABLE</parameter>.</p>
 Parameter REASONAGENTCREDTYPEUNAVAILABLE = "The credential store is not available in this namespace. Read the key from an environment variable instead.";

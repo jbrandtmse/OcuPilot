@@ -314,7 +314,7 @@ function displayOf(value: MemberValue): string {
         }
       </fieldset>
 
-      <div class="ocu-field ocu-oauth-server-metadata">
+      <div class="ocu-field">
         <table class="ocu-oauth-server-metadata-table" id="ocu-oauth-server-metadata" tabindex="-1">
           <caption class="ocu-field-label">{{ STRINGS.oauthServerGroupMetadata }}</caption>
           <tbody>

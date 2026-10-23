@@ -44,9 +44,11 @@ const {
   DIALOG_EDITORS,
   editorScreenFor,
   isListedScreen,
+  listForDocumentScreen,
   listedScreensForArea,
   ownIdSegment,
   parentCriteria,
+  parentIdSegment,
   parentListFor,
   routeEntityType,
   screenForRoute,
@@ -173,6 +175,10 @@ test('a side bar lists only built screens, in side-bar order', () => {
       // editor's Mappings line, among the unlisted screens in descriptor class-name order.
       'os-management/namespaces/global-mappings/edit',
       'os-management/namespaces/global-mappings',
+      // Story 18.37: Interoperability usage's unlisted Database impact and Message volume tabs, by
+      // descriptor class name.
+      'os-management/interoperability-usage/impact',
+      'os-management/interoperability-usage/volume',
       // Story 18.5: the unlisted Journal file databases and Journal file details, reached from
       // Journals, by descriptor class name.
       'os-management/journals/databases',
@@ -234,6 +240,8 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'os-management/sql-activity',
       // Story 18.11: Prometheus metrics, the twenty-first.
       'os-management/metrics',
+      // Story 18.37: Interoperability usage, the twenty-second.
+      'os-management/interoperability-usage',
       'tasks/schedule/details',
       // Story 9.7: the unlisted New Task wizard, reached from the Task schedule's Create.
       'tasks/schedule/edit',
@@ -268,6 +276,8 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'web-applications/list/edit',
       // Story 18.10: the percent-class access list, unlisted, the editor's fifth tab.
       'web-applications/list/class-access',
+      // Story 18.47: the unlisted roles list of one web application.
+      'web-applications/list/roles',
       'web-applications/list',
       'web-applications/rest-apis',
       // Story 16.2: Web sessions, the third Web applications entry.
@@ -375,7 +385,18 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'interoperability/productions/items/test',
       // Story 20.5: a lookup table's entries, unlisted and reached from a Lookup tables name cell, among the unlisted ones.
       'interoperability/lookup-tables/entries',
+      // Story 20.9: a message's Contents and Header tabs, unlisted, between the entries and the BPL editor by class name; Story 20.30's
+      // Trace tab follows them (InteropMessageTraceTab sorts after InteropMessageHeaderTab).
+      'interoperability/messages/contents',
+      'interoperability/messages/document',
+      'interoperability/messages/trace',
+      // Story 20.7: the BPL editor, unlisted, among the unlisted ones; the rule and DTL editors follow Queue messages.
+      'interoperability/processes/document',
+      // Story 20.8: the Configuration diagram, unlisted, between the BPL editor and Queue messages by class name.
+      'interoperability/productions/diagram',
       'interoperability/queues/messages',
+      'interoperability/rules/document',
+      'interoperability/transforms/document',
       // Story 20.2: Interoperability's four lists, in the classic List menu's order.
       'interoperability/productions',
       'interoperability/processes',
@@ -388,6 +409,24 @@ test('a side bar lists only built screens, in side-bar order', () => {
       // Story 20.5: Lookup tables and Business partners, listed after them.
       'interoperability/lookup-tables',
       'interoperability/business-partners',
+      // Story 20.8: the Schema viewer, listed after them.
+      'interoperability/schema-viewer',
+      // Story 20.9: Messages, listed last.
+      'interoperability/messages',
+      // Story 20.11: Analytics' four unlisted screens (a cube's three tabs and a term list's entries), then Cubes, Term lists and Folder items.
+      'analytics/cubes/dimensions',
+      'analytics/cubes/document',
+      'analytics/cubes/relationships',
+      'analytics/term-lists/entries',
+      'analytics/cubes',
+      'analytics/term-lists',
+      'analytics/folder-items',
+      // Story 20.32: Architect, Analyzer and User Portal, the three links, listed after them in position order.
+      'analytics/architect',
+      'analytics/analyzer',
+      'analytics/user-portal',
+      // Story 20.33: MDX query, listed after them at position 7.
+      'analytics/mdx-query',
       'agent/definitions/edit',
       'agent/transcripts/details',
       'agent/definitions',
@@ -449,6 +488,8 @@ test('OS management lists Processes, Locks, System usage, Databases, Integrity l
       'os-management/sql-activity',
       // Story 18.11: the twenty-first.
       'os-management/metrics',
+      // Story 18.37: the twenty-second.
+      'os-management/interoperability-usage',
     ]
   );
   // Story 18.18: Journal settings follows Journals, a listed form page of its own.
@@ -512,6 +553,18 @@ test('OS management lists Processes, Locks, System usage, Databases, Integrity l
   assert.equal(metrics.sideBarPosition, 21);
   assert.equal(metrics.rowTarget, null);
   assert.equal(metrics.refreshes, false);
+  // Story 18.37: Interoperability usage is the twenty-second entry, the first of three tabs: Database impact
+  // and Message volume are unlisted routes under it, and none refreshes.
+  const interopUsage = screenForRoute('os-management/interoperability-usage');
+  assert.equal(stringFor(interopUsage.labelKey), STRINGS.interopUsageLabel);
+  assert.equal(interopUsage.sideBarPosition, 22);
+  assert.equal(interopUsage.refreshes, false);
+  assert.deepEqual(
+    ['os-management/interoperability-usage', 'os-management/interoperability-usage/volume', 'os-management/interoperability-usage/impact'].map((route) => isListedScreen(screenForRoute(route))),
+    [true, false, false],
+    'only the first tab takes a side-bar position'
+  );
+  assert.equal(tabGroupFor(screenForRoute('os-management/interoperability-usage/impact'))?.route, 'os-management/interoperability-usage');
 });
 
 // Story 3.5. `sideBarPosition` 0 is the sentinel for routable-but-unlisted: the route table reads
@@ -796,6 +849,165 @@ test('Story 20.4: the Status tab is what an item row opens, from Production item
     'interoperability/monitor',
     'and one that names none opens the earlier listed list of the type, the Production monitor'
   );
+});
+
+// Story 20.11: a Cubes row opens the cube's Measures tab, the head of the group its Dimensions and Relationships tabs join, a
+// Relationships row opens the related cube's Measures tab, and a Term lists row opens the list's entries. The first is the
+// `<list route>/document` convention (`documentScreenFor`), the second the tab's `rowTarget`, the third the entries list's
+// `parentScope` (`childListFor`).
+//
+// Mutation (Rule 19): drop `rowTarget` from AnalyticsCubeRelationshipsTab and regenerate the mirror -> the Relationships leg goes red.
+// Change AnalyticsTermListEntryList's `parentScope` and regenerate -> the Term lists leg goes red. (A Measures tab moved off
+// `analytics/cubes/document` is refused by the mirror's own tab check before this test can run.)
+test('Story 20.11: a Cubes row opens the cube\'s Measures tab, a Relationships row the related cube\'s, and a Term lists row its entries', () => {
+  const cubes = screenForRoute('analytics/cubes');
+  assert.ok(cubes, 'Cubes is declared');
+  assert.equal(documentScreenFor(cubes)?.route, 'analytics/cubes/document', 'the Cubes name cell opens the Measures tab');
+  assert.equal(childListFor(cubes), null, 'and Cubes has no child list');
+  assert.deepEqual(
+    tabMembersFor(screenForRoute('analytics/cubes/document')).map((tab) => tab.route),
+    ['analytics/cubes/document', 'analytics/cubes/dimensions', 'analytics/cubes/relationships'],
+    'the strip reads Measures, Dimensions, Relationships'
+  );
+  const relationships = screenForRoute('analytics/cubes/relationships');
+  assert.ok(relationships, 'the Relationships tab is declared');
+  assert.deepEqual(relationships.rowTarget, { route: 'analytics/cubes/document', field: 'RelatedCube' }, 'a Relationships row opens the related cube by its name');
+  assert.equal(screenForRoute(relationships.rowTarget.route)?.built, true, 'a built screen');
+  assert.equal(hasIdRoute(screenForRoute(relationships.rowTarget.route)), true, 'keyed by an id');
+  const termLists = screenForRoute('analytics/term-lists');
+  assert.ok(termLists, 'Term lists is declared');
+  assert.equal(childListFor(termLists)?.route, 'analytics/term-lists/entries', 'the Term lists name cell opens the entries');
+  assert.equal(documentScreenFor(termLists), null, 'and Term lists pairs no document viewer');
+  assert.equal(
+    screenForUrl(`/analytics/cubes/dimensions/${encodeEntityId('OcuPilotProbeVisits')}`)?.descriptor,
+    'OcuPilot.Screen.Descriptor.AnalyticsCubeDimensionsTab',
+    'a Dimensions URL resolves to the Dimensions tab'
+  );
+  assert.equal(
+    screenForUrl(`/analytics/term-lists/entries/${encodeEntityId('OcuPilotProbeTerms')}`)?.descriptor,
+    'OcuPilot.Screen.Descriptor.AnalyticsTermListEntryList',
+    'an entries URL resolves to the entries list'
+  );
+});
+
+// Story 20.9: a Messages row's ID opens the message's Header tab, the head of the group the Contents tab joins, and a Queue
+// messages row's message id opens the same tab. The pairing is the `<list route>/document` convention (`documentScreenFor`).
+// Story 20.30: the Trace tab is the group's third member.
+//
+// Mutation (Rule 19): move InteropMessageHeaderTab off `interoperability/messages/document` -> the pairing leg and the
+// Queue messages leg go red. Drop `rowTarget` from InteropQueueMessageList -> the Queue messages leg goes red. Move the Trace tab's
+// `tab.position` to 1 -> the strip leg goes red.
+test('Story 20.9: a Messages row and a Queue messages row open the message\'s Header tab, beside its Contents and Trace tabs', () => {
+  const messages = screenForRoute('interoperability/messages');
+  assert.ok(messages, 'Messages is declared');
+  assert.equal(documentScreenFor(messages)?.route, 'interoperability/messages/document', 'the Messages name cell opens the Header tab');
+  assert.equal(childListFor(messages), null, 'and Messages has no child list');
+  const queueMessages = screenForRoute('interoperability/queues/messages');
+  assert.ok(queueMessages, 'Queue messages is declared');
+  assert.deepEqual(
+    queueMessages.rowTarget,
+    { route: 'interoperability/messages/document', field: 'MessageId' },
+    'a Queue messages row opens the Header tab by the message id'
+  );
+  assert.equal(screenForRoute(queueMessages.rowTarget.route)?.built, true, 'a built screen');
+  assert.equal(hasIdRoute(screenForRoute(queueMessages.rowTarget.route)), true, 'keyed by an id');
+  assert.deepEqual(
+    tabMembersFor(screenForRoute('interoperability/messages/document')).map((tab) => tab.route),
+    ['interoperability/messages/document', 'interoperability/messages/contents', 'interoperability/messages/trace'],
+    'the strip reads Header, Contents, Trace'
+  );
+  assert.equal(
+    screenForUrl(`/interoperability/messages/trace/${encodeEntityId('42')}`)?.descriptor,
+    'OcuPilot.Screen.Descriptor.InteropMessageTraceTab',
+    'a Trace URL resolves to the Trace tab'
+  );
+  assert.equal(
+    screenForUrl(`/interoperability/messages/contents/${encodeEntityId('42')}`)?.descriptor,
+    'OcuPilot.Screen.Descriptor.InteropMessageContentsTab',
+    'a Contents URL resolves to the Contents tab'
+  );
+});
+
+// Story 20.7: a Business rules, Business processes or Data transformations name cell opens the class in its editor
+// screen. The pairing is the `<list route>/document` convention (`documentScreenFor`), so the lists declare no row target
+// and the locator links the editor back to its list (`listForDocumentScreen`).
+//
+// Mutation (Rule 19): move one editor's route off `/document` -> that list's pairing, inverse and URL legs go red.
+test('Story 20.7: each code list pairs with its editor screen, an unlisted built id-keyed viewer, and the editor pairs back', () => {
+  const pairs = [
+    ['interoperability/rules', 'interoperability/rules/document', 'OcuPilot.Screen.Descriptor.InteropRuleEditor'],
+    ['interoperability/processes', 'interoperability/processes/document', 'OcuPilot.Screen.Descriptor.InteropProcessEditor'],
+    ['interoperability/transforms', 'interoperability/transforms/document', 'OcuPilot.Screen.Descriptor.InteropTransformEditor'],
+  ];
+  for (const [listRoute, editorRoute, descriptor] of pairs) {
+    const list = screenForRoute(listRoute);
+    assert.ok(list, `${listRoute} is declared`);
+    assert.ok(list.rowTarget == null, `${listRoute} declares no row target, so its name cell takes the document pairing`);
+    const editor = documentScreenFor(list);
+    assert.equal(editor?.route, editorRoute, `${listRoute}: the name cell opens ${editorRoute}`);
+    assert.equal(editor?.descriptor, descriptor);
+    assert.equal(editor?.archetype, 'viewer (source)');
+    assert.equal(editor?.built, true, 'built');
+    assert.equal(isListedScreen(editor), false, 'and unlisted');
+    assert.equal(hasIdRoute(editor), true, 'keyed by an id');
+    assert.equal(listForDocumentScreen(editor)?.route, listRoute, 'and the locator links it back to its list');
+    const url = `/${editorRoute}/${encodeEntityId('Demo.Probe.Thing.cls')}?ns=HSCUSTOM`;
+    assert.equal(screenForUrl(url)?.route, editorRoute, 'a document URL resolves to the editor');
+    assert.equal(ownIdSegment(editor, url), 'Demo.Probe.Thing.cls', 'and its own id is the class\'s document name');
+  }
+});
+
+// Story 20.8: the Configuration diagram is an unlisted `viewer (source)` under Productions, a child list of it, so the
+// Productions name cell keeps opening Production items (a child list sorts after `InteropItemList` by class name), and
+// the diagram's route id is the parent's, which `parentIdSegment` reads where `ownIdSegment` answers `''`. The Schema
+// viewer is a listed screen that takes no id.
+//
+// Mutation (Rule 19): declare InteropProductionDiagram `detail` -> `detailScreenFor(Productions)` answers the diagram
+// and `childListFor` no longer pairs Production items with the name cell, so the pairing legs go red.
+test('Story 20.8: the Productions name cell still opens Production items, the diagram pairs back to Productions, and its id is the production', () => {
+  const productions = screenForRoute('interoperability/productions');
+  assert.ok(productions, 'Productions is declared');
+  assert.equal(childListFor(productions)?.route, 'interoperability/productions/items', 'the name cell opens Production items');
+  assert.equal(documentScreenFor(productions), null, 'Productions has no document viewer');
+  assert.equal(detailScreenFor(productions), null, 'and no detail screen');
+  const diagram = screenForRoute('interoperability/productions/diagram');
+  assert.ok(diagram, 'the diagram is declared');
+  assert.equal(diagram.archetype, 'viewer (source)');
+  assert.equal(diagram.built, true, 'built');
+  assert.equal(isListedScreen(diagram), false, 'and unlisted');
+  assert.equal(hasIdRoute(diagram), true, 'keyed by a production');
+  assert.equal(parentListFor(diagram)?.route, 'interoperability/productions', 'the locator links it back to Productions');
+  const url = `/${diagram.route}/${encodeEntityId('Demo.Probe.Production')}?ns=USER`;
+  assert.equal(screenForUrl(url)?.route, diagram.route, 'a production URL resolves to the diagram');
+  assert.equal(parentIdSegment(diagram, url), 'Demo.Probe.Production', 'its id is the production, read as the parent\'s');
+  assert.equal(ownIdSegment(diagram, url), '', 'which a parent-scoped screen\'s own id is not');
+  assert.deepEqual(parentCriteria(diagram, url), {}, 'and it declares no criterion to put it in');
+  const viewer = screenForRoute('interoperability/schema-viewer');
+  assert.ok(viewer, 'the Schema viewer is declared');
+  assert.equal(viewer.archetype, 'viewer (source)');
+  assert.equal(isListedScreen(viewer), true, 'and listed');
+  assert.equal(hasIdRoute(viewer), false, 'with no id route');
+  assert.equal(screenForUrl(`/${viewer.route}?ns=USER`)?.route, viewer.route);
+  assert.equal(screenForUrl(`/${viewer.route}/x?ns=USER`), null, 'a route id after it names no screen');
+  const listed = listedScreensForArea('interoperability').map((screen) => screen.route);
+  assert.equal(listed.at(-2), viewer.route, 'listed before Messages (Story 20.9), the last of the area\'s side bar');
+  assert.equal(listed.at(-1), 'interoperability/messages', 'which closes the area\'s side bar');
+});
+
+test('parentIdSegment reads a parent-scoped screen\'s route id, encoded twice, and answers \'\' for any screen that is not', () => {
+  const diagram = screenForRoute('interoperability/productions/diagram');
+  for (const id of ['Demo.Probe.Production', '%Library.Probe', 'A B', 'A/B', '100%', 'caf\u00e9', '_SYSTEM']) {
+    assert.equal(parentIdSegment(diagram, `/${diagram.route}/${encodeEntityId(id)}?ns=USER`), id, id);
+  }
+  assert.equal(parentIdSegment(diagram, `/${diagram.route}?ns=USER`), '', 'the bare route has no id');
+  assert.equal(parentIdSegment(diagram, `/${diagram.route}/a/b`), '', 'two segments are no id');
+  assert.equal(parentIdSegment(diagram, '/interoperability/productions'), '', 'another route is no id');
+  const rules = screenForRoute('interoperability/rules/document');
+  const root = screenForRoute('interoperability/productions');
+  assert.equal(parentIdSegment(rules, `/${rules.route}/${encodeEntityId('Demo.Rule.cls')}`), '', 'a screen with no parent');
+  assert.equal(parentIdSegment(root, `/${root.route}/${encodeEntityId('Demo.Probe.Production')}`), '', 'a list with no parent');
+  assert.equal(parentIdSegment(screenForRoute('interoperability/schema-viewer'), '/interoperability/schema-viewer/x'), '', 'a screen with no id route');
+  assert.equal(parentIdSegment(screenForRoute(''), '/'), '', 'Home');
 });
 
 // Story 6.6, DW-1020: a sub-resource screen's route id names an entity of its parent's own
@@ -1262,6 +1474,82 @@ test('reset forgets the map, so the next principal in this tab is asked about af
   assert.equal(service.loaded(), false, 'a second principal inherits no verdict (AD-8)');
   assert.deepEqual(service.areaVerdict('logs'), UNGATED);
   assert.equal(notified, 1, 'and the shell is told, so the rail stops showing the old gating');
+});
+
+// Story 20.32 (AC1, AC3, AC6): an `external` screen's entry carries the address the instance composed, and the client
+// holds it beside the verdicts; it never composes one.
+//
+// Mutation (Rule 19): drop the `href` parse from `runLoad` -> the kept-address row goes red, and the side bar has nothing to open.
+test('the map keeps an external screen\'s href, answers an empty one for every other route, and forgets it on reset', async () => {
+  const href = '/csp/user/_DeepSee.UI.Architect.zen?$NAMESPACE=USER';
+  const api = stubApi([
+    ok(
+      mapBody([
+        {
+          key: 'analytics',
+          applies: true,
+          allowed: true,
+          screens: [
+            { route: 'analytics/cubes', allowed: true },
+            { route: 'analytics/architect', allowed: true, href },
+            { route: 'analytics/analyzer', allowed: true, href: '' },
+            { route: 'analytics/user-portal', allowed: true, href: 7 },
+          ],
+        },
+      ])
+    ),
+  ]);
+  const service = new NavigationService({ api });
+  assert.equal(service.screenHref('analytics/architect'), '', 'before the map answers there is no address');
+  await service.load();
+  assert.equal(service.screenHref('analytics/architect'), href, 'the address the entry carried');
+  assert.equal(service.screenHref('analytics/cubes'), '', 'an entry that carries none answers an empty string');
+  assert.equal(service.screenHref('analytics/analyzer'), '', 'an empty address is none');
+  assert.equal(service.screenHref('analytics/user-portal'), '', 'and so is one that is not a string');
+  assert.equal(service.screenHref('nowhere'), '', 'a route the map never mentioned has none');
+  service.reset();
+  assert.equal(service.screenHref('analytics/architect'), '', 'a second principal inherits no address');
+});
+
+test('a re-read replaces the addresses: the namespace that stopped applying carries none', async () => {
+  const href = '/csp/user/_DeepSee.UI.Analyzer.zen?$NAMESPACE=USER';
+  const api = stubApi([
+    ok(mapBody([{ key: 'analytics', applies: true, allowed: true, screens: [{ route: 'analytics/analyzer', allowed: true, href }] }])),
+    ok(mapBody([{ key: 'analytics', applies: false, allowed: true, screens: [{ route: 'analytics/analyzer', allowed: true }] }])),
+  ]);
+  const service = new NavigationService({ api });
+  await service.load();
+  assert.equal(service.screenHref('analytics/analyzer'), href);
+  service.reload();
+  await service.load();
+  assert.equal(service.screenHref('analytics/analyzer'), '', 'the second answer carried no address, so none is held');
+});
+
+// Mutation (Rule 19): drop the `appliesAnswered()` test from `screenHref` -> the moved-namespace row goes red.
+test('screenHref offers no address while the map on hand was read under a namespace the shell has left (Story 20.32)', async () => {
+  const href = '/csp/user/_DeepSee.UI.Architect.zen?$NAMESPACE=USER';
+  let namespace = 'USER';
+  const api = stubApi([ok(mapBody([{ key: 'analytics', applies: true, allowed: true, screens: [{ route: 'analytics/architect', allowed: true, href }] }]))]);
+  const service = new NavigationService({ api, namespace: () => namespace });
+  await service.load();
+  assert.equal(service.screenHref('analytics/architect'), href, 'read under USER, offered under USER');
+  namespace = 'SAMPLES';
+  assert.equal(service.screenHref('analytics/architect'), '', 'the shell moved to SAMPLES, so USER\'s address is not offered there');
+  namespace = 'USER';
+  assert.equal(service.screenHref('analytics/architect'), href, 'and it is offered again under the namespace it was read under');
+});
+
+// Mutation (Rule 19): drop the `external` skip from `firstOpenableEntry` -> the first row goes red, and Home's Analytics tile
+// would route onto a link page.
+test('firstOpenableEntry skips an external entry: an area never routes onto a link (Story 20.32)', () => {
+  const allow = (allowed) => (route) => ({ allowed: allowed.includes(route), failedPair: allowed.includes(route) ? '' : 'R:USE' });
+  const screens = listedScreensForArea('analytics');
+  const links = screens.filter((screen) => screen.archetype === 'external').map((screen) => screen.route);
+  assert.deepEqual(links, ['analytics/architect', 'analytics/analyzer', 'analytics/user-portal'], 'the area lists its three links');
+  assert.equal(firstOpenableEntry(screens, allow(links))?.route ?? null, null, 'a caller who may open only the links lands on none of them');
+  assert.equal(firstOpenableEntry(screens, allow([...links, 'analytics/cubes']))?.route, 'analytics/cubes', 'and one who may open Cubes lands there');
+  // The side bar's own entry still opens a link: openableEntry answers the screen itself.
+  assert.equal(openableEntry(screenForRoute('analytics/architect'), allow(links))?.route, 'analytics/architect');
 });
 
 test('the listing seams delegate to the mirror, so a component test can substitute a roster', () => {

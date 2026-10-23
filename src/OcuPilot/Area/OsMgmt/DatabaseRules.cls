@@ -52,7 +52,7 @@ Parameter NAMEPATTERN = "[A-Za-z][A-Za-z0-9_-]{0,63}";
 
 /// <p>The fields each wizard step validates, as <code>&lt;step&gt;=&lt;field&gt;:&lt;field&gt;</code>
 /// entries.</p>
-Parameter STEPS = "name=Name:root:path,size=Size:GlobalJournalState,resource=ResourceName,globals=Databases:Globals";
+Parameter STEPS = "name=Name:root:path,size=Size:GlobalJournalState:Encrypted,resource=ResourceName,globals=Databases:Globals";
 
 /// <p>The disk operations' endpoint and fresh read type (Story 18.4).</p>
 Parameter ACTIONSENDPOINT = "Database.Actions";
@@ -78,6 +78,10 @@ Parameter FIELDNAME = "Name";
 Parameter FIELDSIZE = "Size";
 
 Parameter FIELDRESOURCE = "ResourceName";
+
+/// <p>The create's encrypt flag, refused <parameter>OcuPilot.Api.DatabaseError.ENCRYPTNOKEY</parameter> while no
+/// database encryption key is the default (Story 18.48).</p>
+Parameter FIELDENCRYPTED = "Encrypted";
 
 Parameter FIELDTHRESHOLD = "NewVolumeThreshold";
 
@@ -121,6 +125,11 @@ ClassMethod Validate(pName As %String, pArgs As %DynamicObject, Output pViolatio
                 If '..Checks(pFields, tField) || (pArgs.%GetTypeOf(tField) = "unassigned") Continue
                 If '..WholeAtLeast(pArgs, tField, 0) Do ..Add(.pViolations, tField, "DATABASE." _ $ZConvert(tField, "U") _ ".SHAPE")
             }
+        }
+        If tCreates && ..Checks(pFields, ..#FIELDENCRYPTED) && ..Asked(pArgs, ..#FIELDENCRYPTED) {
+            Set tSC = $ClassMethod(..PortClass(), "DefaultKey", .tKeyID, .pHttpStatus, .pFault)
+            If $$$ISERR(tSC) Quit
+            If tKeyID = "" Do ..Add(.pViolations, ..#FIELDENCRYPTED, ##class(OcuPilot.Api.DatabaseError).#ENCRYPTNOKEY)
         }
         If ..Checks(pFields, ..#FIELDRESOURCE) && (pArgs.%GetTypeOf(..#FIELDRESOURCE) '= "unassigned") {
             Set tResource = ..Text(pArgs, ..#FIELDRESOURCE)
@@ -385,8 +394,9 @@ ClassMethod PortClass() As %String
     Quit $ClassMethod(..#CREATETOOL, "PortClass")
 }
 
-/// <p>Answer <code>GET /database/form[?name=&lt;n&gt;]</code>: <code>{requiredFields, rules}</code>,
-/// with <code>resources</code>, the <code>%DB_*</code> resource names, when the caller may read the
+/// <p>Answer <code>GET /database/form[?name=&lt;n&gt;]</code>: <code>{requiredFields, rules,
+/// EncryptionKeyID}</code> -- the default database encryption key's id, <code>""</code> while none is active or
+/// when the keys cannot be read -- with <code>resources</code>, the <code>%DB_*</code> resource names, when the caller may read the
 /// Resources list, and <code>resourcesRefused</code> naming the pair it lacks otherwise. With a name it
 /// adds <code>Name</code>, <code>configuration</code> (the mounting edit's fresh read) and
 /// <code>file</code> (the file edit's fresh read, <code>Directory</code> included), and
@@ -407,6 +417,9 @@ ClassMethod HandleForm() As %Status
         For tI = 1:1:$Length(..#REQUIREDFIELDS, ",") Do tRequired.%Push($Piece(..#REQUIREDFIELDS, ",", tI))
         Do tBody.%Set("requiredFields", tRequired)
         Do tBody.%Set("rules", ..Rules())
+        Set tKeySC = $ClassMethod(..PortClass(), "DefaultKey", .tKeyID, .tKeyHttp, .tKeyFault)
+        If $$$ISERR(tKeySC) Set tKeyID = ""
+        Do tBody.%Set("EncryptionKeyID", tKeyID, "string")
         Set tFailedPair = ""
         If ##class(OcuPilot.Screen.Gate).Evaluate(..#RESOURCEDESCRIPTOR, .tFailedPair) {
             Set tListSC = ..Resources(.tResources)
@@ -592,6 +605,7 @@ ClassMethod FieldOf(pCode As %String) As %String
     If tPart = "GLOBALS" Quit ..#FIELDGLOBALS
     If tPart = "SERVER" Quit "Server"
     If tPart = "REMOTEDIRECTORY" Quit "Directory"
+    If tPart = "ENCRYPT" Quit ..#FIELDENCRYPTED
     Quit ""
 }
 
@@ -604,6 +618,15 @@ ClassMethod Gate(Output pRefused As %Boolean) As %Status
     If ##class(OcuPilot.Screen.Gate).Evaluate(..#DESCRIPTORCLASS, .tFailedPair) Quit $$$OK
     Set pRefused = 1
     Quit ##class(OcuPilot.Kernel.Denial).Envelope(tFailedPair)
+}
+
+/// <p>Whether <var>pArgs</var>'s <var>pField</var> reads as true: a JSON <code>true</code>, <code>1</code> or the
+/// text <code>true</code>.</p>
+ClassMethod Asked(pArgs As %DynamicObject, pField As %String) As %Boolean [ Private ]
+{
+    Set tType = pArgs.%GetTypeOf(pField)
+    If (tType '= "boolean") && (tType '= "number") && (tType '= "string") Quit 0
+    Quit ##class(OcuPilot.Port.DatabasePort).Truthy(pArgs.%Get(pField))
 }
 
 /// <p>Whether <var>pArgs</var>'s <var>pField</var> is a whole number of at least <var>pMinimum</var>:

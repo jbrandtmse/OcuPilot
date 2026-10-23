@@ -253,6 +253,9 @@ interface HeldRoleView {
                   />
                   <span>{{ view.label }}</span>
                 </label>
+                @if (view.hasEffect) {
+                  <p class="ocu-field-caption" [id]="view.effectId">{{ view.effect }}</p>
+                }
                 @if (view.invalid) {
                   <p class="ocu-form-error" [id]="view.id + '-reason'">{{ view.reason }}</p>
                 }
@@ -740,6 +743,7 @@ export class WebAppEditorPage {
     return GENERAL_FIELDS.map((field) => {
       let effect = '';
       if (field === AUTHE_FIELD && this.store.addsUnauthenticated()) effect = STRINGS.webAppUnauthenticatedEffect;
+      if ((field === 'Enabled' || field === 'Resource') && this.store.grantsPrivileged()) effect = STRINGS.privilegedGrantEffect;
       if (field === 'Resource' && this.store.clearsResource()) effect = STRINGS.webAppNoResourceEffect;
       if (field === repointed) effect = STRINGS.webAppRepointedEffect;
       return this.fieldView(field, effect, '');

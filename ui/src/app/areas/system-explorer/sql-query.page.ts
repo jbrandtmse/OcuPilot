@@ -1,4 +1,3 @@
-import { NgTemplateOutlet } from '@angular/common';
 import { ChangeDetectionStrategy, Component, DestroyRef, InjectionToken, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 
@@ -10,6 +9,7 @@ import { ScreenStores, type ScreenStore } from '../../core/screen-store';
 import type { ScreenDeclaration } from '../../core/screens.generated';
 import { STRINGS } from '../../core/strings';
 import { ScreenActionHandler } from '../../shell/screen-action-handler';
+import { ResultGrid } from '../../shell/result-grid';
 import { WarningDialog } from '../../shell/warning-dialog';
 import { fillPlaceholders } from './code-list.store';
 import { SqlQueryState, backgroundStatusLineFor, consequenceFor, statusLineFor, type SqlQueryDeps, type SqlRows } from './sql-query.store';
@@ -39,18 +39,6 @@ interface ValueField {
   readonly value: string;
 }
 
-/** One row of the result grid as drawn. */
-interface RowView {
-  readonly key: number;
-  readonly cells: readonly string[];
-}
-
-/** One even track per column of `shown`, each at least wide enough to read. */
-function trackTemplate(shown: SqlRows | null): string {
-  const count = Math.max(1, shown?.columns.length ?? 1);
-  return `repeat(${count}, minmax(10rem, 1fr))`;
-}
-
 /**
  * System Explorer's SQL query (Story 19.6): a statement on the code surface, Max rows, Run and
  * Explain plan, and what the instance answered -- a status line, a page-owned grid of text cells, an
@@ -64,7 +52,7 @@ function trackTemplate(shown: SqlRows | null): string {
  *
  * **A query can run in the background** (Story 19.15): Run in background starts it and the Background
  * run section follows it -- its own status line, Cancel while it runs, a failed run's refusal as an
- * alert, and its rows through the same grid template as Run's. Run and Explain plan stay usable while
+ * alert, and its rows through the same `ResultGrid` as Run's. Run and Explain plan stay usable while
  * it runs. Polling stops when the page goes and resumes when it returns to a run still running.
  *
  * **Everything shown is text** (AD-11): a cell, an error and a plan are interpolated, never markup.
@@ -77,7 +65,7 @@ function trackTemplate(shown: SqlRows | null): string {
 @Component({
   selector: 'app-sql-query-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [NgTemplateOutlet, WarningDialog],
+  imports: [ResultGrid, WarningDialog],
   template: `<section class="ocu-form-page ocu-sql-query" [attr.aria-busy]="running">
     @if (hasRefusal) {
       <p class="ocu-banner ocu-banner-warning" role="alert" data-ocu-sql="refusal">{{ refusal }}</p>
@@ -145,10 +133,7 @@ function trackTemplate(shown: SqlRows | null): string {
       <pre class="ocu-source-text ocu-sql-query-plan" tabindex="0" data-ocu-sql="plan" [attr.aria-label]="STRINGS.explorerSqlPlanHeading">{{ plan }}</pre>
     }
     @if (result; as shown) {
-      <ng-container
-        [ngTemplateOutlet]="grid"
-        [ngTemplateOutletContext]="{ $implicit: shown, rows: rows, template: template, label: STRINGS.explorerSqlQueryLabel, slot: '' }"
-      />
+      <app-result-grid [answer]="shown" [label]="STRINGS.explorerSqlQueryLabel" />
     }
     @if (hasBackground) {
       <div class="ocu-sql-query-background" data-ocu-sql="background-run">
@@ -166,47 +151,10 @@ function trackTemplate(shown: SqlRows | null): string {
           <pre class="ocu-source-text ocu-sql-query-message" tabindex="0" data-ocu-sql="background-message" [attr.aria-label]="backgroundStatusLine">{{ backgroundMessage }}</pre>
         }
         @if (backgroundResult; as shown) {
-          <ng-container
-            [ngTemplateOutlet]="grid"
-            [ngTemplateOutletContext]="{ $implicit: shown, rows: backgroundRows, template: backgroundTemplate, label: STRINGS.explorerSqlBackgroundHeading, slot: 'background-' }"
-          />
+          <app-result-grid [answer]="shown" [label]="STRINGS.explorerSqlBackgroundHeading" [slot]="backgroundSlot" />
         }
       </div>
     }
-    <ng-template #grid let-shown let-rows="rows" let-template="template" let-label="label" let-slot="slot">
-      <div class="ocu-data-table-frame">
-        <div
-          class="ocu-data-table-grid ocu-sql-query-results"
-          role="table"
-          [attr.data-ocu-sql]="slot + 'results'"
-          [attr.aria-label]="label"
-          [attr.aria-rowcount]="shown.rows.length + 1"
-        >
-          <div class="ocu-data-table-head" role="rowgroup">
-            <div class="ocu-data-table-row ocu-data-table-header-row" role="row" aria-rowindex="1" [style.grid-template-columns]="template">
-              @for (column of shown.columns; track $index) {
-                <div class="ocu-data-table-header-cell" role="columnheader">
-                  <span class="ocu-data-table-header-label">{{ column }}</span>
-                </div>
-              }
-            </div>
-          </div>
-          <div class="ocu-data-table-viewport">
-            <div class="ocu-data-table-body" role="rowgroup">
-              @for (row of rows; track row.key) {
-                <div class="ocu-data-table-row" role="row" [attr.aria-rowindex]="row.key + 2" [style.grid-template-columns]="template">
-                  @for (cell of row.cells; track $index) {
-                    <div class="ocu-data-table-cell" role="cell">
-                      <span class="ocu-data-table-text ocu-sql-query-cell" [attr.data-ocu-sql]="slot + 'cell'">{{ cell }}</span>
-                    </div>
-                  }
-                </div>
-              }
-            </div>
-          </div>
-        </div>
-      </div>
-    </ng-template>
     @if (confirming) {
       <app-warning-dialog
         [verb]="STRINGS.explorerSqlConfirmTitle"
@@ -224,6 +172,9 @@ export class SqlQueryPage {
   private readonly scope = inject(ScopeService);
 
   protected readonly STRINGS = STRINGS;
+
+  /** The prefix the Background run section's grid carries on its `data-ocu-sql` values. */
+  protected readonly backgroundSlot = 'background-';
 
   protected readonly screen: ScreenDeclaration | null;
 
@@ -325,14 +276,6 @@ export class SqlQueryPage {
     return answer !== null && answer.outcome === 'rows' ? answer.result : null;
   }
 
-  protected get backgroundRows(): readonly RowView[] {
-    return (this.backgroundResult?.rows ?? []).map((cells, key) => ({ key, cells }));
-  }
-
-  protected get backgroundTemplate(): string {
-    return trackTemplate(this.backgroundResult);
-  }
-
   protected get refusal(): string {
     this.generation();
     return this.state.refusal();
@@ -388,15 +331,6 @@ export class SqlQueryPage {
     this.generation();
     const answer = this.state.answer();
     return answer !== null && answer.outcome === 'rows' ? answer.result : null;
-  }
-
-  protected get rows(): readonly RowView[] {
-    return (this.result?.rows ?? []).map((cells, key) => ({ key, cells }));
-  }
-
-  /** One even track per column, each at least wide enough to read. */
-  protected get template(): string {
-    return trackTemplate(this.result);
   }
 
   /** Whether a confirmation waits on Proceed. */

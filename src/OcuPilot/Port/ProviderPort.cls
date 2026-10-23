@@ -70,12 +70,20 @@ Parameter INVOKEPAIRS As %String = {##class(OcuPilot.Screen.Gate).FloorPairSpec(
 /// <p>The subsystem this port's log lines are written under.</p>
 Parameter LOGSUBSYSTEM = "providerport";
 
-/// <p>The message id <method>Security.SSLConfigs.Exists</method> reports for a configuration that
-/// is genuinely absent, which is what separates "not there" from "could not look" -- the method
-/// answers 0 for both. Probed on this build: an absent name answers 0 carrying
-/// <code>ERROR #979: SSL configuration &lt;name&gt; does not exist</code>, a present one answers 1
-/// carrying <code>$$$OK</code>.</p>
-Parameter SSLABSENTCODE = 979;
+/// <p>The answers <method>SslConfigurationState</method> gives.</p>
+Parameter TLSOK = "ok";
+
+Parameter TLSABSENT = "absent";
+
+Parameter TLSUNVERIFIED = "unverified";
+
+Parameter TLSWEAK = "weak";
+
+/// <p>The lowest <code>TLSMinVersion</code> a call may go through (TLS 1.2; <code>$$$TLSv12</code>): the configuration's
+/// floor must be at least this, so it negotiates nothing older (AD-32).</p>
+Parameter MINTLSVERSION As INTEGER = 16;
+
+Parameter TLSUNAVAILABLE = "unavailable";
 
 /// <p>Make one provider call against the stored definition <var>pDefinitionId</var>.
 /// <b>Always returns <code>$$$OK</code></b>; see this class's header for the output shape.</p>
@@ -235,8 +243,8 @@ ClassMethod InvokeDraft(ByRef pValues, ByRef pMessages, ByRef pTools, pSystemPro
 
 /// <p>Everything both entries do once the gate has answered: resolve the provider's catalog row,
 /// judge the endpoint's resolved address, resolve the instance's outbound settings, judge the
-/// configured proxy's resolved address, confirm the TLS configuration, and hand the call to the
-/// adapter the row names.</p>
+/// configured proxy's resolved address, confirm the TLS configuration exists and still requires the server's
+/// certificate (<method>SslConfigurationState</method>), and hand the call to the adapter the row names.</p>
 /// <p><b>A configured proxy is a destination too</b> (AD-32, AD-42). Its host is judged by the same
 /// policy as the endpoint, with the definition's own marked-local flag and its row's local escape,
 /// and a refusal is <code>PROVIDER.EGRESS</code> naming the proxy with no socket opened. An on-host
@@ -331,9 +339,14 @@ ClassMethod Dispatch(ByRef pValues, ByRef pMessages, ByRef pTools, pSystemPrompt
         Set tSettings("maxAttempts") = +pValues("maxAttempts")
     }
     If ..IsHttps(tEndpoint) {
-        If ..SslConfigurationMissing(tSettings("sslConfiguration")) {
+        ; The configuration the call goes through must, at this call, exist and be an enabled client that requires
+        ; the server's certificate, however it came to be otherwise -- the classic portal included (AD-32). The read
+        ; is the same for every caller (AD-9), and a refusal sends nothing.
+        Set tTlsState = ..SslConfigurationState(tSettings("sslConfiguration"))
+        If tTlsState '= ..#TLSOK {
             Set pHttpStatus = ##class(OcuPilot.Kernel.Provider.Base).HttpFor(##class(OcuPilot.Api.Error).#PROVIDERTLS)
-            Set pFault = ##class(OcuPilot.Kernel.Fault).Build(##class(OcuPilot.Api.Error).#UNAVAILABLE, ##class(OcuPilot.Api.Error).#PROVIDERTLS, ##class(OcuPilot.Kernel.Provider.Base).ReasonFor(##class(OcuPilot.Api.Error).#PROVIDERTLS) _ ": " _ tSettings("sslConfiguration"))
+            Set pFault = ##class(OcuPilot.Kernel.Fault).Build(##class(OcuPilot.Api.Error).#UNAVAILABLE, ##class(OcuPilot.Api.Error).#PROVIDERTLS, ##class(OcuPilot.Kernel.Provider.Base).TlsReason(tTlsState, tSettings("sslConfiguration"), ##class(OcuPilot.Kernel.State.Base).#SSLCONFIG))
+            Do ..LogRaw($Case(tTlsState, ..#TLSABSENT: "the TLS configuration this call would go through is absent, so nothing was sent", ..#TLSUNAVAILABLE: "the TLS configuration this call would go through could not be read, so nothing was sent", ..#TLSWEAK: "the TLS configuration this call would go through allows a protocol older than TLS 1.2, so nothing was sent", : "the TLS configuration this call would go through no longer requires the server's certificate, so nothing was sent"), $$$ERROR($$$GeneralError, "configuration " _ tSettings("sslConfiguration")), ##class(OcuPilot.Api.Error).#PROVIDERTLS)
             Quit
         }
     } Else {
@@ -624,42 +637,41 @@ ClassMethod IsHttps(pUrl As %String) As %Boolean [ Private ]
     Quit ($ZConvert($Piece(pUrl, "://", 1), "L") = "https")
 }
 
-/// <p>Whether <var>pName</var> is <b>known</b> to be absent from this instance's TLS
-/// configurations: 1 only when the check ran and answered "no such configuration".</p>
-/// <p><b>A check that could not run answers 0, and the call proceeds.</b>
-/// <class>Security.SSLConfigs</class> exists only in <code>%SYS</code> (probed: it is not compiled
-/// into the install namespace) and lives behind the security database, so a caller without
-/// privilege on it cannot perform this read -- and this port escalates for nothing (AD-8). Refusing
-/// on a check that did not happen would refuse every turn for every ordinary user; proceeding
-/// leaves such a caller with the transport error the missing configuration causes anyway, while an
-/// administrator -- who is who configures this, and who AC3's scenario is about -- gets the named
-/// <code>PROVIDER.TLS</code> refusal. OcuPilot still never falls back to another configuration and
-/// never proceeds unencrypted: the request carries the name it was given, and nothing else.</p>
-/// <p>The namespace is entered once, by explicit save and restore, with the restore as the first
-/// line of the <code>Catch</code> (AD-16), and no OcuPilot class is dispatched to inside the
-/// window. Overridable so a fixture can drive the refusal without touching <code>%SYS</code>.</p>
-ClassMethod SslConfigurationMissing(pName As %String) As %Boolean
+/// <p>Whether a call may go through the TLS configuration <var>pName</var> (Story 18.40, AD-32, AD-9): one of
+/// <parameter>TLSOK</parameter> when it exists, is enabled, is a client, has <code>VerifyPeer</code> of 1 or more and a
+/// <code>TLSMinVersion</code> of TLS 1.2 or later,
+/// <parameter>TLSABSENT</parameter> when no such configuration exists, <parameter>TLSUNVERIFIED</parameter> when it
+/// exists and is a server, disabled or below that, <parameter>TLSWEAK</parameter> when it is otherwise sound but its
+/// <code>TLSMinVersion</code> is below <parameter>MINTLSVERSION</parameter>, and <parameter>TLSUNAVAILABLE</parameter>
+/// when the read did not answer. The <code>CipherList</code> is not judged here: no vendor API expands it, and TLS 1.3's
+/// suites are authenticated-encryption only (inference). An empty name asks nothing and answers <parameter>TLSOK</parameter>, which is the marked-local plain-HTTP
+/// path.</p>
+/// <p><b>The same answer for every caller.</b> The read is
+/// <method>OcuPilot.Kernel.State.Base.GuardedSslConfigRead</method>'s, through its own privileged routine application
+/// and unwound before this method returns, so what the calling account may read of the security database does not
+/// decide it. <b>A read that did not answer refuses</b> rather than proceeds: it is a fault in OcuPilot's own install,
+/// and a call made without knowing whether verification is on is the call this check exists to stop. OcuPilot never
+/// falls back to another configuration and never proceeds unencrypted: the request carries the name it was given.</p>
+/// <p>Overridable so a fixture can drive each branch without touching <code>%SYS</code>.</p>
+ClassMethod SslConfigurationState(pName As %String) As %String
 {
-    Set tMissing = 0
-    Set tOrigNS = $NAMESPACE
+    If pName = "" Quit ..#TLSOK
+    Set tState = ..#TLSUNAVAILABLE
     Try {
-        If pName = "" Quit
-        Set $NAMESPACE = "%SYS"
-        Set tExists = ##class(Security.SSLConfigs).Exists(pName, .tConfig, .tStatus)
-        Set tConfig = ""
-        Set $NAMESPACE = tOrigNS
-        ; Only the vendor's own "does not exist" answer counts as absent. Exists() returns 0 both
-        ; for a configuration that is not there and for a read it could not perform, so testing the
-        ; return value alone would score a caller with no privilege on the security database as
-        ; "configuration missing" and refuse their every turn -- the opposite of this method's
-        ; contract. Measured on this build: absent answers 0 with code 979, present answers 1 with
-        ; an OK status.
-        If 'tExists Set tMissing = (("," _ $System.Status.GetErrorCodes(tStatus) _ ",") [ ("," _ ..#SSLABSENTCODE _ ","))
+        Do ##class(OcuPilot.Kernel.State.Base).GuardedSslConfigRead(pName, .tExists, .tType, .tEnabled, .tVerifyPeer, .tUnavailable, .tMinVersion)
+        If +$Get(tUnavailable) {
+            Set tState = ..#TLSUNAVAILABLE
+        } ElseIf '+$Get(tExists) {
+            Set tState = ..#TLSABSENT
+        } ElseIf (+$Get(tType) = 0) && (+$Get(tEnabled) = 1) && (+$Get(tVerifyPeer) >= 1) {
+            Set tState = $Select(+$Get(tMinVersion) >= ..#MINTLSVERSION: ..#TLSOK, 1: ..#TLSWEAK)
+        } Else {
+            Set tState = ..#TLSUNVERIFIED
+        }
     } Catch ex {
-        Set $NAMESPACE = tOrigNS
-        Set tMissing = 0
+        Set tState = ..#TLSUNAVAILABLE
     }
-    Quit tMissing
+    Quit tState
 }
 
 /// <p>Set the three outputs to the shape a failure carries, so every refusal below can set only

@@ -8,9 +8,9 @@
 # its own project name, its own container name, its own host ports (never 52774 or 1973) and its
 # own data directory, and `down` takes `-v` so nothing of it survives.
 #
-# The `restart`, `depends_on`, `healthcheck` and `command` keys, and the one-shot `durable-init`
-# service, are copied from docker-compose.yml on purpose, so a start behaves on the throwaway as it
-# would there. Copy them again when they change; `ui/tools/ci.test.mjs` holds the two equal.
+# The `restart`, `stop_grace_period`, `depends_on`, `healthcheck` and `command` keys, and the one-shot
+# `durable-init` service, are copied from docker-compose.yml on purpose, so a start behaves on the
+# throwaway as it would there. Copy them again when they change; `ui/tools/ci.test.mjs` holds the two equal.
 #
 # Beside the arming variables, its environment carries OCUPILOT_LOAD_TESTS: "1", which
 # docker-compose.yml does not: it makes container-start.sh compile the roster's test-scope package
@@ -109,10 +109,40 @@ fi
 case "$DIR" in
     *..*) echo "ci-throwaway: '$DIR' contains '..', which walks out of any root this could check; a throwaway's directory is removed recursively, so it must name its scratch root directly"; exit 2 ;;
 esac
+# Every trailing slash comes off, so a root spelled `/tmp//` is the root and not a directory under
+# it. Then the spelling must be plain: `//` and `/./` name a directory the case below reads as
+# inside a root, and `/.` at the end is the root itself.
+while [ "$DIR" != "${DIR%/}" ]; do
+    DIR="${DIR%/}"
+done
 case "$DIR" in
-    /tmp/?*|/private/tmp/?*|"${TMPDIR:-/nonexistent-tmpdir}"?*|"${HOME_ROOT:-/nonexistent-home}/.ocupilot-throwaways"/?*) ;;
+    *//*|*/./*|*/.) echo "ci-throwaway: '$DIR' must name its directory plainly, with no '//', '/./' or trailing '/.'; a throwaway's directory is removed recursively"; exit 2 ;;
+esac
+# The $TMPDIR arm is written with its own separator and from a TMPDIR stripped of its trailing
+# slashes: a TMPDIR of `/` would otherwise make the arm `/?*`, which passes every absolute path,
+# and a TMPDIR of `/tmp` would make `/tmpanything` a sibling that passes as if it were inside. A
+# TMPDIR that is not absolute admits nothing.
+SCRATCH_TMPDIR="${TMPDIR:-/nonexistent-tmpdir}"
+while [ "$SCRATCH_TMPDIR" != "${SCRATCH_TMPDIR%/}" ]; do
+    SCRATCH_TMPDIR="${SCRATCH_TMPDIR%/}"
+done
+case "$SCRATCH_TMPDIR" in
+    /?*) ;;
+    *) SCRATCH_TMPDIR=/nonexistent-tmpdir ;;
+esac
+case "$DIR" in
+    /tmp/?*|/private/tmp/?*|"$SCRATCH_TMPDIR"/?*|"${HOME_ROOT:-/nonexistent-home}/.ocupilot-throwaways"/?*) ;;
     *) echo "ci-throwaway: '$DIR' is not under a scratch root; a throwaway's directory is removed recursively, so it must be under /tmp, /private/tmp, \$TMPDIR or \$HOME/.ocupilot-throwaways"; exit 2 ;;
 esac
+# A link as the directory would carry the removal of its data directory below out of the scratch
+# root, and a link as the data directory would hand a recreated container a directory outside it to
+# mount and write. A link further up the path is not refused.
+for LINK in "$DIR" "$DIR/data"; do
+    if [ -L "$LINK" ]; then
+        echo "ci-throwaway: '$LINK' is a symbolic link; a throwaway's directory is removed recursively, so it must be a real directory under its scratch root"
+        exit 2
+    fi
+done
 
 COMPOSE_FILE="$DIR/compose.yml"
 
@@ -199,6 +229,7 @@ services:
     image: $IMAGE
     container_name: $PROJECT
     restart: on-failure:3
+    stop_grace_period: 60s
     depends_on:
       durable-init:
         condition: service_completed_successfully
@@ -229,6 +260,7 @@ services:
       # trusting a doc comment to keep it off a development instance.
       # classes: LogOlderFilesWire, LogSecondarySeed, LogSecondaryWire, LogSourceRotation
       # classes: LogHubWire
+      # classes: LogTailWire
       OCUPILOT_ALLOW_LOG_ROTATION: "1"
       # Every class that creates or deletes IRIS principals, or the OAuth 2.0 configuration
       # objects handled the same way, or the instance's file-system access allow-list. Same
@@ -275,8 +307,12 @@ services:
       # classes: FindingsWire, GuardrailsWire
       # classes: LogHubWire, PathPort, PathPortInstance, PathPortPrivilege
       # classes: PathPortServed
+      # classes: AllowListPort, AllowedDirectorySave
+      # classes: AllowedDirectoryScreen
       # classes: PermissionCheck, EffectiveUser
       # classes: LedgerSearchWire
+      # classes: WalletRung
+      # classes: WalletRungRoles
       # classes: NamespaceWriteGate
       # The enable-interop gate class also enables interoperability on a probe namespace as its principal.
       # classes: NamespaceInteropGate
@@ -401,6 +437,9 @@ services:
       # routines by the screens' routes and the agent's reads, and confirms an update built from those reads
       # (Story 18.12).
       # classes: RoutineAppListsRead
+      # The web application roles read class creates probe web applications named ocuprobe1847, reads their roles by the
+      # screen's route and the agent's read, and confirms an update built from that read (Story 18.47).
+      # classes: WebAppRolesRead
       # The REST service classes create and delete probe services named OcuProbe1832, and the gate class writes them as
       # principals holding the REST API explorer's pairs and each without one (Story 18.32).
       # classes: RestServiceGate, RestServiceWrite
@@ -425,6 +464,9 @@ services:
       # The Dashboard drill-downs' gate class signs in as probe principals each missing one pair the four screens
       # require, and reads the four as them and as a principal holding both (Story 18.36).
       # classes: DashboardDrillDownGate
+      # The Interoperability usage gate class signs in as probe principals each missing one pair the three tabs
+      # require, and reads the three as them and as a principal holding both (Story 18.37).
+      # classes: InteropUsageGate
       # The interoperability control class compiles and runs a probe production in USER and starts,
       # stops, restarts, updates and recovers it; its descriptor class compiles the probe classes in USER;
       # its gate class signs in as probe principals each
@@ -477,9 +519,46 @@ services:
       # the running one, leaves a waiting test's answer node, audits a failed test, follows the agent's session into the item's
       # Messages tab, and dispatches calls whose fields name a credential through the agent's tool loop.
       # classes: InteropHostTestEdges
+      # The data transformation test classes compile and run probe data transformations in USER, with no probe production (Story 20.27):
+      # the test class runs them from both callers and reads what each run leaves behind, the refusals class meets every outcome and
+      # refusal, and the gate class signs in as probe principals each missing one pair the list, the read or the test requires.
+      # classes: InteropTransformTest, InteropTransformTestGate, InteropTransformTestRefusals
+      # The message resend classes compile and run the probe production in USER and send messages to it (Story 20.31): the resend class
+      # resends from both callers and meets every verdict, the edit class edits a string request, an HL7 message and a request of every
+      # field shape and meets every refusal, the dry-run class reads the review route, and the gate class signs in as probe principals
+      # each missing one pair a resend or an edit requires. They share one case class, which records the message store's high water
+      # first and removes everything above it after the last test. The limits class sends 100 stored messages and meets the digest, the
+      # governance key and the outcome of a refused message, and the sweep class pins the sweep the others end with.
+      # classes: DryRunRoute, InteropEditResend, InteropResend, InteropResendCase, InteropResendGate, InteropResendLimits, InteropResendSweep
+      # The editor save classes make and remove probe documents in USER (Story 20.16): the gate class signs in as probe principals each
+      # missing one pair an editor tool requires, and the turn class runs a scripted turn on a probe transformation and confirms its save.
+      # classes: InteropEditorSaveGate, InteropEditorSaveTurn
       # classes: ExplorerSourceTurn
       # classes: ExplorerSaveTurn
       # classes: ExplorerCreateTurn
+      # The guided-workflow classes run scripted turns on a probe class (Story 20.12): the turn class confirms two workflow
+      # proposals over HTTP and meets the one-change rule and the unknown workflow, and the gates class disables a key, sets
+      # read-only and the kill switch, or proposes deleting its own principal, between a workflow proposal and its confirm.
+      # classes: WorkflowTurn, WorkflowGates
+      # classes: StampRetention
+      # The provider TLS callers class signs in as probe principals holding %Developer, %Operator and %All (Story 18.40).
+      # classes: ProviderSslCallers
+      # The analytics classes turn analytics on for USER's default web application, compile cubes there and write a term list and folder
+      # items (Story 20.11): the port class reads them as the unit-test process, and the gate class also signs in as probe principals
+      # each missing a pair or the database READ the analytics port requires.
+      # classes: AnalyticsGate, AnalyticsPort
+      # The analytics link map class turns analytics on for USER's default web application and reads the navigation map as _SYSTEM and as
+      # probe principals each missing a DeepSee pair the Architect or Analyzer link requires (Story 20.32).
+      # classes: AnalyticsLinkMap
+      # The MDX query classes turn analytics on for USER's default web application and compile cubes there, one of 50,000 facts (Story 20.33): the
+      # port class runs MDX through the analytics port and reads the detector's answers, the job class starts runs past the route and cancels,
+      # stops and fails them, the routes class drives the three routes over HTTP as probe principals, and the gate class signs in as probe
+      # principals each missing a pair or the cache database's WRITE.
+      # classes: AnalyticsMdx, AnalyticsMdxGate, AnalyticsMdxJob, AnalyticsMdxRoutes
+      # The agent's MDX read classes use the same probe (Story 20.35): the read class runs the tool in this process and counts what it prepares, the
+      # job class bounds and stops a slow query and reads the turn's stop hook, the gate class signs in as MDX query's probe principals and as an
+      # adjusted screen, and the turn class runs scripted turns against the turnprobe row.
+      # classes: AnalyticsMdxRead, AnalyticsMdxReadGate, AnalyticsMdxReadJob, AnalyticsMdxReadTurn
       OCUPILOT_ALLOW_PRINCIPALS: "1"
       # Writes an application error to a namespace's own ^ERRORS. Same reasoning again, and one
       # degree worse: an application error cannot be un-logged, so a runner pointed elsewhere
@@ -513,6 +592,10 @@ services:
       # classes: UninstallGuard, UninstallResidue, UninstallSurvival, WebApp
       # classes: AuditEvent, AuditMarker, ConfigGate, State, Token, UnexpireScope, Version, Wire
       # classes: RetentionTask
+      # classes: InstallTarget
+      # classes: ContainerStartNamespace
+      # classes: SslReadInstall
+      # classes: ProposalTargetKey
       OCUPILOT_ALLOW_PRODUCTION_INSTALL: "1"
       # Runs the installer's EnsureSslConfiguration step under the probe profile and so creates
       # -- and leaves -- a TLS configuration in the instance's own security database. Same
@@ -523,6 +606,11 @@ services:
       # classes: ProviderSsl
       # classes: Demo, DemoFaults, FixtureNamespace, SslSave, SslSecret, SslTest
       # classes: SslWire
+      # The provider connection's classes (Story 18.40) create and delete probe configurations by exact name, and the call-time
+      # class briefly turns off peer verification on OcuPilot's own provider configuration and restores it. The callers class
+      # also briefly disables OcuPilot's TLS read application and restores it, so it is armed by this variable and by
+      # OCUPILOT_ALLOW_PRINCIPALS.
+      # classes: EgressSettingsWire, ProviderSslCallTime, ProviderSslCallers, ProviderSslNamed
       OCUPILOT_ALLOW_SSL_CONFIG: "1"
       # Turns the instance's own auditing OFF and back on through the shipped confirm path, which
       # is the widest effect any class here has: while it is off nothing on this instance is
@@ -615,6 +703,10 @@ services:
       # classes: ExplorerSourceTurn
       # classes: ExplorerSaveTurn
       # classes: ExplorerCreateTurn
+      # classes: WorkflowTurn, WorkflowGates
+      # classes: WalletRungRoles
+      # classes: InteropEditorSaveTurn
+      # classes: AnalyticsMdxReadTurn
       OCUPILOT_ALLOW_TEST_PROVIDER: "1"
       # Purges the instance's own audit database through the shipped screen route: every record
       # dated before today is removed, the agent's audit markers among them, and nothing puts one
@@ -643,6 +735,8 @@ services:
       # database and restores what the vendor's enable changes instance-wide, each object by its exact
       # name, writing %SYS security objects, tasks and ^%SYS nodes directly to do so.
       # classes: NamespaceInterop, NamespaceInteropGate
+      # The source-control classes enable a probe source-control class on USER and remove it again.
+      # classes: SourceControlProbe, SourceControlSave
       OCUPILOT_ALLOW_NAMESPACE_CONFIG: "1"
       # Creates, edits and deletes database configurations and database files in this instance's own
       # configuration, with the %DB_* resources and directories a create makes, through the shipped
@@ -720,6 +814,11 @@ services:
       # every startup setting change only to a seam port that sends nothing, and sends the vendor one
       # Settings PUT of the settings unchanged.
       # classes: EncryptionStartupWrite
+      # Story 18.48's class activates one probe database key, which sets key activation at startup to
+      # Interactive, creates one encrypted probe database over it and, on every path, deletes the database,
+      # deactivates the key and sets key activation at startup back to None through the settings PUT. It
+      # never restarts the instance.
+      # classes: DatabaseCreateEncrypted
       OCUPILOT_ALLOW_ENCRYPTION_CONFIG: "1"
     volumes:
       - $DIR/data:/durable

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * The client lint: four rule families over `ui/src`, matching `version-guard.mjs`'s
+ * The client lint: seven rule families over `ui/src`, matching `version-guard.mjs`'s
  * shape (a pure predicate per rule, a thin `main()` doing the impure work, the
  * `pathToFileURL` direct-invocation guard). Wired into `prebuild`/`prestart`
  * (`ui/package.json`) so a violation fails `npm run build` before `ng build`
@@ -41,6 +41,11 @@
  *   assertions about whatever corpus the instance happens to hold rather than about the filter
  *   (DW-368): the first fails when another installation carries one more matching row, and the
  *   second passes by accident of the corpus.
+ * - `checkTemplateClasses({templates, stylesheets, references})` -- an `ocu-` class a template
+ *   uses that no stylesheet selects, unless it is on `UNSTYLED_CLASS_HOOKS` (a hook a test reads,
+ *   or a style someone owes) or, in the file that builds it, carries a prefix on
+ *   `COMPOSED_CLASS_PREFIXES`. An allow-list entry
+ *   that no longer earns its place fails too, so the list cannot outlive the reason for it.
  *
  * Scope, stated plainly: this is a regex-based scanner over source text, not an
  * HTML or CSS parser. It is exact enough to catch what this story's own
@@ -213,6 +218,20 @@ function findLiteralTextNodes(html) {
 }
 
 /**
+ * The template regions of a file: a `.html` file is one, and a `.ts` file holds one per
+ * `template: \`...\``. `offset` is where the region starts in `text`, so a finding inside it can be
+ * given the line it has in the file.
+ */
+function templateRegions(path, text) {
+  if (path.endsWith('.html')) return [{ html: text, offset: 0 }];
+  const regions = [];
+  for (const m of text.matchAll(TEMPLATE_LITERAL_RE)) {
+    regions.push({ html: m[1], offset: m.index + m[0].indexOf(m[1]) });
+  }
+  return regions;
+}
+
+/**
  * Rule family 2: pure -- `allowedKeys` is the set (or array) of valid
  * `STRINGS` keys, so a typo'd `STRINGS.foo` reference is caught here rather
  * than only by `ng build`'s type check, with a message this tool's own shape
@@ -222,16 +241,7 @@ export function checkTemplateLiterals({ path, text, allowedKeys }) {
   const allowed = allowedKeys instanceof Set ? allowedKeys : new Set(allowedKeys);
   const errors = [];
 
-  const templates = [];
-  if (path.endsWith('.html')) {
-    templates.push({ html: text, offset: 0 });
-  } else {
-    for (const m of text.matchAll(TEMPLATE_LITERAL_RE)) {
-      templates.push({ html: m[1], offset: m.index + m[0].indexOf(m[1]) });
-    }
-  }
-
-  for (const { html, offset } of templates) {
+  for (const { html, offset } of templateRegions(path, text)) {
     // Un-sourced interpolations. Exactly two shapes fail, matching the AC's own
     // subject ("a literal ... in a component template") and its Error Handling
     // column ("server-supplied text arriving through a binding is out of scope by
@@ -576,6 +586,368 @@ export function checkFilterAssertions({ path, text }) {
   return { ok: errors.length === 0, errors };
 }
 
+// --- Rule family 7: template classes that no stylesheet selects (DW-1188) ---------------------------
+//
+// A class a template names and no stylesheet selects is one of three things: a hook a test reads, a
+// style somebody owes, or a leftover that does nothing. A build tells them apart only if the first
+// two are written down. `UNSTYLED_CLASS_HOOKS` is that writing, and an entry that stops being true
+// fails, so the list stays a statement about the tree rather than a pile of exemptions.
+//
+// Class contexts only. What decides whether a name is read is where it stands: `class="..."`,
+// `[class.ocu-x]`, the string literals of `[class]="..."`, `host: { class }` and a `*_CLASS = '...'`
+// constant. An `ocu-` id (`id="ocu-x"`, a `*Id` field) is never a class and is never read. Nothing
+// else is a class context here, so this family does not see a class set any other way:
+// `[ngClass]`, `[attr.class]`, `[className]`, a host `'[class]'` key, `@HostBinding`, a whole
+// interpolation inside `class="..."`, the variable half of a `[class]` expression that also holds a
+// literal, or a class that code sets on an element (`className =`, `classList`, an `elementNode`
+// list).
+
+/** Where a finding about the allow-lists themselves is reported. */
+const LINT_PATH = 'tools/client-lint.mjs';
+
+/**
+ * Classes a template carries that no stylesheet selects, each in a group with the reason it is
+ * allowed. Both lists are literal and sorted, as `ALLOWED_ABSOLUTE_URLS` is a literal list: adding
+ * a name is an edit a reviewer sees.
+ *
+ * - `requiresReference` groups are test hooks. A name in one fails when no `ui/browser` file and
+ *   no `*.spec.ts` file reads it, because a hook nothing reads is a leftover.
+ * - The other group is owed a style: a sibling template styles the same role, and styling these
+ *   is a visible change that belongs to a story of its own. It fails as soon as a stylesheet
+ *   selects the name.
+ */
+export const UNSTYLED_CLASS_HOOKS = [
+  {
+    reason: 'A hook a browser spec or a component spec reads; it carries no style on purpose.',
+    requiresReference: true,
+    names: [
+      'ocu-area-tile-screen',
+      'ocu-area-tile-separator',
+      'ocu-broadcast-hint',
+      'ocu-broadcast-message',
+      'ocu-broadcast-send',
+      'ocu-command-bar-journal-switch-directory',
+      'ocu-command-bar-journal-switch-file',
+      'ocu-command-bar-permission-check',
+      'ocu-command-bar-refresh-action',
+      'ocu-command-bar-sort-label',
+      'ocu-command-bar-task-import',
+      'ocu-command-bar-task-manager-suspend',
+      'ocu-command-bar-view-item',
+      'ocu-command-bar-view-menu',
+      'ocu-command-bar-view-trigger',
+      'ocu-command-box-group-actions',
+      'ocu-command-box-group-screens',
+      'ocu-command-box-list',
+      'ocu-command-box-option-label',
+      'ocu-copy-status',
+      'ocu-data-table-announcement',
+      'ocu-data-table-count',
+      'ocu-data-table-menu-label',
+      'ocu-data-table-refusal-message',
+      'ocu-details-group',
+      'ocu-details-tasks',
+      'ocu-details-tasks-none',
+      'ocu-details-tasks-table',
+      'ocu-ecp-status-consequence',
+      'ocu-ecp-status-submit',
+      'ocu-form-tab',
+      'ocu-form-tab-invalid',
+      'ocu-guardrails',
+      'ocu-guardrails-kill-switch',
+      'ocu-guardrails-limits',
+      'ocu-guardrails-read-only',
+      'ocu-guardrails-reason',
+      'ocu-guardrails-secrets',
+      'ocu-guardrails-turns',
+      'ocu-home-block-fixed',
+      'ocu-home-status',
+      'ocu-instance-segment',
+      'ocu-line-diff-text',
+      'ocu-locator-favorite-glyph',
+      'ocu-locator-status',
+      'ocu-lock-remove-consequence',
+      'ocu-lock-remove-submit',
+      'ocu-lock-remove-warning',
+      'ocu-log-cell-text',
+      'ocu-log-cell-time',
+      'ocu-log-chip-count',
+      'ocu-log-chip-word',
+      'ocu-long-block',
+      'ocu-oauth-client-metadata',
+      'ocu-oauth-resource-server-authenticator-note',
+      'ocu-oauth-server-privilege',
+      'ocu-panel-full-screen',
+      'ocu-panel-full-screen-toggle',
+      'ocu-panel-jump',
+      'ocu-panel-message-streamed',
+      'ocu-panel-new-conversation',
+      'ocu-pct-access',
+      'ocu-pct-access-add',
+      'ocu-pct-access-delete',
+      'ocu-pct-access-empty',
+      'ocu-pct-access-table',
+      'ocu-proposal-card-announcement',
+      'ocu-proposal-card-cancel',
+      'ocu-proposal-card-chevron',
+      'ocu-proposal-card-confirm',
+      'ocu-proposal-card-draft-action',
+      'ocu-proposal-card-repropose',
+      'ocu-proposal-card-summary-fields',
+      'ocu-role-member-admin',
+      'ocu-screen-permissions-add-button',
+      'ocu-screen-permissions-classic',
+      'ocu-screen-permissions-consequence',
+      'ocu-screen-permissions-fixed',
+      'ocu-screen-permissions-pair',
+      'ocu-screen-permissions-refusal',
+      'ocu-screen-permissions-remove',
+      'ocu-screen-permissions-text',
+      'ocu-status-bar-user',
+      'ocu-trace-participant',
+      'ocu-transcript-context-none',
+      'ocu-transcript-context-route',
+      'ocu-transcript-context-toggle',
+      'ocu-transcript-withheld',
+      'ocu-warning-consequence',
+      'ocu-workflow-chip-end',
+    ],
+  },
+  {
+    reason: 'Owed a style: a sibling template styles the same role and this one is not styled yet.',
+    requiresReference: false,
+    names: [
+      'ocu-field-error',
+      'ocu-link',
+      'ocu-namespace-switch-caret',
+      'ocu-routine-app-routines',
+    ],
+  },
+];
+
+/**
+ * Class names a file builds at run time, so no stylesheet check can see the whole name. Each entry
+ * is the part before the variable; the file is the one place it is built, and the stylesheets must
+ * select at least one name that starts with it.
+ */
+export const COMPOSED_CLASS_PREFIXES = [
+  {
+    prefix: 'ocu-banner-',
+    file: 'src/app/shell/list-page.ts',
+    reason: 'A list banner adds its raised case\'s severity to its classes (`bannerClass`).',
+  },
+  {
+    prefix: 'ocu-reply-heading-',
+    file: 'src/app/core/reply.ts',
+    reason: 'A reply heading carries its markdown depth.',
+  },
+];
+
+const STATIC_CLASS_RE = /(?<![\w$.:[-])class\s*=\s*(?:"([^"]*)"|'([^']*)')/g;
+const CLASS_TOGGLE_RE = /\[class\.(ocu-[A-Za-z0-9_-]+)\]/g;
+const CLASS_BINDING_RE = /\[class\]\s*=\s*(?:"([^"]*)"|'([^']*)')/g;
+const QUOTED_LITERAL_RE = /'([^']*)'|"([^"]*)"/g;
+const HOST_BLOCK_RE = /\bhost\s*:\s*(?=\{)/g;
+const HOST_CLASS_KEY_RE = /(?<![\w$.[-])['"]?class['"]?\s*:\s*(?:'([^']*)'|"([^"]*)")/g;
+const HOST_TOGGLE_KEY_RE = /['"]\[class\.(ocu-[A-Za-z0-9_-]+)\]['"]\s*:/g;
+const CLASS_CONSTANT_RE = /\b[A-Z][A-Z0-9_]*_CLASS\b\s*(?::[^=;\n]+)?=\s*(?:'([^']*)'|"([^"]*)")/g;
+const STYLES_PROPERTY_RE = /\bstyles\s*:\s*(?=[`'"[])/g;
+const STYLED_CLASS_RE = /\.(ocu-[A-Za-z0-9_-]+)/g;
+const CLASS_REFERENCE_RE = /(?<![A-Za-z0-9_-])ocu-[A-Za-z0-9_-]+/g;
+
+/** The index of the quote that closes the one at `at`, or -1 when it never closes. */
+function closingQuote(code, at) {
+  for (let i = at + 1; i < code.length; i += 1) {
+    if (code[i] === '\\') i += 1;
+    else if (code[i] === code[at]) return i;
+  }
+  return -1;
+}
+
+/** The index of the bracket that closes the `{` or `[` at `at`, skipping quoted text; -1 when none does. */
+function closingBracket(code, at) {
+  const open = code[at];
+  const close = open === '{' ? '}' : ']';
+  let depth = 0;
+  for (let i = at; i < code.length; i += 1) {
+    const ch = code[i];
+    if (ch === "'" || ch === '"' || ch === '`') {
+      i = closingQuote(code, i);
+      if (i < 0) return -1;
+    } else if (ch === open) {
+      depth += 1;
+    } else if (ch === close) {
+      depth -= 1;
+      if (depth === 0) return i;
+    }
+  }
+  return -1;
+}
+
+/**
+ * The names a class value holds, and the unfinished front of any built at run time: a token that
+ * touches an interpolation (`ocu-x-{{ n }}`) or ends in a dash (`'ocu-x-' + n`) is a prefix, since a
+ * finished class name never ends in one. Tokens that do not start with `ocu-` are not this rule's.
+ */
+function classTokens(value) {
+  const names = [];
+  const prefixes = [];
+  for (const token of value.replace(INTERPOLATION_RE, '\u0000').split(/\s+/)) {
+    if (!token.startsWith('ocu-')) continue;
+    const cut = token.indexOf('\u0000');
+    if (cut >= 0) prefixes.push(token.slice(0, cut));
+    else if (token.endsWith('-')) prefixes.push(token);
+    else names.push(token);
+  }
+  return { names, prefixes };
+}
+
+/**
+ * Pure. Every `ocu-` class a file's templates and class declarations use, as
+ * `{names: [{name, line}], prefixes: [{prefix, line}], dynamicBindings: [{line}]}`.
+ *
+ * `prefixes` are names built at run time inside a template. A `[class]` binding whose expression
+ * holds no quoted literal at all (`[class]="bannerClass"`) is a dynamic binding: its names live in
+ * code this scan does not read. Templates are read as written, comments aside.
+ */
+export function extractTemplateClassUses({ path, text }) {
+  const names = [];
+  const prefixes = [];
+  const dynamicBindings = [];
+  const note = (tokens, line) => {
+    for (const name of tokens.names) names.push({ name, line });
+    for (const prefix of tokens.prefixes) prefixes.push({ prefix, line });
+  };
+
+  for (const { html, offset } of templateRegions(path, text)) {
+    const code = blankHtmlComments(html);
+    const lineOf = (index) => lineNumberAt(text, offset + index);
+    for (const m of code.matchAll(STATIC_CLASS_RE)) note(classTokens(m[1] ?? m[2]), lineOf(m.index));
+    for (const m of code.matchAll(CLASS_TOGGLE_RE)) names.push({ name: m[1], line: lineOf(m.index) });
+    for (const m of code.matchAll(CLASS_BINDING_RE)) {
+      const literals = [...(m[1] ?? m[2]).matchAll(QUOTED_LITERAL_RE)];
+      if (literals.length === 0) dynamicBindings.push({ line: lineOf(m.index) });
+      for (const literal of literals) note(classTokens(literal[1] ?? literal[2]), lineOf(m.index));
+    }
+  }
+
+  if (path.endsWith('.ts')) {
+    const code = blankComments(text);
+    for (const m of code.matchAll(CLASS_CONSTANT_RE)) note(classTokens(m[1] ?? m[2]), lineNumberAt(code, m.index));
+    for (const host of code.matchAll(HOST_BLOCK_RE)) {
+      const at = host.index + host[0].length;
+      const end = closingBracket(code, at);
+      if (end < 0) continue;
+      const block = code.slice(at, end + 1);
+      for (const m of block.matchAll(HOST_CLASS_KEY_RE)) note(classTokens(m[1] ?? m[2]), lineNumberAt(code, at + m.index));
+      for (const m of block.matchAll(HOST_TOGGLE_KEY_RE)) names.push({ name: m[1], line: lineNumberAt(code, at + m.index) });
+    }
+  }
+  return { names, prefixes, dynamicBindings };
+}
+
+/**
+ * Pure. The `ocu-` classes a stylesheet selects: every `.ocu-x` in a `.scss` file, or in the
+ * `styles:` of a component in a `.ts` file. Comments are blanked first, so a comment that names a
+ * class to explain it does not style it.
+ */
+export function extractStyledClasses({ path, text }) {
+  const code = blankComments(text);
+  const regions = [];
+  if (path.endsWith('.ts')) {
+    for (const m of code.matchAll(STYLES_PROPERTY_RE)) {
+      const at = m.index + m[0].length;
+      const end = code[at] === '[' ? closingBracket(code, at) : closingQuote(code, at);
+      if (end > at) regions.push(code.slice(at, end + 1));
+    }
+  } else {
+    regions.push(code);
+  }
+  const styled = new Set();
+  for (const region of regions) {
+    for (const m of region.matchAll(STYLED_CLASS_RE)) styled.add(m[1]);
+  }
+  return styled;
+}
+
+/**
+ * Rule family 7: pure. `templates` are the shipped `.ts` and `.html` files under `src/app/`,
+ * `stylesheets` every `.scss` file and every shipped component file (whose `styles:` count), and
+ * `references` the files that may read a hook: `ui/browser` and the `*.spec.ts` files, each as
+ * `{path, text}`.
+ *
+ * Reported: a used class that is not styled, not on `hooks` and not under a prefix its own file
+ * declares, at each use; a class name built at run time that no declared prefix covers; a `[class]` binding with no
+ * literal name in a file that declares no prefix; and, as `stale-unstyled-class-hook`, an entry
+ * whose reason has gone. The checks that need the whole tree (an entry no template uses, a hook
+ * nothing references, a prefix nothing styles or builds) run only when `src/styles/` is among the
+ * stylesheets, so a scratch tree with a single file is judged on that file alone.
+ */
+export function checkTemplateClasses({
+  templates,
+  stylesheets,
+  references,
+  hooks = UNSTYLED_CLASS_HOOKS,
+  composedPrefixes = COMPOSED_CLASS_PREFIXES,
+}) {
+  const errors = [];
+  const wholeTree = stylesheets.some((sheet) => sheet.path.startsWith('src/styles/'));
+  const styled = new Set();
+  for (const sheet of stylesheets) {
+    for (const name of extractStyledClasses(sheet)) styled.add(name);
+  }
+  const hookNames = new Set(hooks.flatMap((group) => group.names));
+  const used = new Set();
+
+  const unstyled = (file, line, literal) => errors.push({ file, line, literal, rule: 'no-unstyled-template-class' });
+  const stale = (name, why) =>
+    errors.push({ file: LINT_PATH, line: 1, literal: `${name} -- ${why}`, rule: 'stale-unstyled-class-hook' });
+
+  for (const template of templates) {
+    const uses = extractTemplateClassUses(template);
+    for (const { name, line } of uses.names) {
+      used.add(name);
+      if (styled.has(name) || hookNames.has(name)) continue;
+      if (composedPrefixes.some((c) => c.file === template.path && name.startsWith(c.prefix))) continue;
+      unstyled(template.path, line, `${name} -- no stylesheet selects it; style it, or list it in UNSTYLED_CLASS_HOOKS with the reason`);
+    }
+    for (const { prefix, line } of uses.prefixes) {
+      if (composedPrefixes.some((c) => c.prefix === prefix && c.file === template.path)) continue;
+      unstyled(template.path, line, `${prefix}... -- a class name built at run time cannot be checked against a stylesheet; declare its prefix in COMPOSED_CLASS_PREFIXES`);
+    }
+    for (const { line } of uses.dynamicBindings) {
+      if (composedPrefixes.some((c) => c.file === template.path)) continue;
+      unstyled(template.path, line, '[class] binds an expression with no literal class name -- the names it yields cannot be checked against a stylesheet; declare the prefix in COMPOSED_CLASS_PREFIXES');
+    }
+  }
+
+  const referenced = new Set();
+  for (const reference of references) {
+    for (const m of reference.text.matchAll(CLASS_REFERENCE_RE)) referenced.add(m[0]);
+  }
+  for (const group of hooks) {
+    for (const name of group.names) {
+      if (styled.has(name)) stale(name, 'a stylesheet selects it now; remove it from UNSTYLED_CLASS_HOOKS');
+      else if (wholeTree && !used.has(name)) stale(name, 'no template uses it; remove it from UNSTYLED_CLASS_HOOKS');
+      else if (wholeTree && group.requiresReference && !referenced.has(name)) {
+        stale(name, 'no browser spec or component spec reads it, so it is not a hook; remove it from the template and from UNSTYLED_CLASS_HOOKS');
+      }
+    }
+  }
+
+  if (wholeTree) {
+    for (const { prefix, file } of composedPrefixes) {
+      if (![...styled].some((name) => name.startsWith(prefix))) {
+        unstyled(file, 1, `${prefix}... -- no stylesheet selects a class that starts with this prefix`);
+      }
+      const owner = templates.find((template) => template.path === file);
+      const builds = owner !== undefined && new RegExp(`${prefix}(?:\\$\\{|\\{\\{|['"\`]\\s*\\+)`).test(owner.text);
+      if (!builds) stale(prefix, `${file} no longer builds a class name that starts with it; remove it from COMPOSED_CLASS_PREFIXES`);
+    }
+  }
+  return { ok: errors.length === 0, errors };
+}
+
 // --- Aggregate ----------------------------------------------------------------
 
 const SCAN_EXTENSIONS = new Set(['.ts', '.scss', '.html']);
@@ -607,11 +979,23 @@ export function lintClient({ uiRoot = UI_ROOT } = {}) {
   const allowedKeys = new Set(Object.keys(loadStrings()));
   const errors = [];
   let scanned = 0;
+  // Family 7 judges the whole tree at once, so the files it reads are collected here and handed over
+  // after every walk has finished.
+  const classTemplates = [];
+  const classStylesheets = [];
+  const classReferences = [];
 
   walk(srcDir, (fullPath) => {
     const path = toRelative(fullPath);
     const text = readFileSync(fullPath, 'utf8');
     scanned += 1;
+
+    const shippedSource = !path.endsWith('.spec.ts') && !path.startsWith(TESTING_DIR);
+    if (path.endsWith('.spec.ts')) classReferences.push({ path, text });
+    if (path.endsWith('.scss') || (shippedSource && path.endsWith('.ts'))) classStylesheets.push({ path, text });
+    if (shippedSource && path.startsWith('src/app/') && (path.endsWith('.ts') || path.endsWith('.html'))) {
+      classTemplates.push({ path, text });
+    }
 
     errors.push(...checkHardcodedColors({ path, text }).errors);
     errors.push(...checkOffOriginUrls({ path, text }).errors);
@@ -646,6 +1030,7 @@ export function lintClient({ uiRoot = UI_ROOT } = {}) {
       scanned += 1;
       errors.push(...checkNonAsciiLiterals({ path, text }).errors);
       errors.push(...checkFilterAssertions({ path, text }).errors);
+      classReferences.push({ path, text });
     }, TOOL_SCAN_EXTENSIONS);
   }
   const browserConfig = join(uiRoot, 'browser.config.mjs');
@@ -655,6 +1040,10 @@ export function lintClient({ uiRoot = UI_ROOT } = {}) {
       ...checkNonAsciiLiterals({ path: toRelative(browserConfig), text: readFileSync(browserConfig, 'utf8') }).errors
     );
   }
+
+  errors.push(
+    ...checkTemplateClasses({ templates: classTemplates, stylesheets: classStylesheets, references: classReferences }).errors
+  );
 
   return { ok: errors.length === 0, errors, scanned };
 }
@@ -672,6 +1061,7 @@ export const RULE_FAMILIES = [
   'non-ascii-literals',
   'testing-imports',
   'filter-assertions',
+  'template-classes',
 ];
 
 function formatError(e) {

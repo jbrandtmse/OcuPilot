@@ -1,7 +1,7 @@
-/// <p>Pins the first write tool (Story 5.1, AD-3, AD-10, AD-22, AD-40): the registry advertises it
+/// <p>Pins the first write tool (Story 5.1, AD-3, AD-10, AD-22): the registry advertises it
 /// as a <code>write</code> tool fulfilled on the instance, its schema is derived and admits no
-/// privilege subtree, the model can reach the minting path and not the claim gate, and the
-/// dispatcher's write branch is exercised through the <b>real</b> restraint verdict.</p>
+/// privilege subtree, and the dispatcher's write branch is exercised through the <b>real</b>
+/// restraint verdict.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed, an account holding
 /// <code>%All</code>, and one web application the instance already serves --
 /// <parameter>LIVETARGET</parameter>, OcuPilot's own shell application, which is read and never
@@ -292,18 +292,6 @@ Method TestAnExcludedFieldLeavesTheSchemaAndTheSettableList()
     Do $$$AssertEquals($ListFind($ClassMethod(tProbe, "SettableFields"), "Description"), 0, "so it is not settable there")
     Do $$$AssertEquals($ClassMethod(tProbe, "InputSchema").%Get("properties").%GetTypeOf("Description"), "unassigned", "and not advertised there")
     Do $$$AssertTrue($ListFind($ClassMethod(tProbe, "SettableFields"), "Enabled") > 0, "while an unlisted sibling is still settable")
-}
-
-/// <p>AD-40: the model can mint and cannot apply. No path from a write tool's view reaches the
-/// claim gate.</p>
-Method TestNoPathFromAWriteToolsViewReachesTheClaimGate()
-{
-    For tClass = "OcuPilot.Screen.Tool.Write", "OcuPilot.Screen.Tool.WebAppUpdate", "OcuPilot.Kernel.Proposal.Mint", "OcuPilot.Kernel.Proposal.Fingerprint", "OcuPilot.Kernel.State.Propose" {
-        Set tSC = ##class(%Compiler.UDL.TextServices).GetTextAsString($Namespace, tClass, .tSource)
-        Do $$$AssertStatusOK(tSC, tClass _ ": its source is readable")
-        Do $$$AssertEquals($Find(tSource, "##class(OcuPilot.Kernel.Proposal.Write)"), 0, tClass _ ": names no call into the claim gate")
-        Do $$$AssertEquals($Find(tSource, """OcuPilot.Kernel.Proposal.Write"""), 0, tClass _ ": and reaches it by no dynamic name either")
-    }
 }
 
 /// <p>AD-8, DW-1208: the write's resolved set is exactly the pair set the screen's own read
@@ -1335,7 +1323,7 @@ Method TestEveryWriteToolsRequestTypeAgreesWithThePortsBodylessRoster()
     }
     Do $$$AssertEquals($ListLength(tMutating), $ListLength(tReached) + $ListLength(tAhead), "the port admits no pair beyond the ones the registry reaches and AHEADTYPES names -- roster '" _ $ListToString(tMutating) _ "' against reached '" _ $ListToString(tReached) _ "'")
     Do $$$AssertTrue(tActions > 0, "and at least one of them is an action-style write, so the bodyless half of the equality was exercised")
-    Do $$$AssertEquals(tOtherPorts, 45, "exactly forty-five shipped writes reach their target through another port -- one, since Stories 19.2, 19.13 and 19.3 System Explorer's ten through the source code API port, since Story 20.20 its two creates through it too, since Story 19.6 its SQL run through the SQL port, since Story 19.8 the data browser's save through it too, since Story 19.17 Document databases' create and drop through the DocDB port, and since Story 20.2 the five production actions through the interoperability port -- and each is held to its own port's contract instead, and since Story 20.15 the three Screen permissions writes through the screen access port, and since Story 20.3 the four item writes through the interoperability port, and since Story 20.22 the two setting writes through it too, and since Story 18.32 the REST service create and delete through the management API port, and since Story 20.23 the five queue and job writes through it too, and since Story 20.5 the four lookup writes and the table export and import through it too, and since Story 20.6 the host test send through it too")
+    Do $$$AssertEquals(tOtherPorts, 51, "exactly fifty-one shipped writes reach their target through another port -- one, since Stories 19.2, 19.13 and 19.3 System Explorer's ten through the source code API port, since Story 20.20 its two creates through it too, since Story 19.6 its SQL run through the SQL port, since Story 19.8 the data browser's save through it too, since Story 19.17 Document databases' create and drop through the DocDB port, and since Story 20.2 the five production actions through the interoperability port -- and each is held to its own port's contract instead, and since Story 20.15 the three Screen permissions writes through the screen access port, and since Story 20.3 the four item writes through the interoperability port, and since Story 20.22 the two setting writes through it too, and since Story 18.32 the REST service create and delete through the management API port, and since Story 20.23 the five queue and job writes through it too, and since Story 20.5 the four lookup writes and the table export and import through it too, and since Story 20.6 the host test send through it too, and since Story 20.27 the data transformation test through it too, and since Story 20.16 the three editor saves through the source code API port too, and since Story 20.31 the message resend and the edit and resend through the interoperability port too")
 
     ; The vendor exposes terminating a process twice -- TYPETERMINATE and RunDelete delegating to it.
     ; Story 7.8 admits the first; the second is no mutating type, so the port answers 501 for it

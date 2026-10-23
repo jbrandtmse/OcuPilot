@@ -3,7 +3,7 @@
 /// requires that read to answer <b>nothing</b>, composes the payload from its arguments and mints a
 /// proposal the user confirms. It writes nothing.</p>
 /// <p><b>It admits no derived field</b>: every template field of the configuration is excluded, and
-/// the five declared arguments (<parameter>ARGUMENTS</parameter>) are the whole payload.
+/// the six declared arguments (<parameter>ARGUMENTS</parameter>) are the whole payload.
 /// <class>OcuPilot.Port.DatabasePort</class> reads them from the port query
 /// (<method>PortQuery</method>) and sequences the resource, the file and the configuration (AD-52 as
 /// amended 2026-09-29). The directory is named by a root and a relative path, resolved through
@@ -18,7 +18,7 @@ Parameter TOOLNAME = "osmgmt.localdatabases.create";
 
 Parameter DESCRIPTORCLASS = "OcuPilot.Screen.Descriptor.LocalDatabaseList";
 
-Parameter DESCRIPTION = "Propose a new local database on this instance. It creates nothing by itself: it answers a proposal the user reviews and confirms. Name the database, choose one of the instance's allowed directories as root and a new subdirectory under it as path, and optionally its initial size, whether new globals are journaled, and an existing %DB_ resource to guard it; without a resource the instance creates %DB_<NAME>.";
+Parameter DESCRIPTION = "Propose a new local database on this instance. It creates nothing by itself: it answers a proposal the user reviews and confirms. Name the database, choose one of the instance's allowed directories as root and a new subdirectory under it as path, and optionally its initial size, whether new globals are journaled, whether it is encrypted, and an existing %DB_ resource to guard it; without a resource the instance creates %DB_<NAME>. An encrypted database uses the default database encryption key, so it is refused while no database key is active.";
 
 /// <p>The port that sequences the create (AD-52).</p>
 Parameter PORTCLASS = "OcuPilot.Port.DatabasePort";
@@ -33,8 +33,9 @@ Parameter READTYPE = "GET";
 Parameter WRITETYPE = "PUT";
 
 /// <p>The declared arguments, comma-separated: the directory's root and relative path, the initial
-/// size in megabytes, whether new globals are journaled, and an existing resource.</p>
-Parameter ARGUMENTS = "root,path,Size,GlobalJournalState,ResourceName";
+/// size in megabytes, whether new globals are journaled, an existing resource, and whether the database is
+/// encrypted with the default database encryption key.</p>
+Parameter ARGUMENTS = "root,path,Size,GlobalJournalState,ResourceName,Encrypted";
 
 /// <p>The configuration template fields this tool never admits: the port sends the resolved
 /// <code>Directory</code>, and every other field keeps the vendor's default.</p>
@@ -77,7 +78,7 @@ ClassMethod ExcludedFields() As %List
     Quit $ListFromString(..#EXCLUDEDFIELDS)
 }
 
-/// <p>The derived schema (the name alone) with the five arguments described, <code>root</code>
+/// <p>The derived schema (the name alone) with the six arguments described, <code>root</code>
 /// required.</p>
 ClassMethod InputSchema(pDescriptor As %String = "") As %DynamicObject
 {
@@ -92,6 +93,7 @@ ClassMethod InputSchema(pDescriptor As %String = "") As %DynamicObject
     Do tProperties.%Set("Size", {"type": "integer", "minimum": 1, "description": "The file's initial size in megabytes. Omit it for 1."})
     Do tProperties.%Set("GlobalJournalState", {"type": "boolean", "description": "Whether new globals in the database are journaled. Omit it for true."})
     Do tProperties.%Set("ResourceName", {"type": "string", "description": "An existing resource whose name begins %DB_ to guard the database. Omit it and the instance creates %DB_<NAME>."})
+    Do tProperties.%Set("Encrypted", {"type": "boolean", "description": "Whether the database file is encrypted with the instance's default database encryption key. Omit it for false. It is refused while no database encryption key is active."})
     Do tSchema.%Get("required").%Push("root")
     Quit tSchema
 }

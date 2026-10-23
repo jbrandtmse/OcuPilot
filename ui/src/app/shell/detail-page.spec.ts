@@ -1,6 +1,6 @@
-import { Component } from '@angular/core';
+import { Component, type Type, input } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { Router, provideRouter } from '@angular/router';
+import { Router, provideRouter, type Route } from '@angular/router';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { NavigationService, screenForUrl, type Verdict } from '../core/navigation';
@@ -10,6 +10,8 @@ import { STRINGS } from '../core/strings';
 import { screenDeclaration } from '../testing/screen-declaration';
 import { DetailPage } from './detail-page';
 import { ListPage } from './list-page';
+import { MatTabNav } from '@angular/material/tabs';
+import { By } from '@angular/platform-browser';
 
 /**
  * The detail page's rendered contract (AD-5): a tab strip of the current screen's group, in position
@@ -21,8 +23,17 @@ import { ListPage } from './list-page';
  * OAuth 2.0 screen, resolved through the real `screenForUrl`.
  */
 
-@Component({ selector: 'app-list-page', template: '<p class="stub-list-page"></p>' })
-class StubListPage {}
+@Component({ selector: 'app-list-page', template: '<p class="stub-list-page" [attr.data-body]="bodyName"></p>' })
+class StubListPage {
+  readonly body = input<Type<unknown> | null>(null);
+
+  protected get bodyName(): string {
+    return this.body()?.name ?? '';
+  }
+}
+
+/** A body component, which the page hands its list page by class. */
+class ProbeBody {}
 
 const ALLOWED: Verdict = { allowed: true, failedPair: '' };
 
@@ -67,7 +78,7 @@ async function settle(fixture: ComponentFixture<unknown>): Promise<void> {
   }
 }
 
-async function build(url: string, navigation = new StubNavigation()): Promise<ComponentFixture<DetailPage>> {
+async function build(url: string, navigation = new StubNavigation(), body: Type<unknown> | null = null): Promise<ComponentFixture<DetailPage>> {
   TestBed.resetTestingModule();
   TestBed.configureTestingModule({
     providers: [
@@ -78,6 +89,7 @@ async function build(url: string, navigation = new StubNavigation()): Promise<Co
   TestBed.overrideComponent(DetailPage, { remove: { imports: [ListPage] }, add: { imports: [StubListPage] } });
   await TestBed.inject(Router).navigateByUrl(url);
   const fixture = TestBed.createComponent(DetailPage);
+  if (body !== null) fixture.componentRef.setInput('body', body);
   document.body.appendChild(fixture.nativeElement);
   planted.push(fixture.nativeElement);
   await settle(fixture);
@@ -86,6 +98,31 @@ async function build(url: string, navigation = new StubNavigation()): Promise<Co
 
 const tabs = (fixture: ComponentFixture<DetailPage>): HTMLButtonElement[] =>
   Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('.ocu-detail-tab'));
+
+/**
+ * Opens the second tab of the OAuth strip against a route table that answers that navigation with
+ * `table` (a refusal or a failure), then builds the strip of the next page with focus on the body.
+ */
+async function stripBuiltAfterAnswer(table: Route[]): Promise<ComponentFixture<DetailPage>> {
+  const leaving = await build('/security/oauth?ns=HSCUSTOM');
+  const router = TestBed.inject(Router);
+  router.resetConfig(table);
+  const target = tabs(leaving)[1];
+  target.focus();
+  target.click();
+  await settle(leaving);
+  expect(router.url, 'the router stayed where it was').toBe('/security/oauth?ns=HSCUSTOM');
+  leaving.destroy();
+  (leaving.nativeElement as HTMLElement).remove();
+  (document.activeElement as HTMLElement | null)?.blur();
+
+  const next = TestBed.createComponent(DetailPage);
+  document.body.appendChild(next.nativeElement);
+  planted.push(next.nativeElement);
+  await settle(next);
+  expect(tabs(next)[1]?.getAttribute('data-route'), 'the next strip lists the tab that was opened').toBe(target.getAttribute('data-route'));
+  return next;
+}
 
 describe('the detail page', () => {
   afterEach(() => {
@@ -106,6 +143,29 @@ describe('the detail page', () => {
     ]);
     expect(tabs(fixture).map((tab) => tab.getAttribute('aria-selected'))).toEqual(['true', 'false', 'false', 'false', 'false']);
     expect((fixture.nativeElement as HTMLElement).querySelector('[role="tabpanel"] .stub-list-page')).not.toBeNull();
+  });
+
+  // A strip wider than its column wraps onto further rows (`_components.scss`), so Material's
+  // pagination, whose arrows only a pointer reaches, stays off.
+  //
+  // Mutation (Rule 19): drop `[disablePagination]="true"` from the `mat-tab-nav-bar` in `DetailPage` -> this goes red.
+  it('draws the strip with pagination disabled, so a strip wider than its column wraps rather than pages', async () => {
+    const fixture = await build('/security/oauth?ns=HSCUSTOM');
+    const bar = fixture.debugElement.query(By.directive(MatTabNav)).componentInstance as MatTabNav;
+    expect(bar.disablePagination).toBe(true);
+  });
+
+  // Story 20.9: the page hands its `body` to the list page it draws, under the strip and without one.
+  //
+  // Mutation (Rule 19): drop `[body]="body()"` from either `app-list-page` in `DetailPage` -> that leg goes red.
+  it('Story 20.9: hands its body to the list page, under the tab strip and without one', async () => {
+    const stripped = await build('/security/oauth?ns=HSCUSTOM', new StubNavigation(), ProbeBody);
+    expect((stripped.nativeElement as HTMLElement).querySelector('[role="tabpanel"] .stub-list-page')?.getAttribute('data-body')).toBe('ProbeBody');
+    const bare = await build('/security/untabbed?ns=HSCUSTOM', new StubNavigation(), ProbeBody);
+    expect((bare.nativeElement as HTMLElement).querySelector('.stub-list-page')?.getAttribute('data-body')).toBe('ProbeBody');
+    expect((bare.nativeElement as HTMLElement).querySelector('nav.ocu-detail-tabs')).toBeNull();
+    const none = await build('/security/oauth?ns=HSCUSTOM');
+    expect((none.nativeElement as HTMLElement).querySelector('.stub-list-page')?.getAttribute('data-body')).toBe('');
   });
 
   it('AC1: a click opens that tab\'s own route with the namespace, and a later tab selects itself', async () => {
@@ -154,6 +214,44 @@ describe('the detail page', () => {
     await settle(arriving);
     expect(document.activeElement).toBe(tabs(arriving)[1]);
     expect(tabs(arriving)[1].getAttribute('aria-selected')).toBe('true');
+  });
+
+  it('AC1: a tab opened twice before the router answers still takes focus on the page that replaces the strip', async () => {
+    // Enter reaches the click handler twice, the strip's key handling and then the button's own
+    // activation, and the router resolves the first navigation `false` once the second supersedes
+    // it. Mutation (Rule 19): clear `focusOnArrival` on any `false` answer, whoever made the request
+    // -> the first answer clears the second open's request and focus stays on the body.
+    const leaving = await build('/security/oauth?ns=HSCUSTOM');
+    const router = TestBed.inject(Router);
+    const target = tabs(leaving)[1];
+    target.focus();
+    target.click();
+    target.click();
+    await settle(leaving);
+    expect(router.url).toBe('/security/oauth/clients?ns=HSCUSTOM');
+    leaving.destroy();
+    (leaving.nativeElement as HTMLElement).remove();
+    (document.activeElement as HTMLElement | null)?.blur();
+
+    const arriving = TestBed.createComponent(DetailPage);
+    document.body.appendChild(arriving.nativeElement);
+    planted.push(arriving.nativeElement);
+    await settle(arriving);
+    expect(document.activeElement).toBe(tabs(arriving)[1]);
+  });
+
+  it('AC1: a tab whose navigation the router refuses leaves no focus request for the next page to take', async () => {
+    // Mutation (Rule 19): drop `forget` from the `false` branch of `DetailPage.open` -> the request
+    // outlives the refused navigation and the next strip built takes focus it was never owed.
+    const next = await stripBuiltAfterAnswer([{ path: '**', canActivate: [() => false], children: [] }]);
+    expect(document.activeElement).not.toBe(tabs(next)[1]);
+  });
+
+  it('AC1: a tab whose page cannot load leaves no focus request for the next page to take', async () => {
+    // Mutation (Rule 19): drop `forget` from the rejection handler of `DetailPage.open` -> the
+    // request outlives the failed navigation and the next strip built takes focus it was never owed.
+    const next = await stripBuiltAfterAnswer([{ path: '**', loadComponent: () => Promise.reject(new Error('the page chunk cannot load')) }]);
+    expect(document.activeElement).not.toBe(tabs(next)[1]);
   });
 
   it('AC5: a gated tab stays listed and focusable, names its pair, and opens nothing', async () => {

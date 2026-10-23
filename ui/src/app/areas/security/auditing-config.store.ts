@@ -11,6 +11,13 @@ import { STRINGS } from '../../core/strings.ts';
 /** The descriptor this screen is declared by. */
 export const AUDITING_CONFIG_DESCRIPTOR = 'OcuPilot.Screen.Descriptor.AuditingConfig';
 
+/**
+ * The router-state key that asks the Auditing configuration page to focus its "Turn auditing on"
+ * button on arrival. The agent panel's auditing-off banner navigates with it (Story 7.4, epics 5.x).
+ * It lives here, not in the page, so the panel never imports the page's module.
+ */
+export const AUDITING_FOCUS_ENABLE = 'ocupilotAuditingFocusEnable';
+
 /** The row action that turns auditing on, as the descriptor declares it. */
 export const AUDITING_ENABLE_ACTION = 'enable';
 

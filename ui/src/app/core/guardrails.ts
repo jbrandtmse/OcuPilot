@@ -8,14 +8,18 @@
  * answer counts as a failed read.
  *
  * **Its own caller-own chrome read.** The page loads it when it opens. It fails closed: a read that
- * does not answer drops any earlier answer and raises `failed()`, so the page shows no section
- * rather than a stale one. Only the newest read settles, and `reset()` drops a departed
- * principal's answer.
+ * does not answer drops any earlier answer and raises `failed()` and `fault()`, so the page shows no
+ * section rather than a stale one. A connectivity-banner fault is parked and read again once the
+ * instance answers; the page draws any other in place. Only the newest read settles, and `reset()`
+ * drops a departed principal's answer.
  *
  * Framework-free, like the rest of `core/` (AD-19).
  */
 
 import type { ApiService, JsonResult } from './api';
+import type { ConnectivityService } from './connectivity';
+import { pickCount } from './count-phrase.ts';
+import { classifyFailure, isBannerFault, type Fault } from './fault.ts';
 import { STRINGS } from './strings.ts';
 
 /** Absolute from the origin root, through the one API service (AD-20). */
@@ -199,7 +203,8 @@ const GROUPED = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
 
 /** The limits line, each number grouped en-US. */
 export function limitsLine(limits: GuardrailsLimits): string {
-  return STRINGS.agentGuardrailsContextLimits.split('<rows>')
+  return pickCount(limits.contextRowCap, STRINGS.agentGuardrailsContextLimitsOne, STRINGS.agentGuardrailsContextLimits)
+    .split('<rows>')
     .join(GROUPED.format(limits.contextRowCap))
     .split('<total>')
     .join(GROUPED.format(limits.totalMaxLength))
@@ -210,19 +215,25 @@ export function limitsLine(limits: GuardrailsLimits): string {
 /** The turns-an-hour line: the sentence for no limit at `0`, else the limit, grouped en-US. */
 export function turnsLine(limits: GuardrailsLimits): string {
   if (limits.turnsPerHour === 0) return STRINGS.agentGuardrailsTurnsNone;
-  return STRINGS.agentGuardrailsTurnsLimit.split('<n>').join(GROUPED.format(limits.turnsPerHour));
+  return pickCount(limits.turnsPerHour, STRINGS.agentGuardrailsTurnsLimitOne, STRINGS.agentGuardrailsTurnsLimit)
+    .split('<n>')
+    .join(GROUPED.format(limits.turnsPerHour));
 }
 
 export interface GuardrailsOptions {
   readonly api: ApiService;
+  /** Parks a banner fault until the instance answers; without it a banner fault is not re-read. */
+  readonly connectivity?: ConnectivityService | null;
 }
 
 export class Guardrails {
   private readonly api: ApiService;
 
+  private readonly connectivity: ConnectivityService | null;
+
   private dataValue: GuardrailsAnswer | null = null;
 
-  private failedValue = false;
+  private faultValue: Fault | null = null;
 
   private loadingValue = false;
 
@@ -236,6 +247,7 @@ export class Guardrails {
 
   constructor(options: GuardrailsOptions) {
     this.api = options.api;
+    this.connectivity = options.connectivity ?? null;
   }
 
   /** The last answer, or `null` before the first. */
@@ -245,7 +257,12 @@ export class Guardrails {
 
   /** Whether the most recent read did not answer. Cleared by the next one that does. */
   failed(): boolean {
-    return this.failedValue;
+    return this.faultValue !== null;
+  }
+
+  /** How the most recent read failed, or `null` when it did not. Cleared by the next one that answers. */
+  fault(): Fault | null {
+    return this.faultValue;
   }
 
   /** Whether a read is in flight. */
@@ -272,10 +289,20 @@ export class Guardrails {
     const answer = result.kind === 'ok' ? narrowGuardrails(result.body) : null;
     if (answer === null) {
       this.dataValue = null;
-      this.failedValue = true;
+      // An ok answer the client cannot read raised no connectivity fault, so it is recorded as a
+      // rejected read: the page then says so itself rather than leaving no alert at all.
+      this.faultValue =
+        result.kind === 'ok'
+          ? { kind: 'rejected', status: result.status, code: null, path: GUARDRAILS_PATH }
+          : classifyFailure(result, GUARDRAILS_PATH);
+      // A banner fault is the shell's banner's to say, so it is parked and the page reads again
+      // once the instance answers; any other fault is drawn in place with its own Retry.
+      if (isBannerFault(this.faultValue)) {
+        this.connectivity?.retryWhenReachable(GUARDRAILS_PATH, () => void this.load());
+      }
     } else {
       this.dataValue = answer;
-      this.failedValue = false;
+      this.faultValue = null;
     }
     this.notify();
   }
@@ -285,7 +312,7 @@ export class Guardrails {
     this.generation += 1;
     this.request += 1;
     this.dataValue = null;
-    this.failedValue = false;
+    this.faultValue = null;
     this.loadingValue = false;
     this.notify();
   }

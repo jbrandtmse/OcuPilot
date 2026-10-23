@@ -76,6 +76,8 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
 <Routes>
   <Route Url="/agent/switches/holds/:id" Method="DELETE" Call="AgentSwitchHoldDelete"/>
   <Route Url="/agent/switches/holds" Method="POST" Call="AgentSwitchHoldCreate"/>
+  <Route Url="/agent/switches/egress" Method="GET" Call="AgentSwitchEgressRead"/>
+  <Route Url="/agent/switches/egress" Method="PUT" Call="AgentSwitchEgressUpdate"/>
   <Route Url="/agent/switches" Method="GET" Call="AgentSwitchesRead"/>
   <Route Url="/agent/switches" Method="PUT" Call="AgentSwitchesUpdate"/>
   <Route Url="/agent/restraint" Method="GET" Call="AgentRestraint"/>
@@ -145,12 +147,15 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/screens/:screen/action" Method="POST" Call="ScreenAction"/>
   <Route Url="/screens/:screen/read" Method="GET" Call="ScreenRead"/>
   <Route Url="/screens/:screen/impact" Method="GET" Call="ScreenImpact"/>
+  <Route Url="/screens/:screen/dryrun" Method="POST" Call="ScreenDryRun"/>
   <Route Url="/logs/errors/namespaces" Method="GET" Call="LogErrorNamespaces"/>
   <Route Url="/logs/errors/dates" Method="GET" Call="LogErrorDates"/>
   <Route Url="/logs/errors/list" Method="GET" Call="LogErrorList"/>
   <Route Url="/logs/errors/detail" Method="GET" Call="LogErrorDetail"/>
+  <Route Url="/logs/alerts/tail" Method="GET" Call="LogAlertsTail"/>
   <Route Url="/logs/alerts" Method="GET" Call="LogAlerts"/>
   <Route Url="/logs/messages/files" Method="GET" Call="LogMessageFiles"/>
+  <Route Url="/logs/messages/tail" Method="GET" Call="LogMessagesTail"/>
   <Route Url="/logs/messages" Method="GET" Call="LogMessages"/>
   <Route Url="/logs/integrity/files" Method="GET" Call="LogIntegrityFiles"/>
   <Route Url="/logs/integrity" Method="GET" Call="LogIntegrity"/>
@@ -240,6 +245,9 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/explorer/sql/background/:id/cancel" Method="POST" Call="ExplorerSqlBackgroundCancel"/>
   <Route Url="/explorer/sql/background/:id" Method="GET" Call="ExplorerSqlBackgroundPoll"/>
   <Route Url="/explorer/sql/background" Method="POST" Call="ExplorerSqlBackgroundStart"/>
+  <Route Url="/analytics/mdx/background/:id/cancel" Method="POST" Call="AnalyticsMdxBackgroundCancel"/>
+  <Route Url="/analytics/mdx/background/:id" Method="GET" Call="AnalyticsMdxBackgroundPoll"/>
+  <Route Url="/analytics/mdx/background" Method="POST" Call="AnalyticsMdxBackgroundStart"/>
   <Route Url="/ecp-settings/form" Method="GET" Call="EcpSettingsFormRead"/>
   <Route Url="/ecp-settings" Method="PUT" Call="EcpSettingsUpdate"/>
   <Route Url="/explorer/sql/data" Method="POST" Call="ExplorerSqlData"/>
@@ -264,6 +272,8 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/interop/items" Method="POST" Call="InteropItemCreate"/>
   <Route Url="/interop/lookup-entries" Method="POST" Call="InteropLookupEntryCreate"/>
   <Route Url="/rest-service" Method="POST" Call="RestServiceCreate"/>
+  <Route Url="/allowed-directories" Method="POST" Call="AllowedDirectorySave"/>
+  <Route Url="/allowed-directories" Method="GET" Call="AllowedDirectoryState"/>
 </Routes>
 }
 
@@ -932,6 +942,13 @@ ClassMethod ScreenImpact(pScreen As %String) As %Status
     Quit ##class(OcuPilot.Api.ScreenImpact).Handle(pScreen)
 }
 
+/// <p>Thin <code>Call=</code> target for <code>POST /screens/:screen/dryrun</code>: delegates to
+/// <class>OcuPilot.Api.ScreenDryRun</class> and carries no logic of its own.</p>
+ClassMethod ScreenDryRun(pScreen As %String) As %Status
+{
+    Quit ##class(OcuPilot.Api.ScreenDryRun).Handle(pScreen)
+}
+
 /// <p>Thin <code>Call=</code> target for <code>GET /logs/errors/namespaces</code>: delegates to
 /// <class>OcuPilot.Api.ErrorLog</class> and carries no logic of its own.</p>
 /// <p>The route is literal and <b>binds the drill level here</b>, from the port's own enum, so no
@@ -973,6 +990,14 @@ ClassMethod LogErrorDetail() As %Status
 ClassMethod LogMessages() As %Status
 {
     Quit ##class(OcuPilot.Api.LogPage).Handle(##class(OcuPilot.Port.LogSourcePort).#MESSAGESKEY)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /logs/messages/tail</code>: the live tail of the
+/// console log, through <method>OcuPilot.Api.LogPage.HandleTail</method> with the source key bound
+/// here as <method>LogMessages</method> binds it (Story 18.38).</p>
+ClassMethod LogMessagesTail() As %Status
+{
+    Quit ##class(OcuPilot.Api.LogPage).HandleTail(##class(OcuPilot.Port.LogSourcePort).#MESSAGESKEY)
 }
 
 /// <p>Thin <code>Call=</code> target for <code>GET /logs/messages/files</code>: the console log
@@ -1128,6 +1153,13 @@ ClassMethod TranscriptRead(pId As %String) As %Status
 ClassMethod LogAlerts() As %Status
 {
     Quit ##class(OcuPilot.Api.LogPage).Handle(##class(OcuPilot.Port.LogSourcePort).#ALERTSKEY)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /logs/alerts/tail</code> -- see
+/// <method>LogMessagesTail</method>. The alerts.log viewer's live tail (Story 18.38).</p>
+ClassMethod LogAlertsTail() As %Status
+{
+    Quit ##class(OcuPilot.Api.LogPage).HandleTail(##class(OcuPilot.Port.LogSourcePort).#ALERTSKEY)
 }
 
 /// <p>Thin <code>Call=</code> target for <code>GET /instance</code>: delegates to
@@ -1810,6 +1842,28 @@ ClassMethod ExplorerSqlBackgroundStart() As %Status
     Quit ##class(OcuPilot.Area.Explorer.SqlBackground).HandleStart()
 }
 
+/// <p>Thin <code>Call=</code> target for <code>POST /analytics/mdx/background/:id/cancel</code> (Story
+/// 20.33): an MDX run's cancel, delegating to <class>OcuPilot.Area.Analytics.MdxQuery</class>. The two
+/// <code>:id</code> routes precede <code>/analytics/mdx/background</code>.</p>
+ClassMethod AnalyticsMdxBackgroundCancel(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.Analytics.MdxQuery).HandleCancel(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /analytics/mdx/background/:id</code>: an MDX run's
+/// poll.</p>
+ClassMethod AnalyticsMdxBackgroundPoll(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Area.Analytics.MdxQuery).HandlePoll(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /analytics/mdx/background</code>: an MDX run's
+/// start.</p>
+ClassMethod AnalyticsMdxBackgroundStart() As %Status
+{
+    Quit ##class(OcuPilot.Area.Analytics.MdxQuery).HandleStart()
+}
+
 /// <p>Thin <code>Call=</code> target for <code>GET /ecp-settings/form</code> (Story 18.21): ECP settings'
 /// form read, delegating to <class>OcuPilot.Area.OsMgmt.EcpSettingsRules</class>. It precedes
 /// <code>/ecp-settings</code>.</p>
@@ -1984,6 +2038,34 @@ ClassMethod RoutineAppCreate() As %Status
 ClassMethod RestServiceCreate() As %Status
 {
     Quit ##class(OcuPilot.Area.WebApp.RestServiceSave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /allowed-directories</code> (Story 18.42): the Allowed directories
+/// screen's add, change and remove, resolved through the one tool only this route reaches (AD-55).</p>
+ClassMethod AllowedDirectorySave() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.AllowedDirectorySave).HandleSave()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /allowed-directories</code> (Story 18.46): the Allowed directories
+/// screen's verdict on the governance key its write asks, which it draws Add, Change and Remove off with.</p>
+ClassMethod AllowedDirectoryState() As %Status
+{
+    Quit ##class(OcuPilot.Area.Security.AllowedDirectorySave).HandleState()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /agent/switches/egress</code> (Story 18.40): the provider connection,
+/// delegated to <class>OcuPilot.Api.Switches</class>.</p>
+ClassMethod AgentSwitchEgressRead() As %Status
+{
+    Quit ##class(OcuPilot.Api.Switches).HandleEgressRead()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>PUT /agent/switches/egress</code> (Story 18.40): the provider
+/// connection's write, delegated to <class>OcuPilot.Api.Switches</class>.</p>
+ClassMethod AgentSwitchEgressUpdate() As %Status
+{
+    Quit ##class(OcuPilot.Api.Switches).HandleEgressUpdate()
 }
 
 }

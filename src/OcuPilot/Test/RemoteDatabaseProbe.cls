@@ -592,7 +592,7 @@ ClassMethod ListText(pDescriptor As %String, pField As %String) As %String
 /// <p>A canonical snapshot of what a remote database write or a directory listing can change, as a
 /// sorted array of lines: every ECP data server with its listed status and connection state; every
 /// database configuration with its server and directory; every service's enablement; the ECP and
-/// connection settings; the monitor state; the line counts of <code>messages.log</code> and
+/// connection settings; the line counts of <code>messages.log</code> and
 /// <code>alerts.log</code> and the count of ERROR #7846 lines; each process with its job type; the
 /// <code>^%SYS</code> nodes whose subscripts name ECP or a probe; and OcuPilot's own objects -- its
 /// applications, roles, resources, its database, and the install namespace's and <code>%ALL</code>'s
@@ -680,7 +680,6 @@ ClassMethod Snapshot() As %DynamicArray
         Set tConfig = ##class(Config.config).Open()
         Set tLines("configconfig|" _ tConfig.MaxServers _ "|" _ tConfig.MaxServerConn) = ""
         Set tConfig = ""
-        Set tLines("monitor|" _ $SYSTEM.Monitor.State()) = ""
         Set tLines("license|" _ $SYSTEM.License.NetworkEnabled() _ "|" _ $SYSTEM.License.MaxECPServers() _ "|" _ $SYSTEM.License.KeyServer()) = ""
         Set tPid = ""
         For {

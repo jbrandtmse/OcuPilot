@@ -45,7 +45,7 @@ function application(overrides: Record<string, unknown> = {}) {
   };
 }
 
-function mount(answers: Record<string, unknown>[], hold: { release?: () => void } = {}) {
+function mount(answers: Record<string, unknown>[], hold: { release?: () => void } = {}, roles: readonly unknown[] = []) {
   TestBed.resetTestingModule();
   const queue = [...answers];
   const sent: string[] = [];
@@ -56,7 +56,7 @@ function mount(answers: Record<string, unknown>[], hold: { release?: () => void 
         await new Promise<void>((resolve) => (hold.release = resolve));
         return { kind: 'ok', status: 200, body: {} } as JsonResult<T>;
       }
-      const body = { requiredFields: [], maxLengths: {}, rules: [], roles: [], serveFilesChoices: ['No', 'Always'], application: queue.shift() ?? application() };
+      const body = { requiredFields: [], maxLengths: {}, rules: [], roles, serveFilesChoices: ['No', 'Always'], application: queue.shift() ?? application() };
       return { kind: 'ok', status: 200, body } as JsonResult<T>;
     },
   };
@@ -101,6 +101,25 @@ describe('the web application editor store (Story 9.2)', () => {
       { match: '%Operator', role: '%SQL' },
       { match: '%Operator', role: '%Manager' },
     ]);
+  });
+
+  it('Story 18.48: grantsPrivileged is true while an application role or a matching role\u2019s target is privileged, and for a role the read does not know', async () => {
+    const roles = [
+      { name: '%Developer', privileged: false },
+      { name: '%Manager', privileged: true },
+    ];
+    for (const [matchRoles, expected] of [
+      [[{ MatchRole: '', TargetRoles: ['%Developer'] }], false],
+      [[{ MatchRole: '', TargetRoles: ['%Developer', '%manager'] }], true],
+      [[{ MatchRole: '%Operator', TargetRoles: ['%Manager'] }], true],
+      [[{ MatchRole: '', TargetRoles: ['%Nobody'] }], true],
+      [[], false],
+    ] as const) {
+      const { store } = mount([application({ MatchRoles: matchRoles })], {}, roles);
+      await store.open('/csp/probe');
+      // Mutation (Rule 19): read only the application roles in `grantsPrivileged` -> the matching role leg goes red.
+      expect(store.grantsPrivileged(), JSON.stringify(matchRoles)).toBe(expected);
+    }
   });
 
   it('names each weakening effect against the read, and the repointed field once, first in the tab order', async () => {

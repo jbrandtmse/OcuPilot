@@ -21,8 +21,12 @@
  * panel's own two-parameter copy did.
  *
  * `panelSettlesAt` and `geometry` are deliberately **not** here: the two copies differ in tolerance
- * (0.01 against 0.51) and in field count (16 against 10), so unifying them would change a
+ * (0.01 against 0.5) and in field count (16 against 10), so unifying them would change a
  * measurement rather than remove a copy.
+ *
+ * `settleViewport` changes the viewport and returns once the shell has taken it: the shell
+ * re-resolves its layout from `(window:resize)`, after the viewport has already changed, so a
+ * measurement taken straight after `page.setViewport` can read the layout of the width before.
  */
 
 import { resetRememberedState } from './preferences-reset.mjs';
@@ -30,6 +34,8 @@ import { resetRememberedState } from './preferences-reset.mjs';
 import assert from 'node:assert/strict';
 
 import { leaveFirstLoginGate } from './shell-entry.mjs';
+
+const { THEME_DARK_CLASS } = await import(new URL('../src/app/core/theme.ts', import.meta.url).href);
 
 /** The shipped agent-definitions list route, absolute from the origin root (AD-20). */
 export const DEFINITIONS_PATH = '/api/ocupilot/agent/definitions';
@@ -57,9 +63,11 @@ export async function definitions(config) {
 
 /**
  * A fresh context signed in through the shell's own form, standing on `url` with the frame and the
- * panel laid out. `mediaFeatures`, when supplied, is emulated before the first navigation.
+ * panel laid out. `mediaFeatures`, when supplied, is emulated before the first navigation, and
+ * `prepare`, when supplied, runs against the page before it, which is where a spec attaches what
+ * must watch the document from its first request.
  */
-export async function signedInAt(browser, config, url, viewport = config.viewport, mediaFeatures = null) {
+export async function signedInAt(browser, config, url, viewport = config.viewport, mediaFeatures = null, prepare = null) {
   // Story 15.5 (AD-50): the remembered screen and shell state lives on the instance now, keyed by
   // the one account every spec signs in as, so a fresh `BrowserContext` is no longer a fresh slate
   // on its own. The reset belongs HERE rather than in each caller: this helper exists because five
@@ -71,6 +79,7 @@ export async function signedInAt(browser, config, url, viewport = config.viewpor
   page.setDefaultNavigationTimeout(config.navigationTimeoutMs);
   await page.setViewport(viewport);
   if (mediaFeatures !== null) await page.emulateMediaFeatures(mediaFeatures);
+  if (prepare !== null) await prepare(page);
   await page.goto(`${config.origin}${url}`, { waitUntil: 'networkidle2' });
   await page.waitForSelector('#ocu-signin-user', { visible: true, timeout: config.navigationTimeoutMs });
   await page.type('#ocu-signin-user', config.username);
@@ -80,6 +89,163 @@ export async function signedInAt(browser, config, url, viewport = config.viewpor
   await leaveFirstLoginGate(page, config.navigationTimeoutMs, url);
   await page.waitForSelector('app-panel [role="separator"]', { timeout: config.navigationTimeoutMs });
   return { context, page };
+}
+
+/**
+ * Set `viewport` and return once the shell has taken it: the document reports the new
+ * `clientWidth`, and two frames have rendered the layout the resize event produced. The panel's
+ * width transition, which that layout starts, may still be running; a spec that measures the panel's
+ * width waits for its own width (`panelSettlesAt`) or for `transitionsSettled` as well.
+ */
+export async function settleViewport(page, viewport) {
+  await page.setViewport(viewport);
+  await page.waitForFunction((width) => document.documentElement.clientWidth === width, {}, viewport.width);
+  await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+}
+
+/** Resolve once no CSS transition is running, the panel's width transition among them; fail after `timeoutMs`. */
+export function transitionsSettled(page, timeoutMs) {
+  return page.waitForFunction(
+    () => document.getAnimations().every((animation) => !(animation instanceof CSSTransition) || animation.playState !== 'running'),
+    { timeout: timeoutMs }
+  );
+}
+
+/** Put the page in the dark theme or the light one by the class `<html>` carries, and let two frames render it. */
+export async function setDarkTheme(page, dark) {
+  await page.evaluate((name, on) => document.documentElement.classList.toggle(name, on), THEME_DARK_CLASS, dark);
+  await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+}
+
+/** The four type tokens text-only resizing scales, as DESIGN.md `:912` names them. */
+export const SCALED_TYPE_TOKENS = [
+  '--ocu-type-caption-size',
+  '--ocu-type-caption-line-height',
+  '--ocu-type-body-size',
+  '--ocu-type-body-line-height',
+];
+
+/**
+ * Multiply `tokens` (default `SCALED_TYPE_TOKENS`) by `factor` on the document element and let two
+ * frames render the result, as text-only resizing does. Answers `{ scaled, unparsed }`: the value each
+ * token now holds, and one message per token whose computed value is not a number with an optional
+ * unit, which is left as it was.
+ *
+ * The values are inline on `<html>`, so they outlast a theme change and are gone with the page.
+ */
+export async function scaleTypeTokens(page, factor, tokens = SCALED_TYPE_TOKENS) {
+  return page.evaluate(
+    async (names, by) => {
+      const root = document.documentElement;
+      const scaled = {};
+      const unparsed = [];
+      for (const token of names) {
+        const read = getComputedStyle(root).getPropertyValue(token).trim();
+        const match = /^(-?\d*\.?\d+)([a-z%]*)$/.exec(read);
+        if (match === null) {
+          unparsed.push(`${token} reads ${JSON.stringify(read)}`);
+          continue;
+        }
+        scaled[token] = `${parseFloat(match[1]) * by}${match[2]}`;
+        root.style.setProperty(token, scaled[token]);
+      }
+      const frame = () => new Promise((resolve) => requestAnimationFrame(() => resolve()));
+      await frame();
+      await frame();
+      return { scaled, unparsed };
+    },
+    tokens,
+    factor
+  );
+}
+
+/**
+ * Fail the reads whose URL contains `control.path` for as long as `control.mode` says so: `'abort'` is a
+ * transport failure (the browser's status 0), `'absent'` an instance that answers 404 with its envelope, `'fault'`
+ * one that answers 500 with its envelope, and `null` lets the read through. `control.hits` counts the reads that were
+ * failed, which is the signal that the page has asked. Every other request goes on untouched. Passed as a `prepare`
+ * argument, so it is armed before the first request.
+ */
+export function interceptRead(control) {
+  return async (page) => {
+    await page.setRequestInterception(true);
+    page.on('request', (request) => {
+      if (!request.url().includes(control.path) || control.mode === null) {
+        void request.continue();
+        return;
+      }
+      control.hits += 1;
+      if (control.mode === 'abort') {
+        void request.abort('failed');
+        return;
+      }
+      if (control.mode === 'fault') {
+        void request.respond({
+          status: 500,
+          contentType: 'application/json',
+          body: JSON.stringify({ error: 'server_error', reason: 'Internal error', code: 'INTERNAL' }),
+        });
+        return;
+      }
+      void request.respond({
+        status: 404,
+        contentType: 'application/json',
+        body: JSON.stringify({ error: 'not_found', reason: 'Not found', code: 'ROUTE.NOTFOUND' }),
+      });
+    });
+  };
+}
+
+/** Two animation frames, so a change the page has already decided on is on screen. */
+export function framesGoBy(page) {
+  return page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+}
+
+/**
+ * Every alert in the document that holds a sentence, each with where it stands (`surface` when it is inside the
+ * element `surfaceSelector` names, `shell` otherwise), its sentence and its actions. The shell mounts empty
+ * assertive regions that announce only once they receive text, so an alert with no text is a region standing by and
+ * not something a person is told.
+ */
+export function readAlerts(page, surfaceSelector) {
+  return page.evaluate(
+    (wanted) => {
+      const surface = document.querySelector(wanted);
+      return Array.from(document.querySelectorAll('[role="alert"]'))
+        .filter((alert) => alert.textContent.trim() !== '')
+        .map((alert) => ({
+          where: surface?.contains(alert) ? 'surface' : 'shell',
+          message: alert.querySelector('.ocu-fault-banner-message')?.textContent.trim() ?? alert.textContent.trim(),
+          actions: Array.from(alert.querySelectorAll('button')).map((button) => button.textContent.trim()),
+        }));
+    },
+    surfaceSelector
+  );
+}
+
+/**
+ * Give a fire-and-forget preference write time to arrive, for an assertion that it does not.
+ *
+ * A poll is the right shape for a value that must appear; a value that must stay absent has nothing
+ * to poll for, so this bounds how long "absent" was given to become "present".
+ */
+export async function settleWrites() {
+  await new Promise((resolve) => setTimeout(resolve, 500));
+}
+
+/** Click the rail item `railItem`, then the side-bar entry named `label` it reveals, with a real pointer. */
+export async function openFromSideBar(page, config, railItem, label) {
+  await page.click(railItem);
+  await page.waitForFunction(
+    (wanted) => [...document.querySelectorAll('.ocu-side-bar-item .ocu-side-bar-label')].some((node) => node.textContent.trim() === wanted),
+    { timeout: config.navigationTimeoutMs },
+    label
+  );
+  const index = await page.evaluate(
+    (wanted) => [...document.querySelectorAll('.ocu-side-bar-item')].findIndex((node) => node.querySelector('.ocu-side-bar-label').textContent.trim() === wanted),
+    label
+  );
+  await page.click(`.ocu-side-bar-item:nth-of-type(${index + 1})`);
 }
 
 /**

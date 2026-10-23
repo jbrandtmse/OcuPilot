@@ -89,6 +89,14 @@ test('the transcript line carries the limit', () => {
   assert.equal(turnLimitLine(3), 'This turn was not started: you have used your 3 turns for this hour.');
 });
 
+test('a limit of one reads the singular in the banner and the transcript line', () => {
+  assert.equal(
+    turnLimitBanner(1, '2026-09-27T14:05:00Z'),
+    "You have reached this instance's limit of 1 agent turn an hour. You can send again at 19:35."
+  );
+  assert.equal(turnLimitLine(1), 'This turn was not started: you have used your 1 turn for this hour.');
+});
+
 test('turnLimitOf accepts only a whole limit of at least 1 and a retryAt that is a date', () => {
   assert.deepEqual(turnLimitOf({ limit: 3, retryAt: '2026-09-27T14:05:00Z' }), { limit: 3, retryAt: '2026-09-27T14:05:00Z' });
   assert.equal(turnLimitOf(null), null);

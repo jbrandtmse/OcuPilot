@@ -12,8 +12,8 @@
 /// vendor keeps the stored one. The model never sends it.</p>
 /// <p><b>Turning peer verification off is permitted and marked</b>: the kernel names the effect
 /// (<method>Consequence</method>) and the proposal is destructive (AD-10). On OcuPilot's own provider
-/// configuration a change to its type, peer verification, trusted certificates or enablement is
-/// refused here at the mint, with the published sentence, and at the write by the kernel.</p>
+/// configuration a change to its type, peer verification, trusted certificates, minimum TLS version, cipher list or
+/// enablement is refused here at the mint, with the published sentence, and at the write by the kernel.</p>
 Class OcuPilot.Screen.Tool.SslUpdate Extends OcuPilot.Screen.Tool.Write
 {
 
@@ -134,7 +134,8 @@ ClassMethod InputSchema(pDescriptor As %String = "") As %DynamicObject
 /// own provider configuration, a change to any of
 /// <method>OcuPilot.Kernel.Proposal.Prohibited.OcuPilotSslFields</method>, refused with
 /// <parameter>OcuPilot.Kernel.Proposal.Prohibited.OCUPILOTSSLREASON</parameter>, the sentence the
-/// kernel refuses the write with (AD-10, AD-53).</p>
+/// kernel refuses the write with (AD-10, AD-53). A change to the same fields of the configuration the egress row
+/// names is refused with <parameter>OcuPilot.Kernel.Proposal.Prohibited.PROVIDERSSLREASON</parameter>.</p>
 ClassMethod ArgumentProblem(pIdValue As %String, pArgs As %DynamicObject, Output pProblem As %String) As %Status
 {
     Set pProblem = ""
@@ -158,6 +159,15 @@ ClassMethod ArgumentProblem(pIdValue As %String, pArgs As %DynamicObject, Output
         }
         If pProblem '= "" Quit $$$OK
     }
+    ; Story 18.40: the configuration the egress row names is held to the same fields, with its own sentence.
+    Set tOwnFields = ##class(OcuPilot.Kernel.Proposal.Prohibited).OcuPilotSslFields()
+    For tI = 1:1:$ListLength(tOwnFields) {
+        If tChanged.%GetTypeOf($List(tOwnFields, tI)) = "unassigned" Continue
+        If '##class(OcuPilot.Kernel.Proposal.Prohibited).ProviderSsl(pIdValue) Quit
+        Set pProblem = "'" _ $List(tOwnFields, tI) _ "': " _ ##class(OcuPilot.Kernel.Proposal.Prohibited).ReasonFor(##class(OcuPilot.Kernel.Proposal.Prohibited).#PROVIDERSSL)
+        Quit
+    }
+    If pProblem '= "" Quit $$$OK
     Set tSC = $ClassMethod(tRules, "Validate", "update", pIdValue, tChanged, tFresh, .tViolations)
     If $$$ISERR(tSC) Quit tSC
     Set pProblem = $ClassMethod(tRules, "Problem", .tViolations)

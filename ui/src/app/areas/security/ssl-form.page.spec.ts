@@ -218,19 +218,24 @@ describe('the SSL/TLS configuration form', () => {
     expect(reads()).toBe(before + 1);
   });
 
-  it("AC3, AD-10: OcuPilot's own configuration states its role and draws its four installer-owned fields disabled with the reason", async () => {
+  it("AC3, AD-10: OcuPilot's own configuration states its role and draws its six installer-owned fields refused with the reason", async () => {
     // Mutation (Rule 19): drop the disabled binding from the peer verification select -> the disabled
-    // assertion goes red.
+    // assertion goes red; drop `TLSMinVersion` or `CipherList` from `OWN_FIELDS` -> that field's leg goes red.
     const { host } = await mount('/security/ssl/edit/OcuPilotProvider', { ocupilot: true });
     expect(host.querySelector('#ocu-ssl-own-role')?.textContent?.trim()).toBe(STRINGS.sslOwnRole);
-    for (const id of ['ocu-ssl-Type', 'ocu-ssl-VerifyPeer', 'ocu-ssl-CAFile', 'ocu-ssl-Enabled']) {
+    for (const id of ['ocu-ssl-Type', 'ocu-ssl-VerifyPeer', 'ocu-ssl-CAFile', 'ocu-ssl-Enabled', 'ocu-ssl-TLSMinVersion']) {
       const field = control<HTMLInputElement | HTMLSelectElement>(host, id);
       expect(field.disabled).toBe(true);
       expect(field.getAttribute('aria-describedby') ?? '').toContain(`${id}-refusal`);
       expect(host.querySelector(`#${id}-refusal`)?.textContent?.trim()).toBe(STRINGS.sslRefusalOcuPilot);
     }
+    const ciphers = control<HTMLTextAreaElement>(host, 'ocu-ssl-CipherList');
+    expect(ciphers.readOnly).toBe(true);
+    expect(ciphers.getAttribute('aria-describedby') ?? '').toContain('ocu-ssl-CipherList-refusal');
+    expect(host.querySelector('#ocu-ssl-CipherList-refusal')?.textContent?.trim()).toBe(STRINGS.sslRefusalOcuPilot);
     expect(control<HTMLInputElement>(host, 'ocu-ssl-Description').readOnly).toBe(false);
-    expect(control<HTMLSelectElement>(host, 'ocu-ssl-TLSMinVersion').disabled).toBe(false);
+    expect(control<HTMLSelectElement>(host, 'ocu-ssl-TLSMaxVersion').disabled).toBe(false);
+    expect(control<HTMLTextAreaElement>(host, 'ocu-ssl-Ciphersuites').readOnly).toBe(false);
   });
 
   it('AD-10: turning peer verification off states its effect under the field before Save', async () => {

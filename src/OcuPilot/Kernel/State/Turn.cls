@@ -33,6 +33,10 @@ Parameter STATEFAILED = "failed";
 /// <p>The value a turn that stopped at its iteration cap records in <property>LimitHit</property>.</p>
 Parameter LIMITITERATIONS = "iterations";
 
+/// <p>The longest workflow id <property>Workflow</property> stores, equal to its column's
+/// <code>MAXLEN</code>.</p>
+Parameter WORKFLOWMAXLENGTH As %Integer = 64;
+
 /// <p>The opaque, server-minted turn id. Unique; matched exactly.</p>
 Property TurnKey As %String(MAXLEN = 64);
 
@@ -111,6 +115,15 @@ Property Citations As %String(MAXLEN = "");
 /// before this property existed reads it back as <code>""</code>, which reads as no egress line, so
 /// no older row is reinterpreted.</p>
 Property Egress As %String(MAXLEN = 1000);
+
+/// <p>The guided workflow's catalog id the turn ran under (AD-66), or <code>""</code> for an
+/// ordinary turn: recorded once at <method>GuardedBegin</method> and read by the loop and the
+/// dispatcher through <method>GuardedWorkflowOf</method>. Protected state swept with the turn
+/// (AD-9, AD-37); the id is a catalog constant, never request text.</p>
+/// <p><b>Added with no <code>SCHEMAVERSION</code> move</b> (Consistency Conventions): a row stored
+/// before this property existed reads it back as <code>""</code>, which is an ordinary turn, so no
+/// older row is reinterpreted.</p>
+Property Workflow As %String(MAXLEN = 64);
 
 Index TurnKeyIdx On TurnKey [ Unique ];
 
@@ -322,7 +335,9 @@ ClassMethod ReconcileHeld(pUser As %String, pLostCode As %String, pLimitsClass A
 /// <p><var>pContextRoute</var> is written onto <property>ContextRoute</property> in the same write,
 /// which is the one place it is ever set; trailing and optional so a caller with no context calls
 /// this unchanged.</p>
-ClassMethod GuardedBegin(pKey As %String, pUser As %String, pLimitsClass As %String, Output pBegun As %Boolean, Output pStartedSeconds As %Integer, pContextRoute As %String = "") As %Status
+/// <p><var>pWorkflow</var> is written onto <property>Workflow</property> in the same write, with the
+/// same contract: trailing, optional, and set nowhere else.</p>
+ClassMethod GuardedBegin(pKey As %String, pUser As %String, pLimitsClass As %String, Output pBegun As %Boolean, Output pStartedSeconds As %Integer, pContextRoute As %String = "", pWorkflow As %String = "") As %Status
 {
     Set pBegun = 0
     Set pStartedSeconds = ""
@@ -342,6 +357,7 @@ ClassMethod GuardedBegin(pKey As %String, pUser As %String, pLimitsClass As %Str
         ; No truncation byref: the route is a closed enum from Loop.ContextRoute() and there is no
         ; contextRouteTruncated column, so a flag nothing reads would only look like one.
         Set tRow.ContextRoute = ..Cap(pContextRoute, ..#ROUTEMAXLENGTH)
+        Set tRow.Workflow = ..Cap(pWorkflow, ..#WORKFLOWMAXLENGTH)
         Set tSC = ..GuardedSaveIfCurrent(tRow, +tRow.RowVersion)
         Set tRow = ""
         If $$$ISERR(tSC) Quit
@@ -532,6 +548,21 @@ ClassMethod GuardedDefinitionOf(pKey As %String, Output pDefinitionId As %String
     Set tSC = ..GuardedOpenId(tIds(1), .tRow)
     If $$$ISERR(tSC) Quit tSC
     If $IsObject(tRow) Set pDefinitionId = ..Text(tRow.DefinitionId)
+    Set tRow = ""
+    Quit $$$OK
+}
+
+/// <p>The guided workflow id turn <var>pKey</var> ran under (<property>Workflow</property>), or
+/// <code>""</code> for an ordinary turn, an unknown key or a row that holds none (AD-66).</p>
+ClassMethod GuardedWorkflowOf(pKey As %String, Output pWorkflow As %String) As %Status
+{
+    Set pWorkflow = ""
+    Set tSC = ..GuardedIdsWhere("SELECT ID FROM OcuPilot_Kernel_State.Turn WHERE %EXACT(TurnKey) = ?", pKey, .tIds)
+    If $$$ISERR(tSC) Quit tSC
+    If $Get(tIds(1)) = "" Quit $$$OK
+    Set tSC = ..GuardedOpenId(tIds(1), .tRow)
+    If $$$ISERR(tSC) Quit tSC
+    If $IsObject(tRow) Set pWorkflow = ..Text(tRow.Workflow)
     Set tRow = ""
     Quit $$$OK
 }

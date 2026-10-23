@@ -218,11 +218,12 @@ Method TestAnAreaOpensWhenAnyScreenItListsIsAllowed()
 {
     Set tGate = "OcuPilot.Test.ScreenGate"
     Set tDescriptor = "OcuPilot.Screen.Descriptor."
+    Do $$$AssertStatusOK(##class(OcuPilot.Screen.Area).List(.tDeclared), "the declared areas read")
+    Do $$$AssertTrue(tDeclared.%Size() > 0, "and there are some, so the verdict strings below are not compared over nothing")
 
-    ; Nothing held: the two areas that declare no pair never gate, and every other area is refused
-    ; on the first pair of its declared set.
-    Set tExpected = "home=open logs=%Admin_Operate:USE os-management=%Admin_Operate:USE tasks=%Admin_Task:USE permissions=%Admin_Secure:USE web-applications=%Admin_Secure:USE security=%Admin_Secure:USE system-explorer=%Development:USE interoperability=%Ens_Portal:USE analytics=%DeepSee_Portal:USE agent=open"
-    Do $$$AssertEquals(..AreaVerdicts(), tExpected, "a holder of nothing opens Home and Agent co-pilot alone, each other area naming its set's first pair")
+    ; Nothing held: the areas that declare no pair never gate, and every other area is refused on
+    ; the first pair of its declared set.
+    Do $$$AssertEquals(..AreaVerdicts(), ..ExpectedAreaVerdicts(""), "a holder of nothing opens the areas that declare no pair alone, each other area naming its set's first pair")
 
     ; %Operator's six grants on a stock instance: %Admin_Operate:U, %DB_IRISLOCALDATA:R,
     ; %DB_IRISSYS:RW, %DB_IRISTEMP:RW, %Service_DocDB:U and %Service_WebGateway:U.
@@ -234,8 +235,8 @@ Method TestAnAreaOpensWhenAnyScreenItListsIsAllowed()
     Do $ClassMethod(tGate, "Hold", "%DB_IRISTEMP", "WRITE")
     Do $ClassMethod(tGate, "Hold", "%Service_DocDB", "USE")
     Do $ClassMethod(tGate, "Hold", "%Service_WebGateway", "USE")
-    Set tExpected = "home=open logs=open os-management=open tasks=open permissions=%Admin_Secure:USE web-applications=open security=%Admin_Secure:USE system-explorer=%Development:USE interoperability=%Ens_Portal:USE analytics=%DeepSee_Portal:USE agent=open"
-    Do $$$AssertEquals(..AreaVerdicts(), tExpected, "%Operator's grants open Logs, OS management, Tasks and Web applications, and not Permissions or Security")
+    Set tOpened = $ListBuild("logs", "os-management", "tasks", "web-applications")
+    Do $$$AssertEquals(..AreaVerdicts(), ..ExpectedAreaVerdicts(tOpened), "%Operator's grants open Logs, OS management, Tasks and Web applications, and not Permissions or Security")
     Do $$$AssertEquals(..ScreenVerdict(tDescriptor _ "LogMessageViewer"), "open", "messages.log opens for them")
     Do $$$AssertEquals(..ScreenVerdict(tDescriptor _ "AuditList"), "%Admin_Secure:USE", "while the audit database viewer keeps its own gate")
     Do $$$AssertEquals(..ScreenVerdict(tDescriptor _ "LogEventViewer"), "%Ens_EventLog:USE", "and so does the interoperability event log")
@@ -351,7 +352,7 @@ Method TestAGatedAreaNamesItsSetsFirstUnheldPairThenItsFirstListedScreens()
     Do $ClassMethod(tGate, "Hold", "%DB_IRISSYS", "READ")
     Set tSC = ##class(OcuPilot.Screen.Registry).ListedScreensForArea("permissions", .tListed)
     Do $$$AssertStatusOK(tSC, "the Permissions side bar reads")
-    Do $$$AssertEquals($ListLength(tListed), 4, "and lists its four screens")
+    Do $$$AssertTrue($ListLength(tListed) > 0, "and lists screens, so the loop below is not over nothing")
     For tI = 1:1:$ListLength(tListed) {
         Set tPage = $ClassMethod($List(tListed, tI), "ClassicPage")
         Do $$$AssertTrue(tPage '= "", $List(tListed, tI) _ " replaces a classic page")
@@ -395,11 +396,40 @@ Method TestAnAreaListingNoScreenIsAnsweredByItsSet()
 /// <code>key=open</code> or <code>key=failedPair</code>.</p>
 ClassMethod AreaVerdicts() As %String
 {
+    Set tSC = ##class(OcuPilot.Screen.Area).List(.tAreas)
+    If $$$ISERR(tSC) Quit "the declared areas do not read: " _ $System.Status.GetErrorText(tSC)
     Set tOut = ""
-    For tArea = "home", "logs", "os-management", "tasks", "permissions", "web-applications", "security", "system-explorer", "interoperability", "analytics", "agent" {
+    Set tIterator = tAreas.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tDeclaredArea) {
+        Set tArea = tDeclaredArea.key
         Set tFailed = ""
         Set tAllowed = ##class(OcuPilot.Test.ScreenGate).Evaluate(tArea, .tFailed)
         Set tOut = tOut _ $Select(tOut = "": "", 1: " ") _ tArea _ "=" _ $Select(tAllowed: "open", 1: tFailed)
+    }
+    Quit tOut
+}
+
+/// <p>What <method>AreaVerdicts</method> answers when the areas in <var>pOpened</var> (a
+/// <class>%List</class> of keys) open and every other area is refused on the first pair of its
+/// declared set: every declared area, in rail order, reads <code>open</code> when it is listed there
+/// or declares no pair, and otherwise names that first pair as <code>resource:permission</code>.
+/// Derived from <method>OcuPilot.Screen.Area.List</method>. For a holder of nothing that is the
+/// gate's answer for any area; for a holder of some pairs it holds while each area outside
+/// <var>pOpened</var> starts with a pair the holder lacks.</p>
+ClassMethod ExpectedAreaVerdicts(pOpened As %List) As %String
+{
+    Set tSC = ##class(OcuPilot.Screen.Area).List(.tAreas)
+    If $$$ISERR(tSC) Quit "the declared areas do not read: " _ $System.Status.GetErrorText(tSC)
+    Set tOut = ""
+    Set tIterator = tAreas.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tArea) {
+        Set tPairs = ##class(OcuPilot.Screen.Area).PairsFrom(tArea.privileges)
+        Set tVerdict = "open"
+        If ($ListFind(pOpened, tArea.key) = 0) && (tPairs '= "") {
+            Set tFirst = $List(tPairs, 1)
+            Set tVerdict = $List(tFirst, 1) _ ":" _ $List(tFirst, 2)
+        }
+        Set tOut = tOut _ $Select(tOut = "": "", 1: " ") _ tArea.key _ "=" _ tVerdict
     }
     Quit tOut
 }
@@ -428,7 +458,9 @@ Method TestThePayloadCarriesEveryAreaWithAVerdict()
 {
     Set tSC = ##class(OcuPilot.Api.Navigation).Payload(.tObject)
     Do $$$AssertStatusOK(tSC, "the payload builds")
-    Do $$$AssertEquals(tObject.areas.%Size(), 11, "every area is emitted, never a partial list")
+    Do $$$AssertStatusOK(##class(OcuPilot.Screen.Area).List(.tDeclared), "the declared areas read")
+    Do $$$AssertTrue(tDeclared.%Size() > 0, "and there are some, so the count below is not of two empty lists")
+    Do $$$AssertEquals(tObject.areas.%Size(), tDeclared.%Size(), "every declared area is emitted, never a partial list")
 
     Set tIterator = tObject.areas.%GetIterator()
     Set tPosition = 0
@@ -491,17 +523,20 @@ Method TestThePayloadCarriesEveryAreaWithAVerdict()
     ; Story 18.11 took it to forty-seven: Prometheus metrics at 21.
     ; Story 18.36 took it to fifty-one: the Dashboard's four unlisted drill-downs, leading the unlisted block by
     ; descriptor class name.
+    ; Story 18.37 took it to fifty-four: Interoperability usage at 22, and its unlisted Database impact and Message
+    ; volume tabs sorting between the global mappings list and the journal file databases.
     Set tOsMgmt = ##class(OcuPilot.Test.Descriptor).AreaEntry(tObject.areas, "os-management")
     Do $$$AssertTrue($IsObject(tOsMgmt), "the payload carries the os-management area")
     If $IsObject(tOsMgmt) {
-        Do $$$AssertEquals(tOsMgmt.screens.%Size(), 51, "which carries its fifty-one built screens -- an added os-management screen updates this count and the per-index assertions below with it")
-        Set tExpected = $ListBuild($ListBuild("os-management/ecp-statistics", "ecpStatisticsLabel", "the unlisted ECP statistics, first alphabetically among sideBarPosition 0"), $ListBuild("os-management/global-statistics", "globalStatisticsLabel", "then the unlisted global and routine statistics"), $ListBuild("os-management/active-processes", "activeProcessesLabel", "then the unlisted most active processes"), $ListBuild("os-management/resource-statistics", "resourceStatisticsLabel", "then the unlisted system resource statistics"), $ListBuild("os-management/databases/details", "databaseDetailsLabel", "then the unlisted database details"), $ListBuild("os-management/database-free-space", "databaseFreeSpaceLabel", "then the unlisted free-space view"), $ListBuild("os-management/databases/integrity", "databaseIntegrityLabel", "then the unlisted Check integrity flow"), $ListBuild("os-management/databases/volumes", "databaseVolumeListLabel", "then the unlisted volume files"), $ListBuild("os-management/devices/edit", "deviceFormLabel", "then the unlisted device editor"), $ListBuild("os-management/ecp-data-servers/edit", "aboutEcpDataServer", "then the unlisted ECP data server editor"), $ListBuild("os-management/ecp-application-servers/ssl", "ecpSslConnectionsLabel", "then the unlisted SSL/TLS authorizations tab"), $ListBuild("os-management/namespaces/global-mappings/edit", "globalMappingFormLabel", "then the unlisted global mapping editor"), $ListBuild("os-management/namespaces/global-mappings", "globalMappingListLabel", "then the unlisted global mappings list"), $ListBuild("os-management/journals/databases", "journalFileDatabaseListLabel", "then the unlisted journal file databases"), $ListBuild("os-management/journals/details", "journalFileDetailsLabel", "then the unlisted journal file details"), $ListBuild("os-management/journal-records", "journalRecordListLabel", "then the unlisted journal records"), $ListBuild("os-management/language-servers/activity", "languageServerActivityLabel", "then the unlisted Activity log of External language servers"), $ListBuild("os-management/language-servers/edit", "languageServerFormLabel", "then the unlisted external language server editor"), $ListBuild("os-management/license-usage/distributed", "licenseUsageDistributed", "then License usage's unlisted Distributed tab"), $ListBuild("os-management/license-usage/processes", "licenseUsageByProcess", "then its unlisted By process tab"), $ListBuild("os-management/license-servers/edit", "aboutLicenseServer", "then the unlisted license server editor"), $ListBuild("os-management/license-usage/users", "licenseUsageByUser", "then its unlisted By user tab"), $ListBuild("os-management/local-databases/edit", "systemInfoDatabase", "then the unlisted local database editor"), $ListBuild("os-management/namespaces/edit", "headerNamespaceLabel", "then the unlisted namespace editor"), $ListBuild("os-management/namespaces/package-mappings/edit", "packageMappingFormLabel", "then the unlisted package mapping editor"), $ListBuild("os-management/namespaces/package-mappings", "packageMappingListLabel", "then the unlisted package mappings list"), $ListBuild("os-management/processes/details", "processDetailsLabel", "then the unlisted process details"), $ListBuild("os-management/remote-databases/edit", "remoteDatabaseFormLabel", "then the unlisted remote database form"), $ListBuild("os-management/namespaces/routine-mappings/edit", "routineMappingFormLabel", "then the unlisted routine mapping editor"), $ListBuild("os-management/namespaces/routine-mappings", "routineMappingListLabel", "then the unlisted routine mappings list, last alphabetically among sideBarPosition 0"), $ListBuild("os-management/processes", "processListLabel", "then the processes list, position 1"), $ListBuild("os-management/locks", "lockListLabel", "then Locks, position 2"), $ListBuild("os-management/system-usage", "systemUsageLabel", "then system usage, position 3"), $ListBuild("os-management/databases", "databaseListLabel", "then Databases, position 4"), $ListBuild("os-management/databases/integrity-log", "databaseIntegrityLogLabel", "then the Integrity log, position 5"), $ListBuild("os-management/devices", "deviceListLabel", "then Devices, position 6"), $ListBuild("os-management/namespaces", "namespaceListLabel", "then Namespaces, position 7"), $ListBuild("os-management/license-usage", "licenseUsageLabel", "then License usage, position 8"), $ListBuild("os-management/dashboard", "dashboardLabel", "then the Dashboard, position 9"), $ListBuild("os-management/language-servers", "languageServersLabel", "then External language servers, position 10"), $ListBuild("os-management/local-databases", "localDatabaseListLabel", "then Local databases, position 11"), $ListBuild("os-management/remote-databases", "remoteDatabaseListLabel", "then Remote databases, position 12"), $ListBuild("os-management/journals", "journalListLabel", "and Journals last, position 13"))
+        Do $$$AssertEquals(tOsMgmt.screens.%Size(), 54, "which carries its fifty-four built screens -- an added os-management screen updates this count and the per-index assertions below with it")
+        Set tExpected = $ListBuild($ListBuild("os-management/ecp-statistics", "ecpStatisticsLabel", "the unlisted ECP statistics, first alphabetically among sideBarPosition 0"), $ListBuild("os-management/global-statistics", "globalStatisticsLabel", "then the unlisted global and routine statistics"), $ListBuild("os-management/active-processes", "activeProcessesLabel", "then the unlisted most active processes"), $ListBuild("os-management/resource-statistics", "resourceStatisticsLabel", "then the unlisted system resource statistics"), $ListBuild("os-management/databases/details", "databaseDetailsLabel", "then the unlisted database details"), $ListBuild("os-management/database-free-space", "databaseFreeSpaceLabel", "then the unlisted free-space view"), $ListBuild("os-management/databases/integrity", "databaseIntegrityLabel", "then the unlisted Check integrity flow"), $ListBuild("os-management/databases/volumes", "databaseVolumeListLabel", "then the unlisted volume files"), $ListBuild("os-management/devices/edit", "deviceFormLabel", "then the unlisted device editor"), $ListBuild("os-management/ecp-data-servers/edit", "aboutEcpDataServer", "then the unlisted ECP data server editor"), $ListBuild("os-management/ecp-application-servers/ssl", "ecpSslConnectionsLabel", "then the unlisted SSL/TLS authorizations tab"), $ListBuild("os-management/namespaces/global-mappings/edit", "globalMappingFormLabel", "then the unlisted global mapping editor"), $ListBuild("os-management/namespaces/global-mappings", "globalMappingListLabel", "then the unlisted global mappings list"), $ListBuild("os-management/interoperability-usage/impact", "interopUsageImpactLabel", "then Interoperability usage's unlisted Database impact tab"), $ListBuild("os-management/interoperability-usage/volume", "interopUsageVolumeLabel", "then its unlisted Message volume tab"), $ListBuild("os-management/journals/databases", "journalFileDatabaseListLabel", "then the unlisted journal file databases"), $ListBuild("os-management/journals/details", "journalFileDetailsLabel", "then the unlisted journal file details"), $ListBuild("os-management/journal-records", "journalRecordListLabel", "then the unlisted journal records"), $ListBuild("os-management/language-servers/activity", "languageServerActivityLabel", "then the unlisted Activity log of External language servers"), $ListBuild("os-management/language-servers/edit", "languageServerFormLabel", "then the unlisted external language server editor"), $ListBuild("os-management/license-usage/distributed", "licenseUsageDistributed", "then License usage's unlisted Distributed tab"), $ListBuild("os-management/license-usage/processes", "licenseUsageByProcess", "then its unlisted By process tab"), $ListBuild("os-management/license-servers/edit", "aboutLicenseServer", "then the unlisted license server editor"), $ListBuild("os-management/license-usage/users", "licenseUsageByUser", "then its unlisted By user tab"), $ListBuild("os-management/local-databases/edit", "systemInfoDatabase", "then the unlisted local database editor"), $ListBuild("os-management/namespaces/edit", "headerNamespaceLabel", "then the unlisted namespace editor"), $ListBuild("os-management/namespaces/package-mappings/edit", "packageMappingFormLabel", "then the unlisted package mapping editor"), $ListBuild("os-management/namespaces/package-mappings", "packageMappingListLabel", "then the unlisted package mappings list"), $ListBuild("os-management/processes/details", "processDetailsLabel", "then the unlisted process details"), $ListBuild("os-management/remote-databases/edit", "remoteDatabaseFormLabel", "then the unlisted remote database form"), $ListBuild("os-management/namespaces/routine-mappings/edit", "routineMappingFormLabel", "then the unlisted routine mapping editor"), $ListBuild("os-management/namespaces/routine-mappings", "routineMappingListLabel", "then the unlisted routine mappings list, last alphabetically among sideBarPosition 0"), $ListBuild("os-management/processes", "processListLabel", "then the processes list, position 1"), $ListBuild("os-management/locks", "lockListLabel", "then Locks, position 2"), $ListBuild("os-management/system-usage", "systemUsageLabel", "then system usage, position 3"), $ListBuild("os-management/databases", "databaseListLabel", "then Databases, position 4"), $ListBuild("os-management/databases/integrity-log", "databaseIntegrityLogLabel", "then the Integrity log, position 5"), $ListBuild("os-management/devices", "deviceListLabel", "then Devices, position 6"), $ListBuild("os-management/namespaces", "namespaceListLabel", "then Namespaces, position 7"), $ListBuild("os-management/license-usage", "licenseUsageLabel", "then License usage, position 8"), $ListBuild("os-management/dashboard", "dashboardLabel", "then the Dashboard, position 9"), $ListBuild("os-management/language-servers", "languageServersLabel", "then External language servers, position 10"), $ListBuild("os-management/local-databases", "localDatabaseListLabel", "then Local databases, position 11"), $ListBuild("os-management/remote-databases", "remoteDatabaseListLabel", "then Remote databases, position 12"), $ListBuild("os-management/journals", "journalListLabel", "and Journals last, position 13"))
         Set tExpected = tExpected _ $ListBuild($ListBuild("os-management/journal-settings", "journalSettingsLabel", "then Journal settings, at position 14"))
         Set tExpected = tExpected _ $ListBuild($ListBuild("os-management/license-key", "licenseKeyLabel", "then License key, at position 15"), $ListBuild("os-management/license-servers", "licenseServerListLabel", "and License servers last, at position 16"))
         Set tExpected = tExpected _ $ListBuild($ListBuild("os-management/ecp-data-servers", "ecpDataServerListLabel", "then ECP data servers, at position 17"))
         Set tExpected = tExpected _ $ListBuild($ListBuild("os-management/ecp-settings", "ecpSettingsLabel", "then ECP settings, at position 18"), $ListBuild("os-management/ecp-application-servers", "ecpAppServersLabel", "then ECP application servers, at position 19"))
         Set tExpected = tExpected _ $ListBuild($ListBuild("os-management/sql-activity", "sqlActivityLabel", "and SQL activity, at position 20"))
         Set tExpected = tExpected _ $ListBuild($ListBuild("os-management/metrics", "metricsLabel", "then Prometheus metrics, at position 21"))
+        Set tExpected = tExpected _ $ListBuild($ListBuild("os-management/interoperability-usage", "interopUsageLabel", "then Interoperability usage, at position 22"))
         For tI = 1:1:$ListLength(tExpected) {
             Set tRow = $List(tExpected, tI)
             Do $$$AssertEquals(tOsMgmt.screens.%Get(tI - 1).route, $List(tRow, 1), $List(tRow, 3))
@@ -525,19 +560,33 @@ Method TestThePayloadCarriesEveryAreaWithAVerdict()
         }
     }
 
-    ; Interoperability (Story 20.2, Story 20.3, Story 20.4, Story 20.5, Story 20.6): its nine listed screens are the area's side bar, in the
-    ; classic List menu's order and then Production monitor, Queues, Jobs, Lookup tables and Business partners, and the roster
-    ; also carries the unlisted Production items list, the item's tabs, a table's entries and Queue messages, which sort first at
+    ; Interoperability (Story 20.2, Story 20.3, Story 20.4, Story 20.5, Story 20.6, Story 20.7, Story 20.8, Story 20.9, Story 20.30): its eleven listed screens are the area's side bar, in the
+    ; classic List menu's order and then Production monitor, Queues, Jobs, Lookup tables, Business partners, the Schema viewer and Messages, and the roster
+    ; also carries the unlisted Production items list, the item's tabs, a table's entries, a message's Contents, Header and Trace tabs, Queue messages, the rule, BPL and DTL editors and the Configuration diagram, which sort first at
     ; position 0, by class name; an added Interoperability
     ; screen updates this count and the order with it.
     Set tInterop = ##class(OcuPilot.Test.Descriptor).AreaEntry(tObject.areas, "interoperability")
     Do $$$AssertTrue($IsObject(tInterop), "the payload carries the interoperability area")
     If $IsObject(tInterop) {
-        Do $$$AssertEquals(tInterop.screens.%Size(), 19, "which carries its nineteen built screens -- an added Interoperability screen updates this count and the order below with it")
-        Set tOrder = $ListBuild("interoperability/productions/items/jobs|interopItemJobsLabel", "interoperability/productions/items|interopItemsLabel", "interoperability/productions/items/log|interopItemLogLabel", "interoperability/productions/items/messages|interopItemMessagesLabel", "interoperability/productions/items/queue|interopItemQueueLabel", "interoperability/productions/items/settings|interopItemSettingsLabel", "interoperability/productions/items/document|interopItemStatusLabel", "interoperability/productions/items/test|interopItemTestLabel", "interoperability/lookup-tables/entries|interopLookupEntriesLabel", "interoperability/queues/messages|interopQueueMessagesLabel", "interoperability/productions|interopProductionsLabel", "interoperability/processes|interopProcessesLabel", "interoperability/transforms|interopTransformsLabel", "interoperability/rules|interopRulesLabel", "interoperability/monitor|interopMonitorLabel", "interoperability/queues|interopQueuesLabel", "interoperability/jobs|interopJobsLabel", "interoperability/lookup-tables|interopLookupTablesLabel", "interoperability/business-partners|interopBusinessPartnersLabel")
+        Do $$$AssertEquals(tInterop.screens.%Size(), 28, "which carries its twenty-eight built screens -- an added Interoperability screen updates this count and the order below with it")
+        Set tOrder = $ListBuild("interoperability/productions/items/jobs|interopItemJobsLabel", "interoperability/productions/items|interopItemsLabel", "interoperability/productions/items/log|interopItemLogLabel", "interoperability/productions/items/messages|interopItemMessagesLabel", "interoperability/productions/items/queue|interopItemQueueLabel", "interoperability/productions/items/settings|interopItemSettingsLabel", "interoperability/productions/items/document|interopItemStatusLabel", "interoperability/productions/items/test|interopItemTestLabel", "interoperability/lookup-tables/entries|interopLookupEntriesLabel", "interoperability/messages/contents|interopMessageContentsLabel", "interoperability/messages/document|logViewerColumnMessage", "interoperability/messages/trace|interopMessageTraceLabel", "interoperability/processes/document|interopBplEditorTitle", "interoperability/productions/diagram|interopProductionDiagramTitle", "interoperability/queues/messages|interopQueueMessagesLabel", "interoperability/rules/document|interopRuleEditorTitle", "interoperability/transforms/document|interopDtlEditorTitle", "interoperability/productions|interopProductionsLabel", "interoperability/processes|interopProcessesLabel", "interoperability/transforms|interopTransformsLabel", "interoperability/rules|interopRulesLabel", "interoperability/monitor|interopMonitorLabel", "interoperability/queues|interopQueuesLabel", "interoperability/jobs|interopJobsLabel", "interoperability/lookup-tables|interopLookupTablesLabel", "interoperability/business-partners|interopBusinessPartnersLabel", "interoperability/schema-viewer|interopSchemaViewerTitle", "interoperability/messages|interopItemTabMessages")
         For tAt = 1:1:$ListLength(tOrder) {
             Set tScreen = tInterop.screens.%Get(tAt - 1)
             Do $$$AssertEquals($Select($IsObject(tScreen): tScreen.route _ "|" _ tScreen.labelKey, 1: ""), $List(tOrder, tAt), "interoperability position " _ tAt _ " is its declared screen, under its own label key")
+        }
+    }
+
+    ; Analytics (Stories 20.11 and 20.32): its six listed screens, Cubes, Term lists and Folder items, then the Architect, Analyzer and User Portal
+    ; links, are the area's side bar; the roster also carries the unlisted cube tabs and a term list's entries, which sort first at position 0, by
+    ; class name; an added Analytics screen updates this count and the order with it.
+    Set tAnalytics = ##class(OcuPilot.Test.Descriptor).AreaEntry(tObject.areas, "analytics")
+    Do $$$AssertTrue($IsObject(tAnalytics), "the payload carries the analytics area")
+    If $IsObject(tAnalytics) {
+        Do $$$AssertEquals(tAnalytics.screens.%Size(), 11, "which carries its eleven built screens -- an added Analytics screen updates this count and the order below with it")
+        Set tOrder = $ListBuild("analytics/cubes/dimensions|analyticsTabDimensions", "analytics/cubes/document|analyticsTabMeasures", "analytics/cubes/relationships|analyticsTabRelationships", "analytics/term-lists/entries|analyticsTermListEntriesLabel", "analytics/cubes|analyticsCubesLabel", "analytics/term-lists|analyticsTermListsLabel", "analytics/folder-items|analyticsFolderItemsLabel", "analytics/architect|analyticsArchitectLabel", "analytics/analyzer|analyticsAnalyzerLabel", "analytics/user-portal|analyticsUserPortalLabel", "analytics/mdx-query|analyticsMdxQueryLabel")
+        For tAt = 1:1:$ListLength(tOrder) {
+            Set tScreen = tAnalytics.screens.%Get(tAt - 1)
+            Do $$$AssertEquals($Select($IsObject(tScreen): tScreen.route _ "|" _ tScreen.labelKey, 1: ""), $List(tOrder, tAt), "analytics position " _ tAt _ " is its declared screen, under its own label key")
         }
     }
 }

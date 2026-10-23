@@ -3,6 +3,7 @@ import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '
 import { ActivatedRoute, Router } from '@angular/router';
 
 import { ApiService } from '../../core/api';
+import { pickCount } from '../../core/count-phrase';
 import { decodeEntityId } from '../../core/entity-id';
 import { formatDeniedAction, NavigationService } from '../../core/navigation';
 import { onScopeChange, ScopeService } from '../../core/scope';
@@ -170,7 +171,7 @@ interface PathView {
   ],
   template: `<section class="ocu-openapi-viewer" [attr.aria-busy]="busy">
     @if (showRefusal) {
-      <div class="ocu-data-table-refusal ocu-openapi-refusal" role="alert" data-ocu-openapi="refusal">
+      <div class="ocu-data-table-refusal" role="alert" data-ocu-openapi="refusal">
         <span class="ocu-data-table-refusal-message">{{ refusalMessage }}</span>
       </div>
     }
@@ -216,7 +217,7 @@ interface PathView {
             <li class="ocu-openapi-path">
               <button
                 type="button"
-                class="ocu-form-disclosure ocu-openapi-path-toggle"
+                class="ocu-form-disclosure"
                 data-ocu-openapi="path"
                 [attr.aria-expanded]="path.open"
                 [attr.aria-controls]="path.panelId"
@@ -261,7 +262,7 @@ interface PathView {
                       @if (operation.tryIt; as tryIt) {
                         <button
                           type="button"
-                          class="ocu-form-disclosure ocu-try-it-toggle"
+                          class="ocu-form-disclosure"
                           data-ocu-try-it="toggle"
                           [id]="tryIt.toggleId"
                           [attr.aria-expanded]="tryIt.open"
@@ -619,7 +620,9 @@ export class OpenApiViewerPage {
     if (answer !== null) {
       const head = [`${answer.status} ${answer.statusText}`.trim(), ...answer.headers].join('\n');
       answerText = answer.body.kind === 'binary' ? head : `${head}\n\n${answer.body.text}`;
-      if (answer.body.kind === 'binary') binaryNote = STRINGS.tryItBinary.replace('<n>', `${answer.body.byteCount}`);
+      if (answer.body.kind === 'binary') {
+        binaryNote = pickCount(answer.body.byteCount, STRINGS.tryItBinaryOne, STRINGS.tryItBinary).replace('<n>', `${answer.body.byteCount}`);
+      }
     }
     return {
       key,

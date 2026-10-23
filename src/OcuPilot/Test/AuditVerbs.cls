@@ -124,9 +124,12 @@ Method Create(pSuffix As %String, pFields As %String) As %String
 /// <p><b>Delete</b> (DW-404, DW-411) -- a deleted definition's row is read back, naming what became
 /// of the credential entry it had created: <code>effects.credentialEntry</code> is
 /// <code>removed</code>, and the entry is gone. A definition with no credential reference records
-/// no effect at all.</p>
+/// no effect at all, and nor does a <code>wallet</code> definition's repoint or delete: a wallet secret's name is no
+/// credential entry (Story 18.41).</p>
 /// <p>Mutation: pass no effects from <method>OcuPilot.Api.Definitions.HandleDelete</method>'s
-/// <method>LogChange</method> call -- the effect assertion goes red.</p>
+/// <method>LogChange</method> call -- the effect assertion goes red. Drop the wallet term from
+/// <method>OcuPilot.Api.Definitions.HandleUpdate</method>'s or <method>OcuPilot.Api.Definitions.HandleDelete</method>'s
+/// clear -- that wallet leg reads <code>notOwned</code> and goes red.</p>
 Method TestADeleteIsRecordedWithWhatBecameOfItsCredentialEntry()
 {
     Set tId = ..Create("AuditDelete", """provider"":""anthropic"",""credType"":""creds"",""credentialName"":""" _ ..#AUDITCREDENTIAL _ """")
@@ -149,6 +152,16 @@ Method TestADeleteIsRecordedWithWhatBecameOfItsCredentialEntry()
     Set tEnvData = ##class(OcuPilot.Test.AuditRecord).RowFor(..PreparedSince, 1, tEnvId, "delete", .tEnvRows)
     Do $$$AssertEquals(tEnvRows, 1, "the delete of a definition with no credential reference is recorded too: " _ tEnvRows)
     If tEnvRows = 1 Do $$$AssertEquals(tEnvData [ """effects""", 0, "with no effect to name: " _ tEnvData)
+
+    Set tWalletId = ..Create("AuditDeleteWallet", """provider"":""anthropic"",""credType"":""wallet"",""credentialName"":""OcuPilotProbe1841.audit""")
+    If tWalletId = "" Quit
+    Do ..Expect("wallet repoint", "PUT", "/agent/definitions/" _ tWalletId, "{""credentialName"":""OcuPilotProbe1841.audit2""}", 200)
+    Do ..Expect("wallet delete", "DELETE", "/agent/definitions/" _ tWalletId, "", 200)
+    For tVerb = "update", "delete" {
+        Set tWalletData = ##class(OcuPilot.Test.AuditRecord).RowFor(..PreparedSince, 1, tWalletId, tVerb, .tWalletRows)
+        Do $$$AssertEquals(tWalletRows, 1, "the wallet definition's " _ tVerb _ " is recorded: " _ tWalletRows)
+        If tWalletRows = 1 Do $$$AssertEquals(tWalletData [ """effects""", 0, "naming no credential entry: " _ tWalletData)
+    }
 }
 
 /// <p><b>Update, repointed</b> (DW-411) -- a definition repointed away from the credential entry it

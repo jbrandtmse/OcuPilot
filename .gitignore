@@ -46,3 +46,4 @@ __pycache__/
 
 # The owner's private production notes (video shot lists and scripts); kept out of the public repository.
 docs/videos/
+_bmad-output/unattended/

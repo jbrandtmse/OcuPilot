@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest';
 
 import { NavigationService, screenForRoute, type Verdict } from '../core/navigation';
 import { OverlayStack } from '../core/overlay-stack';
@@ -11,6 +11,7 @@ import { Session } from '../core/session';
 import type { ScreenDeclaration } from '../core/screens.generated';
 import { ShellState } from '../core/shell-state';
 import { STRINGS } from '../core/strings';
+import { VIEW_KEY_SEPARATOR } from '../core/table-model';
 import { screenDeclaration } from '../testing/screen-declaration';
 import { tableDeclaration } from '../testing/table-declaration';
 import { COMMAND_BOX_OVERLAY_ID, CommandBox } from './command-box';
@@ -50,6 +51,13 @@ const USERS = screen('permissions/users', 'navAreaPermissions', 'permissions', {
 const LOGS = screen('logs/messages', 'navAreaLogs', 'logs', { commandAliases: ['tail'] });
 const HOME = screen('', 'navAreaHome', 'home', { commandAliases: ['start'] });
 
+// Story 20.32: an `external` screen, whose row opens its address in a new tab.
+const ANALYZER = screen('analytics/analyzer', 'analyticsAnalyzerLabel', 'analytics', {
+  archetype: 'external',
+  commandAliases: ['analyzer', 'pivot tables'],
+});
+const ANALYZER_ADDRESS = '/csp/user/_DeepSee.UI.Analyzer.zen?$NAMESPACE=USER';
+
 // Four ways the needle `class` meets a screen, declared in the reverse of the order they rank in:
 // through an alias alone, elsewhere in the name, the start of the name, the whole name.
 const ALIAS_ONLY = screen('system-explorer/routines', 'explorerRoutineListLabel', 'system-explorer', {
@@ -69,6 +77,8 @@ const DEFINITIONS = screenForRoute('agent/definitions') as ScreenDeclaration;
 
 class StubNavigation {
   readonly verdicts = new Map<string, Verdict>();
+  /** The address the map carries for an `external` screen, by route (Story 20.32). */
+  readonly hrefs = new Map<string, string>();
   current: ScreenDeclaration | null = USERS;
   roster: readonly ScreenDeclaration[] = [USERS, LOGS];
   private readonly listeners = new Set<() => void>();
@@ -83,6 +93,10 @@ class StubNavigation {
 
   screenVerdict(route: string): Verdict {
     return this.verdicts.get(route) ?? ALLOWED;
+  }
+
+  screenHref(route: string): string {
+    return this.hrefs.get(route) ?? '';
   }
 
   subscribe(listener: () => void): () => void {
@@ -119,6 +133,8 @@ describe('the command box', () => {
   let signOuts: number;
   let unregisterCreate: () => void;
   const planted: HTMLElement[] = [];
+  /** Story 20.32: `openInNewTab`'s one `window.open` call, stubbed so no tab opens. */
+  let windowOpen: MockInstance<typeof window.open>;
 
   const field = (): HTMLInputElement => fixture.nativeElement.querySelector('[role="combobox"]');
   const listbox = (): HTMLElement | null => fixture.nativeElement.querySelector('[role="listbox"]');
@@ -143,6 +159,7 @@ describe('the command box', () => {
   };
 
   beforeEach(() => {
+    windowOpen = vi.spyOn(window, 'open').mockImplementation(() => null);
     navigation = new StubNavigation();
     accountPreferences = stubAccountPreferences();
     shell = new ShellState({ account: accountPreferences });
@@ -166,6 +183,8 @@ describe('the command box', () => {
           { path: '', children: [] },
           { path: 'permissions/users', children: [] },
           { path: 'logs/messages', children: [] },
+          // Story 20.32: where an external row lands when the map carries no address for it.
+          { path: 'analytics/analyzer', children: [] },
           // DW-1852: where the OAuth 2.0 row lands for a holder of only the authorization server tab.
           { path: 'security/oauth/server', children: [] },
           // Where Enter lands when the ranking puts the whole-name match first.
@@ -194,6 +213,7 @@ describe('the command box', () => {
   });
 
   afterEach(() => {
+    windowOpen.mockRestore();
     for (const element of planted.splice(0)) element.remove();
   });
 
@@ -238,7 +258,7 @@ describe('the command box', () => {
     expect(options().map((option) => option.textContent?.trim())).toEqual([
       `${STRINGS.navAreaPermissions}${STRINGS.navAreaPermissions}`,
     ]);
-    expect(count()).toBe('1 screens, 0 actions');
+    expect(count()).toBe('1 screen, 0 actions');
 
     type('tail');
     expect(options()).toHaveLength(1);
@@ -294,6 +314,89 @@ describe('the command box', () => {
     row.click();
     await fixture.whenStable();
     expect(router.url).toBe('/security/oauth/server');
+  });
+
+  describe('Story 20.32: an external screen row', () => {
+    const enter = () => field().dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+
+    // Mutation (Rule 19): drop the external branch from `choose()` in `command-box.ts` -> Enter routes onto the page, so the call count
+    // reads 0 and the URL moves.
+    it('Enter on an allowed row opens its address in a new tab once, routes nowhere and returns focus', async () => {
+      navigation.roster = [USERS, LOGS, ANALYZER];
+      navigation.hrefs.set('analytics/analyzer', ANALYZER_ADDRESS);
+      const router = TestBed.inject(Router);
+      await router.navigateByUrl('/permissions/users?ns=USER');
+      const elsewhere = document.createElement('button');
+      document.body.appendChild(elsewhere);
+      planted.push(elsewhere);
+      elsewhere.focus();
+
+      chord();
+      type('analyzer');
+      expect(options()).toHaveLength(1);
+      enter();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(windowOpen).toHaveBeenCalledTimes(1);
+      expect(windowOpen).toHaveBeenCalledWith(ANALYZER_ADDRESS, '_blank', 'noopener,noreferrer');
+      expect(router.url).toBe('/permissions/users?ns=USER');
+      expect(field().getAttribute('aria-expanded')).toBe('false');
+      expect(document.activeElement).toBe(elsewhere);
+    });
+
+    // Mutation (Rule 19): drop the `aria-description` binding or the glyph from the screen rows in `command-box.ts` -> this goes red.
+    it('an allowed row with an address says it opens a new tab and carries the glyph, and one without carries neither', async () => {
+      navigation.roster = [USERS, LOGS, ANALYZER];
+      navigation.hrefs.set('analytics/analyzer', ANALYZER_ADDRESS);
+      await TestBed.inject(Router).navigateByUrl('/permissions/users?ns=USER');
+
+      chord();
+      type('analyzer');
+      expect(options()).toHaveLength(1);
+      expect(options()[0].getAttribute('aria-description')).toBe(STRINGS.classicRowLinkDescription.split('<page>').join(STRINGS.analyticsAnalyzerLabel));
+      expect(options()[0].querySelector('.ocu-external-glyph')?.getAttribute('aria-hidden')).toBe('true');
+
+      navigation.hrefs.clear();
+      type('analyze');
+      expect(options()).toHaveLength(1);
+      expect(options()[0].getAttribute('aria-description')).toBeNull();
+      expect(options()[0].querySelector('.ocu-external-glyph')).toBeNull();
+    });
+
+    it('a gated row stays listed, names its pair and opens nothing', async () => {
+      navigation.roster = [USERS, LOGS, ANALYZER];
+      navigation.hrefs.set('analytics/analyzer', ANALYZER_ADDRESS);
+      navigation.verdicts.set('analytics/analyzer', { allowed: false, failedPair: '%DeepSee_Analyzer:USE' });
+      const router = TestBed.inject(Router);
+      await router.navigateByUrl('/permissions/users?ns=USER');
+
+      chord();
+      type('analyzer');
+      expect(options()).toHaveLength(1);
+      expect(options()[0].getAttribute('aria-disabled')).toBe('true');
+      expect(options()[0].textContent).toContain('Requires %DeepSee_Analyzer:USE');
+      enter();
+      await fixture.whenStable();
+
+      expect(windowOpen).not.toHaveBeenCalled();
+      expect(router.url).toBe('/permissions/users?ns=USER');
+    });
+
+    it('a row the map carries no address for routes onto its own page, which says why', async () => {
+      navigation.roster = [USERS, LOGS, ANALYZER];
+      const router = TestBed.inject(Router);
+      await router.navigateByUrl('/permissions/users?ns=USER');
+
+      chord();
+      type('analyzer');
+      enter();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(windowOpen).not.toHaveBeenCalled();
+      expect(router.url).toBe('/analytics/analyzer?ns=USER');
+    });
   });
 
   it('arrow keys move the active descendant and Enter opens the highlighted screen', async () => {
@@ -504,6 +607,52 @@ describe('the command box', () => {
     expect(entry?.hasAttribute('disabled')).toBe(false);
   });
 
+  it("Story 18.46: a registrant's reason lists the primary action and a row action gated with that sentence, ahead of the row's own, and choosing either runs nothing", () => {
+    // The Allowed directories screen registers Add and Change with the instance's verdict on the write's key. The box lists
+    // them as the command bar draws them: the sentence inline, the entry `aria-disabled`, a choice a no-op. The selected row is
+    // the unrestricted fallback row, which the screen's own rule explains too, and the registrant's sentence outranks it.
+    //
+    // Mutation (Rule 19): drop the `this.actions.reason(...)` read from the primary action's entry -> Add is offered and its
+    // choice runs the handler, red; from the row action's entry, or order it after `selfProtectionReason(...)` -> Change names
+    // the fallback sentence, red.
+    const allowed = screenForRoute('security/allowed-directories') as ScreenDeclaration;
+    const descriptor = allowed.descriptor;
+    navigation.current = allowed;
+    let runs = 0;
+    let sentence: string = STRINGS.allowListRefusalOff;
+    const actions = TestBed.inject(ScreenActions);
+    actions.register(descriptor, 'add', () => (runs += 1), () => sentence);
+    actions.register(descriptor, 'change', () => (runs += 1), () => sentence);
+    const store = TestBed.inject(ScreenStores).for(descriptor, allowed.refreshRates);
+    store.applyTick([{ Directory: '/iris/mgr/', Restricted: false }], false, '', new Date());
+    store.setSelection(['/iris/mgr/']);
+    chord();
+
+    const entry = (label: string): HTMLElement | undefined =>
+      Array.from(fixture.nativeElement.querySelectorAll('.ocu-command-box-group-actions [role="option"]')).find(
+        (option) => (option as HTMLElement).querySelector('.ocu-command-box-option-label')?.textContent?.trim() === label
+      ) as HTMLElement | undefined;
+    for (const label of [STRINGS.allowedDirectoryAddAction, STRINGS.allowedDirectoryChangeAction]) {
+      expect(entry(label), label).toBeDefined();
+      expect(entry(label)?.textContent, label).toContain(STRINGS.allowListRefusalOff);
+      expect(entry(label)?.textContent, label).not.toContain(STRINGS.allowListRefusalFallback);
+      expect(entry(label)?.getAttribute('aria-disabled'), label).toBe('true');
+      expect(entry(label)?.hasAttribute('disabled'), label).toBe(false);
+    }
+    entry(STRINGS.allowedDirectoryAddAction)?.click();
+    entry(STRINGS.allowedDirectoryChangeAction)?.click();
+    fixture.detectChanges();
+    expect(runs).toBe(0);
+
+    sentence = '';
+    actions.changed();
+    fixture.detectChanges();
+    expect(entry(STRINGS.allowedDirectoryChangeAction)?.textContent, 'with the registrant silent the row falls back to its own rule').toContain(
+      STRINGS.allowListRefusalFallback
+    );
+    expect(entry(STRINGS.allowedDirectoryAddAction)?.hasAttribute('aria-disabled')).toBe(false);
+  });
+
   it("Story 7.2: with the signed-in account selected, the box lists its protected-account action with the published sentence", () => {
     // Mutation (Rule 19): drop `this.signedIn()` from `actionCandidates`' call -> no reason, red.
     navigation.current = screen('permissions/users', 'navAreaPermissions', 'permissions', {
@@ -513,6 +662,28 @@ describe('the command box', () => {
     });
     TestBed.inject(ScreenActions).register('OcuPilot.Screen.Descriptor.UserList', 'delete', () => {});
     TestBed.inject(ScreenStores).for('OcuPilot.Screen.Descriptor.UserList', []).setSelection(['dana']);
+    chord();
+    const entry = Array.from(
+      fixture.nativeElement.querySelectorAll('.ocu-command-box-group-actions [role="option"]')
+    ).find(
+      (option) =>
+        (option as HTMLElement).querySelector('.ocu-command-box-option-label')?.textContent?.trim() ===
+        STRINGS.actionDelete
+    ) as HTMLElement | undefined;
+    expect(entry?.textContent).toContain(STRINGS.userRefusalCurrentUser);
+    expect(entry?.getAttribute('aria-disabled')).toBe('true');
+  });
+
+  it("Story 18.47, DW-2328: a repeated row selected by its view key reads its entity key for the protected-account rule", () => {
+    // Mutation (Rule 19): drop `entityKeyOf` from `actionCandidates`' selection -> the key carries the ordinal, no rule
+    // matches it, no reason, red.
+    navigation.current = screen('permissions/users', 'navAreaPermissions', 'permissions', {
+      descriptor: 'OcuPilot.Screen.Descriptor.UserList',
+      primaryAction: { id: '', selfProtection: '' },
+      rowActions: [{ id: 'delete', selfProtection: 'protected-account' }],
+    });
+    TestBed.inject(ScreenActions).register('OcuPilot.Screen.Descriptor.UserList', 'delete', () => {});
+    TestBed.inject(ScreenStores).for('OcuPilot.Screen.Descriptor.UserList', []).setSelection([`dana${VIEW_KEY_SEPARATOR}2`]);
     chord();
     const entry = Array.from(
       fixture.nativeElement.querySelectorAll('.ocu-command-box-group-actions [role="option"]')
@@ -571,7 +742,19 @@ describe('the command box', () => {
       fixture.nativeElement.querySelectorAll('.ocu-command-box-group-actions [role="option"]')
     ).map((option) => (option as HTMLElement).querySelector('.ocu-command-box-option-label')?.textContent?.trim());
     expect(labels).toEqual([STRINGS.actionDelete]);
-    expect(count()).toBe('2 screens, 1 actions');
+    expect(count()).toBe('2 screens, 1 action');
+  });
+
+  it('one screen with one action reads the singular of both, and the plural of neither', () => {
+    // Mutation (Rule 19): pick the count template on the screens alone in `command-box.ts` -> the
+    // "1 screen, 1 action" case reads "1 screen, 1 actions", red.
+    navigation.roster = [USERS];
+    navigation.current = screen('permissions/users', 'navAreaPermissions', 'permissions', {
+      primaryAction: { id: '', selfProtection: '' },
+      rowActions: [{ id: 'delete', selfProtection: 'current-user' }],
+    });
+    chord();
+    expect(count()).toBe('1 screen, 1 action');
   });
 
   it('Story 18.4: an action declared as both the primary and a row action is listed once, as the primary', () => {
@@ -620,7 +803,7 @@ describe('the command box', () => {
       fixture.nativeElement.querySelectorAll('.ocu-command-box-group-actions [role="option"]')
     ).map((option) => (option as HTMLElement).querySelector('.ocu-command-box-option-label')?.textContent?.trim());
     expect(labels).toEqual([STRINGS.actionDelete]);
-    expect(count()).toBe('2 screens, 1 actions');
+    expect(count()).toBe('2 screens, 1 action');
   });
 
   it('choosing a registered primary action runs it once and closes the box, and unregistering removes the row', () => {
@@ -1042,7 +1225,7 @@ describe('the command box', () => {
     chord();
     type('a');
 
-    expect(count()).toBe('2 screens, 1 actions');
+    expect(count()).toBe('2 screens, 1 action');
     expect(options()[0].textContent).toContain(STRINGS.navAreaLogs);
   });
 });

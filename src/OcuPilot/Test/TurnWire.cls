@@ -197,11 +197,9 @@ Method TestTheProgressPollCarriesTheTurnsMintedProposal()
 /// one-turn conversation cannot tell a card landing on the right turn from a card landing on the
 /// only turn. The second turn is also what pins the empty array -- a turn that minted nothing
 /// answers <code>[]</code> rather than the other turn's rows.</p>
-/// <p><b>What this does NOT distinguish:</b> the <code>seq</code> join
-/// <method>OcuPilot.Api.Conversation.AttachProposals</method> uses from a join by ordinal.
-/// <property>Seq</property> is <code>COUNT(*) + 1</code> per conversation, so the two coincide in
-/// every state the append path can produce; they diverge only once
-/// <method>GuardedRows</method> skips a row it cannot open, which no fixture here can force.</p>
+/// <p>The <code>seq</code> join <method>OcuPilot.Api.Conversation.AttachProposals</method> uses is
+/// pinned across a retention gap by
+/// <method>OcuPilot.Test.ConversationRestore.TestARetentionGapStillAttachesEachTurnsOwnProposals</method>.</p>
 /// <p>Mutation: drop the <code>AttachProposals</code> call from
 /// <method>OcuPilot.Api.Conversation.HandleRead</method> -- the key roster and the array's size
 /// both go red. Remove the turn key from

@@ -25,6 +25,7 @@ import { ShellState } from '../core/shell-state';
 import { STRINGS } from '../core/strings';
 import { ViewOptions } from '../core/view-options';
 import { ApiService } from '../core/api';
+import { VIEW_KEY_SEPARATOR } from '../core/table-model';
 import { screenDeclaration } from '../testing/screen-declaration';
 import { tableDeclaration } from '../testing/table-declaration';
 import { CommandBar, SORT_MENU_OVERLAY_ID, VIEW_MENU_OVERLAY_ID } from './command-bar';
@@ -435,6 +436,80 @@ describe('the command bar', () => {
     expect(runs).toBe(1);
   });
 
+  it("Story 18.46: a registrant's reason draws the primary action and every row action aria-disabled with that sentence, and a click runs nothing", () => {
+    // The Allowed directories screen registers Add, Change and Remove with the instance's verdict on the write's key. The
+    // sentence outranks "Select a row first" and the row's own rule, holds for the primary action too, and clears when the
+    // registrant says so.
+    //
+    // Mutation (Rule 19): make the bar's `actions.reason(...)` read answer `''` for the primary action -> the primary
+    // button is drawn as an ordinary control and its click is not refused, red; do the same for the row actions -> the
+    // row legs go red.
+    const declared = tableDeclaration({
+      descriptor: 'OcuPilot.Screen.Descriptor.AllowedDirectoryList',
+      primaryAction: { id: 'add', selfProtection: '' },
+      rowActions: [{ id: 'change', selfProtection: 'allowed-directory-fallback' }],
+    });
+    build(declared);
+    let runs = 0;
+    let sentence: string = STRINGS.allowListRefusalOff;
+    actions.register(declared.descriptor, 'add', () => (runs += 1), () => sentence);
+    actions.register(declared.descriptor, 'change', () => (runs += 1), () => sentence);
+    fixture.detectChanges();
+
+    const primary = (): HTMLButtonElement => fixture.nativeElement.querySelector('.ocu-command-bar-primary');
+    const change = (): HTMLButtonElement => fixture.nativeElement.querySelector('.ocu-command-bar-action');
+    expect(primary().textContent?.trim()).toBe(STRINGS.allowedDirectoryAddAction);
+    expect(change().textContent?.trim()).toBe(STRINGS.allowedDirectoryChangeAction);
+    for (const button of [primary(), change()]) {
+      expect(button.getAttribute('aria-disabled')).toBe('true');
+      expect(button.hasAttribute('disabled')).toBe(false);
+      const reason = fixture.nativeElement.querySelector(`#${button.getAttribute('aria-describedby')}`);
+      expect(reason?.textContent?.trim()).toBe(STRINGS.allowListRefusalOff);
+      expect(reason?.getAttribute('role')).toBe('tooltip');
+    }
+    primary().click();
+    change().click();
+    fixture.detectChanges();
+    expect(runs).toBe(0);
+
+    sentence = '';
+    actions.changed();
+    fixture.detectChanges();
+    expect(primary().hasAttribute('aria-disabled')).toBe(false);
+    expect(primary().hasAttribute('aria-describedby')).toBe(false);
+    expect(change().getAttribute('aria-disabled')).toBe('true');
+    expect(fixture.nativeElement.querySelector(`#${change().getAttribute('aria-describedby')}`)?.textContent?.trim()).toBe(STRINGS.privilegeSelectRowFirst);
+    primary().click();
+    expect(runs).toBe(1);
+  });
+
+  it("Story 18.46: a registrant's reason is drawn ahead of the selected row's own self-protection sentence", () => {
+    // Mutation (Rule 19): read the row's `selfProtectionReason` before the registrant's in the bar's row actions -> the
+    // fallback row's sentence is drawn while the verdict stands, red.
+    const base = tableDeclaration();
+    const declared = tableDeclaration({
+      descriptor: 'OcuPilot.Screen.Descriptor.AllowedDirectoryList',
+      rowActions: [{ id: 'change', selfProtection: 'allowed-directory-fallback' }],
+      read: base.read === null ? null : { ...base.read, fields: [...base.read.fields, 'Restricted'] },
+    });
+    build(declared);
+    let sentence: string = STRINGS.allowListRefusalOff;
+    actions.register(declared.descriptor, 'change', () => {}, () => sentence);
+    const store = stores.for(declared.descriptor, declared.refreshRates);
+    store.applyTick([{ Name: 'alpha', NameSpace: 'USER', Count: 0, Enabled: true, Note: 'n', Restricted: false }], false, '', new Date());
+    store.setSelection(['alpha']);
+    fixture.detectChanges();
+    const described = (): string | undefined => {
+      const button: HTMLButtonElement = fixture.nativeElement.querySelector('.ocu-command-bar-action');
+      return fixture.nativeElement.querySelector(`#${button.getAttribute('aria-describedby')}`)?.textContent?.trim();
+    };
+    expect(described()).toBe(STRINGS.allowListRefusalOff);
+    sentence = '';
+    actions.changed();
+    fixture.detectChanges();
+    expect(described(), 'the row is one its own rule explains').toBe(STRINGS.allowListRefusalFallback);
+  });
+
   it("Story 9.3: a system-resource action reads the selected row's own AllowDelete", () => {
     // Mutation (Rule 19): drop `row` from the bar's `selfProtectionReason` call -> the not-deletable
     // row's button is drawn as an ordinary control, red.
@@ -483,6 +558,28 @@ describe('the command bar', () => {
     expect(button.getAttribute('aria-disabled')).toBe('true');
     const reason = fixture.nativeElement.querySelector(`#${button.getAttribute('aria-describedby')}`);
     expect(reason?.textContent?.trim()).toBe(STRINGS.userRefusalCurrentUser);
+    button.click();
+    fixture.detectChanges();
+    expect(runs).toBe(0);
+  });
+
+  it('Story 18.47, DW-2328: a repeated row selected by its view key reads its entity key for the protected-account rule', () => {
+    // Mutation (Rule 19): drop `entityKeyOf` from the bar's `selected` -> the key carries the ordinal, no row or rule
+    // matches it, the button runs and this goes red.
+    const declared = tableDeclaration({
+      descriptor: 'OcuPilot.Screen.Descriptor.UserList',
+      rowActions: [{ id: 'disable', selfProtection: 'protected-account' }],
+    });
+    build(declared);
+    let runs = 0;
+    actions.register(declared.descriptor, 'disable', () => (runs += 1));
+    stores.for(declared.descriptor, declared.refreshRates).setSelection([`dana${VIEW_KEY_SEPARATOR}2`]);
+    fixture.detectChanges();
+    const button: HTMLButtonElement = fixture.nativeElement.querySelector('.ocu-command-bar-action');
+    expect(button.getAttribute('aria-disabled')).toBe('true');
+    expect(fixture.nativeElement.querySelector(`#${button.getAttribute('aria-describedby')}`)?.textContent?.trim()).toBe(
+      STRINGS.userRefusalCurrentUser
+    );
     button.click();
     fixture.detectChanges();
     expect(runs).toBe(0);
@@ -1427,6 +1524,22 @@ describe('the command bar', () => {
     expect(reason?.textContent?.trim()).toBe('The file holds the first 3 rows only.');
     expect(reason?.getAttribute('role')).toBe('tooltip');
     expect(reason?.classList.contains('ocu-command-bar-reason')).toBe(true);
+  });
+
+  it('Story 23.5: one row reads "1 row" in the count, and a cap of one describes the file as the first row only', async () => {
+    // Mutation (Rule 19): fill `STRINGS.tableRowCount` and `STRINGS.tableDownloadCsvCapped` alone in `command-bar.ts` -> both go red.
+    const declared = tableDeclaration();
+    build(declared);
+    actions.register(declared.descriptor, DOWNLOAD_CSV_ACTION_ID, () => {});
+    stores.for(declared.descriptor, declared.refreshRates).setMaxRows(1);
+    refresh.bind(declared, async () => ({ kind: 'ok' as const, rows: [{ Name: 'a' }], truncated: true }));
+    await refresh.readNow();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.ocu-command-bar-count')?.textContent?.trim()).toBe('1 row');
+    const describedBy = download()?.getAttribute('aria-describedby') ?? '';
+    const reason = describedBy === '' ? null : fixture.nativeElement.querySelector(`#${describedBy}`);
+    expect(reason?.textContent?.trim()).toBe('The file holds the first row only.');
   });
 
   it('AC: every command-bar action is reachable from the command box', () => {

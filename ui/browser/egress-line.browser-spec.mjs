@@ -22,7 +22,7 @@ import puppeteer from 'puppeteer';
 import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
 import { loadStrings } from '../tools/strings.mjs';
 import { clickRowCentre, waitForRows } from './list-spec.mjs';
-import { authHeader, signedInAt } from './panel-spec.mjs';
+import { authHeader, settleViewport, signedInAt, transitionsSettled } from './panel-spec.mjs';
 import {
   INVARIANTS,
   VIEWPORTS,
@@ -186,10 +186,11 @@ async function freshViolations(page, route) {
     { viewport: VIEWPORTS.narrow, theme: 'light' },
     { viewport: VIEWPORTS.wide, theme: 'dark' },
   ]) {
-    await page.setViewport(viewport);
+    await settleViewport(page, viewport);
     if (theme === 'dark') await toggleThemeThroughMenu(page, requests, config.navigationTimeoutMs);
     try {
       await frames(page);
+      await transitionsSettled(page, config.navigationTimeoutMs);
       const { entries } = await detectScreen(page, { route, checks: INVARIANTS, viewport: viewport.width, theme, minimums });
       found.push(...entries);
     } finally {

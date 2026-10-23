@@ -1,16 +1,20 @@
 /**
  * Story 19.10's SQL activity in a real browser, against the throwaway instance (AC1, AC4, AC5, AC6,
  * AC8); two legs signed in as throwaway principals, a caller whose statement text is withheld ("Not
- * shown", AC3) and a caller lacking one pair (AC2); and the empty state.
+ * shown", AC3) and a caller lacking one pair (AC2); the probe's row gone once the probe stops; and the
+ * empty state.
  *
  * What it pins: a probe statement running in USER is a row under the declared headers, carrying its
  * Process ID, Namespace, a numeric Elapsed and its Statement text, and never the value it binds; its
  * Process ID cell opens Process details for that pid; the command bar's auto-refresh chip starts off
  * and offers 5, 10, 30 and 60 s; and the screen passes the structural and contrast checks at 1280
- * light, 720 light and 1280 dark, with no entry beyond the baseline (DW-1337).
+ * light, 720 light and 1280 dark, with no entry beyond the baseline (DW-1337). Once the probe stops,
+ * neither its row nor its statement is on the screen; the instance may run SQL of its own, so that
+ * leg never expects an empty list, and the empty-state sentence is pinned by a leg that answers the
+ * screen's read with no statement.
  *
  * It starts one probe job (`OcuPilot.Test.SqlActivityProbe.Start`, a read-only statement that ends
- * itself within 600 s) before the first test and stops it before the empty-state leg, creates two
+ * itself within 600 s) before the first test and stops it before the stopped-probe leg, creates two
  * principals (`OcuP1910Br*`) it removes after the last, and signs in and resets the account's
  * remembered state, so it runs on a throwaway only.
  *
@@ -26,8 +30,8 @@ import puppeteer from 'puppeteer';
 
 import { LIVE_CONTAINER, browserConfig, launchOptions } from '../browser.config.mjs';
 import { loadStrings } from '../tools/strings.mjs';
-import { ROW_SELECTOR, clickRowCentre, waitForRows } from './list-spec.mjs';
-import { signedInAt } from './panel-spec.mjs';
+import { ROW_SELECTOR, clickRowCentre, viewCount, waitForRows } from './list-spec.mjs';
+import { settleViewport, signedInAt, transitionsSettled } from './panel-spec.mjs';
 import { INVARIANTS, VIEWPORTS, assertThrowaway, collapse, compare, componentMinimums, detectScreen, readBaseline } from './structural-walk.mjs';
 import { resetRememberedState } from './preferences-reset.mjs';
 import { markerValue, runIris } from './turnprobe-spec.mjs';
@@ -36,6 +40,7 @@ const config = browserConfig();
 const STRINGS = loadStrings();
 const ROUTE = 'os-management/sql-activity';
 const PAGE_URL = `/ocupilot/${ROUTE}?ns=HSCUSTOM`;
+const READ_PATH = '/api/ocupilot/screens/osmgmt.sqlactivity/read';
 const PROBE = 'OcuPilot.Test.SqlActivityProbe';
 const LITERAL = `OcuSeedBrowser1910${Date.now()}`;
 const VALUE = `OcuSecretProbe1910Browser${Date.now()}`;
@@ -224,9 +229,10 @@ test('AC8: SQL activity passes DW-1337 wide and narrow, light and dark, with no 
     const minimums = componentMinimums();
     const surfaces = {};
     for (const { viewport, theme, checks } of passes) {
-      await page.setViewport(viewport);
+      await settleViewport(page, viewport);
       await page.evaluate((dark) => document.documentElement.classList.toggle('ocu-theme-dark', dark), theme === 'dark');
       await frames(page);
+      await transitionsSettled(page, config.navigationTimeoutMs);
       surfaces[theme] = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
       const { entries } = await detectScreen(page, { route: ROUTE, checks, viewport: viewport.width, theme, minimums });
       found.push(...entries);
@@ -281,23 +287,55 @@ test('AC2: a caller lacking the %DB_IRISSYS:READ pair is refused the screen, nam
   }
 });
 
-// Nothing running. Mutation (Rule 19): set the descriptor's `emptyStateKey` to `sqlActivityLabel` ->
-// the empty state reads "SQL activity" and the sentence assertion goes red. Last, because it stops the
-// probe the other legs read.
-test('Nothing running: with the probe stopped the screen shows its empty state sentence and no row', async () => {
+// Probe stopped. Mutation (Rule 19): skip the `Stop` call below -> the probe's row and its literal are
+// still on the screen and the row assertions go red. The instance may run statements of its own, so the
+// leg asserts on the probe's row and never on the list being empty. Last of the real-instance legs,
+// because it stops the probe the others read.
+test('Probe stopped: the screen lists neither the probe nor its statement, whatever else the instance runs', async () => {
+  const stoppedPid = pid;
   const stopped = runIris(config.container, [
-    `Set tSC=##class(${PROBE}).Stop(${pid}) Write "OCU-SQLSTOP-START:",$Select($System.Status.IsOK(tSC):"ok",1:$System.Status.GetErrorText(tSC)),":OCU-SQLSTOP-END",!`,
+    `Set tSC=##class(${PROBE}).Stop(${stoppedPid}) Write "OCU-SQLSTOP-START:",$Select($System.Status.IsOK(tSC):"ok",1:$System.Status.GetErrorText(tSC)),":OCU-SQLSTOP-END",!`,
   ]);
   assert.equal(markerValue(stopped, 'SQLSTOP'), 'ok', `the probe job is stopped: ${stopped.slice(-400)}`);
   pid = null;
   const { context, page } = await signedInAt(browser, config, PAGE_URL, VIEWPORTS.wide);
   try {
     await page.waitForFunction(
-      (sentence) => document.body.textContent.includes(sentence),
+      (rowSelector) => document.querySelector(rowSelector) !== null || document.querySelector('.ocu-data-table-empty-title') !== null,
       { timeout: config.navigationTimeoutMs },
-      STRINGS.sqlActivityEmpty
+      ROW_SELECTOR
     );
-    assert.equal((await describeRows(page)).length, 0, 'no row');
+    const rows = await describeRows(page);
+    const total = await viewCount(page);
+    assert.equal(rows.length, Math.max(total, 0), `every row of the answer is rendered, so a missing probe row is absent rather than scrolled out: ${rows.length} of ${total}`);
+    assert.ok(!rows.some((row) => row.cells[0] === stoppedPid), `the stopped probe ${stoppedPid} is no longer a row: ${JSON.stringify(rows)}`);
+    assert.ok(!(await page.evaluate(() => document.body.textContent)).includes(LITERAL), 'and its statement text is nowhere on the page');
+  } finally {
+    await context.close();
+  }
+});
+
+// Empty state. The instance may run SQL of its own, so the browser answers the screen's read with no
+// statement. Mutation (Rule 19): set the descriptor's `emptyStateKey` to `sqlActivityLabel` and rebuild
+// -> the empty state reads "SQL activity" and the sentence assertion goes red.
+test('Nothing running: a read that answers no statement shows the screen\'s empty state sentence and no row', async () => {
+  const { context, page } = await signedInAt(browser, config, PAGE_URL, VIEWPORTS.wide);
+  try {
+    let answered = 0;
+    await page.setRequestInterception(true);
+    page.on('request', (request) => {
+      if (new URL(request.url()).pathname === READ_PATH) {
+        answered += 1;
+        void request.respond({ status: 200, contentType: 'application/json', body: JSON.stringify({ rows: [], truncated: false }) });
+        return;
+      }
+      void request.continue();
+    });
+    await page.goto(`${config.origin}${PAGE_URL}`, { waitUntil: 'networkidle0', timeout: config.navigationTimeoutMs });
+    await page.waitForSelector('.ocu-data-table-empty-title', { visible: true, timeout: config.navigationTimeoutMs });
+    assert.equal(await page.$eval('.ocu-data-table-empty-title', (node) => node.textContent.trim()), STRINGS.sqlActivityEmpty, 'the empty state says no statement is running');
+    assert.equal((await describeRows(page)).length, 0, 'and no row is drawn');
+    assert.ok(answered > 0, `the screen's read went to ${READ_PATH} and this test answered it, not the instance`);
   } finally {
     await context.close();
   }

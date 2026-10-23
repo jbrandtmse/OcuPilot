@@ -18,9 +18,9 @@ Parameter ITEMS = "interoperability/productions/items";
 Parameter SCREENS = "InteropMonitorList|interoperability/monitor|5|list|production-item|Monitor|interop.monitor|EnsPortal.ProductionMonitor|1|0|;InteropQueueList|interoperability/queues|6|list|interop-queue|Queues|interop.queues|EnsPortal.Queues|1|0|abort;InteropQueueMessageList|interoperability/queues/messages|0|list|interop-message|QueueItems|interop.queuemessages|EnsPortal.Queues|0|0|abort;InteropJobList|interoperability/jobs|7|list|interop-job|Jobs|interop.jobs|EnsPortal.Jobs|1|0|abort,suspend,stop;InteropItemStatusTab|interoperability/productions/items/document|0|detail|production-item|ItemStatus|interop.itemstatus|EnsPortal.ProductionConfig|0|1|;InteropItemQueueTab|interoperability/productions/items/queue|0|detail|interop-message|ItemQueue|interop.itemqueue|EnsPortal.ProductionConfig|0|3|abort;InteropItemLogTab|interoperability/productions/items/log|0|detail|log-entry|ItemLog|interop.itemlog|EnsPortal.ProductionConfig|0|4|;InteropItemMessageTab|interoperability/productions/items/messages|0|detail|interop-message|ItemMessages|interop.itemmessages|EnsPortal.ProductionConfig|0|5|;InteropItemJobTab|interoperability/productions/items/jobs|0|detail|interop-job|ItemJobs|interop.itemjobs|EnsPortal.ProductionConfig|0|6|abort,suspend,stop";
 
 /// <p>The endpoint roster the port declares (AD-62): the four Story 20.2 endpoints, Items and Settings, the nine
-/// runtime reads, then Story 20.5's LookupTables, LookupEntries and BusinessPartners and Story 20.6's ItemTest. Pinned as a literal,
+/// runtime reads, then Story 20.5's LookupTables, LookupEntries and BusinessPartners, Story 20.6's ItemTest, Story 20.9's three message reads and Story 20.30's session trace. Pinned as a literal,
 /// because a roster that derives both sides proves nothing.</p>
-Parameter ENDPOINTS = "Productions,Processes,Transforms,Rules,Items,Settings,Monitor,ItemStatus,Queues,QueueItems,ItemQueue,ItemLog,ItemMessages,Jobs,ItemJobs,LookupTables,LookupEntries,BusinessPartners,ItemTest";
+Parameter ENDPOINTS = "Productions,Processes,Transforms,Rules,Items,Settings,Monitor,ItemStatus,Queues,QueueItems,ItemQueue,ItemLog,ItemMessages,Jobs,ItemJobs,LookupTables,LookupEntries,BusinessPartners,ItemTest,Messages,MessageHeader,MessageContents,MessageTrace";
 
 /// <p>The pairs each runtime endpoint requires, <code>&lt;endpoint&gt;=&lt;pairs&gt;</code>, separated by <code>;</code>: its classic
 /// page's resource beside the Interoperability menu's, and each item tab's beside Productions' (AD-8, AD-29).</p>
@@ -163,10 +163,10 @@ Method TestTheItemTabsFormOneGroupInOrder()
 /// pins), and its <code>Pairs</code> are the declared sets; an endpoint the port does not serve has none.</p>
 /// <p>Mutation (Rule 19): drop <code>%Ens_Queues:READ</code> from the <code>ItemQueue</code> branch of
 /// <method>OcuPilot.Port.InteropPort.Pairs</method> -- the pair leg goes red.</p>
-Method TestThePortServesTheNineEndpointsAndTheirPairs()
+Method TestThePortServesTheRuntimeEndpointsAndTheirPairs()
 {
     Do $$$AssertEquals($Parameter(..#PORT, "ENDPOINTS"), ..#ENDPOINTS, "the port's endpoint roster")
-    Do $$$AssertEquals($ListToString($ClassMethod(..#PORT, "RuntimeEndpoints")), "Monitor,ItemStatus,Queues,QueueItems,ItemQueue,ItemLog,ItemMessages,Jobs,ItemJobs", "the runtime endpoints are the nine")
+    Do $$$AssertEquals($ListToString($ClassMethod(..#PORT, "RuntimeEndpoints")), "Monitor,ItemStatus,Queues,QueueItems,ItemQueue,ItemLog,ItemMessages,Jobs,ItemJobs,Messages,MessageHeader,MessageContents,MessageTrace", "the runtime endpoints are Story 20.4's nine, Story 20.9's three message reads and Story 20.30's session trace")
     For tI = 1:1:$Length(..#PAIRS, ";") {
         Set tEndpoint = $Piece($Piece(..#PAIRS, ";", tI), "=", 1)
         Do $$$AssertEquals(..PairText($ClassMethod(..#PORT, "Pairs", tEndpoint, "LIST")), ..PairsOf(tEndpoint), tEndpoint _ ": its pairs")
@@ -233,12 +233,14 @@ Method TestEachReadToolIsRegistered()
     }
 }
 
-/// <p>The three entity types Story 20.4 adds are in the closed vocabulary, each with no spelling rule of its own.</p>
+/// <p>The three entity types Story 20.4 adds are in the closed vocabulary, each with no spelling rule of its own but a message's: Story
+/// 20.31 gave <code>interop-message</code> the integer-set rule, so the checked rows of Messages are one target in one spelling.</p>
 Method TestTheNewEntityTypesAreKnownAndKeptExactly()
 {
     For tType = "interop-queue", "interop-message", "interop-job" {
         Do $$$AssertTrue(##class(OcuPilot.Kernel.EntityType).IsKnown(tType), tType _ " is a declared entity type")
-        Do $$$AssertEquals(("," _ $Parameter("OcuPilot.Kernel.EntityRef", "IDRULES")) [ ("," _ tType _ ":"), 0, tType _ " has no id rule, so its id is kept exactly")
+        Set tRuled = (("," _ $Parameter("OcuPilot.Kernel.EntityRef", "IDRULES")) [ ("," _ tType _ ":"))
+        Do $$$AssertEquals(tRuled, tType = "interop-message", tType _ $Select(tRuled: " has the integer-set rule Story 20.31 gave it", 1: " has no id rule, so its id is kept exactly"))
     }
 }
 

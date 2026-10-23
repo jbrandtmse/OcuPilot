@@ -1,11 +1,13 @@
-/// <p>Pins Story 20.6's host test declarations (AD-5, AD-8, AD-35, AD-39, AD-44, AD-51, AD-53, AD-54, AD-59, AD-62): the Test tab of a
-/// production item and its place in the item's tab strip; the send tool's shape, pairs, governance key and credential redaction; the
-/// port's <code>ItemTest</code> endpoint, its pairs, the types it serves and the write it composes; every test code resolving to its
-/// sentence; the script form with a quote and a control character kept inside its literals; and the answer a person or a card shows,
-/// which never carries an <code>outcome</code> member.</p>
+/// <p>Pins Story 20.6's host test declarations and Story 20.27's data transformation test declarations (AD-5, AD-8, AD-35, AD-39, AD-44,
+/// AD-51, AD-53, AD-54, AD-59, AD-62): the Test tab of a production item and its place in the item's tab strip; the send tool's shape,
+/// pairs, governance key and credential redaction; the port's <code>ItemTest</code> endpoint, its pairs, the types it serves and the
+/// write it composes; every test code resolving to its sentence; the script form with a quote and a control character kept inside its
+/// literals; and the answer a person or a card shows, which never carries an <code>outcome</code> member. The same for the
+/// transformation test: its tool, the <code>Transforms</code> endpoint's two types, its codes and its script.</p>
 /// <p><b>What it needs from the environment:</b> the compiled registries, an interoperability-enabled <code>USER</code> namespace and
-/// <parameter>ARMINGVARIABLE</parameter> reading <code>1</code>, because the script leg compiles the probe request class of
-/// <class>OcuPilot.Test.InteropTestFixture</class> in <code>USER</code>. It starts no production.</p>
+/// <parameter>ARMINGVARIABLE</parameter> reading <code>1</code>, because the script legs compile the probe request class of
+/// <class>OcuPilot.Test.InteropTestFixture</class> and the probe transformations of
+/// <class>OcuPilot.Test.InteropTransformFixture</class> in <code>USER</code>. It starts no production.</p>
 Class OcuPilot.Test.InteropTestDescriptor Extends %UnitTest.TestCase
 {
 
@@ -15,6 +17,10 @@ Parameter ARMINGVARIABLE = "OCUPILOT_ALLOW_PRINCIPALS";
 Parameter PROBE = "OcuPilot.Test.ProductionProbe";
 
 Parameter FIXTURE = "OcuPilot.Test.InteropTestFixture";
+
+Parameter TRANSFORMFIXTURE = "OcuPilot.Test.InteropTransformFixture";
+
+Parameter TRANSFORMTOOL = "OcuPilot.Screen.Tool.InteropTransformTest";
 
 Parameter PORT = "OcuPilot.Port.InteropPort";
 
@@ -33,13 +39,18 @@ Method OnBeforeAllTests() As %Status
     If $$$ISERR(tSC) Quit tSC
     Set tSC = $ClassMethod(..#PROBE, "Create")
     If $$$ISERR(tSC) Quit tSC
-    Quit $ClassMethod(..#FIXTURE, "Create")
+    Set tSC = $ClassMethod(..#FIXTURE, "Create")
+    If $$$ISOK(tSC) Set tSC = $ClassMethod(..#TRANSFORMFIXTURE, "Create")
+    If $$$ISERR(tSC) Set tSC = $$$ADDSC(tSC, ..OnAfterAllTests())
+    Quit tSC
 }
 
-/// <p>Remove the probe and the fixture's classes and what they left.</p>
+/// <p>Remove the probe and the fixtures' classes and what they left.</p>
 Method OnAfterAllTests() As %Status
 {
-    Set tSC = $ClassMethod(..#FIXTURE, "Remove")
+    Set tSC = $ClassMethod(..#TRANSFORMFIXTURE, "Remove")
+    Set tFixture = $ClassMethod(..#FIXTURE, "Remove")
+    If $$$ISOK(tSC) Set tSC = tFixture
     Set tRemoved = $ClassMethod(..#PROBE, "Remove")
     Quit $Select($$$ISERR(tSC): tSC, 1: tRemoved)
 }
@@ -120,7 +131,10 @@ Method TestTheSendToolIsDeclaredAsTheSpecNamesIt()
 /// set <parameter>TESTWAIT</parameter> to 600 -- the wait leg goes red.</p>
 Method TestThePortServesTheItemTestEndpointWithTheTestingServicePairs()
 {
-    Do $$$AssertEquals($ListFind($ClassMethod(..#PORT, "Endpoints"), "ItemTest") _ "|" _ $Piece($Parameter(..#PORT, "ENDPOINTS"), ",", *), $ListLength($ClassMethod(..#PORT, "Endpoints")) _ "|ItemTest", "the roster ends with the endpoint")
+    Set tAt = $ListFind($ClassMethod(..#PORT, "Endpoints"), "ItemTest")
+    Do $$$AssertTrue(tAt > 0, "the roster holds the endpoint")
+    Do $$$AssertEquals($ListFind($ClassMethod(..#PORT, "Endpoints"), "BusinessPartners") + 1, tAt, "right after the business partners")
+    Do $$$AssertEquals($ListFind($ListFromString($Parameter(..#PORT, "ENDPOINTS")), "ItemTest"), tAt, "where the declared roster holds it")
     Do $$$AssertEquals($Parameter(..#PORT, "TESTPAIRS"), "%Ens_Portal:USE,%Ens_TestingService:USE", "the Testing Service page's pairs")
     Do $$$AssertEquals($ClassMethod(..#PORT, "TestWait"), 15, "a test waits at most AD-62's 15 seconds")
     For tType = "LIST", "TESTTARGET", "SENDTEST" {
@@ -175,9 +189,10 @@ Method TestEveryTestCodeResolves()
 /// <p>The script form (AD-59): an <code>objectscript</code> step that switches to the namespace, builds the request from the fields
 /// it is given, validates and saves it, and calls the testing service by the item's name; every name and value is a string literal,
 /// a quote doubled and a control character spelled as <code>$Char</code>, so nothing the query carries runs as code, and no line opens
-/// a block it does not close. A document class is its text imported.</p>
+/// a block it does not close. A document class is its text imported, an EDI XML document's from its first <code>&lt;</code>.</p>
 /// <p>Mutation (Rule 19): drop the <code>Literal</code> from the value in <method>OcuPilot.Port.InteropPort.TestSnippet</method> --
-/// the quote leg goes red; convert every value through <code>DisplayToLogical</code> -- the <code>ErrorStatus</code> leg goes red.</p>
+/// the quote leg goes red; convert every value through <code>DisplayToLogical</code> -- the <code>ErrorStatus</code> leg goes red; hand
+/// an EDI XML document's text on as sent -- the EDI XML legs go red.</p>
 Method TestTheScriptKeepsEveryValueInsideItsLiteral()
 {
     Kill tQuery
@@ -205,6 +220,12 @@ Method TestTheScriptKeepsEveryValueInsideItsLiteral()
     Set tQuery("fields") = {"content": ("MSH|^~\&|A" _ $Char(13) _ "PID|1")}.%ToJSON()
     Set tText = $ClassMethod(..#PORT, "Snippet", "ItemTest", "SENDTEST", .tQuery).%Get(0).text
     Do $$$AssertTrue((tText [ "ImportFromString") && (tText [ """_$Char(13)_""") && (tText '[ "%ValidateObject"), "a document is its text imported, a carriage return spelled as $Char")
+    Set tQuery("requestClass") = "EnsLib.EDI.XML.Document"
+    For tCase = $ListBuild(" " _ $Char(13, 10) _ "<root/>", "ImportFromString"", ""<root/>"", .tSC)"), $ListBuild("/etc/hostname", "tSC = $System.Status.Error(5001, ""Not XML Format"")") {
+        Set tQuery("fields") = {"content": ($List(tCase, 1))}.%ToJSON()
+        Set tText = $ClassMethod(..#PORT, "Snippet", "ItemTest", "SENDTEST", .tQuery).%Get(0).text
+        Do $$$AssertTrue(tText [ $List(tCase, 2), "an EDI XML document's text is imported from its first <, and text that is not XML is refused, as the send does (AD-21): " _ tText)
+    }
     Kill tQuery
     Set tQuery("namespace") = "USER"
     Do $$$AssertEquals($ClassMethod(..#PORT, "Snippet", "ItemTest", "TESTTARGET", .tQuery).%Size(), 0, "a read has no script")
@@ -264,6 +285,211 @@ Method TestTheAnswerNeverCarriesAnOutcome()
     Do $$$AssertTrue('tOutput.%IsDefined("outcome"), "no outcome member")
     Do $$$AssertEquals($ClassMethod(..#TOOL, "WriteOutput", {"status": "done"}), "", "an answer with no lines shows nothing")
     Do $$$AssertEquals($ClassMethod(..#TOOL, "WriteOutput", "text"), "", "and neither does a text")
+}
+
+
+/// <p>The transformation test tool is declared as the spec names it: the composed <code>TRANSFORM</code> read and the
+/// <code>TRANSFORMTEST</code> write over the interoperability port's <code>Transforms</code> endpoint, no body, not destructive, the
+/// one <code>test</code> action carrying <code>content</code> (an empty one admitted, for the port to refuse on the field), the
+/// subject that carries the precondition field and the message, the running consequence, a key that ships <code>true</code>, the
+/// dialog's pair and the globals database's WRITE and no routines database, a read composed for the action from the call and for no
+/// action from a stored payload, and an agent message of 1 to the card's width.</p>
+/// <p>Mutation (Rule 19): set <parameter>DESTRUCTIVE</parameter> to 1, or <parameter>ROUTINESDATABASE</parameter> to 1, on
+/// <class>OcuPilot.Screen.Tool.InteropTransformTest</class> -- the shape leg goes red.</p>
+Method TestTheTransformToolIsDeclaredAsTheSpecNamesIt()
+{
+    Set tTool = ..#TRANSFORMTOOL
+    Do $$$AssertEquals($Parameter(tTool, "TOOLNAME") _ "|" _ $ClassMethod(tTool, "WriteType") _ "|" _ $ClassMethod(tTool, "ReadType") _ "|" _ $ClassMethod(tTool, "PortClass") _ "|" _ $ClassMethod(tTool, "Endpoint"), "interop.transforms.test|TRANSFORMTEST|TRANSFORM|" _ ..#PORT _ "|Transforms", "its name, types, port and endpoint")
+    Do $$$AssertEquals($ClassMethod(tTool, "SendsBody") _ "|" _ $ClassMethod(tTool, "Destructive") _ "|" _ $ClassMethod(tTool, "ChangeAction") _ "|" _ $ListToString($ClassMethod(tTool, "ScreenActionIds")) _ "|" _ $Parameter(tTool, "SCREENVALUES") _ "|" _ $Parameter(tTool, "SCREENEMPTY") _ "|" _ $ListToString($ClassMethod(tTool, "SettableFields")), "0|0|updated|test|test=content|test=content|content", "no body, not destructive, the update action, one screen action with its value")
+    Do $$$AssertEquals($ListToString($ClassMethod(tTool, "FingerprintSubject")) _ "|" _ $ClassMethod(tTool, "PreconditionField") _ "|" _ $ClassMethod(tTool, "Consequence", {}, 0, ""), "Namespace,Name,SourceClass,SourceDocType,SourceKind,TargetClass,TargetDocType,TargetKind,Create,content|SourceClass|INTEROP.TRANSFORM.RUNS", "its subject, its precondition field and its consequence")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).FingerprintSubjectProblem(tTool), "", "it passes the subject's adequacy rule")
+    Do $$$AssertTrue($Parameter(tTool, "ADVERTISED") = 1, "it is advertised")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.Governance.Baseline).Seed("interop.transforms.test", .tListed) _ "|" _ tListed, "1|1", "listed in the governance baseline, enabled")
+    Do $$$AssertEquals($Parameter(tTool, "CLASSICPAGES") _ "|" _ ##class(%SYS.Portal.Resources).NormalizePage("EnsPortal.Dialog.TestTransform"), "EnsPortal.Dialog.TestTransform|EnsPortal.Dialog.TestTransform", "the classic page it declares is spelled as NormalizePage answers it (AD-44)")
+    Do $$$AssertEquals($ClassMethod(tTool, "MintClass"), "OcuPilot.Screen.Tool.InteropTransformMint", "its mint refuses an unsound message before the instance is read")
+    Set tCodes = $ClassMethod(tTool, "PreconditionCodes")
+    For tI = 1:1:$ListLength(tCodes) {
+        Set tCode = $List(tCodes, tI)
+        Do $$$AssertTrue(($ListFind($ClassMethod(..#ERROR, "TransformPreconditionCodes"), tCode) > 0) || (tCode = ##class(OcuPilot.Api.InteropError).#NAMESPACE), tCode _ " is a declared refusal")
+    }
+    Do ##class(OcuPilot.Kernel.Scope).Set("USER")
+    Do ##class(OcuPilot.Kernel.Shell.Namespaces).GlobalDatabase("USER", .tGlobals, .tReadOnly)
+    Set tPairs = $ClassMethod(tTool, "PrivilegePairs", "", .tResolved)
+    Set tText = ""
+    For tI = 1:1:$ListLength(tPairs) {
+        Set tText = tText _ $Select(tText = "": "", 1: ",") _ $ListToString($List(tPairs, tI), ":")
+    }
+    Do $$$AssertEquals(tResolved _ "|" _ tText, "1|%Ens_Portal:USE,%Ens_Code:READ,%Ens_DTLTest:USE," _ tGlobals _ ":WRITE", "its pairs are the list's, the dialog's, then WRITE on the globals database alone")
+    Do $$$AssertEquals($Parameter(tTool, "ROUTINESDATABASE") _ "|" _ $Parameter(tTool, "DATABASEPERMISSION"), "0|WRITE", "and it declares no routines database")
+    Kill tQuery
+    Do $ClassMethod(tTool, "PortQuery", {"Name": "N.cls", "content": "<a/>"}, .tQuery)
+    Do $$$AssertEquals($Get(tQuery("action")) _ "|" _ $Get(tQuery("content")), "TRANSFORMTEST|<a/>", "the read made from the call's arguments is composed for the test")
+    Kill tQuery
+    Do $ClassMethod(tTool, "PortQuery", {"SourceClass": "Ens.StringRequest", "Namespace": "USER", "content": "<a/>"}, .tQuery)
+    Do $$$AssertEquals($Get(tQuery("action")) _ "|" _ $Get(tQuery("namespace")) _ "|" _ $Get(tQuery("content")), "|USER|<a/>", "the read made from the stored payload names the payload's namespace and message and no action")
+    Set tSchema = $ClassMethod(tTool, "InputSchema")
+    Set tBound = $Parameter("OcuPilot.Screen.Tool.ExplorerSave", "CHANGEMAXLENGTH")
+    Do $$$AssertEquals(tSchema.required.%ToJSON() _ "|" _ tSchema.properties.content.type _ "|" _ tSchema.properties.content.maxLength, "[""Name"",""content""]|string|" _ tBound, "the schema requires the transformation and a message within the card's width")
+    For tCase = $ListBuild("", 0), $ListBuild("x", 0), $ListBuild($Justify("", tBound), 0), $ListBuild($Justify("", tBound + 1), 1) {
+        Do $ClassMethod(tTool, "ArgumentProblem", "N.cls", {"Name": "N.cls", "content": ($List(tCase, 1))}, .tProblem)
+        Do $$$AssertEquals((tProblem '= "") _ "", $Select($List(tCase, 1) = "": "1", 1: $List(tCase, 2) _ ""), "a message of " _ $Length($List(tCase, 1)) _ " characters is judged as the card's width says")
+    }
+    Do $ClassMethod(tTool, "ArgumentProblem", "N.cls", {"Name": "N.cls"}, .tProblem)
+    Do $$$AssertTrue(tProblem [ "1 to " _ tBound, "and an absent one is refused")
+}
+
+/// <p>The hooks the confirm and a screen action ask of the transformation test: <code>ConfirmProblem</code> judges the message as the
+/// mint's <code>ArgumentProblem</code> does, 1 to the card's width, and <code>ScreenActionDelta</code> carries a string
+/// <code>content</code> as sent, an empty one included for the port to refuse on the field, and refuses a value of any other type and
+/// an absent one.</p>
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Screen.Tool.InteropTransformTest.ConfirmProblem</method> answer no problem -- the confirm
+/// leg goes red; make <method>OcuPilot.Screen.Tool.InteropTransformTest.ScreenActionDelta</method> carry a number -- the screen leg goes
+/// red.</p>
+Method TestTheTransformToolsConfirmAndScreenHooksJudgeTheMessage()
+{
+    Set tTool = ..#TRANSFORMTOOL
+    Set tBound = $Parameter("OcuPilot.Screen.Tool.ExplorerSave", "CHANGEMAXLENGTH")
+    For tCase = $ListBuild("", 1), $ListBuild("x", 0), $ListBuild($Justify("", tBound), 0), $ListBuild($Justify("", tBound + 1), 1) {
+        Do $ClassMethod(tTool, "ConfirmProblem", "N.cls", {"Name": "N.cls", "content": ($List(tCase, 1))}, .tProblem)
+        Do $$$AssertEquals((tProblem '= "") + 0, $List(tCase, 2), "a confirm of a message of " _ $Length($List(tCase, 1)) _ " characters is judged as the card's width says")
+    }
+    Do $ClassMethod(tTool, "ScreenActionDelta", "test", {"content": ""}, {}, .tArgs, .tProblem)
+    Do $$$AssertEquals(tProblem _ "|" _ tArgs.%GetTypeOf("content") _ "|" _ tArgs.content, "|string|", "an empty message is carried to the port, which refuses it on the field")
+    Do $ClassMethod(tTool, "ScreenActionDelta", "test", {"content": "<a/>"}, {}, .tArgs, .tProblem)
+    Do $$$AssertEquals(tProblem _ "|" _ tArgs.content, "|<a/>", "a message is carried as sent")
+    For tJson = "{""content"":5}", "{}", "{""other"":""x""}" {
+        Do $ClassMethod(tTool, "ScreenActionDelta", "test", ##class(%DynamicAbstractObject).%FromJSON(tJson), {}, .tArgs, .tProblem)
+        Do $$$AssertTrue(tProblem [ "content", "a value that is not a string is refused: " _ tJson)
+    }
+}
+
+/// <p>The port serves the <code>Transforms</code> endpoint's two typed calls and its list: the list needs the code pairs alone, the read
+/// and the test add the dialog's resource, the test is a test write and a write at all and the read neither, the test is composed and
+/// has a script form, and no other endpoint serves either type.</p>
+/// <p>Mutation (Rule 19): drop <parameter>DTLTESTPAIR</parameter> from <method>OcuPilot.Port.InteropPort.Pairs</method> -- the pairs leg
+/// goes red.</p>
+Method TestThePortServesTheTransformsTypesWithTheDialogsPair()
+{
+    Do $$$AssertEquals($Parameter(..#PORT, "DTLTESTPAIR") _ "|" _ $Parameter(..#PORT, "CODEPAIRS"), "%Ens_DTLTest:USE|%Ens_Portal:USE,%Ens_Code:READ", "the dialog's pair and the code pairs")
+    For tType = "LIST", "TRANSFORM", "TRANSFORMTEST" {
+        Do $$$AssertTrue($ClassMethod(..#PORT, "Serves", "Transforms", tType), "Transforms serves " _ tType)
+        Set tPairs = $ClassMethod(..#PORT, "Pairs", "Transforms", tType)
+        Set tText = ""
+        For tI = 1:1:$ListLength(tPairs) {
+            Set tText = tText _ $Select(tText = "": "", 1: ",") _ $ListToString($List(tPairs, tI), ":")
+        }
+        Do $$$AssertEquals(tText, "%Ens_Portal:USE,%Ens_Code:READ" _ $Select(tType = "LIST": "", 1: ",%Ens_DTLTest:USE"), tType _ ": its pairs")
+    }
+    For tType = "ITEM", "STATE", "SENDTEST", "TESTTARGET", "EXPORT" {
+        Do $$$AssertTrue('$ClassMethod(..#PORT, "Serves", "Transforms", tType), "Transforms does not serve " _ tType)
+    }
+    For tEndpoint = "Processes", "Rules", "ItemTest", "Items" {
+        Do $$$AssertTrue('$ClassMethod(..#PORT, "Serves", tEndpoint, "TRANSFORMTEST") && '$ClassMethod(..#PORT, "Serves", tEndpoint, "TRANSFORM"), tEndpoint _ " serves neither")
+    }
+    Do $$$AssertTrue($ClassMethod(..#PORT, "IsTestWrite", "TRANSFORMTEST") && $ClassMethod(..#PORT, "IsAnyWrite", "TRANSFORMTEST"), "the test is a test write and a write")
+    Do $$$AssertTrue('$ClassMethod(..#PORT, "IsTestWrite", "TRANSFORM") && '$ClassMethod(..#PORT, "IsAnyWrite", "TRANSFORM"), "the read is neither")
+    Do $$$AssertTrue($Parameter(..#PORT, "COMPOSEDTYPES") [ "Transforms/TRANSFORMTEST", "the test is a composed type")
+    Do $$$AssertEquals($ClassMethod(..#PORT, "SnippetForm", "Transforms", "TRANSFORMTEST") _ "|" _ $ClassMethod(..#PORT, "SnippetForm", "Transforms", "TRANSFORM") _ "|" _ $ClassMethod(..#PORT, "SnippetForm", "Transforms", "LIST"), "objectscript||", "the test has a script form and the reads have none")
+}
+
+/// <p>Every transformation code resolves to its sentence through <class>OcuPilot.Api.InteropError</class>, as a refused tool call and
+/// as a violation; the two formats are the test's preconditions, the content is a violation and not one, and the running consequence
+/// is declared as a consequence and in the codes roster.</p>
+/// <p>Mutation (Rule 19): drop <code>INTEROP.TRANSFORM.CONTENT</code> from <method>OcuPilot.Api.InteropError.TransformCodes</method> --
+/// this goes red.</p>
+Method TestEveryTransformCodeResolves()
+{
+    Set tCodes = $ClassMethod(..#ERROR, "TransformCodes")
+    Do $$$AssertEquals($ListToString(tCodes), "INTEROP.TRANSFORM.SOURCEFORMAT,INTEROP.TRANSFORM.TARGETFORMAT,INTEROP.TRANSFORM.CONTENT", "two refusals and a violation")
+    For tI = 1:1:$ListLength(tCodes) {
+        Set tCode = $List(tCodes, tI)
+        Set tReason = $ClassMethod(..#ERROR, "ReasonFor", tCode)
+        Do $$$AssertTrue((tCode [ "INTEROP.TRANSFORM.") && (tReason '= ""), tCode _ ": a code and a sentence")
+        Do $$$AssertEquals(##class(OcuPilot.Api.Error).ReasonForToolCode(tCode), tReason, tCode _ ": a refused tool call carries it")
+        Do $$$AssertEquals(##class(OcuPilot.Api.Error).ReasonForViolation(tCode), tReason, tCode _ ": and a violation")
+        Do $$$AssertTrue($ListFind($ClassMethod(..#ERROR, "Codes"), tCode) > 0, tCode _ " is in the codes roster")
+    }
+    Do $$$AssertEquals($ListToString($ClassMethod(..#ERROR, "TransformPreconditionCodes")), "INTEROP.TRANSFORM.SOURCEFORMAT,INTEROP.TRANSFORM.TARGETFORMAT", "the source then the target format are the preconditions, in the order they are checked")
+    Set tConsequence = "INTEROP.TRANSFORM.RUNS"
+    Do $$$AssertTrue($ListFind($ClassMethod(..#ERROR, "ConsequenceCodes"), tConsequence) > 0, tConsequence _ " is a consequence code")
+    Do $$$AssertTrue($ClassMethod(..#ERROR, "ReasonFor", tConsequence) [ "code runs on this instance as you", "and its sentence says the transformation's code runs as the person")
+    Do $$$AssertEquals($ClassMethod(..#TRANSFORMTOOL, "Consequence", {}, 0, ""), tConsequence, "the tool's consequence is that code")
+    Do $$$AssertTrue($ClassMethod(..#ERROR, "ReasonFor", "INTEROP.TRANSFORM.CONTENT") [ $FNumber($Parameter("OcuPilot.Port.AtelierPort", "MAXIMPORTCHARACTERS"), ","), "the content sentence states the bound the port holds")
+}
+
+/// <p>The transformation test's script form (AD-59): an <code>objectscript</code> step that switches to the namespace, parses the
+/// message as the source class the way the test does (XML from its first <code>&lt;</code>, text the test refuses refused), creates the
+/// target for <code>existing</code>, calls <code>Transform</code> by name with empty <code>process</code>, <code>context</code> and
+/// <code>aux</code>, renders the target and deletes a stored source or target the way the test does; every name and the message are
+/// string literals, a quote doubled and a control character spelled as <code>$Char</code>, and no line opens a block it does not
+/// close.</p>
+/// <p>Mutation (Rule 19): drop the <code>Literal</code> from the message in <method>OcuPilot.Port.InteropPort.TransformSnippet</method>
+/// -- the quote leg goes red; hand the script the message as pasted -- the EDI XML and refusal legs go red.</p>
+Method TestTheTransformScriptKeepsTheMessageInsideItsLiteral()
+{
+    Set tFixture = ..#TRANSFORMFIXTURE
+    Kill tQuery
+    Set tQuery("namespace") = "USER"
+    Set tQuery("id") = $Parameter(tFixture, "HL7") _ ".cls"
+    Set tQuery("content") = "MSH|^~\&|A""B" _ $Char(13) _ "PID|1"
+    Set tSteps = $ClassMethod(..#PORT, "Snippet", "Transforms", "TRANSFORMTEST", .tQuery)
+    Set tText = $Select(tSteps.%Size() = 1: tSteps.%Get(0).text, 1: "")
+    Do $$$AssertEquals($Select(tSteps.%Size() = 1: tSteps.%Get(0).kind, 1: ""), "objectscript", "one ObjectScript step")
+    Do $$$AssertTrue((tText [ "Set $NAMESPACE = ""USER""") && (tText [ "EnsLib.HL7.Message"", ""ImportFromString""") && (tText [ "IsMutable = 0") && (tText [ "OcuProbeDtl.Hl7"", ""Transform"", tSource, .tTarget") && (tText [ "OutputToLibraryStream(tStream, tSeparators)"), "it switches, parses, calls Transform and renders the raw view: " _ tText)
+    Do $$$AssertTrue(tText [ "MSH|^~\&|A""""B""_$Char(13)_""PID|1", "a quote is doubled and a carriage return is spelled as $Char inside the message's literal")
+    Set tOpens = 0
+    For tLine = 1:1:$Length(tText, $Char(10)) {
+        If $Extract($ZStrip($Piece(tText, $Char(10), tLine), "<>W"), *) = "{" Set tOpens = tOpens + 1
+    }
+    Do $$$AssertEquals(tOpens, 0, "no line opens a block it does not close")
+    Set tQuery("id") = $Parameter(tFixture, "EXISTING") _ ".cls"
+    Set tQuery("content") = $Char(13, 10) _ "<StringRequest/>"
+    Set tText = $ClassMethod(..#PORT, "Snippet", "Transforms", "TRANSFORMTEST", .tQuery).%Get(0).text
+    Do $$$AssertTrue((tText [ "ObjectFromString(.tSource, ""<StringRequest/>"", ""Ens.StringRequest"", ##class(%XML.SAX.NullEntityResolver).%New())") && (tText [ """%New"")") && (tText [ "%XML.Writer") && (tText '[ "ImportFromString"), "an XML source is read from its first < by the XML reader with no entity resolution, an existing target is created, and an XML target is written by the XML writer: " _ tText)
+    Set tQuery("id") = $Parameter(tFixture, "X12") _ ".cls"
+    Set tText = $ClassMethod(..#PORT, "Snippet", "Transforms", "TRANSFORMTEST", .tQuery).%Get(0).text
+    Do $$$AssertTrue((tText [ "SegmentTerminator") && (tText '[ "%XML.Writer"), "an X12 target is written with its segment terminator")
+    Do $$$AssertTrue((tText [ "Set process = """", context = """"") && (tText [ ", .tTarget, """")") && (tText [ """%Delete""") && (tText [ "tObject.%Oid()"), "it empties process, context and aux and deletes a source or target that was stored, as the test does")
+    Set tQuery("id") = $Parameter(tFixture, "EDIXML") _ ".cls"
+    Set tQuery("content") = " " _ $Char(13, 10, 9) _ "<root/>"
+    Set tText = $ClassMethod(..#PORT, "Snippet", "Transforms", "TRANSFORMTEST", .tQuery).%Get(0).text
+    Do $$$AssertTrue(tText [ "ImportFromString"", ""<root/>"", .tSC)", "an EDI XML message is handed on from its first <, as the test hands it: " _ tText)
+    For tContent = "/etc/hostname", "<!DOCTYPE root SYSTEM ""file:///etc/hostname""><root/>" {
+        Set tQuery("content") = tContent
+        Set tText = $ClassMethod(..#PORT, "Snippet", "Transforms", "TRANSFORMTEST", .tQuery).%Get(0).text
+        Do $$$AssertTrue((tText [ "tSC = $System.Status.Error(5001, ") && (tText '[ "ImportFromString"), "text the test refuses is refused in the script and never imported: " _ tText)
+    }
+    Kill tQuery
+    Set tQuery("namespace") = "USER"
+    Set tQuery("id") = "OcuProbeDtl.Missing.cls"
+    Set tText = $ClassMethod(..#PORT, "Snippet", "Transforms", "TRANSFORMTEST", .tQuery).%Get(0).text
+    Do $$$AssertTrue((tText [ "OcuProbeDtl.Missing"", ""Transform""") && (tText '[ "ImportFromString"), "a transformation the namespace does not hold gives the call alone")
+    Do $$$AssertEquals($ClassMethod(..#PORT, "Snippet", "Transforms", "TRANSFORM", .tQuery).%Size(), 0, "a read has no script")
+}
+
+/// <p>What a transformation test shows is <code>{status, sourceClass, targetClass, lines, console, errors}</code> with the lines as text
+/// and no <code>outcome</code> member, which the card would read as a SQL answer (AD-39's seventh exception); the card's rows are the
+/// transformation, its two classes with their document types and the input with its line ends normalized; and an answer that is not a
+/// test's shows nothing.</p>
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Screen.Tool.InteropTransformTest.WriteOutput</method> add an <code>outcome</code> member
+/// -- this goes red.</p>
+Method TestTheTransformAnswerNeverCarriesAnOutcome()
+{
+    Set tWritten = {"status": "done", "sourceClass": "A.B", "targetClass": "C.D", "lines": ["<a>x</a>"], "console": ["w"], "errors": false, "extra": "kept out"}
+    Set tOutput = $ClassMethod(..#TRANSFORMTOOL, "WriteOutput", tWritten)
+    Do $$$AssertTrue($IsObject(tOutput), "a test's answer is shown")
+    If '$IsObject(tOutput) Quit
+    Do $$$AssertEquals(tOutput.%ToJSON(), "{""status"":""done"",""sourceClass"":""A.B"",""targetClass"":""C.D"",""lines"":[""<a>x</a>""],""console"":[""w""],""errors"":false}", "its six members, the markup left as the text it is")
+    Do $$$AssertTrue('tOutput.%IsDefined("outcome"), "no outcome member")
+    Do $$$AssertEquals($ClassMethod(..#TRANSFORMTOOL, "WriteOutput", {"status": "done", "lines": []}), "", "an answer with no console shows nothing")
+    Do $$$AssertEquals($ClassMethod(..#TRANSFORMTOOL, "WriteOutput", "text"), "", "and neither does a text")
+    Set tFresh = {"Name": "A.B.cls", "SourceClass": "EnsLib.HL7.Message", "SourceDocType": "2.5:ADT_A01", "TargetClass": "Ens.StringResponse", "TargetDocType": ""}
+    Do tFresh.%Set("content", "MSH|a" _ $Char(13, 10) _ "PID|1" _ $Char(13) _ "PV1|1")
+    Set tSC = $ClassMethod(..#TRANSFORMTOOL, "StateDiff", tFresh, .tRows, .tProblem)
+    Do $$$AssertEquals(tProblem _ "|" _ tRows.%Size() _ "|" _ tRows.%Get(0).after _ "|" _ tRows.%Get(1).after _ "|" _ tRows.%Get(2).after _ "|" _ tRows.%Get(3).field _ "|" _ tRows.%Get(3).kind, "|4|A.B.cls|EnsLib.HL7.Message (2.5:ADT_A01)|Ens.StringResponse|Input|lines", "the card shows the transformation, its classes and the input")
+    Do $$$AssertEquals(tRows.%Get(3).after, "MSH|a" _ $Char(10) _ "PID|1" _ $Char(10) _ "PV1|1" _ $Char(10), "with every line end a line feed")
+    Do $ClassMethod(..#TRANSFORMTOOL, "StateDiff", {"Name": "A.B.cls"}, .tRows, .tProblem)
+    Do $$$AssertTrue(tProblem [ "did not report", "a read that names no classes is not a card")
 }
 
 }

@@ -24,13 +24,15 @@ import {
 } from '@angular/core';
 import { Router } from '@angular/router';
 
+import { capNoticePhrase, rowCountPhrase } from '../core/count-phrase';
 import { encodeEntityId } from '../core/entity-id';
 import { normalizeEntityId } from '../core/entity-ref';
-import { isBannerFault } from '../core/fault';
 import { childListFor, detailScreenFor, documentScreenFor, editorScreenFor, hasIdRoute, screenForRoute, withQuery } from '../core/navigation';
+import { estimateLines } from '../core/long-blocks';
 import { OverlayStack } from '../core/overlay-stack';
 import { readBackLine, withReadBack } from '../core/read-back';
 import { RefreshService } from '../core/refresh';
+import { ReadState } from '../core/read-state';
 import { ScopeService } from '../core/scope';
 import { csvFileName, csvText, saveCsv, tableCsvRows } from '../core/csv';
 import { DOWNLOAD_CSV_ACTION_ID, ScreenActions, actionLabel, bannerActionIds } from '../core/screen-actions';
@@ -53,17 +55,19 @@ import {
   emptyStateView,
   fieldOf,
   formatClassicRowLinkDescription,
-  formatCapNotice,
   formatColumnWidth,
-  formatRowCount,
   isMoveKey,
+  entityKeyOf,
   moveActive,
   parseMaxRows,
   reconcile,
   resizedWidth,
-  rowFor,
   rowKey,
+  viewKeys as viewKeysOf,
 } from '../core/table-model';
+import { followInAppLink } from './in-app-link';
+import { LongBlock } from './long-block';
+import { ReadRefusal, ReadSkeleton } from './read-state-blocks';
 
 /**
  * How the table resolves a descriptor's string keys. `stringFor` everywhere but a spec, which
@@ -183,6 +187,18 @@ interface CellTooltip {
   readonly placed: boolean;
 }
 
+/** One `long` column's value, shown whole beneath the rows for the row it belongs to. */
+interface LongBlockModel {
+  /** The column's field and the row's key: another row's value is another block. */
+  readonly id: string;
+  /** The column's header label, which names the block. */
+  readonly label: string;
+  readonly labelId: string;
+  readonly text: string;
+  /** `estimateLines` of `text`: past eight, the block starts collapsed. */
+  readonly lines: number;
+}
+
 /**
  * The data table every list screen renders (EXPERIENCE.md › data-table, DESIGN.md › data-table).
  *
@@ -206,43 +222,47 @@ interface CellTooltip {
  * grid left with no row sends focus to the empty state or asks for the filter field
  * (`focusFilter`).
  *
+ * **A `long` column's value shows whole.** A cell cuts it; beneath the rows, the selected row's
+ * value -- or the only row's, where the view holds one -- renders in an `app-long-block` named by
+ * the column's header, with no block where several rows are listed and none is selected. The
+ * blocks scroll in a region of their own, so an opened block is always reachable and its text is
+ * never clipped.
+ *
  * Every control-flow condition is a paren-free member reference, for the reason `sign-in.ts`
  * records: `ui/tools/client-lint.mjs`'s blanker matches `@if` plus one parenthesised group.
  */
 @Component({
   selector: 'app-data-table',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CdkVirtualScrollViewport, CdkFixedSizeVirtualScroll, CdkVirtualForOf],
+  imports: [CdkVirtualScrollViewport, CdkFixedSizeVirtualScroll, CdkVirtualForOf, LongBlock, ReadSkeleton, ReadRefusal],
   host: { '(window:resize)': 'onWindowResize()' },
   template: `<div class="ocu-data-table-frame" [attr.aria-busy]="busy">
       <span class="ocu-visually-hidden ocu-data-table-announcement" role="status">{{
         announcementText
       }}</span>
       @if (showSkeleton) {
-        <div class="ocu-data-table-skeleton" aria-hidden="true">
-          @for (bar of skeletonRows; track bar) {
-            <div class="ocu-data-table-skeleton-row">
-              <span class="ocu-skeleton-bar ocu-skeleton-bar-40"></span>
-              <span class="ocu-skeleton-bar ocu-skeleton-bar-25"></span>
-              <span class="ocu-skeleton-bar ocu-skeleton-bar-15"></span>
-            </div>
-          }
-        </div>
+        <app-read-skeleton />
       }
       @if (showRefusal) {
-        <div class="ocu-data-table-refusal" role="alert">
-          <span class="ocu-data-table-refusal-message">{{ STRINGS.connectivityRequestRefused }}</span>
-          <button type="button" class="ocu-button-text" (click)="onRetry()">{{ STRINGS.actionRetry }}</button>
-        </div>
+        <app-read-refusal (retry)="onRetry()" />
       }
       @if (showEmpty) {
         <section #empty class="ocu-empty-state ocu-data-table-empty" tabindex="-1">
           <p class="ocu-data-table-empty-title">{{ emptyTitle }}</p>
           <p class="ocu-data-table-empty-next">{{ emptyNext }}</p>
           @if (hasPrimaryAction) {
-            <button type="button" class="ocu-button-primary ocu-data-table-empty-action" (click)="onPrimaryAction()">
+            <button
+              type="button"
+              class="ocu-button-primary ocu-data-table-empty-action"
+              [attr.aria-disabled]="primaryAriaDisabled"
+              [attr.aria-describedby]="primaryDescribedBy"
+              (click)="onPrimaryAction()"
+            >
               {{ primaryActionLabel }}
             </button>
+            @if (primaryReason) {
+              <p class="ocu-data-table-empty-reason" [id]="primaryReasonId">{{ primaryReason }}</p>
+            }
           }
         </section>
       }
@@ -285,7 +305,7 @@ interface CellTooltip {
                   @if (header.check) {
                     <input
                       type="checkbox"
-                      class="ocu-data-table-check ocu-data-table-check-all"
+                      class="ocu-data-table-check"
                       tabindex="-1"
                       [checked]="allChecked"
                       [indeterminate]="someChecked"
@@ -470,9 +490,9 @@ interface CellTooltip {
     <div class="ocu-data-table-footer">
       <span class="ocu-data-table-count">{{ rowCountText }}</span>
       @if (showRowCount) {
-        <span class="ocu-data-table-footer-separator" aria-hidden="true">{{ footerSeparator }}</span>
+        <span aria-hidden="true">{{ footerSeparator }}</span>
       }
-      <label class="ocu-data-table-max-rows-label" [attr.for]="maxRowsId">{{ STRINGS.tableMaxRowsLabel }}</label>
+      <label [attr.for]="maxRowsId">{{ STRINGS.tableMaxRowsLabel }}</label>
       <input
         #maxRows
         class="ocu-data-table-max-rows"
@@ -487,7 +507,19 @@ interface CellTooltip {
       @if (showCapNotice) {
         <p class="ocu-data-table-cap-notice">{{ capNotice }}</p>
       }
-    </div>`,
+    </div>
+    @if (hasLongBlocks) {
+      <div class="ocu-data-table-long">
+        @for (block of longBlocks; track block.id) {
+          <section class="ocu-data-table-long-block" [attr.aria-labelledby]="block.labelId">
+            <span class="ocu-data-table-long-label" [id]="block.labelId">{{ block.label }}</span>
+            <app-long-block [lines]="block.lines">
+              <p class="ocu-data-table-long-text">{{ block.text }}</p>
+            </app-long-block>
+          </section>
+        }
+      </div>
+    }`,
 })
 export class DataTable implements OnInit {
   readonly screen = input.required<ScreenDeclaration>();
@@ -523,7 +555,6 @@ export class DataTable implements OnInit {
   protected readonly rowHeight = ROW_HEIGHT_PX;
   protected readonly minBufferPx = MIN_BUFFER_PX;
   protected readonly maxBufferPx = MAX_BUFFER_PX;
-  protected readonly skeletonRows = [0, 1, 2, 3, 4, 5];
 
   /** The vertical ellipsis the row-overflow trigger draws, as an escape (Rule 14). */
   protected readonly menuGlyph = '\u22ee';
@@ -547,6 +578,14 @@ export class DataTable implements OnInit {
 
   /** Bumped by the store, the framework, the scope, the action registry and the router. */
   private readonly generation = signal(0);
+
+  /** The states the read draws, decided where the detail tabs' body components decide them (`core/read-state.ts`). */
+  private readonly readState = new ReadState(
+    this.refresh,
+    () => this.screen(),
+    () => this.store(),
+    () => this.generation()
+  );
   private readonly renderedRange = signal<ListRange>({ start: 0, end: 0 });
   private readonly activeColumn = signal(-1);
   private readonly menuIsOpen = signal(false);
@@ -668,13 +707,18 @@ export class DataTable implements OnInit {
     const multiSelect = screen.multiSelect;
     const checked = store.checked();
     const ineligible = multiSelect === null || (multiSelect.ineligibleKey ?? '') === '' ? '' : this.lookup(multiSelect.ineligibleKey ?? '');
-    return this.view().map((row, index) => {
-      const key = rowKey(row, screen);
-      const checkable = multiSelect !== null && key !== '' && isCheckable(screen, row);
+    const view = this.view();
+    const keys = viewKeysOf(view, screen);
+    return view.map((row, index) => {
+      // `entity` is the row's own key, which a link names; `key` is what selects, activates, checks and marks it in this
+      // view, and differs only for a row whose key repeats or is empty (Story 18.47, DW-2328).
+      const entity = rowKey(row, screen);
+      const key = keys[index];
+      const checkable = multiSelect !== null && entity !== '' && isCheckable(screen, row);
       const id = `${this.tableId}-row-${index}`;
       const isActive = key !== '' && key === active;
       const isChanged = key !== '' && markedKeys.has(key);
-      const linkValue = rowTargetScreen !== null ? textOf(fieldOf(row, rowTargetField)) : key;
+      const linkValue = rowTargetScreen !== null ? textOf(fieldOf(row, rowTargetField)) : entity;
       const withheld = rowTargetScreen !== null && rowTargetUnless !== '' && fieldOf(row, rowTargetUnless) === true;
       const url = linkable && linkValue !== '' && !withheld ? withQuery(`${linkRoute}/${encodeEntityId(linkValue)}`, currentUrl) : '';
       const classicHref = rowLinked ? classicRowHref(row, screen) : '';
@@ -718,6 +762,34 @@ export class DataTable implements OnInit {
         checkReason: multiSelect === null || checkable ? null : ineligible,
         checkDisabled: multiSelect === null || checkable ? null : 'true',
       };
+    });
+  });
+
+  /**
+   * The `long` columns' values for the row the table shows whole: the only row of the view, else
+   * the selected one, else none. A column whose value is empty draws no block.
+   */
+  private readonly longBlockModels = computed<readonly LongBlockModel[]>(() => {
+    this.generation();
+    const columns = this.columns();
+    if (!columns.some((column) => column.long === true)) return [];
+    const view = this.view();
+    const keys = this.viewKeys();
+    const selected = this.store().selection()[0] ?? '';
+    const at = view.length === 1 ? 0 : selected === '' ? -1 : keys.indexOf(selected);
+    if (at < 0) return [];
+    return columns.flatMap((column, columnIndex) => {
+      const text = column.long === true ? textOf(fieldOf(view[at], column.field)) : '';
+      if (text === '') return [];
+      return [
+        {
+          id: `${column.field}:${keys[at]}`,
+          label: this.lookup(column.labelKey),
+          labelId: `${this.tableId}-long-${columnIndex}`,
+          text,
+          lines: estimateLines(text),
+        },
+      ];
     });
   });
 
@@ -806,34 +878,24 @@ export class DataTable implements OnInit {
 
   // --- What renders ------------------------------------------------------------------------------
 
-  private get boundHere(): boolean {
-    this.generation();
-    return this.refresh.descriptor() === this.screen().descriptor;
-  }
-
   private get loaded(): boolean {
-    return this.boundHere && this.refresh.hasLoaded();
-  }
-
-  private get fault() {
-    return this.boundHere ? this.refresh.fault() : null;
+    return this.readState.loaded;
   }
 
   protected get showRefusal(): boolean {
-    const fault = this.fault;
-    return fault !== null && !isBannerFault(fault);
+    return this.readState.showRefusal;
   }
 
   protected get showSkeleton(): boolean {
-    return !this.loaded && !this.showRefusal;
+    return this.readState.showSkeleton;
   }
 
   protected get busy(): string | null {
-    return this.showSkeleton ? 'true' : null;
+    return this.readState.busy;
   }
 
   protected get showEmpty(): boolean {
-    return this.loaded && this.fault === null && this.store().data().length === 0;
+    return this.readState.showEmpty;
   }
 
   protected get showGrid(): boolean {
@@ -855,7 +917,25 @@ export class DataTable implements OnInit {
   }
 
   protected get primaryActionLabel(): string {
-    return this.screen().primaryAction.id;
+    const screen = this.screen();
+    return actionLabel(screen.descriptor, screen.primaryAction.id);
+  }
+
+  /** Why the empty state's primary action cannot be taken now: its registrant's own reason, or `''` (Story 18.46). */
+  protected get primaryReason(): string {
+    this.generation();
+    const screen = this.screen();
+    return this.actions.reason(screen.descriptor, screen.primaryAction.id);
+  }
+
+  protected readonly primaryReasonId = 'ocu-data-table-empty-reason';
+
+  protected get primaryAriaDisabled(): string | null {
+    return this.primaryReason === '' ? null : 'true';
+  }
+
+  protected get primaryDescribedBy(): string | null {
+    return this.primaryReason === '' ? null : this.primaryReasonId;
   }
 
   /** The classic row link's accessible description, naming the classic editor it opens. */
@@ -889,7 +969,9 @@ export class DataTable implements OnInit {
     this.generation();
     const screen = this.screen();
     const selected = this.store().selection()[0] ?? '';
-    const row = rowFor(this.store().data(), screen, selected);
+    const selectedAt = selected === '' ? -1 : this.viewKeys().indexOf(selected);
+    const selectedRow: unknown = selectedAt < 0 ? null : this.view()[selectedAt];
+    const row = selectedRow !== null && typeof selectedRow === 'object' ? (selectedRow as Readonly<Record<string, unknown>>) : null;
     const onBanner = bannerActionIds(screen);
     return screen.rowActions
       .filter((action) => action.id !== '')
@@ -904,7 +986,9 @@ export class DataTable implements OnInit {
       .filter((action) => action.id !== screen.primaryAction.id)
       .filter((action) => this.actions.has(screen.descriptor, action.id))
       .map((action) => {
-        const reason = selfProtectionReason(action.selfProtection, selected, this.signedIn(), row);
+        // A registrant's own reason outranks the row's (AD-53), as the command bar orders them.
+        const registered = this.actions.reason(screen.descriptor, action.id);
+        const reason = registered !== '' ? registered : selfProtectionReason(action.selfProtection, entityKeyOf(selected), this.signedIn(), row);
         const label = actionLabel(screen.descriptor, action.id);
         return {
           id: action.id,
@@ -1039,8 +1123,16 @@ export class DataTable implements OnInit {
     return this.loaded;
   }
 
+  protected get longBlocks(): readonly LongBlockModel[] {
+    return this.longBlockModels();
+  }
+
+  protected get hasLongBlocks(): boolean {
+    return this.longBlockModels().length > 0;
+  }
+
   protected get rowCountText(): string {
-    return this.loaded ? formatRowCount(STRINGS.tableRowCount, this.view().length) : '';
+    return this.loaded ? rowCountPhrase(this.view().length) : '';
   }
 
   protected get maxRowsValue(): string {
@@ -1054,7 +1146,7 @@ export class DataTable implements OnInit {
   }
 
   protected get capNotice(): string {
-    return formatCapNotice(STRINGS.tableRowCapNotice, this.store().maxRows());
+    return capNoticePhrase(this.store().maxRows());
   }
 
   protected trackRow = (_index: number, row: RowModel): string => row.key;
@@ -1522,9 +1614,7 @@ export class DataTable implements OnInit {
 
   protected onLinkClick(event: MouseEvent, row: RowModel): void {
     event.stopPropagation();
-    if (event.ctrlKey || event.metaKey || event.shiftKey || event.button !== 0) return;
-    event.preventDefault();
-    void this.router.navigateByUrl(row.url);
+    followInAppLink(event, this.router, row.url);
   }
 
   /**
@@ -1632,8 +1722,7 @@ export class DataTable implements OnInit {
   }
 
   private viewKeys(): readonly string[] {
-    const screen = this.screen();
-    return this.view().map((row) => rowKey(row, screen));
+    return viewKeysOf(this.view(), this.screen());
   }
 
   private activeIndex(): number {
@@ -1706,7 +1795,9 @@ export class DataTable implements OnInit {
     const screen = this.screen();
     const store = this.store();
     if (screen.multiSelect === null || store.checked().size === 0) return;
-    const checkable = new Set(this.view().filter((row) => isCheckable(screen, row)).map((row) => rowKey(row, screen)));
+    const view = this.view();
+    const keys = viewKeysOf(view, screen);
+    const checkable = new Set(keys.filter((_key, index) => isCheckable(screen, view[index])));
     const kept = [...store.checked()].filter((key) => checkable.has(key));
     if (kept.length !== store.checked().size) store.setChecked(kept);
   }
@@ -1756,7 +1847,7 @@ export class DataTable implements OnInit {
       const row = this.viewKeyFor(key);
       if (row === '') continue;
       this.announcedChanged.set(key, said);
-      this.announcement.set(withReadBack(formatChangeSentence(changeSentenceTemplate(action), row), readBack));
+      this.announcement.set(withReadBack(formatChangeSentence(changeSentenceTemplate(action), entityKeyOf(row)), readBack));
     }
   }
 
@@ -1770,19 +1861,19 @@ export class DataTable implements OnInit {
    * was created -- so a write to `/csp/MyApp` publishes `/csp/myapp` and an exact match marks a key
    * no row holds, leaving the write with no highlight, no scroll, no announcement and no toast.
    *
-   * `rowKey` itself stays unfolded: it is the selection, link and locator key, and folding it
-   * would change route segments.
+   * `rowKey` itself stays unfolded: it is the link and locator key and, where a row's key is unique, its
+   * selection key too (`viewKeys`), and folding it would change route segments.
    */
   private viewKeyFor(id: string): string {
     if (id === '') return '';
     if (this.lastKeys.includes(id)) return id;
     const type = this.screen().entityType;
     const canonical = normalizeEntityId(type, id);
-    return this.lastKeys.find((key) => normalizeEntityId(type, key) === canonical) ?? '';
+    return this.lastKeys.find((key) => normalizeEntityId(type, entityKeyOf(key)) === canonical) ?? '';
   }
 
   /**
-   * The key the mark covering row `rowKey` was stored under, or `''` when no mark covers it.
+   * The key the mark covering the row with view key `viewKey` was stored under, or `''` when no mark covers it.
    *
    * The inverse of `viewKeyFor`, and needed for the same reason: a change event marks the
    * **canonical** id (AD-13) while a row key is the instance's own spelling, so clearing a mark
@@ -1790,12 +1881,13 @@ export class DataTable implements OnInit {
    * read "Changed" for the life of the screen's store while the user worked on it.
    * `ScreenStore.clearChanged('')` is a no-op, so an unmarked row costs one set lookup here.
    */
-  private changedKeyFor(rowKey: string): string {
-    if (rowKey === '') return '';
+  private changedKeyFor(viewKey: string): string {
+    const entity = entityKeyOf(viewKey);
+    if (entity === '') return '';
     const changed = this.store().changed();
-    if (changed.has(rowKey)) return rowKey;
+    if (changed.has(entity)) return entity;
     const type = this.screen().entityType;
-    const canonical = normalizeEntityId(type, rowKey);
+    const canonical = normalizeEntityId(type, entity);
     for (const key of changed) {
       if (normalizeEntityId(type, key) === canonical) return key;
     }

@@ -27,17 +27,13 @@ import { LogViewerPage } from './log-viewer.page';
 const EXPLAINING_PAGES: readonly (Type<unknown> | null)[] = [LogViewerPage, ErrorLogPage, AuditPage, LogHubPage];
 
 describe('Story 11.2: the explain-entry roster', () => {
-  it('every built logs-area screen resolves to a page that carries "Explain this entry"', () => {
+  it('every built logs-area screen resolves to a page that carries "Explain this entry"', async () => {
     const logs = SCREENS.filter((screen) => screen.area === 'logs' && screen.built);
     expect(logs.length).toBeGreaterThanOrEqual(4);
     for (const screen of logs) {
       const label = `${screen.descriptor} (${screen.route})`;
-      const page = resolveScreenPage(
-        DESCRIPTOR_PAGES,
-        ARCHETYPE_PAGES as Readonly<Record<string, Type<unknown>>>,
-        screen.descriptor,
-        screen.archetype
-      );
+      const loader = resolveScreenPage(DESCRIPTOR_PAGES, ARCHETYPE_PAGES, screen.descriptor, screen.archetype);
+      const page = loader === null ? null : await loader();
       expect(EXPLAINING_PAGES.includes(page), label).toBe(true);
       expect(resolveArchetypePage(DESCRIPTOR_EDIT_PAGES, screen.descriptor), `${label}: its id route`).toBeNull();
     }

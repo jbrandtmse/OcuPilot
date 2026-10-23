@@ -380,4 +380,30 @@ Method TestHandlerSuccessWritesJsonOnceWithContentType()
     Do $$$AssertEquals(tContentType, "application/json", "Response.JSON sets application/json on the success path")
 }
 
+/// <p>AD-12's second carve-out: a heartbeat sets the JSON content type, turns the gateway's compression
+/// off and its output flushing on -- measured on the throwaway to be what lets a beat reach a browser, which
+/// accepts gzip, before the envelope -- and flushes once. Those three are set only before the first flush,
+/// because the real response refuses a change after it.</p>
+/// <p>Mutation (Rule 19): delete <code>Set %response.AllowOutputFlush = 1</code>, or
+/// <code>Set %response.GzipOutput = 0</code>, from <method>OcuPilot.Api.Response.Heartbeat</method> -&gt; the
+/// matching assertion goes red.</p>
+Method TestAHeartbeatSetsTheStreamingPropertiesBeforeItsFirstFlushOnly()
+{
+    New %response
+    Set %response = ##class(OcuPilot.Test.ResponseProbe).%New()
+    Set tSC = ##class(OcuPilot.Api.Response).Heartbeat()
+    Do $$$AssertStatusOK(tSC, "the first heartbeat is written")
+    Do $$$AssertEquals(%response.ContentType, "application/json", "as JSON")
+    Do $$$AssertEquals(%response.GzipOutput, 0, "with the gateway's compression off")
+    Do $$$AssertEquals(%response.AllowOutputFlush, 1, "and its output flushing on")
+    Do $$$AssertEquals(%response.Flushes, 1, "flushed once")
+
+    Set %response.GzipOutput = 7
+    Set %response.AllowOutputFlush = 7
+    Set tSC2 = ##class(OcuPilot.Api.Response).Heartbeat()
+    Do $$$AssertStatusOK(tSC2, "a later heartbeat is written")
+    Do $$$AssertEquals(%response.GzipOutput _ "|" _ %response.AllowOutputFlush, "7|7", "and sets nothing the flushed response would refuse")
+    Do $$$AssertEquals(%response.Flushes, 2, "flushing again")
+}
+
 }

@@ -3,7 +3,7 @@ import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '
 import { Router } from '@angular/router';
 
 import { ApiService } from '../../core/api';
-import { NavigationService, formatRequires, screenForRoute, withQuery } from '../../core/navigation';
+import { NavigationService, formatRequires, openableEntry, screenForRoute, withQuery } from '../../core/navigation';
 import { RefreshService, type RefreshRead } from '../../core/refresh';
 import { ScopeService } from '../../core/scope';
 import { REFRESH_ACTION_ID, ScreenActions } from '../../core/screen-actions';
@@ -21,11 +21,17 @@ interface DashboardView {
   readonly store: ScreenStore;
 }
 
-/** One rendered drill-down link: the built screen it opens, its label and its address. */
+/** One rendered drill-down link: the built screen it opens, its label and its address, or the reason it is gated. */
 interface DrillDownLink {
   readonly route: string;
   readonly label: string;
   readonly href: string;
+  /** The route the link opens: the declared one, or the first tab of its group the caller may open. */
+  readonly target: string;
+  /** The caller is refused the screen: the link is drawn aria-disabled with `reason` and goes nowhere. */
+  readonly gated: boolean;
+  readonly reason: string;
+  readonly reasonId: string;
 }
 
 /** One rendered group: its heading, its drill-down links and its meters, or the Task manager group's marker. */
@@ -93,7 +99,11 @@ const TASKS_STORE_SUFFIX = '#tasks';
  *
  * **A group may offer drill-downs** (Story 18.36): under its heading, one `ocu-details-link` per target the
  * store declares for it whose screen is built, at that screen's route in this namespace. A modified click is left
- * to the browser, as Journal file details' View records link leaves it.
+ * to the browser, as Journal file details' View records link leaves it. **A target the caller is refused is listed
+ * and gated** (Story 18.47, EXPERIENCE.md Privilege Gating), as the side bar draws one: no `href`, so `role="link"`
+ * keeps it a link whose `aria-disabled="true"` is announced, `tabindex="0"`, and the "Requires <pair>" reason inline,
+ * which the link is described by; a click goes nowhere. The verdict is the side bar's (`openableEntry` over
+ * `screenVerdict`), read again whenever the navigation map answers.
  *
  * Every control-flow condition is a paren-free member reference, for the reason `sign-in.ts`
  * records.
@@ -109,9 +119,20 @@ const TASKS_STORE_SUFFIX = '#tasks';
         @if (group.hasLinks) {
           <nav class="ocu-details-links" [attr.aria-labelledby]="group.headingId">
             @for (link of group.links; track link.route) {
-              <a class="ocu-details-link" [href]="link.href" [attr.data-drill-down]="link.route" (click)="onDrillDown($event, link)">{{
-                link.label
-              }}</a>
+              <a
+                class="ocu-details-link"
+                [class.ocu-details-link-gated]="link.gated"
+                [attr.href]="link.gated ? null : link.href"
+                [attr.role]="link.gated ? 'link' : null"
+                [attr.tabindex]="link.gated ? '0' : null"
+                [attr.aria-disabled]="link.gated ? 'true' : null"
+                [attr.aria-describedby]="link.gated ? link.reasonId : null"
+                [attr.data-drill-down]="link.route"
+                (click)="onDrillDown($event, link)"
+                >{{ link.label }}@if (link.gated) {
+                  <span class="ocu-details-link-reason" [id]="link.reasonId">{{ link.reason }}</span>
+                }</a
+              >
             }
           </nav>
         }
@@ -325,22 +346,38 @@ export class DashboardPage {
     });
   }
 
-  /** The links a group offers: one per drill-down whose screen is built, each at its route in this namespace. */
+  /**
+   * The links a group offers: one per drill-down whose screen is built, each at its route in this namespace, or gated
+   * with the failed pair where the caller is refused it -- judged as the side bar judges an entry (`openableEntry`).
+   */
   private linksFor(group: DashboardGroup): readonly DrillDownLink[] {
-    return (group.drillDowns ?? [])
-      .filter((drillDown) => screenForRoute(drillDown.route)?.built === true)
-      .map((drillDown) => ({
+    const links: DrillDownLink[] = [];
+    for (const drillDown of group.drillDowns ?? []) {
+      const screen = screenForRoute(drillDown.route);
+      if (screen === null || screen.built !== true) continue;
+      const opens = openableEntry(screen, (route) => this.navigation.screenVerdict(route));
+      links.push({
         route: drillDown.route,
         label: stringFor(drillDown.labelKey),
-        href: this.locationStrategy.prepareExternalUrl(withQuery(drillDown.route, this.router.url)),
-      }));
+        href: opens === null ? '' : this.locationStrategy.prepareExternalUrl(withQuery(opens.route, this.router.url)),
+        target: opens?.route ?? drillDown.route,
+        gated: opens === null,
+        reason: opens === null ? formatRequires(STRINGS.privilegeRequiresResource, this.navigation.screenVerdict(screen.route).failedPair) : '',
+        reasonId: `ocu-dashboard-reason-${drillDown.route.replace(/\//g, '-')}`,
+      });
+    }
+    return links;
   }
 
-  /** Open a drill-down. A modified click is left to the browser, whose new page reads the same screen. */
+  /** Open a drill-down. A gated one goes nowhere; a modified click is left to the browser, whose new page reads the same screen. */
   protected onDrillDown(event: MouseEvent, link: DrillDownLink): void {
+    if (link.gated) {
+      event.preventDefault();
+      return;
+    }
     if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
     event.preventDefault();
-    void this.router.navigateByUrl(withQuery(link.route, this.router.url));
+    void this.router.navigateByUrl(withQuery(link.target, this.router.url));
   }
 
   /** Whether the caller holds Upcoming tasks' pairs, as the navigation map answers them. */

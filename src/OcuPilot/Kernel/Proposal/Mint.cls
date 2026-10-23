@@ -128,6 +128,10 @@ ClassMethod RegistryClass() As %String
 /// <p><b>A target the instance no longer holds is a refusal, never an empty success</b>: the
 /// <code>GET</code>'s 404 and an answer that is not an object are the same "target gone", and both
 /// name the target.</p>
+/// <p><b>The problem is made readable for every mint</b> (AD-13): the <code>detail.problem</code> of a
+/// refusal this method answers is passed through <method>ReadableId</method> on the way out, so a refusal
+/// it answers never names a composite target id with its separator in it, whichever subclass built the id.
+/// A subclass's own refusal made before it calls this method does not pass through it.</p>
 ClassMethod Mint(pDescriptor As %String, pToolName As %String, pUser As %String, pConvKey As %String, pTurnKey As %String, pArgs As %DynamicObject, pLimitsClass As %String, Output pProposal As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pEndpoint As %String = "", pIdParam As %String = "", pIdValue As %String = "", pIdArgument As %String = "", pSettable As %List = "", pToolClass As %String = "") As %Status
 {
     Set tSC = $$$OK
@@ -384,7 +388,17 @@ ClassMethod Mint(pDescriptor As %String, pToolName As %String, pUser As %String,
         Set pProposal = ""
         Set tSC = ..Internal("the proposal could not be minted: " _ ex.DisplayString(), .pHttpStatus, .pFault)
     }
+    If $IsObject(pFault) && (pFault.%GetTypeOf("detail") = "object") && (pFault.%Get("detail").%GetTypeOf("problem") = "string") {
+        Do pFault.%Get("detail").%Set("problem", ..ReadableId(pFault.%Get("detail").%Get("problem")), "string")
+    }
     Quit tSC
+}
+
+/// <p>What a refused composite id reads as in <code>detail.problem</code>: the separator shown as
+/// a breadcrumb, <code>" &#8250; "</code>, rather than an unprintable control character.</p>
+ClassMethod ReadableId(pText As %String) As %String
+{
+    Quit $Replace(pText, $Char(##class(OcuPilot.Kernel.EntityId).#COMPOSITESEPARATOR), " " _ $Char(8250) _ " ")
 }
 
 /// <p>The stored impact of the write <var>pToolName</var> would make to <var>pTargetRef</var>

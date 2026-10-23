@@ -5,8 +5,9 @@
 /// side-bar entry 3 and lives in <code>interoperability</code>, so it is offered only in a namespace that
 /// runs interoperability (AD-44).</p>
 /// <p><b>Its id is the class's document name</b> (<code>&lt;class&gt;.cls</code>, AD-13), and its scope is
-/// <code>namespace</code>. It declares no action: editing a data transformation stays on the classic
-/// page.</p>
+/// <code>namespace</code>. Its one row action is <code>test</code> (Story 20.27): <code>interop.transforms.test</code> runs the
+/// transformation once on a pasted message and shows the target as text. Its name cell opens the class in its editor screen
+/// (Story 20.7). <code>Coded</code> marks a class written as code rather than in DTL, which its editor screen does not open.</p>
 /// <p><b>Its pairs</b> are the classic menu's <code>%Ens_Portal:USE</code> and, as its own,
 /// <code>%Ens_Code:READ</code>, which every shipped role that reaches the page holds; the classic page's
 /// own resource is an OR list a pair set cannot express (AD-8, Story 20.2). The port adds READ on the
@@ -33,7 +34,7 @@ XData Declaration
   "parentScope": "",
   "id": {"kind": "single", "parts": []},
   "primaryAction": {"id": "", "selfProtection": ""},
-  "rowActions": [],
+  "rowActions": [{"id": "test", "selfProtection": ""}],
   "context": {"fields": ["Name", "Modified"], "secretFields": []},
   "emptyStateKey": "interopTransformsEmpty",
   "commandAliases": ["data transformations", "transformations", "dtl"],
@@ -46,7 +47,7 @@ XData Declaration
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
     "source": {"port": "interop", "endpoint": "Transforms", "type": "LIST"},
-    "fields": ["Name", "Modified"],
+    "fields": ["Name", "Modified", "Coded"],
     "filter": ["Name"],
     "sort": {"fields": ["Name", "Modified"], "default": "Name", "direction": "asc"},
     "paging": "cap"
@@ -56,8 +57,8 @@ XData Declaration
       {"field": "Name", "labelKey": "tableColumnName", "kind": "name"},
       {"field": "Modified", "labelKey": "explorerColumnModified", "kind": "text"}
     ],
-    "emptyNextKey": "tableReadOnlyEmptyNext",
-    "emptyAgentKey": ""
+    "emptyNextKey": "",
+    "emptyAgentKey": "interopTransformsEmptyAgent"
   },
   "toolIdentifier": "interop.transforms"
 }

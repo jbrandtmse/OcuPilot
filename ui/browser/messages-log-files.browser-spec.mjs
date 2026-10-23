@@ -20,7 +20,7 @@ import puppeteer from 'puppeteer';
 
 import { browserConfig, launchOptions } from '../browser.config.mjs';
 import { OLDER_FILE, OLDER_LINES, OLDER_MARKER, removeOlderFile, seedOlderFile } from './older-file-spec.mjs';
-import { signedInAt } from './panel-spec.mjs';
+import { settleViewport, signedInAt, transitionsSettled } from './panel-spec.mjs';
 import { INVARIANTS, VIEWPORTS, assertThrowaway, collapse, compare, componentMinimums, detectScreen, readBaseline } from './structural-walk.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -182,9 +182,10 @@ test('AC5: the viewer showing an older file passes the structural walk at wide l
     const minimums = componentMinimums();
     const surfaces = {};
     for (const { viewport, theme, checks } of passes) {
-      await page.setViewport(viewport);
+      await settleViewport(page, viewport);
       await page.evaluate((isDark) => document.documentElement.classList.toggle('ocu-theme-dark', isDark), theme === 'dark');
       await frames(page);
+      await transitionsSettled(page, config.navigationTimeoutMs);
       surfaces[theme] = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
       assert.equal(await page.$eval(CHOICE, (node) => node.value), OLDER_FILE, `the choice shows the older file at ${viewport.width}px ${theme}`);
       const { entries } = await detectScreen(page, { route: ROUTE, checks, viewport: viewport.width, theme, minimums });

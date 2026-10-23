@@ -11,6 +11,7 @@ import {
 import { Router } from '@angular/router';
 
 import { AccountPreferences } from '../core/account-preferences';
+import { pickCount } from '../core/count-phrase';
 import {
   NavigationService,
   areaByKey,
@@ -38,7 +39,8 @@ import { selfProtectionReason } from '../core/self-protection';
 import { Session } from '../core/session';
 import { ShellState } from '../core/shell-state';
 import { STRINGS, stringFor } from '../core/strings';
-import { rowFor } from '../core/table-model';
+import { entityKeyOf, formatClassicRowLinkDescription, rowFor } from '../core/table-model';
+import { NEW_TAB_GLYPH, openInNewTab } from './new-tab';
 
 /** The command box's name on the overlay stack (DW-137). */
 export const COMMAND_BOX_OVERLAY_ID = 'command-box';
@@ -93,6 +95,14 @@ interface CommandRow {
   /** The descriptor and declared id an action row runs. Both `''` for a screen row. */
   readonly descriptor: string;
   readonly actionId: string;
+  /**
+   * The address choosing an available `external` screen row opens in a new tab (AD-47, Story 20.32);
+   * `''` for every other row, including an `external` screen the map carries no address for, which
+   * routes onto its own page and says why.
+   */
+  readonly href: string;
+  /** What a screen reader hears of a row that opens a new tab, `null` for every other. */
+  readonly description: string | null;
   readonly ariaDisabled: string | null;
 }
 
@@ -182,7 +192,7 @@ interface CommandRow {
       <div class="ocu-command-box-sheet">
         <div id="ocu-command-box-list" class="ocu-command-box-list" role="listbox">
           <div
-            class="ocu-command-box-group ocu-command-box-group-screens"
+            class="ocu-command-box-group-screens"
             role="group"
             aria-label="{{ STRINGS.commandBoxGroupScreens }}"
           >
@@ -195,9 +205,13 @@ interface CommandRow {
                 [class.ocu-command-box-option-gated]="row.gated"
                 [attr.aria-selected]="row.id === activeDescendant"
                 [attr.aria-disabled]="row.ariaDisabled"
+                [attr.aria-description]="row.description"
                 (click)="choose(row)"
               >
                 <span class="ocu-command-box-option-label">{{ row.label }}</span>
+                @if (row.href) {
+                  <span class="ocu-external-glyph" aria-hidden="true">{{ externalGlyph }}</span>
+                }
                 @if (row.detail) {
                   <span class="ocu-command-box-option-detail">{{ row.detail }}</span>
                 }
@@ -208,7 +222,7 @@ interface CommandRow {
             }
           </div>
           <div
-            class="ocu-command-box-group ocu-command-box-group-actions"
+            class="ocu-command-box-group-actions"
             role="group"
             aria-label="{{ STRINGS.commandBoxGroupActions }}"
           >
@@ -252,6 +266,9 @@ export class CommandBox {
   private readonly host: ElementRef<HTMLElement> = inject(ElementRef);
 
   protected readonly STRINGS = STRINGS;
+
+  /** The new-tab glyph a row that opens a new tab carries (`NEW_TAB_GLYPH`). */
+  protected readonly externalGlyph = NEW_TAB_GLYPH;
 
   /**
    * The chord, spelled the way the platform spells it. The command glyph is an escape, never
@@ -324,7 +341,12 @@ export class CommandBox {
     const screens = this.screenRows.length;
     const actions = this.actionRows.length;
     if (screens + actions === 0) return STRINGS.commandBoxNoMatch;
-    return formatResultCount(STRINGS.commandBoxResultCount, screens, actions);
+    const template = pickCount(
+      screens,
+      pickCount(actions, STRINGS.commandBoxResultCountOneBoth, STRINGS.commandBoxResultCountOneFirst),
+      pickCount(actions, STRINGS.commandBoxResultCountOneSecond, STRINGS.commandBoxResultCount)
+    );
+    return formatResultCount(template, screens, actions);
   }
 
   /** Ctrl/Cmd+K from anywhere. Inert while a dialog is open (EXPERIENCE.md "anywhere (inert while a dialog or the command-box overlay is open)"). */
@@ -396,7 +418,8 @@ export class CommandBox {
    * Open a row. A gated or unavailable row does nothing: `aria-disabled` carries no behaviour
    * of its own, so the refusal has to be here. An available action row closes the box and runs
    * the action's registered handler once, the same `ScreenActions.run` the command bar's button
-   * calls.
+   * calls. An available `external` screen row opens its address in a new tab with no opener and
+   * routes nowhere (AD-47, Story 20.32).
    *
    * A screen navigation carries the current query, because `?ns=` is data scope and the box
    * reaches every screen in the product (AD-44, DW-134). Before it navigates, an open side bar is
@@ -413,6 +436,13 @@ export class CommandBox {
       this.returnFocus = null;
       this.close();
       void this.session?.signOut();
+      return;
+    }
+    if (row.kind === 'screen' && row.href !== '') {
+      // A link opens beside this tab, in this key press or click, and the screen stays where it is:
+      // focus goes back to where it was and nothing routes.
+      openInNewTab(row.href);
+      this.close();
       return;
     }
     if (row.kind === 'screen') {
@@ -467,6 +497,7 @@ export class CommandBox {
       const area = areaByKey(screen.area);
       const verdict = this.navigation.screenVerdict(screen.route);
       const opens = openableEntry(screen, (route) => this.navigation.screenVerdict(route));
+      const href = opens !== null && screen.archetype === 'external' ? this.navigation.screenHref(screen.route) : '';
       rows.push({
         id: `ocu-command-box-screen-${screen.route.replace(/\//g, '-') || 'root'}`,
         kind: 'screen',
@@ -479,6 +510,8 @@ export class CommandBox {
         area: screen.area,
         descriptor: '',
         actionId: '',
+        href,
+        description: href === '' ? null : formatClassicRowLinkDescription(STRINGS.classicRowLinkDescription, label),
         ariaDisabled: opens !== null ? null : 'true',
       });
     }
@@ -532,14 +565,15 @@ export class CommandBox {
       if (this.actions.has(screen.descriptor, id)) declared.push({ id, rowScoped: false });
     }
     if (this.actions.has(screen.descriptor, screen.primaryAction.id)) {
-      declared.push({ id: screen.primaryAction.id, rowScoped: false });
+      // A registrant's own reason (Story 18.46) lists the primary action held back, with the sentence inline.
+      declared.push({ id: screen.primaryAction.id, rowScoped: false, reason: this.actions.reason(screen.descriptor, screen.primaryAction.id) });
     }
     // The row a self-protection rule is judged against is the one the screen has selected, read
     // from the same store the command bar reads (AD-53). With nothing selected the reason stays
     // "Select a row first", which is what both surfaces already say.
     const selected = screen.rowActions.length === 0
       ? ''
-      : this.stores.for(screen.descriptor, screen.refreshRates).selection()[0] ?? '';
+      : entityKeyOf(this.stores.for(screen.descriptor, screen.refreshRates).selection()[0] ?? '');
     const row = selected === '' ? null : rowFor(this.stores.for(screen.descriptor, screen.refreshRates).data(), screen, selected);
     const checked = screen.multiSelect === null ? 0 : this.stores.for(screen.descriptor, screen.refreshRates).checked().size;
     const onBanner = bannerActionIds(screen);
@@ -557,12 +591,15 @@ export class CommandBox {
         declared.push({
           id: action.id,
           rowScoped: true,
-          // A multi-select action (Story 16.6) acts on the checked rows, with the bar's own reasons.
-          reason: isCheckedSetAction(screen, action.id)
-            ? checkedSetReason(screen, checked)
-            : selected === ''
-              ? STRINGS.privilegeSelectRowFirst
-              : selfProtectionReason(action.selfProtection, selected, this.signedIn(), row),
+          // A multi-select action (Story 16.6) acts on the checked rows, with the bar's own reasons. A registrant's own
+          // reason (Story 18.46) outranks them, as the bar orders them.
+          reason:
+            this.actions.reason(screen.descriptor, action.id) ||
+            (isCheckedSetAction(screen, action.id)
+              ? checkedSetReason(screen, checked)
+              : selected === ''
+                ? STRINGS.privilegeSelectRowFirst
+                : selfProtectionReason(action.selfProtection, selected, this.signedIn(), row)),
         });
       }
     }
@@ -587,6 +624,8 @@ export class CommandBox {
         area: '',
         descriptor: screen.descriptor,
         actionId: action.id,
+        href: '',
+        description: null,
         ariaDisabled: (action.reason ?? '') !== '' ? 'true' : null,
       }));
   }
@@ -623,6 +662,8 @@ export class CommandBox {
         area: '',
         descriptor: '',
         actionId: '',
+        href: '',
+        description: null,
         ariaDisabled: null,
       },
     ];

@@ -243,7 +243,7 @@ jobs:
     runs-on: ubuntu-24.04
     # At least 1.5 times the sum of the largest leg's estimate from ui/tools/ci-timings.json and 3
     # minutes of setup, a margin ui/tools/ci.test.mjs holds.
-    timeout-minutes: 44
+    timeout-minutes: 55
     strategy:
       fail-fast: false
       matrix:
@@ -279,8 +279,8 @@ jobs:
         run: sh scripts/ci-throwaway.sh up --dir /tmp/ocupilot-browser-ci --project ocupilot-browser-ci --web 52780 --super 1979
       - name: wait for readiness to report installed
         run: sh scripts/wait-readiness.sh --url http://localhost:52780/api/ocupilot/readiness/
-      # Both variables, never one: browser.config.mjs carries its own container default, so a run
-      # that sets only the origin execs into the OTHER throwaway's container (2026-09-16).
+      # Both variables, never one: browser.config.mjs has no default for either, so a run that sets
+      # only the origin is refused rather than exec'ing into the OTHER throwaway's container.
       - name: browser spec, this leg's share, one file at a time
         working-directory: ui
         env:

@@ -73,7 +73,6 @@ function same(a: TreeObject | null, b: TreeObject | null): boolean {
   >
     @for (schema of schemaList; track schema.id) {
       <li
-        class="ocu-data-browser-tree-item"
         role="treeitem"
         aria-level="1"
         [id]="schema.id"
@@ -90,7 +89,7 @@ function same(a: TreeObject | null, b: TreeObject | null): boolean {
           <ul class="ocu-data-browser-tree-group" role="group" [attr.aria-busy]="schema.loading">
             @for (child of schema.children; track child.id) {
               <li
-                class="ocu-data-browser-tree-item ocu-data-browser-tree-child"
+                class="ocu-data-browser-tree-child"
                 role="treeitem"
                 aria-level="2"
                 [id]="child.id"

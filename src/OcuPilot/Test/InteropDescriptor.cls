@@ -76,7 +76,7 @@ XData Cases
     {"name": "an interop LIST of Productions is sound", "check": "read", "source": {"port": "interop", "endpoint": "Productions", "type": "LIST"}, "expected": null},
     {"name": "so is each code list", "check": "read", "source": {"port": "interop", "endpoint": "Rules", "type": "LIST"}, "expected": null},
     {"name": "and declares no criteria", "check": "criteria", "source": {"port": "interop", "endpoint": "Productions", "type": "LIST"}, "expected": null},
-    {"name": "an endpoint the port does not serve", "check": "read", "source": {"port": "interop", "endpoint": "Nothing", "type": "LIST"}, "expected": "read.source.endpoint 'Nothing' is not one of the interop port's endpoints ('Productions', 'Processes', 'Transforms', 'Rules', 'Items', 'Settings', 'Monitor', 'ItemStatus', 'Queues', 'QueueItems', 'ItemQueue', 'ItemLog', 'ItemMessages', 'Jobs', 'ItemJobs', 'LookupTables', 'LookupEntries', 'BusinessPartners', 'ItemTest') (AD-62)"},
+    {"name": "an endpoint the port does not serve", "check": "read", "source": {"port": "interop", "endpoint": "Nothing", "type": "LIST"}, "expected": "read.source.endpoint 'Nothing' is not one of the interop port's endpoints ('Productions', 'Processes', 'Transforms', 'Rules', 'Items', 'Settings', 'Monitor', 'ItemStatus', 'Queues', 'QueueItems', 'ItemQueue', 'ItemLog', 'ItemMessages', 'Jobs', 'ItemJobs', 'LookupTables', 'LookupEntries', 'BusinessPartners', 'ItemTest', 'Messages', 'MessageHeader', 'MessageContents', 'MessageTrace') (AD-62)"},
     {"name": "the Settings endpoint is served (Story 20.22)", "check": "read", "source": {"port": "interop", "endpoint": "Settings", "type": "LIST"}, "expected": null},
     {"name": "the Items endpoint is served (Story 20.3)", "check": "read", "source": {"port": "interop", "endpoint": "Items", "type": "LIST"}, "expected": null},
     {"name": "the Monitor endpoint is served (Story 20.4)", "check": "read", "source": {"port": "interop", "endpoint": "Monitor", "type": "LIST"}, "expected": null},
@@ -98,7 +98,7 @@ XData Cases
     {"name": "parts", "check": "read", "source": {"port": "interop", "endpoint": "Productions", "type": "LIST", "parts": [{"type": "LIST", "as": "x"}]}, "expected": "read.source.parts is declared on an interop source, which answers its list whole (AD-36)"},
     {"name": "a list over one member", "check": "read", "source": {"port": "interop", "endpoint": "Productions", "type": "LIST", "rows": "rows"}, "expected": "read.source.rows is declared on a 'interop' source, and a list over one member reads an admin endpoint's one-object answer (AD-36)"},
     {"name": "server criteria", "check": "criteria", "source": {"port": "interop", "endpoint": "Productions", "type": "LIST"}, "criteria": {"fields": [{"param": "pattern", "labelKey": "tableColumnName", "kind": "text", "maxLength": 64}]}, "expected": "read.criteria is declared on a 'interop' source, and server criteria travel on the admin, mgmnt, atelier, timeline and encryption ports alone (AD-21)"},
-    {"name": "an unknown port", "check": "read", "source": {"port": "interopx", "endpoint": "Productions", "type": "LIST"}, "expected": "read.source.port 'interopx' is not one of 'admin', 'state', 'mgmnt', 'logsource', 'path', 'timeline', 'background', 'atelier', 'encryption', 'docdb', 'sqlactivity', 'interop', 'access' or 'monitor', the fourteen sources a declared read names (AD-36)"}
+    {"name": "an unknown port", "check": "read", "source": {"port": "interopx", "endpoint": "Productions", "type": "LIST"}, "expected": "read.source.port 'interopx' is not one of 'admin', 'state', 'mgmnt', 'logsource', 'path', 'timeline', 'background', 'atelier', 'encryption', 'docdb', 'sqlactivity', 'interop', 'access', 'monitor' or 'analytics', the fifteen sources a declared read names (AD-36)"}
   ]
 }
 }
@@ -133,7 +133,7 @@ Method TestTheInteropSourceRefusals()
 
 /// <p>The four descriptors declare what the spec names: the interoperability area, their route,
 /// side-bar position, classic page, pairs (the menu's and the page's own), entity type, scope, three
-/// prompts, the interop source on the right endpoint, and no action but the Productions' five.</p>
+/// prompts, the interop source on the right endpoint, and no action but the Productions' five and the transformations' Test.</p>
 /// <p>Mutation (Rule 19): drop <code>Status</code> from <code>InteropProductionList</code>'s read fields
 /// -- the Productions leg goes red.</p>
 Method TestTheFourDeclarationsRegister()
@@ -150,7 +150,9 @@ Method TestTheFourDeclarationsRegister()
         Do $$$AssertEquals(tDeclaration.ownPrivileges.%ToJSON(), "[{""resource"":""" _ $Piece(tOwn, ":", 1) _ """,""permission"":""" _ $Piece(tOwn, ":", 2) _ """}]", tClass _ ": its own pair is the classic page's resource")
         Do $$$AssertEquals(tDeclaration.privileges.%Get(0).resource _ ":" _ tDeclaration.privileges.%Get(0).permission _ "|" _ tDeclaration.privileges.%Size(), "%Ens_Portal:USE|2", tClass _ ": the Interoperability menu's pair, then its own")
         Do $$$AssertEquals(tDeclaration.read.source.port _ "|" _ tDeclaration.read.source.endpoint _ "|" _ tDeclaration.read.source.type, "interop|" _ $Piece(tRow, "|", 5) _ "|LIST", tClass _ ": read through the interop port")
-        Do $$$AssertEquals(tDeclaration.suggestedPrompts.%Size(), 3, tClass _ ": three suggested prompts")
+        ; Productions also offers the recover-a-production guided workflow as a fourth prompt (Story 20.12).
+        Set tPromptCount = $Select($Piece(tRow, "|", 1) = "InteropProductionList": 4, 1: 3)
+        Do $$$AssertEquals(tDeclaration.suggestedPrompts.%Size(), tPromptCount, tClass _ ": its suggested prompts")
         Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ReadProblem(tDeclaration), "", tClass _ ": its read passes the registry")
         Set tActions = ""
         Set tIterator = tDeclaration.rowActions.%GetIterator()
@@ -160,6 +162,11 @@ Method TestTheFourDeclarationsRegister()
         If $Piece(tRow, "|", 1) = "InteropProductionList" {
             Do $$$AssertEquals(tDeclaration.entityType _ "|" _ tActions _ "|" _ tDeclaration.read.fields.%ToJSON(), "production|start,stop,restart,update,recover|[""Name"",""Status"",""LastStartTime"",""LastStopTime""]", "Productions: the production entity, its five row actions and its four fields")
             Do $$$AssertEquals(tDeclaration.suggestedPrompts.%Get(0).groupKey, "promptGroupTroubleshooting", "Productions: prompts in the Troubleshooting group")
+            Set tWorkflowPrompt = tDeclaration.suggestedPrompts.%Get(3)
+            Do $$$AssertEquals(tWorkflowPrompt.groupKey _ "|" _ tWorkflowPrompt.textKey _ "|" _ tWorkflowPrompt.workflow, "promptGroupTroubleshooting|interopProductionsWorkflowRecover|recoverproduction", "Productions: the fourth prompt starts the recover workflow")
+        } ElseIf $Piece(tRow, "|", 1) = "InteropTransformList" {
+            Do $$$AssertEquals(tDeclaration.entityType _ "|" _ tActions _ "|" _ tDeclaration.table.emptyNextKey _ "|" _ tDeclaration.table.emptyAgentKey, "class|test||interopTransformsEmptyAgent", "Transforms: class rows, the one Test action (Story 20.27) and its own empty state")
+            Do $$$AssertEquals(tDeclaration.suggestedPrompts.%Get(0).groupKey, "promptGroupGettingStarted", tClass _ ": prompts in the Getting started group")
         } Else {
             Do $$$AssertEquals(tDeclaration.entityType _ "|" _ tActions _ "|" _ tDeclaration.table.emptyNextKey, "class||tableReadOnlyEmptyNext", tClass _ ": class rows, no action and the read-only empty state")
             Do $$$AssertEquals(tDeclaration.suggestedPrompts.%Get(0).groupKey, "promptGroupGettingStarted", tClass _ ": prompts in the Getting started group")
@@ -243,8 +250,12 @@ Method TestTheRefusalMatrix()
 /// four fields, and the code lists answer at least one row each for processes and transformations, with
 /// every <code>Name</code> a document name ending <code>.cls</code>, the vendor's base classes absent,
 /// and the cap reported by the row count. Business rules may be empty.</p>
+/// <p>Story 20.7: every Processes and Transforms row carries a boolean <code>Coded</code>, true for the two vendor classes
+/// written as code and false for two vendor classes written in BPL or DTL (<parameter>CODEDROWS</parameter>), and no
+/// Rules row carries one.</p>
 /// <p>Mutation (Rule 19): make <code>ListClasses</code> read <code>Ens.Rule.Definition</code> for every
-/// endpoint -- the process and transformation legs go red.</p>
+/// endpoint -- the process and transformation legs go red. Make it answer <code>Coded</code> false for every row -- the two
+/// true rows go red.</p>
 Method TestTheCodeListsReadThroughThePort()
 {
     Kill tQuery
@@ -260,12 +271,28 @@ Method TestTheCodeListsReadThroughThePort()
         Do $$$AssertTrue((tEndpoint = "Rules") || (tCount >= 1), tEndpoint _ " lists at least one class in HSCUSTOM: " _ tCount)
         Set tBad = 0
         Set tBase = 0
+        Set tUntyped = 0
+        Kill tCoded
         Set tIterator = tResult.%GetIterator()
         While tIterator.%GetNext(.tIndex, .tRow) {
             If $Extract(tRow.Name, *-3, *) '= ".cls" Set tBad = tBad + 1
             If (tRow.Name = "Ens.BusinessProcessBPL.cls") || (tRow.Name = "Ens.DataTransformDTL.cls") Set tBase = tBase + 1
+            If tEndpoint = "Rules" {
+                If tRow.%IsDefined("Coded") Set tUntyped = tUntyped + 1
+            } Else {
+                If tRow.%GetTypeOf("Coded") '= "boolean" Set tUntyped = tUntyped + 1
+                Set tCoded(tRow.Name) = tRow.Coded
+            }
         }
         Do $$$AssertEquals(tBad _ "|" _ tBase, "0|0", tEndpoint _ ": every name is a document name and the base classes are absent")
+        Do $$$AssertEquals(tUntyped, 0, tEndpoint _ $Select(tEndpoint = "Rules": ": no row carries Coded", 1: ": every row carries a boolean Coded"))
+        For tI = 1:1:$Length(..#CODEDROWS, ";") {
+            Set tCase = $Piece(..#CODEDROWS, ";", tI)
+            If $Piece(tCase, "|", 1) '= tEndpoint Continue
+            Set tName = $Piece(tCase, "|", 2)
+            Do $$$AssertTrue($Data(tCoded(tName)) > 0, tEndpoint _ " lists " _ tName)
+            If $Data(tCoded(tName)) Do $$$AssertEquals(tCoded(tName), +$Piece(tCase, "|", 3), tEndpoint _ ": " _ tName _ " reads Coded " _ $Piece(tCase, "|", 3))
+        }
     }
     Set tQuery("maxRows") = 1
     Set tSC = $ClassMethod(..#PORT, "Invoke", "Transforms", "LIST", .tQuery, "", .tResult, .tHttp, .tFault)
@@ -280,11 +307,18 @@ Method TestTheCodeListsReadThroughThePort()
     }
 }
 
+/// <p>The vendor classes <method>TestTheCodeListsReadThroughThePort</method> checks <code>Coded</code> on,
+/// <code>&lt;endpoint&gt;|&lt;document name&gt;|&lt;Coded&gt;</code>: the routing engine and the ITK transformation are written as
+/// code, and the background export process and the message-view transformation are written in BPL and DTL.</p>
+Parameter CODEDROWS = "Processes|EnsLib.HL7.MsgRouter.RoutingEngine.cls|1;Processes|EnsLib.Background.Process.ExportMessageSearch.cls|0;Transforms|EnsLib.ITK.AdapterKit.Transform.PHDEToXMLDETransform.cls|1;Transforms|Ens.Util.DTL.Audit.MessageView.cls|0";
+
 /// <p>AC1: the Rules list names a business rule class by its document name and the Processes list does not,
 /// in <code>USER</code>, where <parameter>PROBE</parameter> compiled a bare <code>Ens.Rule.Definition</code>
 /// subclass.</p>
+/// <p>The probe rule's row carries no <code>Coded</code>, which only Processes and Transforms rows answer (Story 20.7).</p>
 /// <p>Mutation (Rule 19): make <method>OcuPilot.Port.InteropPort.ListClasses</method> read the Processes
-/// family for the Rules endpoint -- the Rules leg goes red.</p>
+/// family for the Rules endpoint -- the Rules leg goes red. Make it answer <code>Coded</code> on a Rules row -- the
+/// probe rule's <code>Coded</code> clause goes red.</p>
 Method TestTheRulesListNamesTheProbeRuleAndProcessesDoesNot()
 {
     Set tDocument = $ClassMethod(..#PROBE, "RuleDocument")
@@ -296,13 +330,20 @@ Method TestTheRulesListNamesTheProbeRuleAndProcessesDoesNot()
         Set tSC = $ClassMethod(..#PORT, "Invoke", $List(tCase, 1), "LIST", .tQuery, "", .tResult, .tHttp, .tFault)
         Do $$$AssertEquals(+$Get(tHttp), 200, $List(tCase, 1) _ " answers 200 in USER")
         Set tSeen = 0
+        Set tCodedAnswered = 0
         If $IsObject($Get(tResult)) {
             Set tIterator = tResult.%GetIterator()
             While tIterator.%GetNext(.tIndex, .tRow) {
-                If tRow.Name = tDocument Set tSeen = 1
+                If tRow.Name = tDocument {
+                    Set tSeen = 1
+                    If tRow.%IsDefined("Coded") Set tCodedAnswered = 1
+                }
             }
         }
         Do $$$AssertEquals(tSeen, $List(tCase, 2), $List(tCase, 1) _ $Select($List(tCase, 2): " lists ", 1: " does not list ") _ tDocument)
+        If $List(tCase, 1) = "Rules" {
+            Do $$$AssertEquals(tCodedAnswered, 0, "the probe rule's row carries no Coded")
+        }
     }
 }
 
@@ -392,7 +433,7 @@ Method TestAnUnknownProductionAndAnUnservedOperation()
 Method TestEveryInteropErrorCodeResolvesToItsSentence()
 {
     Set tError = ..#ERROR
-    Set tCodes = $ListFromString("NAMESPACE,RUNNING,OTHER,TROUBLED,NOTRUNNING,UPTODATE,NOTTROUBLED,BUSY,STATE,STOP,RESTART,UPDATE,RECOVER,SUSPENDED,PARTSTOPPED,ITEMENABLED,ITEMDISABLED,ITEMDEFAULTSETTING,ITEMPOOLZERO,ITEMTAKEN,ITEMAMBIGUOUS,ITEMCLASS,ITEMNAME,ITEMVALUE,ITEMENABLEDREMOVE,ITEMSOURCECONTROL,ITEMPENDING,ITEMREMOVE,SETTINGSECRET,SETTINGSUPPLIED,SETTINGSAME,SETTINGDEFAULTED,SETTINGCORE,SETTINGVALUE,SETTINGLOCATION,SETTINGDESCENT,QUEUEEMPTY,QUEUECHANGED,JOBDEAD,JOBNOTRETRYING,JOBNOTSTOPPED,MESSAGEABORT,QUEUEABORT,JOBABORT,JOBSUSPEND,JOBSTOP,LOOKUPTAKEN,LOOKUPTABLECASE,LOOKUPSAME,LOOKUPSECRET,LOOKUPSOURCECONTROL,LOOKUPLOCKED,LOOKUPTABLENAME,LOOKUPKEY,LOOKUPVALUE,LOOKUPREMOVE,LOOKUPDELETE,LOOKUPIMPORTSHAPE,LOOKUPIMPORTCHANGED,LOOKUPTOOLARGE,LOOKUPEXPORTNAME,LOOKUPIMPORT,TESTDISABLED,TESTTARGETTYPE,TESTTARGETDISABLED,TESTREQUESTTYPE,TESTSECRET,TESTFIELD,TESTVALUE,TESTREQUEST,TESTSENDS")
+    Set tCodes = $ListFromString("NAMESPACE,RUNNING,OTHER,TROUBLED,NOTRUNNING,UPTODATE,NOTTROUBLED,BUSY,STATE,STOP,RESTART,UPDATE,RECOVER,SUSPENDED,PARTSTOPPED,ITEMENABLED,ITEMDISABLED,ITEMDEFAULTSETTING,ITEMPOOLZERO,ITEMTAKEN,ITEMAMBIGUOUS,ITEMCLASS,ITEMNAME,ITEMVALUE,ITEMENABLEDREMOVE,ITEMSOURCECONTROL,ITEMPENDING,ITEMREMOVE,SETTINGSECRET,SETTINGSUPPLIED,SETTINGSAME,SETTINGDEFAULTED,SETTINGCORE,SETTINGVALUE,SETTINGLOCATION,SETTINGDESCENT,QUEUEEMPTY,QUEUECHANGED,JOBDEAD,JOBNOTRETRYING,JOBNOTSTOPPED,MESSAGEABORT,QUEUEABORT,JOBABORT,JOBSUSPEND,JOBSTOP,LOOKUPTAKEN,LOOKUPTABLECASE,LOOKUPSAME,LOOKUPSECRET,LOOKUPSOURCECONTROL,LOOKUPLOCKED,LOOKUPTABLENAME,LOOKUPKEY,LOOKUPVALUE,LOOKUPREMOVE,LOOKUPDELETE,LOOKUPIMPORTSHAPE,LOOKUPIMPORTCHANGED,LOOKUPTOOLARGE,LOOKUPEXPORTNAME,LOOKUPIMPORT,TESTDISABLED,TESTTARGETTYPE,TESTTARGETDISABLED,TESTREQUESTTYPE,TESTSECRET,TESTFIELD,TESTVALUE,TESTREQUEST,TESTSENDS,TRANSFORMSOURCEFORMAT,TRANSFORMTARGETFORMAT,TRANSFORMCONTENT,TRANSFORMRUNS,MESSAGECONTENTS,RESENDNONE,RESENDCHANGED,EDITNOTEDITABLE,EDITNOCHANGE,EDITFIELD,EDITSECRET,EDITVALUE,MESSAGERESEND,MESSAGEEDITRESEND")
     For tI = 1:1:$ListLength(tCodes) {
         Set tName = $List(tCodes, tI)
         Set tCode = $Parameter(tError, tName)

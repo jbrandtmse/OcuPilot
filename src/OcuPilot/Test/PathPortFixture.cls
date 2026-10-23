@@ -36,6 +36,26 @@ ClassMethod Calls() As %Integer
     Quit +$Get(^||OcuPilotPathPortFixture("calls"))
 }
 
+/// <p>How many of those calls were writes, every request type but <code>GET</code> and <code>LIST</code>.</p>
+ClassMethod Writes() As %Integer
+{
+    Quit +$Get(^||OcuPilotPathPortFixture("writes"))
+}
+
+/// <p>Every call forwarded since <method>Reset</method>, in order, each as <code>endpoint/type</code> followed by a space and
+/// its <code>rootPath</code> query when it carried one.</p>
+ClassMethod Log() As %List
+{
+    Set tLog = ""
+    Set tAt = ""
+    For {
+        Set tAt = $Order(^||OcuPilotPathPortFixture("log", tAt), 1, tEntry)
+        If tAt = "" Quit
+        Set tLog = tLog _ $ListBuild(tEntry)
+    }
+    Quit tLog
+}
+
 ClassMethod HoldsPrivilege(pResource As %String, pPermission As %String) As %Boolean
 {
     If $Get(^||OcuPilotPathPortFixture("deny", pResource _ ":" _ pPermission)) Quit 0
@@ -216,6 +236,8 @@ ClassMethod ScriptedCode(pHttp As %Integer) As %String
 ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject = "", Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
 {
     Set ^||OcuPilotPathPortFixture("calls") = ..Calls() + 1
+    If (pType '= "GET") && (pType '= "LIST") Set ^||OcuPilotPathPortFixture("writes") = ..Writes() + 1
+    Set ^||OcuPilotPathPortFixture("log", ..Calls()) = pEndpoint _ "/" _ pType _ $Select($Get(pQuery("rootPath")) '= "": " " _ pQuery("rootPath"), 1: "")
     Set tScript = $Get(^||OcuPilotPathPortFixture("script", pEndpoint, pType))
     If tScript = "" Quit ##class(OcuPilot.Port.AdminPort).Invoke(pEndpoint, pType, .pQuery, pBody, .pResult, .pHttpStatus, .pFault)
     Set pHttpStatus = $List(tScript, 1)

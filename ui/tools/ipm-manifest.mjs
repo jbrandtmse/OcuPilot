@@ -161,11 +161,13 @@ export function rosterShapeProblem(roster) {
   if (!roster.applications.some((application) => application.path === bundle.destinationApplication)) {
     return `bundle.destinationApplication "${bundle.destinationApplication}" names no application the roster declares`;
   }
-  const invoke = roster.invoke;
-  if (invoke === null || typeof invoke !== 'object') return 'carries no "invoke" object';
-  for (const field of ['class', 'method', 'phase', 'when']) {
-    if (typeof invoke[field] !== 'string' || invoke[field] === '') {
-      return `invoke.${field} is missing or empty`;
+  for (const key of ['guard', 'invoke']) {
+    const hook = roster[key];
+    if (hook === null || typeof hook !== 'object') return `carries no "${key}" object`;
+    for (const field of ['class', 'method', 'phase', 'when']) {
+      if (typeof hook[field] !== 'string' || hook[field] === '') {
+        return `${key}.${field} is missing or empty`;
+      }
     }
   }
   return null;
@@ -418,7 +420,7 @@ export function expectedElements(roster) {
   const names = ['Export', 'Document', 'Module', 'Name', 'Version', 'Description', 'Packaging', 'SourcesRoot', 'SystemRequirements'];
   for (let index = 0; index < roster.resources.length; index += 1) names.push('Resource');
   for (let index = 0; index < roster.applications.length; index += 1) names.push('WebApplication');
-  names.push('FileCopy', 'Invoke');
+  names.push('FileCopy', 'Invoke', 'Invoke');
   return names;
 }
 
@@ -588,13 +590,20 @@ export function buildManifest(roster) {
       `Target="${xmlEscape(roster.bundle.destinationTemplate)}"/>`
   );
 
+  // The guard comes first in the document and in the lifecycle: IPM updates a module's web
+  // applications at the start of Activate, before any Activate invoke, so a refusal that waited
+  // for the install's own <Invoke> would arrive after the live applications had been re-pointed.
+  // After Compile the installer class exists and no application has been touched.
+  //
   // No <Arg> children (DW-92): pUnexpire keeps its 0 default, so the IPM path can never reach
   // EnsureUnexpired. Phase is stated explicitly -- its default is Configure, which is not in
   // the activate chain, so a bare <Invoke> would never run at all.
-  lines.push(
-    `      <Invoke Class="${xmlEscape(roster.invoke.class)}" Method="${xmlEscape(roster.invoke.method)}" ` +
-      `Phase="${xmlEscape(roster.invoke.phase)}" When="${xmlEscape(roster.invoke.when)}"/>`
-  );
+  for (const hook of [roster.guard, roster.invoke]) {
+    lines.push(
+      `      <Invoke Class="${xmlEscape(hook.class)}" Method="${xmlEscape(hook.method)}" ` +
+        `Phase="${xmlEscape(hook.phase)}" When="${xmlEscape(hook.when)}"/>`
+    );
+  }
 
   lines.push('    </Module>');
   lines.push('  </Document>');

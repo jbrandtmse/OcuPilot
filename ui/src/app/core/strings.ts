@@ -179,6 +179,12 @@ export const STRINGS = {
   proposalDraftCaption: 'Nothing was changed. Fill in each value in angle brackets before you run this.',
   /** EXPERIENCE.md:276 */
   proposalUnchangedFieldsDisclosure: 'N unchanged fields',
+  /** EXPERIENCE.md:276 */
+  proposalUnchangedFieldsDisclosureOne: '1 unchanged field',
+  /** EXPERIENCE.md:276 */
+  proposalOpaqueCount: '<n> items',
+  /** EXPERIENCE.md:276 */
+  proposalOpaqueCountOne: '1 item',
   /** EXPERIENCE.md:604 */
   longBlockShowMore: 'Show more',
   /** EXPERIENCE.md:604 */
@@ -197,6 +203,10 @@ export const STRINGS = {
   explorerSaveCompilesOnConfirm: 'Confirming saves this text and then compiles it as you. The compile\'s outcome shows here once it has run.',
   /** EXPERIENCE.md:604 */
   explorerSaveNotCompiled: 'Saved, but it did not compile. The saved text is what is now on the instance.',
+  /** EXPERIENCE.md:604 */
+  interopEditorAgentNote: 'The agent reads only what is saved: save your changes here before you ask it for a change, because confirming its change opens the document again.',
+  /** EXPERIENCE.md:604 */
+  interopEditorSaveOnConfirm: 'Confirming saves this text and then compiles it as you, and the editor opens the document again, dropping any changes not saved there. The compile\'s outcome shows here once it has run.',
   /** EXPERIENCE.md:277 */
   proposalExampleCardTitle: 'Example \u2014 this is what a proposal looks like',
   /** EXPERIENCE.md:278 */
@@ -215,7 +225,12 @@ export const STRINGS = {
   agentTurnLimitBanner:
     'You have reached this instance\'s limit of <n> agent turns an hour. You can send again at <hh:mm>.',
   /** EXPERIENCE.md:281 */
+  agentTurnLimitBannerOne:
+    'You have reached this instance\'s limit of 1 agent turn an hour. You can send again at <hh:mm>.',
+  /** EXPERIENCE.md:281 */
   agentTurnLimitLine: 'This turn was not started: you have used your <n> turns for this hour.',
+  /** EXPERIENCE.md:281 */
+  agentTurnLimitLineOne: 'This turn was not started: you have used your 1 turn for this hour.',
   /** EXPERIENCE.md:500 */
   agentJumpToLatest: 'Jump to latest',
   // Story 4.5's four: from the tool-call-card Component Patterns row (:378) and the panel's
@@ -227,6 +242,8 @@ export const STRINGS = {
   agentNewConversationLockedReason: 'Stop the turn first',
   /** EXPERIENCE.md:352 */
   toolCallReadResultLine: '<n> rows returned \u00b7 <m> sent',
+  /** EXPERIENCE.md:352 */
+  toolCallReadResultLineOne: '1 row returned \u00b7 <m> sent',
   /** EXPERIENCE.md:282 */
   agentNavigationAnnouncement: 'I\'m opening <screen> for <entity> \u2014 use Back to return.',
   /** EXPERIENCE.md:282 */
@@ -329,6 +346,12 @@ export const STRINGS = {
   commandBoxNoMatch: 'No screen or action matches.',
   /** EXPERIENCE.md:307 */
   commandBoxResultCount: '<n> screens, <m> actions',
+  /** EXPERIENCE.md:307 */
+  commandBoxResultCountOneFirst: '1 screen, <m> actions',
+  /** EXPERIENCE.md:307 */
+  commandBoxResultCountOneSecond: '<n> screens, 1 action',
+  /** EXPERIENCE.md:307 */
+  commandBoxResultCountOneBoth: '1 screen, 1 action',
   /** EXPERIENCE.md:308 */
   commandBoxGroupScreens: 'Screens',
   /** EXPERIENCE.md:308 */
@@ -365,6 +388,8 @@ export const STRINGS = {
   agentShareContextLabel: 'Share screen context',
   /** EXPERIENCE.md:313 */
   tableRowCapNotice: 'Showing the first <n> rows. Narrow the filter or raise the max rows.',
+  /** EXPERIENCE.md:313 */
+  tableRowCapNoticeOne: 'Showing the first row. Narrow the filter or raise the max rows.',
   /** EXPERIENCE.md:314 */
   tableRowCount: '<n> rows',
   /** EXPERIENCE.md:314 */
@@ -616,6 +641,14 @@ export const STRINGS = {
   agentDefinitionFieldLocalModel: 'Local model',
   /** EXPERIENCE.md:335 */
   agentDefinitionCredTypeNone: 'No API key',
+  // Story 18.41: the wallet rung's checkbox, the field that replaces the API key field, and its caption.
+  /** EXPERIENCE.md:335 */
+  agentDefinitionCredTypeWallet: 'Read the key from a wallet secret',
+  /** EXPERIENCE.md:335 */
+  agentDefinitionFieldWalletSecret: 'Wallet secret',
+  /** EXPERIENCE.md:335 */
+  agentDefinitionWalletSecretCaption:
+    'The secret\'s full name, collection.secret, as the Secrets screen lists it. Set its value there; whoever runs a turn needs permission to use its collection.',
   /** EXPERIENCE.md:335 */
   agentDefinitionHttpAcknowledge:
     'This endpoint is not encrypted, so the key travels across the network in clear.',
@@ -640,8 +673,14 @@ export const STRINGS = {
   agentDefinitionTestTimeoutLocal:
     'The model did not answer within <n> seconds. A local model may still be loading; test again in a minute.',
   /** EXPERIENCE.md:466 */
+  agentDefinitionTestTimeoutLocalOne:
+    'The model did not answer within 1 second. A local model may still be loading; test again in a minute.',
+  /** EXPERIENCE.md:466 */
   agentDefinitionTestTimeout:
     'The provider (<provider>) did not answer within <n> seconds. Check the endpoint and the provider\'s status, then test again.',
+  /** EXPERIENCE.md:466 */
+  agentDefinitionTestTimeoutOne:
+    'The provider (<provider>) did not answer within 1 second. Check the endpoint and the provider\'s status, then test again.',
   /** EXPERIENCE.md:335 */
   agentDefinitionFieldMaxIterations: 'Maximum iterations',
   /** EXPERIENCE.md:335 */
@@ -658,6 +697,8 @@ export const STRINGS = {
   agentDefinitionHideKey: 'Hide key',
   /** EXPERIENCE.md:336 */
   agentDefinitionRetentionCaption: 'Transcripts are kept for <n> days.',
+  /** EXPERIENCE.md:336 */
+  agentDefinitionRetentionCaptionOne: 'Transcripts are kept for 1 day.',
   // Story 14.4: the Transcripts list, its columns, empty state and prompts, and the transcript
   // page's screen-context disclosure and its withheld sentence's action slot.
   /** EXPERIENCE.md:336 */
@@ -716,6 +757,14 @@ export const STRINGS = {
   agentSwitchesHoldRemove: 'Switch the agent back on',
   /** EXPERIENCE.md:342 */
   agentSwitchesHoldsEmpty: 'No users are switched off.',
+  /** EXPERIENCE.md:342 */
+  agentSwitchesConnectionHeading: 'Provider connection',
+  /** EXPERIENCE.md:342 */
+  agentSwitchesProxyServer: 'Proxy server',
+  /** EXPERIENCE.md:342 */
+  agentSwitchesProxyPort: 'Proxy port',
+  /** EXPERIENCE.md:342 */
+  agentSwitchesSaveConnection: 'Save connection',
   /** EXPERIENCE.md:343 */
   agentSwitchesShareContext: 'Screen context is shared by default',
   /** EXPERIENCE.md:349 */
@@ -729,8 +778,31 @@ export const STRINGS = {
   /** EXPERIENCE.md:349 */
   agentSwitchesConcurrentTurnsReason:
     'Fixed at 1: the conversation lock and the panel\'s single transcript assume one turn at a time per user.',
+  /** EXPERIENCE.md:349 */
+  agentSwitchesProxyHint:
+    'Leave the proxy empty to call the provider directly. The port applies only while a proxy is named.',
+  /** EXPERIENCE.md:349 */
+  agentSwitchesSslConfigurationHint:
+    'Leave empty to use OcuPilot\'s own configuration. To trust your own certificate authority, make an SSL/TLS configuration that does and name it here.',
+  /** EXPERIENCE.md:349 */
+  egressRefusalProxyHost:
+    'The proxy is a host name or an IP address on its own, with no scheme, path, port, user name or space, in at most 253 characters.',
+  /** EXPERIENCE.md:349 */
+  egressRefusalProxyPort: 'The proxy\'s port is a whole number from 1 to 65535.',
+  /** EXPERIENCE.md:349 */
+  egressRefusalProxyAddress:
+    'That proxy resolves to a loopback or link-local address or to this instance, which provider calls will not go through.',
+  /** EXPERIENCE.md:349 */
+  egressRefusalSslAbsent: 'No SSL/TLS configuration of that name exists on this instance.',
+  /** EXPERIENCE.md:349 */
+  egressRefusalSslUnverified:
+    'Provider calls need an enabled client configuration that requires the server\'s certificate.',
+  /** EXPERIENCE.md:349 */
+  egressRefusalSslWeak: 'Provider calls need a client configuration whose lowest TLS version is TLS 1.2 or later.',
   /** EXPERIENCE.md:344 */
   agentSwitchesRefusedAction: 'change the switches',
+  /** EXPERIENCE.md:344 */
+  agentSwitchesConnectionRefusedAction: 'change the provider connection',
   // Story 14.2: the Governance policy screen, its refusal action, the governance tool refusal, the
   // purge card's consequence and the screen's prompts. "None", "Read-only" and "Enabled" reuse
   // `sslVerifyPeerNone`, `agentDefinitionFieldReadOnly` and `tableColumnEnabled`.
@@ -1303,6 +1375,8 @@ export const STRINGS = {
   /** EXPERIENCE.md:379 */
   logViewerLoadNewer: 'Load newer',
   /** EXPERIENCE.md:379 */
+  logViewerLiveTail: 'Live tail',
+  /** EXPERIENCE.md:379 */
   logViewerJumpTop: 'Jump to top',
   /** EXPERIENCE.md:379 */
   logViewerJumpBottom: 'Jump to bottom',
@@ -1542,6 +1616,9 @@ export const STRINGS = {
   /** EXPERIENCE.md:260 */
   proposalResidue:
     'Removes exactly the <n> errors listed here. Any logged since the proposal will remain.',
+  /** EXPERIENCE.md:260 */
+  proposalResidueOne:
+    'Removes exactly the error listed here. Any logged since the proposal will remain.',
 
   // Story 8.1's twelve. The Web applications list becomes write-capable, so its empty state
   // invites the agent instead of naming a next step, and the create form beside it publishes the
@@ -1726,7 +1803,7 @@ export const STRINGS = {
   walletKeySecret64Shape: 'Enter the key as base64 that decodes to 16, 24 or 32 bytes.',
   walletKeyTypeMismatch: 'This secret holds another type of key, and a secret\'s type cannot change.',
   walletKeyReplaceRsaConsequence:
-    'Replaces the whole key pair. The old private key is discarded, so data encrypted to the old public key can no longer be decrypted with this secret. An import without a private key leaves the secret with none.',
+    'Replaces the whole key pair, and a stored certificate is removed unless the import carries one. The old private key is discarded, so data encrypted to the old public key can no longer be decrypted with this secret. An import without a private key leaves the secret with none.',
   walletKeyReplaceSymmetricConsequence:
     'Replaces the key. Data encrypted with the old key can no longer be decrypted with this secret.',
   walletTypeNotKeyValue: 'This secret is not a key-value secret.',
@@ -2154,10 +2231,13 @@ export const STRINGS = {
   sslFieldOcspUrl: 'OCSP responder URL',
   /** EXPERIENCE.md:484 */
   sslOwnRole:
-    'OcuPilot\'s agent makes every call to its model provider through this configuration. OcuPilot\'s installer sets its type, peer verification, trusted certificates and whether it is enabled, and restores them at every start.',
+    'OcuPilot\'s agent makes every call to its model provider through this configuration. OcuPilot\'s installer sets its type, peer verification, trusted certificates, minimum TLS version, cipher list and whether it is enabled, and restores them at every start.',
   /** EXPERIENCE.md:485 */
   sslRefusalOcuPilot:
     'OcuPilot\'s installer sets this setting of its own provider configuration and restores it at every start, so it cannot be changed here.',
+  /** EXPERIENCE.md:485 */
+  sslRefusalProviderNamed:
+    'Provider calls are made through this SSL/TLS configuration, so while Switches names it, or while it is OcuPilot\'s own, it cannot be deleted, created, or have its type, peer verification, trusted certificates, minimum TLS version, cipher list or enablement changed.',
   /** EXPERIENCE.md:486 */
   sslFileClassicOnly:
     'File locations are set on the classic portal\'s SSL/TLS Configuration page.',
@@ -2197,7 +2277,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:492 */
   sslPromptOutbound: 'Is this configuration ready for outbound HTTPS?',
 
-  /** EXPERIENCE.md:645 */
+  /** EXPERIENCE.md:648 */
   taskCreate: 'Create task',
   /** EXPERIENCE.md:493 */
   taskFormLabel: 'New task',
@@ -2973,6 +3053,8 @@ export const STRINGS = {
   /** EXPERIENCE.md:519 */
   oauthResourceServerMappingsRefused: 'Saved. <count> service mappings were not changed: <reason>',
   /** EXPERIENCE.md:519 */
+  oauthResourceServerMappingsRefusedOne: 'Saved. 1 service mapping was not changed: <reason>',
+  /** EXPERIENCE.md:519 */
   oauthResourceServerDeleteConsequence: 'This also deletes the resource server\'s service mappings.',
   /** EXPERIENCE.md:519 */
   oauthResourceServersEmptyAgent: 'create an OAuth 2.0 resource server',
@@ -3126,6 +3208,8 @@ export const STRINGS = {
   tryItCut: 'The response was cut at 256 KB.',
   /** EXPERIENCE.md:574 */
   tryItBinary: '<n> bytes, not shown as text.',
+  /** EXPERIENCE.md:574 */
+  tryItBinaryOne: '1 byte, not shown as text.',
   /** EXPERIENCE.md:575 */
   readBackMatches: 'Read back: matches',
   /** EXPERIENCE.md:575 */
@@ -3344,9 +3428,13 @@ export const STRINGS = {
   /** EXPERIENCE.md:583 */
   agentGuardrailsContextLimits: 'Each turn carries at most <rows> rows of the screen you are on, <total> characters in all and <field> characters a field.',
   /** EXPERIENCE.md:583 */
+  agentGuardrailsContextLimitsOne: 'Each turn carries at most 1 row of the screen you are on, <total> characters in all and <field> characters a field.',
+  /** EXPERIENCE.md:583 */
   agentGuardrailsLimitsHeading: 'Limits',
   /** EXPERIENCE.md:583 */
   agentGuardrailsTurnsLimit: 'Each user may start at most <n> agent turns an hour.',
+  /** EXPERIENCE.md:583 */
+  agentGuardrailsTurnsLimitOne: 'Each user may start at most 1 agent turn an hour.',
   /** EXPERIENCE.md:583 */
   agentGuardrailsTurnsNone: 'Agent turns an hour are not limited.',
   /** EXPERIENCE.md:583 */
@@ -3361,6 +3449,8 @@ export const STRINGS = {
   tableDownloadCsv: 'Download CSV',
   /** EXPERIENCE.md:313 */
   tableDownloadCsvCapped: 'The file holds the first <n> rows only.',
+  /** EXPERIENCE.md:313 */
+  tableDownloadCsvCappedOne: 'The file holds the first row only.',
 
   // Story 16.8: the six secondary log viewers' side-bar entries and titles, and the log viewer's two
   // match controls (DW-1102).
@@ -3507,7 +3597,11 @@ export const STRINGS = {
   /** EXPERIENCE.md:336 */
   agentLedgerWithheld: '<n> rows withheld: each records a privilege you do not hold.',
   /** EXPERIENCE.md:336 */
+  agentLedgerWithheldOne: '1 row withheld: it records a privilege you do not hold.',
+  /** EXPERIENCE.md:336 */
   agentLedgerDropped: '<n> calls were counted and not stored.',
+  /** EXPERIENCE.md:336 */
+  agentLedgerDroppedOne: '1 call was counted and not stored.',
   /** EXPERIENCE.md:336 */
   agentLedgerDeniedAction: 'see another user\'s agent activity',
   /** EXPERIENCE.md:336 */
@@ -3995,6 +4089,8 @@ export const STRINGS = {
   databaseResourceNew: 'Create the resource <name>',
   /** EXPERIENCE.md:377 */
   databaseResourceExisting: 'Use an existing resource',
+  /** EXPERIENCE.md:377 */
+  databaseEncrypt: 'Encrypt database',
   /** EXPERIENCE.md:377 */
   databaseGroupMounting: 'Mounting',
   /** EXPERIENCE.md:377 */
@@ -4516,7 +4612,11 @@ export const STRINGS = {
   /** EXPERIENCE.md:589 */
   explorerCompileSummary: 'Compiled <done> of <n> documents, <errors> with errors.',
   /** EXPERIENCE.md:589 */
+  explorerCompileSummaryOne: 'Compiled <done> of 1 document, <errors> with errors.',
+  /** EXPERIENCE.md:589 */
   explorerCompileStopped: 'Stopped after <done> of <n> documents.',
+  /** EXPERIENCE.md:589 */
+  explorerCompileStoppedOne: 'Stopped after <done> of 1 document.',
   /** EXPERIENCE.md:589 */
   explorerDocumentResult: '<name>: <reason>',
   /** EXPERIENCE.md:589 */
@@ -4524,7 +4624,11 @@ export const STRINGS = {
   /** EXPERIENCE.md:589 */
   explorerDeleteRunning: 'Deleting <n> documents',
   /** EXPERIENCE.md:589 */
+  explorerDeleteRunningOne: 'Deleting 1 document',
+  /** EXPERIENCE.md:589 */
   explorerDeleteSummary: 'Deleted <done> of <n> documents.',
+  /** EXPERIENCE.md:589 */
+  explorerDeleteSummaryOne: 'Deleted <done> of 1 document.',
   /** EXPERIENCE.md:589 */
   explorerDeleteConsequence: 'The document\'s source and compiled code are removed and cannot be restored from OcuPilot. A persistent class\'s stored data is kept.',
   /** EXPERIENCE.md:589 */
@@ -4570,13 +4674,21 @@ export const STRINGS = {
   /** EXPERIENCE.md:591 */
   explorerExportDone: 'Exported <n> documents to <path>.',
   /** EXPERIENCE.md:591 */
+  explorerExportDoneOne: 'Exported 1 document to <path>.',
+  /** EXPERIENCE.md:591 */
   explorerExportSaved: 'Saved <n> documents as <file>.',
+  /** EXPERIENCE.md:591 */
+  explorerExportSavedOne: 'Saved 1 document as <file>.',
   /** EXPERIENCE.md:591 */
   explorerImportRunning: 'Importing <file>',
   /** EXPERIENCE.md:591 */
   explorerImportDone: 'Imported <n> documents.',
   /** EXPERIENCE.md:591 */
+  explorerImportDoneOne: 'Imported 1 document.',
+  /** EXPERIENCE.md:591 */
   explorerImportDoneErrors: 'Imported <n> documents, with compile errors.',
+  /** EXPERIENCE.md:591 */
+  explorerImportDoneErrorsOne: 'Imported 1 document, with compile errors.',
   /** EXPERIENCE.md:591 */
   explorerExportDirectory: 'There is no such directory under that allowed directory.',
   /** EXPERIENCE.md:592 */
@@ -4603,6 +4715,8 @@ export const STRINGS = {
   explorerSaveRefused: 'The instance refused this text, so nothing was saved.',
   /** EXPERIENCE.md:593 */
   explorerEditorRefusedAction: 'save this document',
+  /** EXPERIENCE.md:604 */
+  explorerDocumentSourceControl: 'Source control has not released this document for editing, so nothing was saved. Check it out first.',
   // Story 18.5: Journals, Journal file details and Journal file databases -- titles, column headers,
   // empty states and prompts; the two screen-level switches and the integrity check, their warnings
   // (also the agent's card lines), the check's flag and its two verdicts. Size, Reason, Maximum size,
@@ -4723,6 +4837,12 @@ export const STRINGS = {
   explorerCompareIdentical: 'The two documents are identical.',
   /** EXPERIENCE.md:594 */
   explorerCompareSummary: '<n> lines removed \u00b7 <m> lines added',
+  /** EXPERIENCE.md:594 */
+  explorerCompareSummaryOneFirst: '1 line removed \u00b7 <m> lines added',
+  /** EXPERIENCE.md:594 */
+  explorerCompareSummaryOneSecond: '<n> lines removed \u00b7 1 line added',
+  /** EXPERIENCE.md:594 */
+  explorerCompareSummaryOneBoth: '1 line removed \u00b7 1 line added',
   /** EXPERIENCE.md:594 */
   explorerCompareUnchanged: '<n> unchanged lines',
   /** EXPERIENCE.md:594 */
@@ -5346,7 +5466,11 @@ export const STRINGS = {
   /** EXPERIENCE.md:597 */
   explorerSqlStopped: 'Stopped after <s> seconds.',
   /** EXPERIENCE.md:597 */
+  explorerSqlStoppedOne: 'Stopped after 1 second.',
+  /** EXPERIENCE.md:597 */
   explorerSqlStoppedUndone: 'Stopped after <s> seconds; its changes were undone.',
+  /** EXPERIENCE.md:597 */
+  explorerSqlStoppedUndoneOne: 'Stopped after 1 second; its changes were undone.',
   /** EXPERIENCE.md:597 */
   explorerSqlTakesValues: 'This statement takes <n> values.',
   /** EXPERIENCE.md:597 */
@@ -5970,6 +6094,21 @@ export const STRINGS = {
   encryptionStartupInteractiveRefusal:
     'The audit log, IRISSECURITY or IRISTEMP is encrypted, so every start must activate its key, and with Interactive a start nobody answers on the console does not finish. Keep Unattended, or turn their encryption off first.',
   /** EXPERIENCE.md:364 */
+  encryptionStartupJournalRefusal:
+    'Journal encryption is on, or a journal file the instance still needs is encrypted, so every start must activate its key, and with Interactive a start nobody answers on the console does not finish. Keep Unattended, or turn journal encryption off and switch the journal file on Journals first.',
+  /** EXPERIENCE.md:364 */
+  encryptionStartupKmipRefusal:
+    'The audit log, IRISSECURITY or IRISTEMP is encrypted, and OcuPilot cannot check that the KMIP server is reachable and holds their keys, so a start that cannot activate them does not finish. Keep Unattended, or make this change on the classic Database Encryption page.',
+  /** EXPERIENCE.md:364 */
+  encryptionStartupKmipUnconfigured:
+    'This KMIP server has no startup key list, so it cannot activate keys at startup. Choose a server that has one, or add a startup key list to this server\'s configuration.',
+  /** EXPERIENCE.md:364 */
+  encryptionStartupKeyFileDifferent:
+    'Unattended activation already uses another key file, and the instance does not switch files while it does. Keep the key file now stored, or change it on the classic Database Encryption page.',
+  /** EXPERIENCE.md:364 */
+  encryptionKeyFileChanged:
+    'This key file\'s keys changed after the activation was reviewed, so nothing was activated. Review the file\'s keys and propose the activation again.',
+  /** EXPERIENCE.md:364 */
   encryptionStartupPrompt1: 'How does this instance activate its encryption keys at startup?',
   /** EXPERIENCE.md:364 */
   encryptionStartupPrompt2: 'What does unattended key activation store on this instance?',
@@ -6115,6 +6254,36 @@ export const STRINGS = {
   metricsPrompt2: 'How busy is the instance right now: CPU, cache efficiency and global references?',
   /** EXPERIENCE.md:603 */
   metricsPrompt3: 'What do the Web Gateway metrics read?',
+  /** EXPERIENCE.md:603 */
+  interopUsageLabel: 'Interoperability usage',
+  /** EXPERIENCE.md:603 */
+  interopUsageInterfacesTab: 'Interfaces',
+  /** EXPERIENCE.md:603 */
+  interopUsageVolumeLabel: 'Message volume',
+  /** EXPERIENCE.md:603 */
+  interopUsageImpactLabel: 'Database impact',
+  /** EXPERIENCE.md:603 */
+  interopUsageColumnProtocol: 'Protocol',
+  /** EXPERIENCE.md:603 */
+  interopUsageColumnActiveNow: 'Active now',
+  /** EXPERIENCE.md:603 */
+  interopUsageColumnDataCreated: 'Data created (MB)',
+  /** EXPERIENCE.md:603 */
+  interopUsageAll: 'All',
+  /** EXPERIENCE.md:603 */
+  interopUsageInterfacesEmpty: 'The instance has recorded no interoperability interfaces.',
+  /** EXPERIENCE.md:603 */
+  interopUsageVolumeEmpty: 'The instance has recorded no message volume.',
+  /** EXPERIENCE.md:603 */
+  interopUsageImpactEmpty: 'The instance has recorded no database impact from message activity.',
+  /** EXPERIENCE.md:603 */
+  interopUsageNote: 'Counts cover all the usage data the instance still keeps, with no date range.',
+  /** EXPERIENCE.md:603 */
+  interopUsagePrompt1: 'How many interoperability interfaces are active, and in which namespaces?',
+  /** EXPERIENCE.md:603 */
+  interopUsagePrompt2: 'Which namespace has sent and received the most messages?',
+  /** EXPERIENCE.md:603 */
+  interopUsagePrompt3: 'Which database has grown the most from message activity?',
   /** EXPERIENCE.md:604 */
   agentPickerLabel: 'Agent definition: <name>',
   /** EXPERIENCE.md:604 */
@@ -6312,6 +6481,40 @@ export const STRINGS = {
   mftDeleteConsequence: 'The connection is removed. Its OAuth 2.0 client configuration is deleted with it unless another connection names it, and so is that client\'s server description when no other client uses it.',
   /** EXPERIENCE.md:364 */
   mftRevokeConsequence: 'The connection\'s access token is removed and the file service is asked to revoke it. The connection cannot transfer files until it is authorized again on the classic Managed File Transfer Connections page.',
+  /** EXPERIENCE.md:364 */
+  allowListRefusalAgent: 'The allowed directories fence every server path OcuPilot reads or writes, so they are changed on the Allowed directories screen alone.',
+  /** EXPERIENCE.md:364 */
+  allowListRefusalOff: 'Changing the allowed directories is switched off on this instance. An administrator can switch it on in Governance policy.',
+  /** EXPERIENCE.md:364 */
+  allowListRefusalPath: 'A directory is an absolute path of at most 1,024 characters with no control character.',
+  /** EXPERIENCE.md:364 */
+  allowListRefusalListed: 'That directory is already allowed.',
+  /** EXPERIENCE.md:364 */
+  allowListRefusalNotListed: 'That directory is not one of the allowed directories.',
+  /** EXPERIENCE.md:364 */
+  allowListRefusalNoDirectory: 'No directory of that name exists on the server.',
+  /** EXPERIENCE.md:364 */
+  allowListRefusalFallback: 'While the list is unrestricted its one entry is the manager directory, which cannot be changed or removed. Adding a directory restricts the list to that directory, the manager directory and any directory already stored in it.',
+  /** EXPERIENCE.md:364 */
+  allowedDirectoryAddAction: 'Add directory',
+  /** EXPERIENCE.md:364 */
+  allowedDirectoryChangeAction: 'Change directory',
+  /** EXPERIENCE.md:364 */
+  allowedDirectoryNewLabel: 'New directory',
+  /** EXPERIENCE.md:364 */
+  allowedDirectoryHint: 'An absolute directory on the server that already exists.',
+  /** EXPERIENCE.md:364 */
+  allowedDirectoryAddRestricts: 'File dialogs on this instance, the classic portal\'s included, can then reach only the manager directory and the directories listed here.',
+  /** EXPERIENCE.md:364 */
+  allowedDirectoryAddConsequence: 'File and directory fields can then choose locations under this directory.',
+  /** EXPERIENCE.md:364 */
+  allowedDirectoryChangeConsequence: 'File and directory fields then choose locations under the new directory instead of <directory>.',
+  /** EXPERIENCE.md:364 */
+  allowedDirectoryRemoveConsequence: 'File and directory fields can no longer choose locations under this directory; removing the last one leaves none.',
+  /** EXPERIENCE.md:364 */
+  allowedDirectoriesEmptyNone: 'The instance\'s allow-list names no directory, so no file or directory field can choose a location on the server.',
+  /** EXPERIENCE.md:364 */
+  allowedDirectoriesAgentHint: 'explain what the allowed directories control',
   /** EXPERIENCE.md:357 */
   docDbAppListLabel: 'Doc DB applications',
   /** EXPERIENCE.md:357 */
@@ -7041,6 +7244,8 @@ export const STRINGS = {
   /** EXPERIENCE.md:604 */
   interopTestMaxLength: 'At most <n> characters.',
   /** EXPERIENCE.md:604 */
+  interopTestMaxLengthOne: 'At most 1 character.',
+  /** EXPERIENCE.md:604 */
   interopTestDone: 'The target answered in session <session> with <class>.',
   /** EXPERIENCE.md:604 */
   interopTestDoneNoResponse: 'The target answered nothing in session <session>.',
@@ -7072,6 +7277,399 @@ export const STRINGS = {
   interopDtlEditorTitle: 'DTL editor',
   /** EXPERIENCE.md:604 */
   interopBplEditorTitle: 'BPL editor',
+  /** EXPERIENCE.md:604 */
+  interopTransformsEmptyAgent: 'Ask the agent why no data transformation is listed here.',
+  /** EXPERIENCE.md:604 */
+  interopTransformTestTitle: 'Test <transform>',
+  /** EXPERIENCE.md:604 */
+  interopTransformInputLabel: 'Input',
+  /** EXPERIENCE.md:604 */
+  interopTransformInputHint:
+    'Paste the source message: an HL7, X12 or other EDI document\'s text, or XML for the transformation\'s source class.',
+  /** EXPERIENCE.md:604 */
+  interopTransformSourceClass: 'Source class',
+  /** EXPERIENCE.md:604 */
+  interopTransformTargetClass: 'Target class',
+  /** EXPERIENCE.md:604 */
+  interopTransformConsole: 'Console',
+  /** EXPERIENCE.md:604 */
+  interopTransformDone: 'The transformation ran, and its target is below.',
+  /** EXPERIENCE.md:604 */
+  interopTransformInputFailed: 'The input did not parse as the source class.',
+  /** EXPERIENCE.md:604 */
+  interopTransformFailed: 'The transformation failed.',
+  /** EXPERIENCE.md:604 */
+  interopTransformOutputFailed: 'The transformation ran, but its target could not be shown as text.',
+  /** EXPERIENCE.md:604 */
+  interopTransformRefusalSourceFormat:
+    'OcuPilot reads a pasted source only as an HL7 or other EDI document\'s text, or as XML. This transformation\'s source is neither, so test it in the classic portal.',
+  /** EXPERIENCE.md:604 */
+  interopTransformRefusalTargetFormat:
+    'OcuPilot shows a target only as an EDI document\'s text or as XML. This transformation\'s target is neither, so test it in the classic portal.',
+  /** EXPERIENCE.md:604 */
+  interopTransformRefusalContent: 'Paste the source message, at most 3,000,000 characters.',
+  /** EXPERIENCE.md:604 */
+  interopTransformRunsConsequence:
+    'The transformation\'s code runs on this instance as you, on the input shown. Whatever it writes or sends, it writes or sends.',
+  /** EXPERIENCE.md:604 */
+  interopRuleEditorEmpty: 'This business rule no longer exists.',
+  /** EXPERIENCE.md:604 */
+  interopBplEditorEmpty: 'This business process no longer exists.',
+  /** EXPERIENCE.md:604 */
+  interopDtlEditorEmpty: 'This data transformation no longer exists.',
+  /** EXPERIENCE.md:604 */
+  interopBplEditorCoded: 'This business process is written as a class, not in BPL, so the BPL editor cannot open it.',
+  /** EXPERIENCE.md:604 */
+  interopDtlEditorCoded: 'This data transformation is written as a class, not in DTL, so the DTL editor cannot open it.',
+  /** EXPERIENCE.md:604 */
+  interopEditorNote:
+    'Leaving this screen, or choosing Refresh to open the document again, discards any change not saved in the editor.',
+  /** EXPERIENCE.md:604 */
+  interopRuleEditorPrompt1: 'Summarize what this business rule decides.',
+  /** EXPERIENCE.md:604 */
+  interopRuleEditorPrompt2: 'Which targets does this rule send messages to?',
+  /** EXPERIENCE.md:604 */
+  interopRuleEditorPrompt3: 'Which conditions does this rule test, in order?',
+  /** EXPERIENCE.md:604 */
+  interopBplEditorPrompt1: 'Summarize what this business process does.',
+  /** EXPERIENCE.md:604 */
+  interopBplEditorPrompt2: 'Which business operations does this process call?',
+  /** EXPERIENCE.md:604 */
+  interopBplEditorPrompt3: 'Where does this process handle errors?',
+  /** EXPERIENCE.md:604 */
+  interopDtlEditorPrompt1: 'Summarize what this data transformation maps.',
+  /** EXPERIENCE.md:604 */
+  interopDtlEditorPrompt2: 'Which target fields does this transformation set, and from what?',
+  /** EXPERIENCE.md:604 */
+  interopDtlEditorPrompt3: 'How do I test this transformation?',
+  /** EXPERIENCE.md:604 */
+  interopSchemaViewerTitle: 'Schema viewer',
+  /** EXPERIENCE.md:604 */
+  interopSchemaViewerNote: 'The viewer opens on ASC X12; choose another schema type from its list.',
+  /** EXPERIENCE.md:604 */
+  interopSchemaViewerPrompt1: 'Which HL7 v2.x schema categories does this namespace hold?',
+  /** EXPERIENCE.md:604 */
+  interopSchemaViewerPrompt2: 'Which segments make up an HL7 2.5 ADT_A01 message?',
+  /** EXPERIENCE.md:604 */
+  interopSchemaViewerPrompt3: 'How do I add a custom HL7 schema category?',
+  /** EXPERIENCE.md:604 */
+  interopProductionDiagramTitle: 'Configuration diagram',
+  /** EXPERIENCE.md:604 */
+  interopProductionDiagramEmpty: 'This production no longer exists.',
+  /** EXPERIENCE.md:604 */
+  interopProductionDiagramNote:
+    'Leaving this screen, or choosing Refresh to open the production again, discards any change not saved in the diagram.',
+  /** EXPERIENCE.md:604 */
+  interopProductionDiagramPrompt1: 'How do messages flow through this production?',
+  /** EXPERIENCE.md:604 */
+  interopProductionDiagramPrompt2: 'Which items in this production are disabled?',
+  /** EXPERIENCE.md:604 */
+  interopProductionDiagramPrompt3: 'Which business operations does this production send to?',
+  /** EXPERIENCE.md:604 */
+  interopMessagesEmpty: 'No message matches these criteria.',
+  /** EXPERIENCE.md:604 */
+  interopMessagesCriterionErrors: 'Marked as an error',
+  /** EXPERIENCE.md:604 */
+  interopMessagesPrompt1: 'Which messages ended in error in the last hour?',
+  /** EXPERIENCE.md:604 */
+  interopMessagesPrompt2: 'Which business host sent the most messages today?',
+  /** EXPERIENCE.md:604 */
+  interopMessagesPrompt3: 'Show the messages of the newest session in the order they were sent.',
+  /** EXPERIENCE.md:604 */
+  interopMessageTabHeader: 'Header',
+  /** EXPERIENCE.md:604 */
+  interopMessageHeaderEmpty: 'This message no longer exists.',
+  /** EXPERIENCE.md:604 */
+  interopMessageHeaderPrompt1: 'Why did this message fail?',
+  /** EXPERIENCE.md:604 */
+  interopMessageHeaderPrompt2: 'Which host sent this message, and which received it?',
+  /** EXPERIENCE.md:604 */
+  interopMessageHeaderPrompt3: 'Was this message answered, and when?',
+  /** EXPERIENCE.md:604 */
+  interopMessageContentsLabel: 'Message contents',
+  /** EXPERIENCE.md:604 */
+  interopMessageTabContents: 'Contents',
+  /** EXPERIENCE.md:604 */
+  interopMessageContentsEmpty: 'This message has no contents to show.',
+  /** EXPERIENCE.md:604 */
+  interopMessageContentsCut: 'OcuPilot shows the first part of this message; the rest is cut.',
+  /** EXPERIENCE.md:604 */
+  interopRefusalMessageContents: 'OcuPilot cannot show this message body as text.',
+  /** EXPERIENCE.md:604 */
+  interopMessageContentsPrompt1: 'Summarize what this message says.',
+  /** EXPERIENCE.md:604 */
+  interopMessageContentsPrompt2: 'Which fields of this message are empty?',
+  /** EXPERIENCE.md:604 */
+  interopMessageContentsPrompt3: 'Does anything in this message look malformed?',
+  /** EXPERIENCE.md:604 */
+  interopMessageTraceLabel: 'Session trace',
+  /** EXPERIENCE.md:604 */
+  interopMessageTabTrace: 'Trace',
+  /** EXPERIENCE.md:604 */
+  interopMessageTraceNote: 'OcuPilot draws this session\'s messages. The classic Visual Trace also shows its event, rule and I/O log entries.',
+  /** EXPERIENCE.md:604 */
+  interopTraceDiagramLabel: 'Sequence diagram of this session',
+  /** EXPERIENCE.md:604 */
+  interopTraceViewDiagram: 'Diagram',
+  /** EXPERIENCE.md:604 */
+  interopTraceViewMermaid: 'Mermaid text',
+  /** EXPERIENCE.md:604 */
+  interopTraceArrow: 'Message <id>: <type> from <source> to <target>, <status>',
+  /** EXPERIENCE.md:604 */
+  interopTraceNoBody: '(no body)',
+  /** EXPERIENCE.md:604 */
+  interopTraceErrorMark: '[ERROR]',
+  /** EXPERIENCE.md:604 */
+  interopTraceNoName: '(no name)',
+  /** EXPERIENCE.md:604 */
+  interopTraceCut: 'OcuPilot draws the first <n> messages of this session.',
+  /** EXPERIENCE.md:604 */
+  interopTestTraceLink: 'Open this session\'s trace',
+  /** EXPERIENCE.md:604 */
+  interopMessageTracePrompt1: 'What happened in this session, step by step?',
+  /** EXPERIENCE.md:604 */
+  interopMessageTracePrompt2: 'Which host in this session reported the error?',
+  /** EXPERIENCE.md:604 */
+  interopMessageTracePrompt3: 'How long did this session take from its first message to its last?',
+  /** EXPERIENCE.md:604 */
+  interopRefusalResendNone: 'None of these messages can be resent now.',
+  /** EXPERIENCE.md:604 */
+  interopRefusalResendChanged: 'These messages changed after they were reviewed, so nothing was resent. Review them again.',
+  /** EXPERIENCE.md:604 */
+  interopRefusalEditNotEditable:
+    'OcuPilot can edit an HL7 v2 message or the plain fields of a message object, not this message\'s body. Use the classic Edit and Resend page for it.',
+  /** EXPERIENCE.md:604 */
+  interopRefusalEditNoChange: 'This edit changes nothing in the message. Use Resend to send it again as it is.',
+  /** EXPERIENCE.md:604 */
+  interopRefusalEditField: 'The message body has no such field that an edit can set.',
+  /** EXPERIENCE.md:604 */
+  interopRefusalEditSecret: 'This field names a credential, so OcuPilot does not change it.',
+  /** EXPERIENCE.md:604 */
+  interopRefusalEditValue: 'This value is not valid for the field.',
+  /** EXPERIENCE.md:604 */
+  interopMessageResendConsequence:
+    'Resending sends each message marked to be resent to its target again, as a new message in the same session. A message that was already delivered is delivered twice. It cannot be undone.',
+  /** EXPERIENCE.md:604 */
+  interopMessageEditResendConsequence:
+    'Edit and resend saves the edited body as a new copy and sends it to the message\'s target as a new message in the same session. The original message and body stay as they were. It cannot be undone.',
+  /** EXPERIENCE.md:604 */
+  interopResendVerdictResend: 'will be resent',
+  /** EXPERIENCE.md:604 */
+  interopResendVerdictGone: 'no longer exists',
+  /** EXPERIENCE.md:604 */
+  interopResendVerdictNobody: 'its body no longer exists',
+  /** EXPERIENCE.md:604 */
+  interopResendVerdictTargetOff: 'its target is not an enabled item of the running production',
+  /** EXPERIENCE.md:604 */
+  interopResendVerdictNoReplyQueue: 'the queue its reply would go to no longer exists',
+  /** EXPERIENCE.md:604 */
+  interopMessagesResendAction: 'Resend',
+  /** EXPERIENCE.md:604 */
+  interopMessagesEditResendAction: 'Edit and resend',
+  /** EXPERIENCE.md:604 */
+  interopEditResendHeading: 'Edit and resend message',
+  /** EXPERIENCE.md:604 */
+  interopEditResendReview: 'Review',
+  /** EXPERIENCE.md:604 */
+  interopResendOutcome: 'resent as',
+  /** EXPERIENCE.md:604 */
+  interopResendFailed: 'not resent',
+  /** EXPERIENCE.md:604 */
+  interopMessagesEmptyAgent: 'find and resend messages',
+  /** EXPERIENCE.md:605 */
+  agentWorkflowLabel: 'Guided workflow',
+  /** EXPERIENCE.md:605 */
+  agentWorkflowContinue: 'Continue',
+  /** EXPERIENCE.md:605 */
+  agentWorkflowEnd: 'End workflow',
+  /** EXPERIENCE.md:605 */
+  agentWorkflowContinueMessage: 'Continue the guided workflow.',
+  /** EXPERIENCE.md:605 */
+  agentWorkflowContinueWait: 'Confirm or cancel the open proposal first.',
+  /** EXPERIENCE.md:606 */
+  interopProductionsWorkflowRecover: 'Recover a stuck production, step by step',
+  /** EXPERIENCE.md:606 */
+  interopMessagesWorkflowResend: 'Resend failed messages, step by step',
+  /** EXPERIENCE.md:606 */
+  interopMessagesWorkflowTrace: 'Trace a message through its session, step by step',
+  /** EXPERIENCE.md:606 */
+  dashboardWorkflowHealth: 'Check this instance\'s health, step by step',
+  /** EXPERIENCE.md:606 */
+  roleListWorkflowSecurity: 'Review the security posture, step by step',
+  /** EXPERIENCE.md:606 */
+  explorerSqlQueryWorkflowSlow: 'Find out why a query is slow, step by step',
+  /** EXPERIENCE.md:606 */
+  explorerClassListWorkflowCompile: 'Fix a class until it compiles, step by step',
+  /** EXPERIENCE.md:606 */
+  explorerClassListWorkflowReview: 'Review a class\'s ObjectScript, step by step',
+  /** EXPERIENCE.md:606 */
+  namespaceListWorkflowProject: 'Set up a new project\'s namespace, step by step',
+  /** EXPERIENCE.md:604 */
+  analyticsCubesLabel: 'Cubes',
+  /** EXPERIENCE.md:604 */
+  analyticsTermListsLabel: 'Term lists',
+  /** EXPERIENCE.md:604 */
+  analyticsTermListEntriesLabel: 'Term list entries',
+  /** EXPERIENCE.md:604 */
+  analyticsFolderItemsLabel: 'Folder items',
+  /** EXPERIENCE.md:604 */
+  analyticsTabMeasures: 'Measures',
+  /** EXPERIENCE.md:604 */
+  analyticsTabDimensions: 'Dimensions',
+  /** EXPERIENCE.md:604 */
+  analyticsTabRelationships: 'Relationships',
+  /** EXPERIENCE.md:604 */
+  analyticsColumnCaption: 'Caption',
+  /** EXPERIENCE.md:604 */
+  analyticsColumnLastBuild: 'Last build',
+  /** EXPERIENCE.md:604 */
+  analyticsColumnFacts: 'Facts',
+  /** EXPERIENCE.md:604 */
+  analyticsColumnPosition: 'Position',
+  /** EXPERIENCE.md:604 */
+  analyticsColumnDimension: 'Dimension',
+  /** EXPERIENCE.md:604 */
+  analyticsColumnHierarchy: 'Hierarchy',
+  /** EXPERIENCE.md:604 */
+  analyticsColumnRelatedCube: 'Related cube',
+  /** EXPERIENCE.md:604 */
+  analyticsColumnModified: 'Modified',
+  /** EXPERIENCE.md:604 */
+  analyticsColumnFavorite: 'Favorite',
+  /** EXPERIENCE.md:604 */
+  analyticsCubeCriterion: 'Cube',
+  /** EXPERIENCE.md:604 */
+  analyticsTermListCriterion: 'Term list',
+  /** EXPERIENCE.md:604 */
+  analyticsCubesEmpty: 'No cube is defined in this namespace.',
+  /** EXPERIENCE.md:604 */
+  analyticsCubeMeasuresEmpty: 'This cube no longer exists, or it has no measures.',
+  /** EXPERIENCE.md:604 */
+  analyticsCubeDimensionsEmpty: 'This cube no longer exists, or it has no dimensions.',
+  /** EXPERIENCE.md:604 */
+  analyticsCubeRelationshipsEmpty: 'This cube no longer exists, or it has no relationships.',
+  /** EXPERIENCE.md:604 */
+  analyticsTermListsEmpty: 'No term list is defined in this namespace.',
+  /** EXPERIENCE.md:604 */
+  analyticsTermListEntriesEmpty: 'This term list no longer exists, or it has no entries.',
+  /** EXPERIENCE.md:604 */
+  analyticsFolderItemsEmpty: 'No folder item in this namespace is visible to you.',
+  /** EXPERIENCE.md:604 */
+  analyticsRefusalNamespace: 'Analytics is not enabled in this namespace.',
+  /** EXPERIENCE.md:604 */
+  analyticsCubesPrompt1: 'Which cube holds the most facts?',
+  /** EXPERIENCE.md:604 */
+  analyticsCubesPrompt2: 'When was each cube last built?',
+  /** EXPERIENCE.md:604 */
+  analyticsCubesPrompt3: 'Which cubes have never been built?',
+  /** EXPERIENCE.md:604 */
+  analyticsCubeMeasuresPrompt1: 'Summarize what this cube measures.',
+  /** EXPERIENCE.md:604 */
+  analyticsCubeMeasuresPrompt2: 'Which measures of this cube are hidden?',
+  /** EXPERIENCE.md:604 */
+  analyticsCubeMeasuresPrompt3: 'Which measures could I compare across a dimension?',
+  /** EXPERIENCE.md:604 */
+  analyticsCubeDimensionsPrompt1: 'Which dimensions can I filter this cube by?',
+  /** EXPERIENCE.md:604 */
+  analyticsCubeDimensionsPrompt2: 'Which levels does each hierarchy of this cube have?',
+  /** EXPERIENCE.md:604 */
+  analyticsCubeDimensionsPrompt3: 'Does this cube have a time dimension?',
+  /** EXPERIENCE.md:604 */
+  analyticsCubeRelationshipsPrompt1: 'Which cubes does this cube relate to?',
+  /** EXPERIENCE.md:604 */
+  analyticsCubeRelationshipsPrompt2: 'Which related cube must be built first?',
+  /** EXPERIENCE.md:604 */
+  analyticsCubeRelationshipsPrompt3: 'How do I use this relationship in a query?',
+  /** EXPERIENCE.md:604 */
+  analyticsTermListsPrompt1: 'Summarize the term lists in this namespace.',
+  /** EXPERIENCE.md:604 */
+  analyticsTermListsPrompt2: 'Which term list changed most recently?',
+  /** EXPERIENCE.md:604 */
+  analyticsTermListsPrompt3: 'Which term lists could a cube use to translate codes?',
+  /** EXPERIENCE.md:604 */
+  analyticsTermListEntriesPrompt1: 'Summarize what this term list maps.',
+  /** EXPERIENCE.md:604 */
+  analyticsTermListEntriesPrompt2: 'Which keys map to the same value?',
+  /** EXPERIENCE.md:604 */
+  analyticsTermListEntriesPrompt3: 'Are any values in this term list empty?',
+  /** EXPERIENCE.md:604 */
+  analyticsFolderItemsPrompt1: 'Which dashboards are in this namespace?',
+  /** EXPERIENCE.md:604 */
+  analyticsFolderItemsPrompt2: 'Which items are my favorites?',
+  /** EXPERIENCE.md:604 */
+  analyticsFolderItemsPrompt3: 'Which folder items changed most recently?',
+  /** EXPERIENCE.md:604 */
+  analyticsArchitectLabel: 'Architect',
+  /** EXPERIENCE.md:604 */
+  analyticsAnalyzerLabel: 'Analyzer',
+  /** EXPERIENCE.md:604 */
+  analyticsUserPortalLabel: 'User Portal',
+  /** EXPERIENCE.md:604 */
+  externalAreaNotEnabled: '<area> is not enabled in this namespace.',
+  /** EXPERIENCE.md:604 */
+  analyticsArchitectPrompt1: 'What can I change about a cube in Architect?',
+  /** EXPERIENCE.md:604 */
+  analyticsArchitectPrompt2: 'Which cubes here could I open in Architect?',
+  /** EXPERIENCE.md:604 */
+  analyticsArchitectPrompt3: 'What do I need before Architect can build a cube?',
+  /** EXPERIENCE.md:604 */
+  analyticsAnalyzerPrompt1: 'What can I explore in Analyzer?',
+  /** EXPERIENCE.md:604 */
+  analyticsAnalyzerPrompt2: 'Which cubes here could I analyze?',
+  /** EXPERIENCE.md:604 */
+  analyticsAnalyzerPrompt3: 'How do I save a pivot table from Analyzer?',
+  /** EXPERIENCE.md:604 */
+  analyticsUserPortalPrompt1: 'What will I find in the User Portal?',
+  /** EXPERIENCE.md:604 */
+  analyticsUserPortalPrompt2: 'Which dashboards could I open in the User Portal?',
+  /** EXPERIENCE.md:604 */
+  analyticsUserPortalPrompt3: 'Which of my favorites does the User Portal show?',
+  /** EXPERIENCE.md:604 */
+  analyticsMdxQueryLabel: 'MDX query',
+  /** EXPERIENCE.md:604 */
+  analyticsMdxCubeLabel: 'Start from cube',
+  /** EXPERIENCE.md:604 */
+  analyticsMdxEmpty: 'Write one MDX statement, then Run.',
+  /** EXPERIENCE.md:604 */
+  analyticsMdxDrillHeading: 'Drill-through',
+  /** EXPERIENCE.md:604 */
+  analyticsMdxRowHeader: 'Row members',
+  /** EXPERIENCE.md:604 */
+  analyticsMdxDrillCell: 'Drill through <row>, <column>',
+  /** EXPERIENCE.md:604 */
+  analyticsMdxCellsLine: 'Rows: <r> of <R>. Columns: <c> of <C>.',
+  /** EXPERIENCE.md:604 */
+  analyticsMdxCut: 'This answer was cut; the rest is not shown.',
+  /** EXPERIENCE.md:604 */
+  analyticsMdxErrorLine: 'The instance answered this statement with an error.',
+  /** EXPERIENCE.md:604 */
+  analyticsMdxConfirmTitle: 'Run this query?',
+  /** EXPERIENCE.md:604 */
+  analyticsMdxConfirmConsequence: 'This query runs server-side code or SQL with your rights.',
+  /** EXPERIENCE.md:604 */
+  analyticsMdxQueryPrompt1: 'How do I put one dimension on rows and another on columns?',
+  /** EXPERIENCE.md:604 */
+  analyticsMdxQueryPrompt2: 'How do I filter an MDX query to one member?',
+  /** EXPERIENCE.md:604 */
+  analyticsMdxQueryPrompt3: 'What does a drill-through show for a cell?',
+  /** EXPERIENCE.md:604 */
+  analyticsRefusalMdxInput: 'Send one MDX statement of up to 100,000 characters; a drill-through names one cell of its answer.',
+  /** EXPERIENCE.md:604 */
+  analyticsRefusalMdxKind: 'Only SELECT and DRILLTHROUGH statements run here; CREATE and DROP change only a session, which this tool does not keep.',
+  /** EXPERIENCE.md:604 */
+  analyticsRefusalMdxAxes: 'A query here uses at most two axes: columns and rows.',
+  /** EXPERIENCE.md:604 */
+  analyticsRefusalMdxReadonly: 'This namespace keeps its analytics cache in a read-only database, so MDX cannot run here.',
+  /** EXPERIENCE.md:604 */
+  analyticsRefusalMdxBusy: 'An MDX query you started is still running; cancel it or wait for it to end.',
+  /** EXPERIENCE.md:604 */
+  analyticsRefusalMdxFull: 'As many background queries as this instance allows are running, SQL and MDX together; try again when one ends.',
+  /** EXPERIENCE.md:604 */
+  analyticsRefusalMdxNotFound: 'No MDX run of yours has this id; an ended run is kept for 15 minutes.',
+  /** EXPERIENCE.md:604 */
+  analyticsRefusalMdxLost: 'The MDX run ended without an answer; run it again.',
+  /** EXPERIENCE.md:604 */
+  analyticsMdxSqlReason: 'This query may run server-side code or SQL, which the agent\'s read never runs; you can run it yourself on MDX query after confirming.',
 } as const;
 
 /**

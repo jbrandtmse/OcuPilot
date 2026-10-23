@@ -30,10 +30,10 @@ import puppeteer from 'puppeteer';
 import { browserConfig, launchOptions } from '../browser.config.mjs';
 import { loadStrings } from '../tools/strings.mjs';
 import { FILTER_SELECTOR, ROW_SELECTOR, clickRowCentre, waitForRows } from './list-spec.mjs';
-import { authHeader, signedInAt } from './panel-spec.mjs';
+import { authHeader, settleViewport, signedInAt, transitionsSettled } from './panel-spec.mjs';
 import { INVARIANTS, VIEWPORTS, assertThrowaway, collapse, compare, componentMinimums, detectScreen, readBaseline } from './structural-walk.mjs';
 import { escapeOs, markerValue, runIris } from './turnprobe-spec.mjs';
-import { sideBarLabels } from './side-bar-spec.mjs';
+import { assertDrawnAtDeclaredIndex, sideBarLabels } from './side-bar-spec.mjs';
 
 const config = browserConfig();
 const STRINGS = loadStrings();
@@ -133,9 +133,10 @@ async function structural(page, dialog = false) {
   const minimums = componentMinimums();
   const surfaces = {};
   for (const { viewport, theme, checks } of passes) {
-    await page.setViewport(viewport);
+    await settleViewport(page, viewport);
     await page.evaluate((dark) => document.documentElement.classList.toggle('ocu-theme-dark', dark), theme === 'dark');
     await frames(page);
+    await transitionsSettled(page, config.navigationTimeoutMs);
     surfaces[theme] = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
     const { entries } = await detectScreen(page, { route: ROUTE, checks, viewport: viewport.width, theme, minimums });
     found.push(...entries);
@@ -208,8 +209,9 @@ after(async () => {
   }
 });
 
-// AC1. Mutation (Rule 19): declare Web sessions' sideBarPosition 1 -> the side-bar order goes red.
-test('AC1: a seeded session is listed with its user, application and no process, and Web sessions is the third Web applications entry', async () => {
+// AC1. Mutation (Rule 19): give Web sessions `sideBarPosition` 0, regenerate the mirror, rebuild and
+// redeploy -> the wait for its side-bar entry goes red.
+test('AC1: a seeded session is listed with its user, application and no process, and Web sessions is a Web applications entry', async () => {
   const id = await seed();
   const { context, page } = await atList();
   try {
@@ -222,7 +224,7 @@ test('AC1: a seeded session is listed with its user, application and no process,
     );
     const labels = await page.$$eval('.ocu-side-bar-item .ocu-side-bar-label', (items) => items.map((item) => item.textContent.trim()));
     assert.deepEqual(labels, sideBarLabels('web-applications'), 'the side bar lists the Web applications entries in their declared order');
-    assert.equal(labels[2], STRINGS.webSessionListLabel, 'Web sessions third');
+    assertDrawnAtDeclaredIndex(labels, 'web-applications', STRINGS.webSessionListLabel);
     const headers = await page.$$eval('.ocu-data-table-header-label', (items) => items.map((item) => item.textContent.trim()));
     assert.deepEqual(
       headers.slice(0, 5),

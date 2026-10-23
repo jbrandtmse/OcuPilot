@@ -121,7 +121,7 @@ describe('System Explorer Compare', () => {
       'HSCUSTOM /api/ocupilot/screens/explorer.class/read?maxRows=1&name=Demo.Left.cls&form=udl',
       'USER /api/ocupilot/screens/explorer.routine/read?maxRows=1&name=DemoRight.mac&form=udl',
     ]);
-    expect(host.querySelector('[data-ocu-compare="status"]')?.textContent?.trim()).toBe('1 lines removed \u00b7 1 lines added');
+    expect(host.querySelector('[data-ocu-compare="status"]')?.textContent?.trim()).toBe('1 line removed \u00b7 1 line added');
     const diff = host.querySelector('[data-ocu-compare="diff"]') as HTMLElement;
     expect(diff.getAttribute('tabindex')).toBe('0');
     expect(Array.from(diff.querySelectorAll('[data-ocu-diff="collapsed"]')).map((node) => node.textContent?.trim())).toEqual(['5 unchanged lines', '5 unchanged lines']);
@@ -134,6 +134,22 @@ describe('System Explorer Compare', () => {
     expect(added.querySelector('.ocu-line-diff-sign')?.textContent).toBe('+');
     expect(added.querySelector('.ocu-diff-direction')?.textContent).toBe(STRINGS.explorerDiffAdded);
     expect(diff.querySelectorAll('[data-ocu-diff="same"]')).toHaveLength(6);
+  });
+
+  it('reads the singular of whichever side lost or gained exactly one line', async () => {
+    // Mutation (Rule 19): choose the summary on the removed count alone in `statusLine` -> the second case goes red.
+    const first = await mount({
+      'HSCUSTOM|Demo.Left.cls': [...lines(8, 'a'), 'old', ...lines(8, 'b')],
+      'HSCUSTOM|Demo.Right.cls': [...lines(8, 'a'), 'new one', 'new two', ...lines(8, 'b')],
+    });
+    await first.compare('Demo.Right.cls', 'HSCUSTOM');
+    expect(first.host.querySelector('[data-ocu-compare="status"]')?.textContent?.trim()).toBe('1 line removed \u00b7 2 lines added');
+    const second = await mount({
+      'HSCUSTOM|Demo.Left.cls': [...lines(8, 'a'), 'old one', 'old two', ...lines(8, 'b')],
+      'HSCUSTOM|Demo.Right.cls': [...lines(8, 'a'), 'new', ...lines(8, 'b')],
+    });
+    await second.compare('Demo.Right.cls', 'HSCUSTOM');
+    expect(second.host.querySelector('[data-ocu-compare="status"]')?.textContent?.trim()).toBe('2 lines removed \u00b7 1 line added');
   });
 
   it('says two identical documents are identical and draws nothing', async () => {

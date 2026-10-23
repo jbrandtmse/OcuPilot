@@ -196,7 +196,7 @@ Method TestTheAgentsSaveIsConfirmedOverHTTPAndCompiles()
     Do $ClassMethod(..#FIXTURE, "Call", "POST", "/turn?ns=" _ ..#NAMESPACE, tUser, ..PreparedTurnPassword, $ClassMethod(..#FIXTURE, "StartBody", "change the probe class's answer to 2", tConvId), .tStatus, .tText, .tHeaders)
     Do $$$AssertEquals(tStatus, 202, "the turn starts: " _ $Extract(tText, 1, 200))
     If tStatus '= 202 {
-        Do ..RemoveKeyed()
+        Do $$$AssertStatusOK(..RemoveKeyed(), "the probe package is removed")
         Quit
     }
     Set tState = $ClassMethod(..#FIXTURE, "AwaitEnd", ##class(%DynamicObject).%FromJSON(tText).turnId, tUser, ..PreparedTurnPassword, 90, .tView)
@@ -215,7 +215,7 @@ Method TestTheAgentsSaveIsConfirmedOverHTTPAndCompiles()
     Set tProposals = $Select($IsObject($Get(tView)) && $IsObject(tView.%Get("proposals")): tView.proposals, 1: [])
     Do $$$AssertEquals(tProposals.%Size(), 1, "the turn holds one proposal, the valid edit's: " _ tProposals.%ToJSON())
     If tProposals.%Size() '= 1 {
-        Do ..RemoveKeyed()
+        Do $$$AssertStatusOK(..RemoveKeyed(), "the probe package is removed")
         Quit
     }
     Set tKey = tProposals.%Get(0).%Get("proposalId")
@@ -234,6 +234,6 @@ Method TestTheAgentsSaveIsConfirmedOverHTTPAndCompiles()
         Do $$$AssertTrue(tAfter [ "SAVETURNREPLYONE", "the request made after the compile replays the first turn")
         Do $$$AssertTrue((tAfter '[ "Compiling") && (tAfter '[ "Compilation"), "and carries no compile line")
     }
-    Do ..RemoveKeyed()
+    Do $$$AssertStatusOK(..RemoveKeyed(), "the probe package is removed")
 }
 }

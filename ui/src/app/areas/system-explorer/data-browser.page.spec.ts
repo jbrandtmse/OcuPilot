@@ -14,7 +14,7 @@ import { ScreenActionHandler, type ActionRefusal, type ActionSink, type ActionVa
 import { ARCHETYPE_PAGES, DESCRIPTOR_PAGES, resolveScreenPage } from '../../shell/screen-outlet';
 import { stubAccountPreferences } from '../../testing/account-preferences';
 import { DataBrowserPage } from './data-browser.page';
-import { DATA_PATH } from './data-browser.store';
+import { DATA_PATH, outcomeText } from './data-browser.store';
 
 /**
  * Data browser over stubs of what the instance supplies -- the SQL schemas, tables and views reads
@@ -261,7 +261,8 @@ afterEach(() => {
 
 describe('Data browser', () => {
   it("is the screen's own page; the tree lists the schemas holding a table or a view, and the empty state invites a pick", async () => {
-    expect(resolveScreenPage(DESCRIPTOR_PAGES, ARCHETYPE_PAGES, SCREEN.descriptor, SCREEN.archetype)).toBe(DataBrowserPage);
+    const loader = resolveScreenPage(DESCRIPTOR_PAGES, ARCHETYPE_PAGES, SCREEN.descriptor, SCREEN.archetype);
+    expect(await loader?.()).toBe(DataBrowserPage);
     const { host, requests } = await mount();
     expect(requests[0].path).toBe(SCHEMAS_PATH);
     expect(texts(host, 'tree-schema')).toEqual(['\u25b8OcuProbe197', '\u25b8OnlyViews']);
@@ -601,11 +602,21 @@ describe('Data browser', () => {
     mounted.page = { ok: { outcome: 'stopped', table: { schema: 'OcuProbe197', name: 'Plain', type: 'table' }, columns: COLUMNS, key: [], seconds: 50 } };
     await expandAndOpen(mounted);
     expect(el(mounted.host, 'status').textContent?.trim()).toBe('Stopped after 50 seconds.');
+    // Mutation (Rule 19): fill `explorerSqlStopped` alone in the page's status line -> this reads "1 seconds", red.
+    mounted.page = { ok: { outcome: 'stopped', table: { schema: 'OcuProbe197', name: 'Plain', type: 'table' }, columns: COLUMNS, key: [], seconds: 1 } };
+    await click(mounted, el(mounted.host, 'refresh'));
+    expect(el(mounted.host, 'status').textContent?.trim()).toBe(STRINGS.explorerSqlStoppedOne);
     mounted.page = { ok: { outcome: 'error', table: { schema: 'OcuProbe197', name: 'Plain', type: 'table' }, columns: COLUMNS, key: [], sqlcode: -99, message: 'Privilege violation' } };
     await click(mounted, el(mounted.host, 'refresh'));
     expect(el(mounted.host, 'status').textContent?.trim()).toBe('SQLCODE -99');
     expect(el(mounted.host, 'message').textContent?.trim()).toBe('Privilege violation');
     expect(texts(mounted.host, 'cell')).toEqual([]);
+  });
+
+  it('a saved row stopped at a one-second bound reads the singular', () => {
+    // Mutation (Rule 19): fill `explorerSqlStopped` alone in `outcomeText` -> the first leg reads "1 seconds", red.
+    expect(outcomeText('stopped', null, '', 1)).toBe(STRINGS.explorerSqlStoppedOne);
+    expect(outcomeText('stopped', null, '', 2)).toBe(STRINGS.explorerSqlStopped.replace('<s>', '2'));
   });
 
   it('a refusal is an alert: the envelope reason, or the missing pair', async () => {

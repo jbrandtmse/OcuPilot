@@ -32,7 +32,7 @@ export const DATABASE_STEPS: readonly string[] = [NAME_STEP, SIZE_STEP, RESOURCE
 /** The fields each step validates, as the server's step check names them. */
 export const STEP_FIELDS: Readonly<Record<string, readonly string[]>> = {
   [NAME_STEP]: ['Name', 'root', 'path'],
-  [SIZE_STEP]: ['Size', 'GlobalJournalState'],
+  [SIZE_STEP]: ['Size', 'GlobalJournalState', 'Encrypted'],
   [RESOURCE_STEP]: ['ResourceName'],
 };
 
@@ -54,6 +54,7 @@ export interface DatabaseWizardValues {
   readonly path: string;
   readonly Size: string;
   readonly GlobalJournalState: boolean;
+  readonly Encrypted: boolean;
   readonly resourceChoice: ResourceChoice;
   readonly ResourceName: string;
 }
@@ -64,9 +65,13 @@ const EMPTY_VALUES: DatabaseWizardValues = {
   path: '',
   Size: '1',
   GlobalJournalState: true,
+  Encrypted: false,
   resourceChoice: 'new',
   ResourceName: '',
 };
+
+/** The code the server refuses an encrypted create with while no database encryption key is the default (Story 18.48). */
+export const ENCRYPT_NOKEY_CODE = 'DATABASE.ENCRYPT.NOKEY';
 
 /** One rule the server applies, with the sentence it refuses with (AD-39). */
 export interface FieldRule {
@@ -134,6 +139,8 @@ export class DatabaseWizard {
 
   private resourcesRefusedValue = '';
 
+  private encryptionKeyIdValue = '';
+
   private loadedValue = false;
 
   private stepValue = DATABASE_STEPS[0];
@@ -184,6 +191,22 @@ export class DatabaseWizard {
   /** The `%DB_*` resources an existing-resource create may name, as the form read answered them. */
   resources(): readonly string[] {
     return this.resourcesValue;
+  }
+
+  /** The default database encryption key's id, as the form read answered it, or `''` while no key is the default. */
+  encryptionKeyId(): string {
+    return this.encryptionKeyIdValue;
+  }
+
+  /** Whether Encrypt database may be chosen: a database encryption key is the default (Story 18.48). */
+  encryptAvailable(): boolean {
+    return this.encryptionKeyIdValue !== '';
+  }
+
+  /** The server's sentence for an encrypted create with no default key, from the form read's rules, or `''` while one is. */
+  encryptRefusal(): string {
+    if (this.encryptAvailable()) return '';
+    return this.rulesValue.find((entry) => entry.code === ENCRYPT_NOKEY_CODE)?.reason ?? '';
   }
 
   /** The pair a caller lacks to list the resources, or `''` when they were listed. */
@@ -253,6 +276,7 @@ export class DatabaseWizard {
     this.requiredValue = [];
     this.resourcesValue = [];
     this.resourcesRefusedValue = '';
+    this.encryptionKeyIdValue = '';
     this.loadedValue = false;
     this.stepValue = DATABASE_STEPS[0];
     this.furthestValue = 0;
@@ -321,6 +345,14 @@ export class DatabaseWizard {
     if (value === this.valuesValue.GlobalJournalState) return;
     this.valuesValue = { ...this.valuesValue, GlobalJournalState: value };
     this.change('GlobalJournalState');
+  }
+
+  /** Encrypt the new database with the default key; the choice needs a default key, and is refused here without one. */
+  setEncrypted(value: boolean): void {
+    if (value === this.valuesValue.Encrypted) return;
+    if (value && !this.encryptAvailable()) return;
+    this.valuesValue = { ...this.valuesValue, Encrypted: value };
+    this.change('Encrypted');
   }
 
   /** Create the resource or use an existing one; the existing choice needs the resources listed. */
@@ -469,8 +501,8 @@ export class DatabaseWizard {
 
   /**
    * The body both routes take: the name, the directory as a root and a path, the size, the journal
-   * state, and -- only when an existing resource was chosen -- its name; otherwise the instance
-   * creates `%DB_<NAME>`.
+   * state, `Encrypted` only when chosen, and -- only when an existing resource was chosen -- its name;
+   * otherwise the instance creates `%DB_<NAME>`.
    */
   private createBody(): Record<string, unknown> {
     const values = this.valuesValue;
@@ -481,6 +513,7 @@ export class DatabaseWizard {
       Size: sizeValue(values.Size),
       GlobalJournalState: values.GlobalJournalState,
     };
+    if (values.Encrypted) body['Encrypted'] = true;
     if (values.resourceChoice === 'existing') body['ResourceName'] = values.ResourceName;
     return body;
   }
@@ -497,6 +530,7 @@ export class DatabaseWizard {
     this.requiredValue = stringsAt(body, 'requiredFields');
     this.resourcesValue = stringsAt(body, 'resources');
     this.resourcesRefusedValue = textAt(body, 'resourcesRefused');
+    this.encryptionKeyIdValue = textAt(body, 'EncryptionKeyID');
   }
 
   private change(field: string): void {

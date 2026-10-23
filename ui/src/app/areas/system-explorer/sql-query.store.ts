@@ -18,17 +18,18 @@
  * **A query can run in the background** (Story 19.15): Run in background posts it to the start route,
  * which answers a run id at once, and the run is polled until it ends, or canceled. Its state is its
  * own -- it never touches the foreground request's running flag -- so Run and Explain plan answer
- * while it runs.
+ * while it runs. The start, poll and cancel are `core/background-run.ts`'s `BackgroundRun`, which the
+ * MDX query shares; this state keeps only what is the console's own around it.
  */
 
 import type { ApiService, JsonResult } from '../../core/api';
-import { schedulePoll } from '../../core/poll-schedule';
+import { BACKGROUND_POLL_MS, BackgroundRun, backgroundViewOf as readView, runPath, type BackgroundStatus } from '../../core/background-run';
 import { STRINGS } from '../../core/strings';
 import type { ActionRefusal, ActionSink, ActionValues } from '../../shell/screen-action-handler';
 import { answerOf, statusLineFor, type SqlAnswer, type SqlRows } from '../../core/sql-answer';
 import { fillPlaceholders } from './code-list.store';
 
-export { answerOf, statusLineFor, type SqlAnswer, type SqlRows };
+export { answerOf, statusLineFor, BACKGROUND_POLL_MS, type BackgroundStatus, type SqlAnswer, type SqlRows };
 
 /** The console's two routes. */
 export const SQL_RUN_PATH = '/api/ocupilot/explorer/sql/run';
@@ -37,12 +38,9 @@ export const SQL_PLAN_PATH = '/api/ocupilot/explorer/sql/plan';
 /** The background run's start route (Story 19.15); its poll and cancel routes are `backgroundPath`'s. */
 export const SQL_BACKGROUND_PATH = '/api/ocupilot/explorer/sql/background';
 
-/** How often a background run is polled while it runs, in milliseconds. */
-export const BACKGROUND_POLL_MS = 1000;
-
 /** A background run's poll route, or its cancel route when `cancel`. */
 export function backgroundPath(id: string, cancel = false): string {
-  return `${SQL_BACKGROUND_PATH}/${encodeURIComponent(id)}${cancel ? '/cancel' : ''}`;
+  return runPath(SQL_BACKGROUND_PATH, id, cancel);
 }
 
 /** The screen action a confirmed run sends, its one target and its three declared values (AD-56 (ii)). */
@@ -84,9 +82,6 @@ export interface SqlQueryDeps {
   readonly schedule?: (run: () => void, delayMs: number) => void;
 }
 
-/** Where a background run stands, as its poll reads it. */
-export type BackgroundStatus = 'running' | 'ended' | 'canceled' | 'failed';
-
 function text(value: unknown): string {
   return typeof value === 'string' ? value : '';
 }
@@ -122,22 +117,7 @@ export function refusalText(code: string | null, reason: string | null, detail: 
 
 /** One answer of the background run's poll or cancel route, or `null` for any other shape. */
 export function backgroundViewOf(body: unknown): { readonly id: string; readonly status: BackgroundStatus; readonly answer: SqlAnswer | null; readonly refusal: string } | null {
-  if (body === null || typeof body !== 'object') return null;
-  const record = body as Readonly<Record<string, unknown>>;
-  const status = record['status'];
-  if (typeof record['id'] !== 'string' || (status !== 'running' && status !== 'ended' && status !== 'canceled' && status !== 'failed')) return null;
-  const refused = record['refusal'];
-  let refusal = '';
-  if (refused !== null && typeof refused === 'object') {
-    const envelope = refused as Readonly<Record<string, unknown>>;
-    const detail = envelope['detail'];
-    refusal = refusalText(
-      typeof envelope['code'] === 'string' ? envelope['code'] : null,
-      typeof envelope['reason'] === 'string' ? envelope['reason'] : null,
-      detail !== null && typeof detail === 'object' ? (detail as Readonly<Record<string, unknown>>) : null
-    );
-  }
-  return { id: record['id'], status, answer: answerOf(record['result']), refusal };
+  return readView(body, answerOf, refusalText);
 }
 
 /** The Background run section's status line for a run reading `status` with `answer`. */
@@ -167,19 +147,10 @@ export class SqlQueryState {
   private generation = 0;
 
   /** The background run on screen (Story 19.15): its id, where it stands, its answer and its refusal. */
-  private backgroundIdValue: string | null = null;
-
-  private backgroundStatusValue: BackgroundStatus | null = null;
-
-  private backgroundAnswerValue: SqlAnswer | null = null;
-
-  private backgroundRefusalValue = '';
-
-  /** Whether a background start is on its way. */
-  private startingValue = false;
-
-  /** Which background poll is current; a tick or an answer of an older one is dropped. */
-  private backgroundGeneration = 0;
+  private readonly background: BackgroundRun<SqlAnswer> = new BackgroundRun<SqlAnswer>(
+    { path: SQL_BACKGROUND_PATH, busyCode: BACKGROUND_BUSY_CODE, answerOf, refusalText },
+    () => this.notify()
+  );
 
   private readonly listeners = new Set<() => void>();
 
@@ -222,24 +193,24 @@ export class SqlQueryState {
 
   /** The background run's id, or `null` when none is on screen. */
   backgroundId(): string | null {
-    return this.backgroundIdValue;
+    return this.background.id();
   }
 
   backgroundStatus(): BackgroundStatus | null {
-    return this.backgroundStatusValue;
+    return this.background.status();
   }
 
   backgroundAnswer(): SqlAnswer | null {
-    return this.backgroundAnswerValue;
+    return this.background.answer();
   }
 
   backgroundRefusal(): string {
-    return this.backgroundRefusalValue;
+    return this.background.refusal();
   }
 
   /** Whether a background start is on its way or the run on screen still runs. */
   backgroundBusy(): boolean {
-    return this.startingValue || this.backgroundStatusValue === 'running';
+    return this.background.busy();
   }
 
   /** A new statement: the value fields and the last answer belong to the old one, so both go. */
@@ -325,38 +296,15 @@ export class SqlQueryState {
    * refusal also attaches the run it names.
    */
   async startBackground(deps: SqlQueryDeps): Promise<void> {
-    if (this.backgroundBusy()) return;
-    this.startingValue = true;
+    if (this.background.busy()) return;
     this.refusalValue = '';
-    this.notify();
-    const polling = this.backgroundGeneration;
-    const result: JsonResult<unknown> = await deps.api.requestJson<unknown>(SQL_BACKGROUND_PATH, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: this.body(true),
-      scope: deps.scope(),
-    });
-    this.startingValue = false;
-    // Polling stopped while the start was on its way (the page went): the run is attached unpolled,
-    // and followed again when the page returns.
-    const follow = polling === this.backgroundGeneration;
-    if (result.kind === 'ok') {
-      const body = result.body as Readonly<Record<string, unknown>> | null;
-      const id = body !== null && typeof body === 'object' ? body['id'] : undefined;
-      if (typeof id === 'string' && id !== '') {
-        this.attach(deps, id, follow);
-        return;
-      }
-      this.adopt(answerOf(result.body));
+    const started = await this.background.start(deps, this.body(true));
+    if (started === null || started.kind === 'attached') return;
+    if (started.kind === 'answered') {
+      this.adopt(answerOf(started.body));
       return;
     }
-    this.refusalValue =
-      (result.kind === 'error' ? refusalText(result.code, result.reason, result.detail) : '') || STRINGS.connectivityRequestRefused;
-    const running = result.kind === 'error' && result.code === BACKGROUND_BUSY_CODE ? result.detail?.['runId'] : undefined;
-    if (typeof running === 'string' && running !== '') {
-      this.attach(deps, running, follow);
-      return;
-    }
+    this.refusalValue = started.refusal;
     this.notify();
   }
 
@@ -366,28 +314,18 @@ export class SqlQueryState {
    * failure polls again; any other refusal ends the polling with its sentence in the section, which
    * then no longer reads running, so Run in background answers again.
    */
-  async pollBackground(deps: SqlQueryDeps): Promise<void> {
-    const id = this.backgroundIdValue;
-    if (id === null) return;
-    const generation = ++this.backgroundGeneration;
-    const result: JsonResult<unknown> = await deps.api.requestJson<unknown>(backgroundPath(id), { scope: deps.scope() });
-    if (generation !== this.backgroundGeneration || id !== this.backgroundIdValue) return;
-    this.readBackground(deps, result, generation);
+  pollBackground(deps: SqlQueryDeps): Promise<void> {
+    return this.background.poll(deps);
   }
 
   /** Cancel the background run on screen: its answer is read as a poll's, and polling goes on until it ends. */
-  async cancelBackground(deps: SqlQueryDeps): Promise<void> {
-    const id = this.backgroundIdValue;
-    if (id === null || this.backgroundStatusValue !== 'running') return;
-    const generation = ++this.backgroundGeneration;
-    const result: JsonResult<unknown> = await deps.api.requestJson<unknown>(backgroundPath(id, true), { method: 'POST', scope: deps.scope() });
-    if (generation !== this.backgroundGeneration || id !== this.backgroundIdValue) return;
-    this.readBackground(deps, result, generation);
+  cancelBackground(deps: SqlQueryDeps): Promise<void> {
+    return this.background.cancel(deps);
   }
 
   /** Stop polling: a scheduled tick and an answer on its way are dropped. The run itself is left. */
   stopPolling(): void {
-    this.backgroundGeneration += 1;
+    this.background.stop();
   }
 
   /** Cancel: the confirmation closes and nothing runs. */
@@ -437,55 +375,6 @@ export class SqlQueryState {
       this.valuesValue = Array.from({ length: answer.count }, (_, at) => this.valuesValue[at] ?? '');
     }
     this.notify();
-  }
-
-  /** Show the background run `id` as running, and poll it when `follow`. */
-  private attach(deps: SqlQueryDeps, id: string, follow: boolean): void {
-    this.backgroundIdValue = id;
-    this.backgroundStatusValue = 'running';
-    this.backgroundAnswerValue = null;
-    this.backgroundRefusalValue = '';
-    this.notify();
-    if (follow) void this.pollBackground(deps);
-  }
-
-  /** Read one poll or cancel answer of the background run, and schedule the next poll while it runs. */
-  private readBackground(deps: SqlQueryDeps, result: JsonResult<unknown>, generation: number): void {
-    if (result.kind === 'installing' || (result.kind === 'error' && (result.status === 0 || result.status >= 500))) {
-      this.schedulePoll(deps, generation);
-      return;
-    }
-    if (result.kind === 'error' && result.status === 404) {
-      this.backgroundIdValue = null;
-      this.backgroundStatusValue = null;
-      this.backgroundAnswerValue = null;
-      this.backgroundRefusalValue = '';
-      this.notify();
-      return;
-    }
-    const view = result.kind === 'ok' ? backgroundViewOf(result.body) : null;
-    if (view === null) {
-      this.backgroundStatusValue = 'failed';
-      this.backgroundAnswerValue = null;
-      this.backgroundRefusalValue =
-        (result.kind === 'error' ? refusalText(result.code, result.reason, result.detail) : '') || STRINGS.connectivityRequestRefused;
-      this.notify();
-      return;
-    }
-    this.backgroundStatusValue = view.status;
-    this.backgroundAnswerValue = view.answer;
-    this.backgroundRefusalValue = view.refusal;
-    this.notify();
-    if (view.status === 'running') this.schedulePoll(deps, generation);
-  }
-
-  /** Send the next poll after `BACKGROUND_POLL_MS`, unless polling moved on meanwhile. */
-  private schedulePoll(deps: SqlQueryDeps, generation: number): void {
-    const schedule = deps.schedule ?? schedulePoll;
-    schedule(() => {
-      if (generation !== this.backgroundGeneration) return;
-      void this.pollBackground(deps);
-    }, BACKGROUND_POLL_MS);
   }
 
   private notify(): void {

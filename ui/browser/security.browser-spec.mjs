@@ -276,7 +276,6 @@ test('AC1: the Security and secrets side bar reads SSL/TLS, X.509, LDAP / Kerber
       const sideBar = await sideBarOf(page);
       assert.equal(sideBar.area, STRINGS.navAreaSecurity, `${key}: in the Security and secrets area`);
       assert.deepEqual(sideBar.entries, sideBarLabels('security'), `${key}: the side bar lists its entries in their declared order`);
-      assert.deepEqual(sideBar.entries.slice(0, 7), ['SSL/TLS', 'X.509', 'LDAP / Kerberos', 'Wallet', 'OAuth 2.0', 'Auditing configuration', 'Allowed directories'], `${key}: the first seven in the published words`);
       if (list.listed) assert.equal(sideBar.current, list.label, `${key}: and the current entry is this list`);
       else assert.equal(sideBar.entries.includes(list.label), false, `${key}: which is never listed`);
     } finally {

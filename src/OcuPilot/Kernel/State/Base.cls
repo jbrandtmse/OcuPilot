@@ -66,6 +66,31 @@ Parameter IDENTITYAPPLICATION As %String = "OcuPilotIdentity";
 /// so the class cannot be executed in <code>%SYS</code> without <code>%DB_IRISSYS</code>.</p>
 Parameter IDENTITYRESOURCES As %String = "%Admin_Secure:U,%DB_IRISSYS:R";
 
+/// <p>Name of the <b>third</b> privileged routine application, the one the provider's TLS
+/// verification read escalates through (AD-9). It reaches none of OcuPilot's own data and answers
+/// one question about one configuration; its role and its <code>Routines</code> entry are the
+/// identity application's shape. Kernel-visible for the reason <parameter>APPLICATION</parameter>
+/// is.</p>
+Parameter SSLREADAPPLICATION As %String = "OcuPilotSslRead";
+
+/// <p>The resource set <parameter>SSLREADAPPLICATION</parameter>'s role grants, comma-separated as
+/// <code>resource:permission</code>. Measured on a throwaway as a principal holding exactly the
+/// set: <method>Security.SSLConfigs.Exists</method> answers <code>ERROR #822: Access Denied</code>
+/// with <code>%DB_IRISSYS:R</code> alone, and a process without <code>%DB_IRISSYS</code> cannot
+/// enter <code>%SYS</code> at all; <code>%Admin_Manage</code> and <code>%Admin_Operate</code> in
+/// place of <code>%Admin_Secure</code> are refused the same way.</p>
+Parameter SSLREADRESOURCES As %String = "%Admin_Secure:U,%DB_IRISSYS:R";
+
+/// <p>The longest name <class>Security.SSLConfigs</class> holds.</p>
+Parameter SSLNAMEMAXLENGTH As %Integer = 64;
+
+/// <p>The message id <method>Security.SSLConfigs.Exists</method> reports for a configuration that is
+/// genuinely absent, which is what separates "not there" from "could not look" -- the method answers 0 for
+/// both. Probed on this build: an absent name answers 0 carrying
+/// <code>ERROR #979: SSL configuration &lt;name&gt; does not exist</code>, a present one answers 1 carrying
+/// <code>$$$OK</code>.</p>
+Parameter SSLABSENTCODE As %Integer = 979;
+
 /// <p>Name of OcuPilot's protected-state database (AD-9).</p>
 Parameter DATABASENAME As %String = "OCUPILOT";
 
@@ -828,6 +853,79 @@ ClassMethod GuardedUserAbsent(pUserName As %String, Output pUnavailable As %Bool
     Quit tAbsent
 }
 
+/// <p>Whether the TLS configuration <var>pName</var> exists and, when it does, its <code>Type</code>
+/// (<var>pType</var>, 0 for a client), <code>Enabled</code> (<var>pEnabled</var>),
+/// <code>VerifyPeer</code> (<var>pVerifyPeer</var>) and <code>TLSMinVersion</code> (<var>pTLSMinVersion</var>) -- the
+/// fields that decide whether a provider call may be made through it -- read through the TLS read escalation (AD-9) so
+/// the answer does not depend on what the calling account may read. Answers <var>pExists</var>.</p>
+/// <p><b>Five values and nothing else leave the frame.</b> The configuration object opened to read them holds
+/// the key file's password, and is dropped before the frame ends (AD-35). One argument, checked for shape
+/// before anything is escalated: a name the vendor cannot hold names no configuration, so it answers absent
+/// without asking. The role is obtained in this method's own frame through
+/// <parameter>SSLREADAPPLICATION</parameter> and is gone when the frame unwinds, on the exception path as
+/// well. It calls no tool, no port and no provider, and starts no process, so AD-9's two ordering rules hold
+/// unchanged; the <code>%SYS</code> window is the explicit save-and-restore pair (AD-16).</p>
+/// <p><var>pUnavailable</var> is 1 when the read did not answer -- the application or its role is absent,
+/// disabled or no longer grants <parameter>SSLREADRESOURCES</parameter>, or the read raised or failed for a
+/// reason other than the configuration's absence -- and 0 whenever it answered, absent included. <b>The two
+/// are different facts and a caller must not merge them</b>: absent is a statement about the configuration,
+/// unavailable a statement about OcuPilot's own install.</p>
+ClassMethod GuardedSslConfigRead(pName As %String, Output pExists As %Boolean, Output pType As %Integer, Output pEnabled As %Boolean, Output pVerifyPeer As %Integer, Output pUnavailable As %Boolean, Output pTLSMinVersion As %Integer) As %Boolean
+{
+    Set pExists = 0
+    Set pType = ""
+    Set pEnabled = 0
+    Set pVerifyPeer = 0
+    Set pTLSMinVersion = 0
+    Set pUnavailable = 0
+    If '..SslNameUsable(pName) Quit 0
+    Set tAnswered = 0
+    New $ROLES
+    Set tOriginalNs = $NAMESPACE
+    Try {
+        Set tSC = $SYSTEM.Security.AddRoles(..#SSLREADAPPLICATION)
+        If $$$ISERR(tSC) Quit
+        ; The positive check that the escalation took, for the reason GuardedUserEnabled makes it.
+        If '..GrantsInEffect(..#SSLREADRESOURCES) Quit
+        ; Left by a plain assignment, as GuardedUserEnabled is (AD-16).
+        Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOriginalNs)
+        If $$$ISERR(tSC) Quit
+        Set tStatus = $$$OK
+        Set tFound = ##class(Security.SSLConfigs).Exists(pName, .tConfig, .tStatus)
+        If tFound {
+            Set pType = +tConfig.Type
+            Set pEnabled = ''+tConfig.Enabled
+            Set pVerifyPeer = +tConfig.VerifyPeer
+            Set pTLSMinVersion = +tConfig.TLSMinVersion
+            Set pExists = 1
+            Set tAnswered = 1
+        } ElseIf $$$ISERR(tStatus), (("," _ $System.Status.GetErrorCodes(tStatus) _ ",") [ ("," _ ..#SSLABSENTCODE _ ",")) {
+            Set tAnswered = 1
+        }
+        Set tConfig = ""
+    } Catch ex {
+        Set $NAMESPACE = tOriginalNs
+        Set pExists = 0
+        Set pType = ""
+        Set pEnabled = 0
+        Set pVerifyPeer = 0
+        Set pTLSMinVersion = 0
+        Set tConfig = ""
+        Set tAnswered = 0
+    }
+    Set $NAMESPACE = tOriginalNs
+    Set pUnavailable = 'tAnswered
+    Quit pExists
+}
+
+/// <p>Whether <var>pName</var> can be the name of a TLS configuration: non-empty, at most
+/// <parameter>SSLNAMEMAXLENGTH</parameter> characters and free of control characters.</p>
+ClassMethod SslNameUsable(pName As %String) As %Boolean [ Private ]
+{
+    If (pName = "") || ($Length(pName) > ..#SSLNAMEMAXLENGTH) Quit 0
+    Quit ($ZStrip(pName, "*C") = pName)
+}
+
 /// <p>Whether this process actually holds every pair
 /// <parameter>IDENTITYRESOURCES</parameter> declares. Called inside
 /// <method>GuardedUserEnabled</method>'s escalated frame as the oracle for "the escalation is in
@@ -836,10 +934,24 @@ ClassMethod GuardedUserAbsent(pUserName As %String, Output pUnavailable As %Bool
 /// <p>It escalates nothing of its own and is meaningless outside an escalated frame.</p>
 ClassMethod IdentityGrantsInEffect() As %Boolean [ Private ]
 {
+    Quit ..GrantsInEffect(..#IDENTITYRESOURCES)
+}
+
+/// <p>Whether this process actually holds every <code>resource:permission</code> pair of the
+/// comma-separated <var>pResources</var> (<code>U</code>, <code>R</code> and <code>W</code> stand
+/// for <code>USE</code>, <code>READ</code> and <code>WRITE</code>). An empty set, a malformed pair
+/// and a check that raises each answer 0.</p>
+/// <p>It escalates nothing of its own and is meaningless outside an escalated frame.</p>
+ClassMethod GrantsInEffect(pResources As %String) As %Boolean [ Private ]
+{
     Set tHeld = 1
     Try {
-        For tI = 1:1:$Length(..#IDENTITYRESOURCES, ",") {
-            Set tPair = $Piece(..#IDENTITYRESOURCES, ",", tI)
+        If pResources = "" {
+            Set tHeld = 0
+            Quit
+        }
+        For tI = 1:1:$Length(pResources, ",") {
+            Set tPair = $Piece(pResources, ",", tI)
             Set tResource = $Piece(tPair, ":", 1)
             Set tPermission = $Piece(tPair, ":", 2)
             If tPermission = "U" Set tPermission = "USE"
@@ -1362,6 +1474,24 @@ ClassMethod GuardedExecuteRows(pSql As %String, ByRef pParams As %DynamicArray, 
         Set pRowCount = +tRS.%ROWCOUNT
     } Catch ex {
         Set pRowCount = 0
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Escalated: purge and build the indices <var>pIndices</var> (a <code>$ListBuild</code> of index
+/// names) of the calling subclass from its stored rows. For a class whose index definition changed
+/// under rows already stored. Reach it through inherited (<code>..</code>) dispatch from a subclass
+/// in this package, as the other <code>Private</code> methods here are reached.</p>
+ClassMethod GuardedBuildIndices(pIndices As %List) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    New $ROLES
+    Try {
+        Set tSC = $SYSTEM.Security.AddRoles(..#APPLICATION)
+        If $$$ISERR(tSC) Quit
+        Set tSC = ..%BuildIndices(pIndices, 1)
+    } Catch ex {
         Set tSC = ex.AsStatus()
     }
     Quit tSC

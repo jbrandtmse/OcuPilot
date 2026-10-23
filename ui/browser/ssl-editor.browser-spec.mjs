@@ -300,9 +300,10 @@ test('AC5: a two-field Save changes those two and every other field reads back a
 });
 
 // AC3. Mutation (Rule 19): drop the `[disabled]` binding on the peer verification select and
-// redeploy -> the disabled assertion goes red.
-test("AC3: OcuPilot's own configuration shows its role and draws its four installer-owned fields refused, and a change to one sends nothing", async () => {
-  const fields = ['Type', 'VerifyPeer', 'CAFile', 'Enabled', 'Description'];
+// redeploy -> the disabled assertion goes red; drop `TLSMinVersion` or `CipherList` from `OWN_FIELDS` and redeploy -> that
+// field's leg goes red.
+test("AC3: OcuPilot's own configuration shows its role and draws its six installer-owned fields refused, and a change to one sends nothing", async () => {
+  const fields = ['Type', 'VerifyPeer', 'CAFile', 'Enabled', 'TLSMinVersion', 'CipherList', 'Description'];
   const before = stored(OWN, fields);
   const { context, page, writes } = await signedInAt(`/ocupilot/security/ssl/edit/${OWN}?ns=HSCUSTOM`);
   try {
@@ -321,10 +322,18 @@ test("AC3: OcuPilot's own configuration shows its role and draws its four instal
       [STRINGS.processDetailsGroupGeneral, 'Type'],
       [STRINGS.sslTabVerification, 'VerifyPeer'],
       [STRINGS.sslTabVerification, 'CAFile'],
+      [STRINGS.sslTabCryptography, 'TLSMinVersion'],
+      [STRINGS.sslTabCryptography, 'CipherList'],
     ]) {
       await openTab(page, tab);
       refused.push(
-        await page.evaluate((id) => ({ id, disabled: document.getElementById(id)?.disabled ?? null, caption: document.getElementById(`${id}-refusal`)?.textContent.trim() ?? null }), `ocu-ssl-${field}`)
+        await page.evaluate(
+          (id) => {
+            const control = document.getElementById(id);
+            return { id, disabled: control === null ? null : control.disabled || control.readOnly === true, caption: document.getElementById(`${id}-refusal`)?.textContent.trim() ?? null };
+          },
+          `ocu-ssl-${field}`
+        )
       );
     }
     for (const entry of refused) {

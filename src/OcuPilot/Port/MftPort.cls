@@ -10,8 +10,8 @@
 /// deletes its OAuth 2.0 client configuration, and answers 500 (#5809) when that client is absent, with the
 /// connection already gone (measured at Story 18.26's plan). A <code>DELETE</code> answered with an error other
 /// than 404 is therefore re-read through <code>GET</code>: a 404 there is the delete done, answered 200 with
-/// <code>{}</code>; any other answer keeps the first fault. The vendor's 500 is still logged by the admin
-/// port.</p>
+/// <code>{}</code>; any other answer keeps the first fault. The 500 (#5809) is an answer and is not logged
+/// (<parameter>OcuPilot.Port.AdminPort.UNLOGGEDREFUSALS</parameter>); any other 500 is.</p>
 /// <p><b>Caller contract:</b> every vendor call goes through <method>Call</method>, so a test port overrides
 /// that one method.</p>
 Class OcuPilot.Port.MftPort Extends OcuPilot.Port.AdminPort

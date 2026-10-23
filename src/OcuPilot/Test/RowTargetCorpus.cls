@@ -6,7 +6,7 @@
 /// reads this block off disk.</p>
 /// <p>Each <code>Cases</code> entry replaces <code>declaration.rowTarget</code> with its own (a
 /// bare value, for the shapes that are not objects at all), or overrides
-/// <code>declaration.archetype</code> or <code>declaration.table</code> alone, leaving the shared
+/// <code>declaration.archetype</code>, <code>declaration.table</code> or <code>declaration.tab</code> alone, leaving the shared
 /// declaration's own sound <code>rowTarget</code> in place -- the shape used by
 /// <method>OcuPilot.Test.ReadSourceCorpus.DeclarationFor</method> -- and names the exact sentence
 /// both engines return, or <code>null</code> when it is sound.</p>
@@ -49,6 +49,7 @@ XData Cases
     {"name": "a string is not an object", "rowTarget": "os-management/processes/details", "expected": "rowTarget is not an object naming its route and field (AD-5)"},
     {"name": "an unknown key", "rowTarget": {"route": "os-management/processes/details", "field": "Pid", "label": "Owner"}, "expected": "rowTarget declares the unknown key 'label'"},
     {"name": "a detail archetype is not a list", "archetype": "detail", "expected": "rowTarget is declared on a 'detail' archetype, and a row target is a list's own row link (AD-5)"},
+    {"name": "a tab of a tabbed group may declare one (AD-5)", "archetype": "detail", "tab": {"group": "os-management/row-target-corpus", "position": 1, "labelKey": "lockListLabel"}, "expected": null},
     {"name": "no table", "table": null, "expected": "rowTarget is declared without a table, and a row target replaces the table's name column's own link (AD-5)"},
     {"name": "an empty route", "rowTarget": {"route": "", "field": "Pid"}, "expected": "rowTarget.route is empty, and a row target names the route it opens"},
     {"name": "a route equal to this screen's own", "rowTarget": {"route": "os-management/row-target-corpus", "field": "Pid"}, "expected": "rowTarget.route 'os-management/row-target-corpus' is this screen's own route, and a row already reaches it through its own id (AD-5)"},
@@ -128,9 +129,9 @@ ClassMethod RostersBlock(Output pRosters As %DynamicObject) As %Status
 
 /// <p>The corpus declaration with <var>pCase</var>'s <code>rowTarget</code> in place when it
 /// carries one -- an object, or a bare value for the shapes that are not objects at all -- and its
-/// <code>archetype</code> or <code>table</code> when it carries either, as a new object. A case
-/// naming none of the three exercises the shared declaration's own sound <code>rowTarget</code>
-/// unchanged, which is how the archetype and table cases reach their own check with a rowTarget
+/// <code>archetype</code>, <code>table</code> or <code>tab</code> when it carries any of them, as a new object. A case
+/// naming none of the four exercises the shared declaration's own sound <code>rowTarget</code>
+/// unchanged, which is how the archetype, table and tab cases reach their own check with a rowTarget
 /// otherwise sound enough to get there.</p>
 ClassMethod DeclarationFor(pCorpus As %DynamicObject, pCase As %DynamicObject) As %DynamicObject
 {
@@ -145,6 +146,7 @@ ClassMethod DeclarationFor(pCorpus As %DynamicObject, pCase As %DynamicObject) A
     }
     If pCase.%GetTypeOf("archetype") = "string" Do tDeclaration.%Set("archetype", pCase.%Get("archetype"))
     If pCase.%GetTypeOf("table") = "null" Do tDeclaration.%Set("table", "", "null")
+    If pCase.%GetTypeOf("tab") = "object" Do tDeclaration.%Set("tab", ##class(%DynamicObject).%FromJSON(pCase.tab.%ToJSON()))
     Quit tDeclaration
 }
 

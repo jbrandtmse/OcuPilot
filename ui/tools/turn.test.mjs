@@ -1684,6 +1684,85 @@ test("a confirm's console lines reach its outcome and the proposal the card rend
   assert.equal(Object.hasOwn(event, 'output'), false, 'the change carries no console line');
 });
 
+test("a confirmed data transformation test's output reaches its outcome and the card as text, and no compile outcome (Story 20.27)", async () => {
+  // AD-39's seventh exception: the status sentence, the target's lines and the console are the confirm's own `output`, rendered on
+  // the card; the change event carries none, and `errors` is the test's own, never a compile's.
+  //
+  // Mutation (Rule 19): drop the transformation branch from `outputLinesOf` -> the lines legs go red; make `outputErrorsOf` read the
+  // answer's `errors` again -> the outcome leg goes red.
+  const bus = recordingBus();
+  const answer = {
+    status: 'transform',
+    sourceClass: 'Ens.StringRequest',
+    targetClass: 'Ens.StringResponse',
+    lines: ['probe-fail <b>x</b>'],
+    console: ['probe-device-line'],
+    errors: true,
+  };
+  const api = fakeApi({
+    [conversationReadPath('c1')]: [
+      ok({ turns: [{ seq: 1, message: 'do it', state: 'completed', proposals: [wireProposal()] }] }),
+    ],
+    [proposalConfirmPath('p1')]: [
+      ok({ proposalId: 'p1', state: 'confirmed', closedReason: '', confirmedAt: '2026-10-13T10:01:02Z', action: 'updated', output: answer }),
+    ],
+  });
+  const turn = new TurnStore({
+    api,
+    storage: memoryStorage({ [CONVERSATION_STORAGE_KEY]: 'c1' }),
+    navigationType: reloadedTab(),
+    now: () => NOW_MS,
+    bus,
+  });
+  await turn.restore();
+  const outcome = await turn.confirmProposal('p1');
+  const lines = [STRINGS.interopTransformFailed, 'probe-fail <b>x</b>', STRINGS.interopTransformConsole, 'probe-device-line'];
+  assert.deepEqual(outcome.output, lines, 'the outcome carries the sentence, the error text and the console');
+  assert.deepEqual(turn.entries()[0].proposals[0].output, lines, 'and so does the proposal the card renders');
+  assert.equal(outcome.outputErrors, null, 'a failed transformation is no compile error');
+  assert.equal(Object.hasOwn(turn.entries()[0].proposals[0], 'outputErrors'), false, 'and the card is handed no compile outcome');
+  const event = bus.events.find((candidate) => candidate.kind === 'changed');
+  assert.ok(event, 'the confirm publishes a change');
+  assert.equal(JSON.stringify(event).includes('probe-device-line'), false, 'the change carries no console line');
+  assert.equal(JSON.stringify(event).includes('probe-fail'), false, 'and no error line');
+});
+
+test("a confirmed data transformation test's answer at the instance's output bound reaches the card whole, its cut marker last (Story 20.27)", async () => {
+  // The instance holds a test's lines to one million characters and ends the last in the cut marker (`InteropPort.TESTCUT`); the card
+  // is handed every line of that answer, so what the person reads is what the instance sent, to the marker.
+  //
+  // Mutation (Rule 19): keep only the first thousand `lines` of the answer in `transformOutcomeLines` -> the length and last-line legs go red.
+  const cut = ' ... [cut]';
+  const lines = Array.from({ length: 10_000 }, (_, index) => `line-${String(index).padStart(94, '0')}`);
+  lines.push(`line-last${cut}`);
+  const answer = { status: 'done', sourceClass: 'Ens.StringRequest', targetClass: 'Ens.StringResponse', lines, console: ['probe-device-line'], errors: false };
+  const expected = [STRINGS.interopTransformDone, ...lines, STRINGS.interopTransformConsole, 'probe-device-line'];
+  assert.ok(expected.join('\n').length > 990_000, 'the answer is about a million characters');
+  const api = fakeApi({
+    [conversationReadPath('c1')]: [
+      ok({ turns: [{ seq: 1, message: 'do it', state: 'completed', proposals: [wireProposal()] }] }),
+    ],
+    [proposalConfirmPath('p1')]: [
+      ok({ proposalId: 'p1', state: 'confirmed', closedReason: '', confirmedAt: '2026-10-13T10:01:02Z', action: 'updated', output: answer }),
+    ],
+  });
+  const turn = new TurnStore({
+    api,
+    storage: memoryStorage({ [CONVERSATION_STORAGE_KEY]: 'c1' }),
+    navigationType: reloadedTab(),
+    now: () => NOW_MS,
+    bus: recordingBus(),
+  });
+  await turn.restore();
+  const outcome = await turn.confirmProposal('p1');
+  const held = turn.entries()[0].proposals[0].output ?? [];
+  for (const [name, shown] of [['the outcome', outcome.output ?? []], ['the proposal the card renders', held]]) {
+    assert.equal(shown.length, expected.length, `${name} carries every line`);
+    assert.ok(shown.every((line, index) => line === expected[index]), `${name} carries each line as the instance sent it`);
+    assert.equal(shown[shown.length - 3], `line-last${cut}`, `${name} ends the target in the cut marker, before the console`);
+  }
+});
+
 test("a confirm's outcome carries the instance's own action and createdId, which the panel's change sentence reads (Story 10.6)", async () => {
   // The panel names the change from the outcome, so the outcome must carry what the change event
   // carries: the action through the same closed-set reading, and the createdId verbatim.
@@ -2348,4 +2427,111 @@ test('outputLinesOf reads a confirmed SQL run as its status line, and an error a
   assert.deepEqual(outputLinesOf({ outcome: 'unheard-of' }), [], 'an outcome this client does not know shows nothing');
   assert.deepEqual(outputLinesOf({ lines: ['Compiling class A', 7] }), ['Compiling class A'], 'a compile still answers its lines');
   assert.deepEqual(outputLinesOf(null), []);
+});
+
+// --- Story 20.12: a guided workflow rides every send until it is ended ---------------------------
+//
+// Mutations (Rule 19): drop `workflow` from the POST body in `TurnStore.send` -> the first test goes red;
+// keep `workflowValue` in `newConversation` -> the clearing test goes red; make an unaccepted send
+// activate its workflow -> the refusal test goes red.
+
+const completedProgress = (turnId) => ok({ turnId, state: 'completed', steps: [], stepsDropped: 0, reply: 'ok', error: null });
+const compileWorkflow = { id: 'compileclass', text: 'Fix a class until it compiles, step by step' };
+
+test('send(message, context, workflow): the body names the workflow, the next send keeps it, and an ordinary store names none', async () => {
+  const api = fakeApi({
+    [CONVERSATION_PATH]: [ok({ conversationId: 'convo-1' }, 201)],
+    [TURN_PATH]: [ok({ turnId: 'turn-1' }, 202), ok({ turnId: 'turn-2' }, 202), ok({ turnId: 'turn-3' }, 202)],
+    [turnProgressPath('turn-1')]: [completedProgress('turn-1')],
+    [turnProgressPath('turn-2')]: [completedProgress('turn-2')],
+    [turnProgressPath('turn-3')]: [completedProgress('turn-3')],
+  });
+  const { schedule, scheduled } = fakeSchedule();
+  const turn = new TurnStore({ api, storage: memoryStorage(), navigationType: freshTab(), schedule });
+  assert.equal(turn.workflow(), null, 'no workflow before a prompt starts one');
+
+  assert.equal(await turn.send('plain'), 'sent');
+  assert.equal('workflow' in JSON.parse(api.calls.filter((c) => c.path === TURN_PATH)[0].body), false, 'an ordinary send omits the key');
+  scheduled.shift().run();
+  await settle();
+
+  assert.equal(await turn.send(compileWorkflow.text, null, compileWorkflow), 'sent');
+  assert.equal(JSON.parse(api.calls.filter((c) => c.path === TURN_PATH)[1].body).workflow, 'compileclass', 'the prompt names its workflow');
+  assert.deepEqual(turn.workflow(), compileWorkflow, 'an accepted workflow send makes it active');
+  scheduled.shift().run();
+  await settle();
+
+  assert.equal(await turn.send('a typed message'), 'sent');
+  assert.equal(JSON.parse(api.calls.filter((c) => c.path === TURN_PATH)[2].body).workflow, 'compileclass', 'a later send keeps the active workflow');
+});
+
+test('a workflow prompt replaces the active workflow, and endWorkflow clears it so the next body names none', async () => {
+  const api = fakeApi({
+    [CONVERSATION_PATH]: [ok({ conversationId: 'convo-1' }, 201)],
+    [TURN_PATH]: [ok({ turnId: 'turn-1' }, 202), ok({ turnId: 'turn-2' }, 202), ok({ turnId: 'turn-3' }, 202)],
+    [turnProgressPath('turn-1')]: [completedProgress('turn-1')],
+    [turnProgressPath('turn-2')]: [completedProgress('turn-2')],
+    [turnProgressPath('turn-3')]: [completedProgress('turn-3')],
+  });
+  const { schedule, scheduled } = fakeSchedule();
+  const turn = new TurnStore({ api, storage: memoryStorage(), navigationType: freshTab(), schedule });
+  const seen = [];
+  turn.subscribe(() => seen.push(turn.workflow()));
+
+  await turn.send(compileWorkflow.text, null, compileWorkflow);
+  scheduled.shift().run();
+  await settle();
+  const review = { id: 'reviewclass', text: "Review a class's ObjectScript, step by step" };
+  await turn.send(review.text, null, review);
+  assert.deepEqual(turn.workflow(), review, 'the newest workflow prompt replaces the older');
+  scheduled.shift().run();
+  await settle();
+
+  turn.endWorkflow();
+  assert.equal(turn.workflow(), null, 'End workflow clears it');
+  assert.equal(seen.at(-1), null, 'and tells the subscribers');
+  const before = seen.length;
+  turn.endWorkflow();
+  assert.equal(seen.length, before, 'ending when none is active notifies nobody');
+
+  await turn.send('after the end');
+  const bodies = api.calls.filter((c) => c.path === TURN_PATH).map((c) => JSON.parse(c.body));
+  assert.equal(bodies[1].workflow, 'reviewclass');
+  assert.equal('workflow' in bodies[2], false, 'the body after End workflow names none');
+});
+
+test('newConversation and endSession clear the workflow, and a refused newConversation keeps it', async () => {
+  const api = fakeApi({
+    [CONVERSATION_PATH]: [ok({ conversationId: 'convo-1' }, 201), err(500, 'INTERNAL'), ok({ conversationId: 'convo-2' }, 201)],
+    [TURN_PATH]: [ok({ turnId: 'turn-1' }, 202)],
+    [turnProgressPath('turn-1')]: [completedProgress('turn-1')],
+  });
+  const { schedule, scheduled } = fakeSchedule();
+  const turn = new TurnStore({ api, storage: memoryStorage(), navigationType: freshTab(), schedule });
+  await turn.send(compileWorkflow.text, null, compileWorkflow);
+  scheduled.shift().run();
+  await settle();
+
+  assert.equal(await turn.newConversation(), false, 'a refused new conversation changes nothing');
+  assert.deepEqual(turn.workflow(), compileWorkflow, 'so the workflow stays');
+  assert.equal(await turn.newConversation(), true);
+  assert.equal(turn.workflow(), null, 'a new conversation ends the workflow');
+
+  const again = new TurnStore({ api: fakeApi({ [CONVERSATION_PATH]: [ok({ conversationId: 'convo-9' }, 201)], [TURN_PATH]: [ok({ turnId: 'turn-9' }, 202)] }), storage: memoryStorage(), navigationType: freshTab() });
+  await again.send(compileWorkflow.text, null, compileWorkflow);
+  assert.deepEqual(again.workflow(), compileWorkflow);
+  again.endSession();
+  assert.equal(again.workflow(), null, 'sign-out ends it');
+});
+
+test('a send the instance did not accept does not activate its workflow', async () => {
+  const api = fakeApi({
+    [CONVERSATION_PATH]: [ok({ conversationId: 'convo-1' }, 201)],
+    [TURN_PATH]: [err(422, 'WORKFLOW.UNKNOWN', 'That guided workflow is not one OcuPilot offers.'), err(409, 'TURN.BUSY')],
+  });
+  const turn = new TurnStore({ api, storage: memoryStorage(), navigationType: freshTab() });
+  assert.equal(await turn.send(compileWorkflow.text, null, compileWorkflow), 'error');
+  assert.equal(turn.workflow(), null, 'a refusal activates nothing');
+  assert.equal(await turn.send(compileWorkflow.text, null, compileWorkflow), 'locked');
+  assert.equal(turn.workflow(), null, 'neither does a 409');
 });

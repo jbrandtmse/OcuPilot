@@ -176,6 +176,44 @@ Method OnAfterAllTests() As %Status
     Quit tSC
 }
 
+/// <p>The screen entries the navigation map must carry for <var>pAreaKey</var> to
+/// <parameter>ADMINUSER</parameter>, as the JSON array text the payload serializes: every built
+/// screen of the area in <method>OcuPilot.Screen.Registry.ScreensForArea</method>'s order, less the
+/// routes in <var>pSkipRoutes</var> (comma-separated, for a caller that asserts those on their
+/// own), each with its route, label key and side-bar position and the verdict
+/// <class>OcuPilot.Test.ScreenGate</class> answers when only
+/// <parameter>ADMINRESOURCE</parameter>'s <code>USE</code> is held. The process runs as an account
+/// holding <code>%All</code>, so the verdict comes from the fixture seam and the wire is what shows the
+/// real check agrees. An area that lists no built screen answers a sentence, never an empty array,
+/// so an empty roster on both sides is not a pass.</p>
+ClassMethod ExpectedScreens(pAreaKey As %String, pSkipRoutes As %String = "") As %String
+{
+    Set tSC = ##class(OcuPilot.Screen.Registry).ScreensForArea(pAreaKey, 1, .tClasses)
+    If $$$ISERR(tSC) Quit "ScreensForArea failed: " _ $System.Status.GetErrorText(tSC)
+    If $ListLength(tClasses) = 0 Quit "ScreensForArea lists no built screen for " _ pAreaKey
+    Set tGate = "OcuPilot.Test.ScreenGate"
+    Do $ClassMethod(tGate, "Reset")
+    Do $ClassMethod(tGate, "Hold", ..#ADMINRESOURCE, "USE")
+    Set tSkip = $ListFromString(pSkipRoutes)
+    Set tScreens = []
+    For tI = 1:1:$ListLength(tClasses) {
+        Set tClass = $List(tClasses, tI)
+        Set tRoute = $ClassMethod(tClass, "Route")
+        If $ListFind(tSkip, tRoute) Continue
+        Set tEntry = {}
+        Do tEntry.%Set("route", tRoute)
+        Do tEntry.%Set("labelKey", $ClassMethod(tClass, "LabelKey"))
+        Do tEntry.%Set("sideBarPosition", +$ClassMethod(tClass, "SideBarPosition"), "number")
+        Set tFailedPair = ""
+        Set tAllowed = $ClassMethod(tGate, "Evaluate", tClass, .tFailedPair)
+        Do tEntry.%Set("allowed", ''tAllowed, "boolean")
+        If 'tAllowed, tFailedPair '= "" Do tEntry.%Set("failedPair", tFailedPair)
+        Do tScreens.%Push(tEntry)
+    }
+    Do $ClassMethod(tGate, "Reset")
+    Quit tScreens.%ToJSON()
+}
+
 /// <p>Create (or re-grant) one throwaway role and the account that holds it.
 /// <b>Caller contract:</b> <code>$NAMESPACE</code> must already be <code>%SYS</code>.</p>
 Method EnsurePrincipal(pRole As %String, pUser As %String, pResources As %String, pPassword As %String) As %Status
@@ -377,7 +415,9 @@ Method TestTheNavigationMapGatesEveryAreaForARealPrincipal()
     Do $$$AssertEquals((tBody [ "}{"), 0, "exactly one envelope reaches the wire")
 
     Set tObj = ##class(%DynamicObject).%FromJSON(tBody)
-    Do $$$AssertEquals(tObj.areas.%Size(), 11, "every area is listed, denied ones included -- nothing is hidden")
+    Do $$$AssertStatusOK(##class(OcuPilot.Screen.Area).List(.tDeclared), "the declared areas read")
+    Do $$$AssertTrue(tDeclared.%Size() > 0, "and there are some, so the count below is not of two empty lists")
+    Do $$$AssertEquals(tObj.areas.%Size(), tDeclared.%Size(), "every declared area is listed, denied ones included -- nothing is hidden")
 
     Kill tVerdict, tFailed, tHasFailed, tApplies
     Set tIterator = tObj.areas.%GetIterator()
@@ -473,7 +513,9 @@ Method TestTheAgentAreaNeverGatesWhileItsScreensGateOnOcuPilotsOwnResource()
     Do $$$AssertEquals(''tAgent.allowed, 1, "the rail item never gates, whatever the caller holds")
     Do $$$AssertEquals(''tAgent.%IsDefined("failedPair"), 0, "so it carries no failed pair")
 
-    Do $$$AssertEquals(tAgent.screens.%Size(), 9, "and lists all nine built screens, the form and the transcript page included: " _ tAgent.screens.%ToJSON())
+    Do $$$AssertStatusOK(##class(OcuPilot.Screen.Registry).ScreensForArea("agent", 1, .tBuilt), "the area's built screens read")
+    Do $$$AssertTrue($ListLength(tBuilt) > 0, "and there are some, so the count below is not of two empty lists")
+    Do $$$AssertEquals(tAgent.screens.%Size(), $ListLength(tBuilt), "and lists every built screen, the form and the transcript page included: " _ tAgent.screens.%ToJSON())
     Kill tPosition, tAllowed, tFailed
     Set tScreenIterator = tAgent.screens.%GetIterator()
     While tScreenIterator.%GetNext(.tScreenIndex, .tScreen) {
@@ -514,8 +556,8 @@ Method TestTheAgentAreaNeverGatesWhileItsScreensGateOnOcuPilotsOwnResource()
 /// <file>ui/src/app/shell/rail-wire.spec.ts</file> carry the same entry in their captured
 /// payloads.</p>
 /// <p>Mutation: declare <code>"privileges": []</code> in
-/// <class>OcuPilot.Screen.Descriptor.WebAppList</class> -> the entry is allowed and the read answers
-/// 200, so the entry and the <code>failedPair</code> assertions go red.</p>
+/// <class>OcuPilot.Screen.Descriptor.WebAppList</class> -> the read answers 200, so the refusal
+/// assertions go red. The entry comparison reads the declaration on both sides, so it stays green.</p>
 Method TestTheWebApplicationsListIsDeniedToAPrincipalWithoutAdminSecure()
 {
     Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the two principals differ on the administrative resource")
@@ -531,7 +573,7 @@ Method TestTheWebApplicationsListIsDeniedToAPrincipalWithoutAdminSecure()
             If tArea.key = "web-applications" Set tScreens = tArea.screens.%ToJSON()
         }
     }
-    Do $$$AssertEquals(tScreens, "[{""route"":""web-applications/docdb-applications/edit"",""labelKey"":""aboutDocDbApplication"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Secure:USE""},{""route"":""web-applications/rest-apis/document"",""labelKey"":""openApiViewerLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Secure:USE""},{""route"":""web-applications/routine-applications/edit"",""labelKey"":""aboutRoutineApplication"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Secure:USE""},{""route"":""web-applications/routine-applications/roles"",""labelKey"":""routineAppRolesLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Secure:USE""},{""route"":""web-applications/routine-applications/routines"",""labelKey"":""routineAppTabRoutines"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Secure:USE""},{""route"":""web-applications/list/edit"",""labelKey"":""proposalEntityWebApplication"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Secure:USE""},{""route"":""web-applications/list/class-access"",""labelKey"":""webAppPctAccessListLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Secure:USE""},{""route"":""web-applications/list"",""labelKey"":""webAppListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%Admin_Secure:USE""},{""route"":""web-applications/rest-apis"",""labelKey"":""restApiListLabel"",""sideBarPosition"":2,""allowed"":false,""failedPair"":""%Admin_Secure:USE""},{""route"":""web-applications/sessions"",""labelKey"":""webSessionListLabel"",""sideBarPosition"":3,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""},{""route"":""web-applications/docdb-applications"",""labelKey"":""docDbAppListLabel"",""sideBarPosition"":4,""allowed"":false,""failedPair"":""%Admin_Secure:USE""},{""route"":""web-applications/routine-applications"",""labelKey"":""routineAppListLabel"",""sideBarPosition"":5,""allowed"":false,""failedPair"":""%Admin_Secure:USE""}]", "the area lists its twelve built screens -- the Doc DB application editor, the document viewer, the privileged routine application editor, its roles and routines lists, the create form, the list, the percent-class access list, the REST API explorer, Web sessions, the Doc DB applications list and the privileged routine applications list -- each denied on the first pair it declares that the principal lacks, which for Web sessions is its database read, since it holds the screen's own %Admin_Operate:USE")
+    Do $$$AssertEquals(tScreens, ..ExpectedScreens("web-applications"), "the area lists its built screens in side-bar order, each with the verdict the gate answers for a holder of %Admin_Operate:USE alone")
 
     Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", "/api/ocupilot/screens/webapp.list/read?maxRows=5", ..#ADMINUSER, ..PreparedPassword, .tStatus2, .tBody2, .tHeaders2)
     Do $$$AssertStatusOK(tSC, "the read request completes")
@@ -564,7 +606,7 @@ Method TestTheUsersListIsDeniedToAPrincipalWithoutAdminSecure()
             If tArea.key = "permissions" Set tScreens = tArea.screens.%ToJSON()
         }
     }
-    Do $$$AssertEquals(tScreens, "[{""route"":""permissions/roles/edit"",""labelKey"":""userRoleField"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Secure:USE""},{""route"":""permissions/services/edit"",""labelKey"":""serviceFormLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Secure:USE""},{""route"":""permissions/sql-admin-privileges"",""labelKey"":""sqlAdminPrivilegesLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Secure:USE""},{""route"":""permissions/sql-column-privileges"",""labelKey"":""sqlColumnPrivilegesLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Secure:USE""},{""route"":""permissions/sql-privileges"",""labelKey"":""sqlPrivilegesLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Secure:USE""},{""route"":""permissions/users/edit"",""labelKey"":""processColumnUser"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Secure:USE""},{""route"":""permissions/users"",""labelKey"":""userListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%Admin_Secure:USE""},{""route"":""permissions/roles"",""labelKey"":""userColumnRoles"",""sideBarPosition"":2,""allowed"":false,""failedPair"":""%Admin_Secure:USE""},{""route"":""permissions/resources"",""labelKey"":""resourceListLabel"",""sideBarPosition"":3,""allowed"":false,""failedPair"":""%Admin_Secure:USE""},{""route"":""permissions/services"",""labelKey"":""serviceListLabel"",""sideBarPosition"":4,""allowed"":false,""failedPair"":""%Admin_Secure:USE""}]", "the permissions area lists its eight built screens -- the three unlisted forms and the unlisted SQL privileges, then the four lists in side-bar order -- each denied on its first pair")
+    Do $$$AssertEquals(tScreens, ..ExpectedScreens("permissions"), "the permissions area lists its built screens in side-bar order, each with the verdict the gate answers for a holder of %Admin_Operate:USE alone")
 
     Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", "/api/ocupilot/screens/permissions.users/read?maxRows=5", ..#ADMINUSER, ..PreparedPassword, .tStatus2, .tBody2, .tHeaders2)
     Do $$$AssertStatusOK(tSC, "the read request completes")
@@ -580,16 +622,11 @@ Method TestTheUsersListIsDeniedToAPrincipalWithoutAdminSecure()
 /// it with <code>AUTH.NOPRIVILEGE</code>. The entry is compared whole, as the captured payloads in
 /// <file>ui/tools/navigation-wire.test.mjs</file> and <file>ui/src/app/shell/rail-wire.spec.ts</file>
 /// carry it.</p>
-/// <p>Story 6.3 and 6.4 -- the Security and secrets area lists twenty-eight built screens: the unlisted
-/// audit event lists, key file administrators and create form (Story 18.7), OAuth 2.0 tabs, SSL/TLS
-/// configuration form (Story 9.5), wallet secret form (Story 8.6), Secrets list and X.509 credential
-/// form (Story 8.5) first, at position 0, then SSL/TLS, X.509, LDAP / Kerberos, Wallet, OAuth 2.0,
-/// Auditing, Allowed directories (Story 18.1), Encryption key files (Story 18.7), Database encryption and
-/// Data element encryption (Story 18.22).
-/// Each is denied on the first pair it declares: the wallet pair for the three wallet screens, an
-/// OAuth resource for four OAuth tabs, <code>%Admin_FileSystemAccess:USE</code> for Allowed
-/// directories, and <code>%Admin_Secure:USE</code> for the rest, which is also the first pair the
-/// area declares.</p>
+/// <p>Story 6.3 and 6.4 -- the Security and secrets area's built screens are compared whole with
+/// <method>ExpectedScreens</method>, the unlisted ones at position 0 first. Each is denied on the
+/// first pair it declares: the wallet pair for the wallet screens, an OAuth resource for the OAuth
+/// tabs, <code>%Admin_FileSystemAccess:USE</code> for Allowed directories, and
+/// <code>%Admin_Secure:USE</code> for the rest, which is also the first pair the area declares.</p>
 Method TestTheSslConfigurationsListIsDeniedToAPrincipalWithoutAdminSecure()
 {
     Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the two principals differ on the administrative resource")
@@ -614,7 +651,7 @@ Method TestTheSslConfigurationsListIsDeniedToAPrincipalWithoutAdminSecure()
     Set tStartup = "{""route"":""security/database-encryption/startup"",""labelKey"":""encryptionStartupLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Secure:USE""},"
     Do $$$AssertTrue(tScreens [ ("""labelKey"":""encryptionKeyFileFormLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Secure:USE""}," _ tStartup), "the encryption startup settings are listed unlisted after the key file editor, denied on %Admin_Secure:USE")
     Set tScreens = $Replace(tScreens, tStartup, "")
-    Do $$$AssertEquals(tScreens, "[{""route"":""security/auditing/system-events"",""labelKey"":""auditSystemEventListLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Secure:USE""},{""route"":""security/auditing/user-events"",""labelKey"":""auditUserEventListLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Secure:USE""},{""route"":""security/encryption-key-file/administrators"",""labelKey"":""encryptionKeyFileAdminsTitle"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Secure:USE""},{""route"":""security/encryption-key-file/create"",""labelKey"":""encryptionKeyFileFormLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Secure:USE""},{""route"":""security/ldap/edit"",""labelKey"":""ldapFormLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Secure:USE""},{""route"":""security/mft-connections/edit"",""labelKey"":""aboutMftConnection"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Secure:USE""},{""route"":""security/oauth/clients/edit"",""labelKey"":""oauthClientFormLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_OAuth2_Client:USE""},{""route"":""security/oauth/clients"",""labelKey"":""oauthTabClients"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_OAuth2_Client:USE""},{""route"":""security/oauth/resource-servers/edit"",""labelKey"":""oauthClientTypeResource"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Secure:USE""},{""route"":""security/oauth/resource-servers"",""labelKey"":""oauthTabResourceServers"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Secure:USE""},{""route"":""security/oauth/server-clients/edit"",""labelKey"":""oauthRegisteredClientTitle"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_OAuth2_Registration:USE""},{""route"":""security/oauth/server-clients"",""labelKey"":""oauthTabServerClients"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_OAuth2_Registration:USE""},{""route"":""security/oauth/edit"",""labelKey"":""oauthServerFormLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_OAuth2_Client:USE""},{""route"":""security/oauth/server/edit"",""labelKey"":""oauthTabServer"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_OAuth2_Server:USE""},{""route"":""security/oauth/server"",""labelKey"":""oauthTabServer"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_OAuth2_Server:USE""},{""route"":""security/ssl/edit"",""labelKey"":""sslFormLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Secure:USE""},{""route"":""security/superservers/edit"",""labelKey"":""aboutSuperserver"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Secure:USE""},{""route"":""security/wallet/secrets/edit"",""labelKey"":""walletSecretFormLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Wallet:USE""},{""route"":""security/wallet/secrets"",""labelKey"":""walletSecretListLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Wallet:USE""},{""route"":""security/x509/edit"",""labelKey"":""x509FormLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Secure:USE""},{""route"":""security/ssl"",""labelKey"":""sslListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%Admin_Secure:USE""},{""route"":""security/x509"",""labelKey"":""x509ListLabel"",""sideBarPosition"":2,""allowed"":false,""failedPair"":""%Admin_Secure:USE""},{""route"":""security/ldap"",""labelKey"":""ldapListLabel"",""sideBarPosition"":3,""allowed"":false,""failedPair"":""%Admin_Secure:USE""},{""route"":""security/wallet"",""labelKey"":""walletListLabel"",""sideBarPosition"":4,""allowed"":false,""failedPair"":""%Admin_Wallet:USE""},{""route"":""security/oauth"",""labelKey"":""oauthLabel"",""sideBarPosition"":5,""allowed"":false,""failedPair"":""%Admin_OAuth2_Client:USE""},{""route"":""security/auditing"",""labelKey"":""auditingConfigurationLink"",""sideBarPosition"":6,""allowed"":false,""failedPair"":""%Admin_Secure:USE""},{""route"":""security/allowed-directories"",""labelKey"":""allowedDirectoriesLabel"",""sideBarPosition"":7,""allowed"":false,""failedPair"":""%Admin_FileSystemAccess:USE""},{""route"":""security/encryption-key-file"",""labelKey"":""encryptionKeyFileLabel"",""sideBarPosition"":8,""allowed"":false,""failedPair"":""%Admin_Secure:USE""},{""route"":""security/database-encryption"",""labelKey"":""databaseEncryptionLabel"",""sideBarPosition"":9,""allowed"":false,""failedPair"":""%Admin_Secure:USE""},{""route"":""security/data-element-encryption"",""labelKey"":""dataElementEncryptionLabel"",""sideBarPosition"":10,""allowed"":false,""failedPair"":""%Admin_Secure:USE""},{""route"":""security/authentication"",""labelKey"":""authOptionsLabel"",""sideBarPosition"":11,""allowed"":false,""failedPair"":""%Admin_Secure:USE""},{""route"":""security/superservers"",""labelKey"":""superserverListLabel"",""sideBarPosition"":12,""allowed"":false,""failedPair"":""%Admin_Secure:USE""},{""route"":""security/mft-connections"",""labelKey"":""mftConnectionListLabel"",""sideBarPosition"":13,""allowed"":false,""failedPair"":""%Admin_Secure:USE""}]", "the security area lists its thirty-three built screens in side-bar order, each denied on its first pair")
+    Do $$$AssertEquals(tScreens, ..ExpectedScreens("security", "security/database-encryption/startup"), "the security area lists its built screens in side-bar order, less the encryption startup settings asserted above, each with the verdict the gate answers for a holder of %Admin_Operate:USE alone")
     Do $$$AssertEquals(tArea, "false:%Admin_Secure:USE", "and the area itself is denied on the same pair")
 
     Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", "/api/ocupilot/screens/security.ssl/read?maxRows=5", ..#ADMINUSER, ..PreparedPassword, .tStatus2, .tBody2, .tHeaders2)
@@ -642,8 +679,9 @@ Method TestTheSslConfigurationsListIsDeniedToAPrincipalWithoutAdminSecure()
 /// each hold <code>%Admin_Task</code>, for which <code>%DB_IRISSYS:READ</code> is the first unheld
 /// pair under either ordering.</p>
 /// <p>Mutation: swap the two pairs in
-/// <class>OcuPilot.Screen.Descriptor.TaskScheduleList</class> -> the entry's
-/// <code>failedPair</code> reads <code>%DB_IRISSYS:READ</code> and both assertions below go red.</p>
+/// <class>OcuPilot.Screen.Descriptor.TaskScheduleList</class> -> the read's
+/// <code>failedPair</code> reads <code>%DB_IRISSYS:READ</code>, so its assertion goes red. The entry
+/// comparison reads the declaration on both sides, so it stays green.</p>
 Method TestTheTaskScheduleIsDeniedToAPrincipalWithoutAdminTask()
 {
     Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the two principals differ on the administrative resource")
@@ -663,7 +701,7 @@ Method TestTheTaskScheduleIsDeniedToAPrincipalWithoutAdminTask()
             }
         }
     }
-    Do $$$AssertEquals(tScreens, "[{""route"":""tasks/schedule/details"",""labelKey"":""taskDetailsLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Task:USE""},{""route"":""tasks/schedule/edit"",""labelKey"":""proposalEntityTask"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Task:USE""},{""route"":""tasks/schedule/history"",""labelKey"":""taskRunsLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Task:USE""},{""route"":""tasks/schedule"",""labelKey"":""taskListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%Admin_Task:USE""},{""route"":""tasks/on-demand"",""labelKey"":""taskOnDemandLabel"",""sideBarPosition"":2,""allowed"":false,""failedPair"":""%Admin_Task:USE""},{""route"":""tasks/upcoming"",""labelKey"":""taskUpcomingLabel"",""sideBarPosition"":3,""allowed"":false,""failedPair"":""%Admin_Task:USE""},{""route"":""tasks/history"",""labelKey"":""taskHistoryLabel"",""sideBarPosition"":4,""allowed"":false,""failedPair"":""%Admin_Task:USE""},{""route"":""tasks/background"",""labelKey"":""backgroundTaskListLabel"",""sideBarPosition"":5,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""}]", "the tasks area lists its eight built screens in side-bar order (the unlisted task details, the New Task wizard and per-task history first, at position 0, task details sorting first by class name), each denied on the first pair it lacks")
+    Do $$$AssertEquals(tScreens, ..ExpectedScreens("tasks"), "the tasks area lists its built screens in side-bar order, each with the verdict the gate answers for a holder of %Admin_Operate:USE alone")
     Do $$$AssertEquals(tArea, "false:%Admin_Task:USE", "and the area itself is denied on the same pair")
 
     Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", "/api/ocupilot/screens/tasks.schedule/read?maxRows=5", ..#ADMINUSER, ..PreparedPassword, .tStatus2, .tBody2, .tHeaders2)
@@ -687,10 +725,9 @@ Method TestTheTaskScheduleIsDeniedToAPrincipalWithoutAdminTask()
 /// pair would answer allowed and the read would then fail with an
 /// <code>&lt;INVALID OREF&gt;</code> 500 out of the vendor's own class-query helper.</p>
 /// <p>Mutation: remove <code>%Admin_Manage:USE</code> from
-/// <class>OcuPilot.Screen.Descriptor.ProcessList</class> -> the entry reads denied on
-/// <code>%DB_IRISSYS:READ</code> instead and the entry assertion goes red; remove it from the
-/// screen and the area both -> the entry reads allowed and the read answers 500 rather than a named
-/// 403, so every assertion below goes red.
+/// <class>OcuPilot.Screen.Descriptor.ProcessList</class> -> the read is refused naming
+/// <code>%DB_IRISSYS:READ</code> instead, so its <code>failedPair</code> assertion goes red. The entry
+/// comparison reads the declaration on both sides, so it stays green.
 /// <method>OcuPilot.Test.WireSecurityRead.TestTheProcessesListsPairSetIsEnforcedForARealPrincipal</method>
 /// carries the declared order, with a principal that holds none of the three.</p>
 Method TestTheProcessesListIsDeniedToAPrincipalWithoutAdminManage()
@@ -712,69 +749,35 @@ Method TestTheProcessesListIsDeniedToAPrincipalWithoutAdminManage()
             }
         }
     }
-    ; Story 6.11 took the roster from four screens to eight, Story 6.12 to nine, Story 8.8 to ten,
-    ; Story 18.2 to twelve, Story 18.14 to eighteen, Story 16.7 to twenty-three, Story 18.3 to
-    ; twenty-five, Story 16.10 to twenty-seven, Story 18.4 to twenty-nine and Story 16.25 to thirty, in
-    ; ScreensForArea's own (sideBarPosition, class name) collation: the unlisted sideBarPosition-0
-    ; screens sort first, alphabetically by descriptor class name, ahead of the listed ones in position
-    ; order (Processes, Locks, System usage, Databases, the Integrity log, Devices, Namespaces, License
-    ; usage, Dashboard, External language servers, Local databases last).
-    ; Story 18.16 took it to thirty-two: the remote database form sorts among the unlisted ones, and
-    ; Remote databases is listed last, after Local databases.
-    ; Story 18.5 took it to thirty-five: the journal file databases and details sort among the unlisted
-    ; ones, and Journals is listed last, after Remote databases.
-    ; Story 18.18 lists Journal settings last, after Journals, denied on its first pair; it is asserted
-    ; here and taken off the end, so the roster below stays the one before it.
-    ; Story 18.19's unlisted Journal records sorts after the journal file details, denied on
-    ; %DB_IRISSYS:READ as they are.
-    ; Story 18.6 lists License key and License servers last, after Journal settings, and its unlisted
-    ; license server editor sorts between License usage's By process and By user tabs, each denied on
-    ; %Admin_Manage:USE; each is asserted here and taken out, so the roster below stays the one before it.
-    ; Story 18.20 lists ECP data servers last, after License servers, and its unlisted ECP data server
-    ; editor sorts between the device editor and the global mapping editor, each denied on
-    ; %Admin_Manage:USE; each is asserted here and taken out, so the roster below stays the one before it.
-    ; Story 18.21 lists ECP settings and ECP application servers last, after ECP data servers, and its
-    ; unlisted SSL/TLS authorizations tab sorts between the ECP data server editor and the global
-    ; mapping editor, each denied on %Admin_Manage:USE; each is asserted here and taken out, so the
-    ; roster below stays the one before it.
-    ; Story 18.11 lists Prometheus metrics last, after SQL activity, denied on %DB_IRISSYS:READ, the
-    ; second of its pairs; it is asserted here and taken off the end.
-    Set tMetrics = ",{""route"":""os-management/metrics"",""labelKey"":""metricsLabel"",""sideBarPosition"":21,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""}]"
-    Do $$$AssertEquals($Extract(tScreens, *-$Length(tMetrics)+1, *), tMetrics, "Prometheus metrics is listed last, after SQL activity, denied on %DB_IRISSYS:READ")
-    Set tScreens = $Extract(tScreens, 1, *-$Length(tMetrics)) _ "]"
-    ; Story 19.10 lists SQL activity last, after ECP application servers, denied on %DB_IRISSYS:READ,
-    ; the second of its pairs; it is asserted here and taken off the end.
-    Set tSqlActivity = ",{""route"":""os-management/sql-activity"",""labelKey"":""sqlActivityLabel"",""sideBarPosition"":20,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""}]"
-    Do $$$AssertEquals($Extract(tScreens, *-$Length(tSqlActivity)+1, *), tSqlActivity, "SQL activity is listed last, after ECP application servers, denied on %DB_IRISSYS:READ")
-    Set tScreens = $Extract(tScreens, 1, *-$Length(tSqlActivity)) _ "]"
-    Set tEcpSettings = ",{""route"":""os-management/ecp-settings"",""labelKey"":""ecpSettingsLabel"",""sideBarPosition"":18,""allowed"":false,""failedPair"":""%Admin_Manage:USE""},{""route"":""os-management/ecp-application-servers"",""labelKey"":""ecpAppServersLabel"",""sideBarPosition"":19,""allowed"":false,""failedPair"":""%Admin_Manage:USE""}]"
-    Do $$$AssertEquals($Extract(tScreens, *-$Length(tEcpSettings)+1, *), tEcpSettings, "ECP settings and ECP application servers are listed last, after ECP data servers, denied on %Admin_Manage:USE")
-    Set tScreens = $Extract(tScreens, 1, *-$Length(tEcpSettings)) _ "]"
+    ; Each screen below is asserted whole, with the pair this principal is denied on, and each unlisted
+    ; tab or editor is placed between its neighbours. The comparison after them holds the whole roster,
+    ; these included, in ScreensForArea's (sideBarPosition, class name) order: the unlisted screens at
+    ; position 0 first, by descriptor class name, then the listed ones in position order.
+    Set tInteropUsage = "{""route"":""os-management/interoperability-usage"",""labelKey"":""interopUsageLabel"",""sideBarPosition"":22,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""}"
+    Do $$$AssertTrue(tScreens [ tInteropUsage, "Interoperability usage is listed at position 22, denied on %DB_IRISSYS:READ, the second of its pairs")
+    Set tInteropTabs = ",{""route"":""os-management/interoperability-usage/impact"",""labelKey"":""interopUsageImpactLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""},{""route"":""os-management/interoperability-usage/volume"",""labelKey"":""interopUsageVolumeLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""}"
+    Do $$$AssertTrue(($Find(tScreens, "os-management/namespaces/global-mappings/edit") < $Find(tScreens, tInteropTabs)) && ($Find(tScreens, tInteropTabs) < $Find(tScreens, "os-management/journals/databases")), "the unlisted Database impact and Message volume tabs sort between the global mappings list and the journal file databases, denied on %DB_IRISSYS:READ")
+    Set tMetrics = "{""route"":""os-management/metrics"",""labelKey"":""metricsLabel"",""sideBarPosition"":21,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""}"
+    Do $$$AssertTrue(tScreens [ tMetrics, "Prometheus metrics is listed at position 21, denied on %DB_IRISSYS:READ, the second of its pairs")
+    Set tSqlActivity = "{""route"":""os-management/sql-activity"",""labelKey"":""sqlActivityLabel"",""sideBarPosition"":20,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""}"
+    Do $$$AssertTrue(tScreens [ tSqlActivity, "SQL activity is listed at position 20, denied on %DB_IRISSYS:READ, the second of its pairs")
+    Set tEcpSettings = "{""route"":""os-management/ecp-settings"",""labelKey"":""ecpSettingsLabel"",""sideBarPosition"":18,""allowed"":false,""failedPair"":""%Admin_Manage:USE""},{""route"":""os-management/ecp-application-servers"",""labelKey"":""ecpAppServersLabel"",""sideBarPosition"":19,""allowed"":false,""failedPair"":""%Admin_Manage:USE""}"
+    Do $$$AssertTrue(tScreens [ tEcpSettings, "ECP settings and ECP application servers are listed at positions 18 and 19, denied on %Admin_Manage:USE")
     Set tEcpTab = ",{""route"":""os-management/ecp-application-servers/ssl"",""labelKey"":""ecpSslConnectionsLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Manage:USE""}"
     Do $$$AssertTrue(($Find(tScreens, "os-management/ecp-data-servers/edit") < $Find(tScreens, tEcpTab)) && ($Find(tScreens, tEcpTab) < $Find(tScreens, "os-management/namespaces/global-mappings/edit")), "the unlisted SSL/TLS authorizations tab sorts between the ECP data server editor and the global mapping editor, denied on %Admin_Manage:USE")
-    Set tScreens = $Replace(tScreens, tEcpTab, "")
-    Set tEcp = ",{""route"":""os-management/ecp-data-servers"",""labelKey"":""ecpDataServerListLabel"",""sideBarPosition"":17,""allowed"":false,""failedPair"":""%Admin_Manage:USE""}]"
-    Do $$$AssertEquals($Extract(tScreens, *-$Length(tEcp)+1, *), tEcp, "ECP data servers is listed last, after License servers, denied on %Admin_Manage:USE")
-    Set tScreens = $Extract(tScreens, 1, *-$Length(tEcp)) _ "]"
+    Set tEcp = "{""route"":""os-management/ecp-data-servers"",""labelKey"":""ecpDataServerListLabel"",""sideBarPosition"":17,""allowed"":false,""failedPair"":""%Admin_Manage:USE""}"
+    Do $$$AssertTrue(tScreens [ tEcp, "ECP data servers is listed at position 17, denied on %Admin_Manage:USE")
     Set tEcpEditor = ",{""route"":""os-management/ecp-data-servers/edit"",""labelKey"":""aboutEcpDataServer"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Manage:USE""}"
     Do $$$AssertTrue(($Find(tScreens, "os-management/devices/edit") < $Find(tScreens, tEcpEditor)) && ($Find(tScreens, tEcpEditor) < $Find(tScreens, "os-management/namespaces/global-mappings/edit")), "the unlisted ECP data server editor sorts between the device editor and the global mapping editor, denied on %Admin_Manage:USE")
-    Set tScreens = $Replace(tScreens, tEcpEditor, "")
-    Set tLicensing = ",{""route"":""os-management/license-key"",""labelKey"":""licenseKeyLabel"",""sideBarPosition"":15,""allowed"":false,""failedPair"":""%Admin_Manage:USE""},{""route"":""os-management/license-servers"",""labelKey"":""licenseServerListLabel"",""sideBarPosition"":16,""allowed"":false,""failedPair"":""%Admin_Manage:USE""}]"
-    Do $$$AssertEquals($Extract(tScreens, *-$Length(tLicensing)+1, *), tLicensing, "License key and License servers are listed last, after Journal settings, denied on %Admin_Manage:USE")
-    Set tScreens = $Extract(tScreens, 1, *-$Length(tLicensing)) _ "]"
+    Set tLicensing = "{""route"":""os-management/license-key"",""labelKey"":""licenseKeyLabel"",""sideBarPosition"":15,""allowed"":false,""failedPair"":""%Admin_Manage:USE""},{""route"":""os-management/license-servers"",""labelKey"":""licenseServerListLabel"",""sideBarPosition"":16,""allowed"":false,""failedPair"":""%Admin_Manage:USE""}"
+    Do $$$AssertTrue(tScreens [ tLicensing, "License key and License servers are listed at positions 15 and 16, denied on %Admin_Manage:USE")
     Set tEditor = ",{""route"":""os-management/license-servers/edit"",""labelKey"":""aboutLicenseServer"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Manage:USE""}"
     Do $$$AssertTrue(($Find(tScreens, "license-usage/processes") < $Find(tScreens, tEditor)) && ($Find(tScreens, tEditor) < $Find(tScreens, "license-usage/users")), "the unlisted license server editor sorts between By process and By user, denied on %Admin_Manage:USE")
-    Set tScreens = $Replace(tScreens, tEditor, "")
-    Set tSettings = ",{""route"":""os-management/journal-settings"",""labelKey"":""journalSettingsLabel"",""sideBarPosition"":14,""allowed"":false,""failedPair"":""%Admin_Manage:USE""}]"
-    Do $$$AssertEquals($Extract(tScreens, *-$Length(tSettings)+1, *), tSettings, "Journal settings is listed last, after Journals, denied on %Admin_Manage:USE")
-    Set tScreens = $Extract(tScreens, 1, *-$Length(tSettings)) _ "]"
-    ; Story 18.36 lists the Dashboard's four unlisted drill-downs first, ahead of the database details, each denied on
-    ; %DB_IRISSYS:READ, the second of its pairs, since this principal holds %Admin_Operate:USE; they are asserted here and
-    ; taken off the front, so the roster below stays the one before them.
-    Set tDrillDowns = "[{""route"":""os-management/ecp-statistics"",""labelKey"":""ecpStatisticsLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""},{""route"":""os-management/global-statistics"",""labelKey"":""globalStatisticsLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""},{""route"":""os-management/active-processes"",""labelKey"":""activeProcessesLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""},{""route"":""os-management/resource-statistics"",""labelKey"":""resourceStatisticsLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""}"
-    Do $$$AssertEquals($Extract(tScreens, 1, $Length(tDrillDowns)), tDrillDowns, "the four Dashboard drill-downs lead the area, denied on %DB_IRISSYS:READ")
-    Set tScreens = "[" _ $Extract(tScreens, $Length(tDrillDowns) + 2, *)
-    Do $$$AssertEquals(tScreens, "[{""route"":""os-management/databases/details"",""labelKey"":""databaseDetailsLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""},{""route"":""os-management/database-free-space"",""labelKey"":""databaseFreeSpaceLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Manage:USE""},{""route"":""os-management/databases/integrity"",""labelKey"":""databaseIntegrityLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Manage:USE""},{""route"":""os-management/databases/volumes"",""labelKey"":""databaseVolumeListLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Manage:USE""},{""route"":""os-management/devices/edit"",""labelKey"":""deviceFormLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Manage:USE""},{""route"":""os-management/namespaces/global-mappings/edit"",""labelKey"":""globalMappingFormLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Manage:USE""},{""route"":""os-management/namespaces/global-mappings"",""labelKey"":""globalMappingListLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Manage:USE""},{""route"":""os-management/journals/databases"",""labelKey"":""journalFileDatabaseListLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""},{""route"":""os-management/journals/details"",""labelKey"":""journalFileDetailsLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""},{""route"":""os-management/journal-records"",""labelKey"":""journalRecordListLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""},{""route"":""os-management/language-servers/activity"",""labelKey"":""languageServerActivityLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_ExternalLanguageServerEdit:USE""},{""route"":""os-management/language-servers/edit"",""labelKey"":""languageServerFormLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_ExternalLanguageServerEdit:USE""},{""route"":""os-management/license-usage/distributed"",""labelKey"":""licenseUsageDistributed"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""},{""route"":""os-management/license-usage/processes"",""labelKey"":""licenseUsageByProcess"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""},{""route"":""os-management/license-usage/users"",""labelKey"":""licenseUsageByUser"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""},{""route"":""os-management/local-databases/edit"",""labelKey"":""systemInfoDatabase"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Manage:USE""},{""route"":""os-management/namespaces/edit"",""labelKey"":""headerNamespaceLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Manage:USE""},{""route"":""os-management/namespaces/package-mappings/edit"",""labelKey"":""packageMappingFormLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Manage:USE""},{""route"":""os-management/namespaces/package-mappings"",""labelKey"":""packageMappingListLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Manage:USE""},{""route"":""os-management/processes/details"",""labelKey"":""processDetailsLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Manage:USE""},{""route"":""os-management/remote-databases/edit"",""labelKey"":""remoteDatabaseFormLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Manage:USE""},{""route"":""os-management/namespaces/routine-mappings/edit"",""labelKey"":""routineMappingFormLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Manage:USE""},{""route"":""os-management/namespaces/routine-mappings"",""labelKey"":""routineMappingListLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Manage:USE""},{""route"":""os-management/processes"",""labelKey"":""processListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%Admin_Manage:USE""},{""route"":""os-management/locks"",""labelKey"":""lockListLabel"",""sideBarPosition"":2,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""},{""route"":""os-management/system-usage"",""labelKey"":""systemUsageLabel"",""sideBarPosition"":3,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""},{""route"":""os-management/databases"",""labelKey"":""databaseListLabel"",""sideBarPosition"":4,""allowed"":false,""failedPair"":""%Admin_Manage:USE""},{""route"":""os-management/databases/integrity-log"",""labelKey"":""databaseIntegrityLogLabel"",""sideBarPosition"":5,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""},{""route"":""os-management/devices"",""labelKey"":""deviceListLabel"",""sideBarPosition"":6,""allowed"":false,""failedPair"":""%Admin_Manage:USE""},{""route"":""os-management/namespaces"",""labelKey"":""namespaceListLabel"",""sideBarPosition"":7,""allowed"":false,""failedPair"":""%Admin_Manage:USE""},{""route"":""os-management/license-usage"",""labelKey"":""licenseUsageLabel"",""sideBarPosition"":8,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""},{""route"":""os-management/dashboard"",""labelKey"":""dashboardLabel"",""sideBarPosition"":9,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""},{""route"":""os-management/language-servers"",""labelKey"":""languageServersLabel"",""sideBarPosition"":10,""allowed"":false,""failedPair"":""%Admin_ExternalLanguageServerEdit:USE""},{""route"":""os-management/local-databases"",""labelKey"":""localDatabaseListLabel"",""sideBarPosition"":11,""allowed"":false,""failedPair"":""%Admin_Manage:USE""},{""route"":""os-management/remote-databases"",""labelKey"":""remoteDatabaseListLabel"",""sideBarPosition"":12,""allowed"":false,""failedPair"":""%Admin_Manage:USE""},{""route"":""os-management/journals"",""labelKey"":""journalListLabel"",""sideBarPosition"":13,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""}]", "the os-management area lists its thirty built screens, each denied on the first pair this principal lacks: Database details, the Integrity log, Locks, System usage, License usage's four tabs and the Dashboard -- each a two-pair set -- name %DB_IRISSYS:READ, since this principal already holds %Admin_Operate:USE, External language servers, its Activity log and its editor name %Admin_ExternalLanguageServerEdit:USE, while the Free-space view, Check integrity, Database volumes, the device, local database and namespace editors, the three mapping lists and their editors, Process details, the processes list, the General view, Devices, Namespaces and Local databases all name %Admin_Manage:USE, and Journals and its two unlisted screens name %DB_IRISSYS:READ")
+    Set tSettings = "{""route"":""os-management/journal-settings"",""labelKey"":""journalSettingsLabel"",""sideBarPosition"":14,""allowed"":false,""failedPair"":""%Admin_Manage:USE""}"
+    Do $$$AssertTrue(tScreens [ tSettings, "Journal settings is listed at position 14, denied on %Admin_Manage:USE")
+    Set tDrillDowns = "{""route"":""os-management/ecp-statistics"",""labelKey"":""ecpStatisticsLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""},{""route"":""os-management/global-statistics"",""labelKey"":""globalStatisticsLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""},{""route"":""os-management/active-processes"",""labelKey"":""activeProcessesLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""},{""route"":""os-management/resource-statistics"",""labelKey"":""resourceStatisticsLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""}"
+    Do $$$AssertTrue(tScreens [ tDrillDowns, "the Dashboard's four unlisted drill-downs sit together, each denied on %DB_IRISSYS:READ, the second of its pairs")
+    Do $$$AssertEquals(tScreens, ..ExpectedScreens("os-management"), "the os-management area lists its built screens in side-bar order, these included, each with the verdict the gate answers for a holder of %Admin_Operate:USE alone")
     Do $$$AssertEquals(tArea, "false:%Admin_Manage:USE", "and the area itself is denied on the same pair")
 
     Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", "/api/ocupilot/screens/osmgmt.processes/read?maxRows=5", ..#ADMINUSER, ..PreparedPassword, .tStatus2, .tBody2, .tHeaders2)

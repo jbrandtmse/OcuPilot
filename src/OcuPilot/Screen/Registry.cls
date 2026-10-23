@@ -22,7 +22,9 @@
 /// <method>AreaCoverageProblem</method>),
 /// whose banner is not the declared grammar (<method>BannerProblem</method>),
 /// whose archetype or classic link-out is not a permitted shape (AD-44,
-/// <method>ClassicLinkProblem</method>), whose <code>tab</code> is not the declared grammar (AD-5,
+/// <method>ClassicLinkProblem</method>), whose <code>external</code> screen is not one
+/// <class>OcuPilot.Screen.ExternalPage</class> names or declares more than a page to open (AD-44,
+/// <method>ExternalProblem</method>), whose <code>tab</code> is not the declared grammar (AD-5,
 /// <method>TabProblem</method>), whose <code>rowTarget</code> is not the declared grammar (AD-5,
 /// <method>RowTargetProblem</method>), or whose route or tool identifier collides with
 /// another's; and, over the whole roster, whose tab groups do not fit together
@@ -312,6 +314,13 @@ ClassMethod Validate(Output pProblem As %String) As %Status
             Set tClassicProblem = ..ClassicLinkProblem(tObject)
             If tClassicProblem '= "" {
                 Set pProblem = tClass _ ": " _ tClassicProblem
+                Quit
+            }
+            ; AD-5, AD-44, Story 20.32: an external screen names a page in ExternalPage's closed
+            ; vocabulary and declares nothing a screen with something to read or do would.
+            Set tExternalProblem = ..ExternalProblem(tObject)
+            If tExternalProblem '= "" {
+                Set pProblem = tClass _ ": " _ tExternalProblem
                 Quit
             }
             ; AD-5: a tabbed screen is one descriptor per tab, grouped by a declared tab.
@@ -622,10 +631,11 @@ ClassMethod TabProblem(pDeclaration As %DynamicObject) As %String
 /// <p>What is wrong with <var>pDeclaration</var>'s <code>suggestedPrompts</code>, or
 /// <code>""</code> (Story 11.3, AD-5). A built screen declares them; an unbuilt one may leave them
 /// absent or <code>null</code>. Otherwise it is an array of at least
-/// <parameter>SUGGESTEDPROMPTSMIN</parameter> objects, each carrying only <code>groupKey</code> and
+/// <parameter>SUGGESTEDPROMPTSMIN</parameter> objects, each carrying <code>groupKey</code> and
 /// <code>textKey</code>, both non-empty string keys, the group one of
-/// <parameter>PROMPTGROUPKEYS</parameter>. That each key resolves is the build's check, over the
-/// string source this class cannot read. <file>ui/tools/screen-mirror.mjs</file>'s
+/// <parameter>PROMPTGROUPKEYS</parameter>, and optionally <code>workflow</code>, a guided workflow's
+/// catalog id (<method>OcuPilot.Kernel.Agent.Workflow.Ids</method>, Story 20.12, AD-66). That each
+/// key resolves is the build's check, over the string source this class cannot read. <file>ui/tools/screen-mirror.mjs</file>'s
 /// <code>suggestedPromptsProblem</code> returns the same sentence for every case.</p>
 ClassMethod SuggestedPromptsProblem(pDeclaration As %DynamicObject) As %String
 {
@@ -656,7 +666,7 @@ ClassMethod SuggestedPromptsProblem(pDeclaration As %DynamicObject) As %String
                 Set tProblem = tWhere _ " is not an object declaring its groupKey and textKey"
                 Quit
             }
-            Set tProblem = ..UnknownKeyProblem(tPrompt, tWhere, $ListBuild("groupKey", "textKey"))
+            Set tProblem = ..UnknownKeyProblem(tPrompt, tWhere, $ListBuild("groupKey", "textKey", "workflow"))
             If tProblem '= "" Quit
             For tKey = "groupKey", "textKey" {
                 If (tPrompt.%GetTypeOf(tKey) '= "string") || (tPrompt.%Get(tKey) = "") {
@@ -669,6 +679,13 @@ ClassMethod SuggestedPromptsProblem(pDeclaration As %DynamicObject) As %String
             If '$ListFind($ListFromString(..#PROMPTGROUPKEYS), tGroup) {
                 Set tProblem = tWhere _ ".groupKey '" _ tGroup _ "' is not one of the declared prompt groups"
                 Quit
+            }
+            If tPrompt.%GetTypeOf("workflow") '= "unassigned" {
+                Set tWorkflow = $Select(tPrompt.%GetTypeOf("workflow") = "string": tPrompt.%Get("workflow"), 1: "")
+                If (tWorkflow = "") || '$ListFind(##class(OcuPilot.Kernel.Agent.Workflow).Ids(), tWorkflow) {
+                    Set tProblem = tWhere _ " names the unknown workflow '" _ tWorkflow _ "'"
+                    Quit
+                }
             }
         }
     } Catch ex {
@@ -1097,7 +1114,7 @@ Parameter READTOOLIDENTIFIERPATTERN = "^[a-z][a-z0-9]*\.[a-z][a-z0-9]*$";
 /// <code>rowGet</code> or <code>forEach</code> either. A source's optional
 /// <code>forEach</code> lists a parent endpoint first (<method>ForEachProblem</method>), and its
 /// optional <code>query</code> fixes parameters no caller can change
-/// (<method>SourceQueryProblem</method>). The fourteen source ports are
+/// (<method>SourceQueryProblem</method>). The fifteen source ports are
 /// <code>admin</code>, an instance endpoint reached through the port, with a
 /// dotted endpoint name and an optional <code>rowGet</code> (<method>RowGetProblem</method>);
 /// <code>mgmnt</code>, the management API reached through its own port, which declares no
@@ -1107,8 +1124,9 @@ Parameter READTOOLIDENTIFIERPATTERN = "^[a-z][a-z0-9]*\.[a-z][a-z0-9]*$";
 /// declares neither a <code>rowGet</code> nor <code>criteria</code>; <code>logsource</code>, a log
 /// file's bounded tail, which declares no <code>rowGet</code>; <code>encryption</code>, a key file's
 /// lists; <code>path</code>, <code>background</code>, <code>docdb</code>, <code>sqlactivity</code>,
-/// <code>monitor</code> and <code>interop</code>, each a <code>LIST</code> of its port's own endpoint
-/// (the path port's of one of its sources) that declares no <code>rowGet</code>, <code>forEach</code>,
+/// <code>monitor</code>, <code>interop</code> and <code>analytics</code>, each a <code>LIST</code> of its port's own endpoint
+/// (the path port's of one of its sources, the monitor, interop and analytics ports' of one of their endpoints)
+/// that declares no <code>rowGet</code>, <code>forEach</code>,
 /// <code>query</code> or <code>parts</code>; <code>access</code>, the screens' required permissions, a <code>LIST</code> on
 /// <code>Screens</code> that declares none of those and no <code>read.criteria</code>; or <code>timeline</code>, an area's listed screens' reads composed, whose
 /// shape is fixed (<method>TimelineProblem</method>);
@@ -1164,8 +1182,8 @@ ClassMethod ReadProblem(pDeclaration As %DynamicObject) As %String
         Set tProblem = ..UnknownKeyProblem(tSource, "read.source", $ListBuild("port", "endpoint", "type", "rowGet", "forEach", "query", "parts", "rows"))
         If tProblem '= "" Quit
         Set tPort = tSource.%Get("port")
-        If (tSource.%GetTypeOf("port") '= "string") || '$ListFind($ListBuild(##class(OcuPilot.Screen.Read).#SOURCEADMIN, ##class(OcuPilot.Screen.Read).#SOURCESTATE, ##class(OcuPilot.Screen.Read).#SOURCEMGMNT, ##class(OcuPilot.Screen.Read).#SOURCELOGSOURCE, ##class(OcuPilot.Screen.Read).#SOURCEPATH, ##class(OcuPilot.Screen.Read).#SOURCETIMELINE, ##class(OcuPilot.Screen.Read).#SOURCEBACKGROUND, ##class(OcuPilot.Screen.Read).#SOURCEATELIER, ##class(OcuPilot.Screen.Read).#SOURCEENCRYPTION, ##class(OcuPilot.Screen.Read).#SOURCEDOCDB, ##class(OcuPilot.Screen.Read).#SOURCESQLACTIVITY, ##class(OcuPilot.Screen.Read).#SOURCEINTEROP, ##class(OcuPilot.Screen.Read).#SOURCEACCESS, ##class(OcuPilot.Screen.Read).#SOURCEMONITOR), tPort) {
-            Set tProblem = "read.source.port '" _ tPort _ "' is not one of '" _ ##class(OcuPilot.Screen.Read).#SOURCEADMIN _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCESTATE _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEMGMNT _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCELOGSOURCE _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEPATH _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCETIMELINE _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEBACKGROUND _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEATELIER _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEENCRYPTION _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEDOCDB _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCESQLACTIVITY _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEINTEROP _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEACCESS _ "' or '" _ ##class(OcuPilot.Screen.Read).#SOURCEMONITOR _ "', the fourteen sources a declared read names (AD-36)"
+        If (tSource.%GetTypeOf("port") '= "string") || '$ListFind($ListBuild(##class(OcuPilot.Screen.Read).#SOURCEADMIN, ##class(OcuPilot.Screen.Read).#SOURCESTATE, ##class(OcuPilot.Screen.Read).#SOURCEMGMNT, ##class(OcuPilot.Screen.Read).#SOURCELOGSOURCE, ##class(OcuPilot.Screen.Read).#SOURCEPATH, ##class(OcuPilot.Screen.Read).#SOURCETIMELINE, ##class(OcuPilot.Screen.Read).#SOURCEBACKGROUND, ##class(OcuPilot.Screen.Read).#SOURCEATELIER, ##class(OcuPilot.Screen.Read).#SOURCEENCRYPTION, ##class(OcuPilot.Screen.Read).#SOURCEDOCDB, ##class(OcuPilot.Screen.Read).#SOURCESQLACTIVITY, ##class(OcuPilot.Screen.Read).#SOURCEINTEROP, ##class(OcuPilot.Screen.Read).#SOURCEACCESS, ##class(OcuPilot.Screen.Read).#SOURCEMONITOR, ##class(OcuPilot.Screen.Read).#SOURCEANALYTICS), tPort) {
+            Set tProblem = "read.source.port '" _ tPort _ "' is not one of '" _ ##class(OcuPilot.Screen.Read).#SOURCEADMIN _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCESTATE _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEMGMNT _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCELOGSOURCE _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEPATH _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCETIMELINE _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEBACKGROUND _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEATELIER _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEENCRYPTION _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEDOCDB _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCESQLACTIVITY _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEINTEROP _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEACCESS _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEMONITOR _ "' or '" _ ##class(OcuPilot.Screen.Read).#SOURCEANALYTICS _ "', the fifteen sources a declared read names (AD-36)"
             Quit
         }
         If (tSource.%GetTypeOf("endpoint") '= "string") || '$Match(tSource.%Get("endpoint"), "^[A-Za-z][A-Za-z0-9]*(\.[A-Za-z][A-Za-z0-9]*)*$") {
@@ -1275,24 +1293,23 @@ ClassMethod ReadProblem(pDeclaration As %DynamicObject) As %String
             }
             If tProblem '= "" Quit
         }
-        ; A monitor source lists the instance's Prometheus metrics through OcuPilot.Port.MonitorPort,
-        ; which answers every sample of one collection whole behind its own gate (AD-29, AD-36, Story
-        ; 18.11): the port's own endpoint, a LIST, and nothing the port would have to issue per row,
-        ; per parent, under a fixed query or in parts.
+        ; A monitor source lists the instance's Prometheus metrics or its interoperability usage
+        ; through OcuPilot.Port.MonitorPort, which answers each endpoint whole behind its own gate (AD-29,
+        ; AD-36, Stories 18.11 and 18.37): one of the port's endpoints, a LIST, and nothing the port
+        ; would have to issue per row, per parent, under a fixed query or in parts.
         If tPort = ##class(OcuPilot.Screen.Read).#SOURCEMONITOR {
-            Set tMonitorEndpoint = ##class(OcuPilot.Port.MonitorPort).#ENDPOINT
-            If tSource.%Get("endpoint") '= tMonitorEndpoint {
-                Set tProblem = "read.source.endpoint '" _ tSource.%Get("endpoint") _ "' is not the monitor port's endpoint ('" _ tMonitorEndpoint _ "') (AD-29)"
+            If '$ListFind(##class(OcuPilot.Port.MonitorPort).Endpoints(), tSource.%Get("endpoint")) {
+                Set tProblem = "read.source.endpoint '" _ tSource.%Get("endpoint") _ "' is not one of the monitor port's endpoints ('" _ $ListToString(##class(OcuPilot.Port.MonitorPort).Endpoints(), "', '") _ "') (AD-29)"
                 Quit
             }
             If tSource.%Get("type") '= ##class(OcuPilot.Port.MonitorPort).#TYPELIST {
-                Set tProblem = "read.source.type '" _ tSource.%Get("type") _ "' is declared on a monitor source, which lists the instance's Prometheus metrics (AD-36)"
+                Set tProblem = "read.source.type '" _ tSource.%Get("type") _ "' is declared on a monitor source, which lists the instance's metrics and interoperability usage (AD-36)"
                 Quit
             }
             For tKey = "rowGet", "forEach", "query", "parts" {
                 Set tKeyType = tSource.%GetTypeOf(tKey)
                 If (tKeyType = "unassigned") || (tKeyType = "null") Continue
-                Set tProblem = "read.source." _ tKey _ " is declared on a monitor source, which answers the metrics whole (AD-36)"
+                Set tProblem = "read.source." _ tKey _ " is declared on a monitor source, which answers its list whole (AD-36)"
                 Quit
             }
             If tProblem '= "" Quit
@@ -1314,6 +1331,27 @@ ClassMethod ReadProblem(pDeclaration As %DynamicObject) As %String
                 Set tKeyType = tSource.%GetTypeOf(tKey)
                 If (tKeyType = "unassigned") || (tKeyType = "null") Continue
                 Set tProblem = "read.source." _ tKey _ " is declared on an interop source, which answers its list whole (AD-36)"
+                Quit
+            }
+            If tProblem '= "" Quit
+        }
+        ; An analytics source lists the namespace's cubes, a cube's measures, levels or relationships, its term lists, a term
+        ; list's entries or its folder items through OcuPilot.Port.AnalyticsPort, which answers each endpoint whole behind its own
+        ; gate (AD-65, AD-36, Story 20.11): one of the port's endpoints, a LIST, and nothing the port would have to issue per row,
+        ; per parent, under a fixed query or in parts.
+        If tPort = ##class(OcuPilot.Screen.Read).#SOURCEANALYTICS {
+            If '$ListFind(##class(OcuPilot.Port.AnalyticsPort).Endpoints(), tSource.%Get("endpoint")) {
+                Set tProblem = "read.source.endpoint '" _ tSource.%Get("endpoint") _ "' is not one of the analytics port's endpoints ('" _ $ListToString(##class(OcuPilot.Port.AnalyticsPort).Endpoints(), "', '") _ "') (AD-65)"
+                Quit
+            }
+            If tSource.%Get("type") '= ##class(OcuPilot.Port.AnalyticsPort).#TYPELIST {
+                Set tProblem = "read.source.type '" _ tSource.%Get("type") _ "' is declared on an analytics source, which lists the namespace's cubes, term lists and folder items (AD-36)"
+                Quit
+            }
+            For tKey = "rowGet", "forEach", "query", "parts" {
+                Set tKeyType = tSource.%GetTypeOf(tKey)
+                If (tKeyType = "unassigned") || (tKeyType = "null") Continue
+                Set tProblem = "read.source." _ tKey _ " is declared on an analytics source, which answers its list whole (AD-36)"
                 Quit
             }
             If tProblem '= "" Quit
@@ -1600,7 +1638,7 @@ ClassMethod ReadProblem(pDeclaration As %DynamicObject) As %String
             }
             If 'tHasSystemRead && (tPort = ##class(OcuPilot.Screen.Read).#SOURCEADMIN) Set tProblem = "read.source.port 'admin' requires the declared privileges to include %DB_IRISSYS:READ, because the port runs every endpoint in %SYS (AD-2, AD-8)"
             If 'tHasSystemRead && (tPort = ##class(OcuPilot.Screen.Read).#SOURCEPATH) Set tProblem = "read.source.port 'path' requires the declared privileges to include %DB_IRISSYS:READ, because the port reads the allow-list through the admin API in %SYS (AD-2, AD-8, AD-21)"
-            If 'tHasSystemRead && (tPort = ##class(OcuPilot.Screen.Read).#SOURCEMONITOR) Set tProblem = "read.source.port 'monitor' requires the declared privileges to include %DB_IRISSYS:READ, because the port takes its collection in %SYS (AD-29)"
+            If 'tHasSystemRead && (tPort = ##class(OcuPilot.Screen.Read).#SOURCEMONITOR) Set tProblem = "read.source.port 'monitor' requires the declared privileges to include %DB_IRISSYS:READ, because the port reads in %SYS (AD-29)"
         }
     } Catch ex {
         Set tProblem = "the read declaration could not be read: " _ ex.DisplayString()
@@ -1704,8 +1742,15 @@ ClassMethod CriteriaProblem(pDeclaration As %DynamicObject) As %String
 
         Set tPort = ""
         If tRead.%GetTypeOf("source") = "object" Set tPort = tRead.%Get("source").%Get("port")
-        ; AD-36 as amended (Story 20.3): an interop read takes criteria only as its parent's route id, on a parent-scoped list.
-        If (tPort '= "admin") && (tPort '= "mgmnt") && (tPort '= ##class(OcuPilot.Screen.Read).#SOURCEATELIER) && (tPort '= ##class(OcuPilot.Screen.Read).#SOURCETIMELINE) && (tPort '= ##class(OcuPilot.Screen.Read).#SOURCEENCRYPTION) && ((tPort '= ##class(OcuPilot.Screen.Read).#SOURCEINTEROP) || 'tParented) {
+        ; AD-36 as amended (Story 20.3): an interop read takes criteria only as its parent's route id, on a parent-scoped list;
+        ; except an endpoint the port declares searchable (Story 20.9's Messages), whose criteria are its own.
+        Set tSearches = 0
+        If (tPort = ##class(OcuPilot.Screen.Read).#SOURCEINTEROP) && (tRead.%GetTypeOf("source") = "object") {
+            Set tSearches = ''$ListFind($ListFromString($Parameter("OcuPilot.Port.InteropPort", "SEARCHENDPOINTS")), tRead.%Get("source").%Get("endpoint"))
+        }
+        ; AD-36 as amended (Story 20.11): an analytics read takes criteria only as its parent's route id, on a parent-scoped list.
+        Set tParentOnly = (tPort = ##class(OcuPilot.Screen.Read).#SOURCEINTEROP) || (tPort = ##class(OcuPilot.Screen.Read).#SOURCEANALYTICS)
+        If (tPort '= "admin") && (tPort '= "mgmnt") && (tPort '= ##class(OcuPilot.Screen.Read).#SOURCEATELIER) && (tPort '= ##class(OcuPilot.Screen.Read).#SOURCETIMELINE) && (tPort '= ##class(OcuPilot.Screen.Read).#SOURCEENCRYPTION) && ('tParentOnly || ('tParented && 'tSearches)) {
             Set tProblem = "read.criteria is declared on a '" _ tPort _ "' source, and server criteria travel on the admin, mgmnt, atelier, timeline and encryption ports alone (AD-21)"
             Quit
         }
@@ -2635,7 +2680,9 @@ Parameter TABLECOLUMNKINDS = "name,identifier,text,number,status";
 /// columns), a non-empty
 /// <code>labelKey</code>, a <code>kind</code> from <parameter>TABLECOLUMNKINDS</parameter> and an
 /// optional <code>emptyKey</code> (a non-empty string key an empty cell in that column reads
-/// instead of "(none)"), and exactly one column is <code>name</code>. The declaration names a non-empty
+/// instead of "(none)") and an optional boolean <code>long</code> (the column's value can run past
+/// its cell, so the selected or only row's value shows whole beneath the rows), and exactly one
+/// column is <code>name</code>. The declaration names a non-empty
 /// <code>emptyStateKey</code>, and a <code>composite</code> id names only parts in <var>pFields</var>.
 /// A write-capable declaration (<method>IsWriteCapable</method>) names <code>emptyAgentKey</code>
 /// and leaves <code>emptyNextKey</code> empty; any other names <code>emptyNextKey</code> and leaves
@@ -2659,7 +2706,7 @@ ClassMethod TableProblem(pDeclaration As %DynamicObject, pFields As %List, pSecr
             Set tProblem = tWhere _ " is not an object declaring its field, labelKey and kind"
             Quit
         }
-        Set tProblem = ..UnknownKeyProblem(tColumn, tWhere, $ListBuild("field", "labelKey", "kind", "emptyKey"))
+        Set tProblem = ..UnknownKeyProblem(tColumn, tWhere, $ListBuild("field", "labelKey", "kind", "emptyKey", "long"))
         If tProblem '= "" Quit
         Set tField = tColumn.%Get("field")
         If (tColumn.%GetTypeOf("field") '= "string") || '$ListFind(pFields, tField) {
@@ -2686,6 +2733,10 @@ ClassMethod TableProblem(pDeclaration As %DynamicObject, pFields As %List, pSecr
         }
         If (tColumn.%GetTypeOf("emptyKey") '= "unassigned") && ((tColumn.%GetTypeOf("emptyKey") '= "string") || (tColumn.%Get("emptyKey") = "")) {
             Set tProblem = tWhere _ " emptyKey is not a non-empty string key, and an empty cell in that column reads the string it names"
+            Quit
+        }
+        If (tColumn.%GetTypeOf("long") '= "unassigned") && (tColumn.%GetTypeOf("long") '= "boolean") {
+            Set tProblem = tWhere _ " long is not a boolean, and a long column shows the selected row's whole value beneath the rows"
             Quit
         }
         If tKind = "name" Set tNames = tNames + 1
@@ -2989,11 +3040,14 @@ ClassMethod FingerprintSubjectProblem(pToolClass As %String) As %String
 /// <parameter>OcuPilot.Api.EcpError.REASONSSLNOTPENDING</parameter> and
 /// <parameter>OcuPilot.Api.EcpError.REASONSSLNOTAUTHORIZED</parameter> and refused by each tool's
 /// <code>StateDiff</code>.</p>
-/// <p><code>ocupilot-routine-application</code> is one of OcuPilot's own two privileged routine applications (Story 18.31):
-/// a <code>Name</code> of <code>OcuPilotState</code> or <code>OcuPilotIdentity</code> in any case, explained by the
+/// <p><code>ocupilot-routine-application</code> is one of OcuPilot's own three privileged routine applications (Story 18.31):
+/// a <code>Name</code> of <code>OcuPilotState</code>, <code>OcuPilotIdentity</code> or <code>OcuPilotSslRead</code> in any case, explained by the
 /// <code>routineAppRefusalOcuPilot</code> sentence and refused for every write by
 /// <parameter>OcuPilot.Kernel.Proposal.Prohibited.OCUPILOTROUTINEAPP</parameter>.</p>
-Parameter SELFPROTECTIONRULES = "serves-ocupilot,protected-account,service-account-sign-in,ocupilot-application-roles,system-role,system-resource,ocupilot-ssl,ocupilot-session,ecp-ssl-pending,ecp-ssl-authorized,system-pct-access,ocupilot-routine-application";
+/// <p><code>allowed-directory-fallback</code> is the allow-list's unrestricted fallback row (Story 18.46): a row whose
+/// <code>Restricted</code> reads false, explained by <class>OcuPilot.Api.AllowListError</class>'s <code>REASONFALLBACK</code>
+/// and refused for a change or a remove by the allow-list port.</p>
+Parameter SELFPROTECTIONRULES = "serves-ocupilot,protected-account,service-account-sign-in,ocupilot-application-roles,system-role,system-resource,ocupilot-ssl,ocupilot-session,ecp-ssl-pending,ecp-ssl-authorized,system-pct-access,ocupilot-routine-application,allowed-directory-fallback";
 
 /// <p>The fewest suggested prompts a declaration that declares any may carry (Story 11.3).</p>
 Parameter SUGGESTEDPROMPTSMIN As INTEGER = 3;
@@ -3597,6 +3651,64 @@ ClassMethod ClassicHrefProblem(pHref As %String) As %String
     Quit ""
 }
 
+/// <p>What is wrong with <var>pDeclaration</var> as an <code>external</code> screen, or as a screen that claims an
+/// <code>external</code> screen's page, or <code>""</code> when nothing is (AD-5, AD-44, Story 20.32).</p>
+/// <p>An <code>external</code> screen's <code>toolIdentifier</code> names an entry of
+/// <class>OcuPilot.Screen.ExternalPage</class>'s closed vocabulary, and its <code>classicPage</code> is that entry's. A screen
+/// of any other archetype names none. An <code>external</code> screen opens a page in a new tab and so declares no
+/// <code>read</code>, <code>table</code>, action, <code>tab</code> or <code>parentScope</code>
+/// (<method>ExternalFaultProblem</method>). The vocabulary half is the instance's alone; <file>ui/tools/screen-mirror.mjs</file>'s
+/// <code>externalProblem</code> returns the same sentences for the declaration half.</p>
+/// <p><b>Public and value-driven</b> for the reason <method>RefreshProblem</method> is.</p>
+ClassMethod ExternalProblem(pDeclaration As %DynamicObject) As %String
+{
+    Set tProblem = ""
+    Try {
+        If '$IsObject(pDeclaration) {
+            Set tProblem = "the declaration is not an object"
+            Quit
+        }
+        Set tExternal = (pDeclaration.%Get("archetype") = "external")
+        Set tTool = pDeclaration.%Get("toolIdentifier")
+        Set tListed = ##class(OcuPilot.Screen.ExternalPage).Has(tTool)
+        If 'tExternal {
+            If tListed Set tProblem = "toolIdentifier '" _ tTool _ "' names a page in OcuPilot.Screen.ExternalPage's vocabulary, and only an external screen may (AD-44)"
+            Quit
+        }
+        If 'tListed {
+            Set tProblem = "external screen's toolIdentifier '" _ tTool _ "' is not in OcuPilot.Screen.ExternalPage's vocabulary, and an external screen opens only a page the vocabulary names (AD-44)"
+            Quit
+        }
+        Set tWant = ##class(OcuPilot.Screen.ExternalPage).ClassicPage(tTool)
+        If pDeclaration.%Get("classicPage") '= tWant {
+            Set tProblem = "external screen's classicPage '" _ pDeclaration.%Get("classicPage") _ "' is not '" _ tWant _ "', the page OcuPilot.Screen.ExternalPage names for '" _ tTool _ "' (AD-44)"
+            Quit
+        }
+        Set tProblem = ..ExternalFaultProblem(pDeclaration)
+    } Catch ex {
+        Set tProblem = "the external screen declaration could not be read: " _ ex.DisplayString()
+    }
+    Quit tProblem
+}
+
+/// <p>The first of <code>read</code>, <code>table</code>, an action, <code>tab</code> and <code>parentScope</code> that
+/// <var>pDeclaration</var>, an <code>external</code> screen, declares, as a refusal, or <code>""</code> (AD-44, Story 20.32).
+/// An absent key, a <code>null</code>, an empty string and an empty array declare nothing. <file>ui/tools/screen-mirror.mjs</file>'s
+/// <code>externalProblem</code> returns the same sentence for each.</p>
+ClassMethod ExternalFaultProblem(pDeclaration As %DynamicObject) As %String [ Private ]
+{
+    Set tDeclares = ""
+    For tKey = "read", "table", "tab" {
+        If pDeclaration.%GetTypeOf(tKey) = "object" Set tDeclares = tKey
+        If tDeclares '= "" Quit
+    }
+    If (tDeclares = "") && (pDeclaration.%GetTypeOf("primaryAction") = "object") && (pDeclaration.primaryAction.%Get("id") '= "") Set tDeclares = "primaryAction"
+    If (tDeclares = "") && (pDeclaration.%GetTypeOf("rowActions") = "array") && (pDeclaration.rowActions.%Size() > 0) Set tDeclares = "rowActions"
+    If (tDeclares = "") && (pDeclaration.%Get("parentScope") '= "") Set tDeclares = "parentScope"
+    If tDeclares = "" Quit ""
+    Quit "external screen declares " _ tDeclares _ ", and an external screen opens a page in a new tab with no read, table, action, tab or parentScope (AD-44)"
+}
+
 /// <p>The 1-based position of the first declared privilege entry missing a resource or a
 /// permission, as <code>#n</code>, or <code>""</code> when every entry carries both.</p>
 /// <p>An entry that is not an object counts as malformed too: <class>OcuPilot.Screen.Area</class>'s
@@ -3898,7 +4010,8 @@ Parameter ROWTARGETKEYS = "route,field,unless";
 /// <file>ui/src/app/shell/data-table.ts</file> -- because a list keyed by something other than
 /// the linked entity (the Locks list's removal id, say) would otherwise link its own id route,
 /// which names the wrong thing.</p>
-/// <p>Declarable only on a <code>list</code> archetype that also declares a <code>table</code>,
+/// <p>Declarable only on a <code>list</code> archetype, or a <code>detail</code> archetype that declares a
+/// <code>tab</code>, that also declares a <code>table</code>,
 /// since exactly one column's <code>kind</code> is <code>name</code>
 /// (<method>TableProblem</method>) and a row target replaces what that column would otherwise
 /// link to. Its <code>route</code> is a non-empty string other than the declaring screen's own
@@ -3927,7 +4040,8 @@ ClassMethod RowTargetProblem(pDeclaration As %DynamicObject) As %String
         Set tTarget = pDeclaration.%Get("rowTarget")
         Set tProblem = ..UnknownKeyProblem(tTarget, "rowTarget", $ListFromString(..#ROWTARGETKEYS))
         If tProblem '= "" Quit
-        If pDeclaration.%Get("archetype") '= "list" {
+        ; A tab of a tabbed group is a detail screen drawing a table, so it may declare one too (Story 20.11).
+        If (pDeclaration.%Get("archetype") '= "list") && '((pDeclaration.%Get("archetype") = "detail") && (pDeclaration.%GetTypeOf("tab") = "object")) {
             Set tProblem = "rowTarget is declared on a '" _ pDeclaration.%Get("archetype") _ "' archetype, and a row target is a list's own row link (AD-5)"
             Quit
         }

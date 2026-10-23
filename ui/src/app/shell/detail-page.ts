@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, afterNextRender, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, type Type, afterNextRender, computed, inject, input, signal } from '@angular/core';
 import { MatTabLink, MatTabNav, MatTabNavPanel } from '@angular/material/tabs';
 import { Router } from '@angular/router';
 
@@ -18,11 +18,18 @@ interface DetailTab {
   readonly describedBy: string | null;
 }
 
+/** One `open`'s claim on the focus the page it navigates to will take. */
+interface ArrivalRequest {
+  readonly route: string;
+}
+
 /**
- * The route of the tab `open` last navigated to, until the page that route renders has read it. Each
- * tab is its own route, so opening one replaces this page, and the tab that held focus with it.
+ * The tab `open` last navigated to, until the page that route renders has read it. Each tab is its
+ * own route, so opening one replaces this page, and the tab that held focus with it. A request is an
+ * object so that a navigation can forget only its own: one a later `open` supersedes resolves
+ * `false` after the later request was made, and must leave that request standing.
  */
-let focusOnArrival: string | null = null;
+let focusOnArrival: ArrivalRequest | null = null;
 
 /**
  * The page every `detail` archetype renders (AD-5): the current screen's declared read through
@@ -37,13 +44,16 @@ let focusOnArrival: string | null = null;
  *
  * **Keyboard.** The strip is Material's tab nav bar: one Tab stop, Left and Right move between tabs,
  * Enter or Space opens the focused one (EXPERIENCE.md tabs, DESIGN.md tabs). A strip wider than the
- * content column pages, and the focused tab is scrolled into view. The tab a strip opened takes
- * focus on the page that replaces it, when focus has nowhere else to be (EXPERIENCE.md Accessibility
- * Floor, *Focus destinations*).
+ * content column wraps onto further rows, so every tab is in view and none is paged. The tab a
+ * strip opened takes focus on the page that replaces it, when focus has nowhere else to be
+ * (EXPERIENCE.md Accessibility Floor, *Focus destinations*).
  *
  * **A gated tab stays listed and focusable** with `aria-disabled` and its failed pair inline as
  * "Requires <pair>", the side bar's own shape, and does not navigate: the refusal is here, not in
  * the DOM (AD-8).
+ *
+ * **A tab's page may draw its rows with a `body` component** (AD-5, Story 20.9): the page hands it to
+ * the list page, which renders it in place of the table; the strip is unchanged.
  *
  * Every control-flow condition is a paren-free member reference, for the reason `sign-in.ts`
  * records: `ui/tools/client-lint.mjs`'s blanker matches `@if` plus one parenthesised group.
@@ -59,6 +69,7 @@ let focusOnArrival: string | null = null;
         class="ocu-detail-tabs"
         [tabPanel]="panel"
         [disableRipple]="true"
+        [disablePagination]="true"
         [attr.aria-label]="tabsLabel"
       >
         @for (tab of tabs; track tab.route) {
@@ -80,16 +91,22 @@ let focusOnArrival: string | null = null;
         }
       </nav>
       <mat-tab-nav-panel #panel class="ocu-detail-panel">
-        <app-list-page />
+        <app-list-page [body]="body()" />
       </mat-tab-nav-panel>
     } @else {
-      <app-list-page />
+      <app-list-page [body]="body()" />
     }
   </section>`,
 })
 export class DetailPage {
   private readonly navigation = inject(NavigationService);
   private readonly router = inject(Router);
+
+  /**
+   * A component that draws the current tab's rows in place of the table (AD-5, Story 20.9's message
+   * contents), passed to the list page; `null` draws the table.
+   */
+  readonly body = input<Type<unknown> | null>(null);
 
   /** Bumped by the navigation map and the router, so the strip follows both under `OnPush`. */
   private readonly generation = signal(0);
@@ -122,12 +139,12 @@ export class DetailPage {
     });
     const host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
     afterNextRender(() => {
-      const route = focusOnArrival;
+      const request = focusOnArrival;
       focusOnArrival = null;
       const active = document.activeElement;
-      if (route === null || (active !== null && active !== document.body && active.isConnected)) return;
+      if (request === null || (active !== null && active !== document.body && active.isConnected)) return;
       const tabs = Array.from(host.querySelectorAll<HTMLElement>('.ocu-detail-tab'));
-      tabs.find((tab) => tab.getAttribute('data-route') === route)?.focus();
+      tabs.find((tab) => tab.getAttribute('data-route') === request.route)?.focus();
     });
   }
 
@@ -149,14 +166,16 @@ export class DetailPage {
   /** Open a tab. A gated tab does nothing, and the current tab is already open. */
   protected open(tab: DetailTab): void {
     if (tab.gated || tab.active) return;
-    focusOnArrival = tab.route;
+    const request: ArrivalRequest = { route: tab.route };
+    focusOnArrival = request;
+    const forget = (): void => {
+      if (focusOnArrival === request) focusOnArrival = null;
+    };
     void this.router.navigateByUrl(withQuery(this.targetRoute(tab.route), this.router.url)).then(
       (opened) => {
-        if (!opened) focusOnArrival = null;
+        if (!opened) forget();
       },
-      () => {
-        focusOnArrival = null;
-      }
+      forget
     );
   }
 

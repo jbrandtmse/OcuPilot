@@ -46,7 +46,7 @@ import { fileURLToPath } from 'node:url';
 import puppeteer from 'puppeteer';
 
 import { READINESS_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
-import { signedInAt } from './panel-spec.mjs';
+import { settleViewport, signedInAt, transitionsSettled } from './panel-spec.mjs';
 import { INVARIANTS, VIEWPORTS, assertThrowaway, collapse, compare, componentMinimums, detectScreen, readBaseline } from './structural-walk.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -134,13 +134,10 @@ async function assertStructure(page) {
   const found = [];
   const surfaces = {};
   for (const { viewport, theme, checks } of passes) {
-    await page.setViewport(viewport);
+    await settleViewport(page, viewport);
     await page.evaluate((dark) => document.documentElement.classList.toggle('ocu-theme-dark', dark), theme === 'dark');
     await frames(page);
-    await page.waitForFunction(
-      () => document.getAnimations().every((animation) => !(animation instanceof CSSTransition) || animation.playState !== 'running'),
-      { timeout: config.navigationTimeoutMs }
-    );
+    await transitionsSettled(page, config.navigationTimeoutMs);
     surfaces[theme] = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
     const { entries } = await detectScreen(page, { route: VIEWER_ROUTE, checks, viewport: viewport.width, theme, minimums });
     found.push(...entries);

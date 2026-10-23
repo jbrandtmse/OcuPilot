@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, input, output, signal } from '@angular/core';
 
+import { pickCount } from '../../core/count-phrase';
 import { STRINGS } from '../../core/strings';
 import { Dialog } from '../../shell/dialog';
 import { fillPlaceholders } from './code-list.store';
@@ -66,7 +67,7 @@ export class ExplorerCompileDialog {
 
   protected get heading(): string {
     const count = this.count();
-    return count === 1 ? STRINGS.explorerCompileTitleOne : fillPlaceholders(STRINGS.explorerCompileTitle, { n: count });
+    return pickCount(count, STRINGS.explorerCompileTitleOne, fillPlaceholders(STRINGS.explorerCompileTitle, { n: count }));
   }
 
   protected isChecked(key: keyof CompileChoice): boolean {

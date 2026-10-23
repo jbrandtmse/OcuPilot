@@ -51,6 +51,13 @@ export const REQUIRED_FLAGS: readonly FlagField[] = [AUDIT_FIELD, 'DBEncIRISSecu
 /** The refusal the server answers for Interactive under one of `REQUIRED_FLAGS` (AD-10). */
 export const STARTUP_INTERACTIVE_CODE = 'PROHIBITED.STARTUPINTERACTIVE';
 
+/** The refusals for Interactive while journal encryption is on, and for KMIP under one of `REQUIRED_FLAGS` (AD-10, Story 18.48). */
+export const STARTUP_JOURNAL_CODE = 'PROHIBITED.STARTUPJOURNAL';
+export const STARTUP_KMIP_CODE = 'PROHIBITED.STARTUPKMIP';
+
+/** Every start-mode refusal the server answers as an envelope, whose sentence the form draws on the start-mode field. */
+export const STARTUP_MODE_REFUSALS: readonly string[] = [STARTUP_INTERACTIVE_CODE, STARTUP_JOURNAL_CODE, STARTUP_KMIP_CODE];
+
 /** Why a choice is drawn `aria-disabled`, or `''` when it may be made. */
 export type ChoiceRefusal = '' | 'interactive' | 'kmip' | 'needs-start' | 'no-key' | 'no-keys';
 
@@ -445,9 +452,9 @@ export class EncryptionStartupForm {
     this.savingValue = false;
     if (result.kind !== 'ok') {
       this.violationList = violationsOf(result);
-      if (this.violationList.length === 0 && result.kind === 'error' && result.code === STARTUP_INTERACTIVE_CODE) {
-        // AD-10: the Interactive refusal's sentence is shown on the start-mode field.
-        this.violationList = [{ field: MODE_FIELD, code: STARTUP_INTERACTIVE_CODE, reason: result.reason ?? '' }];
+      if (this.violationList.length === 0 && result.kind === 'error' && STARTUP_MODE_REFUSALS.includes(result.code ?? '')) {
+        // AD-10: a start-mode refusal's sentence is shown on the start-mode field.
+        this.violationList = [{ field: MODE_FIELD, code: result.code ?? '', reason: result.reason ?? '' }];
       }
       this.envelopeReason = this.violationList.length === 0 && result.kind === 'error' ? (result.reason ?? '') : '';
       this.rememberRefusal(result);

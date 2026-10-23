@@ -359,13 +359,15 @@ ClassMethod Call(pMethod As %String, pPath As %String, pUser As %String, pPasswo
 /// <p>The body a start posts for <var>pMessage</var>, as the UTF-8 bytes a browser sends.
 /// <var>pConversationId</var> (Story 4.5) is required by <class>OcuPilot.Api.Turn</class>; every
 /// caller supplies one, normally minted by <method>StartConversation</method> first.
-/// <var>pContext</var>, when supplied, is the wire <code>context</code> object (Story 4.4).</p>
-ClassMethod StartBody(pMessage As %String, pConversationId As %String, pContext As %DynamicObject = "") As %String
+/// <var>pContext</var>, when supplied, is the wire <code>context</code> object (Story 4.4).
+/// <var>pWorkflow</var>, when not empty, is the guided workflow's catalog id the body names (Story 20.12).</p>
+ClassMethod StartBody(pMessage As %String, pConversationId As %String, pContext As %DynamicObject = "", pWorkflow As %String = "") As %String
 {
     Set tBody = {}
     Do tBody.%Set("message", pMessage, "string")
     Do tBody.%Set("conversationId", pConversationId, "string")
     If $IsObject(pContext) Do tBody.%Set("context", pContext)
+    If pWorkflow '= "" Do tBody.%Set("workflow", pWorkflow, "string")
     Quit $ZConvert(tBody.%ToJSON(), "O", "UTF8")
 }
 

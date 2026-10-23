@@ -10,7 +10,10 @@
 /// <p><b>Actions.</b> Each row action of a <code>writes</code> screen resolves, by the rule
 /// <class>OcuPilot.Api.ScreenAction</class> applies (a write tool whose <code>DESCRIPTORCLASS</code> is the screen and whose
 /// <code>SCREENACTIONS</code> holds the id), to exactly one tool. The primary action does too, or resolves to the one
-/// bound tool that creates. Every bound tool is advertised but AD-53's two.</p>
+/// bound tool that creates. Every bound tool is advertised but AD-53's three.</p>
+/// <p>A <code>writes</code> row that names a <code>route</code> is the exception (Story 18.46): its actions are sent to
+/// <code>POST /&lt;route&gt;</code>, which the router's URL map holds, not to the screen action route; the screen binds one
+/// tool, which is unadvertised and declares no <code>SCREENACTIONS</code>, so that route reaches none of its actions.</p>
 /// <p><b>Fields.</b> For every bound tool, and every <code>&lt;tool/&gt;</code> row (a tool Epic 18 bound to an earlier
 /// screen): the registry lists it as a write of its own class, every field its generated list admits is settable, and
 /// every other settable name but the id argument is the first path segment of its generated entry, or the tool's port is
@@ -22,8 +25,8 @@ Class OcuPilot.Test.StageTwoTools Extends %UnitTest.TestCase
 /// <p>The package every screen descriptor sits in; roster rows name a descriptor without it.</p>
 Parameter DESCRIPTORPACKAGE = "OcuPilot.Screen.Descriptor.";
 
-/// <p>The two write tools AD-53 keeps off the agent's list.</p>
-Parameter UNADVERTISED = "osmgmt.licensekey.activate,security.secrets.replacesymmetric";
+/// <p>The three write tools AD-53 keeps off the agent's list.</p>
+Parameter UNADVERTISED = "osmgmt.licensekey.activate,security.secrets.replacesymmetric,security.alloweddirectories.update";
 
 Parameter ADMINPORT = "OcuPilot.Port.AdminPort";
 
@@ -35,6 +38,7 @@ Parameter FIELDSCLASS = "OcuPilot.Screen.Tool.ToolFields";
 XData Roster
 {
 <roster>
+<screen name="AllowedDirectoryList" kind="writes" route="allowed-directories"/>
 <screen name="AuthOptions" kind="writes"/>
 <screen name="DataElementEncryption" kind="writes"/>
 <screen name="DatabaseEncryption" kind="writes"/>
@@ -73,7 +77,6 @@ XData Roster
 <screen name="RoutineAppForm" kind="form" list="RoutineAppList"/>
 <screen name="RoutineMappingForm" kind="form" list="RoutineMappingList"/>
 <screen name="SuperserverForm" kind="form" list="SuperserverList"/>
-<screen name="AllowedDirectoryList" kind="read-only" reason="the allow-list is a person's write, never the agent's"/>
 <screen name="DatabaseIntegrityLog" kind="read-only" reason="the output of an integrity check, which the instance writes"/>
 <screen name="EcpAppServerTab" kind="read-only" reason="the connection state of the ECP application servers"/>
 <screen name="JournalFileDatabaseList" kind="read-only" reason="the databases one journal file holds records for"/>
@@ -87,8 +90,12 @@ XData Roster
 <screen name="DashboardGlobals" kind="read-only" reason="a drill-down of the Dashboard's statistics"/>
 <screen name="DashboardProcesses" kind="read-only" reason="a drill-down of the Dashboard's statistics"/>
 <screen name="DashboardResources" kind="read-only" reason="a drill-down of the Dashboard's statistics"/>
+<screen name="InteropUsageTab" kind="read-only" reason="the interoperability usage the instance records, which no write changes"/>
+<screen name="InteropUsageVolumeTab" kind="read-only" reason="the interoperability usage the instance records, which no write changes"/>
+<screen name="InteropUsageImpactTab" kind="read-only" reason="the interoperability usage the instance records, which no write changes"/>
 <screen name="RoutineAppRoleList" kind="read-only" reason="a list the application's update tool replaces whole"/>
 <screen name="RoutineAppRoutineList" kind="read-only" reason="a list the application's update tool replaces whole"/>
+<screen name="WebAppRoleList" kind="read-only" reason="a list the application's update tool replaces whole"/>
 <tool name="osmgmt.databasedetails.mount"/>
 <tool name="osmgmt.databasedetails.dismount"/>
 <tool name="osmgmt.databasedetails.truncate"/>
@@ -123,6 +130,17 @@ XData Elsewhere
 <screen name="AgentSwitches"/>
 <screen name="AgentTranscript"/>
 <screen name="AgentTranscripts"/>
+<screen name="AnalyticsAnalyzerLink"/>
+<screen name="AnalyticsArchitectLink"/>
+<screen name="AnalyticsCubeDimensionsTab"/>
+<screen name="AnalyticsCubeList"/>
+<screen name="AnalyticsCubeMeasuresTab"/>
+<screen name="AnalyticsCubeRelationshipsTab"/>
+<screen name="AnalyticsFolderItemList"/>
+<screen name="AnalyticsMdxQuery"/>
+<screen name="AnalyticsTermListEntryList"/>
+<screen name="AnalyticsTermListList"/>
+<screen name="AnalyticsUserPortalLink"/>
 <screen name="AuditList"/>
 <screen name="AuditSystemEventList"/>
 <screen name="AuditUserEventList"/>
@@ -178,12 +196,21 @@ XData Elsewhere
 <screen name="InteropJobList"/>
 <screen name="InteropLookupEntryList"/>
 <screen name="InteropLookupTableList"/>
+<screen name="InteropMessageContentsTab"/>
+<screen name="InteropMessageHeaderTab"/>
+<screen name="InteropMessageList"/>
+<screen name="InteropMessageTraceTab"/>
 <screen name="InteropMonitorList"/>
+<screen name="InteropProcessEditor"/>
 <screen name="InteropProcessList"/>
+<screen name="InteropProductionDiagram"/>
 <screen name="InteropProductionList"/>
 <screen name="InteropQueueList"/>
 <screen name="InteropQueueMessageList"/>
+<screen name="InteropRuleEditor"/>
 <screen name="InteropRuleList"/>
+<screen name="InteropSchemaViewer"/>
+<screen name="InteropTransformEditor"/>
 <screen name="InteropTransformList"/>
 <screen name="LanguageServerActivity"/>
 <screen name="LanguageServerForm"/>
@@ -298,9 +325,11 @@ Method TestEachScreenIsItsRowsKind()
 }
 
 /// <p>Each row action of a <code>writes</code> screen resolves to exactly one write tool of its own descriptor, its
-/// primary action to one or to the one tool that creates, and every bound tool is advertised but AD-53's two.</p>
+/// primary action to one or to the one tool that creates, and every bound tool is advertised but AD-53's three.</p>
 /// <p>Mutation (Rule 19): empty <parameter>OcuPilot.Screen.Tool.RoutineAppDelete.SCREENACTIONS</parameter> -- the
-/// application list's <code>delete</code> resolves to no tool and goes red.</p>
+/// application list's <code>delete</code> resolves to no tool and goes red; give
+/// <class>OcuPilot.Screen.Tool.AllowedDirectoryUpdate</class> a <code>SCREENACTIONS</code> of <code>add</code> -- the
+/// Allowed directories row goes red.</p>
 Method TestEachDeclaredActionResolvesToExactlyOneWriteTool()
 {
     Set tSC = ..Load(.tScreens, .tOrder, .tToolRows, .tWrites, .tReads, .tBound)
@@ -312,6 +341,10 @@ Method TestEachDeclaredActionResolvesToExactlyOneWriteTool()
         If $List(tScreens(tName), 1) '= "writes" Continue
         Set tClass = ..#DESCRIPTORPACKAGE _ tName
         Set tIds = $ClassMethod(tClass, "RowActionIds")
+        If $List(tScreens(tName), 4) '= "" {
+            Set tActions = tActions + ..CheckRouted(.tBound, .tWrites, tClass, tName, $List(tScreens(tName), 4))
+            Continue
+        }
         For tJ = 1:1:$ListLength(tIds) {
             Set tActions = tActions + 1
             Set tId = $List(tIds, tJ)
@@ -425,7 +458,7 @@ Method TestTheRosterAndElsewhereAreEveryRegisteredScreen()
 }
 
 /// <p>The roster, the tool listing and the bound-tool index. <var>pScreens</var>(name) is
-/// <code>$ListBuild(kind, list, reason)</code> and <var>pOrder</var> the names in roster order; <var>pToolRows</var>
+/// <code>$ListBuild(kind, list, reason, route)</code> and <var>pOrder</var> the names in roster order; <var>pToolRows</var>
 /// holds the <code>&lt;tool/&gt;</code> names; <var>pWrites</var>(name) is a write tool's listing entry and
 /// <var>pReads</var>(descriptor) a descriptor's read tool's name; <var>pBound</var>(descriptor, name) is a write tool's class.</p>
 ClassMethod Load(Output pScreens, Output pOrder, Output pToolRows, Output pWrites, Output pReads, Output pBound) As %Status
@@ -449,7 +482,7 @@ ClassMethod Load(Output pScreens, Output pOrder, Output pToolRows, Output pWrite
                     Set tSC = $$$ERROR($$$GeneralError, "a roster screen row is malformed or repeated: " _ tLine)
                     Quit
                 }
-                Set pScreens(tName) = $ListBuild(tKind, ..Attribute(tLine, "list"), ..Attribute(tLine, "reason"))
+                Set pScreens(tName) = $ListBuild(tKind, ..Attribute(tLine, "list"), ..Attribute(tLine, "reason"), ..Attribute(tLine, "route"))
                 Set pOrder = pOrder _ $ListBuild(tName)
             } ElseIf tLine [ "<tool " {
                 If (tName = "") || $Data(pToolRows(tName)) {
@@ -511,6 +544,33 @@ ClassMethod Elsewhere(Output pNames) As %Status
         Set tSC = ex.AsStatus()
     }
     Quit tSC
+}
+
+/// <p>The check a routed <code>writes</code> row gets (Story 18.46): <var>pRoute</var> is a <code>POST</code> route of the
+/// router, the screen binds exactly one write tool, which is unadvertised and declares no screen action, and the screen
+/// declares at least one action, none of which the screen action route resolves. Answers how many actions it checked.</p>
+Method CheckRouted(ByRef pBound, ByRef pWrites, pClass As %String, pName As %String, pRoute As %String) As %Integer [ Private ]
+{
+    Set tFound = 0
+    Set tRoutes = ##class(OcuPilot.Test.SaveHoldCoverage).Routes()
+    For tI = 1:1:$ListLength(tRoutes) {
+        Set tRoute = $List(tRoutes, tI)
+        If ($List(tRoute, 1) = ("/" _ pRoute)) && ($List(tRoute, 2) = "POST") Set tFound = 1
+    }
+    Do $$$AssertEquals(tFound, 1, pName _ ": POST /" _ pRoute _ " is a route of the router, which its actions are sent to")
+    Do $$$AssertEquals(..Count(.pBound, pClass), 1, pName _ " binds exactly one write tool")
+    Set tToolName = $Order(pBound(pClass, ""), 1, tToolClass)
+    If tToolName = "" Quit 0
+    Do $$$AssertEquals(''##class(OcuPilot.Screen.Tool.Registry).IsAdvertised(pWrites(tToolName)), 0, pName _ ":" _ tToolName _ " is unadvertised, so no provider list carries it")
+    Do $$$AssertEquals($ListLength($ClassMethod(tToolClass, "ScreenActionIds")), 0, pName _ ":" _ tToolName _ " declares no SCREENACTIONS, so the screen action route reaches no tool for it")
+    Set tIds = $ClassMethod(pClass, "RowActionIds")
+    Set tPrimary = $ClassMethod(pClass, "PrimaryActionId")
+    Set tActions = $ListLength(tIds) + (tPrimary '= "")
+    Do $$$AssertTrue(tActions > 0, pName _ " declares actions, which are sent through POST /" _ pRoute)
+    For tI = 1:1:$ListLength(tIds) {
+        Do $$$AssertEquals(..Resolving(.pBound, pClass, $List(tIds, tI)), 0, pName _ ":" _ $List(tIds, tI) _ " resolves to no tool on the screen action route, because it is sent through POST /" _ pRoute)
+    }
+    Quit tActions
 }
 
 /// <p>How many write tools are bound to <var>pDescriptor</var>.</p>

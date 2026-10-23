@@ -51,6 +51,9 @@ const SEED_WINDOW_LINES = 200;
 /** A marker no other console-log entry carries, so the seeded entries are findable by search. */
 const MARKER = 'OcuPilotMessagesSpec';
 
+/** The Live tail test's own marker, which the seed count below never counts as a seeded entry. */
+const LIVE_MARKER = 'OcuPilotMessagesLive';
+
 /** The event name the seeded entries carry, which is the file's bracketed category. */
 const EVENT = 'OcuPilot.MessagesSpec';
 
@@ -77,6 +80,21 @@ const SEEDED = [
 
 let browser = null;
 
+/**
+ * Put one entry in the instance's `messages.log` through its own writer, `WriteToConsoleLog`, in its
+ * own argument order (Message, Flag, Severity, Event). Flag 0: the entry belongs in the file, not on
+ * the operator console.
+ */
+function writeConsoleLine(text, severity) {
+  const command = `##class(%SYS.System).WriteToConsoleLog("${text}",0,${severity},"${EVENT}")`;
+  const written = spawnSync(
+    'docker',
+    ['exec', config.container, 'iris', 'session', 'iris', '-U', 'HSCUSTOM', command],
+    { encoding: 'utf8', timeout: 120000 }
+  );
+  assert.equal(written.status, 0, `severity ${severity} was written:\n${written.stdout ?? ''}${written.stderr ?? ''}`);
+}
+
 before(async () => {
   assert.notEqual(config.container, LIVE_CONTAINER, 'this spec drives the throwaway, never the live container');
   const ready = await (await fetch(`${config.origin}${READINESS_PATH}`)).json();
@@ -100,22 +118,7 @@ before(async () => {
     { encoding: 'utf8', timeout: 60000 }
   );
   if (Number((already.stdout ?? '0').trim()) < SEEDED.length) {
-    for (const entry of SEEDED) {
-      // The instance's own writer, in its own argument order (Message, Flag, Severity, Event).
-      // Flag 0: the entry belongs in the file, not on the operator console.
-      const command =
-        `##class(%SYS.System).WriteToConsoleLog("${entry.text}",0,${entry.severity},"${EVENT}")`;
-      const written = spawnSync(
-        'docker',
-        ['exec', config.container, 'iris', 'session', 'iris', '-U', 'HSCUSTOM', command],
-        { encoding: 'utf8', timeout: 120000 }
-      );
-      assert.equal(
-        written.status,
-        0,
-        `severity ${entry.severity} was written:\n${written.stdout ?? ''}${written.stderr ?? ''}`
-      );
-    }
+    for (const entry of SEEDED) writeConsoleLine(entry.text, entry.severity);
     const seeded = spawnSync(
       'docker',
       [
@@ -324,9 +327,9 @@ test('AC5: a severity chip filters the rows, and Clear filter restores them and 
  * waited for and what the page showed instead -- Puppeteer's own message names neither, and a
  * failure line nobody can quote is a second run's work (DW-1119).
  */
-async function waitNamed(page, predicate, what, args = []) {
+async function waitNamed(page, predicate, what, args = [], timeoutMs = config.navigationTimeoutMs) {
   try {
-    await page.waitForFunction(predicate, { timeout: config.navigationTimeoutMs }, ...args);
+    await page.waitForFunction(predicate, { timeout: timeoutMs }, ...args);
   } catch (cause) {
     // The dump is itself a page read, and a page closed or torn down under the wait cannot answer
     // it -- unguarded, that read throws and replaces the named failure with a bare protocol error,
@@ -472,6 +475,148 @@ test('AC8: the fault banner opens messages.log and brings the Logs side bar with
       STRINGS.messagesLogListLabel,
       'with messages.log as the entry it marks current'
     );
+  } finally {
+    await context.close();
+  }
+});
+
+test('Story 18.38: Live tail brings a line the instance writes onto the screen without Load newer, and off drops the tail', async () => {
+  const { context, page } = await signedInAtViewer();
+  try {
+    // The first window has answered: its rows are on screen, and Live tail is offered on the current file.
+    await waitNamed(page, () => document.querySelector('[data-ocu-log="live"]') !== null, 'Live tail was offered once the first window answered');
+    const label = await page.$eval('[data-ocu-log="live"]', (node) => node.textContent.trim());
+    assert.equal(label, STRINGS.logViewerLiveTail, 'the toggle carries the published word');
+    assert.equal(await page.$eval('[data-ocu-log="live"]', (node) => node.getAttribute('aria-pressed')), 'false', 'and is off until pressed');
+
+    const tails = [];
+    const pages = [];
+    page.on('request', (request) => {
+      const url = new URL(request.url());
+      if (url.pathname.endsWith('/logs/messages/tail')) tails.push(url.search);
+      else if (url.pathname.endsWith('/logs/messages') && url.search.includes('offset=')) pages.push(url.search);
+    });
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    assert.equal(tails.length, 0, 'nothing is tailed while Live tail is off');
+
+    await page.click('[data-ocu-log="live"]');
+    await waitNamed(page, () => document.querySelector('[data-ocu-log="live"]')?.getAttribute('aria-pressed') === 'true', 'the toggle read pressed');
+
+    const marker = `${LIVE_MARKER} live ${Date.now()}`;
+    writeConsoleLine(marker, 0);
+    await waitNamed(
+      page,
+      (text) => [...document.querySelectorAll('.ocu-log-rows .ocu-log-cell-text')].some((node) => node.textContent.includes(text)),
+      'the written line appeared without Load newer',
+      [marker],
+      10000
+    );
+    assert.ok(tails.length >= 1, `the line came through the tail route: ${tails.length} tail requests`);
+    assert.match(tails[0], /identity=.+&size=\d+/, `carrying the page's cursor: ${tails[0]}`);
+    assert.ok(pages.length >= 1, 'and a page read from the held offset');
+
+    // Off: the tail held in flight is dropped, so a line written now never reaches the screen and
+    // nothing more is requested.
+    await page.click('[data-ocu-log="live"]');
+    await waitNamed(page, () => document.querySelector('[data-ocu-log="live"]')?.getAttribute('aria-pressed') === 'false', 'the toggle read off');
+    const tailsAtOff = tails.length;
+    const pagesAtOff = pages.length;
+    const later = `${LIVE_MARKER} after off ${Date.now()}`;
+    writeConsoleLine(later, 0);
+    await new Promise((resolve) => setTimeout(resolve, 4000));
+    assert.equal(tails.length, tailsAtOff, 'no further tail is requested once Live tail is off');
+    assert.equal(pages.length, pagesAtOff, 'and no page is read for the dropped answer');
+    const shown = await page.$$eval('.ocu-log-rows .ocu-log-cell-text', (nodes, text) => nodes.some((node) => node.textContent.includes(text)), later);
+    assert.equal(shown, false, 'so the line written after it stays off the screen until Load newer');
+  } finally {
+    await context.close();
+  }
+});
+
+/**
+ * More than the six connections a browser opens to one HTTP/1.1 origin: a tail that kept its
+ * connection after it was abandoned would leave the shell no room for the next request.
+ */
+const ABANDONED_TAILS = 8;
+
+/** How long a shell call may take once the tails are abandoned. A page read answers in milliseconds. */
+const SHELL_ANSWER_MS = 5000;
+
+/** Poll `predicate` from here until it holds, and name what was awaited when it never does. */
+async function until(predicate, what, timeoutMs = config.navigationTimeoutMs) {
+  const deadline = Date.now() + timeoutMs;
+  while (!predicate()) {
+    if (Date.now() > deadline) throw new Error(`timed out after ${timeoutMs} ms waiting until ${what}`);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+}
+
+// Mutation (Rule 19): `stopLive` without `this.liveAbort?.abort()`, bundle rebuilt and redeployed -> red at
+// round 1's canceled-or-answered wait; with that wait and the cancel count removed and eight rounds run,
+// the page-read assertion goes red alone (observed).
+test('Story 18.38: Live tail turned on and off more than six times in a row cancels each held tail and leaves the shell answering', async () => {
+  const { context, page } = await signedInAtViewer();
+  try {
+    await waitNamed(page, () => document.querySelector('[data-ocu-log="live"]') !== null, 'Live tail was offered once the first window answered');
+
+    // Tails with one cursor are the same GET, and identical tails were measured not to use up the
+    // browser's connections (inference: it lets one of several identical GETs reach the network at a
+    // time), which would hide a held one. Each tail is given a URL of its own here, as tails asked at
+    // different cursors have, so every held tail needs a connection of its own.
+    const isTail = (request) => new URL(request.url()).pathname.endsWith('/logs/messages/tail');
+    const tails = [];
+    const cancelled = [];
+    const finished = [];
+    await page.setRequestInterception(true);
+    page.on('request', (request) => {
+      if (!isTail(request)) {
+        void request.continue();
+        return;
+      }
+      tails.push(request.url());
+      void request.continue({ url: `${request.url()}&asked=${tails.length}` });
+    });
+    page.on('requestfailed', (request) => {
+      if (isTail(request)) cancelled.push(request.failure()?.errorText ?? '');
+    });
+    page.on('requestfinished', (request) => {
+      if (isTail(request)) finished.push(request.url());
+    });
+
+    // A tail the server answers because the instance wrote to messages.log meanwhile is not abandoned:
+    // the viewer reads the change and holds the next one. Rounds therefore repeat until eight tails
+    // have been abandoned, and each round waits until every tail asked so far has ended.
+    for (let round = 1; cancelled.length < ABANDONED_TAILS; round += 1) {
+      assert.ok(round <= ABANDONED_TAILS * 2, `${ABANDONED_TAILS} tails abandoned within ${ABANDONED_TAILS * 2} rounds: ${cancelled.length}`);
+      const asked = tails.length;
+      await page.click('[data-ocu-log="live"]');
+      await waitNamed(page, () => document.querySelector('[data-ocu-log="live"]')?.getAttribute('aria-pressed') === 'true', `the toggle read pressed in round ${round}`);
+      await until(() => tails.length > asked, `a tail was requested in round ${round}`);
+      // Let the request reach the wire, so it holds a connection rather than waiting for one.
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      await page.click('[data-ocu-log="live"]');
+      await waitNamed(page, () => document.querySelector('[data-ocu-log="live"]')?.getAttribute('aria-pressed') === 'false', `the toggle read off in round ${round}`);
+      // Each abandoned tail is cancelled in the browser, not left to run to the server's bound.
+      await until(() => cancelled.length + finished.length === tails.length, `every tail asked by round ${round} was canceled or answered`, SHELL_ANSWER_MS);
+    }
+    assert.deepEqual(cancelled, Array(ABANDONED_TAILS).fill('net::ERR_ABORTED'), 'every abandoned tail ended as an abort');
+
+    // Another shell call completes at once: no connection is held by a tail nobody is waiting for.
+    await page.waitForSelector('[data-ocu-log="load-newer"]', { timeout: config.navigationTimeoutMs });
+    const answered = page.waitForResponse(
+      (response) => {
+        const url = new URL(response.url());
+        return url.pathname.endsWith('/logs/messages') && url.search.includes('offset=');
+      },
+      { timeout: SHELL_ANSWER_MS }
+    );
+    await page.click('[data-ocu-log="load-newer"]');
+    try {
+      await answered;
+    } catch (cause) {
+      throw new Error(`the page read went unanswered for ${SHELL_ANSWER_MS} ms after ${ABANDONED_TAILS} abandoned tails, so a held connection was not released`, { cause });
+    }
+    assert.equal(tails.length, cancelled.length + finished.length, 'and no tail was requested once Live tail was off');
   } finally {
     await context.close();
   }

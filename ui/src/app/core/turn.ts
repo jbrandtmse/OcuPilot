@@ -43,6 +43,7 @@ import { PRODUCTION_STATE_MOVED } from './proposal-view.ts';
 import { readBackOf, type ReadBack } from './read-back.ts';
 import { sqlOutcomeLines } from './sql-answer.ts';
 import { testAnswerOf, testOutcomeLines } from './test-answer.ts';
+import { transformAnswerOf, transformOutcomeLines } from './test-answer.ts';
 import type { ScreenContextPayload } from './screen-context';
 import type { NavigationKind, TokenStorage } from './token-store';
 import { type DraftOutcome, requestDraft } from './draft.ts';
@@ -222,6 +223,12 @@ export interface TurnProposalUnchangedRow {
   readonly value: string;
   /** As on a diff row: the declared word an empty value reads as, present only where sent (DW-1016). */
   readonly emptyKey?: string;
+  /**
+   * The member count of a classified-opaque value (an array or object no reviewed entry describes
+   * member by member), present only where the instance sent one in place of `value`. The count is
+   * all the wire carries of such a value (AD-3, AD-35).
+   */
+  readonly count?: number;
 }
 
 /**
@@ -402,6 +409,16 @@ export function parseEgress(value: unknown): TurnEgress | null {
 export type SendOutcome = 'sent' | 'locked' | 'error';
 
 /**
+ * The guided workflow the next send carries (Story 20.12, AD-66): its catalog id, which the
+ * instance validates and the turn body names, and the text of the suggested prompt that started it,
+ * which the workflow chip shows. Both come from a descriptor's prompt, never from the user's typing.
+ */
+export interface ActiveWorkflow {
+  readonly id: string;
+  readonly text: string;
+}
+
+/**
  * What a confirm or a cancel answered (Story 5.3).
  *
  * **Every value here came from the instance.** `state`, `closedReason` and `confirmedAt` are the
@@ -501,6 +518,8 @@ export function outputLinesOf(output: unknown): readonly string[] {
   if (output === null || typeof output !== 'object') return [];
   if (typeof (output as Record<string, unknown>)['outcome'] === 'string') return sqlOutcomeLines(output);
   if (testAnswerOf(output) !== null) return testOutcomeLines(output);
+  // Story 20.27: a confirmed data transformation test answers its own status, classes, lines and console (AD-39's seventh exception).
+  if (transformAnswerOf(output) !== null) return transformOutcomeLines(output);
   const lines = (output as Record<string, unknown>)['lines'];
   return Array.isArray(lines) ? lines.filter((line): line is string => typeof line === 'string') : [];
 }
@@ -511,6 +530,8 @@ export function outputLinesOf(output: unknown): readonly string[] {
  */
 export function outputErrorsOf(output: unknown): boolean | null {
   if (output === null || typeof output !== 'object') return null;
+  // A host or data transformation test's `errors` is its own failure, never a compile's.
+  if (testAnswerOf(output) !== null || transformAnswerOf(output) !== null) return null;
   const record = output as Record<string, unknown>;
   return Array.isArray(record['lines']) && typeof record['errors'] === 'boolean' ? record['errors'] : null;
 }
@@ -662,6 +683,7 @@ function parseProposalUnchanged(value: unknown): TurnProposalUnchangedRow[] {
       field: textAt(row, 'field'),
       value: textAt(row, 'value'),
       ...(textAt(row, 'emptyKey') !== '' ? { emptyKey: textAt(row, 'emptyKey') } : {}),
+      ...(typeof row['count'] === 'number' && Number.isInteger(row['count']) && row['count'] >= 0 ? { count: row['count'] } : {}),
     });
   }
   return rows;
@@ -1011,6 +1033,9 @@ export class TurnStore {
   private lockedValue = false;
   private restoredValue = false;
 
+  /** The guided workflow every send carries until it is ended, or `null` (Story 20.12). */
+  private workflowValue: ActiveWorkflow | null = null;
+
   /** The last Send the instance refused with anything but 409, or `null` (Story 4.8, DW-1054). */
   private sendErrorValue: SendRefusal | null = null;
 
@@ -1084,6 +1109,18 @@ export class TurnStore {
 
   conversationId(): string | null {
     return this.conversationIdValue;
+  }
+
+  /** The guided workflow every send carries, or `null` (Story 20.12). */
+  workflow(): ActiveWorkflow | null {
+    return this.workflowValue;
+  }
+
+  /** End the guided workflow: the next send names none. A no-op when none is active. */
+  endWorkflow(): void {
+    if (this.workflowValue === null) return;
+    this.workflowValue = null;
+    this.notify();
   }
 
   /** Whether `restore()` has settled -- at bootstrap, and again after sign-out. */
@@ -1204,8 +1241,17 @@ export class TurnStore {
    * resolves, which is what lets the caller clear the draft immediately on `'sent'`. Polling runs
    * detached from this call; `busy()` clears itself, and the finished turn lands in `entries()`,
    * whenever the poll loop reaches a terminal state.
+   *
+   * **A guided workflow rides every send (Story 20.12, AD-66).** The body names `workflow` -- the
+   * `workflow` argument's id, else the active workflow's -- and an accepted send with a `workflow`
+   * argument makes it the active one, replacing any other. A send the instance did not accept
+   * changes nothing, the active workflow included.
    */
-  async send(message: string, context: ScreenContextPayload | null = null): Promise<SendOutcome> {
+  async send(
+    message: string,
+    context: ScreenContextPayload | null = null,
+    workflow: ActiveWorkflow | null = null
+  ): Promise<SendOutcome> {
     if (this.busyValue) {
       this.lockedValue = true;
       this.notify();
@@ -1231,12 +1277,14 @@ export class TurnStore {
         return 'error';
       }
     }
+    const carried = workflow ?? this.workflowValue;
     const started = await this.api.requestJson<{ turnId: string }>(TURN_PATH, {
       method: 'POST',
       body: JSON.stringify({
         message,
         conversationId: this.conversationIdValue,
         ...(context !== null ? { context } : {}),
+        ...(carried !== null ? { workflow: carried.id } : {}),
       }),
     });
     if (generation !== this.pollGeneration) {
@@ -1289,6 +1337,7 @@ export class TurnStore {
     // An accepted turn closes the conversation's live proposals on the instance, so the ended
     // turn's re-read stops here; a refused send closed nothing and leaves it running.
     this.rereadGeneration += 1;
+    if (workflow !== null) this.workflowValue = workflow;
     this.currentTurnId = started.body.turnId;
     this.liveEntryValue = {
       seq: -1,
@@ -1604,6 +1653,7 @@ export class TurnStore {
     }
     this.entriesValue = [];
     this.lockedValue = false;
+    this.workflowValue = null;
     this.rereadGeneration += 1;
     this.proposalTurns.clear();
     // The instance closed every live proposal of this caller when it minted the conversation, and
@@ -1639,6 +1689,7 @@ export class TurnStore {
     this.entriesValue = [];
     this.conversationIdValue = null;
     this.restoredValue = false;
+    this.workflowValue = null;
     this.pendingNavigationValue = null;
     this.actedNavigationSeq = 0;
     this.removeItem(CONVERSATION_STORAGE_KEY);

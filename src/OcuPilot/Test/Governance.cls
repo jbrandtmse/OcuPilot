@@ -47,6 +47,9 @@ Parameter INTEROPRUNTIMEDISABLED = "interop.queuemessages.abort,interop.queues.a
 /// <p>Story 20.5's lookup entry remove and lookup table delete, which ship disabled (AD-22).</p>
 Parameter INTEROPLOOKUPDISABLED = "interop.lookupentries.remove,interop.lookuptables.delete,interop.lookuptables.import";
 
+/// <p>Story 20.31's message resend and edit and resend, which ship disabled (AD-22): a delivered copy cannot be recalled.</p>
+Parameter INTEROPMESSAGEDISABLED = "interop.messages.resend,interop.messageheader.editresend";
+
 /// <p>The managed file transfer connection delete and token revoke, which the baseline also disables
 /// (Story 18.26).</p>
 Parameter MFTDISABLED = "security.mftconnections.delete,security.mftconnections.revoketoken";
@@ -77,6 +80,9 @@ Parameter ROUTINEAPPDELETE = "webapp.routineapps.delete";
 
 /// <p>The REST service delete, which the baseline also disables (Story 18.32).</p>
 Parameter RESTAPIDELETE = "webapp.restapis.delete";
+
+/// <p>The allowed directories update, which the baseline also disables (Story 18.42).</p>
+Parameter ALLOWLISTUPDATE = "security.alloweddirectories.update";
 
 /// <p>Story 18.4's eight disk operations, which the baseline disables.</p>
 Parameter DISKOPERATIONS = "osmgmt.databasedetails.compact,osmgmt.databasedetails.defragment,osmgmt.databasedetails.dismount,osmgmt.databasedetails.mount,osmgmt.databasedetails.truncate,osmgmt.databases.integrity,osmgmt.localdatabases.expand,osmgmt.localdatabases.grow";
@@ -167,11 +173,13 @@ Method TestTheDefaultEnablesEveryWriteButTheBaselineDisabled()
         If tKey = ..#INTEROPITEMREMOVE Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#INTEROPRUNTIMEDISABLED), tKey) Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#INTEROPLOOKUPDISABLED), tKey) Set tExpected = "0|baseline"
+        If $ListFind($ListFromString(..#INTEROPMESSAGEDISABLED), tKey) Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#MFTDISABLED), tKey) Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#LICENSEDISABLED), tKey) Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#ECPDISABLED), tKey) Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#ENCRYPTIONDISABLED), tKey) Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#WALLETKEYDISABLED), tKey) Set tExpected = "0|baseline"
+        If tKey = ..#ALLOWLISTUPDATE Set tExpected = "0|baseline"
         If ..Resolved(tKey) '= tExpected Set tWrong = tWrong _ $ListBuild(tKey _ "=" _ ..Resolved(tKey))
     }
     Do $$$AssertTrue(tCount > 0, "there are write keys to resolve (" _ tCount _ ")")

@@ -20,7 +20,7 @@
  *
  * **It refuses the live and development containers.** It touches only probe applications named `OcuProbe1831...` and
  * probe roles named `OcuProbe1833Role...`: `before` and `after` remove them by exact name with
- * `OcuPilot.Test.RoutineAppProbe.RemoveAll`. It never sends a write naming `OcuPilotState` or `OcuPilotIdentity`: its
+ * `OcuPilot.Test.RoutineAppProbe.RemoveAll`. It never sends a write naming `OcuPilotState`, `OcuPilotIdentity` or `OcuPilotSslRead`: its
  * clicks on the own application's refused Delete and refused tab controls are asserted to send nothing. Every read of the list waits for the list's own answer, its rows, before it counts or clicks.
  *
  * Run, from `ui/`: `npm run build && docker cp dist/ocupilot-ui/browser/. <throwaway>:/durable/iris/csp/ocupilot/`,
@@ -38,7 +38,7 @@ import puppeteer from 'puppeteer';
 import { LIVE_CONTAINER, browserConfig, launchOptions } from '../browser.config.mjs';
 import { FILTER_SELECTOR, ROW_SELECTOR, clickRowCentre } from './list-spec.mjs';
 import { signedInAt } from './panel-spec.mjs';
-import { sideBarLabels } from './side-bar-spec.mjs';
+import { assertDrawnAtDeclaredIndex, sideBarLabels } from './side-bar-spec.mjs';
 import { assertThrowaway } from './structural-walk.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -96,7 +96,7 @@ function held() {
   return values.NAMES;
 }
 
-/** Wait until the list has answered: at least one row (OcuPilot's own two are always listed). */
+/** Wait until the list has answered: at least one row (OcuPilot's own three are always listed). */
 async function waitForListAnswered(page) {
   await page.waitForFunction((rows) => document.querySelector(rows) !== null, { timeout: config.navigationTimeoutMs }, ROW_SELECTOR);
 }
@@ -134,9 +134,9 @@ after(async () => {
 });
 
 // Mutation (Rule 19): give the list a `sideBarPosition` of 0, regenerate the mirror, rebuild and redeploy -> the
-// fifth-place assertion goes red; drop the `ocupilot-routine-application` branch from `selfProtectionReason`, rebuild
+// declared-index assertion goes red; drop the `ocupilot-routine-application` branch from `selfProtectionReason`, rebuild
 // and redeploy -> the aria-disabled assertion goes red.
-test("C4, C3: Web applications lists Privileged routine applications fifth, its entry opens the list, and OcuPilot's own application is drawn with its Delete refused", async () => {
+test("C4, C3: Web applications lists Privileged routine applications, its entry opens the list, and OcuPilot's own application is drawn with its Delete refused", async () => {
   const { context, page } = await signedInAt(browser, config, LIST_URL);
   try {
     if ((await page.$('app-side-bar nav.ocu-side-bar')) === null) {
@@ -147,7 +147,7 @@ test("C4, C3: Web applications lists Privileged routine applications fifth, its 
     await page.waitForSelector('app-side-bar nav.ocu-side-bar', { timeout: config.navigationTimeoutMs });
     const labels = await page.$$eval('app-side-bar .ocu-side-bar-item .ocu-side-bar-label', (nodes) => nodes.map((node) => node.textContent.trim()));
     assert.deepEqual(labels, sideBarLabels('web-applications'), 'the side bar lists its entries in their declared order');
-    assert.equal(labels[4], STRINGS.routineAppListLabel, 'Privileged routine applications is the fifth');
+    assertDrawnAtDeclaredIndex(labels, 'web-applications', STRINGS.routineAppListLabel);
     await page.goto(`${config.origin}/ocupilot/web-applications/list?ns=HSCUSTOM`, { waitUntil: 'networkidle2' });
     await page.waitForFunction(
       (label) => Array.from(document.querySelectorAll('app-side-bar .ocu-side-bar-item')).some((item) => item.textContent.trim() === label),
@@ -272,12 +272,12 @@ test('C2: create a probe application, change its description and delete it with 
 
 // Mutation (Rule 19), each rebuilt and redeployed: send `Role` under another name in the tabs' `onAssignApplicationRole`
 // -> the first action assertion goes red; the tabs' `ruleReason` answering `''` -> the own application's aria-disabled
-// legs go red (its clicks then post, refused 403 by the instance, so the own two are never written).
+// legs go red (its clicks then post, refused 403 by the instance, so the own applications are never written).
 test("C2, C4, C5: the editor's tabs add and remove a role, a matching role and a routine; OcuPilot's own application's tab controls are aria-disabled", async () => {
   removeProbes();
   const tabsName = 'OcuProbe1831Tabs';
   const privilegedRole = 'OcuProbe1833RoleTab';
-  const own = () => iris([mark('OWN', `$Translate(##class(OcuPilot.Test.RoutineAppWrite).OwnTwo(),$Char(10),"|")`)], ['OWN']).values.OWN;
+  const own = () => iris([mark('OWN', `$Translate(##class(OcuPilot.Test.RoutineAppWrite).OwnApplications(),$Char(10),"|")`)], ['OWN']).values.OWN;
   const targets = (match) => iris([mark('T', `##class(${PROBE}).Targets("${tabsName}","${match}")`)], ['T']).values.T;
   const entries = () => iris([mark('E', `##class(${PROBE}).Entries("${tabsName}")`)], ['E']).values.E;
   iris([`Do ##class(${PROBE}).EnsureRole("Tab","%Admin_Secure:U")`, `Do ##class(${PROBE}).Seed("","${tabsName}")`]);

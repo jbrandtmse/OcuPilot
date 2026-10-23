@@ -35,7 +35,7 @@
 /// answer alone.</p>
 /// <p>Seams a fixture subclass overrides: <method>GateClass</method> and
 /// <method>BoundSeconds</method>. Production overrides neither.</p>
-Class OcuPilot.Port.SqlPort Extends %RegisteredObject
+Class OcuPilot.Port.SqlPort Extends (%RegisteredObject, OcuPilot.Kernel.RowFetch)
 {
 
 /// <p>The one endpoint this port serves.</p>
@@ -99,12 +99,6 @@ Parameter MAXROWS As INTEGER = 1000;
 Parameter MAXCHANGES As INTEGER = 100;
 
 Parameter MAXCHANGESTEXT As INTEGER = 1000000;
-
-/// <p>The bounds an answer is held to: a cell, and the whole answer measured as each kept row's JSON
-/// text, cut by whole rows from the end.</p>
-Parameter MAXCELL As INTEGER = 1000;
-
-Parameter MAXANSWER As INTEGER = 1000000;
 
 /// <p>ODBC select mode, so dates and times read alike across locales.</p>
 Parameter SELECTMODE As INTEGER = 1;
@@ -1054,38 +1048,7 @@ ClassMethod Executed(pNamespace As %String, pText As %String, pType As %Integer,
                 For tI = 1:1:tMeta.columns.Count() {
                     Do tColumns.%Push(tMeta.columns.GetAt(tI).colName, "string")
                 }
-                Set tWidth = tColumns.%Size()
-                Set tRows = []
-                Set tTotal = 0
-                Set tTruncated = 0
-                Set tMore = 0
-                Set tCut = 0
-                While tSet.%Next() {
-                    If tRows.%Size() >= pMaxRows {
-                        Set tTruncated = 1
-                        Set tMore = 1
-                        Quit
-                    }
-                    Set tRow = []
-                    For tI = 1:1:tWidth {
-                        Set tValue = tSet.%GetData(tI)
-                        If $IsObject(tValue) Set tValue = ""
-                        If $Length(tValue) > ..#MAXCELL {
-                            Set tValue = $Extract(tValue, 1, ..#MAXCELL - 1) _ $Char(8230)
-                            Set tTruncated = 1
-                            Set tCut = 1
-                        }
-                        Do tRow.%Push(tValue, "string")
-                    }
-                    Set tLength = $Length(tRow.%ToJSON())
-                    If tTotal + tLength > ..#MAXANSWER {
-                        Set tTruncated = 1
-                        Set tMore = 1
-                        Quit
-                    }
-                    Set tTotal = tTotal + tLength
-                    Do tRows.%Push(tRow)
-                }
+                Do ..FetchRows(tSet, tColumns, pMaxRows, .tRows, .tTruncated, .tMore, .tCut)
                 If tSet.%SQLCODE < 0 {
                     Set tCode = tSet.%SQLCODE
                     Set tMessage = tSet.%Message

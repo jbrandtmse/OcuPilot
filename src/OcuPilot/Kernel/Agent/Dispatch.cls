@@ -10,6 +10,10 @@
 /// <li>for a write tool, the restraint verdict (<class>OcuPilot.Kernel.Restraint</class>) -- blocked
 /// is the verdict's own code, and a verdict that could not be read is
 /// <code>TOOL.UNAVAILABLE</code> whatever it says;</li>
+/// <li>for a write tool in a guided-workflow turn (AD-66), the workflow's refusal
+/// (<method>OcuPilot.Kernel.Agent.Workflow.WriteRefusal</method>) -- <code>WORKFLOW.NOTASTEP</code>
+/// for a tool no step names, <code>WORKFLOW.ONECHANGE</code> once the turn holds a proposal -- and a
+/// turn whose workflow or proposal count could not be read is <code>TOOL.UNAVAILABLE</code>;</li>
 /// <li>every declared pair against the user's <b>current</b> grants
 /// (<code>$SYSTEM.Security.CheckUserPermission</code>, not the job's frozen <code>$ROLES</code>) --
 /// <code>AUTH.NOPRIVILEGE</code> with <code>detail.failedPair</code>, never retried; pairs that
@@ -261,6 +265,24 @@ ClassMethod AnswerOne(pKey As %String, pUser As %String, pDefinitionId As %Strin
                 }
                 Quit
             }
+            Set tSC = ##class(OcuPilot.Kernel.State.Turn).GuardedWorkflowOf(pKey, .tWorkflow)
+            If $$$ISERR(tSC) {
+                Do ..LogFault("turn " _ pKey _ ": the turn's guided workflow could not be read for " _ pName, tSC, tUnavailable)
+                Quit
+            }
+            If tWorkflow '= "" {
+                Set tSC = ##class(OcuPilot.Kernel.State.Propose).GuardedCountForTurn(pKey, .tMinted)
+                If $$$ISERR(tSC) {
+                    Do ..LogFault("turn " _ pKey _ ": the turn's proposals could not be counted for " _ pName, tSC, tUnavailable)
+                    Quit
+                }
+                Set tRefusal = ##class(OcuPilot.Kernel.Agent.Workflow).WriteRefusal(tWorkflow, pName, tMinted)
+                If tRefusal '= "" {
+                    Set pContent = ..ErrorContent(tRefusal)
+                    Set pReason = ##class(OcuPilot.Api.Error).ReasonForToolCode(tRefusal)
+                    Quit
+                }
+            }
         }
 
         Set tPairs = $ClassMethod(tRegistry, "RequiredPairs", tTool, .tResolved)
@@ -407,8 +429,9 @@ ClassMethod RecordLedger(pKey As %String, pUser As %String, pRoute As %String, p
 /// and arguments -- then call the resolved tool's own <code>Directive</code> in place of
 /// <code>InvokeTool</code>. Never called for an <code>instance</code>-fulfilled tool.</p>
 /// <p><var>pPending</var> is 1 only once every check has passed and <code>Directive</code> answered
-/// a route to open, with <var>pRoute</var>/<var>pEntityId</var> the values it validated and
-/// <var>pToolName</var> the canonical name the caller records the announce and tool steps under.
+/// a route to open, with <var>pRoute</var>, <var>pEntityId</var> and <var>pParentId</var> the values
+/// it validated (at most one of the two ids is set) and <var>pToolName</var> the canonical name the
+/// caller records the announce and tool steps under.
 /// <var>pTarget</var> is <method>TargetOf</method>'s raw answer, and <var>pArguments</var> and
 /// <var>pArgumentsTruncated</var> are set the same way <method>AnswerOne</method> sets them
 /// (Story 4.5), whichever branch answers.</p>
@@ -435,11 +458,12 @@ ClassMethod RecordLedger(pKey As %String, pUser As %String, pRoute As %String, p
 /// return before any pair is read. It is what tells an honestly-empty requirement from one nobody
 /// read (DW-1305); <var>pSecretDeclared</var> cannot answer that question and must not be used
 /// for it.</p>
-ClassMethod ResolveClientCall(pUser As %String, pBlock As %DynamicObject, pLimitsClass As %String, Output pPending As %Boolean, Output pToolName As %String, Output pRoute As %String, Output pEntityId As %String, Output pTarget As %String, Output pArguments As %String, Output pArgumentsTruncated As %Boolean, Output pIsError As %Boolean, Output pContent As %String, Output pReason As %String, Output pFailedPair As %String, pKey As %String = "", Output pInput As %DynamicAbstractObject, Output pDeclaredPairs As %List, Output pCallPairs As %List, Output pSecretNames As %List, Output pSecretDeclared As %Boolean, Output pPairsResolved As %Boolean, Output pCriterion As %String, Output pCriteria As %DynamicObject) As %Status
+ClassMethod ResolveClientCall(pUser As %String, pBlock As %DynamicObject, pLimitsClass As %String, Output pPending As %Boolean, Output pToolName As %String, Output pRoute As %String, Output pEntityId As %String, Output pTarget As %String, Output pArguments As %String, Output pArgumentsTruncated As %Boolean, Output pIsError As %Boolean, Output pContent As %String, Output pReason As %String, Output pFailedPair As %String, pKey As %String = "", Output pInput As %DynamicAbstractObject, Output pDeclaredPairs As %List, Output pCallPairs As %List, Output pSecretNames As %List, Output pSecretDeclared As %Boolean, Output pPairsResolved As %Boolean, Output pCriterion As %String, Output pCriteria As %DynamicObject, Output pParentId As %String) As %Status
 {
     Set pInput = ""
     Set pCriterion = ""
     Set pCriteria = ""
+    Set pParentId = ""
     Set pDeclaredPairs = ""
     Set pCallPairs = ""
     Set pSecretNames = ""
@@ -558,7 +582,7 @@ ClassMethod ResolveClientCall(pUser As %String, pBlock As %DynamicObject, pLimit
             Quit
         }
 
-        Set tSC = $ClassMethod(tTool.%Get("class"), "Directive", tTool.%Get("descriptor"), tInput, .tDirectiveRoute, .tDirectiveEntityId, .tFault, .tDirectiveCriterion, .tDirectiveCriteria)
+        Set tSC = $ClassMethod(tTool.%Get("class"), "Directive", tTool.%Get("descriptor"), tInput, .tDirectiveRoute, .tDirectiveEntityId, .tFault, .tDirectiveCriterion, .tDirectiveCriteria, .tDirectiveParentId)
         If $$$ISERR(tSC) {
             If $IsObject(tFault) && (tFault.%Get("code") '= "") {
                 ; The fault's detail travels with its code (AD-39): a criteria refusal names the
@@ -577,6 +601,7 @@ ClassMethod ResolveClientCall(pUser As %String, pBlock As %DynamicObject, pLimit
 
         Set pRoute = tDirectiveRoute
         Set pEntityId = tDirectiveEntityId
+        Set pParentId = $Get(tDirectiveParentId)
         Set pCriterion = $Get(tDirectiveCriterion)
         Set pCriteria = $Get(tDirectiveCriteria)
         Set pPending = 1
@@ -595,14 +620,15 @@ ClassMethod ResolveClientCall(pUser As %String, pBlock As %DynamicObject, pLimit
 
 /// <p>The <code>tool_result</code> content for a client-fulfilled call that has been announced and
 /// waited on (Story 4.7, AD-11 invariant 3, AD-39): <code>navigated</code> and <code>route</code>
-/// always, plus <code>entityId</code> when the call named a row and <code>code</code> when it did
-/// not navigate. <var>pOutcome</var> is <code>"opened"</code> (<code>navigated</code> true, no
-/// <code>code</code>) or anything else -- <code>"refused"</code> or <code>"unavailable"</code>
-/// (<code>navigated</code> false, <code>pCode</code> carried through).</p>
-/// <p><b>An absent member is omitted, never emitted as JSON <code>null</code></b>: both are
+/// always, plus <code>entityId</code> when the call named a row, <code>parentId</code> when it named
+/// the item a parent-scoped screen belongs to, and <code>code</code> when it did not navigate.
+/// <var>pOutcome</var> is <code>"opened"</code> (<code>navigated</code> true, no <code>code</code>)
+/// or anything else -- <code>"refused"</code> or <code>"unavailable"</code> (<code>navigated</code>
+/// false, <code>pCode</code> carried through).</p>
+/// <p><b>An absent member is omitted, never emitted as JSON <code>null</code></b>: each is
 /// outside <method>OcuPilot.Screen.Tool.Navigate.ResultSchema</method>'s <code>required</code> and
-/// both are declared <code>"type": "string"</code>, so a null would be a value the declared type
-/// does not admit. This shape is owned here so <class>OcuPilot.Kernel.Agent.Loop</class> never
+/// is declared <code>"type": "string"</code>, so a null would be a value the declared type does
+/// not admit. This shape is owned here so <class>OcuPilot.Kernel.Agent.Loop</class> never
 /// composes a tool result of its own: whatever <var>pOutcome</var> is, the call is an ordinary
 /// result, never an error (AD-11 invariant 3) -- the caller sets <code>is_error</code> false
 /// unconditionally.</p>
@@ -614,6 +640,10 @@ ClassMethod SettleClient(pDetail As %DynamicObject, pOutcome As %String, pCode A
     Set tEntityId = pDetail.%Get("entityId")
     If tEntityId '= "" {
         Do tResult.%Set("entityId", tEntityId, "string")
+    }
+    Set tParentId = pDetail.%Get("parentId")
+    If tParentId '= "" {
+        Do tResult.%Set("parentId", tParentId, "string")
     }
     If pOutcome '= "opened" {
         Do tResult.%Set("code", pCode, "string")

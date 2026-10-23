@@ -24,6 +24,8 @@ import { OverlayStack } from '../core/overlay-stack';
 import { PanelState } from '../core/panel-layout';
 import { ShellState } from '../core/shell-state';
 import { STRINGS, stringFor } from '../core/strings';
+import { formatClassicRowLinkDescription } from '../core/table-model';
+import { NEW_TAB_GLYPH, openInNewTab } from './new-tab';
 import { railItemDomId } from './rail';
 
 /** The side bar's name on the overlay stack. It is the stack's bottom-most member (DW-137). */
@@ -43,6 +45,14 @@ interface SideBarEntry {
   readonly ariaDisabled: string | null;
   readonly ariaCurrent: string | null;
   readonly tabIndex: number;
+  /**
+   * The address an allowed `external` entry opens in a new tab (AD-47, Story 20.32), `''` for every
+   * other entry, including an `external` one the map carries no address for, which routes onto its own
+   * page and says why.
+   */
+  readonly href: string;
+  /** What a screen reader hears of an entry that opens a new tab, `null` for every other. */
+  readonly description: string | null;
 }
 
 /**
@@ -116,6 +126,7 @@ export function isSideBarChord(event: KeyboardEvent): boolean {
           [attr.aria-current]="entry.ariaCurrent"
           [attr.aria-disabled]="entry.ariaDisabled"
           [attr.aria-describedby]="entry.describedBy"
+          [attr.aria-description]="entry.description"
           [attr.tabindex]="entry.tabIndex"
           [class.ocu-side-bar-item-selected]="entry.ariaCurrent"
           [class.ocu-side-bar-item-gated]="entry.gated"
@@ -123,6 +134,9 @@ export function isSideBarChord(event: KeyboardEvent): boolean {
           (keydown)="onKeydown($event)"
         >
           <span class="ocu-side-bar-label">{{ entry.label }}</span>
+          @if (entry.href) {
+            <span class="ocu-external-glyph" aria-hidden="true">{{ externalGlyph }}</span>
+          }
           @if (entry.gated) {
             <span class="ocu-side-bar-reason" [id]="entry.reasonId">{{ entry.reason }}</span>
           }
@@ -167,10 +181,12 @@ export class SideBar {
       const opens = openableEntry(screen, (route) => this.navigation.screenVerdict(route));
       const isCurrent = areaKey === active && (screen.route === this.currentRoute() || (groupRoute !== '' && screen.route === groupRoute));
       const reasonId = `ocu-side-bar-reason-${screen.route.replace(/\//g, '-')}`;
+      const label = stringFor(screen.labelKey);
+      const href = opens !== null && screen.archetype === 'external' ? this.navigation.screenHref(screen.route) : '';
       return {
         route: screen.route,
         target: opens?.route ?? screen.route,
-        label: stringFor(screen.labelKey),
+        label,
         reason: formatRequires(STRINGS.privilegeRequiresResource, verdict.failedPair),
         reasonId,
         describedBy: opens !== null ? null : reasonId,
@@ -178,6 +194,8 @@ export class SideBar {
         ariaDisabled: opens !== null ? null : 'true',
         ariaCurrent: isCurrent ? 'page' : null,
         tabIndex: index === focused ? 0 : -1,
+        href,
+        description: href === '' ? null : formatClassicRowLinkDescription(STRINGS.classicRowLinkDescription, label),
       };
     });
   });
@@ -243,11 +261,22 @@ export class SideBar {
     return this.resolved();
   }
 
-  /** Open a screen. A gated entry does nothing; it is refused here, not by the DOM. */
+  /** The new-tab glyph an `external` entry carries (`NEW_TAB_GLYPH`). */
+  protected readonly externalGlyph = NEW_TAB_GLYPH;
+
+  /**
+   * Open a screen. A gated entry does nothing; it is refused here, not by the DOM. An `external`
+   * entry opens its address in a new tab with no opener, in this click or key press, and does not
+   * route (AD-47, Story 20.32).
+   */
   protected open(entry: SideBarEntry): void {
     if (entry.gated) return;
     const index = this.resolved().findIndex((candidate) => candidate.route === entry.route);
     if (index >= 0) this.focusedIndex.set(index);
+    if (entry.href !== '') {
+      openInNewTab(entry.href);
+      return;
+    }
     // The current query travels with the entry: `?ns=` is data scope, and opening a screen
     // from the side bar must not move the user's work to another namespace (AD-44, DW-134).
     void this.router.navigateByUrl(withQuery(entry.target, this.router.url));

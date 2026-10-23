@@ -69,7 +69,6 @@ Method OnBeforeAllTests() As %Status
     Set tSC = $ClassMethod(..#PROBE, "Remove")
     If $$$ISERR(tSC) Quit tSC
     Set tSC = $ClassMethod(..#PROBE, "Create")
-    ; %UnitTest skips OnAfterAllTests when this method fails, so a failed setup removes what it made here.
     If $$$ISERR(tSC) Set tSC = $$$ADDSC(tSC, ..OnAfterAllTests())
     Quit tSC
 }

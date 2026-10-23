@@ -71,6 +71,13 @@ XData ReadShapes
 <screen name="AgentScreenPermissions" filter="Screen,Area" sort="Area,Screen" kinds="Screen:name,Area:text,Effective:text,Adjustment:text,Holds:status"/>
 <screen name="AgentTranscripts" filter="user,started,lastActivity,title" sort="user,started,lastActivity,turns,title" kinds="started:name,user:text,turns:number,lastActivity:text,title:text"/>
 <screen name="AllowedDirectoryList" filter="Directory,Restricted" sort="Directory,Restricted" kinds="Directory:name,Restricted:status"/>
+<screen name="AnalyticsCubeDimensionsTab" filter="Dimension,Hierarchy,Level" sort="Position,Dimension,Hierarchy,Level" kinds="Position:number,Dimension:text,Hierarchy:text,Level:name"/>
+<screen name="AnalyticsCubeList" filter="Name,Caption,Class" sort="Name,Caption,Class,LastBuild,Facts" kinds="Name:name,Caption:text,Class:identifier,LastBuild:text,Facts:number"/>
+<screen name="AnalyticsCubeMeasuresTab" filter="Name,Caption,Type" sort="Name,Caption,Type,Hidden" kinds="Name:name,Caption:text,Type:text,Hidden:status"/>
+<screen name="AnalyticsCubeRelationshipsTab" filter="Name,RelatedCube" sort="Name,RelatedCube" kinds="Name:name,RelatedCube:text"/>
+<screen name="AnalyticsFolderItemList" filter="Name,Type,Owner" sort="Name,Type,Owner,Modified,Favorite" kinds="Name:name,Type:text,Owner:text,Modified:text,Favorite:status"/>
+<screen name="AnalyticsTermListEntryList" filter="Key,Value,Fields" sort="Key,Value" kinds="Key:name,Value:text,Fields:text"/>
+<screen name="AnalyticsTermListList" filter="Name,Caption" sort="Name,Caption,Modified" kinds="Name:name,Caption:text,Modified:text"/>
 <screen name="AuditList" filter="TimeStamp,EventSource,EventType,Event,Username,Pid,Namespace,Description" sort="TimeStamp,EventSource,EventType,Event,Username,Pid,Namespace,Description" kinds="TimeStamp:text,EventSource:text,EventType:text,Event:name,Username:text,Pid:identifier,Namespace:text,Description:text"/>
 <screen name="AuditSystemEventList" filter="EventName,Enabled,Total,Written,Lost" sort="EventName,Enabled,Total,Written,Lost" kinds="EventName:name,Enabled:status,Total:number,Written:number,Lost:number"/>
 <screen name="AuditUserEventList" filter="EventName,Enabled,Total,Written,Lost" sort="EventName,Enabled,Total,Written,Lost" kinds="EventName:name,Enabled:status,Total:number,Written:number,Lost:number"/>
@@ -184,12 +191,16 @@ XData ReadShapes
 <screen name="RoutineAppList" filter="Name,Resource,Description" sort="Name,Enabled,Resource,Description" kinds="Name:name,Enabled:status,Resource:identifier,Description:text"/>
 <screen name="RoutineAppRoleList" filter="MatchRole" sort="MatchRole" kinds="MatchRole:name,TargetRoles:identifier"/>
 <screen name="RoutineAppRoutineList" filter="RoutineOrClass,Db" sort="RoutineOrClass,Db,Type" kinds="RoutineOrClass:name,Db:identifier,Type:text"/>
+<screen name="WebAppRoleList" filter="MatchRole" sort="MatchRole" kinds="MatchRole:name,TargetRoles:identifier"/>
 <screen name="SqlPrivilegeList" filter="Type,Object,Action,GrantedBy,GrantedVia" sort="Object,Type,Action,GrantedBy,GrantedVia" kinds="Object:name,Type:text,Action:text,GrantedBy:text,GrantOption:text,GrantedVia:text"/>
 <screen name="SqlColumnPrivilegeList" filter="Column,Action,GrantedBy,GrantedVia" sort="Column,Action,GrantedBy,GrantedVia" kinds="Column:name,Action:text,GrantedBy:text,GrantOption:text,GrantedVia:text"/>
 <screen name="SqlAdminPrivilegeList" filter="Privilege,GrantedVia" sort="Privilege,GrantedVia" kinds="Privilege:name,GrantOption:text,GrantedVia:text"/>
 <screen name="ExplorerDocDbList" filter="Name,Class,DocumentType,Resource" sort="Name,Class,DocumentType,Resource" kinds="Name:name,Class:identifier,DocumentType:identifier,Resource:identifier"/>
 <screen name="SqlActivityList" filter="ProcessID,UserName,Namespace,RunType,Statement,Routine" sort="ProcessID,UserName,Namespace,RunType,Elapsed,Started" kinds="ProcessID:name,UserName:text,Namespace:text,RunType:text,Elapsed:number,Statement:identifier,Routine:identifier,Started:text"/>
 <screen name="MetricsList" filter="Metric,Labels,Help" sort="Metric,Value" kinds="Metric:name,Labels:identifier,Value:number,Help:text"/>
+<screen name="InteropUsageTab" filter="Type,Namespace,Protocol" sort="Type,Namespace,Protocol,ActiveNow,Count" kinds="Type:name,Namespace:identifier,Protocol:text,ActiveNow:number,Count:number"/>
+<screen name="InteropUsageVolumeTab" filter="Namespace,Type" sort="Namespace,Type,Volume" kinds="Namespace:name,Type:text,Volume:number"/>
+<screen name="InteropUsageImpactTab" filter="Database" sort="Database,DataCreated" kinds="Database:name,DataCreated:number"/>
 <screen name="InteropProductionList" filter="Name,Status" sort="Name,Status,LastStartTime,LastStopTime" kinds="Name:name,Status:status,LastStartTime:text,LastStopTime:text"/>
 <screen name="InteropProcessList" filter="Name" sort="Name,Modified" kinds="Name:name,Modified:text"/>
 <screen name="InteropTransformList" filter="Name" sort="Name,Modified" kinds="Name:name,Modified:text"/>
@@ -209,6 +220,10 @@ XData ReadShapes
 <screen name="InteropLookupTableList" filter="Name" sort="Name,Modified" kinds="Name:name,Modified:text"/>
 <screen name="InteropLookupEntryList" filter="Key,Value" sort="Key,Value" kinds="Key:name,Value:text,Secret:status"/>
 <screen name="InteropBusinessPartnerList" filter="Name,Description,PrimaryContact" sort="Name,Description,PrimaryContact" kinds="Name:name,Description:text,PrimaryContact:text,PrimaryPhone:text,PrimaryEmail:text"/>
+<screen name="InteropMessageList" filter="Status,Type,Source,Target,BodyClass,SessionId" sort="TimeCreated,Status,Type,Source,Target,BodyClass,SessionId" kinds="ID:name,TimeCreated:text,Status:status,Type:text,Source:text,Target:text,BodyClass:identifier,SessionId:identifier,Error:status"/>
+<screen name="InteropMessageHeaderTab" filter="Name,Value" sort="Position" kinds="Name:name,Value:text"/>
+<screen name="InteropMessageContentsTab" filter="Text" sort="Line" kinds="Line:name,Text:text"/>
+<screen name="InteropMessageTraceTab" filter="Type,Status,Source,Target,BodyClass" sort="Step" kinds="ID:name,TimeCreated:text,Type:text,Status:status,Source:text,Target:text,BodyClass:identifier"/>
 </shapes>
 }
 
@@ -1073,7 +1088,8 @@ Method TestTheAlertLogViewerDeclaresTheLogSourceTailAndItsOnePair()
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DescriptorForTool("logs.alerts"), tClass, "and so does its tool identifier")
     Do $$$AssertEquals($ClassMethod(tClass, "SideBarPosition"), 1, "it is the Logs area's first side-bar entry")
 
-    Do $$$AssertEquals(''$ClassMethod(tClass, "Refreshes"), 0, "nothing streams: it never auto-refreshes (AD-43)")
+    Do $$$AssertEquals(''$ClassMethod(tClass, "Refreshes"), 0, "no auto-refresh (AD-43); its source opts into the live tail")
+    Do $$$AssertTrue($ListFind(##class(OcuPilot.Port.LogSourcePort).TailSources(), tDeclaration.read.source.endpoint) > 0, "and its endpoint is in the port's live tail roster")
     Do $$$AssertEquals($ListLength($ClassMethod(tClass, "RefreshRates")), 0, "and declares no rate")
     Do $$$AssertEquals($ListLength($ClassMethod(tClass, "RowActionIds")), 0, "no row action (AD-44)")
     Do $$$AssertEquals($ClassMethod(tClass, "PrimaryActionId"), "", "and no primary action")
@@ -1117,7 +1133,8 @@ Method TestTheConsoleLogViewerDeclaresTheLogSourceTailAndItsOnePair()
     Do $$$AssertEquals($ClassMethod(tClass, "SideBarPosition"), 2, "it is the Logs area's second side-bar entry")
     Do $$$AssertTrue($ListFind($ClassMethod(tClass, "CommandAliases"), "messages.log") > 0, "and it publishes the messages.log alias the fault banner resolves its destination from: " _ $ListToString($ClassMethod(tClass, "CommandAliases"), ","))
 
-    Do $$$AssertEquals(''$ClassMethod(tClass, "Refreshes"), 0, "nothing streams: it never auto-refreshes (AD-43)")
+    Do $$$AssertEquals(''$ClassMethod(tClass, "Refreshes"), 0, "no auto-refresh (AD-43); its source opts into the live tail")
+    Do $$$AssertTrue($ListFind(##class(OcuPilot.Port.LogSourcePort).TailSources(), tDeclaration.read.source.endpoint) > 0, "and its endpoint is in the port's live tail roster")
     Do $$$AssertEquals($ListLength($ClassMethod(tClass, "RefreshRates")), 0, "and declares no rate")
     Do $$$AssertEquals($ListLength($ClassMethod(tClass, "RowActionIds")), 0, "no row action (AD-44)")
     Do $$$AssertEquals($ClassMethod(tClass, "PrimaryActionId"), "", "and no primary action")
@@ -1125,7 +1142,7 @@ Method TestTheConsoleLogViewerDeclaresTheLogSourceTailAndItsOnePair()
 
 /// <p>Story 18.1 -- the Allowed directories list declares the <code>path</code> source's one key, a
 /// <code>LIST</code>, the port's own two pairs in its order with the first declared its own, the
-/// <code>allowed-directory</code> type at instance scope, no classic page and no action, and takes the
+/// <code>allowed-directory</code> type at instance scope, no classic page and, since Story 18.46, Add, Change and Remove, and takes the
 /// Security and secrets area's seventh side-bar position (AD-8, AD-21, AD-36, AD-44). The registry
 /// refuses the declaration once it carries a detail call, per-parent list, fixed query or parts, an
 /// endpoint the port does not serve, a request type other than <code>LIST</code>, or no
@@ -1155,8 +1172,8 @@ Method TestTheAllowedDirectoriesListDeclaresThePathSource()
     Do $$$AssertEquals($ClassMethod(tClass, "Scope"), "instance", "at instance scope (AD-13)")
     Do $$$AssertEquals($ClassMethod(tClass, "IdKind"), "single", "keyed by its directory")
     Do $$$AssertEquals($ClassMethod(tClass, "ClassicPage"), "", "no classic page exists (AD-44)")
-    Do $$$AssertEquals($ClassMethod(tClass, "PrimaryActionId"), "", "no primary action")
-    Do $$$AssertEquals($ListLength($ClassMethod(tClass, "RowActionIds")), 0, "and no row action")
+    Do $$$AssertEquals($ClassMethod(tClass, "PrimaryActionId"), "add", "Add is the primary action (Story 18.46)")
+    Do $$$AssertEquals($ListToString($ClassMethod(tClass, "RowActionIds")), "change,remove", "and Change and Remove are its row actions")
     Do $$$AssertEquals(''$ClassMethod(tClass, "Refreshes"), 0, "it does not refresh (AD-43)")
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DescriptorForRoute("security/allowed-directories"), tClass, "the route resolves to it")
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DescriptorForTool("security.alloweddirectories"), tClass, "and so does its tool identifier")
@@ -1216,6 +1233,7 @@ Method TestTheSixSecondaryLogViewersDeclareTheirSourceAndPair()
         Do $$$AssertEquals(tDeclaration.id.%ToJSON(), "{""kind"":""none"",""parts"":[]}", tClass _ ": a log entry has no id (AD-13)")
         Do $$$AssertEquals(tDeclaration.suggestedPrompts.%Size(), 3, tClass _ ": three suggested prompts")
         Do $$$AssertEquals(''$ClassMethod(tClass, "Refreshes") _ "|" _ $ListLength($ClassMethod(tClass, "RowActionIds")) _ "|" _ $ClassMethod(tClass, "PrimaryActionId"), "0|0|", tClass _ ": no refresh and no action")
+        Do $$$AssertEquals($ListFind(##class(OcuPilot.Port.LogSourcePort).TailSources(), tKey), 0, tClass _ ": and its source does not opt into the live tail")
     }
 }
 
@@ -1783,7 +1801,7 @@ Method TestTheEntityTypeVocabularyIsClosed()
     Do $$$AssertTrue('##class(OcuPilot.Kernel.EntityType).IsKnown(""), "and neither is the empty string")
     ; Pinned to a literal. Comparing Count() with $ListLength(List()) restates Count()'s own
     ; definition and cannot fail, so a value dropped from TYPES would go unnoticed.
-    Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityType).Count(), 73, "the closed vocabulary holds seventy-three values -- allowed-directory joined in Story 18.1, web-session in Story 16.2, namespace in Story 18.2, background-task in Story 16.5, the three mapping types in Story 18.14, database-configuration in Story 18.3, language-server in Story 16.10, class and routine in Story 19.1, journal-file and journal-file-database in Story 18.5, and journal-settings in Story 18.18, and journal-record in Story 18.19, and license-key and license-server in Story 18.6, and ecp-data-server in Story 18.20, and ecp-settings and ecp-ssl-connection in Story 18.21, and encryption-key-file in Story 18.7, and database-encryption-keys and data-element-encryption-keys in Story 18.22, and encryption-startup in Story 18.23, and docdb-database in Story 19.17, and sql-statement in Story 19.10, and authentication-options in Story 18.8, and superserver in Story 18.25, and mft-connection in Story 18.26, and production in Story 20.2, and screen-permission in Story 20.15, and docdb-application in Story 18.30, and routine-application in Story 18.31, and production-item in Story 20.3, and production-item-setting in Story 20.22, and interop-queue, interop-message and interop-job in Story 20.4, and lookup-table, lookup-entry and business-partner in Story 20.5; adding one is a deliberate edit here and in Kernel.EntityType")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityType).Count(), 77, "the closed vocabulary holds seventy-seven values -- allowed-directory joined in Story 18.1, web-session in Story 16.2, namespace in Story 18.2, background-task in Story 16.5, the three mapping types in Story 18.14, database-configuration in Story 18.3, language-server in Story 16.10, class and routine in Story 19.1, journal-file and journal-file-database in Story 18.5, and journal-settings in Story 18.18, and journal-record in Story 18.19, and license-key and license-server in Story 18.6, and ecp-data-server in Story 18.20, and ecp-settings and ecp-ssl-connection in Story 18.21, and encryption-key-file in Story 18.7, and database-encryption-keys and data-element-encryption-keys in Story 18.22, and encryption-startup in Story 18.23, and docdb-database in Story 19.17, and sql-statement in Story 19.10, and authentication-options in Story 18.8, and superserver in Story 18.25, and mft-connection in Story 18.26, and production in Story 20.2, and screen-permission in Story 20.15, and docdb-application in Story 18.30, and routine-application in Story 18.31, and production-item in Story 20.3, and production-item-setting in Story 20.22, and interop-queue, interop-message and interop-job in Story 20.4, and lookup-table, lookup-entry and business-partner in Story 20.5, and cube, term-list, term-list-entry and folder-item in Story 20.11; adding one is a deliberate edit here and in Kernel.EntityType")
     Do $$$AssertEquals($ClassMethod("OcuPilot.Screen.Descriptor.Home", "PrimaryEntityType"), "", "Home administers nothing and says so")
     Do $$$AssertEquals($ListLength($ClassMethod("OcuPilot.Screen.Descriptor.Home", "EntityTypes")), 0, "so it contributes no key to validate")
 }
@@ -2077,7 +2095,8 @@ Method TestAMultiSelectOutsideTheGrammarIsRefusedByTheRoster()
 /// <p>Mutation: drop one word from <method>RowTargetProblem</method>'s "this screen's own route"
 /// sentence -> the self-route case goes red. Make
 /// <method>RowTargetResolutionProblem</method> return <code>""</code> for an unbuilt target ->
-/// the roster case goes red in both engines.</p>
+/// the roster case goes red in both engines. Drop the tab arm from <method>RowTargetProblem</method> -> the
+/// tab case goes red.</p>
 Method TestEveryRowTargetCorpusCaseGetsItsSentence()
 {
     Set tSC = ##class(OcuPilot.Test.RowTargetCorpus).Corpus(.tCorpus)

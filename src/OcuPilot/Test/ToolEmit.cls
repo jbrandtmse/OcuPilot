@@ -197,6 +197,13 @@ Method TestEveryLiveToolRequiresItsScreensPairs()
                 Set tOtherAdded = $ClassMethod(..#REGISTRY, "ArgumentPairs", tTool, {"namespace": (tOther)}, .tOtherResolved)
                 Do $$$AssertTrue(tOtherResolved && $ListFind(tOtherAdded, $ListBuild(tOtherResource, "WRITE")) && '$ListFind(tOtherAdded, $ListBuild(tResource, "WRITE")), tTool.name _ ": another namespace resolves that namespace's resource and not this one's")
             }
+        } ElseIf $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.InteropEditorSave") {
+            ; Story 20.16: an editor save declares its screen's pairs, then %Development:USE (which the port checks) and
+            ; %Ens_Code:WRITE (the vendor editors' write resource), each once; WRITE on the routines database is an argument pair.
+            Set tExpected = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(tTool.class, "DESCRIPTORCLASS"), .tExpectedResolved)
+            Do $$$AssertTrue($ListLength(tExpected) > 0, tTool.name _ ": its screen declares pairs")
+            Set tExpected = tExpected _ $ListBuild($ListBuild("%Development", "USE"), $ListBuild("%Ens_Code", "WRITE"))
+            Set tExpectedAdded = ##class(OcuPilot.Screen.Tool.ExplorerSave).CodeWritePairs({}, .tExpectedAddedResolved)
         } ElseIf $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.ExplorerSave") || $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.ExplorerCreate") {
             ; Story 20.20 (DW-2242): a save or a create declares its screen's pairs alone, and WRITE on
             ; the routines database of the namespace its proposal stored is an argument pair, which
@@ -223,13 +230,14 @@ Method TestEveryLiveToolRequiresItsScreensPairs()
                 Set tWritePair = $ListBuild(tResource, "WRITE")
                 If '$ListFind(tExpected, tWritePair) Set tExpected = tExpected _ $ListBuild(tWritePair)
             }
-        } ElseIf tTool.class = "OcuPilot.Screen.Tool.InteropItemTestSend" {
+        } ElseIf (tTool.class = "OcuPilot.Screen.Tool.InteropItemTestSend") || (tTool.class = "OcuPilot.Screen.Tool.InteropTransformTest") {
             ; Story 20.6: the host test's send declares %Ens_TestingService:USE and WRITE on the globals database of the request's
             ; namespace, here this one's, after its screen's pairs, each once; it writes no code, so no routines database (AD-8, AD-62).
+            ; Story 20.27: the data transformation test declares %Ens_DTLTest:USE the same way, which its classic page's custom resource repeats.
             Set tExpected = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(tTool.class, "DESCRIPTORCLASS"), .tExpectedResolved)
             Do $$$AssertTrue($ListLength(tExpected) > 0, tTool.name _ ": its screen declares pairs")
             Do $$$AssertTrue(##class(OcuPilot.Kernel.Shell.Namespaces).GlobalDatabase($Namespace, .tGlobalResource, .tReadOnly), tTool.name _ ": this namespace's globals database resolves")
-            For tWritePair = $ListBuild("%Ens_TestingService", "USE"), $ListBuild(tGlobalResource, "WRITE") {
+            For tWritePair = $ListBuild($Parameter(tTool.class, "WRITERESOURCE"), $Parameter(tTool.class, "WRITEPERMISSION")), $ListBuild(tGlobalResource, "WRITE") {
                 If '$ListFind(tExpected, tWritePair) Set tExpected = tExpected _ $ListBuild(tWritePair)
             }
         } ElseIf $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.InteropItemAction") {
@@ -243,6 +251,20 @@ Method TestEveryLiveToolRequiresItsScreensPairs()
             For tWritePair = $ListBuild("%Ens_ProductionConfig", "WRITE"), $ListBuild(tGlobalResource, "WRITE"), $ListBuild(tRoutineResource, "WRITE") {
                 If '$ListFind(tExpected, tWritePair) Set tExpected = tExpected _ $ListBuild(tWritePair)
             }
+        } ElseIf $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.InteropMessageAction") {
+            ; Story 20.31: the resend declares %Ens_MessageResend:USE and the edit and resend %Ens_MessageContent:USE,
+            ; %Ens_MessageResend:USE and %Ens_MessageEditResend:USE, then WRITE on the globals database of the request's
+            ; namespace, here this one's, after their screen's pairs, each once (AD-8, AD-62).
+            Set tExpected = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(tTool.class, "DESCRIPTORCLASS"), .tExpectedResolved)
+            Do $$$AssertTrue($ListLength(tExpected) > 0, tTool.name _ ": its screen declares pairs")
+            Do $$$AssertTrue(##class(OcuPilot.Kernel.Shell.Namespaces).GlobalDatabase($Namespace, .tGlobalResource, .tReadOnly), tTool.name _ ": this namespace's globals database resolves")
+            Set tOwnPairs = $ListBuild($ListBuild("%Ens_MessageResend", "USE"))
+            If tTool.class = "OcuPilot.Screen.Tool.InteropMessageEditResend" Set tOwnPairs = $ListBuild($ListBuild("%Ens_MessageContent", "USE"), $ListBuild("%Ens_MessageResend", "USE"), $ListBuild("%Ens_MessageEditResend", "USE"))
+            For tOwnIndex = 1:1:$ListLength(tOwnPairs) {
+                If '$ListFind(tExpected, $List(tOwnPairs, tOwnIndex)) Set tExpected = tExpected _ $ListBuild($List(tOwnPairs, tOwnIndex))
+            }
+            Set tWritePair = $ListBuild(tGlobalResource, "WRITE")
+            If '$ListFind(tExpected, tWritePair) Set tExpected = tExpected _ $ListBuild(tWritePair)
         } ElseIf $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.InteropProductionAction") || $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.InteropJobAction") || (tTool.class = "OcuPilot.Screen.Tool.InteropQueueAbort") || (tTool.class = "OcuPilot.Screen.Tool.InteropQueueMessageAbort") {
             ; Story 20.2: the production actions declare %Ens_ProductionRun:USE and WRITE on the globals
             ; database of the request's namespace, here this one's, after their screen's pairs, each
@@ -355,11 +377,17 @@ Method TestEveryLiveToolRequiresItsScreensPairs()
             }
         } ElseIf $ClassMethod(tTool.class, "%Extends", "OcuPilot.Kernel.Shell.ReadTool") {
             Set tExpected = ""
-        } ElseIf tTool.class = "OcuPilot.Screen.Tool.ExplorerSqlRead" {
+        } ElseIf (tTool.class = "OcuPilot.Screen.Tool.ExplorerSqlRead") || (tTool.class = "OcuPilot.Screen.Tool.AnalyticsMdxRead") {
             ; Story 19.11: a read with a class of its own, gated as SQL query is; the statement's SQL
             ; privileges and the namespace's database pairs are the port's to check at its prepare.
+            ; Story 20.35: the agent's MDX read is gated as MDX query is; the port checks the rest.
             Set tExpected = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(tTool.class, "DESCRIPTORCLASS"), .tExpectedResolved)
             Do $$$AssertTrue($ListLength(tExpected) > 0, tTool.name _ ": its screen declares pairs")
+        } ElseIf $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.InteropEditorSource") {
+            ; Story 20.16: an editor read is gated as its editor screen is, plus %Development:USE, which the port checks.
+            Set tExpected = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(tTool.class, "DESCRIPTORCLASS"), .tExpectedResolved)
+            Do $$$AssertTrue($ListLength(tExpected) > 0, tTool.name _ ": its editor screen declares pairs")
+            Set tExpected = tExpected _ $ListBuild($ListBuild("%Development", "USE"))
         } ElseIf $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.ExplorerSourceRead") {
             ; Story 20.19: a source read of a viewer, gated as the viewer is.
             Set tExpected = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(tTool.class, "DESCRIPTORCLASS"), .tExpectedResolved)

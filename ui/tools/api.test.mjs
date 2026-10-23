@@ -589,6 +589,101 @@ test('requestJson reports a transport fault as an outcome, never as a rejection'
   assert.equal(harness.session.state(), 'signed-in', 'a dropped call is not a sign-out');
 });
 
+// --- DW-2392: a caller's own abort signal -----------------------------------------------------
+
+/** A fetch that holds every call and rejects it the way the browser does when its signal aborts. */
+function heldUntilAborted() {
+  return (path, init) =>
+    new Promise((resolve, reject) => {
+      init.signal?.addEventListener('abort', () => reject(new DOMException('The operation was aborted.', 'AbortError')));
+    });
+}
+
+test('DW-2392: a caller\'s signal reaches the wire, and aborting it rejects the call without a fault', async () => {
+  // The log viewer's live tail holds a request for up to a minute and abandons it when the person
+  // turns Live tail off. An abort is that caller's doing, so it is a rejection the caller reads,
+  // never `status: 0` (which connectivity would arm a backoff on) and never an `onFault` report.
+  //
+  // Mutation (Rule 19): make `requestJson`'s catch answer an aborted call as status 0 (drop the
+  // `init.signal?.aborted` rethrow) -> the rejection assertion goes red (observed: all three legs).
+  const harness = signedIn(heldUntilAborted());
+  await harness.ready();
+  const controller = new AbortController();
+
+  const pending = harness.api.requestJson('/api/ocupilot/logs/messages/tail?size=1', { signal: controller.signal });
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.ok(harness.calls[0].init.signal, 'the caller\'s signal (joined with none) reached fetch');
+  assert.equal(harness.calls[0].init.signal.aborted, false, 'and is not aborted while the caller wants the answer');
+
+  controller.abort();
+
+  await assert.rejects(pending, { name: 'AbortError' });
+  assert.equal(harness.calls[0].init.signal.aborted, true, 'the request itself was cancelled');
+  assert.deepEqual(harness.faults, [], 'an abandoned request is told to nobody');
+  assert.equal(harness.session.state(), 'signed-in', 'and is not a sign-out');
+});
+
+test('DW-2392: an already-aborted signal never reaches the network, and an abort while the body streams still rejects', async () => {
+  // Mutation (Rule 19): drop the `aborted` check in `send` -> the first leg resolves instead of rejecting;
+  // drop the `aborted` rethrow around `response.text()` -> the second leg resolves with an ok answer whose
+  // body is null (each observed red here alone).
+  const harness = signedIn(() => response(200, '{}'));
+  await harness.ready();
+  const gone = new AbortController();
+  gone.abort();
+
+  await assert.rejects(harness.api.requestJson('/api/ocupilot/info', { signal: gone.signal }), { name: 'AbortError' });
+  await assert.rejects(harness.api.request('/api/ocupilot/info', { signal: gone.signal }), { name: 'AbortError' });
+  assert.equal(harness.calls.length, 0, 'no call was issued for a request nobody wants');
+  assert.deepEqual(harness.faults, []);
+
+  const streaming = new AbortController();
+  const body = signedIn((path, init) => ({
+    status: 200,
+    text: () =>
+      new Promise((resolve, reject) => {
+        init.signal.addEventListener('abort', () => reject(new DOMException('The operation was aborted.', 'AbortError')));
+      }),
+  }));
+  await body.ready();
+  const pending = body.api.requestJson('/api/ocupilot/info', { signal: streaming.signal });
+  await new Promise((resolve) => setImmediate(resolve));
+  streaming.abort();
+  await assert.rejects(pending, { name: 'AbortError' });
+  assert.deepEqual(body.faults, [], 'an abort mid-body is no ok answer and no fault');
+});
+
+test('DW-2392: a call with a timeout and a signal is cancelled by whichever comes first, and a call with neither is untouched', async () => {
+  // Mutation (Rule 19): `arm` ignores `outer` when a timeout is set -> the abort leg reads 'still pending'
+  // (observed), because only the timeout would cancel it.
+  const harness = signedIn(heldUntilAborted());
+  await harness.ready();
+
+  const controller = new AbortController();
+  const aborted = harness.api.requestJson('/api/ocupilot/info', { signal: controller.signal, timeoutMs: 60000 });
+  await new Promise((resolve) => setImmediate(resolve));
+  controller.abort();
+  const outcome = await Promise.race([
+    aborted.then(
+      () => 'answered',
+      (error) => error.name
+    ),
+    new Promise((resolve) => setTimeout(() => resolve('still pending'), 250)),
+  ]);
+  assert.equal(outcome, 'AbortError', 'the caller\'s abort cancelled the request at once, not at its timeout');
+  assert.equal(harness.calls[0].init.signal.aborted, true);
+
+  const timedOut = await harness.api.requestJson('/api/ocupilot/info', { signal: new AbortController().signal, timeoutMs: 20 });
+  assert.equal(timedOut.kind, 'error');
+  assert.equal(timedOut.status, 0, 'the timeout still reads as a transport fault, as it did before the signal existed');
+  assert.equal(harness.faults.length, 1, 'and is reported once');
+
+  const plain = signedIn(() => response(200, '{}'));
+  await plain.ready();
+  await plain.api.request('/api/ocupilot/info');
+  assert.equal(plain.calls[0].init.signal, undefined, 'a call that asked for neither carries no signal');
+});
+
 // --- Story 1.13: every JSON call reports what it came back as -------------------------------
 
 test('onFault fires once per requestJson call, for a success as well as a failure', async () => {
@@ -723,7 +818,7 @@ const FORBIDDEN = [
     why: 'OcuPilot hears no message from a frame (AD-63)',
   },
   { pattern: /\bVSCODE\b/, why: 'an embedded editor loads in normal mode only (AD-63)' },
-  { pattern: /_Editor-|\bvscodeMode\b/, why: 'no vendor editor storage key is written or read (AD-63)' },
+  { pattern: /_Editor-|\bSchema_Viewer-|\bInterop-Editors-|\bvscodeMode\b/, why: 'no vendor editor storage key is written or read (AD-63)' },
 ];
 
 /**
@@ -766,6 +861,8 @@ test('the localStorage ban has no exempted path, and every forbidden shape still
     'const first = window.frames[0];',
     "const source = base + '?VSCODE=1';",
     "const held = tabStorage.getItem('Rule_Editor-0-accessToken');",
+    "const held = tabStorage.getItem('Schema_Viewer-0-accessToken');",
+    "const held = tabStorage.getItem('Interop-Editors-0-refreshToken');",
     "const mode = tabStorage.getItem('vscodeMode');",
     "window.addEventListener('message', handler);",
     "@HostListener('window:message', ['$event']) heard(event: MessageEvent) {}",
@@ -782,7 +879,7 @@ test('the localStorage ban has no exempted path, and every forbidden shape still
       ruleHits[rule] += 1;
     });
   });
-  assert.deepEqual(caught, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16], 'every forbidden shape is caught, localStorage included, each line by one rule');
+  assert.deepEqual(caught, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18], 'every forbidden shape is caught, localStorage included, each line by one rule');
   assert.ok(ruleHits.every((hits) => hits > 0), `and every rule has a hostile line: ${JSON.stringify(ruleHits)}`);
   assert.equal(
     existsSync(corePath('preferences.ts')),
@@ -805,6 +902,8 @@ test('the scan itself catches each forbidden shape on a fixture, and ignores a c
     'const first = window.frames[0];',
     "const source = base + '?VSCODE=1';",
     "const held = tabStorage.getItem('Rule_Editor-0-accessToken');",
+    "const held = tabStorage.getItem('Schema_Viewer-0-accessToken');",
+    "const held = tabStorage.getItem('Interop-Editors-0-refreshToken');",
     "const mode = tabStorage.getItem('vscodeMode');",
     "window.addEventListener('message', handler);",
     "@HostListener('window:message', ['$event']) heard(event: MessageEvent) {}",
@@ -820,8 +919,8 @@ test('the scan itself catches each forbidden shape on a fixture, and ignores a c
   const hits = forbiddenHits(blankComments(fixture)).map((hit) => hit.line);
   assert.deepEqual(
     hits,
-    [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18],
-    'sixteen real violations, the wrapped listener at the line its call starts, and neither comment nor sessionStorage'
+    [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20],
+    'eighteen real violations, the wrapped listener at the line its call starts, and neither comment nor sessionStorage'
   );
 });
 

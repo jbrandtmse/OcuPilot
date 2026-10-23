@@ -32,6 +32,11 @@ Parameter LEASTUSER = "OcuPilotWire99Ldap";
 
 Parameter LEASTROLE = "OcuPilotWire99LdapRole";
 
+/// <p>A second throwaway principal holding <code>%DB_IRISSYS:READ</code> and no <code>%Admin_Secure</code>.</p>
+Parameter OPENUSER = "OcuPilotWire99LdapOpen";
+
+Parameter OPENROLE = "OcuPilotWire99LdapOpenRole";
+
 /// <p>The probe configuration every test edits, created before each and removed after.</p>
 Parameter NAME = "ocup99ldap.invalid";
 
@@ -57,7 +62,8 @@ Method OnBeforeAllTests() As %Status
     Set tSC = $ClassMethod(..#PROBE, "RemoveAll")
     If $$$ISERR(tSC) Quit tSC
     Set ..PreparedPassword = "OcuPilotLdap" _ $Translate($System.Encryption.Base64Encode($System.Encryption.GenCryptRand(18), 1), "+/=", "") _ "!Aa9"
-    Quit $ClassMethod(..#PROBE, "EnsurePrincipal", ..#LEASTUSER, ..#LEASTROLE, "%Admin_Secure:U,%DB_IRISSYS:R", ..PreparedPassword)
+    Set tSC = $ClassMethod(..#PROBE, "EnsurePrincipal", ..#LEASTUSER, ..#LEASTROLE, "%Admin_Secure:U,%DB_IRISSYS:R", ..PreparedPassword)
+    Quit $$$ADDSC(tSC, $ClassMethod(..#PROBE, "EnsurePrincipal", ..#OPENUSER, ..#OPENROLE, "%DB_IRISSYS:R", ..PreparedPassword))
 }
 
 Method OnBeforeOneTest() As %Status
@@ -73,6 +79,7 @@ Method OnAfterOneTest() As %Status
 Method OnAfterAllTests() As %Status
 {
     Set tSC = $ClassMethod(..#PROBE, "RemoveAll")
+    Set tSC = $$$ADDSC(tSC, $ClassMethod(..#PROBE, "RemovePrincipal", ..#OPENUSER, ..#OPENROLE))
     Quit $$$ADDSC(tSC, $ClassMethod(..#PROBE, "RemovePrincipal", ..#LEASTUSER, ..#LEASTROLE))
 }
 
@@ -235,24 +242,41 @@ Method TestAStoredDotlessNameIsAdmitted()
     Do $$$AssertEquals($ClassMethod(..#PROBE, "LdapExists", tNew), 0, "which creates nothing")
 }
 
-/// <p>AD-39: a Save that would leave the configuration retrieving no attribute -- an empty list,
-/// which the vendor's <code>PUT</code> ignores, or one empty name, which it fails on -- is refused 422
-/// on <code>LDAPAttributes</code> by <code>LDAP.ATTRIBUTES.LASTONE</code> with its sentence before
-/// anything is written: neither the attributes nor a description sent beside them change.</p>
-/// <p>Mutation (Rule 19): drop that rule from
-/// <method>OcuPilot.Area.Security.LdapRules.Validate</method> -- both legs go red.</p>
-Method TestTheLastAttributeIsNotRemoved()
+/// <p>DW-1896, AD-27: a Save that removes the configuration's last retrieved attribute -- an empty list, one empty
+/// name or only blank names, which the vendor's own <code>PUT</code> ignores or fails on -- is saved: the
+/// description sent beside it is written, and the instance reads the attributes back as an empty list. A principal
+/// holding exactly the editor's two pairs does it too, and one without <code>%Admin_Secure</code> is refused 403
+/// by the port with nothing changed. The port reads a blank list as the case it completes, and a list that names an
+/// attribute as the vendor's own.</p>
+/// <p>Mutation (Rule 19): drop <code>Security.LDAP/PUT=LDAPAttributes</code> from
+/// <parameter>OcuPilot.Port.AdminPort.CLASSCOMPLETEDTYPES</parameter> -- the empty list is kept by the vendor and the
+/// list-read legs go red; drop the <code>Modify</code> call from
+/// <method>OcuPilot.Port.AdminPort.CompleteClearedList</method> -- the same legs read the stored list back.</p>
+Method TestTheLastAttributeIsRemoved()
 {
-    Set tSC = ##class(OcuPilot.Test.Http).MakeRequest("PUT", ..Path(..#NAME), .tStatus, .tAnswer, "{""LDAPAttributes"":[""cn"",""uid""]}", "application/json")
-    Do $$$AssertEquals(tStatus, 200, "two attributes are saved")
-    For tBody = "{""LDAPAttributes"":[],""Description"":""dropped""}", "{""LDAPAttributes"":[""""],""Description"":""dropped""}" {
+    For tBody = "{""LDAPAttributes"":[],""Description"":""dropped""}", "{""LDAPAttributes"":[""""],""Description"":""dropped""}", "{""LDAPAttributes"":["" "",""""],""Description"":""dropped""}" {
+        Set tSC = ##class(OcuPilot.Test.Http).MakeRequest("PUT", ..Path(..#NAME), .tStatus, .tAnswer, "{""LDAPAttributes"":[""cn"",""uid""],""Description"":""OcuPilot probe""}", "application/json")
+        Do $$$AssertEquals(tStatus, 200, "two attributes are saved")
         Set tSC = ##class(OcuPilot.Test.Http).MakeRequest("PUT", ..Path(..#NAME), .tStatus, .tAnswer, tBody, "application/json")
-        Set tRow = ""
-        If $IsObject($Get(tAnswer)) && (tAnswer.%GetTypeOf("detail") = "object") Set tRow = tAnswer.detail.violations.%Get(0)
-        Do $$$AssertEquals(tStatus _ " " _ $Select($IsObject(tRow): tRow.field _ " " _ tRow.code _ " " _ tRow.reason, 1: ""), "422 LDAPAttributes LDAP.ATTRIBUTES.LASTONE " _ ##class(OcuPilot.Api.LdapError).#REASONATTRIBUTESLASTONE, tBody _ " is refused on the attributes by its sentence")
+        Do $$$AssertEquals(tStatus, 200, tBody _ " is saved: " _ $Select($IsObject($Get(tAnswer)): $Extract(tAnswer.%ToJSON(), 1, 200), 1: ""))
+        Set tSC = $ClassMethod(..#PROBE, "Read", ..#NAME, .tAfter, "Security.LDAP")
+        Do $$$AssertEquals($Select($IsObject($Get(tAfter)): tAfter.%Get("LDAPAttributes").%ToJSON() _ " " _ tAfter.%Get("Description"), 1: ""), "[] dropped", tBody _ ": the attributes read back empty beside the description")
     }
+    Set tSC = ##class(OcuPilot.Test.Http).MakeRequest("PUT", ..Path(..#NAME), .tStatus, .tAnswer, "{""LDAPAttributes"":[""cn"",""uid""]}", "application/json")
+    Set tBase = $Parameter("OcuPilot.Test.Http", "BASEPATH")
+    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("PUT", tBase _ ..Path(..#NAME), ..#LEASTUSER, ..PreparedPassword, .tStatus, .tText, .tHeaders, "{""LDAPAttributes"":[]}", "application/json")
+    Do $$$AssertEquals(tStatus, 200, "a principal holding exactly the editor's two pairs clears it: " _ $Get(tText))
     Set tSC = $ClassMethod(..#PROBE, "Read", ..#NAME, .tAfter, "Security.LDAP")
-    Do $$$AssertEquals($Select($IsObject($Get(tAfter)): tAfter.%Get("LDAPAttributes").%ToJSON() _ " " _ tAfter.%Get("Description"), 1: ""), "[""cn"",""uid""] OcuPilot probe", "and nothing is written")
+    Do $$$AssertEquals($Select($IsObject($Get(tAfter)): tAfter.%Get("LDAPAttributes").%ToJSON(), 1: ""), "[]", "and the list reads empty")
+    Set tSC = ##class(OcuPilot.Test.Http).MakeRequest("PUT", ..Path(..#NAME), .tStatus, .tAnswer, "{""LDAPAttributes"":[""cn"",""uid""],""Description"":""OcuPilot probe""}", "application/json")
+    Set tPlan = [{"endpoint": "Security.LDAP", "type": "PUT", "query": {"name": (..#NAME)}, "body": {"LDAPAttributes": [], "Description": "refused"}, "port": "OcuPilot.Port.AdminPort"}]
+    Set tRun = ##class(OcuPilot.Test.EncryptionProbe).RunAs(..#OPENUSER, tPlan)
+    Do $$$AssertTrue($IsObject(tRun) && (tRun.%GetTypeOf("steps") = "array") && tRun.%Get("loggedIn"), "a principal holding no %Admin_Secure runs the port call: " _ $Select($IsObject(tRun): tRun.%ToJSON(), 1: ""))
+    Do $$$AssertEquals($Select($IsObject(tRun) && (tRun.%GetTypeOf("steps") = "array"): tRun.%Get("steps").%Get(0).%Get("http"), 1: ""), 403, "and the port refuses it 403")
+    Set tSC = $ClassMethod(..#PROBE, "Read", ..#NAME, .tAfter, "Security.LDAP")
+    Do $$$AssertEquals($Select($IsObject($Get(tAfter)): tAfter.%Get("LDAPAttributes").%ToJSON() _ " " _ tAfter.%Get("Description"), 1: ""), "[""cn"",""uid""] OcuPilot probe", "with nothing changed")
+    Set tPort = "OcuPilot.Port.AdminPort"
+    Do $$$AssertEquals($ClassMethod(tPort, "ClassCompletedField", "Security.LDAP", "PUT", {"LDAPAttributes": []}) _ "|" _ $ClassMethod(tPort, "ClassCompletedField", "Security.LDAP", "PUT", {"LDAPAttributes": [" ", ""]}) _ "|" _ $ClassMethod(tPort, "ClassCompletedField", "Security.LDAP", "PUT", {"LDAPAttributes": ["cn", ""]}) _ "|" _ $ClassMethod(tPort, "ClassCompletedField", "Security.LDAP", "PUT", {"Description": "x"}) _ "|" _ $ClassMethod(tPort, "ClassCompletedField", "Security.LDAP", "POST", {"LDAPAttributes": []}), "LDAPAttributes|LDAPAttributes|||", "an empty or blank list is the completed case; a list naming an attribute, no list and another type are not")
 }
 
 /// <p>AD-8 with a real principal: holding exactly the form's two pairs, it reads the form, a new

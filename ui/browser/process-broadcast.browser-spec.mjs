@@ -28,7 +28,7 @@ import puppeteer from 'puppeteer';
 import { LIVE_CONTAINER, browserConfig, launchOptions } from '../browser.config.mjs';
 import { loadStrings } from '../tools/strings.mjs';
 import { FILTER_SELECTOR, ROW_SELECTOR, clickRowCentre, waitForRows } from './list-spec.mjs';
-import { signedInAt } from './panel-spec.mjs';
+import { settleViewport, signedInAt, transitionsSettled } from './panel-spec.mjs';
 import { INVARIANTS, VIEWPORTS, assertThrowaway, collapse, compare, componentMinimums, detectScreen, readBaseline } from './structural-walk.mjs';
 import { markerValue, runIris } from './turnprobe-spec.mjs';
 
@@ -123,9 +123,10 @@ async function structural(page, dialog = false, arrange = null) {
   const minimums = componentMinimums();
   const surfaces = {};
   for (const { viewport, theme, checks } of passes) {
-    await page.setViewport(viewport);
+    await settleViewport(page, viewport);
     await page.evaluate((dark) => document.documentElement.classList.toggle('ocu-theme-dark', dark), theme === 'dark');
     await frames(page);
+    await transitionsSettled(page, config.navigationTimeoutMs);
     surfaces[theme] = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
     if (arrange !== null) await arrange(`${viewport.width}px ${theme}`);
     const { entries } = await detectScreen(page, { route: ROUTE, checks, viewport: viewport.width, theme, minimums });

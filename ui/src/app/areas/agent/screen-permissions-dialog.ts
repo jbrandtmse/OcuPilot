@@ -40,9 +40,9 @@ function fill(template: string, placeholder: string, value: string): string {
     @if (fixed) {
       <p class="ocu-field-caption ocu-screen-permissions-fixed">{{ STRINGS.screenPermissionsFixed }}</p>
     }
-    <fieldset class="ocu-field ocu-screen-permissions-pairs">
+    <fieldset class="ocu-field">
       <legend class="ocu-field-label">{{ STRINGS.screenPermissionsColumnEffective }}</legend>
-      <ul class="ocu-screen-permissions-list">
+      <ul>
         @for (pair of pairList; track pair) {
           <li class="ocu-screen-permissions-pair" [attr.data-pair]="pair">
             <span class="ocu-screen-permissions-text">{{ pair }}</span>
@@ -68,7 +68,7 @@ function fill(template: string, placeholder: string, value: string): string {
     </fieldset>
     @if (canAdjust) {
       <p class="ocu-field-caption ocu-screen-permissions-consequence">{{ STRINGS.screenPermissionsLowerConsequence }}</p>
-      <fieldset class="ocu-field ocu-screen-permissions-add">
+      <fieldset class="ocu-field">
         <legend class="ocu-field-label">{{ STRINGS.screenPermissionsAddLegend }}</legend>
         <div class="ocu-field">
           <label class="ocu-field-label" [attr.for]="resourceId">{{ STRINGS.webAppColumnResource }}</label>
@@ -109,7 +109,7 @@ export class ScreenPermissionsDialog {
   /** The pairs the screen requires before the classic page's resource, each `resource:PERMISSION`. */
   readonly pairs = input<readonly string[]>([]);
 
-  /** The classic page's custom resource as a pair, or `''`: listed as fixed. */
+  /** The custom resources of the classic pages the screen replaces, each as a pair and comma-separated, or `''`: listed as fixed. */
   readonly classic = input<string>('');
 
   /** Whether the screen's permissions can be adjusted at all. */

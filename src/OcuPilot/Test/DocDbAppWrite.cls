@@ -216,8 +216,11 @@ Method TestADeleteRemovesTheRecordOnBothCallers()
 /// 422 <code>DOCDBAPP.VALIDATION</code> carrying the violation and by the agent's mint as its problem naming the field
 /// and the published sentence, an empty name or namespace as 400 <code>TOOL.ARGUMENTS</code> at the mint; no record is
 /// created.</p>
+/// <p>A namespace that is not text is refused on <code>Namespace</code> as <code>PORT.FIELD.SHAPE</code>.</p>
 /// <p>Mutation (Rule 19): drop the <code>Description</code> length rule from
-/// <method>OcuPilot.Area.WebApp.DocDbAppRules.Valid</method> -- its legs create the record and go red.</p>
+/// <method>OcuPilot.Area.WebApp.DocDbAppRules.Valid</method> -- its legs create the record and go red; drop the shape
+/// violation from <method>OcuPilot.Area.WebApp.DocDbAppSave.CreateIdentity</method> -- the non-text namespace leg is
+/// refused as a bad namespace and goes red.</p>
 Method TestEveryCreateRuleIsRefusedBeforeAnyPutOnBothCallers()
 {
     Set tErrors = ..#ERRORS
@@ -266,6 +269,9 @@ Method TestEveryCreateRuleIsRefusedBeforeAnyPutOnBothCallers()
         If '$List(tCase, 5) Do $$$AssertTrue(tProblem [ ("'" _ $List(tCase, 3) _ "': " _ ##class(OcuPilot.Api.Error).ReasonForViolation($List(tCase, 4))), $List(tCase, 1) _ ": naming the field and the published sentence: " _ tProblem)
         Do $$$AssertEquals($ListLength($ClassMethod(..#PROBE, "Names")), 0, $List(tCase, 1) _ ": and the mint created no record")
     }
+    Do ..Save({"Namespace": 5, "Name": "OcuProbe1830R"}, .tStatus, .tAnswer)
+    Do $$$AssertEquals(tStatus _ " " _ ..ViolationOf(tAnswer, "Namespace"), "422 " _ tShape, "a namespace that is not text is refused on its field: " _ ..Text(tAnswer))
+    Do $$$AssertEquals($ListLength($ClassMethod(..#PROBE, "Names")), 0, "and no record was created")
 }
 
 /// <p>C4: every row of the change's rules is refused on its field before any <code>PUT</code>, by the form's Save as a

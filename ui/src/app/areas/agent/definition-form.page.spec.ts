@@ -288,6 +288,10 @@ describe('the Definition form', () => {
     // Mutation (Rule 19): drop the input's `(input)` binding -> the PUT carries 30 and the caption
     // keeps 30, and this goes red.
     const retention = host.querySelector('#ocu-definition-retentionDays') as HTMLInputElement;
+    retention.value = '1';
+    retention.dispatchEvent(new Event('input'));
+    await settle(fixture);
+    expect(host.querySelector('#ocu-definition-retentionDays-caption')?.textContent?.trim()).toBe('Transcripts are kept for 1 day.');
     retention.value = '7';
     retention.dispatchEvent(new Event('input'));
     await settle(fixture);
@@ -734,6 +738,15 @@ describe('the Definition form', () => {
     expect(
       await failureAfterPress(timedOut('PROVIDER.TESTTIMEOUT', { waitedSeconds: 50, providerLabel: 'Google Gemini' }))
     ).toBe(STRINGS.agentDefinitionTestTimeout.replace('<provider>', 'Google Gemini').replace('<n>', '50'));
+
+    // A one-second wait reads the singular. Mutation (Rule 19): fill `agentDefinitionTestTimeoutLocal` and
+    // `agentDefinitionTestTimeout` alone in `testTimeoutText` -> both read "1 seconds", red.
+    expect(
+      await failureAfterPress(timedOut('PROVIDER.TESTTIMEOUTLOCAL', { waitedSeconds: 1, providerLabel: 'OpenAI-compatible' }))
+    ).toBe(STRINGS.agentDefinitionTestTimeoutLocalOne);
+    expect(
+      await failureAfterPress(timedOut('PROVIDER.TESTTIMEOUT', { waitedSeconds: 1, providerLabel: 'Google Gemini' }))
+    ).toBe(STRINGS.agentDefinitionTestTimeoutOne.replace('<provider>', 'Google Gemini'));
 
     // Without the detail the sentence cannot be resolved, so the envelope's own reason renders.
     expect(await failureAfterPress(timedOut('PROVIDER.TESTTIMEOUT', null))).toBe(
@@ -2082,5 +2095,268 @@ describe('the Definition form', () => {
     await typeEndpoint('');
     expect(note()).toBeNull();
     expect(endpoint().getAttribute('aria-describedby')).toBeNull();
+  });
+
+  // --- Story 18.41: the wallet rung ----------------------------------------------------------------
+
+  const walletBox = (host: HTMLElement) => host.querySelector('#ocu-definition-wallet') as HTMLInputElement;
+
+  const tickWallet = async (fixture: ComponentFixture<unknown>, host: HTMLElement, on: boolean) => {
+    walletBox(host).checked = on;
+    walletBox(host).dispatchEvent(new Event('change'));
+    await settle(fixture);
+  };
+
+  const typeInto = async (fixture: ComponentFixture<unknown>, host: HTMLElement, selector: string, value: string) => {
+    const input = host.querySelector(selector) as HTMLInputElement;
+    input.value = value;
+    input.dispatchEvent(new Event('input'));
+    await settle(fixture);
+  };
+
+  it('Story 18.41 C2: the wallet checkbox is offered on every family, and ticking it puts the Wallet secret field and its caption where the API key field was', async () => {
+    // Mutation (Rule 19): make `DefinitionForm.setWallet` ignore its argument and never move `credType` to
+    // `wallet` -> this goes red on the API key field staying, and so does the browser spec.
+    const { fixture, host, calls } = await mount((path, init) => {
+      if (path.endsWith('/agent/providers')) return ok(PROVIDERS_BODY);
+      if (init.method === 'POST') return created(definition({ id: '9' }));
+      return ok({ definitions: [] });
+    });
+
+    expect(walletBox(host).type).toBe('checkbox');
+    expect(walletBox(host).closest('label')?.textContent?.trim()).toBe(STRINGS.agentDefinitionCredTypeWallet);
+    expect(walletBox(host).checked).toBe(false);
+    expect(host.querySelector('#ocu-definition-apiKey')).not.toBeNull();
+    expect(host.querySelector('#ocu-definition-credentialName')).toBeNull();
+
+    await tickWallet(fixture, host, true);
+    expect(walletBox(host).checked).toBe(true);
+    expect(host.querySelector('#ocu-definition-apiKey')).toBeNull();
+    expect(host.querySelector('.ocu-reveal-toggle')).toBeNull();
+    const field = host.querySelector('#ocu-definition-credentialName') as HTMLInputElement;
+    expect(field.value).toBe('');
+    expect(host.querySelector('label[for="ocu-definition-credentialName"]')?.textContent?.trim()).toBe(STRINGS.agentDefinitionFieldWalletSecret);
+    expect(host.querySelector('#ocu-definition-credentialName-caption')?.textContent?.trim()).toBe(STRINGS.agentDefinitionWalletSecretCaption);
+    expect(field.getAttribute('aria-describedby')).toBe('ocu-definition-credentialName-caption');
+
+    await typeInto(fixture, host, '#ocu-definition-name', 'Claude');
+    await typeInto(fixture, host, '#ocu-definition-credentialName', 'Keys.anthropic');
+    saveButton(host).click();
+    await settle(fixture);
+    const posted = lastBody(calls, 'POST');
+    expect(posted['credType']).toBe('wallet');
+    expect(posted['credentialName']).toBe('Keys.anthropic');
+  });
+
+  it('Story 18.41 C2: a malformed secret name is refused on its own field with the server\'s sentence, focused, and a corrected one saves', async () => {
+    const reason = 'Name the wallet secret as collection.secret, as the Secrets screen lists it, in at most 128 characters.';
+    const { fixture, host, calls } = await mount((path, init) => {
+      if (path.endsWith('/agent/providers')) return ok(PROVIDERS_BODY);
+      if (init.method === 'POST') {
+        const sent = JSON.parse(init.body ?? '{}') as Record<string, unknown>;
+        if (!/^[A-Za-z]+\.[A-Za-z]+$/.test(String(sent['credentialName']))) {
+          return refused([{ field: 'credentialName', code: 'WALLETRUNG.NAME', reason }]);
+        }
+        return created(definition({ ...sent, id: '9' }));
+      }
+      return ok({ definitions: [] });
+    });
+    await tickWallet(fixture, host, true);
+    await typeInto(fixture, host, '#ocu-definition-name', 'Claude');
+    await typeInto(fixture, host, '#ocu-definition-credentialName', 'not a name');
+    saveButton(host).click();
+    await settle(fixture);
+
+    const field = host.querySelector('#ocu-definition-credentialName') as HTMLInputElement;
+    expect(field.getAttribute('aria-invalid')).toBe('true');
+    expect(host.querySelector('#ocu-definition-credentialName-reason')?.textContent?.trim()).toBe(reason);
+    expect(field.getAttribute('aria-describedby')).toBe('ocu-definition-credentialName-caption ocu-definition-credentialName-reason');
+    expect(document.activeElement?.id).toBe('ocu-definition-credentialName');
+
+    await typeInto(fixture, host, '#ocu-definition-credentialName', 'Keys.anthropic');
+    saveButton(host).click();
+    await settle(fixture);
+    expect(calls.filter((call) => call.method === 'POST')).toHaveLength(2);
+    expect(host.querySelector('#ocu-definition-credentialName-reason')).toBeNull();
+    expect(lastBody(calls, 'POST')['credentialName']).toBe('Keys.anthropic');
+  });
+
+  it('Story 18.41 C2: a stored wallet definition opens ticked with its secret name, and unticking restores the rung it displaced and the catalog default name', async () => {
+    const answer: Answer = (path, init) => {
+      if (path.endsWith('/agent/providers')) return ok(PROVIDERS_BODY);
+      if (init.method === 'PUT') return ok(definition(JSON.parse(init.body ?? '{}')));
+      return ok(definition({ credType: 'wallet', credentialName: 'Keys.anthropic' }));
+    };
+    const { fixture, host, calls } = await mount(answer, '/agent/definitions/edit/7');
+
+    expect(walletBox(host).checked).toBe(true);
+    expect((host.querySelector('#ocu-definition-credentialName') as HTMLInputElement).value).toBe('Keys.anthropic');
+    expect(host.querySelector('#ocu-definition-apiKey')).toBeNull();
+
+    await tickWallet(fixture, host, false);
+    expect(walletBox(host).checked).toBe(false);
+    expect(host.querySelector('#ocu-definition-credentialName')).toBeNull();
+    expect(host.querySelector('#ocu-definition-apiKey')).not.toBeNull();
+    saveButton(host).click();
+    await settle(fixture);
+    const put = lastBody(calls, 'PUT');
+    expect(put['credType']).toBe('creds');
+    expect(put['credentialName']).toBe('OcuPilotAnthropic');
+  });
+
+  it('Story 18.41: a provider change keeps the secret name, and the checkbox is exclusive with No API key in both directions', async () => {
+    const { fixture, host } = await mount((path, init) => {
+      if (path.endsWith('/agent/providers')) return ok(LOCAL_PROVIDERS);
+      if (init.method === 'POST') return created(definition({ id: '9' }));
+      return ok({ definitions: [] });
+    });
+    await chooseProvider(fixture, host, 'compatible');
+    const noKey = () => host.querySelector('#ocu-definition-credType') as HTMLInputElement;
+
+    await tickWallet(fixture, host, true);
+    await typeInto(fixture, host, '#ocu-definition-credentialName', 'Keys.compatible');
+    await chooseProvider(fixture, host, 'anthropic');
+    expect(walletBox(host).checked).toBe(true);
+    expect((host.querySelector('#ocu-definition-credentialName') as HTMLInputElement).value).toBe('Keys.compatible');
+
+    await chooseProvider(fixture, host, 'compatible');
+    noKey().checked = true;
+    noKey().dispatchEvent(new Event('change'));
+    await settle(fixture);
+    expect(noKey().checked).toBe(true);
+    expect(walletBox(host).checked).toBe(false);
+
+    // Unticking No API key restores the rung the wallet displaced, never the wallet itself.
+    noKey().checked = false;
+    noKey().dispatchEvent(new Event('change'));
+    await settle(fixture);
+    expect(walletBox(host).checked).toBe(false);
+    expect(host.querySelector('#ocu-definition-apiKey')).not.toBeNull();
+
+    // And from the keyless choice, ticking the wallet leaves it, and unticking the wallet returns to it.
+    noKey().checked = true;
+    noKey().dispatchEvent(new Event('change'));
+    await settle(fixture);
+    await tickWallet(fixture, host, true);
+    expect(noKey().checked).toBe(false);
+    await tickWallet(fixture, host, false);
+    expect(noKey().checked).toBe(true);
+  });
+
+  it('Story 18.41: a refused secret name keeps its reason across a provider change, because the cascade leaves the name alone', async () => {
+    // Mutation (Rule 19): drop `if (field === 'credentialName' && this.walletMode()) continue;` from `setProvider`'s
+    // violation sweep -> this goes red on the reason vanishing.
+    const reason = 'Name the wallet secret as collection.secret, as the Secrets screen lists it, in at most 128 characters.';
+    const { fixture, host } = await mount((path, init) => {
+      if (path.endsWith('/agent/providers')) return ok(LOCAL_PROVIDERS);
+      if (init.method === 'POST') return refused([{ field: 'credentialName', code: 'WALLETRUNG.NAME', reason }]);
+      return ok({ definitions: [] });
+    });
+    await tickWallet(fixture, host, true);
+    await typeInto(fixture, host, '#ocu-definition-name', 'Claude');
+    await typeInto(fixture, host, '#ocu-definition-credentialName', 'not a name');
+    saveButton(host).click();
+    await settle(fixture);
+    expect(host.querySelector('#ocu-definition-credentialName-reason')?.textContent?.trim()).toBe(reason);
+
+    await chooseProvider(fixture, host, 'compatible');
+    expect((host.querySelector('#ocu-definition-credentialName') as HTMLInputElement).value).toBe('not a name');
+    expect(host.querySelector('#ocu-definition-credentialName-reason')?.textContent?.trim()).toBe(reason);
+  });
+
+  it('Story 18.41 C5: in wallet mode Test connection posts no credential, even with a key held, and the held key is dropped by the tick', async () => {
+    // Mutation (Rule 19): drop `&& !this.walletMode()` from testConnection's credential post -> this goes red on the
+    // `/credential` POST.
+    const { fixture, host, calls } = await mount(envAnswer(withRung(PROVIDERS_BODY, undefined)));
+    await typeInto(fixture, host, '#ocu-definition-name', 'Claude');
+    await typeInto(fixture, host, '#ocu-definition-apiKey', 'sk-ant-typed-before-the-tick');
+    await tickWallet(fixture, host, true);
+    expect(TestBed.inject(DefinitionForm).key()).toBe('');
+    await typeInto(fixture, host, '#ocu-definition-credentialName', 'Keys.anthropic');
+    TestBed.inject(DefinitionForm).setKey('sk-ant-held-in-wallet-mode');
+    (host.querySelector('.ocu-form-test button') as HTMLButtonElement).click();
+    await settle(fixture);
+    const posts = calls.filter((call) => call.method === 'POST').map((call) => call.path);
+    expect(posts.some((path) => path.endsWith('/credential'))).toBe(false);
+    expect(posts.some((path) => path.endsWith('/test'))).toBe(true);
+    expect(JSON.parse(calls.find((call) => call.method === 'POST')?.body ?? '{}')['credType']).toBe('wallet');
+  });
+
+  it('Story 18.41: in env mode the Wallet secret field takes the environment variable field\'s place, and unticking restores `env`', async () => {
+    const { fixture, host } = await mount(envAnswer(withRung(PROVIDERS_BODY, false)));
+    expect(host.querySelector('#ocu-definition-envVarName')).not.toBeNull();
+
+    await tickWallet(fixture, host, true);
+    expect(host.querySelector('#ocu-definition-envVarName')).toBeNull();
+    expect(host.querySelector('#ocu-definition-credentialName')).not.toBeNull();
+    expect(host.querySelector('#ocu-definition-apiKey')).toBeNull();
+
+    await tickWallet(fixture, host, false);
+    expect((host.querySelector('#ocu-definition-envVarName') as HTMLInputElement).value).toBe('ANTHROPIC_API_KEY');
+    expect(host.querySelector('#ocu-definition-credentialName')).toBeNull();
+  });
+
+  it('Story 18.41: ticking and unticking keeps a stored definition\'s own credential entry name, so the round trip repoints nothing', async () => {
+    // Mutation (Rule 19): make `setWallet(false)` always restore the catalog default name -> red on the PUT's name.
+    const { fixture, host, calls } = await mount((path, init) => {
+      if (path.endsWith('/agent/providers')) return ok(PROVIDERS_BODY);
+      if (init.method === 'PUT') return ok(definition(JSON.parse(init.body ?? '{}')));
+      return ok(definition({ credentialName: 'OperatorAnthropicKey' }));
+    }, '/agent/definitions/edit/7');
+    await tickWallet(fixture, host, true);
+    await tickWallet(fixture, host, false);
+    saveButton(host).click();
+    await settle(fixture);
+    expect(lastBody(calls, 'PUT')['credType']).toBe('creds');
+    expect(lastBody(calls, 'PUT')['credentialName']).toBe('OperatorAnthropicKey');
+  });
+
+  it('Story 18.41: unticking on a provider that does not license No API key restores the credentials rung, never `none`', async () => {
+    // Mutation (Rule 19): restore the held rung unguarded in `setWallet(false)` -> red on `credType` `none`.
+    const { fixture, host, calls } = await mount((path, init) => {
+      if (path.endsWith('/agent/providers')) return ok(LOCAL_PROVIDERS);
+      if (init.method === 'POST') return created(definition({ id: '9' }));
+      return ok({ definitions: [] });
+    });
+    await chooseProvider(fixture, host, 'compatible');
+    const noKey = host.querySelector('#ocu-definition-credType') as HTMLInputElement;
+    noKey.checked = true;
+    noKey.dispatchEvent(new Event('change'));
+    await settle(fixture);
+    await tickWallet(fixture, host, true);
+    await chooseProvider(fixture, host, 'anthropic');
+    await tickWallet(fixture, host, false);
+    await typeInto(fixture, host, '#ocu-definition-name', 'Claude');
+    saveButton(host).click();
+    await settle(fixture);
+    expect(lastBody(calls, 'POST')['credType']).toBe('creds');
+  });
+
+  it('Story 18.41: in env mode, unticking a stored wallet definition fills the environment variable with the catalog default', async () => {
+    // Mutation (Rule 19): keep `this.value('envVarName')` alone in `setWallet(false)` -> red on the empty variable.
+    const { fixture, host, calls } = await mount((path, init) => {
+      if (path.endsWith('/agent/providers')) return ok(withRung(PROVIDERS_BODY, false));
+      if (init.method === 'PUT') return ok(definition(JSON.parse(init.body ?? '{}')));
+      return ok(definition({ credType: 'wallet', credentialName: 'Keys.anthropic', envVarName: '' }));
+    }, '/agent/definitions/edit/7');
+    expect(walletBox(host).checked).toBe(true);
+    await tickWallet(fixture, host, false);
+    expect((host.querySelector('#ocu-definition-envVarName') as HTMLInputElement).value).toBe('ANTHROPIC_API_KEY');
+    saveButton(host).click();
+    await settle(fixture);
+    expect(lastBody(calls, 'PUT')['credType']).toBe('env');
+    expect(lastBody(calls, 'PUT')['envVarName']).toBe('ANTHROPIC_API_KEY');
+  });
+
+  it('Story 18.41: ticking the wallet in env mode drops a refusal on the environment variable field it hides', async () => {
+    // Mutation (Rule 19): drop `this.clearFieldViolation('envVarName')` from `setWallet(true)` -> red on the summary.
+    const { fixture, host } = await mount(envAnswer(withRung(PROVIDERS_BODY, false)));
+    await typeInto(fixture, host, '#ocu-definition-name', 'Claude');
+    await typeInto(fixture, host, '#ocu-definition-envVarName', '');
+    saveButton(host).click();
+    await settle(fixture);
+    expect(host.querySelector('.ocu-form-summary')).not.toBeNull();
+    await tickWallet(fixture, host, true);
+    expect(host.querySelector('.ocu-form-summary')).toBeNull();
   });
 });

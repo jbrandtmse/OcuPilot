@@ -34,8 +34,9 @@ interface FieldView {
 }
 
 /**
- * The Switches screen: the kill switch, the users it is on for, enforced read-only and the
- * instance default for screen-context sharing (FR-19, FR-20, FR-29).
+ * The Switches screen: the kill switch, the users it is on for, enforced read-only, the
+ * instance default for screen-context sharing (FR-19, FR-20, FR-29) and the provider connection
+ * -- the proxy and the SSL/TLS configuration provider calls go through (Story 18.40).
  *
  * **It enforces nothing and reads nothing back to decide with.** Whether a write may happen is
  * `OcuPilot.Kernel.Restraint`'s alone (AD-30); this screen changes the state that verdict reads and
@@ -298,6 +299,98 @@ interface FieldView {
         </div>
       </section>
 
+      @if (connectionLoadedFlag) {
+        <section class="ocu-switches-connection">
+          <h2 class="ocu-switches-holds-heading">{{ STRINGS.agentSwitchesConnectionHeading }}</h2>
+
+          <div class="ocu-field">
+            <label class="ocu-field-label" [attr.for]="proxyServerField.id">{{
+              STRINGS.agentSwitchesProxyServer
+            }}</label>
+            <div class="ocu-field-control">
+              <input
+                class="ocu-field-input"
+                type="text"
+                [id]="proxyServerField.id"
+                [value]="proxyServerValue"
+                [attr.aria-invalid]="proxyServerField.invalid"
+                [attr.aria-describedby]="proxyServerDescribedBy"
+                (input)="onConnectionText('proxyServer', $event)"
+              />
+            </div>
+            <p class="ocu-field-caption" [id]="proxyHintId">{{ STRINGS.agentSwitchesProxyHint }}</p>
+            @if (proxyServerField.invalid) {
+              <p class="ocu-form-error" [id]="proxyServerField.id + '-reason'">
+                {{ proxyServerField.reason }}
+              </p>
+            }
+          </div>
+
+          <div class="ocu-field">
+            <label class="ocu-field-label" [attr.for]="proxyPortField.id">{{
+              STRINGS.agentSwitchesProxyPort
+            }}</label>
+            <div class="ocu-field-control">
+              <input
+                class="ocu-field-input"
+                type="number"
+                min="1"
+                max="65535"
+                [id]="proxyPortField.id"
+                [value]="proxyPortValue"
+                [attr.aria-invalid]="proxyPortField.invalid"
+                [attr.aria-describedby]="proxyPortField.describedBy"
+                (input)="onConnectionText('proxyPort', $event)"
+              />
+            </div>
+            @if (proxyPortField.invalid) {
+              <p class="ocu-form-error" [id]="proxyPortField.id + '-reason'">
+                {{ proxyPortField.reason }}
+              </p>
+            }
+          </div>
+
+          <div class="ocu-field">
+            <label class="ocu-field-label" [attr.for]="sslConfigurationField.id">{{
+              STRINGS.sslFormLabel
+            }}</label>
+            <div class="ocu-field-control">
+              <input
+                class="ocu-field-input"
+                type="text"
+                [id]="sslConfigurationField.id"
+                [value]="sslConfigurationValue"
+                [attr.aria-invalid]="sslConfigurationField.invalid"
+                [attr.aria-describedby]="sslConfigurationDescribedBy"
+                (input)="onConnectionText('sslConfiguration', $event)"
+              />
+            </div>
+            <p class="ocu-field-caption" [id]="sslConfigurationHintId">
+              {{ STRINGS.agentSwitchesSslConfigurationHint }}
+            </p>
+            @if (sslConfigurationField.invalid) {
+              <p class="ocu-form-error" [id]="sslConfigurationField.id + '-reason'">
+                {{ sslConfigurationField.reason }}
+              </p>
+            }
+          </div>
+
+          <div class="ocu-switches-connection-actions">
+            <button
+              type="button"
+              class="ocu-button-secondary"
+              [attr.aria-disabled]="busyFlag"
+              (click)="onSaveConnection()"
+            >
+              {{ STRINGS.agentSwitchesSaveConnection }}
+            </button>
+            @if (connectionSavedFlag) {
+              <span role="status">{{ STRINGS.formSaved }}</span>
+            }
+          </div>
+        </section>
+      }
+
       <div class="ocu-form-bar">
         <div class="ocu-form-bar-status">
           @if (savedFlag) {
@@ -348,6 +441,10 @@ export class SwitchesPage {
   protected readonly shareContextId = 'ocu-switches-share-context';
 
   protected readonly turnsPerHourHintId = 'ocu-switches-turnsPerHour-hint';
+
+  protected readonly proxyHintId = 'ocu-switches-proxyServer-hint';
+
+  protected readonly sslConfigurationHintId = 'ocu-switches-sslConfiguration-hint';
 
   /** The fixed concurrent bound's read-only control (Story 14.6); never sent on save. */
   protected readonly concurrentTurnsId = 'ocu-switches-concurrentTurns';
@@ -417,7 +514,9 @@ export class SwitchesPage {
       return formatDeniedAction(
         STRINGS.privilegeDeniedAction,
         pair,
-        STRINGS.agentSwitchesRefusedAction
+        this.store.refusalAction() === 'connection'
+          ? STRINGS.agentSwitchesConnectionRefusedAction
+          : STRINGS.agentSwitchesRefusedAction
       );
     }
     // Before the envelope's own reason, and replacing it: the server's sentence states the
@@ -477,6 +576,57 @@ export class SwitchesPage {
   protected get concurrentTurnsValue(): string {
     this.generation();
     return this.store.concurrentTurns();
+  }
+
+  protected get connectionLoadedFlag(): boolean {
+    this.generation();
+    return this.store.connectionLoaded();
+  }
+
+  protected get connectionSavedFlag(): boolean {
+    this.generation();
+    return this.store.connectionSaved();
+  }
+
+  protected get proxyServerValue(): string {
+    this.generation();
+    return this.store.connectionValue('proxyServer');
+  }
+
+  protected get proxyPortValue(): string {
+    this.generation();
+    return this.store.connectionValue('proxyPort');
+  }
+
+  protected get sslConfigurationValue(): string {
+    this.generation();
+    return this.store.connectionValue('sslConfiguration');
+  }
+
+  protected get proxyServerField(): FieldView {
+    return this.field('proxyServer');
+  }
+
+  protected get proxyPortField(): FieldView {
+    return this.field('proxyPort');
+  }
+
+  protected get sslConfigurationField(): FieldView {
+    return this.field('sslConfiguration');
+  }
+
+  /** The hint always, then the refusal when there is one. */
+  protected get proxyServerDescribedBy(): string {
+    const field = this.proxyServerField;
+    return field.describedBy === null ? this.proxyHintId : `${this.proxyHintId} ${field.describedBy}`;
+  }
+
+  /** The hint always, then the refusal when there is one. */
+  protected get sslConfigurationDescribedBy(): string {
+    const field = this.sslConfigurationField;
+    return field.describedBy === null
+      ? this.sslConfigurationHintId
+      : `${this.sslConfigurationHintId} ${field.describedBy}`;
   }
 
   protected get holdUserValue(): string {
@@ -549,6 +699,10 @@ export class SwitchesPage {
     this.store.setValue(field, (event.target as HTMLInputElement).value);
   }
 
+  protected onConnectionText(field: string, event: Event): void {
+    this.store.setConnectionValue(field, (event.target as HTMLInputElement).value);
+  }
+
   protected onHoldUser(event: Event): void {
     this.store.setHoldUser((event.target as HTMLInputElement).value);
   }
@@ -560,6 +714,12 @@ export class SwitchesPage {
   protected async onSave(): Promise<void> {
     if (this.busyFlag) return;
     await this.store.save();
+    this.focusRefusal();
+  }
+
+  protected async onSaveConnection(): Promise<void> {
+    if (this.busyFlag) return;
+    await this.store.saveConnection();
     this.focusRefusal();
   }
 

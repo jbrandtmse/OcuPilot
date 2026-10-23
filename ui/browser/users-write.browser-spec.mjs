@@ -238,6 +238,14 @@ test(
     // the whole path the Integration AC is about.
     assert.equal(storedField(TARGET, 'Enabled'), '0', 'the account starts disabled, so the proposal has something to change');
     assert.equal(storedField(TARGET, 'Roles'), HELD_ROLE, 'holding exactly the one role');
+    // The member count the card must read for the escalation array, taken from the stored account.
+    const escalationCount = storedField(TARGET, 'EscalationRoles')
+      .split(',')
+      .filter((role) => role !== '').length;
+    const escalationWords =
+      escalationCount === 1
+        ? STRINGS.proposalOpaqueCountOne
+        : STRINGS.proposalOpaqueCount.replace('<n>', String(escalationCount));
 
     const { context, page, tag } = await withLiveCard(
       [
@@ -281,8 +289,9 @@ test(
       assert.equal(card.expanded, 'false', 'the disclosure starts collapsed, as the published caption does');
 
       // AD-4: the disclosure is the rest of the complete property set the write sends, and its rows
-      // equal the caption's own count. An `ordinary` literal carries its value; the two arrays the
-      // classification calls `opaque` carry the published mask.
+      // equal the caption's own count. An `ordinary` literal carries its value; `EscalationRoles`, an
+      // array the classification calls `opaque` and this proposal leaves unchanged, reads its member
+      // count and no member.
       await page.click('.ocu-proposal-card-disclosure');
       await page.waitForFunction(
         () => document.querySelector('.ocu-proposal-card-disclosure')?.getAttribute('aria-expanded') === 'true',
@@ -292,17 +301,18 @@ test(
         timeout: config.navigationTimeoutMs,
       });
       const disclosed = await page.evaluate((mask) => {
-        const rows = [...document.querySelectorAll('.ocu-diff-row-unchanged')].map((row) => (row.textContent ?? '').trim());
+        const rows = [...document.querySelectorAll('.ocu-diff-row-unchanged')];
+        const texts = rows.map((row) => (row.textContent ?? '').trim());
         const caption = document.querySelector('.ocu-proposal-card-unchanged span:last-child')?.textContent?.trim() ?? '';
+        const escalation = rows.find((row) => row.querySelector('.ocu-diff-field')?.textContent?.trim() === 'EscalationRoles');
         return {
-          rows,
+          rows: texts,
           caption,
-          masked: rows.filter((row) => row.includes(mask)).length,
-          escalation: rows.find((row) => row.includes('EscalationRoles')) ?? '',
-          // Whether the mask is on THAT row, judged where the mask value already lives so
-          // there is no second copy of it in this file.
-          escalationMasked: (rows.find((row) => row.includes('EscalationRoles')) ?? '').includes(mask),
-          fullName: rows.find((row) => row.includes('FullName')) ?? '',
+          escalation: (escalation?.textContent ?? '').trim(),
+          // What the value cell of THAT row reads, and whether it is the mask.
+          escalationValue: escalation?.querySelector('.ocu-diff-value')?.textContent?.trim() ?? '',
+          escalationMasked: (escalation?.textContent ?? '').includes(mask),
+          fullName: texts.find((row) => row.includes('FullName')) ?? '',
         };
       }, '\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022');
       const countInCaption = Number((/\d+/.exec(disclosed.caption) ?? ['0'])[0]);
@@ -316,12 +326,13 @@ test(
         disclosed.fullName.includes(TARGET),
         `an ordinary literal carries its own value in clear: ${disclosed.fullName}`
       );
-      // The mask has to be on THAT row. Two facts ANDed -- an escalation row exists, and some row
-      // is masked -- would be satisfied by any other masked row.
-      assert.ok(
-        disclosed.escalationMasked,
-        `and the opaque escalation array carries the published mask on its own row: ${disclosed.escalation}`
+      // The count has to be on THAT row, and the mask not: a row elsewhere cannot satisfy either.
+      assert.equal(
+        disclosed.escalationValue,
+        escalationWords,
+        `and the opaque escalation array reads its member count on its own row: ${disclosed.escalation}`
       );
+      assert.equal(disclosed.escalationMasked, false, `and not the published mask: ${disclosed.escalation}`);
 
       const before = await page.evaluate(rowTextFor, ROW_SELECTOR, TARGET);
       assert.ok(before.includes(TARGET), `the list carries the target's row before the confirm: ${before}`);

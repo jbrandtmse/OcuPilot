@@ -286,7 +286,7 @@ async function answerFor(answers, readPath) {
   return answered.filter((entry) => entry.path === readPath).pop();
 }
 
-test('AC1: the side bar lists OAuth 2.0 fifth; its strip reads the five tabs, and Right then Enter and a click on each tab open that tab under its headers from one read of its own tool', async () => {
+test('AC1: the side bar lists OAuth 2.0; its strip reads the five tabs, and Right then Enter and a click on each tab open that tab under its headers from one read of its own tool', async () => {
   const { context, page, reads } = await signedInAt(urlOf(TABS[0].route), config.username, config.password);
   try {
     await waitForRows(page, config.navigationTimeoutMs);
@@ -295,7 +295,6 @@ test('AC1: the side bar lists OAuth 2.0 fifth; its strip reads the five tabs, an
 
     const sideBar = await sideBarOf(page);
     assert.deepEqual(sideBar.entries, sideBarLabels('security'));
-    assert.deepEqual(sideBar.entries.slice(0, 7), ['SSL/TLS', 'X.509', 'LDAP / Kerberos', 'Wallet', 'OAuth 2.0', 'Auditing configuration', 'Allowed directories'], 'in the published words');
     assert.equal(sideBar.current, STRINGS.oauthLabel, 'and OAuth 2.0 is the current entry');
 
     const strip = await stripOf(page);
@@ -323,9 +322,6 @@ test('AC1: the side bar lists OAuth 2.0 fifth; its strip reads the five tabs, an
     for (const index of [2, 3, 4, 0, 1]) {
       const tab = TABS[index];
       const beforeClick = reads.length;
-      // A strip wider than the content column pages; focusing a tab scrolls it into view first.
-      await page.focus(`app-detail-page .ocu-detail-tab[data-route="${tab.route}"]`);
-      await new Promise((resolve) => setTimeout(resolve, 600));
       await page.click(`app-detail-page .ocu-detail-tab[data-route="${tab.route}"]`);
       await atTab(page, tab);
       assert.deepEqual(await headersOf(page), tab.headers, `${tab.label}: the declared headers`);

@@ -26,7 +26,7 @@ Parameter PORTPACKAGE = "OcuPilot.Port.";
 /// check declares <parameter>VENDORGATE</parameter> instead.</p>
 /// <p><b>A class in the package and not on this roster fails.</b> That is the point: the roster is
 /// what a new port has to be added to, and adding it is what forces a gate to be named.</p>
-Parameter ROSTER = "OcuPilot.Port.AdminPort=<vendor>|OcuPilot.Port.UserCopyPort=PAIRS|OcuPilot.Port.LogSourcePort=MESSAGESPAIRS;ALERTSPAIRS;ERRORSINSTANCEPAIRS|OcuPilot.Port.MgmntPort=PAIRS;WRITEPAIRS|OcuPilot.Port.MonitorPort=PAIRS|OcuPilot.Port.ProviderPort=INVOKEPAIRS;DRAFTPAIRS|OcuPilot.Port.WalletPort=<vendor>|OcuPilot.Port.TaskPort=<vendor>|OcuPilot.Port.ProcessPort=<vendor>|OcuPilot.Port.TokenPort=<vendor>|OcuPilot.Port.AuditPort=<vendor>|OcuPilot.Port.OAuthServerPort=<vendor>|OcuPilot.Port.OAuthClientPort=<vendor>|OcuPilot.Port.OAuthResourceServerPort=<vendor>|OcuPilot.Port.OAuthAuthorizationServerPort=<vendor>|OcuPilot.Port.OAuthRegisteredClientPort=<vendor>|OcuPilot.Port.AdminRoutes=<table>|OcuPilot.Port.PathPort=PAIRS|OcuPilot.Port.BackgroundTaskPort=PAIRS|OcuPilot.Port.NamespacePort=<vendor>|OcuPilot.Port.DatabasePort=<vendor>|OcuPilot.Port.TaskTransferPort=PAIRS|OcuPilot.Port.LanguageServerPort=<vendor>|OcuPilot.Port.LockPort=<vendor>|OcuPilot.Port.AtelierPort=PAIRS|OcuPilot.Port.AtelierRequest=<stub>|OcuPilot.Port.RemoteDatabasePort=<vendor>|OcuPilot.Port.JournalPort=<vendor>|OcuPilot.Port.LicensePort=<vendor>|OcuPilot.Port.SqlPort=OcuPilot.Port.AtelierPort.PAIRS|OcuPilot.Port.EcpPort=<vendor>|OcuPilot.Port.EncryptionPort=OcuPilot.Port.PathPort.PAIRS|OcuPilot.Port.DocDbPort=PAIRS|OcuPilot.Port.SqlActivityPort=PAIRS|OcuPilot.Port.SuperserverPort=<vendor>|OcuPilot.Port.PctAccessPort=<vendor>|OcuPilot.Port.MftPort=<vendor>|OcuPilot.Port.DocDbAppPort=<vendor>|OcuPilot.Port.SqlPrivilegePort=<vendor>|OcuPilot.Port.ScreenAccessPort=PAIRS|OcuPilot.Port.InteropPort=PRODUCTIONPAIRS;CODEPAIRS;WRITEPAIRS";
+Parameter ROSTER = "OcuPilot.Port.AdminPort=<vendor>|OcuPilot.Port.UserCopyPort=PAIRS|OcuPilot.Port.LogSourcePort=MESSAGESPAIRS;ALERTSPAIRS;ERRORSINSTANCEPAIRS|OcuPilot.Port.MgmntPort=PAIRS;WRITEPAIRS|OcuPilot.Port.MonitorPort=PAIRS|OcuPilot.Port.ProviderPort=INVOKEPAIRS;DRAFTPAIRS|OcuPilot.Port.WalletPort=<vendor>|OcuPilot.Port.TaskPort=<vendor>|OcuPilot.Port.ProcessPort=<vendor>|OcuPilot.Port.TokenPort=<vendor>|OcuPilot.Port.AuditPort=<vendor>|OcuPilot.Port.OAuthServerPort=<vendor>|OcuPilot.Port.OAuthClientPort=<vendor>|OcuPilot.Port.OAuthResourceServerPort=<vendor>|OcuPilot.Port.OAuthAuthorizationServerPort=<vendor>|OcuPilot.Port.OAuthRegisteredClientPort=<vendor>|OcuPilot.Port.AdminRoutes=<table>|OcuPilot.Port.PathPort=PAIRS|OcuPilot.Port.BackgroundTaskPort=PAIRS|OcuPilot.Port.NamespacePort=<vendor>|OcuPilot.Port.DatabasePort=<vendor>|OcuPilot.Port.TaskTransferPort=PAIRS|OcuPilot.Port.LanguageServerPort=<vendor>|OcuPilot.Port.LockPort=<vendor>|OcuPilot.Port.AtelierPort=PAIRS|OcuPilot.Port.AtelierRequest=<stub>|OcuPilot.Port.RemoteDatabasePort=<vendor>|OcuPilot.Port.JournalPort=<vendor>|OcuPilot.Port.LicensePort=<vendor>|OcuPilot.Port.SqlPort=OcuPilot.Port.AtelierPort.PAIRS|OcuPilot.Port.EcpPort=<vendor>|OcuPilot.Port.EncryptionPort=OcuPilot.Port.PathPort.PAIRS|OcuPilot.Port.DocDbPort=PAIRS|OcuPilot.Port.SqlActivityPort=PAIRS|OcuPilot.Port.SuperserverPort=<vendor>|OcuPilot.Port.PctAccessPort=<vendor>|OcuPilot.Port.MftPort=<vendor>|OcuPilot.Port.DocDbAppPort=<vendor>|OcuPilot.Port.SqlPrivilegePort=<vendor>|OcuPilot.Port.ScreenAccessPort=PAIRS|OcuPilot.Port.AnalyticsPort=PORTALPAIRS;TERMLISTPAIRS;FOLDERPAIRS;MDXPAIRS|OcuPilot.Port.InteropPort=PRODUCTIONPAIRS;CODEPAIRS;WRITEPAIRS|OcuPilot.Port.AllowListPort=OcuPilot.Port.PathPort.PAIRS";
 
 /// <p>The roster value for a port whose gate is the vendor's own <code>ResourcesOR()</code> check,
 /// which AD-29 fixes as a lower bound with the remedy at the screen descriptor's declared pair
@@ -163,7 +163,7 @@ Method TestAMalformedPairSpecFailsClosed()
 /// <code>GateAnyOfForUser</code> call, or <method>OcuPilot.Port.MgmntPort.Invoke</method>'s,
 /// <method>OcuPilot.Port.MonitorPort.Performance</method>'s,
 /// <method>OcuPilot.Port.AtelierPort.Invoke</method>'s, <method>OcuPilot.Port.DocDbPort.Invoke</method>'s
-/// or <method>OcuPilot.Port.SqlActivityPort.Invoke</method>'s or <method>OcuPilot.Port.InteropPort.Invoke</method>'s or <method>OcuPilot.Port.ScreenAccessPort.Invoke</method>'s <code>EvaluateRequired</code> call -> this
+/// or <method>OcuPilot.Port.SqlActivityPort.Invoke</method>'s or <method>OcuPilot.Port.InteropPort.Invoke</method>'s or <method>OcuPilot.Port.AnalyticsPort.Admit</method>'s or <method>OcuPilot.Port.ScreenAccessPort.Invoke</method>'s <code>EvaluateRequired</code> call -> this
 /// goes red.</p>
 Method TestEveryPortEvaluatesItsDeclaredGate()
 {
@@ -266,6 +266,50 @@ Method TestEveryPortEvaluatesItsDeclaredGate()
     Do $$$AssertStatusNotOK(tSC, "InteropPort.Invoke refuses a caller holding %Ens_Portal:USE but not %Ens_ProductionConfig:READ")
     Set tDetail11 = $Select($IsObject(tFault11) && $IsObject(tFault11.%Get("detail")): tFault11.detail.%Get("failedPair"), 1: "")
     Do $$$AssertEquals(tHttp11 _ "|" _ $Select($IsObject(tFault11): tFault11.%Get("code"), 1: "") _ "|" _ tDetail11, ##class(OcuPilot.Kernel.Denial).#STATUS _ "|" _ tDenialCode _ "|%Ens_ProductionConfig:READ", "with AUTH.NOPRIVILEGE naming %Ens_ProductionConfig:READ")
+    Do ##class(OcuPilot.Test.ScreenGate).Reset()
+
+    ; AnalyticsPort (Story 20.11): a caller holding nothing is refused the Model Browser's pair; one holding it is refused each
+    ; further pair set's own, by name, before the namespace, the databases and the vendor.
+    Kill tQuery
+    Set tQuery("namespace") = $Namespace
+    Set tSC = ##class(OcuPilot.Test.AnalyticsGateSeam).Invoke("Cubes", "LIST", .tQuery, "", .tRows14, .tHttp14, .tFault14)
+    Do $$$AssertStatusNotOK(tSC, "AnalyticsPort.Invoke refuses a caller holding no pair of the Cubes set")
+    Set tDetail14 = $Select($IsObject(tFault14) && $IsObject(tFault14.%Get("detail")): tFault14.detail.%Get("failedPair"), 1: "")
+    Do $$$AssertEquals(tHttp14 _ "|" _ $Select($IsObject(tFault14): tFault14.%Get("code"), 1: "") _ "|" _ tDetail14, ##class(OcuPilot.Kernel.Denial).#STATUS _ "|" _ tDenialCode _ "|%DeepSee_Portal:USE", "with AUTH.NOPRIVILEGE naming %DeepSee_Portal:USE")
+    Do ##class(OcuPilot.Test.ScreenGate).Hold("%DeepSee_Portal", "USE")
+    For tCase = $ListBuild("TermLists", "%DeepSee_PortalEdit:USE"), $ListBuild("TermListEntries", "%DeepSee_PortalEdit:USE"), $ListBuild("FolderItems", "%Development:USE") {
+        Kill tQuery
+        Set tQuery("namespace") = $Namespace
+        Set tQuery("termlist") = "any"
+        Set tSC = ##class(OcuPilot.Test.AnalyticsGateSeam).Invoke($List(tCase, 1), "LIST", .tQuery, "", .tRows15, .tHttp15, .tFault15)
+        Do $$$AssertStatusNotOK(tSC, "AnalyticsPort.Invoke refuses " _ $List(tCase, 1) _ " to a caller holding only %DeepSee_Portal:USE")
+        Set tDetail15 = $Select($IsObject(tFault15) && $IsObject(tFault15.%Get("detail")): tFault15.detail.%Get("failedPair"), 1: "")
+        Do $$$AssertEquals(tHttp15 _ "|" _ $Select($IsObject(tFault15): tFault15.%Get("code"), 1: "") _ "|" _ tDetail15, ##class(OcuPilot.Kernel.Denial).#STATUS _ "|" _ tDenialCode _ "|" _ $List(tCase, 2), $List(tCase, 1) _ " is refused with AUTH.NOPRIVILEGE naming " _ $List(tCase, 2))
+    }
+    ; The MDX calls (Story 20.33): MdxAdmit evaluates MDXPAIRS first, so a caller holding only the portal's pair is refused naming the
+    ; developer pair, before the namespace, the databases and the vendor.
+    Set tSC = ##class(OcuPilot.Test.AnalyticsGateSeam).MdxAdmit($Namespace, .tHttp18, .tFault18)
+    Do $$$AssertStatusNotOK(tSC, "AnalyticsPort.MdxAdmit refuses a caller holding only %DeepSee_Portal:USE")
+    Set tDetail18 = $Select($IsObject(tFault18) && $IsObject(tFault18.%Get("detail")): tFault18.detail.%Get("failedPair"), 1: "")
+    Do $$$AssertEquals(tHttp18 _ "|" _ $Select($IsObject(tFault18): tFault18.%Get("code"), 1: "") _ "|" _ tDetail18, ##class(OcuPilot.Kernel.Denial).#STATUS _ "|" _ tDenialCode _ "|%Development:USE", "MdxAdmit is refused with AUTH.NOPRIVILEGE naming %Development:USE")
+    ; The routines-database half of the gate: HSLIB reports analytics and keeps its routines with its globals, so the seam names another
+    ; resource for the routines. A caller holding the portal's pair and READ on HSLIB's globals is refused naming that resource, and a
+    ; routines database the instance cannot name is refused with the port's validation code, both before any vendor call.
+    Set tHslib = "HSLIB"
+    Set tHslibGlobals = ""
+    Do $$$AssertTrue(##class(OcuPilot.Kernel.Shell.NamespaceFeatures).Reports("analytics", tHslib) && ##class(OcuPilot.Kernel.Shell.Namespaces).GlobalDatabase(tHslib, .tHslibGlobals) && (tHslibGlobals '= ""), tHslib _ " reports analytics and names its globals resource: " _ tHslibGlobals)
+    Do ##class(OcuPilot.Test.ScreenGate).Hold(tHslibGlobals, "READ")
+    Do ##class(OcuPilot.Test.AnalyticsGateSeam).Arm("routines", "%DB_OCUPILOTPROBEROUTINES")
+    Kill tQuery
+    Set tQuery("namespace") = tHslib
+    Set tSC = ##class(OcuPilot.Test.AnalyticsGateSeam).Invoke("Cubes", "LIST", .tQuery, "", .tRows16, .tHttp16, .tFault16)
+    Do $$$AssertStatusNotOK(tSC, "AnalyticsPort.Invoke refuses a caller lacking READ on the routines database")
+    Set tDetail16 = $Select($IsObject(tFault16) && $IsObject(tFault16.%Get("detail")): tFault16.detail.%Get("failedPair"), 1: "")
+    Do $$$AssertEquals(tHttp16 _ "|" _ $Select($IsObject(tFault16): tFault16.%Get("code"), 1: "") _ "|" _ tDetail16, ##class(OcuPilot.Kernel.Denial).#STATUS _ "|" _ tDenialCode _ "|%DB_OCUPILOTPROBEROUTINES:READ", "with AUTH.NOPRIVILEGE naming the routines resource")
+    Do ##class(OcuPilot.Test.AnalyticsGateSeam).Arm("routines", "")
+    Set tSC = ##class(OcuPilot.Test.AnalyticsGateSeam).Invoke("Cubes", "LIST", .tQuery, "", .tRows17, .tHttp17, .tFault17)
+    Do $$$AssertEquals(tHttp17 _ "|" _ $Select($IsObject(tFault17): tFault17.%Get("code"), 1: ""), "400|PORT.VALIDATION", "and a routines database the instance cannot name is refused with PORT.VALIDATION")
+    Do ##class(OcuPilot.Test.AnalyticsGateSeam).Reset()
     Do ##class(OcuPilot.Test.ScreenGate).Reset()
 
     ; ScreenAccessPort (Story 20.15): its gate is either-of -- a caller holding neither %Development:USE nor

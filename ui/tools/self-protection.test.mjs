@@ -16,7 +16,7 @@
  */
 
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { test } from 'node:test';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -305,6 +305,10 @@ const KERNEL_REFUSALS = [
   // Story 18.23: Interactive key activation while the audit log, IRISSECURITY or IRISTEMP is encrypted,
   // which the form shows on the start-mode field when either caller is answered with it.
   ['STARTUPINTERACTIVE', 'encryptionStartupInteractiveRefusal'],
+  // Story 18.48: Interactive while journal encryption is on, and KMIP while the audit log, IRISSECURITY or IRISTEMP is
+  // encrypted, which the form shows on the start-mode field when either caller is answered with them.
+  ['STARTUPJOURNAL', 'encryptionStartupJournalRefusal'],
+  ['STARTUPKMIP', 'encryptionStartupKmipRefusal'],
   // Story 18.8: a change that leaves OcuPilot's own sign-in with no method, and turning O/S authentication
   // off, which the authentication options form draws on the field before a click and answers either caller
   // with.
@@ -321,6 +325,12 @@ const KERNEL_REFUSALS = [
   // Story 18.10: OcuPilot's own privileged routine applications, whose every change either caller is refused with this
   // sentence.
   ['OCUPILOTROUTINEAPP', 'routineAppRefusalOcuPilot'],
+  // Story 18.42: a write of the directory allow-list through a tool the agent can reach, which either caller is answered
+  // with at Confirm and on the route.
+  ['ALLOWLISTAGENT', 'allowListRefusalAgent'],
+  // Story 18.40: the SSL/TLS configuration the egress row names for provider calls, whose delete, a create under its name
+  // and a change to its type, peer verification, trusted certificates, minimum TLS version, cipher list or enablement either caller is answered with.
+  ['PROVIDERSSL', 'sslRefusalProviderNamed'],
 ];
 
 test('DW-1598, AD-53: each kernel refusal is published verbatim in Fixed strings and is the sentence ReasonFor returns', () => {
@@ -364,7 +374,7 @@ test("Story 9.5: ocupilot-ssl answers OcuPilot's own provider configuration alon
   assert.equal(selfProtectionReason(OCUPILOT_SSL_RULE, 'ISC.FeatureTracker.SSL.Config'), '', 'and any other configuration is not');
 });
 
-test("Story 18.31: ocupilot-routine-application answers OcuPilot's own two routine applications alone, named as Base names them, in any case", async () => {
+test("Story 18.31: ocupilot-routine-application answers OcuPilot's own three routine applications alone, named as Base names them, in any case", async () => {
   // Mutation (Rule 19): answer '' for `ocupilot-routine-application` -> the own-application legs go red; rename a
   // name in `OCUPILOT_ROUTINE_APPLICATIONS` -> the Base.cls legs go red.
   const { selfProtectionReason, OCUPILOT_ROUTINE_APPLICATION_RULE, OCUPILOT_ROUTINE_APPLICATIONS } = await import('../src/app/core/self-protection.ts');
@@ -372,9 +382,11 @@ test("Story 18.31: ocupilot-routine-application answers OcuPilot's own two routi
   const base = readFileSync(join(REPO_ROOT, 'src', 'OcuPilot', 'Kernel', 'State', 'Base.cls'), 'utf8');
   const state = /Parameter APPLICATION As %String = "([^"]+)";/.exec(base);
   const identity = /Parameter IDENTITYAPPLICATION As %String = "([^"]+)";/.exec(base);
+  const sslRead = /Parameter SSLREADAPPLICATION As %String = "([^"]+)";/.exec(base);
   assert.notEqual(state, null, 'Base.cls declares APPLICATION');
   assert.notEqual(identity, null, 'Base.cls declares IDENTITYAPPLICATION');
-  assert.deepEqual([...OCUPILOT_ROUTINE_APPLICATIONS], [state[1], identity[1]], 'one pair of names, read by both sides');
+  assert.notEqual(sslRead, null, 'Base.cls declares SSLREADAPPLICATION');
+  assert.deepEqual([...OCUPILOT_ROUTINE_APPLICATIONS], [state[1], identity[1], sslRead[1]], 'one set of names, read by both sides');
   for (const name of OCUPILOT_ROUTINE_APPLICATIONS) {
     assert.equal(selfProtectionReason(OCUPILOT_ROUTINE_APPLICATION_RULE, name), STRINGS.routineAppRefusalOcuPilot, `${name} is refused`);
     assert.equal(selfProtectionReason(OCUPILOT_ROUTINE_APPLICATION_RULE, name.toLowerCase()), STRINGS.routineAppRefusalOcuPilot, `and in lower case, as the instance resolves a name`);
@@ -382,6 +394,33 @@ test("Story 18.31: ocupilot-routine-application answers OcuPilot's own two routi
   }
   assert.equal(selfProtectionReason(OCUPILOT_ROUTINE_APPLICATION_RULE, 'OcuProbe1831A'), '', 'any other routine application is not');
   assert.equal(selfProtectionReason(OCUPILOT_ROUTINE_APPLICATION_RULE, ''), '', 'and no key answers nothing');
+});
+
+test("Story 18.46: allowed-directory-fallback answers the fallback sentence for a row reading Restricted false, and nothing for a restricted row or no row", async () => {
+  // Mutation (Rule 19): drop the `allowed-directory-fallback` branch from `selfProtectionReason` -> the false-row legs go red;
+  // answer the sentence for `Restricted` true as well -> the restricted legs go red.
+  const { selfProtectionReason, ALLOWED_DIRECTORY_FALLBACK_RULE } = await import('../src/app/core/self-protection.ts');
+  const { STRINGS } = await import('../src/app/core/strings.ts');
+  const registry = readFileSync(REGISTRY, 'utf8');
+  assert.ok(parseSelfProtectionRules(registry)?.includes('allowed-directory-fallback'), 'the instance declares the rule in SELFPROTECTIONRULES');
+  assert.equal(ALLOWED_DIRECTORY_FALLBACK_RULE, 'allowed-directory-fallback');
+  for (const unrestricted of [false, 'false', 0, '0']) {
+    assert.equal(
+      selfProtectionReason(ALLOWED_DIRECTORY_FALLBACK_RULE, '/iris/mgr/', '', { Directory: '/iris/mgr/', Restricted: unrestricted }),
+      STRINGS.allowListRefusalFallback,
+      `a row reading Restricted ${JSON.stringify(unrestricted)} is the fallback row`
+    );
+  }
+  for (const restricted of [true, 'true', 1, '1']) {
+    assert.equal(
+      selfProtectionReason(ALLOWED_DIRECTORY_FALLBACK_RULE, '/data/a/', '', { Directory: '/data/a/', Restricted: restricted }),
+      '',
+      `a row reading Restricted ${JSON.stringify(restricted)} is an entry the person can change`
+    );
+  }
+  assert.equal(selfProtectionReason(ALLOWED_DIRECTORY_FALLBACK_RULE, '/iris/mgr/'), '', 'with no row the instance alone refuses');
+  assert.equal(selfProtectionReason(ALLOWED_DIRECTORY_FALLBACK_RULE, '/iris/mgr/', '', { Directory: '/iris/mgr/' }), '', 'and a row that does not say is the instance\'s to refuse');
+  assert.equal(selfProtectionReason(ALLOWED_DIRECTORY_FALLBACK_RULE, '', '', { Restricted: false }), '', 'and no key answers nothing');
 });
 
 test("Story 16.2: ocupilot-session answers a row under one of OcuPilot's own applications, in every spelling the instance resolves", async () => {
@@ -581,6 +620,7 @@ const ATELIER_REFUSALS = [
   ['REASONSAVEHEADER', 'explorerSaveHeader'],
   ['REASONSAVETOOLARGE', 'explorerSaveTooLarge'],
   ['REASONSAVEREFUSED', 'explorerSaveRefused'],
+  ['REASONDOCUMENTSOURCECONTROL', 'explorerDocumentSourceControl'],
   ['REASONEXPORTDIRECTORY', 'explorerExportDirectory'],
   ['REASONIMPORTUNREADABLE', 'explorerImportUnreadable'],
   ['REASONIMPORTCHANGED', 'explorerImportChanged'],
@@ -793,6 +833,11 @@ const ENCRYPTION_SENTENCES = [
   [ENCRYPTION_ERROR, 'REASONSTARTUPKMIP', 'encryptionStartupKmipConsequence'],
   [ENCRYPTION_ERROR, 'REASONSTARTUPRESTART', 'encryptionStartupRestart'],
   [ENCRYPTION_ERROR, 'REASONSTARTUPJOURNAL', 'encryptionStartupJournalConsequence'],
+  // Story 18.48: the vendor's startup refusals of a KMIP server with no startup key list and of another Unattended key file,
+  // which the form draws on the start-mode field, and an activation's refusal of a key file changed since it was reviewed.
+  [ENCRYPTION_ERROR, 'REASONSTARTUPKMIPUNCONFIGURED', 'encryptionStartupKmipUnconfigured'],
+  [ENCRYPTION_ERROR, 'REASONSTARTUPKEYFILEDIFFERENT', 'encryptionStartupKeyFileDifferent'],
+  [ENCRYPTION_ERROR, 'REASONKEYFILECHANGED', 'encryptionKeyFileChanged'],
   // Story 18.8: the sign-out consequence, which the form states before Save and the card renders.
   [WEBAUTH_ERROR, 'REASONSIGNOUT', 'authOptionsSignOutConsequence'],
   // Story 18.25: the consequence of an SSL/TLS change to the superserver the web gateway connects through, which
@@ -815,6 +860,23 @@ test('Story 18.23: the form draws the Interactive refusal on the start-mode fiel
   const store = /export const STARTUP_INTERACTIVE_CODE = '([^']+)';/.exec(readFileSync(join(REPO_ROOT, 'ui', 'src', 'app', 'areas', 'security', 'encryption-startup.store.ts'), 'utf8'));
   assert.notEqual(store, null, 'encryption-startup.store.ts declares STARTUP_INTERACTIVE_CODE');
   assert.equal(store[1], kernel[1], "the store matches the server's refusal by the kernel's own code");
+});
+
+test('Story 18.48: the form draws the journal and KMIP start refusals on the start-mode field by the codes the kernel declares', () => {
+  // Mutation (Rule 19): change STARTUP_JOURNAL_CODE or STARTUP_KMIP_CODE in encryption-startup.store.ts -> this goes red.
+  const prohibited = readFileSync(PROHIBITED, 'utf8');
+  const source = readFileSync(join(REPO_ROOT, 'ui', 'src', 'app', 'areas', 'security', 'encryption-startup.store.ts'), 'utf8');
+  for (const [name, parameter] of [
+    ['STARTUP_JOURNAL_CODE', 'STARTUPJOURNAL'],
+    ['STARTUP_KMIP_CODE', 'STARTUPKMIP'],
+  ]) {
+    const kernel = new RegExp(`Parameter ${parameter} = "([^"]+)";`).exec(prohibited);
+    assert.notEqual(kernel, null, `Prohibited.cls declares ${parameter}`);
+    const store = new RegExp(`export const ${name} = '([^']+)';`).exec(source);
+    assert.notEqual(store, null, `encryption-startup.store.ts declares ${name}`);
+    assert.equal(store[1], kernel[1], `the store matches the server's ${parameter} refusal by the kernel's own code`);
+  }
+  assert.ok(source.includes('STARTUP_MODE_REFUSALS: readonly string[] = [STARTUP_INTERACTIVE_CODE, STARTUP_JOURNAL_CODE, STARTUP_KMIP_CODE]'), 'and lists all three');
 });
 
 test('Story 18.7: each key file refusal, state refusal and consequence is one sentence on both surfaces, published in Fixed strings', () => {
@@ -849,4 +911,103 @@ test('Story 19.17: each DocDB refusal is one sentence on both surfaces, publishe
     assert.ok(readFileSync(EXPERIENCE, 'utf8').includes(`"${server[1]}"`), `${parameter}'s sentence is published in EXPERIENCE.md's Fixed strings`);
     assert.ok(!server[1].toLowerCase().includes('agent'), `${parameter} names no caller: ${server[1]}`);
   }
+});
+
+/** Story 18.42's error class, which declares the allow-list write's published refusals. */
+const ALLOWLIST_ERROR = join(REPO_ROOT, 'src', 'OcuPilot', 'Api', 'AllowListError.cls');
+
+/** Story 18.42's published sentences: `[parameter, code parameter, strings.ts key]`. */
+const ALLOWLIST_SENTENCES = [
+  ['REASONOFF', 'OFF', 'allowListRefusalOff'],
+  ['REASONPATH', 'PATH', 'allowListRefusalPath'],
+  ['REASONLISTED', 'LISTED', 'allowListRefusalListed'],
+  ['REASONNOTLISTED', 'NOTLISTED', 'allowListRefusalNotListed'],
+  ['REASONNODIRECTORY', 'NODIRECTORY', 'allowListRefusalNoDirectory'],
+  ['REASONFALLBACK', 'FALLBACK', 'allowListRefusalFallback'],
+];
+
+test('Story 18.42: each allow-list refusal is one sentence on both surfaces, published in Fixed strings, for the six codes the class declares', () => {
+  // Mutation (Rule 19): change one word of REASONLISTED in AllowListError.cls, or add a seventh code to its Codes() -> this goes red.
+  const source = readFileSync(ALLOWLIST_ERROR, 'utf8');
+  const experience = readFileSync(EXPERIENCE, 'utf8');
+  const declared = /ClassMethod Codes\(\) As %List\s*\{\s*Quit \$ListBuild\(([^)]*)\)/.exec(source);
+  assert.notEqual(declared, null, 'AllowListError.cls declares Codes()');
+  assert.deepEqual(
+    declared[1].split(',').map((member) => member.trim()).sort(),
+    ALLOWLIST_SENTENCES.map(([, code]) => `..#${code}`).sort(),
+    'the six codes Codes() lists are the six sentences this test pins'
+  );
+  for (const [parameter, code, key] of ALLOWLIST_SENTENCES) {
+    const sentence = new RegExp(`Parameter ${parameter} = "([^"]+)";`).exec(source);
+    assert.notEqual(sentence, null, `AllowListError.cls declares ${parameter}`);
+    const wire = new RegExp(`Parameter ${code} = "(ALLOWLIST\\.[A-Z]+)";`).exec(source);
+    assert.notEqual(wire, null, `AllowListError.cls declares ${code} as an ALLOWLIST code`);
+    assert.equal(sentence[1], stringValue(key), `${parameter} and ${key} are one published sentence`);
+    assert.ok(experience.includes(`"${sentence[1]}"`), `${parameter}'s sentence is published in EXPERIENCE.md's Fixed strings`);
+    assert.ok(!sentence[1].toLowerCase().includes('agent'), `${parameter} names no caller: ${sentence[1]}`);
+  }
+});
+
+/** Story 18.40's error class, which declares the provider connection's published field refusals. */
+const EGRESS_ERROR = join(REPO_ROOT, 'src', 'OcuPilot', 'Api', 'EgressError.cls');
+
+/** Story 18.40's published sentences: `[parameter, code parameter, strings.ts key]`. */
+const EGRESS_SENTENCES = [
+  ['REASONPROXYHOST', 'PROXYHOST', 'egressRefusalProxyHost'],
+  ['REASONPROXYPORT', 'PROXYPORT', 'egressRefusalProxyPort'],
+  ['REASONPROXYADDRESS', 'PROXYADDRESS', 'egressRefusalProxyAddress'],
+  ['REASONSSLABSENT', 'SSLABSENT', 'egressRefusalSslAbsent'],
+  ['REASONSSLUNVERIFIED', 'SSLUNVERIFIED', 'egressRefusalSslUnverified'],
+  ['REASONSSLWEAK', 'SSLWEAK', 'egressRefusalSslWeak'],
+];
+
+test('Story 18.40: each provider connection refusal is one sentence on both surfaces, published in Fixed strings, for the six codes the class declares', () => {
+  // Mutation (Rule 19): change one word of REASONSSLABSENT in EgressError.cls, or add a seventh code to its Codes() -> this goes red.
+  const source = readFileSync(EGRESS_ERROR, 'utf8');
+  const experience = readFileSync(EXPERIENCE, 'utf8');
+  const declared = /ClassMethod Codes\(\) As %List\s*\{\s*Quit \$ListBuild\(([^)]*)\)/.exec(source);
+  assert.notEqual(declared, null, 'EgressError.cls declares Codes()');
+  assert.deepEqual(
+    declared[1].split(',').map((member) => member.trim()).sort(),
+    EGRESS_SENTENCES.map(([, code]) => `..#${code}`).sort(),
+    'the six codes Codes() lists are the six sentences this test pins'
+  );
+  for (const [parameter, code, key] of EGRESS_SENTENCES) {
+    const sentence = new RegExp(`Parameter ${parameter} = "([^"]+)";`).exec(source);
+    assert.notEqual(sentence, null, `EgressError.cls declares ${parameter}`);
+    const wire = new RegExp(`Parameter ${code} = "(EGRESS\\.[A-Z]+)";`).exec(source);
+    assert.notEqual(wire, null, `EgressError.cls declares ${code} as an EGRESS code`);
+    assert.equal(sentence[1], stringValue(key), `${parameter} and ${key} are one published sentence`);
+    assert.ok(experience.includes(`"${sentence[1]}"`), `${parameter}'s sentence is published in EXPERIENCE.md's Fixed strings`);
+    assert.ok(!sentence[1].toLowerCase().includes('agent'), `${parameter} names no caller: ${sentence[1]}`);
+  }
+});
+
+/** Every `.cls` file under `directory`, as paths relative to the repository root with forward slashes. */
+function classFiles(directory) {
+  const found = [];
+  for (const entry of readdirSync(directory, { withFileTypes: true })) {
+    const path = join(directory, entry.name);
+    if (entry.isDirectory()) found.push(...classFiles(path));
+    else if (entry.name.endsWith('.cls')) found.push(path.slice(REPO_ROOT.length + 1).split('\\').join('/'));
+  }
+  return found;
+}
+
+test('Story 18.40: only Api/Switches.cls writes the egress row, outside the tests -- no tool, port or screen class reaches it', () => {
+  // Mutation (Rule 19): add `Do ##class(OcuPilot.Kernel.State.Egress).SetGuarded(.v)` to a class under Screen/Tool -> this goes red naming it.
+  const writers = classFiles(join(REPO_ROOT, 'src', 'OcuPilot')).filter(
+    (file) => !file.startsWith('src/OcuPilot/Test/') && /State\.Egress\)\s*\.SetGuarded\(/.test(readFileSync(join(REPO_ROOT, file), 'utf8'))
+  );
+  assert.deepEqual(writers, ['src/OcuPilot/Api/Switches.cls'], 'the one class outside the tests that calls Egress.SetGuarded');
+  assert.ok(readFileSync(join(REPO_ROOT, 'src', 'OcuPilot', 'Api', 'Switches.cls'), 'utf8').includes('##class(OcuPilot.Kernel.State.Egress).SetGuarded('), 'and it does');
+});
+
+test('Story 18.40, C4: no tool, read or screen class names the egress row or its route -- the agent does not read the provider connection', () => {
+  // Mutation (Rule 19): add `Do ##class(OcuPilot.Kernel.State.Egress).Resolve(.v)` to a class under Screen/Tool -> this goes red naming it.
+  const naming = classFiles(join(REPO_ROOT, 'src', 'OcuPilot', 'Screen')).filter((file) => {
+    const source = readFileSync(join(REPO_ROOT, file), 'utf8');
+    return /State\.Egress\b/.test(source) || source.includes('switches/egress');
+  });
+  assert.deepEqual(naming, [], 'no class under Screen/ reaches the egress row or its route');
 });

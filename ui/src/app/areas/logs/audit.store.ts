@@ -73,6 +73,9 @@ export class AuditSearch {
 
   private readonly reads = new Map<string, RefreshRead>();
 
+  /** The descriptor whose search this holds, or `''` before a page has taken it (`adopt`). */
+  private owner = '';
+
   /** Set when a closing dialog asks the next page instance to put focus back on the grid. */
   private gridFocusWanted = false;
 
@@ -87,6 +90,7 @@ export class AuditSearch {
    * first visit instead of the screen's default.
    */
   reset(): void {
+    this.owner = '';
     this.values = {};
     this.markerOn = false;
     this.searchedOnce = false;
@@ -96,6 +100,17 @@ export class AuditSearch {
     this.gridFocusWanted = false;
     this.reads.clear();
     this.notify();
+  }
+
+  /**
+   * Take the search for `descriptor`. The store is one per tab, and more than one screen is a `list (server criteria)` (Story
+   * 20.9's Messages beside the audit database), so a screen other than the one that last held it starts from nothing: the criteria
+   * typed on one are never read on another. The same screen keeps what it holds, which is what the row dialog's round trip needs.
+   */
+  adopt(descriptor: string): void {
+    if (this.owner === descriptor) return;
+    this.reset();
+    this.owner = descriptor;
   }
 
   subscribe(listener: () => void): () => void {

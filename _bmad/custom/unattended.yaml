@@ -1,0 +1,80 @@
+# /epic-cycle --unattended policy. Project-owned: the kit writes this template only when the file is absent and
+# never overwrites it. The categories are data the lead classifies against (doctrine: epic-cycle-unattended.md U3):
+# hard_stops first, then owner_only (park), then veto_window (decide and report); anything else is decided.
+# Changing this file mid-run stops the run at the next story boundary: change it during a hold, commit it, then resume
+# (the resume records the new version). Orchestrator mode reads it from the main checkout.
+#
+# OcuPilot: written 2026-10-20 by the orchestrator from the owner's standing decisions, on the owner's instruction to
+# launch without reviewing it first ("Write it and launch"). The owner reviews it at the next hold or --review.
+version: 2
+product_defaults:      # tie-break principles for calls made alone, most important first (edit for this project)
+  - The architecture spine is the contract; where it is silent, choose the simplest option consistent with it.
+  - When a choice trades safety for convenience, keep the safe behaviour and make it convenient.
+  - "Developer tool first: a powerful administrative action (an %All grant, a web application's %All role) is permitted behind a confirmation the person sees, not banned; only OcuPilot's own self-protection is absolute (owner 2026-09-23)."
+  - A security posture may be stricter than the classic System Management Portal's for the same action, never looser.
+  - Measure, don't guess; anything not yet measured is labelled (inference).
+  - Smaller is better; split rather than stretch a story.
+  - Text claims only what the product does.
+  - "Plain language in every string a person reads: no internal ids, ledger numbers or incident history in user-facing copy (owner 2026-09-26)."
+owner_fixed:           # values the owner chose; quoted verbatim in every stage, runner and resume prompt; never re-derived
+  - "Bundle budgets in ui/angular.json are fixed at maximumWarning 2500 kB and maximumError 4000 kB; a crossing is reported, never re-based (owner 2026-10-14)."
+  - "Every live Anthropic check uses claude-haiku-5-5 (owner 2026-10-12); CI stays stub-based; the provider keys in .env.local are never copied, printed or committed."
+  - "Stage models: plan, code review and adjudication on Opus; implement and QA on Sonnet; runners on Opus (owner 2026-10-09)."
+  - "Every IRIS MCP call names the slot's server profile: ocupilot-slot-a for slot A, ocupilot-slot-b for slot B. A call without one silently reaches an unrelated instance."
+  - "Never stop, remove, recreate, restart or down ocupilot, any ocupilot-slot-* container or iris-community-edition; a run tears down only a throwaway it started itself."
+  - "No retrospective for any remaining epic (owner 2026-10-01)."
+  - "A database create always names its own directory, never one inside IRISSYS or the manager directory (owner 2026-09-29)."
+  - "Stories merge into the feature branch one at a time as their code heads go green (skill-rules Rule 33, owner 2026-10-20)."
+stage_preamble: "One `iris_execute_tests` call per message, never two in the same message; wait for each run to land in `%UnitTest_Result` before the next."
+milestones: []         # releases are cut on the owner's word, so no milestone defines "the release": every AC move is owner_only
+licences_allowed: [MIT, BSD-2-Clause, BSD-3-Clause, Apache-2.0, ISC]
+hard_stops:            # checked FIRST. Stop the affected unit (story, epic, slot or run); record; continue elsewhere
+  - a security incident (a secret in a commit, log, trace or ANY printed output; pushing to any remote other than origin; changing repository or package visibility) - never rewrite history
+  - a red CI head that is not a known flake and cannot be fixed inside its story, nor fixed forward (limits.fix_forward_per_cause)
+  - a conflict that cannot be classified
+  - agent liveness that cannot be established; a live orphan writer that cannot be stopped
+  - a tooling need that cannot be met
+  - a workspace integrity error; a policy or doctrine file whose hash changed without a logged resume
+owner_only:            # park: record in the inbox, continue with independent work. Park ONLY on an explicit match here.
+  - releases, tags, release pull requests, anything landing on the trunk
+  - cutting a release or touching any release/* branch; merging or opening a pull request to main; publishing to the IPM registry or Open Exchange; the README's release feature
+  - anything outward-facing (publishing, posting, filing external reports, DNS or hosting, repository or service settings, making anything public)
+  - the online demo (demo.ocupilot.org) and its server, deploys and keys
+  - drafting or filing any report to InterSystems or another vendor; the IRIS defect candidates on the owner's hold (DW-2394, DW-2396, DW-2416) are never decided or reported
+  - a security posture looser than the classic System Management Portal's for the same action
+  - dropping scope from a release, or deferring it out of the release; moving an AC when no milestone defines the release
+  - changing a number stated as a product target in the PRD or epics (implementation details such as timeouts, batch sizes and retry counts are decide)
+  - changing epic boundaries, story-to-epic assignment, or dependency statements
+  - waiving a HIGH finding
+  - money, accounts, keys, quota; a dependency under a licence not in licences_allowed
+  - destroying or migrating data on a shared (non-throwaway) runtime
+  - agent instruction files (CLAUDE.md, AGENTS.md, anything under .claude/) and anything under _bmad/ (the kit's own run-state writes excepted)
+  - stopping, recreating or tearing down a runtime resource this run did not start (using one is fine)
+  - rewriting pushed history (force-push); deleting branches or tags other than the kit's own merged epic branches
+veto_window:           # decide now and report; the owner may reverse before the next release
+  - security posture (stricter than the classic portal's; looser is owner_only); how secrets and credentials are stored or handled
+  - privileges, roles and access grants
+  - a change to how stored data is kept (schema, format, retention)
+  - weakening a guarantee stated in the PRD, the spine or a spec's intent
+  - public-facing text NOT already specified in the UX or PRD; claims about what the product does; licence and attribution notices; project or owner identity
+  - a new third-party dependency under a licence in licences_allowed, pinned to an exact version
+  - moving an AC to a not-yet-planned story in the same release (never one a release gate, milestone or end-to-end acceptance test depends on)
+  - adding an AC to another epic's not-yet-planned story (sequential; parallel runs route this to the orchestrator)
+  - amending an architecture decision (AD), within the bounds of the doctrine's U7
+gates:
+  retrospective: skip          # owner 2026-10-01: no retrospective for any remaining epic
+  model_tier: record_only      # offers are recorded, never applied (tier changes are spend); the mandatory rollback still applies
+  merge_to_feature: when_green # when_green | hold
+  merge_conflicts: resolve     # resolve | ask. Overrides parallel.yaml integrate_conflicts for the run
+  gap_fill: burndown           # burndown | none
+  gap_fill_stories: []         # Epic 23's standing cleanup stories (23.7-23.10) are already chartered in epics.md
+limits:
+  clarification_rounds: 3      # per stage per story; then the story stops
+  split_children: 6            # stories one original story may become; past that the story stops
+  fix_forward_per_cause: 1     # per first-red sha; then the epic stops
+  gap_fill_per_epic: 2         # gap-fill stories one epic may charter while its other stories are blocked
+  veto_open_max: 20            # open veto items; at the limit, merges to the feature branch are held until --review
+  unverified_stories: 1        # stories that may be committed past an unresolved CI result during a CI outage
+ci: {queue_minutes: 90, blocked_hours: 6, without_ci: ""}   # a run takes about 30 minutes and can queue behind the other slot's
+hold: {at: "", after_hours: 0} # no time hold (owner 2026-10-20); usage holds still trigger on their own
+notify: {push: true}

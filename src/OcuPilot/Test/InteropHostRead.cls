@@ -55,7 +55,6 @@ Method OnBeforeAllTests() As %Status
     Set tSC = $ClassMethod(..#PROBE, "Remove")
     If $$$ISERR(tSC) Quit tSC
     Set tSC = $ClassMethod(..#PROBE, "Create")
-    ; %UnitTest skips OnAfterAllTests when this method fails, so a failed setup removes what it made here.
     If $$$ISERR(tSC) Set tSC = $$$ADDSC(tSC, ..OnAfterAllTests())
     Quit tSC
 }
@@ -263,8 +262,9 @@ ClassMethod Digest(pRows As %DynamicArray) As %String
 /// host; the item's status is one row; Queues shows the operation's queue with two waiting and one active; the queue's
 /// entries and the item's queue are the two waiting messages with their headers; the item's log holds the probe's
 /// line, the one the operation wrote for the message it took, and none of another item's; its messages are the three the
-/// probe was sent; and Jobs and the item's jobs hold the operation's job with the message it is working on.</p>
-/// <p>Mutation (Rule 19): keep the vendor's hosts in <method>OcuPilot.Port.InteropPort.GatherHosts</method> (drop the
+/// probe was sent, each naming the item; and Jobs and the item's jobs hold the operation's job with the message it is working on.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Port.InteropPort.MessageRow</method> with its production test inverted -- the item's
+/// messages leg goes red; keep the vendor's hosts in <method>OcuPilot.Port.InteropPort.GatherHosts</method> (drop the
 /// test of the production's item names) -- the monitor leg goes red; make <method>OcuPilot.Port.InteropPort.GatherQueueEntries</method>
 /// skip the header join -- the queue legs go red; drop the <code>ConfigName</code> bind from the Log statement -- the log
 /// leg goes red.</p>
@@ -326,6 +326,7 @@ Method TestEachEndpointAnswersTheProbesRows()
         Set tHeader = ..RowWhere(tMessages, "ID", $Piece(..PreparedIds, ",", tI))
         If $IsObject(tHeader) {
             Do $$$AssertEquals(tHeader.Source _ "|" _ tHeader.Target _ "|" _ tHeader.BodyClass, ..#SVCNAME _ "|" _ ..#OPNAME _ "|Ens.Request", "message " _ tI _ " is a request of the service to the operation")
+            Do $$$AssertEquals(tHeader.Production _ "|" _ tHeader.Item, ..#PRODUCTION _ "|" _ ..#PRODUCTION _ "||" _ ..#OPNAME, "message " _ tI _ " names the item's production and the item")
         } Else {
             Do $$$AssertTrue(0, "message " _ tI _ " is among the item's messages")
         }

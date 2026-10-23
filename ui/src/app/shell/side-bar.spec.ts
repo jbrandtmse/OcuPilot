@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest';
 
 import { NavigationService, screenForRoute, type Verdict } from '../core/navigation';
 import { OverlayStack } from '../core/overlay-stack';
@@ -41,6 +41,8 @@ function screen(route: string, labelKey: string, position: number): ScreenDeclar
 
 class StubNavigation {
   readonly verdicts = new Map<string, Verdict>();
+  /** The address the map carries for an `external` screen, by route (Story 20.32). */
+  readonly hrefs = new Map<string, string>();
   screens: readonly ScreenDeclaration[] = [
     screen('permissions/users', 'navAreaPermissions', 1),
     screen('permissions/roles', 'navAreaSecurity', 2),
@@ -73,6 +75,10 @@ class StubNavigation {
     return this.verdicts.get(route) ?? ALLOWED;
   }
 
+  screenHref(route: string): string {
+    return this.hrefs.get(route) ?? '';
+  }
+
   subscribe(listener: () => void): () => void {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
@@ -91,6 +97,8 @@ describe('the primary side bar', () => {
   let account: StubbedAccountPreferences;
   let panel: PanelState;
   const planted: HTMLElement[] = [];
+  /** Story 20.32: `openInNewTab`'s one `window.open` call, stubbed so no tab opens. */
+  let windowOpen: MockInstance<typeof window.open>;
 
   const entries = (): HTMLButtonElement[] =>
     Array.from(fixture.nativeElement.querySelectorAll('.ocu-side-bar-item'));
@@ -121,6 +129,7 @@ describe('the primary side bar', () => {
           { path: '', children: [] },
           { path: 'permissions/users', children: [] },
           { path: 'permissions/roles', children: [] },
+          { path: 'analytics/architect', children: [] },
           { path: 'security/oauth', children: [] },
           { path: 'security/oauth/server', children: [] },
           { path: 'system-explorer/sql-tables/document/:id', children: [] },
@@ -137,10 +146,12 @@ describe('the primary side bar', () => {
   };
 
   beforeEach(async () => {
+    windowOpen = vi.spyOn(window, 'open').mockImplementation(() => null);
     await build();
   });
 
   afterEach(() => {
+    windowOpen.mockRestore();
     for (const element of planted.splice(0)) element.remove();
   });
 
@@ -279,6 +290,76 @@ describe('the primary side bar', () => {
     expect(gated.querySelector('.ocu-side-bar-label')?.nextElementSibling).toBe(reason);
     expect(gated.classList.contains('ocu-side-bar-item-gated')).toBe(true);
     expect(entries()[0].classList.contains('ocu-side-bar-item-gated')).toBe(false);
+  });
+
+  describe('Story 20.32: an external entry', () => {
+    const ADDRESS = '/csp/user/_DeepSee.UI.Architect.zen?$NAMESPACE=USER';
+    const link = screen('analytics/architect', 'analyticsArchitectLabel', 4);
+    const linkEntry = screenDeclaration({ ...link, archetype: 'external', commandAliases: ['architect'] });
+
+    const showLink = async () => {
+      const router = TestBed.inject(Router);
+      await router.navigateByUrl('/permissions/users?ns=USER');
+      navigation.screens = [navigation.screens[0], linkEntry];
+      shell.activateArea('permissions', false);
+      shell.setActiveArea('permissions');
+      navigation.notify();
+      fixture.detectChanges();
+      return router;
+    };
+
+    // Mutation (Rule 19): drop the external branch from `open()` in `side-bar.ts` -> the entry routes onto its page, so the call
+    // count reads 0 and the URL moves.
+    it('opens its address in a new tab once, with the glyph and the description, and never routes', async () => {
+      navigation.hrefs.set('analytics/architect', ADDRESS);
+      const router = await showLink();
+
+      const entry = entries()[1];
+      expect(entry.querySelector('.ocu-external-glyph')?.getAttribute('aria-hidden')).toBe('true');
+      expect(entry.getAttribute('aria-description')).toBe(`Opens ${STRINGS.analyticsArchitectLabel} in the classic portal in a new tab.`);
+      expect(entries()[0].querySelector('.ocu-external-glyph')).toBeNull();
+      expect(entries()[0].hasAttribute('aria-description')).toBe(false);
+
+      entry.click();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(windowOpen).toHaveBeenCalledTimes(1);
+      expect(windowOpen).toHaveBeenCalledWith(ADDRESS, '_blank', 'noopener,noreferrer');
+      expect(router.url).toBe('/permissions/users?ns=USER');
+    });
+
+    it('a gated external entry stays drawn, aria-disabled and naming its pair, and opens nothing', async () => {
+      navigation.hrefs.set('analytics/architect', ADDRESS);
+      navigation.verdicts.set('analytics/architect', { allowed: false, failedPair: '%DeepSee_Architect:USE' });
+      const router = await showLink();
+
+      const entry = entries()[1];
+      expect(entry.getAttribute('aria-disabled')).toBe('true');
+      expect(entry.querySelector('.ocu-side-bar-reason')?.textContent?.trim()).toBe('Requires %DeepSee_Architect:USE');
+      expect(entry.querySelector('.ocu-external-glyph')).toBeNull();
+
+      entry.click();
+      await fixture.whenStable();
+
+      expect(windowOpen).not.toHaveBeenCalled();
+      expect(router.url).toBe('/permissions/users?ns=USER');
+    });
+
+    it('an external entry the map carries no address for routes onto its own page, which says why', async () => {
+      const router = await showLink();
+
+      const entry = entries()[1];
+      expect(entry.getAttribute('aria-disabled')).toBeNull();
+      expect(entry.querySelector('.ocu-external-glyph')).toBeNull();
+      expect(entry.hasAttribute('aria-description')).toBe(false);
+
+      entry.click();
+      await fixture.whenStable();
+
+      expect(windowOpen).not.toHaveBeenCalled();
+      expect(router.url).toBe('/analytics/architect?ns=USER');
+    });
   });
 
   it('arrow keys move between entries and Enter opens, marking the current one aria-current', async () => {

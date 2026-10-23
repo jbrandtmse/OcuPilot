@@ -91,8 +91,10 @@ Method OnAfterOneTest() As %Status
     Quit $$$OK
 }
 
+/// <p>On an instance the class is not armed for, <method>OnBeforeAllTests</method> created nothing, so nothing is removed.</p>
 Method OnAfterAllTests() As %Status
 {
+    If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 Quit $$$OK
     Kill ^||OcuPilotDatabaseWritePort
     Merge tRows = ..PreparedPolicy
     Set tSC = ##class(OcuPilot.Test.GovernanceFixture).Restore(.tRows)
@@ -132,9 +134,11 @@ Method TestACreateSendsTheFiveFieldsOnBothCallersAndMakesNoClient()
 /// <p>C2: a change on both callers sends the fresh read's five fields with the change applied, <code>Service</code>
 /// as read, and nothing else moves; a change that changes nothing sends nothing; a body naming <code>Service</code>
 /// is 400 before anything is read; a stored value the rules would refuse is never refused when the change leaves it
-/// as it is, an SSL/TLS configuration that no longer exists among them.</p>
+/// as it is, an SSL/TLS configuration that no longer exists among them; the name a change body repeats is ignored,
+/// not refused.</p>
 /// <p>Mutation (Rule 19): let the update tool admit <code>Service</code> -- the Service leg sends the
-/// <code>PUT</code> and goes red.</p>
+/// <code>PUT</code> and goes red; make <method>OcuPilot.Kernel.Proposal.ScreenSave.UpdateArguments</method> pass the
+/// body as it is -- the leg repeating the name is refused 400 and goes red.</p>
 Method TestAChangeSendsTheFreshFiveFieldsOnBothCallers()
 {
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Seed", "OcuMftProbeA", {"Username": "before@ocumftprobe.invalid", "URL": "not a url", "SSLConfiguration": "OcuNoSuchTLS"}), "a probe connection, whose stored URL and SSL/TLS configuration no rule would accept")
@@ -148,6 +152,9 @@ Method TestAChangeSendsTheFreshFiveFieldsOnBothCallers()
     Do $ClassMethod(..#SEAM, "Clear")
     Set tSC = $ClassMethod(..#SAVE, "Handle", "OcuMftProbeA", {"Username": "form@ocumftprobe.invalid"}, .tAnswer, .tStatus)
     Do $$$AssertEquals(tStatus _ " " _ $ClassMethod(..#SEAM, "Writes"), "200 ", "a change that changes nothing sends nothing")
+    Do $ClassMethod(..#SEAM, "Clear")
+    Set tSC = $ClassMethod(..#SAVE, "Handle", "OcuMftProbeA", {"Name": "OcuMftProbeA", "Username": "named@ocumftprobe.invalid"}, .tAnswer, .tStatus)
+    Do $$$AssertEquals(tStatus _ " " _ $ClassMethod(..#SEAM, "Writes"), "200 PUT:OcuMftProbeA", "the name repeated in a change body is ignored: " _ $Extract(tAnswer, 1, 200))
     Do $ClassMethod(..#SEAM, "Clear")
     Set tSC = $ClassMethod(..#SAVE, "Handle", "OcuMftProbeA", {"Service": "Dropbox"}, .tAnswer, .tStatus)
     Do $$$AssertEquals(tStatus _ " " _ ##class(OcuPilot.Test.LicenseKey).Parsed(tAnswer).%Get("code") _ " " _ $ClassMethod(..#SEAM, "Calls"), "400 PORT.FIELD.UNEXPECTED ", "a body naming Service is refused before anything is read")
@@ -202,13 +209,19 @@ Method TestADeleteRemovesTheConnectionItsClientAndItsDescription()
 /// port re-reads, finds it absent and answers the delete as done on both callers, with the read-back reading
 /// absent. A <code>DELETE</code> of a name no connection holds stays 404, and a 500 followed by a re-read that
 /// cannot say stays the fault.</p>
+/// <p>The vendor's 500 (#5809) is an answer, not a fault: <code>messages.log</code> gains no
+/// <code>Security.MFT failed</code> line for the first delete (Story 18.47).</p>
 /// <p>Mutation (Rule 19): remove the re-read from <method>OcuPilot.Port.MftPort.Delete</method> -- the list's
-/// Delete answers the 500 and the first leg goes red.</p>
+/// Delete answers the 500 and the first leg goes red; drop <code>Security.MFT/DELETE/500/#5809</code> from
+/// <parameter>OcuPilot.Port.AdminPort.UNLOGGEDREFUSALS</parameter> -- the log leg goes red.</p>
 Method TestADeleteOverAnAbsentClientIsAnsweredAsDeleted()
 {
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Seed", "OcuMftProbeA"), "a probe connection naming no client configuration")
+    Set tLines = ##class(OcuPilot.Test.EcpProbe).LineCount("messages.log")
     Set tSC = $ClassMethod(..#ACTION, "Act", ..#SCREEN, {"action": "delete", "id": "OcuMftProbeA"}, .tAnswer, .tStatus)
     Do $$$AssertEquals(tStatus, 200, "the list's Delete answers 200 as done: " _ $Extract(tAnswer, 1, 300))
+    Set tAfter = ##class(OcuPilot.Test.EcpProbe).LinesAfter("messages.log", tLines)
+    Do $$$AssertEquals(##class(OcuPilot.Test.EcpProbe).CountContaining(tAfter, "Security.MFT failed"), 0, "and messages.log gains no Security.MFT failed line (" _ tAfter.%Size() _ " new lines)")
     Do $$$AssertEquals($ClassMethod(..#SEAM, "Writes"), "DELETE:OcuMftProbeA", "after one DELETE")
     Do $$$AssertEquals($IsObject($ClassMethod(..#PROBE, "Stored", "OcuMftProbeA")), 0, "the connection is gone")
     Do $$$AssertEquals(..Verdict(##class(OcuPilot.Test.LicenseKey).Parsed(tAnswer)), "notFound", "and the read-back reads it absent")
@@ -250,9 +263,11 @@ Method TestADeleteOverAnAbsentClientIsAnsweredAsDeleted()
 /// <p>C5: every row of the rules is refused on its field before any <code>PUT</code>, by the form's Save as a 422
 /// <code>MFT.VALIDATION</code> carrying the violation and by the agent's mint as its problem, naming the field and
 /// the published sentence.</p>
+/// <p>A name that is not text is refused on <code>Name</code> as <code>PORT.FIELD.SHAPE</code>.</p>
 /// <p>Mutation (Rule 19): drop the <code>Service</code> rule from
 /// <method>OcuPilot.Area.Security.MftConnectionRules.Valid</method> -- its legs send the <code>PUT</code> and go
-/// red.</p>
+/// red; drop the shape violation from <method>OcuPilot.Area.Security.MftConnectionSave.CreateIdentity</method> -- the
+/// non-text name leg is refused as a bad name and goes red.</p>
 Method TestEveryRulesRowIsRefusedBeforeAnyPutOnBothCallers()
 {
     Set tErrors = ..#ERRORS
@@ -313,6 +328,9 @@ Method TestEveryRulesRowIsRefusedBeforeAnyPutOnBothCallers()
         Do $$$AssertTrue(tProblem [ ("'" _ $List(tCase, 3) _ "': " _ ##class(OcuPilot.Api.Error).ReasonForViolation($List(tCase, 4))), $List(tCase, 1) _ ": naming the field and the published sentence: " _ tProblem)
         Do $$$AssertEquals($ClassMethod(..#SEAM, "Writes"), "", $List(tCase, 1) _ ": and no PUT")
     }
+    Do $ClassMethod(..#SEAM, "Clear")
+    Set tSC = $ClassMethod(..#SAVE, "Handle", "", {"Name": 5}, .tAnswer, .tStatus)
+    Do $$$AssertEquals(tStatus _ " " _ ..ViolationOf(tAnswer, "Name") _ " " _ $ClassMethod(..#SEAM, "Writes"), "422 " _ tShape _ " ", "a name that is not text is refused on its field before any PUT: " _ $Extract(tAnswer, 1, 200))
     Do $$$AssertEquals($ClassMethod(..#PROBE, "Remaining"), 0, "no probe connection was created")
 
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Seed", "OcuMftProbeU"), "a probe connection to change")
@@ -351,7 +369,7 @@ Method TestALookUpThatCannotBeMadeRefusesTheSave()
 /// since the mint refuses the confirm as changed, and a target another write holds answers 409
 /// <code>WRITE.TARGETBUSY</code> after the wait, with no write.</p>
 /// <p>Mutation (Rule 19): drop the <code>HoldTool</code> from
-/// <method>OcuPilot.Area.Security.MftConnectionSave.HandleUpdate</method> -- the busy leg writes and goes red.</p>
+/// <method>OcuPilot.Kernel.Proposal.ScreenSave.HandleUpdate</method> -- the busy leg writes and goes red.</p>
 Method TestATakenNameAMovedTargetAndABusyTargetAreRefused()
 {
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Seed", "OcuMftProbeA", {"Username": "first@ocumftprobe.invalid"}), "a probe connection")

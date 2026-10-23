@@ -270,11 +270,11 @@ describe('RoutineAppFormPage', () => {
     expect(JSON.parse(put?.body ?? '{}')).toEqual({ Enabled: true });
   });
 
-  it('C3, AD-10: OcuPilot\u2019s own two applications are drawn refused -- the fields read-only, Save aria-disabled and described by the rule\u2019s sentence -- and a click sends nothing', async () => {
+  it('C3, AD-10: OcuPilot\u2019s own three applications are drawn refused -- the fields read-only, Save aria-disabled and described by the rule\u2019s sentence -- and a click sends nothing', async () => {
     // Mutation (Rule 19): drop the `ocupilot-routine-application` branch from `selfProtectionReason`, or the page's
     // `ownRefusal` -> Save loses `aria-disabled`, the sentence is gone and this goes red; drop `onSave`'s `saveBlocked`
     // guard -> the changed buffer is put and the no-write assertion goes red.
-    for (const own of ['OcuPilotState', 'OcuPilotIdentity', 'ocupilotstate']) {
+    for (const own of ['OcuPilotState', 'OcuPilotIdentity', 'OcuPilotSslRead', 'ocupilotstate']) {
       const { fixture, host, calls } = await mount({ url: `/web-applications/routine-applications/edit/${encodeEntityId(own)}`, row: { ...HELD_ROW, Name: own } });
       const sentence = host.querySelector('[data-routine-app="own-refusal"]');
       expect(sentence?.textContent?.trim(), own).toBe(STRINGS.routineAppRefusalOcuPilot);
@@ -410,7 +410,7 @@ describe('RoutineAppFormPage', () => {
     await settle(privileged.fixture);
     expect(privileged.host.querySelector('#ocu-routine-app-routine-effect')?.textContent?.trim()).toBe(STRINGS.privilegedGrantEffect);
     expect(privileged.host.querySelector('[data-action="add-routine"]')?.getAttribute('aria-describedby')).toBe('ocu-routine-app-routine-effect');
-    // Mutation (Rule 19): drop the `matchingRoles()` term from `hasRoutineEffect` -> the matching-role leg goes red.
+    // Mutation (Rule 19): drop the `matchingRoles()` term from `RoutineAppForm.grantsPrivileged` -> the matching-role leg goes red.
     const matching = await mount({ url: editUrl(ID), row: { ...HELD_ROW, MatchRoles: [{ MatchRole: '%Developer', TargetRoles: ['%Manager'] }] } });
     tabs(matching.host)[3].click();
     await settle(matching.fixture);
@@ -421,6 +421,26 @@ describe('RoutineAppFormPage', () => {
     expect(plain.host.querySelector('#ocu-routine-app-routine-effect')).toBeNull();
     expect(plain.host.querySelector('table')).toBeNull();
     expect(plain.host.textContent).toContain(STRINGS.routineAppRoutinesEmpty);
+  });
+
+  it('Story 18.47, DW-2322, AD-10: the Enabled and Resource fields state the privilege while a role the application grants is privileged, and say nothing otherwise', async () => {
+    // Mutation (Rule 19): drop `hasReachEffect` from the template -> the privileged legs go red; make it answer true for
+    // every role -> the unprivileged leg goes red.
+    for (const roles of [
+      [{ MatchRole: '', TargetRoles: ['%Manager'] }],
+      [{ MatchRole: '%Developer', TargetRoles: ['%Manager'] }],
+    ]) {
+      const { host } = await mount({ url: editUrl(ID), row: { ...HELD_ROW, MatchRoles: roles } });
+      expect(host.querySelector('#ocu-routine-app-enabled-effect')?.textContent?.trim()).toBe(STRINGS.privilegedGrantEffect);
+      expect(host.querySelector('#ocu-routine-app-resource-effect')?.textContent?.trim()).toBe(STRINGS.privilegedGrantEffect);
+      expect(control(host, 'Enabled').getAttribute('aria-describedby')?.split(' ')).toContain('ocu-routine-app-enabled-effect');
+      expect(control(host, 'Resource').getAttribute('aria-describedby')?.split(' ')).toEqual(['ocu-routine-app-Resource-hint', 'ocu-routine-app-resource-effect']);
+    }
+    const plain = await mount({ url: editUrl(ID), row: HELD_ROW });
+    expect(plain.host.querySelector('#ocu-routine-app-enabled-effect')).toBeNull();
+    expect(plain.host.querySelector('#ocu-routine-app-resource-effect')).toBeNull();
+    expect(control(plain.host, 'Enabled').getAttribute('aria-describedby')).toBeNull();
+    expect(control(plain.host, 'Resource').getAttribute('aria-describedby')).toBe('ocu-routine-app-Resource-hint');
   });
 
   it('Story 18.33, AD-14: another caller\u2019s change to this application reads its lists again, and its deletion does not', async () => {
@@ -476,10 +496,10 @@ describe('RoutineAppFormPage', () => {
     expect(document.activeElement?.id).toBe('ocu-routine-app-Description');
   });
 
-  it('Story 18.33, C4, AD-10: on OcuPilot\u2019s own two applications every tab control is aria-disabled and described by the rule\u2019s sentence, and a click sends nothing', async () => {
+  it('Story 18.33, C4, AD-10: on OcuPilot\u2019s own three applications every tab control is aria-disabled and described by the rule\u2019s sentence, and a click sends nothing', async () => {
     // Mutation (Rule 19): make the tabs\u2019 `ruleReason` answer `''` (or the client rule, as `self-protection.test.mjs`
     // pins) -> the aria-disabled and described-by legs go red and the clicks post.
-    for (const own of ['OcuPilotState', 'OcuPilotIdentity', 'ocupilotstate']) {
+    for (const own of ['OcuPilotState', 'OcuPilotIdentity', 'OcuPilotSslRead', 'ocupilotstate']) {
       const { fixture, host, calls } = await mount({ url: editUrl(own), row: { ...HELD_ROW, Name: own } });
       for (const [index, key, actions] of [[1, 'application-roles', ['add-application-role', 'remove-application-role']], [2, 'matching-roles', ['add-matching-role', 'remove-matching-role']], [3, 'routines', ['add-routine', 'remove-routine']]] as const) {
         tabs(host)[index].click();

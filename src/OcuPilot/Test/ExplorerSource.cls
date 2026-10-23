@@ -22,8 +22,6 @@ Parameter ROUTINETOOL = "OcuPilot.Screen.Tool.ExplorerRoutineSource";
 
 Parameter PROBE = "OcuPilot.Test.ExplorerSaveProbe";
 
-Parameter LIMIT = 60000;
-
 Method OnBeforeOneTest() As %Status
 {
     Do ##class(OcuPilot.Kernel.Scope).Clear()
@@ -90,12 +88,12 @@ Method TestALongClassIsCutAtWholeLines()
     Set tCut = tResult.%Get("text")
     Do $$$AssertEquals(tResult.%Get("truncated"), 1, "the cut is reported")
     Do $$$AssertTrue(tSent < tTotal, "fewer lines than the document holds are sent: " _ tSent _ " of " _ tTotal)
-    Do $$$AssertTrue(##class(OcuPilot.Screen.Tool.ExplorerSourceRead).Escaped(tCut) <= ..#LIMIT, "the text escapes to at most 60,000 characters: " _ ##class(OcuPilot.Screen.Tool.ExplorerSourceRead).Escaped(tCut))
+    Do $$$AssertTrue(##class(OcuPilot.Screen.Tool.ExplorerSourceRead).Escaped(tCut) <= ..Limit(), "the text escapes to at most the bound: " _ ##class(OcuPilot.Screen.Tool.ExplorerSourceRead).Escaped(tCut))
     Do $$$AssertEquals($Length(tCut, $Char(10)), tSent, "the text is exactly the lines it reports")
     Set tSource = $ClassMethod(..#PROBE, "Source", ..#NAMESPACE, tName)
     Do $$$AssertEquals(tCut, $Piece(tSource, $Char(10), 1, tSent), "the text is the document's first lines, verbatim")
     Set tNext = $Piece(tSource, $Char(10), tSent + 1)
-    Do $$$AssertTrue(##class(OcuPilot.Screen.Tool.ExplorerSourceRead).Escaped(tCut _ $Char(10) _ tNext) > ..#LIMIT, "the next line would not have fit")
+    Do $$$AssertTrue(##class(OcuPilot.Screen.Tool.ExplorerSourceRead).Escaped(tCut _ $Char(10) _ tNext) > ..Limit(), "the next line would not have fit")
 }
 
 Method TestAWideFirstLineIsCutAtACharacter()
@@ -111,10 +109,10 @@ Method TestAWideFirstLineIsCutAtACharacter()
     Set tCut = tResult.%Get("text")
     Do $$$AssertEquals(tResult.%Get("truncated"), 1, "the cut is reported")
     Do $$$AssertEquals(tResult.%Get("linesSent"), 1, "the first line is the one line sent")
-    Do $$$AssertTrue(##class(OcuPilot.Screen.Tool.ExplorerSourceRead).Escaped(tCut) <= ..#LIMIT, "the cut first line escapes to at most 60,000 characters")
+    Do $$$AssertTrue(##class(OcuPilot.Screen.Tool.ExplorerSourceRead).Escaped(tCut) <= ..Limit(), "the cut first line escapes to at most the bound")
     Do $$$AssertTrue($Length(tCut) > 0, "the cut keeps a prefix, not nothing")
     Do $$$AssertEquals(tCut, $Extract(tWide, 1, $Length(tCut)), "the text is a prefix of the first line")
-    Do $$$AssertTrue(##class(OcuPilot.Screen.Tool.ExplorerSourceRead).Escaped($Extract(tWide, 1, $Length(tCut) + 1)) > ..#LIMIT, "one more character would not have fit")
+    Do $$$AssertTrue(##class(OcuPilot.Screen.Tool.ExplorerSourceRead).Escaped($Extract(tWide, 1, $Length(tCut) + 1)) > ..Limit(), "one more character would not have fit")
 }
 
 Method TestCutCountsEscapedCharactersAndLineFeeds()
@@ -126,6 +124,23 @@ Method TestCutCountsEscapedCharactersAndLineFeeds()
     Do $$$AssertEquals(tText _ "|" _ tSent _ "|" _ tTruncated, "a""b|1|1", "a quote escapes to two characters and the next line, with its line feed, does not fit 6")
     Set tText = ##class(OcuPilot.Screen.Tool.ExplorerSourceRead).Cut(tLines, 7, .tSent, .tTruncated)
     Do $$$AssertEquals(tText _ "|" _ tSent _ "|" _ tTruncated, "a""b" _ $Char(10) _ "c|2|0", "the same two lines fit 7 exactly")
+}
+
+/// <p>The cut sentence every source read's description carries, and the description of the result's
+/// <code>text</code>, state the bound the read cuts to: each holds <parameter>SOURCEMAXLENGTH</parameter>
+/// written with thousands separators, as a whole figure rather than the tail or head of a longer one.</p>
+/// <p>Mutation (Rule 19): <parameter>OcuPilot.Screen.Tool.ExplorerSourceRead.SOURCEMAXLENGTH</parameter> 50000
+/// with <parameter>CUTTEXT</parameter> left as it is -- this goes red; the <code>text</code> description of
+/// <method>OcuPilot.Screen.Tool.ExplorerSourceRead.ResultSchema</method> stating another figure -- this goes red;
+/// <parameter>CUTTEXT</parameter> stating 160,000 -- this goes red.</p>
+Method TestTheReadDescriptionStatesTheBoundItCutsTo()
+{
+    Set tStated = $FNumber(..Limit(), ",")
+    Set tWhole = "(?<![0-9,])" _ tStated _ "(?!,?[0-9])"
+    Set tCutText = ##class(OcuPilot.Screen.Tool.ExplorerSourceRead).#CUTTEXT
+    Do $$$AssertTrue($Locate(tCutText, tWhole) > 0, "the cut sentence states " _ tStated _ ": " _ tCutText)
+    Set tTextHint = ##class(OcuPilot.Screen.Tool.ExplorerSourceRead).ResultSchema().%Get("properties").%Get("text").%Get("description")
+    Do $$$AssertTrue($Locate(tTextHint, tWhole) > 0, "and so does the result's text description: " _ tTextHint)
 }
 
 /// <p>A routine the instance keeps only as object code answers 404 <code>PORT.NOTFOUND</code> with the reason that the

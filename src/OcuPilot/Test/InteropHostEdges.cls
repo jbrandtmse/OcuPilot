@@ -1,10 +1,11 @@
 /// <p>Pins the edges of Story 20.4's runtime reads that <class>OcuPilot.Test.InteropHostRead</class> does not reach
 /// (AD-7, AD-24, AD-62): a Troubled production still answers its rows and a dead job is answered <code>Dead</code> and left
-/// as it is; the Messages tab holds the headers an item sourced as well as those sent to it; a business process of pool
-/// size 0 reads only its own entries of the shared <code>Ens.Actor</code> queue; a row cap of one answers one row on every
-/// endpoint; a log is newest first and each row carries the keys and figures the vendor's own queries give; a host with
-/// no queue or job reads no row; a read that cannot take the production's runtime lock answers 503; and a header's and a
-/// log row's stamps are converted from UTC once, to the zone of the process that reads them.</p>
+/// as it is; the Messages tab holds the headers an item sourced as well as those sent to it, merged newest first and
+/// capped, a header reading the same from either side; a business process of pool size 0 reads only its own entries of
+/// the shared <code>Ens.Actor</code> queue; a row cap of one answers one row on every endpoint; a log is newest first and
+/// each row carries the keys and figures the vendor's own queries give; a host with no queue or job reads no row; a read
+/// that cannot take the production's runtime lock answers 503; and a header's and a log row's stamps are converted from
+/// UTC once, to the zone of the process that reads them.</p>
 /// <p>The zone leg runs the reads in a child process started with the environment variable <code>TZ</code> set, because
 /// the conversion follows the operating system's zone for the process: a process can set <code>$ZTIMEZONE</code> without
 /// changing it. The expected stamp is the stored UTC value moved by the child's offset, computed by arithmetic on the day
@@ -60,7 +61,7 @@ Parameter ZONEWEST = 480;
 /// <p>The ids of the three messages the probe was sent, oldest first, comma-separated.</p>
 Property PreparedIds As %String;
 
-/// <p>The ids of the headers the actor-queue leg queued, comma-separated.</p>
+/// <p>The ids of the headers a test stored or queued, comma-separated; they are removed after each test.</p>
 Property PreparedEntries As %String;
 
 Method %OnNew(initvalue As %String = "") As %Status
@@ -80,7 +81,6 @@ Method OnBeforeAllTests() As %Status
     Set tSC = $ClassMethod(..#PROBE, "Remove")
     If $$$ISERR(tSC) Quit tSC
     Set tSC = $ClassMethod(..#PROBE, "Create")
-    ; %UnitTest skips OnAfterAllTests when this method fails, so a failed setup removes what it made here.
     If $$$ISERR(tSC) Set tSC = $$$ADDSC(tSC, ..OnAfterAllTests())
     Quit tSC
 }
@@ -210,23 +210,89 @@ Method TestATroubledProductionStillAnswersItsRowsAndChangesNothing()
 }
 
 /// <p>AC1: the Messages tab of the service holds the three headers it sourced, newest first, though no header was sent
-/// to it: the statement's first subselect reads the headers an item is the source of.</p>
-/// <p>Mutation (Rule 19): make the first subselect of <parameter>OcuPilot.Port.InteropPort:MESSAGESQL</parameter> read
-/// <code>TargetConfigName</code> -- this goes red.</p>
+/// to it: the statement's first branch reads the headers an item is the source of. Each reads, field for field, as it
+/// does on the operation's Messages tab, which the statement's second branch reads.</p>
+/// <p>Mutation (Rule 19): make the first branch of <parameter>OcuPilot.Port.InteropPort:MESSAGESQL</parameter> read
+/// <code>TargetConfigName</code>, or read <code>Status</code> without <code>%EXTERNAL</code> -- this goes red.</p>
 Method TestTheServicesMessagesAreThoseItSourced()
 {
     Do $$$AssertStatusOK(..Arm(), "the probe runs with its operation hung on one message and two waiting")
     Set tRows = ..RowsOf("ItemMessages", ..#SVCNAME, , , .tHttp)
     Do $$$AssertEquals(tHttp, 200, "ItemMessages answers for the service")
+    Set tSent = ..ProbeRows("ItemMessages", .tHttp)
     For tI = 1:1:3 {
         Set tHeader = $ClassMethod(..#READ, "RowWhere", tRows, "ID", $Piece(..PreparedIds, ",", tI))
         If $IsObject(tHeader) {
             Do $$$AssertEquals(tHeader.Source _ "|" _ tHeader.Target, ..#SVCNAME _ "|" _ ..#OPNAME, "message " _ tI _ " is listed as the service's, sent to the operation")
+            Set tSentRow = $ClassMethod(..#READ, "RowWhere", tSent, "ID", tHeader.ID)
+            For tField = "TimeCreated", "Status", "BodyClass", "SessionId" {
+                Do $$$AssertEquals(tHeader.%Get(tField), $Select($IsObject(tSentRow): tSentRow.%Get(tField), 1: "none"), "message " _ tI _ "'s " _ tField _ " reads as it does on the operation's Messages tab")
+            }
         } Else {
             Do $$$AssertTrue(0, "message " _ tI _ " is among the service's messages")
         }
     }
     Do $$$AssertEquals($Piece(..Ordered(tRows, "ID"), ",", 1, 3), $Piece(..PreparedIds, ",", 3) _ "," _ $Piece(..PreparedIds, ",", 2) _ "," _ $Piece(..PreparedIds, ",", 1), "the newest three are the probe's, newest first")
+}
+
+/// <p>Store a message header from <var>pSource</var> to <var>pTarget</var> and answer its id, 0 when it could not be
+/// stored: queued in <var>pQueue</var> when that is given, else queued nowhere.</p>
+ClassMethod StoreHeader(pSource As %String, pTarget As %String, pQueue As %String = "") As %Integer
+{
+    Set tId = 0
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = ..#NAMESPACE
+        Set tHeader = ##class(Ens.MessageHeader).%New()
+        Set tHeader.SourceConfigName = pSource
+        Set tHeader.TargetConfigName = pTarget
+        Set tHeader.MessageBodyClassName = "Ens.Request"
+        Set tHeader.Type = 1
+        Set tHeader.Priority = 6
+        Set tHeader.TimeCreated = $ZDateTime($ZTimeStamp, 3, , 3)
+        If pQueue '= "" {
+            Set tHeader.TargetQueueName = pQueue
+            Set tSC = ##class(Ens.Queue).EnQueue(tHeader)
+        } Else {
+            Set tSC = tHeader.%Save()
+        }
+        If $$$ISOK(tSC) Set tId = tHeader.%Id()
+        Set tHeader = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch {
+        Set $NAMESPACE = tOrigNS
+    }
+    Quit tId
+}
+
+/// <p>AC1: an item that is the source of some headers and the target of others reads them as one list, newest first: the
+/// ids of both sides interleaved, a header that names the item as both its source and its target once, and at most the
+/// cap's rows however many each side holds. The operation holds three target headers of the probe's; the five this test
+/// stores are newer, so they are the newest five of its Messages. They are removed afterwards.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Port.InteropPort.ListItemMessages</method> without its <code>tCount &lt; tTop</code>
+/// test, or keying them by a counter instead of the header id; or the source branch of
+/// <parameter>OcuPilot.Port.InteropPort:MESSAGESQL</parameter> without its <code>ORDER BY</code> -- each goes red.</p>
+Method TestAnItemWithHeadersOnBothSidesReadsThemMergedNewestFirstOnceEachAndCapped()
+{
+    Do $$$AssertStatusOK(..Arm(), "the probe runs with its operation hung on one message and two waiting")
+    Set tH1 = ..StoreHeader(..#OPNAME, ..#SVCNAME)
+    Set tH2 = ..StoreHeader(..#SVCNAME, ..#OPNAME)
+    Set tH3 = ..StoreHeader(..#OPNAME, ..#OPNAME)
+    Set tH4 = ..StoreHeader(..#OPNAME, ..#SVCNAME)
+    Set tH5 = ..StoreHeader(..#SVCNAME, ..#OPNAME)
+    Set ..PreparedEntries = tH1 _ "," _ tH2 _ "," _ tH3 _ "," _ tH4 _ "," _ tH5
+    Do $$$AssertTrue((tH1 > 0) && (tH2 > tH1) && (tH3 > tH2) && (tH4 > tH3) && (tH5 > tH4), "five headers are stored, each newer than the last: " _ ..PreparedEntries)
+    Set tNewest = tH5 _ "," _ tH4 _ "," _ tH3 _ "," _ tH2 _ "," _ tH1
+    Set tAll = ..Ordered(..RowsOf("ItemMessages", ..#OPNAME, , , .tHttp), "ID")
+    Do $$$AssertEquals(tHttp _ "|" _ $Piece(tAll, ",", 1, 5), "200|" _ tNewest, "the operation's five newest headers are the five stored, interleaved newest first")
+    Do $$$AssertEquals($Length("," _ tAll _ ",", "," _ tH3 _ ",") - 1, 1, "the header that is both its source and its target is listed once")
+    For tCap = 2, 4, 5 {
+        Set tRows = ..RowsOf("ItemMessages", ..#OPNAME, , tCap, .tHttp)
+        Do $$$AssertEquals(tHttp _ "|" _ ..Ordered(tRows, "ID"), "200|" _ $Piece(tNewest, ",", 1, tCap), "a cap of " _ tCap _ " answers the newest " _ tCap _ " of the two sides together")
+    }
+    Do ..RemoveEntries(..PreparedEntries)
+    Do $$$AssertEquals(..EntriesLeft(..PreparedEntries), 0, "the stored headers are removed")
+    Set ..PreparedEntries = ""
 }
 
 /// <p>AC3: a business process of pool size 0 reads only its own entries of the queue it shares with every other such
@@ -269,26 +335,7 @@ Method TestAPoolSizeZeroItemReadsOnlyItsOwnActorEntries()
 /// queued. Called while no job reads the queue.</p>
 ClassMethod QueueEntry(pTarget As %String) As %Integer
 {
-    Set tId = 0
-    Set tOrigNS = $NAMESPACE
-    Try {
-        Set $NAMESPACE = ..#NAMESPACE
-        Set tHeader = ##class(Ens.MessageHeader).%New()
-        Set tHeader.SourceConfigName = ..#SVCNAME
-        Set tHeader.TargetConfigName = pTarget
-        Set tHeader.TargetQueueName = ..#ACTOR
-        Set tHeader.MessageBodyClassName = "Ens.Request"
-        Set tHeader.Type = 1
-        Set tHeader.Priority = 6
-        Set tHeader.TimeCreated = $ZDateTime($ZTimeStamp, 3, , 3)
-        Set tSC = ##class(Ens.Queue).EnQueue(tHeader)
-        If $$$ISOK(tSC) Set tId = tHeader.%Id()
-        Set tHeader = ""
-        Set $NAMESPACE = tOrigNS
-    } Catch {
-        Set $NAMESPACE = tOrigNS
-    }
-    Quit tId
+    Quit ..StoreHeader(..#SVCNAME, pTarget, ..#ACTOR)
 }
 
 /// <p>Take the entries for the headers <var>pIds</var> (comma-separated) out of the shared actor queue, delete the headers,
@@ -520,13 +567,14 @@ ClassMethod Clock(pLocal As %String) As %String
     Quit $Select(pLocal = "": "", 1: $Translate($Extract(pLocal, 1, 19), " ", "T") _ "." _ $Extract($Piece(pLocal, ".", 2) _ "000", 1, 3))
 }
 
-/// <p>The stamps of a header, a queue entry and a log row are converted from UTC to local time once: read by a process
+/// <p>The stamps of a header (on the Messages tab of the item that sent it and of the one it was sent to), a queue entry
+/// and a log row are converted from UTC to local time once: read by a process
 /// whose zone is eight hours west of Greenwich, each is the stored UTC value less eight hours; read by this process, each
 /// is the stored value moved by this process's own offset. The stored values are read from the columns, never through
 /// <code>%EXTERNAL</code>, which converts too.</p>
 /// <p>Mutation (Rule 19): <method>OcuPilot.Port.InteropPort.LocalStamp</method> reformatting its argument without
-/// converting -- the western legs go red; <code>%EXTERNAL</code> put back around the stamp in
-/// <parameter>OcuPilot.Port.InteropPort:MESSAGESQL</parameter> -- the Messages leg goes red, the stamp converted twice.</p>
+/// converting -- the western legs go red; <code>%EXTERNAL</code> put back around the stamp in either branch of
+/// <parameter>OcuPilot.Port.InteropPort:MESSAGESQL</parameter> -- a Messages leg goes red, the stamp converted twice.</p>
 Method TestTheStampsAreConvertedOnceToTheZoneOfTheReader()
 {
     Do $$$AssertStatusOK(..Arm(), "the probe runs with its operation hung on one message and two waiting")
@@ -540,11 +588,12 @@ Method TestTheStampsAreConvertedOnceToTheZoneOfTheReader()
 
     Set tHere = ..StampsRead(tHeaderId, tLogId)
     Set tHereWest = +tHere.%Get("west")
-    Do $$$AssertEquals(tHere.%Get("messages") _ "|" _ tHere.%Get("queue") _ "|" _ tHere.%Get("log"), ..MovedWest(tCreated, tHereWest) _ "|" _ ..MovedWest(tCreated, tHereWest) _ "|" _ ..MovedWest(tLogged, tHereWest), "read here, " _ tHereWest _ " minutes west, each stamp is the stored one moved by that")
+    Do $$$AssertEquals(tHere.%Get("messages") _ "|" _ tHere.%Get("sourced") _ "|" _ tHere.%Get("queue") _ "|" _ tHere.%Get("log"), ..MovedWest(tCreated, tHereWest) _ "|" _ ..MovedWest(tCreated, tHereWest) _ "|" _ ..MovedWest(tCreated, tHereWest) _ "|" _ ..MovedWest(tLogged, tHereWest), "read here, " _ tHereWest _ " minutes west, each stamp is the stored one moved by that")
     Set tThere = ..ReadInZone(..#ZONE, tHeaderId, tLogId)
     Do $$$AssertEquals(tThere.%Get("error") _ "|" _ tThere.%Get("west"), "|" _ ..#ZONEWEST, "the child ran eight hours west of Greenwich: " _ tThere.%ToJSON())
     Set tWest = +tThere.%Get("west")
     Do $$$AssertEquals(tThere.%Get("messages"), ..MovedWest(tCreated, tWest), "read eight hours west, a header's stamp is the stored one less eight hours (stored " _ tCreated _ ")")
+    Do $$$AssertEquals(tThere.%Get("sourced"), ..MovedWest(tCreated, tWest), "and so it is on the Messages tab of the item that sent it (stored " _ tCreated _ ")")
     Do $$$AssertEquals(tThere.%Get("queue"), ..MovedWest(tCreated, tWest), "and so is a queue entry's (stored " _ tCreated _ ")")
     Do $$$AssertEquals(tThere.%Get("log"), ..MovedWest(tLogged, tWest), "and a log row's (stored " _ tLogged _ ")")
 }
@@ -560,13 +609,17 @@ ClassMethod MovedWest(pUtc As %String, pWest As %Integer) As %String
 }
 
 /// <p>The stamps the port answers to the calling process for the header <var>pHeaderId</var> and the log row
-/// <var>pLogId</var>: <code>{west, messages, queue, log}</code>, <code>west</code> the process's <code>$ZTIMEZONE</code>.</p>
+/// <var>pLogId</var>: <code>{west, messages, sourced, queue, log}</code>, <code>west</code> the process's
+/// <code>$ZTIMEZONE</code>, <code>messages</code> and <code>sourced</code> the header on the operation's and on the
+/// service's Messages tab.</p>
 ClassMethod StampsRead(pHeaderId As %String, pLogId As %String) As %DynamicObject
 {
     Set tOut = {}
     Do tOut.%Set("west", +$ZTimeZone, "number")
     Set tHeader = $ClassMethod(..#READ, "RowWhere", ..ProbeRows("ItemMessages", .tHttp), "ID", pHeaderId)
     Do tOut.%Set("messages", $Select($IsObject(tHeader): tHeader.TimeCreated, 1: "none"))
+    Set tSourced = $ClassMethod(..#READ, "RowWhere", ..RowsOf("ItemMessages", ..#SVCNAME, , , .tHttp), "ID", pHeaderId)
+    Do tOut.%Set("sourced", $Select($IsObject(tSourced): tSourced.TimeCreated, 1: "none"))
     Set tEntry = $ClassMethod(..#READ, "RowWhere", ..ProbeRows("QueueItems", .tHttp), "MessageId", pHeaderId)
     Do tOut.%Set("queue", $Select($IsObject(tEntry): tEntry.TimeCreated, 1: "none"))
     Set tLog = $ClassMethod(..#READ, "RowWhere", ..ProbeRows("ItemLog", .tHttp), "ID", pLogId)
@@ -575,28 +628,11 @@ ClassMethod StampsRead(pHeaderId As %String, pLogId As %String) As %DynamicObjec
 }
 
 /// <p>Run <method>StampsRead</method> in a new session, in the caller's namespace, whose environment sets <code>TZ</code>
-/// to <var>pZone</var>, and answer what it signalled, or an object carrying <code>error</code>.</p>
+/// to <var>pZone</var> (<method>OcuPilot.Test.ZoneSession.Signalled</method>), and answer what it signalled, or an
+/// object carrying <code>error</code>.</p>
 ClassMethod ReadInZone(pZone As %String, pHeaderId As %String, pLogId As %String) As %DynamicObject
 {
-    Set tOut = {}
-    Set tFile = ##class(%File).TempFilename("txt")
-    Try {
-        Do $System.Event.Clear($Job)
-        Set tCommand = "##class(" _ $ClassName() _ ").ZoneChild(" _ $Job _ "," _ pHeaderId _ "," _ pLogId _ ")"
-        Set tCode = $ZF(-100, "/ASYNC /STDOUT=""" _ tFile _ """ /STDERR=""" _ tFile _ ".err""", "/usr/bin/env", "TZ=" _ pZone, $System.Util.BinaryDirectory() _ "iris", "session", ##class(%SYS.System).GetInstanceName(), "-U", $NAMESPACE, tCommand)
-        Set tMessage = $System.Event.WaitMsg("", 120)
-        If $ListGet(tMessage, 1) '= 1 {
-            Do tOut.%Set("error", "the child session signalled nothing within 120 seconds, code " _ tCode)
-            Quit
-        }
-        Set tOut = ##class(%DynamicObject).%FromJSON($ListGet(tMessage, 2))
-    } Catch ex {
-        Set tOut = {}
-        Do tOut.%Set("error", ex.DisplayString())
-    }
-    Set tDeleted = ##class(%File).Delete(tFile)
-    Set tDeleted = ##class(%File).Delete(tFile _ ".err")
-    Quit tOut
+    Quit ##class(OcuPilot.Test.ZoneSession).Signalled(pZone, "##class(" _ $ClassName() _ ").ZoneChild(" _ $Job _ "," _ pHeaderId _ "," _ pLogId _ ")")
 }
 
 /// <p>The session <method>ReadInZone</method> starts: signal <method>StampsRead</method>'s object to process

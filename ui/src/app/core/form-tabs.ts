@@ -11,6 +11,7 @@
  * under `node --test`.
  */
 
+import { pickCount } from './count-phrase.ts';
 import type { Violation } from './violations.ts';
 import { STRINGS } from './strings.ts';
 
@@ -59,6 +60,9 @@ export function tabToOpen(fieldTabs: FieldTabs, fieldOrder: readonly string[], v
  */
 export function tabAccessibleName(label: string, count: number): string {
   if (count <= 0) return label;
-  if (count === 1) return STRINGS.formTabErrorOne.split(TAB_PLACEHOLDER).join(label);
-  return STRINGS.formTabErrorMany.split(TAB_PLACEHOLDER).join(label).split(COUNT_PLACEHOLDER).join(String(count));
+  return pickCount(count, STRINGS.formTabErrorOne, STRINGS.formTabErrorMany)
+    .split(TAB_PLACEHOLDER)
+    .join(label)
+    .split(COUNT_PLACEHOLDER)
+    .join(String(count));
 }

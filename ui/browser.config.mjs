@@ -10,10 +10,12 @@
  * `npm run test:browser` runs them one file at a time, because
  * `unreadable.browser-spec.mjs` revokes and restores a grant the others depend on.
  *
- * **It runs against a throwaway container, never the live one.** The default origin is the
- * throwaway's published web port (52776), not 52774. A run pointed at 52774 would be driving the
- * owner's instance, signing in to it and minting sessions on it, which is what
- * `scripts/ci-throwaway.sh` exists to make unnecessary.
+ * **It runs against a throwaway container, never the live one, and the run names it.** Both
+ * `OCUPILOT_BROWSER_ORIGIN` and `OCUPILOT_BROWSER_CONTAINER` must be set: there is no fallback,
+ * because a run that fell back to slot A's throwaway from another slot would drive an instance the
+ * run does not own. A run pointed at the live container's port would be driving the owner's
+ * instance, signing in to it and minting sessions on it, which is what `scripts/ci-throwaway.sh`
+ * exists to make unnecessary.
  *
  * **The browser is a dev dependency and reaches no shipped byte** (NFR-10). `puppeteer` is
  * pinned to an exact version in `devDependencies`; nothing in `src/` imports it, and
@@ -29,7 +31,10 @@ import { installProtocolRetry } from './browser/protocol-retry.mjs';
 // protocol, without a line in any spec.
 installProtocolRetry(puppeteer);
 
-/** The origin the spec drives. Never the live container's 52774 -- see this file's header. */
+/**
+ * Slot A's throwaway origin (its published web port). The refusal names it as the example; it is
+ * never a fallback. Never the live container's port -- see this file's header.
+ */
 export const DEFAULT_ORIGIN = 'http://localhost:52776';
 
 /** The shell's own path, the one the install roster declares. */
@@ -47,7 +52,10 @@ export const READINESS_PATH = '/api/ocupilot/readiness/';
 /** The npm licence notices install copies into the shell's served root (DW-217). */
 export const LICENCE_PATH = '/ocupilot/3rdpartylicenses.txt';
 
-/** The throwaway's container name, which `scripts/ci-throwaway.sh` gives it. */
+/**
+ * Slot A's throwaway container name, which `scripts/ci-throwaway.sh` gives it. The refusal names it
+ * as the example, beside `DEFAULT_ORIGIN`; it is never a fallback.
+ */
 export const DEFAULT_CONTAINER = 'ocupilot-ci';
 
 /** The live container's name. A spec that runs commands inside a container refuses it. */
@@ -62,33 +70,27 @@ export const LIVE_CONTAINER = 'ocupilot';
  * compatible Chrome already installed. It is an override, never a default -- unset, the pinned
  * download is what runs, which is what "pinned to an exact version" has to mean.
  *
- * An origin other than `DEFAULT_ORIGIN` must come with `OCUPILOT_BROWSER_CONTAINER`, and a
- * container other than `DEFAULT_CONTAINER` with `OCUPILOT_BROWSER_ORIGIN`, or this throws: the
- * pages would otherwise load from one throwaway while the specs that `docker exec` reach another.
+ * `OCUPILOT_BROWSER_ORIGIN` and `OCUPILOT_BROWSER_CONTAINER` must both be set and not empty, or
+ * this throws before anything touches an instance: the pages would otherwise load from one
+ * throwaway while the specs that `docker exec` reach another.
  *
  * A container named `ocupilot` or `ocupilot-slot-*` is refused outright: those are the live and
  * owner-managed development instances, never a throwaway a spec may write to.
  */
 export function browserConfig(env = process.env) {
-  const origin = env.OCUPILOT_BROWSER_ORIGIN ?? DEFAULT_ORIGIN;
+  const origin = env.OCUPILOT_BROWSER_ORIGIN ?? '';
   const container = env.OCUPILOT_BROWSER_CONTAINER ?? '';
+  if (origin === '' || container === '') {
+    throw new Error(
+      `browser.config: OCUPILOT_BROWSER_ORIGIN and OCUPILOT_BROWSER_CONTAINER must both be set and ` +
+        `not empty, so a run names the throwaway it drives; slot A's is ` +
+        `OCUPILOT_BROWSER_ORIGIN=${DEFAULT_ORIGIN} OCUPILOT_BROWSER_CONTAINER=${DEFAULT_CONTAINER}`
+    );
+  }
   if (container === LIVE_CONTAINER || /^ocupilot-slot-/.test(container)) {
     throw new Error(
       `browser.config: OCUPILOT_BROWSER_CONTAINER is ${container}, a live or development instance; ` +
         `browser specs run only against a throwaway from scripts/ci-throwaway.sh`
-    );
-  }
-  if (origin !== DEFAULT_ORIGIN && container === '') {
-    throw new Error(
-      `browser.config: OCUPILOT_BROWSER_ORIGIN is ${origin}, not ${DEFAULT_ORIGIN}, and ` +
-        `OCUPILOT_BROWSER_CONTAINER is unset; name the container that serves that origin, ` +
-        `because the default ${DEFAULT_CONTAINER} is a different throwaway`
-    );
-  }
-  if (origin === DEFAULT_ORIGIN && container !== '' && container !== DEFAULT_CONTAINER) {
-    throw new Error(
-      `browser.config: OCUPILOT_BROWSER_CONTAINER is ${container}, not ${DEFAULT_CONTAINER}, and ` +
-        `OCUPILOT_BROWSER_ORIGIN is the default ${DEFAULT_ORIGIN}; name the origin that container serves`
     );
   }
   return {
@@ -96,7 +98,7 @@ export function browserConfig(env = process.env) {
     username: env.OCUPILOT_BROWSER_USER ?? '_SYSTEM',
     password: env.OCUPILOT_BROWSER_PASSWORD ?? 'SYS',
     executablePath: env.OCUPILOT_BROWSER_EXECUTABLE ?? '',
-    container: env.OCUPILOT_BROWSER_CONTAINER ?? DEFAULT_CONTAINER,
+    container,
     // Wide enough that the rail and the side bar are both laid out: the shell collapses the
     // side bar below its own breakpoint, and a spec that asserted a non-zero width at a phone
     // width would be asserting the collapse rather than the layout.

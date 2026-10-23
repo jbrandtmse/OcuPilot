@@ -8,7 +8,9 @@
  * typed and leaves it Aborted beside the other; Abort message on the hung job, which is not retrying, is refused with the
  * published sentence and changes nothing; and Stop job warns first, ends the job, puts its message back on the queue and
  * takes the job's row off Jobs; and an item's Queue and Jobs tabs draw the same actions, post them to Queue messages' and
- * Jobs' routes, and show the same dialogs and the published sentence of a refusal.
+ * Jobs' routes, and show the same dialogs and the published sentence of a refusal. Story 20.9's AC4: a Queue messages row's message
+ * id opens that message's Header tab in `USER`, reading the id and the probe operation as its target; and Messages, searched in `USER`
+ * by the probe operation, lists the three messages the probe was armed with.
  *
  * **It compiles, starts and writes a probe production in `USER`** through `OcuPilot.Test.ProductionProbe`, so it runs on a
  * throwaway only; the `after` hook stops and removes the production, its classes and its messages, whatever the tests
@@ -242,6 +244,90 @@ after(async () => {
     }
   } finally {
     if (browser !== null) await browser.close();
+  }
+});
+
+// Story 20.9, AC4. Mutation (Rule 19): remove the `rowTarget` from `InteropQueueMessageList`, regenerate the mirror, rebuild and
+// redeploy -> the message id is plain text and the click wait goes red; move `InteropMessageHeaderTab` off `/document`, regenerate,
+// rebuild and redeploy -> the link opens the list's own id route and the path wait goes red.
+test('AC4: a Queue messages row\'s message id opens that message\'s Header tab in USER, with its id and the probe operation as target', async () => {
+  const ids = armedIds.slice(1);
+  const { context, page } = await signedInAt(browser, config, QUEUES_URL, VIEWPORTS.wide);
+  try {
+    await answered(page);
+    await rowNamed(page, OPERATION);
+    await clickRowCentre(page, { text: OPERATION, link: true });
+    await pathHolds(page, '/interoperability/queues/messages/');
+    await answered(page);
+    const listed = await allRows(page);
+    const first = listed[0][0];
+    assert.ok(ids.includes(first), `the first listed message id is one the probe was armed with: ${first}`);
+    await clickRowCentre(page, { index: 0, link: true });
+    await pathHolds(page, `/interoperability/messages/document/${first}`);
+    assert.equal(new URL(page.url()).searchParams.get('ns'), 'USER', 'in the list\'s namespace');
+    await page.waitForSelector('.ocu-detail-tabs', { timeout: config.navigationTimeoutMs });
+    await page.waitForFunction(
+      (rowSelector, wanted) => Array.from(document.querySelectorAll(rowSelector)).some((row) => row.querySelector('[role="gridcell"]')?.textContent.trim() === wanted),
+      { timeout: config.navigationTimeoutMs },
+      ROW_SELECTOR,
+      'TargetConfigName'
+    );
+    const rows = await allRows(page);
+    const value = Object.fromEntries(rows.map((cells) => [cells[0], cells[1]]));
+    assert.equal(value.ID, first, 'the Header tab\'s ID row reads the message id');
+    assert.equal(value.TargetConfigName, OPERATION, 'and its TargetConfigName row the probe operation');
+    assert.deepEqual(
+      await page.$$eval('.ocu-detail-tabs .ocu-detail-tab-label', (nodes) => nodes.map((node) => node.textContent.trim())),
+      [STRINGS.interopMessageTabHeader, STRINGS.interopMessageTabContents, STRINGS.interopMessageTabTrace],
+      'under the Header, Contents and Trace strip'
+    );
+    // The Contents tab reads the same message's body in USER, where the port opens it switched into that namespace.
+    await (await page.waitForSelector('button.ocu-detail-tab[data-route="interoperability/messages/contents"]', { visible: true, timeout: config.navigationTimeoutMs })).click();
+    await pathHolds(page, `/interoperability/messages/contents/${first}`);
+    await page.waitForSelector('app-interop-message-contents [data-ocu-contents]:not([data-ocu-contents="skeleton"])', { timeout: config.navigationTimeoutMs });
+    const contents = await page.evaluate(() => {
+      const block = document.querySelector('app-interop-message-contents [data-ocu-contents]:not([data-ocu-contents="skeleton"])');
+      return { kind: block?.getAttribute('data-ocu-contents'), text: block?.textContent ?? '' };
+    });
+    assert.deepEqual({ kind: contents.kind, startsAsXml: /^<[A-Za-z]/.test(contents.text) }, { kind: 'text', startsAsXml: true }, `the probe message's body draws as XML text from USER: ${contents.text.slice(0, 80)}`);
+  } finally {
+    await context.close();
+  }
+});
+
+// Story 20.9, AC1 in USER. Mutation (Rule 19): make `OcuPilot.Port.InteropPort.ListMessages` read the install namespace whatever the
+// request names, recompile the tree -> USER's messages are not listed and the row wait goes red.
+test('AC1 in USER: Messages searches the probe production\'s namespace and lists the messages it was armed with by their target', async () => {
+  const { context, page } = await signedInAt(browser, config, '/ocupilot/interoperability/messages?ns=USER', VIEWPORTS.wide);
+  try {
+    await answered(page);
+    await page.waitForSelector('#ocu-audit-criterion-target', { timeout: config.navigationTimeoutMs });
+    await page.click('#ocu-audit-criterion-target', { clickCount: 3 });
+    await page.keyboard.press('Backspace');
+    await page.type('#ocu-audit-criterion-target', OPERATION);
+    // The rows are read only after the search by target has answered, so the opening read's rows cannot stand in for them.
+    const searched = page.waitForResponse(
+      (response) =>
+        response.url().includes('/screens/interop.messages/read') && new URL(response.url()).searchParams.get('target') === OPERATION,
+      { timeout: config.navigationTimeoutMs }
+    );
+    await page.click('.ocu-criteria-controls button[type="submit"]');
+    await searched;
+    await page.waitForFunction(
+      (rowSelector, wanted, target) => {
+        const rows = Array.from(document.querySelectorAll(rowSelector)).map((row) => Array.from(row.querySelectorAll('[role="gridcell"]')).map((cell) => cell.textContent.trim()));
+        return rows.length > 0 && rows.every((cells) => cells[5] === target) && wanted.every((id) => rows.some((cells) => cells[0] === id));
+      },
+      { timeout: config.navigationTimeoutMs },
+      ROW_SELECTOR,
+      armedIds,
+      OPERATION
+    );
+    assert.equal(new URL(page.url()).searchParams.get('ns'), 'USER', 'in the probe\'s namespace');
+    const listed = (await allRows(page)).map((cells) => cells[0]);
+    for (const id of armedIds) assert.ok(listed.includes(id), `message ${id}, which the probe was armed with, is listed: ${listed.join(',')}`);
+  } finally {
+    await context.close();
   }
 });
 

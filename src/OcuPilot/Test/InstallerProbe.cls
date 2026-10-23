@@ -31,10 +31,96 @@ ClassMethod LogWarn(pMessage As %String, pData As %DynamicObject = "")
     Set ^||OcuPilotInstallerProbe("lastWarnData") = $Select($IsObject(pData): pData.%ToJSON(), 1: "")
 }
 
-/// <p>Discard anything a previous capture left behind.</p>
+/// <p>Discard anything a previous capture left behind, and disarm every seam below.</p>
 ClassMethod Clear()
 {
     Kill ^||OcuPilotInstallerProbe
+}
+
+/// <p>Arm <method>OcuPilot.Install.Installer.InstanceVersion</method> to answer
+/// <var>pVersion</var> until <method>Clear</method>.</p>
+ClassMethod SetInstanceVersion(pVersion As %String)
+{
+    Set ^||OcuPilotInstallerProbe("instanceVersion") = pVersion
+}
+
+/// <p>The armed version, else the instance's own.</p>
+ClassMethod InstanceVersion() As %String
+{
+    If $Data(^||OcuPilotInstallerProbe("instanceVersion")) Quit ^||OcuPilotInstallerProbe("instanceVersion")
+    Quit ##super()
+}
+
+/// <p>Arm <method>OcuPilot.Install.Installer.PackageDestination</method> to answer
+/// <var>pDestination</var> until <method>Clear</method>.</p>
+ClassMethod SetPackageDestination(pDestination As %String)
+{
+    Set ^||OcuPilotInstallerProbe("packageDestination") = pDestination
+}
+
+/// <p>The armed destination, else the namespace's own answer.</p>
+ClassMethod PackageDestination(pNamespace As %String) As %String
+{
+    If $Data(^||OcuPilotInstallerProbe("packageDestination")) Quit ^||OcuPilotInstallerProbe("packageDestination")
+    Quit ##super(pNamespace)
+}
+
+/// <p>Make <method>OcuPilot.Install.Installer.CredsDefinitionNames</method> fail (1) or read the
+/// store (0) until <method>Clear</method>.</p>
+ClassMethod SetDefinitionsUnreadable(pUnreadable As %Boolean)
+{
+    Set ^||OcuPilotInstallerProbe("definitionsUnreadable") = pUnreadable
+}
+
+/// <p>An induced read failure when armed, else the real read.</p>
+ClassMethod CredsDefinitionNames(Output pNames As %List) As %Status
+{
+    If +$Get(^||OcuPilotInstallerProbe("definitionsUnreadable"), 0) {
+        Set pNames = ""
+        Quit $$$ERROR($$$GeneralError, "OcuPilot.Test.InstallerProbe: induced definition-store read failure")
+    }
+    Quit ##super(.pNames)
+}
+
+/// <p>Arm <method>OcuPilot.Install.Installer.CredentialsRungAvailable</method> to answer
+/// <var>pAvailable</var> (1 or 0) until <method>Clear</method>.</p>
+ClassMethod SetRungAvailable(pAvailable As %Boolean)
+{
+    Set ^||OcuPilotInstallerProbe("rungAvailable") = pAvailable
+}
+
+/// <p>The armed answer, else the install namespace's own.</p>
+ClassMethod CredentialsRungAvailable() As %Boolean
+{
+    If $Data(^||OcuPilotInstallerProbe("rungAvailable")) Quit ^||OcuPilotInstallerProbe("rungAvailable")
+    Quit ##super()
+}
+
+/// <p>Make <method>OcuPilot.Install.Installer.SqlPrivilegeQuery</method> name a query that does not
+/// exist (1), so the SQL privilege catalog cannot be read, or the real one (0), until
+/// <method>Clear</method>.</p>
+ClassMethod SetPrivilegeCatalogUnreadable(pUnreadable As %Boolean)
+{
+    Set ^||OcuPilotInstallerProbe("privilegeCatalogUnreadable") = pUnreadable
+}
+
+/// <p>Make <method>OcuPilot.Install.Installer.SqlPrivilegeQuery</method> name a query that exists
+/// but whose <code>Execute</code> answers a failing status when run with no arguments (it requires a
+/// directory), so the catalog read fails by status rather than by exception, or the real query (0),
+/// until <method>Clear</method>.</p>
+ClassMethod SetPrivilegeCatalogExecuteFails(pFails As %Boolean)
+{
+    Set ^||OcuPilotInstallerProbe("privilegeCatalogExecuteFails") = pFails
+}
+
+/// <p>A query that does not exist when <method>SetPrivilegeCatalogUnreadable</method> armed it, a
+/// query whose execution fails when <method>SetPrivilegeCatalogExecuteFails</method> armed it, else
+/// the real one.</p>
+ClassMethod SqlPrivilegeQuery() As %String
+{
+    If +$Get(^||OcuPilotInstallerProbe("privilegeCatalogUnreadable"), 0) Quit "Security.SQLPrivileges:NoSuchQuery"
+    If +$Get(^||OcuPilotInstallerProbe("privilegeCatalogExecuteFails"), 0) Quit "%SYS.GlobalQuery:DirectoryList"
+    Quit ##super()
 }
 
 /// <p>Read one captured field back. Returns <code>""</code> when nothing was captured.</p>
@@ -290,6 +376,57 @@ ClassMethod AssertNoForeignRole(pAdminRole As %String, pKey As %String, pName As
         Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
         If $$$ISERR(tSC) Quit
         Set tSC = ..AssertNoForeignOcuPilotRole(.tNames, .tReports)
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tSC
+}
+
+/// <p>Drive <method>OcuPilot.Install.Installer.ReportWidenedGrants</method> for install namespace
+/// <var>pInstallNs</var> over <var>pTables</var> (<code>pTables(schema, table)</code>), which
+/// <method>OcuPilot.Install.Installer.StateTables</method> derives when the caller passes none;
+/// answer its status, and flush its reports through the capture above. The same seam treatment as
+/// <method>AssertOneApplication</method>: the real private method runs, through <code>..</code>
+/// dispatch.</p>
+ClassMethod DriveReportWidenedGrants(pInstallNs As %String, ByRef pTables) As %Status
+{
+    Kill tReports
+    If '$Data(pTables) {
+        Set tSC = ..StateTables(.pTables)
+        If $$$ISERR(tSC) Quit tSC
+    }
+    Set tSC = ..ReportWidenedGrants(pInstallNs, .pTables, .tReports)
+    Do ..FlushReports(.tReports)
+    Quit tSC
+}
+
+/// <p>The warns <method>DriveReportWidenedGrants</method> emits for <var>pInstallNs</var>, read as
+/// <method>CapturedAll</method> does, or as <method>CapturedAllWithData</method> does when
+/// <var>pWithData</var>; <var>pSC</var> is the check's status. Clears the captured warns before and
+/// after, and leaves every armed seam alone.</p>
+ClassMethod WidenedGrantWarns(pInstallNs As %String, Output pSC As %Status, pWithData As %Boolean = 0) As %String
+{
+    Kill ^||OcuPilotInstallerProbe("warn"), ^||OcuPilotInstallerProbe("warnData")
+    Set pSC = ..DriveReportWidenedGrants(pInstallNs)
+    Set tWarns = $Select(pWithData: ..CapturedAllWithData("warn"), 1: ..CapturedAll("warn"))
+    Kill ^||OcuPilotInstallerProbe("warn"), ^||OcuPilotInstallerProbe("warnData")
+    Quit tWarns
+}
+
+/// <p>Drive <method>OcuPilot.Install.Installer.RolesInUse</method>, switching to <code>%SYS</code>
+/// and restoring (AD-16): <var>pRoles</var>(&lt;role, upper-cased&gt;) is the comma-separated
+/// applications that name it, <var>pExcept</var>(&lt;path&gt;) the applications left out.</p>
+ClassMethod DriveRolesInUse(ByRef pExcept, Output pRoles) As %Status
+{
+    Kill pRoles
+    Set tOrigNS = $NAMESPACE
+    Set tSC = $$$OK
+    Try {
+        Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
+        If $$$ISERR(tSC) Quit
+        Set tSC = ..RolesInUse(.pExcept, .pRoles)
     } Catch ex {
         Set $NAMESPACE = tOrigNS
         Set tSC = ex.AsStatus()

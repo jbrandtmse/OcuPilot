@@ -107,7 +107,7 @@ Method OnAfterAllTests() As %Status
 /// <p>The holder reads the list and the form over the wire; in process it creates, changes and deletes a probe
 /// superserver and confirms the agent's change, each write reaching the seam as one <code>PUT</code> or
 /// <code>DELETE</code> on the probe port.</p>
-/// <p>Mutation (Rule 19): make <method>OcuPilot.Area.Security.SuperserverSave.Gate</method> refuse every caller --
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Kernel.Proposal.ScreenSave.Gate</method> refuse every caller --
 /// the holder's write legs go red.</p>
 Method TestTheDeclaredPairsReadAndWrite()
 {
@@ -132,7 +132,7 @@ Method TestTheDeclaredPairsReadAndWrite()
 
 /// <p>Without <code>%Admin_Secure:USE</code>, both reads and the Save over the wire, and in process every write
 /// and the confirm, are refused naming the pair with zero port calls, and the screen is unavailable.</p>
-/// <p>Mutation (Rule 19): let <method>OcuPilot.Area.Security.SuperserverSave.Gate</method> pass every caller --
+/// <p>Mutation (Rule 19): let <method>OcuPilot.Kernel.Proposal.ScreenSave.Gate</method> pass every caller --
 /// the Save legs reach the port and go red.</p>
 Method TestWithoutSecuritysResourceEveryReadAndWriteIsRefused()
 {

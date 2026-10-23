@@ -103,8 +103,10 @@ Method OnAfterOneTest() As %Status
     Quit $$$OK
 }
 
+/// <p>On an instance the class is not armed for, <method>OnBeforeAllTests</method> created nothing, so nothing is removed.</p>
 Method OnAfterAllTests() As %Status
 {
+    If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 Quit $$$OK
     Merge tRows = ..PreparedPolicy
     Set tSC = ##class(OcuPilot.Test.GovernanceFixture).Restore(.tRows)
     Set tSC = $$$ADDSC(tSC, $ClassMethod(..#PROBE, "RemoveAll", ..#NAMESPACE))
@@ -113,9 +115,12 @@ Method OnAfterAllTests() As %Status
 
 /// <p>The holder confirms the agent's create of a new probe service in a process of its own, deletes another through the
 /// explorer's action over the wire and builds a third through the Save; the instance holds the first and the third and
-/// no longer lists the second.</p>
+/// no longer lists the second. The delete reads the web applications of every namespace (Story 18.47, AD-53): the holder
+/// of the declared pairs alone cannot enter them all and is refused 403 with the service kept, and once it can read each
+/// namespace's databases its delete is accepted.</p>
 /// <p>Mutation (Rule 19): add <code>%Admin_Manage:USE</code> to <parameter>OcuPilot.Port.MgmntPort.WRITEPAIRS</parameter> --
-/// the holder lacks it, the port refuses all three legs and this goes red.</p>
+/// the holder lacks it, the port refuses all three legs and this goes red; read <code>pNamespace</code> alone in
+/// <method>OcuPilot.Port.MgmntPort.DeployedAnywhere</method> -- the refused-delete leg goes red.</p>
 Method TestTheDeclaredPairsCreateAndDelete()
 {
     Set tUser = ..User(1)
@@ -125,7 +130,12 @@ Method TestTheDeclaredPairsCreateAndDelete()
     Do $$$AssertEquals(..Ran(tRun), tUser _ " 1", "the child process ran as " _ tUser)
     Do $$$AssertEquals(..Leg(tRun, 1), "200 ", "the holder's confirm of the agent's create is accepted")
     Do $$$AssertEquals($ClassMethod(..#PROBE, "Classes", ..#NAMESPACE, "OcuProbe1832N"), "111", "the instance holds the new service")
-    Do $$$AssertEquals(..Wire("POST", ..#ACTIONPATH, {"action": "delete", "id": "OcuProbe1832B"}, tUser), "200 ", "the holder's delete is accepted")
+    Do $$$AssertEquals(..Wire("POST", ..#ACTIONPATH, {"action": "delete", "id": "OcuProbe1832B"}, tUser), "403 ", "the holder's delete is refused: holding the declared pairs alone, it cannot enter every namespace")
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "Classes", ..#NAMESPACE, "OcuProbe1832B"), "111", "and the service stands")
+    Set tRoles = $ClassMethod(..#PRINCIPALS, "Roles")
+    Set tBase = $Piece(..#RESOURCES, ";", 1)
+    Do $$$AssertStatusOK($ClassMethod(..#PRINCIPALS, "SeedPrincipal", tUser, $List(tRoles, 1), tBase _ ..EveryNamespaceRead(tBase), ..PreparedPassword), "the holder is then given read on every namespace's databases")
+    Do $$$AssertEquals(..Wire("POST", ..#ACTIONPATH, {"action": "delete", "id": "OcuProbe1832B"}, tUser), "200 ", "and its delete is accepted")
     Do $$$AssertEquals($ClassMethod(..#PROBE, "Classes", ..#NAMESPACE, "OcuProbe1832B"), "001", "and the service's specification and dispatch classes are gone")
     Do $$$AssertEquals(..Wire("POST", ..#SAVEPATH, ..SaveBody("OcuProbe1832M"), tUser), "201 ", "the holder's Save is accepted")
     Do $$$AssertEquals($ClassMethod(..#PROBE, "Classes", ..#NAMESPACE, "OcuProbe1832M"), "111", "and the instance holds the service it built")
@@ -194,6 +204,26 @@ Method Wire(pMethod As %String, pPath As %String, pBody, pUser As %String) As %S
     Try { Set tAnswer = ##class(%DynamicObject).%FromJSON($Get(tBody, "{}")) } Catch {}
     Set tDetail = $Select($IsObject(tAnswer): tAnswer.%Get("detail"), 1: "")
     Quit $Get(tStatus) _ " " _ $Select($IsObject(tDetail): tDetail.%Get("failedPair"), 1: "")
+}
+
+/// <p>Read on the resource guarding each namespace's default global and routine database, as the comma-led tail of a
+/// role's resource list; a resource <var>pBase</var> already names is left out, and an implicit namespace is skipped.</p>
+ClassMethod EveryNamespaceRead(pBase As %String) As %String
+{
+    Set tTail = ""
+    Set tSC = ##class(OcuPilot.Kernel.Shell.Namespaces).NamespaceNames(.tNames)
+    If $$$ISERR(tSC) Quit tTail
+    For tI = 1:1:$ListLength(tNames) {
+        Set tName = $List(tNames, tI)
+        If $Extract(tName) = ##class(OcuPilot.Kernel.Shell.Namespaces).#IMPLICITPREFIX Continue
+        For tKind = "GlobalDatabase", "RoutineDatabase" {
+            Set tResource = ""
+            If '$ClassMethod("OcuPilot.Kernel.Shell.Namespaces", tKind, tName, .tResource) || (tResource = "") Continue
+            If (("," _ pBase) [ ("," _ tResource _ ":")) || (tTail [ ("," _ tResource _ ":")) Continue
+            Set tTail = tTail _ "," _ tResource _ ":R"
+        }
+    }
+    Quit tTail
 }
 
 /// <p>The principal of entry <var>pIndex</var> of the probe's principal list.</p>

@@ -266,6 +266,14 @@ Method TestTheIdRuleTableIsDeclaredAndIsWhatNormalizationApplies()
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.EntityRef).Key("process", "instance", "907, 812,812", .tSetKey), "a spelled set builds a key")
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.EntityRef).Key("process", "instance", "812,907", .tCanonicalKey), "and so does the canonical one")
     Do $$$AssertEquals(tSetKey, tCanonicalKey, "and the two are one key")
+    ; Story 20.31's rule: a message header's id may name a set of messages, each once, ascending, so the messages a resend
+    ; names are one target in one spelling, and a single valid id reads as itself. The same corpus runs through the client
+    ; twin (ui/tools/entity-ref.test.mjs).
+    Do $$$AssertTrue($ListFind(tRuled, "interop-message") > 0, "the interop-message pair is the one Story 20.31 added")
+    For tCase = $ListBuild("13,2,13", "2,13"), $ListBuild("13,12", "12,13"), $ListBuild("12,13", "12,13"), $ListBuild("13", "13"), $ListBuild(" 13 ", "13"), $ListBuild("100,9,10", "9,10,100") {
+        Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityRef).NormalizedId("interop-message", $List(tCase, 1)), $List(tCase, 2), "'" _ $List(tCase, 1) _ "' is the message set '" _ $List(tCase, 2) _ "'")
+    }
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityRef).NormalizedId("interop-message", "0x1,2"), "0x1,2", "a set with a member that is no number keeps its spelling, for the port to refuse by name")
     Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityRef).NormalizedId(..#KNOWNTYPE, "/API/OcuPilot/"), "/API/OcuPilot/", "so its ids are the instance's own strings")
     Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityRef).NormalizedId("role", "%All"), "%all", "while a role's fold, by Story 8.3's rule")
     Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityRef).NormalizedId("resource", "%DB_OcuPilot"), "%db_ocupilot", "and a resource's, by Story 8.4's")

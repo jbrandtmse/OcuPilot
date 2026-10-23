@@ -7,8 +7,14 @@
 /// <method>OcuPilot.Test.TurnWireFixture.Resources</method>(0) and a second role granting
 /// <code>%Ens_Portal:U,%Ens_ProductionConfig:R</code>, read back before the test runs. It needs both
 /// <parameter>ARMINGVARIABLE</parameter> and <parameter>PROVIDERVARIABLE</parameter> armed; after the
-/// method no probe job, turn, slot or stub node remains, and the principal, its roles and the probe
+/// method no probe job, turn, slot or stub node remains, and the principals, their roles and the probe
 /// definition are removed in <method>OnAfterAllTests</method>.</p>
+/// <p><b>The in-process leg.</b> <method>TestTheShippedProviderGateAdmitsByTheLastFloorPairAndRefusesNone</method>
+/// calls <method>OcuPilot.Port.ProviderPort.Invoke</method> directly, as the turn owner, for a definition
+/// no row holds. The shipped gate admits that principal by the floor's last member alone, and refuses
+/// <parameter>OcuPilot.Test.TurnWireFixture.USERB</parameter>, which holds the fixture's
+/// <method>OcuPilot.Test.TurnWireFixture.Resources</method>(0) and no member of
+/// <method>OcuPilot.Screen.Gate.FloorResources</method> at <code>USE</code>, read back before the test runs.</p>
 Class OcuPilot.Test.InteropFloorTurn Extends %UnitTest.TestCase
 {
 
@@ -37,6 +43,8 @@ Property PreparedPrior As %String;
 
 Property PreparedSetupOk As %Boolean [ InitialExpression = 0 ];
 
+Property PreparedUserBOk As %Boolean [ InitialExpression = 0 ];
+
 Method %OnNew(initvalue As %String = "") As %Status
 {
     Set tSC = ##super(initvalue)
@@ -45,13 +53,17 @@ Method %OnNew(initvalue As %String = "") As %Status
     Set ..PreparedDefinitionId = ""
     Set ..PreparedPrior = ""
     Set ..PreparedSetupOk = 0
+    Set ..PreparedUserBOk = 0
     Quit $$$OK
 }
 
 /// <p>Refuse unless both variables arm the instance, create the principal and the default
 /// <code>turnprobe</code> definition, and read back through
 /// <method>OcuPilot.Test.InteropFloorFixture.Composed</method> that the principal holds
-/// <code>%Ens_Portal:USE</code>, not <code>%Development:USE</code> and none of <parameter>OcuPilot.Screen.Gate.ADMINRESOURCES</parameter>.</p>
+/// <code>%Ens_Portal:USE</code>, not <code>%Development:USE</code> and none of <parameter>OcuPilot.Screen.Gate.ADMINRESOURCES</parameter>.
+/// It also creates <parameter>OcuPilot.Test.TurnWireFixture.USERB</parameter> with the same first role and no second,
+/// and reads back that it holds no member of <method>OcuPilot.Screen.Gate.FloorResources</method> at <code>USE</code>.
+/// The first floor member the first principal holds is the floor's last, <code>%Ens_Portal</code>.</p>
 Method OnBeforeAllTests() As %Status
 {
     If ($System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1) || ($System.Util.GetEnviron(..#PROVIDERVARIABLE) '= 1) {
@@ -70,7 +82,32 @@ Method OnBeforeAllTests() As %Status
     Set tAdmin = ##class(OcuPilot.Test.InteropFloorFixture).HoldsAdministrative(tComposed)
     Set ..PreparedSetupOk = ##class(OcuPilot.Test.InteropFloorFixture).Holds(tComposed, "%Ens_Portal", "USE") && '##class(OcuPilot.Test.InteropFloorFixture).Holds(tComposed, "%Development", "USE") && 'tAdmin
     If '..PreparedSetupOk Quit $$$ERROR($$$GeneralError, "Setup could not read back that " _ tUser _ " holds %Ens_Portal:USE, no %Development:USE and no administrative resource (administrative " _ tAdmin _ ")")
+    Set tFirstHeld = ..FloorMemberHeld(tComposed)
+    If tFirstHeld '= "%Ens_Portal" Quit $$$ERROR($$$GeneralError, "Setup could not read back that " _ tUser _ " holds the floor's last member and no earlier one (its first is " _ tFirstHeld _ ")")
+    Set tUserB = $Parameter(..#FIXTURE, "USERB")
+    Set tSC = $ClassMethod(..#FIXTURE, "EnsurePrincipal", tUserB, ..PreparedPassword, $ClassMethod(..#FIXTURE, "Resources", 0))
+    If $$$ISERR(tSC) Quit tSC
+    Set tSC = ##class(OcuPilot.Test.InteropFloorFixture).Composed(tUserB, .tComposedB)
+    If $$$ISERR(tSC) Quit tSC
+    Set tFloorHeld = ..FloorMemberHeld(tComposedB)
+    Set ..PreparedUserBOk = (tFloorHeld = "")
+    If '..PreparedUserBOk Quit $$$ERROR($$$GeneralError, "Setup could not read back that " _ tUserB _ " holds no floor resource at USE (it holds " _ tFloorHeld _ ")")
     Quit $$$OK
+}
+
+/// <p>The first member of <method>OcuPilot.Screen.Gate.FloorResources</method> that <var>pComposed</var>,
+/// a <method>OcuPilot.Test.InteropFloorFixture.Composed</method> answer, holds at <code>USE</code>, and
+/// <code>""</code> when it holds none.</p>
+ClassMethod FloorMemberHeld(pComposed As %DynamicObject) As %String
+{
+    Set tResource = ""
+    Set tFloor = ##class(OcuPilot.Screen.Gate).FloorResources()
+    For tI = 1:1:$Length(tFloor, ",") {
+        Set tResource = $Piece(tFloor, ",", tI)
+        If (tResource '= "") && ##class(OcuPilot.Test.InteropFloorFixture).Holds(pComposed, tResource, "USE") Quit
+        Set tResource = ""
+    }
+    Quit tResource
 }
 
 Method OnAfterAllTests() As %Status
@@ -143,6 +180,40 @@ Method TestATurnCallsAHeldToolAndIsRefusedALackedOne()
     If $IsObject(tLackedStep) {
         Do $$$AssertEquals(tLackedStep.status _ "|" _ tLackedStep.code _ "|" _ tLackedStep.failedPair, "error|AUTH.NOPRIVILEGE|%Admin_Secure:USE", "the lacked tool is refused by name")
     }
+}
+
+/// <p><b>The shipped provider gate, in process.</b> <method>OcuPilot.Port.ProviderPort.Invoke</method>
+/// is asked, as each principal, for a definition no row holds. <parameter>OcuPilot.Test.TurnWireFixture.USERA</parameter>
+/// holds only the floor's last member, <code>%Ens_Portal:USE</code>: any one floor pair admits, so the
+/// call passes the gate and ends at the missing definition, answering neither
+/// <method>OcuPilot.Kernel.Denial.Code</method> nor its status. <parameter>OcuPilot.Test.TurnWireFixture.USERB</parameter>
+/// holds no floor member, so the call is refused with the denial's status, code and sentence.</p>
+/// <p>Mutations: <method>OcuPilot.Port.ProviderPort.GateAnyOfForUser</method> requiring every pair -> the
+/// <code>USERA</code> legs go red; <method>OcuPilot.Port.ProviderPort.HoldsPairForUser</method> answering 1
+/// -> the <code>USERB</code> legs go red.</p>
+Method TestTheShippedProviderGateAdmitsByTheLastFloorPairAndRefusesNone()
+{
+    Do $$$AssertTrue(..PreparedSetupOk && ..PreparedUserBOk, "setup read back both principals' grants")
+    Set tFloor = ##class(OcuPilot.Screen.Gate).FloorResources()
+    Do $$$AssertEquals($Piece(tFloor, ",", $Length(tFloor, ",")), "%Ens_Portal", "the floor's last member is the resource USERA holds")
+    Set tDefinition = "OcuPilotProbeNoSuchDefinition"
+    Set tUserA = $Parameter(..#FIXTURE, "USERA")
+    Set tUserB = $Parameter(..#FIXTURE, "USERB")
+
+    Kill tMessages, tTools
+    Do ##class(OcuPilot.Port.ProviderPort).Invoke(tDefinition, .tMessages, .tTools, "", .tResponse, .tHttpA, .tFaultA, tUserA)
+    Set tCodeA = $Select($IsObject(tFaultA): tFaultA.%Get("code"), 1: "")
+    Do $$$AssertNotEquals(tHttpA, ##class(OcuPilot.Kernel.Denial).#STATUS, "the floor-last holder is not answered the gate's status: " _ tHttpA _ " " _ tCodeA)
+    Do $$$AssertNotEquals(tCodeA, ##class(OcuPilot.Kernel.Denial).Code(), "the floor-last holder is not refused by the gate: " _ tCodeA)
+    Do $$$AssertEquals(tHttpA _ "|" _ tCodeA, "503|" _ ##class(OcuPilot.Api.Error).#PROVIDERUNCONFIGURED, "it ends at the definition no row holds")
+
+    Kill tMessages, tTools
+    Do ##class(OcuPilot.Port.ProviderPort).Invoke(tDefinition, .tMessages, .tTools, "", .tResponse, .tHttpB, .tFaultB, tUserB)
+    Set tCodeB = $Select($IsObject(tFaultB): tFaultB.%Get("code"), 1: "")
+    Set tReasonB = $Select($IsObject(tFaultB): tFaultB.%Get("reason"), 1: "")
+    Do $$$AssertEquals(tHttpB, ##class(OcuPilot.Kernel.Denial).#STATUS, "the holder of no floor member is answered the gate's status")
+    Do $$$AssertEquals(tCodeB, ##class(OcuPilot.Kernel.Denial).Code(), "and the gate's code")
+    Do $$$AssertEquals(tReasonB, ##class(OcuPilot.Kernel.Denial).Reason(), "and the gate's sentence")
 }
 
 }

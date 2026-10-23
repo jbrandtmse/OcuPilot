@@ -24,7 +24,7 @@ import puppeteer from 'puppeteer';
 
 import { LIVE_CONTAINER, browserConfig, launchOptions } from '../browser.config.mjs';
 import { loadStrings } from '../tools/strings.mjs';
-import { authHeader, signedInAt } from './panel-spec.mjs';
+import { authHeader, settleViewport, signedInAt, transitionsSettled } from './panel-spec.mjs';
 import { SECONDARY_MARKER, SECONDARY_SOURCES, appendMonitorLine, removeSecondaryLogs, seedSecondaryLogs } from './secondary-log-spec.mjs';
 import { INVARIANTS, VIEWPORTS, assertThrowaway, collapse, compare, componentMinimums, detectScreen, readBaseline } from './structural-walk.mjs';
 import {
@@ -112,7 +112,7 @@ async function seededRow(page, marker = SECONDARY_MARKER) {
     (rows, wanted) => {
       const row = rows.find((candidate) => candidate.textContent.includes(wanted));
       const cell = (name) => row.querySelector(`.ocu-log-cell-${name}`)?.textContent.trim() ?? '';
-      return { time: cell('time'), pid: cell('pid'), text: cell('text'), chip: row.getAttribute('data-ocu-severity') ?? '', index: rows.indexOf(row), total: rows.length };
+      return { time: cell('time'), text: cell('text'), chip: row.getAttribute('data-ocu-severity') ?? '', index: rows.indexOf(row), total: rows.length };
     },
     marker
   );
@@ -336,9 +336,10 @@ test('AC7 (DW-1337): the six seeded viewers and Home pass the structural walk at
       if (route !== '') await seededRow(page);
       else await page.waitForSelector('.ocu-home', { timeout: config.navigationTimeoutMs });
       for (const { viewport, theme, checks } of passes) {
-        await page.setViewport(viewport);
+        await settleViewport(page, viewport);
         await page.evaluate((isDark) => document.documentElement.classList.toggle('ocu-theme-dark', isDark), theme === 'dark');
         await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+        await transitionsSettled(page, config.navigationTimeoutMs);
         const { entries } = await detectScreen(page, { route: route === '' ? '/' : route, checks, viewport: viewport.width, theme, minimums });
         found.push(...entries);
       }

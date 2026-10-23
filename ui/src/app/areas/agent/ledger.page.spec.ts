@@ -285,6 +285,15 @@ describe('LedgerPage', () => {
     expect(empty.host.querySelector('[data-ocu-ledger="withheld"]')).toBeNull();
   });
 
+  it('Story 23.5: one row, one withheld row and one dropped call read the singular, and a cap of one the first row', async () => {
+    // Mutation (Rule 19): fill the plural strings alone in `withheldLine` and `droppedLine` -> the two lines go red.
+    const { host } = await mount([ok(answer({ rows: [toolRow], rowsSent: 1, truncated: true, rowsWithheld: 1, rowsDropped: 1 }))]);
+    expect(host.querySelector('.ocu-data-table-count')?.textContent?.trim()).toBe(STRINGS.explorerSqlRowCountOne);
+    expect(host.querySelector('.ocu-data-table-cap-notice')?.textContent?.trim()).toBe(STRINGS.tableRowCapNoticeOne);
+    expect(host.querySelector('[data-ocu-ledger="withheld"]')?.textContent?.trim()).toBe('1 row withheld: it records a privilege you do not hold.');
+    expect(host.querySelector('[data-ocu-ledger="dropped"]')?.textContent?.trim()).toBe('1 call was counted and not stored.');
+  });
+
   it('AC1: a row opens agent/ledger/<ledgerId>, whose dialog shows its Arguments and Result as text', async () => {
     const { fixture, router, params, host } = await mount([ok(answer())]);
     (host.querySelector('[data-ocu-open="b2"]') as HTMLAnchorElement).click();

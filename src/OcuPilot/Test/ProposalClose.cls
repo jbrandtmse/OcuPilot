@@ -50,18 +50,7 @@ Method OnAfterOneTest() As %Status
 /// <p>Seed one live proposal for <var>pUser</var> in conversation <var>pConvKey</var>.</p>
 Method Seed(pUser As %String = {..#PROBEUSER}, pConvKey As %String = {..#PROBECONV}) As %String
 {
-    Kill tValues
-    Set tValues("user") = pUser
-    Set tValues("convKey") = pConvKey
-    Set tValues("turnKey") = ..#PROBETURN
-    Set tValues("toolName") = "webapp.list.update"
-    Set tValues("targetRef") = ..Target()
-    Set tValues("fingerprint") = "0"
-    Set tValues("arguments") = "{}"
-    Set tValues("payload") = "{}"
-    Set tValues("diff") = "[]"
-    Set tValues("unchangedCount") = 0
-    Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedProposal(.tValues, .tKey, .tToken)
+    Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedMinimal(pUser, pConvKey, ..#PROBETURN, ..Target(), .tKey)
     Do $$$AssertStatusOK(tSC, "a probe proposal is seeded")
     If $$$ISERR(tSC) Quit ""
     Quit tKey

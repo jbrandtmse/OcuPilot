@@ -36,7 +36,7 @@ import puppeteer from 'puppeteer';
 
 import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
 import { leaveFirstLoginGate } from './shell-entry.mjs';
-import { signedInAt } from './panel-spec.mjs';
+import { settleViewport, signedInAt, transitionsSettled } from './panel-spec.mjs';
 import { resetRememberedState } from './preferences-reset.mjs';
 import { INVARIANTS, VIEWPORTS, collapse, compare, componentMinimums, detectScreen, readBaseline } from './structural-walk.mjs';
 import {
@@ -248,9 +248,10 @@ test('AC1 and AC5: the panel follows the performance row, names what the instanc
     const minimums = componentMinimums();
     const surfaces = {};
     for (const { viewport, theme, checks } of passes) {
-      await page.setViewport(viewport);
+      await settleViewport(page, viewport);
       await page.evaluate((isDark) => document.documentElement.classList.toggle('ocu-theme-dark', isDark), theme === 'dark');
       await frames(page);
+      await transitionsSettled(page, config.navigationTimeoutMs);
       surfaces[theme] = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
       assert.ok((await page.evaluate(() => document.querySelectorAll('.ocu-home-finding').length)) > 0, `the panel is showing at ${viewport.width}px ${theme}`);
       const { entries } = await detectScreen(page, { route: HOME_ROUTE_KEY, checks, viewport: viewport.width, theme, minimums });

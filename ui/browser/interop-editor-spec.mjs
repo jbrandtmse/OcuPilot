@@ -42,14 +42,21 @@ export const EDITOR_API = '/api/interop-editors/';
 const LOGOUT_PATH = '/api/ocupilot/logout';
 
 /**
- * Each embedded editor's storage prefix and the segment its document read uses, both read from its
- * bundle and measured on the instance (Story 20.13).
+ * Each embedded app's storage prefix and the segment its document read uses, both read from its
+ * bundle and measured on the instance (Stories 20.13 and 20.8).
  */
 export const EDITOR_APPS = {
   'rule-editor': { prefix: 'Rule_Editor', segment: 'rules' },
   'dtl-editor': { prefix: 'DTL_Editor', segment: 'dtl' },
   'bpl-editor': { prefix: 'BPL_Editor', segment: 'bpl' },
+  'schema-viewer': { prefix: 'Schema_Viewer', segment: 'schemas' },
+  'interop-editor': { prefix: 'Interop-Editors', segment: 'productions' },
 };
+
+/** Whether `key` is one a vendor app keeps in the tab: any `EDITOR_APPS` prefix followed by `-`, or a `_Editor-` key of an app this module does not name. */
+export function isEditorKey(key) {
+  return key.includes('_Editor-') || Object.values(EDITOR_APPS).some(({ prefix }) => key.includes(`${prefix}-`));
+}
 
 /** The frame a spec mounts or a screen draws, unless the caller names another. */
 export const DEFAULT_FRAME_SELECTOR = 'app-screen-outlet iframe';
@@ -74,6 +81,43 @@ export async function until(read, accept, what, timeoutMs) {
   assert.fail(`${what}: waited ${timeoutMs} ms, last read ${JSON.stringify(last)}`);
 }
 
+/** The selector of the frame an editor screen draws. */
+export const SCREEN_FRAME_SELECTOR = 'app-interop-editor-frame iframe';
+
+/** The editor screen has answered the list's read: its section is no longer busy and it draws a block. */
+export async function answered(page, timeoutMs) {
+  await page.waitForFunction(
+    () => {
+      const section = document.querySelector('app-interop-editor-page section');
+      return section !== null && section.getAttribute('aria-busy') === 'false' && section.querySelector('[data-ocu-editor]') !== null;
+    },
+    { timeout: timeoutMs }
+  );
+}
+
+/** The screen's frame, as a puppeteer frame, once it is drawn. */
+export async function editorFrame(page, timeoutMs) {
+  const handle = await page.waitForSelector(SCREEN_FRAME_SELECTOR, { timeout: timeoutMs });
+  return handle.contentFrame();
+}
+
+/** Wait until the frame's editor shows the signed-in person `username` and `text`, answering the puppeteer frame. */
+export async function editorShows(page, username, text, timeoutMs) {
+  const frame = await editorFrame(page, timeoutMs);
+  await until(() => frame.evaluate(() => document.body.innerText), (body) => body.includes(username) && body.includes(text), `the editor shows ${text}`, timeoutMs);
+  return frame;
+}
+
+/** Wait until the editor's snackbar holds a sentence `accept` takes, and answer the sentence. */
+export async function snackbarWhere(frame, accept, what, timeoutMs) {
+  return until(
+    () => frame.evaluate(() => Array.from(document.querySelectorAll('.mdc-snackbar__label')).map((node) => node.innerText.trim())),
+    (labels) => labels.some(accept),
+    what,
+    timeoutMs
+  ).then((labels) => labels.find(accept));
+}
+
 /** The tab's `sessionStorage` keys and OcuPilot's stored pair, exactly as stored. */
 export function tabSnapshot(page) {
   return page.evaluate((pairKey) => ({ keys: Object.keys(sessionStorage), pair: sessionStorage.getItem(pairKey) }), PAIR_STORAGE_KEY);
@@ -83,7 +127,7 @@ export function tabSnapshot(page) {
  * Record every request to `/ui/interop/` and `/api/interop-editors/` that `page` or a frame in it
  * makes, and every http(s) request a frame in it makes to anywhere else on the instance, so the
  * clauses about what a request carries cover all that an editor sends and not only its own two
- * applications: its method, path, query, post body (`null` when it has none), Authorization header
+ * applications: its origin, method, path, query, post body (`null` when it has none), Authorization header
  * (`''` when it has none) and status (`null` until answered). The returned list grows as requests
  * arrive.
  */
@@ -97,6 +141,7 @@ export function watchEditorTraffic(page) {
     const fromFrame = frame !== null && frame !== page.mainFrame() && /^https?:$/.test(url.protocol);
     if (!owned && !fromFrame) return;
     const entry = {
+      origin: url.origin,
       method: request.method(),
       path: url.pathname,
       query: url.search,
@@ -372,7 +417,7 @@ export async function signOutThroughMenu(page, timeoutMs) {
 export async function assertSignOutEndsEditors(page, held) {
   assert.equal((await page.$$('iframe')).length, 0, 'no frame remains in the document');
   const keys = (await tabSnapshot(page)).keys;
-  assert.deepEqual(keys.filter((key) => key.includes('_Editor-')), [], `no editor key is left in the tab: ${JSON.stringify(keys)}`);
+  assert.deepEqual(keys.filter(isEditorKey), [], `no editor key is left in the tab: ${JSON.stringify(keys)}`);
   const answered = {
     login: (await inPage(page, LOGIN)).status,
     accessToken: (await inPage(page, readUnder(held.accessToken))).status,

@@ -55,6 +55,19 @@
 /// <class>OcuPilot.Test.Installer</class>), but calling it a second time from inside the
 /// namespace it would be restoring <b>out of</b> is exactly the failure mode above.</li>
 /// </ol>
+/// <p><b>One install namespace per instance (AD-17).</b> It is the namespace holding the
+/// profile's global mapping. Each entry point names its own target -- the container's
+/// <parameter>NAMESPACEOVERRIDEVAR</parameter>, else <code>HSCUSTOM</code> then <code>USER</code>;
+/// under IPM the namespace <code>zpm</code> runs in; by hand the session's -- and
+/// <method>Install</method> validates it before changing anything:
+/// <method>GuardInstallNamespace</method> (not a system or missing namespace),
+/// <method>GuardVersionFloor</method> (the roster's IRIS floor),
+/// <method>GuardPackageHome</method> (the <code>OcuPilot</code> package resolves from the
+/// namespace's own routine database, AD-9) and <method>GuardOneInstallNamespace</method> (the
+/// namespace holds the mapping, or no other does). <method>Uninstall</method> runs the first and the last, and the IPM
+/// manifest's guard <code>&lt;Invoke&gt;</code> (<method>GuardTarget</method>) runs all four before
+/// IPM touches a web application. A refusal changes nothing in either namespace and writes no
+/// version row.</p>
 /// <p>This class never <code>Write</code>s.</p>
 /// <p>All internal calls use <code>..</code> self-dispatch rather than a hardcoded
 /// <code>##class(OcuPilot.Install.Installer)</code>, so a probe subclass's overrides
@@ -120,6 +133,20 @@ Parameter SSLVERIFYPEER As %Integer = 1;
 /// <class>HS.HealthConnect.FHIRExplorer.Upgrade.Base</class>).</p>
 Parameter SSLCAFILE As %String = "%OSCertificateStore";
 
+/// <p><class>Security.SSLConfigs</class>' <code>TLSMinVersion</code> for TLS 1.2 (4 = TLS 1.0, 8 = TLS 1.1, 16 = TLS 1.2,
+/// 32 = TLS 1.3; <code>$$$TLSv12</code> in <file>irissys/%sySecurity.inc</file>), the lowest floor outbound provider calls
+/// may use (AD-32). The vendor's own default is this on a build with OpenSSL 1.1 or later and TLS 1.1 below it, so the
+/// installer states it rather than inherit it. A floor above it is the operator's and is kept.</p>
+Parameter SSLTLSMINVERSION As %Integer = 16;
+
+/// <p><code>TLSMaxVersion</code> for TLS 1.3, the vendor's own default ceiling, which the installer sets only where an
+/// operator left the ceiling below <parameter>SSLTLSMINVERSION</parameter> (the vendor refuses a floor above its ceiling).</p>
+Parameter SSLTLSMAXVERSION As %Integer = 32;
+
+/// <p>The <code>CipherList</code> the installer creates the configuration with and restores: the vendor's own default
+/// (measured on this build), stated so a list an operator widened is repaired rather than adopted.</p>
+Parameter SSLCIPHERLIST As %String = "ALL:!aNULL:!eNULL:!EXP:!SSLv2";
+
 /// <p>How long <method>Install</method>, <method>StartPath</method>, <method>MarkInstalling</method>
 /// and <method>Uninstall</method> wait for their profile's install lock
 /// (<method>InstallLockName</method>) before refusing (DW-47, DW-84). Measured on this
@@ -166,6 +193,11 @@ ClassMethod Names(pProfile As %String, Output pNames) As %Status [ Private ]
         ; EnsureIdentityApplication runs switched to %SYS, where an OcuPilot class reference
         ; raises <CLASS DOES NOT EXIST> (this class's own header).
         Set pNames("identityResources") = ##class(OcuPilot.Kernel.State.Base).#IDENTITYRESOURCES
+        ; The third privileged routine application and its role: the provider's TLS verification read
+        ; (AD-9). Named, and its role equal to it, for the reason the identity pair is.
+        Set pNames("sslReadApplication") = ##class(OcuPilot.Kernel.State.Base).#SSLREADAPPLICATION _ tSuffix
+        Set pNames("sslReadRole") = pNames("sslReadApplication")
+        Set pNames("sslReadResources") = ##class(OcuPilot.Kernel.State.Base).#SSLREADRESOURCES
         Set pNames("mappingPattern") = $Select(tIsProbe: "ProbeOcuPilotState*", 1: ##class(OcuPilot.Kernel.State.Base).#MAPPINGPATTERN)
         Set pNames("eventSource") = ##class(OcuPilot.Kernel.State.Base).#AUDITSOURCE
         Set pNames("eventType") = ##class(OcuPilot.Kernel.State.Base).#AUDITTYPE
@@ -476,6 +508,162 @@ ClassMethod GuardInstallNamespace(pWhat As %String, Output pInstallNs As %String
     Quit $$$OK
 }
 
+/// <p>The running instance's version as <code>major.minor</code>, which
+/// <method>GuardVersionFloor</method> compares against the roster's floor. A seam:
+/// <class>OcuPilot.Test.InstallerProbe</class> overrides it; production never does.</p>
+ClassMethod InstanceVersion() As %String
+{
+    Quit $System.Version.GetMajor() _ "." _ $System.Version.GetMinor()
+}
+
+/// <p>Whether dotted version <var>pVersion</var> is below dotted version <var>pFloor</var>,
+/// compared piece by piece as numbers (<code>2026.10</code> is above <code>2026.2</code>).</p>
+ClassMethod VersionBelow(pVersion As %String, pFloor As %String) As %Boolean [ Private ]
+{
+    Set tPieces = $Length(pFloor, ".")
+    If $Length(pVersion, ".") > tPieces Set tPieces = $Length(pVersion, ".")
+    For tI = 1:1:tPieces {
+        Set tHave = +$Piece(pVersion, ".", tI)
+        Set tNeed = +$Piece(pFloor, ".", tI)
+        If tHave < tNeed Return 1
+        If tHave > tNeed Return 0
+    }
+    Return 0
+}
+
+/// <p>Refuse, naming both versions, when the instance runs an IRIS older than the roster's
+/// <code>systemRequirements.version</code> (DW-1333). IPM's exporter drops
+/// <code>&lt;SystemRequirements&gt;</code> from the archive, so the installer enforces the floor
+/// itself. A roster that cannot be read, or whose floor is not <code>&gt;=</code> followed by a
+/// dotted version, is refused too: a floor that cannot be read is not one to wave through.
+/// <method>Install</method> calls it; <method>Uninstall</method> does not, since removing
+/// OcuPilot from an older instance is always allowed. Changes nothing.</p>
+ClassMethod GuardVersionFloor(pWhat As %String) As %Status
+{
+    Set tSC = $$$OK
+    Try {
+        Set tRosterSC = ##class(OcuPilot.Install.Roster).Get(.tRoster)
+        Set tSpec = ""
+        If $$$ISOK(tRosterSC) {
+            Set tRequirements = tRoster.systemRequirements
+            If $IsObject(tRequirements) Set tSpec = tRequirements.version
+        }
+        If '$Match(tSpec, "^>=[0-9]+(\.[0-9]+)*$") {
+            Set tSC = $$$ERROR($$$GeneralError, pWhat _ " refused: the roster's IRIS version floor could not be read (" _ $Select($$$ISERR(tRosterSC): $System.Status.GetErrorText(tRosterSC), 1: "systemRequirements.version is '" _ tSpec _ "', not '>=' followed by a dotted version") _ "), so it cannot be enforced. Nothing was changed.")
+            Quit
+        }
+        Set tFloor = $Extract(tSpec, 3, *)
+        Set tVersion = ..InstanceVersion()
+        If '$Match(tVersion, "^[0-9]+(\.[0-9]+)*$") || ..VersionBelow(tVersion, tFloor) {
+            Set tSC = $$$ERROR($$$GeneralError, pWhat _ " refused: this instance runs IRIS " _ $Select(tVersion = "": "(version unreadable)", 1: tVersion) _ ", below the " _ tFloor _ " floor the roster declares. Nothing was changed.")
+        }
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>The destination, as <code>%SYS.Namespace.GetPackageDest</code> spells it, the
+/// <code>OcuPilot</code> package resolves from in <var>pNamespace</var>. A seam:
+/// <class>OcuPilot.Test.InstallerProbe</class> overrides it; production never does.</p>
+ClassMethod PackageDestination(pNamespace As %String) As %String
+{
+    Quit ##class(%SYS.Namespace).GetPackageDest(pNamespace, "OcuPilot")
+}
+
+/// <p>Refuse, naming both destinations, unless the <code>OcuPilot</code> package resolves from
+/// <var>pInstallNs</var>'s own routine database (AD-9: code lives in the install namespace's
+/// normal database, never behind a package mapping). A destination that cannot be read is
+/// refused. <method>Install</method> calls it beside <method>GuardVersionFloor</method>. Changes
+/// nothing.</p>
+ClassMethod GuardPackageHome(pWhat As %String, pInstallNs As %String) As %Status
+{
+    Set tSC = $$$OK
+    Try {
+        Set tPackage = ..PackageDestination(pInstallNs)
+        Set tHome = ##class(%SYS.Namespace).GetRoutineDest(pInstallNs)
+        If (tPackage = "") || (tHome = "") || (tPackage '= tHome) {
+            Set tSC = $$$ERROR($$$GeneralError, pWhat _ " refused: in namespace '" _ pInstallNs _ "' the OcuPilot package resolves from '" _ tPackage _ "', not from the namespace's own routine database '" _ tHome _ "'. OcuPilot's code lives in the install namespace's own database (AD-9); remove the package mapping or run this in a namespace without one. Nothing was changed.")
+        }
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Refuse, naming the namespace and the remedy, when <var>pInstallNs</var> does not hold the
+/// profile's global mapping (<code>pNames("mappingPattern")</code> onto <code>pNames("database")</code>)
+/// and another namespace does: an instance has one install namespace, and installing or uninstalling
+/// from a second one would move or half-remove the first's. A namespace that holds the mapping
+/// itself is an install namespace whatever another holds, so an instance an earlier release left
+/// with two can still be upgraded or uninstalled from either. <code>%ALL</code> is not asked. The
+/// namespaces are read in one <code>%SYS</code> window (AD-16) restored before the answer; a list
+/// that cannot be read is refused. Both <method>Install</method> and <method>Uninstall</method>
+/// call it after their lock and before they read anything. Changes nothing.</p>
+/// <p>Caller contract: <var>pNames</var> is <method>Names</method>' answer, resolved in the install
+/// namespace.</p>
+ClassMethod GuardOneInstallNamespace(pWhat As %String, ByRef pNames, pInstallNs As %String) As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Set tPattern = pNames("mappingPattern")
+    Set tDatabase = pNames("database")
+    Set tHolder = ""
+    Try {
+        Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
+        If $$$ISERR(tSC) Quit
+        If ##class(Config.MapGlobals).Exists(pInstallNs, tPattern, .tOwn) && (tOwn.Database = tDatabase) {
+            Set tOwn = ""
+            Quit
+        }
+        Set tRS = ##class(%ResultSet).%New("Config.Namespaces:List")
+        Set tSC = tRS.Execute()
+        If $$$ISERR(tSC) Quit
+        While tRS.Next() {
+            Set tCandidate = tRS.Get("Namespace")
+            If ($ZConvert(tCandidate, "U") = $ZConvert(pInstallNs, "U")) || ($ZConvert(tCandidate, "U") = "%ALL") Continue
+            If '##class(Config.MapGlobals).Exists(tCandidate, tPattern, .tMapping) Continue
+            If tMapping.Database = tDatabase {
+                Set tHolder = tCandidate
+                Quit
+            }
+        }
+        Set tRS = ""
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Set $NAMESPACE = tOrigNS
+    If $$$ISERR(tSC) {
+        Quit $$$ERROR($$$GeneralError, pWhat _ " refused: could not establish whether another namespace already holds OcuPilot's '" _ tPattern _ "' mapping (" _ $System.Status.GetErrorText(tSC) _ "). Nothing was changed.")
+    }
+    If tHolder '= "" {
+        Quit $$$ERROR($$$GeneralError, pWhat _ " refused: OcuPilot is already installed in namespace '" _ tHolder _ "' (its '" _ tPattern _ "' mapping there targets database " _ tDatabase _ "), and an instance has one install namespace. Run it in '" _ tHolder _ "', or uninstall OcuPilot there first with ##class(OcuPilot.Install.Installer).Uninstall("""", 1), which removes that mapping. Nothing was changed in either namespace.")
+    }
+    Quit $$$OK
+}
+
+/// <p>The IPM manifest's guard <code>&lt;Invoke&gt;</code>
+/// (<class>OcuPilot.Install.Roster</class>'s <code>guard</code>): every refusal
+/// <method>Install</method> makes about its target, for the production profile and without a lock,
+/// changing nothing. IPM runs it after <code>Compile</code>, before it updates the module's web
+/// applications at the start of <code>Activate</code> -- which is what lets an install run in a
+/// second namespace be refused before it re-points the live applications there. It takes no
+/// argument, as the install <code>&lt;Invoke&gt;</code> takes none. <method>Install</method> asks
+/// every question again under its lock.</p>
+ClassMethod GuardTarget() As %Status
+{
+    Set tSC = ..GuardInstallNamespace("Install", .tInstallNs)
+    If $$$ISERR(tSC) Quit tSC
+    Set tSC = ..GuardVersionFloor("Install")
+    If $$$ISERR(tSC) Quit tSC
+    Set tSC = ..GuardPackageHome("Install", tInstallNs)
+    If $$$ISERR(tSC) Quit tSC
+    Set tSC = ..Names("", .tNames)
+    If $$$ISERR(tSC) Quit tSC
+    Quit ..GuardOneInstallNamespace("Install", .tNames, tInstallNs)
+}
+
 /// <p>The name of the lock that serializes install work on one profile (DW-47, DW-84):
 /// <method>Install</method> holds it from the moment its profile is validated until its
 /// version row records the outcome, <method>StartPath</method> holds it for the production
@@ -676,9 +864,10 @@ ClassMethod LogWarn(pMessage As %String, pData As %DynamicObject = "")
 /// <p><b>AC13's namespace guard is the first act</b>, before any object is created and
 /// before any <code>%SYS</code> switch -- refuses immediately when called from anywhere
 /// but the resolved install namespace, closing the <code>reopen_if</code> Story 1.3 left
-/// on this exact gap. <b>AC6's downgrade refusal runs second</b>, for the identical
-/// reason: reading the stored schema version needs no escalation and must settle
-/// "changes nothing" before anything is touched.</p>
+/// on this exact gap. The target's own validity follows (<method>GuardVersionFloor</method>,
+/// <method>GuardPackageHome</method>, then <method>GuardOneInstallNamespace</method> under the
+/// lock), and <b>AC6's downgrade refusal</b> after it, for the identical reason: each needs no
+/// escalation and must settle "changes nothing" before anything is touched.</p>
 /// <p>The version row is written <b>last</b> (AD-38), after the <code>Try</code>/
 /// <code>Catch</code> below, because it must run from the install namespace -- guaranteed
 /// restored at every exit above -- and because a step's failure must still be recorded
@@ -734,6 +923,13 @@ ClassMethod Install(pProfile As %String = "", pUnexpire As %Boolean = 0, pBundle
         ; class's own parameters.
         Set tSC = ..GuardInstallNamespace("Install", .tInstallNs)
         If $$$ISERR(tSC) Quit
+        ; The target's own validity, still before anything is read or written: the roster's IRIS
+        ; floor, then where the OcuPilot package resolves from. Neither names a failing step, so a
+        ; refusal writes no version row.
+        Set tSC = ..GuardVersionFloor("Install")
+        If $$$ISERR(tSC) Quit
+        Set tSC = ..GuardPackageHome("Install", tInstallNs)
+        If $$$ISERR(tSC) Quit
 
         ; No failing step is named for Names() (code review round 3): it refuses a profile
         ; that does not exist, and naming the step made the block after the Try/Catch
@@ -752,6 +948,11 @@ ClassMethod Install(pProfile As %String = "", pUnexpire As %Boolean = 0, pBundle
             Quit
         }
         Set tLocked = 1
+
+        ; One install namespace per instance: asked under the lock, so a second namespace's
+        ; install cannot pass it while the first's is mid-run, and before the first read.
+        Set tSC = ..GuardOneInstallNamespace("Install", .tNames, tInstallNs)
+        If $$$ISERR(tSC) Quit
 
         ; Read the stored version row BEFORE switching to %SYS -- Kernel.State.Version is
         ; an OcuPilot class, mapped only into the install namespace (this class's own
@@ -865,6 +1066,9 @@ ClassMethod Install(pProfile As %String = "", pUnexpire As %Boolean = 0, pBundle
         Set tFailingStep = "EnsureIdentityApplication"
         Set tSC = ..EnsureIdentityApplication(.tNames, tInstallNs, .tReports)
         If $$$ISERR(tSC) { Set $NAMESPACE = tOrigNS  Quit }
+        Set tFailingStep = "EnsureSslReadApplication"
+        Set tSC = ..EnsureSslReadApplication(.tNames, tInstallNs, .tReports)
+        If $$$ISERR(tSC) { Set $NAMESPACE = tOrigNS  Quit }
         Set tFailingStep = "EnsureMapping"
         Set tSC = ..EnsureMapping(.tNames, tInstallNs, .tReports)
         If $$$ISERR(tSC) { Set $NAMESPACE = tOrigNS  Quit }
@@ -931,6 +1135,14 @@ ClassMethod Install(pProfile As %String = "", pUnexpire As %Boolean = 0, pBundle
         Set $NAMESPACE = tOrigNS
         Set tFailingStep = ""
 
+        ; AD-34: the sibling cancel finds a stored proposal through its target key, so a proposal
+        ; minted before the key existed is given one here, in the install namespace, which is the
+        ; only place OcuPilot.Kernel.State.Propose is reachable from.
+        Set tFailingStep = "EnsureProposalTargetKeys"
+        Set tSC = ..EnsureProposalTargetKeys(.tReports)
+        If $$$ISERR(tSC) Quit
+        Set tFailingStep = ""
+
         ; DW-94: the provenance rows for whatever this run created or recognised, written after
         ; the namespace restore because OcuPilot.Kernel.State.WebApp is compiled only into the
         ; install namespace -- the same read-in-the-install-namespace, act-in-%SYS,
@@ -945,6 +1157,10 @@ ClassMethod Install(pProfile As %String = "", pUnexpire As %Boolean = 0, pBundle
         ; (AD-15): a banner that could not be refreshed is a stale fact, and the fact makes no
         ; positive claim -- nothing anywhere says marking is working.
         Do ..RecordAuditMarking($Get(tMarkingObserved, 1), .tReports)
+
+        ; Definitions stored on the credentials rung this namespace cannot reach are reported by
+        ; name, never refused: the install succeeds either way.
+        Do ..ReportCredentialsRung(.tReports)
 
         ; Never fails install (AD-27's fallback) -- ReportGatewayGap always returns OK. Moved
         ; out of the %SYS window in Story 1.17: it reads the provenance record, which is an
@@ -1591,6 +1807,31 @@ ClassMethod ReadApplicationProvenance(pProfile As %String, ByRef pNames, Output 
     Quit ##class(OcuPilot.Kernel.State.WebApp).GuardedPathsForProfile(pProfile, .pRecorded)
 }
 
+/// <p>Give every stored proposal its target key and build the proposal target index over them
+/// (<method>OcuPilot.Kernel.State.Propose.GuardedRebuildTargetKeys</method>). Idempotent: it
+/// reports how many rows it gave a key, and a second run reports none. It runs on every install
+/// and is not a migration step, so it does not move <parameter>SCHEMAVERSION</parameter>.</p>
+/// <p><b>Public, not <code>[ Private ]</code></b>, the same documented deviation
+/// <method>EnsureGrant</method> already carries:
+/// <class>OcuPilot.Test.ProposalTargetKey</class> drives it directly. Runs in the install
+/// namespace, where <class>OcuPilot.Kernel.State.Propose</class> is compiled.</p>
+ClassMethod EnsureProposalTargetKeys(ByRef pReports) As %Status
+{
+    Set tSC = $$$OK
+    Try {
+        Set tSC = ##class(OcuPilot.Kernel.State.Propose).GuardedRebuildTargetKeys(.tChanged)
+        If $$$ISERR(tSC) Quit
+        If tChanged {
+            Do ..Report(.pReports, "info", "Gave " _ tChanged _ " stored proposal(s) their target key and rebuilt the proposal target index", {"rows": (tChanged)})
+        } Else {
+            Do ..Report(.pReports, "info", "Every stored proposal already carries its target key", {"rows": 0})
+        }
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
 /// <p>Write a provenance row for every application <var>pRecordedApps</var> names -- each
 /// entry <code>&lt;path&gt;&lt;tab&gt;&lt;origin&gt;</code>, as
 /// <method>EnsureWebApplication</method> appends them. Runs after the namespace restore, for
@@ -2191,11 +2432,31 @@ ClassMethod EnsureApplication(ByRef pNames, pInstallNs As %String, ByRef pReport
 /// <p>Guard-then-act with drift repair, like every other ensure step.</p>
 ClassMethod EnsureIdentityApplication(ByRef pNames, pInstallNs As %String, ByRef pReports) As %Status [ Private ]
 {
+    Quit ..EnsureReadApplication(pNames("identityRole"), pNames("identityApplication"), pNames("identityResources"), "identity", pInstallNs, .pReports)
+}
+
+/// <p>Ensure the <b>third</b> privileged routine application and its role exist, in the shape
+/// <method>EnsureIdentityApplication</method> gives the second: the role holds
+/// <parameter>OcuPilot.Kernel.State.Base.SSLREADRESOURCES</parameter> and nothing else, and the
+/// application grants it unconditionally to <class>OcuPilot.Kernel.State.Base</class> alone, which is where
+/// <method>OcuPilot.Kernel.State.Base.GuardedSslConfigRead</method> reads the provider's TLS configuration
+/// (AD-9). Guard-then-act with drift repair.</p>
+ClassMethod EnsureSslReadApplication(ByRef pNames, pInstallNs As %String, ByRef pReports) As %Status [ Private ]
+{
+    Quit ..EnsureReadApplication(pNames("sslReadRole"), pNames("sslReadApplication"), pNames("sslReadResources"), "TLS verification", pInstallNs, .pReports)
+}
+
+/// <p>Ensure the role <var>pRole</var>, holding exactly <var>pResources</var> and granting no role, and the routine
+/// application <var>pName</var> exist, enabled and of the routine type, granting that role unconditionally
+/// (<code>MatchRoles = ":&lt;role&gt;"</code>) to <class>OcuPilot.Kernel.State.Base</class> alone, in the install
+/// namespace's routine database. <var>pPurpose</var> is the noun the reports and descriptions use. An existing
+/// role or application that has drifted is repaired and the repair reported; a repair the instance rejects fails
+/// the install, which is the outcome an escalation that cannot be entered must have.</p>
+ClassMethod EnsureReadApplication(pRole As %String, pName As %String, pResources As %String, pPurpose As %String, pInstallNs As %String, ByRef pReports) As %Status [ Private ]
+{
     Set tSC = $$$OK
     Try {
-        Set tRole = pNames("identityRole")
-        Set tName = pNames("identityApplication")
-        Set tWantResources = pNames("identityResources")
+        Set tTitled = $ZConvert($Extract(pPurpose, 1), "U") _ $Extract(pPurpose, 2, *)
         Set tNsObj = ##class(Config.Namespaces).Open(pInstallNs)
         If '$IsObject(tNsObj) {
             Set tSC = $$$ERROR($$$GeneralError, "Could not open namespace configuration for " _ pInstallNs)
@@ -2207,29 +2468,29 @@ ClassMethod EnsureIdentityApplication(ByRef pNames, pInstallNs As %String, ByRef
             Quit
         }
         Set tWantRoutines = "OcuPilot.Kernel.State.Base:" _ tCodeDb _ ":1"
-        Set tWantMatchRoles = ":" _ tRole
+        Set tWantMatchRoles = ":" _ pRole
 
-        If ##class(Security.Roles).Exists(tRole, .tRoleObj, .tRoleExistSC) {
-            Set tSC = ##class(Security.Roles).Get(tRole, .tRoleProps)
+        If ##class(Security.Roles).Exists(pRole, .tRoleObj, .tRoleExistSC) {
+            Set tSC = ##class(Security.Roles).Get(pRole, .tRoleProps)
             If $$$ISERR(tSC) Quit
-            If ($Get(tRoleProps("Resources")) '= tWantResources) || ($Get(tRoleProps("GrantedRoles")) '= "") {
-                Set tRoleMod("Resources") = tWantResources
+            If ($Get(tRoleProps("Resources")) '= pResources) || ($Get(tRoleProps("GrantedRoles")) '= "") {
+                Set tRoleMod("Resources") = pResources
                 Set tRoleMod("GrantedRoles") = ""
                 Set tRoleMod("ForceSave") = 2
-                Set tSC = ##class(Security.Roles).Modify(tRole, .tRoleMod)
+                Set tSC = ##class(Security.Roles).Modify(pRole, .tRoleMod)
                 If $$$ISERR(tSC) Quit
-                Do ..Report(.pReports, "warn", "Repaired the identity role's resources", {"role": (tRole)})
+                Do ..Report(.pReports, "warn", "Repaired the " _ pPurpose _ " role's resources", {"role": (pRole)})
             } Else {
-                Do ..Report(.pReports, "info", "Identity role already correct", {"role": (tRole)})
+                Do ..Report(.pReports, "info", tTitled _ " role already correct", {"role": (pRole)})
             }
         } Else {
-            Set tSC = ##class(Security.Roles).Create(tRole, "OcuPilot identity read", tWantResources, "")
+            Set tSC = ##class(Security.Roles).Create(pRole, "OcuPilot " _ pPurpose _ " read", pResources, "")
             If $$$ISERR(tSC) Quit
-            Do ..Report(.pReports, "info", "Created the identity role", {"role": (tRole)})
+            Do ..Report(.pReports, "info", "Created the " _ pPurpose _ " role", {"role": (pRole)})
         }
 
-        If ##class(Security.Applications).Exists(tName, .tExisting, .tExistSC) {
-            Set tSC = ##class(Security.Applications).Get(tName, .tProps)
+        If ##class(Security.Applications).Exists(pName, .tExisting, .tExistSC) {
+            Set tSC = ##class(Security.Applications).Get(pName, .tProps)
             If $$$ISERR(tSC) Quit
             Set tNeedsRepair = 0
             If +$Get(tProps("Enabled")) '= 1 Set tNeedsRepair = 1
@@ -2245,21 +2506,21 @@ ClassMethod EnsureIdentityApplication(ByRef pNames, pInstallNs As %String, ByRef
                 Set tModProps("Enabled") = 1
                 Set tModProps("MatchRoles") = tWantMatchRoles
                 Set tModProps("Routines") = tWantRoutines
-                Set tSC = ##class(Security.Applications).Modify(tName, .tModProps)
+                Set tSC = ##class(Security.Applications).Modify(pName, .tModProps)
                 If $$$ISERR(tSC) Quit
-                Do ..Report(.pReports, "warn", "Repaired the identity routine application", {"application": (tName)})
+                Do ..Report(.pReports, "warn", "Repaired the " _ pPurpose _ " routine application", {"application": (pName)})
             } Else {
-                Do ..Report(.pReports, "info", "Identity routine application already correct", {"application": (tName)})
+                Do ..Report(.pReports, "info", tTitled _ " routine application already correct", {"application": (pName)})
             }
         } Else {
             Set tProps2("Type") = 4
             Set tProps2("Enabled") = 1
-            Set tProps2("Description") = "OcuPilot identity read"
+            Set tProps2("Description") = "OcuPilot " _ pPurpose _ " read"
             Set tProps2("MatchRoles") = tWantMatchRoles
             Set tProps2("Routines") = tWantRoutines
-            Set tSC = ##class(Security.Applications).Create(tName, .tProps2)
+            Set tSC = ##class(Security.Applications).Create(pName, .tProps2)
             If $$$ISERR(tSC) Quit
-            Do ..Report(.pReports, "info", "Created the identity routine application", {"application": (tName)})
+            Do ..Report(.pReports, "info", "Created the " _ pPurpose _ " routine application", {"application": (pName)})
         }
     } Catch ex {
         Set tSC = ex.AsStatus()
@@ -2833,30 +3094,23 @@ ClassMethod AssertNoForeignOcuPilotRole(ByRef pNames, ByRef pReports) As %Status
             Set tOwned = tOwned + 1
         }
 
-        Set tScanned = 0
-        Set tRS = ##class(%ResultSet).%New("Security.Applications:List")
-        Set tSC = tRS.Execute("*", "", "")
+        ; The count is of applications actually read: the "saw nothing" guard below is about
+        ; applications this method inspected, and counting a row it skipped would let an
+        ; unreadable population pass as a clean one.
+        Set tSC = ..ApplicationMatchRoles(.tMatchRoles)
         If $$$ISERR(tSC) Quit
-        While tRS.Next() {
-            Set tAppName = tRS.Get("Name")
-            If tAppName = "" Continue
-            If '##class(Security.Applications).Exists(tAppName, .tObj, .tExistSC) Continue
-            Set tGetSC = ##class(Security.Applications).Get(tAppName, .tProps)
-            If $$$ISERR(tGetSC) {
-                Set tSC = tGetSC
-                Quit
-            }
-            ; Counted after the read, not before it: the "saw nothing" guard below is about
-            ; applications this method actually inspected, and counting a row it skipped would
-            ; let an unreadable population pass as a clean one.
-            Set tScanned = tScanned + 1
-            Set tRoles = ..RoleNamesIn($Get(tProps("MatchRoles")))
+        Set tScanned = tMatchRoles
+        Set tAppName = ""
+        For {
+            Set tAppName = $Order(tMatchRoles(tAppName))
+            If tAppName = "" Quit
+            Set tRoles = ..RoleNamesIn(tMatchRoles(tAppName))
             For tJ = 1:1:$ListLength(tRoles) {
                 Set tFound = $List(tRoles, tJ)
                 If '$Data(tOwner(tFound)) Continue
                 If tOwner(tFound) = tAppName Continue
                 If tOwner(tFound) = "" {
-                    Set tSC = $$$ERROR($$$GeneralError, "Install asserted that OcuPilot's administrative role '" _ tFound _ "' is an application role of nothing, and the web application '" _ tAppName _ "' carries it in MatchRoles ('" _ $Get(tProps("MatchRoles")) _ "')")
+                    Set tSC = $$$ERROR($$$GeneralError, "Install asserted that OcuPilot's administrative role '" _ tFound _ "' is an application role of nothing, and the web application '" _ tAppName _ "' carries it in MatchRoles ('" _ tMatchRoles(tAppName) _ "')")
                     Quit
                 }
                 Set tSC = $$$ERROR($$$GeneralError, "Install asserted that no application outside OcuPilot's own carries an OcuPilot role, and the web application '" _ tAppName _ "' carries '" _ tFound _ "', which belongs to '" _ tOwner(tFound) _ "'")
@@ -2864,8 +3118,6 @@ ClassMethod AssertNoForeignOcuPilotRole(ByRef pNames, ByRef pReports) As %Status
             }
             If $$$ISERR(tSC) Quit
         }
-        Do tRS.Close()
-        Set tRS = ""
         If $$$ISERR(tSC) Quit
         If tScanned = 0 {
             Set tSC = $$$ERROR($$$GeneralError, "Install asserted OcuPilot's roles against every application the instance defines and read none; a population query that saw nothing is not a clean result")
@@ -2898,6 +3150,72 @@ ClassMethod RoleNamesIn(pMatchRoles As %String) As %List [ Private ]
         }
     }
     Quit tNames
+}
+
+/// <p>The <code>MatchRoles</code> of every web application on the instance, as
+/// <code>Security.Applications.Get</code> answers it: <var>pMatchRoles</var>(&lt;path&gt;), and
+/// <var>pMatchRoles</var> itself the number of applications read. <code>Get</code> holds an
+/// unconditional entry (<code>:Role</code>) in <code>MatchRoles</code>, where the
+/// <code>Detail</code> query moves it to <code>AddedRoles</code>. An application
+/// <code>Exists</code> no longer finds is skipped; a <code>Get</code> that fails answers its
+/// status. The one population read <method>AssertNoForeignOcuPilotRole</method> and
+/// <method>RolesInUse</method> share.</p>
+/// <p><b>Caller contract:</b> <code>$NAMESPACE</code> must already be <code>%SYS</code>.</p>
+ClassMethod ApplicationMatchRoles(Output pMatchRoles) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Kill pMatchRoles
+    Set pMatchRoles = 0
+    Try {
+        Set tRS = ##class(%ResultSet).%New("Security.Applications:List")
+        Set tSC = tRS.Execute("*", "", "")
+        If $$$ISERR(tSC) Quit
+        While tRS.Next() {
+            Set tApp = tRS.Get("Name")
+            If tApp = "" Continue
+            If '##class(Security.Applications).Exists(tApp, .tObj, .tExistSC) Continue
+            Set tSC = ##class(Security.Applications).Get(tApp, .tProps)
+            If $$$ISERR(tSC) Quit
+            Set pMatchRoles(tApp) = $Get(tProps("MatchRoles"))
+            Set pMatchRoles = pMatchRoles + 1
+        }
+        Do tRS.Close()
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>The roles every web application on the instance carries, except the applications named in
+/// <var>pExcept</var> (<code>pExcept(&lt;path&gt;)</code>): <var>pRoles</var>(&lt;role name,
+/// upper-cased&gt;) is the comma-separated applications whose <code>MatchRoles</code> mention it,
+/// in <method>RoleNamesIn</method>'s reading of <method>ApplicationMatchRoles</method>' answer.
+/// <method>Uninstall</method> keeps a role this names, because deleting a role strips it from
+/// every application that matches it. Answers <method>ApplicationMatchRoles</method>' failing
+/// status, so "could not tell" is never read as "no application carries it".</p>
+/// <p><b>Caller contract:</b> <code>$NAMESPACE</code> must already be <code>%SYS</code>.</p>
+ClassMethod RolesInUse(ByRef pExcept, Output pRoles) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Kill pRoles
+    Try {
+        Set tSC = ..ApplicationMatchRoles(.tMatchRoles)
+        If $$$ISERR(tSC) Quit
+        Set tApp = ""
+        For {
+            Set tApp = $Order(tMatchRoles(tApp))
+            If tApp = "" Quit
+            If $Data(pExcept(tApp)) Continue
+            Set tRoles = ..RoleNamesIn(tMatchRoles(tApp))
+            For tI = 1:1:$ListLength(tRoles) {
+                Set tKey = $ZConvert($List(tRoles, tI), "U")
+                Set pRoles(tKey) = $Get(pRoles(tKey)) _ $Select($Data(pRoles(tKey)): ", ", 1: "") _ tApp
+            }
+        }
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
 }
 
 /// <p>Ensure exactly one global mapping <code>&lt;prefix&gt;*</code> targeting the
@@ -2939,11 +3257,12 @@ ClassMethod EnsureMapping(ByRef pNames, pInstallNs As %String, ByRef pReports) A
 /// <method>EnsureAuditEvents</method> applies: created when absent with <code>Type</code> 0
 /// (client), <code>VerifyPeer</code> 1 (require a server certificate) and <code>CAFile</code>
 /// <code>%OSCertificateStore</code> (the operating system's own trusted store); and when it
-/// already exists, a drifted <code>VerifyPeer</code>, <code>CAFile</code>, <code>Type</code> or
-/// <code>Enabled</code> is <b>repaired, and the repair reported as a warn naming every drifted
+/// already exists, a drifted <code>VerifyPeer</code>, <code>CAFile</code>, <code>Type</code>,
+/// <code>Enabled</code>, <code>TLSMinVersion</code> (below <parameter>SSLTLSMINVERSION</parameter>) or
+/// <code>CipherList</code> is <b>repaired, and the repair reported as a warn naming every drifted
 /// property</b>, rather than adopted silently. A configuration that verifies no peer is a
-/// configuration that encrypts to anybody, and a disabled one serves no outbound call at all, so
-/// finding either is not a reason to leave it.</p>
+/// configuration that encrypts to anybody, a disabled one serves no outbound call at all, and one that allows a
+/// protocol older than TLS 1.2 negotiates it, so finding any of them is not a reason to leave it.</p>
 /// <p><b>The configuration is read back after every write and the step fails if it did not
 /// take.</b> <code>Create</code> and <code>Modify</code> both answer a status, and a status is not
 /// evidence that the security database now holds what was asked for -- which is the same
@@ -2962,6 +3281,8 @@ ClassMethod EnsureSslConfiguration(ByRef pNames, ByRef pReports) As %Status [ Pr
             Set tProps("VerifyPeer") = ..#SSLVERIFYPEER
             Set tProps("CAFile") = ..#SSLCAFILE
             Set tProps("Enabled") = 1
+            Set tProps("TLSMinVersion") = ..#SSLTLSMINVERSION
+            Set tProps("CipherList") = ..#SSLCIPHERLIST
             Set tProps("Description") = "OcuPilot outbound provider calls (AD-32) -- created by install"
             Set tSC = ##class(Security.SSLConfigs).Create(tName, .tProps)
             If $$$ISERR(tSC) Quit
@@ -2988,6 +3309,19 @@ ClassMethod EnsureSslConfiguration(ByRef pNames, ByRef pReports) As %Status [ Pr
             Set tModProps("Enabled") = 1
             Set tDrift = tDrift _ $Select(tDrift = "": "", 1: ", ") _ "Enabled"
         }
+        If +$Get(tCurrent("TLSMinVersion")) < ..#SSLTLSMINVERSION {
+            Set tModProps("TLSMinVersion") = ..#SSLTLSMINVERSION
+            Set tDrift = tDrift _ $Select(tDrift = "": "", 1: ", ") _ "TLSMinVersion"
+            ; The vendor refuses a floor above the ceiling, so a ceiling below the floor moves to the vendor's own default.
+            If +$Get(tCurrent("TLSMaxVersion")) < ..#SSLTLSMINVERSION {
+                Set tModProps("TLSMaxVersion") = ..#SSLTLSMAXVERSION
+                Set tDrift = tDrift _ ", TLSMaxVersion"
+            }
+        }
+        If $Get(tCurrent("CipherList")) '= ..#SSLCIPHERLIST {
+            Set tModProps("CipherList") = ..#SSLCIPHERLIST
+            Set tDrift = tDrift _ $Select(tDrift = "": "", 1: ", ") _ "CipherList"
+        }
         If tDrift = "" {
             Do ..Report(.pReports, "info", "Outbound TLS configuration already correct", {"name": (tName)})
             Quit
@@ -3001,7 +3335,7 @@ ClassMethod EnsureSslConfiguration(ByRef pNames, ByRef pReports) As %Status [ Pr
     Quit tSC
 }
 
-/// <p>Read the TLS configuration back and confirm the four properties install writes actually took;
+/// <p>Read the TLS configuration back and confirm the six properties install writes actually took;
 /// report <var>pMessage</var> when they did, as a warn where <var>pRepaired</var> says the run
 /// changed something an operator had moved.</p>
 ClassMethod AssertSslConfiguration(pName As %String, ByRef pReports, pMessage As %String, pRepaired As %Boolean = 0) As %Status [ Private ]
@@ -3019,6 +3353,12 @@ ClassMethod AssertSslConfiguration(pName As %String, ByRef pReports, pMessage As
     }
     If '+$Get(tProps("Enabled")) {
         Quit $$$ERROR($$$GeneralError, "the TLS configuration '" _ pName _ "' reads back disabled, so it would serve no outbound call")
+    }
+    If +$Get(tProps("TLSMinVersion")) < ..#SSLTLSMINVERSION {
+        Quit $$$ERROR($$$GeneralError, "the TLS configuration '" _ pName _ "' reads back TLSMinVersion " _ +$Get(tProps("TLSMinVersion")) _ ", below " _ ..#SSLTLSMINVERSION _ ", so it would negotiate a protocol older than TLS 1.2")
+    }
+    If $Get(tProps("CipherList")) '= ..#SSLCIPHERLIST {
+        Quit $$$ERROR($$$GeneralError, "the TLS configuration '" _ pName _ "' reads back CipherList '" _ $Get(tProps("CipherList")) _ "', not " _ ..#SSLCIPHERLIST)
     }
     Do ..Report(.pReports, $Select(pRepaired: "warn", 1: "info"), pMessage, {"name": (pName)})
     Quit $$$OK
@@ -3290,6 +3630,64 @@ ClassMethod RecordAuditMarking(pMarked As %Boolean, ByRef pReports) [ Private ]
     }
 }
 
+/// <p>Whether the <code>creds</code> credential rung is reachable from the install namespace
+/// (<method>OcuPilot.Kernel.Secret.Ladder.CredentialsRungAvailable</method>, which asks the
+/// calling namespace). A seam: <class>OcuPilot.Test.InstallerProbe</class> overrides it;
+/// production never does.</p>
+ClassMethod CredentialsRungAvailable() As %Boolean
+{
+    Quit ##class(OcuPilot.Kernel.Secret.Ladder).CredentialsRungAvailable()
+}
+
+/// <p>The names of the stored agent definitions whose credential type is <code>creds</code>, as a
+/// <code>$ListBuild</code> list in <var>pNames</var>, or the failing <code>%Status</code> of the
+/// read. A seam: <class>OcuPilot.Test.InstallerProbe</class> overrides it; production never
+/// does.</p>
+ClassMethod CredsDefinitionNames(Output pNames As %List) As %Status
+{
+    Set pNames = ""
+    Set tSC = ##class(OcuPilot.Kernel.State.Agent).GuardedList(.tIds)
+    If $$$ISERR(tSC) Quit tSC
+    For tI = 1:1:+$Get(tIds) {
+        Set tOpenSC = ##class(OcuPilot.Kernel.State.Agent).GuardedOpenId(tIds(tI), .tRow)
+        If $$$ISERR(tOpenSC) || '$IsObject(tRow) Continue
+        Set tType = tRow.CredType
+        Set tName = tRow.Name
+        Set tRow = ""
+        If tType '= "creds" Continue
+        If tName = $Char(0) Set tName = ""
+        Set pNames = pNames _ $ListBuild(tName)
+    }
+    Quit $$$OK
+}
+
+/// <p>When the install namespace cannot reach the <code>creds</code> rung
+/// (<method>CredentialsRungAvailable</method>), warn once for each stored agent definition whose
+/// credential type is <code>creds</code> (<method>CredsDefinitionNames</method>), naming it: such a
+/// definition cannot read its key here. Install is never refused over it (a refusal would stop every
+/// definition for one key, and the definition's own save already refuses the rung where it is
+/// unavailable). A store that cannot be read is a warn too. Reports nothing when the rung is
+/// reachable.</p>
+/// <p><b>Caller contract:</b> <code>$NAMESPACE</code> is the install namespace and the profile's
+/// state exists, as after <method>RecordAuditMarking</method>. Never fails install.</p>
+ClassMethod ReportCredentialsRung(ByRef pReports) [ Private ]
+{
+    Try {
+        If ..CredentialsRungAvailable() Quit
+        Set tSC = ..CredsDefinitionNames(.tNames)
+        If $$$ISERR(tSC) {
+            Do ..Report(.pReports, "warn", "The credentials rung is unavailable in this namespace and the stored agent definitions could not be read, so definitions that use it are not named", {"reason": ($System.Status.GetErrorText(tSC))})
+            Quit
+        }
+        For tI = 1:1:$ListLength(tNames) {
+            Set tName = $List(tNames, tI)
+            Do ..Report(.pReports, "warn", "Agent definition '" _ tName _ "' reads its key from the credentials rung, which this namespace cannot reach (it is not interoperability-enabled, or the instance has no interoperability license); the definition will not find its key here", {"definition": (tName), "credType": "creds"})
+        }
+    } Catch ex {
+        Do ..Report(.pReports, "warn", "The credentials rung could not be checked against the stored agent definitions", {"reason": (ex.DisplayString())})
+    }
+}
+
 /// <p>Ensure the administrative role is granted (AC9, DW-16), using the process's own
 /// <code>$Username</code> as the candidate by default. Takes the candidate username as
 /// an explicit parameter (rather than reading <code>$Username</code> only internally) so
@@ -3465,11 +3863,128 @@ ClassMethod EnsureSqlPrivileges(pInstallNs As %String, ByRef pReports) As %Statu
             If $$$ISERR(tSC) Quit
         }
         If $$$ISERR(tSC) Quit
+        Do ..ReportWidenedGrants(pInstallNs, .tTables, .pReports)
         Do ..Report(.pReports, "info", "Granted OcuPilot's protected schema to the escalation role and read every table's grant back", {"tables": (tHeld), "role": (tRole)})
     } Catch ex {
         Set tSC = ex.AsStatus()
     }
     Quit tSC
+}
+
+/// <p>Warn, once, naming every grant on OcuPilot's protected schemas that a grantee other than the
+/// escalation role (<parameter>OcuPilot.Kernel.State.Base.DBRESOURCE</parameter>) holds in
+/// <var>pInstallNs</var>: <code>{grantee, object, privileges}</code> for each. A grant there lets
+/// that grantee read or change OcuPilot's own tables through SQL, which AD-9 keeps to the escalation
+/// role. Install keeps every one: a refusal would leave OcuPilot stopped over someone else's grant,
+/// and a revoke would undo a grant OcuPilot did not make (AD-37, AD-38). OcuPilot's own tools refuse
+/// to revoke it too, so the warn names the remedy: a
+/// SQL <code>REVOKE</code> or the classic portal. Reports nothing when no such grant exists.</p>
+/// <p>Reads <code>Security.SQLPrivileges:List</code> in one <code>%SYS</code> window (AD-16). The
+/// catalog lists a grant on the schema (<code>5,&lt;SCHEMA&gt;</code>), on a table
+/// (<code>1,&lt;schema&gt;.&lt;table&gt;</code>) and on one column of a table
+/// (<code>1,&lt;schema&gt;.&lt;table&gt;.&lt;column&gt;</code>), each by grantee and privilege
+/// letter; it does not list who holds a role or <code>%All</code>, so a user who holds a role that
+/// was granted the schema is reported as the role, and a holder of <code>%All</code> not at all.
+/// Names compare case-insensitively. A catalog that cannot be read is one warn. Always answers
+/// <code>$$$OK</code>: detection never fails install.</p>
+/// <p><b>Caller contract:</b> <code>$NAMESPACE</code> is the install namespace
+/// <var>pInstallNs</var>; <var>pTables</var> is <method>StateTables</method>' answer.</p>
+ClassMethod ReportWidenedGrants(pInstallNs As %String, ByRef pTables, ByRef pReports) As %Status [ Private ]
+{
+    Set tOrigNS = $NAMESPACE
+    Set tFailure = ""
+    Kill tGrants
+    Try {
+        ; Everything that needs an OcuPilot class is resolved before the switch: %SYS cannot see them.
+        Set tEscalation = $ZConvert(##class(OcuPilot.Kernel.State.Base).#DBRESOURCE, "U")
+        Set tNamespace = $ZConvert(pInstallNs, "U")
+        Set tQuery = ..SqlPrivilegeQuery()
+        Kill tSchemas, tTables
+        Set tSchema = ""
+        For {
+            Set tSchema = $Order(pTables(tSchema))
+            If tSchema = "" Quit
+            Set tSchemas($ZConvert(tSchema, "U")) = ""
+            Set tTable = ""
+            For {
+                Set tTable = $Order(pTables(tSchema, tTable))
+                If tTable = "" Quit
+                Set tTables($ZConvert(tTable, "U")) = ""
+            }
+        }
+        Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
+        If $$$ISERR(tSC) {
+            Set tFailure = $System.Status.GetErrorText(tSC)
+            Quit
+        }
+        Set tRS = ##class(%ResultSet).%New(tQuery)
+        Set tSC = tRS.Execute()
+        If $$$ISERR(tSC) {
+            Set tFailure = $System.Status.GetErrorText(tSC)
+            Quit
+        }
+        While tRS.Next() {
+            If $ZConvert(tRS.Get("Namespace"), "U") '= tNamespace Continue
+            Set tGrantee = tRS.Get("Grantee")
+            If $ZConvert(tGrantee, "U") = tEscalation Continue
+            Set tObject = tRS.Get("SQLObject")
+            Set tName = $ZConvert($Piece(tObject, ",", 2, *), "U")
+            Set tKind = ""
+            If $Piece(tObject, ",", 1) = 5 {
+                If $Data(tSchemas(tName)) Set tKind = "schema"
+            } ElseIf $Piece(tObject, ",", 1) = 1 {
+                If $Data(tTables(tName)) {
+                    Set tKind = "table"
+                } Else {
+                    ; A column's object is its table's name and the column: <schema>.<table>.<column>.
+                    Set tOwner = $Piece(tName, ".", 1, *-1)
+                    If $Data(tTables(tOwner)) Set tKind = "column"
+                }
+            }
+            If tKind = "" Continue
+            Set tGrants(tGrantee, tKind _ " " _ $Piece(tObject, ",", 2, *), tRS.Get("Privilege")) = ""
+        }
+        Do tRS.Close()
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tFailure = ex.DisplayString()
+    }
+    Set $NAMESPACE = tOrigNS
+    If tFailure '= "" {
+        Do ..Report(.pReports, "warn", "OcuPilot's protected schema could not be checked for grants held by other grantees (it could not read the SQL privilege catalog), so any such grant is not reported", {"reason": (tFailure)})
+        Quit $$$OK
+    }
+    Set tText = ""
+    Set tList = []
+    Set tGrantee = ""
+    For {
+        Set tGrantee = $Order(tGrants(tGrantee))
+        If tGrantee = "" Quit
+        Set tObject = ""
+        For {
+            Set tObject = $Order(tGrants(tGrantee, tObject))
+            If tObject = "" Quit
+            Set tPrivileges = ""
+            Set tLetter = ""
+            For {
+                Set tLetter = $Order(tGrants(tGrantee, tObject, tLetter))
+                If tLetter = "" Quit
+                Set tPrivileges = tPrivileges _ $Select(tPrivileges = "": "", 1: ",") _ $Case(tLetter, "a": "%ALTER", "i": "INSERT", "u": "UPDATE", "d": "DELETE", "s": "SELECT", "r": "REFERENCES", "e": "EXECUTE", "l": "USE", : tLetter)
+            }
+            Set tText = tText _ $Select(tText = "": "", 1: "; ") _ tGrantee _ " " _ tPrivileges _ " on " _ tObject
+            Do tList.%Push({"grantee": (tGrantee), "object": (tObject), "privileges": (tPrivileges)})
+        }
+    }
+    If tText = "" Quit $$$OK
+    Do ..Report(.pReports, "warn", "Grants on OcuPilot's protected schema are held by a grantee other than its escalation role: " _ tText _ ". Install keeps them and never revokes a grant it did not make. Revoke each with SQL (REVOKE) or the classic portal; OcuPilot's own tools refuse it.", {"grants": (tList)})
+    Quit $$$OK
+}
+
+/// <p>The class query <method>ReportWidenedGrants</method> reads the SQL privilege catalog through.
+/// A seam: <class>OcuPilot.Test.InstallerProbe</class> overrides it; production never does.</p>
+ClassMethod SqlPrivilegeQuery() As %String
+{
+    Quit "Security.SQLPrivileges:List"
 }
 
 /// <p>OcuPilot's protected tables, derived from <class>%Dictionary.CompiledClass</class>: every
@@ -3625,6 +4140,24 @@ ClassMethod StateFingerprint(pProfile As %String = "") As %String
             Set tIdentityAppRoutines = $Select($$$ISERR(tGetSC): "READFAILED", 1: $Get(tIdAppProps("Routines")))
         }
 
+        ; The third pair, folded as the identity pair is: the TLS verification read refuses every provider call
+        ; when its application is disabled or its role has lost a resource.
+        Set tSslReadRoleResources = ""
+        If ##class(Security.Roles).Exists(tNames("sslReadRole"), .tSrRoleObj, .tSrRoleSC) {
+            Set tGetSC = ##class(Security.Roles).Get(tNames("sslReadRole"), .tSrRoleProps, .tSrRoleObj2)
+            Set tSslReadRoleResources = $Select($$$ISERR(tGetSC): "READFAILED", 1: $Get(tSrRoleProps("Resources")))
+        }
+
+        Set tSslReadAppEnabled = ""
+        Set tSslReadAppMatchRoles = ""
+        Set tSslReadAppRoutines = ""
+        If ##class(Security.Applications).Exists(tNames("sslReadApplication"), .tSrAppObj, .tSrAppSC) {
+            Set tGetSC = ##class(Security.Applications).Get(tNames("sslReadApplication"), .tSrAppProps)
+            Set tSslReadAppEnabled = $Select($$$ISERR(tGetSC): "READFAILED", 1: $Get(tSrAppProps("Enabled")))
+            Set tSslReadAppMatchRoles = $Select($$$ISERR(tGetSC): "READFAILED", 1: $Get(tSrAppProps("MatchRoles")))
+            Set tSslReadAppRoutines = $Select($$$ISERR(tGetSC): "READFAILED", 1: $Get(tSrAppProps("Routines")))
+        }
+
         Set tMapDatabase = ""
         If ##class(Config.MapGlobals).Exists(tInstallNs, tNames("mappingPattern"), .tMapObj, .tMapSC) {
             Set tGetSC = ##class(Config.MapGlobals).Get(tInstallNs, tNames("mappingPattern"), .tMapProps)
@@ -3692,7 +4225,7 @@ ClassMethod StateFingerprint(pProfile As %String = "") As %String
             Set tAppFold = tAppFold _ "|" _ tFRoleResources _ "|" _ ..ApplicationFingerprint($Get(tNames("appName", tFKey)), $Get(tNames("appProperties", tFKey)))
         }
 
-        Set tResult = tDbResourceName _ "|" _ tRoleResources _ "|" _ tAppEnabled _ "|" _ tAppMatchRoles _ "|" _ tAppRoutines _ "|" _ tMapDatabase _ "|" _ tEventEnabled _ "|" _ tDbResourcePublic _ "|" _ tDbResourceType _ "|" _ tAdminResourcePublic _ "|" _ tAuditingEnabled _ "|" _ tVerSchemaVersion _ "|" _ tVerPhase _ "|" _ tIdentityRoleResources _ "|" _ tIdentityAppEnabled _ "|" _ tIdentityAppMatchRoles _ "|" _ tIdentityAppRoutines _ tAppFold
+        Set tResult = tDbResourceName _ "|" _ tRoleResources _ "|" _ tAppEnabled _ "|" _ tAppMatchRoles _ "|" _ tAppRoutines _ "|" _ tMapDatabase _ "|" _ tEventEnabled _ "|" _ tDbResourcePublic _ "|" _ tDbResourceType _ "|" _ tAdminResourcePublic _ "|" _ tAuditingEnabled _ "|" _ tVerSchemaVersion _ "|" _ tVerPhase _ "|" _ tIdentityRoleResources _ "|" _ tIdentityAppEnabled _ "|" _ tIdentityAppMatchRoles _ "|" _ tIdentityAppRoutines _ "|" _ tSslReadRoleResources _ "|" _ tSslReadAppEnabled _ "|" _ tSslReadAppMatchRoles _ "|" _ tSslReadAppRoutines _ tAppFold
     } Catch ex {
         Set tResult = "ERROR:" _ ex.DisplayString()
     }
@@ -3753,6 +4286,8 @@ ClassMethod AnyObjectExists(ByRef pNames, pInstallNs As %String) As %Boolean [ P
     If ##class(Security.Applications).Exists(pNames("application"), .t5, .s5) Quit 1
     If ##class(Security.Applications).Exists(pNames("identityApplication"), .t5b, .s5b) Quit 1
     If ##class(Security.Roles).Exists(pNames("identityRole"), .t5c, .s5c) Quit 1
+    If ##class(Security.Applications).Exists(pNames("sslReadApplication"), .t5d, .s5d) Quit 1
+    If ##class(Security.Roles).Exists(pNames("sslReadRole"), .t5e, .s5e) Quit 1
     If ##class(Config.MapGlobals).Exists(pInstallNs, pNames("mappingPattern"), .t6, .s6) Quit 1
     If ##class(%File).Exists(pNames("directory") _ "IRIS.DAT") Quit 1
     ; Every triple the roster declares, so a registration an uninstall left behind is residue
@@ -3777,17 +4312,25 @@ ClassMethod AnyObjectExists(ByRef pNames, pInstallNs As %String) As %Boolean [ P
 /// <p>Remove every object <var>pProfile</var> owns: <b>first</b> the opt-in demo fixture
 /// set through <class>OcuPilot.Install.Fixture</class> (AD-25) -- read from this profile's
 /// <class>OcuPilot.Kernel.State.Demo</class> inventory while it and its escalation route
-/// still exist -- <b>then</b> the two web applications, the shell's matching role and its
-/// bundle directory, the mapping, the privileged routine application, the
-/// administrative role and resource, the database's guarding resource, the database
-/// itself (config entry, <code>IRIS.DAT</code> and directory), the audit event, and the
-/// outbound TLS configuration.
+/// still exist -- <b>then</b> the web applications install recorded, their matching roles
+/// and the shell's bundle directory (the three rules below), the mapping, the privileged
+/// routine application, the administrative role and resource, the database's guarding
+/// resource, the database itself (config entry, <code>IRIS.DAT</code> and directory), the
+/// audit event, and the outbound TLS configuration.
 /// <b>This order is load-bearing</b> (review finding, HIGH): fixture removal used to run
 /// last, by which point the mapping and database it needs to read
 /// <class>OcuPilot.Kernel.State.Demo</class> through were already gone, silently
 /// orphaning every production fixture. Absent objects are never an error; without
 /// <var>pConfirmDataLoss</var> the method changes nothing (including the fixtures) and
 /// names what it would have destroyed.</p>
+/// <p><b>It keeps what a surviving application still uses, and refuses when it cannot tell
+/// what install created (AD-37).</b> The shell bundle directory stays while an application
+/// sits at the shell's path. A roster matching role stays while a surviving application's
+/// <code>MatchRoles</code> names it, because deleting a role strips it from every
+/// application that matches it. Each object kept is named in a warn with its remedy. When
+/// the provenance record cannot be read while the profile's privileged routine application
+/// exists, or the roles the web applications carry cannot be read, the method removes nothing
+/// and returns an error.</p>
 /// <p><b>It stops before the database while any of this profile's fixture inventory rows
 /// remains (DW-65, the owner's decision, rework iteration 6).</b> Only this profile's rows
 /// are read: a production uninstall does not look at rows another profile left in the same
@@ -3880,6 +4423,11 @@ ClassMethod Uninstall(pProfile As %String = "", pConfirmDataLoss As %Boolean = 0
         }
         Set tLocked = 1
 
+        ; One install namespace per instance: removing from a second namespace would delete the
+        ; first one's objects while leaving its mapping and data, so it is refused before any read.
+        Set tSC = ..GuardOneInstallNamespace("Uninstall", .tNames, tInstallNs)
+        If $$$ISERR(tSC) Quit
+
         ; Review finding (build-auto review, 2026-09-10): AnyObjectExists below checked
         ; only the core installer-managed objects (database, resources, role,
         ; application, mapping, audit event) -- never the demo fixture inventory. If
@@ -3908,24 +4456,44 @@ ClassMethod Uninstall(pProfile As %String = "", pConfirmDataLoss As %Boolean = 0
             Do ..LogWarn("Could not determine whether this profile's demo fixture inventory has any rows -- treating fixtures as present so Uninstall does not silently skip removal", {"profile": (pProfile), "error": ($System.Status.GetErrorText(tFixtureIdsSC))})
         }
 
-        ; DW-94: which of this profile's applications install actually created or recognised.
-        ; Read here, in the install namespace, for the same reason the fixture inventory above
-        ; is: OcuPilot.Kernel.State.WebApp is compiled only here. An unreadable record leaves
-        ; the set empty, which removes no application at all and reports each one instead --
-        ; the safe direction, since removing an application nobody recorded is the thing DW-94
-        ; exists to stop.
-        Kill tRecorded
-        Set tProvSC = ##class(OcuPilot.Kernel.State.WebApp).GuardedPathsForProfile(pProfile, .tRecorded)
-        If $$$ISERR(tProvSC) {
-            Do ..LogWarn("Could not read this profile's web-application provenance record -- no web application, and no matching role of an application still present, will be removed, and each application this profile's roster names is reported instead", {"profile": (pProfile), "error": ($System.Status.GetErrorText(tProvSC))})
-            Kill tRecorded
-        }
+        ; Which of this profile's applications install created or recognised. Read here, in the
+        ; install namespace, because OcuPilot.Kernel.State.WebApp is compiled only here. An
+        ; absent routine application answers an empty set; any other failure is refused below,
+        ; once the nothing-exists return has had its say.
+        Kill tRecorded, tProvReports
+        Set tProvSC = ..ReadApplicationProvenance(pProfile, .tNames, .tRecorded, .tProvReports)
+        If $$$ISERR(tProvSC) Kill tRecorded
 
         Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
         If $$$ISERR(tSC) Quit
 
         If '..AnyObjectExists(.tNames, tInstallNs) && 'tFixturesExist {
             Set $NAMESPACE = tOrigNS
+            Quit
+        }
+
+        ; Without the record, what install created cannot be told from what it did not.
+        If $$$ISERR(tProvSC) {
+            Set $NAMESPACE = tOrigNS
+            Do ..LogWarn("Uninstall refused: this profile's web-application provenance record could not be read, so nothing was removed", {"profile": (pProfile), "error": ($System.Status.GetErrorText(tProvSC))})
+            Set tSC = $$$ERROR($$$GeneralError, "Uninstall('" _ pProfile _ "') refused: this profile's web-application provenance record could not be read (" _ $System.Status.GetErrorText(tProvSC) _ "), so what install created cannot be told from what it did not. Nothing was removed. Repair the production profile's protected state (run Install with no profile) and run Uninstall again.")
+            Quit
+        }
+
+        ; The roster applications this run removes, and the roles every other application
+        ; still carries: a role one of those names is kept, and so is the shell directory
+        ; while an application stays at its path.
+        Kill tExcept
+        For tXI = 1:1:$Length(tNames("appKeys"), ",") {
+            Set tXName = $Get(tNames("appName", $Piece(tNames("appKeys"), ",", tXI)))
+            If (tXName '= "") && $Data(tRecorded(tXName)) Set tExcept(tXName) = ""
+        }
+        Set tShellApp = tNames("appName", tNames("bundleKey"))
+        Set tInUseSC = ..RolesInUse(.tExcept, .tInUse)
+        If $$$ISERR(tInUseSC) {
+            Set $NAMESPACE = tOrigNS
+            Do ..LogWarn("Uninstall refused: the web applications' roles could not be read, so nothing was removed", {"profile": (pProfile), "error": ($System.Status.GetErrorText(tInUseSC))})
+            Set tSC = $$$ERROR($$$GeneralError, "Uninstall('" _ pProfile _ "') refused: the web applications' matching roles could not be read (" _ $System.Status.GetErrorText(tInUseSC) _ "), so a role another application still carries cannot be told from one nothing carries. Nothing was removed. Correct what the error names and run Uninstall again.")
             Quit
         }
 
@@ -3936,18 +4504,18 @@ ClassMethod Uninstall(pProfile As %String = "", pConfirmDataLoss As %Boolean = 0
                 Set tUKey = $Piece(tNames("appKeys"), ",", tUI)
                 Set tUName = $Get(tNames("appName", tUKey))
                 If $Data(tRecorded(tUName)) Set tAppList = tAppList _ $Select(tAppList = "": "", 1: ", ") _ "'" _ tUName _ "'"
-                ; The role list mirrors the deletion loop below: an existing role is removed when
-                ; its application is recorded (and so removed) or no application sits at its
-                ; roster path, and kept while an application uninstall leaves in place still
-                ; matches it -- the AD-21 privilege floor that "left in place" means still working.
+                ; The role list mirrors the deletion loop below: an existing role is listed
+                ; unless a surviving application still names it.
                 Set tURole = $Get(tNames("appRole", tUKey))
                 If tURole = "" Continue
                 If '##class(Security.Roles).Exists(tURole, .tUEW1, .tUSW1) Continue
-                If '$Data(tRecorded(tUName)), ##class(Security.Applications).Exists(tUName, .tUEW2, .tUSW2) Continue
+                If $Data(tInUse($ZConvert(tURole, "U"))) Continue
                 Set tRoleList = tRoleList _ $Select(tRoleList = "": "", 1: ", ") _ "'" _ tURole _ "'"
             }
             If tAppList = "" Set tAppList = "(no web application carries a provenance record, so none would be removed)"
-            Set tSC = $$$ERROR($$$GeneralError, "Uninstall('" _ pProfile _ "') would destroy: database '" _ tNames("database") _ "' at " _ tNames("directory") _ ", resources '" _ tNames("dbResource") _ "' and '" _ tNames("adminResource") _ "', roles '" _ tNames("adminRole") _ "' and '" _ tNames("identityRole") _ "'" _ $Select(tRoleList = "": "", 1: " and " _ tRoleList) _ ", applications '" _ tNames("application") _ "', '" _ tNames("identityApplication") _ "' and " _ tAppList _ ", the shell bundle directory " _ tNames("shellDirectory") _ ", mapping '" _ tNames("mappingPattern") _ "', audit events '" _ ..EventList(.tNames) _ "', TLS configuration '" _ tNames("sslConfig") _ "'" _ $Select($Get(tNames("retentionTaskName")) = "": "", 1: ", the retention task '" _ tNames("retentionTaskName") _ "'") _ ", and any opt-in demo fixture objects this profile owns (AD-25). Pass pConfirmDataLoss=1 to proceed.")
+            ; Listed only when the loop below would remove it: no application stays at the shell's path.
+            Set tDirList = $Select($Data(tRecorded(tShellApp)) || '##class(Security.Applications).Exists(tShellApp, .tUEW2, .tUSW2): ", the shell bundle directory " _ tNames("shellDirectory"), 1: "")
+            Set tSC = $$$ERROR($$$GeneralError, "Uninstall('" _ pProfile _ "') would destroy: database '" _ tNames("database") _ "' at " _ tNames("directory") _ ", resources '" _ tNames("dbResource") _ "' and '" _ tNames("adminResource") _ "', roles '" _ tNames("adminRole") _ "', '" _ tNames("identityRole") _ "' and '" _ tNames("sslReadRole") _ "'" _ $Select(tRoleList = "": "", 1: " and " _ tRoleList) _ ", applications '" _ tNames("application") _ "', '" _ tNames("identityApplication") _ "', '" _ tNames("sslReadApplication") _ "' and " _ tAppList _ tDirList _ ", mapping '" _ tNames("mappingPattern") _ "', audit events '" _ ..EventList(.tNames) _ "', TLS configuration '" _ tNames("sslConfig") _ "'" _ $Select($Get(tNames("retentionTaskName")) = "": "", 1: ", the retention task '" _ tNames("retentionTaskName") _ "'") _ ", and any opt-in demo fixture objects this profile owns (AD-25). Pass pConfirmDataLoss=1 to proceed.")
             Set $NAMESPACE = tOrigNS
             Quit
         }
@@ -4034,17 +4602,16 @@ ClassMethod Uninstall(pProfile As %String = "", pConfirmDataLoss As %Boolean = 0
         Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
         If $$$ISERR(tSC) Quit
 
-        ; Story 1.5's objects go first: every web application this profile's provenance record
-        ; says install created or recognised, then each application's matching role (an
-        ; application that still names a deleted role would be drift nothing removes), then the
-        ; bundle directory the shell application pointed at.
+        ; The web applications install created or recognised go first, then each roster
+        ; matching role no surviving application names (an application that still named a
+        ; deleted role would be drift nothing removes), then the shell bundle directory unless
+        ; an application stays at the shell's path.
         ;
-        ; DW-94: an application at one of the roster's paths with NO provenance row is left
-        ; exactly where it is and reported. It is somebody else's -- or one this instance has
-        ; no record of install putting there -- and uninstall removes only what install
-        ; created. tAdopted collects those for a report after the namespace restore, because
-        ; LogWarn reaches OcuPilot.Kernel.Audit.Log, which %SYS cannot see.
-        Kill tRemovedApps, tRemovedKeys
+        ; An application at one of the roster's paths with no provenance row is somebody
+        ; else's, or one this instance has no record of install putting there: it is left where
+        ; it is and reported. tAdopted collects those for the report after the namespace
+        ; restore, because LogWarn reaches OcuPilot.Kernel.Audit.Log, which %SYS cannot see.
+        Kill tRemovedApps
         Set tAdopted = ""
         For tDI = 1:1:$Length(tNames("appKeys"), ",") {
             Set tDKey = $Piece(tNames("appKeys"), ",", tDI)
@@ -4057,27 +4624,23 @@ ClassMethod Uninstall(pProfile As %String = "", pConfirmDataLoss As %Boolean = 0
             Set tSC = ##class(Security.Applications).Delete(tDName)
             If $$$ISERR(tSC) Quit
             Set tRemovedApps($Increment(tRemovedApps)) = tDName
-            Set tRemovedKeys(tDKey) = ""
         }
         If $$$ISERR(tSC) { Set $NAMESPACE = tOrigNS  Quit }
-        ; A roster-declared matching role is kept only while an application still sits at that
-        ; key's roster path, and removed otherwise. Two cases, and they are not the same:
-        ; DW-94 -- an application uninstall deliberately LEFT IN PLACE (present, no provenance
-        ; row) keeps its role, because deleting a role strips its name from every application
-        ; still matching it (verified on this build, and pinned by OcuPilot.Test.WebApp), which
-        ; would take that application's AD-21 privilege floor with it and leave an anonymous
-        ; application that refuses every anonymous request 403 before its dispatch class runs
-        ; (inference). "Left in place" has to mean still working. An application that is
-        ; ALREADY ABSENT -- removed this run, or by another hand before it
-        ; -- has no floor to preserve, so its role goes: no roster-declared role survives when
-        ; no application sits at its roster path (AD-21: the floor role is created and removed by
-        ; the installer).
+        ; A roster matching role goes unless a surviving application's MatchRoles names it
+        ; (tInUse, read before the first removal): deleting a role strips it from every
+        ; application that matches it, which would take that application's AD-21 privilege floor
+        ; and leave it refusing every anonymous request. A role no application carries is the
+        ; installer's own residue (AD-21) and is removed.
+        Kill tKeptRoles
         For tRI = 1:1:$Length(tNames("appKeys"), ",") {
             Set tRKey = $Piece(tNames("appKeys"), ",", tRI)
             Set tRRole = $Get(tNames("appRole", tRKey))
             If tRRole = "" Continue
-            If '$Data(tRemovedKeys(tRKey)), ##class(Security.Applications).Exists($Get(tNames("appName", tRKey)), .tEW2, .tSW2) Continue
             If '##class(Security.Roles).Exists(tRRole, .tEW3, .tSW3) Continue
+            If $Data(tInUse($ZConvert(tRRole, "U")), tCarriedBy) {
+                Set tKeptRoles(tRRole) = tCarriedBy
+                Continue
+            }
             Set tSC = ##class(Security.Roles).Delete(tRRole)
             If $$$ISERR(tSC) Quit
         }
@@ -4087,8 +4650,13 @@ ClassMethod Uninstall(pProfile As %String = "", pConfirmDataLoss As %Boolean = 0
         ; installed with nothing saying why. Reported after the namespace restore below,
         ; because LogWarn reaches OcuPilot.Kernel.Audit.Log, which %SYS cannot see.
         Set tShellDirLeft = 0
+        Set tShellDirKept = 0
         If ##class(%File).DirectoryExists(tNames("shellDirectory")) {
-            If '##class(%File).RemoveDirectoryTree(tNames("shellDirectory")) Set tShellDirLeft = 1
+            If ##class(Security.Applications).Exists(tShellApp, .tEW4, .tSW4) {
+                Set tShellDirKept = 1
+            } ElseIf '##class(%File).RemoveDirectoryTree(tNames("shellDirectory")) {
+                Set tShellDirLeft = 1
+            }
         }
 
         If ##class(Config.MapGlobals).Exists(tInstallNs, tNames("mappingPattern"), .tE1, .tS1) {
@@ -4107,6 +4675,14 @@ ClassMethod Uninstall(pProfile As %String = "", pConfirmDataLoss As %Boolean = 0
         }
         If ##class(Security.Roles).Exists(tNames("identityRole"), .tE2c, .tS2c) {
             Set tSC = ##class(Security.Roles).Delete(tNames("identityRole"))
+            If $$$ISERR(tSC) { Set $NAMESPACE = tOrigNS  Quit }
+        }
+        If ##class(Security.Applications).Exists(tNames("sslReadApplication"), .tE2d, .tS2d) {
+            Set tSC = ##class(Security.Applications).Delete(tNames("sslReadApplication"))
+            If $$$ISERR(tSC) { Set $NAMESPACE = tOrigNS  Quit }
+        }
+        If ##class(Security.Roles).Exists(tNames("sslReadRole"), .tE2e, .tS2e) {
+            Set tSC = ##class(Security.Roles).Delete(tNames("sslReadRole"))
             If $$$ISERR(tSC) { Set $NAMESPACE = tOrigNS  Quit }
         }
         If ##class(Security.Roles).Exists(tNames("adminRole"), .tE3, .tS3) {
@@ -4156,12 +4732,33 @@ ClassMethod Uninstall(pProfile As %String = "", pConfirmDataLoss As %Boolean = 0
             Do ..LogWarn("Uninstall removed every named object, but the shell application's bundle directory could not be removed and is still on disk", {"directory": (tNames("shellDirectory"))})
         }
 
-        ; DW-94: report what was left behind, and forget what was removed. The report is a
-        ; report, not an error -- an application install never created is not a failure of
-        ; uninstall, it is the one thing uninstall is required not to touch.
+        ; Report what was left behind, and forget what was removed. The report is a report, not
+        ; an error: an object a surviving application still uses is not a failure of uninstall, it
+        ; is the one thing uninstall is required not to touch.
+        Set tLeftText = ""
+        Set tLeftData = {"profile": (pProfile)}
         If tAdopted '= "" {
-            Do ..LogWarn("Uninstall left a web application in place: it sits at one of OcuPilot's declared paths, and this instance has no record of install having created it, so uninstall removes only what install created", {"profile": (pProfile), "applications": (tAdopted)})
+            Set tLeftText = "Uninstall left a web application in place: it sits at one of OcuPilot's declared paths, and this instance has no record of install having created it, so uninstall removes only what install created; delete the application by hand if it is not wanted"
+            Set tLeftData.applications = tAdopted
         }
+        If tShellDirKept {
+            Set tLeftText = tLeftText _ $Select(tLeftText = "": "", 1: ". ") _ "Uninstall left the shell bundle directory " _ tNames("shellDirectory") _ " in place, because an application still sits at the shell's path; delete the directory by hand once that application is gone"
+            Set tLeftData.directory = tNames("shellDirectory")
+        }
+        If $Data(tKeptRoles) {
+            Set tKeptText = ""
+            Set tKeptList = []
+            Set tKeptRole = ""
+            For {
+                Set tKeptRole = $Order(tKeptRoles(tKeptRole))
+                If tKeptRole = "" Quit
+                Set tKeptText = tKeptText _ $Select(tKeptText = "": "", 1: ", ") _ "'" _ tKeptRole _ "' (carried by " _ tKeptRoles(tKeptRole) _ ")"
+                Do tKeptList.%Push({"role": (tKeptRole), "applications": (tKeptRoles(tKeptRole))})
+            }
+            Set tLeftText = tLeftText _ $Select(tLeftText = "": "", 1: ". ") _ "Uninstall left a matching role in place, because a web application that survives uninstall still carries it: " _ tKeptText _ "; remove the role from each of those applications, then delete the role"
+            Set tLeftData.roles = tKeptList
+        }
+        If tLeftText '= "" Do ..LogWarn(tLeftText, tLeftData)
         ; For a named profile only, exactly like the Stamp and Version purges below and for the
         ; identical reason (Fix Pack F-1): a production profile's provenance rows lived inside
         ; the protected database this method has just deleted, together with the privileged

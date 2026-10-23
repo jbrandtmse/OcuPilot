@@ -10,6 +10,7 @@ import {
   readdirSync,
   rmSync,
   statSync,
+  symlinkSync,
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -1128,6 +1129,60 @@ test('DW-243: failure detail that is missing, disagrees with the count, or names
   );
 });
 
+// Mutation (Rule 19): drop the hint from classifyFailureDetail -> the armed legs go red; give every
+// class-level line the hint -> the unarmed leg goes red.
+test('DW-432: a class-level error that names an arming variable says the class is armed and what sets the variable', () => {
+  const landed = { runIndex: 44, total: 0, failed: 0, landed: true };
+  const hint =
+    /; it names OCUPILOT_ALLOW_PRINCIPALS, an arming variable only scripts\/ci-throwaway\.sh sets, so this class runs on a throwaway and not on a development instance \(docs\/DEVELOPMENT\.md, Armed test classes\)/;
+  const classLevel = (action, error) => [{ class: 'OcuPilot.Test.Armed', method: '', action, error, asserts: [] }];
+
+  // The framework records the hook's name as the action and the refusal's text as the error.
+  const refused = classifyFailureDetail(
+    'X',
+    landed,
+    classLevel('OnBeforeAllTests', ' ERROR #5001: OcuPilot.Test.Armed creates principals. OCUPILOT_ALLOW_PRINCIPALS does not read 1 here, so nothing was created.')
+  );
+  assert.equal(refused.length, 1);
+  assert.match(refused[0], /^X: the class recorded a class-level error \(OnBeforeAllTests\) -- which is a failure, never a pass/);
+  assert.match(refused[0], hint, 'the variable in the error text gets the hint');
+
+  const inAction = classifyFailureDetail('X', landed, classLevel('OCUPILOT_ALLOW_PRINCIPALS does not read 1', ''));
+  assert.match(inAction[0], hint, 'and so does a record that carries it in the action');
+
+  const twice = classifyFailureDetail('X', landed, [
+    ...classLevel('OnBeforeAllTests', 'OCUPILOT_ALLOW_PRINCIPALS'),
+    ...classLevel('OnAfterAllTests', 'OCUPILOT_ALLOW_PRINCIPALS'),
+  ]);
+  assert.equal(twice[0].match(/OCUPILOT_ALLOW_PRINCIPALS/g).length, 1, 'a variable is named once however many records name it');
+
+  const both = classifyFailureDetail(
+    'X',
+    landed,
+    classLevel('OnBeforeAllTests', ' ERROR #5001: OCUPILOT_ALLOW_ECP_CONFIG and OCUPILOT_ALLOW_DATABASE_CONFIG must both read 1 here, so nothing was created.')
+  );
+  assert.match(
+    both[0],
+    /; it names OCUPILOT_ALLOW_ECP_CONFIG and OCUPILOT_ALLOW_DATABASE_CONFIG, arming variables only scripts\/ci-throwaway\.sh sets, so this class runs on a throwaway/,
+    'a class armed by two variables names both, in the plural'
+  );
+
+  const unarmed =classifyFailureDetail('X', landed, classLevel('OnAfterAllTests', ' ERROR #5001: uninstall refused'));
+  assert.equal(unarmed.length, 1);
+  assert.doesNotMatch(unarmed[0], /arming variable|OCUPILOT_ALLOW_/, 'a class-level error that names none gets no hint');
+  assert.match(unarmed[0], /class-level error \(OnAfterAllTests\) -- which is a failure, never a pass$/);
+
+  const executed = runRunnerOver(
+    sessionOutput({
+      failed: 0,
+      fails: classLevel('OnBeforeAllTests', ' ERROR #5001: OCUPILOT_ALLOW_PRODUCTION_INSTALL does not read 1 here.'),
+      probeApps: '',
+    })
+  );
+  assert.equal(executed.status, 1, 'the armed class is still red');
+  assert.match(executed.stderr, /it names OCUPILOT_ALLOW_PRODUCTION_INSTALL, an arming variable only scripts\/ci-throwaway\.sh sets/);
+});
+
 test('DW-242: an unchecked leftover answer is labelled UNCHECKED, not LEAKED, and prints the session tail (executed)', () => {
   assert.equal(leftoverIsOwn(null, null), false, 'no answer blames nobody');
   const unchecked = runRunnerOver(
@@ -1644,8 +1699,8 @@ test("the throwaway's port and name are one fact, not six declarations of one", 
   assert.ok(browserOrigin, "the browser step sets OCUPILOT_BROWSER_ORIGIN -- the one setting runCommands() cannot see");
   assert.equal(browserOrigin[1], `http://localhost:${browserPort[1]}`, "the browser step drives its own throwaway's port");
 
-  // Both variables or neither: browser.config.mjs carries its own container default, so a step
-  // that overrides only the origin execs into the OTHER throwaway's container (2026-09-16).
+  // Both variables, always: browser.config.mjs has no default for either, so a step that set only
+  // the origin is refused rather than exec'ing into the OTHER throwaway's container.
   const browserContainer = /OCUPILOT_BROWSER_CONTAINER:\s*(\S+)/.exec(workflow);
   assert.ok(browserContainer, 'the browser step sets OCUPILOT_BROWSER_CONTAINER beside the origin');
   assert.equal(browserContainer[1], browserProject[1], "and it names its own throwaway, whose container_name follows --project");
@@ -1862,13 +1917,14 @@ test('product-check passes only on a namespace holding OcuPilot classes and no O
 // `data-check` fails on a mounted local database with no IRIS.DAT.
 
 /** Run `ci-throwaway.sh <args>` with a stub docker whose `compose ls` prints `ls`, and a stub uname. */
-function runThrowaway(args, { ls = '[]', uname = 'Linux', session = '', env = {}, composeFile = false } = {}) {
+function runThrowaway(args, { ls = '[]', uname = 'Linux', session = '', env = {}, composeFile = false, setup = null } = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'ocupilot-throwaway-dw2034-'));
   try {
     const bin = join(dir, 'bin');
     const scratch = join(dir, 'scratch');
     const capture = join(dir, 'docker-argv.txt');
     mkdirSync(scratch);
+    if (setup !== null) setup({ dir, scratch });
     if (composeFile) writeFileSync(join(scratch, 'compose.yml'), 'name: ocupilot-ci\n');
     writeStub(bin, 'docker', [
       'printf \'%s\\n\' "$*" >> "$OCUPILOT_DOCKER_CAPTURE"',
@@ -1880,7 +1936,7 @@ function runThrowaway(args, { ls = '[]', uname = 'Linux', session = '', env = {}
       'exit 0',
     ]);
     writeStub(bin, 'uname', ['printf \'%s\\n\' "$OCUPILOT_UNAME"']);
-    const argv = args.map((arg) => (arg === '<scratch>' ? scratch : arg));
+    const argv = args.map((arg) => (arg === '<scratch>' ? scratch : arg.replace('<dir>', () => dir)));
     const spawnEnv = stubEnv(bin, {
       OCUPILOT_DOCKER_CAPTURE: capture,
       OCUPILOT_COMPOSE_LS: typeof ls === 'function' ? ls(scratch) : ls,
@@ -1953,6 +2009,88 @@ test('the scratch-root guard admits a directory under $HOME/.ocupilot-throwaways
   assert.equal(slash.status, 2, `and so is the root with a trailing slash: ${slash.output}`);
   const relative = runThrowaway(['logs', '--dir', 'rel/.ocupilot-throwaways/x'], { env: { HOME: 'rel', TMPDIR: '/nonexistent-tmp-dw2034' } });
   assert.equal(relative.status, 2, `a relative HOME admits nothing: ${relative.output}`);
+});
+
+// Mutation (Rule 19): revert the guard to the raw `$TMPDIR` arm with no plain-spelling case and no
+// link test -> every refusal below exits 0, and each is reached through `logs`, which makes no
+// docker call when no compose file exists.
+test("the scratch-root guard refuses a root reached through TMPDIR=/, a sibling, '//', '/./' or a symbolic link (DW-235)", () => {
+  const home = '/nonexistent-home-dw235';
+  const tmp = '/nonexistent-tmp-dw235';
+  const plain = /must name its directory plainly/;
+  const outside = /is not under a scratch root/;
+  const either = /is not under a scratch root|must name its directory plainly/;
+  const link = /is a symbolic link/;
+  const refusals = [
+    ['TMPDIR=/ admits no path', ['logs', '--dir', '/nonexistent-dw235/x'], { TMPDIR: '/' }, outside],
+    ['TMPDIR=// admits no path', ['logs', '--dir', '/nonexistent-dw235/x'], { TMPDIR: '//' }, outside],
+    ['a relative TMPDIR admits nothing', ['logs', '--dir', 'rel/x'], { TMPDIR: 'rel' }, outside],
+    ['a sibling of TMPDIR is not inside it', ['logs', '--dir', `${tmp}x`], { TMPDIR: tmp }, outside],
+    ["a root spelled with a trailing '//' is the root", ['logs', '--dir', '/tmp//'], {}, either],
+    ["'/./' inside the path", ['logs', '--dir', '/tmp/./x'], {}, plain],
+    ["'//' inside the path", ['logs', '--dir', '/tmp//x'], {}, plain],
+    ["a trailing '/.'", ['logs', '--dir', '/tmp/x/.'], {}, plain],
+    ["the local root spelled with a trailing '//'", ['logs', '--dir', `${home}/.ocupilot-throwaways//`], {}, either],
+  ];
+  for (const [label, args, env, message] of refusals) {
+    const run = runThrowaway(args, { env: { HOME: home, TMPDIR: tmp, ...env } });
+    assert.equal(run.status, 2, `${label}: ${run.output}`);
+    assert.match(run.output, message, `${label}: the refusal says why`);
+    assert.equal(run.calls, '', `${label}: no docker command ran`);
+  }
+
+  // The link fixtures live in the run's own temporary directory, which the helper removes.
+  const asDirectory = runThrowaway(['logs', '--dir', '<dir>/link'], { setup: ({ dir, scratch }) => symlinkSync(scratch, join(dir, 'link')) });
+  assert.equal(asDirectory.status, 2, `a --dir that is a symbolic link is refused: ${asDirectory.output}`);
+  assert.match(asDirectory.output, link);
+  assert.equal(asDirectory.calls, '', 'and no docker command ran');
+  const asDirectorySlash = runThrowaway(['logs', '--dir', '<dir>/link/'], { setup: ({ dir, scratch }) => symlinkSync(scratch, join(dir, 'link')) });
+  assert.equal(asDirectorySlash.status, 2, `a symbolic link spelled with a trailing slash is still refused: ${asDirectorySlash.output}`);
+  assert.match(asDirectorySlash.output, link);
+  assert.equal(asDirectorySlash.calls, '', 'and no docker command ran');
+  const asData = runThrowaway(['logs', '--dir', '<scratch>'], {
+    setup: ({ dir, scratch }) => {
+      mkdirSync(join(dir, 'elsewhere'));
+      symlinkSync(join(dir, 'elsewhere'), join(scratch, 'data'));
+    },
+  });
+  assert.equal(asData.status, 2, `a data directory that is a symbolic link is refused: ${asData.output}`);
+  assert.match(asData.output, link);
+  assert.match(asData.output, /\/data' is a symbolic link/, 'naming the link and not its parent');
+  assert.equal(asData.calls, '', 'and no docker command ran');
+
+  // The spellings the matrix keeps admitting. The /tmp directory is a real one this test makes, with
+  // no compose file in it, so the admitted half is held against a guard that refuses real directories.
+  const absent = mkdtempSync('/tmp/ocupilot-dw235-');
+  try {
+    for (const [label, dir, env] of [
+      ['a directory under /tmp', absent, {}],
+      ['a directory under the local root', `${home}/.ocupilot-throwaways/ocupilot-ci`, {}],
+      ['a directory under TMPDIR', `${tmp}/x`, { TMPDIR: tmp }],
+      ['a directory under a TMPDIR with a trailing slash', `${tmp}/x`, { TMPDIR: `${tmp}/` }],
+    ]) {
+      const run = runThrowaway(['logs', '--dir', dir], { env: { HOME: home, TMPDIR: tmp, ...env } });
+      assert.equal(run.status, 0, `${label} is admitted: ${run.output}`);
+      assert.equal(run.calls, '', `${label}: no compose file, so no docker command`);
+    }
+    // One trailing slash is admitted and comes off, so the compose file's path is the one Compose lists.
+    const slash = runThrowaway(['logs', '--dir', `${absent}/`], { env: { HOME: home, TMPDIR: tmp } });
+    assert.equal(slash.status, 0, `a directory with one trailing slash is admitted: ${slash.output}`);
+    assert.ok(slash.output.includes(`no compose file at ${absent}/compose.yml;`), 'and names its compose file with a single separator');
+  } finally {
+    rmSync(absent, { recursive: true, force: true });
+  }
+});
+
+// Mutation (Rule 19): drop `stop_grace_period` from the compose file the here-doc writes -> red.
+// Docker's own stop timeout is about 3 s on Docker Desktop, and IRIS needs up to about 5 s to stop
+// its user jobs, so a throwaway without it is killed mid-shutdown on every stop.
+test('the throwaway compose gives the iris service a 60 s stop grace period (DW-1762)', () => {
+  const throwaway = withoutShellComments(readFileSync(join(REPO_ROOT, 'scripts', 'ci-throwaway.sh'), 'utf8'));
+  const from = throwaway.search(/^ {2}iris:\s*$/m);
+  const to = throwaway.search(/^ {2}durable-init:\s*$/m);
+  assert.ok(from > 0 && to > from, 'the generated compose declares the iris service before durable-init');
+  assert.match(throwaway.slice(from, to), /^ {4}stop_grace_period: 60s$/m, 'and the iris service waits up to 60 s for IRIS to stop');
 });
 
 const dataAnswer = (fields) => `%SYS>\nOCUPILOT-DATCHECK-START:${fields}:OCUPILOT-DATCHECK-END\n%SYS>`;
@@ -2191,6 +2329,7 @@ test('the throwaway start path is the one docker-compose.yml ships', () => {
   };
   for (const [key, name, pattern] of [
     ['restart policy', 'iris', /restart:\s*(\S+)/],
+    ['stop grace period', 'iris', /stop_grace_period:\s*(\S+)/],
     ['start hook command', 'iris', /command:\s*(\[.*\])/],
     ['healthcheck test', 'iris', /test:\s*(\[.*\])/],
     ['healthcheck interval', 'iris', /interval:\s*(\S+)/],
@@ -2445,6 +2584,46 @@ test('DW-1276: neither comment form is an arming declaration', () => {
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
+});
+
+// Mutations (Rule 19): remove one variable's name from docs/DEVELOPMENT.md -> red naming it as
+// missing. Name a variable ci-throwaway.sh does not set -> red naming it as unknown.
+test('DW-432: docs/DEVELOPMENT.md names every arming variable the throwaway sets, and no other', () => {
+  const declared = declaredArmingRosters(readFileSync(join(REPO_ROOT, 'scripts', 'ci-throwaway.sh'), 'utf8')).map((roster) => roster.variable);
+  assert.ok(declared.length >= 7, `expected at least seven arming variables, found ${declared.length}`);
+  const doc = readFileSync(join(REPO_ROOT, 'docs', 'DEVELOPMENT.md'), 'utf8');
+  const named = [...new Set(doc.match(/OCUPILOT_ALLOW_[A-Z_]+/g) ?? [])];
+  assert.deepEqual(
+    declared.filter((variable) => !named.includes(variable)),
+    [],
+    'every variable ci-throwaway.sh sets is named in docs/DEVELOPMENT.md (Armed test classes)'
+  );
+  assert.deepEqual(
+    named.filter((variable) => !declared.includes(variable)),
+    [],
+    'and every OCUPILOT_ALLOW_* name the document carries is one ci-throwaway.sh sets'
+  );
+});
+
+// Mutations (Rule 19): rename the paragraph's bold lead in docs/DEVELOPMENT.md, or end the paragraph
+// before its variable list -> red, while the whole-document pin above stays green.
+test('DW-432: the section the runner hint cites is the paragraph of docs/DEVELOPMENT.md that names the arming variables', () => {
+  const [line] = classifyFailureDetail('X', { runIndex: 44, total: 0, failed: 0, landed: true }, [
+    { class: 'OcuPilot.Test.Armed', method: '', action: 'OnBeforeAllTests', error: 'OCUPILOT_ALLOW_PRINCIPALS', asserts: [] },
+  ]);
+  const cited = /\(docs\/DEVELOPMENT\.md, ([^)]+)\)/.exec(line);
+  assert.ok(cited, `the hint cites a section of docs/DEVELOPMENT.md: ${line}`);
+  const doc = readFileSync(join(REPO_ROOT, 'docs', 'DEVELOPMENT.md'), 'utf8');
+  const at = doc.indexOf(`**${cited[1]}`);
+  assert.ok(at >= 0, `docs/DEVELOPMENT.md has a paragraph led by "${cited[1]}", the section the hint cites`);
+  const paragraph = doc.slice(at).split(/\n[ \t]*\n/, 1)[0];
+  const inParagraph = new Set(paragraph.match(/OCUPILOT_ALLOW_[A-Z_]+/g) ?? []);
+  const declared = declaredArmingRosters(readFileSync(join(REPO_ROOT, 'scripts', 'ci-throwaway.sh'), 'utf8')).map((roster) => roster.variable);
+  assert.deepEqual(
+    declared.filter((variable) => !inParagraph.has(variable)),
+    [],
+    'and that paragraph, not some other part of the document, names every variable ci-throwaway.sh sets'
+  );
 });
 
 // --- The bounded bind retry (DW-439) ---------------------------------------------------------

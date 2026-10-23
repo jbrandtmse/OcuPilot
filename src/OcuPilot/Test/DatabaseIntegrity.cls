@@ -4,8 +4,8 @@
 /// mint and confirm -- with the body the port sends and the report it leaves; the set id's canonical
 /// spelling (AD-13); the refusals, each before any vendor call; the Integrity log's list, pages and rows
 /// (<class>OcuPilot.Port.LogSourcePort</class>, live and through
-/// <class>OcuPilot.Test.LogSourceFixture</class>); a least-privileged reader over the wire; and the
-/// vendor query's columns the log reads.</p>
+/// <class>OcuPilot.Test.LogSourceFixture</class>); the report's leaving the process's null device as it
+/// found it; a least-privileged reader over the wire; and the vendor query's columns the log reads.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed and both
 /// <parameter>ARMINGVARIABLE</parameter> and <parameter>PRINCIPALSVARIABLE</parameter> reading
 /// <code>1</code>, because the class creates, checks and deletes probe databases
@@ -387,6 +387,71 @@ Method TestADamagedBlockIsReportedAsErrors()
     Do $$$AssertTrue(tMarkedGlobal && tDescribed, "the damaged global's row is an error, and the description's an info row")
 }
 
+/// <p>The report leaves the process's null device as it found it: the vendor's DTL and BPL
+/// compile routes <code>Use</code> that device without opening it, so a device the process had open is
+/// still open after a report, with its output not redirected, and one it had not is not left open, and
+/// the current device is the same. One check's report, confirmed as this test's by its listing, is
+/// rendered with the null device closed and with it open, then with its output global broken so the
+/// report raises inside the capture, again closed and open; the test puts the global and its own
+/// process's null device back as it found them.</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Port.LogSourcePort.IntegrityReport</method> closes the null
+/// device whether or not it opened it -> the open-beforehand leg goes red; closes it in its raise's
+/// <code>Catch</code> -> the open raising leg goes red; turns redirection on only when it opened the
+/// device -> the open leg's listing goes red; leaves redirection on -> the open legs go red.</p>
+Method TestTheReportLeavesTheNullDeviceAsItFoundIt()
+{
+    Set tNull = ##class(%Library.Device).GetNullDevice()
+    Set tWasOpen = (..UseWithoutOpening(tNull) = "")
+    Set tA = ..AddProbe("OCUPROBE184IA", 1)
+    Do $$$AssertEquals(..Check(tA), 200, "a check is run")
+    Set tSC = $ClassMethod(..#LOG, "Files", ..#SOURCE, .tFiles, .tHttp, .tFault)
+    Set tCheck = $Select($IsObject($Get(tFiles)) && $IsObject(tFiles.files.%Get(0)): tFiles.files.%Get(0).%Get("name"), 1: "")
+    Do $$$AssertTrue(tCheck '= "", "the check is listed")
+    If tCheck = "" Quit
+    Set tListing = "Directory: " _ tA
+    Set tIO = $IO
+    Try {
+        If ..UseWithoutOpening(tNull) = "" Close tNull
+        Set tSC = $ClassMethod(..#LOG, "IntegrityReport", tCheck, .tStream)
+        Do $$$AssertStatusOK(tSC, "the report renders with the null device closed")
+        Set tOwn = ..StreamHolds(tStream, tListing)
+        Do $$$AssertTrue(tOwn, "with the listing Display wrote, of this test's check (" _ tListing _ ")")
+        Do $$$AssertEquals(..UseWithoutOpening(tNull), "<NOTOPEN>", "a null device the process had not opened is not left open")
+        Do $$$AssertEquals($IO, tIO, "and the current device is the caller's")
+        Open tNull:::1
+        Set tSC = $ClassMethod(..#LOG, "IntegrityReport", tCheck, .tStream)
+        Do $$$AssertStatusOK(tSC, "the report renders with the null device open")
+        Do $$$AssertTrue(..StreamHolds(tStream, tListing), "and captures the listing Display wrote")
+        Do $$$AssertEquals(..UseWithoutOpening(tNull, .tRedirected) _ "|" _ tRedirected, "|0", "a null device the process had open is still open, so a Use that does not open it first succeeds, and its output is not left redirected")
+        Do $$$AssertEquals($IO, tIO, "and the current device is the caller's")
+        Close tNull
+        Set tNode = ..OutputNodeOf(tCheck)
+        Set tHolds = (tNode '= "") && ($Data(@tNode) # 2)
+        Do $$$AssertTrue(tHolds, "the check's output global holds its top node")
+        If tHolds && tOwn {
+            Set tSaved = @tNode
+            For tOpen = 0, 1 {
+                Set tState = $Select(tOpen: "open", 1: "closed")
+                If tOpen Open tNull:::1
+                Set @tNode = "not a list"
+                Set tSC = $ClassMethod(..#LOG, "IntegrityReport", tCheck, .tStream)
+                Set @tNode = tSaved
+                Do $$$AssertStatusNotOK(tSC, "with the null device " _ tState _ ", a report that raises answers the error")
+                Do $$$AssertTrue($IsObject(tStream) && (tStream.Size > 0), "raised after its capture began, its first heading in the stream")
+                Do $$$AssertEquals(..UseWithoutOpening(tNull, .tRedirected) _ "|" _ tRedirected, $Select(tOpen: "|0", 1: "<NOTOPEN>|"), "and leaves the null device " _ tState _ ", its output not redirected")
+                Do $$$AssertEquals($IO, tIO, "and the current device the caller's")
+                If tOpen Close tNull
+            }
+        }
+    } Catch ex {
+        Do $$$AssertStatusOK(ex.AsStatus(), "the legs ran to the end")
+    }
+    If $Data(tSaved) Set @tNode = tSaved
+    If ..UseWithoutOpening(tNull) = "" Close tNull
+    If $IO '= tIO Use tIO
+    If tWasOpen Open tNull:::1
+}
+
 /// <p>A least-privileged reader over the wire (AC7, Task 0): a principal holding
 /// <code>%Admin_Operate:USE</code> and <code>%DB_IRISSYS:READ</code> alone lists the checks and pages the
 /// newest; one holding <code>%Admin_Manage:USE</code> in its place is refused 403 naming it on both
@@ -531,6 +596,49 @@ ClassMethod AnyHolds(pLines As %List, pText As %String) As %Boolean
         If $ListGet(pLines, tI) [ pText Set tFound = 1 Quit
     }
     Quit tFound
+}
+
+/// <p>The extended reference, from the caller's namespace, to the top node of check <var>pCheck</var>'s
+/// output global in <code>%SYS</code>, or <code>""</code> when the check does not open or names none.</p>
+ClassMethod OutputNodeOf(pCheck As %String) As %String
+{
+    Set tOrigNS = $NAMESPACE
+    Set tGlobal = ""
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set tOpened = $ClassMethod("SYS.BackgroundIntegrity", "%OpenId", pCheck)
+        If $IsObject(tOpened) Set tGlobal = tOpened.GetOutputGlobal()
+    } Catch ex {
+        Set tGlobal = ""
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit $Select($Extract(tGlobal) = "^": "^|""%SYS""|" _ $Extract(tGlobal, 2, *), 1: "")
+}
+
+/// <p>What a bare <code>Use</code> of <var>pDevice</var>, as the vendor's compile routes issue it, raises
+/// in this process (<code>&lt;NOTOPEN&gt;</code> for a device it has not opened), or <code>""</code>
+/// when it succeeds, with the device's redirection switch in <var>pRedirected</var>; the current device
+/// is the same after the call.</p>
+ClassMethod UseWithoutOpening(pDevice As %String, Output pRedirected As %String) As %String
+{
+    Set tIO = $IO
+    Set (tRaised, pRedirected) = ""
+    Try {
+        Use pDevice
+        Set pRedirected = ##class(%Library.Device).ReDirectIO()
+    } Catch ex {
+        Set tRaised = ex.Name
+    }
+    If tRaised = "" Use tIO
+    Quit tRaised
+}
+
+/// <p>Whether the report stream <var>pStream</var> holds <var>pText</var>.</p>
+ClassMethod StreamHolds(pStream, pText As %String) As %Boolean
+{
+    If '$IsObject(pStream) Quit 0
+    Do pStream.Rewind()
+    Quit (pStream.Read(3000000) [ pText)
 }
 
 /// <p>The code of the fault <var>pFault</var>, or <code>""</code>.</p>

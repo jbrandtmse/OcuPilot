@@ -68,7 +68,7 @@ XData Declaration
       {"field": "Updatable", "labelKey": "explorerSqlColumnUpdatable", "kind": "status"},
       {"field": "CheckOption", "labelKey": "explorerSqlColumnCheckOption", "kind": "text"},
       {"field": "ClassType", "labelKey": "explorerSqlColumnClassType", "kind": "text"},
-      {"field": "Text", "labelKey": "explorerSearchTextLabel", "kind": "text"}
+      {"field": "Text", "labelKey": "explorerSearchTextLabel", "kind": "text", "long": true}
     ],
     "emptyNextKey": "tableReadOnlyEmptyNext",
     "emptyAgentKey": ""

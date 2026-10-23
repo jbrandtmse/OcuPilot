@@ -35,7 +35,8 @@ Method TestTheAreaIsTheEighthRailItem()
     If '$IsObject(tArea) Quit
     Do $$$AssertEquals(tArea.railPosition _ "|" _ tArea.labelKey _ "|" _ tArea.navigates _ "|" _ tArea.pinBottom, "8|navAreaSystemExplorer|0|0", "rail position 8, its own label, not navigating, not pinned")
     Do $$$AssertEquals(tArea.privileges.%ToJSON(), ..#PAIRS, "gated on %Development:USE alone")
-    Do $$$AssertEquals(##class(OcuPilot.Screen.Area).Find("agent").railPosition, 11, "Agent co-pilot sits at 11")
+    Do $$$AssertStatusOK(##class(OcuPilot.Screen.Area).List(.tAreas), "the declared areas read")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Area).Find("agent").railPosition, tAreas.%Size(), "Agent co-pilot sits last, at the area count")
     Set tSC = ##class(OcuPilot.Screen.Registry).ListedScreensForArea("system-explorer", .tListed)
     Do $$$AssertStatusOK(tSC, "the side bar reads")
     Do $$$AssertEquals($ListToString(tListed), "OcuPilot.Screen.Descriptor.ExplorerClassList,OcuPilot.Screen.Descriptor.ExplorerRoutineList,OcuPilot.Screen.Descriptor.ExplorerSearch,OcuPilot.Screen.Descriptor.ExplorerCompare,OcuPilot.Screen.Descriptor.ExplorerMacro,OcuPilot.Screen.Descriptor.ExplorerSqlSchemas,OcuPilot.Screen.Descriptor.ExplorerSqlTables,OcuPilot.Screen.Descriptor.ExplorerSqlViews,OcuPilot.Screen.Descriptor.ExplorerSqlProcedures,OcuPilot.Screen.Descriptor.ExplorerSqlQuery,OcuPilot.Screen.Descriptor.ExplorerSqlData,OcuPilot.Screen.Descriptor.ExplorerDocDbList", "its side bar lists Classes, Routines, Search, Compare, Macros, SQL schemas, SQL tables, SQL views, SQL procedures, SQL query, Data browser and Document databases")
@@ -409,6 +410,29 @@ Method TestTheStatementsToolsEndWithTheStatisticsNote()
     Do $$$AssertStatusOK(tSC, "explorer.sqltable.read resolves")
     Set tDescription = $Select($IsObject($Get(tEntry)): ##class(OcuPilot.Screen.Tool.Registry).DescriptionOf(tEntry), 1: "")
     Do $$$AssertEquals(tDescription, "Read the rows the explorer.sqltable screen lists, bounded and with secret fields removed.", "explorer.sqltable.read's description is the read sentence alone")
+}
+
+/// <p>The three columns whose value can run past its cell declare <code>long</code>, so the table
+/// shows the selected or only row's value whole beneath the rows: a view's <code>Text</code>, a
+/// procedure's <code>Description</code> and a trigger's <code>Code</code>. No other column of those
+/// three declares it, and each declaration validates.</p>
+/// <p>Mutation (Rule 19): drop <code>"long": true</code> from
+/// <class>OcuPilot.Screen.Descriptor.ExplorerSqlView</class> -- its leg goes red alone.</p>
+Method TestTheLongTextColumnsDeclareLong()
+{
+    For tCase = $ListBuild("ExplorerSqlView", "Text"), $ListBuild("ExplorerSqlProcedure", "Description"), $ListBuild("ExplorerSqlTriggers", "Code") {
+        Set tClass = "OcuPilot.Screen.Descriptor." _ $List(tCase, 1)
+        Set tSC = $ClassMethod(tClass, "DeclarationJson", .tDeclaration)
+        Do $$$AssertStatusOK(tSC, tClass _ ": the declaration parses")
+        If $$$ISERR(tSC) Continue
+        Set tLong = ""
+        Set tIterator = tDeclaration.table.columns.%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tColumn) {
+            If tColumn.%Get("long") = 1 Set tLong = tLong _ $Select(tLong = "": "", 1: ",") _ tColumn.field
+        }
+        Do $$$AssertEquals(tLong, $List(tCase, 2), tClass _ ": its one long column is " _ $List(tCase, 2))
+        Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ReadProblem(tDeclaration), "", tClass _ ": the declaration validates")
+    }
 }
 
 /// <p>Stories 19.5 AC6 and 19.14 AC9: a custom resource an operator assigns to the classic SQL page

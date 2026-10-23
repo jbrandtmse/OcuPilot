@@ -15,6 +15,7 @@ import type { ScreenDeclaration } from '../../core/screens.generated';
 import { STRINGS, stringFor } from '../../core/strings';
 import { COMMAND_BAR_FILTER_ID } from '../../shell/command-bar';
 import { DataTable } from '../../shell/data-table';
+import { ScreenActionDialogs } from '../../shell/screen-action-dialogs';
 import { Dialog } from '../../shell/dialog';
 import { AuditSearch } from './audit.store';
 
@@ -67,7 +68,7 @@ interface AuditView {
 @Component({
   selector: 'app-audit-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DataTable, Dialog],
+  imports: [DataTable, Dialog, ScreenActionDialogs],
   template: `<section class="ocu-list-page">
     @if (list; as view) {
       <form class="ocu-criteria-form" (submit)="onSearch($event)">
@@ -105,21 +106,26 @@ interface AuditView {
           }
         </div>
         <p class="ocu-criteria-hint">{{ STRINGS.auditCriteriaTimeHint }}</p>
-        <p class="ocu-criteria-hint">{{ STRINGS.auditCriteriaNameHint }}</p>
+        @if (hasMarker) {
+          <p class="ocu-criteria-hint">{{ STRINGS.auditCriteriaNameHint }}</p>
+        }
         <div class="ocu-criteria-controls">
           <button type="submit" class="ocu-button-primary">{{ STRINGS.auditCriteriaSearch }}</button>
-          <label class="ocu-criteria-marker" [id]="markerLabelId">
-            <input
-              type="checkbox"
-              data-ocu-marker="filter"
-              [checked]="markerOn"
-              (change)="onMarker($event)"
-            />
-            {{ STRINGS.auditMarkerFilterLabel }}
-          </label>
+          @if (hasMarker) {
+            <label class="ocu-criteria-marker" [id]="markerLabelId">
+              <input
+                type="checkbox"
+                data-ocu-marker="filter"
+                [checked]="markerOn"
+                (change)="onMarker($event)"
+              />
+              {{ STRINGS.auditMarkerFilterLabel }}
+            </label>
+          }
         </div>
       </form>
       <app-data-table [screen]="view.screen" [store]="view.store" (focusFilter)="onFocusFilter()" />
+      <app-screen-action-dialogs [descriptor]="view.screen.descriptor" />
       @if (detail; as row) {
         <app-dialog
           [heading]="STRINGS.auditDialogTitle"
@@ -191,6 +197,7 @@ export class AuditPage {
     }
     const store = this.stores.for(screen.descriptor, screen.refreshRates);
     this.list = { screen, store };
+    this.search.adopt(screen.descriptor);
 
     // Bound on every open. The dialog round trip re-binds the same descriptor with the same
     // closure, which `bind` treats as a no-op that keeps `hasLoaded`, so it reads nothing.
@@ -272,6 +279,14 @@ export class AuditPage {
       value: this.search.value(field.param),
       unavailable: this.search.overriddenByMarker(screen, field.param),
     }));
+  }
+
+  /**
+   * Whether the screen declares an agent-marker filter. The marker checkbox and the comma-separated-names hint belong to the
+   * audit criteria that carry one; another `list (server criteria)` screen (Story 20.9's Messages) shows neither.
+   */
+  protected get hasMarker(): boolean {
+    return (this.list?.screen.read?.criteria?.marker ?? null) !== null;
   }
 
   protected get markerOn(): boolean {

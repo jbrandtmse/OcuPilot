@@ -167,11 +167,12 @@ ClassMethod ProjectRow(pRow, pFieldList As %List, ByRef pDroppedFields As %List)
 /// <p>A tool is bound to a descriptor when its list entry's <code>descriptor</code> or its class's
 /// <code>DESCRIPTORCLASS</code> is that descriptor. The read group is every read tool bound to
 /// <var>pDescriptor</var>. The write group is every write tool bound to it that carries one of its
-/// declared row actions (<code>ScreenActionIds</code>) or, when it declares a primary action,
-/// creates its target (<code>Creates()</code>). A declared row action no tool bound to
+/// declared row actions (<code>ScreenActionIds</code>), creates its target when it declares a primary
+/// action (<code>Creates()</code>), or declares <code>SCREENLISTED</code> 1 (an agent-only write the screen
+/// lists although no action carries it, Story 20.16). A declared row action no tool bound to
 /// <var>pDescriptor</var> carries is resolved against the descriptor its <code>parentScope</code>
-/// route names. A screen that declares no read, no action and no parent -- a form page -- answers
-/// <code>[]</code>. An unadvertised tool is never listed (AD-53).</p>
+/// route names. A form page lists only the read tools bound to it (Stories 19.11 and 20.35). An
+/// unadvertised tool is never listed (AD-53).</p>
 /// <p>A tool list that cannot be built returns its error, with <var>pTools</var> empty.
 /// <var>pList</var> is the tool list it read, for a caller that would otherwise build it again
 /// (<method>Unavailable</method>), and <code>""</code> on an error.</p>
@@ -206,7 +207,7 @@ ClassMethod ScreenTools(pDescriptor As %String, Output pTools As %DynamicArray, 
                 Set tCarries = 1
                 If '$ListFind(tCarried, tAction) Set tCarried = tCarried _ $ListBuild(tAction)
             }
-            If tCarries || (tHasPrimary && ..CreatesTarget(tEntry)) Set tWrite(tName) = ""
+            If tCarries || (tHasPrimary && ..CreatesTarget(tEntry)) || ..ScreenListed(tEntry) Set tWrite(tName) = ""
         }
 
         Set tUnreached = ""
@@ -315,6 +316,15 @@ ClassMethod ActionIds(pEntry As %DynamicObject) As %List [ Private ]
     Set tClass = pEntry.%Get("class")
     If (tClass = "") || '##class(%Dictionary.CompiledMethod).%ExistsId(tClass _ "||ScreenActionIds") Quit ""
     Quit $ClassMethod(tClass, "ScreenActionIds")
+}
+
+/// <p>Whether the write tool <var>pEntry</var> declares <code>SCREENLISTED</code> 1: its class lists the
+/// tool in the context of the screen it is bound to, whatever that screen declares.</p>
+ClassMethod ScreenListed(pEntry As %DynamicObject) As %Boolean [ Private ]
+{
+    Set tClass = pEntry.%Get("class")
+    If tClass = "" Quit 0
+    Quit ''+$Parameter(tClass, "SCREENLISTED")
 }
 
 /// <p>Whether the write tool <var>pEntry</var> creates its target (AD-54).</p>
