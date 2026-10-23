@@ -56,9 +56,6 @@ Property UserName As %String(MAXLEN = 160);
 /// <p>The namespace the statement runs in.</p>
 Property Namespace As %String(MAXLEN = 64);
 
-/// <p>The run's kind: <parameter>KINDSQL</parameter> or <parameter>KINDMDX</parameter>.</p>
-Property Kind As %String(MAXLEN = 16) [ InitialExpression = "sql" ];
-
 /// <p>One of the five <code>STATE*</code> parameter values.</p>
 Property State As %String(MAXLEN = 16);
 
@@ -81,6 +78,16 @@ Property EndedAt As %String(MAXLEN = 32);
 /// the run ends and read back whole by its owner's poll, never queried by member. A stream because a
 /// run answer holds up to 1,000,000 characters of rows.</p>
 Property Answer As %Stream.GlobalCharacter;
+
+/// <p>The run's kind: <parameter>KINDSQL</parameter> or <parameter>KINDMDX</parameter>.</p>
+/// <p><b>Declared after every other property, and a property added later goes after this one.</b>
+/// This class carries no Storage section, so the compiler numbers each stored property's data slot
+/// by declaration order, and a property declared before an existing one shifts the slot of every
+/// property after it in every stored row.</p>
+/// <p><b>Added with no <code>SCHEMAVERSION</code> move</b> (Consistency Conventions): a row stored
+/// before this property existed reads it back empty, which every reader treats as
+/// <parameter>KINDSQL</parameter>, so no older row is reinterpreted.</p>
+Property Kind As %String(MAXLEN = 16) [ InitialExpression = "sql" ];
 
 Index RunKeyIdx On RunKey [ Unique ];
 

@@ -3,8 +3,9 @@
 /// instance cap, ends the owner's lost run before it counts, replaces the owner's ended run and sweeps
 /// even when it refuses; begin, finish and the cancel flag; the owner's view and nobody else's; a lost
 /// run ended <code>failed</code> while a held one stays live; a cancel of a lost run reported not live,
-/// naming no job, and the run ended <code>canceled</code>; and the sweep, through its clock seam
-/// and never ahead of the instance's clock, deleting only a run past retention.</p>
+/// naming no job, and the run ended <code>canceled</code>; the sweep, through its clock seam
+/// and never ahead of the instance's clock, deleting only a run past retention;
+/// and the data slots a row stored by release 1.0.12 is read from (Story 20.37).</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed. It writes rows for three owner
 /// names no account holds (<parameter>USERA</parameter>, <parameter>USERB</parameter>,
 /// <parameter>USERC</parameter>) and removes every row of theirs after each test; one test starts a
@@ -361,6 +362,22 @@ Method TestLookupsMatchTheKindAndARowWithNoKindReadsAsSql()
     Do $$$AssertEquals(tRequested, 1, "and reads as asked")
     Do $$$AssertStatusOK($ClassMethod(..#STORE, "GuardedCancelRequested", tSql, .tRequested), "a row nobody canceled")
     Do $$$AssertEquals(tRequested, 0, "reads as not asked")
+}
+
+/// <p>Consistency Conventions, new properties on a stored class: the run row's data slots hold, in order, the ten columns a row stored by
+/// release 1.0.12 was written with, and then <code>Kind</code>, so such a row reads each column where it wrote it and reads <code>Kind</code>
+/// empty. A slot after the 11th, a property added later, is not checked.</p>
+/// <p>Mutation (Rule 19): declare <code>Kind</code> directly after <code>Namespace</code> in
+/// <class>OcuPilot.Kernel.State.SqlRun</class> -- every slot after <code>Namespace</code> moves and this goes red.</p>
+Method TestARunStoredBeforeKindKeepsEachColumnInItsSlot()
+{
+    Set tExpected = $ListBuild("RunKey", "UserName", "Namespace", "State", "JobId", "CancelRequested", "QueuedAt", "StartedAt", "EndedAt", "Answer", "Kind")
+    Set tActual = ""
+    For tSlot = 1:1:$ListLength(tExpected) {
+        Set tValue = ##class(%Dictionary.CompiledStorageDataValue).%OpenId(..#STORE _ "||Default||SqlRunDefaultData||" _ tSlot)
+        Set tActual = tActual _ $ListBuild($Select($IsObject(tValue): tValue.Value, 1: ""))
+    }
+    Do $$$AssertEquals($ListToString(tActual), $ListToString(tExpected), "the first 11 data slots of a run row")
 }
 
 }

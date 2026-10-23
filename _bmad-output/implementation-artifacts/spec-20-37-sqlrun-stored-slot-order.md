@@ -2,12 +2,21 @@
 title: 'Story 20.37: SqlRun stored slot order'
 type: 'bugfix'
 created: '2026-10-22'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: 'dd2d53f226cd489de34752ccac873030642c842b'
 review_loop_iteration: 0
 followup_review_recommended: false
 context: []
 warnings: [oversized]
-deferred: []
+deferred:
+  - summary: >-
+      No test replaces an owner's ended run whose Kind is NULL through GuardedReserve's ended-row delete, so dropping COALESCE(Kind, 'sql') there would redden nothing.
+    evidence: |-
+      TestLookupsMatchTheKindAndARowWithNoKindReadsAsSql sets Kind = NULL on a live row only; its reserve is refused busy before the delete runs. TestANewRunReplacesTheOwnersEndedRun and TestAnOwnerHasOneLiveRunOfEachKind replace rows that store sql or mdx explicitly; no test inserts a row by SQL. The reader is Story 20.33's and is unchanged here, and Design Notes "AC2 pins it" covers the lookup and the busy refusal, not this delete.
+      Settle it with a NULL-kind ended-row leg in TestANewRunReplacesTheOwnersEndedRun; this story's intent bars changing an existing test method and adding a second one.
+    location: >-
+      src/OcuPilot/Kernel/State/SqlRun.cls:143
+    severity: low
 ---
 
 <intent-contract>
@@ -88,6 +97,19 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Lines were
 
 ## Review Triage Log
 
+### 2026-10-22 — Review pass
+
+- verdicts: 8 findings — high 0, medium 0, low 4, false 4, maybe-false 0 (the one `patch` row is a verification action, not a code change)
+- findings:
+  - `[low]` `[defer]` No test replaces an owner's ended NULL-kind run through `GuardedReserve`'s ended-row delete (`SqlRun.cls:143`) — real and pre-existing (Story 20.33's reader and tests); the intent bars a second method or a changed one, so it is in `deferred:`. The reviewer's other suggestion, editing Design Notes "AC2 pins it", is rejected as a spec edit; the lead can correct that sentence when harvesting.
+  - `[low]` `[patch]` The throwaway's latest `SqlRunStore` run read red (run 15, the AC1 mutation run) after the revert and reload — true; closed by re-running the class once: run 16, 14 of 14 green. No code changed.
+  - `[false]` `[reject]` The spec records no AC3 or loop-command evidence and its Auto Run Result still reads as planning text — Finalize writes both in this pass.
+  - `[low]` `[reject]` The new test reads the compiled storage map, not a stored 1.0.12 row — the intent pins "one test method ... the compiled slot order", the Design Notes decline a hand-built row, and the 1.0.13 upgrade re-check is the end-to-end proof; a row-reading test would add fragile shared-global setup.
+  - `[false]` `[reject]` Matrix row 1 loads over the 20.33 compile, whereas an upgrade loads over a 1.0.12 compile — the mutation went red and green on the same throwaway across reloads, which shows the load rebuilds the map from declaration order; an update from 1.0.12 starts from a map with no `Kind`, which the same rule yields.
+  - `[false]` `[reject]` `Kind`'s doc grows beyond a pure move — the `SqlRun.cls` task and AC3 name the two added paragraphs; the doc is not code, and no reader of `Kind` changed.
+  - `[false]` `[reject]` Existing tests "pass unchanged" and Task 0 are not shown in the diff — `SqlRunStore` ran 14 of 14 (runs 14 and 16), the eight-class batch ran green after the last change (runs 17-24), and Task 0 was measured on the throwaway before any edit.
+  - `[low]` `[reject]` Rows already written in 20.33's order on development instances stay inert and unmigrated — the Never list bars any migration; the spec records the reading as an inference, and `epic-20-context.md` :57 is the lead's to correct.
+
 ## Design Notes
 
 **Why moving the declaration is the whole fix.**
@@ -160,9 +182,27 @@ Shared surfaces: `SqlRun`'s compiled storage map. No other test reads it: `State
 | AC2 | `IdForOwner`'s statement compares `Kind = ?` without `COALESCE` | `TestLookupsMatchTheKindAndARowWithNoKindReadsAsSql` ("reads as SQL") |
 | AC3 | None: a scope criterion, checked by the diff | - |
 
+- mutation: `Kind` declared between `Namespace` and `State` again; whole `src` reloaded on `ocupilot-b-ci`; `SqlRunStore` red, `TestARunStoredBeforeKindKeepsEachColumnInItsSlot` alone (1 of 14); reverted (`SqlRun.cls` blob `8817f56b` before and after), reloaded, green (14 of 14).
+- mutation: `IdForOwner`'s statement compares `Kind = ?` without `COALESCE`; whole `src` reloaded on `ocupilot-b-ci`; `SqlRunStore` red, `TestLookupsMatchTheKindAndARowWithNoKindReadsAsSql` alone ("reads as SQL"); reverted (blob `8817f56b` before and after), reloaded, green (14 of 14).
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-Planned only (halt after planning). The spec moves `Kind` after `Answer` in `Kernel/State/SqlRun.cls` and pins slots 1-11 with one method in `Test/SqlRunStore.cls`, so no roster file changes. `SCHEMAVERSION` stays 1. DW-2500 is addressed. Nothing was created or changed on any instance; the `ocupilot-slot-b` probes were read-only.
+Implemented: `Kind` now follows `Answer` in `Kernel/State/SqlRun.cls`, so the compiled `SqlRunDefaultData` reads slots 1-10 `RunKey` to `Answer` and slot 11 `Kind` (measured on `ocupilot-b-ci`; before the edit slot 4 was `Kind`). Its doc gained the two spec paragraphs. `SqlRunStore` gained `TestARunStoredBeforeKindKeepsEachColumnInItsSlot` and the header phrase. `SCHEMAVERSION` stays 1; DW-2500 is addressed.
+
+Files changed:
+
+- `src/OcuPilot/Kernel/State/SqlRun.cls`: `Kind`'s block moved after `Answer`, doc grown.
+- `src/OcuPilot/Test/SqlRunStore.cls`: one new method and the header phrase.
+
+Review: 8 findings, no patch to code, 1 deferred (a NULL-kind ended-row leg for `GuardedReserve`'s delete, low), 6 rejected with reasons in the triage log, 1 closed by re-running the class. Follow-up review recommended: false.
+
+Verification, all on `ocupilot-b-ci`:
+
+- `SqlRunStore` 14 of 14 green (runs 14 and 16); the AC1 mutation (`Kind` back between `Namespace` and `State`) turned only the new method red (run 15), and the AC2 mutation turned only `TestLookupsMatchTheKindAndARowWithNoKindReadsAsSql` red; each reverted with `SqlRun.cls` blob `8817f56b` equal before and after, reloaded, green.
+- `(once)` batch of eight consumer classes green, 79 tests (runs 17-24).
+- `npm run test:tools` 2146 of 2146, `check-objectscript.py` 0 problems, `lint-docs.sh` 0 issues, and `git diff --stat` from `baseline_revision` lists `SqlRun.cls`, `SqlRunStore.cls` and this spec only.
+
+Residual risks: rows written in 20.33's order on development instances stay inert and unmigrated (the spec's inference); `epic-20-context.md` :57 still says such rows are swept 900 s after they end, which the lead should correct. The 1.0.13 upgrade re-check from `release/1.0.12` is the end-to-end proof and is the orchestrator's.
