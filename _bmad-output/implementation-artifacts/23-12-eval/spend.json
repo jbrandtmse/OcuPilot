@@ -1,0 +1,108 @@
+{
+  "note": "Live spend of Story 23.12 Task 0 and Task Z, priced conservatively: every input token at $0.625 a million, every output token at $2.50 a million. A Test connection call reports no usage and is priced at its bound.",
+  "caps": {
+    "phaseStart": 0.8,
+    "phase": 0.9,
+    "total": 2
+  },
+  "entries": [
+    {
+      "phase": "before",
+      "label": "before1023T1230 test connection (bound)",
+      "at": "2026-10-23T12:30:28.328Z",
+      "input": 5000,
+      "output": 1024,
+      "cost": 0.005685000000000001,
+      "estimated": true
+    },
+    {
+      "phase": "before",
+      "label": "before1023T1230 test connection (bound)",
+      "at": "2026-10-23T12:30:55.763Z",
+      "input": 5000,
+      "output": 1024,
+      "cost": 0.005685000000000001,
+      "estimated": true
+    },
+    {
+      "phase": "before",
+      "label": "before1023T1230 q1",
+      "at": "2026-10-23T12:31:04.831Z",
+      "input": 60826,
+      "output": 1351,
+      "cost": 0.04139375
+    },
+    {
+      "phase": "before",
+      "label": "before1023T1230 q2",
+      "at": "2026-10-23T12:31:21.036Z",
+      "input": 38202,
+      "output": 1314,
+      "cost": 0.02716125
+    },
+    {
+      "phase": "before",
+      "label": "before1023T1230 q3",
+      "at": "2026-10-23T12:31:33.192Z",
+      "input": 38374,
+      "output": 499,
+      "cost": 0.02523125
+    },
+    {
+      "phase": "before",
+      "label": "before1023T1230 q4",
+      "at": "2026-10-23T12:31:41.287Z",
+      "input": 23550,
+      "output": 350,
+      "cost": 0.015593750000000002
+    },
+    {
+      "phase": "before",
+      "label": "before1023T1230 q5",
+      "at": "2026-10-23T12:31:47.378Z",
+      "input": 26689,
+      "output": 1098,
+      "cost": 0.019425625000000002
+    },
+    {
+      "phase": "before",
+      "label": "before1023T1230 q6",
+      "at": "2026-10-23T12:31:57.501Z",
+      "input": 87975,
+      "output": 1604,
+      "cost": 0.058994375
+    },
+    {
+      "phase": "before",
+      "label": "before1023T1230 q7",
+      "at": "2026-10-23T12:32:13.705Z",
+      "input": 23119,
+      "output": 530,
+      "cost": 0.015774375
+    },
+    {
+      "phase": "before",
+      "label": "before1023T1230 q8",
+      "at": "2026-10-23T12:32:21.821Z",
+      "input": 27274,
+      "output": 400,
+      "cost": 0.018046250000000003
+    },
+    {
+      "phase": "before",
+      "label": "before1023T1230 q9",
+      "at": "2026-10-23T12:32:27.908Z",
+      "input": 24004,
+      "output": 1001,
+      "cost": 0.017505000000000003
+    },
+    {
+      "phase": "before",
+      "label": "before1023T1230 q10",
+      "at": "2026-10-23T12:32:38.027Z",
+      "input": 52308,
+      "output": 868,
+      "cost": 0.0348625
+    }
+  ]
+}
