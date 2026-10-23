@@ -9047,6 +9047,46 @@ So that an update never strands a run.
 
 - DW-2500: Kernel/State/SqlRun declares Kind between Namespace and State with no source Storage section, so an update from 1.0.12 shifts stored slots 4-10 and a pre-update background run reads 404 and is never swept (ledger; routed by load 2026-10-23)
 
+### Story 20.38: A schema opens its tables, views and procedures
+
+Chartered on 2026-10-23 at the owner's request, relayed by the Planner. The owner reported on the 1.0.13 demo: "clicking on a SQL Schema doesn't take you to looking at the subschemas https://demo.ocupilot.org/ocupilot/system-explorer/sql-schemas/Ens". Their direction was: "I want to do this as a second story. We can have the orchestrator run it in slot b so that we don't loose a lot of time." It runs beside Story 23.12, and 1.0.14 is cut once both are in.
+
+**Why.** The SQL schemas list's Schema column is a `name` column (`Screen/Descriptor/ExplorerSqlSchemas.cls`, id `single`, no `rowTarget`), so the shared table links each name to `system-explorer/sql-schemas/<schema>`. No screen answers that route. A click changes the address and the breadcrumb ("SQL schemas › Ens"), and the page stays the schema list. The classic portal's SQL page opens a schema into its tables, views and procedures.
+
+The SQL tables, views and procedures screens already filter by schema: `ExplorerSqlTables.cls` has a `schema` criterion, "One schema, spelled as explorer.sqlschemas.read answers its Schema; omit it to list every schema's tables", and so do the others.
+
+A Planner scan (inference: a structural heuristic, not a measurement) found 36 list screens whose `name` column has no screen under its route. Most are probably fine, because they link elsewhere or not at all, but nothing checks it.
+
+As a developer browsing System Explorer,
+I want a schema's name to open that schema,
+So that I can see its tables, views and procedures without filtering three screens by hand.
+
+**Acceptance Criteria:**
+
+- **Given** the SQL schemas list
+- **When** a schema's name is clicked
+- **Then** the schema's own screen opens at `system-explorer/sql-schemas/<schema>`. It is a tab group with "Tables", "Views" and "Procedures":
+  - each tab lists that schema's objects through the existing SQL tables, views and procedures reads with their `schema` criterion (Rule 31: extend those reads, never copy them);
+  - the System items criterion is carried over;
+  - each object's name opens its existing table, view or procedure screen;
+  - the breadcrumb reads SQL schemas › <schema>.
+- **Given** a schema with no objects of a tab's kind (Ens has procedures but no tables)
+- **When** that tab opens
+- **Then** it says so plainly, and the tab for a kind it does hold shows its rows.
+- **Given** the agent on the schema's screen
+- **When** it reads the screen
+- **Then** its screen context and tools are the tabs' own reads, scoped to that schema, with no new agent action.
+- **Given** every built list screen whose name column links somewhere
+- **When** the client tests run
+- **Then** a test fails if any such link leads to a route with no built screen to show it, which is the bug class above.
+  - Every list the test finds is fixed in this story: given a real target, or rendered as plain text where nothing should open.
+  - The spec lists each one and what it now does.
+- **Given** the browser suite
+- **When** a spec clicks a schema name on SQL schemas
+- **Then** it lands on that schema's screen, sees its Procedures tab's rows for a schema that holds procedures, and opens one procedure from it.
+
+**Out of scope:** stored data and the installer (no upgrade check expected; the plan confirms from its diff), editing schemas, and any change to what the SQL tables, views and procedures screens show on their own.
+
 ## Epic 21: Stage 5 - custom-REST parity from the MCP suite's handlers
 
 Every remaining classic portal leaf with a backing class but no route becomes reachable: backup and mirroring, startup and memory tables, NLS locales, SQL settings, globals and the whole SQL tuning track, interoperability credentials, purge, deployment, record maps, workflow, the analytics editors, and a developer-tools set. The agent gains the 28 harvested inspection tools and undo by snapshot and revert.
