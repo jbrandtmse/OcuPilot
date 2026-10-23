@@ -12455,3 +12455,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-20-38-a-schema-opens-its-tables-views-and-procedures.md | severity: low | fix-risk: med | footprint: in-epic
 - evidence: The published input schema lists no required criterion (Screen/Tool/Read.cls) and the hint omits 'required'; a call with no schema is refused 400 PORT.VALIDATION naming the schema rule. Sibling tab tools share it.
 - 2026-10-23T14:28:39Z status=wontfix-accepted owner=20-38-a-schema-opens-its-tables-views-and-procedures by=cr note=read grammar has no required flag; Read.cls is 23.12's; reopen_if=a transcript shows explorer.sqlschema*.read with no schema
+
+### DW-2512: flake: local-databases.browser-spec.mjs: two tests hit 'Navigation timeout of 30000 ms exceeded' at signedInAt page.goto
+- source: release-1.0.14-ci | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: release/1.0.14 push run 40014034409 attempt 1, browser shard 3/5 (723a3662); attempt 2 green; the same code was green on feature (2a9ea8d1, run 40008057887)
+- 2026-10-23T21:31:33Z status=routed owner=burndown by=orchestrator note=CI flake, reported by the Planner at the 1.0.14 cut; first in the next standing cleanup with DW-1822 (Rule 27)
