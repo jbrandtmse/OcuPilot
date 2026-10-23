@@ -12384,3 +12384,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-23-8-the-range-end-cleanup-part-7.md | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: The Problem loop in Superserver/MftConnection/DocDbAppRules is byte-identical (29 files hold it); MftConnectionRules.Taken equals DocDbAppRules.Taken but the id; HandleForm's gate, read and RenderRead skeleton is in 30 Area classes; MftConnectionRules.ClientConfiguration equals SuperserverRules.ServerConfiguration but the type test
 - 2026-10-22T19:50:32Z status=escalated owner=burndown by=cr note=one helper beside AgentRules.ViolationsJson or a ScreenSaveRules template; Rules twin of 23.8 filing candidate 1
+
+### DW-2500: Kernel/State/SqlRun declares Kind between Namespace and State with no source Storage section, so an update from 1.0.12 shifts stored slots 4-10 and a pre-update background run reads 404 and is never swept
+- source: upgrade-1013-check | severity: high | fix-risk: low | footprint: out-of-footprint
+- evidence: 1.0.13 upgrade check (candidate 3fedf80c): pre-update SqlRun row read Kind=ended, State=old JobId; GET /explorer/sql/background/<id> 200 before, 404 after
+- 2026-10-23T02:50:27Z status=routed owner=burndown by=orchestrator note=owner decision 2026-10-22 (relayed by the Planner): fix before the 1.0.13 cut by declaring Kind after Answer; first task on resume, as a fix-forward story in Epic 20
+
+### DW-2501: No check fails when a new stored property on a %Persistent class without a source Storage section is declared anywhere but last, compared with the previous release
+- source: upgrade-1013-check | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: SqlRun Kind (Story 20.33) shifted stored slots and only the release upgrade check caught it; Propose.TargetKey followed the append rule only by comment
+- 2026-10-23T02:50:28Z status=routed owner=burndown by=orchestrator note=owner request 2026-10-22 (relayed by the Planner): cleanup backlog, not built now; compare each persistent class's stored property order against the previous release tag
