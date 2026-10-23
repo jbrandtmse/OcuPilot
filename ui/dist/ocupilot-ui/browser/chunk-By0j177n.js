@@ -1,0 +1,1 @@
+import{Kr as wE}from"./chunk-P_QYOzhA.js";function t(n){return n.toTimeString().slice(0,8)}function a(n,r,i){return r===`running`?wE.databaseOperationRunning.replace(`<operation>`,()=>n).replace(`<time>`,()=>i===null?``:t(i)):r===`finished`?wE.databaseOperationFinished.replace(`<operation>`,()=>n):r===`continues`?wE.auditDatabaseStillRunning:``}export{t as n,a as t};
