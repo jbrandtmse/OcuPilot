@@ -12395,3 +12395,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: upgrade-1013-check | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: SqlRun Kind (Story 20.33) shifted stored slots and only the release upgrade check caught it; Propose.TargetKey followed the append rule only by comment
 - 2026-10-23T02:50:28Z status=routed owner=burndown by=orchestrator note=owner request 2026-10-22 (relayed by the Planner): cleanup backlog, not built now; compare each persistent class's stored property order against the previous release tag
+
+### DW-2502: No test replaces an owner's ended SqlRun row whose Kind is NULL through GuardedReserve's ended-row delete, so dropping its COALESCE(Kind, 'sql') reddens nothing
+- source: _bmad-output/implementation-artifacts/spec-20-37-sqlrun-stored-slot-order.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: SqlRun.cls GuardedReserve ended-row delete; SqlRunStore's NULL-kind leg covers lookup and busy refusal only, other replace tests store sql or mdx explicitly
+- 2026-10-23T04:38:43Z status=open owner=20-37-sqlrun-stored-slot-order by=harvest note=build-auto verification-gap layer; 20.37's charter bars changing existing tests

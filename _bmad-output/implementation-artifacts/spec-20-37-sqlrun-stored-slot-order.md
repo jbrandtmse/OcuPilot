@@ -4,6 +4,7 @@ type: 'bugfix'
 created: '2026-10-22'
 status: 'done'
 baseline_revision: 'dd2d53f226cd489de34752ccac873030642c842b'
+baseline_commit: 'dd2d53f226cd489de34752ccac873030642c842b'
 review_loop_iteration: 0
 followup_review_recommended: false
 context: []
@@ -114,7 +115,7 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Lines were
 
 **Why moving the declaration is the whole fix.**
 
-- **What a 1.0.12 row reads after the fix.** Its list ends at slot 10, so every column reads where 1.0.12 wrote it. `Kind`, slot 11, reads empty: SQL NULL, and `""` through the object. Every reader already maps that to `sql` (`COALESCE(Kind, 'sql')` at :136 and :434, and `Reconcile` :383; AC2 pins it). No index covers `Kind`, and the sweep reads only `State` and `EndedAt`. So the run answers its owner's poll and is swept 900 s after it ends.
+- **What a 1.0.12 row reads after the fix.** Its list ends at slot 10, so every column reads where 1.0.12 wrote it. `Kind`, slot 11, reads empty: SQL NULL, and `""` through the object. Every reader already maps that to `sql` (`COALESCE(Kind, 'sql')` at :136 and :434, and `Reconcile` :383; AC2 pins the lookup and the busy refusal, and the ended-row delete's default is unpinned, DW-2502). No index covers `Kind`, and the sweep reads only `State` and `EndedAt`. So the run answers its owner's poll and is swept 900 s after it ends.
 - **The 1.0.12 layout is measured twice:** the release's declared order, and `ocupilot-slot-b`'s compiled map (Code Map).
 - **The load regenerates the map from declaration order.** Story 20.31's rework measured it on this throwaway (the spine's Conventions row), and the 1.0.13 upgrade check measured it on an update from 1.0.12 (DW-2500's evidence). The IPM path compiles from the same source, so the same holds there (inference).
 
