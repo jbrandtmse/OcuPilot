@@ -9065,12 +9065,12 @@ So that I can see its tables, views and procedures without filtering three scree
 
 - **Given** the SQL schemas list
 - **When** a schema's name is clicked
-- **Then** the schema's own screen opens at `system-explorer/sql-schemas/<schema>`. It is a tab group with "Tables", "Views" and "Procedures":
+- **Then** the schema's own screen opens at `system-explorer/sql-schemas/document/<schema>` [AMENDED 2026-10-23, Story 20.38 plan, unattended ruling: AD-5 puts a parent-scoped tab group's head at its parent list's `<route>/document`, and `sql-schemas/<schema>` stays the list's own id route; was `system-explorer/sql-schemas/<schema>`]. It is a tab group with "Tables", "Views" and "Procedures":
   - each tab lists that schema's objects through the existing SQL tables, views and procedures reads with their `schema` criterion (Rule 31: extend those reads, never copy them);
-  - the System items criterion is carried over;
+  - a system schema's objects show: each tab lists every object in its schema, system ones included, with no System control of its own [AMENDED 2026-10-23, Story 20.38 plan, unattended ruling: AD-5 gives a parent-scoped read one criterion, its route id; was "the System items criterion is carried over"];
   - each object's name opens its existing table, view or procedure screen;
   - the breadcrumb reads SQL schemas › <schema>.
-- **Given** a schema with no objects of a tab's kind (Ens has procedures but no tables)
+- **Given** a schema with no objects of a tab's kind (Ens has tables and procedures but no views [AMENDED 2026-10-23, Story 20.38 plan: measured on ocupilot-slot-b and ocupilot-b-ci; was "Ens has procedures but no tables"])
 - **When** that tab opens
 - **Then** it says so plainly, and the tab for a kind it does hold shows its rows.
 - **Given** the agent on the schema's screen
@@ -9079,13 +9079,34 @@ So that I can see its tables, views and procedures without filtering three scree
 - **Given** every built list screen whose name column links somewhere
 - **When** the client tests run
 - **Then** a test fails if any such link leads to a route with no built screen to show it, which is the bug class above.
-  - Every list the test finds is fixed in this story: given a real target, or rendered as plain text where nothing should open.
+  - SQL schemas is fixed in this story. The other lists the test finds are held in an exact allow-list, and Story 20.39 fixes them [AMENDED 2026-10-23, Story 20.38 plan, unattended split ruling: 17 more lists, past the dispatch's dozen, seven of them with more than one plausible target and three in descriptors Story 23.12 changes; was "Every list the test finds is fixed in this story: given a real target, or rendered as plain text where nothing should open."].
   - The spec lists each one and what it now does.
 - **Given** the browser suite
 - **When** a spec clicks a schema name on SQL schemas
 - **Then** it lands on that schema's screen, sees its Procedures tab's rows for a schema that holds procedures, and opens one procedure from it.
 
 **Out of scope:** stored data and the installer (no upgrade check expected; the plan confirms from its diff), editing schemas, and any change to what the SQL tables, views and procedures screens show on their own.
+
+### Story 20.39: Every list's name opens something
+
+[CHARTERED 2026-10-23, split from Story 20.38 at its plan, unattended ruling within `limits.split_children`] Story 20.38's check found 17 lists besides SQL schemas whose name links back to the list itself, so a click changes the address and the page stays put. 20.38 holds them in an exact allow-list; this story empties it. Its spec's Design Notes list each one, with the target the plan found. After Story 20.38, and after Story 23.12 merges (the task and database descriptors are 23.12's too).
+
+As a developer browsing OcuPilot,
+I want every name a list links to open something,
+So that a click never leaves me where I was.
+
+**Acceptance Criteria:**
+
+- **Given** each list in Story 20.38's allow-list
+- **When** its name is clicked
+- **Then** it opens that object's existing screen, or the name is plain text where nothing should open.
+  - Where more than one target is plausible (SQL privileges, web application class access, database free space, DocDB, business partners, analytics folder items, screen permissions), the plan names the choice and its reason, and plain text is the default.
+  - The spec lists each list and what it now does.
+- **Given** Story 20.38's link check
+- **When** the client tests run
+- **Then** its allow-list is empty, and the check still fails on any new name link that leads back to its own list.
+
+**Out of scope:** new screens for objects that have none; stored data and the installer.
 
 ## Epic 21: Stage 5 - custom-REST parity from the MCP suite's handlers
 
