@@ -8456,6 +8456,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-01T18:33:01Z status=routed owner=23-3-the-range-end-cleanup-part-3 by=merge_gate note=chartered: Story 23.3, the standing cleanup after the 1.0.5 cut (Rule 27; CI health and flakes first, then security; DW-1782 first of security per the owner)
 - 2026-10-01T23:57:15Z status=resolved-by:23-3-the-range-end-cleanup-part-3 by=adjudication note=6e6b8dcc: protocolTimeout 600 s; red at 182 s under a 200 s font hold, 12/12 after; reopen_if a walk stalls past 600 s
 - 2026-10-04T07:59:42Z occurrence=range-end-cleanup note=linked DW-2026: a11y-structural-invariants hung 730 s on run 37184530521 (a3f957b2) and on aaa2460d attempt 1 (2026-10-03)
+- 2026-10-23T10:07:55Z occurrence=release-1.0.13 note=PR #16 run 39922983649 (4d573436) attempt 1, browser shard 1/5: every a11y-structural-invariants test timed out on Runtime.callFunctionOn; attempt 2 green (reported by the Planner)
+- 2026-10-23T10:07:55Z status=routed owner=burndown by=orchestrator note=reopened: reopen_if met (a walk stalled to the 600 s protocolTimeout on the 1.0.13 release PR); CI flake, first in the next standing cleanup (Rule 27)
 
 ### DW-1823: security.browser-spec.mjs AC5 (Story 16.3 AC7, DW-1018 option A) timed out waiting for app-side-bar .ocu-side-bar-item after opening the Security rail item without %Admin_Wallet:USE
 - source: feature CI run 36575310150 attempt 1 on 573c50eb (orchestrator), 2026-09-29 | severity: low | fix-risk: low | footprint: ui/browser/security.browser-spec.mjs
