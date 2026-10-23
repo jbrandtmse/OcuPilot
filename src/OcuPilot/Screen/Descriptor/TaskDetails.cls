@@ -82,6 +82,7 @@ XData Declaration
   "classicPage": "%CSP.UI.Portal.TaskInfo",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "set of one task's properties",
     "source": {
       "port": "admin",
       "endpoint": "Task.CRUD",

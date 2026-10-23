@@ -59,6 +59,7 @@ XData Declaration
   "classicPage": "%CSP.UI.Portal.RoutineList",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "routine or include file",
     "source": {"port": "atelier", "endpoint": "Routines", "type": "LIST"},
     "fields": ["Name", "Modified", "Database", "Generated"],
     "filter": ["Name", "Database"],

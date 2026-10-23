@@ -69,6 +69,8 @@ XData Declaration
   "classicPage": "%CSP.UI.Portal.TaskHistory",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "run of a task",
+    "label": "Past runs of every task, newest first, the last 7 days unless asked; a failed run's error text is in Result. Whether a task is suspended is in tasks.schedule.",
     "source": {"port": "admin", "endpoint": "Task.CRUD", "type": "HISTORY"},
     "fields": ["LastStart", "Completed", "Name", "Status", "Result", "TaskId", "Namespace", "Routine", "Pid", "ErrDate", "ErrNumber", "Username", "LogDatetime"],
     "filter": ["Name", "Namespace", "Status", "Result", "Username", "Routine"],

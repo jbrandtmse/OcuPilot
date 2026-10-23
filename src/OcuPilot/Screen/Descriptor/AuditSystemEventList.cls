@@ -47,6 +47,8 @@ XData Declaration
   "classicPage": "%CSP.UI.Portal.Audit.SystemEvents",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "system audit event type",
+    "label": "Audit event types IRIS defines, each with Enabled and its counters; the audited events themselves are in logs.audit.",
     "source": {"port": "admin", "endpoint": "Security.Audit.Event", "type": "LIST", "query": {"eventOwner": "1"}},
     "fields": ["EventName", "Enabled", "Total", "Written", "Lost"],
     "filter": ["EventName", "Enabled", "Total", "Written", "Lost"],

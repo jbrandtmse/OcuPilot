@@ -36,6 +36,7 @@ XData Declaration
   "classicPage": "%DeepSee.UI.ModelBrowser",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "dimension level of a cube",
     "source": {"port": "analytics", "endpoint": "Dimensions", "type": "LIST"},
     "fields": ["Position", "Dimension", "Hierarchy", "Level"],
     "filter": ["Dimension", "Hierarchy", "Level"],

@@ -14,10 +14,17 @@
  * runs past its cell shows that text whole beneath its row in a long block, which a pointer or the
  * keyboard reaches to the end, in light and in dark. The keyboard path is walked from Tab: Tab
  * reaches Show more, Enter opens it and End brings the last line on screen. The one trigger of the
- * probe table shows its code in a long block named by the Code header.
+ * probe table shows its code in a long block named by the Code header. A schema's name on SQL
+ * schemas opens its Tables, Views and Procedures tabs under the locator SQL schemas, then the
+ * schema, the Tables read carries the schema and no system choice, a procedure's name on the
+ * Procedures tab opens that procedure, and a schema holding one table and nothing else shows the
+ * Views tab's empty sentence (Story 20.38 AC1, AC2, AC5). A direct visit to a system schema's tabs
+ * lists its objects with no System choice and opens a `%Library` procedure, and a schema tab opened
+ * with no schema shows the request refused.
  *
  * The probe objects are `OcuPilot.Test.ExplorerSqlProbe`'s, created in `before` and removed in
- * `after` by that class. It refuses the live container.
+ * `after` by that class, the bare schema's by its `MakeBare` and `RemoveBare`. It refuses the live
+ * container.
  *
  * Run: `node --test --test-concurrency=1 browser/system-explorer-sql.browser-spec.mjs` (after
  * `npm run build`, the bundle copied into the throwaway).
@@ -31,7 +38,7 @@ import puppeteer from 'puppeteer';
 
 import { LIVE_CONTAINER, browserConfig, launchOptions } from '../browser.config.mjs';
 import { loadStrings } from '../tools/strings.mjs';
-import { ROW_SELECTOR, clickRowCentre } from './list-spec.mjs';
+import { ROW_SELECTOR, clickRowCentre, filterToSubset, viewCount, waitForRows } from './list-spec.mjs';
 import { setDarkTheme, settleViewport, signedInAt, transitionsSettled } from './panel-spec.mjs';
 import { INVARIANTS, VIEWPORTS, assertThrowaway, collapse, compare, componentMinimums, detectScreen, readBaseline } from './structural-walk.mjs';
 import { markerValue, runIris } from './turnprobe-spec.mjs';
@@ -51,6 +58,13 @@ const LITERAL = 'OcuProbe195Literal';
 const VIEW_LITERAL = 'OcuProbe195ViewLiteral';
 const LONG_VIEW = 'OcuProbe195.LongView';
 const LONG_VIEW_MARK = 'OcuProbe195View';
+const BARE_SCHEMA = 'OcuProbe2038';
+const BARE_TABLE = 'OcuProbe2038.Bare';
+const PROCEDURE = 'OcuProbe195.Echo';
+const SYSTEM_SCHEMA = '%Dictionary';
+const SYSTEM_TABLE = '%Dictionary.ClassDefinition';
+const PROCEDURE_SCHEMA = '%Library';
+const SCHEMAS_ROUTE = 'system-explorer/sql-schemas';
 const VIEWS_ROUTE = 'system-explorer/sql-views';
 const PROCEDURES_ROUTE = 'system-explorer/sql-procedures';
 const TABLES_ROUTE = 'system-explorer/sql-tables';
@@ -71,16 +85,28 @@ const marker = (name, expression) => `Write "OCU"_"-${name}-START:"_(${expressio
 before(async () => {
   assert.notEqual(config.container, LIVE_CONTAINER, 'this spec creates and removes SQL objects, so it never runs inside the live container');
   await assertThrowaway(config);
-  const output = runIris(config.container, [`Set tSC=##class(${PROBE}).Make("USER")`, marker('OK', '$System.Status.IsOK(tSC)')]);
+  const output = runIris(config.container, [
+    `Set tSC=##class(${PROBE}).Make("USER")`,
+    marker('OK', '$System.Status.IsOK(tSC)'),
+    `Set tBare=##class(${PROBE}).MakeBare("USER")`,
+    marker('BARE', '$System.Status.IsOK(tBare)'),
+  ]);
   assert.equal(markerValue(output, 'OK'), '1', `the probe objects are created in USER: ${output}`);
+  assert.equal(markerValue(output, 'BARE'), '1', `the bare probe schema is created in USER: ${output}`);
   browser = await puppeteer.launch(launchOptions(config));
 });
 
 after(async () => {
   if (browser !== null) await browser.close();
   if (config.container === LIVE_CONTAINER) return;
-  const output = runIris(config.container, [`Set tSC=##class(${PROBE}).Remove("USER")`, marker('OK', '$System.Status.IsOK(tSC)')]);
+  const output = runIris(config.container, [
+    `Set tSC=##class(${PROBE}).Remove("USER")`,
+    marker('OK', '$System.Status.IsOK(tSC)'),
+    `Set tBare=##class(${PROBE}).RemoveBare("USER")`,
+    marker('BARE', '$System.Status.IsOK(tBare)'),
+  ]);
   assert.equal(markerValue(output, 'OK'), '1', `no probe object is left in USER: ${output}`);
+  assert.equal(markerValue(output, 'BARE'), '1', `no bare probe object is left in USER: ${output}`);
 });
 
 function frames(page) {
@@ -148,6 +174,31 @@ async function rowShowing(page, text) {
 async function openTab(page, route) {
   await page.focus(`.ocu-detail-tab[data-route="${route}"]`);
   await page.keyboard.press('Enter');
+}
+
+/** The locator's segments, area first, as the text the page shows. */
+function locatorSegments(page) {
+  return page.$$eval('nav.ocu-locator-bar .ocu-locator-link, nav.ocu-locator-bar .ocu-locator-segment', (nodes) => nodes.map((node) => node.textContent.trim()));
+}
+
+/** The value query parameter `name` carries in a recorded read, or `null` when the read does not send it. */
+function readParam(read, name) {
+  return new URL(read, 'http://localhost').searchParams.get(name);
+}
+
+/** The first recorded read of screen tool `tool`, or `undefined`. */
+function readOf(reads, tool) {
+  return reads.find((read) => read.startsWith(`${READ_PREFIX}${tool}/read?`));
+}
+
+/** Open the schema `name` from SQL schemas: filter the list to it and click its name. */
+async function openSchema(page, name) {
+  await waitForRows(page, config.navigationTimeoutMs);
+  const total = await viewCount(page);
+  await filterToSubset(page, { text: name, expectRow: name, total, timeoutMs: config.navigationTimeoutMs });
+  await clickRowCentre(page, { text: name, link: true });
+  await page.waitForFunction((path) => location.pathname === path, { timeout: config.navigationTimeoutMs }, `/ocupilot/${SCHEMAS_ROUTE}/document/${encodeEntityId(name)}`);
+  await page.waitForSelector('nav.ocu-detail-tabs', { timeout: config.navigationTimeoutMs });
 }
 
 /** The text of the read's note the list page draws above its table, or `null` when it draws none. */
@@ -226,7 +277,7 @@ test('AC2, AC8: the probe table opens to its tabs, and Fields then Triggers keep
     assert.deepEqual(names, ['OcuProbe195.A.B', 'OcuProbe195.Hidden', 'OcuProbe195.Parted', TABLE], 'the probe schema\'s tables');
     assert.deepEqual(await structural(page, TABLES_ROUTE), [], 'SQL tables with its rows adds no structural entry');
 
-    // Mutation (Rule 19): skip `documentScreenFor` for the Tables list in `data-table.ts`'s link chain,
+    // Mutation (Rule 19): skip `documentScreenFor` for the Tables list in `nameLinkTarget`,
     // so its name cell links to the list itself -> the click selects the row and the path wait times out.
     await clickRowCentre(page, { text: TABLE, link: true });
     const id = encodeEntityId(TABLE);
@@ -296,7 +347,7 @@ test('Story 19.14 AC2, AC11: a view opens to View info with its text, then Field
   try {
     await searchList(page, { schema: SCHEMA, system: false });
     await rowShowing(page, VIEW);
-    // Mutation (Rule 19): skip `documentScreenFor` for the Views list in `data-table.ts`'s link chain,
+    // Mutation (Rule 19): skip `documentScreenFor` for the Views list in `nameLinkTarget`,
     // so its name cell links to the list itself -> the click selects the row and the path wait times out.
     await clickRowCentre(page, { text: VIEW, link: true });
     const id = encodeEntityId(VIEW);
@@ -541,6 +592,127 @@ test('Story 19.14 AC3, AC11: a procedure opens to Stored procedure info, then SQ
     for (const tool of ['explorer.sqlprocedure', 'explorer.sqlprocedurestatements']) {
       assert.ok(reads.some((read) => read.startsWith(`${READ_PREFIX}${tool}/read?`) && read.includes(`procedure=${encodeURIComponent(QUERY)}`)), `${tool} reads the procedure through its own read: ${JSON.stringify(reads)}`);
     }
+  } finally {
+    await context.close();
+  }
+});
+
+// Mutation (Rule 19): drop `ExplorerSqlSchemaProcedures`' `rowTarget`, regenerate the mirror, rebuild and
+// redeploy -> the procedure's name is text, and the click on it fails.
+test('Story 20.38 AC1, AC2, AC5: a schema\'s name opens Tables, Views and Procedures, a procedure\'s name opens its screen, and a kind the schema lacks says so', async () => {
+  const first = await signedInAt(browser, config, `/ocupilot/${SCHEMAS_ROUTE}?ns=USER`, VIEWPORTS.wide, REDUCED_MOTION);
+  const reads = recordReads(first.page);
+  try {
+    const { page } = first;
+    // Mutation (Rule 19): drop the `documentScreenFor` arm from `nameLinkTarget`, so the name cell links to
+    // the list itself -> the click selects the row and the path wait times out.
+    await openSchema(page, SCHEMA);
+    const id = encodeEntityId(SCHEMA);
+    const labels = await page.$$eval('.ocu-detail-tab-label', (nodes) => nodes.map((node) => node.textContent.trim()));
+    assert.deepEqual(labels, [STRINGS.explorerSqlColumnTables, STRINGS.explorerSqlColumnViews, STRINGS.explorerSqlColumnProcedures], 'the schema\'s three tabs');
+    assert.deepEqual((await locatorSegments(page)).slice(-2), [STRINGS.explorerSqlSchemasLabel, SCHEMA], 'the locator reads SQL schemas, then the schema');
+    await rowShowing(page, TABLE);
+    assert.ok(
+      reads.some((read) => read.startsWith(`${READ_PREFIX}explorer.sqlschematables/read?`) && read.includes(`schema=${SCHEMA}`) && !read.includes('system')),
+      `the Tables tab reads the schema and sends no system choice: ${JSON.stringify(reads)}`
+    );
+    assert.equal(await currentEntry(page), STRINGS.explorerSqlSchemasLabel, 'the side bar marks SQL schemas');
+
+    await openTab(page, `${SCHEMAS_ROUTE}/procedures`);
+    await page.waitForFunction((path) => location.pathname === path, { timeout: config.navigationTimeoutMs }, `/ocupilot/${SCHEMAS_ROUTE}/procedures/${id}`);
+    await rowShowing(page, PROCEDURE);
+    assert.deepEqual((await locatorSegments(page)).slice(-2), [STRINGS.explorerSqlSchemasLabel, SCHEMA], 'and the same on the Procedures tab');
+    assert.ok(reads.some((read) => read.startsWith(`${READ_PREFIX}explorer.sqlschemaprocedures/read?`) && read.includes(`schema=${SCHEMA}`)), `the Procedures tab reads the schema: ${JSON.stringify(reads)}`);
+
+    await clickRowCentre(page, { text: PROCEDURE, link: true });
+    await page.waitForFunction((path) => location.pathname === path, { timeout: config.navigationTimeoutMs }, `/ocupilot/${PROCEDURES_ROUTE}/document/${encodeEntityId(PROCEDURE)}`);
+    await page.waitForSelector('nav.ocu-detail-tabs', { timeout: config.navigationTimeoutMs });
+    const procedureTabs = await page.$$eval('.ocu-detail-tab-label', (nodes) => nodes.map((node) => node.textContent.trim()));
+    assert.deepEqual(procedureTabs, [STRINGS.explorerSqlTabProcedureInfo, STRINGS.explorerSqlTabStatements], 'the procedure opens to Stored procedure info');
+    await rowShowing(page, 'OcuProbe195.procEcho');
+  } finally {
+    await first.context.close();
+  }
+
+  const second = await signedInAt(browser, config, `/ocupilot/${SCHEMAS_ROUTE}?ns=USER`, VIEWPORTS.wide, REDUCED_MOTION);
+  try {
+    const { page } = second;
+    await openSchema(page, BARE_SCHEMA);
+    await rowShowing(page, BARE_TABLE);
+    await openTab(page, `${SCHEMAS_ROUTE}/views`);
+    await page.waitForFunction((path) => location.pathname === path, { timeout: config.navigationTimeoutMs }, `/ocupilot/${SCHEMAS_ROUTE}/views/${encodeEntityId(BARE_SCHEMA)}`);
+    await page.waitForSelector('.ocu-data-table-empty-title', { timeout: config.navigationTimeoutMs });
+    assert.equal(await page.$eval('.ocu-data-table-empty-title', (node) => node.textContent.trim()), STRINGS.explorerSqlSchemaViewsEmpty, 'a schema with no views says so');
+    assert.equal(STRINGS.explorerSqlSchemaViewsEmpty, 'This schema has no SQL views.', 'in the ruled sentence');
+    // Mutation (Rule 19): label `ExplorerSqlSchemaViews` `explorerSqlColumnViews` instead of
+    // `explorerSqlSchemasLabel`, regenerate, rebuild and redeploy -> the locator reads Views, and this goes red.
+    assert.deepEqual((await locatorSegments(page)).slice(-2), [STRINGS.explorerSqlSchemasLabel, BARE_SCHEMA], 'and the same on the Views tab');
+  } finally {
+    await second.context.close();
+  }
+});
+
+// Mutation (Rule 19): decode the id segment once instead of twice in `routeIdSegment` (`navigation.ts`), rebuild and
+// redeploy -> the tab reads `schema=%25Dictionary`, lists no row, and the wait for `%Dictionary.ClassDefinition` times out.
+test('Story 20.38 QA AC1, AC2, AD-13: a direct visit to a system schema opens its tabs and lists its objects with no System choice, and a procedure of %Library opens its screen', async () => {
+  let reads = [];
+  const record = async (page) => {
+    reads = recordReads(page);
+  };
+  const first = await signedInAt(browser, config, `/ocupilot/${SCHEMAS_ROUTE}/document/${encodeEntityId(SYSTEM_SCHEMA)}?ns=USER`, VIEWPORTS.wide, REDUCED_MOTION, record);
+  try {
+    const { page } = first;
+    await page.waitForSelector('nav.ocu-detail-tabs', { timeout: config.navigationTimeoutMs });
+    const labels = await page.$$eval('.ocu-detail-tab-label', (nodes) => nodes.map((node) => node.textContent.trim()));
+    assert.deepEqual(labels, [STRINGS.explorerSqlColumnTables, STRINGS.explorerSqlColumnViews, STRINGS.explorerSqlColumnProcedures], 'the system schema opens to the same three tabs');
+    assert.deepEqual((await locatorSegments(page)).slice(-2), [STRINGS.explorerSqlSchemasLabel, SYSTEM_SCHEMA], 'under the locator SQL schemas, then the schema, spelled with its percent sign');
+    await waitForRows(page, config.navigationTimeoutMs);
+    const total = await viewCount(page);
+    await filterToSubset(page, { text: SYSTEM_TABLE, expectRow: SYSTEM_TABLE, total, timeoutMs: config.navigationTimeoutMs });
+    const read = readOf(reads, 'explorer.sqlschematables');
+    assert.ok(read !== undefined, `the Tables tab read the schema: ${JSON.stringify(reads)}`);
+    assert.equal(readParam(read, 'schema'), SYSTEM_SCHEMA, 'the read carries the decoded schema');
+    assert.equal(new URL(read, 'http://localhost').searchParams.has('system'), false, 'and sends no system choice');
+  } finally {
+    await first.context.close();
+  }
+
+  const second = await signedInAt(browser, config, `/ocupilot/${SCHEMAS_ROUTE}/procedures/${encodeEntityId(PROCEDURE_SCHEMA)}?ns=USER`, VIEWPORTS.wide, REDUCED_MOTION, record);
+  try {
+    const { page } = second;
+    await page.waitForSelector('nav.ocu-detail-tabs', { timeout: config.navigationTimeoutMs });
+    await waitForRows(page, config.navigationTimeoutMs);
+    assert.equal(readParam(readOf(reads, 'explorer.sqlschemaprocedures'), 'schema'), PROCEDURE_SCHEMA, 'and reads the decoded schema');
+    const procedure = await page.$eval(`${ROW_SELECTOR} [role="gridcell"]`, (cell) => cell.textContent.trim());
+    assert.ok(procedure.startsWith(`${PROCEDURE_SCHEMA}.`), `the first procedure is the schema's own: ${procedure}`);
+    await clickRowCentre(page, { text: procedure, link: true });
+    await page.waitForFunction((path) => location.pathname === path, { timeout: config.navigationTimeoutMs }, `/ocupilot/${PROCEDURES_ROUTE}/document/${encodeEntityId(procedure)}`);
+    await page.waitForSelector('nav.ocu-detail-tabs', { timeout: config.navigationTimeoutMs });
+    const tabs = await page.$$eval('.ocu-detail-tab-label', (nodes) => nodes.map((node) => node.textContent.trim()));
+    assert.deepEqual(tabs, [STRINGS.explorerSqlTabProcedureInfo, STRINGS.explorerSqlTabStatements], `${procedure} opens to Stored procedure info`);
+    await waitForRows(page, config.navigationTimeoutMs);
+  } finally {
+    await second.context.close();
+  }
+});
+
+// Mutation (Rule 19): drop `(tSchemaTab && (tSchema = ""))` from `OcuPilot.Port.AtelierPort.CatalogRows`, reload `src` ->
+// the tab answers every table in the namespace instead of a refusal, and the wait for the refusal times out.
+test('Story 20.38 QA AC1: a schema tab opened with no schema shows the request refused, never an empty tab or every schema', async () => {
+  let reads = [];
+  const { context, page } = await signedInAt(browser, config, `/ocupilot/${SCHEMAS_ROUTE}/document?ns=USER`, VIEWPORTS.wide, REDUCED_MOTION, async (opened) => {
+    reads = recordReads(opened);
+  });
+  try {
+    await page.waitForSelector('.ocu-data-table-refusal', { timeout: config.navigationTimeoutMs });
+    assert.equal(await page.$eval('.ocu-data-table-refusal', (node) => node.getAttribute('role')), 'alert', 'the refusal is announced');
+    assert.equal(await page.$eval('.ocu-data-table-refusal-message', (node) => node.textContent.trim()), STRINGS.connectivityRequestRefused, 'and says the request was refused');
+    assert.equal(await page.$('.ocu-data-table-empty-title'), null, 'a refused read is not the empty sentence');
+    assert.equal((await page.$$(ROW_SELECTOR)).length, 0, 'and lists no row');
+    const read = readOf(reads, 'explorer.sqlschematables');
+    assert.ok(read !== undefined && readParam(read, 'schema') === null, `the tab asked with no schema: ${JSON.stringify(reads)}`);
+    const labels = await page.$$eval('.ocu-detail-tab-label', (nodes) => nodes.map((node) => node.textContent.trim()));
+    assert.deepEqual(labels, [STRINGS.explorerSqlColumnTables, STRINGS.explorerSqlColumnViews, STRINGS.explorerSqlColumnProcedures], 'the tab strip stays');
   } finally {
     await context.close();
   }

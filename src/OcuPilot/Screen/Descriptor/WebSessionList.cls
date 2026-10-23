@@ -58,6 +58,7 @@ XData Declaration
   "classicPage": "%CSP.UI.Portal.CSPSessions",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "web session",
     "source": {"port": "admin", "endpoint": "WebSession", "type": "LIST"},
     "fields": ["ID", "Username", "Application", "SesProcessId", "Timeout", "Preserve"],
     "filter": ["ID", "Username", "Application", "SesProcessId"],

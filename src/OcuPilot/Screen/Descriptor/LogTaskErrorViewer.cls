@@ -41,6 +41,8 @@ XData Declaration
   "classicPage": "%CSP.UI.Portal.BackgroundTaskError",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "error a background job logged",
+    "label": "Errors that portal background jobs logged, from every namespace; a scheduled task's failed runs are in tasks.history.",
     "source": {"port": "logsource", "endpoint": "taskerrors", "type": "LIST"},
     "fields": ["time", "severity", "text"],
     "filter": ["time", "severity", "text"],

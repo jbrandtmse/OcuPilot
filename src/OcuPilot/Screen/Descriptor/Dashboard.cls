@@ -55,6 +55,7 @@ XData Declaration
   "classicPage": "%cspapp.op.utildashboard",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "set of System Dashboard meters",
     "source": {
       "port": "admin",
       "endpoint": "Monitor",

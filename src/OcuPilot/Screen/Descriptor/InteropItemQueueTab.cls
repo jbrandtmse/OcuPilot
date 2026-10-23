@@ -41,6 +41,7 @@ XData Declaration
   "classicPage": "EnsPortal.ProductionConfig",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "queued message of one item",
     "source": {"port": "interop", "endpoint": "ItemQueue", "type": "LIST"},
     "fields": ["Production", "Item", "Queue", "Priority", "Index", "MessageId", "Source", "Target", "BodyClass", "TimeCreated", "Status"],
     "filter": ["MessageId", "Source", "Target", "BodyClass", "Status"],

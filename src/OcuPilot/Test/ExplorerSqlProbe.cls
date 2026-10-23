@@ -35,6 +35,10 @@
 /// <parameter>DOTTEDROUTINECLASSES</parameter> in schema <parameter>SCHEMA</parameter> and in the
 /// dotted schema.</li>
 /// </ul>
+/// <p><method>MakeBare</method> creates, apart from all of these, schema <parameter>BARESCHEMA</parameter>
+/// with the one table <parameter>BARETABLE</parameter>, no view, and no procedure but the table's own
+/// extent procedure, and <method>RemoveBare</method> removes it; <method>Make</method> and
+/// <method>Remove</method> leave it alone.</p>
 /// <p><method>RunAs</method> and <method>RunTabsAs</method> are the child processes a test starts to
 /// read the catalog through the production port as a real principal.</p>
 Class OcuPilot.Test.ExplorerSqlProbe Extends %RegisteredObject
@@ -92,6 +96,11 @@ Parameter DOTTEDPROCEDURE = "OcuProbe195.A.Q";
 
 Parameter DOTTEDROUTINECLASSES = "OcuProbe195.DottedView,OcuProbe195.A.V,OcuProbe195.DottedRoutine,OcuProbe195.A.Routine";
 
+/// <p>The schema <method>MakeBare</method> creates, and its one table.</p>
+Parameter BARESCHEMA = "OcuProbe2038";
+
+Parameter BARETABLE = "OcuProbe2038.Bare";
+
 /// <p>The text <parameter>VISIBLE</parameter>'s trigger code carries, and how many characters its long
 /// comment line holds after it.</p>
 Parameter CODEMARK = "OcuProbe195Code";
@@ -138,6 +147,51 @@ ClassMethod Make(pNamespace As %String) As %Status
         If $$$ISOK(tSC) Set tSC = ..MakeDescribed()
         If $$$ISOK(tSC) Set tSC = ..MakeDotted()
         Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Create <parameter>BARETABLE</parameter> in <var>pNamespace</var> and nothing else: a schema that
+/// holds one table, no view, and no procedure but the table's own extent procedure.</p>
+ClassMethod MakeBare(pNamespace As %String) As %Status
+{
+    Set tSC = ..RemoveBare(pNamespace)
+    If $$$ISERR(tSC) Quit tSC
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tResult = ##class(%SQL.Statement).%ExecDirect(, "CREATE TABLE " _ ..#BARETABLE _ " (Id INT PRIMARY KEY)")
+        If tResult.%SQLCODE < 0 Set tSC = $$$ERROR($$$GeneralError, "bare probe table failed: SQLCODE " _ tResult.%SQLCODE _ " " _ tResult.%Message)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Drop <parameter>BARETABLE</parameter> from <var>pNamespace</var>; a failing status when any table,
+/// view, procedure or class of schema <parameter>BARESCHEMA</parameter> survives.</p>
+ClassMethod RemoveBare(pNamespace As %String) As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Do ##class(%SQL.Statement).%ExecDirect(, "DROP TABLE " _ ..#BARETABLE)
+        Do $System.OBJ.DeletePackage(..#BARESCHEMA, "-d")
+        Set tLeft = ""
+        For tQuery = "SELECT Name FROM %Dictionary.ClassDefinition WHERE Name %STARTSWITH ?", "SELECT TABLE_SCHEMA || '.' || TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA %STARTSWITH ?", "SELECT TABLE_SCHEMA || '.' || TABLE_NAME FROM INFORMATION_SCHEMA.VIEWS WHERE TABLE_SCHEMA %STARTSWITH ?", "SELECT ROUTINE_SCHEMA || '.' || ROUTINE_NAME FROM INFORMATION_SCHEMA.ROUTINES WHERE ROUTINE_SCHEMA %STARTSWITH ?" {
+            Set tResult = ##class(%SQL.Statement).%ExecDirect(, tQuery, ..#BARESCHEMA _ $Select(tQuery [ "ClassDefinition": ".", 1: ""))
+            While tResult.%Next() {
+                Set tLeft = tLeft _ " " _ tResult.%GetData(1)
+            }
+        }
+        Set $NAMESPACE = tOrigNS
+        If tLeft '= "" Set tSC = $$$ERROR($$$GeneralError, "bare probe SQL objects survive in " _ pNamespace _ ":" _ tLeft)
     } Catch ex {
         Set $NAMESPACE = tOrigNS
         Set tSC = ex.AsStatus()

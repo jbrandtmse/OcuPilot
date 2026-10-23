@@ -43,6 +43,7 @@ XData Declaration
   "classicPage": "%CSP.UI.Portal.SQL.Home",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "constraint of one table",
     "source": {"port": "atelier", "endpoint": "Catalog.Constraints", "type": "LIST"},
     "fields": ["Constraint", "Type", "Data"],
     "filter": ["Constraint", "Type", "Data"],

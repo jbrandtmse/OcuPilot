@@ -39,6 +39,7 @@ XData Declaration
   "classicPage": "EnsPortal.ProductionConfig",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "message header of one item",
     "source": {"port": "interop", "endpoint": "ItemMessages", "type": "LIST"},
     "fields": ["Production", "Item", "ID", "TimeCreated", "Status", "Source", "Target", "BodyClass", "SessionId"],
     "filter": ["Status", "Source", "Target", "BodyClass", "SessionId"],

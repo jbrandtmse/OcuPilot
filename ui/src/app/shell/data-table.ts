@@ -27,7 +27,7 @@ import { Router } from '@angular/router';
 import { capNoticePhrase, rowCountPhrase } from '../core/count-phrase';
 import { encodeEntityId } from '../core/entity-id';
 import { normalizeEntityId } from '../core/entity-ref';
-import { childListFor, detailScreenFor, documentScreenFor, editorScreenFor, hasIdRoute, screenForRoute, withQuery } from '../core/navigation';
+import { hasClassicRowLink, hasIdRoute, nameLinkTarget, rowTargetScreenFor, withQuery } from '../core/navigation';
 import { estimateLines } from '../core/long-blocks';
 import { OverlayStack } from '../core/overlay-stack';
 import { readBackLine, withReadBack } from '../core/read-back';
@@ -668,37 +668,17 @@ export class DataTable implements OnInit {
     const readBackLines = new Map([...changed].map((key) => [this.viewKeyFor(key), readBackLine(store.changedReadBack(key))]));
     const activeColumn = this.activeColumn();
     const menuKey = this.menuIsOpen() ? this.menuKey() : null;
-    // The name cell opens the entity's own surface: a declared rowTarget first (Story 6.10's
-    // cross-screen row link, whose field -- not the row's own id -- data-table.ts encodes, because
-    // a list keyed by something other than the linked entity, such as Locks by its removal id,
-    // would otherwise link to the wrong place), then the classic editor where the screen declares a
-    // row link under its exemption (AD-44), which no in-app target replaces and whose blank-value
-    // guard leaves the cell as text; otherwise the list's paired editor where it declares
-    // one (Story 3.5's `editorScreenFor`), its paired document viewer where it declares one
-    // (`documentScreenFor`), its paired per-row detail screen where it declares one
-    // (Story 6.7's `detailScreenFor`), the sub-resource list whose parent it is (`childListFor`),
-    // and otherwise the list's own route with the row's id. A list that declares both a detail
-    // screen and an editor opens the detail screen, which is where its editor is reached from
-    // (Story 9.8: Task schedule). A screen with none is not linkable at
-    // all, and neither is a parent-scoped list that pairs no editor, viewer or detail screen: its
-    // own route's id is its parent's, so a row's id there would name the wrong thing.
-    const rowLinked = screen.classicLinkExemption.exempt && (screen.classicLinkExemption.rowLink ?? null) !== null;
+    // The name cell opens the screen `nameLinkTarget` names, and a row target's field -- not the row's own id -- is what
+    // it encodes.
+    const rowLinked = hasClassicRowLink(screen);
     const rowTarget = screen.rowTarget;
     const rowTargetField = rowTarget?.field ?? '';
     // Story 16.12 (DW-1074): a row target may name the read field that withholds a row's link --
     // a lock a remote client holds has no local pid for Process details to open -- so a row where
     // that field is JSON `true` renders its name cell as text.
     const rowTargetUnless = rowTarget?.unless ?? '';
-    const rowTargetScreen = rowLinked || rowTarget === null ? null : screenForRoute(rowTarget.route);
-    const linkTarget = rowLinked
-      ? null
-      : rowTargetScreen ??
-        (editorScreenFor(screen) === null ? null : detailScreenFor(screen)) ??
-        editorScreenFor(screen) ??
-        documentScreenFor(screen) ??
-        detailScreenFor(screen) ??
-        childListFor(screen) ??
-        (screen.parentScope === '' ? screen : null);
+    const rowTargetScreen = rowTargetScreenFor(screen);
+    const linkTarget = nameLinkTarget(screen);
     const linkRoute = linkTarget?.route ?? '';
     const linkable = linkTarget !== null && hasIdRoute(linkTarget);
     const currentUrl = this.router.url;

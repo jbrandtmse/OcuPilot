@@ -89,6 +89,7 @@ XData Declaration
   "classicPage": "%CSP.UI.Portal.Applications.WebList",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "web application",
     "source": {"port": "admin", "endpoint": "WebApp.App", "type": "LIST"},
     "fields": ["Name", "Namespace", "Type", "Enabled", "DispatchClass", "Resource"],
     "filter": ["Name", "Namespace", "Type", "DispatchClass", "Resource"],

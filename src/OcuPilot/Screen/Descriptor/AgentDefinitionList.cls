@@ -76,6 +76,7 @@ XData Declaration
   "classicPage": "",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "agent definition",
     "source": {"port": "state", "endpoint": "Agent", "type": "LIST"},
     "fields": ["id", "name", "provider", "model", "enabled", "default"],
     "filter": ["name", "provider", "model"],

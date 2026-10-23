@@ -48,6 +48,8 @@ XData Declaration
   "classicPage": "%CSP.UI.Portal.Dialog.IntegLog",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "line of an integrity check report",
+    "label": "Lines of the newest integrity check's report, errors marked severity error; no rows while a check runs or when none has run.",
     "source": {"port": "logsource", "endpoint": "integrity", "type": "LIST"},
     "fields": ["time", "severity", "text"],
     "filter": ["time", "severity", "text"],

@@ -185,6 +185,9 @@ XData Coverage
 <screen name="ExplorerSqlViewStatements" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheViewAndProcedureTabsFormTheirGroups" corpus="the five SQL view and procedure tabs are asserted together in one loop"/>
 <screen name="ExplorerSqlProcedure" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheViewAndProcedureTabsFormTheirGroups" corpus="the five SQL view and procedure tabs are asserted together in one loop"/>
 <screen name="ExplorerSqlProcedureStatements" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheViewAndProcedureTabsFormTheirGroups" corpus="the five SQL view and procedure tabs are asserted together in one loop"/>
+<screen name="ExplorerSqlSchema" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheSchemaTabsFormOneParentScopedGroup" corpus="the three SQL schema tabs are asserted together in one loop"/>
+<screen name="ExplorerSqlSchemaViews" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheSchemaTabsFormOneParentScopedGroup" corpus="the three SQL schema tabs are asserted together in one loop"/>
+<screen name="ExplorerSqlSchemaProcedures" class="OcuPilot.Test.ExplorerDescriptor" method="TestTheSchemaTabsFormOneParentScopedGroup" corpus="the three SQL schema tabs are asserted together in one loop"/>
 <screen name="ExplorerDocDbList" class="OcuPilot.Test.DocDbDescriptor" method="TestTheDescriptorShape"/>
 <screen name="RemoteDatabaseList" class="OcuPilot.Test.RemoteDatabaseDescriptor" method="TestTheListIsOsManagementsTwelfthEntry"/>
 <screen name="RemoteDatabaseForm" class="OcuPilot.Test.RemoteDatabaseDescriptor" method="TestTheFormIsBuiltUnlistedWithTheListsPairs"/>

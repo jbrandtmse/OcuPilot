@@ -52,6 +52,7 @@ XData Declaration
   "classicPage": "%CSP.UI.Portal.OAuth2.ResourceServer.ConfigurationList",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "OAuth 2.0 resource server",
     "source": {"port": "admin", "endpoint": "Security.OAuth2.ResourceServer", "type": "LIST"},
     "fields": ["Name", "ServerDefinition"],
     "filter": ["Name", "ServerDefinition"],

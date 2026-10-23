@@ -39,6 +39,7 @@ XData Declaration
   "classicPage": "%cspapp.op.utilsysstatisticsresource",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "system resource",
     "source": {"port": "admin", "endpoint": "Monitor", "type": "RESOURCEROWS", "rows": "Resources"},
     "fields": ["Name", "Seize", "Nseize", "Aseize", "Bseize", "BusySet"],
     "filter": ["Name"],

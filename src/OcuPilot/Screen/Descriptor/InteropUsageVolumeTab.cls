@@ -38,6 +38,7 @@ XData Declaration
   "classicPage": "%CSP.UI.Portal.InteroperabilityUsage",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "namespace's message volume by direction",
     "source": {"port": "monitor", "endpoint": "MessageVolume", "type": "LIST"},
     "fields": ["Namespace", "Type", "Volume"],
     "filter": ["Namespace", "Type"],

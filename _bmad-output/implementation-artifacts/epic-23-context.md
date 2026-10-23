@@ -4,7 +4,7 @@
 
 ## Goal
 
-Epic 23 holds the cleanup stories chartered after each release. Each takes an owner-approved slice of the deferred-work ledger, at most twelve entries, and gives every entry a disposition, so the ledger stays honest and the code it names stays right. Stories 23.1 to 23.7 and 23.11 are done. Story 23.8 is next. It resolves the last seven medium-severity entries and five low-severity tidy-ups. The medium entries cover the scripts, the install and smoke checks, the client lint, the screen-open contract and the shared Save. The tidy-ups are in the System Explorer save path and a proposal test fixture. The aim is that the scripts, the install checks and the explorer's save path say and do the same thing. Stories 23.9 and 23.10 follow it.
+Epic 23 holds the fix stories chartered between releases. Each cleanup story gives an owner-approved slice of the deferred-work ledger a disposition, so the ledger stays honest and the code it names stays right. Story 23.12 is the only story in this dispatch, chartered at the owner's request after the 1.0.13 demo. It makes the agent read the list that actually holds an answer. Every read tool's description will say what its list holds and which fields it returns. The built-in system prompt gains three short rules: check every likely list before answering "none", never describe a list without reading it, and name the lists checked. The Planner cuts 1.0.14 from this story, and then the run holds again.
 
 ## Stories
 
@@ -15,117 +15,94 @@ Epic 23 holds the cleanup stories chartered after each release. Each takes an ow
 - Story 23.5: The range-end cleanup, part 5 (done)
 - Story 23.6: The Haiku-story cleanup (done)
 - Story 23.7: The range-end cleanup, part 6 (done)
-- Story 23.8: The range-end cleanup, part 7 (next)
+- Story 23.8: The range-end cleanup, part 7 (done)
 - Story 23.9: The range-end cleanup, part 8 (backlog)
 - Story 23.10: The range-end cleanup, part 9: two sweeps (backlog)
 - Story 23.11: The range-end cleanup, part 10 (done)
+- Story 23.12: The agent picks the right list (next, and the only story in this dispatch)
 
 ## Requirements & Constraints
 
-**Every cleanup story**
+**Story 23.12**
 
-- The ledger tool writes each owned entry's disposition: `resolved-by` the story with its commit, or `wontfix-accepted` or `by-design` with a reason and any condition that would reopen it.
-  - Story 23.8's criteria allow no other disposition, so no entry is re-owned onward.
-  - Use `ledger.sh slice|show|append`, and never read the ledger file whole.
-- An entry is a finding, not a fact. Verify it at head and record whether it is confirmed, refuted or already fixed. Counts in an entry's evidence date from its filing, so recount them.
-- Every fix gets a test that reddens before the fix, with a Rule 19 `mutation:` line. If no test can go red, the entry says why.
-- Fixes land in batches grouped by area. Each batch is its own commit with CI green on its own head.
-- A change a user can see is named in the plan beside its entry. A fix that contradicts a planning document corrects that document at its origin.
+- **The defect** was measured on the 1.0.13 demo with `claude-haiku-5-5`. Asked "Which tasks are suspended?" with no screen open, the agent answered "nothing is suspended" three times out of three, while three scheduled tasks were suspended.
+  - The discovery search returned the schedule's read tool among eight tools.
+  - The model read the empty background-jobs list instead, and then claimed the other task lists have no status column.
+  - Today every read tool's description is the same templated sentence with a screen identifier in it.
+- **Descriptions.** Each read tool's description names three things:
+  - the screen's title as a person sees it;
+  - what one row is;
+  - the fields the read returns, derived from the descriptor's declared read fields and never written a second time.
+- **Labels.** Lists a model could confuse each carry a short declared label. It says what the list holds and, where confusion is plausible, what it does not hold.
+  - The groups include at least the five task screens, local against remote databases, and the log screens.
+  - The plan measures the full set and names it.
+- **Prompt rules.** The built-in system prompt gains three rules, each worded once and kept short:
+  - read every likely list before answering "none";
+  - never say a list lacks a field or a status without having read it;
+  - a "nothing found" answer names the lists it checked.
+- **Token cost.** Measure the first request of a turn with no screen open, and of a turn on a busy screen, before and after the change. Record the growth, and keep it within a bound the plan states and the code review checks.
+- **Live evaluation.** About ten questions, each answered by one of several similar lists: suspended tasks, failed task runs, a dismounted database, a remote database, and a `messages.log` error against an application error.
+  - Run them on `claude-haiku-5-5` against a throwaway seeded with a known state, once before the change and once after.
+  - The after run must answer every question right. Keep the script and both score sheets with the story.
+  - State a cost cap first: a few US dollars at most.
+  - CI stays stub-based. The provider keys in `.env.local` may be used for live checks, but never copy or print them.
+- **Roster test.** It fails when any read tool's description lacks its title, its row noun or its field list, or when a tool in a confusable group lacks its label. Its pinning mutation removes the field list from one description.
+- **Out of scope.**
+  - Stored data and the installer. No upgrade check is expected, and the plan confirms that from its diff.
+  - Write tools' descriptions, beyond what the shared builder changes for free.
+  - Which tools a turn starts with.
 
-**Story 23.8's entries** (owner `23-8-the-range-end-cleanup-part-7`). Each is listed with its severity, then its fix-risk.
+**Cleanup stories 23.9 and 23.10.** These carry the epic's standing rules, as before:
 
-- **Scripts, install and container**
-  - DW-216 (med/med): `Install.Smoke.Port` uses the instance's own `WebServerPort`, so behind an external Web Gateway every HTTP check fails. The fix is a documented constraint at least, and an override at best.
-  - DW-235 (med/low): when `TMPDIR` is `/`, the scratch-root guard in `ci-throwaway.sh` admits any absolute path, which a root container then removes.
-  - DW-432 (med/low): `OCUPILOT_ALLOW_PRODUCTION_INSTALL` reddens test classes on any non-throwaway instance.
-    - It is documented only in a shell comment and in class headers: 29 classes at head, against 11 at filing.
-    - It belongs to the `OCUPILOT_ALLOW_*` arming family that `ci-throwaway.sh` sets. None of that family appears in CLAUDE.md, the rules or `docs/DEVELOPMENT.md`.
-  - DW-1762 (med/low): every container stop logs "Previous system shutdown was abnormal", including the README's `docker compose restart iris` update step.
-    - It was seen at every upgrade check from 1.0.2 to 1.0.5. Nothing was lost.
-    - Measure the cause first. A stop timeout too short for IRIS is a guess (inference).
-- **Client lint**
-  - DW-1188 (med/med): no client-lint family checks the `ocu-` classes in templates against the stylesheets.
-  - It needs a curated allow-list of deliberately unstyled hooks, and a policy for runtime-composed names and for `ocu-` ids.
-- **Navigation contract**
-  - DW-1462 (med/med): `shell.screen.open`'s `entityId` is a row key on some screens and the parent's id on parent-scoped ones.
-  - The orchestrator has ruled. `entityId` names the entity the registry declares for that screen. A parent reference gets its own `parentId` across `Navigate.cls`, the directive and the client navigator.
-  - `Test.ToolNavigate`'s registry sweep pins today's split. The entry's seven screens date from 2026-09-22, so derive the current set.
-- **Shared Save (Rule 31)**
-  - DW-2278 (med/med): Superserver, MFT connections (the Security slice) and Doc DB applications (the WebApp slice) each copy one Save, Rules and form shape.
-  - Stories 18.31, 18.33 and 18.34 logged the same copy. The proposed fix is one kernel base the slices extend.
-- **Explorer save and a test fixture** (all low severity)
-  - DW-2256: `ExplorerSaveMint` answers `REASONNOTFOUND` where `AtelierPort.REASONNOSOURCE` applies.
-  - DW-2257: `ExplorerSaveMint` measures the escaped length inline instead of calling the public `ExplorerSourceRead.Escaped`.
-  - DW-2258: `Test/ExplorerSaveTurn` discards `RemoveKeyed()`'s status three times.
-  - DW-2261: `Test/ExplorerSource` and `Test/ExplorerSourceEdges` hard-code `LIMIT = 60000` rather than reading `SOURCEMAXLENGTH`.
-  - DW-1267: `Test/ProposalFixture.RemoveSeeded`'s doc comment promises a sweep its error path skips, and that path drops the keys it had not yet reached.
+- The ledger tool writes each entry's disposition.
+- Each entry is verified at head as a finding, and any count it quotes is recounted.
+- A test reddens before each fix, with a Rule 19 mutation, or the entry says why none can.
+- Fixes land in area batches, each with CI green on its own head.
+- A CLAUDE.md line changes only through the Planner, with the owner's OK.
 
 ## Technical Decisions
 
-- **Slices.**
-  - A slice never depends on another slice, so a base shared by the Security and WebApp slices lives under `Kernel/`.
-  - Rule 31 keeps a copy only when the two will diverge, when a base would couple unrelated areas or vendor APIs, or when two short copies read better.
-- **Screen Save (AD-53, AD-55).** A screen's Save and the agent's confirmed write are two callers of one tool class. A shared base keeps all of the following:
-  - The Save resolves the tool's endpoint, fields, payload and port.
-  - The prohibited set is checked after the state read and before the port write.
-  - The per-target lock is held from the fresh read through the read-back.
-  - No proposal is minted.
-  - Neither read-only nor the kill switch gates it.
-- **Navigation (AD-5, AD-11, AD-13).**
-  - Navigation proposes only registry routes, and every refusal happens on the instance before any announcement.
-  - A sub-resource screen's route id names an entity of its parent screen's primary type.
-  - An id is one percent-encoded segment from the shared encoder, and a composite id never gets a second grammar.
-  - Citation chips open rows through the navigation tool's allow-list and URL builder, so they are reached by the change too (inference).
-  - Every tool has a round-trip test over its generated schema.
-- **Atelier source (AD-61, AD-39).**
-  - A document with no source is `PORT.NOTFOUND` with `REASONNOSOURCE`.
-  - The agent saves only within its namespace's own routines database, refused at the mint and again at Confirm.
-  - Vendor text is logged and never sent.
-- **Install and smoke (AD-17, AD-38, AD-45).**
-  - One smoke path, owned by `Install/` with its assertions in `OcuPilot.Install.Smoke`, defines "installed and working", and CI runs it.
-  - A product start compiles no test class.
-  - Health is this start's install record, never a log line.
-- **Pinned rosters.**
-  - `ui/tools/ci.test.mjs` holds the arming rosters in `ci-throwaway.sh` against the classes that declare each variable.
-  - `compose.test.mjs` pins the compose ports.
-  - `client-lint.mjs` runs in prebuild, and each family is a pure function tested in `client-lint.test.mjs`.
-  - An allow-list stays literal. Any count asserted elsewhere is derived.
+- **The descriptor is the one source (AD-5).**
+  - The tool listing is built only from compile-time declarations. It is kept per process and rebuilt when the `OcuPilot` package's compile signature changes, and nothing read at run time enters it.
+  - So labels and field lists are declarations, and the builder must be deterministic. Anthropic receives the whole tool set byte-identical within a turn: tools outside the starting set carry `defer_loading`, and the last non-deferred tool is cache-marked.
+- **How descriptions are built today.** `Screen/Tool/Read.cls` builds each description from its `DESCRIPTION` parameter and the tool identifier, then appends the read's optional `note` text.
+  - `read.note` is `{key, text}`: the list page shows the key's string, and the tool gets the text.
+  - `Screen/Registry.cls` and `ui/tools/screen-mirror.mjs` validate it alike over a shared corpus. A new declaration follows that pattern, extending the sibling rather than copying it (Rule 31).
+- **Title and row noun.** These are client string keys on the descriptor, `labelKey` and `entityLabelKey`, and some screens leave `entityLabelKey` empty. Their text lives in `ui/src/app/core/strings.ts`. The plan's main design question is how to put the title a person sees into a description built on the instance without writing it twice.
+- **Field list.** It names what the read returns:
+  - the declared read `fields`, including the detail fields that `source.rowGet` merges in;
+  - the schedule's `Suspended` comes from the vendor's `INFO` call, because its LIST reports every task as not suspended;
+  - minus secret-typed fields, which never leave the instance (AD-35, AD-36).
+- **Tool names stay `<area>.<screen>.read`.** On the wire, dots become underscores. Tool identity does not depend on how a screen is named, so a title in the description changes no name and no governance key.
+- **The system prompt is a build-time constant (AD-11).**
+  - Nothing read at run time is joined to it.
+  - A definition's prompt override replaces the built-in prompt whole, so a definition that carries one does not get the new rules (inference). The plan says whether any shipped or demo definition carries one.
+  - Keep the prompt's existing content: it names `<ocupilot-data>` as data (AD-60) and explains the explain-entry marker.
+- **Turn budget (AD-24, Stories 18.39 and 18.45).**
+  - A turn starts with the shell area's tools, `shell.tools.find` among them, plus the screen context's `tools`. Every other advertised tool is reached through the search.
+  - The 2026-10-12 baselines on `claude-haiku-5-5`: a scoped first request of 4,644 tokens, a largest starting set of 11,135, and 192,172 tokens for the full set. The 368 advertised tools then serialized to 525,414 characters, 112,090 of them descriptions.
+  - Re-measure, because the tool count has grown since (inference). Longer descriptions may also change what the discovery search returns (inference).
 - **Tests.**
-  - Tests are hermetic: each asserts on its own rows by marker, with no dependence on run order or instance age.
-  - Every plan carries a `Shared surfaces:` line.
-  - `ProposalFixture.RemoveSeeded` is a shared surface: a name grep finds about 240 files (inference).
+  - Every tool keeps its round-trip test over its generated schema.
+  - Tests are hermetic.
+  - A roster's allow-list stays literal, and any count asserted elsewhere is derived.
 - **Verification.**
   - Run on slot A, with `server: "ocupilot-slot-a"` and the throwaway `ocupilot-ci` (52776/1975).
-  - Run one ObjectScript class per call, and take totals from `%UnitTest_Result`.
-  - Rule 29: the `(loop)` set is the story's own tests. The full ObjectScript sweep runs once, before `dev_complete`, and the browser suite is left to CI.
-  - Rule 30: the fresh check runs forward and in reverse before the push.
-  - Rule 32: the code head is pushed alone, never with `[skip ci]`, with `missing=none` before any bookkeeping push.
-- **Containers.**
-  - Never start, stop, recreate or `down` `ocupilot` or any `ocupilot-slot-*` container.
-  - A `docker-compose.yml` change recreates the owner's live container on its next `up`, so DW-1762 needs the owner's coordination.
-  - Measure on the throwaway, whose compose definition `ci-throwaway.sh` writes itself.
-- **Prose and Git.**
-  - Comments state the contract and never narrate.
-  - Check Markdown with `scripts/lint-docs.sh`.
-  - The README is user-facing: plain language, with no internals.
-  - Stage by path, and never touch `main` or a release branch.
+  - Run one ObjectScript test class per call, and take totals from `%UnitTest_Result`.
+  - Rules 29, 30 and 32 apply.
+  - Never start, stop or recreate `ocupilot` or any `ocupilot-slot-*` container, and tear down only a throwaway this run started.
+- **Prose.** Comments state contracts only, and source text is ASCII with `\uXXXX` escapes. An AD the change reshapes is amended in the spine (Rule 20).
 
 ## UX & Interaction Patterns
 
-- **DW-2256.** A refused agent save of a document with no source reads the viewer's existing sentence, "The instance keeps no source for this document.". The `code` stays the same, and the plan names the wording.
-- **DW-1462.** The navigation tool's parameters change. An agent navigation is still announced first, and the departing screen can still refuse it.
-- **DW-216 and DW-1762.** A changed README install or update step is something an operator sees.
+- **The agent's voice.** The agent speaks in the first person and in plain language, and never claims what it did not verify. It names the screen it means, and names rows in backticks, which render as citation chips. A "nothing found" reply names the lists it checked, by the titles people see.
+- **What a user can see.** If a label reuses `read.note`, its text also appears above that list on the page. The plan names that as a change a user can see.
 
 ## Cross-Story Dependencies
 
-- **Order.** Story 23.8 runs on slot A after Story 23.7. Batch 4 of 23.7 is committed with CI pending. Under Rule 28 that CI resolves before 23.8's implement stage, not before its plan.
-- **Story 23.6's siblings.** Story 23.6 left `REASONNOSOURCE`, the public `Escaped` and the `RemoveKeyed` status fix in `ExplorerSourceTurn`. Extend these rather than copying them (Rule 31).
-- **Epic 20 on slot B.** Its pushed branch contains feature `854081b0`. Beyond feature, it changes:
-  - `scripts/ci-throwaway.sh` (add-only roster comments), touched by DW-235, DW-432 and DW-1762
-  - `scripts/check-objectscript.py`
-  - `ui/src/styles/_components.scss` (+55 lines), which DW-1188 reads
-  - `strings.ts`, `screens.generated.ts` and `screen-outlet.ts`
-  - `Test/Navigation.cls` and `ui/tools/navigation.test.mjs`, beside DW-1462
-- **Before editing those files (Rule 11).** Check Epic 20's diff first. Add-only edits were ruled fine during Story 23.11; anything else is a clarification for the orchestrator. DW-1188's rule will also judge Epic 20's new templates when that epic merges (inference).
-- **Footprint.** `README.md` and `docker-compose.yml` lie outside Epic 23's paths. An edit to either is reported under `footprint_extensions:`.
-- **CLAUDE.md and the rules.** DW-432 asks for lines in CLAUDE.md and `.claude/rules`, and the entry routed that decision to the owner. A CLAUDE.md line changes only through the Planner, with the owner's OK, so report the wording it needs. `docs/DEVELOPMENT.md` is in Epic 23's footprint.
+- **Order.** Story 23.12 runs alone on slot A under the owner's charter. Epic 20 is held, with Story 20.34 next, and Stories 23.9 and 23.10 stay in the backlog.
+- **Earlier stories.**
+  - It leaves Story 18.45's discovery tool and per-screen starting set unchanged.
+  - It stays within Story 18.39's turn budget.
+  - It extends Story 19.14's `read.note`.
+- **Footprint.** Epic 23 covers `src/OcuPilot/`, `ui/src/`, `ui/tools/`, `ui/browser/`, `scripts/`, `docs/` and the planning artifacts. An edit anywhere else is reported under `footprint_extensions:`.

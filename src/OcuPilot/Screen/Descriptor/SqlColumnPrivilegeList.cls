@@ -51,6 +51,7 @@ XData Declaration
   "classicPage": "%CSP.UI.Portal.Dialog.ColumnPriv",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "SQL column privilege",
     "source": {"port": "admin", "endpoint": "Security.SQLPrivilege.Column", "type": "LIST", "query": {"includeSystem": "1"}},
     "fields": ["Column", "Action", "GrantedBy", "GrantOption", "GrantedVia"],
     "filter": ["Column", "Action", "GrantedBy", "GrantedVia"],

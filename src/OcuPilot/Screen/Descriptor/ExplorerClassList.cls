@@ -61,6 +61,7 @@ XData Declaration
   "classicPage": "%CSP.UI.Portal.ClassList",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "class",
     "source": {"port": "atelier", "endpoint": "Classes", "type": "LIST"},
     "fields": ["Name", "Modified", "Database", "Generated"],
     "filter": ["Name", "Database"],

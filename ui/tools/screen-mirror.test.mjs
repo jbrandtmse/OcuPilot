@@ -38,6 +38,9 @@ import {
   parseRefSeparator,
   parseScopeWords,
   readCheckedInMirror,
+  readCheckedInTitles,
+  buildTitles,
+  TITLES_PATH,
   declaredStringKeys,
   readProblem,
   readSources,
@@ -113,6 +116,43 @@ test('the checked-in mirror is exactly what the descriptor declarations produce'
     generate(),
     `${MIRROR_PATH} is stale -- run node tools/screen-mirror.mjs`
   );
+});
+
+// Story 23.12 (AD-5, AD-36): a read tool's description gives its screen the title its descriptor's
+// `labelKey` names in `strings.ts`, generated onto the instance as `Screen/Titles.cls`. `buildTitles` maps
+// every descriptor `labelKey` to that value, sorted, in ASCII; a key the strings lack throws and names the
+// descriptor; and the checked-in class is exactly what the sources produce.
+//
+// Mutation (Rule 19): make `buildTitles` emit the key in place of its value -> the value assertion goes
+// red; drop its throw -> the missing-key assertion goes red; change a title in `strings.ts` without
+// regenerating -> `node tools/screen-mirror.mjs --check` exits 1 and the staleness assertion goes red.
+test('buildTitles maps every descriptor labelKey to its strings.ts value, and Titles.cls holds exactly that', () => {
+  const strings = loadStrings();
+  const { screens } = readSources();
+  const text = buildTitles(screens, strings);
+  const titles = JSON.parse(extractXData(text, 'Titles'));
+  const keys = [...new Set(screens.map((screen) => screen.declaration.labelKey))];
+  assert.ok(keys.length > 100, `every descriptor's labelKey is mapped (read ${keys.length})`);
+  assert.deepEqual(Object.keys(titles), [...keys].sort(), 'the keys are exactly the descriptors\' labelKeys, sorted');
+  for (const screen of screens) {
+    const { labelKey } = screen.declaration;
+    assert.equal(titles[labelKey], strings[labelKey], `${screen.className}: ${labelKey} is its strings.ts value`);
+  }
+  assert.equal(readCheckedInTitles(), text, `${TITLES_PATH} is stale -- run node tools/screen-mirror.mjs`);
+
+  const first = keys[0];
+  assert.notEqual(
+    buildTitles(screens, { ...strings, [first]: `${strings[first]} changed` }),
+    readCheckedInTitles(),
+    'a changed title makes the checked-in class differ, which is what --check compares'
+  );
+
+  const hostile = [{ className: 'OcuPilot.Screen.Descriptor.Hostile', declaration: { labelKey: 'noSuchStringKeyAnywhere' } }];
+  assert.throws(() => buildTitles(hostile, strings), /OcuPilot\.Screen\.Descriptor\.Hostile: labelKey 'noSuchStringKeyAnywhere' names no string/);
+
+  const escaped = buildTitles([{ className: 'OcuPilot.Screen.Descriptor.Accent', declaration: { labelKey: 'k' } }], { k: 'caf\u00e9' });
+  assert.ok(escaped.includes('"k": "caf\\u00e9"'), 'a non-ASCII title is written as a \\uXXXX escape');
+  assert.match(escaped, /^[\x00-\x7f]*$/, 'and the class is ASCII throughout (Rule 14)');
 });
 
 test('the mirror carries the kernel vocabulary, the areas and every descriptor', () => {
@@ -784,6 +824,8 @@ test('readProblem returns every source-type, forEach, query and parts sentence O
     if (testCase.context !== undefined) declaration.context = structuredClone(testCase.context);
     if (testCase.area !== undefined) declaration.area = testCase.area;
     if (testCase.note !== undefined) declaration.read.note = structuredClone(testCase.note);
+    if (testCase.row !== undefined) declaration.read.row = testCase.row;
+    if (testCase.label !== undefined) declaration.read.label = testCase.label;
     assert.equal(readProblem(declaration), testCase.expected, testCase.name);
     if (testCase.expected !== null) refusals += 1;
   }
@@ -952,6 +994,8 @@ test('tabProblem and tabGroupProblem return every sentence OcuPilot.Test.TabCorp
     // Story 18.21: ECP application servers' two tabs, a listed group whose head is its first tab.
     ['os-management/ecp-application-servers', 'os-management/ecp-application-servers', 1, 19],
     ['system-explorer/sql-procedures/document', 'system-explorer/sql-procedures/document', 1, 0],
+    // Story 20.38: a schema's three tabs, a parent-scoped group whose head is unlisted.
+    ['system-explorer/sql-schemas/document', 'system-explorer/sql-schemas/document', 1, 0],
     ['system-explorer/sql-tables/document', 'system-explorer/sql-tables/document', 1, 0],
     ['system-explorer/sql-views/document', 'system-explorer/sql-views/document', 1, 0],
     // Story 20.4: a production item's six tabs, a parent-scoped group whose head is unlisted.
@@ -966,6 +1010,7 @@ test('tabProblem and tabGroupProblem return every sentence OcuPilot.Test.TabCorp
     ['os-management/ecp-application-servers/ssl', 'os-management/ecp-application-servers', 2, 0],
     ['system-explorer/sql-tables/fields', 'system-explorer/sql-tables/document', 2, 0],
     ['system-explorer/sql-procedures/statements', 'system-explorer/sql-procedures/document', 2, 0],
+    ['system-explorer/sql-schemas/views', 'system-explorer/sql-schemas/document', 2, 0],
     ['system-explorer/sql-views/fields', 'system-explorer/sql-views/document', 2, 0],
     ['interoperability/productions/items/settings', 'interoperability/productions/items/document', 2, 0],
     ['interoperability/messages/contents', 'interoperability/messages/document', 2, 0],
@@ -974,6 +1019,7 @@ test('tabProblem and tabGroupProblem return every sentence OcuPilot.Test.TabCorp
     ['security/oauth/clients', 'security/oauth', 2, 0],
     ['analytics/cubes/relationships', 'analytics/cubes/document', 3, 0],
     ['system-explorer/sql-tables/indices', 'system-explorer/sql-tables/document', 3, 0],
+    ['system-explorer/sql-schemas/procedures', 'system-explorer/sql-schemas/document', 3, 0],
     ['system-explorer/sql-views/statements', 'system-explorer/sql-views/document', 3, 0],
     ['interoperability/productions/items/queue', 'interoperability/productions/items/document', 3, 0],
     // Story 20.30: a message's Trace tab, the third of the message group.
@@ -1495,6 +1541,7 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
   // Story 20.9's Messages search, whose nine criteria are its own, and its Header and Contents tabs, whose one criterion is the message.
   // Story 20.30's Trace tab, whose one criterion is the message too.
   // Story 20.11's three cube tabs, whose one criterion is the cube, and a term list's entries, whose one criterion is the term list.
+  // Story 20.38's three schema tabs, whose one criterion is the schema the route id names.
   const withCriteria = emittedScreens.filter((screen) => (screen.read?.criteria ?? null) !== null);
   assert.deepEqual(
     withCriteria.map((screen) => screen.descriptor),
@@ -1523,6 +1570,9 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
       'OcuPilot.Screen.Descriptor.ExplorerSqlProcedure',
       'OcuPilot.Screen.Descriptor.ExplorerSqlProcedureStatements',
       'OcuPilot.Screen.Descriptor.ExplorerSqlProcedures',
+      'OcuPilot.Screen.Descriptor.ExplorerSqlSchema',
+      'OcuPilot.Screen.Descriptor.ExplorerSqlSchemaProcedures',
+      'OcuPilot.Screen.Descriptor.ExplorerSqlSchemaViews',
       'OcuPilot.Screen.Descriptor.ExplorerSqlSchemas',
       'OcuPilot.Screen.Descriptor.ExplorerSqlTable',
       'OcuPilot.Screen.Descriptor.ExplorerSqlTableStatements',
@@ -3086,6 +3136,10 @@ test('Story 19.1: the System Explorer reads through the atelier port, the eighth
     ExplorerSqlViewStatements: ['Catalog.ViewStatements', 'view='],
     ExplorerSqlProcedure: ['Catalog.Procedure', 'procedure='],
     ExplorerSqlProcedureStatements: ['Catalog.ProcedureStatements', 'procedure='],
+    // Story 20.38: a schema's three tabs, each reading one schema.
+    ExplorerSqlSchema: ['Catalog.SchemaTables', 'schema='],
+    ExplorerSqlSchemaViews: ['Catalog.SchemaViews', 'schema='],
+    ExplorerSqlSchemaProcedures: ['Catalog.SchemaProcedures', 'schema='],
   };
   for (const [name, [endpoint, defaults]] of Object.entries(expected)) {
     const screen = screens.find((candidate) => candidate.className === `OcuPilot.Screen.Descriptor.${name}`);

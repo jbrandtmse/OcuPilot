@@ -9047,6 +9047,69 @@ So that an update never strands a run.
 
 - DW-2500: Kernel/State/SqlRun declares Kind between Namespace and State with no source Storage section, so an update from 1.0.12 shifts stored slots 4-10 and a pre-update background run reads 404 and is never swept (ledger; routed by load 2026-10-23)
 
+### Story 20.38: A schema opens its tables, views and procedures
+
+Chartered on 2026-10-23 at the owner's request, relayed by the Planner. The owner reported on the 1.0.13 demo: "clicking on a SQL Schema doesn't take you to looking at the subschemas https://demo.ocupilot.org/ocupilot/system-explorer/sql-schemas/Ens". Their direction was: "I want to do this as a second story. We can have the orchestrator run it in slot b so that we don't loose a lot of time." It runs beside Story 23.12, and 1.0.14 is cut once both are in.
+
+**Why.** The SQL schemas list's Schema column is a `name` column (`Screen/Descriptor/ExplorerSqlSchemas.cls`, id `single`, no `rowTarget`), so the shared table links each name to `system-explorer/sql-schemas/<schema>`. No screen answers that route. A click changes the address and the breadcrumb ("SQL schemas › Ens"), and the page stays the schema list. The classic portal's SQL page opens a schema into its tables, views and procedures.
+
+The SQL tables, views and procedures screens already filter by schema: `ExplorerSqlTables.cls` has a `schema` criterion, "One schema, spelled as explorer.sqlschemas.read answers its Schema; omit it to list every schema's tables", and so do the others.
+
+A Planner scan (inference: a structural heuristic, not a measurement) found 36 list screens whose `name` column has no screen under its route. Most are probably fine, because they link elsewhere or not at all, but nothing checks it.
+
+As a developer browsing System Explorer,
+I want a schema's name to open that schema,
+So that I can see its tables, views and procedures without filtering three screens by hand.
+
+**Acceptance Criteria:**
+
+- **Given** the SQL schemas list
+- **When** a schema's name is clicked
+- **Then** the schema's own screen opens at `system-explorer/sql-schemas/document/<schema>` [AMENDED 2026-10-23, Story 20.38 plan, unattended ruling: AD-5 puts a parent-scoped tab group's head at its parent list's `<route>/document`, and `sql-schemas/<schema>` stays the list's own id route; was `system-explorer/sql-schemas/<schema>`]. It is a tab group with "Tables", "Views" and "Procedures":
+  - each tab lists that schema's objects through the existing SQL tables, views and procedures reads with their `schema` criterion (Rule 31: extend those reads, never copy them);
+  - a system schema's objects show: each tab lists every object in its schema, system ones included, with no System control of its own [AMENDED 2026-10-23, Story 20.38 plan, unattended ruling: AD-5 gives a parent-scoped read one criterion, its route id; was "the System items criterion is carried over"];
+  - each object's name opens its existing table, view or procedure screen;
+  - the breadcrumb reads SQL schemas › <schema>.
+- **Given** a schema with no objects of a tab's kind (Ens has tables and procedures but no views [AMENDED 2026-10-23, Story 20.38 plan: measured on ocupilot-slot-b and ocupilot-b-ci; was "Ens has procedures but no tables"])
+- **When** that tab opens
+- **Then** it says so plainly, and the tab for a kind it does hold shows its rows.
+- **Given** the agent on the schema's screen
+- **When** it reads the screen
+- **Then** its screen context and tools are the tabs' own reads, scoped to that schema, with no new agent action.
+- **Given** every built list screen whose name column links somewhere
+- **When** the client tests run
+- **Then** a test fails if any such link leads to a route with no built screen to show it, which is the bug class above.
+  - SQL schemas is fixed in this story. The other lists the test finds are held in an exact allow-list, and Story 20.39 fixes them [AMENDED 2026-10-23, Story 20.38 plan, unattended split ruling: 17 more lists, past the dispatch's dozen, seven of them with more than one plausible target and three in descriptors Story 23.12 changes; was "Every list the test finds is fixed in this story: given a real target, or rendered as plain text where nothing should open."].
+  - The spec lists each one and what it now does.
+- **Given** the browser suite
+- **When** a spec clicks a schema name on SQL schemas
+- **Then** it lands on that schema's screen, sees its Procedures tab's rows for a schema that holds procedures, and opens one procedure from it.
+
+**Out of scope:** stored data and the installer (no upgrade check expected; the plan confirms from its diff), editing schemas, and any change to what the SQL tables, views and procedures screens show on their own.
+
+### Story 20.39: Every list's name opens something
+
+[CHARTERED 2026-10-23, split from Story 20.38 at its plan, unattended ruling within `limits.split_children`] Story 20.38's check found 17 lists besides SQL schemas whose name links back to the list itself, so a click changes the address and the page stays put. 20.38 holds them in an exact allow-list; this story empties it. Its spec's Design Notes list each one, with the target the plan found. After Story 20.38, and after Story 23.12 merges (the task and database descriptors are 23.12's too).
+
+As a developer browsing OcuPilot,
+I want every name a list links to open something,
+So that a click never leaves me where I was.
+
+**Acceptance Criteria:**
+
+- **Given** each list in Story 20.38's allow-list
+- **When** its name is clicked
+- **Then** it opens that object's existing screen, or the name is plain text where nothing should open.
+  - Where more than one target is plausible (SQL privileges, web application class access, database free space, DocDB, business partners, analytics folder items, screen permissions), the plan names the choice and its reason, and plain text is the default.
+  - The spec lists each list and what it now does.
+- **Given** Story 20.38's link check
+- **When** the client tests run
+- **Then** its allow-list is empty, and the check still fails on any new name link that leads back to its own list.
+
+- DW-2504: Four doc comments still place the name cell's link chain in data-table.ts, which Story 20.38 moved to navigation.ts's nameLinkTarget (ledger; routed by adjudication 2026-10-23)
+
+**Out of scope:** new screens for objects that have none; stored data and the installer.
+
 ## Epic 21: Stage 5 - custom-REST parity from the MCP suite's handlers
 
 Every remaining classic portal leaf with a backing class but no route becomes reachable: backup and mirroring, startup and memory tables, NLS locales, SQL settings, globals and the whole SQL tuning track, interoperability credentials, purge, deployment, record maps, workflow, the analytics editors, and a developer-tools set. The agent gains the 28 harvested inspection tools and undo by snapshot and revert.
@@ -9619,3 +9682,52 @@ So that a large class is readable and the suites stay green when a story adds a 
 - DW-2458: CI flake: log-viewer.spec.ts AC6 (with Live tail off nothing streams) reads fake timers pending on gates (node 24 and node 26), DW-2415 recurring after Story 20.8's fix (ledger; routed by lead 2026-10-15)
 - DW-2460: flake: OcuPilot.Test.SqlBackgroundJob TestAnEarlyCancelIsSentAgainUntilTheQueryRuns failed once in a local full sweep and passed on the shard's re-run (ledger; routed by lead 2026-10-15)
 - DW-2462: flake: OcuPilot.Test.LogTail TestAnAbsentFileIsWaitedOutAndReportedAtTheBound found the file present in a full sweep, green alone (ledger; routed by lead 2026-10-15)
+
+### Story 23.12: The agent picks the right list
+
+Chartered on 2026-10-23 at the owner's request ("We need to improve the system prompt and label the lists"; "we will do one story to fix this and pause again"; "We'll cut 1.0.14 once that bug fix is in"), relayed by the Planner. It is the only story in this dispatch. 1.0.14 is cut from it, and the run then holds again.
+
+**Why.** On the 1.0.13 demo (Claude Haiku 5.5), "Which tasks are suspended?" asked with no screen open was answered wrongly three times out of three: "nothing is suspended", while the instance had three suspended scheduled tasks. Measured from the turn's steps:
+
+- the model searched with "list background tasks with status, suspended tasks";
+- `shell_tools_find` returned eight tools, `tasks_schedule_read` among them;
+- the model read `tasks.background`, which was empty, and claimed the scheduled and on-demand lists "don't show a status column".
+
+Every read tool's description is the same sentence with a screen key in it: "Read the rows the tasks.schedule screen lists, bounded and with secret fields removed." (`Screen/Tool/Read.cls` `DESCRIPTION`/`Description`). Nothing tells the model what a list holds or which fields it carries. And no rule in the system prompt (`Kernel/Agent/Prompt.cls` `BUILTIN`) stops it reporting "none" after checking one list, or asserting what a list lacks without reading it.
+
+As an administrator asking the agent a question from any screen,
+I want it to read the list that actually holds the answer, and to say which lists it checked,
+So that "none" means none, and the agent never describes a list it has not read.
+
+**Acceptance Criteria:**
+
+- **Given** any read tool the registry offers
+- **When** its description is built
+- **Then** it names the screen as the person sees it (its title) and what one row is, and lists the fields the read returns, derived from the descriptor's own `read` fields, never written twice. For example: the task schedule, one scheduled task per row, with fields Name, Type, Namespace, Description, Id, LastFinished, NextScheduled and Suspended.
+
+- **Given** read tools whose lists a model could confuse
+- **When** their descriptions are built
+- **Then** each carries a short declared label saying what it holds and, where the confusion is plausible, what it does not hold.
+  - The groups are at least the task screens (schedule, on-demand, upcoming, history, background), local and remote databases, and the log screens. The plan measures and names the full set.
+  - Example: "background jobs such as a database compact; scheduled tasks are on the task schedule".
+
+- **Given** the built-in system prompt
+- **When** a turn runs
+- **Then** it carries three rules, worded once and kept short:
+  - when more than one list could hold the answer, read each likely one before answering "none";
+  - never say a list lacks a field or a status without having read it (its fields are named in its description);
+  - a "nothing found" answer names the lists it checked.
+
+- **Given** the change in token cost
+- **When** the plan measures the first request of a turn with no screen open and of a turn on a busy screen, before and after
+- **Then** the growth is recorded, and kept within a bound the plan states and the code review checks. The 18.45 per-screen tool scoping stays as it is.
+
+- **Given** a small live evaluation on `claude-haiku-5-5`: about ten questions whose answer sits in one of several similar lists, run against a throwaway seeded with a known state, among them suspended tasks, failed task runs, a dismounted database, a remote database and an error from `messages.log` against an application error
+- **When** it runs once before the change and once after
+- **Then** each answer is scored right or wrong against the seeded state, the "after" run answers every question right, and the evaluation's script and both score sheets are kept with the story. The run stays inside a stated cost cap (a few US dollars at most). CI stays stub-based (owner 2026-10-12: live checks use Haiku 5.5).
+
+- **Given** the registry's descriptions
+- **When** the test suite runs
+- **Then** a roster test fails if any read tool's description lacks its title, its row noun or its field list, and fails if a confusable group's tool lacks its label. Its pinning mutation removes the field list from one description.
+
+**Out of scope:** stored data and the installer (so no upgrade check is expected; the plan confirms that from its diff), write tools' descriptions beyond what the same builder changes for free, and any change to which tools a turn starts with.

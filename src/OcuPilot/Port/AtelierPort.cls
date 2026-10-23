@@ -27,7 +27,7 @@
 /// (<method>MacroContext</method>), read first through the document route, never a caller's list.
 /// Each answers rows only; a match's line and a macro's definition are row fields, never a
 /// document's whole text (AD-36).</p>
-/// <p><b>Eighteen reads answer the SQL catalog</b> (<method>CatalogRows</method>): each sends only
+/// <p><b>Twenty-one reads answer the SQL catalog</b> (<method>CatalogRows</method>): each sends only
 /// this port's fixed statements to the <code>Query</code> route with every caller value bound in its
 /// <code>parameters</code>, so no caller text reaches a statement (AD-61 rules 3 and 7), and a tab's
 /// table, view or procedure is first resolved to the one the caller's own privileges show it.</p>
@@ -100,9 +100,10 @@ Parameter ENDPOINTSEARCH = "Search";
 Parameter ENDPOINTMACRO = "Macro";
 
 /// <p>The SQL catalog's endpoints (<method>CatalogRows</method>): a namespace's schemas, tables,
-/// views and procedures; one table's information, fields, maps and indices, partitions, partition
-/// mappings, triggers, constraints, cached queries and SQL statements; one view's information, fields
-/// and SQL statements; and one procedure's information and SQL statements.</p>
+/// views and procedures; one schema's tables, views and procedures; one table's information, fields,
+/// maps and indices, partitions, partition mappings, triggers, constraints, cached queries and SQL
+/// statements; one view's information, fields and SQL statements; and one procedure's information and
+/// SQL statements.</p>
 Parameter ENDPOINTCATALOGSCHEMAS = "Catalog.Schemas";
 
 Parameter ENDPOINTCATALOGTABLES = "Catalog.Tables";
@@ -110,6 +111,15 @@ Parameter ENDPOINTCATALOGTABLES = "Catalog.Tables";
 Parameter ENDPOINTCATALOGVIEWS = "Catalog.Views";
 
 Parameter ENDPOINTCATALOGPROCEDURES = "Catalog.Procedures";
+
+/// <p>The three schema tabs (<method>CatalogRows</method>): each extends the list of its kind
+/// (<method>CatalogListFor</method>), requires <code>schema</code> and lists every item of that
+/// schema, system ones included.</p>
+Parameter ENDPOINTCATALOGSCHEMATABLES = "Catalog.SchemaTables";
+
+Parameter ENDPOINTCATALOGSCHEMAVIEWS = "Catalog.SchemaViews";
+
+Parameter ENDPOINTCATALOGSCHEMAPROCEDURES = "Catalog.SchemaProcedures";
 
 Parameter ENDPOINTCATALOGTABLE = "Catalog.Table";
 
@@ -817,8 +827,8 @@ ClassMethod MinVersion(pEndpoint As %String, pType As %String = {..#REQUESTTYPE}
 /// <parameter>ENDPOINTSEARCH</parameter> reads <code>text</code>, <code>scope</code> and
 /// <code>case</code> (<method>SearchRows</method>), and <parameter>ENDPOINTMACRO</parameter>
 /// <code>document</code> and <code>macro</code> (<method>MacroRows</method>). A catalog endpoint
-/// reads <code>system</code> and <code>schema</code>, or <code>table</code>, <code>view</code> or
-/// <code>procedure</code> (<method>CatalogRows</method>). <var>pBody</var> is not read.</p>
+/// reads <code>system</code> and <code>schema</code>, a schema tab <code>schema</code> alone, or
+/// <code>table</code>, <code>view</code> or <code>procedure</code> (<method>CatalogRows</method>). <var>pBody</var> is not read.</p>
 /// <p>On success <var>pResult</var> is a <class>%DynamicArray</class> of rows and
 /// <var>pHttpStatus</var> is 200. A list row is <code>{Name, Modified, Database, Generated}</code>;
 /// a document endpoint answers <method>DocumentRows</method>'s rows and <var>pDocument</var>
@@ -1223,21 +1233,34 @@ ClassMethod SearchDocuments(pScope As %String) As %String
 /// <p>Whether <var>pEndpoint</var> is one of the SQL catalog's endpoints.</p>
 ClassMethod IsCatalog(pEndpoint As %String) As %Boolean
 {
-    Quit $Case(pEndpoint, ..#ENDPOINTCATALOGSCHEMAS: 1, ..#ENDPOINTCATALOGTABLES: 1, ..#ENDPOINTCATALOGVIEWS: 1, ..#ENDPOINTCATALOGPROCEDURES: 1, ..#ENDPOINTCATALOGTABLE: 1, ..#ENDPOINTCATALOGFIELDS: 1, ..#ENDPOINTCATALOGINDICES: 1, ..#ENDPOINTCATALOGTRIGGERS: 1, ..#ENDPOINTCATALOGCONSTRAINTS: 1, ..#ENDPOINTCATALOGPARTITIONS: 1, ..#ENDPOINTCATALOGPARTITIONMAPPINGS: 1, ..#ENDPOINTCATALOGCACHEDQUERIES: 1, ..#ENDPOINTCATALOGTABLESTATEMENTS: 1, ..#ENDPOINTCATALOGVIEW: 1, ..#ENDPOINTCATALOGVIEWFIELDS: 1, ..#ENDPOINTCATALOGVIEWSTATEMENTS: 1, ..#ENDPOINTCATALOGPROCEDURE: 1, ..#ENDPOINTCATALOGPROCEDURESTATEMENTS: 1, : 0)
+    Quit $Case(pEndpoint, ..#ENDPOINTCATALOGSCHEMAS: 1, ..#ENDPOINTCATALOGTABLES: 1, ..#ENDPOINTCATALOGVIEWS: 1, ..#ENDPOINTCATALOGPROCEDURES: 1, ..#ENDPOINTCATALOGSCHEMATABLES: 1, ..#ENDPOINTCATALOGSCHEMAVIEWS: 1, ..#ENDPOINTCATALOGSCHEMAPROCEDURES: 1, ..#ENDPOINTCATALOGTABLE: 1, ..#ENDPOINTCATALOGFIELDS: 1, ..#ENDPOINTCATALOGINDICES: 1, ..#ENDPOINTCATALOGTRIGGERS: 1, ..#ENDPOINTCATALOGCONSTRAINTS: 1, ..#ENDPOINTCATALOGPARTITIONS: 1, ..#ENDPOINTCATALOGPARTITIONMAPPINGS: 1, ..#ENDPOINTCATALOGCACHEDQUERIES: 1, ..#ENDPOINTCATALOGTABLESTATEMENTS: 1, ..#ENDPOINTCATALOGVIEW: 1, ..#ENDPOINTCATALOGVIEWFIELDS: 1, ..#ENDPOINTCATALOGVIEWSTATEMENTS: 1, ..#ENDPOINTCATALOGPROCEDURE: 1, ..#ENDPOINTCATALOGPROCEDURESTATEMENTS: 1, : 0)
+}
+
+/// <p>The list endpoint whose statement and column map schema tab <var>pEndpoint</var> reads, and
+/// <var>pEndpoint</var> itself for any other endpoint.</p>
+ClassMethod CatalogListFor(pEndpoint As %String) As %String
+{
+    Quit $Case(pEndpoint, ..#ENDPOINTCATALOGSCHEMATABLES: ..#ENDPOINTCATALOGTABLES, ..#ENDPOINTCATALOGSCHEMAVIEWS: ..#ENDPOINTCATALOGVIEWS, ..#ENDPOINTCATALOGSCHEMAPROCEDURES: ..#ENDPOINTCATALOGPROCEDURES, : pEndpoint)
+}
+
+/// <p>Whether <var>pEndpoint</var> is one of the three schema tabs.</p>
+ClassMethod IsSchemaTab(pEndpoint As %String) As %Boolean
+{
+    Quit ..CatalogListFor(pEndpoint) '= pEndpoint
 }
 
 /// <p><var>pEndpoint</var>'s fixed statement, or <code>""</code> for an endpoint that is not the
-/// catalog's.</p>
+/// catalog's. A schema tab sends its list's statement.</p>
 ClassMethod CatalogStatement(pEndpoint As %String) As %String
 {
-    Quit $Case(pEndpoint, ..#ENDPOINTCATALOGSCHEMAS: ..#CATALOGSCHEMASQUERY, ..#ENDPOINTCATALOGTABLES: ..#CATALOGTABLESQUERY, ..#ENDPOINTCATALOGVIEWS: ..#CATALOGVIEWSQUERY, ..#ENDPOINTCATALOGPROCEDURES: ..#CATALOGPROCEDURESQUERY, ..#ENDPOINTCATALOGTABLE: ..#CATALOGTABLEQUERY, ..#ENDPOINTCATALOGFIELDS: ..#CATALOGFIELDSQUERY, ..#ENDPOINTCATALOGINDICES: ..#CATALOGINDICESQUERY, ..#ENDPOINTCATALOGTRIGGERS: ..#CATALOGTRIGGERSQUERY, ..#ENDPOINTCATALOGCONSTRAINTS: ..#CATALOGCONSTRAINTSQUERY, ..#ENDPOINTCATALOGPARTITIONS: ..#CATALOGPARTITIONSQUERY, ..#ENDPOINTCATALOGPARTITIONMAPPINGS: ..#CATALOGPARTITIONMAPPINGSQUERY, ..#ENDPOINTCATALOGCACHEDQUERIES: ..#CATALOGCACHEDQUERIESQUERY, ..#ENDPOINTCATALOGTABLESTATEMENTS: ..#CATALOGSTATEMENTSQUERY, ..#ENDPOINTCATALOGVIEW: ..#CATALOGVIEWQUERY, ..#ENDPOINTCATALOGVIEWFIELDS: ..#CATALOGVIEWFIELDSQUERY, ..#ENDPOINTCATALOGVIEWSTATEMENTS: ..#CATALOGSTATEMENTSQUERY, ..#ENDPOINTCATALOGPROCEDURE: ..#CATALOGPROCEDUREQUERY, ..#ENDPOINTCATALOGPROCEDURESTATEMENTS: ..#CATALOGSTATEMENTSQUERY, : "")
+    Quit $Case(..CatalogListFor(pEndpoint), ..#ENDPOINTCATALOGSCHEMAS: ..#CATALOGSCHEMASQUERY, ..#ENDPOINTCATALOGTABLES: ..#CATALOGTABLESQUERY, ..#ENDPOINTCATALOGVIEWS: ..#CATALOGVIEWSQUERY, ..#ENDPOINTCATALOGPROCEDURES: ..#CATALOGPROCEDURESQUERY, ..#ENDPOINTCATALOGTABLE: ..#CATALOGTABLEQUERY, ..#ENDPOINTCATALOGFIELDS: ..#CATALOGFIELDSQUERY, ..#ENDPOINTCATALOGINDICES: ..#CATALOGINDICESQUERY, ..#ENDPOINTCATALOGTRIGGERS: ..#CATALOGTRIGGERSQUERY, ..#ENDPOINTCATALOGCONSTRAINTS: ..#CATALOGCONSTRAINTSQUERY, ..#ENDPOINTCATALOGPARTITIONS: ..#CATALOGPARTITIONSQUERY, ..#ENDPOINTCATALOGPARTITIONMAPPINGS: ..#CATALOGPARTITIONMAPPINGSQUERY, ..#ENDPOINTCATALOGCACHEDQUERIES: ..#CATALOGCACHEDQUERIESQUERY, ..#ENDPOINTCATALOGTABLESTATEMENTS: ..#CATALOGSTATEMENTSQUERY, ..#ENDPOINTCATALOGVIEW: ..#CATALOGVIEWQUERY, ..#ENDPOINTCATALOGVIEWFIELDS: ..#CATALOGVIEWFIELDSQUERY, ..#ENDPOINTCATALOGVIEWSTATEMENTS: ..#CATALOGSTATEMENTSQUERY, ..#ENDPOINTCATALOGPROCEDURE: ..#CATALOGPROCEDUREQUERY, ..#ENDPOINTCATALOGPROCEDURESTATEMENTS: ..#CATALOGSTATEMENTSQUERY, : "")
 }
 
 /// <p><var>pEndpoint</var>'s column map (<parameter>CATALOGSCHEMASCOLUMNS</parameter>), or
-/// <code>""</code>.</p>
+/// <code>""</code>. A schema tab answers its list's.</p>
 ClassMethod CatalogColumns(pEndpoint As %String) As %String
 {
-    Quit $Case(pEndpoint, ..#ENDPOINTCATALOGSCHEMAS: ..#CATALOGSCHEMASCOLUMNS, ..#ENDPOINTCATALOGTABLES: ..#CATALOGTABLESCOLUMNS, ..#ENDPOINTCATALOGVIEWS: ..#CATALOGVIEWSCOLUMNS, ..#ENDPOINTCATALOGPROCEDURES: ..#CATALOGPROCEDURESCOLUMNS, ..#ENDPOINTCATALOGTABLE: ..#CATALOGTABLECOLUMNS, ..#ENDPOINTCATALOGFIELDS: ..#CATALOGFIELDSCOLUMNS, ..#ENDPOINTCATALOGINDICES: ..#CATALOGINDICESCOLUMNS, ..#ENDPOINTCATALOGTRIGGERS: ..#CATALOGTRIGGERSCOLUMNS, ..#ENDPOINTCATALOGCONSTRAINTS: ..#CATALOGCONSTRAINTSCOLUMNS, ..#ENDPOINTCATALOGPARTITIONS: ..#CATALOGPARTITIONSCOLUMNS, ..#ENDPOINTCATALOGPARTITIONMAPPINGS: ..#CATALOGPARTITIONMAPPINGSCOLUMNS, ..#ENDPOINTCATALOGCACHEDQUERIES: ..#CATALOGCACHEDQUERIESCOLUMNS, ..#ENDPOINTCATALOGTABLESTATEMENTS: ..#CATALOGSTATEMENTSCOLUMNS, ..#ENDPOINTCATALOGVIEW: ..#CATALOGVIEWCOLUMNS, ..#ENDPOINTCATALOGVIEWFIELDS: ..#CATALOGVIEWFIELDSCOLUMNS, ..#ENDPOINTCATALOGVIEWSTATEMENTS: ..#CATALOGSTATEMENTSCOLUMNS, ..#ENDPOINTCATALOGPROCEDURE: ..#CATALOGPROCEDURECOLUMNS, ..#ENDPOINTCATALOGPROCEDURESTATEMENTS: ..#CATALOGSTATEMENTSCOLUMNS, : "")
+    Quit $Case(..CatalogListFor(pEndpoint), ..#ENDPOINTCATALOGSCHEMAS: ..#CATALOGSCHEMASCOLUMNS, ..#ENDPOINTCATALOGTABLES: ..#CATALOGTABLESCOLUMNS, ..#ENDPOINTCATALOGVIEWS: ..#CATALOGVIEWSCOLUMNS, ..#ENDPOINTCATALOGPROCEDURES: ..#CATALOGPROCEDURESCOLUMNS, ..#ENDPOINTCATALOGTABLE: ..#CATALOGTABLECOLUMNS, ..#ENDPOINTCATALOGFIELDS: ..#CATALOGFIELDSCOLUMNS, ..#ENDPOINTCATALOGINDICES: ..#CATALOGINDICESCOLUMNS, ..#ENDPOINTCATALOGTRIGGERS: ..#CATALOGTRIGGERSCOLUMNS, ..#ENDPOINTCATALOGCONSTRAINTS: ..#CATALOGCONSTRAINTSCOLUMNS, ..#ENDPOINTCATALOGPARTITIONS: ..#CATALOGPARTITIONSCOLUMNS, ..#ENDPOINTCATALOGPARTITIONMAPPINGS: ..#CATALOGPARTITIONMAPPINGSCOLUMNS, ..#ENDPOINTCATALOGCACHEDQUERIES: ..#CATALOGCACHEDQUERIESCOLUMNS, ..#ENDPOINTCATALOGTABLESTATEMENTS: ..#CATALOGSTATEMENTSCOLUMNS, ..#ENDPOINTCATALOGVIEW: ..#CATALOGVIEWCOLUMNS, ..#ENDPOINTCATALOGVIEWFIELDS: ..#CATALOGVIEWFIELDSCOLUMNS, ..#ENDPOINTCATALOGVIEWSTATEMENTS: ..#CATALOGSTATEMENTSCOLUMNS, ..#ENDPOINTCATALOGPROCEDURE: ..#CATALOGPROCEDURECOLUMNS, ..#ENDPOINTCATALOGPROCEDURESTATEMENTS: ..#CATALOGSTATEMENTSCOLUMNS, : "")
 }
 
 /// <p>The rows of SQL catalog endpoint <var>pEndpoint</var>, at most <var>pMax</var> of them when it
@@ -1246,7 +1269,10 @@ ClassMethod CatalogColumns(pEndpoint As %String) As %String
 /// <p>The four lists read <code>system</code> (<code>yes</code> or <code>no</code>, <code>no</code>
 /// when absent: <code>no</code> keeps no <code>%</code> or <code>INFORMATION_SCHEMA</code> item), and
 /// all but the schemas <code>schema</code>, at most <parameter>MAXSCHEMA</parameter> characters with
-/// no control character, an absent or empty one keeping every schema. A tab reads
+/// no control character, an absent or empty one keeping every schema. A schema tab
+/// (<method>CatalogListFor</method>) never reads <code>system</code>: it sends its list's statement
+/// with the flag on, so every item of its schema shows, and it requires <code>schema</code>, an
+/// absent or empty one refused 400 <code>PORT.VALIDATION</code> like a malformed one. A tab reads
 /// <code>table</code> (<parameter>CATALOGTABS</parameter>), <code>view</code>
 /// (<parameter>CATALOGVIEWTABS</parameter>) or <code>procedure</code>
 /// (<parameter>CATALOGPROCEDURETABS</parameter>), <code>Schema.Name</code>, at most
@@ -1271,6 +1297,8 @@ ClassMethod CatalogRows(pVersion As %Integer, pNamespace As %String, pEndpoint A
     Set pRows = ""
     Try {
         Set tKind = $Select($ListFind($ListFromString(..#CATALOGTABS), pEndpoint): "table", $ListFind($ListFromString(..#CATALOGVIEWTABS), pEndpoint): "view", $ListFind($ListFromString(..#CATALOGPROCEDURETABS), pEndpoint): "procedure", 1: "")
+        Set tSchemaTab = ..IsSchemaTab(pEndpoint)
+        Set tBase = ..CatalogListFor(pEndpoint)
         Set tSystem = ""
         Set tSchema = ""
         Set tName = ""
@@ -1289,7 +1317,7 @@ ClassMethod CatalogRows(pVersion As %Integer, pNamespace As %String, pEndpoint A
                 Quit
             }
         } Else {
-            Set tSystem = $Get(pQuery(..#SYSTEMKEY))
+            Set tSystem = $Select(tSchemaTab: "yes", 1: $Get(pQuery(..#SYSTEMKEY)))
             If tSystem = "" Set tSystem = "no"
             If (tSystem '= "yes") && (tSystem '= "no") {
                 Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONCATALOGSYSTEM, .pHttpStatus, .pFault)
@@ -1297,7 +1325,7 @@ ClassMethod CatalogRows(pVersion As %Integer, pNamespace As %String, pEndpoint A
             }
             If pEndpoint '= ..#ENDPOINTCATALOGSCHEMAS {
                 Set tSchema = $Get(pQuery(..#SCHEMAKEY))
-                If ($Length(tSchema) > ..#MAXSCHEMA) || ($ZStrip(tSchema, "*C") '= tSchema) {
+                If ($Length(tSchema) > ..#MAXSCHEMA) || ($ZStrip(tSchema, "*C") '= tSchema) || (tSchemaTab && (tSchema = "")) {
                     Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONCATALOGSCHEMA, .pHttpStatus, .pFault)
                     Quit
                 }
@@ -1307,7 +1335,7 @@ ClassMethod CatalogRows(pVersion As %Integer, pNamespace As %String, pEndpoint A
         Set tParameters = []
         If pEndpoint = ..#ENDPOINTCATALOGSCHEMAS {
             Do tParameters.%Push(tFlag, "number")
-        } ElseIf pEndpoint = ..#ENDPOINTCATALOGTABLES {
+        } ElseIf tBase = ..#ENDPOINTCATALOGTABLES {
             Do tParameters.%Push($Select(tFlag: "SYSTEM TABLE", 1: "BASE TABLE"), "string")
             Do tParameters.%Push(tSchema, "string")
             Do tParameters.%Push(tSchema, "string")

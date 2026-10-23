@@ -30,6 +30,7 @@
  *   hand-written ObjectScript; the error envelope's `reason` is minted at the
  *   port boundary. Neither belongs in this file, and this file is not their
  *   source either.
+ * - The descriptors' `labelKey` values are also generated into `src/OcuPilot/Screen/Titles.cls` for the read tools' descriptions.
  * - Voice rules (EXPERIENCE.md "**Rules.** UI copy is plain", the Voice and Tone table) apply to every
  *   value here: no `!`, no "Oops", no emoji, no "successfully" (case-insensitive).
  *   `ui/tools/strings.mjs`'s `checkVoiceRules` enforces this mechanically.
@@ -5023,6 +5024,12 @@ export const STRINGS = {
   explorerSqlViewsEmpty: 'No SQL views in <NAMESPACE> match.',
   /** EXPERIENCE.md:595 */
   explorerSqlProceduresEmpty: 'No SQL procedures in <NAMESPACE> match.',
+  /** EXPERIENCE.md:595 */
+  explorerSqlSchemaTablesEmpty: 'This schema has no SQL tables.',
+  /** EXPERIENCE.md:595 */
+  explorerSqlSchemaViewsEmpty: 'This schema has no SQL views.',
+  /** EXPERIENCE.md:595 */
+  explorerSqlSchemaProceduresEmpty: 'This schema has no SQL procedures.',
   /** EXPERIENCE.md:595 */
   explorerSqlTableEmpty: 'This table no longer exists.',
   /** EXPERIENCE.md:595 */

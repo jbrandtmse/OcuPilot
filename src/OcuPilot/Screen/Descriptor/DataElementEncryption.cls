@@ -46,6 +46,7 @@ XData Declaration
   "classicPage": "%CSP.UI.Portal.EncryptionManaged",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "data element encryption key",
     "source": {"port": "admin", "endpoint": "Security.Encryption.Key", "type": "DATAELEMENTLIST"},
     "fields": ["Id"],
     "filter": ["Id"],

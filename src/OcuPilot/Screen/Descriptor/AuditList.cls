@@ -142,6 +142,8 @@ XData Declaration
   "classicPage": "%CSP.UI.Portal.Audit.View",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "audit record",
+    "label": "Audited events that happened, such as logins and changes, newest first, the last 24 hours unless asked; which events are audited is in security.auditsystemevents and security.audituserevents.",
     "source": {"port": "admin", "endpoint": "Security.Audit.Record", "type": "LIST"},
     "fields": ["SystemID", "AuditIndex", "TimeStamp", "EventSource", "EventType", "Event", "Pid", "SessionID", "Username", "Description", "UTCTimeStamp", "JobNumber", "Authentication", "ClientExecutableName", "ClientIPAddress", "EventData", "Namespace", "Roles", "RoutineSpec", "UserInfo", "JobId", "Status", "OSUsername", "StartupClientIPAddress"],
     "filter": ["TimeStamp", "EventSource", "EventType", "Event", "Username", "Pid", "Namespace", "Description"],

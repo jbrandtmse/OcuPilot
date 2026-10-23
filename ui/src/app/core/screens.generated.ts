@@ -306,6 +306,10 @@ export interface ReadDeclaration {
   readonly criteria?: ReadCriteria | null;
   /** One sentence about the rows, shown above the table and ending the read tool's description. */
   readonly note?: { readonly key: string; readonly text: string } | null;
+  /** The phrase for one row, read only by the read tool's description; no page renders it. */
+  readonly row?: string | null;
+  /** A sentence or two on what the list holds and does not hold, read only by the read tool's description; no page renders it. */
+  readonly label?: string | null;
 }
 
 /** Where a banner's value comes from: one admin API GET (AD-2). */
@@ -941,6 +945,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "agent definition",
       "source": {
         "port": "state",
         "endpoint": "Agent",
@@ -1303,6 +1308,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "built screen",
       "source": {
         "port": "access",
         "endpoint": "Screens",
@@ -1584,6 +1590,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "conversation",
       "source": {
         "port": "state",
         "endpoint": "Convo",
@@ -1739,6 +1746,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "allowed directory",
       "source": {
         "port": "path",
         "endpoint": "roots",
@@ -2014,6 +2022,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "dimension level of a cube",
       "source": {
         "port": "analytics",
         "endpoint": "Dimensions",
@@ -2159,6 +2168,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "cube",
       "source": {
         "port": "analytics",
         "endpoint": "Cubes",
@@ -2292,6 +2302,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "measure of a cube",
       "source": {
         "port": "analytics",
         "endpoint": "Measures",
@@ -2431,6 +2442,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "relationship of a cube",
       "source": {
         "port": "analytics",
         "endpoint": "Relationships",
@@ -2574,6 +2586,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "folder item",
       "source": {
         "port": "analytics",
         "endpoint": "FolderItems",
@@ -2804,6 +2817,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "term list entry",
       "source": {
         "port": "analytics",
         "endpoint": "TermListEntries",
@@ -2948,6 +2962,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "term list",
       "source": {
         "port": "analytics",
         "endpoint": "TermLists",
@@ -3171,6 +3186,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "audit record",
+      "label": "Audited events that happened, such as logins and changes, newest first, the last 24 hours unless asked; which events are audited is in security.auditsystemevents and security.audituserevents.",
       "source": {
         "port": "admin",
         "endpoint": "Security.Audit.Record",
@@ -3444,6 +3461,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "system audit event type",
+      "label": "Audit event types IRIS defines, each with Enabled and its counters; the audited events themselves are in logs.audit.",
       "source": {
         "port": "admin",
         "endpoint": "Security.Audit.Event",
@@ -3606,6 +3625,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "user audit event type",
+      "label": "Audit event types applications registered, each with Enabled and its counters; the audited events themselves are in logs.audit.",
       "source": {
         "port": "admin",
         "endpoint": "Security.Audit.Event",
@@ -3764,6 +3785,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "auditing setting",
+      "label": "Whether auditing is on for the whole instance; which events are audited is in security.auditsystemevents and security.audituserevents.",
       "source": {
         "port": "admin",
         "endpoint": "Security.Audit.Enabled",
@@ -3884,6 +3907,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "set of authentication options",
       "source": {
         "port": "admin",
         "endpoint": "Security.WebAuth",
@@ -4032,6 +4056,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "background job",
+      "label": "Background jobs such as a database compact, started from the portal, the admin API or a database task; scheduled tasks are in tasks.schedule and their runs in tasks.history.",
       "source": {
         "port": "background",
         "endpoint": "BackgroundTask",
@@ -4222,6 +4248,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "set of System Dashboard meters",
       "source": {
         "port": "admin",
         "endpoint": "Monitor",
@@ -4601,6 +4628,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "set of ECP counters",
       "source": {
         "port": "admin",
         "endpoint": "Monitor",
@@ -4984,6 +5012,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "set of global and routine counters",
       "source": {
         "port": "admin",
         "endpoint": "Monitor",
@@ -5231,6 +5260,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "busy process",
+      "label": "The processes running the most commands, as the Dashboard counts them; every process is in osmgmt.processes.",
       "source": {
         "port": "admin",
         "endpoint": "Monitor",
@@ -5348,6 +5379,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "system resource",
       "source": {
         "port": "admin",
         "endpoint": "Monitor",
@@ -5503,6 +5535,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "data element encryption key",
       "source": {
         "port": "admin",
         "endpoint": "Security.Encryption.Key",
@@ -5649,6 +5682,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "set of one database's properties",
       "source": {
         "port": "admin",
         "endpoint": "Database.SysCRUD",
@@ -5906,6 +5940,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "database encryption key",
       "source": {
         "port": "admin",
         "endpoint": "Security.Encryption.Key",
@@ -6038,6 +6073,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "database",
+      "label": "Size, free space and disk free for each database, with Mounted true or false; Status and the full list are in osmgmt.databases.",
       "source": {
         "port": "admin",
         "endpoint": "Database.SysCRUD",
@@ -6263,6 +6300,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "line of an integrity check report",
+      "label": "Lines of the newest integrity check's report, errors marked severity error; no rows while a check runs or when none has run.",
       "source": {
         "port": "logsource",
         "endpoint": "integrity",
@@ -6401,6 +6440,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "database",
+      "label": "The instance's databases by directory, with Status (Mounted/RW, Mounted/R or Dismounted) and size; a remote database's server is in osmgmt.remotedatabases.",
       "source": {
         "port": "admin",
         "endpoint": "Database.SysCRUD",
@@ -6546,6 +6587,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "volume file of one database",
       "source": {
         "port": "admin",
         "endpoint": "Database.SysCRUD",
@@ -6777,6 +6819,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "I/O device",
       "source": {
         "port": "admin",
         "endpoint": "Device.Standard",
@@ -7012,6 +7055,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "Doc DB application",
       "source": {
         "port": "admin",
         "endpoint": "DocDB",
@@ -7151,6 +7195,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "connected ECP application server",
       "source": {
         "port": "admin",
         "endpoint": "ECP.AppServerList",
@@ -7377,6 +7422,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "ECP data server",
+      "label": "ECP data servers this instance connects to, with their connection Status; the remote databases on them are in osmgmt.remotedatabases.",
       "source": {
         "port": "admin",
         "endpoint": "ECP.DataServer",
@@ -7540,6 +7587,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "set of ECP settings",
       "source": {
         "port": "admin",
         "endpoint": "ECP.Settings",
@@ -7654,6 +7702,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "authorized or pending SSL/TLS client",
       "source": {
         "port": "admin",
         "endpoint": "ECP.AppServerSSLConnection",
@@ -7806,6 +7855,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "encryption key of one key file",
       "source": {
         "port": "encryption",
         "endpoint": "Security.Encryption.KeyInFile",
@@ -7968,6 +8018,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "administrator of one key file",
       "source": {
         "port": "encryption",
         "endpoint": "Security.Encryption.AdminInFile",
@@ -8185,6 +8236,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "set of encryption startup settings",
       "source": {
         "port": "admin",
         "endpoint": "Security.Encryption.Settings",
@@ -8284,6 +8336,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "class or class member",
       "source": {
         "port": "atelier",
         "endpoint": "Class",
@@ -8547,6 +8600,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "class",
       "source": {
         "port": "atelier",
         "endpoint": "Classes",
@@ -8834,6 +8888,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "document database",
+      "label": "Document databases (DocDB) in this namespace, not the instance's databases, which are in osmgmt.databases.",
       "source": {
         "port": "docdb",
         "endpoint": "Databases",
@@ -8964,6 +9020,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "macro definition",
       "source": {
         "port": "atelier",
         "endpoint": "Macro",
@@ -9106,6 +9163,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "routine or include file",
       "source": {
         "port": "atelier",
         "endpoint": "Routine",
@@ -9359,6 +9417,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "routine or include file",
       "source": {
         "port": "atelier",
         "endpoint": "Routines",
@@ -9551,6 +9610,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "match in a class or routine",
       "source": {
         "port": "atelier",
         "endpoint": "Search",
@@ -9713,6 +9773,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "cached query of one table",
       "source": {
         "port": "atelier",
         "endpoint": "Catalog.CachedQueries",
@@ -9864,6 +9925,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "constraint of one table",
       "source": {
         "port": "atelier",
         "endpoint": "Catalog.Constraints",
@@ -10081,6 +10143,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "field of one SQL table",
       "source": {
         "port": "atelier",
         "endpoint": "Catalog.Fields",
@@ -10266,6 +10329,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "map or index of one SQL table",
       "source": {
         "port": "atelier",
         "endpoint": "Catalog.Indices",
@@ -10433,6 +10497,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "partition mapping rule of one table",
       "source": {
         "port": "atelier",
         "endpoint": "Catalog.PartitionMappings",
@@ -10579,6 +10644,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "partition of one table",
       "source": {
         "port": "atelier",
         "endpoint": "Catalog.Partitions",
@@ -10734,6 +10800,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "set of one procedure's details",
       "source": {
         "port": "atelier",
         "endpoint": "Catalog.Procedure",
@@ -10940,6 +11007,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "statement that uses the procedure",
+      "label": "Statements that use one procedure, named by its criterion, with plan state and run statistics; statements running now are in osmgmt.sqlactivity.",
       "source": {
         "port": "atelier",
         "endpoint": "Catalog.ProcedureStatements",
@@ -11130,6 +11199,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "stored procedure or function",
       "source": {
         "port": "atelier",
         "endpoint": "Catalog.Procedures",
@@ -11300,6 +11370,461 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "entityLabelKey": ""
   },
   {
+    "descriptor": "OcuPilot.Screen.Descriptor.ExplorerSqlSchema",
+    "route": "system-explorer/sql-schemas/document",
+    "area": "system-explorer",
+    "labelKey": "explorerSqlSchemasLabel",
+    "sideBarPosition": 0,
+    "archetype": "detail",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Development",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "class",
+    "secondaryEntityTypes": [],
+    "scope": "namespace",
+    "parentScope": "system-explorer/sql-schemas",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Table",
+        "Class",
+        "Owner",
+        "Sharded",
+        "Partitioned"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "explorerSqlSchemaTablesEmpty",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "explorerSqlTablesPrompt2"
+      },
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "explorerSqlTablesPrompt3"
+      },
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "homeStarterPromptExplainScreen"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.SQL.Home",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "row": "SQL table of one schema",
+      "label": "Tables of one schema, named by its criterion, system tables included; tables across every schema are in explorer.sqltables, and the schemas themselves in explorer.sqlschemas.",
+      "source": {
+        "port": "atelier",
+        "endpoint": "Catalog.SchemaTables",
+        "type": "LIST"
+      },
+      "fields": [
+        "Table",
+        "Schema",
+        "Name",
+        "Class",
+        "Owner",
+        "Sharded",
+        "Partitioned"
+      ],
+      "filter": [
+        "Table",
+        "Schema",
+        "Class"
+      ],
+      "sort": {
+        "fields": [
+          "Table",
+          "Class",
+          "Owner"
+        ],
+        "default": "Table",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "schema",
+            "labelKey": "explorerSqlColumnSchema",
+            "kind": "text",
+            "maxLength": 128,
+            "hint": "One schema, spelled as explorer.sqlschemas.read answers its Schema."
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Table",
+          "labelKey": "explorerSqlColumnTable",
+          "kind": "name"
+        },
+        {
+          "field": "Class",
+          "labelKey": "explorerClassDocumentLabel",
+          "kind": "identifier"
+        },
+        {
+          "field": "Owner",
+          "labelKey": "explorerSqlColumnOwner",
+          "kind": "text"
+        },
+        {
+          "field": "Sharded",
+          "labelKey": "explorerSqlColumnSharded",
+          "kind": "status"
+        },
+        {
+          "field": "Partitioned",
+          "labelKey": "explorerSqlColumnPartitioned",
+          "kind": "status"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "tab": {
+      "group": "system-explorer/sql-schemas/document",
+      "position": 1,
+      "labelKey": "explorerSqlColumnTables"
+    },
+    "rowTarget": {
+      "route": "system-explorer/sql-tables/document",
+      "field": "Table"
+    },
+    "toolIdentifier": "explorer.sqlschematables",
+    "refreshDefault": 0,
+    "banner": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.ExplorerSqlSchemaProcedures",
+    "route": "system-explorer/sql-schemas/procedures",
+    "area": "system-explorer",
+    "labelKey": "explorerSqlSchemasLabel",
+    "sideBarPosition": 0,
+    "archetype": "detail",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Development",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "class",
+    "secondaryEntityTypes": [],
+    "scope": "namespace",
+    "parentScope": "system-explorer/sql-schemas",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Procedure",
+        "Type",
+        "Class",
+        "Method"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "explorerSqlSchemaProceduresEmpty",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "explorerSqlProceduresPrompt2"
+      },
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "explorerSqlProceduresPrompt3"
+      },
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "homeStarterPromptExplainScreen"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.SQL.Home",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "row": "procedure or function of one schema",
+      "label": "Stored procedures and functions of one schema, named by its criterion, system ones included; those across every schema are in explorer.sqlprocedures.",
+      "source": {
+        "port": "atelier",
+        "endpoint": "Catalog.SchemaProcedures",
+        "type": "LIST"
+      },
+      "fields": [
+        "Procedure",
+        "Schema",
+        "Name",
+        "Type",
+        "Class",
+        "Method"
+      ],
+      "filter": [
+        "Procedure",
+        "Schema",
+        "Class"
+      ],
+      "sort": {
+        "fields": [
+          "Procedure",
+          "Type",
+          "Class"
+        ],
+        "default": "Procedure",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "schema",
+            "labelKey": "explorerSqlColumnSchema",
+            "kind": "text",
+            "maxLength": 128,
+            "hint": "One schema, spelled as explorer.sqlschemas.read answers its Schema."
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Procedure",
+          "labelKey": "explorerSqlColumnProcedure",
+          "kind": "name"
+        },
+        {
+          "field": "Type",
+          "labelKey": "tableColumnType",
+          "kind": "text"
+        },
+        {
+          "field": "Class",
+          "labelKey": "explorerClassDocumentLabel",
+          "kind": "identifier"
+        },
+        {
+          "field": "Method",
+          "labelKey": "explorerSqlColumnMethod",
+          "kind": "identifier"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "tab": {
+      "group": "system-explorer/sql-schemas/document",
+      "position": 3,
+      "labelKey": "explorerSqlColumnProcedures"
+    },
+    "rowTarget": {
+      "route": "system-explorer/sql-procedures/document",
+      "field": "Procedure"
+    },
+    "toolIdentifier": "explorer.sqlschemaprocedures",
+    "refreshDefault": 0,
+    "banner": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.ExplorerSqlSchemaViews",
+    "route": "system-explorer/sql-schemas/views",
+    "area": "system-explorer",
+    "labelKey": "explorerSqlSchemasLabel",
+    "sideBarPosition": 0,
+    "archetype": "detail",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Development",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "class",
+    "secondaryEntityTypes": [],
+    "scope": "namespace",
+    "parentScope": "system-explorer/sql-schemas",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "View",
+        "Class",
+        "Owner",
+        "Updatable",
+        "CheckOption"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "explorerSqlSchemaViewsEmpty",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "explorerSqlViewsPrompt2"
+      },
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "explorerSqlViewsPrompt3"
+      },
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "homeStarterPromptExplainScreen"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.SQL.Home",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "row": "SQL view of one schema",
+      "label": "Views of one schema, named by its criterion, system views included; views across every schema are in explorer.sqlviews.",
+      "source": {
+        "port": "atelier",
+        "endpoint": "Catalog.SchemaViews",
+        "type": "LIST"
+      },
+      "fields": [
+        "View",
+        "Schema",
+        "Name",
+        "Class",
+        "Owner",
+        "Updatable",
+        "CheckOption"
+      ],
+      "filter": [
+        "View",
+        "Schema",
+        "Class"
+      ],
+      "sort": {
+        "fields": [
+          "View",
+          "Class",
+          "Owner"
+        ],
+        "default": "View",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "schema",
+            "labelKey": "explorerSqlColumnSchema",
+            "kind": "text",
+            "maxLength": 128,
+            "hint": "One schema, spelled as explorer.sqlschemas.read answers its Schema."
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "View",
+          "labelKey": "viewMenuLabel",
+          "kind": "name"
+        },
+        {
+          "field": "Class",
+          "labelKey": "explorerClassDocumentLabel",
+          "kind": "identifier"
+        },
+        {
+          "field": "Owner",
+          "labelKey": "explorerSqlColumnOwner",
+          "kind": "text"
+        },
+        {
+          "field": "Updatable",
+          "labelKey": "explorerSqlColumnUpdatable",
+          "kind": "status"
+        },
+        {
+          "field": "CheckOption",
+          "labelKey": "explorerSqlColumnCheckOption",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "tab": {
+      "group": "system-explorer/sql-schemas/document",
+      "position": 2,
+      "labelKey": "explorerSqlColumnViews"
+    },
+    "rowTarget": {
+      "route": "system-explorer/sql-views/document",
+      "field": "View"
+    },
+    "toolIdentifier": "explorer.sqlschemaviews",
+    "refreshDefault": 0,
+    "banner": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
     "descriptor": "OcuPilot.Screen.Descriptor.ExplorerSqlSchemas",
     "route": "system-explorer/sql-schemas",
     "area": "system-explorer",
@@ -11364,6 +11889,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "SQL schema",
       "source": {
         "port": "atelier",
         "endpoint": "Catalog.Schemas",
@@ -11505,6 +12031,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "set of one table's details",
       "source": {
         "port": "atelier",
         "endpoint": "Catalog.Table",
@@ -11679,6 +12206,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "statement that uses the table",
+      "label": "Statements that use one table, named by its criterion, with plan state and run statistics; statements running now are in osmgmt.sqlactivity.",
       "source": {
         "port": "atelier",
         "endpoint": "Catalog.TableStatements",
@@ -11870,6 +12399,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "SQL table",
       "source": {
         "port": "atelier",
         "endpoint": "Catalog.Tables",
@@ -12025,6 +12555,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "trigger of one table",
       "source": {
         "port": "atelier",
         "endpoint": "Catalog.Triggers",
@@ -12170,6 +12701,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "set of one view's details",
       "source": {
         "port": "atelier",
         "endpoint": "Catalog.View",
@@ -12337,6 +12869,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "column of one view",
       "source": {
         "port": "atelier",
         "endpoint": "Catalog.ViewFields",
@@ -12508,6 +13041,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "statement that uses the view",
+      "label": "Statements that use one view, named by its criterion, with plan state and run statistics; statements running now are in osmgmt.sqlactivity.",
       "source": {
         "port": "atelier",
         "endpoint": "Catalog.ViewStatements",
@@ -12699,6 +13234,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "SQL view",
       "source": {
         "port": "atelier",
         "endpoint": "Catalog.Views",
@@ -12944,6 +13480,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "global mapping of one namespace",
       "source": {
         "port": "admin",
         "endpoint": "Namespace.GlobalMappings",
@@ -13173,6 +13710,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "business partner",
       "source": {
         "port": "interop",
         "endpoint": "BusinessPartners",
@@ -13346,6 +13884,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "job of one production item",
       "source": {
         "port": "interop",
         "endpoint": "ItemJobs",
@@ -13535,6 +14074,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "production item",
       "source": {
         "port": "interop",
         "endpoint": "Items",
@@ -13712,6 +14252,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "event log entry of one item",
       "source": {
         "port": "interop",
         "endpoint": "ItemLog",
@@ -13887,6 +14428,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "message header of one item",
       "source": {
         "port": "interop",
         "endpoint": "ItemMessages",
@@ -14075,6 +14617,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "queued message of one item",
       "source": {
         "port": "interop",
         "endpoint": "ItemQueue",
@@ -14272,6 +14815,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "setting of one production item",
       "source": {
         "port": "interop",
         "endpoint": "Settings",
@@ -14442,6 +14986,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "status of one production item",
       "source": {
         "port": "interop",
         "endpoint": "ItemStatus",
@@ -14620,6 +15165,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "request class or settable field",
       "source": {
         "port": "interop",
         "endpoint": "ItemTest",
@@ -14811,6 +15357,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "production job",
+      "label": "Jobs of this namespace's running production, dead ones included (Dead); the instance's processes are in osmgmt.processes.",
       "source": {
         "port": "interop",
         "endpoint": "Jobs",
@@ -14991,6 +15539,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "lookup table entry",
       "source": {
         "port": "interop",
         "endpoint": "LookupEntries",
@@ -15154,6 +15703,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "lookup table",
       "source": {
         "port": "interop",
         "endpoint": "LookupTables",
@@ -15280,6 +15830,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "line of a message body",
       "source": {
         "port": "interop",
         "endpoint": "MessageContents",
@@ -15422,6 +15973,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "property of a message header",
       "source": {
         "port": "interop",
         "endpoint": "MessageHeader",
@@ -15582,6 +16134,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "interoperability message header",
+      "label": "Interoperability message headers in this namespace, the last 24 hours unless asked; the console log messages.log is logs.messages.",
       "source": {
         "port": "interop",
         "endpoint": "Messages",
@@ -15848,6 +16402,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "message in one session",
       "source": {
         "port": "interop",
         "endpoint": "MessageTrace",
@@ -16035,6 +16590,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "monitored production item",
       "source": {
         "port": "interop",
         "endpoint": "Monitor",
@@ -16282,6 +16838,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "business process class",
+      "label": "Business process classes (BPL or code) in this namespace, not running processes, which are in osmgmt.processes.",
       "source": {
         "port": "interop",
         "endpoint": "Processes",
@@ -16512,6 +17070,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "production",
       "source": {
         "port": "interop",
         "endpoint": "Productions",
@@ -16656,6 +17215,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "interoperability queue",
       "source": {
         "port": "interop",
         "endpoint": "Queues",
@@ -16797,6 +17357,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "message in one queue",
       "source": {
         "port": "interop",
         "endpoint": "QueueItems",
@@ -17057,6 +17618,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "business rule",
       "source": {
         "port": "interop",
         "endpoint": "Rules",
@@ -17345,6 +17907,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "data transformation",
       "source": {
         "port": "interop",
         "endpoint": "Transforms",
@@ -17458,6 +18021,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "database with its message data",
       "source": {
         "port": "monitor",
         "endpoint": "DatabaseImpact",
@@ -17584,6 +18148,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "grouping of interface counts",
       "source": {
         "port": "monitor",
         "endpoint": "Interfaces",
@@ -17730,6 +18295,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "namespace's message volume by direction",
       "source": {
         "port": "monitor",
         "endpoint": "MessageVolume",
@@ -17860,6 +18426,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "database in one journal file",
       "source": {
         "port": "admin",
         "endpoint": "Journal.File",
@@ -18000,6 +18567,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "set of one journal file's details",
       "source": {
         "port": "admin",
         "endpoint": "Journal.File",
@@ -18223,6 +18791,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "journal file",
       "source": {
         "port": "admin",
         "endpoint": "Journal.File",
@@ -18366,6 +18935,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "journal record",
       "source": {
         "port": "admin",
         "endpoint": "Journal.Record",
@@ -18621,6 +19191,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "set of journal settings",
       "source": {
         "port": "admin",
         "endpoint": "Journal.Settings",
@@ -18736,6 +19307,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "language server activity record",
       "source": {
         "port": "admin",
         "endpoint": "LanguageServer",
@@ -18979,6 +19551,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "external language server",
       "source": {
         "port": "admin",
         "endpoint": "LanguageServer",
@@ -19197,6 +19770,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "LDAP configuration",
       "source": {
         "port": "admin",
         "endpoint": "Security.LDAP",
@@ -19334,6 +19908,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "distributed license connection",
       "source": {
         "port": "admin",
         "endpoint": "Monitor",
@@ -19498,6 +20073,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "set of license key details",
       "source": {
         "port": "admin",
         "endpoint": "License.Key",
@@ -19636,6 +20212,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "process holding a license entry",
       "source": {
         "port": "admin",
         "endpoint": "Monitor",
@@ -19887,6 +20464,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "license server",
       "source": {
         "port": "admin",
         "endpoint": "License.Server",
@@ -20016,6 +20594,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "license usage measure",
       "source": {
         "port": "admin",
         "endpoint": "Monitor",
@@ -20144,6 +20723,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "user holding a license unit",
       "source": {
         "port": "admin",
         "endpoint": "Monitor",
@@ -20392,6 +20972,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "local database definition",
+      "label": "Database definitions whose files are on this instance, with Status; definitions of databases on another server are in osmgmt.remotedatabases.",
       "source": {
         "port": "admin",
         "endpoint": "Database.ConfigCRUD",
@@ -20541,6 +21123,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "lock",
       "source": {
         "port": "admin",
         "endpoint": "Lock",
@@ -20701,6 +21284,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "line of alerts.log",
+      "label": "Entries of the instance's alerts.log, newest first; the full console log is logs.messages.",
       "source": {
         "port": "logsource",
         "endpoint": "alerts",
@@ -20827,6 +21412,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "line of an analytics task log",
+      "label": "Analytics task log lines (DeepSeeTasks) from every namespace; the console log is logs.messages.",
       "source": {
         "port": "logsource",
         "endpoint": "analytics",
@@ -21052,6 +21639,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "interoperability event",
+      "label": "Interoperability event log entries (Ens_Util.Log) from every interoperability namespace; production messages are in interop.messages.",
       "source": {
         "port": "logsource",
         "endpoint": "eventlog",
@@ -21174,6 +21763,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "log entry",
+      "label": "Entries from every other Logs screen, application errors included, merged newest first, the last hour unless asked, each naming its source; the integrity log is not included.",
       "source": {
         "port": "timeline",
         "endpoint": "logs",
@@ -21312,6 +21903,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "line of messages.log",
+      "label": "Lines of the instance's console log, messages.log, newest first, with severity (1 warning, 2 severe, 3 fatal); errors raised in application code are in logs.applicationerrors.",
       "source": {
         "port": "logsource",
         "endpoint": "messages",
@@ -21432,6 +22025,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "SQL diagnostic result",
+      "label": "SQL diagnostic results (%SQL_Diag) from every readable namespace; ODBC and JDBC errors are in logs.xdbc.",
       "source": {
         "port": "logsource",
         "endpoint": "sqldiagnostics",
@@ -21552,6 +22147,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "line of SystemMonitor.log",
+      "label": "Entries of SystemMonitor.log, the System Monitor's own log; the console log is logs.messages.",
       "source": {
         "port": "logsource",
         "endpoint": "systemmonitor",
@@ -21675,6 +22272,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "error a background job logged",
+      "label": "Errors that portal background jobs logged, from every namespace; a scheduled task's failed runs are in tasks.history.",
       "source": {
         "port": "logsource",
         "endpoint": "taskerrors",
@@ -21796,6 +22395,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "xDBC error",
+      "label": "ODBC and JDBC (xDBC) errors, one per process, from every readable namespace; SQL diagnostic results are in logs.sqldiagnostics.",
       "source": {
         "port": "logsource",
         "endpoint": "xdbc",
@@ -21922,6 +22523,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "Prometheus metric sample",
       "source": {
         "port": "monitor",
         "endpoint": "Metrics",
@@ -22138,6 +22740,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "managed file transfer connection",
       "source": {
         "port": "admin",
         "endpoint": "Security.MFT",
@@ -22352,6 +22955,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "namespace",
       "source": {
         "port": "admin",
         "endpoint": "Namespace.Namespace",
@@ -22593,6 +23197,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "OAuth 2.0 client configuration",
       "source": {
         "port": "admin",
         "endpoint": "Security.OAuth2.Client.ClientConfiguration",
@@ -22845,6 +23450,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "OAuth 2.0 resource server",
       "source": {
         "port": "admin",
         "endpoint": "Security.OAuth2.ResourceServer",
@@ -23066,6 +23672,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "OAuth 2.0 server client description",
       "source": {
         "port": "admin",
         "endpoint": "Security.OAuth2.ServerClients",
@@ -23311,6 +23918,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "OAuth 2.0 server description",
       "source": {
         "port": "admin",
         "endpoint": "Security.OAuth2.Client.ServerDefinition",
@@ -23537,6 +24145,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "set of authorization server settings",
       "source": {
         "port": "admin",
         "endpoint": "Security.OAuth2.Server",
@@ -23695,6 +24304,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "operation of an OpenAPI document",
       "source": {
         "port": "mgmnt",
         "endpoint": "Document",
@@ -23917,6 +24527,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "package mapping of one namespace",
       "source": {
         "port": "admin",
         "endpoint": "Namespace.PackageMappings",
@@ -24098,6 +24709,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "set of one process's details",
       "source": {
         "port": "admin",
         "endpoint": "Process",
@@ -24463,6 +25075,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "process",
+      "label": "Every IRIS process on the instance, daemons included, with its namespace (Nspace) and State; business process classes are in interop.processes.",
       "source": {
         "port": "admin",
         "endpoint": "Process",
@@ -24702,6 +25316,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "remote database definition",
+      "label": "Database definitions whose files are on another server reached over ECP, with Server and that server's Directory; the servers are in osmgmt.ecpdataservers.",
       "source": {
         "port": "admin",
         "endpoint": "Database.ConfigCRUD",
@@ -24844,6 +25460,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "resource",
       "source": {
         "port": "admin",
         "endpoint": "Security.Resource",
@@ -24990,6 +25607,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "REST application",
       "source": {
         "port": "mgmnt",
         "endpoint": "Applications",
@@ -25233,6 +25851,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "role",
       "source": {
         "port": "admin",
         "endpoint": "Security.Role",
@@ -25467,6 +26086,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "privileged routine application",
       "source": {
         "port": "admin",
         "endpoint": "Security.PrivilegedRoutine",
@@ -25605,6 +26225,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "matching role with its granted roles",
       "source": {
         "port": "admin",
         "endpoint": "Security.PrivilegedRoutine",
@@ -25734,6 +26355,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "routine or class of one application",
       "source": {
         "port": "admin",
         "endpoint": "Security.PrivilegedRoutine",
@@ -25953,6 +26575,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "routine mapping of one namespace",
       "source": {
         "port": "admin",
         "endpoint": "Namespace.RoutineMappings",
@@ -26166,6 +26789,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "service",
       "source": {
         "port": "admin",
         "endpoint": "Security.Service",
@@ -26333,6 +26957,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "running SQL statement",
+      "label": "SQL statements running right now in every namespace, slowest first; statistics for one table's, view's or procedure's statements are in explorer.sqltablestatements, explorer.sqlviewstatements and explorer.sqlprocedurestatements.",
       "source": {
         "port": "sqlactivity",
         "endpoint": "CurrentStatements",
@@ -26513,6 +27139,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "SQL admin privilege",
       "source": {
         "port": "admin",
         "endpoint": "Security.SQLPrivilege.Admin",
@@ -26661,6 +27288,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "SQL column privilege",
       "source": {
         "port": "admin",
         "endpoint": "Security.SQLPrivilege.Column",
@@ -26838,6 +27466,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "SQL privilege",
       "source": {
         "port": "admin",
         "endpoint": "Security.SQLPrivilege.Standard",
@@ -27015,6 +27644,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "SSL/TLS configuration",
       "source": {
         "port": "admin",
         "endpoint": "Security.SSLConfig",
@@ -27304,6 +27934,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "superserver",
       "source": {
         "port": "admin",
         "endpoint": "Security.Superserver",
@@ -27456,6 +28087,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "set of system usage counters",
       "source": {
         "port": "admin",
         "endpoint": "Monitor",
@@ -27741,6 +28373,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "set of one task's properties",
       "source": {
         "port": "admin",
         "endpoint": "Task.CRUD",
@@ -28081,6 +28714,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "run of a task",
+      "label": "Past runs of every task, newest first, the last 7 days unless asked; a failed run's error text is in Result. Whether a task is suspended is in tasks.schedule.",
       "source": {
         "port": "admin",
         "endpoint": "Task.CRUD",
@@ -28285,6 +28920,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "task that can be run now",
+      "label": "Tasks a person can run now, with no suspended state and no run results; those are in tasks.schedule and tasks.history.",
       "source": {
         "port": "admin",
         "endpoint": "Task.CRUD",
@@ -28445,6 +29082,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "run of one task",
+      "label": "Past runs of one task, named by its task id; every task's runs are in tasks.history.",
       "source": {
         "port": "admin",
         "endpoint": "Task.CRUD",
@@ -28672,6 +29311,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "scheduled task",
+      "label": "Every Task Manager task, with Suspended true for a suspended one; a task's runs and their errors are in tasks.history, and portal jobs such as a database compact in tasks.background.",
       "source": {
         "port": "admin",
         "endpoint": "Task.CRUD",
@@ -28855,6 +29496,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "scheduled run of a task",
+      "label": "Each run due within a window ahead, 24 hours unless asked, so a task can appear more than once; past runs are in tasks.history.",
       "source": {
         "port": "admin",
         "endpoint": "Task.CRUD",
@@ -29143,6 +29786,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "user",
       "source": {
         "port": "admin",
         "endpoint": "Security.User",
@@ -29331,6 +29975,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "wallet collection",
       "source": {
         "port": "admin",
         "endpoint": "Wallet.Collection",
@@ -29556,6 +30201,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "secret of one wallet collection",
       "source": {
         "port": "admin",
         "endpoint": "Wallet.Secret",
@@ -29789,6 +30435,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "web application",
       "source": {
         "port": "admin",
         "endpoint": "WebApp.App",
@@ -29947,6 +30594,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "percent class access entry",
       "source": {
         "port": "admin",
         "endpoint": "WebApp.PctClassAccess",
@@ -30093,6 +30741,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "matching role with its granted roles",
       "source": {
         "port": "admin",
         "endpoint": "WebApp.App",
@@ -30239,6 +30888,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "web session",
       "source": {
         "port": "admin",
         "endpoint": "WebSession",
@@ -30394,6 +31044,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "X.509 credential",
       "source": {
         "port": "admin",
         "endpoint": "Security.X509Credential",

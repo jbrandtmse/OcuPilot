@@ -45,6 +45,7 @@ XData Declaration
   "classicPage": "%CSP.UI.Portal.SQL.Home",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "partition mapping rule of one table",
     "source": {"port": "atelier", "endpoint": "Catalog.PartitionMappings", "type": "LIST"},
     "fields": ["Rule", "Buckets", "Rows", "EstimatedSize", "Location"],
     "filter": ["Rule", "Location"],

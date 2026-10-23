@@ -134,6 +134,9 @@ describe('the primary side bar', () => {
           { path: 'security/oauth/server', children: [] },
           { path: 'system-explorer/sql-tables/document/:id', children: [] },
           { path: 'system-explorer/sql-tables/triggers/:id', children: [] },
+          { path: 'system-explorer/sql-schemas/document/:id', children: [] },
+          { path: 'system-explorer/sql-schemas/views/:id', children: [] },
+          { path: 'system-explorer/sql-schemas/procedures/:id', children: [] },
         ]),
         { provide: NavigationService, useValue: navigation as unknown as NavigationService },
         { provide: ShellState, useValue: shell },
@@ -417,6 +420,24 @@ describe('the primary side bar', () => {
       fixture.detectChanges();
       const current = entries().filter((entry) => entry.getAttribute('aria-current') === 'page');
       expect(current.map((entry) => entry.textContent?.trim())).toEqual([STRINGS.explorerSqlTablesLabel]);
+    }
+  });
+
+  it('Story 20.38: every tab of the schema group marks SQL schemas current', async () => {
+    // Mutation (Rule 19): drop the parent-scoped branch from `side-bar.ts` -> the group's head is
+    // unlisted, so no entry is current and this goes red.
+    const router = TestBed.inject(Router);
+    const schemas = screenForRoute('system-explorer/sql-schemas') as ScreenDeclaration;
+    const tables = screenForRoute('system-explorer/sql-tables') as ScreenDeclaration;
+    navigation.screens = [schemas, tables];
+    navigation.notify();
+    shell.activateArea('permissions', false);
+    shell.setActiveArea('permissions');
+    for (const tab of ['document', 'views', 'procedures']) {
+      await router.navigateByUrl(`/system-explorer/sql-schemas/${tab}/Ens?ns=USER`);
+      fixture.detectChanges();
+      const current = entries().filter((entry) => entry.getAttribute('aria-current') === 'page');
+      expect(current.map((entry) => entry.textContent?.trim())).toEqual([STRINGS.explorerSqlSchemasLabel]);
     }
   });
 

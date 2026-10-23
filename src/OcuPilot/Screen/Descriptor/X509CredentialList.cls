@@ -66,6 +66,7 @@ XData Declaration
   "classicPage": "%CSP.UI.Portal.X509Credentials",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "X.509 credential",
     "source": {
       "port": "admin",
       "endpoint": "Security.X509Credential",

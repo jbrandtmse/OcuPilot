@@ -55,6 +55,7 @@ XData Declaration
   "classicPage": "",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "allowed directory",
     "source": {"port": "path", "endpoint": "roots", "type": "LIST"},
     "fields": ["Directory", "Restricted"],
     "filter": ["Directory", "Restricted"],

@@ -772,12 +772,7 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
         If $Data(tCutoffs) Set tAnswer = ..AtOrAfter(tAnswer, .tCutoffs)
         If tTruncated = "" Set tTruncated = (tAnswer.%Size() > tMax)
 
-        Set tSecrets = $ClassMethod(pDescriptor, "ContextSecretFields")
-        Set tFields = []
-        Set tIterator = tRead.%Get("fields").%GetIterator()
-        While tIterator.%GetNext(.tIndex, .tField) {
-            If '$ListFind(tSecrets, tField) Do tFields.%Push(tField)
-        }
+        Set tFields = ..AnsweredFields(pDescriptor)
         Set tRowGet = tSource.%Get("rowGet")
         Set tHasRowGet = $IsObject(tRowGet) && tRowGet.%IsA("%Library.DynamicObject")
         Set tRows = []
@@ -810,6 +805,23 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
         Set tSC = ..Internal("the read failed: " _ ex.DisplayString(), .pHttpStatus, .pFault)
     }
     Quit tSC
+}
+
+/// <p>The field names <var>pDescriptor</var>'s read answers, as a <class>%DynamicArray</class>: its
+/// <code>read.fields</code> minus <code>context.secretFields</code> (AD-35, AD-36). <method>Execute</method>
+/// projects every row onto exactly these, and the read tool's description lists them, so neither can name
+/// a field the other does not carry. Empty for a descriptor that declares no read.</p>
+ClassMethod AnsweredFields(pDescriptor As %String) As %DynamicArray
+{
+    Set tFields = []
+    Set tRead = $ClassMethod(pDescriptor, "Read")
+    If '$IsObject(tRead) || '$IsObject(tRead.%Get("fields")) Quit tFields
+    Set tSecrets = $ClassMethod(pDescriptor, "ContextSecretFields")
+    Set tIterator = tRead.%Get("fields").%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tField) {
+        If '$ListFind(tSecrets, tField) Do tFields.%Push(tField)
+    }
+    Quit tFields
 }
 
 /// <p>The rows a <code>state</code> source answers with (AD-9, AD-36): the kernel store

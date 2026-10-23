@@ -45,6 +45,8 @@ XData Declaration
   "classicPage": "",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "log entry",
+    "label": "Entries from every other Logs screen, application errors included, merged newest first, the last hour unless asked, each naming its source; the integrity log is not included.",
     "source": {"port": "timeline", "endpoint": "logs", "type": "LIST"},
     "fields": ["time", "source", "severity", "text", "id"],
     "filter": ["time", "source", "severity", "text"],

@@ -145,7 +145,7 @@ function runInTree({ entries, toolFields }, check) {
     const toolDir = join(root, 'src', 'OcuPilot', 'Screen', 'Tool');
     mkdirSync(tools, { recursive: true });
     mkdirSync(toolDir, { recursive: true });
-    for (const name of ['field-lists.mjs', 'screen-mirror.mjs', 'credential-pattern.mjs']) copyFileSync(join(here, name), join(tools, name));
+    for (const name of ['field-lists.mjs', 'screen-mirror.mjs', 'credential-pattern.mjs', 'strings.mjs']) copyFileSync(join(here, name), join(tools, name));
     copyFileSync(FIELD_LISTS_SOURCE, join(toolDir, 'FieldLists.cls'));
     const classification = readFileSync(CLASSIFICATION_SOURCE, 'utf8').replace(
       /XData Entries\n\{\n[\s\S]*?\n\}\n\n\}/,

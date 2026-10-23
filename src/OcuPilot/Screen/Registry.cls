@@ -1094,6 +1094,35 @@ ClassMethod ReadNoteProblem(pRead As %DynamicObject) As %String [ Private ]
     Quit tProblem
 }
 
+/// <p>The longest <code>read.row</code> phrase, in characters.</p>
+Parameter READROWMAXLENGTH = 40;
+
+/// <p>The longest <code>read.label</code> sentence, in characters.</p>
+Parameter READLABELMAXLENGTH = 240;
+
+/// <p>What is wrong with <var>pRead</var>'s <code>row</code> or <code>label</code>, or <code>""</code>
+/// (AD-36). Both are optional and only the read tool's description carries them: <code>row</code> is
+/// the phrase for one row, <code>label</code> a sentence or two on what the list holds and does not hold.
+/// Absent or <code>null</code> declares none; otherwise each is a non-empty string, <code>row</code> of
+/// at most <parameter>READROWMAXLENGTH</parameter> characters and <code>label</code> of at most
+/// <parameter>READLABELMAXLENGTH</parameter>. <file>ui/tools/screen-mirror.mjs</file>'s
+/// <code>readRowLabelProblem</code> returns the same sentences, and
+/// <class>OcuPilot.Test.ReadSourceCorpus</class> is the corpus both engines run.</p>
+ClassMethod ReadRowLabelProblem(pRead As %DynamicObject) As %String [ Private ]
+{
+    Set tProblem = ""
+    For tKey = "row", "label" {
+        Set tMax = $Select(tKey = "row": ..#READROWMAXLENGTH, 1: ..#READLABELMAXLENGTH)
+        Set tType = pRead.%GetTypeOf(tKey)
+        If (tType = "unassigned") || (tType = "null") Continue
+        If (tType '= "string") || (pRead.%Get(tKey) = "") || ($Length(pRead.%Get(tKey)) > tMax) {
+            Set tProblem = "read." _ tKey _ " is not a non-empty string of at most " _ tMax _ " characters (AD-36)"
+            Quit
+        }
+    }
+    Quit tProblem
+}
+
 /// <p>The tool-identifier shape a read-declaring descriptor carries: one lower-case area segment
 /// and one lower-case screen segment, so its read tool is <code>&lt;toolIdentifier&gt;.read</code>
 /// (Conventions, Tool naming).</p>
@@ -1171,7 +1200,7 @@ ClassMethod ReadProblem(pDeclaration As %DynamicObject) As %String
             Quit
         }
         Set tRead = pDeclaration.%Get("read")
-        Set tProblem = ..UnknownKeyProblem(tRead, "read", $ListBuild("source", "fields", "filter", "sort", "paging", "criteria", "note"))
+        Set tProblem = ..UnknownKeyProblem(tRead, "read", $ListBuild("source", "fields", "filter", "sort", "paging", "criteria", "note", "row", "label"))
         If tProblem '= "" Quit
 
         If tRead.%GetTypeOf("source") '= "object" {
@@ -1605,6 +1634,8 @@ ClassMethod ReadProblem(pDeclaration As %DynamicObject) As %String
             Quit
         }
         Set tProblem = ..ReadNoteProblem(tRead)
+        If tProblem '= "" Quit
+        Set tProblem = ..ReadRowLabelProblem(tRead)
         If tProblem '= "" Quit
 
         Set tIdentifier = pDeclaration.%Get("toolIdentifier")

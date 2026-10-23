@@ -47,6 +47,8 @@ XData Declaration
   "classicPage": "",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "document database",
+    "label": "Document databases (DocDB) in this namespace, not the instance's databases, which are in osmgmt.databases.",
     "source": {"port": "docdb", "endpoint": "Databases", "type": "LIST"},
     "fields": ["Name", "Class", "DocumentType", "Resource"],
     "filter": ["Name", "Class", "DocumentType", "Resource"],

@@ -46,6 +46,7 @@ XData Declaration
   "classicPage": "EnsPortal.Rules",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "business rule",
     "source": {"port": "interop", "endpoint": "Rules", "type": "LIST"},
     "fields": ["Name", "Modified"],
     "filter": ["Name"],

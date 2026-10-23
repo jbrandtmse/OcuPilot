@@ -49,6 +49,7 @@ XData Declaration
   "classicPage": "",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "match in a class or routine",
     "source": {"port": "atelier", "endpoint": "Search", "type": "LIST"},
     "fields": ["Order", "Document", "Member", "Line", "Attribute", "Text"],
     "filter": ["Document", "Member", "Text"],

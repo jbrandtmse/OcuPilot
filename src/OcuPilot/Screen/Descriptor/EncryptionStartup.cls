@@ -49,6 +49,7 @@ XData Declaration
   "classicPage": "%CSP.UI.Portal.EncryptionDatabase",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "set of encryption startup settings",
     "source": {"port": "admin", "endpoint": "Security.Encryption.Settings", "type": "GET"},
     "fields": ["DBEncStartMode", "DBEncJournal", "DBEncIRISSecurity", "DBEncIRISTemp", "AuditEncrypt", "DBEncStartKMIPServer", "DBEncStartKeyFile", "DBEncDefaultKeyID", "DBEncJournalKeyID"],
     "filter": ["DBEncStartMode"],

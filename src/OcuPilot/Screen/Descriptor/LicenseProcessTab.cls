@@ -37,6 +37,7 @@ XData Declaration
   "classicPage": "%CSP.UI.Portal.LicenseUsage",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "process holding a license entry",
     "source": {"port": "admin", "endpoint": "Monitor", "type": "LICENSEUSAGE", "rows": "UsageByProcess"},
     "fields": ["PID", "Process", "LID", "Type", "Con", "Active", "CSPCon", "LU", "Grace"],
     "filter": ["Process", "LID", "Type"],

@@ -60,12 +60,13 @@ class StubNavigation {
 const ROUTES = ['security/oauth', 'security/oauth/clients', 'security/oauth/resource-servers', 'security/oauth/server', 'security/oauth/server-clients', 'security/untabbed'];
 
 /**
- * Stories 19.5 and 19.14: a SQL table's catalog tabs and a view's, parent-scoped groups whose every
- * route carries the table or the view.
+ * Stories 19.5, 19.14 and 20.38: a SQL table's catalog tabs, a view's and a schema's, parent-scoped
+ * groups whose every route carries the table, the view or the schema.
  */
 const SQL_TAB_ROUTES = [
   ...['document', 'fields', 'indices', 'partitions', 'partition-mappings', 'triggers', 'constraints', 'cached-queries', 'statements'].map((tab) => `system-explorer/sql-tables/${tab}`),
   ...['document', 'fields', 'statements'].map((tab) => `system-explorer/sql-views/${tab}`),
+  ...['document', 'views', 'procedures'].map((tab) => `system-explorer/sql-schemas/${tab}`),
 ];
 
 const planted: HTMLElement[] = [];
@@ -324,6 +325,26 @@ describe('the detail page', () => {
     tabs(fixture)[2].click();
     await settle(fixture);
     expect(router.url).toBe(`/system-explorer/sql-views/statements/${id}?ns=USER`);
+  });
+
+  it('Story 20.38 AC1: a schema\'s tabs, Tables, Views and Procedures, are labeled SQL schemas and carry the schema from tab to tab', async () => {
+    // Mutation (Rule 19): navigate to the bare `tab.route` again in `DetailPage.open` -> the id is
+    // dropped and both url assertions go red.
+    const id = encodeEntityId('%Library');
+    const fixture = await build(`/system-explorer/sql-schemas/document/${id}?ns=USER`);
+    const router = TestBed.inject(Router);
+    expect((fixture.nativeElement as HTMLElement).querySelector('nav.ocu-detail-tabs')?.getAttribute('aria-label')).toBe(STRINGS.explorerSqlSchemasLabel);
+    expect(STRINGS.explorerSqlSchemasLabel).toBe('SQL schemas');
+    expect(tabs(fixture).map((tab) => tab.querySelector('.ocu-detail-tab-label')?.textContent?.trim())).toEqual(['Tables', 'Views', 'Procedures']);
+    tabs(fixture)[1].click();
+    await settle(fixture);
+    expect(router.url).toBe(`/system-explorer/sql-schemas/views/${id}?ns=USER`);
+    tabs(fixture)[2].click();
+    await settle(fixture);
+    expect(router.url).toBe(`/system-explorer/sql-schemas/procedures/${id}?ns=USER`);
+    tabs(fixture)[0].click();
+    await settle(fixture);
+    expect(router.url).toBe(`/system-explorer/sql-schemas/document/${id}?ns=USER`);
   });
 
   it('Story 19.5: a parent-scoped tab rendered with no route id opens the bare route', async () => {

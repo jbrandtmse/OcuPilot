@@ -8456,6 +8456,9 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-01T18:33:01Z status=routed owner=23-3-the-range-end-cleanup-part-3 by=merge_gate note=chartered: Story 23.3, the standing cleanup after the 1.0.5 cut (Rule 27; CI health and flakes first, then security; DW-1782 first of security per the owner)
 - 2026-10-01T23:57:15Z status=resolved-by:23-3-the-range-end-cleanup-part-3 by=adjudication note=6e6b8dcc: protocolTimeout 600 s; red at 182 s under a 200 s font hold, 12/12 after; reopen_if a walk stalls past 600 s
 - 2026-10-04T07:59:42Z occurrence=range-end-cleanup note=linked DW-2026: a11y-structural-invariants hung 730 s on run 37184530521 (a3f957b2) and on aaa2460d attempt 1 (2026-10-03)
+- 2026-10-23T10:07:55Z occurrence=release-1.0.13 note=PR #16 run 39922983649 (4d573436) attempt 1, browser shard 1/5: every a11y-structural-invariants test timed out on Runtime.callFunctionOn; attempt 2 green (reported by the Planner)
+- 2026-10-23T10:07:55Z status=routed owner=burndown by=orchestrator note=reopened: reopen_if met (a walk stalled to the 600 s protocolTimeout on the 1.0.13 release PR); CI flake, first in the next standing cleanup (Rule 27)
+- 2026-10-23T18:09:23Z occurrence=23-12-the-agent-picks-the-right-list note=run 39992827886 (7dd30507) attempt 1, browser shard 1/5: a11y-structural-invariants passed 13/13 in 1912.6 s against 414.8 s recorded; the shard hit its 55-minute limit
 
 ### DW-1823: security.browser-spec.mjs AC5 (Story 16.3 AC7, DW-1018 option A) timed out waiting for app-side-bar .ocu-side-bar-item after opening the Security rail item without %Admin_Wallet:USE
 - source: feature CI run 36575310150 attempt 1 on 573c50eb (orchestrator), 2026-09-29 | severity: low | fix-risk: low | footprint: ui/browser/security.browser-spec.mjs
@@ -12191,6 +12194,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: CI run 38782509360 attempt 1: 'Waiting for selector #ocu-encryption-startup-DBEncStartMode-None failed' after 34 s; ocupilot-b-ci on the same tree: 3 of 3 green; the spec is Story 18.48's, untouched by 20.31
 - 2026-10-15T18:44:49Z status=routed owner=burndown by=lead note=flake priority: rerun once; a second red on the same head is a story red
 - 2026-10-21T13:30:19Z occurrence=20-32-the-analytics-links note=run 39603456840 browser shard 2/5 attempt 1, same selector timeout
+- 2026-10-23T16:32:53Z occurrence=23-12-the-agent-picks-the-right-list
 
 ### DW-2463: The interop-editor browser specs keep local copies of the helpers interop-editor-spec.mjs now shares (answered, editorShows, the frame selector) and of 20.7's readSettings, settingsNode and shellAt
 - source: spec-20-10-source-control-hooks.md (code review) | severity: low | fix-risk: low | footprint: in-epic
@@ -12404,3 +12408,50 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-23T04:38:43Z status=open owner=20-37-sqlrun-stored-slot-order by=harvest note=build-auto verification-gap layer; 20.37's charter bars changing existing tests
 - 2026-10-23T04:55:51Z occurrence=20-37-sqlrun-stored-slot-order
 - 2026-10-23T04:57:16Z status=wontfix-accepted by=adjudication note=LOW; 20.37's charter bars changing existing tests and the reader is 20.33's, unchanged; reopen_if=GuardedReserve's ended-row delete or Kind's empty-means-sql default changes, or a third run kind is added
+
+### DW-2503: Two read-tool descriptions (osmgmt.dashboard 1,143 chars, osmgmt.ecpstatistics 1,030) now exceed 1,024 characters, which a provider may refuse in a tool definition (unverified)
+- source: spec-23-12-the-agent-picks-the-right-list.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: Measured on ocupilot-ci after 23.12; three editor save tools already exceed it (1,463-1,516); neither OpenAI nor Gemini adapter caps a description; an OpenAI 1,024 limit is from third-party reports only (inference)
+- 2026-10-23T13:52:24Z status=open owner=23-12-the-agent-picks-the-right-list by=harvest note=implement deferred; adjudicate at 23.12's gate
+- 2026-10-23T16:15:05Z occurrence=23-12-the-agent-picks-the-right-list
+- 2026-10-23T16:18:28Z status=wontfix-theoretical by=adjudication note=measured 2026-10-23: OpenAI gpt-5.6-terra and Gemini gemini-3.8-flash both answer 200 to a 1,200-char tool description; real if a provider refuses one
+
+### DW-2510: Two ruled labels claim a wider scope than their reads: logs.analytics says every namespace and logs.eventlog every interoperability namespace, where each reads the caller's readable ones
+- source: spec-23-12-the-agent-picks-the-right-list.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: LogAnalyticsViewer doc: each readable namespace; LogEventViewer doc: every interoperability-enabled namespace the user can read; ruled siblings logs.xdbc and logs.sqldiagnostics say every readable namespace
+- 2026-10-23T16:15:05Z status=by-design owner=23-12-the-agent-picks-the-right-list by=cr note=ruled Labels table wording (U-13); reword to every readable namespace in a later label story
+
+### DW-2511: ReadDescriptions' titled-no-row leg reads OcuPilot.Test.ProposalScreen, another suite's fixture, so an edit to that fixture reddens it
+- source: spec-23-12-the-agent-picks-the-right-list.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: TestAFixtureDescriptorWithoutATitleOrARowComposesFromItsIdentifier relies on ProposalScreen's titled labelKey and absent row; compiled code, not run-time state, so no order dependence
+- 2026-10-23T16:15:05Z status=wontfix-accepted owner=23-12-the-agent-picks-the-right-list by=cr note=reopen_if=ReadDescriptions reddens after an edit to Test/ProposalScreen.cls (a row or an untitled labelKey)
+### DW-2504: Four doc comments still place the name cell's link chain in data-table.ts, which Story 20.38 moved to navigation.ts's nameLinkTarget
+- source: spec-20-38-a-schema-opens-its-tables-views-and-procedures.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: Registry.cls RowTargetProblem (:4008), Descriptor/Base.cls RowTarget (:337), Descriptor/LockList.cls (:19) and ui/tools/screen-mirror.mjs (:2830) say 'the paired-surface chain in data-table.ts'; data-table.ts now calls nameLinkTarget in core/navigation.ts.
+- 2026-10-23T14:28:31Z status=wontfix-accepted owner=20-38-a-schema-opens-its-tables-views-and-procedures by=cr note=files barred to this story (23.12, existing descriptors); reopen_if=grep 'chain in' on the four still names data-table.ts after 23.12 merges
+- 2026-10-23T14:30:20Z status=routed owner=20-39-every-list-s-name-opens-something by=adjudication note=stale 'chain in data-table.ts' comments (Registry.cls, Base.cls, LockList.cls, screen-mirror.mjs); 20.39 edits these after 23.12 merges
+
+### DW-2505: SQL schemas' descriptor doc does not say where a schema's name opens, as its sibling lists' docs do
+- source: spec-20-38-a-schema-opens-its-tables-views-and-procedures.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: ExplorerSqlTables.cls's doc names the screen its name cell opens; ExplorerSqlSchemas.cls's is silent, and its link now comes only from documentScreenFor finding sql-schemas/document.
+- 2026-10-23T14:28:32Z status=by-design owner=20-38-a-schema-opens-its-tables-views-and-procedures by=cr note=the spec's Code Map leaves ExplorerSqlSchemas.cls unedited; nameLinkTarget's doc states the chain
+
+### DW-2506: EXPERIENCE.md:595's where-used text omits the schema screen's title and tab names among the reused strings' uses
+- source: spec-20-38-a-schema-opens-its-tables-views-and-procedures.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: Line 595 gives 'SQL schemas' as a side-bar entry and Tables, Views and Procedures as column headers; Story 20.38 also uses them as a schema's tab title and tab names, and its amendment names only the empty states.
+- 2026-10-23T14:28:32Z status=by-design owner=20-38-a-schema-opens-its-tables-views-and-procedures by=cr note=the spec's Tasks prescribe the amendment's exact words; no string changed
+
+### DW-2507: A schema tab for a schema that does not exist answers 200 with no rows, so it reads 'This schema has no SQL tables.'
+- source: spec-20-38-a-schema-opens-its-tables-views-and-procedures.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: AtelierPort.CatalogRows binds the schema into the list statements' TABLE_SCHEMA = ? with no schema lookup first, so a typed or stale URL's unknown schema reads as an empty one; the match ignores case.
+- 2026-10-23T14:28:38Z status=by-design owner=20-38-a-schema-opens-its-tables-views-and-procedures by=cr note=spec forbids new statement text and new strings; a not-found needs both
+
+### DW-2508: A schema named document, views or procedures shares its list-row URL with a schema tab's bare route
+- source: spec-20-38-a-schema-opens-its-tables-views-and-procedures.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: sql-schemas/<id> for id 'views' resolves to the Views tab with no schema, which is refused, instead of the list with that row selected; the spec records it under residual risks.
+- 2026-10-23T14:28:39Z status=by-design owner=20-38-a-schema-opens-its-tables-views-and-procedures by=cr note=the Q1 ruling fixed the address sql-schemas/document/<schema>; the name click opens the tab correctly
+
+### DW-2509: The schema-tab read tools do not tell the model that schema is required
+- source: spec-20-38-a-schema-opens-its-tables-views-and-procedures.md | severity: low | fix-risk: med | footprint: in-epic
+- evidence: The published input schema lists no required criterion (Screen/Tool/Read.cls) and the hint omits 'required'; a call with no schema is refused 400 PORT.VALIDATION naming the schema rule. Sibling tab tools share it.
+- 2026-10-23T14:28:39Z status=wontfix-accepted owner=20-38-a-schema-opens-its-tables-views-and-procedures by=cr note=read grammar has no required flag; Read.cls is 23.12's; reopen_if=a transcript shows explorer.sqlschema*.read with no schema

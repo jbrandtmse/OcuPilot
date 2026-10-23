@@ -50,6 +50,7 @@ XData Declaration
   "classicPage": "%CSP.UI.Portal.Authentication",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "set of authentication options",
     "source": {"port": "admin", "endpoint": "Security.WebAuth", "type": "GET"},
     "fields": ["AutheUnauthenticated", "AutheOS", "AutheOSDelegated", "AutheOSLDAP", "AutheCache", "AutheDelegated", "AutheAlwaysTryDelegated", "AutheKB", "AutheLDAP", "AutheLDAPCache", "AutheOAuth2", "AutheLoginToken", "AutheTwoFactorSMS", "AutheTwoFactorPW", "LoginCookieTimeout", "SMTPServer", "SMTPUsername", "TwoFactorFrom", "TwoFactorTimeout", "JWTIssuer", "JWTSigAlg"],
     "filter": ["JWTSigAlg"],

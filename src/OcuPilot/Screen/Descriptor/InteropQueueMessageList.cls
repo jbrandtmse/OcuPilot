@@ -42,6 +42,7 @@ XData Declaration
   "classicPage": "EnsPortal.Queues",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "message in one queue",
     "source": {"port": "interop", "endpoint": "QueueItems", "type": "LIST"},
     "fields": ["Queue", "Priority", "Index", "MessageId", "Source", "Target", "BodyClass", "TimeCreated", "Status"],
     "filter": ["MessageId", "Source", "Target", "BodyClass", "Status"],
