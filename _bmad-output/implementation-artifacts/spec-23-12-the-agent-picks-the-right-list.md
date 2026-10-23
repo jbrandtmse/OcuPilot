@@ -2,7 +2,7 @@
 title: 'Story 23.12: The agent picks the right list'
 type: 'feature'
 created: '2026-10-23'
-status: 'blocked'
+status: 'ready-for-dev'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -150,6 +150,8 @@ Measured from the tree (`ui/tools/screen-mirror.mjs` `readSources`, `loadStrings
 
 ## Spec Change Log
 
+- 2026-10-23, lead spec gate: visible text accepted (veto U-13); AD-5 and AD-36 notes ruled by the orchestrator: no spine edit in this run, lines kept for the owner's Update; status `ready-for-dev`.
+
 ## Review Triage Log
 
 ## Design Notes
@@ -163,7 +165,7 @@ Measured from the tree (`ui/tools/screen-mirror.mjs` `readSources`, `loadStrings
 - AD-36: one read, its `fields` and `read.note`.
 - AD-60: find rows and tool references are unchanged.
 
-**Spine notes for the lead (Rule 20), both escalated below:**
+**Spine notes, for the owner's attended bmad-architecture Update after the run** (no spine edit in this run, orchestrator ruling 2026-10-23):
 
 - AD-5 gains a third generated artifact: `Screen/Titles.cls`, each descriptor `labelKey`'s string from `strings.ts`, written and checked by `screen-mirror.mjs`.
 - AD-36 gains: "A declared read may declare `row`, the phrase for one row, and `label`, one sentence on what the list holds and does not hold. Its read tool's description carries both, with the screen's title and its answered fields. No page renders them. `Screen/Registry.cls` and `ui/tools/screen-mirror.mjs` validate them alike."
@@ -181,7 +183,8 @@ Measured from the tree (`ui/tools/screen-mirror.mjs` `readSources`, `loadStrings
 **Lead rulings (2026-10-23, run 20261020T0940Z-20,23):**
 
 - Item 1, visible text: accepted as planned (veto window: public-facing text not in UX or PRD). The composed descriptions, row phrases and labels may show in an expanded `shell.tools.find` tool-call card, as today's sentence does. Reversal: reword them in a later story.
-- Item 2, the AD-5 and AD-36 notes: an AD question, which in this run goes to the orchestrator (U7, U14). Ruling pending.
+- Item 2, the AD-5 and AD-36 notes, orchestrator ruling (decide): implement as planned, with no spine edit in this run. `read.row` and `read.label` extend AD-36's read members, and `Screen/Titles.cls` is a client-to-instance flow AD-5 does not address, so neither Rule is contradicted (U7 step 1). An amendment is out under U14, since Story 20.38 cites AD-5. The two lines above wait for the owner's Update. The per-descriptor title copy is rejected.
+- Story 20.38 runs beside this story. `ui/tools/screen-mirror.mjs` and `src/OcuPilot/Screen/Registry.cls` are reserved to this story for edits that are not add-only. If 20.38 merges first, the lead integrates forward, adds `row` to its new read descriptors and labels its schema Tables, Views and Procedures tabs, and regenerates.
 
 **Decided in-stage:**
 
@@ -418,12 +421,7 @@ Every test added or changed passes on a fresh environment, in either order.
 
 ## Auto Run Result
 
-Status: blocked
-Blocking condition: clarification (veto window), two items. (1) Public-facing text: the composed read-tool descriptions, the row phrases and the 36 proposed labels become visible to a person in the expanded tool-call card of a `shell.tools.find` step, both in the live agent panel and on Agent > Transcripts. Recommended: accept as proposed. (2) An AD amendment: AD-5 gains the generated `Screen/Titles.cls`, and AD-36 gains `read.row` and `read.label`. Recommended: apply both on Rule 20's light path.
+Status: ready-for-dev
+Blocking condition: none
 
-The plan is complete on both recommended options and otherwise meets the READY standard:
-
-- On a ruling that keeps both, record it under Design Notes, apply the spine notes and set `status: ready-for-dev`. No re-plan is needed.
-- On any other ruling, set `status: draft` and re-plan.
-
-No commit was made, and only this spec file was written.
+The plan's two questions are ruled (Design Notes, Lead rulings). No re-plan was needed.
