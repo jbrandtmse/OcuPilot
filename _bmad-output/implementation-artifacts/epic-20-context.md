@@ -46,23 +46,23 @@ Bring the classic portal's Interoperability work into OcuPilot for namespaces th
 - Story 20.36: Investigate
 - Story 20.37: SqlRun stored slot order
 - Story 20.38: A schema opens its tables, views and procedures
+- Story 20.39: Every list's name opens something (split from 20.38; not in this dispatch)
 
 ## Requirements & Constraints
 
 ### 20.38: a schema opens its objects (current)
 
 - **The defect.** The SQL schemas list's Schema column is a name column with no row target, so the shared table links each name to `system-explorer/sql-schemas/<schema>`. No screen answers that route: the address and the breadcrumb change, and the page stays the list. The classic SQL page opens a schema into its tables, views and procedures.
-- **The schema screen** opens at `system-explorer/sql-schemas/<schema>`. It is a tab group with "Tables", "Views" and "Procedures":
+- **The schema screen** opens at `system-explorer/sql-schemas/document/<schema>` (runner ruling at the plan: AD-5's parent-scoped head, Story 19.5's shape; `sql-schemas/<schema>` stays the list's own id route). It is a tab group with "Tables", "Views" and "Procedures":
   - each tab lists through the existing SQL tables, views and procedures reads with their `schema` criterion (extend those reads, never copy them);
-  - the System items criterion is carried over;
+  - each tab lists every object in its schema, system ones included, with no System control of its own (runner ruling: AD-5 gives a parent-scoped read one criterion);
   - each object's name opens its existing table, view or procedure screen;
   - the breadcrumb reads SQL schemas › <schema>.
-- **An empty tab** says so plainly while a tab of a kind the schema holds shows rows. Ens holds procedures and no tables. The tab names are fixed. The empty-tab sentence's wording is the runner's ruling, filed as a veto item and reported. Any other new on-screen string goes to the orchestrator.
-- **The agent** on this screen gets the tabs' own reads, scoped to the schema, as its screen context and tools. No new agent action, tool or write.
+- **An empty tab** says so plainly while a tab of a kind the schema holds shows rows. Ens holds tables and procedures and no views (measured). The tab names are fixed. The empty-tab sentences are the runner's ruling (veto U-14): "This schema has no SQL tables.", "This schema has no SQL views.", "This schema has no SQL procedures." Any other new on-screen string goes to the orchestrator.
+- **The agent** on this screen gets the tabs' own reads, scoped to the schema, as its screen context and tools: three new read tools, one per tab (runner ruling). No new agent action or write.
 - **The bug-class check.** A client test fails when any built list's name-column link leads to a route with no built screen.
-  - Every list it finds is fixed in this story: given a real target, or rendered as plain text. The spec lists each one and what it now does.
-  - A Planner scan found 36 candidate lists, most probably fine (inference).
-  - If the real hits pass about a dozen lists, or one needs a product choice about where a name should lead, split the story or escalate.
+  - The plan measured 18 self-linking lists. SQL schemas is fixed here; the other 17 sit in an exact allow-list, and Story 20.39 (split sibling, after 23.12 merges) fixes them.
+  - `ui/tools/screen-mirror.mjs` and `Screen/Registry.cls` take add-only edits from 20.38 (orchestrator ruling: reserved to 23.12 otherwise).
 - **The browser spec** clicks a schema name, lands on the schema's screen, sees the Procedures rows of a schema that holds procedures, and opens one procedure.
 - **Out of scope:** stored data and the installer (no upgrade check is expected, and the plan confirms that from its diff), editing schemas, and any change to what the tables, views and procedures screens show on their own. The merge report says whether the diff touches stored data, the installer, the start path, `module.xml` or compose.
 
@@ -100,7 +100,7 @@ Bring the classic portal's Interoperability work into OcuPilot for namespaces th
 - **Tabbed screens.** A tabbed screen is one descriptor per tab, grouped by a declared `tab`.
   - A parent-scoped group's members name the same `parentScope` and its one criterion, and the strip carries the route id from tab to tab (a SQL table's catalog tabs).
   - Today a list's name cell opens a paired viewer only at `<list route>/document`, which is unlisted (side-bar position 0) and takes an id. Without one, the name links to the dead `<list route>/<id>`.
-  - The story names `sql-schemas/<schema>` instead. The plan reconciles the two, and any change to the route or tab-group grammar goes to the orchestrator as a question: a runner never amends an AD on its own.
+  - 20.38 uses that grammar: its schema screen is at `sql-schemas/document/<schema>` (runner ruling). Any change to the route or tab-group grammar goes to the orchestrator: a runner never amends an AD on its own.
 - **Reads.** A screen's list and its read tool share one declared read: the same filter, fields and cap, reporting truncation and the applied `criteria`. A page may issue another built screen's read, and that screen's gate, cap and field set then apply unchanged, so it never widens.
 - **The SQL catalog reads** go through `AtelierPort`.
   - **Gate:** `%Development:USE` plus READ on the namespace's code databases, resolved at call time. A refusal names the failed pair and is never an empty list.
