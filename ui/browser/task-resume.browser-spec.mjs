@@ -223,9 +223,12 @@ function readReply() {
   return `##class(OcuPilot.Test.TurnProvider).ToolUseReply([{"id": "toolu_read", "name": "${READ_WIRE_NAME}", "input": {}}])`;
 }
 
-/** A `tool_use` reply calling `shell.screen.open` on Task details with one task's id (UJ-6). */
+/**
+ * A `tool_use` reply calling `shell.screen.open` on Task details for one task (UJ-6): Task details
+ * belongs to its task, so the id travels as `parentId`.
+ */
 function navReply(id) {
-  const input = { route: DETAILS_ROUTE, entityId: id };
+  const input = { route: DETAILS_ROUTE, parentId: id };
   return `##class(OcuPilot.Test.TurnProvider).ToolUseReply([{"id": "toolu_nav", "name": "${NAV_WIRE_NAME}", "input": ${JSON.stringify(input)}}])`;
 }
 
@@ -362,9 +365,8 @@ async function listWithLiveCard({ withRefresh = false, details = false } = {}) {
 
 test('AC1, AC2, Story 7.6 AC3: the agent reads the schedule, announces the move, and Task details opens on the task it names', async () => {
   // Mutation (Rule 19): route `navReply` back to `tasks/schedule` -> the URL and heading
-  // assertions go red. Restore `OcuPilot.Screen.Tool.Navigate.AcceptsEntityId`'s
-  // `IdKind() = "single"` answer -> the directive is refused NAV.ENTITYNOTALLOWED and the URL
-  // never carries the id.
+  // assertions go red. Send `entityId` in place of `parentId` -> the directive is refused
+  // NAV.ENTITYNOTALLOWED and the URL never carries the id.
   await requireFreeSlot(config);
   suspendTask(taskId);
   const tag = nextTag();

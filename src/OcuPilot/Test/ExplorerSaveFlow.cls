@@ -2,7 +2,8 @@
 /// AD-15, AD-22, AD-41, AD-53, DW-2228): each refusal that comes before the document is read (OcuPilot's own
 /// code, a <code>%</code> name, <code>%SYS</code>, a class or routine stored in another database) answers its
 /// code for a document that does not exist, while a missing document of the namespace's own database answers
-/// <code>PORT.NOTFOUND</code>; a name set or another kind of document is refused; the closed schema refuses a
+/// <code>PORT.NOTFOUND</code>, and a routine of that database kept only as object code answers it with the reason
+/// that the instance keeps no source; a name set or another kind of document is refused; the closed schema refuses a
 /// text, a version or a compile choice; the proposal is destructive, requires WRITE on the routines
 /// database, shows the model its hunk and not the document, and writes and compiles nothing before Confirm; a
 /// routine and an include file are saved and compiled on Confirm; a routine header rename and a text past the
@@ -13,7 +14,8 @@
 /// <p><b>What it needs from the environment:</b> OcuPilot installed in <code>HSCUSTOM</code> and serving over
 /// HTTP as <class>OcuPilot.Test.Http</class>'s account, a <code>USER</code> namespace, and the
 /// <code>ENSLIB</code> database mapped for the <code>Ens</code> package and its routines. It creates and
-/// removes the documents <class>OcuPilot.Test.ExplorerSaveAgentProbe</class> names, and snapshots the stored
+/// removes the documents <class>OcuPilot.Test.ExplorerSaveAgentProbe</class> names and the routine
+/// <parameter>OBJECTONLY</parameter>, and snapshots the stored
 /// governance policy before each test and puts it back after it.</p>
 Class OcuPilot.Test.ExplorerSaveFlow Extends %UnitTest.TestCase
 {
@@ -25,6 +27,9 @@ Parameter PROBE = "OcuPilot.Test.ExplorerSaveAgentProbe";
 Parameter CLASSTOOL = "explorer.classes.save";
 
 Parameter ROUTINETOOL = "explorer.routines.save";
+
+/// <p>The routine <method>MakeObjectOnly</method> keeps only as object code in the probe namespace.</p>
+Parameter OBJECTONLY = "OcuProbe2021Obj.mac";
 
 Parameter ALPHA = "OcuProbe2021.Flow";
 
@@ -98,6 +103,59 @@ ClassMethod EditOf(pAnswer As %String = "2") As %DynamicObject
     Quit {"Names": (..#ALPHA _ ".cls"), "Edits": [{"Old": "    Quit 1", "New": ("    Quit " _ pAnswer)}]}
 }
 
+/// <p>One call of the Routines save as the model's call reaches it
+/// (<method>OcuPilot.Screen.Tool.Write.View</method>), for a one-edit save of <var>pName</var> in the probe
+/// namespace: the status, and in <var>pHttp</var> and <var>pFault</var> what it refuses with, the fault's
+/// <code>reason</code> included.</p>
+ClassMethod ViewRoutineSave(pName As %String, Output pHttp As %Integer, Output pFault As %DynamicObject) As %Status
+{
+    Do ##class(OcuPilot.Kernel.Scope).Set(..#PROBENAMESPACE)
+    Quit ##class(OcuPilot.Screen.Tool.ExplorerRoutineSave).View("", {"Names": (pName), "Edits": [{"Old": "    Quit 1", "New": "    Quit 2"}]}, 0, .tResult, .pHttp, .pFault)
+}
+
+/// <p>Save and compile <parameter>OBJECTONLY</parameter> in the probe namespace and then remove its source,
+/// leaving the object code and the index entry the instance keeps for a routine deployed without source.</p>
+ClassMethod MakeObjectOnly() As %Status
+{
+    Set tSC = ..RemoveObjectOnly()
+    If $$$ISERR(tSC) Quit tSC
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = ..#PROBENAMESPACE
+        Set tRoutine = ##class(%Routine).%New(..#OBJECTONLY)
+        Do tRoutine.WriteLine($Piece(..#OBJECTONLY, ".", 1) _ " ;")
+        Do tRoutine.WriteLine(" Quit 1")
+        Set tSC = tRoutine.Save()
+        If $$$ISOK(tSC) Set tSC = tRoutine.Compile("-d")
+        Set tRoutine = ""
+        If $$$ISOK(tSC) Kill ^rMAC($Piece(..#OBJECTONLY, ".", 1))
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Delete <parameter>OBJECTONLY</parameter>, object code and index entry included, from the probe
+/// namespace; a failing status when any of it survives.</p>
+ClassMethod RemoveObjectOnly() As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = ..#PROBENAMESPACE
+        Set tSC = ##class(%Routine).Delete(..#OBJECTONLY, 0)
+        Set tBase = $Piece(..#OBJECTONLY, ".", 1)
+        If $$$ISOK(tSC) && ($Data(^rINDEX(tBase)) || $Data(^rOBJ(tBase))) Set tSC = $$$ERROR($$$GeneralError, "the object-only probe routine survives in " _ ..#PROBENAMESPACE)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
 /// <p>Asserts that the call of <var>pTool</var> for <var>pName</var> in <var>pNamespace</var> is refused with
 /// <var>pCode</var>, with <var>pText</var> in its problem, and that no proposal row is added for the tool.</p>
 Method Refused(pNamespace As %String, pTool As %String, pName As %String, pCode As %String, pText As %String)
@@ -126,6 +184,51 @@ Method TestARefusalComesBeforeTheReadOfTheDocument()
     Do ..Refused(..#PROBENAMESPACE, ..#ROUTINETOOL, "%OcuProbe2021.mac", tArguments, "begins with %")
     Do ..Refused(..#PROBENAMESPACE, ..#CLASSTOOL, "OcuProbe2021.Missing.cls", "PORT.NOTFOUND", "")
     Do ..Refused(..#PROBENAMESPACE, ..#ROUTINETOOL, "OcuProbe2021Missing.mac", "PORT.NOTFOUND", "")
+}
+
+/// <p>A routine of the namespace's own database kept only as object code is refused by the Routines save 404
+/// <code>PORT.NOTFOUND</code> with the reason that the instance keeps no source, which is not the reason an
+/// absent document answers, and adds no proposal. The test makes the routine itself
+/// (<method>MakeObjectOnly</method>) and removes it; the first assertion after it fails the leg if the port
+/// does not read it as object code alone.</p>
+/// <p>Mutation (Rule 19): <class>OcuPilot.Screen.Tool.ExplorerSaveMint</class> answers
+/// <parameter>OcuPilot.Port.AtelierPort.REASONNOTFOUND</parameter> for an unavailable document -- this goes red.</p>
+Method TestAnObjectOnlyRoutineIsRefusedAsKeepingNoSource()
+{
+    Set tName = ..#OBJECTONLY
+    Do $$$AssertStatusOK(..MakeObjectOnly(), "a probe routine is compiled and its source removed")
+    Kill tQuery
+    Set tQuery("namespace") = ..#PROBENAMESPACE
+    Set tQuery("name") = tName
+    Set tSC = ##class(OcuPilot.Port.AtelierPort).Invoke("Routine", "LIST", .tQuery, "", .tRows, .tHttp, .tFault, .tDocument)
+    Set tHeld = $Select($IsObject($Get(tDocument)): tHttp _ " " _ tDocument.available _ " " _ tDocument.%Get("reason"), 1: tHttp)
+    Do $$$AssertEquals(tHeld, "200 0 objectonly", "the port reads the probe routine as object code alone")
+    If tHeld = "200 0 objectonly" {
+        Set tBefore = ##class(OcuPilot.Test.ExplorerSave).ProposalRows(..#ROUTINETOOL)
+        Set tSC = ..ViewRoutineSave(tName, .tHttp, .tFault)
+        Do $$$AssertStatusNotOK(tSC, "the save refuses the routine")
+        Do $$$AssertEquals(tHttp _ " " _ $Select($IsObject(tFault): tFault.%Get("code"), 1: ""), "404 PORT.NOTFOUND", "it answers 404 PORT.NOTFOUND")
+        Do $$$AssertEquals($Select($IsObject(tFault): tFault.%Get("reason"), 1: ""), ##class(OcuPilot.Port.AtelierPort).#REASONNOSOURCE, "whose reason says the instance keeps no source")
+        Do $$$AssertEquals(##class(OcuPilot.Test.ExplorerSave).ProposalRows(..#ROUTINETOOL), tBefore, "and no proposal is added")
+    }
+    Do $$$AssertStatusOK(..RemoveObjectOnly(), "the probe routine is removed")
+}
+
+/// <p>A routine the namespace does not hold is refused by the Routines save 404 <code>PORT.NOTFOUND</code>
+/// with the reason that the namespace holds no such document, which is not the reason a routine kept as object
+/// code answers, and adds no proposal.</p>
+/// <p>Mutation (Rule 19): <class>OcuPilot.Screen.Tool.ExplorerSaveMint</class> answers
+/// <parameter>OcuPilot.Port.AtelierPort.REASONNOSOURCE</parameter> for a read the port refused -- this goes
+/// red.</p>
+Method TestAMissingRoutineIsRefusedWithTheReasonOfAnAbsentDocument()
+{
+    Set tName = "OcuProbe2021Missing.mac"
+    Set tBefore = ##class(OcuPilot.Test.ExplorerSave).ProposalRows(..#ROUTINETOOL)
+    Set tSC = ..ViewRoutineSave(tName, .tHttp, .tFault)
+    Do $$$AssertStatusNotOK(tSC, "the mint refuses the routine")
+    Do $$$AssertEquals(tHttp _ " " _ $Select($IsObject(tFault): tFault.%Get("code"), 1: ""), "404 PORT.NOTFOUND", "it answers 404 PORT.NOTFOUND")
+    Do $$$AssertEquals($Select($IsObject(tFault): tFault.%Get("reason"), 1: ""), ##class(OcuPilot.Port.AtelierPort).#REASONNOTFOUND, "whose reason says the namespace holds no such document")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ExplorerSave).ProposalRows(..#ROUTINETOOL), tBefore, "and no proposal is added")
 }
 
 /// <p>Exactly one document of the tool's own kind: a set of two names, a routine named to the Classes tool and a
@@ -327,9 +430,10 @@ Method TestASecondProposalIsRefusedOnceTheFirstIsConfirmed()
 /// <p>A result past the port's bound is refused at the mint: 1,700,000 quotation marks escape to more
 /// characters than one save takes, and 2,200,000 escape past the longest string the instance can build, which
 /// counts as over too.</p>
-/// <p>Mutation (Rule 19): <class>OcuPilot.Screen.Tool.ExplorerSaveMint</class> measures the unescaped text -- the
-/// first leg goes red; it measures without its <code>Try</code>, so the escape's throw reaches the mint's own
-/// <code>Catch</code> -- the second leg goes red (500 <code>INTERNAL</code>).</p>
+/// <p>Mutation (Rule 19): <method>OcuPilot.Screen.Tool.ExplorerSourceRead.Escaped</method> answers the unescaped
+/// length, which the mint measures through -- the first leg goes red; the mint measures without its
+/// <code>Try</code>, so the escape's throw reaches the mint's own <code>Catch</code> -- the second leg goes red
+/// (500 <code>INTERNAL</code>).</p>
 Method TestAnEditPastThePortsBoundIsRefused()
 {
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "MakeClass", ..#PROBENAMESPACE, ..#ALPHA), "a probe class is saved")

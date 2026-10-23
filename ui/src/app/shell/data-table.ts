@@ -305,7 +305,7 @@ interface LongBlockModel {
                   @if (header.check) {
                     <input
                       type="checkbox"
-                      class="ocu-data-table-check ocu-data-table-check-all"
+                      class="ocu-data-table-check"
                       tabindex="-1"
                       [checked]="allChecked"
                       [indeterminate]="someChecked"
@@ -490,9 +490,9 @@ interface LongBlockModel {
     <div class="ocu-data-table-footer">
       <span class="ocu-data-table-count">{{ rowCountText }}</span>
       @if (showRowCount) {
-        <span class="ocu-data-table-footer-separator" aria-hidden="true">{{ footerSeparator }}</span>
+        <span aria-hidden="true">{{ footerSeparator }}</span>
       }
-      <label class="ocu-data-table-max-rows-label" [attr.for]="maxRowsId">{{ STRINGS.tableMaxRowsLabel }}</label>
+      <label [attr.for]="maxRowsId">{{ STRINGS.tableMaxRowsLabel }}</label>
       <input
         #maxRows
         class="ocu-data-table-max-rows"

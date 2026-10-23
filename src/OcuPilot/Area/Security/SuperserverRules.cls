@@ -10,11 +10,14 @@ Include %syINET
 /// refuse at all: a configuration naming no SSL/TLS configuration is stored while the level is 0. Every sentence
 /// is <method>OcuPilot.Api.Error.ReasonForViolation</method>'s, from
 /// <class>OcuPilot.Api.SuperserverError</class>.</p>
-Class OcuPilot.Area.Security.SuperserverRules Extends %RegisteredObject
+Class OcuPilot.Area.Security.SuperserverRules Extends OcuPilot.Kernel.Proposal.ScreenSaveRules
 {
 
 /// <p>The screen whose declared pairs gate the form read (AD-8).</p>
 Parameter DESCRIPTORCLASS = "OcuPilot.Screen.Descriptor.SuperserverForm";
+
+/// <p>The class whose parameters carry this rule set's codes and sentences.</p>
+Parameter ERRORCLASS = "OcuPilot.Api.SuperserverError";
 
 /// <p>The tool whose port the form read asks (AD-52).</p>
 Parameter UPDATETOOL = "OcuPilot.Screen.Tool.SuperserverUpdate";
@@ -174,15 +177,6 @@ ClassMethod Problem(pPortValue As %String, pBody As %DynamicObject, pFresh As %D
     Quit $$$OK
 }
 
-/// <p>Render <var>pViolations</var> as one 422 <parameter>OcuPilot.Api.SuperserverError.VALIDATION</parameter>
-/// envelope carrying every broken rule in <code>detail.violations</code> (AD-39).</p>
-ClassMethod RenderViolations(ByRef pViolations) As %Status
-{
-    Set tDetail = {}
-    Do tDetail.%Set("violations", ##class(OcuPilot.Kernel.AgentRules).ViolationsJson(.pViolations))
-    Quit ##class(OcuPilot.Api.Error).Render(422, ##class(OcuPilot.Api.Error).#VALIDATIONFAILED, ##class(OcuPilot.Api.SuperserverError).#REASONVALIDATION, ##class(OcuPilot.Api.SuperserverError).#VALIDATION, tDetail)
-}
-
 /// <p>Whether <var>pPortValue</var> is a whole number from 100 to 65535.</p>
 ClassMethod IsPort(pPortValue As %String) As %Boolean
 {
@@ -199,20 +193,6 @@ ClassMethod IsBindAddress(pBind As %String) As %Boolean
     If pBind = "" Quit 1
     If $$$ISIP(pBind) Quit 1
     Quit (pBind?1AN.(1AN,1"-",1"_").(1"."1.(1AN,1"-",1"_")).AN) && ($Length(pBind) < 256) && ($Translate(pBind, ".", "")'?.N)
-}
-
-/// <p>Render a failed read of a superserver: 404 <code>PORT.NOTFOUND</code>, the fault the port answered, or an
-/// internal error when it answered none.</p>
-ClassMethod RenderRead(pSC As %Status, pHttpStatus As %Integer, pFault As %DynamicObject) As %Status
-{
-    If +$Get(pHttpStatus) = 404 {
-        Set tMapSC = ##class(OcuPilot.Kernel.Fault).Outcome(404, $$$OK, .tAbsent, .tVendorText)
-        Quit ##class(OcuPilot.Api.Error).Render(404, tAbsent.error, tAbsent.reason, tAbsent.code)
-    }
-    If '$IsObject($Get(pFault)) || (pFault.code = ##class(OcuPilot.Api.Error).#INTERNAL) {
-        Quit ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(pSC))
-    }
-    Quit ##class(OcuPilot.Api.Error).Render($Select(+$Get(pHttpStatus): +pHttpStatus, 1: 500), pFault.error, pFault.reason, pFault.code, pFault.%Get("detail"))
 }
 
 /// <p>Answer <code>GET /superserver/form[?id=&lt;id&gt;]</code>: <code>{row, serving, locked, windows}</code>.
@@ -293,17 +273,6 @@ ClassMethod DefaultRow(pRow As %DynamicObject)
     Do pRow.%Set("SystemDefault", 0, "boolean")
 }
 
-/// <p>Refuse a caller who does not hold the form's declared pairs (AD-8): <var>pRefused</var> 1 means the
-/// envelope is written and the caller writes nothing else.</p>
-ClassMethod Gate(Output pRefused As %Boolean) As %Status
-{
-    Set pRefused = 0
-    Set tFailedPair = ""
-    If ##class(OcuPilot.Screen.Gate).Evaluate(..#DESCRIPTORCLASS, .tFailedPair) Quit $$$OK
-    Set pRefused = 1
-    Quit ##class(OcuPilot.Kernel.Denial).Envelope(tFailedPair)
-}
-
 /// <p><var>pBody</var>'s SSL/TLS support level as 0, 1 or 2, or <code>""</code> when it carries none or one
 /// that is not exactly one of the three, as a number or its plain spelling.</p>
 ClassMethod Level(pBody As %DynamicObject) As %String
@@ -320,20 +289,6 @@ ClassMethod On(pBody As %DynamicObject, pName As %String) As %Boolean [ Private 
 {
     If pBody.%GetTypeOf(pName) '= "boolean" Quit 0
     Quit ''pBody.%Get(pName)
-}
-
-/// <p><var>pBody</var>'s <var>pName</var> as text, <code>""</code> when it carries none.</p>
-ClassMethod Text(pBody As %DynamicObject, pName As %String) As %String [ Private ]
-{
-    Set tType = pBody.%GetTypeOf(pName)
-    If (tType = "unassigned") || (tType = "null") || (tType = "object") || (tType = "array") Quit ""
-    Quit pBody.%Get(pName) _ ""
-}
-
-/// <p>Append one violation.</p>
-ClassMethod Add(ByRef pViolations, pField As %String, pCode As %String) [ Private ]
-{
-    Set pViolations($Increment(pViolations)) = $ListBuild(pField, pCode)
 }
 
 }

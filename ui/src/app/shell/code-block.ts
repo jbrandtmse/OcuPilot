@@ -24,7 +24,7 @@ import { createCopyButton } from './copy-control';
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'ocu-code-block' },
   template: `@for (step of stepList; track $index) {
-    <div class="ocu-code-frame ocu-code-block-step" #frame [attr.data-kind]="step.kind">
+    <div class="ocu-code-frame" #frame [attr.data-kind]="step.kind">
       <pre class="ocu-code-block-pre" tabindex="0">{{ step.text }}</pre>
     </div>
   }`,

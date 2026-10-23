@@ -70,7 +70,7 @@ function idFromUrl(route: string, url: string): string {
       </p>
     }
     @for (turn of rows; track turn.seq) {
-      <div class="ocu-panel-turn ocu-transcript-turn">
+      <div class="ocu-panel-turn">
         <p class="ocu-panel-message-user">{{ turn.message }}</p>
         @for (step of turn.steps; track step.seq) {
           <app-tool-call-card [step]="step" />
@@ -85,7 +85,7 @@ function idFromUrl(route: string, url: string): string {
           <p class="ocu-panel-error-banner" role="status">{{ turn.errorReason }}</p>
         }
         @if (released) {
-          <div class="ocu-transcript-context">
+          <div>
             <button
               type="button"
               class="ocu-button-text ocu-transcript-context-toggle"

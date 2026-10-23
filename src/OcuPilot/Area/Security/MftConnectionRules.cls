@@ -9,11 +9,14 @@
 /// <method>OcuPilot.Api.Error.ReasonForViolation</method>'s, from <class>OcuPilot.Api.MftConnectionError</class>.</p>
 /// <p><b>A create requires all five fields.</b> An update judges only the fields it changes, so a stored value is
 /// never refused for being as it is.</p>
-Class OcuPilot.Area.Security.MftConnectionRules Extends %RegisteredObject
+Class OcuPilot.Area.Security.MftConnectionRules Extends OcuPilot.Kernel.Proposal.ScreenSaveRules
 {
 
 /// <p>The screen whose declared pairs gate the form read (AD-8).</p>
 Parameter DESCRIPTORCLASS = "OcuPilot.Screen.Descriptor.MftConnectionForm";
+
+/// <p>The class whose parameters carry this rule set's codes and sentences.</p>
+Parameter ERRORCLASS = "OcuPilot.Api.MftConnectionError";
 
 /// <p>The tool whose port the form read asks (AD-52).</p>
 Parameter UPDATETOOL = "OcuPilot.Screen.Tool.MftConnectionUpdate";
@@ -173,29 +176,6 @@ ClassMethod Problem(pName As %String, pBody As %DynamicObject, pFresh As %Dynami
     Quit $$$OK
 }
 
-/// <p>Render <var>pViolations</var> as one 422 <parameter>OcuPilot.Api.MftConnectionError.VALIDATION</parameter>
-/// envelope carrying every broken rule in <code>detail.violations</code> (AD-39).</p>
-ClassMethod RenderViolations(ByRef pViolations) As %Status
-{
-    Set tDetail = {}
-    Do tDetail.%Set("violations", ##class(OcuPilot.Kernel.AgentRules).ViolationsJson(.pViolations))
-    Quit ##class(OcuPilot.Api.Error).Render(422, ##class(OcuPilot.Api.Error).#VALIDATIONFAILED, ##class(OcuPilot.Api.MftConnectionError).#REASONVALIDATION, ##class(OcuPilot.Api.MftConnectionError).#VALIDATION, tDetail)
-}
-
-/// <p>Render a failed read of a connection: 404 <code>PORT.NOTFOUND</code>, the fault the port answered, or an
-/// internal error when it answered none.</p>
-ClassMethod RenderRead(pSC As %Status, pHttpStatus As %Integer, pFault As %DynamicObject) As %Status
-{
-    If +$Get(pHttpStatus) = 404 {
-        Set tMapSC = ##class(OcuPilot.Kernel.Fault).Outcome(404, $$$OK, .tAbsent, .tVendorText)
-        Quit ##class(OcuPilot.Api.Error).Render(404, tAbsent.error, tAbsent.reason, tAbsent.code)
-    }
-    If '$IsObject($Get(pFault)) || (pFault.code = ##class(OcuPilot.Api.Error).#INTERNAL) {
-        Quit ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(pSC))
-    }
-    Quit ##class(OcuPilot.Api.Error).Render($Select(+$Get(pHttpStatus): +pHttpStatus, 1: 500), pFault.error, pFault.reason, pFault.code, pFault.%Get("detail"))
-}
-
 /// <p>Answer <code>GET /mft-connection/form[?id=&lt;name&gt;]</code>: <code>{row}</code>. With an id, <code>row</code>
 /// is <code>Name</code> and the five fields from the update tool's fresh <code>GET</code>; an id the instance does
 /// not hold is 404 <code>PORT.NOTFOUND</code>. Without one it is a new connection's, every field empty.</p>
@@ -247,31 +227,6 @@ ClassMethod DefaultRow(pRow As %DynamicObject)
     Do pRow.%Set("Name", "", "string")
     Set tFields = $ListFromString(..#FIELDS)
     For tI = 1:1:$ListLength(tFields) Do pRow.%Set($List(tFields, tI), "", "string")
-}
-
-/// <p>Refuse a caller who does not hold the form's declared pairs (AD-8): <var>pRefused</var> 1 means the
-/// envelope is written and the caller writes nothing else.</p>
-ClassMethod Gate(Output pRefused As %Boolean) As %Status
-{
-    Set pRefused = 0
-    Set tFailedPair = ""
-    If ##class(OcuPilot.Screen.Gate).Evaluate(..#DESCRIPTORCLASS, .tFailedPair) Quit $$$OK
-    Set pRefused = 1
-    Quit ##class(OcuPilot.Kernel.Denial).Envelope(tFailedPair)
-}
-
-/// <p><var>pBody</var>'s <var>pName</var> as text, <code>""</code> when it carries none.</p>
-ClassMethod Text(pBody As %DynamicObject, pName As %String) As %String
-{
-    Set tType = pBody.%GetTypeOf(pName)
-    If (tType = "unassigned") || (tType = "null") || (tType = "object") || (tType = "array") Quit ""
-    Quit pBody.%Get(pName) _ ""
-}
-
-/// <p>Append one violation.</p>
-ClassMethod Add(ByRef pViolations, pField As %String, pCode As %String) [ Private ]
-{
-    Set pViolations($Increment(pViolations)) = $ListBuild(pField, pCode)
 }
 
 }

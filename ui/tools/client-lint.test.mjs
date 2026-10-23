@@ -23,11 +23,16 @@ import {
   checkHardcodedColors,
   checkNonAsciiLiterals,
   checkOffOriginUrls,
+  checkTemplateClasses,
   checkTemplateLiterals,
   checkTestingImports,
+  COMPOSED_CLASS_PREFIXES,
+  extractStyledClasses,
+  extractTemplateClassUses,
   lintClient,
   RULE_FAMILIES,
   TOKEN_STYLESHEET_PATH,
+  UNSTYLED_CLASS_HOOKS,
 } from './client-lint.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -683,4 +688,436 @@ test('AC10: client-lint.mjs exits 1 naming a file under src/app/shell/ that impo
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
+});
+
+// --- checkTemplateClasses (DW-1188) --------------------------------------------------------------
+//
+// A template class that no stylesheet selects is a hook, a style someone owes, or a leftover. Only
+// class contexts are read, so an `ocu-` id never counts. The allow-lists are fixtures here, except
+// where a test is about the real ones.
+//
+// Mutations (Rule 19): remove one group-A name from `UNSTYLED_CLASS_HOOKS` -> the real-tree clean
+// run goes red naming that name's sites. Add a styled name to a group -> `stale-unstyled-class-hook`
+// goes red. Delete the `src/styles/` gate on the whole-tree checks -> the scratch-tree case goes red.
+
+const STYLE_FIXTURE = { path: 'src/styles/_probe.scss', text: '.ocu-styled { color: inherit; }' };
+const tsTemplate = (html) => `template: \`${html}\`,`;
+const classFixture = (html, path = 'src/app/core/probe.ts') => ({ path, text: tsTemplate(html) });
+const hooksOf = (names, requiresReference = true) => [{ reason: 'fixture', requiresReference, names }];
+const namesOf = (uses) => uses.names.map((use) => use.name);
+
+test('a class attribute, a class toggle and the literals of a class binding are the template class uses', () => {
+  const uses = extractTemplateClassUses(
+    classFixture(
+      [
+        '<p class="ocu-a ocu-b plain">',
+        '<i [class.ocu-c]="on" [class.plain]="on">',
+        '<b [class]="on ? \'ocu-d\' : \'ocu-e ocu-f\'">',
+      ].join('\n')
+    )
+  );
+  assert.deepEqual(namesOf(uses), ['ocu-a', 'ocu-b', 'ocu-c', 'ocu-d', 'ocu-e', 'ocu-f']);
+  assert.deepEqual(uses.names.map((use) => use.line), [1, 1, 2, 3, 3, 3], 'each use carries its own line');
+  assert.deepEqual(uses.prefixes, []);
+  assert.deepEqual(uses.dynamicBindings, []);
+});
+
+test('a use is reported at its line in the file, not at its line in the template', () => {
+  const text = ['import { Component } from "@angular/core";', '', '@Component({', '  template: `<p>', '<b class="ocu-late"></b></p>`,', '})'].join('\n');
+  assert.deepEqual(extractTemplateClassUses({ path: 'src/app/core/probe.ts', text }).names, [{ name: 'ocu-late', line: 5 }]);
+});
+
+test('single-quoted attributes, a quoted host key and a closing brace inside a host string are read as written', () => {
+  const uses = extractTemplateClassUses({
+    path: 'src/app/shell/probe.ts',
+    text: [
+      "@Component({ template: `<p class='ocu-a'></p><b [class]='on ? \"ocu-b\" : \"\"'></b>`,",
+      "  host: { 'class': 'ocu-c', title: 'x } y', '[class.ocu-d]': 'on' },",
+      '})',
+    ].join('\n'),
+  });
+  assert.deepEqual(namesOf(uses).sort(), ['ocu-a', 'ocu-b', 'ocu-c', 'ocu-d']);
+});
+
+test('an ocu- id is never a class use', () => {
+  const html = [
+    '<label for="ocu-x" id="ocu-y" aria-labelledby="ocu-z" aria-describedby="ocu-z" name="ocu-w"></label>',
+    '<input [id]="\'ocu-v\'" data-class="ocu-u" panelClass="ocu-t" [attr.aria-controls]="\'ocu-s\'">',
+  ].join('\n');
+  const uses = extractTemplateClassUses(classFixture(html));
+  assert.deepEqual(uses, { names: [], prefixes: [], dynamicBindings: [] });
+  const standalone = extractTemplateClassUses({
+    path: 'src/app/core/probe.ts',
+    text: "const FIELD_ID = 'ocu-field-x';\nreturn `ocu-field-${field}`;\nprotected readonly groupName = 'ocu-group';",
+  });
+  assert.deepEqual(standalone, { names: [], prefixes: [], dynamicBindings: [] });
+});
+
+test('a name built at run time is a prefix, and a binding with no literal name is dynamic', () => {
+  const uses = extractTemplateClassUses(
+    classFixture('<p class="ocu-x-{{ n }} ocu-y"><b [class]="\'ocu-z-\' + n"><i [class]="bannerClass"><u [class]="">')
+  );
+  assert.deepEqual(namesOf(uses), ['ocu-y']);
+  assert.deepEqual(uses.prefixes.map((p) => p.prefix), ['ocu-x-', 'ocu-z-']);
+  assert.equal(uses.dynamicBindings.length, 2, 'a bare member and an empty expression hold no literal');
+});
+
+test('a .html template and a comment inside a template are read the way an inline template is', () => {
+  const html = extractTemplateClassUses({
+    path: 'src/app/shell/probe.html',
+    text: '<!-- <p class="ocu-gone"> -->\n<p class="ocu-kept"></p>\n',
+  });
+  assert.deepEqual(html.names, [{ name: 'ocu-kept', line: 2 }]);
+});
+
+test('host class and host class toggles, and a *_CLASS constant, are class declarations in a .ts file', () => {
+  const uses = extractTemplateClassUses({
+    path: 'src/app/shell/probe.ts',
+    text: [
+      '@Component({',
+      "  host: { class: 'ocu-a ocu-b', '[class.ocu-c]': 'on', role: 'group' },",
+      '})',
+      "export const COPY_STATUS_CLASS = 'ocu-d';",
+      "const SCRATCH_CLASS: string = 'ocu-e';",
+      "// export const IGNORED_CLASS = 'ocu-ignored';",
+      "const PANEL_ID = 'ocu-not-a-class';",
+    ].join('\n'),
+  });
+  assert.deepEqual(namesOf(uses), ['ocu-d', 'ocu-e', 'ocu-a', 'ocu-b', 'ocu-c']);
+  assert.deepEqual(uses.names.map((use) => use.line), [4, 5, 2, 2, 2]);
+});
+
+test('a stylesheet selects every .ocu-x in a selector; a custom property, a comment and a value do not', () => {
+  const styled = extractStyledClasses({
+    path: 'src/styles/_probe.scss',
+    text: [
+      '.ocu-a:hover .ocu-b > .ocu-c, :not(.ocu-d) { color: var(--ocu-ink); --ocu-custom: 1; }',
+      '/* .ocu-commented { } */',
+      '// .ocu-line { }',
+    ].join('\n'),
+  });
+  assert.deepEqual([...styled].sort(), ['ocu-a', 'ocu-b', 'ocu-c', 'ocu-d']);
+});
+
+test("a component's styles: select classes, and nothing else in a .ts file does", () => {
+  const text = [
+    "@Component({ template: `<p class=\"ocu-in-template\"></p>`,",
+    '  styles: `',
+    '    .ocu-in-block { color: inherit; }',
+    '  `,',
+    '})',
+    "const SELECTOR = '.ocu-in-code';",
+    "@Component({ styles: ['.ocu-in-array { margin: 0; }', \"input[type='x'] .ocu-in-array-two { margin: 0; }\"] })",
+  ].join('\n');
+  assert.deepEqual([...extractStyledClasses({ path: 'src/app/shell/probe.ts', text })].sort(), [
+    'ocu-in-array',
+    'ocu-in-array-two',
+    'ocu-in-block',
+  ]);
+});
+
+test('a used class that no stylesheet selects is reported at each use, naming the file and the line', () => {
+  const templates = [
+    classFixture('<p class="ocu-styled ocu-bare"></p>\n<b class="ocu-bare"></b>', 'src/app/core/one.ts'),
+    classFixture('<i [class.ocu-bare]="on"></i>', 'src/app/core/two.ts'),
+  ];
+  const result = checkTemplateClasses({ templates, stylesheets: [STYLE_FIXTURE], references: [], hooks: [], composedPrefixes: [] });
+  assert.equal(result.ok, false);
+  assert.deepEqual(
+    result.errors.map((e) => [e.rule, e.file, e.line, e.literal.split(' ')[0]]),
+    [
+      ['no-unstyled-template-class', 'src/app/core/one.ts', 1, 'ocu-bare'],
+      ['no-unstyled-template-class', 'src/app/core/one.ts', 2, 'ocu-bare'],
+      ['no-unstyled-template-class', 'src/app/core/two.ts', 1, 'ocu-bare'],
+    ]
+  );
+});
+
+test('a class a stylesheet or a component styles: selects, or a hook lists, passes', () => {
+  const templates = [classFixture('<p class="ocu-styled ocu-inline-styled ocu-listed"></p>')];
+  const inline = { path: 'src/app/core/probe.ts', text: tsTemplate('') + "\nstyles: '.ocu-inline-styled { margin: 0; }'," };
+  const result = checkTemplateClasses({
+    templates,
+    stylesheets: [STYLE_FIXTURE, inline],
+    references: [{ path: 'browser/x.browser-spec.mjs', text: "page.$('.ocu-listed')" }],
+    hooks: hooksOf(['ocu-listed']),
+    composedPrefixes: [],
+  });
+  assert.equal(result.ok, true, JSON.stringify(result.errors));
+});
+
+test('an ocu- id in a template is never judged', () => {
+  const result = checkTemplateClasses({
+    templates: [classFixture('<input id="ocu-no-style" aria-describedby="ocu-no-style-hint">')],
+    stylesheets: [STYLE_FIXTURE],
+    references: [],
+    hooks: [],
+    composedPrefixes: [],
+  });
+  assert.equal(result.ok, true, JSON.stringify(result.errors));
+});
+
+test('a hook that a stylesheet now selects is stale, even in a tree with one file', () => {
+  const result = checkTemplateClasses({
+    templates: [classFixture('<p class="ocu-styled"></p>')],
+    stylesheets: [{ path: 'src/app/probe.scss', text: '.ocu-styled { color: inherit; }' }],
+    references: [],
+    hooks: hooksOf(['ocu-styled']),
+    composedPrefixes: [],
+  });
+  assert.deepEqual(result.errors.map((e) => [e.rule, e.literal.split(' ')[0]]), [['stale-unstyled-class-hook', 'ocu-styled']]);
+  assert.match(result.errors[0].literal, /a stylesheet selects it now/);
+  const owed = checkTemplateClasses({
+    templates: [classFixture('<p class="ocu-styled"></p>')],
+    stylesheets: [{ path: 'src/app/probe.scss', text: '.ocu-styled { color: inherit; }' }],
+    references: [],
+    hooks: hooksOf(['ocu-styled'], false),
+    composedPrefixes: [],
+  });
+  assert.match(owed.errors[0]?.literal ?? '', /^ocu-styled -- a stylesheet selects it now/, 'a name owed a style is stale once styled');
+});
+
+test('a hook no template uses, or no spec reads, is stale -- once the tree is whole', () => {
+  const check = (templates, references, requiresReference = true, stylesheets = [STYLE_FIXTURE]) =>
+    checkTemplateClasses({
+      templates,
+      stylesheets,
+      references,
+      hooks: hooksOf(['ocu-hook'], requiresReference),
+      composedPrefixes: [],
+    }).errors.map((e) => [e.rule, e.literal]);
+  const used = [classFixture('<p class="ocu-hook"></p>')];
+
+  assert.deepEqual(check(used, [{ path: 'src/app/core/probe.spec.ts', text: "query('.ocu-hook')" }]), [], 'a spec reads it');
+  assert.deepEqual(check(used, [{ path: 'browser/x.browser-spec.mjs', text: "'.ocu-hook'" }]), [], 'a browser spec reads it');
+  assert.match(check(used, [])[0][1], /^ocu-hook -- no browser spec or component spec reads it/);
+  assert.match(check([], [])[0][1], /^ocu-hook -- no template uses it/);
+  assert.deepEqual(check(used, [], false), [], 'a name owed a style needs no reader');
+  assert.match(check([], [], false)[0][1], /no template uses it/, 'but it is still stale once nothing uses it');
+  assert.deepEqual(check([], [], true, []), [], 'a scratch tree without src/styles/ is judged on its own files alone');
+});
+
+test('a spec reads a hook by its whole name, not by a longer name that starts with it', () => {
+  const longer = [{ path: 'src/app/core/probe.spec.ts', text: "query('.ocu-hook-longer')" }];
+  const result = checkTemplateClasses({
+    templates: [classFixture('<p class="ocu-hook"></p>')],
+    stylesheets: [STYLE_FIXTURE],
+    references: longer,
+    hooks: hooksOf(['ocu-hook']),
+    composedPrefixes: [],
+  });
+  assert.match(result.errors[0]?.literal ?? '', /no browser spec or component spec reads it/);
+});
+
+test('a composed prefix covers the names under it, in its own file only, and needs a style and a builder', () => {
+  const composed = [{ prefix: 'ocu-sev-', file: 'src/app/core/probe.ts', reason: 'fixture' }];
+  const builder = { path: 'src/app/core/probe.ts', text: tsTemplate('<p class="ocu-sev-{{ level }} ocu-sev-high">') + '\nconst c = `ocu-sev-${level}`;' };
+  const styled = { path: 'src/styles/_sev.scss', text: '.ocu-sev-high { color: inherit; }' };
+  const base = { stylesheets: [STYLE_FIXTURE, styled], references: [], hooks: [], composedPrefixes: composed };
+
+  assert.equal(checkTemplateClasses({ ...base, templates: [builder] }).ok, true);
+
+  const elsewhere = { ...builder, path: 'src/app/core/other.ts' };
+  const moved = checkTemplateClasses({ ...base, templates: [builder, elsewhere] });
+  assert.deepEqual(moved.errors.map((e) => [e.file, e.rule]), [['src/app/core/other.ts', 'no-unstyled-template-class']]);
+  assert.match(moved.errors[0].literal, /built at run time/);
+
+  const unstyled = checkTemplateClasses({ ...base, stylesheets: [STYLE_FIXTURE], templates: [builder] });
+  assert.ok(unstyled.errors.some((e) => /no stylesheet selects a class that starts with this prefix/.test(e.literal)));
+
+  const gone = checkTemplateClasses({ ...base, templates: [{ ...builder, text: tsTemplate('<p class="ocu-sev-high">') }] });
+  assert.deepEqual(gone.errors.map((e) => e.rule), ['stale-unstyled-class-hook']);
+  assert.match(gone.errors[0].literal, /no longer builds a class name that starts with it/);
+
+  const inTemplate = checkTemplateClasses({ ...base, templates: [{ ...builder, text: tsTemplate('<p class="ocu-sev-{{ level }}">') }] });
+  assert.equal(inTemplate.ok, true, `a template interpolation is a builder: ${JSON.stringify(inTemplate.errors)}`);
+});
+
+test('a [class] binding with no literal name needs a declared prefix in its file', () => {
+  const templates = [classFixture('<p [class]="bannerClass"></p>')];
+  const base = { templates, stylesheets: [{ path: 'src/app/probe.scss', text: '' }], references: [], hooks: [] };
+  const bare = checkTemplateClasses({ ...base, composedPrefixes: [] });
+  assert.match(bare.errors[0].literal, /^\[class\] binds an expression with no literal class name/);
+  const declared = checkTemplateClasses({
+    ...base,
+    composedPrefixes: [{ prefix: 'ocu-x-', file: 'src/app/core/probe.ts', reason: 'fixture' }],
+  });
+  assert.equal(declared.ok, true, JSON.stringify(declared.errors));
+  const elsewhere = checkTemplateClasses({
+    ...base,
+    templates: [classFixture('<p [class]="bannerClass"></p>', 'src/app/core/other.ts')],
+    composedPrefixes: [{ prefix: 'ocu-x-', file: 'src/app/core/probe.ts', reason: 'fixture' }],
+  });
+  assert.match(elsewhere.errors[0]?.literal ?? '', /^\[class\] binds an expression/, 'a prefix declared for another file does not cover this one');
+});
+
+test('a literal name under a prefix its own file declares needs no style of its own, and any other unstyled name does', () => {
+  const judge = (path) =>
+    checkTemplateClasses({
+      templates: [classFixture('<p class="ocu-sev-unlisted ocu-other"></p>', path)],
+      stylesheets: [{ path: 'src/app/probe.scss', text: '.ocu-styled { color: inherit; }' }],
+      references: [],
+      hooks: [],
+      composedPrefixes: [{ prefix: 'ocu-sev-', file: 'src/app/core/probe.ts', reason: 'fixture' }],
+    }).errors.map((e) => e.literal.split(' ')[0]);
+  assert.deepEqual(judge('src/app/core/probe.ts'), ['ocu-other']);
+  assert.deepEqual(judge('src/app/core/other.ts'), ['ocu-sev-unlisted', 'ocu-other'], 'in another file the name is judged like any other');
+});
+
+test('the allow-lists are literal, sorted, unique and reasoned', () => {
+  const seen = new Set();
+  for (const group of UNSTYLED_CLASS_HOOKS) {
+    assert.ok(group.reason.length > 0 && !group.reason.includes('\n'), 'one reason line per group');
+    assert.deepEqual([...group.names], [...group.names].sort(), 'sorted, so a new name has one place to go');
+    for (const name of group.names) {
+      assert.match(name, /^ocu-[a-z0-9]+(?:-[a-z0-9]+)*$/);
+      assert.ok(!seen.has(name), `${name} is listed once`);
+      seen.add(name);
+    }
+  }
+  assert.equal(UNSTYLED_CLASS_HOOKS.filter((group) => group.requiresReference).length, 1, 'exactly one hook group');
+  for (const entry of COMPOSED_CLASS_PREFIXES) {
+    assert.match(entry.prefix, /^ocu-[a-z0-9-]+-$/, 'a prefix ends where the variable part begins');
+    assert.match(entry.file, /^src\/app\/.+\.ts$/);
+    assert.ok(entry.reason.length > 0);
+  }
+});
+
+test('template-classes is a declared rule family, and the run counts seven', () => {
+  assert.ok(RULE_FAMILIES.includes('template-classes'));
+  assert.equal(RULE_FAMILIES.length, 7);
+});
+
+test('DW-1188: client-lint.mjs exits 1 naming a template class that nothing styles, through the CLI', () => {
+  // The direct calls above pass whether or not the family is wired into lintClient. This drives the
+  // binary the prebuild runs, which is the only thing that observes the wiring.
+  const root = mkdtempSync(join(tmpdir(), 'ocupilot-client-lint-'));
+  try {
+    mkdirSync(join(root, 'src', 'app', 'core'), { recursive: true });
+    writeFileSync(join(root, 'src', 'app', 'core', 'unstyled.ts'), 'const t = { template: `<p class="ocu-not-styled"></p>` };\n');
+    const run = spawnSync(process.execPath, [join(here, 'client-lint.mjs'), '--root', root], { encoding: 'utf8' });
+    assert.equal(run.status, 1, `expected exit 1, got ${run.status}: ${run.stdout}${run.stderr}`);
+    assert.match(run.stderr, /src\/app\/core\/unstyled\.ts:1: \[no-unstyled-template-class\] ocu-not-styled/);
+    assert.doesNotMatch(run.stderr, /stale-unstyled-class-hook/, 'a scratch tree without src/styles/ owes the real hooks nothing');
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('DW-1188: with src/styles/ present the tree is whole, so the real hooks it does not use are stale', () => {
+  const root = mkdtempSync(join(tmpdir(), 'ocupilot-client-lint-'));
+  try {
+    mkdirSync(join(root, 'src', 'app', 'core'), { recursive: true });
+    mkdirSync(join(root, 'src', 'styles'), { recursive: true });
+    writeFileSync(join(root, 'src', 'styles', '_probe.scss'), '.ocu-styled { color: inherit; }\n');
+    writeFileSync(join(root, 'src', 'app', 'core', 'styled.ts'), 'const t = { template: `<p class="ocu-styled"></p>` };\n');
+    const run = spawnSync(process.execPath, [join(here, 'client-lint.mjs'), '--root', root], { encoding: 'utf8' });
+    assert.equal(run.status, 1, `expected exit 1, got ${run.status}: ${run.stdout}${run.stderr}`);
+    const aHook = UNSTYLED_CLASS_HOOKS[0].names[0];
+    assert.match(run.stderr, new RegExp(`tools/client-lint\\.mjs:1: \\[stale-unstyled-class-hook\\] ${aHook} -- no template uses it`));
+    assert.doesNotMatch(run.stderr, /\] ocu-styled /, 'the styled class is not reported');
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+// --- DW-1188: roster, reader and collection pins -------------------------------------------------
+//
+// Pins what the fixtures above leave to the real tree: the declared builders, the whole-name reader
+// check, and which files `lintClient` hands to family 7. Each scratch tree is created and removed
+// by its own test.
+//
+// Mutations (Rule 19): drop `ocu-reply-heading-` from `COMPOSED_CLASS_PREFIXES` -> the roster test is
+// red. Drop the lookbehind of `CLASS_REFERENCE_RE` -> the whole-name reader test is red. Stop
+// collecting `.html` files as templates, or start collecting a `*.spec.ts` or a `src/app/testing/`
+// file -> the collection tests are red.
+
+/** Runs `body` over a scratch `ui` root holding `files` ({relative path: text}), then removes it. */
+function withScratchRoot(files, body) {
+  const root = mkdtempSync(join(tmpdir(), 'ocupilot-client-lint-'));
+  try {
+    for (const [path, text] of Object.entries(files)) {
+      mkdirSync(dirname(join(root, path)), { recursive: true });
+      writeFileSync(join(root, path), text);
+    }
+    return body(root);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+}
+
+const unstyledFiles = (root) =>
+  lintClient({ uiRoot: root })
+    .errors.filter((e) => e.rule === 'no-unstyled-template-class')
+    .map((e) => e.file)
+    .sort();
+
+test('DW-1188: the declared composed prefixes are the two builders the tree has, and each is held to a style', () => {
+  assert.deepEqual(
+    COMPOSED_CLASS_PREFIXES.map((entry) => [entry.prefix, entry.file]),
+    [
+      ['ocu-banner-', 'src/app/shell/list-page.ts'],
+      ['ocu-reply-heading-', 'src/app/core/reply.ts'],
+    ],
+    'a prefix dropped from the roster drops its style check and its builder check with it'
+  );
+  for (const { prefix, file } of COMPOSED_CLASS_PREFIXES) {
+    const built = { path: file, text: 'const c = `' + prefix + '${level}`;' };
+    const noStyle = checkTemplateClasses({ templates: [built], stylesheets: [STYLE_FIXTURE], references: [], hooks: [] });
+    assert.ok(
+      noStyle.errors.some((e) => e.file === file && e.literal.startsWith(`${prefix}... -- no stylesheet selects`)),
+      `${prefix} with no selector is reported`
+    );
+    const styled = { path: 'src/styles/_probe.scss', text: `.${prefix}1 { color: inherit; }` };
+    const withStyle = checkTemplateClasses({ templates: [built], stylesheets: [styled], references: [], hooks: [] });
+    assert.ok(!withStyle.errors.some((e) => e.literal.startsWith(prefix)), `${prefix} with a selector and a builder is quiet`);
+  }
+});
+
+test('a spec reads a hook by its whole name, not as the tail of a data attribute, a custom property or another name', () => {
+  const rules = (text) =>
+    checkTemplateClasses({
+      templates: [classFixture('<p class="ocu-hook"></p>')],
+      stylesheets: [STYLE_FIXTURE],
+      references: [{ path: 'src/app/core/probe.spec.ts', text }],
+      hooks: hooksOf(['ocu-hook']),
+      composedPrefixes: [],
+    }).errors.map((e) => e.rule);
+  for (const text of ['[data-ocu-hook]', 'var(--ocu-hook)', "querySelector('.x-ocu-hook')", 'name_ocu-hook']) {
+    assert.deepEqual(rules(text), ['stale-unstyled-class-hook'], `${text} is not a read of ocu-hook`);
+  }
+  for (const text of ["query('.ocu-hook')", 'class="a ocu-hook"', "'ocu-hook'", '`ocu-hook`', '(ocu-hook)']) {
+    assert.deepEqual(rules(text), [], `${text} is a read of ocu-hook`);
+  }
+});
+
+test('DW-1188: a .html template under src/app/ is read by lintClient like an inline one', () => {
+  withScratchRoot({ 'src/app/core/page.html': '<p class="ocu-not-styled"></p>\n' }, (root) => {
+    assert.deepEqual(unstyledFiles(root), ['src/app/core/page.html']);
+  });
+});
+
+test('DW-1188: a *.spec.ts host and a src/app/testing/ harness are not templates, and a shipped file with the same class is', () => {
+  const template = (name) => `const t = { template: \`<p class="${name}"></p>\` };\n`;
+  withScratchRoot(
+    {
+      'src/app/core/host.spec.ts': template('ocu-spec-only'),
+      'src/app/testing/harness.ts': template('ocu-harness-only'),
+      'src/app/core/shipped.ts': template('ocu-shipped-only'),
+    },
+    (root) => {
+      assert.deepEqual(unstyledFiles(root), ['src/app/core/shipped.ts']);
+    }
+  );
+  const styles = (name) => `const s = { styles: [\`.${name} { color: inherit; }\`] };\n`;
+  withScratchRoot(
+    {
+      'src/app/core/host.spec.ts': styles('ocu-shipped-only'),
+      'src/app/testing/harness.ts': styles('ocu-shipped-only'),
+      'src/app/core/shipped.ts': template('ocu-shipped-only'),
+    },
+    (root) => {
+      assert.deepEqual(unstyledFiles(root), ['src/app/core/shipped.ts'], "a spec's or a harness's styles: style nothing that ships");
+    }
+  );
 });

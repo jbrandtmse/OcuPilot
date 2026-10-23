@@ -554,7 +554,8 @@ token and hidden values left as placeholders.
   specs cover the client; 190 browser specs exercise the running portal.
 - **A smoke test you can run:** `bash scripts/smoke.sh --container ocupilot --user _SYSTEM
   --password SYS` asks the running instance whether OcuPilot works; the assertions live inside
-  IRIS, so CI and your machine ask the same question.
+  IRIS, so CI and your machine ask the same question. It asks the instance's own web server at
+  localhost, so behind an external web server its HTTP checks fail even on a correct install.
 
 ## Troubleshooting
 

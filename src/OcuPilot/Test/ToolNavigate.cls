@@ -71,6 +71,7 @@ Method TestAC2EntityNotAllowedOnNoneId()
     Do $$$AssertStatusNotOK(tSC, "refused")
     Do $$$AssertTrue($IsObject(tFault), "with a fault")
     Do $$$AssertEquals(tFault.code, "NAV.ENTITYNOTALLOWED", "naming the code")
+    Do $$$AssertEquals(tFault.detail.argument, "entityId", "and the argument it refused")
     Do $$$AssertEquals(tRoute, "", "no route is validated")
 }
 
@@ -80,17 +81,18 @@ Method TestAC2EntityNotAllowedOnNoneId()
 /// route segment a <code>single</code> id does (DW-1419, Story 5.11).</p>
 /// <p><b>Both directions, deliberately.</b> A fix that admits a composite of one part and also
 /// admits a composite of three is not a fix.</p>
-/// <p><b>Swept over the registry, not over two examples.</b> The widening moved the answer for
-/// every composite-of-one screen in the tree, so the partition is asserted for every route the tool
-/// serves: an id kind and a part count decide it, and nothing else may. Four of those screens are
-/// parent-scoped, where the segment the accepted id occupies is read as the <b>parent's</b> id --
-/// pinned here as the answer that stands, so moving it is a deliberate change rather than a silent
-/// one.</p>
-/// <p>Mutation (Rule 19): restore <method>OcuPilot.Screen.Tool.Navigate.AcceptsEntityId</method>'s
-/// answer to <code>IdKind() = "single"</code> -- the acceptance below goes red; widen it to every
-/// composite -- the three-part refusal goes red; narrow it to a composite of one whose
-/// <code>parentScope</code> is empty -- the sweep goes red on the four parent-scoped screens, which
-/// the two examples alone leave free.</p>
+/// <p><b>Swept over the registry, not over two examples, and derived from the declarations.</b>
+/// Every built route is a member of exactly one half. A route with no <code>parentScope</code> takes
+/// <code>entityId</code> when its own id is <code>single</code> or a composite of one part, and
+/// never <code>parentId</code>. A parent-scoped route takes <code>parentId</code> when its
+/// <b>parent screen's</b> id has that shape, and never <code>entityId</code>: its one route segment
+/// is the parent's id (AD-5). Each half asserts both an acceptance and a refusal, so a sweep over
+/// one outcome alone cannot pass.</p>
+/// <p>Mutation (Rule 19): drop <method>OcuPilot.Screen.Tool.Navigate.AcceptsEntityId</method>'s
+/// <code>ParentScope</code> clause -- the parent-scoped routes that fit the id shape go red;
+/// make <method>OcuPilot.Screen.Tool.Navigate.AcceptsParentId</method> read the screen's own id
+/// shape -- the interop item tabs and the newly openable screens go red; widen the shape to every
+/// composite -- the three-part refusal goes red.</p>
 Method TestAC2EntityNotAllowedOnACompositeOfMoreThanOnePart()
 {
     Set tArgs = {"route": "logs/audit", "entityId": "x"}
@@ -107,34 +109,57 @@ Method TestAC2EntityNotAllowedOnACompositeOfMoreThanOnePart()
     Do $$$AssertEquals(tOneFault, "", "no fault")
     Do $$$AssertEquals($ListLength($ClassMethod(##class(OcuPilot.Screen.Registry).DescriptorForRoute("tasks/schedule"), "IdParts")), 1, "that screen's composite really has one part")
 
-    ; The widening moved the answer for every composite-of-one screen in the tree, not only this
-    ; story's, so the partition is asserted over the registry rather than over the two examples
-    ; above: an id kind and a part count decide it, and nothing else may.
-    Set tSweptAccept = 0
-    Set tSweptRefuse = 0
     Set tRoutes = $ClassMethod(..#TOOL, "BuiltRoutes")
     Do $$$AssertTrue($ListLength(tRoutes) > 0, "the tool enumerates the routes it serves")
+    Set (tOwnAccept, tOwnRefuse, tParentAccept, tParentRefuse) = 0
     Set tPointer = 0
     While $ListNext(tRoutes, tPointer, tRoute) {
-        If tRoute = "" Continue
         Set tDescriptor = ##class(OcuPilot.Screen.Registry).DescriptorForRoute(tRoute)
         If tDescriptor = "" Continue
-        Set tKind = $ClassMethod(tDescriptor, "IdKind")
-        Set tParts = $ListLength($ClassMethod(tDescriptor, "IdParts"))
-        Set tExpected = ((tKind = "single") || ((tKind = "composite") && (tParts = 1)))
-        Set tSweepArgs = {"route": (tRoute), "entityId": "1"}
-        Set tSweepSC = $ClassMethod(..#TOOL, "Directive", "", tSweepArgs, .tSweepRoute, .tSweepEntityId, .tSweepFault)
-        If tExpected {
-            Set tSweptAccept = tSweptAccept + 1
-            Do $$$AssertStatusOK(tSweepSC, tRoute _ " (" _ tKind _ ", " _ tParts _ " part(s)) accepts an entityId")
+        Set tParentRoute = $ClassMethod(tDescriptor, "ParentScope")
+        Set tShapeOwner = tDescriptor
+        If tParentRoute '= "" {
+            Set tShapeOwner = ##class(OcuPilot.Screen.Registry).DescriptorForRoute(tParentRoute)
+            Do $$$AssertNotEquals(tShapeOwner, "", tRoute _ "'s parent screen " _ tParentRoute _ " is declared")
+            If tShapeOwner = "" Continue
+        }
+        Set tKind = $ClassMethod(tShapeOwner, "IdKind")
+        Set tParts = $ListLength($ClassMethod(tShapeOwner, "IdParts"))
+        Set tShapeFits = ((tKind = "single") || ((tKind = "composite") && (tParts = 1)))
+        Set tLabel = tRoute _ " (" _ $Select(tParentRoute = "": "own", 1: "parent " _ tParentRoute) _ " id " _ tKind _ ", " _ tParts _ " part(s)): "
+
+        ; entityId "1": the screen's own row, on a screen with no parent scope only.
+        Set tEntityExpected = ((tParentRoute = "") && tShapeFits)
+        Set tEntitySC = $ClassMethod(..#TOOL, "Directive", "", {"route": (tRoute), "entityId": "1"}, .tEntityRoute, .tEntityEntityId, .tEntityFault, .tEntityCriterion, .tEntityCriteria, .tEntityParentId)
+        If tEntityExpected {
+            Do $$$AssertStatusOK(tEntitySC, tLabel _ "accepts an entityId")
+            Do $$$AssertEquals(tEntityEntityId _ "|" _ tEntityParentId, "1|", tLabel _ "and answers it as the row, not as a parent")
         } Else {
-            Set tSweptRefuse = tSweptRefuse + 1
-            Do $$$AssertStatusNotOK(tSweepSC, tRoute _ " (" _ tKind _ ", " _ tParts _ " part(s)) refuses an entityId")
-            Do $$$AssertEquals($Select($IsObject($Get(tSweepFault)):tSweepFault.code, 1:""), "NAV.ENTITYNOTALLOWED", "and names the code")
+            Do $$$AssertStatusNotOK(tEntitySC, tLabel _ "refuses an entityId")
+            Do $$$AssertEquals($Select($IsObject($Get(tEntityFault)): tEntityFault.code _ "|" _ tEntityFault.detail.argument, 1: ""), "NAV.ENTITYNOTALLOWED|entityId", tLabel _ "and names the code and the argument")
+        }
+
+        ; parentId "1": the item a parent-scoped screen belongs to, on a parent-scoped screen only.
+        Set tParentExpected = ((tParentRoute '= "") && tShapeFits)
+        Set tParentSC = $ClassMethod(..#TOOL, "Directive", "", {"route": (tRoute), "parentId": "1"}, .tParentRouteOut, .tParentEntityId, .tParentFault, .tParentCriterion, .tParentCriteria, .tParentParentId)
+        If tParentExpected {
+            Do $$$AssertStatusOK(tParentSC, tLabel _ "accepts a parentId")
+            Do $$$AssertEquals(tParentEntityId _ "|" _ tParentParentId, "|1", tLabel _ "and answers it as the parent, not as a row")
+        } Else {
+            Do $$$AssertStatusNotOK(tParentSC, tLabel _ "refuses a parentId")
+            Do $$$AssertEquals($Select($IsObject($Get(tParentFault)): tParentFault.code _ "|" _ tParentFault.detail.argument, 1: ""), "NAV.ENTITYNOTALLOWED|parentId", tLabel _ "and names the code and the argument")
+        }
+
+        If tParentRoute = "" {
+            If tEntityExpected { Set tOwnAccept = tOwnAccept + 1 } Else { Set tOwnRefuse = tOwnRefuse + 1 }
+        } Else {
+            If tParentExpected { Set tParentAccept = tParentAccept + 1 } Else { Set tParentRefuse = tParentRefuse + 1 }
         }
     }
-    Do $$$AssertTrue(tSweptAccept > 1, "more than one built screen accepts an entityId, so the sweep is not the two examples again (" _ tSweptAccept _ ")")
-    Do $$$AssertTrue(tSweptRefuse > 0, "and some built screen refuses one, so a sweep over acceptances alone cannot pass (" _ tSweptRefuse _ ")")
+    Do $$$AssertTrue(tOwnAccept > 1, "more than one screen of its own rows accepts an entityId, so the sweep is not the two examples again (" _ tOwnAccept _ ")")
+    Do $$$AssertTrue(tOwnRefuse > 0, "and some screen of its own rows refuses one (" _ tOwnRefuse _ ")")
+    Do $$$AssertTrue(tParentAccept > 0, "some parent-scoped screen accepts a parentId (" _ tParentAccept _ ")")
+    Do $$$AssertTrue(tParentRefuse > 0, "and some parent-scoped screen refuses one, its parent's id being none or composite (" _ tParentRefuse _ ")")
 }
 
 /// <p>A <code>single</code>-id screen (<code>permissions/users</code>) accepts an
@@ -204,7 +229,8 @@ Method TestAnUndeclaredOrValuedCriterionIsRefused()
 }
 
 /// <p>AD-21: the schema admits <code>criterion</code> as a bounded string and <code>criteria</code>
-/// as a bare object, and closes the top level, so no other argument is representable at all.</p>
+/// as a bare object beside <code>route</code>, <code>entityId</code> and the bounded string
+/// <code>parentId</code>, and closes the top level, so no other argument is representable at all.</p>
 Method TestTheSchemaAdmitsCriterionAndNothingElse()
 {
     Set tSchema = $ClassMethod(..#TOOL, "InputSchema", "")
@@ -219,10 +245,12 @@ Method TestTheSchemaAdmitsCriterionAndNothingElse()
     Set tCount = 0
     Set tIterator = tProperties.%GetIterator()
     While tIterator.%GetNext(.tName, .tValue) {
-        Do $$$AssertTrue($ListFind($ListBuild("route", "entityId", "criterion", "criteria"), tName) > 0, "the schema declares only route, entityId, criterion and criteria, not '" _ tName _ "'")
+        Do $$$AssertTrue($ListFind($ListBuild("route", "entityId", "parentId", "criterion", "criteria"), tName) > 0, "the schema declares only route, entityId, parentId, criterion and criteria, not '" _ tName _ "'")
         Set tCount = tCount + 1
     }
-    Do $$$AssertEquals(tCount, 4, "and all four of them")
+    Do $$$AssertEquals(tCount, 5, "and all five of them")
+    Do $$$AssertEquals(tProperties.%Get("parentId").%Get("type"), "string", "parentId is a string")
+    Do $$$AssertEquals(+tProperties.%Get("parentId").%Get("maxLength"), 256, "bounded at 256 characters, as entityId is")
     Do $$$AssertStatusOK(##class(OcuPilot.Screen.Tool.Registry).EmitSchema(tSchema, .tEmitted, .tProblem), "and the schema still emits: " _ $Get(tProblem))
 }
 
@@ -418,10 +446,10 @@ Method TestEveryNavCodeHasAWrittenSentence()
 /// matching JSON type</b> (DW-1095). <method>ResultSchema</method> is documentation and shape
 /// validation only -- nothing validates a client-fulfilled result at runtime -- so a declaration
 /// the payload contradicts is a claim nothing checks.</p>
-/// <p>The hard case is the <code>opened</code>, no-row outcome, which carries neither
-/// <code>entityId</code> nor <code>code</code>: both are declared <code>"type": "string"</code>
-/// and both are outside <code>required</code>, so the payload has to <b>omit</b> them rather than
-/// emit JSON null.</p>
+/// <p>The hard case is the <code>opened</code>, no-row outcome, which carries none of
+/// <code>entityId</code>, <code>parentId</code> and <code>code</code>: each is declared
+/// <code>"type": "string"</code> and is outside <code>required</code>, so the payload has to
+/// <b>omit</b> it rather than emit JSON null.</p>
 /// <p>Mutation (Rule 19): re-emit <code>%Set("code", "", "null")</code> in
 /// <method>OcuPilot.Kernel.Agent.Dispatch.SettleClient</method> -- this goes red naming
 /// <code>code</code>, its declared type and the null it emitted.</p>
@@ -433,17 +461,19 @@ Method TestSettledResultEmitsOnlyDeclaredKeysWithDeclaredTypes()
 
     ; Every outcome the settle answers, not only the interesting one, so a member that is right in
     ; one shape and wrong in another cannot hide.
-    Set tCases = $ListBuild($ListBuild("opened", "", ""), $ListBuild("opened", "_SYSTEM", ""), $ListBuild("refused", "", ##class(OcuPilot.Api.Error).#NAVREFUSEDUNSAVED), $ListBuild("unavailable", "_SYSTEM", ##class(OcuPilot.Api.Error).#NAVUNAVAILABLE))
+    Set tCases = $ListBuild($ListBuild("opened", "", "", ""), $ListBuild("opened", "_SYSTEM", "", ""), $ListBuild("refused", "", ##class(OcuPilot.Api.Error).#NAVREFUSEDUNSAVED, ""), $ListBuild("unavailable", "_SYSTEM", ##class(OcuPilot.Api.Error).#NAVUNAVAILABLE, ""), $ListBuild("opened", "", "", "7"), $ListBuild("refused", "", ##class(OcuPilot.Api.Error).#NAVREFUSEDUNSAVED, "7"))
     For tI = 1:1:$ListLength(tCases) {
         Set tCase = $List(tCases, tI)
         Set tOutcome = $List(tCase, 1)
         Set tEntity = $List(tCase, 2)
         Set tCode = $List(tCase, 3)
+        Set tParent = $List(tCase, 4)
         Set tDetail = {}
         Do tDetail.%Set("route", "tasks/schedule", "string")
         Do tDetail.%Set("entityId", tEntity, "string")
+        If tParent '= "" Do tDetail.%Set("parentId", tParent, "string")
         Do ##class(OcuPilot.Kernel.Agent.Dispatch).SettleClient(tDetail, tOutcome, tCode, .tContent)
-        Set tLabel = tOutcome _ "/" _ $Select(tEntity = "": "no row", 1: "row") _ ": "
+        Set tLabel = tOutcome _ "/" _ $Select(tEntity '= "": "row", tParent '= "": "parent", 1: "no row") _ ": "
         Set tResult = ##class(%DynamicAbstractObject).%FromJSON(tContent)
         Do $$$AssertTrue($IsObject(tResult), tLabel _ "the settled content parses: " _ tContent)
         Set tIterator = tResult.%GetIterator()
@@ -460,6 +490,7 @@ Method TestSettledResultEmitsOnlyDeclaredKeysWithDeclaredTypes()
         Do $$$AssertEquals(tResult.%GetTypeOf("navigated"), "boolean", tLabel _ "navigated is a boolean")
         Do $$$AssertEquals(tResult.%GetTypeOf("route"), "string", tLabel _ "route is a string")
         If tEntity = "" Do $$$AssertEquals(tResult.%IsDefined("entityId"), 0, tLabel _ "entityId is omitted, not null")
+        If tParent = "" Do $$$AssertEquals(tResult.%IsDefined("parentId"), 0, tLabel _ "parentId is omitted, not null")
         If tOutcome = "opened" Do $$$AssertEquals(tResult.%IsDefined("code"), 0, tLabel _ "code is omitted, not null")
     }
 }

@@ -440,15 +440,20 @@ ClassMethod Field(pKey As %String, pField As %String) As %String
 /// <p>How many proposal rows name a user starting with <var>pPrefix</var>.</p>
 ClassMethod ProposalCount(pPrefix As %String = {..#PROBEPREFIX}) As %Integer
 {
-    Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT COUNT(*) FROM OcuPilot_Kernel_State.Proposal WHERE UserName %STARTSWITH ?", pPrefix)
-    If (tRS.%SQLCODE < 0) || 'tRS.%Next() Quit -1
-    Quit +tRS.%GetData(1)
+    Quit ..CountRows("SELECT COUNT(*) FROM OcuPilot_Kernel_State.Proposal WHERE UserName %STARTSWITH ?", pPrefix)
 }
 
 /// <p>How many turn rows name a user starting with <var>pPrefix</var>.</p>
 ClassMethod TurnCount(pPrefix As %String = {..#PROBEPREFIX}) As %Integer
 {
-    Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT COUNT(*) FROM OcuPilot_Kernel_State.Turn WHERE UserName %STARTSWITH ?", pPrefix)
+    Quit ..CountRows("SELECT COUNT(*) FROM OcuPilot_Kernel_State.Turn WHERE UserName %STARTSWITH ?", pPrefix)
+}
+
+/// <p>The one count the fixed statement <var>pSql</var> answers for the bound value <var>pValue</var>;
+/// <code>-1</code> when it could not be read.</p>
+ClassMethod CountRows(pSql As %String, pValue As %String) As %Integer [ Private ]
+{
+    Set tRS = ##class(%SQL.Statement).%ExecDirect(, pSql, pValue)
     If (tRS.%SQLCODE < 0) || 'tRS.%Next() Quit -1
     Quit +tRS.%GetData(1)
 }
@@ -470,28 +475,55 @@ ClassMethod Remove(Output pRemaining As %Integer, pPrefix As %String = {..#PROBE
     Quit $$$OK
 }
 
+/// <p>How many proposal rows name the turn key <var>pTurnKey</var>; <code>-1</code> when that could not
+/// be read.</p>
+ClassMethod ProposalCountForTurn(pTurnKey As %String) As %Integer
+{
+    Quit ..CountRows("SELECT COUNT(*) FROM OcuPilot_Kernel_State.Proposal WHERE %EXACT(TurnKey) = ?", pTurnKey)
+}
+
+/// <p>How many turn rows name the turn key <var>pTurnKey</var>; <code>-1</code> when that could not be
+/// read.</p>
+ClassMethod TurnCountForTurn(pTurnKey As %String) As %Integer
+{
+    Quit ..CountRows("SELECT COUNT(*) FROM OcuPilot_Kernel_State.Turn WHERE %EXACT(TurnKey) = ?", pTurnKey)
+}
+
 /// <p>Remove every proposal minted on a turn <method>SeedTurn</method> seeded in this process, and
-/// those turns, and report in <var>pRemaining</var> how many of either survive.</p>
+/// those turns, and report in <var>pRemaining</var> how many proposals and turns of those turn keys
+/// survive; <code>-1</code> when a count could not be read.</p>
+/// <p>Every key is attempted, and each failure, an unreadable count included, is added into the answer. A key
+/// is forgotten only once its removal succeeded and none of its rows remain, so a later call removes what
+/// this one could not.</p>
 /// <p><method>Remove</method>'s counterpart for rows that name the running account: the probe
 /// prefix cannot find them, but the seeded turn key can.</p>
 ClassMethod RemoveSeeded(Output pRemaining As %Integer) As %Status
 {
+    Set tSC = $$$OK
     Set pRemaining = 0
+    Set tUnreadable = 0
     Do ..Clear()
     Set tKey = ""
     For {
         Set tKey = $Order(^||OcuPilotProposalFixtureTurns(tKey))
         If tKey = "" Quit
-        Set tSC = ..Update("DELETE FROM OcuPilot_Kernel_State.Proposal WHERE %EXACT(TurnKey) = ?", tKey)
-        If $$$ISERR(tSC) Quit
-        Set tSC = ..Update("DELETE FROM OcuPilot_Kernel_State.Turn WHERE %EXACT(TurnKey) = ?", tKey)
-        If $$$ISERR(tSC) Quit
-        Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT COUNT(*) FROM OcuPilot_Kernel_State.Proposal WHERE %EXACT(TurnKey) = ?", tKey)
-        If tRS.%Next() Set pRemaining = pRemaining + +tRS.%GetData(1)
+        Set tKeySC = ..Update("DELETE FROM OcuPilot_Kernel_State.Proposal WHERE %EXACT(TurnKey) = ?", tKey)
+        Set tKeySC = $$$ADDSC(tKeySC, ..Update("DELETE FROM OcuPilot_Kernel_State.Turn WHERE %EXACT(TurnKey) = ?", tKey))
+        Set tProposals = ..ProposalCountForTurn(tKey)
+        Set tTurns = ..TurnCountForTurn(tKey)
+        Set tSC = $$$ADDSC(tSC, tKeySC)
+        If (tProposals < 0) || (tTurns < 0) {
+            Set tUnreadable = 1
+            Continue
+        }
+        Set pRemaining = pRemaining + tProposals + tTurns
+        If $$$ISOK(tKeySC) && (tProposals + tTurns = 0) Kill ^||OcuPilotProposalFixtureTurns(tKey)
     }
-    Kill ^||OcuPilotProposalFixtureTurns
-    If $Get(tSC, $$$OK) '= $$$OK Quit tSC
-    Quit $$$OK
+    If tUnreadable {
+        Set pRemaining = -1
+        Set tSC = $$$ADDSC(tSC, $$$ERROR($$$GeneralError, "the seeded rows could not be counted"))
+    }
+    Quit tSC
 }
 
 /// <p>The web application <method>EnsureWriteTarget</method> creates and

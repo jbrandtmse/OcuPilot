@@ -920,10 +920,12 @@ Parameter TOOLRESULTTOOLARGE = "TOOL.RESULTTOOLARGE";
 /// no directive are ever written.</p>
 Parameter NAVROUTEUNKNOWN = "NAV.ROUTEUNKNOWN";
 
-/// <p>Tool-result code (Story 4.7, AD-5): the call named an <code>entityId</code> against a
-/// screen whose <code>id.kind</code> is <code>none</code> or <code>composite</code>. Refused by
-/// the tool body before any announcement exists, because the tool never invents a second composite
-/// id grammar (AD-5).</p>
+/// <p>Tool-result code (Story 4.7, AD-5, DW-1462): the call named an <code>entityId</code> against a
+/// screen that takes none of its own (one with a <code>parentScope</code>, or an id of kind
+/// <code>none</code> or <code>composite</code> over several parts), or a <code>parentId</code>
+/// against a screen with no parent or whose parent's id is not one part. <code>detail.argument</code>
+/// names the refused argument. Refused by the tool body before any announcement exists, because the
+/// tool never invents a second composite id grammar (AD-5).</p>
 Parameter NAVENTITYNOTALLOWED = "NAV.ENTITYNOTALLOWED";
 
 /// <p>Tool-result code (Story 5.8, AD-21): the call named a <code>criterion</code> the target
@@ -1045,7 +1047,7 @@ Parameter REASONTOOLRESULTTOOLARGE = "The tool's result is larger than a tool re
 Parameter REASONNAVROUTEUNKNOWN = "That route is not one this instance's screens declare.";
 
 /// <p>Written sentence for <parameter>NAVENTITYNOTALLOWED</parameter>.</p>
-Parameter REASONNAVENTITYNOTALLOWED = "This screen does not take a selected row.";
+Parameter REASONNAVENTITYNOTALLOWED = "This screen cannot be opened on that item.";
 
 /// <p>Written sentence for <parameter>NAVCRITERIONUNKNOWN</parameter>.</p>
 Parameter REASONNAVCRITERIONUNKNOWN = "This screen declares no such filter.";

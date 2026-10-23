@@ -79,8 +79,7 @@ Method TestEveryWriteRouteTakesTheHoldOrIsExempt()
 /// item's <code>Name</code> alone in <method>OcuPilot.Area.Interop.ItemSave.HandleCreate</method>, which the lookup entry add
 /// shares --
 /// that leg answers 400 or 422 at once and goes red; so does the Doc DB application leg when
-/// <method>OcuPilot.Area.WebApp.DocDbAppSave.HandleCreate</method> holds the name alone; so does the privileged routine
-/// application leg when <method>OcuPilot.Area.WebApp.RoutineAppSave.HandleCreate</method> does.</p>
+/// <method>OcuPilot.Area.WebApp.DocDbAppSave.CreateIdentity</method> answers the name alone as the id.</p>
 /// <p>The REST service create holds its package as typed, in the request's namespace, the same way.</p>
 /// <p>Mutation (Rule 19): drop the hold from <method>OcuPilot.Area.WebApp.RestServiceSave.HandleCreate</method> -- the
 /// REST service leg answers 422 <code>RESTSERVICE.DOCUMENT</code> at once and goes red.</p>
