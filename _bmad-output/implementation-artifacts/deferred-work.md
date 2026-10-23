@@ -12406,3 +12406,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-23T04:38:43Z status=open owner=20-37-sqlrun-stored-slot-order by=harvest note=build-auto verification-gap layer; 20.37's charter bars changing existing tests
 - 2026-10-23T04:55:51Z occurrence=20-37-sqlrun-stored-slot-order
 - 2026-10-23T04:57:16Z status=wontfix-accepted by=adjudication note=LOW; 20.37's charter bars changing existing tests and the reader is 20.33's, unchanged; reopen_if=GuardedReserve's ended-row delete or Kind's empty-means-sql default changes, or a third run kind is added
+
+### DW-2503: Two read-tool descriptions (osmgmt.dashboard 1,143 chars, osmgmt.ecpstatistics 1,030) now exceed 1,024 characters, which a provider may refuse in a tool definition (unverified)
+- source: spec-23-12-the-agent-picks-the-right-list.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: Measured on ocupilot-ci after 23.12; three editor save tools already exceed it (1,463-1,516); neither OpenAI nor Gemini adapter caps a description; an OpenAI 1,024 limit is from third-party reports only (inference)
+- 2026-10-23T13:52:24Z status=open owner=23-12-the-agent-picks-the-right-list by=harvest note=implement deferred; adjudicate at 23.12's gate
