@@ -122,9 +122,6 @@ test('Story 20.38 AC4: the declared sets are disjoint, name only built lists tha
   }
   // Temporary: Story 20.39 empties the allow-list and deletes this count in the same pass.
   assert.equal(STORY_20_39_ALLOW_LIST.length, 17, "the allow-list is rows 2 to 18 of Story 20.38's table");
-  for (const descriptor of DIALOG_EDITORS) {
-    assert.ok(NON_DEFECTS.has(descriptor), `${descriptor} is a dialog editor, so a declared non-defect`);
-  }
 });
 
 // Mutation (Rule 19): drop `documentScreenFor` from `nameLinkTarget`, or the `ExplorerSqlSchema`

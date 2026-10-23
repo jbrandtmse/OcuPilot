@@ -827,8 +827,8 @@ ClassMethod MinVersion(pEndpoint As %String, pType As %String = {..#REQUESTTYPE}
 /// <parameter>ENDPOINTSEARCH</parameter> reads <code>text</code>, <code>scope</code> and
 /// <code>case</code> (<method>SearchRows</method>), and <parameter>ENDPOINTMACRO</parameter>
 /// <code>document</code> and <code>macro</code> (<method>MacroRows</method>). A catalog endpoint
-/// reads <code>system</code> and <code>schema</code>, or <code>table</code>, <code>view</code> or
-/// <code>procedure</code> (<method>CatalogRows</method>). <var>pBody</var> is not read.</p>
+/// reads <code>system</code> and <code>schema</code>, a schema tab <code>schema</code> alone, or
+/// <code>table</code>, <code>view</code> or <code>procedure</code> (<method>CatalogRows</method>). <var>pBody</var> is not read.</p>
 /// <p>On success <var>pResult</var> is a <class>%DynamicArray</class> of rows and
 /// <var>pHttpStatus</var> is 200. A list row is <code>{Name, Modified, Database, Generated}</code>;
 /// a document endpoint answers <method>DocumentRows</method>'s rows and <var>pDocument</var>

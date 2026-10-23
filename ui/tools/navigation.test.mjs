@@ -1190,6 +1190,48 @@ test('parentCriteria fills the Secrets list\'s one criterion with the decoded ro
   );
 });
 
+// Story 20.38 (QA) AC1, AC3, AD-13, AD-24: a schema's three tabs are reached from a typed or shared URL
+// as well as from a click, so each URL resolves to its tab, reads the decoded route id as its one
+// criterion, and takes no row of the list's. The agent's read tool for each tab opens that tab and
+// no neighbour, a tab adds no action, and each says its own ruled sentence when its schema holds none (AC2).
+//
+// Mutation (Rule 19): decode the id segment once instead of twice in `routeIdSegment` -> the `%Library`,
+// dotted and 128-character legs go red, reading the still-encoded text as the schema. Reword
+// `explorerSqlSchemaProceduresEmpty` in `strings.ts` -> the Procedures leg's sentence assertion goes red.
+test('Story 20.38 QA: a schema tab\'s URL resolves to that tab and reads the decoded schema, and its read tool opens that tab', () => {
+  const list = screenForRoute('system-explorer/sql-schemas');
+  assert.ok(list !== null, 'the SQL schemas list is declared');
+  const tabs = [
+    ['system-explorer/sql-schemas/document', 'ExplorerSqlSchema', 'explorer.sqlschematables', 'This schema has no SQL tables.'],
+    ['system-explorer/sql-schemas/views', 'ExplorerSqlSchemaViews', 'explorer.sqlschemaviews', 'This schema has no SQL views.'],
+    ['system-explorer/sql-schemas/procedures', 'ExplorerSqlSchemaProcedures', 'explorer.sqlschemaprocedures', 'This schema has no SQL procedures.'],
+  ];
+  const schemas = ['Ens', '%Library', 'HS_FHIR_DTL', 'a.b', 'S'.repeat(128)];
+  for (const [route, descriptor, identifier, empty] of tabs) {
+    const tab = screenForRoute(route);
+    assert.ok(tab !== null && tab.descriptor === `OcuPilot.Screen.Descriptor.${descriptor}`, `${route} is ${descriptor}`);
+    assert.equal(stringFor(tab.emptyStateKey), empty, `${route} says the ruled sentence when its schema holds none`);
+    for (const schema of schemas) {
+      const url = `/${route}/${encodeEntityId(schema)}?ns=USER`;
+      assert.equal(screenForUrl(url)?.route, route, `${route} opens for the id of ${schema.slice(0, 20)}`);
+      assert.deepEqual(parentCriteria(tab, url), { schema }, `${route} reads ${schema.slice(0, 20)} as its schema`);
+      assert.equal(ownIdSegment(tab, url), '', `${route} selects no row of its own`);
+    }
+    assert.deepEqual(parentCriteria(tab, `/${route}?ns=USER`), {}, `${route} with no id reads no schema, which the port refuses`);
+    assert.equal(screenForToolName(`${identifier}.read`), tab, `${identifier}.read opens ${route}`);
+    assert.deepEqual(tab.rowActions, [], `${route} adds no row action`);
+    assert.equal(tab.primaryAction.id, '', `${route} adds no primary action`);
+    assert.equal(tab.refreshes, false, `${route} does not refresh`);
+    assert.deepEqual(tab.read.criteria.fields.map((field) => field.param), ['schema'], `${route} declares the schema as its one criterion`);
+  }
+  assert.equal(screenForToolName('explorer.sqlschemas.read'), list, 'the list\'s own read tool still opens the list, not one of its tabs');
+  // The list's own id route keeps selecting the row; only the group's `document`, `views` and `procedures` routes are tabs.
+  const listUrl = `/system-explorer/sql-schemas/${encodeEntityId('Ens')}?ns=USER`;
+  assert.equal(screenForUrl(listUrl)?.route, list.route, 'a schema id after the list\'s route is the list');
+  assert.equal(ownIdSegment(list, listUrl), 'Ens', 'which selects the row');
+  assert.deepEqual(parentCriteria(list, listUrl), {}, 'and reads no schema');
+});
+
 test('a route resolves to the descriptor that declared it, and a detail URL to its parent', () => {
   assert.equal(screenForRoute('')?.area, 'home', "Home's route is the empty string");
   assert.equal(screenForRoute('no/such/route'), null);

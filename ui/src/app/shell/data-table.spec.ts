@@ -342,8 +342,8 @@ describe('the data table', () => {
     });
 
   it('Story 6.4 AC4: a declared row link draws the name cell as a new-tab anchor at the classic editor, ahead of the in-app link', async () => {
-    // Mutation (Rule 19): ignore `rowLink` in `data-table.ts` (drop `rowLinked` from the chain) -> the
-    // anchor reads the table's own id route and these assertions go red.
+    // Mutation (Rule 19): make `hasClassicRowLink` in `navigation.ts` return `false` -> the anchor reads
+    // the table's own id route and these assertions go red.
     const wired = await wire(rowLinked(), ok(rows(2)));
     await wired.refresh.readNow();
     await settle(wired.fixture);

@@ -9106,6 +9106,8 @@ So that a click never leaves me where I was.
 - **When** the client tests run
 - **Then** its allow-list is empty, and the check still fails on any new name link that leads back to its own list.
 
+- DW-2504: Four doc comments still place the name cell's link chain in data-table.ts, which Story 20.38 moved to navigation.ts's nameLinkTarget (ledger; routed by adjudication 2026-10-23)
+
 **Out of scope:** new screens for objects that have none; stored data and the installer.
 
 ## Epic 21: Stage 5 - custom-REST parity from the MCP suite's handlers

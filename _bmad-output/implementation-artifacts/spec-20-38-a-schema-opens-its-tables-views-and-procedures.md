@@ -149,6 +149,34 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Lines were
 - **AC4.** Given every built list whose name column links somewhere, when `npm run test:tools` runs, then it fails on any link to an unbuilt screen and on any self-link outside the declared non-defects and Story 20.39's exact allow-list. SQL schemas is in neither set.
 - **AC5.** Given the browser suite, when a spec clicks a schema's name, then it lands on the schema's screen, sees the Procedures tab's rows and opens one procedure.
 
+### Review Findings
+
+Code review 2026-10-23 (four layers, full-opus): 23 rows, 13 entries (all low), 7 rejected. No high or medium.
+
+- [x] [Review][Patch] The Story 6.4 test's mutation note named `rowLinked` in `data-table.ts`; it now names `hasClassicRowLink` in `navigation.ts`, run red and reverted byte-identical [ui/src/app/shell/data-table.spec.ts:345]
+- [x] [Review][Patch] Deleted a loop asserting `DIALOG_EDITORS` are in `NON_DEFECTS`, true by construction [ui/tools/name-links.test.mjs:125]
+- [x] [Review][Patch] Deleted the "no System box" assertion: a `detail` tab draws no criterion inputs, so it could not fail; `navigation.test.mjs` pins the one `schema` criterion [ui/browser/system-explorer-sql.browser-spec.mjs:676]
+- [x] [Review][Patch] Deleted an empty-title assertion that follows `waitForRows` and so could not fail [ui/browser/system-explorer-sql.browser-spec.mjs:686]
+- [x] [Review][Patch] The `%Library` procedure leg now waits for the procedure screen's rows, not only its tab labels [ui/browser/system-explorer-sql.browser-spec.mjs:693]
+- [x] [Review][Patch] `Serve`'s doc said every catalog endpoint reads `system`; a schema tab reads `schema` alone [src/OcuPilot/Port/AtelierPort.cls:829]
+- [x] [Review][Patch] The QA line under Verification claimed Retry and matrix row 5 for the missing-schema refusal test; corrected to what it asserts [spec, Verification]
+- [x] [Review][Defer] Four doc comments still place the link chain in `data-table.ts` [Registry.cls:4008, Descriptor/Base.cls:337, Descriptor/LockList.cls:19, ui/tools/screen-mirror.mjs:2830] — deferred: DW-2504 `wontfix-accepted`, files barred to this story
+- [x] [Review][Defer] `ExplorerSqlSchemas.cls`'s doc does not say where a name opens [src/OcuPilot/Screen/Descriptor/ExplorerSqlSchemas.cls] — deferred: DW-2505 `by-design`, the Code Map leaves it unedited
+- [x] [Review][Defer] EXPERIENCE.md:595's where-used text omits the schema screen's title and tab names — deferred: DW-2506 `by-design`, the Tasks prescribe the amendment's words
+- [x] [Review][Defer] A schema that does not exist reads as an empty one [src/OcuPilot/Port/AtelierPort.cls:1328] — deferred: DW-2507 `by-design`, a not-found needs a new statement and string
+- [x] [Review][Defer] A schema named `document`, `views` or `procedures` collides with a tab's bare route [ui/src/app/core/navigation.ts] — deferred: DW-2508 `by-design`, the Q1 address
+- [x] [Review][Defer] The schema-tab tools do not tell the model `schema` is required [src/OcuPilot/Screen/Tool/Read.cls] — deferred: DW-2509 `wontfix-accepted`, pre-existing read grammar
+
+Rejected:
+
+- `low` No test reads the schema tabs as the developer principal: `DeveloperFloor`'s TOOLS and SCREENS rosters pin the three tools and screens, and the port gate is shared through `IsCatalog`.
+- `false` No live leg for system views: `TestEachSchemaTabSendsItsListsStatementWithSystemItems` pins Views' `[1,s,s]` with `system=no`, so a Views-only binding regression goes red.
+- `low` The bare schema is not removed in `OnAfterOneTest`: assertions do not abort a method, `MakeBare` clears a leftover first, and CI legs are fresh.
+- `low` `RemoveBare` reads a failed leftover lookup as none: fixed statements run as the test's superuser, the same shape as `Remove`.
+- `false` `%STARTSWITH 'OcuProbe2038'` could match another schema: nothing creates one, and a false survivor fails loudly.
+- `false` The unbuilt-target check cannot fail today: it is a forward guard, and its predicate's red is recorded under Verification.
+- `reject` The Tasks' "no procedure" for the bare schema: the fix edits the spec's Tasks, and Decided in-stage records the extent procedure.
+
 ## Spec Change Log
 
 - 2026-10-23, runner, after the first plan pass's `intent gap`: ruled Q1-Q4 and the empty-tab sentences (Design Notes, Runner's rulings); recorded the orchestrator's contention ruling; amended `epics.md` Story 20.38's ACs (address, System items, the Ens example, the split) and chartered Story 20.39; status reset to `draft` for the re-plan.
@@ -335,6 +363,16 @@ Every test added or changed passes on a fresh environment, in either order.
   - mutation: made `unbuiltLinkTargets` in `name-links.test.mjs` never flag (`target.built !== true` became `false`) -> "the unbuilt-target check flags a name cell that links to a screen that is not built" red; reverted, byte-identical.
 - **AC5.** AC1's browser test, with AC1's mutation.
   - mutation: AC1's first mutation -> the same browser test red at the click on the procedure's name.
+
+**QA additions (Rule 19):** the implement stage's coverage was audited against AC1-AC5 and the matrix; these close what it left unpinned, all on `ocupilot-b-ci`.
+
+- (QA) `ui/tools/navigation.test.mjs`: "Story 20.38 QA: a schema tab's URL resolves to that tab ..." pins each tab's URL for `%Library`, dotted, underscored and 128-character schemas, the decoded `schema` criterion, a bare route reading none, the three read tools opening their own tab, no row or primary action, and the three ruled empty sentences (AC1, AC2, AC3).
+  - mutation: decoded the route id once in `routeIdSegment` (`navigation.ts`) -> that test red on its `%Library`, dotted and 128-character legs (five other `navigation.test.mjs` tests red too); reverted, byte-identical.
+  - mutation: reworded `explorerSqlSchemaProceduresEmpty` in `strings.ts` -> that test red alone; reverted, byte-identical.
+  - mutation: keyed `screenForToolName` on three segments (`navigation.ts`) -> that test red on its tool legs (four other tests red too); reverted, byte-identical.
+- (QA) `ui/browser/system-explorer-sql.browser-spec.mjs`: two tests. A direct visit to `%Dictionary`'s Tables tab and `%Library`'s Procedures tab lists their objects, the read carrying the decoded schema and no system choice, and a `%Library` procedure's name opens its screen with its rows (AC1, AC2, AD-13). A schema tab opened with no schema shows "request refused", never the empty sentence or rows: the port's missing-schema refusal, shell side (matrix row 5's pair refusal is pinned at the port by `AtelierPortCatalog.TestTheGateRefusesBeforeAnyRoute`).
+  - mutation: decoded the route id once in `routeIdSegment`, rebuilt, redeployed -> the deep-link test red (the wait for rows timed out; the implement stage's click test red too); reverted, rebuilt, redeployed, 10 of 10 green, `navigation.ts` byte-identical.
+  - mutation: dropped `(tSchemaTab && (tSchema = ""))` from `AtelierPort.CatalogRows`, reloaded `src` -> the refusal test red (the wait for the refusal timed out), the other 20.38 tests green; reverted and reloaded, 10 of 10 green, `AtelierPort.cls` byte-identical.
 
 ## Auto Run Result
 
