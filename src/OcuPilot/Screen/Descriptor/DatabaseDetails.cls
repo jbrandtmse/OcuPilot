@@ -103,6 +103,7 @@ XData Declaration
   "classicPage": "%CSP.UI.Portal.DatabaseDetails",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "set of one database's properties",
     "source": {
       "port": "admin",
       "endpoint": "Database.SysCRUD",

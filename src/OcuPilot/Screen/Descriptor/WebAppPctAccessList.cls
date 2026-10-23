@@ -47,6 +47,7 @@ XData Declaration
   "classicPage": "%CSP.UI.Portal.Applications.Web",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "percent class access entry",
     "source": {"port": "admin", "endpoint": "WebApp.PctClassAccess", "type": "LIST"},
     "fields": ["Name", "AllowType", "Class", "AllowAccess", "System"],
     "filter": ["Name", "AllowType", "Class"],

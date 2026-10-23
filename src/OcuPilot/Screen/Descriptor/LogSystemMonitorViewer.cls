@@ -39,6 +39,8 @@ XData Declaration
   "classicPage": "%CSP.UI.Portal.ViewLog",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "line of SystemMonitor.log",
+    "label": "Entries of SystemMonitor.log, the System Monitor's own log; the console log is logs.messages.",
     "source": {"port": "logsource", "endpoint": "systemmonitor", "type": "LIST"},
     "fields": ["time", "severity", "text"],
     "filter": ["time", "severity", "text"],

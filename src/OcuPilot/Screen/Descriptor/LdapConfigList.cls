@@ -61,6 +61,7 @@ XData Declaration
   "classicPage": "%CSP.UI.Portal.LDAPs",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "LDAP configuration",
     "source": {
       "port": "admin",
       "endpoint": "Security.LDAP",

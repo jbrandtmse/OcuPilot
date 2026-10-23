@@ -76,6 +76,7 @@ XData Declaration
   "classicPage": "%CSP.UI.Portal.LocksView",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "lock",
     "source": {"port": "admin", "endpoint": "Lock", "type": "LIST"},
     "fields": ["Pid", "OSUserName", "RoutineInfo", "ModeCount", "Reference", "Directory", "System", "DeleteID", "RemoteOwner"],
     "filter": ["Pid", "OSUserName", "RoutineInfo", "ModeCount", "Reference", "Directory", "System"],

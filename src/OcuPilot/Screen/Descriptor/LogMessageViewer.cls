@@ -64,6 +64,8 @@ XData Declaration
   "classicPage": "%cspapp.op.utilsysconsolelog",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "line of messages.log",
+    "label": "Lines of the instance's console log, messages.log, newest first, with severity (1 warning, 2 severe, 3 fatal); errors raised in application code are in logs.applicationerrors.",
     "source": {"port": "logsource", "endpoint": "messages", "type": "LIST"},
     "fields": ["time", "severity", "text"],
     "filter": ["time", "severity", "text"],

@@ -43,6 +43,7 @@ XData Declaration
   "classicPage": "EnsPortal.BusinessPartners",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "business partner",
     "source": {"port": "interop", "endpoint": "BusinessPartners", "type": "LIST"},
     "fields": ["Name", "Description", "PrimaryContact", "PrimaryTitle", "PrimaryEmail", "PrimaryPhone", "PrimaryMobile", "PrimaryNotes", "AlternativeContact", "AlternativeTitle", "AlternativeEmail", "AlternativePhone", "AlternativeMobile", "AlternativeNotes"],
     "filter": ["Name", "Description", "PrimaryContact"],

@@ -49,6 +49,7 @@ XData Declaration
   "classicPage": "%CSP.UI.Portal.Mappings",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "package mapping of one namespace",
     "source": {"port": "admin", "endpoint": "Namespace.PackageMappings", "type": "LIST"},
     "fields": ["namespace", "Name", "Database"],
     "filter": ["Name", "Database"],

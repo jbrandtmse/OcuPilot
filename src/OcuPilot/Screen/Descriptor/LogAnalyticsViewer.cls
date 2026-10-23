@@ -42,6 +42,8 @@ XData Declaration
   "classicPage": "%DeepSee.UI.LogViewer",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "line of an analytics task log",
+    "label": "Analytics task log lines (DeepSeeTasks) from every namespace; the console log is logs.messages.",
     "source": {"port": "logsource", "endpoint": "analytics", "type": "LIST"},
     "fields": ["time", "severity", "text"],
     "filter": ["time", "severity", "text"],

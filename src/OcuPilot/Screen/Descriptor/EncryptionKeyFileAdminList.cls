@@ -44,6 +44,7 @@ XData Declaration
   "classicPage": "%CSP.UI.Portal.EncryptionManage",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "administrator of one key file",
     "source": {"port": "encryption", "endpoint": "Security.Encryption.AdminInFile", "type": "LIST"},
     "fields": ["Name"],
     "filter": ["Name"],

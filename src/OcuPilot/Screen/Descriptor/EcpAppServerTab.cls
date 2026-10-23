@@ -46,6 +46,7 @@ XData Declaration
   "classicPage": "%CSP.UI.Portal.ECPAppServers",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "connected ECP application server",
     "source": {"port": "admin", "endpoint": "ECP.AppServerList", "type": "LIST"},
     "fields": ["ClientName", "Status", "IPAddress", "IPPort"],
     "filter": ["ClientName", "Status", "IPAddress"],

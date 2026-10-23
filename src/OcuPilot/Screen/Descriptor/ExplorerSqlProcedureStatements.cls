@@ -50,6 +50,8 @@ XData Declaration
   "classicPage": "%CSP.UI.Portal.SQL.Home",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "statement that uses the procedure",
+    "label": "Statements that use one procedure, named by its criterion, with plan state and run statistics; statements running now are in osmgmt.sqlactivity.",
     "source": {"port": "atelier", "endpoint": "Catalog.ProcedureStatements", "type": "LIST"},
     "fields": ["Statement", "PlanState", "NewPlan", "Executions", "TotalTime", "AverageTime", "StdDevTime", "RowCount", "Commands", "FirstSeen", "Location"],
     "filter": ["Statement", "PlanState", "Location"],

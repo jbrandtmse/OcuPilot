@@ -44,6 +44,7 @@ XData Declaration
   "classicPage": "%CSP.UI.Portal.SQL.Home",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "map or index of one SQL table",
     "source": {"port": "atelier", "endpoint": "Catalog.Indices", "type": "LIST"},
     "fields": ["Index", "Map", "Fields", "Type", "BitmapArgument", "SizeMB", "Inherited", "Global", "Status"],
     "filter": ["Index", "Map", "Fields", "Global"],

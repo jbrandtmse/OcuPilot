@@ -202,8 +202,9 @@ pre-commit: checks failed on staged files.
   Classic links:           read the classic-links.mjs output above and fix the
                            named descriptor's archetype or classicLinkExemption
                            (AD-44), then re-stage.
-  Screen mirror:           ui/src/app/core/screens.generated.ts is generated from
-                           the descriptor tree. Run
+  Screen mirror:           ui/src/app/core/screens.generated.ts and
+                           src/OcuPilot/Screen/Titles.cls are generated from the
+                           descriptor tree and ui/src/app/core/strings.ts. Run
                            `cd ui && node tools/screen-mirror.mjs` and re-stage
                            both.
   IPM manifest:            module.xml is generated from

@@ -41,6 +41,7 @@ XData Declaration
   "classicPage": "EnsPortal.ProductionMonitor",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "monitored production item",
     "source": {"port": "interop", "endpoint": "Monitor", "type": "LIST"},
     "fields": ["Production", "Item", "Name", "Type", "Status", "AdapterState", "LastActivity", "ElapsedTime", "Queue", "Count"],
     "filter": ["Name", "Type", "Status"],

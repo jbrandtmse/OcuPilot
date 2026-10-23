@@ -59,6 +59,7 @@ XData Declaration
   "classicPage": "%CSP.UI.Portal.Applications.PrivRoutineList",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "privileged routine application",
     "source": {
       "port": "admin",
       "endpoint": "Security.PrivilegedRoutine",

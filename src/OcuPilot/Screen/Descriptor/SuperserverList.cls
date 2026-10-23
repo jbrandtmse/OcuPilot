@@ -47,6 +47,7 @@ XData Declaration
   "classicPage": "%CSP.UI.Portal.Servers",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "superserver",
     "source": {"port": "admin", "endpoint": "Security.Superserver", "type": "LIST"},
     "fields": ["Port", "BindAddress", "Enabled", "SystemDefault"],
     "filter": ["Port", "BindAddress"],

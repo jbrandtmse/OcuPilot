@@ -93,6 +93,7 @@ XData Declaration
   "classicPage": "%CSP.UI.Portal.Users",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "user",
     "source": {
       "port": "admin",
       "endpoint": "Security.User",

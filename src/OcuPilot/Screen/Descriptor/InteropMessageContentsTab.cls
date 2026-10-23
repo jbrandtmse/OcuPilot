@@ -43,6 +43,7 @@ XData Declaration
   "classicPage": "EnsPortal.MessageViewer",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "line of a message body",
     "source": {"port": "interop", "endpoint": "MessageContents", "type": "LIST"},
     "fields": ["Message", "Line", "Text"],
     "filter": ["Text"],

@@ -87,6 +87,8 @@ XData Declaration
   "classicPage": "%CSP.UI.Portal.OpDatabases",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "database",
+    "label": "The instance's databases by directory, with Status (Mounted/RW, Mounted/R or Dismounted) and size; a remote database's server is in osmgmt.remotedatabases.",
     "source": {"port": "admin", "endpoint": "Database.SysCRUD", "type": "LIST"},
     "fields": ["Directory", "Size", "MaxSize", "Status", "Resource"],
     "filter": ["Directory", "Size", "MaxSize", "Status", "Resource"],

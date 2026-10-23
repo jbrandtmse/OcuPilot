@@ -44,6 +44,7 @@ XData Declaration
   "classicPage": "%CSP.UI.Portal.LicenseServers",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "license server",
     "source": {"port": "admin", "endpoint": "License.Server", "type": "LIST"},
     "fields": ["Name", "Address", "Port", "KeyDirectory"],
     "filter": ["Name", "Address", "Port", "KeyDirectory"],

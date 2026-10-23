@@ -43,6 +43,7 @@ XData Declaration
   "classicPage": "",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "Prometheus metric sample",
     "source": {"port": "monitor", "endpoint": "Metrics", "type": "LIST"},
     "fields": ["Metric", "Labels", "Value", "Help"],
     "filter": ["Metric", "Labels", "Help"],

@@ -48,6 +48,7 @@ XData Declaration
   "classicPage": "%CSP.UI.Portal.SQL.Home",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "set of one view's details",
     "source": {"port": "atelier", "endpoint": "Catalog.View", "type": "LIST"},
     "fields": ["Owner", "LastCompiled", "ReadOnly", "Updatable", "Class", "CheckOption", "ClassType", "Text"],
     "filter": ["Class", "Owner", "Text"],

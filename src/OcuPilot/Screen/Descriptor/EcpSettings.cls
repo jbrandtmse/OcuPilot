@@ -47,6 +47,7 @@ XData Declaration
   "classicPage": "%CSP.UI.Portal.ECP",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "set of ECP settings",
     "source": {"port": "admin", "endpoint": "ECP.Settings", "type": "GET"},
     "fields": ["AppServerSettings.MaxServers", "AppServerSettings.ClientReconnectDuration", "AppServerSettings.ClientReconnectInterval", "DataServerSettings.MaxServerConn", "DataServerSettings.ServerTroubleDuration", "DataServerSettings.SSLECPServer"],
     "filter": ["AppServerSettings.MaxServers"],

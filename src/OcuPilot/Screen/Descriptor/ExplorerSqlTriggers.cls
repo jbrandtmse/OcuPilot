@@ -44,6 +44,7 @@ XData Declaration
   "classicPage": "%CSP.UI.Portal.SQL.Home",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "trigger of one table",
     "source": {"port": "atelier", "endpoint": "Catalog.Triggers", "type": "LIST"},
     "fields": ["Trigger", "Event", "Order", "Code"],
     "filter": ["Trigger", "Event", "Code"],

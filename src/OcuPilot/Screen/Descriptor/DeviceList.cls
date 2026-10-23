@@ -71,6 +71,7 @@ XData Declaration
   "classicPage": "%CSP.UI.Portal.Config.Devices",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "I/O device",
     "source": {"port": "admin", "endpoint": "Device.Standard", "type": "LIST"},
     "fields": ["Name", "PhysicalDevice", "Type", "SubType", "Description", "Alias"],
     "filter": ["Name", "PhysicalDevice", "Type", "SubType", "Description", "Alias"],

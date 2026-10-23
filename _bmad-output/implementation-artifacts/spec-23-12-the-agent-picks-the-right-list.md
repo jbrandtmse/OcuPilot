@@ -2,13 +2,21 @@
 title: 'Story 23.12: The agent picks the right list'
 type: 'feature'
 created: '2026-10-23'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: 'eed218eced7ac6bd8d40a553811dde5e39558f61'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      Two read tools' descriptions (osmgmt.dashboard at 1,143 characters, osmgmt.ecpstatistics at 1,030) exceed 1,024 characters, which a provider may refuse in a tool definition.
+    evidence: |-
+      Measured on ocupilot-ci: both exceed 1,024, and three existing editor save tools already do (interop_processeditor_save 1,505, interop_ruleeditor_save 1,463, interop_transformeditor_save 1,516); neither OpenAI nor Gemini adapter caps a description. An OpenAI limit of 1,024 comes from third-party reports, not its API reference (inference). Settle with one live OpenAI request carrying a description over 1,024 characters (owner-approved key).
+    location: >-
+      src/OcuPilot/Kernel/Provider/ToolDefAdapter.cls:117
+    severity: medium (unverified)
 ---
 
 <intent-contract>
@@ -154,6 +162,29 @@ Measured from the tree (`ui/tools/screen-mirror.mjs` `readSources`, `loadStrings
 
 ## Review Triage Log
 
+### 2026-10-23 -- Review pass
+
+- verdicts: 18 findings -- high 0, medium 1, low 3, false 13, maybe-false 1
+- findings:
+  - `[maybe-false]` `[defer]` Descriptions over 1,024 characters (`osmgmt.dashboard` 1,143, `osmgmt.ecpstatistics` 1,030) may be refused by OpenAI -- the two lengths and the absent cap are measured; the limit is only in third-party reports, and three existing editor save tools (1,463 to 1,516) already carry the same exposure; settle with one live OpenAI request; deferred as medium (unverified).
+  - `[medium]` `[patch]` The title leg of `TestEveryReadToolNamesItsTitleRowAndFields` used `Read.Title` as its own oracle -- confirmed by reading it; patched with `GeneratedTitles` (the compiled XData read independently) and two assertions, mutation line written.
+  - `[low]` `[reject]` Five labels state a default window in prose with nothing tying it to the descriptor's default -- all five agree today; a test over numbers in prose is more machinery than a defect this unlikely warrants.
+  - `[low]` `[patch]` No `mutation:` line for the row clause or the instance-side title on AC1 -- both mutations applied, red observed, reverted, lines written.
+  - `[low]` `[patch]` The AC2 test's doc comment names mutations the spec did not record -- "a label names `tasks.nosuch`" and "a label outside every group" applied, red observed, reverted, lines written.
+  - `[false]` `[reject]` AC3's override leg rests on an older test -- `TurnLoop.TestAnOverrideReplacesTheBuiltInPromptWhole` asserts equality with the override and carries its own mutation line.
+  - `[false]` `[reject]` AC4 has no pinning test -- the spec makes it a deterministic proxy checked at review; measured and recorded under Verification.
+  - `[false]` `[reject]` AC5 and AC8 have no pinning test or mutation line -- the spec makes both lead checks (Task Z; the upgrade-trigger check).
+  - `[false]` `[reject]` Only the type refusal of the grammar has a mutation line -- Rule 19 asks one per AC, and the corpus pins the empty, 40/41 and 240/241 boundaries in both engines.
+  - `[false]` `[reject]` `Title` re-reads the XData on every call, about 158 per provider request -- measured: 157 `Title` calls take 0.042 s and 157 `Description` calls 0.047 s on `ocupilot-ci`.
+  - `[false]` `[reject]` No test exercises `ProviderTools`, the adapters or the assembled request -- `ProviderTools` calls the same `DescriptionOf` on the same entries, `ToolEmit`, `TurnTools`, `TurnScope` and `TurnWire` pass, and Task Z measures the assembled request.
+  - `[false]` `[reject]` A discovery row's 1,000-character cut trims the `Fields:` tail of `osmgmt.dashboard` and `osmgmt.ecpstatistics` -- the Design Notes name both and place the label early so the cut trims only fields.
+  - `[false]` `[reject]` The field list is tied to the executor by shared code, with no test comparing executed row keys -- the spec requires the one helper, and AC1 says "exactly `Screen.Read.AnsweredFields`".
+  - `[false]` `[reject]` The discovery test asserts presence among 20 rows, not rank, and several task reads may tie -- AC7 asks for the row and its description; `ToolsFind` scoring is out of scope (Never).
+  - `[false]` `[reject]` Three titles are shared by several tools and some tab titles are generic -- the Design Notes decide it: the identifier in parentheses tells duplicates apart.
+  - `[false]` `[reject]` Prompt rule 2 says each read tool names its fields, which the other `KIND = "read"` tools do not -- the rule is ruled verbatim and those tools read no list (Design Notes, Scope of AC1).
+  - `[false]` `[reject]` The spine is not edited and AD-36 names only `note` -- the orchestrator ruled no spine edit in this run; the two notes wait for the owner's Update.
+  - `[false]` `[reject]` The demo changes only at a later release -- not a defect of the diff.
+
 ## Design Notes
 
 **Governing ADs:**
@@ -215,6 +246,7 @@ Measured from the tree (`ui/tools/screen-mirror.mjs` `readSources`, `loadStrings
 - **Integration (Rules 1 and 2).**
   - Consumes: `Screen.Read.AnsweredFields`, the `Descriptor.Base` accessors, and `Titles.cls`.
   - Consumed-by: `Loop`'s provider request (`Registry.ProviderTools`), `shell.tools.find` (scoring and rows, AC7), and the live evaluation (AC5, on a real instance).
+- **Decided in implement.** The 122 row phrases outside the Labels table follow the row rule, and review sampled them against the doc comments. The pre-commit hook's `Screen mirror:` hint names `Titles.cls` beside `screens.generated.ts`.
 - **Upgrade trigger (AC8).** None. The file list touches no `Kernel/State/**` and no `Install/**`, and leaves `module.xml` (`OcuPilot.PKG`, by package), `docker-compose.yml` and the start script alone. It adds no `Baseline.cls` key. `ipm-manifest.mjs --check` is unaffected, because `Screen/` already exists.
 - **Ledger inbox.** It holds no entries for this story.
 
@@ -411,17 +443,68 @@ Every test added or changed passes on a fresh environment, in either order.
 
 **Mutations (Rule 19; record each as `mutation: ... -> ...`):**
 
+Each was applied on `ocupilot-ci` (the whole `src/` tree reloaded after it), the named test class run, and the file restored and confirmed byte-identical.
+
 - AC1 and AC6: `Read.Description` omits `Fields:` for `tasks.schedule`. Expected red: `TestEveryReadToolNamesItsTitleRowAndFields`.
+  - mutation: `Tool/Read.cls` `Compose` skips the `Fields:` clause when the identifier is `tasks.schedule` -> `ReadDescriptions.TestEveryReadToolNamesItsTitleRowAndFields` red alone, naming `tasks.schedule.read`.
 - AC1, secret: `AnsweredFields` keeps secret fields. Expected red: the same test, at `osmgmt.licensekey`.
+  - mutation: `Screen/Read.cls` `AnsweredFields` pushes every field, secret or not -> `TestEveryReadToolNamesItsTitleRowAndFields` red alone, at `osmgmt.licensekey.read` (`AuthorizationKey` listed).
 - AC1, title: a `labelKey`'s value changed in `strings.ts`, not regenerated. Expected: `screen-mirror.mjs --check` exits 1. Also, `buildTitles` emitting the key in place of its value turns the mirror test red.
+  - mutation: `taskListLabel` changed in `strings.ts`, nothing regenerated -> `node tools/screen-mirror.mjs --check` exits 1, "src/OcuPilot/Screen/Titles.cls is stale".
+  - mutation: `buildTitles` stores the key as the value -> `screen-mirror.test.mjs` `buildTitles maps every descriptor labelKey ...` red, and the `--check` test with it.
+- AC1, instance-side title: `Read.Title` answers the label key. Expected red: `TestEveryReadToolNamesItsTitleRowAndFields`.
+  - mutation: `Tool/Read.cls` `Title` sets the title to the label key instead of its XData string -> `ReadDescriptions.TestEveryReadToolNamesItsTitleRowAndFields` red alone, on every tool.
+- AC1, row: `Compose` omits the row clause. Expected red: the same test.
+  - mutation: `Tool/Read.cls` `Compose` drops its `, one <row> per row` line -> `TestEveryReadToolNamesItsTitleRowAndFields` and `TestAReadWithoutATitleOrARowStillComposes` red.
 - AC2: `read.label` removed from `BackgroundTaskList`. Expected red: `TestEveryConfusableToolCarriesItsLabel`.
+  - mutation: the `label` line deleted from `Descriptor/BackgroundTaskList.cls` -> `ReadDescriptions.TestEveryConfusableToolCarriesItsLabel` red alone, "tasks.background.read declares its label".
+  - mutation: `TaskHistoryList`'s label names `tasks.nosuch` in place of `tasks.schedule` -> `TestEveryConfusableToolCarriesItsLabel` red alone.
+  - mutation: `UserList` (outside every group) declares a label -> `TestEveryConfusableToolCarriesItsLabel` red alone.
 - AC3: one rule removed from `BUILTIN`. Expected red: `TestThePromptCarriesTheListRules`.
+  - mutation: the second rule deleted from `Prompt.BUILTIN` -> `ReadDescriptions.TestThePromptCarriesTheListRules` red alone (once-each and in-order legs).
 - AC7: `ToolsFind` answers the old fixed sentence. Expected red: `TestTheDiscoveryAnswerCarriesTheDescription`.
+  - mutation: `ToolsFind.View` sets the old fixed sentence for a descriptor-derived read -> `ReadDescriptions.TestTheDiscoveryAnswerCarriesTheDescription` red alone (equality and `Suspended` legs).
 - Grammar: `ReadRowLabelProblem` accepts a number. Expected red: `ReadTool.TestEveryReadSourceCorpusCaseGetsItsSentence` and the mirror's corpus test.
+  - mutation: `Registry.ReadRowLabelProblem` drops its string-type refusal -> `ReadTool.TestEveryReadSourceCorpusCaseGetsItsSentence` red alone ("a row that is a number", "a label that is a number").
+  - mutation: `readRowLabelProblem` drops its string-type refusal -> `screen-mirror.test.mjs` `readProblem returns every ... sentence OcuPilot.Test.ReadSourceCorpus declares` red alone ("a row that is a number").
+- Compose without a title or a row: `Compose` always writes the row clause. Expected red: `TestAReadWithoutATitleOrARowStillComposes`.
+  - mutation: `Compose` writes ", one <row> per row" unconditionally -> `ReadDescriptions.TestAReadWithoutATitleOrARowStillComposes` red alone ("no title and no row").
+- Note stays last: the note dropped from `Read.Description`. Expected red: `ExplorerDescriptor.TestTheStatementsToolsEndWithTheStatisticsNote`.
+  - mutation: `Read.Description` never sets the note -> `ExplorerDescriptor.TestTheStatementsToolsEndWithTheStatisticsNote` red alone, all three statements tools on three legs each.
+
+**Measured after (AC4 proxy, `ocupilot-ci`, this story's code loaded, `Loop.DispatchClass().Advertise` and `Prompt.Builtin()`):**
+
+- The listing holds 396 tools; its descriptions sum to 152,880 characters, against 125,314 before: +27,566, bound 40,000.
+- `Builtin()` is 4,559 characters, against 4,248 before: +311, bound 400.
+- Two reads exceed 1,000 characters, `osmgmt.dashboard` at 1,143 and `osmgmt.ecpstatistics` at 1,030; the longest description of all is an existing write tool at 1,516.
+- Warm `Registry.ProviderTools` takes 0.46 to 0.49 s for 396 tools, and 157 `Read.Title` calls take 0.042 s.
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-The plan's two questions are ruled (Design Notes, Lead rulings). No re-plan was needed.
+**Summary.** Every read tool's description is now composed from declarations: the screen's title from the generated `Screen/Titles.cls`, the descriptor's `row` phrase, the executor's answered fields (`Screen.Read.AnsweredFields`), the descriptor's `label` where it declares one, and its `note` last. 157 descriptors declare `row` and 35 also `label`; `logs.applicationerrors.read` composes through the same `Compose` from `ErrorRead.ROW` and `ErrorRead.LABEL`. The built-in prompt carries the three list rules. `Registry.cls` and `screen-mirror.mjs` validate `row` and `label` alike, and `screen-mirror.mjs` writes and checks `Titles.cls`.
+
+**Files changed.**
+
+- `ui/tools/screen-mirror.mjs`: `readRowLabelProblem`, `buildTitles`, `generateTitles`, the `--check` of `Titles.cls`, `ReadDeclaration.row` and `.label`.
+- `src/OcuPilot/Screen/Titles.cls` (new, generated) and `ui/src/app/core/screens.generated.ts` (regenerated).
+- `ui/src/app/core/strings.ts`: one header line.
+- `src/OcuPilot/Screen/Registry.cls`: `ReadRowLabelProblem` and the allowed keys.
+- `src/OcuPilot/Screen/Read.cls`: `AnsweredFields`, lifted from `Execute`.
+- `src/OcuPilot/Screen/Tool/Read.cls`: `Title`, `Compose`, `Description`; `src/OcuPilot/Screen/Tool/ErrorRead.cls`: `ROW`, `LABEL`, `Description`.
+- `src/OcuPilot/Screen/Descriptor/*.cls` (157): `row`, and `label` on 35.
+- `src/OcuPilot/Kernel/Agent/Prompt.cls`: the three rules and the sentence-group count.
+- `src/OcuPilot/Test/ReadDescriptions.cls` (new), `Test/ReadSourceCorpus.cls`, `Test/ExplorerDescriptor.cls`, `ui/tools/screen-mirror.test.mjs`, `ui/tools/field-lists.test.mjs`.
+- `.githooks/pre-commit`: the `Screen mirror:` hint names `Titles.cls`.
+
+**Review.** Two layers ran (`verification-gap`, `intent-alignment`); 18 findings. Patched: 1 medium (the title leg had no independent oracle) and 2 low (missing `mutation:` lines). Deferred: 1 (descriptions over 1,024 characters, medium unverified). Rejected: 14, each with its reason in the Review Triage Log. Follow-up review recommended: `false` (no high patched, one medium).
+
+**Verification.** On `ocupilot-ci`: `src/` loads with 0 errors; the 19 listed classes plus `ReadDescriptions` run one per call, 0 failed, totals confirmed in `%UnitTest_Result`; `npm run test:tools` 2147 passed; `npm run test:components` 3338 passed; `npm run build` passes its prebuild checkers with an initial total of 2.01 MB; `check-objectscript.py` and `lint-docs.sh` report 0 problems. The token proxies are inside the bounds (Verification, Measured after). Fifteen mutations are recorded, each with the test that went red.
+
+**Residual risks and hand-offs.**
+
+- Task Z (the "after" token measurement and live evaluation) is the lead's, and AC5 stays open until it runs.
+- Story 20.38 adds three read descriptors (`ExplorerSqlSchema`, `ExplorerSqlSchemaViews`, `ExplorerSqlSchemaProcedures`) that need a `row` before `TestEveryReadToolNamesItsTitleRowAndFields` passes on the merged tree. Both stories edit `strings.ts`, `Test/ExplorerDescriptor.cls` and `screen-mirror.test.mjs`, and the merge regenerates `screens.generated.ts` and `Titles.cls`.
+- `.githooks/pre-commit` is outside the spec's file list: a footprint extension for the report.

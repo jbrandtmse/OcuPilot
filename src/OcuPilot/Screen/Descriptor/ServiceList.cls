@@ -62,6 +62,7 @@ XData Declaration
   "classicPage": "%CSP.UI.Portal.Services",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "service",
     "source": {"port": "admin", "endpoint": "Security.Service", "type": "LIST"},
     "fields": ["Name", "Enabled", "Public", "AuthenticationMethods", "AllowedConnections", "Description", "HttpOnlyCookies", "TwoFactorEnabled"],
     "filter": ["Name", "Description", "AuthenticationMethods", "AllowedConnections"],

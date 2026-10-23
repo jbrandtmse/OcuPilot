@@ -46,6 +46,7 @@ XData Declaration
   "classicPage": "EnsPortal.TestingService",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "request class or settable field",
     "source": {"port": "interop", "endpoint": "ItemTest", "type": "LIST"},
     "fields": ["Production", "Item", "RequestClass", "Kind", "Field", "Type", "Required", "MaxLength", "Values", "Secret"],
     "filter": ["RequestClass", "Field", "Type"],

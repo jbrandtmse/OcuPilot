@@ -39,6 +39,7 @@ XData Declaration
   "classicPage": "%CSP.UI.Portal.LicenseUsage",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "distributed license connection",
     "source": {"port": "admin", "endpoint": "Monitor", "type": "LICENSEUSAGE", "rows": "ConnectionList"},
     "fields": ["UserId", "LicenseUnits", "Connections", "ServerIP", "Instance"],
     "filter": ["UserId", "ServerIP"],

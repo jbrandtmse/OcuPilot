@@ -39,6 +39,7 @@ XData Declaration
   "classicPage": "EnsPortal.ProductionConfig",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "event log entry of one item",
     "source": {"port": "interop", "endpoint": "ItemLog", "type": "LIST"},
     "fields": ["Production", "Item", "ID", "TimeLogged", "Type", "Text", "Job", "SessionId"],
     "filter": ["Type", "Text", "Job", "SessionId"],

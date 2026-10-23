@@ -44,6 +44,7 @@ XData Declaration
   "classicPage": "EnsPortal.VisualTrace",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "message in one session",
     "source": {"port": "interop", "endpoint": "MessageTrace", "type": "LIST"},
     "fields": ["Message", "Step", "ID", "TimeCreated", "Type", "Status", "Source", "Target", "BodyClass", "Error", "SessionId"],
     "filter": ["Type", "Status", "Source", "Target", "BodyClass"],

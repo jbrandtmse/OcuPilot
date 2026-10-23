@@ -65,6 +65,7 @@ XData Declaration
   "classicPage": "%CSP.UI.Portal.SSLList",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "SSL/TLS configuration",
     "source": {"port": "admin", "endpoint": "Security.SSLConfig", "type": "LIST"},
     "fields": ["Name", "Description", "Enabled", "Type"],
     "filter": ["Name", "Description", "Type"],

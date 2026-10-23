@@ -39,6 +39,8 @@ XData Declaration
   "classicPage": "%CSP.UI.Portal.SQL.Logs",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "SQL diagnostic result",
+    "label": "SQL diagnostic results (%SQL_Diag) from every readable namespace; ODBC and JDBC errors are in logs.xdbc.",
     "source": {"port": "logsource", "endpoint": "sqldiagnostics", "type": "LIST"},
     "fields": ["time", "severity", "text"],
     "filter": ["time", "severity", "text"],

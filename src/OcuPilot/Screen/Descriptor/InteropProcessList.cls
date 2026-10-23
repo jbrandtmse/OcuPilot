@@ -45,6 +45,8 @@ XData Declaration
   "classicPage": "EnsPortal.BusinessProcesses",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "business process class",
+    "label": "Business process classes (BPL or code) in this namespace, not running processes, which are in osmgmt.processes.",
     "source": {"port": "interop", "endpoint": "Processes", "type": "LIST"},
     "fields": ["Name", "Modified", "Coded"],
     "filter": ["Name"],

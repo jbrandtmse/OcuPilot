@@ -382,13 +382,11 @@ Method TestTheViewAndProcedureTabsFormTheirGroups()
 }
 
 /// <p>Story 19.14 (DW-1977): the three SQL statements reads declare the statistics note, and the
-/// description each read tool is registered with is the read tools' sentence naming its screen, then
-/// the note's text; Table info's read declares none, and its tool's description is that sentence
-/// alone.</p>
+/// description each read tool is registered with ends with the note's text; Table info's read declares
+/// none, and its tool's description carries no note and ends with its field list.</p>
 /// <p>Mutation (Rule 19): drop the note from
 /// <class>OcuPilot.Screen.Descriptor.ExplorerSqlViewStatements</class> -- its two legs go red; drop the
-/// append from <method>OcuPilot.Screen.Tool.Read.Description</method>, or replace the sentence with the
-/// note instead of appending it -- the three description legs go red.</p>
+/// note from <method>OcuPilot.Screen.Tool.Read.Description</method> -- the three description legs go red.</p>
 Method TestTheStatementsToolsEndWithTheStatisticsNote()
 {
     Set tText = "Statistics are as of the instance's last aggregation, so a recently run statement can read blank."
@@ -401,7 +399,9 @@ Method TestTheStatementsToolsEndWithTheStatisticsNote()
         Set tSC = ##class(OcuPilot.Screen.Tool.Registry).Resolve($List(tCase, 2), .tEntry, 1)
         Do $$$AssertStatusOK(tSC, $List(tCase, 2) _ " resolves")
         Set tDescription = $Select($IsObject($Get(tEntry)): ##class(OcuPilot.Screen.Tool.Registry).DescriptionOf(tEntry), 1: "")
-        Do $$$AssertEquals(tDescription, "Read the rows the " _ $Piece($List(tCase, 2), ".", 1, 2) _ " screen lists, bounded and with secret fields removed. " _ tText, $List(tCase, 2) _ ": its description is the read sentence, then the note")
+        Do $$$AssertEquals($Extract(tDescription, *-$Length(tText)+1, *), tText, $List(tCase, 2) _ ": its description ends with the note")
+        Do $$$AssertEquals($Length(tDescription, tText) - 1, 1, $List(tCase, 2) _ ": and carries the note once")
+        Do $$$AssertTrue(($Find(tDescription, " Fields: ") > 0) && ($Find(tDescription, " Fields: ") < $Find(tDescription, tText)), $List(tCase, 2) _ ": the field list comes before it")
     }
     Set tRead = ##class(OcuPilot.Screen.Descriptor.ExplorerSqlTable).Read()
     Do $$$AssertEquals(tRead.%GetTypeOf("note"), "unassigned", "Table info's read declares no note")
@@ -409,7 +409,14 @@ Method TestTheStatementsToolsEndWithTheStatisticsNote()
     Set tSC = ##class(OcuPilot.Screen.Tool.Registry).Resolve("explorer.sqltable.read", .tEntry, 1)
     Do $$$AssertStatusOK(tSC, "explorer.sqltable.read resolves")
     Set tDescription = $Select($IsObject($Get(tEntry)): ##class(OcuPilot.Screen.Tool.Registry).DescriptionOf(tEntry), 1: "")
-    Do $$$AssertEquals(tDescription, "Read the rows the explorer.sqltable screen lists, bounded and with secret fields removed.", "explorer.sqltable.read's description is the read sentence alone")
+    Set tFields = ""
+    Set tIterator = ##class(OcuPilot.Screen.Read).AnsweredFields("OcuPilot.Screen.Descriptor.ExplorerSqlTable").%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tField) {
+        Set tFields = tFields _ $Select(tFields = "": "", 1: ", ") _ tField
+    }
+    Do $$$AssertTrue(tFields '= "", "Table info's read answers fields")
+    Do $$$AssertEquals($Extract(tDescription, *-$Length(" Fields: " _ tFields _ ".")+1, *), " Fields: " _ tFields _ ".", "explorer.sqltable.read's description ends with its field list")
+    Do $$$AssertTrue(tDescription '[ "Statistics are as of", "and carries no note")
 }
 
 /// <p>The three columns whose value can run past its cell declare <code>long</code>, so the table

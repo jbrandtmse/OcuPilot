@@ -59,6 +59,8 @@ XData Declaration
   "classicPage": "%CSP.UI.Portal.BackgroundTaskList",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "background job",
+    "label": "Background jobs such as a database compact, started from the portal, the admin API or a database task; scheduled tasks are in tasks.schedule and their runs in tasks.history.",
     "source": {"port": "background", "endpoint": "BackgroundTask", "type": "LIST"},
     "fields": ["Source", "Id", "Task", "Namespace", "Status", "Details", "ErrorCount", "StartTime", "Database"],
     "filter": ["Source", "Task", "Namespace", "Status", "Details"],

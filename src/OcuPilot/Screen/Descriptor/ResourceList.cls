@@ -59,6 +59,7 @@ XData Declaration
   "classicPage": "%CSP.UI.Portal.Resources",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "resource",
     "source": {"port": "admin", "endpoint": "Security.Resource", "type": "LIST"},
     "fields": ["Name", "Description", "PublicPermission", "ResourceType", "AllowDelete"],
     "filter": ["Name", "Description", "PublicPermission", "ResourceType"],

@@ -38,6 +38,9 @@ import {
   parseRefSeparator,
   parseScopeWords,
   readCheckedInMirror,
+  readCheckedInTitles,
+  buildTitles,
+  TITLES_PATH,
   declaredStringKeys,
   readProblem,
   readSources,
@@ -113,6 +116,43 @@ test('the checked-in mirror is exactly what the descriptor declarations produce'
     generate(),
     `${MIRROR_PATH} is stale -- run node tools/screen-mirror.mjs`
   );
+});
+
+// Story 23.12 (AD-5, AD-36): a read tool's description gives its screen the title its descriptor's
+// `labelKey` names in `strings.ts`, generated onto the instance as `Screen/Titles.cls`. `buildTitles` maps
+// every descriptor `labelKey` to that value, sorted, in ASCII; a key the strings lack throws and names the
+// descriptor; and the checked-in class is exactly what the sources produce.
+//
+// Mutation (Rule 19): make `buildTitles` emit the key in place of its value -> the value assertion goes
+// red; drop its throw -> the missing-key assertion goes red; change a title in `strings.ts` without
+// regenerating -> `node tools/screen-mirror.mjs --check` exits 1 and the staleness assertion goes red.
+test('buildTitles maps every descriptor labelKey to its strings.ts value, and Titles.cls holds exactly that', () => {
+  const strings = loadStrings();
+  const { screens } = readSources();
+  const text = buildTitles(screens, strings);
+  const titles = JSON.parse(extractXData(text, 'Titles'));
+  const keys = [...new Set(screens.map((screen) => screen.declaration.labelKey))];
+  assert.ok(keys.length > 100, `every descriptor's labelKey is mapped (read ${keys.length})`);
+  assert.deepEqual(Object.keys(titles), [...keys].sort(), 'the keys are exactly the descriptors\' labelKeys, sorted');
+  for (const screen of screens) {
+    const { labelKey } = screen.declaration;
+    assert.equal(titles[labelKey], strings[labelKey], `${screen.className}: ${labelKey} is its strings.ts value`);
+  }
+  assert.equal(readCheckedInTitles(), text, `${TITLES_PATH} is stale -- run node tools/screen-mirror.mjs`);
+
+  const first = keys[0];
+  assert.notEqual(
+    buildTitles(screens, { ...strings, [first]: `${strings[first]} changed` }),
+    readCheckedInTitles(),
+    'a changed title makes the checked-in class differ, which is what --check compares'
+  );
+
+  const hostile = [{ className: 'OcuPilot.Screen.Descriptor.Hostile', declaration: { labelKey: 'noSuchStringKeyAnywhere' } }];
+  assert.throws(() => buildTitles(hostile, strings), /OcuPilot\.Screen\.Descriptor\.Hostile: labelKey 'noSuchStringKeyAnywhere' names no string/);
+
+  const escaped = buildTitles([{ className: 'OcuPilot.Screen.Descriptor.Accent', declaration: { labelKey: 'k' } }], { k: 'caf\u00e9' });
+  assert.ok(escaped.includes('"k": "caf\\u00e9"'), 'a non-ASCII title is written as a \\uXXXX escape');
+  assert.match(escaped, /^[\x00-\x7f]*$/, 'and the class is ASCII throughout (Rule 14)');
 });
 
 test('the mirror carries the kernel vocabulary, the areas and every descriptor', () => {
@@ -784,6 +824,8 @@ test('readProblem returns every source-type, forEach, query and parts sentence O
     if (testCase.context !== undefined) declaration.context = structuredClone(testCase.context);
     if (testCase.area !== undefined) declaration.area = testCase.area;
     if (testCase.note !== undefined) declaration.read.note = structuredClone(testCase.note);
+    if (testCase.row !== undefined) declaration.read.row = testCase.row;
+    if (testCase.label !== undefined) declaration.read.label = testCase.label;
     assert.equal(readProblem(declaration), testCase.expected, testCase.name);
     if (testCase.expected !== null) refusals += 1;
   }

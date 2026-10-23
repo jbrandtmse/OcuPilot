@@ -42,6 +42,7 @@ XData Declaration
   "classicPage": "%CSP.UI.Portal.Applications.WebList",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "matching role with its granted roles",
     "source": {"port": "admin", "endpoint": "WebApp.App", "type": "GET", "rows": "MatchRoles"},
     "fields": ["MatchRole", "TargetRoles"],
     "filter": ["MatchRole"],

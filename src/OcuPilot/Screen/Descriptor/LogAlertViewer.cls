@@ -61,6 +61,8 @@ XData Declaration
   "classicPage": "%cspapp.op.utilsysconsolelog",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "line of alerts.log",
+    "label": "Entries of the instance's alerts.log, newest first; the full console log is logs.messages.",
     "source": {"port": "logsource", "endpoint": "alerts", "type": "LIST"},
     "fields": ["time", "severity", "text"],
     "filter": ["time", "severity", "text"],

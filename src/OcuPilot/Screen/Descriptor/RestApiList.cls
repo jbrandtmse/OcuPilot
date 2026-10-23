@@ -57,6 +57,7 @@ XData Declaration
   "classicPage": "",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "REST application",
     "source": {"port": "mgmnt", "endpoint": "Applications", "type": "LIST"},
     "fields": ["Name", "Namespace", "DispatchClass", "SpecBased", "Enabled"],
     "filter": ["Name", "Namespace", "DispatchClass"],
