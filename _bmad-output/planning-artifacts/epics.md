@@ -9047,6 +9047,69 @@ So that an update never strands a run.
 
 - DW-2500: Kernel/State/SqlRun declares Kind between Namespace and State with no source Storage section, so an update from 1.0.12 shifts stored slots 4-10 and a pre-update background run reads 404 and is never swept (ledger; routed by load 2026-10-23)
 
+### Story 20.38: A schema opens its tables, views and procedures
+
+Chartered on 2026-10-23 at the owner's request, relayed by the Planner. The owner reported on the 1.0.13 demo: "clicking on a SQL Schema doesn't take you to looking at the subschemas https://demo.ocupilot.org/ocupilot/system-explorer/sql-schemas/Ens". Their direction was: "I want to do this as a second story. We can have the orchestrator run it in slot b so that we don't loose a lot of time." It runs beside Story 23.12, and 1.0.14 is cut once both are in.
+
+**Why.** The SQL schemas list's Schema column is a `name` column (`Screen/Descriptor/ExplorerSqlSchemas.cls`, id `single`, no `rowTarget`), so the shared table links each name to `system-explorer/sql-schemas/<schema>`. No screen answers that route. A click changes the address and the breadcrumb ("SQL schemas › Ens"), and the page stays the schema list. The classic portal's SQL page opens a schema into its tables, views and procedures.
+
+The SQL tables, views and procedures screens already filter by schema: `ExplorerSqlTables.cls` has a `schema` criterion, "One schema, spelled as explorer.sqlschemas.read answers its Schema; omit it to list every schema's tables", and so do the others.
+
+A Planner scan (inference: a structural heuristic, not a measurement) found 36 list screens whose `name` column has no screen under its route. Most are probably fine, because they link elsewhere or not at all, but nothing checks it.
+
+As a developer browsing System Explorer,
+I want a schema's name to open that schema,
+So that I can see its tables, views and procedures without filtering three screens by hand.
+
+**Acceptance Criteria:**
+
+- **Given** the SQL schemas list
+- **When** a schema's name is clicked
+- **Then** the schema's own screen opens at `system-explorer/sql-schemas/document/<schema>` [AMENDED 2026-10-23, Story 20.38 plan, unattended ruling: AD-5 puts a parent-scoped tab group's head at its parent list's `<route>/document`, and `sql-schemas/<schema>` stays the list's own id route; was `system-explorer/sql-schemas/<schema>`]. It is a tab group with "Tables", "Views" and "Procedures":
+  - each tab lists that schema's objects through the existing SQL tables, views and procedures reads with their `schema` criterion (Rule 31: extend those reads, never copy them);
+  - a system schema's objects show: each tab lists every object in its schema, system ones included, with no System control of its own [AMENDED 2026-10-23, Story 20.38 plan, unattended ruling: AD-5 gives a parent-scoped read one criterion, its route id; was "the System items criterion is carried over"];
+  - each object's name opens its existing table, view or procedure screen;
+  - the breadcrumb reads SQL schemas › <schema>.
+- **Given** a schema with no objects of a tab's kind (Ens has tables and procedures but no views [AMENDED 2026-10-23, Story 20.38 plan: measured on ocupilot-slot-b and ocupilot-b-ci; was "Ens has procedures but no tables"])
+- **When** that tab opens
+- **Then** it says so plainly, and the tab for a kind it does hold shows its rows.
+- **Given** the agent on the schema's screen
+- **When** it reads the screen
+- **Then** its screen context and tools are the tabs' own reads, scoped to that schema, with no new agent action.
+- **Given** every built list screen whose name column links somewhere
+- **When** the client tests run
+- **Then** a test fails if any such link leads to a route with no built screen to show it, which is the bug class above.
+  - SQL schemas is fixed in this story. The other lists the test finds are held in an exact allow-list, and Story 20.39 fixes them [AMENDED 2026-10-23, Story 20.38 plan, unattended split ruling: 17 more lists, past the dispatch's dozen, seven of them with more than one plausible target and three in descriptors Story 23.12 changes; was "Every list the test finds is fixed in this story: given a real target, or rendered as plain text where nothing should open."].
+  - The spec lists each one and what it now does.
+- **Given** the browser suite
+- **When** a spec clicks a schema name on SQL schemas
+- **Then** it lands on that schema's screen, sees its Procedures tab's rows for a schema that holds procedures, and opens one procedure from it.
+
+**Out of scope:** stored data and the installer (no upgrade check expected; the plan confirms from its diff), editing schemas, and any change to what the SQL tables, views and procedures screens show on their own.
+
+### Story 20.39: Every list's name opens something
+
+[CHARTERED 2026-10-23, split from Story 20.38 at its plan, unattended ruling within `limits.split_children`] Story 20.38's check found 17 lists besides SQL schemas whose name links back to the list itself, so a click changes the address and the page stays put. 20.38 holds them in an exact allow-list; this story empties it. Its spec's Design Notes list each one, with the target the plan found. After Story 20.38, and after Story 23.12 merges (the task and database descriptors are 23.12's too).
+
+As a developer browsing OcuPilot,
+I want every name a list links to open something,
+So that a click never leaves me where I was.
+
+**Acceptance Criteria:**
+
+- **Given** each list in Story 20.38's allow-list
+- **When** its name is clicked
+- **Then** it opens that object's existing screen, or the name is plain text where nothing should open.
+  - Where more than one target is plausible (SQL privileges, web application class access, database free space, DocDB, business partners, analytics folder items, screen permissions), the plan names the choice and its reason, and plain text is the default.
+  - The spec lists each list and what it now does.
+- **Given** Story 20.38's link check
+- **When** the client tests run
+- **Then** its allow-list is empty, and the check still fails on any new name link that leads back to its own list.
+
+- DW-2504: Four doc comments still place the name cell's link chain in data-table.ts, which Story 20.38 moved to navigation.ts's nameLinkTarget (ledger; routed by adjudication 2026-10-23)
+
+**Out of scope:** new screens for objects that have none; stored data and the installer.
+
 ## Epic 21: Stage 5 - custom-REST parity from the MCP suite's handlers
 
 Every remaining classic portal leaf with a backing class but no route becomes reachable: backup and mirroring, startup and memory tables, NLS locales, SQL settings, globals and the whole SQL tuning track, interoperability credentials, purge, deployment, record maps, workflow, the analytics editors, and a developer-tools set. The agent gains the 28 harvested inspection tools and undo by snapshot and revert.

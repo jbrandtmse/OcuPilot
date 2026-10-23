@@ -1,7 +1,7 @@
 /// <p>Pins the SQL catalog's screens over the wire and through the agent (AD-5, AD-11, AD-24, AD-36,
 /// AD-60): a list's, a table tab's and a view tab's reads over HTTP as the configured test principal
 /// (<class>OcuPilot.Test.Http</class>) on <class>OcuPilot.Test.ExplorerSqlProbe</class>'s objects;
-/// each of the eighteen <code>explorer.sql*.read</code> tools answered through the agent's dispatcher
+/// each of the twenty-one <code>explorer.sql*.read</code> tools answered through the agent's dispatcher
 /// as rows alone, a trigger's code, a view's text, a description and a statement's text past the
 /// field bound cut and named in <code>truncatedFields</code>; a view's text, a description, a
 /// statement's text and a cached query's text cut the same way in screen context; and the four lists'
@@ -116,7 +116,7 @@ Method TestAViewTabReadsOverTheWire()
     Do $$$AssertEquals(tStatus _ " " _ $Select($IsObject(tAnswer): tAnswer.%Get("code"), 1: ""), "404 PORT.NOTFOUND", "and an absent view is not found")
 }
 
-/// <p>AC5 and Story 19.14 AC7: each of the eighteen read tools answered through the agent's dispatcher
+/// <p>AC5 and Story 19.14 AC7: each of the twenty-one read tools answered through the agent's dispatcher
 /// returns rows and no document -- Partition mappings answering none, since the partitioned probe table
 /// has no mapping configured -- and a trigger's code, a view's text, a procedure's description and a
 /// statement's text longer than the field bound reach the model cut to it, ending in U+2026, each named
@@ -135,7 +135,7 @@ Method TestTheReadToolsAnswerBoundedRowsAlone()
         Set tParted = "{""table"":""" _ $Parameter(..#PROBE, "PARTED") _ """}"
         Set tView = "{""view"":""" _ $Parameter(..#PROBE, "VIEW") _ """}"
         Set tQuery = "{""procedure"":""" _ $Parameter(..#PROBE, "QUERY") _ """}"
-        For tCase = $ListBuild("explorer.sqlschemas.read", "{}"), $ListBuild("explorer.sqltables.read", "{""schema"":""OcuProbe195""}"), $ListBuild("explorer.sqlviews.read", "{""schema"":""OcuProbe195""}"), $ListBuild("explorer.sqlprocedures.read", "{""schema"":""OcuProbe195""}"), $ListBuild("explorer.sqltable.read", tTable), $ListBuild("explorer.sqlfields.read", tTable), $ListBuild("explorer.sqlindices.read", tTable), $ListBuild("explorer.sqltriggers.read", tTable), $ListBuild("explorer.sqlconstraints.read", tTable), $ListBuild("explorer.sqlpartitions.read", tParted), $ListBuild("explorer.sqlpartitionmappings.read", tParted, 0), $ListBuild("explorer.sqlcachedqueries.read", tTable), $ListBuild("explorer.sqltablestatements.read", tTable), $ListBuild("explorer.sqlview.read", tView), $ListBuild("explorer.sqlviewfields.read", tView), $ListBuild("explorer.sqlviewstatements.read", tView), $ListBuild("explorer.sqlprocedure.read", tQuery), $ListBuild("explorer.sqlprocedurestatements.read", tQuery) {
+        For tCase = $ListBuild("explorer.sqlschemas.read", "{}"), $ListBuild("explorer.sqltables.read", "{""schema"":""OcuProbe195""}"), $ListBuild("explorer.sqlviews.read", "{""schema"":""OcuProbe195""}"), $ListBuild("explorer.sqlprocedures.read", "{""schema"":""OcuProbe195""}"), $ListBuild("explorer.sqltable.read", tTable), $ListBuild("explorer.sqlfields.read", tTable), $ListBuild("explorer.sqlindices.read", tTable), $ListBuild("explorer.sqltriggers.read", tTable), $ListBuild("explorer.sqlconstraints.read", tTable), $ListBuild("explorer.sqlpartitions.read", tParted), $ListBuild("explorer.sqlpartitionmappings.read", tParted, 0), $ListBuild("explorer.sqlcachedqueries.read", tTable), $ListBuild("explorer.sqltablestatements.read", tTable), $ListBuild("explorer.sqlview.read", tView), $ListBuild("explorer.sqlviewfields.read", tView), $ListBuild("explorer.sqlviewstatements.read", tView), $ListBuild("explorer.sqlprocedure.read", tQuery), $ListBuild("explorer.sqlprocedurestatements.read", tQuery), $ListBuild("explorer.sqlschematables.read", "{""schema"":""OcuProbe195""}"), $ListBuild("explorer.sqlschemaviews.read", "{""schema"":""OcuProbe195""}"), $ListBuild("explorer.sqlschemaprocedures.read", "{""schema"":""OcuProbe195""}") {
             Set tContent = ..Dispatch(tTurnKey, $List(tCase, 1), $List(tCase, 2), .tIsError)
             Set tRows = tContent.%Get("rows")
             If $ListGet(tCase, 3, 1) {
@@ -181,6 +181,10 @@ Method TestTheReadToolsAnswerBoundedRowsAlone()
 
         Set tContent = ..Dispatch(tTurnKey, "explorer.sqlfields.read", "{}", .tIsError)
         Do $$$AssertEquals(tIsError _ " " _ tContent.%Get("code"), "1 PORT.VALIDATION", "a tab called with no table is refused")
+        For tSchemaTool = "explorer.sqlschematables.read", "explorer.sqlschemaviews.read", "explorer.sqlschemaprocedures.read" {
+            Set tContent = ..Dispatch(tTurnKey, tSchemaTool, "{}", .tIsError)
+            Do $$$AssertEquals(tIsError _ " " _ tContent.%Get("code"), "1 PORT.VALIDATION", tSchemaTool _ ": a schema tab called with no schema is refused")
+        }
     } Catch ex {
         Do $$$AssertStatusOK(ex.AsStatus(), "the dispatch leg ran")
     }

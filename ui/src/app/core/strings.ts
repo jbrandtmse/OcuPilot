@@ -5025,6 +5025,12 @@ export const STRINGS = {
   /** EXPERIENCE.md:595 */
   explorerSqlProceduresEmpty: 'No SQL procedures in <NAMESPACE> match.',
   /** EXPERIENCE.md:595 */
+  explorerSqlSchemaTablesEmpty: 'This schema has no SQL tables.',
+  /** EXPERIENCE.md:595 */
+  explorerSqlSchemaViewsEmpty: 'This schema has no SQL views.',
+  /** EXPERIENCE.md:595 */
+  explorerSqlSchemaProceduresEmpty: 'This schema has no SQL procedures.',
+  /** EXPERIENCE.md:595 */
   explorerSqlTableEmpty: 'This table no longer exists.',
   /** EXPERIENCE.md:595 */
   explorerSqlFieldsEmpty: 'This table has no fields this account can see.',
