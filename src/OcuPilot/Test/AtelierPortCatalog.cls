@@ -1,7 +1,8 @@
 /// <p>Pins the source code API port's SQL catalog family through
 /// <class>OcuPilot.Test.AtelierPortFixture</class>'s canned <code>Query</code> route (AD-21, AD-61
-/// rules 1, 2, 3, 6 and 7): each of the nine endpoints sends exactly its fixed statement with every
-/// caller value bound in <code>parameters</code> and its <code>max</code>; a tab resolves its table
+/// rules 1, 2, 3, 6 and 7): each endpoint sends exactly its fixed statement with every caller value
+/// bound in <code>parameters</code> and its <code>max</code>, a schema tab its list's statement with the
+/// system flag on and a required schema; a tab resolves its table
 /// first and binds the exact names the resolve answers; rows carry exactly the declared fields, flags
 /// read as booleans and no column outside the map; every malformed argument, the gate and an instance
 /// too old for the query route are refused before any route; a resolve answering none or two tables
@@ -102,6 +103,50 @@ Method TestEachListSendsItsFixedStatementAndBoundValues()
     Kill tQuery
     Set tSC = ..Read("Catalog.Views", .tQuery, .tRows, .tHttp, .tFault)
     Do $$$AssertEquals(##class(OcuPilot.Test.AtelierPortFixture).CallAt(1).params.%ToJSON(), "{""max"":" _ $Parameter(..#PORT, "CATALOGMAX") _ "}", "a read naming no cap asks for the port's own bound")
+}
+
+/// <p>Story 20.38 AC1: each schema tab sends the query route exactly its list's statement, the system
+/// flag on whatever <code>system</code> the caller supplied -- <code>SYSTEM TABLE</code> for the tables, 1
+/// for the views and procedures -- and the schema twice, with <code>max</code> the read's cap.</p>
+/// <p>Mutation (Rule 19): bind the flag off in <method>OcuPilot.Port.AtelierPort.CatalogRows</method> for
+/// the schema tabs -&gt; every bound-body assertion here goes red.</p>
+Method TestEachSchemaTabSendsItsListsStatementWithSystemItems()
+{
+    For tCase = $ListBuild("Catalog.SchemaTables", "CATALOGTABLESQUERY", "[""SYSTEM TABLE"",""Probe"",""Probe""]"), $ListBuild("Catalog.SchemaViews", "CATALOGVIEWSQUERY", "[1,""Probe"",""Probe""]"), $ListBuild("Catalog.SchemaProcedures", "CATALOGPROCEDURESQUERY", "[1,""Probe"",""Probe""]") {
+        Do ..ClearFixtures()
+        Do ..ArmCatalog()
+        Kill tQuery
+        Set tQuery("maxRows") = 7
+        Set tQuery("system") = "no"
+        Set tQuery("schema") = "Probe"
+        Set tSC = ..Read($List(tCase, 1), .tQuery, .tRows, .tHttp, .tFault)
+        Set tCall = ##class(OcuPilot.Test.AtelierPortFixture).CallAt(1)
+        Do $$$AssertEquals(tHttp _ " " _ ##class(OcuPilot.Test.AtelierPortFixture).CallCount() _ " " _ tCall.method _ " " _ tCall.params.%ToJSON() _ " " _ tCall.contentType, "200 1 Query {""max"":7} application/json", $List(tCase, 1) _ ": one query call, sent max alone")
+        Do $$$AssertEquals(tCall.body, ..Body($List(tCase, 2), $List(tCase, 3)), $List(tCase, 1) _ ": its list's statement, the flag on though system=no was supplied")
+    }
+}
+
+/// <p>Story 20.38 AC1: a schema tab reads one schema. An absent, empty, 129-character or
+/// control-character schema is refused 400 <code>PORT.VALIDATION</code> with the schema reason before any
+/// route, and a schema of exactly 128 characters is read.</p>
+/// <p>Mutation (Rule 19): drop the empty-schema test in <method>OcuPilot.Port.AtelierPort.CatalogRows</method>
+/// -&gt; the absent and empty legs go red.</p>
+Method TestASchemaTabRequiresOneSchema()
+{
+    Do ..ArmCatalog()
+    For tEndpoint = "Catalog.SchemaTables", "Catalog.SchemaViews", "Catalog.SchemaProcedures" {
+        For tLeg = $ListBuild("absent", ""), $ListBuild("empty", ""), $ListBuild("129 characters", $Translate($Justify("", 129), " ", "s")), $ListBuild("control character", "a" _ $Char(10) _ "b") {
+            Kill tQuery
+            If $List(tLeg, 1) '= "absent" Set tQuery("schema") = $List(tLeg, 2)
+            Set tSC = ..Read(tEndpoint, .tQuery, .tRows, .tHttp, .tFault)
+            Do $$$AssertEquals(tHttp _ " " _ $Select($IsObject(tFault): tFault.code _ " " _ tFault.reason, 1: ""), "400 PORT.VALIDATION " _ $Parameter(..#PORT, "REASONCATALOGSCHEMA"), tEndpoint _ ": " _ $List(tLeg, 1) _ " schema is refused with its reason")
+        }
+    }
+    Do $$$AssertEquals(##class(OcuPilot.Test.AtelierPortFixture).CallCount(), 0, "before any route")
+    Kill tQuery
+    Set tQuery("schema") = $Translate($Justify("", 128), " ", "s")
+    Set tSC = ..Read("Catalog.SchemaTables", .tQuery, .tRows, .tHttp, .tFault)
+    Do $$$AssertEquals(tHttp _ " " _ ##class(OcuPilot.Test.AtelierPortFixture).CallCount(), "200 1", "a schema of 128 characters, the bound, is read")
 }
 
 /// <p>AC2, AC3: each tab first sends the resolve with the caller's name bound and <code>max</code> 2,
@@ -239,10 +284,11 @@ Method TestTheGateRefusesBeforeAnyRoute()
 {
     Do ..ArmCatalog()
     Do ##class(OcuPilot.Test.AtelierPortFixture).SetGateClass("OcuPilot.Test.ScreenGate")
-    For tLeg = $ListBuild("", "%Development:USE", "Catalog.Tables"), $ListBuild("%Development", "%DB_PROBEHOME:READ", "Catalog.Triggers") {
+    For tLeg = $ListBuild("", "%Development:USE", "Catalog.Tables"), $ListBuild("", "%Development:USE", "Catalog.SchemaTables"), $ListBuild("", "%Development:USE", "Catalog.SchemaViews"), $ListBuild("", "%Development:USE", "Catalog.SchemaProcedures"), $ListBuild("%Development", "%DB_PROBEHOME:READ", "Catalog.Triggers") {
         If $List(tLeg, 1) '= "" Do ##class(OcuPilot.Test.ScreenGate).Hold($List(tLeg, 1), "USE")
         Kill tQuery
         Set tQuery("table") = "OcuProbe.Thing"
+        Set tQuery("schema") = "OcuProbe"
         Set tSC = ..Read($List(tLeg, 3), .tQuery, .tRows, .tHttp, .tFault)
         Set tPair = $Select($IsObject(tFault) && $IsObject(tFault.%Get("detail")): tFault.detail.failedPair, 1: "")
         Do $$$AssertEquals(tHttp _ " " _ $Select($IsObject(tFault): tFault.code, 1: "") _ " " _ tPair, "403 AUTH.NOPRIVILEGE " _ $List(tLeg, 2), $List(tLeg, 3) _ ": a caller short of " _ $List(tLeg, 2) _ " is refused naming it")
@@ -261,9 +307,10 @@ Method TestTheVersionGateRefusesEveryCatalogRead()
     Do ..ArmCatalog()
     Do ##class(OcuPilot.Test.AtelierPortFixture).SetVersion(5)
     Set tWanted = $Replace($Replace($Parameter(..#PORT, "REASONVERSION"), "{highest}", 5), "{needed}", 6)
-    For tEndpoint = "Catalog.Schemas", "Catalog.Tables", "Catalog.Views", "Catalog.Procedures", "Catalog.Table", "Catalog.Fields", "Catalog.Indices", "Catalog.Triggers", "Catalog.Constraints" {
+    For tEndpoint = "Catalog.Schemas", "Catalog.Tables", "Catalog.Views", "Catalog.Procedures", "Catalog.SchemaTables", "Catalog.SchemaViews", "Catalog.SchemaProcedures", "Catalog.Table", "Catalog.Fields", "Catalog.Indices", "Catalog.Triggers", "Catalog.Constraints" {
         Kill tQuery
         Set tQuery("table") = "OcuProbe.Thing"
+        Set tQuery("schema") = "OcuProbe"
         Set tSC = ..Read(tEndpoint, .tQuery, .tRows, .tHttp, .tFault)
         Do $$$AssertEquals(tHttp _ " " _ $Select($IsObject(tFault): tFault.code _ " " _ tFault.reason, 1: ""), "501 PORT.NOTIMPLEMENTED " _ tWanted, tEndpoint _ " on a version 5 instance is refused naming both versions")
     }

@@ -376,6 +376,53 @@ export function detailScreenFor(screen: ScreenDeclaration): ScreenDeclaration | 
   return SCREENS.find((child) => isDetailScreenOf(child, screen)) ?? null;
 }
 
+/** Whether `screen` declares a classic row link under its exemption (AD-44), which no in-app target replaces. */
+export function hasClassicRowLink(screen: ScreenDeclaration): boolean {
+  return screen.classicLinkExemption.exempt && (screen.classicLinkExemption.rowLink ?? null) !== null;
+}
+
+/**
+ * The screen `screen`'s declared `rowTarget` names (Story 6.10), or `null` when it declares none, names
+ * a route the mirror does not carry, or declares a classic row link in its place.
+ */
+export function rowTargetScreenFor(screen: ScreenDeclaration): ScreenDeclaration | null {
+  const rowTarget = screen.rowTarget;
+  return hasClassicRowLink(screen) || rowTarget === null ? null : screenForRoute(rowTarget.route);
+}
+
+/**
+ * The screen a list's name cell opens, or `null` when the cell is text or a classic link.
+ *
+ * The name cell opens the entity's own surface: a declared rowTarget first (Story 6.10's
+ * cross-screen row link, whose field -- not the row's own id -- `data-table.ts` encodes, because
+ * a list keyed by something other than the linked entity, such as Locks by its removal id,
+ * would otherwise link to the wrong place), then the classic editor where the screen declares a
+ * row link under its exemption (AD-44), which no in-app target replaces and whose blank-value
+ * guard leaves the cell as text; otherwise the list's paired editor where it declares
+ * one (Story 3.5's `editorScreenFor`), its paired document viewer where it declares one
+ * (`documentScreenFor`), its paired per-row detail screen where it declares one
+ * (Story 6.7's `detailScreenFor`), the sub-resource list whose parent it is (`childListFor`),
+ * and otherwise the list's own route with the row's id. A list that declares both a detail
+ * screen and an editor opens the detail screen, which is where its editor is reached from
+ * (Story 9.8: Task schedule). A screen with none is not linkable at
+ * all, and neither is a parent-scoped list that pairs no editor, viewer or detail screen: its
+ * own route's id is its parent's, so a row's id there would name the wrong thing.
+ *
+ * The cell links only when the target `hasIdRoute`. A target equal to `screen` itself is a link
+ * back to the same list.
+ */
+export function nameLinkTarget(screen: ScreenDeclaration): ScreenDeclaration | null {
+  return hasClassicRowLink(screen)
+    ? null
+    : rowTargetScreenFor(screen) ??
+        (editorScreenFor(screen) === null ? null : detailScreenFor(screen)) ??
+        editorScreenFor(screen) ??
+        documentScreenFor(screen) ??
+        detailScreenFor(screen) ??
+        childListFor(screen) ??
+        (screen.parentScope === '' ? screen : null);
+}
+
 /**
  * The list `screen` is a sub-resource list or the per-row detail screen of, or `null`: the screen
  * at its `parentScope` whenever `screen` qualifies as that screen's child list or detail screen,

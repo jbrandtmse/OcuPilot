@@ -2,7 +2,8 @@
 title: 'Story 20.38: A schema opens its tables, views and procedures'
 type: 'bugfix'
 created: '2026-10-23'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '8c9c61f5d7863a34d3b14ab724a8f9f492fc04bb'
 review_loop_iteration: 0
 followup_review_recommended: false
 context: []
@@ -153,6 +154,25 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Lines were
 
 ## Review Triage Log
 
+### 2026-10-23 - Review pass
+
+- verdicts: 14 findings - high 0, medium 1, low 4, false 9, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` AC4's "never links to an unbuilt screen" assertion cannot fail: the mirror carries only built screens and every chain arm filters on `built` - patched: the predicate is `unbuiltLinkTargets(screens)`, and a control test feeds it a synthetic unbuilt copy of `AllowedDirectoryList` and expects it flagged; the mutation line is recorded.
+  - `[low]` `[patch]` AC1's breadcrumb clause had no `mutation:` line, and the browser test read the locator on two of three tabs - patched in the pass (Rule 19 closes a missing line in the review): the Views tab's locator is asserted, and the mutation line is recorded.
+  - `[low]` `[patch]` Mutation instructions at `data-table.spec.ts` (the Wallet, Activity log and Task schedule tests) and the SQL browser spec (the Tables and Views clicks) named a `linkTarget` chain in `data-table.ts`, which this story moved - patched: they name `nameLinkTarget` in `navigation.ts`.
+  - `[low]` `[patch]` The paired-editor test's instruction in `data-table.spec.ts` predated the move and named code no longer there - patched the same way, its mutation (drop the two `editorScreenFor` terms) run red, reverted byte-identical.
+  - `[low]` `[patch]` The allow-list's count of 17 is a tripwire with no note that Story 20.39 deletes it - patched: a one-line comment.
+  - `[false]` `[reject]` The a11y structural walk was not run: no defect is claimed, and the spec leaves the full browser suite to CI.
+  - `[false]` `[reject]` The list's click is fixed indirectly, through `documentScreenFor`, and only the browser spec drives it: the Code Map says the list is not edited, AC5 pins the click in the browser and AC4's test pins the function.
+  - `[false]` `[reject]` The matrix examples `Ens` and `%Library` are not driven end to end: the plan rules probe-made schemas so a test makes what it asserts, the live test reads `%Dictionary` and `%Library` through the port with and without the system key, and `%` in a route id uses the shared encode pair that `detail-page.spec.ts` exercises for `%Library`.
+  - `[false]` `[reject]` Only the Procedures `rowTarget` is clicked, and only the Views empty sentence is rendered: AC5 names the Procedures click, and the Table, View and Procedure `rowTarget`s and the three `emptyStateKey`s are pinned by the descriptor test and `name-links.test.mjs`.
+  - `[false]` `[reject]` The refusal row is tested below the shell: the matrix row is the AD-29 port refusal, pinned for each tab by `TestTheGateRefusesBeforeAnyRoute`, and the shell's rendering of a refused read is shared grammar this story does not change.
+  - `[false]` `[reject]` "Every object" against the read cap: measured on `ocupilot-b-ci`, the largest counts are 184 procedures (`HS_FHIR_DTL_FROMSDA`), 171 (`%Library`) and 57 tables (`%Dictionary`) against a cap of 1001, and the cap with its notice is the grammar of the lists the tabs extend.
+  - `[false]` `[reject]` The guard evaluates `nameLinkTarget` rather than the drawn cell: `data-table.ts` calls that same function for its target, and the steps after it (the id route, the row-target field) are pinned by `data-table.spec.ts`.
+  - `[false]` `[reject]` The test allows 24 self-links, not the contract's 17: AC4 and the Q4 ruling declare the seven non-defects as their own set, and the 17 are held exactly (count, exact-set, disjoint).
+  - `[false]` `[reject]` Three new read tools against "no new agent action": the Q3 ruling reads it so, AC3 allows the tabs' own reads, and no write, row action or primary action is added.
+
 ## Design Notes
 
 - **Governing ADs (Rule 6):**
@@ -203,6 +223,10 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Lines were
   - **Prompts.** Each tab reuses its list's prompts 2 and 3 plus `homeStarterPromptExplainScreen`, in the Code group. Prompt 1 names the namespace, not the schema. Reusing keys has precedent (19 prompt keys are already shared between descriptors), and adds no string.
   - **The empty-tab check** uses a probe-made schema with one table (`OcuProbe2038`), not `Ens`, so that the test makes what it asserts (Rule 30). The procedure rows come from `OcuProbe195.Echo`.
   - **The schema criterion's `hint`** is "One schema, spelled as explorer.sqlschemas.read answers its Schema." It is tool text: no page renders a criterion's hint.
+  - **The bare schema's Procedures tab** lists the one procedure its table projects, `OcuProbe2038.Bare_Extent` (measured on `ocupilot-b-ci`), so `TestASchemaTabListsEveryObjectOfItsSchema` asserts that row for Procedures and no rows for Views; the browser test asserts Views only.
+  - **The shared chain** is `nameLinkTarget` in `navigation.ts`, with the two predicates `data-table.ts` also reads, `hasClassicRowLink` and `rowTargetScreenFor`, exported beside it rather than copied.
+  - **A self-link** in `name-links.test.mjs` is a name cell whose target is the screen itself and has an id route; a target with no id route leaves the cell as text. It measured 24 lists, the seven non-defects and rows 2-18.
+  - **A roster the plan did not name:** `ReadTool.TestEveryCriteriaCorpusCaseGetsItsSentence` counts descriptors that declare criteria, 69 to 72.
 - **Golden example**, the head's distinctive keys. Everything else follows `ExplorerSqlTables` and `ExplorerSqlTable`:
 
   ```json
@@ -289,20 +313,60 @@ Every test added or changed passes on a fresh environment, in either order.
 
 - **AC1.** The browser test.
   - Mutation: drop `ExplorerSqlSchemaProcedures`' `rowTarget`, then regenerate, rebuild and redeploy. The wait for the procedure's path times out.
+  - mutation: dropped `ExplorerSqlSchemaProcedures`' `rowTarget`, regenerated the mirror, rebuilt, redeployed -> `system-explorer-sql.browser-spec.mjs` "Story 20.38 AC1, AC2, AC5" red (`clickRowCentre: the row carries no .ocu-data-table-link`); reverted and rebuilt, green, the descriptor and `screens.generated.ts` byte-identical.
   - Supporting: the live test (mutation: bind the flag from `system` for the schema endpoints, and the `%Dictionary` and `%Library` legs go red), and `AtelierPortCatalog`'s bodies (mutation: bind 0, and red).
+  - mutation: bound the flag from `system` for the schema tabs in `AtelierPort.CatalogRows` -> `AtelierPortCatalogLive.TestASchemaTabListsEveryObjectOfItsSchema` red on its four `%Dictionary` and `%Library` legs.
+  - mutation: bound the flag as 0 in `AtelierPort.CatalogRows` -> `AtelierPortCatalog.TestEachSchemaTabSendsItsListsStatementWithSystemItems` red on all three tabs (and `TestEachListSendsItsFixedStatementAndBoundValues` on its `system=yes` legs).
+  - mutation: dropped the empty-schema test from `AtelierPort.CatalogRows` -> `AtelierPortCatalog.TestASchemaTabRequiresOneSchema` red on the absent and empty legs of all three tabs.
+  - mutation: labeled `ExplorerSqlSchemaViews` `explorerSqlColumnViews` instead of `explorerSqlSchemasLabel`, regenerated, rebuilt, redeployed -> the same browser test red at "and the same on the Views tab" (the locator read Views, not SQL schemas); reverted and rebuilt, green, the descriptor and `screens.generated.ts` byte-identical.
 - **AC2.** The browser test's `OcuProbe2038` leg.
   - Mutation: point `ExplorerSqlSchemaViews`' `emptyStateKey` at `explorerSqlViewsEmpty`. The sentence assertion goes red.
+  - mutation: pointed `ExplorerSqlSchemaViews`' `emptyStateKey` at `explorerSqlViewsEmpty`, regenerated, rebuilt, redeployed -> the same browser test red on "a schema with no views says so" (`No SQL views in USER match.` for `This schema has no SQL views.`); reverted and rebuilt, green, byte-identical.
 - **AC3.** `ExplorerDescriptor.TestTheSchemaTabsFormOneParentScopedGroup`'s `ScreenTools` leg.
   - Mutation: drop the `BoundTo` filter in `OcuPilot.Screen.Context.ScreenTools`, and recompile. The exact-tools assertion goes red.
+  - mutation: dropped the `BoundTo` filter in `OcuPilot.Screen.Context.ScreenTools`, reloaded `src` -> `ExplorerDescriptor.TestTheSchemaTabsFormOneParentScopedGroup` red on its three "name its own read alone" legs (four other `ScreenTools` tests in the class red too); reverted and reloaded, green, `Context.cls` byte-identical.
   - Supporting: `ToolRoundTrip`'s `PORT.VALIDATION` rows.
 - **AC4.** `name-links.test.mjs`.
   - Mutation: drop the `documentScreenFor` arm from `nameLinkTarget`. SQL schemas and other document-paired lists self-link, and the exact-set assertion goes red naming them.
+  - mutation: dropped the `documentScreenFor` arm from `nameLinkTarget` -> `name-links.test.mjs` "the lists whose name cell links back to themselves are exactly the declared..." red, naming SQL schemas, the Classes, Routines, Tables, Views and Procedures lists, four interoperability lists, Cubes and REST APIs, and "the SQL schemas list opens the schema screen" red; reverted, green, `navigation.ts` byte-identical.
   - A second mutation: delete one allow-list row. Red.
+  - mutation: deleted the `AgentScreenPermissions` row from `STORY_20_39_ALLOW_LIST` -> the same exact-set test red naming it, and the disjoint-sets test red on its row count; reverted, green, byte-identical.
+  - mutation: made `unbuiltLinkTargets` in `name-links.test.mjs` never flag (`target.built !== true` became `false`) -> "the unbuilt-target check flags a name cell that links to a screen that is not built" red; reverted, byte-identical.
 - **AC5.** AC1's browser test, with AC1's mutation.
+  - mutation: AC1's first mutation -> the same browser test red at the click on the procedure's name.
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-This plan pass wrote the tasks, ACs, Verification and in-stage decisions within the runner's rulings. No code was changed. The read-only measurements were made on `ocupilot-b-ci`.
+**Change.** A schema's name on SQL schemas opens a parent-scoped group at `system-explorer/sql-schemas/document/<schema>` with Tables, Views and Procedures tabs. Each lists every object of its kind in the schema, system ones included, through its list's own statement, and each object's name opens its screen. A client test fails on any list whose name cell links back to itself outside the declared non-defects and Story 20.39's allow-list.
+
+**Files changed.**
+
+- Port: `src/OcuPilot/Port/AtelierPort.cls` - the three `Catalog.Schema*` endpoints over their lists' statements and column maps, the system flag bound on, `schema` required.
+- Screens: new `ExplorerSqlSchema`, `ExplorerSqlSchemaViews` and `ExplorerSqlSchemaProcedures` descriptors; `ui/src/app/core/screens.generated.ts` regenerated; three empty-tab strings in `ui/src/app/core/strings.ts`; EXPERIENCE.md line 595 edited in place.
+- Client: `nameLinkTarget` (with `hasClassicRowLink` and `rowTargetScreenFor`) moved from `data-table.ts` into `ui/src/app/core/navigation.ts`; new `ui/tools/name-links.test.mjs`.
+- ObjectScript tests and rosters: `ExplorerSqlProbe` (`MakeBare`, `RemoveBare`), `AtelierPortCatalog`, `AtelierPortCatalogLive`, `ExplorerDescriptor`, `ExplorerCatalog`, `ReadTool` (403 tools, 72 criteria screens), `ToolRoundTrip`, `DeveloperFloor`, `SurfaceCoverage`, `StageTwoTools`, `Descriptor`.
+- Client tests: `screen-mirror.test.mjs`, `navigation.test.mjs`, `detail-page.spec.ts`, `side-bar.spec.ts`, `data-table.spec.ts` (mutation comments only), and the SQL browser spec's new test.
+
+**Review.** 14 findings: 5 patched (1 medium, 4 low), 9 rejected `false`, none deferred (`deferred: []`). Patches are in the triage log. `screen-mirror.mjs`, `Registry.cls` and every existing descriptor are untouched.
+
+**Follow-up review recommended:** false. One medium was patched, no high.
+
+**Verification** (all on `ocupilot-b-ci`, after the last patch unless noted):
+
+- the four story classes (10, 9, 17 and 5 tests) and the six touched rosters (108): green, on the tree as loaded;
+- the eight untouched consumers (63): green, run once after the last patch;
+- `npm run test:tools` (2,151) and `npm run test:components` (3,340): green;
+- `npm run build`: the prebuild checkers pass and the initial total is 2.00 MB, under the 2,500 kB warning;
+- the SQL browser spec: 8 of 8, on the final bundle;
+- `check-objectscript.py`: 0 problems; `lint-docs.sh`: 0 issues;
+- the matrix's five rows are each covered by a test that ran and passed;
+- every mutation is recorded under Verification, each reverted byte-identical.
+
+**Residual risks.**
+
+- Story 23.12 (Epic 23, slot A) changes `ExplorerDescriptor.cls`, `strings.ts`, `screens.generated.ts` and `screen-mirror.test.mjs`, which this story also edits, and the new read descriptors need its `row` and `label` lines if it merges first. The integrate-forward resolves both.
+- Not run here, left to the lead: the full ObjectScript sweep, `smoke.sh`, the Rule 30 fresh check and the full browser suite with the a11y structural walk.
+- A schema named `document`, `views` or `procedures` shares its list route id with a group route; judged negligible.

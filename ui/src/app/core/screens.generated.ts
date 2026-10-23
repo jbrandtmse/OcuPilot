@@ -11300,6 +11300,455 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "entityLabelKey": ""
   },
   {
+    "descriptor": "OcuPilot.Screen.Descriptor.ExplorerSqlSchema",
+    "route": "system-explorer/sql-schemas/document",
+    "area": "system-explorer",
+    "labelKey": "explorerSqlSchemasLabel",
+    "sideBarPosition": 0,
+    "archetype": "detail",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Development",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "class",
+    "secondaryEntityTypes": [],
+    "scope": "namespace",
+    "parentScope": "system-explorer/sql-schemas",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Table",
+        "Class",
+        "Owner",
+        "Sharded",
+        "Partitioned"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "explorerSqlSchemaTablesEmpty",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "explorerSqlTablesPrompt2"
+      },
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "explorerSqlTablesPrompt3"
+      },
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "homeStarterPromptExplainScreen"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.SQL.Home",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "atelier",
+        "endpoint": "Catalog.SchemaTables",
+        "type": "LIST"
+      },
+      "fields": [
+        "Table",
+        "Schema",
+        "Name",
+        "Class",
+        "Owner",
+        "Sharded",
+        "Partitioned"
+      ],
+      "filter": [
+        "Table",
+        "Schema",
+        "Class"
+      ],
+      "sort": {
+        "fields": [
+          "Table",
+          "Class",
+          "Owner"
+        ],
+        "default": "Table",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "schema",
+            "labelKey": "explorerSqlColumnSchema",
+            "kind": "text",
+            "maxLength": 128,
+            "hint": "One schema, spelled as explorer.sqlschemas.read answers its Schema."
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Table",
+          "labelKey": "explorerSqlColumnTable",
+          "kind": "name"
+        },
+        {
+          "field": "Class",
+          "labelKey": "explorerClassDocumentLabel",
+          "kind": "identifier"
+        },
+        {
+          "field": "Owner",
+          "labelKey": "explorerSqlColumnOwner",
+          "kind": "text"
+        },
+        {
+          "field": "Sharded",
+          "labelKey": "explorerSqlColumnSharded",
+          "kind": "status"
+        },
+        {
+          "field": "Partitioned",
+          "labelKey": "explorerSqlColumnPartitioned",
+          "kind": "status"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "tab": {
+      "group": "system-explorer/sql-schemas/document",
+      "position": 1,
+      "labelKey": "explorerSqlColumnTables"
+    },
+    "rowTarget": {
+      "route": "system-explorer/sql-tables/document",
+      "field": "Table"
+    },
+    "toolIdentifier": "explorer.sqlschematables",
+    "refreshDefault": 0,
+    "banner": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.ExplorerSqlSchemaProcedures",
+    "route": "system-explorer/sql-schemas/procedures",
+    "area": "system-explorer",
+    "labelKey": "explorerSqlSchemasLabel",
+    "sideBarPosition": 0,
+    "archetype": "detail",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Development",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "class",
+    "secondaryEntityTypes": [],
+    "scope": "namespace",
+    "parentScope": "system-explorer/sql-schemas",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Procedure",
+        "Type",
+        "Class",
+        "Method"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "explorerSqlSchemaProceduresEmpty",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "explorerSqlProceduresPrompt2"
+      },
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "explorerSqlProceduresPrompt3"
+      },
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "homeStarterPromptExplainScreen"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.SQL.Home",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "atelier",
+        "endpoint": "Catalog.SchemaProcedures",
+        "type": "LIST"
+      },
+      "fields": [
+        "Procedure",
+        "Schema",
+        "Name",
+        "Type",
+        "Class",
+        "Method"
+      ],
+      "filter": [
+        "Procedure",
+        "Schema",
+        "Class"
+      ],
+      "sort": {
+        "fields": [
+          "Procedure",
+          "Type",
+          "Class"
+        ],
+        "default": "Procedure",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "schema",
+            "labelKey": "explorerSqlColumnSchema",
+            "kind": "text",
+            "maxLength": 128,
+            "hint": "One schema, spelled as explorer.sqlschemas.read answers its Schema."
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Procedure",
+          "labelKey": "explorerSqlColumnProcedure",
+          "kind": "name"
+        },
+        {
+          "field": "Type",
+          "labelKey": "tableColumnType",
+          "kind": "text"
+        },
+        {
+          "field": "Class",
+          "labelKey": "explorerClassDocumentLabel",
+          "kind": "identifier"
+        },
+        {
+          "field": "Method",
+          "labelKey": "explorerSqlColumnMethod",
+          "kind": "identifier"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "tab": {
+      "group": "system-explorer/sql-schemas/document",
+      "position": 3,
+      "labelKey": "explorerSqlColumnProcedures"
+    },
+    "rowTarget": {
+      "route": "system-explorer/sql-procedures/document",
+      "field": "Procedure"
+    },
+    "toolIdentifier": "explorer.sqlschemaprocedures",
+    "refreshDefault": 0,
+    "banner": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.ExplorerSqlSchemaViews",
+    "route": "system-explorer/sql-schemas/views",
+    "area": "system-explorer",
+    "labelKey": "explorerSqlSchemasLabel",
+    "sideBarPosition": 0,
+    "archetype": "detail",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Development",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "class",
+    "secondaryEntityTypes": [],
+    "scope": "namespace",
+    "parentScope": "system-explorer/sql-schemas",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "View",
+        "Class",
+        "Owner",
+        "Updatable",
+        "CheckOption"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "explorerSqlSchemaViewsEmpty",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "explorerSqlViewsPrompt2"
+      },
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "explorerSqlViewsPrompt3"
+      },
+      {
+        "groupKey": "webAppPromptGroupCode",
+        "textKey": "homeStarterPromptExplainScreen"
+      }
+    ],
+    "classicPage": "%CSP.UI.Portal.SQL.Home",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "atelier",
+        "endpoint": "Catalog.SchemaViews",
+        "type": "LIST"
+      },
+      "fields": [
+        "View",
+        "Schema",
+        "Name",
+        "Class",
+        "Owner",
+        "Updatable",
+        "CheckOption"
+      ],
+      "filter": [
+        "View",
+        "Schema",
+        "Class"
+      ],
+      "sort": {
+        "fields": [
+          "View",
+          "Class",
+          "Owner"
+        ],
+        "default": "View",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "schema",
+            "labelKey": "explorerSqlColumnSchema",
+            "kind": "text",
+            "maxLength": 128,
+            "hint": "One schema, spelled as explorer.sqlschemas.read answers its Schema."
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "View",
+          "labelKey": "viewMenuLabel",
+          "kind": "name"
+        },
+        {
+          "field": "Class",
+          "labelKey": "explorerClassDocumentLabel",
+          "kind": "identifier"
+        },
+        {
+          "field": "Owner",
+          "labelKey": "explorerSqlColumnOwner",
+          "kind": "text"
+        },
+        {
+          "field": "Updatable",
+          "labelKey": "explorerSqlColumnUpdatable",
+          "kind": "status"
+        },
+        {
+          "field": "CheckOption",
+          "labelKey": "explorerSqlColumnCheckOption",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "tab": {
+      "group": "system-explorer/sql-schemas/document",
+      "position": 2,
+      "labelKey": "explorerSqlColumnViews"
+    },
+    "rowTarget": {
+      "route": "system-explorer/sql-views/document",
+      "field": "View"
+    },
+    "toolIdentifier": "explorer.sqlschemaviews",
+    "refreshDefault": 0,
+    "banner": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
     "descriptor": "OcuPilot.Screen.Descriptor.ExplorerSqlSchemas",
     "route": "system-explorer/sql-schemas",
     "area": "system-explorer",

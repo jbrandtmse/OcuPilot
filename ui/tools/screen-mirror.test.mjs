@@ -952,6 +952,8 @@ test('tabProblem and tabGroupProblem return every sentence OcuPilot.Test.TabCorp
     // Story 18.21: ECP application servers' two tabs, a listed group whose head is its first tab.
     ['os-management/ecp-application-servers', 'os-management/ecp-application-servers', 1, 19],
     ['system-explorer/sql-procedures/document', 'system-explorer/sql-procedures/document', 1, 0],
+    // Story 20.38: a schema's three tabs, a parent-scoped group whose head is unlisted.
+    ['system-explorer/sql-schemas/document', 'system-explorer/sql-schemas/document', 1, 0],
     ['system-explorer/sql-tables/document', 'system-explorer/sql-tables/document', 1, 0],
     ['system-explorer/sql-views/document', 'system-explorer/sql-views/document', 1, 0],
     // Story 20.4: a production item's six tabs, a parent-scoped group whose head is unlisted.
@@ -966,6 +968,7 @@ test('tabProblem and tabGroupProblem return every sentence OcuPilot.Test.TabCorp
     ['os-management/ecp-application-servers/ssl', 'os-management/ecp-application-servers', 2, 0],
     ['system-explorer/sql-tables/fields', 'system-explorer/sql-tables/document', 2, 0],
     ['system-explorer/sql-procedures/statements', 'system-explorer/sql-procedures/document', 2, 0],
+    ['system-explorer/sql-schemas/views', 'system-explorer/sql-schemas/document', 2, 0],
     ['system-explorer/sql-views/fields', 'system-explorer/sql-views/document', 2, 0],
     ['interoperability/productions/items/settings', 'interoperability/productions/items/document', 2, 0],
     ['interoperability/messages/contents', 'interoperability/messages/document', 2, 0],
@@ -974,6 +977,7 @@ test('tabProblem and tabGroupProblem return every sentence OcuPilot.Test.TabCorp
     ['security/oauth/clients', 'security/oauth', 2, 0],
     ['analytics/cubes/relationships', 'analytics/cubes/document', 3, 0],
     ['system-explorer/sql-tables/indices', 'system-explorer/sql-tables/document', 3, 0],
+    ['system-explorer/sql-schemas/procedures', 'system-explorer/sql-schemas/document', 3, 0],
     ['system-explorer/sql-views/statements', 'system-explorer/sql-views/document', 3, 0],
     ['interoperability/productions/items/queue', 'interoperability/productions/items/document', 3, 0],
     // Story 20.30: a message's Trace tab, the third of the message group.
@@ -1495,6 +1499,7 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
   // Story 20.9's Messages search, whose nine criteria are its own, and its Header and Contents tabs, whose one criterion is the message.
   // Story 20.30's Trace tab, whose one criterion is the message too.
   // Story 20.11's three cube tabs, whose one criterion is the cube, and a term list's entries, whose one criterion is the term list.
+  // Story 20.38's three schema tabs, whose one criterion is the schema the route id names.
   const withCriteria = emittedScreens.filter((screen) => (screen.read?.criteria ?? null) !== null);
   assert.deepEqual(
     withCriteria.map((screen) => screen.descriptor),
@@ -1523,6 +1528,9 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
       'OcuPilot.Screen.Descriptor.ExplorerSqlProcedure',
       'OcuPilot.Screen.Descriptor.ExplorerSqlProcedureStatements',
       'OcuPilot.Screen.Descriptor.ExplorerSqlProcedures',
+      'OcuPilot.Screen.Descriptor.ExplorerSqlSchema',
+      'OcuPilot.Screen.Descriptor.ExplorerSqlSchemaProcedures',
+      'OcuPilot.Screen.Descriptor.ExplorerSqlSchemaViews',
       'OcuPilot.Screen.Descriptor.ExplorerSqlSchemas',
       'OcuPilot.Screen.Descriptor.ExplorerSqlTable',
       'OcuPilot.Screen.Descriptor.ExplorerSqlTableStatements',
@@ -3086,6 +3094,10 @@ test('Story 19.1: the System Explorer reads through the atelier port, the eighth
     ExplorerSqlViewStatements: ['Catalog.ViewStatements', 'view='],
     ExplorerSqlProcedure: ['Catalog.Procedure', 'procedure='],
     ExplorerSqlProcedureStatements: ['Catalog.ProcedureStatements', 'procedure='],
+    // Story 20.38: a schema's three tabs, each reading one schema.
+    ExplorerSqlSchema: ['Catalog.SchemaTables', 'schema='],
+    ExplorerSqlSchemaViews: ['Catalog.SchemaViews', 'schema='],
+    ExplorerSqlSchemaProcedures: ['Catalog.SchemaProcedures', 'schema='],
   };
   for (const [name, [endpoint, defaults]] of Object.entries(expected)) {
     const screen = screens.find((candidate) => candidate.className === `OcuPilot.Screen.Descriptor.${name}`);

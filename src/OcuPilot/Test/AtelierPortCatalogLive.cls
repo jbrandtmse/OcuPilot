@@ -213,6 +213,53 @@ Method TestSystemItemsListWhenChosen()
     Do $$$AssertEquals(tHttp _ " " _ tNone.%Size(), "200 0", "and none when they are not, in an answer")
 }
 
+/// <p>Story 20.38 AC1, AC2: a schema's Tables, Views and Procedures tabs read every object of their kind
+/// in the schema, system ones included, whatever <code>system</code> says -- for the probe schema, the
+/// same rows as the list read with system items on; for <code>%Dictionary</code>, its tables, and for
+/// <code>%Library</code>, its procedures, with no <code>system</code> and with <code>system=no</code>.
+/// A schema holding one table and nothing else answers its table, no view, and the one procedure the table
+/// projects, its extent; and a read naming no schema is refused 400.</p>
+/// <p>Mutation (Rule 19): bind the flag from <code>system</code> for the schema tabs in
+/// <method>OcuPilot.Port.AtelierPort.CatalogRows</method> -&gt; the <code>%Dictionary</code> and
+/// <code>%Library</code> legs go red.</p>
+Method TestASchemaTabListsEveryObjectOfItsSchema()
+{
+    Set tProbe = "schema=" _ $Parameter(..#PROBE, "SCHEMA")
+    For tCase = $ListBuild("Catalog.SchemaTables", "Catalog.Tables"), $ListBuild("Catalog.SchemaViews", "Catalog.Views"), $ListBuild("Catalog.SchemaProcedures", "Catalog.Procedures") {
+        Set tTab = ..Rows($List(tCase, 1), tProbe, 1000, .tTabHttp)
+        Set tList = ..Rows($List(tCase, 2), tProbe _ ",system=yes", 1000, .tListHttp)
+        Do $$$AssertEquals(tTabHttp _ " " _ tListHttp, "200 200", $List(tCase, 1) _ ": the tab and its list read")
+        Do $$$AssertTrue(tTab.%Size() > 0, $List(tCase, 1) _ ": the probe schema's rows are not empty")
+        Do $$$AssertEquals(tTab.%ToJSON(), tList.%ToJSON(), $List(tCase, 1) _ ": the probe schema's rows are its list's with system items on")
+    }
+    For tCase = $ListBuild("Catalog.SchemaTables", "%Dictionary", "%Dictionary.ClassDefinition", "Table"), $ListBuild("Catalog.SchemaProcedures", "%Library", "", "Procedure") {
+        For tSystem = "", ",system=no" {
+            Set tRows = ..Rows($List(tCase, 1), "schema=" _ $List(tCase, 2) _ tSystem, 5000, .tHttp)
+            Set tWhere = $List(tCase, 1) _ " " _ $List(tCase, 2) _ $Select(tSystem = "": " with no system key", 1: " with system=no")
+            Do $$$AssertEquals(tHttp, 200, tWhere _ ": reads")
+            If $List(tCase, 3) '= "" {
+                Do $$$AssertTrue(("," _ ..Column(tRows, $List(tCase, 4)) _ ",") [ ("," _ $List(tCase, 3) _ ","), tWhere _ ": lists " _ $List(tCase, 3))
+            } Else {
+                Do $$$AssertTrue(tRows.%Size() > 0, tWhere _ ": is not empty")
+            }
+        }
+    }
+    Set tMade = $ClassMethod(..#PROBE, "MakeBare", ..#PROBENAMESPACE)
+    Do $$$AssertStatusOK(tMade, "the bare probe schema is created")
+    If $$$ISOK(tMade) {
+        Set tBare = "schema=" _ $Parameter(..#PROBE, "BARESCHEMA")
+        Do $$$AssertEquals(..Column(..Rows("Catalog.SchemaTables", tBare, 100, .tHttp), "Table"), $Parameter(..#PROBE, "BARETABLE"), "the bare schema's Tables tab answers its one table")
+        Do $$$AssertEquals(tHttp, 200, "and answers 200")
+        Set tRows = ..Rows("Catalog.SchemaViews", tBare, 100, .tHttp)
+        Do $$$AssertEquals(tHttp _ " " _ tRows.%Size(), "200 0", "the bare schema's Views tab answers 200 with no rows")
+        Set tRows = ..Rows("Catalog.SchemaProcedures", tBare, 100, .tHttp)
+        Do $$$AssertEquals(tHttp _ " " _ ..Column(tRows, "Procedure"), "200 " _ $Parameter(..#PROBE, "BARETABLE") _ "_Extent", "and its Procedures tab, the table's own extent procedure alone")
+    }
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "RemoveBare", ..#PROBENAMESPACE), "the bare probe schema is removed")
+    Set tRows = ..Rows("Catalog.SchemaTables", "", 100, .tHttp, .tFault)
+    Do $$$AssertEquals(tHttp _ " " _ $Select($IsObject(tFault): tFault.code, 1: ""), "400 PORT.VALIDATION", "a schema tab with no schema is refused")
+}
+
 /// <p>Matrix (Over the cap), AC1: through the read executor at a cap of three, the probe schema's four
 /// tables read as three with the cut reported, and at four uncut.</p>
 Method TestTheCapIsReportedThroughTheRead()

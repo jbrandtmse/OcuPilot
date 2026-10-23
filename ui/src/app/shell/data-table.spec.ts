@@ -196,9 +196,9 @@ describe('the data table', () => {
     // editor, so every other case in this file takes the `?? screen` fallback and cannot tell a
     // regression here from the behaviour it always had.
     //
-    // Mutation (Rule 19): change `const linkTarget = editorScreenFor(screen) ?? screen;` back to
-    // `const linkTarget = screen;` in `data-table.ts` -> this goes red, and clicking a
-    // definition's name re-renders the list with `id = '<the id>'` instead of opening its form.
+    // Mutation (Rule 19): drop the two `editorScreenFor(screen)` terms from `nameLinkTarget` in
+    // `navigation.ts` -> this goes red, and clicking a definition's name re-renders the list with
+    // `id = '<the id>'` instead of opening its form.
     const wired = await wire(
       // Only the route is changed: `editorScreenFor` keys off it, and the probe's own columns and
       // single id keep the row key resolvable without inventing a row shape.
@@ -260,7 +260,7 @@ describe('the data table', () => {
     // `childListFor` resolves the built, unlisted, id-keyed screen whose `parentScope` is the list's
     // route out of the generated mirror, so the Wallet list's own route is what is needed here.
     //
-    // Mutation (Rule 19): drop `childListFor(screen)` from the `linkTarget` chain in `data-table.ts`
+    // Mutation (Rule 19): drop `childListFor(screen)` from `nameLinkTarget` in `navigation.ts`
     // -> the first link assertion goes red, reading the Wallet list's own id route instead.
     const wallet = await wire(tableDeclaration({ route: 'security/wallet' }), ok(rows(2)));
     await wallet.refresh.readNow();
@@ -301,7 +301,7 @@ describe('the data table', () => {
     expect(stopped[3].textContent?.trim()).toBe(STRINGS.tableStatusNo);
     // Story 16.25: the editor is paired now, so it wins over the Activity log child list, which the
     // editor links instead.
-    // Mutation (Rule 19): drop the `editorScreenFor(screen) ??` term from `linkTarget` -> this reads the
+    // Mutation (Rule 19): drop the `editorScreenFor(screen) ??` term from `nameLinkTarget` -> this reads the
     // Activity log's route and goes red.
     const link = running[0].querySelector('a') as HTMLAnchorElement;
     expect(link.getAttribute('href')).toBe('/os-management/language-servers/edit/%2525Java%2520Server?ns=HSCUSTOM');
@@ -312,7 +312,7 @@ describe('the data table', () => {
     // Task schedule pairs Task details and, since Edit task reads the id, the task form's id route
     // too; the name cell keeps opening the details, which is where Edit is reached from.
     //
-    // Mutation (Rule 19): drop the detail-first term from the `linkTarget` chain in `data-table.ts`
+    // Mutation (Rule 19): drop the detail-first term from `nameLinkTarget` in `navigation.ts`
     // -> this goes red, reading the editor's route instead.
     const wired = await wire(tableDeclaration({ route: 'tasks/schedule' }), ok(rows(2)));
     await wired.refresh.readNow();

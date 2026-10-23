@@ -348,6 +348,10 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'system-explorer/sql-tables/partitions',
       'system-explorer/sql-procedures/document',
       'system-explorer/sql-procedures/statements',
+      // Story 20.38: a schema's three unlisted tabs, after the procedure's, by descriptor class name.
+      'system-explorer/sql-schemas/document',
+      'system-explorer/sql-schemas/procedures',
+      'system-explorer/sql-schemas/views',
       'system-explorer/sql-tables/document',
       'system-explorer/sql-tables/statements',
       'system-explorer/sql-tables/triggers',
