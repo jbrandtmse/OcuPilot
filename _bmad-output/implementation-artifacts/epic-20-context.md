@@ -54,7 +54,7 @@ Bring the classic portal's Interoperability work into OcuPilot for namespaces th
 - **The fix is declaration order only.** RunKey, UserName, Namespace, State, JobId, CancelRequested, QueuedAt, StartedAt, EndedAt and Answer keep slots 1 to 10, and Kind becomes slot 11. No other product code changes: the code that reads and writes Kind and the existing tests stay as they are. Never hand-write a Storage section.
 - **One small test** reads the compiled storage map and asserts the eleven slots. Show it red under the mutation (Kind moved back between Namespace and State), then revert the mutation.
 - **Out of scope.** A general check that compares every persistent class's stored property order against the previous release is backlog (DW-2501), not built now. `SCHEMAVERSION` does not move, because no stored row's meaning changes.
-- A dev or throwaway instance may hold SqlRun rows written under the shifted layout. After the fix such a row's `State` holds its kind, which no reconcile, reserve or sweep selects, so it stays inert: never live and never counted against a cap (inference, from the code). No migration is planned.
+- A dev or throwaway instance may hold SqlRun rows written under the shifted layout. After the fix such a row's `State` holds its kind, which no reconcile, reserve or sweep selects, so it stays: no reserve counts it against a cap and no sweep removes it (inference, from the code). No migration is planned.
 
 ### Rest of the epic
 

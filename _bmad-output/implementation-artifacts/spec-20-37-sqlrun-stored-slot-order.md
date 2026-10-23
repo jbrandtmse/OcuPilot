@@ -94,6 +94,21 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Lines were
   - every class in the `(once)` batch passes.
 - [ ] **DW-2500** (ledger; routed by load 2026-10-23): `Kernel/State/SqlRun` declares `Kind` between `Namespace` and `State` with no source Storage section, so an update from 1.0.12 shifts stored slots 4-10 and a pre-update background run reads 404 and is never swept. The `SqlRun.cls` task and AC1 close it. The orchestrator's 1.0.13 upgrade re-check is its end-to-end proof.
 
+### Review Findings
+
+- [x] [Review][Patch] The two `mutation:` lines name QA's runs only and blur which stage ran which [this spec, `## Verification`]
+- [x] [Review][Defer] No NULL-kind ended-row leg pins `GuardedReserve`'s delete default [SqlRun.cls:143] — deferred: DW-2502 (occurrence appended); the charter bars the leg here, so `ledger_adjudicated` re-owns or closes it.
+- [x] [Review][Defer] The slot test does not cover the inherited `BaseDefaultData` slots (`%%CLASSNAME`, `RowVersion`), so a property declared in `Base` above `RowVersion` would shift every run row unseen [SqlRunStore.cls:372] — deferred: DW-2501 (occurrence appended); AC1 scopes this test to `SqlRunDefaultData`.
+
+Rejected:
+
+- `false`: AC2's mutation line covers one of its two clauses. Rule 19 asks for one demonstrated mutation per AC, and AC2 has one.
+- `false`: AC3 has no pinning test. It is a scope criterion: the diff's only product change is in `SqlRun.cls`, and `SqlRunStore.cls` gains the header phrase and one method.
+- `false`: AC3's evidence omits the bookkeeping files in the review diff. They are the lead's `_bmad-output/**` changes, not story code.
+- `low`, by-design: a row written in 20.33's order is never swept, and its owner's poll by key reads `running` (its `State` holds the kind). The Never list bars any migration, and no release holds such rows (`70125af9` is not in `origin/main`).
+- `low`, append-only ledger: DW-2502's body reads `footprint: in-epic`, though both files are this story's. Its `open owner=` trailer is what `ledger_adjudicated` dispositions.
+- `low`, spec prose (the lead's): the spec still says `epic-20-context.md` :57 needs correcting, but it was corrected at `d0f48c80`. It also mixes pre-move and post-move line numbers, quotes the removed "AC2 pins it", leaves its task boxes unticked, and logs as `false` a finding that Finalize fixed.
+
 ## Spec Change Log
 
 ## Review Triage Log
@@ -122,9 +137,9 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Lines were
 **Rows written in 20.33's order.**
 
 - **Where they are.** Only code since Story 20.33 writes them, so only development instances and throwaways hold them. Measured: 20.33 (`70125af9`) is not in `origin/main`, and no release branch after `release/1.0.12` exists.
-- **How they read after the fix.** Such a row's `State` holds its kind (`sql` or `mdx`). No reconcile, reserve or sweep selects that value, so the row stays and is inert: it is never live and never counted against a cap (inference, from the code).
+- **How they read after the fix.** Such a row's `State` holds its kind (`sql` or `mdx`). No reconcile, reserve or sweep selects that value, so the row stays: no reserve counts it against a cap and no sweep removes it, and a poll of it reads its kind as its state (inference, from the code).
 - **No migration is planned.** The owner's charter is the move, and a data change on a shared development instance is the owner's call.
-- **For the lead:** `epic-20-context.md` :57 says such rows are swept 900 s after they end (inference). By the reading above they are not, so correct that line at its origin.
+- `epic-20-context.md` :57 was corrected to this reading at `d0f48c80`.
 
 **`SCHEMAVERSION` stays 1** (Conventions: when `SCHEMAVERSION` moves). No stored row's meaning changes: a 1.0.12 row reads every column as written, and reads `Kind` as the safe default `sql`, the case that row names (`RowVersion`, `CredentialCreated`). `Kind`'s doc comment records this, as `Turn.Workflow`'s does.
 
@@ -183,8 +198,9 @@ Shared surfaces: `SqlRun`'s compiled storage map. No other test reads it: `State
 | AC2 | `IdForOwner`'s statement compares `Kind = ?` without `COALESCE` | `TestLookupsMatchTheKindAndARowWithNoKindReadsAsSql` ("reads as SQL") |
 | AC3 | None: a scope criterion, checked by the diff | - |
 
-- mutation: `Kind` declared between `Namespace` and `State` again; whole `src` reloaded on `ocupilot-b-ci`; `SqlRunStore` red, `TestARunStoredBeforeKindKeepsEachColumnInItsSlot` alone (1 of 14); reverted (`SqlRun.cls` blob `8817f56b` before and after), reloaded, green (14 of 14).
-- mutation: `IdForOwner`'s statement compares `Kind = ?` without `COALESCE`; whole `src` reloaded on `ocupilot-b-ci`; `SqlRunStore` red, `TestLookupsMatchTheKindAndARowWithNoKindReadsAsSql` alone ("reads as SQL"); reverted (blob `8817f56b` before and after), reloaded, green (14 of 14).
+- mutation: `Kind` declared between `Namespace` and `State` again → `TestARunStoredBeforeKindKeepsEachColumnInItsSlot` red, alone (13 of 14 green): implement runs 2 and 15, QA run 26; green 14 of 14 after each revert (`SqlRun.cls` blob `8817f56b` before and after) and reload, in runs 3, 16 and 27.
+- mutation: `IdForOwner`'s statement compares `Kind = ?` without `COALESCE` → `TestLookupsMatchTheKindAndARowWithNoKindReadsAsSql` red, alone ("reads as SQL"): implement run 4, QA run 28; green 14 of 14 after each revert (blob `8817f56b`) and reload, in runs 5 and 29.
+- Run ids and their red methods were read from `%UnitTest_Result` on `ocupilot-b-ci` at code review.
 
 ## Auto Run Result
 
@@ -206,4 +222,4 @@ Verification, all on `ocupilot-b-ci`:
 - `(once)` batch of eight consumer classes green, 79 tests (runs 17-24).
 - `npm run test:tools` 2146 of 2146, `check-objectscript.py` 0 problems, `lint-docs.sh` 0 issues, and `git diff --stat` from `baseline_revision` lists `SqlRun.cls`, `SqlRunStore.cls` and this spec only.
 
-Residual risks: rows written in 20.33's order on development instances stay inert and unmigrated (the spec's inference); `epic-20-context.md` :57 still says such rows are swept 900 s after they end, which the lead should correct. The 1.0.13 upgrade re-check from `release/1.0.12` is the end-to-end proof and is the orchestrator's.
+Residual risks: rows written in 20.33's order on development instances stay inert and unmigrated (the spec's inference). The 1.0.13 upgrade re-check from `release/1.0.12` is the end-to-end proof and is the orchestrator's.

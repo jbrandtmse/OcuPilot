@@ -12390,13 +12390,17 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: 1.0.13 upgrade check (candidate 3fedf80c): pre-update SqlRun row read Kind=ended, State=old JobId; GET /explorer/sql/background/<id> 200 before, 404 after
 - 2026-10-23T02:50:27Z status=routed owner=burndown by=orchestrator note=owner decision 2026-10-22 (relayed by the Planner): fix before the 1.0.13 cut by declaring Kind after Answer; first task on resume, as a fix-forward story in Epic 20
 - 2026-10-23T03:40:38Z status=routed owner=20-37-sqlrun-stored-slot-order by=load note=fix_forward 20.37
+- 2026-10-23T04:57:16Z status=resolved-by:20-37-sqlrun-stored-slot-order by=adjudication note=a470a0a7 declares Kind after Answer; compiled SqlRunDefaultData 1-10 RunKey..Answer as release/1.0.12, 11 Kind (ocupilot-b-ci); pinned by SqlRunStore.TestARunStoredBeforeKindKeepsEachColumnInItsSlot, mutation red runs 2/15/26; NULL Kind reads sql (AC2, runs 4/28); end-to-end proof is the orchestrator's 1.0.13 upgrade re-check from release/1.0.12
 
 ### DW-2501: No check fails when a new stored property on a %Persistent class without a source Storage section is declared anywhere but last, compared with the previous release
 - source: upgrade-1013-check | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: SqlRun Kind (Story 20.33) shifted stored slots and only the release upgrade check caught it; Propose.TargetKey followed the append rule only by comment
 - 2026-10-23T02:50:28Z status=routed owner=burndown by=orchestrator note=owner request 2026-10-22 (relayed by the Planner): cleanup backlog, not built now; compare each persistent class's stored property order against the previous release tag
+- 2026-10-23T04:55:51Z occurrence=20-37-sqlrun-stored-slot-order
 
 ### DW-2502: No test replaces an owner's ended SqlRun row whose Kind is NULL through GuardedReserve's ended-row delete, so dropping its COALESCE(Kind, 'sql') reddens nothing
 - source: _bmad-output/implementation-artifacts/spec-20-37-sqlrun-stored-slot-order.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: SqlRun.cls GuardedReserve ended-row delete; SqlRunStore's NULL-kind leg covers lookup and busy refusal only, other replace tests store sql or mdx explicitly
 - 2026-10-23T04:38:43Z status=open owner=20-37-sqlrun-stored-slot-order by=harvest note=build-auto verification-gap layer; 20.37's charter bars changing existing tests
+- 2026-10-23T04:55:51Z occurrence=20-37-sqlrun-stored-slot-order
+- 2026-10-23T04:57:16Z status=wontfix-accepted by=adjudication note=LOW; 20.37's charter bars changing existing tests and the reader is 20.33's, unchanged; reopen_if=GuardedReserve's ended-row delete or Kind's empty-means-sql default changes, or a third run kind is added
