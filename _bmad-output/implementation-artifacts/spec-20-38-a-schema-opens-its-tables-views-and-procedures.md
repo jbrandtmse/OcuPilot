@@ -2,7 +2,7 @@
 title: 'Story 20.38: A schema opens its tables, views and procedures'
 type: 'bugfix'
 created: '2026-10-23'
-status: 'draft'
+status: 'ready-for-dev'
 review_loop_iteration: 0
 followup_review_recommended: false
 context: []
@@ -55,56 +55,135 @@ The rows follow the runner's rulings.
 
 ## Code Map
 
-All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Lines were read at `0e929fa6fb9de8b240c4fae4a989a0a8121a7686`.
+All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Lines were read at `145fea3e1a3ff7800400557557ea645169cceff4`; source is unchanged since `0e929fa6fb9de8b240c4fae4a989a0a8121a7686`.
 
-- `src/OcuPilot/Screen/Descriptor/ExplorerSqlSchemas.cls`: the list. Schema is a `name` column, the id is `single` and there is no `rowTarget`. Its page is `CodeListPage` (`ui/src/app/shell/screen-outlet.ts` :211).
-- `ExplorerSqlTables.cls`, `ExplorerSqlViews.cls`, `ExplorerSqlProcedures.cls`: the reads the tabs extend, each with the `system` and `schema` criteria.
-- `ExplorerSqlTable.cls` (head, `sql-tables/document`, `tab` position 1) and `ExplorerSqlFields.cls`: Story 19.5's parent-scoped group, which is the sibling grammar (Rule 31).
-- `src/OcuPilot/Port/AtelierPort.cls`: :166-174 holds the catalog statements, and :1290-1330 binds `system` and `schema`.
-- `src/OcuPilot/Screen/Registry.cls`: :232 (a unique tool identifier), :363 (a unique route), :712-797 (`TabGroupProblem`), :1610-1612 (the read tool's name), :1772-1787 (one criterion on a parent-scoped read).
-- `ui/tools/screen-mirror.mjs`: :2052 and :2710-2763, the mirror's twins of those checks.
-- `ui/src/app/shell/data-table.ts` :671-725: the name cell's link chain. The fallback to the list's own route is at :701.
-- `ui/src/app/core/navigation.ts`: :240-330 (the paired surfaces) and :783-803 (`withQuery` carries only `ns`).
-- `ui/src/app/app.routes.ts` :82-109: the route table and the `<route>/:id` routes.
-- `ui/src/app/shell/list-page.ts`: :69-80 and :238-255. A list opened on its own id selects that row (DW-1419).
-- `ui/src/app/shell/locator-bar.ts` :347-378.
-- `ui/src/app/areas/logs/audit.page.ts` :303-318: the detail dialog for whatever row the id names.
-- `ui/browser/system-explorer-sql.browser-spec.mjs`: the browser sibling.
-- `/private/tmp/claude-501/-Users-jbrandt-git-OcuPilot/eae04a03-b589-4d2f-8258-acd58fae0712/scratchpad/e20u/20-38/plan/hits.mjs`: the read-only scan behind Q4. Run it from `ui/`.
+- `src/OcuPilot/Port/AtelierPort.cls`: the catalog endpoints (:101-112), the list statements (:166-174) and column maps (:227-233), `REASONCATALOGSCHEMA` (:637, "schema must be 1 to 128 characters, with no control character."), `IsCatalog` (:1224), `CatalogStatement` (:1231), `CatalogColumns` (:1238) and `CatalogRows` (:1268). The list branch reads `system` and `schema` at :1292-1304 and binds them at :1306-1317. `MinVersion` (:793) gives every catalog endpoint the `Query` route's version.
+- `src/OcuPilot/Screen/Descriptor/ExplorerSqlTables.cls`, `ExplorerSqlViews.cls`, `ExplorerSqlProcedures.cls`: the reads, columns, context and prompts the tabs reuse. They are not edited.
+- `ExplorerSqlTable.cls` and `ExplorerSqlFields.cls` (Story 19.5), `ExplorerSqlView*.cls`, `ExplorerSqlProcedure*.cls` (Story 19.14): the parent-scoped group grammar. The cube Relationships tab (Story 20.11) is the precedent for a `rowTarget` on a tab.
+- `ExplorerSqlSchemas.cls`: the list. It is not edited, because its name cell picks up the new head through `documentScreenFor` (`ui/src/app/core/navigation.ts` :306).
+- `ui/src/app/shell/data-table.ts` :685-701: the name cell's link chain, with `rowTarget` first and the list's own route last.
+- `ui/src/app/core/navigation.ts`: `DIALOG_EDITORS` (:289) and `hasIdRoute` (:658).
+- `ui/tools/screen-mirror.mjs` :2844 and :2993: the `rowTarget` checks. They admit a `detail` tab with a table, and refuse a screen that already pairs its own surface. `Registry.cls` :712-797 holds `TabGroupProblem`.
+- `src/OcuPilot/Test/ExplorerSqlProbe.cls`: the `OcuProbe195` objects in `USER`, with `Make` at :103 and `Remove` at :225. The schema holds tables, views and the procedure `OcuProbe195.Echo`.
+- `ui/browser/system-explorer-sql.browser-spec.mjs`: the browser sibling. It uses the helpers `recordReads`, `rowShowing` and `openTab`, and `filterToSubset` and `clickRowCentre` from `list-spec.mjs`.
+- `ui/browser/structural-walk.mjs`: walks every built screen at run time, so CI's a11y spec opens the new tabs from the schemas list's first row.
 
 ## Tasks & Acceptance
 
-**Execution:** the re-plan writes the tasks from the runner's rulings.
+**Execution:**
 
-**Acceptance Criteria:** these are the story's ACs (`epics.md`, Story 20.38, amended 2026-10-23 per the rulings); the re-plan restates them:
+- `src/OcuPilot/Port/AtelierPort.cls`
+  - Add the endpoints `Catalog.SchemaTables`, `Catalog.SchemaViews` and `Catalog.SchemaProcedures` beside the list endpoints.
+  - Each resolves its statement and column map through the list it extends: `Catalog.Tables`, `Catalog.Views` or `Catalog.Procedures`. Add no statement text and no column-map text. `IsCatalog`, `CatalogStatement` and `CatalogColumns` answer them.
+  - In `CatalogRows`, these three never read `system` and bind the flag on (`SYSTEM TABLE` for tables, `1` for views and procedures).
+  - `schema` is required. A schema that is absent, empty, longer than `MAXSCHEMA` or holds a control character is refused 400 `PORT.VALIDATION` `REASONCATALOGSCHEMA` before any route.
+  - Update the endpoint and `CatalogRows` doc comments, contract only.
+- `src/OcuPilot/Screen/Descriptor/ExplorerSqlSchema.cls`, `ExplorerSqlSchemaViews.cls`, `ExplorerSqlSchemaProcedures.cls` (new): the group, in the Design Notes' golden example's shape. Write each doc comment in its sibling's shape.
+- `ui/src/app/core/strings.ts`: after `explorerSqlProceduresEmpty`, add `explorerSqlSchemaTablesEmpty`, `explorerSqlSchemaViewsEmpty` and `explorerSqlSchemaProceduresEmpty`, with the three ruled sentences. Each carries `/** EXPERIENCE.md:595 */`.
+- `_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md` line 595, edited in place with no line added:
+  - add the three sentences after "This table has no constraints.";
+  - add "; the empty states of a schema's Tables, Views and Procedures tabs [ADDED 2026-10-23 - Story 20.38]" to the description.
+- `ui/src/app/core/screens.generated.ts`: regenerate with `cd ui && node tools/screen-mirror.mjs`. Never hand-edit it.
+- `ui/src/app/core/navigation.ts` and `ui/src/app/shell/data-table.ts`: move the chain at data-table.ts :685-701 verbatim into an exported `nameLinkTarget(screen)`, which `data-table.ts` then calls. Behavior does not change, and the :701 fallback stays.
+- `ui/tools/name-links.test.mjs` (new). For every built screen that draws a `name` column, take `nameLinkTarget`:
+  - a target that `hasIdRoute` must be built;
+  - the set of screens whose target is the screen itself must equal, exactly, `NON_DEFECTS` (the seven under Plan findings, each with its reason, and `DIALOG_EDITORS` among them) plus `STORY_20_39_ALLOW_LIST` (rows 2-18 of the table there, by descriptor);
+  - the two sets are disjoint, and SQL schemas is in neither;
+  - SQL schemas links to `system-explorer/sql-schemas/document`;
+  - the three tabs link to `sql-tables/document`, `sql-views/document` and `sql-procedures/document` through `Table`, `View` and `Procedure`.
+- `src/OcuPilot/Test/ExplorerSqlProbe.cls`:
+  - add `BARESCHEMA` (`OcuProbe2038`) and `BARETABLE` (`OcuProbe2038.Bare`);
+  - add `MakeBare(pNamespace)`, which creates that one table and no view or procedure;
+  - add `RemoveBare(pNamespace)`, which drops it and fails if any `OcuProbe2038` class or table is left;
+  - leave `Make` and `Remove` unchanged.
+- `src/OcuPilot/Test/AtelierPortCatalog.cls`:
+  - Add `TestEachSchemaTabSendsItsListsStatementWithSystemItems`. Each new endpoint sends exactly its list's statement, bound `["SYSTEM TABLE",s,s]` or `[1,s,s]`, with `system=no` supplied too.
+  - Add `TestASchemaTabRequiresOneSchema`. An absent, empty, 129-character or control-character schema is refused 400 `REASONCATALOGSCHEMA` before any route.
+  - Add the three endpoints to the version-gate loop (:264), and a schema-tab leg to the gate test (:241): a caller with no `%Development:USE` is refused 403 naming it.
+- `src/OcuPilot/Test/AtelierPortCatalogLive.cls`: add `TestASchemaTabListsEveryObjectOfItsSchema`, which calls `MakeBare` and `RemoveBare` itself and asserts the removal. It checks that:
+  - each new endpoint's rows for `OcuProbe195` equal its list's rows with `system=yes`;
+  - `%Dictionary`'s tables include `%Dictionary.ClassDefinition`, and `%Library`'s procedures are not empty, with no `system` key and with `system=no`;
+  - `OcuProbe2038`'s views and procedures answer 200 with no rows, while its tables answer `OcuProbe2038.Bare`;
+  - a missing schema is refused 400.
+- `src/OcuPilot/Test/ExplorerDescriptor.cls`:
+  - Add the three descriptors to `DESCRIPTORS` after `ExplorerSqlProcedureStatements`, and to the expected tuples.
+  - Add three `explorer.sqlschema*.read` names to the advertised tools. The writers stay unchanged; read the names off the instance.
+  - Widen the SQL slice to 21 (`$List(…,10,30)`), and rename `…GatesAllEighteen` to `…GatesEverySqlScreen`.
+  - Update the header's counts.
+  - Add `TestTheSchemaTabsFormOneParentScopedGroup`. It checks positions, `labelKey`, `tab.labelKey`, the parent, the one criterion `schema/text/128`, the empty keys and the `rowTarget`s. It also checks that `OcuPilot.Screen.Context.ScreenTools(<tab>)` answers exactly the tab's own read wire name.
+  - If the class passes about 520 lines, move the new method into a new `OcuPilot.Test.ExplorerSqlSchemaGroup`.
+- `src/OcuPilot/Test/ExplorerCatalog.cls`:
+  - add the three tools to the dispatch loop (:138), each answering rows for `OcuProbe195`;
+  - add a `{}` leg that is refused `PORT.VALIDATION`;
+  - change the header's "eighteen" to "twenty-one".
+- Roster rows, add-only, with names read off the instance:
+  - `ReadTool.cls`: the names, and the count 400 becomes 403;
+  - `ToolRoundTrip.cls`: `REFUSEEMPTY`, three times `:PORT.VALIDATION`;
+  - `DeveloperFloor.cls`: `SCREENS` and `TOOLS`, plus their counts;
+  - `SurfaceCoverage.cls`: three `<screen>` rows naming the new method;
+  - `StageTwoTools.cls`: `Elsewhere`;
+  - `Descriptor.cls`: `ReadShapes`.
+- Client rosters:
+  - `ui/tools/screen-mirror.test.mjs`: the atelier read roster (:3066, `schema=`), the tab-group members (:955) and the criteria list (:1505);
+  - `ui/tools/navigation.test.mjs`: the unlisted-route order (:335);
+  - `ui/src/app/shell/detail-page.spec.ts`: add the schema group's routes to `SQL_TAB_ROUTES`, and an `it` for its strip, labeled "SQL schemas" with Tables, Views and Procedures, carrying the schema from tab to tab;
+  - `ui/src/app/shell/side-bar.spec.ts`: an `it` checking that every tab of the schema group marks SQL schemas current.
+- `ui/browser/system-explorer-sql.browser-spec.mjs`: `before` and `after` also call `MakeBare` and `RemoveBare`. Add one test that:
+  - filters SQL schemas in `USER` to `OcuProbe195` and clicks its name;
+  - checks the path `/ocupilot/system-explorer/sql-schemas/document/OcuProbe195`;
+  - checks the locator, which reads SQL schemas › OcuProbe195 here and again on the Procedures tab;
+  - checks the tabs Tables, Views and Procedures, and that the Tables read carries `schema=OcuProbe195` and no `system`;
+  - opens Procedures, sees `OcuProbe195.Echo` and clicks it, landing on `sql-procedures/document/OcuProbe195.Echo` with Stored procedure info;
+  - opens `OcuProbe2038` from the list: Tables shows `OcuProbe2038.Bare`, and Views shows exactly "This schema has no SQL views."
 
-- Given the SQL schemas list, when a schema's name is clicked, then the schema's own screen opens with the tabs Tables, Views and Procedures:
-  - each tab lists that schema's objects through the existing reads;
-  - each object's name opens its existing screen;
-  - the breadcrumb reads SQL schemas › <schema>.
-- Given a tab of a kind the schema lacks, when it opens, then it says so plainly.
-- Given the agent on the schema's screen, when it reads the screen, then its context and tools are the tab's own read, scoped to the schema, and no agent action is added.
-- Given every built list whose name column links somewhere, when the client tests run, then a test fails for any link to a route with no built screen to show it.
-- Given the browser suite, when a schema name is clicked, then the schema's screen opens, its Procedures rows show, and one procedure opens.
+**Acceptance Criteria:**
+
+- **AC1.** Given SQL schemas, when a schema's name is clicked, then `system-explorer/sql-schemas/document/<schema>` opens with the tabs Tables, Views and Procedures:
+  - each tab lists every object of its kind in that schema, system ones included, through its list's own statement;
+  - each object's name opens its table, view or procedure screen;
+  - the breadcrumb reads SQL schemas › <schema> on every tab.
+- **AC2.** Given a schema with no objects of a tab's kind, when that tab opens, then it shows that kind's ruled sentence, and a tab of a kind the schema holds shows its rows.
+- **AC3.** Given the agent on any of the three tabs, when it reads the screen, then the context's tools are that tab's own read alone, which requires `schema`, and no write, row action or primary action is added.
+- **AC4.** Given every built list whose name column links somewhere, when `npm run test:tools` runs, then it fails on any link to an unbuilt screen and on any self-link outside the declared non-defects and Story 20.39's exact allow-list. SQL schemas is in neither set.
+- **AC5.** Given the browser suite, when a spec clicks a schema's name, then it lands on the schema's screen, sees the Procedures tab's rows and opens one procedure.
+
+## Spec Change Log
+
+- 2026-10-23, runner, after the first plan pass's `intent gap`: ruled Q1-Q4 and the empty-tab sentences (Design Notes, Runner's rulings); recorded the orchestrator's contention ruling; amended `epics.md` Story 20.38's ACs (address, System items, the Ens example, the split) and chartered Story 20.39; status reset to `draft` for the re-plan.
+
+## Review Triage Log
 
 ## Design Notes
 
 - **Governing ADs (Rule 6):**
-  - AD-5: a descriptor per screen, tab groups and the paired surfaces.
-  - AD-13: one id segment, and the list's own id route.
-  - AD-24: the screen context's `tools`.
-  - AD-36: one declared read per screen and tool.
-  - AD-44: `classicPage` is `%CSP.UI.Portal.SQL.Home`.
-  - AD-61: `AtelierPort`'s fixed statements and gate.
+  - AD-5: descriptors, the parent-scoped group and `rowTarget`.
+  - AD-13: the schema is one encoded id segment.
+  - AD-24: the context's `tools`.
   - AD-29: the port is the gate.
+  - AD-36: one declared read per tab and tool.
+  - AD-43: no refresh.
+  - AD-44: `classicPage` is `%CSP.UI.Portal.SQL.Home`.
+  - AD-61: fixed statements and bound values.
   - AD-19: client state lives in the store.
-- **Rule 31 siblings:** Story 19.5's SQL table group for the tab grammar, and the three list reads and their statements for the reads. Under Q2's Option A, the reads extend in the port, and the descriptors are new declarations over the same endpoints.
-- **Integration (Rules 1 and 2):** no service is introduced. Consumes: Epic 19's SQL catalog reads and screens. Consumed-by: none planned.
-- **Upgrade triggers:** none under any option. Nothing touches `Kernel/State/**`, any `%Persistent` class, `Install/**`, the start path, `module.xml` or compose.
+  - None is amended. The design uses existing grammar, so the spine is unchanged.
+- **Rule 31 siblings:**
+  - The descriptors extend Story 19.5's `ExplorerSqlTable` and `ExplorerSqlFields`, and copy their lists' fields, columns and context.
+  - The endpoints extend `Catalog.Tables`, `Catalog.Views` and `Catalog.Procedures` in the port.
+  - The link check shares `data-table.ts`'s chain through `nameLinkTarget` rather than copying it.
+  - The tests extend `AtelierPortCatalog`, `AtelierPortCatalogLive`, `ExplorerDescriptor`, `ExplorerCatalog`, `ExplorerSqlProbe` and the SQL browser spec.
+- **Integration (Rules 1 and 2):** no service is introduced.
+  - Consumes Epic 19's SQL catalog: the three list statements and column maps, and the table, view and procedure groups as row targets.
+  - Consumed-by: Story 20.39, which empties the link check's allow-list.
+- **Upgrade triggers:** none. Nothing touches `Kernel/State/**`, a `%Persistent` class, `Install/**`, the start path, `module.xml`, compose or the governance baseline, and there is no write key.
+- **Side bar and locator:**
+  - Every member is unlisted (position 0, no aliases), as Story 19.5's group is.
+  - The side bar marks SQL schemas current on every tab.
+  - Every member's `labelKey` is `explorerSqlSchemasLabel`, so the locator reads System Explorer › SQL schemas › <schema>, and its middle crumb returns to the list.
+  - The strip's names come from `tab.labelKey`: `explorerSqlColumnTables`, `explorerSqlColumnViews` and `explorerSqlColumnProcedures`.
 - **Contention (Rule 11):**
-  - Epic 23's branch differs from feature only in five `_bmad-output` files, and its worktree is clean (read-only `git diff --stat` and `git status -s`).
-  - The recommended plan touches neither `Screen/Tool/Read.cls` nor `Kernel/Agent/Prompt.cls`.
-  - Q4 rows 10, 12 and 13 would touch the database and task descriptors.
+  - At plan time, Epic 23's diff and worktree held only `_bmad-output` files, by read-only `git diff --stat` and `git status -s`.
+  - This plan edits neither `screen-mirror.mjs` nor `Registry.cls`. The mirror is only regenerated.
+  - It edits no existing descriptor, nor `Screen/Tool/Read.cls`, nor `Kernel/Agent/Prompt.cls`.
 - **Ledger inbox (Rule 17):** none.
 - **Runner's rulings (2026-10-23, unattended; recorded in the run's log, the veto items in the owner's inbox):**
   - **Q1, the address (veto):** Option A. The schema screen is a parent-scoped group at `system-explorer/sql-schemas/document/<schema>`, in Story 19.5's shape (head at `sql-schemas/document`, the other tabs at `sql-schemas/views` and `sql-schemas/procedures`, parentScope `system-explorer/sql-schemas`). The list's own id route keeps selecting the row. AD-5 is complied with, not amended. `epics.md` 20.38's first AC is amended to that URL.
@@ -118,62 +197,37 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Lines were
   - `screen-mirror.mjs` and `Registry.cls` are reserved to 23.12 for non-add-only edits. This story may only add to them. If it needs more there, the implement stage HALTs with `intent gap` naming the edit, and the runner asks the orchestrator first.
   - If 23.12 merges first, the runner's integrate-forward gives each new read descriptor its `row` line (and a `label` where 23.12's rules call for one), regenerates with `node tools/screen-mirror.mjs`, and pushes that merge alone. If this story merges first, 23.12 adds them on its side.
   - The link check and its fixes are this story's. 23.12's `row` and `label` lines in the same descriptor files are add-only, so they union plainly.
+- **Decided in-stage (unattended):**
+  - **Names.** The descriptors are `ExplorerSqlSchema`, `ExplorerSqlSchemaViews` and `ExplorerSqlSchemaProcedures`. The tools are `explorer.sqlschematables`, `explorer.sqlschemaviews` and `explorer.sqlschemaprocedures`, named for what they read. The endpoints are `Catalog.SchemaTables`, `Catalog.SchemaViews` and `Catalog.SchemaProcedures`.
+  - **Labels.** Every member is labeled "SQL schemas". The siblings label each tab by its own name, but that would put a "Views" crumb in front of a link to SQL schemas, and the AC's breadcrumb would hold only on the head.
+  - **Prompts.** Each tab reuses its list's prompts 2 and 3 plus `homeStarterPromptExplainScreen`, in the Code group. Prompt 1 names the namespace, not the schema. Reusing keys has precedent (19 prompt keys are already shared between descriptors), and adds no string.
+  - **The empty-tab check** uses a probe-made schema with one table (`OcuProbe2038`), not `Ens`, so that the test makes what it asserts (Rule 30). The procedure rows come from `OcuProbe195.Echo`.
+  - **The schema criterion's `hint`** is "One schema, spelled as explorer.sqlschemas.read answers its Schema." It is tool text: no page renders a criterion's hint.
+- **Golden example**, the head's distinctive keys. Everything else follows `ExplorerSqlTables` and `ExplorerSqlTable`:
 
-## Plan findings (answered: see Design Notes, Runner's rulings)
+  ```json
+  "route": "system-explorer/sql-schemas/document", "labelKey": "explorerSqlSchemasLabel", "sideBarPosition": 0,
+  "archetype": "detail", "parentScope": "system-explorer/sql-schemas", "emptyStateKey": "explorerSqlSchemaTablesEmpty",
+  "read": {"source": {"port": "atelier", "endpoint": "Catalog.SchemaTables", "type": "LIST"}, "...": "fields, filter, sort, paging as ExplorerSqlTables",
+    "criteria": {"fields": [{"param": "schema", "labelKey": "explorerSqlColumnSchema", "kind": "text", "maxLength": 128, "hint": "..."}]}},
+  "rowTarget": {"route": "system-explorer/sql-tables/document", "field": "Table"},
+  "tab": {"group": "system-explorer/sql-schemas/document", "position": 1, "labelKey": "explorerSqlColumnTables"},
+  "toolIdentifier": "explorer.sqlschematables"
+  ```
 
-The first plan pass stopped on an `intent gap` with the four questions below; the runner ruled on each on 2026-10-23. The evidence stays here because the Q4 table is the allow-list's source.
+## Plan findings: the self-linking lists (Q4)
 
-### Q1: the schema screen's address (AD-5)
+Q1-Q3's evidence, as ruled, is this file at `10b4a6958becbb3fe63c66c01a33397ec3f4a274`.
 
-AD-5's Rule: "A tab group may be parent-scoped: every member names the same `parentScope` and its one criterion, the head is the parent list's `<route>/document`, and the tab strip carries the route id from tab to tab, validated alike by `Screen/Registry.cls` and `ui/tools/screen-mirror.mjs` (a SQL table's catalog tabs, Story 19.5)."
+The first pass measured these with the shared table's own chain:
 
-Measured:
+- Of 209 built screens, 152 draw a `name` column: 70 render it as text, 57 open a paired surface, and 25 link to their own id route. Re-measured at this plan, with the same counts.
+- Seven of the 25 are the declared non-defects (`NON_DEFECTS`):
+  - `ResourceList` and `AuditUserEventList` are `DIALOG_EDITORS`.
+  - `AuditList`, `JournalRecordList` and `TaskHistoryList` open a detail dialog on their id.
+  - `LicenseKey` and `OpenApiViewer` never draw the table.
 
-- `system-explorer/sql-schemas/<schema>` is the schemas list's own id route. It serves the list's page and selects the row (AD-13, DW-1419), which is the defect the owner saw.
-- No second descriptor can declare that route (`Registry.cls` :363).
-- A parent-scoped group with any head other than `<route>/document` is refused (`Registry.cls` :788, `screen-mirror.mjs` :2763).
-
-The options:
-
-- **Option A (recommended): amend the AC's URL to `system-explorer/sql-schemas/document/<schema>`.**
-  - The group takes Story 19.5's shape. Tables heads it at `sql-schemas/document`, with Views at `sql-schemas/views` and Procedures at `sql-schemas/procedures`, all with parentScope `system-explorer/sql-schemas`.
-  - The list's name cell already links to a built `<list route>/document` (`documentScreenFor`, `data-table.ts` :693-701), so no shell code changes.
-  - With the head labeled "SQL schemas", the locator reads "System Explorer › SQL schemas › <schema>".
-  - The list's own id route keeps selecting the row for the agent's `shell.screen.open`.
-- **Option B: amend AD-5 so that the exact URL works.** Proposed text: "A parent-scoped group's head may instead answer its parent list's own id route, `<route>/<id>`, which then opens the head rather than selecting the row; its other tabs stay at `<route>/<tab>`." The cost: the route table, `screenForUrl`, `ownIdSegment`, the locator, screen-context capture and the agent's open-on-id all change what that route means. Both engines' validation changes too (inference, from the call sites in the Code Map).
-
-### Q2: carrying the System items criterion over (AD-5)
-
-AD-5's Rule gives a parent-scoped group "its one criterion". Both engines refuse a parent-scoped read that declares more than one: "a parent-scoped read declares exactly one read.criteria field, which its route id fills" (`Registry.cls` :1772-1787, `screen-mirror.mjs` :2052). So a tab cannot carry `system` beside `schema`.
-
-It matters because, with `system` set to `no`, the views and procedures statements drop every `%` and `INFORMATION_SCHEMA` schema, and the tables statement drops `SYSTEM TABLE` rows (`AtelierPort.cls` :170-174 and :1308-1318). A system schema opened from the list with System items on would show empty tabs. A name-cell link carries only `ns`.
-
-- **Option A (recommended): the tabs read their schema's objects whatever the System box says, and show no System control of their own.** The schema already narrows the set, so the flag only decides whether a system schema's own objects show.
-  - Built as three `AtelierPort` endpoints over the existing statements and column maps, with the flag bound to 1 and `schema` required. No new statement is written, and the three list screens are unchanged.
-  - This reads "carried over" as "a system schema opened from the list still shows its objects".
-- **Option B: amend AD-5 to let a parent-scoped read declare further `choice` criteria with defaults.** Each tab shows them, and they are carried from the parent list. Both engines' criteria checks, `parentCriteria` and the search store change.
-
-### Q3: "no new tool" against one read per tab (AD-5, AD-36)
-
-AD-5's Rule says "Each tab carries its own primary entity type, read, tool and privilege set". AD-36's Rule says "A screen's list and its read tool resolve through **one** descriptor-declared read".
-
-- A built read is the tool `<toolIdentifier>.read`, and every identifier is unique (`Registry.cls` :232 and :1610-1612). So three tabs are three new read tools.
-- On each tab, the screen context's `tools` names that tab's own read (AD-24).
-- The story's AC says "no new agent action". The epic context and this dispatch say "no new agent action, tool or write".
-
-**Recommended ruling:** the three tab reads are "the tabs' own reads" the AC asks for, so they are allowed. No write, row action or primary action is added. Without this ruling, the AC cannot be met under AD-5 and AD-36.
-
-### Q4: the bug-class check finds 18 lists (dispatch guard)
-
-Measured over the mirror with the shared table's own link chain (`data-table.ts` :693-701, the scan in the Code Map):
-
-- Of 209 built screens, 152 draw a `name` column. 70 render it as text, 57 open a paired surface, and 25 link to their own id route.
-- Seven of those 25 are not defects:
-  - ResourceList and AuditUserEventList are `DIALOG_EDITORS`.
-  - AuditList, JournalRecordList and TaskHistoryList open a detail dialog on their id.
-  - LicenseKey and OpenApiViewer never draw the table.
-
-The other 18 change the address and stay put, or they open the wrong thing:
+Row 1 is fixed here, and rows 2-18 are `STORY_20_39_ALLOW_LIST`. "Today" is what each does now. "Proposed" is for Story 20.39.
 
 | # | List (route · name field) | Today | Proposed |
 |---|---|---|---|
@@ -196,35 +250,59 @@ The other 18 change the address and stay put, or they open the wrong thing:
 | 17 | `analytics/folder-items` · Name | the list again | **choice:** the item's vendor page (Story 20.32's links), or text |
 | 18 | `agent/screenpermissions` · Screen | the list again | **choice:** the named screen, the adjust dialog, or text |
 
-Rows 10, 12 and 13 would edit the database and task descriptors, whose labels Story 23.12 changes. That is a non-add-only edit to a contended file.
-
-- **Recommended split:** 20.38 keeps the schema screen and the check. The check holds rows 2-18 in a named allow-list and asserts it exactly, so a fix that does not remove its row turns red, and so does a new self-link. A sibling story, chartered by the runner after 23.12 merges, fixes rows 2-18 with the owner's rulings on rows 4, 7, 10, 15, 16, 17 and 18.
-- **Alternative that keeps one story:** the shared table stops linking a name to its own list. The fallback at `data-table.ts` :701 is dropped, and a declared set names the pages that open their own id (the seven above). All 17 rows then become text at once, with no descriptor edit, and targets for the choice rows come later. Because this changes 17 screens in one line, it is a ruling for the runner, not a plan-stage choice.
-
-### Also for the re-plan
-
-- **The AC's example is wrong on this instance.** `ocupilot-b-ci`'s `CALL %SQL_Manager.Schemas(0)` answers `Ens` with TABLE_EXISTS 1, VIEW_EXISTS 0 and PROCEDURE_EXISTS 1, and `INFORMATION_SCHEMA.TABLES` holds 26 `BASE TABLE` rows under `Ens` (measured read-only). So Ens holds tables and procedures but no views, and the empty-tab example is Ens's Views tab. The browser spec can use `Ens` for both a Procedures row and an empty tab.
-- **Proposed empty-tab sentence:** reuse the existing sentences ("No SQL views in <NAMESPACE> match.", `strings.ts` :5021-5025). Not taken: see the runner's rulings.
-
-## Spec Change Log
-
-- 2026-10-23, runner, after the first plan pass's `intent gap`: ruled Q1-Q4 and the empty-tab sentences (Design Notes, Runner's rulings); recorded the orchestrator's contention ruling; amended `epics.md` Story 20.38's ACs (address, System items, the Ens example, the split) and chartered Story 20.39; status reset to `draft` for the re-plan.
-
 ## Verification
 
-Shared surfaces, under the recommended options:
+All runtime work targets the throwaway `ocupilot-b-ci` (52777). The MCP profile is `ocupilot-slot-b`, and nothing is written to the dev instance. Each command runs in the foreground with `timeout: 600000`, one test-runner call at a time.
 
-- the screen mirror;
-- the tab-group and criteria corpora (`TabCorpus`, `CriteriaCorpus`);
-- the read-tool rosters (`ReadTool`, `ToolRoundTrip`, `SurfaceCoverage`);
-- `AtelierPort`'s endpoint roster;
-- every list whose name cell changes under Q4.
+**Shared surfaces:**
 
-Every test added or changed passes on a fresh environment, in either order. The commands are written once Q1-Q4 are ruled on, in Rule 29's shape on `ocupilot-b-ci`.
+- the screen mirror (`screens.generated.ts`, regenerated);
+- System Explorer's descriptor and tool rosters (`ExplorerDescriptor`: `DESCRIPTORS`, the SQL slice and count, the advertised `explorer.*` list);
+- the read-tool rosters (`ReadTool`'s names and count, `ToolRoundTrip`'s `REFUSEEMPTY`, `DeveloperFloor`'s `SCREENS` and `TOOLS`, `ExplorerCatalog`'s tool loop);
+- the screen rosters (`SurfaceCoverage`, `StageTwoTools`' `Elsewhere`, `Descriptor`'s `ReadShapes`);
+- `AtelierPort`'s catalog endpoint roster (`AtelierPortCatalog`'s loops, `screen-mirror.test.mjs`'s atelier read roster);
+- the client rosters (`screen-mirror.test.mjs`'s tab-group members and criteria list, `navigation.test.mjs`'s unlisted-route order, `detail-page.spec.ts`, `side-bar.spec.ts`);
+- `strings.ts` (add-only) and EXPERIENCE.md line 595 (in place);
+- the probe fixture `ExplorerSqlProbe` (new methods only);
+- unchanged: the System Explorer side bar (every member unlisted), and the tab-group and criteria corpora (`TabCorpus`, `CriteriaCorpus`), since there is no new grammar.
+
+Every test added or changed passes on a fresh environment, in either order.
+
+**Commands:**
+
+- (loop) Load `src` into the throwaway: `rsync -a --checksum --delete /Users/jbrandt/git/OcuPilot/.worktrees/epic-20/src/ /Users/jbrandt/.ocupilot-throwaways/ocupilot-b-ci/src/`, then `$System.OBJ.LoadDir("/opt/ocupilot/src/OcuPilot","ck-d",.tErrors,1)` inside `docker exec -i ocupilot-b-ci iris session iris -U HSCUSTOM`. Expected: `tErrors` is 0.
+- (loop) The story's own classes, one per call: `cd ui && node tools/ci-runner.mjs --container ocupilot-b-ci --class OcuPilot.Test.<Class>`, for `AtelierPortCatalog`, `AtelierPortCatalogLive`, `ExplorerDescriptor` and `ExplorerCatalog`. Expected: every method passes.
+- (loop) The touched rosters, about 41 s by `ci-timings.json`: `cd ui && node tools/ci-runner.mjs --container ocupilot-b-ci --class OcuPilot.Test.ReadTool --class OcuPilot.Test.ToolRoundTrip --class OcuPilot.Test.SurfaceCoverage --class OcuPilot.Test.DeveloperFloor --class OcuPilot.Test.StageTwoTools --class OcuPilot.Test.Descriptor`. Expected: green.
+- (once) The untouched consumers, about 65 s: `cd ui && node tools/ci-runner.mjs --container ocupilot-b-ci --class OcuPilot.Test.ScreenAccessDescriptor --class OcuPilot.Test.AtelierPortCatalogTabsLive --class OcuPilot.Test.AtelierPortDenial --class OcuPilot.Test.EndpointCoverage --class OcuPilot.Test.ToolEmit --class OcuPilot.Test.TurnScope --class OcuPilot.Test.Navigation --class OcuPilot.Test.RegistryCache`. Expected: green.
+- (loop) `cd ui && npm run test:tools`. Expected: green, including `name-links.test.mjs` and EXPERIENCE.md's line citations.
+- (loop) `cd ui && npm run test:components`. Expected: green, including `data-table` over `nameLinkTarget`.
+- (loop) `cd ui && npm run build`. Expected: the prebuild checkers pass, `screen-mirror.mjs --check` among them, and the bundle stays under 2500 kB / 4000 kB. A crossing is reported, never re-based.
+- (loop) The browser spec: `cd ui && npm run build`, then `docker exec ocupilot-b-ci sh -c 'cd /durable/iris/csp/ocupilot && rm -rf ./*' && docker cp dist/ocupilot-ui/browser/. ocupilot-b-ci:/durable/iris/csp/ocupilot/`, then `cd ui && OCUPILOT_BROWSER_ORIGIN=http://localhost:52777 OCUPILOT_BROWSER_CONTAINER=ocupilot-b-ci node --test --test-concurrency=1 browser/system-explorer-sql.browser-spec.mjs`. Expected: green.
+- (once) `uv run scripts/check-objectscript.py` reports 0 problems, and `bash scripts/lint-docs.sh` is clean for EXPERIENCE.md.
+- **Lead-owned:**
+  - the full ObjectScript sweep;
+  - `bash scripts/smoke.sh --container ocupilot-b-ci --user _SYSTEM --password SYS`;
+  - the Rule 30 fresh check.
+- **Left to CI:** the full browser suite, including the a11y structural walk over the new tabs.
+
+**Pinning tests and mutations (Rule 19; the implement stage demonstrates each and records the `mutation:` line):**
+
+- **AC1.** The browser test.
+  - Mutation: drop `ExplorerSqlSchemaProcedures`' `rowTarget`, then regenerate, rebuild and redeploy. The wait for the procedure's path times out.
+  - Supporting: the live test (mutation: bind the flag from `system` for the schema endpoints, and the `%Dictionary` and `%Library` legs go red), and `AtelierPortCatalog`'s bodies (mutation: bind 0, and red).
+- **AC2.** The browser test's `OcuProbe2038` leg.
+  - Mutation: point `ExplorerSqlSchemaViews`' `emptyStateKey` at `explorerSqlViewsEmpty`. The sentence assertion goes red.
+- **AC3.** `ExplorerDescriptor.TestTheSchemaTabsFormOneParentScopedGroup`'s `ScreenTools` leg.
+  - Mutation: drop the `BoundTo` filter in `OcuPilot.Screen.Context.ScreenTools`, and recompile. The exact-tools assertion goes red.
+  - Supporting: `ToolRoundTrip`'s `PORT.VALIDATION` rows.
+- **AC4.** `name-links.test.mjs`.
+  - Mutation: drop the `documentScreenFor` arm from `nameLinkTarget`. SQL schemas and other document-paired lists self-link, and the exact-set assertion goes red naming them.
+  - A second mutation: delete one allow-list row. Red.
+- **AC5.** AC1's browser test, with AC1's mutation.
 
 ## Auto Run Result
 
-Status: blocked
-Blocking condition: intent gap
+Status: ready-for-dev
+Blocking condition: none
 
-Planning only, with no code changed. Q1-Q3 each need a ruling against an AD-5 or AD-36 Rule, and Q4 needs a split ruling and seven product choices. The recommendations are: Q1 Option A, Q2 Option A, Q3 allow the tab reads, and Q4 split with an exact allow-list.
+This plan pass wrote the tasks, ACs, Verification and in-stage decisions within the runner's rulings. No code was changed. The read-only measurements were made on `ocupilot-b-ci`.
