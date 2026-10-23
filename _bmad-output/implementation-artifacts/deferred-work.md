@@ -12411,3 +12411,15 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-23-12-the-agent-picks-the-right-list.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: Measured on ocupilot-ci after 23.12; three editor save tools already exceed it (1,463-1,516); neither OpenAI nor Gemini adapter caps a description; an OpenAI 1,024 limit is from third-party reports only (inference)
 - 2026-10-23T13:52:24Z status=open owner=23-12-the-agent-picks-the-right-list by=harvest note=implement deferred; adjudicate at 23.12's gate
+- 2026-10-23T16:15:05Z occurrence=23-12-the-agent-picks-the-right-list
+- 2026-10-23T16:18:28Z status=wontfix-theoretical by=adjudication note=measured 2026-10-23: OpenAI gpt-5.6-terra and Gemini gemini-3.8-flash both answer 200 to a 1,200-char tool description; real if a provider refuses one
+
+### DW-2510: Two ruled labels claim a wider scope than their reads: logs.analytics says every namespace and logs.eventlog every interoperability namespace, where each reads the caller's readable ones
+- source: spec-23-12-the-agent-picks-the-right-list.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: LogAnalyticsViewer doc: each readable namespace; LogEventViewer doc: every interoperability-enabled namespace the user can read; ruled siblings logs.xdbc and logs.sqldiagnostics say every readable namespace
+- 2026-10-23T16:15:05Z status=by-design owner=23-12-the-agent-picks-the-right-list by=cr note=ruled Labels table wording (U-13); reword to every readable namespace in a later label story
+
+### DW-2511: ReadDescriptions' titled-no-row leg reads OcuPilot.Test.ProposalScreen, another suite's fixture, so an edit to that fixture reddens it
+- source: spec-23-12-the-agent-picks-the-right-list.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: TestAFixtureDescriptorWithoutATitleOrARowComposesFromItsIdentifier relies on ProposalScreen's titled labelKey and absent row; compiled code, not run-time state, so no order dependence
+- 2026-10-23T16:15:05Z status=wontfix-accepted owner=23-12-the-agent-picks-the-right-list by=cr note=reopen_if=ReadDescriptions reddens after an edit to Test/ProposalScreen.cls (a row or an untitled labelKey)
