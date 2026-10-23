@@ -9619,3 +9619,52 @@ So that a large class is readable and the suites stay green when a story adds a 
 - DW-2458: CI flake: log-viewer.spec.ts AC6 (with Live tail off nothing streams) reads fake timers pending on gates (node 24 and node 26), DW-2415 recurring after Story 20.8's fix (ledger; routed by lead 2026-10-15)
 - DW-2460: flake: OcuPilot.Test.SqlBackgroundJob TestAnEarlyCancelIsSentAgainUntilTheQueryRuns failed once in a local full sweep and passed on the shard's re-run (ledger; routed by lead 2026-10-15)
 - DW-2462: flake: OcuPilot.Test.LogTail TestAnAbsentFileIsWaitedOutAndReportedAtTheBound found the file present in a full sweep, green alone (ledger; routed by lead 2026-10-15)
+
+### Story 23.12: The agent picks the right list
+
+Chartered on 2026-10-23 at the owner's request ("We need to improve the system prompt and label the lists"; "we will do one story to fix this and pause again"; "We'll cut 1.0.14 once that bug fix is in"), relayed by the Planner. It is the only story in this dispatch. 1.0.14 is cut from it, and the run then holds again.
+
+**Why.** On the 1.0.13 demo (Claude Haiku 5.5), "Which tasks are suspended?" asked with no screen open was answered wrongly three times out of three: "nothing is suspended", while the instance had three suspended scheduled tasks. Measured from the turn's steps:
+
+- the model searched with "list background tasks with status, suspended tasks";
+- `shell_tools_find` returned eight tools, `tasks_schedule_read` among them;
+- the model read `tasks.background`, which was empty, and claimed the scheduled and on-demand lists "don't show a status column".
+
+Every read tool's description is the same sentence with a screen key in it: "Read the rows the tasks.schedule screen lists, bounded and with secret fields removed." (`Screen/Tool/Read.cls` `DESCRIPTION`/`Description`). Nothing tells the model what a list holds or which fields it carries. And no rule in the system prompt (`Kernel/Agent/Prompt.cls` `BUILTIN`) stops it reporting "none" after checking one list, or asserting what a list lacks without reading it.
+
+As an administrator asking the agent a question from any screen,
+I want it to read the list that actually holds the answer, and to say which lists it checked,
+So that "none" means none, and the agent never describes a list it has not read.
+
+**Acceptance Criteria:**
+
+- **Given** any read tool the registry offers
+- **When** its description is built
+- **Then** it names the screen as the person sees it (its title) and what one row is, and lists the fields the read returns, derived from the descriptor's own `read` fields, never written twice. For example: the task schedule, one scheduled task per row, with fields Name, Type, Namespace, Description, Id, LastFinished, NextScheduled and Suspended.
+
+- **Given** read tools whose lists a model could confuse
+- **When** their descriptions are built
+- **Then** each carries a short declared label saying what it holds and, where the confusion is plausible, what it does not hold.
+  - The groups are at least the task screens (schedule, on-demand, upcoming, history, background), local and remote databases, and the log screens. The plan measures and names the full set.
+  - Example: "background jobs such as a database compact; scheduled tasks are on the task schedule".
+
+- **Given** the built-in system prompt
+- **When** a turn runs
+- **Then** it carries three rules, worded once and kept short:
+  - when more than one list could hold the answer, read each likely one before answering "none";
+  - never say a list lacks a field or a status without having read it (its fields are named in its description);
+  - a "nothing found" answer names the lists it checked.
+
+- **Given** the change in token cost
+- **When** the plan measures the first request of a turn with no screen open and of a turn on a busy screen, before and after
+- **Then** the growth is recorded, and kept within a bound the plan states and the code review checks. The 18.45 per-screen tool scoping stays as it is.
+
+- **Given** a small live evaluation on `claude-haiku-5-5`: about ten questions whose answer sits in one of several similar lists, run against a throwaway seeded with a known state, among them suspended tasks, failed task runs, a dismounted database, a remote database and an error from `messages.log` against an application error
+- **When** it runs once before the change and once after
+- **Then** each answer is scored right or wrong against the seeded state, the "after" run answers every question right, and the evaluation's script and both score sheets are kept with the story. The run stays inside a stated cost cap (a few US dollars at most). CI stays stub-based (owner 2026-10-12: live checks use Haiku 5.5).
+
+- **Given** the registry's descriptions
+- **When** the test suite runs
+- **Then** a roster test fails if any read tool's description lacks its title, its row noun or its field list, and fails if a confusable group's tool lacks its label. Its pinning mutation removes the field list from one description.
+
+**Out of scope:** stored data and the installer (so no upgrade check is expected; the plan confirms that from its diff), write tools' descriptions beyond what the same builder changes for free, and any change to which tools a turn starts with.

@@ -877,3 +877,13 @@ spawn_at=2026-10-06T16:01:05Z	Story 23.4	cr_complete	batch=b 2026-10-06T20:34:58
 2026-10-22T20:45:26Z	Epic 23	hold_saved	story=none(23.8_committed_and_complete;23.9_not_started) stage=none patch=none tree=clean
 2026-10-22T20:45:26Z	Epic 23	throwaway_removed	container=ocupilot-ci project=ocupilot-ci dir=/Users/jbrandt/.ocupilot-throwaways/ocupilot-ci web=52776 super=1975 started_by=this_run(20261020T0940Z-20,23) via=scripts/ci-throwaway.sh_down result=removed
 2026-10-22T20:45:26Z	Epic 23	hold_complete	shas=head_after_this_commit(origin=local) last_code_head=79202e69(CI_39845859986_green) story_23.8=complete(batch_5_reported_to_main) next=23.9 runtime=none_up(ocupilot-ci_torn_down) inbox_snapshot=unattended-inbox-snapshot.md
+2026-10-23T11:27:24Z	Epic 23	runner_unattended_start	run=20261020T0940Z-20,23 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03 doctrine=3d11cec98d91c1d4d9c225fe3b265e1af418abe4 hashes=match(main_checkout) reason=re-dispatch_2026-10-23_owner_charter_23.12_then_hold hold_at=none HOLD=absent inbox_verify=ok
+2026-10-23T11:27:24Z	Epic 23	lead_model_gate	model=claude-opus-5-5 action=proceed
+2026-10-23T11:27:24Z	Epic 23	runtime_gate	bmad=6.12.1 uv=0.12.9 ci=gh
+2026-10-23T11:27:24Z	Epic 23	launch_env	depth=4 watchdog=1 bash_max_ms=default
+2026-10-23T11:27:24Z	Epic 23	slot_binding_verified	slot=a dev_container=ocupilot docker_port=52774 mcp_profile=ocupilot-slot-a baseUrl=http://localhost:52774 bootstrap_check=ok
+2026-10-23T11:27:24Z	Story 23.8	ci_resolved	story=23.8 batch=5 sha=79202e69 runs=39845859986 result=success failed=none via=none resolved_at=resume
+2026-10-23T11:27:24Z	Epic 23	integrated_forward	story=23.12_start feature=253c9531(2cef77dd_green_run_39936907246:1.0.13,20.37_SqlRun_product_code,README_port+orchestrator_bookkeeping) head=253c9531 mode=fast-forward(40de2a58_ancestor_of_feature) conflicts_resolved=none ledger_duplicates=0 ledger_entry_check=0(1962) tracker_validate=ok staging=not_needed(fast-forward:tip_tree=feature_tree,code_green_on_feature_2cef77dd)
+2026-10-23T11:27:24Z	Epic 23	story_inserted	story=23.12 key=23-12-the-agent-picks-the-right-list source=/Users/jbrandt/.claude/projects/-Users-jbrandt-git-OcuPilot/release-tools/story-draft-agent-picks-the-right-list.md by=owner_charter(relayed_by_Planner,orchestrator_re-dispatch_2026-10-23) wording=verbatim format=AC_clauses_as_list_items_to_match_siblings(lint-docs_Given/When/Then_rule)+one_blank_line_before_a_list lint=0 test_tools=2146/2146
+2026-10-23T11:27:24Z	Epic 23	sprint_plan_generate	new_entries=23-12-the-agent-picks-the-right-list dropped_orphans=none validate=ok
+2026-10-23T11:31:50Z	Epic 23	epic_context_compiled	reason=x0_inserted(story_23.12_inserted) model=claude-opus-5-5 agent=af98237987f881397 header_ok=yes bytes=    9512
