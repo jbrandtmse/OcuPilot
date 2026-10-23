@@ -11432,6 +11432,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "SQL table of one schema",
+      "label": "Tables of one schema, named by its criterion, system tables included; tables across every schema are in explorer.sqltables, and the schemas themselves in explorer.sqlschemas.",
       "source": {
         "port": "atelier",
         "endpoint": "Catalog.SchemaTables",
@@ -11583,6 +11585,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "procedure or function of one schema",
+      "label": "Stored procedures and functions of one schema, named by its criterion, system ones included; those across every schema are in explorer.sqlprocedures.",
       "source": {
         "port": "atelier",
         "endpoint": "Catalog.SchemaProcedures",
@@ -11729,6 +11733,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
+      "row": "SQL view of one schema",
+      "label": "Views of one schema, named by its criterion, system views included; views across every schema are in explorer.sqlviews.",
       "source": {
         "port": "atelier",
         "endpoint": "Catalog.SchemaViews",

@@ -196,6 +196,7 @@ Rejected:
 
 ## Spec Change Log
 
+- 2026-10-23, lead integrate-forward: Story 20.38 merged into feature first. Its three schema tabs gain rows and labels (the three rows above, group "SQL schema objects", roster pin 39 tools in seven groups), as the orchestrator ruled. The labels fall under the same veto as the others (U-13).
 - 2026-10-23, lead spec gate: visible text accepted (veto U-13); AD-5 and AD-36 notes ruled by the orchestrator: no spine edit in this run, lines kept for the owner's Update; status `ready-for-dev`.
 
 ## Review Triage Log
@@ -354,6 +355,9 @@ Signals judged not confusable, because their titles already carry the qualifier:
 | explorer.sqltablestatements | statement that uses the table | Statements that use one table, named by its criterion, with plan state and run statistics; statements running now are in osmgmt.sqlactivity. |
 | explorer.sqlviewstatements | statement that uses the view | Statements that use one view, named by its criterion, with plan state and run statistics; statements running now are in osmgmt.sqlactivity. |
 | explorer.sqlprocedurestatements | statement that uses the procedure | Statements that use one procedure, named by its criterion, with plan state and run statistics; statements running now are in osmgmt.sqlactivity. |
+| explorer.sqlschematables | SQL table of one schema | Tables of one schema, named by its criterion, system tables included; tables across every schema are in explorer.sqltables, and the schemas themselves in explorer.sqlschemas. |
+| explorer.sqlschemaviews | SQL view of one schema | Views of one schema, named by its criterion, system views included; views across every schema are in explorer.sqlviews. |
+| explorer.sqlschemaprocedures | procedure or function of one schema | Stored procedures and functions of one schema, named by its criterion, system ones included; those across every schema are in explorer.sqlprocedures. |
 
 The facts come from each descriptor's doc comment and declaration. `osmgmt.databases`'s Status values were measured in Story 16.21. Whether that list includes remote databases is unrecorded, so no label claims it either way.
 

@@ -47,6 +47,8 @@ XData Declaration
   "classicPage": "%CSP.UI.Portal.SQL.Home",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "SQL table of one schema",
+    "label": "Tables of one schema, named by its criterion, system tables included; tables across every schema are in explorer.sqltables, and the schemas themselves in explorer.sqlschemas.",
     "source": {"port": "atelier", "endpoint": "Catalog.SchemaTables", "type": "LIST"},
     "fields": ["Table", "Schema", "Name", "Class", "Owner", "Sharded", "Partitioned"],
     "filter": ["Table", "Schema", "Class"],
