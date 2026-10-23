@@ -4,7 +4,7 @@
 
 ## Goal
 
-Bring the classic portal's Interoperability work into OcuPilot for namespaces that support it, with Analytics riding along, and give the agent guided multistep workflows and Investigate, so the largest area the classic portal still owns can be used here. Most of the epic has shipped: productions, items, settings, per-host tabs, queues and jobs, lookup tables, read-only partners, host and transformation tests, messages with trace and resend, the embedded vendor editors and the agent's edits behind them, per-screen permissions, the agent's source reads, saves and creates, guided workflows, and the analytics port with its lists, links, MDX tool and the agent's MDX read. What remains is 20.37, a fix-forward that keeps release 1.0.12's stored layout for background runs so the 1.0.13 update strands nothing. The current dispatch covers 20.37 alone, followed by an upgrade re-check, a report and a hold. After that come 20.34 (cube manager), 20.36 (Investigate), 20.25 (item runtime actions), 20.26 (partner writes), then the burn-down.
+Bring the classic portal's Interoperability work into OcuPilot for namespaces that support it, with Analytics riding along. The agent also gains guided multistep workflows and Investigate, so the largest area the classic portal still owns can be used here. Most of the epic has shipped, including 20.37's SqlRun fix-forward in 1.0.13. This dispatch runs one owner-chartered story, 20.38: a SQL schema's name opens that schema's tables, views and procedures, and no list's name links to a dead route again. It runs on slot B beside Epic 23's 23.12, then holds, and 1.0.14 is cut once both are in. After the hold come 20.34 (cube manager), 20.36 (Investigate), 20.25 (item runtime actions), 20.26 (partner writes) and the burn-down.
 
 ## Stories
 
@@ -45,63 +45,101 @@ Bring the classic portal's Interoperability work into OcuPilot for namespaces th
 - Story 20.35: The agent's MDX read
 - Story 20.36: Investigate
 - Story 20.37: SqlRun stored slot order
+- Story 20.38: A schema opens its tables, views and procedures
 
 ## Requirements & Constraints
 
-### 20.37: stored slot order (current)
+### 20.38: a schema opens its objects (current)
 
-- **The defect.** `Kernel/State/SqlRun` gained `Kind` between `Namespace` and `State`. The class has no source Storage section, so the compiler numbers data slots by declaration order, and an update from 1.0.12 shifts slots 4 to 10. A background run saved before the update then reads 404 and is never swept. The release upgrade check found this, and the owner chose to fix it before the 1.0.13 cut.
-- **The fix is declaration order only.** RunKey, UserName, Namespace, State, JobId, CancelRequested, QueuedAt, StartedAt, EndedAt and Answer keep slots 1 to 10, and Kind becomes slot 11. No other product code changes: the code that reads and writes Kind and the existing tests stay as they are. Never hand-write a Storage section.
-- **One small test** reads the compiled storage map and asserts the eleven slots. Show it red under the mutation (Kind moved back between Namespace and State), then revert the mutation.
-- **Out of scope.** A general check that compares every persistent class's stored property order against the previous release is backlog (DW-2501), not built now. `SCHEMAVERSION` does not move, because no stored row's meaning changes.
-- A dev or throwaway instance may hold SqlRun rows written under the shifted layout. After the fix such a row's `State` holds its kind, which no reconcile, reserve or sweep selects, so it stays: no reserve counts it against a cap and no sweep removes it (inference, from the code). No migration is planned.
+- **The defect.** The SQL schemas list's Schema column is a name column with no row target, so the shared table links each name to `system-explorer/sql-schemas/<schema>`. No screen answers that route: the address and the breadcrumb change, and the page stays the list. The classic SQL page opens a schema into its tables, views and procedures.
+- **The schema screen** opens at `system-explorer/sql-schemas/<schema>`. It is a tab group with "Tables", "Views" and "Procedures":
+  - each tab lists through the existing SQL tables, views and procedures reads with their `schema` criterion (extend those reads, never copy them);
+  - the System items criterion is carried over;
+  - each object's name opens its existing table, view or procedure screen;
+  - the breadcrumb reads SQL schemas › <schema>.
+- **An empty tab** says so plainly while a tab of a kind the schema holds shows rows. Ens holds procedures and no tables. The tab names are fixed. The empty-tab sentence's wording is the runner's ruling, filed as a veto item and reported. Any other new on-screen string goes to the orchestrator.
+- **The agent** on this screen gets the tabs' own reads, scoped to the schema, as its screen context and tools. No new agent action, tool or write.
+- **The bug-class check.** A client test fails when any built list's name-column link leads to a route with no built screen.
+  - Every list it finds is fixed in this story: given a real target, or rendered as plain text. The spec lists each one and what it now does.
+  - A Planner scan found 36 candidate lists, most probably fine (inference).
+  - If the real hits pass about a dozen lists, or one needs a product choice about where a name should lead, split the story or escalate.
+- **The browser spec** clicks a schema name, lands on the schema's screen, sees the Procedures rows of a schema that holds procedures, and opens one procedure.
+- **Out of scope:** stored data and the installer (no upgrade check is expected, and the plan confirms that from its diff), editing schemas, and any change to what the tables, views and procedures screens show on their own. The merge report says whether the diff touches stored data, the installer, the start path, `module.xml` or compose.
 
 ### Rest of the epic
 
-- **Every write** is a server-minted proposal with a diff the instance computes, an explicit Confirm and an agent marker. A new write key joins the governance baseline in the same change, and a destructive key ships `false`. Each plan states the action's destructiveness, its key's default and its audit record. Posture questions go to the orchestrator with options and a recommendation.
-- **No compile-time dependency on interoperability.** No shipped class names an `Ens.*`, `EnsLib.*` or `EnsPortal.*` class anywhere the compiler resolves it. Such values are typed `%RegisteredObject` or `%String` and reached at run time.
+- **Every write** is a server-minted proposal. It carries a diff the instance computes, needs an explicit Confirm and carries an agent marker.
+  - A new write key joins the governance baseline in the same change, and a destructive key ships `false`.
+  - Each plan states the action's destructiveness, its key's default and its audit record.
+  - Posture questions go to the orchestrator with options and a recommendation.
+- **No compile-time dependency on interoperability.** No shipped class names an `Ens.*`, `EnsLib.*` or `EnsPortal.*` class where the compiler resolves it.
 - **Secrets.** A secret-named setting reads as empty, and an attempt to set one is refused.
-- **20.34, the cube manager** (Analytics side bar position 8, `%DeepSee_Admin:USE`). Build and Synchronize run through `AnalyticsPort`'s `CubeManager` `BUILD`/`SYNCHRONIZE`, behind `MANAGERPAIRS` plus WRITE on `^DeepSee.Fact`'s database (read-only: 409 `ANALYTICS.CUBE.READONLY`), over a port-composed `STATE` that spans the cube and its dependents.
-  - **Refused by name** before any vendor call: `ANALYTICS.CUBE.BUSY`; for a synchronize, also `ANALYTICS.CUBE.NODSTIME` and `ANALYTICS.CUBE.NOTBUILT`.
-  - **Keys.** Build's key ships `false` (it kills facts first) and Synchronize's ships `true`. Repair is offered as Build.
-  - **Running and audit.** The vendor calls run inside an output capture. The vendor audits nothing, so OcuPilot records its own `ConfigChange`. A build that outlasts the gateway timeout loses its answer.
-- **20.36, Investigate.** Investigate is one more catalog entry in `Kernel/Agent/Workflow`'s `XData Catalog`, with no new mechanism.
-  - **The entry:** no `writes`, `entry: true`, offered by no suggested prompt, and every `reads` name resolves as a read.
-  - **Writes.** Every write in the turn answers `WORKFLOW.NOTASTEP`.
+- **20.34, the cube manager.** Build and Synchronize run through `AnalyticsPort`.
+  - **Gate.** `MANAGERPAIRS` plus WRITE on the fact global's database; a read-only database answers 409 `ANALYTICS.CUBE.READONLY`.
+  - **Refused by name** before any vendor call: `ANALYTICS.CUBE.BUSY`, and for a synchronize also `ANALYTICS.CUBE.NODSTIME` and `ANALYTICS.CUBE.NOTBUILT`.
+  - **Keys.** Build's key ships `false` and Synchronize's `true`. Repair is offered as Build.
+  - **Running.** Vendor calls run inside an output capture. OcuPilot records its own `ConfigChange`.
+  - DW-2485 rides along.
+- **20.36, Investigate** is one more entry in the workflow catalog and adds no new mechanism.
+  - **The entry:** no writes, `entry: true`, offered by no suggested prompt.
+  - **Writes.** Every write in its turn answers `WORKFLOW.NOTASTEP`.
   - **The answer** is a recap and hypotheses ranked most likely first, citing the rows used.
-  - **Never added:** a new route, tool, governance key, screen, descriptor, entity type, suggested prompt or system-prompt sentence.
-  - **Owns DW-2468 and DW-2469.** A step's tools join the turn's starting tool set, and `previous` reports a turn only when it ran the same workflow.
-- **20.25, item runtime actions.** Temporary stop, start and restart of one item, copy, and change of class, each over a fresh read through the interoperability port. A runtime action is followed by the production update the vendor requires. A vendor no-op (a stopped production, a disabled item) is refused by name. The vendor audits copy and change of class.
-- **20.26, partner writes** on `Ens.Config.BusinessPartner`, each confirmed over a fresh read and recording OcuPilot's own audit row.
-  - **Rename** is either refused or run in one transaction.
-  - **Remove** first reads the items that name the partner.
-  - **Pairs** go to the orchestrator (`%Ens_ProductionConfig:WRITE` recommended).
+  - **Never added:** a route, tool, key, screen, entity type or system-prompt sentence.
+  - **Owns DW-2468 and DW-2469.** Step tools join the starting tool set, and `previous` reports only the same workflow's turns.
+- **20.25, item runtime actions.** Temporary stop, start and restart, copy, and change of class, each over a fresh read through the interoperability port.
+  - A runtime action is followed by the production update the vendor requires.
+  - A vendor no-op is refused by name.
+- **20.26, partner writes.** Each write is confirmed over a fresh read and records OcuPilot's own audit row.
+  - A rename is refused or runs in one transaction.
+  - A remove first reads the items that name the partner.
+  - The pairs go to the orchestrator; the recommendation is `%Ens_ProductionConfig:WRITE`.
 
 ## Technical Decisions
 
-- **New stored properties are declared after every existing one** on any `%Persistent` class of OcuPilot's own state. A rename or removal needs a migration step. `SCHEMAVERSION` moves only when a stored row's meaning changes. Upgrade is "install again", and downgrade is not supported.
-- **Ports are the whole gate.** The vendor's production, partner, test, resend and analytics calls check no privilege. Each port therefore gates first, in this order: the endpoint's pairs, the tool's pairs, then database READ (WRITE for a write). A refusal names the failed pair. Every new surface declares its own pair.
-- **`InteropPort`** is the only class that controls a production. A new read or write names its case in the interoperability AD at its spec gate. Each write is action-style over a port-composed read, finishes in its own request, and refuses vendor silent successes by name. Namespace switches use explicit save and restore and call no `OcuPilot.*` class while switched.
-- **`AnalyticsPort`** calls `%DeepSee` in process as the signed-in person, never `/api/deepsee`. Before any vendor call it checks, in order: the pairs, the namespace's shape, that the namespace reports analytics (else 409 `ANALYTICS.NAMESPACE`), then database READ. It uses only reads measured to write nothing.
-- **Background runs** (`Kernel/Shell/BackgroundRun`, shared by the SQL console and MDX, stored in `SqlRun`). A run never mutates. Each user gets one live run per kind, and the instance allows five. The answer is held for its owner alone and swept 900 s after the run ends, and another user's run reads as 404.
-- **Client.** Zoneless and `OnPush`. `screens.generated.ts` is generated and never hand-edited. Bundle limits are a 2,500 kB warning and a 4,000 kB hard stop. A crossing is reported to the owner, never re-based.
+- **One descriptor per screen.** A hand-written descriptor is the single source for route, gate, read tool, context and change events. Adding a screen means adding a descriptor, never editing a router, nav list or tool registry. `screens.generated.ts` is generated by `screen-mirror.mjs` and never hand-edited. Any new descriptor grammar is validated alike by `Screen/Registry.cls` and `screen-mirror.mjs`.
+- **Tabbed screens.** A tabbed screen is one descriptor per tab, grouped by a declared `tab`.
+  - A parent-scoped group's members name the same `parentScope` and its one criterion, and the strip carries the route id from tab to tab (a SQL table's catalog tabs).
+  - Today a list's name cell opens a paired viewer only at `<list route>/document`, which is unlisted (side-bar position 0) and takes an id. Without one, the name links to the dead `<list route>/<id>`.
+  - The story names `sql-schemas/<schema>` instead. The plan reconciles the two, and any change to the route or tab-group grammar goes to the orchestrator as a question: a runner never amends an AD on its own.
+- **Reads.** A screen's list and its read tool share one declared read: the same filter, fields and cap, reporting truncation and the applied `criteria`. A page may issue another built screen's read, and that screen's gate, cap and field set then apply unchanged, so it never widens.
+- **The SQL catalog reads** go through `AtelierPort`.
+  - **Gate:** `%Development:USE` plus READ on the namespace's code databases, resolved at call time. A refusal names the failed pair and is never an empty list.
+  - **Statements:** fixed, with validated parameters only.
+  - **Classic page:** these screens replace `%CSP.UI.Portal.SQL.Home`, whose custom resource also gates them. A new screen declares the classic page it replaces, or says it has none.
+- **Ids** take one path segment, encoded and decoded by the shared pair only.
+- **Screen context.** The kernel derives the context's `tools` from the screen's reads and actions on the instance, and refuses them in a request.
+- **Client.** Zoneless, `OnPush`, and state held in a framework-free store, never a component field.
+  - Each built page loads on demand: one loader line, and no static import from the initial bundle.
+  - Bundle limits are a 2,500 kB warning and a 4,000 kB hard stop. A crossing is reported to the owner, never re-based.
 - **Untrusted content** (vendor text, names, MDX, message bodies) reaches the screen only as interpolated text, and reaches the model only through the one sanitizer.
-- **Tests.** No test class depends on state another class left. Run one test class at a time and wait for each run to land in `%UnitTest_Result`. Read results from that global.
+- **Stored state.** A new stored property is declared after every existing one, since the source carries no Storage section. `SCHEMAVERSION` moves only when a stored row's meaning changes.
+- **Ports are the whole gate** for vendor production, partner, test, resend and analytics calls, which check no privilege themselves. Each checks the endpoint's pairs, the tool's pairs, then database READ (WRITE for a write). `InteropPort` alone controls productions, and its writes refuse vendor silent successes by name. `AnalyticsPort` calls `%DeepSee` in process, never `/api/deepsee`. Namespace switches use explicit save and restore.
+- **Tests.**
+  - No class depends on state another class left.
+  - Run one test class at a time, and read results from `%UnitTest_Result`.
+  - A browser spec runs against the deployed bundle, so rebuild and redeploy before reading a result.
 
 ## UX & Interaction Patterns
 
-- **Gated controls are never hidden.** They stay focusable and `aria-disabled`, and they name the failed pair or reason. Investigate is gated exactly like Explain this and sits beside every Explain this entry.
-- **The workflow chip** above the composer reads "Guided workflow", followed by the starting text, then Continue and End workflow.
-- **Destructive actions.** A person's destructive screen action, such as the cube manager's Build, uses the typed-name confirm. An agent's destructive card carries no typed-name confirm. Dialogs never stack.
-- **New strings** go into EXPERIENCE.md's Fixed strings and `strings.ts` with unique values, with no internal ids in user-facing copy.
+- **Gated controls are never hidden.** They stay focusable and `aria-disabled` and name the failed pair. An unlisted screen is reached from its list and never advertised.
+- **Strings.** "Tables", "Views", "Procedures", "Schema" and "System items" already exist as fixed strings from the SQL catalog, so reuse them. A new string goes into EXPERIENCE.md's Fixed strings and `strings.ts` with a unique value and no internal ids. Other suites cite EXPERIENCE.md by line, so run `cd ui && npm run test:tools` after editing it.
+- **Destructive actions.** A person's destructive action, such as the cube manager's Build, uses the typed-name confirm. Dialogs never stack.
+- **Workflows.** The chip reads "Guided workflow", then Continue and End workflow. Investigate is gated like Explain this and sits beside it.
 
 ## Cross-Story Dependencies
 
-- **Status.** Done: 20.1 to 20.24, 20.27 to 20.33, and 20.35. Ready for development: 20.34 and 20.36 (spec written). Backlog: 20.37, 20.25 and 20.26.
-- **Order.** 20.37, then 20.34, 20.36, 20.25, 20.26 and the burn-down.
-- **20.37** touches only `SqlRun`, which 20.33's MDX runs and the SQL console share. The 1.0.13 upgrade check from release 1.0.12 is re-run after it lands.
-- **20.34** consumes 20.11's port, error and probe types, 20.33's checks and 20.23's action-write shape. DW-2485 (the cache-snapshot `MAXSTRING`) rides with it.
-- **20.36** consumes 20.12's catalog, workflow call, refusals and chip.
-- **Shared rosters take add-only edits.** These include the governance baseline, `strings.ts`, the screen mirror, `ReadTool`, `ToolRoundTrip`, `ToolEmit`, `SurfaceCoverage` and the floor rosters. `ToolWrite`'s other-port write count (51) moves with 20.34, 20.25 and 20.26. Ask first before any non-add-only edit to `Screen/Registry.cls`, `Kernel/EntityType.cls`, the prohibited set, `Kernel/Proposal/*`, `app.routes.ts` or the CI files.
-- **Known flakes:** DW-2461, DW-2472 and DW-2493. Re-run a failed job once; a second red on the same head is a story red.
+- **Status.**
+  - Done: 20.1 to 20.24, 20.27 to 20.33, 20.35 and 20.37.
+  - 20.34 is ready for development.
+  - 20.36's spec is written, but the tracker reads backlog.
+  - 20.25, 20.26 and 20.38 are backlog.
+- **Order.** 20.38 alone, then hold. On resume: 20.34, 20.36, 20.25, 20.26, then the burn-down.
+- **20.38 builds on Epic 19's SQL catalog** (the schemas, tables, views and procedures lists and their viewers) and on the shared table's name-cell links.
+- **Contention with Epic 23.** 20.38 runs beside 23.12 (slot A). 23.12 changes `Screen/Tool/Read.cls` (read descriptions), `Kernel/Agent/Prompt.cls`, and the labels on the task, database and log descriptors.
+  - Check Epic 23's diff before editing a file. An add-only edit is fine; anything else in a file it changed is a Clarification.
+  - The generated mirror and the roster unions resolve at integrate-forward: regenerate, or keep both sides.
+  - If 23.12 merges first, integrate forward and push that merge alone before the code push.
+- **20.34** consumes 20.11's port, error and probe types, 20.33's checks and 20.23's action-write shape. **20.36** consumes 20.12's catalog, workflow call, refusals and chip.
+- **Shared rosters take add-only edits.** These include the governance baseline, `strings.ts`, the screen mirror, `ReadTool`, `ToolRoundTrip`, `ToolEmit` and `SurfaceCoverage`. `ToolWrite`'s other-port write count moves with 20.34, 20.25 and 20.26.
+- **Known flakes:** DW-1822 (a Chrome protocol timeout in the a11y walk, which recurred on the 1.0.13 release PR), DW-2461, DW-2472 and DW-2493. Re-run a failed job once; a second red on the same head is a story red.
 - **Epic 21 waits on this epic.** 21.8 waits on 20.11, and 21.7 and 21.11 wait on all of Epic 20.
