@@ -128,7 +128,8 @@ if [ -n "$OS_TRIGGER" ]; then
   fi
 
   # The screen-mirror drift check (Story 1.9, DW-184). `ui/src/app/core/screens.generated.ts`
-  # is generated from the descriptor tree, so the two must agree on every commit that can
+  # is generated from the descriptor tree, and `src/OcuPilot/Screen/Titles.cls` from its
+  # `labelKey`s and `ui/src/app/core/strings.ts`, so they must agree on every commit that can
   # change either -- and this dispatch was the one `prebuild` and `prestart` ran that the hook
   # did not, so a descriptor committed without its regenerated mirror passed here and failed
   # the next build. Same trigger as the checks above, for the reason their comments record.

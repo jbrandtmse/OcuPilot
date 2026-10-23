@@ -14,8 +14,8 @@
 /// model sends the search the screen sends, and neither can send a parameter the descriptor does
 /// not declare.</p>
 /// <p><b>The description says what the list holds</b> (<method>Description</method>): the screen's title
-/// and tool identifier, what one row is, the fields the read answers, the read's <code>label</code> where
-/// it declares one, and its <code>note</code> last. It is built from compile-time declarations alone, so
+/// and tool identifier, what one row is, the read's <code>label</code> where it declares one, the fields
+/// the read answers, and its <code>note</code> last. It is built from compile-time declarations alone, so
 /// the listing stays deterministic (AD-5).</p>
 Class OcuPilot.Screen.Tool.Read Extends OcuPilot.Screen.Tool.Base [ Abstract ]
 {
@@ -82,8 +82,8 @@ ClassMethod Title(pDescriptor As %String = "") As %String
 /// "Read the rows of the <var>pIdentifier</var> screen"; then ", one <var>pRow</var> per row" when a row
 /// phrase is declared; then ", bounded and with secret fields removed."; then <var>pLabel</var> when
 /// declared; then "Fields:" and <var>pFields</var> joined by commas, when any; and last
-/// <var>pNote</var> when declared. The label comes before the fields so that a cut that trims the end of
-/// a long description trims fields first, and the note is last (AD-36).</p>
+/// <var>pNote</var> when declared. The label comes before the fields so that a cut at the end of a long
+/// description reaches the fields before the label; the note is last (AD-36).</p>
 ClassMethod Compose(pTitle As %String = "", pIdentifier As %String = "", pRow As %String = "", pFields As %DynamicArray = "", pLabel As %String = "", pNote As %String = "") As %String
 {
     Set tText = "Read the rows of the " _ $Select(pTitle '= "": pTitle _ " screen (" _ pIdentifier _ ")", 1: pIdentifier _ " screen")
@@ -104,9 +104,10 @@ ClassMethod Compose(pTitle As %String = "", pIdentifier As %String = "", pRow As
 
 /// <p>The description the model is given for <var>pDescriptor</var>'s read tool
 /// (<method>Compose</method>): the screen's <method>Title</method> and <code>toolIdentifier</code>, the
-/// read's <code>row</code> phrase, its answered fields (<method>OcuPilot.Screen.Read.AnsweredFields</method>,
-/// the fields the executor projects, secret fields removed), its <code>label</code>, and its
-/// <code>note</code>'s <code>text</code> last, the sentence its screen shows above the rows (AD-36).</p>
+/// read's <code>row</code> phrase, its <code>label</code>, its answered fields
+/// (<method>OcuPilot.Screen.Read.AnsweredFields</method>, the fields the executor projects, secret fields
+/// removed), and its <code>note</code>'s <code>text</code> last, the sentence its screen shows above the
+/// rows (AD-36).</p>
 ClassMethod Description(pDescriptor As %String = "") As %String
 {
     Set tRead = $ClassMethod(pDescriptor, "Read")

@@ -46,7 +46,7 @@ XData Declaration
   "classicPage": "%CSP.UI.Portal.LicenseUsage",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
-    "row": "summary of license usage",
+    "row": "license usage measure",
     "source": {"port": "admin", "endpoint": "Monitor", "type": "LICENSEUSAGE", "rows": "Summary"},
     "fields": ["LicenseUnitUse", "Local", "Distributed"],
     "filter": [],

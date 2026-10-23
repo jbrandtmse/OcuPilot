@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 /**
  * Generates `ui/src/app/core/screens.generated.ts` -- the client's mirror of every screen
- * descriptor and of the area vocabulary (AD-5).
+ * descriptor and of the area vocabulary (AD-5) -- and `src/OcuPilot/Screen/Titles.cls`, each
+ * descriptor `labelKey` with its `ui/src/app/core/strings.ts` string, the title a read tool's
+ * description gives its screen.
  *
  * **One source, two readers.** The server reads each `XData` block through
  * `%Dictionary.XDataDefinition`; this reads the same blocks off disk. The mirror is therefore
@@ -33,7 +35,8 @@
  * of `built: true` screens are emitted as `BuiltArchetypeKey`, which `ui/src/app/shell/
  * screen-outlet.ts` requires a page for, so a built screen with no page fails `ng build`.
  *
- * Usage: `node tools/screen-mirror.mjs` writes the mirror; `--check` only reports drift.
+ * Usage: `node tools/screen-mirror.mjs` writes the mirror and `Titles.cls`; `--check` only reports
+ * drift in either.
  */
 
 import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -1354,8 +1357,8 @@ export const READ_LABEL_MAX_LENGTH = 240;
 
 /**
  * What is wrong with a read's `row` or `label`, or `null` (AD-36). Both are optional and only the
- * read tool's description carries them: `row` is the phrase for one row, `label` one sentence on what
- * the list holds and does not hold. Absent or `null` declares none; otherwise each is a non-empty
+ * read tool's description carries them: `row` is the phrase for one row, `label` a sentence or two on
+ * what the list holds and does not hold. Absent or `null` declares none; otherwise each is a non-empty
  * string, `row` of at most `READ_ROW_MAX_LENGTH` characters and `label` of at most
  * `READ_LABEL_MAX_LENGTH`. `OcuPilot.Screen.Registry.ReadRowLabelProblem` returns the same sentences,
  * and `OcuPilot.Test.ReadSourceCorpus` is the corpus both engines run.
@@ -3870,7 +3873,7 @@ export interface ReadDeclaration {
   readonly note?: { readonly key: string; readonly text: string } | null;
   /** The phrase for one row, read only by the read tool's description; no page renders it. */
   readonly row?: string | null;
-  /** One sentence on what the list holds and does not hold, read only by the read tool's description; no page renders it. */
+  /** A sentence or two on what the list holds and does not hold, read only by the read tool's description; no page renders it. */
   readonly label?: string | null;
 }
 

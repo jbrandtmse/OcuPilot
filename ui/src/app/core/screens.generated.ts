@@ -308,7 +308,7 @@ export interface ReadDeclaration {
   readonly note?: { readonly key: string; readonly text: string } | null;
   /** The phrase for one row, read only by the read tool's description; no page renders it. */
   readonly row?: string | null;
-  /** One sentence on what the list holds and does not hold, read only by the read tool's description; no page renders it. */
+  /** A sentence or two on what the list holds and does not hold, read only by the read tool's description; no page renders it. */
   readonly label?: string | null;
 }
 
@@ -20139,7 +20139,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "href": ""
     },
     "read": {
-      "row": "summary of license usage",
+      "row": "license usage measure",
       "source": {
         "port": "admin",
         "endpoint": "Monitor",

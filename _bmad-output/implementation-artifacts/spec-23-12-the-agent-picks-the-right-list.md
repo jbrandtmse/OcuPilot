@@ -157,6 +157,43 @@ Measured from the tree (`ui/tools/screen-mirror.mjs` `readSources`, `loadStrings
 - **AC7 (integration).** Given `shell.tools.find` on `ocupilot-ci`, when queried "suspended tasks" with limit 20, then the `tasks_schedule_read` row carries the registry's composed description.
 - **AC8.** Given the story's diff, when the lead checks the upgrade triggers, then none is touched.
 
+### Review Findings
+
+Code review 2026-10-23 (full-opus; blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor). No high or medium finding; every patch applied by the reviewer.
+
+- [x] [Review][Patch] AC2's identifier scan skipped any dotted token not exactly two segments, so a label naming `tasks.schedule.read` passed [src/OcuPilot/Test/ReadDescriptions.cls:286]
+- [x] [Review][Patch] `ErrorRead.ROW` and `LABEL` were held to no length bound, unlike a descriptor's `row` and `label` [src/OcuPilot/Test/ReadDescriptions.cls:294]
+- [x] [Review][Patch] The matrix test's label-before-fields leg passed with the label absent (`0 < n`) [src/OcuPilot/Test/ReadDescriptions.cls:418]
+- [x] [Review][Patch] Two methods quit with no assertion when the Titles XData is unreadable [src/OcuPilot/Test/ReadDescriptions.cls:414]
+- [x] [Review][Patch] `LicenseSummaryTab`'s row "summary of license usage" misnamed a row, which is one license usage measure [src/OcuPilot/Screen/Descriptor/LicenseSummaryTab.cls:49]
+- [x] [Review][Patch] Doc comments gave the description's order as fields before label [src/OcuPilot/Screen/Tool/Read.cls:17]
+- [x] [Review][Patch] `Compose`'s doc said an end cut trims fields first, which a declared note contradicts [src/OcuPilot/Screen/Tool/Read.cls:86]
+- [x] [Review][Patch] `Prompt.cls`'s doc counted eleven sentences in the screen_context group, which holds twelve [src/OcuPilot/Kernel/Agent/Prompt.cls:10]
+- [x] [Review][Patch] "`label` one sentence" in both validators' docs, while `tasks.history`'s ruled label is two [src/OcuPilot/Screen/Registry.cls:1105]
+- [x] [Review][Patch] `screen-mirror.mjs`'s header and usage, and the hook's comment, named only `screens.generated.ts` [ui/tools/screen-mirror.mjs:4]
+- [x] [Review][Patch] A QA doc comment said the label-after-fields mutation reddens no other test, against its recorded mutation [src/OcuPilot/Test/ReadDescriptions.cls:360]
+- [x] [Review][Patch] `ReadDescriptions`' header said it reads only the registry, while two tests read the instance [src/OcuPilot/Test/ReadDescriptions.cls:7]
+- [x] [Review][Defer] Descriptions over 1,024 characters [src/OcuPilot/Screen/Tool/Read.cls:87] -- deferred: occurrence on DW-2503 (medium, unverified; one live OpenAI request settles it)
+- [x] [Review][Defer] Two ruled labels state a wider namespace scope than their reads [src/OcuPilot/Screen/Descriptor/LogAnalyticsViewer.cls:46] -- deferred: DW-2510 `by-design` (ruled Labels table; reword in a later story)
+- [x] [Review][Defer] The titled-no-row leg reads `Test/ProposalScreen`, another suite's fixture [src/OcuPilot/Test/ReadDescriptions.cls:462] -- deferred: DW-2511 `wontfix-accepted`, with a `reopen_if`
+
+Rejected:
+
+- `by-design` Labels give some group members no inbound pointer (`security.auditing` among them), and `tasks.background` and `logs.taskerrors` do not name each other: the Labels table is ruled (U-13).
+- `by-design` The `logs.hub` label names the integrity log by its title: ruled wording, naming a source it excludes rather than a list to read.
+- `by-design` Rule three asks for screen titles while three statements tabs share one: ruled rule; Design Notes decide that the identifier tells duplicates apart.
+- `false` The labels push other task reads above `tasks.schedule.read` in `shell.tools.find`: probed on `ocupilot-ci` at the default limit, it is in the 8 rows (4th), above the tied writes, and the `tasks.history` label points to it; scoring is out of scope (Never).
+- `low` Row phrases and labels are not run through `checkVoiceRules`: all 36 labels and 157 rows comply today, and the fix is new machinery.
+- `by-design` A discovery row's 1,000-character cut trims `osmgmt.dashboard`'s and `osmgmt.ecpstatistics`' field tails: decided in Design Notes › Template.
+- `false` `Title` re-reads the XData on every call: measured, 157 calls take 0.042 s.
+- `low` Whitespace-only or unpunctuated `row`/`label` pass both validators: no declaration does, and the fix adds a guard to two engines.
+- `by-design` Rule two says every read tool's description names its fields, which the query and source reads do not: ruled rule; Design Notes › Scope of AC1.
+- `low` The corpus harness drops a boolean, object or array `row`/`label`: no case declares one, a future one fails loudly, and the fix adds branches.
+- `false` The commit says 35 labeled lists while 36 tools carry one: 35 descriptors declare `label`; the 36th is `ErrorRead.LABEL`.
+- `false` The spec reads `done` while AC5 is open: AC5 is the lead's Task Z, after review.
+- `false` The probe fixture's literal `Fields: Name, Id.` breaks "no test writes it as a literal": the rule protects production reads' lists from drifting from `AnsweredFields`; the literal is the fixture's own independent oracle.
+- `false` The mirror types `row` and `label` as `string | null`, not `string`: the grammar admits `null`, and the mirror copies it verbatim, as with `note`.
+
 ## Spec Change Log
 
 - 2026-10-23, lead spec gate: visible text accepted (veto U-13); AD-5 and AD-36 notes ruled by the orchestrator: no spine edit in this run, lines kept for the owner's Update; status `ready-for-dev`.
@@ -185,6 +222,13 @@ Measured from the tree (`ui/tools/screen-mirror.mjs` `readSources`, `loadStrings
   - `[false]` `[reject]` Prompt rule 2 says each read tool names its fields, which the other `KIND = "read"` tools do not -- the rule is ruled verbatim and those tools read no list (Design Notes, Scope of AC1).
   - `[false]` `[reject]` The spine is not edited and AD-36 names only `note` -- the orchestrator ruled no spine edit in this run; the two notes wait for the owner's Update.
   - `[false]` `[reject]` The demo changes only at a later release -- not a defect of the diff.
+
+### 2026-10-23 -- Code review
+
+- verdicts: 31 rows, 30 entries -- high 0, medium 1 (unverified), low 14, false or by-design 15. Review tier full-opus, four layers.
+- patched (12, all low): the AC2 scan, the `ErrorRead` bounds, two weak assertions, the `LicenseSummaryTab` row, and seven doc comments. Re-run on `ocupilot-ci`: `ReadDescriptions` 9/0 (run 773), `Descriptor` 60/0 (run 774); `npm run test:tools` 2151 passed; `screen-mirror.mjs --check` and `check-objectscript.py` clean.
+- ledger: DW-2503 occurrence; DW-2510 `by-design`; DW-2511 `wontfix-accepted`.
+- AC4 proxy re-measured: advertised descriptions 152,880 (+27,566 against 40,000), `Builtin()` 4,559 (+311 against 400). AC8: no trigger touched. The probe fixture reaches no roster: `Registry.Descriptors` takes `OcuPilot.Screen.Descriptor.` only, the mirror reads `Screen/Descriptor/`, and `ci-runner` lists only `TestCase` classes.
 
 ## Design Notes
 
@@ -479,6 +523,22 @@ Each was applied on `ocupilot-ci` (the whole `src/` tree reloaded after it), the
 - `Builtin()` is 4,559 characters, against 4,248 before: +311, bound 400.
 - Two reads exceed 1,000 characters, `osmgmt.dashboard` at 1,143 and `osmgmt.ecpstatistics` at 1,030; the longest description of all is an existing write tool at 1,516.
 - Warm `Registry.ProviderTools` takes 0.46 to 0.49 s for 396 tools, and 157 `Read.Title` calls take 0.042 s.
+
+**QA additions (all `(loop)`):**
+
+- `(QA)` `src/OcuPilot/Test/ReadDescriptions.cls`: `TestEveryReadDescriptionIsExactlyItsDeclaredParts`, `TestTheMatrixExamplesCarryTheirDocumentedParts`, `TestAFixtureDescriptorWithoutATitleOrARowComposesFromItsIdentifier`, `TestTheDescribedFieldsAreTheFieldsTheReadReturns`.
+- `(QA)` `src/OcuPilot/Test/ReadDescriptionsProbe.cls` (new fixture descriptor, no title and no row; reaches no roster).
+- `(QA)` `ui/tools/screen-titles.test.mjs` (new): `screen-mirror.mjs --check` run as a process over a copy of the sources.
+- On `ocupilot-ci`: `ReadDescriptions` 9 tests, 0 failed (run 769, per-method rows read from `%UnitTest_Result`); `TurnLoop` 11 tests, 0 failed (run 770); `npm run test:tools` 2151 passed.
+- mutation: `Tool/Read.cls` `Compose` writes the label after the field list -> `ReadDescriptions.TestEveryReadDescriptionIsExactlyItsDeclaredParts` and `TestTheMatrixExamplesCarryTheirDocumentedParts` red (with `TestAReadWithoutATitleOrARowStillComposes`; `TestEveryConfusableToolCarriesItsLabel` stays green).
+- mutation: `Descriptor/UserList.cls` declares a label (a tool outside every group) -> `ReadDescriptions.TestTheMatrixExamplesCarryTheirDocumentedParts` (outside-every-group leg) and `TestEveryReadDescriptionIsExactlyItsDeclaredParts` red, with `TestEveryConfusableToolCarriesItsLabel`.
+- mutation: `Tool/Read.cls` `Description` passes the label key as the title when none is generated -> `ReadDescriptions.TestAFixtureDescriptorWithoutATitleOrARowComposesFromItsIdentifier` red alone.
+- mutation: `Screen/Read.cls` `Execute` projects onto `read.fields` with the secret fields kept -> `ReadDescriptions.TestTheDescribedFieldsAreTheFieldsTheReadReturns` red alone, at `osmgmt.licensekey.read`.
+- mutation: `screen-mirror.mjs` `--check` drops its `Titles.cls` comparison -> `screen-titles.test.mjs` the stale-strings, hand-edited-or-missing and regeneration tests red.
+- mutation: `screen-mirror.mjs` skips writing `Titles.cls` on regenerate -> `screen-titles.test.mjs` the regeneration test red alone.
+- mutation: `Port/ProviderPort.cls` `SystemPromptFor` appends a rule to an override -> `TurnLoop.TestAnOverrideReplacesTheBuiltInPromptWhole` red alone (the override row of the matrix).
+- (CR) mutation: `TaskHistoryList`'s label names `tasks.schedule.read` in place of `tasks.schedule` -> `ReadDescriptions.TestEveryConfusableToolCarriesItsLabel` red alone, "tasks.history's label names tasks.schedule.read" (run 772; the scan before this review skipped the token).
+- (CR) mutation: `ErrorRead.LABEL` padded to 252 characters -> `ReadDescriptions.TestEveryConfusableToolCarriesItsLabel` red alone, "its LABEL meets the read.label bound: 252" (run 772, same run). Both reverted; tree byte-identical; run 773 green.
 
 ## Auto Run Result
 

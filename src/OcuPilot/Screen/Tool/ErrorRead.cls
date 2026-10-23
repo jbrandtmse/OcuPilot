@@ -64,7 +64,7 @@ Parameter SUMMARYFIELDS = "errorNumber,time,errorText,routine,line";
 
 /// <p>The description the model is given, composed as a descriptor-derived read tool's is
 /// (<method>OcuPilot.Screen.Tool.Read.Compose</method>): the screen's title, <parameter>ROW</parameter>,
-/// <parameter>SUMMARYFIELDS</parameter>, <parameter>LABEL</parameter>, then <parameter>DESCRIPTION</parameter>
+/// <parameter>LABEL</parameter>, <parameter>SUMMARYFIELDS</parameter>, then <parameter>DESCRIPTION</parameter>
 /// last. <var>pDescriptor</var> is ignored.</p>
 ClassMethod Description(pDescriptor As %String = "") As %String
 {

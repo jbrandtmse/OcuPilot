@@ -1102,7 +1102,7 @@ Parameter READLABELMAXLENGTH = 240;
 
 /// <p>What is wrong with <var>pRead</var>'s <code>row</code> or <code>label</code>, or <code>""</code>
 /// (AD-36). Both are optional and only the read tool's description carries them: <code>row</code> is
-/// the phrase for one row, <code>label</code> one sentence on what the list holds and does not hold.
+/// the phrase for one row, <code>label</code> a sentence or two on what the list holds and does not hold.
 /// Absent or <code>null</code> declares none; otherwise each is a non-empty string, <code>row</code> of
 /// at most <parameter>READROWMAXLENGTH</parameter> characters and <code>label</code> of at most
 /// <parameter>READLABELMAXLENGTH</parameter>. <file>ui/tools/screen-mirror.mjs</file>'s
