@@ -2,7 +2,7 @@
 title: 'Story 23.9: The range-end cleanup, part 8'
 type: 'bugfix'
 created: '2026-11-12'
-status: 'done'
+status: 'in-progress'
 baseline_revision: 'ec69ba7f973eaf5741a24e4c92081165e5ca9876'
 baseline_commit: 'ec69ba7f973eaf5741a24e4c92081165e5ca9876'
 review_loop_iteration: 0
@@ -135,7 +135,7 @@ deferred:
 - In the same pass, update every test that asserts a shared surface's old shape (Verification › Shared surfaces).
 - The lead writes the ledger trailers once the batch's commit is green.
 - **Pass order** (lead rulings): batch 1 (done); then batch 4 with DW-1706; then batch 3 with DW-1177's docstring, after Story 20.34 (which edits `screen-mirror.test.mjs`'s `OwnPrivilegeCases` test and `check-objectscript.py`) has merged and been integrated forward; then batch 5. Four commits. The lead opens one pass at a time; a pass works only the items the lead names and leaves every other item unchecked.
-- **Current pass: Batch 1 only.**
+- **Current pass: Batch 4 (DW-2259, DW-2260, DW-1981) and DW-1706 from Batch 2.** DW-1177 waits for batch 3; batches 3 and 5 stay unchecked.
 
 ### Batch 1: CI flakes
 
