@@ -344,6 +344,17 @@ deferred:
 - Task 0 (i): `local-databases.browser-spec.mjs` alone twice, 8/8 each, 62.4 s and 58.1 s, no navigation timeout. Task 0 (ii): `PausedCompact` over 30,000 nodes, three probes: task Paused, `Remove` OK, directory gone (0.28-0.71 s to pause, 1.7-1.9 s to remove). AC8 green at 30,000 (11.5 s against 16.1 s).
 - Mutations: restoring `await document.fonts.ready` reddens `structural-walk.test.mjs` (5.0 s); dropping the `fonts.status === 'loaded'` term reddens it on its lower bound; an unwrapped walk page call (`detectScreen`'s evaluate) reddens its `bounded(` source check; `withDeadline` returning its promise reddens the two deadline cases in `protocol-retry.test.mjs` (they hung to the test timeout, now 10 s each); an empty in-flight list reddens `panel-spec.test.mjs`, as does a direct `page.goto` in `signedInAt`. Each reverted, confirmed by `cmp` against the pre-mutation copy.
 - `pNodes` has no pinning test: it sizes a test-only seed, and the observed effect is AC8's fill and duration (11.5 s against 16.1 s), not a pass or fail.
+- QA (batch 1), tests added (QA): `ui/tools/structural-walk.test.mjs` (hung-page cases run `settle`, `detectScreen` and `toggleThemeThroughMenu` against a fake page whose call never settles, with the 60 s deadline advanced by mock timers; a pass retried once through `retryOnce`; the report line), `ui/tools/panel-spec.test.mjs` (`signedInAt` run against a fake browser whose `goto` times out, with a request made by `prepare` and one by the navigation in flight), and `OcuPilot.Test.BackgroundTasksLive.TestThePausedCompactFillsTheNodeCountItIsGiven` (the seed's size argument).
+  - mutation: drop `bounded(` from the settle evaluate -> `structural-walk.test.mjs` settle hung-page case red (10 s test timeout).
+  - mutation: drop `bounded(` from the `detectScreen` evaluate -> its hung-page case red.
+  - mutation: drop `bounded(` from the theme toggle's class wait -> its hung-page case red.
+  - mutation: `WALKCALLDEADLINE` 60_000 to 90_000 -> the three hung-page cases red.
+  - mutation: drop the retried-pass line from `reportLines` -> "the walk's report names each retried pass" red.
+  - mutation: `signedInAt` calls `page.goto` directly -> `panel-spec.test.mjs` `signedInAt` run and source-order case red.
+  - mutation: `signedInAt` starts tracking after `prepare` -> the same two red.
+  - mutation: `gotoNamingInflight` lists no requests -> the first case and the `signedInAt` run red.
+  - mutation: `PausedCompact` calls `..Prepare()` without `pNodes` -> `TestThePausedCompactFillsTheNodeCountItIsGiven` red alone (1 of 9, run 703); reverted, 9/9 (run 704).
+  - Each reverted and confirmed by `cmp` against a pre-mutation copy; `git status --short` lists only the three QA files.
 - Green: `npm run test:tools` 2164/2164; `check-objectscript.py` 0 problems; `BackgroundTasksLive` 8/8; `background-tasks.browser-spec.mjs` 2/2; `a11y-structural-invariants.browser-spec.mjs` 13/13 in 420.8 s with no retried-pass line (414.8 s at 7dd30507).
 
 ## Auto Run Result
