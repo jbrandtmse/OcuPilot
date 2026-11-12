@@ -12463,3 +12463,18 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: release/1.0.14 push run 40014034409 attempt 1, browser shard 3/5 (723a3662); attempt 2 green; the same code was green on feature (2a9ea8d1, run 40008057887)
 - 2026-10-23T21:31:33Z status=routed owner=burndown by=orchestrator note=CI flake, reported by the Planner at the 1.0.14 cut; first in the next standing cleanup with DW-1822 (Rule 27)
 - 2026-11-12T13:49:03Z status=routed owner=23-9-the-range-end-cleanup-part-8 by=spec_gate note=CI flake; first priority in 23.9 (orchestrator re-dispatch 2026-11-12, Rule 27)
+
+### DW-2513: flake: data-table-columns.browser-spec.mjs failed 17 of 18 at its own goto against its local server
+- source: spec-23-9-the-range-end-cleanup-part-8.md (plan) | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: main push run 40026736561 (39f5106e) attempt 1; not in the ledger before; found by the 23.9 plan reading CI logs
+- 2026-11-12T14:27:31Z status=routed owner=23-10-the-range-end-cleanup-part-9-two-sweeps by=spec_gate note=CI flake; first priority in 23.10 (Rule 27)
+
+### DW-2514: Other duplicated client path literals: /api/ocupilot/proposal (core/draft.ts, core/turn.ts), DATABASE_CHECK_PATH (database-integrity and database-wizard stores), screen-action-handler.ts users form path
+- source: spec-23-9-the-range-end-cleanup-part-8.md (plan) | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: found by the 23.9 plan beside DW-2260; each pair currently agrees
+- 2026-11-12T14:27:31Z status=wontfix-accepted owner=23-9-the-range-end-cleanup-part-8 by=spec_gate note=reopen_if=two copies of one /api/ocupilot path literal disagree
+
+### DW-2515: Text criteria inputs on tasks/history, logs/audit, logs/log-hub, sql-query and data-browser may lack maxlength (inference, unchecked)
+- source: spec-23-9-the-range-end-cleanup-part-8.md (plan) | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: (inference) by analogy with DW-1981; not probed
+- 2026-11-12T14:27:31Z status=wontfix-accepted owner=23-9-the-range-end-cleanup-part-8 by=spec_gate note=reopen_if=an over-long criterion value is refused only by the server on one of these screens

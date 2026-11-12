@@ -9651,7 +9651,7 @@ So that an out-of-range request value answers its field refusal and a test run n
 
 **Acceptance Criteria:**
 
-- **Given** the entries re-owned to this story: DW-2417, DW-2426, DW-2431, DW-2432 and DW-1979
+- **Given** the entries re-owned to this story: DW-2513, DW-2417, DW-2426, DW-2431, DW-2432 and DW-1979
 - **When** this story completes
 - **Then** each has a disposition written by the ledger tool: `resolved-by` this story with the commit, or `wontfix-accepted` or `by-design` with a reason and, where a condition would reopen it, that condition.
 
@@ -9660,6 +9660,7 @@ So that an out-of-range request value answers its field refusal and a test run n
 - **Then** a test reddens on a representative site before the fix, the story says how a new site written in the old form is caught or why none can be, and each sweep lands as its own batch with CI green on its own head.
 
 - DW-1979: Journal records' Newest first reads the newest records but the table shows them oldest first (ledger; routed by spec_gate 2026-11-12; moved from Story 23.9 to keep it within 12 entries)
+- DW-2513: data-table-columns.browser-spec.mjs failed 17 of 18 at its own goto against its local server (ledger; routed by spec_gate 2026-11-12; CI flake, first priority)
 
 ### Story 23.11: The range-end cleanup, part 10
 
