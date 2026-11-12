@@ -422,6 +422,14 @@ Code review, batch 4 and DW-1706 (2026-11-12). Rule 3 exempt: test-harness and t
   - Each reverted and confirmed by `cmp` against a pre-mutation copy.
   - mutation (review): drop the abstract check from `testClassesOnDisk`'s final filter, or keep only the first name of a parenthesized `Extends` list -> the abstract-with-tests case in `ci.test.mjs` red; each reverted, confirmed by `cmp`.
 - Green: `npm run test:tools` 2183/2183; `check-objectscript.py` 0 problems; `npm run test:components` 3341/3341; `lint-docs.sh` clean; Load 0 errors and `ProviderTransportRetry` 9/9.
+- QA (pass 2), test added (QA): `ui/tools/ci.test.mjs`, "the checkout list survives a wrapped class header, a class with no Extends and an Extends cycle (DW-2259)" (an `Extends` list and a keyword list wrapped over lines, a class with no `Extends`, and two-class cycles with and without a `Test*` method). No test compares `testClassesOnDisk` with the `objectscript` keys of `ci-timings.json`: the file is refreshed only at a merge, so an equality test would redden the story that adds a test class (the two are equal at 699 today).
+  - mutation: drop the `seen` guard from `reachesTestCase` -> the wrapped-header/cycle test red.
+  - mutation: read the class header on one line only (`\s*` to ` *` before the keyword list) -> the same test red.
+  - mutation: drop the `seen` guard from `hasTests` -> the same test red (the cycle with no own `Test*` method).
+  - mutation: replace the final filter with a direct-`Extends` test (DW-2259) -> all three DW-2259 tests in `ci.test.mjs` red.
+  - mutation: re-declare `USERS_PATH` in `user-editor.store.ts` (DW-2260) -> `client-paths.test.mjs` "USERS_PATH is declared once" red.
+  - mutation: delete the `[attr.maxlength]` binding (DW-1981) -> `journal-records.page.spec.ts` "bounds the offset and value inputs" red alone ("offset: expected null to be '20'").
+  - DW-1706 is a doc comment: no test, no mutation. Each reverted, confirmed by `cmp` against a pre-mutation copy.
 - Build: the journal records chunk is `chunk-BwhbAgfu.js`, 11,658 bytes raw; initial total 2.01 MB (357.88 kB transfer), under the 2500 kB warning.
 
 ## Auto Run Result
