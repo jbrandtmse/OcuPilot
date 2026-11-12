@@ -12197,6 +12197,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-15T18:44:49Z status=routed owner=burndown by=lead note=flake priority: rerun once; a second red on the same head is a story red
 - 2026-10-21T13:30:19Z occurrence=20-32-the-analytics-links note=run 39603456840 browser shard 2/5 attempt 1, same selector timeout
 - 2026-10-23T16:32:53Z occurrence=23-12-the-agent-picks-the-right-list
+- 2026-11-12T18:39:53Z occurrence=23-9-the-range-end-cleanup-part-8 note=run 43275467803 (74a6348f) attempt 1, browser shard 3/5: encryption-startup C1 not ok; rerun --failed
 
 ### DW-2463: The interop-editor browser specs keep local copies of the helpers interop-editor-spec.mjs now shares (answered, editorShows, the frame selector) and of 20.7's readSettings, settingsNode and shellAt
 - source: spec-20-10-source-control-hooks.md (code review) | severity: low | fix-risk: low | footprint: in-epic

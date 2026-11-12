@@ -134,7 +134,7 @@ deferred:
 - Each task names its pinning test; its `mutation:` line goes under Verification with the observed run.
 - In the same pass, update every test that asserts a shared surface's old shape (Verification › Shared surfaces).
 - The lead writes the ledger trailers once the batch's commit is green.
-- **Batch 2 lands with batch 4** (lead ruling at the spec gate): four commits, not five. The lead opens one batch per implement pass; a pass works only the batch the lead names and leaves every other batch's items unchecked.
+- **Pass order** (lead rulings): batch 1 (done); then batch 4 with DW-1706; then batch 3 with DW-1177's docstring, after Story 20.34 (which edits `screen-mirror.test.mjs`'s `OwnPrivilegeCases` test and `check-objectscript.py`) has merged and been integrated forward; then batch 5. Four commits. The lead opens one pass at a time; a pass works only the items the lead names and leaves every other item unchecked.
 - **Current pass: Batch 1 only.**
 
 ### Batch 1: CI flakes
@@ -216,6 +216,7 @@ Rejected:
 
 ## Spec Change Log
 
+- 2026-11-12, after batch 1 (lead): pass order changed to 1, 4 + DW-1706, 3 + DW-1177, 5, so no pass edits a file Epic 20's Story 20.34 has changed before it merges.
 - 2026-11-12, spec gate (lead): batch 2 lands with batch 4; the full sweep is lead-owned (before batch 1's push and the last `src` batch's push); filing candidates filed as DW-2513 (flake, routed to 23.10), DW-2514 and DW-2515 (wontfix-accepted).
 
 ## Review Triage Log
