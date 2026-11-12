@@ -9630,13 +9630,16 @@ So that the next reader is not misled by text the code no longer matches.
 
 **Acceptance Criteria:**
 
-- **Given** the entries re-owned to this story: DW-446, DW-1177, DW-1706, DW-1760, DW-1761, DW-2060, DW-2259, DW-2260, DW-2299, DW-1979 and DW-1981
+- **Given** the entries re-owned to this story: DW-1822, DW-2512, DW-446, DW-1177, DW-1706, DW-1760, DW-1761, DW-2060, DW-2259, DW-2260, DW-2299 and DW-1981
 - **When** this story completes
 - **Then** each has a disposition written by the ledger tool: `resolved-by` this story with the commit, or `wontfix-accepted` or `by-design` with a reason and, where a condition would reopen it, that condition.
 
 - **Given** a fix to code or a test
 - **When** it lands
 - **Then** a test reddens on the defect before the fix, or the entry says why none can, and the fixes land in batches grouped by area, each with CI green on its own head.
+
+- DW-1822: a11y-structural-invariants.browser-spec.mjs stalls on Runtime.callFunctionOn and pushes browser shard 1/5 past its 55-minute limit (ledger; routed by spec_gate 2026-11-12; CI flake, first priority)
+- DW-2512: local-databases.browser-spec.mjs hits a 30-second navigation timeout at signedInAt page.goto (ledger; routed by spec_gate 2026-11-12; CI flake, first priority)
 
 ### Story 23.10: The range-end cleanup, part 9: two sweeps
 
@@ -9648,13 +9651,15 @@ So that an out-of-range request value answers its field refusal and a test run n
 
 **Acceptance Criteria:**
 
-- **Given** the entries re-owned to this story: DW-2417, DW-2426, DW-2431 and DW-2432
+- **Given** the entries re-owned to this story: DW-2417, DW-2426, DW-2431, DW-2432 and DW-1979
 - **When** this story completes
 - **Then** each has a disposition written by the ledger tool: `resolved-by` this story with the commit, or `wontfix-accepted` or `by-design` with a reason and, where a condition would reopen it, that condition.
 
 - **Given** a sweep
 - **When** it lands
 - **Then** a test reddens on a representative site before the fix, the story says how a new site written in the old form is caught or why none can be, and each sweep lands as its own batch with CI green on its own head.
+
+- DW-1979: Journal records' Newest first reads the newest records but the table shows them oldest first (ledger; routed by spec_gate 2026-11-12; moved from Story 23.9 to keep it within 12 entries)
 
 ### Story 23.11: The range-end cleanup, part 10
 

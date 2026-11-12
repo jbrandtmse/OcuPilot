@@ -926,3 +926,17 @@ spawn_at=2026-10-06T16:01:05Z	Story 23.4	cr_complete	batch=b 2026-10-06T20:34:58
 2026-10-23T18:57:59Z	Epic 23	hold_saved	story=none(23.12_committed_and_reported;23.9_not_started) stage=none patch=none tree=clean
 2026-10-23T18:57:59Z	Epic 23	throwaway_removed	container=ocupilot-ci project=ocupilot-ci dir=/Users/jbrandt/.ocupilot-throwaways/ocupilot-ci web=52776 super=1975 started_by=this_run(20261020T0940Z-20,23;up_12:14Z,rebuilt_16:18Z) via=scripts/ci-throwaway.sh_down result=removed
 2026-10-23T18:57:59Z	Epic 23	hold_complete	shas=head_after_this_commit(origin=local) last_code_head=efd8c779(CI_head_7dd30507,run_39992827886_green) story_23.12=complete(reported_to_main) next=23.9 runtime=none_up(ocupilot-ci_torn_down) inbox_snapshot=unattended-inbox-snapshot.md open_items_this_epic=U-13(veto)
+2026-11-12T13:49:18Z	Epic 23	lead_model_gate	model=claude-opus-5-5 action=proceed
+2026-11-12T13:49:18Z	Epic 23	runtime_gate	bmad=6.12.1 uv=0.12.9 ci=gh
+2026-11-12T13:49:18Z	Epic 23	launch_env	depth=4 watchdog=default bash_max_ms=default
+2026-11-12T13:49:18Z	Epic 23	runner_unattended_start	run=20261020T0940Z-20,23 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03 doctrine=3d11cec98d91c1d4d9c225fe3b265e1af418abe4 dispatch=re-dispatch_2026-11-12(full_epic:23.9,23.10,burn-down)
+2026-11-12T13:49:18Z	Epic 23	slot_binding_verified	slot=a mcp_profile=ocupilot-slot-a baseUrl=http://localhost:52774 docker_port_ocupilot=52774 bootstrap_check=ok
+2026-11-12T13:49:18Z	Epic 23	ci_resolved	sha=7dd30507 runs=39992827886 result=success resolved_at=resume feature=03b3dd97(run_40027412807,success)
+2026-11-12T13:49:18Z	Epic 23	integrated_forward	feature=01dadf9d head=79085d2f conflicts_resolved=none code_delta=ui/tools/ci-timings.json_only(timings_refresh) duplicate_dw=0 validate=ok reason=resume_start
+2026-11-12T13:49:18Z	Epic 23	spine_resolved	path=_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md ads=66 status=final
+2026-11-12T13:49:18Z	Epic 23	ledger_load	total=1972 open=0 routed=63 escalated=7 decision_pending=54 terminal=1848 owner_unknown=0 burndown=94 reowned_none=0
+2026-11-12T13:49:18Z	Story 23.9	ruling	question=23.9_capacity(11_owned+DW-1822+DW-2512=13>burndown_story_max_12) choice=move_DW-1979_to_23.10(lowest_priority:low,fix-risk_med,0_occurrences) rejected=owner=burndown(no_gate_before_epic_close),drop_a_flake(orchestrator_first-priority) why=Rule_27_priority_order category=decide policy=b9ff703e
+2026-11-12T13:49:18Z	Story 23.9	ledger_routed_planned	story=23-9-the-range-end-cleanup-part-8 entries=2(DW-1822,DW-2512) excess=0 by=spec_gate
+2026-11-12T13:49:18Z	Story 23.10	ledger_routed_planned	story=23-10-the-range-end-cleanup-part-9-two-sweeps entries=1(DW-1979) excess=0 by=spec_gate
+2026-11-12T13:55:31Z	Epic 23	epic_context_compiled	reason=planning_artifact_newer(integrate_forward+23.9/23.10_routing) model=claude-opus-5-5 header_ok=yes bytes=8484
+2026-11-12T13:55:31Z	Epic 23	protocol_violation	stage=epic_context_prewarm depth=1 agent=epic-context-compile violation=harness_ran_Agent_call_in_background_despite_run_in_background_false consequence=none detected_by=lead(tool_result_async) outcome=lead_waited_in_foreground_polls(output_file_mtime+3_unchanged_samples)_until_completion_notice;applies_to_every_stage_spawn_this_run

@@ -8459,6 +8459,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-23T10:07:55Z occurrence=release-1.0.13 note=PR #16 run 39922983649 (4d573436) attempt 1, browser shard 1/5: every a11y-structural-invariants test timed out on Runtime.callFunctionOn; attempt 2 green (reported by the Planner)
 - 2026-10-23T10:07:55Z status=routed owner=burndown by=orchestrator note=reopened: reopen_if met (a walk stalled to the 600 s protocolTimeout on the 1.0.13 release PR); CI flake, first in the next standing cleanup (Rule 27)
 - 2026-10-23T18:09:23Z occurrence=23-12-the-agent-picks-the-right-list note=run 39992827886 (7dd30507) attempt 1, browser shard 1/5: a11y-structural-invariants passed 13/13 in 1912.6 s against 414.8 s recorded; the shard hit its 55-minute limit
+- 2026-11-12T13:49:02Z status=routed owner=23-9-the-range-end-cleanup-part-8 by=spec_gate note=CI flake; first priority in 23.9 (orchestrator re-dispatch 2026-11-12, Rule 27)
 
 ### DW-1823: security.browser-spec.mjs AC5 (Story 16.3 AC7, DW-1018 option A) timed out waiting for app-side-bar .ocu-side-bar-item after opening the Security rail item without %Admin_Wallet:USE
 - source: feature CI run 36575310150 attempt 1 on 573c50eb (orchestrator), 2026-09-29 | severity: low | fix-risk: low | footprint: ui/browser/security.browser-spec.mjs
@@ -9394,6 +9395,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-03T15:02:19Z status=routed owner=burndown by=adjudication note=a Newest first that draws oldest first is a visible defect; Epic 18 close burn-down steers the store's sort with the order criterion
 - 2026-10-14T08:59:25Z status=routed owner=18-48-epic-18-burn-down-part-2 by=burndown note=chartered into the Epic 18 burn-down part 2 (orchestrator ruling 2026-10-14)
 - 2026-10-14T12:40:15Z status=routed owner=23-9-the-range-end-cleanup-part-8 by=lead note=orchestrator 2026-10-14: 18.48 kept at 12; the journal record browser's two lows move to 23.9
+- 2026-11-12T13:49:03Z status=routed owner=23-10-the-range-end-cleanup-part-9-two-sweeps by=spec_gate note=moved from 23.9 to keep it at burndown_story_max 12 after two CI flakes joined (lowest priority: fix-risk med, no occurrences)
 
 ### DW-1980: The journal record dialog shows an empty body while its record loads (about 1.7 s, the guard's list read)
 - source: spec-18-19-journal-record-browser.md (code review) | severity: low | fix-risk: med | footprint: in-story
@@ -12460,3 +12462,4 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: release-1.0.14-ci | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: release/1.0.14 push run 40014034409 attempt 1, browser shard 3/5 (723a3662); attempt 2 green; the same code was green on feature (2a9ea8d1, run 40008057887)
 - 2026-10-23T21:31:33Z status=routed owner=burndown by=orchestrator note=CI flake, reported by the Planner at the 1.0.14 cut; first in the next standing cleanup with DW-1822 (Rule 27)
+- 2026-11-12T13:49:03Z status=routed owner=23-9-the-range-end-cleanup-part-8 by=spec_gate note=CI flake; first priority in 23.9 (orchestrator re-dispatch 2026-11-12, Rule 27)
