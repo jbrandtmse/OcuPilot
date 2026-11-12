@@ -10241,6 +10241,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-06T20:34:11Z status=routed owner=range-end-cleanup by=lead note=recurrence of DW-439's shape past its bounded retry; a longer or backed-off wait, or a port probe, would cover it
 - 2026-10-11T00:42:33Z status=routed owner=23-7-the-range-end-cleanup-part-6 by=load note=re-own from range-end-cleanup: kit 2026-10-10.1 owners are story keys or burndown
 - 2026-10-11T02:03:07Z status=routed owner=burndown by=merge_gate note=owner decision 2026-10-10 on 23.7, "Pull 5, hold rest (Recommended)", relayed by the Planner; CI flake, the next epic burn-down gate takes it
+- 2026-11-12T20:10:17Z occurrence=20-34-the-cube-manager-s-build-and-synchronize
 
 ### DW-2124: IRIS defect candidate: the admin API's Wallet.Secret PUT of a %Wallet.SymmetricKey stores a random key when Length rides with Secret64, and stores no Length for an imported key (SymmetricKey.Create sets Length on a local subscript)
 - source: spec-18-24-rsa-and-symmetric-key-wallet-secrets.md | severity: low | fix-risk: high | footprint: out-of-footprint
@@ -12481,3 +12482,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-20-34-the-cube-manager-s-build-and-synchronize.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: The spec's Rule 31 note gives 20.11's per-port Deny/Refuse/Conflict as the reason; a Kernel helper would couple neither port.
 - 2026-11-12T17:24:55Z status=wontfix-accepted owner=20-34-the-cube-manager-s-build-and-synchronize by=cr note=reopen_if=a fix lands in one port's capture or audit helper and not in its copy (diff the method pairs)
+
+### DW-2523: flake: analytics-mdx.browser-spec.mjs AC1 timed out waiting 30 s for the MDX grid (the file's first query) in CI browser shard 2/5
+- source: CI run 43290470415 (Story 20.34 head acb0b666) | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: Red in shard 2/5 (waitForSelector [data-ocu-mdx=grid] after 41 s), green on the unchanged rerun of the same run; AC2 in the same file drew the grid; local 11/11 with AC1 at 9.2 s
+- 2026-11-12T20:48:18Z status=routed owner=burndown by=harvest note=CI flake for the burn-down; likely a cold first query on a fresh leg (inference)
