@@ -294,7 +294,7 @@ export const DIALOG_EDITORS: ReadonlySet<string> = new Set([
 /**
  * Lists whose page opens the row's detail dialog at the list's own id route: Audit, Journal records
  * and Task history. Their name cell links to the list itself because that route selects the row and
- * opens the dialog. `nameLinkTarget` links no other list to itself.
+ * opens the dialog. `nameLinkTarget` links no list to itself outside this set and `DIALOG_EDITORS`.
  */
 export const DETAIL_DIALOG_LISTS: ReadonlySet<string> = new Set([
   'OcuPilot.Screen.Descriptor.AuditList',

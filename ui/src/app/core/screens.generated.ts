@@ -452,7 +452,8 @@ export interface TabDeclaration {
 /**
  * A list's single declared cross-screen row target (AD-5, Story 6.10): the route its name cell
  * opens and the row field, read with `fieldOf` and encoded with `encodeEntityId`, that route's
- * id is drawn from -- resolved ahead of the paired-surface chain in `nameLinkTarget` (`ui/src/app/core/navigation.ts`).
+ * id is drawn from -- resolved ahead of the paired-surface chain in `nameLinkTarget`
+ * (`ui/src/app/core/navigation.ts`).
  */
 export interface ScreenRowTarget {
   readonly route: string;

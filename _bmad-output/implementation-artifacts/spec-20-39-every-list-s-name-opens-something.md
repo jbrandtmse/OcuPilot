@@ -100,6 +100,31 @@ Paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`, and lines were
 - **AC3.** Given Resources, User events, Audit, Journal records and Task history, when a row's name is clicked, then its dialog opens as before.
 - **AC4 (DW-2504).** Given the five comment sites, when they are read, then each places the chain in `nameLinkTarget` in `navigation.ts`, and `screens.generated.ts` matches the regenerated mirror.
 
+### Review Findings
+
+Code review 2026-11-12: 0 high, 0 medium, 8 low patched, 9 rejected. Nothing deferred.
+
+- [x] [Review][Patch] The `DETAIL_DIALOG_LISTS` doc says `nameLinkTarget` links no other list to itself, but the `DIALOG_EDITORS` members self-link too [ui/src/app/core/navigation.ts:297]
+- [x] [Review][Patch] The row-target rationale says a list without one "would otherwise link its own id route". It now draws text, so the clause now reads "cannot open that entity by its own id" [src/OcuPilot/Screen/Registry.cls:4041, ui/tools/screen-mirror.mjs:2860]
+- [x] [Review][Patch] The DW-2504 lines were spliced in unwrapped. Rewrapped, and the mirror regenerated [ui/tools/screen-mirror.mjs:4020, ui/src/app/core/screens.generated.ts:455]
+- [x] [Review][Patch] The Upcoming test did not assert that `?ns=` is kept (I/O matrix row "A task row") [ui/browser/tasks.browser-spec.mjs:366]
+- [x] [Review][Patch] The three new browser tests' mutation comments named the path wait as the failing step. With `link: true`, `clickRowCentre` fails first [ui/browser/databases.browser-spec.mjs:285, ui/browser/tasks.browser-spec.mjs:339,356]
+- [x] [Review][Patch] `qualified` was dead once the allow-list was deleted [ui/tools/name-links.test.mjs:22]
+- [x] [Review][Patch] "as the General view's does" read as if the General view used a `rowTarget`. It now says the General view reaches the same screen as its paired detail screen [src/OcuPilot/Screen/Descriptor/DatabaseFreeSpace.cls:38]
+- [x] [Review][Patch] EXPERIENCE.md's data-table pattern still said every name cell navigates and Enter opens a route. Three lines were amended in place [EXPERIENCE.md:625,875,882]
+
+Rejected:
+
+- `low`: the fixture's default descriptor is the real `AuditList`. The shell's store path (`refresh.ts:254`) passes its own route and default rate, so nothing resolves to Audit's today. The fix would rework the in-stage fixture choice.
+- `false`: an empty `DETAIL_DIALOG_LISTS` would give the fixture an undefined descriptor. The hand-written `NON_DEFECTS` set-equality test goes red first.
+- `false`: the Upcoming test does not read "the horizon Story 6.5 AC3 reads". The default is 24 hours, the horizon that test asserts.
+- `low`: the Upcoming test needs one occurrence within 24 hours. Story 6.5 AC3 in the same file has the same precondition.
+- `low`: `app-upcoming-page` went into the global host list rather than a page `:host` rule. Both conventions exist, and every other page that hosts a table carries one of the two (checked).
+- `low`: there is no roster pin for page hosts, and `screen-height` omits Upcoming. The Upcoming test's demonstrated mutation pins this fix.
+- `low`: the `build-output.test.mjs` marker is a hand-copied route. A guard tying it to the fixture is more than a direct correction.
+- `low`: the `rowTarget` field values are not asserted directly. The browser tests' encoded paths and the clicked-name checks cover them.
+- `low`: no fixed bug was ledgered for the Upcoming height fix. The fix and its pin are in this story, so there is no open work to file.
+
 ## Spec Change Log
 
 ## Review Triage Log
@@ -215,6 +240,7 @@ Every test added or changed passes on a fresh environment, in either order.
 - mutation: `tasks.browser-spec.mjs` "Story 6.6 AC3" (`TaskHistoryList` dropped from `DETAIL_DIALOG_LISTS`, rebuilt, redeployed) -> red.
 - mutation: `tasks.browser-spec.mjs` Upcoming test, also the pin for the layout host. Remove `app-upcoming-page` from the host list in `_components.scss`, rebuilt, redeployed -> `clickRowCentre` fails: the table viewport measures `clientHeight` 0.
 - mutation: `screen-mirror.mjs --check` (AC4). Edit the :4020 comment without regenerating -> "the checked-in mirror is stale".
+- mutation (QA): `name-links.test.mjs` per-list row, the two task lists in isolation. Delete `TaskOnDemandList`'s `rowTarget`, regenerate the mirror -> red naming `tasks/on-demand`; restore it and delete `TaskUpcomingList`'s -> red naming `tasks/upcoming`. Both reverted and the mirror regenerated; `git status --short` empty, `--check` up to date, 7 of 7 pass. No test file was created or changed by QA.
 
 **Decided in-stage:** `tableDeclaration()`'s default descriptor is now `[...DETAIL_DIALOG_LISTS][0]`, and `TABLE_PROBE_DESCRIPTOR` is the descriptor whose name is text. `app-upcoming-page` joins the host selectors in `_components.scss` that fill the outlet, because the Upcoming table measured a zero-height viewport and no row was clickable; the new Upcoming test needs it.
 

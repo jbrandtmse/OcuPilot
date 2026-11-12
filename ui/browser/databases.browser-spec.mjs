@@ -313,7 +313,7 @@ test("DW-1880: Database details' Volume files table is set in the app's type, he
 });
 
 // Story 20.39 AC1. Mutation (Rule 19): drop `rowTarget` from `DatabaseFreeSpace`, regenerate, rebuild and
-// redeploy -> the Directory is text and the path wait goes red.
+// redeploy -> the Directory is text, `clickRowCentre` finds no link, and this goes red.
 test("Story 20.39 AC1: a Directory on the Free-space view opens that database's details", async () => {
   const { context, page } = await signedInAtGeneral();
   try {

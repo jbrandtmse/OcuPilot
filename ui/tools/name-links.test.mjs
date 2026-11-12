@@ -19,7 +19,6 @@ const { DETAIL_DIALOG_LISTS, DIALOG_EDITORS, hasIdRoute, nameLinkTarget, screenF
 const { SCREENS } = await import(corePath('screens.generated.ts'));
 
 const PACKAGE = 'OcuPilot.Screen.Descriptor.';
-const qualified = (names) => names.map((name) => `${PACKAGE}${name}`);
 
 /**
  * The lists whose own id route is the right target for their name cell, each with the reason: the

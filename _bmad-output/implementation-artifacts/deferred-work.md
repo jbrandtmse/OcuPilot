@@ -12438,6 +12438,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Registry.cls RowTargetProblem (:4008), Descriptor/Base.cls RowTarget (:337), Descriptor/LockList.cls (:19) and ui/tools/screen-mirror.mjs (:2830) say 'the paired-surface chain in data-table.ts'; data-table.ts now calls nameLinkTarget in core/navigation.ts.
 - 2026-10-23T14:28:31Z status=wontfix-accepted owner=20-38-a-schema-opens-its-tables-views-and-procedures by=cr note=files barred to this story (23.12, existing descriptors); reopen_if=grep 'chain in' on the four still names data-table.ts after 23.12 merges
 - 2026-10-23T14:30:20Z status=routed owner=20-39-every-list-s-name-opens-something by=adjudication note=stale 'chain in data-table.ts' comments (Registry.cls, Base.cls, LockList.cls, screen-mirror.mjs); 20.39 edits these after 23.12 merges
+- 2026-11-12T21:52:29Z status=resolved-by:20-39-every-list-s-name-opens-something by=adjudication note=the five comment sites now place the chain in nameLinkTarget (navigation.ts); mirror regenerated; AC4
 
 ### DW-2505: SQL schemas' descriptor doc does not say where a schema's name opens, as its sibling lists' docs do
 - source: spec-20-38-a-schema-opens-its-tables-views-and-procedures.md | severity: low | fix-risk: low | footprint: in-epic

@@ -36,7 +36,8 @@
 /// <p><b>Its id is <code>single</code>, the same <code>Directory</code>
 /// <class>DatabaseList</class> keys its rows by</b> -- the two views are the same rows, read two
 /// ways. Its name cell opens <class>DatabaseDetails</class> through this screen's
-/// <code>rowTarget</code>, as the General view's does.</p>
+/// <code>rowTarget</code>; the General view's opens the same screen as its paired detail
+/// screen.</p>
 /// <p><b>The pair set is three, and Operate is the AsyncResult poll's, not the List's own.</b>
 /// <code>%Admin_Manage:USE</code> is <code>LIST</code>'s <code>ResourcesOR()</code>, the same pair
 /// <class>DatabaseList</class> declares; <code>%Admin_Operate:USE</code> is

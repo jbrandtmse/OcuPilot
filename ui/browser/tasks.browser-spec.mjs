@@ -1379,7 +1379,7 @@ const DETAILS_PATH = /^\/ocupilot\/tasks\/schedule\/details\/(\d+)$/;
 
 test('Story 20.39 AC1: the demo task\'s name on On-demand tasks opens its Task details, with the namespace kept', async () => {
   // Mutation (Rule 19): drop `rowTarget` from `TaskOnDemandList`, regenerate, rebuild and redeploy -> the
-  // name is text, the click only selects the row, and the path wait goes red.
+  // name is text, `clickRowCentre` finds no link, and this goes red.
   const { context, page } = await signedInAtList(config.username, config.password, ON_DEMAND_URL);
   try {
     await waitForRows(page, config.navigationTimeoutMs);
@@ -1396,7 +1396,7 @@ test('Story 20.39 AC1: the demo task\'s name on On-demand tasks opens its Task d
 
 test('Story 20.39 AC1: the first row\'s name on Upcoming tasks opens that task\'s Task details', async () => {
   // Mutation (Rule 19): drop `rowTarget` from `TaskUpcomingList`, regenerate, rebuild and redeploy -> the
-  // name is text and the path wait goes red.
+  // name is text, `clickRowCentre` finds no link, and this goes red.
   const { context, page } = await signedInAtList(config.username, config.password, UPCOMING_URL);
   try {
     await waitForRows(page, config.navigationTimeoutMs);
@@ -1405,6 +1405,7 @@ test('Story 20.39 AC1: the first row\'s name on Upcoming tasks opens that task\'
     await clickRowCentre(page, { index: 0, link: true });
     await page.waitForFunction((pattern) => new RegExp(pattern).test(window.location.pathname), { timeout: config.navigationTimeoutMs }, DETAILS_PATH.source);
     await page.waitForSelector('.ocu-details-fields', { timeout: config.navigationTimeoutMs });
+    assert.equal(await page.evaluate(() => new URL(window.location.href).searchParams.get('ns')), 'HSCUSTOM', 'the link keeps the namespace');
     assert.equal((await detailsFields(page))[STRINGS.tableColumnName], name, 'Task details shows the clicked occurrence\'s task');
   } finally {
     await context.close();
