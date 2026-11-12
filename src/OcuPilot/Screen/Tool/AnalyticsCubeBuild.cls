@@ -13,7 +13,7 @@ Class OcuPilot.Screen.Tool.AnalyticsCubeBuild Extends OcuPilot.Screen.Tool.Analy
 
 Parameter TOOLNAME = "analytics.cubemanager.build";
 
-Parameter DESCRIPTION = "Propose rebuilding one cube from its source: it deletes the cube's facts and rebuilds them, with every cube that depends on it. It is the classic Cube Manager's Build, also called Repair Build. The cubes cannot be queried while it runs, and a build that fails leaves their facts gone. It changes nothing by itself: it answers a proposal the user reviews and confirms by typing the cube's name. Name the cube by its logical name exactly as the Cube manager or the Cubes list reports it. A cube that is being built or synchronized now, or that depends on one, is refused.";
+Parameter DESCRIPTION = "Propose rebuilding one cube from its source: it deletes the cube's facts and rebuilds them, with every cube that depends on it. It is the classic Cube Manager's Build, also called Repair Build. The cubes cannot be queried while it runs, and a build that fails leaves their facts gone. It changes nothing by itself: it answers a proposal the user reviews and confirms. Name the cube by its logical name exactly as the Cube manager or the Cubes list reports it. A cube that is being built or synchronized now, or that depends on one, is refused.";
 
 Parameter SCREENACTIONS = "build";
 

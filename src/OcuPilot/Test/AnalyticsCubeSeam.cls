@@ -57,6 +57,8 @@ ClassMethod Answer(pCube As %String, pBuild As %Boolean, Output pStats, Output p
     If tMode = "errors" Quit $System.Status.Error(..#CODEBUILDERRORS, "the build had errors")
     If tMode = "lock" Quit $System.Status.Error(..#CODELOCK, "the cube is locked")
     If tMode = "absent" Quit $System.Status.Error(..#CODENOCUBE, "no such cube")
+    If tMode = "errorsplus" Quit $System.Status.AppendStatus($System.Status.Error(..#CODEBUILDERRORS, "the build had errors"), $$$ERROR($$$GeneralError, ..#VENDORTEXT))
+    If tMode = "privilege" Quit $System.Status.Error(..#CODEPRIVILEGE)
     If tMode = "protect" Quit $$$ERROR($$$GeneralError, "<PROTECT> " _ ..#VENDORTEXT)
     If tMode = "exception" {
         Try {

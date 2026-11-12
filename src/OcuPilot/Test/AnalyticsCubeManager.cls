@@ -287,11 +287,12 @@ Method TestAnUpdateWhereTheFactsAreReadOnlyOrAnalyticsIsOffIsRefused()
 
 /// <p>The vendor's answers are mapped by <class>OcuPilot.Test.AnalyticsCubeSeam</class>: a build with failed rows (#20006) is done and says
 /// how many; the cube lock (#20005) is 409 <code>ANALYTICS.CUBE.BUSY</code>; a cube it does not know (#20013) is 404; a
-/// <code>&lt;PROTECT&gt;</code> is 403 <code>PORT.ACCESSDENIED</code>; any other error is 409 <code>ANALYTICS.CUBE.FAILED</code>, its text
-/// logged and absent from the body; and a raised exception is mapped the same. Each makes one vendor call and none changes a fact. A
+/// <code>&lt;PROTECT&gt;</code> or #940 is 403 <code>PORT.ACCESSDENIED</code>; any other error, #20006 beside another error and a raised
+/// exception included, is 409 <code>ANALYTICS.CUBE.FAILED</code>, its text logged and absent from the body. Each makes one vendor call and none changes a fact. A
 /// completed update records one <code>ConfigChange</code> row naming the verb, the cube and the namespace, and a refused or failed one none.</p>
 /// <p>Mutation (Rule 19): map #20006 to <code>FAILED</code> in <method>OcuPilot.Port.AnalyticsPort.VendorOutcome</method> -- the errors leg
-/// goes red; audit the lock case, or call the vendor twice in <method>OcuPilot.Port.AnalyticsPort.PerformCube</method> -- the audit and call-count legs go red.</p>
+/// goes red; audit the lock case, or call the vendor twice in <method>OcuPilot.Port.AnalyticsPort.PerformCube</method> -- the audit and call-count legs go red;
+/// test #20006 with <code>HasCode</code> rather than <code>OnlyCode</code> -- the errors-and-another-fault leg goes red.</p>
 Method TestTheVendorsAnswersAreMapped()
 {
     Set tFacts = ..Facts("OcuPilotProbeVisits")
@@ -326,8 +327,19 @@ Method TestTheVendorsAnswersAreMapped()
     Do $$$AssertEquals($ClassMethod(..#SEAM, "Calls"), 1, "the failed build made exactly one vendor call")
     Do $$$AssertEquals($ClassMethod("OcuPilot.Test.InteropQueueActions", "AuditRows", tSince, "cube", "OcuPilotProbeCategories", "build", .tNone), 1, "and left no audit row beyond the first build's")
     Do $ClassMethod(..#SEAM, "Reset")
+    Do $ClassMethod(..#SEAM, "Arm", "errorsplus")
+    Do $$$AssertEquals(..Ask("BUILD", "OcuPilotProbeCategories", .tResult, .tFault, , ..#SEAM), "409 ANALYTICS.CUBE.FAILED", "a build's row errors beside another error is FAILED, not done")
+    Do $$$AssertEquals($ClassMethod(..#SEAM, "Calls"), 1, "the build with errors and another fault made exactly one vendor call")
+    Do $$$AssertEquals($ClassMethod("OcuPilot.Test.InteropQueueActions", "AuditRows", tSince, "cube", "OcuPilotProbeCategories", "build", .tNone), 1, "and left no audit row beyond the first build's")
+    Do $ClassMethod(..#SEAM, "Reset")
+    Do $ClassMethod(..#SEAM, "Arm", "privilege")
+    Do $$$AssertEquals(..Ask("SYNCHRONIZE", "OcuPilotProbeVisits", .tResult, .tFault, , ..#SEAM), "403 PORT.ACCESSDENIED", "the vendor's privilege error is access denied")
+    Do $$$AssertEquals($ClassMethod(..#SEAM, "Calls"), 1, "the denied synchronize made exactly one vendor call")
+    Do $ClassMethod(..#SEAM, "Reset")
     Do $ClassMethod(..#SEAM, "Arm", "exception")
-    Do $$$AssertEquals(..Ask("SYNCHRONIZE", "OcuPilotProbeVisits", .tResult, .tFault, , ..#SEAM), "500 INTERNAL", "an exception the vendor call raised is an internal fault, logged")
+    Do $$$AssertEquals(..Ask("SYNCHRONIZE", "OcuPilotProbeVisits", .tResult, .tFault, , ..#SEAM), "409 ANALYTICS.CUBE.FAILED", "an exception the vendor call raised is FAILED like any other error")
+    Do $$$AssertTrue($IsObject(tFault) && (tFault.%ToJSON() '[ $Parameter(..#SEAM, "VENDORTEXT")), "its text is not in the body")
+    Do $$$AssertTrue($ClassMethod(..#SEAM, "Logged") [ $Parameter(..#SEAM, "VENDORTEXT"), "but it is in the log: " _ $ClassMethod(..#SEAM, "Logged"))
     Do $$$AssertEquals($ClassMethod(..#SEAM, "Calls"), 1, "the synchronize that raised made exactly one vendor call")
     Do $$$AssertEquals($ClassMethod("OcuPilot.Test.InteropQueueActions", "AuditRows", tSince, "cube", "OcuPilotProbeCategories", "build", .tNone), 1, "and left no audit row beyond the first build's")
     Do $$$AssertEquals($ClassMethod("OcuPilot.Test.InteropQueueActions", "AuditRows", tSince, "cube", "OcuPilotProbeVisits", "synchronize", .tNone), 0, "and a refused update left no audit row")

@@ -487,7 +487,7 @@ ClassMethod Collect(pNamespace As %String, pEndpoint As %String, pCriterion As %
                 Set tCube = $List(tList(tKey), 1)
                 If pEndpoint = ..#ENDPOINTCUBEMANAGER {
                     Set pData = pData + 1
-                    Set pData(pData) = ..CubeNodeHere(tCube, $List(tList(tKey), 2), 1)
+                    Set pData(pData) = ..CubeNodeHere(tCube, $List(tList(tKey), 2), 1, .tList)
                     Continue
                 }
                 Set tFacts = ##class(%DeepSee.Utils).%GetCubeFactCount(tCube, .tFactStatus)
@@ -1526,10 +1526,12 @@ ClassMethod Cut(pText As %String) As %String [ Private ]
 /// update as <code>GetLastUpdate</code> answers them (<code>0</code> for none); the cube's <code>%GetCubeDSTime</code>; whether the
 /// source records its changes (its class's <code>%GetSourceInfo</code> names a <code>dstime</code>); whether an update runs now
 /// (<method>CubeUpdatingHere</method>); whether the cube has been built (its <code>dstime</code> above zero for a source that records
-/// changes, else any fact); and, when <var>pDependents</var>, the cubes that depend on it, sorted by name and joined with
-/// <parameter>DEPENDENTSEPARATOR</parameter>. Writes nothing (measured: <code>%GetCubeDSTime</code>, <code>%GetSourceInfo</code>,
-/// <code>%GetDependentCubes</code>, <code>%IsCubeAvailable</code> and <code>GetLastUpdate</code>).</p>
-ClassMethod CubeNodeHere(pCube As %String, pCaption As %String, pDependents As %Boolean = 1) As %List [ Private ]
+/// changes, else any fact); and, when <var>pDependents</var>, the cubes that depend on it, named as <var>pList</var> (the
+/// <code>%GetCubeList</code> answer, keyed by uppercase index) names them, sorted by name and joined with
+/// <parameter>DEPENDENTSEPARATOR</parameter>; a dependent the list does not hold, because the caller's resources hide it, is left out.
+/// Writes nothing (measured: <code>%GetCubeDSTime</code>, <code>%GetSourceInfo</code>, <code>%GetDependentCubes</code>,
+/// <code>%IsCubeAvailable</code> and <code>GetLastUpdate</code>).</p>
+ClassMethod CubeNodeHere(pCube As %String, pCaption As %String, pDependents As %Boolean, ByRef pList) As %List [ Private ]
 {
     Set tFacts = ##class(%DeepSee.Utils).%GetCubeFactCount(pCube, .tFactStatus)
     If $$$ISERR(tFactStatus) Set tFacts = ""
@@ -1549,7 +1551,7 @@ ClassMethod CubeNodeHere(pCube As %String, pCaption As %String, pDependents As %
             For {
                 Set tIndex = $Order(tFound(tIndex))
                 If tIndex = "" Quit
-                Set tName = ##class(%DeepSee.Utils).%GetCubeName(tIndex)
+                Set tName = $ListGet($Get(pList(tIndex)), 1)
                 If tName '= "" Set tNames(tName) = ""
             }
             Set tName = ""
@@ -1578,25 +1580,22 @@ ClassMethod CubeUpdatingHere(pCube As %String) As %Boolean [ Private ]
     Quit 0
 }
 
-/// <p>Whether <var>pName</var> is a cube the cube manager shows the caller, called with the namespace switched (AD-16): the vendor
-/// knows it (<code>%CubeExists</code>), the caller's resources admit it (<code>%CheckPrivilege</code>), the spelling is the vendor's own
-/// logical name (<code>%GetCubeName</code>, kept exactly, AD-13), and it is a base cube that is neither abstract nor a version, as
-/// <code>%GetCubeList</code> with its non-abstract cubes shows.</p>
-ClassMethod CubeShownHere(pName As %String) As %Boolean [ Private ]
+/// <p>Whether <var>pName</var> is a cube the cube manager shows the caller: a cube <var>pList</var>, the namespace's
+/// <code>%GetCubeList(.list, "cubes", 1)</code>, holds under exactly that logical name (AD-13). The vendor's list applies its own
+/// checks: the cube exists, the caller's resources admit it (<code>%CheckPrivilege</code>), and it is a base cube that is neither
+/// abstract nor a version. So an action reads absent wherever the Cube manager's list does not show the cube. Pure.</p>
+ClassMethod CubeShownHere(pName As %String, ByRef pList) As %Boolean [ Private ]
 {
     If pName = "" Quit 0
-    If '##class(%DeepSee.Utils).%CubeExists(pName) Quit 0
-    If '##class(%DeepSee.Utils).%CheckPrivilege(pName) Quit 0
-    If ##class(%DeepSee.Utils).%GetCubeName(pName) '= pName Quit 0
-    If '##class(%DeepSee.Utils).%IsBaseCube(pName) Quit 0
-    If ##class(%DeepSee.Utils).%IsCubeAbstract(pName) Quit 0
-    Quit '##class(%DeepSee.CubeVersion.Utils).%IsVersion($ZConvert(pName, "U"))
+    Set tKey = $ZConvert(pName, "U")
+    If '$Data(pList(tKey)) Quit 0
+    Quit $ListGet(pList(tKey), 1) = pName
 }
 
 /// <p>Read the cube <var>pName</var> and the cubes that depend on it into <var>pData</var>: <code>pData("exists")</code> is 1 when
 /// <method>CubeShownHere</method> shows it, <code>pData</code> is the count of cubes and <code>pData(n)</code> the
 /// <method>CubeNodeHere</method> of cube <code>n</code>, the target first and then each dependent. A dependent the caller's resources
-/// hide has no name and is left out. An exception is <var>pCaught</var>.</p>
+/// hide is not on the vendor's list and is left out. A list the vendor fails to answer, or an exception, is <var>pCaught</var>.</p>
 /// <p>Everything between the switch and the restore is vendor and system classes and this class's own <code>Here</code> methods
 /// (AD-16); the row is shaped by <method>StateRow</method> after the restore.</p>
 ClassMethod CollectState(pNamespace As %String, pName As %String, Output pData, Output pCaught As %Exception.AbstractException) [ Private ]
@@ -1608,16 +1607,19 @@ ClassMethod CollectState(pNamespace As %String, pName As %String, Output pData, 
     Set tOrigNS = $NAMESPACE
     Try {
         Set $NAMESPACE = pNamespace
-        If ..CubeShownHere(pName) {
+        Kill tList
+        Set tListSC = ##class(%DeepSee.Utils).%GetCubeList(.tList, "cubes", 1)
+        If $$$ISERR(tListSC) $$$ThrowStatus(tListSC)
+        If ..CubeShownHere(pName, .tList) {
             Set pData("exists") = 1
             Set pData = 1
-            Set pData(1) = ..CubeNodeHere(pName, ##class(%DeepSee.Utils).%GetCubeCaption(pName), 1)
+            Set pData(1) = ..CubeNodeHere(pName, $ListGet(tList($ZConvert(pName, "U")), 2), 1, .tList)
             Set tDependents = $List(pData(1), 10)
             For tI = 1:1:$Length(tDependents, ..#DEPENDENTSEPARATOR) {
                 Set tDependent = $Piece(tDependents, ..#DEPENDENTSEPARATOR, tI)
                 If tDependent = "" Continue
                 Set pData = pData + 1
-                Set pData(pData) = ..CubeNodeHere(tDependent, ##class(%DeepSee.Utils).%GetCubeCaption(tDependent), 0)
+                Set pData(pData) = ..CubeNodeHere(tDependent, $ListGet($Get(tList($ZConvert(tDependent, "U"))), 2), 0, .tList)
             }
         }
         Set $NAMESPACE = tOrigNS
@@ -1738,8 +1740,8 @@ ClassMethod ReadCube(pNamespace As %String, pName As %String, Output pRow As %Dy
 /// vendor is called now, through <method>VendorBuild</method> or <method>VendorSynchronize</method>, and its answer is mapped by
 /// <method>VendorOutcome</method>: done (a build that finished with errors is done, and says how many); 409
 /// <parameter>OcuPilot.Api.AnalyticsError.CUBEBUSY</parameter> for the vendor's cube lock; 404 for a cube it does not know; 403
-/// <code>PORT.ACCESSDENIED</code> for <code>&lt;PROTECT&gt;</code> or #940; and anything else 409
-/// <parameter>OcuPilot.Api.AnalyticsError.CUBEFAILED</parameter>, its text logged and never sent. After the namespace is restored a
+/// <code>PORT.ACCESSDENIED</code> for <code>&lt;PROTECT&gt;</code> or #940; and anything else, an exception the call raised included,
+/// 409 <parameter>OcuPilot.Api.AnalyticsError.CUBEFAILED</parameter>, its text logged and never sent. After the namespace is restored a
 /// completed update records OcuPilot's own <code>ConfigChange</code> row (<method>AuditWrite</method>).</p>
 /// <p>The answer is <code>{Name, Namespace, lines, errors}</code>: the output lines for the screen (<method>BuildLines</method>,
 /// <method>SyncLines</method>), and whether any cube built with errors.</p>
@@ -1756,7 +1758,7 @@ ClassMethod PerformCube(pNamespace As %String, pType As %String, pName As %Strin
         Set tVendorSC = ..VendorSynchronize(pNamespace, pName, .tFacts, .tCaught, .tWritten)
     }
     Set tMessage = "the cube " _ $ZConvert(pType, "L") _ " failed" _ $Select(tWritten = "": "", 1: "; the vendor wrote: " _ tWritten)
-    If $IsObject(tCaught) Quit ..Mapped(tCaught, tMessage, .pHttpStatus, .pFault)
+    If $IsObject(tCaught) Set tVendorSC = tCaught.AsStatus()
     Set tOutcome = ..VendorOutcome(tVendorSC)
     If tOutcome = "denied" Quit ..Statused(tVendorSC, tMessage, .pHttpStatus, .pFault)
     If tOutcome = "busy" Quit ..Conflict(##class(OcuPilot.Api.AnalyticsError).#CUBEBUSY, .pHttpStatus, .pFault)
@@ -1948,11 +1950,12 @@ ClassMethod SyncLines(ByRef pFacts, ByRef pNames, pLines As %DynamicArray, pCube
 /// <p>Record OcuPilot's own <code>ConfigChange</code> row for the build or synchronize of the cube <var>pId</var> that read OK (AD-15,
 /// Story 20.34), from whichever caller made it: the vendor audits neither. <var>pVerb</var> is <parameter>VERBBUILD</parameter> or
 /// <parameter>VERBSYNCHRONIZE</parameter>; <var>pEffects</var> names the namespace and the cubes updated, and never a fact. It never
-/// fails the write. Called after the namespace is restored. A seam a test reads through the audit database.</p>
-ClassMethod AuditWrite(pVerb As %String, pId As %String, pEffects As %DynamicObject)
+/// fails the write: a row that cannot be recorded is logged. Called after the namespace is restored.</p>
+ClassMethod AuditWrite(pVerb As %String, pId As %String, pEffects As %DynamicObject) [ Private ]
 {
     Try {
-        Do ##class(OcuPilot.Kernel.Audit.Event).Record(pVerb, ..#ENTITYCUBE, pId, {}, 0, pEffects)
+        Set tSC = ##class(OcuPilot.Kernel.Audit.Event).Record(pVerb, ..#ENTITYCUBE, pId, {}, 0, pEffects)
+        If $$$ISERR(tSC) Do ..LogFault("the cube write could not be audited", tSC)
     } Catch ex {
         Do ..LogFault("the cube write could not be audited", ex.AsStatus())
     }

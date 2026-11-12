@@ -251,11 +251,11 @@ Method TestAPrincipalWithoutWriteOnTheFactDatabaseCanListButNotAct()
 
 /// <p>AC4: with the hidden cube present, whose resource P3 lacks, the list P3 reads omits it, and a Build of it reads absent (404) with
 /// nothing built, where the vendor's own check still applies on top of the gate.</p>
-/// <p>The vendor's own cube checks (<code>%CubeExists</code>, <code>%CheckPrivilege</code>, <code>%GetCubeName</code> and <code>%IsBaseCube</code> all
-/// answer false for a cube its resource hides) and its #20013 for a build of one both read absent, so the HTTP legs alone cannot show the port's check;
-/// the port leg counts the vendor calls through <class>OcuPilot.Test.AnalyticsCubeSeam</class>.</p>
+/// <p>The port shows a cube only when the vendor's <code>%GetCubeList</code> lists it for the caller, and that list applies the vendor's
+/// <code>%CheckPrivilege</code>. The vendor's build answers #20013 for a hidden cube as well, so the HTTP legs alone cannot show the port's
+/// check; the port leg counts the vendor calls through <class>OcuPilot.Test.AnalyticsCubeSeam</class>.</p>
 /// <p>Mutation (Rule 19): make <method>OcuPilot.Port.AnalyticsPort.CubeShownHere</method> answer 1 for any name -- the port leg goes red, one vendor
-/// call made. Dropping <code>%CheckPrivilege</code> alone, or all of the vendor-backed tests but one, does not redden anything.</p>
+/// call made.</p>
 Method TestACubeTheCallersResourcesHideIsAbsent()
 {
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "CreateHidden"), "the hidden cube is created")

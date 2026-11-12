@@ -11,7 +11,7 @@ Class OcuPilot.Screen.Tool.AnalyticsCubeSynchronize Extends OcuPilot.Screen.Tool
 
 Parameter TOOLNAME = "analytics.cubemanager.synchronize";
 
-Parameter DESCRIPTION = "Propose synchronizing one cube: apply the source changes recorded since its last update to it and to the cubes that depend on it. Its source must record changes (DSTIME), and the cube stays queryable. It changes nothing by itself: it answers a proposal the user reviews and confirms. Name the cube by its logical name exactly as the Cube manager or the Cubes list reports it. A cube that is being built or synchronized now, that has never been built, or whose source does not record changes is refused; build it instead.";
+Parameter DESCRIPTION = "Propose synchronizing one cube: apply the source changes recorded since its last update to it and to the cubes that depend on it. Its source must record changes (DSTIME), and the cube stays queryable. It changes nothing by itself: it answers a proposal the user reviews and confirms. Name the cube by its logical name exactly as the Cube manager or the Cubes list reports it. A cube that is being built or synchronized now is refused. So is one that has never been built or whose source does not record changes: it can only be built.";
 
 Parameter SCREENACTIONS = "synchronize";
 

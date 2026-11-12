@@ -3,6 +3,8 @@
 /// Cubes list, its three tabs, Term lists, a term list's entries and Folder items declared as the story names them; each
 /// classic page being the portal's own; each classic page's compiled <code>RESOURCE</code> naming a pair its screen
 /// declares; and the analytics refusal code reading its sentence on a refused tool call and on a violation.</p>
+/// <p>For Story 20.34 it also pins the Cube manager's declaration, its refusal codes and sentences, the two cube tools' declared codes and
+/// the script form of their writes.</p>
 /// <p><b>What it needs from the environment:</b> the compiled registries and the instance's classic DeepSee pages. It reads
 /// declarations and the page dictionary, writes nothing and needs no armed variable.</p>
 Class OcuPilot.Test.AnalyticsDescriptor Extends %UnitTest.TestCase
@@ -291,6 +293,53 @@ Method TestTheCubeCodesReadTheirOwnSentences()
         Do $$$AssertEquals(##class(OcuPilot.Port.AnalyticsPort).ReasonFor(tCode), tReason, tCode _ " and through the port the tools ask")
     }
     Do $$$AssertEquals(##class(OcuPilot.Api.AnalyticsError).ReasonFor(##class(OcuPilot.Api.AnalyticsError).#CUBEBUILD), "", "a consequence code has no refusal sentence")
+}
+
+/// <p>The cube manager's two tools (Story 20.34) declare only the cube codes <class>OcuPilot.Api.AnalyticsError</class> publishes: each
+/// precondition code is a refusal the fresh read answers (a busy cube and the namespace for both, and for a synchronize a source without
+/// <code>DSTIME</code> and a never-built cube), never the vendor's own <code>FAILED</code>, and each consequence code is one the client
+/// maps. Pure.</p>
+/// <p>Mutation (Rule 19): add <code>ANALYTICS.CUBE.FAILED</code> to <parameter>OcuPilot.Screen.Tool.AnalyticsCubeBuild.PRECONDITIONCODES</parameter>,
+/// or drop <code>ANALYTICS.CUBE.NOTBUILT</code> from the synchronize's -- this goes red.</p>
+Method TestTheCubeToolsDeclareTheCubeCodes()
+{
+    Set tError = "OcuPilot.Api.AnalyticsError"
+    For tTool = "OcuPilot.Screen.Tool.AnalyticsCubeBuild", "OcuPilot.Screen.Tool.AnalyticsCubeSynchronize" {
+        Set tCodes = $ListFromString($Parameter(tTool, "PRECONDITIONCODES"))
+        Do $$$AssertTrue($ListFind(tCodes, $Parameter(tError, "CUBEBUSY")) && $ListFind(tCodes, $Parameter(tError, "NAMESPACE")), tTool _ ": its precondition codes name a busy cube and the namespace")
+        For tI = 1:1:$ListLength(tCodes) {
+            Do $$$AssertTrue($ListFind(##class(OcuPilot.Api.AnalyticsError).CubePreconditionCodes(), $List(tCodes, tI)) > 0, tTool _ ": " _ $List(tCodes, tI) _ " is a declared cube refusal")
+        }
+        Do $$$AssertTrue($ListFind(##class(OcuPilot.Api.AnalyticsError).CubeConsequenceCodes(), $Parameter(tTool, "CONSEQUENCECODE")) > 0, tTool _ ": its consequence code is a cube consequence")
+    }
+    Set tSync = $ListFromString($Parameter("OcuPilot.Screen.Tool.AnalyticsCubeSynchronize", "PRECONDITIONCODES"))
+    Do $$$AssertTrue($ListFind(tSync, $Parameter(tError, "CUBENODSTIME")) && $ListFind(tSync, $Parameter(tError, "CUBENOTBUILT")), "a synchronize also names a source without DSTIME and a never-built cube")
+    Do $$$AssertTrue('$ListFind(##class(OcuPilot.Api.AnalyticsError).CubePreconditionCodes(), $Parameter(tError, "CUBEFAILED")), "FAILED is the vendor's answer, not a state")
+}
+
+/// <p>The cube manager's two writes as a script (AD-59, Story 20.34): the namespace, then
+/// <code>%BuildCube(cube, 1, 0, 0, 0, 0, .tStats)</code> or <code>%SynchronizeCube(cube, 0, .tFacts)</code>, the cube a string literal
+/// with its quotes doubled and a control character spelled as <code>$Char</code>, so nothing the query carries runs as code; a read has
+/// no script. Pure.</p>
+/// <p>Mutation (Rule 19): stop doubling the quotes in <method>OcuPilot.Port.AnalyticsPort.Literal</method>, or give the build script
+/// <code>pVerbose</code> 1 -- this goes red.</p>
+Method TestTheCubeWritesScriptQuotesTheCube()
+{
+    Kill tQuery
+    Set tQuery("namespace") = "USER"
+    Set tQuery("id") = "A""B" _ $Char(9) _ "C"
+    Set tCube = """A""""B""_$Char(9)_""C"""
+    For tType = "BUILD", "SYNCHRONIZE" {
+        Do $$$AssertEquals(##class(OcuPilot.Port.AnalyticsPort).SnippetForm("CubeManager", tType), "objectscript", tType _ " has a script form")
+        Set tSteps = ##class(OcuPilot.Port.AnalyticsPort).Snippet("CubeManager", tType, .tQuery)
+        Set tText = $Select($IsObject(tSteps) && (tSteps.%Size() = 1) && (tSteps.%Get(0).kind = "objectscript"): tSteps.%Get(0).text, 1: "")
+        Set tCall = $Select(tType = "BUILD": "%BuildCube(" _ tCube _ ", 1, 0, 0, 0, 0, .tStats)", 1: "%SynchronizeCube(" _ tCube _ ", 0, .tFacts)")
+        Do $$$AssertEquals(tText, " Set $NAMESPACE = ""USER""" _ $Char(10) _ " Set tSC = ##class(%DeepSee.Utils)." _ tCall, tType _ " is one objectscript step naming the namespace and the cube as a literal")
+    }
+    For tType = "STATE", "LIST" {
+        Do $$$AssertEquals(##class(OcuPilot.Port.AnalyticsPort).SnippetForm("CubeManager", tType), "", tType _ " is a read with no script form")
+        Do $$$AssertEquals(##class(OcuPilot.Port.AnalyticsPort).Snippet("CubeManager", tType, .tQuery).%Size(), 0, tType _ " has no script steps")
+    }
 }
 
 }

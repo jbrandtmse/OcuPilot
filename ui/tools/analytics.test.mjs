@@ -283,4 +283,10 @@ test("Story 20.34: the code that builds and synchronizes names nothing the story
   assert.ok(code.includes('%SynchronizeCube(pCube, 0, .tFacts)'), 'the synchronize call is %SynchronizeCube(cube, 0, .facts)');
   const calls = codeOf(readFileSync(PORT, 'utf8'), false);
   assert.equal((calls.match(/##class\(%DeepSee\.Utils\)\.%BuildCube\(/g) ?? []).length, 1, 'and %BuildCube is called once outside a string');
+  // Mutation (Rule 19): add `Set tX = $Get(^DeepSee.Fact(1))` to AnalyticsPort or to a tool -> this goes red; the one vendor-global
+  // reference the Never list allows is the "SYNC" lock probe, taken and released.
+  const vendorGlobal = /\^(?:\|[^|]*\||\[[^\]]*\])?DeepSee\./i;
+  const referencing = (file) => codeOf(readFileSync(file, 'utf8'), false).split('\n').filter((line) => vendorGlobal.test(line)).map((line) => line.trim());
+  assert.deepEqual(referencing(PORT), ['Lock +^DeepSee.Build(tIndex, ""):0 Else  Quit 1', 'Lock -^DeepSee.Build(tIndex, "")'], 'the port names a vendor global only in the lock probe');
+  for (const file of [BUILD_TOOL, SYNCHRONIZE_TOOL, ACTION_TOOL]) assert.deepEqual(referencing(file), [], `${file} names no vendor global`);
 });

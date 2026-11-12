@@ -294,4 +294,30 @@ Method TestAConfirmAfterAnotherBuildIsRefusedAsMoved()
     Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tTurn)
 }
 
+/// <p>The Cube manager's row actions over HTTP answer a cube whose spelling differs from the vendor's logical name, or that does not exist,
+/// as absent: 404 <code>PORT.NOTFOUND</code> for Build and for Synchronize, nothing built or synchronized, and no audit row.</p>
+/// <p>Mutation (Rule 19): compare the spelling case-insensitively in <method>OcuPilot.Port.AnalyticsPort.CubeShownHere</method> -- the lower-case
+/// Build is applied, Visits is rebuilt and this goes red.</p>
+Method TestAnActionOnAMisspelledOrUnknownCubeIsAbsentAndChangesNothing()
+{
+    Do ..Empty(..#VISITS)
+    Do $$$AssertEquals(..Both(), "5|0", "Visits' facts are killed")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "ChangeVisits", 3), "three Visit rows are changed")
+    Set tSince = ##class(OcuPilot.Test.AuditEvent).Now()
+    For tAction = "build", "synchronize" {
+        For tName = $ZConvert(..#VISITS, "L"), "NoSuchCube" {
+            Set tStatus = ..Act(tAction, tName, .tAnswer)
+            Do $$$AssertEquals(tStatus _ "|" _ $Select($IsObject(tAnswer): tAnswer.%Get("code"), 1: ""), "404|PORT.NOTFOUND", tAction _ " on " _ tName _ " reads the cube as absent: " _ $Select($IsObject(tAnswer): $Extract(tAnswer.%ToJSON(), 1, 300), 1: tAnswer))
+        }
+    }
+    Do $$$AssertEquals(..Both(), "5|0", "nothing was built or synchronized")
+    Set tRows = 0
+    For tName = ..#VISITS, $ZConvert(..#VISITS, "L"), "NoSuchCube" {
+        For tVerb = "build", "synchronize" {
+            Set tRows = tRows + $ClassMethod(..#QUEUES, "AuditRows", tSince, "cube", tName, tVerb, .tData)
+        }
+    }
+    Do $$$AssertEquals(tRows, 0, "and no audit row is written under any of the three names")
+}
+
 }
