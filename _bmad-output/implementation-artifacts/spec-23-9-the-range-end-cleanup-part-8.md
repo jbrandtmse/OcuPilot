@@ -185,6 +185,35 @@ deferred:
 - **Integration (Rule 1).** Given `Write.RemovalRows`, when the 16 delete tools mint their proposals through the agent's write path, then each card's removal rows equal today's, observed by the rows' reader classes listed in the Code Map.
 - **Batches.** Given the five batches, when each lands, then it is its own commit with CI green on its own head.
 
+### Review Findings
+
+Code review, batch 1 (2026-11-12). Rule 3 exempt: test-harness code, no user-facing surface.
+
+- [x] [Review][Patch] (med) A hung settle named no route, against the matrix's "pass and route" - `settle` takes `where`, `goInApp` passes its path [ui/browser/structural-walk.mjs:settle, goInApp]
+- [x] [Review][Patch] (med) The walk's retried-pass bookkeeping was untested - lifted into exported `passRetrier`, pinned over an abandoned call [ui/browser/structural-walk.mjs:passRetrier]
+- [x] [Review][Patch] (med) The `fieldNames` deadline had no pin, and the source check missed click, key press and `$$eval` shapes - hung-page row added, check widened [ui/tools/structural-walk.test.mjs]
+- [x] [Review][Patch] (low) The theme toggle's clicks and Escape were unbounded - wrapped in `bounded` [ui/browser/structural-walk.mjs:toggleThemeThroughMenu]
+- [x] [Review][Patch] (low) The deadline error advised raising `protocolTimeout` - its tail now says that does not change this deadline [ui/browser/protocol-retry.mjs:withDeadline]
+- [x] [Review][Patch] (low) `WALKCALLDEADLINE`'s doc said only the walk is bounded; 87 specs call the bounded helpers - doc corrected [ui/browser/protocol-retry.mjs]
+- [x] [Review][Patch] (low) Test header understated the file; a 5 s race timer kept the process alive - header rewritten, timer cleared [ui/tools/structural-walk.test.mjs]
+- [x] [Review][Patch] (low) Verification said `pNodes` has no pinning test, contradicted by QA's test - line corrected (Rule 19) [this spec, Verification]
+- [x] [Review][Defer] The 30,000-node compact may end before AC8 pauses it on a loaded shard [ui/browser/local-databases.browser-spec.mjs:AC8] - deferred: DW-2516 occurrence; settled by CI shard runs of local-databases
+
+Rejected:
+
+- Spec `status: done` with batches open (three layers): build-auto's per-pass machine state; not changed by review.
+- QA pins not yet on a green CI head: the lead commits and pushes after review.
+- QA's `BackgroundTasksLive` method breaks the task's "unchanged" wording: existing callers keep the default, which is the task's intent; the method is the `pNodes` pin.
+- The new ObjectScript test drops `PausedCompact`'s status: a failed seed still reddens the count; the fix adds a branch.
+- `pNodes` 0, negative or odd: test-only seed, every caller a test (theoretical).
+- A font loading in 20-200 s now records the visit unsettled: Design Notes decided this.
+- A bounded `context.close()` that hangs replaces the pass error: needs two hangs at once; the fix adds error chaining.
+- A slow but finite walk call over 60 s: about 80 times a normal visit (inference); the a11y run below took no retry.
+- `signedInAt`'s own calls unbounded: outside the walk's deadline, and the spec keeps `signedInAt`'s navigation as is.
+- The source check's 3-line window and `fieldNames` skip: `fieldNames` is now pinned by behavior; the window only matters for a call next to another bounded one.
+- Cycle-log timestamp mismatch: the lead's log, not this change.
+- `trackInflightRequests` resembles `trackRequests` (Rule 31): different filters and clocks; two short copies read better than one parameterized tracker.
+
 ## Spec Change Log
 
 - 2026-11-12, spec gate (lead): batch 2 lands with batch 4; the full sweep is lead-owned (before batch 1's push and the last `src` batch's push); filing candidates filed as DW-2513 (flake, routed to 23.10), DW-2514 and DW-2515 (wontfix-accepted).
@@ -343,7 +372,7 @@ deferred:
 
 - Task 0 (i): `local-databases.browser-spec.mjs` alone twice, 8/8 each, 62.4 s and 58.1 s, no navigation timeout. Task 0 (ii): `PausedCompact` over 30,000 nodes, three probes: task Paused, `Remove` OK, directory gone (0.28-0.71 s to pause, 1.7-1.9 s to remove). AC8 green at 30,000 (11.5 s against 16.1 s).
 - Mutations: restoring `await document.fonts.ready` reddens `structural-walk.test.mjs` (5.0 s); dropping the `fonts.status === 'loaded'` term reddens it on its lower bound; an unwrapped walk page call (`detectScreen`'s evaluate) reddens its `bounded(` source check; `withDeadline` returning its promise reddens the two deadline cases in `protocol-retry.test.mjs` (they hung to the test timeout, now 10 s each); an empty in-flight list reddens `panel-spec.test.mjs`, as does a direct `page.goto` in `signedInAt`. Each reverted, confirmed by `cmp` against the pre-mutation copy.
-- `pNodes` has no pinning test: it sizes a test-only seed, and the observed effect is AC8's fill and duration (11.5 s against 16.1 s), not a pass or fail.
+- `pNodes` is pinned by `BackgroundTasksLive.TestThePausedCompactFillsTheNodeCountItIsGiven` (mutation under QA below); AC8's fill and duration (11.5 s against 16.1 s) show its effect.
 - QA (batch 1), tests added (QA): `ui/tools/structural-walk.test.mjs` (hung-page cases run `settle`, `detectScreen` and `toggleThemeThroughMenu` against a fake page whose call never settles, with the 60 s deadline advanced by mock timers; a pass retried once through `retryOnce`; the report line), `ui/tools/panel-spec.test.mjs` (`signedInAt` run against a fake browser whose `goto` times out, with a request made by `prepare` and one by the navigation in flight), and `OcuPilot.Test.BackgroundTasksLive.TestThePausedCompactFillsTheNodeCountItIsGiven` (the seed's size argument).
   - mutation: drop `bounded(` from the settle evaluate -> `structural-walk.test.mjs` settle hung-page case red (10 s test timeout).
   - mutation: drop `bounded(` from the `detectScreen` evaluate -> its hung-page case red.
@@ -356,6 +385,14 @@ deferred:
   - mutation: `PausedCompact` calls `..Prepare()` without `pNodes` -> `TestThePausedCompactFillsTheNodeCountItIsGiven` red alone (1 of 9, run 703); reverted, 9/9 (run 704).
   - Each reverted and confirmed by `cmp` against a pre-mutation copy; `git status --short` lists only the three QA files.
 - Green: `npm run test:tools` 2164/2164; `check-objectscript.py` 0 problems; `BackgroundTasksLive` 8/8; `background-tasks.browser-spec.mjs` 2/2; `a11y-structural-invariants.browser-spec.mjs` 13/13 in 420.8 s with no retried-pass line (414.8 s at 7dd30507).
+
+- Code review (batch 1), mutations on its pins, each reverted and confirmed by `cmp`:
+  - mutation: `fieldNames(page)` without `bounded(` -> the field-name hung-page case red.
+  - mutation: settle's label without `where` -> the settle-on-a-path, `goInApp` and retried-pass cases red; `goInApp` calling settle without its path -> the `goInApp` case red.
+  - mutation: drop `report.retried.push(...)`, or the `failure` capture, from `passRetrier` -> the retried-pass case red.
+  - mutation: the theme toggle's first click without `bounded(` -> the source check red.
+  - mutation: the old deadline message tail -> the `protocol-retry.test.mjs` deadline case red.
+  - Green after review: `npm run test:tools` 2178/2178; `a11y-structural-invariants.browser-spec.mjs` 13/13 in 397 s on `ocupilot-ci`, no retried-pass line.
 
 ## Auto Run Result
 
