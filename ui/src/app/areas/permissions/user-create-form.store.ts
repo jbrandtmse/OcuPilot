@@ -9,7 +9,7 @@ import { reasonForField, type Violation, violationsOf } from '../../core/violati
 /** The users route: the create form's POST and the editor's `PUT <path>/<id>`. */
 export const USERS_PATH = '/api/ocupilot/users';
 
-/** The form's own bootstrap read: the rules, their sentences and the roles the instance holds. */
+/** The form read: the rules, their sentences, the roles the instance holds and, with a name, the account. */
 export const USERS_FORM_PATH = `${USERS_PATH}/form`;
 
 /** The blur check: whether a name is already taken. A read of the instance, not a validation. */

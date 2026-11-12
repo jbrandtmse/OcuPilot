@@ -364,15 +364,17 @@ export function classifyRun(className, marker) {
 }
 
 /**
- * The test classes the CHECKOUT carries: every non-abstract `.cls` under `src/OcuPilot/Test/` that
- * reaches `%UnitTest.TestCase` through its `Extends` chain (directly or through a project base
- * class under the same folder) and has a `Test*` method of its own or on a project ancestor.
+ * The test classes the CHECKOUT carries: every non-abstract `.cls` under `src/OcuPilot/Test/`
+ * whose primary superclass chain (the first name of each `Extends` list, followed through project
+ * base classes under the same folder) reaches `%UnitTest.TestCase`, and which has a `Test*` method
+ * of its own or on any project superclass.
  *
- * **It matches the instance's query.** `scripts/ci-unit-test.sh` lists a compiled class whose
- * `PrimarySuper` holds `%UnitTest.TestCase`, is not abstract and has a compiled `Test*` method,
- * inherited or own. A class is abstract here when `Abstract` appears in its class keyword list.
- * `main()` reports a class on disk the instance did NOT offer, so a narrowed instance list is
- * caught.
+ * **It reads the shape of the instance's query.** `scripts/ci-unit-test.sh` lists a compiled class
+ * whose `PrimarySuper` holds `%UnitTest.TestCase` (`PrimarySuper` follows only the first-listed
+ * superclass at each level), is not abstract and has a compiled `Test*` method, inherited from any
+ * superclass or its own. A class is abstract here when its keyword list holds `Abstract`, not
+ * `Not Abstract` or `Abstract = 0`. `main()` reports a class on disk the instance did NOT offer:
+ * the instance list narrowed, or this parser read a class header differently from the compiler.
  *
  * **Why a second source.** "More than zero classes" was the only floor on discovery, so a query
  * that silently narrowed -- a wrong superclass column, a renamed package, a failed compile of
@@ -396,7 +398,7 @@ export function testClassesOnDisk(repoRoot = REPO_ROOT, pkg = DEFAULT_PACKAGE) {
       const name = `${prefix}${entry.name.slice(0, -'.cls'.length)}`;
       parsed.set(name, {
         supers: header?.[2] ? header[2].replace(/[()\s]/g, '').split(',').filter(Boolean) : [],
-        abstract: /\bAbstract\b/.test(header?.[3] ?? ''),
+        abstract: /(?:^|,)\s*Abstract\b(?!\s*=\s*0)/i.test(header?.[3] ?? ''),
         tests: /^(?:Class)?Method\s+Test/m.test(text),
       });
     }
@@ -406,9 +408,8 @@ export function testClassesOnDisk(repoRoot = REPO_ROOT, pkg = DEFAULT_PACKAGE) {
   const reachesTestCase = (name, seen = new Set()) => {
     if (seen.has(name)) return false;
     seen.add(name);
-    return (parsed.get(name)?.supers ?? []).some(
-      (parent) => /(^|\.)TestCase$/.test(parent) || reachesTestCase(parent, seen)
-    );
+    const primary = parsed.get(name)?.supers[0];
+    return primary === '%UnitTest.TestCase' || (primary !== undefined && reachesTestCase(primary, seen));
   };
   const hasTests = (name, seen = new Set()) => {
     if (seen.has(name)) return false;
@@ -519,7 +520,8 @@ function main() {
 
   // ...and a run over SOME of them is the same failure, quieter. The checkout says which classes
   // exist; discovery says which the instance found. A class on disk that the instance did not
-  // offer means the tree did not compile, or the query no longer selects it.
+  // offer means the tree did not compile, the query no longer selects it, or `testClassesOnDisk`
+  // read that class's header differently from the compiler.
   if (options.classes.length === 0) {
     const onDisk = testClassesOnDisk(REPO_ROOT, options.pkg);
     const discovered = new Set(classes);

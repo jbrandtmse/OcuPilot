@@ -934,8 +934,8 @@ test('the runner knows how many test classes the checkout carries, so a narrowed
   );
 });
 
-// Mutation (Rule 19): restore the direct-`Extends` regex in `testClassesOnDisk` -> both tests below
-// go red.
+// Mutation (Rule 19): restore the direct-`Extends` regex in `testClassesOnDisk` -> this test, the next
+// one and the real-tree test below go red.
 test('the checkout list follows the Extends chain to TestCase, as the instance query does (DW-2259)', () => {
   const root = mkdtempSync(join(tmpdir(), 'ocupilot-classes-'));
   try {
@@ -962,9 +962,11 @@ test('the checkout list follows the Extends chain to TestCase, as the instance q
   }
 });
 
-// Mutation (Rule 19): drop the abstract check from the final filter in `testClassesOnDisk`, or take
-// only the first name of a parenthesized `Extends` list -> this test goes red.
-test('the checkout list leaves out an abstract class that carries tests and reads every name of an Extends list (DW-2259)', () => {
+// Mutation (Rule 19): drop the abstract check from the final filter in `testClassesOnDisk`, read
+// `Not Abstract` or `Abstract = 0` as abstract, follow every name of an `Extends` list to TestCase, or
+// read `Test*` methods from the first name only, or accept any superclass named `TestCase` -> this
+// test goes red.
+test('the checkout list leaves out an abstract class with tests, follows the primary superclass to TestCase and reads tests from every superclass (DW-2259)', () => {
   const root = mkdtempSync(join(tmpdir(), 'ocupilot-classes-'));
   try {
     const testDir = join(root, 'src', 'OcuPilot', 'Test');
@@ -974,9 +976,43 @@ test('the checkout list leaves out an abstract class that carries tests and read
     const method = '\nMethod TestSomething()\n{\n    Quit\n}\n';
     writeFileSync(join(testDir, 'AbstractWithTests.cls'), cls('AbstractWithTests', '%UnitTest.TestCase', 'Abstract, ProcedureBlock', method));
     writeFileSync(join(testDir, 'FromAbstract.cls'), cls('FromAbstract', 'OcuPilot.Test.AbstractWithTests', '', ''));
+    writeFileSync(join(testDir, 'NotAbstract.cls'), cls('NotAbstract', '%UnitTest.TestCase', 'Not Abstract', method));
+    writeFileSync(join(testDir, 'AbstractZero.cls'), cls('AbstractZero', '%UnitTest.TestCase', 'Abstract = 0', method));
+    writeFileSync(join(testDir, 'EmptyBase.cls'), cls('EmptyBase', '%UnitTest.TestCase', 'Abstract', ''));
     writeFileSync(join(testDir, 'Helper.cls'), cls('Helper', '%RegisteredObject', '', method));
-    writeFileSync(join(testDir, 'Mixed.cls'), cls('Mixed', '(OcuPilot.Test.Helper, OcuPilot.Test.AbstractWithTests)', '', ''));
-    assert.deepEqual(testClassesOnDisk(root), ['OcuPilot.Test.FromAbstract', 'OcuPilot.Test.Mixed']);
+    // The instance's PrimarySuper follows only the first name of an Extends list.
+    writeFileSync(join(testDir, 'Mixed.cls'), cls('Mixed', '(OcuPilot.Test.EmptyBase, OcuPilot.Test.Helper)', '', ''));
+    writeFileSync(join(testDir, 'Secondary.cls'), cls('Secondary', '(OcuPilot.Test.Helper, %UnitTest.TestCase)', '', method));
+    mkdirSync(join(testDir, 'Lookalike'));
+    writeFileSync(join(testDir, 'Lookalike', 'TestCase.cls'), cls('Lookalike.TestCase', '%RegisteredObject', '', ''));
+    writeFileSync(join(testDir, 'FromLookalike.cls'), cls('FromLookalike', 'OcuPilot.Test.Lookalike.TestCase', '', method));
+    assert.deepEqual(testClassesOnDisk(root), [
+      'OcuPilot.Test.AbstractZero',
+      'OcuPilot.Test.FromAbstract',
+      'OcuPilot.Test.Mixed',
+      'OcuPilot.Test.NotAbstract',
+    ]);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+// Mutation (Rule 19): drop the `seen` guard from `reachesTestCase` or `hasTests`, or read the class
+// header from one line only -> this test goes red.
+test('the checkout list survives a wrapped class header, a class with no Extends and an Extends cycle (DW-2259)', () => {
+  const root = mkdtempSync(join(tmpdir(), 'ocupilot-classes-'));
+  try {
+    const testDir = join(root, 'src', 'OcuPilot', 'Test');
+    mkdirSync(testDir, { recursive: true });
+    const method = '\nMethod TestSomething()\n{\n    Quit\n}\n';
+    writeFileSync(join(testDir, 'Wrapped.cls'), `Class OcuPilot.Test.Wrapped Extends (%UnitTest.TestCase,\n    OcuPilot.Test.Helper)\n    [ ProcedureBlock ]\n{\n${method}\n}\n`);
+    writeFileSync(join(testDir, 'WrappedAbstract.cls'), `Class OcuPilot.Test.WrappedAbstract Extends %UnitTest.TestCase\n    [ Abstract ]\n{\n${method}\n}\n`);
+    writeFileSync(join(testDir, 'Helper.cls'), `Class OcuPilot.Test.Helper\n{\n${method}\n}\n`);
+    writeFileSync(join(testDir, 'CycleA.cls'), `Class OcuPilot.Test.CycleA Extends OcuPilot.Test.CycleB\n{\n${method}\n}\n`);
+    writeFileSync(join(testDir, 'CycleB.cls'), `Class OcuPilot.Test.CycleB Extends OcuPilot.Test.CycleA\n{\n${method}\n}\n`);
+    writeFileSync(join(testDir, 'CycleC.cls'), 'Class OcuPilot.Test.CycleC Extends (OcuPilot.Test.CycleD, %UnitTest.TestCase)\n{\n}\n');
+    writeFileSync(join(testDir, 'CycleD.cls'), 'Class OcuPilot.Test.CycleD Extends OcuPilot.Test.CycleC\n{\n}\n');
+    assert.deepEqual(testClassesOnDisk(root), ['OcuPilot.Test.Wrapped']);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -987,7 +1023,7 @@ test('the checkout list carries the classes that reach TestCase through a projec
   for (const name of ['ProviderStream', 'TurnTools', 'RoutineAppGate']) {
     assert.ok(onDisk.includes(`OcuPilot.Test.${name}`), `${name} extends a project base and is listed`);
   }
-  assert.ok(!onDisk.includes('OcuPilot.Test.StreamCase'), 'an abstract base is not listed');
+  assert.ok(!onDisk.includes('OcuPilot.Test.StreamCase'), 'StreamCase, an abstract base with no Test* method, is not listed');
 });
 
 test('the runner reads the class list out of its own marker, and an empty list stays empty', () => {
