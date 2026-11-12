@@ -366,10 +366,15 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Line numbe
   - **Then** `AnalyticsProbe.Gone()` is true: no probe cube or class, the hidden cube included, no probe `CubeEvent` row and none of the residue Design Notes › Measured names, and USER's analytics flags read their recorded values.
 
 - [ ] **DW-2485 (ledger; routed by Story 20.33's harvest, 2026-10-21):** `Test/AnalyticsPort.Snapshot` joins every `^DeepSee.Cache*` node into one string, so cache residue over about 3.6 MB (a cube build's likeliest effect) raises `<MAXSTRING>` and `TestTheReadsWriteNothing` reddens on state it did not make. Digest each global separately (a hash per global) so the snapshot's size no longer grows with the residue; keep its `pRuntime` argument's meaning; pin it with a demonstrated mutation.
+- [ ] **[Gate] Guards feature gained since this plan (lead, 2026-11-12 resume).** The tree now also carries 20.37, 20.38, 20.39's charter and 23.12. Task 0 re-anchors every line number above on the current head (they were read at `d85b4a6c`), and the story meets these three guards:
+  - **23.12's `Test/ReadDescriptions` roster:** the new `analytics.cubemanager` read names its screen title, what one row is and the fields it answers, as its siblings do. If it and 20.11's cube list can answer the same question, add a `Cubes` group naming both to `XData Groups` (add-only) and give each its declared label. Then `cd ui && node tools/screen-mirror.mjs` regenerates `screens.generated.ts` and `Screen/Titles.cls`. The row phrase and label are agent-facing, so word them in-stage in plain words like the siblings', and record them under Design Notes.
+  - **20.38's `ui/tools/name-links.test.mjs`:** the manager's Name cell opens the cube's own screen through entity `cube`, never the manager's list. A red is fixed by that target, never by a row in either allow-list.
+  - **Client-lint family 7:** every new template class has a style or an allow-list line.
 
 ## Spec Change Log
 
 - 2026-10-15, spec gate (runner): Q1, Q2 and Q3 ruled as recommended (A each; none conflicts with an AD); the spine carries the Story 20.34 clauses in AD-65, AD-51, AD-7, AD-15, AD-22, AD-8, AD-44 and AD-10.
+- 2026-11-12, resume gate (runner): one `[Gate]` task for 23.12's read roster, 20.38's name-link check and client-lint family 7, which feature gained after this plan.
 
 ## Review Triage Log
 
