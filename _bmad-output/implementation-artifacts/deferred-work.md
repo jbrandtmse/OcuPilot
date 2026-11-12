@@ -12534,3 +12534,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: 23.9 batch 4 CI (run 43292059964) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: run 43292059964 (9e7cc026) attempt 1, browser shard 2/5: waitForSelector [data-ocu-mdx=grid] failed at :258 after 37.6 s, the other 10 tests green; batch 4 touches no analytics or walk code
 - 2026-11-12T20:43:32Z status=routed owner=23-10-the-range-end-cleanup-part-9-two-sweeps by=lead note=CI flake; first priority in 23.10 (Rule 27); rerun --failed
+
+### DW-2524: flake: context-chip.browser-spec.mjs test 7 (Fresh at Send) waited past 30000 ms
+- source: 23.9 staging CI (run 43316537748) | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: run 43316537748 (8947b8d2, integrate-forward staging head) attempt 1, browser shard 4/5: 'Waiting failed: 30000ms exceeded', 8 of 9 green; neither 23.9's batches nor 20.34 touch the context chip
+- 2026-11-12T22:40:59Z status=routed owner=23-10-the-range-end-cleanup-part-9-two-sweeps by=lead note=CI flake; first priority in 23.10 (Rule 27); rerun --failed
