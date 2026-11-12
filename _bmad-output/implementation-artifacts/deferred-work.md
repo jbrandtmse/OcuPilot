@@ -12483,3 +12483,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: _bmad-output/implementation-artifacts/spec-23-9-the-range-end-cleanup-part-8.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: pause took 0.28-0.71 s on an idle throwaway over three probes; the compact's own duration over 30,000 nodes was not measured; a CI shard run of local-databases settles it
 - 2026-11-12T15:04:45Z status=open owner=23-9-the-range-end-cleanup-part-8 by=harvest note=batch 1 deferred; adjudicate against the batch 1 CI run
+
+### DW-2517: flake: JournalRecords TestTheToolInReverseOrderKeepsTheNewestRowsUnderTheContextCap: its next page read answered PORT.TIMEOUT
+- source: 23.9 lead full sweep (shard 3/20, run 83) | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: full sweep on ocupilot-ci at c98a0877, shard 3/20: AssertStatusOK at +14 'and its next page reads' => ERROR #5001 PORT.TIMEOUT; the class reran alone 10/10 green (run 701); batch 1 touches no journal code
+- 2026-11-12T17:08:40Z status=routed owner=23-10-the-range-end-cleanup-part-9-two-sweeps by=lead note=CI-health flake; first priority in 23.10 with DW-2513 (Rule 27)
