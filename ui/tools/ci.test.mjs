@@ -934,6 +934,62 @@ test('the runner knows how many test classes the checkout carries, so a narrowed
   );
 });
 
+// Mutation (Rule 19): restore the direct-`Extends` regex in `testClassesOnDisk` -> both tests below
+// go red.
+test('the checkout list follows the Extends chain to TestCase, as the instance query does (DW-2259)', () => {
+  const root = mkdtempSync(join(tmpdir(), 'ocupilot-classes-'));
+  try {
+    const testDir = join(root, 'src', 'OcuPilot', 'Test');
+    mkdirSync(join(testDir, 'Sub'), { recursive: true });
+    const cls = (name, extendsClause, keywords, body) =>
+      `Class OcuPilot.Test.${name} Extends ${extendsClause}${keywords ? ` [ ${keywords} ]` : ''}\n{\n${body}\n}\n`;
+    const method = '\nMethod TestSomething()\n{\n    Quit\n}\n';
+    writeFileSync(join(testDir, 'Base.cls'), cls('Base', '%UnitTest.TestCase', 'Abstract', ''));
+    writeFileSync(join(testDir, 'Child.cls'), cls('Child', 'OcuPilot.Test.Base', '', method));
+    writeFileSync(join(testDir, 'Grand.cls'), cls('Grand', '(OcuPilot.Test.Child)', 'ProcedureBlock', ''));
+    writeFileSync(join(testDir, 'ConcreteBase.cls'), cls('ConcreteBase', '%UnitTest.TestCase', '', method));
+    writeFileSync(join(testDir, 'Sub', 'Sub.cls'), cls('Sub.Sub', 'OcuPilot.Test.ConcreteBase', '', ''));
+    writeFileSync(join(testDir, 'Helper.cls'), cls('Helper', '%UnitTest.TestCase', '', ''));
+    writeFileSync(join(testDir, 'Plain.cls'), cls('Plain', '%RegisteredObject', '', method));
+    assert.deepEqual(testClassesOnDisk(root), [
+      'OcuPilot.Test.Child',
+      'OcuPilot.Test.ConcreteBase',
+      'OcuPilot.Test.Grand',
+      'OcuPilot.Test.Sub.Sub',
+    ]);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+// Mutation (Rule 19): drop the abstract check from the final filter in `testClassesOnDisk`, or take
+// only the first name of a parenthesized `Extends` list -> this test goes red.
+test('the checkout list leaves out an abstract class that carries tests and reads every name of an Extends list (DW-2259)', () => {
+  const root = mkdtempSync(join(tmpdir(), 'ocupilot-classes-'));
+  try {
+    const testDir = join(root, 'src', 'OcuPilot', 'Test');
+    mkdirSync(testDir, { recursive: true });
+    const cls = (name, extendsClause, keywords, body) =>
+      `Class OcuPilot.Test.${name} Extends ${extendsClause}${keywords ? ` [ ${keywords} ]` : ''}\n{\n${body}\n}\n`;
+    const method = '\nMethod TestSomething()\n{\n    Quit\n}\n';
+    writeFileSync(join(testDir, 'AbstractWithTests.cls'), cls('AbstractWithTests', '%UnitTest.TestCase', 'Abstract, ProcedureBlock', method));
+    writeFileSync(join(testDir, 'FromAbstract.cls'), cls('FromAbstract', 'OcuPilot.Test.AbstractWithTests', '', ''));
+    writeFileSync(join(testDir, 'Helper.cls'), cls('Helper', '%RegisteredObject', '', method));
+    writeFileSync(join(testDir, 'Mixed.cls'), cls('Mixed', '(OcuPilot.Test.Helper, OcuPilot.Test.AbstractWithTests)', '', ''));
+    assert.deepEqual(testClassesOnDisk(root), ['OcuPilot.Test.FromAbstract', 'OcuPilot.Test.Mixed']);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('the checkout list carries the classes that reach TestCase through a project base (DW-2259)', () => {
+  const onDisk = testClassesOnDisk(REPO_ROOT);
+  for (const name of ['ProviderStream', 'TurnTools', 'RoutineAppGate']) {
+    assert.ok(onDisk.includes(`OcuPilot.Test.${name}`), `${name} extends a project base and is listed`);
+  }
+  assert.ok(!onDisk.includes('OcuPilot.Test.StreamCase'), 'an abstract base is not listed');
+});
+
 test('the runner reads the class list out of its own marker, and an empty list stays empty', () => {
   assert.deepEqual(parseListMarker('OCUPILOT-LIST-START:A.B,A.C:OCUPILOT-LIST-END'), ['A.B', 'A.C']);
   assert.deepEqual(parseListMarker('OCUPILOT-LIST-START::OCUPILOT-LIST-END'), []);

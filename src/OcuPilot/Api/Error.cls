@@ -259,7 +259,10 @@ Parameter PROVIDERUNAVAILABLE = "PROVIDER.UNAVAILABLE";
 Parameter PROVIDERTIMEOUT = "PROVIDER.TIMEOUT";
 
 /// <p>Machine code (AD-12, AD-39, AD-42): the request failed in transport -- the call raised, or
-/// returned a status that is neither a timeout nor an HTTP answer. <b>Never retried.</b></p>
+/// returned a status that is neither a timeout nor an HTTP answer. A failure before any status
+/// line arrived is retried once, on a new connection, inside the same attempt and delay budget; a
+/// call that raised, a connect that never opened (<code>ERROR #6059</code>) and a stream that broke
+/// after its status line are not (<class>OcuPilot.Kernel.Provider.Base</class>).</p>
 Parameter PROVIDERTRANSPORT = "PROVIDER.TRANSPORT";
 
 /// <p>Machine code (AD-12, AD-32, AD-39): the named TLS configuration is not present on this

@@ -10,12 +10,7 @@ import { type Effective, effectiveOf } from '../../core/privileges';
 import { readBackOf, type ReadBack } from '../../core/read-back';
 import { STRINGS } from '../../core/strings';
 import { reasonForField, type Violation, violationsOf } from '../../core/violations';
-
-/** The route the editor saves through: `PUT <path>/<id>`. */
-export const USERS_PATH = '/api/ocupilot/users';
-
-/** The form read: the rules, their sentences, the roles the instance holds and, with a name, the account. */
-export const USERS_FORM_PATH = `${USERS_PATH}/form`;
+import { USERS_FORM_PATH, USERS_PATH } from './user-create-form.store';
 
 /** The Effective privileges read (Story 16.3): `GET <path>?name=<account>`. */
 export const USERS_EFFECTIVE_PATH = `${USERS_PATH}/effective`;

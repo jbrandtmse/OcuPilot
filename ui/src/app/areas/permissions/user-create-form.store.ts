@@ -6,7 +6,7 @@ import { FormDirty } from '../../core/form-dirty';
 import { readBackOf, type ReadBack } from '../../core/read-back';
 import { reasonForField, type Violation, violationsOf } from '../../core/violations';
 
-/** The route the form creates through. */
+/** The users route: the create form's POST and the editor's `PUT <path>/<id>`. */
 export const USERS_PATH = '/api/ocupilot/users';
 
 /** The form's own bootstrap read: the rules, their sentences and the roles the instance holds. */

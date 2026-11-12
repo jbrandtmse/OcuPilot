@@ -364,25 +364,25 @@ export function classifyRun(className, marker) {
 }
 
 /**
- * The test classes the CHECKOUT carries: every `.cls` under `src/OcuPilot/Test/` whose own
- * `Extends` clause names a `TestCase` and which declares at least one `Test*` method.
+ * The test classes the CHECKOUT carries: every non-abstract `.cls` under `src/OcuPilot/Test/` that
+ * reaches `%UnitTest.TestCase` through its `Extends` chain (directly or through a project base
+ * class under the same folder) and has a `Test*` method of its own or on a project ancestor.
  *
- * **It is a FLOOR, not the same population.** The discovery query reads `PrimarySuper`, which is
- * the whole chain, while this reads the direct `Extends` clause only — so a class reaching
- * `TestCase` through a project base class is offered by the instance and invisible here. That
- * direction is safe by construction: `main()` only reports classes on disk the instance did NOT
- * offer, so a wider instance list passes and a narrowed one is caught, which is the failure this
- * exists for. Widen the matcher the day such a base class appears.
+ * **It matches the instance's query.** `scripts/ci-unit-test.sh` lists a compiled class whose
+ * `PrimarySuper` holds `%UnitTest.TestCase`, is not abstract and has a compiled `Test*` method,
+ * inherited or own. A class is abstract here when `Abstract` appears in its class keyword list.
+ * `main()` reports a class on disk the instance did NOT offer, so a narrowed instance list is
+ * caught.
  *
  * **Why a second source.** "More than zero classes" was the only floor on discovery, so a query
- * that silently narrowed — a wrong superclass column, a renamed package, a failed compile of
- * half the tree — produced a green job over a handful of classes and nothing said so. A gate
+ * that silently narrowed -- a wrong superclass column, a renamed package, a failed compile of
+ * half the tree -- produced a green job over a handful of classes and nothing said so. A gate
  * that reports the size of what it looked at has to compare that size with something; this is
  * the something. Exported so `ci.test.mjs` can drive it.
  */
 export function testClassesOnDisk(repoRoot = REPO_ROOT, pkg = DEFAULT_PACKAGE) {
   const dir = join(repoRoot, 'src', 'OcuPilot', 'Test');
-  const names = [];
+  const parsed = new Map();
   const walk = (current, prefix) => {
     for (const entry of readdirSync(current, { withFileTypes: true })) {
       const full = join(current, entry.name);
@@ -392,14 +392,33 @@ export function testClassesOnDisk(repoRoot = REPO_ROOT, pkg = DEFAULT_PACKAGE) {
       }
       if (!entry.name.endsWith('.cls')) continue;
       const text = readFileSync(full, 'utf8');
-      if (!/Extends\s+[^\n{]*TestCase/.test(text)) continue;
-      if (!/^(?:Class)?Method\s+Test/m.test(text)) continue;
-      if (/^Class\s+\S+\s+Extends[^\n]*\[\s*Abstract/m.test(text)) continue;
-      names.push(`${prefix}${entry.name.slice(0, -'.cls'.length)}`);
+      const header = /^Class\s+(\S+)(?:\s+Extends\s+(\([^)]*\)|[^\s[{]+))?\s*(?:\[([^\]]*)\])?/m.exec(text);
+      const name = `${prefix}${entry.name.slice(0, -'.cls'.length)}`;
+      parsed.set(name, {
+        supers: header?.[2] ? header[2].replace(/[()\s]/g, '').split(',').filter(Boolean) : [],
+        abstract: /\bAbstract\b/.test(header?.[3] ?? ''),
+        tests: /^(?:Class)?Method\s+Test/m.test(text),
+      });
     }
   };
   walk(dir, `${pkg}.`);
-  return names.sort();
+
+  const reachesTestCase = (name, seen = new Set()) => {
+    if (seen.has(name)) return false;
+    seen.add(name);
+    return (parsed.get(name)?.supers ?? []).some(
+      (parent) => /(^|\.)TestCase$/.test(parent) || reachesTestCase(parent, seen)
+    );
+  };
+  const hasTests = (name, seen = new Set()) => {
+    if (seen.has(name)) return false;
+    seen.add(name);
+    const entry = parsed.get(name);
+    return Boolean(entry) && (entry.tests || entry.supers.some((parent) => hasTests(parent, seen)));
+  };
+  return [...parsed.keys()]
+    .filter((name) => !parsed.get(name).abstract && reachesTestCase(name) && hasTests(name))
+    .sort();
 }
 
 /** The argument vector that runs one class through the session primitive. */
