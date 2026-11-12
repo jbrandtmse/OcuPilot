@@ -157,6 +157,7 @@ Method TestAGateDenialReachesNothingAndTheToolStaysAdvertised()
 /// Story 20.3's item remove (<parameter>OcuPilot.Test.Governance.INTEROPITEMREMOVE</parameter>),
 /// Story 20.23's two queue aborts and job abort (<parameter>OcuPilot.Test.Governance.INTEROPRUNTIMEDISABLED</parameter>),
 /// Story 20.31's message resend and edit and resend (<parameter>OcuPilot.Test.Governance.INTEROPMESSAGEDISABLED</parameter>),
+/// Story 20.34's cube build (<parameter>OcuPilot.Test.Governance.CUBEDISABLED</parameter>),
 /// and Story 18.26's connection delete and token revoke (<parameter>OcuPilot.Test.Governance.MFTDISABLED</parameter>),
 /// and Story 18.42's allowed directories update (<parameter>OcuPilot.Test.Governance.ALLOWLISTUPDATE</parameter>),
 /// which their baseline lines disable (AD-10, AD-22). It reads the stored policy, so it first asserts that no policy is
@@ -184,6 +185,7 @@ Method TestTheShippedGateAllowsEveryLiveToolButTheBaselineDisabled()
         If $ListFind($ListFromString($Parameter("OcuPilot.Test.Governance", "INTEROPRUNTIMEDISABLED")), tTool.name) Set tExpected = "0|" _ ##class(OcuPilot.Api.Error).#GOVERNANCEDISABLED
         If $ListFind($ListFromString($Parameter("OcuPilot.Test.Governance", "INTEROPLOOKUPDISABLED")), tTool.name) Set tExpected = "0|" _ ##class(OcuPilot.Api.Error).#GOVERNANCEDISABLED
         If $ListFind($ListFromString($Parameter("OcuPilot.Test.Governance", "INTEROPMESSAGEDISABLED")), tTool.name) Set tExpected = "0|" _ ##class(OcuPilot.Api.Error).#GOVERNANCEDISABLED
+        If tTool.name = $Parameter("OcuPilot.Test.Governance", "CUBEDISABLED") Set tExpected = "0|" _ ##class(OcuPilot.Api.Error).#GOVERNANCEDISABLED
         If $ListFind($ListFromString($Parameter("OcuPilot.Test.Governance", "MFTDISABLED")), tTool.name) Set tExpected = "0|" _ ##class(OcuPilot.Api.Error).#GOVERNANCEDISABLED
         If tTool.name = $Parameter("OcuPilot.Test.Governance", "ALLOWLISTUPDATE") Set tExpected = "0|" _ ##class(OcuPilot.Api.Error).#GOVERNANCEDISABLED
         Do $$$AssertEquals($Get(tDecision("allowed")) _ "|" _ $Get(tDecision("code")), tExpected, tTool.name _ ": " _ tExpected)

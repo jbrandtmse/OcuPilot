@@ -2701,12 +2701,14 @@ test('ownPrivilegesProblem returns every sentence OwnPrivilegeCases declares, an
   // %Development:USE, beside the Analytics area's %DeepSee_Portal. Story 20.32's Architect and Analyzer links own
   // %DeepSee_Architect:USE and %DeepSee_Analyzer:USE, and the User Portal link owns none.
   // Story 20.33's MDX query owns %Development:USE beside the Analytics area's %DeepSee_Portal.
+  // Story 20.34's Cube manager owns %DeepSee_Admin:USE, the classic Cube Registry's resource, beside the Analytics area's %DeepSee_Portal.
   assert.deepEqual(
     owners.sort(),
     [
       'OcuPilot.Screen.Descriptor.AllowedDirectoryList',
       'OcuPilot.Screen.Descriptor.AnalyticsAnalyzerLink',
       'OcuPilot.Screen.Descriptor.AnalyticsArchitectLink',
+      'OcuPilot.Screen.Descriptor.AnalyticsCubeManager',
       'OcuPilot.Screen.Descriptor.AnalyticsFolderItemList',
       'OcuPilot.Screen.Descriptor.AnalyticsMdxQuery',
       'OcuPilot.Screen.Descriptor.AnalyticsTermListEntryList',

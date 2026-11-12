@@ -308,6 +308,39 @@ Method TestANamespaceWithoutAnalyticsIsRefusedOnEveryEndpoint()
     }
 }
 
+/// <p>DW-2485: the snapshot of a namespace whose cache holds megabytes is taken, and is as short as one with an empty cache: a cube build
+/// leaves cache residue, and a snapshot that joined the nodes into one string raised <code>&lt;MAXSTRING&gt;</code> past about 3.6 MB.
+/// Six nodes of one million characters each are written under a probe cube's cache key, the snapshot is read twice (equal, and no error),
+/// and one node changed by a character changes it.</p>
+/// <p>Mutation (Rule 19): join each node's text into one string again in <method>Snapshot</method> -- the first assertion reads
+/// <code>ERROR</code> and this goes red.</p>
+Method TestTheSnapshotDoesNotGrowWithTheCacheItDigests()
+{
+    Set tOrigNS = $NAMESPACE
+    Set tKey = $ZConvert($Parameter(..#PROBE, "GRID"), "U")
+    Try {
+        Set $NAMESPACE = ..#NAMESPACE
+        Kill ^DeepSee.Cache.Results(tKey)
+        For tI = 1:1:6 {
+            Set ^DeepSee.Cache.Results(tKey, "snapshot", tI) = $Justify("", 1000000)
+        }
+        Set $NAMESPACE = tOrigNS
+        Set tFirst = ..Snapshot()
+        Do $$$AssertTrue($Extract(tFirst, 1, 5) '= "ERROR", "the snapshot over six megabytes of cache is taken: " _ $Extract(tFirst, 1, 120))
+        Do $$$AssertEquals(..Snapshot(), tFirst, "and reads the same twice")
+        Do $$$AssertTrue($Length(tFirst) < 1000, "and is short (" _ $Length(tFirst) _ " characters)")
+        Set $NAMESPACE = ..#NAMESPACE
+        Set ^DeepSee.Cache.Results(tKey, "snapshot", 6) = $Justify("", 999999) _ "x"
+        Set $NAMESPACE = tOrigNS
+        Do $$$AssertNotEquals(..Snapshot(), tFirst, "while one changed character changes it")
+    } Catch ex {
+        Do $$$AssertStatusOK(ex.AsStatus(), "the large-cache snapshot leg raised")
+    }
+    Set $NAMESPACE = ..#NAMESPACE
+    Kill ^DeepSee.Cache.Results(tKey)
+    Set $NAMESPACE = tOrigNS
+}
+
 /// <p>End this process's DeepSee session: the process variable the vendor reuses once it holds one, and the session's node in
 /// <code>USER</code>. A read that opens a session writes its node only the first time, so every comparison starts without one.</p>
 ClassMethod ForgetSession()
@@ -397,7 +430,8 @@ ClassMethod InZone(pZone As %String) As %String
 /// <p>The nodes the reads must leave as they found them, in <code>USER</code>, as one digest: every <code>^DeepSee.Cache</code>
 /// global, this process's <code>^DeepSee.Session</code> node, the signed-in user's favorites, the probe's term list, and the folder
 /// and folder item globals. With <var>pRuntime</var> 0 the digest leaves out the first two, the vendor's own runtime nodes that a query's
-/// run writes.</p>
+/// run writes. Each global is digested on its own (a hash folded node by node), so the digest's text is as long as the number of globals
+/// and not as long as what they hold.</p>
 ClassMethod Snapshot(pRuntime As %Boolean = 1) As %String
 {
     Set tOrigNS = $NAMESPACE
@@ -423,13 +457,17 @@ ClassMethod Snapshot(pRuntime As %Boolean = 1) As %String
         For {
             Set tRef = $Order(tRefs(tRef))
             If tRef = "" Quit
-            Set tText = tText _ "#" _ tRef _ ":" _ $Data(@tRef)
-            If $Data(@tRef) # 2 Set tText = tText _ "=" _ @tRef
+            ; One digest per global, folded node by node, so what a global holds never lengthens the text (a cube build leaves megabytes
+            ; of cache): the text grows with the number of globals alone.
+            Set tDigest = $System.Encryption.SHA1Hash(tRef _ ":" _ $Data(@tRef) _ $Select($Data(@tRef) # 2: "=" _ @tRef, 1: ""))
+            Set tNodes = 0
             Set tNode = $Query(@tRef)
             While (tNode '= "") && ..Under(tNode, tRef) {
-                Set tText = tText _ "|" _ tNode _ "=" _ @tNode
+                Set tDigest = $System.Encryption.SHA1Hash(tDigest _ tNode _ "=" _ @tNode)
+                Set tNodes = tNodes + 1
                 Set tNode = $Query(@tNode)
             }
+            Set tText = tText _ "#" _ tRef _ ":" _ $Data(@tRef) _ ":" _ tNodes _ ":" _ $System.Encryption.Base64Encode(tDigest)
         }
         Set $NAMESPACE = tOrigNS
     } Catch ex {

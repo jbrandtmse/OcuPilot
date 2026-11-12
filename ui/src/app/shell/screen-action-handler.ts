@@ -144,6 +144,8 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   'OcuPilot.Screen.Descriptor.InteropItemQueueTab',
   'OcuPilot.Screen.Descriptor.InteropJobList',
   'OcuPilot.Screen.Descriptor.InteropItemJobTab',
+  // Story 20.34: the Cube manager, whose Build types the cube's name and whose Synchronize is sent at once, each reporting the lines the instance answered.
+  'OcuPilot.Screen.Descriptor.AnalyticsCubeManager',
   // Story 20.6: an item's Test tab, whose Send test its own page's dialog sends.
   'OcuPilot.Screen.Descriptor.InteropItemTestTab',
   // Story 20.27: Data transformations, whose Test its own page's dialog sends.
@@ -498,6 +500,17 @@ const INTEROP_ITEM_QUEUE_TAB = 'OcuPilot.Screen.Descriptor.InteropItemQueueTab';
 const INTEROP_JOB_LIST = 'OcuPilot.Screen.Descriptor.InteropJobList';
 const INTEROP_ITEM_JOB_TAB = 'OcuPilot.Screen.Descriptor.InteropItemJobTab';
 
+/** Analytics' Cube manager (Story 20.34), whose Build and Synchronize report the lines the instance answered. */
+const ANALYTICS_CUBE_MANAGER = 'OcuPilot.Screen.Descriptor.AnalyticsCubeManager';
+
+/**
+ * The row actions whose answer is a report: once one ran, the dialog that follows it lists the lines the instance answered for the
+ * screen alone (Story 20.34), keyed by descriptor. A refused action shows its sentence on the screen as every action does.
+ */
+const OUTCOME_ACTIONS: Readonly<Record<string, readonly string[]>> = {
+  [ANALYTICS_CUBE_MANAGER]: ['build', 'synchronize'],
+};
+
 /**
  * The screen whose action route a descriptor's row actions are sent to, where it is not the
  * descriptor's own: Process details acts on the pid it shows through the processes list's write
@@ -518,7 +531,7 @@ const ACTION_ADDRESS: Readonly<Record<string, string>> = {
  * `DESTRUCTIVE` declaration. This is EXPERIENCE.md's `confirm-dialog` rule -- a delete carries the
  * typed-name field and a `button-destructive` -- applied to the verb that deletes.
  */
-const DESTRUCTIVE_ACTIONS: readonly string[] = ['delete', 'terminate', 'revoke-tokens', 'revoke-token', 'end', ENCRYPTION_REMOVE_ADMIN, ENCRYPTION_REMOVE_KEY, ENCRYPTION_DEACTIVATE, 'remove', 'abort', MESSAGE_RESEND, MESSAGE_EDIT_RESEND];
+const DESTRUCTIVE_ACTIONS: readonly string[] = ['delete', 'terminate', 'revoke-tokens', 'revoke-token', 'end', ENCRYPTION_REMOVE_ADMIN, ENCRYPTION_REMOVE_KEY, ENCRYPTION_DEACTIVATE, 'remove', 'abort', MESSAGE_RESEND, MESSAGE_EDIT_RESEND, 'build'];
 
 /**
  * The destructive actions whose typed-name dialog states the removal's impact as its advisory,
@@ -609,6 +622,8 @@ const DESTRUCTIVE_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, 
   [INTEROP_ITEM_QUEUE_TAB]: { abort: STRINGS.interopMessageAbortConsequence },
   [INTEROP_JOB_LIST]: { abort: STRINGS.interopJobAbortConsequence },
   [INTEROP_ITEM_JOB_TAB]: { abort: STRINGS.interopJobAbortConsequence },
+  // Story 20.34: a build deletes the cube's facts and rebuilds them, with every cube that depends on it.
+  [ANALYTICS_CUBE_MANAGER]: { build: STRINGS.analyticsCubeBuildConsequence },
   // Story 20.31: a resend delivers a copy that cannot be recalled, and so does an edit and resend.
   [INTEROP_MESSAGE_LIST]: { [MESSAGE_RESEND]: STRINGS.interopMessageResendConsequence },
   [INTEROP_MESSAGE_HEADER]: { [MESSAGE_RESEND]: STRINGS.interopMessageResendConsequence, [MESSAGE_EDIT_RESEND]: STRINGS.interopMessageEditResendConsequence },
@@ -690,6 +705,8 @@ const TYPED_NAME_ROWS: Readonly<
   [INTEROP_ITEM_QUEUE_TAB]: { name: 'MessageId', field: '', equals: '', advisory: '' },
   [INTEROP_JOB_LIST]: { name: 'Job', field: '', equals: '', advisory: '' },
   [INTEROP_ITEM_JOB_TAB]: { name: 'Job', field: '', equals: '', advisory: '' },
+  // Story 20.34: a build types the cube's logical name, which the Cube manager's name column shows.
+  [ANALYTICS_CUBE_MANAGER]: { name: 'Name', field: '', equals: '', advisory: '' },
 };
 
 /**
@@ -1557,6 +1574,19 @@ export class ScreenActionHandler {
     this.waiting.set({ ...opened, kind: 'outcome', outcome: applied ? outcomeLinesOf(this.lastOutputValue) : [], refusal: applied ? '' : refusal });
   }
 
+  /**
+   * The outcome dialog an `OUTCOME_ACTIONS` action ends in: the lines the instance answered, over the dialog the action was confirmed in
+   * or in place of none (Story 20.34). Nothing opens where the action answered no line or another dialog stands.
+   */
+  private showOutcome(descriptor: string, actionId: string, target: string, sink: ActionSink): void {
+    if (!(Object.hasOwn(OUTCOME_ACTIONS, descriptor) && OUTCOME_ACTIONS[descriptor].includes(actionId)) || this.waiting() !== null) return;
+    const lines = outcomeLinesOf(this.lastOutputValue);
+    if (lines.length === 0) return;
+    this.open('typed-name', descriptor, actionId, target, '', [], sink);
+    const opened = this.waiting();
+    if (opened !== null) this.waiting.set({ ...opened, kind: 'outcome', outcome: lines, refusal: '' });
+  }
+
   /** The row keyed `target` on the screen's last read, or `null`. */
   private row(screen: ScreenDeclaration, target: string): Readonly<Record<string, unknown>> | null {
     const row = this.store(screen.descriptor, screen.refreshRates)
@@ -1643,6 +1673,7 @@ export class ScreenActionHandler {
     const answer = result.body;
     const targetRef = answer?.target;
     sink?.applied?.(actionId);
+    this.showOutcome(descriptor, actionId, target, store);
     if (targetRef === undefined) return true;
     this.injector.get(ChangeBus).publish({
       kind: 'changed',

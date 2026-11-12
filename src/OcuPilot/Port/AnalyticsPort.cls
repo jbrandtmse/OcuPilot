@@ -48,8 +48,19 @@
 /// read tool: it starts the prepared result set, polls the vendor and the caller's stop hook, and on the bound or a stop cancels the vendor's
 /// query and waits for it to finish. <method>RefuseFor</method> publishes <code>ANALYTICS.MDX.SQL</code>, the refusal of a statement
 /// <method>MdxConstructs</method> finds a construct in or cannot read, to a tool that may not name the error class.</p>
-/// <p>Seams a test subclass overrides: <method>GateClass</method>, <method>RoutineResource</method>, <method>Collect</method> and
-/// <method>LogFault</method>. Production overrides none.</p>
+/// <p><b>The cube manager (Story 20.34, AD-65, AD-51, AD-53).</b> The <code>CubeManager</code> endpoint lists each cube with its facts, last
+/// build, last update, whether it can be synchronized, whether an update runs now, and the cubes that depend on it; its <code>STATE</code>
+/// type reads one cube by its exact logical name, judged over the cube and its dependents; its <code>BUILD</code> and
+/// <code>SYNCHRONIZE</code> types are the only writes this port makes. They are gated by <parameter>MANAGERPAIRS</parameter> and, beyond
+/// the read gate, WRITE on the database <code>^DeepSee.Fact</code> maps to in the namespace, which must be mounted read-write
+/// (<method>AdmitDestination</method>). The vendor checks no <code>%DeepSee_*</code> resource and writes no audit event for either, so the
+/// gate is this port's and the audit row is OcuPilot's own (<method>AuditWrite</method>). A state the action does not fit is refused by
+/// its own code before any vendor call (<method>StateRefusal</method>); the two vendor calls are the seams <method>VendorBuild</method>
+/// and <method>VendorSynchronize</method>, each run switched to the namespace inside an output capture, and their answers are mapped by
+/// <method>VendorOutcome</method>. The write runs in the request that asks for it, on the vendor's own build agents, and never in a
+/// job of this product's (AD-7).</p>
+/// <p>Seams a test subclass overrides: <method>GateClass</method>, <method>RoutineResource</method>, <method>Collect</method>,
+/// <method>LogFault</method>, <method>VendorBuild</method> and <method>VendorSynchronize</method>. Production overrides none.</p>
 Class OcuPilot.Port.AnalyticsPort Extends (%RegisteredObject, OcuPilot.Kernel.RowFetch)
 {
 
@@ -57,7 +68,7 @@ Class OcuPilot.Port.AnalyticsPort Extends (%RegisteredObject, OcuPilot.Kernel.Ro
 Parameter GATECLASS = "OcuPilot.Screen.Gate";
 
 /// <p>The endpoints this port serves, comma-separated. <file>ui/tools/screen-mirror.mjs</file> reads this list.</p>
-Parameter ENDPOINTS = "Cubes,Measures,Dimensions,Relationships,TermLists,TermListEntries,FolderItems";
+Parameter ENDPOINTS = "Cubes,Measures,Dimensions,Relationships,TermLists,TermListEntries,FolderItems,CubeManager";
 
 /// <p>The cubes of the namespace.</p>
 Parameter ENDPOINTCUBES = "Cubes";
@@ -80,6 +91,13 @@ Parameter ENDPOINTTERMLISTENTRIES = "TermListEntries";
 /// <p>The folder items of the namespace the caller's resources admit.</p>
 Parameter ENDPOINTFOLDERITEMS = "FolderItems";
 
+/// <p>The cube manager: the cubes with their build state, one cube's state, and the two writes (Story 20.34).</p>
+Parameter ENDPOINTCUBEMANAGER = "CubeManager";
+
+/// <p>The classic Cube Manager's pairs (Story 20.34): the portal's, and <code>%DeepSee.UI.CubeRegistry</code>'s own
+/// <code>RESOURCE</code>, which no shipped role but <code>%All</code> holds. They are not adjustable (AD-64).</p>
+Parameter MANAGERPAIRS = "%DeepSee_Portal:USE,%DeepSee_Admin:USE";
+
 /// <p>The classic Model Browser's pair: the portal's menu resource, public at USE.</p>
 Parameter PORTALPAIRS = "%DeepSee_Portal:USE";
 
@@ -93,8 +111,49 @@ Parameter FOLDERPAIRS = "%DeepSee_Portal:USE,%Development:USE";
 /// <p>The permission a database read needs.</p>
 Parameter READPERMISSION = "READ";
 
-/// <p>The one request type this port serves.</p>
+/// <p>The request type every endpoint serves.</p>
 Parameter TYPELIST = "LIST";
+
+/// <p>One cube's state on the cube manager, judged over the cube and its dependents (Story 20.34).</p>
+Parameter TYPESTATE = "STATE";
+
+/// <p>The cube manager's build and synchronize (Story 20.34): action-style writes over <parameter>TYPESTATE</parameter>.</p>
+Parameter TYPEBUILD = "BUILD";
+
+Parameter TYPESYNCHRONIZE = "SYNCHRONIZE";
+
+/// <p>The query key naming the cube a <code>STATE</code> or a write is about, kept exactly (AD-13).</p>
+Parameter IDKEY = "id";
+
+/// <p>The query key a <code>STATE</code> read composed for an action carries: the write type the read is made for.</p>
+Parameter ACTIONKEY = "action";
+
+/// <p>The global whose database a build or synchronize writes, and the global the MDX cache lives in: the two destinations
+/// <method>AdmitDestination</method> judges.</p>
+Parameter FACTGLOBAL = "^DeepSee.Fact";
+
+Parameter CACHEGLOBAL = "^DeepSee.Cache.Results";
+
+/// <p>The audit entity type and verbs of the cube manager's writes (AD-15).</p>
+Parameter ENTITYCUBE = "cube";
+
+Parameter VERBBUILD = "build";
+
+Parameter VERBSYNCHRONIZE = "synchronize";
+
+/// <p>The vendor's status codes a build or synchronize answer is mapped from: the cube lock, the build's error count, a cube that does
+/// not exist.</p>
+Parameter CODELOCK = 20005;
+
+Parameter CODEBUILDERRORS = 20006;
+
+Parameter CODENOCUBE = 20013;
+
+/// <p>The most characters of what the vendor wrote to the device that a log line quotes.</p>
+Parameter WRITTENMAX As INTEGER = 1000;
+
+/// <p>How the dependent cubes of a row are joined.</p>
+Parameter DEPENDENTSEPARATOR = ", ";
 
 /// <p>The query key naming the namespace.</p>
 Parameter NAMESPACEKEY = "namespace";
@@ -185,6 +244,13 @@ Parameter REASONCUBEREQUIRED = "Name the cube.";
 
 Parameter REASONTERMLISTREQUIRED = "Name the term list.";
 
+/// <p>The published sentence of the cube refusal <var>pCode</var>, <code>""</code> for a code this port does not declare, for the tools
+/// that may not name <class>OcuPilot.Api.AnalyticsError</class>.</p>
+ClassMethod ReasonFor(pCode As %String) As %String
+{
+    Quit ##class(OcuPilot.Api.AnalyticsError).ReasonFor(pCode)
+}
+
 /// <p>The class the pair sets are evaluated through. Overridable so a fixture can drive a denial in process; production never
 /// overrides it.</p>
 ClassMethod GateClass() As %String
@@ -205,6 +271,8 @@ ClassMethod Pairs(pEndpoint As %String) As %List
 {
     If $ListFind($ListBuild(..#ENDPOINTCUBES, ..#ENDPOINTMEASURES, ..#ENDPOINTDIMENSIONS, ..#ENDPOINTRELATIONSHIPS), pEndpoint) {
         Set tSpec = ..#PORTALPAIRS
+    } ElseIf pEndpoint = ..#ENDPOINTCUBEMANAGER {
+        Set tSpec = ..#MANAGERPAIRS
     } ElseIf $ListFind($ListBuild(..#ENDPOINTTERMLISTS, ..#ENDPOINTTERMLISTENTRIES), pEndpoint) {
         Set tSpec = ..#TERMLISTPAIRS
     } ElseIf pEndpoint = ..#ENDPOINTFOLDERITEMS {
@@ -215,11 +283,19 @@ ClassMethod Pairs(pEndpoint As %String) As %List
     Quit ##class(OcuPilot.Screen.Gate).ParsePairSpec(tSpec)
 }
 
-/// <p>Whether endpoint <var>pEndpoint</var> serves request type <var>pType</var>: <code>LIST</code> on every endpoint, and
-/// nothing else.</p>
+/// <p>Whether endpoint <var>pEndpoint</var> serves request type <var>pType</var>: <code>LIST</code> on every endpoint; and, on the
+/// cube manager, <code>STATE</code>, <code>BUILD</code> and <code>SYNCHRONIZE</code>.</p>
 ClassMethod Serves(pEndpoint As %String, pType As %String) As %Boolean
 {
-    Quit $ListFind(..Endpoints(), pEndpoint) && (pType = ..#TYPELIST)
+    If '$ListFind(..Endpoints(), pEndpoint) Quit 0
+    If pType = ..#TYPELIST Quit 1
+    Quit (pEndpoint = ..#ENDPOINTCUBEMANAGER) && ((pType = ..#TYPESTATE) || ..IsWrite(pType))
+}
+
+/// <p>Whether <var>pType</var> is one of this port's two writes, the cube manager's build and synchronize (Story 20.34).</p>
+ClassMethod IsWrite(pType As %String) As %Boolean
+{
+    Quit (pType = ..#TYPEBUILD) || (pType = ..#TYPESYNCHRONIZE)
 }
 
 /// <p>Serve <var>pEndpoint</var> for request type <code>LIST</code>, after the gate.</p>
@@ -241,6 +317,11 @@ ClassMethod Serves(pEndpoint As %String, pType As %String) As %Boolean
 /// <li>FolderItems: <code>{Name, Type, Owner, Modified, Favorite}</code>, <code>Name</code> the item's full name,
 /// <code>Modified</code> the instance's local <code>YYYY-MM-DD HH:MM:SS</code>, <code>Favorite</code> true for an item in the
 /// signed-in user's favorites.</li>
+/// <li>CubeManager: <code>{Name, Caption, Facts, LastBuild, LastUpdate, Synchronizes, Updating, DependentCubes}</code>, the cubes of
+/// Cubes with the time of the last build or synchronize (<code>LastUpdate</code>), whether the source records changes
+/// (<code>Synchronizes</code>), whether this cube is being built or synchronized now (<code>Updating</code>) and the cubes that
+/// depend on it, sorted and joined with <parameter>DEPENDENTSEPARATOR</parameter>. Its <code>STATE</code>, <code>BUILD</code> and
+/// <code>SYNCHRONIZE</code> types take the cube under <parameter>IDKEY</parameter> (<method>InvokeCubeManager</method>).</li>
 /// </ul>
 /// <p>A cube or term list that does not exist, or that the vendor refuses the caller, answers no rows.</p>
 /// <p>Otherwise an error status is returned, <var>pHttpStatus</var> is the status to answer with and <var>pFault</var> the wire
@@ -263,8 +344,14 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
         }
         Set tNamespace = $Get(pQuery(..#NAMESPACEKEY))
         If tNamespace = "" Set tNamespace = ##class(OcuPilot.Kernel.Scope).Current()
-        Set tSC = ..Admit(pEndpoint, tNamespace, .pHttpStatus, .pFault)
+        ; A write, and a STATE read composed for one, is judged against the fact database as well as the read gate.
+        Set tWrite = ..IsWrite(pType) || ((pType = ..#TYPESTATE) && ($Get(pQuery(..#ACTIONKEY)) '= ""))
+        Set tSC = ..Admit(pEndpoint, tNamespace, tWrite, .pHttpStatus, .pFault)
         If $$$ISERR(tSC) Quit
+        If pType '= ..#TYPELIST {
+            Set tSC = ..InvokeCubeManager(tNamespace, pType, .pQuery, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
 
         Set tMaxText = $Get(pQuery(..#MAXROWSKEY))
         If (tMaxText '= "") && '$Match(tMaxText, "^[1-9][0-9]*$") {
@@ -311,16 +398,37 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
 
 /// <p>This port's gate (AD-29, AD-65), evaluated before any vendor call for <var>pEndpoint</var> in <var>pNamespace</var>, in this
 /// order: the endpoint's pairs; the namespace's shape; the namespace reporting analytics; READ on its globals database; READ on its
-/// routines database. A refusal is an error status with <var>pHttpStatus</var> and <var>pFault</var> set as
-/// <method>Invoke</method> answers them. Names no vendor class.</p>
-ClassMethod Admit(pEndpoint As %String, pNamespace As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+/// routines database; and, when <var>pWrite</var> (a build or synchronize, or the read composed for one), WRITE on the database
+/// <parameter>FACTGLOBAL</parameter> maps to, which must be mounted read-write (<method>AdmitDestination</method>). A refusal is an
+/// error status with <var>pHttpStatus</var> and <var>pFault</var> set as <method>Invoke</method> answers them. Names no vendor class.</p>
+ClassMethod Admit(pEndpoint As %String, pNamespace As %String, pWrite As %Boolean, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
     Set pHttpStatus = 0
     Set pFault = ""
     Set tFailedPair = ""
     ; EvaluateRequired, not EvaluatePairs: a pair list mis-edited to empty fails closed.
     If '$ClassMethod(..GateClass(), "EvaluateRequired", ..Pairs(pEndpoint), .tFailedPair) Quit ..Deny(tFailedPair, .pHttpStatus, .pFault)
-    Quit ..AdmitNamespace(pNamespace, .pHttpStatus, .pFault)
+    Set tSC = ..AdmitNamespace(pNamespace, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) || 'pWrite Quit tSC
+    Quit ..AdmitDestination(pNamespace, ..#FACTGLOBAL, ##class(OcuPilot.Api.AnalyticsError).#CUBEREADONLY, .pHttpStatus, .pFault)
+}
+
+/// <p>The destination half of a write's gate (AD-29, AD-65): WRITE on the database <var>pGlobal</var> maps to in <var>pNamespace</var>
+/// (a refusal naming the failed pair), and that database mounted read-write (409 <var>pReadOnlyCode</var>). 400
+/// <code>PORT.VALIDATION</code> when the instance cannot name the database. One check for the MDX cache and for the facts. Names no
+/// vendor class.</p>
+ClassMethod AdmitDestination(pNamespace As %String, pGlobal As %String, pReadOnlyCode As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+{
+    Set pHttpStatus = 0
+    Set pFault = ""
+    Set tFailedPair = ""
+    Set tResource = ""
+    Set tReadOnly = 0
+    Set tMounted = 0
+    If '..DestinationDatabase(pNamespace, pGlobal, .tResource, .tReadOnly, .tMounted) || (tResource = "") Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONNAMESPACEUNKNOWN, .pHttpStatus, .pFault)
+    If '$ClassMethod(..GateClass(), "EvaluateRequired", $ListBuild($ListBuild(tResource, ..#WRITEPERMISSION)), .tFailedPair) Quit ..Deny(tFailedPair, .pHttpStatus, .pFault)
+    If tReadOnly || 'tMounted Quit ..Conflict(pReadOnlyCode, .pHttpStatus, .pFault)
+    Quit $$$OK
 }
 
 /// <p>The namespace half of the gate, after the pairs (AD-29, AD-65), shared by every endpoint and by the MDX calls: the namespace's
@@ -369,7 +477,7 @@ ClassMethod Collect(pNamespace As %String, pEndpoint As %String, pCriterion As %
     Set tOrigNS = $NAMESPACE
     Try {
         Set $NAMESPACE = pNamespace
-        If pEndpoint = ..#ENDPOINTCUBES {
+        If (pEndpoint = ..#ENDPOINTCUBES) || (pEndpoint = ..#ENDPOINTCUBEMANAGER) {
             Set pVendorStatus = ##class(%DeepSee.Utils).%GetCubeList(.tList, "cubes", 1)
             Set tKey = ""
             While $$$ISOK(pVendorStatus) {
@@ -377,6 +485,11 @@ ClassMethod Collect(pNamespace As %String, pEndpoint As %String, pCriterion As %
                 If tKey = "" Quit
                 If (pMax > 0) && (pData >= pMax) Quit
                 Set tCube = $List(tList(tKey), 1)
+                If pEndpoint = ..#ENDPOINTCUBEMANAGER {
+                    Set pData = pData + 1
+                    Set pData(pData) = ..CubeNodeHere(tCube, $List(tList(tKey), 2), 1, .tList)
+                    Continue
+                }
                 Set tFacts = ##class(%DeepSee.Utils).%GetCubeFactCount(tCube, .tFactStatus)
                 If $$$ISERR(tFactStatus) Set tFacts = ""
                 Set pData = pData + 1
@@ -487,7 +600,20 @@ ClassMethod Rows(pEndpoint As %String, ByRef pData) As %DynamicArray [ Private ]
     For tAt = 1:1:pData {
         Set tValues = pData(tAt)
         Set tRow = {}
-        If pEndpoint = ..#ENDPOINTCUBES {
+        If pEndpoint = ..#ENDPOINTCUBEMANAGER {
+            Do tRow.%Set("Name", $List(tValues, 1), "string")
+            Do tRow.%Set("Caption", $List(tValues, 2), "string")
+            If $List(tValues, 3) = "" {
+                Do tRow.%Set("Facts", "", "null")
+            } Else {
+                Do tRow.%Set("Facts", +$List(tValues, 3), "number")
+            }
+            Do tRow.%Set("LastBuild", ..BuildStamp($List(tValues, 4)), "string")
+            Do tRow.%Set("LastUpdate", ..BuildStamp($List(tValues, 5)), "string")
+            Do tRow.%Set("Synchronizes", $List(tValues, 7), "boolean")
+            Do tRow.%Set("Updating", $List(tValues, 8), "boolean")
+            Do tRow.%Set("DependentCubes", $List(tValues, 10), "string")
+        } ElseIf pEndpoint = ..#ENDPOINTCUBES {
             Do tRow.%Set("Name", $List(tValues, 1), "string")
             Do tRow.%Set("Caption", $List(tValues, 2), "string")
             Do tRow.%Set("Class", $List(tValues, 3), "string")
@@ -658,27 +784,21 @@ ClassMethod MdxAdmit(pNamespace As %String, Output pHttpStatus As %Integer, Outp
     If '$ClassMethod(..GateClass(), "EvaluateRequired", ##class(OcuPilot.Screen.Gate).ParsePairSpec(..#MDXPAIRS), .tFailedPair) Quit ..Deny(tFailedPair, .pHttpStatus, .pFault)
     Set tSC = ..AdmitNamespace(pNamespace, .pHttpStatus, .pFault)
     If $$$ISERR(tSC) Quit tSC
-    Set tCache = ""
-    Set tReadOnly = 0
-    Set tMounted = 0
-    If '..CacheDatabase(pNamespace, .tCache, .tReadOnly, .tMounted) || (tCache = "") Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONNAMESPACEUNKNOWN, .pHttpStatus, .pFault)
-    If '$ClassMethod(..GateClass(), "EvaluateRequired", $ListBuild($ListBuild(tCache, ..#WRITEPERMISSION)), .tFailedPair) Quit ..Deny(tFailedPair, .pHttpStatus, .pFault)
-    If tReadOnly || 'tMounted Quit ..Conflict(##class(OcuPilot.Api.AnalyticsError).#MDXREADONLY, .pHttpStatus, .pFault)
-    Quit $$$OK
+    Quit ..AdmitDestination(pNamespace, ..#CACHEGLOBAL, ##class(OcuPilot.Api.AnalyticsError).#MDXREADONLY, .pHttpStatus, .pFault)
 }
 
-/// <p>The guarding resource and mount state of the database <code>^DeepSee.Cache.Results</code> maps to in <var>pNamespace</var>, as
+/// <p>The guarding resource and mount state of the database <var>pGlobal</var> maps to in <var>pNamespace</var>, as
 /// <method>%SYS.Namespace.GetGlobalDest</method> and <method>%SYS.Namespace.GetNSInfo</method> report them; 0 when the instance reports
 /// none, which a caller refuses rather than admits. A <code>%</code>-class that answers in any namespace, so no switch is taken
 /// (AD-16). Overridable so a fixture can name another database; production never overrides it.</p>
-ClassMethod CacheDatabase(pNamespace As %String, Output pResource As %String, Output pReadOnly As %Boolean, Output pMounted As %Boolean) As %Boolean
+ClassMethod DestinationDatabase(pNamespace As %String, pGlobal As %String, Output pResource As %String, Output pReadOnly As %Boolean, Output pMounted As %Boolean) As %Boolean
 {
     Set pResource = ""
     Set pReadOnly = 0
     Set pMounted = 0
     Set tResolved = 0
     Try {
-        Set tDest = ##class(%SYS.Namespace).GetGlobalDest($ZConvert(pNamespace, "U"), "^DeepSee.Cache.Results")
+        Set tDest = ##class(%SYS.Namespace).GetGlobalDest($ZConvert(pNamespace, "U"), pGlobal)
         Kill tInfo
         If tDest '= "" Do ##class(%SYS.Namespace).GetNSInfo("^" _ tDest, .tInfo, 1)
         Set pResource = $Get(tInfo("Resource"))
@@ -1400,16 +1520,489 @@ ClassMethod Cut(pText As %String) As %String [ Private ]
     Quit pText
 }
 
-/// <p>No script form: this port carries no write (AD-59).</p>
-ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
+/// <p>The cube <var>pCube</var> as the cube manager reads it, from vendor and system classes only; called with the namespace
+/// already switched to the cube's (AD-16), by <method>Collect</method> and <method>CollectState</method>. A <code>%List</code> of:
+/// the logical name; <var>pCaption</var>; the fact count (<code>""</code> when the vendor failed to count); the last build and the last
+/// update as <code>GetLastUpdate</code> answers them (<code>0</code> for none); the cube's <code>%GetCubeDSTime</code>; whether the
+/// source records its changes (its class's <code>%GetSourceInfo</code> names a <code>dstime</code>); whether an update runs now
+/// (<method>CubeUpdatingHere</method>); whether the cube has been built (its <code>dstime</code> above zero for a source that records
+/// changes, else any fact); and, when <var>pDependents</var>, the cubes that depend on it, named as <var>pList</var> (the
+/// <code>%GetCubeList</code> answer, keyed by uppercase index) names them, sorted by name and joined with
+/// <parameter>DEPENDENTSEPARATOR</parameter>; a dependent the list does not hold, because the caller's resources hide it, is left out.
+/// Writes nothing (measured: <code>%GetCubeDSTime</code>, <code>%GetSourceInfo</code>, <code>%GetDependentCubes</code>,
+/// <code>%IsCubeAvailable</code> and <code>GetLastUpdate</code>).</p>
+ClassMethod CubeNodeHere(pCube As %String, pCaption As %String, pDependents As %Boolean, ByRef pList) As %List [ Private ]
 {
+    Set tFacts = ##class(%DeepSee.Utils).%GetCubeFactCount(pCube, .tFactStatus)
+    If $$$ISERR(tFactStatus) Set tFacts = ""
+    Set tDSTime = +##class(%DeepSee.Utils).%GetCubeDSTime(pCube)
+    Set tSynchronizes = 0
+    Set tClass = ##class(%DeepSee.Utils).%GetCubeClass(pCube)
+    If tClass '= "" {
+        Kill tInfo
+        Set tInfoSC = $ClassMethod(tClass, "%GetSourceInfo", .tInfo)
+        Set tSynchronizes = $$$ISOK(tInfoSC) && ($Get(tInfo("dstime")) '= "")
+    }
+    Set tDependents = ""
+    If pDependents {
+        Kill tFound
+        If $$$ISOK(##class(%DeepSee.CubeUtils).%GetDependentCubes(pCube, .tFound)) {
+            Set tIndex = ""
+            For {
+                Set tIndex = $Order(tFound(tIndex))
+                If tIndex = "" Quit
+                Set tName = $ListGet($Get(pList(tIndex)), 1)
+                If tName '= "" Set tNames(tName) = ""
+            }
+            Set tName = ""
+            For {
+                Set tName = $Order(tNames(tName))
+                If tName = "" Quit
+                Set tDependents = tDependents _ $Select(tDependents = "": "", 1: ..#DEPENDENTSEPARATOR) _ tName
+            }
+        }
+    }
+    Set tBuilt = $Select(tSynchronizes: (tDSTime > 0), 1: (+tFacts > 0))
+    Quit $ListBuild(pCube, pCaption, tFacts, ##class(%DeepSee.CubeManager.Utils).GetLastUpdate(pCube, "build"), ##class(%DeepSee.CubeManager.Utils).GetLastUpdate(pCube, "synch"), tDSTime, tSynchronizes, ..CubeUpdatingHere(pCube), tBuilt, tDependents)
+}
+
+/// <p>Whether the cube <var>pCube</var> is being built or synchronized now, called with the namespace switched (AD-16): the vendor's own
+/// <code>%IsCubeAvailable</code> answering reason code <code>build</code>, or a zero-timeout incremental probe of
+/// <code>^DeepSee.Build(&lt;index&gt;,"SYNC")</code> failing, taken and released at once as the vendor's own query probe does. The probe
+/// is the one vendor global this port names.</p>
+ClassMethod CubeUpdatingHere(pCube As %String) As %Boolean [ Private ]
+{
+    Set tAvailable = ##class(%DeepSee.Utils).%IsCubeAvailable(pCube, .tReason, .tReasonCode)
+    If 'tAvailable && (tReasonCode = "build") Quit 1
+    Set tIndex = $ZConvert(pCube, "U")
+    Lock +^DeepSee.Build(tIndex, "SYNC"):0 Else  Quit 1
+    Lock -^DeepSee.Build(tIndex, "SYNC")
+    Quit 0
+}
+
+/// <p>Whether <var>pName</var> is a cube the cube manager shows the caller: a cube <var>pList</var>, the namespace's
+/// <code>%GetCubeList(.list, "cubes", 1)</code>, holds under exactly that logical name (AD-13). The vendor's list applies its own
+/// checks: the cube exists, the caller's resources admit it (<code>%CheckPrivilege</code>), and it is a base cube that is neither
+/// abstract nor a version. So an action reads absent wherever the Cube manager's list does not show the cube. Pure.</p>
+ClassMethod CubeShownHere(pName As %String, ByRef pList) As %Boolean [ Private ]
+{
+    If pName = "" Quit 0
+    Set tKey = $ZConvert(pName, "U")
+    If '$Data(pList(tKey)) Quit 0
+    Quit $ListGet(pList(tKey), 1) = pName
+}
+
+/// <p>Read the cube <var>pName</var> and the cubes that depend on it into <var>pData</var>: <code>pData("exists")</code> is 1 when
+/// <method>CubeShownHere</method> shows it, <code>pData</code> is the count of cubes and <code>pData(n)</code> the
+/// <method>CubeNodeHere</method> of cube <code>n</code>, the target first and then each dependent. A dependent the caller's resources
+/// hide is not on the vendor's list and is left out. A list the vendor fails to answer, or an exception, is <var>pCaught</var>.</p>
+/// <p>Everything between the switch and the restore is vendor and system classes and this class's own <code>Here</code> methods
+/// (AD-16); the row is shaped by <method>StateRow</method> after the restore.</p>
+ClassMethod CollectState(pNamespace As %String, pName As %String, Output pData, Output pCaught As %Exception.AbstractException) [ Private ]
+{
+    Kill pData
+    Set pData = 0
+    Set pData("exists") = 0
+    Set pCaught = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Kill tList
+        Set tListSC = ##class(%DeepSee.Utils).%GetCubeList(.tList, "cubes", 1)
+        If $$$ISERR(tListSC) $$$ThrowStatus(tListSC)
+        If ..CubeShownHere(pName, .tList) {
+            Set pData("exists") = 1
+            Set pData = 1
+            Set pData(1) = ..CubeNodeHere(pName, $ListGet(tList($ZConvert(pName, "U")), 2), 1, .tList)
+            Set tDependents = $List(pData(1), 10)
+            For tI = 1:1:$Length(tDependents, ..#DEPENDENTSEPARATOR) {
+                Set tDependent = $Piece(tDependents, ..#DEPENDENTSEPARATOR, tI)
+                If tDependent = "" Continue
+                Set pData = pData + 1
+                Set pData(pData) = ..CubeNodeHere(tDependent, $ListGet($Get(tList($ZConvert(tDependent, "U"))), 2), 0, .tList)
+            }
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+}
+
+/// <p>The state of one cube as the cube manager reads it, from <var>pData</var> as <method>CollectState</method> gathered it:
+/// <code>{Name, Namespace, Facts, LastBuild, BuildStamp, LastUpdate, Built, Synchronizes, Updating, DependentCubes}</code>.
+/// <code>LastBuild</code> and <code>LastUpdate</code> are the instance's local <code>YYYY-MM-DD HH:MM:SS</code>, <code>""</code> for
+/// none; <code>BuildStamp</code> is the last build as the vendor stores it, to the millisecond, so two builds in one second still differ.
+/// <code>Built</code>, <code>Synchronizes</code> and <code>Updating</code> are judged over the cube and its dependents, because the
+/// vendor updates them in the same call: built only if every one is, synchronizes only if every source records changes, updating if any
+/// one is. Pure.</p>
+ClassMethod StateRow(pNamespace As %String, ByRef pData) As %DynamicObject
+{
+    Set tTarget = pData(1)
+    Set tBuilt = 1
+    Set tSynchronizes = 1
+    Set tUpdating = 0
+    For tI = 1:1:pData {
+        Set tNode = pData(tI)
+        If '$List(tNode, 9) Set tBuilt = 0
+        If '$List(tNode, 7) Set tSynchronizes = 0
+        If $List(tNode, 8) Set tUpdating = 1
+    }
+    Set tStamp = $List(tTarget, 4)
+    Set tRow = {}
+    Do tRow.%Set("Name", $List(tTarget, 1), "string")
+    Do tRow.%Set("Namespace", pNamespace, "string")
+    If $List(tTarget, 3) = "" {
+        Do tRow.%Set("Facts", "", "null")
+    } Else {
+        Do tRow.%Set("Facts", +$List(tTarget, 3), "number")
+    }
+    Do tRow.%Set("LastBuild", ..BuildStamp(tStamp), "string")
+    Do tRow.%Set("BuildStamp", $Select((tStamp = "") || (tStamp = 0): "", 1: tStamp), "string")
+    Do tRow.%Set("LastUpdate", ..BuildStamp($List(tTarget, 5)), "string")
+    Do tRow.%Set("Built", tBuilt, "boolean")
+    Do tRow.%Set("Synchronizes", tSynchronizes, "boolean")
+    Do tRow.%Set("Updating", tUpdating, "boolean")
+    Do tRow.%Set("DependentCubes", $List(tTarget, 10), "string")
+    Quit tRow
+}
+
+/// <p>The code a build or synchronize <var>pType</var> is refused with for the state <var>pRow</var> (<method>StateRow</method>'s),
+/// or <code>""</code> when it may go ahead (Story 20.34): whatever the vendor would refuse after it had changed something, or turn into a
+/// build, is refused here by its own code and nothing is called. Pure.</p>
+/// <ul>
+/// <li>Either write, with <code>Updating</code>: <code>ANALYTICS.CUBE.BUSY</code>.</li>
+/// <li>A synchronize, unless <code>Synchronizes</code>: <code>ANALYTICS.CUBE.NODSTIME</code>.</li>
+/// <li>A synchronize, unless <code>Built</code>: <code>ANALYTICS.CUBE.NOTBUILT</code>, which stops the vendor turning it into a full build
+/// under the synchronize key.</li>
+/// </ul>
+ClassMethod StateRefusal(pType As %String, pRow As %DynamicObject) As %String
+{
+    If '..IsWrite(pType) || '$IsObject(pRow) Quit ""
+    If pRow.%Get("Updating") Quit ##class(OcuPilot.Api.AnalyticsError).#CUBEBUSY
+    If pType = ..#TYPESYNCHRONIZE {
+        If 'pRow.%Get("Synchronizes") Quit ##class(OcuPilot.Api.AnalyticsError).#CUBENODSTIME
+        If 'pRow.%Get("Built") Quit ##class(OcuPilot.Api.AnalyticsError).#CUBENOTBUILT
+    }
     Quit ""
 }
 
-/// <p>No script steps: every branch of <method>Invoke</method> is a read (AD-59).</p>
+/// <p>Serve the cube manager's typed calls after <method>Invoke</method>'s gate: <code>STATE</code>, one cube read now, and
+/// <code>BUILD</code> and <code>SYNCHRONIZE</code>, the writes (Story 20.34). The cube is named under <parameter>IDKEY</parameter>,
+/// kept exactly: 400 when it is not named; 404 <code>PORT.NOTFOUND</code>, unlogged, for one the vendor does not know, the caller's
+/// resources hide, or that is spelled other than its logical name. A <code>STATE</code> read carrying <parameter>ACTIONKEY</parameter>
+/// is refused by <method>StateRefusal</method> as that write would be; a write is judged the same way again under the caller's
+/// per-target hold, so a state that moved since the review is refused by its own code with no vendor call. An
+/// <parameter>ACTIONKEY</parameter> that is not one of the two writes is 501.</p>
+ClassMethod InvokeCubeManager(pNamespace As %String, pType As %String, ByRef pQuery, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    Set tName = $Get(pQuery(..#IDKEY))
+    If tName = "" Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONCUBEREQUIRED, .pHttpStatus, .pFault)
+    Set tWrite = ..IsWrite(pType)
+    Set tAction = $Select(tWrite: pType, 1: $Get(pQuery(..#ACTIONKEY)))
+    If (tAction '= "") && '..IsWrite(tAction) Quit ..Refuse(501, ##class(OcuPilot.Api.Error).#NOTIMPLEMENTED, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, ..#REASONNOTIMPLEMENTED, .pHttpStatus, .pFault)
+    Kill tNames
+    Set tSC = ..ReadCube(pNamespace, tName, .tRow, .tNames, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    If tAction '= "" {
+        Set tCode = ..StateRefusal(tAction, tRow)
+        If tCode '= "" Quit ..Conflict(tCode, .pHttpStatus, .pFault)
+    }
+    If 'tWrite {
+        Set pResult = tRow
+        Set pHttpStatus = 200
+        Quit $$$OK
+    }
+    Quit ..PerformCube(pNamespace, pType, tName, .tNames, .pResult, .pHttpStatus, .pFault)
+}
+
+/// <p>The cube <var>pName</var> in <var>pRow</var> (<method>StateRow</method>), and in <var>pNames</var> the logical names of it and its
+/// dependents by their uppercase index, which the vendor's answers are keyed by. A cube that is not shown is 404 <code>PORT.NOTFOUND</code>,
+/// unlogged.</p>
+ClassMethod ReadCube(pNamespace As %String, pName As %String, Output pRow As %DynamicObject, Output pNames, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRow = ""
+    Kill pNames
+    Kill tData
+    Do ..CollectState(pNamespace, pName, .tData, .tCaught)
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the cube could not be read", .pHttpStatus, .pFault)
+    If 'tData("exists") Quit ..Absent(.pHttpStatus, .pFault)
+    For tI = 1:1:tData {
+        Set pNames($ZConvert($List(tData(tI), 1), "U")) = $List(tData(tI), 1)
+    }
+    Set pRow = ..StateRow(pNamespace, .tData)
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>Build or synchronize the cube <var>pName</var> (Story 20.34): the state was judged by <method>InvokeCubeManager</method>, so the
+/// vendor is called now, through <method>VendorBuild</method> or <method>VendorSynchronize</method>, and its answer is mapped by
+/// <method>VendorOutcome</method>: done (a build that finished with errors is done, and says how many); 409
+/// <parameter>OcuPilot.Api.AnalyticsError.CUBEBUSY</parameter> for the vendor's cube lock; 404 for a cube it does not know; 403
+/// <code>PORT.ACCESSDENIED</code> for <code>&lt;PROTECT&gt;</code> or #940; and anything else, an exception the call raised included,
+/// 409 <parameter>OcuPilot.Api.AnalyticsError.CUBEFAILED</parameter>, its text logged and never sent. After the namespace is restored a
+/// completed update records OcuPilot's own <code>ConfigChange</code> row (<method>AuditWrite</method>).</p>
+/// <p>The answer is <code>{Name, Namespace, lines, errors}</code>: the output lines for the screen (<method>BuildLines</method>,
+/// <method>SyncLines</method>), and whether any cube built with errors.</p>
+ClassMethod PerformCube(pNamespace As %String, pType As %String, pName As %String, ByRef pNames, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    Set tWritten = ""
+    Set tCaught = ""
+    Kill tStats
+    Kill tFacts
+    If pType = ..#TYPEBUILD {
+        Set tVendorSC = ..VendorBuild(pNamespace, pName, .tStats, .tCaught, .tWritten)
+    } Else {
+        Set tVendorSC = ..VendorSynchronize(pNamespace, pName, .tFacts, .tCaught, .tWritten)
+    }
+    Set tMessage = "the cube " _ $ZConvert(pType, "L") _ " failed" _ $Select(tWritten = "": "", 1: "; the vendor wrote: " _ tWritten)
+    If $IsObject(tCaught) Set tVendorSC = tCaught.AsStatus()
+    Set tOutcome = ..VendorOutcome(tVendorSC)
+    If tOutcome = "denied" Quit ..Statused(tVendorSC, tMessage, .pHttpStatus, .pFault)
+    If tOutcome = "busy" Quit ..Conflict(##class(OcuPilot.Api.AnalyticsError).#CUBEBUSY, .pHttpStatus, .pFault)
+    If tOutcome = "absent" Quit ..Absent(.pHttpStatus, .pFault)
+    If tOutcome = "failed" {
+        Do ..LogFault(tMessage, tVendorSC)
+        Quit ..Conflict(##class(OcuPilot.Api.AnalyticsError).#CUBEFAILED, .pHttpStatus, .pFault)
+    }
+    Set tLines = []
+    Set tCubes = []
+    Set tErrors = 0
+    If pType = ..#TYPEBUILD {
+        Do ..BuildLines(.tStats, .pNames, tLines, tCubes, .tErrors)
+    } Else {
+        Do ..SyncLines(.tFacts, .pNames, tLines, tCubes)
+    }
+    Set tEffects = {}
+    Do tEffects.%Set("namespace", pNamespace, "string")
+    Do tEffects.%Set("cubes", tCubes)
+    Do ..AuditWrite($Select(pType = ..#TYPEBUILD: ..#VERBBUILD, 1: ..#VERBSYNCHRONIZE), pName, tEffects)
+    Set pResult = {}
+    Do pResult.%Set("Name", pName, "string")
+    Do pResult.%Set("Namespace", pNamespace, "string")
+    Do pResult.%Set("lines", tLines)
+    Do pResult.%Set("errors", (tErrors > 0), "boolean")
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>The vendor's build of the cube <var>pCube</var> and every cube that depends on it, in <var>pNamespace</var>
+/// (<code>%DeepSee.Utils.%BuildCube(cube, 1, 0, 0, 0, 0, .stats)</code>): asynchronous on the vendor's agents, with no console output and
+/// no tracking. It runs switched by explicit save and restore (AD-16), inside an output capture, so nothing the vendor writes reaches the
+/// response; what it wrote is <var>pWritten</var>, cut, for the log. <var>pStats</var> is the vendor's statistics array; an exception is
+/// <var>pCaught</var>. A capture that cannot be opened is a failed status and nothing is built.</p>
+ClassMethod VendorBuild(pNamespace As %String, pCube As %String, Output pStats, Output pCaught As %Exception.AbstractException, Output pWritten As %String) As %Status
+{
+    Kill pStats
+    Set pCaught = ""
+    Set pWritten = ""
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Set tCaptureSC = $$BeginCapture^%SYS.Capture(.tCookie)
+    If $$$ISERR(tCaptureSC) Quit tCaptureSC
+    Try {
+        Set $NAMESPACE = pNamespace
+        Kill tStats
+        Set tSC = ##class(%DeepSee.Utils).%BuildCube(pCube, 1, 0, 0, 0, 0, .tStats)
+        Merge pStats = tStats
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+    Set pWritten = ..EndCapture(tCookie)
+    Quit tSC
+}
+
+/// <p>The vendor's synchronize of the cube <var>pCube</var> and every cube that depends on it, in <var>pNamespace</var>
+/// (<code>%DeepSee.Utils.%SynchronizeCube(cube, 0, .facts)</code>), under the same switch and capture as <method>VendorBuild</method>.
+/// <var>pFacts</var> is the vendor's <code>pFactsUpdated</code>: the total, and under each cube's uppercase index its count.</p>
+ClassMethod VendorSynchronize(pNamespace As %String, pCube As %String, Output pFacts, Output pCaught As %Exception.AbstractException, Output pWritten As %String) As %Status
+{
+    Kill pFacts
+    Set pCaught = ""
+    Set pWritten = ""
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Set tCaptureSC = $$BeginCapture^%SYS.Capture(.tCookie)
+    If $$$ISERR(tCaptureSC) Quit tCaptureSC
+    Try {
+        Set $NAMESPACE = pNamespace
+        Kill tFacts
+        Set tSC = ##class(%DeepSee.Utils).%SynchronizeCube(pCube, 0, .tFacts)
+        Merge pFacts = tFacts
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+    Set pWritten = ..EndCapture(tCookie)
+    Quit tSC
+}
+
+/// <p>End the output capture <var>pCookie</var> and answer what the vendor wrote, at most <parameter>WRITTENMAX</parameter> characters;
+/// <code>""</code> for a capture that cannot be read. The text is for the log and goes nowhere else.</p>
+ClassMethod EndCapture(pCookie As %String) As %String [ Private ]
+{
+    Set tText = ""
+    Try {
+        Kill tLines
+        Set tEndSC = $$EndCapture^%SYS.Capture(pCookie, .tLines)
+        If $IsObject($Get(tLines)) {
+            Set tIterator = tLines.%GetIterator()
+            While tIterator.%GetNext(.tIndex, .tLine) {
+                If ($Length(tText) + $Length(tLine)) >= ..#WRITTENMAX Quit
+                Set tText = tText _ tLine
+            }
+        }
+    } Catch {
+        Set tText = ""
+    }
+    Quit tText
+}
+
+/// <p>What a vendor status <var>pStatus</var> from a build or synchronize means (Story 20.34): <code>ok</code>; <code>denied</code> for
+/// <code>&lt;PROTECT&gt;</code> or #940; <code>busy</code> for the vendor's cube lock (#20005); <code>absent</code> for a cube it does not
+/// know (#20013); <code>errors</code> for a build whose only fault is its count of failed rows (#20006), which still built; and
+/// <code>failed</code> for anything else, including #20006 beside another error. Pure.</p>
+ClassMethod VendorOutcome(pStatus As %Status) As %String
+{
+    If $$$ISOK(pStatus) Quit "ok"
+    Set tText = ""
+    Try {
+        Set tText = $System.Status.GetErrorText(pStatus)
+    } Catch {
+        Set tText = ""
+    }
+    If (tText [ "<PROTECT>") || ..HasCode(pStatus, ..#CODEPRIVILEGE) Quit "denied"
+    If ..HasCode(pStatus, ..#CODELOCK) Quit "busy"
+    If ..HasCode(pStatus, ..#CODENOCUBE) Quit "absent"
+    If ..OnlyCode(pStatus, ..#CODEBUILDERRORS) Quit "errors"
+    Quit "failed"
+}
+
+/// <p>Whether every code of the error status <var>pStatus</var> is <var>pCode</var>, as the vendor tests a build that finished with
+/// errors. Pure.</p>
+ClassMethod OnlyCode(pStatus As %Status, pCode As %String) As %Boolean [ Private ]
+{
+    Set tCodes = ""
+    Try {
+        Set tCodes = $System.Status.GetErrorCodes(pStatus)
+    } Catch {
+        Set tCodes = ""
+    }
+    If tCodes = "" Quit 0
+    Set tOnly = 1
+    For tI = 1:1:$Length(tCodes, ",") {
+        If $Piece(tCodes, ",", tI) '= pCode Set tOnly = 0
+    }
+    Quit tOnly
+}
+
+/// <p>The output lines a build answers, from the vendor's statistics <var>pStats</var>: for each cube built, in name order,
+/// <code>Facts in &lt;cube&gt;: &lt;n&gt;</code> and, when its error count is above zero, <code>Build errors in &lt;cube&gt;: &lt;n&gt;</code>.
+/// <var>pNames</var> gives the logical name of an index. The lines go to <var>pLines</var>, the names to <var>pCubes</var> and the total
+/// of failed rows to <var>pErrors</var>. They are shown on the screen and stored nowhere. Pure.</p>
+ClassMethod BuildLines(ByRef pStats, ByRef pNames, pLines As %DynamicArray, pCubes As %DynamicArray, ByRef pErrors As %Integer)
+{
+    Set tIndex = ""
+    For {
+        Set tIndex = $Order(pStats("cubes", tIndex))
+        If tIndex = "" Quit
+        Set tName = $Get(pNames(tIndex), tIndex)
+        Set tByName(tName) = +$Get(pStats("cubes", tIndex, "factCount")) _ "|" _ +$Get(pStats("cubes", tIndex, "errors"))
+    }
+    Set tName = ""
+    For {
+        Set tName = $Order(tByName(tName))
+        If tName = "" Quit
+        Do pCubes.%Push(tName, "string")
+        Do pLines.%Push("Facts in " _ tName _ ": " _ $Piece(tByName(tName), "|", 1), "string")
+        If $Piece(tByName(tName), "|", 2) > 0 {
+            Set pErrors = pErrors + $Piece(tByName(tName), "|", 2)
+            Do pLines.%Push("Build errors in " _ tName _ ": " _ $Piece(tByName(tName), "|", 2), "string")
+        }
+    }
+}
+
+/// <p>The output lines a synchronize answers, from the vendor's <var>pFacts</var>: for each cube updated, in name order,
+/// <code>Facts updated in &lt;cube&gt;: &lt;n&gt;</code>. A count the vendor did not give as a number (a cube whose pre-synchronize code
+/// stopped it) is 0. Pure.</p>
+ClassMethod SyncLines(ByRef pFacts, ByRef pNames, pLines As %DynamicArray, pCubes As %DynamicArray)
+{
+    Set tIndex = ""
+    For {
+        Set tIndex = $Order(pFacts(tIndex))
+        If tIndex = "" Quit
+        Set tByName($Get(pNames(tIndex), tIndex)) = $Select($IsValidNum($Get(pFacts(tIndex))): +pFacts(tIndex), 1: 0)
+    }
+    Set tName = ""
+    For {
+        Set tName = $Order(tByName(tName))
+        If tName = "" Quit
+        Do pCubes.%Push(tName, "string")
+        Do pLines.%Push("Facts updated in " _ tName _ ": " _ tByName(tName), "string")
+    }
+}
+
+/// <p>Record OcuPilot's own <code>ConfigChange</code> row for the build or synchronize of the cube <var>pId</var> that read OK (AD-15,
+/// Story 20.34), from whichever caller made it: the vendor audits neither. <var>pVerb</var> is <parameter>VERBBUILD</parameter> or
+/// <parameter>VERBSYNCHRONIZE</parameter>; <var>pEffects</var> names the namespace and the cubes updated, and never a fact. It never
+/// fails the write: a row that cannot be recorded is logged. Called after the namespace is restored.</p>
+ClassMethod AuditWrite(pVerb As %String, pId As %String, pEffects As %DynamicObject) [ Private ]
+{
+    Try {
+        Set tSC = ##class(OcuPilot.Kernel.Audit.Event).Record(pVerb, ..#ENTITYCUBE, pId, {}, 0, pEffects)
+        If $$$ISERR(tSC) Do ..LogFault("the cube write could not be audited", tSC)
+    } Catch ex {
+        Do ..LogFault("the cube write could not be audited", ex.AsStatus())
+    }
+}
+
+/// <p>404 <code>PORT.NOTFOUND</code>: the cube is not there, or not shown to the caller. Unlogged (AD-2).</p>
+ClassMethod Absent(Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Do ##class(OcuPilot.Kernel.Fault).Outcome(404, $$$OK, .pFault, .tDetail)
+    Set pHttpStatus = 404
+    Quit $$$ERROR($$$GeneralError, ##class(OcuPilot.Api.Error).#PORTNOTFOUND)
+}
+
+/// <p><code>objectscript</code> for the cube manager's two writes; <code>""</code> for every read, which has no script form (AD-59).</p>
+ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
+{
+    If (pEndpoint = ..#ENDPOINTCUBEMANAGER) && ..IsWrite(pType) Quit "objectscript"
+    Quit ""
+}
+
+/// <p>The write as a script (AD-59), in the namespace <parameter>NAMESPACEKEY</parameter> names: <code>%BuildCube</code> of the cube
+/// <parameter>IDKEY</parameter> names, asynchronous, or <code>%SynchronizeCube</code> of it. The cube is a string literal, so nothing the
+/// query carries runs as code. Whoever runs the script is checked by the vendor's own resources, which do not include
+/// <code>%DeepSee_Admin</code>.</p>
 ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject = "", pContext As %DynamicObject = "") As %DynamicArray
 {
-    Quit []
+    If ..SnippetForm(pEndpoint, pType) = "" Quit []
+    Set tText = " Set $NAMESPACE = " _ ..Literal($Get(pQuery(..#NAMESPACEKEY)))
+    If pType = ..#TYPEBUILD {
+        Set tText = tText _ $Char(10) _ " Set tSC = ##class(%DeepSee.Utils).%BuildCube(" _ ..Literal($Get(pQuery(..#IDKEY))) _ ", 1, 0, 0, 0, 0, .tStats)"
+    } Else {
+        Set tText = tText _ $Char(10) _ " Set tSC = ##class(%DeepSee.Utils).%SynchronizeCube(" _ ..Literal($Get(pQuery(..#IDKEY))) _ ", 0, .tFacts)"
+    }
+    Set tStep = {}
+    Do tStep.%Set("kind", "objectscript", "string")
+    Do tStep.%Set("text", tText, "string")
+    Quit [(tStep)]
+}
+
+/// <p><var>pValue</var> as an ObjectScript string literal, a control character spelled as a <code>$Char</code>.</p>
+ClassMethod Literal(pValue As %String) As %String [ Private ]
+{
+    Set tText = """" _ $Replace(pValue, """", """""") _ """"
+    For tCode = 0:1:31 {
+        If tText [ $Char(tCode) Set tText = $Replace(tText, $Char(tCode), """_$Char(" _ tCode _ ")_""")
+    }
+    Quit tText
 }
 
 }

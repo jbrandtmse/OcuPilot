@@ -192,7 +192,7 @@ after(async () => {
 // AC1. Mutation (Rule 19): make the Cubes read answer `Facts` as 0 -> the Facts cell of every probe row reads 0 and the Cubes leg goes red;
 // drop `Favorite` from the Folder items read -> its favorite cell reads No and the Folder items leg goes red; rebuild and redeploy first
 // for a client mutation.
-test('AC1: the side bar lists Cubes, Term lists, Folder items, the three links and MDX query, and each list\'s rows equal the instance\'s', async () => {
+test('AC1: the side bar lists Cubes, Term lists, Folder items, the three links, MDX query and the Cube manager, and each list\'s rows equal the instance\'s', async () => {
   const { context, page } = await signedInAt(browser, config, url(CUBES), VIEWPORTS.wide, REDUCED_MOTION);
   try {
     await answered(page);
@@ -208,8 +208,9 @@ test('AC1: the side bar lists Cubes, Term lists, Folder items, the three links a
         STRINGS.analyticsAnalyzerLabel,
         STRINGS.analyticsUserPortalLabel,
         STRINGS.analyticsMdxQueryLabel,
+        STRINGS.analyticsCubeManagerLabel,
       ],
-      'the Analytics side bar lists Cubes, Term lists and Folder items, then the Architect, Analyzer and User Portal links (Story 20.32), then MDX query (Story 20.33)'
+      'the Analytics side bar lists Cubes, Term lists and Folder items, then the Architect, Analyzer and User Portal links (Story 20.32), then MDX query (Story 20.33) and the Cube manager (Story 20.34)'
     );
 
     const cubes = inUser('ANCUBES', [

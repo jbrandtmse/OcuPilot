@@ -10248,6 +10248,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-06T20:34:11Z status=routed owner=range-end-cleanup by=lead note=recurrence of DW-439's shape past its bounded retry; a longer or backed-off wait, or a port probe, would cover it
 - 2026-10-11T00:42:33Z status=routed owner=23-7-the-range-end-cleanup-part-6 by=load note=re-own from range-end-cleanup: kit 2026-10-10.1 owners are story keys or burndown
 - 2026-10-11T02:03:07Z status=routed owner=burndown by=merge_gate note=owner decision 2026-10-10 on 23.7, "Pull 5, hold rest (Recommended)", relayed by the Planner; CI flake, the next epic burn-down gate takes it
+- 2026-11-12T20:10:17Z occurrence=20-34-the-cube-manager-s-build-and-synchronize
 
 ### DW-2124: IRIS defect candidate: the admin API's Wallet.Secret PUT of a %Wallet.SymmetricKey stores a random key when Length rides with Secret64, and stores no Length for an imported key (SymmetricKey.Create sets Length on a local subscript)
 - source: spec-18-24-rsa-and-symmetric-key-wallet-secrets.md | severity: low | fix-risk: high | footprint: out-of-footprint
@@ -12321,6 +12322,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-20-33-the-mdx-query-tool.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: 20.33's implement saw TestTheReadsWriteNothing redden on its own measurement residue until the probe cleaned it; a hash per global would remove the dependence
 - 2026-10-21T17:35:13Z status=routed owner=20-34-the-cube-manager-s-build-and-synchronize by=harvest note=20.34 builds cubes, the likeliest source of cache residue; hash per global in Snapshot
+- 2026-11-12T17:29:33Z status=resolved-by:20-34-the-cube-manager-s-build-and-synchronize by=adjudication note=Snapshot digests per global (Test/AnalyticsPort); pinned by TestTheSnapshotDoesNotGrowWithTheCacheItDigests mutation
 
 ### DW-2489: Spine AD-42 still names Area/Explorer/SqlBackground as the SQL console's spawn site at :963, while :965 moves it to Kernel/Shell/BackgroundRun
 - source: spec-20-33-the-mdx-query-tool.md | severity: low | fix-risk: low | footprint: in-story
@@ -12470,8 +12472,35 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: release-1.0.14-ci | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: release/1.0.14 push run 40014034409 attempt 1, browser shard 3/5 (723a3662); attempt 2 green; the same code was green on feature (2a9ea8d1, run 40008057887)
 - 2026-10-23T21:31:33Z status=routed owner=burndown by=orchestrator note=CI flake, reported by the Planner at the 1.0.14 cut; first in the next standing cleanup with DW-1822 (Rule 27)
+- 2026-11-12T21:28:40Z status=resolved-by:23-9-the-range-end-cleanup-part-8 owner=23-9-the-range-end-cleanup-part-8 by=orchestrator note=re-stated: the union merge at ebb0b37d placed this entry's 2026-11-12 13:49 and 19:13 trailers under DW-2523; resolved by 23.9 batch 1 c98a0877 (signedInAt names in-flight requests; AC8 seeds 30k nodes)
+
+### DW-2518: A cube build or synchronize the vendor ran but then failed (a dependent failing after the target rebuilt, a raised exception) records no ConfigChange row, though facts changed
+- source: spec-20-34-the-cube-manager-s-build-and-synchronize.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: AnalyticsPort.PerformCube returns before AuditWrite on busy, failed and denied; the spec's Measured notes say a cascade whose dependent was locked rebuilt the target and then failed (not atomic).
+- 2026-11-12T17:24:55Z status=decision-pending owner=burndown by=cr note=AD-15 call: whether and how a partly applied cube update is audited; the spec's Always list audits completed ones only
+
+### DW-2519: A cube whose dependent the caller's resources hide is judged BUSY, NODSTIME and NOTBUILT without that dependent, while the vendor's cascade still reaches it (inference)
+- source: spec-20-34-the-cube-manager-s-build-and-synchronize.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: CubeNodeHere leaves out a dependent %GetCubeList does not show; %BuildCube walks %GetUpdateLists with no privilege check (irislib Utils.cls:223-280, inference); unverified.
+- 2026-11-12T17:24:55Z status=decision-pending owner=burndown by=cr note=unverified: settle with a dependent whose resource P3 lacks; refusing it needs a new refusal sentence (wording)
+
+### DW-2520: The Cube manager list makes two GetLastUpdate queries (46 ms each, measured) and a full %GetCubeGroups pass per cube, so its read grows with the namespace's cube count
+- source: spec-20-34-the-cube-manager-s-build-and-synchronize.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: AnalyticsPort.CubeNodeHere per row: GetLastUpdate build and synch, and %GetDependentCubes without its groups arguments (CubeUtils.cls:92-110).
+- 2026-11-12T17:24:55Z status=wontfix-accepted owner=20-34-the-cube-manager-s-build-and-synchronize by=cr note=reopen_if=GET /screens/analytics.cubemanager/read takes over 5 s on a real namespace
+
+### DW-2521: Rule 31: AnalyticsPort's EndCapture, AuditWrite and HasCode copy InteropPort's EndTestCapture, AuditRuntime and HasCode, on per-port precedent only
+- source: spec-20-34-the-cube-manager-s-build-and-synchronize.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: The spec's Rule 31 note gives 20.11's per-port Deny/Refuse/Conflict as the reason; a Kernel helper would couple neither port.
+- 2026-11-12T17:24:55Z status=wontfix-accepted owner=20-34-the-cube-manager-s-build-and-synchronize by=cr note=reopen_if=a fix lands in one port's capture or audit helper and not in its copy (diff the method pairs)
+
+### DW-2523: flake: analytics-mdx.browser-spec.mjs AC1 timed out waiting 30 s for the MDX grid (the file's first query) in CI browser shard 2/5
+- source: CI run 43290470415 (Story 20.34 head acb0b666) | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: Red in shard 2/5 (waitForSelector [data-ocu-mdx=grid] after 41 s), green on the unchanged rerun of the same run; AC2 in the same file drew the grid; local 11/11 with AC1 at 9.2 s
+- 2026-11-12T20:48:18Z status=routed owner=burndown by=harvest note=CI flake for the burn-down; likely a cold first query on a fresh leg (inference)
 - 2026-11-12T13:49:03Z status=routed owner=23-9-the-range-end-cleanup-part-8 by=spec_gate note=CI flake; first priority in 23.9 (orchestrator re-dispatch 2026-11-12, Rule 27)
 - 2026-11-12T19:13:24Z status=resolved-by:23-9-the-range-end-cleanup-part-8 by=adjudication note=c98a0877: signedInAt names in-flight requests on a timeout; AC8 seed 30k nodes; reopen_if=the timeout recurs
+- 2026-11-12T21:28:40Z status=routed owner=burndown by=orchestrator note=the 2026-11-12T13:49:03Z and 19:13:24Z trailers above belong to DW-2512 (union-merge misplacement at ebb0b37d); this entry stays routed to burndown
 
 ### DW-2513: flake: data-table-columns.browser-spec.mjs failed 17 of 18 at its own goto against its local server
 - source: spec-23-9-the-range-end-cleanup-part-8.md (plan) | severity: med | fix-risk: low | footprint: out-of-footprint

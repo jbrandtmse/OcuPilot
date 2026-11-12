@@ -559,6 +559,11 @@ services:
       # job class bounds and stops a slow query and reads the turn's stop hook, the gate class signs in as MDX query's probe principals and as an
       # adjusted screen, and the turn class runs scripted turns against the turnprobe row.
       # classes: AnalyticsMdxRead, AnalyticsMdxReadGate, AnalyticsMdxReadJob, AnalyticsMdxReadTurn
+      # The cube manager classes use the same probe (Story 20.34) and build, kill and rebuild its cubes in USER: the manager class meets every
+      # refusal of a build or a synchronize at the port, holding the vendor's lock from this process while another makes the request; the
+      # actions class drives both callers over HTTP and reads the audit rows each leaves; and the gate class signs in as probe principals
+      # each missing a pair or WRITE on the facts database, with a cube none of them may see.
+      # classes: AnalyticsCubeActions, AnalyticsCubeGate, AnalyticsCubeManager
       OCUPILOT_ALLOW_PRINCIPALS: "1"
       # Writes an application error to a namespace's own ^ERRORS. Same reasoning again, and one
       # degree worse: an application error cannot be un-logged, so a runner pointed elsewhere

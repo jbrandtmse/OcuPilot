@@ -50,6 +50,10 @@ Parameter INTEROPLOOKUPDISABLED = "interop.lookupentries.remove,interop.lookupta
 /// <p>Story 20.31's message resend and edit and resend, which ship disabled (AD-22): a delivered copy cannot be recalled.</p>
 Parameter INTEROPMESSAGEDISABLED = "interop.messages.resend,interop.messageheader.editresend";
 
+/// <p>Story 20.34's cube build, which ships disabled (AD-22): it deletes a cube's facts and those of the cubes that depend on it. Its
+/// synchronize ships enabled.</p>
+Parameter CUBEDISABLED = "analytics.cubemanager.build";
+
 /// <p>The managed file transfer connection delete and token revoke, which the baseline also disables
 /// (Story 18.26).</p>
 Parameter MFTDISABLED = "security.mftconnections.delete,security.mftconnections.revoketoken";
@@ -174,6 +178,7 @@ Method TestTheDefaultEnablesEveryWriteButTheBaselineDisabled()
         If $ListFind($ListFromString(..#INTEROPRUNTIMEDISABLED), tKey) Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#INTEROPLOOKUPDISABLED), tKey) Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#INTEROPMESSAGEDISABLED), tKey) Set tExpected = "0|baseline"
+        If tKey = ..#CUBEDISABLED Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#MFTDISABLED), tKey) Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#LICENSEDISABLED), tKey) Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#ECPDISABLED), tKey) Set tExpected = "0|baseline"

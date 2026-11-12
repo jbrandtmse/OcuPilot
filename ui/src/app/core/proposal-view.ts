@@ -388,6 +388,9 @@ export const CONSEQUENCE_INTEROPQUEUEABORT = 'INTEROP.QUEUE.ABORT';
 export const CONSEQUENCE_INTEROPJOBABORT = 'INTEROP.JOB.ABORT';
 export const CONSEQUENCE_INTEROPJOBSUSPEND = 'INTEROP.JOB.SUSPEND';
 export const CONSEQUENCE_INTEROPJOBSTOP = 'INTEROP.JOB.STOP';
+/** Story 20.34: the Cube manager's build and synchronize; each is one published sentence. */
+export const CONSEQUENCE_ANALYTICSCUBEBUILD = 'ANALYTICS.CUBE.BUILD';
+export const CONSEQUENCE_ANALYTICSCUBESYNCHRONIZE = 'ANALYTICS.CUBE.SYNCHRONIZE';
 /** Story 20.5: a lookup table entry's removal and a lookup table's deletion. */
 export const CONSEQUENCE_INTEROPLOOKUPREMOVE = 'INTEROP.LOOKUP.REMOVE';
 export const CONSEQUENCE_INTEROPLOOKUPDELETE = 'INTEROP.LOOKUP.DELETE';
@@ -547,6 +550,9 @@ export function consequenceSentence(code: string | undefined): string {
   if (code === CONSEQUENCE_INTEROPJOBABORT) return STRINGS.interopJobAbortConsequence;
   if (code === CONSEQUENCE_INTEROPJOBSUSPEND) return STRINGS.interopJobSuspendConsequence;
   if (code === CONSEQUENCE_INTEROPJOBSTOP) return STRINGS.interopJobStopConsequence;
+  // Story 20.34: the Cube manager's build and synchronize sentences, each published once.
+  if (code === CONSEQUENCE_ANALYTICSCUBEBUILD) return STRINGS.analyticsCubeBuildConsequence;
+  if (code === CONSEQUENCE_ANALYTICSCUBESYNCHRONIZE) return STRINGS.analyticsCubeSynchronizeConsequence;
   // Story 20.5: a lookup table entry's removal and a lookup table's deletion, each published once.
   if (code === CONSEQUENCE_INTEROPLOOKUPREMOVE) return STRINGS.interopLookupRemoveConsequence;
   if (code === CONSEQUENCE_INTEROPLOOKUPDELETE) return STRINGS.interopLookupDeleteConsequence;

@@ -73,6 +73,7 @@ XData ReadShapes
 <screen name="AllowedDirectoryList" filter="Directory,Restricted" sort="Directory,Restricted" kinds="Directory:name,Restricted:status"/>
 <screen name="AnalyticsCubeDimensionsTab" filter="Dimension,Hierarchy,Level" sort="Position,Dimension,Hierarchy,Level" kinds="Position:number,Dimension:text,Hierarchy:text,Level:name"/>
 <screen name="AnalyticsCubeList" filter="Name,Caption,Class" sort="Name,Caption,Class,LastBuild,Facts" kinds="Name:name,Caption:text,Class:identifier,LastBuild:text,Facts:number"/>
+<screen name="AnalyticsCubeManager" filter="Name,Caption,DependentCubes" sort="Name,Caption,Facts,LastBuild,LastUpdate" kinds="Name:name,Caption:text,Facts:number,LastBuild:text,LastUpdate:text,Synchronizes:status,Updating:status,DependentCubes:text"/>
 <screen name="AnalyticsCubeMeasuresTab" filter="Name,Caption,Type" sort="Name,Caption,Type,Hidden" kinds="Name:name,Caption:text,Type:text,Hidden:status"/>
 <screen name="AnalyticsCubeRelationshipsTab" filter="Name,RelatedCube" sort="Name,RelatedCube" kinds="Name:name,RelatedCube:text"/>
 <screen name="AnalyticsFolderItemList" filter="Name,Type,Owner" sort="Name,Type,Owner,Modified,Favorite" kinds="Name:name,Type:text,Owner:text,Modified:text,Favorite:status"/>

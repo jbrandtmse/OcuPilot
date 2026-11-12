@@ -2169,6 +2169,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     },
     "read": {
       "row": "cube",
+      "label": "Cubes with their class, last build and fact count; when each was updated, whether it can be synchronized and what depends on it are in analytics.cubemanager.",
       "source": {
         "port": "analytics",
         "endpoint": "Cubes",
@@ -2235,6 +2236,189 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.AnalyticsCubeManager",
+    "route": "analytics/cube-manager",
+    "area": "analytics",
+    "labelKey": "analyticsCubeManagerLabel",
+    "sideBarPosition": 8,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%DeepSee_Portal",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DeepSee_Admin",
+        "permission": "USE"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%DeepSee_Admin",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "cube",
+    "secondaryEntityTypes": [],
+    "scope": "namespace",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "build",
+        "selfProtection": ""
+      },
+      {
+        "id": "synchronize",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "Name",
+        "Caption",
+        "Facts",
+        "LastBuild",
+        "LastUpdate",
+        "Synchronizes",
+        "Updating",
+        "DependentCubes"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "analyticsCubesEmpty",
+    "commandAliases": [
+      "cube manager",
+      "build cube",
+      "synchronize cube"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "analyticsCubeManagerPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "analyticsCubeManagerPrompt2"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "analyticsCubeManagerPrompt3"
+      }
+    ],
+    "classicPage": "%DeepSee.UI.CubeRegistry",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "row": "cube with its build state",
+      "label": "Cubes with when each was last built and updated, whether it can be synchronized, whether an update runs now and which cubes depend on it; the cube model is in analytics.cubes.",
+      "source": {
+        "port": "analytics",
+        "endpoint": "CubeManager",
+        "type": "LIST"
+      },
+      "fields": [
+        "Name",
+        "Caption",
+        "Facts",
+        "LastBuild",
+        "LastUpdate",
+        "Synchronizes",
+        "Updating",
+        "DependentCubes"
+      ],
+      "filter": [
+        "Name",
+        "Caption",
+        "DependentCubes"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "Caption",
+          "Facts",
+          "LastBuild",
+          "LastUpdate"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "Caption",
+          "labelKey": "analyticsColumnCaption",
+          "kind": "text"
+        },
+        {
+          "field": "Facts",
+          "labelKey": "analyticsColumnFacts",
+          "kind": "number"
+        },
+        {
+          "field": "LastBuild",
+          "labelKey": "analyticsColumnLastBuild",
+          "kind": "text"
+        },
+        {
+          "field": "LastUpdate",
+          "labelKey": "systemUsageLastUpdate",
+          "kind": "text"
+        },
+        {
+          "field": "Synchronizes",
+          "labelKey": "analyticsColumnSynchronizes",
+          "kind": "status"
+        },
+        {
+          "field": "Updating",
+          "labelKey": "analyticsColumnUpdating",
+          "kind": "status"
+        },
+        {
+          "field": "DependentCubes",
+          "labelKey": "analyticsColumnDependentCubes",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "analyticsCubeManagerEmptyAgent"
+    },
+    "rowTarget": {
+      "route": "analytics/cubes/document",
+      "field": "Name"
+    },
+    "toolIdentifier": "analytics.cubemanager",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
     "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
