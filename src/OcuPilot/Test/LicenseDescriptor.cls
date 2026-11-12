@@ -209,4 +209,15 @@ ClassMethod PairsText(pPairs As %List) As %String
     Quit tOut
 }
 
+/// <p>The delete's card lists the server's address and port, each removed, in that order.</p>
+/// <p>Mutation (Rule 19): drop <code>removed</code> from <method>OcuPilot.Screen.Tool.Write.RemovalRows</method>
+/// and recompile the <code>OcuPilot.Screen.Tool</code> package -- this goes red.</p>
+Method TestTheDeleteCardListsTheServerItRemoves()
+{
+    Set tTool = "OcuPilot.Screen.Tool.LicenseServerDelete"
+    Do $$$AssertStatusOK($ClassMethod(tTool, "StateDiff", {"Address": "ocu.probe.invalid", "Port": 4002}, .tRows, .tProblem), "the delete's card is built")
+    Do $$$AssertEquals(tRows.%ToJSON() _ "|" _ tProblem, "[{""field"":""Address"",""before"":""ocu.probe.invalid"",""after"":"""",""removed"":true},{""field"":""Port"",""before"":""4002"",""after"":"""",""removed"":true}]|", "two removed rows in the declared order")
+    Do $$$AssertStatusOK($ClassMethod(tTool, "StateDiff", {"Port": 4002}, .tRows, .tProblem), "a read without the address is answered")
+    Do $$$AssertTrue((tProblem '= "") && (tRows.%Size() = 0), "and refused with a problem and no row")
+}
 }

@@ -327,4 +327,19 @@ Method TestEveryItemCodeResolves()
     Do $$$AssertEquals(##class(OcuPilot.Api.Error).ReasonForToolCode(##class(OcuPilot.Api.InteropError).#SUSPENDED), ##class(OcuPilot.Api.InteropError).#REASONSUSPENDED, "and a refused tool call carries its sentence")
 }
 
+/// <p>The remove's card lists the class and the state the item leaves with, each removed, the state as
+/// <code>true</code> or <code>false</code> (<method>OcuPilot.Kernel.Proposal.Mint.Display</method>'s
+/// rendering of a boolean).</p>
+/// <p>Mutation (Rule 19): drop <code>removed</code> from <method>OcuPilot.Screen.Tool.Write.RemovalRows</method>
+/// and recompile the <code>OcuPilot.Screen.Tool</code> package -- this goes red.</p>
+Method TestTheRemoveCardListsWhatTheItemLeavesWith()
+{
+    Set tTool = "OcuPilot.Screen.Tool.InteropItemRemove"
+    Do $$$AssertStatusOK($ClassMethod(tTool, "StateDiff", {"Enabled": true, "ClassName": "OcuPilotProbe.Interop.Op"}, .tRows, .tProblem), "the remove's card is built")
+    Do $$$AssertEquals(tRows.%ToJSON() _ "|" _ tProblem, "[{""field"":""ClassName"",""before"":""OcuPilotProbe.Interop.Op"",""after"":"""",""removed"":true},{""field"":""Enabled"",""before"":""true"",""after"":"""",""removed"":true}]|", "two removed rows in the declared order, the state as a word")
+    Do $$$AssertStatusOK($ClassMethod(tTool, "StateDiff", {"Enabled": false, "ClassName": "OcuPilotProbe.Interop.Op"}, .tRows, .tProblem), "a disabled item's card is built")
+    Do $$$AssertEquals(tRows.%Get(1).%Get("before"), "false", "a disabled item reads false")
+    Do $$$AssertStatusOK($ClassMethod(tTool, "StateDiff", {"ClassName": "OcuPilotProbe.Interop.Op"}, .tRows, .tProblem), "a read without the state is answered")
+    Do $$$AssertTrue((tProblem '= "") && (tRows.%Size() = 0), "and refused with a problem and no row")
+}
 }

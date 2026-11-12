@@ -555,6 +555,36 @@ ClassMethod StateDiff(pFresh As %DynamicObject, Output pRows As %DynamicArray, O
     Quit $$$OK
 }
 
+/// <p>The field names, comma-separated, a delete tool's removal rows show, in order. Empty here; a delete
+/// declares its own and builds its rows with <method>RemovalRows</method>.</p>
+Parameter REMOVALROWS = "";
+
+/// <p>The removal rows a delete's card shows: one <code>{field, before, after, removed}</code> per
+/// <parameter>REMOVALROWS</parameter> name, in that order. <code>before</code> is the field of the fresh read
+/// <var>pFresh</var> as <method>OcuPilot.Kernel.Proposal.Mint.Display</method> renders it (<code>""</code> when
+/// <var>pFresh</var> is not an object), <code>after</code> is <code>""</code> and <code>removed</code> is
+/// true. With <var>pSkipUnassigned</var>, a field the read did not assign gets no row.</p>
+/// <p><b>Caller contract:</b> the caller does its own precondition check and wraps this call in its own
+/// <code>Try</code>; an error raised here reaches that <code>Catch</code>. It reads nothing but
+/// <var>pFresh</var> and writes nothing.</p>
+ClassMethod RemovalRows(pFresh As %DynamicObject, pSkipUnassigned As %Boolean = 0) As %DynamicArray
+{
+    Set tRows = []
+    Set tNames = $ListFromString(..#REMOVALROWS)
+    For tI = 1:1:$ListLength(tNames) {
+        Set tField = $List(tNames, tI)
+        Set tIsObject = $IsObject(pFresh)
+        If pSkipUnassigned && tIsObject && (pFresh.%GetTypeOf(tField) = "unassigned") Continue
+        Set tRow = {}
+        Do tRow.%Set("field", tField, "string")
+        Do tRow.%Set("before", $Select(tIsObject: ##class(OcuPilot.Kernel.Proposal.Mint).Display(pFresh.%Get(tField), pFresh.%GetTypeOf(tField)), 1: ""), "string")
+        Do tRow.%Set("after", "", "string")
+        Do tRow.%Set("removed", 1, "boolean")
+        Do tRows.%Push(tRow)
+    }
+    Quit tRows
+}
+
 /// <p>Whether this write's target is refused by the prohibited set before its state precondition is read, and the
 /// <code>PROHIBITED.*</code> code that refuses it. The screen's action route and the mint call it before
 /// <method>StateDiff</method>, so a refusal that must be a 403 is not answered as the precondition's 400.</p>

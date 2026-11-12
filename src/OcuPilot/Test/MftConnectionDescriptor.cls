@@ -143,8 +143,10 @@ Method TestTheEntityTypeKeepsItsIdExactly()
 /// <p>The delete's card lists the four settings the prohibited set reviews, each removed, the client
 /// configuration's name among them and not <code>Service</code> (AD-10); the revoke's lists the token leaving its
 /// authorized state; a read that answers no precondition field is refused with a problem and no row.</p>
+/// <p>A field the read left unassigned gets no row.</p>
 /// <p>Mutation (Rule 19): drop <code>ApplicationName</code> from the delete's <code>REMOVALROWS</code> -- the
-/// delete leg goes red.</p>
+/// delete leg goes red; pass no skip flag from the delete's <method>StateDiff</method> to
+/// <method>OcuPilot.Screen.Tool.Write.RemovalRows</method> -- the partial-read leg goes red.</p>
 Method TestTheCardsListWhatTheActionsRemove()
 {
     Set tFresh = {"Service": "Box", "URL": "https://h.invalid/", "SSLConfiguration": "OcuMftProbeClientTLS", "Username": "u@h.invalid", "ApplicationName": "OcuMftProbeAApp", "IsAuthorized": "Authorized"}
@@ -155,6 +157,8 @@ Method TestTheCardsListWhatTheActionsRemove()
         Set tSeen = tSeen _ $Select(tSeen = "": "", 1: ",") _ tRow.%Get("field") _ "=" _ tRow.%Get("before") _ ":" _ tRow.%Get("removed")
     }
     Do $$$AssertEquals(tSeen, "URL=https://h.invalid/:1,SSLConfiguration=OcuMftProbeClientTLS:1,Username=u@h.invalid:1,ApplicationName=OcuMftProbeAApp:1", "four removed rows, the client configuration's name among them")
+    Do $$$AssertStatusOK($ClassMethod(..#DELETE, "StateDiff", {"URL": "https://h.invalid/", "ApplicationName": "OcuMftProbeAApp"}, .tRows, .tProblem), "a partial read's card is built")
+    Do $$$AssertEquals(tRows.%Size() _ " " _ tRows.%Get(0).%Get("field") _ " " _ tRows.%Get(1).%Get("field"), "2 URL ApplicationName", "only the fields the read answered get a row")
     Do $$$AssertStatusOK($ClassMethod(..#REVOKE, "StateDiff", tFresh, .tRows, .tProblem), "the revoke's card is built")
     Do $$$AssertEquals(tRows.%Size() _ " " _ tRows.%Get(0).%Get("field") _ " " _ tRows.%Get(0).%Get("before") _ " " _ tRows.%Get(0).%Get("removed"), "1 AccessToken Authorized 1", "one row, the token leaving its authorized state")
     For tTool = ..#DELETE, ..#REVOKE {
