@@ -164,6 +164,7 @@ test('a call that never settles is abandoned after the deadline, as a protocol t
   assert.ok(Date.now() - started < 1050, 'within the deadline plus a second');
   assert.equal(isProtocolTimeout(caught), true, 'in a shape isProtocolTimeout matches');
   assert.match(caught.message, /1280px light: settle/, 'naming the call');
+  assert.match(caught.message, /protocolTimeout does not change this deadline/, 'and that raising protocolTimeout is not the remedy');
 });
 
 test('a call that answers in time answers unchanged, and one that fails fails unchanged', async () => {

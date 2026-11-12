@@ -24,9 +24,10 @@ const WRAPPED = Symbol.for('ocupilot.protocolRetry');
 const RETRIED = Symbol.for('ocupilot.protocolRetried');
 
 /**
- * How long one page call of the structural walk may go unanswered before the walk abandons it. The
- * protocol limit stays 600 s for every other call; a walk call normally answers in well under a
- * second, so 60 s only ever fires on a call that is never going to return.
+ * How long one page call of the structural walk's helpers (`settle`, `detectScreen`,
+ * `toggleThemeThroughMenu` and the walk's own steps, in every spec that calls them) may go unanswered
+ * before it is abandoned. The protocol limit stays 600 s for every other call; a walk call normally
+ * answers in well under a second, so 60 s only ever fires on a call that is never going to return.
  */
 export const WALKCALLDEADLINE = 60_000;
 
@@ -45,7 +46,7 @@ export function withDeadline(promise, ms, label) {
     const timer = setTimeout(() => {
       reject(
         new Error(
-          `${label} timed out. Increase the 'protocolTimeout' setting in launch/connect calls for a higher timeout if needed (abandoned after ${ms} ms without an answer).`
+          `${label} timed out. Increase the 'protocolTimeout' setting in launch/connect calls for a higher timeout if needed (abandoned by withDeadline after ${ms} ms without an answer; protocolTimeout does not change this deadline).`
         )
       );
     }, ms);

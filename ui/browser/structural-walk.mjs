@@ -677,14 +677,15 @@ function trackRequests(page) {
  * Wait until the screen is settled: no `/api/ocupilot` request or shell script in flight for `QUIET_MS`, no
  * `[aria-busy="true"]` left, and the fonts loaded (`document.fonts.status` reads `loaded`). The font
  * condition is a synchronous read inside the loop, so `SETTLE_TIMEOUT_MS` bounds it; a font that
- * never loads leaves the screen unsettled, never the call waiting. Answers false when it never settles.
+ * never loads leaves the screen unsettled, never the call waiting. `where`, when given, is the path the
+ * page stands on and joins the step's label. Answers false when it never settles.
  */
-export async function settle(page, requests) {
+export async function settle(page, requests, where = '') {
   const started = Date.now();
   while (Date.now() - started < SETTLE_TIMEOUT_MS) {
     if (requests.inflight.size === 0 && Date.now() - requests.last >= QUIET_MS) {
       const ready = await bounded(
-        stepLabel(requests, 'settle'),
+        stepLabel(requests, where === '' ? 'settle' : `settle ${where}`),
         page.evaluate(() => document.fonts.status === 'loaded' && document.querySelector('[aria-busy="true"]') === null)
       );
       if (ready && requests.inflight.size === 0 && Date.now() - requests.last >= QUIET_MS) return true;
@@ -699,7 +700,7 @@ export async function settle(page, requests) {
  * popstate the router listens for, never a second document -- which would bring the first-login
  * gate back (`shell-entry.mjs`).
  */
-async function goInApp(page, requests, path, timeoutMs) {
+export async function goInApp(page, requests, path, timeoutMs) {
   const pathname = path.split('?')[0];
   requests.last = Date.now();
   await bounded(
@@ -713,7 +714,7 @@ async function goInApp(page, requests, path, timeoutMs) {
     stepLabel(requests, `await ${pathname}`),
     page.waitForFunction((wanted) => window.location.pathname === wanted, { timeout: timeoutMs }, pathname)
   );
-  return settle(page, requests);
+  return settle(page, requests, path);
 }
 
 /** The id segment of the first rendered row link on the list the page stands on under `route`. */
@@ -738,9 +739,9 @@ export async function toggleThemeThroughMenu(page, requests, timeoutMs) {
     stepLabel(requests, 'read theme'),
     page.evaluate((name) => document.documentElement.classList.contains(name), THEME_DARK_CLASS)
   );
-  await page.click('#ocu-account-trigger');
+  await bounded(stepLabel(requests, 'open account menu'), page.click('#ocu-account-trigger'));
   await page.waitForSelector(THEME_ITEM, { visible: true, timeout: timeoutMs });
-  await page.click(THEME_ITEM);
+  await bounded(stepLabel(requests, 'choose theme item'), page.click(THEME_ITEM));
   await bounded(
     stepLabel(requests, 'await theme class'),
     page.waitForFunction(
@@ -750,7 +751,7 @@ export async function toggleThemeThroughMenu(page, requests, timeoutMs) {
       !wasDark
     )
   );
-  await page.keyboard.press('Escape');
+  await bounded(stepLabel(requests, 'close account menu'), page.keyboard.press('Escape'));
   await bounded(
     stepLabel(requests, 'await account panel closed'),
     page.waitForFunction(() => document.querySelector('.ocu-account-panel') === null, { timeout: timeoutMs })
@@ -810,34 +811,14 @@ async function walkPass(page, requests, config, { viewport, theme, checks, minim
 }
 
 /**
- * The whole walk: 1280 px in light (every invariant), then 1280 px in dark (contrast) after the
- * account menu's own toggle, switched back at the end; then 720 px in light (every structural
- * invariant). Each of the two passes is run once more in a fresh context when it fails on a
- * DevTools-protocol timeout, or when one of its page calls goes unanswered for `WALKCALLDEADLINE`;
- * the report names each retried pass. All of it runs with one conversation seeded
- * (`seedConversation`) and removed on every exit path. Answers `{entries, report}`; `report` counts walked, skipped, not built,
- * unresolved (an id-requiring screen neither walked nor skipped), unsettled and unmeasurable.
+ * The walk's per-pass retry over `report` and `entries`: answers `(name, body)`, which runs
+ * `body(found)` and joins `found` to `entries` once a run completes. A run that fails on a protocol
+ * timeout (an abandoned call included) is run once more through `retryOnce`, with `report` put back
+ * as it was before the pass, except for one `report.retried` line naming the pass and the call that
+ * failed.
  */
-export async function walk(browser, config) {
-  const minimums = componentMinimums();
-  const report = {
-    declared: declaredScreens().declared,
-    notBuilt: declaredScreens().notBuilt.map((screen) => screen.route),
-    walked: new Set(),
-    skipped: new Set(),
-    unresolved: new Set(),
-    unsettled: new Set(),
-    unmeasurable: 0,
-    retried: [],
-  };
-  const entries = [];
-  const reducedMotion = [{ name: 'prefers-reduced-motion', value: 'reduce' }];
-
-  // A pass that fails on a protocol timeout is run once more in a fresh signed-in context, which
-  // starts light: `signedInAt` clears the account's remembered shell state, the theme with it. Its
-  // entries join the walk only when it completes, and the report is put back as it was first,
-  // except for one line naming the pass and the call that failed.
-  const withRetry = async (name, body) => {
+export function passRetrier(report, entries) {
+  return async (name, body) => {
     const saved = {
       walked: new Set(report.walked),
       skipped: new Set(report.skipped),
@@ -862,6 +843,35 @@ export async function walk(browser, config) {
     };
     entries.push(...(await retryOnce(run, reset)));
   };
+}
+
+/**
+ * The whole walk: 1280 px in light (every invariant), then 1280 px in dark (contrast) after the
+ * account menu's own toggle, switched back at the end; then 720 px in light (every structural
+ * invariant). Each of the two passes is run once more in a fresh context when it fails on a
+ * DevTools-protocol timeout, or when one of its page calls goes unanswered for `WALKCALLDEADLINE`;
+ * the report names each retried pass. All of it runs with one conversation seeded
+ * (`seedConversation`) and removed on every exit path. Answers `{entries, report}`; `report` counts walked, skipped, not built,
+ * unresolved (an id-requiring screen neither walked nor skipped), unsettled and unmeasurable.
+ */
+export async function walk(browser, config) {
+  const minimums = componentMinimums();
+  const report = {
+    declared: declaredScreens().declared,
+    notBuilt: declaredScreens().notBuilt.map((screen) => screen.route),
+    walked: new Set(),
+    skipped: new Set(),
+    unresolved: new Set(),
+    unsettled: new Set(),
+    unmeasurable: 0,
+    retried: [],
+  };
+  const entries = [];
+  const reducedMotion = [{ name: 'prefers-reduced-motion', value: 'reduce' }];
+
+  // A pass that fails on a protocol timeout is run once more in a fresh signed-in context, which
+  // starts light: `signedInAt` clears the account's remembered shell state, the theme with it.
+  const withRetry = passRetrier(report, entries);
 
   const seeded = seedConversation(config);
   try {
