@@ -42,7 +42,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
-import { retryOnce } from './protocol-retry.mjs';
+import { WALKCALLDEADLINE, retryOnce, withDeadline } from './protocol-retry.mjs';
 import { signedInAt } from './panel-spec.mjs';
 import { escapeOs, markerValue, runIris } from './turnprobe-spec.mjs';
 
@@ -182,6 +182,19 @@ const SETTLE_TIMEOUT_MS = 20000;
 
 /** A screen is settled once no `/api/ocupilot` request or shell script has been in flight for this long. */
 const QUIET_MS = 500;
+
+/**
+ * Await one page call the walk issues, abandoning it after `WALKCALLDEADLINE`. The rejection is a
+ * protocol-timeout error naming `label`, so the pass's `retryOnce` runs the pass once more.
+ */
+function bounded(label, call) {
+  return withDeadline(call, WALKCALLDEADLINE, label);
+}
+
+/** The label of a walk step: the pass the tracker is standing in, then the step. */
+function stepLabel(requests, step) {
+  return `${requests?.pass ?? 'walk'}: ${step}`;
+}
 
 /**
  * Declared minimum widths, each with its source. The CSS-px floor applies to every control; a more
@@ -591,20 +604,24 @@ async function fieldNames(page) {
  * background the contrast check could not resolve (a gradient or image under them).
  */
 export async function detectScreen(page, { route, checks, viewport, theme, minimums }) {
-  const found = await page.evaluate(detectInPage, {
-    checks,
-    floorPx: MIN_WIDTH_SOURCES.floor.px,
-    classMinimums: MIN_WIDTH_SOURCES.classes.map(({ className, px }) => ({ className, px })),
-    tokenMinimums: minimums,
-    overflowAllowances: OVERFLOW_ALLOWANCES.map(({ className, px }) => ({ className, px })),
-  });
+  const pass = `${viewport}px ${theme}`;
+  const found = await bounded(
+    `${pass}: detect ${route}`,
+    page.evaluate(detectInPage, {
+      checks,
+      floorPx: MIN_WIDTH_SOURCES.floor.px,
+      classMinimums: MIN_WIDTH_SOURCES.classes.map(({ className, px }) => ({ className, px })),
+      tokenMinimums: minimums,
+      overflowAllowances: OVERFLOW_ALLOWANCES.map(({ className, px }) => ({ className, px })),
+    })
+  );
   const entries = [];
   const contextFor = (invariant) => (invariant === 'contrast' ? theme : invariant === 'name' ? '' : String(viewport));
   for (const violation of found.violations) {
     entries.push({ route, invariant: violation.invariant, context: contextFor(violation.invariant), element: violation.element, measured: violation.measured });
   }
   if (checks.includes('name') && found.fields.length > 0) {
-    const names = await fieldNames(page);
+    const names = await bounded(`${pass}: field names ${route}`, fieldNames(page));
     for (const field of found.fields) {
       // A field Chrome leaves out of the accessibility tree, or one it answers nothing for, has no
       // name a reader can reach: a failed lookup is reported, never read as a pass.
@@ -658,16 +675,18 @@ function trackRequests(page) {
 
 /**
  * Wait until the screen is settled: no `/api/ocupilot` request or shell script in flight for `QUIET_MS`, no
- * `[aria-busy="true"]` left, and the fonts loaded. Answers false when it never settles.
+ * `[aria-busy="true"]` left, and the fonts loaded (`document.fonts.status` reads `loaded`). The font
+ * condition is a synchronous read inside the loop, so `SETTLE_TIMEOUT_MS` bounds it; a font that
+ * never loads leaves the screen unsettled, never the call waiting. Answers false when it never settles.
  */
-async function settle(page, requests) {
+export async function settle(page, requests) {
   const started = Date.now();
   while (Date.now() - started < SETTLE_TIMEOUT_MS) {
     if (requests.inflight.size === 0 && Date.now() - requests.last >= QUIET_MS) {
-      const ready = await page.evaluate(async () => {
-        await document.fonts.ready;
-        return document.querySelector('[aria-busy="true"]') === null;
-      });
+      const ready = await bounded(
+        stepLabel(requests, 'settle'),
+        page.evaluate(() => document.fonts.status === 'loaded' && document.querySelector('[aria-busy="true"]') === null)
+      );
       if (ready && requests.inflight.size === 0 && Date.now() - requests.last >= QUIET_MS) return true;
     }
     await new Promise((resolve) => setTimeout(resolve, 100));
@@ -683,41 +702,59 @@ async function settle(page, requests) {
 async function goInApp(page, requests, path, timeoutMs) {
   const pathname = path.split('?')[0];
   requests.last = Date.now();
-  await page.evaluate((to) => {
-    window.history.pushState({}, '', to);
-    window.dispatchEvent(new PopStateEvent('popstate'));
-  }, path);
-  await page.waitForFunction((wanted) => window.location.pathname === wanted, { timeout: timeoutMs }, pathname);
+  await bounded(
+    stepLabel(requests, `navigate ${path}`),
+    page.evaluate((to) => {
+      window.history.pushState({}, '', to);
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    }, path)
+  );
+  await bounded(
+    stepLabel(requests, `await ${pathname}`),
+    page.waitForFunction((wanted) => window.location.pathname === wanted, { timeout: timeoutMs }, pathname)
+  );
   return settle(page, requests);
 }
 
 /** The id segment of the first rendered row link on the list the page stands on under `route`. */
-async function firstRowSegment(page, route) {
-  return page.evaluate((prefix) => {
-    for (const link of document.querySelectorAll('a.ocu-data-table-link[href]')) {
-      const path = new URL(link.href).pathname;
-      if (!path.startsWith(prefix)) continue;
-      const segments = path.split('/').filter((part) => part !== '');
-      return segments[segments.length - 1];
-    }
-    return null;
-  }, `/ocupilot/${route}/`);
+async function firstRowSegment(page, requests, route) {
+  return bounded(
+    stepLabel(requests, `first row of ${route}`),
+    page.evaluate((prefix) => {
+      for (const link of document.querySelectorAll('a.ocu-data-table-link[href]')) {
+        const path = new URL(link.href).pathname;
+        if (!path.startsWith(prefix)) continue;
+        const segments = path.split('/').filter((part) => part !== '');
+        return segments[segments.length - 1];
+      }
+      return null;
+    }, `/ocupilot/${route}/`)
+  );
 }
 
 /** Flip the theme through the account menu's own item, and close the menu. */
 export async function toggleThemeThroughMenu(page, requests, timeoutMs) {
-  const wasDark = await page.evaluate((name) => document.documentElement.classList.contains(name), THEME_DARK_CLASS);
+  const wasDark = await bounded(
+    stepLabel(requests, 'read theme'),
+    page.evaluate((name) => document.documentElement.classList.contains(name), THEME_DARK_CLASS)
+  );
   await page.click('#ocu-account-trigger');
   await page.waitForSelector(THEME_ITEM, { visible: true, timeout: timeoutMs });
   await page.click(THEME_ITEM);
-  await page.waitForFunction(
-    (name, dark) => document.documentElement.classList.contains(name) === dark,
-    { timeout: timeoutMs },
-    THEME_DARK_CLASS,
-    !wasDark
+  await bounded(
+    stepLabel(requests, 'await theme class'),
+    page.waitForFunction(
+      (name, dark) => document.documentElement.classList.contains(name) === dark,
+      { timeout: timeoutMs },
+      THEME_DARK_CLASS,
+      !wasDark
+    )
   );
   await page.keyboard.press('Escape');
-  await page.waitForFunction(() => document.querySelector('.ocu-account-panel') === null, { timeout: timeoutMs });
+  await bounded(
+    stepLabel(requests, 'await account panel closed'),
+    page.waitForFunction(() => document.querySelector('.ocu-account-panel') === null, { timeout: timeoutMs })
+  );
   await settle(page, requests);
 }
 
@@ -745,6 +782,7 @@ function urlFor(screen, segments) {
 async function walkPass(page, requests, config, { viewport, theme, checks, minimums, report }) {
   const entries = [];
   const segments = new Map();
+  requests.pass = `${viewport}px ${theme}`;
   const { built } = declaredScreens();
   const ordered = [...built.filter((screen) => !needsId(screen)), ...built.filter(needsId)];
   for (const screen of ordered) {
@@ -760,7 +798,7 @@ async function walkPass(page, requests, config, { viewport, theme, checks, minim
     const settled = await goInApp(page, requests, url, config.navigationTimeoutMs);
     if (!settled) report.unsettled.add(`${screen.route} (${viewport} ${theme})`);
     if (!needsId(screen)) {
-      const segment = await firstRowSegment(page, screen.route);
+      const segment = await firstRowSegment(page, requests, screen.route);
       if (segment !== null) segments.set(screen.route, segment);
     }
     const found = await detectScreen(page, { route: keyRoute(screen), checks, viewport, theme, minimums });
@@ -775,8 +813,9 @@ async function walkPass(page, requests, config, { viewport, theme, checks, minim
  * The whole walk: 1280 px in light (every invariant), then 1280 px in dark (contrast) after the
  * account menu's own toggle, switched back at the end; then 720 px in light (every structural
  * invariant). Each of the two passes is run once more in a fresh context when it fails on a
- * DevTools-protocol timeout. All of it runs with one conversation seeded (`seedConversation`) and removed on every exit
- * path. Answers `{entries, report}`; `report` counts walked, skipped, not built,
+ * DevTools-protocol timeout, or when one of its page calls goes unanswered for `WALKCALLDEADLINE`;
+ * the report names each retried pass. All of it runs with one conversation seeded
+ * (`seedConversation`) and removed on every exit path. Answers `{entries, report}`; `report` counts walked, skipped, not built,
  * unresolved (an id-requiring screen neither walked nor skipped), unsettled and unmeasurable.
  */
 export async function walk(browser, config) {
@@ -789,14 +828,16 @@ export async function walk(browser, config) {
     unresolved: new Set(),
     unsettled: new Set(),
     unmeasurable: 0,
+    retried: [],
   };
   const entries = [];
   const reducedMotion = [{ name: 'prefers-reduced-motion', value: 'reduce' }];
 
   // A pass that fails on a protocol timeout is run once more in a fresh signed-in context, which
   // starts light: `signedInAt` clears the account's remembered shell state, the theme with it. Its
-  // entries join the walk only when it completes, and the report is put back as it was first.
-  const withRetry = async (body) => {
+  // entries join the walk only when it completes, and the report is put back as it was first,
+  // except for one line naming the pass and the call that failed.
+  const withRetry = async (name, body) => {
     const saved = {
       walked: new Set(report.walked),
       skipped: new Set(report.skipped),
@@ -804,17 +845,27 @@ export async function walk(browser, config) {
       unsettled: new Set(report.unsettled),
       unmeasurable: report.unmeasurable,
     };
+    let failure = '';
     const run = async () => {
       const found = [];
-      await body(found);
+      try {
+        await body(found);
+      } catch (error) {
+        failure = String(error?.message ?? error);
+        throw error;
+      }
       return found;
     };
-    entries.push(...(await retryOnce(run, () => Object.assign(report, saved))));
+    const reset = () => {
+      Object.assign(report, saved);
+      report.retried.push(`${name} -- ${failure}`);
+    };
+    entries.push(...(await retryOnce(run, reset)));
   };
 
   const seeded = seedConversation(config);
   try {
-    await withRetry(async (found) => {
+    await withRetry('1280px light then dark', async (found) => {
       const wide = await signedInAt(browser, config, '/ocupilot/', VIEWPORTS.wide, reducedMotion);
       try {
         const requests = trackRequests(wide.page);
@@ -824,17 +875,17 @@ export async function walk(browser, config) {
         await goInApp(wide.page, requests, `/ocupilot/${NAMESPACE_QUERY}`, config.navigationTimeoutMs);
         await toggleThemeThroughMenu(wide.page, requests, config.navigationTimeoutMs);
       } finally {
-        await wide.context.close();
+        await bounded('1280px light then dark: close context', wide.context.close());
       }
     });
 
-    await withRetry(async (found) => {
+    await withRetry('720px light', async (found) => {
       const narrow = await signedInAt(browser, config, '/ocupilot/', VIEWPORTS.narrow, reducedMotion);
       try {
         const requests = trackRequests(narrow.page);
         found.push(...(await walkPass(narrow.page, requests, config, { viewport: VIEWPORTS.narrow.width, theme: 'light', checks: ['name', 'min-width', 'overflow'], minimums, report })));
       } finally {
-        await narrow.context.close();
+        await bounded('720px light: close context', narrow.context.close());
       }
     });
   } finally {
@@ -851,6 +902,7 @@ export function reportLines(report) {
     `structural walk: ${report.unmeasurable} text element(s) unmeasurable for contrast (a gradient or image behind them)`,
     `structural walk: ${report.unsettled.size} screen visit(s) did not settle within ${SETTLE_TIMEOUT_MS}ms${report.unsettled.size === 0 ? '' : ': ' + [...report.unsettled].join(', ')}`,
     ...Object.entries(SKIP).map(([route, reason]) => `structural walk: skipped ${route} -- ${reason}`),
+    ...report.retried.map((line) => `structural walk: pass retried once after a call went unanswered: ${line}`),
   ];
 }
 

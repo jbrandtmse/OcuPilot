@@ -23,9 +23,43 @@ const WRAPPED = Symbol.for('ocupilot.protocolRetry');
 /** Set on an error that has already had its retry. */
 const RETRIED = Symbol.for('ocupilot.protocolRetried');
 
+/**
+ * How long one page call of the structural walk may go unanswered before the walk abandons it. The
+ * protocol limit stays 600 s for every other call; a walk call normally answers in well under a
+ * second, so 60 s only ever fires on a call that is never going to return.
+ */
+export const WALKCALLDEADLINE = 60_000;
+
 /** Whether `error` is a DevTools-protocol timeout. */
 export function isProtocolTimeout(error) {
   return PROTOCOL_TIMEOUT.test(String(error?.message ?? error ?? ''));
+}
+
+/**
+ * Settle with `promise`, or reject after `ms` with an error that `isProtocolTimeout` matches and
+ * that names `label`, so `retryOnce` treats an abandoned call like a protocol timeout. The abandoned
+ * promise is left to settle on its own; its later outcome is ignored.
+ */
+export function withDeadline(promise, ms, label) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(
+        new Error(
+          `${label} timed out. Increase the 'protocolTimeout' setting in launch/connect calls for a higher timeout if needed (abandoned after ${ms} ms without an answer).`
+        )
+      );
+    }, ms);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (error) => {
+        clearTimeout(timer);
+        reject(error);
+      }
+    );
+  });
 }
 
 /**

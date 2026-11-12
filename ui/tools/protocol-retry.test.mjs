@@ -5,12 +5,13 @@
 // to `Network.enable` -> the Runtime.callFunctionOn case goes red. Retry any error -> the
 // other-error case goes red. Drop the retried mark -> the two nested-retry cases go red. Drop either
 // WRAPPED guard -> the wrap-twice case goes red. Create a context without `retryOnce` -> the
-// context-creation case goes red.
+// context-creation case goes red. Make `withDeadline` return its promise unchanged -> the deadline
+// cases go red.
 
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { installProtocolRetry, isProtocolTimeout, retryOnce, wrapBrowser } from '../browser/protocol-retry.mjs';
+import { WALKCALLDEADLINE, installProtocolRetry, isProtocolTimeout, retryOnce, withDeadline, wrapBrowser } from '../browser/protocol-retry.mjs';
 
 const timeout = (command) =>
   new Error(`${command} timed out. Increase the 'protocolTimeout' setting in launch/connect calls for a higher timeout if needed.`);
@@ -151,4 +152,40 @@ test('installProtocolRetry wraps launch once and answers a wrapped browser', asy
   assert.equal(launches, 1);
   assert.equal((await browser.newPage()).name, 'page');
   assert.equal(fake.calls.newPage, 2);
+});
+
+test('a call that never settles is abandoned after the deadline, as a protocol timeout naming the call', { timeout: 10_000 }, async () => {
+  const started = Date.now();
+  let caught = null;
+  await withDeadline(new Promise(() => {}), 50, '1280px light: settle').catch((error) => {
+    caught = error;
+  });
+  assert.ok(caught !== null, 'the never-settling promise was rejected');
+  assert.ok(Date.now() - started < 1050, 'within the deadline plus a second');
+  assert.equal(isProtocolTimeout(caught), true, 'in a shape isProtocolTimeout matches');
+  assert.match(caught.message, /1280px light: settle/, 'naming the call');
+});
+
+test('a call that answers in time answers unchanged, and one that fails fails unchanged', async () => {
+  assert.equal(await withDeadline(Promise.resolve('ok'), 1000, 'call'), 'ok');
+  await assert.rejects(() => withDeadline(Promise.reject(new Error('Target closed')), 1000, 'call'), /Target closed/);
+  assert.equal(WALKCALLDEADLINE, 60_000);
+});
+
+test('retryOnce re-runs a pass once when one of its calls is abandoned', { timeout: 10_000 }, async () => {
+  let creates = 0;
+  let resets = 0;
+  const result = await retryOnce(
+    async () => {
+      creates += 1;
+      if (creates === 1) await withDeadline(new Promise(() => {}), 20, 'pass: detect route');
+      return 'done';
+    },
+    () => {
+      resets += 1;
+    }
+  );
+  assert.equal(result, 'done');
+  assert.equal(creates, 2, 'created once more');
+  assert.equal(resets, 1, 'reset once');
 });

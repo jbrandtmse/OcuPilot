@@ -2,13 +2,22 @@
 title: 'Story 23.9: The range-end cleanup, part 8'
 type: 'bugfix'
 created: '2026-11-12'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: 'ec69ba7f973eaf5741a24e4c92081165e5ca9876'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
 warnings: ['multiple-goals', 'oversized']
-deferred: []
+deferred:
+  - summary: >-
+      The 30,000-node compact in local-databases AC8 might finish before the test pauses it on a loaded CI shard.
+    evidence: |-
+      Pause took 0.28-0.71 s on an idle throwaway over three probes; the compact's own duration over 30,000 nodes was not measured.
+      Settled by CI shard runs of local-databases; the leg errors with "compact reads Completed, not Paused".
+    location: >-
+      src/OcuPilot/Test/BackgroundSeed.cls PausedCompact; ui/browser/local-databases.browser-spec.mjs AC8
+    severity: medium (unverified)
 ---
 
 <intent-contract>
@@ -129,17 +138,17 @@ deferred: []
 
 ### Batch 1: CI flakes
 
-- [ ] **Task 0 (DW-2512), measure on `ocupilot-ci`, at most three calls.**
+- [x] **Task 0 (DW-2512), measure on `ocupilot-ci`, at most three calls.**
   - (i) Run `local-databases.browser-spec.mjs` alone twice (one call each); record durations and any navigation timeout.
   - (ii) In a temporary probe (removed after), seed `BackgroundSeed`'s paused compact at 30,000 nodes and check that AC8's assertions would hold: a compact task over the seed database listed as paused, then `Remove` answers OK.
   - Record both under Verification.
-- [ ] **DW-1822.** `ui/browser/structural-walk.mjs` `settle`: replace `await document.fonts.ready` with a synchronous `document.fonts.status === 'loaded'` read inside the existing loop, so `SETTLE_TIMEOUT_MS` bounds it. Export `settle` for the test. Update its doc comment.
-- [ ] **DW-1822.** `ui/browser/protocol-retry.mjs`: add `export const WALKCALLDEADLINE = 60_000` and `export function withDeadline(promise, ms, label)`, which rejects after `ms` with an error whose message matches `PROTOCOL_TIMEOUT` and names `label`. In `structural-walk.mjs`, every `page.evaluate`/`$eval`/`waitForFunction` the walk issues goes through it, labeled with pass, route and step. `walk` adds one report line per retried pass, naming it.
-- [ ] **DW-1822 pins**, both red before the fix:
+- [x] **DW-1822.** `ui/browser/structural-walk.mjs` `settle`: replace `await document.fonts.ready` with a synchronous `document.fonts.status === 'loaded'` read inside the existing loop, so `SETTLE_TIMEOUT_MS` bounds it. Export `settle` for the test. Update its doc comment.
+- [x] **DW-1822.** `ui/browser/protocol-retry.mjs`: add `export const WALKCALLDEADLINE = 60_000` and `export function withDeadline(promise, ms, label)`, which rejects after `ms` with an error whose message matches `PROTOCOL_TIMEOUT` and names `label`. In `structural-walk.mjs`, every `page.evaluate`/`$eval`/`waitForFunction` the walk issues goes through it, labeled with pass, route and step. `walk` adds one report line per retried pass, naming it.
+- [x] **DW-1822 pins**, both red before the fix:
   - New `ui/tools/structural-walk.test.mjs`: `settle` over a fake page whose `evaluate(fn)` runs `fn` against a stubbed `document` (`fonts.ready` never resolves, `status` turns `loaded` after 1 s, no busy node) answers `true` within 5 s. Test timeout 30 s.
   - `ui/tools/protocol-retry.test.mjs`: `withDeadline` over a never-settling promise rejects within `ms` + 1 s with `isProtocolTimeout` true, and `retryOnce` re-runs its `create` once on it. Use a short `ms`.
-- [ ] **DW-2512.** `ui/browser/panel-spec.mjs` `signedInAt`: track requests from before the `goto`; on a navigation timeout, rethrow the same error with its message extended by each request still in flight and its age in ms. Pin in a new `ui/tools/panel-spec.test.mjs`: a fake page whose `goto` rejects with a `TimeoutError` while one request is in flight gets that URL in the rethrown message. Red before.
-- [ ] **DW-2512.** If Task 0 (ii) holds: `src/OcuPilot/Test/BackgroundSeed.cls` `PausedCompact` gains a trailing `pNodes` argument defaulting to `..#NODES`, and only `local-databases.browser-spec.mjs`'s AC8 passes 30,000. `background-tasks.browser-spec.mjs` and `BackgroundTasksLive` are unchanged. If it does not hold, skip this task and record why (Dispositions).
+- [x] **DW-2512.** `ui/browser/panel-spec.mjs` `signedInAt`: track requests from before the `goto`; on a navigation timeout, rethrow the same error with its message extended by each request still in flight and its age in ms. Pin in a new `ui/tools/panel-spec.test.mjs`: a fake page whose `goto` rejects with a `TimeoutError` while one request is in flight gets that URL in the rethrown message. Red before.
+- [x] **DW-2512.** If Task 0 (ii) holds: `src/OcuPilot/Test/BackgroundSeed.cls` `PausedCompact` gains a trailing `pNodes` argument defaulting to `..#NODES`, and only `local-databases.browser-spec.mjs`'s AC8 passes 30,000. `background-tasks.browser-spec.mjs` and `BackgroundTasksLive` are unchanged. If it does not hold, skip this task and record why (Dispositions).
 
 ### Batch 2: docs
 
@@ -180,6 +189,20 @@ deferred: []
 - 2026-11-12, spec gate (lead): batch 2 lands with batch 4; the full sweep is lead-owned (before batch 1's push and the last `src` batch's push); filing candidates filed as DW-2513 (flake, routed to 23.10), DW-2514 and DW-2515 (wontfix-accepted).
 
 ## Review Triage Log
+
+### 2026-11-12 - Review pass (batch 1)
+
+- verdicts: 8 findings - high 0, medium 3, low 4, false 0, maybe-false 1
+- findings:
+  - `[medium]` `[patch]` settle test had only upper bounds, so dropping the fonts condition stayed green - added a lower-bound assertion (elapsed >= 900 ms); mutation observed red.
+  - `[medium]` `[patch]` the 60 s deadline wiring in the walk was untested - added a source check that every walk `page.evaluate`/`waitForFunction` sits inside `bounded(` (fieldNames runs under its caller's); mutation (unwrap `detectScreen`) observed red.
+  - `[medium]` `[patch]` `signedInAt` wiring of the in-flight diagnostic was untested - added a source-order check (tracking before `prepare`, goto through `gotoNamingInflight`, no direct `page.goto`); mutation observed red.
+  - `[low]` `[reject]` `pNodes` has no mutation line - no test can observe a seed size as pass or fail; the effect is recorded under Verification (fill and AC8 duration), and a size assertion would be a new probe class for a test-only parameter.
+  - `[low]` `[patch]` Verification said the `withDeadline` mutation hung to an 8 s timeout while the tests declare 10 s - wording corrected.
+  - `[low]` `[reject]` settle test's red case leaves a 60 s timer pending - slows a failing run only; fix adds a cancel path to `withDeadline` for no user-visible harm.
+  - `[low]` `[reject]` a hung `context.close()` in a `finally` replaces the original pass error in the retried-pass line - narrow, and the report still names a hung call; a fix adds error-chaining in `walk`.
+  - `[maybe-false]` `[defer]` the 30,000-node compact might end before AC8 pauses it on a loaded CI shard - measured pause 0.28-0.71 s on an idle throwaway over three probes; settled by CI shard runs of `local-databases` (the leg errors with "compact reads Completed, not Paused").
+  - Intent-alignment audit (descriptive): the diff implements both approach halves; the new tests run against fakes in Node, not a real Chrome, by the spec's design; unwrapped calls are `click`, `waitForSelector`, `keyboard.press` and `signedInAt`'s own steps, which the intent does not name.
 
 ## Design Notes
 
@@ -315,7 +338,22 @@ deferred: []
 - No new ObjectScript test class, no browser spec added, no arming roster change.
 - **Standing criterion.** Every test added or changed passes on a fresh environment, in either order. Each creates and removes its own rows, databases, files and markers.
 
+**Batch 1 observed (`ocupilot-ci`).**
+
+- Task 0 (i): `local-databases.browser-spec.mjs` alone twice, 8/8 each, 62.4 s and 58.1 s, no navigation timeout. Task 0 (ii): `PausedCompact` over 30,000 nodes, three probes: task Paused, `Remove` OK, directory gone (0.28-0.71 s to pause, 1.7-1.9 s to remove). AC8 green at 30,000 (11.5 s against 16.1 s).
+- Mutations: restoring `await document.fonts.ready` reddens `structural-walk.test.mjs` (5.0 s); dropping the `fonts.status === 'loaded'` term reddens it on its lower bound; an unwrapped walk page call (`detectScreen`'s evaluate) reddens its `bounded(` source check; `withDeadline` returning its promise reddens the two deadline cases in `protocol-retry.test.mjs` (they hung to the test timeout, now 10 s each); an empty in-flight list reddens `panel-spec.test.mjs`, as does a direct `page.goto` in `signedInAt`. Each reverted, confirmed by `cmp` against the pre-mutation copy.
+- `pNodes` has no pinning test: it sizes a test-only seed, and the observed effect is AC8's fill and duration (11.5 s against 16.1 s), not a pass or fail.
+- Green: `npm run test:tools` 2164/2164; `check-objectscript.py` 0 problems; `BackgroundTasksLive` 8/8; `background-tasks.browser-spec.mjs` 2/2; `a11y-structural-invariants.browser-spec.mjs` 13/13 in 420.8 s with no retried-pass line (414.8 s at 7dd30507).
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+Pass: Batch 1 only (CI flakes). Batches 2 to 5 are untouched and unchecked.
+
+- Change: the structural walk's `settle` reads `document.fonts.status` inside its bounded loop; every walk page call goes through `withDeadline` (60 s, a protocol-timeout error so `retryOnce` re-runs the pass) and a retried pass adds a report line; `signedInAt` rethrows a navigation timeout with each request still in flight and its age; `BackgroundSeed.Prepare` and `PausedCompact` take a trailing `pNodes` and local-databases AC8 passes 30,000.
+- Files: `ui/browser/protocol-retry.mjs`, `ui/browser/structural-walk.mjs`, `ui/browser/panel-spec.mjs`, `ui/browser/local-databases.browser-spec.mjs`, `src/OcuPilot/Test/BackgroundSeed.cls`, `ui/tools/protocol-retry.test.mjs`, new `ui/tools/structural-walk.test.mjs` and `ui/tools/panel-spec.test.mjs`, and this spec.
+- Review: 8 findings, 3 medium patched (settle lower bound, walk deadline wiring check, `signedInAt` wiring check), 1 low wording patched, 3 low rejected with reasons, 1 maybe-false deferred (compact may end before the pause on a loaded shard).
+- Verification: `npm run test:tools` 2166/2166; `check-objectscript.py` 0 problems; `lint-docs.sh` clean; `BackgroundTasksLive` 8/8, `local-databases`, `background-tasks` and `a11y-structural-invariants` (13/13, 420.8 s) browser specs green on `ocupilot-ci`; mutations observed red and reverted (see Verification, Batch 1 observed).
+- Follow-up review: recommended. The wiring pins added in review are source-text checks, not a walk run against a hung page.

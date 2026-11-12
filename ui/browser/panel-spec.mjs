@@ -62,6 +62,37 @@ export async function definitions(config) {
 }
 
 /**
+ * Record every request `page` makes from now on, and answer a function that lists the ones still
+ * in flight with the age of each in milliseconds. Attach it before the first navigation.
+ */
+export function trackInflightRequests(page) {
+  const inflight = new Map();
+  page.on('request', (request) => inflight.set(request, Date.now()));
+  const done = (request) => inflight.delete(request);
+  page.on('requestfinished', done);
+  page.on('requestfailed', done);
+  return () => [...inflight].map(([request, started]) => `${request.url()} (${Date.now() - started} ms)`);
+}
+
+/**
+ * `page.goto` that, on a navigation timeout, rethrows the same error with its message extended by
+ * each request still in flight (from `listInflight`) and that request's age. Any other error, and
+ * the success path, pass through unchanged.
+ */
+export async function gotoNamingInflight(page, url, options, listInflight) {
+  try {
+    return await page.goto(url, options);
+  } catch (error) {
+    const timedOut = error?.name === 'TimeoutError' || /Navigation timeout/.test(String(error?.message ?? ''));
+    if (timedOut && error instanceof Error) {
+      const pending = listInflight();
+      error.message += pending.length === 0 ? '\nno request was in flight' : `\n${pending.length} request(s) still in flight:\n  ${pending.join('\n  ')}`;
+    }
+    throw error;
+  }
+}
+
+/**
  * A fresh context signed in through the shell's own form, standing on `url` with the frame and the
  * panel laid out. `mediaFeatures`, when supplied, is emulated before the first navigation, and
  * `prepare`, when supplied, runs against the page before it, which is where a spec attaches what
@@ -79,8 +110,9 @@ export async function signedInAt(browser, config, url, viewport = config.viewpor
   page.setDefaultNavigationTimeout(config.navigationTimeoutMs);
   await page.setViewport(viewport);
   if (mediaFeatures !== null) await page.emulateMediaFeatures(mediaFeatures);
+  const listInflight = trackInflightRequests(page);
   if (prepare !== null) await prepare(page);
-  await page.goto(`${config.origin}${url}`, { waitUntil: 'networkidle2' });
+  await gotoNamingInflight(page, `${config.origin}${url}`, { waitUntil: 'networkidle2' }, listInflight);
   await page.waitForSelector('#ocu-signin-user', { visible: true, timeout: config.navigationTimeoutMs });
   await page.type('#ocu-signin-user', config.username);
   await page.type('#ocu-signin-password', config.password);
