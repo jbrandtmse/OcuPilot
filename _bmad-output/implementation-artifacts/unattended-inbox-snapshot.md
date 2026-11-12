@@ -2,6 +2,8 @@
 
 Answer an item with `bash _bmad/scripts/unattended-inbox.sh <this directory> answer U-<n> "<answer>" --by owner`, or run `/epic-cycle --review`. This file is generated: a hand edit is saved aside and never applied.
 
+**Hold requested 2026-10-23T18:59:56Z: owner 2026-10-23 (relayed by the Planner): two stories for 1.0.14, then hold for the 1-2 week pause**
+
 ## Parked
 
 ### U-15 | parked | Story 20.39 (split from 20.38) | 2026-10-23T16:59:06Z
@@ -29,10 +31,10 @@ answer: (none yet -- answer with the script or --review)
 
 ## Holds
 
-### U-11 | hold | Run 20261020T0940Z-20,23 | 2026-10-23T07:27:24Z
-question: Parked again after the 1.0.13 fix: Story 20.37 (SqlRun stored slot order, DW-2500) is merged into feature; Epic 20 at 84f5beed (next 20.34), Epic 23 at 40de2a58 (next 23.9). Everything pushed, worktrees clean, throwaways down. The 1.0.13 upgrade re-check runs on slot C and its verdict goes to the Planner, who cuts 1.0.13 only on PASS.
+### U-16 | hold | Run 20261020T0940Z-20,23 | 2026-10-23T18:59:56Z
+question: Parked again after the two owner-chartered stories for 1.0.14: 20.38 (a schema opens its tables, views and procedures) and 23.12 (the agent picks the right list) are merged into feature. Epic 20 at 48b7d1d1 (next 20.34; 20.39 waits on U-15), Epic 23 at 0ac49e6e (next 23.9). Everything pushed, worktrees clean, throwaways down.
 options: Resume after the pause: in a fresh session run /epic-cycle 20,23 --unattended
-recommendation: Nothing to answer; the epic-close decision sheets still hold DW-2471, DW-2202, DW-2473, DW-2474, DW-2497, DW-2499
+recommendation: Answer U-15 (when 20.39 runs) and, if you like, the vetoes U-13 and U-14 before resuming
 blocks: Epics 20 and 23
 answer: (none yet -- answer with the script or --review)
 
@@ -68,5 +70,6 @@ answer: (none yet -- answer with the script or --review)
 - U-7 | veto | Story 23.8 (DW-1462): Ruled: the agent's open-a-screen tool takes a new parentId for a screen that belongs to one item (a task's history, a database's volumes) and keeps entityId for a screen's own rows; today entityId means either. Visible effects: the agent can open 8 more such screens for their item; it no longer opens the 4 production item tabs (jobs, log, messages, queue) on an id it composed itself; and the refusal sentence a person may see in the trace changes from 'This screen does not take a selected row.' to 'This screen cannot be opened on that item.' -> keep (by planner, 2026-10-22T04:59:32Z#24; quoting the owner: "Accept all recommendations (Recommended)"); resolved by orchestrator, 2026-10-22T05:00:22Z -- veto kept (relayed by the Planner, quoting the owner)
 - U-8 | parked | DW-432 (owner-only files): A one-sentence addition to CLAUDE.md 'Running and verifying' and to .claude/rules/objectscript-testing.md 'Practices', proposed by Story 23.8 (owner-only files under the policy, so the run will not edit them): 'Test classes armed by an OCUPILOT_ALLOW_* variable run only on a throwaway, since scripts/ci-throwaway.sh is the only thing that sets them. They are red by design on ocupilot or a slot instance; see docs/DEVELOPMENT.md, Armed test classes.' -> apply as worded; the Planner applies it to CLAUDE.md and .claude/rules/objectscript-testing.md once 23.8 batch 2 is on feature (by planner, 2026-10-22T04:59:32Z#25; quoting the owner: "Accept all recommendations (Recommended)"); resolved by orchestrator, 2026-10-22T09:02:21Z -- 23.8 batch 2 (DEVELOPMENT.md Armed test classes) is on feature at a314ca08; the Planner applies the sentence to CLAUDE.md and objectscript-testing.md
 - U-9 | hold | Run 20261020T0940Z-20,23: Parked for the owner's 1-2 week pause: Epic 20 after 20.35 (at 99947f6b, next 20.34), Epic 23 after 23.8 (at 40de2a58, next 23.9). Everything pushed, both worktrees clean, both throwaways torn down, no hold patches. The orchestrator then runs the 1.0.13 upgrade check and reports to the Planner, who cuts the release. -> (no answer); resolved by orchestrator, 2026-10-23T07:27:24Z -- superseded by the 2026-10-23 hold after the 20.37 fix
+- U-11 | hold | Run 20261020T0940Z-20,23: Parked again after the 1.0.13 fix: Story 20.37 (SqlRun stored slot order, DW-2500) is merged into feature; Epic 20 at 84f5beed (next 20.34), Epic 23 at 40de2a58 (next 23.9). Everything pushed, worktrees clean, throwaways down. The 1.0.13 upgrade re-check runs on slot C and its verdict goes to the Planner, who cuts 1.0.13 only on PASS. -> (no answer); resolved by orchestrator, 2026-10-23T18:59:56Z -- superseded by the hold after Stories 20.38 and 23.12
 
-<!-- journal: 45 lines -->
+<!-- journal: 48 lines -->

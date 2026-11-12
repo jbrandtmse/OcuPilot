@@ -217,7 +217,8 @@ the server; and links to Architect, Analyzer and the User Portal. **System Explo
 source, shows a class's reference page from the instance's own class documentation, searches source, compares two documents line by line and finds where a macro is defined; it
 compiles and deletes them, exports them as XML to a file on the server or a download, and imports an
 XML export or a source file from the server or your computer. Its SQL catalog lists schemas, tables,
-views and procedures with their details, limited to what your own SQL privileges show. SQL query runs
+views and procedures with their details, limited to what your own SQL privileges show; a schema
+opens into its own tables, views and procedures. SQL query runs
 a statement as you, with your SQL privileges: a query runs at once, a statement that changes data or
 the schema runs only after you confirm it, a long query can run in the background, and statements
 that would manage users, databases or OcuPilot's own tables are refused. The data browser opens
@@ -598,7 +599,7 @@ token and hidden values left as placeholders.
   Community, and builds and loads the IPM package offline, including into a namespace without
   interoperability. The ObjectScript suite runs across eight
   containers at once and the browser specs across five, so a full run takes about 30 minutes.
-- **Tests:** 698 `%UnitTest` classes run inside IRIS; 125 Node test files and 260 Angular component
+- **Tests:** 699 `%UnitTest` classes run inside IRIS; 127 Node test files and 260 Angular component
   specs cover the client; 207 browser specs exercise the running portal.
 - **A smoke test you can run:** `bash scripts/smoke.sh --container ocupilot --user _SYSTEM
   --password SYS` asks the running instance whether OcuPilot works; the assertions live inside
