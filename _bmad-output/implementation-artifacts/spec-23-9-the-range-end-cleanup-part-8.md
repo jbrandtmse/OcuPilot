@@ -2,7 +2,7 @@
 title: 'Story 23.9: The range-end cleanup, part 8'
 type: 'bugfix'
 created: '2026-11-12'
-status: 'done'
+status: 'in-progress'
 baseline_revision: '4749fae2bc30a5f93ea6ebd8395e64635317912c'
 baseline_commit: '4749fae2bc30a5f93ea6ebd8395e64635317912c'
 review_loop_iteration: 0
@@ -134,8 +134,8 @@ deferred:
 - Each task names its pinning test; its `mutation:` line goes under Verification with the observed run.
 - In the same pass, update every test that asserts a shared surface's old shape (Verification › Shared surfaces).
 - The lead writes the ledger trailers once the batch's commit is green.
-- **Pass order** (lead rulings): batch 1 (done); then batch 4 with DW-1706; then batch 3 with DW-1177's docstring, after Story 20.34 (which edits `screen-mirror.test.mjs`'s `OwnPrivilegeCases` test and `check-objectscript.py`) has merged and been integrated forward; then batch 5. Four commits. The lead opens one pass at a time; a pass works only the items the lead names and leaves every other item unchecked.
-- **Current pass: Batch 4 (DW-2259, DW-2260, DW-1981) and DW-1706 from Batch 2.** DW-1177 waits for batch 3; batches 3 and 5 stay unchecked.
+- **Pass order** (lead rulings): batch 1 (done); batch 4 with DW-1706 (done); batch 5; then batch 3 with DW-1177's docstring, after Story 20.39 (which edits `Screen/Registry.cls` and `screen-mirror.mjs`) has merged and been integrated forward. Four commits. The lead opens one pass at a time; a pass works only the items the lead names and leaves every other item unchecked.
+- **Current pass: Batch 5 (DW-2299).** DW-1177 and batch 3 stay unchecked.
 
 ### Batch 1: CI flakes
 
