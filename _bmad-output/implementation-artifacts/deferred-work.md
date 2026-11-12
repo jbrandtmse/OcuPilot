@@ -12468,6 +12468,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: release-1.0.14-ci | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: release/1.0.14 push run 40014034409 attempt 1, browser shard 3/5 (723a3662); attempt 2 green; the same code was green on feature (2a9ea8d1, run 40008057887)
 - 2026-10-23T21:31:33Z status=routed owner=burndown by=orchestrator note=CI flake, reported by the Planner at the 1.0.14 cut; first in the next standing cleanup with DW-1822 (Rule 27)
+- 2026-11-12T21:28:40Z status=resolved-by:23-9-the-range-end-cleanup-part-8 owner=23-9-the-range-end-cleanup-part-8 by=orchestrator note=re-stated: the union merge at ebb0b37d placed this entry's 2026-11-12 13:49 and 19:13 trailers under DW-2523; resolved by 23.9 batch 1 c98a0877 (signedInAt names in-flight requests; AC8 seeds 30k nodes)
 
 ### DW-2518: A cube build or synchronize the vendor ran but then failed (a dependent failing after the target rebuilt, a raised exception) records no ConfigChange row, though facts changed
 - source: spec-20-34-the-cube-manager-s-build-and-synchronize.md | severity: med | fix-risk: med | footprint: in-story
@@ -12495,6 +12496,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-12T20:48:18Z status=routed owner=burndown by=harvest note=CI flake for the burn-down; likely a cold first query on a fresh leg (inference)
 - 2026-11-12T13:49:03Z status=routed owner=23-9-the-range-end-cleanup-part-8 by=spec_gate note=CI flake; first priority in 23.9 (orchestrator re-dispatch 2026-11-12, Rule 27)
 - 2026-11-12T19:13:24Z status=resolved-by:23-9-the-range-end-cleanup-part-8 by=adjudication note=c98a0877: signedInAt names in-flight requests on a timeout; AC8 seed 30k nodes; reopen_if=the timeout recurs
+- 2026-11-12T21:28:40Z status=routed owner=burndown by=orchestrator note=the 2026-11-12T13:49:03Z and 19:13:24Z trailers above belong to DW-2512 (union-merge misplacement at ebb0b37d); this entry stays routed to burndown
 
 ### DW-2513: flake: data-table-columns.browser-spec.mjs failed 17 of 18 at its own goto against its local server
 - source: spec-23-9-the-range-end-cleanup-part-8.md (plan) | severity: med | fix-risk: low | footprint: out-of-footprint

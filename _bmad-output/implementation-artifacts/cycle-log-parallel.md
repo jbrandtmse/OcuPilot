@@ -1722,3 +1722,10 @@
 2026-11-12T19:16:28Z	Story 23.9	merged	batch=1 feature=4b1a46193 mode=fast_forward(tip_code-equal_to_74a6348f) checks=ledger_entry_check_0(1977),dup_none,sprint_validate_ok upgrade_triggers=none
 2026-11-12T19:16:28Z	orchestrator	deps_hash_rerecorded	reason=ledger_routed(23.9/23.10_entry_lists_and_DW_bullets_in_Epic_23_blocks)
 2026-11-12T19:16:28Z	ci	timings_refreshed	rule=29 run=43275467803 test_tools=2178/2178
+2026-11-12T19:34:56Z	orchestrator	owner_decision	id=U-19 at=2026-11-12T19:34:12Z#62 via=relay by=planner quote="Apply it (Recommended)" effect=CLAUDE.md_wording_applied_at_75ea5f7d;DW-1177_closed_by_23.9_at_adjudication
+2026-11-12T20:49:18Z	Epic 20	runner_reported	boundary=story_20.34 via=SendMessage(runner->main) code_head=acb0b666(43290470415_success;rerun_2_jobs:DW-2123_infra,DW-2523_flake) tip=70d0fa16 upgrade_triggers=none(no_persistent_class) governance=+analytics.cubemanager.build(false),+analytics.cubemanager.synchronize(true) veto=U-18 decision_sheet=DW-2518,DW-2519 ledger=DW-2485_resolved;DW-2520,DW-2521(wontfix-accepted);DW-2523(flake,burndown) harness_note=Agent_calls_background_despite_false;shell_calls_background_at_180s shas_verified=yes
+2026-11-12T20:49:18Z	Story 20.34	merge_pending	waiting_on=runner_forward_merge_staging_head reason=feature_75ea5f7d_carries_23.9b1_test_harness_not_in_acb0b666
+2026-11-12T20:51:20Z	Story 20.34	staging_head_reported	head=ebb0b37d(merge_of_feature_75ea5f7d;no_token) run=43304282319(pending)
+2026-11-12T21:28:59Z	Story 20.34	ci_green_verified	runs=43290470415(acb0b666),43304282319(staging_ebb0b37d) result=success by=orchestrator
+2026-11-12T21:28:59Z	Story 20.34	merged	feature=ebb0b37d mode=fast_forward(staging_ebb0b37d_own_CI_green) checks=ledger_entry_check_2_problems(DW-2512_trailers_misplaced_under_DW-2523_by_the_union_merge)->corrected_by_orchestrator_trailers(DW-2512_resolved-by_23.9;DW-2523_routed_burndown),dup_none,sprint_validate_ok(20-34_done) upgrade_triggers=none governance=+analytics.cubemanager.build(false),+analytics.cubemanager.synchronize(true)
+2026-11-12T21:28:59Z	ci	timings_refreshed	rule=29 run=43304282319 test_tools=2182/2182
