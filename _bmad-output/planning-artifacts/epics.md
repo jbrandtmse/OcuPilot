@@ -9113,22 +9113,46 @@ So that a click never leaves me where I was.
 [CHARTERED 2026-11-12, split from Story 20.25 at its plan, unattended ruling within `limits.split_children`] Story 20.25 takes the temporary stop, start and restart of one item. Copy needs a new-name dialog (an AD-54 create), and change of class needs a class picker (a new read tool) and drops every setting the new class does not declare. Story 20.25's spec, Design Notes › Split, holds the charter as read in the vendor source.
 
 As an interoperability operator,
-I want to copy an item and change its class from the item's screens,
+I want to copy an item from the item's screens [AMENDED 2026-11-12, Story 20.40 spec gate: change of class moved to Story 20.41, a split],
 So that the classic per-host Actions tab is not needed for them.
 
 **Acceptance Criteria:**
 
 - **Given** an item
-- **When** a copy or a change of class is proposed and confirmed
-- **Then** each runs through the port as the classic page does, and the vendor's own audit records it.
+- **When** a copy is proposed and confirmed [AMENDED 2026-11-12, Story 20.40 spec gate: change of class moved to Story 20.41, a split]
+- **Then** it runs through the port as the classic page does, and the vendor's own audit records it.
 
 - **Given** the vendor behavior measured at its plan
 - **When** each action is planned
 - **Then** its destructiveness, its governance key's default and its audit record are stated (AD-22).
 
-- DW-2298: the classic per-host Actions tab's copy and change class item actions have no story (ledger; routed by spec_gate 2026-11-12)
+- DW-2298: the classic per-host Actions tab's copy item action has no story (ledger; routed by spec_gate 2026-11-12)
 
 **Out of scope:** the temporary stop, start and restart (Story 20.25).
+
+---
+
+### Story 20.41: Item change of class
+
+[CHARTERED 2026-11-12, split from Story 20.40 at its plan (itself split from Story 20.25), unattended ruling within `limits.split_children`] Story 20.40 takes an item's copy. Change of class needs a class picker over the host type's classes (a new read tool) and drops every setting the new class does not declare. Story 20.40's spec, Design Notes › Split, holds the charter as read in the vendor source.
+
+As an interoperability operator,
+I want to change an item's class from the item's screens,
+So that the classic per-host Actions tab is not needed for it.
+
+**Acceptance Criteria:**
+
+- **Given** an item
+- **When** a change of class is proposed and confirmed
+- **Then** it runs through the port as the classic page does, and the vendor's own audit records it.
+
+- **Given** the vendor behavior measured at its plan
+- **When** the action is planned
+- **Then** its destructiveness, its governance key's default and its audit record are stated (AD-22).
+
+- DW-2298: the classic per-host Actions tab's change class item action has no story (ledger; routed by spec_gate 2026-11-12)
+
+**Out of scope:** the temporary stop, start and restart (Story 20.25) and copy (Story 20.40).
 
 ---
 
