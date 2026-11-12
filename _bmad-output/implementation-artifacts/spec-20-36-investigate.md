@@ -147,7 +147,7 @@ Paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`; lines were rea
 
 ## Spec Change Log
 
-- 2026-11-12, spec gate (runner): DW-2468 and DW-2469, routed here after the plan, become tasks; one `[Gate]` task for the guards feature gained since; the three new strings are a veto item; the orchestrator ruled the spine drafts: AD-11 and AD-66 comply as they stand, and AD-24 stops the story for the owner.
+- 2026-11-12, spec gate (runner): DW-2468 and DW-2469, routed here after the plan, become tasks; one `[Gate]` task for the guards feature gained since; the three new strings are a veto item; the orchestrator ruled the spine drafts: AD-11 and AD-66 comply as they stand, and AD-24 stopped the story for the owner, who chose to amend it (U-21, A).
 
 ## Review Triage Log
 
@@ -196,7 +196,7 @@ EXPERIENCE.md: add a Fixed strings row after :268 for the three: "an entry's Inv
 **Spine (orchestrator ruling, 2026-11-12):** no AD is amended in this run, since each of the three is cited by done stories (U7(c)).
 
 - **AD-11 and AD-66: comply as they stand.** The two lines below extend each Rule to a case it does not address. They are recorded here for the owner's attended `bmad-architecture` Update, and are not written into the spine.
-- **AD-24: stopped for the owner** (inbox `stopped` item): (A) amend AD-24 with the line below; (B) reshape Investigate so it sends no marker; (C) defer the story. 20.36 waits at its spec gate until the answer.
+- **AD-24: amended by the owner** (U-21, answer A, 2026-11-12): the spine now reads "... only on an Explain this entry or Investigate turn (Story 20.36)". The story builds on that.
 
 **The proposed lines, verbatim:**
 
