@@ -431,6 +431,8 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'analytics/user-portal',
       // Story 20.33: MDX query, listed after them at position 7.
       'analytics/mdx-query',
+      // Story 20.34: the Cube manager, listed after them at position 8.
+      'analytics/cube-manager',
       'agent/definitions/edit',
       'agent/transcripts/details',
       'agent/definitions',

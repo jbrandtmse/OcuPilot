@@ -7677,6 +7677,42 @@ export const STRINGS = {
   analyticsRefusalMdxLost: 'The MDX run ended without an answer; run it again.',
   /** EXPERIENCE.md:604 */
   analyticsMdxSqlReason: 'This query may run server-side code or SQL, which the agent\'s read never runs; you can run it yourself on MDX query after confirming.',
+  /** EXPERIENCE.md:604 */
+  analyticsCubeManagerLabel: 'Cube manager',
+  /** EXPERIENCE.md:604 */
+  analyticsColumnSynchronizes: 'Synchronizes',
+  /** EXPERIENCE.md:604 */
+  analyticsColumnUpdating: 'Updating',
+  /** EXPERIENCE.md:604 */
+  analyticsColumnDependentCubes: 'Dependent cubes',
+  /** EXPERIENCE.md:604 */
+  actionSynchronize: 'Synchronize',
+  /** EXPERIENCE.md:604 */
+  analyticsCubeBuildAfterword: 'Rebuilt now',
+  /** EXPERIENCE.md:604 */
+  analyticsCubeSynchronizeAfterword: 'Synchronized now',
+  /** EXPERIENCE.md:604 */
+  analyticsCubeBuildConsequence: 'Building deletes this cube\'s facts and rebuilds them from its source, with every cube that depends on it. They cannot be queried until it ends, and a build that fails leaves their facts gone. The cube\'s own code and the namespace\'s analytics start-up code run as you.',
+  /** EXPERIENCE.md:604 */
+  analyticsCubeSynchronizeConsequence: 'Synchronizing applies the source changes recorded since the last update to this cube and the cubes that depend on it. They stay queryable, and their other facts are unchanged. The cube\'s own code runs as you.',
+  /** EXPERIENCE.md:604 */
+  analyticsRefusalCubeBusy: 'This cube, or a cube that depends on it, is being built or synchronized now. Try again when that ends.',
+  /** EXPERIENCE.md:604 */
+  analyticsRefusalCubeNoDstime: 'This cube, or a cube that depends on it, has a source that does not record its changes (DSTIME), so it can only be built.',
+  /** EXPERIENCE.md:604 */
+  analyticsRefusalCubeNotBuilt: 'This cube, or a cube that depends on it, has never been built, so there is nothing to synchronize. Build it first.',
+  /** EXPERIENCE.md:604 */
+  analyticsRefusalCubeReadonly: 'This namespace keeps its cubes\' facts in a read-only database, so they cannot be built or synchronized here.',
+  /** EXPERIENCE.md:604 */
+  analyticsRefusalCubeFailed: 'The instance answered this update with an error, so it may not have finished. The cube\'s Facts and Last update show what it holds now.',
+  /** EXPERIENCE.md:604 */
+  analyticsCubeManagerPrompt1: 'Which cubes can be synchronized rather than rebuilt?',
+  /** EXPERIENCE.md:604 */
+  analyticsCubeManagerPrompt2: 'Which cubes depend on another cube?',
+  /** EXPERIENCE.md:604 */
+  analyticsCubeManagerPrompt3: 'When was each cube last built or updated?',
+  /** EXPERIENCE.md:604 */
+  analyticsCubeManagerEmptyAgent: 'Ask the agent why no cube is listed here.',
 } as const;
 
 /**

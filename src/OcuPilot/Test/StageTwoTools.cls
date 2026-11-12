@@ -134,6 +134,7 @@ XData Elsewhere
 <screen name="AnalyticsArchitectLink"/>
 <screen name="AnalyticsCubeDimensionsTab"/>
 <screen name="AnalyticsCubeList"/>
+<screen name="AnalyticsCubeManager"/>
 <screen name="AnalyticsCubeMeasuresTab"/>
 <screen name="AnalyticsCubeRelationshipsTab"/>
 <screen name="AnalyticsFolderItemList"/>

@@ -260,6 +260,9 @@ XData Coverage
 <screen name="InteropMessageTraceTab" class="OcuPilot.Test.InteropMessageDescriptor" method="TestTheTraceTabJoinsTheMessageGroup"/>
 <screen name="AnalyticsCubeList" class="OcuPilot.Test.AnalyticsDescriptor" method="TestTheSevenDeclarationsRegister" corpus="one declaration test pins all seven Story 20.11 screens in one loop"/>
 <screen name="AnalyticsCubeMeasuresTab" class="OcuPilot.Test.AnalyticsDescriptor" method="TestTheSevenDeclarationsRegister" corpus="one declaration test pins all seven Story 20.11 screens in one loop"/>
+<screen name="AnalyticsCubeManager" class="OcuPilot.Test.AnalyticsDescriptor" method="TestTheCubeManagerDeclaration"/>
+<tool name="analytics.cubemanager.build" class="OcuPilot.Test.AnalyticsCubeActions" method="TestTheAgentsBuildIsADestructiveCardNamingItsDependentsBeforeItConfirms"/>
+<tool name="analytics.cubemanager.synchronize" class="OcuPilot.Test.AnalyticsCubeActions" method="TestASynchronizeAppliesExactlyTheChangesForBothCallers"/>
 <screen name="AnalyticsCubeDimensionsTab" class="OcuPilot.Test.AnalyticsDescriptor" method="TestTheSevenDeclarationsRegister" corpus="one declaration test pins all seven Story 20.11 screens in one loop"/>
 <screen name="AnalyticsCubeRelationshipsTab" class="OcuPilot.Test.AnalyticsDescriptor" method="TestTheSevenDeclarationsRegister" corpus="one declaration test pins all seven Story 20.11 screens in one loop"/>
 <screen name="AnalyticsTermListList" class="OcuPilot.Test.AnalyticsDescriptor" method="TestTheSevenDeclarationsRegister" corpus="one declaration test pins all seven Story 20.11 screens in one loop"/>

@@ -30,6 +30,7 @@ XData Titles
 "allowedDirectoriesLabel": "Allowed directories",
 "analyticsAnalyzerLabel": "Analyzer",
 "analyticsArchitectLabel": "Architect",
+"analyticsCubeManagerLabel": "Cube manager",
 "analyticsCubesLabel": "Cubes",
 "analyticsFolderItemsLabel": "Folder items",
 "analyticsLogListLabel": "Analytics log",

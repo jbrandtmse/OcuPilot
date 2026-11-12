@@ -83,7 +83,9 @@ test('Story 20.11: the port declares its three pair sets and the endpoints the m
   assert.equal(parameter('PORTALPAIRS'), '%DeepSee_Portal:USE');
   assert.equal(parameter('TERMLISTPAIRS'), '%DeepSee_Portal:USE,%DeepSee_PortalEdit:USE');
   assert.equal(parameter('FOLDERPAIRS'), '%DeepSee_Portal:USE,%Development:USE');
-  assert.equal(parameter('ENDPOINTS'), 'Cubes,Measures,Dimensions,Relationships,TermLists,TermListEntries,FolderItems');
+  assert.equal(parameter('ENDPOINTS'), 'Cubes,Measures,Dimensions,Relationships,TermLists,TermListEntries,FolderItems,CubeManager');
+  assert.equal(parameter('MANAGERPAIRS'), '%DeepSee_Portal:USE,%DeepSee_Admin:USE');
+  assert.equal(parameter('TYPESTATE'), 'STATE');
   assert.equal(parameter('TYPELIST'), 'LIST');
 });
 
@@ -182,4 +184,103 @@ test('Story 20.33 (QA): the code that runs an MDX statement names nothing the st
       assert.ok(!word.test(codeOf(source, keepStrings)), `${file} holds no ${what}`);
     }
   }
+});
+
+/** The five refusals of the cube manager's updates (Story 20.34), each pinned to its `strings.ts` key. */
+const CUBE_SENTENCES = [
+  ['REASONCUBEBUSY', 'analyticsRefusalCubeBusy'],
+  ['REASONCUBENODSTIME', 'analyticsRefusalCubeNoDstime'],
+  ['REASONCUBENOTBUILT', 'analyticsRefusalCubeNotBuilt'],
+  ['REASONCUBEREADONLY', 'analyticsRefusalCubeReadonly'],
+  ['REASONCUBEFAILED', 'analyticsRefusalCubeFailed'],
+];
+
+const BUILD_TOOL = join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Tool', 'AnalyticsCubeBuild.cls');
+
+const SYNCHRONIZE_TOOL = join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Tool', 'AnalyticsCubeSynchronize.cls');
+
+const ACTION_TOOL = join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Tool', 'AnalyticsAction.cls');
+
+/** The value `parameter` holds in the class at `file`. */
+function classParameter(file, parameter) {
+  const match = new RegExp(`^Parameter ${parameter}(?: As \\w+)? = "([^"]*)";`, 'm').exec(readFileSync(file, 'utf8'));
+  assert.notEqual(match, null, `${file} declares ${parameter}`);
+  return match[1];
+}
+
+test('Story 20.34: each cube refusal is one sentence on both surfaces, published in Fixed strings', () => {
+  // Mutation (Rule 19): change one word of REASONCUBENOTBUILT in AnalyticsError.cls (or of analyticsRefusalCubeNotBuilt in strings.ts) -> this
+  // goes red naming both.
+  const experience = readFileSync(EXPERIENCE, 'utf8');
+  for (const [parameter, key] of CUBE_SENTENCES) {
+    const server = serverSentence(parameter);
+    assert.equal(server, stringValue(key), `${parameter} and ${key} are one published sentence`);
+    assert.ok(experience.includes(`"${server}"`), `${parameter}'s sentence is published in EXPERIENCE.md's Fixed strings`);
+    assert.ok(!server.toLowerCase().includes('agent'), `${parameter} names no caller: ${server}`);
+  }
+});
+
+test("Story 20.34: the two afterwords and consequence codes are one published sentence each on the tool, the strings table and Fixed strings", () => {
+  // Mutation (Rule 19): change AFTERWORD in AnalyticsCubeBuild.cls to "Rebuilt" -> this goes red naming the tool and the key.
+  const experience = readFileSync(EXPERIENCE, 'utf8');
+  const proposalView = readFileSync(join(REPO_ROOT, 'ui', 'src', 'app', 'core', 'proposal-view.ts'), 'utf8');
+  for (const [file, afterKey, code, constant, consequenceKey] of [
+    [BUILD_TOOL, 'analyticsCubeBuildAfterword', 'ANALYTICS.CUBE.BUILD', 'CONSEQUENCE_ANALYTICSCUBEBUILD', 'analyticsCubeBuildConsequence'],
+    [SYNCHRONIZE_TOOL, 'analyticsCubeSynchronizeAfterword', 'ANALYTICS.CUBE.SYNCHRONIZE', 'CONSEQUENCE_ANALYTICSCUBESYNCHRONIZE', 'analyticsCubeSynchronizeConsequence'],
+  ]) {
+    const afterword = classParameter(file, 'AFTERWORD');
+    assert.equal(afterword, stringValue(afterKey), `${file}: AFTERWORD and ${afterKey} are one published word`);
+    assert.ok(experience.includes(`"${afterword}"`), `${afterword} is published in EXPERIENCE.md's Fixed strings`);
+    assert.equal(classParameter(file, 'CONSEQUENCECODE'), code, `${file} names the consequence code`);
+    assert.ok(proposalView.includes(`${constant} = '${code}'`), `proposal-view.ts holds ${code}`);
+    assert.ok(experience.includes(`"${stringValue(consequenceKey)}"`), `${consequenceKey} is published in EXPERIENCE.md's Fixed strings`);
+  }
+  // The card rows the tool labels are strings the client already publishes, or the Cube manager's own.
+  const labels = readFileSync(ACTION_TOOL, 'utf8');
+  assert.ok(labels.includes('"Cube", "Facts", "Last build", "Last update", "Dependent cubes"'), 'the card rows are the five the story names');
+});
+
+test('Story 20.34: the three output lines are published in Fixed strings and built by the port from the same templates', () => {
+  // Mutation (Rule 19): respell "Facts updated in" in AnalyticsPort.SyncLines -> this goes red naming the template.
+  const experience = readFileSync(EXPERIENCE, 'utf8');
+  const port = readFileSync(PORT, 'utf8');
+  for (const [template, prefix] of [
+    ['Facts in <cube>: <n>', '"Facts in " _ tName _ ": "'],
+    ['Build errors in <cube>: <n>', '"Build errors in " _ tName _ ": "'],
+    ['Facts updated in <cube>: <n>', '"Facts updated in " _ tName _ ": "'],
+  ]) {
+    assert.ok(experience.includes(`"${template}"`), `${template} is published in EXPERIENCE.md`);
+    assert.ok(port.includes(prefix), `the port builds ${template} from ${prefix}`);
+    assert.equal(Object.values(loadStringsValues()).includes(template), false, `${template} is server-only: it is never a strings.ts value`);
+  }
+});
+
+/** Every value `strings.ts` holds, read once. */
+function loadStringsValues() {
+  const values = {};
+  for (const match of readFileSync(STRINGS_SOURCE, 'utf8').matchAll(/\b(\w+):\s*\n?\s*'((?:[^'\\]|\\.)*)'/g)) values[match[1]] = match[2];
+  return values;
+}
+
+test("Story 20.34: the code that builds and synchronizes names nothing the story's Never list forbids", () => {
+  // Mutation (Rule 19): add a `Job` of the build, a `%KillCube` call or a read of `^OBJ.DSTIME` to AnalyticsPort.PerformCube, or a `/api/deepsee`
+  // call to either tool -> this goes red naming the file and the word; a mention in a `///` doc line or in a string is not code.
+  const rules = [
+    { word: /\/api\/deepsee|%Api\.DeepSee|%DeepSee\.REST/i, keepStrings: true, what: 'call of the vendor REST API' },
+    { word: /%KillCube|%FixBuildErrors|%SetAgentCount|%escalateToBuild|%SetAgent/i, keepStrings: false, what: 'vendor method the story forbids' },
+    { word: /\bJOB\b/i, keepStrings: false, what: 'background job' },
+    { word: /\^OBJ\.DSTIME|\^IRIS\.Temp\.DeepSee/i, keepStrings: true, what: 'read or write of the vendor\'s tracking nodes' },
+  ];
+  for (const file of [PORT, BUILD_TOOL, SYNCHRONIZE_TOOL, ACTION_TOOL]) {
+    const source = readFileSync(file, 'utf8');
+    for (const { word, keepStrings, what } of rules) {
+      assert.ok(!word.test(codeOf(source, keepStrings)), `${file} holds no ${what}`);
+    }
+  }
+  // The two vendor calls are exactly the ones the story names.
+  const code = codeOf(readFileSync(PORT, 'utf8'), true);
+  assert.ok(code.includes('%BuildCube(pCube, 1, 0, 0, 0, 0, .tStats)'), 'the build call is %BuildCube(cube, 1, 0, 0, 0, 0, .stats)');
+  assert.ok(code.includes('%SynchronizeCube(pCube, 0, .tFacts)'), 'the synchronize call is %SynchronizeCube(cube, 0, .facts)');
+  const calls = codeOf(readFileSync(PORT, 'utf8'), false);
+  assert.equal((calls.match(/##class\(%DeepSee\.Utils\)\.%BuildCube\(/g) ?? []).length, 1, 'and %BuildCube is called once outside a string');
 });

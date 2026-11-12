@@ -251,6 +251,16 @@ Method TestEveryLiveToolRequiresItsScreensPairs()
             For tWritePair = $ListBuild("%Ens_ProductionConfig", "WRITE"), $ListBuild(tGlobalResource, "WRITE"), $ListBuild(tRoutineResource, "WRITE") {
                 If '$ListFind(tExpected, tWritePair) Set tExpected = tExpected _ $ListBuild(tWritePair)
             }
+        } ElseIf $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.AnalyticsAction") {
+            ; Story 20.34: the cube build and synchronize declare WRITE on the database ^DeepSee.Fact maps to and READ on the routines
+            ; database of the request's namespace, here this one's, after their screen's pairs, each once (AD-8, AD-65).
+            Set tExpected = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(tTool.class, "DESCRIPTORCLASS"), .tExpectedResolved)
+            Do $$$AssertTrue($ListLength(tExpected) > 0, tTool.name _ ": its screen declares pairs")
+            Do $$$AssertTrue(##class(OcuPilot.Port.AnalyticsPort).DestinationDatabase($Namespace, ##class(OcuPilot.Port.AnalyticsPort).#FACTGLOBAL, .tFactResource, .tReadOnly, .tMounted), tTool.name _ ": this namespace's fact database resolves")
+            Do $$$AssertTrue(##class(OcuPilot.Kernel.Shell.Namespaces).RoutineDatabase($Namespace, .tRoutineResource, .tReadOnly), tTool.name _ ": this namespace's routines database resolves")
+            For tOwnPair = $ListBuild(tFactResource, "WRITE"), $ListBuild(tRoutineResource, "READ") {
+                If '$ListFind(tExpected, tOwnPair) Set tExpected = tExpected _ $ListBuild(tOwnPair)
+            }
         } ElseIf $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.InteropMessageAction") {
             ; Story 20.31: the resend declares %Ens_MessageResend:USE and the edit and resend %Ens_MessageContent:USE,
             ; %Ens_MessageResend:USE and %Ens_MessageEditResend:USE, then WRITE on the globals database of the request's
