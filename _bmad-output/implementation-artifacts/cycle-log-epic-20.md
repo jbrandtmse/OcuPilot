@@ -1238,3 +1238,9 @@
 2026-10-23T16:57:43Z	Epic 20	throwaway_removed	run=20261020T0940Z-20,23 container=ocupilot-b-ci cmd=ci-throwaway.sh_down(--dir_/Users/jbrandt/.ocupilot-throwaways/ocupilot-b-ci_--project_ocupilot-b-ci) started_by=this_run(up_12:07Z,rebuilt_~14:30Z) reason=hold_after_20.38 dev_instance=ocupilot-slot-b_untouched
 2026-10-23T16:57:43Z	Epic 20	hold_saved	story=none stage=none patch=none tree=clean note=20.38_committed_and_green(21ad296d,run_39986019621);no_stage_in_flight;no_story_opened_after_it
 2026-10-23T16:57:43Z	Epic 20	hold_complete	shas=origin_code=21ad296d(20.38,green_39986019621,reported_to_main),55575210(integrate_forward_a817d034,green_39949984812),bookkeeping_head=this_commit throwaway=ocupilot-b-ci_torn_down dev_instance=untouched inbox=U-14(veto) resume=<state>/resume/epic-20.md(next=20.34;20.39_after_23.12)
+2026-11-12T13:48:30Z	Epic 20	runner_unattended_start	run=20261020T0940Z-20,23 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03 doctrine=3d11cec98d91c1d4d9c225fe3b265e1af418abe4 dispatch=2026-11-12_resume_after_owner_pause
+2026-11-12T13:48:30Z	Epic 20	lead_model_gate	model=claude-opus-5-5 action=proceed
+2026-11-12T13:48:30Z	Epic 20	runtime_gate	bmad=6.12.1 uv=0.12.9 ci=gh
+2026-11-12T13:48:30Z	Epic 20	launch_env	depth=4 watchdog=0(unset) bash_max_ms=default
+2026-11-12T13:48:30Z	Epic 20	slot_binding_verified	slot=b dev_container=ocupilot-slot-b docker_port=52775 mcp_profile=ocupilot-slot-b baseUrl=http://localhost:52775 bootstrap_check=ok inbox_verify=ok
+2026-11-12T13:48:30Z	Epic 20	ci_resolved	story=20.38 sha=21ad296d runs=39986019621 result=success failed=none via=none resolved_at=resume note=already_resolved_2026-10-23;merged_into_feature
