@@ -50,6 +50,7 @@ XData Declaration
   "classicPage": "%CSP.UI.Portal.ECPAppServers",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "authorized or pending SSL/TLS client",
     "source": {"port": "admin", "endpoint": "ECP.AppServerSSLConnection", "type": "LIST"},
     "fields": ["SSLComputerName", "ClientIP", "Status"],
     "filter": ["SSLComputerName", "ClientIP", "Status"],

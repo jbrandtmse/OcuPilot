@@ -1,0 +1,111 @@
+{
+  "story": "23.12",
+  "file": "measure-before.json",
+  "startedAt": "2026-10-23T12:23:03.428Z",
+  "container": "ocupilot-ci",
+  "model": "claude-haiku-5-5",
+  "message": "Which tasks are suspended?",
+  "contextRow": {
+    "Name": "Switch Journal",
+    "Type": "System",
+    "Namespace": "%SYS",
+    "Description": "Switches the journal file at midnight every day",
+    "Id": 1,
+    "LastFinished": "",
+    "NextScheduled": "2026-10-24 00:00:00",
+    "Suspended": false
+  },
+  "method": {
+    "turn": "POST /api/ocupilot/conversation, then POST /api/ocupilot/turn {message, conversationId[, context]} as _SYSTEM, polled on /turn/:id/progress until terminal",
+    "stub": "OcuPilot.Test.TurnWireFixture.EnsureDefinition(tag) (turnprobe, default marker), OcuPilot.Test.TurnProvider.Plain(tag), first call read with OcuPilot.Test.TurnProvider.Recorded(tag, 1, \"system\"|\"messages\"|\"tools\")",
+    "render": "OcuPilot.Kernel.Provider.{Anthropic,OpenAI,Gemini}.CallMessages(%Net.HttpRequest, .values, .messages, .tools, system) on a fresh adapter (Streaming 0), values model=claude-haiku-5-5 maxTokens=32000; messages and tools rebuilt from the recorded call (role/content or blocks with the tail cache_control removed; name/description/inputSchema, start = not defer_loading, scoped when any tool is deferred). OpenAI goes through MessageAdapter.CanonicalToOpenAi and ToolDefAdapter.ToOpenAi, Gemini through MessageAdapter.CanonicalToGemini and ToolDefAdapter.ToGemini",
+    "chars": "bodyChars = $Length of the UTF-8-decoded entity body; bodyBytes = its UTF-8 bytes; toolsChars = $Length(body.tools.%ToJSON()); tools = Anthropic and OpenAI tools.%Size(), Gemini tools[0].functionDeclarations.%Size()",
+    "countTokens": "POST https://api.anthropic.com/v1/messages/count_tokens, anthropic-version 2023-06-01, {model: claude-haiku-5-5, system, messages, tools} of the rendered Anthropic body (max_tokens dropped)",
+    "proxies": "listing = $ClassMethod(OcuPilot.Kernel.Agent.Loop.DispatchClass(), \"Advertise\", .tools); descriptionChars = sum of $Length(tools(n, \"description\")); prompt = $Length(OcuPilot.Kernel.Agent.Prompt.Builtin())"
+  },
+  "cases": {
+    "N": {
+      "turnState": "completed",
+      "recordedCall": 1,
+      "messages": 1,
+      "tools": 396,
+      "deferredTools": 391,
+      "startingSetTools": 5,
+      "dialects": {
+        "anthropic": {
+          "bodyChars": 576572,
+          "bodyBytes": 576572,
+          "toolsChars": 572188,
+          "tools": 396
+        },
+        "openai": {
+          "bodyChars": 14468,
+          "bodyBytes": 14468,
+          "toolsChars": 10054,
+          "tools": 5
+        },
+        "gemini": {
+          "bodyChars": 14212,
+          "bodyBytes": 14212,
+          "toolsChars": 9788,
+          "tools": 5
+        }
+      },
+      "anthropicRenderEqualsRecorded": {
+        "system": true,
+        "messages": true,
+        "tools": true
+      },
+      "countTokens": 5232
+    },
+    "B": {
+      "turnState": "completed",
+      "recordedCall": 1,
+      "messages": 3,
+      "tools": 396,
+      "deferredTools": 380,
+      "startingSetTools": 16,
+      "dialects": {
+        "anthropic": {
+          "bodyChars": 577595,
+          "bodyBytes": 577595,
+          "toolsChars": 571957,
+          "tools": 396
+        },
+        "openai": {
+          "bodyChars": 33791,
+          "bodyBytes": 33791,
+          "toolsChars": 28154,
+          "tools": 16
+        },
+        "gemini": {
+          "bodyChars": 32873,
+          "bodyBytes": 32873,
+          "toolsChars": 27228,
+          "tools": 16
+        }
+      },
+      "anthropicRenderEqualsRecorded": {
+        "system": true,
+        "messages": true,
+        "tools": true
+      },
+      "countTokens": 12153
+    }
+  },
+  "proxies": {
+    "advertisedTools": 396,
+    "descriptionChars": 125314,
+    "readTools": 163,
+    "readToolDescriptionChars": 17048,
+    "promptChars": 4248,
+    "tasksScheduleReadDescription": "Read the rows the tasks.schedule screen lists, bounded and with secret fields removed."
+  },
+  "teardown": {
+    "sweepLeft": "",
+    "definitionRemoved": true,
+    "stubNodesLeft": "0",
+    "renderDirLeft": "0"
+  },
+  "endedAt": "2026-10-23T12:23:11.495Z"
+}

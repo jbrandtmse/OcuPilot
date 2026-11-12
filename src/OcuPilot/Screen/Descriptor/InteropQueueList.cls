@@ -38,6 +38,7 @@ XData Declaration
   "classicPage": "EnsPortal.Queues",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "interoperability queue",
     "source": {"port": "interop", "endpoint": "Queues", "type": "LIST"},
     "fields": ["Name", "Count", "Active", "Created"],
     "filter": ["Name"],

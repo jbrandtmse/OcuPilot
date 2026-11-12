@@ -13,6 +13,10 @@
 /// and <method>View</method> passes those values to the same executor the route calls -- so the
 /// model sends the search the screen sends, and neither can send a parameter the descriptor does
 /// not declare.</p>
+/// <p><b>The description says what the list holds</b> (<method>Description</method>): the screen's title
+/// and tool identifier, what one row is, the read's <code>label</code> where it declares one, the fields
+/// the read answers, and its <code>note</code> last. It is built from compile-time declarations alone, so
+/// the listing stays deterministic (AD-5).</p>
 Class OcuPilot.Screen.Tool.Read Extends OcuPilot.Screen.Tool.Base [ Abstract ]
 {
 
@@ -21,7 +25,15 @@ Parameter KIND = "read";
 /// <p>The verb a read tool's name ends in.</p>
 Parameter VERB = "read";
 
-Parameter DESCRIPTION = "Read the rows the named screen lists, bounded and with secret fields removed.";
+/// <p>What every read tool's description says, in outline: it reads the rows of one screen, bounded and
+/// with secret fields removed. <method>Description</method> composes the text each tool is advertised
+/// with, naming that screen's title, what one row is and the fields it answers
+/// (<method>Compose</method>).</p>
+Parameter DESCRIPTION = "Read the rows of one screen, bounded and with secret fields removed.";
+
+/// <p>The generated class whose <code>Titles</code> XData maps each descriptor <code>labelKey</code> to
+/// the string <file>ui/src/app/core/strings.ts</file> holds for it.</p>
+Parameter TITLESCLASS = "OcuPilot.Screen.Titles";
 
 /// <p>The executor <method>View</method> reads through. Overridable so a fixture can reach
 /// <class>OcuPilot.Test.PortFixture</class>; production never overrides it.</p>
@@ -44,16 +56,70 @@ ClassMethod NameFor(pDescriptor As %String) As %String
     Quit $ClassMethod(pDescriptor, "ToolIdentifier") _ "." _ ..#VERB
 }
 
-/// <p>The description the model is given: <parameter>DESCRIPTION</parameter> with the descriptor's
-/// <code>toolIdentifier</code> in place of "the named screen", so each read tool says which screen it
-/// reads, followed by the <code>text</code> of the read's <code>note</code> where it declares one
-/// (AD-36), the sentence its screen shows above the rows.</p>
+/// <p>The title of <var>pDescriptor</var>'s screen: the string its <code>labelKey</code> names in
+/// <file>ui/src/app/core/strings.ts</file>, read from the <code>Titles</code> XData of
+/// <parameter>TITLESCLASS</parameter> (AD-5). <code>""</code> for a key the XData lacks, a descriptor with
+/// no readable <code>labelKey</code>, or an XData that cannot be read.</p>
+ClassMethod Title(pDescriptor As %String = "") As %String
+{
+    Set tTitle = ""
+    Try {
+        Set tKey = $ClassMethod(pDescriptor, "LabelKey")
+        Set tXData = ##class(%Dictionary.XDataDefinition).IDKEYOpen(..#TITLESCLASS, "Titles", , .tOpenSC)
+        If '$IsObject(tXData) Quit
+        Do tXData.Data.Rewind()
+        Set tTitles = ##class(%DynamicAbstractObject).%FromJSON(tXData.Data)
+        Set tXData = ""
+        If $IsObject(tTitles) && (tKey '= "") && (tTitles.%GetTypeOf(tKey) = "string") Set tTitle = tTitles.%Get(tKey)
+    } Catch {
+        Set tTitle = ""
+    }
+    Quit tTitle
+}
+
+/// <p>The description of a tool that reads one screen's rows, built from declarations only (AD-5):
+/// "Read the rows of the <var>pTitle</var> screen (<var>pIdentifier</var>)", with no title
+/// "Read the rows of the <var>pIdentifier</var> screen"; then ", one <var>pRow</var> per row" when a row
+/// phrase is declared; then ", bounded and with secret fields removed."; then <var>pLabel</var> when
+/// declared; then "Fields:" and <var>pFields</var> joined by commas, when any; and last
+/// <var>pNote</var> when declared. The label comes before the fields so that a cut at the end of a long
+/// description reaches the fields before the label; the note is last (AD-36).</p>
+ClassMethod Compose(pTitle As %String = "", pIdentifier As %String = "", pRow As %String = "", pFields As %DynamicArray = "", pLabel As %String = "", pNote As %String = "") As %String
+{
+    Set tText = "Read the rows of the " _ $Select(pTitle '= "": pTitle _ " screen (" _ pIdentifier _ ")", 1: pIdentifier _ " screen")
+    If pRow '= "" Set tText = tText _ ", one " _ pRow _ " per row"
+    Set tText = tText _ ", bounded and with secret fields removed."
+    If pLabel '= "" Set tText = tText _ " " _ pLabel
+    Set tFields = ""
+    If $IsObject(pFields) {
+        Set tIterator = pFields.%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tField) {
+            Set tFields = tFields _ $Select(tFields = "": "", 1: ", ") _ tField
+        }
+    }
+    If tFields '= "" Set tText = tText _ " Fields: " _ tFields _ "."
+    If pNote '= "" Set tText = tText _ " " _ pNote
+    Quit tText
+}
+
+/// <p>The description the model is given for <var>pDescriptor</var>'s read tool
+/// (<method>Compose</method>): the screen's <method>Title</method> and <code>toolIdentifier</code>, the
+/// read's <code>row</code> phrase, its <code>label</code>, its answered fields
+/// (<method>OcuPilot.Screen.Read.AnsweredFields</method>, the fields the executor projects, secret fields
+/// removed), and its <code>note</code>'s <code>text</code> last, the sentence its screen shows above the
+/// rows (AD-36).</p>
 ClassMethod Description(pDescriptor As %String = "") As %String
 {
-    Set tDescription = $Replace(..#DESCRIPTION, "the named screen", "the " _ $ClassMethod(pDescriptor, "ToolIdentifier") _ " screen")
     Set tRead = $ClassMethod(pDescriptor, "Read")
-    If $IsObject(tRead) && (tRead.%GetTypeOf("note") = "object") Set tDescription = tDescription _ " " _ tRead.%Get("note").%Get("text")
-    Quit tDescription
+    Set tRow = ""
+    Set tLabel = ""
+    Set tNote = ""
+    If $IsObject(tRead) {
+        If tRead.%GetTypeOf("row") = "string" Set tRow = tRead.%Get("row")
+        If tRead.%GetTypeOf("label") = "string" Set tLabel = tRead.%Get("label")
+        If tRead.%GetTypeOf("note") = "object" Set tNote = tRead.%Get("note").%Get("text")
+    }
+    Quit ..Compose(..Title(pDescriptor), $ClassMethod(pDescriptor, "ToolIdentifier"), tRow, ##class(OcuPilot.Screen.Read).AnsweredFields(pDescriptor), tLabel, tNote)
 }
 
 /// <p>What <var>pDescriptor</var> requires of the caller:

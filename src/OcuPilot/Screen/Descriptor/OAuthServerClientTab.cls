@@ -56,6 +56,7 @@ XData Declaration
   "classicPage": "%CSP.UI.Portal.OAuth2.Server.ClientList",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "OAuth 2.0 server client description",
     "source": {"port": "admin", "endpoint": "Security.OAuth2.ServerClients", "type": "LIST"},
     "fields": ["Name", "ClientId", "ClientType", "RedirectURL", "Description"],
     "filter": ["Name", "ClientId", "ClientType", "RedirectURL", "Description"],

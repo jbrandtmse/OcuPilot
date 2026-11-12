@@ -117,6 +117,8 @@ XData Declaration
   "classicPage": "%CSP.UI.Portal.Processes",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "process",
+    "label": "Every IRIS process on the instance, daemons included, with its namespace (Nspace) and State; business process classes are in interop.processes.",
     "source": {"port": "admin", "endpoint": "Process", "type": "LIST"},
     "fields": ["Pid", "Username", "Nspace", "Routine", "State", "Commands", "Globals", "CanReceiveBroadcast"],
     "filter": ["Pid", "Username", "Nspace", "Routine", "State"],

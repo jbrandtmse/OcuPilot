@@ -51,6 +51,7 @@ XData Declaration
   "classicPage": "%CSP.UI.Portal.OAuth2.Server.Configuration",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "set of authorization server settings",
     "source": {"port": "admin", "endpoint": "Security.OAuth2.Server", "type": "GET"},
     "fields": ["IssuerEndpoint", "Metadata.scopes_supported", "Metadata.grant_types_supported", "SigningAlgorithm", "EncryptionAlgorithm", "KeyAlgorithm", "ServerCredentials"],
     "filter": ["IssuerEndpoint", "Metadata.scopes_supported", "Metadata.grant_types_supported", "SigningAlgorithm", "EncryptionAlgorithm", "KeyAlgorithm", "ServerCredentials"],

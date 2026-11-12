@@ -46,6 +46,7 @@ XData Declaration
   "classicPage": "%CSP.UI.Portal.SQL.Home",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "cached query of one table",
     "source": {"port": "atelier", "endpoint": "Catalog.CachedQueries", "type": "LIST"},
     "fields": ["CachedQuery", "Query", "Created", "Source", "QueryType", "Features"],
     "filter": ["CachedQuery", "Query", "QueryType"],

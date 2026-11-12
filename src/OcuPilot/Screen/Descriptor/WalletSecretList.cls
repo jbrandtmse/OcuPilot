@@ -63,6 +63,7 @@ XData Declaration
   "classicPage": "",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "secret of one wallet collection",
     "source": {"port": "admin", "endpoint": "Wallet.Secret", "type": "LIST"},
     "fields": ["Name", "Type"],
     "filter": ["Name", "Type"],

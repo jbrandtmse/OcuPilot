@@ -48,6 +48,7 @@ XData Declaration
   "classicPage": "",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "macro definition",
     "source": {"port": "atelier", "endpoint": "Macro", "type": "LIST"},
     "fields": ["Macro", "Document", "Line", "Definition"],
     "filter": ["Macro", "Document", "Definition"],

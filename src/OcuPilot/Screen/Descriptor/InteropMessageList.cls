@@ -50,6 +50,8 @@ XData Declaration
   "classicPage": "EnsPortal.MessageViewer",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "interoperability message header",
+    "label": "Interoperability message headers in this namespace, the last 24 hours unless asked; the console log messages.log is logs.messages.",
     "source": {"port": "interop", "endpoint": "Messages", "type": "LIST"},
     "fields": ["ID", "TimeCreated", "Status", "Type", "Source", "Target", "BodyClass", "SessionId", "Error"],
     "filter": ["Status", "Type", "Source", "Target", "BodyClass", "SessionId"],

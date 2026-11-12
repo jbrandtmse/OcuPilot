@@ -80,6 +80,7 @@ XData Declaration
   "classicPage": "%CSP.UI.Portal.ProcessDetails",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "set of one process's details",
     "source": {
       "port": "admin",
       "endpoint": "Process",

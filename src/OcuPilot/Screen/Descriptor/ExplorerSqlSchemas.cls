@@ -42,6 +42,7 @@ XData Declaration
   "classicPage": "%CSP.UI.Portal.SQL.Home",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "SQL schema",
     "source": {"port": "atelier", "endpoint": "Catalog.Schemas", "type": "LIST"},
     "fields": ["Schema", "Tables", "Views", "Procedures"],
     "filter": ["Schema"],

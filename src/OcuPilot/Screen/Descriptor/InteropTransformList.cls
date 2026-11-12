@@ -46,6 +46,7 @@ XData Declaration
   "classicPage": "EnsPortal.DataTransformations",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "data transformation",
     "source": {"port": "interop", "endpoint": "Transforms", "type": "LIST"},
     "fields": ["Name", "Modified", "Coded"],
     "filter": ["Name"],

@@ -42,6 +42,8 @@ XData Declaration
   "classicPage": "EnsPortal.Jobs",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "production job",
+    "label": "Jobs of this namespace's running production, dead ones included (Dead); the instance's processes are in osmgmt.processes.",
     "source": {"port": "interop", "endpoint": "Jobs", "type": "LIST"},
     "fields": ["Job", "Host", "Status", "AdapterState", "LastActivity", "Retry", "ActiveMessage", "Dead"],
     "filter": ["Job", "Host", "Status", "ActiveMessage"],

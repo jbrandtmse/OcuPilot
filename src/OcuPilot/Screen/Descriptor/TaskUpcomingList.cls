@@ -57,6 +57,8 @@ XData Declaration
   "classicPage": "%CSP.UI.Portal.TasksUpcoming",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "scheduled run of a task",
+    "label": "Each run due within a window ahead, 24 hours unless asked, so a task can appear more than once; past runs are in tasks.history.",
     "source": {"port": "admin", "endpoint": "Task.CRUD", "type": "UPCOMING"},
     "fields": ["Id", "Name", "Namespace", "Datetime", "Suspended"],
     "filter": ["Name", "Namespace"],

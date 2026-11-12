@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 /**
  * Generates `ui/src/app/core/screens.generated.ts` -- the client's mirror of every screen
- * descriptor and of the area vocabulary (AD-5).
+ * descriptor and of the area vocabulary (AD-5) -- and `src/OcuPilot/Screen/Titles.cls`, each
+ * descriptor `labelKey` with its `ui/src/app/core/strings.ts` string, the title a read tool's
+ * description gives its screen.
  *
  * **One source, two readers.** The server reads each `XData` block through
  * `%Dictionary.XDataDefinition`; this reads the same blocks off disk. The mirror is therefore
@@ -33,12 +35,14 @@
  * of `built: true` screens are emitted as `BuiltArchetypeKey`, which `ui/src/app/shell/
  * screen-outlet.ts` requires a page for, so a built screen with no page fails `ng build`.
  *
- * Usage: `node tools/screen-mirror.mjs` writes the mirror; `--check` only reports drift.
+ * Usage: `node tools/screen-mirror.mjs` writes the mirror and `Titles.cls`; `--check` only reports
+ * drift in either.
  */
 
 import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
 
 import { isCredentialName } from './credential-pattern.mjs';
+import { loadStrings } from './strings.mjs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, join } from 'node:path';
 
@@ -52,6 +56,7 @@ export const ENTITY_REF_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Kernel', 'E
 export const SCOPE_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Kernel', 'Scope.cls');
 export const NAMESPACE_FEATURES_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Kernel', 'Shell', 'NamespaceFeatures.cls');
 export const MIRROR_PATH = join(REPO_ROOT, 'ui', 'src', 'app', 'core', 'screens.generated.ts');
+export const TITLES_PATH = join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Titles.cls');
 export const TOOL_FIELDS_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Tool', 'ToolFields.cls');
 export const SCREEN_REGISTRY_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Registry.cls');
 export const WORKFLOW_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Kernel', 'Agent', 'Workflow.cls');
@@ -1346,6 +1351,29 @@ function readNoteProblem(read) {
   return null;
 }
 
+/** The longest `read.row` phrase, and the longest `read.label` sentence, in characters. */
+export const READ_ROW_MAX_LENGTH = 40;
+export const READ_LABEL_MAX_LENGTH = 240;
+
+/**
+ * What is wrong with a read's `row` or `label`, or `null` (AD-36). Both are optional and only the
+ * read tool's description carries them: `row` is the phrase for one row, `label` a sentence or two on
+ * what the list holds and does not hold. Absent or `null` declares none; otherwise each is a non-empty
+ * string, `row` of at most `READ_ROW_MAX_LENGTH` characters and `label` of at most
+ * `READ_LABEL_MAX_LENGTH`. `OcuPilot.Screen.Registry.ReadRowLabelProblem` returns the same sentences,
+ * and `OcuPilot.Test.ReadSourceCorpus` is the corpus both engines run.
+ */
+function readRowLabelProblem(read) {
+  for (const [key, max] of [['row', READ_ROW_MAX_LENGTH], ['label', READ_LABEL_MAX_LENGTH]]) {
+    const value = read[key];
+    if (value === undefined || value === null) continue;
+    if (typeof value !== 'string' || value === '' || value.length > max) {
+      return `read.${key} is not a non-empty string of at most ${max} characters (AD-36)`;
+    }
+  }
+  return null;
+}
+
 /**
  * What is wrong with a declaration's `read`, or `null` when nothing is (AD-36).
  *
@@ -1383,7 +1411,7 @@ export function readProblem(declaration) {
     return null;
   }
   if (typeof read !== 'object' || Array.isArray(read)) return 'read is not an object (AD-36)';
-  const readKeysFault = unknownKeyProblem('read', read, ['source', 'fields', 'filter', 'sort', 'paging', 'criteria', 'note']);
+  const readKeysFault = unknownKeyProblem('read', read, ['source', 'fields', 'filter', 'sort', 'paging', 'criteria', 'note', 'row', 'label']);
   if (readKeysFault !== null) return readKeysFault;
   const source = read.source;
   if (source === null || typeof source !== 'object' || Array.isArray(source)) {
@@ -1747,6 +1775,8 @@ export function readProblem(declaration) {
   if (read.paging !== 'cap') return `read.paging '${read.paging}' is not 'cap'`;
   const noteFault = readNoteProblem(read);
   if (noteFault !== null) return noteFault;
+  const rowLabelFault = readRowLabelProblem(read);
+  if (rowLabelFault !== null) return rowLabelFault;
   if (typeof declaration.toolIdentifier !== 'string' || !READ_TOOL_IDENTIFIER_RE.test(declaration.toolIdentifier)) {
     return (
       `toolIdentifier '${declaration.toolIdentifier}' declares a read and is not <area>.<screen> in ` +
@@ -3841,6 +3871,10 @@ export interface ReadDeclaration {
   readonly criteria?: ReadCriteria | null;
   /** One sentence about the rows, shown above the table and ending the read tool's description. */
   readonly note?: { readonly key: string; readonly text: string } | null;
+  /** The phrase for one row, read only by the read tool's description; no page renders it. */
+  readonly row?: string | null;
+  /** A sentence or two on what the list holds and does not hold, read only by the read tool's description; no page renders it. */
+  readonly label?: string | null;
 }
 
 /** Where a banner's value comes from: one admin API GET (AD-2). */
@@ -4070,6 +4104,66 @@ export function readCheckedInMirror() {
   return readFileSync(MIRROR_PATH, 'utf8');
 }
 
+const TITLES_HEADER = `/// <p>GENERATED FILE -- DO NOT EDIT. Every screen descriptor's <code>labelKey</code> with the string
+/// it names in <file>ui/src/app/core/strings.ts</file>: the title a read tool's description gives its
+/// screen (AD-5, AD-36). Written by <file>ui/tools/screen-mirror.mjs</file>; edit the string or the
+/// descriptor and regenerate.</p>
+/// <p>Regenerate: <code>cd ui &amp;&amp; node tools/screen-mirror.mjs</code>. Drift check: the same
+/// command with <code>--check</code>, which <code>prebuild</code> runs.</p>
+`;
+
+/** A JSON string with every non-ASCII character written as a `\uXXXX` escape (Rule 14). */
+function asciiJson(value) {
+  return JSON.stringify(value).replace(/[\u0080-\uffff]/g, (ch) => `\\u${ch.charCodeAt(0).toString(16).padStart(4, '0')}`);
+}
+
+/**
+ * The source of `Titles.cls` for `screens`: each descriptor `labelKey` mapped to its `strings` value,
+ * keys sorted. A key `strings` lacks throws naming the descriptor, so a title is never emitted empty.
+ */
+export function buildTitles(screens, strings) {
+  const titles = {};
+  for (const screen of screens) {
+    const key = screen.declaration.labelKey;
+    if (typeof key !== 'string' || typeof strings[key] !== 'string') {
+      throw new Error(
+        `${screen.className}: labelKey '${key}' names no string in ui/src/app/core/strings.ts, ` +
+          `and a read tool's description gives its screen that string as its title`
+      );
+    }
+    titles[key] = strings[key];
+  }
+  const keys = Object.keys(titles).sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+  const body = keys.map((key) => `${asciiJson(key)}: ${asciiJson(titles[key])}`).join(',\n');
+  return `${TITLES_HEADER}Class OcuPilot.Screen.Titles Extends %RegisteredObject
+{
+
+XData Titles
+{
+{
+${body}
+}
+}
+
+}
+`;
+}
+
+/** `Titles.cls` as this repository's sources produce it right now. */
+export function generateTitles() {
+  return buildTitles(readSources().screens, loadStrings());
+}
+
+/** `Titles.cls` as checked in at `TITLES_PATH`, or `null` when there is none. */
+export function readCheckedInTitles() {
+  try {
+    return readFileSync(TITLES_PATH, 'utf8');
+  } catch (error) {
+    if (error.code === 'ENOENT') return null;
+    throw error;
+  }
+}
+
 /**
  * What this run actually read, as a one-line census.
  *
@@ -4087,6 +4181,7 @@ function census() {
 
 function main() {
   const expected = generate();
+  const expectedTitles = generateTitles();
   const size = census();
   if (process.argv.includes('--check')) {
     if (readCheckedInMirror() !== expected) {
@@ -4094,11 +4189,17 @@ function main() {
       process.exit(1);
       return;
     }
+    if (readCheckedInTitles() !== expectedTitles) {
+      console.error('screen-mirror: src/OcuPilot/Screen/Titles.cls is stale -- run node tools/screen-mirror.mjs');
+      process.exit(1);
+      return;
+    }
     console.log(`screen-mirror: up to date; mirrored ${size}.`);
     return;
   }
   writeFileSync(MIRROR_PATH, expected);
-  console.log(`screen-mirror: wrote ${MIRROR_PATH} from ${size}`);
+  writeFileSync(TITLES_PATH, expectedTitles);
+  console.log(`screen-mirror: wrote ${MIRROR_PATH} and ${TITLES_PATH} from ${size}`);
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

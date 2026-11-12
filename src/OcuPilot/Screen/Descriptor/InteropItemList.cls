@@ -55,6 +55,7 @@ XData Declaration
   "classicPage": "EnsPortal.ProductionConfig",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "production item",
     "source": {"port": "interop", "endpoint": "Items", "type": "LIST"},
     "fields": ["Production", "Name", "ClassName", "Type", "Enabled", "EnabledSource", "PoolSize", "Category", "Comment"],
     "filter": ["Name", "ClassName", "Type"],

@@ -46,6 +46,7 @@ XData Declaration
   "classicPage": "%CSP.UI.Portal.Applications.DocDBList",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "Doc DB application",
     "source": {"port": "admin", "endpoint": "DocDB", "type": "LIST"},
     "fields": ["Name", "Namespace", "Enabled", "Resource", "Description"],
     "filter": ["Name", "Namespace", "Resource", "Description"],

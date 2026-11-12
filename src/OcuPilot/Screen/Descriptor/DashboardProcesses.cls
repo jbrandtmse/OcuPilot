@@ -40,6 +40,8 @@ XData Declaration
   "classicPage": "%cspapp.op.utildashboard",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "busy process",
+    "label": "The processes running the most commands, as the Dashboard counts them; every process is in osmgmt.processes.",
     "source": {"port": "admin", "endpoint": "Monitor", "type": "BUSYPROCESSES", "rows": "BusyProcesses"},
     "fields": ["Process", "Commands"],
     "filter": ["Process"],

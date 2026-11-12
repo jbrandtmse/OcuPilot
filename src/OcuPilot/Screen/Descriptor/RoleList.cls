@@ -67,6 +67,7 @@ XData Declaration
   "classicPage": "%CSP.UI.Portal.Roles",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "role",
     "source": {"port": "admin", "endpoint": "Security.Role", "type": "LIST"},
     "fields": ["Name", "Description", "CreatedBy", "EscalationOnly"],
     "filter": ["Name", "Description", "CreatedBy"],

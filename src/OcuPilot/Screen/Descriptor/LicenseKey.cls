@@ -48,6 +48,7 @@ XData Declaration
   "classicPage": "%CSP.UI.Portal.License.Key",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "set of license key details",
     "source": {"port": "admin", "endpoint": "License.Key", "type": "GET"},
     "fields": ["LicenseCapacity", "CustomerName", "OrderNumber", "AuthorizationKey", "Product", "LicenseType", "Server", "Platform", "LicenseUnits", "CoresLicensed", "CoresEnforced", "ExpirationDate", "ExtendedFeaturesList", "AuthorizedApplications"],
     "filter": ["CustomerName"],

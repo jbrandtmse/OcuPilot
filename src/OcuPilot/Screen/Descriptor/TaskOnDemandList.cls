@@ -64,6 +64,8 @@ XData Declaration
   "classicPage": "%CSP.UI.Portal.TasksOnDemand",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "task that can be run now",
+    "label": "Tasks a person can run now, with no suspended state and no run results; those are in tasks.schedule and tasks.history.",
     "source": {"port": "admin", "endpoint": "Task.CRUD", "type": "LIST", "query": {"onDemand": "1"}},
     "fields": ["Name", "Namespace", "Type", "Description", "Id", "LastFinished", "NextScheduled"],
     "filter": ["Name", "Namespace", "Type", "Description"],

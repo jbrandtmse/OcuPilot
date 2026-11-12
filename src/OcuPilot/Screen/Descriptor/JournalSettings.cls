@@ -45,6 +45,7 @@ XData Declaration
   "classicPage": "%CSP.UI.Portal.Journal",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "set of journal settings",
     "source": {"port": "admin", "endpoint": "Journal.Settings", "type": "GET"},
     "fields": ["CurrentDirectory", "AlternateDirectory", "FileSizeLimit", "JournalFilePrefix", "ArchiveName", "PurgeArchived", "DaysBeforePurge", "BackupsBeforePurge", "FreezeOnError", "JournalcspSession", "CompressFiles", "wijdir", "targwijsz"],
     "filter": ["CurrentDirectory"],

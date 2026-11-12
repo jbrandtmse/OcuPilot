@@ -52,6 +52,7 @@ XData Declaration
   "classicPage": "",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "wallet collection",
     "source": {"port": "admin", "endpoint": "Wallet.Collection", "type": "LIST"},
     "fields": ["Name", "EditResource", "UseResource"],
     "filter": ["Name", "UseResource", "EditResource"],

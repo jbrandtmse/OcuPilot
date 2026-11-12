@@ -45,6 +45,8 @@ XData Declaration
   "classicPage": "%CSP.UI.Portal.SQL.Home",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "procedure or function of one schema",
+    "label": "Stored procedures and functions of one schema, named by its criterion, system ones included; those across every schema are in explorer.sqlprocedures.",
     "source": {"port": "atelier", "endpoint": "Catalog.SchemaProcedures", "type": "LIST"},
     "fields": ["Procedure", "Schema", "Name", "Type", "Class", "Method"],
     "filter": ["Procedure", "Schema", "Class"],

@@ -64,6 +64,7 @@ XData Declaration
   "classicPage": "%cspapp.op.utilsysmonitor",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "set of system usage counters",
     "source": {
       "port": "admin",
       "endpoint": "Monitor",

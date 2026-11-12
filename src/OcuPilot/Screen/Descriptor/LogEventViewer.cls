@@ -44,6 +44,8 @@ XData Declaration
   "classicPage": "EnsPortal.EventLog",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "interoperability event",
+    "label": "Interoperability event log entries (Ens_Util.Log) from every interoperability namespace; production messages are in interop.messages.",
     "source": {"port": "logsource", "endpoint": "eventlog", "type": "LIST"},
     "fields": ["time", "severity", "text"],
     "filter": ["time", "severity", "text"],

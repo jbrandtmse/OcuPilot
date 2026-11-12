@@ -48,6 +48,7 @@ XData Declaration
   "classicPage": "%cspapp.op.utilsysjournal",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "journal record",
     "source": {"port": "admin", "endpoint": "Journal.Record", "type": "LIST"},
     "fields": ["Address", "TimeStamp", "ProcessID", "TypeName", "ExtTypeName", "InTransaction", "GlobalNode", "DatabaseName"],
     "filter": ["GlobalNode", "DatabaseName", "TypeName"],

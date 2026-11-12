@@ -47,6 +47,7 @@ XData Declaration
   "classicPage": "EnsPortal.LookupSettings",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "lookup table",
     "source": {"port": "interop", "endpoint": "LookupTables", "type": "LIST"},
     "fields": ["Name", "Modified"],
     "filter": ["Name"],

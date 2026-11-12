@@ -40,6 +40,7 @@ XData Declaration
   "classicPage": "%CSP.UI.Portal.InteroperabilityUsage",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "database with its message data",
     "source": {"port": "monitor", "endpoint": "DatabaseImpact", "type": "LIST"},
     "fields": ["Database", "DataCreated"],
     "filter": ["Database"],

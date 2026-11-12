@@ -49,6 +49,8 @@ XData Declaration
   "classicPage": "%CSP.UI.Portal.ECPDataServers",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "ECP data server",
+    "label": "ECP data servers this instance connects to, with their connection Status; the remote databases on them are in osmgmt.remotedatabases.",
     "source": {"port": "admin", "endpoint": "ECP.DataServer", "type": "LIST"},
     "fields": ["Name", "RemoteAddress", "RemotePort", "Status", "MirrorConnection", "SSLConfig", "BatchMode"],
     "filter": ["Name", "RemoteAddress", "RemotePort", "Status"],

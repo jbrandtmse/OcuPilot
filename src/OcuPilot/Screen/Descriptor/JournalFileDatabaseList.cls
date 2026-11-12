@@ -42,6 +42,7 @@ XData Declaration
   "classicPage": "%cspapp.op.utilsysjournalsummary",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "database in one journal file",
     "source": {"port": "admin", "endpoint": "Journal.File", "type": "GET", "rows": "Databases"},
     "fields": ["SFN", "DatabasePathOrAlias"],
     "filter": ["DatabasePathOrAlias"],

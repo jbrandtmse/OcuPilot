@@ -69,6 +69,8 @@ XData Declaration
   "classicPage": "%CSP.UI.Portal.Audit.SystemEvents",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "auditing setting",
+    "label": "Whether auditing is on for the whole instance; which events are audited is in security.auditsystemevents and security.audituserevents.",
     "source": {"port": "admin", "endpoint": "Security.Audit.Enabled", "type": "GET"},
     "fields": ["Enabled"],
     "filter": ["Enabled"],

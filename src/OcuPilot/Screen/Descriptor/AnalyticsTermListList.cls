@@ -39,6 +39,7 @@ XData Declaration
   "classicPage": "%DeepSee.UI.TermListManager",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "term list",
     "source": {"port": "analytics", "endpoint": "TermLists", "type": "LIST"},
     "fields": ["Name", "Caption", "Modified"],
     "filter": ["Name", "Caption"],

@@ -119,6 +119,8 @@ XData Declaration
   "classicPage": "%CSP.UI.Portal.TaskSchedule",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "scheduled task",
+    "label": "Every Task Manager task, with Suspended true for a suspended one; a task's runs and their errors are in tasks.history, and portal jobs such as a database compact in tasks.background.",
     "source": {
       "port": "admin",
       "endpoint": "Task.CRUD",

@@ -39,6 +39,7 @@ XData Declaration
   "classicPage": "%DeepSee.UI.FolderManager",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "folder item",
     "source": {"port": "analytics", "endpoint": "FolderItems", "type": "LIST"},
     "fields": ["Name", "Type", "Owner", "Modified", "Favorite"],
     "filter": ["Name", "Type", "Owner"],

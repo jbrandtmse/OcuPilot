@@ -50,6 +50,7 @@ XData Declaration
   "classicPage": "%CSP.UI.Portal.InteroperabilityUsage",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "grouping of interface counts",
     "source": {"port": "monitor", "endpoint": "Interfaces", "type": "LIST"},
     "fields": ["Type", "Namespace", "Protocol", "ActiveNow", "Count"],
     "filter": ["Type", "Namespace", "Protocol"],

@@ -45,6 +45,7 @@ XData Declaration
   "classicPage": "%CSP.UI.Portal.SQL.Home",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "set of one table's details",
     "source": {"port": "atelier", "endpoint": "Catalog.Table", "type": "LIST"},
     "fields": ["Name", "Owner", "LastCompiled", "External", "ReadOnly", "Partitioned", "Class", "ExtentSize", "ExternalType"],
     "filter": ["Name", "Class"],

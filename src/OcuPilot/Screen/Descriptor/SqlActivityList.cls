@@ -46,6 +46,8 @@ XData Declaration
   "classicPage": "%CSP.UI.Portal.SQL.CurrentStatements",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "running SQL statement",
+    "label": "SQL statements running right now in every namespace, slowest first; statistics for one table's, view's or procedure's statements are in explorer.sqltablestatements, explorer.sqlviewstatements and explorer.sqlprocedurestatements.",
     "source": {"port": "sqlactivity", "endpoint": "CurrentStatements", "type": "LIST"},
     "fields": ["Server", "ProcessID", "UserName", "Namespace", "RunType", "Elapsed", "Started", "StatementId", "StatementHash", "Statement", "Routine", "CachedQuery", "Workers", "TransactionLevel", "Remote"],
     "filter": ["ProcessID", "UserName", "Namespace", "RunType", "Statement", "Routine"],

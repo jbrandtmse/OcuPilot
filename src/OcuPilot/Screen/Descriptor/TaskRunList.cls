@@ -67,6 +67,8 @@ XData Declaration
   "classicPage": "%CSP.UI.Portal.TaskHistoryId",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "run of one task",
+    "label": "Past runs of one task, named by its task id; every task's runs are in tasks.history.",
     "source": {"port": "admin", "endpoint": "Task.CRUD", "type": "HISTORY"},
     "fields": ["LastStart", "Completed", "Name", "Status", "Result", "TaskId", "Namespace", "Routine", "Pid", "ErrDate", "ErrNumber", "Username", "LogDatetime"],
     "filter": ["Name", "Namespace", "Status", "Result", "Username", "Routine"],

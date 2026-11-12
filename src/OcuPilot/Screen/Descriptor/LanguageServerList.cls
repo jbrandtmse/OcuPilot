@@ -56,6 +56,7 @@ XData Declaration
   "classicPage": "%CSP.UI.Portal.ExternalLanguageServers",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "external language server",
     "source": {"port": "admin", "endpoint": "LanguageServer", "type": "LIST", "rowGet": {"key": "Name", "param": "name", "type": "ACTIVITY", "fields": ["CurrentlyRunning"], "derived": []}},
     "fields": ["Name", "Type", "Port", "CurrentlyRunning"],
     "filter": ["Name", "Type"],

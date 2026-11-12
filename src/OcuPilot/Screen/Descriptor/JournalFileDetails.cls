@@ -48,6 +48,7 @@ XData Declaration
   "classicPage": "%cspapp.op.utilsysjournalsummary",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "set of one journal file's details",
     "source": {"port": "admin", "endpoint": "Journal.File", "type": "GET"},
     "fields": ["Name", "CreationTime", "FileCount", "MaxSize", "FileGUID", "FirstRecordAddress", "LastRecordAddress", "End", "EncryptionKeyID", "MinTransFileCount", "MinTransFileIndex", "ClusterStartTime", "PrevFile.File", "NextFile.File"],
     "filter": ["Name", "CreationTime", "FileGUID", "EncryptionKeyID", "PrevFile.File", "NextFile.File"],

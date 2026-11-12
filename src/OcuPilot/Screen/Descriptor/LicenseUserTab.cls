@@ -38,6 +38,7 @@ XData Declaration
   "classicPage": "%CSP.UI.Portal.LicenseUsage",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "user holding a license unit",
     "source": {"port": "admin", "endpoint": "Monitor", "type": "LICENSEUSAGE", "rows": "UsageByUser"},
     "fields": ["UserId", "Type", "Connects", "MaxCon", "CSPCon", "LU", "Active", "Grace"],
     "filter": ["UserId", "Type"],

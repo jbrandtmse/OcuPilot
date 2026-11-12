@@ -53,6 +53,8 @@ XData Declaration
   "classicPage": "%CSP.UI.Portal.Databases",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "local database definition",
+    "label": "Database definitions whose files are on this instance, with Status; definitions of databases on another server are in osmgmt.remotedatabases.",
     "source": {"port": "admin", "endpoint": "Database.ConfigCRUD", "type": "LIST", "query": {"localOnly": "1"}},
     "fields": ["Name", "Directory", "Status"],
     "filter": ["Name", "Directory", "Status"],

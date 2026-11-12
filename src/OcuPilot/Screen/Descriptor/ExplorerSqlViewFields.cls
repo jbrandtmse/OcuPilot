@@ -45,6 +45,7 @@ XData Declaration
   "classicPage": "%CSP.UI.Portal.SQL.Home",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "column of one view",
     "source": {"port": "atelier", "endpoint": "Catalog.ViewFields", "type": "LIST"},
     "fields": ["Field", "Type", "Collation", "MaxLength", "MaxValue", "MinValue", "Stream", "Length", "Precision", "Scale"],
     "filter": ["Field", "Type"],

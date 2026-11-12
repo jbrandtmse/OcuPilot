@@ -52,6 +52,7 @@ XData Declaration
   "classicPage": "%CSP.UI.Portal.ExternalLanguageServerActivities",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "language server activity record",
     "source": {"port": "admin", "endpoint": "LanguageServer", "type": "ACTIVITY", "rows": "Activity"},
     "fields": ["ID", "DateTime", "RecordType", "Job", "Text"],
     "filter": ["DateTime", "RecordType", "Text"],

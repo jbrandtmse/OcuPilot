@@ -49,6 +49,7 @@ XData Declaration
   "classicPage": "%CSP.UI.System.ViewCode",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "routine or include file",
     "source": {"port": "atelier", "endpoint": "Routine", "type": "LIST"},
     "fields": ["Order", "Kind", "Name", "Type", "Flags", "Description", "Modified", "Database", "Generates"],
     "filter": ["Name", "Kind"],

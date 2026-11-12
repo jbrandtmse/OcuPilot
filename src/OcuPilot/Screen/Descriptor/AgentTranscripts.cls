@@ -47,6 +47,7 @@ XData Declaration
   "classicPage": "",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "conversation",
     "source": {"port": "state", "endpoint": "Convo", "type": "LIST"},
     "fields": ["id", "user", "started", "lastActivity", "turns", "title"],
     "filter": ["user", "started", "lastActivity", "title"],

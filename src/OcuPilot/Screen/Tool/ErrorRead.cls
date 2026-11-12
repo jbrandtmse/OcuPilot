@@ -33,7 +33,17 @@ Parameter TOOLNAME = "logs.applicationerrors.read";
 
 Parameter KIND = "read";
 
-Parameter DESCRIPTION = "Read one namespace and date's application errors, bounded, with the summary fields only: error number, time, error text, routine and code line. The captured variable table is never returned.";
+/// <p>The closing sentence of the tool's description: what it reads at a time, and what it never
+/// returns (AD-48). <method>Description</method> puts it last, after the screen's title, row phrase,
+/// <parameter>LABEL</parameter> and fields.</p>
+Parameter DESCRIPTION = "It reads one namespace and one date at a time, each exactly as this instance lists them; the captured variable table is never returned.";
+
+/// <p>The phrase for one row, as a descriptor's <code>read.row</code> (AD-36).</p>
+Parameter ROW = "application error";
+
+/// <p>What the list holds and does not hold, as a descriptor's <code>read.label</code> (AD-36); it names
+/// neighbouring lists by tool identifier.</p>
+Parameter LABEL = "Errors raised in application code and logged per namespace and date; system messages and warnings are in logs.messages, and the last hour's errors also appear in logs.hub.";
 
 /// <p>The screen this tool reads for. Its pairs are this tool's (<method>PrivilegePairs</method>);
 /// its rows are not, because this tool's rows come from the port rather than from a declared
@@ -51,6 +61,17 @@ ClassMethod PortClass() As %String
 /// A field outside this list is dropped from the port's row, so widening the port's projection
 /// cannot widen the tool's answer.</p>
 Parameter SUMMARYFIELDS = "errorNumber,time,errorText,routine,line";
+
+/// <p>The description the model is given, composed as a descriptor-derived read tool's is
+/// (<method>OcuPilot.Screen.Tool.Read.Compose</method>): the screen's title, <parameter>ROW</parameter>,
+/// <parameter>LABEL</parameter>, <parameter>SUMMARYFIELDS</parameter>, then <parameter>DESCRIPTION</parameter>
+/// last. <var>pDescriptor</var> is ignored.</p>
+ClassMethod Description(pDescriptor As %String = "") As %String
+{
+    Set tFields = []
+    For tI = 1:1:$Length(..#SUMMARYFIELDS, ",") Do tFields.%Push($Piece(..#SUMMARYFIELDS, ",", tI))
+    Quit ##class(OcuPilot.Screen.Tool.Read).Compose(##class(OcuPilot.Screen.Tool.Read).Title(..#DESCRIPTORCLASS), $Piece(..#TOOLNAME, ".", 1, 2), ..#ROW, tFields, ..#LABEL, ..#DESCRIPTION)
+}
 
 /// <p>The tool's input schema: the namespace and the date the caller drilled to, both required
 /// because this source has no default scope, and an optional <code>maxRows</code>.</p>

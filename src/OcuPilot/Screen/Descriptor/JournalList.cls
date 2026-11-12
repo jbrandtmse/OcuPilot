@@ -48,6 +48,7 @@ XData Declaration
   "classicPage": "%cspapp.op.utilsysjournals",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "journal file",
     "source": {"port": "admin", "endpoint": "Journal.File", "type": "LIST"},
     "fields": ["Name", "Size", "CreationTime", "Reason", "DataSize"],
     "filter": ["Name", "CreationTime", "Reason"],

@@ -48,6 +48,7 @@ XData Declaration
   "classicPage": "%CSP.UI.Portal.SQL.Home",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "set of one procedure's details",
     "source": {"port": "atelier", "endpoint": "Catalog.Procedure", "type": "LIST"},
     "fields": ["Class", "Type", "Method", "Description", "Inputs", "InOuts", "Outputs", "Interface", "Columns", "InputParameters", "InOutParameters", "OutputParameters", "ResultColumns", "ReturnValue"],
     "filter": ["Class", "Method", "Description"],

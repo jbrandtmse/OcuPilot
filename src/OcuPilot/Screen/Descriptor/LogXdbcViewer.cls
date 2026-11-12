@@ -39,6 +39,8 @@ XData Declaration
   "classicPage": "%CSP.UI.Portal.xDBCErrorNamespaces",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "xDBC error",
+    "label": "ODBC and JDBC (xDBC) errors, one per process, from every readable namespace; SQL diagnostic results are in logs.sqldiagnostics.",
     "source": {"port": "logsource", "endpoint": "xdbc", "type": "LIST"},
     "fields": ["time", "severity", "text"],
     "filter": ["time", "severity", "text"],

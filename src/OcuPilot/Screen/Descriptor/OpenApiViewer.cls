@@ -49,6 +49,7 @@ XData Declaration
   "classicPage": "",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "operation of an OpenAPI document",
     "source": {"port": "mgmnt", "endpoint": "Document", "type": "LIST"},
     "fields": ["Order", "Path", "Verb", "Summary", "OperationId", "Parameters", "Responses"],
     "filter": ["Path", "Verb", "Summary"],

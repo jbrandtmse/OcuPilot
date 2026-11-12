@@ -39,6 +39,7 @@ XData Declaration
   "classicPage": "EnsPortal.ProductionConfig",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "status of one production item",
     "source": {"port": "interop", "endpoint": "ItemStatus", "type": "LIST"},
     "fields": ["Production", "Name", "ClassName", "Type", "Enabled", "Status", "AdapterState", "LastActivity"],
     "filter": ["Name", "ClassName", "Type", "Status"],

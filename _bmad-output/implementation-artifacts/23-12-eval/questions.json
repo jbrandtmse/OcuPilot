@@ -1,0 +1,75 @@
+{
+  "note": "Story 23.12's ten live-evaluation questions. {failingTask} is the task the seed found failed and suspended: the install's demo task, or EVAL2312's own when the demo task is absent. Each question runs in a new conversation with no screen context.",
+  "questions": [
+    {
+      "n": 1,
+      "question": "Which tasks are suspended?",
+      "holds": "tasks.schedule",
+      "rightWhen": "It names every task the schedule shows Suspended (the demo task and the three EVAL2312 suspended tasks), and no other.",
+      "expect": "suspendedTasks"
+    },
+    {
+      "n": 2,
+      "question": "Which task runs failed in the last 24 hours?",
+      "holds": "tasks.history",
+      "rightWhen": "It names every task whose run failed in the history read (the demo task at least), not \"none\".",
+      "expect": "failedRuns"
+    },
+    {
+      "n": 3,
+      "question": "Which databases are dismounted?",
+      "holds": "osmgmt.databases",
+      "rightWhen": "It names EVAL2312DISM and every other database the read shows Dismounted.",
+      "expect": "dismountedDatabases"
+    },
+    {
+      "n": 4,
+      "question": "Which databases are remote, and which server holds each?",
+      "holds": "osmgmt.remotedatabases",
+      "rightWhen": "EVAL2312REMOTE on EVAL2312SRV.",
+      "expect": "remoteDatabases"
+    },
+    {
+      "n": 5,
+      "question": "An error about the EVAL2312 journal disk check was reported in the last hour. Which log holds it, and what does it say?",
+      "holds": "logs.messages",
+      "rightWhen": "It names messages.log and quotes the seeded text.",
+      "expect": "consoleLine"
+    },
+    {
+      "n": 6,
+      "question": "What application error was raised in the USER namespace in the last hour?",
+      "holds": "logs.applicationerrors or logs.hub",
+      "rightWhen": "It reports the seeded <DIVIDE> in USER, not \"none\" and not messages.log.",
+      "expect": "applicationError"
+    },
+    {
+      "n": 7,
+      "question": "Are any background jobs, such as a database compact, running or failed?",
+      "holds": "tasks.background",
+      "rightWhen": "It gives the rows the read shows (\"none\" when empty) and names Background tasks among the lists checked.",
+      "expect": "backgroundJobs"
+    },
+    {
+      "n": 8,
+      "question": "When does the task EVAL2312 weekly report run next?",
+      "holds": "tasks.schedule",
+      "rightWhen": "The NextScheduled the schedule shows.",
+      "expect": "weeklyNext"
+    },
+    {
+      "n": 9,
+      "question": "Did {failingTask} succeed the last time it ran, and what did it report?",
+      "holds": "tasks.history",
+      "rightWhen": "It failed, with its Result error text.",
+      "expect": "failingTaskLastRun"
+    },
+    {
+      "n": 10,
+      "question": "Is auditing on for this instance, and is the LoginFailure event enabled?",
+      "holds": "security.auditing, security.auditsystemevents",
+      "rightWhen": "Both values as those reads show them.",
+      "expect": "auditing"
+    }
+  ]
+}

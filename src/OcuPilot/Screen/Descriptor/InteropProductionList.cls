@@ -49,6 +49,7 @@ XData Declaration
   "classicPage": "EnsPortal.Productions",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "production",
     "source": {"port": "interop", "endpoint": "Productions", "type": "LIST"},
     "fields": ["Name", "Status", "LastStartTime", "LastStopTime"],
     "filter": ["Name", "Status"],

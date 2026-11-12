@@ -45,6 +45,8 @@ XData Declaration
   "classicPage": "%CSP.UI.Portal.SQL.Home",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "SQL view of one schema",
+    "label": "Views of one schema, named by its criterion, system views included; views across every schema are in explorer.sqlviews.",
     "source": {"port": "atelier", "endpoint": "Catalog.SchemaViews", "type": "LIST"},
     "fields": ["View", "Schema", "Name", "Class", "Owner", "Updatable", "CheckOption"],
     "filter": ["View", "Schema", "Class"],

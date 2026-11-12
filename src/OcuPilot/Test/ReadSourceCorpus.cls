@@ -10,6 +10,7 @@
 /// them (Story 6.9's parts cases, whose fields cannot start with the shared declaration's own), sets
 /// <code>declaration.area</code> when it carries one (Story 16.9's timeline cases), sets
 /// <code>declaration.read.note</code> when it carries one, <code>null</code> included (Story 19.14),
+/// sets <code>declaration.read.row</code> and <code>declaration.read.label</code> likewise (Story 23.12),
 /// and names the exact sentence both engines return, or <code>null</code> for a sound shape.</p>
 Class OcuPilot.Test.ReadSourceCorpus Extends %RegisteredObject
 {
@@ -171,7 +172,18 @@ XData Cases
     {"name": "a note with an unknown key (Story 19.14)", "source": {"port": "admin", "endpoint": "Security.OAuth2.Client.ClientConfiguration", "type": "LIST"}, "note": {"key": "explorerSqlStatementsNote", "text": "One sentence.", "severity": "info"}, "expected": "read.note declares the unknown key 'severity'"},
     {"name": "a note with no text (Story 19.14)", "source": {"port": "admin", "endpoint": "Security.OAuth2.Client.ClientConfiguration", "type": "LIST"}, "note": {"key": "explorerSqlStatementsNote"}, "expected": "read.note.text is not a non-empty string (AD-36)"},
     {"name": "a note with an empty key (Story 19.14)", "source": {"port": "admin", "endpoint": "Security.OAuth2.Client.ClientConfiguration", "type": "LIST"}, "note": {"key": "", "text": "One sentence."}, "expected": "read.note.key is not a non-empty string (AD-36)"},
-    {"name": "a note whose text is a number (Story 19.14)", "source": {"port": "admin", "endpoint": "Security.OAuth2.Client.ClientConfiguration", "type": "LIST"}, "note": {"key": "explorerSqlStatementsNote", "text": 5}, "expected": "read.note.text is not a non-empty string (AD-36)"}
+    {"name": "a note whose text is a number (Story 19.14)", "source": {"port": "admin", "endpoint": "Security.OAuth2.Client.ClientConfiguration", "type": "LIST"}, "note": {"key": "explorerSqlStatementsNote", "text": 5}, "expected": "read.note.text is not a non-empty string (AD-36)"},
+    {"name": "a row phrase and a label are sound (Story 23.12)", "source": {"port": "admin", "endpoint": "Security.OAuth2.Client.ClientConfiguration", "type": "LIST"}, "row": "scheduled task", "label": "Every task, with Suspended true for a suspended one.", "expected": null},
+    {"name": "a row of exactly 40 characters is sound (Story 23.12)", "source": {"port": "admin", "endpoint": "Security.OAuth2.Client.ClientConfiguration", "type": "LIST"}, "row": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", "expected": null},
+    {"name": "a label of exactly 240 characters is sound (Story 23.12)", "source": {"port": "admin", "endpoint": "Security.OAuth2.Client.ClientConfiguration", "type": "LIST"}, "label": "One sentence about what the list holds. One sentence about what the list holds. One sentence about what the list holds. One sentence about what the list holds. One sentence about what the list holds. One sentence about what the list holds. ", "expected": null},
+    {"name": "a null row declares none (Story 23.12)", "source": {"port": "admin", "endpoint": "Security.OAuth2.Client.ClientConfiguration", "type": "LIST"}, "row": null, "expected": null},
+    {"name": "a row that is a number (Story 23.12)", "source": {"port": "admin", "endpoint": "Security.OAuth2.Client.ClientConfiguration", "type": "LIST"}, "row": 5, "expected": "read.row is not a non-empty string of at most 40 characters (AD-36)"},
+    {"name": "an empty row (Story 23.12)", "source": {"port": "admin", "endpoint": "Security.OAuth2.Client.ClientConfiguration", "type": "LIST"}, "row": "", "expected": "read.row is not a non-empty string of at most 40 characters (AD-36)"},
+    {"name": "a row over 40 characters (Story 23.12)", "source": {"port": "admin", "endpoint": "Security.OAuth2.Client.ClientConfiguration", "type": "LIST"}, "row": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", "expected": "read.row is not a non-empty string of at most 40 characters (AD-36)"},
+    {"name": "a null label declares none (Story 23.12)", "source": {"port": "admin", "endpoint": "Security.OAuth2.Client.ClientConfiguration", "type": "LIST"}, "label": null, "expected": null},
+    {"name": "a label that is a number (Story 23.12)", "source": {"port": "admin", "endpoint": "Security.OAuth2.Client.ClientConfiguration", "type": "LIST"}, "label": 5, "expected": "read.label is not a non-empty string of at most 240 characters (AD-36)"},
+    {"name": "an empty label (Story 23.12)", "source": {"port": "admin", "endpoint": "Security.OAuth2.Client.ClientConfiguration", "type": "LIST"}, "label": "", "expected": "read.label is not a non-empty string of at most 240 characters (AD-36)"},
+    {"name": "a label over 240 characters (Story 23.12)", "source": {"port": "admin", "endpoint": "Security.OAuth2.Client.ClientConfiguration", "type": "LIST"}, "label": "One sentence about what the list holds. One sentence about what the list holds. One sentence about what the list holds. One sentence about what the list holds. One sentence about what the list holds. One sentence about what the list holds. O", "expected": "read.label is not a non-empty string of at most 240 characters (AD-36)"}
   ]
 }
 }
@@ -198,7 +210,8 @@ ClassMethod Corpus(Output pCorpus As %DynamicObject) As %Status
 
 /// <p>The corpus declaration with <var>pCase</var>'s <code>source</code> in place, its
 /// <code>criteria</code> when it carries one, its <code>parentScope</code> when it carries one
-/// (Story 6.7), and its read <code>note</code> when it carries one (Story 19.14), as a new object.</p>
+/// (Story 6.7), and its read <code>note</code>, <code>row</code> and <code>label</code> when it carries
+/// them (Stories 19.14 and 23.12), as a new object.</p>
 /// <p>A part-shaped case may also override <code>fields</code>, <code>filter</code>,
 /// <code>sort</code>, <code>table</code> and <code>context</code> -- the corpus's shared OAuth
 /// declaration carries fields no parts field can start with, so a case that exercises a parts
@@ -220,6 +233,11 @@ ClassMethod DeclarationFor(pCorpus As %DynamicObject, pCase As %DynamicObject) A
     If (tNoteType = "object") || (tNoteType = "array") Do tDeclaration.read.%Set("note", ##class(%DynamicAbstractObject).%FromJSON(pCase.note.%ToJSON()))
     If (tNoteType = "null") Do tDeclaration.read.%Set("note", "", "null")
     If (tNoteType = "string") || (tNoteType = "number") Do tDeclaration.read.%Set("note", pCase.note, tNoteType)
+    For tKey = "row", "label" {
+        Set tType = pCase.%GetTypeOf(tKey)
+        If tType = "null" Do tDeclaration.read.%Set(tKey, "", "null")
+        If (tType = "string") || (tType = "number") Do tDeclaration.read.%Set(tKey, pCase.%Get(tKey), tType)
+    }
     Quit tDeclaration
 }
 

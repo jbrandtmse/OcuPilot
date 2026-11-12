@@ -95,6 +95,8 @@ XData Declaration
   "classicPage": "%CSP.UI.Portal.OpDatabases",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "database",
+    "label": "Size, free space and disk free for each database, with Mounted true or false; Status and the full list are in osmgmt.databases.",
     "source": {
       "port": "admin",
       "endpoint": "Database.SysCRUD",

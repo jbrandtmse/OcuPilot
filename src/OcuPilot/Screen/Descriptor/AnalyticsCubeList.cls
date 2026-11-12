@@ -38,6 +38,7 @@ XData Declaration
   "classicPage": "%DeepSee.UI.ModelBrowser",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "cube",
     "source": {"port": "analytics", "endpoint": "Cubes", "type": "LIST"},
     "fields": ["Name", "Caption", "Class", "LastBuild", "Facts"],
     "filter": ["Name", "Caption", "Class"],

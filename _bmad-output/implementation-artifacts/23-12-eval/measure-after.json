@@ -1,0 +1,111 @@
+{
+  "story": "23.12",
+  "file": "measure-after.json",
+  "startedAt": "2026-10-23T16:26:35.008Z",
+  "container": "ocupilot-ci",
+  "model": "claude-haiku-5-5",
+  "message": "Which tasks are suspended?",
+  "contextRow": {
+    "Name": "Switch Journal",
+    "Type": "System",
+    "Namespace": "%SYS",
+    "Description": "Switches the journal file at midnight every day",
+    "Id": 1,
+    "LastFinished": "",
+    "NextScheduled": "2026-10-24 00:00:00",
+    "Suspended": false
+  },
+  "method": {
+    "turn": "POST /api/ocupilot/conversation, then POST /api/ocupilot/turn {message, conversationId[, context]} as _SYSTEM, polled on /turn/:id/progress until terminal",
+    "stub": "OcuPilot.Test.TurnWireFixture.EnsureDefinition(tag) (turnprobe, default marker), OcuPilot.Test.TurnProvider.Plain(tag), first call read with OcuPilot.Test.TurnProvider.Recorded(tag, 1, \"system\"|\"messages\"|\"tools\")",
+    "render": "OcuPilot.Kernel.Provider.{Anthropic,OpenAI,Gemini}.CallMessages(%Net.HttpRequest, .values, .messages, .tools, system) on a fresh adapter (Streaming 0), values model=claude-haiku-5-5 maxTokens=32000; messages and tools rebuilt from the recorded call (role/content or blocks with the tail cache_control removed; name/description/inputSchema, start = not defer_loading, scoped when any tool is deferred). OpenAI goes through MessageAdapter.CanonicalToOpenAi and ToolDefAdapter.ToOpenAi, Gemini through MessageAdapter.CanonicalToGemini and ToolDefAdapter.ToGemini",
+    "chars": "bodyChars = $Length of the UTF-8-decoded entity body; bodyBytes = its UTF-8 bytes; toolsChars = $Length(body.tools.%ToJSON()); tools = Anthropic and OpenAI tools.%Size(), Gemini tools[0].functionDeclarations.%Size()",
+    "countTokens": "POST https://api.anthropic.com/v1/messages/count_tokens, anthropic-version 2023-06-01, {model: claude-haiku-5-5, system, messages, tools} of the rendered Anthropic body (max_tokens dropped)",
+    "proxies": "listing = $ClassMethod(OcuPilot.Kernel.Agent.Loop.DispatchClass(), \"Advertise\", .tools); descriptionChars = sum of $Length(tools(n, \"description\")); prompt = $Length(OcuPilot.Kernel.Agent.Prompt.Builtin())"
+  },
+  "cases": {
+    "N": {
+      "turnState": "completed",
+      "recordedCall": 1,
+      "messages": 1,
+      "tools": 396,
+      "deferredTools": 391,
+      "startingSetTools": 5,
+      "dialects": {
+        "anthropic": {
+          "bodyChars": 604446,
+          "bodyBytes": 604446,
+          "toolsChars": 599751,
+          "tools": 396
+        },
+        "openai": {
+          "bodyChars": 14779,
+          "bodyBytes": 14779,
+          "toolsChars": 10054,
+          "tools": 5
+        },
+        "gemini": {
+          "bodyChars": 14523,
+          "bodyBytes": 14523,
+          "toolsChars": 9788,
+          "tools": 5
+        }
+      },
+      "anthropicRenderEqualsRecorded": {
+        "system": true,
+        "messages": true,
+        "tools": true
+      },
+      "countTokens": 5314
+    },
+    "B": {
+      "turnState": "completed",
+      "recordedCall": 1,
+      "messages": 3,
+      "tools": 396,
+      "deferredTools": 380,
+      "startingSetTools": 16,
+      "dialects": {
+        "anthropic": {
+          "bodyChars": 605469,
+          "bodyBytes": 605469,
+          "toolsChars": 599520,
+          "tools": 396
+        },
+        "openai": {
+          "bodyChars": 34414,
+          "bodyBytes": 34414,
+          "toolsChars": 28466,
+          "tools": 16
+        },
+        "gemini": {
+          "bodyChars": 33496,
+          "bodyBytes": 33496,
+          "toolsChars": 27540,
+          "tools": 16
+        }
+      },
+      "anthropicRenderEqualsRecorded": {
+        "system": true,
+        "messages": true,
+        "tools": true
+      },
+      "countTokens": 12346
+    }
+  },
+  "proxies": {
+    "advertisedTools": 396,
+    "descriptionChars": 152877,
+    "readTools": 163,
+    "readToolDescriptionChars": 44611,
+    "promptChars": 4559,
+    "tasksScheduleReadDescription": "Read the rows of the Task schedule screen (tasks.schedule), one scheduled task per row, bounded and with secret fields removed. Every Task Manager task, with Suspended true for a suspended one; a task's runs and their errors are in tasks.history, and portal jobs such as a database compact in tasks.background. Fields: Name, Type, Namespace, Description, Id, LastFinished, NextScheduled, Suspended."
+  },
+  "teardown": {
+    "sweepLeft": "",
+    "definitionRemoved": true,
+    "stubNodesLeft": "0",
+    "renderDirLeft": "0"
+  },
+  "endedAt": "2026-10-23T16:26:42.334Z"
+}

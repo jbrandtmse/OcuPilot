@@ -52,6 +52,7 @@ XData Declaration
   "classicPage": "%CSP.UI.Portal.Namespaces",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "namespace",
     "source": {"port": "admin", "endpoint": "Namespace.Namespace", "type": "LIST"},
     "fields": ["Name", "Globals", "Routines", "TempGlobals"],
     "filter": ["Name", "Globals", "Routines", "TempGlobals"],

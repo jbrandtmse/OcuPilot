@@ -48,6 +48,7 @@ XData Declaration
   "classicPage": "%CSP.UI.Portal.MFT.ConnectionList",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "managed file transfer connection",
     "source": {"port": "admin", "endpoint": "Security.MFT", "type": "LIST"},
     "fields": ["Name", "Service", "IsAuthorized"],
     "filter": ["Name", "Service"],

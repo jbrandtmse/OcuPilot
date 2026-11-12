@@ -56,6 +56,7 @@ XData Declaration
   "classicPage": "",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "built screen",
     "source": {"port": "access", "endpoint": "Screens", "type": "LIST"},
     "fields": ["Screen", "Area", "Declared", "Adjustment", "ClassicResource", "Effective", "Holds", "FailedPair", "Adjustable"],
     "filter": ["Screen", "Area"],

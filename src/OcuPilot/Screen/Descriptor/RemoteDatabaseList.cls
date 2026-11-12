@@ -48,6 +48,8 @@ XData Declaration
   "classicPage": "%CSP.UI.Portal.RemoteDatabases",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "remote database definition",
+    "label": "Database definitions whose files are on another server reached over ECP, with Server and that server's Directory; the servers are in osmgmt.ecpdataservers.",
     "source": {"port": "admin", "endpoint": "Database.ConfigCRUD", "type": "LIST", "query": {"remoteOnly": "1"}},
     "fields": ["Name", "Server", "Directory", "Status"],
     "filter": ["Name", "Server", "Directory", "Status"],

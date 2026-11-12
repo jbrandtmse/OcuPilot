@@ -83,6 +83,7 @@ XData Declaration
   "classicPage": "%CSP.UI.Portal.DatabaseDetails",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "volume file of one database",
     "source": {"port": "admin", "endpoint": "Database.SysCRUD", "type": "VOLUMELIST"},
     "fields": ["VolumeNumber", "VolumeDirectory", "File", "Size", "VolumeDirectoryTotalSize", "DiskFree"],
     "filter": ["VolumeDirectory", "File"],

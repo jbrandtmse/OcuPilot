@@ -36,6 +36,7 @@ XData Declaration
   "classicPage": "%DeepSee.UI.ModelBrowser",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
+    "row": "relationship of a cube",
     "source": {"port": "analytics", "endpoint": "Relationships", "type": "LIST"},
     "fields": ["Name", "RelatedCube"],
     "filter": ["Name", "RelatedCube"],
