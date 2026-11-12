@@ -12478,3 +12478,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-23-9-the-range-end-cleanup-part-8.md (plan) | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: (inference) by analogy with DW-1981; not probed
 - 2026-11-12T14:27:31Z status=wontfix-accepted owner=23-9-the-range-end-cleanup-part-8 by=spec_gate note=reopen_if=an over-long criterion value is refused only by the server on one of these screens
+
+### DW-2516: The 30,000-node compact in local-databases AC8 might finish before the test pauses it on a loaded CI shard
+- source: _bmad-output/implementation-artifacts/spec-23-9-the-range-end-cleanup-part-8.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: pause took 0.28-0.71 s on an idle throwaway over three probes; the compact's own duration over 30,000 nodes was not measured; a CI shard run of local-databases settles it
+- 2026-11-12T15:04:45Z status=open owner=23-9-the-range-end-cleanup-part-8 by=harvest note=batch 1 deferred; adjudicate against the batch 1 CI run
