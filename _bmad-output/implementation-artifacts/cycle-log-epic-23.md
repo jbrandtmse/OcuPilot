@@ -992,3 +992,6 @@ spawn_at=2026-10-06T16:01:05Z	Story 23.4	cr_complete	batch=b 2026-10-06T20:34:58
 2026-11-12T21:20:39Z	Story 23.9	ci_resolved	story=23.9 batch=4 sha=9e7cc026 runs=43292059964 result=success failed=none via=none resolved_at=batch_boundary attempt=2(attempt_1:flake_DW-2522)
 2026-11-12T21:20:39Z	Story 23.9	committed	batch=4 sha=03e48df6 code_heads=9e7cc026(implement;CI_43292059964_green_a2),03e48df6(QA+review) submodules= ci=pending runs=43309263027 missing=none pushed_at=2026-11-12T21:20:19Z amendments=epics.md(23.10_entry_list+DW-2522_bullet) footprint_extensions=none upgrade_trigger=none
 2026-11-12T21:20:39Z	Story 23.9	story_cycle	batch=4 plan_to_commit_min=126(open_19:14Z_to_push_21:20Z) implement_passes=1 reviews=1 rework=0 first_ci=flake(9e7cc026:DW-2522) models=implement:sonnet,qa:sonnet,cr:opus
+2026-11-12T21:57:37Z	Story 23.9	ci_resolved	story=23.9 batch=4 sha=03e48df6 runs=43309263027 result=success failed=none via=none resolved_at=batch_boundary attempt=1
+2026-11-12T21:57:37Z	Story 23.9	ledger_adjudicated	batch=4 owned=4(DW-2259,DW-2260,DW-1981,DW-1706) resolved=4 reowned=0 terminal=0 remaining_owned=4(DW-1177,DW-1760,DW-1761,DW-2299) filed_this_batch=DW-2522(23.10) occurrences=DW-2514
+2026-11-12T21:57:37Z	Story 23.9	boundary_reported	batch=4 to=main code_heads=9e7cc026,03e48df6 runs=43292059964(green_a2),43309263027(green_a1)

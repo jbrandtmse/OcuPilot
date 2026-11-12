@@ -7712,6 +7712,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-30T06:31:00Z status=routed owner=range-end-cleanup by=merge_gate note=Story 23.1 closed as it stood (owner-approved burn-down plan 2026-09-29); a two-word doc correction in Api/Error.cls, into Story 23.3 (next release) since 23.2 is capped at 12
 - 2026-10-11T00:42:32Z status=routed owner=23-7-the-range-end-cleanup-part-6 by=load note=re-own from range-end-cleanup: kit 2026-10-10.1 owners are story keys or burndown
 - 2026-10-12T19:22:37Z status=routed owner=23-9-the-range-end-cleanup-part-8 by=merge_gate note=owner 2026-10-12 released 23.7's 32 (Release Story 23.7); split by priority, 12 at most each (Rule 27)
+- 2026-11-12T21:57:37Z status=resolved-by:23-9-the-range-end-cleanup-part-8 by=adjudication note=9e7cc026,03e48df6: PROVIDERTRANSPORT doc states the one retry before a status line (AD-42)
 
 ### DW-1707: Preferences and about 24 Area save handlers answer a server-side body read or decode fault as the caller's (422 or 400), mostly unlogged
 - source: spec-23-1-the-range-end-cleanup.md | severity: low | fix-risk: med | footprint: out-of-footprint
@@ -9412,6 +9413,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-03T15:02:19Z status=routed owner=burndown by=adjudication note=the bundle budget is re-based per story under DW-1166, so the measured maxlength patch lands with Epic 18's burn-down
 - 2026-10-14T08:59:25Z status=routed owner=18-48-epic-18-burn-down-part-2 by=burndown note=chartered into the Epic 18 burn-down part 2 (orchestrator ruling 2026-10-14)
 - 2026-10-14T12:40:15Z status=routed owner=23-9-the-range-end-cleanup-part-8 by=lead note=orchestrator 2026-10-14: 18.48 kept at 12; the journal record browser's two lows move to 23.9
+- 2026-11-12T21:57:37Z status=resolved-by:23-9-the-range-end-cleanup-part-8 by=adjudication note=9e7cc026: offset/value inputs bind declared maxlength 20/200; journal-records.page.spec pins
 ### DW-1976: A long row text on a detail tab (a view's text, a procedure's description, trigger code) renders as one clipped data-table cell, and its cut-cell tooltip (480px wide, no height bound or scroll, clamped to the window) cannot show a text taller than the window, so AD-36's 'shown whole on the screen' holds for the read's answer but not for what a person can read
 - source: spec-19-14-the-sql-catalog-s-remaining-detail-tabs.md | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: ui/src/styles/_components.scss .ocu-data-table-cell nowrap + ellipsis and .ocu-data-table-tooltip max-width 480px, no max-height; data-table.ts placeTooltip clamps top to the window. Measured lengths (spec Design Notes): view text up to 5,856, SqlProc descriptions up to 41,734 characters
@@ -11104,6 +11106,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-11T09:52:03Z occurrence=18-32-spec-based-rest-services
 - 2026-10-12T10:58:27Z occurrence=18-39-the-agent-s-context-budget
 - 2026-10-12T19:22:38Z status=routed owner=23-9-the-range-end-cleanup-part-8 by=merge_gate note=owner 2026-10-12 released 23.7's 32 (Release Story 23.7); split by priority, 12 at most each (Rule 27)
+- 2026-11-12T21:57:36Z status=resolved-by:23-9-the-range-end-cleanup-part-8 by=adjudication note=9e7cc026,03e48df6: testClassesOnDisk follows the first-superclass chain, skips abstract; 680->699 listed; ci.test.mjs pins
 
 ### DW-2260: USERS_PATH is declared twice in the client
 - source: spec-23-6-the-haiku-story-cleanup.md | severity: low | fix-risk: low | footprint: out-of-footprint
@@ -11111,6 +11114,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-09T17:02:33Z status=routed owner=range-end-cleanup by=spec_gate note=23.6 plan filing candidate 5; not absorbed (dispatch)
 - 2026-10-11T00:42:34Z status=routed owner=23-7-the-range-end-cleanup-part-6 by=load note=re-own from range-end-cleanup: kit 2026-10-10.1 owners are story keys or burndown
 - 2026-10-12T19:22:38Z status=routed owner=23-9-the-range-end-cleanup-part-8 by=merge_gate note=owner 2026-10-12 released 23.7's 32 (Release Story 23.7); split by priority, 12 at most each (Rule 27)
+- 2026-11-12T21:57:37Z status=resolved-by:23-9-the-range-end-cleanup-part-8 by=adjudication note=9e7cc026: USERS_PATH/USERS_FORM_PATH declared once; client-paths.test.mjs pins (walkSource)
 
 ### DW-2261: Explorer source tests repeat LIMIT = 60000 instead of reading SOURCEMAXLENGTH
 - source: spec-23-6-the-haiku-story-cleanup.md | severity: low | fix-risk: low | footprint: out-of-footprint
