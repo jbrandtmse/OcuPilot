@@ -219,6 +219,26 @@ Code review, batch 4 and DW-1706 (2026-11-12). Rule 3 exempt: test-harness and t
 - [x] [Review][Patch] (med) The abstract exclusion in `testClassesOnDisk` and a parenthesized `Extends` list had no pin - third case added with an abstract class that carries tests [ui/tools/ci.test.mjs]
 - [x] [Review][Patch] (low) `client-paths.test.mjs` missed `const USERS_PATH: string =` - pattern widened to `\bconst NAME\s*[:=]` [ui/tools/client-paths.test.mjs]
 
+Code review (bmad-code-review), batch 4 and DW-1706 (2026-11-12). Rule 3: DW-1981's `maxlength` is a user-facing attribute; the component spec on the real template with the declared criteria is the accepted tier for an attribute binding (the sibling `code-list.page.ts` binding is pinned the same way, and `journal-records.browser-spec.mjs` renders the screen in CI's browser job). The rest is tooling, exempt.
+
+- [x] [Review][Patch] (med) The checkout list followed every name of an `Extends` list to `TestCase`, while the instance's `PrimarySuper` follows only the first (verified on `ocupilot-slot-a`), and two tests pinned the mismatch - `reachesTestCase` follows the first name; `Mixed`, `Wrapped` and a new `Secondary` case expect the instance's answer [ui/tools/ci-runner.mjs:testClassesOnDisk; ui/tools/ci.test.mjs]
+- [x] [Review][Patch] (med) `client-paths.test.mjs` hand-rolled a source walk beside `source-scan.mjs` `walkSource`, the shared walker for static guards (Rule 31) - now uses `walkSource` and `blankComments` [ui/tools/client-paths.test.mjs; ui/tools/source-scan.mjs:walkSource]
+- [x] [Review][Patch] (low) `Not Abstract` and `Abstract = 0` read as abstract - the keyword test now matches `check-objectscript.py` `ABSTRACT_KEYWORD_RE`, the Python sibling a node runner cannot import (the copy's reason) [ui/tools/ci-runner.mjs]
+- [x] [Review][Patch] (low) Any superclass named `...TestCase` counted as the framework base - now `%UnitTest.TestCase` exactly [ui/tools/ci-runner.mjs:reachesTestCase]
+- [x] [Review][Patch] (low) "It matches the instance's query" overclaimed, `main()`'s comment named only the instance for a mismatch, and `ci-shards.mjs` gave no reason the splits differ - comments corrected [ui/tools/ci-runner.mjs; ui/tools/ci-shards.mjs]
+- [x] [Review][Patch] (low) A mutation comment still said "both tests below", and the real-tree `StreamCase` message claimed the abstract filter (it has no `Test*` method) - both corrected [ui/tools/ci.test.mjs]
+- [x] [Review][Patch] (low) `USERS_FORM_PATH`'s doc covered only the create form's read, not the editor's `?name=` read [ui/src/app/areas/permissions/user-create-form.store.ts]
+- [x] [Review][Patch] (low) The `PROVIDERTRANSPORT` sentence was broader than `Provider.Base`: a body that could not be built is not retried, and the retry needs an attempt left - sentence narrowed to Base's contract [src/OcuPilot/Api/Error.cls]
+- [x] [Review][Defer] `shell/screen-action-handler.ts` `USER_FORM_READ_PATH` repeats the users form route under another name, which a name-based pin cannot see [ui/src/app/shell/screen-action-handler.ts:409] - deferred: DW-2514 occurrence (Epic 20's file, kept by Design Notes); the test header now says it pins these names only
+
+Rejected:
+
+- A `]` inside a quoted class keyword value: no project header has one; a fix needs a quote-aware scanner.
+- A file whose declared class name differs from its path: none does (699 equal to the instance's list both ways).
+- A BOM or unparsed header drops a class silently: no file under `src/OcuPilot/Test` starts with a BOM.
+- A `TestCase` link or `Test*` method on a class outside `src/OcuPilot/Test`: none today; the doc states the folder limit.
+- `Method Test` at column 0 inside a banner or XData: unchanged from the previous matcher; none today.
+
 ## Spec Change Log
 
 - 2026-11-12, after batch 1 (lead): pass order changed to 1, 4 + DW-1706, 3 + DW-1177, 5, so no pass edits a file Epic 20's Story 20.34 has changed before it merges.
@@ -431,6 +451,14 @@ Code review, batch 4 and DW-1706 (2026-11-12). Rule 3 exempt: test-harness and t
   - mutation: delete the `[attr.maxlength]` binding (DW-1981) -> `journal-records.page.spec.ts` "bounds the offset and value inputs" red alone ("offset: expected null to be '20'").
   - DW-1706 is a doc comment: no test, no mutation. Each reverted, confirmed by `cmp` against a pre-mutation copy.
 - Build: the journal records chunk is `chunk-BwhbAgfu.js`, 11,658 bytes raw; initial total 2.01 MB (357.88 kB transfer), under the 2500 kB warning.
+- Code review (bmad-code-review), mutations on its pins, each reverted and confirmed by `cmp`:
+  - mutation: `reachesTestCase` follows every name of an `Extends` list -> the abstract/primary-superclass case in `ci.test.mjs` red (`Secondary` listed).
+  - mutation: `hasTests` reads the first superclass only -> the same case red (`Mixed` dropped).
+  - mutation: the abstract test back to `\bAbstract\b` -> the same case red (`NotAbstract`, `AbstractZero` dropped).
+  - mutation: accept any superclass ending `.TestCase` -> the same case red (`FromLookalike` listed).
+  - mutation: a direct-`Extends` filter -> the first, second and real-tree DW-2259 tests red.
+  - mutation: `export const USERS_PATH: string =` re-declared in `user-editor.store.ts` -> `client-paths.test.mjs` "USERS_PATH is declared once" red.
+  - Green after review: `testClassesOnDisk` 699, equal to the `ci-timings.json` keys both ways; `npm run test:tools` 2184/2184; `npm run test:components` 3341/3341; `client-lint.mjs` clean; `check-objectscript.py` 0 problems; `Error.cls` loaded into `ocupilot-ci` with 0 errors and `ProviderTransportRetry` 9/9.
 
 ## Auto Run Result
 

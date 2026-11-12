@@ -12478,6 +12478,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-23-9-the-range-end-cleanup-part-8.md (plan) | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: found by the 23.9 plan beside DW-2260; each pair currently agrees
 - 2026-11-12T14:27:31Z status=wontfix-accepted owner=23-9-the-range-end-cleanup-part-8 by=spec_gate note=reopen_if=two copies of one /api/ocupilot path literal disagree
+- 2026-11-12T20:00:48Z occurrence=23-9-the-range-end-cleanup-part-8
 
 ### DW-2515: Text criteria inputs on tasks/history, logs/audit, logs/log-hub, sql-query and data-browser may lack maxlength (inference, unchecked)
 - source: spec-23-9-the-range-end-cleanup-part-8.md (plan) | severity: low | fix-risk: low | footprint: out-of-footprint
@@ -12495,3 +12496,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: 23.9 lead full sweep (shard 3/20, run 83) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: full sweep on ocupilot-ci at c98a0877, shard 3/20: AssertStatusOK at +14 'and its next page reads' => ERROR #5001 PORT.TIMEOUT; the class reran alone 10/10 green (run 701); batch 1 touches no journal code
 - 2026-11-12T17:08:40Z status=routed owner=23-10-the-range-end-cleanup-part-9-two-sweeps by=lead note=CI-health flake; first priority in 23.10 with DW-2513 (Rule 27)
+
+### DW-2522: flake: analytics-mdx.browser-spec.mjs AC1: the first query's grid did not appear within navigationTimeoutMs
+- source: 23.9 batch 4 CI (run 43292059964) | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: run 43292059964 (9e7cc026) attempt 1, browser shard 2/5: waitForSelector [data-ocu-mdx=grid] failed at :258 after 37.6 s, the other 10 tests green; batch 4 touches no analytics or walk code
+- 2026-11-12T20:43:32Z status=routed owner=23-10-the-range-end-cleanup-part-9-two-sweeps by=lead note=CI flake; first priority in 23.10 (Rule 27); rerun --failed
