@@ -395,6 +395,32 @@ Method TestTheTeardownOutlastsAStalledCompact()
     Do $$$AssertEquals($ListLength($ClassMethod(..#SEED, "Tasks", 0)), 0, "and leaves no task over the seed database, so the next seed is not refused")
 }
 
+/// <p>The seed's size argument: <method>OcuPilot.Test.BackgroundSeed.PausedCompact</method> given a
+/// node count fills the scratch database with that many nodes and frees the first half, so the
+/// nodes left are the second half. The status of the pause is not asserted -- a compact over so small
+/// a fill may end first -- only what the fill wrote.</p>
+/// <p>Mutation (Rule 19): call <code>..Prepare()</code> without the argument in
+/// <method>OcuPilot.Test.BackgroundSeed.PausedCompact</method>, or loop to <parameter>NODES</parameter>
+/// in <method>OcuPilot.Test.BackgroundSeed.Prepare</method> -- the fill writes 300,000 nodes and the
+/// count leg goes red.</p>
+Method TestThePausedCompactFillsTheNodeCountItIsGiven()
+{
+    Set tNodes = 40
+    Do $ClassMethod(..#SEED, "PausedCompact", .tJob, .tTaskId, tNodes)
+    Set tGlobal = "^|""^^" _ $ClassMethod(..#SEED, "Directory") _ """|OcuPilotSeed"
+    Set tLeft = 0
+    Set tFirst = ""
+    Set tNode = ""
+    For {
+        Set tNode = $Order(@tGlobal@(tNode))
+        If tNode = "" Quit
+        If tFirst = "" Set tFirst = tNode
+        Set tLeft = tLeft + 1
+    }
+    Do $$$AssertEquals(tLeft, tNodes \ 2, "the fill leaves the second half of the " _ tNodes _ " nodes it was given")
+    Do $$$AssertEquals(tFirst, (tNodes \ 2) + 1, "starting after the freed first half")
+}
+
 /// <p>AD-8's own-pair case: a holder of the Tasks area's two pairs alone keeps the area and its
 /// other screens, while Background tasks is shown and refused on <code>%Admin_Operate:USE</code>, and
 /// its read is refused naming that pair.</p>

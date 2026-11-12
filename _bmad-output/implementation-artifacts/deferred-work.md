@@ -3039,6 +3039,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-30T03:32:47Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down decision sheet 2026-09-29: into Story 23.3 (after the following release)
 - 2026-10-11T00:42:30Z status=routed owner=23-7-the-range-end-cleanup-part-6 by=load note=re-own from range-end-cleanup: kit 2026-10-10.1 owners are story keys or burndown
 - 2026-10-12T19:22:37Z status=routed owner=23-9-the-range-end-cleanup-part-8 by=merge_gate note=owner 2026-10-12 released 23.7's 32 (Release Story 23.7); split by priority, 12 at most each (Rule 27)
+- 2026-11-12T19:13:35Z status=resolved-by:23-9-the-range-end-cleanup-part-8 by=adjudication note=already true at head: 5ef1e153 set (21 rules); test_check_objectscript.py pins it; 21 measured
 
 ### DW-447: Api.Definitions and Api.Switches render ReadRequestBody's vendor exception text (ex.DisplayString) in their 400 bad-body reason, against AD-39's normalization rule
 - source: spec-4-1-the-turn-runs-in-a-background-job-and-returns-immediately.md | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -8459,6 +8460,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-23T10:07:55Z occurrence=release-1.0.13 note=PR #16 run 39922983649 (4d573436) attempt 1, browser shard 1/5: every a11y-structural-invariants test timed out on Runtime.callFunctionOn; attempt 2 green (reported by the Planner)
 - 2026-10-23T10:07:55Z status=routed owner=burndown by=orchestrator note=reopened: reopen_if met (a walk stalled to the 600 s protocolTimeout on the 1.0.13 release PR); CI flake, first in the next standing cleanup (Rule 27)
 - 2026-10-23T18:09:23Z occurrence=23-12-the-agent-picks-the-right-list note=run 39992827886 (7dd30507) attempt 1, browser shard 1/5: a11y-structural-invariants passed 13/13 in 1912.6 s against 414.8 s recorded; the shard hit its 55-minute limit
+- 2026-11-12T13:49:02Z status=routed owner=23-9-the-range-end-cleanup-part-8 by=spec_gate note=CI flake; first priority in 23.9 (orchestrator re-dispatch 2026-11-12, Rule 27)
+- 2026-11-12T19:13:24Z status=resolved-by:23-9-the-range-end-cleanup-part-8 by=adjudication note=c98a0877,74a6348f: settle bounded via fonts.status; 60 s per-call deadline, pass retried; a11y 13/13 in 395-463 s
 
 ### DW-1823: security.browser-spec.mjs AC5 (Story 16.3 AC7, DW-1018 option A) timed out waiting for app-side-bar .ocu-side-bar-item after opening the Security rail item without %Admin_Wallet:USE
 - source: feature CI run 36575310150 attempt 1 on 573c50eb (orchestrator), 2026-09-29 | severity: low | fix-risk: low | footprint: ui/browser/security.browser-spec.mjs
@@ -9394,6 +9397,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-03T15:02:19Z status=routed owner=burndown by=adjudication note=a Newest first that draws oldest first is a visible defect; Epic 18 close burn-down steers the store's sort with the order criterion
 - 2026-10-14T08:59:25Z status=routed owner=18-48-epic-18-burn-down-part-2 by=burndown note=chartered into the Epic 18 burn-down part 2 (orchestrator ruling 2026-10-14)
 - 2026-10-14T12:40:15Z status=routed owner=23-9-the-range-end-cleanup-part-8 by=lead note=orchestrator 2026-10-14: 18.48 kept at 12; the journal record browser's two lows move to 23.9
+- 2026-11-12T13:49:03Z status=routed owner=23-10-the-range-end-cleanup-part-9-two-sweeps by=spec_gate note=moved from 23.9 to keep it at burndown_story_max 12 after two CI flakes joined (lowest priority: fix-risk med, no occurrences)
 
 ### DW-1980: The journal record dialog shows an empty body while its record loads (about 1.7 s, the guard's list read)
 - source: spec-18-19-journal-record-browser.md (code review) | severity: low | fix-risk: med | footprint: in-story
@@ -9874,6 +9878,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-05T20:00:23Z occurrence=18-23-encryption-startup-settings
 - 2026-10-11T00:42:33Z status=routed owner=23-7-the-range-end-cleanup-part-6 by=load note=re-own from range-end-cleanup: kit 2026-10-10.1 owners are story keys or burndown
 - 2026-10-12T19:22:37Z status=routed owner=23-9-the-range-end-cleanup-part-8 by=merge_gate note=owner 2026-10-12 released 23.7's 32 (Release Story 23.7); split by priority, 12 at most each (Rule 27)
+- 2026-11-12T19:13:35Z status=resolved-by:23-9-the-range-end-cleanup-part-8 by=adjudication note=already true at head: ca9b32cf (18.48) reads thirty-eight in all; Codes() lists 38
 
 ### DW-2064: The spine lags Story 18.7's confirmed decisions: AD-2 names neither AdminInFile's two unlogged 409 refusals nor the key list's #5022 read as no key, and AD-8 lacks amendment 8
 - source: spec-18-7-encryption.md (code review) | severity: med | fix-risk: low | footprint: in-story
@@ -12196,6 +12201,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-15T18:44:49Z status=routed owner=burndown by=lead note=flake priority: rerun once; a second red on the same head is a story red
 - 2026-10-21T13:30:19Z occurrence=20-32-the-analytics-links note=run 39603456840 browser shard 2/5 attempt 1, same selector timeout
 - 2026-10-23T16:32:53Z occurrence=23-12-the-agent-picks-the-right-list
+- 2026-11-12T18:39:53Z occurrence=23-9-the-range-end-cleanup-part-8 note=run 43275467803 (74a6348f) attempt 1, browser shard 3/5: encryption-startup C1 not ok; rerun --failed
 
 ### DW-2463: The interop-editor browser specs keep local copies of the helpers interop-editor-spec.mjs now shares (answered, editorShows, the frame selector) and of 20.7's readSettings, settingsNode and shellAt
 - source: spec-20-10-source-control-hooks.md (code review) | severity: low | fix-risk: low | footprint: in-epic
@@ -12487,3 +12493,32 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: CI run 43290470415 (Story 20.34 head acb0b666) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: Red in shard 2/5 (waitForSelector [data-ocu-mdx=grid] after 41 s), green on the unchanged rerun of the same run; AC2 in the same file drew the grid; local 11/11 with AC1 at 9.2 s
 - 2026-11-12T20:48:18Z status=routed owner=burndown by=harvest note=CI flake for the burn-down; likely a cold first query on a fresh leg (inference)
+- 2026-11-12T13:49:03Z status=routed owner=23-9-the-range-end-cleanup-part-8 by=spec_gate note=CI flake; first priority in 23.9 (orchestrator re-dispatch 2026-11-12, Rule 27)
+- 2026-11-12T19:13:24Z status=resolved-by:23-9-the-range-end-cleanup-part-8 by=adjudication note=c98a0877: signedInAt names in-flight requests on a timeout; AC8 seed 30k nodes; reopen_if=the timeout recurs
+
+### DW-2513: flake: data-table-columns.browser-spec.mjs failed 17 of 18 at its own goto against its local server
+- source: spec-23-9-the-range-end-cleanup-part-8.md (plan) | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: main push run 40026736561 (39f5106e) attempt 1; not in the ledger before; found by the 23.9 plan reading CI logs
+- 2026-11-12T14:27:31Z status=routed owner=23-10-the-range-end-cleanup-part-9-two-sweeps by=spec_gate note=CI flake; first priority in 23.10 (Rule 27)
+
+### DW-2514: Other duplicated client path literals: /api/ocupilot/proposal (core/draft.ts, core/turn.ts), DATABASE_CHECK_PATH (database-integrity and database-wizard stores), screen-action-handler.ts users form path
+- source: spec-23-9-the-range-end-cleanup-part-8.md (plan) | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: found by the 23.9 plan beside DW-2260; each pair currently agrees
+- 2026-11-12T14:27:31Z status=wontfix-accepted owner=23-9-the-range-end-cleanup-part-8 by=spec_gate note=reopen_if=two copies of one /api/ocupilot path literal disagree
+
+### DW-2515: Text criteria inputs on tasks/history, logs/audit, logs/log-hub, sql-query and data-browser may lack maxlength (inference, unchecked)
+- source: spec-23-9-the-range-end-cleanup-part-8.md (plan) | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: (inference) by analogy with DW-1981; not probed
+- 2026-11-12T14:27:31Z status=wontfix-accepted owner=23-9-the-range-end-cleanup-part-8 by=spec_gate note=reopen_if=an over-long criterion value is refused only by the server on one of these screens
+
+### DW-2516: The 30,000-node compact in local-databases AC8 might finish before the test pauses it on a loaded CI shard
+- source: _bmad-output/implementation-artifacts/spec-23-9-the-range-end-cleanup-part-8.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: pause took 0.28-0.71 s on an idle throwaway over three probes; the compact's own duration over 30,000 nodes was not measured; a CI shard run of local-databases settles it
+- 2026-11-12T15:04:45Z status=open owner=23-9-the-range-end-cleanup-part-8 by=harvest note=batch 1 deferred; adjudicate against the batch 1 CI run
+- 2026-11-12T17:34:45Z occurrence=23-9-the-range-end-cleanup-part-8
+- 2026-11-12T19:13:24Z status=wontfix-accepted by=adjudication note=CI green twice + 3 local runs; reopen_if=local-databases AC8 reads compact Completed, not Paused
+
+### DW-2517: flake: JournalRecords TestTheToolInReverseOrderKeepsTheNewestRowsUnderTheContextCap: its next page read answered PORT.TIMEOUT
+- source: 23.9 lead full sweep (shard 3/20, run 83) | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: full sweep on ocupilot-ci at c98a0877, shard 3/20: AssertStatusOK at +14 'and its next page reads' => ERROR #5001 PORT.TIMEOUT; the class reran alone 10/10 green (run 701); batch 1 touches no journal code
+- 2026-11-12T17:08:40Z status=routed owner=23-10-the-range-end-cleanup-part-9-two-sweeps by=lead note=CI-health flake; first priority in 23.10 with DW-2513 (Rule 27)
