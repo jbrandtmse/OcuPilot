@@ -133,7 +133,7 @@ async function mount(
 
 const rowNames = (host: HTMLElement) =>
   Array.from(host.querySelectorAll('.ocu-data-table-body [role="row"]')).map((row) =>
-    row.querySelector('.ocu-data-table-link')?.textContent?.trim()
+    row.querySelector('.ocu-data-table-link, .ocu-data-table-text')?.textContent?.trim()
   );
 
 /** A body component that shows what the page gave it: the screen's descriptor and how many rows its store holds. */
@@ -383,7 +383,7 @@ describe('the list page', () => {
     expect(document.activeElement).toBe(grid);
     expect(store.active()).toBe('C');
     const active = page.host().querySelector('.ocu-data-table-row-active') as HTMLElement;
-    expect(active.querySelector('.ocu-data-table-link')?.textContent?.trim()).toBe('C');
+    expect(active.querySelector('.ocu-data-table-link, .ocu-data-table-text')?.textContent?.trim()).toBe('C');
     expect(grid.getAttribute('aria-activedescendant')).toBe(active.id);
 
     const posts = page.paths.filter((path) => path.endsWith('/action')).length;

@@ -35,14 +35,8 @@
 /// its own.</p>
 /// <p><b>Its id is <code>single</code>, the same <code>Directory</code>
 /// <class>DatabaseList</class> keys its rows by</b> -- the two views are the same rows, read two
-/// ways. <class>DatabaseDetails</class> is reached from <class>DatabaseList</class>'s name cell and
-/// not from this view's: <method>OcuPilot.Screen.Read</method> declares no pairing here and the
-/// client's row-link chain resolves a detail screen by <code>parentScope</code>
-/// (<file>ui/src/app/core/navigation.ts</file> <code>detailScreenFor</code>), which names the
-/// General view's route alone, so this view's name cell resolves to its own route. A
-/// <code>rowTarget</code> is not available to change that -- both engines refuse one on a screen
-/// that already pairs its own surface -- and <file>EXPERIENCE.md</file> asks for the link from the
-/// Databases name cell only.</p>
+/// ways. Its name cell opens <class>DatabaseDetails</class> through this screen's
+/// <code>rowTarget</code>, as the General view's does.</p>
 /// <p><b>The pair set is three, and Operate is the AsyncResult poll's, not the List's own.</b>
 /// <code>%Admin_Manage:USE</code> is <code>LIST</code>'s <code>ResourcesOR()</code>, the same pair
 /// <class>DatabaseList</class> declares; <code>%Admin_Operate:USE</code> is
@@ -125,6 +119,7 @@ XData Declaration
     "emptyNextKey": "tableReadOnlyEmptyNext",
     "emptyAgentKey": ""
   },
+  "rowTarget": {"route": "os-management/databases/details", "field": "Directory"},
   "toolIdentifier": "osmgmt.databasefreespace"
 }
 }

@@ -2,7 +2,8 @@
 title: "Story 20.39: Every list's name opens something"
 type: 'bugfix'
 created: '2026-11-12'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: 'a87ff13cb6914ba63c42f45b493a8b64ce3ec55b'
 review_loop_iteration: 0
 followup_review_recommended: false
 context: []
@@ -102,6 +103,22 @@ Paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`, and lines were
 
 ## Review Triage Log
 
+### 2026-11-12 - Review pass
+
+- verdicts: 11 findings - high 0, medium 0, low 11, false 0, maybe-false 0
+- findings:
+  - `[low]` `patch` The `TableProbe` marker in `build-output.test.mjs` "no harness code reaches the shipped bundle" can no longer fail, because the fixture's default descriptor is now `AuditList` - marker changed to the fixture's route `web-applications/probe`, shown present in a harness build and absent from the production build.
+  - `[low]` `patch` The Free-space browser test could read General's rows before the Free-space view drew - it now waits for the Disk free column header, which only the Free-space view draws; the spec passes.
+  - `[low]` `reject` The databases and tasks browser mutations are combined with the old last arm - the `rowTarget`-only isolation is the per-list row in `name-links.test.mjs`, recorded in the mutation lines.
+  - `[low]` `reject` AC3 has a mutation line for `TaskHistoryList` only - the exact-set test reddens for any set member removed, and the other four lists' browser specs are unchanged.
+  - `[low]` `reject` The `SQL_SCHEMAS` assertion duplicates the exact-set test - no user-reachable harm.
+  - `[low]` `reject` `tableDeclaration()`'s default reads the first set member - every member links to itself, so any order serves.
+  - `[low]` `reject` The Allowed-directories address assertion is read right after the selection appears - the zero-link assertion carries the test and runs after the rows are drawn.
+  - `[low]` `reject` Intent audit: no test for a `rowTarget` naming the list itself - `rowTargetResolutionProblem` already refuses a route that names no other declared screen, and `screen-mirror.test.mjs` pins it.
+  - `[low]` `reject` Intent audit: resolver-level checks cover the other 13 former self-links - the intent's expectation for them is text, which `nameLinkTarget` answering `null` fully decides.
+  - `[low]` `reject` Intent audit: the fixture default changed and `LicenseKey` and `OpenApiViewer` left `NON_DEFECTS` - both are stated in the spec's tasks.
+  - `[low]` `reject` Intent audit: `app-upcoming-page` in `_components.scss` - the Upcoming table measured a zero-height viewport and no row was clickable; pinned by the Upcoming browser test's mutation.
+
 ## Design Notes
 
 - **Governing ADs (Rule 6):** none is amended.
@@ -187,7 +204,39 @@ Every test added or changed passes on a fresh environment, in either order.
 - AC3: `tasks.browser-spec.mjs` "Story 6.6 AC3" (:816, run by name pattern) and the exact-set test. Drop `TaskHistoryList` from `DETAIL_DIALOG_LISTS`, and both go red.
 - AC4: `screen-mirror.mjs --check` in the prebuild. Edit :4020 without regenerating, and the check fails.
 
+**Mutations demonstrated (Rule 19; each reverted, tree byte-identical):**
+
+- mutation: `name-links.test.mjs` exact-set and per-list tests. Restore the old last arm of `nameLinkTarget` (`screen.parentScope === '' ? screen : null`) -> both go red naming the lists that self-link again. `data-table.spec.ts` "Story 20.39: a list in no dialog set draws its name as text" goes red alone.
+- mutation: `name-links.test.mjs` set equality. Drop `TaskHistoryList` from `DETAIL_DIALOG_LISTS` -> the exact-set test goes red; add `AllowedDirectoryList` to it -> the exact-set and per-list tests go red. `NON_DEFECTS` is a hand-written roster, so a set change alone cannot keep the test green.
+- mutation: `name-links.test.mjs` per-list row. Delete `DatabaseFreeSpace`'s `rowTarget` and regenerate the mirror -> only the per-list test goes red, naming `os-management/database-free-space`.
+- mutation: `allowed-directories.browser-spec.mjs` "Story 20.39 AC1" (old last arm, rebuilt and redeployed) -> red.
+- mutation: `databases.browser-spec.mjs` and `tasks.browser-spec.mjs` "Story 20.39 AC1" (old last arm plus the three `rowTarget`s dropped, regenerated, rebuilt, redeployed) -> all three red. Combined with the old last arm, so the `rowTarget`-only isolation is the per-list row above.
+- mutation: `tasks.browser-spec.mjs` "Story 6.6 AC3" (`TaskHistoryList` dropped from `DETAIL_DIALOG_LISTS`, rebuilt, redeployed) -> red.
+- mutation: `tasks.browser-spec.mjs` Upcoming test, also the pin for the layout host. Remove `app-upcoming-page` from the host list in `_components.scss`, rebuilt, redeployed -> `clickRowCentre` fails: the table viewport measures `clientHeight` 0.
+- mutation: `screen-mirror.mjs --check` (AC4). Edit the :4020 comment without regenerating -> "the checked-in mirror is stale".
+
+**Decided in-stage:** `tableDeclaration()`'s default descriptor is now `[...DETAIL_DIALOG_LISTS][0]`, and `TABLE_PROBE_DESCRIPTOR` is the descriptor whose name is text. `app-upcoming-page` joins the host selectors in `_components.scss` that fill the outlet, because the Upcoming table measured a zero-height viewport and no row was clickable; the new Upcoming test needs it.
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+Summary: the last arm of `nameLinkTarget` links a list to itself only for the five dialog lists (`DIALOG_EDITORS` plus the new `DETAIL_DIALOG_LISTS`); On-demand tasks and Upcoming tasks open Task details and Database free space opens Database details through `rowTarget`; every other unpaired list draws text. The allow-list is deleted. DW-2504's five comment sites now point at `nameLinkTarget`, and the mirror is regenerated.
+
+Files changed:
+
+- `ui/src/app/core/navigation.ts`: `DETAIL_DIALOG_LISTS` and the new last arm.
+- `src/OcuPilot/Screen/Descriptor/TaskOnDemandList.cls`, `TaskUpcomingList.cls`, `DatabaseFreeSpace.cls`: `rowTarget`.
+- `Base.cls`, `LockList.cls`, `Registry.cls`, `ui/tools/screen-mirror.mjs`, `ui/src/app/core/screens.generated.ts`: comment edits (DW-2504) and the regenerated mirror.
+- `ui/tools/name-links.test.mjs`, `ui/tools/build-output.test.mjs`: the five-list roster, per-list outcomes, the control, and the harness marker.
+- `ui/src/app/testing/table-declaration.ts`, `shell/data-table.spec.ts`, `shell/list-page.spec.ts`: fixture default and text-cell test.
+- `ui/browser/databases`, `tasks`, `allowed-directories`, `task-run` browser specs: new and adjusted tests.
+- `ui/src/styles/_components.scss`: `app-upcoming-page` joins the outlet-filling hosts (a zero-height Upcoming table made rows unclickable).
+- `EXPERIENCE.md` :98 and :103: amended in place.
+
+Review: 2 patches applied (harness marker, Free-space readiness wait), 9 rejected low findings with reasons in the triage log, nothing deferred. Follow-up review recommended: false.
+
+Verification: `screen-mirror.mjs --check` up to date; `npm run test:tools` 2184 pass; `npm run test:components` 3346 pass; `npm run build` prebuild checkers pass, initial bundle 2.02 MB; Descriptor, ScreenRead, Navigation and TaskLists classes green on `ocupilot-b-ci`; browser specs databases, allowed-directories, task-run, tasks (whole file), audit-events, screen-height, permissions-sql-privileges, web-applications-class-access and data-table (harness) green; `check-objectscript.py` 0 problems; `lint-docs.sh` clean.
+
+Residual risk: the full ObjectScript sweep, the smoke, the Rule 30 fresh check and the full browser suite are the runner's and CI's.

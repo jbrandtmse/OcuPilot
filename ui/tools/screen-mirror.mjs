@@ -2857,7 +2857,7 @@ export const ROW_TARGET_KEYS = ['route', 'field', 'unless'];
  * What is wrong with `declaration`'s declared `rowTarget`, or `null` when nothing is, including
  * when none is declared (AD-5, Story 6.10). A row target is a list's single cross-screen row
  * link: the field its name cell encodes and the route that link opens, resolved ahead of the
- * paired-surface chain in `data-table.ts` -- because a list keyed by something other than the
+ * paired-surface chain in `nameLinkTarget` (`ui/src/app/core/navigation.ts`) -- because a list keyed by something other than the
  * linked entity (the Locks list's removal id, say) would otherwise link its own id route, which
  * names the wrong thing.
  *
@@ -4017,7 +4017,7 @@ export interface TabDeclaration {
 /**
  * A list's single declared cross-screen row target (AD-5, Story 6.10): the route its name cell
  * opens and the row field, read with \`fieldOf\` and encoded with \`encodeEntityId\`, that route's
- * id is drawn from -- resolved ahead of the paired-surface chain in \`shell/data-table.ts\`.
+ * id is drawn from -- resolved ahead of the paired-surface chain in \`nameLinkTarget\` (\`ui/src/app/core/navigation.ts\`).
  */
 export interface ScreenRowTarget {
   readonly route: string;

@@ -216,7 +216,7 @@ async function selectProbe(page) {
     taskName,
     NAME_TEXT
   );
-  await clickRowCentre(page, { text: taskName });
+  await clickRowCentre(page, { text: taskName, cell: 2 });
   await page.waitForFunction(
     (selector) => Array.from(document.querySelectorAll(selector)).some((row) => row.getAttribute('aria-selected') === 'true'),
     { timeout: config.navigationTimeoutMs },

@@ -452,7 +452,7 @@ export interface TabDeclaration {
 /**
  * A list's single declared cross-screen row target (AD-5, Story 6.10): the route its name cell
  * opens and the row field, read with `fieldOf` and encoded with `encodeEntityId`, that route's
- * id is drawn from -- resolved ahead of the paired-surface chain in `shell/data-table.ts`.
+ * id is drawn from -- resolved ahead of the paired-surface chain in `nameLinkTarget` (`ui/src/app/core/navigation.ts`).
  */
 export interface ScreenRowTarget {
   readonly route: string;
@@ -6332,11 +6332,14 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyNextKey": "tableReadOnlyEmptyNext",
       "emptyAgentKey": ""
     },
+    "rowTarget": {
+      "route": "os-management/databases/details",
+      "field": "Directory"
+    },
     "toolIdentifier": "osmgmt.databasefreespace",
     "refreshDefault": 0,
     "banner": null,
     "tab": null,
-    "rowTarget": null,
     "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
@@ -29178,11 +29181,14 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyNextKey": "",
       "emptyAgentKey": "taskOnDemandEmptyAgent"
     },
+    "rowTarget": {
+      "route": "tasks/schedule/details",
+      "field": "Id"
+    },
     "toolIdentifier": "tasks.ondemand",
     "refreshDefault": 0,
     "banner": null,
     "tab": null,
-    "rowTarget": null,
     "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": []
@@ -29759,11 +29765,14 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyNextKey": "tableReadOnlyEmptyNext",
       "emptyAgentKey": ""
     },
+    "rowTarget": {
+      "route": "tasks/schedule/details",
+      "field": "Id"
+    },
     "toolIdentifier": "tasks.upcoming",
     "refreshDefault": 0,
     "banner": null,
     "tab": null,
-    "rowTarget": null,
     "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],

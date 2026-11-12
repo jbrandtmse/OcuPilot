@@ -4038,7 +4038,7 @@ Parameter ROWTARGETKEYS = "route,field,unless";
 /// <code>""</code> when nothing is, including when none is declared (AD-5, Story 6.10). A row
 /// target is a list's single cross-screen row link: the field its name cell encodes and the
 /// route that link opens, resolved ahead of the paired-surface chain in
-/// <file>ui/src/app/shell/data-table.ts</file> -- because a list keyed by something other than
+/// <code>nameLinkTarget</code> (<file>ui/src/app/core/navigation.ts</file>) -- because a list keyed by something other than
 /// the linked entity (the Locks list's removal id, say) would otherwise link its own id route,
 /// which names the wrong thing.</p>
 /// <p>Declarable only on a <code>list</code> archetype, or a <code>detail</code> archetype that declares a

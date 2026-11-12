@@ -8,54 +8,30 @@ import { dirname, join } from 'node:path';
 // reason is declared here. A name cell that links to its own list changes the address and the
 // breadcrumb and opens no screen, which is how the SQL schemas list shipped.
 //
-// Two declared sets hold every list that links to itself. `NON_DEFECTS` are the lists whose own id
-// route is the right target. `STORY_20_39_ALLOW_LIST` is the lists Story 20.39 fixes, and it empties
-// there: a fix that leaves its row in place, or a new self-link, turns this red.
+// `NON_DEFECTS` holds every list that links to itself, each with its reason: the five lists whose page
+// opens a dialog at their own id route. A new self-link, or a set member with no reason here, turns
+// this red.
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const corePath = (name) => join(uiRoot, 'src', 'app', 'core', name);
 
-const { DIALOG_EDITORS, hasIdRoute, nameLinkTarget, screenForRoute } = await import(corePath('navigation.ts'));
+const { DETAIL_DIALOG_LISTS, DIALOG_EDITORS, hasIdRoute, nameLinkTarget, screenForRoute } = await import(corePath('navigation.ts'));
 const { SCREENS } = await import(corePath('screens.generated.ts'));
 
 const PACKAGE = 'OcuPilot.Screen.Descriptor.';
 const qualified = (names) => names.map((name) => `${PACKAGE}${name}`);
 
 /**
- * The lists whose own id route is the right target for their name cell, each with the reason.
- * The two dialog editors are `DIALOG_EDITORS`: their editor is a dialog over the list itself.
+ * The lists whose own id route is the right target for their name cell, each with the reason: the
+ * page opens the row's dialog there. They are the members of `DIALOG_EDITORS` and
+ * `DETAIL_DIALOG_LISTS`, declared here by hand so that a member added to either set needs a reason.
  */
 const NON_DEFECTS = new Map([
-  ...[...DIALOG_EDITORS].map((descriptor) => [descriptor, 'its editor is a dialog over the list itself']),
+  [`${PACKAGE}ResourceList`, 'its editor is a dialog over the list itself'],
+  [`${PACKAGE}AuditUserEventList`, 'its editor is a dialog over the list itself'],
   [`${PACKAGE}AuditList`, "its name cell opens the row's detail dialog on its id"],
   [`${PACKAGE}JournalRecordList`, "its name cell opens the row's detail dialog on its id"],
   [`${PACKAGE}TaskHistoryList`, "its name cell opens the row's detail dialog on its id"],
-  [`${PACKAGE}LicenseKey`, 'its page never draws the shared table'],
-  [`${PACKAGE}OpenApiViewer`, 'its page never draws the shared table'],
-]);
-
-/**
- * The lists Story 20.39 fixes, by descriptor, in the order of the table in Story 20.38's spec
- * (rows 2 to 18; row 1, SQL schemas, is fixed by Story 20.38 and is in neither set).
- */
-const STORY_20_39_ALLOW_LIST = qualified([
-  'ExplorerClassDocument', // system-explorer/classes/document
-  'ExplorerRoutineDocument', // system-explorer/routines/document
-  'SqlPrivilegeList', // permissions/sql-privileges
-  'SqlColumnPrivilegeList', // permissions/sql-column-privileges
-  'SqlAdminPrivilegeList', // permissions/sql-admin-privileges
-  'WebAppPctAccessList', // web-applications/list/class-access
-  'AuditSystemEventList', // security/auditing/system-events
-  'AllowedDirectoryList', // security/allowed-directories
-  'DatabaseFreeSpace', // os-management/database-free-space
-  'EcpSslConnectionTab', // os-management/ecp-application-servers/ssl
-  'TaskOnDemandList', // tasks/on-demand
-  'TaskUpcomingList', // tasks/upcoming
-  'BackgroundTaskList', // tasks/background
-  'ExplorerDocDbList', // system-explorer/docdb
-  'InteropBusinessPartnerList', // interoperability/business-partners
-  'AnalyticsFolderItemList', // analytics/folder-items
-  'AgentScreenPermissions', // agent/screenpermissions
 ]);
 
 const SQL_SCHEMAS = `${PACKAGE}ExplorerSqlSchemas`;
@@ -73,14 +49,17 @@ const selfLinking = () =>
     .map((screen) => screen.descriptor)
     .sort();
 
-// Mutation (Rule 19): drop the `documentScreenFor` arm from `nameLinkTarget` -> SQL schemas, and
-// every other list that pairs a document viewer, link to themselves, and the exact-set assertion
-// goes red naming them. Delete one row of `STORY_20_39_ALLOW_LIST` -> the same assertion goes red
-// naming that list.
-test('Story 20.38 AC4: the lists whose name cell links back to themselves are exactly the declared non-defects and Story 20.39\'s allow-list', () => {
+// Mutation (Rule 19): restore the old last arm of `nameLinkTarget` (`screen.parentScope === '' ? screen : null`)
+// -> every unpaired top-level list links to itself and this goes red naming them. Add a descriptor to
+// `DETAIL_DIALOG_LISTS` -> the set-equality assertion goes red until a reason is added to `NON_DEFECTS`.
+test('Story 20.39 AC2: the lists whose name cell links back to themselves are exactly the declared dialog lists', () => {
   assert.ok(namedScreens.length > 100, `the mirror carries the built screens that draw a name column (${namedScreens.length})`);
-  const declared = [...NON_DEFECTS.keys(), ...STORY_20_39_ALLOW_LIST].sort();
-  assert.deepEqual(selfLinking(), declared, 'a list that links its name to itself is declared, and a declared one still does');
+  assert.deepEqual(selfLinking(), [...NON_DEFECTS.keys()].sort(), 'a list that links its name to itself is declared, and a declared one still does');
+  assert.deepEqual(
+    [...DIALOG_EDITORS, ...DETAIL_DIALOG_LISTS].sort(),
+    [...NON_DEFECTS.keys()].sort(),
+    'every member of a client dialog set has a reason here, and every reason names a set member'
+  );
 });
 
 /** The descriptors among `screens` whose name cell links to a screen that is not built. */
@@ -99,29 +78,21 @@ test('Story 20.38 AC4: a name cell never links to a screen that is not built', (
 });
 
 test('Story 20.38 AC4: the unbuilt-target check flags a name cell that links to a screen that is not built', () => {
-  const real = namedScreens.find((screen) => screen.descriptor === `${PACKAGE}AllowedDirectoryList`);
-  assert.ok(real !== undefined, 'the control starts from a built list that pairs nothing');
+  const real = namedScreens.find((screen) => screen.descriptor === [...DETAIL_DIALOG_LISTS][0]);
+  assert.ok(real !== undefined, 'the control starts from a built list that links its name to itself');
   const unbuilt = { ...real, route: 'security/unbuilt-probe', built: false, parentScope: '', rowTarget: null, classicLinkExemption: { exempt: false } };
-  assert.equal(nameLinkTarget(unbuilt), unbuilt, 'a list that pairs nothing links to itself');
+  assert.equal(nameLinkTarget(unbuilt), unbuilt, 'a dialog list links to itself');
   assert.deepEqual(unbuiltLinkTargets([unbuilt]), [real.descriptor], 'the unbuilt copy is flagged');
   assert.deepEqual(unbuiltLinkTargets([real]), [], 'and the built original is not');
 });
 
-test('Story 20.38 AC4: the declared sets are disjoint, name only built lists that draw a name column, and leave SQL schemas in neither', () => {
+test('Story 20.39 AC2: the declared dialog lists are built lists that draw a name column, and SQL schemas is not one', () => {
   const nonDefects = [...NON_DEFECTS.keys()];
-  assert.equal(new Set(STORY_20_39_ALLOW_LIST).size, STORY_20_39_ALLOW_LIST.length, 'the allow-list names no list twice');
-  assert.deepEqual(
-    nonDefects.filter((descriptor) => STORY_20_39_ALLOW_LIST.includes(descriptor)),
-    [],
-    'no list is both a non-defect and on the allow-list'
-  );
-  assert.equal(nonDefects.includes(SQL_SCHEMAS) || STORY_20_39_ALLOW_LIST.includes(SQL_SCHEMAS), false, 'SQL schemas is in neither set');
+  assert.equal(nonDefects.includes(SQL_SCHEMAS), false, 'SQL schemas is not a dialog list');
   const named = new Set(namedScreens.map((screen) => screen.descriptor));
-  for (const descriptor of [...nonDefects, ...STORY_20_39_ALLOW_LIST]) {
+  for (const descriptor of nonDefects) {
     assert.ok(named.has(descriptor), `${descriptor} is a built screen that draws a name column`);
   }
-  // Temporary: Story 20.39 empties the allow-list and deletes this count in the same pass.
-  assert.equal(STORY_20_39_ALLOW_LIST.length, 17, "the allow-list is rows 2 to 18 of Story 20.38's table");
 });
 
 // Mutation (Rule 19): drop `documentScreenFor` from `nameLinkTarget`, or the `ExplorerSqlSchema`
@@ -141,4 +112,50 @@ test('Story 20.38 AC1: the SQL schemas list opens the schema screen, and each of
     assert.equal(nameLinkTarget(tab)?.route, target, `${route}'s name cell opens ${target}`);
     assert.deepEqual(tab.rowTarget, { route: target, field }, `${route} carries ${field} to it`);
   }
+});
+
+/**
+ * What a name cell opens for the lists that once linked to themselves: the route `nameLinkTarget`
+ * answers, or `null` where the cell is text. A target with no id route also draws text.
+ */
+const FORMER_SELF_LINKS = [
+  ['system-explorer/classes/document', null],
+  ['system-explorer/routines/document', null],
+  ['permissions/sql-privileges', null],
+  ['permissions/sql-column-privileges', null],
+  ['permissions/sql-admin-privileges', null],
+  ['web-applications/list/class-access', null],
+  ['security/auditing/system-events', null],
+  ['security/allowed-directories', null],
+  ['os-management/database-free-space', 'os-management/databases/details'],
+  ['os-management/ecp-application-servers/ssl', null],
+  ['tasks/on-demand', 'tasks/schedule/details'],
+  ['tasks/upcoming', 'tasks/schedule/details'],
+  ['tasks/background', null],
+  ['system-explorer/docdb', null],
+  ['interoperability/business-partners', null],
+  ['analytics/folder-items', null],
+  ['agent/screenpermissions', null],
+];
+
+// Mutation (Rule 19): delete `TaskOnDemandList`'s or `DatabaseFreeSpace`'s `rowTarget`, regenerate the
+// mirror -> its row below goes red.
+test('Story 20.39 AC1: each list that linked to itself opens the screen of its own entity, or draws text', () => {
+  for (const [route, expected] of FORMER_SELF_LINKS) {
+    const screen = screenForRoute(route);
+    assert.ok(screen !== null && screen.built, `${route} is a built screen`);
+    const target = nameLinkTarget(screen);
+    const opened = target !== null && hasIdRoute(target) ? target.route : null;
+    assert.equal(opened, expected, `${route}'s name cell ${expected === null ? 'is text' : `opens ${expected}`}`);
+  }
+});
+
+// Mutation (Rule 19): admit every top-level list in the last arm of `nameLinkTarget` -> this goes red.
+test('Story 20.39 AC2: a top-level list that pairs nothing and sits in neither dialog set draws its name as text', () => {
+  const real = namedScreens.find((screen) => screen.descriptor === `${PACKAGE}AllowedDirectoryList`);
+  assert.ok(real !== undefined, 'the control starts from a built list that pairs nothing');
+  const probe = { ...real, descriptor: `${PACKAGE}NameLinkProbe`, route: 'security/name-link-probe', parentScope: '', rowTarget: null, classicLinkExemption: { exempt: false } };
+  assert.equal(nameLinkTarget(probe), null, 'a list in no set answers no target');
+  const dialog = { ...probe, descriptor: [...DETAIL_DIALOG_LISTS][0] };
+  assert.equal(nameLinkTarget(dialog), dialog, 'and the same list declared in a dialog set links to itself');
 });
