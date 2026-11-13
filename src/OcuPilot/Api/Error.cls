@@ -1945,6 +1945,24 @@ ClassMethod Render(pStatus As %Integer, pSlug As %String, pReason As %String, pC
     Quit tSC
 }
 
+/// <p>Render the refusal of a request body that could not be used (AD-39). Without <var>pField</var>
+/// it is <parameter>AGENTBADBODY</parameter>: the body is missing, is not JSON, or is not the object the
+/// request expects. With one -- <method>OcuPilot.Kernel.Utils.ReadRequestBody</method>'s
+/// <var>pField</var>, the top-level key holding a value the instance cannot hold, or <code>*</code> --
+/// it is 400 <parameter>PORTFIELDSHAPE</parameter> with one <code>detail.violations</code> row
+/// <code>{field, code, reason}</code>, the reason being that code's published sentence.</p>
+/// <p>The field is a key of the caller's own document; the value is never quoted.</p>
+ClassMethod RenderBodyRefusal(pField As %String = "") As %Status
+{
+    If pField = "" {
+        Quit ..Render(400, ..#BADREQUEST, ..#REASONAGENTBADBODY, ..#AGENTBADBODY)
+    }
+    Set tReason = ..ReasonForViolation(..#PORTFIELDSHAPE)
+    Set tDetail = {"violations": []}
+    Do tDetail.%Get("violations").%Push({"field": (pField), "code": (..#PORTFIELDSHAPE), "reason": (tReason)})
+    Quit ..Render(400, ..#BADREQUEST, tReason, ..#PORTFIELDSHAPE, tDetail)
+}
+
 /// <p>Whether <var>pCode</var> is a well-formed machine code. Three refusals, in the order a
 /// caller is likeliest to trip them: empty, canonical-numeric, and anything the
 /// <parameter>CODEPATTERN</parameter> shape does not admit.</p>

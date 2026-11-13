@@ -11956,6 +11956,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Story 18.47 plan audit 2026-10-14 (code read): 109 sites in 54 Area files; Screen/Tool about 14, Api 11, Kernel 20-25 (inference); over the ruling's 10, so 18.47 fixes none
 - 2026-10-14T09:42:09Z status=routed owner=23-9-the-range-end-cleanup-part-8 by=spec_gate note=orchestrator 2026-10-14: more than about 10 sites, so one sweep entry; supersedes DW-2327
 - 2026-10-14T12:40:16Z status=routed owner=23-10-the-range-end-cleanup-part-9-two-sweeps by=lead note=orchestrator 2026-10-14: Story 23.10, two sweeps
+- 2026-11-13T14:06:41Z status=resolved-by:23-10-the-range-end-cleanup-part-9-two-sweeps by=adjudication note=batch_2:Kernel.Utils.OversizedMember+ReadRequestBody_pField,Api.Error.RenderBodyRefusal,Area_wrappers_and_direct_callers,Registry.ValidateArguments;pins_Test.Utils,PctAccessSaveWire,ToolDispatch,BodyOversizedWire;new-site_check_ui/tools/request-body.test.mjs;code_7b95c2b0(CI_43405790354_green)+43f32a09;residual_SqlConsole/SqlData/MdxQuery_and_Api_routes_answer_their_own_400_not_500_per_spec
 
 ### DW-2418: A turn's one PROVIDER.TLS sentence names the absent, unverified and unreadable causes but not a TLS floor below 1.2
 - source: spec-18-47-epic-18-burn-down-part-1.md | severity: low | fix-risk: low | footprint: in-story

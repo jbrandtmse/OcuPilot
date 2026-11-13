@@ -203,10 +203,10 @@ ClassMethod HandleValidate() As %Status
             Set tSC = ##class(OcuPilot.Kernel.Denial).Envelope(tFailedPair)
             Quit
         }
-        Set tReadSC = ##class(OcuPilot.Kernel.Utils).ReadRequestBody(.tBody, .tStage)
+        Set tReadSC = ##class(OcuPilot.Kernel.Utils).ReadRequestBody(.tBody, .tStage, .tBodyField)
         If $$$ISERR(tReadSC) || '$IsObject($Get(tBody)) || 'tBody.%IsA("%Library.DynamicObject") || (tBody.%Size() '= 1) || (tBody.%GetTypeOf("Key") '= "string") {
             Set tBody = ""
-            Set tSC = ##class(OcuPilot.Api.Error).Render(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#REASONAGENTBADBODY, ##class(OcuPilot.Api.Error).#AGENTBADBODY)
+            Set tSC = ##class(OcuPilot.Api.Error).RenderBodyRefusal(tBodyField)
             Quit
         }
         Set tKey = tBody.%Get("Key")

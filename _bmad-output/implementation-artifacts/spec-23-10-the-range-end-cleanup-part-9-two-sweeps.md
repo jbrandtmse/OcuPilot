@@ -3,8 +3,8 @@ title: 'Story 23.10: The range-end cleanup, part 9: two sweeps'
 type: 'bugfix'
 created: '2026-11-12'
 status: 'in-progress'
-baseline_revision: '736c294e17eb13450cdbcf5acd48697e9690af7c'
-baseline_commit: '736c294e17eb13450cdbcf5acd48697e9690af7c'
+baseline_revision: '7b808a4c7cf6e48b6010eb4d75e1028cd5e8f80f'
+baseline_commit: '7b808a4c7cf6e48b6010eb4d75e1028cd5e8f80f'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -183,21 +183,21 @@ deferred:
 
 ### Batch 2: request bodies (DW-2417)
 
-- [ ] `src/OcuPilot/Kernel/Utils.cls`: add `OversizedMember(pValue) As %String` beside `ReadRequestBody`. It walks objects and arrays with three-argument `%GetNext`, inside a `Try`.
+- [x] `src/OcuPilot/Kernel/Utils.cls`: add `OversizedMember(pValue) As %String` beside `ReadRequestBody`. It walks objects and arrays with three-argument `%GetNext`, inside a `Try`.
   - It answers the top-level key of the first value the instance cannot hold: a string that came back as a stream, or a number whose untyped read raises (decided by attempting the read, never by `$IsValidNum`).
   - It answers `*` when the walk itself raises (an oversized key, or very deep nesting), and `""` when every value can be held.
-- [ ] `ReadRequestBody` gains a trailing `Output pField`. After a successful parse it calls `OversizedMember`; on a hit it answers an error at stage `parse`, with `pField` set. The doc states the new outcome.
-- [ ] `src/OcuPilot/Api/Error.cls`: add `RenderBodyRefusal(pField)`. With a field it answers 400 `PORT.FIELD.SHAPE` with `detail.violations[{field, code: "PORT.FIELD.SHAPE", reason}]`, the reason being that code's existing published sentence (AD-39); without one it answers today's `AGENT.BADBODY`.
-- [ ] Every Area `Body()` wrapper gains `, Output pField`, and each `If '..Body(` branch renders through `RenderBodyRefusal`. Do the same for each handler that calls `ReadRequestBody` directly and answers a bad body.
+- [x] `ReadRequestBody` gains a trailing `Output pField`. After a successful parse it calls `OversizedMember`; on a hit it answers an error at stage `parse`, with `pField` set. The doc states the new outcome.
+- [x] `src/OcuPilot/Api/Error.cls`: add `RenderBodyRefusal(pField)`. With a field it answers 400 `PORT.FIELD.SHAPE` with `detail.violations[{field, code: "PORT.FIELD.SHAPE", reason}]`, the reason being that code's existing published sentence (AD-39); without one it answers today's `AGENT.BADBODY`.
+- [x] Every Area `Body()` wrapper gains `, Output pField`, and each `If '..Body(` branch renders through `RenderBodyRefusal`. Do the same for each handler that calls `ReadRequestBody` directly and answers a bad body.
   - Where a handler already answers an oversized value with its own field refusal (`RestService/Save`), its wire answer stays as it is, and `RestServiceSave` stays green unchanged.
   - Api routes keep their own bad-body answers.
   - `Area/Interop/ItemSave.cls`: edit it only if Epic 20's diff still omits it; otherwise leave it, since it answers 400 `AGENT.BADBODY` through the guard, and record the residual under Verification.
-- [ ] `src/OcuPilot/Screen/Tool/Registry.cls` `ValidateArguments`: before type checks, an argument object for which `OversizedMember` answers non-empty gets the same `pProblem` and error status a wrong-typed argument gets, naming the key.
-- [ ] **Pins**, red before:
+- [x] `src/OcuPilot/Screen/Tool/Registry.cls` `ValidateArguments`: before type checks, an argument object for which `OversizedMember` answers non-empty gets the same `pProblem` and error status a wrong-typed argument gets, naming the key.
+- [x] **Pins**, red before:
   - `Test/Utils.cls`: legs for `1e400`, nested `[1, -1e400]`, a 4,000,000-character value and a 4,000,000-character key (each answers its key or `*`), and pass legs for `1e308` and a 1,000,000-character string. Mutations: remove the guard call (error legs red); judge numbers by `$IsValidNum` (the `1e308` leg red).
   - `Test/PctAccessSaveWire.cls`: a raw body with `"Extra":1e400` answers 400 `PORT.FIELD.SHAPE` on `Extra`, and nothing is written; red today with a 500.
   - `Test/ToolDispatch.cls`: a tool call with an argument holding `1e400` answers the tool-arguments refusal.
-- [ ] **New-site catch.** New `ui/tools/request-body.test.mjs`: it fails if `%request.Content` or `GetMimeData(` appears in non-test `src/OcuPilot` outside `Kernel/Utils.cls`. Prove it by adding such a read to one Area file and watching it go red.
+- [x] **New-site catch.** New `ui/tools/request-body.test.mjs`: it fails if `%request.Content` or `GetMimeData(` appears in non-test `src/OcuPilot` outside `Kernel/Utils.cls`. Prove it by adding such a read to one Area file and watching it go red.
 
 ### Batch 3: test teardowns (DW-2426)
 
@@ -296,6 +296,35 @@ Rejected:
 - `false`: `waitForSlotFree` duplicates `requireFreeSlot` (Rule 31 check). It was extracted from `requireFreeSlot`, which now calls it.
 - `false`: `answeredWith` duplicates a sibling (Rule 31 check). `statusReads` and `backgroundReads` each wait for one exact line, and no helper waits for "not busy and an outcome line".
 
+Code review, batch 2 (2026-11-13; four layers, full-opus). 0 decision-needed, 8 patch, 0 defer, 15 rejected.
+
+- [x] [Review][Patch] `POST /rest-service` stopped giving its own 422 for a `Name` or `Document` it cannot use. `Name: 1e400`, a `Document` holding `-1e400` and a 4,000,000-character `Document` answered 400 `PORT.FIELD.SHAPE`, but the task keeps this handler's answer. They now answer 422 `RESTSERVICE.NAME` / `RESTSERVICE.DOCUMENT` again. Only `*` and a string `Name` past the string limit (500 before the batch) are refused on the field. The test is now `TestAnOversizedMemberKeepsTheRoutesOwnAnswer`: red at head on the three 422 legs (run 748). [src/OcuPilot/Area/WebApp/RestServiceSave.cls:72]
+- [x] [Review][Patch] `{"": 1e400}` passed the guard, because a hit under the empty key answered `""` ("every value is held"), so the route's own walk could still raise. Such a hit now answers `*`. A new leg in `Test.Utils` was red at head (run 746). [src/OcuPilot/Kernel/Utils.cls:435]
+- [x] [Review][Patch] The adoption scan checked files, not sites. A `..Body(.tBody)` call, a branch put back to `AGENT.BADBODY`, or `..BadBody()` passed in any file that renders `RenderBodyRefusal` elsewhere. It is now per call site: each reader or `Body()` call takes the field, and the next four lines refuse on that same variable. [ui/tools/request-body.test.mjs:101]
+- [x] [Review][Patch] The `*` refusal on `/rest-service` had only a curl check. `Test.Http.AbsoluteRequest` and `RestServiceSave.Save` now accept a stream, and the test posts a 4,000,000-character key, name and document. [src/OcuPilot/Test/Http.cls:230, src/OcuPilot/Test/RestServiceSave.cls:95]
+- [x] [Review][Patch] The one-reader scan missed `%request.MimeData` and `NextMimeData(`. [ui/tools/request-body.test.mjs:35]
+- [x] [Review][Patch] `BodyOversizedWire`'s first mutation note said both routes "answer 500" without the guard. `LicenseRules` answers `AGENT.BADBODY` on its size check, so the note now says neither route answers the field refusal. [src/OcuPilot/Test/BodyOversizedWire.cls:45]
+- [x] [Review][Patch] Test doc comments narrated history ("where it used to answer 500"); the clauses are deleted. [src/OcuPilot/Test/BodyOversizedWire.cls:6, :85; src/OcuPilot/Test/PctAccessSaveWire.cls:104]
+- [x] [Review][Patch] `TestOversizedMemberNamesTheFirstValueTheInstanceCannotHold`'s mutation note named a mutation that reddens another test. It now names its own (answer `""` from `OversizedMember`'s `Catch`), observed red (run 751). [src/OcuPilot/Test/Utils.cls:262]
+
+Rejected:
+
+- `low`: a top-level array holding `1e400` answers `PORT.FIELD.SHAPE` on a numeric field `0`, not `AGENT.BADBODY` (verification-gap, blind, edge, auditor). It is still a 400, and no client sends an array body. `violationsOf` drops a non-string field, so the envelope's own reason is shown. A fix adds a branch at the reader.
+- `low`: `PORT.FIELD.SHAPE`'s sentence speaks of a "different kind of value" for an oversized one, and `Extra` or `*` names no control (blind). The task prescribes that code's existing published sentence; new wording would be an escalation. That a screen shows nothing is unverified: it would need an editor driven with an unplaced violation.
+- `low`: the error text and `detail` repeat a caller's key at any length, and a key near the string limit makes the message concatenation raise (blind, edge). That needs a key of about 3,641,000 characters; the `Catch` still answers a 400 on the field.
+- `low`: `*` hides a known top-level key when a nested walk raises (blind). It is still refused. Naming the key adds a `Try` per member.
+- `low`: `ValidateArguments` can name an argument `'*'` (blind). Only a model-written key past the string limit reaches it.
+- `false`: the parsed body kept on a hit is unpinned (blind). `RestServiceSave`'s `Big: 1e999` leg (`PORT.FIELD.UNEXPECTED`) and the new 422 legs each need it: a cleared body answers `PORT.FIELD.SHAPE` there.
+- `false`: the spec is `done` while batches 3-6 are open, and it grew (blind). That is the lead's per-batch protocol.
+- `low`: the Auto Run Result says 25 wrappers, not 27 (blind). The fix would edit the spec's result section.
+- `false`: the `Api/*` callers are outside the adoption scan (edge). The task keeps those routes' own bad-body answers, and the test header scopes the scan to `Area/` and `Kernel/`.
+- `false`: an unexpected oversized key on `/rest-service` answers `*`, not `PORT.FIELD.UNEXPECTED` (edge). Its walk would raise, so it is refused first (Decided in-stage).
+- `low`: the dispatcher reads arguments before `ValidateArguments`, and only a top-level `1e400` is pinned (auditor). Both paths share the one function; a nested raise before it was not shown. If real, it is low: the model would have to write a nested `1e400`.
+- `low`: `PctAccessSaveWire`'s no-write leg does not redden when the guard is removed (auditor). It reddens under a write-before-refusal mutation, which is what it pins.
+- `low`: `SqlConsole`, `SqlData` and `MdxQuery` answer their own existing 400 with no field (auditor). The wording is already published, and the residual is recorded under Verification.
+- `low`: `Api/Account` and `Api/Preferences` have private methods named `RenderBodyRefusal` with other arguments (auditor, Rule 31 check). Nothing is copied; only the name is shared.
+- `false`: `OversizedMember` copies a size or shape helper (Rule 31 check). No walker exists in `Kernel/Utils.cls` or `Api/Error.cls`.
+
 ## Spec Change Log
 
 ## Review Triage Log
@@ -319,6 +348,22 @@ Rejected:
   - `[low]` `[reject]` Each fix covers its failing site, not the pattern - the spec scopes new-site checks to the two sweeps and names the siblings to move (done); the other specs are in the deferred row above.
   - `[false]` `[reject]` The CI-green evidence is local only - CI on the batch head is the lead's step after the commit, not a property of the diff.
   - `[false]` `[reject]` The spec says `ScriptStream(..., 4)` and the diff uses 3 - the fourth parameter is seconds, the Verification line and the diff agree; a fix would edit the spec's Code Map text, which is not a defect of the code.
+
+### 2026-11-13 - Review pass (Batch 2)
+
+- verdicts: 11 findings - high 0, medium 2, low 7, false 2, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` `POST /rest-service` with an oversized key answered 500 (the retained body's `UnexpectedKey` walk raised before the field refusal) - a `*` field is now refused before `UnexpectedKey`; a curl with a 4,000,000-character key answers 400 `PORT.FIELD.SHAPE` on `*`; a named-field leg is kept in `RestServiceSave` (`TestAnOversizedExpectedMemberIsRefusedOnItsField`).
+  - `[medium]` `[patch]` Nothing pinned that the other Area handlers took the field and rendered `RenderBodyRefusal` (a handler reverted or written the old way passed every test) - `request-body.test.mjs` gained an adoption scan over `Area/` and `Kernel/` callers with a three-name allow-list for the handlers that answer their own `RenderInput`; reddened by reverting one caller.
+  - `[low]` `[reject]` `TestAnOversizedNumberIsRefusedOnItsField`'s last assertion is `<> 200` rather than a positive read (verification-gap) - it still fails if the guard moves after a write, and the status and code assertions carry the mutation.
+  - `[low]` `[reject]` No leg for deep nesting or a top-level array (verification-gap) - both reach the same `Catch` and index naming as the long-key leg; the spec lists four legs.
+  - `[low]` `[reject]` `SqlConsole`, `SqlData`, `MdxQuery` and the `Api/*` callers now answer their own 400 for an oversized value instead of 500 (verification-gap, intent-alignment) - the spec keeps those routes' own bad-body answers; the status moves from an error to the route's existing refusal, recorded under Verification.
+  - `[low]` `[patch]` A doubled blank line before the new methods in `Kernel/Utils.cls`, `Test/Utils.cls` and `Test/PctAccessSaveWire.cls` - removed.
+  - `[low]` `[reject]` Strings and keys are pinned at `OversizedMember`, not over HTTP (intent-alignment) - a test string cannot exceed the instance's string limit; the HTTP answers were driven by curl with a stream and are recorded under Verification.
+  - `[low]` `[reject]` The tool-argument test checks the problem text and one top-level `1e400` (intent-alignment) - the refusal code is the existing tool-arguments one; nested walking is pinned in `Test.Utils`.
+  - `[false]` `[reject]` The sweep guard scans a different thing from the sweep (intent-alignment, same claim as the second medium) - closed by that row's adoption scan.
+  - `[false]` `[reject]` Wire coverage is one route only (intent-alignment) - same root cause as the second medium, closed by the adoption scan and three routes driven by curl.
+  - `[low]` `[reject]` Api routes keep their code and text but the status for this input changes (intent-alignment) - the same row as the third finding.
 
 ## Design Notes
 
@@ -442,32 +487,57 @@ Batch 1 (observed on `ocupilot-ci`):
   - DW-2517 `mutation:` `maxRows` 20 on the second page -> "the second page asks for the context cap" red (a source-text pin; the scan time itself is not observable in a test).
 - DW-2517 `mutation:` `maxRows` back to 20 on the second page, with 10.4 million scratch records written to the current journal file before the class ran (three calls: a switch and 400,000 sets, 10,000,000 sets, the run) -> `TestTheToolInReverseOrderKeepsTheNewestRowsUnderTheContextCap` took 23.4 s (below the 30 s bound, so it stayed green); with `maxRows` 10 under the same file it took 0.33 s. The 30 s bound itself was not reached in the three calls; the fix stands on the structural reading plus this measured 70-fold drop. Scratch global killed afterwards.
 
+Batch 2 (observed on `ocupilot-ci`; the tests were loaded and run red before the fix):
+
+- DW-2417 `Test/Utils.cls` `mutation:` before the fix, 3 of 12 red (`OversizedMember` and the `pField` argument did not exist). Remove the guard call from `ReadRequestBody` (`pField` left empty) -> `TestReadRequestBodyRefusesAValueTheInstanceCannotHold` red (1 of 12). Judge numbers by `$IsValidNum(pMember)` in `HoldsOversized` -> `TestOversizedMemberLetsHoldableValuesThrough` red on the `1e308` and the `1e146`/`1E308` legs (`$IsValidNum` answers 0 for both), and the holdable leg of the `ReadRequestBody` test red (2 of 12). Reverted; 12 of 12.
+- DW-2417 `PctAccessSaveWire` `mutation:` before the fix `TestAnOversizedNumberIsRefusedOnItsField` red (500, no field refusal; 1 of 4); with the guard call removed, red again on all three assertions; fixed, 4 of 4. Over HTTP on `ocupilot-ci` (curl, `_SYSTEM`): `{"Extra":1e400}` posted to `/web-app/pct-access`, `/database` and `/remote-database` answers 400 `PORT.FIELD.SHAPE` with `violations[{field: "Extra", ...}]`; `{"list":[1,-1e400]}` names `list`; a 4,000,000-character value names its key; a 4,000,000-character key names `*`; `{"a":` stays 400 `AGENT.BADBODY`; `/rest-service` with `Extra` stays `PORT.FIELD.UNEXPECTED` on `Extra`.
+- DW-2417 `ToolDispatch` `mutation:` before the fix `TestAnOversizedArgumentIsRefusedByName` red (the problem read `the arguments could not be validated: <MAXNUMBER> ...` with no argument name; 1 of 19); with the `OversizedMember` check removed from `ValidateArguments`, red with the same text; fixed, 19 of 19.
+- DW-2417 `request-body.test.mjs` `mutation:` `Set tProbe = %request.Content` added to `Area/Security/WalletSave.cls` `Body` -> the scan test red naming `Area/Security/WalletSave.cls:364`; reverted, 3 of 3.
+- DW-2417 `RestServiceSave` `mutation:` (code review) `TestAnOversizedMemberKeepsTheRoutesOwnAnswer`. It checks that `Name: 1e400`, a `Document` holding `-1e400` and a 4,000,000-character `Document` keep 422 `RESTSERVICE.NAME` / `RESTSERVICE.DOCUMENT`, and that a 4,000,000-character string `Name` and key answer 400 `PORT.FIELD.SHAPE` on `Name` and `*`. Bodies are streamed through `Test.Http.AbsoluteRequest`.
+  - At head (every named field refused after `UnexpectedKey`), the three 422 legs went red (run 748).
+  - With the fix: 9 of 9 (run 749).
+  - `*` refusal made never-true: the long-key leg alone went red (run 750). Reverted byte-identical; 9 of 9.
+- DW-2417 `request-body.test.mjs` adoption `mutation:` (code review, per-site scan), each applied alone and reverted byte-identical, the suite then 5 of 5:
+  - `DatabaseSave.HandleUpdate`'s refusal back to the `AGENT.BADBODY` render: red, naming `DatabaseSave.cls:103`.
+  - One `..BadBody(tBodyField)` in `OAuthServerSave` made `..BadBody()`: red, naming `:187`.
+  - `..Body(.tBody)` in `DeviceSave`: red.
+  - `%request.MimeData("BODY", 1)` added to `WalletSave` `Body`: the one-reader scan red.
+- DW-2417 `Test/Utils.cls` `mutation:` (code review) the `{"": 1e400}` leg was red at head: `OversizedMember` answered `""` (run 746). With the fix, 12 of 12 (run 747). Answering `""` from `OversizedMember`'s `Catch` turned the long-key leg of `TestOversizedMemberNamesTheFirstValueTheInstanceCannotHold` red (run 751). Reverted; 12 of 12.
+- Other classes run on `ocupilot-ci` after the change, one at a time: `RestServiceSave` 9 of 9 (the eight existing tests unchanged), `AllowedDirectorySave` 9, `BadBodySentence` 2, `BadBodyWrongShape` 3, `ScreenSaveOrder` 16 (its fixture's `Body` override gained `pField`; red 1 of 16 before that), `RoleSave` 8, `OAuthClientCreate` 8, `TaskSave` 8, `UserSave` 7, `WebAppSave` 7, all green. `check-objectscript` 0 problems over 21 rules; `npm run test:tools` 2211 of 2211.
+- Residual: `Area/Explorer/SqlConsole`, `SqlData` and `Area/Analytics/MdxQuery` read the body and answer their own `RenderInput` refusal for any unreadable body; an oversized value now reaches that 400 instead of a 500, with no field. `Api/*` routes keep their own bad-body answers, an oversized value included. `Area/Interop/ItemSave.cls` was edited: Epic 20's diff and status did not name it at the pass (re-checked immediately before).
+
+- (QA) `src/OcuPilot/Test/BodyOversizedWire.cls` (new, not armed, nothing written; 3 of 3 on `ocupilot-ci`): over HTTP, `/license/key/validate` (direct reader caller) and `/database/check` (wrapper) answer 400 `PORT.FIELD.SHAPE` on `Extra`, and on `list` for `[1, -1e400]`; `1e308` is not refused as a field shape; `{"a":` stays `AGENT.BADBODY`; the residual routes `/explorer/sql/run`, `/explorer/sql/plan`, `/explorer/sql/data` and `/analytics/mdx/background` answer their own 400 (`EXPLORER.SQL.INPUT`, `EXPLORER.DATA.INPUT`, `ANALYTICS.MDX.INPUT`) with no field.
+- (QA) `mutation:` guard call removed from `ReadRequestBody` (`Set pField = ""`) -> `TestAnOversizedNumberIsRefusedOnItsFieldOverHttp` and `TestTheRoutesWithTheirOwnInputRefusalAnswerItForAnOversizedValue` red (2 of 3). `mutation:` numbers judged by `$IsValidNum` in `HoldsOversized` -> `TestAHoldableValueAndMalformedJsonKeepTheirOwnAnswers` red (1 of 3). Both reverted byte-identical (`git diff` empty), recompiled, 3 of 3. `check-objectscript` 0 problems; `npm run test:tools` 2211 of 2211.
+
 Decided in-stage (Batch 1):
 
 - `relaunchOnce(open, relaunch, browser, closeDeadline)` takes the browser to close as its third argument, since the helper cannot learn it from `open`; the close is bounded by `CLOSEDEADLINE` (10 s) so a wedged browser that will not close is abandoned.
 - `answeredWith` also requires the status line to differ from the idle line `STRINGS.analyticsMdxEmpty`, because the idle page is not busy and has a non-empty status line; without that the wait passed before the run began.
 - `ScriptStream`'s fourth argument is `pMidHangSeconds` (seconds spread across the slices), not a slice size; test 7 uses 3. `turnprobe-spec.mjs` gained `scriptStreamReply` and `waitForSlotFree`, the latter shared with `requireFreeSlot`.
 
+Decided in-stage (Batch 2):
+
+- `ReadRequestBody` leaves `pBody` holding the parsed document on an oversized hit. `RestServiceSave` keeps its own answers: `PORT.FIELD.UNEXPECTED` on an unexpected key, and its 422 `RESTSERVICE.NAME` / `RESTSERVICE.DOCUMENT` for a `Name` or `Document` it cannot use. It refuses on the field only for `*` (an oversized key) and for a string `Name` past the string limit, the two cases that raised before (code review). Every other wrapper returns 0 on the error and renders `RenderBodyRefusal`.
+- `OversizedMember` also answers for a top-level array, naming the index; `ValidateArguments` names the key as `argument '<key>' holds a value this instance cannot hold (type)`.
+- `RenderBodyRefusal` answers on the `bad_request` slug, as `PORT.FIELD.UNEXPECTED` is answered in the Area handlers.
+
 ## Auto Run Result
 
 Status: done
 Blocking condition: none
 
-Summary: Batch 1 (CI flakes DW-2513, DW-2517, DW-2522, DW-2524) is implemented as test-harness changes; no product code changed.
+Summary: Batch 2 (DW-2417, request bodies) is implemented. One guard at the one body reader, `Kernel.Utils.ReadRequestBody`, refuses a value the instance cannot hold; the Area routes answer 400 `PORT.FIELD.SHAPE` on the field, and `ValidateArguments` refuses an oversized tool argument by name.
 
 Files changed:
 
-- `ui/browser/protocol-retry.mjs`: `isNavigationTimeout`, `relaunchOnce`, `CLOSEDEADLINE`.
-- `ui/tools/protocol-retry.test.mjs`: four fake-launcher cases for `relaunchOnce`.
-- `ui/browser/data-table-columns.browser-spec.mjs`: the shared browser is relaunched once on a navigation timeout; a failed open closes its context.
-- `ui/browser/analytics-mdx.browser-spec.mjs`: `answeredWith` bounded by the product's MDX bound, at the six answer waits and the two Proceed waits.
-- `ui/browser/panel-spec.mjs`, `panel-collapse.browser-spec.mjs`, `transcript-follow.browser-spec.mjs`: `waitForReplies` hoisted and shared.
-- `ui/browser/turnprobe-spec.mjs`: `scriptStreamReply` and `waitForSlotFree` (shared with `requireFreeSlot`).
-- `ui/browser/context-chip.browser-spec.mjs`: "Fresh at Send" streams turn 1 and waits for an idle turn and a free slot before the second Send.
-- `src/OcuPilot/Test/JournalRecords.cls`: the second reverse page sends `maxRows` 10.
+- `src/OcuPilot/Kernel/Utils.cls`: `OversizedMember`, `HoldsOversized`, and `ReadRequestBody`'s `Output pField`.
+- `src/OcuPilot/Api/Error.cls`: `RenderBodyRefusal(pField)`.
+- `src/OcuPilot/Screen/Tool/Registry.cls`: `ValidateArguments` refuses an oversized argument before the type checks.
+- 25 Area `Body()` wrappers, 15 direct callers, `Kernel/Proposal/ScreenSave` and the five OAuth classes' `BadBody`: take the field and render through `RenderBodyRefusal`. `Area/WebApp/RestServiceSave` keeps its own refusals (unexpected key, 422 name and document) and refuses on the field only for `*` and an over-long `Name` (as patched by code review). `Area/Interop/ItemSave` was edited (Epic 20 had not changed it).
+- Tests: `Test/Utils`, `Test/PctAccessSaveWire`, `Test/ToolDispatch`, `Test/RestServiceSave` (one new method), `Test/ScreenSaveOrderFixture` (override signature), and new `ui/tools/request-body.test.mjs` (single-reader scan and adoption scan).
 
-Review: 15 findings; 1 patch (medium; the two Proceed waits in analytics-mdx), 2 deferred (low, in `deferred:`), 12 rejected with reasons in the triage log. Follow-up review recommended: false (one medium patched, no high).
+Review: 11 findings; 2 medium patched (the `*` key on `/rest-service` answered 500; the adoption of the field refusal was unpinned), 1 low patched (blank lines), 8 rejected with reasons in the triage log, none deferred. Follow-up review recommended: false (no high patched).
 
-Verification: `protocol-retry.test.mjs` 16 of 16; `client-lint` and `browser-reset` clean; `check-objectscript` 0 problems; on `ocupilot-ci`: `JournalRecords` 10 of 10, `data-table-columns` 18 of 18, `analytics-mdx` 11 of 11 (re-run after the patch), `context-chip` 9 of 9, `panel-collapse` 5 of 5, `transcript-follow` 4 of 4; `npm run test:tools` 2194 of 2194 (implement stage). The mutation lines are under Verification.
+Verification: on `ocupilot-ci` `Utils` 12, `PctAccessSaveWire` 4, `ToolDispatch` 19, `RestServiceSave` 9, plus the Area classes named under Verification, all green; `request-body.test.mjs` 5 of 5; `npm run test:tools` 2211 of 2211; `check-objectscript` 0 problems. Each pin was red before the fix or under its mutation, recorded under Verification.
 
-Residual risk: DW-2513 and DW-2517 are shown structurally, not under their real conditions (a wedged Chrome; a journal that makes the scan exceed 30 s).
+Residual risk: `SqlConsole`, `SqlData` and `MdxQuery` answer an oversized value with their own input refusal and no field; `Api/*` routes keep their own bad-body answers.
