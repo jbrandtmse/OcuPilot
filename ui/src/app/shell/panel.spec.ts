@@ -4750,8 +4750,8 @@ describe('Story 11.2: Explain this entry', () => {
       expect(mounted.host.querySelector('[data-ocu-workflow-chip]')).toBeNull();
     });
 
-    // Mutation (Rule 19): `onExplainEntry` leaves an already-active workflow in place for an investigate request
-    // -> the second body names `compileclass` and this goes red; a typed send drops the workflow -> the third goes red.
+    // Mutation (Rule 19): `TurnStore.send` prefers the active workflow over its argument
+    // (`this.workflowValue ?? workflow`) -> the second body names `compileclass` and this goes red.
     it('an investigate request replaces the workflow that was active, and a typed message after it carries investigate', async () => {
       const mounted = await mountEntry({ endingTurns: 3 });
       expect(await mounted.turn.send('start', null, { id: 'compileclass', text: 'Compile a class' })).toBe('sent');

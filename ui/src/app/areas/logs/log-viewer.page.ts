@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, Injector, afterNextRender, inject, signal, viewChild } from '@angular/core';
 import { NavigationEnd, Router } from '@angular/router';
 
-import { ExplainEntry } from '../../core/explain-entry';
+import { ExplainEntry, type ExplainEntryKind } from '../../core/explain-entry';
 import { isBannerFault } from '../../core/fault';
 import { formatDeniedAction, NavigationService, parentCriteria } from '../../core/navigation';
 import { REFRESH_ACTION_ID, ScreenActions } from '../../core/screen-actions';
@@ -312,7 +312,7 @@ const SOURCES: Readonly<Record<string, LogViewerSource>> = {
                       data-ocu-log="investigate"
                       [attr.aria-disabled]="explainAriaDisabled"
                       [attr.aria-describedby]="explainDescribedBy"
-                      (click)="onInvestigate(row)"
+                      (click)="onExplain(row, 'investigate')"
                     >
                       {{ STRINGS.agentInvestigateEntryAction }}
                     </button>
@@ -638,16 +638,10 @@ export class LogViewerPage {
     return this.explainEntry?.describedBy() ?? null;
   }
 
-  /** Hand this row's entry to the panel; a refused control sends nothing. */
-  protected onExplain(row: RowView): void {
+  /** Hand this row's entry to the panel as a request of `kind`; a refused control sends nothing. */
+  protected onExplain(row: RowView, kind: ExplainEntryKind = 'explain'): void {
     if (this.screen === null) return;
-    this.explainEntry?.request(this.screen, row.entry);
-  }
-
-  /** Hand this row's entry to the panel as an Investigate request; a refused control sends nothing. */
-  protected onInvestigate(row: RowView): void {
-    if (this.screen === null) return;
-    this.explainEntry?.request(this.screen, row.entry, 'investigate');
+    this.explainEntry?.request(this.screen, row.entry, kind);
   }
 
   protected get chips(): readonly ChipView[] {

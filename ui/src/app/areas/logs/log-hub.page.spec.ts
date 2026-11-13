@@ -6,7 +6,7 @@ import { ApiService, type JsonResult } from '../../core/api';
 import { ChangeBus } from '../../core/change-bus';
 import type { ConnectivityService } from '../../core/connectivity';
 import { encodeEntityId, joinCompositeId } from '../../core/entity-id';
-import { ExplainEntry } from '../../core/explain-entry';
+import { BUSY_REASON_ID, CONTEXT_CHIP_OFF_ID, ExplainEntry, KILL_SWITCH_ID } from '../../core/explain-entry';
 import { NavigationService, formatDeniedAction } from '../../core/navigation';
 import { RefreshService } from '../../core/refresh';
 import { ScopeService } from '../../core/scope';
@@ -16,7 +16,7 @@ import { ScreenStores } from '../../core/screen-store';
 import { SCREENS } from '../../core/screens.generated';
 import { STRINGS } from '../../core/strings';
 import { stubAccountPreferences } from '../../testing/account-preferences';
-import { explainContext, narrowedEntry, stubExplainEntry } from '../../testing/explain-entry';
+import { type ExplainEntryState, explainContext, narrowedEntry, stubExplainEntry } from '../../testing/explain-entry';
 import { LogHubPage } from './log-hub.page';
 import { LogHubStore, nextSecond } from './log-hub.store';
 
@@ -345,6 +345,31 @@ describe('LogHubPage', () => {
 
     const headers = Array.from(host.querySelectorAll('[data-ocu-hub="sources"] thead th')).map((header) => header.textContent?.trim());
     expect(headers[headers.length - 1]).toBe(STRINGS.agentEntryActionsColumn);
+  });
+
+  // Mutation (Rule 19): the timeline Investigate drops its `aria-describedby` binding -> this goes red on the
+  // timeline control under each reason.
+  it('Story 20.36: under the kill switch, a running turn or sharing off, every Investigate is refused with that reason, as Explain is', async () => {
+    const cases: [Partial<ExplainEntryState>, string][] = [
+      [{ killSwitch: true }, KILL_SWITCH_ID],
+      [{ busy: true }, BUSY_REASON_ID],
+      [{ share: false }, CONTEXT_CHIP_OFF_ID],
+    ];
+    for (const [gate, reasonId] of cases) {
+      const { entry } = stubExplainEntry(gate);
+      const { fixture, host } = await mount(entry);
+      const timeline = host.querySelectorAll<HTMLElement>('[data-ocu-hub="investigate"]');
+      expect(timeline.length, JSON.stringify(gate)).toBe(ROWS.length);
+      for (const control of [...Array.from(timeline), sourceRow(host, 'logs/audit').querySelector('[data-ocu-hub="source-investigate"]') as HTMLElement]) {
+        expect(control.getAttribute('aria-disabled'), JSON.stringify(gate)).toBe('true');
+        expect(control.getAttribute('aria-describedby'), JSON.stringify(gate)).toBe(reasonId);
+        control.click();
+      }
+      await settle(fixture);
+      expect(entry.take(), JSON.stringify(gate)).toBeNull();
+      TestBed.inject(LogHubStore).reset();
+      TestBed.resetTestingModule();
+    }
   });
 
   it('a modified click on an entry or a source is left to the browser and hands nothing off', async () => {

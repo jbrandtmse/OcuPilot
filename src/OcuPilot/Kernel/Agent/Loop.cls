@@ -119,7 +119,8 @@ ClassMethod ContextTools(pContextJson As %String) As %List
 /// of that workflow names (<method>OcuPilot.Kernel.Agent.Workflow.StepTools</method>), so a workflow
 /// started from a screen whose context lacks a step's tool still holds it; every other tool is left for
 /// the discovery tool to find. An array without the discovery tool is left whole, so no advertised tool
-/// becomes unreachable. A pure function of the array, the context and the catalog.</p>
+/// becomes unreachable. A pure function of the array, the context, the catalog and the dispatch class's
+/// tool registry, which turns a step's canonical names into wire names.</p>
 ClassMethod Scope(ByRef pTools, pContextJson As %String = "", pWorkflow As %String = "")
 {
     Kill pTools("scoped")

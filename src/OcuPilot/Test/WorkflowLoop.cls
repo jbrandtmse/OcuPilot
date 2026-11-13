@@ -6,8 +6,8 @@
 /// same workflow. Each observed on the requests <class>OcuPilot.Test.ProviderStub</class> recorded.</p>
 /// <p>Driven through <class>OcuPilot.Test.TurnLoopProbe</class> as <class>OcuPilot.Test.TurnToolsCase</class>
 /// sets it up, with <class>OcuPilot.Test.ToolDispatchProbe</class> over the counting fixture tools where a tool is
-/// called. <b>Live-safe</b>: it spawns nothing and opens no socket; it writes probe agent definitions and turn rows
-/// and removes every one after each method.</p>
+/// called. <b>Live-safe</b>: it spawns nothing and opens no socket; it writes probe agent definitions, turn rows, a
+/// conversation and the proposals a method mints, and removes every one after each method.</p>
 Class OcuPilot.Test.WorkflowLoop Extends OcuPilot.Test.TurnToolsCase
 {
 
@@ -291,8 +291,8 @@ Method TestAWorkflowsStepToolsStartInTheToolSet()
 }
 
 /// <p><code>previous</code> reports the proposals of the conversation's newest earlier turn only when that turn ran the
-/// same workflow: an <code>investigate</code> turn after an ordinary turn that minted a proposal reports none, and the
-/// next <code>investigate</code> turn reports the one the first minted.</p>
+/// same workflow: an <code>investigate</code> turn after an Explain turn (the marked context, no workflow) that minted a
+/// proposal reports none, and the next <code>investigate</code> turn reports the one the first minted.</p>
 /// <p>Mutation: <method>OcuPilot.Kernel.Agent.Loop.WorkflowResult</method> skips the earlier turn's workflow check ->
 /// this goes red at the first investigate turn.</p>
 Method TestPreviousReportsOnlyATurnOfTheSameWorkflow()
@@ -304,8 +304,8 @@ Method TestPreviousReportsOnlyATurnOfTheSameWorkflow()
     Set ..ProbeConvKey = tConvo.ConvKey
 
     Do $ClassMethod(..#STUB, "QueueAnswer", 200, ..Reply("done"))
-    Set tOrdinary = ..RunTurn(.tOutcome, "", 0, 0, "", tConvo)
-    Do $$$AssertEquals(tOutcome("state"), "completed", "an ordinary turn completes")
+    Set tOrdinary = ..RunTurn(.tOutcome, "", 0, 0, ..#ENTRYCONTEXT, tConvo)
+    Do $$$AssertEquals(tOutcome("state"), "completed", "an Explain turn completes")
     Do ..Finish(tConvo, tOrdinary, "explorer.classes.save", tLimits)
 
     Do $ClassMethod(..#STUB, "QueueAnswer", 200, ..Reply("done"))
@@ -316,7 +316,7 @@ Method TestPreviousReportsOnlyATurnOfTheSameWorkflow()
     Do $$$AssertTrue(tAt >= 0, "it carries a workflow result")
     If tAt < 0 Quit
     Set tWorkflow = ..ResultBody(tMessages, tAt, "ocupilot_workflow")
-    Do $$$AssertEquals(tWorkflow.%Get("previous").%Size(), 0, "after an ordinary turn that proposed a change, previous reports none")
+    Do $$$AssertEquals(tWorkflow.%Get("previous").%Size(), 0, "after an Explain turn that proposed a change, previous reports none")
     Do ..Finish(tConvo, tFirst, "osmgmt.namespaces.create", tLimits)
 
     Do $ClassMethod(..#STUB, "QueueAnswer", 200, ..Reply("done"))
@@ -324,10 +324,40 @@ Method TestPreviousReportsOnlyATurnOfTheSameWorkflow()
     Do $$$AssertEquals(tOutcome("state"), "completed", "the second investigate turn completes")
     Set tMessages = ..MessagesOf(3)
     Set tAt = ..WorkflowMessage(tMessages)
+    Do $$$AssertTrue(tAt >= 0, "the second investigate turn carries a workflow result")
     If tAt < 0 Quit
     Set tWorkflow = ..ResultBody(tMessages, tAt, "ocupilot_workflow")
     Do $$$AssertEquals(tWorkflow.%Get("previous").%Size(), 1, "after a turn of the same workflow, previous reports its one proposal")
     Do $$$AssertEquals(tWorkflow.%Get("previous").%Get(0).%Get("tool"), "osmgmt.namespaces.create", "and it is that turn's, not the ordinary turn's")
+    Set tConvo = ""
+}
+
+/// <p>An <code>investigate</code> turn started while another workflow ran reports no <code>previous</code>: the earlier
+/// <code>compileclass</code> turn's proposal is that workflow's, not this one's.</p>
+/// <p>Mutation: <method>OcuPilot.Kernel.Agent.Loop.WorkflowResult</method> skips only an earlier turn with no workflow
+/// (<code>If tEarlierWorkflow = "" Quit</code>) -> this goes red.</p>
+Method TestPreviousIgnoresATurnOfAnotherWorkflow()
+{
+    Set tLimits = $ClassMethod(..#LOOP, "LimitsClass")
+    Set tConvo = ##class(OcuPilot.Kernel.State.Convo).LoadOrCreate("", $Username, 5, .tConvoSC, .tConflict)
+    Do $$$AssertStatusOK(tConvoSC, "a conversation is created")
+    If '$IsObject(tConvo) Quit
+    Set ..ProbeConvKey = tConvo.ConvKey
+
+    Do $ClassMethod(..#STUB, "QueueAnswer", 200, ..Reply("done"))
+    Set tCompile = ..RunTurn(.tOutcome, "", 0, 0, "", tConvo, "", "compileclass")
+    Do $$$AssertEquals(tOutcome("state"), "completed", "a compileclass turn completes")
+    Do ..Finish(tConvo, tCompile, "explorer.classes.save", tLimits)
+
+    Do $ClassMethod(..#STUB, "QueueAnswer", 200, ..Reply("done"))
+    Set tInvestigate = ..RunTurn(.tOutcome, "", 0, 0, ..#ENTRYCONTEXT, tConvo, "", "investigate")
+    Do $$$AssertEquals(tOutcome("state"), "completed", "the investigate turn completes")
+    Set tMessages = ..MessagesOf(2)
+    Set tAt = ..WorkflowMessage(tMessages)
+    Do $$$AssertTrue(tAt >= 0, "it carries a workflow result")
+    If tAt < 0 Quit
+    Set tWorkflow = ..ResultBody(tMessages, tAt, "ocupilot_workflow")
+    Do $$$AssertEquals(tWorkflow.%Get("workflow") _ "|" _ tWorkflow.%Get("previous").%Size(), "investigate|0", "after a compileclass turn that proposed a change, previous reports none")
     Set tConvo = ""
 }
 

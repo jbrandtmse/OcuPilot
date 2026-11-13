@@ -2,7 +2,7 @@
 title: 'Story 20.36: Investigate'
 type: 'feature'
 created: '2026-10-15'
-status: 'done'
+status: 'in-progress'
 baseline_revision: '3db990a9012c1900ab586d39a36285d83e6d4aad'
 baseline_commit: '3db990a9012c1900ab586d39a36285d83e6d4aad'
 review_loop_iteration: 0
@@ -121,7 +121,7 @@ Paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`; lines were rea
   - `ExplainEntryRequest`;
   - the catalog's ids;
   - the hub's column headers.
-- [ ] **DW-2468 (ledger; routed by Story 20.12's adjudication, 2026-10-20):** a workflow's step tools are not in the turn's starting tool set, so on a screen without a step's tool the model reaches it only through `shell_tools_find`. Investigate starts workflows from any log page, so `Loop.Scope` adds the running workflow's step tools to the starting set. Pin it with a `WorkflowLoop` leg on a screen whose context lacks a step's tool, with a demonstrated mutation.
+- [x] ~~DW-2468~~ withdrawn at code review (rework 1): adding a workflow's step tools to the starting set contradicts AD-24's starting-set clause; the story complies with AD-24 as it stands (U7), and DW-2468 goes to the decision sheet with the AD-24 amendment recommended. Original task: **DW-2468 (ledger; routed by Story 20.12's adjudication, 2026-10-20):** a workflow's step tools are not in the turn's starting tool set, so on a screen without a step's tool the model reaches it only through `shell_tools_find`. Investigate starts workflows from any log page, so `Loop.Scope` adds the running workflow's step tools to the starting set. Pin it with a `WorkflowLoop` leg on a screen whose context lacks a step's tool, with a demonstrated mutation.
 - [ ] **DW-2469 (ledger; routed by Story 20.12's review, 2026-10-20):** `Loop.WorkflowResult` reports the conversation's newest earlier turn as `previous`, whatever workflow it ran. Investigate starts a workflow mid-conversation, so report `previous` only when that turn ran the same workflow (`Turn.Workflow`). Pin it with a `WorkflowLoop` leg (an Explain turn, then an Investigate turn: no `previous`), with a demonstrated mutation.
 - [ ] **[Gate] Guards feature gained since this plan (lead, 2026-11-12):** Task 0 re-anchors every line on the current head (lines above were read at `091114cd`; 20.12 is merged). Every new template class has a style or an allow-list line (client-lint family 7). A new read tool, if any, meets 23.12's `Test/ReadDescriptions` roster, and a new list's name cell meets 20.38's `ui/tools/name-links.test.mjs` with no allow-list row.
 
@@ -147,7 +147,27 @@ Paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`; lines were rea
   - **When** the instance validates it and an investigate turn calls a write.
   - **Then** `WorkflowCatalog` is green with `investigate` (an `entry` workflow with no writes and no prompt), and `WorkflowLoop`'s write leg answers `WORKFLOW.NOTASTEP` with nothing minted.
 
+- [ ] [Review] **high, rework 1** Revert the DW-2468 change so a turn's starting set is again exactly AD-24's (the shell area's tools with `shell.tools.find`, and the screen context's `tools`): `Loop.Scope` no longer reads `Workflow.StepTools`, and its doc comment says so; remove `WorkflowLoop`'s step-tools test leg and the `mutation:` line for it under `## Verification`. Keep `Workflow.StepTools` and `Named` only if something else still calls them (`WorkflowCatalog.TestStepToolsNameTheReadsAndTheWrites` does not count); otherwise remove them and that test too. Everything else review patched stays. Then run `WorkflowLoop`, `WorkflowCatalog`, `TurnCitations` and the client and browser `(loop)` lines touched, on `ocupilot-b-ci`.
+
+### Review Findings
+
+Code review 1 (2026-11-12): 19 findings; high 1, medium 4, low 6 kept, 8 rejected.
+
+- [x] [Review][Decision] **high** (decided by the runner, U7 comply: the rework 1 item below) `Loop.Scope` adds a workflow's step tools to the starting set, a source AD-24's Rule does not list ("a turn starts with the shell area's tools ... and the screen context's `tools`"); every workflow's writes start undeferred too. The DW-2468 task needs an AD-24 amendment or a revert. Escalated (Clarification Needed).
+- [x] [Review][Patch] **medium** `Workflow.StepTools` copied `Writes` (Rule 2): both now call one private `Named(pId, pMembers)`.
+- [x] [Review][Patch] **medium** `TurnCitations`' investigate test copied its sibling's setup and never checked its workflow: shared `BeginProbeTurn`, which asserts a key was reserved; the test asserts the turn row's `Workflow`.
+- [x] [Review][Patch] **medium** AC2: the hub's Investigate controls were never checked under the gate: a `log-hub.page.spec.ts` case over the three reasons (mutation line below).
+- [x] [Review][Patch] **medium** DW-2469 was unpinned against an earlier turn of another workflow: `TestPreviousIgnoresATurnOfAnotherWorkflow` (mutation line below); the first turn of the sibling test is now an Explain turn, as the task names.
+- [x] [Review][Patch] **low** The second half of `TestPreviousReportsOnlyATurnOfTheSameWorkflow` could quit without asserting: it asserts first.
+- [x] [Review][Patch] **low** The log viewer's separate `onInvestigate` copied `onExplain`: one handler takes the kind, as on the other pages.
+- [x] [Review][Patch] **low** `Loop.Scope`'s doc omitted the registry it reads: corrected.
+- [x] [Review][Patch] **low** Wording: `WorkflowLoop`'s header names the conversation and proposals; `Workflow.cls` header wrapped; the SCSS comment names `.ocu-log-viewport`; the panel spec's mutation comment matches the recorded one; EXPERIENCE.md :268 reads `[AMENDED 2026-11-12 - Story 20.36]`.
+- [x] [Review][Defer] **low** The no-chip-for-a-log-row assertions backtick no value a log read returned, so they cannot fail: DW-2529, `wontfix-accepted`.
+- Rejected: a follow-up turn carries no marker (AD-24 marks only the Investigate turn); a restarted workflow reads the abandoned run's `previous` (needs per-run state); a string `entry` flag (fails loudly); the browser legs read install state (Rule 30 allows the store's own read); the planned wrapper mutation (AC2 has its demonstrated one); `previous` narrowed beyond AD-66 (ruled: AD-66 complies); three spec-text findings (a review does not edit the intent or results); the bundle's 2.02 MB (under the 2500 kB warning; 1.97 MB was an inference).
+
 ## Spec Change Log
+
+- 2026-11-13, rework 1 (runner): code review's HIGH (Loop.Scope's step tools contradict AD-24's starting set). The story complies with AD-24: the DW-2468 change and its test are reverted, and DW-2468 goes to the decision sheet.
 
 - 2026-11-12, spec gate (runner): DW-2468 and DW-2469, routed here after the plan, become tasks; one `[Gate]` task for the guards feature gained since; the three new strings are a veto item; the orchestrator ruled the spine drafts: AD-11 and AD-66 comply as they stand, and AD-24 stopped the story for the owner, who chose to amend it (U-21, A).
 
@@ -302,6 +322,12 @@ EXPERIENCE.md: add a Fixed strings row after :268 for the three: "an entry's Inv
 - mutation: `parseEntryWorkflowIds` keeps no entry -> `explain-entry.test.mjs`'s entry test and `screen-mirror.test.mjs`'s prompt-roster test.
 - mutation: `.ocu-log-hub-rows-explain` takes `min-width: 0` -> `log-hub.browser-spec.mjs`'s structural walk (bundle rebuilt and redeployed, then restored and green).
 - mutation: `TurnStore.send` prefers the active workflow over the argument (`this.workflowValue ?? workflow`) -> `panel.spec.ts`'s replace-and-follow-up test alone.
+- mutation: the Explain path of `onExplainEntry` also sends the `investigate` workflow (QA) -> `investigate-entry.browser-spec.mjs`'s (e) leg alone (bundle rebuilt and redeployed, then restored and green).
+- mutation: the log viewer's Investigate button drops `aria-describedby` (QA) -> `investigate-entry.browser-spec.mjs`'s (f) leg alone (restored byte-identical against a copy, bundle redeployed, spec green 6 of 6).
+- mutation: `Loop.WorkflowResult` skips only an earlier turn with no workflow (`If tEarlierWorkflow = "" Quit`) (code review) -> `WorkflowLoop`'s `TestPreviousIgnoresATurnOfAnotherWorkflow` alone (run 745; restored byte-identical, reloaded, run 746 green).
+- mutation: the hub timeline's Investigate drops its `aria-describedby` binding (code review) -> `log-hub.page.spec.ts`'s 20.36 gate test alone (restored byte-identical).
+
+**Files added or changed by QA:** `ui/browser/investigate-entry.browser-spec.mjs` (QA): legs (e), Explain unchanged on a real turn, and (f), sharing off refuses both controls.
 
 ## Auto Run Result
 

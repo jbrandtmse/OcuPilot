@@ -12238,6 +12238,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Loop.Scope marks the shell area's and the screen context's tools as the starting set and reads nothing from the workflow result; scripted turns call step tools by wire name, which dispatch does not scope
 - 2026-10-20T15:26:39Z status=open owner=20-12-the-agent-gains-guided-workflows-and-investigate by=harvest note=implement self-review deferral; adjudicate at 20.12's gate
 - 2026-10-20T19:55:32Z status=routed owner=20-36-investigate by=adjudication note=not covered by 20.12; a step tool off the screen costs one shell_tools_find search; Investigate starts workflows anywhere
+- 2026-11-13T03:05:45Z status=decision-pending owner=burndown by=cr note=fix contradicts AD-24 starting-set clause; reverted in 20.36 rework 1; recommend owner amend AD-24 to add step tools
 
 ### DW-2469: A workflow turn's previous reports the conversation's newest earlier turn whatever workflow it ran, so a workflow started mid-conversation reads unrelated proposals as its own earlier steps
 - source: spec-20-12-the-agent-gains-guided-workflows-and-investigate.md | severity: med | fix-risk: low | footprint: in-epic
@@ -12555,3 +12556,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: grep '"removed", 1' in src/OcuPilot/Screen/Tool: TaskDelete, UserDelete, SslDelete ... loop FingerprintSubject(); MappingDelete, SuperserverDelete ... ReadAnswers(); same Display/after/removed/push as Write.cls RemovalRows
 - 2026-11-13T00:03:53Z status=routed owner=23-10-the-range-end-cleanup-part-9-two-sweeps by=cr note=give RemovalRows a names argument (default REMOVALROWS) and move the 16 onto it; Screen/** is Epic 20's, check contention
 - 2026-11-12T23:17:35Z occurrence=20-34-the-cube-manager-s-build-and-synchronize note=also red on CI 43290470415 (acb0b666), filed there as DW-2523, now dropped as this entry's duplicate
+
+### DW-2529: An investigate turn's no-chip-for-a-log-row assertions backtick no value a log read returned, so they cannot fail if log rows became citable
+- source: spec-20-36-investigate.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: TurnCitations.TestAnInvestigateTurnCitesARowItRead backticks an invented messages.log line; investigate-entry.browser-spec.mjs (a) backticks only _SYSTEM. The no-chip guarantee is Registry.CitationSource answering none for log screens (unchanged).
+- 2026-11-13T03:01:42Z status=wontfix-accepted owner=20-36-investigate by=cr note=reopen_if=Registry.CitationSource answers candidates for any logs/* screen

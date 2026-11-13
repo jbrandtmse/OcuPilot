@@ -11,6 +11,8 @@
  * entry"; and the screen with both controls and the chip passes the DW-1337 invariants `cardViolations` measures.
  * (b) the error log's row menu, (c) the audit dialog's action and (d) the hub's timeline and source buttons each send
  * the same body for their own entry.
+ * (e) an Explain turn is unchanged: no workflow result in its opening and no chip. (f) with sharing off, both controls
+ * refuse, described by the sharing reason, and a click sends nothing.
  *
  * Arms the `turnprobe` definition and seeds application errors the way `explain-entry.browser-spec.mjs` does, and
  * clears the seed and the definition in `after`, so it runs only in a throwaway.
@@ -59,6 +61,9 @@ const HUB_SOURCE_INVESTIGATE = '[data-ocu-hub="source-investigate"]';
 
 /** The busy reason's id, which a refused entry control is described by while a turn runs. */
 const BUSY_REASON_ID = 'ocu-panel-busy-reason';
+
+/** The sharing-off reason's id, which a refused entry control is described by while the context is not shared. */
+const CONTEXT_CHIP_OFF_ID = 'ocu-context-chip-off';
 
 /** `OcuPilot.Test.ErrorDelete`'s namespace: seeded entries never mix with the install's own. */
 const SEED_NAMESPACE = 'USER';
@@ -447,5 +452,62 @@ test('(d) the log hub: a timeline entry\u2019s and a source\u2019s Investigate e
     await context.close();
     forgetTag(probe, timelineTag);
     if (sourceTag !== '') forgetTag(probe, sourceTag);
+  }
+});
+
+test('(e) Explain this entry is unchanged: its turn carries no workflow result and shows no chip (QA)', async () => {
+  await requireFreeSlot(config);
+  const tag = scriptText('that line explained');
+  const { context, page } = await signedInAt(browser, config, MESSAGES_URL);
+  try {
+    await page.waitForSelector(LOG_EXPLAIN, { timeout: config.navigationTimeoutMs });
+    await waitForAvailable(page, LOG_EXPLAIN);
+    const rows = await page.$$('.ocu-log-row');
+    assert.ok(rows.length > 1, `messages.log shows more than one row (${rows.length})`);
+    await (await rows[rows.length - 1].$(LOG_EXPLAIN)).click();
+    await waitForReply(page, 'that line explained');
+    assert.equal(await page.$eval('.ocu-panel-message-user', (el) => el.textContent.trim()), STRINGS.agentExplainEntryMessage);
+
+    const messages = recordedMessages(tag);
+    assert.deepEqual(
+      openingResults(messages).map((block) => (block.type === 'tool_result' ? block.tool_use_id : block.type)),
+      ['ocupilot_screen_context', 'text'],
+      'an Explain turn opens with the screen context and the person\u2019s text, and no workflow result'
+    );
+    assert.equal(lastUserText(messages), STRINGS.agentExplainEntryMessage, 'the user message is the explain sentence');
+    assert.equal(await readChip(page), null, 'and no workflow chip is drawn');
+  } finally {
+    await context.close();
+    forgetTag(probe, tag);
+  }
+});
+
+test('(f) sharing off: both entry controls refuse with the sharing reason, and a click sends nothing (QA)', async () => {
+  await requireFreeSlot(config);
+  await putShare(false);
+  const { context, page } = await signedInAt(browser, config, MESSAGES_URL);
+  try {
+    for (const selector of [LOG_EXPLAIN, LOG_INVESTIGATE]) {
+      await page.waitForFunction(
+        (wanted, reasonId) => {
+          const button = document.querySelector(wanted);
+          return button?.getAttribute('aria-disabled') === 'true' && button.getAttribute('aria-describedby') === reasonId;
+        },
+        { timeout: config.navigationTimeoutMs },
+        selector,
+        CONTEXT_CHIP_OFF_ID
+      );
+    }
+    const reason = await page.evaluate((reasonId) => document.getElementById(reasonId)?.textContent?.trim() ?? '', CONTEXT_CHIP_OFF_ID);
+    assert.ok(reason.length > 0, 'the reason the controls are described by is drawn');
+    await page.click(LOG_INVESTIGATE);
+    await page.click(LOG_EXPLAIN);
+    // A send would draw the person's message at once; give it a beat to prove it does not.
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    assert.equal(await page.$$eval('.ocu-panel-message-user', (nodes) => nodes.length), 0, 'a refused control sends no message');
+    assert.equal(await readChip(page), null, 'and starts no workflow');
+  } finally {
+    await context.close();
+    await putShare(true);
   }
 });

@@ -5645,8 +5645,8 @@ app-interop-message-contents {
 }
 
 // Explain this entry and Investigate this entry share one trailing track (Story 20.36). The rows keep
-// the width that track and the three fixed ones need, so a narrow viewport scrolls the viewport sideways
-// rather than letting the buttons past their row, as the hub's rows do.
+// the width that track and the three fixed ones need, so at a narrow width `.ocu-log-viewport` scrolls
+// sideways inside the screen, as the hub's frame does, rather than letting the buttons past their row.
 .ocu-log-rows-explain {
   min-width: 48rem;
 }

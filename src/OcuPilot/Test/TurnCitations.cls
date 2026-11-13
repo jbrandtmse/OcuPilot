@@ -1,6 +1,7 @@
 /// <p>A turn's citations (Story 11.4, AD-11, AD-13, AD-37): which returned rows become candidates,
-/// which backticked spans of the reply cite them, and that a finished turn's poll and its restored
-/// conversation entry both carry them.</p>
+/// which backticked spans of the reply cite them, that a finished turn's poll and its restored
+/// conversation entry both carry them, and that an <code>investigate</code> turn (Story 20.36) cites only
+/// what a citable read returned.</p>
 /// <p>The candidate and span legs run on synthetic read content. The turn leg runs the real loop in
 /// process through <class>OcuPilot.Test.TurnLoopProbe</class> over
 /// <class>OcuPilot.Test.ProviderStub</class>'s scripted answers, as the suite's own account, which
@@ -60,6 +61,35 @@ Method OnAfterOneTest() As %Status
     If ..PreparedConvKey '= "" Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Convo).GuardedDelete(..PreparedConvKey), "the conversation is removed")
     Do $$$AssertEquals(##class(OcuPilot.Test.TurnFixture).SlotOwner($Username), "", "no turn slot is left held")
     Quit ##class(OcuPilot.Test.AgentFixture).RemoveProbeDefinitions(.tRemaining)
+}
+
+/// <p>Create the class's probe definition, then reserve and begin a turn on it as the suite's account, naming
+/// <var>pWorkflow</var> when it is not empty. Answers the turn key, recorded for teardown, or <code>""</code> when
+/// none was reserved; <var>pId</var> is the definition's id and <var>pStarted</var> the begin time.</p>
+Method BeginProbeTurn(pLimits As %String, pWorkflow As %String, Output pId As %String, Output pStarted As %Integer) As %String
+{
+    Set pId = ""
+    Set pStarted = ""
+    Set tRow = ##class(OcuPilot.Kernel.State.Agent).%New()
+    Set tRow.Name = "OcuPilotProbeAgentTurnCitations"
+    Set tRow.Provider = "probe-local"
+    Set tRow.Model = "probe-local-model-1"
+    Set tRow.EndpointUrl = "https://api.anthropic.com/v1/messages"
+    Set tRow.CredType = "env"
+    Set tRow.EnvVarName = "OCUPILOT_PROBE_LOCAL_KEY"
+    Set tRow.MaxTokens = 4000
+    Set tRow.MaxIterationsPerTurn = 10
+    Set tRow.Enabled = 1
+    Set tRow.ConnectionVerified = 1
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Agent).GuardedCreate(tRow), "a probe definition is created")
+    Set pId = tRow.%Id()
+    Set tRow = ""
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Turn).GuardedReserve($Username, pId, "TURN.ABANDONED.JOBLOST", pLimits, .tKey, .tBusy, .tSweep), "the turn is reserved")
+    Do $$$AssertTrue($Get(tKey) '= "", "a turn key was reserved")
+    If $Get(tKey) = "" Quit ""
+    Set ..PreparedKeys(tKey) = ""
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Turn).GuardedBegin(tKey, $Username, pLimits, .tBegun, .pStarted, "", pWorkflow), "the turn begins")
+    Quit tKey
 }
 
 /// <p>A read result whose rows carry <var>pField</var> with each of <var>pIds</var>.</p>
@@ -157,25 +187,9 @@ Method TestAFinishedTurnCarriesItsCitationsOnThePollAndTheRestore()
     Set tCalls = [{"id": "toolu_1", "name": "permissions_users_read", "input": {}}, {"id": "toolu_2", "name": "webapp_list_read", "input": {"nosuch": 1}}]
     Do $ClassMethod(..#STUB, "QueueAnswer", 200, ##class(OcuPilot.Test.TurnTools).Reply("", tCalls))
     Do $ClassMethod(..#STUB, "QueueAnswer", 200, ##class(OcuPilot.Test.TurnTools).Reply("`_SYSTEM` holds %All; `/csp/user` and `NotARow` do not."))
-    Set tRow = ##class(OcuPilot.Kernel.State.Agent).%New()
-    Set tRow.Name = "OcuPilotProbeAgentTurnCitations"
-    Set tRow.Provider = "probe-local"
-    Set tRow.Model = "probe-local-model-1"
-    Set tRow.EndpointUrl = "https://api.anthropic.com/v1/messages"
-    Set tRow.CredType = "env"
-    Set tRow.EnvVarName = "OCUPILOT_PROBE_LOCAL_KEY"
-    Set tRow.MaxTokens = 4000
-    Set tRow.MaxIterationsPerTurn = 10
-    Set tRow.Enabled = 1
-    Set tRow.ConnectionVerified = 1
-    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Agent).GuardedCreate(tRow), "a probe definition is created")
-    Set tId = tRow.%Id()
-    Set tRow = ""
     Set tLimits = "OcuPilot.Kernel.Agent.Limits"
-    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Turn).GuardedReserve($Username, tId, "TURN.ABANDONED.JOBLOST", tLimits, .tKey, .tBusy, .tSweep), "the turn is reserved")
-    If $Get(tKey) = "" Quit
-    Set ..PreparedKeys(tKey) = ""
-    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Turn).GuardedBegin(tKey, $Username, tLimits, .tBegun, .tStarted), "the turn begins")
+    Set tKey = ..BeginProbeTurn(tLimits, "", .tId, .tStarted)
+    If tKey = "" Quit
     Set tSC = $ClassMethod(..#LOOP, "Run", tKey, $Username, tId, "who holds %All?", 0, ##class(OcuPilot.Api.Router).#ADMINRESOURCES, tStarted, .tOutcome)
     Do $$$AssertStatusOK(tSC, "the loop returns")
     Do $$$AssertEquals(tOutcome("state"), "completed", "the turn completes")
@@ -208,25 +222,10 @@ Method TestAnInvestigateTurnCitesARowItRead()
     Set tCalls = [{"id": "toolu_1", "name": "permissions_users_read", "input": {}}, {"id": "toolu_2", "name": "logs_messages_read", "input": {}}]
     Do $ClassMethod(..#STUB, "QueueAnswer", 200, ##class(OcuPilot.Test.TurnTools).Reply("", tCalls))
     Do $ClassMethod(..#STUB, "QueueAnswer", 200, ##class(OcuPilot.Test.TurnTools).Reply("Recap: `_SYSTEM` was in use. Hypotheses: 1. `2026-11-12 09:00:01 a probe line` points at the instance."))
-    Set tRow = ##class(OcuPilot.Kernel.State.Agent).%New()
-    Set tRow.Name = "OcuPilotProbeAgentTurnCitations"
-    Set tRow.Provider = "probe-local"
-    Set tRow.Model = "probe-local-model-1"
-    Set tRow.EndpointUrl = "https://api.anthropic.com/v1/messages"
-    Set tRow.CredType = "env"
-    Set tRow.EnvVarName = "OCUPILOT_PROBE_LOCAL_KEY"
-    Set tRow.MaxTokens = 4000
-    Set tRow.MaxIterationsPerTurn = 10
-    Set tRow.Enabled = 1
-    Set tRow.ConnectionVerified = 1
-    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Agent).GuardedCreate(tRow), "a probe definition is created")
-    Set tId = tRow.%Id()
-    Set tRow = ""
     Set tLimits = "OcuPilot.Kernel.Agent.Limits"
-    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Turn).GuardedReserve($Username, tId, "TURN.ABANDONED.JOBLOST", tLimits, .tKey, .tBusy, .tSweep), "the turn is reserved")
-    If $Get(tKey) = "" Quit
-    Set ..PreparedKeys(tKey) = ""
-    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Turn).GuardedBegin(tKey, $Username, tLimits, .tBegun, .tStarted, "", "investigate"), "the turn begins with the investigate workflow")
+    Set tKey = ..BeginProbeTurn(tLimits, "investigate", .tId, .tStarted)
+    If tKey = "" Quit
+    Do $$$AssertEquals(##class(OcuPilot.Test.TurnFixture).Field(tKey, "Workflow"), "investigate", "the turn runs the investigate workflow")
     Set tContext = "{""route"":""logs/messages"",""namespace"":""HSCUSTOM"",""tools"":[],""view"":{""rows"":[{""time"":""2026-11-12T09:00:01.000"",""severity"":""0"",""text"":""a probe line""}],""rowsAvailable"":1,""selected"":0}}"
     Set tSC = $ClassMethod(..#LOOP, "Run", tKey, $Username, tId, "Investigate the selected entry", 0, ##class(OcuPilot.Api.Router).#ADMINRESOURCES, tStarted, .tOutcome, tContext)
     Do $$$AssertStatusOK(tSC, "the loop returns")

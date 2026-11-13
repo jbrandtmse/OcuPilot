@@ -5,8 +5,9 @@
 /// <code>id</code>, a <code>purpose</code>, ordered <code>steps</code> and a <code>finish</code>; a
 /// step says what to do and names the read tools (<code>reads</code>) and write tools
 /// (<code>writes</code>) it uses by canonical name. A new workflow is a new entry, never a code
-/// path. An entry marked <code>"entry": true</code> is offered by an entry control (Investigate this entry)
-/// instead of a suggested prompt, and has no <code>writes</code>. Every text is ASCII and names no tool the model cannot call. The steps are adapted from
+/// path. An entry marked <code>"entry": true</code> is offered by an entry control (Investigate this
+/// entry) instead of a suggested prompt, and has no <code>writes</code>. Every text is ASCII and names
+/// no tool the model cannot call. The steps are adapted from
 /// iris-execute-mcp-v2's MCP prompts (<code>packages/*/src/prompts/*.ts</code>, MIT, Copyright (c) 2026
 /// jbrandtmse, <code>ui/licenses/iris-execute-mcp-v2.txt</code>).</p>
 /// <p><b>The result is OcuPilot's own data</b> (AD-11 rule 1): <method>Exchange</method> builds it from
@@ -101,13 +102,29 @@ ClassMethod Ids() As %List
 /// in step order, as a <class>%List</class>; empty for an unknown id.</p>
 ClassMethod StepTools(pId As %String) As %List
 {
+    Quit ..Named(pId, $ListBuild("reads", "writes"))
+}
+
+/// <p>The canonical names of every write tool any step of workflow <var>pId</var> names, once each in
+/// step order, as a <class>%List</class>; empty for a read-only workflow and for an unknown id.</p>
+ClassMethod Writes(pId As %String) As %List
+{
+    Quit ..Named(pId, $ListBuild("writes"))
+}
+
+/// <p>The canonical names the step members <var>pMembers</var> (a <class>%List</class> of
+/// <code>reads</code> and <code>writes</code>) of workflow <var>pId</var> name, once each in step order;
+/// empty for an unknown id or a catalog that cannot be read.</p>
+ClassMethod Named(pId As %String, pMembers As %List) As %List [ Private ]
+{
     Set tTools = ""
     Try {
         Set tEntry = ..Lookup(pId, .tFound)
         If 'tFound Quit
         Set tSteps = tEntry.%Get("steps").%GetIterator()
         While tSteps.%GetNext(.tStepIndex, .tStep) {
-            For tMember = "reads", "writes" {
+            Set tPointer = 0
+            While $ListNext(pMembers, tPointer, tMember) {
                 If tStep.%GetTypeOf(tMember) '= "array" Continue
                 Set tNames = tStep.%Get(tMember).%GetIterator()
                 While tNames.%GetNext(.tNameIndex, .tName) {
@@ -119,28 +136,6 @@ ClassMethod StepTools(pId As %String) As %List
         Set tTools = ""
     }
     Quit tTools
-}
-
-/// <p>The canonical names of every write tool any step of workflow <var>pId</var> names, once each in
-/// step order, as a <class>%List</class>; empty for a read-only workflow and for an unknown id.</p>
-ClassMethod Writes(pId As %String) As %List
-{
-    Set tWrites = ""
-    Try {
-        Set tEntry = ..Lookup(pId, .tFound)
-        If 'tFound Quit
-        Set tSteps = tEntry.%Get("steps").%GetIterator()
-        While tSteps.%GetNext(.tStepIndex, .tStep) {
-            If tStep.%GetTypeOf("writes") '= "array" Continue
-            Set tNames = tStep.%Get("writes").%GetIterator()
-            While tNames.%GetNext(.tNameIndex, .tName) {
-                If '$ListFind(tWrites, tName) Set tWrites = tWrites _ $ListBuild(tName)
-            }
-        }
-    } Catch ex {
-        Set tWrites = ""
-    }
-    Quit tWrites
 }
 
 /// <p>The code a workflow turn refuses a write call with, or <code>""</code> to let it through.
