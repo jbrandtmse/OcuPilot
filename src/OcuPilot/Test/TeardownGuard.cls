@@ -1,7 +1,8 @@
 /// <p>Pins that a test class's <method>OnAfterAllTests</method> undoes only what its own
 /// <method>OnBeforeAllTests</method> did: a teardown that runs when the setup refused (unarmed, or failed
 /// before its snapshot) leaves the shared governance policy as it found it, and every teardown that
-/// restores the policy, deletes the egress row or reinstalls OcuPilot opens with a guard.</p>
+/// calls the policy restore, the egress delete or the installer directly opens with a guard: the setup's
+/// snapshot flag whenever it restores the policy.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed and the test classes compiled. Not
 /// armed: it writes only the stored governance policy, which each test sets aside and puts back.</p>
 Class OcuPilot.Test.TeardownGuard Extends %UnitTest.TestCase
@@ -46,10 +47,33 @@ Method TestATeardownWithoutItsSetupLeavesTheStoredPolicy()
     Do $$$AssertTrue(##class(OcuPilot.Test.GovernanceFixture).Matches(.tSeeded), "and every stored row reads as it did")
 }
 
-/// <p>Every <class>OcuPilot.Test</class> test case whose teardown restores the policy, deletes the
-/// egress row or reinstalls OcuPilot opens that teardown with a guard: its setup's flag, or the
-/// arming variables its setup checks. The classes are derived from the compiled dictionary, so a class
-/// written later is held to the same line.</p>
+/// <p>A class whose setup took its snapshot has its teardown put that snapshot back over a changed
+/// policy, and the teardown can run a second time -- as it does when the runner repeats it after a failed
+/// one -- leaving the same rows.</p>
+Method TestATeardownAfterItsSetupRestoresTheSnapshotAndRepeats()
+{
+    Kill tSettings
+    Set tSettings(..#KEY) = "disabled"
+    Set tSC = ##class(OcuPilot.Test.GovernanceFixture).Apply("read-only", .tSettings)
+    Do $$$AssertStatusOK(tSC, "a read-only preset and a disabled key are stored")
+    Set tSC = ##class(OcuPilot.Test.GovernanceFixture).Snapshot(.tSeeded)
+    Do $$$AssertStatusOK(tSC, "the stored rows are read")
+    Set tTest = ##class(OcuPilot.Test.AuthOptionsWrite).%New("")
+    Merge tTest.PreparedPolicy = tSeeded
+    Set tTest.PreparedPolicyTaken = 1
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.GovernanceFixture).Clear(), "the stored rows are removed, as a test would leave them changed")
+    Do $$$AssertTrue('##class(OcuPilot.Test.GovernanceFixture).Matches(.tSeeded), "the policy no longer reads as seeded")
+    Do $$$AssertStatusOK(tTest.OnAfterAllTests(), "the teardown of a class whose setup took its snapshot answers ok")
+    Do $$$AssertTrue(##class(OcuPilot.Test.GovernanceFixture).Matches(.tSeeded), "and the seeded rows are back")
+    Do $$$AssertStatusOK(tTest.OnAfterAllTests(), "the teardown answers ok a second time")
+    Do $$$AssertTrue(##class(OcuPilot.Test.GovernanceFixture).Matches(.tSeeded), "and the seeded rows are unchanged")
+}
+
+/// <p>Every <class>OcuPilot.Test</class> test case whose teardown restores the policy opens that
+/// teardown with its setup's flag, which is true only once the snapshot exists; one whose teardown
+/// only deletes the egress row or reinstalls OcuPilot opens with that flag or the arming variables its
+/// setup checks. The classes are derived from the compiled dictionary, so a class written later is held
+/// to the same line.</p>
 Method TestEveryTeardownThatTouchesSharedStateOpensWithAGuard()
 {
     Set tClasses = ..ListTestClasses()
@@ -58,10 +82,11 @@ Method TestEveryTeardownThatTouchesSharedStateOpensWithAGuard()
     Set tUnguarded = ""
     For tIdx = 1:1:$ListLength(tClasses) {
         Set tName = $List(tClasses, tIdx)
-        Set tFirst = ..FirstTeardownLine(tName, .tTouches)
+        Set tFirst = ..FirstTeardownLine(tName, .tTouches, .tRestores)
         If 'tTouches Continue
         Set tDerived = tDerived + 1
-        If '$Match(tFirst, ..#ARMINGGUARD) && '$Match(tFirst, ..#FLAGGUARD) Set tUnguarded = tUnguarded _ $ListBuild(tName)
+        If $Match(tFirst, ..#FLAGGUARD) Continue
+        If tRestores || '$Match(tFirst, ..#ARMINGGUARD) Set tUnguarded = tUnguarded _ $ListBuild(tName)
     }
     Do $$$AssertTrue(tDerived > 0, "the test cases whose teardown touches shared state are found")
     Do $$$AssertEquals($ListLength(tUnguarded), 0, "every such teardown opens with a guard; without one: " _ $ListToString(tUnguarded, ", "))
@@ -99,8 +124,8 @@ ClassMethod ListTestClasses() As %List
     Quit tNames
 }
 
-/// <p>Whether <var>pClass</var>'s <method>OnBeforeAllTests</method> sets the flag on the line directly after
-/// the one that merges the policy snapshot. A setup that cannot be read answers false.</p>
+/// <p>Whether <var>pClass</var>'s <method>OnBeforeAllTests</method> sets the flag once, on the line directly
+/// after the one that merges the policy snapshot. A setup that cannot be read answers false.</p>
 ClassMethod FlagFollowsSnapshot(pClass As %String) As %Boolean
 {
     Set tFollows = 0
@@ -110,25 +135,29 @@ ClassMethod FlagFollowsSnapshot(pClass As %String) As %Boolean
         Set tStream = tMethod.Implementation
         Do tStream.Rewind()
         Set tPrior = ""
+        Set tSets = 0
         While 'tStream.AtEnd {
             Set tLine = tStream.ReadLine()
             If $ZStrip(tLine, "<>W") = "" Continue
-            If $ZStrip(tLine, "<>W") = "Set ..PreparedPolicyTaken = 1" Set tFollows = (tPrior [ "Merge ..PreparedPolicy = ")
+            If tLine [ "..PreparedPolicyTaken = " Set tSets = tSets + 1, tFollows = (tPrior [ "Merge ..PreparedPolicy = ")
             Set tPrior = tLine
         }
+        If tSets '= 1 Set tFollows = 0
     } Catch ex {
         Set tFollows = 0
     }
     Quit tFollows
 }
 
-/// <p>The first executable line of <var>pClass</var>'s <method>OnAfterAllTests</method>, and whether
-/// <var>pTouches</var> that teardown calls the policy restore, an egress delete or the installer.
-/// A class that is not a test case, or has no such method, answers no touch; a teardown that cannot be
-/// read answers a touch with no guard, so it is named rather than skipped.</p>
-ClassMethod FirstTeardownLine(pClass As %String, Output pTouches As %Boolean) As %String
+/// <p>The first executable line of <var>pClass</var>'s <method>OnAfterAllTests</method>, whether
+/// <var>pTouches</var> that teardown calls the policy restore, an egress delete or the installer, and
+/// whether <var>pRestores</var> it calls the policy restore. A class that is not a test case, or has no
+/// such method, answers no touch; a teardown that cannot be read answers a touch with no guard, so it is
+/// named rather than skipped.</p>
+ClassMethod FirstTeardownLine(pClass As %String, Output pTouches As %Boolean, Output pRestores As %Boolean) As %String
 {
     Set pTouches = 0
+    Set pRestores = 0
     Set tFirst = ""
     Try {
         If '$ClassMethod(pClass, "%Extends", "%UnitTest.TestCase") Quit
@@ -143,7 +172,8 @@ ClassMethod FirstTeardownLine(pClass As %String, Output pTouches As %Boolean) As
             If $ZStrip(tLine, "<>W") = "" Continue
             If $Extract($ZStrip(tLine, "<W"), 1) = ";" Continue
             If tFirst = "" Set tFirst = tLine
-            If (tLine [ "GovernanceFixture).Restore(") || (tLine [ "Egress).Delete") || (tLine [ "Installer).Install(") Set pTouches = 1
+            If tLine [ "GovernanceFixture).Restore(" Set pRestores = 1
+            If pRestores || (tLine [ "Egress).Delete") || (tLine [ "Installer).Install(") Set pTouches = 1
         }
     } Catch ex {
         Set pTouches = 1

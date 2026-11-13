@@ -34,6 +34,9 @@ Parameter ROLES = "webapp.webapproles";
 /// <p>The governance policy as it stood before the class ran.</p>
 Property PreparedPolicy [ MultiDimensional ];
 
+/// <p>Whether <method>OnBeforeAllTests</method> took the policy snapshot; the teardown restores only then.</p>
+Property PreparedPolicyTaken As %Boolean [ InitialExpression = 0 ];
+
 Method OnBeforeAllTests() As %Status
 {
     If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 {
@@ -42,6 +45,7 @@ Method OnBeforeAllTests() As %Status
     Set tSC = ##class(OcuPilot.Test.GovernanceFixture).Snapshot(.tRows)
     If $$$ISERR(tSC) Quit tSC
     Merge ..PreparedPolicy = tRows
+    Set ..PreparedPolicyTaken = 1
     Quit ..RemoveProbes()
 }
 
@@ -64,10 +68,10 @@ Method OnAfterOneTest() As %Status
     Quit $$$OK
 }
 
-/// <p>On an instance the class is not armed for, <method>OnBeforeAllTests</method> created nothing, so nothing is removed.</p>
+/// <p>When <method>OnBeforeAllTests</method> did not take its snapshot (the class is not armed, or the snapshot failed), it created nothing, so nothing is removed.</p>
 Method OnAfterAllTests() As %Status
 {
-    If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 Quit $$$OK
+    If '..PreparedPolicyTaken Quit $$$OK
     Kill ^||OcuPilotDatabaseWritePort
     Merge tRows = ..PreparedPolicy
     Set tSC = ##class(OcuPilot.Test.GovernanceFixture).Restore(.tRows)
