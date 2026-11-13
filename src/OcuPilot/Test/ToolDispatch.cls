@@ -280,6 +280,21 @@ Method TestRefusedArgumentsReachNoTool()
     Do $$$AssertEquals($ClassMethod(..#COUNTER, "Calls", ..#READER), 0, "and the tool never ran")
 }
 
+/// <p>Arguments (DW-2417) -- an argument holding a number past the largest the instance holds is refused
+/// <code>TOOL.ARGUMENTS</code> with a problem that names the argument, the answer a wrongly typed one
+/// gets, and no tool runs.</p>
+/// <p>Mutation: remove the <code>OversizedMember</code> check from
+/// <method>OcuPilot.Screen.Tool.Registry.ValidateArguments</method> -> the problem no longer names the argument
+/// and this goes red.</p>
+Method TestAnOversizedArgumentIsRefusedByName()
+{
+    Do ..Call("probe_counter_read", ##class(%DynamicAbstractObject).%FromJSON("{""marker"": 1e400}"), .tResult, .tName)
+    Set tContent = ##class(%DynamicAbstractObject).%FromJSON(tResult.content)
+    Do $$$AssertEquals(tResult."is_error" _ "|" _ tContent.code, "1|TOOL.ARGUMENTS", "an oversized number is refused as arguments")
+    Do $$$AssertTrue($IsObject(tContent.detail) && (tContent.detail.problem [ "'marker'"), "the problem names the argument: " _ tResult.content)
+    Do $$$AssertEquals($ClassMethod(..#COUNTER, "Calls", ..#READER), 0, "and the tool never ran")
+}
+
 /// <p>Tool fault (DW-298) -- a view's fault answers its <code>code</code> and <code>detail</code>
 /// and nothing else, whatever the HTTP status; one at 500 or above is also logged.</p>
 /// <p>Mutation: the fault's <code>reason</code> rendered -> this goes red.</p>

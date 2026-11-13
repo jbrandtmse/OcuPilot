@@ -231,6 +231,18 @@ Method TestABodyThatIsNotNameAndDocumentAloneIsRefused()
     Do $$$AssertTrue(..Unchanged() && '$ClassMethod(..#PROBE, "HasClass", ..#INSTALLSCOPE, "OcuProbe1832X.spec"), "no refusal built anything, in this namespace or the install namespace")
 }
 
+/// <p>A body whose own <code>Name</code> or <code>Document</code> holds a value past the instance's largest number is
+/// refused 400 <code>PORT.FIELD.SHAPE</code> on that field, and nothing is built.</p>
+/// <p>Mutation (Rule 19): drop the <code>tBodyField</code> refusal from
+/// <method>OcuPilot.Area.WebApp.RestServiceSave.HandleCreate</method> -- the legs answer 500 and go red.</p>
+Method TestAnOversizedExpectedMemberIsRefusedOnItsField()
+{
+    Set tText = $ZConvert(..Text(), "O", "JSON")
+    Do $$$AssertEquals(..Save("{""Name"": 1e400, ""Document"": """ _ tText _ """}"), "400 " _ ##class(OcuPilot.Api.Error).#PORTFIELDSHAPE _ " Name", "a name past the largest number is refused on Name")
+    Do $$$AssertEquals(..Save("{""Name"": ""OcuProbe1832X"", ""Document"": [1, -1e400]}"), "400 " _ ##class(OcuPilot.Api.Error).#PORTFIELDSHAPE _ " Document", "and so is a document that holds one")
+    Do $$$AssertTrue(..Unchanged() && '$ClassMethod(..#PROBE, "HasClass", ..#INSTALLSCOPE, "OcuProbe1832X.spec"), "no refusal built anything")
+}
+
 /// <p>C3, the matrix's Taken row: a name the namespace lists in another case, or in the case it is listed, and a name whose
 /// dispatch class or specification class the namespace holds although no service lists it, are each refused 422
 /// <code>RESTSERVICE.TAKEN</code> on <code>Name</code> with the published sentence; the held classes and the listed

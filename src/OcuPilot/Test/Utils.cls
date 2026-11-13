@@ -237,4 +237,81 @@ Method TestReadRequestBodyReportsAParseFaultSeparately()
     Do $$$AssertTrue(tText [ "Invalid JSON", "reported as the client's JSON, not as a read or decode fault: " _ tText)
 }
 
+/// <p>A JSON stream: <var>pHead</var>, then <var>pCount</var> copies of <var>pChar</var>, then
+/// <var>pTail</var>. A stream rather than a string, because the instance's string limit is below the
+/// sizes these legs need.</p>
+ClassMethod JsonStream(pHead As %String, pChar As %String, pCount As %Integer, pTail As %String) As %Stream.TmpBinary
+{
+    Set tStream = ##class(%Stream.TmpBinary).%New()
+    Do tStream.Write(pHead)
+    Set tRemaining = pCount
+    While tRemaining > 0 {
+        Set tBlock = $Select(tRemaining > 20000: 20000, 1: tRemaining)
+        Do tStream.Write(..Repeat(pChar, tBlock))
+        Set tRemaining = tRemaining - tBlock
+    }
+    Do tStream.Write(pTail)
+    Do tStream.Rewind()
+    Quit tStream
+}
+
+/// <p>DW-2417 -- <method>OcuPilot.Kernel.Utils.OversizedMember</method> answers the top-level key of
+/// the first value the instance cannot hold: a number past the largest it holds, one nested in an
+/// array, a string past the string limit, and a key past it (answered <code>*</code>, because the
+/// walk itself raises).</p>
+/// <p>Mutation: remove the guard call from <method>OcuPilot.Kernel.Utils.ReadRequestBody</method> -> the
+/// <code>ReadRequestBody</code> leg of <method>TestReadRequestBodyRefusesAValueTheInstanceCannotHold</method>
+/// goes red.</p>
+Method TestOversizedMemberNamesTheFirstValueTheInstanceCannotHold()
+{
+    Set tUtils = "OcuPilot.Kernel.Utils"
+    Do $$$AssertEquals($ClassMethod(tUtils, "OversizedMember", ##class(%DynamicAbstractObject).%FromJSON("{""a"":1,""Extra"":1e400}")), "Extra", "a number past the largest the instance holds names its key")
+    Do $$$AssertEquals($ClassMethod(tUtils, "OversizedMember", ##class(%DynamicAbstractObject).%FromJSON("{""a"":1,""Neg"":-1e400}")), "Neg", "and so does a negative one")
+    Do $$$AssertEquals($ClassMethod(tUtils, "OversizedMember", ##class(%DynamicAbstractObject).%FromJSON("{""ok"":true,""list"":[1,-1e400]}")), "list", "a number nested in an array names the top-level key")
+    Do $$$AssertEquals($ClassMethod(tUtils, "OversizedMember", ##class(%DynamicAbstractObject).%FromJSON("{""deep"":{""a"":{""b"":[{""c"":1e400}]}}}")), "deep", "and so does one nested in objects")
+    Set tLongValue = ##class(%DynamicAbstractObject).%FromJSON(..JsonStream("{""Big"":""", "x", 4000000, """}"))
+    Do $$$AssertEquals($ClassMethod(tUtils, "OversizedMember", tLongValue), "Big", "a 4,000,000-character value names its key")
+    Set tLongKey = ##class(%DynamicAbstractObject).%FromJSON(..JsonStream("{""", "k", 4000000, """:1}"))
+    Do $$$AssertEquals($ClassMethod(tUtils, "OversizedMember", tLongKey), "*", "a 4,000,000-character key answers * because the walk itself raises")
+}
+
+/// <p>DW-2417 -- values the instance can hold are not reported: the largest double the instance
+/// reads, a number whose text <code>$IsValidNum</code> refuses although the read holds it, a
+/// 1,000,000-character string, and an ordinary document.</p>
+/// <p>Mutation: judge numbers by <code>$IsValidNum</code> in
+/// <method>OcuPilot.Kernel.Utils.OversizedMember</method> -> the <code>1e146</code> leg goes red.</p>
+Method TestOversizedMemberLetsHoldableValuesThrough()
+{
+    Set tUtils = "OcuPilot.Kernel.Utils"
+    Do $$$AssertEquals($ClassMethod(tUtils, "OversizedMember", ##class(%DynamicAbstractObject).%FromJSON("{""n"":1e308}")), "", "1e308 is held")
+    Do $$$AssertEquals($ClassMethod(tUtils, "OversizedMember", ##class(%DynamicAbstractObject).%FromJSON("{""n"":1e146,""m"":1E308,""z"":[0,-1.5,1e-300]}")), "", "so are 1e146 and 1E308, which $IsValidNum refuses")
+    Set tMillion = ##class(%DynamicAbstractObject).%FromJSON(..JsonStream("{""s"":""", "x", 1000000, """}"))
+    Do $$$AssertEquals($ClassMethod(tUtils, "OversizedMember", tMillion), "", "a 1,000,000-character string is held")
+    Do $$$AssertEquals($ClassMethod(tUtils, "OversizedMember", ##class(%DynamicAbstractObject).%FromJSON("{""a"":null,""b"":true,""c"":""text"",""d"":{},""e"":[]}")), "", "and an ordinary document reports nothing")
+}
+
+/// <p>DW-2417 -- <method>OcuPilot.Kernel.Utils.ReadRequestBody</method> answers an error at the parse stage,
+/// with <var>pField</var> naming the key, for a body holding a value the instance cannot hold; a body
+/// that can be held leaves <var>pField</var> empty.</p>
+Method TestReadRequestBodyRefusesAValueTheInstanceCannotHold()
+{
+    New %request
+    Set %request = ##class(OcuPilot.Test.BodyRequest).%New()
+    Set tRaw = ##class(%Stream.TmpBinary).%New()
+    Do tRaw.Write("{""Name"":""x"",""Extra"":1e400}")
+    Set %request.MimePayload = tRaw
+    Set tSC = ##class(OcuPilot.Kernel.Utils).ReadRequestBody(.tBody, .tStage, .tField)
+    Do $$$AssertStatusNotOK(tSC, "a body holding 1e400 is refused")
+    Do $$$AssertEquals($Get(tStage), "parse", "at the parse stage")
+    Do $$$AssertEquals($Get(tField), "Extra", "naming the key")
+
+    Set tGood = ##class(%Stream.TmpBinary).%New()
+    Do tGood.Write("{""Name"":""x"",""n"":1e308}")
+    Set %request.MimePayload = tGood
+    Set tSC = ##class(OcuPilot.Kernel.Utils).ReadRequestBody(.tBody2, .tStage2, .tField2)
+    Do $$$AssertStatusOK(tSC, "a body the instance can hold is read")
+    Do $$$AssertEquals($Get(tField2), "", "with no field named")
+    Do $$$AssertTrue($IsObject($Get(tBody2)), "and its parsed object returned")
+}
+
 }

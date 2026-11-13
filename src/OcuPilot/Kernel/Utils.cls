@@ -366,11 +366,18 @@ ClassMethod IncompleteUtf8TailLength(pChunk As %String) As %Integer
 /// payload that was actually fine.</p>
 /// <p><var>pStage</var> is the stage that failed -- <code>read</code>, <code>decode</code> or
 /// <code>parse</code> -- and <code>""</code> when none did.</p>
-ClassMethod ReadRequestBody(Output pBody As %DynamicObject, Output pStage As %String) As %Status
+/// <p><b>A document the instance cannot hold</b> -- a number past the largest it reads, a string past
+/// its string limit, a key past it -- parses, but reading the member raises. It answers an error at the
+/// <code>parse</code> stage with <var>pField</var> set to <method>OversizedMember</method>'s answer: the
+/// top-level key, or <code>*</code> when no one key is to blame. <var>pBody</var> then holds the parsed
+/// document, which must not be read member by member without the guard's own walk; a caller that
+/// refuses the request does not read it. <var>pField</var> is <code>""</code> in every other outcome.</p>
+ClassMethod ReadRequestBody(Output pBody As %DynamicObject, Output pStage As %String, Output pField As %String) As %Status
 {
     Set tSC = $$$OK
     Set pBody = ""
     Set pStage = ""
+    Set pField = ""
     Set tStage = "read"
     Try {
         Set tStream = %request.GetMimeData("BODY")
@@ -386,6 +393,11 @@ ClassMethod ReadRequestBody(Output pBody As %DynamicObject, Output pStage As %St
         Set tUtf8Stream = ..DecodeUtf8Stream(tStream)
         Set tStage = "parse"
         Set pBody = ##class(%DynamicObject).%FromJSON(tUtf8Stream)
+        Set pField = ..OversizedMember(pBody)
+        If pField '= "" {
+            Set pStage = "parse"
+            Set tSC = $$$ERROR($$$GeneralError, "Request body holds a value this instance cannot hold, at member '" _ pField _ "'")
+        }
     } Catch ex {
         Set pStage = tStage
         If tStage = "parse" {
@@ -397,6 +409,63 @@ ClassMethod ReadRequestBody(Output pBody As %DynamicObject, Output pStage As %St
         }
     }
     Quit tSC
+}
+
+/// <p>The top-level key of the first value in <var>pValue</var> that this instance cannot hold, or
+/// <code>""</code> when every value can be held.</p>
+/// <p>A value the instance cannot hold parses and then raises when read: a number past the largest it
+/// reads (<code>1e400</code>) raises <code>&lt;MAXNUMBER&gt;</code>, a string past the string limit
+/// raises <code>&lt;MAXSTRING&gt;</code> through the untyped reads, and a key past the limit raises in
+/// every form. The walk reads with the three-argument <code>%GetNext</code>, which hands a long string back as
+/// a stream and a number as its JSON text, and decides a number by attempting the untyped read -- never
+/// by <code>$IsValidNum</code>, which refuses <code>1e146</code> and <code>1E308</code>, values the
+/// instance holds.</p>
+/// <p>Objects and arrays are walked to any depth; a key is the top-level one for a hit anywhere beneath it.
+/// <code>*</code> is the answer when the walk itself raises (an oversized key, or nesting too deep to
+/// walk): no one member is to blame.</p>
+ClassMethod OversizedMember(pValue As %DynamicAbstractObject) As %String
+{
+    Set tField = ""
+    Try {
+        If '$IsObject(pValue) Quit
+        Set tIterator = pValue.%GetIterator()
+        While tIterator.%GetNext(.tKey, .tMember, .tType) {
+            If ..HoldsOversized(pValue, tKey, tMember, tType) {
+                Set tField = tKey
+                Quit
+            }
+        }
+    } Catch ex {
+        Set tField = "*"
+    }
+    Quit tField
+}
+
+/// <p>Whether member <var>pKey</var> of <var>pContainer</var> is, or holds, a value the instance cannot
+/// hold. <var>pMember</var> and <var>pType</var> are what the three-argument <code>%GetNext</code>
+/// returned for it. A raise from walking a container's own members is left to
+/// <method>OversizedMember</method>.</p>
+ClassMethod HoldsOversized(pContainer As %DynamicAbstractObject, pKey As %String, pMember, pType As %String) As %Boolean [ Private ]
+{
+    Set tOversized = 0
+    If pType = "string" {
+        Set tOversized = $IsObject(pMember)
+    } ElseIf pType = "number" {
+        Try {
+            Set tRead = pContainer.%Get(pKey)
+        } Catch {
+            Set tOversized = 1
+        }
+    } ElseIf $IsObject(pMember) && ((pType = "object") || (pType = "array")) {
+        Set tIterator = pMember.%GetIterator()
+        While tIterator.%GetNext(.tKey, .tChild, .tChildType) {
+            If ..HoldsOversized(pMember, tKey, tChild, tChildType) {
+                Set tOversized = 1
+                Quit
+            }
+        }
+    }
+    Quit tOversized
 }
 
 }
