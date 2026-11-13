@@ -1424,3 +1424,4 @@
 2026-11-13T21:07:32Z	Story 20.25	ledger_adjudicated	owned=1(DW-2535) resolved=1 reowned=0 terminal=0 slice_after=empty
 2026-11-13T21:07:32Z	Story 20.25	smoke_complete	method=instance+browser result=pass iterations=2 defects_caught=0 evidence=smoke.sh_50/50+interop-items_5/5_on_fresh_ocupilot-b-ci(tree=b38aa6b8) model=claude-opus-5-5
 2026-11-13T21:07:32Z	Story 20.25	fresh_check	code_head=b38aa6b8 env=recipe(down+up_this_run's_ocupilot-b-ci) tests=shard_8/8_order_26_classes_one_per_call(InteropItemRun_9/9_at_run_26)+4_classes_26_forward_and_reverse result=pass order=forward,reverse
+2026-11-13T21:08:22Z	Story 20.25	committed	sha=b38aa6b8 fix_for=20-25-item-runtime-and-configuration-actions story_commit=6d08b6ce(rework_1)+b38aa6b8(re-review) submodules= ci=pending runs=43507916359 missing=none pushed=alone_by_sha(after_68eebfe9_bookkeeping) amendments=none upgrade_trigger=none(test-only)
