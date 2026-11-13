@@ -2,8 +2,8 @@
 title: 'Story 23.10: The range-end cleanup, part 9: two sweeps'
 type: 'bugfix'
 created: '2026-11-12'
-status: 'in-progress'
-baseline_revision: '7b808a4c7cf6e48b6010eb4d75e1028cd5e8f80f'
+status: 'done'
+baseline_revision: 'fac5dd41f7bf034c080cccb547d36d7cb79b91c7'
 baseline_commit: '7b808a4c7cf6e48b6010eb4d75e1028cd5e8f80f'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -160,7 +160,7 @@ deferred:
 - In the same pass, update every test that asserts a shared surface's old shape (Verification › Shared surfaces).
 - The lead writes the ledger trailers once the batch's commit is green.
 - **Pass order:** batches 1 to 3. **Split (lead ruling at the spec gate, per Design Notes › Size):** batches 4 to 6 (DW-2431, DW-2432, DW-2525, DW-1979) moved to Story 23.13, which is planned on its own and may reuse this spec's Code Map, Tasks and Design Notes for them; they are not part of this story and stay unchecked here. The lead opens one pass at a time; a pass works only the items the lead names and leaves every other item unchecked.
-- **Current pass: Batch 2 only** (DW-2417, request bodies). Batch 3 stays unchecked.
+- **Current pass: Batch 3 only** (DW-2426, test teardowns). Batches 1 and 2 are done.
 
 ### Batch 1: CI flakes
 
@@ -201,9 +201,9 @@ deferred:
 
 ### Batch 3: test teardowns (DW-2426)
 
-- [ ] The 46 policy-restore edit sites (Code Map › The 51, less the four below and RoutineAppGate) each gain `Property PreparedPolicyTaken As %Boolean [ InitialExpression = 0 ];`. `Set ..PreparedPolicyTaken = 1` goes right after the snapshot is merged into `..PreparedPolicy`. The first line of `OnAfterAllTests` is `If '..PreparedPolicyTaken Quit $$$OK`. Anything that teardown undoes before its restore is guarded by the flag of the setup step that made it.
-- [ ] `EgressSettingsWire`, `AuditEvent`, `AuditMarker`: first line of `OnAfterAllTests` is ProviderSslCallTime's arming line over their own variable(s). `SuperserverProhibited` gets the flag.
-- [ ] **Pin**, new `src/OcuPilot/Test/TeardownGuard.cls`, which is unarmed and safe on any instance:
+- [x] The 46 policy-restore edit sites (Code Map › The 51, less the four below and RoutineAppGate) each gain `Property PreparedPolicyTaken As %Boolean [ InitialExpression = 0 ];`. `Set ..PreparedPolicyTaken = 1` goes right after the snapshot is merged into `..PreparedPolicy`. The first line of `OnAfterAllTests` is `If '..PreparedPolicyTaken Quit $$$OK`. Anything that teardown undoes before its restore is guarded by the flag of the setup step that made it.
+- [x] `EgressSettingsWire`, `AuditEvent`, `AuditMarker`: first line of `OnAfterAllTests` is ProviderSslCallTime's arming line over their own variable(s). `SuperserverProhibited` gets the flag.
+- [x] **Pin**, new `src/OcuPilot/Test/TeardownGuard.cls`, which is unarmed and safe on any instance:
   - **The representative.** Around each test, `GovernanceFixture.SetAside()` and `PutBack()`. `Apply` one policy row, then call `##class(OcuPilot.Test.AuthOptionsWrite).%New("").OnAfterAllTests()` without its setup, and assert `GovernanceFixture.Matches` the seeded row. It is red at head. Mutation: drop AuthOptionsWrite's guard line.
   - **New-site catch.** Read `%Dictionary.CompiledMethod` for every `OcuPilot.Test` test case whose `OnAfterAllTests` calls `GovernanceFixture).Restore(`, `Egress).Delete` or `Installer).Install(`, and require a guard as the first executable line, naming each class that has none. The derived count is asserted `> 0`, never a literal. Red at head, naming every unguarded class (the 51 expected; a different set is recorded and reconciled against Code Map). Mutation: drop one class's guard.
 
@@ -365,6 +365,18 @@ Rejected:
   - `[false]` `[reject]` Wire coverage is one route only (intent-alignment) - same root cause as the second medium, closed by the adoption scan and three routes driven by curl.
   - `[low]` `[reject]` Api routes keep their code and text but the status for this input changes (intent-alignment) - the same row as the third finding.
 
+### 2026-11-13 - Review pass (Batch 3)
+
+- verdicts: 7 findings - high 0, medium 1, low 4, false 0, maybe-false 0 (plus 2 descriptive notes)
+- findings:
+  - `[medium]` `[patch]` Nothing pinned that a flag guard's setup sets the flag after the snapshot (a dropped or moved `Set ..PreparedPolicyTaken = 1` stayed green) - `TestEveryFlagGuardHasItsFlagSetRightAfterTheSnapshot` added; mutation under Verification.
+  - `[low]` `[patch]` `FirstTeardownLine` read a class it could not open as "touches nothing" - it now answers a touch with no guard, so the class is named.
+  - `[low]` `[patch]` The Verification line said "flag line" without naming it, and the arming-guard classes had no `mutation:` line - the line is named and an arming-guard mutation recorded.
+  - `[low]` `[reject]` The arming guards are pinned by line shape, so a guard narrowed to fewer variables stays green - the three guards mirror their own setups, and checking the operand set means parsing each setup, which is more than a direct correction.
+  - `[low]` `[reject]` About 50 of the 51 sites have no behavioral run of a refused setup (intent-alignment) - the spec prescribes one representative plus the derived catch, and a refused setup on the other classes would call `Install` or `DeleteGuarded` on the instance.
+  - `[low]` `[reject]` The behavioral test covers the policy path only (intent-alignment) - the egress and install teardowns cannot be run unarmed without touching the instance.
+  - `[low]` `[reject]` The representative exercises the never-ran branch, not a setup that failed after arming (intent-alignment) - both leave the flag at 0, the branch the guard tests.
+
 ## Design Notes
 
 **Dispositions** (lead writes them through `ledger.sh` after each green batch):
@@ -509,6 +521,15 @@ Batch 2 (observed on `ocupilot-ci`; the tests were loaded and run red before the
 - (QA) `src/OcuPilot/Test/BodyOversizedWire.cls` (new, not armed, nothing written; 3 of 3 on `ocupilot-ci`): over HTTP, `/license/key/validate` (direct reader caller) and `/database/check` (wrapper) answer 400 `PORT.FIELD.SHAPE` on `Extra`, and on `list` for `[1, -1e400]`; `1e308` is not refused as a field shape; `{"a":` stays `AGENT.BADBODY`; the residual routes `/explorer/sql/run`, `/explorer/sql/plan`, `/explorer/sql/data` and `/analytics/mdx/background` answer their own 400 (`EXPLORER.SQL.INPUT`, `EXPLORER.DATA.INPUT`, `ANALYTICS.MDX.INPUT`) with no field.
 - (QA) `mutation:` guard call removed from `ReadRequestBody` (`Set pField = ""`) -> `TestAnOversizedNumberIsRefusedOnItsFieldOverHttp` and `TestTheRoutesWithTheirOwnInputRefusalAnswerItForAnOversizedValue` red (2 of 3). `mutation:` numbers judged by `$IsValidNum` in `HoldsOversized` -> `TestAHoldableValueAndMalformedJsonKeepTheirOwnAnswers` red (1 of 3). Both reverted byte-identical (`git diff` empty), recompiled, 3 of 3. `check-objectscript` 0 problems; `npm run test:tools` 2211 of 2211.
 
+Batch 3 (observed on `ocupilot-ci`):
+
+- DW-2426 `TeardownGuard` `mutation:` at head (before the guards) the representative and the dictionary test were red, the latter naming the 51 classes (the Code Map's set, name for name). With the guards, all green. Each mutation below was reverted byte-identical (file checksums equal before and after):
+  - Drop `AuthOptionsWrite`'s `If '..PreparedPolicyTaken Quit $$$OK` line -> the representative and the catch red, the catch naming `AuthOptionsWrite` alone (run 18). Drop `SqlPrivilegeWrite`'s same line -> the catch alone red, naming `SqlPrivilegeWrite` (run 19).
+  - Drop `EgressSettingsWire`'s arming line (`If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 Quit $$$OK`) -> `TestEveryTeardownThatTouchesSharedStateOpensWithAGuard` alone red (run 27).
+  - Drop `SqlPrivilegeGate`'s `Set ..PreparedPolicyTaken = 1` -> `TestEveryFlagGuardHasItsFlagSetRightAfterTheSnapshot` alone red (run 26).
+  - Reverted; 3 of 3 (run 28).
+- Run green after the change, one class at a time: AuthOptionsWrite 5, EgressSettingsWire 6, SuperserverProhibited 6, AuditEvent 9, AuditMarker 8, ClassicPageGate 9, NamespaceWriteGate 4, TaskTransferLive 7, RoutineAppGate 6, RemoteDatabaseListing 10. `check-objectscript` 0 problems.
+
 Decided in-stage (Batch 1):
 
 - `relaunchOnce(open, relaunch, browser, closeDeadline)` takes the browser to close as its third argument, since the helper cannot learn it from `open`; the close is bounded by `CLOSEDEADLINE` (10 s) so a wedged browser that will not close is abandoned.
@@ -526,18 +547,12 @@ Decided in-stage (Batch 2):
 Status: done
 Blocking condition: none
 
-Summary: Batch 2 (DW-2417, request bodies) is implemented. One guard at the one body reader, `Kernel.Utils.ReadRequestBody`, refuses a value the instance cannot hold; the Area routes answer 400 `PORT.FIELD.SHAPE` on the field, and `ValidateArguments` refuses an oversized tool argument by name.
+Summary: Batch 3 (DW-2426, test teardowns). 47 test classes (the 46 policy-restore sites and `SuperserverProhibited`) gain `PreparedPolicyTaken`, set right after the snapshot merge and checked on the first line of `OnAfterAllTests`; `EgressSettingsWire`, `AuditEvent` and `AuditMarker` open their teardown with the arming line over their own variables. `RoutineAppGate` inherits `DocDbAppGate`'s. New `Test/TeardownGuard.cls` (unarmed, 3 tests): a refused setup's teardown leaves the stored policy, every teardown touching shared state opens with a guard, and every flag guard's setup sets the flag right after the snapshot.
 
-Files changed:
+Files changed: 47 classes under `src/OcuPilot/Test/` (flag guard), 3 more there (arming line), new `src/OcuPilot/Test/TeardownGuard.cls`, and this spec.
 
-- `src/OcuPilot/Kernel/Utils.cls`: `OversizedMember`, `HoldsOversized`, and `ReadRequestBody`'s `Output pField`.
-- `src/OcuPilot/Api/Error.cls`: `RenderBodyRefusal(pField)`.
-- `src/OcuPilot/Screen/Tool/Registry.cls`: `ValidateArguments` refuses an oversized argument before the type checks.
-- 25 Area `Body()` wrappers, 15 direct callers, `Kernel/Proposal/ScreenSave` and the five OAuth classes' `BadBody`: take the field and render through `RenderBodyRefusal`. `Area/WebApp/RestServiceSave` keeps its own refusals (unexpected key, 422 name and document) and refuses on the field only for `*` and an over-long `Name` (as patched by code review). `Area/Interop/ItemSave` was edited (Epic 20 had not changed it).
-- Tests: `Test/Utils`, `Test/PctAccessSaveWire`, `Test/ToolDispatch`, `Test/RestServiceSave` (one new method), `Test/ScreenSaveOrderFixture` (override signature), and new `ui/tools/request-body.test.mjs` (single-reader scan and adoption scan).
+Review: patches applied 3 (1 medium, 2 low), deferred 0, rejected 4 (reasons in the triage log). Follow-up review recommended: false (no high patched).
 
-Review: 11 findings; 2 medium patched (the `*` key on `/rest-service` answered 500; the adoption of the field refusal was unpinned), 1 low patched (blank lines), 8 rejected with reasons in the triage log, none deferred. Follow-up review recommended: false (no high patched).
+Verification: `TeardownGuard` 3 of 3 (run 28); on `ocupilot-ci`, one class at a time, green: AuthOptionsWrite 5, EgressSettingsWire 6, SuperserverProhibited 6, AuditEvent 9, AuditMarker 8, ClassicPageGate 9, NamespaceWriteGate 4, TaskTransferLive 7, RoutineAppGate 6, RemoteDatabaseListing 10. Mutations under Verification. `check-objectscript` 0 problems; `npm run test:tools` 2211 of 2211. The other edited classes are the lead's sweep.
 
-Verification: on `ocupilot-ci` `Utils` 12, `PctAccessSaveWire` 4, `ToolDispatch` 19, `RestServiceSave` 9, plus the Area classes named under Verification, all green; `request-body.test.mjs` 5 of 5; `npm run test:tools` 2211 of 2211; `check-objectscript` 0 problems. Each pin was red before the fix or under its mutation, recorded under Verification.
-
-Residual risk: `SqlConsole`, `SqlData` and `MdxQuery` answer an oversized value with their own input refusal and no field; `Api/*` routes keep their own bad-body answers.
+Residual: a guard narrowed to fewer arming variables is not caught (line shape only).

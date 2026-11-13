@@ -40,6 +40,9 @@ Property PreparedPassword As %String;
 /// <p>The governance policy as it stood before the class ran.</p>
 Property PreparedPolicy [ MultiDimensional ];
 
+/// <p>Whether <method>OnBeforeAllTests</method> took the policy snapshot; the teardown restores only then.</p>
+Property PreparedPolicyTaken As %Boolean [ InitialExpression = 0 ];
+
 /// <p>The encryption facts and the audit database's identity before each test.</p>
 Property PreparedFacts As %String(MAXLEN = "");
 
@@ -61,6 +64,7 @@ Method OnBeforeAllTests() As %Status
     Set tSC = ##class(OcuPilot.Test.GovernanceFixture).Snapshot(.tRows)
     If $$$ISERR(tSC) Quit tSC
     Merge ..PreparedPolicy = tRows
+    Set ..PreparedPolicyTaken = 1
     Quit $ClassMethod(..#PROBE, "RemoveAll", .tRemaining)
 }
 
@@ -96,6 +100,7 @@ Method OnAfterOneTest() As %Status
 
 Method OnAfterAllTests() As %Status
 {
+    If '..PreparedPolicyTaken Quit $$$OK
     Merge tRows = ..PreparedPolicy
     Set tSC = ##class(OcuPilot.Test.GovernanceFixture).Restore(.tRows)
     Quit $$$ADDSC(tSC, $ClassMethod(..#PROBE, "RemoveAll", .tRemaining))
