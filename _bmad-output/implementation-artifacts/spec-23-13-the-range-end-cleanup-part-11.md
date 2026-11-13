@@ -260,6 +260,28 @@ Rejected:
 - The `SslDelete` source-swap mutation changes no rows (its two lists are equal): the line claims only that the source pin reddens, which it did.
 - Auto Run Result's "(5 tests)" and QA's "the mapping family" (only `GlobalMappingDelete` is driven): edits to the spec under review.
 
+#### Batch 2 (DW-2432) (2026-11-13)
+
+No high. AD-10 holds read by effect (the resource-side twin of DW-2425's clause, spine :427; spine untouched), AD-55 holds (one classifier, OR'd into the mint), and the `Prohibited.cls` edits sit outside Epic 20's four regions. Rule 3: `WebAppWeakening` drives the real mint of `permissions.resources.update` over live applications and reads the stored destructive mark and `GRANT.PRIVILEGED`; `resources-editor.browser-spec.mjs` already pins the card's `privilegedGrantEffect` line for that stored consequence.
+
+- [x] [Review][Patch] (med, fix-risk low, in-story) `WebAppWeakening.MintResource` was `Mint` with the tool swapped and a second copy of the tool's descriptor class (Rule 2): `Mint` takes an optional tool class and the copy and `RESOURCELIST` are gone [src/OcuPilot/Test/WebAppWeakening.cls:Mint]
+- [x] [Review][Patch] (low) `GrantsPrivilegeByEffect`'s doc said a form's per-choice halves state the same consequence; the application half has none, and the doc now says so and that it reads the instance as the caller, counting a failed lookup [src/OcuPilot/Kernel/Proposal/Prohibited.cls:GrantsPrivilegeByEffect]
+- [x] [Review][Patch] (low) `ProhibitedGuardFixture`'s header and `Invoke` doc predated QA's `getthrows` and `routinelistfails` modes [src/OcuPilot/Test/ProhibitedGuardFixture.cls:1]
+- [x] [Review][Patch] (low) The `WebAppWeakening` and `RoutineAppGrant` class headers did not name the resource-side pin [src/OcuPilot/Test/WebAppWeakening.cls:1]
+
+Rejected:
+
+- An empty resource name matches every enabled application with no `Resource`: the only caller (`Mint`) passes the target's id, and the outcome over-marks rather than under-marks; a guard would flip the fail direction.
+- A person's Save and the resource form state no consequence for this arm, so "both callers" reaches the agent only: rulings 1 and 4 (no field line); the fix edits the spec (by-design).
+- Rule 3 only partly met: false; see above.
+- `AssertResourceGrant` and `AssertResourceGrants` are the same three lines in two armed test classes: a shared base would couple them for one assertion.
+- `GuardsPrivilegedApplication` writes its own `GET` instead of `ReadMember`: false; `ReadMember` answers one typed member and the walk needs the whole object.
+- `Disarm` is not in teardown: the global is process-private and every case re-arms it.
+- No `mutation:` line for dropping the escalation check or the resource filter: Rule 19 asks one per AC; the task's three mutations and five more are recorded, two of them on the Unchanged row.
+- The "past a disabled application" legs rely on list order: the two names are prefix-ordered, which sorts first in every collation; real only if the vendor list stopped sorting by name.
+- `SeedGuard` builds JSON by concatenation: its inputs are the class's own constants.
+- DW-2522's reopen trailer, the Auto Run Result residual-risk line, QA's Verification layout, the "always fails" wording and the frontmatter status: the lead's bookkeeping or edits to the spec under review.
+
 ## Spec Change Log
 
 - 2026-11-13: batch 4 re-opened for one review iteration (DW-2542, the first review's unpatched in-story medium).
@@ -455,6 +477,11 @@ Rejected:
   - mutation: drop the `EnabledOn` check -> the `WebAppWeakening` disabled-application leg red alone.
   - (code review, observed, tree identical after) mutation: drop `&& '(tHeld [ "U")` in `AddsPublicUse` -> the `WebAppWeakening` test red alone (its read-over-USE leg). Read the payload's USE without upper-casing -> the same test red alone (its lower-case leg). Compare the application row's `Resource` without upper-casing -> the same test red alone (its second application names the resource in lower case). `Continue` becomes `Quit` after a disabled application -> the same test red alone (the disabled application lists first). Answer a failed read of the matched application as 0 -> `ResourceUpdate`'s `TestAnApplicationReadThatFailsCounts` red alone (new fixture `OcuPilot.Test.ProhibitedGuardFixture`).
   - After the review patch: `WebAppWeakening` 9/9, `RoutineAppGrant` 7/7, `ResourceUpdate` 8/8, `ResourceCreate` 8/8, `ProhibitedByEffect` 8/8, `Prohibited` 15/15; `check-objectscript.py` 0 problems; `npm run test:tools` 2220/2220.
+  - (QA) changed `src/OcuPilot/Test/ProhibitedGuardFixture.cls` (modes `getthrows` and `routinelistfails`) and `src/OcuPilot/Test/ResourceUpdate.cls` (`TestAnApplicationReadThatFailsCounts` gains two legs: a read that raises, and a failed privileged-routine list after the web list answered); `ResourceUpdate` 8/8, `WebAppWeakening` 9/9, `RoutineAppGrant` 7/7 on `ocupilot-ci`; each applied with `Prohibited`/`ProhibitedFixture`/`ProhibitedGuardFixture` recompiled, observed red, reverted, `git diff -- src/OcuPilot/Kernel` empty after:
+  - mutation: the `Catch` of `GuardsPrivilegedApplication` answers 0 -> `TestAnApplicationReadThatFailsCounts` red alone (the new raising leg).
+  - mutation: a failed list answers 0 for the privileged routine endpoint only -> `TestAnApplicationReadThatFailsCounts` red alone (the new routine-list leg; `TestAFailedLookupOfTheApplicationsAResourceGuardsCounts` stays green, its list fails on the web endpoint).
+  - mutation ("Grant at the surface"): `Mint` passes another resource name as the target id to `GrantsPrivilegeByEffect` -> `WebAppWeakening.TestPublicUseOnAResourceAnApplicationGuardsIsAGrant` red alone (its direct legs pass an id themselves, so only the mint legs can redden). An empty id instead stayed green (an enabled application with an empty `Resource` matches it), so that variant is not evidence.
+  - (code review, observed, tree identical after) mutation: `WebAppWeakening.Mint` ignores its tool argument (`Set pTool = ..#TOOL`) -> `TestPublicUseOnAResourceAnApplicationGuardsIsAGrant` red alone (run 64); after revert `WebAppWeakening` 9/9 (run 65), `RoutineAppGrant` 7/7, `ResourceUpdate` 8/8; `check-objectscript.py` 0 problems.
 
 ## Auto Run Result
 

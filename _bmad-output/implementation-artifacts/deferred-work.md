@@ -12568,6 +12568,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-13T06:29:49Z occurrence=20-36-investigate
 - 2026-11-13T23:29:51Z occurrence=23-13-the-range-end-cleanup-part-11 note=run_43522335138(ff913bec)_attempt_1_browser_shard_2/5_first_spec:AC1_'expected_the_run_to_answer_within_145000_ms;_the_page_shows_busy_false,status_Write_one_MDX_statement,then_Run'_(the_Run_never_started),other_10_green;batch_4_touches_no_analytics_code
 - 2026-11-13T23:29:51Z status=routed owner=burndown by=lead note=reopened:reopen_condition_met_after_the_23.10_fix(answer_wait_bounded);new_mechanism:the_first_Run_never_starts_on_a_cold_shard;CI_flake,first_priority_in_the_Epic_23_burn-down(Rule_27)
+- 2026-11-13T23:59:11Z status=resolved-by:23-10-the-range-end-cleanup-part-9-two-sweeps by=lead note=the_2026-11-13T23:29Z_reopen_is_withdrawn:the_same_AC1_went_red_on_both_attempts_of_run_43522335138(ff913bec),so_it_is_a_story_red_on_23.13_batch_4(inference:its_rework_made_ScreenStore_adoption_notify_on_every_adoption,which_resets_the_MDX_page_before_its_first_Run),not_this_flake
 
 ### DW-2524: flake: context-chip.browser-spec.mjs test 7 (Fresh at Send) waited past 30000 ms
 - source: 23.9 staging CI (run 43316537748) | severity: med | fix-risk: low | footprint: out-of-footprint
