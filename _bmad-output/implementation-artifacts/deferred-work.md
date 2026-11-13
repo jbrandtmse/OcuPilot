@@ -12245,6 +12245,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-20T15:26:39Z status=open owner=20-12-the-agent-gains-guided-workflows-and-investigate by=harvest note=implement self-review deferral; adjudicate at 20.12's gate
 - 2026-10-20T19:55:32Z status=routed owner=20-36-investigate by=adjudication note=not covered by 20.12; a step tool off the screen costs one shell_tools_find search; Investigate starts workflows anywhere
 - 2026-11-13T03:05:45Z status=decision-pending owner=burndown by=cr note=fix contradicts AD-24 starting-set clause; reverted in 20.36 rework 1; recommend owner amend AD-24 to add step tools
+- 2026-11-13T07:50:28Z status=by-design owner=burndown by=owner note=owner U-27 (relayed by the Planner): keep AD-24 as it is; a guided workflow's off-screen step tools stay reachable through one shell.tools.find call; no follow-up story
 
 ### DW-2469: A workflow turn's previous reports the conversation's newest earlier turn whatever workflow it ran, so a workflow started mid-conversation reads unrelated proposals as its own earlier steps
 - source: spec-20-12-the-agent-gains-guided-workflows-and-investigate.md | severity: med | fix-risk: low | footprint: in-epic

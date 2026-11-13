@@ -1769,3 +1769,6 @@
 2026-11-13T07:38:42Z	Story 20.36	ci_green_verified	runs=43371448555(2d34b7be),43379465200(staging_64e58441;attempt2_after_DW-1822-class_a11y_settle_timeout) result=success by=orchestrator
 2026-11-13T07:38:42Z	Story 20.36	merged	feature=64e58441 mode=fast_forward(staging_own_CI_green) checks=ledger_entry_check_1(DW-2525_spec_gate_trailer_misplaced_by_union_merge->restated),dup_none,sprint_validate_ok(20-36_done) upgrade_triggers=none new_keys=none spine=AD-24_amended(owner_U-21)_on_feature
 2026-11-13T07:38:42Z	ci	timings_refreshed	rule=29 run=43379465200
+2026-11-13T07:50:28Z	orchestrator	owner_decision	id=U-27 at=2026-11-13T07:49:55Z#86 via=relay by=planner quote="B: keep it as is" effect=AD-24_unchanged;DW-2468_by-design
+2026-11-13T07:54:49Z	orchestrator	owner_instruction	via=relay(Planner) quote="Order the hold tonight at 2am." effect=hold_at_10:00Z_via_inbox(Planner_writes_HOLD)
+2026-11-13T08:37:03Z	orchestrator	runner_interim_status	note=post_compaction_reanchor command_reread=full doctrine_reread=full overlay_reread=full e20=20.25_code_review e23=23.10_batch1_ci
