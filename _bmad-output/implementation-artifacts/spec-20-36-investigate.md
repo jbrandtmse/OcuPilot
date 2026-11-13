@@ -119,6 +119,9 @@ Paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`; lines were rea
   - `ExplainEntryRequest`;
   - the catalog's ids;
   - the hub's column headers.
+- [ ] **DW-2468 (ledger; routed by Story 20.12's adjudication, 2026-10-20):** a workflow's step tools are not in the turn's starting tool set, so on a screen without a step's tool the model reaches it only through `shell_tools_find`. Investigate starts workflows from any log page, so `Loop.Scope` adds the running workflow's step tools to the starting set. Pin it with a `WorkflowLoop` leg on a screen whose context lacks a step's tool, with a demonstrated mutation.
+- [ ] **DW-2469 (ledger; routed by Story 20.12's review, 2026-10-20):** `Loop.WorkflowResult` reports the conversation's newest earlier turn as `previous`, whatever workflow it ran. Investigate starts a workflow mid-conversation, so report `previous` only when that turn ran the same workflow (`Turn.Workflow`). Pin it with a `WorkflowLoop` leg (an Explain turn, then an Investigate turn: no `previous`), with a demonstrated mutation.
+- [ ] **[Gate] Guards feature gained since this plan (lead, 2026-11-12):** Task 0 re-anchors every line on the current head (lines above were read at `091114cd`; 20.12 is merged). Every new template class has a style or an allow-list line (client-lint family 7). A new read tool, if any, meets 23.12's `Test/ReadDescriptions` roster, and a new list's name cell meets 20.38's `ui/tools/name-links.test.mjs` with no allow-list row.
 
 **Acceptance Criteria:**
 
@@ -143,6 +146,8 @@ Paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`; lines were rea
   - **Then** `WorkflowCatalog` is green with `investigate` (an `entry` workflow with no writes and no prompt), and `WorkflowLoop`'s write leg answers `WORKFLOW.NOTASTEP` with nothing minted.
 
 ## Spec Change Log
+
+- 2026-11-12, spec gate (runner): DW-2468 and DW-2469, routed here after the plan, become tasks; one `[Gate]` task for the guards feature gained since; the three new strings are a veto item; the orchestrator ruled the spine drafts: AD-11 and AD-66 comply as they stand, and AD-24 stopped the story for the owner, who chose to amend it (U-21, A).
 
 ## Review Triage Log
 
@@ -188,7 +193,12 @@ Checked and not engaged: AD-5 (no descriptor or prompt changes; every screen kee
 
 EXPERIENCE.md: add a Fixed strings row after :268 for the three: "an entry's Investigate control beside each Explain this entry, the message it sends with the `investigate` workflow (Story 20.36, AD-66), and the log hub's hidden column header for the two" [ADDED 2026-10-15 - Story 20.36].
 
-**Spine drafts (Rule 20, apply-and-report; the lead writes them at the gate):**
+**Spine (orchestrator ruling, 2026-11-12):** no AD is amended in this run, since each of the three is cited by done stories (U7(c)).
+
+- **AD-11 and AD-66: comply as they stand.** The two lines below extend each Rule to a case it does not address. They are recorded here for the owner's attended `bmad-architecture` Update, and are not written into the spine.
+- **AD-24: amended by the owner** (U-21, answer A, 2026-11-12): the spine now reads "... only on an Explain this entry or Investigate turn (Story 20.36)". The story builds on that.
+
+**The proposed lines, verbatim:**
 
 - **AD-24**, the explain-entry sentence "The client sends a marker only on an Explain this entry turn" becomes "... on an Explain this entry or Investigate turn (Story 20.36)".
 - **AD-11**, the DW-1838 clause gains: "An Investigate turn (Story 20.36) sends the same marker and names the `investigate` workflow (AD-66)."

@@ -335,7 +335,8 @@ ClassMethod ContextMaxLengths(Output pLengths)
 /// <p>This screen's declared <code>rowTarget</code> as a copy, or <code>""</code> for a screen
 /// that declares none (AD-5, Story 6.10), with its optional <code>unless</code>, the read field that
 /// withholds a row's link (Story 16.12). A row target is a list's single cross-screen row link,
-/// resolved ahead of the paired-surface chain in <file>ui/src/app/shell/data-table.ts</file> and
+/// resolved ahead of the paired-surface chain in <code>nameLinkTarget</code>
+/// (<file>ui/src/app/core/navigation.ts</file>) and
 /// validated by <method>OcuPilot.Screen.Registry.RowTargetProblem</method> and
 /// <method>OcuPilot.Screen.Registry.RowTargetResolutionProblem</method>.</p>
 ClassMethod RowTarget() As %DynamicObject

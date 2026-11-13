@@ -19,7 +19,7 @@ import puppeteer from 'puppeteer';
 
 import { browserConfig, launchOptions } from '../browser.config.mjs';
 import { loadStrings } from '../tools/strings.mjs';
-import { ROW_SELECTOR, viewCount, waitForRows } from './list-spec.mjs';
+import { ROW_SELECTOR, clickRowCentre, viewCount, waitForRows } from './list-spec.mjs';
 import { authHeader, settleViewport, signedInAt, transitionsSettled } from './panel-spec.mjs';
 import { INVARIANTS, VIEWPORTS, assertThrowaway, collapse, compare, componentMinimums, detectScreen, readBaseline } from './structural-walk.mjs';
 import { allowList as arrangeAllowList, instanceValue as readInstanceValue } from './allow-list-spec.mjs';
@@ -115,6 +115,22 @@ test('AC1, restricted: an allow-list restricted to two roots lists exactly those
   } finally {
     await context.close();
     allowList('Clear()');
+  }
+});
+
+// Mutation (Rule 19): restore the old last arm of `nameLinkTarget` (`screen.parentScope === '' ? screen : null`),
+// rebuild and redeploy -> the Directory cell holds a link and the first assertion goes red.
+test('Story 20.39 AC1: a Directory is text, not a link, and a click on it selects the row and leaves the address alone', async () => {
+  allowList('Clear()');
+  const { context, page } = await atList();
+  try {
+    assert.equal(await page.$$eval(`${ROW_SELECTOR} [role="gridcell"]:first-child .ocu-data-table-link`, (links) => links.length), 0, 'the Directory cell holds no link');
+    const before = await page.evaluate(() => window.location.pathname + window.location.search);
+    await clickRowCentre(page, { index: 0, cell: 1 });
+    await page.waitForSelector('[role="row"][aria-selected="true"]', { timeout: config.navigationTimeoutMs });
+    assert.equal(await page.evaluate(() => window.location.pathname + window.location.search), before, 'the address does not change');
+  } finally {
+    await context.close();
   }
 });
 

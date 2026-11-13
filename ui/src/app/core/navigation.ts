@@ -292,6 +292,17 @@ export const DIALOG_EDITORS: ReadonlySet<string> = new Set([
 ]);
 
 /**
+ * Lists whose page opens the row's detail dialog at the list's own id route: Audit, Journal records
+ * and Task history. Their name cell links to the list itself because that route selects the row and
+ * opens the dialog. `nameLinkTarget` links no list to itself outside this set and `DIALOG_EDITORS`.
+ */
+export const DETAIL_DIALOG_LISTS: ReadonlySet<string> = new Set([
+  'OcuPilot.Screen.Descriptor.AuditList',
+  'OcuPilot.Screen.Descriptor.JournalRecordList',
+  'OcuPilot.Screen.Descriptor.TaskHistoryList',
+]);
+
+/**
  * The route segment a list's own document viewer is declared under, appended to the list's route.
  *
  * The same convention as `EDITOR_ROUTE_SUFFIX`: a viewer paired with a list lives at
@@ -402,7 +413,9 @@ export function rowTargetScreenFor(screen: ScreenDeclaration): ScreenDeclaration
  * one (Story 3.5's `editorScreenFor`), its paired document viewer where it declares one
  * (`documentScreenFor`), its paired per-row detail screen where it declares one
  * (Story 6.7's `detailScreenFor`), the sub-resource list whose parent it is (`childListFor`),
- * and otherwise the list's own route with the row's id. A list that declares both a detail
+ * and otherwise, for the lists in `DIALOG_EDITORS` and `DETAIL_DIALOG_LISTS` only, the list's own
+ * route with the row's id, where the page opens the row's dialog. Every other list that pairs
+ * nothing draws its name as text. A list that declares both a detail
  * screen and an editor opens the detail screen, which is where its editor is reached from
  * (Story 9.8: Task schedule). A screen with none is not linkable at
  * all, and neither is a parent-scoped list that pairs no editor, viewer or detail screen: its
@@ -420,7 +433,9 @@ export function nameLinkTarget(screen: ScreenDeclaration): ScreenDeclaration | n
         documentScreenFor(screen) ??
         detailScreenFor(screen) ??
         childListFor(screen) ??
-        (screen.parentScope === '' ? screen : null);
+        (screen.parentScope === '' && (DIALOG_EDITORS.has(screen.descriptor) || DETAIL_DIALOG_LISTS.has(screen.descriptor))
+          ? screen
+          : null);
 }
 
 /**

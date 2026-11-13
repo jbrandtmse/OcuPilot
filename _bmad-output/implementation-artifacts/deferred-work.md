@@ -12374,6 +12374,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: CI run 39654904051 (f74e5331), browser shard 3/5 | severity: med | fix-risk: med | footprint: in-epic
 - evidence: attempt 1 red at line 535 (second reply never drawn); --failed rerun green; same spec 9/9 locally on the same tree; batch 3 changed no client or turn code
 - 2026-10-21T19:44:05Z status=routed owner=burndown by=ci note=flake class per CI Is a Gate; priority for the burn-down
+- 2026-11-13T00:51:09Z status=dropped owner=burndown by=orchestrator note=duplicate of DW-2524 (same context-chip test 7 Fresh at Send timeout), which 23.10 owns
 
 ### DW-2494: The agent's MDX read polls only the turn's stop, abandon and lease, so a kill switch, enforced read-only or lost privilege set mid-read acts at the next step
 - source: spec-20-35-the-agent-s-mdx-read.md | severity: low | fix-risk: low | footprint: in-story
@@ -12446,6 +12447,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Registry.cls RowTargetProblem (:4008), Descriptor/Base.cls RowTarget (:337), Descriptor/LockList.cls (:19) and ui/tools/screen-mirror.mjs (:2830) say 'the paired-surface chain in data-table.ts'; data-table.ts now calls nameLinkTarget in core/navigation.ts.
 - 2026-10-23T14:28:31Z status=wontfix-accepted owner=20-38-a-schema-opens-its-tables-views-and-procedures by=cr note=files barred to this story (23.12, existing descriptors); reopen_if=grep 'chain in' on the four still names data-table.ts after 23.12 merges
 - 2026-10-23T14:30:20Z status=routed owner=20-39-every-list-s-name-opens-something by=adjudication note=stale 'chain in data-table.ts' comments (Registry.cls, Base.cls, LockList.cls, screen-mirror.mjs); 20.39 edits these after 23.12 merges
+- 2026-11-12T21:52:29Z status=resolved-by:20-39-every-list-s-name-opens-something by=adjudication note=the five comment sites now place the chain in nameLinkTarget (navigation.ts); mirror regenerated; AC4
 
 ### DW-2505: SQL schemas' descriptor doc does not say where a schema's name opens, as its sibling lists' docs do
 - source: spec-20-38-a-schema-opens-its-tables-views-and-procedures.md | severity: low | fix-risk: low | footprint: in-epic
@@ -12535,15 +12537,21 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: full sweep on ocupilot-ci at c98a0877, shard 3/20: AssertStatusOK at +14 'and its next page reads' => ERROR #5001 PORT.TIMEOUT; the class reran alone 10/10 green (run 701); batch 1 touches no journal code
 - 2026-11-12T17:08:40Z status=routed owner=23-10-the-range-end-cleanup-part-9-two-sweeps by=lead note=CI-health flake; first priority in 23.10 with DW-2513 (Rule 27)
 
+### DW-2526: flake: LogHubErrors.TestASeededErrorReadsInTheHubsForm read a row other than its seeded error as the newest (CI instance shard 8/8)
+- source: CI run 43332030735 (Story 20.39 head 8d7fa08a) | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: Red once ('one row, the newest, and the read says it cut'), green on the unchanged rerun; an unrelated adminport OAuth REFRESHJWKS error was logged the same second; local 2/2 green
+- 2026-11-13T00:50:26Z status=routed owner=burndown by=harvest note=CI flake for the burn-down: the test asserts on the store's newest row, which a concurrent error can take (inference)
 ### DW-2522: flake: analytics-mdx.browser-spec.mjs AC1: the first query's grid did not appear within navigationTimeoutMs
 - source: 23.9 batch 4 CI (run 43292059964) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: run 43292059964 (9e7cc026) attempt 1, browser shard 2/5: waitForSelector [data-ocu-mdx=grid] failed at :258 after 37.6 s, the other 10 tests green; batch 4 touches no analytics or walk code
 - 2026-11-12T20:43:32Z status=routed owner=23-10-the-range-end-cleanup-part-9-two-sweeps by=lead note=CI flake; first priority in 23.10 (Rule 27); rerun --failed
+- 2026-11-13T00:51:08Z occurrence=20-34-the-cube-manager-s-build-and-synchronize note=re-stated (a union merge misplaced the 23:17:35Z line): also red on CI 43290470415 (acb0b666), filed there as DW-2523, dropped as this entry's duplicate
 
 ### DW-2524: flake: context-chip.browser-spec.mjs test 7 (Fresh at Send) waited past 30000 ms
 - source: 23.9 staging CI (run 43316537748) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: run 43316537748 (8947b8d2, integrate-forward staging head) attempt 1, browser shard 4/5: 'Waiting failed: 30000ms exceeded', 8 of 9 green; neither 23.9's batches nor 20.34 touch the context chip
 - 2026-11-12T22:40:59Z status=routed owner=23-10-the-range-end-cleanup-part-9-two-sweeps by=lead note=CI flake; first priority in 23.10 (Rule 27); rerun --failed
+- 2026-11-13T00:51:09Z occurrence=23-11-the-range-end-cleanup-part-10 note=first filed as DW-2493 (2026-10-21, 23.11 batch c), now dropped as this entry's duplicate; also red on staging run 43316537748 attempt 1
 
 ### DW-2525: Rule 31: 16 delete tools keep Write.RemovalRows's loop body over FingerprintSubject() (11) or ReadAnswers() (5, four with the unassigned skip); the helper takes no name list
 - source: spec-23-9-the-range-end-cleanup-part-8.md | severity: med | fix-risk: med | footprint: out-of-footprint
