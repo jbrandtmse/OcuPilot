@@ -2,7 +2,7 @@
 title: 'Story 20.25: Item runtime and configuration actions'
 type: 'feature'
 created: '2026-11-12'
-status: 'in-progress'
+status: 'done'
 baseline_revision: 'e85f63460b00969949e6429a2114e7b78ce86a8b'
 baseline_commit: 'e85f63460b00969949e6429a2114e7b78ce86a8b'
 review_loop_iteration: 0
@@ -215,7 +215,7 @@ Rejected:
 - low: `UpdateCapped`'s doc says only vendor classes run, though a test seam overrides it — true of the shipped class
 - low: a DW-1822 occurrence trailer sits on a resolved entry — runner bookkeeping outside this story's code; reported to the runner
 
-- [ ] [CI] instance shard 8/8, run 43445087881 (red twice on one head; reproduced on a fresh `ocupilot-b-ci` in shard 8/8's class order): `OcuPilot.Test.InteropItemRun.TestAStartThePortCannotFinishIsPending` read the Productions screen's Update as 409 `INTEROP.PRODUCTION.UPTODATE` right after `Facts` read `needs=1` -- `src/OcuPilot/Test/InteropItemControl.cls` `StartProduction` -- cause (Ens event log in USER): `Ens.ScheduleHandler` runs its own `UpdateProduction` just after the production starts; on a fresh or slow instance it lands after the test's `STARTITEM` cleared the flag and applies the pending update itself. Make the shared start helper wait, bounded (about 10 s), for that startup update to finish before it returns -- e.g. until `Ens_Util.Log` in the probe namespace holds an `Ens.ScheduleHandler` `UpdateProduction` row reading updated or up-to-date logged since this start -- and fail with a clear status when it never does; the callers (`InteropItemRun`, `InteropItemCopy`, `InteropItemRunGate`) gain the precondition with no change of their own. Pin it: a mutation that skips the wait must be shown to matter, or record why no deterministic mutation exists (the race needs a fresh instance); record the `mutation:` line or that reason under `## Verification`. Rule 19: test-only change; no product code.
+- [x] [CI] instance shard 8/8, run 43445087881 (red twice on one head; reproduced on a fresh `ocupilot-b-ci` in shard 8/8's class order): `OcuPilot.Test.InteropItemRun.TestAStartThePortCannotFinishIsPending` read the Productions screen's Update as 409 `INTEROP.PRODUCTION.UPTODATE` right after `Facts` read `needs=1` -- `src/OcuPilot/Test/InteropItemControl.cls` `StartProduction` -- cause (Ens event log in USER): `Ens.ScheduleHandler` runs its own `UpdateProduction` just after the production starts; on a fresh or slow instance it lands after the test's `STARTITEM` cleared the flag and applies the pending update itself. Make the shared start helper wait, bounded (about 10 s), for that startup update to finish before it returns -- e.g. until `Ens_Util.Log` in the probe namespace holds an `Ens.ScheduleHandler` `UpdateProduction` row reading updated or up-to-date logged since this start -- and fail with a clear status when it never does; the callers (`InteropItemRun`, `InteropItemCopy`, `InteropItemRunGate`) gain the precondition with no change of their own. Pin it: a mutation that skips the wait must be shown to matter, or record why no deterministic mutation exists (the race needs a fresh instance); record the `mutation:` line or that reason under `## Verification`. Rule 19: test-only change; no product code.
 
 ## Spec Change Log
 
@@ -240,6 +240,17 @@ Rejected:
   - `[maybe-false]` `[reject]` a failure of the start's own flag clear is answered `STARTPENDING` - that call follows a read that proved the flag set; it would be a low at most
   - `[low]` `[reject]` intent-alignment: a pre-action warning dialog on the row actions - the spec's own `WARNING_CONSEQUENCES` task and the Dialogs line require it; no new dialog component
   - `[low]` `[reject]` intent-alignment: the write's read-back can show `Jobs` 0 after a start - Task 0 (e) measured it and the tests and the browser spec wait for the job; the AC3 wording needs no timing
+
+### 2026-11-13 - Review pass (CI item)
+
+- verdicts: 9 findings - high 0, medium 0, low 3, false 0, maybe-false 0, reject-as-moot 6
+- findings:
+  - `[low]` `[patch]` the helper duplicated `InteropJobEnd.StartUpdated` (and waited 10 s against its 20 s) - `StartProduction` now calls it; the duplicate method is gone
+  - `[low]` `[patch]` the mutation line's warm-instance sentence carried no `(inference)` label - labeled
+  - `[low]` `[patch]` the `updated.` branch had no deterministic check - the wait is now the sibling's, which its own tests and the new mutation exercise; text matches `Ens/Director.cls`
+  - `[low]` `[reject]` a refused Start is not detected before the wait - no caller reaches it (each resets the probe first); the wait names the missing update
+  - `[low]` `[reject]` the swallowed query error, the two-table mark read - both lived in the removed duplicate
+  - `[low]` `[reject]` intent-alignment: the helper waits on the scheduler's logged update, the surface the item names; the race itself cannot be pinned (recorded under Verification)
 
 ## Design Notes
 
@@ -404,16 +415,15 @@ Run on `ocupilot-b-ci` (each reverted, tree byte-identical; the source reloaded 
 - mutation (AC2, QA): `ItemRunRefusal` drops `AMBIGUOUS` -> `InteropItemRun` `TestTheRefusalsAreJudgedInTheMatrixOrder` alone (the HTTP leg stays green because the port counts the name's items itself (inference); the pure function's order is what the test pins)
 - mutation (AD-59, review): the draft's cap written as `If tTimeout > 15 Set tTimeout = 15` with the update after it on the line -> `InteropItemRun` `TestEachToolsDraftRendersItsScript`
 - mutation (AC2, review): `OwnsJobs` asks for a job above 0 -> `InteropItemRun` `TestTheRefusalsAreJudgedInTheMatrixOrder` (run with the one above, run 786, 2 of 8 red, each on its own test)
+- mutation (CI item, `InteropItemControl.StartProduction` waits on `InteropJobEnd.StartUpdated`): that method's event-log query names `Ens.ScheduleHandlerX` -> `InteropItemRunGate` red in `OnBeforeAllTests` ("its schedule handler logged no update after it in about 20 seconds"), so every caller of the helper meets the wait. No deterministic mutation reproduces the race itself, since it needs a fresh instance after a long run (inference: skipping the wait leaves the three classes green on a warm one).
 
 ## Auto Run Result
 
 Status: done
 Blocking condition: none
 
-Implemented: `ITEMRUN` and the `STOPITEM`, `STARTITEM` and `RESTARTITEM` writes on `InteropPort` with the run pair and the refusals judged before any vendor call; five item error codes and three consequence codes; the `InteropItemRunAction` base and the Stop, Start and Restart tools; three Production items row actions; three baseline keys (`true`); the client warnings and sentences; the EXPERIENCE.md clauses; `InteropItemRun` (8) and `InteropItemRunGate` (3); a Stop and Start browser leg; roster edits (`ReadTool` 409, `ToolWrite` 56, `ToolRoundTrip`, `SurfaceCoverage`, `ToolEmit`); Task 0 recorded under Design Notes, Measured.
+This pass (the open `[CI]` item, test-only): `OcuPilot.Test.InteropItemControl.StartProduction` now also waits for the scheduler's startup update by calling `OcuPilot.Test.InteropJobEnd.StartUpdated` (20 s at most, the sibling's bound; the item said about 10 s), failing with its status when the update is not logged. Decided in-stage: reuse the sibling rather than a second query (Rule 2). Callers `InteropItemRun`, `InteropItemCopy` and `InteropItemRunGate` are unchanged.
 
-Review: 11 findings, none high. Patched: 2 medium and 2 low, all in tests (a missing job wait in the gate class, an untested start draft, a weak audit assertion, and the AC4 and AC6 mutation lines). Deferred: none. Rejected: 7, each with its reason in the Review Triage Log. Follow-up review recommended: false.
+Review: 9 findings, none high; 3 low patched, 6 rejected (Review Triage Log). Follow-up review recommended: false.
 
-Verified on `ocupilot-b-ci` after the patches: `InteropItemRun`, `InteropItemRunGate`, `InteropItemDescriptor`, `ToolWrite`, `GovernanceBaseline`, `ReadTool` green; the earlier pass's item, runtime and roster classes, `interop-items.browser-spec.mjs` (4/4), `test:tools` (2193), `test:components` (3359), `build` (2.02 MB) and the two static checks were green before the test-only patches. Three mutations were run in review, each red as listed and reverted byte-identical.
-
-Residual risk: the full ObjectScript sweep, `npm test`, the smoke, Rule 30's fresh check and the CI browser suite are the runner's. A scratch file `/tmp/Meas25.cls` remains inside `ocupilot-b-ci` (not removable by the agent).
+Verified on `ocupilot-b-ci`: `InteropItemRun` (8), `InteropItemCopy` (8) and `InteropItemRunGate` (3) green, one class per call, before and after the review patch; the mutation under Verification read red on `InteropItemRunGate` and was reverted (tree matches); `check-objectscript.py` 0 problems. The race itself needs a fresh instance after a long run, so the runner's shard 8/8 fresh check is what proves it. Earlier passes closed in the Review Triage Log above.
