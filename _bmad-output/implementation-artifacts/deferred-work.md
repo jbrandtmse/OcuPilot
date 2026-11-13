@@ -12516,6 +12516,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-23-9-the-range-end-cleanup-part-8.md (plan) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: main push run 40026736561 (39f5106e) attempt 1; not in the ledger before; found by the 23.9 plan reading CI logs
 - 2026-11-12T14:27:31Z status=routed owner=23-10-the-range-end-cleanup-part-9-two-sweeps by=spec_gate note=CI flake; first priority in 23.10 (Rule 27)
+- 2026-11-13T05:48:56Z occurrence=23-10-the-range-end-cleanup-part-9-two-sweeps note=local ocupilot-ci, QA: context-chip 'A failed send preserves the paste-warning acknowledgment' page.goto 30 s timeout once; green on rerun
 
 ### DW-2514: Other duplicated client path literals: /api/ocupilot/proposal (core/draft.ts, core/turn.ts), DATABASE_CHECK_PATH (database-integrity and database-wizard stores), screen-action-handler.ts users form path
 - source: spec-23-9-the-range-end-cleanup-part-8.md (plan) | severity: low | fix-risk: low | footprint: out-of-footprint
