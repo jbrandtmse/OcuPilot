@@ -1817,3 +1817,7 @@
 2026-11-13T19:55:17Z	Epic 23	runner_reported	staging=fdd85a5b(merge_131027e7_of_feature_278b9878;43490572294_success) conflicts=sprint-status_only merged_tree_check=pass
 2026-11-13T19:55:17Z	Story 23.10	merged	batch=3(story_complete) feature=fdd85a5b7 mode=fast_forward(staging_own_CI_green) checks=ledger_entry_check_0(1995),dup_none,sprint_validate_ok upgrade_triggers=none new_keys=none
 2026-11-13T19:55:17Z	ci	timings_refreshed	rule=29 run=43490572294
+2026-11-13T20:18:38Z	Epic 20	runner_reported	boundary=story_20.40 via=SendMessage(runner->main) code_head=80c03e4c(43493917409_success) rework=1(InteropDescriptor_roster) ledger=DW-2298_copy_resolved,change-of-class_reowned_20.41;DW-2536,DW-2539_wontfix-accepted;DW-2534_flake_burndown upgrade_triggers=baseline_key:interop.items.copy(default_true) new_keys=1 DW-2535=reproduced(Ens.ScheduleHandler_startup_UpdateProduction_race);fix_in_flight_as_20.25_rework shas_verified=yes
+2026-11-13T20:18:38Z	Story 20.40	staging_head_built	head=7cc8add01 branch=OCU-1-staging-20-40 base=feature_9494c786+80c03e4c conflicts=sprint-status(ours+set_20-40=done;validate_ok) ledger_check=0(1998) dups=none run=43500291806(pending)
+2026-11-13T20:59:19Z	Story 20.40	merged	feature=7cc8add01 mode=fast_forward(staging_own_CI_green_43500291806) checks=ledger_entry_check_0(1998),dup_none,sprint_validate_ok(20-40_done) upgrade_triggers=baseline_key:interop.items.copy(default_true) new_keys=1
+2026-11-13T20:59:19Z	ci	timings_refreshed	rule=29 run=43500291806
