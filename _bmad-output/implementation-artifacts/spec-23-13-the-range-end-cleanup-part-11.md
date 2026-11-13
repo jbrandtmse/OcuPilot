@@ -2,8 +2,8 @@
 title: 'Story 23.13: The range-end cleanup, part 11'
 type: 'bugfix'
 created: '2026-11-13'
-status: 'in-progress'
-baseline_revision: '609d86f8fcb76c53653e96591b0d9b467baca5fa'
+status: 'done'
+baseline_revision: '7b1dd0b4f4fb04d337c1214a54001a501329071e'
 baseline_commit: '609d86f8fcb76c53653e96591b0d9b467baca5fa'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -146,7 +146,7 @@ Waits for escalation 5 (contention) before any `Prohibited.cls` edit. Task 0 nee
   9. After step 8, HALT `blocked: Task 0 complete; throwaway rebuild needed: <state>`.
   - **Decision rule.** The start does not finish: widen (next item), once escalation 1 is answered. A vendor refusal at step 4 or 5, or a start that finishes: keep the arm and record the evidence. Anything else (a half-applied write, a refusal that moved a fact): an `intent gap` HALT.
 - [ ] **DW-2431, only if Task 0 widens.** `Prohibited.cls`: `LeavesInteractiveJournal` becomes `LeavesModeJournal(pMode, ...)`, as `LeavesModeRequired` is; `EncryptionStartup` runs the journal arm for Interactive or KMIP, and KMIP refuses with escalation 1's code and sentence, before any write, from either caller. Add `Codes()`/`ReasonFor`, the add-only `strings.ts` key, a `self-protection.test.mjs` pair and the EXPERIENCE.md row as the answer says. Pin: new `EncryptionStartupWrite` legs, KMIP with `DBEncJournal` on, both callers; red before. Mutation: drop KMIP from the widened branch.
-- [ ] **DW-2432.** `Prohibited.cls`:
+- [x] **DW-2432.** `Prohibited.cls`:
   - Add `AddsPublicUse(pPayload, pTarget)`: the payload adds `U` to the public permission, as `AddsPublicLetter` reads letters.
   - Add `GuardsPrivilegedApplication(pName) As %Boolean`. It lists web and privileged routine applications through `PortClass()`, keeps those whose `Resource` equals `pName` without regard to case, and reads each with a `GET`. It answers 1 when a read application is enabled (`EnabledOn`) and its roles escalate (`ApplicationRolesEscalate` over the read object). A failed list or read answers 1.
   - The resource arm becomes: `AddsPublicLetter` and either `ResourceGrantsAdministrativePrivilege(pId)`, or `AddsPublicUse` and `GuardsPrivilegedApplication(pId)`. The lookup runs only when `U` is added.
@@ -308,6 +308,14 @@ Rejected:
   - `[low]` `[reject]` The store's notify-on-adoption and `remembered()` have no store-level test — the kept-direction case reddens under the old notify rule, and a store test adds a case for no new behavior.
   - `[low]` `[reject]` Order 1 with a late adoption is not a case of its own — it takes the same `followOrder()` call the Oldest first case pins, and the arrival case pins its desc branch.
 
+### 2026-11-13 — Review pass (batch 2, DW-2432)
+
+- verdicts: 2 findings — high 0, medium 2, low 0, false 0, maybe-false 0 (one intent-alignment report, descriptive)
+- findings:
+  - `[medium]` `[patch]` verification-gap: the held-USE clause and the case folds of `AddsPublicUse` and the row-side resource compare had no pin (both USE-already-held legs add no letter, so the clause was never reached) — patched: read-over-USE, lower-case and lower-case-resource legs added to the `WebAppWeakening` test; three mutations observed red, reverted, lines written under Verification.
+  - `[medium]` `[patch]` verification-gap: the failed-read branch of `GuardsPrivilegedApplication` and the walk past a disabled application were unpinned (the fixture leg reaches only a failed list) — patched: a disabled-then-enabled leg in `WebAppWeakening`, and `ResourceUpdate.TestAnApplicationReadThatFailsCounts` over a new `ProhibitedGuardFixture` port; two mutations observed red, reverted.
+  - `[n/a]` `[reject]` intent-alignment: the mint-level assertion covers one web-application update, the rest sit at the classifier — the mint ORs the classifier's verdict in for every caller (AD-55), the spec's pin names the classifier legs, and the real-mint leg shows the surface.
+
 ## Design Notes
 
 **Dispositions** (lead writes them through `ledger.sh` after each green batch):
@@ -439,6 +447,14 @@ Rejected:
   - mutation: set `after` before `before` in `RemovalRows` -> `TestARowKeepsItsFieldOrderAndTypes` and `TestEachDrivenToolAnswersTheRowsItsRosterNames` red.
   - mutation: pass skip 0 in `SuperserverDelete` -> `TestEachDrivenToolAnswersTheRowsItsRosterNames` red (with the source pin `TestEachToolPassesItsOwnNamesAndSkip`).
   - (code review, batch 3, observed, tree identical after) mutation: pass `..ReadAnswers()` in `WebAppDelete` and give `DeviceDelete`'s call a names list -> `TestEachDrivenToolAnswersTheRowsItsRosterNames` red naming `WebAppDelete` (both legs), and `TestEachToolPassesItsOwnNamesAndSkip` red on its miscall and on the roster control (`DeviceDelete` not on `Sites()`). `RemovalRowsSweep` 7/7 after revert (run 58); `check-objectscript.py` 0 problems.
+- Batch 2 (DW-2432), pin `WebAppWeakening` (`TestPublicUseOnAResourceAnApplicationGuardsIsAGrant`), `RoutineAppGrant` (`TestPublicUseOnAResourceARoutineApplicationGuardsIsAGrant`) and `ResourceUpdate` (`TestAFailedLookupOfTheApplicationsAResourceGuardsCounts`); each applied on `ocupilot-ci` with `Prohibited` and `ProhibitedFixture` recompiled, observed red, reverted, `git diff` identical to the pre-mutation diff:
+  - mutation: drop the `AddsPublicUse`/`GuardsPrivilegedApplication` clause from the resource arm (the red-before state) -> the three new tests red, each alone in its class.
+  - mutation: answer a failed list, a failed read and a throw as 0 in `GuardsPrivilegedApplication` -> the `ResourceUpdate` fixture test red alone.
+  - mutation: read `Enabled` from the list row (`EnabledOn(tRow)`) -> the `RoutineAppGrant` test red alone.
+  - mutation: drop the `AddsPublicUse` condition -> the `WebAppWeakening` read-only leg red alone.
+  - mutation: drop the `EnabledOn` check -> the `WebAppWeakening` disabled-application leg red alone.
+  - (code review, observed, tree identical after) mutation: drop `&& '(tHeld [ "U")` in `AddsPublicUse` -> the `WebAppWeakening` test red alone (its read-over-USE leg). Read the payload's USE without upper-casing -> the same test red alone (its lower-case leg). Compare the application row's `Resource` without upper-casing -> the same test red alone (its second application names the resource in lower case). `Continue` becomes `Quit` after a disabled application -> the same test red alone (the disabled application lists first). Answer a failed read of the matched application as 0 -> `ResourceUpdate`'s `TestAnApplicationReadThatFailsCounts` red alone (new fixture `OcuPilot.Test.ProhibitedGuardFixture`).
+  - After the review patch: `WebAppWeakening` 9/9, `RoutineAppGrant` 7/7, `ResourceUpdate` 8/8, `ResourceCreate` 8/8, `ProhibitedByEffect` 8/8, `Prohibited` 15/15; `check-objectscript.py` 0 problems; `npm run test:tools` 2220/2220.
 
 ## Auto Run Result
 
@@ -456,3 +472,5 @@ Batch 4 (DW-1979) pass: the journal records page now follows the order select wi
 DW-2542 pass (batch 4 rework): the defect was real. `ScreenStore` adopts the remembered view when the account answers, after the page's cold-open `followOrder()`, replacing the direction it set. The page now re-runs `followOrder()` once on the first store notification after adoption (`ScreenStore.remembered()`, new; `adoptRemembered` notifies once on every adoption). Files: `ui/src/app/core/screen-store.ts`, `ui/src/app/areas/os-management/journal-records.page.ts`, `ui/src/app/areas/os-management/journal-records.page.spec.ts` (three cases). Review: 1 medium patched (seed pin), 2 low rejected (triage log). Verification and mutations under Verification. Follow-up review recommended: false (no high patched).
 
 Batch 3 (DW-2525) pass: `RemovalRows` takes a trailing `pNames` list and the 16 delete bodies call it with `..FingerprintSubject()` or `..ReadAnswers()` (skip kept for the four that had it); new unarmed `OcuPilot.Test.RemovalRowsSweep` (7 tests after QA and review) pins the lift. Files: `src/OcuPilot/Screen/Tool/Write.cls`, the 16 `*Delete.cls` bodies, `src/OcuPilot/Test/RemovalRowsSweep.cls`. Verification and mutations under Verification; the new class joins the `ci-timings.json` roster at the lead's refresh. Batch 2 is untouched. Review: 1 medium patched (per-site roster pin), 1 low patched (floor), 2 low and the intent report rejected (triage log). Follow-up review recommended: false.
+
+DW-2432 pass (batch 2): adding public `U` to a resource that an enabled web or privileged routine application uses as its `Resource` while its roles escalate now mints `GRANT.PRIVILEGED` at the destructive treatment, on a create or an update, with the existing `privilegedGrantEffect` line and no new string. Files: `src/OcuPilot/Kernel/Proposal/Prohibited.cls` (`AddsPublicUse`, `GuardsPrivilegedApplication`, the resource arm of `GrantsPrivilegeByEffect`); tests in `WebAppWeakening`, `RoutineAppGrant`, `ResourceUpdate` and the new helper `OcuPilot.Test.ProhibitedGuardFixture`. Task 0 and DW-2431 are not done in this pass; their boxes stay open. Review: 2 medium patched (unpinned branches), 1 rejected. Follow-up review recommended: false. Verification and mutations under Verification. Residual risk: the AD-10 clause for this arm is the lead's (ruling 1); a failed per-application read is pinned through a fixture port only.
