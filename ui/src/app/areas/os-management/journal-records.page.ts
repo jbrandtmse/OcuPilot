@@ -386,7 +386,14 @@ export class JournalRecordsPage {
         this.open();
       }) ?? null;
 
-    const stopStore = store.subscribe(() => this.bump());
+    let awaitingView = !store.remembered();
+    const stopStore = store.subscribe(() => {
+      if (awaitingView && store.remembered()) {
+        awaitingView = false;
+        this.followOrder();
+      }
+      this.bump();
+    });
     const stopSearch = this.search.subscribe(() => {
       this.bump();
       if (this.recordAwaitsFile && this.search.value('file') !== '') void this.loadRecord(this.entityId());

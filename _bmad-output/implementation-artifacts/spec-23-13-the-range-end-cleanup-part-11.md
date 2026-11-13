@@ -2,8 +2,8 @@
 title: 'Story 23.13: The range-end cleanup, part 11'
 type: 'bugfix'
 created: '2026-11-13'
-status: 'in-progress'
-baseline_revision: 'df38df2d0caecc13074b30cad4933fb56428068b'
+status: 'done'
+baseline_revision: 'aa6e60dc5dcd633975cbc7a6ecc1c49d18960ac5'
 baseline_commit: 'df38df2d0caecc13074b30cad4933fb56428068b'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -169,7 +169,7 @@ Waits for escalation 5 (contention) before any `Prohibited.cls` edit. Task 0 nee
 - [x] **Pin** in `journal-records.page.spec.ts`: rows at Addresses 300, 200, 100. Order 1 draws 300, 200, 100 and leaves the store's direction desc; order 0 draws 100, 200, 300; with sort `TimeStamp`, order 1 leaves the direction as it was. Red before. Mutations: remove the call; map order 1 to asc.
 - [ ] `cd ui && npm run build`; record the journal records chunk and the initial total against the 2500 kB warning. Run `journal-records.browser-spec.mjs` after redeploy.
 - [x] DW-2527: no code (Declined DW-2527 under Design Notes).
-- [ ] [Review] DW-2542 (batch 4 code review, medium, first review) — `journal-records.page.ts` `followOrder()` runs once in the constructor's `open()`, while `ScreenStore.adoptRemembered` (screen-store.ts ~:151, :164) can adopt a remembered `desc` direction after it on a cold open, so a reloaded tab under Oldest first may draw descending until the next Search — re-run `followOrder()` once the remembered view is adopted (or have the read path consult the order), pinned by a component case that adopts a remembered `desc` after the cold open and reads ascending under order 0, red before.
+- [x] [Review] DW-2542 (batch 4 code review, medium, first review) — `journal-records.page.ts` `followOrder()` runs once in the constructor's `open()`, while `ScreenStore.adoptRemembered` (screen-store.ts ~:151, :164) can adopt a remembered `desc` direction after it on a cold open, so a reloaded tab under Oldest first may draw descending until the next Search — re-run `followOrder()` once the remembered view is adopted (or have the read path consult the order), pinned by a component case that adopts a remembered `desc` after the cold open and reads ascending under order 0, red before.
 
 **Acceptance Criteria:**
 
@@ -253,6 +253,14 @@ Rejected:
   - `[low]` `[reject]` a failed `relaunch()` propagating with the closed browser held is not pinned — the walk throws either way, and `after` closes under a deadline.
   - `[n/a]` `[reject]` intent-alignment: `retryOnce`'s awaited reset reaches every caller — all other callers pass synchronous resets, and the awaited form is the spec's own task.
   - `[n/a]` `[reject]` intent-alignment: the `--write` CLI path passes no `relaunch` — the spec scopes the relaunch to the a11y spec, and without it a rerun keeps today's behavior.
+
+### 2026-11-13 — Review pass (batch 4, DW-2542 rework)
+
+- verdicts: 3 findings — high 0, medium 1, low 2, false 0, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` The page subscriber's `awaitingView` seed had no test: starting it at true reddened nothing, and a revisit that reads nothing would have its first direction click reset to the declared one (Rule 19) — a revisit case now pins it, red under the mutation.
+  - `[low]` `[reject]` The store's notify-on-adoption and `remembered()` have no store-level test — the kept-direction case reddens under the old notify rule, and a store test adds a case for no new behavior.
+  - `[low]` `[reject]` Order 1 with a late adoption is not a case of its own — it takes the same `followOrder()` call the Oldest first case pins, and the arrival case pins its desc branch.
 
 ## Design Notes
 
@@ -370,6 +378,7 @@ Rejected:
   - (QA) added to `ui/browser/journal-records.browser-spec.mjs` (DW-2541): `DW-1979: Newest first draws the newest seeded records first, in descending Address` (order 1, filter `OcuProbe185`, ten rows, descending Address and `^OcuProbe185(30)` to `(21)`); syntax-checked only, not run (the throwaway was the lead's sweep's); component runner `npm run test:components` 3362/3362 (261 files); the component spec's three cases already pin each Batch 4 AC with an observed red, so none added.
   - mutation: remove the `followOrder()` call → `DW-1979: Newest first draws the newest seeded records first, in descending Address` (lead, fresh check)
   - (code review, observed, tree identical after) mutation: drop the `followOrder()` call in the Refresh action -> the Refresh case red alone. Call `followOrder()` from `onSearch` instead of `open()` -> the arrival case red alone. Keep only `sort !== ''` in the guard -> the explicit Address case red alone. Component spec 18/18; `npm run test:components` 3364/3364 (261 files); `npm run test:tools` 2219/2219; `npm run build` clean, initial total 2.02 MB.
+  - (DW-2542, observed, tree identical after) mutation: drop the `followOrder()` call in `journal-records.page.ts`'s store subscriber -> the remembered-view case red alone. Run it on every store change -> the kept-direction case red alone. Notify in `adoptRemembered` only when a view moved -> the kept-direction case red alone. Start the subscriber's `awaitingView` at true -> the revisit case red alone (code review, observed). Component spec 21/21; `npm run test:components` 3367/3367 (261 files); `npm run test:tools` 2219/2219; `npm run build` clean, initial total 2.02 MB of 2500 kB, journal records chunk 12.02 kB; `screen-store.test.mjs` 26/26. `journal-records.browser-spec.mjs`: lead, fresh check (not run here).
 
 ## Auto Run Result
 
@@ -383,3 +392,5 @@ Batch 4 (DW-1979) pass: the journal records page now follows the order select wi
 - **Review:** 1 medium patched (guard pin and mutations), 2 deferred (browser order 1 leg; Refresh path), 4 rejected with reasons in the triage log. Follow-up review recommended: false.
 - **Verification:** component spec 16/16; `npm run test:components` 3362/3362; `npm run test:tools` 2219/2219; `npm run build` clean (chunk 11.93 kB, initial 2.02 MB of 2500 kB). `journal-records.browser-spec.mjs`: lead, fresh check (not run here); the build item's box stays open for it.
 - **Residual risk:** the draw order is shown through the component spec only until the lead's browser run; a Refresh with an unsearched order change reads the new order under the old direction (deferred).
+
+DW-2542 pass (batch 4 rework): the defect was real. `ScreenStore` adopts the remembered view when the account answers, after the page's cold-open `followOrder()`, replacing the direction it set. The page now re-runs `followOrder()` once on the first store notification after adoption (`ScreenStore.remembered()`, new; `adoptRemembered` notifies once on every adoption). Files: `ui/src/app/core/screen-store.ts`, `ui/src/app/areas/os-management/journal-records.page.ts`, `ui/src/app/areas/os-management/journal-records.page.spec.ts` (three cases). Review: 1 medium patched (seed pin), 2 low rejected (triage log). Verification and mutations under Verification. Follow-up review recommended: false (no high patched).

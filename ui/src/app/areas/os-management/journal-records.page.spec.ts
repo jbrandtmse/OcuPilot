@@ -16,7 +16,7 @@ import { assembleScreenContext } from '../../core/screen-context';
 import { ScreenStores } from '../../core/screen-store';
 import { SCREENS, type ScreenDeclaration } from '../../core/screens.generated';
 import { STRINGS } from '../../core/strings';
-import { stubAccountPreferences } from '../../testing/account-preferences';
+import { type StubbedAccountPreferences, stubAccountPreferences } from '../../testing/account-preferences';
 import { JournalRecordsPage, nextOffset } from './journal-records.page';
 
 /**
@@ -90,6 +90,8 @@ interface Options {
   readonly id?: string;
   /** Held until it resolves: Journals' read answers only then. */
   readonly journalsGate?: Promise<void>;
+  /** The account the store adopts its remembered view from; not loaded until the spec loads it. */
+  readonly account?: StubbedAccountPreferences;
 }
 
 async function mount(options: Options = {}) {
@@ -109,7 +111,7 @@ async function mount(options: Options = {}) {
     },
   };
   const params = new BehaviorSubject(convertToParamMap(options.id === undefined ? {} : { id: options.id }));
-  const stores = new ScreenStores({ account: stubAccountPreferences() });
+  const stores = new ScreenStores({ account: options.account ?? stubAccountPreferences() });
   const refresh = new RefreshService({
     stores,
     connectivity: { retryWhenReachable: () => {} } as unknown as ConnectivityService,
@@ -337,6 +339,50 @@ describe('Journal records', () => {
     arrivals.set({ route: RECORDS.route, criterion: '', criteria: { file: NEWEST } });
     await settle(fixture);
     expect(store.direction()).toBe('');
+  });
+
+  it('Oldest first draws ascending when the remembered descending view is adopted after the cold open', async () => {
+    // Mutation (Rule 19), applied and observed red here: drop the `followOrder` call in the store subscriber.
+    const view = JSON.stringify({ sort: '', direction: 'desc', filter: '', maxRows: 1000 });
+    const account = stubAccountPreferences({ views: { [RECORDS.route]: view } });
+    const rows = [row(200, '^OcuProbe1979(200)'), row(300, '^OcuProbe1979(300)'), row(100, '^OcuProbe1979(100)')];
+    const { host, store, fixture } = await mount({ rows, account });
+    const drawn = () =>
+      Array.from(host.querySelectorAll('.ocu-data-table-body [role="row"]')).map((tr) => /\((\d+)\)/.exec(tr.textContent ?? '')?.[1]);
+    expect(store.remembered()).toBe(false);
+    await account.load();
+    await settle(fixture);
+    expect(store.remembered()).toBe(true);
+    expect(store.direction()).toBe('');
+    expect(drawn()).toEqual(['100', '200', '300']);
+  });
+
+  it('a direction chosen on the declared sort after the remembered view is adopted is kept', async () => {
+    // Mutations (Rule 19), each applied and observed red here: run `followOrder` on every store change,
+    // or notify on adoption only when a remembered view moved something.
+    const account = stubAccountPreferences();
+    const { store, fixture } = await mount({ account });
+    await account.load();
+    await settle(fixture);
+    store.setDirection('desc');
+    await settle(fixture);
+    expect(store.direction()).toBe('desc');
+  });
+
+  it('a direction chosen on the declared sort is kept on a revisit that reads nothing', async () => {
+    // Mutation (Rule 19), applied and observed red here: start the subscriber's `awaitingView` at true.
+    const account = stubAccountPreferences();
+    await account.load();
+    const { store, fixture } = await mount({ account });
+    expect(store.remembered()).toBe(true);
+    fixture.destroy();
+    const revisit = TestBed.createComponent(JournalRecordsPage);
+    revisit.detectChanges();
+    await settle(revisit);
+    store.setDirection('desc');
+    await settle(revisit);
+    expect(store.direction()).toBe('desc');
+    revisit.destroy();
   });
 
   it('Refresh after an order picked but not searched draws in that order', async () => {

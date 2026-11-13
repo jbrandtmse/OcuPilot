@@ -159,7 +159,8 @@ export class ScreenStore {
    * and a cap of `DEFAULT_MAX_ROWS` -- and a read that failed keeps them rather than clearing
    * anything. A remembered off is adopted like any rate, so a person who turned Home's refresh off
    * finds it off; a rate the descriptor no longer permits is ignored and the default stands. A view
-   * member of the wrong shape falls back field by field.
+   * member of the wrong shape falls back field by field. Listeners are notified once on adoption,
+   * whether or not anything was remembered.
    */
   private adoptRemembered(): void {
     if (!this.account.loaded()) {
@@ -168,13 +169,11 @@ export class ScreenStore {
     }
     if (this.adopted || (this.route === '' && this.rateKey === '')) return;
     this.adopted = true;
-    let moved = false;
     const stored = this.rateKey === '' ? undefined : this.account.refreshRates().get(this.rateKey);
     const rate = stored === undefined ? NaN : Number(stored);
     const permitted = rate === RATE_OFF || this.permitted.includes(rate);
     if (Number.isFinite(rate) && permitted && rate !== this.rateSeconds) {
       this.rateSeconds = rate;
-      moved = true;
     }
     const view = this.route === '' ? null : this.storedView();
     if (view !== null) {
@@ -183,9 +182,17 @@ export class ScreenStore {
       this.filterText = view.filter;
       this.rowCap = view.maxRows;
       this.widths = view.widths;
-      moved = true;
     }
-    if (moved) this.notify();
+    this.notify();
+  }
+
+  /**
+   * Whether the instance's remembered rate and view have been adopted since the last sign-in. A
+   * caller that derives state from the view reads it once this turns true, because adoption
+   * replaces the sort and direction it read before.
+   */
+  remembered(): boolean {
+    return this.adopted;
   }
 
   /** The remembered view, or `null` when nothing usable is stored. */
