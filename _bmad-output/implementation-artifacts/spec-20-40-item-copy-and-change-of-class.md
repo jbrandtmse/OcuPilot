@@ -2,8 +2,8 @@
 title: 'Story 20.40: Item copy and change of class'
 type: 'feature'
 created: '2026-11-12'
-status: 'in-progress'
-baseline_revision: 'edfeb15efbe64d19420e0f810788201485d8cf1a'
+status: 'done'
+baseline_revision: '8c06ac6a0143bbfb6f240e69eb0ac412f904bbf4'
 baseline_commit: 'edfeb15efbe64d19420e0f810788201485d8cf1a'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -213,7 +213,7 @@ Rejected:
 - low: the contended `Test/InteropItemDescriptor.cls` rosters were edited in place; Rule 30 required the roster moves, and Epic 23's branch has no change to that file.
 - low: AC4's audit and AC6's `ToolWrite` count have no mutation line of their own; Rule 19 asks for one per AC, and both carry one.
 
-- [ ] [Smoke] Full sweep shard 13/20 on d49eb2d3: `OcuPilot.Test.InteropDescriptor.TestEveryInteropErrorCodeResolvesToItsSentence` fails "Codes and ConsequenceCodes list every code this test names" -- `src/OcuPilot/Test/InteropDescriptor.cls` (the `tCodes` roster) -- add `ITEMCOPYSOURCE` and `ITEMCOPY` to the roster so it names every code `InteropError.Codes()` and `ConsequenceCodes()` list; demonstrate the mutation (drop one, see red, revert) and record its `mutation:` line under `## Verification`; add `InteropDescriptor` to this spec's `Shared surfaces:` and its `(loop)` class list.
+- [x] [Smoke] Full sweep shard 13/20 on d49eb2d3: `OcuPilot.Test.InteropDescriptor.TestEveryInteropErrorCodeResolvesToItsSentence` fails "Codes and ConsequenceCodes list every code this test names" -- `src/OcuPilot/Test/InteropDescriptor.cls` (the `tCodes` roster) -- add `ITEMCOPYSOURCE` and `ITEMCOPY` to the roster so it names every code `InteropError.Codes()` and `ConsequenceCodes()` list; demonstrate the mutation (drop one, see red, revert) and record its `mutation:` line under `## Verification`; add `InteropDescriptor` to this spec's `Shared surfaces:` and its `(loop)` class list.
 
 ## Spec Change Log
 
@@ -239,6 +239,13 @@ Rejected:
   - `[false]` `[reject]` (intent-alignment) No `ModifyConfiguration` string in the test - `InteropItemControl.Audited` reads `Event = 'ModifyConfiguration'` and the copy test asserts its rows.
   - `[low]` `[reject]` (intent-alignment) The per-pair refusal is asserted on one leg of the copy class - `InteropItemGate`'s `Items|COPY` leg covers every principal, and the class pins the declaration.
   - `[false]` `[reject]` (intent-alignment) The row action and button reuse `auditDatabaseCopyConfirm` - ruled as written in Design Notes (veto U-25), not a divergence.
+
+### 2026-11-13 - Review pass (rework 1)
+
+- verdicts: 2 findings - high 0, medium 0, low 2, false 0, maybe-false 0
+- findings:
+  - `[low]` `[reject]` (verification-gap) The roster test's closing assertion compares list lengths, not membership - it predates this pass and sits outside the diff; a membership check adds a branch for a swap nobody can reach in everyday use.
+  - `[low]` `[reject]` (intent-alignment) The same length-only check, restated as a divergence from "strict completeness" - same location and claim as the row above.
 
 
 ## Design Notes
@@ -333,6 +340,7 @@ The story complies with every AD as it stands.
 - the production-item create list in `Prohibited`
 - the probe production
 - the Fixed-strings row and the Dialogs line
+- `InteropDescriptor`'s error-code roster
 
 *Every test added or changed passes on a fresh environment, in either order.*
 
@@ -341,7 +349,7 @@ The story complies with every AD as it stands.
 **Commands** (each sized to about 150 s, one class or spec file per call, `timeout: 600000`; totals read from `%UnitTest_Result`):
 
 - `(loop)` `cd ui && node tools/ci-runner.mjs --container ocupilot-b-ci --class OcuPilot.Test.<C>`, one class per call:
-  - `InteropItemCopy`, `InteropItemControl`, `InteropItemGate`, `InteropItemRefusals`, `InteropItemDescriptor`;
+  - `InteropItemCopy`, `InteropItemControl`, `InteropItemGate`, `InteropItemRefusals`, `InteropItemDescriptor`, `InteropDescriptor`;
   - `ReadTool`, `ToolWrite`, `ToolRoundTrip`, `ToolEmit`, `SurfaceCoverage`, `EndpointCoverage`, `GovernanceBaseline`, `Governance`, `Prohibited`, `ReadDescriptions`, `Descriptor`, `CompileWithoutInterop`;
   - and every class the sweep changes.
 - `(loop)` `cd ui && OCUPILOT_BROWSER_ORIGIN=http://localhost:52777 OCUPILOT_BROWSER_CONTAINER=ocupilot-b-ci node --test --test-concurrency=1 browser/interop-items.browser-spec.mjs`, on the redeployed bundle.
@@ -375,6 +383,7 @@ The story complies with every AD as it stands.
 - mutation (QA, AC1): `UNDRAWN_ACTIONS` drops the Production items entry -> the new handler spec test reds (the page, handler and store specs alone stayed green before it); reverted byte-identical.
 - mutation (QA, AC1): the page registers no `copy`, or its add guard ignores an open copy dialog -> the list page spec's Story 20.40 test reds on each; the store spec's `named` counting every violation reds "shows a refusal on the source", and dropping the in-flight guard reds "posts once"; `strings.ts` copy sentence reworded -> `interop.test.mjs` `SENTENCES` reds. Each reverted byte-identical.
 - mutation (code review, applied together at distinct sites, each red attributed by its assertion, all reverted byte-identical and reloaded, then 8 of 8): `InteropItemCopy` overrides `ConfirmProblem` to answer none -> the confirm-after-removal leg reds (AC3); the `COPY` branch blanks `Comment` and `Category` -> the comment-and-category leg reds (AC1); the pool-size rule drops `BusinessType() = 2` -> the service leg reds; `InputSchema` stops requiring `CopyFrom` -> the schema leg reds; the item create branch passes no false-only field to `Copied` -> the `Enabled` true row reds.
+- mutation (smoke rework): `ITEMCOPY` dropped from `InteropDescriptor`'s `tCodes` roster -> `TestEveryInteropErrorCodeResolvesToItsSentence` reds on the code-count assertion; reverted byte-identical, reloaded, `InteropDescriptor` 12 of 12.
 - mutation (code review, client): `onOpenCopy` ignores an open add dialog -> the list page spec's "Copy never opens over an open add dialog" reds; reverted byte-identical.
 
 **Run (implement, `ocupilot-b-ci`):** `InteropItemCopy` 7 of 7, and green: `InteropItemControl`, `InteropItemGate`, `InteropItemRefusals`, `InteropItemDescriptor`, `InteropItemRun`, `InteropItemRunGate`, `InteropItemGateSplit`, `InteropItemIdentity`, `InteropSettingControl`, `ReadTool`, `ToolWrite`, `ToolRoundTrip`, `ToolEmit`, `SurfaceCoverage`, `EndpointCoverage`, `GovernanceBaseline`, `Governance`, `Prohibited`, `ReadDescriptions`, `Descriptor`, `CompileWithoutInterop`, `SaveHoldCoverage`, `StageTwoTools`, `ClassicPageGate`, `MappingDescriptor`, `DraftPorts`, `DraftRoute`; the browser spec 5 of 5; `npm run test:tools` 2206 of 2206; `npm run test:components` 3369 of 3369; `npm run build` clean (initial total 2.02 MB); `check-objectscript.py` clean.
@@ -396,11 +405,8 @@ The story complies with every AD as it stands.
 Status: done
 Blocking condition: none
 
-**This pass (implement and review).** Item copy as a `COPY` item write on `InteropPort`'s Items endpoint, one create tool `interop.items.copy`, the Save `POST /interop/items/copy`, the Copy row action with its dialog and store, the agent's consequence text, the governance key (`true`), the ruled strings and the Rule 30 rosters. Change of class goes to Story 20.41 (split).
+**This pass (rework 1, the open `[Smoke]` item).** `src/OcuPilot/Test/InteropDescriptor.cls`: `ITEMCOPYSOURCE` and `ITEMCOPY` added to the `tCodes` roster. `InteropDescriptor` joins `Shared surfaces:` and the `(loop)` class list, and its `mutation:` line is under Verification. The first pass closed at the commit that carried it.
 
-- Files: see the commit. Server: `Port/InteropPort.cls`, `Api/InteropError.cls`, `Api/Router.cls`, `Screen/Tool/InteropItemAdd.cls` (hook), `Screen/Tool/InteropItemCopy.cls`, `Area/Interop/ItemCopy.cls`, `Kernel/Proposal/Prohibited.cls`, `Kernel/Governance/Baseline.cls`, `Screen/Descriptor/InteropItemList.cls`. Client: the copy store, dialog and their specs, the list page, strings, screen actions, proposal view. Tests: `Test/InteropItemCopy.cls` (8 tests) and the roster classes.
-- Review: 12 findings, one medium, eight low and three false; every patch applied in-pass (script-form test, lower-case source row, mint pin, mutation lines), none deferred, seven rejected with reasons in the Review Triage Log.
-- Verification (this pass, `ocupilot-b-ci`): `InteropItemCopy` 8 of 8 after the patches; `GovernanceBaseline` and `ReadTool` green after their mutations were reverted; the copy dialog spec 4 of 4; `check-objectscript.py` 0 problems in 2,213 files; `lint-docs.sh` 0 problems. The implement pass's runs (27 further classes, the browser spec 5 of 5, `test:tools` 2,206, `test:components` 3,369, `build`) stand for the files this pass did not touch.
-- Not run, left to the runner: the full ObjectScript sweep, `npm test`, the smoke, the fresh check and CI.
-- Follow-up review recommended: false (one medium patched, no high).
-- Residual: `DW-2298`'s copy residual is closed by AC1 to AC3 and its change-of-class residual belongs to Story 20.41; the runner ticks the ledger.
+- Review: 2 low findings, both rejected (Review Triage Log); no patches, nothing deferred.
+- Verification (`ocupilot-b-ci`): `InteropDescriptor` 12 of 12 (runs 726 and 729, and 730 in review); mutation dropping `ITEMCOPY` 11 of 12, reverted byte-identical; `check-objectscript.py` 0 problems in 2,213 files; `lint-docs.sh` clean.
+- Follow-up review recommended: false (no high patched).
