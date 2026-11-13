@@ -12585,6 +12585,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: _bmad-output/implementation-artifacts/spec-23-10-the-range-end-cleanup-part-9-two-sweeps.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: the vendor's hidden Journal ListTask loops While rset.%Next && rowNum <= MaxRows, so it seeks one match past the cap (read on ocupilot-slot-a); the timeout is unmeasured
 - 2026-11-13T01:28:16Z status=routed owner=23-13-the-range-end-cleanup-part-11 by=harvest note=with DW-1979 (journal order) in 23.13
+- 2026-11-13T16:11:09Z status=wontfix-accepted by=spec_gate note=reopen_if=a_person_reports_a_Journal_records_search_answering_PORT.TIMEOUT;the_vendor_ListTask_runs_%Next_before_its_row-cap_check(read_on_ocupilot-slot-a_2026-11-13),so_no_port_or_page_change_stops_the_extra_scan;Story_23.13_Declined_DW-2527
 
 ### DW-2528: The instance never refuses a malformed area privilege pair (missing or non-string half); only the mirror's buildMirror does
 - source: spec-23-9-the-range-end-cleanup-part-8.md | severity: low | fix-risk: low | footprint: in-story
