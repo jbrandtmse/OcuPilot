@@ -268,6 +268,10 @@ Rejected:
 
 ## Review Triage Log
 
+### 2026-11-13 - Contention note (batch 3)
+
+- The batch 3 implement stage made non-add-only edits to `ui/tools/screen-mirror.mjs` and `ui/tools/screen-mirror.test.mjs`, which Epic 20 had also changed (Story 20.36, `f1b9a5a4`), before the lead asked the orchestrator. The orchestrator ruled them kept (decide, 2026-11-13): the regions are separate and neither side changes the other; whichever story merges second keeps both. Stages are reminded that such an edit goes to the orchestrator first.
+
 ### 2026-11-12 - Review pass (batch 1)
 
 - verdicts: 8 findings - high 0, medium 3, low 4, false 0, maybe-false 1
