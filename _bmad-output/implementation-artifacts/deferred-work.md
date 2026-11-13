@@ -4355,6 +4355,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-30T03:32:47Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down decision sheet 2026-09-29: into Story 23.3 (after the following release)
 - 2026-10-11T00:42:30Z status=routed owner=23-7-the-range-end-cleanup-part-6 by=load note=re-own from range-end-cleanup: kit 2026-10-10.1 owners are story keys or burndown
 - 2026-10-12T19:22:37Z status=routed owner=23-9-the-range-end-cleanup-part-8 by=merge_gate note=owner 2026-10-12 released 23.7's 32 (Release Story 23.7); split by priority, 12 at most each (Rule 27)
+- 2026-11-13T04:57:44Z status=resolved-by:23-9-the-range-end-cleanup-part-8 by=adjudication note=owner-applied 75ea5f7d (CLAUDE.md:134-136); script docstring 53bd0ce0,df1c6122
 
 ### DW-1184: Three Test/Dispatch harness helpers assign %request and %response without New, so the stubs outlive the call and a later test in the same process reads them instead of its own state
 - source: spec-5-0-epic-4-deferred-cleanup.md | severity: low | fix-risk: low | footprint: in-story
@@ -8036,6 +8037,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-30T06:34:04Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p4
 - 2026-10-11T00:42:32Z status=routed owner=23-7-the-range-end-cleanup-part-6 by=load note=re-own from range-end-cleanup: kit 2026-10-10.1 owners are story keys or burndown
 - 2026-10-12T19:22:37Z status=routed owner=23-9-the-range-end-cleanup-part-8 by=merge_gate note=owner 2026-10-12 released 23.7's 32 (Release Story 23.7); split by priority, 12 at most each (Rule 27)
+- 2026-11-13T04:57:44Z status=resolved-by:23-9-the-range-end-cleanup-part-8 by=adjudication note=53bd0ce0,df1c6122: (a) both engines refuse an own pair the area declares; (b) by-design per AD-8; reopen_if AD-8 requires an area pair
 
 ### DW-1761: The instance's MalformedPair accepts a non-string resource or permission ({resource: 5}) where the client mirror's malformedPair refuses it; the corpus has only string cases
 - source: 16.8 rework independent review (orchestrator), 2026-09-27 | severity: low | fix-risk: low | footprint: src/OcuPilot/Screen/Registry.cls, ui/tools/screen-mirror.mjs
@@ -8044,6 +8046,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-30T06:34:04Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p4
 - 2026-10-11T00:42:32Z status=routed owner=23-7-the-range-end-cleanup-part-6 by=load note=re-own from range-end-cleanup: kit 2026-10-10.1 owners are story keys or burndown
 - 2026-10-12T19:22:37Z status=routed owner=23-9-the-range-end-cleanup-part-8 by=merge_gate note=owner 2026-10-12 released 23.7's 32 (Release Story 23.7); split by priority, 12 at most each (Rule 27)
+- 2026-11-13T04:57:44Z status=resolved-by:23-9-the-range-end-cleanup-part-8 by=adjudication note=53bd0ce0,df1c6122: MalformedPair refuses non-string or non-object halves; corpus pins both engines
 
 ### DW-1762: Every container stop in the 1.0.2 upgrade check logged Previous system shutdown was abnormal (restart of 1.0.1 code and recreate of 1.0.2); the README update step (docker compose restart) triggers it on every update
 - source: 1.0.2 upgrade check (orchestrator), 2026-09-27 | severity: medium | fix-risk: low | footprint: docker-compose.yml, scripts/ci-throwaway.sh, README.md
