@@ -195,6 +195,21 @@ export function scriptReply(options, tag, hangSeconds, bodyExpr, httpStatus = 20
   assert.equal(markerValue(output, name), '1', `Script succeeded: ${output}`);
 }
 
+/**
+ * Script one streamed reply for `tag`: `hangSeconds` before the status line, then `bodyExpr` fed
+ * to the turn's reader in slices spread over `midHangSeconds`, so the text is drawn while the turn
+ * is still running (`OcuPilot.Test.TurnProvider.ScriptStream`). Asserts its `%Status` as
+ * `scriptReply` does.
+ */
+export function scriptStreamReply(options, tag, hangSeconds, bodyExpr, midHangSeconds) {
+  const name = `${options.marker}-STREAM`;
+  const output = runIris(options.container, [
+    `Set sc=##class(OcuPilot.Test.TurnProvider).ScriptStream("${escapeOs(tag)}",${hangSeconds},${bodyExpr},${midHangSeconds})`,
+    `Write "OCU-${name}-START:"_$System.Status.IsOK(sc)_":OCU-${name}-END",!`,
+  ]);
+  assert.equal(markerValue(output, name), '1', `ScriptStream succeeded: ${output}`);
+}
+
 /** Forget `tag`'s script and recorded calls. */
 export function forgetTag(options, tag) {
   runIris(options.container, [`Do ##class(OcuPilot.Test.TurnProvider).Forget("${escapeOs(tag)}")`]);
@@ -265,6 +280,21 @@ export function slotOwner(config) {
 }
 
 /**
+ * Poll until no process holds `config.username`'s turn slot, for at most `timeoutMs`, and answer the
+ * holder at the end (`''` when it was freed). It abandons nothing: a turn that has drawn its reply
+ * still holds the slot until its conversation entry is stored, and a Send in that gap meets 409.
+ */
+export async function waitForSlotFree(config, timeoutMs = SLOT_FREE_TIMEOUT_MS) {
+  const deadline = Date.now() + timeoutMs;
+  let owner = slotOwner(config);
+  while (owner !== '' && Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    owner = slotOwner(config);
+  }
+  return owner;
+}
+
+/**
  * Abandon every turn `config.username` still has running, through the instance's own route, and
  * answer how many were abandoned (`-1` when the route itself did not answer).
  */
@@ -298,12 +328,7 @@ export async function abandonTurns(config) {
  */
 export async function requireFreeSlot(config) {
   const abandoned = await abandonTurns(config);
-  const deadline = Date.now() + SLOT_FREE_TIMEOUT_MS;
-  let owner = slotOwner(config);
-  while (owner !== '' && Date.now() < deadline) {
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    owner = slotOwner(config);
-  }
+  const owner = await waitForSlotFree(config);
   if (owner !== '') {
     throw new Error(
       `${slotGlobal(config)} is still held by pid ${owner} after abandoning ${abandoned} turn(s) and ` +

@@ -212,7 +212,8 @@ Method TestNextRecordsContinuesInBothOrders()
 /// <p>AC2, the read tool in reverse order: its <code>order</code> hint tells the caller to send
 /// <code>direction</code> <code>desc</code> with order 1, and with it a context cap below the rows read
 /// keeps the newest ten, and the offset hint's next page continues at the twentieth, none skipped or
-/// repeated.</p>
+/// repeated. The second page asks for ten rows, the cap, so the vendor's backward scan ends inside
+/// this run's records and not at the start of a journal file that earlier classes made long.</p>
 /// <p>Mutation (Rule 19): drop the direction clause from the descriptor's <code>order</code> hint
 /// -&gt; this goes red on the hint.</p>
 Method TestTheToolInReverseOrderKeepsTheNewestRowsUnderTheContextCap()
@@ -229,6 +230,7 @@ Method TestTheToolInReverseOrderKeepsTheNewestRowsUnderTheContextCap()
     Do $$$AssertEquals(tRows.%Size() _ " " _ ''tFirst.%Get("truncated") _ " " _ tRows.%Get(0).%Get("GlobalNode"), "10 1 ^OcuProbe185(30)", "the context cap keeps the ten newest, newest first")
     Do ..Bounds(tRows, .tLow, .tHigh)
     Do tArgs.%Set("offset", (tLow - 1) _ "", "string")
+    Do tArgs.%Set("maxRows", 10, "number")
     Set tSC = ##class(OcuPilot.Screen.Tool.Read).View(..#SCREEN, tArgs, 10, .tSecond, .tHttp, .tFault)
     Do $$$AssertStatusOK(tSC, "and its next page reads")
     If $$$ISERR(tSC) Quit

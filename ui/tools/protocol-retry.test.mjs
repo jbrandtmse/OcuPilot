@@ -6,12 +6,13 @@
 // other-error case goes red. Drop the retried mark -> the two nested-retry cases go red. Drop either
 // WRAPPED guard -> the wrap-twice case goes red. Create a context without `retryOnce` -> the
 // context-creation case goes red. Make `withDeadline` return its promise unchanged -> the deadline
-// cases go red.
+// cases go red. Drop the close in `relaunchOnce` -> the wedged-browser case goes red; retry any error
+// there -> the other-error case goes red.
 
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { WALKCALLDEADLINE, installProtocolRetry, isProtocolTimeout, retryOnce, withDeadline, wrapBrowser } from '../browser/protocol-retry.mjs';
+import { WALKCALLDEADLINE, installProtocolRetry, isNavigationTimeout, isProtocolTimeout, relaunchOnce, retryOnce, withDeadline, wrapBrowser } from '../browser/protocol-retry.mjs';
 
 const timeout = (command) =>
   new Error(`${command} timed out. Increase the 'protocolTimeout' setting in launch/connect calls for a higher timeout if needed.`);
@@ -189,4 +190,64 @@ test('retryOnce re-runs a pass once when one of its calls is abandoned', { timeo
   assert.equal(result, 'done');
   assert.equal(creates, 2, 'created once more');
   assert.equal(resets, 1, 'reset once');
+});
+
+const navigationTimeout = () => new Error('Navigation timeout of 30000 ms exceeded');
+
+/** A launcher whose first browser never navigates and whose later ones do. */
+function fakeLauncher(stuck = 1) {
+  const launched = [];
+  const launch = () => {
+    const wedged = launched.length < stuck;
+    const fake = { id: launched.length + 1, closed: false, wedged };
+    fake.close = async () => {
+      fake.closed = true;
+    };
+    launched.push(fake);
+    return fake;
+  };
+  const open = async (browser) => {
+    if (browser.wedged) throw navigationTimeout();
+    return { page: `page of browser ${browser.id}` };
+  };
+  return { launched, launch, open };
+}
+
+test('a navigation that times out on a wedged browser is opened again on a new browser, and the wedged one is closed', async () => {
+  const launcher = fakeLauncher();
+  const first = launcher.launch();
+  const page = await relaunchOnce(launcher.open, async () => launcher.launch(), first);
+  assert.equal(page.page, 'page of browser 2', 'the page is the new browser\'s');
+  assert.equal(first.closed, true, 'browser 1 was closed');
+  assert.equal(launcher.launched.length, 2, 'one relaunch');
+});
+
+test('a second navigation timeout propagates, after exactly one relaunch', async () => {
+  const launcher = fakeLauncher(2);
+  const first = launcher.launch();
+  await assert.rejects(() => relaunchOnce(launcher.open, async () => launcher.launch(), first), /Navigation timeout of 30000 ms exceeded/);
+  assert.equal(launcher.launched.length, 2, 'no third browser');
+});
+
+test('an error that is not a navigation timeout, and a browser that opens, relaunch nothing', async () => {
+  const launcher = fakeLauncher(0);
+  const first = launcher.launch();
+  let relaunches = 0;
+  const relaunch = async () => {
+    relaunches += 1;
+    return launcher.launch();
+  };
+  assert.equal((await relaunchOnce(launcher.open, relaunch, first)).page, 'page of browser 1');
+  await assert.rejects(() => relaunchOnce(async () => { throw new Error('Target closed'); }, relaunch, first), /Target closed/);
+  assert.equal(relaunches, 0);
+  assert.ok(isNavigationTimeout(navigationTimeout()));
+  assert.ok(!isNavigationTimeout(timeout('Network.enable')), 'a protocol timeout is retryOnce\'s');
+});
+
+test('a browser that will not close is abandoned after the close deadline, and the retry still runs', { timeout: 10_000 }, async () => {
+  const launcher = fakeLauncher();
+  const first = launcher.launch();
+  first.close = () => new Promise(() => {});
+  const page = await relaunchOnce(launcher.open, async () => launcher.launch(), first, 50);
+  assert.equal(page.page, 'page of browser 2');
 });
