@@ -12521,6 +12521,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-23-9-the-range-end-cleanup-part-8.md (plan) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: main push run 40026736561 (39f5106e) attempt 1; not in the ledger before; found by the 23.9 plan reading CI logs
 - 2026-11-12T14:27:31Z status=routed owner=23-10-the-range-end-cleanup-part-9-two-sweeps by=spec_gate note=CI flake; first priority in 23.10 (Rule 27)
+- 2026-11-13T05:48:56Z occurrence=23-10-the-range-end-cleanup-part-9-two-sweeps note=local ocupilot-ci, QA: context-chip 'A failed send preserves the paste-warning acknowledgment' page.goto 30 s timeout once; green on rerun
+- 2026-11-13T08:40:40Z status=resolved-by:23-10-the-range-end-cleanup-part-9-two-sweeps by=adjudication note=cd679de0: relaunchOnce on a goto timeout; context-chip goto (local, once) not shown same cause; reopen_if=a CI 30 s goto timeout recurs
 
 ### DW-2514: Other duplicated client path literals: /api/ocupilot/proposal (core/draft.ts, core/turn.ts), DATABASE_CHECK_PATH (database-integrity and database-wizard stores), screen-action-handler.ts users form path
 - source: spec-23-9-the-range-end-cleanup-part-8.md (plan) | severity: low | fix-risk: low | footprint: out-of-footprint
@@ -12544,6 +12546,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: 23.9 lead full sweep (shard 3/20, run 83) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: full sweep on ocupilot-ci at c98a0877, shard 3/20: AssertStatusOK at +14 'and its next page reads' => ERROR #5001 PORT.TIMEOUT; the class reran alone 10/10 green (run 701); batch 1 touches no journal code
 - 2026-11-12T17:08:40Z status=routed owner=23-10-the-range-end-cleanup-part-9-two-sweeps by=lead note=CI-health flake; first priority in 23.10 with DW-2513 (Rule 27)
+- 2026-11-13T08:40:40Z status=resolved-by:23-10-the-range-end-cleanup-part-9-two-sweeps by=adjudication note=cd679de0: second page sends maxRows 10; red not observed (23.4 s vs 0.33 s at 10.4M records); structural pin
 
 ### DW-2526: flake: LogHubErrors.TestASeededErrorReadsInTheHubsForm read a row other than its seeded error as the newest (CI instance shard 8/8)
 - source: CI run 43332030735 (Story 20.39 head 8d7fa08a) | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -12554,6 +12557,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: run 43292059964 (9e7cc026) attempt 1, browser shard 2/5: waitForSelector [data-ocu-mdx=grid] failed at :258 after 37.6 s, the other 10 tests green; batch 4 touches no analytics or walk code
 - 2026-11-12T20:43:32Z status=routed owner=23-10-the-range-end-cleanup-part-9-two-sweeps by=lead note=CI flake; first priority in 23.10 (Rule 27); rerun --failed
 - 2026-11-13T00:51:08Z occurrence=20-34-the-cube-manager-s-build-and-synchronize note=re-stated (a union merge misplaced the 23:17:35Z line): also red on CI 43290470415 (acb0b666), filed there as DW-2523, dropped as this entry's duplicate
+- 2026-11-13T08:40:40Z status=resolved-by:23-10-the-range-end-cleanup-part-9-two-sweeps by=adjudication note=cd679de0,554aa62a: MDX answer waits use the product bound (145 s); analytics-mdx 11/11
 - 2026-11-13T06:29:49Z occurrence=20-36-investigate
 
 ### DW-2524: flake: context-chip.browser-spec.mjs test 7 (Fresh at Send) waited past 30000 ms
@@ -12561,6 +12565,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: run 43316537748 (8947b8d2, integrate-forward staging head) attempt 1, browser shard 4/5: 'Waiting failed: 30000ms exceeded', 8 of 9 green; neither 23.9's batches nor 20.34 touch the context chip
 - 2026-11-12T22:40:59Z status=routed owner=23-10-the-range-end-cleanup-part-9-two-sweeps by=lead note=CI flake; first priority in 23.10 (Rule 27); rerun --failed
 - 2026-11-13T00:51:09Z occurrence=23-11-the-range-end-cleanup-part-10 note=first filed as DW-2493 (2026-10-21, 23.11 batch c), now dropped as this entry's duplicate; also red on staging run 43316537748 attempt 1
+- 2026-11-13T08:40:40Z status=resolved-by:23-10-the-range-end-cleanup-part-9-two-sweeps by=adjudication note=cd679de0,554aa62a: Fresh at Send waits for an idle turn and a free slot; context-chip 9/9 both orders
 
 ### DW-2525: Rule 31: 16 delete tools keep Write.RemovalRows's loop body over FingerprintSubject() (11) or ReadAnswers() (5, four with the unassigned skip); the helper takes no name list
 - source: spec-23-9-the-range-end-cleanup-part-8.md | severity: med | fix-risk: med | footprint: out-of-footprint
@@ -12584,3 +12589,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-23-9-the-range-end-cleanup-part-8.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: Registry.cls AreaProblem checks only appliesWhen; screen-mirror.mjs buildMirror runs malformedPair over each area's privileges (both predate df5b1c48). Shipped areas: 0 malformed; the mirror's --check in every build and CI refuses one before it ships.
 - 2026-11-13T02:34:17Z status=wontfix-accepted owner=23-9-the-range-end-cleanup-part-8 by=cr note=pre-existing; the build gate refuses it; reopen_if=Area.cls declares a pair with a missing or non-string half
+
+### DW-2530: A Send pressed between a reply being drawn and its turn handing back the slot can meet a 409 busy (inference)
+- source: _bmad-output/implementation-artifacts/spec-23-10-the-range-end-cleanup-part-9-two-sweeps.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: Kernel/Agent/Job.cls Run appends the convo entry before Finish frees the slot; the window is unmeasured (inference)
+- 2026-11-13T05:35:43Z status=wontfix-accepted owner=23-10-the-range-end-cleanup-part-9-two-sweeps by=harvest note=reopen_if=a person or a spec sees a 409 busy on a Send right after a drawn reply
+
+### DW-2531: turn.browser-spec.mjs 'New conversation clears the transcript' sends a second turn after a drawn-text wait, the shape DW-2524 fixed
+- source: _bmad-output/implementation-artifacts/spec-23-10-the-range-end-cleanup-part-9-two-sweeps.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: ui/browser/turn.browser-spec.mjs:357-369; not yet seen red in CI
+- 2026-11-13T05:35:43Z status=wontfix-accepted owner=23-10-the-range-end-cleanup-part-9-two-sweeps by=harvest note=reopen_if=that test goes red in CI on a busy turn slot; then waitForReplies plus waitForSlotFree, as DW-2524

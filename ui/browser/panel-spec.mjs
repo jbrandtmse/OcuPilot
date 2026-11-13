@@ -305,3 +305,19 @@ export async function saveAndSettle(page, config) {
     );
   }
 }
+
+/**
+ * Wait until `count` replies are drawn and the turn has ended: Send reads `sendLabel` (the Send
+ * string) again. A streamed reply is drawn while its turn still runs, and then Send is Stop and a
+ * press stops that turn rather than starting another, so a drawn reply alone is not the end of a
+ * turn.
+ */
+export async function waitForReplies(page, count, config, sendLabel) {
+  await page.waitForFunction(
+    (n, label) =>
+      document.querySelectorAll('app-reply').length >= n && document.querySelector('.ocu-panel-send')?.textContent?.trim() === label,
+    { timeout: config.navigationTimeoutMs },
+    count,
+    sendLabel
+  );
+}

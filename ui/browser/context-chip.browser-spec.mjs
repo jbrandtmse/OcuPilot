@@ -32,7 +32,7 @@ import puppeteer from 'puppeteer';
 import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
 import { loadStrings } from '../tools/strings.mjs';
 import { leaveFirstLoginGate } from './shell-entry.mjs';
-import { authHeader as sharedAuthHeader, saveAndSettle } from './panel-spec.mjs';
+import { authHeader as sharedAuthHeader, saveAndSettle, waitForReplies } from './panel-spec.mjs';
 import {
   armProbeDefinition,
   disarmProbeDefinition,
@@ -43,8 +43,10 @@ import {
   nextTag as sharedNextTag,
   runIris as sharedRunIris,
   scriptReply as sharedScriptReply,
+  scriptStreamReply as sharedScriptStreamReply,
   setTag as sharedSetTag,
   requireFreeSlot as sharedRequireFreeSlot,
+  waitForSlotFree,
 } from './turnprobe-spec.mjs';
 import { FILTER_SELECTOR, ROW_SELECTOR, waitForRows } from './list-spec.mjs';
 import { resetRememberedState } from './preferences-reset.mjs';
@@ -131,6 +133,11 @@ function setTag(tag) {
 /** Script one scripted reply for `tag`: `hangSeconds` before answering, then `bodyExpr` (ObjectScript). */
 function scriptReply(tag, hangSeconds, bodyExpr) {
   sharedScriptReply(probe, tag, hangSeconds, bodyExpr);
+}
+
+/** Script one streamed reply for `tag`: its text is drawn while the turn still runs, for `midHangSeconds`. */
+function scriptStream(tag, bodyExpr, midHangSeconds) {
+  sharedScriptStreamReply(probe, tag, 0, bodyExpr, midHangSeconds);
 }
 
 function textReply(text) {
@@ -495,7 +502,8 @@ test('Integration AC: a sent turn carries the synthetic screen_context pair nami
 test('Fresh at Send: context is assembled at the moment of the click, not cached from an earlier screen', async () => {
   const tag = nextTag();
   setTag(tag);
-  scriptReply(tag, 0, textReply('first'));
+  // 'first' is drawn while its turn still runs, so a wait on the drawn text alone ends mid-turn.
+  scriptStream(tag, textReply('first'), 3);
   scriptReply(tag, 0, textReply('second'));
   const { context, page } = await signedInAt(USERS_URL);
   try {
@@ -503,9 +511,11 @@ test('Fresh at Send: context is assembled at the moment of the click, not cached
       timeout: config.navigationTimeoutMs,
     });
     await typeAndSend(page, 'first turn, on Users');
-    await page.waitForFunction(
-      () => (document.querySelector('.ocu-panel-message-agent-text')?.textContent ?? '') === 'first',
-      { timeout: config.navigationTimeoutMs }
+    await waitForReplies(page, 1, config, STRINGS.actionSend);
+    assert.equal(
+      (await page.$$eval('.ocu-panel-message-agent-text', (nodes) => nodes.map((node) => node.textContent)))[0],
+      'first',
+      'the first turn answered its scripted text'
     );
 
     // A real in-app navigation (the rail then the side bar, client-side routed), not a page
@@ -529,15 +539,30 @@ test('Fresh at Send: context is assembled at the moment of the click, not cached
       () => (document.querySelector('.ocu-context-chip-text')?.textContent ?? '').startsWith('Processes'),
       { timeout: config.navigationTimeoutMs }
     );
+    // A turn holds its slot until its conversation entry is stored, which is after its reply is drawn.
+    assert.equal(await waitForSlotFree(config), '', 'the first turn handed its slot back before the second Send');
     await typeAndSend(page, 'second turn, on Processes');
     // The SAME conversation now holds two turns, so two `.ocu-panel-message-agent-text`
     // paragraphs exist -- the last one is this turn's.
-    await page.waitForFunction(
-      () => {
+    await namedWaitForFunction(
+      page,
+      (sendLabel) => {
         const replies = document.querySelectorAll('.ocu-panel-message-agent-text');
-        return replies[replies.length - 1]?.textContent === 'second';
+        return (
+          replies[replies.length - 1]?.textContent === 'second' &&
+          document.querySelector('.ocu-panel-send')?.textContent?.trim() === sendLabel
+        );
       },
-      { timeout: config.navigationTimeoutMs }
+      [STRINGS.actionSend],
+      'the second turn to draw "second" as the last reply with Send reading Send',
+      (p) =>
+        p.evaluate(() => ({
+          send: document.querySelector('.ocu-panel-send')?.textContent?.trim() ?? '(Send absent)',
+          lockBanner: document.querySelector('#ocu-panel-lock')?.textContent?.trim() ?? '(no lock banner)',
+          draft: document.querySelector('#ocu-panel-composer')?.value ?? '(composer absent)',
+          replyCount: document.querySelectorAll('.ocu-panel-message-agent-text').length,
+          replies: Array.from(document.querySelectorAll('.ocu-panel-message-agent-text'), (node) => node.textContent),
+        })).then((state) => JSON.stringify(state))
     );
 
     const payload = screenContextPayload(recordedMessages(tag, 2));
