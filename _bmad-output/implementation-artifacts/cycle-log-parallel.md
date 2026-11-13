@@ -1783,3 +1783,12 @@
 2026-11-13T10:47:46Z	Epic 20	runner_ended	reason=hold head=b8bf20539(local) origin=64e58441 unpushed=7(code:21e594ec,8127b55f_all_gates_green_local;bookkeeping:e85f6346,a2c71acf,2526e9be,ebdd30a0,b8bf2053) tree=clean throwaway=ocupilot-b-ci_down applied=U-21 state=held
 2026-11-13T10:47:46Z	orchestrator	hold_complete	shas=feature:f67572aa6(pre-hold-commit),e20:b8bf20539(local;origin_64e58441),e23:b3f01e196(origin) throwaways=none_up hold_patches=e23:23-10-cr in_flight_ci=43405790354 lock=released_after_push
 2026-11-13T10:47:46Z	orchestrator	unattended_report	merged_this_dispatch=23.9(all_batches),23.10_b1,20.34,20.39,20.36 held=e20(20.25_gates_green_local),e23(23.10_b2_patch) open_vetoes=see_inbox parked=none remaining=20.25_push,20.26,20.40,20.41,e20_burndown,23.10_b2,23.13,e23_burndown 1.0.15=waits_on_epic20_close
+2026-11-13T13:22:41Z	orchestrator	lead_model_gate	model=claude-opus-5-5 action=proceed session=fresh(after_owner_quota_hold)
+2026-11-13T13:22:41Z	orchestrator	runtime_gate	bmad=6.12.1 uv=0.12.9 ci=gh
+2026-11-13T13:22:41Z	orchestrator	launch_env	depth=4 watchdog=1 bash_max_ms=default source=~/.claude/settings.json_env
+2026-11-13T13:22:41Z	orchestrator	telemetry_gate	pending=0 action=none
+2026-11-13T13:22:41Z	orchestrator	permission_mode_attested	mode=bypassPermissions via=launch_attestation_reused(2026-10-20T09:40:42Z)+session_system_prompt_states_bypass session=interactive_reinvocation
+2026-11-13T13:22:41Z	orchestrator	unattended_resumed	run=20261020T0940Z-20,23 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03 doctrine=3d11cec98d91c1d4d9c225fe3b265e1af418abe4 lock_token=1794576131-46542 lock=run-start(released_at_hold) by=owner(chat:/epic-cycle_20,23_--unattended) after=owner_quota_hold(2026-11-13T09:59Z) hold=cleared(resumed_by_the_owner) hashes=unchanged runtime_locks=none_to_sweep answers=none
+2026-11-13T13:22:41Z	orchestrator	ci_resolved	story=resume sha=12bcd16a3 result=unavailable reason=pushed_with_skip-token_commit_f67572aa6 code_equal_to=7b808a4c(run_43396193055_success) action=dispatch_gate_push(Rule_32)
+2026-11-13T13:22:41Z	Epic 23	ci_resolved	story=23.10_batch2 sha=7b95c2b0e runs=43405790354 result=success resolved_at=resume by=orchestrator(gh_run_view)
+2026-11-13T13:22:41Z	orchestrator	dispatch_writeahead	epics=20(slot_b,held->running),23(slot_a,held->running) prompts=resume/epic-20.md,resume/epic-23.md hold_at=none
