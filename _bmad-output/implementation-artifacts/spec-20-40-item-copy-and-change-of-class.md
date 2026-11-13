@@ -215,6 +215,18 @@ Rejected:
 
 - [x] [Smoke] Full sweep shard 13/20 on d49eb2d3: `OcuPilot.Test.InteropDescriptor.TestEveryInteropErrorCodeResolvesToItsSentence` fails "Codes and ConsequenceCodes list every code this test names" -- `src/OcuPilot/Test/InteropDescriptor.cls` (the `tCodes` roster) -- add `ITEMCOPYSOURCE` and `ITEMCOPY` to the roster so it names every code `InteropError.Codes()` and `ConsequenceCodes()` list; demonstrate the mutation (drop one, see red, revert) and record its `mutation:` line under `## Verification`; add `InteropDescriptor` to this spec's `Shared surfaces:` and its `(loop)` class list.
 
+Code review 2026-11-13 (rework 1): the `[Smoke]` item is confirmed closed (`InteropDescriptor` 12 of 12, run 731). 0 decision-needed, 1 patch (applied), 0 deferred, 5 rejected.
+
+- [x] [Review][Patch] (low) The roster's closing check compared counts only, so a duplicate roster name could hide a missing code, and a red never named the code; it now names each code `Codes()` and `ConsequenceCodes()` list that the roster misses [src/OcuPilot/Test/InteropDescriptor.cls `TestEveryInteropErrorCodeResolvesToItsSentence`]
+
+Rejected (rework 1):
+
+- low: the spec's frontmatter reads `done` while the tracker reads `review`; `done` is the implement stage's own status at `dev_complete`, and the fix edits the spec under review.
+- false: the Review Triage Log's rework-1 entry predates this review; it is the implement stage's own self-review, not this one.
+- low: the rework's Auto Run Result no longer lists the gates left to the runner; the runner's cycle log owns them, and the fix edits the spec under review.
+- low: the Auto Run Result no longer carries the DW-2298 residual line; the Tasks line and the ledger still carry it, and the fix edits the spec under review.
+- low: "the first pass closed at the commit that carried it" names no commit; the fix edits the spec under review.
+
 ## Spec Change Log
 
 - 2026-11-13, rework iteration 1 (runner): the full sweep found the error-code roster in `InteropDescriptor` missing the two copy codes.
@@ -384,6 +396,7 @@ The story complies with every AD as it stands.
 - mutation (QA, AC1): the page registers no `copy`, or its add guard ignores an open copy dialog -> the list page spec's Story 20.40 test reds on each; the store spec's `named` counting every violation reds "shows a refusal on the source", and dropping the in-flight guard reds "posts once"; `strings.ts` copy sentence reworded -> `interop.test.mjs` `SENTENCES` reds. Each reverted byte-identical.
 - mutation (code review, applied together at distinct sites, each red attributed by its assertion, all reverted byte-identical and reloaded, then 8 of 8): `InteropItemCopy` overrides `ConfirmProblem` to answer none -> the confirm-after-removal leg reds (AC3); the `COPY` branch blanks `Comment` and `Category` -> the comment-and-category leg reds (AC1); the pool-size rule drops `BusinessType() = 2` -> the service leg reds; `InputSchema` stops requiring `CopyFrom` -> the schema leg reds; the item create branch passes no false-only field to `Copied` -> the `Enabled` true row reds.
 - mutation (smoke rework): `ITEMCOPY` dropped from `InteropDescriptor`'s `tCodes` roster -> `TestEveryInteropErrorCodeResolvesToItsSentence` reds on the code-count assertion; reverted byte-identical, reloaded, `InteropDescriptor` 12 of 12.
+- mutation (code review, rework 1): `ITEMCOPY` replaced by a second `ITEMCOPYSOURCE` in the roster (counts equal) -> only "this test names every code Codes and ConsequenceCodes list" reds (run 733); reverted byte-identical, reloaded, 12 of 12 (run 734).
 - mutation (code review, client): `onOpenCopy` ignores an open add dialog -> the list page spec's "Copy never opens over an open add dialog" reds; reverted byte-identical.
 
 **Run (implement, `ocupilot-b-ci`):** `InteropItemCopy` 7 of 7, and green: `InteropItemControl`, `InteropItemGate`, `InteropItemRefusals`, `InteropItemDescriptor`, `InteropItemRun`, `InteropItemRunGate`, `InteropItemGateSplit`, `InteropItemIdentity`, `InteropSettingControl`, `ReadTool`, `ToolWrite`, `ToolRoundTrip`, `ToolEmit`, `SurfaceCoverage`, `EndpointCoverage`, `GovernanceBaseline`, `Governance`, `Prohibited`, `ReadDescriptions`, `Descriptor`, `CompileWithoutInterop`, `SaveHoldCoverage`, `StageTwoTools`, `ClassicPageGate`, `MappingDescriptor`, `DraftPorts`, `DraftRoute`; the browser spec 5 of 5; `npm run test:tools` 2206 of 2206; `npm run test:components` 3369 of 3369; `npm run build` clean (initial total 2.02 MB); `check-objectscript.py` clean.
