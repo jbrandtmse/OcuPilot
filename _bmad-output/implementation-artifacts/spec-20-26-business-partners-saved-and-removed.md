@@ -189,6 +189,8 @@ deferred: []
 
 ## Spec Change Log
 
+- 2026-11-12, spec gate (runner and orchestrator): the posture question is ruled (A), `%Ens_ProductionConfig:WRITE` and globals WRITE for add, update and remove (veto, orchestrator); the new strings are kept as proposed (veto U-23); nothing is written into the spine.
+
 ## Review Triage Log
 
 ## Design Notes

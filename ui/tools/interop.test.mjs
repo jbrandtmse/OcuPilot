@@ -57,6 +57,14 @@ const SENTENCES = [
   ['REASONITEMSOURCECONTROL', 'interopItemRefusalSourceControl'],
   ['REASONITEMPENDING', 'interopItemPendingConsequence'],
   ['REASONITEMREMOVE', 'interopItemRemoveConsequence'],
+  ['REASONITEMNOTENABLED', 'interopItemRefusalNotEnabled'],
+  ['REASONITEMTEMPSTOPPED', 'interopItemRefusalTempStopped'],
+  ['REASONITEMNOTTEMPSTOPPED', 'interopItemRefusalNotTempStopped'],
+  ['REASONITEMNOJOBS', 'interopItemRefusalNoJobs'],
+  ['REASONITEMSTARTPENDING', 'interopItemRefusalStartPending'],
+  ['REASONITEMSTOP', 'interopItemStopConsequence'],
+  ['REASONITEMSTART', 'interopItemStartConsequence'],
+  ['REASONITEMRESTART', 'interopItemRestartConsequence'],
   ['REASONSETTINGSECRET', 'interopSettingRefusalSecret'],
   ['REASONSETTINGSUPPLIED', 'interopSettingRefusalSupplied'],
   ['REASONSETTINGSAME', 'interopSettingRefusalSame'],
@@ -149,15 +157,15 @@ test('Story 20.2: each Interoperability refusal and consequence is one sentence 
   }
 });
 
-test("Story 20.2: the wait the stop, restart, update and busy sentences state is the port's STOPSECONDS", () => {
+test("Story 20.2: the wait the stop, restart, update and busy sentences state (Story 20.25's item stop, restart and start-pending among them) is the port's STOPSECONDS", () => {
   // Mutation (Rule 19): change STOPSECONDS in InteropPort.cls to 20 -> this goes red.
   const match = /Parameter STOPSECONDS = (\d+);/.exec(readFileSync(PORT, 'utf8'));
   assert.notEqual(match, null, 'InteropPort.cls declares STOPSECONDS');
   const seconds = match[1];
-  for (const key of ['interopStopConsequence', 'interopRestartConsequence', 'interopUpdateConsequence', 'interopRefusalBusy', 'interopRefusalPartStopped', 'interopJobStopConsequence']) {
+  for (const key of ['interopStopConsequence', 'interopRestartConsequence', 'interopUpdateConsequence', 'interopRefusalBusy', 'interopRefusalPartStopped', 'interopJobStopConsequence', 'interopItemStopConsequence', 'interopItemRestartConsequence', 'interopItemRefusalStartPending']) {
     assert.ok(stringValue(key).includes(`${seconds} seconds`), `${key} states a wait of ${seconds} seconds`);
   }
-  for (const key of ['interopRecoverConsequence', 'interopRefusalRunning']) {
+  for (const key of ['interopRecoverConsequence', 'interopRefusalRunning', 'interopItemStartConsequence']) {
     assert.ok(!/\d+ seconds/.test(stringValue(key)), `${key} states no wait`);
   }
 });

@@ -34,6 +34,8 @@ ClassMethod Disarm()
     Kill ^||OcuPilotInteropItemMove
     Kill ^||OcuPilotInteropItemTestWait
     Kill ^||OcuPilotInteropItemSendFail
+    Kill ^||OcuPilotInteropItemUpdate
+    Kill ^||OcuPilotInteropItemUpdates
 }
 
 /// <p>Answer the next job writes with a vendor status carrying code <var>pCode</var> instead of calling the vendor (Story 20.23), so a
@@ -50,6 +52,24 @@ ClassMethod VendorJob(pNamespace As %String, pType As %String, pPid As %String, 
         Quit $System.Status.Error(^||OcuPilotInteropItemJobCode, pPid, pCap)
     }
     Quit ##super(pNamespace, pType, pPid, pCap, .pCaught)
+}
+
+/// <p>Answer the <var>pNth</var> production update of the item runtime writes after this call (Story 20.25) with a vendor status
+/// carrying code <var>pCode</var> instead of calling the vendor, so a refusal the vendor gives only when the production's work in
+/// progress outlasts the wait reaches the port's own mapping at the half of a write the test chooses. <method>Disarm</method> clears it.</p>
+ClassMethod RefuseUpdateWith(pCode As %String, pNth As %Integer = 1)
+{
+    Set ^||OcuPilotInteropItemUpdate = $ListBuild(pCode, pNth)
+    Set ^||OcuPilotInteropItemUpdates = 0
+}
+
+ClassMethod UpdateCapped(pCap As %Integer) As %Status [ Private ]
+{
+    If $Data(^||OcuPilotInteropItemUpdate) {
+        Set ^||OcuPilotInteropItemUpdates = $Get(^||OcuPilotInteropItemUpdates) + 1
+        If ^||OcuPilotInteropItemUpdates = $List(^||OcuPilotInteropItemUpdate, 2) Quit $System.Status.Error($List(^||OcuPilotInteropItemUpdate, 1), pCap)
+    }
+    Quit ##super(pCap)
 }
 
 /// <p>Send the probe production one message just after the next queue entry is aborted (Story 20.23), so it joins the queue after a

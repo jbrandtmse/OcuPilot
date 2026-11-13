@@ -14224,6 +14224,18 @@ export const SCREENS: readonly ScreenDeclaration[] = [
         "selfProtection": ""
       },
       {
+        "id": "stop",
+        "selfProtection": ""
+      },
+      {
+        "id": "start",
+        "selfProtection": ""
+      },
+      {
+        "id": "restart",
+        "selfProtection": ""
+      },
+      {
         "id": "remove",
         "selfProtection": ""
       }

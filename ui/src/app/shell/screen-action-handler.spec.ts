@@ -2371,10 +2371,10 @@ describe('Production items\u2019 row actions (Story 20.3)', () => {
   const ROW = { Production: PRODUCTION, Name: NAME, ClassName: 'Probe.Op', Type: 'operation', Enabled: true, PoolSize: 1 };
   const TARGET = { type: 'production-item', scope: 'USER', id: TARGET_ID };
 
-  it('registers the three declared row actions, and leaves Add for the page\u2019s own dialog', () => {
+  it('registers the six declared row actions, and leaves Add for the page\u2019s own dialog', () => {
     // Mutation (Rule 19): drop the list from SCREEN_ACTION_DESCRIPTORS -> nothing registers and this goes red.
     const { actions } = mount(undefined, ITEMS);
-    for (const id of ['enable', 'disable', 'remove']) expect(actions.has(ITEMS, id), id).toBe(true);
+    for (const id of ['enable', 'disable', 'stop', 'start', 'restart', 'remove']) expect(actions.has(ITEMS, id), id).toBe(true);
     expect(actions.has(ITEMS, 'add')).toBe(false);
   });
 
@@ -2393,6 +2393,31 @@ describe('Production items\u2019 row actions (Story 20.3)', () => {
       await settle();
       expect(calls.map((call) => JSON.parse(call.body))).toEqual([{ action, id: TARGET_ID }]);
       expect(events.map((event) => `${event.action} ${event.type} ${event.id}`)).toEqual([`updated production-item ${TARGET_ID}`]);
+      TestBed.resetTestingModule();
+    }
+  });
+
+  it('warns before Stop, Start and Restart (Story 20.25) with the sentence that states what each does, and sends once past Proceed with the row key', async () => {
+    // Mutation (Rule 19): remove stop, start or restart from the list's WARNING_CONSEQUENCES entry -> that action is sent at once
+    // and the pending-warning assertion goes red.
+    const sentences = {
+      stop: STRINGS.interopItemStopConsequence,
+      start: STRINGS.interopItemStartConsequence,
+      restart: STRINGS.interopItemRestartConsequence,
+    } as const;
+    for (const action of ['stop', 'start', 'restart'] as const) {
+      const { handler, store, calls, events } = mount({ kind: 'ok', status: 200, body: { action: 'updated', target: TARGET } }, ITEMS);
+      handler.startFor(ITEMS, action, TARGET_ID, ROW, store);
+      expect(handler.pending()?.kind, action).toBe('warning');
+      expect(handler.pending()?.consequence, action).toBe(sentences[action]);
+      handler.cancelPending();
+      await settle();
+      expect(calls, action).toHaveLength(0);
+      handler.startFor(ITEMS, action, TARGET_ID, ROW, store);
+      handler.confirmPending();
+      await settle();
+      expect(calls.map((call) => JSON.parse(call.body)), action).toEqual([{ action, id: TARGET_ID }]);
+      expect(events.map((event) => `${event.action} ${event.type} ${event.id}`), action).toEqual([`updated production-item ${TARGET_ID}`]);
       TestBed.resetTestingModule();
     }
   });

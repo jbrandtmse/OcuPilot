@@ -382,6 +382,10 @@ export const CONSEQUENCE_INTEROPRECOVER = 'INTEROP.RECOVER';
 /** Story 20.3: an item write's pending-update sentence, and a removal's. */
 export const CONSEQUENCE_INTEROPITEMPENDING = 'INTEROP.ITEM.PENDING';
 export const CONSEQUENCE_INTEROPITEMREMOVE = 'INTEROP.ITEM.REMOVE';
+/** Story 20.25: an item's stop, start and restart; each is one published sentence. */
+export const CONSEQUENCE_INTEROPITEMSTOP = 'INTEROP.ITEM.STOP';
+export const CONSEQUENCE_INTEROPITEMSTART = 'INTEROP.ITEM.START';
+export const CONSEQUENCE_INTEROPITEMRESTART = 'INTEROP.ITEM.RESTART';
 /** Story 20.23: the queue and job actions' consequence sentences (AD-62); each is one published sentence. */
 export const CONSEQUENCE_INTEROPMESSAGEABORT = 'INTEROP.MESSAGE.ABORT';
 export const CONSEQUENCE_INTEROPQUEUEABORT = 'INTEROP.QUEUE.ABORT';
@@ -544,6 +548,10 @@ export function consequenceSentence(code: string | undefined): string {
   // Story 20.3: an item write's pending-update sentence and a removal's, each published once.
   if (code === CONSEQUENCE_INTEROPITEMPENDING) return STRINGS.interopItemPendingConsequence;
   if (code === CONSEQUENCE_INTEROPITEMREMOVE) return STRINGS.interopItemRemoveConsequence;
+  // Story 20.25: an item's stop, start and restart sentences, each published once.
+  if (code === CONSEQUENCE_INTEROPITEMSTOP) return STRINGS.interopItemStopConsequence;
+  if (code === CONSEQUENCE_INTEROPITEMSTART) return STRINGS.interopItemStartConsequence;
+  if (code === CONSEQUENCE_INTEROPITEMRESTART) return STRINGS.interopItemRestartConsequence;
   // Story 20.23: the queue and job actions' sentences, each published once.
   if (code === CONSEQUENCE_INTEROPMESSAGEABORT) return STRINGS.interopMessageAbortConsequence;
   if (code === CONSEQUENCE_INTEROPQUEUEABORT) return STRINGS.interopQueueAbortConsequence;
