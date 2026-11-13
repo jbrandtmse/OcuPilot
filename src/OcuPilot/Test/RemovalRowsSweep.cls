@@ -1,13 +1,16 @@
 /// <p>What pins <method>OcuPilot.Screen.Tool.Write.RemovalRows</method> as the one place a delete's removal rows
 /// are built. A delete tool whose own <code>StateDiff</code> writes a <code>"removed"</code> row calls
 /// <method>RemovalRows</method>, or is on <method>Others</method>, the list of tools whose rows have another
-/// shape. A tool added later with its own copy of the loop fails here, naming it.</p>
-/// <p>Five tests. One scans the shipped tool classes' own <code>StateDiff</code> source. One pins each migrated
-/// tool's call: the names it reads and whether it skips an unassigned field. One reads the roster
+/// shape. A tool added later with its own copy of the loop in its <code>StateDiff</code> fails here, naming it.</p>
+/// <p>Seven tests. One scans the shipped tool classes' own <code>StateDiff</code> source. One pins each migrated
+/// tool's call: the names it reads and whether it skips an unassigned field, with <method>Sites</method> naming
+/// exactly the tools whose own <code>StateDiff</code> passes <method>RemovalRows</method> a names list. One reads the roster
 /// itself: every name on it is a compiled tool that writes a <code>"removed"</code> row and does not call
 /// <method>RemovalRows</method>. Two drive <method>RemovalRows</method>: the rows follow the names it is given, in
 /// that order, with each value as <method>OcuPilot.Kernel.Proposal.Mint.Display</method> renders it, and with
-/// no names they follow <parameter>REMOVALROWS</parameter>.</p>
+/// no names they follow <parameter>REMOVALROWS</parameter>. One pins a row's field order and value types as
+/// JSON. One calls <code>StateDiff</code> of the tools whose precondition is a field present or absent in the
+/// read, and holds the proposal's rows to the names and the unassigned-field flag the roster gives.</p>
 /// <p>It needs nothing from the environment, creates nothing and writes nothing.</p>
 Class OcuPilot.Test.RemovalRowsSweep Extends %UnitTest.TestCase
 {
@@ -43,15 +46,48 @@ ClassMethod Sites() As %String
 /// <code>"removed"</code>, comma-separated in name order.</p>
 ClassMethod RemovingClasses() As %String
 {
+    Quit ..ClassesWhoseStateDiffHas("""removed""")
+}
+
+/// <p>The compiled <package>OcuPilot.Screen.Tool</package> classes whose own <code>StateDiff</code> source contains
+/// <var>pText</var>, comma-separated in name order.</p>
+ClassMethod ClassesWhoseStateDiffHas(pText As %String) As %String
+{
     Set tFound = ""
     Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT Name FROM %Dictionary.CompiledClass WHERE Name %STARTSWITH 'OcuPilot.Screen.Tool.' ORDER BY Name")
     If tRS.%SQLCODE < 0 Quit ""
     While tRS.%Next() {
         Set tClass = tRS.%GetData(1)
-        If ..StateDiffSource(tClass) [ """removed""" Set tFound = tFound _ $Select(tFound = "": "", 1: ",") _ tClass
+        If ..StateDiffSource(tClass) [ pText Set tFound = tFound _ $Select(tFound = "": "", 1: ",") _ tClass
     }
     Do tRS.%Close()
     Quit tFound
+}
+
+/// <p>The tools whose own <code>StateDiff</code> calls <method>RemovalRows</method> with a third argument, a
+/// names list, as full class names, comma-separated in exact collation order.</p>
+ClassMethod NamesCallers() As %String
+{
+    Set tAll = ..ClassesWhoseStateDiffHas("RemovalRows(")
+    For tI = 1:1:$Length(tAll, ",") {
+        Set tClass = $Piece(tAll, ",", tI)
+        If tClass = "" Continue
+        If $Length($Piece($Piece(..StateDiffSource(tClass), "RemovalRows(", 2), ")", 1), ",") >= 3 Set tSorted(tClass) = ""
+    }
+    Quit ..Joined(.tSorted)
+}
+
+/// <p>The subscripts of <var>pSet</var>, comma-separated in collation order.</p>
+ClassMethod Joined(ByRef pSet) As %String
+{
+    Set tJoined = ""
+    Set tKey = ""
+    For {
+        Set tKey = $Order(pSet(tKey))
+        If tKey = "" Quit
+        Set tJoined = tJoined _ $Select(tJoined = "": "", 1: ",") _ tKey
+    }
+    Quit tJoined
 }
 
 /// <p>The source of the <code>StateDiff</code> method <var>pClass</var> declares itself, or <code>""</code> when it
@@ -102,8 +138,9 @@ Method TestEachToolPassesItsOwnNamesAndSkip()
         Set tClass = "OcuPilot.Screen.Tool." _ $Piece(tSite, ":", 1)
         Set tCall = "Set pRows = ..RemovalRows(pFresh, " _ $Piece(tSite, ":", 2) _ ", .." _ $Piece(tSite, ":", 3) _ "())"
         If ..StateDiffSource(tClass) '[ tCall Set tMiscalled = tMiscalled _ " " _ tClass
+        Set tRoster(tClass) = ""
     }
-    Do $$$AssertEquals($Length(tSites, ","), 16, "control: the roster holds the 16 migrated tools")
+    Do $$$AssertEquals(..Joined(.tRoster), ..NamesCallers(), "control: the roster names exactly the tools whose own StateDiff passes RemovalRows a names list")
     Do $$$AssertEquals(tMiscalled, "", "every tool passes the flag and names source the roster gives:" _ tMiscalled)
 }
 
@@ -165,6 +202,99 @@ Method TestNoNamesReadsTheDeclaredRows()
     Do $$$AssertEquals(tRows.%Size(), 2, "one row per declared name")
     Do $$$AssertEquals(tRows.%Get(0).field _ "," _ tRows.%Get(1).field, tDeclared, "in the declared order")
     Do $$$AssertEquals(tRows.%Get(0).before, "ProbeDocDb", "carrying the read value")
+}
+
+/// <p>The entries of <method>Sites</method> whose <code>StateDiff</code> precondition only needs its field
+/// assigned: every site but <code>RoleDelete</code> (an array), <code>AuditUserEventDelete</code> (a boolean) and
+/// <code>TaskDelete</code> (two fields), with the abstract <code>MappingDelete</code> driven through
+/// <code>GlobalMappingDelete</code>. Comma-separated, as <method>Sites</method> writes them.</p>
+ClassMethod Driven() As %String
+{
+    Set tSites = ..Sites()
+    Set tDriven = ""
+    For tI = 1:1:$Length(tSites, ",") {
+        Set tSite = $Piece(tSites, ",", tI)
+        If $ListFind($ListBuild("RoleDelete", "AuditUserEventDelete", "TaskDelete"), $Piece(tSite, ":", 1)) Continue
+        If $Piece(tSite, ":", 1) = "MappingDelete" Set $Piece(tSite, ":", 1) = "GlobalMappingDelete"
+        Set tDriven = tDriven _ $Select(tDriven = "": "", 1: ",") _ tSite
+    }
+    Quit tDriven
+}
+
+/// <p>The rows <var>pNames</var> make for <var>pFresh</var> as JSON, each carrying the read value
+/// <code>v-</code> plus the name, or <code>""</code> for a name <var>pSkip</var> leaves out or the read did not
+/// assign.</p>
+ClassMethod ExpectedRows(pFresh As %DynamicObject, pNames As %List, pSkip As %Boolean) As %String
+{
+    Set tJSON = ""
+    For tI = 1:1:$ListLength(pNames) {
+        Set tName = $List(pNames, tI)
+        Set tAssigned = (pFresh.%GetTypeOf(tName) '= "unassigned")
+        If pSkip && 'tAssigned Continue
+        Set tJSON = tJSON _ $Select(tJSON = "": "", 1: ",") _ "{""field"":""" _ tName _ """,""before"":""" _ $Select(tAssigned: "v-" _ tName, 1: "") _ """,""after"":"""",""removed"":true}"
+    }
+    Quit "[" _ tJSON _ "]"
+}
+
+/// <p>A row is <code>field</code>, <code>before</code>, <code>after</code>, <code>removed</code>, in that
+/// order, the first three strings and the last a JSON boolean.</p>
+/// <p>Mutation (Rule 19): set <code>after</code> before <code>before</code> in <method>RemovalRows</method> --
+/// this goes red.</p>
+Method TestARowKeepsItsFieldOrderAndTypes()
+{
+    Set tRows = $ClassMethod(..#BASE, "RemovalRows", {"Alpha": "one"}, 0, $ListBuild("Alpha"))
+    Do $$$AssertEquals(tRows.%ToJSON(), "[{""field"":""Alpha"",""before"":""one"",""after"":"""",""removed"":true}]", "the row's keys, order and value types")
+}
+
+/// <p>Each tool on <method>Driven</method>, given a read that assigns every name it reads or fingerprints, answers
+/// <code>StateDiff</code> rows that are exactly those names in order, each with the value read; given a read
+/// that leaves one name unassigned, a tool with the skip omits that row and a tool without it keeps the row
+/// empty. A tool that migrated to <method>RemovalRows</method> with another names source or flag is seen here
+/// by its rows, not by its source.</p>
+/// <p>Mutation (Rule 19): pass skip <code>0</code> in <code>SuperserverDelete</code> -- this goes red naming
+/// it.</p>
+Method TestEachDrivenToolAnswersTheRowsItsRosterNames()
+{
+    Set tSites = ..Driven()
+    Set tWrong = ""
+    Set tRowsChecked = 0
+    Set tOmitted = 0
+    For tI = 1:1:$Length(tSites, ",") {
+        Set tSite = $Piece(tSites, ",", tI)
+        Set tShort = $Piece(tSite, ":", 1)
+        Set tClass = "OcuPilot.Screen.Tool." _ tShort
+        Set tSkip = $Piece(tSite, ":", 2)
+        Set tNames = $ClassMethod(tClass, $Piece(tSite, ":", 3))
+        Set tPre = $ClassMethod(tClass, "PreconditionField")
+        Set tFresh = {}
+        For tJ = 1:1:$ListLength(tNames) {
+            Set tName = $List(tNames, tJ)
+            Do tFresh.%Set(tName, "v-" _ tName, "string")
+        }
+        If tPre '= "" Do tFresh.%Set(tPre, "v-" _ tPre, "string")
+        Set tRows = ""
+        Set tProblem = ""
+        Set tSC = $ClassMethod(tClass, "StateDiff", tFresh, .tRows, .tProblem)
+        Set tExpected = ..ExpectedRows(tFresh, tNames, tSkip)
+        If $$$ISERR(tSC) || (tProblem '= "") || (tRows.%ToJSON() '= tExpected) Set tWrong = tWrong _ " " _ tShort _ "(full)"
+        Set tRowsChecked = tRowsChecked + tRows.%Size()
+        ; leave out the last name that is not the precondition's field
+        Set tOmit = ""
+        For tJ = $ListLength(tNames):-1:1 {
+            If $List(tNames, tJ) '= tPre Set tOmit = $List(tNames, tJ) Quit
+        }
+        If tOmit '= "" Set tOmitted = tOmitted + 1
+        Do tFresh.%Remove(tOmit)
+        Set tRows = ""
+        Set tProblem = ""
+        Set tSC = $ClassMethod(tClass, "StateDiff", tFresh, .tRows, .tProblem)
+        Set tExpected = ..ExpectedRows(tFresh, tNames, tSkip)
+        If $$$ISERR(tSC) || (tProblem '= "") || (tRows.%ToJSON() '= tExpected) Set tWrong = tWrong _ " " _ tShort _ "(one unassigned)"
+        Set tRowsChecked = tRowsChecked + tRows.%Size()
+    }
+    Do $$$AssertEquals(tOmitted, $Length(tSites, ","), "control: each tool's second leg left one name unassigned")
+    Do $$$AssertTrue(tRowsChecked > $Length(tSites, ","), "control: the legs produced rows (" _ tRowsChecked _ ")")
+    Do $$$AssertEquals(tWrong, "", "each tool's rows are its names in order, with its skip:" _ tWrong)
 }
 
 }

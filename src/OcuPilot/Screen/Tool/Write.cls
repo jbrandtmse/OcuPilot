@@ -555,8 +555,9 @@ ClassMethod StateDiff(pFresh As %DynamicObject, Output pRows As %DynamicArray, O
     Quit $$$OK
 }
 
-/// <p>The field names, comma-separated, a delete tool's removal rows show, in order. Empty here; a delete
-/// declares its own and builds its rows with <method>RemovalRows</method>.</p>
+/// <p>The field names, comma-separated, a delete tool's removal rows show, in order. Empty here; a delete with
+/// a fixed set declares its own and builds its rows with <method>RemovalRows</method>, and one whose rows follow
+/// what it reads or fingerprints passes those names to <method>RemovalRows</method> instead.</p>
 Parameter REMOVALROWS = "";
 
 /// <p>The removal rows a delete's card shows: one <code>{field, before, after, removed}</code> per name of
