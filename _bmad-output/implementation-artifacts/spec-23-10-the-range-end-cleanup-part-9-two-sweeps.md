@@ -262,6 +262,40 @@ deferred:
 - **Integration (Rule 1).** Given `Kernel.Utils.OversizedMember`, when the Area routes and `ValidateArguments` read bodies and tool arguments through it, then an oversized value answers the field refusal over HTTP (`PctAccessSaveWire`) and the tool-arguments refusal in a turn (`ToolDispatch`). And given `Write.RemovalRows`' names argument, when the 16 deletes mint their proposals, then each card's removal rows equal today's, as observed by the seven readers.
 - **Batches.** Given the six batches, when each lands, then it is its own commit with CI green on its own head.
 
+### Review Findings
+
+Code review, batch 1 (2026-11-12; four layers, full-opus). 0 decision-needed, 3 patch, 1 defer, 22 rejected.
+
+- [x] [Review][Patch] The `ANSWER_BOUND_MS` comment claimed a cold first query "costs most of" the 145 s bound; the failures took 37.6 s and 41.2 s. Sentence deleted. [ui/browser/analytics-mdx.browser-spec.mjs:132]
+- [x] [Review][Patch] `relaunchOnce`'s doc and `openHarness`'s comment stated the wedged navigation stack as fact. They now name the trigger (a navigation timeout) and label the cause `(inference)`. [ui/browser/protocol-retry.mjs:439, ui/browser/data-table-columns.browser-spec.mjs:114]
+- [x] [Review][Patch] `ci-flake-waits.test.mjs`: (1) the fake `docker` now restores PATH and removes its directory through `t.after` as well as `finally`, so a timed-out test cleans up too (`t.after` runs on a `node:test` timeout, checked on Node 26.8.1); (2) the deadline case's 700 ms deadline, which a slow first spawn could exhaust, is now 1500 ms, with 2 to 5 reads; (3) the header no longer opens with the story that added the file, and its marker-versus-assert mutation wording matches what reddens. [ui/tools/ci-flake-waits.test.mjs]
+- [x] [Review][Defer] A `goto` timeout on context-chip's shared browser ("A failed send preserves the paste-warning acknowledgment", QA run, green on rerun) has no relaunch. It is already ledgered as an occurrence on DW-2513. DW-2513's adjudication must decide whether that occurrence shares data-table-columns' cause (a local server, page-level CDP live) or is instance latency, before it resolves the entry on data-table-columns alone. [ui/browser/context-chip.browser-spec.mjs:302] -- deferred: one occurrence, against IRIS rather than a local server; settled by a second CI occurrence with the same 30 s `goto` signature (severity medium, unverified)
+
+Rejected:
+
+- `false`: the spec is `done` while batches 2-3 are open (blind, auditor). That is the lead's per-batch protocol, which this stage may not change.
+- `false`: the QA file is uncommitted and missing from the record (auditor, blind, edge). The lead commits QA's tests. Its mutation lines are now under Verification.
+- `false`: relaunch is missed when the wedge shows as a protocol timeout on `createBrowserContext`/`newPage` (edge). On all 17 recorded failures, `createBrowserContext`, `newPage` and `setViewport` answered inside the 32.2-32.5 s, so only `goto` hung.
+- `false`: `openIn`'s `context.close()` can hang on the wedged browser (edge). It is a browser-level CDP call, and page-level calls on that browser answered in every recorded failure. This was also rejected in the implement review.
+- `false`: an abandoned Chrome keeps Node alive (edge). The close is abandoned only past the deadline, and the browser-level protocol was live.
+- `false`: the drill-listing waits still flake cold (edge). Each follows a warm run in the same test, and AC2 took 5.6-6.4 s on both failing runs.
+- `false`: the second context-chip wait is not `waitForReplies` (edge). The spec asks for a `namedWaitForFunction` there, and it checks the Send label and the exact last reply.
+- `low`: `answeredWith` waits the full bound when a run fails before answering (status line `''`) (blind, edge, verification-gap). It is still red, by name. The fix adds a banner branch to the predicate, and the failure occurs only on a broken build.
+- `low`: `relaunchOnce` copies `retryOnce`'s try/retry shape (auditor, Rule 31). The predicate, the async reset and the replacement target all differ. Extending would add parameters to a function `wrapBrowser` installs everywhere, and two 10-line copies read better.
+- `low`: `scriptStreamReply` resembles `stream-reply.browser-spec.mjs`'s local `scriptStream` (auditor, Rule 31). The new one is the shared helper. Moving that spec onto it needs a `breakAtHalf` parameter that nothing here uses.
+- `low`: `waitForReplies` has no named diagnosis (edge). It was hoisted unchanged. A diagnosis adds a branch to three specs' shared wait.
+- `low`: `waitForSlotFree` reads a failed lookup as free (edge, verification-gap). This was rejected in the implement review: `scriptStreamReply` already asserts the fixture's markers in the same test.
+- `low`: the two source-text pins are brittle to rewording (blind). A reword reddens a tools test whose message names the step to update. These are the structural pins the spec allows for conditions no local run can build.
+- `low`: drawn-text-only waits in navigate, agent-mdx, turn-limit, screen-grounding, explain-screen and proposal-demo (blind). None has a recorded failure. The `deferred:` row for `turn.browser-spec.mjs` carries the shape to the lead's harvest.
+- `low`: `system-explorer-sql-query` waits for a background answer under `navigationTimeoutMs` (blind). A different product bound, with no recorded failure.
+- `low`: a `goto` that returns while the renderer never draws row 2 is not relaunched (edge). That is not the recorded condition.
+- `low`: a relaunch whose `puppeteer.launch` throws leaves `browser` closed (edge). Every later test would fail either way, because Chrome cannot start.
+- `low`: the DW-2524 pin's "every run" claim (auditor). The fix would edit the spec's task text. One red run is recorded.
+- `low`: the spec's task and Code Map text name `answered(page)`, a two-argument `relaunchOnce` and `ScriptStream(..., 4)` (blind, auditor). The fix would edit the spec. Decided in-stage records the shapes as built.
+- `low`: `ANSWERING_TEST`'s bound is not tied to `AnalyticsPort` by a test. This was rejected in the implement review, and it was not raised again here.
+- `false`: `waitForSlotFree` duplicates `requireFreeSlot` (Rule 31 check). It was extracted from `requireFreeSlot`, which now calls it.
+- `false`: `answeredWith` duplicates a sibling (Rule 31 check). `statusReads` and `backgroundReads` each wait for one exact line, and no helper waits for "not busy and an outcome line".
+
 ## Spec Change Log
 
 ## Review Triage Log
@@ -403,6 +437,9 @@ Batch 1 (observed on `ocupilot-ci`):
 - DW-2513 `mutation:` `relaunchOnce` without its `browser.close()` -> the wedged-browser case in `protocol-retry.test.mjs` red (15 pass, 1 fail); retrying any error (not only a navigation timeout) -> the other-error case red. Red before: the helper did not exist, so the test file could not import it. Wiring in `data-table-columns`: a one-off thrown `Navigation timeout of 30000 ms exceeded` in the first `openIn` (not kept) -> the shared browser was replaced and all 18 tests passed; a truly wedged Chrome cannot be imposed locally.
 - DW-2522 `mutation:` request interception holding the first `GET .../analytics/mdx/background/<id>` for 35 s (not kept), on the file as at head -> AC1 red at the grid wait (`Waiting for selector [data-ocu-mdx="grid"] failed ... 30000ms exceeded`, 34.7 s); the same hold on the fixed file -> AC1 green (39.9 s). The fixed file without the hold: 11 of 11, 39.4 s. After the review patch (the two Proceed waits also use `answeredWith`): 11 of 11, 40.0 s.
 - DW-2524 `mutation:` the old waits kept (reply text drawn, then the unconditional second Send and the plain last-reply wait) with turn 1 scripted `ScriptStream(tag, 0, <'first'>, 3)` -> "Fresh at Send" red at the last-reply wait (`Waiting failed: 30000ms exceeded`, 42.9 s); with the fix, 9 of 9 in `context-chip` (this test 15.7 s). `panel-collapse` 5 of 5 and `transcript-follow` 4 of 4 on the hoisted `waitForReplies`.
+- QA pins in `ui/tools/ci-flake-waits.test.mjs` (no browser, no instance; re-run in code review, 9 of 9 each time):
+  - DW-2524 `mutation:` drop the Send-label clause from `panel-spec.mjs` `waitForReplies` -> "not satisfied while Send reads Stop" red. `waitForSlotFree` answering its first read without polling -> the polling and deadline cases red. `waitForSlotFree` answering `''` -> the deadline case red. Dropping context-chip's `waitForSlotFree` call -> the order case red (a source-order pin). Renaming `scriptStreamReply`'s marker -> both stream cases red, and dropping its assert -> the error case red (QA's observation).
+  - DW-2517 `mutation:` `maxRows` 20 on the second page -> "the second page asks for the context cap" red (a source-text pin; the scan time itself is not observable in a test).
 - DW-2517 `mutation:` `maxRows` back to 20 on the second page, with 10.4 million scratch records written to the current journal file before the class ran (three calls: a switch and 400,000 sets, 10,000,000 sets, the run) -> `TestTheToolInReverseOrderKeepsTheNewestRowsUnderTheContextCap` took 23.4 s (below the 30 s bound, so it stayed green); with `maxRows` 10 under the same file it took 0.33 s. The 30 s bound itself was not reached in the three calls; the fix stands on the structural reading plus this measured 70-fold drop. Scratch global killed afterwards.
 
 Decided in-stage (Batch 1):
