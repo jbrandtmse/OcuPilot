@@ -22,7 +22,7 @@ import puppeteer from 'puppeteer';
 
 import { browserConfig, launchOptions } from '../browser.config.mjs';
 import { signedInAt } from './panel-spec.mjs';
-import { CLOSEDEADLINE, withDeadline } from './protocol-retry.mjs';
+import { closeOrAbandon } from './protocol-retry.mjs';
 import {
   INVARIANTS,
   MIN_WIDTH_SOURCES,
@@ -62,11 +62,7 @@ after(async () => {
   if (browser === null) return;
   const closing = browser;
   browser = null;
-  try {
-    await withDeadline(closing.close(), CLOSEDEADLINE, 'browser close');
-  } catch {
-    // A wedged browser is abandoned; the process exit ends it.
-  }
+  await closeOrAbandon(closing);
 });
 
 test('AC5: every built screen is walked or skipped, and no id-requiring screen is neither', () => {

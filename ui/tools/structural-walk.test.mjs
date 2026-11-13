@@ -26,10 +26,15 @@
 //   new browser is held.
 // - drop the `error.retried` / message lines from `passRetrier`'s failure path -> the both-stall case
 //   red.
-// - open a pass's context through `browser` instead of `held` in `walk` -> the held-browser case red.
-// - drop the `relaunch === null` return in `passRetrier`'s reset -> the no-relaunch case red.
-// - drop the `withDeadline` around the stalled browser's `close()` -> the relaunch case red (its close
-//   never resolves, so the rerun never starts).
+// - open a pass's context through `browser` instead of `held` in `walk`, or drop `relaunch` from its
+//   `passRetrier` call -> the held-browser case red.
+// - drop the `relaunch === null` return in `passRetrier`'s reset -> the no-relaunch case and the
+//   retried-pass report case red.
+// - drop the `withDeadline` in `closeOrAbandon` -> the relaunch case red (its close never resolves,
+//   so the rerun never starts).
+// - in the a11y spec, drop `browser = result.browser`, or close without `closeOrAbandon`; or have
+//   `walk` answer `browser` instead of `withRetry.held()` -> the a11y spec wiring case red.
+// - annotate every failing pass's error, retried or not -> the no-retry failure case red.
 
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -97,6 +102,19 @@ test("both of the walk's passes open their context on the browser the retrier ho
   const opens = body.match(/signedInAt\(\s*(\w+)\s*,/g) ?? [];
   assert.equal(opens.length, 2, 'the walk opens two contexts, one per pass');
   assert.deepEqual(opens.map((call) => /signedInAt\(\s*(\w+)/.exec(call)[1]), ['held', 'held'], 'each through the browser its pass was handed, never the one `walk` started with');
+  assert.match(body, /passRetrier\(report, entries, browser, relaunch\)/, 'and the retrier is handed the caller\'s relaunch, so a stalled pass reruns on a new browser');
+});
+
+test('the a11y spec hands the walk a relaunch, holds the browser the walk ends on, and closes it under the close deadline', () => {
+  const spec = readFileSync(new URL('../browser/a11y-structural-invariants.browser-spec.mjs', import.meta.url), 'utf8');
+  const walkSource = readFileSync(new URL('../browser/structural-walk.mjs', import.meta.url), 'utf8');
+  assert.match(spec, /await walk\(browser, config, relaunch\)/, 'the spec passes its relaunch to the walk');
+  assert.match(spec, /browser = result\.browser;/, 'and holds the browser the walk answers, so `after` closes the live one');
+  const hook = spec.slice(spec.indexOf('after(async'));
+  const after = hook.slice(0, hook.indexOf('\n});'));
+  assert.match(after, /closeOrAbandon\(closing\)/, 'the close is bounded');
+  assert.doesNotMatch(after, /\.close\(\)/, 'and not an unbounded close');
+  assert.match(walkSource, /return \{ entries: collapse\(entries\), report, browser: withRetry\.held\(\) \};/, 'the walk answers the browser its retrier holds now');
 });
 
 // --- A walk call that never answers, run through the walk's own entry points ----------------------
@@ -330,6 +348,19 @@ test('without a relaunch a rerun keeps the browser it had', { timeout: 10_000 },
     mock.timers.reset();
   }
   assert.deepEqual(seen, [only, only], 'both runs used the one browser');
+});
+
+test('a pass that fails without a retry throws its own error, unannotated', async () => {
+  const report = freshReport();
+  const failure = new Error('the page closed');
+  const withRetry = passRetrier(report, [], { number: 1 }, async () => ({ number: 2 }));
+  await assert.rejects(
+    withRetry('720px light', async () => {
+      throw failure;
+    }),
+    (error) => error === failure && error.retried === undefined && error.message === 'the page closed'
+  );
+  assert.deepEqual(report.retried, [], 'and no pass is reported as retried');
 });
 
 test('a call that answers in time is untouched by the deadline', async () => {

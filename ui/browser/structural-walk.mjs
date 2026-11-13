@@ -42,7 +42,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
-import { CLOSEDEADLINE, WALKCALLDEADLINE, retryOnce, withDeadline } from './protocol-retry.mjs';
+import { WALKCALLDEADLINE, closeOrAbandon, retryOnce, withDeadline } from './protocol-retry.mjs';
 import { signedInAt } from './panel-spec.mjs';
 import { escapeOs, markerValue, runIris } from './turnprobe-spec.mjs';
 
@@ -819,8 +819,8 @@ async function walkPass(page, requests, config, { viewport, theme, checks, minim
  * given, the rerun first closes the held browser (abandoned after `CLOSEDEADLINE` when it does not
  * close) and holds the browser `relaunch()` answers, since a browser that stalled a call can stall
  * the rerun too; without it the rerun uses the same browser. `held()` answers the browser held now.
- * When a pass fails for good after a retry, the error carries the `report.retried` lines on
- * `error.retried` and at the end of its message.
+ * When a pass fails and `report.retried` holds any line (its own retry's, or an earlier pass's), the
+ * error carries those lines on `error.retried` and at the end of its message.
  */
 export function passRetrier(report, entries, browser, relaunch = null) {
   let current = browser;
@@ -847,11 +847,7 @@ export function passRetrier(report, entries, browser, relaunch = null) {
       Object.assign(report, saved);
       report.retried.push(`${name} -- ${failure}`);
       if (relaunch === null) return;
-      try {
-        await withDeadline(current.close(), CLOSEDEADLINE, 'browser close');
-      } catch {
-        // A wedged browser may not close; the new one is what the rerun uses.
-      }
+      await closeOrAbandon(current);
       current = await relaunch();
     };
     try {
@@ -878,8 +874,8 @@ export function passRetrier(report, entries, browser, relaunch = null) {
  * answers the browser it ended on, which the caller closes. All of it runs with one conversation
  * seeded (`seedConversation`) and removed on every exit path. Answers `{entries, report, browser}`;
  * `report` counts walked, skipped, not built, unresolved (an id-requiring screen neither walked nor
- * skipped), unsettled and unmeasurable. A pass that fails after its retry throws an error carrying
- * the retried lines.
+ * skipped), unsettled and unmeasurable. When the walk throws after any pass was retried, the error
+ * carries the retried lines.
  */
 export async function walk(browser, config, relaunch = null) {
   const minimums = componentMinimums();

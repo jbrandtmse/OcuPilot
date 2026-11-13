@@ -8,7 +8,8 @@
 // context-creation case goes red. Make `withDeadline` return its promise unchanged -> the deadline
 // cases go red. Drop the close in `relaunchOnce` -> the wedged-browser case goes red; retry any error
 // there -> the other-error case goes red. Drop the `await` on `retryOnce`'s reset -> the async-reset
-// case goes red.
+// case goes red. Swallow the error `reset` throws, or call `reset` inside the second attempt's `try`
+// -> the reset-error case goes red.
 
 import assert from 'node:assert/strict';
 import test from 'node:test';
@@ -109,6 +110,24 @@ test('retryOnce waits for an asynchronous reset before its second attempt', asyn
     }
   );
   assert.equal(value, 'after the reset');
+});
+
+test('an error the reset throws propagates unmarked, and the second attempt does not run', async () => {
+  let tries = 0;
+  const broken = new Error('relaunch failed');
+  await assert.rejects(
+    retryOnce(
+      async () => {
+        tries += 1;
+        throw timeout('Runtime.callFunctionOn');
+      },
+      async () => {
+        throw broken;
+      }
+    ),
+    (error) => error === broken && error[Symbol.for('ocupilot.protocolRetried')] !== true
+  );
+  assert.equal(tries, 1, 'the second attempt never ran');
 });
 
 test('a retry resets before its second attempt only, and a timeout that had its retry is not retried again', async () => {
