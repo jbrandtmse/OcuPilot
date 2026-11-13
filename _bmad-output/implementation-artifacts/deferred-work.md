@@ -12625,3 +12625,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: cycle-log-epic-23.md (23.10 batch 3 sweep, shard 17 resumed) | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: s17.log 18:0xZ; rerun 18:31Z 4/4 green; no CI occurrence found; Epic 23 never changed the class
 - 2026-11-13T18:31:20Z status=wontfix-accepted owner=23-10-the-range-end-cleanup-part-9-two-sweeps by=lead note=reopen_if=it recurs on a lead sweep or in a CI run (inference: a cube cache write still in flight when Remove ran)
+
+### DW-2540: Journal records' Refresh action and refresh timer read the form's current criteria without going through open(), so an order picked but not yet searched reads in the new order while the table direction still follows the last search
+- source: _bmad-output/implementation-artifacts/spec-23-13-the-range-end-cleanup-part-11.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: journal-records.page.ts:377 registers REFRESH_ACTION_ID with refresh.readNow(); followOrder() runs only in open()
+- 2026-11-13T20:44:09Z status=open owner=23-13-the-range-end-cleanup-part-11 by=harvest note=batch 4 self-review; for the batch 4 code review to patch (two-way door) or close
+
+### DW-2541: journal-records.browser-spec.mjs has no order 1 (Newest first) leg; Newest first drawing newest first is pinned only in the component spec
+- source: _bmad-output/implementation-artifacts/spec-23-13-the-range-end-cleanup-part-11.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: the browser spec asserts the first ten seeded records ascending for order 0 only
+- 2026-11-13T20:44:09Z status=open owner=23-13-the-range-end-cleanup-part-11 by=harvest note=batch 4 self-review; for batch 4 QA to add the leg (add-only edit to a contended file)
