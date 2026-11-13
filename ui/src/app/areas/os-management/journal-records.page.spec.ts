@@ -10,7 +10,7 @@ import { NavigationService } from '../../core/navigation';
 import { OverlayStack } from '../../core/overlay-stack';
 import { RefreshService } from '../../core/refresh';
 import { ScopeService } from '../../core/scope';
-import { ScreenActions } from '../../core/screen-actions';
+import { REFRESH_ACTION_ID, ScreenActions } from '../../core/screen-actions';
 import { ScreenArrivals } from '../../core/screen-arrival';
 import { assembleScreenContext } from '../../core/screen-context';
 import { ScreenStores } from '../../core/screen-store';
@@ -117,6 +117,7 @@ async function mount(options: Options = {}) {
     namespace: () => 'HSCUSTOM',
     schedule: () => {},
   });
+  const actions = new ScreenActions();
   TestBed.configureTestingModule({
     providers: [
       provideRouter([
@@ -128,7 +129,7 @@ async function mount(options: Options = {}) {
       { provide: ApiService, useValue: api as unknown as ApiService },
       { provide: RefreshService, useValue: refresh },
       { provide: ScreenStores, useValue: stores },
-      { provide: ScreenActions, useValue: new ScreenActions() },
+      { provide: ScreenActions, useValue: actions },
       { provide: OverlayStack, useValue: new OverlayStack() },
       {
         provide: ScopeService,
@@ -151,6 +152,7 @@ async function mount(options: Options = {}) {
     host,
     paths,
     store: stores.for(RECORDS.descriptor, RECORDS.refreshRates),
+    actions,
     openId: async (id: string) => {
       params.next(convertToParamMap({ id }));
       await settle(fixture);
@@ -280,7 +282,7 @@ describe('Journal records', () => {
 
   it('Newest first draws the newest record first and remembers the direction; Oldest first restores the declared one', async () => {
     // Mutations (Rule 19), each applied and observed red here: remove the `followOrder` call in
-    // `open()` -> the Newest first legs go red; map order 1 to `asc` -> the Newest first legs go red.
+    // `open()`, map order 1 to `asc`, or drop the order 0 `setDirection('')` restore -> red.
     const rows = [row(200, '^OcuProbe1979(200)'), row(300, '^OcuProbe1979(300)'), row(100, '^OcuProbe1979(100)')];
     const { host, store, choose, fixture } = await mount({ rows });
     const search = async () => {
@@ -301,6 +303,7 @@ describe('Journal records', () => {
   });
 
   it('Newest first leaves the direction alone under a sort the person chose on another column', async () => {
+    // Mutation (Rule 19), applied and observed red here: remove `followOrder`'s early return.
     const { store, choose, host, fixture } = await mount();
     store.setSort('TimeStamp');
     await choose('order', '1');
@@ -315,10 +318,32 @@ describe('Journal records', () => {
   });
 
   it('Newest first draws descending under an explicit Address sort', async () => {
+    // Mutation (Rule 19), applied and observed red here: keep only the `sort !== ''` half of the guard.
     const { store, choose, host, fixture } = await mount();
     store.setSort('Address');
     await choose('order', '1');
     (host.querySelector('form') as HTMLFormElement).dispatchEvent(new Event('submit', { cancelable: true }));
+    await settle(fixture);
+    expect(store.direction()).toBe('desc');
+    expect(Array.from(host.querySelectorAll('.ocu-data-table-body [role="row"]')).map((tr) => /\((\d+)\)/.exec(tr.textContent ?? '')?.[1])).toEqual(['3', '2', '1']);
+  });
+
+  it('Newest first follows an arrival that carries it, and an arrival without it restores the declared direction', async () => {
+    // Mutation (Rule 19), applied and observed red here: call `followOrder` from `onSearch` instead of `open()`.
+    const arrivals = new ScreenArrivals();
+    arrivals.set({ route: RECORDS.route, criterion: '', criteria: { file: FILE, order: '1' } });
+    const { store, fixture } = await mount({ arrivals });
+    expect(store.direction()).toBe('desc');
+    arrivals.set({ route: RECORDS.route, criterion: '', criteria: { file: NEWEST } });
+    await settle(fixture);
+    expect(store.direction()).toBe('');
+  });
+
+  it('Refresh after an order picked but not searched draws in that order', async () => {
+    // Mutation (Rule 19), applied and observed red here: drop the `followOrder` call in the Refresh action.
+    const { store, choose, actions, fixture } = await mount();
+    await choose('order', '1');
+    expect(actions.run(RECORDS.descriptor, REFRESH_ACTION_ID)).toBe(true);
     await settle(fixture);
     expect(store.direction()).toBe('desc');
   });

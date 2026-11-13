@@ -374,6 +374,7 @@ export class JournalRecordsPage {
 
     const stopRefreshAction = this.actions.register(screen.descriptor, REFRESH_ACTION_ID, () => {
       this.refresh.bind(screen, this.boundRead(screen));
+      this.followOrder();
       void this.refresh.readNow();
     });
 
