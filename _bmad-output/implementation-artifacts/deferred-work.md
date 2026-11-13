@@ -12646,3 +12646,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: local shard re-run (Story 20.40 code head 80c03e4c) | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: Red once in shard 13 run after a full sweep on the same instance; green alone right after (runs 749, 771); green in the fresh sweep's shard 13 on d49eb2d3
 - 2026-11-13T19:36:37Z status=wontfix-accepted owner=20-40-item-copy-and-change-of-class by=harvest note=reopen_if=it reds on a fresh instance or in CI
+
+### DW-2544: flake: stream-reply.browser-spec.mjs (c) to (f) timed out (Navigation timeout of 30000 ms with one request in flight; a 60000 ms wait) in CI browser shard 4/5
+- source: CI run 43507916359 (Story 20.25 fix b38aa6b8) | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: Red on attempt 1, green on the unchanged --failed rerun; the change under test was ObjectScript test-only; same navigation-timeout shape as DW-2512
+- 2026-11-13T22:15:24Z status=routed owner=burndown by=harvest note=CI flake for the Epic 20 burn-down
