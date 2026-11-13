@@ -165,6 +165,11 @@ Code review 1 (2026-11-12): 19 findings; high 1, medium 4, low 6 kept, 8 rejecte
 - [x] [Review][Defer] **low** The no-chip-for-a-log-row assertions backtick no value a log read returned, so they cannot fail: DW-2529, `wontfix-accepted`.
 - Rejected: a follow-up turn carries no marker (AD-24 marks only the Investigate turn); a restarted workflow reads the abandoned run's `previous` (needs per-run state); a string `entry` flag (fails loudly); the browser legs read install state (Rule 30 allows the store's own read); the planned wrapper mutation (AC2 has its demonstrated one); `previous` narrowed beyond AD-66 (ruled: AD-66 complies); three spec-text findings (a review does not edit the intent or results); the bundle's 2.02 MB (under the 2500 kB warning; 1.97 MB was an inference).
 
+Code review 2, rework re-review over `5ffbf0f5..HEAD` (2026-11-12): 7 findings; high 0, medium 1, low 0 kept, 6 rejected. The rework 1 high is fixed: `Loop.Scope` and its call are byte-identical to `3db990a9`, and nothing in `src`, `ui` or `scripts` reads `StepTools` or `Workflow.Named`.
+
+- [x] [Review][Patch] **medium** Nothing pinned the restored AD-24 starting set for a workflow turn, so putting the reverted branch back stayed green: `WorkflowLoop.TestAWorkflowTurnStartsWithTheOrdinaryToolSet` asserts an `investigate` turn defers exactly what the ordinary turn from `ENTRYCONTEXT` defers. Mutation: `Loop.Run` marks a workflow turn's `logs_messages_read` as a starting tool -> this test alone red (run 754 on `ocupilot-b-ci`), reverted byte-identical, 10 of 10 green (run 755). [src/OcuPilot/Test/WorkflowLoop.cls:271]
+- Rejected: the stale red counts on the `investigate`-entry mutation line and the triage log's `StepTools` pin, and the "thirteen" count (spec-text edits to an oversized spec); `epics.md` and the epic context still naming DW-2468 under 20.36, and no named limit for the discovery-tool reach (ruled: DW-2468 is on the decision sheet, and story assignment is the owner's); `baseline_revision`, `review_loop_iteration` and the frontmatter `status` beside the tracker's `review` (the runner's bookkeeping).
+
 ## Spec Change Log
 
 - 2026-11-13, rework 1 (runner): code review's HIGH (Loop.Scope's step tools contradict AD-24's starting set). The story complies with AD-24: the DW-2468 change and its test are reverted, and DW-2468 goes to the decision sheet.
