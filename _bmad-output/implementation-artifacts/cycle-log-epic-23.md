@@ -1090,3 +1090,8 @@ spawn_at=2026-10-06T16:01:05Z	Story 23.4	cr_complete	batch=b 2026-10-06T20:34:58
 2026-11-13T14:06:33Z	Story 23.10	smoke_complete	batch=2 method=cli result=pass iterations=1 defects_caught=0 evidence=smoke.sh_ocupilot-ci_50/50 model=claude-opus-5-5
 2026-11-13T14:06:33Z	Story 23.10	committed	batch=2 sha=43f32a09 code_heads=7b95c2b0(implement,CI_43405790354_green),43f32a09(QA+review) ci=pending runs=43439501562 missing=none pushed_at=14:05:48Z push_route=43f32a09_alone amendments=none footprint_extensions=none upgrade_trigger=none
 2026-11-13T14:06:33Z	Story 23.10	ledger_adjudicated	batch=2 owned=1(DW-2417) resolved=1 reowned=0 terminal=0 slice_after=1(DW-2426,batch_3)
+2026-11-13T15:02:52Z	Story 23.10	ci_resolved	story=23.10 batch=2 sha=43f32a09 runs=43439501562 result=success failed=none via=none resolved_at=next_implement attempt=1
+2026-11-13T15:02:52Z	Story 23.10	boundary_reported	batch=2 to=main code_heads=7b95c2b0,43f32a09 runs=43405790354,43439501562(green) ledger=DW-2417_resolved
+2026-11-13T15:02:52Z	Story 23.10	rework_opened	cycle_iteration=1 iteration=batch_3 trigger=next_batch items=DW-2426 scope_baseline=5e68fc54f spec_status=done->in-progress
+2026-11-13T15:02:52Z	Story 23.10	sprint_status_written	key=23-10-the-range-end-cleanup-part-9-two-sweeps from=done to=in-progress reason=batch_2_done,batch_3_open by=lead(sanctioned_rework_reopen)
+2026-11-13T15:02:52Z	Story 23.10	stage_spawned	stage=implement batch=3 spawn_at=2026-11-13T15:02:52Z model=sonnet agent_name=23-10-the-range-end-cleanup-part-9-two-sweeps-implement-3 cycle_iteration=1 story_base=736c294e items=DW-2426 epic20=edfeb15e(14_Test_files,none_of_the_51,GovernanceFixture,TeardownGuard)

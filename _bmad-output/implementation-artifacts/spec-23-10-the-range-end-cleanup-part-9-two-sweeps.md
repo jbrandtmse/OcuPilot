@@ -2,7 +2,7 @@
 title: 'Story 23.10: The range-end cleanup, part 9: two sweeps'
 type: 'bugfix'
 created: '2026-11-12'
-status: 'done'
+status: 'in-progress'
 baseline_revision: '7b808a4c7cf6e48b6010eb4d75e1028cd5e8f80f'
 baseline_commit: '7b808a4c7cf6e48b6010eb4d75e1028cd5e8f80f'
 review_loop_iteration: 0
