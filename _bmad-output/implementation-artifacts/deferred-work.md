@@ -8466,6 +8466,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-23T18:09:23Z occurrence=23-12-the-agent-picks-the-right-list note=run 39992827886 (7dd30507) attempt 1, browser shard 1/5: a11y-structural-invariants passed 13/13 in 1912.6 s against 414.8 s recorded; the shard hit its 55-minute limit
 - 2026-11-12T13:49:02Z status=routed owner=23-9-the-range-end-cleanup-part-8 by=spec_gate note=CI flake; first priority in 23.9 (orchestrator re-dispatch 2026-11-12, Rule 27)
 - 2026-11-12T19:13:24Z status=resolved-by:23-9-the-range-end-cleanup-part-8 by=adjudication note=c98a0877,74a6348f: settle bounded via fonts.status; 60 s per-call deadline, pass retried; a11y 13/13 in 395-463 s
+- 2026-11-13T08:23:31Z occurrence=20-36-investigate
 
 ### DW-1823: security.browser-spec.mjs AC5 (Story 16.3 AC7, DW-1018 option A) timed out waiting for app-side-bar .ocu-side-bar-item after opening the Security rail item without %Admin_Wallet:USE
 - source: feature CI run 36575310150 attempt 1 on 573c50eb (orchestrator), 2026-09-29 | severity: low | fix-risk: low | footprint: ui/browser/security.browser-spec.mjs
