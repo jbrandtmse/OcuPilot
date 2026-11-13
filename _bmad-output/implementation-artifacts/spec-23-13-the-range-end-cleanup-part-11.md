@@ -215,6 +215,13 @@ Waits for escalation 5 (contention) before any `Prohibited.cls` edit. Task 0 nee
 4. **Task 0's restart.** One `docker restart -t 120 ocupilot-ci`; the lead grants it at batch 2 or runs the step itself. A rebuild follows, because the encryption state stays in the volume (inference).
 5. **Contention, `Prohibited.cls`.** Epic 20 has changed it (Story 20.40: `ITEMCOPYFIELDS` :307, `PermittedCreateFields` :1357, `Prohibits` :1567, new `ItemCopied` after `Copied`), and 20.26 and 20.41 plan it. Batch 2 edits other regions (:545-579, :2438, :3133-3260, :4644, :4713-4800, :6111-6172) but changes existing methods, so the orchestrator rules before the edit. Recommended: allow, separate regions.
 
+**Orchestrator rulings at the spec gate (2026-11-13; these replace escalations 1, 2 and 5):**
+
+1. **DW-2432: comply under the existing AD-10 arm.** The spine already carries DW-2425 (ARCHITECTURE-SPINE.md :427: a web or privileged routine application's `Resource` changed to one whose public permission holds `U`, read at the write, a failed read counts). Adding public `U` to the resource such an application already uses is the same effect reached from the resource side, and AD-10 is defined by effect. Implement it with DW-2425's treatment and no new field line. Do not edit the spine (AD-10 is cited by in-flight Epic 20 specs). Escalation 2's clause stays here as proposed for the owner's architecture Update (veto item U-29).
+2. **DW-2431: Task 0 first.** If the KMIP start with journal encryption finishes, DW-2431 closes on that evidence with no code. If it does not finish, the widening stops for this run (it needs a new refusal code, an AD-10 amendment): the implement stage HALTs `blocked` with `Task 0 measured: start does not finish` and the evidence, adds no code, no string and no row, and the lead records it for the owner. Escalation 1's text waits with it.
+3. **Prohibited.cls contention: allowed.** Batch 2's regions are disjoint from Epic 20's; whichever epic integrates second resolves the plain union.
+4. Decided by the lead: no new field line for DW-2432; Task 0's one `docker restart -t 120 ocupilot-ci` is granted (the throwaway this run started); DW-2527 `wontfix-accepted`.
+
 **Contended** (Epic 20 at `f57371d1e`; re-check before each batch with `git -C /Users/jbrandt/git/OcuPilot/.worktrees/epic-20 diff --stat origin/feature/OCU-1_ocupilot-mvp...HEAD` and `status -s`):
 
 - `src/OcuPilot/Kernel/Proposal/Prohibited.cls`: changed; escalation 5.
