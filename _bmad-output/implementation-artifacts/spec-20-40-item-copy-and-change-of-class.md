@@ -2,7 +2,7 @@
 title: 'Story 20.40: Item copy and change of class'
 type: 'feature'
 created: '2026-11-12'
-status: 'done'
+status: 'in-progress'
 baseline_revision: 'edfeb15efbe64d19420e0f810788201485d8cf1a'
 baseline_commit: 'edfeb15efbe64d19420e0f810788201485d8cf1a'
 review_loop_iteration: 0
@@ -213,7 +213,11 @@ Rejected:
 - low: the contended `Test/InteropItemDescriptor.cls` rosters were edited in place; Rule 30 required the roster moves, and Epic 23's branch has no change to that file.
 - low: AC4's audit and AC6's `ToolWrite` count have no mutation line of their own; Rule 19 asks for one per AC, and both carry one.
 
+- [ ] [Smoke] Full sweep shard 13/20 on d49eb2d3: `OcuPilot.Test.InteropDescriptor.TestEveryInteropErrorCodeResolvesToItsSentence` fails "Codes and ConsequenceCodes list every code this test names" -- `src/OcuPilot/Test/InteropDescriptor.cls` (the `tCodes` roster) -- add `ITEMCOPYSOURCE` and `ITEMCOPY` to the roster so it names every code `InteropError.Codes()` and `ConsequenceCodes()` list; demonstrate the mutation (drop one, see red, revert) and record its `mutation:` line under `## Verification`; add `InteropDescriptor` to this spec's `Shared surfaces:` and its `(loop)` class list.
+
 ## Spec Change Log
+
+- 2026-11-13, rework iteration 1 (runner): the full sweep found the error-code roster in `InteropDescriptor` missing the two copy codes.
 
 - 2026-11-12, spec gate (runner): change of class chartered as Story 20.41 (split); the three new strings and the secret-named settings choice are veto item U-25; the AD lines stay for the owner's Update, not written.
 

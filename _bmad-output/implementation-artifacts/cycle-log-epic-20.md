@@ -1402,3 +1402,6 @@
 2026-11-13T16:47:22Z	Story 20.40	fresh_check	code_head=d49eb2d3 env=recipe(down+up_this_run's_ocupilot-b-ci;src=d49eb2d3;bundle_rebuilt_2.02MB) tests=10_classes_123_forward_and_reverse+interop-items_5/5_together_and_alone result=pass order=forward,reverse
 2026-11-13T16:47:22Z	Story 20.40	gate_step	code_head=d49eb2d3 step=npm_test result=pass test:tools=2206/2206 test:components=3372/3372
 2026-11-13T16:47:22Z	Story 20.40	gate_step	code_head=d49eb2d3 step=full_sweep result=running started=16:47Z shards=20
+2026-11-13T19:00:40Z	Story 20.40	gate_step	code_head=d49eb2d3 step=full_sweep result=fail shards=20 classes=705 tests=5428 failed=1(shard_13:InteropDescriptor.TestEveryInteropErrorCodeResolvesToItsSentence;roster_misses_ITEMCOPY,ITEMCOPYSOURCE) finished=19:00Z
+2026-11-13T19:00:40Z	Story 20.40	rework_opened	cycle_iteration=2 iteration=1 trigger=smoke items=Smoke_InteropDescriptor_error-code_roster scope_baseline=pending
+2026-11-13T19:00:40Z	Story 20.40	stage_spawned	stage=implement spawn_at=2026-11-13T19:00:40Z model=sonnet agent_name=20-40-implement-2 cycle_iteration=2 rework=1
