@@ -2,7 +2,7 @@
 title: 'Story 20.25: Item runtime and configuration actions'
 type: 'feature'
 created: '2026-11-12'
-status: 'done'
+status: 'in-progress'
 baseline_revision: 'e85f63460b00969949e6429a2114e7b78ce86a8b'
 baseline_commit: 'e85f63460b00969949e6429a2114e7b78ce86a8b'
 review_loop_iteration: 0
@@ -215,7 +215,11 @@ Rejected:
 - low: `UpdateCapped`'s doc says only vendor classes run, though a test seam overrides it — true of the shipped class
 - low: a DW-1822 occurrence trailer sits on a resolved entry — runner bookkeeping outside this story's code; reported to the runner
 
+- [ ] [CI] instance shard 8/8, run 43445087881 (red twice on one head; reproduced on a fresh `ocupilot-b-ci` in shard 8/8's class order): `OcuPilot.Test.InteropItemRun.TestAStartThePortCannotFinishIsPending` read the Productions screen's Update as 409 `INTEROP.PRODUCTION.UPTODATE` right after `Facts` read `needs=1` -- `src/OcuPilot/Test/InteropItemControl.cls` `StartProduction` -- cause (Ens event log in USER): `Ens.ScheduleHandler` runs its own `UpdateProduction` just after the production starts; on a fresh or slow instance it lands after the test's `STARTITEM` cleared the flag and applies the pending update itself. Make the shared start helper wait, bounded (about 10 s), for that startup update to finish before it returns -- e.g. until `Ens_Util.Log` in the probe namespace holds an `Ens.ScheduleHandler` `UpdateProduction` row reading updated or up-to-date logged since this start -- and fail with a clear status when it never does; the callers (`InteropItemRun`, `InteropItemCopy`, `InteropItemRunGate`) gain the precondition with no change of their own. Pin it: a mutation that skips the wait must be shown to matter, or record why no deterministic mutation exists (the race needs a fresh instance); record the `mutation:` line or that reason under `## Verification`. Rule 19: test-only change; no product code.
+
 ## Spec Change Log
+
+- 2026-11-13, rework (runner, orchestrator ruling on DW-2535): a CI story red in `InteropItemRun`, a hermeticity gap in the shared probe start helper.
 
 - 2026-11-12, spec gate (runner): copy and change of class chartered as Story 20.40 (split); the eight new strings are veto item U-22; the spine drafts are kept for the owner's Update, not written.
 
