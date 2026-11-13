@@ -22,6 +22,7 @@ import puppeteer from 'puppeteer';
 
 import { browserConfig, launchOptions } from '../browser.config.mjs';
 import { signedInAt } from './panel-spec.mjs';
+import { closeOrAbandon } from './protocol-retry.mjs';
 import {
   INVARIANTS,
   MIN_WIDTH_SOURCES,
@@ -45,15 +46,23 @@ let result = null;
 
 before(async () => {
   await assertThrowaway(config);
-  browser = await puppeteer.launch({ ...launchOptions(config), protocolTimeout: 600_000 });
-  result = await walk(browser, config);
+  const launch = () => puppeteer.launch({ ...launchOptions(config), protocolTimeout: 600_000 });
+  browser = await launch();
+  // A pass that stalled its browser is rerun on a new one, which this spec then holds and closes.
+  const relaunch = async () => {
+    browser = await launch();
+    return browser;
+  };
+  result = await walk(browser, config, relaunch);
+  browser = result.browser;
   for (const line of reportLines(result.report)) console.log(line);
 });
 
 after(async () => {
   if (browser === null) return;
-  await browser.close();
+  const closing = browser;
   browser = null;
+  await closeOrAbandon(closing);
 });
 
 test('AC5: every built screen is walked or skipped, and no id-requiring screen is neither', () => {

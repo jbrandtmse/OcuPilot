@@ -20,12 +20,27 @@
 //   its path -> the goInApp case red.
 // - drop the `report.retried.push(...)` from `passRetrier`'s reset, or its `failure` capture -> the
 //   retried-pass case red.
+// - rerun on the original browser (drop `current = await relaunch()`) -> the relaunch case red: the
+//   rerun hangs twice and the pass fails.
+// - drop the `await` on `reset()` in `retryOnce` -> the relaunch case red: the rerun starts before the
+//   new browser is held.
+// - drop the `error.retried` / message lines from `passRetrier`'s failure path -> the both-stall case
+//   red.
+// - open a pass's context through `browser` instead of `held` in `walk`, or drop `relaunch` from its
+//   `passRetrier` call -> the held-browser case red.
+// - drop the `relaunch === null` return in `passRetrier`'s reset -> the no-relaunch case and the
+//   retried-pass report case red.
+// - drop the `withDeadline` in `closeOrAbandon` -> the relaunch case red (its close never resolves,
+//   so the rerun never starts).
+// - in the a11y spec, drop `browser = result.browser`, or close without `closeOrAbandon`; or have
+//   `walk` answer `browser` instead of `withRetry.held()` -> the a11y spec wiring case red.
+// - annotate every failing pass's error, retried or not -> the no-retry failure case red.
 
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test, { afterEach, mock } from 'node:test';
 
-import { WALKCALLDEADLINE, isProtocolTimeout, retryOnce } from '../browser/protocol-retry.mjs';
+import { CLOSEDEADLINE, WALKCALLDEADLINE, isProtocolTimeout, retryOnce } from '../browser/protocol-retry.mjs';
 
 const { detectScreen, goInApp, passRetrier, reportLines, settle, toggleThemeThroughMenu } = await import(new URL('../browser/structural-walk.mjs', import.meta.url).href);
 
@@ -76,6 +91,30 @@ test('every page call the walk issues goes through the per-call deadline', () =>
     if (!/\bbounded\(\s*$/m.test(context) && !/\bbounded\(.*\bpage\./.test(line)) bare.push(`line ${index + 1}: ${line.trim()}`);
   });
   assert.deepEqual(bare, [], 'no walk page call outside bounded()');
+});
+
+test("both of the walk's passes open their context on the browser the retrier holds", () => {
+  const source = readFileSync(new URL('../browser/structural-walk.mjs', import.meta.url), 'utf8');
+  const start = source.indexOf('export async function walk(');
+  const end = source.indexOf('/** The walk\'s own report', start);
+  assert.ok(start > 0 && end > start, 'the walk function is found');
+  const body = source.slice(start, end);
+  const opens = body.match(/signedInAt\(\s*(\w+)\s*,/g) ?? [];
+  assert.equal(opens.length, 2, 'the walk opens two contexts, one per pass');
+  assert.deepEqual(opens.map((call) => /signedInAt\(\s*(\w+)/.exec(call)[1]), ['held', 'held'], 'each through the browser its pass was handed, never the one `walk` started with');
+  assert.match(body, /passRetrier\(report, entries, browser, relaunch\)/, 'and the retrier is handed the caller\'s relaunch, so a stalled pass reruns on a new browser');
+});
+
+test('the a11y spec hands the walk a relaunch, holds the browser the walk ends on, and closes it under the close deadline', () => {
+  const spec = readFileSync(new URL('../browser/a11y-structural-invariants.browser-spec.mjs', import.meta.url), 'utf8');
+  const walkSource = readFileSync(new URL('../browser/structural-walk.mjs', import.meta.url), 'utf8');
+  assert.match(spec, /await walk\(browser, config, relaunch\)/, 'the spec passes its relaunch to the walk');
+  assert.match(spec, /browser = result\.browser;/, 'and holds the browser the walk answers, so `after` closes the live one');
+  const hook = spec.slice(spec.indexOf('after(async'));
+  const after = hook.slice(0, hook.indexOf('\n});'));
+  assert.match(after, /closeOrAbandon\(closing\)/, 'the close is bounded');
+  assert.doesNotMatch(after, /\.close\(\)/, 'and not an unbounded close');
+  assert.match(walkSource, /return \{ entries: collapse\(entries\), report, browser: withRetry\.held\(\) \};/, 'the walk answers the browser its retrier holds now');
 });
 
 // --- A walk call that never answers, run through the walk's own entry points ----------------------
@@ -205,6 +244,125 @@ test('a pass whose call hangs is re-run once and then completes, over a fake pag
   assert.equal(resets, 1, 'and was reset once between them');
 });
 
+/**
+ * A launcher of fake browsers for `passRetrier`: browser 1's pages never answer `evaluate`, browser 2's
+ * do. `close` on browser 1 never resolves when `stuckClose` is set. `stall` makes every browser hang.
+ */
+function fakeLauncher({ stuckClose = false, stall = false } = {}) {
+  const launched = [];
+  const launch = () => {
+    const number = launched.length + 1;
+    const browser = {
+      number,
+      closed: 0,
+      page: { evaluate: number === 1 || stall ? hang : async () => true },
+      close: () => {
+        browser.closed += 1;
+        return number === 1 && stuckClose ? hang() : Promise.resolve();
+      },
+    };
+    launched.push(browser);
+    return browser;
+  };
+  return { launched, launch };
+}
+
+const freshReport = () => ({ walked: new Set(), skipped: new Set(), unresolved: new Set(), unsettled: new Set(), unmeasurable: 0, retried: [] });
+
+test('a pass whose browser stalls is rerun once on a newly launched browser, and the stalled one is closed', { timeout: 10_000 }, async () => {
+  const report = freshReport();
+  const entries = [];
+  const launcher = fakeLauncher({ stuckClose: true });
+  const first = launcher.launch();
+  const withRetry = passRetrier(report, entries, first, async () => launcher.launch());
+  const usedBy = [];
+  mock.timers.enable({ apis: ['setTimeout'] });
+  try {
+    const finished = withRetry('720px light', async (found, browser) => {
+      usedBy.push(browser.number);
+      await settle(browser.page, { ...quiet(), pass: '720px light' }, '/ocupilot/tasks/schedule');
+      found.push(`entry on browser ${browser.number}`);
+    });
+    await flush();
+    mock.timers.tick(WALKCALLDEADLINE);
+    await flush();
+    assert.equal(first.closed, 1, 'the stalled browser was asked to close');
+    assert.equal(launcher.launched.length, 1, 'and the rerun waits for it, or for the close deadline, before relaunching');
+    mock.timers.tick(CLOSEDEADLINE);
+    await finished;
+  } finally {
+    mock.timers.reset();
+  }
+  assert.deepEqual(usedBy, [1, 2], 'the pass ran on browser 1 and then on browser 2');
+  assert.equal(launcher.launched.length, 2, 'one relaunch');
+  assert.deepEqual(entries, ['entry on browser 2'], 'only the rerun on the new browser joins the walk');
+  assert.equal(withRetry.held(), launcher.launched[1], 'the walk now holds the new browser');
+  assert.equal(report.retried.length, 1, 'the report names the retried pass');
+  assert.match(report.retried[0], /^720px light -- 720px light: settle \/ocupilot\/tasks\/schedule timed out/, 'and the call that was abandoned');
+});
+
+test('a pass whose rerun stalls too fails with the retried line on the error', { timeout: 10_000 }, async () => {
+  const report = freshReport();
+  const launcher = fakeLauncher({ stall: true });
+  const withRetry = passRetrier(report, [], launcher.launch(), async () => launcher.launch());
+  mock.timers.enable({ apis: ['setTimeout'] });
+  let failure = null;
+  try {
+    const finished = withRetry('720px light', async (found, browser) => {
+      await settle(browser.page, { ...quiet(), pass: '720px light' });
+    }).catch((error) => {
+      failure = error;
+    });
+    await flush();
+    mock.timers.tick(WALKCALLDEADLINE);
+    await flush();
+    mock.timers.tick(WALKCALLDEADLINE);
+    await finished;
+  } finally {
+    mock.timers.reset();
+  }
+  assert.equal(launcher.launched.length, 2, 'the rerun ran on a second browser');
+  assert.ok(failure instanceof Error && isProtocolTimeout(failure), 'the pass failed on a protocol timeout');
+  assert.equal(failure.retried?.length, 1, 'the error carries the retried line');
+  assert.match(failure.retried[0], /^720px light -- 720px light: settle timed out/, 'naming the pass and the first call');
+  assert.match(failure.message, /structural walk retried: 720px light -- /, 'and the message shows it');
+});
+
+test('without a relaunch a rerun keeps the browser it had', { timeout: 10_000 }, async () => {
+  const report = freshReport();
+  const only = { number: 1, page: { evaluate: hang } };
+  const withRetry = passRetrier(report, [], only);
+  let attempts = 0;
+  const seen = [];
+  mock.timers.enable({ apis: ['setTimeout'] });
+  try {
+    const finished = withRetry('720px light', async (found, browser) => {
+      attempts += 1;
+      seen.push(browser);
+      if (attempts === 1) await settle(browser.page, quiet());
+    });
+    await flush();
+    mock.timers.tick(WALKCALLDEADLINE);
+    await finished;
+  } finally {
+    mock.timers.reset();
+  }
+  assert.deepEqual(seen, [only, only], 'both runs used the one browser');
+});
+
+test('a pass that fails without a retry throws its own error, unannotated', async () => {
+  const report = freshReport();
+  const failure = new Error('the page closed');
+  const withRetry = passRetrier(report, [], { number: 1 }, async () => ({ number: 2 }));
+  await assert.rejects(
+    withRetry('720px light', async () => {
+      throw failure;
+    }),
+    (error) => error === failure && error.retried === undefined && error.message === 'the page closed'
+  );
+  assert.deepEqual(report.retried, [], 'and no pass is reported as retried');
+});
+
 test('a call that answers in time is untouched by the deadline', async () => {
   const found = { violations: [], fields: [], unmeasurable: 3 };
   const result = await detectScreen({ evaluate: async () => found }, { route: 'tasks/schedule', checks: ['contrast'], viewport: 1280, theme: 'dark', minimums: [] });
@@ -215,7 +373,7 @@ test('a pass retried after an abandoned call leaves the report as it was before 
   const report = { walked: new Set(['before']), skipped: new Set(), unresolved: new Set(), unsettled: new Set(), unmeasurable: 0, retried: [] };
   const entries = [];
   let attempts = 0;
-  const withRetry = passRetrier(report, entries);
+  const withRetry = passRetrier(report, entries, null);
   mock.timers.enable({ apis: ['setTimeout'] });
   try {
     const finished = withRetry('720px light', async (found) => {

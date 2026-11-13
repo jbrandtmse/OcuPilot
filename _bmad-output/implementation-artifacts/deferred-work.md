@@ -8468,6 +8468,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-12T19:13:24Z status=resolved-by:23-9-the-range-end-cleanup-part-8 by=adjudication note=c98a0877,74a6348f: settle bounded via fonts.status; 60 s per-call deadline, pass retried; a11y 13/13 in 395-463 s
 - 2026-11-13T08:23:31Z occurrence=20-36-investigate
 - 2026-11-13T08:59:21Z status=routed owner=23-13-the-range-end-cleanup-part-11 by=orchestrator note=reopened: reopen_if met after the 23.9 fix (c98a0877, 74a6348f); staging 64e58441 run 43379465200 attempt 1, AC5 720 px light settle on /agent/governance timed out via protocol-retry.mjs:48, attempt 2 green; CI flake, first priority (Rule 27)
+- 2026-11-13T20:06:00Z status=resolved-by:23-13-the-range-end-cleanup-part-11 by=adjudication note=batch_1:a_stalled_walk_pass_reruns_once_on_a_relaunched_browser(stalled_one_closed_under_CLOSEDEADLINE_via_protocol-retry.closeOrAbandon),retryOnce_awaits_reset,failed_walk_error_carries_retried_lines;pins_ui/tools/structural-walk.test.mjs+protocol-retry.test.mjs(fakes);a11y_real_13/13_on_ocupilot-ci;code_69eaecb3+QA/review_commit;reopen_if=a_CI_a11y_rerun_after_a_relaunch_stalls_again
 
 ### DW-1823: security.browser-spec.mjs AC5 (Story 16.3 AC7, DW-1018 option A) timed out waiting for app-side-bar .ocu-side-bar-item after opening the Security rail item without %Admin_Wallet:USE
 - source: feature CI run 36575310150 attempt 1 on 573c50eb (orchestrator), 2026-09-29 | severity: low | fix-risk: low | footprint: ui/browser/security.browser-spec.mjs
