@@ -12628,3 +12628,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-20-40-item-copy-and-change-of-class.md | severity: low | fix-risk: med | footprint: in-story
 - evidence: ui/src/app/areas/interoperability/interop-item-copy.store.ts vs interop-item-add.store.ts; the spec's stated reason (the add's six-field state) covers the state, not the shared plumbing; Rule 2 copy with a weak reason
 - 2026-11-13T16:38:28Z status=wontfix-accepted owner=20-40-item-copy-and-change-of-class by=cr note=reopen_if=a third interop item create store (20.41 change of class or later) copies the same plumbing
+
+### DW-2539: flake: LanguageServerWire.TestTheExactPairsPrincipalStartsAndStopsTheProbe read the probe as running on the list (expected not running) on a second shard 13/20 run on a used ocupilot-b-ci
+- source: local shard re-run (Story 20.40 code head 80c03e4c) | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: Red once in shard 13 run after a full sweep on the same instance; green alone right after (runs 749, 771); green in the fresh sweep's shard 13 on d49eb2d3
+- 2026-11-13T19:36:37Z status=wontfix-accepted owner=20-40-item-copy-and-change-of-class by=harvest note=reopen_if=it reds on a fresh instance or in CI
