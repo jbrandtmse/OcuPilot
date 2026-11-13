@@ -5,7 +5,8 @@
 /// <code>id</code>, a <code>purpose</code>, ordered <code>steps</code> and a <code>finish</code>; a
 /// step says what to do and names the read tools (<code>reads</code>) and write tools
 /// (<code>writes</code>) it uses by canonical name. A new workflow is a new entry, never a code
-/// path. Every text is ASCII and names no tool the model cannot call. The steps are adapted from
+/// path. An entry marked <code>"entry": true</code> is offered by an entry control (Investigate this entry)
+/// instead of a suggested prompt, and has no <code>writes</code>. Every text is ASCII and names no tool the model cannot call. The steps are adapted from
 /// iris-execute-mcp-v2's MCP prompts (<code>packages/*/src/prompts/*.ts</code>, MIT, Copyright (c) 2026
 /// jbrandtmse, <code>ui/licenses/iris-execute-mcp-v2.txt</code>).</p>
 /// <p><b>The result is OcuPilot's own data</b> (AD-11 rule 1): <method>Exchange</method> builds it from
@@ -94,6 +95,30 @@ ClassMethod Ids() As %List
         Set tIds = ""
     }
     Quit tIds
+}
+
+/// <p>The canonical names of every tool, read or write, any step of workflow <var>pId</var> names, once each
+/// in step order, as a <class>%List</class>; empty for an unknown id.</p>
+ClassMethod StepTools(pId As %String) As %List
+{
+    Set tTools = ""
+    Try {
+        Set tEntry = ..Lookup(pId, .tFound)
+        If 'tFound Quit
+        Set tSteps = tEntry.%Get("steps").%GetIterator()
+        While tSteps.%GetNext(.tStepIndex, .tStep) {
+            For tMember = "reads", "writes" {
+                If tStep.%GetTypeOf(tMember) '= "array" Continue
+                Set tNames = tStep.%Get(tMember).%GetIterator()
+                While tNames.%GetNext(.tNameIndex, .tName) {
+                    If '$ListFind(tTools, tName) Set tTools = tTools _ $ListBuild(tName)
+                }
+            }
+        }
+    } Catch ex {
+        Set tTools = ""
+    }
+    Quit tTools
 }
 
 /// <p>The canonical names of every write tool any step of workflow <var>pId</var> names, once each in
@@ -283,7 +308,14 @@ XData Catalog [ MimeType = application/json ]
    {"say": "Propose the project's user, with the new namespace as its default.", "writes": ["permissions.users.create"]},
    {"say": "Propose the web application for the project's namespace.", "writes": ["webapp.list.create"]},
    {"say": "When a step fails or the person asks to undo, propose the matching delete for the newest thing created, then the older ones in turn.", "writes": ["osmgmt.localdatabases.delete", "osmgmt.namespaces.delete", "permissions.users.delete", "webapp.list.delete"]}],
-  "finish": "Say what was created and what is left to do by hand."}
+  "finish": "Say what was created and what is left to do by hand."},
+ {"id": "investigate", "entry": true,
+  "purpose": "Investigate the one log or audit entry the user chose, changing nothing.",
+  "steps": [
+   {"say": "screen_context marks the entry: selected is its index in rows, or focus holds it; that marker, not entity, names it. Read what it records."},
+   {"say": "Read the same log, and the hub across logs, around the entry's time for what came before and after it.", "reads": ["logs.hub.read", "logs.messages.read", "logs.alerts.read", "logs.eventlog.read", "logs.applicationerrors.read", "logs.audit.read", "logs.systemmonitor.read"]},
+   {"say": "Read the state of what the entry names: the instance, a production and its items, an item's log, or its messages.", "reads": ["osmgmt.dashboard.read", "osmgmt.systemusage.read", "interop.productions.read", "interop.itemstatus.read", "interop.itemlog.read", "interop.messages.read"]}],
+  "finish": "Answer under two headings. Recap: what the entry records and what the reads found. Hypotheses: numbered, most likely first, each naming in backticks the rows it rests on, as the reads returned them. Propose no change; where a hypothesis suggests a fix, name the guided workflow or the screen that would make it."}
 ]}
 }
 

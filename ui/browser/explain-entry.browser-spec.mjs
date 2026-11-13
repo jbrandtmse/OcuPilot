@@ -252,7 +252,11 @@ test('(b) Application errors: the list row menu\u2019s item marks that one error
     const labels = await page.$$eval('[role="menu"] [role="menuitem"]', (items) =>
       items.map((item) => item.querySelector('.ocu-data-table-menu-label')?.textContent.trim() ?? '')
     );
-    assert.deepEqual(labels, [STRINGS.actionDelete, STRINGS.agentExplainEntryAction], 'Delete stays first, and the item follows it');
+    assert.deepEqual(
+      labels,
+      [STRINGS.actionDelete, STRINGS.agentExplainEntryAction, STRINGS.agentInvestigateEntryAction],
+      'Delete stays first, and Explain and Investigate follow it'
+    );
     await page.evaluate((wanted) => {
       Array.from(document.querySelectorAll('[role="menu"] [role="menuitem"]'))
         .find((item) => item.textContent.trim() === wanted)

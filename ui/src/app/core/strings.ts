@@ -7713,6 +7713,12 @@ export const STRINGS = {
   analyticsCubeManagerPrompt3: 'When was each cube last built or updated?',
   /** EXPERIENCE.md:604 */
   analyticsCubeManagerEmptyAgent: 'Ask the agent why no cube is listed here.',
+  /** EXPERIENCE.md:268 */
+  agentInvestigateEntryAction: 'Investigate this entry',
+  /** EXPERIENCE.md:268 */
+  agentInvestigateEntryMessage: 'Investigate the selected entry',
+  /** EXPERIENCE.md:268 */
+  agentEntryActionsColumn: 'Ask the agent',
 } as const;
 
 /**

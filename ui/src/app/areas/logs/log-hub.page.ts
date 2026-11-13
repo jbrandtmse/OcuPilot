@@ -3,7 +3,7 @@ import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '
 import { Router } from '@angular/router';
 
 import { csvFileName, csvText, saveCsv } from '../../core/csv';
-import { ExplainEntry } from '../../core/explain-entry';
+import { ExplainEntry, type ExplainEntryKind } from '../../core/explain-entry';
 import { isBannerFault } from '../../core/fault';
 import { NavigationService, entityUrl, formatDeniedAction, formatRequires, screenForRoute, withQuery } from '../../core/navigation';
 import { RefreshService, type RefreshRead } from '../../core/refresh';
@@ -99,7 +99,7 @@ interface OptionView {
               <th scope="col" class="ocu-log-hub-th">{{ STRINGS.logHubColumnLastEntry }}</th>
               @if (explainShown) {
                 <th scope="col" class="ocu-log-hub-th">
-                  <span class="ocu-visually-hidden">{{ STRINGS.agentExplainEntryAction }}</span>
+                  <span class="ocu-visually-hidden">{{ STRINGS.agentEntryActionsColumn }}</span>
                 </th>
               }
             </tr>
@@ -143,16 +143,28 @@ interface OptionView {
                 </td>
                 @if (explainShown) {
                   <td class="ocu-log-hub-td">
-                    <button
-                      type="button"
-                      class="ocu-button-text ocu-log-explain"
-                      data-ocu-hub="source-explain"
-                      [attr.aria-disabled]="source.explainDisabled"
-                      [attr.aria-describedby]="source.explainDescribedBy"
-                      (click)="onExplainSource(source)"
-                    >
-                      {{ STRINGS.agentExplainEntryAction }}
-                    </button>
+                    <span class="ocu-log-entry-actions">
+                      <button
+                        type="button"
+                        class="ocu-button-text ocu-log-explain"
+                        data-ocu-hub="source-explain"
+                        [attr.aria-disabled]="source.explainDisabled"
+                        [attr.aria-describedby]="source.explainDescribedBy"
+                        (click)="onExplainSource(source)"
+                      >
+                        {{ STRINGS.agentExplainEntryAction }}
+                      </button>
+                      <button
+                        type="button"
+                        class="ocu-button-text ocu-log-explain"
+                        data-ocu-hub="source-investigate"
+                        [attr.aria-disabled]="source.explainDisabled"
+                        [attr.aria-describedby]="source.explainDescribedBy"
+                        (click)="onExplainSource(source, 'investigate')"
+                      >
+                        {{ STRINGS.agentInvestigateEntryAction }}
+                      </button>
+                    </span>
                   </td>
                 }
               </tr>
@@ -228,7 +240,7 @@ interface OptionView {
 
       @if (showRows) {
         <div class="ocu-log-hub-frame">
-          <div class="ocu-log-rows ocu-log-hub-rows" role="list" data-ocu-hub="timeline">
+          <div class="ocu-log-rows ocu-log-hub-rows" [class.ocu-log-hub-rows-explain]="explainShown" role="list" data-ocu-hub="timeline">
             @for (entry of timelineRows; track entry.key) {
               <div
                 class="ocu-log-row ocu-log-hub-row"
@@ -249,16 +261,28 @@ interface OptionView {
                 </span>
                 <span class="ocu-log-cell ocu-log-cell-text" data-ocu-hub="text">{{ entry.row.text }}</span>
                 @if (explainShown) {
-                  <button
-                    type="button"
-                    class="ocu-button-text ocu-log-explain"
-                    data-ocu-hub="explain"
-                    [attr.aria-disabled]="explainAriaDisabled"
-                    [attr.aria-describedby]="explainDescribedBy"
-                    (click)="onExplainEntry(entry)"
-                  >
-                    {{ STRINGS.agentExplainEntryAction }}
-                  </button>
+                  <span class="ocu-log-entry-actions">
+                    <button
+                      type="button"
+                      class="ocu-button-text ocu-log-explain"
+                      data-ocu-hub="explain"
+                      [attr.aria-disabled]="explainAriaDisabled"
+                      [attr.aria-describedby]="explainDescribedBy"
+                      (click)="onExplainEntry(entry)"
+                    >
+                      {{ STRINGS.agentExplainEntryAction }}
+                    </button>
+                    <button
+                      type="button"
+                      class="ocu-button-text ocu-log-explain"
+                      data-ocu-hub="investigate"
+                      [attr.aria-disabled]="explainAriaDisabled"
+                      [attr.aria-describedby]="explainDescribedBy"
+                      (click)="onExplainEntry(entry, 'investigate')"
+                    >
+                      {{ STRINGS.agentInvestigateEntryAction }}
+                    </button>
+                  </span>
                 }
               </div>
             }
@@ -623,15 +647,15 @@ export class LogHubPage {
   }
 
   /** Hand this entry to the panel, which marks it among the timeline's rows; a refused control sends nothing. */
-  protected onExplainEntry(entry: EntryView): void {
+  protected onExplainEntry(entry: EntryView, kind: ExplainEntryKind = 'explain'): void {
     if (this.screen === null) return;
-    this.explainEntry?.request(this.screen, entry.row);
+    this.explainEntry?.request(this.screen, entry.row, kind);
   }
 
   /** Hand a source's last entry to the panel, which marks it; a source not shown, or with none, sends nothing. */
-  protected onExplainSource(source: SourceView): void {
+  protected onExplainSource(source: SourceView, kind: ExplainEntryKind = 'explain'): void {
     if (this.screen === null || source.explainDisabled !== null || source.last === null) return;
-    this.explainEntry?.request(this.screen, source.last.row);
+    this.explainEntry?.request(this.screen, source.last.row, kind);
   }
 
   /**

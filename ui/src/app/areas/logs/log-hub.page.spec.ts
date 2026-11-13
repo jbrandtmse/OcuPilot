@@ -309,6 +309,44 @@ describe('LogHubPage', () => {
     expect(entry.take()).toBeNull();
   });
 
+  // Mutation (Rule 19): the timeline button requests `explain` -> the kind goes red. The source button
+  // ignores the refusal state -> the denied and empty legs go red. The header keeps "Explain this entry"
+  // -> the header assertion goes red.
+  it('Story 20.36: Investigate sits beside each Explain on the timeline and the sources, refuses as Explain does, and the hidden header names both', async () => {
+    const { entry } = stubExplainEntry();
+    const { fixture, host } = await mount(entry);
+    const timeline = host.querySelectorAll<HTMLElement>('[data-ocu-hub="investigate"]');
+    expect(timeline).toHaveLength(ROWS.length);
+    expect(timeline[3].textContent?.trim()).toBe(STRINGS.agentInvestigateEntryAction);
+    expect(timeline[3].previousElementSibling).toBe(host.querySelectorAll<HTMLElement>('[data-ocu-hub="explain"]')[3]);
+    expect(timeline[3].parentElement?.classList.contains('ocu-log-entry-actions')).toBe(true);
+    timeline[3].click();
+    const timelineRequest = entry.take();
+    expect(timelineRequest?.kind).toBe('investigate');
+    expect(timelineRequest?.row).toEqual(ROWS[3]);
+
+    const audit = sourceRow(host, 'logs/audit').querySelector('[data-ocu-hub="source-investigate"]') as HTMLElement;
+    expect(audit.getAttribute('aria-disabled')).toBeNull();
+    audit.click();
+    const auditRequest = entry.take();
+    expect(auditRequest?.kind).toBe('investigate');
+    expect(auditRequest?.row).toEqual(ROWS[2]);
+
+    const denied = sourceRow(host, 'logs/eventlog').querySelector('[data-ocu-hub="source-investigate"]') as HTMLElement;
+    const deniedExplain = sourceRow(host, 'logs/eventlog').querySelector('[data-ocu-hub="source-explain"]') as HTMLElement;
+    expect(denied.getAttribute('aria-disabled')).toBe('true');
+    expect(denied.getAttribute('aria-describedby')).toBe(deniedExplain.getAttribute('aria-describedby'));
+    denied.click();
+    const empty = sourceRow(host, 'logs/messages').querySelector('[data-ocu-hub="source-investigate"]') as HTMLElement;
+    expect(empty.getAttribute('aria-disabled')).toBe('true');
+    empty.click();
+    await settle(fixture);
+    expect(entry.take()).toBeNull();
+
+    const headers = Array.from(host.querySelectorAll('[data-ocu-hub="sources"] thead th')).map((header) => header.textContent?.trim());
+    expect(headers[headers.length - 1]).toBe(STRINGS.agentEntryActionsColumn);
+  });
+
   it('a modified click on an entry or a source is left to the browser and hands nothing off', async () => {
     const { fixture, host, router, arrivals } = await mount();
     const prevented: boolean[] = [];

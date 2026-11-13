@@ -1,4 +1,4 @@
-/// <p>The guided-workflow catalog and its pure rules (Story 20.12, AD-66): the nine ids, every tool a step names
+/// <p>The guided-workflow catalog and its pure rules (Stories 20.12 and 20.36, AD-66): the ten ids, every tool a step names
 /// resolving as the kind it is listed under, each workflow offered by a built screen's prompt, the three
 /// <code>WORKFLOW.*</code> sentences, <method>OcuPilot.Kernel.Agent.Workflow.WriteRefusal</method>'s three answers,
 /// <method>OcuPilot.Kernel.Agent.Workflow.Previous</method>'s projection and cap, and
@@ -14,8 +14,8 @@ Parameter ERRORS = "OcuPilot.Api.WorkflowError";
 
 Parameter REGISTRY = "OcuPilot.Screen.Tool.Registry";
 
-/// <p>The catalog's nine ids, in order.</p>
-Parameter IDS = "recoverproduction,resendmessages,tracemessage,systemhealth,securityposture,slowquery,compileclass,reviewclass,newproject";
+/// <p>The catalog's ten ids, in order.</p>
+Parameter IDS = "recoverproduction,resendmessages,tracemessage,systemhealth,securityposture,slowquery,compileclass,reviewclass,newproject,investigate";
 
 /// <p>The names of the eleven iris-execute-mcp-v2 prompts the catalog adapts; no id is one of them.</p>
 Parameter HARVESTED = "recover-stuck-production,resend-failed-messages,trace-message-flow,check-system-health,run-external-backup,diagnose-slow-query,deploy-and-test-class,objectscript-review,promote-environment-change,audit-security-posture,provision-project-environment";
@@ -34,14 +34,14 @@ ClassMethod Member(pStep As %DynamicObject, pName As %String) As %String
     Quit $Select(pStep.%GetTypeOf(pName) = "array": pStep.%Get(pName).%ToJSON(), 1: "")
 }
 
-/// <p>The catalog holds the nine ids, in order, each a lower-case word, none a harvested prompt's name; every
+/// <p>The catalog holds the ten ids, in order, each a lower-case word, none a harvested prompt's name; every
 /// workflow carries a purpose, steps that each say something, and a finish; every text is ASCII and names no
 /// tool under the sibling projects' prefix.</p>
 /// <p>Mutation: rename one id in the catalog -> this goes red.</p>
-Method TestTheNineIdsEqualTheRoster()
+Method TestTheTenIdsEqualTheRoster()
 {
     Set tIds = $ClassMethod(..#WORKFLOW, "Ids")
-    Do $$$AssertEquals($ListToString(tIds, ","), ..#IDS, "the catalog holds the nine ids, in order")
+    Do $$$AssertEquals($ListToString(tIds, ","), ..#IDS, "the catalog holds the ten ids, in order")
     For tI = 1:1:$ListLength(tIds) {
         Set tId = $List(tIds, tI)
         Do $$$AssertTrue($Match(tId, "^[a-z][a-z0-9]*$"), tId _ " is a lower-case word")
@@ -114,15 +114,17 @@ Method TestEveryNamedToolResolvesAsItsKind()
         Set tWrites = tWrites + 1
     }
     Do $$$AssertTrue((tReads > 0) && (tWrites > 0), "the catalog names read tools (" _ tReads _ ") and write tools (" _ tWrites _ ")")
-    For tId = "tracemessage", "securityposture", "slowquery", "reviewclass" {
+    For tId = "tracemessage", "securityposture", "slowquery", "reviewclass", "investigate" {
         Do $$$AssertEquals($ListLength($ClassMethod(..#WORKFLOW, "Writes", tId)), 0, tId _ " names no write tool")
     }
     Do $$$AssertEquals($ListLength($ClassMethod(..#WORKFLOW, "Writes", "nosuch")), 0, "an unknown id names none")
 }
 
-/// <p>Every workflow is offered by the suggested prompt of at least one built screen, and every prompt's
-/// <code>workflow</code> names a catalog id.</p>
-/// <p>Mutation: drop a descriptor's workflow prompt -> this goes red naming the workflow.</p>
+/// <p>Every workflow not marked <code>entry</code> is offered by the suggested prompt of at least one built screen,
+/// and every prompt's <code>workflow</code> names a catalog id. A workflow marked <code>entry</code> is offered by
+/// an entry control instead: no built screen's prompt names it, and it has no write.</p>
+/// <p>Mutation: drop a descriptor's workflow prompt -> this goes red naming the workflow. A descriptor's prompt
+/// names <code>investigate</code> -> this goes red.</p>
 Method TestEveryWorkflowIsOfferedByABuiltScreen()
 {
     Set tSC = ##class(OcuPilot.Screen.Registry).Descriptors(.tList)
@@ -140,9 +142,33 @@ Method TestEveryWorkflowIsOfferedByABuiltScreen()
         }
     }
     Set tIds = $ClassMethod(..#WORKFLOW, "Ids")
+    Set tEntries = 0
     For tI = 1:1:$ListLength(tIds) {
-        Do $$$AssertTrue($Get(tOffered($List(tIds, tI))) > 0, $List(tIds, tI) _ " is offered by a built screen's prompt")
+        Set tId = $List(tIds, tI)
+        Set tEntry = $ClassMethod(..#WORKFLOW, "Lookup", tId, .tFound)
+        Do $$$AssertTrue(tFound, tId _ " resolves in the catalog")
+        If 'tFound Continue
+        If tEntry.%Get("entry") = 1 {
+            Set tEntries = tEntries + 1
+            Do $$$AssertEquals(+$Get(tOffered(tId)), 0, tId _ " is an entry workflow, offered by no screen's prompt")
+            Do $$$AssertEquals($ListLength($ClassMethod(..#WORKFLOW, "Writes", tId)), 0, tId _ " is an entry workflow with no write")
+            Continue
+        }
+        Do $$$AssertTrue($Get(tOffered(tId)) > 0, tId _ " is offered by a built screen's prompt")
     }
+    Do $$$AssertTrue(tEntries > 0, "the catalog holds an entry workflow")
+}
+
+/// <p><method>OcuPilot.Kernel.Agent.Workflow.StepTools</method> answers every tool a workflow's steps name, reads and
+/// writes, once each in step order, and nothing for an unknown id.</p>
+/// <p>Mutation: <method>StepTools</method> skips the <code>writes</code> member -> this goes red.</p>
+Method TestStepToolsNameTheReadsAndTheWrites()
+{
+    Set tTools = $ClassMethod(..#WORKFLOW, "StepTools", "compileclass")
+    Do $$$AssertEquals($ListToString(tTools, ","), "explorer.classes.read,explorer.class.source,explorer.classes.save,explorer.classes.compile", "compileclass names its reads and its writes, once each, in step order")
+    Set tTools = $ClassMethod(..#WORKFLOW, "StepTools", "investigate")
+    Do $$$AssertTrue($ListFind(tTools, "logs.messages.read") > 0, "investigate names the messages.log read")
+    Do $$$AssertEquals($ListLength($ClassMethod(..#WORKFLOW, "StepTools", "nosuch")), 0, "an unknown id names none")
 }
 
 /// <p>Each <code>WORKFLOW.*</code> code resolves to its sentence directly and through

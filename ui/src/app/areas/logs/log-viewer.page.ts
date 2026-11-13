@@ -265,7 +265,7 @@ const SOURCES: Readonly<Record<string, LogViewerSource>> = {
               >{{ row.raw }}
 </span>}</pre>
         } @else {
-          <div class="ocu-log-rows" role="list">
+          <div class="ocu-log-rows" [class.ocu-log-rows-explain]="explainShown" role="list">
             @for (row of rows; track row.key) {
               <div
                 class="ocu-log-row"
@@ -295,16 +295,28 @@ const SOURCES: Readonly<Record<string, LogViewerSource>> = {
                   }
                 </span>
                 @if (explainShown) {
-                  <button
-                    type="button"
-                    class="ocu-button-text ocu-log-explain"
-                    data-ocu-log="explain"
-                    [attr.aria-disabled]="explainAriaDisabled"
-                    [attr.aria-describedby]="explainDescribedBy"
-                    (click)="onExplain(row)"
-                  >
-                    {{ STRINGS.agentExplainEntryAction }}
-                  </button>
+                  <span class="ocu-log-entry-actions">
+                    <button
+                      type="button"
+                      class="ocu-button-text ocu-log-explain"
+                      data-ocu-log="explain"
+                      [attr.aria-disabled]="explainAriaDisabled"
+                      [attr.aria-describedby]="explainDescribedBy"
+                      (click)="onExplain(row)"
+                    >
+                      {{ STRINGS.agentExplainEntryAction }}
+                    </button>
+                    <button
+                      type="button"
+                      class="ocu-button-text ocu-log-explain"
+                      data-ocu-log="investigate"
+                      [attr.aria-disabled]="explainAriaDisabled"
+                      [attr.aria-describedby]="explainDescribedBy"
+                      (click)="onInvestigate(row)"
+                    >
+                      {{ STRINGS.agentInvestigateEntryAction }}
+                    </button>
+                  </span>
                 }
               </div>
             }
@@ -630,6 +642,12 @@ export class LogViewerPage {
   protected onExplain(row: RowView): void {
     if (this.screen === null) return;
     this.explainEntry?.request(this.screen, row.entry);
+  }
+
+  /** Hand this row's entry to the panel as an Investigate request; a refused control sends nothing. */
+  protected onInvestigate(row: RowView): void {
+    if (this.screen === null) return;
+    this.explainEntry?.request(this.screen, row.entry, 'investigate');
   }
 
   protected get chips(): readonly ChipView[] {

@@ -114,11 +114,13 @@ ClassMethod ContextTools(pContextJson As %String) As %List
 /// shape) to the turn's starting set, in place. When the array holds the discovery tool
 /// (<parameter>DISCOVERYTOOL</parameter>), <code>pTools("scoped")</code> becomes 1 and
 /// <code>pTools(n, "start")</code> becomes 1 for each tool whose wire name starts with
-/// <parameter>SHELLPREFIX</parameter> and for each name <method>ContextTools</method> reads from
-/// <var>pContextJson</var>; every other tool is left for the discovery tool to find. An array without
-/// the discovery tool is left whole, so no advertised tool becomes unreachable. A pure function of
-/// the array and the context: it reads no registry.</p>
-ClassMethod Scope(ByRef pTools, pContextJson As %String = "")
+/// <parameter>SHELLPREFIX</parameter>, for each name <method>ContextTools</method> reads from
+/// <var>pContextJson</var> and, when <var>pWorkflow</var> is a guided workflow's id, for each tool a step
+/// of that workflow names (<method>OcuPilot.Kernel.Agent.Workflow.StepTools</method>), so a workflow
+/// started from a screen whose context lacks a step's tool still holds it; every other tool is left for
+/// the discovery tool to find. An array without the discovery tool is left whole, so no advertised tool
+/// becomes unreachable. A pure function of the array, the context and the catalog.</p>
+ClassMethod Scope(ByRef pTools, pContextJson As %String = "", pWorkflow As %String = "")
 {
     Kill pTools("scoped")
     Set tHasDiscovery = 0
@@ -130,10 +132,19 @@ ClassMethod Scope(ByRef pTools, pContextJson As %String = "")
     }
     If 'tHasDiscovery Quit
     Set tContextTools = ..ContextTools(pContextJson)
+    Set tStepWires = ""
+    If pWorkflow '= "" {
+        Set tRegistry = $ClassMethod(..DispatchClass(), "RegistryClass")
+        Set tStepTools = ##class(OcuPilot.Kernel.Agent.Workflow).StepTools(pWorkflow)
+        Set tPointer = 0
+        While $ListNext(tStepTools, tPointer, tStepTool) {
+            Set tStepWires = tStepWires _ $ListBuild($ClassMethod(tRegistry, "WireName", tStepTool))
+        }
+    }
     Set pTools("scoped") = 1
     For tI = 1:1:+pTools {
         Set tName = $Get(pTools(tI, "name"))
-        If ($Extract(tName, 1, $Length(..#SHELLPREFIX)) = ..#SHELLPREFIX) || $ListFind(tContextTools, tName) Set pTools(tI, "start") = 1
+        If ($Extract(tName, 1, $Length(..#SHELLPREFIX)) = ..#SHELLPREFIX) || $ListFind(tContextTools, tName) || $ListFind(tStepWires, tName) Set pTools(tI, "start") = 1
     }
 }
 
@@ -298,7 +309,7 @@ ClassMethod Run(pKey As %String, pUser As %String, pDefinitionId As %String, pMe
             Do ..LogFault("the turn's tools could not be advertised", tAdvertiseSC, pOutcome("code"))
             Quit
         }
-        Do ..Scope(.tTools, pContext)
+        Do ..Scope(.tTools, pContext, tWorkflow)
         For {
             If ..Boundary(pKey, pUser, pReadOnly, pResources, pStartedSeconds, tBound + tOutput, .tState, .tCode) {
                 If tCode = ##class(OcuPilot.Api.Error).#TURNSTOPPED {
@@ -412,9 +423,10 @@ ClassMethod AddOpeningExchange(pUseBlocks As %DynamicArray, pUserBlocks As %Dyna
 /// <var>pUser</var>'s turn in conversation <var>pConvo</var> (AD-66), as JSON text:
 /// <method>OcuPilot.Kernel.Agent.Workflow.Exchange</method> over the facts about the proposals of the
 /// conversation's newest entry, which is the turn before this one because the current turn's entry is
-/// appended after the loop ends. A turn with no conversation, no earlier entry or no earlier proposal
-/// reports an empty <code>previous</code>; a read that fails is logged under <var>pCode</var> and
-/// reports the same.</p>
+/// appended after the loop ends, and only when that turn ran the same workflow. A turn with no
+/// conversation, no earlier entry, an earlier turn of another workflow or no earlier proposal reports
+/// an empty <code>previous</code>; a read that fails is logged under <var>pCode</var> and reports the
+/// same.</p>
 ClassMethod WorkflowResult(pWorkflow As %String, pUser As %String, pConvo As OcuPilot.Kernel.State.Convo, pCode As %String) As %String
 {
     Set tRows = []
@@ -427,6 +439,12 @@ ClassMethod WorkflowResult(pWorkflow As %String, pUser As %String, pConvo As Ocu
         }
         Set tSeq = $Order(tKeys(""), -1)
         If (tSeq = "") || (tKeys(tSeq) = "") Quit
+        Set tOrderSC = ##class(OcuPilot.Kernel.State.Turn).GuardedWorkflowOf(tKeys(tSeq), .tEarlierWorkflow)
+        If $$$ISERR(tOrderSC) {
+            Do ..LogFault("the earlier turn's guided workflow could not be read; it reports no earlier proposals", tOrderSC, pCode)
+            Quit
+        }
+        If tEarlierWorkflow '= pWorkflow Quit
         Set tRowsSC = ##class(OcuPilot.Kernel.State.Propose).GuardedRowsForTurn(tKeys(tSeq), pUser, .tTurnRows)
         If $$$ISERR(tRowsSC) {
             Do ..LogFault("the earlier turn's proposals could not be read for the guided workflow; it reports none", tRowsSC, pCode)

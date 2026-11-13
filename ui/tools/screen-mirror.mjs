@@ -439,6 +439,17 @@ export function parseWorkflowIds(text) {
   return ids.length === 0 ? null : ids;
 }
 
+/**
+ * The guided-workflow ids the catalog marks `"entry": true` -- offered by an entry control, not by a
+ * prompt (Story 20.36, AD-66) -- in catalog order, or `null` when the catalog cannot be read as
+ * `parseWorkflowIds` reads it.
+ */
+export function parseEntryWorkflowIds(text) {
+  if (parseWorkflowIds(text) === null) return null;
+  const parsed = JSON.parse(extractXData(text, 'Catalog'));
+  return parsed.workflows.filter((entry) => entry.entry === true).map((entry) => entry.id);
+}
+
 /** The ids `WORKFLOW_SOURCE` declares; throws when its catalog cannot be read. */
 export function readWorkflowIds() {
   const ids = parseWorkflowIds(readFileSync(WORKFLOW_SOURCE, 'utf8'));

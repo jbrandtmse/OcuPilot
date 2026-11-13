@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { readFileSync } from 'node:fs';
 
 // Pins the "Explain this entry" hand-off (Story 11.2): when a control shows, the order its three
 // refusal reasons are named in, and that a refused request records nothing for the panel to take.
@@ -10,11 +11,17 @@ import { dirname, join } from 'node:path';
 // - drop the sharing-off arm from `reason()` -> the sharing-off case goes red.
 // - swap the kill-switch and busy arms -> the order case goes red.
 // - record a request whatever `reason()` says -> the refusal case goes red.
+//
+// Story 20.36 adds the request's kind (Mutation, Rule 19):
+// - `request` ignores its `kind` argument -> the kind and default cases go red.
+// - `INVESTIGATE_WORKFLOW` names an id the catalog does not hold, or one not marked `entry` -> the
+//   catalog case goes red.
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
-const { ExplainEntry, KILL_SWITCH_ID, BUSY_REASON_ID, CONTEXT_CHIP_OFF_ID } = await import(
+const { ExplainEntry, INVESTIGATE_WORKFLOW, KILL_SWITCH_ID, BUSY_REASON_ID, CONTEXT_CHIP_OFF_ID } = await import(
   join(uiRoot, 'src', 'app', 'core', 'explain-entry.ts')
 );
+const { parseEntryWorkflowIds, parseWorkflowIds, WORKFLOW_SOURCE } = await import(join(uiRoot, 'tools', 'screen-mirror.mjs'));
 const { screenDeclaration } = await import(join(uiRoot, 'src', 'app', 'testing', 'screen-declaration.ts'));
 
 /** A subscribable fake whose answers a test sets and whose `fire()` notifies its listeners. */
@@ -84,8 +91,35 @@ test('a request is recorded once, taken once, and notifies', () => {
   });
   assert.equal(entry.request(SCREEN, ROW), true);
   assert.equal(notified, 1);
-  assert.deepEqual(entry.take(), { screen: SCREEN, row: ROW });
+  assert.deepEqual(entry.take(), { screen: SCREEN, row: ROW, kind: 'explain' });
   assert.equal(entry.take(), null, 'taking clears it');
+});
+
+test('a request records its kind, and a request that names none is an explain (Story 20.36)', () => {
+  const { entry } = stores();
+  assert.equal(entry.request(SCREEN, ROW, 'investigate'), true);
+  assert.deepEqual(entry.take(), { screen: SCREEN, row: ROW, kind: 'investigate' });
+  assert.equal(entry.request(SCREEN, ROW, 'explain'), true);
+  assert.equal(entry.take().kind, 'explain');
+  assert.equal(entry.request(SCREEN, ROW), true);
+  assert.equal(entry.take().kind, 'explain', 'the default kind');
+});
+
+test('both kinds are refused under each reason, and record nothing (Story 20.36)', () => {
+  for (const kind of ['explain', 'investigate']) {
+    for (const options of [{ killSwitch: true }, { busy: true }, { share: false }]) {
+      const { entry } = stores(options);
+      assert.equal(entry.request(SCREEN, ROW, kind), false, `${kind} ${JSON.stringify(options)}`);
+      assert.equal(entry.take(), null, `${kind} ${JSON.stringify(options)}`);
+    }
+  }
+});
+
+test('the workflow an Investigate request starts is a catalog id marked entry (Story 20.36)', () => {
+  const source = readFileSync(WORKFLOW_SOURCE, 'utf8');
+  assert.equal(INVESTIGATE_WORKFLOW, 'investigate');
+  assert.ok(parseWorkflowIds(source).includes(INVESTIGATE_WORKFLOW), 'it is in the catalog');
+  assert.ok(parseEntryWorkflowIds(source).includes(INVESTIGATE_WORKFLOW), 'and marked entry, so no prompt offers it');
 });
 
 test('a refused or hidden control records nothing for the panel to take', () => {

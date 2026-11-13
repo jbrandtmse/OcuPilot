@@ -55,6 +55,7 @@ import {
   PROMPT_GROUP_KEYS,
   SCREEN_REGISTRY_SOURCE,
   WORKFLOW_SOURCE,
+  parseEntryWorkflowIds,
   parseWorkflowIds,
   tabProblem,
   timelineMemberProblem,
@@ -900,7 +901,7 @@ test('every shipped built screen declares at least three suggested prompts that 
 });
 
 // Story 20.12, AD-66: a suggested prompt's `workflow` is a catalog id, read from `Workflow.cls`'s own
-// `XData Catalog`; every emitted `workflow` in the mirror is one, the nine catalog ids are exactly the
+// `XData Catalog`; every emitted `workflow` in the mirror is one, the ten catalog ids are exactly the
 // ones the instance's `WorkflowCatalog` test holds, and an unknown id reaches the generator as a refusal.
 //
 // Mutation (Rule 19): accept any `workflow` in `suggestedPromptsProblem` -> the corpus test above and
@@ -910,8 +911,8 @@ test('every workflow a prompt names is a catalog id, and the generator refuses a
   const ids = parseWorkflowIds(readFileSync(WORKFLOW_SOURCE, 'utf8'));
   assert.deepEqual(
     ids,
-    ['recoverproduction', 'resendmessages', 'tracemessage', 'systemhealth', 'securityposture', 'slowquery', 'compileclass', 'reviewclass', 'newproject'],
-    'the catalog holds the nine workflows, in order'
+    ['recoverproduction', 'resendmessages', 'tracemessage', 'systemhealth', 'securityposture', 'slowquery', 'compileclass', 'reviewclass', 'newproject', 'investigate'],
+    'the catalog holds the ten workflows, in order'
   );
   const sources = readSources();
   assert.deepEqual(sources.workflowIds, ids, 'readSources reads the same ids');
@@ -923,9 +924,12 @@ test('every workflow a prompt names is a catalog id, and the generator refuses a
       emitted.add(prompt.workflow);
     }
   }
-  assert.deepEqual([...emitted].sort(), [...ids].sort(), 'every catalog workflow is offered by a screen prompt');
+  const entryOnly = parseEntryWorkflowIds(readFileSync(WORKFLOW_SOURCE, 'utf8'));
+  assert.deepEqual(entryOnly, ['investigate'], 'investigate is the one workflow an entry control offers');
+  const prompted = ids.filter((id) => !entryOnly.includes(id));
+  assert.deepEqual([...emitted].sort(), [...prompted].sort(), 'every catalog workflow but an entry one is offered by a screen prompt');
   const checkedIn = readCheckedInMirror();
-  for (const id of ids) assert.ok(checkedIn.includes(`"workflow": "${id}"`), `the checked-in mirror emits '${id}'`);
+  for (const id of prompted) assert.ok(checkedIn.includes(`"workflow": "${id}"`), `the checked-in mirror emits '${id}'`);
 
   const userForm = sources.screens.find((screen) => screen.className === 'OcuPilot.Screen.Descriptor.UserForm');
   const hostile = structuredClone(userForm.declaration);

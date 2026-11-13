@@ -2,7 +2,8 @@
 title: 'Story 20.36: Investigate'
 type: 'feature'
 created: '2026-10-15'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '3db990a9012c1900ab586d39a36285d83e6d4aad'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -151,6 +152,22 @@ Paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`; lines were rea
 
 ## Review Triage Log
 
+### 2026-11-12 - Review pass
+
+- verdicts: 11 findings - high 0, medium 1, low 4, false 6, maybe-false 0
+- findings:
+  - `[medium]` `patch` Matrix rows "Already in a workflow" and "Follow-up" had no 20.36 test - added a `panel.spec.ts` test (a compileclass workflow, then Investigate replaces it, then a typed message carries it); mutation line written, red observed.
+  - `[low]` `patch` AC2/AC3 pins (the new buttons' aria values, the hub header, `StepTools`, `parseEntryWorkflowIds`, the hub rule) had no `mutation:` line - each mutation applied, red observed, reverted byte-identical; six lines written.
+  - `[low]` `patch` `TestEveryWorkflowIsOfferedByABuiltScreen` skipped an id that did not resolve without an assertion - it now asserts the id resolves.
+  - `[false]` `reject` The hub layout has no geometry check - `log-hub.browser-spec.mjs` walks the hub structurally; `min-width: 0` on `.ocu-log-hub-rows-explain` turned it red, and the restored rule is green.
+  - `[false]` `reject` Explain chosen while Investigate is active goes out as an investigate turn - the spec names this as a limit (20.12's rule: the active workflow rides every send), so it is by design.
+  - `[low]` `reject` `Loop.WorkflowResult`'s unreadable-earlier-turn branch is untested - it mirrors the sibling branch below it, which is also untested; a fault-injection test costs more than the branch.
+  - `[low]` `reject` `suggested-prompts.test.mjs` title says "nine catalog workflows" - still true of the nine prompted ones.
+  - `[false]` `reject` Intent audit: Loop and Workflow edits go past a catalog entry - DW-2468 and DW-2469 are tasks of this spec, and no file in the spec's Never list was edited.
+  - `[false]` `reject` Intent audit: the buttons are wrapped and two row classes added - the spec orders the wrapper; no existing grid track or Explain attribute changed, and the browser walk needed the width classes.
+  - `[false]` `reject` Intent audit: the log viewer is not among the four named entry points - the spec's task list names it, and AC1 drives it.
+  - `[false]` `reject` Intent audit: follow-up and replace are only covered in the browser spec - covered now by the patched panel test above.
+
 ## Design Notes
 
 **Governing ADs.**
@@ -267,9 +284,42 @@ EXPERIENCE.md: add a Fixed strings row after :268 for the three: "an entry's Inv
 | AC2 | `.ocu-log-entry-actions` takes `nowrap` off and a fixed width that overflows the track | the browser `cardViolations` leg |
 | AC3 | `investigate` gains `"writes": ["permissions.users.delete"]` | `WorkflowCatalog`' entry leg, and `WorkflowLoop`'s write leg (it mints) |
 
+**Pinning mutations (Rule 19), on `ocupilot-b-ci`.** Each was applied, observed red and reverted byte-identical (`cmp` against a copy), with the tree reloaded or the bundle rebuilt and redeployed.
+
+- mutation: `onExplainEntry` sends no workflow for `investigate` -> `panel.spec.ts`'s 20.36 send test, and the browser AC1 leg at its opening-order assertion (bundle rebuilt and redeployed).
+- mutation: the catalog's `investigate` entry is removed -> `WorkflowLoop` (four tests), `WorkflowCatalog` (three) and `explain-entry.test.mjs`'s catalog test.
+- mutation: `Loop.Run` skips `Citations.Cite` in a workflow turn -> `TurnCitations`' investigate test alone.
+- mutation: `ExplainEntry.request` ignores `kind` -> `explain-entry.test.mjs`'s kind test and the four page specs' Investigate tests.
+- mutation: the error log drops its investigate item -> `error-log.page.spec.ts`'s labels pin and three other tests.
+- mutation: `.ocu-log-rows-explain` takes `min-width: 0` -> the browser AC2 `cardViolations` leg (35px past the row at 720; bundle rebuilt and redeployed).
+- mutation: `investigate` gains `"writes": ["permissions.users.delete"]` -> `WorkflowCatalog`'s entry and no-write tests and `WorkflowLoop`'s opening test; with `"writes": ["probe.counter.write"]` -> `WorkflowLoop`'s write test, where the tool runs.
+- mutation: `Loop.Scope` ignores the workflow argument (DW-2468) -> `WorkflowLoop`'s step-tools test alone.
+- mutation: `Loop.WorkflowResult` skips the earlier turn's workflow check (DW-2469) -> `WorkflowLoop`'s previous test alone.
+- mutation: the new log viewer Investigate button drops `aria-disabled` -> `log-viewer.spec.ts`'s 20.36 refusal test alone.
+- mutation: the hub's hidden header reads `agentExplainEntryAction` again -> `log-hub.page.spec.ts`'s 20.36 test alone.
+- mutation: `Workflow.StepTools` skips `writes` -> `WorkflowCatalog`'s step-tools and exchange tests (reloaded, then restored and green).
+- mutation: `parseEntryWorkflowIds` keeps no entry -> `explain-entry.test.mjs`'s entry test and `screen-mirror.test.mjs`'s prompt-roster test.
+- mutation: `.ocu-log-hub-rows-explain` takes `min-width: 0` -> `log-hub.browser-spec.mjs`'s structural walk (bundle rebuilt and redeployed, then restored and green).
+- mutation: `TurnStore.send` prefers the active workflow over the argument (`this.workflowValue ?? workflow`) -> `panel.spec.ts`'s replace-and-follow-up test alone.
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-Planned against Story 20.12's planned code, which is not built yet; Task 0 halts if 20.12 has not merged into `OCU-1-epic20`. The spine drafts in Design Notes await the lead at the spec gate.
+**Change.** Investigate this entry sits beside Explain this entry on the log viewer rows, the error log menu, the audit dialog and the hub (sources and timeline). It sends the explain-entry turn with the `investigate` workflow, a read-only `entry` workflow in 20.12's catalog; the gate is Explain's. DW-2468 (`Loop.Scope` holds a running workflow's step tools) and DW-2469 (`previous` only for the same workflow) are closed in this story.
+
+**Files.**
+
+- Server: `Kernel/Agent/Workflow.cls` (the entry, `StepTools`), `Kernel/Agent/Loop.cls` (`Scope`, `WorkflowResult`), tests `WorkflowCatalog`, `WorkflowLoop`, `TurnCitations`.
+- Client: `core/explain-entry.ts` (kind), `shell/panel.ts`, the four pages and `log-viewer.page.ts`, `core/strings.ts` (three strings), `_components.scss` (three add-only rules), `ui/tools/screen-mirror.mjs` (`parseEntryWorkflowIds`).
+- Client tests: `explain-entry.test.mjs`, `screen-mirror.test.mjs`, the four page specs, `panel.spec.ts`, and the new `ui/browser/investigate-entry.browser-spec.mjs`; `explain-entry.browser-spec.mjs`' label pin.
+- Docs: EXPERIENCE.md, the three strings added to the existing :268 row (a new row would shift about 3,500 citations).
+
+**Review.** 11 findings: patches applied 3 (one medium: the replace and follow-up matrix rows now have a panel test; two low: six mutation lines, an assertion on an unresolved catalog id), deferred 0, rejected 8 with reasons in the Review Triage Log.
+
+**Verification (`ocupilot-b-ci`).** `WorkflowCatalog`, `WorkflowLoop`, `TurnCitations`, `TurnGrounding`, `ScreenGrounding`, `TurnSanitize`, `TurnScope`, `TurnScopeFamilies`, `WorkflowTurn`, `WorkflowGates` and `Descriptor` green (the implement pass; `WorkflowCatalog` again after the patch, 10 of 10). `test:tools` 2193 of 2193 and `test:components` 3356 of 3356 after the patch. Browser: `investigate-entry` 4, `explain-entry` 4, `error-log-actions` 3, `log-hub` 6, `secondary-logs` 7 green. Initial bundle 2.02 MB against the 2500 kB warning (the spec expected about 1.97 MB; no baseline was measured). `check-objectscript` and `lint-docs` clean. Mutations: fifteen, each red and reverted byte-identical (lines under Verification).
+
+**Decided in-stage.** The EXPERIENCE.md placement above. Two width classes (`.ocu-log-rows-explain`, `.ocu-log-hub-rows-explain`) keep two buttons inside their row at 720, found by the browser walk; no existing track changed. The audit dialog's two buttons sit in separate `@if` blocks for Angular's slot projection. `fire()` in `testing/explain-entry.ts` is unchanged (it only notifies); the page specs read `take().kind`.
+
+**Residual risks.** The runner's full ObjectScript sweep, `npm test`, the smoke and Rule 30's fresh check, and the full browser suite in CI, have not run. The unreadable-earlier-turn branch of `WorkflowResult` has no test (low, rejected).

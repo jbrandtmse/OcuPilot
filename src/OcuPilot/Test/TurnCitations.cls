@@ -197,4 +197,45 @@ Method TestAFinishedTurnCarriesItsCitationsOnThePollAndTheRestore()
     Do $$$AssertEquals(tRestored.turns.%Get(1).%Get("citations").%ToJSON(), tExpected, "and the restored entry carries the citation")
 }
 
+/// <p>An <code>investigate</code> turn (Story 20.36) that read the Users screen and the messages.log, and replied
+/// naming <code>_SYSTEM</code> and a messages.log line, cites <code>_SYSTEM</code> alone: a log row has no citable id,
+/// so it stays text (a named limit). The finished turn's poll carries that one citation.</p>
+/// <p>Mutation: <method>OcuPilot.Kernel.Agent.Loop.Run</method> skips <code>Citations.Cite</code> in a workflow turn
+/// -> this goes red.</p>
+Method TestAnInvestigateTurnCitesARowItRead()
+{
+    Do $ClassMethod(..#LOOP, "SetLimitsClass", "OcuPilot.Kernel.Agent.Limits")
+    Set tCalls = [{"id": "toolu_1", "name": "permissions_users_read", "input": {}}, {"id": "toolu_2", "name": "logs_messages_read", "input": {}}]
+    Do $ClassMethod(..#STUB, "QueueAnswer", 200, ##class(OcuPilot.Test.TurnTools).Reply("", tCalls))
+    Do $ClassMethod(..#STUB, "QueueAnswer", 200, ##class(OcuPilot.Test.TurnTools).Reply("Recap: `_SYSTEM` was in use. Hypotheses: 1. `2026-11-12 09:00:01 a probe line` points at the instance."))
+    Set tRow = ##class(OcuPilot.Kernel.State.Agent).%New()
+    Set tRow.Name = "OcuPilotProbeAgentTurnCitations"
+    Set tRow.Provider = "probe-local"
+    Set tRow.Model = "probe-local-model-1"
+    Set tRow.EndpointUrl = "https://api.anthropic.com/v1/messages"
+    Set tRow.CredType = "env"
+    Set tRow.EnvVarName = "OCUPILOT_PROBE_LOCAL_KEY"
+    Set tRow.MaxTokens = 4000
+    Set tRow.MaxIterationsPerTurn = 10
+    Set tRow.Enabled = 1
+    Set tRow.ConnectionVerified = 1
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Agent).GuardedCreate(tRow), "a probe definition is created")
+    Set tId = tRow.%Id()
+    Set tRow = ""
+    Set tLimits = "OcuPilot.Kernel.Agent.Limits"
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Turn).GuardedReserve($Username, tId, "TURN.ABANDONED.JOBLOST", tLimits, .tKey, .tBusy, .tSweep), "the turn is reserved")
+    If $Get(tKey) = "" Quit
+    Set ..PreparedKeys(tKey) = ""
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Turn).GuardedBegin(tKey, $Username, tLimits, .tBegun, .tStarted, "", "investigate"), "the turn begins with the investigate workflow")
+    Set tContext = "{""route"":""logs/messages"",""namespace"":""HSCUSTOM"",""tools"":[],""view"":{""rows"":[{""time"":""2026-11-12T09:00:01.000"",""severity"":""0"",""text"":""a probe line""}],""rowsAvailable"":1,""selected"":0}}"
+    Set tSC = $ClassMethod(..#LOOP, "Run", tKey, $Username, tId, "Investigate the selected entry", 0, ##class(OcuPilot.Api.Router).#ADMINRESOURCES, tStarted, .tOutcome, tContext)
+    Do $$$AssertStatusOK(tSC, "the loop returns")
+    Do $$$AssertEquals(tOutcome("state"), "completed", "the turn completes")
+    Set tExpected = "[{""type"":""user"",""scope"":""instance"",""id"":""_SYSTEM"",""route"":""permissions/users"",""label"":""_SYSTEM""}]"
+    Do $$$AssertEquals($Get(tOutcome("citations")), tExpected, "only the row a citable read returned is cited; the messages.log line is text")
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Turn).GuardedFinish(tKey, $Username, tOutcome("state"), tOutcome("code"), tOutcome("limit"), tOutcome("reply"), tOutcome("errorSeq"), tLimits, $Get(tOutcome("citations"))), "the turn is finished")
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Turn).GuardedView(tKey, $Username, .tFound, .tView), "the poll reads")
+    Do $$$AssertEquals($Select($IsObject($Get(tView)): tView.%Get("citations").%ToJSON(), 1: ""), tExpected, "the poll carries exactly that citation")
+}
+
 }
