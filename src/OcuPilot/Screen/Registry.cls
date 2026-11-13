@@ -266,7 +266,8 @@ ClassMethod Validate(Output pProblem As %String) As %Status
             }
             ; A pair missing either half is dropped by Area.PairsFrom rather than carried, so a
             ; descriptor that misspells "permission" would otherwise declare a gate and ship
-            ; ungated. The refusal is here because the drop is silent by design everywhere else.
+            ; ungated, and a half that is not a string would be read as its text. The refusal is
+            ; here because the drop is silent by design everywhere else.
             Set tBadPair = ..MalformedPair(tObject.%Get("privileges"))
             If tBadPair '= "" {
                 Set pProblem = tClass _ ": declared privilege pair " _ tBadPair _ " is missing its resource or its permission"

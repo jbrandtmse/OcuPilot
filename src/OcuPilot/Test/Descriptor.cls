@@ -1162,7 +1162,7 @@ Method TestTheAllowedDirectoriesListDeclaresThePathSource()
 
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DeclarationProblem(tDeclaration), "", "the declaration validates")
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ReadProblem(tDeclaration), "", "including its read")
-    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).OwnPrivilegesProblem(tDeclaration), "", "and its own pair")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).OwnPrivilegesProblem(tDeclaration, ##class(OcuPilot.Screen.Area).PrivilegePairs(tDeclaration.area)), "", "and its own pair")
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ClassicLinkProblem(tDeclaration), "", "and it links out to nothing")
     Do $$$AssertEquals(tDeclaration.read.source.%ToJSON(), "{""port"":""path"",""endpoint"":""roots"",""type"":""LIST""}", "the allow-list's roots are the read's source (AD-21, AD-36)")
     Do $$$AssertTrue($ListFind($ListFromString(##class(OcuPilot.Port.PathPort).#SOURCES), tDeclaration.read.source.endpoint) > 0, "and its endpoint is one of the port's sources")
@@ -1232,7 +1232,7 @@ Method TestTheSixSecondaryLogViewersDeclareTheirSourceAndPair()
         Set tDeclaredSpec = ##class(OcuPilot.Kernel.Audit.Ledger).PairsToString($ClassMethod(tClass, "PrivilegePairs"), .tCut)
         Do $$$AssertEquals(tDeclaredSpec, tPortSpec, tClass _ ": declares the port's pair for its key")
         Do $$$AssertEquals(##class(OcuPilot.Kernel.Audit.Ledger).PairsToString($ClassMethod(tClass, "OwnPrivilegePairs"), .tCut), $Piece(tRow, "|", 5), tClass _ ": declares its own exactly the pairs the logs area does not carry")
-        Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).OwnPrivilegesProblem(tDeclaration), "", tClass _ ": each one of its privileges")
+        Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).OwnPrivilegesProblem(tDeclaration, ##class(OcuPilot.Screen.Area).PrivilegePairs("logs")), "", tClass _ ": each one of its privileges and none the logs area declares")
         Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).AreaCoverageProblem("logs", $ClassMethod(tClass, "PrivilegePairs"), $ClassMethod(tClass, "OwnPrivilegePairs")), "", tClass _ ": which the logs area covers, less its own")
         Do $$$AssertEquals(tDeclaration.id.%ToJSON(), "{""kind"":""none"",""parts"":[]}", tClass _ ": a log entry has no id (AD-13)")
         Do $$$AssertEquals(tDeclaration.suggestedPrompts.%Size(), 3, tClass _ ": three suggested prompts")
@@ -1322,12 +1322,17 @@ Method TestAnAreaThatDoesNotCoverItsScreensPairsIsRefused()
 /// <method>OcuPilot.Screen.Registry.AreaCoverageProblem</method> passes an own pair and still
 /// refuses an extra pair not declared own, beside one that is; and
 /// <method>OcuPilot.Screen.Registry.Validate</method> refuses <class>OcuPilot.Test.OwnPair.Bad</class>,
-/// whose own pair is not among its privileges.</p>
+/// whose own pair is not among its privileges, and <class>OcuPilot.Test.OwnPairArea.Bad</class>, whose
+/// own pair the shipped <code>logs</code> area declares.</p>
 /// <p>Mutation: make <method>OcuPilot.Screen.Registry.AreaCoverageProblem</method> ignore
 /// <var>pOwnPairs</var> -&gt; the own-pair coverage assertion and the production roster in
 /// <method>TestAnAreaThatDoesNotCoverItsScreensPairsIsRefused</method> go red. Delete the
 /// <method>OcuPilot.Screen.Registry.OwnPrivilegesProblem</method> call from
-/// <method>OcuPilot.Screen.Registry.Validate</method> -&gt; the fixture-roster assertion goes red.</p>
+/// <method>OcuPilot.Screen.Registry.Validate</method> -&gt; the fixture-roster assertion goes red.
+/// Make <method>OcuPilot.Screen.Registry.OwnPrivilegesProblem</method> ignore
+/// <var>pAreaPairs</var>, or call it from <method>OcuPilot.Screen.Registry.Validate</method> without
+/// the area's pairs -&gt; the area corpus cases or the <code>OwnPairArea.Bad</code> assertion go
+/// red.</p>
 Method TestAPairAScreenDeclaresItsOwnIsLeftOutOfItsAreasCoverage()
 {
     Set tSC = ##class(OcuPilot.Test.DeclarationCorpus).OwnPrivilegeCorpus(.tCorpus)

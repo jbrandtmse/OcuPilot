@@ -2677,9 +2677,10 @@ test('ownPrivilegesProblem returns every sentence OwnPrivilegeCases declares, an
   }
   assert.ok(refusals > 0, 'the corpus carries at least one refusing case');
 
-  const { screens } = readSources();
+  const { screens, areas } = readSources();
   for (const screen of screens) {
-    assert.equal(ownPrivilegesProblem(screen.declaration), null, `${screen.className}'s own pairs pass`);
+    const area = areas.find((candidate) => candidate.key === screen.declaration.area);
+    assert.equal(ownPrivilegesProblem(screen.declaration, area?.privileges), null, `${screen.className}'s own pairs pass`);
   }
   const owners = screens.filter((screen) => Array.isArray(screen.declaration.ownPrivileges)).map((screen) => screen.className);
   // Story 16.3, DW-1018 (Option A): the Logs area's two, and the thirteen wallet and OAuth 2.0

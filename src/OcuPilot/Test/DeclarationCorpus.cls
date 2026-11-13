@@ -17,7 +17,8 @@
 /// <file>ui/tools/screen-mirror.test.mjs</file> (AD-8). Each case is a declaration holding the
 /// block's <code>area</code> and <code>privileges</code> and, when the case carries one, its
 /// <code>ownPrivileges</code>, with the exact sentence both engines return, or <code>null</code>.
-/// Both engines are given the block's <code>areaPrivileges</code> as the area's declared set.</p>
+/// Both engines are given the block's <code>areaPrivileges</code> as the area's declared set, a
+/// synthetic set rather than the shipped area's.</p>
 Class OcuPilot.Test.DeclarationCorpus Extends %RegisteredObject
 {
 
@@ -25,13 +26,13 @@ XData OwnPrivilegeCases
 {
 {
   "area": "logs",
-  "areaPrivileges": [{"resource": "%Admin_Operate", "permission": "USE"}],
-  "privileges": [{"resource": "%Admin_Task", "permission": "USE"}, {"resource": "%DB_IRISSYS", "permission": "READ"}, {"resource": "%Admin_Operate", "permission": "USE"}],
+  "areaPrivileges": [{"resource": "%Admin_Operate", "permission": "USE"}, {"resource": "%Admin_Secure", "permission": "USE"}],
+  "privileges": [{"resource": "%Admin_Task", "permission": "USE"}, {"resource": "%DB_IRISSYS", "permission": "READ"}, {"resource": "%Admin_Operate", "permission": "USE"}, {"resource": "%Admin_Operate", "permission": "READ"}],
   "cases": [
     {"name": "no ownPrivileges is sound", "expected": null},
     {"name": "an empty ownPrivileges is sound", "ownPrivileges": [], "expected": null},
     {"name": "one declared pair owned is sound", "ownPrivileges": [{"resource": "%Admin_Task", "permission": "USE"}], "expected": null},
-    {"name": "every declared pair owned is sound", "ownPrivileges": [{"resource": "%DB_IRISSYS", "permission": "READ"}, {"resource": "%Admin_Task", "permission": "USE"}], "expected": null},
+    {"name": "every declared pair the area does not declare, owned, is sound, an area resource at another permission included", "ownPrivileges": [{"resource": "%DB_IRISSYS", "permission": "READ"}, {"resource": "%Admin_Task", "permission": "USE"}, {"resource": "%Admin_Operate", "permission": "READ"}], "expected": null},
     {"name": "a string is not an array of pairs", "ownPrivileges": "%Admin_Task:USE", "expected": "ownPrivileges is not an array of privilege pairs"},
     {"name": "nor is a single pair object", "ownPrivileges": {"resource": "%Admin_Task", "permission": "USE"}, "expected": "ownPrivileges is not an array of privilege pairs"},
     {"name": "a pair missing its permission", "ownPrivileges": [{"resource": "%Admin_Task"}], "expected": "declared own privilege pair #1 is missing its resource or its permission"},
@@ -43,6 +44,8 @@ XData OwnPrivilegeCases
     {"name": "the first undeclared pair is named, past a declared one and ahead of a second", "ownPrivileges": [{"resource": "%Admin_Task", "permission": "USE"}, {"resource": "%Admin_Journal", "permission": "USE"}, {"resource": "%Admin_Manage", "permission": "USE"}], "expected": "own privilege pair %Admin_Journal:USE is not one of the screen's declared privileges, and a screen owns only a pair it requires (AD-8)"},
     {"name": "an own pair the area already declares", "ownPrivileges": [{"resource": "%Admin_Operate", "permission": "USE"}], "expected": "own privilege pair %Admin_Operate:USE is one its area 'logs' already declares, and a screen owns only a pair it requires beyond its area's (AD-8)"},
     {"name": "the area's pair is named past an own pair the area does not declare", "ownPrivileges": [{"resource": "%Admin_Task", "permission": "USE"}, {"resource": "%Admin_Operate", "permission": "USE"}], "expected": "own privilege pair %Admin_Operate:USE is one its area 'logs' already declares, and a screen owns only a pair it requires beyond its area's (AD-8)"},
+    {"name": "the area's pair is named ahead of an undeclared one", "ownPrivileges": [{"resource": "%Admin_Operate", "permission": "USE"}, {"resource": "%Ens_EventLog", "permission": "USE"}], "expected": "own privilege pair %Admin_Operate:USE is one its area 'logs' already declares, and a screen owns only a pair it requires beyond its area's (AD-8)"},
+    {"name": "an area pair the screen does not declare is refused as undeclared", "ownPrivileges": [{"resource": "%Admin_Secure", "permission": "USE"}], "expected": "own privilege pair %Admin_Secure:USE is not one of the screen's declared privileges, and a screen owns only a pair it requires (AD-8)"},
     {"name": "a resource that is not a string", "ownPrivileges": [{"resource": 5, "permission": "USE"}], "expected": "declared own privilege pair #1 is missing its resource or its permission"},
     {"name": "a permission that is not a string", "ownPrivileges": [{"resource": "%Admin_Task", "permission": true}], "expected": "declared own privilege pair #1 is missing its resource or its permission"},
     {"name": "an entry that is an array, not a pair", "ownPrivileges": [["%Admin_Task", "USE"]], "expected": "declared own privilege pair #1 is missing its resource or its permission"}
