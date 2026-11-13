@@ -1743,3 +1743,10 @@
 2026-11-12T23:18:13Z	Story 23.9	ci_green_verified	batch=4(pass2) runs=43292059964,43309263027,43316537748(staging;attempt2_after_DW-2493_flake) head=8947b8d2 result=success by=orchestrator
 2026-11-12T23:18:13Z	Story 23.9	merged	batch=4(pass2) feature=8947b8d2 mode=fast_forward(staging_own_CI_green) checks=ledger_entry_check_0(1983),dup_none,sprint_validate_ok upgrade_triggers=none ledger=DW-2259,DW-2260,DW-1981,DW-1706_resolved;DW-2523_dropped_as_dup_of_DW-2522
 2026-11-12T23:18:13Z	ci	timings_refreshed	rule=29 run=43316537748 test_tools=2188/2188
+2026-11-13T00:23:41Z	orchestrator	owner_decision	id=U-22 at=2026-11-13T00:21:35Z#75 via=relay by=planner quote="" effect=none(veto_kept)
+2026-11-13T00:23:41Z	orchestrator	owner_decision	id=U-23 at=2026-11-13T00:23:12Z#76 via=relay by=planner quote="" effect=none(veto_kept)
+2026-11-13T00:23:41Z	orchestrator	owner_decision	id=U-24 at=2026-11-13T00:23:12Z#77 via=relay by=planner quote="" effect=none(veto_kept)
+2026-11-13T00:23:41Z	orchestrator	owner_decision	id=U-25 at=2026-11-13T00:23:13Z#78 via=relay by=planner quote="" effect=none(veto_kept)
+2026-11-13T00:23:41Z	orchestrator	owner_decision	id=U-26 at=2026-11-13T00:23:13Z#79 via=relay by=planner quote="" effect=none(veto_kept)
+2026-11-13T00:51:09Z	Epic 23	runner_reported	boundary=23.9_pass3(batch5) via=SendMessage(runner->main) code_heads=001b78bd(43327519764_success),a0fda1b4(43334908833_success) tip=f9039f2fd(code-equal_to_a0fda1b4_but_ci-timings.json) product=Write.cls(add-only)+16_delete_tools(epic20_untouched) ledger=DW-2299_resolved;DW-2525(med,routed_23.10);DW-2524(flake,23.10) shas_verified=yes
+2026-11-13T00:51:09Z	Story 23.9	merged	batch=5(pass3) feature=f9039f2fd mode=fast_forward(tip_code-equal_to_green_a0fda1b4_except_generated_ci-timings) checks=ledger_entry_check_1(DW-2522_occurrence_misplaced_by_union_merge->restated),dup_none,sprint_validate_ok upgrade_triggers=none ledger_dups=DW-2493_dropped_as_dup_of_DW-2524
