@@ -12616,3 +12616,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: CI run 43445087881 (staging c2b0262a) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: Red once, green on the unchanged rerun (--failed) of the same run; the filtered list held only /csp/myapp, so the subset check had nothing else to drop (inference: the list read before its other rows arrived)
 - 2026-11-13T15:58:45Z status=routed owner=burndown by=harvest note=CI flake for the Epic 20 burn-down
+
+### DW-2535: order or timing dependence: InteropItemRun.TestAStartThePortCannotFinishIsPending read the Productions Update as 409 INTEROP.PRODUCTION.UPTODATE right after Facts read needs=1 (CI instance shard 8/8 of staging c2b0262a)
+- source: CI run 43445087881 (staging c2b0262a), Story 20.25's test | severity: med | fix-risk: med | footprint: in-footprint
+- evidence: Red on attempt 1 and on the unchanged --failed rerun, after Installer and InteropItemRefusals; green on 8127b55f (43439116625), on staging ec81a3ec (43449535161), and locally in the same 26-class order on ocupilot-b-ci (runs 66-68, 69-94); the port's start path has no deferred update, so what applied the pending update is not known
+- 2026-11-13T16:12:54Z status=routed owner=burndown by=harvest note=Priority for the Epic 20 burn-down: find what applies the pending update between the Facts read and the Act (inference: a slower runner lets the vendor apply it), then harden the test or the start path
