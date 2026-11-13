@@ -57,6 +57,8 @@ const SENTENCES = [
   ['REASONITEMSOURCECONTROL', 'interopItemRefusalSourceControl'],
   ['REASONITEMPENDING', 'interopItemPendingConsequence'],
   ['REASONITEMREMOVE', 'interopItemRemoveConsequence'],
+  ['REASONITEMCOPY', 'interopItemCopyConsequence'],
+  ['REASONITEMCOPYSOURCE', 'interopItemRefusalCopySource'],
   ['REASONITEMNOTENABLED', 'interopItemRefusalNotEnabled'],
   ['REASONITEMTEMPSTOPPED', 'interopItemRefusalTempStopped'],
   ['REASONITEMNOTTEMPSTOPPED', 'interopItemRefusalNotTempStopped'],

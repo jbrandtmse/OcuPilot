@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { ApiService } from '../../core/api';
 import { ChangeBus } from '../../core/change-bus';
-import { encodeEntityId } from '../../core/entity-id';
+import { encodeEntityId, joinCompositeId } from '../../core/entity-id';
 import { OverlayStack } from '../../core/overlay-stack';
 import { ScopeService } from '../../core/scope';
 import { ScreenActions } from '../../core/screen-actions';
@@ -15,7 +15,8 @@ import { STRINGS } from '../../core/strings';
 import { ListPage } from '../../shell/list-page';
 import { stubAccountPreferences } from '../../testing/account-preferences';
 import { InteropItemAddDialog } from './interop-item-add-dialog';
-import { INTEROP_ITEM_ADD_ACTION, INTEROP_ITEM_LIST, InteropItemListPage } from './interop-item-list.page';
+import { InteropItemCopyDialog } from './interop-item-copy-dialog';
+import { INTEROP_ITEM_ADD_ACTION, INTEROP_ITEM_COPY_ACTION, INTEROP_ITEM_LIST, InteropItemListPage } from './interop-item-list.page';
 
 /**
  * The Production items page (Stories 20.3, 20.8). The shared list page and the add dialog are replaced by stand-ins, so
@@ -33,6 +34,15 @@ class StubAddDialog {
   readonly namespace = input<string>('');
 
   readonly production = input.required<string>();
+}
+
+@Component({ selector: 'app-interop-item-copy-dialog', template: '<span data-stub-copy>{{ production() }}|{{ source() }}</span>' })
+class StubCopyDialog {
+  readonly namespace = input<string>('');
+
+  readonly production = input.required<string>();
+
+  readonly source = input.required<string>();
 }
 
 const DIAGRAM_ROUTE = 'interoperability/productions/diagram';
@@ -63,8 +73,8 @@ async function mount(url: string) {
     ],
   });
   TestBed.overrideComponent(InteropItemListPage, {
-    remove: { imports: [ListPage, InteropItemAddDialog] },
-    add: { imports: [StubListPage, StubAddDialog] },
+    remove: { imports: [ListPage, InteropItemAddDialog, InteropItemCopyDialog] },
+    add: { imports: [StubListPage, StubAddDialog, StubCopyDialog] },
   });
   const router = TestBed.inject(Router);
   await router.navigateByUrl(url);
@@ -73,7 +83,7 @@ async function mount(url: string) {
   planted.push(fixture.nativeElement);
   fixture.detectChanges();
   await settle(fixture);
-  return { fixture, host: fixture.nativeElement as HTMLElement, router, actions: TestBed.inject(ScreenActions) };
+  return { fixture, host: fixture.nativeElement as HTMLElement, router, actions: TestBed.inject(ScreenActions), stores: TestBed.inject(ScreenStores) };
 }
 
 const link = (host: HTMLElement): HTMLAnchorElement | null => host.querySelector('.ocu-interop-item-links a.ocu-details-link');
@@ -142,6 +152,36 @@ describe('the Production items page', () => {
     }
     expect(preventedByPage[5], 'a plain click is handled by the page').toBe(true);
     expect(decodeURIComponent(decodeURIComponent(router.url))).toBe(`/${DIAGRAM_ROUTE}/Demo.One?ns=USER`);
+  });
+
+  // Mutation (Rule 19): the page does not register `copy`, or reads the production's name where the item's belongs -> this goes red.
+  it('Story 20.40: Copy opens the copy dialog on the selected row\u2019s name for the production the route names, and opens nothing with no selection', async () => {
+    const { fixture, host, actions, stores } = await mount(itemsUrl('Demo.One'));
+    const screen = SCREENS.find((entry) => entry.descriptor === INTEROP_ITEM_LIST);
+    const store = stores.for(INTEROP_ITEM_LIST, screen?.refreshRates ?? []);
+    actions.run(INTEROP_ITEM_LIST, INTEROP_ITEM_COPY_ACTION);
+    await settle(fixture);
+    expect(host.querySelector('[data-stub-copy]'), 'no selection, no dialog').toBeNull();
+    store.setSelection([joinCompositeId(['Demo.One', 'Op1'])]);
+    actions.run(INTEROP_ITEM_LIST, INTEROP_ITEM_COPY_ACTION);
+    await settle(fixture);
+    expect(host.querySelector('[data-stub-copy]')?.textContent?.trim()).toBe('Demo.One|Op1');
+    actions.run(INTEROP_ITEM_LIST, INTEROP_ITEM_ADD_ACTION);
+    await settle(fixture);
+    expect(host.querySelector('[data-stub-production]'), 'the add never opens over the copy dialog').toBeNull();
+  });
+
+  // Mutation (Rule 19): `onOpenCopy` ignores an open add dialog -> the stacked-dialog leg goes red.
+  it('Story 20.40: Copy never opens over an open add dialog', async () => {
+    const { fixture, host, actions, stores } = await mount(itemsUrl('Demo.One'));
+    const screen = SCREENS.find((entry) => entry.descriptor === INTEROP_ITEM_LIST);
+    stores.for(INTEROP_ITEM_LIST, screen?.refreshRates ?? []).setSelection([joinCompositeId(['Demo.One', 'Op1'])]);
+    actions.run(INTEROP_ITEM_LIST, INTEROP_ITEM_ADD_ACTION);
+    await settle(fixture);
+    expect(host.querySelector('[data-stub-production]'), 'the add dialog is open').not.toBeNull();
+    actions.run(INTEROP_ITEM_LIST, INTEROP_ITEM_COPY_ACTION);
+    await settle(fixture);
+    expect(host.querySelector('[data-stub-copy]'), 'the copy never opens over the add dialog').toBeNull();
   });
 
   // Mutation (Rule 19): the link is drawn whatever the route names -> the bare-route leg goes red.

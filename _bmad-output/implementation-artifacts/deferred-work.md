@@ -11248,6 +11248,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-11T09:31:48Z status=routed owner=20-23-queue-and-job-actions by=lead note=returned from 23-7 by orchestrator ruling: a 2f2e972f re-own trailer was copied under it by a later ledger merge; its owner was 20-23, never range-end-cleanup
 - 2026-10-11T09:33:14Z status=routed owner=20-25-item-runtime-and-configuration-actions by=spec_gate note=20.23 declines it (item operations, not queue or job actions); Story 20.25 chartered for it
 - 2026-11-13T08:55:33Z status=routed owner=20-40-item-copy-and-change-of-class by=adjudication note=stop, start and restart delivered by 20.25; copy remains (20.40), then change class (20.41 bullet)
+- 2026-11-13T16:40:28Z status=routed owner=20-41-item-change-of-class by=adjudication note=copy residual resolved by 20.40 (interop.items.copy, POST /interop/items/copy, Copy row action; InteropItemCopy 8/8); the change-of-class residual remains, for Story 20.41
 
 ### DW-2278: Rule 31: the Superserver, MFT and Doc DB slices each carry their own Save, Rules and form of one shape; one base would serve all three
 - source: spec-18-30-doc-db-applications.md | severity: med | fix-risk: med | footprint: in-epic
@@ -12624,3 +12625,18 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: cycle-log-epic-23.md (23.10 batch 3 sweep, shard 17 resumed) | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: s17.log 18:0xZ; rerun 18:31Z 4/4 green; no CI occurrence found; Epic 23 never changed the class
 - 2026-11-13T18:31:20Z status=wontfix-accepted owner=23-10-the-range-end-cleanup-part-9-two-sweeps by=lead note=reopen_if=it recurs on a lead sweep or in a CI run (inference: a cube cache write still in flight when Remove ran)
+### DW-2534: flake: web-applications.browser-spec.mjs AC5 filterToSubset on "myapp" left 1 of 1 rows (expected a proper subset holding /csp/myapp) in CI browser shard 4/5
+- source: CI run 43445087881 (staging c2b0262a) | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: Red once, green on the unchanged rerun (--failed) of the same run; the filtered list held only /csp/myapp, so the subset check had nothing else to drop (inference: the list read before its other rows arrived)
+- 2026-11-13T15:58:45Z status=routed owner=burndown by=harvest note=CI flake for the Epic 20 burn-down
+
+### DW-2535: order or timing dependence: InteropItemRun.TestAStartThePortCannotFinishIsPending read the Productions Update as 409 INTEROP.PRODUCTION.UPTODATE right after Facts read needs=1 (CI instance shard 8/8 of staging c2b0262a)
+- source: CI run 43445087881 (staging c2b0262a), Story 20.25's test | severity: med | fix-risk: med | footprint: in-footprint
+- evidence: Red on attempt 1 and on the unchanged --failed rerun, after Installer and InteropItemRefusals; green on 8127b55f (43439116625), on staging ec81a3ec (43449535161), and locally in the same 26-class order on ocupilot-b-ci (runs 66-68, 69-94); the port's start path has no deferred update, so what applied the pending update is not known
+- 2026-11-13T16:12:54Z status=routed owner=burndown by=harvest note=Priority for the Epic 20 burn-down: find what applies the pending update between the Facts read and the Act (inference: a slower runner lets the vendor apply it), then harden the test or the start path
+- 2026-11-13T16:40:28Z owner=20-25-item-runtime-and-configuration-actions by=orchestrator note=fix_after_20.40
+
+### DW-2536: InteropItemCopyStore repeats InteropItemAddStore's listener, generation, refusal and postInteropCreate plumbing (about 60 of its 147 lines)
+- source: spec-20-40-item-copy-and-change-of-class.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: ui/src/app/areas/interoperability/interop-item-copy.store.ts vs interop-item-add.store.ts; the spec's stated reason (the add's six-field state) covers the state, not the shared plumbing; Rule 2 copy with a weak reason
+- 2026-11-13T16:38:28Z status=wontfix-accepted owner=20-40-item-copy-and-change-of-class by=cr note=reopen_if=a third interop item create store (20.41 change of class or later) copies the same plumbing

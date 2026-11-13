@@ -51,7 +51,7 @@ Method OnAfterOneTest() As %Status
 
 /// <p>The descriptor declares what the spec names: a built, unlisted list under the Productions list, its
 /// composite id, the Productions list's pairs with the classic page's resource as its own, the add as its
-/// primary action and enable, disable, stop, start, restart and remove as its row actions, three prompts, and the interop
+/// primary action and enable, disable, stop, start, restart, copy and remove as its row actions, three prompts, and the interop
 /// source's Items endpoint with the production as its one criterion; and it passes the registry.</p>
 /// <p>Mutation (Rule 19): change <code>parentScope</code> to <code>interoperability/processes</code> -- this
 /// goes red.</p>
@@ -69,7 +69,7 @@ Method TestTheDescriptorDeclaresTheProductionItemsList()
     While tIterator.%GetNext(.tIndex, .tAction) {
         Set tActions = tActions _ $Select(tActions = "": "", 1: ",") _ tAction.id
     }
-    Do $$$AssertEquals(tActions _ "|" _ tDeclaration.context.fields.%ToJSON(), "enable,disable,stop,start,restart,remove|[""Name"",""ClassName"",""Type"",""Enabled"",""PoolSize""]", "its six row actions, remove last, and its context fields")
+    Do $$$AssertEquals(tActions _ "|" _ tDeclaration.context.fields.%ToJSON(), "enable,disable,stop,start,restart,copy,remove|[""Name"",""ClassName"",""Type"",""Enabled"",""PoolSize""]", "its seven row actions, remove last, and its context fields")
     Do $$$AssertEquals(tDeclaration.suggestedPrompts.%Size(), 3, "three suggested prompts")
     Do $$$AssertEquals(tDeclaration.read.source.port _ "|" _ tDeclaration.read.source.endpoint _ "|" _ tDeclaration.read.source.type, "interop|Items|LIST", "read through the interop port's Items endpoint")
     Do $$$AssertEquals(tDeclaration.read.criteria.fields.%Size() _ "|" _ tDeclaration.read.criteria.fields.%Get(0).param _ "|" _ (tDeclaration.read.criteria.fields.%Get(0).hint '= ""), "1|production|1", "one criterion, the production, with a hint")
@@ -77,7 +77,7 @@ Method TestTheDescriptorDeclaresTheProductionItemsList()
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).CriteriaProblem(tDeclaration), "", "and so do its criteria")
     Do $$$AssertTrue(##class(OcuPilot.Kernel.EntityType).IsKnown("production-item"), "production-item is in the kernel's vocabulary")
     Do $$$AssertTrue($ListFind(##class(OcuPilot.Kernel.Proposal.Prohibited).CoveredTypes(), "production-item") > 0, "and in the prohibited set's covered types")
-    Do $$$AssertEquals($ListToString(##class(OcuPilot.Kernel.Proposal.Prohibited).PermittedCreateFields("production-item")), "Name,ClassName,PoolSize,Enabled,Category,Comment", "an add may set the six fields")
+    Do $$$AssertEquals($ListToString(##class(OcuPilot.Kernel.Proposal.Prohibited).PermittedCreateFields("production-item")), "Name,ClassName,PoolSize,Enabled,Category,Comment,CopyFrom", "an add may set the six fields and a copy names its source")
 }
 
 /// <p>The criteria rule on synthetic sources (AD-36 as amended): an interop read takes criteria only as
@@ -349,12 +349,12 @@ ClassMethod Names(pRows As %DynamicArray) As %String
 
 /// <p>Every item code and consequence code resolves to its sentence through <class>OcuPilot.Api.InteropError</class>,
 /// a refused tool call and a violation; the item refusals the tools may name are all declared, the field
-/// violations are not among them, and the five consequence codes are declared as consequences.</p>
+/// violations are not among them, and the six consequence codes are declared as consequences.</p>
 Method TestEveryItemCodeResolves()
 {
     Set tError = "OcuPilot.Api.InteropError"
-    Set tCodes = ##class(OcuPilot.Api.InteropError).ItemCodes() _ $ListBuild(##class(OcuPilot.Api.InteropError).#ITEMPENDING, ##class(OcuPilot.Api.InteropError).#ITEMREMOVE, ##class(OcuPilot.Api.InteropError).#ITEMSTOP, ##class(OcuPilot.Api.InteropError).#ITEMSTART, ##class(OcuPilot.Api.InteropError).#ITEMRESTART)
-    Do $$$AssertEquals($ListLength(tCodes), 21, "sixteen item codes and five consequences")
+    Set tCodes = ##class(OcuPilot.Api.InteropError).ItemCodes() _ $ListBuild(##class(OcuPilot.Api.InteropError).#ITEMPENDING, ##class(OcuPilot.Api.InteropError).#ITEMREMOVE, ##class(OcuPilot.Api.InteropError).#ITEMSTOP, ##class(OcuPilot.Api.InteropError).#ITEMSTART, ##class(OcuPilot.Api.InteropError).#ITEMRESTART, ##class(OcuPilot.Api.InteropError).#ITEMCOPY)
+    Do $$$AssertEquals($ListLength(tCodes), 23, "seventeen item codes and six consequences")
     For tI = 1:1:$ListLength(tCodes) {
         Set tCode = $List(tCodes, tI)
         Set tReason = $ClassMethod(tError, "ReasonFor", tCode)
@@ -365,7 +365,7 @@ Method TestEveryItemCodeResolves()
     For tCode = ##class(OcuPilot.Api.InteropError).#ITEMCLASS, ##class(OcuPilot.Api.InteropError).#ITEMNAME, ##class(OcuPilot.Api.InteropError).#ITEMVALUE {
         Do $$$AssertTrue('$ListFind(##class(OcuPilot.Api.InteropError).ItemPreconditionCodes(), tCode), tCode _ " is an add's violation, not an item refusal")
     }
-    For tCode = ##class(OcuPilot.Api.InteropError).#ITEMPENDING, ##class(OcuPilot.Api.InteropError).#ITEMREMOVE, ##class(OcuPilot.Api.InteropError).#ITEMSTOP, ##class(OcuPilot.Api.InteropError).#ITEMSTART, ##class(OcuPilot.Api.InteropError).#ITEMRESTART {
+    For tCode = ##class(OcuPilot.Api.InteropError).#ITEMPENDING, ##class(OcuPilot.Api.InteropError).#ITEMREMOVE, ##class(OcuPilot.Api.InteropError).#ITEMSTOP, ##class(OcuPilot.Api.InteropError).#ITEMSTART, ##class(OcuPilot.Api.InteropError).#ITEMRESTART, ##class(OcuPilot.Api.InteropError).#ITEMCOPY {
         Do $$$AssertTrue($ListFind(##class(OcuPilot.Api.InteropError).ConsequenceCodes(), tCode) > 0, tCode _ " is a consequence code")
     }
     Do $$$AssertTrue($ListFind(##class(OcuPilot.Api.InteropError).Codes(), ##class(OcuPilot.Api.InteropError).#SUSPENDED) && $ListFind(##class(OcuPilot.Api.InteropError).Codes(), ##class(OcuPilot.Api.InteropError).#PARTSTOPPED), "the stop outcomes are refusal codes")

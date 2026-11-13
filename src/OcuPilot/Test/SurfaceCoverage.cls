@@ -429,6 +429,7 @@ XData Coverage
 <tool name="interop.items.start" class="OcuPilot.Test.InteropItemRun" method="TestTheAgentsStopAndStartConfirmOverHttp" corpus="the stop and the start are asserted together in one test"/>
 <tool name="interop.items.restart" class="OcuPilot.Test.InteropItemRun" method="TestTheAgentsRestartConfirmsOverHttp"/>
 <tool name="interop.items.add" class="OcuPilot.Test.InteropItemControl" method="TestTheAgentsAddAndRemoveConfirmOverHttp" corpus="the add and the remove are asserted together in one test"/>
+<tool name="interop.items.copy" class="OcuPilot.Test.InteropItemCopy" method="TestTheAgentsCopyConfirmsOverHttp"/>
 <tool name="interop.items.remove" class="OcuPilot.Test.InteropItemControl" method="TestTheAgentsAddAndRemoveConfirmOverHttp" corpus="the add and the remove are asserted together in one test"/>
 <tool name="interop.itemsettings.set" class="OcuPilot.Test.InteropSettingControl" method="TestTheAgentsSetAndResetOfAHostSettingConfirmOverHttp" corpus="the set and the reset are asserted together in one test"/>
 <tool name="interop.itemsettings.reset" class="OcuPilot.Test.InteropSettingControl" method="TestTheAgentsSetAndResetOfAHostSettingConfirmOverHttp" corpus="the set and the reset are asserted together in one test"/>

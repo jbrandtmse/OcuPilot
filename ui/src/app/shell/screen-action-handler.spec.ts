@@ -1628,6 +1628,15 @@ describe('the mapping lists\u2019 Delete and the Namespaces list\u2019s Copy map
     expect(actions.has(NAMESPACE_LIST, ENABLE_INTEROP)).toBe(false);
   });
 
+  it('leaves Production items\u2019 Copy undrawn, for the list\u2019s own page to register (Story 20.40)', () => {
+    // Mutation (Rule 19): drop the Production items list's entry from `UNDRAWN_ACTIONS` -> this goes red, and a later
+    // construction of the handler would replace the page's registration with a send that carries no source item.
+    const items = 'OcuPilot.Screen.Descriptor.InteropItemList';
+    const { actions } = mount(undefined, items);
+    expect(actions.has(items, 'remove')).toBe(true);
+    expect(actions.has(items, 'copy')).toBe(false);
+  });
+
   it('leaves the Task schedule\u2019s Export and Import undrawn, for its own page to register', () => {
     // Mutation (Rule 19): drop the Task schedule's entry from `UNDRAWN_ACTIONS` -> this goes red, and
     // Export would be sent at once with no file.

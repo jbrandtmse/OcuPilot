@@ -482,6 +482,9 @@ services:
       # and the split gate class creates and deletes a namespace configuration over two existing databases
       # (Story 20.3).
       # classes: InteropItemGateSplit, InteropItemIdentity
+      # The item copy class compiles and runs the same probe production in USER, copying its items (Story 20.40): one leg per
+      # refusal and one for the agent's confirmed copy, the Save, the settings read of the copy and the gate pairs.
+      # classes: InteropItemCopy
       # The item runtime classes compile and run the same probe production in USER, stopping, starting and restarting its items
       # (Story 20.25): the run class drives the three writes and every refusal of them, and the gate class signs in as probe
       # principals each missing one pair a runtime write requires.

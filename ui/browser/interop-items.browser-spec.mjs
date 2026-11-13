@@ -9,7 +9,8 @@
  * and in the stored configuration; Remove asks for the item's name typed, states what it deletes, and removes
  * it; a refused Add shows the server's sentence in the dialog; and the list passes the structural and
  * contrast checks at 1280 light, 720 light and 1280 dark, with no entry beyond the baseline (DW-1337). Story
- * 20.25's last test starts the probe production, then Stop warns with the published sentence and, past Proceed,
+ * 20.40's Copy opens its dialog on the selected item, refuses a held name with the server's sentence, adds a disabled copy of the item under a new
+ * name and removes it. Story 20.25's last test starts the probe production, then Stop warns with the published sentence and, past Proceed,
  * ends the operation's jobs, so its Jobs tab lists none; Start warns and runs a job again.
  *
  * **It compiles and writes a probe production in `USER`** through `OcuPilot.Test.ProductionProbe`, so it runs
@@ -46,6 +47,8 @@ const ROUTE = 'interoperability/productions/items';
 const PRODUCTIONS_URL = '/ocupilot/interoperability/productions?ns=USER';
 const ACTION_PATH = '/api/ocupilot/screens/interop.items/action';
 const ADD_PATH = '/api/ocupilot/interop/items';
+const COPY_PATH = '/api/ocupilot/interop/items/copy';
+const COPIED = 'OcuPilotProbeCopy';
 const ROW_ID = (name) => `${PRODUCTION}\u0001${name}`;
 const NAME_TEXT = '.ocu-data-table-link, .ocu-data-table-text';
 
@@ -237,6 +240,13 @@ async function fill(page, field, value) {
   await page.type(selector, value);
 }
 
+/** Type `value` into the copy dialog's name field. */
+async function fillCopyName(page, value) {
+  const selector = 'input[data-interop-item-copy-name]';
+  await page.click(selector, { clickCount: 3 });
+  await page.type(selector, value);
+}
+
 before(async () => {
   assert.notEqual(config.container, LIVE_CONTAINER, 'this spec runs commands inside the container, so it never runs against the live one');
   await assertThrowaway(config);
@@ -396,6 +406,68 @@ test('AC2, AC3: Add item opens its dialog; a held name is refused with the serve
     await rowPresent(page, ADDED, false);
     assert.deepEqual(actions, [{ action: 'remove', id: ROW_ID(ADDED) }], 'one remove, sent with the row key once the name matched');
     assert.equal(stored(ADDED), '', 'the stored configuration no longer holds the item');
+  } finally {
+    await context.close();
+  }
+});
+
+// AC1. Mutation (Rule 19): make the copy dialog post to the add's route (`INTEROP_ITEM_COPY_PATH` -> `/api/ocupilot/interop/items`),
+// rebuild and redeploy -> the copy request is never seen and this goes red.
+test('AC1: Copy opens its dialog on the selected item; a held name is refused with the server\'s sentence; a new name adds a disabled copy of the item, which is then removed', async () => {
+  const { context, page } = await signedInAt(browser, config, PRODUCTIONS_URL, VIEWPORTS.wide);
+  const copies = [];
+  const actions = [];
+  page.on('request', (request) => {
+    const path = new URL(request.url()).pathname;
+    if (request.method() !== 'POST') return;
+    if (path === COPY_PATH) copies.push(JSON.parse(request.postData() ?? '{}'));
+    if (path === ACTION_PATH) actions.push(JSON.parse(request.postData() ?? '{}'));
+  });
+  try {
+    await openItems(page);
+    await rowAction(page, OPERATION, STRINGS.auditDatabaseCopyConfirm);
+    await page.waitForSelector('input[data-interop-item-copy-name]', { visible: true, timeout: config.navigationTimeoutMs });
+    const opened = await page.evaluate(() => ({
+      title: document.querySelector('[role="dialog"] .ocu-dialog-title')?.textContent?.trim(),
+      consequence: document.querySelector('[data-interop-item-copy-consequence]')?.textContent?.trim(),
+      name: document.querySelector('input[data-interop-item-copy-name]').value,
+    }));
+    assert.deepEqual(opened, { title: STRINGS.interopItemCopyTitle, consequence: STRINGS.interopItemCopyConsequence, name: '' }, 'the dialog is titled with the published words, states the copy\'s consequence and starts with an empty name');
+    assert.deepEqual(actions, [], 'the screen action route is never used for a copy');
+
+    await fillCopyName(page, OPERATION);
+    await page.click('[data-interop-item-copy-confirm]');
+    await page.waitForSelector('[data-interop-item-copy-reason]', { visible: true, timeout: config.navigationTimeoutMs });
+    assert.equal(
+      await page.$eval('[data-interop-item-copy-reason]', (node) => node.textContent.trim()),
+      STRINGS.interopItemRefusalTaken,
+      'a name the production holds is refused with the server\'s sentence'
+    );
+    assert.equal(copies.length, 1, 'one request was sent');
+    assert.equal(stored(COPIED), '', 'and nothing was stored');
+
+    await fillCopyName(page, COPIED);
+    await page.click('[data-interop-item-copy-confirm]');
+    await page.waitForFunction(() => document.querySelector('[role="dialog"]') === null, { timeout: config.navigationTimeoutMs });
+    assert.deepEqual(copies.at(-1), { Production: PRODUCTION, Name: COPIED, CopyFrom: OPERATION }, 'the Save carries the production, the new name and the item copied');
+    await page.click(FILTER_SELECTOR, { clickCount: 3 });
+    await page.keyboard.press('Backspace');
+    await rowPresent(page, COPIED);
+    const source = await itemRow(page, OPERATION);
+    const copy = await itemRow(page, COPIED);
+    assert.equal(copy[1], source[1], 'the copy reads the source\'s class');
+    assert.notEqual(copy[3], source[3], 'and, unlike the enabled source, is disabled');
+    assert.equal(stored(COPIED), '0', 'the stored configuration holds the copy, disabled');
+    assert.equal(stored(OPERATION), '1', 'and the source is unchanged');
+
+    await rowAction(page, COPIED, STRINGS.actionRemove);
+    await page.waitForSelector('.ocu-typed-name-consequence', { visible: true, timeout: config.navigationTimeoutMs });
+    await page.type('.ocu-typed-name-field', COPIED);
+    await page.keyboard.press('Enter');
+    await page.waitForFunction(() => document.querySelector('[role="dialog"]') === null, { timeout: config.navigationTimeoutMs });
+    await rowPresent(page, COPIED, false);
+    assert.deepEqual(actions, [{ action: 'remove', id: ROW_ID(COPIED) }], 'the copy is removed with its typed name');
+    assert.equal(stored(COPIED), '', 'the stored configuration no longer holds it');
   } finally {
     await context.close();
   }

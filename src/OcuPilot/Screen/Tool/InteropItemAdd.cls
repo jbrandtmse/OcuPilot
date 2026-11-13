@@ -73,7 +73,8 @@ ClassMethod NameDescription() As %String
     Quit "The new item's name: 1 to 128 characters with no control character, no space at either end and none of | ; , [; it does not begin with - or _, end with -, ! or $, or read *. A name this production already holds, in any letter case, is refused, so check its Production items list first."
 }
 
-/// <p>The derived schema with the class, pool size, enabled flag, category and comment described.</p>
+/// <p>The derived schema with the class, pool size, enabled flag, category and comment described. The class is required
+/// only where <method>SettableFields</method> lists it, so a subclass that sets other fields (the copy) inherits cleanly.</p>
 ClassMethod InputSchema(pDescriptor As %String = "") As %DynamicObject
 {
     Set tSchema = ##super(pDescriptor)
@@ -90,7 +91,7 @@ ClassMethod InputSchema(pDescriptor As %String = "") As %DynamicObject
         Quit:tField=""
         If tProperties.%GetTypeOf(tField) = "object" Do tProperties.%Get(tField).%Set("description", tDescriptions(tField), "string")
     }
-    If tSchema.%GetTypeOf("required") = "array" Do tSchema.%Get("required").%Push("ClassName")
+    If $ListFind(..SettableFields(), "ClassName") && (tSchema.%GetTypeOf("required") = "array") Do tSchema.%Get("required").%Push("ClassName")
     Quit tSchema
 }
 
@@ -117,6 +118,14 @@ ClassMethod CreatedId(pWritten) As %String
     Quit ##class(OcuPilot.Kernel.EntityId).JoinComposite($ListBuild(pWritten.%Get("Production"), pWritten.%Get("Name")))
 }
 
+/// <p>The port's rules over the new item <var>pName</var> of the production <var>pProduction</var> and the caller's fields
+/// <var>pArgs</var>, in <var>pViolations</var> (<code>pViolations(n) = $ListBuild(field, code)</code>, count in
+/// <code>pViolations</code>): <method>OcuPilot.Port.InteropPort.AddViolations</method> here; the copy overrides it.</p>
+ClassMethod FieldViolations(pNamespace As %String, pProduction As %String, pName As %String, pArgs As %DynamicObject, Output pViolations) As %Status
+{
+    Quit $ClassMethod(..#PORTCLASS, "AddViolations", pNamespace, pName, pArgs, .pViolations)
+}
+
 /// <p>The rules over the caller's fields and the production, as one sentence naming each field and its
 /// published sentence, or <code>""</code> (AD-55): <method>OcuPilot.Port.InteropPort.AddViolations</method>
 /// and a production the namespace holds, in the namespace <var>pArgs</var> carries under
@@ -131,7 +140,7 @@ ClassMethod ArgumentProblem(pIdValue As %String, pArgs As %DynamicObject, Output
         Set pProblem = "'" _ ..#PRODUCTIONARGUMENT _ "' names no production of this namespace"
         Quit $$$OK
     }
-    Set tSC = $ClassMethod(..#PORTCLASS, "AddViolations", tNamespace, $ListGet(tParts, 2), pArgs, .tViolations)
+    Set tSC = ..FieldViolations(tNamespace, $ListGet(tParts, 1), $ListGet(tParts, 2), pArgs, .tViolations)
     If $$$ISERR(tSC) Quit tSC
     For tI = 1:1:$Get(tViolations) {
         Set pProblem = pProblem _ $Select(pProblem = "": "", 1: " ") _ "'" _ $List(tViolations(tI), 1) _ "': " _ ##class(OcuPilot.Api.Error).ReasonForViolation($List(tViolations(tI), 2))
