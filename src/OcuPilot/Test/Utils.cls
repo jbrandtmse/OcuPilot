@@ -258,10 +258,9 @@ ClassMethod JsonStream(pHead As %String, pChar As %String, pCount As %Integer, p
 /// <p>DW-2417 -- <method>OcuPilot.Kernel.Utils.OversizedMember</method> answers the top-level key of
 /// the first value the instance cannot hold: a number past the largest it holds, one nested in an
 /// array, a string past the string limit, and a key past it (answered <code>*</code>, because the
-/// walk itself raises).</p>
-/// <p>Mutation: remove the guard call from <method>OcuPilot.Kernel.Utils.ReadRequestBody</method> -> the
-/// <code>ReadRequestBody</code> leg of <method>TestReadRequestBodyRefusesAValueTheInstanceCannotHold</method>
-/// goes red.</p>
+/// walk itself raises); an empty key, which no answer can name, is answered <code>*</code> too.</p>
+/// <p>Mutation: answer <code>""</code> from <method>OcuPilot.Kernel.Utils.OversizedMember</method>'s
+/// <code>Catch</code> -> the long-key leg goes red.</p>
 Method TestOversizedMemberNamesTheFirstValueTheInstanceCannotHold()
 {
     Set tUtils = "OcuPilot.Kernel.Utils"
@@ -273,6 +272,7 @@ Method TestOversizedMemberNamesTheFirstValueTheInstanceCannotHold()
     Do $$$AssertEquals($ClassMethod(tUtils, "OversizedMember", tLongValue), "Big", "a 4,000,000-character value names its key")
     Set tLongKey = ##class(%DynamicAbstractObject).%FromJSON(..JsonStream("{""", "k", 4000000, """:1}"))
     Do $$$AssertEquals($ClassMethod(tUtils, "OversizedMember", tLongKey), "*", "a 4,000,000-character key answers * because the walk itself raises")
+    Do $$$AssertEquals($ClassMethod(tUtils, "OversizedMember", ##class(%DynamicAbstractObject).%FromJSON("{""a"":1,"""":1e400}")), "*", "an empty key holding one answers *, never the empty answer that means every value is held")
 }
 
 /// <p>DW-2417 -- values the instance can hold are not reported: the largest double the instance

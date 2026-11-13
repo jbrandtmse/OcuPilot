@@ -422,7 +422,8 @@ ClassMethod ReadRequestBody(Output pBody As %DynamicObject, Output pStage As %St
 /// instance holds.</p>
 /// <p>Objects and arrays are walked to any depth; a key is the top-level one for a hit anywhere beneath it.
 /// <code>*</code> is the answer when the walk itself raises (an oversized key, or nesting too deep to
-/// walk): no one member is to blame.</p>
+/// walk): no one member is to blame. It is also the answer for a hit under the empty key, which
+/// <code>""</code> cannot name.</p>
 ClassMethod OversizedMember(pValue As %DynamicAbstractObject) As %String
 {
     Set tField = ""
@@ -431,7 +432,7 @@ ClassMethod OversizedMember(pValue As %DynamicAbstractObject) As %String
         Set tIterator = pValue.%GetIterator()
         While tIterator.%GetNext(.tKey, .tMember, .tType) {
             If ..HoldsOversized(pValue, tKey, tMember, tType) {
-                Set tField = tKey
+                Set tField = $Select(tKey = "": "*", 1: tKey)
                 Quit
             }
         }

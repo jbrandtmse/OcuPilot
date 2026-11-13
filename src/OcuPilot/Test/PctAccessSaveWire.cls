@@ -101,7 +101,7 @@ Method TestAnExistingEntryIsRefusedAndNotWrittenAgain()
 }
 
 /// <p>A body holding a number past the largest the instance holds is refused 400 <code>PORT.FIELD.SHAPE</code> on the
-/// field that carries it, where it used to answer 500, and no entry is written.</p>
+/// field that carries it, and no entry is written.</p>
 /// <p>Mutation (Rule 19): remove the oversized-value guard from <method>OcuPilot.Kernel.Utils.ReadRequestBody</method>
 /// -- the post answers 500 and the status leg goes red.</p>
 Method TestAnOversizedNumberIsRefusedOnItsField()

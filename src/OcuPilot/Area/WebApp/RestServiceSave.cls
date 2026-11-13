@@ -40,7 +40,8 @@ ClassMethod ProhibitedClass() As %String
 /// <p>Answer <code>POST /rest-service</code>: build the service the body's <code>Name</code> names from the text its
 /// <code>Document</code> carries, and answer <code>{name, readBack}</code> with 201 (AD-58). A body that is no JSON object
 /// is 400 <code>AGENT.BADBODY</code>; a key other than <code>Name</code> and <code>Document</code> is 400
-/// <code>PORT.FIELD.UNEXPECTED</code>; a rule the port states, a taken name or a document the management API cannot
+/// <code>PORT.FIELD.UNEXPECTED</code>; a key past the string limit, or a string <code>Name</code> past it, is 400
+/// <code>PORT.FIELD.SHAPE</code> on <code>*</code> or <code>Name</code>; a rule the port states, a taken name or a document the management API cannot
 /// build is 422 with its <code>RESTSERVICE.*</code> code on the field; any other refusal is the prohibited set's or the
 /// port's own envelope.</p>
 ClassMethod HandleCreate() As %Status
@@ -68,7 +69,7 @@ ClassMethod HandleCreate() As %Status
             Set tSC = ##class(OcuPilot.Api.Error).Render(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#REASONPORTFIELDUNEXPECTED, ##class(OcuPilot.Api.Error).#PORTFIELDUNEXPECTED, tDetail)
             Quit
         }
-        If tBodyField '= "" {
+        If (tBodyField = ..IdArgument()) && (tBody.%GetTypeOf(tBodyField) = "string") {
             Set tSC = ##class(OcuPilot.Api.Error).RenderBodyRefusal(tBodyField)
             Quit
         }
@@ -239,7 +240,9 @@ ClassMethod UnexpectedKey(pBody As %DynamicObject) As %String [ Private ]
 /// <p>Read the request body into <var>pBody</var>; 0 when it is not a JSON object. <var>pField</var> names the top-level
 /// key holding a value the instance cannot hold (<code>*</code> when no one key is to blame), else <code>""</code>; the
 /// parsed object is still returned then, so the unexpected-key refusal, which judges each value by its type and never
-/// reads it, comes first.</p>
+/// reads it, comes first, and a <code>Name</code> or <code>Document</code> the route cannot use keeps its own 422. Only
+/// <code>*</code> and a string <code>Name</code>, which <method>HandleCreate</method> would have to read, are refused
+/// on the field.</p>
 ClassMethod Body(Output pBody As %DynamicObject, Output pField As %String) As %Boolean [ Private ]
 {
     Set pBody = ""

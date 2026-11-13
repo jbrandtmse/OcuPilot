@@ -87,12 +87,12 @@ ClassMethod Body(pName As %String, pText As %String) As %DynamicObject
     Quit {"Name": (pName), "Document": (pText)}
 }
 
-/// <p>The Save of <var>pBody</var> (an object, or the raw text of one) in <var>pNamespace</var>, answered as
-/// <code>status code field</code>, the field being the first violation's. <var>pAnswer</var> is the parsed envelope and
-/// <var>pHeaders</var> the response headers.</p>
+/// <p>The Save of <var>pBody</var> (an object, a stream of the raw text, or the raw text of one) in <var>pNamespace</var>,
+/// answered as <code>status code field</code>, the field being the first violation's. <var>pAnswer</var> is the parsed
+/// envelope and <var>pHeaders</var> the response headers.</p>
 ClassMethod Save(pBody, pNamespace As %String = {..#NAMESPACE}, Output pAnswer, Output pHeaders) As %String
 {
-    Set tText = $Select($IsObject(pBody): pBody.%ToJSON(), 1: pBody)
+    Set tText = $Select('$IsObject(pBody): pBody, pBody.%IsA("%Stream.Object"): pBody, 1: pBody.%ToJSON())
     Set tPath = $Parameter("OcuPilot.Test.Http", "BASEPATH") _ ..#SAVEPATH _ "?ns=" _ $ZConvert(pNamespace, "O", "URL")
     Kill tExtra
     Do ##class(OcuPilot.Test.Http).AbsoluteRequest("POST", tPath, ##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), .tStatus, .tRaw, .pHeaders, tText, "application/json", .tExtra, 120)
@@ -231,15 +231,24 @@ Method TestABodyThatIsNotNameAndDocumentAloneIsRefused()
     Do $$$AssertTrue(..Unchanged() && '$ClassMethod(..#PROBE, "HasClass", ..#INSTALLSCOPE, "OcuProbe1832X.spec"), "no refusal built anything, in this namespace or the install namespace")
 }
 
-/// <p>A body whose own <code>Name</code> or <code>Document</code> holds a value past the instance's largest number is
-/// refused 400 <code>PORT.FIELD.SHAPE</code> on that field, and nothing is built.</p>
-/// <p>Mutation (Rule 19): drop the <code>tBodyField</code> refusal from
-/// <method>OcuPilot.Area.WebApp.RestServiceSave.HandleCreate</method> -- the legs answer 500 and go red.</p>
-Method TestAnOversizedExpectedMemberIsRefusedOnItsField()
+/// <p>A <code>Name</code> or <code>Document</code> holding a value the instance cannot hold keeps the answer this route
+/// gives a name or document it cannot use: 422 <code>RESTSERVICE.NAME</code> or <code>RESTSERVICE.DOCUMENT</code> on that
+/// field. A string <code>Name</code> past the string limit, which the route cannot read, is refused 400
+/// <code>PORT.FIELD.SHAPE</code> on <code>Name</code>, and a key past the limit on <code>*</code>. Nothing is built.</p>
+/// <p>Mutation (Rule 19): refuse every field the reader names after the unexpected-key check in
+/// <method>OcuPilot.Area.WebApp.RestServiceSave.HandleCreate</method> -- the 422 legs answer 400 and go red; drop its
+/// <code>*</code> refusal -- the long-key leg answers 500 and goes red.</p>
+Method TestAnOversizedMemberKeepsTheRoutesOwnAnswer()
 {
     Set tText = $ZConvert(..Text(), "O", "JSON")
-    Do $$$AssertEquals(..Save("{""Name"": 1e400, ""Document"": """ _ tText _ """}"), "400 " _ ##class(OcuPilot.Api.Error).#PORTFIELDSHAPE _ " Name", "a name past the largest number is refused on Name")
-    Do $$$AssertEquals(..Save("{""Name"": ""OcuProbe1832X"", ""Document"": [1, -1e400]}"), "400 " _ ##class(OcuPilot.Api.Error).#PORTFIELDSHAPE _ " Document", "and so is a document that holds one")
+    Set tShape = ##class(OcuPilot.Api.Error).#PORTFIELDSHAPE
+    Set tName = ##class(OcuPilot.Api.RestServiceError).#NAME
+    Set tDocument = ##class(OcuPilot.Api.RestServiceError).#DOCUMENT
+    Do $$$AssertEquals(..Save("{""Name"": 1e400, ""Document"": """ _ tText _ """}"), "422 " _ tName _ " Name", "a name past the largest number is a name the route cannot use")
+    Do $$$AssertEquals(..Save("{""Name"": ""OcuProbe1832X"", ""Document"": [1, -1e400]}"), "422 " _ tDocument _ " Document", "and a document holding one is a document it cannot use")
+    Do $$$AssertEquals(..Save(##class(OcuPilot.Test.Utils).JsonStream("{""Name"": ""OcuProbe1832X"", ""Document"": """, "x", 4000000, """}")), "422 " _ tDocument _ " Document", "and so is a document past the string limit")
+    Do $$$AssertEquals(..Save(##class(OcuPilot.Test.Utils).JsonStream("{""Document"": """ _ tText _ """, ""Name"": """, "x", 4000000, """}")), "400 " _ tShape _ " Name", "a string name past the string limit is refused on Name")
+    Do $$$AssertEquals(..Save(##class(OcuPilot.Test.Utils).JsonStream("{""Name"": ""OcuProbe1832X"", """, "k", 4000000, """: 1}")), "400 " _ tShape _ " *", "and a key past it on *, before the unexpected-key walk can raise")
     Do $$$AssertTrue(..Unchanged() && '$ClassMethod(..#PROBE, "HasClass", ..#INSTALLSCOPE, "OcuProbe1832X.spec"), "no refusal built anything")
 }
 
