@@ -240,6 +240,16 @@ Method TestEveryLiveToolRequiresItsScreensPairs()
             For tWritePair = $ListBuild($Parameter(tTool.class, "WRITERESOURCE"), $Parameter(tTool.class, "WRITEPERMISSION")), $ListBuild(tGlobalResource, "WRITE") {
                 If '$ListFind(tExpected, tWritePair) Set tExpected = tExpected _ $ListBuild(tWritePair)
             }
+        } ElseIf $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.InteropItemRunAction") {
+            ; Story 20.25: the item stop, start and restart declare %Ens_ConfigItemRun:USE, then WRITE on the globals database of the
+            ; request's namespace, here this one's, after their screen's pairs, each once; they save no production, so no
+            ; %Ens_ProductionConfig:WRITE and no routines database (AD-8, AD-62).
+            Set tExpected = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(tTool.class, "DESCRIPTORCLASS"), .tExpectedResolved)
+            Do $$$AssertTrue($ListLength(tExpected) > 0, tTool.name _ ": its screen declares pairs")
+            Do $$$AssertTrue(##class(OcuPilot.Kernel.Shell.Namespaces).GlobalDatabase($Namespace, .tGlobalResource, .tReadOnly), tTool.name _ ": this namespace's globals database resolves")
+            For tWritePair = $ListBuild("%Ens_ConfigItemRun", "USE"), $ListBuild(tGlobalResource, "WRITE") {
+                If '$ListFind(tExpected, tWritePair) Set tExpected = tExpected _ $ListBuild(tWritePair)
+            }
         } ElseIf $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.InteropItemAction") {
             ; Story 20.3: the item writes declare %Ens_ProductionConfig:WRITE, then WRITE on the globals and
             ; the routines database of the request's namespace, here this one's, after their screen's pairs,

@@ -154,6 +154,45 @@ Parameter ITEMREMOVE = "INTEROP.ITEM.REMOVE";
 
 Parameter REASONITEMREMOVE = "Removing this item deletes it and every setting it holds from the production.";
 
+/// <p>A stop, start or restart of an item whose production is running, but which is disabled (Story 20.25): the vendor answers
+/// success and does nothing.</p>
+Parameter ITEMNOTENABLED = "INTEROP.ITEM.NOTENABLED";
+
+Parameter REASONITEMNOTENABLED = "This item is disabled, so it is not running. Enable it instead.";
+
+/// <p>A stop or restart of an item that is already stopped.</p>
+Parameter ITEMTEMPSTOPPED = "INTEROP.ITEM.TEMPSTOPPED";
+
+Parameter REASONITEMTEMPSTOPPED = "This item is already stopped. Start it to run it again.";
+
+/// <p>A start of an item that was not stopped with Stop: the vendor answers success and does nothing.</p>
+Parameter ITEMNOTTEMPSTOPPED = "INTEROP.ITEM.NOTTEMPSTOPPED";
+
+Parameter REASONITEMNOTTEMPSTOPPED = "This item has not been stopped with Stop, so there is nothing to start.";
+
+/// <p>A stop or restart of an item that runs no jobs of its own.</p>
+Parameter ITEMNOJOBS = "INTEROP.ITEM.NOJOBS";
+
+Parameter REASONITEMNOJOBS = "This item runs no jobs of its own now, so it cannot be stopped by itself. That is so for an item that runs in its callers' jobs or in the shared actor pool, and for one its schedule has stopped.";
+
+/// <p>A start whose production update did not finish: the stop is cleared, and the next update starts the item.</p>
+Parameter ITEMSTARTPENDING = "INTEROP.ITEM.STARTPENDING";
+
+Parameter REASONITEMSTARTPENDING = "The production's work in progress did not finish within 15 seconds, so the item starts only when the production is next updated on Productions.";
+
+/// <p>The consequence codes the item stop, start and restart proposals carry (Story 20.25).</p>
+Parameter ITEMSTOP = "INTEROP.ITEM.STOP";
+
+Parameter REASONITEMSTOP = "Stopping this item ends its jobs until it is started again, and updates the production now to apply it, along with any other change waiting for it. Messages sent to the item wait in its queue. The item stays enabled, and the stop ends when the production next restarts. If its jobs do not finish their current messages within 15 seconds, nothing is changed.";
+
+Parameter ITEMSTART = "INTEROP.ITEM.START";
+
+Parameter REASONITEMSTART = "Starting this item starts its jobs again, and updates the production now to apply it, along with any other change waiting for it.";
+
+Parameter ITEMRESTART = "INTEROP.ITEM.RESTART";
+
+Parameter REASONITEMRESTART = "Restarting this item stops its jobs and starts them again, updating the production twice, which also applies any other change waiting for it. If its jobs do not finish their current messages within 15 seconds, nothing is changed.";
+
 /// <p>A set or reset of a setting whose name the credential pattern matches (Story 20.22): OcuPilot neither shows
 /// nor sets such a value.</p>
 Parameter SETTINGSECRET = "INTEROP.SETTING.SECRET";
@@ -471,13 +510,13 @@ ClassMethod Codes() As %List
 /// <p>The consequence codes, as a <class>%List</class>.</p>
 ClassMethod ConsequenceCodes() As %List
 {
-    Quit $ListBuild(..#STOP, ..#RESTART, ..#UPDATE, ..#RECOVER, ..#ITEMPENDING, ..#ITEMREMOVE, ..#SETTINGLOCATION, ..#MESSAGEABORT, ..#QUEUEABORT, ..#JOBABORT, ..#JOBSUSPEND, ..#JOBSTOP, ..#LOOKUPREMOVE, ..#LOOKUPDELETE, ..#LOOKUPIMPORT, ..#TESTSENDS, ..#TRANSFORMRUNS, ..#MESSAGERESEND, ..#MESSAGEEDITRESEND)
+    Quit $ListBuild(..#STOP, ..#RESTART, ..#UPDATE, ..#RECOVER, ..#ITEMPENDING, ..#ITEMREMOVE, ..#SETTINGLOCATION, ..#MESSAGEABORT, ..#QUEUEABORT, ..#JOBABORT, ..#JOBSUSPEND, ..#JOBSTOP, ..#ITEMSTOP, ..#ITEMSTART, ..#ITEMRESTART, ..#LOOKUPREMOVE, ..#LOOKUPDELETE, ..#LOOKUPIMPORT, ..#TESTSENDS, ..#TRANSFORMRUNS, ..#MESSAGERESEND, ..#MESSAGEEDITRESEND)
 }
 
 /// <p>The item codes, as a <class>%List</class>: the refusals an item read or write answers with.</p>
 ClassMethod ItemCodes() As %List
 {
-    Quit $ListBuild(..#ITEMENABLED, ..#ITEMDISABLED, ..#ITEMDEFAULTSETTING, ..#ITEMPOOLZERO, ..#ITEMTAKEN, ..#ITEMAMBIGUOUS, ..#ITEMCLASS, ..#ITEMNAME, ..#ITEMVALUE, ..#ITEMENABLEDREMOVE, ..#ITEMSOURCECONTROL)
+    Quit $ListBuild(..#ITEMENABLED, ..#ITEMDISABLED, ..#ITEMDEFAULTSETTING, ..#ITEMPOOLZERO, ..#ITEMTAKEN, ..#ITEMAMBIGUOUS, ..#ITEMCLASS, ..#ITEMNAME, ..#ITEMVALUE, ..#ITEMENABLEDREMOVE, ..#ITEMSOURCECONTROL, ..#ITEMNOTENABLED, ..#ITEMTEMPSTOPPED, ..#ITEMNOTTEMPSTOPPED, ..#ITEMNOJOBS, ..#ITEMSTARTPENDING)
 }
 
 /// <p>The item refusals an item tool's fresh read answers when the action does not fit the item, as a
@@ -617,6 +656,14 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#ITEMSOURCECONTROL Quit ..#REASONITEMSOURCECONTROL
     If pCode = ..#ITEMPENDING Quit ..#REASONITEMPENDING
     If pCode = ..#ITEMREMOVE Quit ..#REASONITEMREMOVE
+    If pCode = ..#ITEMNOTENABLED Quit ..#REASONITEMNOTENABLED
+    If pCode = ..#ITEMTEMPSTOPPED Quit ..#REASONITEMTEMPSTOPPED
+    If pCode = ..#ITEMNOTTEMPSTOPPED Quit ..#REASONITEMNOTTEMPSTOPPED
+    If pCode = ..#ITEMNOJOBS Quit ..#REASONITEMNOJOBS
+    If pCode = ..#ITEMSTARTPENDING Quit ..#REASONITEMSTARTPENDING
+    If pCode = ..#ITEMSTOP Quit ..#REASONITEMSTOP
+    If pCode = ..#ITEMSTART Quit ..#REASONITEMSTART
+    If pCode = ..#ITEMRESTART Quit ..#REASONITEMRESTART
     If pCode = ..#SETTINGSECRET Quit ..#REASONSETTINGSECRET
     If pCode = ..#SETTINGSUPPLIED Quit ..#REASONSETTINGSUPPLIED
     If pCode = ..#SETTINGSAME Quit ..#REASONSETTINGSAME

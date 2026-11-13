@@ -996,6 +996,22 @@ describe('the proposal card', () => {
     }
   });
 
+  it('Story 20.25: each item stop, start and restart consequence code states its own published sentence, on a card that is not drawn destructive', () => {
+    // Mutation (Rule 19): drop one of the three INTEROP.ITEM codes from `consequenceSentence` -> its leg goes red.
+    for (const [code, sentence] of [
+      ['INTEROP.ITEM.STOP', STRINGS.interopItemStopConsequence],
+      ['INTEROP.ITEM.START', STRINGS.interopItemStartConsequence],
+      ['INTEROP.ITEM.RESTART', STRINGS.interopItemRestartConsequence],
+    ] as const) {
+      const { card } = mount(liveView({ consequence: code, destructive: false, maskedFields: [] }), { phase: 'live' });
+      expect(card.classList.contains('ocu-proposal-card-destructive'), code).toBe(false);
+      const lines = card.querySelectorAll('[data-slot="consequence"]');
+      expect(lines.length, code).toBe(1);
+      expect(lines[0].textContent, code).toContain(sentence);
+      TestBed.resetTestingModule();
+    }
+  });
+
   it('Story 20.5: a lookup table entry\'s removal, a lookup table\'s deletion and a lookup table\'s import each state their own published sentence, drawn destructive', () => {
     // Mutation (Rule 19): drop one of the three INTEROP.LOOKUP codes from `consequenceSentence` -> its leg goes red.
     for (const [code, sentence] of [

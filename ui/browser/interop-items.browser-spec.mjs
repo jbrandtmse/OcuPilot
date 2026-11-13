@@ -8,11 +8,14 @@
  * disabled, and Enable stores it enabled again; Add item opens the dialog, whose item then appears in the list
  * and in the stored configuration; Remove asks for the item's name typed, states what it deletes, and removes
  * it; a refused Add shows the server's sentence in the dialog; and the list passes the structural and
- * contrast checks at 1280 light, 720 light and 1280 dark, with no entry beyond the baseline (DW-1337).
+ * contrast checks at 1280 light, 720 light and 1280 dark, with no entry beyond the baseline (DW-1337). Story
+ * 20.25's last test starts the probe production, then Stop warns with the published sentence and, past Proceed,
+ * ends the operation's jobs, so its Jobs tab lists none; Start warns and runs a job again.
  *
  * **It compiles and writes a probe production in `USER`** through `OcuPilot.Test.ProductionProbe`, so it runs
  * on a throwaway only; the `after` hook removes the production, its classes and its messages, whatever the
- * tests answered. It starts nothing: an item write on a stopped production is stored and saved to the class.
+ * tests answered. It starts nothing until its last test: an item write on a stopped production is stored and
+ * saved to the class.
  *
  * Run: `OCUPILOT_BROWSER_ORIGIN=<origin> OCUPILOT_BROWSER_CONTAINER=<container> \
  *   node --test --test-concurrency=1 browser/interop-items.browser-spec.mjs` (after `npm run build` and the
@@ -35,6 +38,7 @@ const config = browserConfig();
 const STRINGS = loadStrings();
 const PROBE = 'OcuPilot.Test.ProductionProbe';
 const CONTROL = 'OcuPilot.Test.InteropItemControl';
+const RUN = 'OcuPilot.Test.InteropItemRun';
 const PRODUCTION = 'OcuPilotProbe.Interop.Production';
 const OPERATION = 'OcuPilotProbeOp';
 const ADDED = 'OcuPilotProbeAdded';
@@ -169,6 +173,61 @@ async function openItems(page) {
   await page.waitForFunction((suffix) => new URL(window.location.href).pathname.includes(suffix), { timeout: config.navigationTimeoutMs }, `/${ROUTE}/`);
   await waitForRows(page, config.navigationTimeoutMs);
   await rowPresent(page, OPERATION);
+}
+
+/** The operation's runtime as `InteropItemRun.Facts` reads it, once it equals `want` (a failing assertion after twenty seconds). */
+async function waitForFacts(want) {
+  let facts = '';
+  for (let attempt = 0; attempt < 40; attempt += 1) {
+    facts = probe('FACTS', `##class(${RUN}).Facts()`).value;
+    if (facts === want) return;
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+  assert.equal(facts, want, 'the operation reads as the action leaves it');
+}
+
+/** Click the row action `label` of `name`, assert its warning states `sentence`, and answer Proceed once nothing was sent while it was open. */
+async function warnAndProceed(page, posts, name, label, sentence) {
+  const sent = posts.length;
+  await rowAction(page, name, label);
+  await page.waitForSelector('app-warning-dialog', { timeout: config.navigationTimeoutMs });
+  const opened = await page.evaluate(() => {
+    const surface = document.querySelector('[role="dialog"]');
+    return {
+      title: (surface.querySelector('.ocu-dialog-title')?.textContent ?? '').trim(),
+      body: (surface.querySelector('.ocu-warning-consequence')?.textContent ?? '').trim(),
+      destructive: surface.querySelector('.ocu-button-destructive') !== null,
+    };
+  });
+  assert.deepEqual(opened, { title: label, body: sentence, destructive: false }, `${label} warns with its published sentence, never a destructive one`);
+  assert.equal(posts.length, sent, 'nothing is sent while the dialog is open');
+  await page.click('[role="dialog"] .ocu-dialog-actions .ocu-button-primary');
+  await page.waitForFunction(() => document.querySelector('[role="dialog"]') === null, { timeout: config.navigationTimeoutMs });
+}
+
+/** Open the operation's Jobs tab from the Production items list and answer the job rows' first cells, `[]` for the empty state. */
+async function jobsTab(page) {
+  await rowPresent(page, OPERATION);
+  // The list is still narrowed to the operation by the row action's filter, and its name cell can carry the Changed tag.
+  await clickRowCentre(page, { index: 0, link: true });
+  await page.waitForFunction((suffix) => new URL(window.location.href).pathname.includes(suffix), { timeout: config.navigationTimeoutMs }, '/interoperability/productions/items/document/');
+  await (await page.waitForSelector('button.ocu-detail-tab[data-route="interoperability/productions/items/jobs"]', { visible: true, timeout: config.navigationTimeoutMs })).click();
+  await page.waitForFunction(
+    (rowSelector, empty, header) => {
+      if (!new URL(window.location.href).pathname.includes('/interoperability/productions/items/jobs/')) return false;
+      if (document.querySelector('.ocu-data-table-empty-title')?.textContent.trim() === empty) return true;
+      const first = document.querySelector('.ocu-data-table-header-label')?.textContent.trim();
+      return first === header && document.querySelectorAll(rowSelector).length > 0;
+    },
+    { timeout: config.navigationTimeoutMs },
+    ROW_SELECTOR,
+    STRINGS.interopItemJobsEmpty,
+    STRINGS.interopColumnJob
+  );
+  return page.evaluate(
+    (rowSelector) => Array.from(document.querySelectorAll(rowSelector)).map((row) => row.querySelector('[role="gridcell"]')?.textContent.trim() ?? ''),
+    ROW_SELECTOR
+  );
 }
 
 /** Type `value` into the add dialog's field `field`. */
@@ -337,6 +396,38 @@ test('AC2, AC3: Add item opens its dialog; a held name is refused with the serve
     await rowPresent(page, ADDED, false);
     assert.deepEqual(actions, [{ action: 'remove', id: ROW_ID(ADDED) }], 'one remove, sent with the row key once the name matched');
     assert.equal(stored(ADDED), '', 'the stored configuration no longer holds the item');
+  } finally {
+    await context.close();
+  }
+});
+
+// AC3. Mutation (Rule 19): make the spec's Stop send `start` (change the label passed to `warnAndProceed` for the stop) -> the
+// stopped-flag wait goes red; rebuild and redeploy first for any client mutation.
+test('AC3: Stop warns and ends the operation\'s jobs, so its Jobs tab lists none; Start warns and runs a job again', async () => {
+  const started = probe('RUNSTART', `$System.Status.IsOK(##class(${CONTROL}).StartProduction())`);
+  assert.equal(started.value, '1', `the probe production runs with the operation's job: ${started.output}`);
+  const { context, page } = await signedInAt(browser, config, PRODUCTIONS_URL, VIEWPORTS.wide);
+  const posts = [];
+  page.on('request', (request) => {
+    if (request.method() === 'POST' && new URL(request.url()).pathname === ACTION_PATH) posts.push(JSON.parse(request.postData() ?? '{}'));
+  });
+  try {
+    await openItems(page);
+    const itemsUrl = page.url();
+    await waitForFacts('enabled=1 stopped=0 own=1 jobs=1 needs=0');
+
+    await warnAndProceed(page, posts, OPERATION, STRINGS.actionStop, STRINGS.interopItemStopConsequence);
+    assert.deepEqual(posts, [{ action: 'stop', id: ROW_ID(OPERATION) }], 'Stop sent once, past Proceed');
+    await waitForFacts('enabled=1 stopped=1 own=0 jobs=0 needs=0');
+    assert.deepEqual(await jobsTab(page), [], 'the Jobs tab lists no job after the stop');
+
+    await page.goto(itemsUrl, { waitUntil: 'networkidle2' });
+    await waitForRows(page, config.navigationTimeoutMs);
+    await warnAndProceed(page, posts, OPERATION, STRINGS.actionStart, STRINGS.interopItemStartConsequence);
+    assert.deepEqual(posts.at(-1), { action: 'start', id: ROW_ID(OPERATION) }, 'Start sent once, past Proceed');
+    await waitForFacts('enabled=1 stopped=0 own=1 jobs=1 needs=0');
+    const jobs = await jobsTab(page);
+    assert.ok(jobs.length >= 1 && jobs.every((cell) => /^\d+$/.test(cell)), `the Jobs tab lists a job after the start: ${JSON.stringify(jobs)}`);
   } finally {
     await context.close();
   }

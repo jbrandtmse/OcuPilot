@@ -764,9 +764,13 @@ const WARNING_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, stri
   },
   // Story 20.3: an item's Enable and Disable change the stored configuration, and a running production
   // reads them only at its next update.
+  // Story 20.25: Stop, Start and Restart each update the production now, and say so.
   'OcuPilot.Screen.Descriptor.InteropItemList': {
     enable: STRINGS.interopItemPendingConsequence,
     disable: STRINGS.interopItemPendingConsequence,
+    stop: STRINGS.interopItemStopConsequence,
+    start: STRINGS.interopItemStartConsequence,
+    restart: STRINGS.interopItemRestartConsequence,
   },
   // Story 20.22: a reset changes the stored configuration, which a running production reads only at its next update.
   'OcuPilot.Screen.Descriptor.InteropItemSettingList': { reset: STRINGS.interopItemPendingConsequence },

@@ -2,7 +2,8 @@
 title: 'Story 20.25: Item runtime and configuration actions'
 type: 'feature'
 created: '2026-11-12'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: 'e85f63460b00969949e6429a2114e7b78ce86a8b'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -188,6 +189,22 @@ deferred: []
 
 ## Review Triage Log
 
+### 2026-11-13 - Review pass
+
+- verdicts: 11 findings (the two AMBIGUOUS-order reports share a row) - high 0, medium 2, low 8, false 0, maybe-false 1
+- findings:
+  - `[medium]` `[patch]` `InteropItemRunGate` port leg reads `Facts` straight after a restart's start update, when the job is not yet running (Task 0 e) - added `WaitJobs(1)` before the check
+  - `[medium]` `[patch]` the start tool's copy-out draft had no test - `TestEachToolsDraftRendersItsScript` gained a start leg (flag cleared once, no `1, 0` call, the item left stopped); mutation recorded
+  - `[low]` `[patch]` an audit assertion joined two substrings where the second contains the first - the stop row is now matched as `item temporary stop by`
+  - `[low]` `[patch]` AC4 and AC6 had no `mutation:` line - both demonstrated and recorded in Verification
+  - `[low]` `[reject]` the browser spec's last test relies on the earlier tests leaving the operation enabled - the file shares one probe production by design, and `waitForFacts` names the state when it is not so
+  - `[low]` `[reject]` `ReadItemRun` answers AMBIGUOUS before NOTRUNNING while `ItemRunRefusal` judges the reverse - the Matrix fixes no precedence between the two and each is a correct refusal before any vendor call
+  - `[low]` `[reject]` a restart's card shows `TemporarilyStopped` false to false - the spec fixes `STATEFIELD`, and the card still states the consequence sentence
+  - `[low]` `[reject]` `PerformItemRun`'s `Catch` does not clear the flag when a vendor call throws - the vendor calls return statuses (Task 0 c, d); no throwing path was shown (wontfix-theoretical)
+  - `[maybe-false]` `[reject]` a failure of the start's own flag clear is answered `STARTPENDING` - that call follows a read that proved the flag set; it would be a low at most
+  - `[low]` `[reject]` intent-alignment: a pre-action warning dialog on the row actions - the spec's own `WARNING_CONSEQUENCES` task and the Dialogs line require it; no new dialog component
+  - `[low]` `[reject]` intent-alignment: the write's read-back can show `Jobs` 0 after a start - Task 0 (e) measured it and the tests and the browser spec wait for the job; the AC3 wording needs no timing
+
 ## Design Notes
 
 **Governing ADs:** AD-7, AD-8, AD-10, AD-13, AD-14, AD-15, AD-16, AD-22, AD-29, AD-34, AD-51, AD-52, AD-53, AD-58, AD-59, AD-62. Checked with nothing to add:
@@ -206,6 +223,24 @@ deferred: []
   - The classic page needs `%Ens_ConfigItemRun:USE` and globals WRITE for the stop and start (:6027-6045). Its follow-up update admits `RunItem` (:6146-6151). It checks no source control for them, unlike enable, so this story refuses no namespace under source control.
   - Classic restart is stop, update, start, update (:5925-6000, :6925-6930).
 
+**Measured** (Task 0, implement stage, on `ocupilot-b-ci` in `USER`, auditing on, the probe production running; none contradicts the spec):
+
+- (a) `TempStopConfigItem(…,1,0)` records one `%Ensemble/%Production/ModifyConfiguration` row, "item <name> of <production>" with "item temporary stop by …", and `(…,0,0)` one with "item restarted after temporary stop by …". `UpdateProduction` records nothing beside them.
+- (b) `Job`, `PoolSize` and the flag read as follows.
+
+  | Item | Before | After a stop and its update |
+  |---|---|---|
+  | Queue operation | 1, 1, unset | 0, 1, 1 (no job) |
+  | Adapterless service | 0, 0, unset | the vendor refuses the stop: "not running"; unchanged |
+  | Pool-size-0 process | 0, 0, unset | the vendor refuses: "pool size of 0"; unchanged |
+  | `InProc` operation | 0, 1, unset | the vendor refuses: "not running"; unchanged |
+
+  So `OwnJobs` is `Job > 0` and `PoolSize > 0`, false for a stopped item too, and the refusal order puts `TEMPSTOPPED` before `NOJOBS`. No new probe item is needed: the probe's service and `ProductionProbe.AddItem` with pool size 0 read `OwnJobs` false.
+- (c) A principal holding only `%DB_USER:RW`, `%Ens_Portal:U`, `%Ens_ProductionConfig:R` and `%Ens_ConfigItemRun:U` ran the stop, the update, the start and the update, all answering OK. The same principal without `%Ens_ConfigItemRun:U` was still admitted by `TempStopConfigItem` (the flag was set), and its `UpdateProduction` answered "#940 Insufficient privilege". The port's gate is the whole gate for the flag, and the pairs equal the classic page's.
+- (d) With the operation's job hung on a message past a 2-second cap, the stop's update answered `<Ens>ErrJobNotStopped` after 2.0 s, the jobs still ran and `NeedsUpdate` read true until `TempStopConfigItem(…,0,0)`; after it the flag was unset, the job ran and `NeedsUpdate` read false. The vendor recorded the stop row and the restore row.
+- (e) The jobs do not run by the time a start's update returns: `Job` read 1 and the Jobs tab 0 at once, and 1 two seconds later. A reader of the Jobs tab waits.
+- (f) A stop, update, start and update on the probe took 0.01 s, so a restart is far below the gateway's 60 s (the probe's operation holds no message).
+
 **Decisions (AD-22):**
 
 | Action | Tool and key | Destructive | Audit record |
@@ -214,7 +249,7 @@ deferred: []
 | Start one item | `interop.items.start`, `true` | no | vendor `ModifyConfiguration` ("restarted after temporary stop"), plus the marker |
 | Restart one item | `interop.items.restart`, `true` | no | two vendor rows, plus the marker |
 
-- **Pairs.** The pairs are the classic page's own, so the posture is equal to the classic portal's, not looser (inference until Task 0 (c)). No question remains for the orchestrator.
+- **Pairs.** The pairs are the classic page's own, so the posture is equal to the classic portal's, not looser (Task 0 (c)). No question remains for the orchestrator.
 - **A failed update.** A stop or a restart's first half calls `TempStopConfigItem(…,0,0)` to clear the flag it set, and the vendor records a second row. That is the honest record of the flag cleared. A failed start cannot be undone, since the vendor refuses a stop on an item not running, so it answers `STARTPENDING`.
 - **Prohibited.** AD-10 names no effect on a production item, and OcuPilot runs no production. The existing `production-item` branch carries the three types.
 
@@ -314,7 +349,29 @@ Together they would take this story past five actions, each with its own refusal
 | AC5 | `Pairs` drops `ITEMRUNPAIR` | `InteropItemRunGate`'s run-pair leg |
 | AC3 | The browser spec's Stop sends `start` | the Jobs-tab assertion |
 
+Run on `ocupilot-b-ci` (each reverted, tree byte-identical; the source reloaded before each run, the bundle rebuilt for the browser one):
+
+- mutation: `PerformItemRun`'s stop half skips `UpdateCapped` -> `InteropItemRun` `TestTheAgentsStopAndStartConfirmOverHttp`, `TestTheAgentsRestartConfirmsOverHttp`, `TestThePersonsRowActionsStopStartAndRestart`, `TestAStopThePortCannotFinishIsUndone`, `TestAStartThePortCannotFinishIsPending`
+- mutation: a restart omits its start half -> `InteropItemRun` `TestTheAgentsRestartConfirmsOverHttp`, `TestThePersonsRowActionsStopStartAndRestart`, `TestAStartThePortCannotFinishIsPending`
+- mutation: `ItemRunRefusal` drops `NOTRUNNING` -> `InteropItemRun` `TestEachRefusalIsMadeByNameBeforeAnyVendorCall`, `TestTheRefusalsAreJudgedInTheMatrixOrder`
+- mutation: `ItemRunRefusal` drops `NOTTEMPSTOPPED` -> the same two tests
+- mutation: the failed stop's update skips the flag restore -> `InteropItemRun` `TestAStopThePortCannotFinishIsUndone`
+- mutation: `Pairs` drops `ITEMRUNPAIR` -> `InteropItemRunGate` `TestEachMissingPairIsRefusedByNameThroughThePort`
+- mutation: `InteropItemRunAction.WRITERESOURCE` names a pair the principals hold -> `InteropItemRunGate` `TestEachMissingPairIsRefusedByNameOnEachTool`, `TestEachMissingPairIsRefusedByNameOnTheRowAction`
+- mutation: the browser spec's Stop clicks Start -> `interop-items.browser-spec.mjs` AC3 test, on the warning assertion (before the Jobs-tab one)
+- mutation (AC4): `interop.items.stop` set `false` in `Baseline` -> `InteropItemDescriptor` `TestTheRuntimeToolShapesAndPairs`
+- mutation (AC6): the `InteropItemRestart` class removed from the instance (the registry then holds 408 tools and the other-port count reads 55) -> `ToolWrite` `TestEveryWriteToolsRequestTypeAgreesWithThePortsBodylessRoster` alone
+- mutation (AD-59): the start draft renders `TempStopConfigItem(..., 1, 0)` for a start -> `InteropItemRun` `TestEachToolsDraftRendersItsScript`
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+Implemented: `ITEMRUN` and the `STOPITEM`, `STARTITEM` and `RESTARTITEM` writes on `InteropPort` with the run pair and the refusals judged before any vendor call; five item error codes and three consequence codes; the `InteropItemRunAction` base and the Stop, Start and Restart tools; three Production items row actions; three baseline keys (`true`); the client warnings and sentences; the EXPERIENCE.md clauses; `InteropItemRun` (8) and `InteropItemRunGate` (3); a Stop and Start browser leg; roster edits (`ReadTool` 409, `ToolWrite` 56, `ToolRoundTrip`, `SurfaceCoverage`, `ToolEmit`); Task 0 recorded under Design Notes, Measured.
+
+Review: 11 findings, none high. Patched: 2 medium and 2 low, all in tests (a missing job wait in the gate class, an untested start draft, a weak audit assertion, and the AC4 and AC6 mutation lines). Deferred: none. Rejected: 7, each with its reason in the Review Triage Log. Follow-up review recommended: false.
+
+Verified on `ocupilot-b-ci` after the patches: `InteropItemRun`, `InteropItemRunGate`, `InteropItemDescriptor`, `ToolWrite`, `GovernanceBaseline`, `ReadTool` green; the earlier pass's item, runtime and roster classes, `interop-items.browser-spec.mjs` (4/4), `test:tools` (2193), `test:components` (3359), `build` (2.02 MB) and the two static checks were green before the test-only patches. Three mutations were run in review, each red as listed and reverted byte-identical.
+
+Residual risk: the full ObjectScript sweep, `npm test`, the smoke, Rule 30's fresh check and the CI browser suite are the runner's. A scratch file `/tmp/Meas25.cls` remains inside `ocupilot-b-ci` (not removable by the agent).

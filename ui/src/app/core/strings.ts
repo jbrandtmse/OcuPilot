@@ -6764,6 +6764,27 @@ export const STRINGS = {
   /** EXPERIENCE.md:604 */
   interopItemRefusalSourceControl: 'This namespace uses source control, so change this production\'s items in the classic production configuration page.',
   /** EXPERIENCE.md:604 */
+  interopItemStopConsequence:
+    'Stopping this item ends its jobs until it is started again, and updates the production now to apply it, along with any other change waiting for it. Messages sent to the item wait in its queue. The item stays enabled, and the stop ends when the production next restarts. If its jobs do not finish their current messages within 15 seconds, nothing is changed.',
+  /** EXPERIENCE.md:604 */
+  interopItemStartConsequence:
+    'Starting this item starts its jobs again, and updates the production now to apply it, along with any other change waiting for it.',
+  /** EXPERIENCE.md:604 */
+  interopItemRestartConsequence:
+    'Restarting this item stops its jobs and starts them again, updating the production twice, which also applies any other change waiting for it. If its jobs do not finish their current messages within 15 seconds, nothing is changed.',
+  /** EXPERIENCE.md:604 */
+  interopItemRefusalNotEnabled: 'This item is disabled, so it is not running. Enable it instead.',
+  /** EXPERIENCE.md:604 */
+  interopItemRefusalTempStopped: 'This item is already stopped. Start it to run it again.',
+  /** EXPERIENCE.md:604 */
+  interopItemRefusalNotTempStopped: 'This item has not been stopped with Stop, so there is nothing to start.',
+  /** EXPERIENCE.md:604 */
+  interopItemRefusalNoJobs:
+    'This item runs no jobs of its own now, so it cannot be stopped by itself. That is so for an item that runs in its callers\' jobs or in the shared actor pool, and for one its schedule has stopped.',
+  /** EXPERIENCE.md:604 */
+  interopItemRefusalStartPending:
+    'The production\'s work in progress did not finish within 15 seconds, so the item starts only when the production is next updated on Productions.',
+  /** EXPERIENCE.md:604 */
   interopItemSettingsLabel: 'Item settings',
   /** EXPERIENCE.md:604 */
   interopItemSettingsCriterionItem: 'Item',

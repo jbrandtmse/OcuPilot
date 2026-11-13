@@ -255,6 +255,12 @@ Parameter WRITEPAIRS = "%Ens_ProductionRun:USE";
 /// need <code>%Ens_ProductionRun:USE</code>.</p>
 Parameter ITEMWRITEPAIRS = "%Ens_ProductionConfig:WRITE";
 
+/// <p>The pair an item runtime write (stop, start, restart) adds to the Items endpoint's pairs: the classic
+/// <code>EnsPortal.ProductionConfig</code> page's own check for a temporary stop or start. The vendor's
+/// <code>TempStopConfigItem</code> checks no privilege (measured), so the declared pairs are the whole gate. The
+/// write needs neither <code>%Ens_ProductionRun:USE</code> nor <code>%Ens_ProductionConfig:WRITE</code>.</p>
+Parameter ITEMRUNPAIR = "%Ens_ConfigItemRun:USE";
+
 /// <p>The pair a queue abort (one message or all) adds to the Queues and QueueItems endpoints' pairs: the vendor's own
 /// check in <code>Ens.Queue.AbortItem</code> (Story 20.23).</p>
 Parameter QUEUEWRITEPAIR = "%Ens_Queues:WRITE";
@@ -314,6 +320,22 @@ Parameter TYPEDISABLE = "DISABLE";
 Parameter TYPEADD = "ADD";
 
 Parameter TYPEREMOVE = "REMOVE";
+
+/// <p>One item's runtime (Story 20.25): <code>{Production, Name, ClassName, Enabled, EnabledSource, Count, State, Current,
+/// TemporarilyStopped, OwnJobs, Jobs, NeedsUpdate, Namespace}</code>, the fresh read of the item runtime tools. The id is the
+/// composite <code>[Production, Name]</code>. With <parameter>ACTIONKEY</parameter> in the query it refuses what that action
+/// would be refused (<method>ItemRunRefusal</method>). The three writes below are not named <code>STOP</code>, <code>START</code>
+/// or <code>RESTART</code>, which add the production run resource (<method>IsWrite</method>).</p>
+Parameter TYPEITEMRUN = "ITEMRUN";
+
+/// <p>Stop one item's jobs until it is started again or its production next restarts.</p>
+Parameter TYPESTOPITEM = "STOPITEM";
+
+/// <p>Start the jobs of an item stopped with <parameter>TYPESTOPITEM</parameter>.</p>
+Parameter TYPESTARTITEM = "STARTITEM";
+
+/// <p>Stop one item's jobs and start them again.</p>
+Parameter TYPERESTARTITEM = "RESTARTITEM";
 
 /// <p>One setting: <code>{Production, Item, Target, Name, Value, Source, Default, DefaultSource, Type, Category,
 /// Location, Secret, Namespace, Count}</code>, the setting tools' fresh read. The id is the composite
@@ -782,6 +804,15 @@ ClassMethod IsItemWrite(pType As %String) As %Boolean
     Quit (pType = ..#TYPEENABLE) || (pType = ..#TYPEDISABLE) || (pType = ..#TYPEADD) || (pType = ..#TYPEREMOVE)
 }
 
+/// <p>Whether <var>pType</var> is one of the item runtime writes this port carries (Story 20.25): an action-style write
+/// over the port-composed <code>ITEMRUN</code> read, needing the run pair and WRITE on the namespace's globals database and
+/// no routines database. It is not an item write: the stored production configuration and the production class are not
+/// changed.</p>
+ClassMethod IsItemRunWrite(pType As %String) As %Boolean
+{
+    Quit (pType = ..#TYPESTOPITEM) || (pType = ..#TYPESTARTITEM) || (pType = ..#TYPERESTARTITEM)
+}
+
 /// <p>Whether <var>pType</var> is one of the setting writes this port carries (Story 20.22). A setting write is an
 /// item write for the pairs and the databases it needs: it stores the item and the production class.</p>
 ClassMethod IsSettingWrite(pType As %String) As %Boolean
@@ -820,7 +851,7 @@ ClassMethod IsMessageType(pType As %String) As %Boolean
 /// <p>Whether <var>pType</var> is any write this port carries, whichever family declares it.</p>
 ClassMethod IsAnyWrite(pType As %String) As %Boolean
 {
-    Quit ..IsWrite(pType) || ..IsItemWrite(pType) || ..IsSettingWrite(pType) || ..IsRuntimeWrite(pType) || ..IsLookupWrite(pType) || ..IsTestWrite(pType) || ..IsMessageWrite(pType)
+    Quit ..IsWrite(pType) || ..IsItemWrite(pType) || ..IsItemRunWrite(pType) || ..IsSettingWrite(pType) || ..IsRuntimeWrite(pType) || ..IsLookupWrite(pType) || ..IsTestWrite(pType) || ..IsMessageWrite(pType)
 }
 
 /// <p>The runtime reads, as a <class>%List</class>: Story 20.4's nine, Story 20.9's three message reads and Story 20.30's session trace. Each serves
@@ -883,6 +914,7 @@ ClassMethod Pairs(pEndpoint As %String, pType As %String = "") As %List
     }
     If ..IsWrite(pType) Set tSpec = tSpec _ "," _ ..#WRITEPAIRS
     If ..IsItemWrite(pType) || ..IsSettingWrite(pType) Set tSpec = tSpec _ "," _ ..#ITEMWRITEPAIRS
+    If ..IsItemRunWrite(pType) Set tSpec = tSpec _ "," _ ..#ITEMRUNPAIR
     If (pType = ..#TYPEABORTQUEUE) || (pType = ..#TYPEABORTMESSAGE) Set tSpec = tSpec _ "," _ ..#QUEUEWRITEPAIR
     If (pType = ..#TYPEABORTJOB) || (pType = ..#TYPESTOPJOB) Set tSpec = tSpec _ "," _ ..#JOBWRITEPAIR
     If pType = ..#TYPESUSPENDJOB Set tSpec = tSpec _ "," _ ..#SUSPENDPAIR
@@ -902,7 +934,7 @@ ClassMethod Serves(pEndpoint As %String, pType As %String) As %Boolean
 {
     If '$ListFind(..Endpoints(), pEndpoint) Quit 0
     If pType = ..#TYPELIST Quit 1
-    If pEndpoint = ..#ENDPOINTITEMS Quit (pType = ..#TYPEITEM) || ..IsItemWrite(pType)
+    If pEndpoint = ..#ENDPOINTITEMS Quit (pType = ..#TYPEITEM) || ..IsItemWrite(pType) || (pType = ..#TYPEITEMRUN) || ..IsItemRunWrite(pType)
     If pEndpoint = ..#ENDPOINTSETTINGS Quit (pType = ..#TYPESETTING) || ..IsSettingWrite(pType)
     If pEndpoint = ..#ENDPOINTQUEUES Quit (pType = ..#TYPEQUEUE) || (pType = ..#TYPEABORTQUEUE)
     If pEndpoint = ..#ENDPOINTQUEUEITEMS Quit (pType = ..#TYPEENTRY) || (pType = ..#TYPEABORTMESSAGE)
@@ -1422,10 +1454,11 @@ ClassMethod SourceControlled(pNamespace As %String) As %Boolean
     Quit ''##class(%CSP.Portal.SourceControl.Util).IsEnabled(pNamespace)
 }
 
-/// <p>Serve the Items endpoint (Story 20.3) after <method>Invoke</method>'s gate. A <code>LIST</code> names
+/// <p>Serve the Items endpoint (Stories 20.3 and 20.25) after <method>Invoke</method>'s gate. A <code>LIST</code> names
 /// its production under <parameter>PRODUCTIONKEY</parameter>; every other type names an item by the
 /// composite id <code>[Production, Name]</code> under <parameter>IDKEY</parameter>, never by the vendor's
-/// integer id, which a recompile renumbers.</p>
+/// integer id, which a recompile renumbers. <code>ITEMRUN</code> and the three runtime writes
+/// (<method>IsItemRunWrite</method>) go to <method>ReadItemRun</method> and <method>PerformItemRun</method>.</p>
 ClassMethod InvokeItems(pNamespace As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
     Set tSC = $$$OK
@@ -1452,6 +1485,19 @@ ClassMethod InvokeItems(pNamespace As %String, pType As %String, ByRef pQuery, p
         }
         Set tProduction = $List(tParts, 1)
         Set tName = $List(tParts, 2)
+        If (pType = ..#TYPEITEMRUN) || ..IsItemRunWrite(pType) {
+            Set tAction = $Select(..IsItemRunWrite(pType): pType, 1: $Get(pQuery(..#ACTIONKEY)))
+            If (tAction '= "") && '..IsItemRunWrite(tAction) {
+                Set tSC = ..Refuse(501, ##class(OcuPilot.Api.Error).#NOTIMPLEMENTED, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, ..#REASONNOTIMPLEMENTED, .pHttpStatus, .pFault)
+                Quit
+            }
+            If ..IsItemRunWrite(pType) {
+                Set tSC = ..PerformItemRun(pNamespace, pType, tProduction, tName, .pResult, .pHttpStatus, .pFault)
+            } Else {
+                Set tSC = ..ReadItemRun(pNamespace, tProduction, tName, tAction, .pResult, .pHttpStatus, .pFault)
+            }
+            Quit
+        }
         Set tAction = $Select(..IsItemWrite(pType): pType, 1: $Get(pQuery(..#ACTIONKEY)))
         If (tAction '= "") && '..IsItemWrite(tAction) {
             Set tSC = ..Refuse(501, ##class(OcuPilot.Api.Error).#NOTIMPLEMENTED, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, ..#REASONNOTIMPLEMENTED, .pHttpStatus, .pFault)
@@ -1643,6 +1689,41 @@ ClassMethod ItemCode(pToken As %String) As %String
     Quit ..#ITEMCODEPREFIX _ pToken
 }
 
+/// <p>The token (<code>NOTRUNNING</code>, <code>AMBIGUOUS</code>, <code>NOTENABLED</code>, <code>TEMPSTOPPED</code>,
+/// <code>NOTTEMPSTOPPED</code> or <code>NOJOBS</code>) naming why the item runtime action <var>pType</var>
+/// (<method>IsItemRunWrite</method>) is refused, <code>""</code> for none (Story 20.25), judged in this order. <var>pCount</var> is
+/// the number of items of the name, <var>pRunning</var> whether the item's production is the namespace's running one,
+/// <var>pEnabled</var> the item's effective <code>Enabled</code>, <var>pTempStopped</var> whether the vendor's temporary-stop flag
+/// is set and <var>pOwnJobs</var> whether the item runs jobs of its own. Each is a case the vendor answers as a silent success
+/// or with an error status. Pure, and it names no other class, so it runs while the production's namespace is switched.</p>
+/// <ul>
+/// <li>Any action: <code>NOTRUNNING</code>, <code>AMBIGUOUS</code>, <code>NOTENABLED</code>.</li>
+/// <li>Stop and restart: <code>TEMPSTOPPED</code> when the flag is set, then <code>NOJOBS</code> when the item runs no jobs of its own.</li>
+/// <li>Start: <code>NOTTEMPSTOPPED</code> when the flag is not set.</li>
+/// </ul>
+ClassMethod ItemRunRefusal(pType As %String, pCount As %Integer, pRunning As %Boolean, pEnabled As %Boolean, pTempStopped As %Boolean, pOwnJobs As %Boolean) As %String
+{
+    If 'pRunning Quit "NOTRUNNING"
+    If pCount > 1 Quit "AMBIGUOUS"
+    If 'pEnabled Quit "NOTENABLED"
+    If pType = ..#TYPESTARTITEM {
+        If 'pTempStopped Quit "NOTTEMPSTOPPED"
+        Quit ""
+    }
+    If pTempStopped Quit "TEMPSTOPPED"
+    If 'pOwnJobs Quit "NOJOBS"
+    Quit ""
+}
+
+/// <p>The code <method>ItemRunRefusal</method>'s token <var>pToken</var> names: the production's
+/// <code>NOTRUNNING</code>, else <method>ItemCode</method>'s; <code>""</code> for no token.</p>
+ClassMethod ItemRunCode(pToken As %String) As %String
+{
+    If pToken = "" Quit ""
+    If pToken = "NOTRUNNING" Quit ##class(OcuPilot.Api.InteropError).#NOTRUNNING
+    Quit ..ItemCode(pToken)
+}
+
 /// <p>Read the items of <var>pProduction</var> in <var>pNamespace</var> whose name is <var>pName</var>
 /// without regard to case, or every item when it is <code>""</code> (at most <var>pMax</var> of them when
 /// that is above zero), without changing anything. <var>pExists</var> is whether the production is there.
@@ -1762,6 +1843,155 @@ ClassMethod ReadItem(pNamespace As %String, pProduction As %String, pName As %St
         If tCode '= "" Quit ..Conflict(tCode, .pHttpStatus, .pFault)
     }
     Set pRow = ..ItemRow(pProduction, tLine, pNamespace, tCount)
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>The vendor's runtime facts for the item <var>pItemName</var> in <var>pNamespace</var> (Story 20.25), read from
+/// <code>^Ens.Runtime("ConfigItem",&lt;name&gt;,...)</code> and written by nothing here: <var>pStopped</var> whether the
+/// temporary-stop flag is set, <var>pRunAsJob</var> and <var>pPoolSize</var> the job and pool size the running production
+/// holds for it (both 0 for an item that runs no jobs of its own, and <var>pRunAsJob</var> 0 while the item is stopped). A
+/// fault is <var>pCaught</var>, with the namespace restored. Only this class runs while the namespace is switched.</p>
+ClassMethod ItemRuntime(pNamespace As %String, pItemName As %String, Output pStopped As %Boolean, Output pRunAsJob As %Integer, Output pPoolSize As %Integer, Output pCaught) As %Status [ Private ]
+{
+    Set pStopped = 0
+    Set pRunAsJob = 0
+    Set pPoolSize = 0
+    Set pCaught = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set pStopped = ''$Get(^Ens.Runtime("ConfigItem", pItemName, "TemporarilyStop"))
+        Set pRunAsJob = +$Get(^Ens.Runtime("ConfigItem", pItemName, "Job"))
+        Set pPoolSize = +$Get(^Ens.Runtime("ConfigItem", pItemName, "PoolSize"))
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+    Quit $$$OK
+}
+
+/// <p>One item's runtime, fresh (Story 20.25): <code>{Production, Name, ClassName, Enabled, EnabledSource, Count, State,
+/// Current, TemporarilyStopped, OwnJobs, Jobs, NeedsUpdate, Namespace}</code>. <code>State</code> and <code>Current</code> are the
+/// production's (<method>ReadState</method>); <code>TemporarilyStopped</code>, <code>OwnJobs</code> (the item runs jobs of its own
+/// while not stopped) and <code>Jobs</code> (the processes the host holds now) are read only while the item's production is the
+/// namespace's running one and are false, false and 0 otherwise. An unknown production or item is 404 <code>PORT.NOTFOUND</code>,
+/// unlogged; a name the production holds more than once is <code>AMBIGUOUS</code>. With <var>pAction</var>, one of the item runtime
+/// writes, it refuses what that action would be refused (<method>ItemRunRefusal</method>).</p>
+ClassMethod ReadItemRun(pNamespace As %String, pProduction As %String, pName As %String, pAction As %String, Output pRow As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRow = ""
+    Set tSC = ..ReadState(pNamespace, pProduction, .tFacts, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    Set tSC = ..GatherItems(pNamespace, pProduction, pName, 0, .tExists, .tFound, .tCount, .tCaught)
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the item runtime read failed", .pHttpStatus, .pFault)
+    If 'tExists || (tCount = 0) Quit ..Absent(.pHttpStatus, .pFault)
+    If tCount > 1 Quit ..Conflict(##class(OcuPilot.Api.InteropError).#ITEMAMBIGUOUS, .pHttpStatus, .pFault)
+    Set tLine = tFound(1)
+    Set tRunning = (tFacts("current") = pProduction) && (tFacts("word") = "Running")
+    Set tStopped = 0
+    Set tOwnJobs = 0
+    Set tJobs = 0
+    If tRunning {
+        Set tSC = ..ItemRuntime(pNamespace, $List(tLine, 1), .tStopped, .tRunAsJob, .tPoolSize, .tCaught)
+        If $IsObject(tCaught) Quit ..Mapped(tCaught, "the item runtime read failed", .pHttpStatus, .pFault)
+        Set tOwnJobs = (tRunAsJob > 0) && (tPoolSize > 0)
+        Set tSC = ..GatherJobs(pNamespace, pProduction, $List(tLine, 1), 0, .tCurrent, .tJobLines, .tCaught)
+        If $IsObject(tCaught) Quit ..Mapped(tCaught, "the item runtime read failed", .pHttpStatus, .pFault)
+        For tI = 1:1:tJobLines {
+            If '..JobRow(tJobLines(tI)).%Get("Dead") Set tJobs = tJobs + 1
+        }
+    }
+    If ..IsItemRunWrite(pAction) {
+        Set tCode = ..ItemRunCode(..ItemRunRefusal(pAction, tCount, tRunning, $List(tLine, 4), tStopped, tOwnJobs))
+        If tCode '= "" Quit ..Conflict(tCode, .pHttpStatus, .pFault)
+    }
+    Set tRow = {}
+    Do tRow.%Set("Production", pProduction, "string")
+    Do tRow.%Set("Name", $List(tLine, 1) _ "", "string")
+    Do tRow.%Set("ClassName", $List(tLine, 2) _ "", "string")
+    Do tRow.%Set("Enabled", ''$List(tLine, 4), "boolean")
+    Do tRow.%Set("EnabledSource", $List(tLine, 5), "string")
+    Do tRow.%Set("Count", +tCount, "number")
+    Do tRow.%Set("State", tFacts("word"), "string")
+    Do tRow.%Set("Current", tFacts("current"), "string")
+    Do tRow.%Set("TemporarilyStopped", ''tStopped, "boolean")
+    Do tRow.%Set("OwnJobs", ''tOwnJobs, "boolean")
+    Do tRow.%Set("Jobs", tJobs, "number")
+    Do tRow.%Set("NeedsUpdate", ''$Select(tRunning: tFacts("needsUpdate"), 1: 0), "boolean")
+    Do tRow.%Set("Namespace", pNamespace, "string")
+    Set pRow = tRow
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>The production's own update, with the wait capped at <var>pCap</var> seconds (<method>Perform</method>'s shape): the
+/// production's update timeout, or <var>pCap</var> when that is longer. Called while the production's namespace is switched; only
+/// vendor classes run.</p>
+ClassMethod UpdateCapped(pCap As %Integer) As %Status [ Private ]
+{
+    Set tTimeout = ##class(Ens.Director).GetRunningProductionUpdateTimeout()
+    If tTimeout > pCap Set tTimeout = pCap
+    Quit ##class(Ens.Director).UpdateProduction(tTimeout, 0)
+}
+
+/// <p>Stop, start or restart one item's jobs (Story 20.25) and answer the item's runtime as it stands. The item is read first
+/// and judged by <method>ItemRunRefusal</method>, so a production that is not running, a disabled item, a start of an item not
+/// stopped, a stop of one already stopped or running no jobs of its own, and a name held twice are refused with their own codes,
+/// 409, before any vendor call. Then, in one switched block, as the classic page does:</p>
+/// <ul>
+/// <li>Stop: <code>TempStopConfigItem(...,1,0)</code> and the production's capped update. An update the vendor refuses
+/// (<code>INTEROP.PRODUCTION.BUSY</code>) is followed by <code>TempStopConfigItem(...,0,0)</code>, so the flag is not left set.</li>
+/// <li>Start: <code>TempStopConfigItem(...,0,0)</code> and the capped update. An update the vendor refuses is
+/// <code>INTEROP.ITEM.STARTPENDING</code>: the flag is cleared and the next update starts the item.</li>
+/// <li>Restart: the stop, then the start.</li>
+/// </ul>
+/// <p>The update is the production's own, so it also applies any other change waiting for the production. Neither
+/// <code>EnableConfigItem</code> nor an update inside <code>TempStopConfigItem</code> is used. The vendor records
+/// <code>ModifyConfiguration</code> for each flag change, and the port records nothing of its own.</p>
+ClassMethod PerformItemRun(pNamespace As %String, pType As %String, pProduction As %String, pName As %String, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    Set tSC = ..ReadItemRun(pNamespace, pProduction, pName, pType, .tRow, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    Set tConfigName = pProduction _ "||" _ tRow.%Get("Name")
+    Set tCap = ..StopSeconds()
+    Set tVendorSC = $$$OK
+    Set tRestoreSC = $$$OK
+    Set tStage = "stop"
+    Set tCaught = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        If pType '= ..#TYPESTARTITEM {
+            Set tVendorSC = ##class(Ens.Director).TempStopConfigItem(tConfigName, 1, 0)
+            If $$$ISOK(tVendorSC) {
+                Set tVendorSC = ..UpdateCapped(tCap)
+                If $$$ISERR(tVendorSC) Set tRestoreSC = ##class(Ens.Director).TempStopConfigItem(tConfigName, 0, 0)
+            }
+        }
+        If $$$ISOK(tVendorSC) && (pType '= ..#TYPESTOPITEM) {
+            Set tStage = "start"
+            Set tVendorSC = ##class(Ens.Director).TempStopConfigItem(tConfigName, 0, 0)
+            If $$$ISOK(tVendorSC) Set tVendorSC = ..UpdateCapped(tCap)
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tCaught = ex
+    }
+    If $$$ISERR(tRestoreSC) Do ..LogFault("the item's temporary stop could not be cleared", tRestoreSC)
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the item " _ pType _ " failed", .pHttpStatus, .pFault)
+    If $$$ISERR(tVendorSC) {
+        If (tStage = "start") && '..HasCode(tVendorSC, ..#CODEPRIVILEGE) && '(($System.Status.GetErrorText(tVendorSC)) [ "<PROTECT>") {
+            If '..HasCode(tVendorSC, ..#CODENOTQUIESCENT) && '..HasCode(tVendorSC, ..#CODEJOBNOTSTOPPED) Do ..LogFault("the item start's update failed", tVendorSC)
+            Quit ..Conflict(##class(OcuPilot.Api.InteropError).#ITEMSTARTPENDING, .pHttpStatus, .pFault)
+        }
+        Quit ..Statused(tVendorSC, "the item " _ pType _ " failed", .pHttpStatus, .pFault)
+    }
+    Set pResult = tRow
+    If $$$ISOK(..ReadItemRun(pNamespace, pProduction, pName, "", .tAfter, .tAfterHttp, .tAfterFault)) Set pResult = tAfter
     Set pHttpStatus = 200
     Quit $$$OK
 }
@@ -5031,7 +5261,7 @@ ClassMethod AuditRuntime(pVerb As %String, pType As %String, pId As %String, pEf
 /// reads and anything else, which have no script form (AD-59).</p>
 ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
 {
-    If (pEndpoint = ..#ENDPOINTITEMS) && ..IsItemWrite(pType) Quit "objectscript"
+    If (pEndpoint = ..#ENDPOINTITEMS) && (..IsItemWrite(pType) || ..IsItemRunWrite(pType)) Quit "objectscript"
     If (pEndpoint = ..#ENDPOINTSETTINGS) && ..IsSettingWrite(pType) Quit "objectscript"
     If ..IsRuntimeWrite(pType) && ..Serves(pEndpoint, pType) Quit "objectscript"
     If (..IsLookupWrite(pType) || (pType = ..#TYPEEXPORT)) && ..Serves(pEndpoint, pType) Quit "objectscript"
@@ -5144,6 +5374,7 @@ ClassMethod ItemSnippet(pType As %String, pId As %String, pBody As %DynamicAbstr
     Set tName = ..Literal($ListGet(tParts, 2))
     Set tConfigName = ..Literal($ListGet(tParts, 1) _ "||" _ $ListGet(tParts, 2))
     Set tNL = $Char(10)
+    If ..IsItemRunWrite(pType) Quit ..ItemRunSnippet(pType, tConfigName)
     Set tText = tNL _ " Set tProduction = ##class(Ens.Config.Production).%OpenId(" _ tProduction _ ", 4)"
     If (pType = ..#TYPEENABLE) || (pType = ..#TYPEDISABLE) {
         Set tText = tText _ tNL _ " Set tSC = ##class(Ens.Director).EnableConfigItem(" _ tConfigName _ ", " _ (pType = ..#TYPEENABLE) _ ", 0)"
@@ -5169,6 +5400,25 @@ ClassMethod ItemSnippet(pType As %String, pId As %String, pBody As %DynamicAbstr
     }
     ; The production was opened with its exclusive lock, which lasts while a reference to it does.
     Set tText = tText _ tNL _ " Kill tItem, tProduction"
+    Quit tText
+}
+
+/// <p>The lines <method>ItemSnippet</method> adds for the item runtime write <var>pType</var> (Story 20.25) of the item the string
+/// literal <var>pConfigName</var> names (<code>Production||Name</code>): <code>TempStopConfigItem</code> with no update, then the
+/// production's update timeout capped at <parameter>STOPSECONDS</parameter> and <code>UpdateProduction</code>; after a refused
+/// stop's update the flag is cleared again. A restart does the stop and then the start. Each line closes any block it opens.</p>
+ClassMethod ItemRunSnippet(pType As %String, pConfigName As %String) As %String [ Private ]
+{
+    Set tNL = $Char(10)
+    Set tText = ""
+    If pType '= ..#TYPESTARTITEM {
+        Set tText = tText _ tNL _ " Set tSC = ##class(Ens.Director).TempStopConfigItem(" _ pConfigName _ ", 1, 0)"
+        Set tText = tText _ tNL _ " If $System.Status.IsOK(tSC) { Set tTimeout = ##class(Ens.Director).GetRunningProductionUpdateTimeout() If tTimeout > " _ ..#STOPSECONDS _ " Set tTimeout = " _ ..#STOPSECONDS _ " Set tSC = ##class(Ens.Director).UpdateProduction(tTimeout, 0) If $System.Status.IsError(tSC) { Do ##class(Ens.Director).TempStopConfigItem(" _ pConfigName _ ", 0, 0) } }"
+    }
+    If pType '= ..#TYPESTOPITEM {
+        Set tText = tText _ tNL _ " If " _ $Select(pType = ..#TYPESTARTITEM: "1", 1: "$System.Status.IsOK(tSC)") _ " { Set tSC = ##class(Ens.Director).TempStopConfigItem(" _ pConfigName _ ", 0, 0)"
+        Set tText = tText _ " If $System.Status.IsOK(tSC) { Set tTimeout = ##class(Ens.Director).GetRunningProductionUpdateTimeout() If tTimeout > " _ ..#STOPSECONDS _ " Set tTimeout = " _ ..#STOPSECONDS _ " Set tSC = ##class(Ens.Director).UpdateProduction(tTimeout, 0) } }"
+    }
     Quit tText
 }
 

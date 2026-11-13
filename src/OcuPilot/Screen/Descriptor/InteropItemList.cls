@@ -16,11 +16,14 @@
 /// stored production configuration and the production class only, so a running production reads update
 /// pending until Productions' confirmed Update applies it. Remove types the item's name and is refused while
 /// the item is enabled. Add opens a dialog; it is a person's Save, resolved through the same tool as the
-/// agent's (AD-55).</p>
+/// agent's (AD-55). Stop, Start and Restart (Story 20.25) are the callers of
+/// <class>OcuPilot.Screen.Tool.InteropItemStop</class>, <class>OcuPilot.Screen.Tool.InteropItemStart</class> and
+/// <class>OcuPilot.Screen.Tool.InteropItemRestart</class>: each stops or starts the item's jobs and updates the
+/// production, and each warns first.</p>
 /// <p><b>Its pairs</b> are the Productions list's: <code>%Ens_Portal:USE</code> and, as its own,
 /// <code>%Ens_ProductionConfig:READ</code>; the four tools add <code>%Ens_ProductionConfig:WRITE</code> and
-/// WRITE on the namespace's globals and routines databases, which the port checks before any vendor call
-/// (AD-8, AD-62). It does not refresh (AD-43).</p>
+/// WRITE on the namespace's globals and routines databases, and the three runtime tools <code>%Ens_ConfigItemRun:USE</code> and
+/// WRITE on the globals database, which the port checks before any vendor call (AD-8, AD-62). It does not refresh (AD-43).</p>
 Class OcuPilot.Screen.Descriptor.InteropItemList Extends OcuPilot.Screen.Descriptor.Base
 {
 
@@ -43,7 +46,7 @@ XData Declaration
   "parentScope": "interoperability/productions",
   "id": {"kind": "composite", "parts": ["Production", "Name"]},
   "primaryAction": {"id": "add", "selfProtection": ""},
-  "rowActions": [{"id": "enable", "selfProtection": ""}, {"id": "disable", "selfProtection": ""}, {"id": "remove", "selfProtection": ""}],
+  "rowActions": [{"id": "enable", "selfProtection": ""}, {"id": "disable", "selfProtection": ""}, {"id": "stop", "selfProtection": ""}, {"id": "start", "selfProtection": ""}, {"id": "restart", "selfProtection": ""}, {"id": "remove", "selfProtection": ""}],
   "context": {"fields": ["Name", "ClassName", "Type", "Enabled", "PoolSize"], "secretFields": []},
   "emptyStateKey": "interopItemsEmpty",
   "commandAliases": [],
