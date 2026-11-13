@@ -4,7 +4,7 @@ type: 'bugfix'
 created: '2026-11-13'
 status: 'done'
 baseline_revision: 'aa6e60dc5dcd633975cbc7a6ecc1c49d18960ac5'
-baseline_commit: 'df38df2d0caecc13074b30cad4933fb56428068b'
+baseline_commit: 'aa6e60dc5dcd633975cbc7a6ecc1c49d18960ac5'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -224,6 +224,23 @@ Rejected:
 - Next records under Newest first untested: it goes through `open()`, which the arrival case now pins.
 - The repeated submit-and-settle lines in the new cases: cosmetic.
 
+#### Batch 4 rework 1 (2026-11-13)
+
+DW-2542 confirmed fixed: the store subscriber re-runs `followOrder()` once adoption lands, and the remembered-desc case reads ascending under Oldest first.
+
+- [x] [Review][Patch] (low, fix-risk low, in-story) The remembered-desc case did not show the seeded view was adopted: a seed that stopped reaching the store would read ascending anyway; it now seeds max rows 500 and asserts the store took them [ui/src/app/areas/os-management/journal-records.page.spec.ts:344]
+- [x] [Review][Patch] (low, fix-risk low, in-story) The store's new contract (adoption notifies once with nothing remembered; `remembered()`) had no `node --test` pin in `core/`'s own suite: one case added [ui/tools/screen-store.test.mjs:82]
+- [x] [Review][Patch] (low, fix-risk low, in-story) `remembered()`'s doc omitted that a store with neither a route nor a rate key never adopts [ui/src/app/core/screen-store.ts:193]
+
+Rejected:
+
+- A direction clicked before the account read answers is reset at adoption under Oldest first: real only inside the read's window, where adoption already replaced an in-memory choice before this change, and Decided in-stage 2 resets it at the next Search; the fix needs a new "person chose" flag.
+- An order changed but not searched before the account answers draws the old read in the new direction: the same read window; the fix adds state.
+- Adoption's `followOrder()` writes the reset direction back to the account: what the DW-2542 task asks for (by-design).
+- Under order 1 the cold open's `followOrder()` writes a default view before the read answers, so a write's answer could be adopted instead of the remembered view: outside the rework range (batch 4's `open()`), race-dependent and not shown, and not high.
+- `remembered()` shares a name with `panel-layout.ts`'s `remembered(): number`, and notifies where panel layout notifies only on change: different classes, no caller confuses them; the always-notify matches the account store's settling notify.
+- Shared surfaces, linkage, Code Map line numbers, Decided in-stage 2 wording, no contention record for `screen-store.ts`: edits to the spec under review (Epic 20 has not changed the file).
+
 ## Spec Change Log
 
 - 2026-11-13: batch 4 re-opened for one review iteration (DW-2542, the first review's unpatched in-story medium).
@@ -379,6 +396,7 @@ Rejected:
   - mutation: remove the `followOrder()` call → `DW-1979: Newest first draws the newest seeded records first, in descending Address` (lead, fresh check)
   - (code review, observed, tree identical after) mutation: drop the `followOrder()` call in the Refresh action -> the Refresh case red alone. Call `followOrder()` from `onSearch` instead of `open()` -> the arrival case red alone. Keep only `sort !== ''` in the guard -> the explicit Address case red alone. Component spec 18/18; `npm run test:components` 3364/3364 (261 files); `npm run test:tools` 2219/2219; `npm run build` clean, initial total 2.02 MB.
   - (DW-2542, observed, tree identical after) mutation: drop the `followOrder()` call in `journal-records.page.ts`'s store subscriber -> the remembered-view case red alone. Run it on every store change -> the kept-direction case red alone. Notify in `adoptRemembered` only when a view moved -> the kept-direction case red alone. Start the subscriber's `awaitingView` at true -> the revisit case red alone (code review, observed). Component spec 21/21; `npm run test:components` 3367/3367 (261 files); `npm run test:tools` 2219/2219; `npm run build` clean, initial total 2.02 MB of 2500 kB, journal records chunk 12.02 kB; `screen-store.test.mjs` 26/26. `journal-records.browser-spec.mjs`: lead, fresh check (not run here).
+  - (code review, batch 4 rework 1, observed, tree identical after) mutation: stop adopting the remembered max rows in `adoptRemembered` -> the remembered-view case red alone. Notify in `adoptRemembered` only when a view moved -> `screen-store.test.mjs` "adoption notifies once ..." red alone; return `false` from `remembered()` -> the same case red alone. Component spec 21/21; `npm run test:components` 3367/3367 (261 files); `npm run test:tools` 2220/2220; `npm run build` clean (before the comment-only patch), initial total 2.02 MB.
 
 ## Auto Run Result
 

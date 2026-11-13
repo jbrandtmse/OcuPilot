@@ -9406,6 +9406,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-14T12:40:15Z status=routed owner=23-9-the-range-end-cleanup-part-8 by=lead note=orchestrator 2026-10-14: 18.48 kept at 12; the journal record browser's two lows move to 23.9
 - 2026-11-12T13:49:03Z status=routed owner=23-10-the-range-end-cleanup-part-9-two-sweeps by=spec_gate note=moved from 23.9 to keep it at burndown_story_max 12 after two CI flakes joined (lowest priority: fix-risk med, no occurrences)
 - 2026-11-13T01:28:16Z status=routed owner=23-13-the-range-end-cleanup-part-11 by=spec_gate note=23.10 split at its spec gate; batches 4-6 moved to Story 23.13
+- 2026-11-13T21:34:51Z status=resolved-by:23-13-the-range-end-cleanup-part-11 by=adjudication note=batch_4:journal-records.page.ts_followOrder()_in_open()+Refresh+after_remembered-view_adoption;component_pins_21/21;browser_Newest_first_leg_run_in_the_lead_fresh_check;code_73a78926,9a957e22,5479801a+review_commit
 
 ### DW-1980: The journal record dialog shows an empty body while its record loads (about 1.7 s, the guard's list read)
 - source: spec-18-19-journal-record-browser.md (code review) | severity: low | fix-risk: med | footprint: in-story
@@ -12630,13 +12631,21 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: _bmad-output/implementation-artifacts/spec-23-13-the-range-end-cleanup-part-11.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: journal-records.page.ts:377 registers REFRESH_ACTION_ID with refresh.readNow(); followOrder() runs only in open()
 - 2026-11-13T20:44:09Z status=open owner=23-13-the-range-end-cleanup-part-11 by=harvest note=batch 4 self-review; for the batch 4 code review to patch (two-way door) or close
+- 2026-11-13T21:34:51Z status=resolved-by:23-13-the-range-end-cleanup-part-11 by=adjudication note=batch_4_review:Refresh_calls_followOrder()_before_reading(the_refresh_timer_half_does_not_exist:refreshes_false);component_pin;code_9a957e22
 
 ### DW-2541: journal-records.browser-spec.mjs has no order 1 (Newest first) leg; Newest first drawing newest first is pinned only in the component spec
 - source: _bmad-output/implementation-artifacts/spec-23-13-the-range-end-cleanup-part-11.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: the browser spec asserts the first ten seeded records ascending for order 0 only
 - 2026-11-13T20:44:09Z status=open owner=23-13-the-range-end-cleanup-part-11 by=harvest note=batch 4 self-review; for batch 4 QA to add the leg (add-only edit to a contended file)
+- 2026-11-13T21:34:51Z status=resolved-by:23-13-the-range-end-cleanup-part-11 by=adjudication note=batch_4_QA:journal-records.browser-spec.mjs_Newest_first_leg(descending_Address,^OcuProbe185(30)..(21));run_and_mutation_in_the_lead_fresh_check;code_9a957e22
 
 ### DW-2542: Journal records: a desc direction Newest first remembered (AD-50) can be adopted after the cold open's followOrder, so a reloaded tab under Oldest first draws its rows descending until the next Search (unverified timing)
 - source: spec-23-13-the-range-end-cleanup-part-11.md | severity: med | fix-risk: med | footprint: in-story
 - evidence: ScreenStore.adoptRemembered runs on the account preferences' first answer (screen-store.ts:151,164); app.ts issues that load beside the router outlet without gating it; followOrder runs once in the constructor's open(). Settle: hard-reload the records URL after a Newest first search with desc remembered and read the drawn order.
 - 2026-11-13T21:00:50Z status=routed owner=23-13-the-range-end-cleanup-part-11 by=cr note=code review batch 4; maybe-false on timing; fix: re-run followOrder once the remembered view is adopted
+- 2026-11-13T21:34:51Z status=resolved-by:23-13-the-range-end-cleanup-part-11 by=adjudication note=batch_4_rework_1:ScreenStore.remembered()+adoption_always_notifies;page_re-runs_followOrder()_once_after_adoption;component+screen-store.test_pins;code_5479801a+review_commit
+
+### DW-2543: Journal records: a cold open that arrives with Newest first calls setDirection, which saves the whole remembered view (empty filter, default row limit, no widths) before the account read answers; if that write lands first the remembered filter, row limit and widths can be lost (unverified timing)
+- source: spec-23-13-the-range-end-cleanup-part-11.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: batch 4 rework re-review (rejected as out of rework scope): open() -> followOrder() -> setDirection('desc') -> rememberView() before adoptRemembered; screen-store.ts setDirection/rememberView; settle by arriving at the records URL with order=1 after remembering a filter and reading the preference row
+- 2026-11-13T21:34:51Z status=routed owner=burndown by=lead note=fix idea: skip rememberView until remembered() is true, or defer followOrder's write until adoption
