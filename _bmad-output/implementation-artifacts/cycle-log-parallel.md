@@ -1772,3 +1772,7 @@
 2026-11-13T07:50:28Z	orchestrator	owner_decision	id=U-27 at=2026-11-13T07:49:55Z#86 via=relay by=planner quote="B: keep it as is" effect=AD-24_unchanged;DW-2468_by-design
 2026-11-13T07:54:49Z	orchestrator	owner_instruction	via=relay(Planner) quote="Order the hold tonight at 2am." effect=hold_at_10:00Z_via_inbox(Planner_writes_HOLD)
 2026-11-13T08:37:03Z	orchestrator	runner_interim_status	note=post_compaction_reanchor command_reread=full doctrine_reread=full overlay_reread=full e20=20.25_code_review e23=23.10_batch1_ci
+2026-11-13T08:41:14Z	Epic 23	ci_green_verified	runner_report=interim story=23.10_batch1 runs=43390487951 head=554aa62a result=success shas_verified=cd679de0,554aa62a,ccaafacb,f806426d3 next=staging_head_after_integrate_forward
+2026-11-13T09:00:14Z	Story 20.25	runner_interim_status	source=a26fa46cfd0c34454 cr=no_high,4_med_patched code_head=8127b55f(local) gates=running(~2h) upgrade_triggers=governance_keys:interop.items.stop,start,restart=true
+2026-11-13T09:00:14Z	orchestrator	ruling	question=hold_10:00Z_inside_20.25_gate_pipeline choice=finish_running_gate_step_then_hold_at_next_step_boundary;log_each_gate_writeahead;no_push_before_gates;8127b55f_local-only_at_hold rejected=interrupt_running_call,run_all_gates_past_hold why=U11_never_interrupts;owner_hold_time category=decide
+2026-11-13T09:00:14Z	Story 20.36	ledger_routed_planned	note=DW-1822_reopened(reopen_if_met_after_23.9_fix;staging_64e58441_run_43379465200) owner=23-13-the-range-end-cleanup-part-11 by=orchestrator bullet=runner_epic23
