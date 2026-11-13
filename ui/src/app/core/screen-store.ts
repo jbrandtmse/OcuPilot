@@ -189,7 +189,8 @@ export class ScreenStore {
   /**
    * Whether the instance's remembered rate and view have been adopted since the last sign-in. A
    * caller that derives state from the view reads it once this turns true, because adoption
-   * replaces the sort and direction it read before.
+   * replaces the sort and direction it read before. A store with neither a route nor a rate key has
+   * nothing to adopt, so this stays false for it.
    */
   remembered(): boolean {
     return this.adopted;

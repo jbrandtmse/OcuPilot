@@ -342,8 +342,9 @@ describe('Journal records', () => {
   });
 
   it('Oldest first draws ascending when the remembered descending view is adopted after the cold open', async () => {
-    // Mutation (Rule 19), applied and observed red here: drop the `followOrder` call in the store subscriber.
-    const view = JSON.stringify({ sort: '', direction: 'desc', filter: '', maxRows: 1000 });
+    // Mutations (Rule 19), each applied and observed red here: drop the `followOrder` call in the store
+    // subscriber; stop adopting the remembered max rows, which shows the seeded view was adopted.
+    const view = JSON.stringify({ sort: '', direction: 'desc', filter: '', maxRows: 500 });
     const account = stubAccountPreferences({ views: { [RECORDS.route]: view } });
     const rows = [row(200, '^OcuProbe1979(200)'), row(300, '^OcuProbe1979(300)'), row(100, '^OcuProbe1979(100)')];
     const { host, store, fixture } = await mount({ rows, account });
@@ -353,6 +354,7 @@ describe('Journal records', () => {
     await account.load();
     await settle(fixture);
     expect(store.remembered()).toBe(true);
+    expect(store.maxRows()).toBe(500);
     expect(store.direction()).toBe('');
     expect(drawn()).toEqual(['100', '200', '300']);
   });

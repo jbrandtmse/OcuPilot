@@ -77,6 +77,19 @@ test('DW-17 bad cap: 0, -5, 2.5 and NaN change neither the store nor the prefere
   assert.equal(notified, 0, 'and nobody was told of a change that did not happen');
 });
 
+// Mutations (Rule 19): notify in `adoptRemembered` only when a remembered value moved -> red;
+// return `false` from `remembered()` -> red.
+test('adoption notifies once and turns remembered() true, even with nothing remembered', async () => {
+  const held = stubAccountPreferences();
+  const store = new ScreenStores({ account: held }).for(ONE, []);
+  let notified = 0;
+  store.subscribe(() => (notified += 1));
+  assert.equal(store.remembered(), false, 'nothing is adopted before the account answers');
+  await held.load();
+  assert.equal(store.remembered(), true);
+  assert.equal(notified, 1, 'listeners hear the adoption even though it moved nothing');
+});
+
 test('a remembered view of the wrong shape falls back field by field, without throwing', async () => {
   const shaped = await account({
     [ONE_ROUTE]: JSON.stringify({ sort: 3, direction: 'sideways', filter: 'x', maxRows: -1 }),
