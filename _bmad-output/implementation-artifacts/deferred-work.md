@@ -11246,6 +11246,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-11T00:42:34Z status=routed owner=23-7-the-range-end-cleanup-part-6 by=load note=re-own from range-end-cleanup: kit 2026-10-10.1 owners are story keys or burndown
 - 2026-10-11T09:31:48Z status=routed owner=20-23-queue-and-job-actions by=lead note=returned from 23-7 by orchestrator ruling: a 2f2e972f re-own trailer was copied under it by a later ledger merge; its owner was 20-23, never range-end-cleanup
 - 2026-10-11T09:33:14Z status=routed owner=20-25-item-runtime-and-configuration-actions by=spec_gate note=20.23 declines it (item operations, not queue or job actions); Story 20.25 chartered for it
+- 2026-11-13T08:55:33Z status=routed owner=20-40-item-copy-and-change-of-class by=adjudication note=stop, start and restart delivered by 20.25; copy remains (20.40), then change class (20.41 bullet)
 
 ### DW-2278: Rule 31: the Superserver, MFT and Doc DB slices each carry their own Save, Rules and form of one shape; one base would serve all three
 - source: spec-18-30-doc-db-applications.md | severity: med | fix-risk: med | footprint: in-epic
@@ -11886,6 +11887,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-20-16-the-agent-edits-rule-dtl-and-bpl-content-behind-the-embedded.md (rework 1 re-review) | severity: med | fix-risk: low | footprint: in-epic
 - evidence: epic-20-context.md:169 (regenerated from planning artifacts per plan spawn) lists ReadTool and ToolRoundTrip, not ToolWrite.cls:1338 (49 after 20.16). 20.16's plan missed it and its fresh check went red, costing a rework; 20.25, 20.26 and 20.31 add InteropPort writes.
 - 2026-10-14T03:02:05Z status=routed owner=20-25-item-runtime-and-configuration-actions by=cr note=name ToolWrite's other-port count (49 after 20.16) in Shared surfaces and move it; first of 20.25/20.26/20.31
+- 2026-11-13T08:55:32Z status=resolved-by:20-25-item-runtime-and-configuration-actions by=adjudication note=ToolWrite other-port count updated to 56 in the same pass; pinned by ToolWrite
 
 ### DW-2408: interop-item-test.browser-spec.mjs's cleanup leaves the host test's message headers and the probe production's Ens_Util.Log rows behind in USER
 - source: spec-20-30 plan (measured) | severity: med | fix-risk: low | footprint: in-epic
@@ -12582,3 +12584,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-23-9-the-range-end-cleanup-part-8.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: Registry.cls AreaProblem checks only appliesWhen; screen-mirror.mjs buildMirror runs malformedPair over each area's privileges (both predate df5b1c48). Shipped areas: 0 malformed; the mirror's --check in every build and CI refuses one before it ships.
 - 2026-11-13T02:34:17Z status=wontfix-accepted owner=23-9-the-range-end-cleanup-part-8 by=cr note=pre-existing; the build gate refuses it; reopen_if=Area.cls declares a pair with a missing or non-string half
+
+### DW-2532: Item runtime refusal legs miss four Matrix sub-cases: a troubled production, another production running, a system-default disable, an InProc or schedule-stopped host
+- source: spec-20-25-item-runtime-and-configuration-actions.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: InteropItemRun covers NOTRUNNING with a stopped production only and NOJOBS with an adapterless service and a pool-size-0 process; ReadItemRun's running test and GatherItems' effective Enabled are correct today (code review 20.25).
+- 2026-11-13T08:52:15Z status=wontfix-accepted owner=20-25-item-runtime-and-configuration-actions by=cr note=reopen_if=ReadItemRun's tRunning test or GatherItems' EnabledSource branch changes
+
+### DW-2533: InteropItemRunGate copies InteropItemGate's principal and child-probe helpers instead of sharing them
+- source: spec-20-25-item-runtime-and-configuration-actions.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: EnsurePrincipals, ProbeAs, Probe, Post and FailedPair repeat InteropItemGate's shape over other parameters; subclassing would rerun the parent's Test methods, and sharing needs a helper class over Story 20.3's done test.
+- 2026-11-13T08:52:15Z status=wontfix-accepted owner=20-25-item-runtime-and-configuration-actions by=cr note=reopen_if=a third interop gate test class copies EnsurePrincipals and Probe

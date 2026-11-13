@@ -402,8 +402,10 @@ test('AC2, AC3: Add item opens its dialog; a held name is refused with the serve
 });
 
 // AC3. Mutation (Rule 19): make the spec's Stop send `start` (change the label passed to `warnAndProceed` for the stop) -> the
-// stopped-flag wait goes red; rebuild and redeploy first for any client mutation.
+// Stop warning's sentence assertion goes red; rebuild and redeploy first for any client mutation.
 test('AC3: Stop warns and ends the operation\'s jobs, so its Jobs tab lists none; Start warns and runs a job again', async () => {
+  const reset = probe('RUNRESET', `$System.Status.IsOK(##class(${CONTROL}).Reset())`);
+  assert.equal(reset.value, '1', `the probe production's items are as they began: ${reset.output}`);
   const started = probe('RUNSTART', `$System.Status.IsOK(##class(${CONTROL}).StartProduction())`);
   assert.equal(started.value, '1', `the probe production runs with the operation's job: ${started.output}`);
   const { context, page } = await signedInAt(browser, config, PRODUCTIONS_URL, VIEWPORTS.wide);

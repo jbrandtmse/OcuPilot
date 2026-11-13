@@ -108,11 +108,7 @@ Method StartProbe(pExtras As %List = "") As %Status
         Set tItem = $List(pExtras, tI)
         Set tSC = $ClassMethod(..#PROBE, "AddItem", $List(tItem, 1), $List(tItem, 2), $List(tItem, 3), $List(tItem, 4))
     }
-    If $$$ISERR(tSC) Quit tSC
-    Kill tQuery
-    Set tQuery("namespace") = ..#NAMESPACE
-    Set tQuery("id") = ..#PRODUCTION
-    Set tSC = $ClassMethod(..#PORT, "Invoke", "Productions", "START", .tQuery, "", .tResult, .tHttp, .tFault)
+    If $$$ISOK(tSC) Set tSC = $ClassMethod(..#CONTROL, "StartProduction")
     If $$$ISERR(tSC) Quit tSC
     Quit ..WaitJobs(1)
 }
@@ -163,7 +159,8 @@ ClassMethod Port(pType As %String, pName As %String = {..#OPNAME}, pNamespace As
 
 /// <p>Mint <var>pTool</var> for the plain operation as the HTTP account and confirm it over HTTP: the card's one
 /// <code>TemporarilyStopped</code> row (<var>pBefore</var> to <var>pAfter</var>), the consequence code, that it is not destructive, the
-/// single envelope the confirm answers, its marker, its ledger row, and the vendor's audit rows since the mint, in <var>pAudit</var>.</p>
+/// single envelope the confirm answers, its marker, its ledger row, no OcuPilot change row naming the item, and the vendor's audit rows
+/// since the mint, in <var>pAudit</var>.</p>
 Method Through(pTool As %String, pBefore As %String, pAfter As %String, pConsequence As %String, Output pAudit As %String)
 {
     Set tName = $Parameter(pTool, "TOOLNAME")
@@ -181,6 +178,7 @@ Method Through(pTool As %String, pBefore As %String, pAfter As %String, pConsequ
     Do $$$AssertEquals(tAnswer.%Get("auditMarked") _ "|" _ tAnswer.action, "1|updated", tName _ ": updated and marked (AD-15)")
     Do $$$AssertEquals($ClassMethod(..#CONTROL, "LedgerCount", tTurn, tName), 1, tName _ ": the confirmed write is in the ledger once")
     Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tTurn)
+    Do $$$AssertEquals(##class(OcuPilot.Test.AuditEvent).RowsCarrying(tSince, "ConfigChange", ..#OPNAME, .tOwn), 0, tName _ ": OcuPilot records no change row of its own, only the vendor's: " _ $Get(tOwn))
     Set pAudit = $ClassMethod(..#CONTROL, "Audited", tSince)
 }
 
@@ -247,7 +245,8 @@ Method TestThePersonsRowActionsStopStartAndRestart()
 /// stopped or running no jobs of its own (an adapterless service and a pool-size-0 process), a name held twice and a namespace that does
 /// not report interoperability are each shown.</p>
 /// <p>Mutation (Rule 19): drop <code>NOTRUNNING</code> from <method>OcuPilot.Port.InteropPort.ItemRunRefusal</method> -- the stopped-production
-/// leg goes red, the vendor's silent success reaching the audit; drop <code>NOTTEMPSTOPPED</code> -- the start-not-stopped leg goes red.</p>
+/// legs go red, answered <code>NOJOBS</code> and <code>NOTTEMPSTOPPED</code> instead; drop <code>NOTTEMPSTOPPED</code> -- the start-not-stopped
+/// leg goes red.</p>
 Method TestEachRefusalIsMadeByNameBeforeAnyVendorCall()
 {
     Do ..HoldPairs()
@@ -297,6 +296,7 @@ Method TestAStopThePortCannotFinishIsUndone()
     For tType = "STOPITEM", "RESTARTITEM" {
         Set tSince = ##class(OcuPilot.Test.AuditEvent).Now()
         Do $$$AssertEquals(..Port(tType), "409 INTEROP.PRODUCTION.BUSY", tType _ " is refused as the production's work in progress did not finish")
+        Do $$$AssertEquals($ClassMethod(..#SEAM, "Logged"), 0, tType _ ": an update the production could not finish is no fault, and the flag was cleared")
         Do $$$AssertEquals(..Facts(), "enabled=1 stopped=0 own=1 jobs=1 needs=0", tType _ " left the flag clear, the job running and nothing pending")
         Set tAudit = $ClassMethod(..#CONTROL, "Audited", tSince)
         Do $$$AssertTrue((tAudit [ "item temporary stop by") && (tAudit [ "restarted after temporary stop"), tType _ ": the vendor audited the flag set and cleared: " _ tAudit)
@@ -317,6 +317,7 @@ Method TestAStartThePortCannotFinishIsPending()
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "AddItem", ..#NEWNAME, ..#OPCLASS, 1, 1), "another change is left waiting for the production: an enabled item")
     Do $ClassMethod(..#SEAM, "RefuseUpdateWith", "<Ens>ErrProductionNotQuiescent", 1)
     Do $$$AssertEquals(..Port("STARTITEM"), "409 INTEROP.ITEM.STARTPENDING", "a start whose update is refused is pending")
+    Do $$$AssertEquals($ClassMethod(..#SEAM, "Logged"), 0, "an update the production could not finish is no fault")
     Do $ClassMethod(..#SEAM, "Disarm")
     Set tFacts = ..Facts()
     Do $$$AssertEquals(tFacts, "enabled=1 stopped=0 own=0 jobs=0 needs=1", "the flag is clear, no job runs yet and an update is pending: " _ tFacts)
@@ -327,6 +328,7 @@ Method TestAStartThePortCannotFinishIsPending()
     Do $ClassMethod(..#SEAM, "RefuseUpdateWith", "<Ens>ErrProductionNotQuiescent", 2)
     Set tText = ..Port("RESTARTITEM")
     Do $$$AssertEquals(tText, "409 INTEROP.ITEM.STARTPENDING", "a restart whose second update is refused is pending: " _ tText)
+    Do $$$AssertEquals($ClassMethod(..#SEAM, "Logged"), 0, "and it is no fault")
     Do $ClassMethod(..#SEAM, "Disarm")
     Set tFacts = ..Facts()
     Do $$$AssertTrue(tFacts [ "stopped=0 own=0 jobs=0", "its first half ended the job and the flag is clear: " _ tFacts)
@@ -336,7 +338,8 @@ Method TestAStartThePortCannotFinishIsPending()
 /// <code>Enabled</code>, then the flag and the item's own jobs for a stop or a restart, or the flag alone for a start -- and
 /// <method>OcuPilot.Port.InteropPort.ItemRunCode</method> gives each token its code.</p>
 /// <p>Mutation (Rule 19): swap the <code>TEMPSTOPPED</code> and <code>NOJOBS</code> lines -- a stopped item (which reads no job of its own)
-/// is refused <code>NOJOBS</code>, and the order rows go red.</p>
+/// is refused <code>NOJOBS</code>, and the order rows go red; make <method>OcuPilot.Port.InteropPort.OwnsJobs</method> ask for a job above
+/// 0 -- the single-job adapter's row goes red.</p>
 Method TestTheRefusalsAreJudgedInTheMatrixOrder()
 {
     For tCase = $ListBuild("STOPITEM", 1, 1, 1, 0, 1, ""), $ListBuild("STOPITEM", 1, 0, 1, 0, 1, "NOTRUNNING"), $ListBuild("STOPITEM", 2, 1, 1, 0, 1, "AMBIGUOUS"), $ListBuild("STOPITEM", 2, 0, 1, 0, 1, "NOTRUNNING"), $ListBuild("STOPITEM", 1, 1, 0, 0, 1, "NOTENABLED"), $ListBuild("STOPITEM", 1, 1, 1, 1, 1, "TEMPSTOPPED"), $ListBuild("STOPITEM", 1, 1, 1, 1, 0, "TEMPSTOPPED"), $ListBuild("STOPITEM", 1, 1, 1, 0, 0, "NOJOBS"), $ListBuild("STARTITEM", 1, 1, 1, 0, 1, "NOTTEMPSTOPPED"), $ListBuild("STARTITEM", 1, 1, 1, 1, 0, ""), $ListBuild("STARTITEM", 1, 1, 0, 1, 1, "NOTENABLED"), $ListBuild("RESTARTITEM", 1, 1, 1, 1, 1, "TEMPSTOPPED"), $ListBuild("RESTARTITEM", 1, 1, 1, 0, 0, "NOJOBS"), $ListBuild("RESTARTITEM", 1, 1, 1, 0, 1, "") {
@@ -344,12 +347,23 @@ Method TestTheRefusalsAreJudgedInTheMatrixOrder()
         Do $$$AssertEquals(tGot, $List(tCase, 7), $List(tCase, 1) _ " count " _ $List(tCase, 2) _ " running " _ $List(tCase, 3) _ " enabled " _ $List(tCase, 4) _ " stopped " _ $List(tCase, 5) _ " own jobs " _ $List(tCase, 6))
     }
     Do $$$AssertEquals($ClassMethod(..#PORT, "ItemRunCode", "NOTRUNNING") _ "|" _ $ClassMethod(..#PORT, "ItemRunCode", "NOJOBS") _ "|" _ $ClassMethod(..#PORT, "ItemRunCode", ""), "INTEROP.PRODUCTION.NOTRUNNING|INTEROP.ITEM.NOJOBS|", "each token has its code")
+    For tCase = $ListBuild(1, 1, 1), $ListBuild(-1, 1, 1), $ListBuild(1, 3, 1), $ListBuild(0, 1, 0), $ListBuild(1, 0, 0), $ListBuild(0, 0, 0), $ListBuild("", "", 0) {
+        Do $$$AssertEquals($ClassMethod(..#PORT, "OwnsJobs", $List(tCase, 1), $List(tCase, 2)), $List(tCase, 3), "job " _ $List(tCase, 1) _ " and pool size " _ $List(tCase, 2) _ ": own jobs " _ $List(tCase, 3) _ " (-1 is a single-job adapter's, a TCP inbound service's)")
+    }
 }
 
 /// <p>AD-59: each tool's copy-out draft renders one ObjectScript step that switches to the namespace the proposal read and calls the vendor's
 /// temporary stop and the production's update, closes the proposal as a draft and changes nothing; none names <code>CleanProduction</code>,
-/// <code>EnableConfigItem</code> or an update inside the temporary stop.</p>
-/// <p>Mutation (Rule 19): render a restart's script without its start -- the restart row goes red; render a start's script with the flag set (<code>1, 0</code>) -- the start rows go red.</p>
+/// <code>EnableConfigItem</code> or an update inside the temporary stop; the update's cap is a block, so the update runs whatever the
+/// production's update timeout (a condition written without a block makes the rest of its line conditional).</p>
+/// <p>Mutation (Rule 19): render a restart's script without its start -- the restart row goes red; render a start's script with the flag set
+/// (<code>1, 0</code>) -- the start rows go red; write the cap as <code>If tTimeout &gt; 15 Set tTimeout = 15</code> -- every row goes red.</p>
+/// <p>How many times the draft text <var>pText</var> caps the timeout with a condition written without a block.</p>
+ClassMethod UnblockedCaps(pText As %String) As %Integer
+{
+    Quit $Length(pText, "If tTimeout > " _ $Parameter(..#PORT, "STOPSECONDS") _ " Set ") - 1
+}
+
 Method TestEachToolsDraftRendersItsScript()
 {
     Do $$$AssertStatusOK(..StartProbe(), "the probe production runs with the operation's job")
@@ -367,6 +381,7 @@ Method TestEachToolsDraftRendersItsScript()
         Do $$$AssertEquals(tDraft.state _ "|" _ tDraft.closedReason _ "|" _ tDraft.draft.steps.%Get(0).kind, "canceled|draft|objectscript", $Parameter(tTool, "TOOLNAME") _ ": an ObjectScript draft that closes the proposal")
         Do $$$AssertTrue((tText [ "Set $NAMESPACE = ""USER""") && (tText [ ("TempStopConfigItem(" _ tConfig _ ", 1, 0)")) && (tText [ "UpdateProduction(tTimeout, 0)") && (tText '[ "CleanProduction") && (tText '[ "EnableConfigItem") && (tText '[ "SaveToClass"), $Parameter(tTool, "TOOLNAME") _ ": " _ tText)
         Do $$$AssertEquals($Length(tText, "TempStopConfigItem(" _ tConfig _ ", 0, 0)") - 1, $List(tCase, 3), $Parameter(tTool, "TOOLNAME") _ ": the flag is cleared once by a refused stop's restore, and a second time by a restart's start")
+        Do $$$AssertEquals(..UnblockedCaps(tText) _ "|" _ ($Length(tText, "UpdateProduction(tTimeout, 0)") - 1), "0|" _ $List(tCase, 3), $Parameter(tTool, "TOOLNAME") _ ": each update follows a cap written as a block: " _ tText)
     }
     Do $$$AssertEquals(..Facts(), "enabled=1 stopped=0 own=1 jobs=1 needs=0", "no draft changed the item")
     Do ..HoldPairs()
@@ -382,6 +397,7 @@ Method TestEachToolsDraftRendersItsScript()
             Set tText = tDraft.draft.steps.%Get(0).text
             Do $$$AssertTrue((tText [ "Set $NAMESPACE = ""USER""") && (tText [ ("TempStopConfigItem(" _ tConfig _ ", 0, 0)")) && (tText [ "UpdateProduction(tTimeout, 0)") && (tText '[ ("TempStopConfigItem(" _ tConfig _ ", 1, 0)")) && (tText '[ "CleanProduction") && (tText '[ "EnableConfigItem") && (tText '[ "SaveToClass"), "interop.items.start: " _ tText)
             Do $$$AssertEquals($Length(tText, "TempStopConfigItem(" _ tConfig _ ", 0, 0)") - 1, 1, "interop.items.start: the flag is cleared once")
+            Do $$$AssertEquals(..UnblockedCaps(tText) _ "|" _ ($Length(tText, "UpdateProduction(tTimeout, 0)") - 1), "0|1", "interop.items.start: its update follows a cap written as a block: " _ tText)
         }
     }
     Do $$$AssertEquals(..Facts(), "enabled=1 stopped=1 own=0 jobs=0 needs=0", "the start draft left the item stopped")

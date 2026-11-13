@@ -524,7 +524,7 @@ ClassMethod ItemCodes() As %List
 /// and <parameter>ITEMVALUE</parameter>) are an add's body and are not among them.</p>
 ClassMethod ItemPreconditionCodes() As %List
 {
-    Quit $ListBuild(..#ITEMENABLED, ..#ITEMDISABLED, ..#ITEMDEFAULTSETTING, ..#ITEMPOOLZERO, ..#ITEMTAKEN, ..#ITEMAMBIGUOUS, ..#ITEMENABLEDREMOVE, ..#ITEMSOURCECONTROL)
+    Quit $ListBuild(..#ITEMENABLED, ..#ITEMDISABLED, ..#ITEMDEFAULTSETTING, ..#ITEMPOOLZERO, ..#ITEMTAKEN, ..#ITEMAMBIGUOUS, ..#ITEMENABLEDREMOVE, ..#ITEMSOURCECONTROL, ..#ITEMNOTENABLED, ..#ITEMTEMPSTOPPED, ..#ITEMNOTTEMPSTOPPED, ..#ITEMNOJOBS)
 }
 
 /// <p>The setting codes (Story 20.22), as a <class>%List</class>: the refusals an item setting read or write answers

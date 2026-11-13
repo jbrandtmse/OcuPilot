@@ -112,18 +112,18 @@ Method OnAfterOneTest() As %Status
     Quit $$$OK
 }
 
-/// <p>Start the probe production through the port and wait for the plain operation's job.</p>
+/// <p>Start the probe production (<method>OcuPilot.Test.InteropItemControl.StartProduction</method>) and wait until the plain
+/// operation reads running with its job and nothing pending; a failing status when it never does.</p>
 ClassMethod StartProbe() As %Status
 {
-    Kill tQuery
-    Set tQuery("namespace") = ..#NAMESPACE
-    Set tQuery("id") = ..#PRODUCTION
-    Set tSC = ##class(OcuPilot.Port.InteropPort).Invoke("Productions", "START", .tQuery, "", .tResult, .tHttp, .tFault)
+    Set tSC = $ClassMethod(..#CONTROL, "StartProduction")
     If $$$ISERR(tSC) Quit tSC
     For tTry = 1:1:30 {
-        If $ClassMethod(..#RUN, "Facts", ..#ITEM) = "enabled=1 stopped=0 own=1 jobs=1 needs=0" Quit
+        Set tFacts = $ClassMethod(..#RUN, "Facts", ..#ITEM)
+        If tFacts = "enabled=1 stopped=0 own=1 jobs=1 needs=0" Quit
         Hang 0.5
     }
+    If tFacts '= "enabled=1 stopped=0 own=1 jobs=1 needs=0" Quit $$$ERROR($$$GeneralError, "the probe's operation reads " _ tFacts _ " after the start")
     Quit $$$OK
 }
 

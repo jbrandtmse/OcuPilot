@@ -145,7 +145,7 @@ Method TestTheToolShapes()
 
 /// <p>The three item runtime tools (Story 20.25) declare what the spec names: the port, the <code>ITEMRUN</code> read, their own write type and
 /// screen action, no body, no destructive flag, the <code>updated</code> change action, the flag as their subject and state row, their
-/// consequence and precondition codes (each a declared code), the composite mint; each passes the subject's adequacy rule, is advertised
+/// consequence and precondition codes (each a declared item refusal, or the namespace's or the stopped production's), the composite mint; each passes the subject's adequacy rule, is advertised
 /// and is listed in the governance baseline, enabled. Their pairs are the screen's two, then <code>%Ens_ConfigItemRun:USE</code>, then WRITE
 /// on the request namespace's globals database alone: neither <code>%Ens_ProductionConfig:WRITE</code>, <code>%Ens_ProductionRun:USE</code> nor
 /// the routines database.</p>
@@ -169,6 +169,7 @@ Method TestTheRuntimeToolShapesAndPairs()
         Do $$$AssertTrue($ListFind(tCodes, ##class(OcuPilot.Api.InteropError).#NAMESPACE) && $ListFind(tCodes, ##class(OcuPilot.Api.InteropError).#NOTRUNNING) && '$ListFind(tCodes, ##class(OcuPilot.Api.InteropError).#ITEMSOURCECONTROL), tTool _ ": its precondition codes name the namespace and the stopped production, and not source control")
         For tJ = 1:1:$ListLength(tCodes) {
             Do $$$AssertTrue(##class(OcuPilot.Api.InteropError).ReasonFor($List(tCodes, tJ)) '= "", tTool _ ": " _ $List(tCodes, tJ) _ " has a sentence")
+            Do $$$AssertTrue(($ListFind(##class(OcuPilot.Api.InteropError).ItemPreconditionCodes(), $List(tCodes, tJ)) > 0) || ($List(tCodes, tJ) = ##class(OcuPilot.Api.InteropError).#NAMESPACE) || ($List(tCodes, tJ) = ##class(OcuPilot.Api.InteropError).#NOTRUNNING), tTool _ ": " _ $List(tCodes, tJ) _ " is a declared item refusal, the namespace's or the stopped production's")
         }
         Kill tQuery
         Do $ClassMethod(tTool, "PortQuery", {"Name": "N"}, .tQuery)

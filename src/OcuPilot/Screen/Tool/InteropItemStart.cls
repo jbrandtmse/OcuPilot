@@ -9,7 +9,7 @@ Class OcuPilot.Screen.Tool.InteropItemStart Extends OcuPilot.Screen.Tool.Interop
 
 Parameter TOOLNAME = "interop.items.start";
 
-Parameter DESCRIPTION = "Propose starting the jobs of one item of the running production of the namespace the user is working in that was stopped with Stop. It changes nothing by itself: it answers a proposal the user reviews and confirms. Name the production as the Productions list reports it and the item as that production's Production items list reports it. Confirming updates the production now, which also applies any other change waiting for it. An item that was not stopped with Stop, a disabled item, a production that is not running, and a name the production holds more than once are refused.";
+Parameter DESCRIPTION = "Propose starting the jobs of one item of the running production of the namespace the user is working in that was stopped with Stop. It changes nothing by itself: it answers a proposal the user reviews and confirms. Name the production as the Productions list reports it and the item as that production's Production items list reports it. Confirming updates the production now, which also applies any other change waiting for it; if that update does not finish within 15 seconds, or sooner when the production's update timeout is shorter, the item starts at the production's next update. An item that was not stopped with Stop, a disabled item, a production that is not running, and a name the production holds more than once are refused.";
 
 Parameter SCREENACTIONS = "start";
 

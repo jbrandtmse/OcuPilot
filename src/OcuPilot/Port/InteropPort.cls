@@ -1695,7 +1695,7 @@ ClassMethod ItemCode(pToken As %String) As %String
 /// the number of items of the name, <var>pRunning</var> whether the item's production is the namespace's running one,
 /// <var>pEnabled</var> the item's effective <code>Enabled</code>, <var>pTempStopped</var> whether the vendor's temporary-stop flag
 /// is set and <var>pOwnJobs</var> whether the item runs jobs of its own. Each is a case the vendor answers as a silent success
-/// or with an error status. Pure, and it names no other class, so it runs while the production's namespace is switched.</p>
+/// or with an error status. Pure, and it names no other class.</p>
 /// <ul>
 /// <li>Any action: <code>NOTRUNNING</code>, <code>AMBIGUOUS</code>, <code>NOTENABLED</code>.</li>
 /// <li>Stop and restart: <code>TEMPSTOPPED</code> when the flag is set, then <code>NOJOBS</code> when the item runs no jobs of its own.</li>
@@ -1713,6 +1713,15 @@ ClassMethod ItemRunRefusal(pType As %String, pCount As %Integer, pRunning As %Bo
     If pTempStopped Quit "TEMPSTOPPED"
     If 'pOwnJobs Quit "NOJOBS"
     Quit ""
+}
+
+/// <p>Whether an item runs jobs of its own while not stopped, from the job and pool size the running production holds for it
+/// (<method>ItemRuntime</method>), judged as the vendor's <code>TempStopConfigItem</code> judges them: both nonzero. The job reads
+/// <code>-1</code> for an item whose adapter runs one job whatever its pool size (<code>SINGLEPOOLJOB</code>, a TCP inbound
+/// service's), 0 for an item that runs in its callers' jobs or the shared actor pool, has no adapter, or is stopped.</p>
+ClassMethod OwnsJobs(pRunAsJob As %Integer, pPoolSize As %Integer) As %Boolean
+{
+    Quit (+pRunAsJob '= 0) && (+pPoolSize '= 0)
 }
 
 /// <p>The code <method>ItemRunRefusal</method>'s token <var>pToken</var> names: the production's
@@ -1850,8 +1859,8 @@ ClassMethod ReadItem(pNamespace As %String, pProduction As %String, pName As %St
 /// <p>The vendor's runtime facts for the item <var>pItemName</var> in <var>pNamespace</var> (Story 20.25), read from
 /// <code>^Ens.Runtime("ConfigItem",&lt;name&gt;,...)</code> and written by nothing here: <var>pStopped</var> whether the
 /// temporary-stop flag is set, <var>pRunAsJob</var> and <var>pPoolSize</var> the job and pool size the running production
-/// holds for it (both 0 for an item that runs no jobs of its own, and <var>pRunAsJob</var> 0 while the item is stopped). A
-/// fault is <var>pCaught</var>, with the namespace restored. Only this class runs while the namespace is switched.</p>
+/// holds for it (<method>OwnsJobs</method> reads them). A fault is <var>pCaught</var>, with the namespace restored. Only this
+/// class runs while the namespace is switched.</p>
 ClassMethod ItemRuntime(pNamespace As %String, pItemName As %String, Output pStopped As %Boolean, Output pRunAsJob As %Integer, Output pPoolSize As %Integer, Output pCaught) As %Status [ Private ]
 {
     Set pStopped = 0
@@ -1896,7 +1905,7 @@ ClassMethod ReadItemRun(pNamespace As %String, pProduction As %String, pName As 
     If tRunning {
         Set tSC = ..ItemRuntime(pNamespace, $List(tLine, 1), .tStopped, .tRunAsJob, .tPoolSize, .tCaught)
         If $IsObject(tCaught) Quit ..Mapped(tCaught, "the item runtime read failed", .pHttpStatus, .pFault)
-        Set tOwnJobs = (tRunAsJob > 0) && (tPoolSize > 0)
+        Set tOwnJobs = ..OwnsJobs(tRunAsJob, tPoolSize)
         Set tSC = ..GatherJobs(pNamespace, pProduction, $List(tLine, 1), 0, .tCurrent, .tJobLines, .tCaught)
         If $IsObject(tCaught) Quit ..Mapped(tCaught, "the item runtime read failed", .pHttpStatus, .pFault)
         For tI = 1:1:tJobLines {
@@ -5406,18 +5415,19 @@ ClassMethod ItemSnippet(pType As %String, pId As %String, pBody As %DynamicAbstr
 /// <p>The lines <method>ItemSnippet</method> adds for the item runtime write <var>pType</var> (Story 20.25) of the item the string
 /// literal <var>pConfigName</var> names (<code>Production||Name</code>): <code>TempStopConfigItem</code> with no update, then the
 /// production's update timeout capped at <parameter>STOPSECONDS</parameter> and <code>UpdateProduction</code>; after a refused
-/// stop's update the flag is cleared again. A restart does the stop and then the start. Each line closes any block it opens.</p>
+/// stop's update the flag is cleared again. A restart does the stop and then the start. Each line closes any block it opens, and every
+/// condition takes a block, so no command after it on the line is conditional on it.</p>
 ClassMethod ItemRunSnippet(pType As %String, pConfigName As %String) As %String [ Private ]
 {
     Set tNL = $Char(10)
     Set tText = ""
     If pType '= ..#TYPESTARTITEM {
         Set tText = tText _ tNL _ " Set tSC = ##class(Ens.Director).TempStopConfigItem(" _ pConfigName _ ", 1, 0)"
-        Set tText = tText _ tNL _ " If $System.Status.IsOK(tSC) { Set tTimeout = ##class(Ens.Director).GetRunningProductionUpdateTimeout() If tTimeout > " _ ..#STOPSECONDS _ " Set tTimeout = " _ ..#STOPSECONDS _ " Set tSC = ##class(Ens.Director).UpdateProduction(tTimeout, 0) If $System.Status.IsError(tSC) { Do ##class(Ens.Director).TempStopConfigItem(" _ pConfigName _ ", 0, 0) } }"
+        Set tText = tText _ tNL _ " If $System.Status.IsOK(tSC) { Set tTimeout = ##class(Ens.Director).GetRunningProductionUpdateTimeout() If tTimeout > " _ ..#STOPSECONDS _ " { Set tTimeout = " _ ..#STOPSECONDS _ " } Set tSC = ##class(Ens.Director).UpdateProduction(tTimeout, 0) If $System.Status.IsError(tSC) { Do ##class(Ens.Director).TempStopConfigItem(" _ pConfigName _ ", 0, 0) } }"
     }
     If pType '= ..#TYPESTOPITEM {
         Set tText = tText _ tNL _ " If " _ $Select(pType = ..#TYPESTARTITEM: "1", 1: "$System.Status.IsOK(tSC)") _ " { Set tSC = ##class(Ens.Director).TempStopConfigItem(" _ pConfigName _ ", 0, 0)"
-        Set tText = tText _ " If $System.Status.IsOK(tSC) { Set tTimeout = ##class(Ens.Director).GetRunningProductionUpdateTimeout() If tTimeout > " _ ..#STOPSECONDS _ " Set tTimeout = " _ ..#STOPSECONDS _ " Set tSC = ##class(Ens.Director).UpdateProduction(tTimeout, 0) } }"
+        Set tText = tText _ " If $System.Status.IsOK(tSC) { Set tTimeout = ##class(Ens.Director).GetRunningProductionUpdateTimeout() If tTimeout > " _ ..#STOPSECONDS _ " { Set tTimeout = " _ ..#STOPSECONDS _ " } Set tSC = ##class(Ens.Director).UpdateProduction(tTimeout, 0) } }"
     }
     Quit tText
 }
