@@ -159,18 +159,6 @@ Method TestEveryWorkflowIsOfferedByABuiltScreen()
     Do $$$AssertTrue(tEntries > 0, "the catalog holds an entry workflow")
 }
 
-/// <p><method>OcuPilot.Kernel.Agent.Workflow.StepTools</method> answers every tool a workflow's steps name, reads and
-/// writes, once each in step order, and nothing for an unknown id.</p>
-/// <p>Mutation: <method>StepTools</method> skips the <code>writes</code> member -> this goes red.</p>
-Method TestStepToolsNameTheReadsAndTheWrites()
-{
-    Set tTools = $ClassMethod(..#WORKFLOW, "StepTools", "compileclass")
-    Do $$$AssertEquals($ListToString(tTools, ","), "explorer.classes.read,explorer.class.source,explorer.classes.save,explorer.classes.compile", "compileclass names its reads and its writes, once each, in step order")
-    Set tTools = $ClassMethod(..#WORKFLOW, "StepTools", "investigate")
-    Do $$$AssertTrue($ListFind(tTools, "logs.messages.read") > 0, "investigate names the messages.log read")
-    Do $$$AssertEquals($ListLength($ClassMethod(..#WORKFLOW, "StepTools", "nosuch")), 0, "an unknown id names none")
-}
-
 /// <p>Each <code>WORKFLOW.*</code> code resolves to its sentence directly and through
 /// <method>OcuPilot.Api.Error.ReasonForToolCode</method>, and a code of another family resolves to none here.</p>
 /// <p>Mutation: reword <parameter>REASONNOTASTEP</parameter> -> this goes red.</p>

@@ -114,14 +114,11 @@ ClassMethod ContextTools(pContextJson As %String) As %List
 /// shape) to the turn's starting set, in place. When the array holds the discovery tool
 /// (<parameter>DISCOVERYTOOL</parameter>), <code>pTools("scoped")</code> becomes 1 and
 /// <code>pTools(n, "start")</code> becomes 1 for each tool whose wire name starts with
-/// <parameter>SHELLPREFIX</parameter>, for each name <method>ContextTools</method> reads from
-/// <var>pContextJson</var> and, when <var>pWorkflow</var> is a guided workflow's id, for each tool a step
-/// of that workflow names (<method>OcuPilot.Kernel.Agent.Workflow.StepTools</method>), so a workflow
-/// started from a screen whose context lacks a step's tool still holds it; every other tool is left for
-/// the discovery tool to find. An array without the discovery tool is left whole, so no advertised tool
-/// becomes unreachable. A pure function of the array, the context, the catalog and the dispatch class's
-/// tool registry, which turns a step's canonical names into wire names.</p>
-ClassMethod Scope(ByRef pTools, pContextJson As %String = "", pWorkflow As %String = "")
+/// <parameter>SHELLPREFIX</parameter> and for each name <method>ContextTools</method> reads from
+/// <var>pContextJson</var>; every other tool is left for the discovery tool to find. An array without
+/// the discovery tool is left whole, so no advertised tool becomes unreachable. A pure function of
+/// the array and the context: it reads no registry.</p>
+ClassMethod Scope(ByRef pTools, pContextJson As %String = "")
 {
     Kill pTools("scoped")
     Set tHasDiscovery = 0
@@ -133,19 +130,10 @@ ClassMethod Scope(ByRef pTools, pContextJson As %String = "", pWorkflow As %Stri
     }
     If 'tHasDiscovery Quit
     Set tContextTools = ..ContextTools(pContextJson)
-    Set tStepWires = ""
-    If pWorkflow '= "" {
-        Set tRegistry = $ClassMethod(..DispatchClass(), "RegistryClass")
-        Set tStepTools = ##class(OcuPilot.Kernel.Agent.Workflow).StepTools(pWorkflow)
-        Set tPointer = 0
-        While $ListNext(tStepTools, tPointer, tStepTool) {
-            Set tStepWires = tStepWires _ $ListBuild($ClassMethod(tRegistry, "WireName", tStepTool))
-        }
-    }
     Set pTools("scoped") = 1
     For tI = 1:1:+pTools {
         Set tName = $Get(pTools(tI, "name"))
-        If ($Extract(tName, 1, $Length(..#SHELLPREFIX)) = ..#SHELLPREFIX) || $ListFind(tContextTools, tName) || $ListFind(tStepWires, tName) Set pTools(tI, "start") = 1
+        If ($Extract(tName, 1, $Length(..#SHELLPREFIX)) = ..#SHELLPREFIX) || $ListFind(tContextTools, tName) Set pTools(tI, "start") = 1
     }
 }
 
@@ -310,7 +298,7 @@ ClassMethod Run(pKey As %String, pUser As %String, pDefinitionId As %String, pMe
             Do ..LogFault("the turn's tools could not be advertised", tAdvertiseSC, pOutcome("code"))
             Quit
         }
-        Do ..Scope(.tTools, pContext, tWorkflow)
+        Do ..Scope(.tTools, pContext)
         For {
             If ..Boundary(pKey, pUser, pReadOnly, pResources, pStartedSeconds, tBound + tOutput, .tState, .tCode) {
                 If tCode = ##class(OcuPilot.Api.Error).#TURNSTOPPED {

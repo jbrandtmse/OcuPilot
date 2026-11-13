@@ -1,9 +1,8 @@
 /// <p>The guided-workflow turn in process (Stories 20.12 and 20.36, AD-11, AD-66): the opening messages a turn that
 /// carries a workflow builds -- the synthetic <code>workflow</code> call and result after screen context, or alone --
 /// with the ordinary turn's unchanged; a model call named <code>workflow</code> answering <code>TOOL.UNKNOWN</code>;
-/// a read-only workflow's refusal of a write tool; the <code>investigate</code> turn's marked context and refusal; a
-/// workflow's step tools joining the turn's starting tool set; and <code>previous</code> reporting only a turn of the
-/// same workflow. Each observed on the requests <class>OcuPilot.Test.ProviderStub</class> recorded.</p>
+/// a read-only workflow's refusal of a write tool; the <code>investigate</code> turn's marked context and refusal; and
+/// <code>previous</code> reporting only a turn of the same workflow. Each observed on the requests <class>OcuPilot.Test.ProviderStub</class> recorded.</p>
 /// <p>Driven through <class>OcuPilot.Test.TurnLoopProbe</class> as <class>OcuPilot.Test.TurnToolsCase</class>
 /// sets it up, with <class>OcuPilot.Test.ToolDispatchProbe</class> over the counting fixture tools where a tool is
 /// called. <b>Live-safe</b>: it spawns nothing and opens no socket; it writes probe agent definitions, turn rows, a
@@ -266,28 +265,6 @@ Method TestAnInvestigateTurnRefusesAWrite()
     Do $$$AssertEquals(##class(OcuPilot.Test.DispatchTool.Counter).Calls("probe.counter.write"), 0, "and the counter did not move")
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Propose).GuardedCountForTurn(tKey, .tMinted), "the turn's proposals are counted")
     Do $$$AssertEquals(tMinted, 0, "and the turn minted no proposal")
-}
-
-/// <p>A workflow's step tools join the turn's starting tool set: an <code>investigate</code> turn from a screen whose
-/// context names no tools sends <code>logs_messages_read</code> and <code>osmgmt_dashboard_read</code> undeferred, as the
-/// ordinary turn from the same screen defers them, and still defers a tool no step names.</p>
-/// <p>Mutation: <method>OcuPilot.Kernel.Agent.Loop.Scope</method> ignores its workflow argument -> this goes red.</p>
-Method TestAWorkflowsStepToolsStartInTheToolSet()
-{
-    Do $ClassMethod(..#LOOP, "SetLimitsClass", "OcuPilot.Kernel.Agent.Limits")
-    Do $ClassMethod(..#STUB, "QueueAnswer", 200, ..Reply("done"))
-    Set tKey = ..RunTurn(.tOrdinary, "", 0, 0, ..#ENTRYCONTEXT)
-    Do $$$AssertEquals(tOrdinary("state"), "completed", "the ordinary turn completes")
-    Do $ClassMethod(..#STUB, "QueueAnswer", 200, ..Reply("done"))
-    Set tKey = ..RunTurn(.tOutcome, "", 0, 0, ..#ENTRYCONTEXT, "", "", "investigate")
-    Do $$$AssertEquals(tOutcome("state"), "completed", "the investigate turn completes")
-    Set tOrdinaryDeferred = ","_##class(OcuPilot.Test.TurnScope).Deferred(##class(OcuPilot.Test.TurnBudget).Sent(1).tools, 1)_","
-    Set tStartDeferred = ","_##class(OcuPilot.Test.TurnScope).Deferred(##class(OcuPilot.Test.TurnBudget).Sent(2).tools, 1)_","
-    Do $$$AssertTrue(tOrdinaryDeferred [ ",logs_messages_read,", "the ordinary turn defers the messages.log read")
-    Do $$$AssertTrue(tOrdinaryDeferred [ ",osmgmt_dashboard_read,", "and the dashboard read")
-    Do $$$AssertEquals(tStartDeferred [ ",logs_messages_read,", 0, "the investigate turn starts with the messages.log read")
-    Do $$$AssertEquals(tStartDeferred [ ",osmgmt_dashboard_read,", 0, "and the dashboard read")
-    Do $$$AssertTrue(tStartDeferred [ ",permissions_users_read,", "while a tool no step names stays deferred")
 }
 
 /// <p><code>previous</code> reports the proposals of the conversation's newest earlier turn only when that turn ran the
