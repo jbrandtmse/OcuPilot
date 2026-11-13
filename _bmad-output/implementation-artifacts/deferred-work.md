@@ -7712,6 +7712,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-30T06:31:00Z status=routed owner=range-end-cleanup by=merge_gate note=Story 23.1 closed as it stood (owner-approved burn-down plan 2026-09-29); a two-word doc correction in Api/Error.cls, into Story 23.3 (next release) since 23.2 is capped at 12
 - 2026-10-11T00:42:32Z status=routed owner=23-7-the-range-end-cleanup-part-6 by=load note=re-own from range-end-cleanup: kit 2026-10-10.1 owners are story keys or burndown
 - 2026-10-12T19:22:37Z status=routed owner=23-9-the-range-end-cleanup-part-8 by=merge_gate note=owner 2026-10-12 released 23.7's 32 (Release Story 23.7); split by priority, 12 at most each (Rule 27)
+- 2026-11-12T21:57:37Z status=resolved-by:23-9-the-range-end-cleanup-part-8 by=adjudication note=9e7cc026,03e48df6: PROVIDERTRANSPORT doc states the one retry before a status line (AD-42)
 
 ### DW-1707: Preferences and about 24 Area save handlers answer a server-side body read or decode fault as the caller's (422 or 400), mostly unlogged
 - source: spec-23-1-the-range-end-cleanup.md | severity: low | fix-risk: med | footprint: out-of-footprint
@@ -9412,6 +9413,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-03T15:02:19Z status=routed owner=burndown by=adjudication note=the bundle budget is re-based per story under DW-1166, so the measured maxlength patch lands with Epic 18's burn-down
 - 2026-10-14T08:59:25Z status=routed owner=18-48-epic-18-burn-down-part-2 by=burndown note=chartered into the Epic 18 burn-down part 2 (orchestrator ruling 2026-10-14)
 - 2026-10-14T12:40:15Z status=routed owner=23-9-the-range-end-cleanup-part-8 by=lead note=orchestrator 2026-10-14: 18.48 kept at 12; the journal record browser's two lows move to 23.9
+- 2026-11-12T21:57:37Z status=resolved-by:23-9-the-range-end-cleanup-part-8 by=adjudication note=9e7cc026: offset/value inputs bind declared maxlength 20/200; journal-records.page.spec pins
 ### DW-1976: A long row text on a detail tab (a view's text, a procedure's description, trigger code) renders as one clipped data-table cell, and its cut-cell tooltip (480px wide, no height bound or scroll, clamped to the window) cannot show a text taller than the window, so AD-36's 'shown whole on the screen' holds for the read's answer but not for what a person can read
 - source: spec-19-14-the-sql-catalog-s-remaining-detail-tabs.md | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: ui/src/styles/_components.scss .ocu-data-table-cell nowrap + ellipsis and .ocu-data-table-tooltip max-width 480px, no max-height; data-table.ts placeTooltip clamps top to the window. Measured lengths (spec Design Notes): view text up to 5,856, SqlProc descriptions up to 41,734 characters
@@ -11105,6 +11107,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-11T09:52:03Z occurrence=18-32-spec-based-rest-services
 - 2026-10-12T10:58:27Z occurrence=18-39-the-agent-s-context-budget
 - 2026-10-12T19:22:38Z status=routed owner=23-9-the-range-end-cleanup-part-8 by=merge_gate note=owner 2026-10-12 released 23.7's 32 (Release Story 23.7); split by priority, 12 at most each (Rule 27)
+- 2026-11-12T21:57:36Z status=resolved-by:23-9-the-range-end-cleanup-part-8 by=adjudication note=9e7cc026,03e48df6: testClassesOnDisk follows the first-superclass chain, skips abstract; 680->699 listed; ci.test.mjs pins
 
 ### DW-2260: USERS_PATH is declared twice in the client
 - source: spec-23-6-the-haiku-story-cleanup.md | severity: low | fix-risk: low | footprint: out-of-footprint
@@ -11112,6 +11115,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-09T17:02:33Z status=routed owner=range-end-cleanup by=spec_gate note=23.6 plan filing candidate 5; not absorbed (dispatch)
 - 2026-10-11T00:42:34Z status=routed owner=23-7-the-range-end-cleanup-part-6 by=load note=re-own from range-end-cleanup: kit 2026-10-10.1 owners are story keys or burndown
 - 2026-10-12T19:22:38Z status=routed owner=23-9-the-range-end-cleanup-part-8 by=merge_gate note=owner 2026-10-12 released 23.7's 32 (Release Story 23.7); split by priority, 12 at most each (Rule 27)
+- 2026-11-12T21:57:37Z status=resolved-by:23-9-the-range-end-cleanup-part-8 by=adjudication note=9e7cc026: USERS_PATH/USERS_FORM_PATH declared once; client-paths.test.mjs pins (walkSource)
 
 ### DW-2261: Explorer source tests repeat LIMIT = 60000 instead of reading SOURCEMAXLENGTH
 - source: spec-23-6-the-haiku-story-cleanup.md | severity: low | fix-risk: low | footprint: out-of-footprint
@@ -12469,6 +12473,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: release-1.0.14-ci | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: release/1.0.14 push run 40014034409 attempt 1, browser shard 3/5 (723a3662); attempt 2 green; the same code was green on feature (2a9ea8d1, run 40008057887)
 - 2026-10-23T21:31:33Z status=routed owner=burndown by=orchestrator note=CI flake, reported by the Planner at the 1.0.14 cut; first in the next standing cleanup with DW-1822 (Rule 27)
+- 2026-11-12T21:28:40Z status=resolved-by:23-9-the-range-end-cleanup-part-8 owner=23-9-the-range-end-cleanup-part-8 by=orchestrator note=re-stated: the union merge at ebb0b37d placed this entry's 2026-11-12 13:49 and 19:13 trailers under DW-2523; resolved by 23.9 batch 1 c98a0877 (signedInAt names in-flight requests; AC8 seeds 30k nodes)
 
 ### DW-2518: A cube build or synchronize the vendor ran but then failed (a dependent failing after the target rebuilt, a raised exception) records no ConfigChange row, though facts changed
 - source: spec-20-34-the-cube-manager-s-build-and-synchronize.md | severity: med | fix-risk: med | footprint: in-story
@@ -12496,6 +12501,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-12T20:48:18Z status=routed owner=burndown by=harvest note=CI flake for the burn-down; likely a cold first query on a fresh leg (inference)
 - 2026-11-12T13:49:03Z status=routed owner=23-9-the-range-end-cleanup-part-8 by=spec_gate note=CI flake; first priority in 23.9 (orchestrator re-dispatch 2026-11-12, Rule 27)
 - 2026-11-12T19:13:24Z status=resolved-by:23-9-the-range-end-cleanup-part-8 by=adjudication note=c98a0877: signedInAt names in-flight requests on a timeout; AC8 seed 30k nodes; reopen_if=the timeout recurs
+- 2026-11-12T21:28:40Z status=routed owner=burndown by=orchestrator note=the 2026-11-12T13:49:03Z and 19:13:24Z trailers above belong to DW-2512 (union-merge misplacement at ebb0b37d); this entry stays routed to burndown
+- 2026-11-12T23:17:34Z status=dropped owner=burndown by=orchestrator note=duplicate of DW-2522 (same analytics-mdx AC1 first-query timeout), which 23.10 owns; this entry's occurrence (CI 43290470415, Story 20.34 head acb0b666) counts there
 
 ### DW-2513: flake: data-table-columns.browser-spec.mjs failed 17 of 18 at its own goto against its local server
 - source: spec-23-9-the-range-end-cleanup-part-8.md (plan) | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -12506,6 +12513,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-23-9-the-range-end-cleanup-part-8.md (plan) | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: found by the 23.9 plan beside DW-2260; each pair currently agrees
 - 2026-11-12T14:27:31Z status=wontfix-accepted owner=23-9-the-range-end-cleanup-part-8 by=spec_gate note=reopen_if=two copies of one /api/ocupilot path literal disagree
+- 2026-11-12T20:00:48Z occurrence=23-9-the-range-end-cleanup-part-8
 
 ### DW-2515: Text criteria inputs on tasks/history, logs/audit, logs/log-hub, sql-query and data-browser may lack maxlength (inference, unchecked)
 - source: spec-23-9-the-range-end-cleanup-part-8.md (plan) | severity: low | fix-risk: low | footprint: out-of-footprint
@@ -12528,3 +12536,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: CI run 43332030735 (Story 20.39 head 8d7fa08a) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: Red once ('one row, the newest, and the read says it cut'), green on the unchanged rerun; an unrelated adminport OAuth REFRESHJWKS error was logged the same second; local 2/2 green
 - 2026-11-13T00:50:26Z status=routed owner=burndown by=harvest note=CI flake for the burn-down: the test asserts on the store's newest row, which a concurrent error can take (inference)
+### DW-2522: flake: analytics-mdx.browser-spec.mjs AC1: the first query's grid did not appear within navigationTimeoutMs
+- source: 23.9 batch 4 CI (run 43292059964) | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: run 43292059964 (9e7cc026) attempt 1, browser shard 2/5: waitForSelector [data-ocu-mdx=grid] failed at :258 after 37.6 s, the other 10 tests green; batch 4 touches no analytics or walk code
+- 2026-11-12T20:43:32Z status=routed owner=23-10-the-range-end-cleanup-part-9-two-sweeps by=lead note=CI flake; first priority in 23.10 (Rule 27); rerun --failed
+- 2026-11-12T23:17:35Z occurrence=20-34-the-cube-manager-s-build-and-synchronize note=also red on CI 43290470415 (acb0b666), filed there as DW-2523, now dropped as this entry's duplicate

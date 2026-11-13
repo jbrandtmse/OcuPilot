@@ -79,6 +79,7 @@ interface CriterionView {
   readonly choice: boolean;
   readonly options: readonly { readonly value: string; readonly label: string }[];
   readonly value: string;
+  readonly maxLength: number;
 }
 
 /** One field of the record dialog, resolved for drawing. */
@@ -278,6 +279,7 @@ function heldFor(store: ScreenStore | null, screen: ScreenDeclaration | null): J
                   class="ocu-criteria-input"
                   type="text"
                   [id]="field.id"
+                  [attr.maxlength]="field.maxLength"
                   [value]="field.value"
                   (input)="onCriterion(field.param, $event)"
                 />
@@ -477,6 +479,7 @@ export class JournalRecordsPage {
         choice: field.kind === 'choice',
         options: (field.options ?? []).map((option) => ({ value: option, label: stringFor(OPTION_LABEL_KEYS[field.param]?.[option] ?? '') })),
         value: this.search.value(field.param),
+        maxLength: field.maxLength,
       }));
   }
 

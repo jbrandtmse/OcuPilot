@@ -254,6 +254,17 @@ describe('Journal records', () => {
     expect((host.querySelector('#ocu-journal-records-operator') as HTMLSelectElement).value).toBe('[');
   });
 
+  it('bounds the offset and value inputs by the lengths the descriptor declares', async () => {
+    // Mutation (Rule 19): remove the `[attr.maxlength]` binding from the text input -> red.
+    const { host } = await mount();
+    const declared = (param: string) => RECORDS.read?.criteria?.fields.find((field) => field.param === param)?.maxLength;
+    expect([declared('offset'), declared('value')]).toEqual([20, 200]);
+    for (const param of ['offset', 'value']) {
+      const input = host.querySelector(`#ocu-journal-records-${param}`) as HTMLInputElement;
+      expect(input.getAttribute('maxlength'), param).toBe(String(declared(param)));
+    }
+  });
+
   it('AC2: Next records continues after the page\u2019s highest address in file order, and before its lowest in reverse', async () => {
     const { paths, next, choose } = await mount();
     await next();

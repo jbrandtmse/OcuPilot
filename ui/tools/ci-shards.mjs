@@ -21,10 +21,10 @@
  *   node tools/ci-shards.mjs check --suite S --shards N --records DIR --result R [--dir DIR]
  *   node tools/ci-shards.mjs refresh (--run ID | --records DIR) [--timings PATH]
  *
- * `assign` splits the checkout's lists. The ObjectScript one is `testClassesOnDisk`'s floor, which
- * misses a class that reaches `TestCase` through a base class, while a CI leg splits the list the
- * instance offers, so the two splits can differ; the share a leg actually ran is its record's
- * `assigned`.
+ * `assign` splits the checkout's lists. The ObjectScript one is `testClassesOnDisk`, which reads
+ * the shape of the instance's query, while a CI leg splits the list the instance offers; the two
+ * differ when a class failed to compile or the instance otherwise offers a different list, so the
+ * share a leg actually ran is its record's `assigned`.
  *
  * `refresh --run ID` downloads that run's `ci-record-*` artifacts with `gh run download` and
  * rewrites `ci-timings.json` from the seconds each shard recorded. Every suite present in the

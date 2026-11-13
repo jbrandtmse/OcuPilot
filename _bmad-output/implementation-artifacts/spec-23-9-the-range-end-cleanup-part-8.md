@@ -3,10 +3,10 @@ title: 'Story 23.9: The range-end cleanup, part 8'
 type: 'bugfix'
 created: '2026-11-12'
 status: 'done'
-baseline_revision: 'ec69ba7f973eaf5741a24e4c92081165e5ca9876'
-baseline_commit: 'ec69ba7f973eaf5741a24e4c92081165e5ca9876'
+baseline_revision: '4749fae2bc30a5f93ea6ebd8395e64635317912c'
+baseline_commit: '4749fae2bc30a5f93ea6ebd8395e64635317912c'
 review_loop_iteration: 0
-followup_review_recommended: true
+followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
 warnings: ['multiple-goals', 'oversized']
@@ -135,7 +135,7 @@ deferred:
 - In the same pass, update every test that asserts a shared surface's old shape (Verification › Shared surfaces).
 - The lead writes the ledger trailers once the batch's commit is green.
 - **Pass order** (lead rulings): batch 1 (done); then batch 4 with DW-1706; then batch 3 with DW-1177's docstring, after Story 20.34 (which edits `screen-mirror.test.mjs`'s `OwnPrivilegeCases` test and `check-objectscript.py`) has merged and been integrated forward; then batch 5. Four commits. The lead opens one pass at a time; a pass works only the items the lead names and leaves every other item unchecked.
-- **Current pass: Batch 1 only.**
+- **Current pass: Batch 4 (DW-2259, DW-2260, DW-1981) and DW-1706 from Batch 2.** DW-1177 waits for batch 3; batches 3 and 5 stay unchecked.
 
 ### Batch 1: CI flakes
 
@@ -153,7 +153,7 @@ deferred:
 
 ### Batch 2: docs
 
-- [ ] **DW-1706.** `src/OcuPilot/Api/Error.cls` :262: replace "<b>Never retried.</b>" with "A failure before any status line arrived is retried once, on a new connection, inside the same attempt and delay budget; a call that raised, a connect that never opened (<code>ERROR #6059</code>) and a stream that broke after its status line are not (<class>OcuPilot.Kernel.Provider.Base</class>)." No test (doc comment; the behavior is pinned by `ProviderTransportRetry`).
+- [x] **DW-1706.** `src/OcuPilot/Api/Error.cls` :262: replace "<b>Never retried.</b>" with "A failure before any status line arrived is retried once, on a new connection, inside the same attempt and delay budget; a call that raised, a connect that never opened (<code>ERROR #6059</code>) and a stream that broke after its status line are not (<class>OcuPilot.Kernel.Provider.Base</class>)." No test (doc comment; the behavior is pinned by `ProviderTransportRetry`).
 - [ ] **DW-1177.** `scripts/check-objectscript.py` :180: "runs it over the whole tree whenever a commit stages a `.cls`/`.mac`/`.inc`, `ui/`, `module.xml` or `scripts/*.sh` path". No test (docstring). The CLAUDE.md line goes to the Planner (Design Notes › For the Planner).
 - [ ] **DW-446, DW-2060.** No edit (already true at head; Design Notes).
 
@@ -166,10 +166,10 @@ deferred:
 
 ### Batch 4: client and runner tooling
 
-- [ ] **DW-2259.** `ui/tools/ci-runner.mjs` `testClassesOnDisk`: parse every `.cls` under `src/OcuPilot/Test/` into name, supers (parenthesized list or one name), abstract (`\bAbstract\b` in the class's keyword list) and own `Test*` methods. List a class when it reaches `%UnitTest.TestCase` through any chain, is not abstract, and has a `Test*` method of its own or on a project ancestor. Correct the floor caveat at :366-382 and `ci-shards.mjs` :24-27.
+- [x] **DW-2259.** `ui/tools/ci-runner.mjs` `testClassesOnDisk`: parse every `.cls` under `src/OcuPilot/Test/` into name, supers (parenthesized list or one name), abstract (`\bAbstract\b` in the class's keyword list) and own `Test*` methods. List a class when it reaches `%UnitTest.TestCase` through any chain, is not abstract, and has a `Test*` method of its own or on a project ancestor. Correct the floor caveat at :366-382 and `ci-shards.mjs` :24-27.
   - Pin in `ui/tools/ci.test.mjs`: (a) a temp tree with abstract `Base`, `Child Extends Base` (tests), `Grand Extends Child`, and concrete `ConcreteBase` (tests) with `Sub`, expecting `[Child, ConcreteBase, Grand, Sub]`; (b) the real tree includes `ProviderStream`, `TurnTools` and `RoutineAppGate` and excludes `StreamCase`. Both red before.
-- [ ] **DW-2260.** Keep `USERS_PATH` and `USERS_FORM_PATH` exported from `user-create-form.store.ts`; `user-editor.store.ts` imports them (its effective path derives from the import), and `user-editor.page.spec.ts` imports from there. Pin: new `ui/tools/client-paths.test.mjs` walks `ui/src` non-spec `.ts` files and expects exactly one `const USERS_PATH =` and one `const USERS_FORM_PATH =`. Red before.
-- [ ] **DW-1981.** `journal-records.page.ts`: `CriterionView` gains `maxLength`, the getter maps `field.maxLength`, and the text input binds `[attr.maxlength]="field.maxLength"`, as `code-list.page.ts` does. Pin in `journal-records.page.spec.ts`: the offset and value inputs carry `maxlength` equal to `RECORDS.read.criteria` fields' declared values (20 and 200). Red before. Record the journal records chunk size and the initial total after `npm run build`.
+- [x] **DW-2260.** Keep `USERS_PATH` and `USERS_FORM_PATH` exported from `user-create-form.store.ts`; `user-editor.store.ts` imports them (its effective path derives from the import), and `user-editor.page.spec.ts` imports from there. Pin: new `ui/tools/client-paths.test.mjs` walks `ui/src` non-spec `.ts` files and expects exactly one `const USERS_PATH =` and one `const USERS_FORM_PATH =`. Red before.
+- [x] **DW-1981.** `journal-records.page.ts`: `CriterionView` gains `maxLength`, the getter maps `field.maxLength`, and the text input binds `[attr.maxlength]="field.maxLength"`, as `code-list.page.ts` does. Pin in `journal-records.page.spec.ts`: the offset and value inputs carry `maxlength` equal to `RECORDS.read.criteria` fields' declared values (20 and 200). Red before. Record the journal records chunk size and the initial total after `npm run build`.
 
 ### Batch 5: shared removal rows
 
@@ -214,6 +214,31 @@ Rejected:
 - Cycle-log timestamp mismatch: the lead's log, not this change.
 - `trackInflightRequests` resembles `trackRequests` (Rule 31): different filters and clocks; two short copies read better than one parameterized tracker.
 
+Code review, batch 4 and DW-1706 (2026-11-12). Rule 3 exempt: test-harness and tooling code, one `maxlength` attribute that follows the declared bounds.
+
+- [x] [Review][Patch] (med) The abstract exclusion in `testClassesOnDisk` and a parenthesized `Extends` list had no pin - third case added with an abstract class that carries tests [ui/tools/ci.test.mjs]
+- [x] [Review][Patch] (low) `client-paths.test.mjs` missed `const USERS_PATH: string =` - pattern widened to `\bconst NAME\s*[:=]` [ui/tools/client-paths.test.mjs]
+
+Code review (bmad-code-review), batch 4 and DW-1706 (2026-11-12). Rule 3: DW-1981's `maxlength` is a user-facing attribute; the component spec on the real template with the declared criteria is the accepted tier for an attribute binding (the sibling `code-list.page.ts` binding is pinned the same way, and `journal-records.browser-spec.mjs` renders the screen in CI's browser job). The rest is tooling, exempt.
+
+- [x] [Review][Patch] (med) The checkout list followed every name of an `Extends` list to `TestCase`, while the instance's `PrimarySuper` follows only the first (verified on `ocupilot-slot-a`), and two tests pinned the mismatch - `reachesTestCase` follows the first name; `Mixed`, `Wrapped` and a new `Secondary` case expect the instance's answer [ui/tools/ci-runner.mjs:testClassesOnDisk; ui/tools/ci.test.mjs]
+- [x] [Review][Patch] (med) `client-paths.test.mjs` hand-rolled a source walk beside `source-scan.mjs` `walkSource`, the shared walker for static guards (Rule 31) - now uses `walkSource` and `blankComments` [ui/tools/client-paths.test.mjs; ui/tools/source-scan.mjs:walkSource]
+- [x] [Review][Patch] (low) `Not Abstract` and `Abstract = 0` read as abstract - the keyword test now matches `check-objectscript.py` `ABSTRACT_KEYWORD_RE`, the Python sibling a node runner cannot import (the copy's reason) [ui/tools/ci-runner.mjs]
+- [x] [Review][Patch] (low) Any superclass named `...TestCase` counted as the framework base - now `%UnitTest.TestCase` exactly [ui/tools/ci-runner.mjs:reachesTestCase]
+- [x] [Review][Patch] (low) "It matches the instance's query" overclaimed, `main()`'s comment named only the instance for a mismatch, and `ci-shards.mjs` gave no reason the splits differ - comments corrected [ui/tools/ci-runner.mjs; ui/tools/ci-shards.mjs]
+- [x] [Review][Patch] (low) A mutation comment still said "both tests below", and the real-tree `StreamCase` message claimed the abstract filter (it has no `Test*` method) - both corrected [ui/tools/ci.test.mjs]
+- [x] [Review][Patch] (low) `USERS_FORM_PATH`'s doc covered only the create form's read, not the editor's `?name=` read [ui/src/app/areas/permissions/user-create-form.store.ts]
+- [x] [Review][Patch] (low) The `PROVIDERTRANSPORT` sentence was broader than `Provider.Base`: a body that could not be built is not retried, and the retry needs an attempt left - sentence narrowed to Base's contract [src/OcuPilot/Api/Error.cls]
+- [x] [Review][Defer] `shell/screen-action-handler.ts` `USER_FORM_READ_PATH` repeats the users form route under another name, which a name-based pin cannot see [ui/src/app/shell/screen-action-handler.ts:409] - deferred: DW-2514 occurrence (Epic 20's file, kept by Design Notes); the test header now says it pins these names only
+
+Rejected:
+
+- A `]` inside a quoted class keyword value: no project header has one; a fix needs a quote-aware scanner.
+- A file whose declared class name differs from its path: none does (699 equal to the instance's list both ways).
+- A BOM or unparsed header drops a class silently: no file under `src/OcuPilot/Test` starts with a BOM.
+- A `TestCase` link or `Test*` method on a class outside `src/OcuPilot/Test`: none today; the doc states the folder limit.
+- `Method Test` at column 0 inside a banner or XData: unchanged from the previous matcher; none today.
+
 ## Spec Change Log
 
 - 2026-11-12, after batch 1 (lead): pass order changed to 1, 4 + DW-1706, 3 + DW-1177, 5, so no pass edits a file Epic 20's Story 20.34 has changed before it merges.
@@ -234,6 +259,19 @@ Rejected:
   - `[low]` `[reject]` a hung `context.close()` in a `finally` replaces the original pass error in the retried-pass line - narrow, and the report still names a hung call; a fix adds error-chaining in `walk`.
   - `[maybe-false]` `[defer]` the 30,000-node compact might end before AC8 pauses it on a loaded CI shard - measured pause 0.28-0.71 s on an idle throwaway over three probes; settled by CI shard runs of `local-databases` (the leg errors with "compact reads Completed, not Paused").
   - Intent-alignment audit (descriptive): the diff implements both approach halves; the new tests run against fakes in Node, not a real Chrome, by the spec's design; unwrapped calls are `click`, `waitForSelector`, `keyboard.press` and `signedInAt`'s own steps, which the intent does not name.
+
+### 2026-11-12 - Review pass (batch 4 and DW-1706)
+
+- verdicts: 7 findings - high 0, medium 1, low 4, false 0, maybe-false 0 (2 descriptive notes folded into rows)
+- findings:
+  - `[medium]` `[patch]` abstract exclusion unpinned: the test's abstract `Base` has no tests, so dropping the abstract filter stays green - added a case with an abstract class that carries a `Test*` method and a concrete child; both mutations observed red.
+  - `[low]` `[patch]` a parenthesized multi-name `Extends` list was not exercised - folded into the same case (`Mixed Extends (Helper, AbstractWithTests)`); mutation observed red.
+  - `[low]` `[patch]` `client-paths.test.mjs` pattern missed a typed declaration - widened.
+  - `[low]` `[reject]` the real-tree test breaks on renaming `ProviderStream`, `TurnTools` or `RoutineAppGate` - the spec names those three; a rename is a deliberate edit to that line.
+  - `[low]` `[reject]` the 699 equality with `ci-timings.json` is not asserted in a test - it is recorded under Verification, and the file is generated and refreshed at every merge.
+  - `[low]` `[reject]` the matcher accepts any parent named `...TestCase` where the instance reads `%UnitTest.TestCase` - no project class extends another `TestCase`; the fix adds a name table.
+  - `[low]` `[reject]` the ci-runner doc comment lost its em dashes to `--` - comment-only, ASCII, no harm.
+  - Intent-alignment audit (descriptive): the diff implements the literal reading of all four items; the editor store does not re-export the constants, as the spec says (imports only); server limits are untouched, as the spec says.
 
 ## Design Notes
 
@@ -395,15 +433,43 @@ Rejected:
   - mutation: the old deadline message tail -> the `protocol-retry.test.mjs` deadline case red.
   - Green after review: `npm run test:tools` 2178/2178; `a11y-structural-invariants.browser-spec.mjs` 13/13 in 397 s on `ocupilot-ci`, no retried-pass line.
 
+**Batch 4 and DW-1706 observed (`ocupilot-ci`).**
+
+- `testClassesOnDisk` lists 699 classes, equal to the `objectscript` keys of `ci-timings.json` both ways (680 before).
+  - mutation: restore the direct-`Extends` regex -> both DW-2259 tests in `ci.test.mjs` red.
+  - mutation: `USERS_PATH` re-declared in `user-editor.store.ts` -> `client-paths.test.mjs` red.
+  - mutation: remove the `[attr.maxlength]` binding -> `journal-records.page.spec.ts` red ("offset: expected null to be '20'").
+  - Each reverted and confirmed by `cmp` against a pre-mutation copy.
+  - mutation (review): drop the abstract check from `testClassesOnDisk`'s final filter, or keep only the first name of a parenthesized `Extends` list -> the abstract-with-tests case in `ci.test.mjs` red; each reverted, confirmed by `cmp`.
+- Green: `npm run test:tools` 2183/2183; `check-objectscript.py` 0 problems; `npm run test:components` 3341/3341; `lint-docs.sh` clean; Load 0 errors and `ProviderTransportRetry` 9/9.
+- QA (pass 2), test added (QA): `ui/tools/ci.test.mjs`, "the checkout list survives a wrapped class header, a class with no Extends and an Extends cycle (DW-2259)" (an `Extends` list and a keyword list wrapped over lines, a class with no `Extends`, and two-class cycles with and without a `Test*` method). No test compares `testClassesOnDisk` with the `objectscript` keys of `ci-timings.json`: the file is refreshed only at a merge, so an equality test would redden the story that adds a test class (the two are equal at 699 today).
+  - mutation: drop the `seen` guard from `reachesTestCase` -> the wrapped-header/cycle test red.
+  - mutation: read the class header on one line only (`\s*` to ` *` before the keyword list) -> the same test red.
+  - mutation: drop the `seen` guard from `hasTests` -> the same test red (the cycle with no own `Test*` method).
+  - mutation: replace the final filter with a direct-`Extends` test (DW-2259) -> all three DW-2259 tests in `ci.test.mjs` red.
+  - mutation: re-declare `USERS_PATH` in `user-editor.store.ts` (DW-2260) -> `client-paths.test.mjs` "USERS_PATH is declared once" red.
+  - mutation: delete the `[attr.maxlength]` binding (DW-1981) -> `journal-records.page.spec.ts` "bounds the offset and value inputs" red alone ("offset: expected null to be '20'").
+  - DW-1706 is a doc comment: no test, no mutation. Each reverted, confirmed by `cmp` against a pre-mutation copy.
+- Build: the journal records chunk is `chunk-BwhbAgfu.js`, 11,658 bytes raw; initial total 2.01 MB (357.88 kB transfer), under the 2500 kB warning.
+- Code review (bmad-code-review), mutations on its pins, each reverted and confirmed by `cmp`:
+  - mutation: `reachesTestCase` follows every name of an `Extends` list -> the abstract/primary-superclass case in `ci.test.mjs` red (`Secondary` listed).
+  - mutation: `hasTests` reads the first superclass only -> the same case red (`Mixed` dropped).
+  - mutation: the abstract test back to `\bAbstract\b` -> the same case red (`NotAbstract`, `AbstractZero` dropped).
+  - mutation: accept any superclass ending `.TestCase` -> the same case red (`FromLookalike` listed).
+  - mutation: a direct-`Extends` filter -> the first, second and real-tree DW-2259 tests red.
+  - mutation: `export const USERS_PATH: string =` re-declared in `user-editor.store.ts` -> `client-paths.test.mjs` "USERS_PATH is declared once" red.
+  - Green after review: `testClassesOnDisk` 699, equal to the `ci-timings.json` keys both ways; `npm run test:tools` 2184/2184; `npm run test:components` 3341/3341; `client-lint.mjs` clean; `check-objectscript.py` 0 problems; `Error.cls` loaded into `ocupilot-ci` with 0 errors and `ProviderTransportRetry` 9/9.
+
 ## Auto Run Result
 
 Status: done
 Blocking condition: none
 
-Pass: Batch 1 only (CI flakes). Batches 2 to 5 are untouched and unchecked.
+Pass: Batch 4 (DW-2259, DW-2260, DW-1981) and DW-1706 from Batch 2. Batch 1 closed in its own pass (`c98a0877`, `74a6348f`); DW-1177 and batches 3 and 5 are untouched and unchecked.
 
-- Change: the structural walk's `settle` reads `document.fonts.status` inside its bounded loop; every walk page call goes through `withDeadline` (60 s, a protocol-timeout error so `retryOnce` re-runs the pass) and a retried pass adds a report line; `signedInAt` rethrows a navigation timeout with each request still in flight and its age; `BackgroundSeed.Prepare` and `PausedCompact` take a trailing `pNodes` and local-databases AC8 passes 30,000.
-- Files: `ui/browser/protocol-retry.mjs`, `ui/browser/structural-walk.mjs`, `ui/browser/panel-spec.mjs`, `ui/browser/local-databases.browser-spec.mjs`, `src/OcuPilot/Test/BackgroundSeed.cls`, `ui/tools/protocol-retry.test.mjs`, new `ui/tools/structural-walk.test.mjs` and `ui/tools/panel-spec.test.mjs`, and this spec.
-- Review: 8 findings, 3 medium patched (settle lower bound, walk deadline wiring check, `signedInAt` wiring check), 1 low wording patched, 3 low rejected with reasons, 1 maybe-false deferred (compact may end before the pause on a loaded shard).
-- Verification: `npm run test:tools` 2166/2166; `check-objectscript.py` 0 problems; `lint-docs.sh` clean; `BackgroundTasksLive` 8/8, `local-databases`, `background-tasks` and `a11y-structural-invariants` (13/13, 420.8 s) browser specs green on `ocupilot-ci`; mutations observed red and reverted (see Verification, Batch 1 observed).
-- Follow-up review: recommended. The wiring pins added in review are source-text checks, not a walk run against a hung page.
+- Change: `testClassesOnDisk` follows each class's `Extends` chain to `TestCase`, skips abstract classes and counts a `Test*` method on a project ancestor (699 classes, 680 before); `user-editor.store.ts` imports `USERS_PATH` and `USERS_FORM_PATH` from `user-create-form.store.ts`; the journal records text inputs carry `maxlength` from the declared criteria; `PROVIDERTRANSPORT`'s doc comment states the single retry before a status line.
+- Files: `ui/tools/ci-runner.mjs`, `ui/tools/ci-shards.mjs`, `ui/tools/ci.test.mjs`, new `ui/tools/client-paths.test.mjs`, `ui/src/app/areas/permissions/user-create-form.store.ts`, `user-editor.store.ts`, `user-editor.page.spec.ts`, `ui/src/app/areas/os-management/journal-records.page.ts` and `.spec.ts`, `src/OcuPilot/Api/Error.cls`, and this spec.
+- Review: 7 findings - 1 medium and 2 low patched (abstract-with-tests and multi-name `Extends` case, wider declaration pattern), 4 low rejected with reasons; none deferred.
+- Verification: `check-objectscript.py` 0 problems; `npm run test:tools` 2183/2183; `npm run test:components` 3341/3341; `npm run build` passes, journal records chunk 11,658 bytes, initial total 2.01 MB (under the 2500 kB warning); `lint-docs.sh` clean; Load 0 errors and `ProviderTransportRetry` 9/9 on `ocupilot-ci`; mutations observed red and reverted (see Verification, Batch 4 observed).
+- Follow-up review: not recommended; this pass patched no high and one medium.
+- Residual risk: the checkout list is compared with the instance's own list only by CI and the lead's sweep; the list equals the `ci-timings.json` keys both ways.
