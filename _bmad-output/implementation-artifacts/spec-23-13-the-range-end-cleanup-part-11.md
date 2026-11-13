@@ -2,16 +2,30 @@
 title: 'Story 23.13: The range-end cleanup, part 11'
 type: 'bugfix'
 created: '2026-11-13'
-status: 'in-progress'
-baseline_revision: 'a457bf66d29327a5da16437a17bc4e3c42dc5adb'
-baseline_commit: 'a457bf66d29327a5da16437a17bc4e3c42dc5adb'
+status: 'done'
+baseline_revision: 'df38df2d0caecc13074b30cad4933fb56428068b'
+baseline_commit: 'df38df2d0caecc13074b30cad4933fb56428068b'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
   - '{project-root}/_bmad-output/implementation-artifacts/spec-23-10-the-range-end-cleanup-part-9-two-sweeps.md'
 warnings: ['multiple-goals', 'oversized']
-deferred: []
+deferred:
+  - summary: >-
+      Journal records' Refresh action and refresh timer read the form's current criteria without going through open(), so an order picked but not yet searched reads in the new order while the table direction still follows the last search.
+    evidence: |-
+      journal-records.page.ts registers REFRESH_ACTION_ID with refresh.readNow() directly, and boundRead's cached RefreshRead reads search.criteria() (every held value); followOrder() runs only in open(). The Code Map's "every read goes through open()" does not hold for these two paths.
+    location: >-
+      ui/src/app/areas/os-management/journal-records.page.ts:377
+    severity: low
+  - summary: >-
+      journal-records.browser-spec.mjs has no order 1 leg, so Newest first drawing newest first is pinned only in the component spec.
+    evidence: |-
+      The browser spec asserts the first ten seeded records ascending for order 0 only. ui/browser/** is Epic 20's contended footprint, so a leg is a lead decision.
+    location: >-
+      ui/browser/journal-records.browser-spec.mjs
+    severity: low
 ---
 
 <intent-contract>
@@ -151,10 +165,10 @@ Waits for escalation 5 (contention) before any `Prohibited.cls` edit. Task 0 nee
 
 ### Batch 4: journal order (DW-1979, DW-2527)
 
-- [ ] `ui/src/app/areas/os-management/journal-records.page.ts` `open()`: before the read, when the store's sort is the declared default (`''` or `Address`), order 1 calls `setDirection('desc')` unless it is already desc, and order 0 calls `setDirection('')` when it is desc. Any other sort is left alone.
-- [ ] **Pin** in `journal-records.page.spec.ts`: rows at Addresses 300, 200, 100. Order 1 draws 300, 200, 100 and leaves the store's direction desc; order 0 draws 100, 200, 300; with sort `TimeStamp`, order 1 leaves the direction as it was. Red before. Mutations: remove the call; map order 1 to asc.
+- [x] `ui/src/app/areas/os-management/journal-records.page.ts` `open()`: before the read, when the store's sort is the declared default (`''` or `Address`), order 1 calls `setDirection('desc')` unless it is already desc, and order 0 calls `setDirection('')` when it is desc. Any other sort is left alone.
+- [x] **Pin** in `journal-records.page.spec.ts`: rows at Addresses 300, 200, 100. Order 1 draws 300, 200, 100 and leaves the store's direction desc; order 0 draws 100, 200, 300; with sort `TimeStamp`, order 1 leaves the direction as it was. Red before. Mutations: remove the call; map order 1 to asc.
 - [ ] `cd ui && npm run build`; record the journal records chunk and the initial total against the 2500 kB warning. Run `journal-records.browser-spec.mjs` after redeploy.
-- [ ] DW-2527: no code (Declined DW-2527 under Design Notes).
+- [x] DW-2527: no code (Declined DW-2527 under Design Notes).
 
 **Acceptance Criteria:**
 
@@ -190,6 +204,18 @@ Rejected:
 ## Spec Change Log
 
 ## Review Triage Log
+
+### 2026-11-13 — Review pass (batch 4)
+
+- verdicts: 7 findings — high 0, medium 1, low 5, false 0, maybe-false 0 (one intent-alignment report, descriptive)
+- findings:
+  - `[medium]` `[patch]` verification-gap: the guard around a sort the person chose and the explicit `Address` branch had no pin and no mutation line — patched: an explicit-Address case added, three guard mutations applied, observed red, reverted, lines written under Verification.
+  - `[low]` `[defer]` verification-gap: `journal-records.browser-spec.mjs` has no order 1 leg — `ui/browser/**` is contended and the spec asks only to run it; deferred (frontmatter).
+  - `[low]` `[reject]` verification-gap: the test title says "remembers the direction" while only `store.direction()` is read — that store state is what `rememberView` stores; a persistence assertion would add a seam.
+  - `[low]` `[reject]` verification-gap: a header-toggled direction is reset by the next search — the spec's Decided in-stage item 2.
+  - `[low]` `[defer]` intent-alignment: the Refresh action and the refresh timer read without `open()`, so the direction follows only at Search, Next and arrivals — deferred (frontmatter); the fix moves the call into the cached read.
+  - `[n/a]` `[reject]` intent-alignment: readings B (server order) and F (persistence across sessions) — the intent's row is the table direction; the lead's browser run is the real-bundle check.
+  - `[n/a]` `[reject]` intent-alignment: `''` counts as the declared sort — the spec's own wording.
 
 ### 2026-11-13 — Review pass
 
@@ -308,16 +334,24 @@ Rejected:
   - mutation: annotate every failing pass's error, retried or not -> the no-retry failure case red alone.
   - mutation: swallow the error `reset` throws in `retryOnce` -> the reset-error case red alone.
   - (code review, observed, tree identical after) mutation: drop `relaunch` from `walk`'s `passRetrier` call -> the held-browser case red alone. Call `reset` inside the second attempt's `try` -> the reset-error case red alone. The a11y spec's `after` calls `closing.close()` instead of `closeOrAbandon` -> the a11y spec wiring case red alone. `test:tools` 2219/2219; after a rebuild and redeploy, `a11y-structural-invariants.browser-spec.mjs` 13/13 on `ocupilot-ci` in 535 s, no retried line.
+- Batch 4 (DW-1979), pin `journal-records.page.spec.ts` (Newest first draws newest first and remembers desc; Oldest first restores the declared direction; another column's sort left alone); each applied, observed red, reverted, `git diff` identical to the pre-mutation diff:
+  - mutation: remove the `followOrder()` call in `open()` -> the Newest first case red alone (this is also the red-before state).
+  - mutation: map order 1 to `asc` -> the Newest first case red alone.
+  - mutation: drop the declared-sort half of the guard (`sort !== ''` only) -> the explicit Address case red alone (review, observed).
+  - mutation: remove the guard's early return -> the other-column case red alone (review, observed).
+  - mutation: drop the `setDirection('')` restore in the order 0 branch -> the Newest first case red alone (review, observed).
+  - Component spec 16/16; `npm run test:components` 3362/3362 (261 files); `npm run test:tools` 2219/2219; `npm run build` clean, no budget warning: journal records chunk 11.93 kB raw, initial total 2.02 MB against the 2500 kB warning.
+  - `journal-records.browser-spec.mjs` after redeploy: lead, fresh check (not run in this pass).
 
 ## Auto Run Result
 
 Status: done
 Blocking condition: none
 
-Batch 1 only (DW-1822); batches 2 to 4 are untouched and their checkboxes stay open.
+Batch 4 (DW-1979) pass: the journal records page now follows the order select with the table direction; DW-2527 is declined, no code. Batch 1 closed in its own pass; batches 2 and 3 are untouched and their checkboxes stay open.
 
-- **Change:** a pass that stalls its browser is rerun on a newly launched browser, and the stalled one is closed under `CLOSEDEADLINE`. A pass that fails after its retry throws an error that carries the `retried` lines. `retryOnce` awaits its reset.
-- **Files:** `ui/browser/protocol-retry.mjs` (awaited reset); `ui/browser/structural-walk.mjs` (`passRetrier` and `walk` hold and relaunch the browser, `walk` answers it); `ui/browser/a11y-structural-invariants.browser-spec.mjs` (relaunch and bounded close); `ui/tools/structural-walk.test.mjs` and `ui/tools/protocol-retry.test.mjs` (pins).
-- **Review:** 1 medium patched (held-browser pin), 1 low patched (three mutation lines), 4 rejected with reasons in the triage log, none deferred. Follow-up review recommended: false.
-- **Verification:** `structural-walk` and `protocol-retry` tests 33/33; `npm run test:tools` 2216/2216 after the last edit; `npm run build` clean; `a11y-structural-invariants.browser-spec.mjs` 13/13 on `ocupilot-ci` in 459 s with no retried line. Mutations are recorded under Verification.
-- **Residual risk:** the relaunch path is shown through fakes only; a real stalled browser was not reproduced.
+- **Change:** `open()` calls `followOrder()` before the read: under `''` or the declared sort, order 1 sets direction `desc` and order 0 restores `''`; another column's sort is left alone.
+- **Files:** `ui/src/app/areas/os-management/journal-records.page.ts` (`followOrder`); `ui/src/app/areas/os-management/journal-records.page.spec.ts` (three cases).
+- **Review:** 1 medium patched (guard pin and mutations), 2 deferred (browser order 1 leg; Refresh path), 4 rejected with reasons in the triage log. Follow-up review recommended: false.
+- **Verification:** component spec 16/16; `npm run test:components` 3362/3362; `npm run test:tools` 2219/2219; `npm run build` clean (chunk 11.93 kB, initial 2.02 MB of 2500 kB). `journal-records.browser-spec.mjs`: lead, fresh check (not run here); the build item's box stays open for it.
+- **Residual risk:** the draw order is shown through the component spec only until the lead's browser run; a Refresh with an unsearched order change reads the new order under the old direction (deferred).

@@ -278,6 +278,51 @@ describe('Journal records', () => {
     expect(nextOffset([], '0')).toBe('');
   });
 
+  it('Newest first draws the newest record first and remembers the direction; Oldest first restores the declared one', async () => {
+    // Mutations (Rule 19), each applied and observed red here: remove the `followOrder` call in
+    // `open()` -> the Newest first legs go red; map order 1 to `asc` -> the Newest first legs go red.
+    const rows = [row(200, '^OcuProbe1979(200)'), row(300, '^OcuProbe1979(300)'), row(100, '^OcuProbe1979(100)')];
+    const { host, store, choose, fixture } = await mount({ rows });
+    const search = async () => {
+      (host.querySelector('form') as HTMLFormElement).dispatchEvent(new Event('submit', { cancelable: true }));
+      await settle(fixture);
+    };
+    const drawn = () =>
+      Array.from(host.querySelectorAll('.ocu-data-table-body [role="row"]')).map((tr) => /\((\d+)\)/.exec(tr.textContent ?? '')?.[1]);
+    expect(drawn()).toEqual(['100', '200', '300']);
+    await choose('order', '1');
+    await search();
+    expect(drawn()).toEqual(['300', '200', '100']);
+    expect(store.direction()).toBe('desc');
+    await choose('order', '0');
+    await search();
+    expect(drawn()).toEqual(['100', '200', '300']);
+    expect(store.direction()).toBe('');
+  });
+
+  it('Newest first leaves the direction alone under a sort the person chose on another column', async () => {
+    const { store, choose, host, fixture } = await mount();
+    store.setSort('TimeStamp');
+    await choose('order', '1');
+    (host.querySelector('form') as HTMLFormElement).dispatchEvent(new Event('submit', { cancelable: true }));
+    await settle(fixture);
+    expect(store.direction()).toBe('');
+    store.setDirection('desc');
+    await choose('order', '0');
+    (host.querySelector('form') as HTMLFormElement).dispatchEvent(new Event('submit', { cancelable: true }));
+    await settle(fixture);
+    expect(store.direction()).toBe('desc');
+  });
+
+  it('Newest first draws descending under an explicit Address sort', async () => {
+    const { store, choose, host, fixture } = await mount();
+    store.setSort('Address');
+    await choose('order', '1');
+    (host.querySelector('form') as HTMLFormElement).dispatchEvent(new Event('submit', { cancelable: true }));
+    await settle(fixture);
+    expect(store.direction()).toBe('desc');
+  });
+
   it('AC5: a row opens the dialog, which fetches the record and renders every value as text', async () => {
     const { host, paths, openId } = await mount();
     await openId('300');
