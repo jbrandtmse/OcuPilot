@@ -11290,6 +11290,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-11T06:59:46Z status=routed owner=23-7-the-range-end-cleanup-part-6 by=spec_gate note=the REMOVALROWS StateDiff body already repeats in 13 delete tools; one Write.cls default serves all, so 23.7 lifts it once
 - 2026-10-11T08:55:17Z status=routed owner=burndown by=lead note=23.7 takes no new routings (orchestrator); lift StateDiff into Screen/Tool/Write.cls once Epic 20 has merged (Write.cls is Epic 20's until then), and the 13 deletes extend it
 - 2026-10-14T08:59:26Z status=routed owner=23-9-the-range-end-cleanup-part-8 by=burndown note=orchestrator 2026-10-14: the StateDiff lift into Write.cls is add-only
+- 2026-11-13T00:49:30Z status=resolved-by:23-9-the-range-end-cleanup-part-8 by=adjudication note=001b78bd,a0fda1b4: Write.RemovalRows lifts the loop for 16 deletes; totals equal; rows pinned per tool; rest DW-2525
 ### DW-2300: A tool class's compile time is recorded a few milliseconds before its compiled code, so a ListTools build in that gap can cache the class's previous view until the next compile
 - source: spec-20-24-agent-tool-calls-stop-re-listing-the-tool-registry.md | severity: low | fix-risk: high | footprint: in-story
 - evidence: Measured on ocupilot-b-ci at code review: the CompiledClass row and TimeChanged lead %Extends and $Parameter by 1.6-4.2 ms (one 53 ms); the before/after check cannot see it; 20 batch-compile trials ended with 0 stale listings; a production build reads a class at least 38 ms after its signature read
@@ -12370,6 +12371,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: CI run 39654904051 (f74e5331), browser shard 3/5 | severity: med | fix-risk: med | footprint: in-epic
 - evidence: attempt 1 red at line 535 (second reply never drawn); --failed rerun green; same spec 9/9 locally on the same tree; batch 3 changed no client or turn code
 - 2026-10-21T19:44:05Z status=routed owner=burndown by=ci note=flake class per CI Is a Gate; priority for the burn-down
+- 2026-11-13T00:51:09Z status=dropped owner=burndown by=orchestrator note=duplicate of DW-2524 (same context-chip test 7 Fresh at Send timeout), which 23.10 owns
 
 ### DW-2494: The agent's MDX read polls only the turn's stop, abandon and lease, so a kill switch, enforced read-only or lost privilege set mid-read acts at the next step
 - source: spec-20-35-the-agent-s-mdx-read.md | severity: low | fix-risk: low | footprint: in-story
@@ -12540,4 +12542,16 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: 23.9 batch 4 CI (run 43292059964) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: run 43292059964 (9e7cc026) attempt 1, browser shard 2/5: waitForSelector [data-ocu-mdx=grid] failed at :258 after 37.6 s, the other 10 tests green; batch 4 touches no analytics or walk code
 - 2026-11-12T20:43:32Z status=routed owner=23-10-the-range-end-cleanup-part-9-two-sweeps by=lead note=CI flake; first priority in 23.10 (Rule 27); rerun --failed
+- 2026-11-13T00:51:08Z occurrence=20-34-the-cube-manager-s-build-and-synchronize note=re-stated (a union merge misplaced the 23:17:35Z line): also red on CI 43290470415 (acb0b666), filed there as DW-2523, dropped as this entry's duplicate
+
+### DW-2524: flake: context-chip.browser-spec.mjs test 7 (Fresh at Send) waited past 30000 ms
+- source: 23.9 staging CI (run 43316537748) | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: run 43316537748 (8947b8d2, integrate-forward staging head) attempt 1, browser shard 4/5: 'Waiting failed: 30000ms exceeded', 8 of 9 green; neither 23.9's batches nor 20.34 touch the context chip
+- 2026-11-12T22:40:59Z status=routed owner=23-10-the-range-end-cleanup-part-9-two-sweeps by=lead note=CI flake; first priority in 23.10 (Rule 27); rerun --failed
+- 2026-11-13T00:51:09Z occurrence=23-11-the-range-end-cleanup-part-10 note=first filed as DW-2493 (2026-10-21, 23.11 batch c), now dropped as this entry's duplicate; also red on staging run 43316537748 attempt 1
+
+### DW-2525: Rule 31: 16 delete tools keep Write.RemovalRows's loop body over FingerprintSubject() (11) or ReadAnswers() (5, four with the unassigned skip); the helper takes no name list
+- source: spec-23-9-the-range-end-cleanup-part-8.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: grep '"removed", 1' in src/OcuPilot/Screen/Tool: TaskDelete, UserDelete, SslDelete ... loop FingerprintSubject(); MappingDelete, SuperserverDelete ... ReadAnswers(); same Display/after/removed/push as Write.cls RemovalRows
+- 2026-11-13T00:03:53Z status=routed owner=23-10-the-range-end-cleanup-part-9-two-sweeps by=cr note=give RemovalRows a names argument (default REMOVALROWS) and move the 16 onto it; Screen/** is Epic 20's, check contention
 - 2026-11-12T23:17:35Z occurrence=20-34-the-cube-manager-s-build-and-synchronize note=also red on CI 43290470415 (acb0b666), filed there as DW-2523, now dropped as this entry's duplicate

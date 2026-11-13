@@ -357,4 +357,18 @@ ClassMethod Declaration(pClass As %String) As %DynamicObject
     Quit tDeclaration
 }
 
+/// <p>The table delete's card lists the table's name and entry count, and the entry remove's card the key and
+/// value, every row removed, in the declared order.</p>
+/// <p>Mutation (Rule 19): drop <code>removed</code> from <method>OcuPilot.Screen.Tool.Write.RemovalRows</method>
+/// and recompile the <code>OcuPilot.Screen.Tool</code> package -- this goes red.</p>
+Method TestTheLookupDeleteCardsListWhatTheyRemove()
+{
+    Set tTool = "OcuPilot.Screen.Tool.InteropLookupTableDelete"
+    Do $$$AssertStatusOK($ClassMethod(tTool, "StateDiff", {"Name": "OcuProbeTable", "Entries": 3}, .tRows, .tProblem), "the table delete's card is built")
+    Do $$$AssertEquals(tRows.%ToJSON() _ "|" _ tProblem, "[{""field"":""Name"",""before"":""OcuProbeTable"",""after"":"""",""removed"":true},{""field"":""Entries"",""before"":""3"",""after"":"""",""removed"":true}]|", "the name then the entry count, each removed")
+    Set tTool = "OcuPilot.Screen.Tool.InteropLookupEntryRemove"
+    Do $$$AssertStatusOK($ClassMethod(tTool, "StateDiff", {"Key": "ocu-key", "Value": "ocu-value"}, .tRows, .tProblem), "the entry remove's card is built")
+    Do $$$AssertEquals(tRows.%ToJSON() _ "|" _ tProblem, "[{""field"":""Key"",""before"":""ocu-key"",""after"":"""",""removed"":true},{""field"":""Value"",""before"":""ocu-value"",""after"":"""",""removed"":true}]|", "the key then the value, each removed")
+}
+
 }

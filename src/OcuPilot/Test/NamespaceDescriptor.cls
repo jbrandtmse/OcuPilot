@@ -152,4 +152,16 @@ ClassMethod Rows(pRows As %DynamicArray, pField As %String = "") As %String
     Quit tOut
 }
 
+/// <p>The delete's card lists the three databases the namespace leaves behind, each removed, in the declared
+/// order.</p>
+/// <p>Mutation (Rule 19): drop <code>removed</code> from <method>OcuPilot.Screen.Tool.Write.RemovalRows</method>
+/// and recompile the <code>OcuPilot.Screen.Tool</code> package -- this goes red.</p>
+Method TestTheDeleteCardListsTheDatabasesItRemoves()
+{
+    Set tTool = "OcuPilot.Screen.Tool.NamespaceDelete"
+    Do $$$AssertStatusOK($ClassMethod(tTool, "StateDiff", {"Globals": "OCUG", "Routines": "OCUR", "TempGlobals": "IRISTEMP"}, .tRows, .tProblem), "the delete's card is built")
+    Do $$$AssertEquals(tRows.%ToJSON() _ "|" _ tProblem, "[{""field"":""Globals"",""before"":""OCUG"",""after"":"""",""removed"":true},{""field"":""Routines"",""before"":""OCUR"",""after"":"""",""removed"":true},{""field"":""TempGlobals"",""before"":""IRISTEMP"",""after"":"""",""removed"":true}]|", "three removed rows in the declared order")
+    Do $$$AssertStatusOK($ClassMethod(tTool, "StateDiff", {"Routines": "OCUR"}, .tRows, .tProblem), "a read without the globals database is answered")
+    Do $$$AssertTrue((tProblem '= "") && (tRows.%Size() = 0), "and refused with a problem and no row")
+}
 }

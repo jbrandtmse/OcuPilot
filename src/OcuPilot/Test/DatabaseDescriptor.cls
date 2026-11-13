@@ -389,4 +389,15 @@ ClassMethod Names(pPairs As %List) As %String
     Quit tOut
 }
 
+/// <p>The delete's card lists the database's directory and its two mount settings, each removed, in the declared
+/// order, a setting as the word it reads.</p>
+/// <p>Mutation (Rule 19): drop <code>removed</code> from <method>OcuPilot.Screen.Tool.Write.RemovalRows</method>
+/// and recompile the <code>OcuPilot.Screen.Tool</code> package -- this goes red.</p>
+Method TestTheDeleteCardListsWhatTheDatabaseKeeps()
+{
+    Set tTool = "OcuPilot.Screen.Tool.LocalDatabaseDelete"
+    Do $$$AssertStatusOK($ClassMethod(tTool, "StateDiff", {"Directory": "/probe/ocudb/", "MountAtStartup": true, "MountRequired": false}, .tRows, .tProblem), "the delete's card is built")
+    Do $$$AssertEquals(tRows.%ToJSON() _ "|" _ tProblem, "[{""field"":""Directory"",""before"":""/probe/ocudb/"",""after"":"""",""removed"":true},{""field"":""MountAtStartup"",""before"":""true"",""after"":"""",""removed"":true},{""field"":""MountRequired"",""before"":""false"",""after"":"""",""removed"":true}]|", "the directory then both mount settings, each removed")
+}
+
 }

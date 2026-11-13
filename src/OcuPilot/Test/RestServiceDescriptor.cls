@@ -130,11 +130,15 @@ Method TestTheCreatesRulesAreThePortsAndTheCodeSaves()
 }
 
 /// <p>The delete's card names the service it removes, once, as removed; a read that answers nothing leaves it empty.</p>
-/// <p>Mutation (Rule 19): drop <code>removed</code> from the delete's <method>StateDiff</method> -- this goes red.</p>
+/// <p>Mutation (Rule 19): drop <code>removed</code> from <method>OcuPilot.Screen.Tool.Write.RemovalRows</method> and
+/// recompile the <code>OcuPilot.Screen.Tool</code> package -- the first leg goes red; read a non-object as an object
+/// there -- the second goes red.</p>
 Method TestTheDeleteCardNamesWhatTheActionRemoves()
 {
     Do $$$AssertStatusOK($ClassMethod(..#DELETE, "StateDiff", {"Name": "OcuProbe1832Z", "Namespace": "USER", "Implementation": "OcuProbe1832Z.impl"}, .tRows, .tProblem), "the delete's card is built")
     Do $$$AssertEquals(tRows.%ToJSON() _ "|" _ tProblem, "[{""field"":""Name"",""before"":""OcuProbe1832Z"",""after"":"""",""removed"":true}]|", "one removed row, the package")
+    Do $$$AssertStatusOK($ClassMethod(..#DELETE, "StateDiff", "", .tRows, .tProblem), "a read that answers nothing is answered")
+    Do $$$AssertEquals(tRows.%ToJSON() _ "|" _ tProblem, "[{""field"":""Name"",""before"":"""",""after"":"""",""removed"":true}]|", "with the one row and nothing before it")
 }
 
 /// <p>AD-13: <code>rest-service</code> is a known entity type whose id the instance resolves in any case and which

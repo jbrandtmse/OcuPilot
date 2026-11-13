@@ -100,16 +100,7 @@ ClassMethod StateDiff(pFresh As %DynamicObject, Output pRows As %DynamicArray, O
             Set pProblem = "this instance did not report that device's physical device name, and a device whose settings are unknown is not one to delete"
             Quit
         }
-        Set tNames = $ListFromString(..#REMOVALROWS)
-        For tI = 1:1:$ListLength(tNames) {
-            Set tField = $List(tNames, tI)
-            Set tRow = {}
-            Do tRow.%Set("field", tField, "string")
-            Do tRow.%Set("before", ##class(OcuPilot.Kernel.Proposal.Mint).Display(pFresh.%Get(tField), pFresh.%GetTypeOf(tField)), "string")
-            Do tRow.%Set("after", "", "string")
-            Do tRow.%Set("removed", 1, "boolean")
-            Do pRows.%Push(tRow)
-        }
+        Set pRows = ..RemovalRows(pFresh)
     } Catch ex {
         Set pRows = []
         Set pProblem = ""

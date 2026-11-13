@@ -3,8 +3,8 @@ title: 'Story 23.9: The range-end cleanup, part 8'
 type: 'bugfix'
 created: '2026-11-12'
 status: 'done'
-baseline_revision: '4749fae2bc30a5f93ea6ebd8395e64635317912c'
-baseline_commit: '4749fae2bc30a5f93ea6ebd8395e64635317912c'
+baseline_revision: '38ec7c97bb775b5ffd0ed857019d54d28b8ee370'
+baseline_commit: '38ec7c97bb775b5ffd0ed857019d54d28b8ee370'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -134,8 +134,8 @@ deferred:
 - Each task names its pinning test; its `mutation:` line goes under Verification with the observed run.
 - In the same pass, update every test that asserts a shared surface's old shape (Verification › Shared surfaces).
 - The lead writes the ledger trailers once the batch's commit is green.
-- **Pass order** (lead rulings): batch 1 (done); then batch 4 with DW-1706; then batch 3 with DW-1177's docstring, after Story 20.34 (which edits `screen-mirror.test.mjs`'s `OwnPrivilegeCases` test and `check-objectscript.py`) has merged and been integrated forward; then batch 5. Four commits. The lead opens one pass at a time; a pass works only the items the lead names and leaves every other item unchecked.
-- **Current pass: Batch 4 (DW-2259, DW-2260, DW-1981) and DW-1706 from Batch 2.** DW-1177 waits for batch 3; batches 3 and 5 stay unchecked.
+- **Pass order** (lead rulings): batch 1 (done); batch 4 with DW-1706 (done); batch 5; then batch 3 with DW-1177's docstring, after Story 20.39 (which edits `Screen/Registry.cls` and `screen-mirror.mjs`) has merged and been integrated forward. Four commits. The lead opens one pass at a time; a pass works only the items the lead names and leaves every other item unchecked.
+- **Current pass: Batch 5 (DW-2299).** DW-1177 and batch 3 stay unchecked.
 
 ### Batch 1: CI flakes
 
@@ -173,8 +173,8 @@ deferred:
 
 ### Batch 5: shared removal rows
 
-- [ ] **DW-2299.** `Screen/Tool/Write.cls`, add-only: `Parameter REMOVALROWS = "";` and `ClassMethod RemovalRows(pFresh As %DynamicObject, pSkipUnassigned As %Boolean = 0) As %DynamicArray`, B's loop: one row per `REMOVALROWS` name with `field`, `before` (`Mint.Display` of the value and its type; `""` when `pFresh` is not an object), `after` `""` and `removed` true; with `pSkipUnassigned`, an unassigned field gets no row. The doc states the contract. `StateDiff` is untouched.
-- [ ] **DW-2299.** The 16 deletes keep their guards, messages and Try/Catch and set `pRows = ..RemovalRows(pFresh)` (`MftConnectionDelete` passes 1). A and C's doc comments point at `RemovalRows`.
+- [x] **DW-2299.** `Screen/Tool/Write.cls`, add-only: `Parameter REMOVALROWS = "";` and `ClassMethod RemovalRows(pFresh As %DynamicObject, pSkipUnassigned As %Boolean = 0) As %DynamicArray`, B's loop: one row per `REMOVALROWS` name with `field`, `before` (`Mint.Display` of the value and its type; `""` when `pFresh` is not an object), `after` `""` and `removed` true; with `pSkipUnassigned`, an unassigned field gets no row. The doc states the contract. `StateDiff` is untouched.
+- [x] **DW-2299.** The 16 deletes keep their guards, messages and Try/Catch and set `pRows = ..RemovalRows(pFresh)` (`MftConnectionDelete` passes 1). A and C's doc comments point at `RemovalRows`.
 
 **Acceptance Criteria:**
 
@@ -239,6 +239,28 @@ Rejected:
 - A `TestCase` link or `Test*` method on a class outside `src/OcuPilot/Test`: none today; the doc states the folder limit.
 - `Method Test` at column 0 inside a banner or XData: unchanged from the previous matcher; none today.
 
+Code review (bmad-code-review), batch 5 (2026-11-12). Rule 3 exempt: server-side card rows, no new surface; the reader tests below observe each card.
+
+- [x] [Review][Patch] (med) The non-object branch of `RemovalRows`, the only guard `ExplorerDocDbDelete` and `RestServiceDelete` had, was unpinned - `RestServiceDescriptor` gains a non-object leg [src/OcuPilot/Test/RestServiceDescriptor.cls]
+- [x] [Review][Patch] (med) `pSkipUnassigned` and `MftConnectionDelete`'s argument were unpinned - `MftConnectionDescriptor` gains a partial-read leg [src/OcuPilot/Test/MftConnectionDescriptor.cls]
+- [x] [Review][Patch] (med) No test observed the rows of `InteropItemRemove`, `LicenseServerDelete`, `NamespaceDelete` or `RemoteDatabaseDelete` (the Integration AC) - one method in each tool's descriptor test class [src/OcuPilot/Test/InteropItemDescriptor.cls, LicenseDescriptor.cls, NamespaceDescriptor.cls, RemoteDatabaseDescriptor.cls]
+- [x] [Review][Patch] (low) `Mint.Display`'s boolean rendering through a removal row was unpinned - the InteropItemRemove method asserts `true` and `false`
+
+Code review stage (bmad-code-review), batch 5 (2026-11-12). Rule 3: the cards are user-facing, the lift is behavior-preserving inside `StateDiff`, Mint is unchanged and none of the 16 declares `EMPTYKEYS`, so a `StateDiff` reader observes the card's rows; `InteropLookupControl.TestTheAgentsRemoveConfirmsOverHttp` drives one delete over real HTTP, and the browser suite is CI's. Met.
+
+- [x] [Review][Patch] (low) `RemovalRows`'s caller contract said every caller wraps it in its own `Try`; `ExplorerDocDbDelete` and `RestServiceDelete` call it bare [src/OcuPilot/Screen/Tool/Write.cls:RemovalRows] - the contract now says it raises to its caller
+- [x] [Review][Patch] (low) The doc said `pSkipUnassigned` drops every unassigned field; a read that is not an object still gets every row (no caller reaches it) [src/OcuPilot/Screen/Tool/Write.cls:RemovalRows] - doc states the case; doc-only, Load 0 errors on `ocupilot-ci`, `RestServiceDescriptor` 8/8 (run 432), `check-objectscript.py` 0 problems
+- [x] [Review][Defer] (med) The lifted loop body survives in 16 sibling deletes over `FingerprintSubject()` (11) or `ReadAnswers()` (5, four with the skip), e.g. `TaskDelete.cls` and `MappingDelete.cls` beside `Write.cls` `RemovalRows`, which takes no name list [src/OcuPilot/Screen/Tool/*Delete.cls] - deferred: pre-existing, outside this spec's census of the 16 `REMOVALROWS` readers; DW-2525, routed to 23-10
+
+Rejected:
+
+- A non-dynamic object `pFresh` raises at `%GetTypeOf`: the old loop's `%Get` raised alike, and the mint passes the port's dynamic object.
+- Two new tests index a row before checking the count: a short list still errors the method red; the guard adds branches.
+- `Parameter REMOVALROWS = ""` on the base lost the compile error a delete got for an undeclared parameter: the spec prescribes the default, and each delete's own reader pins its rows; a roster guard adds a test for a mistake no delete makes today.
+- New readers call `StateDiff`, not the mint: Mint is untouched and transforms none of the 16 cards' rows (see Rule 3 above).
+- Spec status, baseline, oversized additions, the Auto Run Result's file list and totals, and the review log's audit sentence: edits to the spec under review, outside a review's sanctioned sections.
+- "the 4 new-test classes" names three counts: four classes gained a test, and the same line gives `RemoteDatabaseDescriptor`'s 5 to 6.
+
 ## Spec Change Log
 
 - 2026-11-12, after batch 1 (lead): pass order changed to 1, 4 + DW-1706, 3 + DW-1177, 5, so no pass edits a file Epic 20's Story 20.34 has changed before it merges.
@@ -272,6 +294,18 @@ Rejected:
   - `[low]` `[reject]` the matcher accepts any parent named `...TestCase` where the instance reads `%UnitTest.TestCase` - no project class extends another `TestCase`; the fix adds a name table.
   - `[low]` `[reject]` the ci-runner doc comment lost its em dashes to `--` - comment-only, ASCII, no harm.
   - Intent-alignment audit (descriptive): the diff implements the literal reading of all four items; the editor store does not re-export the constants, as the spec says (imports only); server limits are untouched, as the spec says.
+
+### 2026-11-12 - Review pass (batch 5)
+
+- verdicts: 6 findings - high 0, medium 3, low 3, false 0, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` non-object `pFresh` branch of `RemovalRows` unpinned; the lift removed the two A tools' only copy of that guard - added a non-object leg to `RestServiceDescriptor`; mutation observed red.
+  - `[medium]` `[patch]` `pSkipUnassigned` and `MftConnectionDelete`'s argument unpinned - added a partial-read leg to `MftConnectionDescriptor`; mutation observed red.
+  - `[medium]` `[patch]` Integration AC unobserved for four deletes (InteropItemRemove, LicenseServerDelete, NamespaceDelete, RemoteDatabaseDelete) - one method per descriptor test class; the `removed` mutation observed red in each.
+  - `[low]` `[patch]` `Mint.Display` boolean rendering through a removal row had no mutation - folded into the InteropItemRemove method; mutation observed red.
+  - `[low]` `[reject]` A and C's `before` moves from `value _ ""` to `Mint.Display` (verification-gap other finding, intent audit) - the fields are `Name`, `Class`, both strings, for which the two are identical; the spec prescribes the single rendering.
+  - `[low]` `[reject]` `$IsObject(pFresh)` recomputed on each loop turn - negligible, and hoisting it adds a branch for no named harm.
+  - Intent-alignment audit (descriptive): the diff implements the full lift (all 16 tools call the helper, A and C included); the tests exercise the card rows through `StateDiff`, the surface the AC names.
 
 ## Design Notes
 
@@ -460,16 +494,37 @@ Rejected:
   - mutation: `export const USERS_PATH: string =` re-declared in `user-editor.store.ts` -> `client-paths.test.mjs` "USERS_PATH is declared once" red.
   - Green after review: `testClassesOnDisk` 699, equal to the `ci-timings.json` keys both ways; `npm run test:tools` 2184/2184; `npm run test:components` 3341/3341; `client-lint.mjs` clean; `check-objectscript.py` 0 problems; `Error.cls` loaded into `ocupilot-ci` with 0 errors and `ProviderTransportRetry` 9/9.
 
+**Batch 5 observed (`ocupilot-ci`).**
+
+- Before the edit (tree at `38ec7c97`, Load 0 errors), per-class totals, all 0 failed: DocDbWrite 8, RestServiceDescriptor 8, InteropItemControl 6, DeviceDelete 6, EcpDataServerWrite 11, EcpSslConnectionWrite 6, InteropLookupControl 7, InteropLookupEdges 10, LanguageServerEditor 9, LicenseServerWrite 6, DatabaseWrite 16, DatabaseWriteDetail 5, MftConnectionDescriptor 8, NamespaceWrite 10, RemoteDatabaseDescriptor 5, RemoteDatabaseWrite 9, WebSessions 9, X509Delete 4; 143 in all.
+- After the edit (Load 0 errors), the same 18 classes one at a time, all 0 failed, totals equal class by class (143 in all): runs 26-43.
+  - mutation: drop `removed` from `RemovalRows`, whole `OcuPilot.Screen.Tool` package recompiled -> 9 of the 18 reader classes red: DocDbWrite, RestServiceDescriptor, DeviceDelete, InteropLookupControl, LanguageServerEditor, DatabaseWriteDetail, MftConnectionDescriptor, WebSessions, X509Delete (runs 44-61). Nine stayed green: InteropItemControl, EcpDataServerWrite, EcpSslConnectionWrite, InteropLookupEdges, LicenseServerWrite, DatabaseWrite, NamespaceWrite, RemoteDatabaseDescriptor, RemoteDatabaseWrite.
+  - mutation: `RemovalRows` pushes no row -> the same nine red plus EcpDataServerWrite, EcpSslConnectionWrite and InteropLookupEdges (12 red); InteropItemControl, LicenseServerWrite, DatabaseWrite, NamespaceWrite, RemoteDatabaseDescriptor and RemoteDatabaseWrite stay green (runs 62-79). No test among the 18 observes the rows of `InteropItemRemove`, `LicenseServerDelete`, `NamespaceDelete` or `RemoteDatabaseDelete`; the premise "all 16 deletes' readers red" does not hold for those four, as it did not before the lift.
+  - Reverted, confirmed by `cmp` against a pre-mutation copy; whole package recompiled; the 12 red classes re-run green (runs 84-95).
+- Code review (batch 5), tests added to existing reader classes so every delete's rows are observed: `InteropItemDescriptor.TestTheRemoveCardListsWhatTheItemLeavesWith` (InteropItemRemove, the state as a word), `LicenseDescriptor.TestTheDeleteCardListsTheServerItRemoves`, `NamespaceDescriptor.TestTheDeleteCardListsTheDatabasesItRemoves`, `RemoteDatabaseDescriptor.TestTheDeleteCardListsTheDatabaseItRemoves`, a non-object leg in `RestServiceDescriptor.TestTheDeleteCardNamesWhatTheActionRemoves` and a partial-read leg in `MftConnectionDescriptor.TestTheCardsListWhatTheActionsRemove`. Whole `OcuPilot.Screen.Tool` package recompiled before each read; each reverted, `Write.cls` confirmed by `cmp` against a pre-mutation copy.
+  - mutation: drop `removed` from `RemovalRows` -> the four new methods plus the Rest and Mft legs red (runs 102-107).
+  - mutation: `RemovalRows` reads a non-object `pFresh` as an object -> `RestServiceDescriptor` red (run 108).
+  - mutation: `MftConnectionDelete`'s skip flag ignored -> the Mft partial-read leg red (run 109).
+  - mutation: `before` as `pFresh.%Get(tField) _ ""` instead of `Mint.Display` -> `InteropItemDescriptor` red (run 131).
+- Green after review: the 18 reader classes and the 4 new-test classes (`InteropItemDescriptor` 10, `LicenseDescriptor` 9, `NamespaceDescriptor` 5), all 0 failed, totals equal to the before figures except `RemoteDatabaseDescriptor` 5 to 6 (its new method); `check-objectscript.py` 0 problems; `npm run test:tools` 2188/2188.
+
+- QA (batch 5), per-delete reader matrix on `ocupilot-ci`: `Write.RemovalRows` mutated per tool (selector `^QAMut`, `$ClassName()`-keyed), whole `OcuPilot.Screen.Tool` package recompiled once, each tool's reader classes run with seven mutations (`removed` dropped, first-row `before`, second-row `before`, last-row `before`, last row dropped, first two fields swapped, `after` set). Before the QA edits, gaps: `removed` for EcpDataServerDelete, EcpSslConnectionDelete, InteropLookupTableDelete; first-row `before` and order for InteropLookupTableDelete; order for InteropLookupEntryRemove and LocalDatabaseDelete; `after` for the two ECP deletes, both lookup deletes, LocalDatabaseDelete, MftConnectionDelete, WebSessionEnd; last-row `before` for LocalDatabaseDelete and X509Delete. After the QA edits every applicable mutation reddens a reader for all 16 deletes (a single-field tool has no second-row or swap mutation).
+  - mutation: drop `removed` -> reader per delete: DeviceDelete `DeviceDelete.TestTheCardListsWhatGoesAndAConfirmDeletes`; EcpDataServerDelete and EcpSslConnectionDelete `EcpDescriptor.TestTheEcpDeleteCardsListWhatTheyRemove`; ExplorerDocDbDelete `DocDbWrite.TestTheAgentsDropIsGovernedThenConfirmed`; InteropItemRemove `InteropItemDescriptor.TestTheRemoveCardListsWhatTheItemLeavesWith`; InteropLookupEntryRemove `InteropLookupControl.TestTheAgentsRemoveConfirmsOverHttp`; InteropLookupEntryRemove and InteropLookupTableDelete `InteropLookupDescriptor.TestTheLookupDeleteCardsListWhatTheyRemove`; LanguageServerDelete `LanguageServerEditor.TestTheDeleteRefusesARunningServer`; LicenseServerDelete `LicenseDescriptor.TestTheDeleteCardListsTheServerItRemoves`; LocalDatabaseDelete `DatabaseDescriptor.TestTheDeleteCardListsWhatTheDatabaseKeeps` and `DatabaseWriteDetail.TestTheDeleteCardShowsWhatTheWriteRemoves`; MftConnectionDelete `MftConnectionDescriptor.TestTheCardsListWhatTheActionsRemove`; NamespaceDelete `NamespaceDescriptor.TestTheDeleteCardListsTheDatabasesItRemoves`; RemoteDatabaseDelete `RemoteDatabaseDescriptor.TestTheDeleteCardListsTheDatabaseItRemoves`; RestServiceDelete `RestServiceDescriptor.TestTheDeleteCardNamesWhatTheActionRemoves`; WebSessionEnd `WebSessions.TestTheStateDiffListsTheSessionAsRemoved`; X509Delete `X509Delete.TestTheRemovalRowsAndAReplacedCertificateRefusesTheConfirm`.
+  - mutation: `after` set, last-row `before`, second-row `before`, last row dropped, fields swapped -> red for the same tools, the three strengthened readers (`MftConnectionDescriptor.TestTheCardsListWhatTheActionsRemove`, `WebSessions.TestTheStateDiffListsTheSessionAsRemoved`, `X509Delete.TestTheRemovalRowsAndAReplacedCertificateRefusesTheConfirm`) included.
+  - Reverted: `Write.cls` byte-identical to the pre-mutation copy (`cmp`), package recompiled, `^QAMut` killed; the 24 reader classes re-run green, 201 tests, 0 failed (runs 408-431).
+  - (QA) tests added: `EcpDescriptor.TestTheEcpDeleteCardsListWhatTheyRemove`, `InteropLookupDescriptor.TestTheLookupDeleteCardsListWhatTheyRemove`, `DatabaseDescriptor.TestTheDeleteCardListsWhatTheDatabaseKeeps` (each calls the delete's `StateDiff` with a fixed read and pins the full row list); (QA) strengthened: `MftConnectionDescriptor`, `WebSessions` (row text now carries `after`), `X509Delete` (every field's `before`, in order).
+  - Files (QA): `src/OcuPilot/Test/EcpDescriptor.cls`, `src/OcuPilot/Test/InteropLookupDescriptor.cls`, `src/OcuPilot/Test/DatabaseDescriptor.cls`, `src/OcuPilot/Test/MftConnectionDescriptor.cls`, `src/OcuPilot/Test/WebSessions.cls`, `src/OcuPilot/Test/X509Delete.cls`. `check-objectscript.py` 0 problems; `npm run test:tools` 2188/2188.
+
 ## Auto Run Result
 
 Status: done
 Blocking condition: none
 
-Pass: Batch 4 (DW-2259, DW-2260, DW-1981) and DW-1706 from Batch 2. Batch 1 closed in its own pass (`c98a0877`, `74a6348f`); DW-1177 and batches 3 and 5 are untouched and unchecked.
+Pass: Batch 5 (DW-2299). Batches 1 and 4 and DW-1706 closed in their own passes; DW-1177 and batch 3 are untouched and unchecked.
 
-- Change: `testClassesOnDisk` follows each class's `Extends` chain to `TestCase`, skips abstract classes and counts a `Test*` method on a project ancestor (699 classes, 680 before); `user-editor.store.ts` imports `USERS_PATH` and `USERS_FORM_PATH` from `user-create-form.store.ts`; the journal records text inputs carry `maxlength` from the declared criteria; `PROVIDERTRANSPORT`'s doc comment states the single retry before a status line.
-- Files: `ui/tools/ci-runner.mjs`, `ui/tools/ci-shards.mjs`, `ui/tools/ci.test.mjs`, new `ui/tools/client-paths.test.mjs`, `ui/src/app/areas/permissions/user-create-form.store.ts`, `user-editor.store.ts`, `user-editor.page.spec.ts`, `ui/src/app/areas/os-management/journal-records.page.ts` and `.spec.ts`, `src/OcuPilot/Api/Error.cls`, and this spec.
-- Review: 7 findings - 1 medium and 2 low patched (abstract-with-tests and multi-name `Extends` case, wider declaration pattern), 4 low rejected with reasons; none deferred.
-- Verification: `check-objectscript.py` 0 problems; `npm run test:tools` 2183/2183; `npm run test:components` 3341/3341; `npm run build` passes, journal records chunk 11,658 bytes, initial total 2.01 MB (under the 2500 kB warning); `lint-docs.sh` clean; Load 0 errors and `ProviderTransportRetry` 9/9 on `ocupilot-ci`; mutations observed red and reverted (see Verification, Batch 4 observed).
-- Follow-up review: not recommended; this pass patched no high and one medium.
-- Residual risk: the checkout list is compared with the instance's own list only by CI and the lead's sweep; the list equals the `ci-timings.json` keys both ways.
+- Change: `Write.cls` gains `Parameter REMOVALROWS` and `RemovalRows(pFresh, pSkipUnassigned)`; the 16 delete tools set `pRows = ..RemovalRows(pFresh)` (`MftConnectionDelete` passes 1) and keep their guards, messages and Try/Catch; A and C doc comments point at it. `StateDiff` is untouched.
+- Files: `src/OcuPilot/Screen/Tool/Write.cls` and the 16 delete tools (`DeviceDelete`, `EcpDataServerDelete`, `EcpSslConnectionDelete`, `ExplorerDocDbDelete`, `InteropItemRemove`, `InteropLookupEntryRemove`, `InteropLookupTableDelete`, `LanguageServerDelete`, `LicenseServerDelete`, `LocalDatabaseDelete`, `MftConnectionDelete`, `NamespaceDelete`, `RemoteDatabaseDelete`, `RestServiceDelete`, `WebSessionEnd`, `X509Delete`); six existing test classes gained a method or leg (`InteropItemDescriptor`, `LicenseDescriptor`, `NamespaceDescriptor`, `RemoteDatabaseDescriptor`, `RestServiceDescriptor`, `MftConnectionDescriptor`); this spec.
+- Review: 6 findings - 3 medium and 1 low patched (tests that observe the non-object branch, the skip flag, the four unobserved deletes' rows and the boolean rendering), 2 low rejected with reasons; none deferred.
+- Verification: the 18 reader classes' totals equal before and after (143, 0 failed); the `removed`, non-object, skip-flag and `Display` mutations observed red on `ocupilot-ci` and reverted (see Verification, Batch 5 observed); `check-objectscript.py` 0 problems; `npm run test:tools` 2188/2188.
+- Follow-up review: not recommended; this pass patched no high.
+- Residual risk: `ExplorerDocDbDelete` shares the A path but its reader (`DocDbWrite`) is armed and does not call `StateDiff` with a non-object; `RestServiceDelete` pins the shared branch.
