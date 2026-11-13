@@ -166,6 +166,27 @@ Waits for escalation 5 (contention) before any `Prohibited.cls` edit. Task 0 nee
 - **Integration (Rule 1).** Given `Write.RemovalRows`' names argument, when the 16 deletes mint their proposals, then each card's removal rows equal today's, as the 13 readers observe.
 - **Batches.** Given the four batches, when each lands, then it is its own commit with CI green on its own head.
 
+### Review Findings
+
+#### Batch 1 (2026-11-13)
+
+- [x] [Review][Patch] (med, fix-risk low, in-story) The bounded close was copied from `relaunchOnce` into `passRetrier`'s reset and the a11y spec's `after` (Rule 2): now one helper, `closeOrAbandon`, used by all three [ui/browser/protocol-retry.mjs:93]
+- [x] [Review][Patch] (med, fix-risk low, in-story) No test pinned that `walk` hands `relaunch` to `passRetrier`; dropping it stayed green (Rule 19): the held-browser case now asserts the call [ui/tools/structural-walk.test.mjs:105]
+- [x] [Review][Patch] (low) The `passRetrier` and `walk` doc comments said only a retried pass's error is annotated; the code annotates once any pass was retried (the spec's own wording) [ui/browser/structural-walk.mjs:822]
+- [x] [Review][Patch] (low) The reset-error case's "unmarked" clause could not fail; it now reads the retried mark [ui/tools/protocol-retry.test.mjs:128]
+- [x] [Review][Patch] (low) The test-file mutation headers lacked QA's mutations [ui/tools/structural-walk.test.mjs:29]
+
+Rejected:
+
+- Spec `status: done` with batches 2-4 open: build-auto's per-pass state, which the lead owns; editing it edits the spec under review.
+- The pass body's bounded `context.close()` on a stalled browser replaces the stalled call's error (pre-existing): false for the observed stall, where the surfaced error named `settle`.
+- A stall inside the wrapped `createBrowserContext` is marked by its inner retry and is not relaunched: outside the matrix row (a page call past `WALKCALLDEADLINE`) and not observed.
+- An abandoned browser is not killed: a rare path, and a kill adds a branch to `relaunchOnce` too; reopen if a relaunched rerun also stalls in CI.
+- `relaunch()` answering null or rejecting, a read-only `message`, a non-object throw: no caller or error type here does that.
+- The `--write` path's error now carries retried lines: the spec asks it of every walk failure; the rerun itself is unchanged.
+- "Flake, at the surface" has no `mutation:` line: the spec runs it as a non-regression check, and the stall is pinned through fakes (Design Notes).
+- Auto Run Result counts, cycle-log fields, Verification nesting, red-before shown by mutation: bookkeeping, not code; the spec is oversized.
+
 ## Spec Change Log
 
 ## Review Triage Log
@@ -278,8 +299,15 @@ Waits for escalation 5 (contention) before any `Prohibited.cls` edit. Task 0 nee
   - mutation: skip the `error.retried` and message lines in `passRetrier`'s failure path -> the both-stall case red alone.
   - mutation: open a pass's context through `browser` instead of `held` in `walk` -> the held-browser source case red.
   - mutation: drop the `relaunch === null` return in `passRetrier`'s reset -> the no-relaunch case and the retried-pass report case red.
-  - mutation: drop the `withDeadline` around the stalled browser's `close()` -> the relaunch case red (its close never resolves).
+  - mutation: drop the `withDeadline` in `closeOrAbandon` (`await browser.close()`) -> the relaunch case and `protocol-retry.test.mjs`'s wedged-browser case red (code review, observed).
   - Real spec on `ocupilot-ci` after `npm run build` and the redeploy: `a11y-structural-invariants.browser-spec.mjs` 13/13 in 459 s, the walk report printed (191 walked, 22 skipped, 0 unsettled), no retried line. The stall itself is shown through fakes only. `npm run test:tools` 2216/2216 after the last edit; `structural-walk` and `protocol-retry` tests 33/33.
+  - (QA) added to `ui/tools/structural-walk.test.mjs` (a11y spec wiring pin; no-retry failure case) and `ui/tools/protocol-retry.test.mjs` (reset-error case); `structural-walk` and `protocol-retry` tests 36/36; each applied, observed red, reverted, `git diff` identical to the pre-mutation diff:
+  - mutation: drop `browser = result.browser;` in the a11y spec -> the a11y spec wiring case red.
+  - mutation: replace the spec's bounded close with `await closing.close()` -> the a11y spec wiring case red.
+  - mutation: `walk` answers `browser` instead of `withRetry.held()` -> the a11y spec wiring case red.
+  - mutation: annotate every failing pass's error, retried or not -> the no-retry failure case red alone.
+  - mutation: swallow the error `reset` throws in `retryOnce` -> the reset-error case red alone.
+  - (code review, observed, tree identical after) mutation: drop `relaunch` from `walk`'s `passRetrier` call -> the held-browser case red alone. Call `reset` inside the second attempt's `try` -> the reset-error case red alone. The a11y spec's `after` calls `closing.close()` instead of `closeOrAbandon` -> the a11y spec wiring case red alone. `test:tools` 2219/2219; after a rebuild and redeploy, `a11y-structural-invariants.browser-spec.mjs` 13/13 on `ocupilot-ci` in 535 s, no retried line.
 
 ## Auto Run Result
 
