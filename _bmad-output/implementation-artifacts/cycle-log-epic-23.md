@@ -1080,3 +1080,13 @@ spawn_at=2026-10-06T16:01:05Z	Story 23.4	cr_complete	batch=b 2026-10-06T20:34:58
 2026-11-13T10:01:29Z	Story 23.10	code_pushed	batch=2 sha=7b95c2b0(implement) alone=yes ci=run_43405790354 missing=none pushed_at=2026-11-13T10:01:29Z note=pushed_at_the_hold;in-flight_CI_left_running
 2026-11-13T10:01:29Z	Epic 23	throwaway_removed	container=ocupilot-ci project=ocupilot-ci dir=/Users/jbrandt/.ocupilot-throwaways/ocupilot-ci started_by=this_run(20261020T0940Z-20,23;up_2026-11-12T14:33Z,rebuilt_per_fresh_check) via=scripts/ci-throwaway.sh_down result=removed reason=hold
 2026-11-13T10:01:29Z	Epic 23	hold_complete	shas=head_after_this_commit(origin=local) last_code_heads=554aa62a(23.10_b1,green_43390487951),7b95c2b0(23.10_b2_implement,CI_43405790354_pending) staging_green=7b808a4c(43396193055) story_23.9=done story_23.10=batch_1_done,batch_2_reviewed(patch_held),batch_3_open story_23.13=backlog runtime=none_up inbox_snapshot=unattended-inbox-snapshot.md
+2026-11-13T14:02:52Z	Epic 23	lead_model_gate	model=claude-opus-5-5 action=proceed
+2026-11-13T14:02:52Z	Epic 23	runtime_gate	bmad=6.12.1 uv=0.12.9 ci=gh
+2026-11-13T14:02:52Z	Epic 23	launch_env	depth=4 watchdog=1 bash_max_ms=default
+2026-11-13T14:02:52Z	Epic 23	runner_unattended_start	run=20261020T0940Z-20,23 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03 doctrine=3d11cec98d91c1d4d9c225fe3b265e1af418abe4 redispatch=2026-11-13_after_owner_quota_hold head=b3f01e196
+2026-11-13T14:02:52Z	Story 23.10	ci_resolved	story=23.10 batch=2 sha=7b95c2b0 runs=43405790354 result=success failed=none via=none resolved_at=resume attempt=1
+2026-11-13T14:02:52Z	Story 23.10	hold_restored	story=23-10-the-range-end-cleanup-part-9-two-sweeps patch=deleted_after_apply(reverse_check_ok) files=8(7_M,1_untracked_BodyOversizedWire.cls)
+2026-11-13T14:06:33Z	Story 23.10	fresh_check	batch=2 env=recipe(down+up_ocupilot-ci_this_run,STARTPATH-OK,LoadDir_0_errors,bundle_deployed) tests=Utils,RestServiceSave,BodyOversizedWire,PctAccessSaveWire,ToolDispatch_each_alone_green;request-body.test_5/5 result=pass order=each_class_alone record=/Users/jbrandt/.ocupilot-throwaways/e23-fresh-23-10-b2
+2026-11-13T14:06:33Z	Story 23.10	smoke_complete	batch=2 method=cli result=pass iterations=1 defects_caught=0 evidence=smoke.sh_ocupilot-ci_50/50 model=claude-opus-5-5
+2026-11-13T14:06:33Z	Story 23.10	committed	batch=2 sha=43f32a09 code_heads=7b95c2b0(implement,CI_43405790354_green),43f32a09(QA+review) ci=pending runs=43439501562 missing=none pushed_at=14:05:48Z push_route=43f32a09_alone amendments=none footprint_extensions=none upgrade_trigger=none
+2026-11-13T14:06:33Z	Story 23.10	ledger_adjudicated	batch=2 owned=1(DW-2417) resolved=1 reowned=0 terminal=0 slice_after=1(DW-2426,batch_3)
