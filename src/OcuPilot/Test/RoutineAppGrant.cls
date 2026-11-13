@@ -3,7 +3,7 @@
 /// while a target role in <code>MatchRoles</code> does, are proposed at the destructive treatment with
 /// <code>GRANT.PRIVILEGED</code>, through the update tool's mint and through
 /// <method>OcuPilot.Kernel.Proposal.Prohibited.GrantsPrivilegeByEffect</method> asked directly; a remove, and an add under
-/// unprivileged roles, are not.</p>
+/// unprivileged roles, are not. So is public USE added to the resource such an application uses (DW-2432).</p>
 /// <p>Every write is real for an application named <code>OcuProbe1831...</code> and a role named
 /// <code>OcuProbe1833Role...</code>; the mint stores a proposal and writes nothing, and no proposal is confirmed.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed and serving, and

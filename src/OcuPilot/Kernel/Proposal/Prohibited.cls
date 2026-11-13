@@ -4701,8 +4701,10 @@ ClassMethod ResourceNames(pObject As %DynamicObject, Output pNames) [ Private ]
 /// resource's <parameter>FIELDPUBLICPERMISSION</parameter>, which grants privilege when it adds a
 /// letter (<method>AddsPublicLetter</method>) on a resource
 /// <method>ResourceGrantsAdministrativePrivilege</method> names -- <var>pId</var>, the target's id,
-/// is what names it -- or adds USE (<method>AddsPublicUse</method>) to one an enabled application whose roles escalate
-/// guards (<method>GuardsPrivilegedApplication</method>). A task's <code>RunAsUser</code> naming an account other than the caller's,
+/// is what names it -- or adds USE (<method>AddsPublicUse</method>) to a resource that an enabled application whose
+/// roles escalate uses (<method>GuardsPrivilegedApplication</method>, which reads the instance's applications as the
+/// caller and counts a lookup that fails). A form's per-choice half judges the name alone, so it states no
+/// consequence for the application half. A task's <code>RunAsUser</code> naming an account other than the caller's,
 /// compared without regard to case, grants that account's privileges to the task; so does an
 /// import's <code>runAs</code>, the accounts of the tasks it creates, when any is another account. The authorization
 /// server configuration's <code>CustomizationRoles</code> grants privilege when it adds a privileged

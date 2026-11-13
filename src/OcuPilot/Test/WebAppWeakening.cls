@@ -4,7 +4,8 @@
 /// minted destructive and names the effect, the confirm over the wire applies it, and the editor's
 /// Save applies it -- and refused on one of OcuPilot's own, each with its own code, on both callers.
 /// It also pins the card's one-code precedence for a proposal with several effects and for a
-/// privileged role on an unauthenticated application.</p>
+/// privileged role on an unauthenticated application, and the privileged grant reached from the resource side: public
+/// USE added to a resource an enabled application granting a privileged role uses (DW-2432).</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed and serving, an account holding
 /// <code>%All</code>, and <parameter>ARMINGVARIABLE</parameter> reading <code>1</code>, because it
 /// creates and deletes two web applications by exact name and records one of them as OcuPilot's own
@@ -26,10 +27,8 @@ Parameter SET = "OcuPilot.Kernel.Proposal.Prohibited";
 
 Parameter LIMITS = "OcuPilot.Kernel.Agent.Limits";
 
-/// <p>DW-2432: the resource edit's tool and the list screen it is minted under.</p>
+/// <p>DW-2432: the resource edit's tool.</p>
 Parameter RESOURCETOOL = "OcuPilot.Screen.Tool.ResourceUpdate";
-
-Parameter RESOURCELIST = "OcuPilot.Screen.Descriptor.ResourceList";
 
 /// <p>The application that is not OcuPilot's own.</p>
 Parameter PROBEAPP = "/csp/ocupilotprobeweakening";
@@ -299,13 +298,13 @@ Method TestPublicUseOnAResourceAnApplicationGuardsIsAGrant()
     Do ..AssertResourceGrant({"PublicPermission": "RU"}, {"PublicPermission": "U"}, ..#PUBLICNONE, 0, "adding read to a resource that already holds USE")
     Do ..AssertResourceGrant({"PublicPermission": "u"}, tNothing, ..#PUBLICNONE, 1, "adding USE written in lower case")
     Do ..AssertResourceGrant({"PublicPermission": "RU"}, {"PublicPermission": "R"}, ..#PUBLICREAD, 0, "adding USE to a resource no application uses")
-    Set tKey = ..MintResource(..#PUBLICNONE, {"PublicPermission": "U"}, .tProposal, .tHttp, .tFault)
+    Set tKey = ..Mint(..#PUBLICNONE, {"PublicPermission": "U"}, .tProposal, .tHttp, .tFault, ..#RESOURCETOOL)
     Do $$$AssertNotEquals(tKey, "", "the resource edit adding USE is minted: " _ $Select($IsObject($Get(tFault)): tFault.%ToJSON(), 1: ""))
     If tKey '= "" {
         Do ..Stored(tKey, .tDestructive, .tConsequence)
         Do $$$AssertEquals(tDestructive _ " " _ tConsequence, "1 " _ ##class(OcuPilot.Kernel.Proposal.Mint).#CONSEQUENCEPRIVILEGED, "destructive, naming the privilege")
     }
-    Set tKey = ..MintResource(..#PUBLICNONE, {"PublicPermission": "R"}, .tProposal, .tHttp, .tFault)
+    Set tKey = ..Mint(..#PUBLICNONE, {"PublicPermission": "R"}, .tProposal, .tHttp, .tFault, ..#RESOURCETOOL)
     Do $$$AssertNotEquals(tKey, "", "the edit adding only read is minted: " _ $Select($IsObject($Get(tFault)): tFault.%ToJSON(), 1: ""))
     If tKey '= "" {
         Do ..Stored(tKey, .tDestructive, .tConsequence)
@@ -336,21 +335,6 @@ Method AssertResourceGrant(pPayload As %DynamicObject, pTarget As %DynamicObject
 {
     Set tSC = $ClassMethod(..#SET, "GrantsPrivilegeByEffect", $Parameter(..#SET, "TYPERESOURCE"), pPayload, pTarget, .tGrants, pId)
     Do $$$AssertEquals($System.Status.IsOK(tSC) _ " " _ tGrants, "1 " _ pGrant, pLabel _ ": " _ $Select(pGrant: "a grant", 1: "no grant"))
-}
-
-/// <p>Mint one <code>permissions.resources.update</code> proposal against <var>pName</var> from <var>pArgs</var>, as
-/// <method>Mint</method> mints the application edit. Answers the proposal id, or <code>""</code>.</p>
-Method MintResource(pName As %String, pArgs As %DynamicObject, Output pProposal As %DynamicObject, Output pHttp As %Integer, Output pFault As %DynamicObject) As %String
-{
-    Set pProposal = ""
-    Set tUser = ##class(OcuPilot.Test.Http).GetTestUsername()
-    Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedTurn(tUser, "completed", .tTurnKey)
-    Do $$$AssertStatusOK(tSC, "a probe turn is seeded")
-    If $$$ISERR(tSC) Quit ""
-    Do pArgs.%Set("Name", pName, "string")
-    Set tSC = ##class(OcuPilot.Kernel.Proposal.Mint).Mint(..#RESOURCELIST, $Parameter(..#RESOURCETOOL, "TOOLNAME"), tUser, "", tTurnKey, pArgs, ..#LIMITS, .pProposal, .pHttp, .pFault, $ClassMethod(..#RESOURCETOOL, "Endpoint"), $ClassMethod(..#RESOURCETOOL, "IdParam"), pName, $ClassMethod(..#RESOURCETOOL, "IdArgument"), $ClassMethod(..#RESOURCETOOL, "SettableFields"), ..#RESOURCETOOL)
-    If $$$ISERR(tSC) || '$IsObject($Get(pProposal)) Quit ""
-    Quit pProposal.%Get("proposalId")
 }
 
 /// <p>Create the probe resource <var>pName</var> with public permission <var>pPermission</var> in <code>%SYS</code>,
@@ -462,19 +446,20 @@ ClassMethod Rendered(pField As %String, pJson As %String) As %String
     Quit ##class(OcuPilot.Kernel.Proposal.Mint).Display(tObject.%Get("v"), tObject.%GetTypeOf("v"))
 }
 
-/// <p>Mint one <code>webapp.list.update</code> proposal against <var>pName</var> from
-/// <var>pArgs</var> through the shipped mint and the shipped port, owned by the suite's HTTP account
-/// inside a seeded turn, so the confirm over the wire is that account's own. Answers the proposal id,
-/// or <code>""</code>.</p>
-Method Mint(pName As %String, pArgs As %DynamicObject, Output pProposal As %DynamicObject, Output pHttp As %Integer, Output pFault As %DynamicObject) As %String
+/// <p>Mint one proposal of <var>pTool</var> (<parameter>TOOL</parameter>, <code>webapp.list.update</code>, when
+/// empty) against <var>pName</var> from <var>pArgs</var> through the shipped mint and the shipped port, owned by the
+/// suite's HTTP account inside a seeded turn, so the confirm over the wire is that account's own. Answers the proposal
+/// id, or <code>""</code>.</p>
+Method Mint(pName As %String, pArgs As %DynamicObject, Output pProposal As %DynamicObject, Output pHttp As %Integer, Output pFault As %DynamicObject, pTool As %String = "") As %String
 {
+    If pTool = "" Set pTool = ..#TOOL
     Set pProposal = ""
     Set tUser = ##class(OcuPilot.Test.Http).GetTestUsername()
     Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedTurn(tUser, "completed", .tTurnKey)
     Do $$$AssertStatusOK(tSC, "a probe turn is seeded")
     If $$$ISERR(tSC) Quit ""
     Do pArgs.%Set("Name", pName, "string")
-    Set tSC = ##class(OcuPilot.Kernel.Proposal.Mint).Mint($Parameter(..#TOOL, "DESCRIPTORCLASS"), $Parameter(..#TOOL, "TOOLNAME"), tUser, "", tTurnKey, pArgs, ..#LIMITS, .pProposal, .pHttp, .pFault, $ClassMethod(..#TOOL, "Endpoint"), $ClassMethod(..#TOOL, "IdParam"), pName, $ClassMethod(..#TOOL, "IdArgument"), $ClassMethod(..#TOOL, "SettableFields"), ..#TOOL)
+    Set tSC = ##class(OcuPilot.Kernel.Proposal.Mint).Mint($Parameter(pTool, "DESCRIPTORCLASS"), $Parameter(pTool, "TOOLNAME"), tUser, "", tTurnKey, pArgs, ..#LIMITS, .pProposal, .pHttp, .pFault, $ClassMethod(pTool, "Endpoint"), $ClassMethod(pTool, "IdParam"), pName, $ClassMethod(pTool, "IdArgument"), $ClassMethod(pTool, "SettableFields"), pTool)
     If $$$ISERR(tSC) || '$IsObject($Get(pProposal)) Quit ""
     Quit pProposal.%Get("proposalId")
 }
