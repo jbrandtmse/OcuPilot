@@ -1405,3 +1405,5 @@
 2026-11-13T19:00:40Z	Story 20.40	gate_step	code_head=d49eb2d3 step=full_sweep result=fail shards=20 classes=705 tests=5428 failed=1(shard_13:InteropDescriptor.TestEveryInteropErrorCodeResolvesToItsSentence;roster_misses_ITEMCOPY,ITEMCOPYSOURCE) finished=19:00Z
 2026-11-13T19:00:40Z	Story 20.40	rework_opened	cycle_iteration=2 iteration=1 trigger=smoke items=Smoke_InteropDescriptor_error-code_roster scope_baseline=pending
 2026-11-13T19:00:40Z	Story 20.40	stage_spawned	stage=implement spawn_at=2026-11-13T19:00:40Z model=sonnet agent_name=20-40-implement-2 cycle_iteration=2 rework=1
+2026-11-13T19:16:26Z	Story 20.40	dev_complete	spawn_at=2026-11-13T19:00:40Z model=sonnet agent_name=20-40-implement-2 cycle_iteration=2 rework=1 build_sha=0ac64532 baseline_revision=8c06ac6a followup_review_recommended=false deferred=0 files=2 note=ITEMCOPY,ITEMCOPYSOURCE_added_to_InteropDescriptor_roster;12/12;mutation_11/12
+2026-11-13T19:16:26Z	Story 20.40	stage_spawned	stage=code-review spawn_at=2026-11-13T19:16:26Z model=opus agent_name=20-40-code-review-2 cycle_iteration=2 baseline=8c06ac6a scope=rework_1
