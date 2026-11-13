@@ -12478,6 +12478,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: release/1.0.14 push run 40014034409 attempt 1, browser shard 3/5 (723a3662); attempt 2 green; the same code was green on feature (2a9ea8d1, run 40008057887)
 - 2026-10-23T21:31:33Z status=routed owner=burndown by=orchestrator note=CI flake, reported by the Planner at the 1.0.14 cut; first in the next standing cleanup with DW-1822 (Rule 27)
 - 2026-11-12T21:28:40Z status=resolved-by:23-9-the-range-end-cleanup-part-8 owner=23-9-the-range-end-cleanup-part-8 by=orchestrator note=re-stated: the union merge at ebb0b37d placed this entry's 2026-11-12 13:49 and 19:13 trailers under DW-2523; resolved by 23.9 batch 1 c98a0877 (signedInAt names in-flight requests; AC8 seeds 30k nodes)
+- 2026-11-13T06:29:49Z occurrence=20-36-investigate
 
 ### DW-2518: A cube build or synchronize the vendor ran but then failed (a dependent failing after the target rebuilt, a raised exception) records no ConfigChange row, though facts changed
 - source: spec-20-34-the-cube-manager-s-build-and-synchronize.md | severity: med | fix-risk: med | footprint: in-story
@@ -12545,6 +12546,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: run 43292059964 (9e7cc026) attempt 1, browser shard 2/5: waitForSelector [data-ocu-mdx=grid] failed at :258 after 37.6 s, the other 10 tests green; batch 4 touches no analytics or walk code
 - 2026-11-12T20:43:32Z status=routed owner=23-10-the-range-end-cleanup-part-9-two-sweeps by=lead note=CI flake; first priority in 23.10 (Rule 27); rerun --failed
 - 2026-11-13T00:51:08Z occurrence=20-34-the-cube-manager-s-build-and-synchronize note=re-stated (a union merge misplaced the 23:17:35Z line): also red on CI 43290470415 (acb0b666), filed there as DW-2523, dropped as this entry's duplicate
+- 2026-11-13T06:29:49Z occurrence=20-36-investigate
 
 ### DW-2524: flake: context-chip.browser-spec.mjs test 7 (Fresh at Send) waited past 30000 ms
 - source: 23.9 staging CI (run 43316537748) | severity: med | fix-risk: low | footprint: out-of-footprint
