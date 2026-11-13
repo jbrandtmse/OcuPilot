@@ -2,9 +2,9 @@
 title: 'Story 23.13: The range-end cleanup, part 11'
 type: 'bugfix'
 created: '2026-11-13'
-status: 'in-progress'
-baseline_revision: 'aa6e60dc5dcd633975cbc7a6ecc1c49d18960ac5'
-baseline_commit: 'aa6e60dc5dcd633975cbc7a6ecc1c49d18960ac5'
+status: 'done'
+baseline_revision: '609d86f8fcb76c53653e96591b0d9b467baca5fa'
+baseline_commit: '609d86f8fcb76c53653e96591b0d9b467baca5fa'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -156,12 +156,12 @@ Waits for escalation 5 (contention) before any `Prohibited.cls` edit. Task 0 nee
 
 ### Batch 3: removal rows (DW-2525)
 
-- [ ] `src/OcuPilot/Screen/Tool/Write.cls` `RemovalRows` gains a trailing `pNames As %List = ""`: when non-empty, the rows follow those names in that order; else `REMOVALROWS` as today. The doc states the contract.
-- [ ] The 16 bodies keep their preconditions, messages and `Try`, and set `pRows = ..RemovalRows(pFresh, <0, or 1 for the four with the skip>, ..FingerprintSubject())` (or `..ReadAnswers()`).
-- [ ] **New-site catch and pin**, new `src/OcuPilot/Test/RemovalRowsSweep.cls` (unarmed), following `CompositeMintSweep`:
+- [x] `src/OcuPilot/Screen/Tool/Write.cls` `RemovalRows` gains a trailing `pNames As %List = ""`: when non-empty, the rows follow those names in that order; else `REMOVALROWS` as today. The doc states the contract.
+- [x] The 16 bodies keep their preconditions, messages and `Try`, and set `pRows = ..RemovalRows(pFresh, <0, or 1 for the four with the skip>, ..FingerprintSubject())` (or `..ReadAnswers()`).
+- [x] **New-site catch and pin**, new `src/OcuPilot/Test/RemovalRowsSweep.cls` (unarmed), following `CompositeMintSweep`:
   - For every `OcuPilot.Screen.Tool` class whose own `StateDiff` source sets `"removed"`, the body calls `RemovalRows`, or the class is on an allow-list naming each other shape (Code Map). The checked count is asserted `> 0`. Red before, naming the 16. Mutation: put one body's loop back.
   - `RemovalRows` with a names list answers rows in that order with each value's `Mint.Display`; with the skip it omits an unassigned name; with no names it reads `REMOVALROWS`. Red before (no argument).
-- [ ] **Equal behavior.** The 13 readers' per-class totals are equal before and after; Story 23.9's mutation (drop `removed` in `RemovalRows`) reddens each of `ResourceDelete`, `RoleDelete`, `TaskScheduleActions`, `DocDbAppDescriptor`, `WalletSecretDelete` after the lift.
+- [x] **Equal behavior.** The 13 readers' per-class totals are equal before and after; Story 23.9's mutation (drop `removed` in `RemovalRows`) reddens each of `ResourceDelete`, `RoleDelete`, `TaskScheduleActions`, `DocDbAppDescriptor`, `WalletSecretDelete` after the lift.
 
 ### Batch 4: journal order (DW-1979, DW-2527)
 
@@ -246,6 +246,16 @@ Rejected:
 - 2026-11-13: batch 4 re-opened for one review iteration (DW-2542, the first review's unpatched in-story medium).
 
 ## Review Triage Log
+
+### 2026-11-13 — Review pass (batch 3)
+
+- verdicts: 4 findings — high 0, medium 1, low 3, false 0, maybe-false 0 (one intent-alignment report, descriptive)
+- findings:
+  - `[medium]` `[patch]` verification-gap: the 16 call sites were pinned only by the substring `RemovalRows(`, so a wrong names source or skip flag at a site (SslDelete, UserDelete, SuperserverDelete, MappingDelete have no reader) stayed green — patched: `Sites()` roster and `TestEachToolPassesItsOwnNamesAndSkip` pin each site's exact call; two mutations (SuperserverDelete skip 1 to 0, SslDelete source swap) observed red, reverted, lines written under Verification.
+  - `[low]` `[patch]` verification-gap: the sweep's floor `> 0` let a mostly-blind scan pass — patched with the roster test and the floor raised to the size of the other-shapes list.
+  - `[low]` `[reject]` verification-gap: `TestNoNamesReadsTheDeclaredRows` leans on `ExplorerDocDbDelete`'s `REMOVALROWS` — its control assertion names the drift; a probe subclass adds a class for no new behavior.
+  - `[low]` `[reject]` verification-gap: an empty names list falls back to `REMOVALROWS` — the task says "when non-empty"; none of the 16 declares `REMOVALROWS`, so no row changes.
+  - `[n/a]` `[reject]` intent-alignment: the pins sit at source text and the builder, with card rows observed by the 13 readers — the spec's Integration AC names the readers; the equal totals are under Verification.
 
 ### 2026-11-13 — Review pass (batch 4)
 
@@ -397,6 +407,15 @@ Rejected:
   - (code review, observed, tree identical after) mutation: drop the `followOrder()` call in the Refresh action -> the Refresh case red alone. Call `followOrder()` from `onSearch` instead of `open()` -> the arrival case red alone. Keep only `sort !== ''` in the guard -> the explicit Address case red alone. Component spec 18/18; `npm run test:components` 3364/3364 (261 files); `npm run test:tools` 2219/2219; `npm run build` clean, initial total 2.02 MB.
   - (DW-2542, observed, tree identical after) mutation: drop the `followOrder()` call in `journal-records.page.ts`'s store subscriber -> the remembered-view case red alone. Run it on every store change -> the kept-direction case red alone. Notify in `adoptRemembered` only when a view moved -> the kept-direction case red alone. Start the subscriber's `awaitingView` at true -> the revisit case red alone (code review, observed). Component spec 21/21; `npm run test:components` 3367/3367 (261 files); `npm run test:tools` 2219/2219; `npm run build` clean, initial total 2.02 MB of 2500 kB, journal records chunk 12.02 kB; `screen-store.test.mjs` 26/26. `journal-records.browser-spec.mjs`: lead, fresh check (not run here).
   - (code review, batch 4 rework 1, observed, tree identical after) mutation: stop adopting the remembered max rows in `adoptRemembered` -> the remembered-view case red alone. Notify in `adoptRemembered` only when a view moved -> `screen-store.test.mjs` "adoption notifies once ..." red alone; return `false` from `remembered()` -> the same case red alone. Component spec 21/21; `npm run test:components` 3367/3367 (261 files); `npm run test:tools` 2220/2220; `npm run build` clean (before the comment-only patch), initial total 2.02 MB.
+- Batch 3 (DW-2525), pin `RemovalRowsSweep` (the 16 copies, the names argument, the roster); each applied on `ocupilot-ci` with the tool package recompiled, observed red, reverted, `git diff` over `src` identical to the pre-mutation diff:
+  - red before the lift (the 16 tool files and `Write.cls` at the baseline): `TestEveryRemovalRowComesFromTheOneBuilder` named the 16 classes and `TestRowsFollowTheNamesInOrder` raised `<PARAMETER>`.
+  - mutation: put `ResourceDelete`'s own loop back in place of its `RemovalRows` call -> `TestEveryRemovalRowComesFromTheOneBuilder` red alone, naming `ResourceDelete`.
+  - mutation: ignore `pNames` in `RemovalRows` -> `TestRowsFollowTheNamesInOrder` red alone.
+  - mutation: read the names from `pNames` only (no `REMOVALROWS` fallback) -> `TestNoNamesReadsTheDeclaredRows` red alone.
+  - mutation: add `WalletSecretDelete` to `Others()` -> `TestTheListOfOtherShapesNamesNothingStale` red alone.
+  - mutation (Story 23.9's): drop `removed` in `RemovalRows` -> `ResourceDelete`, `RoleDelete`, `TaskScheduleActions`, `DocDbAppDescriptor`, `WalletSecretDelete` each 1 failed.
+  - (code review, observed, tree identical after) mutation: pass skip 0 instead of 1 in `SuperserverDelete` -> `TestEachToolPassesItsOwnNamesAndSkip` red alone, naming it. Pass `..ReadAnswers()` instead of `..FingerprintSubject()` in `SslDelete` -> the same test red alone, naming it. `RemovalRowsSweep` 5/5 after both reverts.
+  - Readers before and after the lift, tests and failures equal: ResourceDelete 6/6, RoleDelete 11/11, TaskScheduleActions 6/6, TaskResume 15/15, WalletSecretDelete 3/3, DocDbAppDescriptor 11/11, RoutineAppDescriptor 13/13, OAuthServerDelete 4/4, OAuthDelete 5/5, LdapCreate 6/6, AuditEventTools 10/10, WebAppPctAccess 11/11, ProhibitedRoute 24/24; all 0 failed. `RemovalRowsSweep` 5/5 (4 before review). `check-objectscript.py` 0 problems over 21 rules; `npm run test:tools` 2220/2220 after the review patch.
 
 ## Auto Run Result
 
@@ -412,3 +431,5 @@ Batch 4 (DW-1979) pass: the journal records page now follows the order select wi
 - **Residual risk:** the draw order is shown through the component spec only until the lead's browser run; a Refresh with an unsearched order change reads the new order under the old direction (deferred).
 
 DW-2542 pass (batch 4 rework): the defect was real. `ScreenStore` adopts the remembered view when the account answers, after the page's cold-open `followOrder()`, replacing the direction it set. The page now re-runs `followOrder()` once on the first store notification after adoption (`ScreenStore.remembered()`, new; `adoptRemembered` notifies once on every adoption). Files: `ui/src/app/core/screen-store.ts`, `ui/src/app/areas/os-management/journal-records.page.ts`, `ui/src/app/areas/os-management/journal-records.page.spec.ts` (three cases). Review: 1 medium patched (seed pin), 2 low rejected (triage log). Verification and mutations under Verification. Follow-up review recommended: false (no high patched).
+
+Batch 3 (DW-2525) pass: `RemovalRows` takes a trailing `pNames` list and the 16 delete bodies call it with `..FingerprintSubject()` or `..ReadAnswers()` (skip kept for the four that had it); new unarmed `OcuPilot.Test.RemovalRowsSweep` (5 tests) pins the lift. Files: `src/OcuPilot/Screen/Tool/Write.cls`, the 16 `*Delete.cls` bodies, `src/OcuPilot/Test/RemovalRowsSweep.cls`. Verification and mutations under Verification; the new class joins the `ci-timings.json` roster at the lead's refresh. Batch 2 is untouched. Review: 1 medium patched (per-site roster pin), 1 low patched (floor), 2 low and the intent report rejected (triage log). Follow-up review recommended: false.
