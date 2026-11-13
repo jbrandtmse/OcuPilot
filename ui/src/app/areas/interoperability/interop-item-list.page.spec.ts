@@ -171,6 +171,19 @@ describe('the Production items page', () => {
     expect(host.querySelector('[data-stub-production]'), 'the add never opens over the copy dialog').toBeNull();
   });
 
+  // Mutation (Rule 19): `onOpenCopy` ignores an open add dialog -> the stacked-dialog leg goes red.
+  it('Story 20.40: Copy never opens over an open add dialog', async () => {
+    const { fixture, host, actions, stores } = await mount(itemsUrl('Demo.One'));
+    const screen = SCREENS.find((entry) => entry.descriptor === INTEROP_ITEM_LIST);
+    stores.for(INTEROP_ITEM_LIST, screen?.refreshRates ?? []).setSelection([joinCompositeId(['Demo.One', 'Op1'])]);
+    actions.run(INTEROP_ITEM_LIST, INTEROP_ITEM_ADD_ACTION);
+    await settle(fixture);
+    expect(host.querySelector('[data-stub-production]'), 'the add dialog is open').not.toBeNull();
+    actions.run(INTEROP_ITEM_LIST, INTEROP_ITEM_COPY_ACTION);
+    await settle(fixture);
+    expect(host.querySelector('[data-stub-copy]'), 'the copy never opens over the add dialog').toBeNull();
+  });
+
   // Mutation (Rule 19): the link is drawn whatever the route names -> the bare-route leg goes red.
   it('Story 20.8: draws no link while the route names no production', async () => {
     const { host } = await mount('/interoperability/productions/items?ns=USER');

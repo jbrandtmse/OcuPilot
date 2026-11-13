@@ -181,6 +181,38 @@ Line numbers are on `ac902dcd`. Stories 20.25 and 20.26 land first and shift the
 - AC5: Given a caller missing one declared pair, when it copies by either caller, then it is refused 403 naming that pair.
 - AC6: Given the new tool, when `Test/ToolWrite` and `Test/ReadTool` run, then each count reads exactly one above the branch's value before this story.
 
+### Review Findings
+
+Code review 2026-11-13: 0 decision-needed, 9 patch (all applied), 1 closed `wontfix-accepted` (DW-2536), 14 rejected.
+
+- [x] [Review][Patch] (med) An agent's confirm after the source was removed answers 400 `TOOL.ARGUMENTS` with the source sentence before the write and leaves the proposal live, as the mint does and as the add's `ConfirmProblem` does; no test reached it. Decided in-stage: kept, and the matrix's 409 holds at the write itself. Leg added [src/OcuPilot/Test/InteropItemCopy.cls `TestAChangeSinceTheMintAndTheWritesOwnRefusalsStoreNothing`]
+- [x] [Review][Patch] (med) The copy's comment check compared two empty strings, and its category was never read; the source now holds both [src/OcuPilot/Test/InteropItemCopy.cls `TestThePersonsSaveCopiesTheItemAndItsSettings`, `MarkSource`]
+- [x] [Review][Patch] (med) The business-process-only condition of the pool-size rule was unpinned; a pool-size-0 service's copy now reads 0 [src/OcuPilot/Test/InteropItemCopy.cls `TestThePersonsSaveCopiesTheItemAndItsSettings`]
+- [x] [Review][Patch] (med) Rule 2: `Prohibited.ItemCopied` was a near-copy of the user copy's `Copied`; `Copied` now takes the permitted list and the false-only fields, and `ItemCopied` is gone [src/OcuPilot/Kernel/Proposal/Prohibited.cls `Copied`]
+- [x] [Review][Patch] (low) The copy tool's input schema (CopyFrom required, no class) was unpinned [src/OcuPilot/Test/InteropItemCopy.cls `TestACopyNeedsTheRoutinesDatabaseAndIsRefusedUnderSourceControl`]
+- [x] [Review][Patch] (low) Copy opening over an open add dialog was unpinned [ui/src/app/areas/interoperability/interop-item-list.page.spec.ts]
+- [x] [Review][Patch] (low) The agent-facing description said a running production starts an enabled item on its next update; a copy is never enabled [src/OcuPilot/Screen/Tool/InteropItemCopy.cls `DESCRIPTION`]
+- [x] [Review][Patch] (low) `ITEMCOPYSOURCE`'s doc placed the 422 at the mint, and `ItemPreconditionCodes`' doc did not cover the copy's source refusal [src/OcuPilot/Api/InteropError.cls]
+- [x] [Review][Patch] (low) Stale docs: "three siblings" (now four), the list page's registered actions, the gate's "six port legs" (now seven), `StoredColumn` [InteropItemList.cls, interop-item-list.page.ts, Test/InteropItemGate.cls, Test/InteropItemCopy.cls]
+- [x] [Review][Defer] (low) Rule 2: `InteropItemCopyStore` repeats the add store's listener, refusal and post plumbing; the stated reason covers the state only [ui/src/app/areas/interoperability/interop-item-copy.store.ts] -- `wontfix-accepted` DW-2536, reopen when a third item create store copies it
+
+Rejected:
+
+- low: the copy's script finds the source by the caller's spelling, so a case-different `CopyFrom` fails there (`<INVALID OREF>`, nothing written); the tool tells the agent to name it exactly, the remove's script looks up the same way, and the fix adds a search loop.
+- low (by-design): `%ConstructClone(1)` also clones the referenced production in memory; it is the vendor's shape the spec requires, nothing of it is saved (`%OnAddToSaveSet` re-points the copy), and `ProductionRows` pins that.
+- false: "the clone guard cannot fire" -- `%ConstructClone` answers `""` when the clone fails, which the guard catches; the source was just found under the lock by its stored name. The literal 2 is required: AD-62 (12) forbids the `Ensemble` include.
+- low: `ItemCopy.Violations` and `InteropItemCopy.FieldViolations` both delegate to `CopyViolations`; each is a one-line override of its own class's seam, and `ItemSave.Violations` serves Saves other than the item tools.
+- low: a 422 naming both `Name` and `CopyFrom` draws only the name refusal; `CopyFrom` is the selected row's own name, so this needs that item removed concurrently, and the fix adds a branch.
+- low: the dialog does not name the source; the wording is ruled (U-25) and new wording is owner-only.
+- false: the gate probe's copy cleanup "fails silently" -- `TestEachMissingPairIsRefusedByNameThroughThePort` asserts `BASELINE` after each principal, which names any leftover.
+- low: `StoredColumn` concatenates its column into SQL; its callers are literals in the same test class.
+- low: a System Default Setting supplying `Enabled` true runs the copy enabled and refuses Remove; rare, the read-back reports it, the add and the classic copy behave the same, and a guard would add a refusal the spec does not have.
+- low: a source whose class is no longer compiled is copied as it is, disabled, as the classic copy does.
+- low: a stale selection from another production; the table prunes rows that leave the view, and the fix adds a guard.
+- low: in a source-controlled namespace the Save answers a bad name 422 before 409; the matrix promises no precedence and the add's Save has the same order.
+- low: the contended `Test/InteropItemDescriptor.cls` rosters were edited in place; Rule 30 required the roster moves, and Epic 23's branch has no change to that file.
+- low: AC4's audit and AC6's `ToolWrite` count have no mutation line of their own; Rule 19 asks for one per AC, and both carry one.
+
 ## Spec Change Log
 
 - 2026-11-12, spec gate (runner): change of class chartered as Story 20.41 (split); the three new strings and the secret-named settings choice are veto item U-25; the AD lines stay for the owner's Update, not written.
@@ -324,7 +356,7 @@ The story complies with every AD as it stands.
 - mutation: `COPYSOURCE` removed from the refusals under the lock -> `TestAChangeSinceTheMintAndTheWritesOwnRefusalsStoreNothing` reds on the write-time source row.
 - mutation: `InteropItemCopy.ROUTINESDATABASE` set to 0 -> `TestACopyNeedsTheRoutinesDatabaseAndIsRefusedUnderSourceControl` reds on the declaration row (AC5); `COPY` dropped from `IsItemWrite` -> that test and `InteropItemGate`'s port leg red on all six principals.
 - mutation: `Ens.Director.UpdateProduction` called after the copy's save -> `TestACopyOnARunningProductionChangesNoJob` reds on the pending-update leg.
-- mutation: `Prohibited.ItemCopied` admits every field -> `TestTheProhibitedSetAdmitsOnlyTheCopysOwnFields` reds on the extra-field rows; its `COPY` branch dropped -> the legitimate copy row reds.
+- mutation: `Prohibited.Copied` admits every field -> `TestTheProhibitedSetAdmitsOnlyTheCopysOwnFields` reds on the extra-field rows; its `COPY` branch dropped -> the legitimate copy row reds.
 - mutation: the store posts to `/api/ocupilot/interop/items` (bundle rebuilt and redeployed) -> the browser spec's Copy leg reds; restored, rebuilt and redeployed, the whole spec reads 5 of 5.
 
 - mutation (review pass): `ItemSnippet`'s `COPY` branch drops `Set tItem.Enabled = 0` -> `TestTheScriptOfACopyClonesTheSourceDisabledAndSavesTheClass` reds; reverted byte-identical.
@@ -333,6 +365,13 @@ The story complies with every AD as it stands.
 - mutation (review pass, AC4): `"interop.items.copy"` set `false` in `Baseline` -> `GovernanceBaseline.TestThePurgeIsTheOneDisabledLine` reds.
 - mutation (review pass, AC6): `Screen/Tool/InteropItemCopy` deleted from the throwaway -> `ReadTool.TestTheRegistryListsDescriptorReadsAndInheritedKinds` reds on the registry count; restored and the whole tree reloaded, `ReadTool` 28 of 28.
 - mutation (review pass, client): `confirmDisabled` ignores a blank name -> the copy dialog spec's "Copy needs a name" test reds; `nameViolation` returns an empty string -> its "draws a refusal on the name" test reds. Both reverted byte-identical.
+
+- (QA) `ui/src/app/shell/proposal-card.spec.ts` (new test, the copy consequence on the agent's card) and `ui/src/app/shell/screen-action-handler.spec.ts` (new test, Copy left undrawn for the page).
+- mutation (QA, AC1): `consequenceSentence` drops the `INTEROP.ITEM.COPY` branch -> the proposal card spec's Story 20.40 test reds; reverted byte-identical.
+- mutation (QA, AC1): `UNDRAWN_ACTIONS` drops the Production items entry -> the new handler spec test reds (the page, handler and store specs alone stayed green before it); reverted byte-identical.
+- mutation (QA, AC1): the page registers no `copy`, or its add guard ignores an open copy dialog -> the list page spec's Story 20.40 test reds on each; the store spec's `named` counting every violation reds "shows a refusal on the source", and dropping the in-flight guard reds "posts once"; `strings.ts` copy sentence reworded -> `interop.test.mjs` `SENTENCES` reds. Each reverted byte-identical.
+- mutation (code review, applied together at distinct sites, each red attributed by its assertion, all reverted byte-identical and reloaded, then 8 of 8): `InteropItemCopy` overrides `ConfirmProblem` to answer none -> the confirm-after-removal leg reds (AC3); the `COPY` branch blanks `Comment` and `Category` -> the comment-and-category leg reds (AC1); the pool-size rule drops `BusinessType() = 2` -> the service leg reds; `InputSchema` stops requiring `CopyFrom` -> the schema leg reds; the item create branch passes no false-only field to `Copied` -> the `Enabled` true row reds.
+- mutation (code review, client): `onOpenCopy` ignores an open add dialog -> the list page spec's "Copy never opens over an open add dialog" reds; reverted byte-identical.
 
 **Run (implement, `ocupilot-b-ci`):** `InteropItemCopy` 7 of 7, and green: `InteropItemControl`, `InteropItemGate`, `InteropItemRefusals`, `InteropItemDescriptor`, `InteropItemRun`, `InteropItemRunGate`, `InteropItemGateSplit`, `InteropItemIdentity`, `InteropSettingControl`, `ReadTool`, `ToolWrite`, `ToolRoundTrip`, `ToolEmit`, `SurfaceCoverage`, `EndpointCoverage`, `GovernanceBaseline`, `Governance`, `Prohibited`, `ReadDescriptions`, `Descriptor`, `CompileWithoutInterop`, `SaveHoldCoverage`, `StageTwoTools`, `ClassicPageGate`, `MappingDescriptor`, `DraftPorts`, `DraftRoute`; the browser spec 5 of 5; `npm run test:tools` 2206 of 2206; `npm run test:components` 3369 of 3369; `npm run build` clean (initial total 2.02 MB); `check-objectscript.py` clean.
 

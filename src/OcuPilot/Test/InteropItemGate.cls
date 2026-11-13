@@ -56,7 +56,7 @@ Parameter LEGS = "Items|LIST,Items|ITEM,Items|DISABLE,Items|ENABLE,Items|ADD,Ite
 /// <p>The tools whose pairs the probe evaluates.</p>
 Parameter TOOLS = "InteropItemEnable,InteropItemDisable,InteropItemRemove,InteropItemAdd,InteropSettingSet,InteropSettingReset,InteropItemCopy";
 
-/// <p>What each principal's six port legs answer, <code>&lt;user&gt;=&lt;the pair a refused leg names, or
+/// <p>What each principal's seven port legs answer, <code>&lt;user&gt;=&lt;the pair a refused leg names, or
 /// empty when the leg is admitted&gt;</code> per leg in <parameter>LEGS</parameter> order, separated by
 /// <code>,</code>.</p>
 Parameter EXPECTED = "OcuP203Exact=,,,,,,;OcuP203NoPortal=%Ens_Portal:USE,%Ens_Portal:USE,%Ens_Portal:USE,%Ens_Portal:USE,%Ens_Portal:USE,%Ens_Portal:USE,%Ens_Portal:USE;OcuP203NoCfgRead=%Ens_ProductionConfig:READ,%Ens_ProductionConfig:READ,%Ens_ProductionConfig:READ,%Ens_ProductionConfig:READ,%Ens_ProductionConfig:READ,%Ens_ProductionConfig:READ,%Ens_ProductionConfig:READ;OcuP203NoCfgWrite=,,%Ens_ProductionConfig:WRITE,%Ens_ProductionConfig:WRITE,%Ens_ProductionConfig:WRITE,%Ens_ProductionConfig:WRITE,%Ens_ProductionConfig:WRITE;OcuP203NoRead=%DB_USER:READ,%DB_USER:READ,%DB_USER:WRITE,%DB_USER:WRITE,%DB_USER:WRITE,%DB_USER:WRITE,%DB_USER:WRITE;OcuP203NoWrite=,,%DB_USER:WRITE,%DB_USER:WRITE,%DB_USER:WRITE,%DB_USER:WRITE,%DB_USER:WRITE";
@@ -139,7 +139,7 @@ ClassMethod ExpectedFor(pUser As %String) As %List
     Quit $ListFromString($Piece(tEntry, "=", 2), ",")
 }
 
-/// <p>AC4: each principal's six port legs are admitted or refused naming the pair <parameter>EXPECTED</parameter>
+/// <p>AC4: each principal's seven port legs are admitted or refused naming the pair <parameter>EXPECTED</parameter>
 /// says, with 403 <code>AUTH.NOPRIVILEGE</code> on a refusal; a refused leg changes no item, and the exact
 /// principal's disable, enable, add and remove leave the items as they began.</p>
 /// <p>Mutation (Rule 19): drop <code>%Ens_ProductionConfig:WRITE</code> from

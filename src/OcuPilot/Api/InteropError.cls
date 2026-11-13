@@ -119,7 +119,7 @@ Parameter ITEMAMBIGUOUS = "INTEROP.ITEM.AMBIGUOUS";
 Parameter REASONITEMAMBIGUOUS = "This production holds more than one item of that name, so change it in the classic production configuration page.";
 
 /// <p>A copy whose source item the production does not hold (Story 20.40): a violation (422) on <code>CopyFrom</code> at a Save
-/// or a mint, a refusal (409) at the write.</p>
+/// (the mint and the confirm refuse it as an argument, 400 <code>TOOL.ARGUMENTS</code>), a refusal (409) at the write.</p>
 Parameter ITEMCOPYSOURCE = "INTEROP.ITEM.COPYSOURCE";
 
 Parameter REASONITEMCOPYSOURCE = "This production holds no item of that name to copy.";
@@ -530,7 +530,8 @@ ClassMethod ItemCodes() As %List
     Quit $ListBuild(..#ITEMENABLED, ..#ITEMDISABLED, ..#ITEMDEFAULTSETTING, ..#ITEMPOOLZERO, ..#ITEMTAKEN, ..#ITEMAMBIGUOUS, ..#ITEMCLASS, ..#ITEMNAME, ..#ITEMVALUE, ..#ITEMENABLEDREMOVE, ..#ITEMSOURCECONTROL, ..#ITEMNOTENABLED, ..#ITEMTEMPSTOPPED, ..#ITEMNOTTEMPSTOPPED, ..#ITEMNOJOBS, ..#ITEMSTARTPENDING, ..#ITEMCOPYSOURCE)
 }
 
-/// <p>The item refusals an item tool's fresh read answers when the action does not fit the item, as a
+/// <p>The item refusals an item tool's fresh read answers when the action does not fit the item, and a copy's source refusal, which the
+/// write answers under the production's lock, as a
 /// <class>%List</class>; the field violations (<parameter>ITEMCLASS</parameter>, <parameter>ITEMNAME</parameter>
 /// and <parameter>ITEMVALUE</parameter>) are an add's body and are not among them.</p>
 ClassMethod ItemPreconditionCodes() As %List

@@ -308,12 +308,12 @@ Parameter BROADCASTWRITETYPE = "BROADCAST";
 
 /// <p>The user write whose payload <method>Copied</method> checks, keyed on the tool's declared write type: a
 /// copy of an existing account (AD-10). A production item's copy (Story 20.40) declares the same write type and is
-/// judged by <method>ItemCopied</method>.</p>
+/// judged by <method>Copied</method> over <parameter>ITEMCOPYFIELDS</parameter>.</p>
 Parameter COPYWRITETYPE = "COPY";
 
 /// <p>The only fields a production item copy's payload names, comma-separated: the source item's name and the
 /// <code>Enabled</code> flag, which a copy always sends false. The namespace it was composed in is removed before the check.
-/// <method>ItemCopied</method> refuses any other, and
+/// <method>Copied</method> refuses any other, and
 /// <class>OcuPilot.Screen.Tool.InteropItemCopy</class> composes exactly these (AD-3, AD-10).</p>
 Parameter ITEMCOPYFIELDS = "CopyFrom,Enabled";
 
@@ -1365,7 +1365,7 @@ ClassMethod PermittedCreateFields(pType As %String) As %List
     ; Story 18.32: a REST service create sets its package and its document, which the rest-service arm judges by the package.
     If pType = ..#TYPERESTSERVICE Quit $ListBuild("Name", "Document")
     ; Story 20.3: an item add sets these six; its production is the id's and its namespace the payload's. Story 20.40: a copy names
-    ; the item it copies, which the create branch admits for a COPY write alone (ItemCopied).
+    ; the item it copies, which the create branch admits for a COPY write alone (Copied).
     If pType = ..#TYPEPRODUCTIONITEM Quit $ListBuild("Name", "ClassName", "PoolSize", "Enabled", "Category", "Comment", "CopyFrom")
     ; Story 20.5: an entry add sets its key and its value; its table is the id's and its namespace the payload's.
     If pType = ..#TYPELOOKUPENTRY Quit $ListBuild("Key", "Value")
@@ -1577,7 +1577,7 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
                 If tItemPayload.%GetTypeOf("Namespace") '= "unassigned" Do tItemPayload.%Remove("Namespace")
                 ; Story 20.40: a copy's payload is the source's name and a false Enabled, and no other field.
                 If ..WriteTypeOf(..ToolClassNamed(pToolName)) = ..#COPYWRITETYPE {
-                    Set tSC = ..ItemCopied(tItemPayload, .pProhibits, .pCode)
+                    Set tSC = ..Copied(tItemPayload, .pProhibits, .pCode, ..#ITEMCOPYFIELDS, "Enabled")
                     Quit
                 }
                 If tItemPayload.%GetTypeOf("CopyFrom") '= "unassigned" {
@@ -6052,38 +6052,21 @@ ClassMethod ServingSessionId() As %String
 }
 
 
-/// <p>Whether a user copy's payload names only the fields its composition sets: <code>CopyFrom</code>,
-/// <code>FullName</code>, <code>Roles</code> and <code>EscalationRoles</code>. Any other field is refused
-/// <parameter>UNCOVEREDFIELD</parameter>, because the copy admits no other setting (Story 18.29).</p>
-ClassMethod Copied(pPayload As %DynamicObject, Output pProhibits As %Boolean, Output pCode As %String) As %Status [ Private ]
+/// <p>Whether a copy's payload names only the fields its composition sets, <var>pPermitted</var> (comma-separated): a user
+/// copy's <parameter>COPYFIELDS</parameter> when empty (Story 18.29), a production item copy's
+/// <parameter>ITEMCOPYFIELDS</parameter> (Story 20.40). Each field <var>pFalseOnly</var> names is admitted only when false,
+/// as a copy's <code>Enabled</code> is. Any other field, and such a field set true, is refused
+/// <parameter>UNCOVEREDFIELD</parameter>, because a copy admits no other setting. The caller removes the namespace.</p>
+ClassMethod Copied(pPayload As %DynamicObject, Output pProhibits As %Boolean, Output pCode As %String, pPermitted As %String = "", pFalseOnly As %String = "") As %Status [ Private ]
 {
     Set pProhibits = 0
     Set pCode = ""
     If '$IsObject(pPayload) Quit $$$OK
-    Set tPermitted = $ListFromString(..#COPYFIELDS)
+    Set tPermitted = $ListFromString($Select(pPermitted = "": ..#COPYFIELDS, 1: pPermitted))
+    Set tFalseOnly = $ListFromString(pFalseOnly)
     Set tIterator = pPayload.%GetIterator()
     While tIterator.%GetNext(.tKey, .tValue) {
-        If '$ListFind(tPermitted, tKey) {
-            Do ..Refuse(..#UNCOVEREDFIELD, .pProhibits, .pCode)
-            Quit
-        }
-    }
-    Quit $$$OK
-}
-
-/// <p>Whether a production item copy's payload names only <parameter>ITEMCOPYFIELDS</parameter>, with <code>Enabled</code>
-/// false (Story 20.40). Any other field, and a true <code>Enabled</code>, is refused <parameter>UNCOVEREDFIELD</parameter>,
-/// because a copy takes its class, settings, category and comment from the source and starts disabled. The
-/// namespace is removed by the caller.</p>
-ClassMethod ItemCopied(pPayload As %DynamicObject, Output pProhibits As %Boolean, Output pCode As %String) As %Status [ Private ]
-{
-    Set pProhibits = 0
-    Set pCode = ""
-    If '$IsObject(pPayload) Quit $$$OK
-    Set tPermitted = $ListFromString(..#ITEMCOPYFIELDS)
-    Set tIterator = pPayload.%GetIterator()
-    While tIterator.%GetNext(.tKey, .tValue) {
-        If '$ListFind(tPermitted, tKey) || ((tKey = "Enabled") && (tValue '= 0)) {
+        If '$ListFind(tPermitted, tKey) || ($ListFind(tFalseOnly, tKey) && (tValue '= 0)) {
             Do ..Refuse(..#UNCOVEREDFIELD, .pProhibits, .pCode)
             Quit
         }

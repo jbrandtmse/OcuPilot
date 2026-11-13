@@ -30,7 +30,8 @@ const INTEROP_PRODUCTION_DIAGRAM = 'OcuPilot.Screen.Descriptor.InteropProduction
  * Interoperability's Production items (Story 20.3, AD-5): the shared list page, over it the add dialog and the copy dialog.
  *
  * **Add item and Copy are this page's own actions**, registered on the descriptor after injecting the shell's handler,
- * whose construction registers the list's declared Enable, Disable and Remove. The dialogs add the item to the
+ * whose construction registers the list's other declared row actions (Copy is left to this page through its `UNDRAWN_ACTIONS`
+ * entry). The dialogs add the item to the
  * production the route names, in the namespace the shell is scoped to, which is the one the list reads. Copy
  * (Story 20.40) opens on the selected row and never over another dialog.
  *

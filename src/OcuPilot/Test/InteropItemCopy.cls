@@ -103,7 +103,8 @@ ClassMethod CopyArgs(pName As %String, pFrom As %String) As %DynamicObject
     Quit tArgs
 }
 
-/// <p>The stored <code>PoolSize</code> of every item named <var>pName</var> in the probe production, comma-separated.</p>
+/// <p>The stored column <var>pColumn</var> (<code>PoolSize</code>, <code>ClassName</code>, <code>Comment</code> or <code>Category</code>) of every item
+/// named <var>pName</var> in the probe production, comma-separated.</p>
 ClassMethod StoredColumn(pColumn As %String, pName As %String) As %String
 {
     Set tText = ""
@@ -120,6 +121,35 @@ ClassMethod StoredColumn(pColumn As %String, pName As %String) As %String
         Set tText = "unread " _ ex.DisplayString()
     }
     Quit tText
+}
+
+/// <p>Store <var>pComment</var> and <var>pCategory</var> on the probe operation <parameter>SOURCE</parameter> in the stored configuration only;
+/// <method>OcuPilot.Test.ProductionProbe.ResetProduction</method> puts them back.</p>
+ClassMethod MarkSource(pComment As %String, pCategory As %String) As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = ..#NAMESPACE
+        Set tProduction = ##class(Ens.Config.Production).%OpenId(..#PRODUCTION, 4)
+        Set tItem = ""
+        For tI = 1:1:tProduction.Items.Count() {
+            If tProduction.Items.GetAt(tI).Name = ..#SOURCE Set tItem = tProduction.Items.GetAt(tI)
+        }
+        If '$IsObject(tItem) {
+            Set tSC = $$$ERROR($$$GeneralError, "the probe operation is not in the probe production")
+        } Else {
+            Set tItem.Comment = pComment
+            Set tItem.Category = pCategory
+            Set tSC = tProduction.%Save()
+        }
+        Set tItem = "", tProduction = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
 }
 
 /// <p>How many rows <code>Ens_Config.Production</code> holds in <code>USER</code>.</p>
@@ -227,25 +257,31 @@ Method TestACopyOnARunningProductionChangesNoJob()
 
 /// <p>AC1, AC2: the person's Save copies the item, answers 201 with the new item's id and a read-back that matches, adds it disabled,
 /// and the copy's Item settings read lists the source's value for a setting the source holds; a copy of a business process whose pool size
-/// is 0 reads a pool size of 1 and leaves the source at 0, and a source with a comment gives the copy the comment.</p>
+/// is 0 reads a pool size of 1 and leaves the source at 0, a business service whose pool size is 0 keeps 0, and the copy takes the source's
+/// comment and category.</p>
 /// <p>Mutation (Rule 19): build the clone in <method>OcuPilot.Port.InteropPort.PerformItem</method> with
 /// <code>Ens.Config.Item.%New(ClassName)</code> in place of <code>%ConstructClone(1)</code> -- the settings leg goes red.</p>
 Method TestThePersonsSaveCopiesTheItemAndItsSettings()
 {
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "SetSetting", "InitSeconds", 7), "InitSeconds is stored at 7 on the source")
+    Do $$$AssertStatusOK(..MarkSource("OcuPilot probe comment", "OcuPilotProbeCategory"), "the source holds a comment and a category")
     Set tText = ..SaveCopy(..#COPY, ..#SOURCE, .tAnswer, , .tContentType)
     Do $$$AssertEquals(tText, "201 ", "the Save answers 201: " _ $Select($IsObject(tAnswer): tAnswer.%ToJSON(), 1: tAnswer))
     Do $$$AssertTrue(tContentType [ "application/json", "as application/json: " _ tContentType)
     Do $$$AssertEquals($Select($IsObject(tAnswer): $Translate(tAnswer.id, $Char(1), "~") _ "|" _ tAnswer.target.type _ "|" _ tAnswer.readBack.verdict, 1: ""), ..#PRODUCTION _ "~" _ ..#COPY _ "|production-item|" _ ##class(OcuPilot.Kernel.Proposal.ReadBack).#MATCHES, "with the new item's id and a read-back that matches")
     Do $$$AssertEquals($ClassMethod(..#CONTROL, "StoredEnabled", ..#COPY) _ "|" _ $ClassMethod(..#CONTROL, "ClassEnabled", ..#COPY), "0|false", "the copy is stored disabled and carried into the class")
     Do $$$AssertEquals(..SettingOf(..#COPY, "InitSeconds"), "7|production", "the copy's Item settings list the source's value (AC2)")
-    Do $$$AssertEquals(..StoredColumn("Comment", ..#COPY), ..StoredColumn("Comment", ..#SOURCE), "the copy takes the source's comment")
+    Do $$$AssertEquals(..StoredColumn("Comment", ..#COPY) _ "|" _ ..StoredColumn("Category", ..#COPY), "OcuPilot probe comment|OcuPilotProbeCategory", "the copy takes the source's comment and category")
     ; A business process whose pool size is 0.
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "AddItem", "OcuPilotProbeProc", "EnsLib.MsgRouter.RoutingEngine", 0, 0), "a business process with a pool size of 0 is stored")
     Set tText = ..SaveCopy("OcuPilotProbeProcCopy", "OcuPilotProbeProc", .tAnswer)
     Do $$$AssertEquals(tText, "201 ", "its copy is saved: " _ $Select($IsObject(tAnswer): tAnswer.%ToJSON(), 1: tAnswer))
     Do $$$AssertEquals(..StoredColumn("PoolSize", "OcuPilotProbeProcCopy") _ "|" _ ..StoredColumn("PoolSize", "OcuPilotProbeProc"), "1|0", "the copy reads a pool size of 1 and the source stays at 0")
     Do $$$AssertEquals($ClassMethod(..#CONTROL, "StoredEnabled", "OcuPilotProbeProcCopy"), "0", "and is disabled")
+    ; A business service whose pool size is 0 is no business process, so its copy keeps 0.
+    Set tText = ..SaveCopy("OcuPilotProbeSvcCopy", "OcuPilotProbeSvc", .tAnswer)
+    Do $$$AssertEquals(tText, "201 ", "the service's copy is saved: " _ $Select($IsObject(tAnswer): tAnswer.%ToJSON(), 1: tAnswer))
+    Do $$$AssertEquals(..StoredColumn("PoolSize", "OcuPilotProbeSvcCopy") _ "|" _ ..StoredColumn("PoolSize", "OcuPilotProbeSvc"), "0|0", "a business service's copy keeps a pool size of 0")
     ; A source named in another letter case is found as it is stored.
     Set tSince = ##class(OcuPilot.Test.AuditEvent).Now()
     Set tText = ..SaveCopy("OcuPilotProbeLowerCopy", $ZConvert(..#SOURCE, "L"), .tAnswer)
@@ -325,7 +361,9 @@ Method TestEachRefusalIsRefusedByItsCodeAndWritesNothing()
     Do $$$AssertEquals(tText, "409 " _ $Parameter(tE, "NAMESPACE"), "the port refuses a namespace without interoperability")
 }
 
-/// <p>AC3: a name taken since the mint closes the proposal target-changed; and at the write itself, under the production's lock, the port
+/// <p>AC3: a name taken since the mint closes the proposal target-changed; a source removed since the mint refuses the confirm as an
+/// argument (400 <code>TOOL.ARGUMENTS</code>, carrying the source sentence) before the write and leaves the proposal live; and at the
+/// write itself, under the production's lock, the port
 /// refuses a name held (<code>TAKEN</code>), a source the production no longer holds (<code>COPYSOURCE</code>) and a source it holds twice
 /// (<code>AMBIGUOUS</code>) with 409 and stores nothing. The rules that run before the lock are set aside through the test seam for the
 /// write-time rows.</p>
@@ -344,6 +382,18 @@ Method TestAChangeSinceTheMintAndTheWritesOwnRefusalsStoreNothing()
     Do $$$AssertEquals($Select($IsObject(tAnswer): tStatus _ " " _ tAnswer.%Get("code"), 1: tStatus), "409 PROPOSAL.TARGETCHANGED", "the confirm closes the proposal target-changed: " _ $Extract($Get(tRaw), 1, 300))
     Do $$$AssertEquals($ClassMethod(..#CONTROL, "Items"), tBaseline _ "," _ ..#COPY _ ":0", "and only the other item is there")
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "ResetProduction"), "the probe production is put back")
+    ; A source removed since the mint: the confirm asks the copy's rules again and is refused before the write.
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "AddItem", "OcuPilotProbeGone", $Parameter(..#CONTROL, "OPCLASS"), 1, 0), "a source item is stored")
+    Set tSC = $ClassMethod(..#CONTROL, "MintAs", ..#TOOL, ..CopyArgs(..#COPY, "OcuPilotProbeGone"), tUser, .tGone, .tHttp, .tFault, .tTurn)
+    Do $$$AssertStatusOK(tSC, "the copy of it mints: " _ $Select($IsObject($Get(tFault)): tFault.%ToJSON(), 1: ""))
+    If $IsObject($Get(tGone)) {
+        Do $$$AssertStatusOK($ClassMethod(..#PROBE, "ResetProduction"), "the source is removed after the mint")
+        Set tSC = $ClassMethod(..#CONTROL, "ConfirmHttp", tGone.proposalId, .tStatus, .tRaw, .tAnswer)
+        Do $$$AssertEquals($Select($IsObject(tAnswer): tStatus _ " " _ tAnswer.%Get("code"), 1: tStatus), "400 TOOL.ARGUMENTS", "the confirm is refused as an argument: " _ $Extract($Get(tRaw), 1, 300))
+        Do $$$AssertTrue($Get(tRaw) [ $Parameter(tE, "REASONITEMCOPYSOURCE"), "carrying the source sentence")
+        Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tGone.proposalId, "State"), "live", "and the proposal stays live")
+        Do $$$AssertEquals($ClassMethod(..#CONTROL, "Items"), tBaseline, "and nothing was stored")
+    }
     Do $ClassMethod(..#SEAM, "SkipCopyRules")
     Set tGate = $ListBuild($ListBuild("%Ens_Portal", "USE"), $ListBuild("%Ens_ProductionConfig", "READ"), $ListBuild("%Ens_ProductionConfig", "WRITE"), $ListBuild("%DB_USER", "READ"), $ListBuild("%DB_USER", "WRITE"))
     For tI = 1:1:$ListLength(tGate) {
@@ -361,7 +411,8 @@ Method TestAChangeSinceTheMintAndTheWritesOwnRefusalsStoreNothing()
 }
 
 /// <p>AC3: a namespace under source control refuses a copy by <code>INTEROP.ITEM.SOURCECONTROL</code>, before anything is read, and the
-/// port's copy needs WRITE on the routines database as every item write does.</p>
+/// port's copy needs WRITE on the routines database as every item write does; the copy tool's input schema requires the source and asks for
+/// no class.</p>
 /// <p>Mutation (Rule 19): drop <code>COPY</code> from <method>OcuPilot.Port.InteropPort.IsItemWrite</method> -- the routines row goes red;
 /// set <parameter>OcuPilot.Screen.Tool.InteropItemCopy.ROUTINESDATABASE</parameter> to 0 -- the tool-declaration row goes red.</p>
 Method TestACopyNeedsTheRoutinesDatabaseAndIsRefusedUnderSourceControl()
@@ -391,13 +442,23 @@ Method TestACopyNeedsTheRoutinesDatabaseAndIsRefusedUnderSourceControl()
         If '$ListFind(tCopyPairs, $List(tAddPairs, tI)) Set tMissing = tMissing + 1
     }
     Do $$$AssertEquals(tMissing, 0, "and the copy declares every pair the add does")
+    ; Its input schema asks for the source and for no class (AD-3).
+    Set tSchema = $ClassMethod(..#TOOL, "InputSchema")
+    Set tRequired = ","
+    If $IsObject(tSchema) && (tSchema.%GetTypeOf("required") = "array") {
+        Set tIterator = tSchema.required.%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tField) { Set tRequired = tRequired _ tField _ "," }
+    }
+    Set tProperties = $Select($IsObject(tSchema) && (tSchema.%GetTypeOf("properties") = "object"): tSchema.properties, 1: {})
+    Do $$$AssertTrue((tRequired [ ",CopyFrom,") && (tRequired '[ ",ClassName,"), "the copy requires CopyFrom and no class: " _ tRequired)
+    Do $$$AssertEquals((tProperties.%GetTypeOf("CopyFrom") = "object") _ "|" _ tProperties.%GetTypeOf("ClassName"), "1|unassigned", "and describes CopyFrom and no class")
 }
 
 
 /// <p>AD-10: the prohibited set admits a copy's own fields alone -- the source, and <code>Enabled</code> false -- and admits the source
 /// name for no other write: a copy naming a class, or enabled, is refused <code>UNCOVEREDFIELD</code>, and so is an add naming a
 /// source.</p>
-/// <p>Mutation (Rule 19): make <method>OcuPilot.Kernel.Proposal.Prohibited.ItemCopied</method> admit every field -- the copy's
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Kernel.Proposal.Prohibited.Copied</method> admit every field -- the copy's
 /// extra-field rows go red.</p>
 Method TestTheProhibitedSetAdmitsOnlyTheCopysOwnFields()
 {

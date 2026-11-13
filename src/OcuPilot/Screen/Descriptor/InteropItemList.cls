@@ -12,7 +12,7 @@
 /// its scope is <code>namespace</code>. It is never the vendor's integer item id, which a recompile
 /// renumbers.</p>
 /// <p><b>Its row actions</b> Enable, Disable, Copy and Remove, and its primary action Add, are the screen's callers
-/// of <class>OcuPilot.Screen.Tool.InteropItemEnable</class> and its three siblings (AD-53): each writes the
+/// of <class>OcuPilot.Screen.Tool.InteropItemEnable</class> and its four siblings (AD-53): each writes the
 /// stored production configuration and the production class only, so a running production reads update
 /// pending until Productions' confirmed Update applies it. Remove types the item's name and is refused while
 /// the item is enabled. Add opens a dialog; it is a person's Save, resolved through the same tool as the

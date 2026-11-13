@@ -1012,6 +1012,15 @@ describe('the proposal card', () => {
     }
   });
 
+  it('Story 20.40: an item copy\'s consequence code states its published sentence on a card that is not drawn destructive', () => {
+    // Mutation (Rule 19): drop the INTEROP.ITEM.COPY branch from `consequenceSentence` -> the consequence line is empty and this goes red.
+    const { card } = mount(liveView({ consequence: 'INTEROP.ITEM.COPY', destructive: false, maskedFields: [] }), { phase: 'live' });
+    expect(card.classList.contains('ocu-proposal-card-destructive')).toBe(false);
+    const lines = card.querySelectorAll('[data-slot="consequence"]');
+    expect(lines.length).toBe(1);
+    expect(lines[0].textContent).toContain(STRINGS.interopItemCopyConsequence);
+  });
+
   it('Story 20.5: a lookup table entry\'s removal, a lookup table\'s deletion and a lookup table\'s import each state their own published sentence, drawn destructive', () => {
     // Mutation (Rule 19): drop one of the three INTEROP.LOOKUP codes from `consequenceSentence` -> its leg goes red.
     for (const [code, sentence] of [
