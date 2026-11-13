@@ -12572,3 +12572,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-23-9-the-range-end-cleanup-part-8.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: Registry.cls AreaProblem checks only appliesWhen; screen-mirror.mjs buildMirror runs malformedPair over each area's privileges (both predate df5b1c48). Shipped areas: 0 malformed; the mirror's --check in every build and CI refuses one before it ships.
 - 2026-11-13T02:34:17Z status=wontfix-accepted owner=23-9-the-range-end-cleanup-part-8 by=cr note=pre-existing; the build gate refuses it; reopen_if=Area.cls declares a pair with a missing or non-string half
+
+### DW-2530: A Send pressed between a reply being drawn and its turn handing back the slot can meet a 409 busy (inference)
+- source: _bmad-output/implementation-artifacts/spec-23-10-the-range-end-cleanup-part-9-two-sweeps.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: Kernel/Agent/Job.cls Run appends the convo entry before Finish frees the slot; the window is unmeasured (inference)
+- 2026-11-13T05:35:43Z status=wontfix-accepted owner=23-10-the-range-end-cleanup-part-9-two-sweeps by=harvest note=reopen_if=a person or a spec sees a 409 busy on a Send right after a drawn reply
+
+### DW-2531: turn.browser-spec.mjs 'New conversation clears the transcript' sends a second turn after a drawn-text wait, the shape DW-2524 fixed
+- source: _bmad-output/implementation-artifacts/spec-23-10-the-range-end-cleanup-part-9-two-sweeps.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: ui/browser/turn.browser-spec.mjs:357-369; not yet seen red in CI
+- 2026-11-13T05:35:43Z status=wontfix-accepted owner=23-10-the-range-end-cleanup-part-9-two-sweeps by=harvest note=reopen_if=that test goes red in CI on a busy turn slot; then waitForReplies plus waitForSlotFree, as DW-2524
