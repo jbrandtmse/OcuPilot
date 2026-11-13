@@ -1362,3 +1362,8 @@
 2026-11-13T08:29:04Z	Story 20.25	stage_spawned	stage=code-review spawn_at=2026-11-13T08:29:04Z model=opus agent_name=20-25-code-review-1 cycle_iteration=1 baseline=e85f6346
 2026-11-13T08:55:32Z	Story 20.25	cr_complete	spawn_at=2026-11-13T08:29:04Z model=opus agent_name=20-25-code-review-1 cycle_iteration=1 resolved=10(patched:4_med(copy-out_script_If_block,TCP_inbound_OwnsJobs,Rule2_shared_StartProduction,AC4_no_own_audit),6_low) wontfix_accepted=2(DW-2532,DW-2533) dismissed=11 high=0 med=4 low=19 rows=2 unresolved_high_med=0 review_tier=full-opus status=done closing_sections_present=true
 2026-11-13T08:55:33Z	Story 20.25	ledger_adjudicated	owned=2 resolved=1(DW-2407) reowned=1(DW-2298->20-40,residual_copy_then_change-class_on_20.41) terminal=0 slice_after=empty born=DW-2532,DW-2533(wontfix-accepted)
+2026-11-13T09:01:49Z	Story 20.25	gate_step	code_head=8127b55f step=build result=pass bundle_initial=2.02MB
+2026-11-13T09:01:49Z	Story 20.25	smoke_complete	method=instance result=pass iterations=1 defects_caught=0 evidence=smoke.sh_50/50_on_fresh_ocupilot-b-ci(tree=8127b55f) model=claude-opus-5-5 note=browser_part_in_fresh_check
+2026-11-13T09:04:39Z	Story 20.25	fresh_check	code_head=8127b55f env=recipe(down+up_this_run's_ocupilot-b-ci;src=8127b55f;bundle_rebuilt_2.02MB) tests=10_classes_118_forward_and_reverse+interop-items_4/4_together_and_alone result=pass order=forward,reverse
+2026-11-13T09:04:39Z	Story 20.25	gate_step	code_head=8127b55f step=npm_test result=pass test:tools=2193/2193 test:components=3359/3359
+2026-11-13T09:04:39Z	Story 20.25	gate_step	code_head=8127b55f step=full_sweep result=running started=09:04Z shards=20 note=hold_at_10:00Z_ruled:finish_sweep,no_push,hold_after
