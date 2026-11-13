@@ -12502,6 +12502,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-12T13:49:03Z status=routed owner=23-9-the-range-end-cleanup-part-8 by=spec_gate note=CI flake; first priority in 23.9 (orchestrator re-dispatch 2026-11-12, Rule 27)
 - 2026-11-12T19:13:24Z status=resolved-by:23-9-the-range-end-cleanup-part-8 by=adjudication note=c98a0877: signedInAt names in-flight requests on a timeout; AC8 seed 30k nodes; reopen_if=the timeout recurs
 - 2026-11-12T21:28:40Z status=routed owner=burndown by=orchestrator note=the 2026-11-12T13:49:03Z and 19:13:24Z trailers above belong to DW-2512 (union-merge misplacement at ebb0b37d); this entry stays routed to burndown
+- 2026-11-12T23:17:34Z status=dropped owner=burndown by=orchestrator note=duplicate of DW-2522 (same analytics-mdx AC1 first-query timeout), which 23.10 owns; this entry's occurrence (CI 43290470415, Story 20.34 head acb0b666) counts there
 
 ### DW-2513: flake: data-table-columns.browser-spec.mjs failed 17 of 18 at its own goto against its local server
 - source: spec-23-9-the-range-end-cleanup-part-8.md (plan) | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -12545,3 +12546,4 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-23-9-the-range-end-cleanup-part-8.md | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: grep '"removed", 1' in src/OcuPilot/Screen/Tool: TaskDelete, UserDelete, SslDelete ... loop FingerprintSubject(); MappingDelete, SuperserverDelete ... ReadAnswers(); same Display/after/removed/push as Write.cls RemovalRows
 - 2026-11-13T00:03:53Z status=routed owner=23-10-the-range-end-cleanup-part-9-two-sweeps by=cr note=give RemovalRows a names argument (default REMOVALROWS) and move the 16 onto it; Screen/** is Epic 20's, check contention
+- 2026-11-12T23:17:35Z occurrence=20-34-the-cube-manager-s-build-and-synchronize note=also red on CI 43290470415 (acb0b666), filed there as DW-2523, now dropped as this entry's duplicate
