@@ -2,7 +2,7 @@
 title: 'Story 23.9: The range-end cleanup, part 8'
 type: 'bugfix'
 created: '2026-11-12'
-status: 'done'
+status: 'in-progress'
 baseline_revision: '38ec7c97bb775b5ffd0ed857019d54d28b8ee370'
 baseline_commit: '38ec7c97bb775b5ffd0ed857019d54d28b8ee370'
 review_loop_iteration: 0
@@ -135,7 +135,7 @@ deferred:
 - In the same pass, update every test that asserts a shared surface's old shape (Verification › Shared surfaces).
 - The lead writes the ledger trailers once the batch's commit is green.
 - **Pass order** (lead rulings): batch 1 (done); batch 4 with DW-1706 (done); batch 5; then batch 3 with DW-1177's docstring, after Story 20.39 (which edits `Screen/Registry.cls` and `screen-mirror.mjs`) has merged and been integrated forward. Four commits. The lead opens one pass at a time; a pass works only the items the lead names and leaves every other item unchecked.
-- **Current pass: Batch 5 (DW-2299).** DW-1177 and batch 3 stay unchecked.
+- **Current pass: Batch 3 (DW-1760 (a), DW-1761) and DW-1177's docstring from Batch 2.** DW-1760 (b) closes by-design at adjudication; no other item remains.
 
 ### Batch 1: CI flakes
 
