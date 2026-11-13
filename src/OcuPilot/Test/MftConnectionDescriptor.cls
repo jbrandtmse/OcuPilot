@@ -154,9 +154,9 @@ Method TestTheCardsListWhatTheActionsRemove()
     Set tSeen = ""
     Set tIterator = tRows.%GetIterator()
     While tIterator.%GetNext(.tIndex, .tRow) {
-        Set tSeen = tSeen _ $Select(tSeen = "": "", 1: ",") _ tRow.%Get("field") _ "=" _ tRow.%Get("before") _ ":" _ tRow.%Get("removed")
+        Set tSeen = tSeen _ $Select(tSeen = "": "", 1: ",") _ tRow.%Get("field") _ "=" _ tRow.%Get("before") _ ">" _ tRow.%Get("after") _ ":" _ tRow.%Get("removed")
     }
-    Do $$$AssertEquals(tSeen, "URL=https://h.invalid/:1,SSLConfiguration=OcuMftProbeClientTLS:1,Username=u@h.invalid:1,ApplicationName=OcuMftProbeAApp:1", "four removed rows, the client configuration's name among them")
+    Do $$$AssertEquals(tSeen, "URL=https://h.invalid/>:1,SSLConfiguration=OcuMftProbeClientTLS>:1,Username=u@h.invalid>:1,ApplicationName=OcuMftProbeAApp>:1", "four removed rows, the client configuration's name among them")
     Do $$$AssertStatusOK($ClassMethod(..#DELETE, "StateDiff", {"URL": "https://h.invalid/", "ApplicationName": "OcuMftProbeAApp"}, .tRows, .tProblem), "a partial read's card is built")
     Do $$$AssertEquals(tRows.%Size() _ " " _ tRows.%Get(0).%Get("field") _ " " _ tRows.%Get(1).%Get("field"), "2 URL ApplicationName", "only the fields the read answered get a row")
     Do $$$AssertStatusOK($ClassMethod(..#REVOKE, "StateDiff", tFresh, .tRows, .tProblem), "the revoke's card is built")

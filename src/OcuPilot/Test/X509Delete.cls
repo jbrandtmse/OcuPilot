@@ -70,7 +70,12 @@ Method TestTheRemovalRowsAndAReplacedCertificateRefusesTheConfirm()
     While tIterator.%GetNext(.tIndex, .tRow) {
         Do $$$AssertEquals(tRow.%Get("removed") _ "|" _ tRow.%Get("after"), "1|", tRow.%Get("field") _ " is removed with no after-state")
     }
-    Do $$$AssertEquals(tRows.%Get(0).%Get("field") _ "=" _ tRows.%Get(0).%Get("before"), "SubjectDN=CN=Probe", "the subject first, as the certificate read answers it")
+    Set tSeen = ""
+    Set tIterator = tRows.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tRow) {
+        Set tSeen = tSeen _ $Select(tSeen = "": "", 1: "|") _ tRow.%Get("field") _ "=" _ tRow.%Get("before")
+    }
+    Do $$$AssertEquals(tSeen, "SubjectDN=CN=Probe|IssuerDN=CN=Issuer|SerialNumber=11|ValidityNotBefore=2026-01-01 00:00:00|ValidityNotAfter=2126-01-01 00:00:00|HasPrivateKey=true", "the subject first and every field's value as the certificate read answers it")
     Do $$$AssertEquals(tProposal.%Get("unchangedCount"), 0, "and nothing sent unchanged")
 
     For tCase = 1:1:2 {

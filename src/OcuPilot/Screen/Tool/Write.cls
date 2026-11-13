@@ -563,10 +563,11 @@ Parameter REMOVALROWS = "";
 /// <parameter>REMOVALROWS</parameter> name, in that order. <code>before</code> is the field of the fresh read
 /// <var>pFresh</var> as <method>OcuPilot.Kernel.Proposal.Mint.Display</method> renders it (<code>""</code> when
 /// <var>pFresh</var> is not an object), <code>after</code> is <code>""</code> and <code>removed</code> is
-/// true. With <var>pSkipUnassigned</var>, a field the read did not assign gets no row.</p>
-/// <p><b>Caller contract:</b> the caller does its own precondition check and wraps this call in its own
-/// <code>Try</code>; an error raised here reaches that <code>Catch</code>. It reads nothing but
-/// <var>pFresh</var> and writes nothing.</p>
+/// true. With <var>pSkipUnassigned</var>, a field an object read did not assign gets no row; a read that is
+/// not an object still gets every row.</p>
+/// <p><b>Caller contract:</b> it checks no precondition and returns no status; an error raised here reaches the
+/// caller, so a caller that answers a <code>%Status</code> for it wraps the call in its own <code>Try</code>.
+/// It reads nothing but <var>pFresh</var> and writes nothing.</p>
 ClassMethod RemovalRows(pFresh As %DynamicObject, pSkipUnassigned As %Boolean = 0) As %DynamicArray
 {
     Set tRows = []
