@@ -1755,3 +1755,10 @@
 2026-11-13T01:33:17Z	Story 20.39	ci_green_verified	runs=43332030735,43340834124(staging) head=5f24fa35 result=success by=orchestrator
 2026-11-13T01:33:17Z	Story 20.39	merged	feature=5f24fa35 mode=fast_forward(staging_own_CI_green) checks=ledger_entry_check_0(1986),dup_none,sprint_validate_ok upgrade_triggers=none
 2026-11-13T01:33:17Z	Epic 23	runner_reported	story=23.10 spec_gate=done split=23.13_range-end_cleanup_part_11(DW-2431,DW-2432,DW-2525,DW-1979,DW-2527;decide) reason=AD-10_amendment+contended_Prohibited.cls_moved_out
+2026-11-13T02:08:49Z	Epic 23	runner_clarification	story=23.9_batch3 question=implement_stage_edited_contended_screen-mirror.mjs+test_(20.36_changed_them_add-only_at_f1b9a5a4e) hunks=disjoint state=53bd0ce05_local,staging_df5b1c48c_run_43346482495_pending
+2026-11-13T02:08:49Z	orchestrator	ruling	question=23.9b3_contended_screen-mirror_edits choice=(a)_keep(disjoint_regions;20.36_add-only;plain_union_for_whoever_merges_second) rejected=(b)_set_aside_until_20.36(an_extra_cycle_for_the_same_result) note=stage_skipped_the_ask_first_rule->recorded_in_the_spec category=decide policy=b9ff703e inbox=none
+2026-11-13T02:08:49Z	Epic 23	runner_resumed	with=ruling_(a) via=SendMessage(orchestrator->runner)
+2026-11-13T04:59:45Z	Epic 23	runner_reported	boundary=story_23.9_complete(batch3) via=SendMessage(runner->main) code_heads=53bd0ce0,df1c6122(43365295683_success) staging=df5b1c48(43346482495_success) ledger=DW-1760,DW-1761,DW-1177_resolved;DW-2528(wontfix-accepted) story_totals=12_resolved,2_terminal,10_filed_routed shas_verified=yes
+2026-11-13T04:59:45Z	Story 23.9	merged	batch=3(story_complete) feature=16486c5c0 mode=fast_forward(tip_code-equal_to_green_df1c6122) checks=ledger_entry_check_0(1988),dup_none,sprint_validate_ok upgrade_triggers=none
+2026-11-13T04:59:45Z	orchestrator	deps_hash_rerecorded	reason=split(23.13_from_23.10)
+2026-11-13T04:59:45Z	ci	timings_refreshed	rule=29 run=43365295683
