@@ -12564,3 +12564,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: _bmad-output/implementation-artifacts/spec-23-10-the-range-end-cleanup-part-9-two-sweeps.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: the vendor's hidden Journal ListTask loops While rset.%Next && rowNum <= MaxRows, so it seeks one match past the cap (read on ocupilot-slot-a); the timeout is unmeasured
 - 2026-11-13T01:28:16Z status=routed owner=23-13-the-range-end-cleanup-part-11 by=harvest note=with DW-1979 (journal order) in 23.13
+
+### DW-2528: The instance never refuses a malformed area privilege pair (missing or non-string half); only the mirror's buildMirror does
+- source: spec-23-9-the-range-end-cleanup-part-8.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Registry.cls AreaProblem checks only appliesWhen; screen-mirror.mjs buildMirror runs malformedPair over each area's privileges (both predate df5b1c48). Shipped areas: 0 malformed; the mirror's --check in every build and CI refuses one before it ships.
+- 2026-11-13T02:34:17Z status=wontfix-accepted owner=23-9-the-range-end-cleanup-part-8 by=cr note=pre-existing; the build gate refuses it; reopen_if=Area.cls declares a pair with a missing or non-string half
