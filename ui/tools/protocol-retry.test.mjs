@@ -7,7 +7,8 @@
 // WRAPPED guard -> the wrap-twice case goes red. Create a context without `retryOnce` -> the
 // context-creation case goes red. Make `withDeadline` return its promise unchanged -> the deadline
 // cases go red. Drop the close in `relaunchOnce` -> the wedged-browser case goes red; retry any error
-// there -> the other-error case goes red.
+// there -> the other-error case goes red. Drop the `await` on `retryOnce`'s reset -> the async-reset
+// case goes red.
 
 import assert from 'node:assert/strict';
 import test from 'node:test';
@@ -91,6 +92,23 @@ test('a context created through the wrapped browser retries its own page creatio
   assert.equal(wrapped.newPage, wrappedNewPage, 'wrapping twice wraps once');
   assert.equal(wrapped.defaultBrowserContext().newPage, defaultNewPage, 'and so does reaching the default context twice');
   assert.equal((await wrapped.defaultBrowserContext().newPage()).name, 'page', 'and the default context is wrapped too');
+});
+
+test('retryOnce waits for an asynchronous reset before its second attempt', async () => {
+  let ready = false;
+  let tries = 0;
+  const value = await retryOnce(
+    async () => {
+      tries += 1;
+      if (tries === 1) throw timeout('Runtime.callFunctionOn');
+      return ready ? 'after the reset' : 'before the reset finished';
+    },
+    async () => {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      ready = true;
+    }
+  );
+  assert.equal(value, 'after the reset');
 });
 
 test('a retry resets before its second attempt only, and a timeout that had its retry is not retried again', async () => {

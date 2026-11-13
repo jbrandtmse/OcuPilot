@@ -64,15 +64,16 @@ export function withDeadline(promise, ms, label) {
 }
 
 /**
- * Run `create`; when it fails with a protocol timeout that has not had its retry, call `reset` and
- * run it once more. The second attempt's error is marked, so no other retry repeats it.
+ * Run `create`; when it fails with a protocol timeout that has not had its retry, await `reset` (it
+ * may be synchronous or answer a promise) and run it once more. The second attempt's error is
+ * marked, so no other retry repeats it. An error `reset` throws propagates unmarked.
  */
 export async function retryOnce(create, reset = () => {}) {
   try {
     return await create();
   } catch (error) {
     if (!isProtocolTimeout(error) || error[RETRIED] === true) throw error;
-    reset();
+    await reset();
     try {
       return await create();
     } catch (again) {
