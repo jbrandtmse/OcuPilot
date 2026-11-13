@@ -1059,3 +1059,6 @@ spawn_at=2026-10-06T16:01:05Z	Story 23.4	cr_complete	batch=b 2026-10-06T20:34:58
 2026-11-13T06:22:16Z	Story 23.10	smoke_complete	batch=1 method=cli+browser result=pass iterations=1 defects_caught=0 evidence=smoke_49/49(1_skipped_agentswitches_by_design) model=claude-opus-5-5
 2026-11-13T08:05:44Z	Story 23.10	full_objectscript_sweep	tree=554aa62a throwaway=ocupilot-ci(fresh_06:09Z_this_run) shards=20/20 failed=0 by=lead record=/Users/jbrandt/.ocupilot-throwaways/e23-sweep-23-10-b1 before_first_push=yes
 2026-11-13T08:05:44Z	Story 23.10	committed	batch=1 sha=554aa62a code_heads=cd679de0(implement),554aa62a(QA+review) ci=pending runs=43390487951 missing=none pushed_at=2026-11-13T08:05:24Z push_route=ccaafacb_first(no_run),then_554aa62a_alone amendments=none footprint_extensions=none upgrade_trigger=none
+2026-11-13T08:40:41Z	Story 23.10	ci_resolved	story=23.10 batch=1 sha=554aa62a runs=43390487951 result=success failed=none via=none resolved_at=batch_boundary attempt=1
+2026-11-13T08:40:41Z	Story 23.10	ledger_adjudicated	batch=1 owned=4(DW-2513,DW-2522,DW-2524,DW-2517) resolved=4 reowned=0 terminal=0 remaining_owned=2(DW-2417,DW-2426) filed_this_batch=DW-2530,DW-2531(wontfix-accepted)
+2026-11-13T08:40:41Z	Story 23.10	boundary_reported	batch=1 to=main code_heads=cd679de0,554aa62a runs=43390487951(green_a1)
