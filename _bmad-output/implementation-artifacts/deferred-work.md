@@ -11290,6 +11290,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-11T06:59:46Z status=routed owner=23-7-the-range-end-cleanup-part-6 by=spec_gate note=the REMOVALROWS StateDiff body already repeats in 13 delete tools; one Write.cls default serves all, so 23.7 lifts it once
 - 2026-10-11T08:55:17Z status=routed owner=burndown by=lead note=23.7 takes no new routings (orchestrator); lift StateDiff into Screen/Tool/Write.cls once Epic 20 has merged (Write.cls is Epic 20's until then), and the 13 deletes extend it
 - 2026-10-14T08:59:26Z status=routed owner=23-9-the-range-end-cleanup-part-8 by=burndown note=orchestrator 2026-10-14: the StateDiff lift into Write.cls is add-only
+- 2026-11-13T00:49:30Z status=resolved-by:23-9-the-range-end-cleanup-part-8 by=adjudication note=001b78bd,a0fda1b4: Write.RemovalRows lifts the loop for 16 deletes; totals equal; rows pinned per tool; rest DW-2525
 ### DW-2300: A tool class's compile time is recorded a few milliseconds before its compiled code, so a ListTools build in that gap can cache the class's previous view until the next compile
 - source: spec-20-24-agent-tool-calls-stop-re-listing-the-tool-registry.md | severity: low | fix-risk: high | footprint: in-story
 - evidence: Measured on ocupilot-b-ci at code review: the CompiledClass row and TimeChanged lead %Extends and $Parameter by 1.6-4.2 ms (one 53 ms); the before/after check cannot see it; 20 batch-compile trials ended with 0 stale listings; a production build reads a class at least 38 ms after its signature read

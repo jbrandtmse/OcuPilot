@@ -1016,3 +1016,5 @@ spawn_at=2026-10-06T16:01:05Z	Story 23.4	cr_complete	batch=b 2026-10-06T20:34:58
 2026-11-13T00:10:50Z	Story 23.9	smoke_complete	batch=5 method=cli result=pass iterations=1 defects_caught=0 evidence=smoke.sh_ocupilot-ci_50/50 model=claude-opus-5-5
 2026-11-13T00:10:50Z	Story 23.9	committed	batch=5 sha=a0fda1b4 code_heads=001b78bd(implement;CI_43327519764_green_a1),a0fda1b4(QA+review) submodules= ci=pending runs=43334908833 missing=none pushed_at=2026-11-13T00:10:21Z amendments=epics.md(23.10_list+DW-2524,DW-2525_bullets) footprint_extensions=none upgrade_trigger=none
 2026-11-13T00:10:50Z	Story 23.9	story_cycle	batch=5 plan_to_commit_min=124(open_22:06Z_to_push_00:10Z) implement_passes=1 reviews=1 rework=0 first_ci=success(001b78bd) models=implement:sonnet,qa:sonnet,cr:opus
+2026-11-13T00:49:31Z	Story 23.9	ci_resolved	story=23.9 batch=5 sha=a0fda1b4 runs=43334908833 result=success failed=none via=none resolved_at=batch_boundary attempt=1
+2026-11-13T00:49:31Z	Story 23.9	ledger_adjudicated	batch=5 owned=1(DW-2299) resolved=1 reowned=0 terminal=0 remaining_owned=3(DW-1177,DW-1760,DW-1761) filed_this_batch=DW-2524(23.10),DW-2525(23.10)
