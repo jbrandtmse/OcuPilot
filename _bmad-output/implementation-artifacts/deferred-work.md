@@ -12601,3 +12601,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: _bmad-output/implementation-artifacts/spec-23-10-the-range-end-cleanup-part-9-two-sweeps.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: ui/browser/turn.browser-spec.mjs:357-369; not yet seen red in CI
 - 2026-11-13T05:35:43Z status=wontfix-accepted owner=23-10-the-range-end-cleanup-part-9-two-sweeps by=harvest note=reopen_if=that test goes red in CI on a busy turn slot; then waitForReplies plus waitForSlotFree, as DW-2524
+
+### DW-2537: flake (lead sweep, macOS throwaway): DatabaseActions' compact, defragment, dismount and mount left ocupilot-ci's write daemon paused (Error opening volume to write block 1 of the probe database), the class hung 20 minutes and the instance hit its license limit
+- source: cycle-log-epic-23.md (23.10 batch 3 sweep, shard 17) | severity: low | fix-risk: med | footprint: out-of-footprint
+- evidence: messages.log 17:37:51Z-17:55Z on ocupilot-ci; rerun alone on a rebuilt throwaway green in 50 s; CI (Linux) green on this class every run
+- 2026-11-13T18:01:44Z status=wontfix-accepted owner=23-10-the-range-end-cleanup-part-9-two-sweeps by=lead note=reopen_if=it recurs on a lead sweep or appears in a CI run; evidence /Users/jbrandt/.ocupilot-throwaways/e23-sweep-23-10-b3/wedge-messages.log (inference: virtiofs bind mount)
+
+### DW-2538: flake (lead sweep): AnalyticsMdxReadGate's OnAfterAllTests reported 'left probe state in USER: cache of OCUPILOTPROBEGRID' on a just-rebuilt ocupilot-ci (shard 17/20, 5th class); rerun alone green
+- source: cycle-log-epic-23.md (23.10 batch 3 sweep, shard 17 resumed) | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: s17.log 18:0xZ; rerun 18:31Z 4/4 green; no CI occurrence found; Epic 23 never changed the class
+- 2026-11-13T18:31:20Z status=wontfix-accepted owner=23-10-the-range-end-cleanup-part-9-two-sweeps by=lead note=reopen_if=it recurs on a lead sweep or in a CI run (inference: a cube cache write still in flight when Remove ran)
