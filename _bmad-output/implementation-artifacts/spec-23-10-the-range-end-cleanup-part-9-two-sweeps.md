@@ -2,7 +2,7 @@
 title: 'Story 23.10: The range-end cleanup, part 9: two sweeps'
 type: 'bugfix'
 created: '2026-11-12'
-status: 'done'
+status: 'in-progress'
 baseline_revision: '736c294e17eb13450cdbcf5acd48697e9690af7c'
 baseline_commit: '736c294e17eb13450cdbcf5acd48697e9690af7c'
 review_loop_iteration: 0
@@ -160,7 +160,7 @@ deferred:
 - In the same pass, update every test that asserts a shared surface's old shape (Verification › Shared surfaces).
 - The lead writes the ledger trailers once the batch's commit is green.
 - **Pass order:** batches 1 to 3. **Split (lead ruling at the spec gate, per Design Notes › Size):** batches 4 to 6 (DW-2431, DW-2432, DW-2525, DW-1979) moved to Story 23.13, which is planned on its own and may reuse this spec's Code Map, Tasks and Design Notes for them; they are not part of this story and stay unchecked here. The lead opens one pass at a time; a pass works only the items the lead names and leaves every other item unchecked.
-- **Current pass: Batch 1 only** (the four CI flakes: DW-2513, DW-2522, DW-2524, DW-2517). Batches 2 and 3 stay unchecked.
+- **Current pass: Batch 2 only** (DW-2417, request bodies). Batch 3 stays unchecked.
 
 ### Batch 1: CI flakes
 
