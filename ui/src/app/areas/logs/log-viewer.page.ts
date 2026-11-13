@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, Injector, afterNextRender, inject, signal, viewChild } from '@angular/core';
 import { NavigationEnd, Router } from '@angular/router';
 
-import { ExplainEntry } from '../../core/explain-entry';
+import { ExplainEntry, type ExplainEntryKind } from '../../core/explain-entry';
 import { isBannerFault } from '../../core/fault';
 import { formatDeniedAction, NavigationService, parentCriteria } from '../../core/navigation';
 import { REFRESH_ACTION_ID, ScreenActions } from '../../core/screen-actions';
@@ -265,7 +265,7 @@ const SOURCES: Readonly<Record<string, LogViewerSource>> = {
               >{{ row.raw }}
 </span>}</pre>
         } @else {
-          <div class="ocu-log-rows" role="list">
+          <div class="ocu-log-rows" [class.ocu-log-rows-explain]="explainShown" role="list">
             @for (row of rows; track row.key) {
               <div
                 class="ocu-log-row"
@@ -295,16 +295,28 @@ const SOURCES: Readonly<Record<string, LogViewerSource>> = {
                   }
                 </span>
                 @if (explainShown) {
-                  <button
-                    type="button"
-                    class="ocu-button-text ocu-log-explain"
-                    data-ocu-log="explain"
-                    [attr.aria-disabled]="explainAriaDisabled"
-                    [attr.aria-describedby]="explainDescribedBy"
-                    (click)="onExplain(row)"
-                  >
-                    {{ STRINGS.agentExplainEntryAction }}
-                  </button>
+                  <span class="ocu-log-entry-actions">
+                    <button
+                      type="button"
+                      class="ocu-button-text ocu-log-explain"
+                      data-ocu-log="explain"
+                      [attr.aria-disabled]="explainAriaDisabled"
+                      [attr.aria-describedby]="explainDescribedBy"
+                      (click)="onExplain(row)"
+                    >
+                      {{ STRINGS.agentExplainEntryAction }}
+                    </button>
+                    <button
+                      type="button"
+                      class="ocu-button-text ocu-log-explain"
+                      data-ocu-log="investigate"
+                      [attr.aria-disabled]="explainAriaDisabled"
+                      [attr.aria-describedby]="explainDescribedBy"
+                      (click)="onExplain(row, 'investigate')"
+                    >
+                      {{ STRINGS.agentInvestigateEntryAction }}
+                    </button>
+                  </span>
                 }
               </div>
             }
@@ -626,10 +638,10 @@ export class LogViewerPage {
     return this.explainEntry?.describedBy() ?? null;
   }
 
-  /** Hand this row's entry to the panel; a refused control sends nothing. */
-  protected onExplain(row: RowView): void {
+  /** Hand this row's entry to the panel as a request of `kind`; a refused control sends nothing. */
+  protected onExplain(row: RowView, kind: ExplainEntryKind = 'explain'): void {
     if (this.screen === null) return;
-    this.explainEntry?.request(this.screen, row.entry);
+    this.explainEntry?.request(this.screen, row.entry, kind);
   }
 
   protected get chips(): readonly ChipView[] {

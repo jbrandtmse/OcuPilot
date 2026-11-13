@@ -412,9 +412,10 @@ ClassMethod AddOpeningExchange(pUseBlocks As %DynamicArray, pUserBlocks As %Dyna
 /// <var>pUser</var>'s turn in conversation <var>pConvo</var> (AD-66), as JSON text:
 /// <method>OcuPilot.Kernel.Agent.Workflow.Exchange</method> over the facts about the proposals of the
 /// conversation's newest entry, which is the turn before this one because the current turn's entry is
-/// appended after the loop ends. A turn with no conversation, no earlier entry or no earlier proposal
-/// reports an empty <code>previous</code>; a read that fails is logged under <var>pCode</var> and
-/// reports the same.</p>
+/// appended after the loop ends, and only when that turn ran the same workflow. A turn with no
+/// conversation, no earlier entry, an earlier turn of another workflow or no earlier proposal reports
+/// an empty <code>previous</code>; a read that fails is logged under <var>pCode</var> and reports the
+/// same.</p>
 ClassMethod WorkflowResult(pWorkflow As %String, pUser As %String, pConvo As OcuPilot.Kernel.State.Convo, pCode As %String) As %String
 {
     Set tRows = []
@@ -427,6 +428,12 @@ ClassMethod WorkflowResult(pWorkflow As %String, pUser As %String, pConvo As Ocu
         }
         Set tSeq = $Order(tKeys(""), -1)
         If (tSeq = "") || (tKeys(tSeq) = "") Quit
+        Set tOrderSC = ##class(OcuPilot.Kernel.State.Turn).GuardedWorkflowOf(tKeys(tSeq), .tEarlierWorkflow)
+        If $$$ISERR(tOrderSC) {
+            Do ..LogFault("the earlier turn's guided workflow could not be read; it reports no earlier proposals", tOrderSC, pCode)
+            Quit
+        }
+        If tEarlierWorkflow '= pWorkflow Quit
         Set tRowsSC = ##class(OcuPilot.Kernel.State.Propose).GuardedRowsForTurn(tKeys(tSeq), pUser, .tTurnRows)
         If $$$ISERR(tRowsSC) {
             Do ..LogFault("the earlier turn's proposals could not be read for the guided workflow; it reports none", tRowsSC, pCode)

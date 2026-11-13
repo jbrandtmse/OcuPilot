@@ -26,7 +26,13 @@ import { type Citation, formatCitationAbsent } from '../core/citations';
 import type { ProposalDraft } from '../core/draft';
 import { egressLine, type EgressLine } from '../core/egress-line';
 import { decodeEntityId } from '../core/entity-id';
-import { BUSY_REASON_ID, CONTEXT_CHIP_OFF_ID, ExplainEntry, KILL_SWITCH_ID } from '../core/explain-entry';
+import {
+  BUSY_REASON_ID,
+  CONTEXT_CHIP_OFF_ID,
+  ExplainEntry,
+  INVESTIGATE_WORKFLOW,
+  KILL_SWITCH_ID,
+} from '../core/explain-entry';
 import { classifyFault, isBannerFault } from '../core/fault';
 import { FixFinding } from '../core/fix-finding';
 import {
@@ -2077,7 +2083,8 @@ export class Panel {
    * sentence naming the selected entry as the user's message, with the entry's screen's own context
    * and a marker for the entry (`assembleEntryContext`), through the same path and leaving the
    * draft as it is. The gate is checked again here, and a request whose context assembles to
-   * nothing sends nothing.
+   * nothing sends nothing. A request of kind `investigate` (Story 20.36) sends its own sentence with
+   * the `investigate` workflow, which makes the workflow chip show (AD-66).
    */
   private onExplainEntry(): void {
     const entry = this.explainEntry;
@@ -2086,6 +2093,13 @@ export class Panel {
     if (!entry.shown() || entry.reason() !== null) return;
     const context = assembleEntryContext({ ...this.contextInputs(request.screen), row: request.row });
     if (context === null) return;
+    if (request.kind === 'investigate') {
+      void this.sendWithContext(STRINGS.agentInvestigateEntryMessage, context, {
+        id: INVESTIGATE_WORKFLOW,
+        text: STRINGS.agentInvestigateEntryAction,
+      });
+      return;
+    }
     void this.sendWithContext(STRINGS.agentExplainEntryMessage, context);
   }
 

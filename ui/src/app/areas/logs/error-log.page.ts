@@ -14,7 +14,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 
 import { ChangeBus } from '../../core/change-bus';
 import { decodeEntityId, splitCompositeId } from '../../core/entity-id';
-import { ExplainEntry } from '../../core/explain-entry';
+import { ExplainEntry, type ExplainEntryKind } from '../../core/explain-entry';
 import { isBannerFault } from '../../core/fault';
 import { formatDeniedAction, NavigationService } from '../../core/navigation';
 import { OverlayStack } from '../../core/overlay-stack';
@@ -41,6 +41,9 @@ const MENU_OVERLAY_ID = 'ocu-error-log-menu';
 
 /** The row menu's "Explain this entry" item's id, which no declared action id takes (Story 11.2). */
 const EXPLAIN_ENTRY_ITEM = 'explain-entry';
+
+/** The row menu's "Investigate this entry" item's id, which no declared action id takes (Story 20.36). */
+const INVESTIGATE_ENTRY_ITEM = 'investigate-entry';
 
 /** One row-menu entry: a declared row action with a registered handler, or "Explain this entry". */
 interface MenuItem {
@@ -705,7 +708,7 @@ export class ErrorLogPage {
   /**
    * The row menu's entries, as `DataTable` resolves its own: every declared row action with a
    * registered handler, each with its label and, where the selected row refuses it, the reason.
-   * At the `list` level "Explain this entry" follows them while the agent can take it (Story 11.2),
+   * At the `list` level "Explain this entry" and "Investigate this entry" follow them while the agent can take them (Stories 11.2 and 20.36),
    * refused under the kill switch, a running turn or sharing off and described by that reason.
    */
   protected get menuItems(): readonly MenuItem[] {
@@ -735,6 +738,14 @@ export class ErrorLogPage {
         label: STRINGS.agentExplainEntryAction,
         reason: '',
         name: STRINGS.agentExplainEntryAction,
+        ariaDisabled: explain.reason() === null ? null : 'true',
+        describedBy: explain.describedBy(),
+      });
+      items.push({
+        id: INVESTIGATE_ENTRY_ITEM,
+        label: STRINGS.agentInvestigateEntryAction,
+        reason: '',
+        name: STRINGS.agentInvestigateEntryAction,
         ariaDisabled: explain.reason() === null ? null : 'true',
         describedBy: explain.describedBy(),
       });
@@ -828,17 +839,21 @@ export class ErrorLogPage {
       this.explainRow(key);
       return;
     }
+    if (item.id === INVESTIGATE_ENTRY_ITEM) {
+      this.explainRow(key, 'investigate');
+      return;
+    }
     if (item.reason !== '') return;
     this.actions.run(LOG_ERROR_LIST, item.id);
   }
 
   /** Hand the list row selected by `key` to the panel, with its drilled scope; a refused item sends nothing. */
-  private explainRow(key: string): void {
+  private explainRow(key: string, kind: ExplainEntryKind = 'explain'): void {
     const screen = SCREENS.find((entry) => entry.descriptor === LOG_ERROR_LIST);
     if (this.explainEntry === null || screen === undefined) return;
     const row = this.drill.scopedErrors().find((candidate) => this.drill.selectionKey(String(candidate.errorNumber)) === key);
     if (row === undefined) return;
-    this.explainEntry.request(screen, row);
+    this.explainEntry.request(screen, row, kind);
   }
 
   /** The typed name matched: the handler sends the delete it was standing in front of. */

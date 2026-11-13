@@ -5644,6 +5644,19 @@ app-interop-message-contents {
   padding: 0 var(--ocu-space-2);
 }
 
+// Explain this entry and Investigate this entry share one trailing track (Story 20.36). The rows keep
+// the width that track and the three fixed ones need, so at a narrow width `.ocu-log-viewport` scrolls
+// sideways inside the screen, as the hub's frame does, rather than letting the buttons past their row.
+.ocu-log-rows-explain {
+  min-width: 48rem;
+}
+
+.ocu-log-entry-actions {
+  display: inline-flex;
+  gap: var(--ocu-space-2);
+  white-space: nowrap;
+}
+
 .ocu-log-explain[aria-disabled='true'],
 .ocu-audit-explain[aria-disabled='true'] {
   color: var(--ocu-restrained);
@@ -7724,6 +7737,11 @@ app-log-hub-page {
 
 .ocu-log-hub-row.ocu-log-hub-row-explain {
   grid-template-columns: 190px 200px 110px minmax(0, 1fr) auto;
+}
+
+// The timeline keeps the width its three fixed tracks and the two entry controls need (Story 20.36).
+.ocu-log-hub-rows-explain {
+  min-width: 52rem;
 }
 
 // The entry a log viewer was opened at from the hub's timeline (Story 16.9): marked by a leading

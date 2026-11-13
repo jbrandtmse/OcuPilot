@@ -1144,11 +1144,16 @@ describe('ErrorLogPage', () => {
   it('Story 11.2: the list level\u2019s row menu adds "Explain this entry" after Delete, which hands over the scoped row', async () => {
     const { fixture, entry } = await atList();
     const items = openMenu(fixture, '5');
-    expect(items.map((item) => item.textContent?.trim())).toEqual([STRINGS.actionDelete, STRINGS.agentExplainEntryAction]);
+    expect(items.map((item) => item.textContent?.trim())).toEqual([
+      STRINGS.actionDelete,
+      STRINGS.agentExplainEntryAction,
+      STRINGS.agentInvestigateEntryAction,
+    ]);
     expect(items[1].getAttribute('aria-disabled')).toBeNull();
     items[1].click();
     fixture.detectChanges();
     const taken = entry.take();
+    expect(taken?.kind).toBe('explain');
     expect(taken?.screen.route).toBe('logs/errors');
     expect(taken?.row).toMatchObject({ namespace: 'USER', date: '09/23/2026', errorNumber: 5, time: '17:02:10' });
     expect(fixture.nativeElement.querySelector('.ocu-data-table-menu')).toBeNull();
@@ -1159,6 +1164,21 @@ describe('ErrorLogPage', () => {
     expect(context?.view?.selected).toBe(1);
     expect(context?.view?.rows[1]).toMatchObject({ namespace: 'USER', date: '09/23/2026', errorNumber: 5 });
     expect(context?.view?.focus).toBeUndefined();
+  });
+
+  // Mutation (Rule 19): the page drops its investigate item -> the labels pin above goes red. The item
+  // requests `explain` -> the kind assertion goes red.
+  it('Story 20.36: the list level\u2019s row menu adds "Investigate this entry" after Explain, which requests investigate for the scoped row', async () => {
+    const { fixture, entry } = await atList();
+    const items = openMenu(fixture, '5');
+    expect(items[2].getAttribute('aria-disabled')).toBeNull();
+    items[2].click();
+    fixture.detectChanges();
+    const taken = entry.take();
+    expect(taken?.kind).toBe('investigate');
+    expect(taken?.screen.route).toBe('logs/errors');
+    expect(taken?.row).toMatchObject({ namespace: 'USER', date: '09/23/2026', errorNumber: 5 });
+    expect(fixture.nativeElement.querySelector('.ocu-data-table-menu')).toBeNull();
   });
 
   it('Story 11.2: the namespaces, dates and detail levels offer no explain item, and Delete stays first', async () => {
@@ -1174,6 +1194,7 @@ describe('ErrorLogPage', () => {
     await drill.openDetail(4);
     fixture.detectChanges();
     expect((fixture.nativeElement as HTMLElement).textContent ?? '').not.toContain(STRINGS.agentExplainEntryAction);
+    expect((fixture.nativeElement as HTMLElement).textContent ?? '').not.toContain(STRINGS.agentInvestigateEntryAction);
   });
 
   // Mutation (Rule 19): drop the page's `explainEntry.subscribe` -> this goes red on the stale item.
@@ -1186,6 +1207,9 @@ describe('ErrorLogPage', () => {
     const item = fixture.nativeElement.querySelectorAll('.ocu-data-table-menu-item')[1] as HTMLButtonElement;
     expect(item.getAttribute('aria-disabled')).toBe('true');
     expect(item.getAttribute('aria-describedby')).toBe(BUSY_REASON_ID);
+    const investigate = fixture.nativeElement.querySelectorAll('.ocu-data-table-menu-item')[2] as HTMLButtonElement;
+    expect(investigate.getAttribute('aria-disabled')).toBe('true');
+    expect(investigate.getAttribute('aria-describedby')).toBe(BUSY_REASON_ID);
   });
 
   it('Story 11.2: unconfigured, the list level offers no explain item', async () => {
@@ -1201,10 +1225,15 @@ describe('ErrorLogPage', () => {
     ];
     for (const [gate, reasonId] of cases) {
       const { fixture, entry } = await atList(gate);
-      const item = openMenu(fixture, '4')[1];
+      const items = openMenu(fixture, '4');
+      const item = items[1];
       expect(item.getAttribute('aria-disabled'), JSON.stringify(gate)).toBe('true');
       expect(item.getAttribute('aria-describedby'), JSON.stringify(gate)).toBe(reasonId);
+      expect(items[2].getAttribute('aria-disabled'), JSON.stringify(gate)).toBe('true');
+      expect(items[2].getAttribute('aria-describedby'), JSON.stringify(gate)).toBe(reasonId);
       item.click();
+      expect(entry.take(), JSON.stringify(gate)).toBeNull();
+      openMenu(fixture, '4')[2].click();
       expect(entry.take(), JSON.stringify(gate)).toBeNull();
       TestBed.inject(ErrorLogDrill).reset();
       TestBed.resetTestingModule();

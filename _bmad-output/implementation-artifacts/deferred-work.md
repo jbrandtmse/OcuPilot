@@ -12244,11 +12244,14 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Loop.Scope marks the shell area's and the screen context's tools as the starting set and reads nothing from the workflow result; scripted turns call step tools by wire name, which dispatch does not scope
 - 2026-10-20T15:26:39Z status=open owner=20-12-the-agent-gains-guided-workflows-and-investigate by=harvest note=implement self-review deferral; adjudicate at 20.12's gate
 - 2026-10-20T19:55:32Z status=routed owner=20-36-investigate by=adjudication note=not covered by 20.12; a step tool off the screen costs one shell_tools_find search; Investigate starts workflows anywhere
+- 2026-11-13T03:05:45Z status=decision-pending owner=burndown by=cr note=fix contradicts AD-24 starting-set clause; reverted in 20.36 rework 1; recommend owner amend AD-24 to add step tools
+- 2026-11-13T07:50:28Z status=by-design owner=burndown by=owner note=owner U-27 (relayed by the Planner): keep AD-24 as it is; a guided workflow's off-screen step tools stay reachable through one shell.tools.find call; no follow-up story
 
 ### DW-2469: A workflow turn's previous reports the conversation's newest earlier turn whatever workflow it ran, so a workflow started mid-conversation reads unrelated proposals as its own earlier steps
 - source: spec-20-12-the-agent-gains-guided-workflows-and-investigate.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: Loop.WorkflowResult takes the newest Entry.GuardedTurnKeys turn and never reads that turn's Turn.Workflow; unreachable in 20.12 (workflow prompts render only in an empty conversation's greeting), reachable once 20.36's Investigate starts a workflow beside Explain mid-conversation
 - 2026-10-20T19:52:55Z status=routed owner=20-36-investigate by=cr note=theoretical in 20.12; guard: report previous only when the turn before ran the same workflow
+- 2026-11-13T03:31:39Z status=resolved-by:20-36-investigate by=adjudication note=WorkflowResult reports previous only for a turn of the same workflow; pinned by TestPreviousIgnoresATurnOfAnotherWorkflow
 ### DW-2467: _bmad/custom/parallel.yaml:54 still says ui/browser.config.mjs defaults to ocupilot-ci; since 23.11 batch b the config has no default for either browser variable
 - source: spec-23-11-the-range-end-cleanup-part-10.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: browserConfig throws unless OCUPILOT_BROWSER_ORIGIN and OCUPILOT_BROWSER_CONTAINER are both set (ui/browser.config.mjs, pinned by ui/tools/browser-config.test.mjs at 7aceb0c1)
@@ -12482,6 +12485,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: release/1.0.14 push run 40014034409 attempt 1, browser shard 3/5 (723a3662); attempt 2 green; the same code was green on feature (2a9ea8d1, run 40008057887)
 - 2026-10-23T21:31:33Z status=routed owner=burndown by=orchestrator note=CI flake, reported by the Planner at the 1.0.14 cut; first in the next standing cleanup with DW-1822 (Rule 27)
 - 2026-11-12T21:28:40Z status=resolved-by:23-9-the-range-end-cleanup-part-8 owner=23-9-the-range-end-cleanup-part-8 by=orchestrator note=re-stated: the union merge at ebb0b37d placed this entry's 2026-11-12 13:49 and 19:13 trailers under DW-2523; resolved by 23.9 batch 1 c98a0877 (signedInAt names in-flight requests; AC8 seeds 30k nodes)
+- 2026-11-13T06:29:49Z occurrence=20-36-investigate
 
 ### DW-2518: A cube build or synchronize the vendor ran but then failed (a dependent failing after the target rebuilt, a raised exception) records no ConfigChange row, though facts changed
 - source: spec-20-34-the-cube-manager-s-build-and-synchronize.md | severity: med | fix-risk: med | footprint: in-story
@@ -12553,6 +12557,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-12T20:43:32Z status=routed owner=23-10-the-range-end-cleanup-part-9-two-sweeps by=lead note=CI flake; first priority in 23.10 (Rule 27); rerun --failed
 - 2026-11-13T00:51:08Z occurrence=20-34-the-cube-manager-s-build-and-synchronize note=re-stated (a union merge misplaced the 23:17:35Z line): also red on CI 43290470415 (acb0b666), filed there as DW-2523, dropped as this entry's duplicate
 - 2026-11-13T08:40:40Z status=resolved-by:23-10-the-range-end-cleanup-part-9-two-sweeps by=adjudication note=cd679de0,554aa62a: MDX answer waits use the product bound (145 s); analytics-mdx 11/11
+- 2026-11-13T06:29:49Z occurrence=20-36-investigate
 
 ### DW-2524: flake: context-chip.browser-spec.mjs test 7 (Fresh at Send) waited past 30000 ms
 - source: 23.9 staging CI (run 43316537748) | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -12566,6 +12571,12 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: grep '"removed", 1' in src/OcuPilot/Screen/Tool: TaskDelete, UserDelete, SslDelete ... loop FingerprintSubject(); MappingDelete, SuperserverDelete ... ReadAnswers(); same Display/after/removed/push as Write.cls RemovalRows
 - 2026-11-13T00:03:53Z status=routed owner=23-10-the-range-end-cleanup-part-9-two-sweeps by=cr note=give RemovalRows a names argument (default REMOVALROWS) and move the 16 onto it; Screen/** is Epic 20's, check contention
 - 2026-11-12T23:17:35Z occurrence=20-34-the-cube-manager-s-build-and-synchronize note=also red on CI 43290470415 (acb0b666), filed there as DW-2523, now dropped as this entry's duplicate
+- 2026-11-13T07:37:59Z status=routed owner=23-13-the-range-end-cleanup-part-11 by=orchestrator note=re-stated: a union merge misplaced the 2026-11-13T01:28:15Z spec_gate trailer (23.10 split to 23.13)
+
+### DW-2529: An investigate turn's no-chip-for-a-log-row assertions backtick no value a log read returned, so they cannot fail if log rows became citable
+- source: spec-20-36-investigate.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: TurnCitations.TestAnInvestigateTurnCitesARowItRead backticks an invented messages.log line; investigate-entry.browser-spec.mjs (a) backticks only _SYSTEM. The no-chip guarantee is Registry.CitationSource answering none for log screens (unchanged).
+- 2026-11-13T03:01:42Z status=wontfix-accepted owner=20-36-investigate by=cr note=reopen_if=Registry.CitationSource answers candidates for any logs/* screen
 - 2026-11-13T01:28:15Z status=routed owner=23-13-the-range-end-cleanup-part-11 by=spec_gate note=23.10 split at its spec gate; batches 4-6 moved to Story 23.13
 
 ### DW-2527: Paging Journal records Newest first, when matches end exactly at the page cap, can scan back to the start of the journal and answer PORT.TIMEOUT (inference)
