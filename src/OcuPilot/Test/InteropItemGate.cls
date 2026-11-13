@@ -49,16 +49,17 @@ Parameter BASELINE = "OcuPilotProbeOp:1,OcuPilotProbeSvc:1";
 Parameter PRINCIPALS = "OcuP203Exact:%Development:U,%Ens_Portal:U,%Ens_ProductionConfig:RW,%DB_USER:RW;OcuP203NoPortal:%Development:U,%Ens_ProductionConfig:RW,%DB_USER:RW;OcuP203NoCfgRead:%Development:U,%Ens_Portal:U,%Ens_ProductionConfig:W,%DB_USER:RW;OcuP203NoCfgWrite:%Development:U,%Ens_Portal:U,%Ens_ProductionConfig:R,%DB_USER:RW;OcuP203NoRead:%Development:U,%Ens_Portal:U,%Ens_ProductionConfig:RW;OcuP203NoWrite:%Development:U,%Ens_Portal:U,%Ens_ProductionConfig:RW,%DB_USER:R";
 
 /// <p>The port legs a probe runs, in order, <code>&lt;endpoint&gt;|&lt;type&gt;</code>. The disable is followed
-/// by the enable and the add by the remove, so a principal admitted to all leaves the probe as it was.</p>
-Parameter LEGS = "Items|LIST,Items|ITEM,Items|DISABLE,Items|ENABLE,Items|ADD,Items|REMOVE";
+/// by the enable and the add by the remove, so a principal admitted to all leaves the probe as it was; the copy (Story 20.40) is
+/// removed by the probe itself when it is admitted.</p>
+Parameter LEGS = "Items|LIST,Items|ITEM,Items|DISABLE,Items|ENABLE,Items|ADD,Items|REMOVE,Items|COPY";
 
 /// <p>The tools whose pairs the probe evaluates.</p>
-Parameter TOOLS = "InteropItemEnable,InteropItemDisable,InteropItemRemove,InteropItemAdd,InteropSettingSet,InteropSettingReset";
+Parameter TOOLS = "InteropItemEnable,InteropItemDisable,InteropItemRemove,InteropItemAdd,InteropSettingSet,InteropSettingReset,InteropItemCopy";
 
 /// <p>What each principal's six port legs answer, <code>&lt;user&gt;=&lt;the pair a refused leg names, or
 /// empty when the leg is admitted&gt;</code> per leg in <parameter>LEGS</parameter> order, separated by
 /// <code>,</code>.</p>
-Parameter EXPECTED = "OcuP203Exact=,,,,,;OcuP203NoPortal=%Ens_Portal:USE,%Ens_Portal:USE,%Ens_Portal:USE,%Ens_Portal:USE,%Ens_Portal:USE,%Ens_Portal:USE;OcuP203NoCfgRead=%Ens_ProductionConfig:READ,%Ens_ProductionConfig:READ,%Ens_ProductionConfig:READ,%Ens_ProductionConfig:READ,%Ens_ProductionConfig:READ,%Ens_ProductionConfig:READ;OcuP203NoCfgWrite=,,%Ens_ProductionConfig:WRITE,%Ens_ProductionConfig:WRITE,%Ens_ProductionConfig:WRITE,%Ens_ProductionConfig:WRITE;OcuP203NoRead=%DB_USER:READ,%DB_USER:READ,%DB_USER:WRITE,%DB_USER:WRITE,%DB_USER:WRITE,%DB_USER:WRITE;OcuP203NoWrite=,,%DB_USER:WRITE,%DB_USER:WRITE,%DB_USER:WRITE,%DB_USER:WRITE";
+Parameter EXPECTED = "OcuP203Exact=,,,,,,;OcuP203NoPortal=%Ens_Portal:USE,%Ens_Portal:USE,%Ens_Portal:USE,%Ens_Portal:USE,%Ens_Portal:USE,%Ens_Portal:USE,%Ens_Portal:USE;OcuP203NoCfgRead=%Ens_ProductionConfig:READ,%Ens_ProductionConfig:READ,%Ens_ProductionConfig:READ,%Ens_ProductionConfig:READ,%Ens_ProductionConfig:READ,%Ens_ProductionConfig:READ,%Ens_ProductionConfig:READ;OcuP203NoCfgWrite=,,%Ens_ProductionConfig:WRITE,%Ens_ProductionConfig:WRITE,%Ens_ProductionConfig:WRITE,%Ens_ProductionConfig:WRITE,%Ens_ProductionConfig:WRITE;OcuP203NoRead=%DB_USER:READ,%DB_USER:READ,%DB_USER:WRITE,%DB_USER:WRITE,%DB_USER:WRITE,%DB_USER:WRITE,%DB_USER:WRITE;OcuP203NoWrite=,,%DB_USER:WRITE,%DB_USER:WRITE,%DB_USER:WRITE,%DB_USER:WRITE,%DB_USER:WRITE";
 
 /// <p>The first pair each principal's four tools fail on, in the order screen pairs, configuration write,
 /// database write.</p>
@@ -396,9 +397,10 @@ ClassMethod Probe(pParent As %Integer, pUsername As %String, pNamespace As %Stri
             If tType = "LIST" {
                 Set tQuery("production") = pProduction
                 Set tQuery("maxRows") = 5
-            } ElseIf (tType = "ADD") || (tType = "REMOVE") {
+            } ElseIf (tType = "ADD") || (tType = "REMOVE") || (tType = "COPY") {
                 Set tQuery("id") = pProduction _ $Char(1) _ ..#ADDED
                 If tType = "ADD" Set tBody = {"ClassName": "OcuPilotProbe.Interop.Op", "PoolSize": 1, "Enabled": false}
+                If tType = "COPY" Set tBody = {"CopyFrom": (..#ITEM), "Enabled": false}
             } Else {
                 Set tQuery("id") = pProduction _ $Char(1) _ ..#ITEM
             }
@@ -413,6 +415,12 @@ ClassMethod Probe(pParent As %Integer, pUsername As %String, pNamespace As %Stri
                 If $IsObject(tFault.%Get("detail")) Do tLeg.%Set("failedPair", tFault.detail.%Get("failedPair"))
             }
             Do tOut.%Set(tLegName, tLeg)
+            If (tType = "COPY") && (+tHttp = 200) {
+                Kill tCleanQuery
+                Set tCleanQuery("namespace") = pNamespace
+                Set tCleanQuery("id") = pProduction _ $Char(1) _ ..#ADDED
+                Set tCleanSC = ##class(OcuPilot.Port.InteropPort).Invoke("Items", "REMOVE", .tCleanQuery, "", .tCleanResult, .tCleanHttp, .tCleanFault)
+            }
         }
         Do ##class(OcuPilot.Kernel.Scope).Set(pNamespace)
         Set tTools = {}
