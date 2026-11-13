@@ -12635,3 +12635,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: _bmad-output/implementation-artifacts/spec-23-13-the-range-end-cleanup-part-11.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: the browser spec asserts the first ten seeded records ascending for order 0 only
 - 2026-11-13T20:44:09Z status=open owner=23-13-the-range-end-cleanup-part-11 by=harvest note=batch 4 self-review; for batch 4 QA to add the leg (add-only edit to a contended file)
+
+### DW-2542: Journal records: a desc direction Newest first remembered (AD-50) can be adopted after the cold open's followOrder, so a reloaded tab under Oldest first draws its rows descending until the next Search (unverified timing)
+- source: spec-23-13-the-range-end-cleanup-part-11.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: ScreenStore.adoptRemembered runs on the account preferences' first answer (screen-store.ts:151,164); app.ts issues that load beside the router outlet without gating it; followOrder runs once in the constructor's open(). Settle: hard-reload the records URL after a Newest first search with desc remembered and read the drawn order.
+- 2026-11-13T21:00:50Z status=routed owner=23-13-the-range-end-cleanup-part-11 by=cr note=code review batch 4; maybe-false on timing; fix: re-run followOrder once the remembered view is adopted

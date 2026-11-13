@@ -2,7 +2,7 @@
 title: 'Story 23.13: The range-end cleanup, part 11'
 type: 'bugfix'
 created: '2026-11-13'
-status: 'done'
+status: 'in-progress'
 baseline_revision: 'df38df2d0caecc13074b30cad4933fb56428068b'
 baseline_commit: 'df38df2d0caecc13074b30cad4933fb56428068b'
 review_loop_iteration: 0
@@ -169,6 +169,7 @@ Waits for escalation 5 (contention) before any `Prohibited.cls` edit. Task 0 nee
 - [x] **Pin** in `journal-records.page.spec.ts`: rows at Addresses 300, 200, 100. Order 1 draws 300, 200, 100 and leaves the store's direction desc; order 0 draws 100, 200, 300; with sort `TimeStamp`, order 1 leaves the direction as it was. Red before. Mutations: remove the call; map order 1 to asc.
 - [ ] `cd ui && npm run build`; record the journal records chunk and the initial total against the 2500 kB warning. Run `journal-records.browser-spec.mjs` after redeploy.
 - [x] DW-2527: no code (Declined DW-2527 under Design Notes).
+- [ ] [Review] DW-2542 (batch 4 code review, medium, first review) — `journal-records.page.ts` `followOrder()` runs once in the constructor's `open()`, while `ScreenStore.adoptRemembered` (screen-store.ts ~:151, :164) can adopt a remembered `desc` direction after it on a cold open, so a reloaded tab under Oldest first may draw descending until the next Search — re-run `followOrder()` once the remembered view is adopted (or have the read path consult the order), pinned by a component case that adopts a remembered `desc` after the cold open and reads ascending under order 0, red before.
 
 **Acceptance Criteria:**
 
@@ -201,7 +202,31 @@ Rejected:
 - "Flake, at the surface" has no `mutation:` line: the spec runs it as a non-regression check, and the stall is pinned through fakes (Design Notes).
 - Auto Run Result counts, cycle-log fields, Verification nesting, red-before shown by mutation: bookkeeping, not code; the spec is oversized.
 
+#### Batch 4 (2026-11-13)
+
+- [x] [Review][Patch] (low, fix-risk low, in-story) DW-2540: the Refresh action read the form's order without `followOrder()`; it now calls it before the read, pinned by a Refresh case (the screen declares no refresh timer) [ui/src/app/areas/os-management/journal-records.page.ts:377]
+- [x] [Review][Patch] (med, fix-risk low, in-story) No test reached `followOrder()` except through Search, so moving it to `onSearch` stayed green while an agent arrival with Newest first drew ascending (Rule 19): an arrival case now pins it [ui/src/app/areas/os-management/journal-records.page.spec.ts:331]
+- [x] [Review][Patch] (low) The explicit-Address case's title says it draws descending but read only the direction; it now reads the drawn rows, and the three cases name their mutations [ui/src/app/areas/os-management/journal-records.page.spec.ts:320]
+- [x] [Review][Patch] (low) The browser spec's "What it pins" list omitted the new Newest first leg [ui/browser/journal-records.browser-spec.mjs:17]
+- [x] [Review][Defer] (med unverified, fix-risk med) A remembered `desc` adopted after the cold open's `followOrder()` draws Oldest first descending on a reloaded tab [ui/src/app/core/screen-store.ts:164] — deferred: DW-2542, settled by a hard reload of the records URL with `desc` remembered
+
+Rejected:
+
+- DW-2541 still open in the frontmatter, triage log, Auto Run Result and ledger; the Code Map's "every read goes through `open()`"; Verification mixing the lead's unrun line; Auto Run Result's blocker and files lines: edits to the spec under review or the lead's trailers.
+- QA's browser edit has no contention record: false; Epic 20 has not changed the file, and the edit is add-only.
+- "Order at the surface" unmet until the browser leg runs: the lead's fresh check runs it, as this pass's prompt sets.
+- The leg's ready wait assumes the earlier read holds no probe records: if wrong it reddens rather than passes; the lead's run decides.
+- The leg reads from the file's end, so a later `^OcuProbe185` write breaks it: false; nothing writes the global between the seed and `after`.
+- The leg leaves `desc` remembered: false; `signedInAt` resets remembered state before every context.
+- A stored sort outside `sort.fields`; a declared `desc` direction: not reachable for this descriptor (sort `Address` asc).
+- A faulted read keeps the previous rows under the new direction: rare, and the fault is shown; the fix adds a branch.
+- An explicit Address sort a person chose is overridden at Search: the task names `''` or `Address` (by-design).
+- Next records under Newest first untested: it goes through `open()`, which the arrival case now pins.
+- The repeated submit-and-settle lines in the new cases: cosmetic.
+
 ## Spec Change Log
+
+- 2026-11-13: batch 4 re-opened for one review iteration (DW-2542, the first review's unpatched in-story medium).
 
 ## Review Triage Log
 
@@ -342,6 +367,9 @@ Rejected:
   - mutation: drop the `setDirection('')` restore in the order 0 branch -> the Newest first case red alone (review, observed).
   - Component spec 16/16; `npm run test:components` 3362/3362 (261 files); `npm run test:tools` 2219/2219; `npm run build` clean, no budget warning: journal records chunk 11.93 kB raw, initial total 2.02 MB against the 2500 kB warning.
   - `journal-records.browser-spec.mjs` after redeploy: lead, fresh check (not run in this pass).
+  - (QA) added to `ui/browser/journal-records.browser-spec.mjs` (DW-2541): `DW-1979: Newest first draws the newest seeded records first, in descending Address` (order 1, filter `OcuProbe185`, ten rows, descending Address and `^OcuProbe185(30)` to `(21)`); syntax-checked only, not run (the throwaway was the lead's sweep's); component runner `npm run test:components` 3362/3362 (261 files); the component spec's three cases already pin each Batch 4 AC with an observed red, so none added.
+  - mutation: remove the `followOrder()` call → `DW-1979: Newest first draws the newest seeded records first, in descending Address` (lead, fresh check)
+  - (code review, observed, tree identical after) mutation: drop the `followOrder()` call in the Refresh action -> the Refresh case red alone. Call `followOrder()` from `onSearch` instead of `open()` -> the arrival case red alone. Keep only `sort !== ''` in the guard -> the explicit Address case red alone. Component spec 18/18; `npm run test:components` 3364/3364 (261 files); `npm run test:tools` 2219/2219; `npm run build` clean, initial total 2.02 MB.
 
 ## Auto Run Result
 
