@@ -200,7 +200,7 @@ ClassMethod RawRequest(pMethod As %String, pPath As %String, pBody As %String, p
 /// @param pStatusCode Output: HTTP status code
 /// @param pBody Output: the complete response body, unparsed
 /// @param pHeaders Output: response headers, subscripted by upper-case name
-/// @param pRequestBody Optional: request body to send, or "" for none. Written to the entity body verbatim, so it must already be the bytes to send — ASCII, or UTF-8 the caller encoded itself
+/// @param pRequestBody Optional: request body to send, or "" for none. Written to the entity body verbatim, so it must already be the bytes to send — ASCII, or UTF-8 the caller encoded itself. A stream is copied instead, for a body past the string limit
 /// @param pContentType Optional: request Content-Type, applied only when a body is sent
 /// @param pExtraHeaders Optional ByRef: extra request headers, subscripted by header name
 /// @param pTimeout Optional: seconds the client waits for an answer; 0 keeps the class default of 30
@@ -227,7 +227,12 @@ ClassMethod AbsoluteRequest(pMethod As %String, pPath As %String, pUsername As %
             If $$$ISERR(tSC) Quit
         }
         If $$$ISERR(tSC) Quit
-        If pRequestBody '= "" {
+        If $IsObject(pRequestBody) {
+            If pContentType '= "" Set tReq.ContentType = pContentType
+            Do pRequestBody.Rewind()
+            Set tSC = tReq.EntityBody.CopyFrom(pRequestBody)
+            If $$$ISERR(tSC) Quit
+        } ElseIf pRequestBody '= "" {
             If pContentType '= "" Set tReq.ContentType = pContentType
             Do tReq.EntityBody.Write(pRequestBody)
         }

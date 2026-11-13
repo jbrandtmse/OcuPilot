@@ -11960,6 +11960,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Story 18.47 plan audit 2026-10-14 (code read): 109 sites in 54 Area files; Screen/Tool about 14, Api 11, Kernel 20-25 (inference); over the ruling's 10, so 18.47 fixes none
 - 2026-10-14T09:42:09Z status=routed owner=23-9-the-range-end-cleanup-part-8 by=spec_gate note=orchestrator 2026-10-14: more than about 10 sites, so one sweep entry; supersedes DW-2327
 - 2026-10-14T12:40:16Z status=routed owner=23-10-the-range-end-cleanup-part-9-two-sweeps by=lead note=orchestrator 2026-10-14: Story 23.10, two sweeps
+- 2026-11-13T14:06:41Z status=resolved-by:23-10-the-range-end-cleanup-part-9-two-sweeps by=adjudication note=batch_2:Kernel.Utils.OversizedMember+ReadRequestBody_pField,Api.Error.RenderBodyRefusal,Area_wrappers_and_direct_callers,Registry.ValidateArguments;pins_Test.Utils,PctAccessSaveWire,ToolDispatch,BodyOversizedWire;new-site_check_ui/tools/request-body.test.mjs;code_7b95c2b0(CI_43405790354_green)+43f32a09;residual_SqlConsole/SqlData/MdxQuery_and_Api_routes_answer_their_own_400_not_500_per_spec
 
 ### DW-2418: A turn's one PROVIDER.TLS sentence names the absent, unverified and unreadable causes but not a TLS floor below 1.2
 - source: spec-18-47-epic-18-burn-down-part-1.md | severity: low | fix-risk: low | footprint: in-story
@@ -11992,6 +11993,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: irislib %UnitTest/Manager.cls:1296 calls OnAfterAllTests when OnBeforeAllTests errs; Story 18.47 code review probe on ocupilot-ci: with no snapshot, armed, the call deleted 2 seeded policy rows; 18.47 guarded its 7 classes
 - 2026-10-14T12:29:05Z status=routed owner=burndown by=cr note=guard each by its OnBeforeAllTests arming condition as ProviderSslCallTime does; not in Restore: AllowedDirectorySave clears with it
 - 2026-10-14T12:40:16Z status=routed owner=23-10-the-range-end-cleanup-part-9-two-sweeps by=lead note=orchestrator 2026-10-14: Story 23.10, two sweeps
+- 2026-11-13T15:51:28Z status=resolved-by:23-10-the-range-end-cleanup-part-9-two-sweeps by=adjudication note=batch_3:52_teardowns_guarded(PreparedPolicyTaken_flag_on_every_policy-restoring_teardown_incl_5_previously_arming-only,arming_line_on_EgressSettingsWire/AuditEvent/AuditMarker);new_Test.TeardownGuard_pins_representative,flag-after-snapshot,repeat-safe_restore,new-site_catch_over_CompiledMethod;code_a75bc739+QA/review_commit;lead_20-shard_sweep_before_push
 
 ### DW-2427: The encryption key-file field refusals #5022, #1219 and #1204 (AdminPort PROPERTYFAULTS) are still logged at severity 2, so a mistyped key-file password raises the instance alert state
 - source: spec-18-47-epic-18-burn-down-part-1.md | severity: med | fix-risk: low | footprint: in-epic
@@ -12588,6 +12590,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: _bmad-output/implementation-artifacts/spec-23-10-the-range-end-cleanup-part-9-two-sweeps.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: the vendor's hidden Journal ListTask loops While rset.%Next && rowNum <= MaxRows, so it seeks one match past the cap (read on ocupilot-slot-a); the timeout is unmeasured
 - 2026-11-13T01:28:16Z status=routed owner=23-13-the-range-end-cleanup-part-11 by=harvest note=with DW-1979 (journal order) in 23.13
+- 2026-11-13T16:11:09Z status=wontfix-accepted by=spec_gate note=reopen_if=a_person_reports_a_Journal_records_search_answering_PORT.TIMEOUT;the_vendor_ListTask_runs_%Next_before_its_row-cap_check(read_on_ocupilot-slot-a_2026-11-13),so_no_port_or_page_change_stops_the_extra_scan;Story_23.13_Declined_DW-2527
 
 ### DW-2528: The instance never refuses a malformed area privilege pair (missing or non-string half); only the mirror's buildMirror does
 - source: spec-23-9-the-range-end-cleanup-part-8.md | severity: low | fix-risk: low | footprint: in-story
@@ -12613,6 +12616,15 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: ui/browser/turn.browser-spec.mjs:357-369; not yet seen red in CI
 - 2026-11-13T05:35:43Z status=wontfix-accepted owner=23-10-the-range-end-cleanup-part-9-two-sweeps by=harvest note=reopen_if=that test goes red in CI on a busy turn slot; then waitForReplies plus waitForSlotFree, as DW-2524
 
+### DW-2537: flake (lead sweep, macOS throwaway): DatabaseActions' compact, defragment, dismount and mount left ocupilot-ci's write daemon paused (Error opening volume to write block 1 of the probe database), the class hung 20 minutes and the instance hit its license limit
+- source: cycle-log-epic-23.md (23.10 batch 3 sweep, shard 17) | severity: low | fix-risk: med | footprint: out-of-footprint
+- evidence: messages.log 17:37:51Z-17:55Z on ocupilot-ci; rerun alone on a rebuilt throwaway green in 50 s; CI (Linux) green on this class every run
+- 2026-11-13T18:01:44Z status=wontfix-accepted owner=23-10-the-range-end-cleanup-part-9-two-sweeps by=lead note=reopen_if=it recurs on a lead sweep or appears in a CI run; evidence /Users/jbrandt/.ocupilot-throwaways/e23-sweep-23-10-b3/wedge-messages.log (inference: virtiofs bind mount)
+
+### DW-2538: flake (lead sweep): AnalyticsMdxReadGate's OnAfterAllTests reported 'left probe state in USER: cache of OCUPILOTPROBEGRID' on a just-rebuilt ocupilot-ci (shard 17/20, 5th class); rerun alone green
+- source: cycle-log-epic-23.md (23.10 batch 3 sweep, shard 17 resumed) | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: s17.log 18:0xZ; rerun 18:31Z 4/4 green; no CI occurrence found; Epic 23 never changed the class
+- 2026-11-13T18:31:20Z status=wontfix-accepted owner=23-10-the-range-end-cleanup-part-9-two-sweeps by=lead note=reopen_if=it recurs on a lead sweep or in a CI run (inference: a cube cache write still in flight when Remove ran)
 ### DW-2534: flake: web-applications.browser-spec.mjs AC5 filterToSubset on "myapp" left 1 of 1 rows (expected a proper subset holding /csp/myapp) in CI browser shard 4/5
 - source: CI run 43445087881 (staging c2b0262a) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: Red once, green on the unchanged rerun (--failed) of the same run; the filtered list held only /csp/myapp, so the subset check had nothing else to drop (inference: the list read before its other rows arrived)

@@ -26,9 +26,15 @@ Parameter SAVEPATH = "/web-app/pct-access";
 /// <p>One request over the wire as the test account: the status and the parsed answer.</p>
 ClassMethod Post(pBody As %DynamicObject, Output pStatus As %Integer, Output pAnswer, Output pContentType As %String) As %Status
 {
+    Quit ..PostRaw(pBody.%ToJSON(), .pStatus, .pAnswer, .pContentType)
+}
+
+/// <p>One request with <var>pJson</var> as the body text, for a body a <class>%DynamicObject</class> cannot carry.</p>
+ClassMethod PostRaw(pJson As %String, Output pStatus As %Integer, Output pAnswer, Output pContentType As %String) As %Status
+{
     Set pAnswer = ""
     Set pContentType = ""
-    Set tJson = pBody.%ToJSON()
+    Set tJson = pJson
     Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("POST", $Parameter("OcuPilot.Test.Http", "BASEPATH") _ ..#SAVEPATH _ "?ns=HSCUSTOM", ##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), .pStatus, .tRaw, .tHeaders, tJson)
     Set pContentType = $Get(tHeaders("CONTENT-TYPE"))
     Try { Set pAnswer = ##class(%DynamicObject).%FromJSON(tRaw) } Catch { Set pAnswer = $Get(tRaw) }
@@ -91,6 +97,27 @@ Method TestAnExistingEntryIsRefusedAndNotWrittenAgain()
     Do $$$AssertStatusOK(tSC, "the held entry is read through the port")
     Do $$$AssertEquals($Get(tStateHttp), 200, "the held entry reads back")
     Do $$$AssertEquals($Select($IsObject($Get(tState)): tState.AllowAccess, 1: ""), 1, "and keeps the access the first post gave it, so no second write reached the vendor")
+    Quit
+}
+
+/// <p>A body holding a number past the largest the instance holds is refused 400 <code>PORT.FIELD.SHAPE</code> on the
+/// field that carries it, and no entry is written.</p>
+/// <p>Mutation (Rule 19): remove the oversized-value guard from <method>OcuPilot.Kernel.Utils.ReadRequestBody</method>
+/// -- the post answers 500 and the status leg goes red.</p>
+Method TestAnOversizedNumberIsRefusedOnItsField()
+{
+    Set tJson = "{""Name"": ""all-applications"", ""AllowType"": ""AllowClass"", ""Class"": ""%OcuProbe1810.Wire"", ""AllowAccess"": true, ""Extra"": 1e400}"
+    Set tSC = ..PostRaw(tJson, .tStatus, .tAnswer, .tContentType)
+    Do $$$AssertStatusOK(tSC, "the request is sent")
+    Do $$$AssertEquals(tStatus, 400, "an oversized number answers 400, not 500")
+    Do $$$AssertTrue($Find(tContentType, "application/json") > 0, "the refusal is JSON")
+    Do $$$AssertEquals($Select($IsObject(tAnswer): tAnswer.code, 1: ""), ##class(OcuPilot.Api.Error).#PORTFIELDSHAPE, "the refusal is the field-shape code")
+    Set tViolation = $Select($IsObject(tAnswer) && $IsObject(tAnswer.detail) && $IsObject(tAnswer.detail.violations): tAnswer.detail.violations.%Get(0), 1: "")
+    Do $$$AssertEquals($Select($IsObject(tViolation): tViolation.field _ "|" _ tViolation.code _ "|" _ tViolation.reason, 1: ""), "Extra|" _ ##class(OcuPilot.Api.Error).#PORTFIELDSHAPE _ "|" _ ##class(OcuPilot.Api.Error).#REASONPORTFIELDSHAPE, "naming the field, with the code's published sentence")
+    Kill tQuery
+    Set tQuery("name") = ##class(OcuPilot.Kernel.EntityId).JoinComposite($ListBuild("all-applications", "AllowClass", "%OcuProbe1810.Wire"))
+    Set tSC = ##class(OcuPilot.Port.PctAccessPort).Invoke("WebApp.PctClassAccess", "STATE", .tQuery, "", .tState, .tStateHttp, .tStateFault)
+    Do $$$AssertNotEquals($Get(tStateHttp), 200, "and no entry was written")
     Quit
 }
 

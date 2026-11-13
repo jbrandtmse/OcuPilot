@@ -47,6 +47,7 @@ Method OnBeforeAllTests() As %Status
 
 Method OnAfterAllTests() As %Status
 {
+    If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 Quit $$$OK
     Do ##class(OcuPilot.Kernel.State.Egress).DeleteGuarded()
     Quit ..RemoveProbes()
 }

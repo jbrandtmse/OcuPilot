@@ -79,6 +79,7 @@ Method OnBeforeAllTests() As %Status
 /// is still missing -- a class that left auditing off is a failure, not a passing run.</p>
 Method OnAfterAllTests() As %Status
 {
+    If ($System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1) || ($System.Util.GetEnviron("OCUPILOT_ALLOW_PRODUCTION_INSTALL") '= 1) Quit $$$OK
     Set tSC = ##class(OcuPilot.Install.Installer).Install("")
     If $$$ISERR(tSC) Quit tSC
     Set tMissing = ..MissingTriples()

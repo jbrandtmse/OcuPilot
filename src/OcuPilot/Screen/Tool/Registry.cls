@@ -772,7 +772,9 @@ ClassMethod FulfilmentProblem(pClass As %String, pKind As %String, pFulfilment A
 /// (<code>integer</code> is a number with no fraction), <code>enum</code>, <code>minimum</code>,
 /// <code>maximum</code>, <code>maxLength</code> (on a string), <code>items</code>,
 /// <code>minItems</code>, <code>maxItems</code>,
-/// <code>required</code>, and <code>additionalProperties: false</code>.</p>
+/// <code>required</code>, and <code>additionalProperties: false</code>. Before the type checks, an argument
+/// holding a value the instance cannot hold (<method>OcuPilot.Kernel.Utils.OversizedMember</method>) is
+/// refused as a wrongly typed one is, naming the top-level argument (<code>*</code> when no one is to blame).</p>
 ClassMethod ValidateArguments(pSchema As %DynamicObject, pArgs As %DynamicObject, Output pProblem As %String) As %Status
 {
     Set pProblem = ""
@@ -781,6 +783,11 @@ ClassMethod ValidateArguments(pSchema As %DynamicObject, pArgs As %DynamicObject
         If pProblem '= "" Quit
         If '$IsObject(pArgs) || 'pArgs.%IsA("%Library.DynamicObject") {
             Set pProblem = "the arguments are not an object (type)"
+            Quit
+        }
+        Set tOversized = ##class(OcuPilot.Kernel.Utils).OversizedMember(pArgs)
+        If tOversized '= "" {
+            Set pProblem = "argument '" _ tOversized _ "' holds a value this instance cannot hold (type)"
             Quit
         }
         Set pProblem = ..ObjectProblem(pSchema, pArgs, "")

@@ -9796,7 +9796,7 @@ So that a privileged change is confirmed as one and the screens show what they s
 
 **Acceptance Criteria:**
 
-- **Given** the entries re-owned to this story: DW-2431, DW-2432, DW-2525 and DW-1979
+- **Given** the entries re-owned to this story: DW-1822, DW-2431, DW-2432, DW-2525, DW-1979 and DW-2527
 - **When** this story completes
 - **Then** each has a disposition written by the ledger tool: `resolved-by` this story with the commit, or `wontfix-accepted` or `by-design` with a reason and, where a condition would reopen it, that condition.
 
@@ -9806,3 +9806,4 @@ So that a privileged change is confirmed as one and the screens show what they s
 
 - DW-1979: Journal records' Newest first reads the newest records but the table shows them oldest first (ledger; routed by spec_gate 2026-11-12; moved from Story 23.9 to keep it within 12 entries)
 - DW-2525: sixteen more delete tools repeat the removal-row loop over FingerprintSubject() or ReadAnswers(), which Write.RemovalRows cannot absorb as written (ledger; routed by cr 2026-11-12)
+- DW-1822: a11y-structural-invariants AC5 settle on /agent/governance at 720 px timed out at protocol-retry.mjs:48 on staging run 43379465200 attempt 1, after Story 23.9's fix (ledger; routed by orchestrator 2026-11-13; CI flake, first priority)

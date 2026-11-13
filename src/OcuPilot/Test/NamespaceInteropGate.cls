@@ -73,6 +73,9 @@ Property PreparedResources As %String(MAXLEN = "");
 /// <p>The governance policy as it stood before the class ran.</p>
 Property PreparedPolicy [ MultiDimensional ];
 
+/// <p>Whether <method>OnBeforeAllTests</method> took the policy snapshot; the teardown restores only then.</p>
+Property PreparedPolicyTaken As %Boolean [ InitialExpression = 0 ];
+
 /// <p>The probe snapshot taken before all tests, before the principals exist.</p>
 Property PreparedSnapshot As %Library.DynamicArray;
 
@@ -98,6 +101,7 @@ Method OnBeforeAllTests() As %Status
     Set tSC = ##class(OcuPilot.Test.GovernanceFixture).Snapshot(.tRows)
     If $$$ISERR(tSC) Quit tSC
     Merge ..PreparedPolicy = tRows
+    Set ..PreparedPolicyTaken = 1
     Set tSC = $ClassMethod(..#PROBE, "RemoveAll", .tRemaining)
     If $$$ISERR(tSC) Quit tSC
     Set ..PreparedSnapshot = $ClassMethod(..#PROBE, "Snapshot")
@@ -127,6 +131,7 @@ Method OnAfterOneTest() As %Status
 /// status when any survives or the snapshot differs from the one taken before all tests.</p>
 Method OnAfterAllTests() As %Status
 {
+    If '..PreparedPolicyTaken Quit $$$OK
     Set tSC = $ClassMethod(..#PROBE, "RemoveAll", .tRemaining)
     Merge tRows = ..PreparedPolicy
     Set tSC = $$$ADDSC(tSC, ##class(OcuPilot.Test.GovernanceFixture).Restore(.tRows))

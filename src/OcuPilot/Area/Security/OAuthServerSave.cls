@@ -83,8 +83,8 @@ ClassMethod HandleCreate() As %Status
             Set tSC = tGateSC
             Quit
         }
-        If '..Body(.tBody) {
-            Set tSC = ..BadBody()
+        If '..Body(.tBody, .tBodyField) {
+            Set tSC = ..BadBody(tBodyField)
             Quit
         }
         If ..StrayKey(tBody, ..#BODYFIELDS, .tStray) {
@@ -134,8 +134,8 @@ ClassMethod HandleUpdate(pId As %String) As %Status
             Set tSC = tGateSC
             Quit
         }
-        If '..Body(.tBody) {
-            Set tSC = ..BadBody()
+        If '..Body(.tBody, .tBodyField) {
+            Set tSC = ..BadBody(tBodyField)
             Quit
         }
         If ..StrayKey(tBody, ..#BODYFIELDS, .tStray) {
@@ -184,8 +184,8 @@ ClassMethod HandleDiscover() As %Status
             Set tSC = tGateSC
             Quit
         }
-        If '..Body(.tBody) {
-            Set tSC = ..BadBody()
+        If '..Body(.tBody, .tBodyField) {
+            Set tSC = ..BadBody(tBodyField)
             Quit
         }
         If ..StrayKey(tBody, ..#DISCOVERFIELDS, .tStray) {
@@ -443,11 +443,12 @@ ClassMethod Answer(pSC As %Status, ByRef pViolations, pHttp As %Integer, pFault 
     Quit ##class(OcuPilot.Api.Response).JSONStatus(pSuccess, tAnswer)
 }
 
-/// <p>Read the request body into <var>pBody</var>; 0 when it is not a JSON object.</p>
-ClassMethod Body(Output pBody As %DynamicObject) As %Boolean [ Private ]
+/// <p>Read the request body into <var>pBody</var>; 0 when it is not a JSON object. <var>pField</var> names the top-level
+/// key holding a value the instance cannot hold (<code>*</code> when no one key is to blame), else <code>""</code>.</p>
+ClassMethod Body(Output pBody As %DynamicObject, Output pField As %String) As %Boolean [ Private ]
 {
     Set pBody = ""
-    Set tReadSC = ##class(OcuPilot.Kernel.Utils).ReadRequestBody(.pBody, .tStage)
+    Set tReadSC = ##class(OcuPilot.Kernel.Utils).ReadRequestBody(.pBody, .tStage, .pField)
     If $$$ISERR(tReadSC) || '$IsObject(pBody) || 'pBody.%IsA("%Library.DynamicObject") Quit 0
     Quit 1
 }
@@ -487,9 +488,9 @@ ClassMethod Unexpected(pKey As %String) As %Status [ Private ]
 }
 
 /// <p>The unreadable-body refusal every JSON handler gives.</p>
-ClassMethod BadBody() As %Status [ Private ]
+ClassMethod BadBody(pField As %String = "") As %Status [ Private ]
 {
-    Quit ##class(OcuPilot.Api.Error).Render(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#REASONAGENTBADBODY, ##class(OcuPilot.Api.Error).#AGENTBADBODY)
+    Quit ##class(OcuPilot.Api.Error).RenderBodyRefusal(pField)
 }
 
 /// <p>The caller's own body fields, minus the identifying argument, as one

@@ -31,6 +31,9 @@ Parameter NAME = "OCUPROBE184P";
 
 Property PreparedPolicy [ MultiDimensional ];
 
+/// <p>Whether <method>OnBeforeAllTests</method> took the policy snapshot; the teardown restores only then.</p>
+Property PreparedPolicyTaken As %Boolean [ InitialExpression = 0 ];
+
 Method OnBeforeAllTests() As %Status
 {
     If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 {
@@ -39,6 +42,7 @@ Method OnBeforeAllTests() As %Status
     Set tSC = ##class(OcuPilot.Test.GovernanceFixture).Snapshot(.tRows)
     If $$$ISERR(tSC) Quit tSC
     Merge ..PreparedPolicy = tRows
+    Set ..PreparedPolicyTaken = 1
     Quit $ClassMethod(..#PROBE, "RemoveAll", .tRemaining)
 }
 
@@ -56,6 +60,7 @@ Method OnAfterOneTest() As %Status
 
 Method OnAfterAllTests() As %Status
 {
+    If '..PreparedPolicyTaken Quit $$$OK
     Merge tRows = ..PreparedPolicy
     Set tSC = ##class(OcuPilot.Test.GovernanceFixture).Restore(.tRows)
     Quit $$$ADDSC(tSC, $ClassMethod(..#PROBE, "RemoveAll", .tRemaining))
