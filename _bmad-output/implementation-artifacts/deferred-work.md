@@ -12523,3 +12523,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: 23.9 lead full sweep (shard 3/20, run 83) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: full sweep on ocupilot-ci at c98a0877, shard 3/20: AssertStatusOK at +14 'and its next page reads' => ERROR #5001 PORT.TIMEOUT; the class reran alone 10/10 green (run 701); batch 1 touches no journal code
 - 2026-11-12T17:08:40Z status=routed owner=23-10-the-range-end-cleanup-part-9-two-sweeps by=lead note=CI-health flake; first priority in 23.10 with DW-2513 (Rule 27)
+
+### DW-2526: flake: LogHubErrors.TestASeededErrorReadsInTheHubsForm read a row other than its seeded error as the newest (CI instance shard 8/8)
+- source: CI run 43332030735 (Story 20.39 head 8d7fa08a) | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: Red once ('one row, the newest, and the read says it cut'), green on the unchanged rerun; an unrelated adminport OAuth REFRESHJWKS error was logged the same second; local 2/2 green
+- 2026-11-13T00:50:26Z status=routed owner=burndown by=harvest note=CI flake for the burn-down: the test asserts on the store's newest row, which a concurrent error can take (inference)
