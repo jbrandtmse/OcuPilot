@@ -132,6 +132,53 @@ async function statusReads(page, text, timeout = config.navigationTimeoutMs) {
   );
 }
 
+/**
+ * How long a run may take to answer: the product bounds a query at `AnalyticsPort`'s `MDXSECONDS` (120) and then gives the vendor
+ * `MDXSETTLESECONDS` (10) to report it, and the client polls every second; 15 s more covers the polls and a loaded runner. A cold first
+ * query in a fresh namespace costs most of that.
+ */
+const ANSWER_BOUND_MS = (120 + 10) * 1000 + 15_000;
+/** A test that waits for an answer: the bound, plus room for its other steps. */
+const ANSWERING_TEST = { timeout: ANSWER_BOUND_MS + 120_000 };
+
+/** What the page shows of a run's outcome: busy flag, status line, error text and banner. */
+function describeAnswer(page) {
+  return page
+    .evaluate(() => ({
+      busy: document.querySelector('section.ocu-mdx-query')?.getAttribute('aria-busy') ?? '(page absent)',
+      status: (document.querySelector('[data-ocu-mdx="status"]')?.textContent ?? '(no status line)').trim(),
+      error: (document.querySelector('[data-ocu-mdx="error"]')?.textContent ?? '(no error text)').trim(),
+      banner: (document.querySelector('[data-ocu-mdx="banner"]')?.textContent ?? '(no banner)').trim(),
+    }))
+    .then((state) => JSON.stringify(state))
+    .catch((error) => `(page unreadable: ${error.message})`);
+}
+
+/**
+ * Wait until the run has answered -- the page is no longer busy and its status line reads an outcome: not empty, not the
+ * background-run line and not the idle line a page shows before any run -- then until `selector` is drawn, so an error answer
+ * fails by name rather than as a missing selector.
+ */
+async function answeredWith(page, selector) {
+  try {
+    await page.waitForFunction(
+      (notAnOutcome) => {
+        const status = (document.querySelector('[data-ocu-mdx="status"]')?.textContent ?? '').trim();
+        return document.querySelector('section.ocu-mdx-query')?.getAttribute('aria-busy') === 'false' && !notAnOutcome.includes(status);
+      },
+      { timeout: ANSWER_BOUND_MS },
+      ['', STRINGS.explorerSqlBackgroundRunning, STRINGS.analyticsMdxEmpty]
+    );
+  } catch (error) {
+    throw new Error(`expected the run to answer within ${ANSWER_BOUND_MS} ms; the page shows ${await describeAnswer(page)} (underlying: ${error.message})`);
+  }
+  try {
+    await page.waitForSelector(selector, { visible: true, timeout: config.navigationTimeoutMs });
+  } catch (error) {
+    throw new Error(`expected the answer to draw ${selector}; the page shows ${await describeAnswer(page)} (underlying: ${error.message})`);
+  }
+}
+
 /** The grid the page draws: its column headers, and each row's label and cells. */
 function shownGrid(page) {
   return page.evaluate(() => ({
@@ -250,12 +297,12 @@ after(async () => {
 // AC1, AC8. Mutation (Rule 19): make `MdxAnswer` join a position's labels innermost first -> the crossjoin's labels in AC2 and the grid read
 // differently from the instance's; make it read the first column's cell for every column -> the cells differ and this goes red; rebuild and
 // redeploy first for a client mutation.
-test('AC1, AC8: a SELECT\'s grid equals the instance\'s answer for the statement, with no dialog, and the page passes the structural walk', async () => {
+test('AC1, AC8: a SELECT\'s grid equals the instance\'s answer for the statement, with no dialog, and the page passes the structural walk', ANSWERING_TEST, async () => {
   const { context, page } = await signedInAt(browser, config, PAGE_URL, VIEWPORTS.wide, REDUCED_MOTION);
   try {
     await writeStatement(page, VISITS_GRID);
     await pressRun(page);
-    await page.waitForSelector('[data-ocu-mdx="grid"]', { visible: true, timeout: config.navigationTimeoutMs });
+    await answeredWith(page, '[data-ocu-mdx="grid"]');
     const expected = vendorGrid(VISITS_GRID)
       .split('|')
       .filter((entry) => entry !== '')
@@ -277,12 +324,12 @@ test('AC1, AC8: a SELECT\'s grid equals the instance\'s answer for the statement
 
 // AC2. Mutation (Rule 19): compose the drill without the vendor's filter slots in `MdxDrill` -> the listing is the whole cube and this goes red;
 // make the cell button send its own ordinals swapped -> the listing is another cell's.
-test('AC2: a value cell\'s drill-through shows the listing the instance answers for that cell, the grid still shown', async () => {
+test('AC2: a value cell\'s drill-through shows the listing the instance answers for that cell, the grid still shown', ANSWERING_TEST, async () => {
   const { context, page } = await signedInAt(browser, config, PAGE_URL, VIEWPORTS.wide, REDUCED_MOTION);
   try {
     await writeStatement(page, CROSSJOIN);
     await pressRun(page);
-    await page.waitForSelector('[data-ocu-mdx="drill-cell"]', { visible: true, timeout: config.navigationTimeoutMs });
+    await answeredWith(page, '[data-ocu-mdx="drill-cell"]');
     const cells = await page.$$('[data-ocu-mdx="drill-cell"]');
     assert.equal(cells.length, 2, 'the crossjoin answers two cells');
     await cells[1].click();
@@ -343,7 +390,7 @@ test('AC5: a CREATE statement shows its refusal sentence', async () => {
 
 // AC10, AC8. Mutation (Rule 19): skip the confirmation check in `MdxQuery.Check` -> Run starts the run at once, no dialog opens and this goes
 // red; make the store send `confirmed: true` on the first start -> the same.
-test('AC10, AC8: a statement that runs server-side code asks first, Cancel runs nothing, and Proceed runs it', async () => {
+test('AC10, AC8: a statement that runs server-side code asks first, Cancel runs nothing, and Proceed runs it', ANSWERING_TEST, async () => {
   const { context, page } = await signedInAt(browser, config, PAGE_URL, VIEWPORTS.wide, REDUCED_MOTION);
   try {
     assert.equal(nodeDefined(2), '0', 'the splice node starts undefined');
@@ -370,7 +417,7 @@ test('AC10, AC8: a statement that runs server-side code asks first, Cancel runs 
     await page.waitForSelector('app-warning-dialog [role="dialog"]', { visible: true, timeout: config.navigationTimeoutMs });
     await page.click('[role="dialog"] .ocu-dialog-actions .ocu-button-primary');
     await page.waitForFunction(() => document.querySelector('[role="dialog"]') === null, { timeout: config.navigationTimeoutMs });
-    await page.waitForSelector('[data-ocu-mdx="grid"]', { visible: true, timeout: config.navigationTimeoutMs });
+    await answeredWith(page, '[data-ocu-mdx="grid"]');
     assert.equal(nodeDefined(2), '1', 'Proceed ran the statement: its braces defined the node');
   } finally {
     await context.close();
@@ -381,12 +428,12 @@ test('AC10, AC8: a statement that runs server-side code asks first, Cancel runs 
 
 // AC2, AC8 (QA). Mutation (Rule 19): make the drill button a `div` with a click handler -> the keyboard press opens nothing and this goes red; style a
 // listing cell with a pale token -> the structural walk goes red.
-test('AC2, AC8 (QA): a value cell opens its drill-through from the keyboard, and the grid with the listing passes the structural walk', async () => {
+test('AC2, AC8 (QA): a value cell opens its drill-through from the keyboard, and the grid with the listing passes the structural walk', ANSWERING_TEST, async () => {
   const { context, page } = await signedInAt(browser, config, PAGE_URL, VIEWPORTS.wide, REDUCED_MOTION);
   try {
     await writeStatement(page, CROSSJOIN);
     await pressRun(page);
-    await page.waitForSelector('[data-ocu-mdx="drill-cell"]', { visible: true, timeout: config.navigationTimeoutMs });
+    await answeredWith(page, '[data-ocu-mdx="drill-cell"]');
     const first = (await page.$$('[data-ocu-mdx="drill-cell"]'))[0];
     await first.focus();
     await page.keyboard.press('Enter');
@@ -408,12 +455,12 @@ test('AC2, AC8 (QA): a value cell opens its drill-through from the keyboard, and
 
 // AC2 (QA). Mutation (Rule 19): make `MdxAnswer` read a DRILLTHROUGH's rows from the first row past the cap -> the rows differ from the instance's and
 // this goes red; let the store keep a typed listing as a grid -> a grid is drawn and this goes red.
-test('AC2 (QA): a typed DRILLTHROUGH shows the instance\'s listing under its heading, with no grid, its row count and no dialog', async () => {
+test('AC2 (QA): a typed DRILLTHROUGH shows the instance\'s listing under its heading, with no grid, its row count and no dialog', ANSWERING_TEST, async () => {
   const { context, page } = await signedInAt(browser, config, PAGE_URL, VIEWPORTS.wide, REDUCED_MOTION);
   try {
     await writeStatement(page, TYPED);
     await pressRun(page);
-    await page.waitForSelector('[data-ocu-mdx="listing"] [data-ocu-sql="listing-cell"]', { visible: true, timeout: config.navigationTimeoutMs });
+    await answeredWith(page, '[data-ocu-mdx="listing"] [data-ocu-sql="listing-cell"]');
     const listed = await page.$$eval('[data-ocu-mdx="listing"] [data-ocu-sql="listing-cell"]', (nodes) => nodes.map((node) => node.textContent.trim()));
     const expected = vendorTyped(TYPED)
       .split('|')
@@ -432,12 +479,12 @@ test('AC2 (QA): a typed DRILLTHROUGH shows the instance\'s listing under its hea
 });
 
 // AC8 (QA). Mutation (Rule 19): make the instance answer an error with no text in `ErrorAnswer` -> the page draws no error block and this goes red.
-test("AC8 (QA): a statement the instance will not prepare shows the vendor's own text, asks nothing, and the page passes the structural walk", async () => {
+test("AC8 (QA): a statement the instance will not prepare shows the vendor's own text, asks nothing, and the page passes the structural walk", ANSWERING_TEST, async () => {
   const { context, page } = await signedInAt(browser, config, PAGE_URL, VIEWPORTS.wide, REDUCED_MOTION);
   try {
     await writeStatement(page, SYNTAX);
     await pressRun(page);
-    await page.waitForSelector('[data-ocu-mdx="error"]', { visible: true, timeout: config.navigationTimeoutMs });
+    await answeredWith(page, '[data-ocu-mdx="error"]');
     const text = await page.$eval('[data-ocu-mdx="error"]', (node) => node.textContent);
     assert.ok(text.includes('Unknown term at start of query: SELEKT'), `the page shows the vendor's text: ${text}`);
     await statusReads(page, STRINGS.analyticsMdxErrorLine);
@@ -452,7 +499,7 @@ test("AC8 (QA): a statement the instance will not prepare shows the vendor's own
 
 // AC10 (QA). Mutation (Rule 19): answer 0 from `MdxConstructs` when a tokenize fails -> no dialog opens, the vendor's error shows at once and this goes
 // red.
-test("AC10 (QA): a statement the detector cannot read asks first, Cancel shows nothing, and Proceed shows the vendor's error", async () => {
+test("AC10 (QA): a statement the detector cannot read asks first, Cancel shows nothing, and Proceed shows the vendor's error", ANSWERING_TEST, async () => {
   const { context, page } = await signedInAt(browser, config, PAGE_URL, VIEWPORTS.wide, REDUCED_MOTION);
   try {
     await writeStatement(page, UNREAD);
@@ -467,7 +514,7 @@ test("AC10 (QA): a statement the detector cannot read asks first, Cancel shows n
     await pressRun(page);
     await page.waitForSelector('app-warning-dialog [role="dialog"]', { visible: true, timeout: config.navigationTimeoutMs });
     await page.click('[role="dialog"] .ocu-dialog-actions .ocu-button-primary');
-    await page.waitForSelector('[data-ocu-mdx="error"]', { visible: true, timeout: config.navigationTimeoutMs });
+    await answeredWith(page, '[data-ocu-mdx="error"]');
     const text = await page.$eval('[data-ocu-mdx="error"]', (node) => node.textContent);
     assert.ok(text.includes('Unexpected end of statement'), `Proceed shows the vendor's error: ${text}`);
   } finally {
@@ -478,7 +525,7 @@ test("AC10 (QA): a statement the detector cannot read asks first, Cancel shows n
 
 // AC1 (QA). Mutation (Rule 19): make `onCube` in the page write nothing -> the statement stays empty and this goes red; read the cubes from another
 // namespace in the store -> the options are not the probe's.
-test("AC1 (QA): the cube picker offers the instance's cubes, a pick writes the starting statement only while it is empty, and that statement runs", async () => {
+test("AC1 (QA): the cube picker offers the instance's cubes, a pick writes the starting statement only while it is empty, and that statement runs", ANSWERING_TEST, async () => {
   const { context, page } = await signedInAt(browser, config, PAGE_URL, VIEWPORTS.wide, REDUCED_MOTION);
   try {
     await page.waitForSelector('select[data-ocu-mdx="cube"] option[value="OcuPilotProbeVisits"]', { timeout: config.navigationTimeoutMs });
@@ -492,7 +539,7 @@ test("AC1 (QA): the cube picker offers the instance's cubes, a pick writes the s
     await frames(page);
     assert.equal(await statementText(page), 'SELECT FROM [OcuPilotProbeVisits]', 'a second pick leaves a statement that is written');
     await pressRun(page);
-    await page.waitForSelector('[data-ocu-mdx="drill-cell"]', { visible: true, timeout: config.navigationTimeoutMs });
+    await answeredWith(page, '[data-ocu-mdx="drill-cell"]');
     const cells = await page.$$eval('[data-ocu-mdx="drill-cell"]', (nodes) => nodes.map((node) => node.textContent.trim()));
     assert.deepEqual(cells, [vendorScalar('SELECT FROM [OcuPilotProbeVisits]')], "the statement runs to the instance's one cell");
   } finally {

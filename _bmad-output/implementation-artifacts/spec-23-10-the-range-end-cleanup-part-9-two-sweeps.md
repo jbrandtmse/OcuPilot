@@ -2,7 +2,8 @@
 title: 'Story 23.10: The range-end cleanup, part 9: two sweeps'
 type: 'bugfix'
 created: '2026-11-12'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '736c294e17eb13450cdbcf5acd48697e9690af7c'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -18,6 +19,24 @@ deferred:
     location: >-
       src/OcuPilot/Port/AdminPort.cls AwaitTask (:3610), ASYNCTIMEOUT (:1080), HALVEDROWTYPES (:956)
     severity: low (unverified)
+  - summary: >-
+      A person who presses Send in the moment between a reply being drawn and its turn handing back the turn slot
+      meets a 409.
+    evidence: |-
+      Kernel/Agent/Job.cls Run appends the conversation entry and only then calls Finish, so the slot is held after the reply
+      is drawn (read in code); whether the panel's Send is enabled in that window was not driven (inference).
+    location: >-
+      src/OcuPilot/Kernel/Agent/Job.cls (Run, AppendConvoEntry then Finish)
+    severity: low (unverified)
+  - summary: >-
+      turn.browser-spec.mjs 'New conversation clears the transcript' waits for drawn reply text and then sends a second
+      turn with no Send-label or turn-slot wait, the shape DW-2524 fixed in context-chip.
+    evidence: |-
+      ui/browser/turn.browser-spec.mjs:350-392 (read in the verification-gap review); no failure of it appears in the
+      200-run list, so the exposure is an inference. agent-mdx and navigate may share the shape (not read).
+    location: >-
+      ui/browser/turn.browser-spec.mjs:357-369
+    severity: low
 ---
 
 <intent-contract>
@@ -144,19 +163,19 @@ deferred:
 
 ### Batch 1: CI flakes
 
-- [ ] **DW-2513.** `ui/browser/protocol-retry.mjs`: add `isNavigationTimeout(error)` and `relaunchOnce(open, relaunch)`. On a navigation timeout, `relaunchOnce` closes the browser, launches a new one through `relaunch`, and retries `open` once; a second timeout propagates.
+- [x] **DW-2513.** `ui/browser/protocol-retry.mjs`: add `isNavigationTimeout(error)` and `relaunchOnce(open, relaunch)`. On a navigation timeout, `relaunchOnce` closes the browser, launches a new one through `relaunch`, and retries `open` once; a second timeout propagates.
   - `data-table-columns.browser-spec.mjs`: hold `browser` so the relaunch can replace it; `openHarness` closes its context on any throw and opens through `relaunchOnce`.
   - Pin in `ui/tools/protocol-retry.test.mjs`, with a fake launcher whose browser 1 `goto` always times out and whose browser 2 resolves: `relaunchOnce` answers browser 2's page and closed browser 1. Red before (the helper does not exist).
   - A wedged Chrome cannot be imposed locally (Design Notes).
-- [ ] **DW-2522.** `analytics-mdx.browser-spec.mjs`: add `answered(page)`. It waits until `section.ocu-mdx-query` has `aria-busy="false"` and the status line is non-empty and no longer reads `STRINGS.explorerSqlBackgroundRunning`.
+- [x] **DW-2522.** `analytics-mdx.browser-spec.mjs`: add `answered(page)`. It waits until `section.ocu-mdx-query` has `aria-busy="false"` and the status line is non-empty and no longer reads `STRINGS.explorerSqlBackgroundRunning`.
   - The bound is one constant equal to `(MDXSECONDS + MDXSETTLESECONDS) * 1000` plus 15 s, its comment naming the two `AnalyticsPort` parameters. A timeout names the status line, the error text and the banner.
   - Use it at the six answer waits (:258, :285, :389, :416, :440, :495), then assert the grid, so an error answer fails by name. Raise those tests' own timeouts above the bound.
   - Condition and pin: request interception holds the first answering `GET .../analytics/mdx/background/<id>` for 35 s. It is red at :258 before the fix and green after. Record it as the mutation; it is not kept.
-- [ ] **DW-2524 (closes DW-2493).** Hoist `waitForReplies` into `ui/browser/panel-spec.mjs` as an add-only export: the reply count is reached and the Send label reads `STRINGS.actionSend`.
+- [x] **DW-2524 (closes DW-2493).** Hoist `waitForReplies` into `ui/browser/panel-spec.mjs` as an add-only export: the reply count is reached and the Send label reads `STRINGS.actionSend`.
   - `panel-collapse` and `transcript-follow` import it in place of their copies.
   - Context-chip test 7 waits on it after each turn. Before the second Send it polls `slotOwner(config)` until empty, never `requireFreeSlot`. The wait at :535 becomes a `namedWaitForFunction` whose diagnosis names the Send label, the lock banner, the draft and the reply count.
   - Pin, kept: turn 1 is scripted `TurnProvider.ScriptStream(tag, 0, <'first'>, 4)`, so 'first' is drawn while the turn still runs. It is red at :535 before the fix, every run (inference until observed; record it), and green after.
-- [ ] **DW-2517.** `src/OcuPilot/Test/JournalRecords.cls`: the second page of `TestTheToolInReverseOrderKeepsTheNewestRowsUnderTheContextCap` sends `maxRows` 10 (`tArgs.%Set("maxRows", 10, "number")` before :230). It then keeps records 20..11, and its extra read finds record 10 straight away. Its assertions are unchanged; one doc clause says why.
+- [x] **DW-2517.** `src/OcuPilot/Test/JournalRecords.cls`: the second page of `TestTheToolInReverseOrderKeepsTheNewestRowsUnderTheContextCap` sends `maxRows` 10 (`tArgs.%Set("maxRows", 10, "number")` before :230). It then keeps records 20..11, and its extra read finds record 10 straight away. Its assertions are unchanged; one doc clause says why.
   - Condition, at most three calls, on `ocupilot-ci`, in a temporary helper class that is removed afterwards: switch the journal file (`JournalProbe.SwitchFile()`), then journal sets and kills to a scratch global until a reverse non-matching `%SYS.Journal.Record:List` takes over 30 s.
   - Then run `JournalRecords` alone: red at +14 before the fix (`PORT.TIMEOUT`), green after. Mutation: `maxRows` back to 20.
   - If the condition cannot be built in three calls, record why. The fix then stands on the structural reading, since the second page no longer scans past this run's records.
@@ -245,6 +264,26 @@ deferred:
 ## Spec Change Log
 
 ## Review Triage Log
+
+### 2026-11-12 - Review pass
+
+- verdicts: 15 findings - high 0, medium 1, low 11, false 2, maybe-false 1
+- findings:
+  - `[low]` `[reject]` DW-2517 has no test red before the fix (the long-journal condition stayed under 30 s) - the spec's task allows this ("if the condition cannot be built in three calls, record why; the fix then stands on the structural reading"); recorded under Verification, nothing in the test can observe the scan time.
+  - `[medium]` `[patch]` Two Proceed waits in analytics-mdx (AC10 tests) and the same bound for the drill listing waits: the Proceed runs wait for an answer under the 30 s navigation timeout and pass only because AC1 warmed the cache first - the two Proceed waits now use `answeredWith`, and their tests `ANSWERING_TEST`; the two drill-listing waits follow a warm run in the same test and stay (analytics-mdx 11 of 11 afterwards).
+  - `[low]` `[reject]` `ANSWER_BOUND_MS` is not tied to `AnalyticsPort`'s parameters by a test - the spec asks for one constant with a comment naming the two parameters; a new cross-file roster test is added surface for a number the owner fixes by AD-65, and the fix is more than a direct correction.
+  - `[low]` `[reject]` `waitForSlotFree` reads a failed slot lookup as free - the same test already asserts the fixture's markers at `scriptStreamReply`, so a missing fixture fails before this line; the fix would add a branch to a shared helper `requireFreeSlot` also uses.
+  - `[low]` `[reject]` The `data-table-columns` relaunch wiring has no kept test - the spec states a wedged Chrome cannot be imposed locally and pins the helper with a fake launcher; the wiring was exercised once with an injected timeout (18 of 18).
+  - `[low]` `[defer]` `turn.browser-spec.mjs` sends a second turn after a drawn-text wait - a sibling outside the two the spec names, no observed failure; filed under `deferred:` (inference).
+  - `[low]` `[reject]` `openIn`'s `context.close()` has no deadline - the failing navigations in the CI log answered at about 32 s, so the protocol was live; a deadline adds a branch for an unshown case.
+  - `[maybe-false]` `[reject]` A browser `relaunchOnce` abandons may keep the Node process alive - not shown; if true it is low, and the spec file's `after` closes the replacement browser.
+  - `[low]` `[defer]` The turn slot stays held after the reply is drawn (a person's Send in that window meets 409) - the code order is read (`Run` then `Finish`), the panel's reaction is not; filed under `deferred:` (inference).
+  - `[low]` `[reject]` DW-2517's fix leaves the long scan path untested - the same as the first row; the product edge is already under `deferred:`.
+  - `[low]` `[reject]` Wiring of DW-2513 covered by helper tests only - the same as the fifth row.
+  - `[low]` `[reject]` DW-2522 has no kept test that reproduces the slow answer - the spec says the held-answer run "is not kept" and records it as the mutation; `answeredWith` also excluding the idle line is recorded under Decided in-stage.
+  - `[low]` `[reject]` Each fix covers its failing site, not the pattern - the spec scopes new-site checks to the two sweeps and names the siblings to move (done); the other specs are in the deferred row above.
+  - `[false]` `[reject]` The CI-green evidence is local only - CI on the batch head is the lead's step after the commit, not a property of the diff.
+  - `[false]` `[reject]` The spec says `ScriptStream(..., 4)` and the diff uses 3 - the fourth parameter is seconds, the Verification line and the diff agree; a fix would edit the spec's Code Map text, which is not a defect of the code.
 
 ## Design Notes
 
@@ -358,7 +397,39 @@ deferred:
 
 **Mutation lines** (filled per batch with the observed run): one per task's pin, as each task names.
 
+Batch 1 (observed on `ocupilot-ci`):
+
+- DW-2513 `mutation:` `relaunchOnce` without its `browser.close()` -> the wedged-browser case in `protocol-retry.test.mjs` red (15 pass, 1 fail); retrying any error (not only a navigation timeout) -> the other-error case red. Red before: the helper did not exist, so the test file could not import it. Wiring in `data-table-columns`: a one-off thrown `Navigation timeout of 30000 ms exceeded` in the first `openIn` (not kept) -> the shared browser was replaced and all 18 tests passed; a truly wedged Chrome cannot be imposed locally.
+- DW-2522 `mutation:` request interception holding the first `GET .../analytics/mdx/background/<id>` for 35 s (not kept), on the file as at head -> AC1 red at the grid wait (`Waiting for selector [data-ocu-mdx="grid"] failed ... 30000ms exceeded`, 34.7 s); the same hold on the fixed file -> AC1 green (39.9 s). The fixed file without the hold: 11 of 11, 39.4 s. After the review patch (the two Proceed waits also use `answeredWith`): 11 of 11, 40.0 s.
+- DW-2524 `mutation:` the old waits kept (reply text drawn, then the unconditional second Send and the plain last-reply wait) with turn 1 scripted `ScriptStream(tag, 0, <'first'>, 3)` -> "Fresh at Send" red at the last-reply wait (`Waiting failed: 30000ms exceeded`, 42.9 s); with the fix, 9 of 9 in `context-chip` (this test 15.7 s). `panel-collapse` 5 of 5 and `transcript-follow` 4 of 4 on the hoisted `waitForReplies`.
+- DW-2517 `mutation:` `maxRows` back to 20 on the second page, with 10.4 million scratch records written to the current journal file before the class ran (three calls: a switch and 400,000 sets, 10,000,000 sets, the run) -> `TestTheToolInReverseOrderKeepsTheNewestRowsUnderTheContextCap` took 23.4 s (below the 30 s bound, so it stayed green); with `maxRows` 10 under the same file it took 0.33 s. The 30 s bound itself was not reached in the three calls; the fix stands on the structural reading plus this measured 70-fold drop. Scratch global killed afterwards.
+
+Decided in-stage (Batch 1):
+
+- `relaunchOnce(open, relaunch, browser, closeDeadline)` takes the browser to close as its third argument, since the helper cannot learn it from `open`; the close is bounded by `CLOSEDEADLINE` (10 s) so a wedged browser that will not close is abandoned.
+- `answeredWith` also requires the status line to differ from the idle line `STRINGS.analyticsMdxEmpty`, because the idle page is not busy and has a non-empty status line; without that the wait passed before the run began.
+- `ScriptStream`'s fourth argument is `pMidHangSeconds` (seconds spread across the slices), not a slice size; test 7 uses 3. `turnprobe-spec.mjs` gained `scriptStreamReply` and `waitForSlotFree`, the latter shared with `requireFreeSlot`.
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+Summary: Batch 1 (CI flakes DW-2513, DW-2517, DW-2522, DW-2524) is implemented as test-harness changes; no product code changed.
+
+Files changed:
+
+- `ui/browser/protocol-retry.mjs`: `isNavigationTimeout`, `relaunchOnce`, `CLOSEDEADLINE`.
+- `ui/tools/protocol-retry.test.mjs`: four fake-launcher cases for `relaunchOnce`.
+- `ui/browser/data-table-columns.browser-spec.mjs`: the shared browser is relaunched once on a navigation timeout; a failed open closes its context.
+- `ui/browser/analytics-mdx.browser-spec.mjs`: `answeredWith` bounded by the product's MDX bound, at the six answer waits and the two Proceed waits.
+- `ui/browser/panel-spec.mjs`, `panel-collapse.browser-spec.mjs`, `transcript-follow.browser-spec.mjs`: `waitForReplies` hoisted and shared.
+- `ui/browser/turnprobe-spec.mjs`: `scriptStreamReply` and `waitForSlotFree` (shared with `requireFreeSlot`).
+- `ui/browser/context-chip.browser-spec.mjs`: "Fresh at Send" streams turn 1 and waits for an idle turn and a free slot before the second Send.
+- `src/OcuPilot/Test/JournalRecords.cls`: the second reverse page sends `maxRows` 10.
+
+Review: 15 findings; 1 patch (medium; the two Proceed waits in analytics-mdx), 2 deferred (low, in `deferred:`), 12 rejected with reasons in the triage log. Follow-up review recommended: false (one medium patched, no high).
+
+Verification: `protocol-retry.test.mjs` 16 of 16; `client-lint` and `browser-reset` clean; `check-objectscript` 0 problems; on `ocupilot-ci`: `JournalRecords` 10 of 10, `data-table-columns` 18 of 18, `analytics-mdx` 11 of 11 (re-run after the patch), `context-chip` 9 of 9, `panel-collapse` 5 of 5, `transcript-follow` 4 of 4; `npm run test:tools` 2194 of 2194 (implement stage). The mutation lines are under Verification.
+
+Residual risk: DW-2513 and DW-2517 are shown structurally, not under their real conditions (a wedged Chrome; a journal that makes the scan exceed 30 s).

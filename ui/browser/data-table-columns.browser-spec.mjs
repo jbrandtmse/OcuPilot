@@ -21,6 +21,7 @@ import puppeteer from 'puppeteer';
 import { browserConfig, launchOptions } from '../browser.config.mjs';
 import { loadStrings } from '../tools/strings.mjs';
 import { clickRowCentre } from './list-spec.mjs';
+import { relaunchOnce } from './protocol-retry.mjs';
 import { resetRememberedState } from './preferences-reset.mjs';
 
 const config = browserConfig();
@@ -109,16 +110,36 @@ const CLASSIC_SCROLLBARS = '::-webkit-scrollbar { width: 15px; height: 15px; }';
 
 async function openHarness(viewport = WIDE, { classicScrollbars = false, owner = browser } = {}) {
   await resetRememberedState();
-  const context = await owner.createBrowserContext();
-  const page = await context.newPage();
-  await page.setViewport(viewport);
-  await page.goto(`${origin}${PAGE}`, { waitUntil: 'domcontentloaded' });
-  if (classicScrollbars) await page.addStyleTag({ content: CLASSIC_SCROLLBARS });
-  await page.waitForSelector('[role="grid"] [role="row"][aria-rowindex="2"]', { timeout: config.navigationTimeoutMs });
-  // The label widths are measured after the first render and again once the fonts settle.
-  await page.evaluate(() => document.fonts.ready);
-  await settle(page);
-  return { context, page };
+  // The shared browser is replaced once when its navigation stack is wedged; a test's own browser is not.
+  const open = (holder) => openIn(holder, viewport, classicScrollbars);
+  if (owner !== browser) return open(owner);
+  return relaunchOnce(
+    open,
+    async () => {
+      browser = await puppeteer.launch(launchOptions(config));
+      return browser;
+    },
+    owner
+  );
+}
+
+/** One attempt: a context and page on `holder`, closed again when any step throws. */
+async function openIn(holder, viewport, classicScrollbars) {
+  const context = await holder.createBrowserContext();
+  try {
+    const page = await context.newPage();
+    await page.setViewport(viewport);
+    await page.goto(`${origin}${PAGE}`, { waitUntil: 'domcontentloaded' });
+    if (classicScrollbars) await page.addStyleTag({ content: CLASSIC_SCROLLBARS });
+    await page.waitForSelector('[role="grid"] [role="row"][aria-rowindex="2"]', { timeout: config.navigationTimeoutMs });
+    // The label widths are measured after the first render and again once the fonts settle.
+    await page.evaluate(() => document.fonts.ready);
+    await settle(page);
+    return { context, page };
+  } catch (error) {
+    await context.close().catch(() => {});
+    throw error;
+  }
 }
 
 function settle(page, ms = 150) {

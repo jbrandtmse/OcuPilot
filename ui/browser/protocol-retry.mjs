@@ -82,6 +82,38 @@ export async function retryOnce(create, reset = () => {}) {
   }
 }
 
+/** How long a wedged browser is given to close before it is abandoned. */
+export const CLOSEDEADLINE = 10_000;
+
+/** The message a page navigation that got no answer within `navigationTimeoutMs` carries. */
+export const NAVIGATION_TIMEOUT = /Navigation timeout of \d+ ms exceeded/;
+
+/** Whether `error` is a page navigation that timed out. */
+export function isNavigationTimeout(error) {
+  return NAVIGATION_TIMEOUT.test(String(error?.message ?? error ?? ''));
+}
+
+/**
+ * Run `open(browser)`; when it fails with a navigation timeout, close `browser`, launch a new one
+ * through `relaunch()` and run `open` once more on it. A shared browser whose navigation stack is
+ * wedged times out every `goto` until it is replaced. Any other error, and a second navigation
+ * timeout, propagate unchanged; a browser that cannot be closed is abandoned, not waited for.
+ * `relaunch` answers the new browser, and the caller keeps holding it.
+ */
+export async function relaunchOnce(open, relaunch, browser, closeDeadline = CLOSEDEADLINE) {
+  try {
+    return await open(browser);
+  } catch (error) {
+    if (!isNavigationTimeout(error)) throw error;
+    try {
+      await withDeadline(browser.close(), closeDeadline, 'browser close');
+    } catch {
+      // A wedged browser may not close; the new one is what the retry uses.
+    }
+    return open(await relaunch());
+  }
+}
+
 /** Wrap a context's page creation. Idempotent. */
 export function wrapContext(context) {
   if (context === null || typeof context !== 'object' || context[WRAPPED]) return context;
