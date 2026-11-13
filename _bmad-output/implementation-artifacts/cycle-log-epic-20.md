@@ -1339,3 +1339,4 @@
 2026-11-13T03:07:35Z	Story 20.36	stage_spawned	stage=implement spawn_at=2026-11-13T03:07:35Z model=sonnet agent_name=20-36-implement-2 cycle_iteration=2 rework=1 head=0dfcb8f01
 2026-11-13T03:15:25Z	Story 20.36	dev_complete	spawn_at=2026-11-13T03:07:35Z model=sonnet agent_name=20-36-implement-2 cycle_iteration=2 rework=1 build_sha=a9cdda55 baseline_revision=3db990a9 followup_review_recommended=true deferred=0 loc_removed=91 note=AD-24_starting_set_restored;StepTools,Named_removed;6_classes_green
 2026-11-13T03:15:25Z	Story 20.36	stage_spawned	stage=code-review spawn_at=2026-11-13T03:15:25Z model=opus agent_name=20-36-code-review-2 cycle_iteration=2 baseline=3db990a9 scope=rework_1
+2026-11-13T03:15:38Z	Story 20.36	report_error	fault=lead field=re-review_baseline reported=3db990a9 actual=5ffbf0f5 impact=none(corrected_before_spawn;build-auto_left_baseline_revision_unchanged)
