@@ -324,7 +324,9 @@ Method TestAStartThePortCannotFinishIsPending()
     Set tText = $ClassMethod(..#PRODUCTIONS, "Act", "update", ..#PRODUCTION)
     Do $$$AssertEquals(tText, "200 ", "the Productions screen's Update answers 200: " _ tText)
     Do $$$AssertStatusOK(..WaitJobs(1), "and the item's job runs")
-    Do $$$AssertEquals(..Facts(..#NEWNAME), "enabled=1 stopped=0 own=1 jobs=1 needs=0", "beside the item the other change added")
+    For tTry = 1:1:20 { Quit:..Facts(..#NEWNAME)="enabled=1 stopped=0 own=1 jobs=1 needs=0"  Hang 0.5 }
+    Set tFacts = ..Facts(..#NEWNAME)
+    Do $$$AssertEquals(tFacts, "enabled=1 stopped=0 own=1 jobs=1 needs=0", "beside the item the other change added: " _ tFacts)
     Do $ClassMethod(..#SEAM, "RefuseUpdateWith", "<Ens>ErrProductionNotQuiescent", 2)
     Set tText = ..Port("RESTARTITEM")
     Do $$$AssertEquals(tText, "409 INTEROP.ITEM.STARTPENDING", "a restart whose second update is refused is pending: " _ tText)
@@ -332,6 +334,27 @@ Method TestAStartThePortCannotFinishIsPending()
     Do $ClassMethod(..#SEAM, "Disarm")
     Set tFacts = ..Facts()
     Do $$$AssertTrue(tFacts [ "stopped=0 own=0 jobs=0", "its first half ended the job and the flag is clear: " _ tFacts)
+}
+
+/// <p>The shared start helper (<method>OcuPilot.Test.InteropItemControl.StartProduction</method>) does not answer OK before the
+/// production's own startup update has run: with this process holding the vendor's runtime lock in <code>USER</code>, which the schedule
+/// handler's update waits on, it answers a failing status naming the missing update.</p>
+/// <p>Mutation (Rule 19): delete the <method>OcuPilot.Test.InteropJobEnd.StartUpdated</method> call in <method>StartProduction</method> --
+/// this test goes red, the start answering OK.</p>
+Method TestTheStartHelperWaitsForTheProductionsOwnUpdate()
+{
+    Set tOrigNS = $NAMESPACE
+    Set $NAMESPACE = ..#NAMESPACE
+    Lock +^Ens.Runtime:5
+    Set tLocked = $Test
+    Set $NAMESPACE = tOrigNS
+    Set tSC = $ClassMethod(..#CONTROL, "StartProduction")
+    Set $NAMESPACE = ..#NAMESPACE
+    If tLocked Lock -^Ens.Runtime
+    Set $NAMESPACE = tOrigNS
+    Do $$$AssertTrue(tLocked, "this process held the runtime lock across the start")
+    Do $$$AssertStatusNotOK(tSC, "the helper does not answer OK while the startup update cannot run")
+    Do $$$AssertTrue($System.Status.GetErrorText(tSC) [ "logged no update", "its status names the missing update: " _ $System.Status.GetErrorText(tSC))
 }
 
 /// <p>AC2: <method>OcuPilot.Port.InteropPort.ItemRunRefusal</method> judges in the matrix's order -- the production, the name, the item's

@@ -217,6 +217,20 @@ Rejected:
 
 - [x] [CI] instance shard 8/8, run 43445087881 (red twice on one head; reproduced on a fresh `ocupilot-b-ci` in shard 8/8's class order): `OcuPilot.Test.InteropItemRun.TestAStartThePortCannotFinishIsPending` read the Productions screen's Update as 409 `INTEROP.PRODUCTION.UPTODATE` right after `Facts` read `needs=1` -- `src/OcuPilot/Test/InteropItemControl.cls` `StartProduction` -- cause (Ens event log in USER): `Ens.ScheduleHandler` runs its own `UpdateProduction` just after the production starts; on a fresh or slow instance it lands after the test's `STARTITEM` cleared the flag and applies the pending update itself. Make the shared start helper wait, bounded (about 10 s), for that startup update to finish before it returns -- e.g. until `Ens_Util.Log` in the probe namespace holds an `Ens.ScheduleHandler` `UpdateProduction` row reading updated or up-to-date logged since this start -- and fail with a clear status when it never does; the callers (`InteropItemRun`, `InteropItemCopy`, `InteropItemRunGate`) gain the precondition with no change of their own. Pin it: a mutation that skips the wait must be shown to matter, or record why no deterministic mutation exists (the race needs a fresh instance); record the `mutation:` line or that reason under `## Verification`. Rule 19: test-only change; no product code.
 
+Code review 2026-11-13, rework 1 (four layers on `bb1d7a3e..915706f7` plus the tree): the `[CI]` item above is fixed.
+
+- [x] [Review][Patch] (medium) Deleting the new `StartUpdated` call in `StartProduction` reddened nothing; `InteropJobStop`'s lock on `^Ens.Runtime` blocks the scheduler's update on any instance [src/OcuPilot/Test/InteropItemRun.cls `TestTheStartHelperWaitsForTheProductionsOwnUpdate`] — the new test holds that lock across the helper and asserts a failing status naming the missing update
+- [x] [Review][Patch] (medium) Rule 19 hermeticity: `TestAStartThePortCannotFinishIsPending` read the added item's facts right after waiting for the plain operation's job alone; red in this review's own run 12 on `ocupilot-b-ci` [src/OcuPilot/Test/InteropItemRun.cls] — it waits, ten seconds at most, for the added item and names what it read
+
+Rejected:
+
+- low: the wait is bounded at 20 s, not about 10 s — decided in-stage to reuse the sibling's bound; only the failure path is longer
+- low: `StartUpdated` answers 1 at once with no production current, none logged as started, or Troubled — unreachable after the port's START and the job wait (the vendor logs `started.` on every start, `Ens/Director.cls` :120); Troubled reddens the callers' next assertion
+- low: the browser leg that calls the helper was not re-run — CI's browser legs are its fresh tier; the success path only waits longer
+- low: `StartUpdated`'s doc names one caller — an example, not a roster; `InteropTestFixture` was already unnamed
+- false: spec `done` beside tracker `review` — the implement stage's contract; the tracker is the runner's
+- the earlier pass's finding counts, its residual-check list and the throwaway's scratch file — fixes that edit the spec under review
+
 ## Spec Change Log
 
 - 2026-11-13, rework (runner, orchestrator ruling on DW-2535): a CI story red in `InteropItemRun`, a hermeticity gap in the shared probe start helper.
@@ -415,7 +429,8 @@ Run on `ocupilot-b-ci` (each reverted, tree byte-identical; the source reloaded 
 - mutation (AC2, QA): `ItemRunRefusal` drops `AMBIGUOUS` -> `InteropItemRun` `TestTheRefusalsAreJudgedInTheMatrixOrder` alone (the HTTP leg stays green because the port counts the name's items itself (inference); the pure function's order is what the test pins)
 - mutation (AD-59, review): the draft's cap written as `If tTimeout > 15 Set tTimeout = 15` with the update after it on the line -> `InteropItemRun` `TestEachToolsDraftRendersItsScript`
 - mutation (AC2, review): `OwnsJobs` asks for a job above 0 -> `InteropItemRun` `TestTheRefusalsAreJudgedInTheMatrixOrder` (run with the one above, run 786, 2 of 8 red, each on its own test)
-- mutation (CI item, `InteropItemControl.StartProduction` waits on `InteropJobEnd.StartUpdated`): that method's event-log query names `Ens.ScheduleHandlerX` -> `InteropItemRunGate` red in `OnBeforeAllTests` ("its schedule handler logged no update after it in about 20 seconds"), so every caller of the helper meets the wait. No deterministic mutation reproduces the race itself, since it needs a fresh instance after a long run (inference: skipping the wait leaves the three classes green on a warm one).
+- mutation (CI item, `InteropItemControl.StartProduction` waits on `InteropJobEnd.StartUpdated`): that method's event-log query names `Ens.ScheduleHandlerX` -> `InteropItemRunGate` red in `OnBeforeAllTests` ("its schedule handler logged no update after it in about 20 seconds"), so every caller of the helper meets the wait. No deterministic mutation reproduces the race itself, since it needs a fresh instance after a long run: with the wait deleted, `TestAStartThePortCannotFinishIsPending` stayed green on a warm `ocupilot-b-ci` (run 14).
+- mutation (CI item, review): delete the `StartUpdated` call in `InteropItemControl.StartProduction` -> `InteropItemRun` `TestTheStartHelperWaitsForTheProductionsOwnUpdate` alone (run 14, 1 of 9 red; reverted byte-identical, the class green 9/9 in run 13)
 
 ## Auto Run Result
 
