@@ -244,6 +244,24 @@ ClassMethod Jobs() As %String
     Quit tText
 }
 
+/// <p>Start the probe production through the port, as the Productions screen's Start does, and wait, fifteen seconds at most,
+/// until the plain operation holds a job (Story 20.25's browser spec, which stops and starts that item). A failing status when the port
+/// refuses or the job never appears.</p>
+ClassMethod StartProduction() As %Status
+{
+    Kill tQuery
+    Set tQuery("namespace") = ..#NAMESPACE
+    Set tQuery("id") = ..#PRODUCTION
+    Set tSC = $ClassMethod(..#PORT, "Invoke", "Productions", "START", .tQuery, "", .tResult, .tHttp, .tFault)
+    If $$$ISERR(tSC) Quit tSC
+    For tTry = 1:1:30 {
+        If $ListFind($ListFromString(..Jobs()), ..#OPNAME) Quit
+        Hang 0.5
+    }
+    If '$ListFind($ListFromString(..Jobs()), ..#OPNAME) Quit $$$ERROR($$$GeneralError, "the probe production's operation holds no job after the start")
+    Quit $$$OK
+}
+
 /// <p>The vendor's <code>ModifyConfiguration</code> audit rows since <var>pSince</var> that name the probe
 /// production, each as <code>Description: EventData</code>, joined by <code>;</code>.</p>
 ClassMethod Audited(pSince As %String) As %String
