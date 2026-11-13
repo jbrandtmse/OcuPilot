@@ -11988,6 +11988,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: irislib %UnitTest/Manager.cls:1296 calls OnAfterAllTests when OnBeforeAllTests errs; Story 18.47 code review probe on ocupilot-ci: with no snapshot, armed, the call deleted 2 seeded policy rows; 18.47 guarded its 7 classes
 - 2026-10-14T12:29:05Z status=routed owner=burndown by=cr note=guard each by its OnBeforeAllTests arming condition as ProviderSslCallTime does; not in Restore: AllowedDirectorySave clears with it
 - 2026-10-14T12:40:16Z status=routed owner=23-10-the-range-end-cleanup-part-9-two-sweeps by=lead note=orchestrator 2026-10-14: Story 23.10, two sweeps
+- 2026-11-13T15:51:28Z status=resolved-by:23-10-the-range-end-cleanup-part-9-two-sweeps by=adjudication note=batch_3:52_teardowns_guarded(PreparedPolicyTaken_flag_on_every_policy-restoring_teardown_incl_5_previously_arming-only,arming_line_on_EgressSettingsWire/AuditEvent/AuditMarker);new_Test.TeardownGuard_pins_representative,flag-after-snapshot,repeat-safe_restore,new-site_catch_over_CompiledMethod;code_a75bc739+QA/review_commit;lead_20-shard_sweep_before_push
 
 ### DW-2427: The encryption key-file field refusals #5022, #1219 and #1204 (AdminPort PROPERTYFAULTS) are still logged at severity 2, so a mistyped key-file password raises the instance alert state
 - source: spec-18-47-epic-18-burn-down-part-1.md | severity: med | fix-risk: low | footprint: in-epic

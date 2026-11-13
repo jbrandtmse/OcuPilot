@@ -325,6 +325,26 @@ Rejected:
 - `low`: `Api/Account` and `Api/Preferences` have private methods named `RenderBodyRefusal` with other arguments (auditor, Rule 31 check). Nothing is copied; only the name is shared.
 - `false`: `OversizedMember` copies a size or shape helper (Rule 31 check). No walker exists in `Kernel/Utils.cls` or `Api/Error.cls`.
 
+#### Batch 3
+
+Code review, batch 3 (2026-11-13; four layers, full-opus). 0 decision-needed, 3 patch, 0 defer, 9 rejected.
+
+- [x] [Review][Patch] Five policy-restoring teardowns outside the 51 (`EcpDataServerWrite`, `MftConnectionWrite`, `RestServiceGate`, `RoutineAppGrant`, `WebAppRolesRead`) opened with the arming line only, so an armed setup whose snapshot failed still ran `Restore` over an empty snapshot and deleted every policy row; the catch accepted an arming line on a restoring teardown. The five now take the flag, and the catch requires the flag whenever the teardown calls the policy restore (an arming line still passes for egress and installer teardowns). Medium; fix-risk low (the same three-line edit as the 47); in-story (DW-2426's refused-setup row). [src/OcuPilot/Test/TeardownGuard.cls:86, the five classes]
+- [x] [Review][Patch] `FlagFollowsSnapshot` read only the last flag assignment, so an extra early `Set ..PreparedPolicyTaken = 1` before the snapshot passed. It now requires exactly one assignment. Low; fix-risk low. [src/OcuPilot/Test/TeardownGuard.cls:126]
+- [x] [Review][Patch] The class header promised every teardown that restores the policy; the catch sees only direct calls. The header now says "calls ... directly". Low; fix-risk low. [src/OcuPilot/Test/TeardownGuard.cls:1]
+
+Rejected:
+
+- `low`: a teardown opening with a `//` or `#;` comment is named unguarded (blind, edge). It fails safe by naming the class; this project's method comments use `;`, and the fix adds a branch.
+- `low`: a setup whose `$$$ISERR` check after `Snapshot` is removed would set the flag over a partial snapshot (edge). No setup is written that way; pinning it adds a second structural check.
+- `low`: the QA test runs `AuthOptionsWrite`'s teardown with the flag set on an unarmed instance, so a step added there later would run anywhere (edge). It does a `^||` kill and restores the seeded rows; the Code Map counts probe-named cleanup safe unarmed.
+- `low`: `EgressSettingsWire`, `AuditEvent` and `AuditMarker` still undo when armed and their setup failed early (edge). The task prescribes the arming line for these three; `Install` repairs and `DeleteGuarded` runs on a throwaway only.
+- `low`: the Auto Run Result says `TeardownGuard` has 3 tests, and the batch 3 triage heading's low count is 4 for 6 rows (blind). The fix edits the spec's result and log sections.
+- `low`: `docs/DEVELOPMENT.md` does not state the teardown guard rule (blind). The red message names each class and the test header states the rule; a doc paragraph is new surface.
+- `low`: `PreparedPolicyTaken` also names a per-test flag in seven classes (blind). Siblings chose that name; the checks read only `OnAfterAllTests` and `OnBeforeAllTests`, where the per-test flags never appear.
+- `low`: the batch 3 loop ran 10 of the 51 classes (auditor). The lead's sweep runs all of them before the commit; each edit is three lines and the load compiled them.
+- `false`: the catch misses a teardown that reaches the restore through a helper (edge, auditor, blind). No `OnAfterAllTests` does today (every helper that makes the three calls was traced to a test method or per-test hook); the header now states the direct-call scope.
+
 ## Spec Change Log
 
 ## Review Triage Log
@@ -528,7 +548,9 @@ Batch 3 (observed on `ocupilot-ci`):
   - Drop `EgressSettingsWire`'s arming line (`If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 Quit $$$OK`) -> `TestEveryTeardownThatTouchesSharedStateOpensWithAGuard` alone red (run 27).
   - Drop `SqlPrivilegeGate`'s `Set ..PreparedPolicyTaken = 1` -> `TestEveryFlagGuardHasItsFlagSetRightAfterTheSnapshot` alone red (run 26).
   - Reverted; 3 of 3 (run 28).
+- (QA) `src/OcuPilot/Test/TeardownGuard.cls`: `TestATeardownAfterItsSetupRestoresTheSnapshotAndRepeats` (snapshot taken, policy changed, the teardown restores it and a second call leaves it). `mutation:` `AuthOptionsWrite`'s guard line replaced by `Quit $$$OK` (a guard that always quits) -> that test red alone beside the catch (run 30), which the representative would not catch; reverted byte-identical (checksum equal), `TeardownGuard` 4 of 4 (runs 29, 31). The Egress, AuditEvent and AuditMarker arming lines stay pinned by line shape only: running those teardowns unarmed on `ocupilot-ci`, where the variables are set, would touch the instance.
 - Run green after the change, one class at a time: AuthOptionsWrite 5, EgressSettingsWire 6, SuperserverProhibited 6, AuditEvent 9, AuditMarker 8, ClassicPageGate 9, NamespaceWriteGate 4, TaskTransferLive 7, RoutineAppGate 6, RemoteDatabaseListing 10. `check-objectscript` 0 problems.
+- (Review) `TeardownGuard` `mutation:` `WebAppRolesRead`'s flag guard put back to its arming line -> `TestEveryTeardownThatTouchesSharedStateOpensWithAGuard` red naming `WebAppRolesRead` alone; `Set ..PreparedPolicyTaken = 1` added before `RoutineAppGrant`'s snapshot -> `TestEveryFlagGuardHasItsFlagSetRightAfterTheSnapshot` red naming `RoutineAppGrant` alone (run 38). Reverted byte-identical (checksums equal); `TeardownGuard` 4 of 4 (run 39); EcpDataServerWrite 11, MftConnectionWrite 9, RestServiceGate 3, RoutineAppGrant 6, WebAppRolesRead 2 (runs 33-37); `check-objectscript` 0 problems; `npm run test:tools` 2211 of 2211.
 
 Decided in-stage (Batch 1):
 
@@ -553,6 +575,6 @@ Files changed: 47 classes under `src/OcuPilot/Test/` (flag guard), 3 more there 
 
 Review: patches applied 3 (1 medium, 2 low), deferred 0, rejected 4 (reasons in the triage log). Follow-up review recommended: false (no high patched).
 
-Verification: `TeardownGuard` 3 of 3 (run 28); on `ocupilot-ci`, one class at a time, green: AuthOptionsWrite 5, EgressSettingsWire 6, SuperserverProhibited 6, AuditEvent 9, AuditMarker 8, ClassicPageGate 9, NamespaceWriteGate 4, TaskTransferLive 7, RoutineAppGate 6, RemoteDatabaseListing 10. Mutations under Verification. `check-objectscript` 0 problems; `npm run test:tools` 2211 of 2211. The other edited classes are the lead's sweep.
+Verification: `TeardownGuard` 3 of 3 (run 28), 4 of 4 after QA and code review (runs 31, 39); on `ocupilot-ci`, one class at a time, green: AuthOptionsWrite 5, EgressSettingsWire 6, SuperserverProhibited 6, AuditEvent 9, AuditMarker 8, ClassicPageGate 9, NamespaceWriteGate 4, TaskTransferLive 7, RoutineAppGate 6, RemoteDatabaseListing 10. Mutations under Verification. `check-objectscript` 0 problems; `npm run test:tools` 2211 of 2211. The other edited classes are the lead's sweep.
 
 Residual: a guard narrowed to fewer arming variables is not caught (line shape only).
