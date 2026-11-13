@@ -12539,3 +12539,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: 23.9 staging CI (run 43316537748) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: run 43316537748 (8947b8d2, integrate-forward staging head) attempt 1, browser shard 4/5: 'Waiting failed: 30000ms exceeded', 8 of 9 green; neither 23.9's batches nor 20.34 touch the context chip
 - 2026-11-12T22:40:59Z status=routed owner=23-10-the-range-end-cleanup-part-9-two-sweeps by=lead note=CI flake; first priority in 23.10 (Rule 27); rerun --failed
+
+### DW-2525: Rule 31: 16 delete tools keep Write.RemovalRows's loop body over FingerprintSubject() (11) or ReadAnswers() (5, four with the unassigned skip); the helper takes no name list
+- source: spec-23-9-the-range-end-cleanup-part-8.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: grep '"removed", 1' in src/OcuPilot/Screen/Tool: TaskDelete, UserDelete, SslDelete ... loop FingerprintSubject(); MappingDelete, SuperserverDelete ... ReadAnswers(); same Display/after/removed/push as Write.cls RemovalRows
+- 2026-11-13T00:03:53Z status=routed owner=23-10-the-range-end-cleanup-part-9-two-sweeps by=cr note=give RemovalRows a names argument (default REMOVALROWS) and move the 16 onto it; Screen/** is Epic 20's, check contention

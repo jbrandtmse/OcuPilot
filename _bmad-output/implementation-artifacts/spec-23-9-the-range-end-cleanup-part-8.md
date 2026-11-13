@@ -246,6 +246,21 @@ Code review (bmad-code-review), batch 5 (2026-11-12). Rule 3 exempt: server-side
 - [x] [Review][Patch] (med) No test observed the rows of `InteropItemRemove`, `LicenseServerDelete`, `NamespaceDelete` or `RemoteDatabaseDelete` (the Integration AC) - one method in each tool's descriptor test class [src/OcuPilot/Test/InteropItemDescriptor.cls, LicenseDescriptor.cls, NamespaceDescriptor.cls, RemoteDatabaseDescriptor.cls]
 - [x] [Review][Patch] (low) `Mint.Display`'s boolean rendering through a removal row was unpinned - the InteropItemRemove method asserts `true` and `false`
 
+Code review stage (bmad-code-review), batch 5 (2026-11-12). Rule 3: the cards are user-facing, the lift is behavior-preserving inside `StateDiff`, Mint is unchanged and none of the 16 declares `EMPTYKEYS`, so a `StateDiff` reader observes the card's rows; `InteropLookupControl.TestTheAgentsRemoveConfirmsOverHttp` drives one delete over real HTTP, and the browser suite is CI's. Met.
+
+- [x] [Review][Patch] (low) `RemovalRows`'s caller contract said every caller wraps it in its own `Try`; `ExplorerDocDbDelete` and `RestServiceDelete` call it bare [src/OcuPilot/Screen/Tool/Write.cls:RemovalRows] - the contract now says it raises to its caller
+- [x] [Review][Patch] (low) The doc said `pSkipUnassigned` drops every unassigned field; a read that is not an object still gets every row (no caller reaches it) [src/OcuPilot/Screen/Tool/Write.cls:RemovalRows] - doc states the case; doc-only, Load 0 errors on `ocupilot-ci`, `RestServiceDescriptor` 8/8 (run 432), `check-objectscript.py` 0 problems
+- [x] [Review][Defer] (med) The lifted loop body survives in 16 sibling deletes over `FingerprintSubject()` (11) or `ReadAnswers()` (5, four with the skip), e.g. `TaskDelete.cls` and `MappingDelete.cls` beside `Write.cls` `RemovalRows`, which takes no name list [src/OcuPilot/Screen/Tool/*Delete.cls] - deferred: pre-existing, outside this spec's census of the 16 `REMOVALROWS` readers; DW-2525, routed to 23-10
+
+Rejected:
+
+- A non-dynamic object `pFresh` raises at `%GetTypeOf`: the old loop's `%Get` raised alike, and the mint passes the port's dynamic object.
+- Two new tests index a row before checking the count: a short list still errors the method red; the guard adds branches.
+- `Parameter REMOVALROWS = ""` on the base lost the compile error a delete got for an undeclared parameter: the spec prescribes the default, and each delete's own reader pins its rows; a roster guard adds a test for a mistake no delete makes today.
+- New readers call `StateDiff`, not the mint: Mint is untouched and transforms none of the 16 cards' rows (see Rule 3 above).
+- Spec status, baseline, oversized additions, the Auto Run Result's file list and totals, and the review log's audit sentence: edits to the spec under review, outside a review's sanctioned sections.
+- "the 4 new-test classes" names three counts: four classes gained a test, and the same line gives `RemoteDatabaseDescriptor`'s 5 to 6.
+
 ## Spec Change Log
 
 - 2026-11-12, after batch 1 (lead): pass order changed to 1, 4 + DW-1706, 3 + DW-1177, 5, so no pass edits a file Epic 20's Story 20.34 has changed before it merges.
