@@ -266,15 +266,16 @@ ClassMethod Validate(Output pProblem As %String) As %Status
             }
             ; A pair missing either half is dropped by Area.PairsFrom rather than carried, so a
             ; descriptor that misspells "permission" would otherwise declare a gate and ship
-            ; ungated. The refusal is here because the drop is silent by design everywhere else.
+            ; ungated, and a half that is not a string would be read as its text. The refusal is
+            ; here because the drop is silent by design everywhere else.
             Set tBadPair = ..MalformedPair(tObject.%Get("privileges"))
             If tBadPair '= "" {
                 Set pProblem = tClass _ ": declared privilege pair " _ tBadPair _ " is missing its resource or its permission"
                 Quit
             }
-            ; AD-8: a pair a screen declares its own is one of its privileges, and only such a pair
-            ; is left out of the area's coverage below.
-            Set tOwnProblem = ..OwnPrivilegesProblem(tObject)
+            ; AD-8: a pair a screen declares its own is one of its privileges and not one its area
+            ; declares, and only such a pair is left out of the area's coverage below.
+            Set tOwnProblem = ..OwnPrivilegesProblem(tObject, ##class(OcuPilot.Screen.Area).PrivilegePairs(tArea))
             If tOwnProblem '= "" {
                 Set pProblem = tClass _ ": " _ tOwnProblem
                 Quit
@@ -821,14 +822,17 @@ ClassMethod TabCriterion(pDeclaration As %DynamicObject) As %String [ Private ]
 /// <p>What is wrong with <var>pDeclaration</var>'s <code>ownPrivileges</code>, or <code>""</code>
 /// when nothing is (AD-8). The key is optional; when declared it is an array of privilege pairs,
 /// each carrying both halves and each one of the screen's own <code>privileges</code>, matched
-/// exactly. A screen declares a pair its own when it requires that pair beyond its area's set:
-/// <method>AreaCoverageProblem</method> leaves such a pair out, and the screen's own gate still
-/// requires it.</p>
+/// exactly, and none one its area declares. A screen declares a pair its own when it requires that
+/// pair beyond its area's set: <method>AreaCoverageProblem</method> leaves such a pair out, and the
+/// screen's own gate still requires it.</p>
+/// <p><var>pAreaPairs</var> is the area's declared set in the form
+/// <method>OcuPilot.Screen.Area.PairsFrom</method> answers, and the area key the sentence names is
+/// the declaration's <code>area</code>. An empty list declares nothing to refuse.</p>
 /// <p><file>ui/tools/screen-mirror.mjs</file>'s <code>ownPrivilegesProblem</code> returns the same
 /// sentence for every case in <class>OcuPilot.Test.DeclarationCorpus</class>'s
 /// <code>OwnPrivilegeCases</code>.</p>
 /// <p><b>Public and value-driven</b> for the reason <method>RefreshProblem</method> is.</p>
-ClassMethod OwnPrivilegesProblem(pDeclaration As %DynamicObject) As %String
+ClassMethod OwnPrivilegesProblem(pDeclaration As %DynamicObject, pAreaPairs As %List = "") As %String
 {
     Set tProblem = ""
     Try {
@@ -848,9 +852,14 @@ ClassMethod OwnPrivilegesProblem(pDeclaration As %DynamicObject) As %String
         Set tDeclared = ##class(OcuPilot.Screen.Area).PairsFrom(pDeclaration.%Get("privileges"))
         Set tIterator = tOwn.%GetIterator()
         While tIterator.%GetNext(.tIndex, .tPair) {
-            If $ListFind(tDeclared, $ListBuild(tPair.resource, tPair.permission)) Continue
-            Set tProblem = "own privilege pair " _ tPair.resource _ ":" _ tPair.permission _ " is not one of the screen's declared privileges, and a screen owns only a pair it requires (AD-8)"
-            Quit
+            If '$ListFind(tDeclared, $ListBuild(tPair.resource, tPair.permission)) {
+                Set tProblem = "own privilege pair " _ tPair.resource _ ":" _ tPair.permission _ " is not one of the screen's declared privileges, and a screen owns only a pair it requires (AD-8)"
+                Quit
+            }
+            If $ListFind(pAreaPairs, $ListBuild(tPair.resource, tPair.permission)) {
+                Set tProblem = "own privilege pair " _ tPair.resource _ ":" _ tPair.permission _ " is one its area '" _ pDeclaration.%Get("area") _ "' already declares, and a screen owns only a pair it requires beyond its area's (AD-8)"
+                Quit
+            }
         }
     } Catch ex {
         Set tProblem = "the declared own privileges could not be read: " _ ex.DisplayString()
@@ -3740,18 +3749,20 @@ ClassMethod ExternalFaultProblem(pDeclaration As %DynamicObject) As %String [ Pr
     Quit "external screen declares " _ tDeclares _ ", and an external screen opens a page in a new tab with no read, table, action, tab or parentScope (AD-44)"
 }
 
-/// <p>The 1-based position of the first declared privilege entry missing a resource or a
-/// permission, as <code>#n</code>, or <code>""</code> when every entry carries both.</p>
-/// <p>An entry that is not an object counts as malformed too: <class>OcuPilot.Screen.Area</class>'s
-/// <method>PairsFrom</method> skips it, so it would otherwise declare a gate and produce
-/// none.</p>
+/// <p>The 1-based position of the first declared privilege entry that is not a pair, as
+/// <code>#n</code>, or <code>""</code> when every entry is one.</p>
+/// <p>A pair is an object whose <code>resource</code> and <code>permission</code> are both
+/// non-empty strings. Any other entry counts as malformed:
+/// <class>OcuPilot.Screen.Area</class>'s <method>PairsFrom</method> skips one missing a half, so it
+/// would otherwise declare a gate and produce none, and a half that is not a string would be read
+/// as its text.</p>
 ClassMethod MalformedPair(pDeclared As %DynamicArray) As %String [ Private ]
 {
     Set tBad = ""
     If '$IsObject(pDeclared) Quit tBad
     Set tIterator = pDeclared.%GetIterator()
     While tIterator.%GetNext(.tIndex, .tPair) {
-        If '$IsObject(tPair) || (tPair.%Get("resource") = "") || (tPair.%Get("permission") = "") {
+        If '$IsObject(tPair) || 'tPair.%IsA("%Library.DynamicObject") || (tPair.%GetTypeOf("resource") '= "string") || (tPair.%Get("resource") = "") || (tPair.%GetTypeOf("permission") '= "string") || (tPair.%Get("permission") = "") {
             Set tBad = "#" _ (tIndex + 1)
             Quit
         }

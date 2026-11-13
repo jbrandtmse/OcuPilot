@@ -190,7 +190,9 @@ Method TestAClassThatIsNotADescriptorIsRefusedRatherThanAdmitted()
 /// dropped rather than carried everywhere else, so without this refusal a descriptor that
 /// misspells <code>permission</code> declares a gate and ships ungated.</p>
 /// <p>Mutation: spell the fixture's key <code>permission</code> -> the refusal assertions go
-/// red, because the roster becomes sound.</p>
+/// red, because the roster becomes sound. Restore the empty-string comparison of
+/// <method>OcuPilot.Screen.Registry.MalformedPair</method> in place of its string-type check -> the
+/// non-string assertion goes red.</p>
 Method TestAMalformedPrivilegePairIsRefused()
 {
     Set tSC = ##class(OcuPilot.Test.PairRegistry).Validate(.tProblem)
@@ -201,6 +203,12 @@ Method TestAMalformedPrivilegePairIsRefused()
     ; The same declaration, read the way the gate reads it, yields no pairs at all -- which is
     ; the ungated screen the refusal above exists to prevent.
     Do $$$AssertEquals($ListLength($ClassMethod("OcuPilot.Test.Pair.Bad", "PrivilegePairs")), 0, "the malformed pair contributes nothing to the requirement")
+
+    ; A pair whose half is present and is not a string is refused with the same sentence and the
+    ; position the mirror's malformedPair names.
+    Set tSC = ##class(OcuPilot.Test.PairTypeRegistry).Validate(.tTypeProblem)
+    Do $$$AssertStatusNotOK(tSC, "a roster whose declared pair has a resource that is not a string is refused")
+    Do $$$AssertTrue(tTypeProblem [ "OcuPilot.Test.PairType.Bad: declared privilege pair #1 is missing its resource or its permission", "and names the position: " _ tTypeProblem)
 }
 
 /// <p>AD-8 as amended for DW-1768: an area opens when any screen its side bar lists is allowed, and

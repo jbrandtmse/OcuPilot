@@ -9697,7 +9697,7 @@ So that an out-of-range request value answers its field refusal and a test run n
 
 **Acceptance Criteria:**
 
-- **Given** the entries re-owned to this story: DW-2513, DW-2517, DW-2522, DW-2524, DW-2525, DW-2417, DW-2426, DW-2431, DW-2432 and DW-1979
+- **Given** the entries re-owned to this story: DW-2513, DW-2517, DW-2522, DW-2524, DW-2417 and DW-2426 (DW-2431, DW-2432, DW-2525 and DW-1979 moved to Story 23.13 at the spec gate, 2026-11-12)
 - **When** this story completes
 - **Then** each has a disposition written by the ledger tool: `resolved-by` this story with the commit, or `wontfix-accepted` or `by-design` with a reason and, where a condition would reopen it, that condition.
 
@@ -9705,12 +9705,10 @@ So that an out-of-range request value answers its field refusal and a test run n
 - **When** it lands
 - **Then** a test reddens on a representative site before the fix, the story says how a new site written in the old form is caught or why none can be, and each sweep lands as its own batch with CI green on its own head.
 
-- DW-1979: Journal records' Newest first reads the newest records but the table shows them oldest first (ledger; routed by spec_gate 2026-11-12; moved from Story 23.9 to keep it within 12 entries)
 - DW-2513: data-table-columns.browser-spec.mjs failed 17 of 18 at its own goto against its local server (ledger; routed by spec_gate 2026-11-12; CI flake, first priority)
 - DW-2517: JournalRecords reverse-order test read its next page as PORT.TIMEOUT once in a full sweep (ledger; routed by lead 2026-11-12; CI flake, first priority)
 - DW-2522: analytics-mdx AC1's first query grid did not appear within the navigation timeout on a CI shard (ledger; routed by lead 2026-11-12; CI flake, first priority)
 - DW-2524: context-chip Fresh at Send waited past 30 seconds on a CI shard (ledger; routed by lead 2026-11-12; CI flake, first priority)
-- DW-2525: sixteen more delete tools repeat the removal-row loop over FingerprintSubject() or ReadAnswers(), which Write.RemovalRows cannot absorb as written (ledger; routed by cr 2026-11-12)
 
 ### Story 23.11: The range-end cleanup, part 10
 
@@ -9787,3 +9785,24 @@ So that "none" means none, and the agent never describes a list it has not read.
 - **Then** a roster test fails if any read tool's description lacks its title, its row noun or its field list, and fails if a confusable group's tool lacks its label. Its pinning mutation removes the field list from one description.
 
 **Out of scope:** stored data and the installer (so no upgrade check is expected; the plan confirms that from its diff), write tools' descriptions beyond what the same builder changes for free, and any change to which tools a turn starts with.
+
+### Story 23.13: The range-end cleanup, part 11
+
+Split from Story 23.10 at its spec gate on 2026-11-12 (the plan's own recommendation): Story 23.10 keeps its four CI flakes and its two sweeps, and this story takes the rest. The two refusal-classifier edges from Story 18.48's review: KMIP start mode with journal encryption, measured on a throwaway before the start arm is widened, and a resource edit that opens a privileged application to everyone, which takes the privileged-grant treatment Story 18.48 gave the application edit. Also the delete tools that still repeat the removal-row loop over their own name lists, and Journal records' Newest first showing its rows oldest first. Story 23.10's spec holds the investigation for each, which this story's plan may reuse. A slot that would otherwise sit idle runs it, after Story 23.10.
+
+As a maintainer of OcuPilot,
+I want the remaining classifier edges, repeated loops and the journal order fixed,
+So that a privileged change is confirmed as one and the screens show what they say they show.
+
+**Acceptance Criteria:**
+
+- **Given** the entries re-owned to this story: DW-2431, DW-2432, DW-2525 and DW-1979
+- **When** this story completes
+- **Then** each has a disposition written by the ledger tool: `resolved-by` this story with the commit, or `wontfix-accepted` or `by-design` with a reason and, where a condition would reopen it, that condition.
+
+- **Given** a fix to code or a test
+- **When** it lands
+- **Then** a test reddens on the defect before the fix, or the entry says why none can, and the fixes land in batches grouped by area, each with CI green on its own head.
+
+- DW-1979: Journal records' Newest first reads the newest records but the table shows them oldest first (ledger; routed by spec_gate 2026-11-12; moved from Story 23.9 to keep it within 12 entries)
+- DW-2525: sixteen more delete tools repeat the removal-row loop over FingerprintSubject() or ReadAnswers(), which Write.RemovalRows cannot absorb as written (ledger; routed by cr 2026-11-12)

@@ -4355,6 +4355,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-30T03:32:47Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down decision sheet 2026-09-29: into Story 23.3 (after the following release)
 - 2026-10-11T00:42:30Z status=routed owner=23-7-the-range-end-cleanup-part-6 by=load note=re-own from range-end-cleanup: kit 2026-10-10.1 owners are story keys or burndown
 - 2026-10-12T19:22:37Z status=routed owner=23-9-the-range-end-cleanup-part-8 by=merge_gate note=owner 2026-10-12 released 23.7's 32 (Release Story 23.7); split by priority, 12 at most each (Rule 27)
+- 2026-11-13T04:57:44Z status=resolved-by:23-9-the-range-end-cleanup-part-8 by=adjudication note=owner-applied 75ea5f7d (CLAUDE.md:134-136); script docstring 53bd0ce0,df1c6122
 
 ### DW-1184: Three Test/Dispatch harness helpers assign %request and %response without New, so the stubs outlive the call and a later test in the same process reads them instead of its own state
 - source: spec-5-0-epic-4-deferred-cleanup.md | severity: low | fix-risk: low | footprint: in-story
@@ -8036,6 +8037,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-30T06:34:04Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p4
 - 2026-10-11T00:42:32Z status=routed owner=23-7-the-range-end-cleanup-part-6 by=load note=re-own from range-end-cleanup: kit 2026-10-10.1 owners are story keys or burndown
 - 2026-10-12T19:22:37Z status=routed owner=23-9-the-range-end-cleanup-part-8 by=merge_gate note=owner 2026-10-12 released 23.7's 32 (Release Story 23.7); split by priority, 12 at most each (Rule 27)
+- 2026-11-13T04:57:44Z status=resolved-by:23-9-the-range-end-cleanup-part-8 by=adjudication note=53bd0ce0,df1c6122: (a) both engines refuse an own pair the area declares; (b) by-design per AD-8; reopen_if AD-8 requires an area pair
 
 ### DW-1761: The instance's MalformedPair accepts a non-string resource or permission ({resource: 5}) where the client mirror's malformedPair refuses it; the corpus has only string cases
 - source: 16.8 rework independent review (orchestrator), 2026-09-27 | severity: low | fix-risk: low | footprint: src/OcuPilot/Screen/Registry.cls, ui/tools/screen-mirror.mjs
@@ -8044,6 +8046,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-30T06:34:04Z status=routed owner=range-end-cleanup by=merge_gate note=owner-approved burn-down plan 2026-09-29 (23.1 closed; its slice re-sorted): queued for the standing cleanup after the next release (Story 23.3 or later), priority p4
 - 2026-10-11T00:42:32Z status=routed owner=23-7-the-range-end-cleanup-part-6 by=load note=re-own from range-end-cleanup: kit 2026-10-10.1 owners are story keys or burndown
 - 2026-10-12T19:22:37Z status=routed owner=23-9-the-range-end-cleanup-part-8 by=merge_gate note=owner 2026-10-12 released 23.7's 32 (Release Story 23.7); split by priority, 12 at most each (Rule 27)
+- 2026-11-13T04:57:44Z status=resolved-by:23-9-the-range-end-cleanup-part-8 by=adjudication note=53bd0ce0,df1c6122: MalformedPair refuses non-string or non-object halves; corpus pins both engines
 
 ### DW-1762: Every container stop in the 1.0.2 upgrade check logged Previous system shutdown was abnormal (restart of 1.0.1 code and recreate of 1.0.2); the README update step (docker compose restart) triggers it on every update
 - source: 1.0.2 upgrade check (orchestrator), 2026-09-27 | severity: medium | fix-risk: low | footprint: docker-compose.yml, scripts/ci-throwaway.sh, README.md
@@ -9399,6 +9402,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-14T08:59:25Z status=routed owner=18-48-epic-18-burn-down-part-2 by=burndown note=chartered into the Epic 18 burn-down part 2 (orchestrator ruling 2026-10-14)
 - 2026-10-14T12:40:15Z status=routed owner=23-9-the-range-end-cleanup-part-8 by=lead note=orchestrator 2026-10-14: 18.48 kept at 12; the journal record browser's two lows move to 23.9
 - 2026-11-12T13:49:03Z status=routed owner=23-10-the-range-end-cleanup-part-9-two-sweeps by=spec_gate note=moved from 23.9 to keep it at burndown_story_max 12 after two CI flakes joined (lowest priority: fix-risk med, no occurrences)
+- 2026-11-13T01:28:16Z status=routed owner=23-13-the-range-end-cleanup-part-11 by=spec_gate note=23.10 split at its spec gate; batches 4-6 moved to Story 23.13
 
 ### DW-1980: The journal record dialog shows an empty body while its record loads (about 1.7 s, the guard's list read)
 - source: spec-18-19-journal-record-browser.md (code review) | severity: low | fix-risk: med | footprint: in-story
@@ -12031,12 +12035,14 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Prohibited.EncryptionStartup runs the journal arm for Interactive only and LeavesKmipRequired reads STARTUPREQUIREDFLAGS alone; Task 0 saw KMIP at an unreachable host and an unanswered journal key each abort a start (inference: together they do too); settle on a throwaway: KMIP over an unreachable startup server, DBEncJournal on, restart
 - 2026-10-14T19:05:14Z status=decision-pending owner=burndown by=cr note=unverified med; measure on a throwaway, then DW-2100's decision rule decides AD-10's scope
 - 2026-10-14T19:17:29Z status=routed owner=23-10-the-range-end-cleanup-part-9-two-sweeps by=lead note=orchestrator 2026-10-14 (feature 07ff504f): measure on a throwaway, then decide by DW-2100's rule
+- 2026-11-13T01:28:15Z status=routed owner=23-13-the-range-end-cleanup-part-11 by=spec_gate note=23.10 split at its spec gate; batches 4-6 moved to Story 23.13
 
 ### DW-2432: AD-10's grant arm misses the reverse of DW-2425: a Security.Resource edit that adds public USE to a resource guarding an enabled application whose MatchRoles grant a privileged role mints ordinary
 - source: spec-18-48-epic-18-burn-down-part-2.md | severity: med | fix-risk: med | footprint: in-epic
 - evidence: Prohibited.GrantsPrivilegeByEffect's TYPERESOURCE arm grants only when the resource itself is privileged (ResourceGrantsAdministrativePrivilege) and AddsPublicLetter; WidensPrivilegedReach judges only an application's own Resource change (code read, Story 18.48 review)
 - 2026-10-14T19:05:20Z status=decision-pending owner=burndown by=cr note=recommend extending AD-10 as DW-2425 did (an application lookup by Resource); Prohibited.cls is Epic 20-contended
 - 2026-10-14T19:17:29Z status=routed owner=23-10-the-range-end-cleanup-part-9-two-sweeps by=lead note=orchestrator 2026-10-14 (feature 07ff504f): decided, privileged-grant treatment as DW-2425
+- 2026-11-13T01:28:15Z status=routed owner=23-13-the-range-end-cleanup-part-11 by=spec_gate note=23.10 split at its spec gate; batches 4-6 moved to Story 23.13
 ### DW-2430: log-viewer.spec.ts AC6 copies home.page.spec.ts's real-timer wait instead of sharing one helper in ui/src/app/testing/
 - source: spec-20-8 code review (rework 2 re-review) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: log-viewer.spec.ts AC6 (realTimers and its 50 x 20 ms wait) repeats home.page.spec.ts:1302-1308 (pendingRealTimers, same bound and cast); the rework item required the copy and gave no reason (Rule 2); ui/src/app/testing/ holds the shared spec helpers.
@@ -12564,3 +12570,14 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-20-36-investigate.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: TurnCitations.TestAnInvestigateTurnCitesARowItRead backticks an invented messages.log line; investigate-entry.browser-spec.mjs (a) backticks only _SYSTEM. The no-chip guarantee is Registry.CitationSource answering none for log screens (unchanged).
 - 2026-11-13T03:01:42Z status=wontfix-accepted owner=20-36-investigate by=cr note=reopen_if=Registry.CitationSource answers candidates for any logs/* screen
+- 2026-11-13T01:28:15Z status=routed owner=23-13-the-range-end-cleanup-part-11 by=spec_gate note=23.10 split at its spec gate; batches 4-6 moved to Story 23.13
+
+### DW-2527: Paging Journal records Newest first, when matches end exactly at the page cap, can scan back to the start of the journal and answer PORT.TIMEOUT (inference)
+- source: _bmad-output/implementation-artifacts/spec-23-10-the-range-end-cleanup-part-9-two-sweeps.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: the vendor's hidden Journal ListTask loops While rset.%Next && rowNum <= MaxRows, so it seeks one match past the cap (read on ocupilot-slot-a); the timeout is unmeasured
+- 2026-11-13T01:28:16Z status=routed owner=23-13-the-range-end-cleanup-part-11 by=harvest note=with DW-1979 (journal order) in 23.13
+
+### DW-2528: The instance never refuses a malformed area privilege pair (missing or non-string half); only the mirror's buildMirror does
+- source: spec-23-9-the-range-end-cleanup-part-8.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Registry.cls AreaProblem checks only appliesWhen; screen-mirror.mjs buildMirror runs malformedPair over each area's privileges (both predate df5b1c48). Shipped areas: 0 malformed; the mirror's --check in every build and CI refuses one before it ships.
+- 2026-11-13T02:34:17Z status=wontfix-accepted owner=23-9-the-range-end-cleanup-part-8 by=cr note=pre-existing; the build gate refuses it; reopen_if=Area.cls declares a pair with a missing or non-string half

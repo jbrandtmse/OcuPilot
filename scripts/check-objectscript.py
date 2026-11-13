@@ -177,7 +177,8 @@ prose into one checker.
 
 This checker is deliberately line-oriented rather than a full UDL parser: it is exact
 enough to catch the violations above and cheap enough to run on every commit and every
-CI build. `.githooks/pre-commit` runs it on staged `.cls`/`.mac`/`.inc`/`ui` files,
+CI build. `.githooks/pre-commit` runs it over the whole tree whenever a commit stages a
+`.cls`/`.mac`/`.inc` under `src/OcuPilot/`, a `ui/` path, `module.xml` or `scripts/*.sh`,
 `.github/workflows/ci.yml` runs it on every change, and `bash scripts/lint-docs.sh` and this
 script together are the two mechanical document/code gates this repository has. Every run
 prints the file count it scanned, so "found nothing wrong" and "looked at nothing" are

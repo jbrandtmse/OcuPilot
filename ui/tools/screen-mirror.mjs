@@ -852,9 +852,9 @@ function credentialNameProblem(names, secrets, where) {
 }
 
 /**
- * The 1-based position of the first entry in `privileges` missing a resource or a permission,
- * as `#n`, or `null` when every entry carries both. An entry that is not an object counts as
- * malformed too.
+ * The 1-based position of the first entry in `privileges` that is not a pair, as `#n`, or `null`
+ * when every entry is one. A pair is an object whose `resource` and `permission` are both
+ * non-empty strings; any other entry counts as malformed.
  */
 export function malformedPair(privileges) {
   if (!Array.isArray(privileges)) return null;
@@ -877,10 +877,12 @@ export function malformedPair(privileges) {
  * `OcuPilot.Screen.Registry.OwnPrivilegesProblem` returns for every case in
  * `OcuPilot.Test.DeclarationCorpus`'s `OwnPrivilegeCases`. The key is optional; when declared it is
  * an array of privilege pairs, each carrying both halves and each one of the screen's own
- * `privileges`, matched exactly. A pair a screen declares its own is one it requires beyond its
- * area's set, left out of the area's coverage check on the instance.
+ * `privileges`, matched exactly, and none one its area declares. A pair a screen declares its own
+ * is one it requires beyond its area's set, left out of the area's coverage check on the instance.
+ * `areaPairs` is the area's `privileges` array (an entry that is not a pair declares nothing), and
+ * the area key the sentence names is the declaration's `area`.
  */
-export function ownPrivilegesProblem(declaration) {
+export function ownPrivilegesProblem(declaration, areaPairs = []) {
   const own = declaration?.ownPrivileges;
   if (own === undefined || own === null) return null;
   if (!Array.isArray(own)) return 'ownPrivileges is not an array of privilege pairs';
@@ -889,12 +891,19 @@ export function ownPrivilegesProblem(declaration) {
   const declared = (Array.isArray(declaration.privileges) ? declaration.privileges : []).filter(
     (pair) => malformedPair([pair]) === null
   );
+  const inArea = (Array.isArray(areaPairs) ? areaPairs : []).filter((pair) => malformedPair([pair]) === null);
   for (const pair of own) {
     const held = declared.some((d) => d.resource === pair.resource && d.permission === pair.permission);
     if (!held) {
       return (
         `own privilege pair ${pair.resource}:${pair.permission} is not one of the screen's declared ` +
         'privileges, and a screen owns only a pair it requires (AD-8)'
+      );
+    }
+    if (inArea.some((a) => a.resource === pair.resource && a.permission === pair.permission)) {
+      return (
+        `own privilege pair ${pair.resource}:${pair.permission} is one its area '${declaration.area}' ` +
+        "already declares, and a screen owns only a pair it requires beyond its area's (AD-8)"
       );
     }
   }
@@ -3433,7 +3442,8 @@ export function buildMirror({
           `resource or no permission; a dropped pair ships an ungated screen (AD-8)`
       );
     }
-    const ownFault = ownPrivilegesProblem(screen.declaration);
+    const screenArea = areas.find((area) => area.key === screen.declaration.area);
+    const ownFault = ownPrivilegesProblem(screen.declaration, screenArea?.privileges);
     if (ownFault !== null) {
       throw new Error(`src/OcuPilot/Screen/Descriptor/${screen.file} (${screen.className}): ${ownFault}`);
     }
