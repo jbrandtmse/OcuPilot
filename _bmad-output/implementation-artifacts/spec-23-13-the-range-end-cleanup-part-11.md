@@ -241,6 +241,25 @@ Rejected:
 - `remembered()` shares a name with `panel-layout.ts`'s `remembered(): number`, and notifies where panel layout notifies only on change: different classes, no caller confuses them; the always-notify matches the account store's settling notify.
 - Shared surfaces, linkage, Code Map line numbers, Decided in-stage 2 wording, no contention record for `screen-store.ts`: edits to the spec under review (Epic 20 has not changed the file).
 
+#### Batch 3 (2026-11-13)
+
+No high or medium. The 16 lifts are behavior-preserving: no body sets `pRows` before the call, every precondition refuses a non-object read, and no tool or subclass declares `REMOVALROWS`. AD-3 and AD-51 hold. Rule 3: the readers (`ProhibitedRoute`, `WebAppPctAccess` and the rest) drive the rows through the real mint.
+
+- [x] [Review][Patch] (low, fix-risk low, in-story) `Driven()` was a hand-copied subset of `Sites()` that left out `UserDelete` (no reader), `WebAppDelete`, `OAuthClientDelete` and `OAuthServerClientDelete`, whose preconditions qualify, so the header's claim was false: `Driven()` now derives from `Sites()` minus the three whose preconditions need more [src/OcuPilot/Test/RemovalRowsSweep.cls:Driven]
+- [x] [Review][Patch] (low, fix-risk low, in-story) The roster control compared a literal 16 with a literal list and could not fail: it now holds `Sites()` equal to the tools whose own `StateDiff` passes `RemovalRows` a names list (`NamesCallers`) [src/OcuPilot/Test/RemovalRowsSweep.cls:TestEachToolPassesItsOwnNamesAndSkip]
+- [x] [Review][Patch] (low, fix-risk low, in-story) The driven test's control read only the last tool's omitted name: it now counts one per tool [src/OcuPilot/Test/RemovalRowsSweep.cls:TestEachDrivenToolAnswersTheRowsItsRosterNames]
+- [x] [Review][Patch] (low) The class header said any later copy of the loop fails; the scan reads only `StateDiff`, and the header now says so [src/OcuPilot/Test/RemovalRowsSweep.cls:4]
+- [x] [Review][Patch] (low) `REMOVALROWS`'s doc said every delete declares its own; it now names the names-list path [src/OcuPilot/Screen/Tool/Write.cls:558]
+
+Rejected:
+
+- The scan reads only `StateDiff`, so a copy in a helper or in `MergeUpdate` passes: the task defines the scan over each tool's own `StateDiff` (by-design).
+- A `StateDiff` that calls `RemovalRows` and also pushes its own row passes, and the scan could equal `Others()` exactly: the task's predicate is "calls `RemovalRows`, or is on the list" (by-design).
+- The skip flag of `RoleDelete`, `AuditUserEventDelete` and `TaskDelete` is seen by no behavioral test: the source pin reddens on it, and a fixture per precondition adds three shapes for no reachable case.
+- A comma string passed as `pNames` raises `<LIST>`: no caller does; the contract names a `$ListBuild` list, and the caller's `Try` answers the error.
+- The `SslDelete` source-swap mutation changes no rows (its two lists are equal): the line claims only that the source pin reddens, which it did.
+- Auto Run Result's "(5 tests)" and QA's "the mapping family" (only `GlobalMappingDelete` is driven): edits to the spec under review.
+
 ## Spec Change Log
 
 - 2026-11-13: batch 4 re-opened for one review iteration (DW-2542, the first review's unpatched in-story medium).
@@ -416,6 +435,10 @@ Rejected:
   - mutation (Story 23.9's): drop `removed` in `RemovalRows` -> `ResourceDelete`, `RoleDelete`, `TaskScheduleActions`, `DocDbAppDescriptor`, `WalletSecretDelete` each 1 failed.
   - (code review, observed, tree identical after) mutation: pass skip 0 instead of 1 in `SuperserverDelete` -> `TestEachToolPassesItsOwnNamesAndSkip` red alone, naming it. Pass `..ReadAnswers()` instead of `..FingerprintSubject()` in `SslDelete` -> the same test red alone, naming it. `RemovalRowsSweep` 5/5 after both reverts.
   - Readers before and after the lift, tests and failures equal: ResourceDelete 6/6, RoleDelete 11/11, TaskScheduleActions 6/6, TaskResume 15/15, WalletSecretDelete 3/3, DocDbAppDescriptor 11/11, RoutineAppDescriptor 13/13, OAuthServerDelete 4/4, OAuthDelete 5/5, LdapCreate 6/6, AuditEventTools 10/10, WebAppPctAccess 11/11, ProhibitedRoute 24/24; all 0 failed. `RemovalRowsSweep` 5/5 (4 before review). `check-objectscript.py` 0 problems over 21 rules; `npm run test:tools` 2220/2220 after the review patch.
+  - (QA) added to `src/OcuPilot/Test/RemovalRowsSweep.cls`: `TestARowKeepsItsFieldOrderAndTypes` (a row's keys, order and value types as JSON) and `TestEachDrivenToolAnswersTheRowsItsRosterNames` (nine tools' `StateDiff` rows against their roster names and skip, with one name unassigned; covers `SslDelete`, `SuperserverDelete` and the mapping family through `GlobalMappingDelete` only, which have no reader); `RemovalRowsSweep` 7/7 on `ocupilot-ci`; each applied, observed red, reverted, `git diff -- src` equal to the pre-mutation diff:
+  - mutation: set `after` before `before` in `RemovalRows` -> `TestARowKeepsItsFieldOrderAndTypes` and `TestEachDrivenToolAnswersTheRowsItsRosterNames` red.
+  - mutation: pass skip 0 in `SuperserverDelete` -> `TestEachDrivenToolAnswersTheRowsItsRosterNames` red (with the source pin `TestEachToolPassesItsOwnNamesAndSkip`).
+  - (code review, batch 3, observed, tree identical after) mutation: pass `..ReadAnswers()` in `WebAppDelete` and give `DeviceDelete`'s call a names list -> `TestEachDrivenToolAnswersTheRowsItsRosterNames` red naming `WebAppDelete` (both legs), and `TestEachToolPassesItsOwnNamesAndSkip` red on its miscall and on the roster control (`DeviceDelete` not on `Sites()`). `RemovalRowsSweep` 7/7 after revert (run 58); `check-objectscript.py` 0 problems.
 
 ## Auto Run Result
 
@@ -432,4 +455,4 @@ Batch 4 (DW-1979) pass: the journal records page now follows the order select wi
 
 DW-2542 pass (batch 4 rework): the defect was real. `ScreenStore` adopts the remembered view when the account answers, after the page's cold-open `followOrder()`, replacing the direction it set. The page now re-runs `followOrder()` once on the first store notification after adoption (`ScreenStore.remembered()`, new; `adoptRemembered` notifies once on every adoption). Files: `ui/src/app/core/screen-store.ts`, `ui/src/app/areas/os-management/journal-records.page.ts`, `ui/src/app/areas/os-management/journal-records.page.spec.ts` (three cases). Review: 1 medium patched (seed pin), 2 low rejected (triage log). Verification and mutations under Verification. Follow-up review recommended: false (no high patched).
 
-Batch 3 (DW-2525) pass: `RemovalRows` takes a trailing `pNames` list and the 16 delete bodies call it with `..FingerprintSubject()` or `..ReadAnswers()` (skip kept for the four that had it); new unarmed `OcuPilot.Test.RemovalRowsSweep` (5 tests) pins the lift. Files: `src/OcuPilot/Screen/Tool/Write.cls`, the 16 `*Delete.cls` bodies, `src/OcuPilot/Test/RemovalRowsSweep.cls`. Verification and mutations under Verification; the new class joins the `ci-timings.json` roster at the lead's refresh. Batch 2 is untouched. Review: 1 medium patched (per-site roster pin), 1 low patched (floor), 2 low and the intent report rejected (triage log). Follow-up review recommended: false.
+Batch 3 (DW-2525) pass: `RemovalRows` takes a trailing `pNames` list and the 16 delete bodies call it with `..FingerprintSubject()` or `..ReadAnswers()` (skip kept for the four that had it); new unarmed `OcuPilot.Test.RemovalRowsSweep` (7 tests after QA and review) pins the lift. Files: `src/OcuPilot/Screen/Tool/Write.cls`, the 16 `*Delete.cls` bodies, `src/OcuPilot/Test/RemovalRowsSweep.cls`. Verification and mutations under Verification; the new class joins the `ci-timings.json` roster at the lead's refresh. Batch 2 is untouched. Review: 1 medium patched (per-site roster pin), 1 low patched (floor), 2 low and the intent report rejected (triage log). Follow-up review recommended: false.

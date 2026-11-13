@@ -12580,6 +12580,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-13T00:03:53Z status=routed owner=23-10-the-range-end-cleanup-part-9-two-sweeps by=cr note=give RemovalRows a names argument (default REMOVALROWS) and move the 16 onto it; Screen/** is Epic 20's, check contention
 - 2026-11-12T23:17:35Z occurrence=20-34-the-cube-manager-s-build-and-synchronize note=also red on CI 43290470415 (acb0b666), filed there as DW-2523, now dropped as this entry's duplicate
 - 2026-11-13T07:37:59Z status=routed owner=23-13-the-range-end-cleanup-part-11 by=orchestrator note=re-stated: a union merge misplaced the 2026-11-13T01:28:15Z spec_gate trailer (23.10 split to 23.13)
+- 2026-11-13T23:06:19Z status=resolved-by:23-13-the-range-end-cleanup-part-11 by=adjudication note=batch_3:Write.RemovalRows(pFresh,pSkip,pNames);16_delete_StateDiff_bodies_call_it(skip_kept_for_4);new_Test.RemovalRowsSweep_7_tests(new-site_catch,roster_from_StateDiff,driven_rows,field_order);13_readers_equal_totals;code_d0d4007c+QA/review_commit
 
 ### DW-2529: An investigate turn's no-chip-for-a-log-row assertions backtick no value a log read returned, so they cannot fail if log rows became citable
 - source: spec-20-36-investigate.md | severity: low | fix-risk: low | footprint: in-story
