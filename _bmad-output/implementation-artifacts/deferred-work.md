@@ -12566,6 +12566,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-13T00:51:08Z occurrence=20-34-the-cube-manager-s-build-and-synchronize note=re-stated (a union merge misplaced the 23:17:35Z line): also red on CI 43290470415 (acb0b666), filed there as DW-2523, dropped as this entry's duplicate
 - 2026-11-13T08:40:40Z status=resolved-by:23-10-the-range-end-cleanup-part-9-two-sweeps by=adjudication note=cd679de0,554aa62a: MDX answer waits use the product bound (145 s); analytics-mdx 11/11
 - 2026-11-13T06:29:49Z occurrence=20-36-investigate
+- 2026-11-13T23:29:51Z occurrence=23-13-the-range-end-cleanup-part-11 note=run_43522335138(ff913bec)_attempt_1_browser_shard_2/5_first_spec:AC1_'expected_the_run_to_answer_within_145000_ms;_the_page_shows_busy_false,status_Write_one_MDX_statement,then_Run'_(the_Run_never_started),other_10_green;batch_4_touches_no_analytics_code
+- 2026-11-13T23:29:51Z status=routed owner=burndown by=lead note=reopened:reopen_condition_met_after_the_23.10_fix(answer_wait_bounded);new_mechanism:the_first_Run_never_starts_on_a_cold_shard;CI_flake,first_priority_in_the_Epic_23_burn-down(Rule_27)
 
 ### DW-2524: flake: context-chip.browser-spec.mjs test 7 (Fresh at Send) waited past 30000 ms
 - source: 23.9 staging CI (run 43316537748) | severity: med | fix-risk: low | footprint: out-of-footprint
