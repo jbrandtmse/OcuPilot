@@ -134,8 +134,7 @@ async function statusReads(page, text, timeout = config.navigationTimeoutMs) {
 
 /**
  * How long a run may take to answer: the product bounds a query at `AnalyticsPort`'s `MDXSECONDS` (120) and then gives the vendor
- * `MDXSETTLESECONDS` (10) to report it, and the client polls every second; 15 s more covers the polls and a loaded runner. A cold first
- * query in a fresh namespace costs most of that.
+ * `MDXSETTLESECONDS` (10) to report it, and the client polls every second; 15 s more covers the polls and a loaded runner.
  */
 const ANSWER_BOUND_MS = (120 + 10) * 1000 + 15_000;
 /** A test that waits for an answer: the bound, plus room for its other steps. */

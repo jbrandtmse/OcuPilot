@@ -110,7 +110,7 @@ const CLASSIC_SCROLLBARS = '::-webkit-scrollbar { width: 15px; height: 15px; }';
 
 async function openHarness(viewport = WIDE, { classicScrollbars = false, owner = browser } = {}) {
   await resetRememberedState();
-  // The shared browser is replaced once when its navigation stack is wedged; a test's own browser is not.
+  // The shared browser is replaced once when a navigation on it times out; a test's own browser is not.
   const open = (holder) => openIn(holder, viewport, classicScrollbars);
   if (owner !== browser) return open(owner);
   return relaunchOnce(

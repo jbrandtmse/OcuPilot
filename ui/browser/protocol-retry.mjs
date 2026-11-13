@@ -95,8 +95,8 @@ export function isNavigationTimeout(error) {
 
 /**
  * Run `open(browser)`; when it fails with a navigation timeout, close `browser`, launch a new one
- * through `relaunch()` and run `open` once more on it. A shared browser whose navigation stack is
- * wedged times out every `goto` until it is replaced. Any other error, and a second navigation
+ * through `relaunch()` and run `open` once more on it. A shared browser that times out one `goto`
+ * can time out every later one until it is replaced (inference). Any other error, and a second navigation
  * timeout, propagate unchanged; a browser that cannot be closed is abandoned, not waited for.
  * `relaunch` answers the new browser, and the caller keeps holding it.
  */
