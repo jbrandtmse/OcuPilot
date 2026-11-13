@@ -2,8 +2,8 @@
 title: 'Story 23.9: The range-end cleanup, part 8'
 type: 'bugfix'
 created: '2026-11-12'
-status: 'in-progress'
-baseline_revision: '38ec7c97bb775b5ffd0ed857019d54d28b8ee370'
+status: 'done'
+baseline_revision: 'df5b1c48c97ff189636782f832ffbf4fad11dfd2'
 baseline_commit: '38ec7c97bb775b5ffd0ed857019d54d28b8ee370'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -154,14 +154,14 @@ deferred:
 ### Batch 2: docs
 
 - [x] **DW-1706.** `src/OcuPilot/Api/Error.cls` :262: replace "<b>Never retried.</b>" with "A failure before any status line arrived is retried once, on a new connection, inside the same attempt and delay budget; a call that raised, a connect that never opened (<code>ERROR #6059</code>) and a stream that broke after its status line are not (<class>OcuPilot.Kernel.Provider.Base</class>)." No test (doc comment; the behavior is pinned by `ProviderTransportRetry`).
-- [ ] **DW-1177.** `scripts/check-objectscript.py` :180: "runs it over the whole tree whenever a commit stages a `.cls`/`.mac`/`.inc`, `ui/`, `module.xml` or `scripts/*.sh` path". No test (docstring). The CLAUDE.md line goes to the Planner (Design Notes › For the Planner).
+- [x] **DW-1177.** `scripts/check-objectscript.py` :180: "runs it over the whole tree whenever a commit stages a `.cls`/`.mac`/`.inc`, `ui/`, `module.xml` or `scripts/*.sh` path". No test (docstring). The CLAUDE.md line goes to the Planner (Design Notes › For the Planner).
 - [ ] **DW-446, DW-2060.** No edit (already true at head; Design Notes).
 
 ### Batch 3: pair validation
 
-- [ ] **DW-1761.** `Screen/Registry.cls` `MalformedPair`: an entry is malformed unless it is a `%DynamicObject` whose `resource` and `permission` have `%GetTypeOf` `"string"` and are non-empty. Update its doc.
-- [ ] **DW-1760.** `OwnPrivilegesProblem` gains a trailing `pAreaPairs As %List = ""`; an own pair `$ListFind`-ed in it is refused with the matrix sentence (area key from the declaration's `area`). `Validate` :277 passes `Area.PrivilegePairs(tArea)`. `screen-mirror.mjs` `ownPrivilegesProblem` takes the same second argument and sentence; `buildMirror` :3425 passes the matching area's privileges.
-- [ ] **Corpus.** `DeclarationCorpus.cls` `OwnPrivilegeCases`: add top-level `area` and `areaPrivileges` (`%Admin_Operate:USE`); add that pair to `privileges`; move the case at :40 that uses `%Admin_Operate` as "undeclared" to another resource; add the cases `an own pair the area already declares` (refused) and `a resource that is not a string` (`{resource: 5, permission: "USE"}`, expected the `#1` sentence). Both readers (`OwnPrivilegeDeclarationFor`, the node loop at :2666) pass `areaPrivileges`. Add `malformedPair([{resource: 5, permission: 'USE'}]) === '#1'` to the inline cases at :2253, and a `privileges` non-string fixture leg beside `Navigation.TestAMalformedPrivilegePairIsRefused`.
+- [x] **DW-1761.** `Screen/Registry.cls` `MalformedPair`: an entry is malformed unless it is a `%DynamicObject` whose `resource` and `permission` have `%GetTypeOf` `"string"` and are non-empty. Update its doc.
+- [x] **DW-1760.** `OwnPrivilegesProblem` gains a trailing `pAreaPairs As %List = ""`; an own pair `$ListFind`-ed in it is refused with the matrix sentence (area key from the declaration's `area`). `Validate` :277 passes `Area.PrivilegePairs(tArea)`. `screen-mirror.mjs` `ownPrivilegesProblem` takes the same second argument and sentence; `buildMirror` :3425 passes the matching area's privileges.
+- [x] **Corpus.** `DeclarationCorpus.cls` `OwnPrivilegeCases`: add top-level `area` and `areaPrivileges` (`%Admin_Operate:USE`); add that pair to `privileges`; move the case at :40 that uses `%Admin_Operate` as "undeclared" to another resource; add the cases `an own pair the area already declares` (refused) and `a resource that is not a string` (`{resource: 5, permission: "USE"}`, expected the `#1` sentence). Both readers (`OwnPrivilegeDeclarationFor`, the node loop at :2666) pass `areaPrivileges`. Add `malformedPair([{resource: 5, permission: 'USE'}]) === '#1'` to the inline cases at :2253, and a `privileges` non-string fixture leg beside `Navigation.TestAMalformedPrivilegePairIsRefused`.
   - Pins: `Descriptor.TestAPairAScreenDeclaresItsOwnIsLeftOutOfItsAreasCoverage` (red before on both new cases) and screen-mirror.test.mjs :2666 (red before on the area case).
 
 ### Batch 4: client and runner tooling
@@ -306,6 +306,15 @@ Rejected:
   - `[low]` `[reject]` A and C's `before` moves from `value _ ""` to `Mint.Display` (verification-gap other finding, intent audit) - the fields are `Name`, `Class`, both strings, for which the two are identical; the spec prescribes the single rendering.
   - `[low]` `[reject]` `$IsObject(pFresh)` recomputed on each loop turn - negligible, and hoisting it adds a branch for no named harm.
   - Intent-alignment audit (descriptive): the diff implements the full lift (all 16 tools call the helper, A and C included); the tests exercise the card rows through `StateDiff`, the surface the AC names.
+
+### 2026-11-12 - Review pass (batch 3 and DW-1177)
+
+- verdicts: 3 findings - high 0, medium 1, low 1, false 0, maybe-false 1
+- findings:
+  - `[medium]` `[patch]` `Validate`'s call into `OwnPrivilegesProblem` with the area's pairs had no test: the corpus calls the value function with its own list, and `OwnPair.Bad` is refused on the subset rule first - added `OcuPilot.Test.OwnPairArea.Bad` and `OwnPairAreaRegistry` and a `Validate` leg in `Descriptor.TestAPairAScreenDeclaresItsOwnIsLeftOutOfItsAreasCoverage`; mutation observed red.
+  - `[low]` `[patch]` `MalformedPair`'s `permission` type clause and its `%IsA` clause were not isolated by any case - corpus cases `a permission that is not a string` and `an entry that is an array, not a pair`; both clauses mutated alone, each red.
+  - `[maybe-false]` `[reject]` `Area.PairsFrom` still reads a non-string half (intent audit) - the validator refuses such a declaration at install, so it never reaches the reader; the spec names `MalformedPair` only.
+  - Intent-alignment audit (descriptive): the diff implements the refusal at the value functions and at both build entry points; the instance's `Validate` leg was the one surface without a test, closed by the first finding.
 
 ## Design Notes
 
@@ -515,16 +524,32 @@ Rejected:
   - (QA) tests added: `EcpDescriptor.TestTheEcpDeleteCardsListWhatTheyRemove`, `InteropLookupDescriptor.TestTheLookupDeleteCardsListWhatTheyRemove`, `DatabaseDescriptor.TestTheDeleteCardListsWhatTheDatabaseKeeps` (each calls the delete's `StateDiff` with a fixed read and pins the full row list); (QA) strengthened: `MftConnectionDescriptor`, `WebSessions` (row text now carries `after`), `X509Delete` (every field's `before`, in order).
   - Files (QA): `src/OcuPilot/Test/EcpDescriptor.cls`, `src/OcuPilot/Test/InteropLookupDescriptor.cls`, `src/OcuPilot/Test/DatabaseDescriptor.cls`, `src/OcuPilot/Test/MftConnectionDescriptor.cls`, `src/OcuPilot/Test/WebSessions.cls`, `src/OcuPilot/Test/X509Delete.cls`. `check-objectscript.py` 0 problems; `npm run test:tools` 2188/2188.
 
+**Batch 3 and DW-1177 observed (`ocupilot-ci`).**
+
+- Load 0 errors; `Descriptor` 60/60 (run 25) and `Navigation` 14/14 (run 26), confirmed in `%UnitTest_Result` on `ocupilot-ci`; `screen-mirror.test.mjs` 78/78; `check-objectscript.py` 0 problems; `test_check_objectscript.py` 146 OK; `npm run test:tools` 2190/2190; `screen-mirror.mjs --check` up to date (213 descriptors, 11 areas); `lint-docs.sh` clean.
+- Red before: with `HEAD`'s `Registry.cls` loaded, `Descriptor` red on `TestAPairAScreenDeclaresItsOwnIsLeftOutOfItsAreasCoverage` (`<PARAMETER>`, the old one-argument signature, run 18) and `Navigation` red on `TestAMalformedPrivilegePairIsRefused` (the `PairType.Bad` fixture refused with the area-coverage sentence, run 19); with `HEAD`'s `screen-mirror.mjs`, the own-privilege corpus test red on "an own pair the area already declares". The mirror's `malformedPair` case for `resource: 5` was already green (its string check is the reference).
+  - mutation: `OwnPrivilegesProblem` ignores `pAreaPairs` (recompiled with its dependents) -> `Descriptor` red on "an own pair the area already declares" and "the area's pair is named past an own pair the area does not declare" (run 22).
+  - mutation: `MalformedPair` back to the `= ""` comparisons -> `Navigation` red on the non-string fixture leg (run 23) and `Descriptor` red on "a resource that is not a string" (run 24).
+  - mutation: `ownPrivilegesProblem` skips the area check -> the corpus test red on "an own pair the area already declares".
+  - mutation: `buildMirror` omits the area argument -> the same test red (its build leg).
+  - Each reverted and confirmed by `cmp` against a pre-mutation copy; reloaded with 0 errors; the final runs above are post-revert.
+  - Review patch: `Validate` leg and corpus cases `a permission that is not a string` and `an entry that is an array, not a pair`; `Descriptor` 60/60 (run 32), `Navigation` 14/14 (run 33), `npm run test:tools` 2190/2190, `check-objectscript.py` 0 problems.
+  - mutation: `Validate` calls `OwnPrivilegesProblem(tObject)` without the area's pairs -> `Descriptor` red on `TestAPairAScreenDeclaresItsOwnIsLeftOutOfItsAreasCoverage` (run 29).
+  - mutation: `MalformedPair` without its `permission` type clause -> the same test red (run 30).
+  - mutation: `MalformedPair` without its `%IsA` clause -> the same test red (run 31).
+  - Each reverted and confirmed by `cmp` against a pre-mutation copy; every class reloaded with `LoadDir` before its run.
+- New fixtures: `OcuPilot.Test.PairType.Bad` and `OcuPilot.Test.PairTypeRegistry` (descriptor and registry only; no test class, no roster), and `OcuPilot.Test.OwnPairArea.Bad` with `OcuPilot.Test.OwnPairAreaRegistry` (the same).
+
 ## Auto Run Result
 
 Status: done
 Blocking condition: none
 
-Pass: Batch 5 (DW-2299). Batches 1 and 4 and DW-1706 closed in their own passes; DW-1177 and batch 3 are untouched and unchecked.
+Pass: Batch 3 (DW-1761, DW-1760 (a)) and DW-1177's docstring. DW-1760 (b) closes by-design at adjudication. Earlier passes closed in their own commits.
 
-- Change: `Write.cls` gains `Parameter REMOVALROWS` and `RemovalRows(pFresh, pSkipUnassigned)`; the 16 delete tools set `pRows = ..RemovalRows(pFresh)` (`MftConnectionDelete` passes 1) and keep their guards, messages and Try/Catch; A and C doc comments point at it. `StateDiff` is untouched.
-- Files: `src/OcuPilot/Screen/Tool/Write.cls` and the 16 delete tools (`DeviceDelete`, `EcpDataServerDelete`, `EcpSslConnectionDelete`, `ExplorerDocDbDelete`, `InteropItemRemove`, `InteropLookupEntryRemove`, `InteropLookupTableDelete`, `LanguageServerDelete`, `LicenseServerDelete`, `LocalDatabaseDelete`, `MftConnectionDelete`, `NamespaceDelete`, `RemoteDatabaseDelete`, `RestServiceDelete`, `WebSessionEnd`, `X509Delete`); six existing test classes gained a method or leg (`InteropItemDescriptor`, `LicenseDescriptor`, `NamespaceDescriptor`, `RemoteDatabaseDescriptor`, `RestServiceDescriptor`, `MftConnectionDescriptor`); this spec.
-- Review: 6 findings - 3 medium and 1 low patched (tests that observe the non-object branch, the skip flag, the four unobserved deletes' rows and the boolean rendering), 2 low rejected with reasons; none deferred.
-- Verification: the 18 reader classes' totals equal before and after (143, 0 failed); the `removed`, non-object, skip-flag and `Display` mutations observed red on `ocupilot-ci` and reverted (see Verification, Batch 5 observed); `check-objectscript.py` 0 problems; `npm run test:tools` 2188/2188.
+- Change: `Registry.cls` `MalformedPair` requires string halves; `OwnPrivilegesProblem` takes `pAreaPairs`, refuses an area-declared own pair with the spec sentence, and `Validate` passes `Area.PrivilegePairs`; `screen-mirror.mjs` `ownPrivilegesProblem` takes the area's privileges and `buildMirror` passes them; the `OwnPrivilegeCases` corpus gains `area`, `areaPrivileges` and four cases; `check-objectscript.py` docstring states the hook's whole-tree scope.
+- Files: `src/OcuPilot/Screen/Registry.cls`, `src/OcuPilot/Test/DeclarationCorpus.cls`, `src/OcuPilot/Test/Descriptor.cls`, `src/OcuPilot/Test/Navigation.cls`, fixtures `src/OcuPilot/Test/PairType/Bad.cls`, `PairTypeRegistry.cls`, `OwnPairArea/Bad.cls`, `OwnPairAreaRegistry.cls`, `ui/tools/screen-mirror.mjs`, `ui/tools/screen-mirror.test.mjs`, `scripts/check-objectscript.py`; this spec.
+- Review: 3 findings - 1 medium and 1 low patched (the `Validate` leg; two `MalformedPair` clauses), 1 maybe-false rejected with its reason; none deferred.
+- Verification: `Descriptor` 60/60 and `Navigation` 14/14 on `ocupilot-ci`; `screen-mirror.mjs --check` up to date (213 descriptors); `npm run test:tools` 2190/2190; `check-objectscript.py` 0 problems and its harness 146 OK; `lint-docs.sh` clean; all mutations observed red and reverted (Verification, Batch 3 and DW-1177 observed).
 - Follow-up review: not recommended; this pass patched no high.
-- Residual risk: `ExplorerDocDbDelete` shares the A path but its reader (`DocDbWrite`) is armed and does not call `StateDiff` with a non-object; `RestServiceDelete` pins the shared branch.
+- Residual risk: `ui/tools/screen-mirror.mjs` and `screen-mirror.test.mjs` also carry uncommitted Story 20.36 edits in the Epic 20 worktree, in other regions (`parseEntryWorkflowIds`, the workflow-ids test); the edits here are in `malformedPair`, `ownPrivilegesProblem`, `buildMirror` and the own-pair tests, so a merge is expected to be clean.

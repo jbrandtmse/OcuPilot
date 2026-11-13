@@ -2258,6 +2258,8 @@ test('the build refuses a privilege pair missing a half, in an area and in a des
   assert.equal(malformedPair([{ permission: 'USE' }]), '#1', 'no resource');
   assert.equal(malformedPair([{ resource: '%Admin_Secure', permission: '' }]), '#1', 'an empty permission');
   assert.equal(malformedPair([{ resource: 'a', permission: 'USE' }, 'not-an-object']), '#2', 'and the position is named');
+  assert.equal(malformedPair([{ resource: 5, permission: 'USE' }]), '#1', 'a resource that is not a string');
+  assert.equal(malformedPair([{ resource: 'a', permission: true }]), '#1', 'nor is a permission');
 
   // `refSeparator` is what a real source set carries; a synthetic one declares it too, or the
   // generator refuses it before it reaches the refusal under test.
@@ -2662,14 +2664,15 @@ test('declarationProblem returns every sentence OcuPilot.Test.DeclarationCorpus 
 // refusal reaches the generator.
 //
 // Mutation (Rule 19): delete the `ownPrivilegesProblem` call from `buildMirror` -> the "reaches the
-// generator" assertion goes red while the corpus run stays green.
+// generator" assertions go red while the corpus run stays green. Drop the area check from
+// `ownPrivilegesProblem` -> the area cases of the corpus run and the area leg of the build go red.
 test('ownPrivilegesProblem returns every sentence OwnPrivilegeCases declares, and an unrequired own pair never reaches the mirror', () => {
   const corpus = testCorpus(['Test', 'DeclarationCorpus.cls'], 'OwnPrivilegeCases');
   let refusals = 0;
   for (const testCase of corpus.cases) {
-    const declaration = { privileges: structuredClone(corpus.privileges) };
+    const declaration = { area: corpus.area, privileges: structuredClone(corpus.privileges) };
     if ('ownPrivileges' in testCase) declaration.ownPrivileges = structuredClone(testCase.ownPrivileges);
-    assert.equal(ownPrivilegesProblem(declaration), testCase.expected, testCase.name);
+    assert.equal(ownPrivilegesProblem(declaration, structuredClone(corpus.areaPrivileges)), testCase.expected, testCase.name);
     if (testCase.expected !== null) refusals += 1;
   }
   assert.ok(refusals > 0, 'the corpus carries at least one refusing case');
@@ -2780,6 +2783,24 @@ test('ownPrivilegesProblem returns every sentence OwnPrivilegeCases declares, an
         screens: [{ file: 'Hostile.cls', className: 'OcuPilot.Screen.Descriptor.Hostile', declaration: hostile }],
       }),
     /Hostile\.cls \(OcuPilot\.Screen\.Descriptor\.Hostile\): own privilege pair %Ens_EventLog:USE is not one of the screen's declared privileges/
+  );
+
+  // An own pair the screen's area already declares is refused at the build, with the area read
+  // from the declaration's `area`.
+  const sources = readSources();
+  const owned = structuredClone(testCorpus(['Test', 'DeclarationCorpus.cls'], 'Cases').declaration);
+  const [areaPair] = sources.areas.find((area) => area.key === owned.area).privileges;
+  owned.privileges = [areaPair];
+  owned.ownPrivileges = [areaPair];
+  assert.throws(
+    () =>
+      buildMirror({
+        ...sources,
+        screens: [{ file: 'Owned.cls', className: 'OcuPilot.Screen.Descriptor.Owned', declaration: owned }],
+      }),
+    new RegExp(
+      `Owned\\.cls \\(OcuPilot\\.Screen\\.Descriptor\\.Owned\\): own privilege pair ${areaPair.resource}:${areaPair.permission} is one its area '${owned.area}' already declares`
+    )
   );
 });
 

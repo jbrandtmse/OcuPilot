@@ -15,15 +15,18 @@
 /// <method>OcuPilot.Screen.Registry.OwnPrivilegesProblem</method> in
 /// <class>OcuPilot.Test.Descriptor</class> and <code>ownPrivilegesProblem</code> in
 /// <file>ui/tools/screen-mirror.test.mjs</file> (AD-8). Each case is a declaration holding the
-/// block's <code>privileges</code> and, when the case carries one, its <code>ownPrivileges</code>,
-/// with the exact sentence both engines return, or <code>null</code>.</p>
+/// block's <code>area</code> and <code>privileges</code> and, when the case carries one, its
+/// <code>ownPrivileges</code>, with the exact sentence both engines return, or <code>null</code>.
+/// Both engines are given the block's <code>areaPrivileges</code> as the area's declared set.</p>
 Class OcuPilot.Test.DeclarationCorpus Extends %RegisteredObject
 {
 
 XData OwnPrivilegeCases
 {
 {
-  "privileges": [{"resource": "%Admin_Task", "permission": "USE"}, {"resource": "%DB_IRISSYS", "permission": "READ"}],
+  "area": "logs",
+  "areaPrivileges": [{"resource": "%Admin_Operate", "permission": "USE"}],
+  "privileges": [{"resource": "%Admin_Task", "permission": "USE"}, {"resource": "%DB_IRISSYS", "permission": "READ"}, {"resource": "%Admin_Operate", "permission": "USE"}],
   "cases": [
     {"name": "no ownPrivileges is sound", "expected": null},
     {"name": "an empty ownPrivileges is sound", "ownPrivileges": [], "expected": null},
@@ -37,13 +40,18 @@ XData OwnPrivilegeCases
     {"name": "a pair the screen does not declare", "ownPrivileges": [{"resource": "%Ens_EventLog", "permission": "USE"}], "expected": "own privilege pair %Ens_EventLog:USE is not one of the screen's declared privileges, and a screen owns only a pair it requires (AD-8)"},
     {"name": "a declared resource at another permission", "ownPrivileges": [{"resource": "%DB_IRISSYS", "permission": "WRITE"}], "expected": "own privilege pair %DB_IRISSYS:WRITE is not one of the screen's declared privileges, and a screen owns only a pair it requires (AD-8)"},
     {"name": "matched exactly, so a differently cased permission is not declared", "ownPrivileges": [{"resource": "%Admin_Task", "permission": "Use"}], "expected": "own privilege pair %Admin_Task:Use is not one of the screen's declared privileges, and a screen owns only a pair it requires (AD-8)"},
-    {"name": "the first undeclared pair is named, past a declared one and ahead of a second", "ownPrivileges": [{"resource": "%Admin_Task", "permission": "USE"}, {"resource": "%Admin_Operate", "permission": "USE"}, {"resource": "%Admin_Manage", "permission": "USE"}], "expected": "own privilege pair %Admin_Operate:USE is not one of the screen's declared privileges, and a screen owns only a pair it requires (AD-8)"}
+    {"name": "the first undeclared pair is named, past a declared one and ahead of a second", "ownPrivileges": [{"resource": "%Admin_Task", "permission": "USE"}, {"resource": "%Admin_Journal", "permission": "USE"}, {"resource": "%Admin_Manage", "permission": "USE"}], "expected": "own privilege pair %Admin_Journal:USE is not one of the screen's declared privileges, and a screen owns only a pair it requires (AD-8)"},
+    {"name": "an own pair the area already declares", "ownPrivileges": [{"resource": "%Admin_Operate", "permission": "USE"}], "expected": "own privilege pair %Admin_Operate:USE is one its area 'logs' already declares, and a screen owns only a pair it requires beyond its area's (AD-8)"},
+    {"name": "the area's pair is named past an own pair the area does not declare", "ownPrivileges": [{"resource": "%Admin_Task", "permission": "USE"}, {"resource": "%Admin_Operate", "permission": "USE"}], "expected": "own privilege pair %Admin_Operate:USE is one its area 'logs' already declares, and a screen owns only a pair it requires beyond its area's (AD-8)"},
+    {"name": "a resource that is not a string", "ownPrivileges": [{"resource": 5, "permission": "USE"}], "expected": "declared own privilege pair #1 is missing its resource or its permission"},
+    {"name": "a permission that is not a string", "ownPrivileges": [{"resource": "%Admin_Task", "permission": true}], "expected": "declared own privilege pair #1 is missing its resource or its permission"},
+    {"name": "an entry that is an array, not a pair", "ownPrivileges": [["%Admin_Task", "USE"]], "expected": "declared own privilege pair #1 is missing its resource or its permission"}
   ]
 }
 }
 
 /// <p><code>OwnPrivilegeCases</code> as a <class>%DynamicObject</class>:
-/// <code>{privileges, cases}</code>.</p>
+/// <code>{area, areaPrivileges, privileges, cases}</code>.</p>
 ClassMethod OwnPrivilegeCorpus(Output pCorpus As %DynamicObject) As %Status
 {
     Set tSC = $$$OK
@@ -64,11 +72,14 @@ ClassMethod OwnPrivilegeCorpus(Output pCorpus As %DynamicObject) As %Status
 }
 
 /// <p>The declaration <var>pCase</var> of <code>OwnPrivilegeCases</code> describes, as a new
-/// object: the corpus's <code>privileges</code> and, when the case carries one, its
-/// <code>ownPrivileges</code>.</p>
+/// object: the corpus's <code>area</code> and <code>privileges</code> and, when the case carries
+/// one, its <code>ownPrivileges</code>. The area's pairs are <code>areaPrivileges</code>, which
+/// <method>OwnPrivilegeAreaPairs</method> answers as the <class>%List</class> a caller passes
+/// to <method>OcuPilot.Screen.Registry.OwnPrivilegesProblem</method>.</p>
 ClassMethod OwnPrivilegeDeclarationFor(pCorpus As %DynamicObject, pCase As %DynamicObject) As %DynamicObject
 {
     Set tDeclaration = {}
+    Do tDeclaration.%Set("area", pCorpus.area)
     Do tDeclaration.%Set("privileges", ##class(%DynamicArray).%FromJSON(pCorpus.privileges.%ToJSON()))
     If pCase.%IsDefined("ownPrivileges") {
         Set tOwn = pCase.%Get("ownPrivileges")
@@ -76,6 +87,13 @@ ClassMethod OwnPrivilegeDeclarationFor(pCorpus As %DynamicObject, pCase As %Dyna
         Do tDeclaration.%Set("ownPrivileges", tOwn)
     }
     Quit tDeclaration
+}
+
+/// <p>The corpus's <code>areaPrivileges</code> as the <class>%List</class> of pairs
+/// <method>OcuPilot.Screen.Registry.OwnPrivilegesProblem</method> takes.</p>
+ClassMethod OwnPrivilegeAreaPairs(pCorpus As %DynamicObject) As %List
+{
+    Quit ##class(OcuPilot.Screen.Area).PairsFrom(pCorpus.areaPrivileges)
 }
 
 XData Cases

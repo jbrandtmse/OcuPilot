@@ -1334,12 +1334,13 @@ Method TestAPairAScreenDeclaresItsOwnIsLeftOutOfItsAreasCoverage()
     Do $$$AssertStatusOK(tSC, "the own-pair corpus reads")
     If $IsObject(tCorpus) {
         Set tRefusals = 0
+        Set tAreaPairs = ##class(OcuPilot.Test.DeclarationCorpus).OwnPrivilegeAreaPairs(tCorpus)
         Set tIterator = tCorpus.cases.%GetIterator()
         While tIterator.%GetNext(.tIndex, .tCase) {
             Set tExpected = $Select(tCase.%GetTypeOf("expected") = "null": "", 1: tCase.expected)
             If tExpected '= "" Set tRefusals = tRefusals + 1
             Set tDeclaration = ##class(OcuPilot.Test.DeclarationCorpus).OwnPrivilegeDeclarationFor(tCorpus, tCase)
-            Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).OwnPrivilegesProblem(tDeclaration), tExpected, tCase.name)
+            Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).OwnPrivilegesProblem(tDeclaration, tAreaPairs), tExpected, tCase.name)
         }
         Do $$$AssertTrue(tRefusals > 0, "the corpus carries at least one refusing case: " _ tRefusals)
     }
@@ -1355,6 +1356,12 @@ Method TestAPairAScreenDeclaresItsOwnIsLeftOutOfItsAreasCoverage()
     Do $$$AssertStatusNotOK(tSC, "a roster whose screen owns a pair it does not require is refused")
     Do $$$AssertTrue(tProblem [ "OcuPilot.Test.OwnPair.Bad", "the refusal names the offending class: " _ tProblem)
     Do $$$AssertTrue(tProblem [ "own privilege pair %Ens_EventLog:USE is not one of the screen's declared privileges", "and the sentence OwnPrivilegesProblem returns: " _ tProblem)
+
+    ; Validate hands the area's declared pairs to OwnPrivilegesProblem.
+    Set tSC = ##class(OcuPilot.Test.OwnPairAreaRegistry).Validate(.tAreaProblem)
+    Do $$$AssertStatusNotOK(tSC, "a roster whose screen owns a pair its area declares is refused")
+    Do $$$AssertTrue(tAreaProblem [ "OcuPilot.Test.OwnPairArea.Bad", "the refusal names the offending class: " _ tAreaProblem)
+    Do $$$AssertTrue(tAreaProblem [ "own privilege pair %Admin_Operate:USE is one its area 'logs' already declares", "and the sentence OwnPrivilegesProblem returns: " _ tAreaProblem)
 }
 
 /// <p>Story 3.5 -- <method>OcuPilot.Screen.Registry.SideBarPositionProblem</method> refuses a
