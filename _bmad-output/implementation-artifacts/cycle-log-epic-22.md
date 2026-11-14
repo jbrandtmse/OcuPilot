@@ -31,3 +31,6 @@
 2026-11-14T19:47:24Z	Story 22.1	ci_resolved	story=22.1 sha=74ec38514 runs=43628782453 failed=none via=none result=success resolved_at=next_plan(before_22.2_implement)
 2026-11-14T19:49:05Z	Epic 22	integrated_forward_staging	feature=b8a0b2e5e head=f5e641ffa conflicts_resolved=none suite=test:tools_2273/2273+lint-docs_0 ci=pending runs=43634085424 note=mid-epic_staging_head(not_the_final_integrate-forward)
 2026-11-14T19:49:06Z	Story 22.2	stage_spawned	stage=implement spawn_at=2026-11-14T19:49:06Z model=sonnet agent_name=22-2-picking-up-a-row-when-its-gate-clears-implement-1 cycle_iteration=1 story_base=f5e641ffa
+2026-11-14T19:49:30Z	Epic 22	hold_ordered	reason=owner:account_switch(HOLD_requested_at=2026-11-14T19:48:55Z,weekly_usage_95pct) note=Story_22.2_implement_stage_spawned_entry_above_was_written_but_its_Agent_call_was_never_made;no_stage_in_flight;resume_re-spawns_implement_on_the_spec_path(spec_status_ready-for-dev)
+2026-11-14T19:49:30Z	Story 22.2	hold_saved	story=22-2-picking-up-a-row-when-its-gate-clears stage=implement(not_spawned) patch=none tree=clean
+2026-11-14T19:49:30Z	Epic 22	hold_complete	shas=code_head_22.1=74ec38514(CI_43628782453_success),staging_head=f5e641ffa(CI_43634085424_pending_at_hold),bookkeeping_tip=pushed_below throwaways=none_started_by_this_run
