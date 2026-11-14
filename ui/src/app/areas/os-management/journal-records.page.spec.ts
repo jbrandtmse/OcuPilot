@@ -368,6 +368,27 @@ describe('Journal records', () => {
     });
   });
 
+  it('an arrival without Newest first after one with it, before the account answers, sends no view, and the remembered view is kept', async () => {
+    // Mutation (Rule 19), applied and observed red here: the Oldest-first branch of `followOrder` calls
+    // `setDirection('')` without `remember`.
+    const view = JSON.stringify({ sort: '', direction: '', filter: '^OcuProbe', maxRows: 500 });
+    const account = stubAccountPreferences({ views: { [RECORDS.route]: view } });
+    const arrivals = new ScreenArrivals();
+    arrivals.set({ route: RECORDS.route, criterion: '', criteria: { file: FILE, order: '1' } });
+    const { store, fixture } = await mount({ arrivals, account });
+    expect(store.direction()).toBe('desc');
+    arrivals.set({ route: RECORDS.route, criterion: '', criteria: { file: NEWEST } });
+    await settle(fixture);
+    expect(store.remembered()).toBe(false);
+    expect(store.direction()).toBe('');
+    expect(account.calls.filter((call) => call.method === 'POST')).toEqual([]);
+    await account.load();
+    await settle(fixture);
+    expect(store.filter()).toBe('^OcuProbe');
+    expect(store.maxRows()).toBe(500);
+    expect(store.direction()).toBe('');
+  });
+
   it('Oldest first draws ascending when the remembered descending view is adopted after the cold open', async () => {
     // Mutations (Rule 19), each applied and observed red here: drop the `followOrder` call in the store
     // subscriber; stop adopting the remembered max rows, which shows the seeded view was adopted.
