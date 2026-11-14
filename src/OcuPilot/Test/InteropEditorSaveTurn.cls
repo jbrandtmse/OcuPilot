@@ -4,7 +4,8 @@
 /// scripted model, for the class's text and then for one replacement copied from it. The proposal it mints is confirmed over HTTP as
 /// the same principal, scoped to <code>USER</code> as the client scopes it: the class holds the new text and the confirm answers the
 /// compile's output. A second turn in the same conversation, after the compile, replays the first and carries no compile line, and
-/// neither does any request before it.</p>
+/// neither does any request before it. It also pins <method>OcuPilot.Test.TurnWireFixture.SweepSince</method>'s removal of a
+/// ledger row whose turn is gone, since this class is that method's ObjectScript caller.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed and serving over HTTP on a throwaway, a <code>USER</code> namespace
 /// that runs interoperability, and both <parameter>ARMINGVARIABLE</parameter> and <parameter>PROVIDERVARIABLE</parameter> reading
 /// <code>1</code>: it creates a turn principal, the <code>OcuProbe2016</code> probe package and the <code>turnprobe</code>
@@ -237,7 +238,8 @@ Method TestTheEditorsSaveIsConfirmedOverHTTPFromARealTurn()
 
 /// <p><method>OcuPilot.Test.TurnWireFixture.SweepSince</method> removes a probe user's ledger row above the
 /// mark whose turn is gone, matched on the key as stored: a ledger row outlives its turn, so the key it holds
-/// is the only way to reach it.</p>
+/// is the only way to reach it. The key is lower case, so a key read back in its collated upper-case form
+/// misses the row.</p>
 /// <p>Mutation (Rule 19): select the bare <code>TurnKey</code> in the ledger leg of
 /// <method>OcuPilot.Test.TurnWireFixture.SweepSince</method> -- the sweep answers a leftover ledger row.</p>
 Method TestSweepSinceRemovesALedgerRowWhoseTurnIsGone()
@@ -249,7 +251,7 @@ Method TestSweepSinceRemovesALedgerRowWhoseTurnIsGone()
     Do $$$AssertEquals($ClassMethod(..#FIXTURE, "SweepSince", ..PreparedMark, tUser), "", "the sweep leaves nothing of the principal's above the mark")
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Ledger).GuardedCountForTurn(tKey, .tCount), "the key's rows are counted")
     Do $$$AssertEquals($Get(tCount), 0, "and the ledger row is gone")
-    Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tKey)
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tKey), "the key's rows are removed whatever the sweep did")
 }
 
 }

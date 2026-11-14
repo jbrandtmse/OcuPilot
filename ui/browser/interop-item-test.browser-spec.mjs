@@ -166,9 +166,9 @@ before(async () => {
   const marked = probe('ITMARK', `##class(${PROBE}).HighWater()`);
   assert.match(marked.value ?? '', /^\d+\|\d+$/, `the message store's high-water mark is read: ${marked.output}`);
   mark = marked.value;
+  created = true;
   const made = probe('ITMADE', `$System.Status.IsOK(##class(${PROBE}).Create())_$System.Status.IsOK(##class(${FIXTURE}).Create())`);
   assert.equal(made.value, '11', `the probe production and the fixture's classes are created: ${made.output}`);
-  created = true;
   const started = probe('ITSTART', `$System.Status.IsOK(##class(${FIXTURE}).Start())`);
   assert.equal(started.value, '1', `the probe production runs with the testing service registered: ${started.output}`);
   browser = await puppeteer.launch(launchOptions(config));
