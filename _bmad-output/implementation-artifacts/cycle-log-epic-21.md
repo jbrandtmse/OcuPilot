@@ -18,3 +18,5 @@
 2026-11-14T18:47:14Z	Story 21.1	dev_complete	spawn_at=2026-11-14T18:22:00Z model=sonnet build_sha=2023c665a baseline_revision=e215bb48d story_base=2111ba65f review_loop_iteration=0 followup_review_recommended=false deferred=0 files=13 cycle_iteration=1 note=handoff_read_only_mcp_call_on_slot_a_dev_failed_wrote_nothing
 2026-11-14T18:47:14Z	Story 21.1	adr_verifications_complete	tool=none acs=none result=none_required evidence= mutations=none model=claude-opus-5-5
 2026-11-14T18:47:14Z	Story 21.1	stage_spawned	stage=qa spawn_at=2026-11-14T18:47:14Z model=sonnet agent_name=21-1-the-harvest-seam-qa-1 cycle_iteration=1
+2026-11-14T18:57:37Z	Story 21.1	qa_complete	spawn_at=2026-11-14T19:00:00Z model=sonnet tests=src/OcuPilot/Test/HarvestWire.cls,src/OcuPilot/Test/HarvestWireFixture.cls tests_added=7 mutations_demonstrated=3 first_run_failures=0 clarifications=0 closing_sections_present=true footprint=scripts/ci-throwaway.sh(add-only_roster_line)
+2026-11-14T18:57:37Z	Story 21.1	stage_spawned	stage=code-review spawn_at=2026-11-14T18:57:37Z model=opus agent_name=21-1-the-harvest-seam-code-review-1 cycle_iteration=1
