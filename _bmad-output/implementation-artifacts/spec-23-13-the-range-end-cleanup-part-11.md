@@ -2,7 +2,7 @@
 title: 'Story 23.13: The range-end cleanup, part 11'
 type: 'bugfix'
 created: '2026-11-13'
-status: 'done'
+status: 'in-progress'
 baseline_revision: '7b1dd0b4f4fb04d337c1214a54001a501329071e'
 baseline_commit: '7b1dd0b4f4fb04d337c1214a54001a501329071e'
 review_loop_iteration: 0
@@ -170,6 +170,7 @@ Waits for escalation 5 (contention) before any `Prohibited.cls` edit. Task 0 nee
 - [x] `cd ui && npm run build`; record the journal records chunk and the initial total against the 2500 kB warning. Run `journal-records.browser-spec.mjs` after redeploy.
 - [x] DW-2527: no code (Declined DW-2527 under Design Notes).
 - [x] [Review] DW-2542 (batch 4 code review, medium, first review) — `journal-records.page.ts` `followOrder()` runs once in the constructor's `open()`, while `ScreenStore.adoptRemembered` (screen-store.ts ~:151, :164) can adopt a remembered `desc` direction after it on a cold open, so a reloaded tab under Oldest first may draw descending until the next Search — re-run `followOrder()` once the remembered view is adopted (or have the read path consult the order), pinned by a component case that adopts a remembered `desc` after the cold open and reads ascending under order 0, red before.
+- [ ] [CI] browser shard 2/5: `analytics-mdx.browser-spec.mjs` AC1 red on both attempts of run 43522335138 (batch 4 head `ff913bec`): "expected the run to answer within 145000 ms; the page shows busy false, status 'Write one MDX statement, then Run.'" — the first Run never started; the same spec and shard partition were green in 10 s on batch 1's head (run 43517400511), and green locally on a warm and a cold `ocupilot-ci`. Suspected cause (inference): rework 1 made `ScreenStore.adoptRemembered` notify on every adoption, a shared-surface change every screen's subscribers see. Fix: restore notify-only-when-the-view-or-rate-moved (adoption replaces the direction only when a view is stored, which is exactly when it notifies), keep `remembered()`, and keep the journal page's one re-run of `followOrder()` on the first notification after adoption; update `ui/tools/screen-store.test.mjs`'s 'adoption notifies once ... even with nothing remembered' case to the restored contract. All journal records component cases stay green. — https://github.com/jbrandtmse/OcuPilot/actions/runs/43522335138
 
 **Acceptance Criteria:**
 
@@ -283,6 +284,8 @@ Rejected:
 - DW-2522's reopen trailer, the Auto Run Result residual-risk line, QA's Verification layout, the "always fails" wording and the frontmatter status: the lead's bookkeeping or edits to the spec under review.
 
 ## Spec Change Log
+
+- 2026-11-13: batch 4 re-opened for a CI red (rework iteration 2 of 3): restore the store's notify-on-change contract.
 
 - 2026-11-13: batch 4 re-opened for one review iteration (DW-2542, the first review's unpatched in-story medium).
 
