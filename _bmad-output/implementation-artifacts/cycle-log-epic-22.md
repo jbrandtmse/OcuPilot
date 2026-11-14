@@ -8,3 +8,5 @@
 2026-11-14T17:48:02Z	Epic 22	ledger_load	total=2017 open=0 routed=41 escalated=0 decision_pending=51 terminal=1925 owner_unknown=0 burndown=51 reowned_none=0 epic22_owned=0
 2026-11-14T17:48:44Z	Epic 22	sprint_planning_complete	gate=PASS in_sync=true focus=epic-22 source=feature-catalog.md:P4 model=claude-opus-5-5
 2026-11-14T17:48:44Z	Epic 22	retro_review_skipped	reason=assigned_to_epic_21 retro_review=skip
+2026-11-14T17:51:59Z	Epic 22	epic_context_compiled	sha=4f9d2248f reason=initial model=claude-opus-5-5 lines=61
+2026-11-14T17:52:09Z	Story 22.1	stage_spawned	stage=plan spawn_at=2026-11-14T17:52:09Z model=opus agent_name=22-1-the-exclusion-register-plan-1 cycle_iteration=1
