@@ -6792,6 +6792,29 @@ export const STRINGS = {
   /** EXPERIENCE.md:604 */
   interopItemRefusalCopySource: 'This production holds no item of that name to copy.',
   /** EXPERIENCE.md:604 */
+  interopItemChangeClassAction: 'Change class',
+  /** EXPERIENCE.md:604 */
+  interopItemChangeClassConsequence:
+    'Changing this item\'s class removes every setting the new class does not take, and they cannot be restored. The change takes effect when this production next starts or, while it runs, when it is updated on Productions.',
+  /** EXPERIENCE.md:604 */
+  interopItemRefusalNewClass: 'Choose a compiled class of this item\'s kind, as its Classes tab lists them.',
+  /** EXPERIENCE.md:604 */
+  interopItemRefusalSameClass: 'This item already uses that class.',
+  /** EXPERIENCE.md:604 */
+  interopItemRefusalReviewChanged: 'This item\'s settings changed after they were reviewed, so its class was not changed. Review it again.',
+  /** EXPERIENCE.md:604 */
+  interopItemClassesLabel: 'Host classes',
+  /** EXPERIENCE.md:604 */
+  interopItemClassesEmpty: 'No compiled class of this item\'s kind is in this namespace.',
+  /** EXPERIENCE.md:604 */
+  interopItemClassesPrompt1: 'Which classes can this item change to?',
+  /** EXPERIENCE.md:604 */
+  interopItemClassesPrompt2: 'Which of this item\'s settings would a change of class remove?',
+  /** EXPERIENCE.md:604 */
+  interopItemClassesPrompt3: 'What does each class this item could take do?',
+  /** EXPERIENCE.md:604 */
+  interopItemClassesColumnCurrent: 'Current',
+  /** EXPERIENCE.md:604 */
   interopItemSettingsLabel: 'Item settings',
   /** EXPERIENCE.md:604 */
   interopItemSettingsCriterionItem: 'Item',
@@ -7009,7 +7032,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:604 */
   interopBusinessPartnersEmpty: 'This namespace holds no business partners.',
   /** EXPERIENCE.md:604 */
-  interopBusinessPartnersEmptyNext: 'Business partners are added and changed in the classic Business Partners page.',
+  interopBusinessPartnersEmptyAgent: 'Ask the agent to add a business partner here.',
   /** EXPERIENCE.md:604 */
   interopLookupTablesEmptyAgent: 'Ask the agent to create a lookup table here.',
   /** EXPERIENCE.md:604 */
@@ -7040,6 +7063,40 @@ export const STRINGS = {
   interopPartnerColumnContact: 'Primary contact',
   /** EXPERIENCE.md:604 */
   interopPartnerColumnPhone: 'Phone',
+  /** EXPERIENCE.md:604 */
+  interopPartnerAddAction: 'New business partner',
+  /** EXPERIENCE.md:604 */
+  interopPartnerEditTitle: 'Edit business partner <name>',
+  /** EXPERIENCE.md:604 */
+  interopPartnerAlternativeContact: 'Alternative contact',
+  /** EXPERIENCE.md:604 */
+  interopPartnerFieldTitle: 'Title',
+  /** EXPERIENCE.md:604 */
+  interopPartnerFieldMobile: 'Mobile',
+  /** EXPERIENCE.md:604 */
+  interopPartnerFieldNotes: 'Notes',
+  /** EXPERIENCE.md:604 */
+  interopPartnerHelp: 'A business partner is information about an organization or application a production connects to. Saving one changes nothing in how a production runs.',
+  /** EXPERIENCE.md:604 */
+  interopPartnerRenameNote:
+    'A partner\'s name cannot be changed. To rename one, add a partner under the new name, change the Business partner setting of each item that names this one, then remove it.',
+  /** EXPERIENCE.md:604 */
+  interopPartnerRemoveConsequence: 'Removing this business partner deletes its description and both contacts, and it cannot be restored from OcuPilot.',
+  /** EXPERIENCE.md:604 */
+  interopPartnerRefusalTaken: 'This namespace already holds a business partner of that name.',
+  /** EXPERIENCE.md:604 */
+  interopPartnerRefusalNameCase:
+    'A business partner whose name differs from this one only in letter case already exists. Use its spelling, or choose another name.',
+  /** EXPERIENCE.md:604 */
+  interopPartnerRefusalNamed:
+    'Production items name this business partner in their Business partner setting, so it is not removed. Clear that setting on each of them first, then remove the partner.',
+  /** EXPERIENCE.md:604 */
+  interopPartnerRefusalSourceControl: 'This namespace uses source control, so change business partners in the classic Business Partners page.',
+  /** EXPERIENCE.md:604 */
+  interopPartnerRefusalName: 'A business partner name is 1 to 255 characters with no control character.',
+  /** EXPERIENCE.md:604 */
+  interopPartnerRefusalLength:
+    'This value is longer than a business partner keeps: at most 5,000 characters for a description, 1,000 for notes, 50 for a phone or mobile number and 255 for anything else.',
   /** EXPERIENCE.md:604 */
   interopLookupEntriesCriterionTable: 'Lookup table',
   /** EXPERIENCE.md:604 */

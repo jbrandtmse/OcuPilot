@@ -124,6 +124,21 @@ Parameter ITEMCOPYSOURCE = "INTEROP.ITEM.COPYSOURCE";
 
 Parameter REASONITEMCOPYSOURCE = "This production holds no item of that name to copy.";
 
+/// <p>A change of class to one the item's Classes tab does not list (Story 20.41): not compiled, abstract, or of another kind.</p>
+Parameter ITEMNEWCLASS = "INTEROP.ITEM.NEWCLASS";
+
+Parameter REASONITEMNEWCLASS = "Choose a compiled class of this item's kind, as its Classes tab lists them.";
+
+/// <p>A change of class to the class the item already has.</p>
+Parameter ITEMSAMECLASS = "INTEROP.ITEM.SAMECLASS";
+
+Parameter REASONITEMSAMECLASS = "This item already uses that class.";
+
+/// <p>A change of class whose dropped settings moved after they were reviewed: nothing is written.</p>
+Parameter ITEMREVIEWCHANGED = "INTEROP.ITEM.REVIEWCHANGED";
+
+Parameter REASONITEMREVIEWCHANGED = "This item's settings changed after they were reviewed, so its class was not changed. Review it again.";
+
 /// <p>Violation code (422), on <code>ClassName</code>: not a business service, process or operation class
 /// compiled in the namespace.</p>
 Parameter ITEMCLASS = "INTEROP.ITEM.CLASS";
@@ -159,6 +174,11 @@ Parameter REASONITEMPENDING = "The change takes effect when this production next
 Parameter ITEMREMOVE = "INTEROP.ITEM.REMOVE";
 
 Parameter REASONITEMREMOVE = "Removing this item deletes it and every setting it holds from the production.";
+
+/// <p>The consequence code of an item change of class (Story 20.41).</p>
+Parameter ITEMCHANGECLASS = "INTEROP.ITEM.CHANGECLASS";
+
+Parameter REASONITEMCHANGECLASS = "Changing this item's class removes every setting the new class does not take, and they cannot be restored. The change takes effect when this production next starts or, while it runs, when it is updated on Productions.";
 
 /// <p>The consequence code of an item copy (Story 20.40).</p>
 Parameter ITEMCOPY = "INTEROP.ITEM.COPY";
@@ -379,6 +399,37 @@ Parameter LOOKUPDELETE = "INTEROP.LOOKUP.DELETE";
 
 Parameter REASONLOOKUPDELETE = "Deleting this lookup table removes every entry in it. Rules and transformations that read it then get their default value.";
 
+/// <p>The business partner writes' refusals, violations and consequence (Story 20.26). An add of a name the namespace holds,
+/// or holds in another letter case, and a remove of a partner an item names are each 409 on the
+/// <parameter>OcuPilot.Api.Error.CONFLICT</parameter> slug; the two violations are 422.</p>
+Parameter PARTNERTAKEN = "INTEROP.PARTNER.TAKEN";
+
+Parameter REASONPARTNERTAKEN = "This namespace already holds a business partner of that name.";
+
+Parameter PARTNERNAMECASE = "INTEROP.PARTNER.NAMECASE";
+
+Parameter REASONPARTNERNAMECASE = "A business partner whose name differs from this one only in letter case already exists. Use its spelling, or choose another name.";
+
+Parameter PARTNERNAMED = "INTEROP.PARTNER.NAMED";
+
+Parameter REASONPARTNERNAMED = "Production items name this business partner in their Business partner setting, so it is not removed. Clear that setting on each of them first, then remove the partner.";
+
+Parameter PARTNERSOURCECONTROL = "INTEROP.PARTNER.SOURCECONTROL";
+
+Parameter REASONPARTNERSOURCECONTROL = "This namespace uses source control, so change business partners in the classic Business Partners page.";
+
+Parameter PARTNERNAME = "INTEROP.PARTNER.NAME";
+
+Parameter REASONPARTNERNAME = "A business partner name is 1 to 255 characters with no control character.";
+
+Parameter PARTNERLENGTH = "INTEROP.PARTNER.LENGTH";
+
+Parameter REASONPARTNERLENGTH = "This value is longer than a business partner keeps: at most 5,000 characters for a description, 1,000 for notes, 50 for a phone or mobile number and 255 for anything else.";
+
+Parameter PARTNERREMOVE = "INTEROP.PARTNER.REMOVE";
+
+Parameter REASONPARTNERREMOVE = "Removing this business partner deletes its description and both contacts, and it cannot be restored from OcuPilot.";
+
 /// <p>The host test's refusals and violations (Story 20.6). The first five refuse a test before a request is built, each 409 on the
 /// <parameter>OcuPilot.Api.Error.CONFLICT</parameter> slug, and the last three are the 422 violations of a request's fields.
 /// <code>INTEROP.PRODUCTION.NOTRUNNING</code> is the production-not-running refusal, reused.</p>
@@ -515,19 +566,19 @@ Parameter OUTCOMEFAILED = "not resent";
 /// consequence.</p>
 ClassMethod Codes() As %List
 {
-    Quit $ListBuild(..#NAMESPACE, ..#RUNNING, ..#OTHER, ..#TROUBLED, ..#NOTRUNNING, ..#UPTODATE, ..#NOTTROUBLED, ..#BUSY, ..#STATE, ..#SUSPENDED, ..#PARTSTOPPED) _ ..ItemCodes() _ ..SettingCodes() _ ..RuntimeCodes() _ ..LookupCodes() _ ..TestCodes() _ ..TransformCodes() _ ..MessageCodes()
+    Quit $ListBuild(..#NAMESPACE, ..#RUNNING, ..#OTHER, ..#TROUBLED, ..#NOTRUNNING, ..#UPTODATE, ..#NOTTROUBLED, ..#BUSY, ..#STATE, ..#SUSPENDED, ..#PARTSTOPPED) _ ..ItemCodes() _ ..SettingCodes() _ ..RuntimeCodes() _ ..LookupCodes() _ ..PartnerCodes() _ ..TestCodes() _ ..TransformCodes() _ ..MessageCodes()
 }
 
 /// <p>The consequence codes, as a <class>%List</class>.</p>
 ClassMethod ConsequenceCodes() As %List
 {
-    Quit $ListBuild(..#STOP, ..#RESTART, ..#UPDATE, ..#RECOVER, ..#ITEMPENDING, ..#ITEMREMOVE, ..#ITEMCOPY, ..#SETTINGLOCATION, ..#MESSAGEABORT, ..#QUEUEABORT, ..#JOBABORT, ..#JOBSUSPEND, ..#JOBSTOP, ..#ITEMSTOP, ..#ITEMSTART, ..#ITEMRESTART, ..#LOOKUPREMOVE, ..#LOOKUPDELETE, ..#LOOKUPIMPORT, ..#TESTSENDS, ..#TRANSFORMRUNS, ..#MESSAGERESEND, ..#MESSAGEEDITRESEND)
+    Quit $ListBuild(..#STOP, ..#RESTART, ..#UPDATE, ..#RECOVER, ..#ITEMPENDING, ..#ITEMREMOVE, ..#ITEMCOPY, ..#ITEMCHANGECLASS, ..#SETTINGLOCATION, ..#MESSAGEABORT, ..#QUEUEABORT, ..#JOBABORT, ..#JOBSUSPEND, ..#JOBSTOP, ..#ITEMSTOP, ..#ITEMSTART, ..#ITEMRESTART, ..#LOOKUPREMOVE, ..#LOOKUPDELETE, ..#LOOKUPIMPORT, ..#PARTNERREMOVE, ..#TESTSENDS, ..#TRANSFORMRUNS, ..#MESSAGERESEND, ..#MESSAGEEDITRESEND)
 }
 
 /// <p>The item codes, as a <class>%List</class>: the refusals an item read or write answers with.</p>
 ClassMethod ItemCodes() As %List
 {
-    Quit $ListBuild(..#ITEMENABLED, ..#ITEMDISABLED, ..#ITEMDEFAULTSETTING, ..#ITEMPOOLZERO, ..#ITEMTAKEN, ..#ITEMAMBIGUOUS, ..#ITEMCLASS, ..#ITEMNAME, ..#ITEMVALUE, ..#ITEMENABLEDREMOVE, ..#ITEMSOURCECONTROL, ..#ITEMNOTENABLED, ..#ITEMTEMPSTOPPED, ..#ITEMNOTTEMPSTOPPED, ..#ITEMNOJOBS, ..#ITEMSTARTPENDING, ..#ITEMCOPYSOURCE)
+    Quit $ListBuild(..#ITEMENABLED, ..#ITEMDISABLED, ..#ITEMDEFAULTSETTING, ..#ITEMPOOLZERO, ..#ITEMTAKEN, ..#ITEMAMBIGUOUS, ..#ITEMCLASS, ..#ITEMNAME, ..#ITEMVALUE, ..#ITEMENABLEDREMOVE, ..#ITEMSOURCECONTROL, ..#ITEMNOTENABLED, ..#ITEMTEMPSTOPPED, ..#ITEMNOTTEMPSTOPPED, ..#ITEMNOJOBS, ..#ITEMSTARTPENDING, ..#ITEMCOPYSOURCE, ..#ITEMNEWCLASS, ..#ITEMSAMECLASS, ..#ITEMREVIEWCHANGED)
 }
 
 /// <p>The item refusals an item tool's fresh read answers when the action does not fit the item, and a copy's source refusal, which the
@@ -536,7 +587,7 @@ ClassMethod ItemCodes() As %List
 /// and <parameter>ITEMVALUE</parameter>) are an add's body and are not among them.</p>
 ClassMethod ItemPreconditionCodes() As %List
 {
-    Quit $ListBuild(..#ITEMENABLED, ..#ITEMDISABLED, ..#ITEMDEFAULTSETTING, ..#ITEMPOOLZERO, ..#ITEMTAKEN, ..#ITEMAMBIGUOUS, ..#ITEMENABLEDREMOVE, ..#ITEMSOURCECONTROL, ..#ITEMNOTENABLED, ..#ITEMTEMPSTOPPED, ..#ITEMNOTTEMPSTOPPED, ..#ITEMNOJOBS, ..#ITEMCOPYSOURCE)
+    Quit $ListBuild(..#ITEMENABLED, ..#ITEMDISABLED, ..#ITEMDEFAULTSETTING, ..#ITEMPOOLZERO, ..#ITEMTAKEN, ..#ITEMAMBIGUOUS, ..#ITEMENABLEDREMOVE, ..#ITEMSOURCECONTROL, ..#ITEMNOTENABLED, ..#ITEMTEMPSTOPPED, ..#ITEMNOTTEMPSTOPPED, ..#ITEMNOJOBS, ..#ITEMCOPYSOURCE, ..#ITEMNEWCLASS, ..#ITEMSAMECLASS)
 }
 
 /// <p>The setting codes (Story 20.22), as a <class>%List</class>: the refusals an item setting read or write answers
@@ -576,6 +627,21 @@ ClassMethod LookupCodes() As %List
 ClassMethod LookupPreconditionCodes() As %List
 {
     Quit $ListBuild(..#LOOKUPTAKEN, ..#LOOKUPTABLECASE, ..#LOOKUPSECRET, ..#LOOKUPSOURCECONTROL)
+}
+
+/// <p>The business partner codes (Story 20.26), as a <class>%List</class>: the four refusals a partner read or write answers
+/// with, the source control refusal among them, and the two violations of its fields. The one consequence code is
+/// <method>ConsequenceCodes</method>'s.</p>
+ClassMethod PartnerCodes() As %List
+{
+    Quit $ListBuild(..#PARTNERTAKEN, ..#PARTNERNAMECASE, ..#PARTNERNAMED, ..#PARTNERSOURCECONTROL, ..#PARTNERNAME, ..#PARTNERLENGTH)
+}
+
+/// <p>The partner refusals a partner tool's fresh read answers when the action does not fit the partner, as a
+/// <class>%List</class>; the two violations, which the write alone judges, are not among them.</p>
+ClassMethod PartnerPreconditionCodes() As %List
+{
+    Quit $ListBuild(..#PARTNERTAKEN, ..#PARTNERNAMECASE, ..#PARTNERNAMED, ..#PARTNERSOURCECONTROL)
 }
 
 /// <p>The host test's codes (Story 20.6), as a <class>%List</class>: the five refusals a test is refused with before a request is
@@ -670,6 +736,10 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#ITEMREMOVE Quit ..#REASONITEMREMOVE
     If pCode = ..#ITEMCOPY Quit ..#REASONITEMCOPY
     If pCode = ..#ITEMCOPYSOURCE Quit ..#REASONITEMCOPYSOURCE
+    If pCode = ..#ITEMNEWCLASS Quit ..#REASONITEMNEWCLASS
+    If pCode = ..#ITEMSAMECLASS Quit ..#REASONITEMSAMECLASS
+    If pCode = ..#ITEMREVIEWCHANGED Quit ..#REASONITEMREVIEWCHANGED
+    If pCode = ..#ITEMCHANGECLASS Quit ..#REASONITEMCHANGECLASS
     If pCode = ..#ITEMNOTENABLED Quit ..#REASONITEMNOTENABLED
     If pCode = ..#ITEMTEMPSTOPPED Quit ..#REASONITEMTEMPSTOPPED
     If pCode = ..#ITEMNOTTEMPSTOPPED Quit ..#REASONITEMNOTTEMPSTOPPED
@@ -712,6 +782,13 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#LOOKUPTOOLARGE Quit ..#REASONLOOKUPTOOLARGE
     If pCode = ..#LOOKUPEXPORTNAME Quit ..#REASONLOOKUPEXPORTNAME
     If pCode = ..#LOOKUPIMPORT Quit ..#REASONLOOKUPIMPORT
+    If pCode = ..#PARTNERTAKEN Quit ..#REASONPARTNERTAKEN
+    If pCode = ..#PARTNERNAMECASE Quit ..#REASONPARTNERNAMECASE
+    If pCode = ..#PARTNERNAMED Quit ..#REASONPARTNERNAMED
+    If pCode = ..#PARTNERSOURCECONTROL Quit ..#REASONPARTNERSOURCECONTROL
+    If pCode = ..#PARTNERNAME Quit ..#REASONPARTNERNAME
+    If pCode = ..#PARTNERLENGTH Quit ..#REASONPARTNERLENGTH
+    If pCode = ..#PARTNERREMOVE Quit ..#REASONPARTNERREMOVE
     If pCode = ..#TESTDISABLED Quit ..#REASONTESTDISABLED
     If pCode = ..#TESTTARGETTYPE Quit ..#REASONTESTTARGETTYPE
     If pCode = ..#TESTTARGETDISABLED Quit ..#REASONTESTTARGETDISABLED

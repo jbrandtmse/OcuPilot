@@ -1021,6 +1021,15 @@ describe('the proposal card', () => {
     expect(lines[0].textContent).toContain(STRINGS.interopItemCopyConsequence);
   });
 
+  it('Story 20.41: an item change of class\'s consequence code states its published sentence on a card drawn destructive', () => {
+    // Mutation (Rule 19): drop the INTEROP.ITEM.CHANGECLASS branch from `consequenceSentence` -> the consequence line is empty and this goes red.
+    const { card } = mount(liveView({ consequence: 'INTEROP.ITEM.CHANGECLASS', destructive: true, maskedFields: [] }), { phase: 'live' });
+    expect(card.classList.contains('ocu-proposal-card-destructive')).toBe(true);
+    const lines = card.querySelectorAll('[data-slot="consequence"]');
+    expect(lines.length).toBe(1);
+    expect(lines[0].textContent).toContain(STRINGS.interopItemChangeClassConsequence);
+  });
+
   it('Story 20.5: a lookup table entry\'s removal, a lookup table\'s deletion and a lookup table\'s import each state their own published sentence, drawn destructive', () => {
     // Mutation (Rule 19): drop one of the three INTEROP.LOOKUP codes from `consequenceSentence` -> its leg goes red.
     for (const [code, sentence] of [
@@ -1035,6 +1044,15 @@ describe('the proposal card', () => {
       expect(lines[0].textContent, code).toContain(sentence);
       TestBed.resetTestingModule();
     }
+  });
+
+  // Mutation (Rule 19): drop the INTEROP.PARTNER.REMOVE branch from `consequenceSentence` -> the consequence line is empty and this goes red.
+  it('Story 20.26: a business partner\'s removal states its published sentence, drawn destructive', () => {
+    const { card } = mount(liveView({ consequence: 'INTEROP.PARTNER.REMOVE', destructive: true, maskedFields: [] }), { phase: 'live' });
+    expect(card.classList.contains('ocu-proposal-card-destructive')).toBe(true);
+    const lines = card.querySelectorAll('[data-slot="consequence"]');
+    expect(lines.length).toBe(1);
+    expect(lines[0].textContent).toContain(STRINGS.interopPartnerRemoveConsequence);
   });
 
   // Mutation (Rule 19): drop the INTEROP.TEST.SENDS code from `consequenceSentence` -> this goes red.

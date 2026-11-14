@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-09-2026 07:49
-last_updated: '11-14-2026 05:09'
+last_updated: '11-14-2026 05:10'
 project: OcuPilot
 project_key: NOKEY
 tracking_system: file-system
@@ -344,7 +344,7 @@ development_status:
   19-18-epic-19-burn-down: done
   epic-19-retrospective: optional
 
-  epic-20: in-progress
+  epic-20: done
   20-1-namespace-category-gating: done
   20-2-productions-listed-and-controlled: done
   20-3-production-items: done
@@ -370,7 +370,7 @@ development_status:
   20-23-queue-and-job-actions: done
   20-24-agent-tool-calls-stop-re-listing-the-tool-registry: done
   20-25-item-runtime-and-configuration-actions: done
-  20-26-business-partners-saved-and-removed: ready-for-dev
+  20-26-business-partners-saved-and-removed: done
   20-27-transformations-tested: done
   20-28-ocupilot-compiles-in-a-namespace-without-interoperability: done
   20-29-screens-load-on-demand: done
@@ -385,7 +385,7 @@ development_status:
   20-38-a-schema-opens-its-tables-views-and-procedures: done
   20-39-every-list-s-name-opens-something: done
   20-40-item-copy-and-change-of-class: done
-  20-41-item-change-of-class: ready-for-dev
+  20-41-item-change-of-class: done
   epic-20-retrospective: optional
 
   epic-21: backlog

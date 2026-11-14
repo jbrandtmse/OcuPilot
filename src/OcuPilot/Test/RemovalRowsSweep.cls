@@ -26,7 +26,7 @@ Parameter DECLARING = "OcuPilot.Screen.Tool.ExplorerDocDbDelete";
 /// <code>%Get</code> of one value. Comma-separated class names.</p>
 ClassMethod Others() As %String
 {
-    Quit "ErrorDelete,LockRemove,MftConnectionRevoke,UserTokenRevoke,ExplorerDelete,OAuthResourceServerDelete,OAuthAuthorizationServerDelete"
+    Quit "ErrorDelete,LockRemove,MftConnectionRevoke,UserTokenRevoke,ExplorerDelete,OAuthResourceServerDelete,OAuthAuthorizationServerDelete,InteropItemChangeClass"
 }
 
 /// <p>The tools that build their removal rows through <method>RemovalRows</method>, each as

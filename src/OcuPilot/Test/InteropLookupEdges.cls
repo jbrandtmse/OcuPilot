@@ -109,21 +109,6 @@ ClassMethod BarePartner(pPut As %Boolean) As %Status
     Quit tSC
 }
 
-/// <p>Whether the bare partner is there.</p>
-ClassMethod BarePartnerExists() As %Boolean
-{
-    Set tOrigNS = $NAMESPACE
-    Set tExists = 0
-    Try {
-        Set $NAMESPACE = "USER"
-        Set tExists = ##class(Ens.Config.BusinessPartner).%ExistsId(..#BAREPARTNER)
-        Set $NAMESPACE = tOrigNS
-    } Catch {
-        Set $NAMESPACE = tOrigNS
-    }
-    Quit ''tExists
-}
-
 /// <p>One request as a browser sends it (a UTF-8 JSON body, a percent-encoded query): the HTTP status and the parsed answer.</p>
 ClassMethod Send(pMethod As %String, pPath As %String, pBody As %DynamicObject = "", Output pStatus As %Integer, Output pAnswer)
 {
@@ -148,9 +133,7 @@ ClassMethod ReadRows(pScreen As %String, pQuery As %String, Output pStatus As %I
     Quit $Select($IsObject(tAnswer) && $IsObject(tAnswer.%Get("rows")): tAnswer.%Get("rows"), 1: "")
 }
 
-/// <p>AC6: a partner that holds only its name lists with every contact field empty, through the port and the screen's read; and a remove
-/// sent to the partners screen is refused and the partner stays. That last assertion is temporary (the stated partial): it is deleted in
-/// the pass that lands Story 20.26's partner remove, with the tool that performs it.</p>
+/// <p>AC6: a partner that holds only its name lists with every contact field empty, through the port and the screen's read.</p>
 /// <p>Mutation (Rule 19): make <method>OcuPilot.Port.InteropPort.ListPartners</method> skip a partner whose primary contact has no name --
 /// the bare partner is not listed and this goes red.</p>
 Method TestAPartnerWithNoContactsListsWithEmptyContactFields()
@@ -173,11 +156,6 @@ Method TestAPartnerWithNoContactsListsWithEmptyContactFields()
     Set tRows = ..ReadRows(..#PARTNERSCREEN, "", .tStatus)
     Do $$$AssertEquals(tStatus, 200, "the screen's read answers too")
     Do $$$AssertTrue($IsObject(..RowNamed(tRows, ..#BAREPARTNER)), "and lists the bare partner")
-    Set tBody = {"action": "delete"}
-    Do tBody.%Set("id", ..#BAREPARTNER, "string")
-    Do ..Send("POST", ..#PARTNERSCREEN _ "/action", tBody, .tStatus, .tAnswer)
-    Do $$$AssertTrue((tStatus >= 400) && (tStatus < 500), "a remove sent to the partners screen is refused: " _ tStatus)
-    Do $$$AssertEquals(..BarePartnerExists(), 1, "and the partner is still there")
 }
 
 /// <p>The row of the list <var>pRows</var> whose <code>Name</code> is <var>pName</var>, or <code>""</code>.</p>

@@ -295,7 +295,9 @@ Method TestEveryLiveToolRequiresItsScreensPairs()
             Set tWritePair = $ListBuild(tGlobalResource, "WRITE")
             If '$ListFind(tExpected, tRunPair) Set tExpected = tExpected _ $ListBuild(tRunPair)
             If '$ListFind(tExpected, tWritePair) Set tExpected = tExpected _ $ListBuild(tWritePair)
-        } ElseIf $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.InteropAction") && ($Parameter(tTool.class, "DESCRIPTORCLASS") [ "OcuPilot.Screen.Descriptor.InteropLookup") {
+        } ElseIf ($ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.InteropAction") && ($Parameter(tTool.class, "DESCRIPTORCLASS") [ "OcuPilot.Screen.Descriptor.InteropLookup")) || $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.InteropPartnerAction") {
+            ; Story 20.26: the business partner writes declare %Ens_ProductionConfig:WRITE and WRITE on the globals database and no routines
+            ; database, as the lookup writes below declare their own resource and the database.
             ; Story 20.5: the lookup writes declare their own resource at its permission, then WRITE or READ on the globals database
             ; of the request's namespace, here this one's, after their screen's pairs, each once (AD-8, AD-62); the export's own
             ; pair is the file system's, since it writes a file.

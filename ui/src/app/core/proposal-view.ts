@@ -388,6 +388,8 @@ export const CONSEQUENCE_INTEROPITEMSTART = 'INTEROP.ITEM.START';
 export const CONSEQUENCE_INTEROPITEMRESTART = 'INTEROP.ITEM.RESTART';
 /** Story 20.40: an item copy's sentence. */
 export const CONSEQUENCE_INTEROPITEMCOPY = 'INTEROP.ITEM.COPY';
+/** Story 20.41: an item change of class's sentence. */
+export const CONSEQUENCE_INTEROPITEMCHANGECLASS = 'INTEROP.ITEM.CHANGECLASS';
 /** Story 20.23: the queue and job actions' consequence sentences (AD-62); each is one published sentence. */
 export const CONSEQUENCE_INTEROPMESSAGEABORT = 'INTEROP.MESSAGE.ABORT';
 export const CONSEQUENCE_INTEROPQUEUEABORT = 'INTEROP.QUEUE.ABORT';
@@ -402,6 +404,8 @@ export const CONSEQUENCE_INTEROPLOOKUPREMOVE = 'INTEROP.LOOKUP.REMOVE';
 export const CONSEQUENCE_INTEROPLOOKUPDELETE = 'INTEROP.LOOKUP.DELETE';
 /** Story 20.5: a lookup table's import. */
 export const CONSEQUENCE_INTEROPLOOKUPIMPORT = 'INTEROP.LOOKUP.IMPORT';
+/** Story 20.26: a business partner's removal. */
+export const CONSEQUENCE_INTEROPPARTNERREMOVE = 'INTEROP.PARTNER.REMOVE';
 /** Story 20.6: a host test, which sends a real message through the running production. */
 export const CONSEQUENCE_INTEROPTESTSENDS = 'INTEROP.TEST.SENDS';
 /** Story 20.27: a data transformation test, which runs the transformation's code on this instance as the person. */
@@ -556,6 +560,8 @@ export function consequenceSentence(code: string | undefined): string {
   if (code === CONSEQUENCE_INTEROPITEMRESTART) return STRINGS.interopItemRestartConsequence;
   // Story 20.40: an item copy's sentence, published once.
   if (code === CONSEQUENCE_INTEROPITEMCOPY) return STRINGS.interopItemCopyConsequence;
+  // Story 20.41: an item change of class's sentence, published once.
+  if (code === CONSEQUENCE_INTEROPITEMCHANGECLASS) return STRINGS.interopItemChangeClassConsequence;
   // Story 20.23: the queue and job actions' sentences, each published once.
   if (code === CONSEQUENCE_INTEROPMESSAGEABORT) return STRINGS.interopMessageAbortConsequence;
   if (code === CONSEQUENCE_INTEROPQUEUEABORT) return STRINGS.interopQueueAbortConsequence;
@@ -569,6 +575,8 @@ export function consequenceSentence(code: string | undefined): string {
   if (code === CONSEQUENCE_INTEROPLOOKUPREMOVE) return STRINGS.interopLookupRemoveConsequence;
   if (code === CONSEQUENCE_INTEROPLOOKUPDELETE) return STRINGS.interopLookupDeleteConsequence;
   if (code === CONSEQUENCE_INTEROPLOOKUPIMPORT) return STRINGS.interopLookupImportConsequence;
+  // Story 20.26: a business partner's removal, published once.
+  if (code === CONSEQUENCE_INTEROPPARTNERREMOVE) return STRINGS.interopPartnerRemoveConsequence;
   // Story 20.6: a host test's sentence, the one its own dialog shows.
   if (code === CONSEQUENCE_INTEROPTESTSENDS) return STRINGS.interopTestSendsConsequence;
   // Story 20.27: a data transformation test's sentence, the one its own dialog shows.

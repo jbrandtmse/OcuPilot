@@ -230,6 +230,7 @@ XData Keys [ MimeType = application/json ]
   "interop.items.start": true,
   "interop.items.stop": true,
   "interop.items.copy": true,
+  "interop.items.changeclass": false,
   "interop.itemsettings.set": true,
   "interop.itemsettings.reset": true,
   "interop.queuemessages.abort": false,
@@ -251,7 +252,10 @@ XData Keys [ MimeType = application/json ]
   "interop.messages.resend": false,
   "interop.messageheader.editresend": false,
   "analytics.cubemanager.build": false,
-  "analytics.cubemanager.synchronize": true
+  "analytics.cubemanager.synchronize": true,
+  "interop.businesspartners.add": true,
+  "interop.businesspartners.update": true,
+  "interop.businesspartners.remove": false
 }
 }
 

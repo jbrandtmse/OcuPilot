@@ -158,8 +158,8 @@ const ACTION_LABELS: Readonly<Record<string, string>> = {
  * elsewhere, which is the whole reason this map is keyed by descriptor.
  */
 const DESCRIPTOR_ACTION_LABELS: Readonly<Record<string, Readonly<Record<string, string>>>> = {
-  // Story 20.3: Production items' Add opens the dialog that adds one item, and its Remove deletes one; Copy (Story 20.40) opens the dialog that copies the selected item.
-  'OcuPilot.Screen.Descriptor.InteropItemList': { add: STRINGS.interopItemAddTitle, copy: STRINGS.auditDatabaseCopyConfirm, remove: STRINGS.actionRemove },
+  // Story 20.3: Production items' Add opens the dialog that adds one item, and its Remove deletes one; Copy (Story 20.40) opens the dialog that copies the selected item; Change class (Story 20.41) opens the one that picks its new class.
+  'OcuPilot.Screen.Descriptor.InteropItemList': { add: STRINGS.interopItemAddTitle, copy: STRINGS.auditDatabaseCopyConfirm, changeclass: STRINGS.interopItemChangeClassAction, remove: STRINGS.actionRemove },
   // Story 20.23: Queues' Abort all aborts every message the queue's read enumerated; Jobs' and an item's Jobs tab's three actions act
   // on the message a job keeps retrying and on the job itself.
   'OcuPilot.Screen.Descriptor.InteropQueueList': { abort: STRINGS.interopQueuesAbortAllAction },
@@ -180,6 +180,13 @@ const DESCRIPTOR_ACTION_LABELS: Readonly<Record<string, Readonly<Record<string, 
   'OcuPilot.Screen.Descriptor.InteropLookupEntryList': {
     add: STRINGS.interopLookupEntryAddAction,
     set: STRINGS.interopLookupEntrySetAction,
+    remove: STRINGS.actionRemove,
+  },
+  // Story 20.26: Business partners' New business partner opens the dialog that adds one, its Edit opens the dialog that changes one and its
+  // Remove deletes one.
+  'OcuPilot.Screen.Descriptor.InteropBusinessPartnerList': {
+    add: STRINGS.interopPartnerAddAction,
+    edit: STRINGS.agentPanelSecretWarningEdit,
     remove: STRINGS.actionRemove,
   },
   // Story 8.5: the X.509 list's Create imports a credential rather than typing one in.

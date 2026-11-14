@@ -1,7 +1,7 @@
-import { Component, input } from '@angular/core';
+import { Component, input, output } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { ApiService } from '../../core/api';
 import { ChangeBus } from '../../core/change-bus';
@@ -13,10 +13,18 @@ import { ScreenStores } from '../../core/screen-store';
 import { SCREENS } from '../../core/screens.generated';
 import { STRINGS } from '../../core/strings';
 import { ListPage } from '../../shell/list-page';
+import { ScreenActionHandler } from '../../shell/screen-action-handler';
 import { stubAccountPreferences } from '../../testing/account-preferences';
 import { InteropItemAddDialog } from './interop-item-add-dialog';
+import { InteropItemChangeClassDialog } from './interop-item-change-class-dialog';
 import { InteropItemCopyDialog } from './interop-item-copy-dialog';
-import { INTEROP_ITEM_ADD_ACTION, INTEROP_ITEM_COPY_ACTION, INTEROP_ITEM_LIST, InteropItemListPage } from './interop-item-list.page';
+import {
+  INTEROP_ITEM_ADD_ACTION,
+  INTEROP_ITEM_CHANGE_CLASS_ACTION,
+  INTEROP_ITEM_COPY_ACTION,
+  INTEROP_ITEM_LIST,
+  InteropItemListPage,
+} from './interop-item-list.page';
 
 /**
  * The Production items page (Stories 20.3, 20.8). The shared list page and the add dialog are replaced by stand-ins, so
@@ -43,6 +51,21 @@ class StubCopyDialog {
   readonly production = input.required<string>();
 
   readonly source = input.required<string>();
+}
+
+@Component({
+  selector: 'app-interop-item-change-class-dialog',
+  template:
+    '<button data-stub-class (click)="chosen.emit(\'Probe.TearOp\')">{{ production() }}|{{ item() }}</button><button data-stub-class-cancel (click)="cancelled.emit()"></button>',
+})
+class StubChangeClassDialog {
+  readonly production = input.required<string>();
+
+  readonly item = input.required<string>();
+
+  readonly chosen = output<string>();
+
+  readonly cancelled = output<void>();
 }
 
 const DIAGRAM_ROUTE = 'interoperability/productions/diagram';
@@ -73,8 +96,8 @@ async function mount(url: string) {
     ],
   });
   TestBed.overrideComponent(InteropItemListPage, {
-    remove: { imports: [ListPage, InteropItemAddDialog, InteropItemCopyDialog] },
-    add: { imports: [StubListPage, StubAddDialog, StubCopyDialog] },
+    remove: { imports: [ListPage, InteropItemAddDialog, InteropItemCopyDialog, InteropItemChangeClassDialog] },
+    add: { imports: [StubListPage, StubAddDialog, StubCopyDialog, StubChangeClassDialog] },
   });
   const router = TestBed.inject(Router);
   await router.navigateByUrl(url);
@@ -169,6 +192,53 @@ describe('the Production items page', () => {
     actions.run(INTEROP_ITEM_LIST, INTEROP_ITEM_ADD_ACTION);
     await settle(fixture);
     expect(host.querySelector('[data-stub-production]'), 'the add never opens over the copy dialog').toBeNull();
+  });
+
+  // Mutation (Rule 19): the page does not register `changeclass`, or hands the dialog the composite id where the item's name belongs -> this goes red.
+  it('Story 20.41: Change class opens the class dialog on the selected row\u2019s item, and the class it chooses starts the review typed by the item\u2019s name', async () => {
+    const { fixture, host, actions, stores } = await mount(itemsUrl('Demo.One'));
+    const handler = TestBed.inject(ScreenActionHandler);
+    const started = vi.spyOn(handler, 'startDryRun').mockResolvedValue(true);
+    const screen = SCREENS.find((entry) => entry.descriptor === INTEROP_ITEM_LIST);
+    const store = stores.for(INTEROP_ITEM_LIST, screen?.refreshRates ?? []);
+    actions.run(INTEROP_ITEM_LIST, INTEROP_ITEM_CHANGE_CLASS_ACTION);
+    await settle(fixture);
+    expect(host.querySelector('[data-stub-class]'), 'no selection, no dialog').toBeNull();
+    const id = joinCompositeId(['Demo.One', 'Op1']);
+    store.setSelection([id]);
+    actions.run(INTEROP_ITEM_LIST, INTEROP_ITEM_CHANGE_CLASS_ACTION);
+    await settle(fixture);
+    expect(host.querySelector('[data-stub-class]')?.textContent?.trim()).toBe('Demo.One|Op1');
+    actions.run(INTEROP_ITEM_LIST, INTEROP_ITEM_ADD_ACTION);
+    actions.run(INTEROP_ITEM_LIST, INTEROP_ITEM_COPY_ACTION);
+    await settle(fixture);
+    expect(host.querySelector('[data-stub-production]'), 'the add never opens over the class dialog').toBeNull();
+    expect(host.querySelector('[data-stub-copy]'), 'nor the copy').toBeNull();
+    (host.querySelector('[data-stub-class]') as HTMLButtonElement).click();
+    await settle(fixture);
+    expect(host.querySelector('[data-stub-class]'), 'the choice closes the dialog').toBeNull();
+    expect(started).toHaveBeenCalledTimes(1);
+    expect(started.mock.calls[0].slice(0, 5)).toEqual([INTEROP_ITEM_LIST, 'changeclass', id, { NewClass: 'Probe.TearOp' }, store]);
+    expect(started.mock.calls[0][5]).toBe('Op1');
+  });
+
+  // Mutation (Rule 19): drop `(cancelled)="onCloseClass()"` from the page's template, or have `onCloseClass` leave `classing` set -> this goes red.
+  it('Story 20.41: dismissing the class dialog closes it without starting a review, and the action can open it again', async () => {
+    const { fixture, host, actions, stores } = await mount(itemsUrl('Demo.One'));
+    const handler = TestBed.inject(ScreenActionHandler);
+    const started = vi.spyOn(handler, 'startDryRun').mockResolvedValue(true);
+    const screen = SCREENS.find((entry) => entry.descriptor === INTEROP_ITEM_LIST);
+    stores.for(INTEROP_ITEM_LIST, screen?.refreshRates ?? []).setSelection([joinCompositeId(['Demo.One', 'Op1'])]);
+    actions.run(INTEROP_ITEM_LIST, INTEROP_ITEM_CHANGE_CLASS_ACTION);
+    await settle(fixture);
+    expect(host.querySelector('[data-stub-class]'), 'the dialog is open').not.toBeNull();
+    (host.querySelector('[data-stub-class-cancel]') as HTMLButtonElement).click();
+    await settle(fixture);
+    expect(host.querySelector('[data-stub-class]'), 'dismissal closes the dialog').toBeNull();
+    expect(started, 'dismissal starts no review').not.toHaveBeenCalled();
+    actions.run(INTEROP_ITEM_LIST, INTEROP_ITEM_CHANGE_CLASS_ACTION);
+    await settle(fixture);
+    expect(host.querySelector('[data-stub-class]'), 'a dismissed dialog does not block the next one').not.toBeNull();
   });
 
   // Mutation (Rule 19): `onOpenCopy` ignores an open add dialog -> the stacked-dialog leg goes red.

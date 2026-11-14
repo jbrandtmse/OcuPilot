@@ -246,6 +246,7 @@ XData Coverage
 <screen name="InteropItemMessageTab" class="OcuPilot.Test.InteropHostDescriptor" method="TestTheNineDeclarationsRegister" corpus="one declaration test pins all nine Story 20.4 runtime screens in one loop"/>
 <screen name="InteropItemJobTab" class="OcuPilot.Test.InteropHostDescriptor" method="TestTheNineDeclarationsRegister" corpus="one declaration test pins all nine Story 20.4 runtime screens in one loop"/>
 <screen name="InteropItemTestTab" class="OcuPilot.Test.InteropTestDescriptor" method="TestTheTabIsDeclaredAsTheSpecPlacesIt"/>
+<screen name="InteropItemClassTab" class="OcuPilot.Test.InteropItemClasses" method="TestTheTabIsDeclaredAsTheSpecPlacesIt"/>
 <screen name="InteropLookupTableList" class="OcuPilot.Test.InteropLookupDescriptor" method="TestTheThreeDeclarationsRegister" corpus="one declaration test pins all three Story 20.5 screens in one loop"/>
 <screen name="InteropLookupEntryList" class="OcuPilot.Test.InteropLookupDescriptor" method="TestTheThreeDeclarationsRegister" corpus="one declaration test pins all three Story 20.5 screens in one loop"/>
 <screen name="InteropBusinessPartnerList" class="OcuPilot.Test.InteropLookupDescriptor" method="TestTheThreeDeclarationsRegister" corpus="one declaration test pins all three Story 20.5 screens in one loop"/>
@@ -430,6 +431,7 @@ XData Coverage
 <tool name="interop.items.restart" class="OcuPilot.Test.InteropItemRun" method="TestTheAgentsRestartConfirmsOverHttp"/>
 <tool name="interop.items.add" class="OcuPilot.Test.InteropItemControl" method="TestTheAgentsAddAndRemoveConfirmOverHttp" corpus="the add and the remove are asserted together in one test"/>
 <tool name="interop.items.copy" class="OcuPilot.Test.InteropItemCopy" method="TestTheAgentsCopyConfirmsOverHttp"/>
+<tool name="interop.items.changeclass" class="OcuPilot.Test.InteropItemChangeClass" method="TestTheAgentsChangeOfClassConfirmsOverHttp"/>
 <tool name="interop.items.remove" class="OcuPilot.Test.InteropItemControl" method="TestTheAgentsAddAndRemoveConfirmOverHttp" corpus="the add and the remove are asserted together in one test"/>
 <tool name="interop.itemsettings.set" class="OcuPilot.Test.InteropSettingControl" method="TestTheAgentsSetAndResetOfAHostSettingConfirmOverHttp" corpus="the set and the reset are asserted together in one test"/>
 <tool name="interop.itemsettings.reset" class="OcuPilot.Test.InteropSettingControl" method="TestTheAgentsSetAndResetOfAHostSettingConfirmOverHttp" corpus="the set and the reset are asserted together in one test"/>
@@ -441,6 +443,9 @@ XData Coverage
 <tool name="interop.lookupentries.add" class="OcuPilot.Test.InteropLookupControl" method="TestTheAgentsAddConfirmsOverHttp"/>
 <tool name="interop.lookupentries.set" class="OcuPilot.Test.InteropLookupControl" method="TestTheAgentsSetConfirmsOverHttp"/>
 <tool name="interop.lookupentries.remove" class="OcuPilot.Test.InteropLookupControl" method="TestTheAgentsRemoveConfirmsOverHttp"/>
+<tool name="interop.businesspartners.add" class="OcuPilot.Test.InteropPartnerControl" method="TestTheAgentsAddConfirmsOverHttp"/>
+<tool name="interop.businesspartners.update" class="OcuPilot.Test.InteropPartnerControl" method="TestTheAgentsUpdateConfirmsOverHttp"/>
+<tool name="interop.businesspartners.remove" class="OcuPilot.Test.InteropPartnerControl" method="TestTheAgentsRemoveConfirmsOverHttp"/>
 <tool name="interop.lookuptables.delete" class="OcuPilot.Test.InteropLookupControl" method="TestTheAgentsDeleteConfirmsOverHttp"/>
 <tool name="interop.lookuptables.export" class="OcuPilot.Test.InteropLookupTransfer" method="TestTheAgentsExportConfirmsOverHttp"/>
 <tool name="interop.lookuptables.import" class="OcuPilot.Test.InteropLookupTransfer" method="TestTheAgentsImportConfirmsOverHttp"/>

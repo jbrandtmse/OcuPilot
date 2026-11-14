@@ -103,6 +103,7 @@ XData Titles
 "interopBplEditorTitle": "BPL editor",
 "interopBusinessPartnersLabel": "Business partners",
 "interopDtlEditorTitle": "DTL editor",
+"interopItemClassesLabel": "Host classes",
 "interopItemJobsLabel": "Item jobs",
 "interopItemLogLabel": "Item log",
 "interopItemMessagesLabel": "Item messages",

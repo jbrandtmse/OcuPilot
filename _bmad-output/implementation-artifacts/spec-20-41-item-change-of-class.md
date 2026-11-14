@@ -2,7 +2,9 @@
 title: 'Story 20.41: Item change of class'
 type: 'feature'
 created: '2026-11-12'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: 'ab0e5c00e54e281ae5f4a97101fde159c3282a0d'
+baseline_commit: 'ab0e5c00e54e281ae5f4a97101fde159c3282a0d'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -144,7 +146,7 @@ Line numbers are on `a6c49d6d`. Stories 20.25, 20.26 and 20.40 land first and sh
 
 **Execution:**
 
-- [ ] **Task 0, on `ocupilot-b-ci` (USER, auditing on, the probe production).** Record each result under Design Notes › Measured.
+- [x] **Task 0, on `ocupilot-b-ci` (USER, auditing on, the probe production).** Record each result under Design Notes › Measured.
   - (a) Re-anchor the Code Map on the branch head, where 20.25, 20.26 and 20.40 have landed. Read `ToolWrite`'s other-port count and `ReadTool`'s registry count; this story's pins are one and two above them.
   - (b) On a probe item changed `Op` → `TearOp` through the port's write, record:
     - the item's stored `Settings` before and after;
@@ -154,7 +156,7 @@ Line numbers are on `a6c49d6d`. Stories 20.25, 20.26 and 20.40 land first and sh
   - (c) Which stock roles hold `%Ens_ProductionConfig:WRITE` (`Security.Roles` resources, read in `%SYS`), to place the tab in `InteropFloor`'s rosters.
   - (d) The picker's rows equal `Ens.ContextSearch.BusinessServices`, `BusinessProcesses` and `BusinessOperations` for each kind, as sets.
   - A result that changes destructiveness, the key default, the audit choice, the dropped rule or the pairs is `## Clarification Needed`.
-- [ ] `src/OcuPilot/Port/InteropPort.cls`:
+- [x] `src/OcuPilot/Port/InteropPort.cls`:
   - **The endpoint.** Add `ENDPOINTITEMCLASSES` `ItemClasses` to `ENDPOINTS`. Its pairs are `PRODUCTIONPAIRS` plus `ITEMWRITEPAIRS`, so the read takes the classic dialog's `RESOURCE`. It serves `LIST` only, dispatched to a new `InvokeItemClasses` modeled on `InvokeItemTest`'s `LIST` branch.
   - **The list.** `ListItemClasses` gathers the item first: absent is 404, and a name held twice is `AMBIGUOUS`. It lists each candidate as a row `{Production, Item, ClassName, Type, Current}`, `Current` true for the item's own class. One `CandidateClasses(pType, .pFound)` helper, extended from `ListClasses`' reader, serves this read and the write's check.
   - **The write type.** Add `TYPECHANGECLASS` `CHANGECLASS` to `IsItemWrite`, and `NEWCLASSKEY` `newClass`.
@@ -168,10 +170,10 @@ Line numbers are on `a6c49d6d`. Stories 20.25, 20.26 and 20.40 land first and sh
     - refuse `REVIEWCHANGED` when the query's `DIGESTKEY` differs;
     - set `ClassName`, remove the dropped settings, `%Save` the production, audit as Boundaries says, `SaveToClass(item)`, then read the item back.
   - `InvokeItems` hands both keys through. Add an `ItemSnippet` `CHANGECLASS` branch (AD-59). Refresh the header and `PerformItem`'s doc.
-- [ ] `src/OcuPilot/Api/InteropError.cls`:
+- [x] `src/OcuPilot/Api/InteropError.cls`:
   - `ITEMNEWCLASS`, `ITEMSAMECLASS` and `ITEMREVIEWCHANGED` go to `Codes`, the item lists and `ReasonFor`, the last also to `RESENDCHANGED`'s list;
   - consequence `ITEMCHANGECLASS` `INTEROP.ITEM.CHANGECLASS` goes to `Codes`, `ConsequenceCodes` and `ReasonFor`.
-- [ ] `src/OcuPilot/Screen/Tool/InteropItemChangeClass.cls` (new, extends `InteropItemAction`):
+- [x] `src/OcuPilot/Screen/Tool/InteropItemChangeClass.cls` (new, extends `InteropItemAction`):
   - `TOOLNAME` `interop.items.changeclass`, `WRITETYPE` `CHANGECLASS`, `DESTRUCTIVE` 1, `DRYRUN` 1, `SCREENACTIONS` `changeclass`;
   - `SCREENVALUES` `changeclass=NewClass:Reviewed`, `SCREENOPTIONAL` `changeclass=Reviewed`;
   - `CLASSICPAGES` `EnsPortal.Dialog.ChangeClass`, `CONSEQUENCECODE` `INTEROP.ITEM.CHANGECLASS`;
@@ -183,7 +185,7 @@ Line numbers are on `a6c49d6d`. Stories 20.25, 20.26 and 20.40 land first and sh
   - `ArgumentProblem`, `ConfirmProblem` and `ScreenActionDelta` apply `NewClass`'s shape rule of the Matrix.
   - `InputSchema`: `NewClass` described ("as the item's Classes tab lists it") and required; `Reviewed` is not offered.
   - `DESCRIPTION` in the siblings' plain words. It is agent-facing and decided at implement.
-- [ ] `src/OcuPilot/Screen/Descriptor/InteropItemClassTab.cls` (new), on `InteropItemTestTab`'s shape:
+- [x] `src/OcuPilot/Screen/Descriptor/InteropItemClassTab.cls` (new), on `InteropItemTestTab`'s shape:
   - route `interoperability/productions/items/classes`, `archetype` `detail`;
   - privileges `%Ens_Portal:USE` and `%Ens_ProductionConfig:WRITE`, the latter as `ownPrivileges`;
   - `classicPage` `EnsPortal.ProductionConfig` (AD-44's item tabs), `entityType` `production-item`, id composite `[Item, ClassName]`;
@@ -191,9 +193,9 @@ Line numbers are on `a6c49d6d`. Stories 20.25, 20.26 and 20.40 land first and sh
   - read row "class this item can change to", source `interop`/`ItemClasses`/`LIST`, fields `Production, Item, ClassName, Type, Current`, one `item` criterion as the Test tab's;
   - columns `ClassName` (`interopItemColumnClass`, `name`), `Type` and `Current`;
   - tab position 8, label `explorerClassListLabel`; `toolIdentifier` `interop.itemclasses`.
-- [ ] `src/OcuPilot/Screen/Descriptor/InteropItemList.cls`: add `changeclass` to `rowActions` immediately before `remove`, which stays last. Refresh the doc.
-- [ ] `src/OcuPilot/Kernel/Governance/Baseline.cls`: append `"interop.items.changeclass": false`.
-- [ ] Client:
+- [x] `src/OcuPilot/Screen/Descriptor/InteropItemList.cls`: add `changeclass` to `rowActions` immediately before `remove`, which stays last. Refresh the doc.
+- [x] `src/OcuPilot/Kernel/Governance/Baseline.cls`: append `"interop.items.changeclass": false`.
+- [x] Client:
   - `interop-item-change-class.store.ts` (new): reads `/api/ocupilot/screens/interop.itemclasses/read?maxRows=1000&item=<Production||Name>` through `ApiService`, holding the rows, loading and refusal.
   - `interop-item-change-class-dialog.ts` (new), on the add dialog's model:
     - the consequence banner and a refusal alert;
@@ -206,22 +208,22 @@ Line numbers are on `a6c49d6d`. Stories 20.25, 20.26 and 20.40 land first and sh
     - `startDryRun` and `openReview` take an optional typed name, defaulting to today's;
     - `reviewLinesOf` renders a review of several rows: each row as `- <field>: <before>`, then `+ <field>: <after>` unless it is removed. A one-row review renders as today.
   - `screen-actions.ts`, `proposal-view.ts`, `strings.ts`: the label, the consequence and the ruled strings, appended. Specs for the store, the dialog and the handler's change.
-- [ ] `_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md`: add the ruled strings to :604's row, and to :173's Dialogs line: "change an item's class (Production items, Story 20.41: the class from the item's Classes tab, then the dry run's removed settings, then the destructive treatment, typed name the item's name)". Then run `npm run test:tools`.
-- [ ] `src/OcuPilot/Test/InteropItemChangeClass.cls` (new, armed by `OCUPILOT_ALLOW_PRINCIPALS`): one leg per Matrix row, each on its own probe items, created and removed in the test, using `InteropItemControl`'s class methods.
+- [x] `_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md`: add the ruled strings to :604's row, and to :173's Dialogs line: "change an item's class (Production items, Story 20.41: the class from the item's Classes tab, then the dry run's removed settings, then the destructive treatment, typed name the item's name)". Then run `npm run test:tools`.
+- [x] `src/OcuPilot/Test/InteropItemChangeClass.cls` (new, armed by `OCUPILOT_ALLOW_PRINCIPALS`): one leg per Matrix row, each on its own probe items, created and removed in the test, using `InteropItemControl`'s class methods.
   - The agent's leg: mint, HTTP confirm, the class read back, the audit row and the recompile.
   - The person's leg: the dry run, then the action with `Reviewed`.
   - The Gates leg uses `InteropItemGate`'s generator.
   - Split at about 500 lines (`InteropItemChangeClassRefusals`).
-- [ ] `src/OcuPilot/Test/InteropItemClasses.cls` (new, armed): Task 0 (d)'s set equality for each kind, the unknown kind, `Current`, 404, `AMBIGUOUS` and the WRITE pair's 403.
-- [ ] `src/OcuPilot/Test/InteropItemDescriptor.cls` (append only): the row actions in order, and `StateDiff` over a fixed read, the secret row's value empty.
-- [ ] `scripts/ci-throwaway.sh`: both new classes on the item `# classes:` line.
-- [ ] The Code Map's rosters, then sweep `src/OcuPilot/Test`, `ui/browser`, `ui/tools` and the `ui/src` specs for the old shape of each (Rule 30).
-- [ ] `ui/browser/interop-items.browser-spec.mjs`, on the deployed bundle:
+- [x] `src/OcuPilot/Test/InteropItemClasses.cls` (new, armed): Task 0 (d)'s set equality for each kind, the unknown kind, `Current`, 404, `AMBIGUOUS` and the WRITE pair's 403.
+- [x] `src/OcuPilot/Test/InteropItemDescriptor.cls` (append only): the row actions in order, and `StateDiff` over a fixed read, the secret row's value empty.
+- [x] `scripts/ci-throwaway.sh`: both new classes on the item `# classes:` line.
+- [x] The Code Map's rosters, then sweep `src/OcuPilot/Test`, `ui/browser`, `ui/tools` and the `ui/src` specs for the old shape of each (Rule 30).
+- [x] `ui/browser/interop-items.browser-spec.mjs`, on the deployed bundle:
   - a Change class leg changes a probe item `Op` → `TearOp` through the row action;
   - it asserts the review lists `Host.HangSeconds` and the typed name;
   - it sees the row's class change, then removes the item.
-- [ ] `ui/browser/interop-host-tabs.browser-spec.mjs`: the strip's labels with Classes last.
-- [ ] DW-2298 (owned by 20.25 until its adjudication re-owns it): AC1-AC4 close its change-of-class residual.
+- [x] `ui/browser/interop-host-tabs.browser-spec.mjs`: the strip's labels with Classes last.
+- [x] DW-2298 (owned by 20.25 until its adjudication re-owns it): AC1-AC4 close its change-of-class residual.
 
 **Acceptance Criteria:**
 
@@ -233,11 +235,109 @@ Line numbers are on `a6c49d6d`. Stories 20.25, 20.26 and 20.40 land first and sh
 - AC6: Given the two new tools, when `Test/ToolWrite` and `Test/ReadTool` run, then the other-port count reads one above, and the registry count two above, the branch's values before this story.
 - AC7: Given the Classes tab's read tool, when `Test/ReadDescriptions` runs, then it passes with the tool's title, row phrase and fields, and the tool is in no confusable group.
 
+### Review Findings
+
+Code review 2026-11-14 (first review, `389e9e2d..3c459376` plus QA's tree).
+
+- [x] [Review][Patch] AC2's Item settings clause cannot fail: `HeldSettings()` lists only settings the new class declares, so a kept `HangSeconds` never shows [src/OcuPilot/Test/InteropItemChangeClass.cls:311]
+- [x] [Review][Patch] The drop rule's Adapter keep branch is never run: the one Adapter case changes to a class with no adapter [src/OcuPilot/Port/InteropPort.cls:DroppedSettings]
+- [x] [Review][Patch] The gate's change-of-class leg leaves state its reset cannot see: the change-back is unchecked and `Items()` compares names and enabled flags only [src/OcuPilot/Test/InteropItemGate.cls:419]
+- [x] [Review][Patch] The class picker shows an empty select and no sentence when its read fails without one (status 0, installing) [ui/src/app/areas/interoperability/interop-item-change-class.store.ts:load]
+- [x] [Review][Patch] Stale doc comments: `Snippet` and `ItemSnippet` omit the change of class, and the page comment says the dialogs add an item [src/OcuPilot/Port/InteropPort.cls:5732, ui/src/app/areas/interoperability/interop-item-list.page.ts:41]
+- [x] [Review][Patch] AC4's audit and key-default clauses and AC5's write clause have pinning tests but no `mutation:` line [spec ## Verification]
+- [x] [Review][Defer] `InteropItemChangeClassMint.Mint` repeats `InteropTransformMint.Mint`'s pre-read `ArgumentProblem` guard under another parent [src/OcuPilot/Screen/Tool/InteropItemChangeClassMint.cls:9] — deferred: LOW, a hook in the kernel mint would serve both, outside this story's files; ledgered DW-2546, wontfix-accepted.
+
+Rejected:
+
+- `false` the candidate scan holds the production's lock too long: the three-kind scan measured 0.078 s for 197 classes on `ocupilot-b-ci`.
+- `false` a multi-line value breaks the review's layout: `.ocu-dialog-review > li` is `white-space: pre-wrap`.
+- `false` the AD-59 script drops nothing without a context: its one caller, `Kernel/Proposal/Draft.cls:217`, always passes the stored payload, and `FINGERPRINTSUBJECT` keeps `Dropped` in it.
+- `low` the picker can be cut at 1,000 rows and does not show each class's kind: 198 classes in `USER`, and the kinds mix only for an item whose class is not compiled.
+- `low` by-design: a change that drops nothing reviews as bare `- old` / `+ new` lines; Tasks keeps a one-row review rendering as today.
+- `low` the dialog's empty sentence would be untrue when the item's class is the only one of its kind: every interoperability namespace ships dozens of vendor classes of each kind, and a fix needs a new string.
+- `low` suggested prompt 2 has no read that answers it: the strings are ruled (U-26), and the agent answers it with a proposal, which writes nothing.
+- `low` the class-shape rule admits underscores and an interior `%`: the agent copies names from the Classes tab, the port refuses any class not listed, and a tighter pattern risks refusing a valid name.
+- `low` a class of two kinds reads Type `service` on an unknown-kind item's tab: cosmetic, on a rare item, and the write's check is per kind.
+- `low` the write saves the item rather than the production: Intent and the vendor save the item, and the stored settings read correct.
+- `low` `Test/InteropItemDescriptor.cls` is edited in place: the edits are the roster's required rows, and Epic 23's branch does not touch the file.
+- `low` DW-2545 still reads open: its adjudication is the runner's ledger gate.
+- `low` the spec lost its frontmatter `deferred:` key: the fix edits the spec under review; the runner's harvest is the place to restore it.
+
+- [x] [Smoke] Full sweep on ddae7dc1 (fresh `ocupilot-b-ci`, 20 shards, 710 classes): four roster assertions the story's change missed -- (1) `OcuPilot.Test.ToolDispatch.TestTheShippedGateAllowsEveryLiveToolButTheBaselineDisabled` +24: "interop.items.changeclass: 1|" and "interop.items.remove: 1|"; (2) `OcuPilot.Test.CompositeMintSweep.TestTheRosterIsEveryCompositeIdMint` +34: "every composite-id mint has a row: OcuPilot.Screen.Tool.InteropItemChangeClassMint"; (3) `OcuPilot.Test.InteropHostDescriptor.TestTheItemTabsFormOneGroupInOrder` +18: "and the group has seven members" (the Classes tab joins the group); (4) `OcuPilot.Test.InteropHostDescriptor.TestThePortServesTheRuntimeEndpointsAndTheirPairs` +1: "the port's endpoint roster". Update each roster to the delivered shape (read every name from the instance, never recall it), find out why `interop.items.remove` now reads differently in ToolDispatch and fix the cause, not the symptom; add the three classes to `Shared surfaces:` and the `(loop)` class list; demonstrate one mutation per roster row added and record its `mutation:` line under `## Verification`.
+
+Code review 2026-11-14, rework re-review (`906b7b29..8721fd22`): clean. The four `[Smoke]` reds are fixed: `ToolDispatch` 19, `CompositeMintSweep` 5 and `InteropHostDescriptor` 8 green on `ocupilot-b-ci` (runs 762-764, source identical to the tree). The probe's `ArgumentProblem` stub and `REVIEWEDARGUMENT` reach no other row: `Mint.Mint` asks `ArgumentProblem` only after the read, where every sweep mode has already refused, and only `InteropItemChangeClassMint` reads the parameter.
+
+Rejected:
+
+- `low` the Classes-tab mutation line omits `TestTheNineDeclarationsRegister`, also red in run 754: the line is true and claims no "alone"; the fix edits this spec.
+- `low` the endpoint mutation changes the test's literal: the test pins the port's parameter against that literal, and a product-side drop reddens it too; already rejected in the rework's triage.
+- `low` the `ToolDispatch` mutation only reverts the fix: it reddens both names, which shows the test reads each verdict from the gate; a baseline set `true` reddens it the same way.
+- `low` `Governance.INTEROPITEMREMOVE` now also holds the change of class: both readers use `$ListFind` and both doc comments name the two tools; the parameter is round-1 code, outside this range.
+- `false` the probe's `REVIEWEDARGUMENT` is dead and could go stale: it keeps the stand-in faithful to the tool interface the mint reads, and no sweep row observes it, so a stale value changes no result.
+- `false` the probe's `ArgumentProblem` ignores `NewClass`: the sweep pins the readable-id pass, not argument rules, which `InteropItemChangeClass`'s own tests pin.
+- `low` a duplicate tab position would pass the eight-member count: the loop is unchanged apart from 7 to 8, and the registry's own roster check reddened on a position change in run 754.
+- `low` the Code Map table, `Shared surfaces:` grouping, the rework paragraph's wording and the triage heading's date: each fix edits this spec.
+- `false` the frontmatter reads `done` while tracking reads `review`: this is the rework convention, and the review does not set the frontmatter.
+- `low` `InteropItemChangeClassMint` drops an error status from `ArgumentProblem`: round-1 code outside this range, and the shipped `ArgumentProblem` always returns `$$$OK`.
+
+- [x] [CI] staging d35237a5, run 43556455745, instance shard 1/8: `OcuPilot.Test.RemovalRowsSweep.TestEveryRemovalRowComesFromTheOneBuilder` names `OcuPilot.Screen.Tool.InteropItemChangeClass` -- Epic 23's roster (23.13 batch 3, now on this branch) requires every tool that writes a `removed` row in `StateDiff` to build it through `OcuPilot.Screen.Tool.Write.RemovalRows` or to be in that test's `Others()`. Build the dropped-setting rows through `RemovalRows` (Rule 2), keeping the card's rows as they are; only if the builder cannot take the rows, add an add-only `Others()` line and write a one-line reason here.
+  - Reason for the `Others()` line: the builder cannot take these rows. `RemovalRows` reads each row's value from `pFresh` by its field name and the roster pins every names call to `..RemovalRows(pFresh, <skip>, ..<source>())` over a fixed names source, while this tool's rows are `<Target>.<Name>` over an array the read carries, so they are the "array the tool reads for itself" shape that `Others()` names.
+  - Scope of this pass: only this item; the checked tasks above are done and are not re-derived. Verify on `ocupilot-b-ci` (slot B, `server: "ocupilot-slot-b"`): load `src`, then run `OcuPilot.Test.RemovalRowsSweep`, `OcuPilot.Test.InteropItemChangeClass`, `OcuPilot.Test.InteropItemChangeClassRefusals`, `OcuPilot.Test.InteropItemDescriptor`, one class per call, and `uv run scripts/check-objectscript.py` on the changed classes. The card's rows stay exactly as they are (the existing card assertions stay green unchanged). Record a `mutation:` line for the roster pin under `## Verification`.
+
+Code review 2026-11-14, rework re-review (`ab0e5c00..62a087a4`): clean. The `[CI]` red is fixed: `RemovalRowsSweep` 7 of 7 green on `ocupilot-b-ci` (run 173, compiled `Others()` ends in `InteropItemChangeClass`). The reason is present and true: `RemovalRows` names each row from its names list and renders `before` from `pFresh` through `Mint.Display`, while this tool's rows are `<Target>.<Name>` from the read's `Dropped` array with a credential's value left empty (AD-35), and the sweep pins every names call to a fixed, argument-free names source.
+
+Rejected:
+
+- `low` lines 108 and 399 still say `Write.RemovalRows` is not on this branch and builds fixed-name rows only: the fix edits this spec.
+- `low` `RemovalRowsSweep` is not on `Shared surfaces:` or the `(loop)` class list: the fix edits this spec; CI's shards run the class.
+- `low` the recorded reason leaves out the AD-35 blank and the exact call text the sweep pins, and the rework's triage line overstates the `Sites` edit: the conclusion is true; the fix edits this spec.
+- `low` the cycle log's `dev_complete` note omits `InteropItemDescriptor` 12 of 12: the log is append-only, and this spec records run 171.
+- `false` the sweep's header describes deletes only: the scan covers every `OcuPilot.Screen.Tool` class and `Others()`'s own comment is not delete-specific, so no reader acts on the header wrongly.
+- `false` review outcomes were written before this review: the rework 2 triage entry is the implement stage's own review, the same convention as rework 1.
+
 ## Spec Change Log
+
+- 2026-11-14, rework iteration 2 (runner, CI story red on the staging head): the removed rows go through the shared builder.
+
+- 2026-11-14, rework iteration 1 (runner): the full sweep found four roster assertions the story missed.
 
 - 2026-11-12, spec gate (runner): the privileges and the twelve new strings are veto item U-26; the AD lines stay for the owner's Update, not written.
 
 ## Review Triage Log
+
+### 2026-11-13 — Review pass
+
+- verdicts: 12 findings — high 0, medium 2, low 10, false 0, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` the dropped-set rule is pinned only for a Host setting the new class does not declare — added `TestTheDropRuleIsAppliedPerTargetAndPerValue` (invalid Host value, Adapter, other target); two mutations recorded.
+  - `[medium]` `[patch]` a changed value of a non-secret dropped setting is not covered by the moved-since-review tests — added `TestAValueThatMovedAfterTheReviewIsRefusedAndNothingIsWritten`; mutation recorded.
+  - `[low]` `[patch]` the class-shape rule on the person's route and `ConfirmProblem` are undiscriminated — the route assertion now excludes the port's own code, and a `ConfirmProblem` leg was added; mutation recorded.
+  - `[low]` `[defer]` the Change class dialog's dismissal path is not tested — the add and copy dialogs share the shape; closed in QA (DW-2545), see Verification.
+  - `[low]` `[patch]` AC6 and AC7 have no `mutation:` line — two mutations run and recorded.
+  - `[low]` `[reject]` the unknown-kind write is tested only to the operation class — the list leg pins all three kinds and both reads derive the kind through the same `GetBusinessType`; a service or process leg adds nothing the write's own judging does not.
+  - `[low]` `[reject]` `Hang 2` before the no-job assertion — the polled `Running|1` leg is the one that discriminates, and the sleep only lengthens the window.
+  - `[low]` `[reject]` an action without `Reviewed` skips the digest compare — by design: `Reviewed` is optional in `SCREENOPTIONAL` as the resend's is (AD-56), the client always sends it, and a direct caller can send the digest as well.
+  - `[low]` `[reject]` the handler's no-outcome-dialog rule applies to any applied action that answers no lines — the resend actions answer lines when applied, and their specs stay green.
+  - `[low]` `[reject]` digest enforcement lives at the callers as well as the port (intent audit) — same as the row on `Reviewed`.
+  - `[low]` `[reject]` the picker and the write derive the item's kind separately (intent audit) — both call `Ens.Config.Item:GetBusinessType` (`InteropPort.cls` 1769, 2166).
+  - `[low]` `[reject]` the nothing-dropped review is not pinned in the browser (intent audit) — it takes the existing one-row render path, and the agent's card for it is pinned.
+
+### 2026-11-13 — Review pass (rework 1, the `[Smoke]` roster item)
+
+- verdicts: 4 findings — high 0, medium 0, low 4, false 0, maybe-false 0
+- findings:
+  - `[low]` `[reject]` mutation line 4 mutates the test's own `ENDPOINTS` literal, not the product — the line says so ("the test's ENDPOINTS"), and the assertion compares the port's parameter to that literal, so removing a name from it is the discriminating mutation; the product-side drop also reddens `InteropDescriptor` and `InteropItemClasses`, which a line claiming "alone red" does not assert.
+  - `[low]` `[reject]` the probe's new `ArgumentProblem` stub has no mutation line of its own — the new roster row's mutation (row removed) is the line that pins the stub's need, and without the stub the row errors rather than passes.
+  - `[low]` `[reject]` the mutation runs are not visible in the diff — the tree after the pass is byte-identical to the diff (no mutated source), and the three classes were re-run green on `ocupilot-b-ci` after reload (runs 759-761).
+  - `[low]` `[reject]` the `ToolDispatch` comparison was rewritten rather than appended (intent audit) — a minimal in-place roster edit the dispatch allowed, and `Governance.cls` reads the same parameter with `$ListFind`.
+
+### 2026-11-14 — Review pass (rework 2, the `[CI]` roster item)
+
+- verdicts: 3 findings — high 0, medium 0, low 3, false 0, maybe-false 0
+- findings:
+  - `[low]` `[reject]` the builder could take the rows through a transient object keyed `<Target>.<Name>`, so the `Others()` line takes the fallback branch (intent audit) — the sweep pins every names call to a fixed names source in `Sites()` and drives it with a read that assigns each name, so a shim needs edits to Epic 23's `Sites` and `Driven` that are not add-only; the rows are the array-read shape `Others()` already holds for `ErrorDelete` and its siblings, and the roster's stale-name test goes red if this tool later adopts the builder.
+  - `[low]` `[reject]` the mutation line's "(1 of 7)" reads like a stale count (verification-gap) — it is the sweep's test count, and the fix edits this spec.
+  - `[low]` `[reject]` the pass's mutation is recorded but not visible in the diff (verification-gap) — the tree after the pass is byte-identical to the diff, and `RemovalRowsSweep` ran green again (run 172) after the pass.
 
 ## Design Notes
 
@@ -259,6 +359,13 @@ The story complies with every AD as it stands.
 - `GetHyperEventResources` gives `HostChangeClass` the page's `EDITRESOURCE`, `%Ens_ProductionConfig:WRITE` (:7911), and the dialog's `RESOURCE` is the same pair. So the change's posture equals the classic portal's.
 - `HSCUSTOM` on `ocupilot-slot-b` holds 90 non-abstract compiled service classes, 67 process classes and 120 operation classes (`%Dictionary.CompiledClass.PrimarySuper`; an approximation of `SubclassOf`, inference). The picker's 1,000-row cap holds all three together.
 
+**Measured** (Task 0, `ocupilot-b-ci`, 2026-11-13, auditing on, the probe production in `USER`):
+
+- (a) At the branch head `389e9e2d` (Stories 20.25 and 20.40 landed): `ToolWrite`'s other-port count read 57 and `ReadTool`'s registry 410, so this story's pins are 58 and 412. `ReadTool`'s criteria-descriptor count read 72 and is 73 with the Classes tab.
+- (b) A probe operation item holding Host `HangSeconds`, `ApiToken` and `TearDownSeconds`, changed `Op` to `TearOp` through the port's write: its stored `Settings` read `Host.HangSeconds=5, Host.ApiToken=..., Host.TearDownSeconds=7` before and `Host.TearDownSeconds=7` after. The vendor's audit holds one `ModifyConfiguration` row, `item <name> of <production>: item class changed by OcuPilot from <old> to <new>, Host.ApiToken, Host.HangSeconds`. The class reads `TearOp` after a recompile of the production class. On a running production at `Running|0`, the change of a disabled item moved the state to `Running|1`, and so did the change of an enabled one: update pending.
+- (c) `%Ens_ProductionConfig:W` is held by `%EnsRole_Administrator` and `%EnsRole_WebDeveloper`; `%EnsRole_Operator` holds `R` and `%EnsRole_Monitor` none. The tab is in `InteropFloor`'s Administrator rosters.
+- (d) For an operation, a business process, a business service and an item whose class is not compiled, the `ItemClasses` rows equal `Ens.ContextSearch.BusinessOperations`, `BusinessProcesses`, `BusinessServices` and `AllBusinessHosts` as sets (84, 29, 88 and 198 classes in `USER`, none missing, none extra).
+
 **Decisions (AD-22):**
 
 | Action | Tool and key | Destructive | Audit record |
@@ -276,6 +383,17 @@ The story complies with every AD as it stands.
 - **The picker is an item tab.** A tab is a screen a person can open (AD-5), and it gives the agent a read with one `item` criterion, as the Settings and Test tabs do. The tab is in no confusable group: its read needs an item, and no other list holds an item's candidate classes.
 - **The tab's screen title is new.** Reusing "Classes" as the title would give the model two read tools titled alike; the tab label stays "Classes".
 - Reused strings: the tab label `explorerClassListLabel` ("Classes"), the column and the select label `interopItemColumnClass` ("Host class"), the button `interopEditResendReview` ("Review"), the criterion label `interopItemSettingsCriterionItem` and `tableColumnType`.
+
+**Decided in-stage (implement):**
+
+- The Classes tab declares `%Ens_ProductionConfig:READ` as well as `WRITE`, both as its own pairs. `InteropFloor`'s derived leg needs a declared pair from the classic page's `RESOURCE` (`EnsPortal.ProductionConfig`, `READ`), and the port's `ItemClasses` pairs already include READ, so the effective gate is unchanged. Veto item U-26 (privileges) carries this.
+- `interopItemClassesEmptyAgent` is not shipped: the screen mirror refuses an `emptyAgentKey` on a descriptor with no action, so the tab's empty state is the existing `tableReadOnlyEmptyNext`. Eleven new strings, not twelve.
+- `INTEROP.ITEM.REVIEWCHANGED` is in `ItemCodes` once and not also in `MessageCodes`: `Codes()` would list it twice, and the roster test counts them. `NEWCLASS` and `SAMECLASS` are in `ItemPreconditionCodes`.
+- The agent's mint is `InteropItemChangeClassMint` (extends `InteropItemMint`), so a class that is empty, not a string, too long or not class-shaped, and a `Reviewed` argument, are refused before the instance is read.
+- The composed read answers `Reviewed` only when it is composed for an action. The agent's confirm re-read carries the stored `Digest` and no action, and would otherwise answer a different `Reviewed` than its mint did and close every proposal target-changed.
+- `DroppedSettings` answers each setting's position in `pPositions` as well, so the write removes by index in descending order. A review of several rows renders `- field: before` and `+ field: after` lines, trimmed of trailing blanks; a review whose action answers no line (this one) ends with the change event and opens no outcome dialog.
+- The principals' legs are `InteropItemGate`'s own: its `LEGS` gained `Items|CHANGECLASS` and its `TOOLS` this tool, and its probe changes the class back when admitted.
+- The agent's confirm of a destructive key that ships `false` needs the key on in the tests that confirm (`InteropItemChangeClass.KeyOn`); `ClassicPageGate`'s and `Governance`'s rosters name the key.
 
 **For the runner (veto window, privileges):**
 
@@ -340,7 +458,7 @@ The story complies with every AD as it stands.
 
 - the Production items row actions;
 - an item's tab strip;
-- the write-tool and read-tool rosters (`ReadTool` +2, `ToolWrite`'s other-port count +1, `ToolRoundTrip`, `ToolEmit`, `SurfaceCoverage`);
+- the write-tool and read-tool rosters (`ToolDispatch`, `CompositeMintSweep`, `InteropHostDescriptor`, `ReadTool` +2, `ToolWrite`'s other-port count +1, `ToolRoundTrip`, `ToolEmit`, `SurfaceCoverage`);
 - the screen rosters (`Descriptor`, `StageTwoTools`, the screen mirror, `InteropFloor`);
 - the classic-page rosters (`MappingDescriptor`, `ClassicPageGate`);
 - the governance baseline;
@@ -358,12 +476,49 @@ The story complies with every AD as it stands.
 - `(loop)` `cd ui && node tools/ci-runner.mjs --container ocupilot-b-ci --class OcuPilot.Test.<C>`, one class per call:
   - `InteropItemChangeClass` (and its split), `InteropItemClasses`, `InteropItemControl`, `InteropItemGate`, `InteropItemRefusals`, `InteropItemDescriptor`;
   - `ReadTool`, `ToolWrite`, `ToolRoundTrip`, `ToolEmit`, `SurfaceCoverage`, `EndpointCoverage`, `GovernanceBaseline`, `Governance`, `Prohibited`, `ReadDescriptions`, `Descriptor`, `StageTwoTools`, `MappingDescriptor`, `ClassicPageGate`, `InteropFloor`, `CompileWithoutInterop`;
+  - `ToolDispatch`, `CompositeMintSweep`, `InteropHostDescriptor`;
   - and every class the sweep changes.
 - `(loop)` `cd ui && OCUPILOT_BROWSER_ORIGIN=http://localhost:52777 OCUPILOT_BROWSER_CONTAINER=ocupilot-b-ci node --test --test-concurrency=1 browser/<file>`, on the redeployed bundle, one call each for `interop-items.browser-spec.mjs` and `interop-host-tabs.browser-spec.mjs`.
 - `(loop)` `cd ui && npm run test:tools`, and as a separate call `cd ui && npm run test:components`. Both pass, `name-links.test.mjs` included.
 - `(loop)` `cd ui && npm run build`: it passes, with client-lint family 7 clean and the bundle under the fixed 2,500 kB warning.
 - `(loop)` `uv run scripts/check-objectscript.py <changed .cls>` and `bash scripts/lint-docs.sh`, both clean.
 - The full ObjectScript sweep, `npm test`, the smoke and Rule 30's fresh check are the runner's. The full browser suite is CI's.
+
+**Mutations run** (`ocupilot-b-ci`, each tree restored byte-identical, the class reloaded after):
+
+- mutation: `ChangeStep` stores `SaveToClass` as `$$$OK` -> `InteropItemChangeClass.TestTheAgentsChangeOfClassConfirmsOverHttp` red on the recompile leg (AC1).
+- mutation: `DroppedSettings` drops no setting (`If tRemove && 0`) -> `InteropItemChangeClass` red on the card and the stored-settings legs (AC1).
+- mutation: the dialog's store reads `interop.items` for `interop.itemclasses` -> `interop-item-change-class.store.spec.ts` and `interop-item-change-class-dialog.spec.ts` red on the path and the option list, and the browser Change class leg red (AC2).
+- mutation: `ChangeStep` skips the digest compare (`If 0 && ...`) -> `InteropItemChangeClassRefusals.TestASettingThatMovedAfterTheReviewIsRefusedAndNothingIsWritten` red on the write leg (AC3).
+- mutation: `CandidateClasses` admits an abstract class (`If tAbstract && 0 Continue`) -> `InteropItemChangeClassRefusals.TestAClassTheTabDoesNotListAndTheItemsOwnClassAreRefused` red on the abstract-class rows (AC3).
+- mutation: `InteropItemChangeClass.StateDiff` returns a credential-named setting's `Value` -> `InteropItemDescriptor.TestTheChangeOfClassToolAndItsCard` red (AC4).
+- mutation: the `ItemClasses` branch of `Pairs` drops `ITEMWRITEPAIRS` -> `InteropItemClasses.TestACallerMissingAPairIsRefusedNamingIt` red on the missing-write leg (AC5).
+- mutation: the page's `startDryRun` call drops the item's name (`target.name`) -> the browser Change class leg red on the typed name (AC1).
+- mutation: `DroppedSettings` ignores the status of the Host `IsValid` call, and again keeps a setting of any target but Host -> `InteropItemChangeClass.TestTheDropRuleIsAppliedPerTargetAndPerValue` red on the dropped list and the stored settings (AC1).
+- mutation: `ChangeDigest` leaves a dropped setting's value out -> `InteropItemChangeClassRefusals.TestAValueThatMovedAfterTheReviewIsRefusedAndNothingIsWritten` red (AC3).
+- mutation: `ScreenActionDelta` skips the class rule, and `ConfirmProblem` answers no problem -> `InteropItemChangeClassRefusals.TestABadClassArgumentIsRefusedBeforeAnyRead` red on the person's route and on the confirm check (AC3).
+- mutation: the tool class `InteropItemChangeClass` deleted from the instance -> `ToolWrite` red on the write roster; the tab class `InteropItemClassTab` deleted -> `ReadTool` red on the registry and the criteria corpus (AC6).
+- mutation: the tab's read declares a `label` -> `ReadDescriptions.TestEveryConfusableToolCarriesItsLabel` and `TestEveryReadDescriptionIsExactlyItsDeclaredParts` red, so the tool stays in no confusable group and its description is its declared parts (AC7).
+- mutation: (QA) the Change class dialog's template drops `(closed)="cancelled.emit()"` -> `interop-item-change-class-dialog.spec.ts` red on the Cancel, scrim and Escape legs, and the browser leg `the Change class dialog closes on Escape, Cancel and the scrim` red on the bundle rebuilt and redeployed with it (30 s wait for the dialog to go; AC1, DW-2545).
+- mutation: (QA) the page's template drops `(cancelled)="onCloseClass()"` -> `interop-item-list.page.spec.ts` `dismissing the class dialog closes it without starting a review` red (AC1, DW-2545).
+- mutation: (review) `DroppedSettings` keeps every setting (`If tRemove && 0`) -> `InteropItemChangeClass.TestTheDropRuleIsAppliedPerTargetAndPerValue` red on its `(AC2)` Item settings assertion (AC2).
+- mutation: (review) `DroppedSettings`' Adapter branch removes every Adapter setting (`Set tRemove = 1`) -> `InteropItemChangeClass.TestAnAdapterSettingTheSharedAdapterTakesIsKept` alone red (AC1, AC2).
+- mutation: (review) `InteropItemGate.Probe`'s change back names `TearOp` (refused `SAMECLASS`) -> `TestEachMissingPairIsRefusedByNameThroughThePort` red on `OcuP203Exact: Items|CHANGECLASS` alone.
+- mutation: (review) `ChangeStep`'s audit text leaves out `from <old>` -> `InteropItemChangeClass.TestTheAgentsChangeOfClassConfirmsOverHttp` and `TestThePersonsDryRunThenActionChangesTheClass` red on the audit row (AC4).
+- mutation: (review) the baseline sets `interop.items.changeclass` `true` -> `InteropItemDescriptor.TestTheChangeOfClassToolAndItsCard` red on "listed in the governance baseline, disabled" (AC4).
+- mutation: (review) `Pairs` adds `ITEMWRITEPAIRS` for every item write but `CHANGECLASS` -> `InteropItemGate.TestEachMissingPairIsRefusedByNameThroughThePort` red on `OcuP203NoCfgWrite: Items|CHANGECLASS` (AC5).
+- mutation: (review) the picker store keeps `result.reason ?? ''` for an error and ignores every other kind -> `interop-item-change-class.store.spec.ts` `reports the server-fault sentence ...` red.
+- mutation: (smoke) `ToolDispatch` compares the tool name to the whole `INTEROPITEMREMOVE` list again -> `TestTheShippedGateAllowsEveryLiveToolButTheBaselineDisabled` red on `interop.items.remove` and `interop.items.changeclass`.
+- mutation: (smoke) the `InteropItemChangeClassMint` row removed from `CompositeMintSweep.Roster` -> `TestTheRosterIsEveryCompositeIdMint` alone red.
+- mutation: (smoke) the Classes tab at position 9 -> `InteropHostDescriptor.TestTheItemTabsFormOneGroupInOrder` red on position 8 and the eight members.
+- mutation: (smoke) `ItemClasses` left out of the test's `ENDPOINTS` -> `TestThePortServesTheRuntimeEndpointsAndTheirPairs` alone red.
+- mutation: (CI) `InteropItemChangeClass` taken off `RemovalRowsSweep.Others()` -> `TestEveryRemovalRowComesFromTheOneBuilder` alone red, naming the tool (1 of 7).
+
+**Tests added or changed by QA:**
+
+- `ui/src/app/areas/interoperability/interop-item-change-class-dialog.spec.ts` (QA): three dismissal legs (Cancel, scrim, Escape through the overlay stack).
+- `ui/src/app/areas/interoperability/interop-item-list.page.spec.ts` (QA): dismissal closes the dialog, starts no review and lets the action reopen it.
+- `ui/browser/interop-items.browser-spec.mjs` (QA): the dialog closes on Escape, Cancel and the scrim in a real browser, with nothing reviewed or sent and the item unchanged.
 
 **Planned pinning mutations (Rule 19):**
 
@@ -380,5 +535,19 @@ The story complies with every AD as it stands.
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+**Change.** A destructive `interop.items.changeclass` item write (key `false`) and an `ItemClasses` read with its Classes tab; a Change class row action on Production items with a class picker, a dry run listing each dropped setting and the typed item name; the agent's card lists each dropped setting as a removed row. The port composes the read from the chosen class, recomputes its digest under the lock and refuses a moved reviewed set before anything is written.
+
+**Files.** Port and errors: `Port/InteropPort.cls`, `Api/InteropError.cls`. Tool and tab: `Screen/Tool/InteropItemChangeClass.cls`, `InteropItemChangeClassMint.cls`, `Screen/Descriptor/InteropItemClassTab.cls`, `InteropItemList.cls`, `Screen/Titles.cls`, the governance baseline. Client: the picker store and dialog, the page, the action handler, `strings.ts`, `screens.generated.ts`, `proposal-view.ts`, `screen-actions.ts`. Tests: three new classes (`InteropItemChangeClass`, `InteropItemChangeClassRefusals`, `InteropItemClasses`), appended or moved rosters, client specs, two browser specs; `scripts/ci-throwaway.sh`; `EXPERIENCE.md`.
+
+**Review.** Patches applied: 2 medium, 2 low (tests and mutation lines, listed in the triage log). Deferred: 1 low (dialog dismissal). Rejected: 7 low, each with its reason in the triage log. Follow-up review: not recommended.
+
+**Verified** on `ocupilot-b-ci` after the patches: the classes of the spec's loop list, run one at a time, all green (the two patched classes again after the patch); `npm run test:tools` 2211 pass; `npm run test:components` 3388 pass; `npm run build` passes with the initial bundle at 2.02 MB; `interop-items` (6) and `interop-host-tabs` (4) browser specs green on the redeployed bundle; `check-objectscript.py` and `lint-docs.sh` clean. Not run here: the full ObjectScript sweep, the smoke, Rule 30's fresh check and the full browser suite (the runner's and CI's).
+
+**Residual.** The veto-window items are in Design Notes (the tab also declares `%Ens_ProductionConfig:READ` as an own pair, and 11 new strings, not 12). DW-2298's change-of-class residual is the runner's to close.
+
+**Rework 1 (the `[Smoke]` roster item).** `ToolDispatch` compared a tool name to the whole two-name `INTEROPITEMREMOVE` list, so neither name matched; it now tests list membership. `CompositeMintSweep` gained the `InteropItemChangeClassMint` row and `CompositeMintProbe` the argument stand-ins it needs. `InteropHostDescriptor` pins the Classes tab at position 8 and `ItemClasses` in `ENDPOINTS`. `Write.RemovalRows` was not used (no rows built); `ToolDispatch` is a minimal in-place edit. Review: 4 low rejected (triage log), 0 patched; follow-up review not recommended. Verified on `ocupilot-b-ci`: `ToolDispatch` 19, `CompositeMintSweep` 5 and `InteropHostDescriptor` 8 tests green, one class per call after loading `src`; `check-objectscript.py` 0 problems; `lint-docs.sh` clean.
+
+**Rework 2 (the `[CI]` roster item).** `InteropItemChangeClass` is on `RemovalRowsSweep.Others()` (one add-only name; its rows are `<Target>.<Name>` over the read's `Dropped` array, which the builder's names-on-read shape does not take, reason under the item). The tool and the card's rows are unchanged. Review: 3 low rejected (triage log), 0 patched; follow-up review not recommended. Verified on `ocupilot-b-ci`: `RemovalRowsSweep` 7 tests (run 172), `InteropItemChangeClass` 7, `InteropItemChangeClassRefusals` 6 and `InteropItemDescriptor` 12 green, one class per call after loading `src`; `check-objectscript.py` and `lint-docs.sh` clean; one mutation recorded.

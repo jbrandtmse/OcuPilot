@@ -10362,6 +10362,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Measured at 20.1 plan on slot B (M1-M5, candidates A-F in that spec's Auto Run Result at 9faa902f): an unsandboxed same-origin frame signs in silently but can read ocupilot.token-pair; a noopener tab keeps both ADs but drops in-place and 20.7's messages; sandboxed frames never sign in
 - 2026-10-07T05:16:47Z status=decision-pending owner=burndown by=orchestrator note=security posture, queued for the owner's morning summary 2026-10-07; recommended A (same-origin frame, normal mode, AD-62 named case)
 - 2026-10-07T10:04:43Z status=routed owner=20-13-the-sign-in-hand-off-to-the-embedded-vendor-editors by=owner note=owner decision 2026-10-07: option A, written by the orchestrator as AD-63 (feature 75014fdc)
+- 2026-11-14T10:07:50Z status=resolved-by:20-13-the-sign-in-hand-off-to-the-embedded-vendor-editors by=burndown note=owner_option_A_delivered_by_20.13_(9104d78f,green_38272302931):same-origin_frame_named_case_written_as_AD-63;never_adjudicated_at_20.13(its_gate_listed_DW-2349_only)
 
 ### DW-2148: EXPERIENCE.md's rail row (:612 nine rail-items) and area-tile row (:653 Seven tiles) understate a namespace that reports interoperability or analytics
 - source: spec-20-1-namespace-category-gating.md | severity: low | fix-risk: low | footprint: in-epic
@@ -11267,6 +11268,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-11T09:33:14Z status=routed owner=20-25-item-runtime-and-configuration-actions by=spec_gate note=20.23 declines it (item operations, not queue or job actions); Story 20.25 chartered for it
 - 2026-11-13T08:55:33Z status=routed owner=20-40-item-copy-and-change-of-class by=adjudication note=stop, start and restart delivered by 20.25; copy remains (20.40), then change class (20.41 bullet)
 - 2026-11-13T16:40:28Z status=routed owner=20-41-item-change-of-class by=adjudication note=copy residual resolved by 20.40 (interop.items.copy, POST /interop/items/copy, Copy row action; InteropItemCopy 8/8); the change-of-class residual remains, for Story 20.41
+- 2026-11-14T00:46:48Z status=resolved-by:20-41-item-change-of-class by=adjudication note=change of class delivered (interop.items.changeclass, ItemClasses read and Classes tab, Change class row action; InteropItemChangeClass 7/7, Refusals 6/6); the copy residual closed at 20.40; temporary stop, start and restart at 20.25
 
 ### DW-2278: Rule 31: the Superserver, MFT and Doc DB slices each carry their own Save, Rules and form of one shape; one base would serve all three
 - source: spec-18-30-doc-db-applications.md | severity: med | fix-risk: med | footprint: in-epic
@@ -11426,6 +11428,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: 20.5's AC: the read-only half ships first; the classic page declares no edit resource (inference from source); the vendor audits nothing (measured at 20.5's plan)
 - 2026-10-11T17:14:49Z status=routed owner=20-26-business-partners-saved-and-removed by=spec_gate note=chartered as Story 20.26 at 20.5's spec gate
 - 2026-10-11T23:29:55Z occurrence=20-5-lookup-tables-and-business-partners
+- 2026-11-14T07:30:21Z status=resolved-by:20-26-business-partners-saved-and-removed by=adjudication note=ae506a6b_PartnerSave+InteropPort_add/update/remove;name_read-only_on_edit(no_rename,AC2);remove_refused_when_an_item_names_it(AC3,InteropPartnerRefusals);posture_WRITE_pair_per_orchestrator_ruling(AC5,InteropPartnerGate)
 ### DW-2313: Prohibited.PermittedChangeFields' Doc DB clause still names the routine application type, unreachable since 18.33's routine line above it
 - source: spec-18-33-privileged-routine-application-roles-and-routines.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: Epic 20's committed 20.23 (6aa1f459) edits Prohibited.cls, so Rule 11 kept 18.33's edit to added lines; the old clause's routine term is dead
@@ -11559,6 +11562,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Probed on ocupilot-b-ci HSSYSLOCALTEMP (no interoperability): #include Ensemble fails MPP5635 and an argument As Ens.Config.Item fails #5373 (both probes removed); README:365 admits an IPM install into any non-system namespace
 - 2026-10-12T08:23:20Z status=decision-pending owner=burndown by=cr note=product call: support a non-interop install namespace (drop include and Ens types) or say README needs one
 - 2026-10-12T12:33:19Z status=routed owner=20-28-ocupilot-compiles-in-a-namespace-without-interoperability by=lead note=orchestrator ruling 2026-10-12 chartered Story 20.28 (no Ensemble include, no Ens.Config argument types, a non-interop compile guard in CI)
+- 2026-11-14T10:07:50Z status=resolved-by:20-28-ocupilot-compiles-in-a-namespace-without-interoperability by=burndown note=20.28_(5ee4c8c4,green_38303997167)_removed_Include_Ensemble_and_Ens.Config_argument_types(InteropPort_has_neither_today)+non-interop_compile_guard_in_CI;never_adjudicated_at_20.28
 
 ### DW-2344: The Test dialog builds its form from the tab's capped rows, so past the row cap a class can be offered with fields missing, and the dialog does not say the list is cut
 - source: spec-20-6-testing-hosts-and-transformations.md | severity: low | fix-risk: low | footprint: in-story
@@ -12700,6 +12704,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: CI run 43445087881 (staging c2b0262a) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: Red once, green on the unchanged rerun (--failed) of the same run; the filtered list held only /csp/myapp, so the subset check had nothing else to drop (inference: the list read before its other rows arrived)
 - 2026-11-13T15:58:45Z status=routed owner=burndown by=harvest note=CI flake for the Epic 20 burn-down
+- 2026-11-14T10:07:51Z owner=21-10-the-remaining-leaves-across-the-six-areas by=burndown note=overflow:_Epic_20_burn-down_not_chartered(2_story-closable_entries,cap_8,no_entry_with_2_occurrences);a_web-applications_browser-spec_flake_waits_for_Epic_21's_remaining-leaves_story,as_the_orchestrator_routed_Epic_23's_non-interop_overflow
 
 ### DW-2535: order or timing dependence: InteropItemRun.TestAStartThePortCannotFinishIsPending read the Productions Update as 409 INTEROP.PRODUCTION.UPTODATE right after Facts read needs=1 (CI instance shard 8/8 of staging c2b0262a)
 - source: CI run 43445087881 (staging c2b0262a), Story 20.25's test | severity: med | fix-risk: med | footprint: in-footprint
@@ -12718,6 +12723,22 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Red once in shard 13 run after a full sweep on the same instance; green alone right after (runs 749, 771); green in the fresh sweep's shard 13 on d49eb2d3
 - 2026-11-13T19:36:37Z status=wontfix-accepted owner=20-40-item-copy-and-change-of-class by=harvest note=reopen_if=it reds on a fresh instance or in CI
 
+### DW-2544: flake: stream-reply.browser-spec.mjs (c) to (f) timed out (Navigation timeout of 30000 ms with one request in flight; a 60000 ms wait) in CI browser shard 4/5
+- source: CI run 43507916359 (Story 20.25 fix b38aa6b8) | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: Red on attempt 1, green on the unchanged --failed rerun; the change under test was ObjectScript test-only; same navigation-timeout shape as DW-2512
+- 2026-11-13T22:15:24Z status=routed owner=burndown by=harvest note=CI flake for the Epic 20 burn-down
+- 2026-11-14T10:07:51Z owner=21-10-the-remaining-leaves-across-the-six-areas by=burndown note=overflow:_Epic_20_burn-down_not_chartered(2_story-closable_entries,cap_8,no_entry_with_2_occurrences);stream-reply_navigation-timeout_flake_waits_for_Epic_21's_remaining-leaves_story
+
+### DW-2545: The Change class dialog's dismissal (Cancel, Escape, scrim) and the page's close handler are not exercised by any spec
+- source: _bmad-output/implementation-artifacts/spec-20-41-item-change-of-class.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: The dialog spec's host counts cancelled but never triggers it; the page spec's stub never emits it; the add and copy dialogs share the shape
+- 2026-11-14T00:10:06Z status=open owner=20-41-item-change-of-class by=harvest note=For 20.41's QA stage to cover, or close at adjudication
+- 2026-11-14T00:46:48Z status=resolved-by:20-41-item-change-of-class by=adjudication note=QA added the Change class dialog's dismissal legs (Cancel, scrim, Escape), the page's close leg and a browser leg; mutations recorded under Verification
+
+### DW-2546: InteropItemChangeClassMint.Mint repeats InteropTransformMint.Mint's pre-read ArgumentProblem guard under another parent (Rule 2 near-copy)
+- source: spec-20-41-item-change-of-class.md | severity: low | fix-risk: med | footprint: out-of-footprint
+- evidence: Both Mint overrides call the tool's ArgumentProblem before the fresh read and refuse TOOL.ARGUMENTS (InteropTransformMint.cls:15, InteropItemChangeClassMint.cls:15); a kernel-mint hook would serve both but touches Kernel/Proposal/Mint.cls, outside this story.
+- 2026-11-14T00:43:33Z status=wontfix-accepted owner=20-41-item-change-of-class by=cr note=reopen_if=a third mint overrides Mint only to run ArgumentProblem before the fresh read
 ### DW-2540: Journal records' Refresh action and refresh timer read the form's current criteria without going through open(), so an order picked but not yet searched reads in the new order while the table direction still follows the last search
 - source: _bmad-output/implementation-artifacts/spec-23-13-the-range-end-cleanup-part-11.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: journal-records.page.ts:377 registers REFRESH_ACTION_ID with refresh.readNow(); followOrder() runs only in open()
@@ -12747,6 +12768,22 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-23-14-epic-23-burn-down.md | severity: low | fix-risk: med | footprint: in-story
 - evidence: TestTheScreensActionsResumePauseAndCancelACompact routes a 200 Pause settling to Done into the Cancel-409 branch (spec batch 1 task); the seam class BackgroundTaskPortSeam pins the vendor Pause call on a fake
 - 2026-11-14T02:05:18Z status=by-design owner=23-14-epic-23-burn-down by=cr note=spec-bound: batch 1 task takes the ended branch on Done; seam pins dispatch; live 403 leg still reddens
+### DW-2554: Business partners' Edit sends all thirteen values from the non-refreshing list row, so a field changed elsewhere after the list loaded is silently reverted
+- source: spec-20-26-business-partners-saved-and-removed.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: interop-business-partner-list.page.ts onOpenEdit fills from the list row (AD-43, no refresh) and onEdit sends every field; PerformPartner writes each that differs from the fresh read. The spec's task says the dialog sends all thirteen.
+- 2026-11-14T07:27:06Z status=decision-pending owner=burndown by=cr note=product call: send only the fields the person changed, or refuse when the row moved; spec text says send all
+- 2026-11-14T13:10:57Z status=routed owner=21-7-interoperability-parity by=unattended note=epic20_decision_sheet:send_only_the_fields_the_person_changed
+
+### DW-2555: AD-62 (10), AD-15 and AD-22 still describe business partners as read-only with READ pairs; Story 20.26's ADD/SET/REMOVEPARTNER amendments are unwritten
+- source: spec-20-26-business-partners-saved-and-removed.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: ARCHITECTURE-SPINE.md AD-62 (10) says partner save and remove are a later story and gives %Ens_ProductionConfig:READ; the code declares PARTNERWRITEPAIR :WRITE. The spec lists the wording under For the owner's attended Update.
+- 2026-11-14T07:27:06Z status=decision-pending owner=burndown by=cr note=human=owner's attended spine Update applying the spec's three AD sentences (Rule 20)
+- 2026-11-14T13:10:57Z status=dropped by=unattended note=action_item:epic-20-retro-item-4-attended-architecture-update-amend-ad-62
+
+### DW-2556: Partner field validation is repeated in three callers (PartnerSave.Violations, InteropPartnerAction.ArgumentProblem, PerformPartner): each reads the fields, flags non-strings, then calls PartnerViolations
+- source: spec-20-26-business-partners-saved-and-removed.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Three near-identical loops of about ten lines; a shared port helper would serve all three. AD-55 requires each caller to judge, so the calls stay; only the loop is copied.
+- 2026-11-14T07:27:07Z status=wontfix-accepted owner=20-26-business-partners-saved-and-removed by=cr note=reopen_if=a partner field rule changes in one of the three loops and not the others
 - 2026-11-14T02:05:18Z status=by-design owner=23-14-epic-23-burn-down by=cr note=spec-bound: batch 1 task takes the ended branch on Done; seam pins dispatch; live 403 leg still reddens
 ### DW-2548: flake: analytics-mdx.browser-spec.mjs AC7 timed out waiting for [data-ocu-mdx="banner"] on attempt 1 and passed on the unchanged rerun
 - source: staging e9f727fb run 43543858957 (orchestrator, 23.13 merge) | severity: med | fix-risk: low | footprint: out-of-footprint

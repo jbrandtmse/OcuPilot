@@ -496,6 +496,9 @@ services:
       # The item copy class compiles and runs the same probe production in USER, copying its items (Story 20.40): one leg per
       # refusal and one for the agent's confirmed copy, the Save, the settings read of the copy and the gate pairs.
       # classes: InteropItemCopy
+      # The item change-of-class classes compile and run the same probe production in USER (Story 20.41): the change class drives the
+      # agent's and the person's changes, the refusals class each refusal of the matrix, and the classes class the Classes tab's read.
+      # classes: InteropItemChangeClass, InteropItemChangeClassRefusals, InteropItemClasses
       # The item runtime classes compile and run the same probe production in USER, stopping, starting and restarting its items
       # (Story 20.25): the run class drives the three writes and every refusal of them, and the gate class signs in as probe
       # principals each missing one pair a runtime write requires.
@@ -527,6 +530,11 @@ services:
       # and an agent's confirm that meets a held vendor lock or a key someone else took. The names class adds pairs too long to
       # address, names the export cannot name, a comma in a name and tables named by numbers, and removes those too.
       # classes: InteropLookupControl, InteropLookupEdges, InteropLookupGate, InteropLookupNames, InteropLookupRead, InteropLookupRefusals, InteropLookupTransfer
+      # The business partner classes write probe business partners in USER and remove them (Story 20.26): the control class drives
+      # the add, edit and remove from both callers and reads the audit rows each leaves, the refusals class meets every refusal,
+      # a probe production that is not running among them, and the gate class signs in as probe principals each missing one pair a
+      # partner write requires.
+      # classes: InteropPartnerControl, InteropPartnerGate, InteropPartnerRefusals
       # The host test classes compile and run the same probe production in USER, with a request class of their own and an
       # operation that echoes it (Story 20.6): the test class reads an item's Test tab and sends a request from both callers,
       # the refusals class meets every refusal and violation, a production started without testing and a disabled item, and
