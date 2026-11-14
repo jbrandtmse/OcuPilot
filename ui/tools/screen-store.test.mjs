@@ -80,7 +80,7 @@ test('DW-17 bad cap: 0, -5, 2.5 and NaN change neither the store nor the prefere
 // Mutations (Rule 19): notify on every adoption in `adoptRemembered` -> the nothing-remembered
 // assertion goes red; return `false` from `remembered()` -> red; leave `viewRestored` unset when a
 // view is adopted -> the `restoredView()` assertions go red.
-test('adoption turns remembered() true and notifies only when a remembered view or rate moved', async () => {
+test('adoption turns remembered() true and notifies only when it changed the rate or adopted a stored view', async () => {
   const empty = stubAccountPreferences();
   const bare = new ScreenStores({ account: empty }).for(ONE, []);
   let bareHeard = 0;
