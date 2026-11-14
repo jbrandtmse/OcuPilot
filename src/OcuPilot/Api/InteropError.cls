@@ -630,7 +630,7 @@ ClassMethod LookupPreconditionCodes() As %List
 }
 
 /// <p>The business partner codes (Story 20.26), as a <class>%List</class>: the four refusals a partner read or write answers
-/// with, the two violations of its fields and the source control refusal. The one consequence code is
+/// with, the source control refusal among them, and the two violations of its fields. The one consequence code is
 /// <method>ConsequenceCodes</method>'s.</p>
 ClassMethod PartnerCodes() As %List
 {

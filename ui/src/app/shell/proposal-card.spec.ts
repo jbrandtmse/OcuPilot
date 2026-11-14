@@ -1046,6 +1046,15 @@ describe('the proposal card', () => {
     }
   });
 
+  // Mutation (Rule 19): drop the INTEROP.PARTNER.REMOVE branch from `consequenceSentence` -> the consequence line is empty and this goes red.
+  it('Story 20.26: a business partner\'s removal states its published sentence, drawn destructive', () => {
+    const { card } = mount(liveView({ consequence: 'INTEROP.PARTNER.REMOVE', destructive: true, maskedFields: [] }), { phase: 'live' });
+    expect(card.classList.contains('ocu-proposal-card-destructive')).toBe(true);
+    const lines = card.querySelectorAll('[data-slot="consequence"]');
+    expect(lines.length).toBe(1);
+    expect(lines[0].textContent).toContain(STRINGS.interopPartnerRemoveConsequence);
+  });
+
   // Mutation (Rule 19): drop the INTEROP.TEST.SENDS code from `consequenceSentence` -> this goes red.
   it('Story 20.6: a host test states that it sends a real message, and is not drawn destructive', () => {
     const { card } = mount(liveView({ consequence: 'INTEROP.TEST.SENDS', destructive: false, maskedFields: [] }), { phase: 'live' });

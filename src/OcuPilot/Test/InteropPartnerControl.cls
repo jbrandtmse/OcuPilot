@@ -450,11 +450,12 @@ ClassMethod ListedRow() As %DynamicObject
 /// <p>The probe partner's row in <var>pRows</var>, or <code>""</code>.</p>
 ClassMethod RowIn(pRows As %DynamicArray) As %DynamicObject
 {
-    If '$IsObject(pRows) Quit ""
+    Set tHit = ""
+    If '$IsObject(pRows) Quit tHit
     For tI = 0:1:pRows.%Size() - 1 {
-        If pRows.%Get(tI).Name = ..#PARTNER Quit
+        If pRows.%Get(tI).Name = ..#PARTNER Set tHit = pRows.%Get(tI) Quit
     }
-    Quit $Select(tI < pRows.%Size(): pRows.%Get(tI), 1: "")
+    Quit tHit
 }
 
 }

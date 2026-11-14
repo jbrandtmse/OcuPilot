@@ -151,8 +151,7 @@ ClassMethod CodeFor(pPair As %String) As %String
 }
 
 /// <p>AC5: each principal's five port legs are admitted or refused naming the pair <parameter>EXPECTED</parameter> says, with 403
-/// <code>AUTH.NOPRIVILEGE</code> on a refusal, before any vendor call: a refused leg changes no partner, and the exact principal's add,
-/// set and remove leave only the partner its add made.</p>
+/// <code>AUTH.NOPRIVILEGE</code> on a refusal, before any vendor call: a principal refused every write leg changes no partner.</p>
 /// <p>Mutation (Rule 19): drop <code>%Ens_ProductionConfig:WRITE</code> from <parameter>OcuPilot.Port.InteropPort.PARTNERWRITEPAIR</parameter>
 /// by making <method>OcuPilot.Port.InteropPort.Pairs</method> skip it -- the read-only principal's write legs reach the vendor and this
 /// goes red.</p>

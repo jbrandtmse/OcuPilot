@@ -192,7 +192,7 @@ export class InteropBusinessPartnerDialog {
 
   protected get heading(): string {
     const partner = this.partner();
-    return partner === null ? STRINGS.interopPartnerAddAction : STRINGS.interopPartnerEditTitle.replace('<name>', partner);
+    return partner === null ? STRINGS.interopPartnerAddAction : STRINGS.interopPartnerEditTitle.replace('<name>', () => partner);
   }
 
   protected fieldId(field: string): string {

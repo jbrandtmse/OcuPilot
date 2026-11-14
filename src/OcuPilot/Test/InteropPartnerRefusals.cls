@@ -123,7 +123,8 @@ Method TestAHeldNameAndItsOtherLetterCaseAreRefusedByTheirCodes()
     Do $$$AssertEquals($ClassMethod(tFixture, "Snapshot"), tBefore, "nothing was written")
 }
 
-/// <p>AC1: a name that is empty or holds a control character or is past 255 characters, and a field past the vendor's length, are
+/// <p>AC1: a name that is empty, holds a control character, is past 255 characters or is one the instance cannot address, and a
+/// field past the vendor's length, are
 /// 422 <code>INTEROP.PARTNER.NAME</code> or <code>INTEROP.PARTNER.LENGTH</code> naming the field, from the Save, the Edit, the
 /// agent's mint and the port, with nothing written; a name that holds <code>||</code> is a name (measured), and a value that is not
 /// a string is a shape violation.</p>
@@ -143,6 +144,12 @@ Method TestANameOrAFieldOutsideItsRuleIsRefusedByItsCode()
     Do $$$AssertEquals(..PortWrite("ADDPARTNER", $Translate($Justify("", 256), " ", "n"), {}, .tFault) _ " " _ ..CodeOf(tFault), "422 INTEROP.PARTNER.NAME", "and one past 255 characters")
     Do $$$AssertEquals($ClassMethod(..#CONTROL, "MintVerdict", "InteropPartnerAdd", $ClassMethod(..#CONTROL, "ArgsFor", "bad" _ $Char(1) _ "name"), .tReason), "TOOL.ARGUMENTS", "the agent's add of that name is refused at the mint")
     Do $$$AssertTrue(tReason [ "'Name'", "naming the field: " _ tReason)
+    ; A name within 255 characters that the instance cannot address as a partner's id.
+    Set tWide = $Translate($Justify("", 255), " ", $Char(20013))
+    Do $$$AssertEquals($ClassMethod(..#CONTROL, "MintVerdict", "InteropPartnerAdd", $ClassMethod(..#CONTROL, "ArgsFor", tWide), .tReason), "TOOL.ARGUMENTS", "the agent's add of a name the instance cannot address is refused at the mint")
+    Do $$$AssertTrue(tReason [ "'Name'", "naming the field: " _ tReason)
+    Do $$$AssertEquals(..PortWrite("ADDPARTNER", tWide, {}, .tFault) _ " " _ ..CodeOf(tFault), "422 INTEROP.PARTNER.NAME", "and so does the port's own add")
+    Do $$$AssertEquals(..PortWrite("REMOVEPARTNER", tWide, {}, .tFault) _ " " _ ..CodeOf(tFault), "404 PORT.NOTFOUND", "and the port's remove reads it absent")
     Do $$$AssertEquals($ClassMethod(tFixture, "Snapshot"), tBefore, "no refused name wrote a thing")
     ; The fields.
     Do $$$AssertStatusOK($ClassMethod(tFixture, "PutPartner", ..#PARTNER), "the probe partner is held")
@@ -211,8 +218,8 @@ Method TestARenameIsRefusedBeforeAnyPortCall()
 }
 
 /// <p>AC3: a remove of a partner an item names in its Host <code>BusinessPartner</code> setting is <code>INTEROP.PARTNER.NAMED</code>
-/// with its published sentence, from the person's Remove, the agent's mint, the confirm and the port, though the production that
-/// holds the item is not running; the partner stays, and once the item no longer names it the remove runs. A partner no item names
+/// with its published sentence, from the person's Remove, the agent's mint and the port, though the production that holds the item
+/// is not running; a confirm of a remove minted before the item named the partner closes target-changed; the partner stays, and once the item no longer names it the remove runs. A partner no item names
 /// is removed.</p>
 /// <p>Mutation (Rule 19): make <method>OcuPilot.Port.InteropPort.PartnerWriteToken</method> ignore <var>pNamed</var> -- every leg goes
 /// red; make <method>OcuPilot.Port.InteropPort.PartnerNamedByHere</method> read only the running production's items -- the legs on the
