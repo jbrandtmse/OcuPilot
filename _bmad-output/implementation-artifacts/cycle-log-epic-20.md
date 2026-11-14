@@ -1473,3 +1473,5 @@
 2026-11-14T07:05:41Z	Story 20.26	stage_dead	story=20-26-business-partners-saved-and-removed stage=qa evidence=none(tree_clean;qa_wrote_nothing) rerun_from=qa agent=20-26-qa-1 cause=owner_computer_crash_~06:00Z
 2026-11-14T07:07:25Z	Epic 20	throwaway_up	container=ocupilot-b-ci started_by=this_runner(after_down_of_crash-exited_one) tree=fbc10f9a healthy
 2026-11-14T07:07:25Z	Story 20.26	stage_spawned	stage=qa spawn_at=2026-11-14T07:07:25Z model=sonnet agent_name=20-26-qa-2 cycle_iteration=1 rerun_after=stage_dead prompt=e20u/20-26/prompts/qa-1.md
+2026-11-14T07:11:56Z	Story 20.26	qa_complete	spawn_at=2026-11-14T07:07:30Z model=sonnet agent_name=20-26-qa-2 cycle_iteration=1 tests=ui/src/app/shell/proposal-card.spec.ts tests_added=1 mutations_demonstrated=6 first_run_failures=0 clarifications=0 closing_sections_present=true
+2026-11-14T07:11:56Z	Story 20.26	stage_spawned	stage=code-review spawn_at=2026-11-14T07:11:56Z model=opus agent_name=20-26-code-review-1 cycle_iteration=1 baseline=54d90dd1 prompt=e20u/20-26/prompts/cr-1.md
