@@ -40,3 +40,5 @@
 2026-11-14T22:57:23Z	Story 22.2	dev_complete	spawn_at=2026-11-14T22:44:17Z model=claude-sonnet build_sha=c788b99b4 baseline_revision=f3068683f review_loop_iteration=0 followup_review_recommended=false deferred=0 files=3 loc_added=259 loc_removed=15 nfr_tripwires=0 adr_violations_surfaced=0 cycle_iteration=1 note=harness_backgrounded_the_Agent_call;waited_on_completion_notice
 2026-11-14T22:57:23Z	Story 22.2	adr_verifications_complete	tool=none acs= result=none_required evidence= mutations=none model=claude-opus-5-5
 2026-11-14T22:57:30Z	Story 22.2	stage_spawned	stage=qa spawn_at=2026-11-14T22:57:30Z model=sonnet agent_name=22-2-picking-up-a-row-when-its-gate-clears-qa-1 cycle_iteration=1
+2026-11-14T23:01:07Z	Story 22.2	qa_complete	spawn_at=2026-11-14T22:57:30Z model=claude-sonnet tests=ui/tools/exclusion-register.test.mjs tests_added=0 mutations_demonstrated=7 first_run_failures=0 clarifications=0 closing_sections_present=true
+2026-11-14T23:01:07Z	Story 22.2	stage_spawned	stage=code-review spawn_at=2026-11-14T23:01:07Z model=opus agent_name=22-2-picking-up-a-row-when-its-gate-clears-code-review-1 cycle_iteration=1
