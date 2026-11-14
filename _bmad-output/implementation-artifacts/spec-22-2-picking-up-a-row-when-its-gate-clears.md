@@ -77,6 +77,27 @@ deferred: []
 - Given a gate that has cleared, when the row is built, then the procedure puts it in the slice that owns its area as one descriptor with its derived read tool and confirmed write tools, names each by an existing path, and names the rosters that already hold every screen to that contract (AC2).
 - Given the change, when `bash scripts/lint-docs.sh` and `node tools/client-lint.mjs` run, then both pass, and the story's diff, this spec aside, touches only the register and its test.
 
+### Review Findings
+
+Code review 2026-11-14 (full-opus; blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor). 32 rows, 15 entries, all patched in-pass (fix-risk low: prose in the register or one test file, suite re-run green); 6 rejected.
+
+- [x] [Review][Patch] high: build item 5 said every tool gets a `Baseline.cls` line; AD-22 holds every write key (acceptance-auditor, own) -- now "Every key a write tool yields".
+- [x] [Review][Patch] high: build item 5 said an action never offered to the agent goes in `Prohibited.cls`; AD-10 refuses it whatever the caller and its set is declared in the AD -- now "never reachable, from the agent or from the screen ... amend AD-10 in the spine, then declare it".
+- [x] [Review][Patch] med: AD-8 and the privilege set were absent, though Design Notes cite AD-8 (blind-hunter, acceptance-auditor) -- item 3 declares the privilege set (AD-8) and its AD-44 union.
+- [x] [Review][Patch] med: item 9 said the rosters need no change and stay green; each reddens until the pick-up adds its row (blind-hunter) -- corrected, with what row each needs.
+- [x] [Review][Patch] med: assess said record the reading while refuse said nothing is recorded (blind-hunter, edge-case-hunter) -- the reading goes in the answer or the change proposal; item 1 carries it.
+- [x] [Review][Patch] med: deleting build item 2, 6, 7 or 8, the navigation roster, or the assess step's default-instance and slot B sentences stayed green, since paths cited twice satisfied a whole-body check (verification-gap, edge-case-hunter, blind-hunter) -- `BUILD_ITEMS` pins each numbered item's own anchors; three assess assertions added.
+- [x] [Review][Patch] med: `parseKindChecks` copied `parseRegister`'s kinds scan (Rule 31), so its vocabulary-equality assertion could not fail (verification-gap, edge-case-hunter, own) -- `parseRegister` returns `kindRows`; the copy and the assertion are gone.
+- [x] [Review][Patch] low: no branch for a request naming no instance, or a check that fails to run (edge-case-hunter) -- assess asks for the instance; a check that did not run reads neither way.
+- [x] [Review][Patch] low: no branch for an ID the register does not hold (edge-case-hunter) -- one sentence in the opening.
+- [x] [Review][Patch] low: renaming `license`, `edition` or `platform` skipped the instance check silently (edge-case-hunter) -- their presence is asserted.
+- [x] [Review][Patch] low: item 6 named three ports and cited two by AD only (blind-hunter, acceptance-auditor) -- `InteropPort.cls`, `AnalyticsPort.cls` and `src/OcuPilot/Port/` cited; an existing port is used.
+- [x] [Review][Patch] low: `src/OcuPilot/Area/<Area>/` implied the folder is the area key (blind-hunter, acceptance-auditor) -- the folder shortens the key, where the area has one.
+- [x] [Review][Patch] low: an installed-package condition on a `demand` row (IO-83 to IO-89) had no instruction (blind-hunter) -- item 7 names it.
+- [x] [Review][Patch] low: `classic-links.mjs` was said to check the classic page; it checks the link-out (acceptance-auditor) -- reworded.
+- [x] [Review][Patch] low: AD-3's authored half was not named (acceptance-auditor) -- item 5 names `Classification.cls`.
+- Rejected: non-screen rows have no fallback (FR-80 and this spec leave anything finer to the pick-up); "one descriptor" against a two-screen example (false: one per screen, FR-80; item 3 now says so); positional `REGISTER_COLUMNS` slices (the spec's Tasks fix them); case-insensitive `existsSync` (Linux CI reddens it); paths outside the prefix list and a top-level placeholder (none is cited; the fix adds branches).
+
 ## Spec Change Log
 
 ## Review Triage Log
@@ -132,11 +153,13 @@ deferred: []
 - mutation: delete `How to tell it has cleared` from the refuse step -> the column test red naming the step.
 - mutation: blank the `license` row's `How a request checks it` cell -> the kinds test red naming `license`.
 - mutation: change a cited path to `src/OcuPilot/Screen/Registry2.cls` -> the path test red naming it.
-- mutation: remove `src/OcuPilot/Test/SurfaceCoverage.cls` from the build step -> the contract test red naming it.
+- mutation: remove `src/OcuPilot/Test/SurfaceCoverage.cls` from the build step -> the build-item test red naming item 9.
 - mutation: delete the SA-50 register row -> 22.1's row-set test red naming SA-50 missing.
 - mutation: change `## Gate kinds` to `######` -> `bash scripts/lint-docs.sh` exit 1 (MD001).
 - mutation: remove the assess step's `Nothing is designed or built` sentence, its `the instance the request is for` or its record-the-date clause, the refuse step's `changes no file`, or the `platform` cell's instance phrase -> the assess/refuse column test or the kinds test red.
-- mutation: delete build item 4 or the `bmad-correct-course` name -> the contract test red.
+- mutation: delete build item 4 or the `bmad-correct-course` name -> the build-item test red.
+- mutation (code review): delete build item 6 or 8; drop `AdminPort.cls` from item 6 alone, `appliesWhen` from item 7, `navigation.test.mjs` or "never the check removed" from item 9, `AD-8` from item 3, or restore "Every tool gets a line" or the unamended Prohibited sentence -> the build-item test red naming the item.
+- mutation (code review): drop the assess step's "a tool's default is never the answer" or "A check that fails to run" sentence -> the assess/refuse test red; rename the `license` kind to `licence` -> the kinds test red naming `license`.
 
 **Mutation results (Rule 19):** all of the above applied, observed red naming the cause, and reverted (register and test checksums identical afterwards). `####` leaves `lint-docs.sh` green (h3 to h4 is a legal step), so the planned lint mutation is `######`.
 

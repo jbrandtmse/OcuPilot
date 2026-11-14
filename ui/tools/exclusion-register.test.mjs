@@ -18,7 +18,7 @@ import { dirname, join } from 'node:path';
 // It also holds the register's `## Picking up a row` procedure: the section sits before `## Gate kinds`,
 // its three steps come in order, the assess and refuse steps quote the register's own column names
 // (taken from REGISTER_COLUMNS), every gate kind carries a check, every repository path the section
-// names exists, and the build step names each file of CONTRACT_PATHS.
+// names exists, and each numbered item of the build step names what BUILD_ITEMS gives it.
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const PLANNING = join(REPO_ROOT, '_bmad-output', 'planning-artifacts');
@@ -43,24 +43,36 @@ const KIND_CHECK_COLUMN = 'How a request checks it';
 const INSTANCE_PHRASE = 'the instance the request is for';
 const REPO_PATH_RE = /^(src|ui|docs|scripts|_bmad-output)\//;
 
-// Files the build step must name: the screen contract a built row is held to.
-const CONTRACT_PATHS = [
-  'src/OcuPilot/Screen/Descriptor/Base.cls',
-  'src/OcuPilot/Screen/Registry.cls',
-  'src/OcuPilot/Screen/Area.cls',
-  'ui/tools/screen-mirror.mjs',
-  'src/OcuPilot/Screen/Tool/Registry.cls',
-  'src/OcuPilot/Screen/Tool/Read.cls',
-  'src/OcuPilot/Screen/Tool/Write.cls',
-  'src/OcuPilot/Kernel/Proposal/Mint.cls',
-  'src/OcuPilot/Kernel/Proposal/Confirm.cls',
-  'src/OcuPilot/Port/AdminPort.cls',
-  'src/OcuPilot/Kernel/Proposal/Prohibited.cls',
-  'src/OcuPilot/Kernel/Governance/Baseline.cls',
-  'src/OcuPilot/Test/SurfaceCoverage.cls',
-  'src/OcuPilot/Test/EndpointCoverage.cls',
-  'src/OcuPilot/Test/SaveHoldCoverage.cls',
-  'src/OcuPilot/Test/GovernanceBaseline.cls'
+// What each numbered item of the build step must name, in item order: the screen contract a built
+// row is held to. A token holding '/' is a repository path and must appear backticked.
+const BUILD_ITEMS = [
+  ['bmad-correct-course', 'feature-catalog.md', 'extract-stages.md', 'removes the row from this register'],
+  ['src/OcuPilot/Screen/Area.cls', 'src/OcuPilot/Area/', 'ui/src/app/areas/<area>/', 'ARCHITECTURE-SPINE.md'],
+  ['src/OcuPilot/Screen/Descriptor/Base.cls', 'src/OcuPilot/Screen/Registry.cls', 'ui/tools/screen-mirror.mjs', 'AD-8', 'AD-44'],
+  ['src/OcuPilot/Screen/Tool/Registry.cls', 'src/OcuPilot/Screen/Tool/Read.cls', 'src/OcuPilot/Screen/Read.cls'],
+  [
+    'src/OcuPilot/Screen/Tool/Write.cls',
+    'ui/tools/field-lists.mjs',
+    'src/OcuPilot/Screen/Tool/Classification.cls',
+    'src/OcuPilot/Screen/Tool/ToolFields.cls',
+    'src/OcuPilot/Kernel/Proposal/Mint.cls',
+    'src/OcuPilot/Kernel/Proposal/Confirm.cls',
+    'src/OcuPilot/Kernel/Proposal/Prohibited.cls',
+    'amend AD-10',
+    'Every key a write tool yields',
+    'src/OcuPilot/Kernel/Governance/Baseline.cls'
+  ],
+  ['src/OcuPilot/Port/AdminPort.cls', 'src/OcuPilot/Port/InteropPort.cls', 'src/OcuPilot/Port/AnalyticsPort.cls', 'AD-29'],
+  ['appliesWhen', 'src/OcuPilot/Screen/Area.cls', 'spine amendment first'],
+  ['_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md'],
+  [
+    'src/OcuPilot/Test/SurfaceCoverage.cls',
+    'src/OcuPilot/Test/EndpointCoverage.cls',
+    'src/OcuPilot/Test/SaveHoldCoverage.cls',
+    'src/OcuPilot/Test/GovernanceBaseline.cls',
+    'ui/tools/navigation.test.mjs',
+    'never the check removed'
+  ]
 ];
 
 /** The trimmed cells of one Markdown table line; `\|` stays inside its cell. */
@@ -136,7 +148,11 @@ function parseEpicsGroupWording() {
   throw new Error(`${EPICS_PATH}: Story 22.1 no longer says '${marker}'`);
 }
 
-/** The register's gate-kind vocabulary and its groups as `{ heading, rows }`, in document order. */
+/**
+ * The register's gate-kind vocabulary, the Gate kinds table as `{ kind, check }` rows (the check column
+ * read by the name its header gives it, `''` when the table has none), and its groups as
+ * `{ heading, rows }`, in document order.
+ */
 function parseRegister() {
   const lines = linesOf(REGISTER_PATH);
   const kindsAt = lines.indexOf('## Gate kinds');
@@ -145,10 +161,15 @@ function parseRegister() {
   assert.ok(registerAt > kindsAt, `${REGISTER_PATH}: no '## The register' heading after '## Gate kinds'`);
 
   const kinds = new Set();
+  const kindRows = [];
+  let checkAt = -1;
   for (const line of lines.slice(kindsAt + 1, registerAt)) {
-    const cell = line.startsWith('|') ? cellsOf(line)[0] : '';
-    const match = /^`([a-z-]+)`$/.exec(cell);
-    if (match !== null) kinds.add(match[1]);
+    const cells = line.startsWith('|') ? cellsOf(line) : [''];
+    if (cells[0] === 'Kind') checkAt = cells.indexOf(KIND_CHECK_COLUMN);
+    const match = /^`([a-z-]+)`$/.exec(cells[0]);
+    if (match === null) continue;
+    kinds.add(match[1]);
+    kindRows.push({ kind: match[1], check: checkAt >= 0 && cells[checkAt] !== undefined ? cells[checkAt] : '' });
   }
 
   const groups = [];
@@ -165,7 +186,7 @@ function parseRegister() {
       groups[groups.length - 1].rows.push({ id, feature, reason, kind: kind.replace(/^`|`$/g, ''), gate, tell });
     }
   }
-  return { kinds, groups };
+  return { kinds, kindRows, checkAt, groups };
 }
 
 /**
@@ -186,26 +207,6 @@ function parsePickUp() {
     }
   }
   return { where, kindsAt, steps, text };
-}
-
-/** The Gate kinds table as `{ kind, checks }` rows, reading the check column by the name its header gives it. */
-function parseKindChecks() {
-  const lines = linesOf(REGISTER_PATH);
-  const kindsAt = lines.indexOf('## Gate kinds');
-  const registerAt = lines.indexOf('## The register');
-  assert.ok(kindsAt >= 0 && registerAt > kindsAt, `${REGISTER_PATH}: no '## Gate kinds' table before '## The register'`);
-  const section = lines.slice(kindsAt + 1, registerAt).filter((line) => line.startsWith('|'));
-  const header = section.length > 0 ? cellsOf(section[0]) : [];
-  const checkAt = header.indexOf(KIND_CHECK_COLUMN);
-  assert.ok(checkAt >= 0, `${REGISTER_PATH}: the Gate kinds table has no '${KIND_CHECK_COLUMN}' column; read [${header.join(' | ')}]`);
-  const rows = [];
-  for (const line of section) {
-    const cells = cellsOf(line);
-    const match = /^`([a-z-]+)`$/.exec(cells[0]);
-    if (match === null) continue;
-    rows.push({ kind: match[1], check: cells[checkAt] === undefined ? '' : cells[checkAt] });
-  }
-  return rows;
 }
 
 function sorted(values) {
@@ -387,21 +388,27 @@ test('the assess step and the refuse step quote the register columns they depend
   assert.match(stepBody(PICK_UP_STEPS[0]), /the\s+instance\s+the\s+request\s+is\s+for/, `${REGISTER_PATH}: the assess step does not say the check runs on the instance the request is for`);
   assert.match(stepBody(PICK_UP_STEPS[0]), /Record\s+the\s+value[^.]*\s+and\s+the\s+date/, `${REGISTER_PATH}: the assess step does not say to record the value and the date`);
   assert.match(stepBody(PICK_UP_STEPS[0]), /Gate kinds/, `${REGISTER_PATH}: the assess step does not point at the Gate kinds table`);
+  assert.match(stepBody(PICK_UP_STEPS[0]), /a\s+tool's\s+default\s+is\s+never\s+the\s+answer/, `${REGISTER_PATH}: the assess step does not refuse a tool's default instance`);
+  assert.match(stepBody(PICK_UP_STEPS[0]), /says\s+nothing\s+about\s+any\s+other\s+instance/, `${REGISTER_PATH}: the assess step does not say the slot B reading answers for no other instance`);
+  assert.match(stepBody(PICK_UP_STEPS[0]), /A\s+check\s+that\s+fails\s+to\s+run\s+has\s+read\s+neither\s+way/, `${REGISTER_PATH}: the assess step reads a check that did not run as an answer`);
   assert.match(stepBody(PICK_UP_STEPS[1]), /changes\s+no\s+file/, `${REGISTER_PATH}: the refuse step does not say a refused request changes no file`);
 });
 
 test('every gate kind carries a check, and a license, edition or platform check is read on the requested instance', () => {
-  const kinds = parseKindChecks();
+  const { kindRows: kinds, checkAt } = parseRegister();
+  assert.ok(checkAt >= 0, `${REGISTER_PATH}: the Gate kinds table has no '${KIND_CHECK_COLUMN}' column`);
   assert.ok(kinds.length > 0, `${REGISTER_PATH}: the Gate kinds table yields no kinds`);
+  const instanceKinds = ['license', 'edition', 'platform'];
+  const absent = instanceKinds.filter((kind) => !kinds.some((row) => row.kind === kind));
+  assert.deepEqual(absent, [], `${REGISTER_PATH}: the Gate kinds table has no row for: ${absent.join(', ')}`);
   const problems = [];
   for (const { kind, check } of kinds) {
     if (check === '') problems.push(`${kind}: empty '${KIND_CHECK_COLUMN}' cell`);
-    else if (['license', 'edition', 'platform'].includes(kind) && !check.includes(INSTANCE_PHRASE)) {
+    else if (instanceKinds.includes(kind) && !check.includes(INSTANCE_PHRASE)) {
       problems.push(`${kind}: does not say the check runs on ${INSTANCE_PHRASE}`);
     }
   }
   assert.deepEqual(problems, [], `${REGISTER_PATH}: ${problems.join('; ')}`);
-  assert.deepEqual(sorted(kinds.map((row) => row.kind)), sorted(parseRegister().kinds), `${REGISTER_PATH}: the check column and the kind vocabulary read different kinds`);
 });
 
 test('every repository path the procedure names exists', () => {
@@ -418,11 +425,19 @@ test('every repository path the procedure names exists', () => {
   assert.deepEqual(missing, [], `${REGISTER_PATH}: paths that do not exist: ${missing.join(', ')}`);
 });
 
-test('the build step names every file of the screen contract and how the request is recorded', () => {
-  const body = stepBody(PICK_UP_STEPS[2]);
-  const missing = CONTRACT_PATHS.filter((path) => !body.includes(`\`${path}\``));
-  assert.deepEqual(missing, [], `${REGISTER_PATH}: step '${PICK_UP_STEPS[2]}' does not name: ${missing.join(', ')}`);
-  const record = ['bmad-correct-course', 'feature-catalog.md', 'extract-stages.md', 'removes the row from this register'];
-  const unnamed = record.filter((token) => !body.replace(/\s+/g, ' ').includes(token));
-  assert.deepEqual(unnamed, [], `${REGISTER_PATH}: step '${PICK_UP_STEPS[2]}' does not record the request through: ${unnamed.join(', ')}`);
+test('each numbered item of the build step names its part of the screen contract', () => {
+  const items = [];
+  for (const line of stepBody(PICK_UP_STEPS[2]).split('\n')) {
+    if (/^\d+\. \*\*/.test(line)) items.push(line);
+    else if (items.length > 0 && /^\s+\S/.test(line)) items[items.length - 1] += ` ${line.trim()}`;
+  }
+  assert.equal(items.length, BUILD_ITEMS.length, `${REGISTER_PATH}: step '${PICK_UP_STEPS[2]}' has ${items.length} numbered items, BUILD_ITEMS ${BUILD_ITEMS.length}`);
+  const problems = [];
+  BUILD_ITEMS.forEach((tokens, index) => {
+    for (const token of tokens) {
+      const wanted = token.includes('/') ? `\`${token}\`` : token;
+      if (!items[index].includes(wanted)) problems.push(`item ${index + 1} does not name ${wanted}`);
+    }
+  });
+  assert.deepEqual(problems, [], `${REGISTER_PATH}: step '${PICK_UP_STEPS[2]}': ${problems.join('; ')}`);
 });
