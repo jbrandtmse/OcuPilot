@@ -323,6 +323,32 @@ Method TestTheDropRuleIsAppliedPerTargetAndPerValue()
     Do $$$AssertEquals(tFields, "Host.TearDownSeconds,Adapter.ProbeAdapterSetting,Other.ProbeOtherSetting", "each is a dropped setting")
     Do $$$AssertEquals(..PortChange(..#PORT, ..#ITEM, ..#NEWCLASS, tRead.Digest), "200 ", "and the change reviewed at that digest is applied")
     Do $$$AssertEquals(..Stored(), ..#NEWCLASS _ "|", "the item holds none of them")
+    Do $$$AssertEquals(..HeldSettings(), "", "(AC2) its Item settings tab holds no production value for the dropped setting the new class declares")
+}
+
+/// <p>AC1, AC2: between two operation classes on the same adapter (<code>EnsLib.File.OutboundAdapter</code>), an Adapter setting the
+/// adapter declares and accepts is kept and one whose stored value it rejects is dropped, and the Item settings tab then holds the kept
+/// one alone.</p>
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Port.InteropPort.DroppedSettings</method> remove every Adapter setting -- the dropped list,
+/// the stored settings and the tab go red.</p>
+Method TestAnAdapterSettingTheSharedAdapterTakesIsKept()
+{
+    Set tName = "OcuPilotProbeChgFile"
+    Set tNew = "EnsLib.HL7.Operation.FileOperation"
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "AddFileItem", tName, "EnsLib.File.PassthroughOperation", "/tmp/ocupilot-probe-chg"), "a file operation holding its adapter's FilePath is stored")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "PutItemSetting", tName, "Adapter", "Overwrite", "maybe"), "and its adapter's Overwrite at a value the adapter rejects")
+    Set tRead = ..Dry(tName, tNew, .tText)
+    Do $$$AssertEquals(tText, "200 ", "the composed read of the change to another class on the same adapter is answered")
+    If '$IsObject(tRead) Quit
+    Set tFields = ""
+    Set tIterator = tRead.Dropped.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tRow) {
+        Set tFields = tFields _ $Select(tFields = "": "", 1: ",") _ tRow.Target _ "." _ tRow.Name
+    }
+    Do $$$AssertEquals(tFields, "Adapter.Overwrite", "only the rejected Adapter setting is a dropped setting")
+    Do $$$AssertEquals(..PortChange(..#PORT, tName, tNew, tRead.Digest), "200 ", "the change reviewed at that digest is applied")
+    Do $$$AssertEquals(..Stored(tName), tNew _ "|Adapter.FilePath=/tmp/ocupilot-probe-chg", "the item keeps the Adapter setting its adapter takes")
+    Do $$$AssertEquals(..HeldSettings(tName), "Adapter.FilePath", "(AC2) and its Item settings tab holds that one alone")
 }
 
 /// <p>AC1: a change that drops nothing is still a destructive card with the class row alone, and its confirm keeps every setting; an

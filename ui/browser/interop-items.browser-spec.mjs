@@ -566,6 +566,45 @@ test('AC1: Change class lists the Classes tab\'s other classes, reviews the sett
   }
 });
 
+// AC1 (the dialog's dismissal). Mutation (Rule 19): drop `(closed)="cancelled.emit()"` from the Change class dialog's template, or have the
+// page's `onCloseClass` leave the dialog open; rebuild and redeploy first -> the dialog is still on screen after Escape, Cancel or the scrim.
+test('AC1: the Change class dialog closes on Escape, Cancel and the scrim, and each leaves the item as it was with nothing reviewed or sent', async () => {
+  const { context, page } = await signedInAt(browser, config, PRODUCTIONS_URL, VIEWPORTS.wide);
+  const sent = [];
+  page.on('request', (request) => {
+    if (request.method() !== 'POST') return;
+    const path = new URL(request.url()).pathname;
+    if (path === ACTION_PATH || path === DRY_RUN_PATH) sent.push(path);
+  });
+  const dialogGone = () => page.waitForFunction(() => document.querySelector('[role="dialog"]') === null, { timeout: config.navigationTimeoutMs });
+  const open = async () => {
+    await rowAction(page, OPERATION, STRINGS.interopItemChangeClassAction);
+    await page.waitForSelector('[role="dialog"] [data-interop-item-class-review]', { visible: true, timeout: config.navigationTimeoutMs });
+  };
+  try {
+    await openItems(page);
+    const before = stored(OPERATION);
+    await open();
+    await page.keyboard.press('Escape');
+    await dialogGone();
+    await open();
+    await page.evaluate((cancel) => {
+      Array.from(document.querySelectorAll('[role="dialog"] .ocu-dialog-actions button')).find((button) => button.textContent.trim() === cancel).click();
+    }, STRINGS.actionCancel);
+    await dialogGone();
+    await open();
+    await page.mouse.click(4, 4);
+    await dialogGone();
+    assert.deepEqual(sent, [], 'no review and no change was sent');
+    assert.equal(stored(OPERATION), before, 'and the stored item is as it was');
+    await open();
+    await page.keyboard.press('Escape');
+    await dialogGone();
+  } finally {
+    await context.close();
+  }
+});
+
 // AC3. Mutation (Rule 19): make the spec's Stop send `start` (change the label passed to `warnAndProceed` for the stop) -> the
 // Stop warning's sentence assertion goes red; rebuild and redeploy first for any client mutation.
 test('AC3: Stop warns and ends the operation\'s jobs, so its Jobs tab lists none; Start warns and runs a job again', async () => {

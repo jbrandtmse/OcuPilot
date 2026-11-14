@@ -119,13 +119,16 @@ Method OnBeforeOneTest() As %Status
     Quit $ClassMethod(..#CONTROL, "Reset")
 }
 
-/// <p>The seam and the fake gate are cleared, and the probe's items are asserted as they began and put back when they are not.</p>
+/// <p>The seam and the fake gate are cleared, and the probe's items are asserted as they began and put back when they are not. The
+/// production is then rebuilt from its class text, because the exact principal's change of class drops a setting the change back cannot
+/// restore.</p>
 Method OnAfterOneTest() As %Status
 {
     Do $ClassMethod(..#SEAM, "Disarm")
     Do ##class(OcuPilot.Test.ScreenGate).Reset()
     Do $$$AssertEquals($ClassMethod(..#CONTROL, "Items"), ..#BASELINE, "the probe production's items are left as they began")
     Do $ClassMethod(..#CONTROL, "Reset")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "ResetProduction"), "the probe production is rebuilt with its items' classes and settings as they began")
     Quit $$$OK
 }
 
@@ -422,6 +425,7 @@ ClassMethod Probe(pParent As %Integer, pUsername As %String, pNamespace As %Stri
                 Set tBackQuery("id") = pProduction _ $Char(1) _ ..#ITEM
                 Set tBackQuery("newClass") = "OcuPilotProbe.Interop.Op"
                 Set tBackSC = ##class(OcuPilot.Port.InteropPort).Invoke("Items", "CHANGECLASS", .tBackQuery, "", .tBackResult, .tBackHttp, .tBackFault)
+                If +$Get(tBackHttp) '= 200 Do tLeg.%Set("code", "the change back answered " _ +$Get(tBackHttp))
             }
             If (tType = "COPY") && (+tHttp = 200) {
                 Kill tCleanQuery

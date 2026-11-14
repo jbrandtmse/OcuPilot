@@ -10,7 +10,8 @@ import { InteropItemChangeClassDialog } from './interop-item-change-class-dialog
 /**
  * The Change class dialog (Story 20.41): its published words, the classes the Classes tab lists less the item's own as the
  * select's options, a Review that stays unavailable until one is chosen and then emits it, the empty sentence where the tab lists
- * no other class, and the server's refusal of the read drawn as the dialog's alert.
+ * no other class, the server's refusal of the read drawn as the dialog's alert, and each dismissal path (Cancel, the scrim, Escape
+ * through the overlay stack) emitting `cancelled` once and `chosen` never.
  */
 
 @Component({
@@ -48,6 +49,7 @@ async function settle(fixture: ComponentFixture<unknown>): Promise<void> {
 async function mount(answer: JsonResult<unknown>) {
   TestBed.resetTestingModule();
   const sent: string[] = [];
+  const overlays = new OverlayStack();
   const api = {
     requestJson: async <T,>(path: string, _init: ApiRequestInit = {}): Promise<JsonResult<T>> => {
       sent.push(path);
@@ -57,7 +59,7 @@ async function mount(answer: JsonResult<unknown>) {
   TestBed.configureTestingModule({
     providers: [
       { provide: ApiService, useValue: api as unknown as ApiService },
-      { provide: OverlayStack, useValue: new OverlayStack() },
+      { provide: OverlayStack, useValue: overlays },
     ],
   });
   const fixture = TestBed.createComponent(Host);
@@ -65,7 +67,7 @@ async function mount(answer: JsonResult<unknown>) {
   planted.push(fixture.nativeElement);
   fixture.detectChanges();
   await settle(fixture);
-  return { fixture, host: fixture.nativeElement as HTMLElement, sent };
+  return { fixture, host: fixture.nativeElement as HTMLElement, sent, overlays };
 }
 
 const select = (host: HTMLElement): HTMLSelectElement | null => host.querySelector('select[data-interop-item-class-select]');
@@ -124,5 +126,36 @@ describe('the Change class dialog', () => {
     expect(alert.textContent?.trim()).toBe(STRINGS.interopItemRefusalAmbiguous);
     expect(host.querySelector('[data-interop-item-class-empty]'), 'a refused read is not an empty list').toBeNull();
     expect((fixture.componentInstance as Host).chosen).toEqual([]);
+  });
+
+  // Mutation (Rule 19): drop `(closed)="cancelled.emit()"` from the template -> the three dismissal legs go red.
+  describe('dismissal', () => {
+    const cancel = (host: HTMLElement): HTMLButtonElement =>
+      [...host.querySelectorAll('.ocu-dialog-actions button')].find((button) => button.textContent?.trim() === STRINGS.actionCancel) as HTMLButtonElement;
+
+    it('emits cancelled once for Cancel, even with a class chosen, and never chosen', async () => {
+      const { fixture, host } = await mount({ kind: 'ok', status: 200, body: { rows: ROWS } });
+      choose(fixture, host, 'Probe.TearOp');
+      cancel(host).click();
+      await settle(fixture);
+      expect((fixture.componentInstance as Host).cancelled).toBe(1);
+      expect((fixture.componentInstance as Host).chosen).toEqual([]);
+    });
+
+    it('emits cancelled once for a press on the scrim', async () => {
+      const { fixture, host } = await mount({ kind: 'ok', status: 200, body: { rows: ROWS } });
+      (host.querySelector('.ocu-dialog-scrim') as HTMLElement).dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+      await settle(fixture);
+      expect((fixture.componentInstance as Host).cancelled).toBe(1);
+      expect((fixture.componentInstance as Host).chosen).toEqual([]);
+    });
+
+    it('emits cancelled once for Escape, which reaches the dialog through the overlay stack', async () => {
+      const { fixture, overlays } = await mount({ kind: 'ok', status: 200, body: { rows: ROWS } });
+      expect(overlays.closeTop()).toBe(true);
+      await settle(fixture);
+      expect((fixture.componentInstance as Host).cancelled).toBe(1);
+      expect((fixture.componentInstance as Host).chosen).toEqual([]);
+    });
   });
 });

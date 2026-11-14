@@ -11,14 +11,7 @@ context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
   - '{project-root}/_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md'
 warnings: [oversized]
-deferred:
-  - summary: >-
-      The Change class dialog's dismissal (Cancel, Escape, scrim) and the page's close handler are not exercised by any spec.
-    evidence: |-
-      The dialog spec's host counts `cancelled` but never triggers it, the page spec's stub never emits it, and the add and copy dialogs share the shape.
-    location: >-
-      ui/src/app/areas/interoperability/interop-item-change-class-dialog.spec.ts
-    severity: low
+deferred: []
 ---
 
 <intent-contract>
@@ -242,6 +235,34 @@ Line numbers are on `a6c49d6d`. Stories 20.25, 20.26 and 20.40 land first and sh
 - AC6: Given the two new tools, when `Test/ToolWrite` and `Test/ReadTool` run, then the other-port count reads one above, and the registry count two above, the branch's values before this story.
 - AC7: Given the Classes tab's read tool, when `Test/ReadDescriptions` runs, then it passes with the tool's title, row phrase and fields, and the tool is in no confusable group.
 
+### Review Findings
+
+Code review 2026-11-14 (first review, `389e9e2d..3c459376` plus QA's tree).
+
+- [x] [Review][Patch] AC2's Item settings clause cannot fail: `HeldSettings()` lists only settings the new class declares, so a kept `HangSeconds` never shows [src/OcuPilot/Test/InteropItemChangeClass.cls:311]
+- [x] [Review][Patch] The drop rule's Adapter keep branch is never run: the one Adapter case changes to a class with no adapter [src/OcuPilot/Port/InteropPort.cls:DroppedSettings]
+- [x] [Review][Patch] The gate's change-of-class leg leaves state its reset cannot see: the change-back is unchecked and `Items()` compares names and enabled flags only [src/OcuPilot/Test/InteropItemGate.cls:419]
+- [x] [Review][Patch] The class picker shows an empty select and no sentence when its read fails without one (status 0, installing) [ui/src/app/areas/interoperability/interop-item-change-class.store.ts:load]
+- [x] [Review][Patch] Stale doc comments: `Snippet` and `ItemSnippet` omit the change of class, and the page comment says the dialogs add an item [src/OcuPilot/Port/InteropPort.cls:5732, ui/src/app/areas/interoperability/interop-item-list.page.ts:41]
+- [x] [Review][Patch] AC4's audit and key-default clauses and AC5's write clause have pinning tests but no `mutation:` line [spec ## Verification]
+- [x] [Review][Defer] `InteropItemChangeClassMint.Mint` repeats `InteropTransformMint.Mint`'s pre-read `ArgumentProblem` guard under another parent [src/OcuPilot/Screen/Tool/InteropItemChangeClassMint.cls:9] — deferred: LOW, a hook in the kernel mint would serve both, outside this story's files; ledgered DW-2546, wontfix-accepted.
+
+Rejected:
+
+- `false` the candidate scan holds the production's lock too long: the three-kind scan measured 0.078 s for 197 classes on `ocupilot-b-ci`.
+- `false` a multi-line value breaks the review's layout: `.ocu-dialog-review > li` is `white-space: pre-wrap`.
+- `false` the AD-59 script drops nothing without a context: its one caller, `Kernel/Proposal/Draft.cls:217`, always passes the stored payload, and `FINGERPRINTSUBJECT` keeps `Dropped` in it.
+- `low` the picker can be cut at 1,000 rows and does not show each class's kind: 198 classes in `USER`, and the kinds mix only for an item whose class is not compiled.
+- `low` by-design: a change that drops nothing reviews as bare `- old` / `+ new` lines; Tasks keeps a one-row review rendering as today.
+- `low` the dialog's empty sentence would be untrue when the item's class is the only one of its kind: every interoperability namespace ships dozens of vendor classes of each kind, and a fix needs a new string.
+- `low` suggested prompt 2 has no read that answers it: the strings are ruled (U-26), and the agent answers it with a proposal, which writes nothing.
+- `low` the class-shape rule admits underscores and an interior `%`: the agent copies names from the Classes tab, the port refuses any class not listed, and a tighter pattern risks refusing a valid name.
+- `low` a class of two kinds reads Type `service` on an unknown-kind item's tab: cosmetic, on a rare item, and the write's check is per kind.
+- `low` the write saves the item rather than the production: Intent and the vendor save the item, and the stored settings read correct.
+- `low` `Test/InteropItemDescriptor.cls` is edited in place: the edits are the roster's required rows, and Epic 23's branch does not touch the file.
+- `low` DW-2545 still reads open: its adjudication is the runner's ledger gate.
+- `low` the spec lost its frontmatter `deferred:` key: the fix edits the spec under review; the runner's harvest is the place to restore it.
+
 ## Spec Change Log
 
 - 2026-11-12, spec gate (runner): the privileges and the twelve new strings are veto item U-26; the AD lines stay for the owner's Update, not written.
@@ -255,7 +276,7 @@ Line numbers are on `a6c49d6d`. Stories 20.25, 20.26 and 20.40 land first and sh
   - `[medium]` `[patch]` the dropped-set rule is pinned only for a Host setting the new class does not declare — added `TestTheDropRuleIsAppliedPerTargetAndPerValue` (invalid Host value, Adapter, other target); two mutations recorded.
   - `[medium]` `[patch]` a changed value of a non-secret dropped setting is not covered by the moved-since-review tests — added `TestAValueThatMovedAfterTheReviewIsRefusedAndNothingIsWritten`; mutation recorded.
   - `[low]` `[patch]` the class-shape rule on the person's route and `ConfirmProblem` are undiscriminated — the route assertion now excludes the port's own code, and a `ConfirmProblem` leg was added; mutation recorded.
-  - `[low]` `[defer]` the Change class dialog's dismissal path is not tested — the add and copy dialogs share the shape; in the deferred list.
+  - `[low]` `[defer]` the Change class dialog's dismissal path is not tested — the add and copy dialogs share the shape; closed in QA (DW-2545), see Verification.
   - `[low]` `[patch]` AC6 and AC7 have no `mutation:` line — two mutations run and recorded.
   - `[low]` `[reject]` the unknown-kind write is tested only to the operation class — the list leg pins all three kinds and both reads derive the kind through the same `GetBusinessType`; a service or process leg adds nothing the write's own judging does not.
   - `[low]` `[reject]` `Hang 2` before the no-job assertion — the polled `Running|1` leg is the one that discriminates, and the sleep only lengthens the window.
@@ -424,6 +445,21 @@ The story complies with every AD as it stands.
 - mutation: `ScreenActionDelta` skips the class rule, and `ConfirmProblem` answers no problem -> `InteropItemChangeClassRefusals.TestABadClassArgumentIsRefusedBeforeAnyRead` red on the person's route and on the confirm check (AC3).
 - mutation: the tool class `InteropItemChangeClass` deleted from the instance -> `ToolWrite` red on the write roster; the tab class `InteropItemClassTab` deleted -> `ReadTool` red on the registry and the criteria corpus (AC6).
 - mutation: the tab's read declares a `label` -> `ReadDescriptions.TestEveryConfusableToolCarriesItsLabel` and `TestEveryReadDescriptionIsExactlyItsDeclaredParts` red, so the tool stays in no confusable group and its description is its declared parts (AC7).
+- mutation: (QA) the Change class dialog's template drops `(closed)="cancelled.emit()"` -> `interop-item-change-class-dialog.spec.ts` red on the Cancel, scrim and Escape legs, and the browser leg `the Change class dialog closes on Escape, Cancel and the scrim` red on the bundle rebuilt and redeployed with it (30 s wait for the dialog to go; AC1, DW-2545).
+- mutation: (QA) the page's template drops `(cancelled)="onCloseClass()"` -> `interop-item-list.page.spec.ts` `dismissing the class dialog closes it without starting a review` red (AC1, DW-2545).
+- mutation: (review) `DroppedSettings` keeps every setting (`If tRemove && 0`) -> `InteropItemChangeClass.TestTheDropRuleIsAppliedPerTargetAndPerValue` red on its `(AC2)` Item settings assertion (AC2).
+- mutation: (review) `DroppedSettings`' Adapter branch removes every Adapter setting (`Set tRemove = 1`) -> `InteropItemChangeClass.TestAnAdapterSettingTheSharedAdapterTakesIsKept` alone red (AC1, AC2).
+- mutation: (review) `InteropItemGate.Probe`'s change back names `TearOp` (refused `SAMECLASS`) -> `TestEachMissingPairIsRefusedByNameThroughThePort` red on `OcuP203Exact: Items|CHANGECLASS` alone.
+- mutation: (review) `ChangeStep`'s audit text leaves out `from <old>` -> `InteropItemChangeClass.TestTheAgentsChangeOfClassConfirmsOverHttp` and `TestThePersonsDryRunThenActionChangesTheClass` red on the audit row (AC4).
+- mutation: (review) the baseline sets `interop.items.changeclass` `true` -> `InteropItemDescriptor.TestTheChangeOfClassToolAndItsCard` red on "listed in the governance baseline, disabled" (AC4).
+- mutation: (review) `Pairs` adds `ITEMWRITEPAIRS` for every item write but `CHANGECLASS` -> `InteropItemGate.TestEachMissingPairIsRefusedByNameThroughThePort` red on `OcuP203NoCfgWrite: Items|CHANGECLASS` (AC5).
+- mutation: (review) the picker store keeps `result.reason ?? ''` for an error and ignores every other kind -> `interop-item-change-class.store.spec.ts` `reports the server-fault sentence ...` red.
+
+**Tests added or changed by QA:**
+
+- `ui/src/app/areas/interoperability/interop-item-change-class-dialog.spec.ts` (QA): three dismissal legs (Cancel, scrim, Escape through the overlay stack).
+- `ui/src/app/areas/interoperability/interop-item-list.page.spec.ts` (QA): dismissal closes the dialog, starts no review and lets the action reopen it.
+- `ui/browser/interop-items.browser-spec.mjs` (QA): the dialog closes on Escape, Cancel and the scrim in a real browser, with nothing reviewed or sent and the item unchanged.
 
 **Planned pinning mutations (Rule 19):**
 

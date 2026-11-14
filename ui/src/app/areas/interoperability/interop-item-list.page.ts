@@ -37,8 +37,8 @@ const INTEROP_PRODUCTION_DIAGRAM = 'OcuPilot.Screen.Descriptor.InteropProduction
  * Interoperability's Production items (Story 20.3, AD-5): the shared list page, over it the add, copy and change class dialogs.
  *
  * **Add item, Copy and Change class are this page's own actions**, registered on the descriptor after injecting the shell's handler,
- * whose construction registers the list's other declared row actions (Copy is left to this page through its `UNDRAWN_ACTIONS`
- * entry). The dialogs add the item to the
+ * whose construction registers the list's other declared row actions (Copy and Change class are left to this page through their
+ * `UNDRAWN_ACTIONS` entry). The add and copy dialogs add an item to the
  * production the route names, in the namespace the shell is scoped to, which is the one the list reads. Copy
  * (Story 20.40) opens on the selected row and never over another dialog. Change class (Story 20.41) opens the class picker on the
  * selected row; the class it chooses closes it and starts the handler's review of what the change removes, whose typed name is the

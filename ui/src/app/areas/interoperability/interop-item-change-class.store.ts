@@ -1,6 +1,7 @@
 import { Injectable, Injector, inject } from '@angular/core';
 
 import { ApiService } from '../../core/api';
+import { STRINGS } from '../../core/strings';
 
 /** The tool whose read lists the classes an item can change to: the item's Classes tab (Story 20.41). */
 export const INTEROP_ITEM_CLASSES_TOOL = 'interop.itemclasses';
@@ -22,7 +23,8 @@ export interface ClassOption {
  * through the same screen read as that tab, less the item's own class, and the one the person chose.
  *
  * **It composes no rule of its own.** The rows are the instance's (`Current` marks the class the item has, which is
- * left out), and every refusal sentence is the server's (AD-39). The review that follows (the settings the new class
+ * left out), and every refusal sentence is the server's (AD-39); a read that fails without one reads as the shell's server-fault
+ * sentence, so the dialog never stands empty with no word. The review that follows (the settings the new class
  * does not take) is the handler's dry run, not this store's.
  *
  * **The namespace is the shell's**, which the API service attaches to every request, so the list is read where the
@@ -109,8 +111,8 @@ export class InteropItemChangeClassStore {
     if (result.kind === 'ok') {
       this.optionList = optionsOf(result.body);
       this.loadedValue = true;
-    } else if (result.kind === 'error') {
-      this.reasonValue = result.reason ?? '';
+    } else {
+      this.reasonValue = result.kind === 'error' && typeof result.reason === 'string' && result.reason !== '' ? result.reason : STRINGS.connectivityServerFault;
     }
     this.notify();
   }

@@ -5734,7 +5734,7 @@ ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
 /// <code>StartProduction</code> of the one production, <code>StopProduction</code>,
 /// <code>RestartProduction</code> and <code>UpdateProduction</code> with the production's own timeout capped
 /// at <parameter>STOPSECONDS</parameter>, and <code>RecoverProduction</code>; an item's
-/// <code>EnableConfigItem</code>, add and remove, each followed by the production class's
+/// <code>EnableConfigItem</code>, add, copy, change of class and remove, each followed by the production class's
 /// <code>SaveToClass</code>; the queue and job actions (<method>RuntimeSnippet</method>); and the message resend and edit and resend
 /// (<method>MessageSnippet</method>). A read writes nothing and answers no step. Every value is rendered as a
 /// string literal, so nothing the query carries runs as code, and every line closes any block it opens.
@@ -5821,7 +5821,9 @@ ClassMethod RuntimeSnippet(pType As %String, pId As %String, pContext As %Dynami
 }
 
 /// <p>The lines <method>Snippet</method> adds for the item write <var>pType</var> of the item the composite
-/// id <var>pId</var> names, carrying the add's or the copy's body <var>pBody</var>. The last line drops the production, so a
+/// id <var>pId</var> names, carrying the add's or the copy's body <var>pBody</var>. A change of class sets the class
+/// <var>pQuery</var> names under <parameter>NEWCLASSKEY</parameter> and removes the settings the proposal's stored payload
+/// (<var>pContext</var>'s <code>payload.Dropped</code>) lists. The last line drops the production, so a
 /// terminal that runs the script does not keep its exclusive lock.</p>
 ClassMethod ItemSnippet(pType As %String, pId As %String, pBody As %DynamicAbstractObject, ByRef pQuery, pContext As %DynamicObject = "") As %String [ Private ]
 {

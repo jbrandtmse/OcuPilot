@@ -55,7 +55,8 @@ class StubCopyDialog {
 
 @Component({
   selector: 'app-interop-item-change-class-dialog',
-  template: '<button data-stub-class (click)="chosen.emit(\'Probe.TearOp\')">{{ production() }}|{{ item() }}</button>',
+  template:
+    '<button data-stub-class (click)="chosen.emit(\'Probe.TearOp\')">{{ production() }}|{{ item() }}</button><button data-stub-class-cancel (click)="cancelled.emit()"></button>',
 })
 class StubChangeClassDialog {
   readonly production = input.required<string>();
@@ -219,6 +220,25 @@ describe('the Production items page', () => {
     expect(started).toHaveBeenCalledTimes(1);
     expect(started.mock.calls[0].slice(0, 5)).toEqual([INTEROP_ITEM_LIST, 'changeclass', id, { NewClass: 'Probe.TearOp' }, store]);
     expect(started.mock.calls[0][5]).toBe('Op1');
+  });
+
+  // Mutation (Rule 19): drop `(cancelled)="onCloseClass()"` from the page's template, or have `onCloseClass` leave `classing` set -> this goes red.
+  it('Story 20.41: dismissing the class dialog closes it without starting a review, and the action can open it again', async () => {
+    const { fixture, host, actions, stores } = await mount(itemsUrl('Demo.One'));
+    const handler = TestBed.inject(ScreenActionHandler);
+    const started = vi.spyOn(handler, 'startDryRun').mockResolvedValue(true);
+    const screen = SCREENS.find((entry) => entry.descriptor === INTEROP_ITEM_LIST);
+    stores.for(INTEROP_ITEM_LIST, screen?.refreshRates ?? []).setSelection([joinCompositeId(['Demo.One', 'Op1'])]);
+    actions.run(INTEROP_ITEM_LIST, INTEROP_ITEM_CHANGE_CLASS_ACTION);
+    await settle(fixture);
+    expect(host.querySelector('[data-stub-class]'), 'the dialog is open').not.toBeNull();
+    (host.querySelector('[data-stub-class-cancel]') as HTMLButtonElement).click();
+    await settle(fixture);
+    expect(host.querySelector('[data-stub-class]'), 'dismissal closes the dialog').toBeNull();
+    expect(started, 'dismissal starts no review').not.toHaveBeenCalled();
+    actions.run(INTEROP_ITEM_LIST, INTEROP_ITEM_CHANGE_CLASS_ACTION);
+    await settle(fixture);
+    expect(host.querySelector('[data-stub-class]'), 'a dismissed dialog does not block the next one').not.toBeNull();
   });
 
   // Mutation (Rule 19): `onOpenCopy` ignores an open add dialog -> the stacked-dialog leg goes red.

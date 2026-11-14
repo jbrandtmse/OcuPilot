@@ -68,6 +68,16 @@ describe('InteropItemChangeClassStore', () => {
     expect(store.loaded()).toBe(false);
   });
 
+  it('reports the server-fault sentence for a read that fails with no sentence of its own, and for one the install gate answers', async () => {
+    // Mutation (Rule 19): keep `result.reason ?? ''` for an error and ignore every other kind -> both reasons read ''.
+    const unreachable = mount(() => ({ kind: 'error', status: 0, code: null, reason: null, detail: null }));
+    await unreachable.store.load('Probe.Production', 'ProbeOp');
+    expect([unreachable.store.reason(), unreachable.store.loaded(), unreachable.store.options().length]).toEqual([STRINGS.connectivityServerFault, false, 0]);
+    const installing = mount(() => ({ kind: 'installing', status: 503, code: null }));
+    await installing.store.load('Probe.Production', 'ProbeOp');
+    expect(installing.store.reason()).toBe(STRINGS.connectivityServerFault);
+  });
+
   it('answers an empty list as loaded and refused by nothing, and drops a read that a reset superseded', async () => {
     const { store } = mount(() => ({ kind: 'ok', status: 200, body: { rows: [ROWS[0]] } }));
     const pending = store.load('Probe.Production', 'ProbeOp');
