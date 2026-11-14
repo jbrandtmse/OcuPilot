@@ -11249,6 +11249,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-11T09:33:14Z status=routed owner=20-25-item-runtime-and-configuration-actions by=spec_gate note=20.23 declines it (item operations, not queue or job actions); Story 20.25 chartered for it
 - 2026-11-13T08:55:33Z status=routed owner=20-40-item-copy-and-change-of-class by=adjudication note=stop, start and restart delivered by 20.25; copy remains (20.40), then change class (20.41 bullet)
 - 2026-11-13T16:40:28Z status=routed owner=20-41-item-change-of-class by=adjudication note=copy residual resolved by 20.40 (interop.items.copy, POST /interop/items/copy, Copy row action; InteropItemCopy 8/8); the change-of-class residual remains, for Story 20.41
+- 2026-11-14T00:46:48Z status=resolved-by:20-41-item-change-of-class by=adjudication note=change of class delivered (interop.items.changeclass, ItemClasses read and Classes tab, Change class row action; InteropItemChangeClass 7/7, Refusals 6/6); the copy residual closed at 20.40; temporary stop, start and restart at 20.25
 
 ### DW-2278: Rule 31: the Superserver, MFT and Doc DB slices each carry their own Save, Rules and form of one shape; one base would serve all three
 - source: spec-18-30-doc-db-applications.md | severity: med | fix-risk: med | footprint: in-epic
@@ -12656,3 +12657,9 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: _bmad-output/implementation-artifacts/spec-20-41-item-change-of-class.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: The dialog spec's host counts cancelled but never triggers it; the page spec's stub never emits it; the add and copy dialogs share the shape
 - 2026-11-14T00:10:06Z status=open owner=20-41-item-change-of-class by=harvest note=For 20.41's QA stage to cover, or close at adjudication
+- 2026-11-14T00:46:48Z status=resolved-by:20-41-item-change-of-class by=adjudication note=QA added the Change class dialog's dismissal legs (Cancel, scrim, Escape), the page's close leg and a browser leg; mutations recorded under Verification
+
+### DW-2546: InteropItemChangeClassMint.Mint repeats InteropTransformMint.Mint's pre-read ArgumentProblem guard under another parent (Rule 2 near-copy)
+- source: spec-20-41-item-change-of-class.md | severity: low | fix-risk: med | footprint: out-of-footprint
+- evidence: Both Mint overrides call the tool's ArgumentProblem before the fresh read and refuse TOOL.ARGUMENTS (InteropTransformMint.cls:15, InteropItemChangeClassMint.cls:15); a kernel-mint hook would serve both but touches Kernel/Proposal/Mint.cls, outside this story.
+- 2026-11-14T00:43:33Z status=wontfix-accepted owner=20-41-item-change-of-class by=cr note=reopen_if=a third mint overrides Mint only to run ArgumentProblem before the fresh read
