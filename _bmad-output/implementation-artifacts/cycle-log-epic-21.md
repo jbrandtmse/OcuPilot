@@ -34,3 +34,7 @@
 2026-11-14T19:59:54Z	Story 21.2	spec_validated	service_introducing=true integration_ac=present adr_constrained_acs=AD-10,AD-22,AD-23,AD-29,AD-21,AD-35 decision_dependency=none sections_created=none owned_ledger=DW-2560 addressed=1 declined=0 mutates_shared_runtime=false(throwaway_only) strings=ruled(U-38) new_arming=OCUPILOT_ALLOW_BACKUP_CONTROL model=claude-opus-5-5
 2026-11-14T20:00:08Z	Story 21.12	stage_spawned	stage=plan spawn_at=2026-11-14T20:00:08Z model=opus agent_name=21-12-mirroring-plan-1 cycle_iteration=1
 2026-11-14T20:09:55Z	Story 21.12	story_parked	stage=plan reason=intent_gap(mirroring_unlicensed_on_community,AD-10_arm_wording) category=park(owner_only:epic_boundaries,AD) inbox=U-39 code=none
+2026-11-14T20:10:10Z	Story 21.12	runner_reported	item=U-39 via=SendMessage(main) reason=sweep_in_background_shell
+2026-11-14T20:10:22Z	Epic 21	hold_ordered	reason=HOLD_file(usage_95pct_19:48Z) by=orchestrator instructions=finish_21.1_sweep_smoke_push;no_new_stage
+2026-11-14T21:34:43Z	Story 21.1	gate_step	step=full_sweep result=not_run reason=owner_hold_interrupt shards_green=19/20(shard_20_killed) redo=after_restart
+2026-11-14T21:34:43Z	Epic 21	ruling	question=push_before_rule29_sweep choice=push_all_local_commits_now authorized_by=owner(via_orchestrator_hold_order) waiver=rule29_sweep_before_first_code_push smoke=not_run fresh_check=pass(forward,reverse) category=owner_decision
