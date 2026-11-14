@@ -12252,6 +12252,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-23T16:32:53Z occurrence=23-12-the-agent-picks-the-right-list
 - 2026-11-12T18:39:53Z occurrence=23-9-the-range-end-cleanup-part-8 note=run 43275467803 (74a6348f) attempt 1, browser shard 3/5: encryption-startup C1 not ok; rerun --failed
 - 2026-11-14T00:52:32Z owner=23-14-epic-23-burn-down by=burndown note=chartered_in_Story_23.14(Epic_23_burn-down,orchestrator_ruling_2026-11-14)
+- 2026-11-14T03:03:18Z occurrence=23-14-epic-23-burn-down note=staging_21d6495b_run_43545992116_attempt_1_browser_shard_1/5:C1,C2,C9_waiting_for_DBEncStartMode-None(before_batch_2's_fix);rerun_--failed
 
 ### DW-2463: The interop-editor browser specs keep local copies of the helpers interop-editor-spec.mjs now shares (answered, editorShows, the frame selector) and of 20.7's readSettings, settingsNode and shellAt
 - source: spec-20-10-source-control-hooks.md (code review) | severity: low | fix-risk: low | footprint: in-epic
