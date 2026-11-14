@@ -1906,3 +1906,13 @@
 2026-11-14T13:48:33Z	orchestrator	candidate_ci_green	sha=0b3112f6a run=43598581340 release=1.0.15 sent_to=OcuPilot_Planner upgrade_check=not_needed new_keys=10
 2026-11-14T13:48:33Z	orchestrator	unattended_report	merged=epic20(41),epic23(14) since_resume=20.25,20.40,20.41,20.26,20.25fix,23.10,23.13,23.14 crash=survived(no_git_loss) open_owner=U-30,U-33,U-34 open_vetoes=U-20,U-29,U-31,U-32,U-35 action_items=1(DW-2555) ledger_residue=routed41(21-10:30,21-7:8,17-2:3),owner_hold49,inbox2 throwaways=down next=epics_21,22_attended
 2026-11-14T13:48:33Z	orchestrator	parallel_summary	epics_merged=20,23 stories=20:41,23:14(incl_burndown_23.14) run=20261020T0940Z-20,23 started=2026-10-20T09:40Z ended=2026-11-14T13:48:33Z
+2026-11-14T16:57:01Z	orchestrator	lead_model_gate	model=claude-opus-5-5 action=proceed run=20261114T1656Z-21,22
+2026-11-14T16:57:01Z	orchestrator	runtime_gate	bmad=6.12.1 uv=0.12.9 ci=gh kit=2026-10-19.3(owner:stay)
+2026-11-14T16:57:01Z	orchestrator	launch_env	depth=4 watchdog=1 bash_max_ms=default
+2026-11-14T16:57:01Z	orchestrator	telemetry_gate	pending=0 action=none
+2026-11-14T16:57:01Z	orchestrator	owner_decision	id=launch_21_22 via=relay(OcuPilot_Planner,AskUserQuestion_16:52Z) quotes="Start now, unattended (Recommended)"|"Stay on 2026-10-19.3 (Recommended)"|"Planner decides"(readiness)|"Yes, confirmed (Recommended)"(permission) effect=presence_waived(Planner_answers_inbox);kit_kept;readiness_FAIL_to_Planner;hold=usage-triggered(~92pct_weekly;Planner_writes_HOLD;20:00Z_cancelled)
+2026-11-14T16:57:01Z	orchestrator	permission_mode_attested	mode=bypassPermissions by=owner(via_Planner_AskUserQuestion_16:52Z) session=interactive(VS_Code)
+2026-11-14T16:57:01Z	orchestrator	sprint_planning_complete	gate=CONCERNS findings=21.11_undo_state-capture_model_unrecorded(AD_expected_at_spec_gate),21.10_carries_30_routed_ledger_entries(split_likely),DW-2555_AD-62/15/22_sentences_pending_owner_Update,U-30/U-34_AD-10/AD-15_questions_open,22.2_has_no_current_demand in_sync=true
+2026-11-14T16:57:01Z	orchestrator	unattended_started	run=20261114T1656Z-21,22 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03 doctrine=3d11cec98d91c1d4d9c225fe3b265e1af418abe4 range=21,22 ci=gh visibility=public notify=push lock_token=1794675398-97204 kit=2026-10-19.3 deps=approved(hash_current)
+2026-11-14T16:57:01Z	orchestrator	spine_counter_seeded	next=67
+2026-11-14T16:57:01Z	orchestrator	ledger_counter_seeded	next=2558
