@@ -519,6 +519,11 @@ services:
       # and an agent's confirm that meets a held vendor lock or a key someone else took. The names class adds pairs too long to
       # address, names the export cannot name, a comma in a name and tables named by numbers, and removes those too.
       # classes: InteropLookupControl, InteropLookupEdges, InteropLookupGate, InteropLookupNames, InteropLookupRead, InteropLookupRefusals, InteropLookupTransfer
+      # The business partner classes write probe business partners in USER and remove them (Story 20.26): the control class drives
+      # the add, edit and remove from both callers and reads the audit rows each leaves, the refusals class meets every refusal,
+      # a probe production that is not running among them, and the gate class signs in as probe principals each missing one pair a
+      # partner write requires.
+      # classes: InteropPartnerControl, InteropPartnerGate, InteropPartnerRefusals
       # The host test classes compile and run the same probe production in USER, with a request class of their own and an
       # operation that echoes it (Story 20.6): the test class reads an item's Test tab and sends a request from both callers,
       # the refusals class meets every refusal and violation, a production started without testing and a disabled item, and

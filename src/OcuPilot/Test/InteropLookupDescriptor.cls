@@ -23,7 +23,7 @@ Parameter TOOLS = "InteropLookupEntryAdd|interop.lookupentries.add|ADDENTRY||0|c
 
 /// <p>The screens declare what the plan names: their routes, positions, entity types, ids, pairs (the endpoint's, the classic
 /// page's resource as their own), actions, the entries list's one criterion and its parent, the tables list's secondary entity
-/// type, three prompts each, the read source and the classic page; the partner list is read-only and says what to do next; and
+/// type, three prompts each, the read source and the classic page; the partner list offers New business partner, Edit and Remove and invites the agent; and
 /// each passes the registry.</p>
 /// <p>Mutation (Rule 19): remove <code>parentScope</code> from the entries list, or <code>secondaryEntityTypes</code> from either
 /// list -- this goes red.</p>
@@ -55,7 +55,7 @@ Method TestTheThreeDeclarationsRegister()
     Do $$$AssertEquals(tEntries.secondaryEntityTypes.%Size() _ "|" _ tEntries.secondaryEntityTypes.%Get(0), "1|lookup-table", "and re-reads on a table's change, an import or a delete")
     Do $$$AssertEquals(tEntries.read.criteria.fields.%Size() _ "|" _ tEntries.read.criteria.fields.%Get(0).param _ "|" _ tEntries.read.criteria.fields.%Get(0).maxLength, "1|table|255", "its one criterion is the table")
     Do $$$AssertTrue(tEntries.read.criteria.fields.%Get(0).hint [ "interop.lookuptables.read", "whose hint names the tables read tool")
-    Do $$$AssertEquals(tPartners.primaryAction.id _ "|" _ tPartners.rowActions.%Size() _ "|" _ (tPartners.table.emptyNextKey '= "") _ "|" _ (tPartners.table.emptyAgentKey = ""), "|0|1|1", "the partners list offers no action and says what to do next")
+    Do $$$AssertEquals(tPartners.primaryAction.id _ "|" _ tPartners.rowActions.%Get(0).id _ "," _ tPartners.rowActions.%Get(1).id _ "|" _ (tPartners.table.emptyNextKey = "") _ "|" _ (tPartners.table.emptyAgentKey '= ""), "add|edit,remove|1|1", "the partners list offers New business partner, Edit and Remove and invites the agent")
     Do $$$AssertEquals(tPartners.read.fields.%Size(), 14, "and reads the partner's name, description and both contacts' six fields")
 }
 
@@ -153,11 +153,11 @@ Method TestThePortDeclaresItsPairsAndServesWhatThePlanSays()
     Do $$$AssertEquals(##class(OcuPilot.Test.InteropHostDescriptor).PairText($ClassMethod(..#PORT, "Pairs", "LookupEntries", "LOOKUPENTRY")), tText, "and a read adds none")
     Set tServed = ""
     For tEndpoint = "LookupTables", "LookupEntries", "BusinessPartners" {
-        For tType = "LIST", "LOOKUPTABLE", "LOOKUPENTRY", "ADDENTRY", "SETENTRY", "REMOVEENTRY", "DELETETABLE", "IMPORTTABLE", "IMPORT", "EXPORT", "STATE", "ITEM" {
+        For tType = "LIST", "LOOKUPTABLE", "LOOKUPENTRY", "ADDENTRY", "SETENTRY", "REMOVEENTRY", "DELETETABLE", "IMPORTTABLE", "IMPORT", "EXPORT", "STATE", "ITEM", "PARTNER", "ADDPARTNER", "SETPARTNER", "REMOVEPARTNER" {
             If $ClassMethod(..#PORT, "Serves", tEndpoint, tType) Set tServed = tServed _ $Select(tServed = "": "", 1: ";") _ tEndpoint _ "=" _ tType
         }
     }
-    Do $$$AssertEquals(tServed, "LookupTables=LIST;LookupTables=LOOKUPTABLE;LookupTables=DELETETABLE;LookupTables=IMPORTTABLE;LookupTables=IMPORT;LookupTables=EXPORT;LookupEntries=LIST;LookupEntries=LOOKUPENTRY;LookupEntries=ADDENTRY;LookupEntries=SETENTRY;LookupEntries=REMOVEENTRY;BusinessPartners=LIST", "each endpoint serves exactly its types")
+    Do $$$AssertEquals(tServed, "LookupTables=LIST;LookupTables=LOOKUPTABLE;LookupTables=DELETETABLE;LookupTables=IMPORTTABLE;LookupTables=IMPORT;LookupTables=EXPORT;LookupEntries=LIST;LookupEntries=LOOKUPENTRY;LookupEntries=ADDENTRY;LookupEntries=SETENTRY;LookupEntries=REMOVEENTRY;BusinessPartners=LIST;BusinessPartners=PARTNER;BusinessPartners=ADDPARTNER;BusinessPartners=SETPARTNER;BusinessPartners=REMOVEPARTNER", "each endpoint serves exactly its types")
     Do $$$AssertTrue($ListFind($ClassMethod(..#PORT, "Endpoints"), "LookupTables") && $ListFind($ClassMethod(..#PORT, "Endpoints"), "BusinessPartners"), "and the endpoint roster carries the three")
     For tType = "ADDENTRY", "SETENTRY", "REMOVEENTRY", "DELETETABLE", "IMPORT" {
         Do $$$AssertTrue($ClassMethod(..#PORT, "IsLookupWrite", tType), tType _ " is a lookup write")
@@ -347,7 +347,8 @@ Method TestTheKernelCoversTheLookupTypes()
     For tType = "lookup-table", "lookup-entry", "business-partner" {
         Do $$$AssertTrue(##class(OcuPilot.Kernel.EntityType).IsKnown(tType), tType _ " is an entity type")
     }
-    Do $$$AssertTrue('$ListFind($ClassMethod(tProhibited, "CoveredTypes"), "business-partner"), "a business partner has no write, so it is not a covered type")
+    Do $$$AssertTrue($ListFind($ClassMethod(tProhibited, "CoveredTypes"), "business-partner"), "a business partner is a covered type")
+    Do $$$AssertEquals($ListLength($ClassMethod(tProhibited, "PermittedChangeFields", "business-partner")) _ "|" _ $ListLength($ClassMethod(tProhibited, "PermittedCreateFields", "business-partner")), "13|14", "a partner's change reviews its thirteen fields and its create its name and the thirteen")
 }
 
 /// <p>The declaration <var>pClass</var> (a descriptor class name without its package) as an object.</p>

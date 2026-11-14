@@ -136,6 +136,9 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   // entries, whose Remove types the key and whose Add entry and Set value its own page's dialogs send.
   'OcuPilot.Screen.Descriptor.InteropLookupTableList',
   'OcuPilot.Screen.Descriptor.InteropLookupEntryList',
+  // Story 20.26: Business partners, whose Remove types the partner's name and whose New business partner and Edit its own page's dialog
+  // sends.
+  'OcuPilot.Screen.Descriptor.InteropBusinessPartnerList',
   // Story 20.23: Queues, whose Abort all types the queue's name; Queue messages and an item's Queue tab, whose Abort types the
   // message id; and Jobs and an item's Jobs tab, whose Abort message types the job's process id and whose Suspend message and
   // Stop job warn first.
@@ -457,6 +460,8 @@ const UNDRAWN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   'OcuPilot.Screen.Descriptor.InteropLookupTableList': ['export', 'export-browser', 'import', 'import-local'],
   // A table's entries' page registers Set value itself, whose dialog sends the value (Story 20.5).
   'OcuPilot.Screen.Descriptor.InteropLookupEntryList': ['set'],
+  // Business partners' page registers Edit itself, whose dialog sends the thirteen fields (Story 20.26).
+  'OcuPilot.Screen.Descriptor.InteropBusinessPartnerList': ['edit'],
   // An item's Test tab's page registers Send test itself, whose dialog sends the request class and its fields (Story 20.6).
   'OcuPilot.Screen.Descriptor.InteropItemTestTab': ['test'],
   // Data transformations' page registers Test itself, whose dialog sends the pasted message (Story 20.27).
@@ -625,6 +630,8 @@ const DESTRUCTIVE_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, 
   // Story 20.5: a lookup table's Delete removes every entry in it, and an entry's Remove removes the table too when it is the last.
   'OcuPilot.Screen.Descriptor.InteropLookupTableList': { delete: STRINGS.interopLookupDeleteConsequence },
   'OcuPilot.Screen.Descriptor.InteropLookupEntryList': { remove: STRINGS.interopLookupRemoveConsequence },
+  // Story 20.26: a business partner's Remove deletes its description and both contacts.
+  'OcuPilot.Screen.Descriptor.InteropBusinessPartnerList': { remove: STRINGS.interopPartnerRemoveConsequence },
   // Story 20.23: an abort never delivers the messages it takes: all of a queue's, one waiting message, or the message a job keeps retrying.
   [INTEROP_QUEUE_LIST]: { abort: STRINGS.interopQueueAbortConsequence },
   [INTEROP_QUEUE_MESSAGE_LIST]: { abort: STRINGS.interopMessageAbortConsequence },
@@ -708,6 +715,8 @@ const TYPED_NAME_ROWS: Readonly<
   // is removed by typing its key and sending the row key.
   'OcuPilot.Screen.Descriptor.InteropLookupTableList': { name: 'Name', field: '', equals: '', advisory: '' },
   'OcuPilot.Screen.Descriptor.InteropLookupEntryList': { name: 'Key', field: '', equals: '', advisory: '' },
+  // Story 20.26: a business partner is keyed by its name, which its Remove types.
+  'OcuPilot.Screen.Descriptor.InteropBusinessPartnerList': { name: 'Name', field: '', equals: '', advisory: '' },
   // Story 20.23: an abort types the queue's name, the message's id or the job's process id, which each list's name column shows.
   [INTEROP_QUEUE_LIST]: { name: 'Name', field: '', equals: '', advisory: '' },
   [INTEROP_QUEUE_MESSAGE_LIST]: { name: 'MessageId', field: '', equals: '', advisory: '' },

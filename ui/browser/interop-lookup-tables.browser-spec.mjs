@@ -1,19 +1,19 @@
 /**
  * Story 20.5 in a real browser, against the throwaway instance: Interoperability's Lookup tables, a table's entries
- * and Business partners (AD-5, AD-36, AD-44, AD-53, AD-55, AD-62).
+ * (AD-5, AD-36, AD-44, AD-53, AD-55, AD-62).
  *
- * What it pins, in `USER`, whose probe table and probe business partner this spec creates and removes: New table creates
+ * What it pins, in `USER`, whose probe tables this spec creates and removes: New table creates
  * a table with its first entry; the table's name opens its entries under the published headers; Add entry, Set value and
  * Remove (typing the key) each change the rows and the stored table, and removing the last entry removes the table;
- * Delete (typing the table's name) removes it from the list; a refused add shows the server's sentence in the dialog;
- * Business partners lists the probe partner and offers no action trigger; and each list passes the structural and contrast
- * checks at 1280 light, 720 light and 1280 dark, with no entry beyond the baseline (DW-1337).
+ * Delete (typing the table's name) removes it from the list; a refused add shows the server's sentence in the dialog; and each
+ * list passes the structural and contrast checks at 1280 light, 720 light and 1280 dark, with no entry beyond the baseline
+ * (DW-1337). Business partners has its own spec (`interop-business-partners.browser-spec.mjs`).
  *
  * Each test arranges the table it needs through the fixture and removes it when it ends, so every test passes alone and in
- * any order; only the second table and the probe partner are arranged once, in `before`.
+ * any order; only the second table is arranged once, in `before`.
  *
  * **It writes probe lookup tables in `USER`** through `OcuPilot.Test.InteropLookupFixture`, so it runs on a throwaway
- * only; the `after` hook removes every table and the partner, whatever the tests answered. It starts no production.
+ * only; the `after` hook removes every table, whatever the tests answered. It starts no production.
  *
  * Run: `OCUPILOT_BROWSER_ORIGIN=<origin> OCUPILOT_BROWSER_CONTAINER=<container> \
  *   node --test --test-concurrency=1 browser/interop-lookup-tables.browser-spec.mjs` (after `npm run build` and the
@@ -38,10 +38,8 @@ const FIXTURE = 'OcuPilot.Test.InteropLookupFixture';
 const TABLE = 'OcuProbe205Browser';
 const OTHER = 'OcuProbe205Other';
 const TABLES_URL = '/ocupilot/interoperability/lookup-tables?ns=USER';
-const PARTNERS_URL = '/ocupilot/interoperability/business-partners?ns=USER';
 const TABLES_ROUTE = 'interoperability/lookup-tables';
 const ENTRIES_ROUTE = 'interoperability/lookup-tables/entries';
-const PARTNERS_ROUTE = 'interoperability/business-partners';
 const ENTRY_ACTION_PATH = '/api/ocupilot/screens/interop.lookupentries/action';
 const TABLE_ACTION_PATH = '/api/ocupilot/screens/interop.lookuptables/action';
 const ADD_PATH = '/api/ocupilot/interop/lookup-entries';
@@ -234,8 +232,6 @@ before(async () => {
   assert.equal(cleared.value, '1', `an earlier run's probe tables are removed: ${cleared.output}`);
   const other = probe('LKOTHER', `$System.Status.IsOK(##class(${FIXTURE}).Put("${OTHER}","only","entry"))`);
   assert.equal(other.value, '1', `a second table is arranged: ${other.output}`);
-  const partner = probe('LKPARTNER', `$System.Status.IsOK(##class(${FIXTURE}).PutPartner())`);
-  assert.equal(partner.value, '1', `the probe partner is created: ${partner.output}`);
   created = true;
   browser = await puppeteer.launch(launchOptions(config));
 });
@@ -244,7 +240,7 @@ after(async () => {
   try {
     if (created && /-ci$/.test(config.container)) {
       const removed = probe('LKGONE', `$System.Status.IsOK(##class(${FIXTURE}).Clear())_##class(${FIXTURE}).Tables()`);
-      assert.equal(removed.value, '1', `the probe tables and partner are removed: ${removed.output}`);
+      assert.equal(removed.value, '1', `the probe tables are removed: ${removed.output}`);
     }
   } finally {
     if (browser !== null) await browser.close();
@@ -418,29 +414,5 @@ test('AC2, AC3: removing the last entry removes the table; Delete types the tabl
   } finally {
     await context.close();
     drop();
-  }
-});
-
-// AC6. Mutation (Rule 19): give the partners descriptor a row action, regenerate the mirror, rebuild and redeploy -> the
-// trigger appears and the no-action assertion goes red.
-test('AC6: Business partners lists the probe partner under the published headers and offers no action', async () => {
-  const { context, page } = await signedInAt(browser, config, PARTNERS_URL, VIEWPORTS.wide);
-  try {
-    await waitForRows(page, config.navigationTimeoutMs);
-    await waitForMapAnswered(page, config.navigationTimeoutMs);
-    await rowPresent(page, 'OcuProbe205Partner');
-    const headers = await page.$$eval('.ocu-data-table-header-label', (items) => items.map((item) => item.textContent.trim()));
-    assert.deepEqual(
-      headers.slice(0, 5),
-      [STRINGS.tableColumnName, STRINGS.tableColumnDescription, STRINGS.interopPartnerColumnContact, STRINGS.interopPartnerColumnPhone, STRINGS.userFieldEmail],
-      'the declared headers'
-    );
-    const row = await rowOf(page, 'OcuProbe205Partner');
-    assert.deepEqual(row.slice(0, 5), ['OcuProbe205Partner', 'Probe partner description', 'Pat Primary', '555-0101', 'pat@example.test'], 'the partner reads its description and its primary contact');
-    assert.equal(await page.$('.ocu-data-table-trigger'), null, 'and no row offers an action trigger');
-    assert.equal(await page.$('.ocu-command-bar button.ocu-command-bar-primary'), null, 'nor does the command bar offer a primary action');
-    assert.deepEqual(await structural(page, PARTNERS_ROUTE), [], 'Business partners: no violation beyond the baseline\'s entries');
-  } finally {
-    await context.close();
   }
 });

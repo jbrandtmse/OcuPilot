@@ -182,6 +182,13 @@ const DESCRIPTOR_ACTION_LABELS: Readonly<Record<string, Readonly<Record<string, 
     set: STRINGS.interopLookupEntrySetAction,
     remove: STRINGS.actionRemove,
   },
+  // Story 20.26: Business partners' New business partner opens the dialog that adds one, its Edit opens the dialog that changes one and its
+  // Remove deletes one.
+  'OcuPilot.Screen.Descriptor.InteropBusinessPartnerList': {
+    add: STRINGS.interopPartnerAddAction,
+    edit: STRINGS.agentPanelSecretWarningEdit,
+    remove: STRINGS.actionRemove,
+  },
   // Story 8.5: the X.509 list's Create imports a credential rather than typing one in.
   'OcuPilot.Screen.Descriptor.X509CredentialList': { create: STRINGS.actionImport },
   'OcuPilot.Screen.Descriptor.AgentSwitches': {

@@ -18,7 +18,9 @@
 /// <p>Seams a subclass may override: <method>PortClass</method> and <method>ProhibitedClass</method>.
 /// Production overrides neither. A Save of another parent-scoped create (Story 20.5's lookup entry) extends this class and
 /// overrides <method>ParentHeld</method>, <method>Violations</method> and the parameters above; the order of the Save does
-/// not change.</p>
+/// not change. A Save whose member has no parent (Story 20.26's business partner) declares an empty
+/// <parameter>PRODUCTIONMEMBER</parameter>: it reads and checks no parent, its id is the name alone
+/// (<method>IdOf</method>) and the rest of the order is the same.</p>
 Class OcuPilot.Area.Interop.ItemSave Extends %RegisteredObject
 {
 
@@ -29,7 +31,8 @@ Parameter CREATETOOL = "OcuPilot.Screen.Tool.InteropItemAdd";
 /// reference carries (AD-8, AD-13).</p>
 Parameter DESCRIPTORCLASS = "OcuPilot.Screen.Descriptor.InteropItemList";
 
-/// <p>The body members that identify the item: its production and its name. Everything else is a field.</p>
+/// <p>The body members that identify the item: its production and its name. Everything else is a field. An empty
+/// <parameter>PRODUCTIONMEMBER</parameter> makes the Save namespace-scoped: its member has no parent.</p>
 Parameter PRODUCTIONMEMBER = "Production";
 
 Parameter NAMEMEMBER = "Name";
@@ -97,7 +100,7 @@ ClassMethod HandleCreate() As %Status
         }
         Set tProduction = ""
         Set tName = ""
-        If tBody.%GetTypeOf(..#PRODUCTIONMEMBER) = "string" Set tProduction = tBody.%Get(..#PRODUCTIONMEMBER)
+        If (..#PRODUCTIONMEMBER '= "") && (tBody.%GetTypeOf(..#PRODUCTIONMEMBER) = "string") Set tProduction = tBody.%Get(..#PRODUCTIONMEMBER)
         If tBody.%GetTypeOf(..#NAMEMEMBER) = "string" Set tName = tBody.%Get(..#NAMEMEMBER)
         Set tId = ..IdOf(tProduction, tName)
         Set tHoldSC = ##class(OcuPilot.Kernel.Proposal.Operation).HoldTool(..#CREATETOOL, tId, .tHeld, .tHoldKey)
@@ -116,10 +119,12 @@ ClassMethod HandleCreate() As %Status
 
 /// <p>The composite id of the item <var>pName</var> of the production <var>pProduction</var>, or
 /// <code>""</code> when either is empty or carries the separator character, which the rules then
-/// refuse.</p>
+/// refuse. With no <parameter>PRODUCTIONMEMBER</parameter> the id is <var>pName</var> alone, <code>""</code> when it is empty or
+/// carries the separator character.</p>
 ClassMethod IdOf(pProduction As %String, pName As %String) As %String
 {
     Set tSeparator = $Char(##class(OcuPilot.Kernel.EntityId).#COMPOSITESEPARATOR)
+    If ..#PRODUCTIONMEMBER = "" Quit $Select((pName = "") || (pName [ tSeparator): "", 1: pName)
     If (pProduction = "") || (pName = "") || (pProduction [ tSeparator) || (pName [ tSeparator) Quit ""
     Quit ##class(OcuPilot.Kernel.EntityId).JoinComposite($ListBuild(pProduction, pName))
 }
@@ -143,12 +148,12 @@ ClassMethod Create(pProduction As %String, pName As %String, pFields As %Dynamic
         Set tSC = ..Unexpected(tClass, pFields, .pHttpStatus, .pFault)
         If $$$ISERR(tSC) Quit
         Set tNamespace = ##class(OcuPilot.Kernel.Scope).Current()
-        If (pProduction = "") || (pName = "") {
-            If pProduction = "" Set pViolations($Increment(pViolations)) = $ListBuild(..#PRODUCTIONMEMBER, ..#PARENTEMPTYCODE)
+        If ((..#PRODUCTIONMEMBER '= "") && (pProduction = "")) || (pName = "") {
+            If (..#PRODUCTIONMEMBER '= "") && (pProduction = "") Set pViolations($Increment(pViolations)) = $ListBuild(..#PRODUCTIONMEMBER, ..#PARENTEMPTYCODE)
             If pName = "" Set pViolations($Increment(pViolations)) = $ListBuild(..#NAMEMEMBER, ..#NAMEEMPTYCODE)
             Quit
         }
-        If '..ParentHeld(tNamespace, pProduction) {
+        If (..#PRODUCTIONMEMBER '= "") && '..ParentHeld(tNamespace, pProduction) {
             Do ##class(OcuPilot.Kernel.Fault).Outcome(404, $$$OK, .pFault, .tDetail)
             Set pHttpStatus = 404
             Set tSC = $$$ERROR($$$GeneralError, ##class(OcuPilot.Api.Error).#PORTNOTFOUND)
@@ -294,7 +299,7 @@ ClassMethod Body(Output pBody As %DynamicObject, Output pField As %String) As %B
 ClassMethod CallerFields(pArgs As %DynamicObject) As %DynamicObject
 {
     Set tFields = ##class(%DynamicAbstractObject).%FromJSON(pArgs.%ToJSON())
-    If tFields.%GetTypeOf(..#PRODUCTIONMEMBER) '= "unassigned" Do tFields.%Remove(..#PRODUCTIONMEMBER)
+    If (..#PRODUCTIONMEMBER '= "") && (tFields.%GetTypeOf(..#PRODUCTIONMEMBER) '= "unassigned") Do tFields.%Remove(..#PRODUCTIONMEMBER)
     If tFields.%GetTypeOf(..#NAMEMEMBER) '= "unassigned" Do tFields.%Remove(..#NAMEMEMBER)
     Quit tFields
 }

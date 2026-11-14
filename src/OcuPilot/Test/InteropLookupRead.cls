@@ -192,7 +192,7 @@ Method TestThePartnersListHoldsBothContacts()
     Do $$$AssertEquals(tHttp _ " " _ tCut.%Size(), "200 1", "maxRows cuts the partners to one row, though two are held")
     Kill tQuery
     Do ..Port("BusinessPartners", "ADDENTRY", .tQuery, .tHttp, .tFault)
-    Do $$$AssertEquals(tHttp, 501, "the partners endpoint serves no write: a partner's save and remove are a later story")
+    Do $$$AssertEquals(tHttp, 501, "the partners endpoint serves no lookup write")
 }
 
 /// <p>AC1, AC6: the screen's read and the read tool of each of the three screens answer the same rows as the port, in the

@@ -67,8 +67,8 @@ Method TestEveryWriteRouteTakesTheHoldOrIsExempt()
 /// <p>The audit event create holds <code>Source/Type/Name</code>, the create tool's
 /// <code>EventName</code>, the key file create the composite of <code>root</code> and
 /// <code>path</code> its tool's mint builds, and the production item add the composite of
-/// <code>Production</code> and <code>Name</code> in the request's namespace, and the lookup entry add the composite of
-/// <code>Table</code> and <code>Key</code> in it: with this process holding
+/// <code>Production</code> and <code>Name</code> in the request's namespace, the lookup entry add the composite of
+/// <code>Table</code> and <code>Key</code> in it, and the business partner add its <code>Name</code> alone: with this process holding
 /// each key as another write would, the Save waits out
 /// <parameter>OcuPilot.Kernel.State.Propose.CLAIMLOCKSECONDS</parameter> and answers 409
 /// <code>WRITE.TARGETBUSY</code>. Each body also breaks a rule the Save checks after the hold, so a Save
@@ -102,6 +102,8 @@ Method TestACreateSaveHoldsTheKeyItsMintComputes()
     ; A lookup entry is namespace-scoped too, and its id is the table and the key.
     Set tEntry = ##class(OcuPilot.Kernel.EntityId).JoinComposite($ListBuild("OcuProbeHold205", "hold"))
     Do ..HeldLeg("/interop/lookup-entries?ns=USER", "OcuPilot.Screen.Tool.InteropLookupEntryAdd", tEntry, {"Table": "OcuProbeHold205", "Key": "hold", "OcuProbeUnexpected": 1}.%ToJSON())
+    ; A business partner is namespace-scoped and its id is its name alone.
+    Do ..HeldLeg("/interop/business-partners?ns=USER", "OcuPilot.Screen.Tool.InteropPartnerAdd", "OcuProbeHold226", {"Name": "OcuProbeHold226", "OcuProbeUnexpected": 1}.%ToJSON())
     ; A REST service is namespace-scoped and named by its package as typed; the document breaks a rule the Save checks after the hold.
     Do ..HeldLeg("/rest-service?ns=USER", "OcuPilot.Screen.Tool.RestServiceCreate", "OcuProbe1832Hold", {"Name": "OcuProbe1832Hold", "Document": "not json"}.%ToJSON())
     Do ##class(OcuPilot.Kernel.Scope).Clear()

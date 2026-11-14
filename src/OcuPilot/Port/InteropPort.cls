@@ -1,8 +1,8 @@
-/// <p>The port to the instance's interoperability runtime (AD-62, AD-29, AD-52, Stories 20.2, 20.3, 20.5, 20.6, 20.23, 20.27, 20.31, 20.40 and 20.41): <b>the
+/// <p>The port to the instance's interoperability runtime (AD-62, AD-29, AD-52, Stories 20.2, 20.3, 20.5, 20.6, 20.23, 20.26, 20.27, 20.31, 20.40 and 20.41): <b>the
 /// only product class that starts, stops, restarts, updates or recovers a production, enables, disables,
 /// adds, copies, changes the class of or removes one of its items, aborts a queued message, a queue's messages or a job's retried message,
 /// suspends that message or stops a job, adds, changes or removes a lookup table's entry, deletes, imports or exports a lookup
-/// table, sends a test request to an item, runs a data transformation on a pasted message, or resends messages with or without an
+/// table, adds, changes or removes a business partner, sends a test request to an item, runs a data transformation on a pasted message, or resends messages with or without an
 /// edited body</b>, and the only one that reads the interoperability configuration for
 /// a declared read (source kind <code>interop</code>); Story 20.4 adds the nine runtime reads (<parameter>ENDPOINTS</parameter>
 /// from <code>Monitor</code> on), which write nothing. It calls the documented classes the classic pages call --
@@ -50,6 +50,14 @@
 /// takes it, refuse by name what the vendor would answer as a silent success, and record OcuPilot's own audit row
 /// (<method>AuditRuntime</method>), because the vendor records none. The vendor's lookup and partner calls check no privilege
 /// either (measured), so the gate is the whole gate.</p>
+/// <p><b>The business partner writes</b> (Story 20.26, the <code>BusinessPartners</code> endpoint's <code>ADDPARTNER</code>,
+/// <code>SETPARTNER</code> and <code>REMOVEPARTNER</code>, each over the port-composed <code>PARTNER</code> read) save and delete an
+/// <code>Ens.Config.BusinessPartner</code> through the vendor class's own <code>%Save</code> and <code>%DeleteId</code>, which check
+/// no privilege and audit nothing (measured), so the gate is the whole gate and the port records OcuPilot's own row
+/// (<method>AuditRuntime</method>). A rename cannot be expressed: the name is the target, and an update's body carries the other
+/// thirteen fields. Before any vendor call the port refuses a namespace under source control, an add of a name the namespace holds
+/// in any letter case, a remove of a partner that any item of any production of the namespace names in its Host
+/// <code>BusinessPartner</code> setting, and a field past the vendor's own length (<method>PartnerViolations</method>).</p>
 /// <p><b>The host test</b> (Story 20.6, the <code>ItemTest</code> endpoint) lists the request classes an item takes (the host class's
 /// own <code>GetMessageList</code>, as the classic dialog reads it, then their subclasses from the class dictionary) and their
 /// settable fields from the class dictionary, and sends one test request through <code>EnsLib.Testing.Service</code> as the
@@ -221,6 +229,10 @@ Parameter LOOKUPPAIRS = "%Ens_Portal:USE,%Ens_LookupTables:READ";
 
 /// <p>The pair a lookup write adds: the classic page's <code>EDITRESOURCE</code>.</p>
 Parameter LOOKUPWRITEPAIR = "%Ens_LookupTables:WRITE";
+
+/// <p>The pair a business partner write adds (Story 20.26): the resource the classic page reads with and every other
+/// interoperability configuration write holds at WRITE. The classic page declares no edit resource, so it admits a holder of READ.</p>
+Parameter PARTNERWRITEPAIR = "%Ens_ProductionConfig:WRITE";
 
 /// <p>The pairs the ItemTest endpoint requires: the classic Interoperability menu's <code>%Ens_Portal:USE</code> and
 /// <code>EnsPortal.TestingService</code>'s own resource (Story 20.6). The vendor's <code>SendTestRequest</code> checks no
@@ -423,6 +435,20 @@ Parameter TYPEREMOVEENTRY = "REMOVEENTRY";
 /// <p>Remove a table and every entry in it.</p>
 Parameter TYPEDELETETABLE = "DELETETABLE";
 
+/// <p>One business partner (Story 20.26): <code>{Name, Description, ...the twelve contact fields, NamedBy, Namespace}</code>, the
+/// partner tools' fresh read. The id is the partner's name. With <parameter>ACTIONKEY</parameter> in the query it refuses what that
+/// action would be refused (<method>ReadPartner</method>).</p>
+Parameter TYPEPARTNER = "PARTNER";
+
+/// <p>Add a partner, with its description and both contacts. The body names the thirteen fields; the name is the id.</p>
+Parameter TYPEADDPARTNER = "ADDPARTNER";
+
+/// <p>Store new values for the fields of a partner the namespace holds. The name cannot change.</p>
+Parameter TYPESETPARTNER = "SETPARTNER";
+
+/// <p>Remove a partner, with its description and both contacts.</p>
+Parameter TYPEREMOVEPARTNER = "REMOVEPARTNER";
+
 /// <p>The query key naming the table an entries list reads: its one criterion.</p>
 Parameter TABLEKEY = "table";
 
@@ -618,6 +644,24 @@ Parameter LOOKUPCODEPREFIX = "INTEROP.LOOKUP.";
 /// (<code>/</code>, <code>\</code>) or a separator (<code>;</code>), so the export of a table whose name holds one cannot name its
 /// own <code>.LUT</code> document (<method>LookupAddressable</method>).</p>
 Parameter UNADDRESSABLE = "*?/\;";
+
+/// <p>What every business partner refusal code begins with (<class>OcuPilot.Api.InteropError</class>).</p>
+Parameter PARTNERCODEPREFIX = "INTEROP.PARTNER.";
+
+/// <p>The partner fields in the order a row carries them (Story 20.26): the name, the description, then the primary and the
+/// alternative contact's name, title, email, phone, mobile and notes. <parameter>PARTNERSETFIELDS</parameter> is the thirteen a
+/// write may set.</p>
+Parameter PARTNERFIELDS = "Name,Description,PrimaryContact,PrimaryTitle,PrimaryEmail,PrimaryPhone,PrimaryMobile,PrimaryNotes,AlternativeContact,AlternativeTitle,AlternativeEmail,AlternativePhone,AlternativeMobile,AlternativeNotes";
+
+Parameter PARTNERSETFIELDS = "Description,PrimaryContact,PrimaryTitle,PrimaryEmail,PrimaryPhone,PrimaryMobile,PrimaryNotes,AlternativeContact,AlternativeTitle,AlternativeEmail,AlternativePhone,AlternativeMobile,AlternativeNotes";
+
+/// <p>The most characters the vendor stores for a partner's name and for the name, title and email of a contact (measured: one more
+/// is refused #7201 and nothing is stored). A description, a contact's phone and mobile number and a contact's notes keep fewer or
+/// more (<method>PartnerLimit</method>).</p>
+Parameter PARTNERNAMEMAX = 255;
+
+/// <p>The entity type the audit row of a partner write names.</p>
+Parameter ENTITYPARTNER = "business-partner";
 
 /// <p>The entity types and verbs the audit row of a lookup write names (<method>AuditRuntime</method>, Story 20.5).</p>
 Parameter ENTITYLOOKUPTABLE = "lookup-table";
@@ -871,10 +915,17 @@ ClassMethod IsMessageType(pType As %String) As %Boolean
     Quit (pType = ..#TYPERESEND) || (pType = ..#TYPEEDIT) || ..IsMessageWrite(pType)
 }
 
+/// <p>Whether <var>pType</var> is one of the business partner writes this port carries (Story 20.26): an action-style or merge
+/// write over the <code>PARTNER</code> read, needing WRITE on the namespace's globals database and no routines database.</p>
+ClassMethod IsPartnerWrite(pType As %String) As %Boolean
+{
+    Quit (pType = ..#TYPEADDPARTNER) || (pType = ..#TYPESETPARTNER) || (pType = ..#TYPEREMOVEPARTNER)
+}
+
 /// <p>Whether <var>pType</var> is any write this port carries, whichever family declares it.</p>
 ClassMethod IsAnyWrite(pType As %String) As %Boolean
 {
-    Quit ..IsWrite(pType) || ..IsItemWrite(pType) || ..IsItemRunWrite(pType) || ..IsSettingWrite(pType) || ..IsRuntimeWrite(pType) || ..IsLookupWrite(pType) || ..IsTestWrite(pType) || ..IsMessageWrite(pType)
+    Quit ..IsWrite(pType) || ..IsItemWrite(pType) || ..IsItemRunWrite(pType) || ..IsSettingWrite(pType) || ..IsRuntimeWrite(pType) || ..IsLookupWrite(pType) || ..IsPartnerWrite(pType) || ..IsTestWrite(pType) || ..IsMessageWrite(pType)
 }
 
 /// <p>The runtime reads, as a <class>%List</class>: Story 20.4's nine, Story 20.9's three message reads and Story 20.30's session trace. Each serves
@@ -944,6 +995,7 @@ ClassMethod Pairs(pEndpoint As %String, pType As %String = "") As %List
     If (pType = ..#TYPEABORTJOB) || (pType = ..#TYPESTOPJOB) Set tSpec = tSpec _ "," _ ..#JOBWRITEPAIR
     If pType = ..#TYPESUSPENDJOB Set tSpec = tSpec _ "," _ ..#SUSPENDPAIR
     If ..IsLookupWrite(pType) Set tSpec = tSpec _ "," _ ..#LOOKUPWRITEPAIR
+    If ..IsPartnerWrite(pType) Set tSpec = tSpec _ "," _ ..#PARTNERWRITEPAIR
     If (pEndpoint = ..#ENDPOINTTRANSFORMS) && ((pType = ..#TYPETRANSFORM) || (pType = ..#TYPETRANSFORMTEST)) Set tSpec = tSpec _ "," _ ..#DTLTESTPAIR
     If (pEndpoint = ..#ENDPOINTMESSAGES) && ((pType = ..#TYPERESEND) || (pType = ..#TYPERESENDMESSAGES)) Set tSpec = tSpec _ "," _ ..#RESENDPAIR
     If (pEndpoint = ..#ENDPOINTMESSAGES) && ((pType = ..#TYPEEDIT) || (pType = ..#TYPEEDITRESEND)) Set tSpec = tSpec _ "," _ ..#MESSAGECONTENTPAIR _ "," _ ..#RESENDPAIR _ "," _ ..#EDITRESENDPAIR
@@ -954,7 +1006,8 @@ ClassMethod Pairs(pEndpoint As %String, pType As %String = "") As %List
 /// beyond it, Productions the production reads and writes, Items and Settings theirs, and Queues (<code>QUEUE</code>,
 /// <code>ABORTQUEUE</code>), QueueItems (<code>ENTRY</code>, <code>ABORTMESSAGE</code>), Jobs (<code>JOB</code>,
 /// <code>ABORTJOB</code>, <code>SUSPENDJOB</code>, <code>STOPJOB</code>) and Transforms (<code>TRANSFORM</code>,
-/// <code>TRANSFORMTEST</code>) and Messages the four resend types of Story 20.31.</p>
+/// <code>TRANSFORMTEST</code>), Messages the four resend types of Story 20.31 and BusinessPartners the read and three writes of
+/// Story 20.26.</p>
 ClassMethod Serves(pEndpoint As %String, pType As %String) As %Boolean
 {
     If '$ListFind(..Endpoints(), pEndpoint) Quit 0
@@ -966,6 +1019,7 @@ ClassMethod Serves(pEndpoint As %String, pType As %String) As %Boolean
     If pEndpoint = ..#ENDPOINTJOBS Quit (pType = ..#TYPEJOB) || (pType = ..#TYPEABORTJOB) || (pType = ..#TYPESUSPENDJOB) || (pType = ..#TYPESTOPJOB)
     If pEndpoint = ..#ENDPOINTLOOKUPTABLES Quit (pType = ..#TYPELOOKUPTABLE) || (pType = ..#TYPEDELETETABLE) || (pType = ..#TYPEIMPORTTABLE) || (pType = ..#TYPEIMPORT) || (pType = ..#TYPEEXPORT)
     If pEndpoint = ..#ENDPOINTLOOKUPENTRIES Quit (pType = ..#TYPELOOKUPENTRY) || (pType = ..#TYPEADDENTRY) || (pType = ..#TYPESETENTRY) || (pType = ..#TYPEREMOVEENTRY)
+    If pEndpoint = ..#ENDPOINTBUSINESSPARTNERS Quit (pType = ..#TYPEPARTNER) || ..IsPartnerWrite(pType)
     If pEndpoint = ..#ENDPOINTITEMTEST Quit (pType = ..#TYPETESTTARGET) || (pType = ..#TYPESENDTEST)
     If pEndpoint = ..#ENDPOINTTRANSFORMS Quit (pType = ..#TYPETRANSFORM) || (pType = ..#TYPETRANSFORMTEST)
     If pEndpoint = ..#ENDPOINTMESSAGES Quit ..IsMessageType(pType)
@@ -1097,6 +1151,10 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
         }
         If (pEndpoint = ..#ENDPOINTLOOKUPTABLES) || (pEndpoint = ..#ENDPOINTLOOKUPENTRIES) {
             Set tSC = ..InvokeLookup(tNamespace, pEndpoint, pType, .pQuery, pBody, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
+        If (pEndpoint = ..#ENDPOINTBUSINESSPARTNERS) && (pType '= ..#TYPELIST) {
+            Set tSC = ..InvokePartner(tNamespace, pType, .pQuery, pBody, .pResult, .pHttpStatus, .pFault)
             Quit
         }
 
@@ -5721,6 +5779,7 @@ ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
     If (pEndpoint = ..#ENDPOINTSETTINGS) && ..IsSettingWrite(pType) Quit "objectscript"
     If ..IsRuntimeWrite(pType) && ..Serves(pEndpoint, pType) Quit "objectscript"
     If (..IsLookupWrite(pType) || (pType = ..#TYPEEXPORT)) && ..Serves(pEndpoint, pType) Quit "objectscript"
+    If (pEndpoint = ..#ENDPOINTBUSINESSPARTNERS) && ..IsPartnerWrite(pType) Quit "objectscript"
     If (pEndpoint = ..#ENDPOINTITEMTEST) && ..IsTestWrite(pType) Quit "objectscript"
     If (pEndpoint = ..#ENDPOINTTRANSFORMS) && (pType = ..#TYPETRANSFORMTEST) Quit "objectscript"
     If (pEndpoint = ..#ENDPOINTMESSAGES) && ..IsMessageWrite(pType) Quit "objectscript"
@@ -5736,7 +5795,7 @@ ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
 /// at <parameter>STOPSECONDS</parameter>, and <code>RecoverProduction</code>; an item's
 /// <code>EnableConfigItem</code>, add, copy, change of class and remove, each followed by the production class's
 /// <code>SaveToClass</code>; the queue and job actions (<method>RuntimeSnippet</method>); and the message resend and edit and resend
-/// (<method>MessageSnippet</method>). A read writes nothing and answers no step. Every value is rendered as a
+/// (<method>MessageSnippet</method>); and the business partner writes (<method>PartnerSnippet</method>). A read writes nothing and answers no step. Every value is rendered as a
 /// string literal, so nothing the query carries runs as code, and every line closes any block it opens.
 /// Whoever runs the script is checked by the vendor's own run resource, and a recover by the namespace's
 /// database alone; an item write is checked by the databases alone.</p>
@@ -5748,6 +5807,8 @@ ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody 
         Set tText = tText _ ..ItemSnippet(pType, $Get(pQuery(..#IDKEY)), pBody, .pQuery, pContext)
     } ElseIf pEndpoint = ..#ENDPOINTSETTINGS {
         Set tText = tText _ ..SettingSnippet(pType, $Get(pQuery(..#IDKEY)), pBody)
+    } ElseIf pEndpoint = ..#ENDPOINTBUSINESSPARTNERS {
+        Set tText = tText _ ..PartnerSnippet(pType, $Get(pQuery(..#IDKEY)), pBody)
     } ElseIf pEndpoint = ..#ENDPOINTITEMTEST {
         Set tText = tText _ ..TestSnippet($Get(pQuery(..#IDKEY)), .pQuery)
     } ElseIf pEndpoint = ..#ENDPOINTTRANSFORMS {
@@ -6857,15 +6918,7 @@ ClassMethod ListPartners(pNamespace As %String, pMax As %Integer, Output pRows A
                 Set tName = tResultSet.GetData(1)
                 Set tLine = $ListBuild(tName, tResultSet.GetData(2))
                 Set tPartner = ##class(Ens.Config.BusinessPartner).%OpenId(tName)
-                For tContact = "PrimaryContact", "AlternativeContact" {
-                    Set tObject = $Select($IsObject(tPartner): $Property(tPartner, tContact), 1: "")
-                    If $IsObject(tObject) {
-                        Set tLine = tLine _ $ListBuild(tObject.Name, tObject.Title, tObject.Email, tObject.PhoneNumber, tObject.MobileNumber, tObject.Notes)
-                    } Else {
-                        Set tLine = tLine _ $ListBuild("", "", "", "", "", "")
-                    }
-                    Set tObject = ""
-                }
+                Set tLine = tLine _ ..PartnerContacts(tPartner)
                 Set tPartner = ""
                 Set tFound = tFound + 1
                 Set tFound(tFound) = tLine
@@ -6880,17 +6933,438 @@ ClassMethod ListPartners(pNamespace As %String, pMax As %Integer, Output pRows A
     }
     If $IsObject(tCaught) Quit ..Mapped(tCaught, "the business partner list failed", .pHttpStatus, .pFault)
     If $$$ISERR(tStatusSC) Quit ..Statused(tStatusSC, "the business partner list failed", .pHttpStatus, .pFault)
-    Set tNames = $ListBuild("Name", "Description", "PrimaryContact", "PrimaryTitle", "PrimaryEmail", "PrimaryPhone", "PrimaryMobile", "PrimaryNotes", "AlternativeContact", "AlternativeTitle", "AlternativeEmail", "AlternativePhone", "AlternativeMobile", "AlternativeNotes")
     Set pRows = []
     For tI = 1:1:tFound {
-        Set tRow = {}
-        For tJ = 1:1:$ListLength(tNames) {
-            Do tRow.%Set($List(tNames, tJ), $List(tFound(tI), tJ) _ "", "string")
-        }
-        Do pRows.%Push(tRow)
+        Do pRows.%Push(..PartnerRow(tFound(tI)))
     }
     Set pHttpStatus = 200
     Quit $$$OK
+}
+
+/// <p>Whether the instance can address <code>^Ens.Config.BusinessPartnerD</code> by the name <var>pName</var> (Story 20.26): a
+/// name whose encoded form is past the instance's subscript limit raises <code>&lt;SUBSCRIPT&gt;</code> in the vendor's own
+/// calls, so no partner holds it. The test reads a process-private global whose name is as long as the vendor's, which nothing
+/// writes. Pure; it names no other class, so it runs while a namespace is switched.</p>
+ClassMethod PartnerFits(pName As %String) As %Boolean
+{
+    Set tFits = 1
+    Try {
+        Set tProbe = $Data(^||Ens.Config.BusinessPartnerD(pName))
+    } Catch {
+        Set tFits = 0
+    }
+    Quit tFits
+}
+
+/// <p>The most characters the vendor stores for the partner field <var>pField</var> (Story 20.26, measured): 5,000 for the
+/// description, 1,000 for a contact's notes, 50 for a phone or mobile number and 255 for every other field. Pure.</p>
+ClassMethod PartnerLimit(pField As %String) As %Integer
+{
+    Quit $Case(pField, "Description": 5000, "PrimaryNotes": 1000, "AlternativeNotes": 1000, "PrimaryPhone": 50, "PrimaryMobile": 50, "AlternativePhone": 50, "AlternativeMobile": 50, : ..#PARTNERNAMEMAX)
+}
+
+/// <p>The 422 violations of a partner's name and fields, in <var>pViolations</var> as <code>pViolations(n) = $ListBuild(field,
+/// code)</code> with the count in <code>pViolations</code> (Story 20.26): <code>Name</code> is 1 to 255 characters with no control
+/// character and one the instance can address (<method>PartnerFits</method>), judged only when <var>pJudgeName</var> (an add: a
+/// partner already held keeps the name it has), and each of the thirteen fields in
+/// <var>pFields</var> (<code>pFields(field) = value</code>, a field not supplied is not judged) is within
+/// <method>PartnerLimit</method>. They are the vendor's own limits (measured), and the vendor would refuse each with an error that
+/// names none of them. Pure.</p>
+ClassMethod PartnerViolations(pName As %String, ByRef pFields, Output pViolations, pJudgeName As %Boolean = 1) As %Status
+{
+    Kill pViolations
+    Set pViolations = 0
+    If pJudgeName && ((pName = "") || ($Length(pName) > ..#PARTNERNAMEMAX) || ($ZStrip(pName, "*C") '= pName) || '..PartnerFits(pName)) {
+        Set pViolations($Increment(pViolations)) = $ListBuild("Name", ##class(OcuPilot.Api.InteropError).#PARTNERNAME)
+    }
+    Set tNames = $ListFromString(..#PARTNERSETFIELDS)
+    For tI = 1:1:$ListLength(tNames) {
+        Set tField = $List(tNames, tI)
+        If $Length($Get(pFields(tField))) > ..PartnerLimit(tField) Set pViolations($Increment(pViolations)) = $ListBuild(tField, ##class(OcuPilot.Api.InteropError).#PARTNERLENGTH)
+    }
+    Quit $$$OK
+}
+
+/// <p>The decision a partner write <var>pType</var> is refused with, as the last segment of its code (<code>TAKEN</code>,
+/// <code>NAMECASE</code>, <code>NAMED</code>) or <code>ABSENT</code> for a target that is not there, else <code>""</code> (Story
+/// 20.26): whatever the vendor would answer as a silent success, or get wrong, is refused here by its own name. <var>pExists</var>
+/// is whether the partner is held under exactly that name, <var>pMatch</var> the spelling it is held under in another letter case
+/// (<code>""</code> when none) and <var>pNamed</var> how many items of any production name it. It names no other class, so it runs
+/// while the partner's namespace is switched. Pure.</p>
+/// <ul>
+/// <li>Add: <code>TAKEN</code> when the name is held, <code>NAMECASE</code> when it is absent but held in another letter case.</li>
+/// <li>Set: <code>ABSENT</code> unless the partner is held.</li>
+/// <li>Remove: <code>ABSENT</code> unless the partner is held, then <code>NAMED</code> while any item names it.</li>
+/// </ul>
+ClassMethod PartnerWriteToken(pType As %String, pExists As %Boolean, pMatch As %String, pNamed As %Integer) As %String
+{
+    If pType = ..#TYPEADDPARTNER {
+        If pExists Quit "TAKEN"
+        If pMatch '= "" Quit "NAMECASE"
+        Quit ""
+    }
+    If 'pExists Quit "ABSENT"
+    If (pType = ..#TYPEREMOVEPARTNER) && (pNamed > 0) Quit "NAMED"
+    Quit ""
+}
+
+/// <p>The dotted path, from the partner, of the property its field <var>pField</var> names (Story 20.26): <code>Description</code>,
+/// or a contact's property, <code>PrimaryContact.Name</code> for <code>PrimaryContact</code> and so on. Pure.</p>
+ClassMethod PartnerPath(pField As %String) As %String
+{
+    If pField = "Description" Quit "Description"
+    Set tPrimary = ($Extract(pField, 1, 7) = "Primary")
+    Set tRest = $Extract(pField, $Select(tPrimary: 8, 1: 12), *)
+    Quit $Select(tPrimary: "PrimaryContact", 1: "AlternativeContact") _ "." _ $Case(tRest, "Contact": "Name", "Phone": "PhoneNumber", "Mobile": "MobileNumber", : tRest)
+}
+
+/// <p>Store <var>pValue</var> in the field <var>pField</var> of the partner <var>pPartner</var>, making its contact when it has none
+/// (Story 20.26). It runs while a namespace is switched.</p>
+ClassMethod PartnerSet(pPartner As %RegisteredObject, pField As %String, pValue As %String) [ Private ]
+{
+    Set tPath = ..PartnerPath(pField)
+    If tPath '[ "." {
+        Set $Property(pPartner, tPath) = pValue
+        Quit
+    }
+    Set tContact = $Piece(tPath, ".", 1)
+    Set tObject = $Property(pPartner, tContact)
+    If '$IsObject(tObject) {
+        Set $Property(pPartner, tContact) = ##class(Ens.Config.BusinessPartnerContact).%New()
+        Set tObject = $Property(pPartner, tContact)
+    }
+    Set $Property(tObject, $Piece(tPath, ".", 2)) = pValue
+}
+
+/// <p>The twelve contact fields of the partner <var>pPartner</var>, as a <class>%List</class> in <parameter>PARTNERFIELDS</parameter>'
+/// order after the description: the primary contact's name, title, email, phone, mobile and notes, then the alternative's. A
+/// partner with no contact object, or no partner, reads as empty (Story 20.26). It runs while a namespace is switched.</p>
+ClassMethod PartnerContacts(pPartner As %RegisteredObject) As %List [ Private ]
+{
+    Set tLine = ""
+    For tContact = "PrimaryContact", "AlternativeContact" {
+        Set tObject = $Select($IsObject(pPartner): $Property(pPartner, tContact), 1: "")
+        If $IsObject(tObject) {
+            Set tLine = tLine _ $ListBuild(tObject.Name, tObject.Title, tObject.Email, tObject.PhoneNumber, tObject.MobileNumber, tObject.Notes)
+        } Else {
+            Set tLine = tLine _ $ListBuild("", "", "", "", "", "")
+        }
+        Set tObject = ""
+    }
+    Quit tLine
+}
+
+/// <p>The partner <var>pPartner</var> named <var>pName</var> as the fourteen values <parameter>PARTNERFIELDS</parameter> names, in
+/// order (Story 20.26). It runs while a namespace is switched.</p>
+ClassMethod PartnerLine(pName As %String, pPartner As %RegisteredObject) As %List [ Private ]
+{
+    Quit $ListBuild(pName, $Select($IsObject(pPartner): pPartner.Description, 1: "")) _ ..PartnerContacts(pPartner)
+}
+
+/// <p>The row a partner list and the partner read answer, from the fourteen values <var>pLine</var> of
+/// <method>PartnerLine</method>: <code>{Name, Description, ...}</code>, all strings; with <var>pNamespace</var> (the partner read)
+/// <code>NamedBy</code>, how many items name the partner, and <code>Namespace</code> too. Runs in the install namespace.</p>
+ClassMethod PartnerRow(pLine As %List, pNamed As %Integer = 0, pNamespace As %String = "") As %DynamicObject [ Private ]
+{
+    Set tNames = $ListFromString(..#PARTNERFIELDS)
+    Set tRow = {}
+    For tJ = 1:1:$ListLength(tNames) {
+        Do tRow.%Set($List(tNames, tJ), $List(pLine, tJ) _ "", "string")
+    }
+    If pNamespace '= "" {
+        Do tRow.%Set("NamedBy", +pNamed, "number")
+        Do tRow.%Set("Namespace", pNamespace, "string")
+    }
+    Quit tRow
+}
+
+/// <p>How many items of every production of the current namespace name the partner <var>pName</var> in their Host
+/// <code>BusinessPartner</code> setting, compared exactly, a running production or not (Story 20.26). A production whose
+/// listing fails raises, so a partner is never read as named by nothing for want of an answer. Only vendor classes run, so it
+/// runs while a namespace is switched. A credential, a system default setting or a managed alert that names the partner is not
+/// counted.</p>
+ClassMethod PartnerNamedByHere(pName As %String) As %Integer
+{
+    Set tCount = 0
+    Kill tProductions
+    Set tResultSet = ##class(%ResultSet).%New("Ens.Config.Production:ProductionStatus")
+    Set tStatus = tResultSet.Execute()
+    If $$$ISERR(tStatus) Throw ##class(%Exception.StatusException).CreateFromStatus(tStatus)
+    While tResultSet.Next() {
+        Set tProductions($Increment(tProductions)) = tResultSet.GetData(1)
+    }
+    Do tResultSet.Close()
+    Set tResultSet = ""
+    For tI = 1:1:$Get(tProductions) {
+        Set tProduction = ##class(Ens.Config.Production).%OpenId(tProductions(tI))
+        If '$IsObject(tProduction) Continue
+        For tJ = 1:1:tProduction.Items.Count() {
+            Set tItem = tProduction.Items.GetAt(tJ)
+            If '$IsObject(tItem) Continue
+            Set tSetting = tItem.FindSettingByName("BusinessPartner", "Host")
+            If $IsObject(tSetting) && (tSetting.Value = pName) Set tCount = tCount + 1
+        }
+        Set tSetting = ""
+        Set tItem = ""
+        Set tProduction = ""
+    }
+    Quit tCount
+}
+
+/// <p>The facts about the partner <var>pName</var>, read in the current namespace, which the caller has already switched, and kept
+/// in <var>pFacts</var>: <code>exists</code> (the partner is held under exactly that name), <code>match</code> (the spelling it
+/// is held under in another letter case, else <code>""</code>, found by comparing every partner's name in upper case, so the work
+/// is bounded by the partner count), and, for a partner that exists, <code>line</code> (<method>PartnerLine</method>) and
+/// <code>named</code> (<method>PartnerNamedByHere</method>). A name the instance cannot address is not held. Nothing is written
+/// (Story 20.26).</p>
+ClassMethod PartnerFactsHere(pName As %String, ByRef pFacts) [ Private ]
+{
+    Kill pFacts
+    Set pFacts("exists") = 0
+    Set pFacts("match") = ""
+    Set pFacts("named") = 0
+    Set pFacts("line") = ""
+    If '..PartnerFits(pName) Quit
+    Set pFacts("exists") = ''##class(Ens.Config.BusinessPartner).%ExistsId(pName)
+    If 'pFacts("exists") {
+        Set tUpper = $ZConvert(pName, "U")
+        Set tResultSet = ##class(%ResultSet).%New("Ens.Config.BusinessPartner:List")
+        Set tStatus = tResultSet.Execute()
+        If $$$ISOK(tStatus) {
+            While tResultSet.Next() {
+                Set tHeld = tResultSet.GetData(1)
+                If $ZConvert(tHeld, "U") = tUpper {
+                    Set pFacts("match") = tHeld
+                    Quit
+                }
+            }
+            Do tResultSet.Close()
+        }
+        Set tResultSet = ""
+        Quit
+    }
+    Set tPartner = ##class(Ens.Config.BusinessPartner).%OpenId(pName)
+    If $IsObject(tPartner) Set pFacts("line") = ..PartnerLine(pName, tPartner)
+    Set tPartner = ""
+    Set pFacts("named") = ..PartnerNamedByHere(pName)
+}
+
+/// <p><method>PartnerFactsHere</method> in <var>pNamespace</var>; a fault is <var>pCaught</var>, with the namespace restored
+/// (Story 20.26).</p>
+ClassMethod PartnerFacts(pNamespace As %String, pName As %String, Output pFacts, Output pCaught) [ Private ]
+{
+    Kill pFacts
+    Set pCaught = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Do ..PartnerFactsHere(pName, .pFacts)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+}
+
+/// <p>One business partner, fresh (Story 20.26): the fourteen fields of <method>ListPartners</method> and <code>NamedBy</code> (how
+/// many items name it) and <code>Namespace</code>. A partner not held under exactly that name is 404 <code>PORT.NOTFOUND</code>,
+/// unlogged. With <var>pAction</var> it refuses what that write would be refused, in this order: <code>SOURCECONTROL</code> for any
+/// write; for an add (AD-54, which inverts the read) <code>TAKEN</code> when the name is held, <code>NAMECASE</code> when it is held
+/// in another letter case, and otherwise the 404 a create expects; for a remove <code>NAMED</code> while any item names it.</p>
+ClassMethod ReadPartner(pNamespace As %String, pName As %String, pAction As %String, Output pRow As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRow = ""
+    If (pAction '= "") && ..SourceControlled(pNamespace) Quit ..Conflict(##class(OcuPilot.Api.InteropError).#PARTNERSOURCECONTROL, .pHttpStatus, .pFault)
+    Do ..PartnerFacts(pNamespace, pName, .tFacts, .tCaught)
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the business partner read failed", .pHttpStatus, .pFault)
+    If pAction = ..#TYPEADDPARTNER {
+        Set tToken = ..PartnerWriteToken(pAction, tFacts("exists"), tFacts("match"), 0)
+        If tToken '= "" Quit ..Conflict(..#PARTNERCODEPREFIX _ tToken, .pHttpStatus, .pFault)
+        Quit ..Absent(.pHttpStatus, .pFault)
+    }
+    If 'tFacts("exists") Quit ..Absent(.pHttpStatus, .pFault)
+    If pAction '= "" {
+        Set tToken = ..PartnerWriteToken(pAction, 1, "", tFacts("named"))
+        If tToken '= "" Quit ..Conflict(..#PARTNERCODEPREFIX _ tToken, .pHttpStatus, .pFault)
+    }
+    Set pRow = ..PartnerRow(tFacts("line"), tFacts("named"), pNamespace)
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>Serve the BusinessPartners endpoint's single-partner types (Story 20.26) after <method>Invoke</method>'s gate: the
+/// <code>PARTNER</code> read and the three writes, the partner named under <parameter>IDKEY</parameter> by its name, kept exactly
+/// (AD-13). An <parameter>ACTIONKEY</parameter> names the write the read is composed for.</p>
+ClassMethod InvokePartner(pNamespace As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pResult = ""
+    Try {
+        Set tName = $Get(pQuery(..#IDKEY))
+        If tName = "" {
+            Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONIDREQUIRED, .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tAction = $Select(..IsPartnerWrite(pType): pType, 1: $Get(pQuery(..#ACTIONKEY)))
+        If (tAction '= "") && '..IsPartnerWrite(tAction) {
+            Set tSC = ..Refuse(501, ##class(OcuPilot.Api.Error).#NOTIMPLEMENTED, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, ..#REASONNOTIMPLEMENTED, .pHttpStatus, .pFault)
+            Quit
+        }
+        If ..IsPartnerWrite(pType) {
+            Set tSC = ..PerformPartner(pNamespace, pType, tName, pBody, .pResult, .pHttpStatus, .pFault)
+        } Else {
+            Set tSC = ..ReadPartner(pNamespace, tName, tAction, .pResult, .pHttpStatus, .pFault)
+        }
+    } Catch ex {
+        Set pResult = ""
+        Set tSC = ..Fail("the business partner call failed inside the port", ex.AsStatus(), .pHttpStatus, .pFault)
+    }
+    Quit tSC
+}
+
+/// <p>Run partner write <var>pType</var> on the partner <var>pName</var> in <var>pNamespace</var> and answer what it leaves (Story
+/// 20.26). The sequence:</p>
+/// <ol>
+/// <li>A namespace under source control is <code>INTEROP.PARTNER.SOURCECONTROL</code>, before anything is read.</li>
+/// <li>An add's or set's fields are judged by <method>PartnerViolations</method> (422, a value that is not a string the field's
+/// shape); a remove of a name the instance cannot address is 404.</li>
+/// <li>In the namespace the partner is read again and judged by <method>PartnerWriteToken</method>, so a state that moved since the
+/// review is refused by its own code with no vendor call; then the vendor's <code>%Save</code> of a new partner, <code>%Save</code>
+/// of the opened partner (concurrency 4, the reference dropped right after) with each field that differs, or
+/// <code>%DeleteId</code> runs. A set that moves no field calls nothing. A partner another process holds locked is 503.</li>
+/// <li>The namespace is restored, then OcuPilot's own audit row is recorded (<method>AuditRuntime</method>), because the vendor
+/// records none. It carries the namespace and, for a set, the names of the fields it changed, never a value.</li>
+/// </ol>
+/// <p>The answer is the partner's row read again (<method>ReadPartner</method>); after a remove <code>{Name, Namespace}</code>.</p>
+ClassMethod PerformPartner(pNamespace As %String, pType As %String, pName As %String, pBody As %DynamicAbstractObject, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    If ..SourceControlled(pNamespace) Quit ..Conflict(##class(OcuPilot.Api.InteropError).#PARTNERSOURCECONTROL, .pHttpStatus, .pFault)
+    Kill tValues
+    Set tFields = $ListFromString(..#PARTNERSETFIELDS)
+    If pType '= ..#TYPEREMOVEPARTNER {
+        Set tViolations = 0
+        If '$IsObject(pBody) || 'pBody.%IsA("%Library.DynamicObject") Set pBody = {}
+        For tI = 1:1:$ListLength(tFields) {
+            Set tField = $List(tFields, tI)
+            Set tFieldType = pBody.%GetTypeOf(tField)
+            If tFieldType = "string" {
+                Set tValues(tField) = pBody.%Get(tField)
+            } ElseIf tFieldType '= "unassigned" {
+                Set tViolations($Increment(tViolations)) = $ListBuild(tField, ##class(OcuPilot.Api.Error).#PORTFIELDSHAPE)
+            }
+        }
+        Set tSC = ..PartnerViolations(pName, .tValues, .tFieldViolations, (pType = ..#TYPEADDPARTNER))
+        If $$$ISERR(tSC) Quit tSC
+        For tI = 1:1:tFieldViolations {
+            Set tViolations($Increment(tViolations)) = tFieldViolations(tI)
+        }
+        If tViolations Quit ..Violations(.tViolations, .pHttpStatus, .pFault)
+    } ElseIf '..PartnerFits(pName) {
+        Quit ..Absent(.pHttpStatus, .pFault)
+    }
+    Set tToken = ""
+    Set tCaught = ""
+    Set tVendorSC = $$$OK
+    Set tBusy = 0
+    Set tChanged = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Do ..PartnerFactsHere(pName, .tFacts)
+        Set tToken = ..PartnerWriteToken(pType, tFacts("exists"), tFacts("match"), tFacts("named"))
+        If tToken = "" {
+            If pType = ..#TYPEADDPARTNER {
+                Set tPartner = ##class(Ens.Config.BusinessPartner).%New()
+                Set tPartner.PartnerName = pName
+                For tI = 1:1:$ListLength(tFields) {
+                    Do ..PartnerSet(tPartner, $List(tFields, tI), $Get(tValues($List(tFields, tI))))
+                }
+                Set tVendorSC = tPartner.%Save()
+            } ElseIf pType = ..#TYPESETPARTNER {
+                Set tPartner = ##class(Ens.Config.BusinessPartner).%OpenId(pName, 4)
+                If '$IsObject(tPartner) {
+                    Set tBusy = 1
+                } Else {
+                    Set tHeld = ..PartnerLine(pName, tPartner)
+                    For tI = 1:1:$ListLength(tFields) {
+                        Set tField = $List(tFields, tI)
+                        If '$Data(tValues(tField)) Continue
+                        If $List(tHeld, $ListFind($ListFromString(..#PARTNERFIELDS), tField)) = tValues(tField) Continue
+                        Do ..PartnerSet(tPartner, tField, tValues(tField))
+                        Set tChanged = tChanged _ $ListBuild(tField)
+                    }
+                    If tChanged '= "" Set tVendorSC = tPartner.%Save()
+                }
+            } Else {
+                Set tVendorSC = ##class(Ens.Config.BusinessPartner).%DeleteId(pName)
+            }
+        }
+        ; The partner's lock is released in the namespace it was taken in.
+        Set tPartner = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Try {
+            Set $NAMESPACE = pNamespace
+        } Catch {
+        }
+        Set tPartner = ""
+        Set $NAMESPACE = tOrigNS
+        Set tCaught = ex
+    }
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the business partner write failed", .pHttpStatus, .pFault)
+    If tBusy Quit ..Unavailable(.pHttpStatus, .pFault)
+    If tToken = "ABSENT" Quit ..Absent(.pHttpStatus, .pFault)
+    If tToken '= "" Quit ..Conflict(..#PARTNERCODEPREFIX _ tToken, .pHttpStatus, .pFault)
+    If $$$ISERR(tVendorSC) Quit ..Statused(tVendorSC, "the business partner write failed", .pHttpStatus, .pFault)
+    If (pType '= ..#TYPESETPARTNER) || (tChanged '= "") {
+        Set tEffects = {}
+        Do tEffects.%Set("namespace", pNamespace, "string")
+        If pType = ..#TYPESETPARTNER Do tEffects.%Set("fields", $ListToString(tChanged, ","), "string")
+        Do ..AuditRuntime($Case(pType, ..#TYPEADDPARTNER: ..#VERBADD, ..#TYPESETPARTNER: ..#VERBSET, : ..#VERBREMOVE), ..#ENTITYPARTNER, pName, tEffects)
+    }
+    If pType = ..#TYPEREMOVEPARTNER {
+        Set pResult = {}
+        Do pResult.%Set("Name", pName, "string")
+        Do pResult.%Set("Namespace", pNamespace, "string")
+        Set pHttpStatus = 200
+        Quit $$$OK
+    }
+    Set tReadSC = ..ReadPartner(pNamespace, pName, "", .tRow, .tReadHttp, .tReadFault)
+    If $$$ISERR(tReadSC) {
+        Set tRow = {}
+        Do tRow.%Set("Name", pName, "string")
+        Do tRow.%Set("Namespace", pNamespace, "string")
+    }
+    Set pResult = tRow
+    Set pHttpStatus = 200
+    Set pFault = ""
+    Quit $$$OK
+}
+
+/// <p>The lines <method>Snippet</method> adds for the partner write <var>pType</var> of the partner named <var>pId</var>
+/// (Story 20.26): the vendor's <code>%Save</code> of a new partner with each of the thirteen fields the body <var>pBody</var>
+/// carries, a <code>%Save</code> of the partner opened at concurrency 4 with the fields it carries, or
+/// <code>%DeleteId</code>. Names and values are string literals.</p>
+ClassMethod PartnerSnippet(pType As %String, pId As %String, pBody As %DynamicAbstractObject) As %String [ Private ]
+{
+    Set tNL = $Char(10)
+    Set tName = ..Literal(pId)
+    If pType = ..#TYPEREMOVEPARTNER Quit tNL _ " Set tSC = ##class(Ens.Config.BusinessPartner).%DeleteId(" _ tName _ ")"
+    If pType = ..#TYPEADDPARTNER {
+        Set tText = tNL _ " Set tPartner = ##class(Ens.Config.BusinessPartner).%New()" _ tNL _ " Set tPartner.PartnerName = " _ tName
+    } Else {
+        Set tText = tNL _ " Set tPartner = ##class(Ens.Config.BusinessPartner).%OpenId(" _ tName _ ", 4)"
+    }
+    Set tFields = $ListFromString(..#PARTNERSETFIELDS)
+    For tI = 1:1:$ListLength(tFields) {
+        Set tField = $List(tFields, tI)
+        Set tValue = ""
+        Set tSupplied = $IsObject(pBody) && (pBody.%GetTypeOf(tField) = "string")
+        If tSupplied Set tValue = pBody.%Get(tField)
+        If tSupplied || (pType = ..#TYPEADDPARTNER) Set tText = tText _ tNL _ " Set tPartner." _ ..PartnerPath(tField) _ " = " _ ..Literal(tValue)
+    }
+    Quit tText _ tNL _ " Set tSC = tPartner.%Save()" _ tNL _ " Set tPartner = """""
 }
 
 /// <p>The lines <method>Snippet</method> adds for the lookup write <var>pType</var> of the table or entry the id <var>pId</var>

@@ -17,6 +17,10 @@ Parameter PARTNER = "OcuProbe205Partner";
 /// <p>The second probe partner, so a list cut to one row has a row to leave out.</p>
 Parameter PARTNERB = "OcuProbe205PartnerB";
 
+/// <p>Every partner the business partner write tests (Story 20.26) create is named this and a suffix; <method>Clear</method>
+/// removes each one.</p>
+Parameter PARTNERPREFIX = "OcuProbe226";
+
 /// <p>Store <var>pValue</var> for <var>pKey</var> of <var>pTable</var>, creating the table, as the vendor does.</p>
 ClassMethod Put(pTable As %String, pKey As %String, pValue As %String) As %Status
 {
@@ -164,11 +168,43 @@ ClassMethod Clear() As %Status
         Set $NAMESPACE = tOrigNS
         Set tSC = ex.AsStatus()
     }
+    Quit $$$ADDSC(tSC, ..DropPartners(..#PARTNERPREFIX))
+}
+
+/// <p>Remove every business partner whose name begins with <var>pPrefix</var>, in any letter case, as the vendor's own delete does
+/// (Story 20.26); no other partner is touched.</p>
+ClassMethod DropPartners(pPrefix As %String) As %Status
+{
+    Set tOrigNS = $NAMESPACE
+    Set tSC = $$$OK
+    Try {
+        Set $NAMESPACE = ..#NAMESPACE
+        Kill tNames
+        Set tName = ""
+        For {
+            Set tName = $Order(^Ens.Config.BusinessPartnerD(tName))
+            If tName = "" Quit
+            If $ZConvert($Extract(tName, 1, $Length(pPrefix)), "U") = $ZConvert(pPrefix, "U") Set tNames(tName) = ""
+        }
+        Set tName = ""
+        For {
+            Set tName = $Order(tNames(tName))
+            If tName = "" Quit
+            Set tSC = $$$ADDSC(tSC, ##class(Ens.Config.BusinessPartner).%DeleteId(tName))
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
     Quit tSC
 }
 
-/// <p>Create the probe partner <var>pName</var> (<parameter>PARTNER</parameter> when empty) with both contacts.</p>
-ClassMethod PutPartner(pName As %String = "") As %Status
+/// <p>Create the probe partner <var>pName</var> (<parameter>PARTNER</parameter> when empty) with both contacts. Each member of
+/// <var>pFields</var>, when it is an object, replaces the field of that name (<code>Description</code>, <code>PrimaryContact</code>,
+/// <code>PrimaryPhone</code> and so on, as <class>OcuPilot.Port.InteropPort</class>'s <parameter>PARTNERFIELDS</parameter> names
+/// them).</p>
+ClassMethod PutPartner(pName As %String = "", pFields As %DynamicObject = "") As %Status
 {
     Set tOrigNS = $NAMESPACE
     If pName = "" Set pName = ..#PARTNER
@@ -191,6 +227,18 @@ ClassMethod PutPartner(pName As %String = "") As %Status
         Set tPartner.AlternativeContact.PhoneNumber = "555-0201"
         Set tPartner.AlternativeContact.MobileNumber = "555-0202"
         Set tPartner.AlternativeContact.Notes = "Alternative notes"
+        If $IsObject(pFields) {
+            Set tIterator = pFields.%GetIterator()
+            While tIterator.%GetNext(.tField, .tValue) {
+                If tField = "Description" {
+                    Set tPartner.Description = tValue
+                    Continue
+                }
+                Set tContact = $Select($Extract(tField, 1, 7) = "Primary": "PrimaryContact", 1: "AlternativeContact")
+                Set tRest = $Extract(tField, $Select(tContact = "PrimaryContact": 8, 1: 12), *)
+                Set $Property($Property(tPartner, tContact), $Case(tRest, "Contact": "Name", "Phone": "PhoneNumber", "Mobile": "MobileNumber", : tRest)) = tValue
+            }
+        }
         Set tSC = tPartner.%Save()
         Set tPartner = ""
         Set $NAMESPACE = tOrigNS
@@ -199,6 +247,29 @@ ClassMethod PutPartner(pName As %String = "") As %Status
         Set tSC = ex.AsStatus()
     }
     Quit tSC
+}
+
+/// <p>The probe partner <var>pName</var> as <code>description|primary contact|primary phone|alternative notes</code>, or
+/// <code>&lt;absent&gt;</code> when the namespace does not hold it (Story 20.26).</p>
+ClassMethod PartnerText(pName As %String) As %String
+{
+    Set tOrigNS = $NAMESPACE
+    Set tText = "<absent>"
+    Try {
+        Set $NAMESPACE = ..#NAMESPACE
+        Set tPartner = ##class(Ens.Config.BusinessPartner).%OpenId(pName)
+        If $IsObject(tPartner) {
+            Set tPrimary = tPartner.PrimaryContact
+            Set tAlternative = tPartner.AlternativeContact
+            Set tText = tPartner.Description _ "|" _ $Select($IsObject(tPrimary): tPrimary.Name, 1: "") _ "|" _ $Select($IsObject(tPrimary): tPrimary.PhoneNumber, 1: "") _ "|" _ $Select($IsObject(tAlternative): tAlternative.Notes, 1: "")
+        }
+        Set tPartner = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tText = "<error " _ ex.DisplayString() _ ">"
+    }
+    Quit tText
 }
 
 /// <p>Everything the lookup and partner reads must leave alone, as one SHA-256: the whole of <code>^Ens.LookupTable</code>

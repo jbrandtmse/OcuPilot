@@ -47,6 +47,9 @@ Parameter INTEROPRUNTIMEDISABLED = "interop.queuemessages.abort,interop.queues.a
 /// <p>Story 20.5's lookup entry remove and lookup table delete, which ship disabled (AD-22).</p>
 Parameter INTEROPLOOKUPDISABLED = "interop.lookupentries.remove,interop.lookuptables.delete,interop.lookuptables.import";
 
+/// <p>The business partner remove (Story 20.26): the one partner write that ships disabled.</p>
+Parameter INTEROPPARTNERDISABLED = "interop.businesspartners.remove";
+
 /// <p>Story 20.31's message resend and edit and resend, which ship disabled (AD-22): a delivered copy cannot be recalled.</p>
 Parameter INTEROPMESSAGEDISABLED = "interop.messages.resend,interop.messageheader.editresend";
 
@@ -177,6 +180,7 @@ Method TestTheDefaultEnablesEveryWriteButTheBaselineDisabled()
         If $ListFind($ListFromString(..#INTEROPITEMREMOVE), tKey) Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#INTEROPRUNTIMEDISABLED), tKey) Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#INTEROPLOOKUPDISABLED), tKey) Set tExpected = "0|baseline"
+        If $ListFind($ListFromString(..#INTEROPPARTNERDISABLED), tKey) Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#INTEROPMESSAGEDISABLED), tKey) Set tExpected = "0|baseline"
         If tKey = ..#CUBEDISABLED Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#MFTDISABLED), tKey) Set tExpected = "0|baseline"

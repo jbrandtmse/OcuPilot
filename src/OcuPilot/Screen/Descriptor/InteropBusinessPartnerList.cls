@@ -2,13 +2,17 @@
 /// Partners page keeps as informational data, with both contacts of each, read through
 /// <class>OcuPilot.Port.InteropPort</class> (source kind <code>interop</code>, endpoint <code>BusinessPartners</code>) and
 /// rendered from the declared <code>table</code> (AD-5, AD-29, AD-36, AD-62, Story 20.5).</p>
-/// <p><b>It is read-only</b>: Story 20.5 ships the list alone, and saving or removing a partner is a later story, so it declares
-/// no primary action and no row action and names <code>emptyNextKey</code> rather than an invitation to the agent
-/// (<method>OcuPilot.Screen.Registry.TableProblem</method>). The partner's name, description and contacts are untrusted content
+/// <p><b>Its primary action</b> New business partner and <b>its row actions</b> Edit and Remove are the screen's callers of
+/// <class>OcuPilot.Screen.Tool.InteropPartnerAdd</class>, <class>OcuPilot.Screen.Tool.InteropPartnerUpdate</class> and
+/// <class>OcuPilot.Screen.Tool.InteropPartnerRemove</class> (AD-53, AD-55); each is in effect at once, since a partner is
+/// information about an organization or application and changes nothing in how a production runs. New business partner and Edit
+/// open one dialog; Edit shows the name read-only, because a partner cannot be renamed. Remove types the partner's name, and a
+/// partner that production items name is refused. The partner's name, description and contacts are untrusted content
 /// (AD-11, AD-60).</p>
 /// <p><b>Its id is the partner's name</b>, kept exactly (AD-13), and its scope is <code>namespace</code>. Its pairs are the
 /// Productions list's, which are the classic page's: <code>%Ens_Portal:USE</code> and, as its own,
-/// <code>%Ens_ProductionConfig:READ</code>. It does not refresh (AD-43).</p>
+/// <code>%Ens_ProductionConfig:READ</code>; the three tools add <code>%Ens_ProductionConfig:WRITE</code> and WRITE on the namespace's
+/// globals database (AD-8, AD-62). It does not refresh (AD-43).</p>
 Class OcuPilot.Screen.Descriptor.InteropBusinessPartnerList Extends OcuPilot.Screen.Descriptor.Base
 {
 
@@ -30,8 +34,8 @@ XData Declaration
   "scope": "namespace",
   "parentScope": "",
   "id": {"kind": "single", "parts": []},
-  "primaryAction": {"id": "", "selfProtection": ""},
-  "rowActions": [],
+  "primaryAction": {"id": "add", "selfProtection": ""},
+  "rowActions": [{"id": "edit", "selfProtection": ""}, {"id": "remove", "selfProtection": ""}],
   "context": {"fields": ["Name", "Description", "PrimaryContact", "PrimaryEmail", "PrimaryPhone"], "secretFields": []},
   "emptyStateKey": "interopBusinessPartnersEmpty",
   "commandAliases": ["business partners", "business partner"],
@@ -58,8 +62,8 @@ XData Declaration
       {"field": "PrimaryPhone", "labelKey": "interopPartnerColumnPhone", "kind": "text"},
       {"field": "PrimaryEmail", "labelKey": "userFieldEmail", "kind": "text"}
     ],
-    "emptyNextKey": "interopBusinessPartnersEmptyNext",
-    "emptyAgentKey": ""
+    "emptyNextKey": "",
+    "emptyAgentKey": "interopBusinessPartnersEmptyAgent"
   },
   "toolIdentifier": "interop.businesspartners"
 }

@@ -404,6 +404,8 @@ export const CONSEQUENCE_INTEROPLOOKUPREMOVE = 'INTEROP.LOOKUP.REMOVE';
 export const CONSEQUENCE_INTEROPLOOKUPDELETE = 'INTEROP.LOOKUP.DELETE';
 /** Story 20.5: a lookup table's import. */
 export const CONSEQUENCE_INTEROPLOOKUPIMPORT = 'INTEROP.LOOKUP.IMPORT';
+/** Story 20.26: a business partner's removal. */
+export const CONSEQUENCE_INTEROPPARTNERREMOVE = 'INTEROP.PARTNER.REMOVE';
 /** Story 20.6: a host test, which sends a real message through the running production. */
 export const CONSEQUENCE_INTEROPTESTSENDS = 'INTEROP.TEST.SENDS';
 /** Story 20.27: a data transformation test, which runs the transformation's code on this instance as the person. */
@@ -573,6 +575,8 @@ export function consequenceSentence(code: string | undefined): string {
   if (code === CONSEQUENCE_INTEROPLOOKUPREMOVE) return STRINGS.interopLookupRemoveConsequence;
   if (code === CONSEQUENCE_INTEROPLOOKUPDELETE) return STRINGS.interopLookupDeleteConsequence;
   if (code === CONSEQUENCE_INTEROPLOOKUPIMPORT) return STRINGS.interopLookupImportConsequence;
+  // Story 20.26: a business partner's removal, published once.
+  if (code === CONSEQUENCE_INTEROPPARTNERREMOVE) return STRINGS.interopPartnerRemoveConsequence;
   // Story 20.6: a host test's sentence, the one its own dialog shows.
   if (code === CONSEQUENCE_INTEROPTESTSENDS) return STRINGS.interopTestSendsConsequence;
   // Story 20.27: a data transformation test's sentence, the one its own dialog shows.

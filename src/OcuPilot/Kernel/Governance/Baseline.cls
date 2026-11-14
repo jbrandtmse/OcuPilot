@@ -252,7 +252,10 @@ XData Keys [ MimeType = application/json ]
   "interop.messages.resend": false,
   "interop.messageheader.editresend": false,
   "analytics.cubemanager.build": false,
-  "analytics.cubemanager.synchronize": true
+  "analytics.cubemanager.synchronize": true,
+  "interop.businesspartners.add": true,
+  "interop.businesspartners.update": true,
+  "interop.businesspartners.remove": false
 }
 }
 

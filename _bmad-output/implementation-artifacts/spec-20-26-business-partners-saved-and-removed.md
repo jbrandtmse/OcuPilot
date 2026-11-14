@@ -2,7 +2,8 @@
 title: 'Story 20.26: Business partners saved and removed'
 type: 'feature'
 created: '2026-11-12'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '54d90dd107400a1a9ebdf204e22bf7644ca4d1fb'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -193,6 +194,26 @@ deferred: []
 
 ## Review Triage Log
 
+### 2026-11-13 — Review pass
+
+- verdicts: 15 findings — high 0, medium 3, low 8, false 4, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` The partner Save route had no held-key leg in `SaveHoldCoverage` — added the leg; mutating `ItemSave.IdOf`'s name-only key reddens it.
+  - `[medium]` `[patch]` `PartnerSnippet` and the partner `SnippetForm` had no test — added `InteropPartnerControl.TestEveryPartnerWriteRendersItsScript`; an unquoted description reddens it.
+  - `[medium]` `[patch]` The update's lock-not-got 503 path was unpinned — added `InteropPartnerRefusals.TestAnEditOfAPartnerWhoseLockIsHeldIsRefusedUnavailable`; skipping `tBusy` reddens it.
+  - `[low]` `[patch]` Field limits were tested only one past the limit — added `TestAValueAtItsLimitIsSavedWhole`; lowering the description limit reddens it.
+  - `[low]` `[patch]` The reviewed field lists were pinned by count only — added a membership assertion against `PARTNERSETFIELDS`; a misspelled field reddens it.
+  - `[low]` `[patch]` AC2 and AC5 mutations covered one leg each — recorded two more: a rename key in the update schema reddens the agent leg, and `WRITEPERMISSION` `READ` reddens the tool-pair and screen-route gate legs. The planned AC2 row named a mutation that cannot redden anything (`Name` is already the target), and is replaced.
+  - `[low]` `[patch]` `InteropError.PartnerPreconditionCodes` had no caller or test — pinned by the new codes assertion, which also holds each tool's `PRECONDITIONCODES` inside it.
+  - `[low]` `[reject]` `PartnerNamedByHere` skips a production that does not open — the listing is the compiled productions, so an unopenable one is not expected (inference); throwing would block removes on a malformed class and the fix adds a branch.
+  - `[low]` `[patch]` `InteropPartnerControl` left its probe production on a raise between create and remove — `OnAfterOneTest` now removes it.
+  - `[low]` `[reject]` `ListedRow` answers empty on a read error, so the closing "unlisted" check could pass — the earlier listed-row assertions in the same test fail first on a read error.
+  - `[false]` `[reject]` Intent audit: `INTEROP.PARTNER.NAMECASE` goes beyond `TAKEN` — Task 0 (b) measured a case variant as a second partner and the spec makes the refusal conditional on that result.
+  - `[false]` `[reject]` Intent audit: `PartnerFits` extends the name rule to names the instance cannot address — Task 0 (c) says a stored-but-unopenable name is refused by the name rule.
+  - `[low]` `[reject]` Intent audit: a screen Edit that changes nothing is accepted and calls nothing — the dialog sends all thirteen values, nothing is written or audited, and the agent's mint refuses it; recorded in the spec by the implement pass.
+  - `[false]` `[reject]` Intent audit: existing tests, EXPERIENCE.md and the moved AC6 leg changed — each is a listed task.
+  - `[false]` `[reject]` Intent audit: the tests drive the callers over HTTP and the source-control leg drives the port in process — AC1 and AC4 name both callers, and no throwaway can be put under source control.
+
 ## Design Notes
 
 **Governing ADs:** AD-4, AD-6, AD-8, AD-10, AD-13, AD-14, AD-15, AD-16, AD-22, AD-29, AD-34, AD-39, AD-44, AD-51, AD-52, AD-53, AD-54, AD-55, AD-56, AD-58, AD-59, AD-62. Also AD-11 and AD-60: a partner's text is untrusted, and it reaches the model through the existing read and its sanitizer. Checked with nothing to add:
@@ -211,12 +232,29 @@ deferred: []
   - it removes with no check;
   - the class says partners have "no effect on the running of the system".
 
+**Measured at implement** (on `ocupilot-b-ci`, as `irisowner` unless noted):
+
+- (a) `%Save` and `%DeleteId` of a partner write no audit row: the `%SYS.Audit` count read 206,685 before and after one of each.
+- (b) `OCUPROBE226CASE` beside `OcuProbe226Case` is a second partner: both saved, `%ExistsId` is exact (`ocuprobe226case` reads absent), and the vendor's `List` query lists both. So the add refuses a case variant with `INTEROP.PARTNER.NAMECASE`, as the plan allowed.
+- (c) A name holding `||` is stored, exists and opens, so the name rule does not refuse it. A 256-character name, a description of 5,001, notes of 1,001, a phone of 51 and a contact name of 256 are each refused #7201 with nothing stored; an empty name is #5659.
+- (d) A principal holding `%Development:U`, `%Ens_Portal:U`, `%Ens_ProductionConfig:R` and `%DB_USER:RW` adds and deletes a partner through the vendor directly (both answered OK), so the port's gate is the whole gate. That the classic page admits a READ holder to its saves is read from source (`EnsPortal.BusinessPartners` declares no `EDITRESOURCE`) and stays an inference.
+- (e) The scan finds the probe partner named by an item of a probe production that is not running (`NamedBy` reads 1 with no production current): `InteropPartnerRefusals`' named leg.
+- (f) On the branch head `ToolWrite`'s other-port count read 58 and `ReadTool`'s production registry 412; they now read 61 and 415 (the registry lists 239 writes and 176 reads). The 56 and 409 the plan expected were stale, since Stories 20.40 and 20.41 had landed. `Write.RemovalRows` has landed, so the remove's `StateDiff` uses it.
+
 **Decisions:**
 
 - **Rename: refused.** The vendor renames without updating references, so every item, credential and alert naming the old partner would point at nothing. Doing it in one transaction would also mean rewriting each item's setting in each production class: an item write with `SaveToClass`, routines WRITE and source control, far past this story. Refusing it is the simplest option consistent with AD-62. The person renames in three confirmed steps (add, re-point the items, remove), and the rename note and the update's description say so.
 - **Remove of a named partner: refused, not warned.** A warning on the screen path would need a dynamic warning before a typed-name dialog, or a new list field (a changed declared read and the `ReadDescriptions` roster), so that the person sees which partners are named. A refusal is one code that both callers meet at the port. It keeps references whole, which is the safe behavior, and its sentence says how to proceed. It is a precondition refusal like `INTEROP.ITEM.TEMPSTOPPED`, not a ban: once the items' setting is cleared, the remove runs.
 - **Named limits:** a credential (`Ens.Config.Credentials.BusinessPartner`), a system default setting or a managed alert naming the partner is not checked (inference: rare; the AC names items). An item changed to name the partner between the check and the delete is not caught; the window is the request.
 - **Source control:** every partner write is refused in a namespace under source control, as every lookup and item write is. This is stricter than the classic page, which refuses only when the document reads read-only. Decided in-stage, because it is a consistency rule and not an access posture.
+
+**Decided at implement:**
+
+- **The update's fingerprint leaves `NamedBy` out** by overriding `MergeUpdate` to drop it from the merged payload, because a merge write may not declare `FINGERPRINTSUBJECT` (`Registry.FingerprintSubjectProblem`). Its `STATEMARKER` is therefore `Namespace`, which the payload carries and a call's arguments do not. `InteropPartnerControl.TestTheAgentsUpdateConfirmsOverHttp` pins it: an item that names the partner after the mint does not close the update.
+- **An Edit that changes nothing** from the screen is accepted and calls the vendor nothing and records no row; the agent's mint of the same update is refused by the kernel. `PartnerViolations` judges the name for an add only, since a partner already held keeps the name it has.
+- **Strings.** Values in `strings.ts` are unique and the Fixed strings column is their authority, so the row action reuses the published word `Edit` (`agentPanelSecretWarningEdit`), the contact group heading `interopPartnerColumnContact`, and the email label `userFieldEmail`. The retired empty-state line is removed from `strings.ts` and from EXPERIENCE.md's row 604 (the table's literals must all exist in `strings.ts`). The new literals sit in the row's String column and the clause in its Where column; the dialog line is appended to the Dialogs paragraph.
+- **Code Map anchors** moved (`InteropPort` is now about 8,900 lines): everything was found by name.
+- **Rule 31.** `PerformPartner`, `ReadPartner` and `PartnerFactsHere` follow `PerformLookup`'s and `LookupFactsHere`'s order without the table lock; `ToolEmit` extends the lookup branch to `InteropPartnerAction`; `InteropLookupGate` gains `CreatePrincipals` and `DeletePrincipals`, which `InteropPartnerGate` reuses. `interop-business-partners.browser-spec.mjs` copies the list helpers of `interop-lookup-tables.browser-spec.mjs`, because sharing them would rewrite that spec, and the AC6 list leg moved into it.
 
 **Posture question for the orchestrator** (the story sends it; planning proceeds on (A)):
 
@@ -306,14 +344,42 @@ deferred: []
 |---|---|---|
 | AC1 | `PerformPartner` skips `AuditRuntime` | `InteropPartnerControl`'s audit-row assertion |
 | AC1 | The update drops `AlternativeNotes` from what it sets | the update leg's read-back (`mismatch`) |
-| AC2 | The update's `FIELDS` gains `Name` | `InteropPartnerRefusals`' rename leg |
+| AC2 | The update's schema gains a rename key (`PartnerFieldRows` adds `NewName`) | `InteropPartnerRefusals`' rename leg |
 | AC3 | `PartnerWriteToken` ignores `NamedBy` | the named leg (the partner is removed) |
 | AC3 | `PartnerNamedByHere` reads only the running production | the named leg on the stopped probe production |
 | AC4 | The add stores `Description` empty | the integration leg's list read |
 | AC5 | `Pairs` drops `PARTNERWRITEPAIR` | `InteropPartnerGate`'s `:READ`-only leg |
 | AC1 (browser) | The dialog's Edit sends no `PrimaryPhone` | the spec's changed-phone assertion |
 
+**Observed mutations (Rule 19)**, each applied on `ocupilot-b-ci`, the class and every descendant (or the bundle) rebuilt, read red, then reverted:
+
+- AC1: mutation: `PerformPartner` skips `AuditRuntime` -> `InteropPartnerControl`'s five audit and ledger legs went red.
+- AC1: mutation: the update skips `AlternativeNotes` -> `InteropPartnerControl.TestThePersonsEditAndRemoveWriteAndAuditWithoutAValue`'s read-back, stored-value and audit-fields legs went red.
+- AC1 (browser): mutation: the dialog's Edit sends no `PrimaryPhone` (bundle rebuilt and redeployed) -> `interop-business-partners.browser-spec.mjs`'s changed-phone test went red.
+- AC2: mutation: `Name` added to the update's declared screen values -> `InteropPartnerRefusals.TestARenameIsRefusedBeforeAnyPortCall` went red.
+- AC2: mutation: `PartnerFieldRows` adds a `NewName` row, so the update's schema admits it -> `InteropPartnerRefusals.TestARenameIsRefusedBeforeAnyPortCall`'s agent leg went red.
+- AC3: mutation: `PartnerWriteToken` ignores `NamedBy` -> `InteropPartnerRefusals.TestARemoveOfAPartnerAnItemNamesIsRefused` went red.
+- AC3: mutation: `PartnerNamedByHere` reads only the active production -> the same test went red, its production being stopped.
+- AC4: mutation: the add stores `Description` empty -> `InteropPartnerControl.TestTheBusinessPartnersReadListsTheAddedChangedAndRemovedPartner`'s first listing went red.
+- AC5: mutation: `Pairs` skips `PARTNERWRITEPAIR` -> `InteropPartnerGate`'s read-only principal's write legs went red.
+- AC5: mutation: `InteropPartnerAction` declares `WRITEPERMISSION` `READ` -> `InteropPartnerGate.TestEachMissingPairIsRefusedByNameOnEachTool` and `...OnTheScreenRoutes` went red.
+- AC1: mutation: `PartnerLimit` answers 255 for the description -> `InteropPartnerControl.TestAValueAtItsLimitIsSavedWhole` went red.
+- AC1: mutation: `PartnerSnippet` writes the description unquoted, or `IdOf` of a name-only Save answers a key other than the mint's -> `InteropPartnerControl.TestEveryPartnerWriteRendersItsScript` and `SaveHoldCoverage.TestACreateSaveHoldsTheKeyItsMintComputes` went red.
+- AC1: mutation: a misspelled field in `Prohibited.PermittedChangeFields` for `business-partner` -> `InteropPartnerControl.TestTheReviewedFieldListsAndPreconditionCodesAreTheTools` went red.
+- AC1: mutation: `PerformPartner`'s `tBusy` answer is skipped -> `InteropPartnerRefusals.TestAnEditOfAPartnerWhoseLockIsHeldIsRefusedUnavailable` went red.
+- AC6: mutation: the baseline line of `interop.businesspartners.remove` reads `true` -> `GovernanceBaseline.TestThePurgeIsTheOneDisabledLine` went red.
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+Summary: Business partners can be added, edited and removed from the Business partners screen and by the agent's confirmed proposal, through new `PARTNER`, `ADDPARTNER`, `SETPARTNER` and `REMOVEPARTNER` types on `InteropPort`. A rename and a remove of a partner an item names are refused, each write is audited by OcuPilot, and Task 0's measurements are under Design Notes.
+
+Files changed: the port, `InteropError`, `Router`, `ItemSave`/`PartnerSave`, the four `InteropPartner*` tools, the partners descriptor, `Baseline` and `Prohibited`, the partner page, dialog and store with their specs, the shell and string wiring, `EXPERIENCE.md`, `ci-throwaway.sh`, three new armed test classes, a new browser spec, and the old-shape and roster tests the spec lists.
+
+Review: 15 findings, none high; 3 medium and 5 low patched (test additions and mutation lines, no product change), 7 rejected with reasons in the Review Triage Log, none deferred. Follow-up review recommended: false (the patches are tests, each shown red by a mutation).
+
+Verification: every `(loop)` class in `## Verification` and both browser specs passed on `ocupilot-b-ci` at the implement pass; after the patches, `InteropPartnerControl` (10), `InteropPartnerRefusals` (7), `InteropPartnerGate` (3), `InteropLookupGate` (3) and `SaveHoldCoverage` (2) pass, and `check-objectscript` reports 0 problems. The full ObjectScript sweep, `npm test`, the smoke, Rule 30's fresh check and the full browser suite are the runner's and CI's. Mutations are under Verification.
+
+Residual risks: `ui/tools/ci-timings.json` has no entries for the new classes and spec until the next refresh; a production class that fails to open is not counted when the scan looks for items naming a partner.

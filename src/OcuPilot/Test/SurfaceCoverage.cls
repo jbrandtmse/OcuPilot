@@ -443,6 +443,9 @@ XData Coverage
 <tool name="interop.lookupentries.add" class="OcuPilot.Test.InteropLookupControl" method="TestTheAgentsAddConfirmsOverHttp"/>
 <tool name="interop.lookupentries.set" class="OcuPilot.Test.InteropLookupControl" method="TestTheAgentsSetConfirmsOverHttp"/>
 <tool name="interop.lookupentries.remove" class="OcuPilot.Test.InteropLookupControl" method="TestTheAgentsRemoveConfirmsOverHttp"/>
+<tool name="interop.businesspartners.add" class="OcuPilot.Test.InteropPartnerControl" method="TestTheAgentsAddConfirmsOverHttp"/>
+<tool name="interop.businesspartners.update" class="OcuPilot.Test.InteropPartnerControl" method="TestTheAgentsUpdateConfirmsOverHttp"/>
+<tool name="interop.businesspartners.remove" class="OcuPilot.Test.InteropPartnerControl" method="TestTheAgentsRemoveConfirmsOverHttp"/>
 <tool name="interop.lookuptables.delete" class="OcuPilot.Test.InteropLookupControl" method="TestTheAgentsDeleteConfirmsOverHttp"/>
 <tool name="interop.lookuptables.export" class="OcuPilot.Test.InteropLookupTransfer" method="TestTheAgentsExportConfirmsOverHttp"/>
 <tool name="interop.lookuptables.import" class="OcuPilot.Test.InteropLookupTransfer" method="TestTheAgentsImportConfirmsOverHttp"/>
