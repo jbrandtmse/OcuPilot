@@ -2719,10 +2719,10 @@ test('DW-432: the section the runner hint cites is the paragraph of docs/DEVELOP
   );
 });
 
-// --- The bounded bind retry (DW-439) ---------------------------------------------------------
+// --- The bind retry and its time budget (DW-439, DW-2123) ------------------------------------
 
 /** Run `ci-throwaway.sh up` against a stub docker that fails `up` a given number of times. */
-function runThrowawayUp({ fails, message, retrySeconds = '0', waitSeconds = '30', stubSleep = false, stubSs = false }) {
+function runThrowawayUp({ fails, message, retrySeconds = '0', waitSeconds = '30', stubSleep = false, stubSs = false, firstUpSeconds = '0' }) {
   const dir = mkdtempSync(join(tmpdir(), 'ocupilot-throwaway-bind-'));
   const bin = join(dir, 'bin');
   const scratch = join(dir, 'scratch');
@@ -2742,6 +2742,7 @@ function runThrowawayUp({ fails, message, retrySeconds = '0', waitSeconds = '30'
     '    n=$((n + 1))',
     '    printf \'%s\' "$n" > "$OCUPILOT_UP_COUNT"',
     '    if [ "$n" -le "$OCUPILOT_UP_FAILS" ]; then',
+    '      if [ "$n" -eq 1 ] && [ "$OCUPILOT_FIRST_UP_SECONDS" -gt 0 ]; then sleep "$OCUPILOT_FIRST_UP_SECONDS"; fi',
     '      printf \'%s\\n\' "$OCUPILOT_UP_MESSAGE" >&2',
     '      exit 1',
     '    fi',
@@ -2769,6 +2770,8 @@ function runThrowawayUp({ fails, message, retrySeconds = '0', waitSeconds = '30'
         OCUPILOT_BIND_RETRY_SECONDS: retrySeconds,
         OCUPILOT_BIND_WAIT_SECONDS: waitSeconds,
         OCUPILOT_SLEEP_CAPTURE: sleeps,
+        // How long the first `up` runs before it fails, standing in for an image pull.
+        OCUPILOT_FIRST_UP_SECONDS: firstUpSeconds,
       }),
     });
     const argv = existsSync(capture) ? readFileSync(capture, 'utf8') : '';
@@ -2805,8 +2808,8 @@ test('DW-439: a bring-up that failed on a host-port bind is retried, and succeed
 });
 
 test('DW-2123: a bind that holds past the old three attempts still clears within the budget', () => {
-  // Two CI bring-ups failed all three attempts inside about 8 seconds, so the budget is time, not a
-  // count of attempts.
+  // The budget is time, not a count of attempts, so a holder that outlasts the first few waits is
+  // still ridden out.
   //
   // Mutation (Rule 19): restore a three-attempt cap on the loop -> the fourth attempt never comes
   // and this goes red with a non-zero exit.
@@ -2826,6 +2829,17 @@ test('DW-439: a bind that never clears exits at the end of its time budget, nami
   assert.match(run.output, /2 second budget/, 'the message names the budget');
   assert.match(run.output, /52776/, 'the message names the port');
   assert.match(run.output, /ephemeral port range/, 'and the range this runner allocates from');
+});
+
+test('DW-2123: the budget runs from the first bind failure, so a slow first attempt still leaves a retry', () => {
+  // The first attempt also pulls the image; with the clock started before it, an attempt that ran
+  // past the whole budget and then failed on the bind exited with no retry at all.
+  //
+  // Mutation (Rule 19): start the budget clock before the first attempt -> the 2 second first
+  // attempt spends the 1 second budget, and this goes red with a non-zero exit after one attempt.
+  const run = runThrowawayUp({ fails: 1, message: BIND_MESSAGE, waitSeconds: '1', firstUpSeconds: '2' });
+  assert.equal(run.status, 0, `expected the retry to succeed: ${run.output}`);
+  assert.equal(run.ups, 2, 'one retry after the slow first attempt');
 });
 
 test('DW-2123: the waits between attempts double from the first and stop growing at 30 seconds', () => {
@@ -2882,8 +2896,9 @@ test('DW-439: the retry waits between attempts, and the waits are overridable', 
   //
   // Mutation (Rule 19): delete the sleep, or either OCUPILOT_BIND_* default -> red.
   const source = withoutShellComments(readFileSync(join(REPO_ROOT, 'scripts', 'ci-throwaway.sh'), 'utf8'));
-  assert.match(source, /BIND_RETRY_SECONDS="\$\{OCUPILOT_BIND_RETRY_SECONDS:-[1-9]\d*\}"/, 'a non-zero first wait, overridable by the environment');
-  assert.match(source, /BIND_WAIT_SECONDS="\$\{OCUPILOT_BIND_WAIT_SECONDS:-[1-9]\d*\}"/, 'a non-zero budget, overridable by the environment');
+  assert.match(source, /BIND_RETRY_SECONDS="\$\{OCUPILOT_BIND_RETRY_SECONDS:-2\}"/, 'a first wait of 2 seconds, overridable by the environment');
+  assert.match(source, /BIND_WAIT_SECONDS="\$\{OCUPILOT_BIND_WAIT_SECONDS:-120\}"/, 'a 120 second budget, overridable by the environment');
+  assert.match(source, /^BIND_WAIT_CAP=30$/m, 'and no wait grows past 30 seconds');
   assert.match(source, /sleep "\$BIND_SLEEP"/, 'the wait is a sleep');
   assert.match(source, /BIND_DELAY=\$\(\(BIND_DELAY \* 2\)\)/, 'and doubles after each failure');
 });
@@ -2912,27 +2927,21 @@ test('DW-439: a failure that is not a host-port bind exits at once, unretried', 
   assert.match(run.output, /not a host-port bind/, 'saying which of the two it is');
 });
 
-test('DW-439: the retry actually waits, and the second wait outlasts the first', () => {
-  // The two tests above pin the SHAPE of the backoff by reading the source text -- a non-zero,
-  // overridable default and a `sleep` keyed to `ATTEMPT`. Neither one runs the script and watches
-  // a clock, so a change that keeps both regexes matching but breaks the growth (a stray
-  // `ATTEMPT=1` reset between attempts, or a `$((BIND_RETRY_SECONDS))` that drops the
-  // multiplication) would still pass them. This drives the real retry with `OCUPILOT_BIND_RETRY_SECONDS`
-  // set to a real, small, non-zero value and asserts on the wall-clock elapsed, which is what
-  // downstream users actually experience.
+test('DW-439: the retry actually waits on a real clock', () => {
+  // The source-text test above pins the SHAPE of the backoff, and the wait-sequence test reads the
+  // waits (and so their growth) through a stub `sleep`. Neither watches a real clock. This drives
+  // the real retry with `OCUPILOT_BIND_RETRY_SECONDS` set to a real, small, non-zero value and
+  // asserts on the wall-clock elapsed.
   //
-  // Mutation (Rule 19): replace `sleep $((BIND_RETRY_SECONDS * ATTEMPT))` with a constant
-  // `sleep $BIND_RETRY_SECONDS` -> the elapsed floor below (which needs the SECOND wait to be
-  // longer than the first, i.e. growth) goes red while the two source-text tests above stay green.
+  // Mutation (Rule 19): delete the `sleep` -> the elapsed floor below goes red.
   const start = Date.now();
   const run = runThrowawayUp({ fails: 2, message: BIND_MESSAGE, retrySeconds: '1' });
   const elapsedMs = Date.now() - start;
   assert.equal(run.status, 0, `expected the third attempt to succeed: ${run.output}`);
   assert.equal(run.ups, 3, 'three bring-up attempts');
-  // Attempt 1's wait is BIND_RETRY_SECONDS*1 = 1s, attempt 2's is BIND_RETRY_SECONDS*2 = 2s: the
-  // two real sleeps sum to at least 3s. A flat (non-growing) 1s-per-attempt backoff would total
-  // only ~2s, so this floor distinguishes growth from a fixed wait as well as from no wait at all.
-  assert.ok(elapsedMs >= 2900, `expected at least ~3s of growing backoff (1s + 2s), took ${elapsedMs}ms`);
+  // The first wait is BIND_RETRY_SECONDS = 1s and the second doubles it to 2s, so the two real
+  // sleeps sum to at least 3s.
+  assert.ok(elapsedMs >= 2900, `expected at least ~3s of real backoff (1s + 2s), took ${elapsedMs}ms`);
 });
 
 test('DW-439: the bring-up streams output as it happens, never only at exit', () => {

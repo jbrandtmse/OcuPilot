@@ -32,8 +32,9 @@
 #
 # Both published ports bind 127.0.0.1 only: every reader of the instance (the readiness wait, the
 # test runner, the headless browser) runs on the host that started it. `up` retries a host-port
-# bind failure, and only that, until OCUPILOT_BIND_WAIT_SECONDS (default 120) have elapsed, waiting
-# 2, 4, 8, 16, then 30 seconds between attempts (the first wait is OCUPILOT_BIND_RETRY_SECONDS).
+# bind failure, and only that, until OCUPILOT_BIND_WAIT_SECONDS (default 120) have elapsed since the
+# first one, waiting 2, 4, 8, 16, then 30 seconds between attempts (the first wait is
+# OCUPILOT_BIND_RETRY_SECONDS).
 set -e
 
 ACTION="${1:-}"
@@ -889,7 +890,7 @@ EOF
         UP_OUTPUT_FILE="$DIR/up-output.txt"
         UP_RC_FILE="$DIR/up-rc.txt"
         ATTEMPT=1
-        BIND_DEADLINE=$(( $(date +%s) + BIND_WAIT_SECONDS ))
+        BIND_DEADLINE=""
         BIND_DELAY="$BIND_RETRY_SECONDS"
         while : ; do
             # Cleared first: the exit code is written from inside the pipeline, so if that write
@@ -908,12 +909,15 @@ EOF
                     exit 1
                     ;;
             esac
-            # Who holds the web port right now, when `ss` exists: the next occurrence names its
-            # holder instead of leaving it an inference.
+            # The sockets on the web port right now, when `ss` exists, so the log shows the
+            # connection holding it.
             if command -v ss >/dev/null 2>&1; then
                 echo "ci-throwaway: sockets on port $WEB_PORT:"
                 ss -Htan "( sport = :$WEB_PORT )" || true
             fi
+            # The budget runs from the first bind failure, so a first attempt that spent its time
+            # pulling the image still leaves the whole budget for the retries.
+            if [ -z "$BIND_DEADLINE" ]; then BIND_DEADLINE=$(( $(date +%s) + BIND_WAIT_SECONDS )); fi
             BIND_REMAINING=$(( BIND_DEADLINE - $(date +%s) ))
             if [ "$BIND_REMAINING" -le 0 ]; then
                 echo "ci-throwaway: host port $WEB_PORT (or superserver $SUPER_PORT) was still bound after $ATTEMPT attempt(s) over a $BIND_WAIT_SECONDS second budget; this runner's ephemeral port range is $(ephemeral_range), which bears on $WEB_PORT -- $SUPER_PORT is below any default range's floor, so a bind failure there is another listener"
