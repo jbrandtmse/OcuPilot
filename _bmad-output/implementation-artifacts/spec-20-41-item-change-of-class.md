@@ -2,7 +2,7 @@
 title: 'Story 20.41: Item change of class'
 type: 'feature'
 created: '2026-11-12'
-status: 'done'
+status: 'in-progress'
 baseline_revision: '389e9e2d856876ff9a03df440c0382bfef2c4d62'
 baseline_commit: '389e9e2d856876ff9a03df440c0382bfef2c4d62'
 review_loop_iteration: 0
@@ -263,7 +263,11 @@ Rejected:
 - `low` DW-2545 still reads open: its adjudication is the runner's ledger gate.
 - `low` the spec lost its frontmatter `deferred:` key: the fix edits the spec under review; the runner's harvest is the place to restore it.
 
+- [ ] [Smoke] Full sweep on ddae7dc1 (fresh `ocupilot-b-ci`, 20 shards, 710 classes): four roster assertions the story's change missed -- (1) `OcuPilot.Test.ToolDispatch.TestTheShippedGateAllowsEveryLiveToolButTheBaselineDisabled` +24: "interop.items.changeclass: 1|" and "interop.items.remove: 1|"; (2) `OcuPilot.Test.CompositeMintSweep.TestTheRosterIsEveryCompositeIdMint` +34: "every composite-id mint has a row: OcuPilot.Screen.Tool.InteropItemChangeClassMint"; (3) `OcuPilot.Test.InteropHostDescriptor.TestTheItemTabsFormOneGroupInOrder` +18: "and the group has seven members" (the Classes tab joins the group); (4) `OcuPilot.Test.InteropHostDescriptor.TestThePortServesTheRuntimeEndpointsAndTheirPairs` +1: "the port's endpoint roster". Update each roster to the delivered shape (read every name from the instance, never recall it), find out why `interop.items.remove` now reads differently in ToolDispatch and fix the cause, not the symptom; add the three classes to `Shared surfaces:` and the `(loop)` class list; demonstrate one mutation per roster row added and record its `mutation:` line under `## Verification`.
+
 ## Spec Change Log
+
+- 2026-11-14, rework iteration 1 (runner): the full sweep found four roster assertions the story missed.
 
 - 2026-11-12, spec gate (runner): the privileges and the twelve new strings are veto item U-26; the AD lines stay for the owner's Update, not written.
 

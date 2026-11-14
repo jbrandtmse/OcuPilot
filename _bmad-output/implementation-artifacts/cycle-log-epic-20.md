@@ -1440,3 +1440,8 @@
 2026-11-14T00:18:48Z	Story 20.41	stage_spawned	stage=code-review spawn_at=2026-11-14T00:18:48Z model=opus agent_name=20-41-code-review-1 cycle_iteration=1 baseline=389e9e2d
 2026-11-14T00:46:49Z	Story 20.41	cr_complete	spawn_at=2026-11-14T00:18:48Z model=opus agent_name=20-41-code-review-1 cycle_iteration=1 resolved=6(patched:3_med(AC2_settings-tab_assert,adapter-setting-kept_leg,gate_change-back_checked),3_low) wontfix_accepted=1(DW-2546) dismissed=13 high=0 med=3 low=4 rows=1 unresolved_high_med=0 review_tier=full-opus status=done closing_sections_present=true
 2026-11-14T00:46:49Z	Story 20.41	ledger_adjudicated	owned=2(DW-2298,DW-2545) resolved=2 reowned=0 terminal=0 slice_after=empty born=DW-2546(wontfix-accepted) note=spec_deferred_key_restored(QA_had_removed_it)
+2026-11-14T03:04:25Z	Story 20.41	gate_step	code_head=ddae7dc1 step=build result=pass bundle_initial=2.02MB
+2026-11-14T03:04:25Z	Story 20.41	gate_step	code_head=ddae7dc1 step=smoke result=pass smoke=50/50 fresh_classes=19_classes_247_forward_and_reverse_green browser_specs=not_run(path_error_in_runner_list;rerun_after_rework) npm_test=test:tools_2211/2211
+2026-11-14T03:04:25Z	Story 20.41	gate_step	code_head=ddae7dc1 step=full_sweep result=fail shards=20 classes=710 tests=5461 failed=4(ToolDispatch_baseline-disabled_roster:changeclass,remove;CompositeMintSweep:InteropItemChangeClassMint;InteropHostDescriptor:item_tab_group_count,port_endpoint_roster) finished=03:03Z
+2026-11-14T03:04:25Z	Story 20.41	rework_opened	cycle_iteration=2 iteration=1 trigger=smoke items=Smoke_four_roster_assertions scope_baseline=pending
+2026-11-14T03:04:25Z	Story 20.41	stage_spawned	stage=implement spawn_at=2026-11-14T03:04:25Z model=sonnet agent_name=20-41-implement-2 cycle_iteration=2 rework=1
