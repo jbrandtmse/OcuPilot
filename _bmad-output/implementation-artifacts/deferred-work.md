@@ -12716,6 +12716,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: batch 4 rework re-review (rejected as out of rework scope): open() -> followOrder() -> setDirection('desc') -> rememberView() before adoptRemembered; screen-store.ts setDirection/rememberView; settle by arriving at the records URL with order=1 after remembering a filter and reading the preference row
 - 2026-11-13T21:34:51Z status=routed owner=burndown by=lead note=fix idea: skip rememberView until remembered() is true, or defer followOrder's write until adoption
 - 2026-11-14T00:52:35Z owner=23-14-epic-23-burn-down by=burndown note=chartered_in_Story_23.14(Epic_23_burn-down,orchestrator_ruling_2026-11-14)
+- 2026-11-14T04:04:21Z status=resolved-by:23-14-epic-23-burn-down by=adjudication note=batch_6:ScreenStore.setDirection_takes_remember(default_true);followOrder_passes_store.remembered(),so_an_arrival_before_the_account_read_sets_the_direction_without_posting_the_default_view;component_cases_red_against_the_pre-batch_code(QA)_and_for_the_order_0_path(review);journal-records.browser-spec_5/5
 
 ### DW-2547: BackgroundTasksLive's live Pause leg passes a 200 Pause that settles to Done, so a Pause with no effect on a short compact reads green there
 - source: spec-23-14-epic-23-burn-down.md | severity: low | fix-risk: med | footprint: in-story

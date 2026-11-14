@@ -514,9 +514,14 @@ export class ScreenStore {
     return this.sortDirection;
   }
 
-  setDirection(direction: SortDirection): void {
+  /**
+   * Set the direction and notify. The view is sent to the instance unless `remember` is false, which
+   * a caller passes while the remembered view has not been adopted: a send then would replace it
+   * with this store's defaults.
+   */
+  setDirection(direction: SortDirection, remember = true): void {
     this.sortDirection = direction;
-    this.rememberView();
+    if (remember) this.rememberView();
     this.notify();
   }
 
