@@ -28,3 +28,4 @@
 2026-11-14T18:51:38Z	Story 22.2	stage_spawned	stage=plan spawn_at=2026-11-14T18:51:38Z model=opus agent_name=22-2-picking-up-a-row-when-its-gate-clears-plan-1 cycle_iteration=1
 2026-11-14T19:05:44Z	Story 22.2	story_created	spawn_at=2026-11-14T18:51:38Z model=claude-opus-5-5 path=_bmad-output/implementation-artifacts/spec-22-2-picking-up-a-row-when-its-gate-clears.md build_status=ready-for-dev epic_context=reused warnings=oversized
 2026-11-14T19:05:44Z	Story 22.2	spec_validated	service_introducing=false integration_ac=declared-none(consumes_22.1_register) adr_constrained_acs= decision_dependency=none sections_created=none owned_ledger=none addressed=0 declined=0 mutates_shared_runtime=false lead_edits=request_record_wording,DW-2558_filed(FR-80_vs_AD-22,routed_burndown) model=claude-opus-5-5
+2026-11-14T19:47:24Z	Story 22.1	ci_resolved	story=22.1 sha=74ec38514 runs=43628782453 failed=none via=none result=success resolved_at=next_plan(before_22.2_implement)
