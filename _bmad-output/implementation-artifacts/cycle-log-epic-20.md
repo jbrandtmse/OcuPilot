@@ -1469,3 +1469,7 @@
 2026-11-14T05:52:02Z	Story 20.41	stage_spawned	stage=code-review spawn_at=2026-11-14T05:52:02Z model=opus agent_name=20-41-code-review-3 cycle_iteration=3 baseline=ab0e5c00 scope=rework_2
 2026-11-14T05:59:51Z	Story 20.41	cr_complete	spawn_at=2026-11-14T05:52:02Z model=opus agent_name=20-41-code-review-3 cycle_iteration=3 scope=rework_2(ab0e5c00..) resolved=0 dismissed=7 high=0 med=0 low=5 rows=0 unresolved_high_med=0 review_tier=full-opus status=done checklist=RemovalRowsSweep_7/7;fallback_reason_present_and_true
 2026-11-14T06:00:06Z	Story 20.26	stage_spawned	stage=qa spawn_at=2026-11-14T06:00:06Z model=sonnet agent_name=20-26-qa-1 cycle_iteration=1
+2026-11-14T07:05:41Z	Epic 20	runner_unattended_start	run=20261020T0940Z-20,23 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03 doctrine=3d11cec98d91c1d4d9c225fe3b265e1af418abe4 note=redispatch_after_owner_computer_crash head=fbc10f9a origin=d35237a5 unpushed=9 launch_env=depth4
+2026-11-14T07:05:41Z	Story 20.26	stage_dead	story=20-26-business-partners-saved-and-removed stage=qa evidence=none(tree_clean;qa_wrote_nothing) rerun_from=qa agent=20-26-qa-1 cause=owner_computer_crash_~06:00Z
+2026-11-14T07:07:25Z	Epic 20	throwaway_up	container=ocupilot-b-ci started_by=this_runner(after_down_of_crash-exited_one) tree=fbc10f9a healthy
+2026-11-14T07:07:25Z	Story 20.26	stage_spawned	stage=qa spawn_at=2026-11-14T07:07:25Z model=sonnet agent_name=20-26-qa-2 cycle_iteration=1 rerun_after=stage_dead prompt=e20u/20-26/prompts/qa-1.md
