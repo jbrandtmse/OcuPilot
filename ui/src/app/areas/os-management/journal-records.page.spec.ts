@@ -10,13 +10,13 @@ import { NavigationService } from '../../core/navigation';
 import { OverlayStack } from '../../core/overlay-stack';
 import { RefreshService } from '../../core/refresh';
 import { ScopeService } from '../../core/scope';
-import { ScreenActions } from '../../core/screen-actions';
+import { REFRESH_ACTION_ID, ScreenActions } from '../../core/screen-actions';
 import { ScreenArrivals } from '../../core/screen-arrival';
 import { assembleScreenContext } from '../../core/screen-context';
 import { ScreenStores } from '../../core/screen-store';
 import { SCREENS, type ScreenDeclaration } from '../../core/screens.generated';
 import { STRINGS } from '../../core/strings';
-import { stubAccountPreferences } from '../../testing/account-preferences';
+import { type StubbedAccountPreferences, stubAccountPreferences } from '../../testing/account-preferences';
 import { JournalRecordsPage, nextOffset } from './journal-records.page';
 
 /**
@@ -90,6 +90,8 @@ interface Options {
   readonly id?: string;
   /** Held until it resolves: Journals' read answers only then. */
   readonly journalsGate?: Promise<void>;
+  /** The account the store adopts its remembered view from; not loaded until the spec loads it. */
+  readonly account?: StubbedAccountPreferences;
 }
 
 async function mount(options: Options = {}) {
@@ -109,7 +111,7 @@ async function mount(options: Options = {}) {
     },
   };
   const params = new BehaviorSubject(convertToParamMap(options.id === undefined ? {} : { id: options.id }));
-  const stores = new ScreenStores({ account: stubAccountPreferences() });
+  const stores = new ScreenStores({ account: options.account ?? stubAccountPreferences() });
   const refresh = new RefreshService({
     stores,
     connectivity: { retryWhenReachable: () => {} } as unknown as ConnectivityService,
@@ -117,6 +119,7 @@ async function mount(options: Options = {}) {
     namespace: () => 'HSCUSTOM',
     schedule: () => {},
   });
+  const actions = new ScreenActions();
   TestBed.configureTestingModule({
     providers: [
       provideRouter([
@@ -128,7 +131,7 @@ async function mount(options: Options = {}) {
       { provide: ApiService, useValue: api as unknown as ApiService },
       { provide: RefreshService, useValue: refresh },
       { provide: ScreenStores, useValue: stores },
-      { provide: ScreenActions, useValue: new ScreenActions() },
+      { provide: ScreenActions, useValue: actions },
       { provide: OverlayStack, useValue: new OverlayStack() },
       {
         provide: ScopeService,
@@ -151,6 +154,7 @@ async function mount(options: Options = {}) {
     host,
     paths,
     store: stores.for(RECORDS.descriptor, RECORDS.refreshRates),
+    actions,
     openId: async (id: string) => {
       params.next(convertToParamMap({ id }));
       await settle(fixture);
@@ -276,6 +280,134 @@ describe('Journal records', () => {
     expect(nextOffset([row(5, 'a'), row(9, 'b'), row(7, 'c')], '0')).toBe('10');
     expect(nextOffset([row(5, 'a'), row(9, 'b'), row(7, 'c')], '1')).toBe('4');
     expect(nextOffset([], '0')).toBe('');
+  });
+
+  it('Newest first draws the newest record first and remembers the direction; Oldest first restores the declared one', async () => {
+    // Mutations (Rule 19), each applied and observed red here: remove the `followOrder` call in
+    // `open()`, map order 1 to `asc`, or drop the order 0 `setDirection('')` restore -> red.
+    const rows = [row(200, '^OcuProbe1979(200)'), row(300, '^OcuProbe1979(300)'), row(100, '^OcuProbe1979(100)')];
+    const { host, store, choose, fixture } = await mount({ rows });
+    const search = async () => {
+      (host.querySelector('form') as HTMLFormElement).dispatchEvent(new Event('submit', { cancelable: true }));
+      await settle(fixture);
+    };
+    const drawn = () =>
+      Array.from(host.querySelectorAll('.ocu-data-table-body [role="row"]')).map((tr) => /\((\d+)\)/.exec(tr.textContent ?? '')?.[1]);
+    expect(drawn()).toEqual(['100', '200', '300']);
+    await choose('order', '1');
+    await search();
+    expect(drawn()).toEqual(['300', '200', '100']);
+    expect(store.direction()).toBe('desc');
+    await choose('order', '0');
+    await search();
+    expect(drawn()).toEqual(['100', '200', '300']);
+    expect(store.direction()).toBe('');
+  });
+
+  it('Newest first leaves the direction alone under a sort the person chose on another column', async () => {
+    // Mutation (Rule 19), applied and observed red here: remove `followOrder`'s early return.
+    const { store, choose, host, fixture } = await mount();
+    store.setSort('TimeStamp');
+    await choose('order', '1');
+    (host.querySelector('form') as HTMLFormElement).dispatchEvent(new Event('submit', { cancelable: true }));
+    await settle(fixture);
+    expect(store.direction()).toBe('');
+    store.setDirection('desc');
+    await choose('order', '0');
+    (host.querySelector('form') as HTMLFormElement).dispatchEvent(new Event('submit', { cancelable: true }));
+    await settle(fixture);
+    expect(store.direction()).toBe('desc');
+  });
+
+  it('Newest first draws descending under an explicit Address sort', async () => {
+    // Mutation (Rule 19), applied and observed red here: keep only the `sort !== ''` half of the guard.
+    const { store, choose, host, fixture } = await mount();
+    store.setSort('Address');
+    await choose('order', '1');
+    (host.querySelector('form') as HTMLFormElement).dispatchEvent(new Event('submit', { cancelable: true }));
+    await settle(fixture);
+    expect(store.direction()).toBe('desc');
+    expect(Array.from(host.querySelectorAll('.ocu-data-table-body [role="row"]')).map((tr) => /\((\d+)\)/.exec(tr.textContent ?? '')?.[1])).toEqual(['3', '2', '1']);
+  });
+
+  it('Newest first follows an arrival that carries it, and an arrival without it restores the declared direction', async () => {
+    // Mutation (Rule 19), applied and observed red here: call `followOrder` from `onSearch` instead of `open()`.
+    const arrivals = new ScreenArrivals();
+    arrivals.set({ route: RECORDS.route, criterion: '', criteria: { file: FILE, order: '1' } });
+    const { store, fixture } = await mount({ arrivals });
+    expect(store.direction()).toBe('desc');
+    arrivals.set({ route: RECORDS.route, criterion: '', criteria: { file: NEWEST } });
+    await settle(fixture);
+    expect(store.direction()).toBe('');
+  });
+
+  it('Oldest first draws ascending when the remembered descending view is adopted after the cold open', async () => {
+    // Mutations (Rule 19), each applied and observed red here: drop the `followOrder` call in the store
+    // subscriber; stop adopting the remembered max rows, which shows the seeded view was adopted.
+    const view = JSON.stringify({ sort: '', direction: 'desc', filter: '', maxRows: 500 });
+    const account = stubAccountPreferences({ views: { [RECORDS.route]: view } });
+    const rows = [row(200, '^OcuProbe1979(200)'), row(300, '^OcuProbe1979(300)'), row(100, '^OcuProbe1979(100)')];
+    const { host, store, fixture } = await mount({ rows, account });
+    const drawn = () =>
+      Array.from(host.querySelectorAll('.ocu-data-table-body [role="row"]')).map((tr) => /\((\d+)\)/.exec(tr.textContent ?? '')?.[1]);
+    expect(store.remembered()).toBe(false);
+    await account.load();
+    await settle(fixture);
+    expect(store.remembered()).toBe(true);
+    expect(store.maxRows()).toBe(500);
+    expect(store.direction()).toBe('');
+    expect(drawn()).toEqual(['100', '200', '300']);
+  });
+
+  it('a direction chosen on the declared sort is kept after an adoption that restored no view', async () => {
+    // Mutations (Rule 19), each applied and observed red here: run `followOrder` on every store change,
+    // or on the first notification after adoption whether or not a stored view replaced the defaults.
+    const account = stubAccountPreferences();
+    const { store, fixture } = await mount({ account });
+    await account.load();
+    await settle(fixture);
+    store.setDirection('desc');
+    await settle(fixture);
+    expect(store.direction()).toBe('desc');
+  });
+
+  it('a direction chosen on the declared sort after a stored view is adopted on the cold open is kept', async () => {
+    // Mutation (Rule 19), applied and observed red here: drop `awaitingView = false` in the store subscriber.
+    const view = JSON.stringify({ sort: '', direction: 'asc', filter: '', maxRows: 500 });
+    const account = stubAccountPreferences({ views: { [RECORDS.route]: view } });
+    const { store, fixture } = await mount({ account });
+    await account.load();
+    await settle(fixture);
+    expect(store.restoredView()).toBe(true);
+    store.setDirection('desc');
+    await settle(fixture);
+    expect(store.direction()).toBe('desc');
+  });
+
+  it('a direction chosen on the declared sort is kept on a revisit that restores a stored view', async () => {
+    // Mutation (Rule 19), applied and observed red here: start the subscriber's `awaitingView` at true.
+    const view = JSON.stringify({ sort: '', direction: 'asc', filter: '', maxRows: 500 });
+    const account = stubAccountPreferences({ views: { [RECORDS.route]: view } });
+    await account.load();
+    const { store, fixture } = await mount({ account });
+    expect(store.remembered()).toBe(true);
+    fixture.destroy();
+    const revisit = TestBed.createComponent(JournalRecordsPage);
+    revisit.detectChanges();
+    await settle(revisit);
+    store.setDirection('desc');
+    await settle(revisit);
+    expect(store.direction()).toBe('desc');
+    revisit.destroy();
+  });
+
+  it('Refresh after an order picked but not searched draws in that order', async () => {
+    // Mutation (Rule 19), applied and observed red here: drop the `followOrder` call in the Refresh action.
+    const { store, choose, actions, fixture } = await mount();
+    await choose('order', '1');
+    expect(actions.run(RECORDS.descriptor, REFRESH_ACTION_ID)).toBe(true);
+    await settle(fixture);
+    expect(store.direction()).toBe('desc');
   });
 
   it('AC5: a row opens the dialog, which fetches the record and renders every value as text', async () => {

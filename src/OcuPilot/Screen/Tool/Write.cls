@@ -555,23 +555,27 @@ ClassMethod StateDiff(pFresh As %DynamicObject, Output pRows As %DynamicArray, O
     Quit $$$OK
 }
 
-/// <p>The field names, comma-separated, a delete tool's removal rows show, in order. Empty here; a delete
-/// declares its own and builds its rows with <method>RemovalRows</method>.</p>
+/// <p>The field names, comma-separated, a delete tool's removal rows show, in order. Empty here; a delete with
+/// a fixed set declares its own and builds its rows with <method>RemovalRows</method>, and one whose rows follow
+/// what it reads or fingerprints passes those names to <method>RemovalRows</method> instead.</p>
 Parameter REMOVALROWS = "";
 
-/// <p>The removal rows a delete's card shows: one <code>{field, before, after, removed}</code> per
-/// <parameter>REMOVALROWS</parameter> name, in that order. <code>before</code> is the field of the fresh read
+/// <p>The removal rows a delete's card shows: one <code>{field, before, after, removed}</code> per name of
+/// <var>pNames</var>, in that order; with no <var>pNames</var>, per <parameter>REMOVALROWS</parameter> name. <code>before</code> is the field of the fresh read
 /// <var>pFresh</var> as <method>OcuPilot.Kernel.Proposal.Mint.Display</method> renders it (<code>""</code> when
 /// <var>pFresh</var> is not an object), <code>after</code> is <code>""</code> and <code>removed</code> is
 /// true. With <var>pSkipUnassigned</var>, a field an object read did not assign gets no row; a read that is
 /// not an object still gets every row.</p>
+/// <p><var>pNames</var> is a <code>$ListBuild</code> list, as <method>ReadAnswers</method> and
+/// <method>FingerprintSubject</method> answer it, for a delete whose rows follow what it reads or fingerprints
+/// rather than a fixed <parameter>REMOVALROWS</parameter>.</p>
 /// <p><b>Caller contract:</b> it checks no precondition and returns no status; an error raised here reaches the
 /// caller, so a caller that answers a <code>%Status</code> for it wraps the call in its own <code>Try</code>.
 /// It reads nothing but <var>pFresh</var> and writes nothing.</p>
-ClassMethod RemovalRows(pFresh As %DynamicObject, pSkipUnassigned As %Boolean = 0) As %DynamicArray
+ClassMethod RemovalRows(pFresh As %DynamicObject, pSkipUnassigned As %Boolean = 0, pNames As %List = "") As %DynamicArray
 {
     Set tRows = []
-    Set tNames = $ListFromString(..#REMOVALROWS)
+    Set tNames = $Select(pNames '= "": pNames, 1: $ListFromString(..#REMOVALROWS))
     For tI = 1:1:$ListLength(tNames) {
         Set tField = $List(tNames, tI)
         Set tIsObject = $IsObject(pFresh)

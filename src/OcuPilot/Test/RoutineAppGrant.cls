@@ -3,7 +3,7 @@
 /// while a target role in <code>MatchRoles</code> does, are proposed at the destructive treatment with
 /// <code>GRANT.PRIVILEGED</code>, through the update tool's mint and through
 /// <method>OcuPilot.Kernel.Proposal.Prohibited.GrantsPrivilegeByEffect</method> asked directly; a remove, and an add under
-/// unprivileged roles, are not.</p>
+/// unprivileged roles, are not. So is public USE added to the resource such an application uses (DW-2432).</p>
 /// <p>Every write is real for an application named <code>OcuProbe1831...</code> and a role named
 /// <code>OcuProbe1833Role...</code>; the mint stores a proposal and writes nothing, and no proposal is confirmed.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed and serving, and
@@ -235,6 +235,37 @@ Method TestAResourceTheBroadPublicMayUseIsAGrantUnderAPrivilegedRole()
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Seed", "", ..#APP, {"Description": "probe", "Enabled": true, "Resource": ($Parameter(..#PROBE, "RESOURCE")), "MatchRoles": [{"MatchRole": "", "TargetRoles": [(tAdmin)]}], "Routines": []}), "an enabled probe application granting a privileged role")
     Do ..AssertMint({"Resource": (tUse)}, 1, "the resource moved to one the public may use")
     Do ..AssertMint({"Resource": (tRead)}, 0, "the resource moved to one the public only reads")
+}
+
+/// <p>DW-2432 (AD-10): adding USE to the public permission of a resource an enabled privileged routine application guards
+/// is a grant while its roles escalate, and is not when the application is disabled or grants only a database role, or the
+/// edit adds only a read letter. The application is judged by its own read, not by its list row, which reads every routine
+/// application as disabled.</p>
+/// <p>Mutation (Rule 19): read <code>Enabled</code> from the list row in
+/// <method>OcuPilot.Kernel.Proposal.Prohibited.GuardsPrivilegedApplication</method> -- the grant leg goes red.</p>
+Method TestPublicUseOnAResourceARoutineApplicationGuardsIsAGrant()
+{
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "EnsureResource"), "the probe resource, whose public permission holds nothing")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "EnsureRole", "Admin", "%Admin_Secure:U"), "a probe role carrying an administrative resource")
+    Set tResource = $Parameter(..#PROBE, "RESOURCE")
+    Set tAdmin = $ClassMethod(..#PROBE, "RoleName", "Admin")
+    Set tNothing = {"PublicPermission": ""}
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Seed", "", ..#APP, {"Description": "probe", "Enabled": true, "Resource": (tResource), "MatchRoles": [{"MatchRole": "", "TargetRoles": [(tAdmin)]}], "Routines": []}), "an enabled probe application granting a privileged role that guards it")
+    Do ..AssertResourceGrants({"PublicPermission": "U"}, tNothing, tResource, 1, "adding USE to the guarded resource")
+    Do ..AssertResourceGrants({"PublicPermission": "U"}, {}, tResource, 1, "a create naming it with USE")
+    Do ..AssertResourceGrants({"PublicPermission": "R"}, tNothing, tResource, 0, "adding only read to it")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Seed", "", ..#APP, {"Description": "probe", "Enabled": false, "Resource": (tResource), "MatchRoles": [{"MatchRole": "", "TargetRoles": [(tAdmin)]}], "Routines": []}), "the application disabled")
+    Do ..AssertResourceGrants({"PublicPermission": "U"}, tNothing, tResource, 0, "adding USE where it is disabled")
+    Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Seed", "", ..#APP, {"Description": "probe", "Enabled": true, "Resource": (tResource), "MatchRoles": [{"MatchRole": "", "TargetRoles": ["%DB_HSCUSTOM"]}], "Routines": []}), "the application enabled and granting only a database role")
+    Do ..AssertResourceGrants({"PublicPermission": "U"}, tNothing, tResource, 0, "adding USE where its roles escalate nothing")
+}
+
+/// <p>Assert that <code>GrantsPrivilegeByEffect</code> answers <var>pGrant</var> for a resource edit carrying
+/// <var>pPayload</var> against <var>pTarget</var>, the resource being <var>pId</var>.</p>
+Method AssertResourceGrants(pPayload As %DynamicObject, pTarget As %DynamicObject, pId As %String, pGrant As %Boolean, pLabel As %String)
+{
+    Set tSC = $ClassMethod(..#SET, "GrantsPrivilegeByEffect", $Parameter(..#SET, "TYPERESOURCE"), pPayload, pTarget, .tGrants, pId)
+    Do $$$AssertEquals($System.Status.IsOK(tSC) _ " " _ tGrants, "1 " _ pGrant, pLabel _ ": " _ $Select(pGrant: "a grant", 1: "no grant"))
 }
 
 /// <p>Mint the update of <parameter>APP</parameter> over <var>pChange</var> and assert it is destructive with

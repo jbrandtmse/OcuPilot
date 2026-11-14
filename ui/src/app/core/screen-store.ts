@@ -114,6 +114,9 @@ export class ScreenStore {
   /** Whether the instance's answer has been adopted since the last sign-in; `ShellState`'s flag. */
   private adopted = false;
 
+  /** Whether the adoption replaced the view with a stored one. */
+  private viewRestored = false;
+
   /** Released by `ScreenStores.reset()`, so a dropped store stops listening to the account store. */
   private stopAccount: () => void = () => {};
 
@@ -159,11 +162,13 @@ export class ScreenStore {
    * and a cap of `DEFAULT_MAX_ROWS` -- and a read that failed keeps them rather than clearing
    * anything. A remembered off is adopted like any rate, so a person who turned Home's refresh off
    * finds it off; a rate the descriptor no longer permits is ignored and the default stands. A view
-   * member of the wrong shape falls back field by field.
+   * member of the wrong shape falls back field by field. Listeners are notified only when the
+   * adoption changed the rate or adopted a stored view.
    */
   private adoptRemembered(): void {
     if (!this.account.loaded()) {
       this.adopted = false;
+      this.viewRestored = false;
       return;
     }
     if (this.adopted || (this.route === '' && this.rateKey === '')) return;
@@ -183,9 +188,29 @@ export class ScreenStore {
       this.filterText = view.filter;
       this.rowCap = view.maxRows;
       this.widths = view.widths;
+      this.viewRestored = true;
       moved = true;
     }
     if (moved) this.notify();
+  }
+
+  /**
+   * Whether the instance's remembered rate and view have been adopted since the last sign-in. It can
+   * turn true without a notification, when nothing was stored; a listener that derives state from
+   * the view asks `restoredView()` whether the sort and direction it read before were replaced. A
+   * store with neither a route nor a rate key has nothing to adopt, so this stays false for it.
+   */
+  remembered(): boolean {
+    return this.adopted;
+  }
+
+  /**
+   * Whether adoption replaced this store's view with one the instance had stored. Adoption
+   * notifies listeners only when it changed the rate or adopted a stored view, so this tells a
+   * listener whether that first notification carried a replaced sort and direction.
+   */
+  restoredView(): boolean {
+    return this.viewRestored;
   }
 
   /** The remembered view, or `null` when nothing usable is stored. */

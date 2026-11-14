@@ -42,7 +42,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
-import { WALKCALLDEADLINE, retryOnce, withDeadline } from './protocol-retry.mjs';
+import { WALKCALLDEADLINE, closeOrAbandon, retryOnce, withDeadline } from './protocol-retry.mjs';
 import { signedInAt } from './panel-spec.mjs';
 import { escapeOs, markerValue, runIris } from './turnprobe-spec.mjs';
 
@@ -813,14 +813,20 @@ async function walkPass(page, requests, config, { viewport, theme, checks, minim
 }
 
 /**
- * The walk's per-pass retry over `report` and `entries`: answers `(name, body)`, which runs
- * `body(found)` and joins `found` to `entries` once a run completes. A run that fails on a protocol
- * timeout (an abandoned call included) is run once more through `retryOnce`, with `report` put back
- * as it was before the pass, except for one `report.retried` line naming the pass and the call that
- * failed.
+ * The walk's per-pass retry over `report` and `entries`, holding `browser`: answers `(name, body)`,
+ * which runs `body(found, browser)` against the browser held at that moment and joins `found` to
+ * `entries` once a run completes. A run that fails on a protocol timeout (an abandoned call
+ * included) is run once more through `retryOnce`, with `report` put back as it was before the pass,
+ * except for one `report.retried` line naming the pass and the call that failed. When `relaunch` is
+ * given, the rerun first closes the held browser (abandoned after `CLOSEDEADLINE` when it does not
+ * close) and holds the browser `relaunch()` answers, since a browser that stalled a call can stall
+ * the rerun too; without it the rerun uses the same browser. `held()` answers the browser held now.
+ * When a pass fails and `report.retried` holds any line (its own retry's, or an earlier pass's), the
+ * error carries those lines on `error.retried` and at the end of its message.
  */
-export function passRetrier(report, entries) {
-  return async (name, body) => {
+export function passRetrier(report, entries, browser, relaunch = null) {
+  let current = browser;
+  const withRetry = async (name, body) => {
     const saved = {
       walked: new Set(report.walked),
       skipped: new Set(report.skipped),
@@ -832,19 +838,32 @@ export function passRetrier(report, entries) {
     const run = async () => {
       const found = [];
       try {
-        await body(found);
+        await body(found, current);
       } catch (error) {
         failure = String(error?.message ?? error);
         throw error;
       }
       return found;
     };
-    const reset = () => {
+    const reset = async () => {
       Object.assign(report, saved);
       report.retried.push(`${name} -- ${failure}`);
+      if (relaunch === null) return;
+      await closeOrAbandon(current);
+      current = await relaunch();
     };
-    entries.push(...(await retryOnce(run, reset)));
+    try {
+      entries.push(...(await retryOnce(run, reset)));
+    } catch (error) {
+      if (report.retried.length > 0 && error !== null && typeof error === 'object') {
+        error.retried = [...report.retried];
+        error.message = `${error.message}\nstructural walk retried: ${report.retried.join(' | ')}`;
+      }
+      throw error;
+    }
   };
+  withRetry.held = () => current;
+  return withRetry;
 }
 
 /**
@@ -852,11 +871,15 @@ export function passRetrier(report, entries) {
  * account menu's own toggle, switched back at the end; then 720 px in light (every structural
  * invariant). Each of the two passes is run once more in a fresh context when it fails on a
  * DevTools-protocol timeout, or when one of its page calls goes unanswered for `WALKCALLDEADLINE`;
- * the report names each retried pass. All of it runs with one conversation seeded
- * (`seedConversation`) and removed on every exit path. Answers `{entries, report}`; `report` counts walked, skipped, not built,
- * unresolved (an id-requiring screen neither walked nor skipped), unsettled and unmeasurable.
+ * the report names each retried pass. When `relaunch` (answers a new browser) is given, the rerun
+ * runs on a newly launched browser and the stalled one is closed, as `passRetrier` says; the walk
+ * answers the browser it ended on, which the caller closes. All of it runs with one conversation
+ * seeded (`seedConversation`) and removed on every exit path. Answers `{entries, report, browser}`;
+ * `report` counts walked, skipped, not built, unresolved (an id-requiring screen neither walked nor
+ * skipped), unsettled and unmeasurable. When the walk throws after any pass was retried, the error
+ * carries the retried lines.
  */
-export async function walk(browser, config) {
+export async function walk(browser, config, relaunch = null) {
   const minimums = componentMinimums();
   const report = {
     declared: declaredScreens().declared,
@@ -873,12 +896,12 @@ export async function walk(browser, config) {
 
   // A pass that fails on a protocol timeout is run once more in a fresh signed-in context, which
   // starts light: `signedInAt` clears the account's remembered shell state, the theme with it.
-  const withRetry = passRetrier(report, entries);
+  const withRetry = passRetrier(report, entries, browser, relaunch);
 
   const seeded = seedConversation(config);
   try {
-    await withRetry('1280px light then dark', async (found) => {
-      const wide = await signedInAt(browser, config, '/ocupilot/', VIEWPORTS.wide, reducedMotion);
+    await withRetry('1280px light then dark', async (found, held) => {
+      const wide = await signedInAt(held, config, '/ocupilot/', VIEWPORTS.wide, reducedMotion);
       try {
         const requests = trackRequests(wide.page);
         found.push(...(await walkPass(wide.page, requests, config, { viewport: VIEWPORTS.wide.width, theme: 'light', checks: INVARIANTS, minimums, report })));
@@ -891,8 +914,8 @@ export async function walk(browser, config) {
       }
     });
 
-    await withRetry('720px light', async (found) => {
-      const narrow = await signedInAt(browser, config, '/ocupilot/', VIEWPORTS.narrow, reducedMotion);
+    await withRetry('720px light', async (found, held) => {
+      const narrow = await signedInAt(held, config, '/ocupilot/', VIEWPORTS.narrow, reducedMotion);
       try {
         const requests = trackRequests(narrow.page);
         found.push(...(await walkPass(narrow.page, requests, config, { viewport: VIEWPORTS.narrow.width, theme: 'light', checks: ['name', 'min-width', 'overflow'], minimums, report })));
@@ -903,7 +926,7 @@ export async function walk(browser, config) {
   } finally {
     removeConversation(config, seeded);
   }
-  return { entries: collapse(entries), report };
+  return { entries: collapse(entries), report, browser: withRetry.held() };
 }
 
 /** The walk's own report, as the lines the spec and `--write` print. */

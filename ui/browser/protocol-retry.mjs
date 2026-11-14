@@ -64,15 +64,16 @@ export function withDeadline(promise, ms, label) {
 }
 
 /**
- * Run `create`; when it fails with a protocol timeout that has not had its retry, call `reset` and
- * run it once more. The second attempt's error is marked, so no other retry repeats it.
+ * Run `create`; when it fails with a protocol timeout that has not had its retry, await `reset` (it
+ * may be synchronous or answer a promise) and run it once more. The second attempt's error is
+ * marked, so no other retry repeats it. An error `reset` throws propagates unmarked.
  */
 export async function retryOnce(create, reset = () => {}) {
   try {
     return await create();
   } catch (error) {
     if (!isProtocolTimeout(error) || error[RETRIED] === true) throw error;
-    reset();
+    await reset();
     try {
       return await create();
     } catch (again) {
@@ -84,6 +85,18 @@ export async function retryOnce(create, reset = () => {}) {
 
 /** How long a wedged browser is given to close before it is abandoned. */
 export const CLOSEDEADLINE = 10_000;
+
+/**
+ * Close `browser`, waiting at most `closeDeadline`. A browser that does not close in time, or whose
+ * close fails, is abandoned, not waited for; this never throws.
+ */
+export async function closeOrAbandon(browser, closeDeadline = CLOSEDEADLINE) {
+  try {
+    await withDeadline(browser.close(), closeDeadline, 'browser close');
+  } catch {
+    // A wedged browser may not close; the caller moves on without it.
+  }
+}
 
 /** The message a page navigation that got no answer within `navigationTimeoutMs` carries. */
 export const NAVIGATION_TIMEOUT = /Navigation timeout of \d+ ms exceeded/;
@@ -105,11 +118,7 @@ export async function relaunchOnce(open, relaunch, browser, closeDeadline = CLOS
     return await open(browser);
   } catch (error) {
     if (!isNavigationTimeout(error)) throw error;
-    try {
-      await withDeadline(browser.close(), closeDeadline, 'browser close');
-    } catch {
-      // A wedged browser may not close; the new one is what the retry uses.
-    }
+    await closeOrAbandon(browser, closeDeadline);
     return open(await relaunch());
   }
 }

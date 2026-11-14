@@ -14,7 +14,10 @@
  *    and wide dark.
  * 5. **A refused record** (AC5): a reloaded record route on an address that holds no record shows
  *    the route's own reason in the dialog.
+ * 6. **Newest first** (DW-1979): the probe filter under Newest first lists the newest ten seeded
+ *    records, in descending Address.
  *
+
  * **It refuses the live and development containers.** It seeds the probe database
  * (`OcuPilot.Test.JournalProbe.SeedProbeDatabase`) over `docker exec` before its tests and removes
  * it, and the task rows its reads leave, after them; the records stay in the journal file.
@@ -262,6 +265,43 @@ test('AC2: the probe filter lists the first ten seeded records, and Next records
     assert.deepEqual(second, Array.from({ length: 10 }, (_, index) => `^OcuProbe185(${index + 11})`), 'Next records lists the next ten');
     const repeated = (await columnTexts(page, 'Address')).filter((address) => firstAddresses.includes(address));
     assert.deepEqual(repeated, [], 'none repeated');
+  } finally {
+    await context.close();
+  }
+});
+
+// DW-1979. Mutation (Rule 19): remove the `followOrder()` call in `open()` of the journal records
+// page, rebuild and redeploy -> the table sorts Address ascending under Newest first, the ten rows
+// read 21 to 30, and this goes red.
+test('DW-1979: Newest first draws the newest seeded records first, in descending Address', async () => {
+  const { context, page } = await signedInAt(browser, config, LIST_URL, VIEWPORTS.wide);
+  try {
+    await openRecords(page);
+    await setMaxRows(page, 10);
+    await setCriterion(page, 'value', 'OcuProbe185');
+    await page.select('#ocu-journal-records-order', '1');
+    await page.click('.ocu-criteria-controls button[type="submit"]');
+    // The read lands when all ten rows are seeded records: the form's earlier read lists the file's
+    // own first records, none of them probe records.
+    await page.waitForFunction(
+      (rowSelector) => {
+        const headers = Array.from(document.querySelectorAll('.ocu-data-table-header-row [role="columnheader"]'));
+        const index = headers.findIndex((header) => header.getAttribute('data-column') === 'GlobalNode');
+        const rows = Array.from(document.querySelectorAll(rowSelector));
+        return rows.length === 10 && rows.every((row) => (row.querySelectorAll('[role="gridcell"]')[index]?.textContent ?? '').includes('OcuProbe185('));
+      },
+      { timeout: config.navigationTimeoutMs },
+      ROW_SELECTOR
+    );
+    const nodes = await columnTexts(page, 'GlobalNode');
+    const addresses = (await columnTexts(page, 'Address')).map(Number);
+    assert.ok(addresses.every(Number.isInteger), `the Address cells are whole numbers: ${JSON.stringify(addresses)}`);
+    assert.deepEqual(
+      addresses,
+      [...addresses].sort((left, right) => right - left),
+      'the rows read newest first, in descending Address'
+    );
+    assert.deepEqual(nodes, Array.from({ length: 10 }, (_, index) => `^OcuProbe185(${30 - index})`), 'the newest ten seeded records, newest first');
   } finally {
     await context.close();
   }
