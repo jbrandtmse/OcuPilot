@@ -42,7 +42,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
-import { WALKCALLDEADLINE, closeOrAbandon, retryOnce, withDeadline } from './protocol-retry.mjs';
+import { WALKCALLDEADLINE, closeOrAbandon, isConnectionLoss, isProtocolTimeout, retryOnce, withDeadline } from './protocol-retry.mjs';
 import { signedInAt } from './panel-spec.mjs';
 import { escapeOs, markerValue, runIris } from './turnprobe-spec.mjs';
 
@@ -179,6 +179,9 @@ export function removeConversation(config, key) {
 
 /** How long a screen may take to settle before the walk records it as unsettled. */
 const SETTLE_TIMEOUT_MS = 20000;
+
+/** How many of the slowest visits the report prints. */
+const SLOWEST_VISITS = 5;
 
 /** A screen is settled once no `/api/ocupilot` request or shell script has been in flight for this long. */
 const QUIET_MS = 500;
@@ -678,27 +681,47 @@ function trackRequests(page) {
  * `[aria-busy="true"]` left, and the fonts loaded (`document.fonts.status` reads `loaded`). The font
  * condition is a synchronous read inside the loop, so `SETTLE_TIMEOUT_MS` bounds it; a font that
  * never loads leaves the screen unsettled, never the call waiting. `where`, when given, is the path the
- * page stands on and joins the step's label. Answers false when it never settles.
+ * page stands on and joins the step's label. Answers `{settled, ms, why}`: whether the screen settled,
+ * how long that took, and, when it did not, what was still pending -- the in-flight requests, the busy
+ * element or the font status.
  */
 export async function settle(page, requests, where = '') {
   const started = Date.now();
+  let pending = '';
   while (Date.now() - started < SETTLE_TIMEOUT_MS) {
     if (requests.inflight.size === 0 && Date.now() - requests.last >= QUIET_MS) {
       const ready = await bounded(
         stepLabel(requests, where === '' ? 'settle' : `settle ${where}`),
-        page.evaluate(() => document.fonts.status === 'loaded' && document.querySelector('[aria-busy="true"]') === null)
+        page.evaluate(() => {
+          if (document.fonts.status !== 'loaded') return `fonts ${document.fonts.status}`;
+          const busy = document.querySelector('[aria-busy="true"]');
+          return busy === null ? true : `busy element ${busy.tagName.toLowerCase()}${busy.id ? '#' + busy.id : ''}`;
+        })
       );
-      if (ready && requests.inflight.size === 0 && Date.now() - requests.last >= QUIET_MS) return true;
+      if (ready === true && requests.inflight.size === 0 && Date.now() - requests.last >= QUIET_MS) return { settled: true, ms: Date.now() - started, why: '' };
+      pending = ready === true ? '' : String(ready);
     }
     await new Promise((resolve) => setTimeout(resolve, 100));
   }
-  return false;
+  const inflight = [...requests.inflight].map((request) => pathOf(request.url()));
+  const why = inflight.length > 0 ? `in flight: ${inflight.join(', ')}` : pending !== '' ? pending : 'requests kept arriving';
+  return { settled: false, ms: Date.now() - started, why };
+}
+
+/** `url` as its path and query, or as given when it is not a URL. */
+function pathOf(url) {
+  try {
+    const parsed = new URL(url);
+    return parsed.pathname + parsed.search;
+  } catch {
+    return String(url);
+  }
 }
 
 /**
  * Move the running shell to `path` with the router's own navigation: a history entry and the
  * popstate the router listens for, never a second document -- which would bring the first-login
- * gate back (`shell-entry.mjs`).
+ * gate back (`shell-entry.mjs`). Answers `settle`'s `{settled, ms, why}`.
  */
 export async function goInApp(page, requests, path, timeoutMs) {
   const pathname = path.split('?')[0];
@@ -796,8 +819,10 @@ async function walkPass(page, requests, config, { viewport, theme, checks, minim
       report.unresolved.add(screen.route);
       continue;
     }
-    const settled = await goInApp(page, requests, url, config.navigationTimeoutMs);
-    if (!settled) report.unsettled.add(`${screen.route} (${viewport} ${theme})`);
+    const visit = `${screen.route === '' ? '/' : screen.route} (${viewport} ${theme})`;
+    const { settled, ms, why } = await goInApp(page, requests, url, config.navigationTimeoutMs);
+    report.visits.push({ visit, ms, settled, why });
+    if (!settled) report.unsettled.add(visit);
     if (!needsId(screen)) {
       const segment = await firstRowSegment(page, requests, screen.route);
       if (segment !== null) segments.set(screen.route, segment);
@@ -814,7 +839,8 @@ async function walkPass(page, requests, config, { viewport, theme, checks, minim
  * The walk's per-pass retry over `report` and `entries`, holding `browser`: answers `(name, body)`,
  * which runs `body(found, browser)` against the browser held at that moment and joins `found` to
  * `entries` once a run completes. A run that fails on a protocol timeout (an abandoned call
- * included) is run once more through `retryOnce`, with `report` put back as it was before the pass,
+ * included), or, when `relaunch` is given, on a lost connection (`isConnectionLoss`), is run once
+ * more through `retryOnce`, with `report` put back as it was before the pass,
  * except for one `report.retried` line naming the pass and the call that failed. When `relaunch` is
  * given, the rerun first closes the held browser (abandoned after `CLOSEDEADLINE` when it does not
  * close) and holds the browser `relaunch()` answers, since a browser that stalled a call can stall
@@ -830,6 +856,7 @@ export function passRetrier(report, entries, browser, relaunch = null) {
       skipped: new Set(report.skipped),
       unresolved: new Set(report.unresolved),
       unsettled: new Set(report.unsettled),
+      visits: [...(report.visits ?? [])],
       unmeasurable: report.unmeasurable,
     };
     let failure = '';
@@ -851,7 +878,8 @@ export function passRetrier(report, entries, browser, relaunch = null) {
       current = await relaunch();
     };
     try {
-      entries.push(...(await retryOnce(run, reset)));
+      const retryable = relaunch === null ? isProtocolTimeout : (error) => isProtocolTimeout(error) || isConnectionLoss(error);
+      entries.push(...(await retryOnce(run, reset, retryable)));
     } catch (error) {
       if (report.retried.length > 0 && error !== null && typeof error === 'object') {
         error.retried = [...report.retried];
@@ -868,13 +896,15 @@ export function passRetrier(report, entries, browser, relaunch = null) {
  * The whole walk: 1280 px in light (every invariant), then 1280 px in dark (contrast) after the
  * account menu's own toggle, switched back at the end; then 720 px in light (every structural
  * invariant). Each of the two passes is run once more in a fresh context when it fails on a
- * DevTools-protocol timeout, or when one of its page calls goes unanswered for `WALKCALLDEADLINE`;
- * the report names each retried pass. When `relaunch` (answers a new browser) is given, the rerun
+ * DevTools-protocol timeout, or when one of its page calls goes unanswered for `WALKCALLDEADLINE`,
+ * or, when `relaunch` is given, when its connection to the browser is lost; the report names each
+ * retried pass. When `relaunch` (answers a new browser) is given, the rerun
  * runs on a newly launched browser and the stalled one is closed, as `passRetrier` says; the walk
  * answers the browser it ended on, which the caller closes. All of it runs with one conversation
  * seeded (`seedConversation`) and removed on every exit path. Answers `{entries, report, browser}`;
  * `report` counts walked, skipped, not built, unresolved (an id-requiring screen neither walked nor
- * skipped), unsettled and unmeasurable. When the walk throws after any pass was retried, the error
+ * skipped), unsettled and unmeasurable, and `report.visits` holds each visit's `{visit, ms, settled,
+ * why}`. When the walk throws after any pass was retried, the error
  * carries the retried lines.
  */
 export async function walk(browser, config, relaunch = null) {
@@ -886,6 +916,7 @@ export async function walk(browser, config, relaunch = null) {
     skipped: new Set(),
     unresolved: new Set(),
     unsettled: new Set(),
+    visits: [],
     unmeasurable: 0,
     retried: [],
   };
@@ -929,13 +960,17 @@ export async function walk(browser, config, relaunch = null) {
 
 /** The walk's own report, as the lines the spec and `--write` print. */
 export function reportLines(report) {
+  const visits = report.visits ?? [];
+  const slowest = [...visits].sort((a, b) => b.ms - a.ms).slice(0, SLOWEST_VISITS);
   return [
     `structural walk: ${report.declared} declared screen(s); ${report.walked.size} walked, ${report.skipped.size} skipped, ${report.notBuilt.length} not built (${report.notBuilt.join(', ')})`,
     `structural walk: ${report.unresolved.size} id-requiring screen(s) neither walked nor skipped${report.unresolved.size === 0 ? '' : ': ' + [...report.unresolved].join(', ')}`,
     `structural walk: ${report.unmeasurable} text element(s) unmeasurable for contrast (a gradient or image behind them)`,
     `structural walk: ${report.unsettled.size} screen visit(s) did not settle within ${SETTLE_TIMEOUT_MS}ms${report.unsettled.size === 0 ? '' : ': ' + [...report.unsettled].join(', ')}`,
+    ...(slowest.length === 0 ? [] : [`structural walk: ${slowest.length} slowest visit(s): ${slowest.map((entry) => `${entry.visit} ${entry.ms}ms`).join('; ')}`]),
+    ...visits.filter((entry) => !entry.settled).map((entry) => `structural walk: unsettled ${entry.visit} after ${entry.ms}ms -- ${entry.why}`),
     ...Object.entries(SKIP).map(([route, reason]) => `structural walk: skipped ${route} -- ${reason}`),
-    ...report.retried.map((line) => `structural walk: pass retried once after a call went unanswered: ${line}`),
+    ...report.retried.map((line) => `structural walk: pass retried once after a call failed: ${line}`),
   ];
 }
 
