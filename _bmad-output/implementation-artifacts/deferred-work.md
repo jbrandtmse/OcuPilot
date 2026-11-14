@@ -10189,6 +10189,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-11T00:42:33Z status=routed owner=23-7-the-range-end-cleanup-part-6 by=load note=re-own from range-end-cleanup: kit 2026-10-10.1 owners are story keys or burndown
 - 2026-10-11T02:03:07Z status=routed owner=burndown by=merge_gate note=owner decision 2026-10-10 on 23.7, "Pull 5, hold rest (Recommended)", relayed by the Planner; CI flake, the next epic burn-down gate takes it
 - 2026-11-14T00:52:33Z owner=23-14-epic-23-burn-down by=burndown note=chartered_in_Story_23.14(Epic_23_burn-down,orchestrator_ruling_2026-11-14)
+- 2026-11-14T03:31:10Z status=resolved-by:23-14-epic-23-burn-down by=adjudication note=batch_2:error-log_sign-in_helpers_go_through_relaunchOnce+gotoNamingInflight,closing_the_context_on_error;source-text_pin_in_protocol-retry.test.mjs;the_ledger's_'same_shape_in_run_36483764167'_was_wrong(that_run_timed_out_in_the_explain-screen_spec);recurred_2026-11-13_run_43371448555;reopen_if=error-log_navigations_time_out_again_after_a_relaunch
 
 ### DW-2112: SaveHoldCoverage checks Save handler source text; only the web-application Save is held at runtime, so a wrong hold key in another Save is not caught
 - source: spec-23-4-the-range-end-cleanup-part-4.md | severity: med | fix-risk: low | footprint: in-story
@@ -11342,6 +11343,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-12T03:29:02Z occurrence=20-5-lookup-tables-and-business-partners
 - 2026-10-12T03:29:02Z status=routed owner=burndown by=runner note=second form caught: headless Chrome dropped its connection mid-run (frame detached, Connection closed); green on unchanged rerun
 - 2026-11-14T00:52:32Z owner=23-14-epic-23-burn-down by=burndown note=chartered_in_Story_23.14(Epic_23_burn-down,orchestrator_ruling_2026-11-14)
+- 2026-11-14T03:31:10Z status=resolved-by:23-14-epic-23-burn-down by=adjudication note=batch_2:settle_answers_{settled,ms,why},the_walk_records_each_visit_and_reports_the_slowest_and_every_unsettled_one_with_its_reason;a_lost_connection_reruns_the_pass_on_a_relaunched_browser;pins_in_ui/tools(structural-walk,protocol-retry)
 
 ### DW-2302: Jobs lists no job of Ens.MonitorService, Ens.Alarm or Ens.Alert, because EnumerateHostStatus, its host list, skips those three
 - source: spec-20-4-per-host-tabs-the-monitor-queues-and-jobs.md | severity: low | fix-risk: low | footprint: in-story
@@ -11872,6 +11874,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-13T21:11:34Z status=routed owner=burndown by=runner note=rerun once (attempt 2); if green it is a flake: the spec must wait for the reply's settled state before reading its text
 - 2026-10-13T21:52:09Z occurrence=20-7-the-three-embedded-vendor-editors note=attempt 2 of run 38463014073 green unchanged: a flake (orchestrator noted)
 - 2026-11-14T00:52:32Z owner=23-14-epic-23-burn-down by=burndown note=chartered_in_Story_23.14(Epic_23_burn-down,orchestrator_ruling_2026-11-14)
+- 2026-11-14T03:31:10Z status=resolved-by:23-14-epic-23-burn-down by=adjudication note=batch_2:the_markup_test_streams_the_reply_in_slices_and_waits_for_no_streamed_marker_before_reading;red_on_the_old_wait_in_a_real_browser
 
 ### DW-2398: Saved message searches are not offered: each vendor store (the classic namespace-shared one and the per-user Ens.Message.SavedSearch) belongs to its own search engine, which OcuPilot's header search cannot run
 - source: spec-20-9 gate (orchestrator ruling Q2) | severity: low | fix-risk: med | footprint: in-epic
@@ -12253,6 +12256,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-12T18:39:53Z occurrence=23-9-the-range-end-cleanup-part-8 note=run 43275467803 (74a6348f) attempt 1, browser shard 3/5: encryption-startup C1 not ok; rerun --failed
 - 2026-11-14T00:52:32Z owner=23-14-epic-23-burn-down by=burndown note=chartered_in_Story_23.14(Epic_23_burn-down,orchestrator_ruling_2026-11-14)
 - 2026-11-14T03:03:18Z occurrence=23-14-epic-23-burn-down note=staging_21d6495b_run_43545992116_attempt_1_browser_shard_1/5:C1,C2,C9_waiting_for_DBEncStartMode-None(before_batch_2's_fix);rerun_--failed
+- 2026-11-14T03:31:10Z status=resolved-by:23-14-epic-23-burn-down by=adjudication note=batch_2:C1_waits_for_the_keys_page_and_state_before_the_click,then_the_startup_path_and_the_None_radio_or_a_scoped_alert,naming_the_alert_text;no_deterministic_red(layout_timing,recorded);reopen_if=encryption-startup_C1/C2/C9_reds_again_in_CI
 
 ### DW-2463: The interop-editor browser specs keep local copies of the helpers interop-editor-spec.mjs now shares (answered, editorShows, the frame selector) and of 20.7's readSettings, settingsNode and shellAt
 - source: spec-20-10-source-control-hooks.md (code review) | severity: low | fix-risk: low | footprint: in-epic
@@ -12717,3 +12721,23 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: local shard re-run (Story 20.40 code head 80c03e4c) | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: Red once in shard 13 run after a full sweep on the same instance; green alone right after (runs 749, 771); green in the fresh sweep's shard 13 on d49eb2d3
 - 2026-11-13T19:36:37Z status=wontfix-accepted owner=20-40-item-copy-and-change-of-class by=harvest note=reopen_if=it reds on a fresh instance or in CI
+
+### DW-2548: flake: analytics-mdx.browser-spec.mjs AC7 timed out waiting for [data-ocu-mdx="banner"] on attempt 1 and passed on the unchanged rerun
+- source: staging e9f727fb run 43543858957 (orchestrator, 23.13 merge) | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: run 43543858957 attempt 1 red, attempt 2 green on the same head; same spec as the 23.13 batch 4 story red (AC1, ff913bec), whose rework restored the screen store's notify-on-change contract; a shared cause is not shown (inference)
+- 2026-11-14T03:05:37Z status=routed owner=21-10-the-remaining-leaves-across-the-six-areas by=lead note=CI flake, priority in the next standing cleanup; 23.14 is at burndown_story_max (12)
+
+### DW-2549: flake: agent-code-save.browser-spec.mjs QA 5-7 timed out waiting for app-proposal-card .ocu-proposal-card-confirm on attempt 1 and passed on the unchanged rerun
+- source: staging e9f727fb run 43543858957 (orchestrator, 23.13 merge) | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: run 43543858957 attempt 1 red, attempt 2 green on the same head; no earlier ledger entry for this spec
+- 2026-11-14T03:05:37Z status=routed owner=21-10-the-remaining-leaves-across-the-six-areas by=lead note=CI flake, priority in the next standing cleanup; 23.14 is at burndown_story_max (12)
+
+### DW-2550: The structural walk's per-visit record is pinned only by the a11y browser spec, which checks a numeric ms per visit but not that walkPass carries goInApp's settled and why into the visit
+- source: spec-23-14-epic-23-burn-down.md | severity: low | fix-risk: low | footprint: in-footprint
+- evidence: ui/browser/structural-walk.mjs walkPass report.visits.push; a11y-structural-invariants.browser-spec.mjs asserts only visits.length and Number.isFinite(ms); a push of settled:true, why:'' stays green (verification-gap layer, 23.14 batch 2 review)
+- 2026-11-14T03:24:09Z status=wontfix-accepted owner=23-14-epic-23-burn-down by=cr note=reopen_if=a walk report lists an unsettled visit with no 'structural walk: unsettled' reason line, or walkPass gains a fake-page unit harness
+
+### DW-2551: DW-2461's pre-click waits (aria-busy false, the keys state) and post-click path wait have no run in which the old C1 is red and the new one green
+- source: spec-23-14-epic-23-burn-down.md | severity: low | fix-risk: low | footprint: in-footprint
+- evidence: spec Tasks Batch 2 DW-2461 'No deterministic red: the miss depends on layout timing'; Verification batch 2 records two forced misses, both red; removing the pre-click waits reddens nothing (verification-gap layer, 23.14 batch 2 review)
+- 2026-11-14T03:24:10Z status=by-design owner=23-14-epic-23-burn-down by=cr note=spec-bound: the batch 2 task records that no deterministic red exists; DW-2461's reopen_if (C1 fails on the startup-path wait or names an alert) is the watch
