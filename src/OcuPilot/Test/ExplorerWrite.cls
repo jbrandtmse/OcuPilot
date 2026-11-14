@@ -250,7 +250,13 @@ ClassMethod HoldDocument(pDocument As %String, pHold As %Boolean)
 /// <p>AC3: the agent's compile, sent through the dispatcher, mints a proposal whose card names the
 /// documents and the three flags and carries no console line; confirming compiles both in one call and
 /// answers the console as the confirm's <code>output</code>.</p>
-/// <p>Mutation (Rule 19): put the written output on the mint's answer -- the turn leg goes red.</p>
+/// <p>The proposal stores the namespace it was read in as its <code>Namespace</code> argument, the
+/// confirm's gate requires WRITE on that namespace's routines database and not on the request's, and a
+/// confirm scoped to another namespace compiles in the stored one (DW-2253).</p>
+/// <p>Mutation (Rule 19): put the written output on the mint's answer -- the turn leg goes red.
+/// <method>OcuPilot.Screen.Tool.ExplorerWrite.ArgumentPairs</method> reading the request's scope, or
+/// <class>OcuPilot.Screen.Tool.ExplorerMint</class> not storing <code>Namespace</code> -- the namespace legs go
+/// red.</p>
 Method TestTheAgentCompilesThroughConfirm()
 {
     For tName = "OcuProbe192.Alpha", "OcuProbe192.Beta" {
@@ -265,13 +271,23 @@ Method TestTheAgentCompilesThroughConfirm()
     Do $$$AssertEquals(tProposal.target.id, "OcuProbe192.Alpha.cls,OcuProbe192.Beta.cls", "the target is the canonical set")
     Do $$$AssertTrue((tCard [ "OcuProbe192.Alpha.cls, OcuProbe192.Beta.cls") && (tCard [ """KeepSource""") && (tCard [ """CompileDependents""") && (tCard [ """SkipUpToDate"""), "the card names the documents and the flags: " _ tCard)
     Do $$$AssertTrue((tProposal.%ToJSON() '[ "Compilation") && (tProposal.%ToJSON() '[ "Compiling") && (tProposal.%GetTypeOf("output") = "unassigned"), "and the answer the model reads holds no console line")
-    Set tSC = ..ConfirmIn(..#PROBENAMESPACE, tProposal, .tResult, .tConfirmHttp, .tCode)
-    Do $$$AssertStatusOK(tSC, "the confirm writes: " _ $Get(tCode))
+    Do ##class(OcuPilot.Kernel.State.Propose).GuardedByKey(tProposal.proposalId, .tFound, .tValues)
+    Set tStoredArguments = $Select($Get(tFound) && ($Get(tValues("arguments")) '= ""): ##class(%DynamicObject).%FromJSON(tValues("arguments")), 1: "")
+    Do $$$AssertTrue($IsObject(tStoredArguments) && (tStoredArguments.%GetTypeOf("Namespace") = "string") && (tStoredArguments.%Get("Namespace") = ..#PROBENAMESPACE), "the stored arguments hold the namespace the proposal was read in: " _ $Get(tValues("arguments")))
+    If '$IsObject(tStoredArguments) Quit
+    Do ##class(OcuPilot.Kernel.Scope).Set($Namespace)
+    Do $$$AssertStatusOK(##class(OcuPilot.Screen.Tool.Registry).Resolve("explorer.classes.compile", .tTool), "the compile tool resolves")
+    Set tSC = ##class(OcuPilot.Kernel.Proposal.Operation).RequiredPairsOf(tTool, tValues("arguments"), .tPairs)
+    Do $$$AssertStatusOK(tSC, "the confirm's pairs resolve in " _ $Namespace)
+    Do $$$AssertTrue($ListFind(tPairs, $ListBuild("%DB_USER", "WRITE")) > 0, "a confirm scoped to " _ $Namespace _ " requires WRITE on " _ ..#PROBENAMESPACE _ "'s routines database")
+    Do $$$AssertTrue($ListFind(tPairs, $ListBuild(##class(OcuPilot.Test.DeveloperFloorFixture).CodeResource(), "WRITE")) = 0, "and not on the request's own")
+    Set tSC = ..ConfirmIn($Namespace, tProposal, .tResult, .tConfirmHttp, .tCode)
+    Do $$$AssertStatusOK(tSC, "the confirm, scoped to " _ $Namespace _ ", writes: " _ $Get(tCode))
     If '$IsObject($Get(tResult)) Quit
     Do $$$AssertEquals(tResult.state _ " " _ tResult.action _ " " _ tResult.readBack.verdict, "confirmed updated nothingSent", "the proposal is confirmed")
     Set tLines = $Select($IsObject(tResult.%Get("output")): tResult.output.lines.%ToJSON(), 1: "")
     Do $$$AssertTrue((tLines [ "qualifiers 'cuk'") && (tLines [ "OcuProbe192.Alpha") && (tLines [ "OcuProbe192.Beta"), "and the confirm answers the console of one compile of both: " _ tLines)
-    Do $$$AssertTrue($ClassMethod(..#PROBE, "Compiled", ..#PROBENAMESPACE, "OcuProbe192.Alpha") && $ClassMethod(..#PROBE, "Compiled", ..#PROBENAMESPACE, "OcuProbe192.Beta"), "both are compiled")
+    Do $$$AssertTrue($ClassMethod(..#PROBE, "Compiled", ..#PROBENAMESPACE, "OcuProbe192.Alpha") && $ClassMethod(..#PROBE, "Compiled", ..#PROBENAMESPACE, "OcuProbe192.Beta"), "both are compiled in " _ ..#PROBENAMESPACE)
     Set tStored = ..StoredText(tProposal.proposalId, .tLedgerRows)
     Do $$$AssertTrue(tLedgerRows > 0, "the turn's ledger rows are read: " _ tLedgerRows)
     Do $$$AssertTrue((tStored [ "OcuProbe192.Alpha.cls") && (tStored '[ "Compilation") && (tStored '[ "Compiling"), "and the stored proposal and its turn's ledger rows hold no console line: " _ $Extract(tStored, 1, 400))

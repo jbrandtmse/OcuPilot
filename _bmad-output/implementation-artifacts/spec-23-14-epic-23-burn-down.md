@@ -2,9 +2,9 @@
 title: 'Story 23.14: Epic 23 burn-down'
 type: 'bugfix'
 created: '2026-11-13'
-status: 'in-progress'
-baseline_revision: '04df7ef5c6b8e5054b8f1072c98bf63f0b62326b'
-baseline_commit: '04df7ef5c6b8e5054b8f1072c98bf63f0b62326b'
+status: 'done'
+baseline_revision: '90d4c3b31ff12ea14ef1e32892d930d520519f2a'
+baseline_commit: '90d4c3b31ff12ea14ef1e32892d930d520519f2a'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -316,19 +316,19 @@ Job logs for DW-2461 and DW-2111 are saved in `scratchpad/e23u/23-14/plan/browse
 
 ### Batch 5: Explorer namespace gate (waits for escalations 3 and 4)
 
-- [ ] **DW-2253.**
+- [x] **DW-2253.**
   - `src/OcuPilot/Screen/Tool/ExplorerWrite.cls`:
     - `PrivilegePairs` drops the code WRITE pair, as save and create do.
     - Add `ArgumentPairs`, returning `ExplorerSave.CodeWritePairs(pArgs)`.
     - Update the docs.
   - `ExplorerImport.ArgumentPairs` returns `CodeWritePairs(pArgs)` and then `FilePairs(pArgs)`.
   - `ExplorerMint.cls` and `ExplorerImportMint.cls` set `Namespace` = `Scope.Current()` after copying the arguments.
-- [ ] Update the old-shape tests:
+- [x] Update the old-shape tests:
   - `AtelierPortWriteDenial`: move compile, delete and both imports into the save/create loop;
   - `ToolEmit`: widen the save/create branch;
   - `DeveloperFloor`: add the tools to `TOOLS` and `HELDWRITES`. Read the count from the instance, and update the count message;
   - `ClassicPageGate` `OWNPAIRS`: empty compile and import, once ruled.
-- [ ] Pins, red before:
+- [x] Pins, red before:
   - `ExplorerWrite.TestTheAgentCompilesThroughConfirm`:
     - after the USER dispatch, the stored arguments hold `"Namespace":"USER"`;
     - with scope HSCUSTOM, `RequiredPairsOf` holds `%DB_USER:WRITE` and not HSCUSTOM's code WRITE;
@@ -454,6 +454,19 @@ Rejected (batch 3):
 - `low` New comments carry ledger ids -- the file's existing convention, as its test names do.
 - `low` Ruling preconditions (the browser shard's route to the port, Epic 20's `.github` log) unrecorded; `status: done` with batch 5 open; stale Auto Run counts; the commit message's wording of the prefix rule -- fixes edit the spec, its machine state or history; the auditor checked both preconditions hold.
 
+#### Batch 5 (2026-11-14)
+
+- [x] [Review][Patch] The unresolved-namespace guard in `ExplorerImport.ArgumentPairs` had no test, so an import, compile or delete naming a namespace with no routines database could pass the gate with no WRITE pair (med, fix-risk low) [src/OcuPilot/Test/AtelierPortWriteDenial.cls:TestTheToolsTakeTheirWritePairFromTheStoredNamespace] -- a leg passes a stored namespace that names no routines database to the six tools, with and without `root`, and asserts no resolution and no pairs; mutation line under Verification.
+- [x] [Review][Patch] Dropping `FilePairs` from the import's `ArgumentPairs` had no recorded red (low, Rule 19) [Verification] -- run 28, mutation line added.
+- [x] [Review][Patch] `TestTheAgentCompilesThroughConfirm` read `tValues("arguments")` after a failed lookup, which raised `<UNDEFINED>` with no message (low) [src/OcuPilot/Test/ExplorerWrite.cls] -- it quits after the stored-arguments assertion when the arguments are not an object.
+
+Rejected (batch 5):
+
+- `low` The `$ListFind(...) = 0` assertion is vacuous without the preceding `> 0` one -- both sit in one method and the first fails loudly.
+- `low` `TestAnAgentCompileIsGatedOnTheNamespaceItWrites` calls `Operation.Gate` with stored JSON for the converse -- the in-process dispatcher refuses a mint as another user; the forward leg mints and confirms.
+- `low` No mint-then-confirm across namespaces for delete or import -- both inherit the compile's mint, `ExplorerTransfer` pins the import mint's stored namespace, and the `ArgumentPairs` legs cover all ten tools.
+- `low` No end-to-end refusal-by-name at dispatch for compile, delete and import, and the screen action's unchanged row has no new assertion -- the stored-namespace gate is the intent's row; the screen action's path is unchanged code.
+
 **Acceptance Criteria:**
 
 - **Dispositions.** Given the 12 entries, when the story completes, then each is closed as Design Notes › Dispositions says, with its batch commit.
@@ -534,6 +547,19 @@ Rejected (batch 3):
   - `[low]` `[reject]` The exact budget cutoff and the clipped last sleep are unpinned (intent auditor) — no user-reachable harm; the exhaustion case pins the stop and the message.
   - `[low]` `[reject]` A retry wait of 0 retries without a pause for the whole budget (intent auditor) — documented in the script, and used only by tests that stub docker.
   - `[low]` `[patch]` Numeric validation is an extra the intent does not list (intent auditor) — kept, since a non-numeric value would abort `up` in an arithmetic error; pinned by the refusal case above.
+
+### 2026-11-14 — Review pass (batch 5)
+
+- verdicts: 8 findings — high 0, medium 1, low 7, false 0, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` The unresolved-namespace guard in `ExplorerImport.ArgumentPairs` is untested (verification-gap) — verified: without it `FilePairs` sets `pResolved` to 1; patched with a new leg, red without the guard (run 27).
+  - `[low]` `[patch]` Dropping `FilePairs` is not mutation-proven (verification-gap) — run 28 red, line added.
+  - `[low]` `[patch]` `<UNDEFINED>` after a failed `GuardedByKey` lookup (verification-gap) — quits when the arguments are not an object.
+  - `[low]` `[reject]` The `= 0` assertion is vacuous without the `> 0` one (verification-gap) — adjacent, the first fails loudly.
+  - `[low]` `[reject]` The converse leg calls `Operation.Gate` with stored JSON (verification-gap) — a mint as another user is refused in process; the forward leg is a real mint and confirm.
+  - `[low]` `[reject]` Import and delete have no cross-namespace mint-and-confirm (verification-gap) — they share the compile's mint, `ExplorerTransfer` pins the import mint, and the pair legs cover all ten tools.
+  - `[low]` `[reject]` Tests run at the confirm, not the HTTP route (intent auditor) — `Router` only sets the scope that `Scope.Set` sets in the tests; the confirm is the gate.
+  - `[low]` `[reject]` The declared-pair roster change and the screen action's unchanged row have no new assertion (intent auditor) — the roster is spec-bound (escalation 4, `DeveloperFloor` and `ToolEmit` updated); the screen action's code is unchanged.
 
 ## Design Notes
 
@@ -741,6 +767,17 @@ Batch 4:
 - mutation: DW-2408 -- the sweep dropped from `after` (`SweepSince` answering `0|0`): `interop-item-test` red on "no message or log row is left above the mark 0|0", actual `1|0|0|1|1|1|1|14` against `1|0|0|1|1|1|0|0`, so USER held 1 header and 14 log rows past the mark. Reverted (`cmp` identical) and USER swept back to `0|0`; run green, 5 tests, 0 failed, with `HighWater()` back at the mark.
 - (review) mutation: DW-2403 sibling teardowns -- `TurnLoop`'s `GuardedDeleteForTurn` dropped (throwaway copy): run 30 red, 6 of 11 methods on "and none of them survives". Reverted (`cmp` identical) and the `irisowner` rows removed (`Ledger` 0 rows); run 31 green. `TurnCitations` run 28, `AnthropicThinking` run 29, `TurnNavigate` run 32 (15) and `InteropEditorSaveTurn` run 33 (2) green, `Ledger` 0 rows after; `interop-item-test` 5 tests, 0 failed after a rebuild and redeploy.
 
+Batch 5:
+
+- mutation: DW-2253 `ArgumentPairs` -- `ExplorerWrite.ArgumentPairs` reading the request's scope (`CodeWritePairs({})`): `ExplorerWrite` run 10 red on "a confirm scoped to HSCUSTOM requires WRITE on USER's routines database" and "and not on the request's own"; `AtelierPortWriteDenial` run 11 red on the principal's confirm ("403 AUTH.NOPRIVILEGE", the class not compiled in USER, the converse's failed pair) and on the compile and delete stored-namespace legs. Before the change the confirm leg is the 403 the matrix names. Reverted (`cmp` identical).
+- mutation: DW-2253 `ExplorerMint` -- `Namespace` left out of the stored arguments: `ExplorerWrite` run 12 red on the stored-arguments leg and both pair legs; `AtelierPortWriteDenial` run 13 red on the confirm leg. Reverted (`cmp` identical).
+- mutation: DW-2253 `ExplorerImportMint` -- `Namespace` left out: `ExplorerTransfer` run 14 red on "its stored arguments hold the namespace the file was previewed in" (the one pin this mint has; the screen-action and tool-pair pins do not mint an import). Reverted (`cmp` identical).
+- mutation: DW-2253 `PrivilegePairs` -- the routines WRITE pair restored in `ExplorerWrite.PrivilegePairs`: `AtelierPortWriteDenial` run 15 red (confirm leg), `ToolEmit` run 16 red on `explorer.classes.compile`, `DeveloperFloor` run 17 red on the held roster, `ClassicPageGate` run 18 red on `explorer.classes.compile`. Reverted (`cmp` identical).
+- mutation: DW-2253 `ExplorerImport.ArgumentPairs` -- the file pairs alone (the old shape): `AtelierPortWriteDenial` run 19 red on both import tools' argument-pair legs. Reverted (`cmp` identical).
+- Final, one class per call after the revert and a reload: `ExplorerWrite` run 20 (10 tests), `AtelierPortWriteDenial` run 21 (9), `ToolEmit` run 22 (11), `DeveloperFloor` run 23 (10; `TOOLS` holds 62 names and `HELDWRITES` 17, the held set matching on the instance), `ClassicPageGate` run 24 (9), `ExplorerTransfer` run 25 (10); 0 failed. `AtelierPortWriteDenial`'s principal's ledger rows are removed by its own test; `ocupilot-ci`'s `Ledger` still holds 48 `IRISOWNER` and 3 `OCUPROBE1814PAGEHOLDING` rows left by other classes (inference: `ExplorerTransfer` and `ClassicPageGate` teardowns, outside this batch).
+
+- (review) mutation: DW-2253 unresolved guard -- the `If 'pResolved Quit ""` line deleted from `ExplorerImport.ArgumentPairs`: `AtelierPortWriteDenial` run 27 red on `TestTheToolsTakeTheirWritePairFromTheStoredNamespace` (the stored namespace that names no routines database now resolves, with the file pair). Reverted (`cmp` identical). `FilePairs` dropped from the same method (`Quit tPairs`): run 28 red on that test and on `TestAnImportOfAServerFileWithoutTheFilePairIsRefusedByName`. Reverted (`cmp` identical). Final after the revert and a reload: `AtelierPortWriteDenial` run 30 (9), `ExplorerWrite` run 29 (10), `ToolEmit` run 31 (11), `DeveloperFloor` run 32 (10), `ClassicPageGate` run 33 (9), `ExplorerTransfer` run 34 (10), all 0 failed; `uv run scripts/check-objectscript.py` 0 problems.
+
 Batch 6:
 
 - mutation: DW-2543 -- `followOrder` passing `true` (the old behavior): the new `journal-records.page.spec.ts` case red on "no view POST before the account answers" (`expected [ { ... } ] to deeply equal []`). The store ignoring `remember` (`rememberView()` always called): the same case red, and the `screen-store.test.mjs` case "setDirection with remember false ..." red. `setDirection` not notifying: the store case red. The subscriber's `followOrder` dropped: the page case red, and the existing "Oldest first draws ascending when the remembered descending view is adopted" case red. Each reverted (`git diff` byte-identical to before the mutation). Final: page spec 23 pass; `screen-store.test.mjs` 29 pass; `npm run test:components` 3382 pass; `npm run test:tools` 2233 pass; `npm run build` passes. No browser run in this pass (the `journal-records` browser spec is the lead's fresh check).
@@ -752,13 +789,13 @@ Batch 6:
 Status: done
 Blocking condition: none
 
-Batch 3 (CI tooling: DW-2123, DW-2501). Batches 1, 2, 4 and 6 closed at their own commits; batch 5 (DW-2253) is open.
+Batch 5 (Explorer namespace gate: DW-2253). Batches 1 to 4 and 6 closed at their own commits.
 
 - **Changed:**
-  - `scripts/ci-throwaway.sh`: a time budget (`OCUPILOT_BIND_WAIT_SECONDS`, default 120) with waits of 2, 4, 8, 16, then 30 s replaces the three attempts, still on bind failures only. Each bind failure prints the web port's sockets when `ss` exists. Both ports publish on `127.0.0.1`.
-  - `.github/workflows/ci.yml`: the gates job fetches `origin/release/*` tips at depth 1; the port-reservation comment states what the reservation does.
-  - `ui/tools/ci.test.mjs`: budget, wait-sequence, `ss`, loopback, refusal and gates-fetch cases; `DECLARED_GATES` carries the fetch.
-  - `ui/tools/stored-order.mjs` and `ui/tools/stored-order.test.mjs` (new): the stored-property order check against the newest `origin/release/*`.
-- **Review:** 15 findings: 7 patched (2 medium, 5 low), 0 deferred, 8 rejected (reasons in the log). Follow-up review recommended: false (no high patched).
-- **Verified:** `bash -n scripts/ci-throwaway.sh` clean; `ci.test.mjs` + `stored-order.test.mjs` 121 pass; `npm run test:tools` 2258 pass; `uv run scripts/test_check_objectscript.py` 146 OK; `uv run scripts/check-objectscript.py` 0 problems. Mutations under Verification, Batch 3.
-- **Residual:** the loopback bind and the new fetch step meet a real Docker port and a real GitHub checkout only at the lead's down/up check and in CI (inference until then). The shallow-skip and full-clone-fail branches of the git legs run only where a release ref is missing.
+  - `src/OcuPilot/Screen/Tool/ExplorerWrite.cls`: `PrivilegePairs` drops the code WRITE pair; new `ArgumentPairs` returns `ExplorerSave.CodeWritePairs`.
+  - `ExplorerImport.cls`: `ArgumentPairs` returns the code WRITE pair, then the file pairs.
+  - `ExplorerMint.cls`, `ExplorerImportMint.cls`: store `Namespace` = `Scope.Current()`.
+  - Tests: `AtelierPortWriteDenial`, `ToolEmit`, `DeveloperFloor` (62 tools, 17 held writes), `ClassicPageGate` (`OWNPAIRS`), `ExplorerWrite`, `ExplorerTransfer`.
+- **Review:** 8 findings: 3 patched (1 medium, 2 low), 0 deferred, 5 rejected (reasons in the log). Follow-up review recommended: false (no high patched).
+- **Verified:** one class per call on `ocupilot-ci` after the last reload: `ExplorerWrite` 10, `AtelierPortWriteDenial` 9, `ToolEmit` 11, `DeveloperFloor` 10, `ClassicPageGate` 9, `ExplorerTransfer` 10, 0 failed; `uv run scripts/check-objectscript.py` 0 problems. Mutations under Verification, Batch 5.
+- **Residual:** the full ObjectScript sweep is the lead's. When Epic 20 integrates, `ClassicPageGate` `OWNPAIRS` and `ToolEmit` take a plain union.

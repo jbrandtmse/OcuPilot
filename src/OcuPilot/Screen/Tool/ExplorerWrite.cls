@@ -13,9 +13,11 @@
 /// <code>DOCS</code>, which answers the namespace it read; that namespace is in every subject and
 /// travels in the port query, so a confirm writes where the proposal read.</p>
 /// <p><b>It declares WRITE on the namespace's routines database</b> beyond the list's
-/// <code>%Development:USE</code> (AD-8 as amended 2026-10-02, measured), resolved for the request's
-/// scope at each gate call; the port checks the same pair for the namespace it writes, before any
-/// vendor call. A document whose name begins with <code>OcuPilot</code> is refused by the kernel
+/// <code>%Development:USE</code> (AD-8 as amended 2026-10-02, measured) as an argument pair
+/// (<method>ArgumentPairs</method>): it resolves from the namespace the proposal stored in its
+/// <code>Namespace</code> argument, else the request's scope, so a confirm is gated on the namespace it
+/// writes; the port checks the same pair for that namespace, before any vendor call. A document whose
+/// name begins with <code>OcuPilot</code> is refused by the kernel
 /// (<parameter>OcuPilot.Kernel.Proposal.Prohibited.OCUPILOTCODE</parameter>) on both callers.</p>
 /// <p>A write's console lines and per-document results reach the screen and the proposal card only,
 /// through <method>WriteOutput</method> (AD-39's fifth exception).</p>
@@ -95,22 +97,24 @@ ClassMethod InputSchema(pDescriptor As %String = "") As %DynamicObject
     Quit tSchema
 }
 
-/// <p>The screen's own pairs, then WRITE on the routines database of the namespace the request is
-/// scoped to (<method>OcuPilot.Kernel.Scope.Current</method>), then the custom resource of each
-/// <parameter>CLASSICPAGES</parameter> page, each pair once (AD-8, AD-44). <var>pResolved</var> is 0
-/// when the namespace's routines database names no resource.</p>
+/// <p>The screen's own pairs, then the custom resource of each <parameter>CLASSICPAGES</parameter>
+/// page, each pair once (AD-8, AD-44). WRITE is not among them: <method>ArgumentPairs</method>
+/// carries it. <var>pResolved</var> is 0 when the screen's pairs do not resolve.</p>
 ClassMethod PrivilegePairs(pDescriptor As %String = "", Output pResolved As %Boolean) As %List
 {
     Set tPairs = ##class(OcuPilot.Screen.Gate).RequiredPairs(..#DESCRIPTORCLASS, .pResolved)
     If 'pResolved Quit ""
-    Do ##class(OcuPilot.Port.AtelierPort).DatabaseResources(##class(OcuPilot.Kernel.Scope).Current(), .tRoutine, .tGlobal, .tMapped, .tResolved)
-    If tRoutine = "" {
-        Set pResolved = 0
-        Quit ""
-    }
-    Set tOwn = $ListBuild(tRoutine, ..#WRITEPERMISSION)
-    If '$ListFind(tPairs, tOwn) Set tPairs = tPairs _ $ListBuild(tOwn)
     Quit ##class(OcuPilot.Screen.Gate).WithClassicPages(tPairs, ..#CLASSICPAGES)
+}
+
+/// <p>The WRITE pair on the routines database of the namespace the proposal stored in <var>pArgs</var>'
+/// <code>Namespace</code>, else of the request's scope
+/// (<class>OcuPilot.Screen.Tool.ExplorerSave</class>.<method>CodeWritePairs</method>). Both callers
+/// resolve it from the arguments they hold, so a compile, delete or import confirmed in another
+/// namespace is gated on the namespace it writes.</p>
+ClassMethod ArgumentPairs(pDescriptor As %String = "", pArgs As %DynamicObject, Output pResolved As %Boolean) As %List
+{
+    Quit ##class(OcuPilot.Screen.Tool.ExplorerSave).CodeWritePairs(pArgs, .pResolved)
 }
 
 /// <p>The namespace the stored payload <var>pPayload</var> was read in, under the port's own query
