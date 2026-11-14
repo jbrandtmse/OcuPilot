@@ -1857,3 +1857,10 @@
 2026-11-14T05:40:51Z	Epic 23	runner_reported	boundary=23.14_batch6(DW-2543) code_heads=a769e952,9a5403b6(43559590462_success_attempt1) ledger=DW-2543_resolved;DW-2553_SslSecret_flake_21-10 upgrade_triggers=none
 2026-11-14T05:40:51Z	Story 23.14	merged_to_feature	batch=6 tip=9a5403b6 merge=8f07f4a8b route=code_equal_merge checks=ledger_entry_check_0(2008),dups_none,sprint_validate_ok upgrade_triggers=none
 2026-11-14T05:40:51Z	ci	timings_refreshed	rule=29 run=43559590462
+2026-11-14T06:00:05Z	Epic 20	runner_reported	story=20.41_fix fdc0e406(fix_for=20-41;RemovalRowsSweep.Others()_add-only_with_spec_reason) sits_on=20.26_implement_ae506a6b(unreviewed) plan=ship_with_20.26_boundary(one_code_head,one_staging) orchestrator=agreed(no_cherry-pick;release_waits_on_epic20_close)
+2026-11-14T06:21:57Z	orchestrator	session_crash	at=~2026-11-14T06:00Z cause=owner_computer_crash runners=dead(in-session_subagents) last_heartbeat=05:42:12Z ci_in_flight=none(all_heads_resolved) worktrees=clean(e20_9_ahead,e23_8_ahead) containers=ocupilot_exited(owner_call),ocupilot-ci+ocupilot-b-ci_exited,ocupilot-slot-b_healthy
+2026-11-14T06:21:57Z	orchestrator	unattended_resumed	run=20261020T0940Z-20,23 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03 doctrine=3d11cec98d91c1d4d9c225fe3b265e1af418abe4 lock_token=1794576131-46542(same_session,lock_kept) by=owner_via_relay(Contest_Planner->OcuPilot_Planner) quote="resume work" hashes=unchanged runtime_locks=none slot_a=waits_for_ocupilot_up(owner_call,Planner_confirms)
+2026-11-14T06:21:57Z	Epic 23	ci_green_verified	story=23.14_batch4 runs=43562565417 head=2dd39eab result=success note=green_before_crash;boundary_not_reported_by_dead_runner;verified_by_orchestrator
+2026-11-14T06:21:57Z	Story 23.14	merged_to_feature	batch=4(DW-2403,DW-2408) tip=2dd39eab merge=24b9c2f10 route=code_equal_merge checks=ledger_entry_check_0(2009),dups_none,sprint_validate_ok upgrade_triggers=none
+2026-11-14T06:21:57Z	ci	timings_refreshed	rule=29 run=43562565417
+2026-11-14T06:21:57Z	orchestrator	dispatch_writeahead	epics=20(slot_b,re-dispatch_after_crash),23(slot_a,after_ocupilot_up) gate=token-free_push(Rule_32)
