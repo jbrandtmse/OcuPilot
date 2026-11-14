@@ -12121,6 +12121,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: ReadMessageContents cuts the text before splitting it, and truncated comes only from Screen/Read's extra-row check, so an HL7 body with a 1 MB document in one OBX segment ends on that segment cut at 4,000 and the segments after it go unannounced. LogSourcePort hands Screen/Read a port cut flag (tPortCut); the interop port has none, and Screen/Read.cls is on Story 20.9's Never list.
 - 2026-10-14T20:29:43Z status=escalated owner=burndown by=cr note=fix: an interop port cut flag through Screen/Read as LogSourcePort's tPortCut, or a product call on how the cut shows
 - 2026-11-14T10:35:34Z status=routed owner=21-10-the-remaining-leaves-across-the-six-areas by=unattended note=epic23_decision_sheet:route_to_next_standing_cleanup
+- 2026-11-14T13:09:03Z status=routed owner=21-7-interoperability-parity by=unattended note=epic20_decision_sheet:interop_port_cut_flag(re-owned_from_21-10)
 
 ### DW-2434: Rule 31: interop-message-contents.ts copies DataTable's state getters (boundHere, loaded, fault, showRefusal, showSkeleton, busy, showEmpty) and its skeleton, refusal and empty markup instead of sharing them
 - source: spec-20-9-messages-search-view-resend-and-trace.md | severity: low | fix-risk: med | footprint: in-epic
@@ -12566,6 +12567,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: CubeNodeHere leaves out a dependent %GetCubeList does not show; %BuildCube walks %GetUpdateLists with no privilege check (irislib Utils.cls:223-280, inference); unverified.
 - 2026-11-12T17:24:55Z status=decision-pending owner=burndown by=cr note=unverified: settle with a dependent whose resource P3 lacks; refusing it needs a new refusal sentence (wording)
 - 2026-11-14T10:35:36Z status=decision-pending owner=burndown by=unattended note=epic23_decision_sheet:measure_first_in_epic20_burndown
+- 2026-11-14T13:09:03Z status=wontfix-accepted by=unattended note=reopen_if=a_probe_with_a_dependent_the_callers_resource_lacks_shows_a_wrong_verdict
 
 ### DW-2520: The Cube manager list makes two GetLastUpdate queries (46 ms each, measured) and a full %GetCubeGroups pass per cube, so its read grows with the namespace's cube count
 - source: spec-20-34-the-cube-manager-s-build-and-synchronize.md | severity: low | fix-risk: med | footprint: in-story
