@@ -1235,3 +1235,5 @@ spawn_at=2026-10-06T16:01:05Z	Story 23.4	cr_complete	batch=b 2026-10-06T20:34:58
 2026-11-14T03:31:11Z	Story 23.14	ledger_adjudicated	batch=2 owned=4(DW-2461,DW-2397,DW-2111,DW-2301) resolved=4 reowned=0 terminal=0
 2026-11-14T03:33:51Z	Story 23.14	ci_resolved	story=23.14 batch=1 sha=21d6495b runs=43545992116 result=success failed=none via=none resolved_at=batch_boundary attempt=2(DW-2461_flake_rerun)
 2026-11-14T03:33:51Z	Story 23.14	boundary_reported	batch=1 to=main code_heads=36621e51,62de6712 staging=21d6495b runs=43545992116(green_a2) ledger=DW-2236,DW-2526_resolved;DW-2547_by-design
+2026-11-14T03:37:40Z	Story 23.14	rework_opened	cycle_iteration=1 iteration=batch_6 trigger=next_batch items=DW-2543 scope_baseline=07b8d59ea spec_status=done->in-progress note=batch_2_fresh_check_running_on_ocupilot-ci;batch_6_client-only
+2026-11-14T03:37:40Z	Story 23.14	stage_spawned	stage=implement batch=6 spawn_at=2026-11-14T03:37:40Z model=sonnet agent_name=23-14-epic-23-burn-down-implement-6 cycle_iteration=1 items=DW-2543 no_ocupilot-ci=yes
