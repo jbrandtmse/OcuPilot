@@ -2,8 +2,8 @@
 title: 'Story 20.41: Item change of class'
 type: 'feature'
 created: '2026-11-12'
-status: 'in-progress'
-baseline_revision: '389e9e2d856876ff9a03df440c0382bfef2c4d62'
+status: 'done'
+baseline_revision: '906b7b292fa7fa3cd257964abf9c861359ea15c6'
 baseline_commit: '389e9e2d856876ff9a03df440c0382bfef2c4d62'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -263,7 +263,7 @@ Rejected:
 - `low` DW-2545 still reads open: its adjudication is the runner's ledger gate.
 - `low` the spec lost its frontmatter `deferred:` key: the fix edits the spec under review; the runner's harvest is the place to restore it.
 
-- [ ] [Smoke] Full sweep on ddae7dc1 (fresh `ocupilot-b-ci`, 20 shards, 710 classes): four roster assertions the story's change missed -- (1) `OcuPilot.Test.ToolDispatch.TestTheShippedGateAllowsEveryLiveToolButTheBaselineDisabled` +24: "interop.items.changeclass: 1|" and "interop.items.remove: 1|"; (2) `OcuPilot.Test.CompositeMintSweep.TestTheRosterIsEveryCompositeIdMint` +34: "every composite-id mint has a row: OcuPilot.Screen.Tool.InteropItemChangeClassMint"; (3) `OcuPilot.Test.InteropHostDescriptor.TestTheItemTabsFormOneGroupInOrder` +18: "and the group has seven members" (the Classes tab joins the group); (4) `OcuPilot.Test.InteropHostDescriptor.TestThePortServesTheRuntimeEndpointsAndTheirPairs` +1: "the port's endpoint roster". Update each roster to the delivered shape (read every name from the instance, never recall it), find out why `interop.items.remove` now reads differently in ToolDispatch and fix the cause, not the symptom; add the three classes to `Shared surfaces:` and the `(loop)` class list; demonstrate one mutation per roster row added and record its `mutation:` line under `## Verification`.
+- [x] [Smoke] Full sweep on ddae7dc1 (fresh `ocupilot-b-ci`, 20 shards, 710 classes): four roster assertions the story's change missed -- (1) `OcuPilot.Test.ToolDispatch.TestTheShippedGateAllowsEveryLiveToolButTheBaselineDisabled` +24: "interop.items.changeclass: 1|" and "interop.items.remove: 1|"; (2) `OcuPilot.Test.CompositeMintSweep.TestTheRosterIsEveryCompositeIdMint` +34: "every composite-id mint has a row: OcuPilot.Screen.Tool.InteropItemChangeClassMint"; (3) `OcuPilot.Test.InteropHostDescriptor.TestTheItemTabsFormOneGroupInOrder` +18: "and the group has seven members" (the Classes tab joins the group); (4) `OcuPilot.Test.InteropHostDescriptor.TestThePortServesTheRuntimeEndpointsAndTheirPairs` +1: "the port's endpoint roster". Update each roster to the delivered shape (read every name from the instance, never recall it), find out why `interop.items.remove` now reads differently in ToolDispatch and fix the cause, not the symptom; add the three classes to `Shared surfaces:` and the `(loop)` class list; demonstrate one mutation per roster row added and record its `mutation:` line under `## Verification`.
 
 ## Spec Change Log
 
@@ -289,6 +289,15 @@ Rejected:
   - `[low]` `[reject]` digest enforcement lives at the callers as well as the port (intent audit) — same as the row on `Reviewed`.
   - `[low]` `[reject]` the picker and the write derive the item's kind separately (intent audit) — both call `Ens.Config.Item:GetBusinessType` (`InteropPort.cls` 1769, 2166).
   - `[low]` `[reject]` the nothing-dropped review is not pinned in the browser (intent audit) — it takes the existing one-row render path, and the agent's card for it is pinned.
+
+### 2026-11-13 — Review pass (rework 1, the `[Smoke]` roster item)
+
+- verdicts: 4 findings — high 0, medium 0, low 4, false 0, maybe-false 0
+- findings:
+  - `[low]` `[reject]` mutation line 4 mutates the test's own `ENDPOINTS` literal, not the product — the line says so ("the test's ENDPOINTS"), and the assertion compares the port's parameter to that literal, so removing a name from it is the discriminating mutation; the product-side drop also reddens `InteropDescriptor` and `InteropItemClasses`, which a line claiming "alone red" does not assert.
+  - `[low]` `[reject]` the probe's new `ArgumentProblem` stub has no mutation line of its own — the new roster row's mutation (row removed) is the line that pins the stub's need, and without the stub the row errors rather than passes.
+  - `[low]` `[reject]` the mutation runs are not visible in the diff — the tree after the pass is byte-identical to the diff (no mutated source), and the three classes were re-run green on `ocupilot-b-ci` after reload (runs 759-761).
+  - `[low]` `[reject]` the `ToolDispatch` comparison was rewritten rather than appended (intent audit) — a minimal in-place roster edit the dispatch allowed, and `Governance.cls` reads the same parameter with `$ListFind`.
 
 ## Design Notes
 
@@ -409,7 +418,7 @@ The story complies with every AD as it stands.
 
 - the Production items row actions;
 - an item's tab strip;
-- the write-tool and read-tool rosters (`ReadTool` +2, `ToolWrite`'s other-port count +1, `ToolRoundTrip`, `ToolEmit`, `SurfaceCoverage`);
+- the write-tool and read-tool rosters (`ToolDispatch`, `CompositeMintSweep`, `InteropHostDescriptor`, `ReadTool` +2, `ToolWrite`'s other-port count +1, `ToolRoundTrip`, `ToolEmit`, `SurfaceCoverage`);
 - the screen rosters (`Descriptor`, `StageTwoTools`, the screen mirror, `InteropFloor`);
 - the classic-page rosters (`MappingDescriptor`, `ClassicPageGate`);
 - the governance baseline;
@@ -427,6 +436,7 @@ The story complies with every AD as it stands.
 - `(loop)` `cd ui && node tools/ci-runner.mjs --container ocupilot-b-ci --class OcuPilot.Test.<C>`, one class per call:
   - `InteropItemChangeClass` (and its split), `InteropItemClasses`, `InteropItemControl`, `InteropItemGate`, `InteropItemRefusals`, `InteropItemDescriptor`;
   - `ReadTool`, `ToolWrite`, `ToolRoundTrip`, `ToolEmit`, `SurfaceCoverage`, `EndpointCoverage`, `GovernanceBaseline`, `Governance`, `Prohibited`, `ReadDescriptions`, `Descriptor`, `StageTwoTools`, `MappingDescriptor`, `ClassicPageGate`, `InteropFloor`, `CompileWithoutInterop`;
+  - `ToolDispatch`, `CompositeMintSweep`, `InteropHostDescriptor`;
   - and every class the sweep changes.
 - `(loop)` `cd ui && OCUPILOT_BROWSER_ORIGIN=http://localhost:52777 OCUPILOT_BROWSER_CONTAINER=ocupilot-b-ci node --test --test-concurrency=1 browser/<file>`, on the redeployed bundle, one call each for `interop-items.browser-spec.mjs` and `interop-host-tabs.browser-spec.mjs`.
 - `(loop)` `cd ui && npm run test:tools`, and as a separate call `cd ui && npm run test:components`. Both pass, `name-links.test.mjs` included.
@@ -458,6 +468,10 @@ The story complies with every AD as it stands.
 - mutation: (review) the baseline sets `interop.items.changeclass` `true` -> `InteropItemDescriptor.TestTheChangeOfClassToolAndItsCard` red on "listed in the governance baseline, disabled" (AC4).
 - mutation: (review) `Pairs` adds `ITEMWRITEPAIRS` for every item write but `CHANGECLASS` -> `InteropItemGate.TestEachMissingPairIsRefusedByNameThroughThePort` red on `OcuP203NoCfgWrite: Items|CHANGECLASS` (AC5).
 - mutation: (review) the picker store keeps `result.reason ?? ''` for an error and ignores every other kind -> `interop-item-change-class.store.spec.ts` `reports the server-fault sentence ...` red.
+- mutation: (smoke) `ToolDispatch` compares the tool name to the whole `INTEROPITEMREMOVE` list again -> `TestTheShippedGateAllowsEveryLiveToolButTheBaselineDisabled` red on `interop.items.remove` and `interop.items.changeclass`.
+- mutation: (smoke) the `InteropItemChangeClassMint` row removed from `CompositeMintSweep.Roster` -> `TestTheRosterIsEveryCompositeIdMint` alone red.
+- mutation: (smoke) the Classes tab at position 9 -> `InteropHostDescriptor.TestTheItemTabsFormOneGroupInOrder` red on position 8 and the eight members.
+- mutation: (smoke) `ItemClasses` left out of the test's `ENDPOINTS` -> `TestThePortServesTheRuntimeEndpointsAndTheirPairs` alone red.
 
 **Tests added or changed by QA:**
 
@@ -492,3 +506,5 @@ Blocking condition: none
 **Verified** on `ocupilot-b-ci` after the patches: the classes of the spec's loop list, run one at a time, all green (the two patched classes again after the patch); `npm run test:tools` 2211 pass; `npm run test:components` 3388 pass; `npm run build` passes with the initial bundle at 2.02 MB; `interop-items` (6) and `interop-host-tabs` (4) browser specs green on the redeployed bundle; `check-objectscript.py` and `lint-docs.sh` clean. Not run here: the full ObjectScript sweep, the smoke, Rule 30's fresh check and the full browser suite (the runner's and CI's).
 
 **Residual.** The veto-window items are in Design Notes (the tab also declares `%Ens_ProductionConfig:READ` as an own pair, and 11 new strings, not 12). DW-2298's change-of-class residual is the runner's to close.
+
+**Rework 1 (the `[Smoke]` roster item).** `ToolDispatch` compared a tool name to the whole two-name `INTEROPITEMREMOVE` list, so neither name matched; it now tests list membership. `CompositeMintSweep` gained the `InteropItemChangeClassMint` row and `CompositeMintProbe` the argument stand-ins it needs. `InteropHostDescriptor` pins the Classes tab at position 8 and `ItemClasses` in `ENDPOINTS`. `Write.RemovalRows` was not used (no rows built); `ToolDispatch` is a minimal in-place edit. Review: 4 low rejected (triage log), 0 patched; follow-up review not recommended. Verified on `ocupilot-b-ci`: `ToolDispatch` 19, `CompositeMintSweep` 5 and `InteropHostDescriptor` 8 tests green, one class per call after loading `src`; `check-objectscript.py` 0 problems; `lint-docs.sh` clean.

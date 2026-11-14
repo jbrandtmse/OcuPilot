@@ -50,6 +50,7 @@ ClassMethod Roster() As %DynamicArray
     Do tRoster.%Push({"mint": "OcuPilot.Screen.Tool.MappingMint", "args": {"Namespace": "USER", "Name": "ProbeMapping"}, "idValue": "ProbeMapping", "parts": ["USER", "ProbeMapping"]})
     Do tRoster.%Push({"mint": "OcuPilot.Screen.Tool.DocDbAppMint", "args": {"Namespace": "USER", "Name": "ProbeRecord"}, "idValue": "ProbeRecord", "parts": ["USER", "ProbeRecord"]})
     Do tRoster.%Push({"mint": "OcuPilot.Screen.Tool.InteropItemMint", "args": {"Production": "Probe.Production", "Name": "ProbeItem"}, "idValue": "ProbeItem", "parts": ["Probe.Production", "ProbeItem"]})
+    Do tRoster.%Push({"mint": "OcuPilot.Screen.Tool.InteropItemChangeClassMint", "args": {"Production": "Probe.Production", "Name": "ProbeItem", "NewClass": "Probe.NewClass"}, "idValue": "ProbeItem", "parts": ["Probe.Production", "ProbeItem"]})
     Do tRoster.%Push({"mint": "OcuPilot.Screen.Tool.InteropLookupEntryMint", "args": {"Table": "ProbeTable", "Key": "ProbeKey"}, "idValue": "ProbeKey", "parts": ["ProbeTable", "ProbeKey"]})
     Do tRoster.%Push({"mint": "OcuPilot.Screen.Tool.InteropSettingMint", "args": {"Production": "Probe.Production", "Item": "ProbeItem", "Target": "Host", "Name": "ProbeSetting"}, "idValue": "ProbeSetting", "parts": ["Probe.Production", "ProbeItem", "Host", "ProbeSetting"]})
     Do tRoster.%Push({"mint": "OcuPilot.Screen.Tool.SuperserverMint", "args": {"Port": "51999", "BindAddress": "127.0.0.1"}, "idValue": "51999", "parts": ["51999", "127.0.0.1"]})
