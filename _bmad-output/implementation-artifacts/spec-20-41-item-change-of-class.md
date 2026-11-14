@@ -284,6 +284,17 @@ Rejected:
   - Reason for the `Others()` line: the builder cannot take these rows. `RemovalRows` reads each row's value from `pFresh` by its field name and the roster pins every names call to `..RemovalRows(pFresh, <skip>, ..<source>())` over a fixed names source, while this tool's rows are `<Target>.<Name>` over an array the read carries, so they are the "array the tool reads for itself" shape that `Others()` names.
   - Scope of this pass: only this item; the checked tasks above are done and are not re-derived. Verify on `ocupilot-b-ci` (slot B, `server: "ocupilot-slot-b"`): load `src`, then run `OcuPilot.Test.RemovalRowsSweep`, `OcuPilot.Test.InteropItemChangeClass`, `OcuPilot.Test.InteropItemChangeClassRefusals`, `OcuPilot.Test.InteropItemDescriptor`, one class per call, and `uv run scripts/check-objectscript.py` on the changed classes. The card's rows stay exactly as they are (the existing card assertions stay green unchanged). Record a `mutation:` line for the roster pin under `## Verification`.
 
+Code review 2026-11-14, rework re-review (`ab0e5c00..62a087a4`): clean. The `[CI]` red is fixed: `RemovalRowsSweep` 7 of 7 green on `ocupilot-b-ci` (run 173, compiled `Others()` ends in `InteropItemChangeClass`). The reason is present and true: `RemovalRows` names each row from its names list and renders `before` from `pFresh` through `Mint.Display`, while this tool's rows are `<Target>.<Name>` from the read's `Dropped` array with a credential's value left empty (AD-35), and the sweep pins every names call to a fixed, argument-free names source.
+
+Rejected:
+
+- `low` lines 108 and 399 still say `Write.RemovalRows` is not on this branch and builds fixed-name rows only: the fix edits this spec.
+- `low` `RemovalRowsSweep` is not on `Shared surfaces:` or the `(loop)` class list: the fix edits this spec; CI's shards run the class.
+- `low` the recorded reason leaves out the AD-35 blank and the exact call text the sweep pins, and the rework's triage line overstates the `Sites` edit: the conclusion is true; the fix edits this spec.
+- `low` the cycle log's `dev_complete` note omits `InteropItemDescriptor` 12 of 12: the log is append-only, and this spec records run 171.
+- `false` the sweep's header describes deletes only: the scan covers every `OcuPilot.Screen.Tool` class and `Others()`'s own comment is not delete-specific, so no reader acts on the header wrongly.
+- `false` review outcomes were written before this review: the rework 2 triage entry is the implement stage's own review, the same convention as rework 1.
+
 ## Spec Change Log
 
 - 2026-11-14, rework iteration 2 (runner, CI story red on the staging head): the removed rows go through the shared builder.
