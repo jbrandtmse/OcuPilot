@@ -1864,3 +1864,11 @@
 2026-11-14T06:21:57Z	Story 23.14	merged_to_feature	batch=4(DW-2403,DW-2408) tip=2dd39eab merge=24b9c2f10 route=code_equal_merge checks=ledger_entry_check_0(2009),dups_none,sprint_validate_ok upgrade_triggers=none
 2026-11-14T06:21:57Z	ci	timings_refreshed	rule=29 run=43562565417
 2026-11-14T06:21:57Z	orchestrator	dispatch_writeahead	epics=20(slot_b,re-dispatch_after_crash),23(slot_a,after_ocupilot_up) gate=token-free_push(Rule_32)
+2026-11-14T06:39:07Z	orchestrator	owner_instruction	via=relay(Contest_Planner->OcuPilot_Planner) effect=account-switch_hold_written_by_Planner_at_2026-11-14T13:30Z;push_local_work_before;restart_after_switch_on_owner_word quota=57pct_at_06:38Z
+2026-11-14T06:40:14Z	orchestrator	owner_instruction	via=relay(Contest_Planner->OcuPilot_Planner) effect=hold_moved_to_2026-11-14T15:00Z(replaces_13:30Z)
+2026-11-14T07:04:17Z	orchestrator	ci_green_verified	runs=43566087333 head=dd646817c result=success gate=dispatch(Rule_32,after_crash)
+2026-11-14T07:04:17Z	Epic 20	runner_dispatched	slot=b runner=epic-runner-20 model=opus prompt=e20-unattended-20261020-prompt.md(Re-dispatch_2026-11-14) hold_at=2026-11-14T15:00Z(Planner_writes)
+2026-11-14T07:04:17Z	Epic 23	runner_dispatched	slot=a runner=epic-runner-23 model=opus prompt=e23-unattended-20261020-prompt.md(Re-dispatch_2026-11-14) hold_at=2026-11-14T15:00Z(Planner_writes)
+2026-11-14T07:46:18Z	Epic 23	runner_reported	boundary=23.14_batch3(DW-2123,DW-2501) code_heads=c4e10fbb,e277d207(43569579466_success) U-32_bind_condition=held(browser_shards_green) footprint_extensions=.github/workflows/ci.yml(release_fetch_depth1;comment) upgrade_triggers=none
+2026-11-14T07:46:18Z	Story 23.14	merged_to_feature	batch=3 tip=90d4c3b3 merge=f1aec185d route=code_equal_merge checks=ledger_entry_check_0(2010),dups_none,sprint_validate_ok(23-14_in-progress_for_batch5) footprint_extension_verified=.github/workflows/ci.yml(not_contended) upgrade_triggers=none
+2026-11-14T07:46:18Z	ci	timings_refreshed	rule=29 run=43569579466
