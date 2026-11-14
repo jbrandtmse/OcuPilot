@@ -684,10 +684,10 @@ Batch 6:
 
 ## Auto Run Result
 
-Status: done
-Blocking condition: none
+Status: blocked
+Blocking condition: intent gap: `src/OcuPilot/Test/ToolEmit.cls` is changed in the Epic 20 worktree (committed: 20.25, 20.34, 20.35 history and a 20.26 edit at `TestEveryLiveToolRequiresItsScreensPairs` about :297 in `origin/feature/OCU-1_ocupilot-mvp...HEAD`; also modified, uncommitted), and no orchestrator ruling covers it. Batch 5's task widens the save/create branch at :206-221, a non-add-only edit to that file. Recommended: allow (separate region from Epic 20's :297 edit; plain union at integration). No file was edited by this pass.
 
-Batches 1, 2 and 6 closed at their own commits. This pass: batch 4 (DW-2403, DW-2408) only.
+Batches 1, 2, 4 and 6 closed at their own commits. Batch 3 and batch 5 (DW-2253) are open. Other batch 5 files checked: `ClassicPageGate` is ruled (keep 20.41's entry if present; it is not in this tree, so only the compile and import entries go); the Explorer tools, mints, `AtelierPortWriteDenial`, `DeveloperFloor` and `ExplorerWrite` are unchanged by Epic 20 at `54d90dd10`.
 
 - **Changed:**
   - `src/OcuPilot/Test/TurnWireFixture.cls`: `SweepSince` selects `%EXACT(TurnKey)` and `%EXACT(UserName)`. `Sweep` deletes USERA's and USERB's ledger rows and reports `ledger rows (n)` from an exact SQL count (`LedgerRows`).

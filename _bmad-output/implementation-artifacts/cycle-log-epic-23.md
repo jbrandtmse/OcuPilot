@@ -1262,3 +1262,6 @@ spawn_at=2026-10-06T16:01:05Z	Story 23.4	cr_complete	batch=b 2026-10-06T20:34:58
 2026-11-14T04:57:00Z	Story 23.14	smoke_complete	batch=4 method=cli+browser result=pass iterations=1 defects_caught=0 evidence=smoke.sh_ocupilot-ci_50/50 model=claude-opus-5-5
 2026-11-14T04:58:27Z	Story 23.14	rework_opened	cycle_iteration=1 iteration=batch_5 trigger=next_batch items=DW-2253 scope_baseline=2dd39eab7 spec_status=done->in-progress
 2026-11-14T04:58:27Z	Story 23.14	stage_spawned	stage=implement batch=5 spawn_at=2026-11-14T04:58:27Z model=sonnet agent_name=23-14-epic-23-burn-down-implement-5 cycle_iteration=1 items=DW-2253
+2026-11-14T05:01:17Z	Story 23.14	dev_clarification_requested	batch=5 condition=intent_gap(Test/ToolEmit.cls_changed_by_Epic_20;batch_5_widens_its_save/create_roster_branch) via=SendMessage_main batch_5_waits=yes
+2026-11-14T05:01:17Z	Story 23.14	rework_opened	cycle_iteration=1 iteration=batch_3 trigger=next_batch items=DW-2123,DW-2501 scope_baseline=cd4f63331 spec_status=blocked->in-progress(batch_5_held)
+2026-11-14T05:01:17Z	Story 23.14	stage_spawned	stage=implement batch=3 spawn_at=2026-11-14T05:01:17Z model=sonnet agent_name=23-14-epic-23-burn-down-implement-3 cycle_iteration=1 items=DW-2123,DW-2501
