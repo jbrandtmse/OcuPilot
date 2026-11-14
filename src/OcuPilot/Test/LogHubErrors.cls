@@ -19,6 +19,18 @@ Parameter ARMINGVARIABLE = "OCUPILOT_ALLOW_ERROR_SEED";
 /// <p>The namespace the error is seeded in.</p>
 Parameter NAMESPACE = "HSCUSTOM";
 
+/// <p>The errors this test seeded, as <code>$ListBuild(namespace, day, number)</code> entries, which
+/// <method>OnAfterOneTest</method> deletes.</p>
+Property PreparedSeeds As %List;
+
+Method %OnNew(initvalue As %String = "") As %Status
+{
+    Set tSC = ##super(initvalue)
+    If $$$ISERR(tSC) Quit tSC
+    Set ..PreparedSeeds = ""
+    Quit $$$OK
+}
+
 Method OnBeforeAllTests() As %Status
 {
     If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 {
@@ -36,6 +48,7 @@ Method TestASeededErrorReadsInTheHubsForm()
     Set tSC = ##class(OcuPilot.Test.ErrorLogSeed).SeedInto(..#NAMESPACE, .tDay, .tNumber)
     Do $$$AssertStatusOK(tSC, "an application error is seeded")
     If $$$ISERR(tSC) Quit
+    Do ..Track(..#NAMESPACE, tDay, tNumber)
 
     Set tSC = ##class(OcuPilot.Port.LogSourcePort).Errors("dates", ..#NAMESPACE, "", "", "", .tDates, .tHttp, .tFault)
     Do $$$AssertStatusOK(tSC, "the namespace's dates read")
@@ -81,23 +94,37 @@ Method TestASeededErrorReadsInTheHubsForm()
     Do $$$AssertTrue($IsObject(tHubRow), "the hub's timeline carries it under its composite id")
     If $IsObject(tHubRow) Do $$$AssertEquals(tHubRow.time _ "|" _ tHubRow.severity _ "|" _ tHubRow.text, tTime _ "|2|" _ tText, "the same time, severity and text")
 
-    ; The cap: a second seed puts two errors in the window, so a cap of one answers the newest
-    ; alone and says it cut, and a cap above every error cuts nothing.
+    ; The cap: a second seed, a second after the first, puts two errors in the window, so a cap
+    ; of one answers a row no older than the second seed's alone and says it cut, and a cap above
+    ; every error cuts nothing. A later error in any namespace may take the row, so the read is
+    ; compared with the second seed's own time, and a stand-in seeded in USER after the full read
+    ; keeps the newer-row case in every run.
+    Hang 1
     Set tSC = ##class(OcuPilot.Test.ErrorLogSeed).SeedInto(..#NAMESPACE, .tDay2, .tNumber2)
     Do $$$AssertStatusOK(tSC, "a second application error is seeded")
+    If $$$ISERR(tSC) Quit
+    Do ..Track(..#NAMESPACE, tDay2, tNumber2)
     Set tSC = ##class(OcuPilot.Port.LogSourcePort).RecentErrors(100000, tSince, .tAll, .tHttp, .tFault)
     Do $$$AssertStatusOK(tSC, "every error in the window reads")
-    Set tNewest = ""
+    Set tSecondTime = ""
     If $IsObject($Get(tAll)) {
         Do $$$AssertEquals(tAll.truncated, 0, "a cap above every error cuts nothing")
         Set tIterator = tAll.rows.%GetIterator()
         While tIterator.%GetNext(.tIndex, .tRow) {
-            If tRow.time ] tNewest Set tNewest = tRow.time
+            If (tRow.namespace = ..#NAMESPACE) && (tRow.errorNumber = tNumber2) && ($ZDateH(tRow.date, 1, , , , , , , "") = tDay2) Set tSecondTime = tRow.time
         }
     }
+    Do $$$AssertTrue(tSecondTime '= "", "the full read carries the second seed under its own error number")
+    Hang 1.1
+    Set tSC = ##class(OcuPilot.Test.ErrorLogSeed).SeedInto("USER", .tDay3, .tNumber3)
+    Do $$$AssertStatusOK(tSC, "a stand-in error, newer than the second seed, is seeded in USER")
+    If $$$ISOK(tSC) Do ..Track("USER", tDay3, tNumber3)
     Set tSC = ##class(OcuPilot.Port.LogSourcePort).RecentErrors(1, tSince, .tOne, .tHttp, .tFault)
     Do $$$AssertStatusOK(tSC, "a cap of one reads")
-    If $IsObject($Get(tOne)) Do $$$AssertEquals(tOne.rows.%Size() _ "|" _ tOne.truncated _ "|" _ $Select(tOne.rows.%Size() > 0: tOne.rows.%Get(0).time, 1: ""), "1|1|" _ tNewest, "one row, the newest, and the read says it cut")
+    If $IsObject($Get(tOne)) && (tSecondTime '= "") {
+        Set tOneTime = $Select(tOne.rows.%Size() > 0: tOne.rows.%Get(0).time, 1: "")
+        Do $$$AssertEquals(tOne.rows.%Size() _ "|" _ tOne.truncated _ "|" _ ('(tSecondTime ] tOneTime) && (tOneTime '= "")), "1|1|1", "one row, no older than the second seed's, and the read says it cut: " _ tOneTime _ " against " _ tSecondTime)
+    }
 
     ; A bound after every error still answers each namespace's newest date, so the error log's last
     ; entry is its newest whatever the window, while the timeline holds none of it (AD-36).
@@ -149,4 +176,43 @@ Method TestASeededErrorReadsInTheHubsForm()
     Do $$$AssertEquals(tLeft, 0, "and none of that namespace's errors are read")
 }
 
+/// <p>Record an error this test seeded, so <method>OnAfterOneTest</method> deletes it.</p>
+Method Track(pNamespace As %String, pDay As %Integer, pNumber As %Integer)
+{
+    Set ..PreparedSeeds = ..PreparedSeeds _ $ListBuild($ListBuild(pNamespace, pDay, pNumber))
+}
+
+/// <p>Delete every error this test seeded through the vendor's own delete, and assert that none
+/// remains.</p>
+Method OnAfterOneTest() As %Status
+{
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        For tI = 1:1:$ListLength(..PreparedSeeds) {
+            Set tSeed = $List(..PreparedSeeds, tI)
+            Do ##class(SYS.ApplicationError).DeleteByError($List(tSeed, 1), $ZDate($List(tSeed, 2), 1), $List(tSeed, 3))
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Do $$$AssertStatusOK(ex.AsStatus(), "the seeded errors are deleted")
+    }
+    For tI = 1:1:$ListLength(..PreparedSeeds) {
+        Set tSeed = $List(..PreparedSeeds, tI)
+        Set tSC = ##class(OcuPilot.Test.ErrorLogSeed).Read("list", $List(tSeed, 1), $ZDate($List(tSeed, 2), 1), "", .tList, .tStatus, .tFault)
+        Set tLeft = 0
+        ; A day with no errors left answers 404; any other answer than 200 or 404 is a refused read.
+        Do $$$AssertTrue(($Get(tStatus) = 200) || ($Get(tStatus) = 404), "the day of the seeded error " _ $List(tSeed, 1) _ " #" _ $List(tSeed, 3) _ " reads back as its rows or as a day with none: " _ $Get(tStatus))
+        If $$$ISOK(tSC) && $IsObject($Get(tList)) {
+            Set tIterator = tList.rows.%GetIterator()
+            While tIterator.%GetNext(.tIndex, .tRow) {
+                If tRow.errorNumber = $List(tSeed, 3) Set tLeft = tLeft + 1
+            }
+        }
+        Do $$$AssertEquals(tLeft, 0, "the seeded error " _ $List(tSeed, 1) _ " #" _ $List(tSeed, 3) _ " is gone")
+    }
+    Set ..PreparedSeeds = ""
+    Quit $$$OK
+}
 }

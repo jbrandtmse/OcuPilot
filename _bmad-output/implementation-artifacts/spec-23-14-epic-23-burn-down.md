@@ -2,7 +2,8 @@
 title: 'Story 23.14: Epic 23 burn-down'
 type: 'bugfix'
 created: '2026-11-13'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: 'c92cdb4027ffe5af4adf802666504688e92797c2'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -220,7 +221,7 @@ Job logs for DW-2461 and DW-2111 are saved in `scratchpad/e23u/23-14/plan/browse
 
 ### Batch 1: instance-test flakes
 
-- [ ] **DW-2236.** `src/OcuPilot/Test/BackgroundTasksLive.cls`:
+- [x] **DW-2236.** `src/OcuPilot/Test/BackgroundTasksLive.cls`:
   - After a Pause that answers 200, call `BackgroundSeed.Settled(tTaskId, "Running")`.
     - If it settles to Paused, assert the Paused re-read and continue to Cancel.
     - If it settles to Done, take the existing ended-compact branch (Cancel answers 409 `TASK.BACKGROUND.STATE`, asserted).
@@ -229,7 +230,7 @@ Job logs for DW-2461 and DW-2111 are saved in `scratchpad/e23u/23-14/plan/browse
   - **Red first.** Add a temporary, uncommitted leg that calls `BackgroundSeed.Stall(job, 3)` between Resume and Pause. Measure whether Pause still answers 200. If it does, :218 reads Running at head, which is red, and the fixed test is green.
     - If the stall blocks or refuses the Pause, record that, and record "no deterministic red: the race is the vendor's checkpoint timing; the settle is the seed's established contract".
     - Mutation: drop the `Settled` call (red under the stall leg).
-- [ ] **DW-2526.** `src/OcuPilot/Test/LogHubErrors.cls`:
+- [x] **DW-2526.** `src/OcuPilot/Test/LogHubErrors.cls`:
   - `Hang 1` before the second seed (:86).
   - Take the second seed's time from its own row, matched by `errorNumber`.
   - Assert that the cap-of-one read answers one row, `truncated` 1, and a time no older than that seed's.
@@ -365,6 +366,16 @@ Job logs for DW-2461 and DW-2111 are saved in `scratchpad/e23u/23-14/plan/browse
 ## Spec Change Log
 
 ## Review Triage Log
+
+### 2026-11-13 — Review pass
+
+- verdicts: 5 findings — high 0, medium 0, low 3, false 2, maybe-false 0
+- findings:
+  - `[low]` `[reject]` DW-2526 stand-in is not pinned by an assertion — the spec fixes the cap-of-one assertion as "no older than the second seed's"; the stand-in's job is to make the old exact-newest assertion red, and the cap-keeps-oldest mutation pins the AC. Closed by-design.
+  - `[low]` `[patch]` DW-2526 teardown read-back passes when the read fails, and has no mutation line — added a status assertion (200, or 404 for a day with no errors left) and demonstrated the skipped-delete mutation red (run 25).
+  - `[low]` `[patch]` DW-2236 Resume and admin API settle sites have no recorded red — the DW-2236 mutation line now says neither has a deterministic red; same vendor-checkpoint cause.
+  - `[false]` `[reject]` DW-2526 `Hang` sleeps are not a readiness signal — they separate two one-second-resolution timestamps, which the assertion needs; the assertion holds either way.
+  - `[false]` `[reject]` Pause-200 branch final `StatusOf` read is a single read — it follows the seed's settle on the same process-state source; no defect shown.
 
 ## Design Notes
 
@@ -524,7 +535,23 @@ Sweep `ui/browser`, `ui/tools`, the `ui/src` specs and `src/OcuPilot/Test` for e
 
 **Mutation lines:** filled per batch with the observed run, one for each task's pin, as each task names.
 
+Batch 1:
+
+- mutation: DW-2236 -- no deterministic red. A temporary leg (removed, uncommitted) resumed a seeded compact, called `BackgroundSeed.Stall(job, 3)`, then sent the screen's Pause: it answered 200 after 3.0 s (the vendor's Pause waits for the stopped job), and the row and the vendor state both read Paused at once, so the pre-fix immediate re-read stayed green (`ocupilot-ci`, run 15, 10 tests, 0 failed). The race is the vendor's checkpoint timing; the settle is the seed's established contract (`BackgroundSeed.PausedCompact`). The Resume settle and the admin API `SettledRow` read wait on the same vendor checkpoint, and no stall forces either to read the old state, so neither has a deterministic red. Final class: run 20, 9 tests, 0 failed.
+- mutation: DW-2526 -- `LogSourcePort.RecentErrors` iterating `tHeld` oldest first (cap keeps the oldest row): `LogHubErrors` run 18 red, "one row, no older than the second seed's ... 2026-11-14T01:27:14.000 against 2026-11-14T01:27:16.000". Reverted (`git status` shows no `Port/` change); run 19, 1 test, 0 failed.
+- mutation: DW-2526 teardown -- the `DeleteByError` call in `LogHubErrors.OnAfterOneTest` commented out: `LogHubErrors` run 25 red on the three "is gone" assertions (HSCUSTOM #19, #20, USER #1). Reverted (byte-identical copy); final run green, 1 test, 0 failed.
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+Batch 1 (DW-2236, DW-2526), this pass only.
+
+- **Changed:**
+  - `src/OcuPilot/Test/BackgroundTasksLive.cls`: settles after Resume and after a 200 Pause through `BackgroundSeed.Settled` (Paused continues to Cancel, Done takes the ended-compact Cancel 409 branch, other states fail naming the state); `SettledRow` settles the admin API row's Paused re-read.
+  - `src/OcuPilot/Test/LogHubErrors.cls`: the second seed's time comes from its own row by namespace, day and `errorNumber`; a stand-in error seeded in USER after the full read; `OnAfterOneTest` deletes all three seeds and checks they are gone.
+  - This spec: boxes checked, mutation lines, triage log.
+- **Review:** 5 findings: 2 patched (teardown read-back status plus mutation, DW-2236 mutation line), 3 rejected (reasons in the log); none deferred. Follow-up review recommended: false (patched low 2, medium 0, high 0).
+- **Verified on `ocupilot-ci`, one class per call:** `BackgroundTasksLive` run 20 green (9 tests); `LogHubErrors` green on the final code; DW-2526 mutations red (runs 18, 25); `uv run scripts/check-objectscript.py` 0 problems; `npm run test:tools` 2221 pass, 0 fail. DW-2236 has no deterministic red (stall measurement, Verification).
+- **Residual:** the DW-2236 settles are unfalsified by a red; the mutation line says why.
