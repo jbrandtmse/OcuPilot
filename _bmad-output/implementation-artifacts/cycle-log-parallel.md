@@ -1916,3 +1916,8 @@
 2026-11-14T16:57:01Z	orchestrator	unattended_started	run=20261114T1656Z-21,22 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03 doctrine=3d11cec98d91c1d4d9c225fe3b265e1af418abe4 range=21,22 ci=gh visibility=public notify=push lock_token=1794675398-97204 kit=2026-10-19.3 deps=approved(hash_current)
 2026-11-14T16:57:01Z	orchestrator	spine_counter_seeded	next=67
 2026-11-14T16:57:01Z	orchestrator	ledger_counter_seeded	next=2558
+2026-11-14T16:58:44Z	Epic 21	worktree_provisioned	path=.worktrees/epic-21 branch=OCU-1-epic21 from=bb672a5f slot=a
+2026-11-14T16:58:44Z	Epic 22	worktree_provisioned	path=.worktrees/epic-22 branch=OCU-1-epic22 from=bb672a5f slot=b
+2026-11-14T16:58:44Z	Epic 21	worktree_bootstrapped	epic=21 result=ok
+2026-11-14T16:58:44Z	Epic 22	worktree_bootstrapped	epic=22 result=ok
+2026-11-14T16:58:44Z	orchestrator	dispatch_writeahead	epics=21(slot_a,retro_review=own),22(slot_b,retro_review=skip) prompts=e21-unattended-20261114-prompt.md,e22-unattended-20261114-prompt.md gate=token-free_push(Rule_32)
