@@ -12,3 +12,4 @@
 2026-11-14T17:52:09Z	Story 22.1	stage_spawned	stage=plan spawn_at=2026-11-14T17:52:09Z model=opus agent_name=22-1-the-exclusion-register-plan-1 cycle_iteration=1
 2026-11-14T18:05:01Z	Story 22.1	story_created	spawn_at=2026-11-14T17:52:09Z model=claude-opus-5-5 path=_bmad-output/implementation-artifacts/spec-22-1-the-exclusion-register.md build_status=ready-for-dev epic_context=reused warnings=oversized
 2026-11-14T18:05:01Z	Story 22.1	spec_validated	service_introducing=false integration_ac=declared-none adr_constrained_acs= decision_dependency=none sections_created=none owned_ledger=none addressed=0 declined=0 mutates_shared_runtime=false model=claude-opus-5-5
+2026-11-14T18:05:03Z	Story 22.1	stage_spawned	stage=implement spawn_at=2026-11-14T18:05:03Z model=sonnet agent_name=22-1-the-exclusion-register-implement-1 cycle_iteration=1 story_base=2d9befbc8

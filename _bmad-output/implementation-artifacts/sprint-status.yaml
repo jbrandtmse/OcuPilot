@@ -402,8 +402,8 @@ development_status:
   21-11-the-agent-gains-the-harvested-tools-and-undo: backlog
   epic-21-retrospective: optional
 
-  epic-22: backlog
-  22-1-the-exclusion-register: ready-for-dev
+  epic-22: in-progress
+  22-1-the-exclusion-register: in-progress
   22-2-picking-up-a-row-when-its-gate-clears: backlog
   epic-22-retrospective: optional
 
