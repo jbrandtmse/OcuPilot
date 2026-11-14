@@ -2,7 +2,8 @@
 title: 'Story 22.2: Picking up a row when its gate clears'
 type: 'chore'
 created: '2026-11-14'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: 'f3068683fa852cad75e3772ade3013974c563442'
 review_loop_iteration: 0
 followup_review_recommended: false
 context: []
@@ -79,6 +80,20 @@ deferred: []
 
 ## Review Triage Log
 
+### 2026-11-14 — Review pass
+
+- verdicts: 9 findings — high 0, medium 1, low 7, false 1, maybe-false 0
+- findings:
+  - `[low]` `[patch]` assess/refuse phrase assertions and the kinds instance-phrase branch had no mutation line — demonstrated all five mutations red, lines written.
+  - `[medium]` `[patch]` build step pinned only for 12 paths; deleting the read-tool item or the record sentence stayed green — roster extended (Read, Mint, Confirm, AdminPort) and a record-the-request assertion added, both mutation-proved.
+  - `[low]` `[patch]` planned `####` mutation line stale — replaced by `######`, the form that reddens lint.
+  - `[low]` `[patch]` the contract test's final existence loop duplicated the path test — removed.
+  - `[false]` `[reject]` Auto Run Result reads ready-for-dev — rewritten at finalize.
+  - `[low]` `[reject]` placeholder paths checked only to their parent — the spec's matrix says exactly this.
+  - `[low]` `[reject]` intent-alignment: tests pin prose shape, not meaning — a doc procedure can only be pinned textually; the key phrases are now asserted.
+  - `[low]` `[reject]` intent-alignment: build step has nine sub-items against "three steps" — the three are the `###` steps; the spec's Tasks list the nine items.
+  - `[low]` `[reject]` intent-alignment: Gate kinds table gained a column — the spec's Tasks require it and 22.1's parser reads only column 0.
+
 ## Design Notes
 
 **Architecture decisions.** FR-80 and the Design Paradigm (one slice per area, never reaching into another) govern a pick-up; the spine gives Stage 6 no AD. The procedure cites AD-5, AD-3, AD-6, AD-8 (privilege set), AD-10, AD-15, AD-22, AD-27, AD-29, AD-36, AD-44, AD-52, AD-53, AD-62, AD-65. No AC contradicts an AD.
@@ -118,9 +133,17 @@ deferred: []
 - mutation: change a cited path to `src/OcuPilot/Screen/Registry2.cls` -> the path test red naming it.
 - mutation: remove `src/OcuPilot/Test/SurfaceCoverage.cls` from the build step -> the contract test red naming it.
 - mutation: delete the SA-50 register row -> 22.1's row-set test red naming SA-50 missing.
-- mutation: change `## Gate kinds` to `####` -> `bash scripts/lint-docs.sh` exit 1.
+- mutation: change `## Gate kinds` to `######` -> `bash scripts/lint-docs.sh` exit 1 (MD001).
+- mutation: remove the assess step's `Nothing is designed or built` sentence, its `the instance the request is for` or its record-the-date clause, the refuse step's `changes no file`, or the `platform` cell's instance phrase -> the assess/refuse column test or the kinds test red.
+- mutation: delete build item 4 or the `bmad-correct-course` name -> the contract test red.
+
+**Mutation results (Rule 19):** all of the above applied, observed red naming the cause, and reverted (register and test checksums identical afterwards). `####` leaves `lint-docs.sh` green (h3 to h4 is a legal step), so the planned lint mutation is `######`.
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+Added `## Picking up a row` (assess, refuse, build) and a `How a request checks it` column to `docs/exclusion-register.md`; extended `ui/tools/exclusion-register.test.mjs` with five tests (placement and order, quoted columns and key phrases, every kind's check, every cited path exists, build step names the 16-file contract and the record). Review: 4 patches applied (1 medium, 3 low), 5 rejected with reasons in the triage log, none deferred. Follow-up review recommended: false (patched counts: high 0, medium 1, low 3).
+
+Verification: exclusion-register test 16 of 16; `lint-docs.sh` and `client-lint.mjs` clean; `npm run test:tools` 2278 pass, 0 fail; every Rule 19 mutation observed red and reverted.

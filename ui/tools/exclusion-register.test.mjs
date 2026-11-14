@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
@@ -14,6 +14,11 @@ import { dirname, join } from 'node:path';
 // Both sides of every equality are read from the documents; no row-set ID or count is typed here. Nothing
 // calls an instance, so the test needs only the checkout. A document that parses to nothing fails
 // naming itself, never as a pass over an empty set.
+//
+// It also holds the register's `## Picking up a row` procedure: the section sits before `## Gate kinds`,
+// its three steps come in order, the assess and refuse steps quote the register's own column names
+// (taken from REGISTER_COLUMNS), every gate kind carries a check, every repository path the section
+// names exists, and the build step names each file of CONTRACT_PATHS.
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const PLANNING = join(REPO_ROOT, '_bmad-output', 'planning-artifacts');
@@ -32,6 +37,31 @@ const EM_DASH = '\u2014';
 const GROUP_LINE_RE = new RegExp(`^\\*\\*(.+)\\*\\* ${EM_DASH} (\\d+) rows?$`);
 const ISO_DATE_RE = /\b\d{4}-\d{2}-\d{2}\b/;
 const REGISTER_COLUMNS = ['ID', 'Feature', 'Reason', 'Gate kind', 'Gate', 'How to tell it has cleared'];
+const PICK_UP_HEADING = '## Picking up a row';
+const PICK_UP_STEPS = ['Assess the gate first', 'When the gate has not cleared', 'When the gate has cleared'];
+const KIND_CHECK_COLUMN = 'How a request checks it';
+const INSTANCE_PHRASE = 'the instance the request is for';
+const REPO_PATH_RE = /^(src|ui|docs|scripts|_bmad-output)\//;
+
+// Files the build step must name: the screen contract a built row is held to.
+const CONTRACT_PATHS = [
+  'src/OcuPilot/Screen/Descriptor/Base.cls',
+  'src/OcuPilot/Screen/Registry.cls',
+  'src/OcuPilot/Screen/Area.cls',
+  'ui/tools/screen-mirror.mjs',
+  'src/OcuPilot/Screen/Tool/Registry.cls',
+  'src/OcuPilot/Screen/Tool/Read.cls',
+  'src/OcuPilot/Screen/Tool/Write.cls',
+  'src/OcuPilot/Kernel/Proposal/Mint.cls',
+  'src/OcuPilot/Kernel/Proposal/Confirm.cls',
+  'src/OcuPilot/Port/AdminPort.cls',
+  'src/OcuPilot/Kernel/Proposal/Prohibited.cls',
+  'src/OcuPilot/Kernel/Governance/Baseline.cls',
+  'src/OcuPilot/Test/SurfaceCoverage.cls',
+  'src/OcuPilot/Test/EndpointCoverage.cls',
+  'src/OcuPilot/Test/SaveHoldCoverage.cls',
+  'src/OcuPilot/Test/GovernanceBaseline.cls'
+];
 
 /** The trimmed cells of one Markdown table line; `\|` stays inside its cell. */
 function cellsOf(line) {
@@ -136,6 +166,46 @@ function parseRegister() {
     }
   }
   return { kinds, groups };
+}
+
+/**
+ * The `## Picking up a row` section: its heading position, its `###` subsections as `{ heading, body }` in
+ * document order, and its whole text. `where` is the line index of the heading, -1 when it is absent.
+ */
+function parsePickUp() {
+  const lines = linesOf(REGISTER_PATH);
+  const where = lines.indexOf(PICK_UP_HEADING);
+  const kindsAt = lines.indexOf('## Gate kinds');
+  const steps = [];
+  let text = '';
+  if (where >= 0) {
+    for (let i = where + 1; i < lines.length && !lines[i].startsWith('## '); i += 1) {
+      text += `${lines[i]}\n`;
+      if (lines[i].startsWith('### ')) steps.push({ heading: lines[i].slice(4).trim(), body: '' });
+      else if (steps.length > 0) steps[steps.length - 1].body += `${lines[i]}\n`;
+    }
+  }
+  return { where, kindsAt, steps, text };
+}
+
+/** The Gate kinds table as `{ kind, checks }` rows, reading the check column by the name its header gives it. */
+function parseKindChecks() {
+  const lines = linesOf(REGISTER_PATH);
+  const kindsAt = lines.indexOf('## Gate kinds');
+  const registerAt = lines.indexOf('## The register');
+  assert.ok(kindsAt >= 0 && registerAt > kindsAt, `${REGISTER_PATH}: no '## Gate kinds' table before '## The register'`);
+  const section = lines.slice(kindsAt + 1, registerAt).filter((line) => line.startsWith('|'));
+  const header = section.length > 0 ? cellsOf(section[0]) : [];
+  const checkAt = header.indexOf(KIND_CHECK_COLUMN);
+  assert.ok(checkAt >= 0, `${REGISTER_PATH}: the Gate kinds table has no '${KIND_CHECK_COLUMN}' column; read [${header.join(' | ')}]`);
+  const rows = [];
+  for (const line of section) {
+    const cells = cellsOf(line);
+    const match = /^`([a-z-]+)`$/.exec(cells[0]);
+    if (match === null) continue;
+    rows.push({ kind: match[1], check: cells[checkAt] === undefined ? '' : cells[checkAt] });
+  }
+  return rows;
 }
 
 function sorted(values) {
@@ -280,4 +350,79 @@ test('AN-23 says the three analytics links ship and that rebuilding stays exclud
   assert.match(row.reason, /Architect, Analyzer and User Portal links ship/, `${REGISTER_PATH}: AN-23 does not say the three links ship`);
   assert.match(row.reason, /Story 20\.32/, `${REGISTER_PATH}: AN-23 does not name the story that delivered the links`);
   assert.match(row.reason, /Rebuilding them stays excluded/, `${REGISTER_PATH}: AN-23 does not say rebuilding stays excluded`);
+});
+
+test('the procedure section sits before the Gate kinds table, with its three steps in order', () => {
+  const pickUp = parsePickUp();
+  assert.ok(pickUp.where >= 0, `${REGISTER_PATH}: no '${PICK_UP_HEADING}' heading`);
+  assert.ok(pickUp.kindsAt >= 0, `${REGISTER_PATH}: no '## Gate kinds' heading`);
+  assert.ok(pickUp.where < pickUp.kindsAt, `${REGISTER_PATH}: '${PICK_UP_HEADING}' must come before '## Gate kinds'`);
+  assert.deepEqual(
+    pickUp.steps.map((step) => step.heading),
+    PICK_UP_STEPS,
+    `${REGISTER_PATH}: '${PICK_UP_HEADING}' must hold these steps in this order: ${PICK_UP_STEPS.join(' > ')}`
+  );
+});
+
+function stepBody(name) {
+  const step = parsePickUp().steps.find((candidate) => candidate.heading === name);
+  assert.ok(step, `${REGISTER_PATH}: no '### ${name}' step`);
+  return step.body;
+}
+
+test('the assess step and the refuse step quote the register columns they depend on, and assess says nothing is built before the gate reads cleared', () => {
+  const problems = [];
+  const wanted = [
+    [PICK_UP_STEPS[0], REGISTER_COLUMNS.slice(3, 6)],
+    [PICK_UP_STEPS[1], REGISTER_COLUMNS.slice(4, 6)]
+  ];
+  for (const [name, columns] of wanted) {
+    const body = stepBody(name);
+    for (const column of columns) {
+      if (!body.includes(`\`${column}\``)) problems.push(`step '${name}' does not name the column \`${column}\``);
+    }
+  }
+  assert.deepEqual(problems, [], `${REGISTER_PATH}: ${problems.join('; ')}`);
+  assert.match(stepBody(PICK_UP_STEPS[0]), /Nothing\s+is\s+designed\s+or\s+built/, `${REGISTER_PATH}: the assess step does not say nothing is built before the gate reads cleared`);
+  assert.match(stepBody(PICK_UP_STEPS[0]), /the\s+instance\s+the\s+request\s+is\s+for/, `${REGISTER_PATH}: the assess step does not say the check runs on the instance the request is for`);
+  assert.match(stepBody(PICK_UP_STEPS[0]), /Record\s+the\s+value[^.]*\s+and\s+the\s+date/, `${REGISTER_PATH}: the assess step does not say to record the value and the date`);
+  assert.match(stepBody(PICK_UP_STEPS[0]), /Gate kinds/, `${REGISTER_PATH}: the assess step does not point at the Gate kinds table`);
+  assert.match(stepBody(PICK_UP_STEPS[1]), /changes\s+no\s+file/, `${REGISTER_PATH}: the refuse step does not say a refused request changes no file`);
+});
+
+test('every gate kind carries a check, and a license, edition or platform check is read on the requested instance', () => {
+  const kinds = parseKindChecks();
+  assert.ok(kinds.length > 0, `${REGISTER_PATH}: the Gate kinds table yields no kinds`);
+  const problems = [];
+  for (const { kind, check } of kinds) {
+    if (check === '') problems.push(`${kind}: empty '${KIND_CHECK_COLUMN}' cell`);
+    else if (['license', 'edition', 'platform'].includes(kind) && !check.includes(INSTANCE_PHRASE)) {
+      problems.push(`${kind}: does not say the check runs on ${INSTANCE_PHRASE}`);
+    }
+  }
+  assert.deepEqual(problems, [], `${REGISTER_PATH}: ${problems.join('; ')}`);
+  assert.deepEqual(sorted(kinds.map((row) => row.kind)), sorted(parseRegister().kinds), `${REGISTER_PATH}: the check column and the kind vocabulary read different kinds`);
+});
+
+test('every repository path the procedure names exists', () => {
+  const { text, where } = parsePickUp();
+  assert.ok(where >= 0, `${REGISTER_PATH}: no '${PICK_UP_HEADING}' heading`);
+  const paths = [...text.matchAll(/`([^`\s]+)`/g)].map((match) => match[1]).filter((token) => REPO_PATH_RE.test(token));
+  assert.ok(paths.length > 0, `${REGISTER_PATH}: '${PICK_UP_HEADING}' names no repository path`);
+  const missing = [];
+  for (const path of new Set(paths)) {
+    // A `<placeholder>` segment stands for a name chosen later, so its parent directory is what must exist.
+    const concrete = path.includes('<') ? path.slice(0, path.indexOf('<')) : path;
+    if (!existsSync(join(REPO_ROOT, concrete))) missing.push(path);
+  }
+  assert.deepEqual(missing, [], `${REGISTER_PATH}: paths that do not exist: ${missing.join(', ')}`);
+});
+
+test('the build step names every file of the screen contract and how the request is recorded', () => {
+  const body = stepBody(PICK_UP_STEPS[2]);
+  const missing = CONTRACT_PATHS.filter((path) => !body.includes(`\`${path}\``));
+  assert.deepEqual(missing, [], `${REGISTER_PATH}: step '${PICK_UP_STEPS[2]}' does not name: ${missing.join(', ')}`);
+  const record = ['bmad-correct-course', 'feature-catalog.md', 'extract-stages.md', 'removes the row from this register'];
+  const unnamed = record.filter((token) => !body.replace(/\s+/g, ' ').includes(token));
+  assert.deepEqual(unnamed, [], `${REGISTER_PATH}: step '${PICK_UP_STEPS[2]}' does not record the request through: ${unnamed.join(', ')}`);
 });
