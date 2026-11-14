@@ -1945,3 +1945,7 @@
 2026-11-14T21:52:35Z	orchestrator	hold_cleared	reason=resumed_by_the_owner(interactive_reinvocation_after_account_switch)
 2026-11-14T21:52:35Z	orchestrator	unattended_resumed	run=20261114T1656Z-21,22 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03 doctrine=3d11cec98d91c1d4d9c225fe3b265e1af418abe4 lock_token=1794693143-71436 feature=ae8b680aa deps=approved(hash_current) answers=none runtime_locks=none_to_sweep
 2026-11-14T21:52:35Z	orchestrator	dispatch_writeahead	epics=21(slot_a,held->running),22(slot_b,held->running) prompts=e21-unattended-20261114-prompt.md+resume/epic-21.md,e22-unattended-20261114-prompt.md+resume/epic-22.md gate=token-free_push(Rule_32)
+2026-11-14T22:42:39Z	orchestrator	ci_red_classified	run=43645120786 workflow=.github/workflows/ci.yml class=flake test=ci.test.mjs:DW-2123_bind_budget(gates_node_26.0.0) action=rerun_failed ledger=DW-2565(routed_21-10)
+2026-11-14T22:42:39Z	orchestrator	ci_green_verified	runs=43645120786 head=76ccaa892 result=success gate=dispatch(Rule_32) attempt=2
+2026-11-14T22:42:39Z	Epic 21	runner_dispatched	slot=a runner=epic-runner-21 model=opus prompt=e21-redispatch-20261114T2152Z-prompt.md(+e21-unattended-20261114-prompt.md,resume/epic-21.md) hold_at=none(usage-triggered) kind=redispatch_after_hold
+2026-11-14T22:42:39Z	Epic 22	runner_dispatched	slot=b runner=epic-runner-22 model=opus prompt=e22-redispatch-20261114T2152Z-prompt.md(+e22-unattended-20261114-prompt.md,resume/epic-22.md) hold_at=none(usage-triggered) kind=redispatch_after_hold

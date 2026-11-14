@@ -12819,3 +12819,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-23-14-epic-23-burn-down.md | severity: low | fix-risk: med | footprint: in-epic
 - evidence: Operation.RequiredPairsOf turns ArgumentPairs' pResolved=0 (CodeWritePairs on a deleted namespace) into an error status; Confirm answers it through Internal (500 + log). Before batch 5 compile/delete/import resolved on the request scope and the port answered a named 400.
 - 2026-11-14T07:58:33Z status=wontfix-accepted owner=23-14-epic-23-burn-down by=cr note=reopen_if=a confirm of an Explorer write answers 500 naming unresolved argument pairs
+
+### DW-2565: flake: ui/tools/ci.test.mjs 'DW-2123: the budget runs from the first bind failure, so a slow first attempt still leaves a retry' failed (2343 ms) on the gates node 26.0.0 leg and passed on the unchanged rerun
+- source: cycle-log-parallel.md (dispatch gate 2026-11-14) | severity: low | fix-risk: low | footprint: in-epic
+- evidence: run 43645120786 attempt 1 (head 76ccaa892) gates node 26.0.0 red on that one test; node 22/24 legs green; attempt 2 green
+- 2026-11-14T22:42:30Z status=routed owner=21-10-the-remaining-leaves-across-the-six-areas by=lead note=timing-sensitive pin of DW-2123's bind budget; routed with the other CI flakes to 21.10
