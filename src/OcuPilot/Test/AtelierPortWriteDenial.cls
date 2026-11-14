@@ -88,6 +88,10 @@ Method OnAfterAllTests() As %Status
 Method OnAfterOneTest() As %Status
 {
     Do ##class(OcuPilot.Kernel.Scope).Clear()
+    Do ##class(OcuPilot.Kernel.Proposal.Caller).Clear()
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.ProposalFixture).RemoveSeeded(.tRemaining), "every seeded proposal and turn is removed")
+    Do $$$AssertEquals($Get(tRemaining), 0, "and none survives")
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForUser(..#READWRITEUSER), "the read-and-write principal's ledger rows are removed")
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Remove", ..#OTHERNAMESPACE), "every probe document in " _ ..#OTHERNAMESPACE _ " is removed")
     Do $$$AssertStatusOK($ClassMethod(..#PROBE, "Remove", $Namespace), "and in the install namespace")
     Do $$$AssertStatusOK($ClassMethod(..#SAVEPROBE, "Remove", ..#OTHERNAMESPACE), "and the save's in " _ ..#OTHERNAMESPACE)
@@ -210,13 +214,13 @@ ClassMethod Refusal(pBody) As %String
 
 /// <p>Every System Explorer write that writes code -- compile, delete, import, save and create --
 /// declares the list's pair alone and takes WRITE on the routines database as an argument pair, read from
-/// the namespace the proposal stored, else the request's (DW-2242, DW-2253). The export tools declare the
-/// list's pair alone and add no WRITE.</p>
+/// the namespace the proposal stored, else the request's. The export tools declare the list's pair alone
+/// and add no WRITE.</p>
 /// <p>Mutation (Rule 19): give <method>OcuPilot.Screen.Tool.ExplorerWrite.ArgumentPairs</method> the request's
 /// scope instead of the stored namespace, or restore the WRITE pair to
 /// <method>OcuPilot.Screen.Tool.ExplorerWrite.PrivilegePairs</method> -- this goes red; give the import
-/// <class>OcuPilot.Screen.Tool.ExplorerExport</class>'s <method>PrivilegePairs</method> -- the import
-/// legs go red.</p>
+/// <class>OcuPilot.Screen.Tool.ExplorerExport</class>'s <method>ArgumentPairs</method> (the file pairs
+/// alone) -- the import legs go red.</p>
 Method TestTheToolsTakeTheirWritePairFromTheStoredNamespace()
 {
     For tCase = $ListBuild(..#OTHERNAMESPACE, "%DB_USER"), $ListBuild($Namespace, ##class(OcuPilot.Test.DeveloperFloorFixture).CodeResource()) {
@@ -249,15 +253,15 @@ Method TestTheToolsTakeTheirWritePairFromTheStoredNamespace()
 }
 
 /// <p>A compile the agent minted in <code>USER</code> for the principal holding READ and WRITE on
-/// <code>USER</code>'s database alone is confirmed at the install namespace and compiles in
-/// <code>USER</code>: the gate requires the namespace the write lands in. The converse is refused: the
-/// same arguments naming the install namespace, confirmed at <code>USER</code>, require the install
-/// namespace's code database's WRITE, which the principal lacks, and the refusal names that pair
-/// (DW-2253).</p>
+/// <code>USER</code>'s database alone is confirmed by that principal over HTTP at the install namespace
+/// (<code>?ns=</code>) and compiles in <code>USER</code>: the gate requires the namespace the write lands
+/// in. The converse, gated at <code>USER</code> on stored arguments naming the install namespace,
+/// requires the install namespace's code database's WRITE, which the principal lacks, and the refusal
+/// names that pair.</p>
 /// <p>Mutation (Rule 19): give <method>OcuPilot.Screen.Tool.ExplorerWrite.ArgumentPairs</method> the request's
-/// scope, or leave <code>Namespace</code> out of <class>OcuPilot.Screen.Tool.ExplorerMint</class> -- the
-/// confirm leg goes red; restore WRITE to <method>OcuPilot.Screen.Tool.ExplorerWrite.PrivilegePairs</method> --
-/// both go red.</p>
+/// scope, leave <code>Namespace</code> out of <class>OcuPilot.Screen.Tool.ExplorerMint</class>, or restore
+/// WRITE to <method>OcuPilot.Screen.Tool.ExplorerWrite.PrivilegePairs</method> -- the confirm leg goes
+/// red.</p>
 Method TestAnAgentCompileIsGatedOnTheNamespaceItWrites()
 {
     Set tUser = ..#READWRITEUSER
@@ -276,12 +280,14 @@ Method TestAnAgentCompileIsGatedOnTheNamespaceItWrites()
         Do $$$AssertEquals(tRS.%SQLCODE, 0, "the proposal is the principal's")
         Set tRS = ##class(%SQL.Statement).%ExecDirect(, "UPDATE OcuPilot_Kernel_State.Turn SET UserName = ? WHERE %EXACT(TurnKey) = ?", tUser, tTurn)
         Do $$$AssertEquals(tRS.%SQLCODE, 0, "and so is its turn")
-        Do ##class(OcuPilot.Kernel.Scope).Set($Namespace)
-        Set tSC = ##class(OcuPilot.Kernel.Proposal.Confirm).Confirm(tProposal.%Get("proposalId"), "", tUser, .tResult, .tHttp, .tConfirmCode, .tDetail)
-        Do $$$AssertStatusOK(tSC, "the principal's confirm at " _ $Namespace _ " is accepted: " _ $Get(tHttp) _ " " _ $Get(tConfirmCode))
+        Do ##class(OcuPilot.Kernel.Scope).Clear()
+        Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("POST", $Parameter("OcuPilot.Test.Http", "BASEPATH") _ "/proposal/" _ tProposal.%Get("proposalId") _ "/confirm?ns=" _ $Namespace, tUser, ..PreparedPassword, .tStatus, .tRaw, .tHeaders, "", "application/json")
+        Do $$$AssertStatusOK(tSC, "the principal's confirm at ?ns=" _ $Namespace _ " is sent")
+        Do $$$AssertEquals($Get(tStatus), 200, "and is accepted: " _ $Extract($Get(tRaw), 1, 300))
         Do $$$AssertTrue($ClassMethod(..#PROBE, "Compiled", ..#OTHERNAMESPACE, "OcuProbe192.Alpha"), "and the class is compiled in " _ ..#OTHERNAMESPACE)
     }
     Do $$$AssertStatusOK(##class(OcuPilot.Test.ProposalFixture).RemoveSeeded(.tRemaining), "the seeded proposal and turn are removed")
+    Do $$$AssertEquals($Get(tRemaining), 0, "and none of them survives")
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForUser(tUser), "and the principal's ledger rows")
 
     Do ##class(OcuPilot.Kernel.Scope).Set(..#OTHERNAMESPACE)
@@ -290,6 +296,29 @@ Method TestAnAgentCompileIsGatedOnTheNamespaceItWrites()
     Set tSC = ##class(OcuPilot.Kernel.Proposal.Operation).Gate(tTool, "", "{}", "[]", tStored.%ToJSON(), tUser, "", "OcuPilot.Kernel.Proposal.Confirm", .tPairs, .tRefused, .tGateHttp, .tGateCode, .tGateDetail)
     Do $$$AssertStatusOK(tSC, "the gate answers for a proposal read in " _ $Namespace _ " and confirmed in " _ ..#OTHERNAMESPACE)
     Do $$$AssertEquals(tRefused _ " " _ tGateHttp _ " " _ tGateCode _ " " _ $Select($IsObject(tGateDetail): tGateDetail.%Get("failedPair"), 1: ""), "1 403 AUTH.NOPRIVILEGE " _ tCode _ ":WRITE", "the principal without " _ $Namespace _ "'s WRITE is refused naming it")
+}
+
+/// <p>A proposal that stored no <code>Namespace</code> (minted before the namespace was stored) is gated
+/// on the namespace the request is scoped to: for the principal holding READ and WRITE on
+/// <code>USER</code>'s database alone, the gate accepts it at <code>USER</code> and refuses it at the
+/// install namespace naming that namespace's code database's WRITE pair.</p>
+/// <p>Mutation (Rule 19): give <method>OcuPilot.Screen.Tool.ExplorerWrite.ArgumentPairs</method> a fixed
+/// namespace instead of the request's scope when none is stored -- one of the two legs goes red.</p>
+Method TestAProposalWithNoStoredNamespaceIsGatedOnTheRequestsNamespace()
+{
+    Set tUser = ..#READWRITEUSER
+    Set tCode = ##class(OcuPilot.Test.DeveloperFloorFixture).CodeResource()
+    Do $$$AssertStatusOK(##class(OcuPilot.Screen.Tool.Registry).Resolve("explorer.classes.compile", .tTool), "the compile tool resolves")
+    Set tStored = {"Names": "OcuProbe192.Alpha.cls"}
+    Do ##class(OcuPilot.Kernel.Scope).Set(..#OTHERNAMESPACE)
+    Set tSC = ##class(OcuPilot.Kernel.Proposal.Operation).Gate(tTool, "", "{}", "[]", tStored.%ToJSON(), tUser, "", "OcuPilot.Kernel.Proposal.Confirm", .tPairs, .tRefused, .tGateHttp, .tGateCode, .tGateDetail)
+    Do $$$AssertStatusOK(tSC, "the gate answers at " _ ..#OTHERNAMESPACE)
+    Do $$$AssertTrue('tRefused && $ListFind(tPairs, $ListBuild("%DB_USER", "WRITE")), "a proposal with no stored namespace confirmed at " _ ..#OTHERNAMESPACE _ " requires and is granted that database's WRITE")
+    Do ##class(OcuPilot.Kernel.Scope).Set($Namespace)
+    Set tSC = ##class(OcuPilot.Kernel.Proposal.Operation).Gate(tTool, "", "{}", "[]", tStored.%ToJSON(), tUser, "", "OcuPilot.Kernel.Proposal.Confirm", .tPairs, .tRefused, .tGateHttp, .tGateCode, .tGateDetail)
+    Do ##class(OcuPilot.Kernel.Scope).Clear()
+    Do $$$AssertStatusOK(tSC, "the gate answers at " _ $Namespace)
+    Do $$$AssertEquals(tRefused _ " " _ tGateHttp _ " " _ tGateCode _ " " _ $Select($IsObject(tGateDetail): tGateDetail.%Get("failedPair"), 1: ""), "1 403 AUTH.NOPRIVILEGE " _ tCode _ ":WRITE", "the same proposal confirmed at " _ $Namespace _ " is refused naming that namespace's WRITE")
 }
 
 /// <p>AC6: holding the read pairs and READ alone on <code>USER</code>'s database, a compile and a

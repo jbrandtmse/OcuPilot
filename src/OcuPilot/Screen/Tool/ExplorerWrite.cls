@@ -45,10 +45,6 @@ Parameter IDARGUMENT = "Names";
 /// <p>The read field naming the namespace the set was read in.</p>
 Parameter NAMESPACEFIELD = "Namespace";
 
-/// <p>The permission a write requires on the resource guarding its namespace's routines
-/// database.</p>
-Parameter WRITEPERMISSION = "WRITE";
-
 /// <p>The comma-joined names of the set.</p>
 ClassMethod IdArgument() As %String
 {

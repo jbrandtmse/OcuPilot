@@ -10,7 +10,7 @@
 /// (<method>OcuPilot.Kernel.Scope.Current</method>) is asked, and its refusal answered unchanged; and
 /// <code>documents</code> is set to the preview's summary, the reviewed argument the write
 /// compares. The same namespace is stored as the proposal's <code>Namespace</code> argument, which the
-/// confirm's gate and write read.</p>
+/// confirm's gate reads.</p>
 Class OcuPilot.Screen.Tool.ExplorerImportMint Extends OcuPilot.Kernel.Proposal.Mint
 {
 

@@ -16,8 +16,9 @@
 /// kernel refuses an import whose reviewed documents name one of OcuPilot's own
 /// (<parameter>OcuPilot.Kernel.Proposal.Prohibited.OCUPILOTCODE</parameter>).</p>
 /// <p><b>It is destructive</b>: an import replaces existing code without asking, which cannot be
-/// undone from OcuPilot. It declares WRITE on the routines database of the namespace the proposal stored
-/// (AD-8) and PathPort's pairs when it names a server file. Its console lines and imported names reach the screen and the
+/// undone from OcuPilot. It takes WRITE on the routines database as an argument pair, from the namespace
+/// the proposal stored, else the request's (AD-8), and PathPort's pairs when it names a server file. Its
+/// console lines and imported names reach the screen and the
 /// proposal card only (AD-39's fifth exception). It performs the classic Import dialog's operation
 /// (AD-44).</p>
 Class OcuPilot.Screen.Tool.ExplorerImport Extends OcuPilot.Screen.Tool.ExplorerWrite [ Abstract ]
@@ -95,7 +96,7 @@ ClassMethod InputSchema(pDescriptor As %String = "") As %DynamicObject
     Quit tSchema
 }
 
-/// <p>The WRITE pair on the routines database of the namespace the proposal stored
+/// <p>The WRITE pair on the routines database of the namespace the proposal stored, else the request's
 /// (<method>OcuPilot.Screen.Tool.ExplorerWrite.ArgumentPairs</method>), then PathPort's pairs when
 /// <var>pArgs</var> names a server file by a non-empty <code>root</code> (AD-21's sixth case,
 /// AD-29).</p>

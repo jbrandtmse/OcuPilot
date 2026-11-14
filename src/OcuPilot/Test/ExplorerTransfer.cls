@@ -243,7 +243,7 @@ Method TestTheAgentExportsAndImportsThroughConfirm()
     Do $$$AssertTrue((tCard [ """root""") && (tCard [ """path""") && (tCard [ """documents""") && (tCard [ "OcuProbe1913.Alpha.cls new") && (tCard [ """Compile"""), "its card names the file, the reviewed documents and the compile choice: " _ tCard)
     Do $$$AssertEquals(tImport.target.id _ " " _ ..Stored(tImport.proposalId, "consequence"), "import EXPLORER.IMPORT.REPLACES", "its target is import, with the replacement consequence")
     Set tStoredArguments = ##class(%DynamicObject).%FromJSON(..Stored(tImport.proposalId, "arguments"))
-    Do $$$AssertEquals(tStoredArguments.%Get("Namespace"), ..#PROBENAMESPACE, "its stored arguments hold the namespace the file was previewed in (DW-2253)")
+    Do $$$AssertEquals(tStoredArguments.%Get("Namespace"), ..#PROBENAMESPACE, "its stored arguments hold the namespace the file was previewed in")
     Set tSC = ..ConfirmIn(tImport, .tResult, .tConfirmHttp, .tCode)
     Do $$$AssertStatusOK(tSC, "the import is confirmed: " _ $Get(tCode))
     If '$IsObject($Get(tResult)) Quit

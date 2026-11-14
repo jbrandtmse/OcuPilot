@@ -252,7 +252,7 @@ ClassMethod HoldDocument(pDocument As %String, pHold As %Boolean)
 /// answers the console as the confirm's <code>output</code>.</p>
 /// <p>The proposal stores the namespace it was read in as its <code>Namespace</code> argument, the
 /// confirm's gate requires WRITE on that namespace's routines database and not on the request's, and a
-/// confirm scoped to another namespace compiles in the stored one (DW-2253).</p>
+/// confirm scoped to another namespace compiles in the stored one.</p>
 /// <p>Mutation (Rule 19): put the written output on the mint's answer -- the turn leg goes red.
 /// <method>OcuPilot.Screen.Tool.ExplorerWrite.ArgumentPairs</method> reading the request's scope, or
 /// <class>OcuPilot.Screen.Tool.ExplorerMint</class> not storing <code>Namespace</code> -- the namespace legs go

@@ -9,7 +9,7 @@
 /// admits it, and the tools whose required pairs it holds are exactly the declared sixty-two,
 /// whose writes are the two exports, the SQL console's run, the data browser's save, Screen permissions' three,
 /// and the saves, creates, compiles, deletes and imports, whose WRITE pair is an argument pair the developer
-/// lacks in the install namespace (Story 20.20, DW-2242, DW-2253).</p>
+/// lacks in the install namespace (Story 20.20, DW-2242).</p>
 /// <p>It needs <parameter>ARMINGVARIABLE</parameter> armed: <class>OcuPilot.Test.DeveloperFloorFixture</class>
 /// creates the three principals in <method>OnBeforeAllTests</method>, which reads their grants back
 /// through <class>OcuPilot.Kernel.Shell.Effective</class>, and removes them in
@@ -47,8 +47,8 @@ Parameter TOOLS = "agent.screenpermissions.addpair,agent.screenpermissions.read,
 /// <p>The write tools among <parameter>TOOLS</parameter>: an export needs the read pairs alone; SQL
 /// query's run and the data browser's save declare no pair beyond their screens' (Stories 19.6 and 19.8);
 /// and a System Explorer write's WRITE on the routines database is an argument pair, which the declared
-/// level does not read (Story 20.20 and DW-2242 for saves and creates; DW-2253 for compiles, deletes and
-/// imports). The developer lacks that WRITE in the install namespace, and a call refuses it there by name.</p>
+/// level does not read (Story 20.20 and DW-2242). The developer lacks that WRITE in the install namespace,
+/// and a call refuses it there by name.</p>
 Parameter HELDWRITES = "agent.screenpermissions.addpair,agent.screenpermissions.removepair,agent.screenpermissions.reset,explorer.classes.compile,explorer.classes.create,explorer.classes.delete,explorer.classes.export,explorer.classes.import,explorer.classes.save,explorer.routines.compile,explorer.routines.create,explorer.routines.delete,explorer.routines.export,explorer.routines.import,explorer.routines.save,explorer.sqldata.save,explorer.sqlquery.run";
 
 /// <p>The second namespace System Explorer is read in, whose code database
