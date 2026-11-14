@@ -2,9 +2,10 @@
 title: 'Story 22.1: The exclusion register'
 type: 'chore'
 created: '2026-11-14'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '8774fda9f8a66145a68b9d577bce3444988df474'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context: []
 warnings: [oversized]
 deferred: []
@@ -77,6 +78,25 @@ deferred: []
 
 ## Review Triage Log
 
+### 2026-11-14 — Review pass
+
+- verdicts: 14 findings — high 0, medium 4, low 10, false 0, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` AN-23's "links ship, rebuilding stays excluded" had no pinning test — added `AN-23 says the three analytics links ship...` and a mutation line.
+  - `[medium]` `[patch]` "where the vendor evaluates it" and "names the deprecated feature" were unpinned — the license/edition/platform test now needs `evaluates it` and `slot B read <value>`; the deprecation test needs the named feature; OS-34 gained its vendor citation.
+  - `[medium]` `[patch]` Reasons of SA-53 to SA-58 and EX-55 to EX-57 added words the catalog does not carry — restated from the catalog phrase.
+  - `[medium]` `[patch]` IO-83 to IO-89 said "No instance check applies", but the vendor menu lists those pages only where the package is installed — rows now cite the check and what slot B read (1 for X12, ASTM, DICOM, SEF, XML, read 2026-11-14); kind stays `demand`, a small call within the story.
+  - `[low]` `[patch]` Several tests had no mutation line — seven more recorded.
+  - `[low]` `[patch]` A test name overstated what it pins — renamed to the extract-versus-catalog comparison it makes.
+  - `[low]` `[patch]` IO-76 and IO-77 gate text did not match the check — reworded.
+  - `[low]` `[patch]` "hidden administration API" is not sourced — now "admin-v2 API", the catalog's wording.
+  - `[low]` `[reject]` EX-55 to EX-57 "no OcuPilot link exists yet" has no re-read path — searched `src/OcuPilot/Screen` and `ui/src`, no descriptor names them; Story 22.2 re-reads a row's gate before a pick-up.
+  - `[low]` `[reject]` Feature cells paraphrase catalog names — the reason is what the spec ties to the catalog.
+  - `[low]` `[reject]` A mistyped id is skipped by the parsers — it surfaces as a missing id.
+  - `[low]` `[reject]` The test reads one sentence of Story 22.1 in `epics.md` — the spec chose that source for the group wording.
+  - `[low]` `[reject]` IO-75 takes `demand` though its group is edition-gated — stated in the row and in Design Notes.
+  - `[low]` `[reject]` No test checks reason fidelity, `(inference)` labels or the truth of a check — the spec makes these a manual check, done by two layers against the catalog and the instance.
+
 ## Design Notes
 
 **Architecture decisions.** The spine's capability map gives Stage 6 no AD of its own ("long tail, on demand, —"). The register cites AD-27 (OS-31, OS-32 and SA-50 reach `%Api.Admin.*` only through `AdminPort`) and AD-1 with AD-2 (in-process, same instance) for EX-58. AD-5 governs a pick-up, which is Story 22.2's.
@@ -141,10 +161,17 @@ deferred: []
 
 **Pinning tests and planned mutations (Rule 19):**
 
-- mutation: delete one register row -> the ID-set test goes red naming it as missing.
-- mutation: move a row to another group -> the partition test goes red naming the group.
-- mutation: remove the backticks from SA-50's how-to-tell -> the specificity test goes red naming SA-50.
-- mutation: set AN-23's kind to `rebuild` -> the vocabulary test goes red naming AN-23.
+- mutation: deleted the IO-85 row -> `the register holds exactly the catalog P4 rows, each once` went red naming IO-85 as missing (the group test went red too, naming the group that lost it); reverted.
+- mutation: moved the SH-29 row into the sharding group -> `each register group holds exactly the extract group of the same position` went red naming that group and SH-29; reverted.
+- mutation: removed the backticks from SA-50's how-to-tell -> `a license, edition or platform gate names a runnable check` went red naming SA-50; reverted.
+- mutation: set AN-23's kind to `rebuild` -> `every row names a gate kind from the Gate kinds table` went red naming AN-23; reverted.
+- mutation: replaced AN-23's reason with "Full applications." -> `AN-23 says the three analytics links ship and that rebuilding stays excluded` went red; reverted.
+- mutation: removed IO-76's "The vendor's interoperability menu evaluates it" sentence -> `a license, edition or platform gate names a runnable check` went red naming IO-76; reverted.
+- mutation: duplicated the SA-51 row -> `the register holds exactly the catalog P4 rows, each once` went red naming SA-51 as listed twice; reverted.
+- mutation: added a row with a non-P4 id (SA-01) -> the same test went red naming it as not P4; reverted.
+- mutation: blanked SA-52's reason -> `every row carries a reason, a gate and a way to tell it has cleared` went red naming SA-52; reverted.
+- mutation: removed the deprecated feature from LG-13's gate -> `a deprecation gate names the deprecated feature and the owner decision that clears it` went red naming LG-13; reverted.
+- mutation: renamed the `## The register` heading -> `the parsers read something from every document` went red; reverted.
 
 **Manual checks:**
 
@@ -152,7 +179,11 @@ deferred: []
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-Planned only (halt after planning). Slot B was read, never written: sharding license, edition and platform checks, the `/ui/security-config` application and the three Analytics link descriptors, all on 2026-11-14.
+Added `docs/exclusion-register.md` (56 P4 rows in eight groups, with a Gate kinds table) and `ui/tools/exclusion-register.test.mjs` (10 tests: row set, extract grouping and epics wording, row completeness, kind vocabulary, runnable check with vendor source and slot B reading, deprecation, AN-23, parse floors). No other file changed; no planning document, product string or IRIS write.
+
+Review: 4 medium and 4 low patched (all in the register wording and the test; see the triage log), 6 low rejected. Follow-up review recommended: true, because four medium patches changed register wording that no second layer re-read.
+
+Verified: `node --test tools/exclusion-register.test.mjs` 10 of 10; `bash scripts/lint-docs.sh` exit 0; `node tools/client-lint.mjs` exit 0; eleven mutations each red and reverted, files byte-identical (checksums). Slot B reads on 2026-11-14 matched the Design Notes; added reads: `IsPackageInstalled` for X12, ASTM, DICOM, SEF, XML and HL7, all 1. Vendor line cites differ from the Design Notes by one line: `%sySite.inc:17`, `EnsPortal.Application` 66 and 67.
