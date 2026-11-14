@@ -1843,3 +1843,4 @@
 2026-11-14T03:05:05Z	Story 23.13	ci_red_classified	run=43543858957 head=e9f727fbb class=flake tests=analytics-mdx_AC7,agent-code-save_QA5-7 note=green_on_unchanged_rerun;flake_entries_requested_from_epic23_runner(23.14)
 2026-11-14T03:05:05Z	Story 23.13	merged	batches=2-4(story_complete) feature=e9f727fbb mode=fast_forward(staging_own_CI_green_43543858957_attempt2) checks=ledger_entry_check_0(2003),dup_none,sprint_validate_ok upgrade_triggers=none new_keys=none
 2026-11-14T03:05:05Z	ci	timings_refreshed	rule=29 run=43543858957
+2026-11-14T03:05:46Z	Epic 23	runner_reported	flakes_filed=DW-2548(analytics-mdx_AC7),DW-2549(agent-code-save_QA5-7) owner=21-10(holding) reason=23.14_at_burndown_story_max status=23.14_b1_staging_21d6495b(43545992116;DW-2461_flake_rerun),b2_QA orchestrator=accepted
