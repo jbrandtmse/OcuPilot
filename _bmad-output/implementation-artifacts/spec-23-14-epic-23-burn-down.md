@@ -409,6 +409,25 @@ Rejected (batch 6):
 - `low` The new page case pins "draws descending" through `store.direction()`, not the drawn rows -- the direction-to-rows link is pinned by "Newest first draws descending under an explicit Address sort", and QA's `journal-records` browser run passed 5 of 5.
 - `low` Two batch 6 cycle-log `spawn_at` values differ from their `stage_spawned` lines -- the lead's log, outside this stage's writes; no code or gate reads the difference.
 
+#### Batch 4 (2026-11-14)
+
+- [x] [Review][Patch] DW-2403's teardown leak remained in three sibling classes: `TurnLoop`, `TurnCitations` and `AnthropicThinking` deleted their turns but not the turns' ledger rows (measured on `ocupilot-ci`: +17, +8 and +9 `irisowner` rows; `TurnTools`, `ToolNavigateParent` and `InjectionChannels` +0) (med, fix-risk low) [src/OcuPilot/Test/TurnLoop.cls, TurnCitations.cls, AnthropicThinking.cls:OnAfterOneTest] -- each teardown deletes and counts its keys' rows as `TurnNavigate`'s does; runs 27-29 green with no row added; mutation line under Verification.
+- [x] [Review][Patch] `TestDeletingATurnRemovesItsDirective` left a ledger row behind whenever its count went red, since its key is out of the teardown's and is not a probe user's (low) [src/OcuPilot/Test/TurnNavigate.cls] -- it removes the key's rows after the count assertion, and its doc says so; run 32 green.
+- [x] [Review][Patch] The new `SweepSince` test discarded its cleanup's status (low) [src/OcuPilot/Test/InteropEditorSaveTurn.cls:TestSweepSinceRemovesALedgerRowWhoseTurnIsGone] -- asserted.
+- [x] [Review][Patch] `InteropEditorSaveTurn`'s header did not say the class pins `SweepSince`'s ledger leg (low) [src/OcuPilot/Test/InteropEditorSaveTurn.cls:1-11] -- the header names it.
+- [x] [Review][Patch] Nothing said the new test's key must be lower case for the bare-`TurnKey` mutation to redden (low) [src/OcuPilot/Test/InteropEditorSaveTurn.cls:TestSweepSinceRemovesALedgerRowWhoseTurnIsGone] -- the method doc says so.
+- [x] [Review][Patch] `interop-item-test` set `created` only after both creates passed, so a half-made probe skipped the `after` sweep (low) [ui/browser/interop-item-test.browser-spec.mjs:before] -- set before the creates, as the resend spec does; 5 tests, 0 failed after a rebuild and redeploy.
+- [x] [Review][Defer] `SweepSince`'s exact `UserName` select has no test that reddens without it [src/OcuPilot/Test/TurnWireFixture.cls:SweepSince] -- deferred: DW-2552 `wontfix-accepted` (a pin needs a probe turn job still running at the sweep).
+
+Rejected (batch 4):
+
+- `false` `turnprobe-spec.mjs` also calls `SweepSince`, so the exact ledger leg now deletes in browser specs -- its contract already says those rows go, and its caller asserts the sweep empty; the change can only turn a red green.
+- `false` `HighWater()` equal to the mark fails if a row at or below the mark is deleted mid-run -- `before` runs the same removals ahead of the mark.
+- `low` The batch 4 task line names a delete `TestDeletingATurnRemovesItsDirective` did not make; the "no red" residual's "only the armed turn classes" reason is too strong -- fixes edit the spec (the first is true again after the patch above).
+- `low` `Sweep` reports `ledger rows (-1)` for an unread count -- still non-empty, so red either way; the fix adds a branch.
+- `low` A ledger row above the mark with an empty `TurnKey` is reported, not deleted -- no writer appends one, and it fails loudly.
+- `low` `TestDeletingATurnRemovesItsDirective`'s count is a tripwire for a later product write, not a pin of this batch's change -- it can fail (run 16); no defect.
+
 **Acceptance Criteria:**
 
 - **Dispositions.** Given the 12 entries, when the story completes, then each is closed as Design Notes › Dispositions says, with its batch commit.
@@ -653,7 +672,9 @@ Batch 4:
 - mutation: DW-2403 `TurnNavigate` -- the teardown's and `TestDeletingATurnRemovesItsDirective`'s `GuardedDeleteForTurn` calls dropped (throwaway copy): run 4 red on "and none of them survives" in 6 of 15 methods, so the count was non-zero before the delete. Reverted (`cmp` identical); run green, 15 tests, 0 failed. The `irisowner` ledger rows that red run left were removed with `Ledger.GuardedDeleteForUser`; `OcuPilot_Kernel_State.Ledger` reads 0 rows on `ocupilot-ci`.
 - mutation: DW-2403 `TestDeletingATurnRemovesItsDirective` -- its own steps write no ledger row (run 14: the delete dropped, the count still 0), so the method asserts the count is 0 and keeps no delete call. A ledger row appended for its key before the count (throwaway copy): run 16 red on that method alone, 14 other methods green. Reverted (`cmp` identical); the key's row removed (`Ledger` reads 0 rows); run 17 green, 15 tests.
 - no red: DW-2403 `SweepSince`'s `%EXACT(UserName)` select. The abandon signal it feeds is killed with the turn, so a sweep that abandons nothing leaves no trace, and a pin needs a running job that honours the signal, which only the 25 armed turn classes start; the bare select returns the collated uppercase name, which the exact-match abandon would not find (inference).
+- (QA) mutation: DW-2403 `SweepSince` -- the bare `TurnKey` restored in its ledger leg, re-run independently on `ocupilot-ci`: `InteropEditorSaveTurn.TestSweepSinceRemovesALedgerRowWhoseTurnIsGone` red (run 19, 1 of 2 failed). Reverted; `git status --short` empty; class green, 2 tests (run 20). QA added no test file; every batch 4 AC has a pin with an observed red except the recorded `%EXACT(UserName)` case.
 - mutation: DW-2408 -- the sweep dropped from `after` (`SweepSince` answering `0|0`): `interop-item-test` red on "no message or log row is left above the mark 0|0", actual `1|0|0|1|1|1|1|14` against `1|0|0|1|1|1|0|0`, so USER held 1 header and 14 log rows past the mark. Reverted (`cmp` identical) and USER swept back to `0|0`; run green, 5 tests, 0 failed, with `HighWater()` back at the mark.
+- (review) mutation: DW-2403 sibling teardowns -- `TurnLoop`'s `GuardedDeleteForTurn` dropped (throwaway copy): run 30 red, 6 of 11 methods on "and none of them survives". Reverted (`cmp` identical) and the `irisowner` rows removed (`Ledger` 0 rows); run 31 green. `TurnCitations` run 28, `AnthropicThinking` run 29, `TurnNavigate` run 32 (15) and `InteropEditorSaveTurn` run 33 (2) green, `Ledger` 0 rows after; `interop-item-test` 5 tests, 0 failed after a rebuild and redeploy.
 
 Batch 6:
 

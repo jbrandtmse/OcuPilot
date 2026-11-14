@@ -11904,6 +11904,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-14T00:51:43Z status=routed owner=burndown by=cr note=20.16's InteropEditorSaveTurn calls SweepSince before Sweep; fix SweepSince with %EXACT and sweep the others
 - 2026-10-22T14:11:37Z occurrence=23-8-the-range-end-cleanup-part-7 note=Test/TurnNavigate's teardown deletes its turns but not their ledger rows (seen in 23.8 batch 4 code review)
 - 2026-11-14T00:52:34Z owner=23-14-epic-23-burn-down by=burndown note=chartered_in_Story_23.14(Epic_23_burn-down,orchestrator_ruling_2026-11-14)
+- 2026-11-14T04:51:39Z status=resolved-by:23-14-epic-23-burn-down by=adjudication note=batch_4:TurnWireFixture.SweepSince_selects_%EXACT(TurnKey)/%EXACT(UserName),Sweep_deletes_the_probe_users'_ledger_rows(LedgerRows_count);TurnNavigate,TurnLoop,TurnCitations,AnthropicThinking_teardowns_delete_and_count_their_turns'_ledger_rows;new_InteropEditorSaveTurn.TestSweepSinceRemovesALedgerRowWhoseTurnIsGone;mutations_red
 
 ### DW-2405: OcuPilot's create and delete of a class or routine drop the source-control class's follow-up user action (an 'add to source control?' question for a new document or after a delete is never asked and AfterUserAction never runs)
 - source: spec-20-10-source-control-hooks.md (plan, harvested at the spec gate) | severity: med | fix-risk: med | footprint: out-of-footprint
@@ -11923,6 +11924,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-14T03:47:33Z status=routed owner=burndown by=spec_gate note=Rule 19 hermeticity: the spec (Story 20.6's) removes the headers and log rows it caused
 - 2026-10-15T02:29:03Z occurrence=20-30-the-session-trace
 - 2026-11-14T00:52:34Z owner=23-14-epic-23-burn-down by=burndown note=chartered_in_Story_23.14(Epic_23_burn-down,orchestrator_ruling_2026-11-14)
+- 2026-11-14T04:51:39Z status=resolved-by:23-14-epic-23-burn-down by=adjudication note=batch_4:interop-item-test.browser-spec.mjs_records_ProductionProbe.HighWater()_before_and_runs_SweepSince(mark)_after,asserting_the_high-water_is_back;dropping_the_sweep_reddens_the_spec
 
 ### DW-2414: A deleted account that was the first to run the install gate's version-row read after its cached queries were purged (an install, an uninstall) is refused 503 INSTALL.UNREADABLE instead of 401 AUTH.DISABLED
 - source: spec-20-16 (harvest, CI rework 2) | severity: low | fix-risk: med | footprint: out-of-footprint
@@ -12742,3 +12744,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-23-14-epic-23-burn-down.md | severity: low | fix-risk: low | footprint: in-footprint
 - evidence: spec Tasks Batch 2 DW-2461 'No deterministic red: the miss depends on layout timing'; Verification batch 2 records two forced misses, both red; removing the pre-click waits reddens nothing (verification-gap layer, 23.14 batch 2 review)
 - 2026-11-14T03:24:10Z status=by-design owner=23-14-epic-23-burn-down by=cr note=spec-bound: the batch 2 task records that no deterministic red exists; DW-2461's reopen_if (C1 fails on the startup-path wait or names an alert) is the watch
+
+### DW-2552: TurnWireFixture.SweepSince's exact UserName select (the abandon leg) has no test that reddens without it
+- source: spec-23-14-epic-23-burn-down.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: Reverting to SELECT DISTINCT UserName keeps every batch 4 test green: no test has a probe turn job running when SweepSince is called, and the teardown's Sweep abandons by the exact name right after.
+- 2026-11-14T04:48:28Z status=wontfix-accepted owner=23-14-epic-23-burn-down by=cr note=reopen_if=a SweepSince caller reports a ' job <pid>' leftover for a probe user's running turn
