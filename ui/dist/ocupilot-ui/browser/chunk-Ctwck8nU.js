@@ -1,0 +1,1 @@
+import{rt as NE}from"./chunk-B0lXaW8W.js";function t(n){return n.toTimeString().slice(0,8)}function a(n,r,i){return r===`running`?NE.databaseOperationRunning.replace(`<operation>`,()=>n).replace(`<time>`,()=>i===null?``:t(i)):r===`finished`?NE.databaseOperationFinished.replace(`<operation>`,()=>n):r===`continues`?NE.auditDatabaseStillRunning:``}export{t as n,a as t};
