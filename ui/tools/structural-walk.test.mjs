@@ -8,7 +8,8 @@
 //   fake `fonts.ready` never resolving.
 // - drop the fonts term from the settle evaluate -> the first test goes red on its lower bound:
 //   settle answered before the fonts reported loaded.
-// - settle without its `why` (an empty reason) -> the unsettled-visit and fonts cases red; the report
+// - settle without its `why` (an empty reason) -> the unsettled-visit and fonts cases red; keep a
+//   reason the in-page check has since cleared -> the cleared-reason case red; the report
 //   without its slowest-visits line -> the report case red.
 // - drop `visits` from `passRetrier`'s saved state -> the rerun case red on its visits.
 // - `walkPass` without `report.visits.push` -> the a11y spec's visits assertion red (browser tier).
@@ -502,4 +503,48 @@ test('without a relaunch a lost connection throws as before', async () => {
   );
   assert.equal(attempts, 1, 'the pass ran once');
   assert.deepEqual(report.retried, []);
+});
+
+/** Run `settleUntilGivenUp` against the real in-page check, with `document` stubbed as `stub`. */
+async function settleOverDocument(stub) {
+  const before = Object.getOwnPropertyDescriptor(globalThis, 'document');
+  globalThis.document = stub;
+  try {
+    return await settleUntilGivenUp(fakePage(), quiet());
+  } finally {
+    if (before === undefined) delete globalThis.document;
+    else Object.defineProperty(globalThis, 'document', before);
+  }
+}
+
+test('a busy element and a fonts status that never reads loaded are named by the in-page check', { timeout: 10_000 }, async () => {
+  // Mutation (Rule 19): the in-page check answering `busy === null` (false for a busy element) -> the first assertion goes red (why reads "false").
+  const busy = await settleOverDocument({
+    fonts: { status: 'loaded' },
+    querySelector: () => ({ tagName: 'SECTION', id: 'keys' }),
+  });
+  assert.equal(busy.settled, false, 'a screen that stays busy does not settle');
+  assert.equal(busy.why, 'busy element section#keys', 'and the busy element is named');
+  const fonts = await settleOverDocument({ fonts: { status: 'loading' }, querySelector: () => null });
+  assert.equal(fonts.why, 'fonts loading', 'a font that never loads is named by its status');
+});
+
+test('an in-flight request whose URL does not parse is named as given', { timeout: 10_000 }, async () => {
+  // Mutation (Rule 19): `pathOf` answering '' when the URL does not parse -> the reason reads "in flight: " and this goes red.
+  const requests = { inflight: new Set([{ url: () => 'not a url' }]), last: Date.now(), pass: '1280px light' };
+  const answer = await settleUntilGivenUp({ evaluate: async () => true }, requests);
+  assert.equal(answer.settled, false);
+  assert.equal(answer.why, 'in flight: not a url', 'the in-flight request is the reason, as given');
+});
+
+test('a reason the in-page check has since cleared is not the reason a later timeout gives', { timeout: 10_000 }, async () => {
+  // Mutation (Rule 19): keep `pending` when the in-page check answers true -> why reads the busy element and this goes red.
+  let checks = 0;
+  const page = { evaluate: async () => (++checks === 1 ? 'busy element section' : true) };
+  // Quiet until the second check has answered; from then on a request lands on every read.
+  const requests = { inflight: new Set(), get last() { return checks < 2 ? 0 : Date.now(); }, pass: '1280px light' };
+  const answer = await settleUntilGivenUp(page, requests);
+  assert.equal(answer.settled, false);
+  assert.equal(checks, 2, 'the check ran twice: busy, then ready');
+  assert.equal(answer.why, 'requests kept arriving', 'the cleared busy element is not the reason');
 });

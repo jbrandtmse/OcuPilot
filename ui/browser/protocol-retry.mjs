@@ -37,7 +37,7 @@ export function isProtocolTimeout(error) {
 }
 
 /** The message a browser, target, session or frame that is gone carries. */
-export const CONNECTION_LOSS = /Connection closed|Target closed|Session closed|frame (was |got )?detached/i;
+export const CONNECTION_LOSS = /Connection closed|Target closed|Session (closed|already detached)|frame (was |got )?detached|detached frame/i;
 
 /** Whether `error` says the browser connection, its target, its session or its frame was lost. */
 export function isConnectionLoss(error) {

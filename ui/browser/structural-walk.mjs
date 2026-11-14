@@ -699,7 +699,7 @@ export async function settle(page, requests, where = '') {
         })
       );
       if (ready === true && requests.inflight.size === 0 && Date.now() - requests.last >= QUIET_MS) return { settled: true, ms: Date.now() - started, why: '' };
-      if (ready !== true) pending = String(ready);
+      pending = ready === true ? '' : String(ready);
     }
     await new Promise((resolve) => setTimeout(resolve, 100));
   }
@@ -819,7 +819,7 @@ async function walkPass(page, requests, config, { viewport, theme, checks, minim
       report.unresolved.add(screen.route);
       continue;
     }
-    const visit = `${screen.route} (${viewport} ${theme})`;
+    const visit = `${screen.route === '' ? '/' : screen.route} (${viewport} ${theme})`;
     const { settled, ms, why } = await goInApp(page, requests, url, config.navigationTimeoutMs);
     report.visits.push({ visit, ms, settled, why });
     if (!settled) report.unsettled.add(visit);
@@ -839,7 +839,8 @@ async function walkPass(page, requests, config, { viewport, theme, checks, minim
  * The walk's per-pass retry over `report` and `entries`, holding `browser`: answers `(name, body)`,
  * which runs `body(found, browser)` against the browser held at that moment and joins `found` to
  * `entries` once a run completes. A run that fails on a protocol timeout (an abandoned call
- * included) is run once more through `retryOnce`, with `report` put back as it was before the pass,
+ * included), or, when `relaunch` is given, on a lost connection (`isConnectionLoss`), is run once
+ * more through `retryOnce`, with `report` put back as it was before the pass,
  * except for one `report.retried` line naming the pass and the call that failed. When `relaunch` is
  * given, the rerun first closes the held browser (abandoned after `CLOSEDEADLINE` when it does not
  * close) and holds the browser `relaunch()` answers, since a browser that stalled a call can stall
@@ -895,13 +896,15 @@ export function passRetrier(report, entries, browser, relaunch = null) {
  * The whole walk: 1280 px in light (every invariant), then 1280 px in dark (contrast) after the
  * account menu's own toggle, switched back at the end; then 720 px in light (every structural
  * invariant). Each of the two passes is run once more in a fresh context when it fails on a
- * DevTools-protocol timeout, or when one of its page calls goes unanswered for `WALKCALLDEADLINE`;
- * the report names each retried pass. When `relaunch` (answers a new browser) is given, the rerun
+ * DevTools-protocol timeout, or when one of its page calls goes unanswered for `WALKCALLDEADLINE`,
+ * or, when `relaunch` is given, when its connection to the browser is lost; the report names each
+ * retried pass. When `relaunch` (answers a new browser) is given, the rerun
  * runs on a newly launched browser and the stalled one is closed, as `passRetrier` says; the walk
  * answers the browser it ended on, which the caller closes. All of it runs with one conversation
  * seeded (`seedConversation`) and removed on every exit path. Answers `{entries, report, browser}`;
  * `report` counts walked, skipped, not built, unresolved (an id-requiring screen neither walked nor
- * skipped), unsettled and unmeasurable. When the walk throws after any pass was retried, the error
+ * skipped), unsettled and unmeasurable, and `report.visits` holds each visit's `{visit, ms, settled,
+ * why}`. When the walk throws after any pass was retried, the error
  * carries the retried lines.
  */
 export async function walk(browser, config, relaunch = null) {
@@ -967,7 +970,7 @@ export function reportLines(report) {
     ...(slowest.length === 0 ? [] : [`structural walk: ${slowest.length} slowest visit(s): ${slowest.map((entry) => `${entry.visit} ${entry.ms}ms`).join('; ')}`]),
     ...visits.filter((entry) => !entry.settled).map((entry) => `structural walk: unsettled ${entry.visit} after ${entry.ms}ms -- ${entry.why}`),
     ...Object.entries(SKIP).map(([route, reason]) => `structural walk: skipped ${route} -- ${reason}`),
-    ...report.retried.map((line) => `structural walk: pass retried once after a call went unanswered: ${line}`),
+    ...report.retried.map((line) => `structural walk: pass retried once after a call failed: ${line}`),
   ];
 }
 
