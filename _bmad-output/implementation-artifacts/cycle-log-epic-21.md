@@ -33,3 +33,4 @@
 2026-11-14T19:59:54Z	Story 21.2	story_created	spawn_at=2026-11-14T20:00:00Z model=opus path=_bmad-output/implementation-artifacts/spec-21-2-backup.md build_status=ready-for-dev epic_context=reused oversized=true cycle_iteration=2
 2026-11-14T19:59:54Z	Story 21.2	spec_validated	service_introducing=true integration_ac=present adr_constrained_acs=AD-10,AD-22,AD-23,AD-29,AD-21,AD-35 decision_dependency=none sections_created=none owned_ledger=DW-2560 addressed=1 declined=0 mutates_shared_runtime=false(throwaway_only) strings=ruled(U-38) new_arming=OCUPILOT_ALLOW_BACKUP_CONTROL model=claude-opus-5-5
 2026-11-14T20:00:08Z	Story 21.12	stage_spawned	stage=plan spawn_at=2026-11-14T20:00:08Z model=opus agent_name=21-12-mirroring-plan-1 cycle_iteration=1
+2026-11-14T20:09:55Z	Story 21.12	story_parked	stage=plan reason=intent_gap(mirroring_unlicensed_on_community,AD-10_arm_wording) category=park(owner_only:epic_boundaries,AD) inbox=U-39 code=none
