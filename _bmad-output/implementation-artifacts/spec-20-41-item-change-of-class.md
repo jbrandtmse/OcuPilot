@@ -2,8 +2,8 @@
 title: 'Story 20.41: Item change of class'
 type: 'feature'
 created: '2026-11-12'
-status: 'in-progress'
-baseline_revision: '906b7b292fa7fa3cd257964abf9c861359ea15c6'
+status: 'done'
+baseline_revision: 'ab0e5c00e54e281ae5f4a97101fde159c3282a0d'
 baseline_commit: '906b7b292fa7fa3cd257964abf9c861359ea15c6'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -280,7 +280,9 @@ Rejected:
 - `false` the frontmatter reads `done` while tracking reads `review`: this is the rework convention, and the review does not set the frontmatter.
 - `low` `InteropItemChangeClassMint` drops an error status from `ArgumentProblem`: round-1 code outside this range, and the shipped `ArgumentProblem` always returns `$$$OK`.
 
-- [ ] [CI] staging d35237a5, run 43556455745, instance shard 1/8: `OcuPilot.Test.RemovalRowsSweep.TestEveryRemovalRowComesFromTheOneBuilder` names `OcuPilot.Screen.Tool.InteropItemChangeClass` -- Epic 23's roster (23.13 batch 3, now on this branch) requires every tool that writes a `removed` row in `StateDiff` to build it through `OcuPilot.Screen.Tool.Write.RemovalRows` or to be in that test's `Others()`. Build the dropped-setting rows through `RemovalRows` (Rule 2), keeping the card's rows as they are; only if the builder cannot take the rows, add an add-only `Others()` line and write a one-line reason here.
+- [x] [CI] staging d35237a5, run 43556455745, instance shard 1/8: `OcuPilot.Test.RemovalRowsSweep.TestEveryRemovalRowComesFromTheOneBuilder` names `OcuPilot.Screen.Tool.InteropItemChangeClass` -- Epic 23's roster (23.13 batch 3, now on this branch) requires every tool that writes a `removed` row in `StateDiff` to build it through `OcuPilot.Screen.Tool.Write.RemovalRows` or to be in that test's `Others()`. Build the dropped-setting rows through `RemovalRows` (Rule 2), keeping the card's rows as they are; only if the builder cannot take the rows, add an add-only `Others()` line and write a one-line reason here.
+  - Reason for the `Others()` line: the builder cannot take these rows. `RemovalRows` reads each row's value from `pFresh` by its field name and the roster pins every names call to `..RemovalRows(pFresh, <skip>, ..<source>())` over a fixed names source, while this tool's rows are `<Target>.<Name>` over an array the read carries, so they are the "array the tool reads for itself" shape that `Others()` names.
+  - Scope of this pass: only this item; the checked tasks above are done and are not re-derived. Verify on `ocupilot-b-ci` (slot B, `server: "ocupilot-slot-b"`): load `src`, then run `OcuPilot.Test.RemovalRowsSweep`, `OcuPilot.Test.InteropItemChangeClass`, `OcuPilot.Test.InteropItemChangeClassRefusals`, `OcuPilot.Test.InteropItemDescriptor`, one class per call, and `uv run scripts/check-objectscript.py` on the changed classes. The card's rows stay exactly as they are (the existing card assertions stay green unchanged). Record a `mutation:` line for the roster pin under `## Verification`.
 
 ## Spec Change Log
 
@@ -317,6 +319,14 @@ Rejected:
   - `[low]` `[reject]` the probe's new `ArgumentProblem` stub has no mutation line of its own — the new roster row's mutation (row removed) is the line that pins the stub's need, and without the stub the row errors rather than passes.
   - `[low]` `[reject]` the mutation runs are not visible in the diff — the tree after the pass is byte-identical to the diff (no mutated source), and the three classes were re-run green on `ocupilot-b-ci` after reload (runs 759-761).
   - `[low]` `[reject]` the `ToolDispatch` comparison was rewritten rather than appended (intent audit) — a minimal in-place roster edit the dispatch allowed, and `Governance.cls` reads the same parameter with `$ListFind`.
+
+### 2026-11-14 — Review pass (rework 2, the `[CI]` roster item)
+
+- verdicts: 3 findings — high 0, medium 0, low 3, false 0, maybe-false 0
+- findings:
+  - `[low]` `[reject]` the builder could take the rows through a transient object keyed `<Target>.<Name>`, so the `Others()` line takes the fallback branch (intent audit) — the sweep pins every names call to a fixed names source in `Sites()` and drives it with a read that assigns each name, so a shim needs edits to Epic 23's `Sites` and `Driven` that are not add-only; the rows are the array-read shape `Others()` already holds for `ErrorDelete` and its siblings, and the roster's stale-name test goes red if this tool later adopts the builder.
+  - `[low]` `[reject]` the mutation line's "(1 of 7)" reads like a stale count (verification-gap) — it is the sweep's test count, and the fix edits this spec.
+  - `[low]` `[reject]` the pass's mutation is recorded but not visible in the diff (verification-gap) — the tree after the pass is byte-identical to the diff, and `RemovalRowsSweep` ran green again (run 172) after the pass.
 
 ## Design Notes
 
@@ -491,6 +501,7 @@ The story complies with every AD as it stands.
 - mutation: (smoke) the `InteropItemChangeClassMint` row removed from `CompositeMintSweep.Roster` -> `TestTheRosterIsEveryCompositeIdMint` alone red.
 - mutation: (smoke) the Classes tab at position 9 -> `InteropHostDescriptor.TestTheItemTabsFormOneGroupInOrder` red on position 8 and the eight members.
 - mutation: (smoke) `ItemClasses` left out of the test's `ENDPOINTS` -> `TestThePortServesTheRuntimeEndpointsAndTheirPairs` alone red.
+- mutation: (CI) `InteropItemChangeClass` taken off `RemovalRowsSweep.Others()` -> `TestEveryRemovalRowComesFromTheOneBuilder` alone red, naming the tool (1 of 7).
 
 **Tests added or changed by QA:**
 
@@ -527,3 +538,5 @@ Blocking condition: none
 **Residual.** The veto-window items are in Design Notes (the tab also declares `%Ens_ProductionConfig:READ` as an own pair, and 11 new strings, not 12). DW-2298's change-of-class residual is the runner's to close.
 
 **Rework 1 (the `[Smoke]` roster item).** `ToolDispatch` compared a tool name to the whole two-name `INTEROPITEMREMOVE` list, so neither name matched; it now tests list membership. `CompositeMintSweep` gained the `InteropItemChangeClassMint` row and `CompositeMintProbe` the argument stand-ins it needs. `InteropHostDescriptor` pins the Classes tab at position 8 and `ItemClasses` in `ENDPOINTS`. `Write.RemovalRows` was not used (no rows built); `ToolDispatch` is a minimal in-place edit. Review: 4 low rejected (triage log), 0 patched; follow-up review not recommended. Verified on `ocupilot-b-ci`: `ToolDispatch` 19, `CompositeMintSweep` 5 and `InteropHostDescriptor` 8 tests green, one class per call after loading `src`; `check-objectscript.py` 0 problems; `lint-docs.sh` clean.
+
+**Rework 2 (the `[CI]` roster item).** `InteropItemChangeClass` is on `RemovalRowsSweep.Others()` (one add-only name; its rows are `<Target>.<Name>` over the read's `Dropped` array, which the builder's names-on-read shape does not take, reason under the item). The tool and the card's rows are unchanged. Review: 3 low rejected (triage log), 0 patched; follow-up review not recommended. Verified on `ocupilot-b-ci`: `RemovalRowsSweep` 7 tests (run 172), `InteropItemChangeClass` 7, `InteropItemChangeClassRefusals` 6 and `InteropItemDescriptor` 12 green, one class per call after loading `src`; `check-objectscript.py` and `lint-docs.sh` clean; one mutation recorded.
