@@ -1201,3 +1201,5 @@ spawn_at=2026-10-06T16:01:05Z	Story 23.4	cr_complete	batch=b 2026-10-06T20:34:58
 2026-11-14T00:53:14Z	Epic 23	ledger_burndown_complete	open_before=96(32_routed+64_escalated/decision-pending) resolved=0 terminal=0 chartered=1(23-14-epic-23-burn-down) chartered_size=12 overflow=20 reowned=20(21-7:6,21-10:14,orchestrator_ruling) to_decision_sheet=64(46_already_owner-held_or_inbox,18_open) open_after=76 cap=8 story_max=12 filed_this_epic=850 closed_this_epic=978 drain_ratio=1.15 note=23.13_CI_on_361ddb0d_still_resolving(infra_rerun)
 2026-11-14T00:53:14Z	Story 23.14	ledger_routed_planned	story=23-14-epic-23-burn-down entries=12 excess=0 by=burndown
 2026-11-14T00:53:14Z	Epic 23	deps_hash_rerecorded_requested	reason=burndown_inserted(Story_23.14) by=runner(orchestrator_re-records)
+2026-11-14T00:56:02Z	Epic 23	epic_context_compiled	reason=x0_inserted(burn-down_Story_23.14) model=claude-opus-5-5 header_ok=yes
+2026-11-14T00:56:02Z	Story 23.14	stage_spawned	stage=plan spawn_at=2026-11-14T00:56:02Z model=opus agent_name=23-14-epic-23-burn-down-plan-1 cycle_iteration=1
