@@ -105,6 +105,7 @@ const workflow = withoutComments(workflowSource);
  */
 export const DECLARED_GATES = [
   // gates
+  `git fetch --no-tags --depth=1 origin '+refs/heads/release/*:refs/remotes/origin/release/*'`,
   'npm ci',
   'npm run build',
   'npm test',
@@ -2721,13 +2722,18 @@ test('DW-432: the section the runner hint cites is the paragraph of docs/DEVELOP
 // --- The bounded bind retry (DW-439) ---------------------------------------------------------
 
 /** Run `ci-throwaway.sh up` against a stub docker that fails `up` a given number of times. */
-function runThrowawayUp({ fails, message, retrySeconds = '0' }) {
+function runThrowawayUp({ fails, message, retrySeconds = '0', waitSeconds = '30', stubSleep = false, stubSs = false }) {
   const dir = mkdtempSync(join(tmpdir(), 'ocupilot-throwaway-bind-'));
   const bin = join(dir, 'bin');
   const scratch = join(dir, 'scratch');
   const capture = join(dir, 'docker-argv.txt');
   const counter = join(dir, 'up-count.txt');
+  const sleeps = join(dir, 'sleeps.txt');
   mkdirSync(bin);
+  // A `sleep` that records its argument and returns at once, so the backoff sequence is read
+  // without waiting it out. Only the budget's own clock (`date`) stays real.
+  if (stubSleep) writeStub(bin, 'sleep', ['printf \'%s\\n\' "$1" >> "$OCUPILOT_SLEEP_CAPTURE"', 'exit 0']);
+  if (stubSs) writeStub(bin, 'ss', ['printf \'%s\\n\' "SS-STUB $*"', 'exit 0']);
   writeStub(bin, 'docker', [
     'printf \'%s\\n\' "$*" >> "$OCUPILOT_DOCKER_CAPTURE"',
     'case "$*" in',
@@ -2761,12 +2767,17 @@ function runThrowawayUp({ fails, message, retrySeconds = '0' }) {
         // status pass the default '0' to keep the run fast; the backoff test below overrides it
         // to observe the wait actually elapsing.
         OCUPILOT_BIND_RETRY_SECONDS: retrySeconds,
+        OCUPILOT_BIND_WAIT_SECONDS: waitSeconds,
+        OCUPILOT_SLEEP_CAPTURE: sleeps,
       }),
     });
     const argv = existsSync(capture) ? readFileSync(capture, 'utf8') : '';
+    const composeFile = join(scratch, 'compose.yml');
     return {
       status: run.status,
       output: `${run.stdout}${run.stderr}`,
+      sleeps: existsSync(sleeps) ? readFileSync(sleeps, 'utf8').split('\n').filter(Boolean).map(Number) : [],
+      compose: existsSync(composeFile) ? readFileSync(composeFile, 'utf8') : '',
       ups: (argv.match(/up -d --wait/g) ?? []).length,
       downs: (argv.match(/down -v/g) ?? []).length,
     };
@@ -2793,25 +2804,88 @@ test('DW-439: a bring-up that failed on a host-port bind is retried, and succeed
   assert.equal(run.downs, 2, 'with this project\'s containers removed between them');
 });
 
-test('DW-439: a bind that never clears exits naming the port and the measured ephemeral range', () => {
-  // Mutation (Rule 19): make the loop unbounded -> this never returns; drop the port or the
-  // range from the exhaustion message -> the matching assertion goes red.
-  const run = runThrowawayUp({ fails: 99, message: BIND_MESSAGE });
-  assert.notEqual(run.status, 0, 'an exhausted retry is a failure');
-  assert.equal(run.ups, 3, 'bounded at three attempts, so a deterministic bind cannot loop');
+test('DW-2123: a bind that holds past the old three attempts still clears within the budget', () => {
+  // Two CI bring-ups failed all three attempts inside about 8 seconds, so the budget is time, not a
+  // count of attempts.
+  //
+  // Mutation (Rule 19): restore a three-attempt cap on the loop -> the fourth attempt never comes
+  // and this goes red with a non-zero exit.
+  const run = runThrowawayUp({ fails: 4, message: BIND_MESSAGE });
+  assert.equal(run.status, 0, `expected the fifth attempt to succeed: ${run.output}`);
+  assert.equal(run.ups, 5, 'five bring-up attempts');
+  assert.equal(run.downs, 4, 'with this project\'s containers removed between them');
+});
+
+test('DW-439: a bind that never clears exits at the end of its time budget, naming the port and the measured ephemeral range', () => {
+  // Mutation (Rule 19): make the loop unbounded -> this never returns; drop the budget check ->
+  // the same; drop the port or the range from the exhaustion message -> the matching assertion
+  // goes red.
+  const run = runThrowawayUp({ fails: 99, message: BIND_MESSAGE, retrySeconds: '1', waitSeconds: '2' });
+  assert.notEqual(run.status, 0, 'an exhausted budget is a failure');
+  assert.ok(run.ups >= 1 && run.ups < 99, `stopped at the end of the budget, made ${run.ups} attempts`);
+  assert.match(run.output, /2 second budget/, 'the message names the budget');
   assert.match(run.output, /52776/, 'the message names the port');
   assert.match(run.output, /ephemeral port range/, 'and the range this runner allocates from');
 });
 
-test('DW-439: the retry waits between attempts, and the wait is overridable', () => {
-  // Three cycles back to back would ask for the port again well inside the seconds a transient
-  // occupant holds it for, so the retry as written would have survived only an occupant that
-  // cleared within the teardown's own duration.
+test('DW-2123: the waits between attempts double from the first and stop growing at 30 seconds', () => {
+  // Mutation (Rule 19): drop the cap -> the sixth wait reads 32; stop doubling -> the second wait
+  // reads 2, not 4.
+  const run = runThrowawayUp({ fails: 7, message: BIND_MESSAGE, retrySeconds: '2', waitSeconds: '120', stubSleep: true });
+  assert.equal(run.status, 0, `expected the eighth attempt to succeed: ${run.output}`);
+  assert.deepEqual(run.sleeps, [2, 4, 8, 16, 30, 30, 30], 'the waits before each retry');
+});
+
+test('DW-2123: each bind failure prints the sockets on the web port when ss exists', () => {
+  // Mutation (Rule 19): drop the `ss` call or change its filter -> red.
+  const run = runThrowawayUp({ fails: 1, message: BIND_MESSAGE, stubSs: true });
+  assert.equal(run.status, 0, run.output);
+  assert.match(run.output, /SS-STUB -Htan \( sport = :52776 \)/, 'ss is asked for the web port, and its answer reaches the log');
+});
+
+test('DW-2123: both published ports bind the loopback address only', () => {
+  // Every reader of the throwaway runs on the host that started it, so nothing needs the port on
+  // another interface.
   //
-  // Mutation (Rule 19): delete the sleep, or the OCUPILOT_BIND_RETRY_SECONDS default -> red.
+  // Mutation (Rule 19): drop the `127.0.0.1:` prefix from either port line -> red.
+  const run = runThrowawayUp({ fails: 0, message: BIND_MESSAGE });
+  assert.equal(run.status, 0, run.output);
+  assert.match(run.compose, /^ {6}- "127\.0\.0\.1:1975:1972"$/m, 'the superserver port');
+  assert.match(run.compose, /^ {6}- "127\.0\.0\.1:52776:52773"$/m, 'the web port');
+});
+
+test('DW-2123: a budget or a first wait that is not a whole number is refused before any bring-up', () => {
+  // Mutation (Rule 19): delete the `case` guard on the two variables -> red.
+  for (const [waitSeconds, retrySeconds] of [['abc', '0'], ['30', '1.5']]) {
+    const run = runThrowawayUp({ fails: 0, message: BIND_MESSAGE, waitSeconds, retrySeconds });
+    assert.equal(run.status, 2, `${waitSeconds}/${retrySeconds}: ${run.output}`);
+    assert.match(run.output, /must be whole numbers/);
+    assert.equal(run.ups, 0, 'nothing was brought up');
+  }
+});
+
+test('DW-2501: the gates job fetches the release branch tips before it runs the tests that read them', () => {
+  // The stored-order test reads `refs/remotes/origin/release/*`, and skips where a shallow clone holds none, so a
+  // fetch that moved to another job or after `npm test` would turn the gate local-only with CI still green.
+  //
+  // Mutation (Rule 19): move the step into another job, or below `npm test` -> red.
+  const runs = jobSteps(workflow, 'gates').map((step) => step.run);
+  const fetchAt = runs.indexOf(`git fetch --no-tags --depth=1 origin '+refs/heads/release/*:refs/remotes/origin/release/*'`);
+  const testAt = runs.indexOf('npm test');
+  assert.ok(fetchAt >= 0, 'the gates job fetches the release branch tips, at depth 1');
+  assert.ok(testAt > fetchAt, 'and does so before npm test');
+});
+
+test('DW-439: the retry waits between attempts, and the waits are overridable', () => {
+  // A retry with no wait would ask for the port again well inside the seconds a transient occupant
+  // holds it for.
+  //
+  // Mutation (Rule 19): delete the sleep, or either OCUPILOT_BIND_* default -> red.
   const source = withoutShellComments(readFileSync(join(REPO_ROOT, 'scripts', 'ci-throwaway.sh'), 'utf8'));
-  assert.match(source, /BIND_RETRY_SECONDS="\$\{OCUPILOT_BIND_RETRY_SECONDS:-[1-9]\d*\}"/, 'a non-zero default, overridable by the environment');
-  assert.match(source, /sleep \$\(\(BIND_RETRY_SECONDS \* ATTEMPT\)\)/, 'and the wait grows with the attempt');
+  assert.match(source, /BIND_RETRY_SECONDS="\$\{OCUPILOT_BIND_RETRY_SECONDS:-[1-9]\d*\}"/, 'a non-zero first wait, overridable by the environment');
+  assert.match(source, /BIND_WAIT_SECONDS="\$\{OCUPILOT_BIND_WAIT_SECONDS:-[1-9]\d*\}"/, 'a non-zero budget, overridable by the environment');
+  assert.match(source, /sleep "\$BIND_SLEEP"/, 'the wait is a sleep');
+  assert.match(source, /BIND_DELAY=\$\(\(BIND_DELAY \* 2\)\)/, 'and doubles after each failure');
 });
 
 test('DW-439: the bring-up is streamed, and its exit code read back beside the text', () => {

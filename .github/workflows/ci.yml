@@ -90,6 +90,10 @@ jobs:
           - '26.0.0'
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      # Each release branch at its tip only, so the checkout stays shallow. `ui/tools/stored-order.test.mjs`
+      # reads the newest one as the baseline a stored class's property order is held against.
+      - name: fetch the release branch tips
+        run: git fetch --no-tags --depth=1 origin '+refs/heads/release/*:refs/remotes/origin/release/*'
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: ${{ matrix.node }}
@@ -161,13 +165,12 @@ jobs:
         run: npm run build
       - name: the runner's ephemeral port range
         run: cat /proc/sys/net/ipv4/ip_local_port_range
-      # DW-439's actual fix, not its third retry. 52776, 52780 and 52781 sit inside the range a Linux
-      # runner allocates outbound source ports from, so a transient occupant can hold one when
-      # compose asks for it -- which exhausted `ci-throwaway.sh`'s three bounded retries on
-      # 2026-09-21 and reddened a job that had run no test. Reserving them tells the kernel never
-      # to hand them out ephemerally, which keeps the ports CONSTANT -- the reason the script's
-      # own comment rejected moving them, since they are written into CLAUDE.md, parallel.yaml
-      # and every runner's spawn prompt -- while removing the race rather than retrying through it.
+      # Keeps the kernel from handing these ports out as outbound source ports. 52776, 52780 and 52781
+      # sit inside the range a Linux runner allocates those from, so without the reservation an
+      # unrelated connection can be holding one when compose asks for it. The reservation does not
+      # evict a connection that already holds the port, so `ci-throwaway.sh up` also retries a bind
+      # failure for its time budget, and the ports stay constant because CLAUDE.md, parallel.yaml
+      # and every runner's spawn prompt carry them.
       - name: reserve the throwaway host ports
         run: sudo sysctl -w net.ipv4.ip_local_reserved_ports=52776,52780,52781
       - name: bring up a throwaway container

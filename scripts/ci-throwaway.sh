@@ -29,6 +29,11 @@
 #
 # Without --dir or OCUPILOT_THROWAWAY_DIR the directory is $HOME/.ocupilot-throwaways/<project> on
 # macOS, whose /tmp cleaner prunes files left untouched for days, and /tmp/ocupilot-ci elsewhere.
+#
+# Both published ports bind 127.0.0.1 only: every reader of the instance (the readiness wait, the
+# test runner, the headless browser) runs on the host that started it. `up` retries a host-port
+# bind failure, and only that, until OCUPILOT_BIND_WAIT_SECONDS (default 120) have elapsed, waiting
+# 2, 4, 8, 16, then 30 seconds between attempts (the first wait is OCUPILOT_BIND_RETRY_SECONDS).
 set -e
 
 ACTION="${1:-}"
@@ -146,12 +151,17 @@ done
 
 COMPOSE_FILE="$DIR/compose.yml"
 
-# How many times a bring-up that failed on a host-port bind is retried (DW-439), and the base of
-# the wait between attempts. The wait grows with the attempt (2s, then 4s), because three cycles
-# run back to back would otherwise ask for the port again well inside the seconds a transient
-# occupant holds it for. Overridable so a test that stubs docker can set it to 0.
-BIND_ATTEMPTS=3
+# How long a bring-up that failed on a host-port bind keeps retrying (DW-439, DW-2123), and the
+# wait before the first retry. The wait doubles after each failure up to BIND_WAIT_CAP seconds, so
+# the retries stay spread across the budget instead of asking again inside the seconds a transient
+# occupant holds the port. Both are overridable so a test that stubs docker can shrink them; a
+# retry wait of 0 retries at once until the budget ends.
+BIND_WAIT_SECONDS="${OCUPILOT_BIND_WAIT_SECONDS:-120}"
 BIND_RETRY_SECONDS="${OCUPILOT_BIND_RETRY_SECONDS:-2}"
+BIND_WAIT_CAP=30
+case "$BIND_WAIT_SECONDS$BIND_RETRY_SECONDS" in
+    ''|*[!0-9]*) echo "ci-throwaway: OCUPILOT_BIND_WAIT_SECONDS and OCUPILOT_BIND_RETRY_SECONDS must be whole numbers"; exit 2 ;;
+esac
 
 # The kernel's ephemeral port range, named in the exhaustion message so the next occurrence is a
 # measurement rather than the inference the ledger entry recorded. Linux only; anywhere else it
@@ -234,8 +244,8 @@ services:
       durable-init:
         condition: service_completed_successfully
     ports:
-      - "$SUPER_PORT:1972"
-      - "$WEB_PORT:52773"
+      - "127.0.0.1:$SUPER_PORT:1972"
+      - "127.0.0.1:$WEB_PORT:52773"
     environment:
       ISC_DATA_DIRECTORY: /durable/iris
       OCUPILOT_DEMO: "1"
@@ -856,19 +866,20 @@ services:
       - $DIR/scripts:/opt/ocupilot/scripts:ro
 EOF
         echo "ci-throwaway: wrote $COMPOSE_FILE ($IMAGE, web $WEB_PORT, superserver $SUPER_PORT)"
-        # The bring-up, retried a BOUNDED number of times and ONLY on a host-port bind (DW-439).
+        # The bring-up, retried within a time budget and ONLY on a host-port bind (DW-439, DW-2123).
         #
         # 52776 sits inside the ephemeral range a Linux runner allocates outbound source ports
         # from -- the kernel default is 32768-60999 -- so an outbound connection opened by
-        # anything else on the box can hold it when compose asks for it, a failure that is over in
-        # seconds and is not about this container at all. 1975 is an order of magnitude below that
-        # floor and cannot be taken that way; a bind failure there is another listener, which the
-        # same retry survives only if that listener goes away. Moving the ports is not the fix:
-        # 52776/1975 are written into CLAUDE.md, _bmad/custom/parallel.yaml and every parallel
-        # runner's spawn prompt.
+        # anything else on the box can hold it when compose asks for it, a failure that is not
+        # about this container at all. Reserving the port in the runner's kernel settings does not
+        # remove every holder, so the retry rides out the occupant for OCUPILOT_BIND_WAIT_SECONDS.
+        # 1975 is an order of magnitude below that floor and cannot be taken that way; a bind
+        # failure there is another listener, which the same retry survives only if that listener
+        # goes away. Moving the ports is not the fix: 52776/1975 are written into CLAUDE.md,
+        # _bmad/custom/parallel.yaml and every parallel runner's spawn prompt.
         #
         # Every other failure exits at once. A retry loop that swallows "the image is not
-        # available" or "the install failed" turns one clear error into three and then a
+        # available" or "the install failed" turns one clear error into several and then a
         # misleading one about a port.
         #
         # The bring-up is STREAMED, not captured: the first start takes several minutes, and a
@@ -878,6 +889,8 @@ EOF
         UP_OUTPUT_FILE="$DIR/up-output.txt"
         UP_RC_FILE="$DIR/up-rc.txt"
         ATTEMPT=1
+        BIND_DEADLINE=$(( $(date +%s) + BIND_WAIT_SECONDS ))
+        BIND_DELAY="$BIND_RETRY_SECONDS"
         while : ; do
             # Cleared first: the exit code is written from inside the pipeline, so if that write
             # never happens -- the left side killed, the file unwritable -- `cat` would otherwise
@@ -895,13 +908,24 @@ EOF
                     exit 1
                     ;;
             esac
-            if [ "$ATTEMPT" -ge "$BIND_ATTEMPTS" ]; then
-                echo "ci-throwaway: host port $WEB_PORT (or superserver $SUPER_PORT) was still bound after $BIND_ATTEMPTS attempt(s); this runner's ephemeral port range is $(ephemeral_range), which bears on $WEB_PORT -- $SUPER_PORT is below any default range's floor, so a bind failure there is another listener"
+            # Who holds the web port right now, when `ss` exists: the next occurrence names its
+            # holder instead of leaving it an inference.
+            if command -v ss >/dev/null 2>&1; then
+                echo "ci-throwaway: sockets on port $WEB_PORT:"
+                ss -Htan "( sport = :$WEB_PORT )" || true
+            fi
+            BIND_REMAINING=$(( BIND_DEADLINE - $(date +%s) ))
+            if [ "$BIND_REMAINING" -le 0 ]; then
+                echo "ci-throwaway: host port $WEB_PORT (or superserver $SUPER_PORT) was still bound after $ATTEMPT attempt(s) over a $BIND_WAIT_SECONDS second budget; this runner's ephemeral port range is $(ephemeral_range), which bears on $WEB_PORT -- $SUPER_PORT is below any default range's floor, so a bind failure there is another listener"
                 exit 1
             fi
-            echo "ci-throwaway: host port $WEB_PORT is bound; removing this project's containers and retrying (attempt $ATTEMPT of $BIND_ATTEMPTS)"
+            echo "ci-throwaway: host port $WEB_PORT is bound; removing this project's containers and retrying (attempt $ATTEMPT, $BIND_REMAINING seconds of budget left)"
             docker compose -f "$COMPOSE_FILE" down -v || true
-            if [ "$BIND_RETRY_SECONDS" -gt 0 ]; then sleep $((BIND_RETRY_SECONDS * ATTEMPT)); fi
+            BIND_SLEEP="$BIND_DELAY"
+            if [ "$BIND_SLEEP" -gt "$BIND_REMAINING" ]; then BIND_SLEEP="$BIND_REMAINING"; fi
+            if [ "$BIND_SLEEP" -gt 0 ]; then sleep "$BIND_SLEEP"; fi
+            BIND_DELAY=$((BIND_DELAY * 2))
+            if [ "$BIND_DELAY" -gt "$BIND_WAIT_CAP" ]; then BIND_DELAY="$BIND_WAIT_CAP"; fi
             ATTEMPT=$((ATTEMPT + 1))
         done
         docker compose -f "$COMPOSE_FILE" ps
