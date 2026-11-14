@@ -386,6 +386,8 @@ export const CONSEQUENCE_INTEROPITEMREMOVE = 'INTEROP.ITEM.REMOVE';
 export const CONSEQUENCE_INTEROPITEMSTOP = 'INTEROP.ITEM.STOP';
 export const CONSEQUENCE_INTEROPITEMSTART = 'INTEROP.ITEM.START';
 export const CONSEQUENCE_INTEROPITEMRESTART = 'INTEROP.ITEM.RESTART';
+/** Story 20.40: an item copy's sentence. */
+export const CONSEQUENCE_INTEROPITEMCOPY = 'INTEROP.ITEM.COPY';
 /** Story 20.23: the queue and job actions' consequence sentences (AD-62); each is one published sentence. */
 export const CONSEQUENCE_INTEROPMESSAGEABORT = 'INTEROP.MESSAGE.ABORT';
 export const CONSEQUENCE_INTEROPQUEUEABORT = 'INTEROP.QUEUE.ABORT';
@@ -552,6 +554,8 @@ export function consequenceSentence(code: string | undefined): string {
   if (code === CONSEQUENCE_INTEROPITEMSTOP) return STRINGS.interopItemStopConsequence;
   if (code === CONSEQUENCE_INTEROPITEMSTART) return STRINGS.interopItemStartConsequence;
   if (code === CONSEQUENCE_INTEROPITEMRESTART) return STRINGS.interopItemRestartConsequence;
+  // Story 20.40: an item copy's sentence, published once.
+  if (code === CONSEQUENCE_INTEROPITEMCOPY) return STRINGS.interopItemCopyConsequence;
   // Story 20.23: the queue and job actions' sentences, each published once.
   if (code === CONSEQUENCE_INTEROPMESSAGEABORT) return STRINGS.interopMessageAbortConsequence;
   if (code === CONSEQUENCE_INTEROPQUEUEABORT) return STRINGS.interopQueueAbortConsequence;

@@ -6785,6 +6785,13 @@ export const STRINGS = {
   interopItemRefusalStartPending:
     'The production\'s work in progress did not finish within 15 seconds, so the item starts only when the production is next updated on Productions.',
   /** EXPERIENCE.md:604 */
+  interopItemCopyTitle: 'Copy item',
+  /** EXPERIENCE.md:604 */
+  interopItemCopyConsequence:
+    'The copy is added to this production disabled, with this item\'s class and settings. A business process that runs in the shared actor pool is copied with a pool size of 1. Enable the copy to run it.',
+  /** EXPERIENCE.md:604 */
+  interopItemRefusalCopySource: 'This production holds no item of that name to copy.',
+  /** EXPERIENCE.md:604 */
   interopItemSettingsLabel: 'Item settings',
   /** EXPERIENCE.md:604 */
   interopItemSettingsCriterionItem: 'Item',

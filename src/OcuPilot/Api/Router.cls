@@ -269,6 +269,7 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/routine-application/:id" Method="PUT" Call="RoutineAppUpdate"/>
   <Route Url="/routine-application" Method="POST" Call="RoutineAppCreate"/>
   <Route Url="/explorer/docdb" Method="POST" Call="ExplorerDocDbCreate"/>
+  <Route Url="/interop/items/copy" Method="POST" Call="InteropItemCopy"/>
   <Route Url="/interop/items" Method="POST" Call="InteropItemCreate"/>
   <Route Url="/interop/lookup-entries" Method="POST" Call="InteropLookupEntryCreate"/>
   <Route Url="/rest-service" Method="POST" Call="RestServiceCreate"/>
@@ -1921,6 +1922,13 @@ ClassMethod ExplorerDocDbCreate() As %Status
 ClassMethod InteropItemCreate() As %Status
 {
     Quit ##class(OcuPilot.Area.Interop.ItemSave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /interop/items/copy</code> (Story 20.40): Production items'
+/// Copy dialog, resolved through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod InteropItemCopy() As %Status
+{
+    Quit ##class(OcuPilot.Area.Interop.ItemCopy).HandleCreate()
 }
 
 /// <p>Thin <code>Call=</code> target for <code>POST /interop/lookup-entries</code> (Story 20.5): Lookup tables' New table and the

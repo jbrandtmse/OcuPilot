@@ -1,6 +1,6 @@
-/// <p>The port to the instance's interoperability runtime (AD-62, AD-29, AD-52, Stories 20.2, 20.3, 20.5, 20.6, 20.23, 20.27 and 20.31): <b>the
+/// <p>The port to the instance's interoperability runtime (AD-62, AD-29, AD-52, Stories 20.2, 20.3, 20.5, 20.6, 20.23, 20.27, 20.31 and 20.40): <b>the
 /// only product class that starts, stops, restarts, updates or recovers a production, enables, disables,
-/// adds or removes one of its items, aborts a queued message, a queue's messages or a job's retried message,
+/// adds, copies or removes one of its items, aborts a queued message, a queue's messages or a job's retried message,
 /// suspends that message or stops a job, adds, changes or removes a lookup table's entry, deletes, imports or exports a lookup
 /// table, sends a test request to an item, runs a data transformation on a pasted message, or resends messages with or without an
 /// edited body</b>, and the only one that reads the interoperability configuration for
@@ -320,6 +320,11 @@ Parameter TYPEDISABLE = "DISABLE";
 Parameter TYPEADD = "ADD";
 
 Parameter TYPEREMOVE = "REMOVE";
+
+/// <p>An item copy (Story 20.40): a create over the new name's absence, whose payload names the source item
+/// (<code>CopyFrom</code>) in the same production. It extends the add's path: the new item is the source's clone, stored
+/// disabled.</p>
+Parameter TYPECOPY = "COPY";
 
 /// <p>One item's runtime (Story 20.25): <code>{Production, Name, ClassName, Enabled, EnabledSource, Count, State, Current,
 /// TemporarilyStopped, OwnJobs, Jobs, NeedsUpdate, Namespace}</code>, the fresh read of the item runtime tools. The id is the
@@ -798,10 +803,10 @@ ClassMethod IsWrite(pType As %String) As %Boolean
     Quit (pType = ..#TYPESTART) || (pType = ..#TYPESTOP) || (pType = ..#TYPERESTART) || (pType = ..#TYPEUPDATE) || (pType = ..#TYPERECOVER)
 }
 
-/// <p>Whether <var>pType</var> is one of the item writes this port carries (Story 20.3).</p>
+/// <p>Whether <var>pType</var> is one of the item writes this port carries (Stories 20.3 and 20.40).</p>
 ClassMethod IsItemWrite(pType As %String) As %Boolean
 {
-    Quit (pType = ..#TYPEENABLE) || (pType = ..#TYPEDISABLE) || (pType = ..#TYPEADD) || (pType = ..#TYPEREMOVE)
+    Quit (pType = ..#TYPEENABLE) || (pType = ..#TYPEDISABLE) || (pType = ..#TYPEADD) || (pType = ..#TYPECOPY) || (pType = ..#TYPEREMOVE)
 }
 
 /// <p>Whether <var>pType</var> is one of the item runtime writes this port carries (Story 20.25): an action-style write
@@ -1596,6 +1601,41 @@ ClassMethod AddViolations(pNamespace As %String, pName As %String, pBody As %Dyn
     Quit tSC
 }
 
+/// <p>Every rule over a copy's fields, in <var>pViolations</var> as <method>AddViolations</method> answers them (Story 20.40):
+/// the new name (<method>NameProblem</method>); then <code>CopyFrom</code>, which must be a string
+/// (<code>PORT.FIELD.SHAPE</code> otherwise) and not empty (<code>COPYSOURCE</code>); then, once this port's gate admits a
+/// copy in <var>pNamespace</var> and the namespace is not under source control, the number of items of the
+/// production <var>pProduction</var> named <code>CopyFrom</code> without regard to case: none is
+/// <code>COPYSOURCE</code> and more than one is <code>AMBIGUOUS</code>. A production the namespace does not hold is left to
+/// the write's own 404.</p>
+ClassMethod CopyViolations(pNamespace As %String, pProduction As %String, pName As %String, pBody As %DynamicObject, Output pViolations) As %Status
+{
+    Kill pViolations
+    Set pViolations = 0
+    Set tSC = $$$OK
+    Set tAdmitted = $$$ISOK(..Admit(..#ENDPOINTITEMS, ..#TYPECOPY, pNamespace, .tHttp, .tFault))
+    Try {
+        If '$IsObject(pBody) || 'pBody.%IsA("%Library.DynamicObject") Set pBody = {}
+        If ..NameProblem(pName) '= "" Set pViolations($Increment(pViolations)) = $ListBuild("Name", ##class(OcuPilot.Api.InteropError).#ITEMNAME)
+        Set tType = pBody.%GetTypeOf("CopyFrom")
+        Set tFrom = ""
+        If tType = "string" Set tFrom = pBody.%Get("CopyFrom")
+        If (tType '= "string") && (tType '= "unassigned") {
+            Set pViolations($Increment(pViolations)) = $ListBuild("CopyFrom", ##class(OcuPilot.Api.Error).#PORTFIELDSHAPE)
+        } ElseIf tFrom = "" {
+            Set pViolations($Increment(pViolations)) = $ListBuild("CopyFrom", ##class(OcuPilot.Api.InteropError).#ITEMCOPYSOURCE)
+        } ElseIf tAdmitted && '..SourceControlled(pNamespace) {
+            Set tReadSC = ..GatherItems(pNamespace, pProduction, tFrom, 0, .tExists, .tFound, .tCount, .tCaught)
+            If $IsObject(tCaught) Throw tCaught
+            If tExists && (tCount = 0) Set pViolations($Increment(pViolations)) = $ListBuild("CopyFrom", ##class(OcuPilot.Api.InteropError).#ITEMCOPYSOURCE)
+            If tExists && (tCount > 1) Set pViolations($Increment(pViolations)) = $ListBuild("CopyFrom", ##class(OcuPilot.Api.InteropError).#ITEMAMBIGUOUS)
+        }
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
 /// <p>Whether <var>pNamespace</var> holds the production <var>pProduction</var>. A namespace this port's gate
 /// does not admit an item read in (<method>Admit</method>), and a fault in the look-up, answer 1 without a
 /// vendor call, so the write's own refusal decides rather than this one.</p>
@@ -1626,7 +1666,7 @@ ClassMethod Violations(ByRef pViolations, Output pHttpStatus As %Integer, Output
 /// <code>Enabled</code>, <var>pSource</var> <code>default</code> when a system default supplies it,
 /// <var>pBusinessType</var> its host type code and <var>pPoolSize</var> its pool size. Pure.</p>
 /// <ul>
-/// <li>Add: <code>TAKEN</code> when the name is held.</li>
+/// <li>Add and copy: <code>TAKEN</code> when the name is held.</li>
 /// <li>Any other write: <code>AMBIGUOUS</code> when more than one item holds the name.</li>
 /// <li>Enable: <code>ENABLED</code> when it is, else <code>DEFAULTSETTING</code> when a system default
 /// supplies <code>Enabled</code>.</li>
@@ -1645,7 +1685,7 @@ ClassMethod ItemRefusal(pType As %String, pCount As %Integer, pEnabled As %Boole
 /// production's namespace is switched, where a reference to another OcuPilot class does not resolve.</p>
 ClassMethod ItemRefusalToken(pType As %String, pCount As %Integer, pEnabled As %Boolean, pSource As %String, pBusinessType As %Integer, pPoolSize As %String) As %String
 {
-    If pType = ..#TYPEADD {
+    If (pType = ..#TYPEADD) || (pType = ..#TYPECOPY) {
         If pCount > 0 Quit "TAKEN"
         Quit ""
     }
@@ -1831,7 +1871,7 @@ ClassMethod ListItems(pNamespace As %String, pProduction As %String, pMax As %In
 /// unlogged, and so is an item an enable or a disable would not find (<method>VendorCannotFind</method>); a
 /// name the production holds more than once is <code>AMBIGUOUS</code>. With <var>pAction</var> it refuses
 /// what that action would be refused
-/// (<method>ItemRefusal</method>); for an add (AD-54) it inverts, so absence is the 404 the create
+/// (<method>ItemRefusal</method>); for an add or a copy (AD-54) it inverts, so absence is the 404 the create
 /// expects and a held name is <code>TAKEN</code>.</p>
 ClassMethod ReadItem(pNamespace As %String, pProduction As %String, pName As %String, pAction As %String, Output pRow As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
@@ -1839,7 +1879,7 @@ ClassMethod ReadItem(pNamespace As %String, pProduction As %String, pName As %St
     If ..SourceControlled(pNamespace) Quit ..Conflict(##class(OcuPilot.Api.InteropError).#ITEMSOURCECONTROL, .pHttpStatus, .pFault)
     Set tSC = ..GatherItems(pNamespace, pProduction, pName, 0, .tExists, .tFound, .tCount, .tCaught)
     If $IsObject(tCaught) Quit ..Mapped(tCaught, "the item read failed", .pHttpStatus, .pFault)
-    If pAction = ..#TYPEADD {
+    If (pAction = ..#TYPEADD) || (pAction = ..#TYPECOPY) {
         If tCount > 0 Quit ..Conflict(##class(OcuPilot.Api.InteropError).#ITEMTAKEN, .pHttpStatus, .pFault)
         Quit ..Absent(.pHttpStatus, .pFault)
     }
@@ -2029,15 +2069,18 @@ ClassMethod ItemObject(pProduction As %RegisteredObject, pName As %String) As %R
 /// The sequence, in one switched block:</p>
 /// <ol>
 /// <li>A namespace under source control is refused, before anything is read.</li>
-/// <li>An add's fields are validated (<method>AddViolations</method>): 422.</li>
+/// <li>An add's fields are validated (<method>AddViolations</method>), and a copy's (<method>CopyViolations</method>): 422.</li>
 /// <li>The production is opened at concurrency 4, so writers on one production wait on the vendor's row
 /// lock; a lock not taken in time is 503 <code>PORT.UNAVAILABLE</code>.</li>
 /// <li>The item's facts are read under that lock and judged by <method>ItemRefusal</method>: 409.</li>
-/// <li>Enable and disable call <code>Ens.Director:EnableConfigItem</code> with no update; add inserts a new
+/// <li>Enable and disable call <code>Ens.Director:EnableConfigItem</code> with no update; add and copy insert a new
 /// <code>Ens.Config.Item</code> and saves the production; remove calls <code>RemoveItem</code> and saves
 /// it. Add and remove record <code>%Ensemble/%Production/ModifyConfiguration</code> through
 /// <code>Ens.Util.Auditing</code>, naming the operation and the item and never a value; enable and
-/// disable carry the vendor's own event. The vendor answers an error status only when the audit call
+/// disable carry the vendor's own event. A copy (Story 20.40) refuses the new name held (<code>TAKEN</code>) and a source
+/// the production does not hold once (<code>COPYSOURCE</code> or <code>AMBIGUOUS</code>), 409, under the same lock; it
+/// inserts the source's clone, named, disabled, with a pool size of 1 when a business process's was 0, saves the production
+/// and records the vendor's event naming both items. The vendor answers an error status only when the audit call
 /// raises (an event that is disabled is dropped without one); that status is logged once the namespace is
 /// restored and never fails the write.</li>
 /// <li>The production class is saved every time (<code>SaveToClass</code>), because the configuration
@@ -2056,9 +2099,13 @@ ClassMethod PerformItem(pNamespace As %String, pType As %String, pProduction As 
         If $$$ISERR(tViolationSC) Quit ..Fail("the setting's value could not be judged", tViolationSC, .pHttpStatus, .pFault)
         If tViolations > 0 Quit ..Violations(.tViolations, .pHttpStatus, .pFault)
     }
-    If pType = ..#TYPEADD {
+    If (pType = ..#TYPEADD) || (pType = ..#TYPECOPY) {
         If '$IsObject(pBody) || 'pBody.%IsA("%Library.DynamicObject") Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONITEMBODY, .pHttpStatus, .pFault)
-        Set tViolationSC = ..AddViolations(pNamespace, pName, pBody, .tViolations)
+        If pType = ..#TYPECOPY {
+            Set tViolationSC = ..CopyViolations(pNamespace, pProduction, pName, pBody, .tViolations)
+        } Else {
+            Set tViolationSC = ..AddViolations(pNamespace, pName, pBody, .tViolations)
+        }
         If $$$ISERR(tViolationSC) Quit ..Fail("the item's fields could not be judged", tViolationSC, .pHttpStatus, .pFault)
         If tViolations > 0 Quit ..Violations(.tViolations, .pHttpStatus, .pFault)
     }
@@ -2097,7 +2144,7 @@ ClassMethod PerformItem(pNamespace As %String, pType As %String, pProduction As 
                 Set tFactsSC = ..GatherItems(pNamespace, pProduction, pName, 0, .tExists, .tFound, .tCount, .tGatherCaught)
                 If $IsObject(tGatherCaught) Throw tGatherCaught
                 Set tLine = $Get(tFound(1))
-                If (pType '= ..#TYPEADD) && (tCount = 0) {
+                If (pType '= ..#TYPEADD) && (pType '= ..#TYPECOPY) && (tCount = 0) {
                     Set tAbsent = 1
                 } ElseIf ..VendorCannotFind(pType, tCount, tLine) {
                     Set tAbsent = 1
@@ -2108,12 +2155,38 @@ ClassMethod PerformItem(pNamespace As %String, pType As %String, pProduction As 
                         Set tRefusal = ..ItemRefusalToken(pType, tCount, $List(tLine, 4), $List(tLine, 5), $List(tLine, 3), $List(tLine, 6))
                     }
                 }
+                If (pType = ..#TYPECOPY) && (tRefusal = "") && 'tAbsent {
+                    ; The source is read under the same lock and copied as it stands now.
+                    Set tSourceSC = ..GatherItems(pNamespace, pProduction, pBody.%Get("CopyFrom"), 0, .tSourceExists, .tSourceFound, .tSourceCount, .tSourceCaught)
+                    If $IsObject(tSourceCaught) Throw tSourceCaught
+                    If tSourceCount = 0 Set tRefusal = "COPYSOURCE"
+                    If tSourceCount > 1 Set tRefusal = "AMBIGUOUS"
+                }
                 If (tRefusal = "") && 'tAbsent {
                     Set tName = $Select(tLine = "": pName, 1: $List(tLine, 1))
                     Set tTarget = ""
                     If (pType = ..#TYPEENABLE) || (pType = ..#TYPEDISABLE) {
                         Set tVendorSC = ##class(Ens.Director).EnableConfigItem(pProduction _ "||" _ tName, (pType = ..#TYPEENABLE), 0)
                         If $$$ISOK(tVendorSC) Set tSaveSC = tProduction.SaveToClass(..ItemObject(tProduction, tName))
+                    } ElseIf pType = ..#TYPECOPY {
+                        Set tSourceName = $List(tSourceFound(1), 1)
+                        Kill %objlasterror
+                        Set tNew = ..ItemObject(tProduction, tSourceName).%ConstructClone(1)
+                        If '$IsObject(tNew) {
+                            Set tVendorSC = $$$ERROR($$$GeneralError, "the source item could not be cloned: " _ $System.Status.GetErrorText($Get(%objlasterror, $$$OK)))
+                        } Else {
+                            Set tNew.Name = pName
+                            Set tNew.Enabled = 0
+                            If (tNew.BusinessType() = 2) && (tNew.PoolSize = 0) Set tNew.PoolSize = 1
+                            Do tProduction.Items.Insert(tNew)
+                            Set tVendorSC = tProduction.%Save()
+                        }
+                        If $$$ISOK(tVendorSC) {
+                            Set tActions = "item added by OcuPilot as a copy of " _ tSourceName
+                            Set tAuditSC = ##class(Ens.Util.Auditing).AuditModifyProductionConfig(pProduction, pName, .tActions)
+                            Set tSaveSC = tProduction.SaveToClass(tNew)
+                        }
+                        Set tNew = ""
                     } ElseIf pType = ..#TYPEADD {
                         Set tNew = ##class(Ens.Config.Item).%New(pBody.%Get("ClassName"))
                         Set tNew.Name = pName
@@ -5374,7 +5447,7 @@ ClassMethod RuntimeSnippet(pType As %String, pId As %String, pContext As %Dynami
 }
 
 /// <p>The lines <method>Snippet</method> adds for the item write <var>pType</var> of the item the composite
-/// id <var>pId</var> names, carrying the add's body <var>pBody</var>. The last line drops the production, so a
+/// id <var>pId</var> names, carrying the add's or the copy's body <var>pBody</var>. The last line drops the production, so a
 /// terminal that runs the script does not keep its exclusive lock.</p>
 ClassMethod ItemSnippet(pType As %String, pId As %String, pBody As %DynamicAbstractObject) As %String [ Private ]
 {
@@ -5399,6 +5472,16 @@ ClassMethod ItemSnippet(pType As %String, pId As %String, pBody As %DynamicAbstr
         If $IsObject(pBody) && (pBody.%GetTypeOf("PoolSize") = "number") Set tText = tText _ tNL _ " Set tItem.PoolSize = " _ ..Literal(pBody.%Get("PoolSize"))
         If $IsObject(pBody) && (pBody.%GetTypeOf("Category") = "string") Set tText = tText _ tNL _ " Set tItem.Category = " _ ..Literal(pBody.%Get("Category"))
         If $IsObject(pBody) && (pBody.%GetTypeOf("Comment") = "string") Set tText = tText _ tNL _ " Set tItem.Comment = " _ ..Literal(pBody.%Get("Comment"))
+        Set tText = tText _ tNL _ " Do tProduction.Items.Insert(tItem)"
+        Set tText = tText _ tNL _ " Set tSC = tProduction.%Save()"
+        Set tText = tText _ tNL _ " If $System.Status.IsOK(tSC) Set tSC = tProduction.SaveToClass(tItem)"
+    } ElseIf pType = ..#TYPECOPY {
+        Set tFrom = ""
+        If $IsObject(pBody) && (pBody.%GetTypeOf("CopyFrom") = "string") Set tFrom = pBody.%Get("CopyFrom")
+        Set tText = tText _ tNL _ " Set tItem = tProduction.FindItemByConfigName(" _ ..Literal(tFrom) _ ").%ConstructClone(1)"
+        Set tText = tText _ tNL _ " Set tItem.Name = " _ tName
+        Set tText = tText _ tNL _ " Set tItem.Enabled = 0"
+        Set tText = tText _ tNL _ " If (tItem.BusinessType() = 2) && (tItem.PoolSize = 0) Set tItem.PoolSize = 1"
         Set tText = tText _ tNL _ " Do tProduction.Items.Insert(tItem)"
         Set tText = tText _ tNL _ " Set tSC = tProduction.%Save()"
         Set tText = tText _ tNL _ " If $System.Status.IsOK(tSC) Set tSC = tProduction.SaveToClass(tItem)"

@@ -2,7 +2,9 @@
 title: 'Story 20.40: Item copy and change of class'
 type: 'feature'
 created: '2026-11-12'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '8c06ac6a0143bbfb6f240e69eb0ac412f904bbf4'
+baseline_commit: '8c06ac6a0143bbfb6f240e69eb0ac412f904bbf4'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -119,7 +121,7 @@ Line numbers are on `ac902dcd`. Stories 20.25 and 20.26 land first and shift the
 
 **Execution:**
 
-- [ ] **Task 0, on `ocupilot-b-ci` (USER, auditing on, the probe production).** Record each result under Design Notes › Measured.
+- [x] **Task 0, on `ocupilot-b-ci` (USER, auditing on, the probe production).** Record each result under Design Notes › Measured.
   - (a) Re-anchor the Code Map on the branch head, where 20.25 and 20.26 have landed. Read `ToolWrite`'s other-port count and `ReadTool`'s registry count; this story's pins are each one above them.
   - (b) A copy through the port's vendor shape leaves:
     - one production row;
@@ -131,43 +133,43 @@ Line numbers are on `ac902dcd`. Stories 20.25 and 20.26 land first and shift the
   - (c) A principal holding only the add's pairs can copy.
   - (d) Grep `src/OcuPilot/Test` and `ui/tools` for a check that every declared row action resolves a tool with `SCREENACTIONS`. If one exists, the page-run `copy` joins its exemption, as `add` is exempt as a primary action. A check with no exemption mechanism is `## Clarification Needed`.
   - A result that changes destructiveness, the key default, the audit choice or the pairs is `## Clarification Needed`.
-- [ ] `src/OcuPilot/Port/InteropPort.cls`:
+- [x] `src/OcuPilot/Port/InteropPort.cls`:
   - Add `TYPECOPY` `COPY` to `IsItemWrite`, so `Serves` and the routines WRITE follow.
   - `ItemRefusalToken`: `COPY` refuses `TAKEN` as `ADD` does. `ReadItem` inverts for `COPY` as for `ADD`.
   - Add `CopyViolations(pNamespace, pProduction, pName, pBody, .pViolations)`. It checks `NameProblem`; then `CopyFrom`, refused `PORT.FIELD.SHAPE` for a wrong JSON type and `COPYSOURCE` for an empty string; then, admitted and switched as `AddViolations` is, the source's count: 0 is `COPYSOURCE`, more than one is `AMBIGUOUS`.
   - `PerformItem`, `COPY`: `CopyViolations` first (422). Then, under the open lock: `TAKEN` for the new name, `COPYSOURCE` or `AMBIGUOUS` for the source (409), the vendor shape of Boundaries, and the new item read back.
   - Add an `ItemSnippet` `COPY` branch (AD-59), and refresh the header doc and `PerformItem`'s doc.
   - Rule 31: `COPY` extends the `ADD` branch and `AddViolations`' model. It is not a second path.
-- [ ] `src/OcuPilot/Api/InteropError.cls`:
+- [x] `src/OcuPilot/Api/InteropError.cls`:
   - add `ITEMCOPYSOURCE` `INTEROP.ITEM.COPYSOURCE` to `Codes`, `ItemCodes`, the second item list and `ReasonFor`;
   - add consequence `ITEMCOPY` `INTEROP.ITEM.COPY` to `Codes`, `ConsequenceCodes` and `ReasonFor`.
-- [ ] `src/OcuPilot/Screen/Tool/InteropItemAdd.cls`: `InputSchema` pushes `ClassName` to `required` only when `SettableFields` lists it (a hook, so the copy inherits cleanly).
-- [ ] `src/OcuPilot/Screen/Tool/InteropItemCopy.cls` (new, extends `InteropItemAdd`):
+- [x] `src/OcuPilot/Screen/Tool/InteropItemAdd.cls`: `InputSchema` pushes `ClassName` to `required` only when `SettableFields` lists it (a hook, so the copy inherits cleanly).
+- [x] `src/OcuPilot/Screen/Tool/InteropItemCopy.cls` (new, extends `InteropItemAdd`):
   - `TOOLNAME` `interop.items.copy`; `WRITETYPE` `COPY`; `FIELDS` `CopyFrom`; `FieldRows` of `CopyFrom`, a string.
   - `READBACKFIELDS` `Name,Enabled`; `CLASSICPAGES` `""`, as the item siblings on the same page declare none (AD-44).
   - `CONSEQUENCECODE` `INTEROP.ITEM.COPY`; `PRECONDITIONCODES` `TAKEN`, `COPYSOURCE`, `AMBIGUOUS`, `SOURCECONTROL` and `INTEROP.NAMESPACE`.
   - `InputSchema`: `CopyFrom` described and required.
   - `ArgumentProblem` uses the port's `CopyViolations` over the id's production.
   - `DESCRIPTION` in the siblings' plain words. It is agent-facing and decided at implement.
-- [ ] `src/OcuPilot/Area/Interop/ItemCopy.cls` (new, extends `ItemSave`): `CREATETOOL` `InteropItemCopy`, and `Violations` → `CopyViolations`. The order of the Save is unchanged.
-- [ ] `src/OcuPilot/Api/Router.cls`: `POST /interop/items/copy` → `InteropItemCopy` → `ItemCopy.HandleCreate`, beside :272.
-- [ ] `src/OcuPilot/Kernel/Proposal/Prohibited.cls`: the production-item create branch admits `CopyFrom` for a `COPY` write only. Model it on Story 18.29's user-copy branch.
-- [ ] `src/OcuPilot/Kernel/Governance/Baseline.cls`: append `"interop.items.copy": true`.
-- [ ] `src/OcuPilot/Screen/Descriptor/InteropItemList.cls`: add `copy` to `rowActions` before `remove`, which stays last. Refresh the doc.
-- [ ] Client:
+- [x] `src/OcuPilot/Area/Interop/ItemCopy.cls` (new, extends `ItemSave`): `CREATETOOL` `InteropItemCopy`, and `Violations` → `CopyViolations`. The order of the Save is unchanged.
+- [x] `src/OcuPilot/Api/Router.cls`: `POST /interop/items/copy` → `InteropItemCopy` → `ItemCopy.HandleCreate`, beside :272.
+- [x] `src/OcuPilot/Kernel/Proposal/Prohibited.cls`: the production-item create branch admits `CopyFrom` for a `COPY` write only. Model it on Story 18.29's user-copy branch.
+- [x] `src/OcuPilot/Kernel/Governance/Baseline.cls`: append `"interop.items.copy": true`.
+- [x] `src/OcuPilot/Screen/Descriptor/InteropItemList.cls`: add `copy` to `rowActions` before `remove`, which stays last. Refresh the doc.
+- [x] Client:
   - `ui/src/app/areas/interoperability/interop-item-copy.store.ts` (new): the name, the busy flag and refusals, posting `{Production, Name, CopyFrom}` through `postInteropCreate` with tool `interop.items.copy`. It is a new store, not a subclass of the add store, whose six-field state the copy never uses (Rule 31).
   - `interop-item-copy-dialog.ts` (new), on the add dialog's model: the copy consequence as a banner, the reason alert, one Name field with `interopItemAddNameHint`, and a primary Copy that is `aria-disabled` while the name is blank or a copy is in flight. It uses only classes the add dialog uses (client-lint family 7).
   - `interop-item-list.page.ts`: register `copy`. It opens the dialog with the selected row's name, never over another dialog.
   - Specs for the store and the dialog.
-- [ ] `ui/src/app/core/screen-actions.ts`: `copy: STRINGS.auditDatabaseCopyConfirm` ("Copy") in InteropItemList's labels.
-- [ ] `ui/src/app/core/proposal-view.ts` and `ui/src/app/core/strings.ts`: the `INTEROP.ITEM.COPY` consequence and the ruled strings, appended to the item block.
-- [ ] `_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md`: append the ruled strings as a clause to :604's row, and Copy item to :173's Dialogs line. Then run `npm run test:tools`.
-- [ ] `src/OcuPilot/Test/InteropItemCopy.cls` (new, armed by `OCUPILOT_ALLOW_PRINCIPALS`): one leg per Matrix row, each on its own probe items, created and removed in the test, using `InteropItemControl`'s class methods.
+- [x] `ui/src/app/core/screen-actions.ts`: `copy: STRINGS.auditDatabaseCopyConfirm` ("Copy") in InteropItemList's labels.
+- [x] `ui/src/app/core/proposal-view.ts` and `ui/src/app/core/strings.ts`: the `INTEROP.ITEM.COPY` consequence and the ruled strings, appended to the item block.
+- [x] `_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md`: append the ruled strings as a clause to :604's row, and Copy item to :173's Dialogs line. Then run `npm run test:tools`.
+- [x] `src/OcuPilot/Test/InteropItemCopy.cls` (new, armed by `OCUPILOT_ALLOW_PRINCIPALS`): one leg per Matrix row, each on its own probe items, created and removed in the test, using `InteropItemControl`'s class methods.
   - The agent's leg is mint, HTTP confirm and read-back, and checks the audit row and the recompile. The Save leg is `POST /interop/items/copy`.
   - The Gates leg uses `InteropItemGate`'s principal generator. The `PORT.FIELD.SHAPE` sub-case is unit-tested on `CopyViolations`.
-- [ ] `scripts/ci-throwaway.sh`: `InteropItemCopy` on a `# classes:` line.
-- [ ] The Code Map's rosters, then sweep `src/OcuPilot/Test`, `ui/browser`, `ui/tools` and the `ui/src` specs for the old shape of each (Rule 30).
-- [ ] `ui/browser/interop-items.browser-spec.mjs`: on the deployed bundle, a Copy leg. It copies a probe item through the row action, asserts the dialog's consequence, and sees the new row disabled with the source's class, then removes it.
+- [x] `scripts/ci-throwaway.sh`: `InteropItemCopy` on a `# classes:` line.
+- [x] The Code Map's rosters, then sweep `src/OcuPilot/Test`, `ui/browser`, `ui/tools` and the `ui/src` specs for the old shape of each (Rule 30).
+- [x] `ui/browser/interop-items.browser-spec.mjs`: on the deployed bundle, a Copy leg. It copies a probe item through the row action, asserts the dialog's consequence, and sees the new row disabled with the source's class, then removes it.
 - [ ] DW-2298 (owned by 20.25 until its adjudication re-owns it): the copy residual is closed by AC1-AC3, and the change-of-class residual goes to the split child.
 
 **Acceptance Criteria:**
@@ -179,11 +181,84 @@ Line numbers are on `ac902dcd`. Stories 20.25 and 20.26 land first and shift the
 - AC5: Given a caller missing one declared pair, when it copies by either caller, then it is refused 403 naming that pair.
 - AC6: Given the new tool, when `Test/ToolWrite` and `Test/ReadTool` run, then each count reads exactly one above the branch's value before this story.
 
+### Review Findings
+
+Code review 2026-11-13: 0 decision-needed, 9 patch (all applied), 1 closed `wontfix-accepted` (DW-2536), 14 rejected.
+
+- [x] [Review][Patch] (med) An agent's confirm after the source was removed answers 400 `TOOL.ARGUMENTS` with the source sentence before the write and leaves the proposal live, as the mint does and as the add's `ConfirmProblem` does; no test reached it. Decided in-stage: kept, and the matrix's 409 holds at the write itself. Leg added [src/OcuPilot/Test/InteropItemCopy.cls `TestAChangeSinceTheMintAndTheWritesOwnRefusalsStoreNothing`]
+- [x] [Review][Patch] (med) The copy's comment check compared two empty strings, and its category was never read; the source now holds both [src/OcuPilot/Test/InteropItemCopy.cls `TestThePersonsSaveCopiesTheItemAndItsSettings`, `MarkSource`]
+- [x] [Review][Patch] (med) The business-process-only condition of the pool-size rule was unpinned; a pool-size-0 service's copy now reads 0 [src/OcuPilot/Test/InteropItemCopy.cls `TestThePersonsSaveCopiesTheItemAndItsSettings`]
+- [x] [Review][Patch] (med) Rule 2: `Prohibited.ItemCopied` was a near-copy of the user copy's `Copied`; `Copied` now takes the permitted list and the false-only fields, and `ItemCopied` is gone [src/OcuPilot/Kernel/Proposal/Prohibited.cls `Copied`]
+- [x] [Review][Patch] (low) The copy tool's input schema (CopyFrom required, no class) was unpinned [src/OcuPilot/Test/InteropItemCopy.cls `TestACopyNeedsTheRoutinesDatabaseAndIsRefusedUnderSourceControl`]
+- [x] [Review][Patch] (low) Copy opening over an open add dialog was unpinned [ui/src/app/areas/interoperability/interop-item-list.page.spec.ts]
+- [x] [Review][Patch] (low) The agent-facing description said a running production starts an enabled item on its next update; a copy is never enabled [src/OcuPilot/Screen/Tool/InteropItemCopy.cls `DESCRIPTION`]
+- [x] [Review][Patch] (low) `ITEMCOPYSOURCE`'s doc placed the 422 at the mint, and `ItemPreconditionCodes`' doc did not cover the copy's source refusal [src/OcuPilot/Api/InteropError.cls]
+- [x] [Review][Patch] (low) Stale docs: "three siblings" (now four), the list page's registered actions, the gate's "six port legs" (now seven), `StoredColumn` [InteropItemList.cls, interop-item-list.page.ts, Test/InteropItemGate.cls, Test/InteropItemCopy.cls]
+- [x] [Review][Defer] (low) Rule 2: `InteropItemCopyStore` repeats the add store's listener, refusal and post plumbing; the stated reason covers the state only [ui/src/app/areas/interoperability/interop-item-copy.store.ts] -- `wontfix-accepted` DW-2536, reopen when a third item create store copies it
+
+Rejected:
+
+- low: the copy's script finds the source by the caller's spelling, so a case-different `CopyFrom` fails there (`<INVALID OREF>`, nothing written); the tool tells the agent to name it exactly, the remove's script looks up the same way, and the fix adds a search loop.
+- low (by-design): `%ConstructClone(1)` also clones the referenced production in memory; it is the vendor's shape the spec requires, nothing of it is saved (`%OnAddToSaveSet` re-points the copy), and `ProductionRows` pins that.
+- false: "the clone guard cannot fire" -- `%ConstructClone` answers `""` when the clone fails, which the guard catches; the source was just found under the lock by its stored name. The literal 2 is required: AD-62 (12) forbids the `Ensemble` include.
+- low: `ItemCopy.Violations` and `InteropItemCopy.FieldViolations` both delegate to `CopyViolations`; each is a one-line override of its own class's seam, and `ItemSave.Violations` serves Saves other than the item tools.
+- low: a 422 naming both `Name` and `CopyFrom` draws only the name refusal; `CopyFrom` is the selected row's own name, so this needs that item removed concurrently, and the fix adds a branch.
+- low: the dialog does not name the source; the wording is ruled (U-25) and new wording is owner-only.
+- false: the gate probe's copy cleanup "fails silently" -- `TestEachMissingPairIsRefusedByNameThroughThePort` asserts `BASELINE` after each principal, which names any leftover.
+- low: `StoredColumn` concatenates its column into SQL; its callers are literals in the same test class.
+- low: a System Default Setting supplying `Enabled` true runs the copy enabled and refuses Remove; rare, the read-back reports it, the add and the classic copy behave the same, and a guard would add a refusal the spec does not have.
+- low: a source whose class is no longer compiled is copied as it is, disabled, as the classic copy does.
+- low: a stale selection from another production; the table prunes rows that leave the view, and the fix adds a guard.
+- low: in a source-controlled namespace the Save answers a bad name 422 before 409; the matrix promises no precedence and the add's Save has the same order.
+- low: the contended `Test/InteropItemDescriptor.cls` rosters were edited in place; Rule 30 required the roster moves, and Epic 23's branch has no change to that file.
+- low: AC4's audit and AC6's `ToolWrite` count have no mutation line of their own; Rule 19 asks for one per AC, and both carry one.
+
+- [x] [Smoke] Full sweep shard 13/20 on d49eb2d3: `OcuPilot.Test.InteropDescriptor.TestEveryInteropErrorCodeResolvesToItsSentence` fails "Codes and ConsequenceCodes list every code this test names" -- `src/OcuPilot/Test/InteropDescriptor.cls` (the `tCodes` roster) -- add `ITEMCOPYSOURCE` and `ITEMCOPY` to the roster so it names every code `InteropError.Codes()` and `ConsequenceCodes()` list; demonstrate the mutation (drop one, see red, revert) and record its `mutation:` line under `## Verification`; add `InteropDescriptor` to this spec's `Shared surfaces:` and its `(loop)` class list.
+
+Code review 2026-11-13 (rework 1): the `[Smoke]` item is confirmed closed (`InteropDescriptor` 12 of 12, run 731). 0 decision-needed, 1 patch (applied), 0 deferred, 5 rejected.
+
+- [x] [Review][Patch] (low) The roster's closing check compared counts only, so a duplicate roster name could hide a missing code, and a red never named the code; it now names each code `Codes()` and `ConsequenceCodes()` list that the roster misses [src/OcuPilot/Test/InteropDescriptor.cls `TestEveryInteropErrorCodeResolvesToItsSentence`]
+
+Rejected (rework 1):
+
+- low: the spec's frontmatter reads `done` while the tracker reads `review`; `done` is the implement stage's own status at `dev_complete`, and the fix edits the spec under review.
+- false: the Review Triage Log's rework-1 entry predates this review; it is the implement stage's own self-review, not this one.
+- low: the rework's Auto Run Result no longer lists the gates left to the runner; the runner's cycle log owns them, and the fix edits the spec under review.
+- low: the Auto Run Result no longer carries the DW-2298 residual line; the Tasks line and the ledger still carry it, and the fix edits the spec under review.
+- low: "the first pass closed at the commit that carried it" names no commit; the fix edits the spec under review.
+
 ## Spec Change Log
+
+- 2026-11-13, rework iteration 1 (runner): the full sweep found the error-code roster in `InteropDescriptor` missing the two copy codes.
 
 - 2026-11-12, spec gate (runner): change of class chartered as Story 20.41 (split); the three new strings and the secret-named settings choice are veto item U-25; the AD lines stay for the owner's Update, not written.
 
 ## Review Triage Log
+
+### 2026-11-13 - Review pass
+
+- verdicts: 12 findings - high 0, medium 1, low 8, false 3, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` The script a person takes instead of confirming a copy (`ItemSnippet` `COPY`) had no content test - added `TestTheScriptOfACopyClonesTheSourceDisabledAndSavesTheClass` with a mutation line.
+  - `[low]` `[patch]` A lower-case `CopyFrom` was never exercised - a lower-case source row and its audit read added to the Save test.
+  - `[low]` `[patch]` The mint of a source held twice asserted only "some refusal" - now pins `400 TOOL.ARGUMENTS` and the held-twice sentence.
+  - `[low]` `[patch]` AC4, AC6 and the copy dialog spec carried no `mutation:` line - each mutation run and recorded under Verification.
+  - `[low]` `[reject]` AC5 is pinned at the port (`Invoke`), not by an HTTP principal missing one pair - both callers resolve through the same `Invoke`, so an HTTP leg adds a principal harness and no new branch.
+  - `[low]` `[reject]` `Hang 2` in `TestACopyOnARunningProductionChangesNoJob` - the absence it observes is followed by a polled pending-update leg, and the delay only lengthens the window.
+  - `[low]` `[reject]` The store spec's immediate `release(...)` - `postInteropCreate` calls the transport synchronously today, and a change there would fail the sibling specs first.
+  - `[low]` `[patch]` (intent-alignment) The mint of a source held twice pins no code - the same row as the third patch above.
+  - `[false]` `[reject]` (intent-alignment) A bad name in a source-controlled namespace may answer 422 before 409 - `PerformItem` refuses source control first, before any field is judged, and the matrix test's source-control row is green.
+  - `[false]` `[reject]` (intent-alignment) No `ModifyConfiguration` string in the test - `InteropItemControl.Audited` reads `Event = 'ModifyConfiguration'` and the copy test asserts its rows.
+  - `[low]` `[reject]` (intent-alignment) The per-pair refusal is asserted on one leg of the copy class - `InteropItemGate`'s `Items|COPY` leg covers every principal, and the class pins the declaration.
+  - `[false]` `[reject]` (intent-alignment) The row action and button reuse `auditDatabaseCopyConfirm` - ruled as written in Design Notes (veto U-25), not a divergence.
+
+### 2026-11-13 - Review pass (rework 1)
+
+- verdicts: 2 findings - high 0, medium 0, low 2, false 0, maybe-false 0
+- findings:
+  - `[low]` `[reject]` (verification-gap) The roster test's closing assertion compares list lengths, not membership - it predates this pass and sits outside the diff; a membership check adds a branch for a swap nobody can reach in everyday use.
+  - `[low]` `[reject]` (intent-alignment) The same length-only check, restated as a divergence from "strict completeness" - same location and claim as the row above.
+
 
 ## Design Notes
 
@@ -239,6 +314,23 @@ The story complies with every AD as it stands.
 - AD-62's Story 20.3 sentence would read `ADD`, `COPY`, `REMOVE`, with a copy as a create over the new name's absence that clones the source disabled.
 - AD-22 would gain "`interop.items.copy` ships `true`".
 
+**Measured (Task 0, implement, `ocupilot-b-ci`, auditing on, the probe production in USER; branch head `edfeb15e`):**
+
+- (a) Re-anchored on the branch, where 20.25 has landed: `TYPEADD` :320, `IsItemWrite` :802, `IsItemRunWrite` :811, `AddViolations` :1548, `ItemRefusalToken` :1646, `ReadItem` :1836, `PerformItem` :2048 and `ItemSnippet` :5379 of `InteropPort`; the item list's row actions read `enable,disable,stop,start,restart,remove` before this story. `ReadTool` counted 409 production tools and `ToolWrite` 56 other-port writes; both read one above after it (410, 57), and the registry names carry `interop.items.copy` between `add` and `disable`.
+- (b) A copy through the port left one production row (the count is unchanged), the item count up by one, the copy's `InitSeconds` setting and comment equal to the source's (one setting and the comment were compared, not every setting), the source still enabled and unchanged, and one `ModifyConfiguration` row naming the copy and the source. On a running production the jobs and the last start were unchanged and the production read `Running|1` (update pending, `NeedsUpdate` true). A business process with pool size 0 copied to pool size 1, disabled, the source staying at 0.
+- (c) `OcuP203Exact`, holding only the add's pairs, copied through the port (200); each principal missing one pair was refused 403 naming it (`InteropItemGate`'s new `Items|COPY` leg).
+- (d) No check in `src/OcuPilot/Test` or `ui/tools` resolves every declared row action of `InteropItemList` to a tool with `SCREENACTIONS` (`StageTwoTools` lists the screen without a kind). The client handler registers every declared row action of a roster screen unless `UNDRAWN_ACTIONS` names it, so `copy` joined that exemption in `ui/src/app/shell/screen-action-handler.ts` (a file the Code Map did not list; one add-only entry). No result changed destructiveness, the key default, the audit choice or the pairs.
+
+**Decided in-stage (implement):**
+
+- `InteropItemAdd.ArgumentProblem` calls a new `FieldViolations` hook (the add keeps `AddViolations`); the copy overrides it with `CopyViolations`, so the argument problem is not copied (Rule 2).
+- `CopyViolations` leaves an unknown production to the write's 404 and skips the source count in a namespace under source control, so `SOURCECONTROL` stays first. The source is matched without regard to case, as the new name is, and the clone is taken from the stored item.
+- `Prohibited.PermittedCreateFields("production-item")` gained `CopyFrom`, because `TestNoWriteToolAdmitsAnAlwaysProhibitedField` requires every field a create tool settles to be a reviewed one. The create branch refuses `CopyFrom` on any write but a `COPY` and, for a `COPY`, admits `CopyFrom` and a false `Enabled` alone (`ITEMCOPYFIELDS`, `ItemCopied`).
+- `"interop.items.copy": true` sits beside the item keys in the baseline, after `interop.items.stop`, not at the end of the object; no test pins the position.
+- `POST /interop/items/copy` is declared before `/interop/items` (check-objectscript rule on shorter routes first). `InteropError.ItemPreconditionCodes` gained `COPYSOURCE`. `screens.generated.ts` was regenerated for the new row action.
+- The Gates leg is `InteropItemGate`'s own: it gained an `Items|COPY` port leg (admitted copies are removed by the probe) and the copy tool among the pairs it evaluates, instead of a second principal generator. `InteropItemCopy` holds the tool-declaration and routines/source-control legs. `InteropItemSeam` gained `SkipCopyRules`, which sets aside the rules that run before the lock so the write's own 409s are reachable.
+- The dialog shows the ruled strings and the add dialog's hint only; the source's name is passed to the Save and drawn nowhere. The name field starts empty. No on-screen string beyond the three ruled was added.
+
 **Integration ACs, Consumes, Consumed-by:**
 
 - Integration: AC2. The consumer is `InteropItemSettingList` (20.22), read against `ocupilot-b-ci`, together with the Production items list (20.3).
@@ -260,6 +352,7 @@ The story complies with every AD as it stands.
 - the production-item create list in `Prohibited`
 - the probe production
 - the Fixed-strings row and the Dialogs line
+- `InteropDescriptor`'s error-code roster
 
 *Every test added or changed passes on a fresh environment, in either order.*
 
@@ -268,7 +361,7 @@ The story complies with every AD as it stands.
 **Commands** (each sized to about 150 s, one class or spec file per call, `timeout: 600000`; totals read from `%UnitTest_Result`):
 
 - `(loop)` `cd ui && node tools/ci-runner.mjs --container ocupilot-b-ci --class OcuPilot.Test.<C>`, one class per call:
-  - `InteropItemCopy`, `InteropItemControl`, `InteropItemGate`, `InteropItemRefusals`, `InteropItemDescriptor`;
+  - `InteropItemCopy`, `InteropItemControl`, `InteropItemGate`, `InteropItemRefusals`, `InteropItemDescriptor`, `InteropDescriptor`;
   - `ReadTool`, `ToolWrite`, `ToolRoundTrip`, `ToolEmit`, `SurfaceCoverage`, `EndpointCoverage`, `GovernanceBaseline`, `Governance`, `Prohibited`, `ReadDescriptions`, `Descriptor`, `CompileWithoutInterop`;
   - and every class the sweep changes.
 - `(loop)` `cd ui && OCUPILOT_BROWSER_ORIGIN=http://localhost:52777 OCUPILOT_BROWSER_CONTAINER=ocupilot-b-ci node --test --test-concurrency=1 browser/interop-items.browser-spec.mjs`, on the redeployed bundle.
@@ -276,6 +369,37 @@ The story complies with every AD as it stands.
 - `(loop)` `cd ui && npm run build`: it passes, with client-lint family 7 clean and the bundle under the fixed 2,500 kB warning.
 - `(loop)` `uv run scripts/check-objectscript.py <changed .cls>` and `bash scripts/lint-docs.sh`, both clean.
 - The full ObjectScript sweep, `npm test`, the smoke and Rule 30's fresh check are the runner's. The full browser suite is CI's.
+
+**Mutations run (Rule 19), each on `ocupilot-b-ci` with every OcuPilot class reloaded and compiled after the edit and again after the revert (server) or the bundle rebuilt and redeployed (client); each revert confirmed byte-identical:**
+
+- mutation: `PerformItem`'s `COPY` branch stops setting `Enabled` 0 -> `InteropItemCopy` reds `TestTheAgentsCopyConfirmsOverHttp` and `TestThePersonsSaveCopiesTheItemAndItsSettings` (read-back, stored state, compile).
+- mutation: the `COPY` branch drops `SaveToClass` -> the same two tests red on the class and recompile legs.
+- mutation: the clone becomes `Ens.Config.Item.%New(ClassName)` -> both red on the settings legs (AC2).
+- mutation: `ReadItem` inverts for `ADD` only -> `TestEachRefusalIsRefusedByItsCodeAndWritesNothing` reds on the new name held twice (`AMBIGUOUS` in place of `TAKEN`). A held name seen once stays `TAKEN` through `ItemRefusalToken`, so that row is what makes the inversion load-bearing.
+- mutation: `CopyViolations` skips the source count -> the same test reds on the absent-source and held-twice Saves and the mint.
+- mutation: `COPYSOURCE` removed from the refusals under the lock -> `TestAChangeSinceTheMintAndTheWritesOwnRefusalsStoreNothing` reds on the write-time source row.
+- mutation: `InteropItemCopy.ROUTINESDATABASE` set to 0 -> `TestACopyNeedsTheRoutinesDatabaseAndIsRefusedUnderSourceControl` reds on the declaration row (AC5); `COPY` dropped from `IsItemWrite` -> that test and `InteropItemGate`'s port leg red on all six principals.
+- mutation: `Ens.Director.UpdateProduction` called after the copy's save -> `TestACopyOnARunningProductionChangesNoJob` reds on the pending-update leg.
+- mutation: `Prohibited.Copied` admits every field -> `TestTheProhibitedSetAdmitsOnlyTheCopysOwnFields` reds on the extra-field rows; its `COPY` branch dropped -> the legitimate copy row reds.
+- mutation: the store posts to `/api/ocupilot/interop/items` (bundle rebuilt and redeployed) -> the browser spec's Copy leg reds; restored, rebuilt and redeployed, the whole spec reads 5 of 5.
+
+- mutation (review pass): `ItemSnippet`'s `COPY` branch drops `Set tItem.Enabled = 0` -> `TestTheScriptOfACopyClonesTheSourceDisabledAndSavesTheClass` reds; reverted byte-identical.
+- mutation (review pass): `tSourceName` taken from the caller's `CopyFrom` in place of the stored name -> `TestThePersonsSaveCopiesTheItemAndItsSettings` reds on the lower-case source row.
+- mutation (review pass): the `AMBIGUOUS` violation dropped from `CopyViolations` -> `TestEachRefusalIsRefusedByItsCodeAndWritesNothing` reds on the held-twice Save and mint rows.
+- mutation (review pass, AC4): `"interop.items.copy"` set `false` in `Baseline` -> `GovernanceBaseline.TestThePurgeIsTheOneDisabledLine` reds.
+- mutation (review pass, AC6): `Screen/Tool/InteropItemCopy` deleted from the throwaway -> `ReadTool.TestTheRegistryListsDescriptorReadsAndInheritedKinds` reds on the registry count; restored and the whole tree reloaded, `ReadTool` 28 of 28.
+- mutation (review pass, client): `confirmDisabled` ignores a blank name -> the copy dialog spec's "Copy needs a name" test reds; `nameViolation` returns an empty string -> its "draws a refusal on the name" test reds. Both reverted byte-identical.
+
+- (QA) `ui/src/app/shell/proposal-card.spec.ts` (new test, the copy consequence on the agent's card) and `ui/src/app/shell/screen-action-handler.spec.ts` (new test, Copy left undrawn for the page).
+- mutation (QA, AC1): `consequenceSentence` drops the `INTEROP.ITEM.COPY` branch -> the proposal card spec's Story 20.40 test reds; reverted byte-identical.
+- mutation (QA, AC1): `UNDRAWN_ACTIONS` drops the Production items entry -> the new handler spec test reds (the page, handler and store specs alone stayed green before it); reverted byte-identical.
+- mutation (QA, AC1): the page registers no `copy`, or its add guard ignores an open copy dialog -> the list page spec's Story 20.40 test reds on each; the store spec's `named` counting every violation reds "shows a refusal on the source", and dropping the in-flight guard reds "posts once"; `strings.ts` copy sentence reworded -> `interop.test.mjs` `SENTENCES` reds. Each reverted byte-identical.
+- mutation (code review, applied together at distinct sites, each red attributed by its assertion, all reverted byte-identical and reloaded, then 8 of 8): `InteropItemCopy` overrides `ConfirmProblem` to answer none -> the confirm-after-removal leg reds (AC3); the `COPY` branch blanks `Comment` and `Category` -> the comment-and-category leg reds (AC1); the pool-size rule drops `BusinessType() = 2` -> the service leg reds; `InputSchema` stops requiring `CopyFrom` -> the schema leg reds; the item create branch passes no false-only field to `Copied` -> the `Enabled` true row reds.
+- mutation (smoke rework): `ITEMCOPY` dropped from `InteropDescriptor`'s `tCodes` roster -> `TestEveryInteropErrorCodeResolvesToItsSentence` reds on the code-count assertion; reverted byte-identical, reloaded, `InteropDescriptor` 12 of 12.
+- mutation (code review, rework 1): `ITEMCOPY` replaced by a second `ITEMCOPYSOURCE` in the roster (counts equal) -> only "this test names every code Codes and ConsequenceCodes list" reds (run 733); reverted byte-identical, reloaded, 12 of 12 (run 734).
+- mutation (code review, client): `onOpenCopy` ignores an open add dialog -> the list page spec's "Copy never opens over an open add dialog" reds; reverted byte-identical.
+
+**Run (implement, `ocupilot-b-ci`):** `InteropItemCopy` 7 of 7, and green: `InteropItemControl`, `InteropItemGate`, `InteropItemRefusals`, `InteropItemDescriptor`, `InteropItemRun`, `InteropItemRunGate`, `InteropItemGateSplit`, `InteropItemIdentity`, `InteropSettingControl`, `ReadTool`, `ToolWrite`, `ToolRoundTrip`, `ToolEmit`, `SurfaceCoverage`, `EndpointCoverage`, `GovernanceBaseline`, `Governance`, `Prohibited`, `ReadDescriptions`, `Descriptor`, `CompileWithoutInterop`, `SaveHoldCoverage`, `StageTwoTools`, `ClassicPageGate`, `MappingDescriptor`, `DraftPorts`, `DraftRoute`; the browser spec 5 of 5; `npm run test:tools` 2206 of 2206; `npm run test:components` 3369 of 3369; `npm run build` clean (initial total 2.02 MB); `check-objectscript.py` clean.
 
 **Planned pinning mutations (Rule 19):**
 
@@ -291,5 +415,11 @@ The story complies with every AD as it stands.
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+**This pass (rework 1, the open `[Smoke]` item).** `src/OcuPilot/Test/InteropDescriptor.cls`: `ITEMCOPYSOURCE` and `ITEMCOPY` added to the `tCodes` roster. `InteropDescriptor` joins `Shared surfaces:` and the `(loop)` class list, and its `mutation:` line is under Verification. The first pass closed at the commit that carried it.
+
+- Review: 2 low findings, both rejected (Review Triage Log); no patches, nothing deferred.
+- Verification (`ocupilot-b-ci`): `InteropDescriptor` 12 of 12 (runs 726 and 729, and 730 in review); mutation dropping `ITEMCOPY` 11 of 12, reverted byte-identical; `check-objectscript.py` 0 problems in 2,213 files; `lint-docs.sh` clean.
+- Follow-up review recommended: false (no high patched).

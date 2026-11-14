@@ -445,6 +445,8 @@ const UNDRAWN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   [ECP_DATA_SERVER_LIST]: [ECP_CHANGE_STATUS],
   // Screen permissions' page registers Change permissions itself, whose dialog sends Add and Remove (Story 20.15).
   [SCREEN_PERMISSIONS]: [SCREEN_PERMISSIONS_ADD, SCREEN_PERMISSIONS_REMOVE],
+  // Production items' page registers Copy itself, whose dialog posts to the copy tool's own Save route (Story 20.40).
+  'OcuPilot.Screen.Descriptor.InteropItemList': ['copy'],
   // Item settings' page registers Set value itself, whose dialog sends the value (Story 20.22).
   'OcuPilot.Screen.Descriptor.InteropItemSettingList': ['set'],
   // The Lookup tables' page registers Export itself and draws Import as a screen-level action, whose dialogs send the four transfer

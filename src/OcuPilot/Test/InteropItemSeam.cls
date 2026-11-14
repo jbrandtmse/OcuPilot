@@ -36,6 +36,24 @@ ClassMethod Disarm()
     Kill ^||OcuPilotInteropItemSendFail
     Kill ^||OcuPilotInteropItemUpdate
     Kill ^||OcuPilotInteropItemUpdates
+    Kill ^||OcuPilotInteropItemSkipCopyRules
+}
+
+/// <p>Set aside the rules <method>OcuPilot.Port.InteropPort.CopyViolations</method> judges before the production's lock is taken
+/// (Story 20.40), so a copy reaches the refusals the write makes itself under the lock. <method>Disarm</method> clears it.</p>
+ClassMethod SkipCopyRules()
+{
+    Set ^||OcuPilotInteropItemSkipCopyRules = 1
+}
+
+ClassMethod CopyViolations(pNamespace As %String, pProduction As %String, pName As %String, pBody As %DynamicObject, Output pViolations) As %Status
+{
+    If $Get(^||OcuPilotInteropItemSkipCopyRules) {
+        Kill pViolations
+        Set pViolations = 0
+        Quit $$$OK
+    }
+    Quit ##super(pNamespace, pProduction, pName, pBody, .pViolations)
 }
 
 /// <p>Answer the next job writes with a vendor status carrying code <var>pCode</var> instead of calling the vendor (Story 20.23), so a

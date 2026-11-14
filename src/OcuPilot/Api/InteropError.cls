@@ -118,6 +118,12 @@ Parameter ITEMAMBIGUOUS = "INTEROP.ITEM.AMBIGUOUS";
 
 Parameter REASONITEMAMBIGUOUS = "This production holds more than one item of that name, so change it in the classic production configuration page.";
 
+/// <p>A copy whose source item the production does not hold (Story 20.40): a violation (422) on <code>CopyFrom</code> at a Save
+/// (the mint and the confirm refuse it as an argument, 400 <code>TOOL.ARGUMENTS</code>), a refusal (409) at the write.</p>
+Parameter ITEMCOPYSOURCE = "INTEROP.ITEM.COPYSOURCE";
+
+Parameter REASONITEMCOPYSOURCE = "This production holds no item of that name to copy.";
+
 /// <p>Violation code (422), on <code>ClassName</code>: not a business service, process or operation class
 /// compiled in the namespace.</p>
 Parameter ITEMCLASS = "INTEROP.ITEM.CLASS";
@@ -153,6 +159,11 @@ Parameter REASONITEMPENDING = "The change takes effect when this production next
 Parameter ITEMREMOVE = "INTEROP.ITEM.REMOVE";
 
 Parameter REASONITEMREMOVE = "Removing this item deletes it and every setting it holds from the production.";
+
+/// <p>The consequence code of an item copy (Story 20.40).</p>
+Parameter ITEMCOPY = "INTEROP.ITEM.COPY";
+
+Parameter REASONITEMCOPY = "The copy is added to this production disabled, with this item's class and settings. A business process that runs in the shared actor pool is copied with a pool size of 1. Enable the copy to run it.";
 
 /// <p>A stop, start or restart of an item whose production is running, but which is disabled (Story 20.25): the vendor answers
 /// success and does nothing.</p>
@@ -510,21 +521,22 @@ ClassMethod Codes() As %List
 /// <p>The consequence codes, as a <class>%List</class>.</p>
 ClassMethod ConsequenceCodes() As %List
 {
-    Quit $ListBuild(..#STOP, ..#RESTART, ..#UPDATE, ..#RECOVER, ..#ITEMPENDING, ..#ITEMREMOVE, ..#SETTINGLOCATION, ..#MESSAGEABORT, ..#QUEUEABORT, ..#JOBABORT, ..#JOBSUSPEND, ..#JOBSTOP, ..#ITEMSTOP, ..#ITEMSTART, ..#ITEMRESTART, ..#LOOKUPREMOVE, ..#LOOKUPDELETE, ..#LOOKUPIMPORT, ..#TESTSENDS, ..#TRANSFORMRUNS, ..#MESSAGERESEND, ..#MESSAGEEDITRESEND)
+    Quit $ListBuild(..#STOP, ..#RESTART, ..#UPDATE, ..#RECOVER, ..#ITEMPENDING, ..#ITEMREMOVE, ..#ITEMCOPY, ..#SETTINGLOCATION, ..#MESSAGEABORT, ..#QUEUEABORT, ..#JOBABORT, ..#JOBSUSPEND, ..#JOBSTOP, ..#ITEMSTOP, ..#ITEMSTART, ..#ITEMRESTART, ..#LOOKUPREMOVE, ..#LOOKUPDELETE, ..#LOOKUPIMPORT, ..#TESTSENDS, ..#TRANSFORMRUNS, ..#MESSAGERESEND, ..#MESSAGEEDITRESEND)
 }
 
 /// <p>The item codes, as a <class>%List</class>: the refusals an item read or write answers with.</p>
 ClassMethod ItemCodes() As %List
 {
-    Quit $ListBuild(..#ITEMENABLED, ..#ITEMDISABLED, ..#ITEMDEFAULTSETTING, ..#ITEMPOOLZERO, ..#ITEMTAKEN, ..#ITEMAMBIGUOUS, ..#ITEMCLASS, ..#ITEMNAME, ..#ITEMVALUE, ..#ITEMENABLEDREMOVE, ..#ITEMSOURCECONTROL, ..#ITEMNOTENABLED, ..#ITEMTEMPSTOPPED, ..#ITEMNOTTEMPSTOPPED, ..#ITEMNOJOBS, ..#ITEMSTARTPENDING)
+    Quit $ListBuild(..#ITEMENABLED, ..#ITEMDISABLED, ..#ITEMDEFAULTSETTING, ..#ITEMPOOLZERO, ..#ITEMTAKEN, ..#ITEMAMBIGUOUS, ..#ITEMCLASS, ..#ITEMNAME, ..#ITEMVALUE, ..#ITEMENABLEDREMOVE, ..#ITEMSOURCECONTROL, ..#ITEMNOTENABLED, ..#ITEMTEMPSTOPPED, ..#ITEMNOTTEMPSTOPPED, ..#ITEMNOJOBS, ..#ITEMSTARTPENDING, ..#ITEMCOPYSOURCE)
 }
 
-/// <p>The item refusals an item tool's fresh read answers when the action does not fit the item, as a
+/// <p>The item refusals an item tool's fresh read answers when the action does not fit the item, and a copy's source refusal, which the
+/// write answers under the production's lock, as a
 /// <class>%List</class>; the field violations (<parameter>ITEMCLASS</parameter>, <parameter>ITEMNAME</parameter>
 /// and <parameter>ITEMVALUE</parameter>) are an add's body and are not among them.</p>
 ClassMethod ItemPreconditionCodes() As %List
 {
-    Quit $ListBuild(..#ITEMENABLED, ..#ITEMDISABLED, ..#ITEMDEFAULTSETTING, ..#ITEMPOOLZERO, ..#ITEMTAKEN, ..#ITEMAMBIGUOUS, ..#ITEMENABLEDREMOVE, ..#ITEMSOURCECONTROL, ..#ITEMNOTENABLED, ..#ITEMTEMPSTOPPED, ..#ITEMNOTTEMPSTOPPED, ..#ITEMNOJOBS)
+    Quit $ListBuild(..#ITEMENABLED, ..#ITEMDISABLED, ..#ITEMDEFAULTSETTING, ..#ITEMPOOLZERO, ..#ITEMTAKEN, ..#ITEMAMBIGUOUS, ..#ITEMENABLEDREMOVE, ..#ITEMSOURCECONTROL, ..#ITEMNOTENABLED, ..#ITEMTEMPSTOPPED, ..#ITEMNOTTEMPSTOPPED, ..#ITEMNOJOBS, ..#ITEMCOPYSOURCE)
 }
 
 /// <p>The setting codes (Story 20.22), as a <class>%List</class>: the refusals an item setting read or write answers
@@ -656,6 +668,8 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#ITEMSOURCECONTROL Quit ..#REASONITEMSOURCECONTROL
     If pCode = ..#ITEMPENDING Quit ..#REASONITEMPENDING
     If pCode = ..#ITEMREMOVE Quit ..#REASONITEMREMOVE
+    If pCode = ..#ITEMCOPY Quit ..#REASONITEMCOPY
+    If pCode = ..#ITEMCOPYSOURCE Quit ..#REASONITEMCOPYSOURCE
     If pCode = ..#ITEMNOTENABLED Quit ..#REASONITEMNOTENABLED
     If pCode = ..#ITEMTEMPSTOPPED Quit ..#REASONITEMTEMPSTOPPED
     If pCode = ..#ITEMNOTTEMPSTOPPED Quit ..#REASONITEMNOTTEMPSTOPPED
