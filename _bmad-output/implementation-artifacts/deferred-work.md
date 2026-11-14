@@ -9406,6 +9406,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-14T12:40:15Z status=routed owner=23-9-the-range-end-cleanup-part-8 by=lead note=orchestrator 2026-10-14: 18.48 kept at 12; the journal record browser's two lows move to 23.9
 - 2026-11-12T13:49:03Z status=routed owner=23-10-the-range-end-cleanup-part-9-two-sweeps by=spec_gate note=moved from 23.9 to keep it at burndown_story_max 12 after two CI flakes joined (lowest priority: fix-risk med, no occurrences)
 - 2026-11-13T01:28:16Z status=routed owner=23-13-the-range-end-cleanup-part-11 by=spec_gate note=23.10 split at its spec gate; batches 4-6 moved to Story 23.13
+- 2026-11-13T21:34:51Z status=resolved-by:23-13-the-range-end-cleanup-part-11 by=adjudication note=batch_4:journal-records.page.ts_followOrder()_in_open()+Refresh+after_remembered-view_adoption;component_pins_21/21;browser_Newest_first_leg_run_in_the_lead_fresh_check;code_73a78926,9a957e22,5479801a+review_commit
 
 ### DW-1980: The journal record dialog shows an empty body while its record loads (about 1.7 s, the guard's list read)
 - source: spec-18-19-journal-record-browser.md (code review) | severity: low | fix-risk: med | footprint: in-story
@@ -12044,6 +12045,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-14T19:05:14Z status=decision-pending owner=burndown by=cr note=unverified med; measure on a throwaway, then DW-2100's decision rule decides AD-10's scope
 - 2026-10-14T19:17:29Z status=routed owner=23-10-the-range-end-cleanup-part-9-two-sweeps by=lead note=orchestrator 2026-10-14 (feature 07ff504f): measure on a throwaway, then decide by DW-2100's rule
 - 2026-11-13T01:28:15Z status=routed owner=23-13-the-range-end-cleanup-part-11 by=spec_gate note=23.10 split at its spec gate; batches 4-6 moved to Story 23.13
+- 2026-11-14T00:21:26Z status=decision-pending owner=burndown by=unattended note=inbox=U-30
 
 ### DW-2432: AD-10's grant arm misses the reverse of DW-2425: a Security.Resource edit that adds public USE to a resource guarding an enabled application whose MatchRoles grant a privileged role mints ordinary
 - source: spec-18-48-epic-18-burn-down-part-2.md | severity: med | fix-risk: med | footprint: in-epic
@@ -12051,6 +12053,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-14T19:05:20Z status=decision-pending owner=burndown by=cr note=recommend extending AD-10 as DW-2425 did (an application lookup by Resource); Prohibited.cls is Epic 20-contended
 - 2026-10-14T19:17:29Z status=routed owner=23-10-the-range-end-cleanup-part-9-two-sweeps by=lead note=orchestrator 2026-10-14 (feature 07ff504f): decided, privileged-grant treatment as DW-2425
 - 2026-11-13T01:28:15Z status=routed owner=23-13-the-range-end-cleanup-part-11 by=spec_gate note=23.10 split at its spec gate; batches 4-6 moved to Story 23.13
+- 2026-11-14T00:34:09Z status=resolved-by:23-13-the-range-end-cleanup-part-11 by=adjudication note=batch_2:Prohibited.AddsPublicUse+GuardsPrivilegedApplication;resource_arm_of_GrantsPrivilegeByEffect_mints_GRANT.PRIVILEGED_when_public_U_is_added_to_a_resource_an_enabled_privileged_application_uses(failed_lookup_counts);under_AD-10's_existing_DW-2425_clause_(orchestrator_ruling_1;no_spine_edit;U-29);pins_WebAppWeakening,RoutineAppGrant,ResourceUpdate;code_1c303193+256a1013
 ### DW-2430: log-viewer.spec.ts AC6 copies home.page.spec.ts's real-timer wait instead of sharing one helper in ui/src/app/testing/
 - source: spec-20-8 code review (rework 2 re-review) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: log-viewer.spec.ts AC6 (realTimers and its 50 x 20 ms wait) repeats home.page.spec.ts:1302-1308 (pendingRealTimers, same bound and cast); the rework item required the copy and gave no reason (Rule 2); ui/src/app/testing/ holds the shared spec helpers.
@@ -12566,6 +12569,9 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-13T00:51:08Z occurrence=20-34-the-cube-manager-s-build-and-synchronize note=re-stated (a union merge misplaced the 23:17:35Z line): also red on CI 43290470415 (acb0b666), filed there as DW-2523, dropped as this entry's duplicate
 - 2026-11-13T08:40:40Z status=resolved-by:23-10-the-range-end-cleanup-part-9-two-sweeps by=adjudication note=cd679de0,554aa62a: MDX answer waits use the product bound (145 s); analytics-mdx 11/11
 - 2026-11-13T06:29:49Z occurrence=20-36-investigate
+- 2026-11-13T23:29:51Z occurrence=23-13-the-range-end-cleanup-part-11 note=run_43522335138(ff913bec)_attempt_1_browser_shard_2/5_first_spec:AC1_'expected_the_run_to_answer_within_145000_ms;_the_page_shows_busy_false,status_Write_one_MDX_statement,then_Run'_(the_Run_never_started),other_10_green;batch_4_touches_no_analytics_code
+- 2026-11-13T23:29:51Z status=routed owner=burndown by=lead note=reopened:reopen_condition_met_after_the_23.10_fix(answer_wait_bounded);new_mechanism:the_first_Run_never_starts_on_a_cold_shard;CI_flake,first_priority_in_the_Epic_23_burn-down(Rule_27)
+- 2026-11-13T23:59:11Z status=resolved-by:23-10-the-range-end-cleanup-part-9-two-sweeps by=lead note=the_2026-11-13T23:29Z_reopen_is_withdrawn:the_same_AC1_went_red_on_both_attempts_of_run_43522335138(ff913bec),so_it_is_a_story_red_on_23.13_batch_4(inference:its_rework_made_ScreenStore_adoption_notify_on_every_adoption,which_resets_the_MDX_page_before_its_first_Run),not_this_flake
 
 ### DW-2524: flake: context-chip.browser-spec.mjs test 7 (Fresh at Send) waited past 30000 ms
 - source: 23.9 staging CI (run 43316537748) | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -12580,6 +12586,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-11-13T00:03:53Z status=routed owner=23-10-the-range-end-cleanup-part-9-two-sweeps by=cr note=give RemovalRows a names argument (default REMOVALROWS) and move the 16 onto it; Screen/** is Epic 20's, check contention
 - 2026-11-12T23:17:35Z occurrence=20-34-the-cube-manager-s-build-and-synchronize note=also red on CI 43290470415 (acb0b666), filed there as DW-2523, now dropped as this entry's duplicate
 - 2026-11-13T07:37:59Z status=routed owner=23-13-the-range-end-cleanup-part-11 by=orchestrator note=re-stated: a union merge misplaced the 2026-11-13T01:28:15Z spec_gate trailer (23.10 split to 23.13)
+- 2026-11-13T23:06:19Z status=resolved-by:23-13-the-range-end-cleanup-part-11 by=adjudication note=batch_3:Write.RemovalRows(pFresh,pSkip,pNames);16_delete_StateDiff_bodies_call_it(skip_kept_for_4);new_Test.RemovalRowsSweep_7_tests(new-site_catch,roster_from_StateDiff,driven_rows,field_order);13_readers_equal_totals;code_d0d4007c+QA/review_commit
 
 ### DW-2529: An investigate turn's no-chip-for-a-log-row assertions backtick no value a log read returned, so they cannot fail if log rows became citable
 - source: spec-20-36-investigate.md | severity: low | fix-risk: low | footprint: in-story
@@ -12647,3 +12654,26 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: local shard re-run (Story 20.40 code head 80c03e4c) | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: Red once in shard 13 run after a full sweep on the same instance; green alone right after (runs 749, 771); green in the fresh sweep's shard 13 on d49eb2d3
 - 2026-11-13T19:36:37Z status=wontfix-accepted owner=20-40-item-copy-and-change-of-class by=harvest note=reopen_if=it reds on a fresh instance or in CI
+
+### DW-2540: Journal records' Refresh action and refresh timer read the form's current criteria without going through open(), so an order picked but not yet searched reads in the new order while the table direction still follows the last search
+- source: _bmad-output/implementation-artifacts/spec-23-13-the-range-end-cleanup-part-11.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: journal-records.page.ts:377 registers REFRESH_ACTION_ID with refresh.readNow(); followOrder() runs only in open()
+- 2026-11-13T20:44:09Z status=open owner=23-13-the-range-end-cleanup-part-11 by=harvest note=batch 4 self-review; for the batch 4 code review to patch (two-way door) or close
+- 2026-11-13T21:34:51Z status=resolved-by:23-13-the-range-end-cleanup-part-11 by=adjudication note=batch_4_review:Refresh_calls_followOrder()_before_reading(the_refresh_timer_half_does_not_exist:refreshes_false);component_pin;code_9a957e22
+
+### DW-2541: journal-records.browser-spec.mjs has no order 1 (Newest first) leg; Newest first drawing newest first is pinned only in the component spec
+- source: _bmad-output/implementation-artifacts/spec-23-13-the-range-end-cleanup-part-11.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: the browser spec asserts the first ten seeded records ascending for order 0 only
+- 2026-11-13T20:44:09Z status=open owner=23-13-the-range-end-cleanup-part-11 by=harvest note=batch 4 self-review; for batch 4 QA to add the leg (add-only edit to a contended file)
+- 2026-11-13T21:34:51Z status=resolved-by:23-13-the-range-end-cleanup-part-11 by=adjudication note=batch_4_QA:journal-records.browser-spec.mjs_Newest_first_leg(descending_Address,^OcuProbe185(30)..(21));run_and_mutation_in_the_lead_fresh_check;code_9a957e22
+
+### DW-2542: Journal records: a desc direction Newest first remembered (AD-50) can be adopted after the cold open's followOrder, so a reloaded tab under Oldest first draws its rows descending until the next Search (unverified timing)
+- source: spec-23-13-the-range-end-cleanup-part-11.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: ScreenStore.adoptRemembered runs on the account preferences' first answer (screen-store.ts:151,164); app.ts issues that load beside the router outlet without gating it; followOrder runs once in the constructor's open(). Settle: hard-reload the records URL after a Newest first search with desc remembered and read the drawn order.
+- 2026-11-13T21:00:50Z status=routed owner=23-13-the-range-end-cleanup-part-11 by=cr note=code review batch 4; maybe-false on timing; fix: re-run followOrder once the remembered view is adopted
+- 2026-11-13T21:34:51Z status=resolved-by:23-13-the-range-end-cleanup-part-11 by=adjudication note=batch_4_rework_1:ScreenStore.remembered()+adoption_always_notifies;page_re-runs_followOrder()_once_after_adoption;component+screen-store.test_pins;code_5479801a+review_commit
+
+### DW-2543: Journal records: a cold open that arrives with Newest first calls setDirection, which saves the whole remembered view (empty filter, default row limit, no widths) before the account read answers; if that write lands first the remembered filter, row limit and widths can be lost (unverified timing)
+- source: spec-23-13-the-range-end-cleanup-part-11.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: batch 4 rework re-review (rejected as out of rework scope): open() -> followOrder() -> setDirection('desc') -> rememberView() before adoptRemembered; screen-store.ts setDirection/rememberView; settle by arriving at the records URL with order=1 after remembering a filter and reading the preference row
+- 2026-11-13T21:34:51Z status=routed owner=burndown by=lead note=fix idea: skip rememberView until remembered() is true, or defer followOrder's write until adoption

@@ -4,7 +4,8 @@
 /// minted destructive and names the effect, the confirm over the wire applies it, and the editor's
 /// Save applies it -- and refused on one of OcuPilot's own, each with its own code, on both callers.
 /// It also pins the card's one-code precedence for a proposal with several effects and for a
-/// privileged role on an unauthenticated application.</p>
+/// privileged role on an unauthenticated application, and the privileged grant reached from the resource side: public
+/// USE added to a resource an enabled application granting a privileged role uses (DW-2432).</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed and serving, an account holding
 /// <code>%All</code>, and <parameter>ARMINGVARIABLE</parameter> reading <code>1</code>, because it
 /// creates and deletes two web applications by exact name and records one of them as OcuPilot's own
@@ -25,6 +26,9 @@ Parameter TOOL = "OcuPilot.Screen.Tool.WebAppUpdate";
 Parameter SET = "OcuPilot.Kernel.Proposal.Prohibited";
 
 Parameter LIMITS = "OcuPilot.Kernel.Agent.Limits";
+
+/// <p>DW-2432: the resource edit's tool.</p>
+Parameter RESOURCETOOL = "OcuPilot.Screen.Tool.ResourceUpdate";
 
 /// <p>The application that is not OcuPilot's own.</p>
 Parameter PROBEAPP = "/csp/ocupilotprobeweakening";
@@ -273,6 +277,66 @@ Method TestEnablingAndAPublicResourceAreGrantsWhileAPrivilegedRoleIsGranted()
     }
 }
 
+/// <p>DW-2432 (AD-10): adding USE to the public permission of a resource an enabled web application guards is a grant
+/// while the application's roles escalate -- asked directly, for an update and for a create, and through the agent's mint
+/// of the resource edit -- and is not when the edit adds only a read letter, when the application is disabled or grants
+/// only a database role, or when no application uses the resource.</p>
+/// <p>Mutation (Rule 19): drop the <code>GuardsPrivilegedApplication</code> clause from the resource branch of
+/// <method>OcuPilot.Kernel.Proposal.Prohibited.GrantsPrivilegeByEffect</method> -- the grant legs go red.</p>
+Method TestPublicUseOnAResourceAnApplicationGuardsIsAGrant()
+{
+    Do ..RemoveResources()
+    Do $$$AssertStatusOK(..AddResource(..#PUBLICNONE, ""), "a resource whose public permission holds nothing")
+    Do $$$AssertStatusOK(..AddResource(..#PUBLICREAD, "R"), "and one that only reads")
+    Do $$$AssertStatusOK(..SeedGuard(..#PUBLICNONE, "true", "%All"), "an enabled application granting %All that guards the first")
+    Set tNothing = {"PublicPermission": ""}
+    Do ..AssertResourceGrant({"PublicPermission": "U"}, tNothing, ..#PUBLICNONE, 1, "adding USE to the guarded resource")
+    Do ..AssertResourceGrant({"PublicPermission": "U"}, tNothing, $ZConvert(..#PUBLICNONE, "L"), 1, "adding USE to it named in another case")
+    Do ..AssertResourceGrant({"PublicPermission": "U"}, {}, ..#PUBLICNONE, 1, "a create naming it with USE")
+    Do ..AssertResourceGrant({"PublicPermission": "R"}, tNothing, ..#PUBLICNONE, 0, "adding only read to it")
+    Do ..AssertResourceGrant({"PublicPermission": "U"}, {"PublicPermission": "U"}, ..#PUBLICNONE, 0, "USE it already holds")
+    Do ..AssertResourceGrant({"PublicPermission": "RU"}, {"PublicPermission": "U"}, ..#PUBLICNONE, 0, "adding read to a resource that already holds USE")
+    Do ..AssertResourceGrant({"PublicPermission": "u"}, tNothing, ..#PUBLICNONE, 1, "adding USE written in lower case")
+    Do ..AssertResourceGrant({"PublicPermission": "RU"}, {"PublicPermission": "R"}, ..#PUBLICREAD, 0, "adding USE to a resource no application uses")
+    Set tKey = ..Mint(..#PUBLICNONE, {"PublicPermission": "U"}, .tProposal, .tHttp, .tFault, ..#RESOURCETOOL)
+    Do $$$AssertNotEquals(tKey, "", "the resource edit adding USE is minted: " _ $Select($IsObject($Get(tFault)): tFault.%ToJSON(), 1: ""))
+    If tKey '= "" {
+        Do ..Stored(tKey, .tDestructive, .tConsequence)
+        Do $$$AssertEquals(tDestructive _ " " _ tConsequence, "1 " _ ##class(OcuPilot.Kernel.Proposal.Mint).#CONSEQUENCEPRIVILEGED, "destructive, naming the privilege")
+    }
+    Set tKey = ..Mint(..#PUBLICNONE, {"PublicPermission": "R"}, .tProposal, .tHttp, .tFault, ..#RESOURCETOOL)
+    Do $$$AssertNotEquals(tKey, "", "the edit adding only read is minted: " _ $Select($IsObject($Get(tFault)): tFault.%ToJSON(), 1: ""))
+    If tKey '= "" {
+        Do ..Stored(tKey, .tDestructive, .tConsequence)
+        Do $$$AssertEquals(tDestructive _ " " _ tConsequence, "0 ", "ordinary")
+    }
+    Do $$$AssertStatusOK(..SeedGuard(..#PUBLICNONE, "false", "%All"), "the application disabled")
+    Do ..AssertResourceGrant({"PublicPermission": "U"}, tNothing, ..#PUBLICNONE, 0, "adding USE where the application is disabled")
+    Do $$$AssertStatusOK(..SeedGuard(..#PUBLICNONE, "true", "%DB_HSCUSTOM"), "the application enabled and granting only a database role")
+    Do ..AssertResourceGrant({"PublicPermission": "U"}, tNothing, ..#PUBLICNONE, 0, "adding USE where its roles escalate nothing")
+    Do $$$AssertStatusOK(..SeedGuard($ZConvert(..#PUBLICNONE, "L"), "true", "%All", ..#OWNAPP), "a second application, enabled and granting %All, naming the resource in another case")
+    Do ..AssertResourceGrant({"PublicPermission": "U"}, tNothing, ..#PUBLICNONE, 1, "adding USE where a later application guards it, past one that escalates nothing")
+    Do $$$AssertStatusOK(..SeedGuard(..#PUBLICNONE, "false", "%All"), "the first application disabled")
+    Do ..AssertResourceGrant({"PublicPermission": "U"}, tNothing, ..#PUBLICNONE, 1, "adding USE where a later application guards it, past one that is disabled")
+}
+
+/// <p>Save <var>pApp</var> (<parameter>PROBEAPP</parameter> when empty) guarded by <var>pResource</var>, enabled when
+/// <var>pEnabled</var> reads <code>true</code>, granting <var>pRole</var> to every caller.</p>
+ClassMethod SeedGuard(pResource As %String, pEnabled As %String, pRole As %String, pApp As %String = "") As %Status
+{
+    If pApp = "" Set pApp = ..#PROBEAPP
+    Set tJson = "{""NameSpace"": """ _ $Namespace _ """, ""Description"": """ _ ..#PROBEMARKER _ """, ""AutheEnabled"": 32, ""Resource"": """ _ pResource _ """, ""Enabled"": " _ pEnabled _ ", ""DispatchClass"": """", ""MatchRoles"": [{""MatchRole"": """", ""TargetRoles"": [""" _ pRole _ """]}]}"
+    Quit ##class(OcuPilot.Test.WebAppSave).EnsureApp(pApp, ..#PROBEMARKER, ##class(%DynamicAbstractObject).%FromJSON(tJson))
+}
+
+/// <p>Assert that <code>GrantsPrivilegeByEffect</code> answers <var>pGrant</var> for a resource edit carrying
+/// <var>pPayload</var> against <var>pTarget</var>, the resource being <var>pId</var>.</p>
+Method AssertResourceGrant(pPayload As %DynamicObject, pTarget As %DynamicObject, pId As %String, pGrant As %Boolean, pLabel As %String)
+{
+    Set tSC = $ClassMethod(..#SET, "GrantsPrivilegeByEffect", $Parameter(..#SET, "TYPERESOURCE"), pPayload, pTarget, .tGrants, pId)
+    Do $$$AssertEquals($System.Status.IsOK(tSC) _ " " _ tGrants, "1 " _ pGrant, pLabel _ ": " _ $Select(pGrant: "a grant", 1: "no grant"))
+}
+
 /// <p>Create the probe resource <var>pName</var> with public permission <var>pPermission</var> in <code>%SYS</code>,
 /// replacing one of that name.</p>
 ClassMethod AddResource(pName As %String, pPermission As %String) As %Status
@@ -382,19 +446,20 @@ ClassMethod Rendered(pField As %String, pJson As %String) As %String
     Quit ##class(OcuPilot.Kernel.Proposal.Mint).Display(tObject.%Get("v"), tObject.%GetTypeOf("v"))
 }
 
-/// <p>Mint one <code>webapp.list.update</code> proposal against <var>pName</var> from
-/// <var>pArgs</var> through the shipped mint and the shipped port, owned by the suite's HTTP account
-/// inside a seeded turn, so the confirm over the wire is that account's own. Answers the proposal id,
-/// or <code>""</code>.</p>
-Method Mint(pName As %String, pArgs As %DynamicObject, Output pProposal As %DynamicObject, Output pHttp As %Integer, Output pFault As %DynamicObject) As %String
+/// <p>Mint one proposal of <var>pTool</var> (<parameter>TOOL</parameter>, <code>webapp.list.update</code>, when
+/// empty) against <var>pName</var> from <var>pArgs</var> through the shipped mint and the shipped port, owned by the
+/// suite's HTTP account inside a seeded turn, so the confirm over the wire is that account's own. Answers the proposal
+/// id, or <code>""</code>.</p>
+Method Mint(pName As %String, pArgs As %DynamicObject, Output pProposal As %DynamicObject, Output pHttp As %Integer, Output pFault As %DynamicObject, pTool As %String = "") As %String
 {
+    If pTool = "" Set pTool = ..#TOOL
     Set pProposal = ""
     Set tUser = ##class(OcuPilot.Test.Http).GetTestUsername()
     Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedTurn(tUser, "completed", .tTurnKey)
     Do $$$AssertStatusOK(tSC, "a probe turn is seeded")
     If $$$ISERR(tSC) Quit ""
     Do pArgs.%Set("Name", pName, "string")
-    Set tSC = ##class(OcuPilot.Kernel.Proposal.Mint).Mint($Parameter(..#TOOL, "DESCRIPTORCLASS"), $Parameter(..#TOOL, "TOOLNAME"), tUser, "", tTurnKey, pArgs, ..#LIMITS, .pProposal, .pHttp, .pFault, $ClassMethod(..#TOOL, "Endpoint"), $ClassMethod(..#TOOL, "IdParam"), pName, $ClassMethod(..#TOOL, "IdArgument"), $ClassMethod(..#TOOL, "SettableFields"), ..#TOOL)
+    Set tSC = ##class(OcuPilot.Kernel.Proposal.Mint).Mint($Parameter(pTool, "DESCRIPTORCLASS"), $Parameter(pTool, "TOOLNAME"), tUser, "", tTurnKey, pArgs, ..#LIMITS, .pProposal, .pHttp, .pFault, $ClassMethod(pTool, "Endpoint"), $ClassMethod(pTool, "IdParam"), pName, $ClassMethod(pTool, "IdArgument"), $ClassMethod(pTool, "SettableFields"), pTool)
     If $$$ISERR(tSC) || '$IsObject($Get(pProposal)) Quit ""
     Quit pProposal.%Get("proposalId")
 }

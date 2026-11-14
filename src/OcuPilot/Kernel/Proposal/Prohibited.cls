@@ -4718,7 +4718,10 @@ ClassMethod ResourceNames(pObject As %DynamicObject, Output pNames) [ Private ]
 /// resource's <parameter>FIELDPUBLICPERMISSION</parameter>, which grants privilege when it adds a
 /// letter (<method>AddsPublicLetter</method>) on a resource
 /// <method>ResourceGrantsAdministrativePrivilege</method> names -- <var>pId</var>, the target's id,
-/// is what names it. A task's <code>RunAsUser</code> naming an account other than the caller's,
+/// is what names it -- or adds USE (<method>AddsPublicUse</method>) to a resource that an enabled application whose
+/// roles escalate uses (<method>GuardsPrivilegedApplication</method>, which reads the instance's applications as the
+/// caller and counts a lookup that fails). A form's per-choice half judges the name alone, so it states no
+/// consequence for the application half. A task's <code>RunAsUser</code> naming an account other than the caller's,
 /// compared without regard to case, grants that account's privileges to the task; so does an
 /// import's <code>runAs</code>, the accounts of the tasks it creates, when any is another account. The authorization
 /// server configuration's <code>CustomizationRoles</code> grants privilege when it adds a privileged
@@ -4742,7 +4745,7 @@ ClassMethod GrantsPrivilegeByEffect(pType As %String, pPayload As %DynamicObject
             Quit
         }
         If pType = ..#TYPERESOURCE {
-            Set pGrants = (..ResourceGrantsAdministrativePrivilege(pId) && ..AddsPublicLetter(pPayload, tTarget))
+            Set pGrants = (..AddsPublicLetter(pPayload, tTarget) && (..ResourceGrantsAdministrativePrivilege(pId) || (..AddsPublicUse(pPayload, tTarget) && ..GuardsPrivilegedApplication(pId))))
             Quit
         }
         If pType = ..#TYPEROLE {
@@ -6160,6 +6163,62 @@ ClassMethod WidensPrivilegedReach(pPayload As %DynamicObject, pTarget As %Dynami
     Set pGrants = 0
     If '((pClears && ..ClearsResource(pPayload, pTarget)) || (..EnabledOn(pPayload) && '..EnabledOn(pTarget)) || ..RepointsToPublicResource(pPayload, pTarget)) Quit $$$OK
     Quit ..ApplicationRolesEscalate(pPayload, pTarget, .pGrants)
+}
+
+/// <p>Whether <var>pPayload</var>'s <parameter>FIELDPUBLICPERMISSION</parameter> carries USE that <var>pTarget</var>'s
+/// does not, compared without regard to case, as <method>AddsPublicLetter</method> reads letters. An absent member adds
+/// nothing.</p>
+ClassMethod AddsPublicUse(pPayload As %DynamicObject, pTarget As %DynamicObject) As %Boolean [ Private ]
+{
+    If '$IsObject(pPayload) Quit 0
+    Set tWanted = $ZConvert(..Rendered(pPayload, ..#FIELDPUBLICPERMISSION), "U")
+    Set tHeld = $ZConvert(..Rendered(pTarget, ..#FIELDPUBLICPERMISSION), "U")
+    Quit ((tWanted [ "U") && '(tHeld [ "U"))
+}
+
+/// <p>Whether an enabled web application or privileged routine application whose <code>Resource</code> is
+/// <var>pName</var>, compared without regard to case, has a target role in its <code>MatchRoles</code> that escalates
+/// (<method>ApplicationRolesEscalate</method>). Both lists are read through <method>PortClass</method> as the caller and
+/// each match is read with a <code>GET</code>, because a list row carries neither <code>MatchRoles</code> nor a
+/// routine application's <code>Enabled</code>. <b>A list or read that fails answers 1</b>, so a question the instance
+/// cannot answer is counted rather than passed.</p>
+ClassMethod GuardsPrivilegedApplication(pName As %String) As %Boolean [ Private ]
+{
+    Set tGuards = 0
+    Try {
+        Set tPort = ..PortClass()
+        Set tWanted = $ZConvert(pName, "U")
+        For tEndpoint = "WebApp.App", "Security.PrivilegedRoutine" {
+            Kill tQuery, tList
+            Set tSC = $ClassMethod(tPort, "Invoke", tEndpoint, "LIST", .tQuery, "", .tList, .tHttp, .tFault)
+            If $$$ISERR(tSC) || '$IsObject($Get(tList)) || 'tList.%IsA("%Library.DynamicArray") {
+                Set tGuards = 1
+                Quit
+            }
+            Set tIterator = tList.%GetIterator()
+            While tIterator.%GetNext(.tIndex, .tRow) {
+                If '$IsObject(tRow) || 'tRow.%IsA("%Library.DynamicObject") Continue
+                If $ZConvert(..Rendered(tRow, "Resource"), "U") '= tWanted Continue
+                Kill tQuery, tApp
+                Set tQuery("name") = ..Rendered(tRow, "Name")
+                Set tSC = $ClassMethod(tPort, "Invoke", tEndpoint, "GET", .tQuery, "", .tApp, .tHttp, .tFault)
+                If $$$ISERR(tSC) || '$IsObject($Get(tApp)) || 'tApp.%IsA("%Library.DynamicObject") {
+                    Set tGuards = 1
+                    Quit
+                }
+                If '..EnabledOn(tApp) Continue
+                Set tSC = ..ApplicationRolesEscalate({}, tApp, .tEscalates)
+                If $$$ISERR(tSC) || tEscalates {
+                    Set tGuards = 1
+                    Quit
+                }
+            }
+            If tGuards Quit
+        }
+    } Catch {
+        Set tGuards = 1
+    }
+    Quit tGuards
 }
 
 /// <p>Whether <var>pPayload</var> carries a <code>Resource</code> other than <var>pTarget</var>'s, compared without

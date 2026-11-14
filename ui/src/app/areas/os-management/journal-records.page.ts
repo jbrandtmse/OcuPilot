@@ -374,6 +374,7 @@ export class JournalRecordsPage {
 
     const stopRefreshAction = this.actions.register(screen.descriptor, REFRESH_ACTION_ID, () => {
       this.refresh.bind(screen, this.boundRead(screen));
+      this.followOrder();
       void this.refresh.readNow();
     });
 
@@ -385,7 +386,14 @@ export class JournalRecordsPage {
         this.open();
       }) ?? null;
 
-    const stopStore = store.subscribe(() => this.bump());
+    let awaitingView = !store.remembered();
+    const stopStore = store.subscribe(() => {
+      if (awaitingView && store.remembered()) {
+        awaitingView = false;
+        if (store.restoredView()) this.followOrder();
+      }
+      this.bump();
+    });
     const stopSearch = this.search.subscribe(() => {
       this.bump();
       if (this.recordAwaitsFile && this.search.value('file') !== '') void this.loadRecord(this.entityId());
@@ -423,9 +431,29 @@ export class JournalRecordsPage {
     return search.readFor(() => recordsRead(api, screen, search));
   }
 
-  /** Run the held search once the scope has resolved; before then the framework's own read is the one. */
+  /**
+   * Run the held search once the scope has resolved; before then the framework's own read is the one.
+   * Under the declared sort, Newest first draws descending and Oldest first restores the declared
+   * direction; a sort the person chose on another column is left alone.
+   */
   private open(): void {
+    this.followOrder();
     if (this.scope.loaded()) void this.refresh.readNow();
+  }
+
+  /** Make the table's direction follow the form's order while the store sorts on the declared field. */
+  private followOrder(): void {
+    const view = this.list;
+    const declared = view?.screen.read?.sort.default;
+    if (view === null || declared === undefined) return;
+    const sort = view.store.sort();
+    if (sort !== '' && sort !== declared) return;
+    const direction = view.store.direction();
+    if (this.search.value('order') === '1') {
+      if (direction !== 'desc') view.store.setDirection('desc');
+    } else if (direction === 'desc') {
+      view.store.setDirection('');
+    }
   }
 
   /** Fetch the record the route names, or clear the dialog when it names none. */

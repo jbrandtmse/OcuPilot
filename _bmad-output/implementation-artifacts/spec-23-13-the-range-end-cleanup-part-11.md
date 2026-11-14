@@ -3,15 +3,29 @@ title: 'Story 23.13: The range-end cleanup, part 11'
 type: 'bugfix'
 created: '2026-11-13'
 status: 'done'
-baseline_revision: 'a457bf66d29327a5da16437a17bc4e3c42dc5adb'
-baseline_commit: 'a457bf66d29327a5da16437a17bc4e3c42dc5adb'
+baseline_revision: '640fa62038fce28dff2009c5a247ee31a7d67b62'
+baseline_commit: '640fa62038fce28dff2009c5a247ee31a7d67b62'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
   - '{project-root}/_bmad-output/implementation-artifacts/spec-23-10-the-range-end-cleanup-part-9-two-sweeps.md'
 warnings: ['multiple-goals', 'oversized']
-deferred: []
+deferred:
+  - summary: >-
+      Journal records' Refresh action and refresh timer read the form's current criteria without going through open(), so an order picked but not yet searched reads in the new order while the table direction still follows the last search.
+    evidence: |-
+      journal-records.page.ts registers REFRESH_ACTION_ID with refresh.readNow() directly, and boundRead's cached RefreshRead reads search.criteria() (every held value); followOrder() runs only in open(). The Code Map's "every read goes through open()" does not hold for these two paths.
+    location: >-
+      ui/src/app/areas/os-management/journal-records.page.ts:377
+    severity: low
+  - summary: >-
+      journal-records.browser-spec.mjs has no order 1 leg, so Newest first drawing newest first is pinned only in the component spec.
+    evidence: |-
+      The browser spec asserts the first ten seeded records ascending for order 0 only. ui/browser/** is Epic 20's contended footprint, so a leg is a lead decision.
+    location: >-
+      ui/browser/journal-records.browser-spec.mjs
+    severity: low
 ---
 
 <intent-contract>
@@ -120,7 +134,7 @@ deferred: []
 
 Waits for escalation 5 (contention) before any `Prohibited.cls` edit. Task 0 needs escalation 4. DW-2432 needs no new string; the lead writes its AD-10 clause (escalation 2) before the batch's code commit (Rule 20). The DW-2431 widening needs escalation 1.
 
-- [ ] **Task 0 (DW-2431), on `ocupilot-ci` after `LOAD-OK`, in the implement stage's own probe class (removed afterwards).**
+- [x] **Task 0 (DW-2431), on `ocupilot-ci` after `LOAD-OK`, in the implement stage's own probe class (removed afterwards).**
   1. Read S0: start mode None, no active keys, all four flags off, no KMIP server.
   2. Through `EncryptionPort` with a path seam rooted at `/durable/t0-2313/`: create key file F1 with K1, list it, then `ActivateDB` (this sets Interactive, as 18.48's M3 measured).
   3. `Settings PUT {"DBEncJournal": true}`.
@@ -131,8 +145,8 @@ Waits for escalation 5 (contention) before any `Prohibited.cls` edit. Task 0 nee
   8. Only with the lead's grant: `docker restart -t 120 ocupilot-ci`, then poll health for 10 minutes in foreground steps under 170 s, and read `messages.log` for KMIP and key-activation failures. Without the grant, HALT `blocked: Task 0 ready for restart`.
   9. After step 8, HALT `blocked: Task 0 complete; throwaway rebuild needed: <state>`.
   - **Decision rule.** The start does not finish: widen (next item), once escalation 1 is answered. A vendor refusal at step 4 or 5, or a start that finishes: keep the arm and record the evidence. Anything else (a half-applied write, a refusal that moved a fact): an `intent gap` HALT.
-- [ ] **DW-2431, only if Task 0 widens.** `Prohibited.cls`: `LeavesInteractiveJournal` becomes `LeavesModeJournal(pMode, ...)`, as `LeavesModeRequired` is; `EncryptionStartup` runs the journal arm for Interactive or KMIP, and KMIP refuses with escalation 1's code and sentence, before any write, from either caller. Add `Codes()`/`ReasonFor`, the add-only `strings.ts` key, a `self-protection.test.mjs` pair and the EXPERIENCE.md row as the answer says. Pin: new `EncryptionStartupWrite` legs, KMIP with `DBEncJournal` on, both callers; red before. Mutation: drop KMIP from the widened branch.
-- [ ] **DW-2432.** `Prohibited.cls`:
+- [ ] **DW-2431, only if Task 0 widens.** Task 0 measured `widen`; stopped for this run under orchestrator ruling 2 (owner question U-30; ledger `decision-pending`, `note=inbox=U-30`). No code, string or row. `Prohibited.cls`: `LeavesInteractiveJournal` becomes `LeavesModeJournal(pMode, ...)`, as `LeavesModeRequired` is; `EncryptionStartup` runs the journal arm for Interactive or KMIP, and KMIP refuses with escalation 1's code and sentence, before any write, from either caller. Add `Codes()`/`ReasonFor`, the add-only `strings.ts` key, a `self-protection.test.mjs` pair and the EXPERIENCE.md row as the answer says. Pin: new `EncryptionStartupWrite` legs, KMIP with `DBEncJournal` on, both callers; red before. Mutation: drop KMIP from the widened branch.
+- [x] **DW-2432.** `Prohibited.cls`:
   - Add `AddsPublicUse(pPayload, pTarget)`: the payload adds `U` to the public permission, as `AddsPublicLetter` reads letters.
   - Add `GuardsPrivilegedApplication(pName) As %Boolean`. It lists web and privileged routine applications through `PortClass()`, keeps those whose `Resource` equals `pName` without regard to case, and reads each with a `GET`. It answers 1 when a read application is enabled (`EnabledOn`) and its roles escalate (`ApplicationRolesEscalate` over the read object). A failed list or read answers 1.
   - The resource arm becomes: `AddsPublicLetter` and either `ResourceGrantsAdministrativePrivilege(pId)`, or `AddsPublicUse` and `GuardsPrivilegedApplication(pId)`. The lookup runs only when `U` is added.
@@ -142,19 +156,22 @@ Waits for escalation 5 (contention) before any `Prohibited.cls` edit. Task 0 nee
 
 ### Batch 3: removal rows (DW-2525)
 
-- [ ] `src/OcuPilot/Screen/Tool/Write.cls` `RemovalRows` gains a trailing `pNames As %List = ""`: when non-empty, the rows follow those names in that order; else `REMOVALROWS` as today. The doc states the contract.
-- [ ] The 16 bodies keep their preconditions, messages and `Try`, and set `pRows = ..RemovalRows(pFresh, <0, or 1 for the four with the skip>, ..FingerprintSubject())` (or `..ReadAnswers()`).
-- [ ] **New-site catch and pin**, new `src/OcuPilot/Test/RemovalRowsSweep.cls` (unarmed), following `CompositeMintSweep`:
+- [x] `src/OcuPilot/Screen/Tool/Write.cls` `RemovalRows` gains a trailing `pNames As %List = ""`: when non-empty, the rows follow those names in that order; else `REMOVALROWS` as today. The doc states the contract.
+- [x] The 16 bodies keep their preconditions, messages and `Try`, and set `pRows = ..RemovalRows(pFresh, <0, or 1 for the four with the skip>, ..FingerprintSubject())` (or `..ReadAnswers()`).
+- [x] **New-site catch and pin**, new `src/OcuPilot/Test/RemovalRowsSweep.cls` (unarmed), following `CompositeMintSweep`:
   - For every `OcuPilot.Screen.Tool` class whose own `StateDiff` source sets `"removed"`, the body calls `RemovalRows`, or the class is on an allow-list naming each other shape (Code Map). The checked count is asserted `> 0`. Red before, naming the 16. Mutation: put one body's loop back.
   - `RemovalRows` with a names list answers rows in that order with each value's `Mint.Display`; with the skip it omits an unassigned name; with no names it reads `REMOVALROWS`. Red before (no argument).
-- [ ] **Equal behavior.** The 13 readers' per-class totals are equal before and after; Story 23.9's mutation (drop `removed` in `RemovalRows`) reddens each of `ResourceDelete`, `RoleDelete`, `TaskScheduleActions`, `DocDbAppDescriptor`, `WalletSecretDelete` after the lift.
+- [x] **Equal behavior.** The 13 readers' per-class totals are equal before and after; Story 23.9's mutation (drop `removed` in `RemovalRows`) reddens each of `ResourceDelete`, `RoleDelete`, `TaskScheduleActions`, `DocDbAppDescriptor`, `WalletSecretDelete` after the lift.
 
 ### Batch 4: journal order (DW-1979, DW-2527)
 
-- [ ] `ui/src/app/areas/os-management/journal-records.page.ts` `open()`: before the read, when the store's sort is the declared default (`''` or `Address`), order 1 calls `setDirection('desc')` unless it is already desc, and order 0 calls `setDirection('')` when it is desc. Any other sort is left alone.
-- [ ] **Pin** in `journal-records.page.spec.ts`: rows at Addresses 300, 200, 100. Order 1 draws 300, 200, 100 and leaves the store's direction desc; order 0 draws 100, 200, 300; with sort `TimeStamp`, order 1 leaves the direction as it was. Red before. Mutations: remove the call; map order 1 to asc.
-- [ ] `cd ui && npm run build`; record the journal records chunk and the initial total against the 2500 kB warning. Run `journal-records.browser-spec.mjs` after redeploy.
-- [ ] DW-2527: no code (Declined DW-2527 under Design Notes).
+- [x] `ui/src/app/areas/os-management/journal-records.page.ts` `open()`: before the read, when the store's sort is the declared default (`''` or `Address`), order 1 calls `setDirection('desc')` unless it is already desc, and order 0 calls `setDirection('')` when it is desc. Any other sort is left alone.
+- [x] **Pin** in `journal-records.page.spec.ts`: rows at Addresses 300, 200, 100. Order 1 draws 300, 200, 100 and leaves the store's direction desc; order 0 draws 100, 200, 300; with sort `TimeStamp`, order 1 leaves the direction as it was. Red before. Mutations: remove the call; map order 1 to asc.
+- [x] `cd ui && npm run build`; record the journal records chunk and the initial total against the 2500 kB warning. Run `journal-records.browser-spec.mjs` after redeploy.
+- [x] DW-2527: no code (Declined DW-2527 under Design Notes).
+- [x] [Review] DW-2542 (batch 4 code review, medium, first review) — `journal-records.page.ts` `followOrder()` runs once in the constructor's `open()`, while `ScreenStore.adoptRemembered` (screen-store.ts ~:151, :164) can adopt a remembered `desc` direction after it on a cold open, so a reloaded tab under Oldest first may draw descending until the next Search — re-run `followOrder()` once the remembered view is adopted (or have the read path consult the order), pinned by a component case that adopts a remembered `desc` after the cold open and reads ascending under order 0, red before.
+- [ ] [CI] browser shard 2/5: `analytics-mdx.browser-spec.mjs` AC1 red on both attempts of run 43522335138 (batch 4 head `ff913bec`): "expected the run to answer within 145000 ms; the page shows busy false, status 'Write one MDX statement, then Run.'" — the first Run never started; the same spec and shard partition were green in 10 s on batch 1's head (run 43517400511), and green locally on a warm and a cold `ocupilot-ci`. Suspected cause (inference): rework 1 made `ScreenStore.adoptRemembered` notify on every adoption, a shared-surface change every screen's subscribers see. Fix: restore notify-only-when-the-view-or-rate-moved (adoption replaces the direction only when a view is stored, which is exactly when it notifies), keep `remembered()`, and keep the journal page's one re-run of `followOrder()` on the first notification after adoption; update `ui/tools/screen-store.test.mjs`'s 'adoption notifies once ... even with nothing remembered' case to the restored contract. All journal records component cases stay green. — https://github.com/jbrandtmse/OcuPilot/actions/runs/43522335138
+  - Rework 2 pass: `adoptRemembered` notifies only when the rate or view moved; `remembered()` kept; new `restoredView()` tells the journal page's one `followOrder()` re-run whether adoption replaced the view (an empty adoption no longer notifies, so the person's own first change would otherwise be re-followed). Not run here: the browser shard (the lead's fresh check).
 
 **Acceptance Criteria:**
 
@@ -187,9 +204,130 @@ Rejected:
 - "Flake, at the surface" has no `mutation:` line: the spec runs it as a non-regression check, and the stall is pinned through fakes (Design Notes).
 - Auto Run Result counts, cycle-log fields, Verification nesting, red-before shown by mutation: bookkeeping, not code; the spec is oversized.
 
+#### Batch 4 (2026-11-13)
+
+- [x] [Review][Patch] (low, fix-risk low, in-story) DW-2540: the Refresh action read the form's order without `followOrder()`; it now calls it before the read, pinned by a Refresh case (the screen declares no refresh timer) [ui/src/app/areas/os-management/journal-records.page.ts:377]
+- [x] [Review][Patch] (med, fix-risk low, in-story) No test reached `followOrder()` except through Search, so moving it to `onSearch` stayed green while an agent arrival with Newest first drew ascending (Rule 19): an arrival case now pins it [ui/src/app/areas/os-management/journal-records.page.spec.ts:331]
+- [x] [Review][Patch] (low) The explicit-Address case's title says it draws descending but read only the direction; it now reads the drawn rows, and the three cases name their mutations [ui/src/app/areas/os-management/journal-records.page.spec.ts:320]
+- [x] [Review][Patch] (low) The browser spec's "What it pins" list omitted the new Newest first leg [ui/browser/journal-records.browser-spec.mjs:17]
+- [x] [Review][Defer] (med unverified, fix-risk med) A remembered `desc` adopted after the cold open's `followOrder()` draws Oldest first descending on a reloaded tab [ui/src/app/core/screen-store.ts:164] — deferred: DW-2542, settled by a hard reload of the records URL with `desc` remembered
+
+Rejected:
+
+- DW-2541 still open in the frontmatter, triage log, Auto Run Result and ledger; the Code Map's "every read goes through `open()`"; Verification mixing the lead's unrun line; Auto Run Result's blocker and files lines: edits to the spec under review or the lead's trailers.
+- QA's browser edit has no contention record: false; Epic 20 has not changed the file, and the edit is add-only.
+- "Order at the surface" unmet until the browser leg runs: the lead's fresh check runs it, as this pass's prompt sets.
+- The leg's ready wait assumes the earlier read holds no probe records: if wrong it reddens rather than passes; the lead's run decides.
+- The leg reads from the file's end, so a later `^OcuProbe185` write breaks it: false; nothing writes the global between the seed and `after`.
+- The leg leaves `desc` remembered: false; `signedInAt` resets remembered state before every context.
+- A stored sort outside `sort.fields`; a declared `desc` direction: not reachable for this descriptor (sort `Address` asc).
+- A faulted read keeps the previous rows under the new direction: rare, and the fault is shown; the fix adds a branch.
+- An explicit Address sort a person chose is overridden at Search: the task names `''` or `Address` (by-design).
+- Next records under Newest first untested: it goes through `open()`, which the arrival case now pins.
+- The repeated submit-and-settle lines in the new cases: cosmetic.
+
+#### Batch 4 rework 1 (2026-11-13)
+
+DW-2542 confirmed fixed: the store subscriber re-runs `followOrder()` once adoption lands, and the remembered-desc case reads ascending under Oldest first.
+
+- [x] [Review][Patch] (low, fix-risk low, in-story) The remembered-desc case did not show the seeded view was adopted: a seed that stopped reaching the store would read ascending anyway; it now seeds max rows 500 and asserts the store took them [ui/src/app/areas/os-management/journal-records.page.spec.ts:344]
+- [x] [Review][Patch] (low, fix-risk low, in-story) The store's new contract (adoption notifies once with nothing remembered; `remembered()`) had no `node --test` pin in `core/`'s own suite: one case added [ui/tools/screen-store.test.mjs:82]
+- [x] [Review][Patch] (low, fix-risk low, in-story) `remembered()`'s doc omitted that a store with neither a route nor a rate key never adopts [ui/src/app/core/screen-store.ts:193]
+
+Rejected:
+
+- A direction clicked before the account read answers is reset at adoption under Oldest first: real only inside the read's window, where adoption already replaced an in-memory choice before this change, and Decided in-stage 2 resets it at the next Search; the fix needs a new "person chose" flag.
+- An order changed but not searched before the account answers draws the old read in the new direction: the same read window; the fix adds state.
+- Adoption's `followOrder()` writes the reset direction back to the account: what the DW-2542 task asks for (by-design).
+- Under order 1 the cold open's `followOrder()` writes a default view before the read answers, so a write's answer could be adopted instead of the remembered view: outside the rework range (batch 4's `open()`), race-dependent and not shown, and not high.
+- `remembered()` shares a name with `panel-layout.ts`'s `remembered(): number`, and notifies where panel layout notifies only on change: different classes, no caller confuses them; the always-notify matches the account store's settling notify.
+- Shared surfaces, linkage, Code Map line numbers, Decided in-stage 2 wording, no contention record for `screen-store.ts`: edits to the spec under review (Epic 20 has not changed the file).
+
+#### Batch 3 (2026-11-13)
+
+No high or medium. The 16 lifts are behavior-preserving: no body sets `pRows` before the call, every precondition refuses a non-object read, and no tool or subclass declares `REMOVALROWS`. AD-3 and AD-51 hold. Rule 3: the readers (`ProhibitedRoute`, `WebAppPctAccess` and the rest) drive the rows through the real mint.
+
+- [x] [Review][Patch] (low, fix-risk low, in-story) `Driven()` was a hand-copied subset of `Sites()` that left out `UserDelete` (no reader), `WebAppDelete`, `OAuthClientDelete` and `OAuthServerClientDelete`, whose preconditions qualify, so the header's claim was false: `Driven()` now derives from `Sites()` minus the three whose preconditions need more [src/OcuPilot/Test/RemovalRowsSweep.cls:Driven]
+- [x] [Review][Patch] (low, fix-risk low, in-story) The roster control compared a literal 16 with a literal list and could not fail: it now holds `Sites()` equal to the tools whose own `StateDiff` passes `RemovalRows` a names list (`NamesCallers`) [src/OcuPilot/Test/RemovalRowsSweep.cls:TestEachToolPassesItsOwnNamesAndSkip]
+- [x] [Review][Patch] (low, fix-risk low, in-story) The driven test's control read only the last tool's omitted name: it now counts one per tool [src/OcuPilot/Test/RemovalRowsSweep.cls:TestEachDrivenToolAnswersTheRowsItsRosterNames]
+- [x] [Review][Patch] (low) The class header said any later copy of the loop fails; the scan reads only `StateDiff`, and the header now says so [src/OcuPilot/Test/RemovalRowsSweep.cls:4]
+- [x] [Review][Patch] (low) `REMOVALROWS`'s doc said every delete declares its own; it now names the names-list path [src/OcuPilot/Screen/Tool/Write.cls:558]
+
+Rejected:
+
+- The scan reads only `StateDiff`, so a copy in a helper or in `MergeUpdate` passes: the task defines the scan over each tool's own `StateDiff` (by-design).
+- A `StateDiff` that calls `RemovalRows` and also pushes its own row passes, and the scan could equal `Others()` exactly: the task's predicate is "calls `RemovalRows`, or is on the list" (by-design).
+- The skip flag of `RoleDelete`, `AuditUserEventDelete` and `TaskDelete` is seen by no behavioral test: the source pin reddens on it, and a fixture per precondition adds three shapes for no reachable case.
+- A comma string passed as `pNames` raises `<LIST>`: no caller does; the contract names a `$ListBuild` list, and the caller's `Try` answers the error.
+- The `SslDelete` source-swap mutation changes no rows (its two lists are equal): the line claims only that the source pin reddens, which it did.
+- Auto Run Result's "(5 tests)" and QA's "the mapping family" (only `GlobalMappingDelete` is driven): edits to the spec under review.
+
+#### Batch 2 (DW-2432) (2026-11-13)
+
+No high. AD-10 holds read by effect (the resource-side twin of DW-2425's clause, spine :427; spine untouched), AD-55 holds (one classifier, OR'd into the mint), and the `Prohibited.cls` edits sit outside Epic 20's four regions. Rule 3: `WebAppWeakening` drives the real mint of `permissions.resources.update` over live applications and reads the stored destructive mark and `GRANT.PRIVILEGED`; `resources-editor.browser-spec.mjs` already pins the card's `privilegedGrantEffect` line for that stored consequence.
+
+- [x] [Review][Patch] (med, fix-risk low, in-story) `WebAppWeakening.MintResource` was `Mint` with the tool swapped and a second copy of the tool's descriptor class (Rule 2): `Mint` takes an optional tool class and the copy and `RESOURCELIST` are gone [src/OcuPilot/Test/WebAppWeakening.cls:Mint]
+- [x] [Review][Patch] (low) `GrantsPrivilegeByEffect`'s doc said a form's per-choice halves state the same consequence; the application half has none, and the doc now says so and that it reads the instance as the caller, counting a failed lookup [src/OcuPilot/Kernel/Proposal/Prohibited.cls:GrantsPrivilegeByEffect]
+- [x] [Review][Patch] (low) `ProhibitedGuardFixture`'s header and `Invoke` doc predated QA's `getthrows` and `routinelistfails` modes [src/OcuPilot/Test/ProhibitedGuardFixture.cls:1]
+- [x] [Review][Patch] (low) The `WebAppWeakening` and `RoutineAppGrant` class headers did not name the resource-side pin [src/OcuPilot/Test/WebAppWeakening.cls:1]
+
+Rejected:
+
+- An empty resource name matches every enabled application with no `Resource`: the only caller (`Mint`) passes the target's id, and the outcome over-marks rather than under-marks; a guard would flip the fail direction.
+- A person's Save and the resource form state no consequence for this arm, so "both callers" reaches the agent only: rulings 1 and 4 (no field line); the fix edits the spec (by-design).
+- Rule 3 only partly met: false; see above.
+- `AssertResourceGrant` and `AssertResourceGrants` are the same three lines in two armed test classes: a shared base would couple them for one assertion.
+- `GuardsPrivilegedApplication` writes its own `GET` instead of `ReadMember`: false; `ReadMember` answers one typed member and the walk needs the whole object.
+- `Disarm` is not in teardown: the global is process-private and every case re-arms it.
+- No `mutation:` line for dropping the escalation check or the resource filter: Rule 19 asks one per AC; the task's three mutations and five more are recorded, two of them on the Unchanged row.
+- The "past a disabled application" legs rely on list order: the two names are prefix-ordered, which sorts first in every collation; real only if the vendor list stopped sorting by name.
+- `SeedGuard` builds JSON by concatenation: its inputs are the class's own constants.
+- DW-2522's reopen trailer, the Auto Run Result residual-risk line, QA's Verification layout, the "always fails" wording and the frontmatter status: the lead's bookkeeping or edits to the spec under review.
+
+#### Batch 4 rework 2 (2026-11-14)
+
+No high. The restored `adoptRemembered` notifies exactly as before rework 1 (`5479801ad^`): the same `moved` branches and `if (moved) this.notify()`; `viewRestored`, `remembered()` and `restoredView()` add no notification, and only the journal page calls the two getters, so every other subscriber hears what it heard before rework 1. DW-2542 still holds: a stored view makes adoption notify with `restoredView()` true, and the journal page re-runs `followOrder()`. [CI] still open: the fix is not shown to address the `analytics-mdx` AC1 red (inference). `MdxQueryPage` uses its store only as a `WeakMap` key and never subscribes to it. The store's subscribers on that route are the shell's `locator-bar.ts:404` and `context-chip.ts:142` and the refresh service. The lead's fresh check and CI decide. Rule 3: the browser leg is the lead's fresh check.
+
+- [x] [Review][Patch] (med, fix-risk low, in-story) The journal subscriber's `awaitingView = false` was unpinned: with the restored contract an empty adoption never notifies, so the kept-direction case no longer passed through an adoption notification. A cold-open case with a stored view now pins it, and dropping the line turns it red [ui/src/app/areas/os-management/journal-records.page.spec.ts:374]
+- [x] [Review][Patch] (low) `remembered()`'s doc said adoption replaces the sort and direction once it turns true; it can turn true silently, and the doc now points to `restoredView()` [ui/src/app/core/screen-store.ts:198]
+- [x] [Review][Patch] (low) "moved the rate or the view" in the adoption doc and the store test title: any stored view notifies, equal or not, so the wording now reads "changed the rate or adopted a stored view" [ui/src/app/core/screen-store.ts:166]
+- [x] [Review][Patch] (low) The kept-direction case's title said a remembered view was adopted while its account stores none: retitled [ui/src/app/areas/os-management/journal-records.page.spec.ts:362]
+- [x] [Review][Patch] (low) The rework 2 Verification line named the revisit case and the kept-direction case by their old titles: corrected in place [spec ## Verification]
+
+Rejected:
+
+- The triage log's `[false]` verdict on the unshown `analytics-mdx` cause, rework 1's Auto Run Result and review lines that state the always-notify contract, the Task 0 / DW-2431 record and the two `spawn_at` values for the 4r2 implement agent in the cycle log: edits to the spec under review or the lead's bookkeeping.
+- The frontmatter `status: 'done'` beside the open [CI] box: false; it is build-auto's machine state, and the box waits on the lead's fresh check.
+
 ## Spec Change Log
 
+- 2026-11-13: batch 4 re-opened for a CI red (rework iteration 2 of 3): restore the store's notify-on-change contract.
+
+- 2026-11-13: batch 4 re-opened for one review iteration (DW-2542, the first review's unpatched in-story medium).
+
 ## Review Triage Log
+
+### 2026-11-13 — Review pass (batch 3)
+
+- verdicts: 4 findings — high 0, medium 1, low 3, false 0, maybe-false 0 (one intent-alignment report, descriptive)
+- findings:
+  - `[medium]` `[patch]` verification-gap: the 16 call sites were pinned only by the substring `RemovalRows(`, so a wrong names source or skip flag at a site (SslDelete, UserDelete, SuperserverDelete, MappingDelete have no reader) stayed green — patched: `Sites()` roster and `TestEachToolPassesItsOwnNamesAndSkip` pin each site's exact call; two mutations (SuperserverDelete skip 1 to 0, SslDelete source swap) observed red, reverted, lines written under Verification.
+  - `[low]` `[patch]` verification-gap: the sweep's floor `> 0` let a mostly-blind scan pass — patched with the roster test and the floor raised to the size of the other-shapes list.
+  - `[low]` `[reject]` verification-gap: `TestNoNamesReadsTheDeclaredRows` leans on `ExplorerDocDbDelete`'s `REMOVALROWS` — its control assertion names the drift; a probe subclass adds a class for no new behavior.
+  - `[low]` `[reject]` verification-gap: an empty names list falls back to `REMOVALROWS` — the task says "when non-empty"; none of the 16 declares `REMOVALROWS`, so no row changes.
+  - `[n/a]` `[reject]` intent-alignment: the pins sit at source text and the builder, with card rows observed by the 13 readers — the spec's Integration AC names the readers; the equal totals are under Verification.
+
+### 2026-11-13 — Review pass (batch 4)
+
+- verdicts: 7 findings — high 0, medium 1, low 5, false 0, maybe-false 0 (one intent-alignment report, descriptive)
+- findings:
+  - `[medium]` `[patch]` verification-gap: the guard around a sort the person chose and the explicit `Address` branch had no pin and no mutation line — patched: an explicit-Address case added, three guard mutations applied, observed red, reverted, lines written under Verification.
+  - `[low]` `[defer]` verification-gap: `journal-records.browser-spec.mjs` has no order 1 leg — `ui/browser/**` is contended and the spec asks only to run it; deferred (frontmatter).
+  - `[low]` `[reject]` verification-gap: the test title says "remembers the direction" while only `store.direction()` is read — that store state is what `rememberView` stores; a persistence assertion would add a seam.
+  - `[low]` `[reject]` verification-gap: a header-toggled direction is reset by the next search — the spec's Decided in-stage item 2.
+  - `[low]` `[defer]` intent-alignment: the Refresh action and the refresh timer read without `open()`, so the direction follows only at Search, Next and arrivals — deferred (frontmatter); the fix moves the call into the cached read.
+  - `[n/a]` `[reject]` intent-alignment: readings B (server order) and F (persistence across sessions) — the intent's row is the table direction; the lead's browser run is the real-bundle check.
+  - `[n/a]` `[reject]` intent-alignment: `''` counts as the declared sort — the spec's own wording.
 
 ### 2026-11-13 — Review pass
 
@@ -202,6 +340,34 @@ Rejected:
   - `[low]` `[reject]` a failed `relaunch()` propagating with the closed browser held is not pinned — the walk throws either way, and `after` closes under a deadline.
   - `[n/a]` `[reject]` intent-alignment: `retryOnce`'s awaited reset reaches every caller — all other callers pass synchronous resets, and the awaited form is the spec's own task.
   - `[n/a]` `[reject]` intent-alignment: the `--write` CLI path passes no `relaunch` — the spec scopes the relaunch to the a11y spec, and without it a rerun keeps today's behavior.
+
+### 2026-11-13 — Review pass (batch 4, DW-2542 rework)
+
+- verdicts: 3 findings — high 0, medium 1, low 2, false 0, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` The page subscriber's `awaitingView` seed had no test: starting it at true reddened nothing, and a revisit that reads nothing would have its first direction click reset to the declared one (Rule 19) — a revisit case now pins it, red under the mutation.
+  - `[low]` `[reject]` The store's notify-on-adoption and `remembered()` have no store-level test — the kept-direction case reddens under the old notify rule, and a store test adds a case for no new behavior.
+  - `[low]` `[reject]` Order 1 with a late adoption is not a case of its own — it takes the same `followOrder()` call the Oldest first case pins, and the arrival case pins its desc branch.
+
+### 2026-11-13 — Review pass (batch 2, DW-2432)
+
+- verdicts: 2 findings — high 0, medium 2, low 0, false 0, maybe-false 0 (one intent-alignment report, descriptive)
+- findings:
+  - `[medium]` `[patch]` verification-gap: the held-USE clause and the case folds of `AddsPublicUse` and the row-side resource compare had no pin (both USE-already-held legs add no letter, so the clause was never reached) — patched: read-over-USE, lower-case and lower-case-resource legs added to the `WebAppWeakening` test; three mutations observed red, reverted, lines written under Verification.
+  - `[medium]` `[patch]` verification-gap: the failed-read branch of `GuardsPrivilegedApplication` and the walk past a disabled application were unpinned (the fixture leg reaches only a failed list) — patched: a disabled-then-enabled leg in `WebAppWeakening`, and `ResourceUpdate.TestAnApplicationReadThatFailsCounts` over a new `ProhibitedGuardFixture` port; two mutations observed red, reverted.
+  - `[n/a]` `[reject]` intent-alignment: the mint-level assertion covers one web-application update, the rest sit at the classifier — the mint ORs the classifier's verdict in for every caller (AD-55), the spec's pin names the classifier legs, and the real-mint leg shows the surface.
+
+### 2026-11-13 — Review pass (batch 4, CI red rework 2)
+
+- verdicts: 7 findings — high 0, medium 0, low 3, false 4, maybe-false 0
+- findings:
+  - `[low]` `[patch]` A rate-only adoption (notify once, `restoredView()` false) had no test: `screen-store.test.mjs` now has a Home-rate case, red under dropping `moved = true` from the rate branch.
+  - `[low]` `[patch]` The revisit case's title said it reads nothing while it now seeds a stored view: retitled.
+  - `[low]` `[reject]` `viewRestored` has no sign-out reset test: `ScreenStores.reset()` drops the stores on sign-out, and the one-line reset is not reachable by a caller.
+  - `[false]` `[reject]` The `analytics-mdx` cause is unshown (inference): a fix cannot show it; the lead's fresh check runs the shard.
+  - `[false]` `[reject]` The store test joins two scenarios in one case: each half builds its own store and account; a failure names the half.
+  - `[false]` `[reject]` Intent-alignment: the fix is verified below the browser surface; the browser leg is the lead's fresh check by the prompt.
+  - `[false]` `[reject]` Intent-alignment: `viewRestored` is not cleared by a later empty adoption: adoption runs once per sign-in (`adopted`), so none follows.
 
 ## Design Notes
 
@@ -308,16 +474,68 @@ Rejected:
   - mutation: annotate every failing pass's error, retried or not -> the no-retry failure case red alone.
   - mutation: swallow the error `reset` throws in `retryOnce` -> the reset-error case red alone.
   - (code review, observed, tree identical after) mutation: drop `relaunch` from `walk`'s `passRetrier` call -> the held-browser case red alone. Call `reset` inside the second attempt's `try` -> the reset-error case red alone. The a11y spec's `after` calls `closing.close()` instead of `closeOrAbandon` -> the a11y spec wiring case red alone. `test:tools` 2219/2219; after a rebuild and redeploy, `a11y-structural-invariants.browser-spec.mjs` 13/13 on `ocupilot-ci` in 535 s, no retried line.
+- Batch 4 (DW-1979), pin `journal-records.page.spec.ts` (Newest first draws newest first and remembers desc; Oldest first restores the declared direction; another column's sort left alone); each applied, observed red, reverted, `git diff` identical to the pre-mutation diff:
+  - mutation: remove the `followOrder()` call in `open()` -> the Newest first case red alone (this is also the red-before state).
+  - mutation: map order 1 to `asc` -> the Newest first case red alone.
+  - mutation: drop the declared-sort half of the guard (`sort !== ''` only) -> the explicit Address case red alone (review, observed).
+  - mutation: remove the guard's early return -> the other-column case red alone (review, observed).
+  - mutation: drop the `setDirection('')` restore in the order 0 branch -> the Newest first case red alone (review, observed).
+  - Component spec 16/16; `npm run test:components` 3362/3362 (261 files); `npm run test:tools` 2219/2219; `npm run build` clean, no budget warning: journal records chunk 11.93 kB raw, initial total 2.02 MB against the 2500 kB warning.
+  - `journal-records.browser-spec.mjs` after redeploy: lead, fresh check 2026-11-13 22:14Z on a rebuilt `ocupilot-ci`: forward and reverse green, final 5/5.
+  - (QA) added to `ui/browser/journal-records.browser-spec.mjs` (DW-2541): `DW-1979: Newest first draws the newest seeded records first, in descending Address` (order 1, filter `OcuProbe185`, ten rows, descending Address and `^OcuProbe185(30)` to `(21)`); syntax-checked only, not run (the throwaway was the lead's sweep's); component runner `npm run test:components` 3362/3362 (261 files); the component spec's three cases already pin each Batch 4 AC with an observed red, so none added.
+  - mutation: remove the `followOrder()` call → `DW-1979: Newest first draws the newest seeded records first, in descending Address` (lead, fresh check 22:15Z: red 0/1 under the mutation, green after the revert; tree identical)
+  - (code review, observed, tree identical after) mutation: drop the `followOrder()` call in the Refresh action -> the Refresh case red alone. Call `followOrder()` from `onSearch` instead of `open()` -> the arrival case red alone. Keep only `sort !== ''` in the guard -> the explicit Address case red alone. Component spec 18/18; `npm run test:components` 3364/3364 (261 files); `npm run test:tools` 2219/2219; `npm run build` clean, initial total 2.02 MB.
+  - (DW-2542, observed, tree identical after) mutation: drop the `followOrder()` call in `journal-records.page.ts`'s store subscriber -> the remembered-view case red alone. Run it on every store change -> the kept-direction case red alone. Notify in `adoptRemembered` only when a view moved -> the kept-direction case red alone. Start the subscriber's `awaitingView` at true -> the revisit case red alone (code review, observed). Component spec 21/21; `npm run test:components` 3367/3367 (261 files); `npm run test:tools` 2219/2219; `npm run build` clean, initial total 2.02 MB of 2500 kB, journal records chunk 12.02 kB; `screen-store.test.mjs` 26/26. `journal-records.browser-spec.mjs`: lead, fresh check (not run here).
+  - (code review, batch 4 rework 1, observed, tree identical after) mutation: stop adopting the remembered max rows in `adoptRemembered` -> the remembered-view case red alone. Notify in `adoptRemembered` only when a view moved -> `screen-store.test.mjs` "adoption notifies once ..." red alone; return `false` from `remembered()` -> the same case red alone. Component spec 21/21; `npm run test:components` 3367/3367 (261 files); `npm run test:tools` 2220/2220; `npm run build` clean (before the comment-only patch), initial total 2.02 MB.
+  - (rework 2, CI red restored contract, observed, tree identical after) mutation: notify on every adoption in `adoptRemembered` -> `screen-store.test.mjs` "adoption turns remembered() true and notifies only when ..." red alone. Return `false` from `remembered()` -> the same case red alone. Never set `viewRestored` -> the same case and the journal "remembered descending view is adopted after the cold open" case red. Re-run `followOrder()` on the first notification whether or not `restoredView()` -> "a direction chosen on the declared sort is kept after an adoption that restored no view" red alone. Start the subscriber's `awaitingView` at true -> "kept on a revisit that restores a stored view" red alone. Component spec 21/21; `npm run test:components` 3367/3367 (261 files); `npm run test:tools` 2220/2220; `screen-store.test.mjs` 27/27; `npm run build` clean, initial total 2.02 MB of 2500 kB, journal records chunk 12.03 kB.
+  - (rework 2, code review, observed, tree identical after) mutation: drop `moved = true` from the rate branch of `adoptRemembered` -> `screen-store.test.mjs` "adoption of a remembered rate alone notifies once ..." red alone (27/28 pass); `screen-store.test.mjs` 28/28 after revert.
+  - (rework 2 re-review, observed, tree identical after) mutation: drop `awaitingView = false` in `journal-records.page.ts`'s store subscriber -> "a direction chosen on the declared sort after a stored view is adopted on the cold open is kept" red alone (21/22 pass); component spec 22/22 after revert.
+- Batch 3 (DW-2525), pin `RemovalRowsSweep` (the 16 copies, the names argument, the roster); each applied on `ocupilot-ci` with the tool package recompiled, observed red, reverted, `git diff` over `src` identical to the pre-mutation diff:
+  - red before the lift (the 16 tool files and `Write.cls` at the baseline): `TestEveryRemovalRowComesFromTheOneBuilder` named the 16 classes and `TestRowsFollowTheNamesInOrder` raised `<PARAMETER>`.
+  - mutation: put `ResourceDelete`'s own loop back in place of its `RemovalRows` call -> `TestEveryRemovalRowComesFromTheOneBuilder` red alone, naming `ResourceDelete`.
+  - mutation: ignore `pNames` in `RemovalRows` -> `TestRowsFollowTheNamesInOrder` red alone.
+  - mutation: read the names from `pNames` only (no `REMOVALROWS` fallback) -> `TestNoNamesReadsTheDeclaredRows` red alone.
+  - mutation: add `WalletSecretDelete` to `Others()` -> `TestTheListOfOtherShapesNamesNothingStale` red alone.
+  - mutation (Story 23.9's): drop `removed` in `RemovalRows` -> `ResourceDelete`, `RoleDelete`, `TaskScheduleActions`, `DocDbAppDescriptor`, `WalletSecretDelete` each 1 failed.
+  - (code review, observed, tree identical after) mutation: pass skip 0 instead of 1 in `SuperserverDelete` -> `TestEachToolPassesItsOwnNamesAndSkip` red alone, naming it. Pass `..ReadAnswers()` instead of `..FingerprintSubject()` in `SslDelete` -> the same test red alone, naming it. `RemovalRowsSweep` 5/5 after both reverts.
+  - Readers before and after the lift, tests and failures equal: ResourceDelete 6/6, RoleDelete 11/11, TaskScheduleActions 6/6, TaskResume 15/15, WalletSecretDelete 3/3, DocDbAppDescriptor 11/11, RoutineAppDescriptor 13/13, OAuthServerDelete 4/4, OAuthDelete 5/5, LdapCreate 6/6, AuditEventTools 10/10, WebAppPctAccess 11/11, ProhibitedRoute 24/24; all 0 failed. `RemovalRowsSweep` 5/5 (4 before review). `check-objectscript.py` 0 problems over 21 rules; `npm run test:tools` 2220/2220 after the review patch.
+  - (QA) added to `src/OcuPilot/Test/RemovalRowsSweep.cls`: `TestARowKeepsItsFieldOrderAndTypes` (a row's keys, order and value types as JSON) and `TestEachDrivenToolAnswersTheRowsItsRosterNames` (nine tools' `StateDiff` rows against their roster names and skip, with one name unassigned; covers `SslDelete`, `SuperserverDelete` and the mapping family through `GlobalMappingDelete` only, which have no reader); `RemovalRowsSweep` 7/7 on `ocupilot-ci`; each applied, observed red, reverted, `git diff -- src` equal to the pre-mutation diff:
+  - mutation: set `after` before `before` in `RemovalRows` -> `TestARowKeepsItsFieldOrderAndTypes` and `TestEachDrivenToolAnswersTheRowsItsRosterNames` red.
+  - mutation: pass skip 0 in `SuperserverDelete` -> `TestEachDrivenToolAnswersTheRowsItsRosterNames` red (with the source pin `TestEachToolPassesItsOwnNamesAndSkip`).
+  - (code review, batch 3, observed, tree identical after) mutation: pass `..ReadAnswers()` in `WebAppDelete` and give `DeviceDelete`'s call a names list -> `TestEachDrivenToolAnswersTheRowsItsRosterNames` red naming `WebAppDelete` (both legs), and `TestEachToolPassesItsOwnNamesAndSkip` red on its miscall and on the roster control (`DeviceDelete` not on `Sites()`). `RemovalRowsSweep` 7/7 after revert (run 58); `check-objectscript.py` 0 problems.
+- Batch 2 (DW-2432), pin `WebAppWeakening` (`TestPublicUseOnAResourceAnApplicationGuardsIsAGrant`), `RoutineAppGrant` (`TestPublicUseOnAResourceARoutineApplicationGuardsIsAGrant`) and `ResourceUpdate` (`TestAFailedLookupOfTheApplicationsAResourceGuardsCounts`); each applied on `ocupilot-ci` with `Prohibited` and `ProhibitedFixture` recompiled, observed red, reverted, `git diff` identical to the pre-mutation diff:
+  - mutation: drop the `AddsPublicUse`/`GuardsPrivilegedApplication` clause from the resource arm (the red-before state) -> the three new tests red, each alone in its class.
+  - mutation: answer a failed list, a failed read and a throw as 0 in `GuardsPrivilegedApplication` -> the `ResourceUpdate` fixture test red alone.
+  - mutation: read `Enabled` from the list row (`EnabledOn(tRow)`) -> the `RoutineAppGrant` test red alone.
+  - mutation: drop the `AddsPublicUse` condition -> the `WebAppWeakening` read-only leg red alone.
+  - mutation: drop the `EnabledOn` check -> the `WebAppWeakening` disabled-application leg red alone.
+  - (code review, observed, tree identical after) mutation: drop `&& '(tHeld [ "U")` in `AddsPublicUse` -> the `WebAppWeakening` test red alone (its read-over-USE leg). Read the payload's USE without upper-casing -> the same test red alone (its lower-case leg). Compare the application row's `Resource` without upper-casing -> the same test red alone (its second application names the resource in lower case). `Continue` becomes `Quit` after a disabled application -> the same test red alone (the disabled application lists first). Answer a failed read of the matched application as 0 -> `ResourceUpdate`'s `TestAnApplicationReadThatFailsCounts` red alone (new fixture `OcuPilot.Test.ProhibitedGuardFixture`).
+  - After the review patch: `WebAppWeakening` 9/9, `RoutineAppGrant` 7/7, `ResourceUpdate` 8/8, `ResourceCreate` 8/8, `ProhibitedByEffect` 8/8, `Prohibited` 15/15; `check-objectscript.py` 0 problems; `npm run test:tools` 2220/2220.
+  - (QA) changed `src/OcuPilot/Test/ProhibitedGuardFixture.cls` (modes `getthrows` and `routinelistfails`) and `src/OcuPilot/Test/ResourceUpdate.cls` (`TestAnApplicationReadThatFailsCounts` gains two legs: a read that raises, and a failed privileged-routine list after the web list answered); `ResourceUpdate` 8/8, `WebAppWeakening` 9/9, `RoutineAppGrant` 7/7 on `ocupilot-ci`; each applied with `Prohibited`/`ProhibitedFixture`/`ProhibitedGuardFixture` recompiled, observed red, reverted, `git diff -- src/OcuPilot/Kernel` empty after:
+  - mutation: the `Catch` of `GuardsPrivilegedApplication` answers 0 -> `TestAnApplicationReadThatFailsCounts` red alone (the new raising leg).
+  - mutation: a failed list answers 0 for the privileged routine endpoint only -> `TestAnApplicationReadThatFailsCounts` red alone (the new routine-list leg; `TestAFailedLookupOfTheApplicationsAResourceGuardsCounts` stays green, its list fails on the web endpoint).
+  - mutation ("Grant at the surface"): `Mint` passes another resource name as the target id to `GrantsPrivilegeByEffect` -> `WebAppWeakening.TestPublicUseOnAResourceAnApplicationGuardsIsAGrant` red alone (its direct legs pass an id themselves, so only the mint legs can redden). An empty id instead stayed green (an enabled application with an empty `Resource` matches it), so that variant is not evidence.
+  - (code review, observed, tree identical after) mutation: `WebAppWeakening.Mint` ignores its tool argument (`Set pTool = ..#TOOL`) -> `TestPublicUseOnAResourceAnApplicationGuardsIsAGrant` red alone (run 64); after revert `WebAppWeakening` 9/9 (run 65), `RoutineAppGrant` 7/7, `ResourceUpdate` 8/8; `check-objectscript.py` 0 problems.
+
+**Task 0 (DW-2431), lead measurement 2026-11-14 00:00-00:12Z on `ocupilot-ci`:** steps 2-5 all accepted with no refusal (key file F1 created and activated, which set Interactive; `DBEncJournal` true, after which `OKNoDBEncKeyAtStartup` answers #1212; a KMIP server at 192.0.2.1:5696 saved; `DBEncStartMode` KMIP answered 200 with no code, while none of the three databases was encrypted). After one `docker restart -t 120`, every start (8 in all, `on-failure:3` spent) logged "KMIP unknown error", "Database encryption key activation failed", "Failure activating required database encryption key" and "Startup aborted, entering single user mode" about 20 s in; the container exited 1 and was rebuilt. Outcome `widen`.
 
 ## Auto Run Result
 
 Status: done
 Blocking condition: none
 
-Batch 1 only (DW-1822); batches 2 to 4 are untouched and their checkboxes stay open.
+Batch 4 (DW-1979) pass: the journal records page now follows the order select with the table direction; DW-2527 is declined, no code. Batch 1 closed in its own pass; batches 2 and 3 are untouched and their checkboxes stay open.
 
-- **Change:** a pass that stalls its browser is rerun on a newly launched browser, and the stalled one is closed under `CLOSEDEADLINE`. A pass that fails after its retry throws an error that carries the `retried` lines. `retryOnce` awaits its reset.
-- **Files:** `ui/browser/protocol-retry.mjs` (awaited reset); `ui/browser/structural-walk.mjs` (`passRetrier` and `walk` hold and relaunch the browser, `walk` answers it); `ui/browser/a11y-structural-invariants.browser-spec.mjs` (relaunch and bounded close); `ui/tools/structural-walk.test.mjs` and `ui/tools/protocol-retry.test.mjs` (pins).
-- **Review:** 1 medium patched (held-browser pin), 1 low patched (three mutation lines), 4 rejected with reasons in the triage log, none deferred. Follow-up review recommended: false.
-- **Verification:** `structural-walk` and `protocol-retry` tests 33/33; `npm run test:tools` 2216/2216 after the last edit; `npm run build` clean; `a11y-structural-invariants.browser-spec.mjs` 13/13 on `ocupilot-ci` in 459 s with no retried line. Mutations are recorded under Verification.
-- **Residual risk:** the relaunch path is shown through fakes only; a real stalled browser was not reproduced.
+- **Change:** `open()` calls `followOrder()` before the read: under `''` or the declared sort, order 1 sets direction `desc` and order 0 restores `''`; another column's sort is left alone.
+- **Files:** `ui/src/app/areas/os-management/journal-records.page.ts` (`followOrder`); `ui/src/app/areas/os-management/journal-records.page.spec.ts` (three cases).
+- **Review:** 1 medium patched (guard pin and mutations), 2 deferred (browser order 1 leg; Refresh path), 4 rejected with reasons in the triage log. Follow-up review recommended: false.
+- **Verification:** component spec 16/16; `npm run test:components` 3362/3362; `npm run test:tools` 2219/2219; `npm run build` clean (chunk 11.93 kB, initial 2.02 MB of 2500 kB). `journal-records.browser-spec.mjs`: lead, fresh check (not run here); the build item's box stays open for it.
+- **Residual risk:** the draw order is shown through the component spec only until the lead's browser run; a Refresh with an unsearched order change reads the new order under the old direction (deferred).
+
+DW-2542 pass (batch 4 rework): the defect was real. `ScreenStore` adopts the remembered view when the account answers, after the page's cold-open `followOrder()`, replacing the direction it set. The page now re-runs `followOrder()` once on the first store notification after adoption (`ScreenStore.remembered()`, new; `adoptRemembered` notifies once on every adoption). Files: `ui/src/app/core/screen-store.ts`, `ui/src/app/areas/os-management/journal-records.page.ts`, `ui/src/app/areas/os-management/journal-records.page.spec.ts` (three cases). Review: 1 medium patched (seed pin), 2 low rejected (triage log). Verification and mutations under Verification. Follow-up review recommended: false (no high patched).
+
+Batch 3 (DW-2525) pass: `RemovalRows` takes a trailing `pNames` list and the 16 delete bodies call it with `..FingerprintSubject()` or `..ReadAnswers()` (skip kept for the four that had it); new unarmed `OcuPilot.Test.RemovalRowsSweep` (7 tests after QA and review) pins the lift. Files: `src/OcuPilot/Screen/Tool/Write.cls`, the 16 `*Delete.cls` bodies, `src/OcuPilot/Test/RemovalRowsSweep.cls`. Verification and mutations under Verification; the new class joins the `ci-timings.json` roster at the lead's refresh. Batch 2 is untouched. Review: 1 medium patched (per-site roster pin), 1 low patched (floor), 2 low and the intent report rejected (triage log). Follow-up review recommended: false.
+
+DW-2432 pass (batch 2): adding public `U` to a resource that an enabled web or privileged routine application uses as its `Resource` while its roles escalate now mints `GRANT.PRIVILEGED` at the destructive treatment, on a create or an update, with the existing `privilegedGrantEffect` line and no new string. Files: `src/OcuPilot/Kernel/Proposal/Prohibited.cls` (`AddsPublicUse`, `GuardsPrivilegedApplication`, the resource arm of `GrantsPrivilegeByEffect`); tests in `WebAppWeakening`, `RoutineAppGrant`, `ResourceUpdate` and the new helper `OcuPilot.Test.ProhibitedGuardFixture`. Task 0 and DW-2431 are not done in this pass; their boxes stay open. Review: 2 medium patched (unpinned branches), 1 rejected. Follow-up review recommended: false. Verification and mutations under Verification. Residual risk: the AD-10 clause for this arm is the lead's (ruling 1); a failed per-application read is pinned through a fixture port only.
+
+CI red pass (batch 4 rework 2): `ScreenStore.adoptRemembered` notifies again only when the rate or the view moved, and `restoredView()` (new) lets the journal page's one `followOrder()` re-run happen only when a stored view replaced the defaults. Files: `ui/src/app/core/screen-store.ts`, `ui/src/app/areas/os-management/journal-records.page.ts`, `ui/src/app/areas/os-management/journal-records.page.spec.ts`, `ui/tools/screen-store.test.mjs`. Review: 2 low patched (rate-only case, retitle), 5 rejected (triage log). Follow-up review recommended: false (no high patched). Verification: component spec 21/21, `screen-store.test.mjs` 28/28, `npm run test:components` 3367/3367 and `npm run test:tools` 2220/2220 (before the one added case), `npm run build` clean, initial total 2.02 MB of 2500 kB, journal records chunk 12.03 kB. Residual risk: the `analytics-mdx` cause is an inference and the browser shard was not run here; the lead's fresh check settles it.

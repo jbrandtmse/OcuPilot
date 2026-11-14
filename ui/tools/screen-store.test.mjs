@@ -77,6 +77,31 @@ test('DW-17 bad cap: 0, -5, 2.5 and NaN change neither the store nor the prefere
   assert.equal(notified, 0, 'and nobody was told of a change that did not happen');
 });
 
+// Mutations (Rule 19): notify on every adoption in `adoptRemembered` -> the nothing-remembered
+// assertion goes red; return `false` from `remembered()` -> red; leave `viewRestored` unset when a
+// view is adopted -> the `restoredView()` assertions go red.
+test('adoption turns remembered() true and notifies only when it changed the rate or adopted a stored view', async () => {
+  const empty = stubAccountPreferences();
+  const bare = new ScreenStores({ account: empty }).for(ONE, []);
+  let bareHeard = 0;
+  bare.subscribe(() => (bareHeard += 1));
+  assert.equal(bare.remembered(), false, 'nothing is adopted before the account answers');
+  await empty.load();
+  assert.equal(bare.remembered(), true);
+  assert.equal(bareHeard, 0, 'adopting nothing moves nothing, so nobody is told');
+  assert.equal(bare.restoredView(), false, 'no stored view replaced the defaults');
+
+  const seeded = stubAccountPreferences({ views: { [ONE_ROUTE]: JSON.stringify({ sort: 'Name', direction: 'desc' }) } });
+  const held = new ScreenStores({ account: seeded }).for(ONE, []);
+  let heldHeard = 0;
+  held.subscribe(() => (heldHeard += 1));
+  await seeded.load();
+  assert.equal(held.remembered(), true);
+  assert.equal(heldHeard, 1, 'a remembered view that replaced the defaults is announced once');
+  assert.equal(held.direction(), 'desc');
+  assert.equal(held.restoredView(), true);
+});
+
 test('a remembered view of the wrong shape falls back field by field, without throwing', async () => {
   const shaped = await account({
     [ONE_ROUTE]: JSON.stringify({ sort: 3, direction: 'sideways', filter: 'x', maxRows: -1 }),
@@ -446,6 +471,18 @@ test('Story 16.18: a rate remembered after the store was made is adopted when th
   assert.equal(store.rate(), 10, 'the default, before the account has answered');
   await held.load();
   assert.equal(store.rate(), 60, 'the remembered rate, once it has');
+});
+
+// Mutations (Rule 19): drop `moved = true` from the rate branch of `adoptRemembered` -> red.
+test('adoption of a remembered rate alone notifies once and leaves restoredView() false', async () => {
+  const held = stubAccountPreferences({ refreshRates: { [HOME_REFRESH_NAME]: '60' } });
+  const store = new ScreenStores({ account: held }).for(HOME_DESCRIPTOR, HOME.refreshRates);
+  let heard = 0;
+  store.subscribe(() => (heard += 1));
+  await held.load();
+  assert.equal(store.rate(), 60);
+  assert.equal(heard, 1, 'a rate that moved is announced once');
+  assert.equal(store.restoredView(), false, 'no view was stored, so none was restored');
 });
 
 test('Story 16.18: the name home keys the refresh kind only -- another screen with no route still remembers nothing', async () => {
