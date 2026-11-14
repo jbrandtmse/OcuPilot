@@ -12819,3 +12819,33 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-23-14-epic-23-burn-down.md | severity: low | fix-risk: med | footprint: in-epic
 - evidence: Operation.RequiredPairsOf turns ArgumentPairs' pResolved=0 (CodeWritePairs on a deleted namespace) into an error status; Confirm answers it through Internal (500 + log). Before batch 5 compile/delete/import resolved on the request scope and the port answered a named 400.
 - 2026-11-14T07:58:33Z status=wontfix-accepted owner=23-14-epic-23-burn-down by=cr note=reopen_if=a confirm of an Explorer write answers 500 naming unresolved argument pairs
+
+### DW-2559: The spine does not yet describe the harvest seam: AD-23 says RenderResponseBody emits the envelope (it records one render for HarvestPort), and AD-29's Rule says each port declares its own resource (HarvestPort evaluates the caller's declared pairs)
+- source: spec-21-1-the-harvest-seam.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: Handler.RenderResponseBody only records on the stub; HarvestPort has no PAIRS and PortGate needed a <caller> row; the spec's proposed amendment adds HarvestPort to AD-29's Binds but no Rule sentence
+- 2026-11-14T19:22:46Z status=escalated owner=burndown by=cr note=runner's Rule 20 veto window for 21.1: apply AD-23 amendment and add an AD-29 Rule sentence for a caller-declared gate
+
+### DW-2560: Nothing polices harvested body classes: a body is a public class method any code or route could call past HarvestPort's gate, and PortGate has no row kind for a body class under Port/Harvest/
+- source: spec-21-1-the-harvest-seam.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: Design Notes claim a body cannot be wired as a route past the gate, but only the render fails outside the port, after the body ran; PortGate.PortClasses lists every OcuPilot.Port. class at any depth
+- 2026-11-14T19:22:46Z status=routed owner=21-2-backup-and-mirroring by=cr note=add a checker rule on who names Port.Harvest body classes, a PortGate row kind for a body, and correct the spec claim
+
+### DW-2561: HarvestPort restores only the three CSP stubs, the device and the namespace: a body that leaves a transaction open, sets $ROLES or %SourceControl, or switches device is not undone
+- source: spec-21-1-the-harvest-seam.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: Invoke News %request/%response/%session only; the sibling's one TSTART (REST/Sql.cls) and its own null-device redirects handle their own cleanup
+- 2026-11-14T19:22:46Z status=wontfix-theoretical owner=21-1-the-harvest-seam by=cr note=real once a harvested body opens a transaction or sets roles; guard $TLEVEL in Invoke then
+
+### DW-2562: A harvested body's SanitizeError collapses every status to GeneralError, so the port answers INTERNAL for not-found/conflict/validation and logs only the sanitized text
+- source: spec-21-1-the-harvest-seam.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: Spec Named limits state the collapse; the base could override SanitizeError to keep the raw status on the stub for classification and the log
+- 2026-11-14T19:22:46Z status=by-design owner=21-1-the-harvest-seam by=cr note=spec Named limit; an area port validates first. Option for 21.2: base overrides SanitizeError to stash the raw status
+
+### DW-2563: HarvestPort discards the %Status a harvested body returns, so a body that returns an error without rendering is logged only as rendered 0 times
+- source: spec-21-1-the-harvest-seam.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Invoke calls Do $ClassMethod(...); 85 of 101 sibling rendering bodies end Quit $$$OK and the rest reset tSC to OK after rendering
+- 2026-11-14T19:22:46Z status=wontfix-accepted owner=21-1-the-harvest-seam by=cr note=reopen_if=a harvested body in 21.2-21.10 returns an error status after or instead of rendering
+
+### DW-2564: HarvestRouteFixture.Handle and HarvestWireFixture.Run repeat the same four-line fault-or-result writer block
+- source: spec-21-1-the-harvest-seam.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: both test fixtures copy SqlConsole.RenderFault's pattern, which is Private and cannot be called
+- 2026-11-14T19:22:46Z status=wontfix-accepted owner=21-1-the-harvest-seam by=cr note=reopen_if=a third route fixture copies the block

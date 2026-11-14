@@ -106,6 +106,15 @@ Method TestSuccessAnswersTheBareResult()
     Do $$$AssertEquals(##class(OcuPilot.Test.HarvestPortFixture).LogCount(), 0, "nothing is logged")
 }
 
+Method TestOkRenderWithNoResultAnswersAnEmptyObject()
+{
+    Do ..Drive("Bare")
+    Do $$$AssertEquals(..GotHttp(), 200, "HTTP 200")
+    Do $$$AssertTrue($IsObject(..GotResult()), "the result is an object")
+    If '$IsObject(..GotResult()) Quit
+    Do $$$AssertEquals(..GotResult().%ToJSON(), "{}", "an omitted result part answers {}")
+}
+
 Method TestVerbatimTaskListAnswersTheEnvelope()
 {
     Do ..Drive("TaskList")
@@ -169,6 +178,10 @@ Method TestConsoleAndArgumentsReachTheirDestinations()
     Do $$$AssertStatusOK(tSC, "the console case answers")
     Do $$$AssertEquals($IsObject($Get(tConsole)), 1, "the console is an object")
     Do $$$AssertEquals($Get(tConsole).%Get(0), "note", "pConsole is the render's message part")
+    Kill tResult, tHttp, tFault, tConsole
+    Set tSC = ##class(OcuPilot.Test.HarvestPortFixture).Invoke("OcuPilot.Test.HarvestFixture", "ConsoleFailure", ..Pairs(), .tQuery, "", .tResult, .tHttp, .tFault, .tConsole)
+    Do $$$AssertEquals(+$Get(tHttp), 404, "the failing console case answers its fault")
+    Do $$$AssertEquals($Get(tConsole), "", "a fault hands out no message part")
     Kill tResult, tHttp, tFault
     Set tSC = ##class(OcuPilot.Test.HarvestPortFixture).Invoke("OcuPilot.Test.HarvestFixture", "Args", ..Pairs(), .tQuery, "", .tResult, .tHttp, .tFault, , "one", "two")
     Do $$$AssertStatusOK(tSC, "the argument case answers")
@@ -294,8 +307,16 @@ Method TestNotAHandlerRunsNothing()
     Do ..AssertFault(500, ##class(OcuPilot.Api.Error).#INTERNAL, "an absent class")
     Do ..Drive("Run", , , , "OcuPilot.Test.HarvestOutsider")
     Do ..AssertFault(500, ##class(OcuPilot.Api.Error).#INTERNAL, "a public method of a class outside the handler base")
+    Do ..Drive("RenderResponseBody")
+    Do ..AssertFault(500, ##class(OcuPilot.Api.Error).#INTERNAL, "the base's own render")
+    Do ..Drive("SanitizeError")
+    Do ..AssertFault(500, ##class(OcuPilot.Api.Error).#INTERNAL, "a helper the base inherits")
     Do $$$AssertEquals(##class(OcuPilot.Test.HarvestFixture).Runs(), 0, "nothing ran, the outsider's counter included")
-    Do $$$AssertEquals(##class(OcuPilot.Test.HarvestPortFixture).LogCount(), 5, "each refusal is logged")
+    Do $$$AssertEquals(##class(OcuPilot.Test.HarvestPortFixture).LogCount(), 7, "each refusal is logged")
+    For tI = 1:1:7 {
+        Set tMessage = ##class(OcuPilot.Test.HarvestPortFixture).LogAt(tI).message
+        Do $$$AssertTrue(tMessage [ "is not a harvested handler method", "refusal " _ tI _ " is the handler check's, not a raised call: " _ tMessage)
+    }
 }
 
 Method TestRenderOutsideThePortRecordsNothing()
@@ -305,12 +326,21 @@ Method TestRenderOutsideThePortRecordsNothing()
     Do $$$AssertStatusNotOK(tSC, "%response undefined: an error status")
     Set %response = ##class(%CSP.Response).%New()
     Set tCookie = ""
+    Set tSC = $$$OK
     Set tCaptureSC = $$BeginCapture^%SYS.Capture(.tCookie)
-    Set tSC = ##class(OcuPilot.Test.HarvestFixture).RenderResponseBody($$$OK, , {"a":1})
-    Set tEnd = $$EndCapture^%SYS.Capture(tCookie, .tLines)
+    If $$$ISOK(tCaptureSC) {
+        Try {
+            Set tSC = ##class(OcuPilot.Test.HarvestFixture).RenderResponseBody($$$OK, , {"a":1})
+        } Catch ex {
+            Set tSC = ex.AsStatus()
+        }
+        Kill tLines
+        Set tEnd = $$EndCapture^%SYS.Capture(tCookie, .tLines)
+    }
     Do $$$AssertStatusOK(tCaptureSC, "the capture opened")
+    If $$$ISERR(tCaptureSC) Quit
     Do $$$AssertStatusNotOK(tSC, "a plain response: an error status")
-    Do $$$AssertEquals(tLines.%Size(), 0, "nothing was written")
+    Do $$$AssertEquals($Select($IsObject($Get(tLines)): tLines.%Size(), 1: -1), 0, "nothing was written")
 }
 
 /// <p>No class that extends the base writes the response itself, and the scan found one.</p>

@@ -166,9 +166,8 @@ prose into one checker.
     `Kernel/Agent/Dispatch.cls`; a file under `Kernel/Shell/` or `Screen/Tool/` names no
     `OcuPilot.Api.*` class but the vocabulary class `OcuPilot.Api.Error`, because the handlers
     depend on the shell reads and the tools and never the reverse; and `BeginCapture` or
-    `%SYS.Capture` appears only in `Port/AdminPort.cls`, `Port/MgmntPort.cls` and
-    `Port/AtelierPort.cls`, because a port's own capture refuses to open inside one that already
-    holds output.
+    `%SYS.Capture` appears only in the ports `CAPTURE_ALLOWED` names, because a port's own capture
+    refuses to open inside one that already holds output.
 
 21. **Literal state SQL (AD-21, Story 4.2).** Under `Kernel/State/`, outside `Base.cls`, which
     defines the helpers, the SQL argument of every `Guarded*Where*` or `GuardedExecute*` call is a

@@ -9201,6 +9201,7 @@ So that the highest-consequence operations are reachable.
 - **Given** these are the most destructive operations OcuPilot has ever exposed
 - **When** the prohibited set is revisited
 - **Then** every backup and mirroring write is a confirmed proposal whose destructive key defaults to disabled, for an administrator to switch on; only removing a mirror together with its databases joins the prohibited set, in the kernel (AD-10), beside the self-protection cases it already holds; and every freeze OcuPilot issues carries a bounded suspend limit, so writes never stay frozen indefinitely [AMENDED 2026-10-09, owner decision "I agree with your recommendations", relayed by the Planner, Rule 5].
+- DW-2560: Nothing polices harvested body classes: a body is a public class method any code or route could call past HarvestPort's gate, and PortGate has no row kind for a body class (ledger; routed by cr 2026-11-14)
 
 ### Story 21.3: Startup, memory and compatibility settings
 

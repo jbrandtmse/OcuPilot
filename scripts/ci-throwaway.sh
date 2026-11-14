@@ -310,6 +310,7 @@ services:
       # classes: TurnWireFixture, UnexpireScope, UserUpdate, Version, Wire, WireOAuthRead, WireSecurityRead
       # classes: RoleSave, RoleUpdate, ReadBackRoute
       # classes: ImpactRoute
+      # classes: HarvestWire
       # classes: SslWire
       # classes: TaskWire
       # classes: ServiceEdit, LdapEdit, ServiceLdapProbe

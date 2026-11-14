@@ -104,6 +104,35 @@ The fixture handler is `OcuPilot.Test.HarvestFixture`. Every case runs through `
 - **AC2.** Given every compiled `OcuPilot.*` class that `%Extends` the base, when the implementation of each method it defines is read, then none names `OcuPilot.Api.Response`, `OcuPilot.Api.Error` or `%response`, and at least one class was scanned. Given the verbatim `TaskList`, when it runs through the port, then it answers OcuPilot's envelope (matrix row "Harvested body").
 - **AC3.** Given the `Twice` and `Chatter` cases over `HarvestRouteFixture` through `OcuPilot.Test.Dispatch.InvokeHandler`, when the raw body is read, then it contains no `}{` and parses as one object: the `INTERNAL` fault for `Twice`, the result for `Chatter`. `OcuPilot.Test.Envelope` stays green.
 
+### Review Findings
+
+Code review, 2026-11-14 (four layers, full-opus). Patches applied in the review pass; the defer items are ledgered.
+
+- [x] [Review][Patch] [high] `HarvestPort` defined `Invoke` without `Snippet` and `SnippetForm` (AD-59), so `OcuPilot.Test.DraftRegistry` was red; added the read-only pair other read ports carry [src/OcuPilot/Port/HarvestPort.cls:212]
+- [x] [Review][Patch] [medium] An OK render with no result part answering `{}` was unpinned; `Bare` fixture and `TestOkRenderWithNoResultAnswersAnEmptyObject` [src/OcuPilot/Test/Harvest.cls]
+- [x] [Review][Patch] [medium] `TestRenderOutsideThePortRecordsNothing` left its capture open if the render raised, and ended a capture it had not begun; guarded, with assertions outside the capture [src/OcuPilot/Test/Harvest.cls]
+- [x] [Review][Patch] [low] The handler check admitted inherited class methods (the base's `RenderResponseBody`, every `Kernel.Utils` helper); the method's origin must now be a class below the base, with two refusal cases [src/OcuPilot/Port/HarvestPort.cls:163]
+- [x] [Review][Patch] [low] The absent- and private-method refusals could not fail with their guards removed (the raised call answered the same 500); each refusal now asserts the handler check's log line [src/OcuPilot/Test/Harvest.cls]
+- [x] [Review][Patch] [low] `pConsole` carried the body's unnormalized message part on a fault too; it is set on an OK render only and the caller contract says it is unnormalized [src/OcuPilot/Port/HarvestPort.cls:187]
+- [x] [Review][Patch] [low] `HarvestWire.TestVendorTextNeverReachesTheWireOverHttp` passed for any 500 without the text; it asserts the `INTERNAL` code and the generic reason [src/OcuPilot/Test/HarvestWire.cls]
+- [x] [Review][Patch] [low] Rule 20's docstring in the checker still named three capture ports; it now points at `CAPTURE_ALLOWED` [scripts/check-objectscript.py:168]
+- [x] [Review][Defer] [medium] The spine does not yet carry the seam (AD-23's "emits", AD-29's own-resource Rule) — deferred: DW-2559, escalated to the runner's Rule 20 veto window; the AD-29 amendment needs a Rule sentence, not only a Binds entry
+- [x] [Review][Defer] [medium] Nothing polices harvested body classes (direct calls past the gate; no `PortGate` row kind for a body) — deferred: DW-2560, routed to 21-2-backup-and-mirroring
+- [x] [Review][Defer] [low] The port does not undo a body's open transaction, roles, source-control or device changes — deferred: DW-2561, wontfix-theoretical
+- [x] [Review][Defer] [medium] `SanitizeError` collapses a body's refusal to `INTERNAL` and the log gets the sanitized text — deferred: DW-2562, by-design (Named limits)
+- [x] [Review][Defer] [low] The body's returned `%Status` is discarded — deferred: DW-2563, wontfix-accepted with reopen_if
+- [x] [Review][Defer] [low] The two route fixtures repeat a four-line writer block — deferred: DW-2564, wontfix-accepted with reopen_if
+
+Rejected:
+
+- `HttpStatusFor` duplicates `Fault`'s map: low; `Fault` maps HTTP to code and nothing else maps code to HTTP, so no second copy can diverge.
+- `EndCapture`'s status is unchecked: low; `AtelierPort.Route` treats it the same way, a failed end is unlikely, and the fix adds a branch.
+- A `pQuery` node with only subscripts raises: low; the port convention is a one-level `pQuery`, and the answer is a logged `INTERNAL`.
+- A raise before the body ran is logged as the body raising: low; log wording only, and the fix adds a stage variable.
+- The `<caller>` row never checks that the body did not run: false; a gate moved after the handler check lets the probe's render answer 200, which fails its 403 assertion. Its fixed signature fails loudly for any second caller port.
+- `HarvestWireFixture` ignores `ReadRequestBody`'s status: low; a test fixture sent only valid bodies.
+- The `Shared surfaces` line, the Auto Run Result's file list and AC2's "other than the base" wording: the fix edits the spec.
+
 ## Spec Change Log
 
 ## Review Triage Log
@@ -202,6 +231,13 @@ HTTP status by code: `PORT.ACCESSDENIED` 403, `PORT.NOTFOUND` 404, `PORT.CONFLIC
 - mutation: AC3, `BeginCapture` and the capturing flag removed from `Invoke` -> red: `TestSingleEnvelopeOverTheRoute` alone (run 16).
 - mutation: handler check, the `%Extends` line removed from `IsHandler` -> red: `TestNotAHandlerRunsNothing` alone (run 15).
 - mutation: `PORT.CONFLICT` answered 500 and `pConsole` not set -> red: `TestClassifiedStatusesAnswerTheirHttpStatus` and `TestConsoleAndArgumentsReachTheirDestinations` (run 17).
+- test (QA): `src/OcuPilot/Test/HarvestWire.cls` and `src/OcuPilot/Test/HarvestWireFixture.cls` -- the port over real HTTP in a real CSP job (armed `OCUPILOT_ALLOW_PRINCIPALS`; roster line added to `scripts/ci-throwaway.sh`).
+- mutation (QA): AC1, over HTTP, answer `{status, console, result}` instead of the bare result -> red: `HarvestWire.TestSuccessAnswersTheBareResultOverHttp`, `TestVerbatimTaskListRunsInARealJob`, `TestRealRequestQueryAndBodyReachTheBody`, `TestDeviceOutputNeverReachesTheWire` (run 21).
+- mutation (QA): AC3, over HTTP, capture removed from `Invoke` -> red: `HarvestWire.TestDeviceOutputNeverReachesTheWire` alone (run 20).
+- mutation (QA): `$NAMESPACE` not restored after the call, as the route sees it -> red: `HarvestWire.TestStrandedNamespaceIsRestoredOverHttp` alone (run 22).
+- mutation (CR): `Snippet` renamed away in `HarvestPort` -> red: `DraftRegistry.TestEveryPortThatDefinesInvokeDefinesASnippet` alone (the pre-patch tree was red the same way).
+- mutation (CR): the `{}` default dropped, `pConsole` set before the status check, and the `Private` clause removed from `IsHandler` -> red: `Harvest.TestOkRenderWithNoResultAnswersAnEmptyObject`, `TestConsoleAndArgumentsReachTheirDestinations` and `TestNotAHandlerRunsNothing`, one each.
+- mutation (CR): `IsHandler`'s origin check replaced by `Quit 1` -> red: `Harvest.TestNotAHandlerRunsNothing` alone.
 
 ## Auto Run Result
 

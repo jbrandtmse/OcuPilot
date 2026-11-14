@@ -203,6 +203,22 @@ ClassMethod Console() As %Status
     Quit $$$OK
 }
 
+/// <p>Renders a success with no result part.</p>
+ClassMethod Bare() As %Status
+{
+    Do ..Count()
+    Do ..RenderResponseBody($$$OK)
+    Quit $$$OK
+}
+
+/// <p>Renders a failure with a message part.</p>
+ClassMethod ConsoleFailure() As %Status
+{
+    Do ..Count()
+    Do ..RenderResponseBody($$$ERROR($$$LoadObjectNotFound, "Thing", "id"), ["vendor line"])
+    Quit $$$OK
+}
+
 /// <p>Answers the two arguments it was called with.</p>
 ClassMethod Args(pFirst As %String, pSecond As %String) As %Status
 {

@@ -66,7 +66,9 @@ ClassMethod LogFault(pMessage As %String, pStatus As %Status, pCode As %String =
 /// </ul>
 /// <p>The answer follows the port convention. <var>pFault</var> is
 /// <code>{error, reason, code[, detail]}</code> and is empty on success; the returned status is an
-/// error whenever <var>pFault</var> is set. <var>pConsole</var> is the render's message part.</p>
+/// error whenever <var>pFault</var> is set. <var>pConsole</var> is an OK render's message part, the body's
+/// own text unnormalized, and <code>""</code> on every other answer; it reaches no wire, model or log
+/// unless an AD-39 exception names it.</p>
 /// <p>Caller contract: must not be called from an escalated frame (AD-9). The caller's
 /// <code>%request</code>, <code>%response</code>, <code>%session</code>, device and
 /// <code>$NAMESPACE</code> are unchanged on return, on every path; no <code>OcuPilot.*</code> class
@@ -156,7 +158,8 @@ ClassMethod Invoke(pHandler As %String, pMethod As %String, pPairs As %List, ByR
 }
 
 /// <p>Whether <var>pHandler</var> is a compiled class that extends <parameter>HANDLERBASE</parameter>
-/// and defines <var>pMethod</var> as a public class method.</p>
+/// and has <var>pMethod</var> as a public class method defined below the base, so neither the base's
+/// own render nor a helper it inherits runs as a body.</p>
 ClassMethod IsHandler(pHandler As %String, pMethod As %String) As %Boolean [ Private ]
 {
     If '$Match(pHandler, "^[A-Za-z%][A-Za-z0-9%.]*$") Quit 0
@@ -164,7 +167,9 @@ ClassMethod IsHandler(pHandler As %String, pMethod As %String) As %Boolean [ Pri
     If '##class(%Dictionary.CompiledClass).%ExistsId(pHandler) Quit 0
     If '$ClassMethod(pHandler, "%Extends", ..#HANDLERBASE) Quit 0
     Set tMethod = ##class(%Dictionary.CompiledMethod).%OpenId(pHandler _ "||" _ pMethod)
-    Quit $IsObject(tMethod) && tMethod.ClassMethod && 'tMethod.Private
+    If '$IsObject(tMethod) || 'tMethod.ClassMethod || tMethod.Private Quit 0
+    If tMethod.Origin = ..#HANDLERBASE Quit 0
+    Quit $ClassMethod(tMethod.Origin, "%Extends", ..#HANDLERBASE)
 }
 
 /// <p>The answer for the render <var>pStub</var> recorded, once the namespace is the caller's.</p>
@@ -178,8 +183,8 @@ ClassMethod Answer(pHandler As %String, pMethod As %String, pStub As %Registered
         Quit ..Fail(tText, $$$ERROR($$$GeneralError, tText), .pHttpStatus, .pFault)
     }
     Set tStatus = pStub.RenderStatus
-    Set pConsole = pStub.MsgPart
     If $$$ISOK(tStatus) {
+        Set pConsole = pStub.MsgPart
         Set pResult = $Select($IsObject(pStub.ResPart): pStub.ResPart, 1: {})
         Set pHttpStatus = 200
         Quit $$$OK
@@ -200,6 +205,19 @@ ClassMethod HttpStatusFor(pCode As %String) As %Integer [ Private ]
     If pCode = ##class(OcuPilot.Api.Error).#PORTVALIDATION Quit 400
     If pCode = ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED Quit 501
     Quit 500
+}
+
+/// <p><code>""</code>: no harvested body this port runs is a write, so no request type has a
+/// script form (AD-59).</p>
+ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
+{
+    Quit ""
+}
+
+/// <p>No step: no harvested body this port runs is a write (AD-59).</p>
+ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject = "", pContext As %DynamicObject = "") As %DynamicArray
+{
+    Quit []
 }
 
 /// <p>The privilege refusal naming <var>pFailedPair</var> (AD-8, AD-39).</p>

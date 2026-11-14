@@ -20,3 +20,6 @@
 2026-11-14T18:47:14Z	Story 21.1	stage_spawned	stage=qa spawn_at=2026-11-14T18:47:14Z model=sonnet agent_name=21-1-the-harvest-seam-qa-1 cycle_iteration=1
 2026-11-14T18:57:37Z	Story 21.1	qa_complete	spawn_at=2026-11-14T19:00:00Z model=sonnet tests=src/OcuPilot/Test/HarvestWire.cls,src/OcuPilot/Test/HarvestWireFixture.cls tests_added=7 mutations_demonstrated=3 first_run_failures=0 clarifications=0 closing_sections_present=true footprint=scripts/ci-throwaway.sh(add-only_roster_line)
 2026-11-14T18:57:37Z	Story 21.1	stage_spawned	stage=code-review spawn_at=2026-11-14T18:57:37Z model=opus agent_name=21-1-the-harvest-seam-code-review-1 cycle_iteration=1
+2026-11-14T19:27:36Z	Story 21.1	cr_complete	spawn_at=2026-11-14T19:12:00Z model=opus resolved=8 fixed_at_source=8 by_design=1 wontfix_theoretical=1 routed=1 escalated=1 decision_pending=0 deferred=6 dismissed=7 high=1 med=5 low=8 rows=36 unresolved_high_med=2 clarifications=0 closing_sections_present=true final=done note=layers_ran_background_despite_flag
+2026-11-14T19:27:36Z	Story 21.1	ledger_routed_planned	story=21-2-backup-and-mirroring entries=1 excess=0 by=cr
+2026-11-14T19:27:36Z	Story 21.1	ledger_adjudicated	owned=0 resolved=0 reowned=0 terminal=0 filed_by_cr=DW-2559(escalated_burndown),DW-2560(routed_21-2),DW-2561..2564(terminal) model=claude-opus-5-5
