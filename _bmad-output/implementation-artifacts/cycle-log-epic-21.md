@@ -11,3 +11,4 @@
 2026-11-14T17:48:29Z	Epic 21	retro_review_skipped	reason=all_items_held_or_routed burndown=51(all_inbox_or_owner_hold) routed_17-2=3(out_of_band_owner_epic) action_items_open=2(attended_architecture_updates)
 2026-11-14T17:52:57Z	Epic 21	throwaway_up	container=ocupilot-ci dir=/Users/jbrandt/.ocupilot-throwaways/ocupilot-ci project=ocupilot-ci web=52776 super=1975 started_by=epic-21-runner run=20261114T1656Z-21,22 startpath_ok=1
 2026-11-14T17:52:57Z	Epic 21	epic_context_compiled	sha=pending reason=initial model=claude-opus-5-5 lines=83
+2026-11-14T17:53:33Z	Story 21.1	stage_spawned	stage=plan spawn_at=2026-11-14T17:53:33Z model=opus agent_name=21-1-the-harvest-seam-plan-1 cycle_iteration=1
