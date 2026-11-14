@@ -181,11 +181,15 @@ Method TestASeededPortalCompactIsListedPaused()
 /// <p>AC2, AD-8, AD-53: the screen's Resume acts on a seeded compact -- 200, the updated change
 /// event's triple, and the compact running again -- and its Pause, sent by
 /// <parameter>READERUSER</parameter>, who holds the screen's pairs and nothing more, answers 200 or
-/// the vendor's state refusal of a compact that already ended. A 200 is followed by the screen's
-/// Cancel (200, the row re-reads Cancelled) and a Pause of the canceled compact (409
-/// <code>TASK.BACKGROUND.STATE</code> with the published sentence); a refusal is followed by a Cancel
-/// of the ended compact that answers 409 <code>TASK.BACKGROUND.STATE</code>. Any other answer to the
-/// Pause fails.</p>
+/// the vendor's state refusal of a compact that already ended. A 200 Pause that settles to Paused is
+/// followed by the screen's Cancel (200, the row re-reads Cancelled) and a Pause of the canceled
+/// compact (409 <code>TASK.BACKGROUND.STATE</code> with the published sentence); a refusal, or a 200
+/// Pause that settles to Done because the work ended first, is followed by a Cancel of the ended
+/// compact that answers 409 <code>TASK.BACKGROUND.STATE</code>. Any other answer to the Pause, or
+/// any other settled state, fails.</p>
+/// <p>The vendor's Pause and Resume take effect asynchronously, so each state read after a Resume or
+/// a 200 Pause waits for the state to leave the one it was in
+/// (<method>OcuPilot.Test.BackgroundSeed.Settled</method>).</p>
 /// <p>The live leg accepts the ended compact's state refusal, and
 /// <class>OcuPilot.Test.BackgroundTaskPortSeam</class> pins the 200 path at the port.</p>
 /// <p>Mutation (Rule 19): skip the vendor call in
@@ -203,16 +207,28 @@ Method TestTheScreensActionsResumePauseAndCancelACompact()
     Do $$$AssertEquals(tStatus, 200, "the screen's Resume answers 200: " _ $Select($IsObject(tBody): tBody.%ToJSON(), 1: tBody))
     Do $$$AssertTrue($IsObject(tBody) && $IsObject(tBody.%Get("target")), "and answers the change event: " _ $Select($IsObject(tBody): tBody.%ToJSON(), 1: tBody))
     If $IsObject(tBody) && $IsObject(tBody.%Get("target")) Do $$$AssertEquals(tBody.%Get("action") _ " " _ tBody.%Get("target").%Get("type") _ " " _ tBody.%Get("target").%Get("scope") _ " " _ (tBody.%Get("target").%Get("id") = tId), "updated background-task instance 1", "publishing the updated event for the row")
-    Do $$$AssertTrue($ListFind($ListBuild("Running", "Done"), $ClassMethod(..#SEED, "State", tTaskId)), "and the compact runs again: " _ $ClassMethod(..#SEED, "State", tTaskId))
+    Set tResumed = $ClassMethod(..#SEED, "Settled", tTaskId, "Paused")
+    Do $$$AssertTrue($ListFind($ListBuild("Running", "Done"), tResumed), "and the compact runs again: " _ tResumed)
     Set tSC = ..Act("pause", tId, ..#READERUSER, ..PreparedPassword, .tStatus, .tBody)
     Set tPauseBody = $Select($IsObject(tBody): tBody.%ToJSON(), 1: tBody)
-    If tStatus '= 200 {
-        Set tEnded = $ClassMethod(..#SEED, "State", tTaskId)
-        Set tRefused = (tStatus _ " " _ ..Code(tBody) _ " " _ tEnded = "409 TASK.BACKGROUND.STATE Done")
-        Do $$$AssertTrue(tRefused, "a Pause that is not a 200 is only the state refusal of a compact that already ended: " _ tStatus _ " " _ tEnded _ " " _ tPauseBody)
+    Set tEnded = 0
+    If tStatus = 200 {
+        ; A pause takes effect asynchronously, so the state is read once it has left Running:
+        ; Paused, or Done when the work finished first.
+        Set tSettled = $ClassMethod(..#SEED, "Settled", tTaskId, "Running")
+        Do $$$AssertTrue($ListFind($ListBuild("Paused", "Done"), tSettled), "a Pause that answers 200 settles to Paused, or to Done when the work ended first: " _ tSettled)
+        If '$ListFind($ListBuild("Paused", "Done"), tSettled) Quit
+        Set tEnded = (tSettled = "Done")
+    } Else {
+        Set tEndState = $ClassMethod(..#SEED, "State", tTaskId)
+        Set tRefused = (tStatus _ " " _ ..Code(tBody) _ " " _ tEndState = "409 TASK.BACKGROUND.STATE Done")
+        Do $$$AssertTrue(tRefused, "a Pause that is not a 200 is only the state refusal of a compact that already ended: " _ tStatus _ " " _ tEndState _ " " _ tPauseBody)
         If 'tRefused Quit
+        Set tEnded = 1
+    }
+    If tEnded {
         Set tSC = ..Act("cancel", tId, "", "", .tStatus, .tBody)
-        Do $$$AssertEquals(tStatus _ " " _ ..Code(tBody), "409 TASK.BACKGROUND.STATE", "and so is the screen's Cancel of it: " _ $Select($IsObject(tBody): tBody.%ToJSON(), 1: tBody))
+        Do $$$AssertEquals(tStatus _ " " _ ..Code(tBody), "409 TASK.BACKGROUND.STATE", "the screen's Cancel of a compact that ended first is the state refusal: " _ $Select($IsObject(tBody): tBody.%ToJSON(), 1: tBody))
         Quit
     }
     Do $$$AssertEquals(..StatusOf("Management Portal", tJob), "Paused", "the screen's Pause answers 200 to a holder of the screen's pairs alone, and the row re-reads Paused")
@@ -265,7 +281,7 @@ Method TestAnAdminApiCompactIsListedAndPausedThroughAsyncResult()
     Set tId = ##class(OcuPilot.Kernel.EntityId).JoinComposite($ListBuild("Admin API", tGuid))
     Set tSC = ..Act("pause", tId, "", "", .tStatus, .tAnswer)
     Do $$$AssertEquals(tStatus, 200, "the screen's Pause answers 200: " _ $Select($IsObject(tAnswer): tAnswer.%ToJSON(), 1: tAnswer))
-    Do $$$AssertEquals(..StatusOf("Admin API", tGuid), "Paused", "and the row re-reads Paused")
+    Do $$$AssertEquals(..SettledRow("Admin API", tGuid, "Running"), "Paused", "and the row re-reads Paused")
     ; DW-1821 (Story 18.4): the paused compact is listed once, on its admin API row, with its database.
     Set tDirectory = $ZConvert(##class(%File).NormalizeDirectory($ClassMethod(..#SEED, "Directory")), "U")
     Set tPaused = ..Listed("Admin API", tGuid)
@@ -275,7 +291,7 @@ Method TestAnAdminApiCompactIsListedAndPausedThroughAsyncResult()
     Do $$$AssertEquals(tStatus _ " " _ ..Code(tAnswer) _ " " _ $Select($IsObject(tAnswer): tAnswer.%Get("reason"), 1: ""), "409 TASK.BACKGROUND.STATE " _ ##class(OcuPilot.Api.Error).#REASONTASKBACKGROUNDSTATE, "AsyncResult refuses to cancel a paused compact, with the published sentence")
     Set tSC = ..Act("resume", tId, "", "", .tStatus, .tAnswer)
     Do $$$AssertEquals(tStatus, 200, "the screen's Resume answers 200: " _ $Select($IsObject(tAnswer): tAnswer.%ToJSON(), 1: tAnswer))
-    Do $$$AssertTrue($ListFind($ListBuild("Running", "Finished"), ..StatusOf("Admin API", tGuid)), "and the row re-reads running or finished")
+    Do $$$AssertTrue($ListFind($ListBuild("Running", "Finished"), ..SettledRow("Admin API", tGuid, "Paused")), "and the row re-reads running or finished")
 }
 
 /// <p>AC1: the admin API half is the caller's own. An async task row the test account owns is
@@ -525,6 +541,20 @@ Method StatusOf(pSource As %String, pId As %String) As %String
 {
     Set tRow = ..Listed(pSource, pId)
     Quit $Select($IsObject(tRow): tRow.%Get("Status"), 1: "")
+}
+
+/// <p>The status the screen's row <var>pId</var> of <var>pSource</var> reads once it has left
+/// <var>pFrom</var>, read at most 150 times, 200 ms apart, since a pause or resume takes effect
+/// asynchronously; the last read when it never leaves.</p>
+Method SettledRow(pSource As %String, pId As %String, pFrom As %String) As %String
+{
+    Set tState = ..StatusOf(pSource, pId)
+    For tI = 1:1:150 {
+        If tState '= pFrom Quit
+        Hang 0.2
+        Set tState = ..StatusOf(pSource, pId)
+    }
+    Quit tState
 }
 
 /// <p>The row the classic page's own query answers for job <var>pJob</var>, read in
