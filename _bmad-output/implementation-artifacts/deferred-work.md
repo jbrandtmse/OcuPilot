@@ -12829,6 +12829,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-1-the-harvest-seam.md | severity: med | fix-risk: med | footprint: in-epic
 - evidence: Design Notes claim a body cannot be wired as a route past the gate, but only the render fails outside the port, after the body ran; PortGate.PortClasses lists every OcuPilot.Port. class at any depth
 - 2026-11-14T19:22:46Z status=routed owner=21-2-backup-and-mirroring by=cr note=add a checker rule on who names Port.Harvest body classes, a PortGate row kind for a body, and correct the spec claim
+- 2026-11-14T19:49:14Z owner=21-2-backup by=spec_gate note=story_retitled_on_split(21.2_backup,21.12_mirroring)
 
 ### DW-2561: HarvestPort restores only the three CSP stubs, the device and the namespace: a body that leaves a transaction open, sets $ROLES or %SourceControl, or switches device is not undone
 - source: spec-21-1-the-harvest-seam.md | severity: low | fix-risk: med | footprint: in-story

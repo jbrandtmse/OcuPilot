@@ -24,3 +24,7 @@
 2026-11-14T19:27:36Z	Story 21.1	ledger_routed_planned	story=21-2-backup-and-mirroring entries=1 excess=0 by=cr
 2026-11-14T19:27:36Z	Story 21.1	ledger_adjudicated	owned=0 resolved=0 reowned=0 terminal=0 filed_by_cr=DW-2559(escalated_burndown),DW-2560(routed_21-2),DW-2561..2564(terminal) model=claude-opus-5-5
 2026-11-14T19:34:16Z	Story 21.2	stage_spawned	stage=plan spawn_at=2026-11-14T19:34:16Z model=opus agent_name=21-2-backup-and-mirroring-plan-1 cycle_iteration=1
+2026-11-14T19:49:32Z	Story 21.2	ruling	question=plan_intent_gap_too_large choice=split(21.2_backup,21.12_mirroring_planned_next) rejected=one_story why=size(97_files_per_similar_story),mirroring_untestable_on_one_instance category=decide policy=b9ff703e split_children=2
+2026-11-14T19:49:32Z	Story 21.2	ruling	question=freeze_limit_ceiling_and_new_strings choice=FREEZELIMITMAX=600s_required_no_default;strings_as_proposed rejected=default_limit,other_wording why=vendor_ExternalFreezeTimeOut_default_600;plain_language category=veto inbox=U-38 policy=b9ff703e
+2026-11-14T19:49:32Z	Epic 21	deps_hash_rerecorded	reason=split story=21.2->21.2,21.12 note=orchestrator_rerecords
+2026-11-14T19:49:52Z	Story 21.2	plan_clarification_requested	condition=intent_gap_too_large ruled=split,freeze_limit,strings inbox=U-38 respawn=spec_path status_reset=draft

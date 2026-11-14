@@ -9182,10 +9182,12 @@ So that 165 rows do not each become a rewrite.
 - **When** any harvested handler responds
 - **Then** it is the one OcuPilot envelope, and the no-double-envelope assertion still passes.
 
-### Story 21.2: Backup and mirroring
+### Story 21.2: Backup
+
+[AMENDED 2026-11-14, Story 21.2 plan, unattended ruling: split into siblings, Rule 5] The mirroring set and the mirroring half of the destructive-operations criterion moved verbatim to Story 21.12, planned next.
 
 As an operator,
-I want backup and the mirroring set,
+I want backup,
 So that the highest-consequence operations are reachable.
 
 **Acceptance Criteria:**
@@ -9194,13 +9196,9 @@ So that the highest-consequence operations are reachable.
 - **When** each runs
 - **Then** it round-trips through the OcuPilot API over its backing class.
 
-- **Given** mirror create, edit for failover and async members, join, the monitor, and member and database actions
-- **When** each runs
-- **Then** it round-trips.
-
 - **Given** these are the most destructive operations OcuPilot has ever exposed
 - **When** the prohibited set is revisited
-- **Then** every backup and mirroring write is a confirmed proposal whose destructive key defaults to disabled, for an administrator to switch on; only removing a mirror together with its databases joins the prohibited set, in the kernel (AD-10), beside the self-protection cases it already holds; and every freeze OcuPilot issues carries a bounded suspend limit, so writes never stay frozen indefinitely [AMENDED 2026-10-09, owner decision "I agree with your recommendations", relayed by the Planner, Rule 5].
+- **Then** every backup write is a confirmed proposal whose destructive key defaults to disabled, for an administrator to switch on; and every freeze OcuPilot issues carries a bounded suspend limit, so writes never stay frozen indefinitely [AMENDED 2026-10-09, owner decision "I agree with your recommendations", relayed by the Planner, Rule 5].
 - DW-2560: Nothing polices harvested body classes: a body is a public class method any code or route could call past HarvestPort's gate, and PortGate has no row kind for a body class (ledger; routed by cr 2026-11-14)
 
 ### Story 21.3: Startup, memory and compatibility settings
@@ -9356,6 +9354,24 @@ So that the last two steps of the agent's growth land together.
 - **Then** it captures a snapshot **before** the write and offers a one-click revert
 - **And** the revert is itself a **confirmed proposal with its own diff and its own audit marker** - undoing is a write, not an exemption from the write model
 - **And** the state-capture model it needs is what kept it out of Release 1, so it is designed here rather than retrofitted.
+
+### Story 21.12: Mirroring
+
+[AMENDED 2026-11-14, Story 21.2 plan, unattended ruling: split into siblings, Rule 5] Split from Story 21.2, whose mirroring criteria it carries verbatim; it is planned next after Story 21.2.
+
+As an operator,
+I want the mirroring set,
+So that the highest-consequence operations are reachable.
+
+**Acceptance Criteria:**
+
+- **Given** mirror create, edit for failover and async members, join, the monitor, and member and database actions
+- **When** each runs
+- **Then** it round-trips.
+
+- **Given** these are the most destructive operations OcuPilot has ever exposed
+- **When** the prohibited set is revisited
+- **Then** every mirroring write is a confirmed proposal whose destructive key defaults to disabled, for an administrator to switch on; only removing a mirror together with its databases joins the prohibited set, in the kernel (AD-10), beside the self-protection cases it already holds [AMENDED 2026-10-09, owner decision "I agree with your recommendations", relayed by the Planner, Rule 5].
 
 ---
 
