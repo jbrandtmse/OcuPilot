@@ -12,3 +12,5 @@
 2026-11-14T17:52:57Z	Epic 21	throwaway_up	container=ocupilot-ci dir=/Users/jbrandt/.ocupilot-throwaways/ocupilot-ci project=ocupilot-ci web=52776 super=1975 started_by=epic-21-runner run=20261114T1656Z-21,22 startpath_ok=1
 2026-11-14T17:52:57Z	Epic 21	epic_context_compiled	sha=pending reason=initial model=claude-opus-5-5 lines=83
 2026-11-14T17:53:33Z	Story 21.1	stage_spawned	stage=plan spawn_at=2026-11-14T17:53:33Z model=opus agent_name=21-1-the-harvest-seam-plan-1 cycle_iteration=1
+2026-11-14T18:09:07Z	Story 21.1	story_created	spawn_at=2026-11-14T17:55:00Z model=opus path=_bmad-output/implementation-artifacts/spec-21-1-the-harvest-seam.md build_status=ready-for-dev epic_context=reused oversized=true
+2026-11-14T18:09:07Z	Story 21.1	spec_validated	service_introducing=true integration_ac=declared-none(first_consumer=21.2) adr_constrained_acs=AD-23,AD-12,AD-39,AD-29,AD-16,AD-1,AD-7,AD-61 decision_dependency=none sections_created=none owned_ledger=none addressed=0 declined=0 mutates_shared_runtime=false proposed_ad_amendment=AD-23_rule,AD-29_binds(design_notes_only) model=claude-opus-5-5
