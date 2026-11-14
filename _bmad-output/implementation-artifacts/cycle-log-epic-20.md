@@ -1458,3 +1458,4 @@
 2026-11-14T04:24:14Z	Story 20.41	ci_resolved	story=20.41 sha=a33f5745 runs=43553438894 result=success failed=none via=none resolved_at=next_implement first_ci=success
 2026-11-14T04:24:14Z	Story 20.41	boundary_reported	to=main code_head=a33f5745 runs=43553438894 result=success ledger=DW-2298(resolved),DW-2545(resolved),DW-2546(wontfix-accepted) upgrade_trigger=baseline_key(interop.items.changeclass;default_false)
 2026-11-14T04:24:14Z	Epic 20	integrated_forward	feature=93fe6294 head=d35237a5 conflicts_resolved=sprint-status.yaml(regenerated;23-13_done,23-14_in-progress_re-applied;valid) ci=pending runs=43556455745 missing=none test:tools=2221/2221 note=staging_head_before_20.26
+2026-11-14T04:24:37Z	Story 20.26	stage_spawned	stage=implement spawn_at=2026-11-14T04:24:37Z model=sonnet agent_name=20-26-implement-1 cycle_iteration=1 story_base=83beee234 prompt=e20u/20-26/prompts/implement-1.md+common.md note=beside_staging_CI_43556455745
