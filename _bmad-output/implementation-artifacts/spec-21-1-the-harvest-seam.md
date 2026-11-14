@@ -2,7 +2,8 @@
 title: 'Story 21.1: The harvest seam'
 type: 'feature'
 created: '2026-11-14'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: 'e215bb48d0b33588a33048d46fa1005715eab410'
 review_loop_iteration: 0
 followup_review_recommended: false
 context: []
@@ -106,6 +107,21 @@ The fixture handler is `OcuPilot.Test.HarvestFixture`. Every case runs through `
 
 ## Review Triage Log
 
+### 2026-11-14 -- Review pass
+
+- verdicts: 10 findings -- high 0, medium 4, low 4, false 0, maybe-false 2
+- findings:
+  - `[medium]` `[patch]` `OcuPilot.Test.PortGate` red: three new port-package classes had no roster row -- confirmed by running it; rows added (`<caller>` for the port, `<stub>` for the base and the response stub), the `<caller>` row drives an empty pair set to a 403.
+  - `[medium]` `[patch]` the handler-class check was unpinned -- `HarvestOutsider` added, `TestNotAHandlerRunsNothing` asserts its counter stays 0; mutation recorded.
+  - `[medium]` `[patch]` the 409, 400 and 501 mappings were unpinned -- three fixture bodies and `TestClassifiedStatusesAnswerTheirHttpStatus`; mutation recorded.
+  - `[low]` `[patch]` `pConsole` and `pArgs` were unexercised -- `TestConsoleAndArgumentsReachTheirDestinations`; mutation recorded.
+  - `[medium]` `[patch]` `TestDeviceOutputIsDiscarded` could not fail for its name -- renamed `TestChatterBodyStillAnswers`; the discard is pinned over the wire and the capture-removal mutation is recorded.
+  - `[low]` `[patch]` `TestHelperWorksWhileSwitched` passed with no log line -- added the log count and a positive text check.
+  - `[low]` `[reject]` the real gate relies on the unit-test account holding `%All` -- the same dependency every port test here carries.
+  - `[maybe-false]` `[reject]` the verbatim `TaskList` test passes on an empty task list -- the keys and the count/size relation are asserted either way.
+  - `[maybe-false]` `[reject]` the harvested body is in the Test package and the port runs through a subclass overriding two seams -- the spec fixes both.
+  - `[low]` `[reject]` `## Auto Run Result` read `ready-for-dev` mid-run -- finalized below.
+
 ## Design Notes
 
 **Governing ADs:** AD-23 (the seam), AD-12 and AD-39 (one envelope, normalized vendor text), AD-29 (a port's own gate), AD-16 (save and restore), AD-1 and AD-7 (the stubs let a turn job call the port in process), AD-61 (the in-process call, stub and capture pattern; a `<PROTECT>` is an access refusal), and AD-36 (no read in this story; bounds belong to each harvesting story).
@@ -132,6 +148,7 @@ HTTP status by code: `PORT.ACCESSDENIED` 403, `PORT.NOTFOUND` 404, `PORT.CONFLIC
 - Two renders, or none, is `INTERNAL`. It is never "first wins", because a second render is the double-envelope defect.
 - The request method is `POST` with a body and `GET` without one.
 - Device output is discarded.
+- `scripts/check-objectscript.py` lists `HarvestPort` as a port that may open an output capture, with its harness row; `OcuPilot.Test.PortGate` gets roster rows for the port and its two stubs.
 - Every body fault is logged. A later story that reads an absence on purpose adds an unlogged list, as `AdminPort` does.
 - `RenderResponseBody` outside a `HarvestPort` call records nothing and fails, so a body cannot be wired as a route past the port's gate.
 
@@ -177,7 +194,25 @@ HTTP status by code: `PORT.ACCESSDENIED` 403, `PORT.NOTFOUND` 404, `PORT.CONFLIC
 - AC2: add `Do ##class(OcuPilot.Api.Response).JSON(tResult)` to the fixture's `TaskList`. Expected red: the scan.
 - AC3: make the port answer the first of two renders. Expected red: Twice, in process and over the wire.
 
+- mutation: AC1, `pMsgPart` retyped to `%DynamicObject` in the base -> red: `Harvest.TestRenderSignatureIsTheVendors` alone (run 4).
+- mutation: AC1, `ResPart` recorded as `{status, console, result}` -> red: `TestSuccessAnswersTheBareResult`, `TestVerbatimTaskListAnswersTheEnvelope`, `TestChatterBodyStillAnswers`, `TestRequestStubCarriesTheQueryAndTheBody`, `TestSingleEnvelopeOverTheRoute` (run 6).
+- mutation: AC2, `Response.JSON(tResult)` added to the fixture's `TaskList` -> red: `TestNoHarvestedBodyNamesTheResponseWriter` and `TestVerbatimTaskListAnswersTheEnvelope` (run 7).
+- mutation: AC3, port answers the first of two renders (`tRenders < 1`) -> red: `TestTwoRendersAreNeitherAnswered` and `TestSingleEnvelopeOverTheRoute` (run 8).
+- mutation: AC3, `BeginCapture` and the capturing flag removed from `Invoke` -> red: `TestSingleEnvelopeOverTheRoute` alone (run 16).
+- mutation: handler check, the `%Extends` line removed from `IsHandler` -> red: `TestNotAHandlerRunsNothing` alone (run 15).
+- mutation: `PORT.CONFLICT` answered 500 and `pConsole` not set -> red: `TestClassifiedStatusesAnswerTheirHttpStatus` and `TestConsoleAndArgumentsReachTheirDestinations` (run 17).
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+**Summary.** The base class `Port/Harvest/Handler`, the stub `Port/Harvest/Response` and the port `Port/HarvestPort` are in, with four fixtures and the test class `Test/Harvest` (21 tests). The fixture's `TaskList` is the sibling body at `c6aad31` changed only by its base and the `..` rename.
+
+**Files changed.** `Port/Harvest/Handler.cls`, `Port/Harvest/Response.cls`, `Port/HarvestPort.cls` (new); `Port/AtelierRequest.cls` (doc sentence); `Test/Harvest*.cls` and `Test/HarvestOutsider.cls` (new); `Test/PortGate.cls` (roster rows and a `<caller>` row kind); `scripts/check-objectscript.py` and its harness (capture allow-list).
+
+**Review.** Six patches applied (three medium, three low), four findings rejected with reasons in the triage log, none deferred. Follow-up review not recommended.
+
+**Verification (all on `ocupilot-ci`).** Reload `LOADERRORS=0`; `Harvest` 21 of 21, `Envelope` 17 of 17, `PortGate` 4 of 4; `check-objectscript.py` 0 problems and its harness 146 tests OK; `lint-docs.sh` clean; `npm run test:tools` green. Seven mutations observed red and reverted, recorded under `## Verification`. Not run here, runner-owned: the full ObjectScript sweep, `smoke.sh`, the fresh check.
+
+**Residual risk.** The four new test classes are not in `ci-timings.json` until the merge gate refreshes it. Another test that enumerates `OcuPilot.Port.*` would surface only in the full sweep.

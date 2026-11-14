@@ -26,7 +26,7 @@ Parameter PORTPACKAGE = "OcuPilot.Port.";
 /// check declares <parameter>VENDORGATE</parameter> instead.</p>
 /// <p><b>A class in the package and not on this roster fails.</b> That is the point: the roster is
 /// what a new port has to be added to, and adding it is what forces a gate to be named.</p>
-Parameter ROSTER = "OcuPilot.Port.AdminPort=<vendor>|OcuPilot.Port.UserCopyPort=PAIRS|OcuPilot.Port.LogSourcePort=MESSAGESPAIRS;ALERTSPAIRS;ERRORSINSTANCEPAIRS|OcuPilot.Port.MgmntPort=PAIRS;WRITEPAIRS|OcuPilot.Port.MonitorPort=PAIRS|OcuPilot.Port.ProviderPort=INVOKEPAIRS;DRAFTPAIRS|OcuPilot.Port.WalletPort=<vendor>|OcuPilot.Port.TaskPort=<vendor>|OcuPilot.Port.ProcessPort=<vendor>|OcuPilot.Port.TokenPort=<vendor>|OcuPilot.Port.AuditPort=<vendor>|OcuPilot.Port.OAuthServerPort=<vendor>|OcuPilot.Port.OAuthClientPort=<vendor>|OcuPilot.Port.OAuthResourceServerPort=<vendor>|OcuPilot.Port.OAuthAuthorizationServerPort=<vendor>|OcuPilot.Port.OAuthRegisteredClientPort=<vendor>|OcuPilot.Port.AdminRoutes=<table>|OcuPilot.Port.PathPort=PAIRS|OcuPilot.Port.BackgroundTaskPort=PAIRS|OcuPilot.Port.NamespacePort=<vendor>|OcuPilot.Port.DatabasePort=<vendor>|OcuPilot.Port.TaskTransferPort=PAIRS|OcuPilot.Port.LanguageServerPort=<vendor>|OcuPilot.Port.LockPort=<vendor>|OcuPilot.Port.AtelierPort=PAIRS|OcuPilot.Port.AtelierRequest=<stub>|OcuPilot.Port.RemoteDatabasePort=<vendor>|OcuPilot.Port.JournalPort=<vendor>|OcuPilot.Port.LicensePort=<vendor>|OcuPilot.Port.SqlPort=OcuPilot.Port.AtelierPort.PAIRS|OcuPilot.Port.EcpPort=<vendor>|OcuPilot.Port.EncryptionPort=OcuPilot.Port.PathPort.PAIRS|OcuPilot.Port.DocDbPort=PAIRS|OcuPilot.Port.SqlActivityPort=PAIRS|OcuPilot.Port.SuperserverPort=<vendor>|OcuPilot.Port.PctAccessPort=<vendor>|OcuPilot.Port.MftPort=<vendor>|OcuPilot.Port.DocDbAppPort=<vendor>|OcuPilot.Port.SqlPrivilegePort=<vendor>|OcuPilot.Port.ScreenAccessPort=PAIRS|OcuPilot.Port.AnalyticsPort=PORTALPAIRS;TERMLISTPAIRS;FOLDERPAIRS;MDXPAIRS;MANAGERPAIRS|OcuPilot.Port.InteropPort=PRODUCTIONPAIRS;CODEPAIRS;WRITEPAIRS|OcuPilot.Port.AllowListPort=OcuPilot.Port.PathPort.PAIRS";
+Parameter ROSTER = "OcuPilot.Port.AdminPort=<vendor>|OcuPilot.Port.UserCopyPort=PAIRS|OcuPilot.Port.LogSourcePort=MESSAGESPAIRS;ALERTSPAIRS;ERRORSINSTANCEPAIRS|OcuPilot.Port.MgmntPort=PAIRS;WRITEPAIRS|OcuPilot.Port.MonitorPort=PAIRS|OcuPilot.Port.ProviderPort=INVOKEPAIRS;DRAFTPAIRS|OcuPilot.Port.WalletPort=<vendor>|OcuPilot.Port.TaskPort=<vendor>|OcuPilot.Port.ProcessPort=<vendor>|OcuPilot.Port.TokenPort=<vendor>|OcuPilot.Port.AuditPort=<vendor>|OcuPilot.Port.OAuthServerPort=<vendor>|OcuPilot.Port.OAuthClientPort=<vendor>|OcuPilot.Port.OAuthResourceServerPort=<vendor>|OcuPilot.Port.OAuthAuthorizationServerPort=<vendor>|OcuPilot.Port.OAuthRegisteredClientPort=<vendor>|OcuPilot.Port.AdminRoutes=<table>|OcuPilot.Port.PathPort=PAIRS|OcuPilot.Port.BackgroundTaskPort=PAIRS|OcuPilot.Port.NamespacePort=<vendor>|OcuPilot.Port.DatabasePort=<vendor>|OcuPilot.Port.TaskTransferPort=PAIRS|OcuPilot.Port.LanguageServerPort=<vendor>|OcuPilot.Port.LockPort=<vendor>|OcuPilot.Port.AtelierPort=PAIRS|OcuPilot.Port.AtelierRequest=<stub>|OcuPilot.Port.RemoteDatabasePort=<vendor>|OcuPilot.Port.JournalPort=<vendor>|OcuPilot.Port.LicensePort=<vendor>|OcuPilot.Port.SqlPort=OcuPilot.Port.AtelierPort.PAIRS|OcuPilot.Port.EcpPort=<vendor>|OcuPilot.Port.EncryptionPort=OcuPilot.Port.PathPort.PAIRS|OcuPilot.Port.DocDbPort=PAIRS|OcuPilot.Port.SqlActivityPort=PAIRS|OcuPilot.Port.SuperserverPort=<vendor>|OcuPilot.Port.PctAccessPort=<vendor>|OcuPilot.Port.MftPort=<vendor>|OcuPilot.Port.DocDbAppPort=<vendor>|OcuPilot.Port.SqlPrivilegePort=<vendor>|OcuPilot.Port.ScreenAccessPort=PAIRS|OcuPilot.Port.AnalyticsPort=PORTALPAIRS;TERMLISTPAIRS;FOLDERPAIRS;MDXPAIRS;MANAGERPAIRS|OcuPilot.Port.InteropPort=PRODUCTIONPAIRS;CODEPAIRS;WRITEPAIRS|OcuPilot.Port.AllowListPort=OcuPilot.Port.PathPort.PAIRS|OcuPilot.Port.HarvestPort=<caller>|OcuPilot.Port.Harvest.Handler=<stub>|OcuPilot.Port.Harvest.Response=<stub>";
 
 /// <p>The roster value for a port whose gate is the vendor's own <code>ResourcesOR()</code> check,
 /// which AD-29 fixes as a lower bound with the remedy at the screen descriptor's declared pair
@@ -38,10 +38,14 @@ Parameter VENDORGATE = "<vendor>";
 /// no <code>Invoke</code>.</p>
 Parameter TABLEROW = "<table>";
 
-/// <p>The roster value for a class in the package that is a request stub a port hands a vendor
-/// route rather than a port: it has no outbound entry, so it has no gate to name, and the test
-/// asserts it defines no <code>Invoke</code>.</p>
+/// <p>The roster value for a class in the package that is a stub or a base class a port hands a
+/// vendor route or body rather than a port: it has no outbound entry, so it has no gate to name,
+/// and the test asserts it defines no <code>Invoke</code>.</p>
 Parameter STUBROW = "<stub>";
+
+/// <p>The roster value for a port whose gate is the pair set its caller declares: the test drives
+/// <code>Invoke</code> with an empty set and asserts the refusal, since an empty set fails closed.</p>
+Parameter CALLERROW = "<caller>";
 
 /// <p>The gate whose held set a test declares, in place of the instance's own answer.</p>
 Parameter GATE = "OcuPilot.Test.ScreenGate";
@@ -120,6 +124,12 @@ Method TestEveryPortDeclaresANamedGate()
         }
         If tRow = ..#STUBROW {
             Do $$$AssertTrue('##class(%Dictionary.CompiledMethod).%ExistsId(tClass _ "||Invoke"), tClass _ ": is a request stub with no outbound entry")
+            Continue
+        }
+        If tRow = ..#CALLERROW {
+            Set tSC = $ClassMethod(tClass, "Invoke", "OcuPilot.Port.Harvest.Handler", "RenderResponseBody", "", .tNoQuery, "", .tResult, .tHttp, .tFault)
+            Do $$$AssertEquals(tHttp, ##class(OcuPilot.Kernel.Denial).#STATUS, tClass _ ": an empty declared pair set is refused 403")
+            Do $$$AssertEquals($Select($IsObject(tFault): tFault.%Get("code"), 1: ""), ##class(OcuPilot.Kernel.Denial).Code(), tClass _ ": naming AUTH.NOPRIVILEGE")
             Continue
         }
         If tRow = ..#VENDORGATE {

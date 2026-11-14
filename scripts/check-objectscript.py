@@ -919,7 +919,8 @@ CAPTURE_RE = re.compile(r"BeginCapture|%SYS\.Capture", re.IGNORECASE)
 # The port classes that may open an output capture. Story 4.2 wrote this rule when AdminPort was
 # the only port that captured; Epic 6's MgmntPort captures the same way, Story 19.1's AtelierPort
 # is the third, and Story 20.6's InteropPort the fourth, around the host test's send; Story 20.34's
-# AnalyticsPort is the fifth, around the cube build and synchronize. The rule still
+# AnalyticsPort is the fifth, around the cube build and synchronize; Story 21.1's HarvestPort is
+# the sixth, around a harvested handler body. The rule still
 # refuses a capture anywhere else, which is what keeps one from opening inside another (DW-1173
 # asks whether these can nest).
 CAPTURE_ALLOWED = frozenset(
@@ -929,6 +930,7 @@ CAPTURE_ALLOWED = frozenset(
         "src/OcuPilot/Port/AtelierPort.cls",
         "src/OcuPilot/Port/InteropPort.cls",
         "src/OcuPilot/Port/AnalyticsPort.cls",
+        "src/OcuPilot/Port/HarvestPort.cls",
     }
 )
 
