@@ -9,7 +9,7 @@ Make every remaining classic-portal leaf that has a backing class but no admin, 
 ## Stories
 
 - Story 21.1: The harvest seam
-- Story 21.2: Backup and mirroring
+- Story 21.2: Backup
 - Story 21.3: Startup, memory and compatibility settings
 - Story 21.4: NLS locales and SQL settings
 - Story 21.5: Globals and the data tools
@@ -19,12 +19,15 @@ Make every remaining classic-portal leaf that has a backing class but no admin, 
 - Story 21.9: Developer tools
 - Story 21.10: The remaining leaves across the six areas
 - Story 21.11: The agent gains the harvested tools and undo
+- Story 21.12: Mirroring
 
 ## Requirements & Constraints
 
 - **One contract for every screen added after Release 1.** Each screen is declared by exactly one descriptor and reaches outside through exactly one port. Its read tool and its write tools' field lists derive from that descriptor. Every write goes through a server-minted proposal, an instance-computed diff, an explicit confirmation and an agent audit marker. A story is accepted on that contract plus each row's own backing class; anything finer is authored when the row is picked up.
-- **Destructive writes start disabled.** Every new write key is absent from the governance baseline, so it defaults to disabled. Destructive actions are named as destructive (for example, every global kill). The highest-consequence operations are backup run, mirror actions, global kill, purge and deployment.
-- **Backup and mirroring:** every write is a confirmed proposal whose destructive key defaults to disabled. Only "remove a mirror together with its databases" joins the kernel's prohibited set. Every freeze OcuPilot issues carries a bounded suspend limit.
+- **Destructive writes start disabled.** A new write key is never left out of the governance baseline: the baseline test requires a line for every registered write key, so a destructive key ships with a `false` line and joins that test's disabled list in the same change. Destructive actions are named as destructive (for example, every global kill). The highest-consequence operations are backup run, mirror actions, global kill, purge and deployment.
+- **Backup (21.2):** every write is a confirmed proposal whose destructive key ships disabled. Every freeze OcuPilot issues, from either caller, carries a bounded suspend limit; the bound, its mechanism and how it holds where the vendor ignores the suspend limit (a clustered system) are measured in the story.
+- **Harvested bodies are not policed yet (21.2):** a body is a public class method that any code or route could call past the harvest port's gate, and the port-gate test has no row kind for a body class.
+- **Mirroring (21.12):** every write is a confirmed proposal whose destructive key ships disabled. Only removing a mirror together with its databases joins the kernel's prohibited set, refused from either caller; removal that keeps the databases is an ordinary disabled-by-default write.
 - Settings that need a restart say so on each change.
 - NLS work configures the server's locales. OcuPilot's own interface stays English.
 - The execute-command console's output is capped by the harvested output ceiling (32,768 characters).
@@ -40,7 +43,7 @@ Make every remaining classic-portal leaf that has a backing class but no admin, 
 
 ## Technical Decisions
 
-- **The harvest seam (AD-23):** harvested handlers inherit an OcuPilot base class that exposes `RenderResponseBody(pStatus As %Status, pMsgPart As %DynamicArray, pResPart As %DynamicObject) As %Status`. That is the signature called at all 738 harvested call sites. It emits OcuPilot's envelope instead of `%Atelier.REST`'s `{status, console, result}`. Only the base class changes; handler bodies are never edited to change response shape.
+- **The harvest seam (AD-23, built in 21.1):** harvested handlers inherit an OcuPilot base class that exposes `RenderResponseBody(pStatus As %Status, pMsgPart As %DynamicArray, pResPart As %DynamicObject) As %Status`. That is the signature called at all 738 harvested call sites. It emits OcuPilot's envelope instead of `%Atelier.REST`'s `{status, console, result}`. Only the base class changes; handler bodies are never edited to change response shape. `HarvestPort` is a body's one caller: it gates the call and runs the body in the caller's process, so a harvested body is reached through a port, not routed on its own.
 - **One envelope, one writer (AD-12, AD-39):** a flat `{error, reason}` envelope with a slug from a fixed enum, plus a stable machine code and an optional detail object. Handlers never `Write` to the response. Inside a nested `Catch`, use `Return $$$OK`, never a bare `Quit`. The no-`}{` double-envelope test must keep passing. Vendor `%Status` text is normalized before it reaches the screen or the model.
 - **Rename everything harvested.** None of `ExecuteMCPv2.*`, `SessionAgent.*`, `/api/executemcp/v2`, `^UnitTestRoot`, `^ExecuteMCPv2*`, `%ExecuteMCPOutput`, the `[IRIS-MCP-TRUNCATED…]` marker, the `iris_` tool prefix or any `IRIS_*` environment variable may appear. Tools are named `<area>.<screen>.<verb>`.
 - **Ports:**
@@ -74,10 +77,11 @@ Make every remaining classic-portal leaf that has a backing class but no admin, 
 
 ## Cross-Story Dependencies
 
-- 21.1 (the seam) comes before every story that harvests a handler body: 21.2 to 21.10.
+- 21.1 (the seam) comes before every story that harvests a handler body: 21.2 to 21.10 and 21.12.
 - In 21.9, remote instance profiles (DT-11) land before environment diff and promote (DT-09, DT-10).
 - 21.6 extends the diagnose-slow-query workflow from Epic 20 (Story 20.12).
 - 21.7 extends Epic 20's Interoperability slice and `InteropPort`. 21.8 extends Epic 20's analytics rider and `AnalyticsPort`.
+- 21.12 is planned right after 21.2, which it was split from.
 - 21.11 depends on 21.7's interoperability surfaces for the 28 tools. Undo applies across every write tool from earlier epics.
 - 21.10 adds leaves to the area slices from Epics 1 to 18, each in the slice that already owns its neighbors.
 - Epic 22's long-tail rows stay out of scope.

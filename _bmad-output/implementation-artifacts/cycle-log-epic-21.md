@@ -28,3 +28,5 @@
 2026-11-14T19:49:32Z	Story 21.2	ruling	question=freeze_limit_ceiling_and_new_strings choice=FREEZELIMITMAX=600s_required_no_default;strings_as_proposed rejected=default_limit,other_wording why=vendor_ExternalFreezeTimeOut_default_600;plain_language category=veto inbox=U-38 policy=b9ff703e
 2026-11-14T19:49:32Z	Epic 21	deps_hash_rerecorded	reason=split story=21.2->21.2,21.12 note=orchestrator_rerecords
 2026-11-14T19:49:52Z	Story 21.2	plan_clarification_requested	condition=intent_gap_too_large ruled=split,freeze_limit,strings inbox=U-38 respawn=spec_path status_reset=draft
+2026-11-14T19:53:14Z	Epic 21	epic_context_compiled	reason=planning_artifact_newer(split_21.2) model=claude-opus-5-5 lines=87
+2026-11-14T19:53:14Z	Story 21.2	stage_spawned	stage=plan spawn_at=2026-11-14T19:53:14Z model=opus agent_name=21-2-backup-plan-2 cycle_iteration=2
