@@ -62,8 +62,8 @@ ClassMethod HandleCreate(pKind As %String) As %Status
             Set tSC = tGateSC
             Quit
         }
-        If '..Body(.tBody) {
-            Set tSC = ##class(OcuPilot.Api.Error).Render(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#REASONAGENTBADBODY, ##class(OcuPilot.Api.Error).#AGENTBADBODY)
+        If '..Body(.tBody, .tBodyField) {
+            Set tSC = ##class(OcuPilot.Api.Error).RenderBodyRefusal(tBodyField)
             Quit
         }
         Set tNamespace = ""
@@ -103,8 +103,8 @@ ClassMethod HandleUpdate(pKind As %String, pId As %String) As %Status
             Set tSC = tGateSC
             Quit
         }
-        If '..Body(.tBody) {
-            Set tSC = ##class(OcuPilot.Api.Error).Render(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#REASONAGENTBADBODY, ##class(OcuPilot.Api.Error).#AGENTBADBODY)
+        If '..Body(.tBody, .tBodyField) {
+            Set tSC = ##class(OcuPilot.Api.Error).RenderBodyRefusal(tBodyField)
             Quit
         }
         Set tParts = ##class(OcuPilot.Kernel.EntityId).SplitComposite(##class(OcuPilot.Kernel.EntityId).Decode(pId))
@@ -323,11 +323,12 @@ ClassMethod Absent() As %Status [ Private ]
     Quit ##class(OcuPilot.Api.Error).Render(404, ##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.Error).#REASONMAPPINGNAMEABSENT, ##class(OcuPilot.Api.Error).#MAPPINGNAMEABSENT)
 }
 
-/// <p>Read the request body into <var>pBody</var>; 0 when it is not a JSON object.</p>
-ClassMethod Body(Output pBody As %DynamicObject) As %Boolean [ Private ]
+/// <p>Read the request body into <var>pBody</var>; 0 when it is not a JSON object. <var>pField</var> names the top-level
+/// key holding a value the instance cannot hold (<code>*</code> when no one key is to blame), else <code>""</code>.</p>
+ClassMethod Body(Output pBody As %DynamicObject, Output pField As %String) As %Boolean [ Private ]
 {
     Set pBody = ""
-    Set tReadSC = ##class(OcuPilot.Kernel.Utils).ReadRequestBody(.pBody, .tStage)
+    Set tReadSC = ##class(OcuPilot.Kernel.Utils).ReadRequestBody(.pBody, .tStage, .pField)
     If $$$ISERR(tReadSC) || '$IsObject(pBody) || 'pBody.%IsA("%Library.DynamicObject") Quit 0
     Quit 1
 }

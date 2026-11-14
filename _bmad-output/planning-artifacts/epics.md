@@ -8806,7 +8806,7 @@ So that a multi-step plan does not spend about a second per step before any tool
 [AMENDED 2026-10-11, Story 20.23 spec gate (DW-2298), Rule 5] Chartered from Story 20.23's plan, which declined the classic per-host Actions tab's remaining item actions as item operations, not queue or job actions; that spec's Design Notes › Ledger inbox carries the charter as read in the vendor source. Consumes Story 20.3's Production items and Story 20.4's per-host tabs. Its place in the order is the orchestrator's.
 
 As an interoperability operator,
-I want to temporarily stop, start and restart one item, copy an item and change its class from the item's screens,
+I want to temporarily stop, start and restart one item from the item's screens [AMENDED 2026-11-12, Story 20.25 spec gate: copy and change of class moved to Story 20.40, a split],
 So that the classic per-host Actions tab is not needed for them.
 
 **Acceptance Criteria:**
@@ -8815,9 +8815,7 @@ So that the classic per-host Actions tab is not needed for them.
 - **When** a temporary stop, a start or a restart is proposed and confirmed
 - **Then** each runs through the interoperability port as a confirmed write over a fresh read, followed by the production update the vendor requires, and is refused by name before any vendor call where the vendor would answer success while doing nothing (a stopped production, a disabled item).
 
-- **Given** an item
-- **When** a copy or a change of class is proposed and confirmed
-- **Then** each runs through the port as the classic page does, and the vendor's own audit records it.
+- Copy and change of class moved to Story 20.40 [AMENDED 2026-11-12, Story 20.25 spec gate, split].
 
 - **Given** the vendor behavior measured at its plan
 - **When** each action is planned
@@ -9109,6 +9107,54 @@ So that a click never leaves me where I was.
 - DW-2504: Four doc comments still place the name cell's link chain in data-table.ts, which Story 20.38 moved to navigation.ts's nameLinkTarget (ledger; routed by adjudication 2026-10-23)
 
 **Out of scope:** new screens for objects that have none; stored data and the installer.
+
+### Story 20.40: Item copy and change of class
+
+[CHARTERED 2026-11-12, split from Story 20.25 at its plan, unattended ruling within `limits.split_children`] Story 20.25 takes the temporary stop, start and restart of one item. Copy needs a new-name dialog (an AD-54 create), and change of class needs a class picker (a new read tool) and drops every setting the new class does not declare. Story 20.25's spec, Design Notes › Split, holds the charter as read in the vendor source.
+
+As an interoperability operator,
+I want to copy an item from the item's screens [AMENDED 2026-11-12, Story 20.40 spec gate: change of class moved to Story 20.41, a split],
+So that the classic per-host Actions tab is not needed for them.
+
+**Acceptance Criteria:**
+
+- **Given** an item
+- **When** a copy is proposed and confirmed [AMENDED 2026-11-12, Story 20.40 spec gate: change of class moved to Story 20.41, a split]
+- **Then** it runs through the port as the classic page does, and the vendor's own audit records it.
+
+- **Given** the vendor behavior measured at its plan
+- **When** each action is planned
+- **Then** its destructiveness, its governance key's default and its audit record are stated (AD-22).
+
+- DW-2298: the classic per-host Actions tab's copy item action has no story (ledger; routed by spec_gate 2026-11-12)
+
+**Out of scope:** the temporary stop, start and restart (Story 20.25).
+
+---
+
+### Story 20.41: Item change of class
+
+[CHARTERED 2026-11-12, split from Story 20.40 at its plan (itself split from Story 20.25), unattended ruling within `limits.split_children`] Story 20.40 takes an item's copy. Change of class needs a class picker over the host type's classes (a new read tool) and drops every setting the new class does not declare. Story 20.40's spec, Design Notes › Split, holds the charter as read in the vendor source.
+
+As an interoperability operator,
+I want to change an item's class from the item's screens,
+So that the classic per-host Actions tab is not needed for it.
+
+**Acceptance Criteria:**
+
+- **Given** an item
+- **When** a change of class is proposed and confirmed
+- **Then** it runs through the port as the classic page does, and the vendor's own audit records it.
+
+- **Given** the vendor behavior measured at its plan
+- **When** the action is planned
+- **Then** its destructiveness, its governance key's default and its audit record are stated (AD-22).
+
+- DW-2298: the classic per-host Actions tab's change class item action has no story (ledger; routed by spec_gate 2026-11-12)
+
+**Out of scope:** the temporary stop, start and restart (Story 20.25) and copy (Story 20.40).
+
+---
 
 ## Epic 21: Stage 5 - custom-REST parity from the MCP suite's handlers
 
@@ -9630,13 +9676,16 @@ So that the next reader is not misled by text the code no longer matches.
 
 **Acceptance Criteria:**
 
-- **Given** the entries re-owned to this story: DW-446, DW-1177, DW-1706, DW-1760, DW-1761, DW-2060, DW-2259, DW-2260, DW-2299, DW-1979 and DW-1981
+- **Given** the entries re-owned to this story: DW-1822, DW-2512, DW-446, DW-1177, DW-1706, DW-1760, DW-1761, DW-2060, DW-2259, DW-2260, DW-2299 and DW-1981
 - **When** this story completes
 - **Then** each has a disposition written by the ledger tool: `resolved-by` this story with the commit, or `wontfix-accepted` or `by-design` with a reason and, where a condition would reopen it, that condition.
 
 - **Given** a fix to code or a test
 - **When** it lands
 - **Then** a test reddens on the defect before the fix, or the entry says why none can, and the fixes land in batches grouped by area, each with CI green on its own head.
+
+- DW-1822: a11y-structural-invariants.browser-spec.mjs stalls on Runtime.callFunctionOn and pushes browser shard 1/5 past its 55-minute limit (ledger; routed by spec_gate 2026-11-12; CI flake, first priority)
+- DW-2512: local-databases.browser-spec.mjs hits a 30-second navigation timeout at signedInAt page.goto (ledger; routed by spec_gate 2026-11-12; CI flake, first priority)
 
 ### Story 23.10: The range-end cleanup, part 9: two sweeps
 
@@ -9648,13 +9697,18 @@ So that an out-of-range request value answers its field refusal and a test run n
 
 **Acceptance Criteria:**
 
-- **Given** the entries re-owned to this story: DW-2417, DW-2426, DW-2431 and DW-2432
+- **Given** the entries re-owned to this story: DW-2513, DW-2517, DW-2522, DW-2524, DW-2417 and DW-2426 (DW-2431, DW-2432, DW-2525 and DW-1979 moved to Story 23.13 at the spec gate, 2026-11-12)
 - **When** this story completes
 - **Then** each has a disposition written by the ledger tool: `resolved-by` this story with the commit, or `wontfix-accepted` or `by-design` with a reason and, where a condition would reopen it, that condition.
 
 - **Given** a sweep
 - **When** it lands
 - **Then** a test reddens on a representative site before the fix, the story says how a new site written in the old form is caught or why none can be, and each sweep lands as its own batch with CI green on its own head.
+
+- DW-2513: data-table-columns.browser-spec.mjs failed 17 of 18 at its own goto against its local server (ledger; routed by spec_gate 2026-11-12; CI flake, first priority)
+- DW-2517: JournalRecords reverse-order test read its next page as PORT.TIMEOUT once in a full sweep (ledger; routed by lead 2026-11-12; CI flake, first priority)
+- DW-2522: analytics-mdx AC1's first query grid did not appear within the navigation timeout on a CI shard (ledger; routed by lead 2026-11-12; CI flake, first priority)
+- DW-2524: context-chip Fresh at Send waited past 30 seconds on a CI shard (ledger; routed by lead 2026-11-12; CI flake, first priority)
 
 ### Story 23.11: The range-end cleanup, part 10
 
@@ -9731,3 +9785,56 @@ So that "none" means none, and the agent never describes a list it has not read.
 - **Then** a roster test fails if any read tool's description lacks its title, its row noun or its field list, and fails if a confusable group's tool lacks its label. Its pinning mutation removes the field list from one description.
 
 **Out of scope:** stored data and the installer (so no upgrade check is expected; the plan confirms that from its diff), write tools' descriptions beyond what the same builder changes for free, and any change to which tools a turn starts with.
+
+### Story 23.13: The range-end cleanup, part 11
+
+Split from Story 23.10 at its spec gate on 2026-11-12 (the plan's own recommendation): Story 23.10 keeps its four CI flakes and its two sweeps, and this story takes the rest. The two refusal-classifier edges from Story 18.48's review: KMIP start mode with journal encryption, measured on a throwaway before the start arm is widened, and a resource edit that opens a privileged application to everyone, which takes the privileged-grant treatment Story 18.48 gave the application edit. Also the delete tools that still repeat the removal-row loop over their own name lists, and Journal records' Newest first showing its rows oldest first. Story 23.10's spec holds the investigation for each, which this story's plan may reuse. A slot that would otherwise sit idle runs it, after Story 23.10.
+
+As a maintainer of OcuPilot,
+I want the remaining classifier edges, repeated loops and the journal order fixed,
+So that a privileged change is confirmed as one and the screens show what they say they show.
+
+**Acceptance Criteria:**
+
+- **Given** the entries re-owned to this story: DW-1822, DW-2431, DW-2432, DW-2525, DW-1979 and DW-2527
+- **When** this story completes
+- **Then** each has a disposition written by the ledger tool: `resolved-by` this story with the commit, or `wontfix-accepted` or `by-design` with a reason and, where a condition would reopen it, that condition.
+
+- **Given** a fix to code or a test
+- **When** it lands
+- **Then** a test reddens on the defect before the fix, or the entry says why none can, and the fixes land in batches grouped by area, each with CI green on its own head.
+
+- DW-1979: Journal records' Newest first reads the newest records but the table shows them oldest first (ledger; routed by spec_gate 2026-11-12; moved from Story 23.9 to keep it within 12 entries)
+- DW-2525: sixteen more delete tools repeat the removal-row loop over FingerprintSubject() or ReadAnswers(), which Write.RemovalRows cannot absorb as written (ledger; routed by cr 2026-11-12)
+- DW-1822: a11y-structural-invariants AC5 settle on /agent/governance at 720 px timed out at protocol-retry.mjs:48 on staging run 43379465200 attempt 1, after Story 23.9's fix (ledger; routed by orchestrator 2026-11-13; CI flake, first priority)
+
+### Story 23.14: Epic 23 burn-down
+
+Chartered by Epic 23's burn-down gate on 2026-11-14 (Rule 17), after Story 23.13, from the 32 story-closable entries the `burndown` owner held. It takes the 12 by priority: the CI flakes first (Rule 27), then the security entry, then repeat occurrences and the lowest fix-risk. The other 20 were re-owned to Epic 21 stories by the orchestrator's ruling the same day; the IRIS defect candidates and other owner questions stay on the owner's sheet.
+
+As a maintainer of OcuPilot,
+I want the recurring CI flakes and the remaining range-end defects closed,
+So that a red CI run means a real defect and the screens behave as they say.
+
+**Acceptance Criteria:**
+
+- **Given** the entries re-owned to this story: DW-2236, DW-2461, DW-2123, DW-2301, DW-2397, DW-2111, DW-2526, DW-2253, DW-2403, DW-2408, DW-2501 and DW-2543
+- **When** this story completes
+- **Then** each has a disposition written by the ledger tool: `resolved-by` this story with the commit, or `wontfix-accepted` or `by-design` with a reason and, where a condition would reopen it, that condition.
+
+- **Given** a fix to code or a test
+- **When** it lands
+- **Then** a test reddens on the defect before the fix, or the entry says why none can, and the fixes land in batches grouped by area, each with CI green on its own head.
+
+- DW-2236: CI flake: BackgroundTasksLive's Pause and Cancel answer 409 TASK.BACKGROUND.STATE when the seeded compact has already left Running (ledger; routed by burndown 2026-11-14)
+- DW-2461: flake: encryption-startup.browser-spec.mjs C1, C2, C9 timed out waiting for the None start mode control in CI browser shard 1/5 (ledger; routed by burndown 2026-11-14)
+- DW-2123: CI flake: a GitHub runner held host port 52776 through all three bring-up attempts, so an instance shard failed before running any class (ledger; routed by burndown 2026-11-14)
+- DW-2301: flake: a11y-structural-invariants AC5 recorded security/auditing/user-events (1280 light) as unsettled within 20 s (ledger; routed by burndown 2026-11-14)
+- DW-2397: CI flake: turn.browser-spec.mjs 'Markup in a reply renders as literal text' read the reply before its text finished arriving (ledger; routed by burndown 2026-11-14)
+- DW-2111: five error-log browser navigations timed out at 30 s in one CI run and did not reproduce on a re-run (ledger; routed by burndown 2026-11-14)
+- DW-2526: flake: LogHubErrors.TestASeededErrorReadsInTheHubsForm read a row other than its seeded error as the newest (ledger; routed by burndown 2026-11-14)
+- DW-2253: System Explorer's compile, delete and import Confirm gate WRITE on the request's namespace while the write targets the proposal's (ledger; routed by burndown 2026-11-14)
+- DW-2403: the turn wire test classes leave their probe user's ledger rows, and SweepSince misses rows whose turn is gone (ledger; routed by burndown 2026-11-14)
+- DW-2408: interop-item-test.browser-spec.mjs's cleanup leaves the host test's message headers and the probe production's log rows behind in USER (ledger; routed by burndown 2026-11-14)
+- DW-2501: no check fails when a new stored property on a %Persistent class without a source Storage section is declared anywhere but last (ledger; routed by burndown 2026-11-14)
+- DW-2543: Journal records' cold open with Newest first saves the default view before the account read answers, which can lose the remembered filter, row limit and widths (ledger; routed by burndown 2026-11-14)

@@ -2,7 +2,9 @@
 title: "Story 20.34: The cube manager's build and synchronize"
 type: 'feature'
 created: '2026-10-15'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: 'b850c80c0cf45beb72a0886c03e12dd57f409432'
+baseline_commit: 'b850c80c0cf45beb72a0886c03e12dd57f409432'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -171,7 +173,7 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Line numbe
 
 **Execution:**
 
-- [ ] **Task 0 (re-anchor and measure, no product code).** First run `git rev-parse --show-toplevel`.
+- [x] **Task 0 (re-anchor and measure, no product code).** First run `git rev-parse --show-toplevel`.
   1. Confirm that 20.11, 20.32, 20.33 and 20.35 are implemented here: `Port/AnalyticsPort.cls`, `Api/AnalyticsError.cls`, `Test/AnalyticsProbe.cls`, `Test/AnalyticsGate.cls` and the MDX query descriptor exist. If one is missing, stop and report to the lead.
   2. Re-anchor every planned symbol above, and record:
      - `ReadTool`'s count, `ToolWrite`'s other-port count (51 expected), `ClassicPageGate`'s count sentence, and the strings count against 3,800;
@@ -187,11 +189,11 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Line numbe
      5. that the probe's Categories source declares no `DSTIME` and Visits' declares `AUTO`.
 
   A measurement that contradicts this spec halts the stage with its evidence.
-- [ ] **`src/OcuPilot/Api/AnalyticsError.cls`** **(20.11, planned; add-only).** Codes and sentences:
+- [x] **`src/OcuPilot/Api/AnalyticsError.cls`** **(20.11, planned; add-only).** Codes and sentences:
   - `ANALYTICS.CUBE.BUSY`, `ANALYTICS.CUBE.NODSTIME`, `ANALYTICS.CUBE.NOTBUILT`, `ANALYTICS.CUBE.READONLY` and `ANALYTICS.CUBE.FAILED`, each with its `REASON*`, the sentences in Design Notes › Strings;
   - the consequence codes `ANALYTICS.CUBE.BUILD` and `ANALYTICS.CUBE.SYNCHRONIZE`;
   - a `CubeCodes` list and `ReasonFor` branches, as `InteropError`'s `RuntimeCodes` and `ReasonFor` do.
-- [ ] **`src/OcuPilot/Port/AnalyticsPort.cls`** **(20.11, planned; add-only members).**
+- [x] **`src/OcuPilot/Port/AnalyticsPort.cls`** **(20.11, planned; add-only members).**
   - **Declarations.**
     - `CubeManager` joins `ENDPOINTS`; `MANAGERPAIRS = "%DeepSee_Portal:USE,%DeepSee_Admin:USE"`.
     - Types `STATE`, `BUILD` and `SYNCHRONIZE` on `CubeManager`, beside `LIST`. `ACTIONKEY` and `NAMESPACEKEY` keys, as `InteropPort`'s.
@@ -216,23 +218,23 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Line numbe
     - Record the audit row through a private `AuditWrite`, the sibling of `InteropPort.AuditRuntime`.
   - **`Snippet`/`SnippetForm`.** The two calls as script, the cube name in a doubled-quote literal, as `InteropPort.RuntimeSnippet` composes them.
   - **Doc comments** name AD-7, AD-29, AD-51, AD-53 and AD-65.
-- [ ] **`src/OcuPilot/Screen/Tool/AnalyticsAction.cls`** (new, abstract; follows `InteropAction`, Design Notes › Rule 31).
+- [x] **`src/OcuPilot/Screen/Tool/AnalyticsAction.cls`** (new, abstract; follows `InteropAction`, Design Notes › Rule 31).
   - `PORTCLASS` `AnalyticsPort`, `READTYPE` `STATE`, `SENDSBODY` 0, `READSVALUES` 1, `NAMESPACEFIELD` `Namespace`, `STATEMARKER` `Updating`, `CLASSICPAGES` `%DeepSee.UI.CubeRegistry`.
   - `IdArgument` `Name`, `IdParam`, `SettableFields`, `Consequence`, `PortQuery`, `ArgumentNamespace`.
   - `PrivilegePairs`: the screen's pairs (`Screen.Gate.RequiredPairs`), then WRITE on the resource of the database `^DeepSee.Fact` maps to, then READ on the routines database, then each classic page's custom resource, each once.
   - A `StateDiff` whose rows are Cube, Facts, Last build, Last update and Dependent cubes, with the action's afterword on Last build (Build) or Last update (Synchronize), as `InteropJobAction`'s rows carry `AFTERWORD`.
   - `WriteOutput`, which answers the port's `lines` as `InteropItemTestSend.WriteOutput` does.
-- [ ] **`src/OcuPilot/Screen/Tool/AnalyticsCubeBuild.cls`** (new):
+- [x] **`src/OcuPilot/Screen/Tool/AnalyticsCubeBuild.cls`** (new):
   - `TOOLNAME` `analytics.cubemanager.build`, `SCREENACTIONS` `build`, `WRITETYPE` `BUILD`, `DESTRUCTIVE` 1, `CHANGEACTION` `updated`;
   - `FINGERPRINTSUBJECT` `Updating,DependentCubes,BuildStamp,Namespace`, `PRECONDITIONFIELD` `Updating`;
   - `PRECONDITIONCODES` `ANALYTICS.CUBE.BUSY,ANALYTICS.CUBE.READONLY,ANALYTICS.NAMESPACE`, `CONSEQUENCECODE` `ANALYTICS.CUBE.BUILD`, `AFTERWORD` "Rebuilt now";
   - `DESCRIPTION`: "Rebuild one cube from its source: deletes its facts and rebuilds them, with every cube that depends on it. It is the classic Cube Manager's Build, also called Repair Build. The cubes cannot be queried while it runs."
-- [ ] **`src/OcuPilot/Screen/Tool/AnalyticsCubeSynchronize.cls`** (new):
+- [x] **`src/OcuPilot/Screen/Tool/AnalyticsCubeSynchronize.cls`** (new):
   - `TOOLNAME` `analytics.cubemanager.synchronize`, `SCREENACTIONS` `synchronize`, `WRITETYPE` `SYNCHRONIZE`, `DESTRUCTIVE` 0, `CHANGEACTION` `updated`;
   - `FINGERPRINTSUBJECT` `Updating,Built,Synchronizes,DependentCubes,Namespace`, `PRECONDITIONFIELD` `Synchronizes`;
   - `PRECONDITIONCODES` adds `ANALYTICS.CUBE.NODSTIME` and `ANALYTICS.CUBE.NOTBUILT`; `CONSEQUENCECODE` `ANALYTICS.CUBE.SYNCHRONIZE`, `AFTERWORD` "Synchronized now";
   - `DESCRIPTION`: "Apply the source changes recorded since a cube's last update to it and to the cubes that depend on it. Its source must record changes (DSTIME). The cube stays queryable."
-- [ ] **`src/OcuPilot/Screen/Descriptor/AnalyticsCubeManager.cls`** (new; sibling of `AnalyticsCubeList`).
+- [x] **`src/OcuPilot/Screen/Descriptor/AnalyticsCubeManager.cls`** (new; sibling of `AnalyticsCubeList`).
   - Declarations:
     - route `analytics/cube-manager`, side-bar position 8, archetype `list`;
     - area `analytics`, scope `namespace`, `built` true, `refreshes` false;
@@ -243,9 +245,9 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Line numbe
     - `classicLinkExemption` all false, `context.fields` equal to the read fields, three prompts.
   - Columns: Name `name`, Caption `text`, Facts `number`, Last build and Last update `text`, Synchronizes and Updating `status`, Dependent cubes `text`; default sort Name.
   - The doc comment names AD-5, AD-29, AD-44, AD-51, AD-53 and AD-65.
-- [ ] **`src/OcuPilot/Kernel/Proposal/Prohibited.cls`** (add-only): a type parameter for `cube`, appended to `COVEREDTYPES` and the :1440 condition, and a branch calling `ReviewedFewOnly`. OcuPilot owns no cube, so no self-protection predicate applies (AD-10).
-- [ ] **`src/OcuPilot/Kernel/Governance/Baseline.cls`** (add-only): `"analytics.cubemanager.build": false` and `"analytics.cubemanager.synchronize": true` (AD-22).
-- [ ] **Client.**
+- [x] **`src/OcuPilot/Kernel/Proposal/Prohibited.cls`** (add-only): a type parameter for `cube`, appended to `COVEREDTYPES` and the :1440 condition, and a branch calling `ReviewedFewOnly`. OcuPilot owns no cube, so no self-protection predicate applies (AD-10).
+- [x] **`src/OcuPilot/Kernel/Governance/Baseline.cls`** (add-only): `"analytics.cubemanager.build": false` and `"analytics.cubemanager.synchronize": true` (AD-22).
+- [x] **Client.**
   - `ui/src/app/shell/screen-action-handler.ts`:
     - `SCREEN_ACTION_DESCRIPTORS` gets the descriptor;
     - `DESTRUCTIVE_ACTIONS` gets `build`;
@@ -256,29 +258,29 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Line numbe
   - `core/proposal-view.ts`: the two consequence codes.
   - `core/strings.ts` (add-only): Design Notes › Strings.
   - Then `cd ui && node tools/screen-mirror.mjs`.
-- [ ] **`src/OcuPilot/Test/AnalyticsProbe.cls`** **(20.11, planned; add-only methods):**
+- [x] **`src/OcuPilot/Test/AnalyticsProbe.cls`** **(20.11, planned; add-only methods):**
   - `ChangeVisits(pCount)` updates that many Visit rows' measure.
   - `CreateHidden()` compiles and builds `OcuPilotProbeHidden` on the Category source, carrying Task 0's resource; `RemoveHidden()` removes it.
   - `Remove` and `Gone` also cover the hidden cube and the build residue Design Notes › Measured lists, where 20.11's do not already.
-- [ ] **`src/OcuPilot/Test/AnalyticsCubeSeam.cls`** (new; sibling of `AnalyticsGateSeam` and `InteropItemSeam`): an `AnalyticsPort` subclass whose `VendorBuild` and `VendorSynchronize` answer a status the test sets.
-- [ ] **`src/OcuPilot/Test/AnalyticsCubeManager.cls`** (new; armed `OCUPILOT_ALLOW_PRINCIPALS`; `AnalyticsProbe` `Remove`, `Enable` and `Create` in `OnBeforeAllTests`, `Remove` and `Gone` in `OnAfterAllTests`). The port's own rows and refusals, in process and, where the matrix says so, over HTTP:
+- [x] **`src/OcuPilot/Test/AnalyticsCubeSeam.cls`** (new; sibling of `AnalyticsGateSeam` and `InteropItemSeam`): an `AnalyticsPort` subclass whose `VendorBuild` and `VendorSynchronize` answer a status the test sets.
+- [x] **`src/OcuPilot/Test/AnalyticsCubeManager.cls`** (new; armed `OCUPILOT_ALLOW_PRINCIPALS`; `AnalyticsProbe` `Remove`, `Enable` and `Create` in `OnBeforeAllTests`, `Remove` and `Gone` in `OnAfterAllTests`). The port's own rows and refusals, in process and, where the matrix says so, over HTTP:
   - the `List` row equals the vendor's own answers;
   - `STATE` for the spelling and unknown rows;
   - No DSTIME, Not built (Visits is rebuilt after the leg), Read-only and No analytics, and Busy: the test process takes the build lock, then the `"SYNC"` node, switched to USER and released at the end, while an HTTP action (another process) acts. Each asserts the `CubeEvent` row count unchanged;
   - the Vendor answers rows, calling `AnalyticsCubeSeam` in process;
   - `TestTheNewReadsWriteNothing` extends 20.11's node-count assertion to `LIST` and `STATE`.
-- [ ] **`src/OcuPilot/Test/AnalyticsCubeActions.cls`** (new; armed; probe as above). Both callers end to end over HTTP:
+- [x] **`src/OcuPilot/Test/AnalyticsCubeActions.cls`** (new; armed; probe as above). Both callers end to end over HTTP:
   - Build, person and agent: the card's rows, `destructive`, the confirm, the facts and `LastBuild`, the output lines, the `ConfigChange` rows, and the marker for the agent only;
   - Build key off (`GovernanceFixture`);
   - Synchronize;
   - Moved.
-- [ ] **`src/OcuPilot/Test/AnalyticsCubeGate.cls`** (new; armed; sibling of `AnalyticsGate`, whose principal helper becomes a public class method rather than being copied).
+- [x] **`src/OcuPilot/Test/AnalyticsCubeGate.cls`** (new; armed; sibling of `AnalyticsGate`, whose principal helper becomes a public class method rather than being copied).
   - P1: the matrix row.
   - P3 holds the floor, `%DeepSee_Admin:USE`, `%DB_USER:RW` and READ on the install namespace's code database. P3 builds Visits through the screen, and the agent's `analytics.cubemanager.read` answers P3 the same rows as the screen read. With `CreateHidden`, the Hidden row.
   - P4 is P3 with `%DB_USER:R`: the No WRITE row.
-- [ ] **`src/OcuPilot/Test/AnalyticsDescriptor.cls`** **(20.11, planned; add-only):** the cube manager's declarations, `Registry.Validate`, `NormalizePage` equal to `classicPage`, and the page's compiled `RESOURCE` naming a pair the screen declares.
-- [ ] **`src/OcuPilot/Test/PortGate.cls`**: `MANAGERPAIRS` joins `AnalyticsPort`'s `ROSTER` row, with its denial leg.
-- [ ] **Rosters under `src/OcuPilot/Test/`, each row's name read from the instance, never recalled:**
+- [x] **`src/OcuPilot/Test/AnalyticsDescriptor.cls`** **(20.11, planned; add-only):** the cube manager's declarations, `Registry.Validate`, `NormalizePage` equal to `classicPage`, and the page's compiled `RESOURCE` naming a pair the screen declares.
+- [x] **`src/OcuPilot/Test/PortGate.cls`**: `MANAGERPAIRS` joins `AnalyticsPort`'s `ROSTER` row, with its denial leg.
+- [x] **Rosters under `src/OcuPilot/Test/`, each row's name read from the instance, never recalled:**
   - `ToolWrite` 51 → 53, with its sentence;
   - `ReadTool` +3 (the derived read and two writes);
   - `ToolRoundTrip` `REFUSEEMPTY`: `analytics.cubemanager.read:ANALYTICS.NAMESPACE`, and both writes `:TOOL.ARGUMENTS`;
@@ -291,21 +293,21 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Line numbe
   - `StageTwoTools` `Elsewhere`: `<screen name="AnalyticsCubeManager"/>`;
   - `Descriptor` `ReadShapes`: one row;
   - `Navigation`: the analytics block, +1.
-- [ ] **`scripts/ci-throwaway.sh`**: the three new armed classes on the `# classes:` lines before `OCUPILOT_ALLOW_PRINCIPALS`.
-- [ ] **`ui/tools/analytics.test.mjs`** **(20.11, planned)**: each new `REASON*` equals its `strings.ts` key and its EXPERIENCE.md literal; the three output line templates equal their EXPERIENCE.md literals. **`ui/tools/navigation.test.mjs`**: the route in the roster. **`ui/tools/screen-mirror.test.mjs`**: the descriptor joins the owners list. **`ui/tools/strings.test.mjs`**: raise its bound only as that file says, when the count comes within 50.
-- [ ] **`ui/browser/analytics-cube-manager.browser-spec.mjs`** (new; sibling of `analytics.browser-spec.mjs`).
+- [x] **`scripts/ci-throwaway.sh`**: the three new armed classes on the `# classes:` lines before `OCUPILOT_ALLOW_PRINCIPALS`.
+- [x] **`ui/tools/analytics.test.mjs`** **(20.11, planned)**: each new `REASON*` equals its `strings.ts` key and its EXPERIENCE.md literal; the three output line templates equal their EXPERIENCE.md literals. **`ui/tools/navigation.test.mjs`**: the route in the roster. **`ui/tools/screen-mirror.test.mjs`**: the descriptor joins the owners list. **`ui/tools/strings.test.mjs`**: raise its bound only as that file says, when the count comes within 50.
+- [x] **`ui/browser/analytics-cube-manager.browser-spec.mjs`** (new; sibling of `analytics.browser-spec.mjs`).
   - **`before`**: refuse the live container, require readiness `installed`, and through `runIris` run `AnalyticsProbe` `Remove`, `Enable` and `Create("_SYSTEM")`. **`after`**: `Remove`, then assert `Gone`.
   - **Tests**, each with its mutation comment, in USER:
     1. **AC1 and AC7:** Build on Categories through the typed-name dialog. The outcome shows the two facts lines, the Cube manager's rows show the new Last build without a reload, and the Cubes list then shows it too.
     2. **AC2:** after `ChangeVisits(10)`, Synchronize on Visits shows `Facts updated in OcuPilotProbeVisits: 10`.
     3. **AC3:** Synchronize on Categories shows the No DSTIME sentence.
     4. **AC6:** the per-spec `structural` helper at 1280 light, 720 light and 1280 dark finds no fresh entry, and the screen shows three prompts.
-- [ ] **EXPERIENCE.md:**
+- [x] **EXPERIENCE.md:**
   - :157-170 and :159: Analytics gains Cube manager. The sentence: "Cube manager (Story 20.34): Build and Synchronize as row actions; Build is also the classic Repair Build."
   - :173: the destructive dialog list gains "the Cube manager's Build (typed name)".
   - :604: the literals, with a Story 20.34 clause.
   - Then run `cd ui && npm run test:tools`.
-- [ ] **Roster sweep (Rule 30).** Search `src/OcuPilot/Test`, `ui/tools`, `ui/browser` and the `ui/src` specs for:
+- [x] **Roster sweep (Rule 30).** Search `src/OcuPilot/Test`, `ui/tools`, `ui/browser` and the `ui/src` specs for:
   - the rosters above;
   - `DESTRUCTIVE_ACTIONS`;
   - the analytics side-bar count;
@@ -365,13 +367,84 @@ All paths are under `/Users/jbrandt/git/OcuPilot/.worktrees/epic-20`. Line numbe
   - **When** it ends.
   - **Then** `AnalyticsProbe.Gone()` is true: no probe cube or class, the hidden cube included, no probe `CubeEvent` row and none of the residue Design Notes › Measured names, and USER's analytics flags read their recorded values.
 
-- [ ] **DW-2485 (ledger; routed by Story 20.33's harvest, 2026-10-21):** `Test/AnalyticsPort.Snapshot` joins every `^DeepSee.Cache*` node into one string, so cache residue over about 3.6 MB (a cube build's likeliest effect) raises `<MAXSTRING>` and `TestTheReadsWriteNothing` reddens on state it did not make. Digest each global separately (a hash per global) so the snapshot's size no longer grows with the residue; keep its `pRuntime` argument's meaning; pin it with a demonstrated mutation.
+- [x] **DW-2485 (ledger; routed by Story 20.33's harvest, 2026-10-21):** `Test/AnalyticsPort.Snapshot` joins every `^DeepSee.Cache*` node into one string, so cache residue over about 3.6 MB (a cube build's likeliest effect) raises `<MAXSTRING>` and `TestTheReadsWriteNothing` reddens on state it did not make. Digest each global separately (a hash per global) so the snapshot's size no longer grows with the residue; keep its `pRuntime` argument's meaning; pin it with a demonstrated mutation.
+- [x] **[Gate] Guards feature gained since this plan (lead, 2026-11-12 resume).** The tree now also carries 20.37, 20.38, 20.39's charter and 23.12. Task 0 re-anchors every line number above on the current head (they were read at `d85b4a6c`), and the story meets these three guards:
+  - **23.12's `Test/ReadDescriptions` roster:** the new `analytics.cubemanager` read names its screen title, what one row is and the fields it answers, as its siblings do. If it and 20.11's cube list can answer the same question, add a `Cubes` group naming both to `XData Groups` (add-only) and give each its declared label. Then `cd ui && node tools/screen-mirror.mjs` regenerates `screens.generated.ts` and `Screen/Titles.cls`. The row phrase and label are agent-facing, so word them in-stage in plain words like the siblings', and record them under Design Notes.
+  - **20.38's `ui/tools/name-links.test.mjs`:** the manager's Name cell opens the cube's own screen through entity `cube`, never the manager's list. A red is fixed by that target, never by a row in either allow-list.
+  - **Client-lint family 7:** every new template class has a style or an allow-list line.
+- [x] **Review patches (first review pass).**
+  - `AnalyticsCubeGate.TestAManagerBuildsThroughTheScreenAndTheAgentsReadAnswersTheScreensRows`: assert the screen rows are a non-empty array, and that the tool's Visits row carries `Facts` 1000 and a non-empty `LastBuild` equal to the `STATE` read's value; drop the guard that skips the comparison when the screen rows are absent. Update the test's doc comment to what it now pins.
+  - `AnalyticsCubeManager.TestTheVendorsAnswersAreMapped`: assert `AnalyticsCubeSeam.Calls()` is 1 after each armed case (before each `Reset`), and that a refused or failed build or synchronize (lock, protect, other, exception) writes no `ConfigChange` row.
+  - `screen-action-handler-cube.spec.ts`: retitle the first test to what it asserts.
+  - Rule 19 mutations still owed, each demonstrated on `ocupilot-b-ci`, reverted byte-identical, and written as a `mutation:` line under Verification: the five `screen-action-handler-cube.spec.ts` tests; the four new `ui/tools/analytics.test.mjs` tests; `AnalyticsDescriptor.TestTheCubeManagerDeclaration` and `TestTheCubeCodesReadTheirOwnSentences`; `ToolEmit`'s `AnalyticsAction` branch; the read tool's view dropping `LastBuild` (AC7); and the browser spec's four tests (AC1/AC7, AC2, AC3, AC6; rebuild and redeploy the bundle after each client mutation).
+
+### Review Findings
+
+Code review, 2026-11-12, review tier `full-opus`, four layers. Patches are applied and green on `ocupilot-b-ci`.
+
+- [x] [Review][Patch] (high, AD-65) `CubeShownHere` called vendor reads AD-65 does not list (`%IsBaseCube`, `%IsCubeAbstract`, `%IsVersion`, `%GetCubeName`, `%GetCubeCaption`). It now reads `%GetCubeList(.l,"cubes",1)`, which AD-65 lists and which applies the same checks, and takes the captions and dependent names from it [AnalyticsPort.cls `CubeShownHere`, `CollectState`, `CubeNodeHere`]
+- [x] [Review][Patch] (med) An exception raised by the vendor call answered 500 `INTERNAL`, where the Always list says 409 `ANALYTICS.CUBE.FAILED`. It now maps through `VendorOutcome` [AnalyticsPort.cls `PerformCube`; Test/AnalyticsCubeManager.cls]
+- [x] [Review][Patch] (med) #20006 beside another error, and #940, had no test. The seam gains `errorsplus` and `privilege` modes [Test/AnalyticsCubeSeam.cls; Test/AnalyticsCubeManager.cls `TestTheVendorsAnswersAreMapped`]
+- [x] [Review][Patch] (med) The writes' script form (`Snippet`, `Literal`, AD-59) had no test [Test/AnalyticsDescriptor.cls `TestTheCubeWritesScriptQuotesTheCube`]
+- [x] [Review][Patch] (low) `AuditWrite` dropped `Record`'s status and was public, where the spec says private [AnalyticsPort.cls `AuditWrite`]
+- [x] [Review][Patch] (low) The tools' agent-facing descriptions were wrong in two places: Build's said the person confirms "by typing the cube's name" (its card has no typed name), and Synchronize's said "build it instead" also to a busy cube. Both reworded, decided in-stage [Screen/Tool/AnalyticsCubeBuild.cls, AnalyticsCubeSynchronize.cls]
+- [x] [Review][Patch] (low) The cube tools' `PRECONDITIONCODES` were not held against `CubePreconditionCodes`/`CubeConsequenceCodes`, as `InteropItemDescriptor` holds its own [Test/AnalyticsDescriptor.cls `TestTheCubeToolsDeclareTheCubeCodes`]
+- [x] [Review][Patch] (low) The QA test's audit check matched only the exact cube id, so it could not fail. It now counts all three names [Test/AnalyticsCubeActions.cls]
+- [x] [Review][Patch] (low) The Never-list static test did not cover `^DeepSee.*`. It now holds the `"SYNC"` probe as the one reference [ui/tools/analytics.test.mjs]
+- [x] [Review][Patch] (low) The Hidden test's doc comment said `%IsBaseCube` reads a hidden cube as absent, which the vendor source contradicts. Corrected [Test/AnalyticsCubeGate.cls]
+- [x] [Review][Patch] (low) AC6's position and floor clauses and AC7's re-fetch had no `mutation:` line. Demonstrated and recorded under Verification
+- [x] [Review][Patch] (low) The MDX gate classes were not re-run after `AdmitDestination` replaced their check. `AnalyticsMdxGate`, `AnalyticsMdxReadGate`, `AnalyticsMdx`, `AnalyticsMdxRead`, `AnalyticsGate` and `AnalyticsPort` are green
+- [x] [Review][Defer] (med) A cube update the vendor ran but then failed records no `ConfigChange` row [AnalyticsPort.cls `PerformCube`] — deferred: DW-2518, decision-pending (an AD-15 call)
+- [x] [Review][Defer] (med, unverified) A dependent the caller cannot see is left out of the preconditions, while the vendor's cascade still reaches it (inference) — deferred: DW-2519, decision-pending; settled by a dependent whose resource P3 lacks, and refusing it needs a new sentence
+- [x] [Review][Defer] (low) The list's per-row cost grows with the cube count — DW-2520, wontfix-accepted with `reopen_if`
+- [x] [Review][Defer] (low, Rule 31) `EndCapture`, `AuditWrite` and `HasCode` copy `InteropPort`'s helpers on per-port precedent — DW-2521, wontfix-accepted with `reopen_if`
+
+**Rejected:**
+
+- `%escalateToBuild`: false. The vendor escalates only a source without `DSTimeEnabled`, which NODSTIME refuses first, and OcuPilot never sets the variable.
+- `LIMITAGENTS` wait: by design, a named limit.
+- `%GetSourceInfo` or `%GetDependentCubes` failing: low. The state is not reachable in normal use, and the fix adds guards.
+- A hidden index in the lines: covered by DW-2519.
+- `EndCapture` with an over-long first line: low, log-only.
+- `Snippet` with no namespace or id: false, the mint always composes both.
+- `PrivilegePairs` on `Scope.Current`: false. The payload's namespace is the request's, as in `InteropAction`.
+- Synchronize shows the person no consequence: by design (no `WARNING_CONSEQUENCES`).
+- Reused label keys: by design (Strings).
+- The veto string's heading: ruled by the runner.
+- The Verification counts: spec narration.
+- The key-off test never mints: covered by `ToolDispatch`'s `CUBEDISABLED` leg.
+- The READONLY sentence for an unmounted database: by design, the spec's sentence.
+- The EXPERIENCE.md order prose: low. The spec gave the sentence, and `Navigation` pins the order.
+- AC3's sentence on the wire: false. `Conflict` answers `ReasonFor(code)`, which is pinned.
+- AC6's prompts read from the mirror: low. `Registry.Validate` and `suggested-prompts.browser-spec.mjs` cover them.
+- The QA test's `NoSuchCube` leg and `ChangeVisits(3)`: low. The unknown check is pinned in process.
+- The `"SYNC"` probe is caught by the `CubeEvent` count: a note, not a gap.
 
 ## Spec Change Log
 
 - 2026-10-15, spec gate (runner): Q1, Q2 and Q3 ruled as recommended (A each; none conflicts with an AD); the spine carries the Story 20.34 clauses in AD-65, AD-51, AD-7, AD-15, AD-22, AD-8, AD-44 and AD-10.
+- 2026-11-12, resume gate (runner): one `[Gate]` task for 23.12's read roster, 20.38's name-link check and client-lint family 7, which feature gained after this plan.
 
 ## Review Triage Log
+
+### 2026-11-12 - Review pass
+
+- verdicts: 14 findings - high 0, medium 3, low 5, false 6, maybe-false 0
+- findings:
+  - `[false]` `[reject]` Synchronize opens an outcome dialog although the row says "no dialog" - the row means no confirmation dialog; the Approach and browser AC2 require the output lines on the screen, which the existing outcome dialog carries.
+  - `[false]` `[reject]` `build` joins the global `DESTRUCTIVE_ACTIONS` list - the spec's client task names exactly this; no other descriptor declares an action `build`.
+  - `[low]` `[reject]` `CubeShownHere` adds base, abstract and version filters beyond the spec - they match what the Cubes list already shows, so an action reads absent where the list does; no user-visible harm.
+  - `[false]` `[reject]` The vendor-answers row runs in process, not over HTTP - the spec's Tasks say the seam row calls `AnalyticsCubeSeam` in process.
+  - `[false]` `[reject]` No Moved test for Synchronize - the Moved row names Build only.
+  - `[false]` `[reject]` `AnalyticsProbe` is shared fixture code - the diff adds methods and extends the existing cube lists; no member is removed.
+  - `[false]` `[reject]` EXPERIENCE.md and `ci-throwaway.sh` are edited - both are named in the spec's Tasks.
+  - `[medium]` `[patch]` AC7's agent-read leg compared two outputs of one source and could not see a dropped `LastBuild` - fixed: non-empty screen rows, `Facts` 1000 and `LastBuild` equal to the `STATE` read; mutation demonstrated.
+  - `[medium]` `[patch]` The vendor-call count covered only the last seam case, and refused cases had no audit-row check - fixed: a count after each case and a no-`ConfigChange` check; double-call and audited-lock mutations demonstrated.
+  - `[medium]` `[patch]` Pinning tests without a demonstrated `mutation:` line - closed: client spec, `analytics.test.mjs`, descriptor tests, `ToolEmit`, the read tool and the four browser tests each have a line. The planned `%CheckPrivilege` row stays unpinnable (redundant with the vendor's own absent answers; recorded in Verification).
+  - `[low]` `[reject]` Policy precondition in the key-off test - the class is armed for a throwaway and asserts the default it needs; a snapshot adds machinery for a case that does not occur.
+  - `[low]` `[reject]` Fixed 1.5 s pause in the browser spec - it separates two one-second `LastBuild` values, which no readiness signal can.
+  - `[low]` `[patch]` First client-spec test title overclaimed - retitled to what it asserts.
+  - `[low]` `[reject]` Static source-text tests for the vendor arguments - the seam bypasses the real call, so the text match is the only check; static by nature.
 
 ## Design Notes
 
@@ -533,6 +606,28 @@ Checked, not engaged: AD-41 and AD-42 (no spawn under Q1 A), AD-26 (no 202), AD-
 
 **Weight.** No page code and no lazy chunk. The initial bundle gains one mirror entry, about 18 strings and a few handler-map entries, about 4 kB (inference). From the measured 1.96 MB that gives about 1.965 MB, under the owner's fixed 2500 kB warning.
 
+**Task 0, measured on `ocupilot-b-ci` (2026-11-12; implement pass).**
+
+- 20.11, 20.32, 20.33 and 20.35 are present. Counts moved as planned: `ReadTool` 403 to 406 tools, `ToolWrite` other-port writes 51 to 53, `ClassicPageGate` `OWNPAIRS` 85 to 87 names, Analytics side bar 11 to 12 screens with position 8 free. The strings bound (3,800) held.
+- `NormalizePage("/csp/user/_DeepSee.UI.CubeRegistry.zen")` answers `%DeepSee.UI.CubeRegistry`, whose compiled `RESOURCE` is `%DeepSee_Admin`.
+- `%IsCubeAvailable`, `%GetCubeDSTime`, `%GetSourceInfo`, `%GetDependentCubes`, `GetLastUpdate(,"synch")` and the `"SYNC"` lock probe wrote nothing: USER's 166,635 `^DeepSee*` nodes and its 3 `^IRIS.Temp.DeepSee*` globals read the same before and after. Time: `GetLastUpdate` 46 ms for both kinds, every other read under 0.4 ms, the lock probe 8 microseconds.
+- `%DeepSee_Architect` and `%DeepSee_Admin` grant no public permission. `GetGlobalDest("USER","^DeepSee.Fact")` names USER's own database (`%DB_USER`, read-write); HSLIB's names `%DB_HSLIB`, mounted read-only.
+- Categories' source declares no `DSTIME`; Visits' declares `AUTO`. No measurement contradicted the spec. One addition: `%GetCubeDSTime` reads non-zero for a built cube whose source has no `DSTIME` (Categories read 5), so `Built` is judged by `dstime` above zero only for a source that records changes, and by any fact otherwise.
+
+**Decided in-stage (implement pass, 2026-11-12).**
+
+- **Agent-facing read words.** `analytics.cubemanager`: row "cube with its build state"; label "Cubes with when each was last built and updated, whether it can be synchronized, whether an update runs now and which cubes depend on it; the cube model is in analytics.cubes." `analytics.cubes` gains the label "Cubes with their class, last build and fact count; when each was updated, whether it can be synchronized and what depends on it are in analytics.cubemanager." `ReadDescriptions` `XData Groups` gains `Cubes` naming both tools (41 tools in eight groups).
+- **The write gate.** `Admit` takes `pWrite`; a `STATE` read composed for an action (`ACTIONKEY`) is gated as a write, so the mint and a screen action refuse `ANALYTICS.CUBE.READONLY` too. `CacheDatabase` became `DestinationDatabase(ns, global)`, and `AdmitDestination(ns, global, code)` is the one check the MDX gate and the fact gate both call.
+- **Switched code.** The per-cube reads are `...Here` methods of the port, called only between the switch and the restore, as `InteropPort` does; nothing in them names an `OcuPilot.*` class.
+- **`Built`, `Synchronizes`, `Updating`** are judged over the cube and its dependents (`StateRow`); a list row's `Updating` is the cube's own.
+- **Card rows.** `StateDiff` shows Cube, Facts, Last build, Last update and Dependent cubes; the row for the action moves to its afterword and the others read as they are. `STATEFIELD` is `Facts`, so the prohibited set's sweep skips that label (a payload property of the same name would otherwise read as a changed field).
+- **Output after the action.** The client shows the answered lines in the existing outcome dialog for the descriptor's `OUTCOME_ACTIONS` (Build and Synchronize), after the send, over no earlier dialog for Synchronize. It is generic handler code; the page, the dialog and the heading are unchanged.
+- **`scripts/check-objectscript.py`** names `AnalyticsPort.cls` among the ports that may open an output capture (the fifth, as Stories 4.2, 6, 19.1 and 20.6 named theirs), and its harness holds it. The hook would otherwise refuse the commit.
+- **`AnalyticsGate`'s principal helper** is already the shared `InteropTestGate.CreatePrincipals`; `AnalyticsCubeGate` calls it and `AnalyticsGate` is unchanged. `AnalyticsCubeGate` holds the Hidden leg's decisive assertion on the port through `AnalyticsCubeSeam`'s call count: the vendor's own checks and its #20013 also read the hidden cube as absent, so an HTTP 404 alone does not show the port's check.
+- **`ui/tools/ci-timings.json`** is not edited (the lead's): the three new classes and the new browser spec have no recorded time yet.
+
+**Clarification Needed (veto window; wording not in the spec or EXPERIENCE.md before this pass).** The registry requires a write-capable list descriptor to declare `table.emptyAgentKey` (and `emptyNextKey` empty). The Cube manager declares `analyticsCubeManagerEmptyAgent`: "Ask the agent why no cube is listed here." (the sibling of Jobs' "Ask the agent why no job is listed here."). It is published in EXPERIENCE.md's Fixed strings with the story's other literals; a different sentence is a change to that key, the table row and nothing else.
+
 ## Verification
 
 **Shared surfaces:**
@@ -597,9 +692,49 @@ Checked, not engaged: AD-41 and AD-42 (no spawn under Q1 A), AD-26 (no 202), AD-
 | AC7 | The read tool's view drops `LastBuild` | `AnalyticsCubeGate`'s read-tool clause |
 | AC8 | `Remove` skips the hidden cube | `AnalyticsProbe.Gone()` in `AnalyticsCubeGate`'s `OnAfterAllTests` |
 
+
+**Mutations demonstrated on `ocupilot-b-ci` (implement pass; each reverted byte-identical and the tree reloaded).**
+
+- mutation: `VendorBuild` answers OK without the vendor call -> `AnalyticsCubeActions` (build lines, facts, last-build, audit effects) and `AnalyticsCubeGate`'s Cubes-list leg red.
+- mutation: `AnalyticsCubeBuild.DESTRUCTIVE` 0 -> `AnalyticsCubeActions` agent-card test red alone; `StateDiff` without the Dependent cubes row -> the same test red.
+- mutation: `PerformCube` without `AuditWrite` -> `AnalyticsCubeActions` (four tests) and `AnalyticsCubeManager.TestTheVendorsAnswersAreMapped` red.
+- mutation: `VendorSynchronize` calls `%BuildCube` -> `TestASynchronizeAppliesExactlyTheChangesForBothCallers` red; `BuildStamp` out of `AnalyticsCubeBuild.FINGERPRINTSUBJECT` -> `TestAConfirmAfterAnotherBuildIsRefusedAsMoved` red.
+- mutation: `StateRefusal` without the `Synchronizes` test, without the `Built` test; `CubeUpdatingHere` without the `"SYNC"` probe; `Admit` without the destination check; `#20006` unmapped -> `AnalyticsCubeManager`'s NO DSTIME, NOT BUILT, Busy, HSLIB and vendor-answers tests, each red by its own name.
+- mutation: `Synchronizes` always true, the spelling compared case-insensitively, the dependents left out -> `AnalyticsCubeManager`'s list, state and NO DSTIME tests red.
+- mutation: `MANAGERPAIRS` without `%DeepSee_Admin:USE` -> `AnalyticsCubeGate` P1 test and `PortGate` red; WRITE read as READ in `AdmitDestination` and `AnalyticsAction.PrivilegePairs` -> P4 test red.
+- mutation: `CubeShownHere` answering 1 for any non-empty name -> `AnalyticsCubeGate.TestACubeTheCallersResourcesHideIsAbsent` red alone (one vendor call; code review, on `CubeShownHere` reading `%GetCubeList`). The vendor's build answers #20013 for a hidden cube too, which is why that leg counts vendor calls.
+- mutation: baseline `analytics.cubemanager.build` `true` -> `GovernanceBaseline` and `AnalyticsCubeActions.TestTheBuildKeyShipsOffForTheAgentAndAPersonsBuildStillRuns` red.
+- mutation: the `AnalyticsCubeManager` `Elsewhere` row removed -> `StageTwoTools.TestTheRosterAndElsewhereAreEveryRegisteredScreen` red alone.
+- mutation: `Snapshot` joins node text into one string again (DW-2485) -> `AnalyticsPort.TestTheSnapshotDoesNotGrowWithTheCacheItDigests` red on `<MAXSTRING>`.
+- mutation: `ForgetBuilds` skips the hidden cube's tracking -> `AnalyticsCubeGate`'s `OnAfterAllTests` fails the class on `Gone()` ("build residue"). `Remove` skipping the hidden cube alone reddens nothing, because deleting the package removes the cube.
+- mutation: (review pass 1, each reverted byte-identical and the tree reloaded or the bundle rebuilt and redeployed) `ownPrivileges` of `AnalyticsCubeManager` changed to `%DeepSee_PortalEdit:USE` -> `AnalyticsDescriptor.TestTheCubeManagerDeclaration` and `TestTheSevenDeclarationsRegister` red; `AnalyticsCubeBuild.DESTRUCTIVE` 0 -> `TestTheCubeManagerDeclaration` red alone; the `ANALYTICS.CUBE.NOTBUILT` line dropped from `AnalyticsError.ReasonFor` -> `TestTheCubeCodesReadTheirOwnSentences` red alone.
+- mutation: `AnalyticsAction.PrivilegePairs` without the routines-database READ pair -> `ToolEmit.TestEveryLiveToolRequiresItsScreensPairs` red alone (the `AnalyticsAction` branch).
+- mutation: `AnalyticsPort.Rows` not setting `LastBuild` on the Cube manager's row -> `AnalyticsCubeGate.TestAManagerBuildsThroughTheScreenAndTheAgentsReadAnswersTheScreensRows` red alone (the read-tool row now carries a non-empty `LastBuild` equal to the `STATE` read's). Dropping `LastBuild` from the descriptor's `read.fields` reddens all four Gate tests, because the registry then refuses the descriptor, so it does not isolate the clause.
+- mutation: the lock case audited, and `PerformCube` calling `VendorBuild` twice -> `AnalyticsCubeManager.TestTheVendorsAnswersAreMapped` red each time (the per-case call count and the no-audit-row assertions added in this pass).
+- mutation: `REASONCUBENOTBUILT` reworded; `AnalyticsCubeBuild.AFTERWORD` "Rebuilt now" -> "Rebuilt"; "Facts updated in" respelled in `AnalyticsPort.SyncLines`; a `Job` line added to `PerformCube` -> the four new `ui/tools/analytics.test.mjs` tests, one each, red by their own names.
+- mutation: `screen-action-handler-cube.spec.ts`: the descriptor dropped from `SCREEN_ACTION_DESCRIPTORS` -> all five red (the roster test first); `build` dropped from `DESTRUCTIVE_ACTIONS` -> the typed-name test and the confirmed-Build test red; `OUTCOME_ACTIONS` emptied -> the confirmed-Build and the Synchronize tests red; `synchronize` added to `DESTRUCTIVE_ACTIONS` -> the Synchronize test red (with the roster and refusal tests); the `lines.length === 0` guard removed from `showOutcome`, and the `store.setRefusal` call removed -> the no-outcome and refusal test red, each alone.
+- mutation: browser spec on `ocupilot-b-ci` (bundle rebuilt and redeployed after each client mutation): `VendorBuild` not calling the vendor -> AC1/AC7 red alone; `VendorSynchronize` calling `%BuildCube` -> AC2 red alone; the `Synchronizes` test dropped from `StateRefusal` -> AC3 red alone; `OUTCOME_ACTIONS` emptied -> AC1/AC7 and AC2 red; `synchronize` added to `DESTRUCTIVE_ACTIONS` -> AC1/AC7, AC2 and AC3 red; `.ocu-data-table-cell` coloured `var(--ocu-surface-container-high)` in `styles/_components.scss` -> AC6 red on `analytics/cube-manager|contrast|dark` (1.43:1).
+- Not demonstrated: nothing owed from the review pass. The planned AC4 `STATE` skipping `%CheckPrivilege` row is an equivalent mutant: `%GetCubeList`, which `CubeShownHere` reads, applies `%CheckPrivilege` itself (`irislib/%DeepSee/Utils.cls`:7962-7975), so the `CubeShownHere` line pins AC4.
+- (QA) `src/OcuPilot/Test/AnalyticsCubeActions.cls` gained `TestAnActionOnAMisspelledOrUnknownCubeIsAbsentAndChangesNothing` (I/O row "Spelling or unknown", over the action route for Build and Synchronize: 404 `PORT.NOTFOUND`, nothing built, no audit row). The class is green, 6 tests, on `ocupilot-b-ci`.
+- mutation: (QA) `AnalyticsPort.CubeShownHere` comparing the spelling case-insensitively -> `AnalyticsCubeActions.TestAnActionOnAMisspelledOrUnknownCubeIsAbsentAndChangesNothing` red alone (1 of 6); reverted byte-identical, `src` reloaded, class green again.
+- mutation: (code review, each reverted byte-identical, `src` reloaded or the bundle rebuilt and redeployed, and the class re-run green) `PerformCube` mapping a raised exception through `Mapped` (500) again, and `VendorOutcome` testing #20006 with `HasCode` -> `AnalyticsCubeManager.TestTheVendorsAnswersAreMapped` red alone, on its exception leg and its errors-beside-another-error leg.
+- mutation: (code review) `Literal` not doubling quotes; `ANALYTICS.CUBE.FAILED` added to `AnalyticsCubeBuild.PRECONDITIONCODES`; the descriptor's `sideBarPosition` 9 (AC6, pinned position) -> `AnalyticsDescriptor.TestTheCubeWritesScriptQuotesTheCube`, `TestTheCubeToolsDeclareTheCubeCodes` and `TestTheCubeManagerDeclaration` red, one each. `Navigation` stays green at 9: it pins the order, and the Cube manager is last either way.
+- mutation: (code review) the descriptor declaring only `%DeepSee_Portal:USE` (AC6, no floor principal opens it) -> `DeveloperFloor` red (3 of 10, `TestTheDeveloperSignsInAndOpensExactlyTheDeclaredScreens` among them).
+- mutation: (code review) `core/refresh.ts` not re-reading on a `changed` event (AC7, re-fetch without a reload) -> browser AC1/AC7 and AC2 red.
+- mutation: (code review) a `$Get(^DeepSee.Fact(1))` in `CubeUpdatingHere` -> `ui/tools/analytics.test.mjs`'s Never-list test red alone.
+- Not pinnable: `CubeUpdatingHere`'s `%IsCubeAvailable` branch is an equivalent mutant while a build holds `^DeepSee.Build(<index>)` (`Utils.cls`:433), which also fails the `"SYNC"` probe (inference).
+
+**Run in this pass.** ObjectScript classes (green, `ocupilot-b-ci`): the three new ones, `AnalyticsDescriptor`, `AnalyticsPort`, `AnalyticsGate`, `PortGate`, `EndpointCoverage`, `DraftRegistry`, `SaveHoldCoverage`, `InteropSettingDescriptor`, `InteropFloor`, `DeveloperFloor`, `ClassicPageGate`, `MappingDescriptor`, `Prohibited`, `Governance`, `GovernanceBaseline`, `ToolDispatch`, `ToolWrite`, `ToolRoundTrip`, `ToolEmit`, `ReadTool`, `ReadDescriptions`, `Descriptor`, `Navigation`, `StageTwoTools`, `SurfaceCoverage`. `npm run test:tools` 2,161 pass; `ng test` 260 files and 3,340 tests, plus the new `screen-action-handler-cube.spec.ts` (5); `npm run build` clean with the initial total at 2.02 MB (no new lazy chunk); `check-objectscript` 0 problems and its harness 146 pass; browser (bundle redeployed): `analytics-cube-manager` 4/4, `analytics` 5/5, `analytics-links` 6/6, `namespace-categories` 4/4, `a11y-structural-invariants` green.
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-Planned as one story over 20.11, 20.32, 20.33 and 20.35, which land first (Task 0 re-anchors them). Gate questions Q1 (a build longer than a request, AD-7), Q2 (the audit record) and Q3 (the user code a build runs) are for the orchestrator at the spec gate, each with a recommendation; none blocks under it. The Rule 20 drafts are in Design Notes.
+Summary: Cube manager screen with Build and Synchronize, the agent's two write tools, `AnalyticsPort`'s `CubeManager` endpoint (gate, named preconditions over the cube and its dependents, vendor seams, `ConfigChange` audit), `cube` as a covered type, the two baseline keys (Build `false`, Synchronize `true`), the client rosters and strings, EXPERIENCE.md, three armed test classes with `AnalyticsCubeSeam`, DW-2485, and the [Gate] guards (23.12 `Cubes` read group, 20.38 name link, no new template class).
+
+- Review: 14 findings (medium 3, low 5, false 6); patches applied 4 (two test strengthenings, one retitle, the owed mutations); deferred 0; rejected 10 with reasons in the Review Triage Log.
+- Follow-up review recommended: false (test-only patches, re-run green with demonstrated mutations).
+- Verification on `ocupilot-b-ci`: 38 ObjectScript classes green (three batches plus `SaveHoldCoverage`, then the five touched classes again after the patches); `test:tools` 2161 and `test:components` 3345 pass; `npm run build` clean, initial total 2.02 MB (spec expected about 1.965 MB; under the fixed 2500 kB warning), no new lazy chunk; browser `analytics-cube-manager` 4, `analytics` 5, `analytics-links` 6, `namespace-categories` 4 and `a11y-structural-invariants` 13 pass; `check-objectscript` and `lint-docs` clean.
+- Residual: the full ObjectScript sweep, `npm test`, `smoke.sh`, `ci-timings.json` for the new classes and spec, and the AD drafts are the lead's. `scripts/check-objectscript.py` gained `AnalyticsPort.cls` in `CAPTURE_ALLOWED` (and its harness), outside the spec's file list.
+- Clarification Needed (veto window): `analyticsCubeManagerEmptyAgent` ("Ask the agent why no cube is listed here.") is a new user-facing string the registry requires; see Design Notes.

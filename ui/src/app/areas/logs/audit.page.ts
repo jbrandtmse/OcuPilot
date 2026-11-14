@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, DestroyRef, afterNextRender, inject
 import { ActivatedRoute, Router } from '@angular/router';
 
 import { decodeEntityId } from '../../core/entity-id';
-import { ExplainEntry } from '../../core/explain-entry';
+import { ExplainEntry, type ExplainEntryKind } from '../../core/explain-entry';
 import { NavigationService, withQuery } from '../../core/navigation';
 import { RefreshService } from '../../core/refresh';
 import { ScopeService } from '../../core/scope';
@@ -147,6 +147,19 @@ interface AuditView {
               (click)="onExplain()"
             >
               {{ STRINGS.agentExplainEntryAction }}
+            </button>
+          }
+          @if (explainShown) {
+            <button
+              dialogAction
+              type="button"
+              class="ocu-button-secondary ocu-audit-explain"
+              data-ocu-audit="investigate"
+              [attr.aria-disabled]="explainAriaDisabled"
+              [attr.aria-describedby]="explainDescribedBy"
+              (click)="onInvestigate()"
+            >
+              {{ STRINGS.agentInvestigateEntryAction }}
             </button>
           }
         </app-dialog>
@@ -340,10 +353,19 @@ export class AuditPage {
    * sends nothing and leaves the dialog open.
    */
   protected onExplain(): void {
+    this.handOff('explain');
+  }
+
+  /** Hand the open row to the panel as an Investigate request, closing the dialog only when it is accepted. */
+  protected onInvestigate(): void {
+    this.handOff('investigate');
+  }
+
+  private handOff(kind: ExplainEntryKind): void {
     const view = this.list;
     const row = this.detailRow;
     if (this.explainEntry === null || view === null || row === null || typeof row !== 'object') return;
-    if (!this.explainEntry.request(view.screen, row)) return;
+    if (!this.explainEntry.request(view.screen, row, kind)) return;
     this.onCloseDetail();
   }
 

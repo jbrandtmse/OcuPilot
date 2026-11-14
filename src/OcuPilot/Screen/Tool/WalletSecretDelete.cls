@@ -111,17 +111,7 @@ ClassMethod StateDiff(pFresh As %DynamicObject, Output pRows As %DynamicArray, O
             Set pProblem = "this instance did not report that secret's type, and a secret whose type is unknown is not one to delete"
             Quit
         }
-        Set tNames = ..ReadAnswers()
-        For tI = 1:1:$ListLength(tNames) {
-            Set tField = $List(tNames, tI)
-            If pFresh.%GetTypeOf(tField) = "unassigned" Continue
-            Set tRow = {}
-            Do tRow.%Set("field", tField, "string")
-            Do tRow.%Set("before", ##class(OcuPilot.Kernel.Proposal.Mint).Display(pFresh.%Get(tField), pFresh.%GetTypeOf(tField)), "string")
-            Do tRow.%Set("after", "", "string")
-            Do tRow.%Set("removed", 1, "boolean")
-            Do pRows.%Push(tRow)
-        }
+        Set pRows = ..RemovalRows(pFresh, 1, ..ReadAnswers())
     } Catch ex {
         Set pRows = []
         Set pProblem = ""

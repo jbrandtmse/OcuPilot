@@ -218,9 +218,9 @@ test('AC1: the side bar lists the three links after Folder items, and each, with
     await analyticsSideBar(page);
     const labels = await sideBarLabels(page);
     assert.deepEqual(
-      labels.slice(-4),
-      [STRINGS.analyticsArchitectLabel, STRINGS.analyticsAnalyzerLabel, STRINGS.analyticsUserPortalLabel, STRINGS.analyticsMdxQueryLabel],
-      'the Analytics side bar ends with Architect, Analyzer and User Portal, then MDX query (Story 20.33)'
+      labels.slice(-5),
+      [STRINGS.analyticsArchitectLabel, STRINGS.analyticsAnalyzerLabel, STRINGS.analyticsUserPortalLabel, STRINGS.analyticsMdxQueryLabel, STRINGS.analyticsCubeManagerLabel],
+      'the Analytics side bar ends with Architect, Analyzer and User Portal, then MDX query (Story 20.33) and the Cube manager (Story 20.34)'
     );
     const shellUrl = page.url();
     for (const link of LINKS) {

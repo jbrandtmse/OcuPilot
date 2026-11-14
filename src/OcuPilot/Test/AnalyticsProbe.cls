@@ -17,6 +17,10 @@
 /// a probe class and the local caches of result sets (<method>LocalCaches</method>). <method>Gone</method> checks all four.</p>
 /// <p>The vendor bookkeeping a first build creates in a namespace (<code>^DeepSee.Agents</code>, <code>Tasks</code> and
 /// <code>TaskGroups</code>) is not removed: it belongs to the namespace, not to a cube.</p>
+/// <p>Story 20.34 adds <method>ChangeVisits</method> (changes that many Visit rows, which the Visits cube's <code>DSTIME</code> records),
+/// <method>CreateHidden</method> and <method>RemoveHidden</method> (a cube whose resource <parameter>HIDDENRESOURCE</parameter> no
+/// principal of the cube manager holds), and the cleanup of what a build leaves: the build tracking and statistics nodes of each probe
+/// cube, and the source classes' update node. <method>Gone</method> checks the hidden cube and that residue.</p>
 /// <p><b>Not a <class>%UnitTest.TestCase</class></b>: it holds no assertions and runs no tests. Every entry point acts on
 /// <code>USER</code> by explicit save and restore of the namespace, and a run needs a throwaway instance.</p>
 Class OcuPilot.Test.AnalyticsProbe Extends %RegisteredObject
@@ -67,6 +71,14 @@ Parameter CALCULATED = "Twice";
 
 /// <p>The resource the guarded cube and the guarded dashboard carry.</p>
 Parameter RESOURCE = "%DeepSee_Admin";
+
+/// <p>The hidden cube (Story 20.34) made on demand by <method>CreateHidden</method>: its logical name, its class and the resource it
+/// carries, which grants no public permission and which the cube manager's pairs do not include.</p>
+Parameter HIDDEN = "OcuPilotProbeHidden";
+
+Parameter HIDDENCLASS = "OcuPilotProbe.Analytics.HiddenCube";
+
+Parameter HIDDENRESOURCE = "%DeepSee_Architect";
 
 /// <p>The link pair <method>CreateLinks</method> makes: <parameter>LINKMANY</parameter> carries <parameter>RESOURCE</parameter> and
 /// defines the relationship <parameter>LINKREL</parameter> to <parameter>LINKONE</parameter>, which names the inverse
@@ -176,6 +188,11 @@ ClassMethod ClassText(pName As %String) As %String [ Private ]
             "</cube>"
         ; The "one" side of a relationship compiles first.
         Set tDepends = ..#VISITCLASS _ "," _ ..#LINKONECLASS
+    } ElseIf pName = "HiddenCube" {
+        Set tCube = "<cube xmlns='http://www.intersystems.com/deepsee' name='" _ ..#HIDDEN _ "' displayName='OcuPilot probe hidden' resource='" _ ..#HIDDENRESOURCE _ "' sourceClass='" _ ..#CATEGORYCLASS _ "'>" _
+            "<dimension name='Label' hasAll='false'><hierarchy name='H1'><level name='Name' sourceProperty='Name'/></hierarchy></dimension>" _
+            "</cube>"
+        Set tDepends = ..#CATEGORYCLASS
     } Else {
         Set tCube = "<cube xmlns='http://www.intersystems.com/deepsee' name='" _ ..#GUARDED _ "' displayName='OcuPilot probe guarded' resource='" _ ..#RESOURCE _ "' sourceClass='" _ ..#CATEGORYCLASS _ "'>" _
             "<dimension name='Label' hasAll='false'><hierarchy name='H1'><level name='Name' sourceProperty='Name'/></hierarchy></dimension>" _
@@ -326,6 +343,123 @@ ClassMethod CreateLinks() As %Status
     Quit tSC
 }
 
+/// <p>Change <var>pCount</var> Visit rows in <code>USER</code>, saving each so that the Visits cube's <code>DSTIME</code> records the
+/// change: the cube then has <var>pCount</var> changes to synchronize.</p>
+ClassMethod ChangeVisits(pCount As %Integer) As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = ..#NAMESPACE
+        For tI = 1:1:pCount {
+            Set tVisit = $ClassMethod(..#VISITCLASS, "%OpenId", tI)
+            If '$IsObject(tVisit) {
+                Set tSC = $$$ERROR($$$GeneralError, "OcuPilot.Test.AnalyticsProbe.ChangeVisits found no Visit row " _ tI)
+                Quit
+            }
+            Set tVisit.Amount = tVisit.Amount + 1
+            Set tSC = tVisit.%Save()
+            Set tVisit = ""
+            If $$$ISERR(tSC) Quit
+        }
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tSC
+}
+
+/// <p>Compile and build the hidden cube in <code>USER</code>: <parameter>HIDDEN</parameter> over the Category rows, carrying
+/// <parameter>HIDDENRESOURCE</parameter>. It refuses, changing nothing, unless <method>Create</method> has run.
+/// <method>RemoveHidden</method> and <method>Remove</method> delete it.</p>
+ClassMethod CreateHidden() As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set tCreated = ..Reports()
+        If tCreated {
+            Set $NAMESPACE = ..#NAMESPACE
+            Set tCreated = ##class(%Dictionary.CompiledClass).%ExistsId(..#CATEGORYCLASS)
+            Set $NAMESPACE = tOrigNS
+        }
+        If 'tCreated {
+            Set tSC = $$$ERROR($$$GeneralError, "OcuPilot.Test.AnalyticsProbe.CreateHidden needs the probe created in " _ ..#NAMESPACE _ ": call Enable and Create first")
+            Quit
+        }
+        Set tSC = ##class(%Compiler.UDL.TextServices).SetTextFromString(..#NAMESPACE, ..#HIDDENCLASS, ..ClassText("HiddenCube"))
+        If $$$ISERR(tSC) Quit
+        Set $NAMESPACE = ..#NAMESPACE
+        Set tSC = $System.OBJ.Compile(..#HIDDENCLASS, "ck-d")
+        If $$$ISERR(tSC) Quit
+        Set tSC = ##class(%DeepSee.Utils).%BuildCube(..#HIDDEN, 0, 0, 0, 0, 0)
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tSC
+}
+
+/// <p>Delete the hidden cube from <code>USER</code>: its facts, its definition class and its build events and tracking; nothing
+/// happens when there is none.</p>
+ClassMethod RemoveHidden() As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = ..#NAMESPACE
+        If ##class(%DeepSee.Utils).%IsDeepSeeEnabled() && ##class(%DeepSee.Utils).%CubeExists(..#HIDDEN) Do ##class(%DeepSee.Utils).%KillCube(..#HIDDEN, 1)
+        If ##class(%Dictionary.CompiledClass).%ExistsId(..#HIDDENCLASS) Do $System.OBJ.Delete(..#HIDDENCLASS, "-d")
+        Set tRS = ##class(%SQL.Statement).%ExecDirect(, "DELETE FROM %DeepSee_CubeManager.CubeEvent WHERE CubeKey = ?", $ZConvert(..#HIDDEN, "U"))
+        Do ..ForgetBuilds()
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tSC
+}
+
+/// <p>Kill, in the current namespace, what a build leaves for a probe cube or a probe source class: the cube's nodes of the build
+/// tracking, the build statistics and the per-process update tracking, and the source classes' update node. The vendor's counters stay.</p>
+ClassMethod ForgetBuilds() [ Private ]
+{
+    For tCube = ..#LINKMANY, ..#LINKONE, ..#VISITS, ..#CATEGORIES, ..#GUARDED, ..#GRID, ..#HIDDEN {
+        Set tIndex = $ZConvert(tCube, "U")
+        Kill ^IRIS.Temp.DeepSeeTracking($Namespace, tIndex)
+        Kill ^IRIS.Temp.DeepSeeBuildStats($Namespace, tIndex)
+        Set tJob = ""
+        For {
+            Set tJob = $Order(^IRIS.Temp.CubeManagerUpdateTracking(tJob))
+            If tJob = "" Quit
+            Kill ^IRIS.Temp.CubeManagerUpdateTracking(tJob, tIndex)
+        }
+    }
+    For tClass = ..#VISITCLASS, ..#CATEGORYCLASS, ..#GRIDSOURCE {
+        Kill ^DeepSee.Update("classes", tClass)
+    }
+}
+
+/// <p>Whether a build left a node for a probe cube or a probe source class, as <method>ForgetBuilds</method> names them, in the current
+/// namespace.</p>
+ClassMethod BuildsLeft() As %Boolean [ Private ]
+{
+    Set tLeft = 0
+    For tCube = ..#LINKMANY, ..#LINKONE, ..#VISITS, ..#CATEGORIES, ..#GUARDED, ..#GRID, ..#HIDDEN {
+        Set tIndex = $ZConvert(tCube, "U")
+        If $Data(^IRIS.Temp.DeepSeeTracking($Namespace, tIndex)) || $Data(^IRIS.Temp.DeepSeeBuildStats($Namespace, tIndex)) Set tLeft = 1
+        Set tJob = ""
+        For {
+            Set tJob = $Order(^IRIS.Temp.CubeManagerUpdateTracking(tJob))
+            If tJob = "" Quit
+            If $Data(^IRIS.Temp.CubeManagerUpdateTracking(tJob, tIndex)) Set tLeft = 1
+        }
+    }
+    For tClass = ..#VISITCLASS, ..#CATEGORYCLASS, ..#GRIDSOURCE {
+        If $Data(^DeepSee.Update("classes", tClass)) Set tLeft = 1
+    }
+    Quit tLeft
+}
+
 /// <p>Create, in <code>USER</code>, the second term list: <parameter>TERMFIELDSTWO</parameter> as its extra fields and
 /// <parameter>TERMSTWO</parameter> as its entry. <method>Remove</method> deletes it.</p>
 ClassMethod CreateTermListTwo() As %Status
@@ -471,7 +605,7 @@ ClassMethod LocalCaches() As %Integer
 /// cache by the cube name as the query spelled it.</p>
 ClassMethod IsProbeCube(pKey As %String) As %Boolean [ Private ]
 {
-    Quit $ListFind($ListBuild($ZConvert(..#LINKMANY, "U"), $ZConvert(..#LINKONE, "U"), $ZConvert(..#VISITS, "U"), $ZConvert(..#CATEGORIES, "U"), $ZConvert(..#GUARDED, "U"), $ZConvert(..#GRID, "U")), $ZConvert(pKey, "U")) > 0
+    Quit $ListFind($ListBuild($ZConvert(..#LINKMANY, "U"), $ZConvert(..#LINKONE, "U"), $ZConvert(..#VISITS, "U"), $ZConvert(..#CATEGORIES, "U"), $ZConvert(..#GUARDED, "U"), $ZConvert(..#GRID, "U"), $ZConvert(..#HIDDEN, "U")), $ZConvert(pKey, "U")) > 0
 }
 
 /// <p>Whether <var>pText</var>, the SQL a <code>%SEARCH</code> run leaves in <code>^DeepSee.ComputedSQL</code>, names a probe class, spelled as a class
@@ -492,7 +626,7 @@ ClassMethod Remove() As %Status
     Set tOrigNS = $NAMESPACE
     Try {
         Set $NAMESPACE = ..#NAMESPACE
-        For tCube = ..#LINKMANY, ..#LINKONE, ..#VISITS, ..#CATEGORIES, ..#GUARDED, ..#GRID {
+        For tCube = ..#LINKMANY, ..#LINKONE, ..#VISITS, ..#CATEGORIES, ..#GUARDED, ..#GRID, ..#HIDDEN {
             If ##class(%DeepSee.Utils).%IsDeepSeeEnabled() && ##class(%DeepSee.Utils).%CubeExists(tCube) Do ##class(%DeepSee.Utils).%KillCube(tCube, 1)
         }
         ; An MDX query leaves its result cache: %KillCube clears the axes and cells but keeps one activeChunk node per query key.
@@ -518,6 +652,7 @@ ClassMethod Remove() As %Status
         }
         Do $System.OBJ.DeletePackage(..#PACKAGE, "-d")
         Kill ^OBJ.DSTIME(..#VISITCLASS), ^OBJ.DSTIME(..#CATEGORYCLASS)
+        Do ..ForgetBuilds()
         ; The data globals of a class another suite deleted outlive it: kill every global named for the package.
         Set tPrefix = "^" _ ..#PACKAGE _ "."
         Set tGlobal = $Order(^$GLOBAL($Extract(tPrefix, 1, *-1)))
@@ -587,9 +722,10 @@ ClassMethod Left() As %String
         Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT COUNT(*) FROM %Dictionary.ClassDefinition WHERE Name %STARTSWITH ?", ..#PACKAGE _ ".")
         If tRS.%Next() && (+tRS.%GetData(1) > 0) Set tLeft = tLeft _ ",classes"
         ; %CubeExists reads the cube registry, which answers whether or not USER reports analytics.
-        For tCube = ..#VISITS, ..#CATEGORIES, ..#GUARDED, ..#GRID, ..#LINKONE, ..#LINKMANY {
+        For tCube = ..#VISITS, ..#CATEGORIES, ..#GUARDED, ..#GRID, ..#LINKONE, ..#LINKMANY, ..#HIDDEN {
             If ##class(%DeepSee.Utils).%CubeExists(tCube) Set tLeft = tLeft _ ",cube " _ tCube
         }
+        If ..BuildsLeft() Set tLeft = tLeft _ ",build residue"
         If ##class(%DeepSee.TermList).%TermListExists(..#TERMLIST) Set tLeft = tLeft _ ",term list"
         If ##class(%DeepSee.TermList).%TermListExists(..#TERMLISTTWO) Set tLeft = tLeft _ ",second term list"
         For tItem = ..#PIVOT, ..#DASHBOARD, ..#GUARDEDDASHBOARD {

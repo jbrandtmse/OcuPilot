@@ -13,7 +13,8 @@ import { STRINGS } from '../../core/strings';
 import { stubAccountPreferences } from '../../testing/account-preferences';
 import { PermissionCheck } from '../../shell/permission-check';
 import { USER_FORM, USER_LIST, UserEditorPage } from './user-editor.page';
-import { TWO_FACTOR_SMS_BIT, TWO_FACTOR_TOTP_BIT, USERS_EFFECTIVE_PATH, USERS_FORM_PATH, USERS_PATH } from './user-editor.store';
+import { USERS_FORM_PATH, USERS_PATH } from './user-create-form.store';
+import { TWO_FACTOR_SMS_BIT, TWO_FACTOR_TOTP_BIT, USERS_EFFECTIVE_PATH } from './user-editor.store';
 
 /**
  * The user editor over stubs of what an instance supplies -- the URL and the HTTP answers. The real

@@ -21,7 +21,7 @@ import puppeteer from 'puppeteer';
 
 import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
 import { loadStrings } from '../tools/strings.mjs';
-import { signedInAt } from './panel-spec.mjs';
+import { signedInAt, waitForReplies as waitForFinishedReplies } from './panel-spec.mjs';
 import {
   armProbeDefinition,
   disarmProbeDefinition,
@@ -145,15 +145,8 @@ async function send(page, text) {
 }
 
 /** Wait until `count` finished replies are in the transcript and Send reads Send again. */
-async function waitForReplies(page, count) {
-  await page.waitForFunction(
-    (n, sendLabel) =>
-      document.querySelectorAll('app-reply').length >= n &&
-      document.querySelector('.ocu-panel-send')?.textContent?.trim() === sendLabel,
-    { timeout: config.navigationTimeoutMs },
-    count,
-    STRINGS.actionSend
-  );
+function waitForReplies(page, count) {
+  return waitForFinishedReplies(page, count, config, STRINGS.actionSend);
 }
 
 /** Wait until the transcript's `scrollTop` holds still across two reads, and answer it. */

@@ -1,14 +1,44 @@
-/// <p>The guided-workflow turn in process (Story 20.12, AD-11, AD-66): the opening messages a turn that carries a
-/// workflow builds -- the synthetic <code>workflow</code> call and result after screen context, or alone -- with the
-/// ordinary turn's unchanged; a model call named <code>workflow</code> answering <code>TOOL.UNKNOWN</code>; and a
-/// read-only workflow's refusal of a write tool. Each observed on the requests
+/// <p>The guided-workflow turn in process (Stories 20.12 and 20.36, AD-11, AD-66): the opening messages a turn that
+/// carries a workflow builds -- the synthetic <code>workflow</code> call and result after screen context, or alone --
+/// with the ordinary turn's unchanged; a model call named <code>workflow</code> answering <code>TOOL.UNKNOWN</code>;
+/// a read-only workflow's refusal of a write tool; the <code>investigate</code> turn's marked context, refusal and starting
+/// tool set; and <code>previous</code> reporting only a turn of the same workflow. Each observed on the requests
 /// <class>OcuPilot.Test.ProviderStub</class> recorded.</p>
 /// <p>Driven through <class>OcuPilot.Test.TurnLoopProbe</class> as <class>OcuPilot.Test.TurnToolsCase</class>
 /// sets it up, with <class>OcuPilot.Test.ToolDispatchProbe</class> over the counting fixture tools where a tool is
-/// called. <b>Live-safe</b>: it spawns nothing and opens no socket; it writes probe agent definitions and turn rows
-/// and removes every one after each method.</p>
+/// called. <b>Live-safe</b>: it spawns nothing and opens no socket; it writes probe agent definitions, turn rows, a
+/// conversation and the proposals a method mints, and removes every one after each method.</p>
 Class OcuPilot.Test.WorkflowLoop Extends OcuPilot.Test.TurnToolsCase
 {
+
+/// <p>The conversation a method created, or <code>""</code>.</p>
+Property ProbeConvKey As %String;
+
+/// <p>Every turn key a method minted a proposal for, so teardown removes exactly those.</p>
+Property ProposedKeys [ MultiDimensional ];
+
+Method %OnNew(initvalue As %String = "") As %Status
+{
+    Set tSC = ##super(initvalue)
+    If $$$ISERR(tSC) Quit tSC
+    Set ..ProbeConvKey = ""
+    Kill ..ProposedKeys
+    Quit $$$OK
+}
+
+Method OnAfterOneTest() As %Status
+{
+    Set tKey = ""
+    For {
+        Set tKey = $Order(..ProposedKeys(tKey))
+        If tKey = "" Quit
+        Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Propose).GuardedDeleteForTurn(tKey), "turn " _ tKey _ "'s proposals are removed")
+    }
+    Kill ..ProposedKeys
+    If ..ProbeConvKey '= "" Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Convo).GuardedDelete(..ProbeConvKey), "the conversation is removed")
+    Set ..ProbeConvKey = ""
+    Quit ##super()
+}
 
 /// <p>A screen-context payload the loop carries as given.</p>
 Parameter CONTEXT = "{""route"":""system-explorer/classes"",""namespace"":""USER"",""tools"":[]}";
@@ -43,6 +73,22 @@ Method ResultsIn(pMessages As %DynamicArray, pIndex As %Integer) As %String
         Set tLast = tBlock.type
     }
     Quit tIds _ "|" _ tLast
+}
+
+/// <p>The index of the user message of <var>pMessages</var> that holds the <code>workflow</code> result, or
+/// <code>-1</code>.</p>
+Method WorkflowMessage(pMessages As %DynamicArray) As %Integer
+{
+    Set tFound = -1
+    For tI = 0:1:pMessages.%Size() - 1 {
+        Set tMessage = pMessages.%Get(tI)
+        If tMessage.%GetTypeOf("content") '= "array" Continue
+        Set tIterator = tMessage.content.%GetIterator()
+        While tIterator.%GetNext(.tAt, .tBlock) {
+            If (tBlock.type = "tool_result") && (tBlock."tool_use_id" = "ocupilot_workflow") Set tFound = tI
+        }
+    }
+    Quit tFound
 }
 
 /// <p>The data-framed body of the <code>tool_result</code> block of message <var>pIndex</var> whose id is
@@ -167,6 +213,170 @@ Method TestAReadOnlyWorkflowRefusesAWriteTool()
     Set tKey = ..RunTurn(.tOutcome)
     Do $$$AssertEquals(tOutcome("state"), "completed", "an ordinary turn completes")
     Do $$$AssertEquals(##class(OcuPilot.Test.DispatchTool.Counter).Calls("probe.counter.write"), 1, "and its call to the write tool runs")
+}
+
+/// <p>A screen-context payload that marks the second of two rows as the entry the user chose (the explain-entry
+/// marker).</p>
+Parameter ENTRYCONTEXT = "{""route"":""logs/messages"",""namespace"":""HSCUSTOM"",""tools"":[],""view"":{""rows"":[{""time"":""2026-11-12T09:00:00.000"",""severity"":""0"",""text"":""first line""},{""time"":""2026-11-12T09:00:01.000"",""severity"":""2"",""text"":""second line""}],""rowsAvailable"":2,""selected"":1}}";
+
+/// <p>An <code>investigate</code> turn from a log entry opens with the context preamble, the <code>screen_context</code>
+/// call whose result carries the marker, then the <code>workflow</code> call whose result names Recap and Hypotheses,
+/// has no write in any step and reports no <code>previous</code>, all before the person's text.</p>
+/// <p>Mutation: the catalog's <code>investigate</code> entry is removed -> this goes red on the turn's workflow.</p>
+Method TestAnInvestigateTurnOpensWithTheMarkedContextThenItsWorkflow()
+{
+    Do $ClassMethod(..#STUB, "QueueAnswer", 200, ..Reply("done"))
+    Set tKey = ..RunTurn(.tOutcome, "", 0, 0, ..#ENTRYCONTEXT, "", "", "investigate")
+    Do $$$AssertEquals(tOutcome("state"), "completed", "the turn completes")
+    Set tMessages = ..MessagesOf(1)
+    Do $$$AssertEquals(tMessages.%Size(), 3, "the turn opens with three messages")
+    If tMessages.%Size() '= 3 Quit
+    Do $$$AssertEquals(..UsesIn(tMessages, 1), "screen_context=ocupilot_screen_context,workflow=ocupilot_workflow", "the assistant calls screen_context, then workflow")
+    Do $$$AssertEquals(..ResultsIn(tMessages, 2), "ocupilot_screen_context,ocupilot_workflow|text", "the results come in the same order, the person's text last")
+    Set tContext = ..ResultBody(tMessages, 2, "ocupilot_screen_context")
+    Do $$$AssertEquals(tContext.view.selected _ "|" _ tContext.view.rows.%Get(1).text, "1|second line", "the screen context carries the marker for the chosen row")
+    Do $$$AssertEquals($IsObject(tContext.view.%Get("focus")), 0, "and exactly one marker")
+    Set tWorkflow = ..ResultBody(tMessages, 2, "ocupilot_workflow")
+    Do $$$AssertEquals(tWorkflow.%Get("workflow") _ "|" _ tWorkflow.%Get("previous").%Size() _ "|" _ tWorkflow.steps.%Size(), "investigate|0|3", "the result names investigate, three steps and an empty previous")
+    Do $$$AssertTrue((tWorkflow.finish [ "Recap") && (tWorkflow.finish [ "Hypotheses"), "and its finish names the Recap and the Hypotheses")
+    Set tWrites = 0
+    Set tIterator = tWorkflow.steps.%GetIterator()
+    While tIterator.%GetNext(.tAt, .tStep) {
+        If tStep.%GetTypeOf("writes") '= "unassigned" Set tWrites = tWrites + 1
+    }
+    Do $$$AssertEquals(tWrites, 0, "no step names a write")
+    Do $$$AssertEquals(##class(OcuPilot.Test.TurnFixture).Field(tKey, "Workflow"), "investigate", "and the turn row records its workflow")
+}
+
+/// <p>An <code>investigate</code> turn refuses a write: the fixture write tool is answered
+/// <code>WORKFLOW.NOTASTEP</code> and its counter does not move.</p>
+/// <p>Mutation: the catalog's <code>investigate</code> entry gains <code>"writes": ["probe.counter.write"]</code>
+/// -> this goes red (the tool runs).</p>
+Method TestAnInvestigateTurnRefusesAWrite()
+{
+    Do $ClassMethod(..#LOOP, "SetDispatchClass", ..#DISPATCH)
+    Do $ClassMethod(..#DISPATCH, "ForceRestraint", "clear")
+    Do $ClassMethod(..#STUB, "QueueAnswer", 200, ..Reply("", [{"id": "toolu_1", "name": "probe_counter_write", "input": {"marker": "w"}}]))
+    Do $ClassMethod(..#STUB, "QueueAnswer", 200, ..Reply("done"))
+    Set tKey = ..RunTurn(.tOutcome, "", 0, 0, ..#ENTRYCONTEXT, "", "", "investigate")
+    Do $$$AssertEquals(tOutcome("state"), "completed", "the turn completes")
+    Set tMessages = ..MessagesOf(2)
+    Set tBody = ..ResultBody(tMessages, tMessages.%Size() - 1, "toolu_1")
+    Do $$$AssertEquals(tBody.%Get("code"), "WORKFLOW.NOTASTEP", "the write is refused WORKFLOW.NOTASTEP")
+    Do $$$AssertEquals(##class(OcuPilot.Test.DispatchTool.Counter).Calls("probe.counter.write"), 0, "and the counter did not move")
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Propose).GuardedCountForTurn(tKey, .tMinted), "the turn's proposals are counted")
+    Do $$$AssertEquals(tMinted, 0, "and the turn minted no proposal")
+}
+
+/// <p>A workflow turn starts with the ordinary turn's tool set (AD-24): an <code>investigate</code> turn from a screen whose
+/// context names no tools defers exactly what the ordinary turn from the same screen defers, its steps' reads
+/// <code>logs_messages_read</code> and <code>osmgmt_dashboard_read</code> among them.</p>
+/// <p>Mutation: <method>OcuPilot.Kernel.Agent.Loop.Run</method> marks a workflow turn's <code>logs_messages_read</code> as a
+/// starting tool -> this goes red, alone in the class.</p>
+Method TestAWorkflowTurnStartsWithTheOrdinaryToolSet()
+{
+    Do $ClassMethod(..#LOOP, "SetLimitsClass", "OcuPilot.Kernel.Agent.Limits")
+    Do $ClassMethod(..#STUB, "QueueAnswer", 200, ..Reply("done"))
+    Set tKey = ..RunTurn(.tOrdinary, "", 0, 0, ..#ENTRYCONTEXT)
+    Do $$$AssertEquals(tOrdinary("state"), "completed", "the ordinary turn completes")
+    Do $ClassMethod(..#STUB, "QueueAnswer", 200, ..Reply("done"))
+    Set tKey = ..RunTurn(.tOutcome, "", 0, 0, ..#ENTRYCONTEXT, "", "", "investigate")
+    Do $$$AssertEquals(tOutcome("state"), "completed", "the investigate turn completes")
+    Set tOrdinaryDeferred = ##class(OcuPilot.Test.TurnScope).Deferred(##class(OcuPilot.Test.TurnBudget).Sent(1).tools, 1)
+    Set tWorkflowDeferred = ##class(OcuPilot.Test.TurnScope).Deferred(##class(OcuPilot.Test.TurnBudget).Sent(2).tools, 1)
+    Do $$$AssertTrue((","_tOrdinaryDeferred_",") [ ",logs_messages_read,", "the ordinary turn defers the messages.log read")
+    Do $$$AssertTrue((","_tOrdinaryDeferred_",") [ ",osmgmt_dashboard_read,", "and the dashboard read")
+    Do $$$AssertEquals(tWorkflowDeferred, tOrdinaryDeferred, "the investigate turn defers the same tools")
+}
+
+/// <p><code>previous</code> reports the proposals of the conversation's newest earlier turn only when that turn ran the
+/// same workflow: an <code>investigate</code> turn after an Explain turn (the marked context, no workflow) that minted a
+/// proposal reports none, and the next <code>investigate</code> turn reports the one the first minted.</p>
+/// <p>Mutation: <method>OcuPilot.Kernel.Agent.Loop.WorkflowResult</method> skips the earlier turn's workflow check ->
+/// this goes red at the first investigate turn.</p>
+Method TestPreviousReportsOnlyATurnOfTheSameWorkflow()
+{
+    Set tLimits = $ClassMethod(..#LOOP, "LimitsClass")
+    Set tConvo = ##class(OcuPilot.Kernel.State.Convo).LoadOrCreate("", $Username, 5, .tConvoSC, .tConflict)
+    Do $$$AssertStatusOK(tConvoSC, "a conversation is created")
+    If '$IsObject(tConvo) Quit
+    Set ..ProbeConvKey = tConvo.ConvKey
+
+    Do $ClassMethod(..#STUB, "QueueAnswer", 200, ..Reply("done"))
+    Set tOrdinary = ..RunTurn(.tOutcome, "", 0, 0, ..#ENTRYCONTEXT, tConvo)
+    Do $$$AssertEquals(tOutcome("state"), "completed", "an Explain turn completes")
+    Do ..Finish(tConvo, tOrdinary, "explorer.classes.save", tLimits)
+
+    Do $ClassMethod(..#STUB, "QueueAnswer", 200, ..Reply("done"))
+    Set tFirst = ..RunTurn(.tOutcome, "", 0, 0, ..#ENTRYCONTEXT, tConvo, "", "investigate")
+    Do $$$AssertEquals(tOutcome("state"), "completed", "the first investigate turn completes")
+    Set tMessages = ..MessagesOf(2)
+    Set tAt = ..WorkflowMessage(tMessages)
+    Do $$$AssertTrue(tAt >= 0, "it carries a workflow result")
+    If tAt < 0 Quit
+    Set tWorkflow = ..ResultBody(tMessages, tAt, "ocupilot_workflow")
+    Do $$$AssertEquals(tWorkflow.%Get("previous").%Size(), 0, "after an Explain turn that proposed a change, previous reports none")
+    Do ..Finish(tConvo, tFirst, "osmgmt.namespaces.create", tLimits)
+
+    Do $ClassMethod(..#STUB, "QueueAnswer", 200, ..Reply("done"))
+    Set tSecond = ..RunTurn(.tOutcome, "", 0, 0, ..#ENTRYCONTEXT, tConvo, "", "investigate")
+    Do $$$AssertEquals(tOutcome("state"), "completed", "the second investigate turn completes")
+    Set tMessages = ..MessagesOf(3)
+    Set tAt = ..WorkflowMessage(tMessages)
+    Do $$$AssertTrue(tAt >= 0, "the second investigate turn carries a workflow result")
+    If tAt < 0 Quit
+    Set tWorkflow = ..ResultBody(tMessages, tAt, "ocupilot_workflow")
+    Do $$$AssertEquals(tWorkflow.%Get("previous").%Size(), 1, "after a turn of the same workflow, previous reports its one proposal")
+    Do $$$AssertEquals(tWorkflow.%Get("previous").%Get(0).%Get("tool"), "osmgmt.namespaces.create", "and it is that turn's, not the ordinary turn's")
+    Set tConvo = ""
+}
+
+/// <p>An <code>investigate</code> turn started while another workflow ran reports no <code>previous</code>: the earlier
+/// <code>compileclass</code> turn's proposal is that workflow's, not this one's.</p>
+/// <p>Mutation: <method>OcuPilot.Kernel.Agent.Loop.WorkflowResult</method> skips only an earlier turn with no workflow
+/// (<code>If tEarlierWorkflow = "" Quit</code>) -> this goes red.</p>
+Method TestPreviousIgnoresATurnOfAnotherWorkflow()
+{
+    Set tLimits = $ClassMethod(..#LOOP, "LimitsClass")
+    Set tConvo = ##class(OcuPilot.Kernel.State.Convo).LoadOrCreate("", $Username, 5, .tConvoSC, .tConflict)
+    Do $$$AssertStatusOK(tConvoSC, "a conversation is created")
+    If '$IsObject(tConvo) Quit
+    Set ..ProbeConvKey = tConvo.ConvKey
+
+    Do $ClassMethod(..#STUB, "QueueAnswer", 200, ..Reply("done"))
+    Set tCompile = ..RunTurn(.tOutcome, "", 0, 0, "", tConvo, "", "compileclass")
+    Do $$$AssertEquals(tOutcome("state"), "completed", "a compileclass turn completes")
+    Do ..Finish(tConvo, tCompile, "explorer.classes.save", tLimits)
+
+    Do $ClassMethod(..#STUB, "QueueAnswer", 200, ..Reply("done"))
+    Set tInvestigate = ..RunTurn(.tOutcome, "", 0, 0, ..#ENTRYCONTEXT, tConvo, "", "investigate")
+    Do $$$AssertEquals(tOutcome("state"), "completed", "the investigate turn completes")
+    Set tMessages = ..MessagesOf(2)
+    Set tAt = ..WorkflowMessage(tMessages)
+    Do $$$AssertTrue(tAt >= 0, "it carries a workflow result")
+    If tAt < 0 Quit
+    Set tWorkflow = ..ResultBody(tMessages, tAt, "ocupilot_workflow")
+    Do $$$AssertEquals(tWorkflow.%Get("workflow") _ "|" _ tWorkflow.%Get("previous").%Size(), "investigate|0", "after a compileclass turn that proposed a change, previous reports none")
+    Set tConvo = ""
+}
+
+/// <p>Mint one live proposal of <var>pTool</var> for turn <var>pTurnKey</var> in <var>pConvo</var>, then append the
+/// turn's entry, so the conversation's newest entry is that turn.</p>
+Method Finish(pConvo As OcuPilot.Kernel.State.Convo, pTurnKey As %String, pTool As %String, pLimits As %String)
+{
+    Kill tValues
+    Set tValues("user") = $Username
+    Set tValues("convKey") = pConvo.ConvKey
+    Set tValues("turnKey") = pTurnKey
+    Set tValues("toolName") = pTool
+    Do ##class(OcuPilot.Kernel.EntityRef).Key("task", "instance", "OcuPilotProbe" _ pTurnKey, .tRef)
+    Set tValues("targetRef") = tRef
+    Set tValues("diff") = "[]"
+    Set tValues("payload") = "{}"
+    Set tValues("arguments") = "{}"
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Propose).GuardedMint(.tValues, pLimits, .tProposal, .tToken, .tExpires), "turn " _ pTurnKey _ " minted a proposal")
+    Set ..ProposedKeys(pTurnKey) = ""
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Convo).AppendEntry(pConvo, "what is on this instance", "completed", "done", "", 0, [], 0, pLimits, pTurnKey), "and its entry is appended")
 }
 
 }

@@ -204,21 +204,19 @@ Method TestEveryLiveToolRequiresItsScreensPairs()
             Do $$$AssertTrue($ListLength(tExpected) > 0, tTool.name _ ": its screen declares pairs")
             Set tExpected = tExpected _ $ListBuild($ListBuild("%Development", "USE"), $ListBuild("%Ens_Code", "WRITE"))
             Set tExpectedAdded = ##class(OcuPilot.Screen.Tool.ExplorerSave).CodeWritePairs({}, .tExpectedAddedResolved)
-        } ElseIf $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.ExplorerSave") || $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.ExplorerCreate") {
+        } ElseIf $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.ExplorerSave") || $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.ExplorerCreate") || $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.ExplorerCompile") || $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.ExplorerDelete") || $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.ExplorerImport") {
             ; Story 20.20 (DW-2242): a save or a create declares its screen's pairs alone, and WRITE on
             ; the routines database of the namespace its proposal stored is an argument pair, which
-            ; with no namespace argument is the request's scope (AD-8).
+            ; with no namespace argument is the request's scope (AD-8). A compile, a delete and an import
+            ; take WRITE the same way.
             Set tExpected = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(tTool.class, "DESCRIPTORCLASS"), .tExpectedResolved)
             Do $$$AssertTrue($ListLength(tExpected) > 0, tTool.name _ ": its screen declares pairs")
             Set tExpectedAdded = ##class(OcuPilot.Screen.Tool.ExplorerSave).CodeWritePairs({}, .tExpectedAddedResolved)
         } ElseIf $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.ExplorerWrite") {
-            ; Story 19.2: System Explorer's compile, delete and import declare WRITE on the routines
-            ; database of the request's namespace, here this one's, after their screen's pairs (AD-8
-            ; as amended 2026-10-02); Story 19.13's export only reads and declares none.
+            ; Story 19.13: System Explorer's export only reads and declares its screen's pairs alone, with no WRITE
+            ; pair of the routines database.
             Set tExpected = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(tTool.class, "DESCRIPTORCLASS"), .tExpectedResolved)
             Do $$$AssertTrue($ListLength(tExpected) > 0, tTool.name _ ": its screen declares pairs")
-            Set tCodePair = $ListBuild(##class(OcuPilot.Test.DeveloperFloorFixture).CodeResource(), "WRITE")
-            If '$ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.ExplorerExport") && '$ListFind(tExpected, tCodePair) Set tExpected = tExpected _ $ListBuild(tCodePair)
         } ElseIf $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.ExplorerDocDbWrite") {
             ; Story 19.17: Document databases' create and drop declare WRITE on the routines and
             ; globals databases of the request's namespace, here this one's, after their screen's
@@ -240,6 +238,16 @@ Method TestEveryLiveToolRequiresItsScreensPairs()
             For tWritePair = $ListBuild($Parameter(tTool.class, "WRITERESOURCE"), $Parameter(tTool.class, "WRITEPERMISSION")), $ListBuild(tGlobalResource, "WRITE") {
                 If '$ListFind(tExpected, tWritePair) Set tExpected = tExpected _ $ListBuild(tWritePair)
             }
+        } ElseIf $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.InteropItemRunAction") {
+            ; Story 20.25: the item stop, start and restart declare %Ens_ConfigItemRun:USE, then WRITE on the globals database of the
+            ; request's namespace, here this one's, after their screen's pairs, each once; they save no production, so no
+            ; %Ens_ProductionConfig:WRITE and no routines database (AD-8, AD-62).
+            Set tExpected = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(tTool.class, "DESCRIPTORCLASS"), .tExpectedResolved)
+            Do $$$AssertTrue($ListLength(tExpected) > 0, tTool.name _ ": its screen declares pairs")
+            Do $$$AssertTrue(##class(OcuPilot.Kernel.Shell.Namespaces).GlobalDatabase($Namespace, .tGlobalResource, .tReadOnly), tTool.name _ ": this namespace's globals database resolves")
+            For tWritePair = $ListBuild("%Ens_ConfigItemRun", "USE"), $ListBuild(tGlobalResource, "WRITE") {
+                If '$ListFind(tExpected, tWritePair) Set tExpected = tExpected _ $ListBuild(tWritePair)
+            }
         } ElseIf $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.InteropItemAction") {
             ; Story 20.3: the item writes declare %Ens_ProductionConfig:WRITE, then WRITE on the globals and
             ; the routines database of the request's namespace, here this one's, after their screen's pairs,
@@ -250,6 +258,16 @@ Method TestEveryLiveToolRequiresItsScreensPairs()
             Do $$$AssertTrue(##class(OcuPilot.Kernel.Shell.Namespaces).RoutineDatabase($Namespace, .tRoutineResource, .tReadOnly), tTool.name _ ": this namespace's routines database resolves")
             For tWritePair = $ListBuild("%Ens_ProductionConfig", "WRITE"), $ListBuild(tGlobalResource, "WRITE"), $ListBuild(tRoutineResource, "WRITE") {
                 If '$ListFind(tExpected, tWritePair) Set tExpected = tExpected _ $ListBuild(tWritePair)
+            }
+        } ElseIf $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.AnalyticsAction") {
+            ; Story 20.34: the cube build and synchronize declare WRITE on the database ^DeepSee.Fact maps to and READ on the routines
+            ; database of the request's namespace, here this one's, after their screen's pairs, each once (AD-8, AD-65).
+            Set tExpected = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(tTool.class, "DESCRIPTORCLASS"), .tExpectedResolved)
+            Do $$$AssertTrue($ListLength(tExpected) > 0, tTool.name _ ": its screen declares pairs")
+            Do $$$AssertTrue(##class(OcuPilot.Port.AnalyticsPort).DestinationDatabase($Namespace, ##class(OcuPilot.Port.AnalyticsPort).#FACTGLOBAL, .tFactResource, .tReadOnly, .tMounted), tTool.name _ ": this namespace's fact database resolves")
+            Do $$$AssertTrue(##class(OcuPilot.Kernel.Shell.Namespaces).RoutineDatabase($Namespace, .tRoutineResource, .tReadOnly), tTool.name _ ": this namespace's routines database resolves")
+            For tOwnPair = $ListBuild(tFactResource, "WRITE"), $ListBuild(tRoutineResource, "READ") {
+                If '$ListFind(tExpected, tOwnPair) Set tExpected = tExpected _ $ListBuild(tOwnPair)
             }
         } ElseIf $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.InteropMessageAction") {
             ; Story 20.31: the resend declares %Ens_MessageResend:USE and the edit and resend %Ens_MessageContent:USE,
@@ -277,7 +295,9 @@ Method TestEveryLiveToolRequiresItsScreensPairs()
             Set tWritePair = $ListBuild(tGlobalResource, "WRITE")
             If '$ListFind(tExpected, tRunPair) Set tExpected = tExpected _ $ListBuild(tRunPair)
             If '$ListFind(tExpected, tWritePair) Set tExpected = tExpected _ $ListBuild(tWritePair)
-        } ElseIf $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.InteropAction") && ($Parameter(tTool.class, "DESCRIPTORCLASS") [ "OcuPilot.Screen.Descriptor.InteropLookup") {
+        } ElseIf ($ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.InteropAction") && ($Parameter(tTool.class, "DESCRIPTORCLASS") [ "OcuPilot.Screen.Descriptor.InteropLookup")) || $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.InteropPartnerAction") {
+            ; Story 20.26: the business partner writes declare %Ens_ProductionConfig:WRITE and WRITE on the globals database and no routines
+            ; database, as the lookup writes below declare their own resource and the database.
             ; Story 20.5: the lookup writes declare their own resource at its permission, then WRITE or READ on the globals database
             ; of the request's namespace, here this one's, after their screen's pairs, each once (AD-8, AD-62); the export's own
             ; pair is the file system's, since it writes a file.

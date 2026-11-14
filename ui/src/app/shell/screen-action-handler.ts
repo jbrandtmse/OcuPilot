@@ -136,6 +136,9 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   // entries, whose Remove types the key and whose Add entry and Set value its own page's dialogs send.
   'OcuPilot.Screen.Descriptor.InteropLookupTableList',
   'OcuPilot.Screen.Descriptor.InteropLookupEntryList',
+  // Story 20.26: Business partners, whose Remove types the partner's name and whose New business partner and Edit its own page's dialog
+  // sends.
+  'OcuPilot.Screen.Descriptor.InteropBusinessPartnerList',
   // Story 20.23: Queues, whose Abort all types the queue's name; Queue messages and an item's Queue tab, whose Abort types the
   // message id; and Jobs and an item's Jobs tab, whose Abort message types the job's process id and whose Suspend message and
   // Stop job warn first.
@@ -144,6 +147,8 @@ export const SCREEN_ACTION_DESCRIPTORS: readonly string[] = [
   'OcuPilot.Screen.Descriptor.InteropItemQueueTab',
   'OcuPilot.Screen.Descriptor.InteropJobList',
   'OcuPilot.Screen.Descriptor.InteropItemJobTab',
+  // Story 20.34: the Cube manager, whose Build types the cube's name and whose Synchronize is sent at once, each reporting the lines the instance answered.
+  'OcuPilot.Screen.Descriptor.AnalyticsCubeManager',
   // Story 20.6: an item's Test tab, whose Send test its own page's dialog sends.
   'OcuPilot.Screen.Descriptor.InteropItemTestTab',
   // Story 20.27: Data transformations, whose Test its own page's dialog sends.
@@ -378,6 +383,8 @@ const REVIEWED_VALUE = 'Reviewed';
 const DRY_RUN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   [INTEROP_MESSAGE_LIST]: [MESSAGE_RESEND],
   [INTEROP_MESSAGE_HEADER]: [MESSAGE_EDIT_RESEND],
+  // Story 20.41: Production items' Change class lists the settings the new class does not take before it is confirmed.
+  'OcuPilot.Screen.Descriptor.InteropItemList': ['changeclass'],
 };
 
 /**
@@ -443,6 +450,9 @@ const UNDRAWN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   [ECP_DATA_SERVER_LIST]: [ECP_CHANGE_STATUS],
   // Screen permissions' page registers Change permissions itself, whose dialog sends Add and Remove (Story 20.15).
   [SCREEN_PERMISSIONS]: [SCREEN_PERMISSIONS_ADD, SCREEN_PERMISSIONS_REMOVE],
+  // Production items' page registers Copy itself, whose dialog posts to the copy tool's own Save route (Story 20.40), and Change class
+  // itself, whose dialog picks the class and starts the review (Story 20.41).
+  'OcuPilot.Screen.Descriptor.InteropItemList': ['copy', 'changeclass'],
   // Item settings' page registers Set value itself, whose dialog sends the value (Story 20.22).
   'OcuPilot.Screen.Descriptor.InteropItemSettingList': ['set'],
   // The Lookup tables' page registers Export itself and draws Import as a screen-level action, whose dialogs send the four transfer
@@ -450,6 +460,8 @@ const UNDRAWN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   'OcuPilot.Screen.Descriptor.InteropLookupTableList': ['export', 'export-browser', 'import', 'import-local'],
   // A table's entries' page registers Set value itself, whose dialog sends the value (Story 20.5).
   'OcuPilot.Screen.Descriptor.InteropLookupEntryList': ['set'],
+  // Business partners' page registers Edit itself, whose dialog sends the thirteen fields (Story 20.26).
+  'OcuPilot.Screen.Descriptor.InteropBusinessPartnerList': ['edit'],
   // An item's Test tab's page registers Send test itself, whose dialog sends the request class and its fields (Story 20.6).
   'OcuPilot.Screen.Descriptor.InteropItemTestTab': ['test'],
   // Data transformations' page registers Test itself, whose dialog sends the pasted message (Story 20.27).
@@ -498,6 +510,17 @@ const INTEROP_ITEM_QUEUE_TAB = 'OcuPilot.Screen.Descriptor.InteropItemQueueTab';
 const INTEROP_JOB_LIST = 'OcuPilot.Screen.Descriptor.InteropJobList';
 const INTEROP_ITEM_JOB_TAB = 'OcuPilot.Screen.Descriptor.InteropItemJobTab';
 
+/** Analytics' Cube manager (Story 20.34), whose Build and Synchronize report the lines the instance answered. */
+const ANALYTICS_CUBE_MANAGER = 'OcuPilot.Screen.Descriptor.AnalyticsCubeManager';
+
+/**
+ * The row actions whose answer is a report: once one ran, the dialog that follows it lists the lines the instance answered for the
+ * screen alone (Story 20.34), keyed by descriptor. A refused action shows its sentence on the screen as every action does.
+ */
+const OUTCOME_ACTIONS: Readonly<Record<string, readonly string[]>> = {
+  [ANALYTICS_CUBE_MANAGER]: ['build', 'synchronize'],
+};
+
 /**
  * The screen whose action route a descriptor's row actions are sent to, where it is not the
  * descriptor's own: Process details acts on the pid it shows through the processes list's write
@@ -518,7 +541,7 @@ const ACTION_ADDRESS: Readonly<Record<string, string>> = {
  * `DESTRUCTIVE` declaration. This is EXPERIENCE.md's `confirm-dialog` rule -- a delete carries the
  * typed-name field and a `button-destructive` -- applied to the verb that deletes.
  */
-const DESTRUCTIVE_ACTIONS: readonly string[] = ['delete', 'terminate', 'revoke-tokens', 'revoke-token', 'end', ENCRYPTION_REMOVE_ADMIN, ENCRYPTION_REMOVE_KEY, ENCRYPTION_DEACTIVATE, 'remove', 'abort', MESSAGE_RESEND, MESSAGE_EDIT_RESEND];
+const DESTRUCTIVE_ACTIONS: readonly string[] = ['delete', 'terminate', 'revoke-tokens', 'revoke-token', 'end', ENCRYPTION_REMOVE_ADMIN, ENCRYPTION_REMOVE_KEY, ENCRYPTION_DEACTIVATE, 'remove', 'abort', MESSAGE_RESEND, MESSAGE_EDIT_RESEND, 'build'];
 
 /**
  * The destructive actions whose typed-name dialog states the removal's impact as its advisory,
@@ -599,16 +622,24 @@ const DESTRUCTIVE_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, 
   // Story 19.17: a document database's Drop types its name.
   'OcuPilot.Screen.Descriptor.ExplorerDocDbList': { delete: STRINGS.explorerDocDbDropConsequence },
   // Story 20.3: a production item's Remove types its name and deletes the settings it holds.
-  'OcuPilot.Screen.Descriptor.InteropItemList': { remove: STRINGS.interopItemRemoveConsequence },
+  'OcuPilot.Screen.Descriptor.InteropItemList': {
+    remove: STRINGS.interopItemRemoveConsequence,
+    // Story 20.41: the dialog the review opens in states what the change removes.
+    changeclass: STRINGS.interopItemChangeClassConsequence,
+  },
   // Story 20.5: a lookup table's Delete removes every entry in it, and an entry's Remove removes the table too when it is the last.
   'OcuPilot.Screen.Descriptor.InteropLookupTableList': { delete: STRINGS.interopLookupDeleteConsequence },
   'OcuPilot.Screen.Descriptor.InteropLookupEntryList': { remove: STRINGS.interopLookupRemoveConsequence },
+  // Story 20.26: a business partner's Remove deletes its description and both contacts.
+  'OcuPilot.Screen.Descriptor.InteropBusinessPartnerList': { remove: STRINGS.interopPartnerRemoveConsequence },
   // Story 20.23: an abort never delivers the messages it takes: all of a queue's, one waiting message, or the message a job keeps retrying.
   [INTEROP_QUEUE_LIST]: { abort: STRINGS.interopQueueAbortConsequence },
   [INTEROP_QUEUE_MESSAGE_LIST]: { abort: STRINGS.interopMessageAbortConsequence },
   [INTEROP_ITEM_QUEUE_TAB]: { abort: STRINGS.interopMessageAbortConsequence },
   [INTEROP_JOB_LIST]: { abort: STRINGS.interopJobAbortConsequence },
   [INTEROP_ITEM_JOB_TAB]: { abort: STRINGS.interopJobAbortConsequence },
+  // Story 20.34: a build deletes the cube's facts and rebuilds them, with every cube that depends on it.
+  [ANALYTICS_CUBE_MANAGER]: { build: STRINGS.analyticsCubeBuildConsequence },
   // Story 20.31: a resend delivers a copy that cannot be recalled, and so does an edit and resend.
   [INTEROP_MESSAGE_LIST]: { [MESSAGE_RESEND]: STRINGS.interopMessageResendConsequence },
   [INTEROP_MESSAGE_HEADER]: { [MESSAGE_RESEND]: STRINGS.interopMessageResendConsequence, [MESSAGE_EDIT_RESEND]: STRINGS.interopMessageEditResendConsequence },
@@ -684,12 +715,16 @@ const TYPED_NAME_ROWS: Readonly<
   // is removed by typing its key and sending the row key.
   'OcuPilot.Screen.Descriptor.InteropLookupTableList': { name: 'Name', field: '', equals: '', advisory: '' },
   'OcuPilot.Screen.Descriptor.InteropLookupEntryList': { name: 'Key', field: '', equals: '', advisory: '' },
+  // Story 20.26: a business partner is keyed by its name, which its Remove types.
+  'OcuPilot.Screen.Descriptor.InteropBusinessPartnerList': { name: 'Name', field: '', equals: '', advisory: '' },
   // Story 20.23: an abort types the queue's name, the message's id or the job's process id, which each list's name column shows.
   [INTEROP_QUEUE_LIST]: { name: 'Name', field: '', equals: '', advisory: '' },
   [INTEROP_QUEUE_MESSAGE_LIST]: { name: 'MessageId', field: '', equals: '', advisory: '' },
   [INTEROP_ITEM_QUEUE_TAB]: { name: 'MessageId', field: '', equals: '', advisory: '' },
   [INTEROP_JOB_LIST]: { name: 'Job', field: '', equals: '', advisory: '' },
   [INTEROP_ITEM_JOB_TAB]: { name: 'Job', field: '', equals: '', advisory: '' },
+  // Story 20.34: a build types the cube's logical name, which the Cube manager's name column shows.
+  [ANALYTICS_CUBE_MANAGER]: { name: 'Name', field: '', equals: '', advisory: '' },
 };
 
 /**
@@ -747,9 +782,13 @@ const WARNING_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, stri
   },
   // Story 20.3: an item's Enable and Disable change the stored configuration, and a running production
   // reads them only at its next update.
+  // Story 20.25: Stop, Start and Restart each update the production now, and say so.
   'OcuPilot.Screen.Descriptor.InteropItemList': {
     enable: STRINGS.interopItemPendingConsequence,
     disable: STRINGS.interopItemPendingConsequence,
+    stop: STRINGS.interopItemStopConsequence,
+    start: STRINGS.interopItemStartConsequence,
+    restart: STRINGS.interopItemRestartConsequence,
   },
   // Story 20.22: a reset changes the stored configuration, which a running production reads only at its next update.
   'OcuPilot.Screen.Descriptor.InteropItemSettingList': { reset: STRINGS.interopItemPendingConsequence },
@@ -957,6 +996,8 @@ export interface DryRunRow {
   readonly field: string;
   readonly before: string;
   readonly after: string;
+  /** The row names a value the action removes (Story 20.41), so a review draws no after-line for it. */
+  readonly removed?: boolean;
 }
 
 /**
@@ -1498,9 +1539,17 @@ export class ScreenActionHandler {
    * Review `actionId` on `id`, then open its typed-name dialog over the review (Story 20.31): the lines the dry run answered above the
    * action's consequence, the typed name the message id -- or, over a set of several, how many of them will be sent -- and the digest of
    * the review kept to be sent as `Reviewed` when the person confirms. A refusal is `sink`'s; nothing opens over another dialog.
-   * `values` are the action's declared values the review was made with, sent again on the confirm.
+   * `values` are the action's declared values the review was made with, sent again on the confirm. `name` is what the person types where
+   * the target's id is not it (Story 20.41: the item's name for its composite id); absent, the id, or the count of a set.
    */
-  async startDryRun(descriptor: string, actionId: string, id: string, values: ActionValues | undefined, sink: ActionSink): Promise<boolean> {
+  async startDryRun(
+    descriptor: string,
+    actionId: string,
+    id: string,
+    values: ActionValues | undefined,
+    sink: ActionSink,
+    name?: string
+  ): Promise<boolean> {
     if (this.waiting() !== null) return false;
     sink.setRefusal('');
     const run = await this.dryRunFor(descriptor, actionId, id, values);
@@ -1508,7 +1557,7 @@ export class ScreenActionHandler {
       sink.setRefusal(run.refusal.reason);
       return false;
     }
-    return this.openReview(descriptor, actionId, id, values, run, sink);
+    return this.openReview(descriptor, actionId, id, values, run, sink, name);
   }
 
   /** Open the review dialog for a dry run that was answered (`startDryRun`'s second half); `false` where another dialog stands or no digest came. */
@@ -1518,13 +1567,15 @@ export class ScreenActionHandler {
     id: string,
     values: ActionValues | undefined,
     run: Extract<DryRunResult, { readonly kind: 'ok' }>,
-    sink: ActionSink
+    sink: ActionSink,
+    name?: string
   ): boolean {
     const digest = run.review['Digest'];
     if (this.waiting() !== null || typeof digest !== 'string' || digest === '') return false;
     const lines = reviewLinesOf(run.rows);
     const sendable = lines.filter((line) => line.endsWith(`: ${STRINGS.interopResendVerdictResend}`)).length;
-    this.open('typed-name', descriptor, actionId, id, this.consequence(descriptor, actionId), [], sink, id.includes(',') ? String(sendable) : id);
+    const typed = name ?? (id.includes(',') ? String(sendable) : id);
+    this.open('typed-name', descriptor, actionId, id, this.consequence(descriptor, actionId), [], sink, typed);
     const opened = this.waiting();
     if (opened === null) return false;
     this.waiting.set({ ...opened, review: lines, reviewed: digest, ...(values === undefined ? {} : { reviewValues: values }) });
@@ -1551,10 +1602,25 @@ export class ScreenActionHandler {
       this.store(screen.descriptor, screen.refreshRates).setChecked([]);
     }
     if (this.waiting() !== null) return;
+    // An action that answers no line (a change of class, Story 20.41) ends with its change event, and no outcome dialog.
+    if (applied && outcomeLinesOf(this.lastOutputValue).length === 0) return;
     this.open('typed-name', pending.descriptor, pending.actionId, pending.target, '', [], sink, pending.name, '', pending.verb);
     const opened = this.waiting();
     if (opened === null) return;
     this.waiting.set({ ...opened, kind: 'outcome', outcome: applied ? outcomeLinesOf(this.lastOutputValue) : [], refusal: applied ? '' : refusal });
+  }
+
+  /**
+   * The outcome dialog an `OUTCOME_ACTIONS` action ends in: the lines the instance answered, over the dialog the action was confirmed in
+   * or in place of none (Story 20.34). Nothing opens where the action answered no line or another dialog stands.
+   */
+  private showOutcome(descriptor: string, actionId: string, target: string, sink: ActionSink): void {
+    if (!(Object.hasOwn(OUTCOME_ACTIONS, descriptor) && OUTCOME_ACTIONS[descriptor].includes(actionId)) || this.waiting() !== null) return;
+    const lines = outcomeLinesOf(this.lastOutputValue);
+    if (lines.length === 0) return;
+    this.open('typed-name', descriptor, actionId, target, '', [], sink);
+    const opened = this.waiting();
+    if (opened !== null) this.waiting.set({ ...opened, kind: 'outcome', outcome: lines, refusal: '' });
   }
 
   /** The row keyed `target` on the screen's last read, or `null`. */
@@ -1643,6 +1709,7 @@ export class ScreenActionHandler {
     const answer = result.body;
     const targetRef = answer?.target;
     sink?.applied?.(actionId);
+    this.showOutcome(descriptor, actionId, target, store);
     if (targetRef === undefined) return true;
     this.injector.get(ChangeBus).publish({
       kind: 'changed',
@@ -1826,6 +1893,7 @@ function dryRunRowsOf(rows: unknown): readonly DryRunRow[] {
       field,
       before: typeof row['before'] === 'string' ? row['before'] : '',
       after: typeof row['after'] === 'string' ? row['after'] : '',
+      ...(row['removed'] === true ? { removed: true } : {}),
     });
   }
   return out;
@@ -1839,9 +1907,18 @@ function dryRunRowsOf(rows: unknown): readonly DryRunRow[] {
 function reviewLinesOf(rows: readonly DryRunRow[]): readonly string[] {
   const row = rows[0];
   if (row === undefined) return [];
+  // Several rows (a change of class, Story 20.41) read as a diff of fields: each row's old value marked `-`, its new one marked `+`
+  // unless the row is removed.
+  if (rows.length > 1) return rows.flatMap((entry) => fieldReviewLines(entry));
   const after = textLines(row.after);
   if (row.before === '') return after;
   return [...textLines(row.before).map((line) => `- ${line}`), ...after.map((line) => `+ ${line}`)];
+}
+
+/** One row of a review of several fields: `- <field>: <before>`, then `+ <field>: <after>` unless the row is removed. */
+function fieldReviewLines(row: DryRunRow): readonly string[] {
+  const before = `- ${row.field}: ${row.before}`.trimEnd();
+  return row.removed === true ? [before] : [before, `+ ${row.field}: ${row.after}`.trimEnd()];
 }
 
 /** The lines of `text`, its one closing line feed ending the last line; none for empty text. */

@@ -269,8 +269,10 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/routine-application/:id" Method="PUT" Call="RoutineAppUpdate"/>
   <Route Url="/routine-application" Method="POST" Call="RoutineAppCreate"/>
   <Route Url="/explorer/docdb" Method="POST" Call="ExplorerDocDbCreate"/>
+  <Route Url="/interop/items/copy" Method="POST" Call="InteropItemCopy"/>
   <Route Url="/interop/items" Method="POST" Call="InteropItemCreate"/>
   <Route Url="/interop/lookup-entries" Method="POST" Call="InteropLookupEntryCreate"/>
+  <Route Url="/interop/business-partners" Method="POST" Call="InteropPartnerCreate"/>
   <Route Url="/rest-service" Method="POST" Call="RestServiceCreate"/>
   <Route Url="/allowed-directories" Method="POST" Call="AllowedDirectorySave"/>
   <Route Url="/allowed-directories" Method="GET" Call="AllowedDirectoryState"/>
@@ -1923,11 +1925,25 @@ ClassMethod InteropItemCreate() As %Status
     Quit ##class(OcuPilot.Area.Interop.ItemSave).HandleCreate()
 }
 
+/// <p>Thin <code>Call=</code> target for <code>POST /interop/items/copy</code> (Story 20.40): Production items'
+/// Copy dialog, resolved through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod InteropItemCopy() As %Status
+{
+    Quit ##class(OcuPilot.Area.Interop.ItemCopy).HandleCreate()
+}
+
 /// <p>Thin <code>Call=</code> target for <code>POST /interop/lookup-entries</code> (Story 20.5): Lookup tables' New table and the
 /// entries list's Add, resolved through the one tool the agent's confirm uses (AD-55).</p>
 ClassMethod InteropLookupEntryCreate() As %Status
 {
     Quit ##class(OcuPilot.Area.Interop.LookupEntrySave).HandleCreate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /interop/business-partners</code> (Story 20.26): Business partners' New business
+/// partner, resolved through the one tool the agent's confirm uses (AD-55).</p>
+ClassMethod InteropPartnerCreate() As %Status
+{
+    Quit ##class(OcuPilot.Area.Interop.PartnerSave).HandleCreate()
 }
 
 /// <p>Thin <code>Call=</code> target for <code>GET /authentication-options/form</code> (Story 18.8): the

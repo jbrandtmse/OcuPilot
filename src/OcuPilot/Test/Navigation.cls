@@ -190,7 +190,9 @@ Method TestAClassThatIsNotADescriptorIsRefusedRatherThanAdmitted()
 /// dropped rather than carried everywhere else, so without this refusal a descriptor that
 /// misspells <code>permission</code> declares a gate and ships ungated.</p>
 /// <p>Mutation: spell the fixture's key <code>permission</code> -> the refusal assertions go
-/// red, because the roster becomes sound.</p>
+/// red, because the roster becomes sound. Restore the empty-string comparison of
+/// <method>OcuPilot.Screen.Registry.MalformedPair</method> in place of its string-type check -> the
+/// non-string assertion goes red.</p>
 Method TestAMalformedPrivilegePairIsRefused()
 {
     Set tSC = ##class(OcuPilot.Test.PairRegistry).Validate(.tProblem)
@@ -201,6 +203,12 @@ Method TestAMalformedPrivilegePairIsRefused()
     ; The same declaration, read the way the gate reads it, yields no pairs at all -- which is
     ; the ungated screen the refusal above exists to prevent.
     Do $$$AssertEquals($ListLength($ClassMethod("OcuPilot.Test.Pair.Bad", "PrivilegePairs")), 0, "the malformed pair contributes nothing to the requirement")
+
+    ; A pair whose half is present and is not a string is refused with the same sentence and the
+    ; position the mirror's malformedPair names.
+    Set tSC = ##class(OcuPilot.Test.PairTypeRegistry).Validate(.tTypeProblem)
+    Do $$$AssertStatusNotOK(tSC, "a roster whose declared pair has a resource that is not a string is refused")
+    Do $$$AssertTrue(tTypeProblem [ "OcuPilot.Test.PairType.Bad: declared privilege pair #1 is missing its resource or its permission", "and names the position: " _ tTypeProblem)
 }
 
 /// <p>AD-8 as amended for DW-1768: an area opens when any screen its side bar lists is allowed, and
@@ -560,7 +568,7 @@ Method TestThePayloadCarriesEveryAreaWithAVerdict()
         }
     }
 
-    ; Interoperability (Story 20.2, Story 20.3, Story 20.4, Story 20.5, Story 20.6, Story 20.7, Story 20.8, Story 20.9, Story 20.30): its eleven listed screens are the area's side bar, in the
+    ; Interoperability (Story 20.2, Story 20.3, Story 20.4, Story 20.5, Story 20.6, Story 20.7, Story 20.8, Story 20.9, Story 20.30, Story 20.41): its eleven listed screens are the area's side bar, in the
     ; classic List menu's order and then Production monitor, Queues, Jobs, Lookup tables, Business partners, the Schema viewer and Messages, and the roster
     ; also carries the unlisted Production items list, the item's tabs, a table's entries, a message's Contents, Header and Trace tabs, Queue messages, the rule, BPL and DTL editors and the Configuration diagram, which sort first at
     ; position 0, by class name; an added Interoperability
@@ -568,8 +576,8 @@ Method TestThePayloadCarriesEveryAreaWithAVerdict()
     Set tInterop = ##class(OcuPilot.Test.Descriptor).AreaEntry(tObject.areas, "interoperability")
     Do $$$AssertTrue($IsObject(tInterop), "the payload carries the interoperability area")
     If $IsObject(tInterop) {
-        Do $$$AssertEquals(tInterop.screens.%Size(), 28, "which carries its twenty-eight built screens -- an added Interoperability screen updates this count and the order below with it")
-        Set tOrder = $ListBuild("interoperability/productions/items/jobs|interopItemJobsLabel", "interoperability/productions/items|interopItemsLabel", "interoperability/productions/items/log|interopItemLogLabel", "interoperability/productions/items/messages|interopItemMessagesLabel", "interoperability/productions/items/queue|interopItemQueueLabel", "interoperability/productions/items/settings|interopItemSettingsLabel", "interoperability/productions/items/document|interopItemStatusLabel", "interoperability/productions/items/test|interopItemTestLabel", "interoperability/lookup-tables/entries|interopLookupEntriesLabel", "interoperability/messages/contents|interopMessageContentsLabel", "interoperability/messages/document|logViewerColumnMessage", "interoperability/messages/trace|interopMessageTraceLabel", "interoperability/processes/document|interopBplEditorTitle", "interoperability/productions/diagram|interopProductionDiagramTitle", "interoperability/queues/messages|interopQueueMessagesLabel", "interoperability/rules/document|interopRuleEditorTitle", "interoperability/transforms/document|interopDtlEditorTitle", "interoperability/productions|interopProductionsLabel", "interoperability/processes|interopProcessesLabel", "interoperability/transforms|interopTransformsLabel", "interoperability/rules|interopRulesLabel", "interoperability/monitor|interopMonitorLabel", "interoperability/queues|interopQueuesLabel", "interoperability/jobs|interopJobsLabel", "interoperability/lookup-tables|interopLookupTablesLabel", "interoperability/business-partners|interopBusinessPartnersLabel", "interoperability/schema-viewer|interopSchemaViewerTitle", "interoperability/messages|interopItemTabMessages")
+        Do $$$AssertEquals(tInterop.screens.%Size(), 29, "which carries its twenty-nine built screens -- an added Interoperability screen updates this count and the order below with it")
+        Set tOrder = $ListBuild("interoperability/productions/items/classes|interopItemClassesLabel", "interoperability/productions/items/jobs|interopItemJobsLabel", "interoperability/productions/items|interopItemsLabel", "interoperability/productions/items/log|interopItemLogLabel", "interoperability/productions/items/messages|interopItemMessagesLabel", "interoperability/productions/items/queue|interopItemQueueLabel", "interoperability/productions/items/settings|interopItemSettingsLabel", "interoperability/productions/items/document|interopItemStatusLabel", "interoperability/productions/items/test|interopItemTestLabel", "interoperability/lookup-tables/entries|interopLookupEntriesLabel", "interoperability/messages/contents|interopMessageContentsLabel", "interoperability/messages/document|logViewerColumnMessage", "interoperability/messages/trace|interopMessageTraceLabel", "interoperability/processes/document|interopBplEditorTitle", "interoperability/productions/diagram|interopProductionDiagramTitle", "interoperability/queues/messages|interopQueueMessagesLabel", "interoperability/rules/document|interopRuleEditorTitle", "interoperability/transforms/document|interopDtlEditorTitle", "interoperability/productions|interopProductionsLabel", "interoperability/processes|interopProcessesLabel", "interoperability/transforms|interopTransformsLabel", "interoperability/rules|interopRulesLabel", "interoperability/monitor|interopMonitorLabel", "interoperability/queues|interopQueuesLabel", "interoperability/jobs|interopJobsLabel", "interoperability/lookup-tables|interopLookupTablesLabel", "interoperability/business-partners|interopBusinessPartnersLabel", "interoperability/schema-viewer|interopSchemaViewerTitle", "interoperability/messages|interopItemTabMessages")
         For tAt = 1:1:$ListLength(tOrder) {
             Set tScreen = tInterop.screens.%Get(tAt - 1)
             Do $$$AssertEquals($Select($IsObject(tScreen): tScreen.route _ "|" _ tScreen.labelKey, 1: ""), $List(tOrder, tAt), "interoperability position " _ tAt _ " is its declared screen, under its own label key")
@@ -582,8 +590,8 @@ Method TestThePayloadCarriesEveryAreaWithAVerdict()
     Set tAnalytics = ##class(OcuPilot.Test.Descriptor).AreaEntry(tObject.areas, "analytics")
     Do $$$AssertTrue($IsObject(tAnalytics), "the payload carries the analytics area")
     If $IsObject(tAnalytics) {
-        Do $$$AssertEquals(tAnalytics.screens.%Size(), 11, "which carries its eleven built screens -- an added Analytics screen updates this count and the order below with it")
-        Set tOrder = $ListBuild("analytics/cubes/dimensions|analyticsTabDimensions", "analytics/cubes/document|analyticsTabMeasures", "analytics/cubes/relationships|analyticsTabRelationships", "analytics/term-lists/entries|analyticsTermListEntriesLabel", "analytics/cubes|analyticsCubesLabel", "analytics/term-lists|analyticsTermListsLabel", "analytics/folder-items|analyticsFolderItemsLabel", "analytics/architect|analyticsArchitectLabel", "analytics/analyzer|analyticsAnalyzerLabel", "analytics/user-portal|analyticsUserPortalLabel", "analytics/mdx-query|analyticsMdxQueryLabel")
+        Do $$$AssertEquals(tAnalytics.screens.%Size(), 12, "which carries its twelve built screens -- an added Analytics screen updates this count and the order below with it")
+        Set tOrder = $ListBuild("analytics/cubes/dimensions|analyticsTabDimensions", "analytics/cubes/document|analyticsTabMeasures", "analytics/cubes/relationships|analyticsTabRelationships", "analytics/term-lists/entries|analyticsTermListEntriesLabel", "analytics/cubes|analyticsCubesLabel", "analytics/term-lists|analyticsTermListsLabel", "analytics/folder-items|analyticsFolderItemsLabel", "analytics/architect|analyticsArchitectLabel", "analytics/analyzer|analyticsAnalyzerLabel", "analytics/user-portal|analyticsUserPortalLabel", "analytics/mdx-query|analyticsMdxQueryLabel", "analytics/cube-manager|analyticsCubeManagerLabel")
         For tAt = 1:1:$ListLength(tOrder) {
             Set tScreen = tAnalytics.screens.%Get(tAt - 1)
             Do $$$AssertEquals($Select($IsObject(tScreen): tScreen.route _ "|" _ tScreen.labelKey, 1: ""), $List(tOrder, tAt), "analytics position " _ tAt _ " is its declared screen, under its own label key")

@@ -48,10 +48,10 @@ ClassMethod Gate(Output pRefused As %Boolean, pWriteTool As %String = "") As %St
     Quit ##super(.pRefused, pWriteTool)
 }
 
-ClassMethod Body(Output pBody As %DynamicObject) As %Boolean [ Private ]
+ClassMethod Body(Output pBody As %DynamicObject, Output pField As %String) As %Boolean [ Private ]
 {
     Do ##class(OcuPilot.Test.ScreenSaveTrace).Mark("body")
-    Quit ##super(.pBody)
+    Quit ##super(.pBody, .pField)
 }
 
 ClassMethod CreateIdentity(pBody As %DynamicObject, Output pId As %String, Output pParts As %List, ByRef pShape)

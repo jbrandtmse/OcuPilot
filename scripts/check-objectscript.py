@@ -177,7 +177,8 @@ prose into one checker.
 
 This checker is deliberately line-oriented rather than a full UDL parser: it is exact
 enough to catch the violations above and cheap enough to run on every commit and every
-CI build. `.githooks/pre-commit` runs it on staged `.cls`/`.mac`/`.inc`/`ui` files,
+CI build. `.githooks/pre-commit` runs it over the whole tree whenever a commit stages a
+`.cls`/`.mac`/`.inc` under `src/OcuPilot/`, a `ui/` path, `module.xml` or `scripts/*.sh`,
 `.github/workflows/ci.yml` runs it on every change, and `bash scripts/lint-docs.sh` and this
 script together are the two mechanical document/code gates this repository has. Every run
 prints the file count it scanned, so "found nothing wrong" and "looked at nothing" are
@@ -917,7 +918,8 @@ SHELL_API_REACH_RE = re.compile(r"OcuPilot\.Api\.(?!Error\b)\w+(?:\.\w+)*")
 CAPTURE_RE = re.compile(r"BeginCapture|%SYS\.Capture", re.IGNORECASE)
 # The port classes that may open an output capture. Story 4.2 wrote this rule when AdminPort was
 # the only port that captured; Epic 6's MgmntPort captures the same way, Story 19.1's AtelierPort
-# is the third, and Story 20.6's InteropPort the fourth, around the host test's send. The rule still
+# is the third, and Story 20.6's InteropPort the fourth, around the host test's send; Story 20.34's
+# AnalyticsPort is the fifth, around the cube build and synchronize. The rule still
 # refuses a capture anywhere else, which is what keeps one from opening inside another (DW-1173
 # asks whether these can nest).
 CAPTURE_ALLOWED = frozenset(
@@ -926,6 +928,7 @@ CAPTURE_ALLOWED = frozenset(
         "src/OcuPilot/Port/MgmntPort.cls",
         "src/OcuPilot/Port/AtelierPort.cls",
         "src/OcuPilot/Port/InteropPort.cls",
+        "src/OcuPilot/Port/AnalyticsPort.cls",
     }
 )
 

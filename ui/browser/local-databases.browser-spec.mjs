@@ -116,6 +116,9 @@ const detailsUrl = (directory) => `/ocupilot/${DETAILS_ROUTE}/${encodeEntityId(d
 /** The class that seeds and removes a paused portal compact (test-only, armed by `OCUPILOT_ALLOW_PRINCIPALS`). */
 const SEED = 'OcuPilot.Test.BackgroundSeed';
 
+/** AC8 needs a compact that is listed as paused, not a long one: a tenth of the seed's default fill (about 117 MB, not 1.2 GB), so the leg writes and deletes little disk before the next page load. */
+const COMPACT_SEED_NODES = 30000;
+
 /** Whether the AC8 leg seeded, so `after` removes the seed again whatever the leg answered. */
 let seededCompact = false;
 
@@ -773,7 +776,7 @@ test('AC8 (DW-1080): Database details lists the paused compact running against i
   try {
     const seeded = seedIris(
       [
-        `Set sc=##class(${SEED}).PausedCompact(.job,.task)`,
+        `Set sc=##class(${SEED}).PausedCompact(.job,.task,${COMPACT_SEED_NODES})`,
         mark('BGSEED', `$Select($System.Status.IsOK(sc):"ok#"_##class(${SEED}).Directory(),1:$System.Status.GetErrorText(sc))`),
       ],
       'BGSEED'

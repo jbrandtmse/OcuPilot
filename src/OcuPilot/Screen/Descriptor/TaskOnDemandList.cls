@@ -84,6 +84,7 @@ XData Declaration
     "emptyNextKey": "",
     "emptyAgentKey": "taskOnDemandEmptyAgent"
   },
+  "rowTarget": {"route": "tasks/schedule/details", "field": "Id"},
   "toolIdentifier": "tasks.ondemand"
 }
 }

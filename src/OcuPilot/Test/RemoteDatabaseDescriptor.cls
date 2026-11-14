@@ -209,4 +209,15 @@ ClassMethod Rows(pRows As %DynamicArray) As %String
     Quit tOut
 }
 
+/// <p>The delete's card lists the data server and the directory, each removed, in that order.</p>
+/// <p>Mutation (Rule 19): drop <code>removed</code> from <method>OcuPilot.Screen.Tool.Write.RemovalRows</method>
+/// and recompile the <code>OcuPilot.Screen.Tool</code> package -- this goes red.</p>
+Method TestTheDeleteCardListsTheDatabaseItRemoves()
+{
+    Set tTool = "OcuPilot.Screen.Tool.RemoteDatabaseDelete"
+    Do $$$AssertStatusOK($ClassMethod(tTool, "StateDiff", {"Server": "OCUPROBE", "Directory": "/ocu/probe/"}, .tRows, .tProblem), "the delete's card is built")
+    Do $$$AssertEquals(tRows.%ToJSON() _ "|" _ tProblem, "[{""field"":""Server"",""before"":""OCUPROBE"",""after"":"""",""removed"":true},{""field"":""Directory"",""before"":""/ocu/probe/"",""after"":"""",""removed"":true}]|", "two removed rows in the declared order")
+    Do $$$AssertStatusOK($ClassMethod(tTool, "StateDiff", {"Directory": "/ocu/probe/"}, .tRows, .tProblem), "a read without the data server is answered")
+    Do $$$AssertTrue((tProblem '= "") && (tRows.%Size() = 0), "and refused with a problem and no row")
+}
 }

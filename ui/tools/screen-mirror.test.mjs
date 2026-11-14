@@ -55,6 +55,7 @@ import {
   PROMPT_GROUP_KEYS,
   SCREEN_REGISTRY_SOURCE,
   WORKFLOW_SOURCE,
+  parseEntryWorkflowIds,
   parseWorkflowIds,
   tabProblem,
   timelineMemberProblem,
@@ -900,7 +901,7 @@ test('every shipped built screen declares at least three suggested prompts that 
 });
 
 // Story 20.12, AD-66: a suggested prompt's `workflow` is a catalog id, read from `Workflow.cls`'s own
-// `XData Catalog`; every emitted `workflow` in the mirror is one, the nine catalog ids are exactly the
+// `XData Catalog`; every emitted `workflow` in the mirror is one, the ten catalog ids are exactly the
 // ones the instance's `WorkflowCatalog` test holds, and an unknown id reaches the generator as a refusal.
 //
 // Mutation (Rule 19): accept any `workflow` in `suggestedPromptsProblem` -> the corpus test above and
@@ -910,8 +911,8 @@ test('every workflow a prompt names is a catalog id, and the generator refuses a
   const ids = parseWorkflowIds(readFileSync(WORKFLOW_SOURCE, 'utf8'));
   assert.deepEqual(
     ids,
-    ['recoverproduction', 'resendmessages', 'tracemessage', 'systemhealth', 'securityposture', 'slowquery', 'compileclass', 'reviewclass', 'newproject'],
-    'the catalog holds the nine workflows, in order'
+    ['recoverproduction', 'resendmessages', 'tracemessage', 'systemhealth', 'securityposture', 'slowquery', 'compileclass', 'reviewclass', 'newproject', 'investigate'],
+    'the catalog holds the ten workflows, in order'
   );
   const sources = readSources();
   assert.deepEqual(sources.workflowIds, ids, 'readSources reads the same ids');
@@ -923,9 +924,12 @@ test('every workflow a prompt names is a catalog id, and the generator refuses a
       emitted.add(prompt.workflow);
     }
   }
-  assert.deepEqual([...emitted].sort(), [...ids].sort(), 'every catalog workflow is offered by a screen prompt');
+  const entryOnly = parseEntryWorkflowIds(readFileSync(WORKFLOW_SOURCE, 'utf8'));
+  assert.deepEqual(entryOnly, ['investigate'], 'investigate is the one workflow an entry control offers');
+  const prompted = ids.filter((id) => !entryOnly.includes(id));
+  assert.deepEqual([...emitted].sort(), [...prompted].sort(), 'every catalog workflow but an entry one is offered by a screen prompt');
   const checkedIn = readCheckedInMirror();
-  for (const id of ids) assert.ok(checkedIn.includes(`"workflow": "${id}"`), `the checked-in mirror emits '${id}'`);
+  for (const id of prompted) assert.ok(checkedIn.includes(`"workflow": "${id}"`), `the checked-in mirror emits '${id}'`);
 
   const userForm = sources.screens.find((screen) => screen.className === 'OcuPilot.Screen.Descriptor.UserForm');
   const hostile = structuredClone(userForm.declaration);
@@ -1039,6 +1043,7 @@ test('tabProblem and tabGroupProblem return every sentence OcuPilot.Test.TabCorp
     ['system-explorer/sql-tables/constraints', 'system-explorer/sql-tables/document', 7, 0],
     ['interoperability/productions/items/test', 'interoperability/productions/items/document', 7, 0],
     ['system-explorer/sql-tables/cached-queries', 'system-explorer/sql-tables/document', 8, 0],
+    ['interoperability/productions/items/classes', 'interoperability/productions/items/document', 8, 0],
     ['system-explorer/sql-tables/statements', 'system-explorer/sql-tables/document', 9, 0],
   ]);
   assert.ok(emitted.every((screen) => 'tab' in screen), 'every screen emits tab, null when it is no tab');
@@ -1583,6 +1588,7 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
       'OcuPilot.Screen.Descriptor.ExplorerSqlViewStatements',
       'OcuPilot.Screen.Descriptor.ExplorerSqlViews',
       'OcuPilot.Screen.Descriptor.GlobalMappingList',
+      'OcuPilot.Screen.Descriptor.InteropItemClassTab',
       'OcuPilot.Screen.Descriptor.InteropItemJobTab',
       'OcuPilot.Screen.Descriptor.InteropItemList',
       'OcuPilot.Screen.Descriptor.InteropItemLogTab',
@@ -2258,6 +2264,8 @@ test('the build refuses a privilege pair missing a half, in an area and in a des
   assert.equal(malformedPair([{ permission: 'USE' }]), '#1', 'no resource');
   assert.equal(malformedPair([{ resource: '%Admin_Secure', permission: '' }]), '#1', 'an empty permission');
   assert.equal(malformedPair([{ resource: 'a', permission: 'USE' }, 'not-an-object']), '#2', 'and the position is named');
+  assert.equal(malformedPair([{ resource: 5, permission: 'USE' }]), '#1', 'a resource that is not a string');
+  assert.equal(malformedPair([{ resource: 'a', permission: true }]), '#1', 'nor is a permission');
 
   // `refSeparator` is what a real source set carries; a synthetic one declares it too, or the
   // generator refuses it before it reaches the refusal under test.
@@ -2662,21 +2670,23 @@ test('declarationProblem returns every sentence OcuPilot.Test.DeclarationCorpus 
 // refusal reaches the generator.
 //
 // Mutation (Rule 19): delete the `ownPrivilegesProblem` call from `buildMirror` -> the "reaches the
-// generator" assertion goes red while the corpus run stays green.
+// generator" assertions go red while the corpus run stays green. Drop the area check from
+// `ownPrivilegesProblem` -> the area cases of the corpus run and the area leg of the build go red.
 test('ownPrivilegesProblem returns every sentence OwnPrivilegeCases declares, and an unrequired own pair never reaches the mirror', () => {
   const corpus = testCorpus(['Test', 'DeclarationCorpus.cls'], 'OwnPrivilegeCases');
   let refusals = 0;
   for (const testCase of corpus.cases) {
-    const declaration = { privileges: structuredClone(corpus.privileges) };
+    const declaration = { area: corpus.area, privileges: structuredClone(corpus.privileges) };
     if ('ownPrivileges' in testCase) declaration.ownPrivileges = structuredClone(testCase.ownPrivileges);
-    assert.equal(ownPrivilegesProblem(declaration), testCase.expected, testCase.name);
+    assert.equal(ownPrivilegesProblem(declaration, structuredClone(corpus.areaPrivileges)), testCase.expected, testCase.name);
     if (testCase.expected !== null) refusals += 1;
   }
   assert.ok(refusals > 0, 'the corpus carries at least one refusing case');
 
-  const { screens } = readSources();
+  const { screens, areas } = readSources();
   for (const screen of screens) {
-    assert.equal(ownPrivilegesProblem(screen.declaration), null, `${screen.className}'s own pairs pass`);
+    const area = areas.find((candidate) => candidate.key === screen.declaration.area);
+    assert.equal(ownPrivilegesProblem(screen.declaration, area?.privileges), null, `${screen.className}'s own pairs pass`);
   }
   const owners = screens.filter((screen) => Array.isArray(screen.declaration.ownPrivileges)).map((screen) => screen.className);
   // Story 16.3, DW-1018 (Option A): the Logs area's two, and the thirteen wallet and OAuth 2.0
@@ -2701,12 +2711,14 @@ test('ownPrivilegesProblem returns every sentence OwnPrivilegeCases declares, an
   // %Development:USE, beside the Analytics area's %DeepSee_Portal. Story 20.32's Architect and Analyzer links own
   // %DeepSee_Architect:USE and %DeepSee_Analyzer:USE, and the User Portal link owns none.
   // Story 20.33's MDX query owns %Development:USE beside the Analytics area's %DeepSee_Portal.
+  // Story 20.34's Cube manager owns %DeepSee_Admin:USE, the classic Cube Registry's resource, beside the Analytics area's %DeepSee_Portal.
   assert.deepEqual(
     owners.sort(),
     [
       'OcuPilot.Screen.Descriptor.AllowedDirectoryList',
       'OcuPilot.Screen.Descriptor.AnalyticsAnalyzerLink',
       'OcuPilot.Screen.Descriptor.AnalyticsArchitectLink',
+      'OcuPilot.Screen.Descriptor.AnalyticsCubeManager',
       'OcuPilot.Screen.Descriptor.AnalyticsFolderItemList',
       'OcuPilot.Screen.Descriptor.AnalyticsMdxQuery',
       'OcuPilot.Screen.Descriptor.AnalyticsTermListEntryList',
@@ -2718,6 +2730,7 @@ test('ownPrivilegesProblem returns every sentence OwnPrivilegeCases declares, an
       'OcuPilot.Screen.Descriptor.EncryptionKeyFileForm',
       'OcuPilot.Screen.Descriptor.ExplorerDocDbList',
       'OcuPilot.Screen.Descriptor.InteropBusinessPartnerList',
+      'OcuPilot.Screen.Descriptor.InteropItemClassTab',
       'OcuPilot.Screen.Descriptor.InteropItemJobTab',
       'OcuPilot.Screen.Descriptor.InteropItemList',
       'OcuPilot.Screen.Descriptor.InteropItemLogTab',
@@ -2778,6 +2791,24 @@ test('ownPrivilegesProblem returns every sentence OwnPrivilegeCases declares, an
         screens: [{ file: 'Hostile.cls', className: 'OcuPilot.Screen.Descriptor.Hostile', declaration: hostile }],
       }),
     /Hostile\.cls \(OcuPilot\.Screen\.Descriptor\.Hostile\): own privilege pair %Ens_EventLog:USE is not one of the screen's declared privileges/
+  );
+
+  // An own pair the screen's area already declares is refused at the build, with the area read
+  // from the declaration's `area`.
+  const sources = readSources();
+  const owned = structuredClone(testCorpus(['Test', 'DeclarationCorpus.cls'], 'Cases').declaration);
+  const [areaPair] = sources.areas.find((area) => area.key === owned.area).privileges;
+  owned.privileges = [areaPair];
+  owned.ownPrivileges = [areaPair];
+  assert.throws(
+    () =>
+      buildMirror({
+        ...sources,
+        screens: [{ file: 'Owned.cls', className: 'OcuPilot.Screen.Descriptor.Owned', declaration: owned }],
+      }),
+    new RegExp(
+      `Owned\\.cls \\(OcuPilot\\.Screen\\.Descriptor\\.Owned\\): own privilege pair ${areaPair.resource}:${areaPair.permission} is one its area '${owned.area}' already declares`
+    )
   );
 });
 

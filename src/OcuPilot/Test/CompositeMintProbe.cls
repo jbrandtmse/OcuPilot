@@ -21,6 +21,17 @@ Parameter PRESENT = "present";
 /// target's id as the read was asked it.</p>
 Parameter REFUSED = "refused";
 
+/// <p>The argument <class>OcuPilot.Screen.Tool.InteropItemChangeClassMint</class> refuses from an agent, as its tool class names it.</p>
+Parameter REVIEWEDARGUMENT = "Reviewed";
+
+/// <p>The agent-argument check <class>OcuPilot.Screen.Tool.InteropItemChangeClassMint</class> asks its tool class before it reads: this
+/// probe finds no problem, so the mint reaches the read.</p>
+ClassMethod ArgumentProblem(pIdValue As %String, pArgs As %DynamicObject, Output pProblem As %String) As %Status
+{
+    Set pProblem = ""
+    Quit $$$OK
+}
+
 /// <p>The port this tool's target lives behind: this class.</p>
 ClassMethod PortClass() As %String
 {

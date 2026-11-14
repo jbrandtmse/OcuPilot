@@ -73,14 +73,22 @@ Method OnBeforeAllTests() As %Status
 Method OnAfterAllTests() As %Status
 {
     Set tSC = $ClassMethod(..#FIXTURE, "Clear")
+    Quit $$$ADDSC(tSC, ..DeletePrincipals(..#PRINCIPALS))
+}
+
+/// <p>Delete each principal of <var>pPrincipals</var> (<code>user:pairs</code>, separated by <code>;</code>) and its role; a failing
+/// status naming any that survives. <class>OcuPilot.Test.InteropPartnerGate</class> reuses it.</p>
+ClassMethod DeletePrincipals(pPrincipals As %String) As %Status
+{
+    Set tSC = $$$OK
     Set tOrigNS = $NAMESPACE
     Try {
         Set $NAMESPACE = "%SYS"
-        For tI = 1:1:$Length(..#PRINCIPALS, ";") {
-            Set tUser = $Piece($Piece(..#PRINCIPALS, ";", tI), ":", 1)
+        For tI = 1:1:$Length(pPrincipals, ";") {
+            Set tUser = $Piece($Piece(pPrincipals, ";", tI), ":", 1)
             If ##class(Security.Users).Exists(tUser) Do ##class(Security.Users).Delete(tUser)
             If ##class(Security.Roles).Exists(tUser _ "Role") Do ##class(Security.Roles).Delete(tUser _ "Role")
-            If ##class(Security.Users).Exists(tUser) || ##class(Security.Roles).Exists(tUser _ "Role") Set tSC = $$$ADDSC(tSC, $$$ERROR($$$GeneralError, "OcuPilot.Test.InteropLookupGate left the principal or role of " _ tUser))
+            If ##class(Security.Users).Exists(tUser) || ##class(Security.Roles).Exists(tUser _ "Role") Set tSC = $$$ADDSC(tSC, $$$ERROR($$$GeneralError, "the principal or role of " _ tUser _ " survived its deletion"))
         }
         Set $NAMESPACE = tOrigNS
     } Catch ex {
@@ -382,6 +390,28 @@ ClassMethod Probe(pParent As %Integer, pUsername As %String, pNamespace As %Stri
 /// namespace's code database, then read the decisive grants back.</p>
 Method EnsurePrincipals() As %Status
 {
+    Set tOrigNS = $NAMESPACE
+    Set tSC = ..CreatePrincipals(..#PRINCIPALS, ..PreparedPassword, "the lookup endpoints' gate")
+    Try {
+        If $$$ISERR(tSC) Quit
+        For tCase = $ListBuild("OcuP205Lookup", "%Ens_LookupTables", "WRITE", 1), $ListBuild("OcuP205NoLookWrite", "%Ens_LookupTables", "WRITE", 0), $ListBuild("OcuP205NoLookRead", "%Ens_LookupTables", "READ", 0), $ListBuild("OcuP205DbReadOnly", "%DB_USER", "WRITE", 0), $ListBuild("OcuP205DbReadOnly", "%DB_USER", "READ", 1), $ListBuild("OcuP205NoPortal", "%Ens_Portal", "USE", 0), $ListBuild("OcuP205NoCfgRead", "%Ens_ProductionConfig", "READ", 0), $ListBuild("OcuP205Partner", "%Ens_ProductionConfig", "READ", 1), $ListBuild("OcuP205Lookup", "%Admin_FileSystemAccess", "USE", 1), $ListBuild("OcuP205DbReadOnly", "%Admin_FileSystemAccess", "USE", 1), $ListBuild("OcuP205NoFile", "%Admin_FileSystemAccess", "USE", 0), $ListBuild("OcuP205NoLookWrite", "%Admin_FileSystemAccess", "USE", 0) {
+            If $SYSTEM.Security.CheckUserPermission($List(tCase, 1), $List(tCase, 2), $List(tCase, 3)) '= $List(tCase, 4) {
+                Set tSC = $$$ERROR($$$GeneralError, "the principal " _ $List(tCase, 1) _ "'s " _ $List(tCase, 2) _ ":" _ $List(tCase, 3) _ " did not read back as declared")
+                Quit
+            }
+        }
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Create each principal of <var>pPrincipals</var> (<code>user:pairs</code>, separated by <code>;</code>) with a role of its own
+/// holding its pairs and READ on the install namespace's code database, every user with the password <var>pPassword</var> and
+/// <var>pPurpose</var> in its role's description. <class>OcuPilot.Test.InteropPartnerGate</class> reuses it.</p>
+ClassMethod CreatePrincipals(pPrincipals As %String, pPassword As %String, pPurpose As %String) As %Status
+{
     Set tSC = $$$OK
     Set tOrigNS = $NAMESPACE
     Try {
@@ -391,25 +421,18 @@ Method EnsurePrincipals() As %Status
             Quit
         }
         Set $NAMESPACE = "%SYS"
-        For tI = 1:1:$Length(..#PRINCIPALS, ";") {
-            Set tEntry = $Piece(..#PRINCIPALS, ";", tI)
+        For tI = 1:1:$Length(pPrincipals, ";") {
+            Set tEntry = $Piece(pPrincipals, ";", tI)
             Set tUser = $Piece(tEntry, ":", 1)
             Set tRole = tUser _ "Role"
             If ##class(Security.Users).Exists(tUser) Do ##class(Security.Users).Delete(tUser)
             If ##class(Security.Roles).Exists(tRole) Do ##class(Security.Roles).Delete(tRole)
-            Set tSC = ##class(Security.Roles).Create(tRole, "OcuPilot test: the lookup endpoints' gate (throwaway)", tHome _ ":R," _ $Piece(tEntry, ":", 2, *), "")
+            Set tSC = ##class(Security.Roles).Create(tRole, "OcuPilot test: " _ pPurpose _ " (throwaway)", tHome _ ":R," _ $Piece(tEntry, ":", 2, *), "")
             If $$$ISERR(tSC) Quit
-            Set tSC = ##class(Security.Users).Create(tUser, tRole, ..PreparedPassword, "OcuPilot lookup gate test principal (throwaway)", "", "", "", 0, 1, "Created by OcuPilot.Test.InteropLookupGate; deleted in OnAfterAllTests")
+            Set tSC = ##class(Security.Users).Create(tUser, tRole, pPassword, "OcuPilot test principal (throwaway)", "", "", "", 0, 1, "Created by an OcuPilot gate test; deleted when it ends")
             If $$$ISERR(tSC) Quit
         }
         Set $NAMESPACE = tOrigNS
-        If $$$ISERR(tSC) Quit
-        For tCase = $ListBuild("OcuP205Lookup", "%Ens_LookupTables", "WRITE", 1), $ListBuild("OcuP205NoLookWrite", "%Ens_LookupTables", "WRITE", 0), $ListBuild("OcuP205NoLookRead", "%Ens_LookupTables", "READ", 0), $ListBuild("OcuP205DbReadOnly", "%DB_USER", "WRITE", 0), $ListBuild("OcuP205DbReadOnly", "%DB_USER", "READ", 1), $ListBuild("OcuP205NoPortal", "%Ens_Portal", "USE", 0), $ListBuild("OcuP205NoCfgRead", "%Ens_ProductionConfig", "READ", 0), $ListBuild("OcuP205Partner", "%Ens_ProductionConfig", "READ", 1), $ListBuild("OcuP205Lookup", "%Admin_FileSystemAccess", "USE", 1), $ListBuild("OcuP205DbReadOnly", "%Admin_FileSystemAccess", "USE", 1), $ListBuild("OcuP205NoFile", "%Admin_FileSystemAccess", "USE", 0), $ListBuild("OcuP205NoLookWrite", "%Admin_FileSystemAccess", "USE", 0) {
-            If $SYSTEM.Security.CheckUserPermission($List(tCase, 1), $List(tCase, 2), $List(tCase, 3)) '= $List(tCase, 4) {
-                Set tSC = $$$ERROR($$$GeneralError, "the principal " _ $List(tCase, 1) _ "'s " _ $List(tCase, 2) _ ":" _ $List(tCase, 3) _ " did not read back as declared")
-                Quit
-            }
-        }
     } Catch ex {
         Set $NAMESPACE = tOrigNS
         Set tSC = ex.AsStatus()

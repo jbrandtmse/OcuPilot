@@ -6,6 +6,9 @@
  * never sends a turn itself. The request is a client-side hand-off, not a context channel: what
  * reaches the model is still only the `screen_context` payload the panel assembles (AD-11).
  *
+ * "Investigate this entry" (Story 20.36) rides the same store as a request of kind `investigate`, under
+ * the same gate; the panel sends it with the `investigate` workflow.
+ *
  * The gate is the one "Explain this screen" answers, in its order: the control shows once the
  * agent status has answered with an enabled definition and the sharing setting has answered, and it refuses under the kill switch, a
  * running turn and sharing off, described by that reason's id.
@@ -30,10 +33,17 @@ export const CONTEXT_CHIP_OFF_ID = 'ocu-context-chip-off';
 /** Why an entry control refuses, topmost first. */
 export type ExplainEntryReason = 'kill-switch' | 'busy' | 'sharing-off';
 
-/** One pending request: the screen the entry is on and the entry as that screen shows it. */
+/** What a request asks: the entry explained, or investigated through the `investigate` workflow (Story 20.36). */
+export type ExplainEntryKind = 'explain' | 'investigate';
+
+/** The guided workflow an Investigate request starts: a catalog id of `Kernel/Agent/Workflow` marked `entry`. */
+export const INVESTIGATE_WORKFLOW = 'investigate';
+
+/** One pending request: the screen the entry is on, the entry as that screen shows it, and what is asked. */
 export interface ExplainEntryRequest {
   readonly screen: ScreenDeclaration;
   readonly row: object;
+  readonly kind: ExplainEntryKind;
 }
 
 export interface ExplainEntryOptions {
@@ -85,9 +95,9 @@ export class ExplainEntry {
    * was recorded. Refused, recording nothing, while the control is not shown or `reason()` names a
    * reason.
    */
-  request(screen: ScreenDeclaration, row: object): boolean {
+  request(screen: ScreenDeclaration, row: object, kind: ExplainEntryKind = 'explain'): boolean {
     if (!this.shown() || this.reason() !== null) return false;
-    this.pending = { screen, row };
+    this.pending = { screen, row, kind };
     this.notify();
     return true;
   }

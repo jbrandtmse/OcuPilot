@@ -27,6 +27,9 @@ Parameter PORT = "OcuPilot.Port.InteropPort";
 /// Productions row action are read through it.</p>
 Parameter PRODUCTIONS = "OcuPilot.Test.InteropControl";
 
+/// <p>The vendor schedule handler's startup update, awaited by <method>StartProduction</method>.</p>
+Parameter STARTUPDATE = "OcuPilot.Test.InteropJobEnd";
+
 Parameter NAMESPACE = "USER";
 
 Parameter SCREEN = "/screens/interop.items";
@@ -242,6 +245,27 @@ ClassMethod Jobs() As %String
         Set tText = tText _ $Select(tText = "": "", 1: ",") _ tName
     }
     Quit tText
+}
+
+/// <p>Start the probe production through the port, as the Productions screen's Start does, and wait until the plain operation holds
+/// a job (fifteen seconds at most) and the scheduler's own startup update of the production has run
+/// (<method>OcuPilot.Test.InteropJobEnd.StartUpdated</method>, twenty seconds at most). A failing status when the port refuses or
+/// either wait runs out. The scheduler applies any update pending at that moment, so a caller that reads or changes the
+/// update-pending flag right after this returns meets a settled flag.</p>
+ClassMethod StartProduction() As %Status
+{
+    Kill tQuery
+    Set tQuery("namespace") = ..#NAMESPACE
+    Set tQuery("id") = ..#PRODUCTION
+    Set tSC = $ClassMethod(..#PORT, "Invoke", "Productions", "START", .tQuery, "", .tResult, .tHttp, .tFault)
+    If $$$ISERR(tSC) Quit tSC
+    For tTry = 1:1:30 {
+        If $ListFind($ListFromString(..Jobs()), ..#OPNAME) Quit
+        Hang 0.5
+    }
+    If '$ListFind($ListFromString(..Jobs()), ..#OPNAME) Quit $$$ERROR($$$GeneralError, "the probe production's operation holds no job after the start")
+    If '$ClassMethod(..#STARTUPDATE, "StartUpdated", .tWhy) Quit $$$ERROR($$$GeneralError, tWhy)
+    Quit $$$OK
 }
 
 /// <p>The vendor's <code>ModifyConfiguration</code> audit rows since <var>pSince</var> that name the probe

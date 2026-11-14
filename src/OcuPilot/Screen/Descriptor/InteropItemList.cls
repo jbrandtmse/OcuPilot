@@ -11,16 +11,22 @@
 /// <p><b>Its id is the composite <code>[Production, Name]</code></b>, each part kept exactly (AD-13), and
 /// its scope is <code>namespace</code>. It is never the vendor's integer item id, which a recompile
 /// renumbers.</p>
-/// <p><b>Its row actions</b> Enable, Disable and Remove, and its primary action Add, are the screen's callers
-/// of <class>OcuPilot.Screen.Tool.InteropItemEnable</class> and its three siblings (AD-53): each writes the
+/// <p><b>Its row actions</b> Enable, Disable, Copy, Change class and Remove, and its primary action Add, are the screen's callers
+/// of <class>OcuPilot.Screen.Tool.InteropItemEnable</class> and its four siblings (AD-53): each writes the
 /// stored production configuration and the production class only, so a running production reads update
 /// pending until Productions' confirmed Update applies it. Remove types the item's name and is refused while
 /// the item is enabled. Add opens a dialog; it is a person's Save, resolved through the same tool as the
-/// agent's (AD-55).</p>
+/// agent's (AD-55). Copy (Story 20.40) opens a dialog for the new item's name and posts it as the copy tool's Save
+/// (<class>OcuPilot.Screen.Tool.InteropItemCopy</class>); the copy is added disabled. Change class (Story 20.41) is the caller of
+/// <class>OcuPilot.Screen.Tool.InteropItemChangeClass</class>: its dialog lists the item's Classes tab, and the choice is reviewed (the settings
+/// the new class does not take are listed as removed) and confirmed by typing the item's name. Stop, Start and Restart (Story 20.25) are the callers of
+/// <class>OcuPilot.Screen.Tool.InteropItemStop</class>, <class>OcuPilot.Screen.Tool.InteropItemStart</class> and
+/// <class>OcuPilot.Screen.Tool.InteropItemRestart</class>: each stops or starts the item's jobs and updates the
+/// production, and each warns first.</p>
 /// <p><b>Its pairs</b> are the Productions list's: <code>%Ens_Portal:USE</code> and, as its own,
 /// <code>%Ens_ProductionConfig:READ</code>; the four tools add <code>%Ens_ProductionConfig:WRITE</code> and
-/// WRITE on the namespace's globals and routines databases, which the port checks before any vendor call
-/// (AD-8, AD-62). It does not refresh (AD-43).</p>
+/// WRITE on the namespace's globals and routines databases, and the three runtime tools <code>%Ens_ConfigItemRun:USE</code> and
+/// WRITE on the globals database, which the port checks before any vendor call (AD-8, AD-62). It does not refresh (AD-43).</p>
 Class OcuPilot.Screen.Descriptor.InteropItemList Extends OcuPilot.Screen.Descriptor.Base
 {
 
@@ -43,7 +49,7 @@ XData Declaration
   "parentScope": "interoperability/productions",
   "id": {"kind": "composite", "parts": ["Production", "Name"]},
   "primaryAction": {"id": "add", "selfProtection": ""},
-  "rowActions": [{"id": "enable", "selfProtection": ""}, {"id": "disable", "selfProtection": ""}, {"id": "remove", "selfProtection": ""}],
+  "rowActions": [{"id": "enable", "selfProtection": ""}, {"id": "disable", "selfProtection": ""}, {"id": "stop", "selfProtection": ""}, {"id": "start", "selfProtection": ""}, {"id": "restart", "selfProtection": ""}, {"id": "copy", "selfProtection": ""}, {"id": "changeclass", "selfProtection": ""}, {"id": "remove", "selfProtection": ""}],
   "context": {"fields": ["Name", "ClassName", "Type", "Enabled", "PoolSize"], "secretFields": []},
   "emptyStateKey": "interopItemsEmpty",
   "commandAliases": [],

@@ -124,7 +124,7 @@ Method TestTheStateDiffListsTheSessionAsRemoved()
     Set tSC = $ClassMethod(..#TOOL, "StateDiff", ..Row(..#SESSION, "/api/atelier/"), .tRows, .tProblem)
     Do $$$AssertStatusOK(tSC, "a session answers")
     Do $$$AssertEquals(tProblem, "", "with no problem")
-    Do $$$AssertEquals(..RowsText(tRows), "Username=OcuPilotProbeSessionUser!|Application=/api/atelier/!|SesProcessId=!|Timeout=2026-09-28 16:00:00!", "one removal row each for the user, application, process and expiry")
+    Do $$$AssertEquals(..RowsText(tRows), "Username=OcuPilotProbeSessionUser>!|Application=/api/atelier/>!|SesProcessId=>!|Timeout=2026-09-28 16:00:00>!", "one removal row each for the user, application, process and expiry")
     Set tRow = ..Row(..#SESSION, "/api/atelier/")
     Do tRow.%Remove("Application")
     Set tSC = $ClassMethod(..#TOOL, "StateDiff", tRow, .tRows, .tProblem)
@@ -175,7 +175,7 @@ Method TestTheFingerprintCoversTheApplicationAndNotTheExpiry()
     Do $$$AssertStatusOK(tSC, "the end mints: " _ $System.Status.GetErrorText(tSC))
     If $$$ISERR(tSC) Quit
     Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).LastType() _ " " _ ##class(OcuPilot.Test.ProposalFixture).WriteCount(), "LIST 0", "the mint read the list and wrote nothing")
-    Do $$$AssertEquals(..RowsText(tProposal.%Get("changed")), "Username=OcuPilotProbeSessionUser!|Application=/api/atelier/!|SesProcessId=!|Timeout=2026-09-28 16:00:00!", "the card lists the session as removed")
+    Do $$$AssertEquals(..RowsText(tProposal.%Get("changed")), "Username=OcuPilotProbeSessionUser>!|Application=/api/atelier/>!|SesProcessId=>!|Timeout=2026-09-28 16:00:00>!", "the card lists the session as removed")
     Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tProposal.%Get("proposalId"), "Destructive"), 1, "and the stored row is destructive")
 
     Do ##class(OcuPilot.Test.ProposalFixture).Arm(..Rows(..Row(..#SESSION, "/csp/sys/")))
@@ -472,7 +472,7 @@ ClassMethod RowsText(pRows As %DynamicArray) As %String
     If '$IsObject(pRows) Quit ""
     Set tIterator = pRows.%GetIterator()
     While tIterator.%GetNext(.tIndex, .tRow) {
-        Set tText = tText _ $Select(tText = "": "", 1: "|") _ tRow.%Get("field") _ "=" _ tRow.%Get("before") _ $Select(tRow.%Get("removed"): "!", 1: "")
+        Set tText = tText _ $Select(tText = "": "", 1: "|") _ tRow.%Get("field") _ "=" _ tRow.%Get("before") _ ">" _ tRow.%Get("after") _ $Select(tRow.%Get("removed"): "!", 1: "")
     }
     Quit tText
 }

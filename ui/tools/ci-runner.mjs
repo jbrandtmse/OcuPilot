@@ -364,25 +364,27 @@ export function classifyRun(className, marker) {
 }
 
 /**
- * The test classes the CHECKOUT carries: every `.cls` under `src/OcuPilot/Test/` whose own
- * `Extends` clause names a `TestCase` and which declares at least one `Test*` method.
+ * The test classes the CHECKOUT carries: every non-abstract `.cls` under `src/OcuPilot/Test/`
+ * whose primary superclass chain (the first name of each `Extends` list, followed through project
+ * base classes under the same folder) reaches `%UnitTest.TestCase`, and which has a `Test*` method
+ * of its own or on any project superclass.
  *
- * **It is a FLOOR, not the same population.** The discovery query reads `PrimarySuper`, which is
- * the whole chain, while this reads the direct `Extends` clause only — so a class reaching
- * `TestCase` through a project base class is offered by the instance and invisible here. That
- * direction is safe by construction: `main()` only reports classes on disk the instance did NOT
- * offer, so a wider instance list passes and a narrowed one is caught, which is the failure this
- * exists for. Widen the matcher the day such a base class appears.
+ * **It reads the shape of the instance's query.** `scripts/ci-unit-test.sh` lists a compiled class
+ * whose `PrimarySuper` holds `%UnitTest.TestCase` (`PrimarySuper` follows only the first-listed
+ * superclass at each level), is not abstract and has a compiled `Test*` method, inherited from any
+ * superclass or its own. A class is abstract here when its keyword list holds `Abstract`, not
+ * `Not Abstract` or `Abstract = 0`. `main()` reports a class on disk the instance did NOT offer:
+ * the instance list narrowed, or this parser read a class header differently from the compiler.
  *
  * **Why a second source.** "More than zero classes" was the only floor on discovery, so a query
- * that silently narrowed — a wrong superclass column, a renamed package, a failed compile of
- * half the tree — produced a green job over a handful of classes and nothing said so. A gate
+ * that silently narrowed -- a wrong superclass column, a renamed package, a failed compile of
+ * half the tree -- produced a green job over a handful of classes and nothing said so. A gate
  * that reports the size of what it looked at has to compare that size with something; this is
  * the something. Exported so `ci.test.mjs` can drive it.
  */
 export function testClassesOnDisk(repoRoot = REPO_ROOT, pkg = DEFAULT_PACKAGE) {
   const dir = join(repoRoot, 'src', 'OcuPilot', 'Test');
-  const names = [];
+  const parsed = new Map();
   const walk = (current, prefix) => {
     for (const entry of readdirSync(current, { withFileTypes: true })) {
       const full = join(current, entry.name);
@@ -392,14 +394,32 @@ export function testClassesOnDisk(repoRoot = REPO_ROOT, pkg = DEFAULT_PACKAGE) {
       }
       if (!entry.name.endsWith('.cls')) continue;
       const text = readFileSync(full, 'utf8');
-      if (!/Extends\s+[^\n{]*TestCase/.test(text)) continue;
-      if (!/^(?:Class)?Method\s+Test/m.test(text)) continue;
-      if (/^Class\s+\S+\s+Extends[^\n]*\[\s*Abstract/m.test(text)) continue;
-      names.push(`${prefix}${entry.name.slice(0, -'.cls'.length)}`);
+      const header = /^Class\s+(\S+)(?:\s+Extends\s+(\([^)]*\)|[^\s[{]+))?\s*(?:\[([^\]]*)\])?/m.exec(text);
+      const name = `${prefix}${entry.name.slice(0, -'.cls'.length)}`;
+      parsed.set(name, {
+        supers: header?.[2] ? header[2].replace(/[()\s]/g, '').split(',').filter(Boolean) : [],
+        abstract: /(?:^|,)\s*Abstract\b(?!\s*=\s*0)/i.test(header?.[3] ?? ''),
+        tests: /^(?:Class)?Method\s+Test/m.test(text),
+      });
     }
   };
   walk(dir, `${pkg}.`);
-  return names.sort();
+
+  const reachesTestCase = (name, seen = new Set()) => {
+    if (seen.has(name)) return false;
+    seen.add(name);
+    const primary = parsed.get(name)?.supers[0];
+    return primary === '%UnitTest.TestCase' || (primary !== undefined && reachesTestCase(primary, seen));
+  };
+  const hasTests = (name, seen = new Set()) => {
+    if (seen.has(name)) return false;
+    seen.add(name);
+    const entry = parsed.get(name);
+    return Boolean(entry) && (entry.tests || entry.supers.some((parent) => hasTests(parent, seen)));
+  };
+  return [...parsed.keys()]
+    .filter((name) => !parsed.get(name).abstract && reachesTestCase(name) && hasTests(name))
+    .sort();
 }
 
 /** The argument vector that runs one class through the session primitive. */
@@ -500,7 +520,8 @@ function main() {
 
   // ...and a run over SOME of them is the same failure, quieter. The checkout says which classes
   // exist; discovery says which the instance found. A class on disk that the instance did not
-  // offer means the tree did not compile, or the query no longer selects it.
+  // offer means the tree did not compile, the query no longer selects it, or `testClassesOnDisk`
+  // read that class's header differently from the compiler.
   if (options.classes.length === 0) {
     const onDisk = testClassesOnDisk(REPO_ROOT, options.pkg);
     const discovered = new Set(classes);

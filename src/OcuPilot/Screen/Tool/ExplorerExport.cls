@@ -76,17 +76,10 @@ ClassMethod InputSchema(pDescriptor As %String = "") As %DynamicObject
     Quit tSchema
 }
 
-/// <p>The screen's own pairs, then the custom resource of each <parameter>CLASSICPAGES</parameter>
-/// page, each pair once (AD-8, AD-44): an export writes no database, so no routines WRITE.</p>
-ClassMethod PrivilegePairs(pDescriptor As %String = "", Output pResolved As %Boolean) As %List
-{
-    Set tPairs = ##class(OcuPilot.Screen.Gate).RequiredPairs(..#DESCRIPTORCLASS, .pResolved)
-    If 'pResolved Quit ""
-    Quit ##class(OcuPilot.Screen.Gate).WithClassicPages(tPairs, ..#CLASSICPAGES)
-}
-
 /// <p>PathPort's pairs when <var>pArgs</var> names a server file by a non-empty <code>root</code>
-/// (AD-21's sixth case, AD-29); none otherwise.</p>
+/// (AD-21's sixth case, AD-29); none otherwise. It replaces
+/// <method>OcuPilot.Screen.Tool.ExplorerWrite.ArgumentPairs</method>, so an export, which writes no
+/// database, takes no routines WRITE.</p>
 ClassMethod ArgumentPairs(pDescriptor As %String = "", pArgs As %DynamicObject, Output pResolved As %Boolean) As %List
 {
     Quit ..FilePairs(pArgs, .pResolved)

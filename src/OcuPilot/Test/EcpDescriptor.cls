@@ -485,4 +485,17 @@ ClassMethod PairsText(pPairs As %List) As %String
     Quit ##class(OcuPilot.Test.LicenseDescriptor).PairsText(pPairs)
 }
 
+/// <p>The two ECP deletes' cards list what each removes, every row removed, in the declared order.</p>
+/// <p>Mutation (Rule 19): drop <code>removed</code> from <method>OcuPilot.Screen.Tool.Write.RemovalRows</method>
+/// and recompile the <code>OcuPilot.Screen.Tool</code> package -- this goes red.</p>
+Method TestTheEcpDeleteCardsListWhatTheyRemove()
+{
+    Set tTool = "OcuPilot.Screen.Tool.EcpDataServerDelete"
+    Do $$$AssertStatusOK($ClassMethod(tTool, "StateDiff", {"Address": "ocu.probe.invalid", "Port": 1972}, .tRows, .tProblem), "the data server delete's card is built")
+    Do $$$AssertEquals(tRows.%ToJSON() _ "|" _ tProblem, "[{""field"":""Address"",""before"":""ocu.probe.invalid"",""after"":"""",""removed"":true},{""field"":""Port"",""before"":""1972"",""after"":"""",""removed"":true}]|", "the address then the port, each removed")
+    Set tTool = "OcuPilot.Screen.Tool.EcpSslConnectionDelete"
+    Do $$$AssertStatusOK($ClassMethod(tTool, "StateDiff", {"SSLComputerName": "CN=OCUPROBEECPX", "Status": "Authorized"}, .tRows, .tProblem), "the SSL/TLS delete's card is built")
+    Do $$$AssertEquals(tRows.%ToJSON() _ "|" _ tProblem, "[{""field"":""SSLComputerName"",""before"":""CN=OCUPROBEECPX"",""after"":"""",""removed"":true}]|", "the one name, removed")
+}
+
 }

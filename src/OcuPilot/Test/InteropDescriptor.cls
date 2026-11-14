@@ -76,7 +76,7 @@ XData Cases
     {"name": "an interop LIST of Productions is sound", "check": "read", "source": {"port": "interop", "endpoint": "Productions", "type": "LIST"}, "expected": null},
     {"name": "so is each code list", "check": "read", "source": {"port": "interop", "endpoint": "Rules", "type": "LIST"}, "expected": null},
     {"name": "and declares no criteria", "check": "criteria", "source": {"port": "interop", "endpoint": "Productions", "type": "LIST"}, "expected": null},
-    {"name": "an endpoint the port does not serve", "check": "read", "source": {"port": "interop", "endpoint": "Nothing", "type": "LIST"}, "expected": "read.source.endpoint 'Nothing' is not one of the interop port's endpoints ('Productions', 'Processes', 'Transforms', 'Rules', 'Items', 'Settings', 'Monitor', 'ItemStatus', 'Queues', 'QueueItems', 'ItemQueue', 'ItemLog', 'ItemMessages', 'Jobs', 'ItemJobs', 'LookupTables', 'LookupEntries', 'BusinessPartners', 'ItemTest', 'Messages', 'MessageHeader', 'MessageContents', 'MessageTrace') (AD-62)"},
+    {"name": "an endpoint the port does not serve", "check": "read", "source": {"port": "interop", "endpoint": "Nothing", "type": "LIST"}, "expected": "read.source.endpoint 'Nothing' is not one of the interop port's endpoints ('Productions', 'Processes', 'Transforms', 'Rules', 'Items', 'Settings', 'Monitor', 'ItemStatus', 'Queues', 'QueueItems', 'ItemQueue', 'ItemLog', 'ItemMessages', 'Jobs', 'ItemJobs', 'LookupTables', 'LookupEntries', 'BusinessPartners', 'ItemTest', 'Messages', 'MessageHeader', 'MessageContents', 'MessageTrace', 'ItemClasses') (AD-62)"},
     {"name": "the Settings endpoint is served (Story 20.22)", "check": "read", "source": {"port": "interop", "endpoint": "Settings", "type": "LIST"}, "expected": null},
     {"name": "the Items endpoint is served (Story 20.3)", "check": "read", "source": {"port": "interop", "endpoint": "Items", "type": "LIST"}, "expected": null},
     {"name": "the Monitor endpoint is served (Story 20.4)", "check": "read", "source": {"port": "interop", "endpoint": "Monitor", "type": "LIST"}, "expected": null},
@@ -427,23 +427,32 @@ Method TestAnUnknownProductionAndAnUnservedOperation()
 /// <p>Each <code>INTEROP.*</code> code carries its published sentence, resolves through
 /// <method>OcuPilot.Api.InteropError.ReasonFor</method>, and reaches a refused tool call and a
 /// violation through <class>OcuPilot.Api.Error</class>; a code it does not declare resolves to
-/// nothing.</p>
+/// nothing. The roster names every code <method>OcuPilot.Api.InteropError.Codes</method> and
+/// <method>OcuPilot.Api.InteropError.ConsequenceCodes</method> list, and a missing one is named.</p>
 /// <p>Mutation (Rule 19): drop the <code>INTEROP.</code> line from
 /// <method>OcuPilot.Api.Error.ReasonForToolCode</method> -- this goes red.</p>
 Method TestEveryInteropErrorCodeResolvesToItsSentence()
 {
     Set tError = ..#ERROR
-    Set tCodes = $ListFromString("NAMESPACE,RUNNING,OTHER,TROUBLED,NOTRUNNING,UPTODATE,NOTTROUBLED,BUSY,STATE,STOP,RESTART,UPDATE,RECOVER,SUSPENDED,PARTSTOPPED,ITEMENABLED,ITEMDISABLED,ITEMDEFAULTSETTING,ITEMPOOLZERO,ITEMTAKEN,ITEMAMBIGUOUS,ITEMCLASS,ITEMNAME,ITEMVALUE,ITEMENABLEDREMOVE,ITEMSOURCECONTROL,ITEMPENDING,ITEMREMOVE,SETTINGSECRET,SETTINGSUPPLIED,SETTINGSAME,SETTINGDEFAULTED,SETTINGCORE,SETTINGVALUE,SETTINGLOCATION,SETTINGDESCENT,QUEUEEMPTY,QUEUECHANGED,JOBDEAD,JOBNOTRETRYING,JOBNOTSTOPPED,MESSAGEABORT,QUEUEABORT,JOBABORT,JOBSUSPEND,JOBSTOP,LOOKUPTAKEN,LOOKUPTABLECASE,LOOKUPSAME,LOOKUPSECRET,LOOKUPSOURCECONTROL,LOOKUPLOCKED,LOOKUPTABLENAME,LOOKUPKEY,LOOKUPVALUE,LOOKUPREMOVE,LOOKUPDELETE,LOOKUPIMPORTSHAPE,LOOKUPIMPORTCHANGED,LOOKUPTOOLARGE,LOOKUPEXPORTNAME,LOOKUPIMPORT,TESTDISABLED,TESTTARGETTYPE,TESTTARGETDISABLED,TESTREQUESTTYPE,TESTSECRET,TESTFIELD,TESTVALUE,TESTREQUEST,TESTSENDS,TRANSFORMSOURCEFORMAT,TRANSFORMTARGETFORMAT,TRANSFORMCONTENT,TRANSFORMRUNS,MESSAGECONTENTS,RESENDNONE,RESENDCHANGED,EDITNOTEDITABLE,EDITNOCHANGE,EDITFIELD,EDITSECRET,EDITVALUE,MESSAGERESEND,MESSAGEEDITRESEND")
+    Set tNamed = ""
+    Set tCodes = $ListFromString("NAMESPACE,RUNNING,OTHER,TROUBLED,NOTRUNNING,UPTODATE,NOTTROUBLED,BUSY,STATE,STOP,RESTART,UPDATE,RECOVER,SUSPENDED,PARTSTOPPED,ITEMENABLED,ITEMDISABLED,ITEMDEFAULTSETTING,ITEMPOOLZERO,ITEMTAKEN,ITEMAMBIGUOUS,ITEMCLASS,ITEMNAME,ITEMVALUE,ITEMENABLEDREMOVE,ITEMSOURCECONTROL,ITEMPENDING,ITEMREMOVE,ITEMNOTENABLED,ITEMTEMPSTOPPED,ITEMNOTTEMPSTOPPED,ITEMNOJOBS,ITEMSTARTPENDING,ITEMCOPYSOURCE,ITEMCOPY,ITEMNEWCLASS,ITEMSAMECLASS,ITEMREVIEWCHANGED,ITEMCHANGECLASS,ITEMSTOP,ITEMSTART,ITEMRESTART,SETTINGSECRET,SETTINGSUPPLIED,SETTINGSAME,SETTINGDEFAULTED,SETTINGCORE,SETTINGVALUE,SETTINGLOCATION,SETTINGDESCENT,QUEUEEMPTY,QUEUECHANGED,JOBDEAD,JOBNOTRETRYING,JOBNOTSTOPPED,MESSAGEABORT,QUEUEABORT,JOBABORT,JOBSUSPEND,JOBSTOP,LOOKUPTAKEN,LOOKUPTABLECASE,LOOKUPSAME,LOOKUPSECRET,LOOKUPSOURCECONTROL,LOOKUPLOCKED,LOOKUPTABLENAME,LOOKUPKEY,LOOKUPVALUE,LOOKUPREMOVE,LOOKUPDELETE,LOOKUPIMPORTSHAPE,LOOKUPIMPORTCHANGED,LOOKUPTOOLARGE,LOOKUPEXPORTNAME,LOOKUPIMPORT,TESTDISABLED,TESTTARGETTYPE,TESTTARGETDISABLED,TESTREQUESTTYPE,TESTSECRET,TESTFIELD,TESTVALUE,TESTREQUEST,TESTSENDS,TRANSFORMSOURCEFORMAT,TRANSFORMTARGETFORMAT,TRANSFORMCONTENT,TRANSFORMRUNS,MESSAGECONTENTS,RESENDNONE,RESENDCHANGED,EDITNOTEDITABLE,EDITNOCHANGE,EDITFIELD,EDITSECRET,EDITVALUE,MESSAGERESEND,MESSAGEEDITRESEND,PARTNERTAKEN,PARTNERNAMECASE,PARTNERNAMED,PARTNERSOURCECONTROL,PARTNERNAME,PARTNERLENGTH,PARTNERREMOVE")
     For tI = 1:1:$ListLength(tCodes) {
         Set tName = $List(tCodes, tI)
         Set tCode = $Parameter(tError, tName)
         Set tReason = $Parameter(tError, "REASON" _ tName)
+        Set tNamed = tNamed _ $ListBuild(tCode)
         Do $$$AssertTrue((tCode [ "INTEROP.") && (tReason '= ""), tName _ ": a code and a sentence are declared")
         Do $$$AssertEquals(##class(OcuPilot.Api.InteropError).ReasonFor(tCode), tReason, tCode _ ": ReasonFor answers the sentence")
         Do $$$AssertEquals(##class(OcuPilot.Api.Error).ReasonForToolCode(tCode), tReason, tCode _ ": a refused tool call carries it")
         Do $$$AssertEquals(##class(OcuPilot.Api.Error).ReasonForViolation(tCode), tReason, tCode _ ": and a violation")
     }
     Do $$$AssertEquals(##class(OcuPilot.Api.InteropError).ReasonFor("INTEROP.NOSUCH"), "", "a code it does not declare resolves to nothing")
+    Set tListed = ##class(OcuPilot.Api.InteropError).Codes() _ ##class(OcuPilot.Api.InteropError).ConsequenceCodes()
+    Set tMissing = ""
+    For tI = 1:1:$ListLength(tListed) {
+        If '$ListFind(tNamed, $List(tListed, tI)) Set tMissing = tMissing _ $ListBuild($List(tListed, tI))
+    }
+    Do $$$AssertEquals($ListToString(tMissing), "", "this test names every code Codes and ConsequenceCodes list")
     Do $$$AssertEquals($ListLength(##class(OcuPilot.Api.InteropError).Codes()) + $ListLength(##class(OcuPilot.Api.InteropError).ConsequenceCodes()), $ListLength(tCodes), "Codes and ConsequenceCodes list every code this test names")
 }
 

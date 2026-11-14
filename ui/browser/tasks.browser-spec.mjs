@@ -1374,3 +1374,40 @@ test('Story 9.7: the schedule list draws Create, and Create opens the New Task w
     await context.close();
   }
 });
+
+const DETAILS_PATH = /^\/ocupilot\/tasks\/schedule\/details\/(\d+)$/;
+
+test('Story 20.39 AC1: the demo task\'s name on On-demand tasks opens its Task details, with the namespace kept', async () => {
+  // Mutation (Rule 19): drop `rowTarget` from `TaskOnDemandList`, regenerate, rebuild and redeploy -> the
+  // name is text, `clickRowCentre` finds no link, and this goes red.
+  const { context, page } = await signedInAtList(config.username, config.password, ON_DEMAND_URL);
+  try {
+    await waitForRows(page, config.navigationTimeoutMs);
+    await filterToSubset(page, { text: 'nightly purge', expectRow: DEMO_TASK, total: await viewCount(page), timeoutMs: config.navigationTimeoutMs });
+    await clickRowCentre(page, { text: DEMO_TASK, link: true });
+    await page.waitForFunction((pattern) => new RegExp(pattern).test(window.location.pathname), { timeout: config.navigationTimeoutMs }, DETAILS_PATH.source);
+    await page.waitForSelector('.ocu-details-fields', { timeout: config.navigationTimeoutMs });
+    assert.equal(await page.evaluate(() => new URL(window.location.href).searchParams.get('ns')), 'HSCUSTOM', 'the link keeps the namespace');
+    assert.equal((await detailsFields(page))[STRINGS.tableColumnName], DEMO_TASK, 'Task details shows the clicked task');
+  } finally {
+    await context.close();
+  }
+});
+
+test('Story 20.39 AC1: the first row\'s name on Upcoming tasks opens that task\'s Task details', async () => {
+  // Mutation (Rule 19): drop `rowTarget` from `TaskUpcomingList`, regenerate, rebuild and redeploy -> the
+  // name is text, `clickRowCentre` finds no link, and this goes red.
+  const { context, page } = await signedInAtList(config.username, config.password, UPCOMING_URL);
+  try {
+    await waitForRows(page, config.navigationTimeoutMs);
+    const name = await page.$eval(ROW_SELECTOR, (row) => row.querySelectorAll('[role="gridcell"]')[1].textContent.trim());
+    assert.notEqual(name, '', 'the first occurrence names its task');
+    await clickRowCentre(page, { index: 0, link: true });
+    await page.waitForFunction((pattern) => new RegExp(pattern).test(window.location.pathname), { timeout: config.navigationTimeoutMs }, DETAILS_PATH.source);
+    await page.waitForSelector('.ocu-details-fields', { timeout: config.navigationTimeoutMs });
+    assert.equal(await page.evaluate(() => new URL(window.location.href).searchParams.get('ns')), 'HSCUSTOM', 'the link keeps the namespace');
+    assert.equal((await detailsFields(page))[STRINGS.tableColumnName], name, 'Task details shows the clicked occurrence\'s task');
+  } finally {
+    await context.close();
+  }
+});

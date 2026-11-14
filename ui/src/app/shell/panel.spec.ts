@@ -4548,7 +4548,9 @@ describe('Story 11.2: Explain this entry', () => {
   ];
 
   /** The panel on messages.log, or on `url`, with the hand-off provided, a transport that accepts turns, and `share`. */
-  async function mountEntry(options: { share?: boolean; restraint?: Partial<Restraint>; progress?: unknown[]; rowCap?: number; url?: string } = {}) {
+  async function mountEntry(
+    options: { share?: boolean; restraint?: Partial<Restraint>; progress?: unknown[]; rowCap?: number; url?: string; endingTurns?: number } = {}
+  ) {
     const agentContext = stubAgentContext({ share: options.share ?? true, contextRowCap: options.rowCap ?? 200 });
     await agentContext.load();
     const { schedule, scheduled } = fakeTurnSchedule();
@@ -4557,8 +4559,15 @@ describe('Story 11.2: Explain this entry', () => {
       [TURN_PATH]: [
         { kind: 'ok', status: 202, body: { turnId: 'turn-1' } },
         { kind: 'ok', status: 202, body: { turnId: 'turn-2' } },
+        { kind: 'ok', status: 202, body: { turnId: 'turn-3' } },
       ],
       ...(options.progress !== undefined ? { [turnProgressPath('turn-1')]: options.progress } : {}),
+      ...Object.fromEntries(
+        Array.from({ length: options.endingTurns ?? 0 }, (_, index) => {
+          const answer = progressWith([]);
+          return [turnProgressPath(`turn-${index + 1}`), [{ ...answer, body: { ...answer.body, turnId: `turn-${index + 1}` } }]];
+        })
+      ),
     });
     const turn = stubTurnStore({ api: api as never, schedule });
     const mounted = await mount({
@@ -4576,8 +4585,13 @@ describe('Story 11.2: Explain this entry', () => {
 
   const turnPosts = (api: ReturnType<typeof fakeTurnApi>) => api.calls.filter((call) => call.path === TURN_PATH);
 
-  async function explain(mounted: Awaited<ReturnType<typeof mountEntry>>, screen: typeof MESSAGES, row: object): Promise<boolean> {
-    const recorded = mounted.entry.request(screen, row);
+  async function explain(
+    mounted: Awaited<ReturnType<typeof mountEntry>>,
+    screen: typeof MESSAGES,
+    row: object,
+    kind: 'explain' | 'investigate' = 'explain'
+  ): Promise<boolean> {
+    const recorded = mounted.entry.request(screen, row, kind);
     await turnSettle();
     mounted.fixture.detectChanges();
     return recorded;
@@ -4696,6 +4710,78 @@ describe('Story 11.2: Explain this entry', () => {
     await explain(mounted, MESSAGES, LINES[0]);
     const statuses = [...mounted.host.querySelectorAll('.ocu-proposal-card-status')].map((node) => (node.textContent ?? '').trim());
     expect(statuses).toEqual([STRINGS.proposalStatusCanceledByMessage]);
+  });
+
+  describe('Story 20.36: Investigate this entry', () => {
+    // Mutation (Rule 19): `onExplainEntry` sends no workflow for an investigate request -> the workflow and
+    // chip assertions go red. It sends the explain sentence -> the message assertion goes red. It sends a
+    // different context for the kind -> the marker assertion goes red.
+    it('an investigate request sends its sentence, the marked context and the investigate workflow, and the chip shows', async () => {
+      const mounted = await mountEntry();
+      await typeDraft(mounted.host, mounted.fixture, 'keep me');
+      expect(await explain(mounted, MESSAGES, LINES[1], 'investigate')).toBe(true);
+
+      const posts = turnPosts(mounted.api);
+      expect(posts).toHaveLength(1);
+      const body = JSON.parse(posts[0].body ?? '{}') as {
+        message: string;
+        workflow?: string;
+        context: { route: string; view: { selected?: number; focus?: unknown; rows: unknown[] } };
+      };
+      expect(body.message).toBe(STRINGS.agentInvestigateEntryMessage);
+      expect(body.message).not.toContain(INJECTED);
+      expect(body.workflow).toBe('investigate');
+      expect(body.context.route).toBe('logs/messages');
+      expect(body.context.view.rows).toHaveLength(3);
+      expect(body.context.view.selected).toBe(1);
+      expect('focus' in body.context.view).toBe(false);
+      expect(mounted.host.querySelector('.ocu-panel-message-user')?.textContent?.trim()).toBe(STRINGS.agentInvestigateEntryMessage);
+      expect(mounted.host.querySelector('.ocu-workflow-chip-label')?.textContent?.trim()).toBe(STRINGS.agentWorkflowLabel);
+      expect(mounted.host.querySelector('.ocu-workflow-chip-name')?.textContent?.trim()).toBe(STRINGS.agentInvestigateEntryAction);
+      expect((mounted.host.querySelector('.ocu-panel-composer') as HTMLTextAreaElement).value).toBe('keep me');
+    });
+
+    it('an explain request with no workflow active sends none, and no chip shows', async () => {
+      const mounted = await mountEntry();
+      expect(await explain(mounted, MESSAGES, LINES[1])).toBe(true);
+      const body = JSON.parse(turnPosts(mounted.api)[0]?.body ?? '{}') as Record<string, unknown>;
+      expect(body['message']).toBe(STRINGS.agentExplainEntryMessage);
+      expect('workflow' in body).toBe(false);
+      expect(mounted.host.querySelector('[data-ocu-workflow-chip]')).toBeNull();
+    });
+
+    // Mutation (Rule 19): `TurnStore.send` prefers the active workflow over its argument
+    // (`this.workflowValue ?? workflow`) -> the second body names `compileclass` and this goes red.
+    it('an investigate request replaces the workflow that was active, and a typed message after it carries investigate', async () => {
+      const mounted = await mountEntry({ endingTurns: 3 });
+      expect(await mounted.turn.send('start', null, { id: 'compileclass', text: 'Compile a class' })).toBe('sent');
+      for (let guard = 0; guard < 6 && mounted.turn.busy(); guard += 1) {
+        mounted.scheduled.shift()?.run();
+        await turnSettle();
+      }
+      expect(mounted.turn.workflow()?.id).toBe('compileclass');
+
+      expect(await explain(mounted, MESSAGES, LINES[1], 'investigate')).toBe(true);
+      expect(JSON.parse(turnPosts(mounted.api)[1]?.body ?? '{}')['workflow']).toBe('investigate');
+      expect(mounted.host.querySelector('.ocu-workflow-chip-name')?.textContent?.trim()).toBe(STRINGS.agentInvestigateEntryAction);
+      for (let guard = 0; guard < 6 && mounted.turn.busy(); guard += 1) {
+        mounted.scheduled.shift()?.run();
+        await turnSettle();
+      }
+      mounted.fixture.detectChanges();
+
+      await typeDraft(mounted.host, mounted.fixture, 'and then?');
+      (mounted.host.querySelector('.ocu-panel-send') as HTMLButtonElement).click();
+      await turnSettle();
+      expect(JSON.parse(turnPosts(mounted.api)[2]?.body ?? '{}')['workflow']).toBe('investigate');
+    });
+
+    it('a refused investigate request sends nothing and shows no chip', async () => {
+      const unshared = await mountEntry({ share: false });
+      expect(await explain(unshared, MESSAGES, LINES[0], 'investigate')).toBe(false);
+      expect(turnPosts(unshared.api)).toHaveLength(0);
+      expect(unshared.host.querySelector('[data-ocu-workflow-chip]')).toBeNull();
+    });
   });
 });
 

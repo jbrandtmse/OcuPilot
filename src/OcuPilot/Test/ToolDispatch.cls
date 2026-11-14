@@ -154,11 +154,13 @@ Method TestAGateDenialReachesNothingAndTheToolStaysAdvertised()
 /// activation and license server delete (<parameter>OcuPilot.Test.Governance.LICENSEDISABLED</parameter>),
 /// and Story 18.24's two wallet key replaces (<parameter>OcuPilot.Test.Governance.WALLETKEYDISABLED</parameter>),
 /// and Story 18.25's superserver delete (<parameter>OcuPilot.Test.Governance.SUPERSERVERDELETE</parameter>),
-/// Story 20.3's item remove (<parameter>OcuPilot.Test.Governance.INTEROPITEMREMOVE</parameter>),
+/// Story 20.3's item remove and Story 20.41's item change of class (<parameter>OcuPilot.Test.Governance.INTEROPITEMREMOVE</parameter>),
 /// Story 20.23's two queue aborts and job abort (<parameter>OcuPilot.Test.Governance.INTEROPRUNTIMEDISABLED</parameter>),
 /// Story 20.31's message resend and edit and resend (<parameter>OcuPilot.Test.Governance.INTEROPMESSAGEDISABLED</parameter>),
+/// Story 20.34's cube build (<parameter>OcuPilot.Test.Governance.CUBEDISABLED</parameter>),
 /// and Story 18.26's connection delete and token revoke (<parameter>OcuPilot.Test.Governance.MFTDISABLED</parameter>),
 /// and Story 18.42's allowed directories update (<parameter>OcuPilot.Test.Governance.ALLOWLISTUPDATE</parameter>),
+/// and Story 20.26's business partner remove (<parameter>OcuPilot.Test.Governance.INTEROPPARTNERDISABLED</parameter>),
 /// which their baseline lines disable (AD-10, AD-22). It reads the stored policy, so it first asserts that no policy is
 /// stored.</p>
 /// <p>Mutation: <method>OcuPilot.Kernel.Governance.Gate.Decide</method> answers 0 -> this goes red.</p>
@@ -180,10 +182,12 @@ Method TestTheShippedGateAllowsEveryLiveToolButTheBaselineDisabled()
         If $ListFind($ListFromString($Parameter("OcuPilot.Test.Governance", "ENCRYPTIONDISABLED")), tTool.name) Set tExpected = "0|" _ ##class(OcuPilot.Api.Error).#GOVERNANCEDISABLED
         If $ListFind($ListFromString($Parameter("OcuPilot.Test.Governance", "WALLETKEYDISABLED")), tTool.name) Set tExpected = "0|" _ ##class(OcuPilot.Api.Error).#GOVERNANCEDISABLED
         If tTool.name = $Parameter("OcuPilot.Test.Governance", "SUPERSERVERDELETE") Set tExpected = "0|" _ ##class(OcuPilot.Api.Error).#GOVERNANCEDISABLED
-        If tTool.name = $Parameter("OcuPilot.Test.Governance", "INTEROPITEMREMOVE") Set tExpected = "0|" _ ##class(OcuPilot.Api.Error).#GOVERNANCEDISABLED
+        If $ListFind($ListFromString($Parameter("OcuPilot.Test.Governance", "INTEROPITEMREMOVE")), tTool.name) Set tExpected = "0|" _ ##class(OcuPilot.Api.Error).#GOVERNANCEDISABLED
         If $ListFind($ListFromString($Parameter("OcuPilot.Test.Governance", "INTEROPRUNTIMEDISABLED")), tTool.name) Set tExpected = "0|" _ ##class(OcuPilot.Api.Error).#GOVERNANCEDISABLED
         If $ListFind($ListFromString($Parameter("OcuPilot.Test.Governance", "INTEROPLOOKUPDISABLED")), tTool.name) Set tExpected = "0|" _ ##class(OcuPilot.Api.Error).#GOVERNANCEDISABLED
+        If $ListFind($ListFromString($Parameter("OcuPilot.Test.Governance", "INTEROPPARTNERDISABLED")), tTool.name) Set tExpected = "0|" _ ##class(OcuPilot.Api.Error).#GOVERNANCEDISABLED
         If $ListFind($ListFromString($Parameter("OcuPilot.Test.Governance", "INTEROPMESSAGEDISABLED")), tTool.name) Set tExpected = "0|" _ ##class(OcuPilot.Api.Error).#GOVERNANCEDISABLED
+        If tTool.name = $Parameter("OcuPilot.Test.Governance", "CUBEDISABLED") Set tExpected = "0|" _ ##class(OcuPilot.Api.Error).#GOVERNANCEDISABLED
         If $ListFind($ListFromString($Parameter("OcuPilot.Test.Governance", "MFTDISABLED")), tTool.name) Set tExpected = "0|" _ ##class(OcuPilot.Api.Error).#GOVERNANCEDISABLED
         If tTool.name = $Parameter("OcuPilot.Test.Governance", "ALLOWLISTUPDATE") Set tExpected = "0|" _ ##class(OcuPilot.Api.Error).#GOVERNANCEDISABLED
         Do $$$AssertEquals($Get(tDecision("allowed")) _ "|" _ $Get(tDecision("code")), tExpected, tTool.name _ ": " _ tExpected)
@@ -275,6 +279,21 @@ Method TestRefusedArgumentsReachNoTool()
         Do $$$AssertEquals(tResult."is_error" _ "|" _ tContent.code, "1|TOOL.ARGUMENTS", $List(tCase, 3) _ ": refused")
         Do $$$AssertTrue($IsObject(tContent.detail) && (tContent.detail.problem [ $List(tCase, 3)), $List(tCase, 3) _ ": the problem names it: " _ tResult.content)
     }
+    Do $$$AssertEquals($ClassMethod(..#COUNTER, "Calls", ..#READER), 0, "and the tool never ran")
+}
+
+/// <p>Arguments (DW-2417) -- an argument holding a number past the largest the instance holds is refused
+/// <code>TOOL.ARGUMENTS</code> with a problem that names the argument, the answer a wrongly typed one
+/// gets, and no tool runs.</p>
+/// <p>Mutation: remove the <code>OversizedMember</code> check from
+/// <method>OcuPilot.Screen.Tool.Registry.ValidateArguments</method> -> the problem no longer names the argument
+/// and this goes red.</p>
+Method TestAnOversizedArgumentIsRefusedByName()
+{
+    Do ..Call("probe_counter_read", ##class(%DynamicAbstractObject).%FromJSON("{""marker"": 1e400}"), .tResult, .tName)
+    Set tContent = ##class(%DynamicAbstractObject).%FromJSON(tResult.content)
+    Do $$$AssertEquals(tResult."is_error" _ "|" _ tContent.code, "1|TOOL.ARGUMENTS", "an oversized number is refused as arguments")
+    Do $$$AssertTrue($IsObject(tContent.detail) && (tContent.detail.problem [ "'marker'"), "the problem names the argument: " _ tResult.content)
     Do $$$AssertEquals($ClassMethod(..#COUNTER, "Calls", ..#READER), 0, "and the tool never ran")
 }
 

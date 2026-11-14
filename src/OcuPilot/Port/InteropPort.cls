@@ -1,8 +1,8 @@
-/// <p>The port to the instance's interoperability runtime (AD-62, AD-29, AD-52, Stories 20.2, 20.3, 20.5, 20.6, 20.23, 20.27 and 20.31): <b>the
+/// <p>The port to the instance's interoperability runtime (AD-62, AD-29, AD-52, Stories 20.2, 20.3, 20.5, 20.6, 20.23, 20.26, 20.27, 20.31, 20.40 and 20.41): <b>the
 /// only product class that starts, stops, restarts, updates or recovers a production, enables, disables,
-/// adds or removes one of its items, aborts a queued message, a queue's messages or a job's retried message,
+/// adds, copies, changes the class of or removes one of its items, aborts a queued message, a queue's messages or a job's retried message,
 /// suspends that message or stops a job, adds, changes or removes a lookup table's entry, deletes, imports or exports a lookup
-/// table, sends a test request to an item, runs a data transformation on a pasted message, or resends messages with or without an
+/// table, adds, changes or removes a business partner, sends a test request to an item, runs a data transformation on a pasted message, or resends messages with or without an
 /// edited body</b>, and the only one that reads the interoperability configuration for
 /// a declared read (source kind <code>interop</code>); Story 20.4 adds the nine runtime reads (<parameter>ENDPOINTS</parameter>
 /// from <code>Monitor</code> on), which write nothing. It calls the documented classes the classic pages call --
@@ -50,6 +50,14 @@
 /// takes it, refuse by name what the vendor would answer as a silent success, and record OcuPilot's own audit row
 /// (<method>AuditRuntime</method>), because the vendor records none. The vendor's lookup and partner calls check no privilege
 /// either (measured), so the gate is the whole gate.</p>
+/// <p><b>The business partner writes</b> (Story 20.26, the <code>BusinessPartners</code> endpoint's <code>ADDPARTNER</code>,
+/// <code>SETPARTNER</code> and <code>REMOVEPARTNER</code>, each over the port-composed <code>PARTNER</code> read) save and delete an
+/// <code>Ens.Config.BusinessPartner</code> through the vendor class's own <code>%Save</code> and <code>%DeleteId</code>, which check
+/// no privilege and audit nothing (measured), so the gate is the whole gate and the port records OcuPilot's own row
+/// (<method>AuditRuntime</method>). A rename cannot be expressed: the name is the target, and an update's body carries the other
+/// thirteen fields. Before any vendor call the port refuses a namespace under source control, an add of a name the namespace holds
+/// in any letter case, a remove of a partner that any item of any production of the namespace names in its Host
+/// <code>BusinessPartner</code> setting, and a field past the vendor's own length (<method>PartnerViolations</method>).</p>
 /// <p><b>The host test</b> (Story 20.6, the <code>ItemTest</code> endpoint) lists the request classes an item takes (the host class's
 /// own <code>GetMessageList</code>, as the classic dialog reads it, then their subclasses from the class dictionary) and their
 /// settable fields from the class dictionary, and sends one test request through <code>EnsLib.Testing.Service</code> as the
@@ -82,6 +90,12 @@
 /// is <code>resend</code>, at most <parameter>RESENDMAX</parameter> in one action, in ascending id order, and goes on past a vendor
 /// refusal of one. An edit resends the original header with a saved clone of its body that carries the changed fields
 /// (<method>EditCloneHere</method>); the original body is never changed.</p>
+/// <p><b>The change of class</b> (Story 20.41, the <code>Items</code> endpoint's <code>CHANGECLASS</code>) is an item write over the
+/// <code>ITEM</code> read composed from the chosen class (<parameter>NEWCLASSKEY</parameter>), which answers the settings the change
+/// removes (<method>DroppedSettings</method>, the rule of the classic <code>HostChangeClass</code>) and a digest over them. The write
+/// judges the class and the settings again under the production's lock and refuses a reviewed digest that moved
+/// (<code>INTEROP.ITEM.REVIEWCHANGED</code>) before anything is written. The <code>ItemClasses</code> endpoint lists the classes an
+/// item can change to (<method>CandidateClasses</method>).</p>
 /// <p>Seams a test subclass overrides: <method>GateClass</method>, <method>LogFault</method>,
 /// <method>StopSeconds</method>, <method>RoutineResource</method>, <method>SourceControlled</method>,
 /// <method>VendorAbortItem</method>, <method>VendorJob</method>, <method>LockTable</method>, <method>VendorSendTest</method>
@@ -95,7 +109,7 @@ Parameter GATECLASS = "OcuPilot.Screen.Gate";
 /// <p>The endpoints this port serves, comma-separated: the namespace's productions, business
 /// processes, data transformations and business rules, and a production's items.
 /// <file>ui/tools/screen-mirror.mjs</file> reads this list.</p>
-Parameter ENDPOINTS = "Productions,Processes,Transforms,Rules,Items,Settings,Monitor,ItemStatus,Queues,QueueItems,ItemQueue,ItemLog,ItemMessages,Jobs,ItemJobs,LookupTables,LookupEntries,BusinessPartners,ItemTest,Messages,MessageHeader,MessageContents,MessageTrace";
+Parameter ENDPOINTS = "Productions,Processes,Transforms,Rules,Items,Settings,Monitor,ItemStatus,Queues,QueueItems,ItemQueue,ItemLog,ItemMessages,Jobs,ItemJobs,LookupTables,LookupEntries,BusinessPartners,ItemTest,Messages,MessageHeader,MessageContents,MessageTrace,ItemClasses";
 
 Parameter ENDPOINTPRODUCTIONS = "Productions";
 
@@ -157,6 +171,11 @@ Parameter ENDPOINTBUSINESSPARTNERS = "BusinessPartners";
 /// sent) and the write <code>SENDTEST</code>.</p>
 Parameter ENDPOINTITEMTEST = "ItemTest";
 
+/// <p>The classes an item can change to (Story 20.41): <code>LIST</code> for the item <parameter>ITEMKEY</parameter> names, one row
+/// for each compiled, non-abstract class of the item's kind (<method>CandidateClasses</method>). It takes the Productions
+/// endpoint's pairs and the item write's, the classic Change Class dialog's resource.</p>
+Parameter ENDPOINTITEMCLASSES = "ItemClasses";
+
 /// <p>The namespace's message headers (Story 20.9): <code>LIST</code> searches them by time window, status, type, source, target,
 /// body class, session and error flag, newest first. It is the one endpoint whose <code>LIST</code> takes search criteria of its
 /// own, beside a parented list's route id (<parameter>SEARCHENDPOINTS</parameter>).</p>
@@ -211,6 +230,10 @@ Parameter LOOKUPPAIRS = "%Ens_Portal:USE,%Ens_LookupTables:READ";
 /// <p>The pair a lookup write adds: the classic page's <code>EDITRESOURCE</code>.</p>
 Parameter LOOKUPWRITEPAIR = "%Ens_LookupTables:WRITE";
 
+/// <p>The pair a business partner write adds (Story 20.26): the resource the classic page reads with and every other
+/// interoperability configuration write holds at WRITE. The classic page declares no edit resource, so it admits a holder of READ.</p>
+Parameter PARTNERWRITEPAIR = "%Ens_ProductionConfig:WRITE";
+
 /// <p>The pairs the ItemTest endpoint requires: the classic Interoperability menu's <code>%Ens_Portal:USE</code> and
 /// <code>EnsPortal.TestingService</code>'s own resource (Story 20.6). The vendor's <code>SendTestRequest</code> checks no
 /// privilege (measured), so these, and WRITE on the namespace's globals database for a send, are the whole gate.</p>
@@ -254,6 +277,12 @@ Parameter WRITEPAIRS = "%Ens_ProductionRun:USE";
 /// privilege of their own (measured), so the declared pairs are the whole gate. An item write does not
 /// need <code>%Ens_ProductionRun:USE</code>.</p>
 Parameter ITEMWRITEPAIRS = "%Ens_ProductionConfig:WRITE";
+
+/// <p>The pair an item runtime write (stop, start, restart) adds to the Items endpoint's pairs: the classic
+/// <code>EnsPortal.ProductionConfig</code> page's own check for a temporary stop or start. The vendor's
+/// <code>TempStopConfigItem</code> checks no privilege (measured), so the declared pairs are the whole gate. The
+/// write needs neither <code>%Ens_ProductionRun:USE</code> nor <code>%Ens_ProductionConfig:WRITE</code>.</p>
+Parameter ITEMRUNPAIR = "%Ens_ConfigItemRun:USE";
 
 /// <p>The pair a queue abort (one message or all) adds to the Queues and QueueItems endpoints' pairs: the vendor's own
 /// check in <code>Ens.Queue.AbortItem</code> (Story 20.23).</p>
@@ -314,6 +343,31 @@ Parameter TYPEDISABLE = "DISABLE";
 Parameter TYPEADD = "ADD";
 
 Parameter TYPEREMOVE = "REMOVE";
+
+/// <p>An item copy (Story 20.40): a create over the new name's absence, whose payload names the source item
+/// (<code>CopyFrom</code>) in the same production. It extends the add's path: the new item is the source's clone, stored
+/// disabled.</p>
+Parameter TYPECOPY = "COPY";
+
+/// <p>An item change of class (Story 20.41): an action-style write over the port-composed <code>ITEM</code> read, whose composed read
+/// names the chosen class under <parameter>NEWCLASSKEY</parameter> and answers the settings the change would drop.</p>
+Parameter TYPECHANGECLASS = "CHANGECLASS";
+
+/// <p>One item's runtime (Story 20.25): <code>{Production, Name, ClassName, Enabled, EnabledSource, Count, State, Current,
+/// TemporarilyStopped, OwnJobs, Jobs, NeedsUpdate, Namespace}</code>, the fresh read of the item runtime tools. The id is the
+/// composite <code>[Production, Name]</code>. With <parameter>ACTIONKEY</parameter> in the query it refuses what that action
+/// would be refused (<method>ItemRunRefusal</method>). The three writes below are not named <code>STOP</code>, <code>START</code>
+/// or <code>RESTART</code>, which add the production run resource (<method>IsWrite</method>).</p>
+Parameter TYPEITEMRUN = "ITEMRUN";
+
+/// <p>Stop one item's jobs until it is started again or its production next restarts.</p>
+Parameter TYPESTOPITEM = "STOPITEM";
+
+/// <p>Start the jobs of an item stopped with <parameter>TYPESTOPITEM</parameter>.</p>
+Parameter TYPESTARTITEM = "STARTITEM";
+
+/// <p>Stop one item's jobs and start them again.</p>
+Parameter TYPERESTARTITEM = "RESTARTITEM";
 
 /// <p>One setting: <code>{Production, Item, Target, Name, Value, Source, Default, DefaultSource, Type, Category,
 /// Location, Secret, Namespace, Count}</code>, the setting tools' fresh read. The id is the composite
@@ -380,6 +434,20 @@ Parameter TYPEREMOVEENTRY = "REMOVEENTRY";
 
 /// <p>Remove a table and every entry in it.</p>
 Parameter TYPEDELETETABLE = "DELETETABLE";
+
+/// <p>One business partner (Story 20.26): <code>{Name, Description, ...the twelve contact fields, NamedBy, Namespace}</code>, the
+/// partner tools' fresh read. The id is the partner's name. With <parameter>ACTIONKEY</parameter> in the query it refuses what that
+/// action would be refused (<method>ReadPartner</method>).</p>
+Parameter TYPEPARTNER = "PARTNER";
+
+/// <p>Add a partner, with its description and both contacts. The body names the thirteen fields; the name is the id.</p>
+Parameter TYPEADDPARTNER = "ADDPARTNER";
+
+/// <p>Store new values for the fields of a partner the namespace holds. The name cannot change.</p>
+Parameter TYPESETPARTNER = "SETPARTNER";
+
+/// <p>Remove a partner, with its description and both contacts.</p>
+Parameter TYPEREMOVEPARTNER = "REMOVEPARTNER";
 
 /// <p>The query key naming the table an entries list reads: its one criterion.</p>
 Parameter TABLEKEY = "table";
@@ -577,6 +645,24 @@ Parameter LOOKUPCODEPREFIX = "INTEROP.LOOKUP.";
 /// own <code>.LUT</code> document (<method>LookupAddressable</method>).</p>
 Parameter UNADDRESSABLE = "*?/\;";
 
+/// <p>What every business partner refusal code begins with (<class>OcuPilot.Api.InteropError</class>).</p>
+Parameter PARTNERCODEPREFIX = "INTEROP.PARTNER.";
+
+/// <p>The partner fields in the order a row carries them (Story 20.26): the name, the description, then the primary and the
+/// alternative contact's name, title, email, phone, mobile and notes. <parameter>PARTNERSETFIELDS</parameter> is the thirteen a
+/// write may set.</p>
+Parameter PARTNERFIELDS = "Name,Description,PrimaryContact,PrimaryTitle,PrimaryEmail,PrimaryPhone,PrimaryMobile,PrimaryNotes,AlternativeContact,AlternativeTitle,AlternativeEmail,AlternativePhone,AlternativeMobile,AlternativeNotes";
+
+Parameter PARTNERSETFIELDS = "Description,PrimaryContact,PrimaryTitle,PrimaryEmail,PrimaryPhone,PrimaryMobile,PrimaryNotes,AlternativeContact,AlternativeTitle,AlternativeEmail,AlternativePhone,AlternativeMobile,AlternativeNotes";
+
+/// <p>The most characters the vendor stores for a partner's name and for the name, title and email of a contact (measured: one more
+/// is refused #7201 and nothing is stored). A description, a contact's phone and mobile number and a contact's notes keep fewer or
+/// more (<method>PartnerLimit</method>).</p>
+Parameter PARTNERNAMEMAX = 255;
+
+/// <p>The entity type the audit row of a partner write names.</p>
+Parameter ENTITYPARTNER = "business-partner";
+
 /// <p>The entity types and verbs the audit row of a lookup write names (<method>AuditRuntime</method>, Story 20.5).</p>
 Parameter ENTITYLOOKUPTABLE = "lookup-table";
 
@@ -604,6 +690,9 @@ Parameter QUEUEKEY = "queue";
 /// <p>The query key carrying the digest a queue abort was reviewed with (Story 20.23): the write refuses a queue whose
 /// entries no longer give it.</p>
 Parameter DIGESTKEY = "digest";
+
+/// <p>The query key naming the class an item change of class (<parameter>TYPECHANGECLASS</parameter>) is composed for.</p>
+Parameter NEWCLASSKEY = "newClass";
 
 /// <p>The queue a business process of pool size 0 shares with every other such process; its entries are told apart by
 /// the header's target.</p>
@@ -776,10 +865,19 @@ ClassMethod IsWrite(pType As %String) As %Boolean
     Quit (pType = ..#TYPESTART) || (pType = ..#TYPESTOP) || (pType = ..#TYPERESTART) || (pType = ..#TYPEUPDATE) || (pType = ..#TYPERECOVER)
 }
 
-/// <p>Whether <var>pType</var> is one of the item writes this port carries (Story 20.3).</p>
+/// <p>Whether <var>pType</var> is one of the item writes this port carries (Stories 20.3, 20.40 and 20.41).</p>
 ClassMethod IsItemWrite(pType As %String) As %Boolean
 {
-    Quit (pType = ..#TYPEENABLE) || (pType = ..#TYPEDISABLE) || (pType = ..#TYPEADD) || (pType = ..#TYPEREMOVE)
+    Quit (pType = ..#TYPEENABLE) || (pType = ..#TYPEDISABLE) || (pType = ..#TYPEADD) || (pType = ..#TYPECOPY) || (pType = ..#TYPEREMOVE) || (pType = ..#TYPECHANGECLASS)
+}
+
+/// <p>Whether <var>pType</var> is one of the item runtime writes this port carries (Story 20.25): an action-style write
+/// over the port-composed <code>ITEMRUN</code> read, needing the run pair and WRITE on the namespace's globals database and
+/// no routines database. It is not an item write: the stored production configuration and the production class are not
+/// changed.</p>
+ClassMethod IsItemRunWrite(pType As %String) As %Boolean
+{
+    Quit (pType = ..#TYPESTOPITEM) || (pType = ..#TYPESTARTITEM) || (pType = ..#TYPERESTARTITEM)
 }
 
 /// <p>Whether <var>pType</var> is one of the setting writes this port carries (Story 20.22). A setting write is an
@@ -817,10 +915,17 @@ ClassMethod IsMessageType(pType As %String) As %Boolean
     Quit (pType = ..#TYPERESEND) || (pType = ..#TYPEEDIT) || ..IsMessageWrite(pType)
 }
 
+/// <p>Whether <var>pType</var> is one of the business partner writes this port carries (Story 20.26): an action-style or merge
+/// write over the <code>PARTNER</code> read, needing WRITE on the namespace's globals database and no routines database.</p>
+ClassMethod IsPartnerWrite(pType As %String) As %Boolean
+{
+    Quit (pType = ..#TYPEADDPARTNER) || (pType = ..#TYPESETPARTNER) || (pType = ..#TYPEREMOVEPARTNER)
+}
+
 /// <p>Whether <var>pType</var> is any write this port carries, whichever family declares it.</p>
 ClassMethod IsAnyWrite(pType As %String) As %Boolean
 {
-    Quit ..IsWrite(pType) || ..IsItemWrite(pType) || ..IsSettingWrite(pType) || ..IsRuntimeWrite(pType) || ..IsLookupWrite(pType) || ..IsTestWrite(pType) || ..IsMessageWrite(pType)
+    Quit ..IsWrite(pType) || ..IsItemWrite(pType) || ..IsItemRunWrite(pType) || ..IsSettingWrite(pType) || ..IsRuntimeWrite(pType) || ..IsLookupWrite(pType) || ..IsPartnerWrite(pType) || ..IsTestWrite(pType) || ..IsMessageWrite(pType)
 }
 
 /// <p>The runtime reads, as a <class>%List</class>: Story 20.4's nine, Story 20.9's three message reads and Story 20.30's session trace. Each serves
@@ -856,6 +961,8 @@ ClassMethod Pairs(pEndpoint As %String, pType As %String = "") As %List
         Set tSpec = ..#LOOKUPPAIRS
     } ElseIf pEndpoint = ..#ENDPOINTITEMTEST {
         Set tSpec = ..#TESTPAIRS
+    } ElseIf pEndpoint = ..#ENDPOINTITEMCLASSES {
+        Set tSpec = ..#PRODUCTIONPAIRS _ "," _ ..#ITEMWRITEPAIRS
     } ElseIf pEndpoint = ..#ENDPOINTMONITOR {
         Set tSpec = ..#MONITORPAIRS
     } ElseIf (pEndpoint = ..#ENDPOINTQUEUES) || (pEndpoint = ..#ENDPOINTQUEUEITEMS) {
@@ -883,10 +990,12 @@ ClassMethod Pairs(pEndpoint As %String, pType As %String = "") As %List
     }
     If ..IsWrite(pType) Set tSpec = tSpec _ "," _ ..#WRITEPAIRS
     If ..IsItemWrite(pType) || ..IsSettingWrite(pType) Set tSpec = tSpec _ "," _ ..#ITEMWRITEPAIRS
+    If ..IsItemRunWrite(pType) Set tSpec = tSpec _ "," _ ..#ITEMRUNPAIR
     If (pType = ..#TYPEABORTQUEUE) || (pType = ..#TYPEABORTMESSAGE) Set tSpec = tSpec _ "," _ ..#QUEUEWRITEPAIR
     If (pType = ..#TYPEABORTJOB) || (pType = ..#TYPESTOPJOB) Set tSpec = tSpec _ "," _ ..#JOBWRITEPAIR
     If pType = ..#TYPESUSPENDJOB Set tSpec = tSpec _ "," _ ..#SUSPENDPAIR
     If ..IsLookupWrite(pType) Set tSpec = tSpec _ "," _ ..#LOOKUPWRITEPAIR
+    If ..IsPartnerWrite(pType) Set tSpec = tSpec _ "," _ ..#PARTNERWRITEPAIR
     If (pEndpoint = ..#ENDPOINTTRANSFORMS) && ((pType = ..#TYPETRANSFORM) || (pType = ..#TYPETRANSFORMTEST)) Set tSpec = tSpec _ "," _ ..#DTLTESTPAIR
     If (pEndpoint = ..#ENDPOINTMESSAGES) && ((pType = ..#TYPERESEND) || (pType = ..#TYPERESENDMESSAGES)) Set tSpec = tSpec _ "," _ ..#RESENDPAIR
     If (pEndpoint = ..#ENDPOINTMESSAGES) && ((pType = ..#TYPEEDIT) || (pType = ..#TYPEEDITRESEND)) Set tSpec = tSpec _ "," _ ..#MESSAGECONTENTPAIR _ "," _ ..#RESENDPAIR _ "," _ ..#EDITRESENDPAIR
@@ -897,18 +1006,20 @@ ClassMethod Pairs(pEndpoint As %String, pType As %String = "") As %List
 /// beyond it, Productions the production reads and writes, Items and Settings theirs, and Queues (<code>QUEUE</code>,
 /// <code>ABORTQUEUE</code>), QueueItems (<code>ENTRY</code>, <code>ABORTMESSAGE</code>), Jobs (<code>JOB</code>,
 /// <code>ABORTJOB</code>, <code>SUSPENDJOB</code>, <code>STOPJOB</code>) and Transforms (<code>TRANSFORM</code>,
-/// <code>TRANSFORMTEST</code>) and Messages the four resend types of Story 20.31.</p>
+/// <code>TRANSFORMTEST</code>), Messages the four resend types of Story 20.31 and BusinessPartners the read and three writes of
+/// Story 20.26.</p>
 ClassMethod Serves(pEndpoint As %String, pType As %String) As %Boolean
 {
     If '$ListFind(..Endpoints(), pEndpoint) Quit 0
     If pType = ..#TYPELIST Quit 1
-    If pEndpoint = ..#ENDPOINTITEMS Quit (pType = ..#TYPEITEM) || ..IsItemWrite(pType)
+    If pEndpoint = ..#ENDPOINTITEMS Quit (pType = ..#TYPEITEM) || ..IsItemWrite(pType) || (pType = ..#TYPEITEMRUN) || ..IsItemRunWrite(pType)
     If pEndpoint = ..#ENDPOINTSETTINGS Quit (pType = ..#TYPESETTING) || ..IsSettingWrite(pType)
     If pEndpoint = ..#ENDPOINTQUEUES Quit (pType = ..#TYPEQUEUE) || (pType = ..#TYPEABORTQUEUE)
     If pEndpoint = ..#ENDPOINTQUEUEITEMS Quit (pType = ..#TYPEENTRY) || (pType = ..#TYPEABORTMESSAGE)
     If pEndpoint = ..#ENDPOINTJOBS Quit (pType = ..#TYPEJOB) || (pType = ..#TYPEABORTJOB) || (pType = ..#TYPESUSPENDJOB) || (pType = ..#TYPESTOPJOB)
     If pEndpoint = ..#ENDPOINTLOOKUPTABLES Quit (pType = ..#TYPELOOKUPTABLE) || (pType = ..#TYPEDELETETABLE) || (pType = ..#TYPEIMPORTTABLE) || (pType = ..#TYPEIMPORT) || (pType = ..#TYPEEXPORT)
     If pEndpoint = ..#ENDPOINTLOOKUPENTRIES Quit (pType = ..#TYPELOOKUPENTRY) || (pType = ..#TYPEADDENTRY) || (pType = ..#TYPESETENTRY) || (pType = ..#TYPEREMOVEENTRY)
+    If pEndpoint = ..#ENDPOINTBUSINESSPARTNERS Quit (pType = ..#TYPEPARTNER) || ..IsPartnerWrite(pType)
     If pEndpoint = ..#ENDPOINTITEMTEST Quit (pType = ..#TYPETESTTARGET) || (pType = ..#TYPESENDTEST)
     If pEndpoint = ..#ENDPOINTTRANSFORMS Quit (pType = ..#TYPETRANSFORM) || (pType = ..#TYPETRANSFORMTEST)
     If pEndpoint = ..#ENDPOINTMESSAGES Quit ..IsMessageType(pType)
@@ -1026,6 +1137,10 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
             Set tSC = ..InvokeItemTest(tNamespace, pType, .pQuery, .pResult, .pHttpStatus, .pFault)
             Quit
         }
+        If pEndpoint = ..#ENDPOINTITEMCLASSES {
+            Set tSC = ..InvokeItemClasses(tNamespace, .pQuery, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
         If (pEndpoint = ..#ENDPOINTTRANSFORMS) && (pType '= ..#TYPELIST) {
             Set tSC = ..InvokeTransformTest(tNamespace, pType, .pQuery, .pResult, .pHttpStatus, .pFault)
             Quit
@@ -1036,6 +1151,10 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
         }
         If (pEndpoint = ..#ENDPOINTLOOKUPTABLES) || (pEndpoint = ..#ENDPOINTLOOKUPENTRIES) {
             Set tSC = ..InvokeLookup(tNamespace, pEndpoint, pType, .pQuery, pBody, .pResult, .pHttpStatus, .pFault)
+            Quit
+        }
+        If (pEndpoint = ..#ENDPOINTBUSINESSPARTNERS) && (pType '= ..#TYPELIST) {
+            Set tSC = ..InvokePartner(tNamespace, pType, .pQuery, pBody, .pResult, .pHttpStatus, .pFault)
             Quit
         }
 
@@ -1422,10 +1541,11 @@ ClassMethod SourceControlled(pNamespace As %String) As %Boolean
     Quit ''##class(%CSP.Portal.SourceControl.Util).IsEnabled(pNamespace)
 }
 
-/// <p>Serve the Items endpoint (Story 20.3) after <method>Invoke</method>'s gate. A <code>LIST</code> names
+/// <p>Serve the Items endpoint (Stories 20.3 and 20.25) after <method>Invoke</method>'s gate. A <code>LIST</code> names
 /// its production under <parameter>PRODUCTIONKEY</parameter>; every other type names an item by the
 /// composite id <code>[Production, Name]</code> under <parameter>IDKEY</parameter>, never by the vendor's
-/// integer id, which a recompile renumbers.</p>
+/// integer id, which a recompile renumbers. <code>ITEMRUN</code> and the three runtime writes
+/// (<method>IsItemRunWrite</method>) go to <method>ReadItemRun</method> and <method>PerformItemRun</method>.</p>
 ClassMethod InvokeItems(pNamespace As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
     Set tSC = $$$OK
@@ -1452,16 +1572,31 @@ ClassMethod InvokeItems(pNamespace As %String, pType As %String, ByRef pQuery, p
         }
         Set tProduction = $List(tParts, 1)
         Set tName = $List(tParts, 2)
+        If (pType = ..#TYPEITEMRUN) || ..IsItemRunWrite(pType) {
+            Set tAction = $Select(..IsItemRunWrite(pType): pType, 1: $Get(pQuery(..#ACTIONKEY)))
+            If (tAction '= "") && '..IsItemRunWrite(tAction) {
+                Set tSC = ..Refuse(501, ##class(OcuPilot.Api.Error).#NOTIMPLEMENTED, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, ..#REASONNOTIMPLEMENTED, .pHttpStatus, .pFault)
+                Quit
+            }
+            If ..IsItemRunWrite(pType) {
+                Set tSC = ..PerformItemRun(pNamespace, pType, tProduction, tName, .pResult, .pHttpStatus, .pFault)
+            } Else {
+                Set tSC = ..ReadItemRun(pNamespace, tProduction, tName, tAction, .pResult, .pHttpStatus, .pFault)
+            }
+            Quit
+        }
         Set tAction = $Select(..IsItemWrite(pType): pType, 1: $Get(pQuery(..#ACTIONKEY)))
         If (tAction '= "") && '..IsItemWrite(tAction) {
             Set tSC = ..Refuse(501, ##class(OcuPilot.Api.Error).#NOTIMPLEMENTED, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, ..#REASONNOTIMPLEMENTED, .pHttpStatus, .pFault)
             Quit
         }
+        Set tNewClass = $Get(pQuery(..#NEWCLASSKEY))
+        Set tReviewed = $Get(pQuery(..#DIGESTKEY))
         If ..IsItemWrite(pType) {
-            Set tSC = ..PerformItem(pNamespace, pType, tProduction, tName, pBody, .pResult, .pHttpStatus, .pFault)
+            Set tSC = ..PerformItem(pNamespace, pType, tProduction, tName, pBody, .pResult, .pHttpStatus, .pFault, "", "", tNewClass, tReviewed)
             Quit
         }
-        Set tSC = ..ReadItem(pNamespace, tProduction, tName, tAction, .pResult, .pHttpStatus, .pFault)
+        Set tSC = ..ReadItem(pNamespace, tProduction, tName, tAction, .pResult, .pHttpStatus, .pFault, ($Data(pQuery(..#NEWCLASSKEY)) # 2), tNewClass, tReviewed)
     } Catch ex {
         Set pResult = ""
         Set tSC = ..Fail("the item call failed inside the port", ex.AsStatus(), .pHttpStatus, .pFault)
@@ -1550,6 +1685,368 @@ ClassMethod AddViolations(pNamespace As %String, pName As %String, pBody As %Dyn
     Quit tSC
 }
 
+/// <p>Every rule over a copy's fields, in <var>pViolations</var> as <method>AddViolations</method> answers them (Story 20.40):
+/// the new name (<method>NameProblem</method>); then <code>CopyFrom</code>, which must be a string
+/// (<code>PORT.FIELD.SHAPE</code> otherwise) and not empty (<code>COPYSOURCE</code>); then, once this port's gate admits a
+/// copy in <var>pNamespace</var> and the namespace is not under source control, the number of items of the
+/// production <var>pProduction</var> named <code>CopyFrom</code> without regard to case: none is
+/// <code>COPYSOURCE</code> and more than one is <code>AMBIGUOUS</code>. A production the namespace does not hold is left to
+/// the write's own 404.</p>
+ClassMethod CopyViolations(pNamespace As %String, pProduction As %String, pName As %String, pBody As %DynamicObject, Output pViolations) As %Status
+{
+    Kill pViolations
+    Set pViolations = 0
+    Set tSC = $$$OK
+    Set tAdmitted = $$$ISOK(..Admit(..#ENDPOINTITEMS, ..#TYPECOPY, pNamespace, .tHttp, .tFault))
+    Try {
+        If '$IsObject(pBody) || 'pBody.%IsA("%Library.DynamicObject") Set pBody = {}
+        If ..NameProblem(pName) '= "" Set pViolations($Increment(pViolations)) = $ListBuild("Name", ##class(OcuPilot.Api.InteropError).#ITEMNAME)
+        Set tType = pBody.%GetTypeOf("CopyFrom")
+        Set tFrom = ""
+        If tType = "string" Set tFrom = pBody.%Get("CopyFrom")
+        If (tType '= "string") && (tType '= "unassigned") {
+            Set pViolations($Increment(pViolations)) = $ListBuild("CopyFrom", ##class(OcuPilot.Api.Error).#PORTFIELDSHAPE)
+        } ElseIf tFrom = "" {
+            Set pViolations($Increment(pViolations)) = $ListBuild("CopyFrom", ##class(OcuPilot.Api.InteropError).#ITEMCOPYSOURCE)
+        } ElseIf tAdmitted && '..SourceControlled(pNamespace) {
+            Set tReadSC = ..GatherItems(pNamespace, pProduction, tFrom, 0, .tExists, .tFound, .tCount, .tCaught)
+            If $IsObject(tCaught) Throw tCaught
+            If tExists && (tCount = 0) Set pViolations($Increment(pViolations)) = $ListBuild("CopyFrom", ##class(OcuPilot.Api.InteropError).#ITEMCOPYSOURCE)
+            If tExists && (tCount > 1) Set pViolations($Increment(pViolations)) = $ListBuild("CopyFrom", ##class(OcuPilot.Api.InteropError).#ITEMAMBIGUOUS)
+        }
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Whether <var>pClass</var> has the shape of a class name an item's class may take: a letter or <code>%</code>, then letters,
+/// digits, <code>%</code>, dots and underscores, at most 128 characters (Story 20.41). Pure.</p>
+ClassMethod NewClassShape(pClass As %String) As %Boolean
+{
+    Quit $Match(pClass, "^[A-Za-z%][A-Za-z0-9%._]*$") && ($Length(pClass) <= 128)
+}
+
+/// <p>The classes an item of business type <var>pType</var> can change to, in <var>pFound</var> as <code>pFound(class) = kind</code>,
+/// <code>kind</code> 1, 2 or 3 for a service, a process or an operation (Story 20.41): the compiled, non-abstract subclasses of
+/// <code>Ens.BusinessService</code>, <code>Ens.BusinessProcess</code> or <code>Ens.BusinessOperation</code>, which are the lists
+/// <code>Ens.ContextSearch</code> gives the classic Change Class dialog. A <var>pType</var> that is none of the three
+/// (<code>Ens.Config.Item:GetBusinessType</code> answers another value for a class it does not know) lists all three. It reads
+/// <code>%Dictionary.ClassDefinition:SubclassOf</code> and <code>%Dictionary.CompiledClass</code> and writes nothing. Called while
+/// the production's namespace is switched; only vendor classes run.</p>
+ClassMethod CandidateClasses(pType As %Integer, ByRef pFound) [ Private ]
+{
+    Kill pFound
+    For tKind = 1, 2, 3 {
+        If (pType = 1) || (pType = 2) || (pType = 3) {
+            If tKind '= pType Continue
+        }
+        Set tSuper = $Case(tKind, 1: "Ens.BusinessService", 2: "Ens.BusinessProcess", : "Ens.BusinessOperation")
+        Set tResult = ##class(%ResultSet).%New("%Dictionary.ClassDefinition:SubclassOf")
+        Set tStatus = tResult.Execute(tSuper)
+        If $$$ISERR(tStatus) Throw ##class(%Exception.StatusException).CreateFromStatus(tStatus)
+        While tResult.Next() {
+            Set tName = tResult.GetData(1)
+            If (tName = "") || $Data(pFound(tName)) Continue
+            Set tCompiled = ##class(%Dictionary.CompiledClass).%OpenId(tName)
+            If '$IsObject(tCompiled) Continue
+            Set tAbstract = tCompiled.Abstract
+            Set tCompiled = ""
+            If tAbstract Continue
+            Set pFound(tName) = tKind
+        }
+        Do tResult.Close()
+        Set tResult = ""
+    }
+}
+
+/// <p>The settings of the item <var>pItem</var> that a change to the class <var>pNewClass</var> removes, in <var>pDropped</var> as
+/// <code>pDropped(n) = $ListBuild(Target, Name, Value)</code> with the count in <var>pDropped</var>, and each one's position in the
+/// item's settings in <var>pPositions</var> (Story 20.41). It is the rule of the classic Change Class action
+/// (<code>EnsPortal.ProductionConfig:HostChangeClass</code>), applied over the stored settings: a Host setting is removed unless
+/// <var>pNewClass</var> declares it in <code>GetSettings</code> and its <code>&lt;Name&gt;IsValid</code> accepts the stored value;
+/// an Adapter setting is judged the same way against the adapter class <var>pNewClass</var> names; a setting of any other target is
+/// removed; and a setting whose <code>IsValid</code> raises is removed. <var>pItem</var> is an <code>Ens.Config.Item</code>, typed
+/// <code>%RegisteredObject</code> so the class compiles where interoperability is not enabled (AD-62 item 12); it is not changed.
+/// Called while the production's namespace is switched; only vendor classes run.</p>
+ClassMethod DroppedSettings(pItem As %RegisteredObject, pNewClass As %String, Output pDropped, Output pPositions) [ Private ]
+{
+    Kill pDropped, pPositions
+    Set pDropped = 0
+    Kill tClassSettings, tAdapterSettings
+    Set tTransient = ##class(Ens.Config.Item).%New(pNewClass)
+    Set tAdapter = tTransient.AdapterClassName()
+    Set tTransient = ""
+    Do $ClassMethod(pNewClass, "GetSettings", .tClassSettings)
+    Try {
+        If tAdapter '= "" Do $ClassMethod(tAdapter, "GetSettings", .tAdapterSettings)
+    } Catch {
+    }
+    Set tSettings = pItem.Settings
+    For tI = 1:1:tSettings.Count() {
+        Set tSetting = tSettings.GetAt(tI)
+        Set tTarget = tSetting.Target
+        Set tName = tSetting.Name
+        Set tValue = tSetting.Value
+        Set tRemove = 1
+        Try {
+            If tTarget = "Host" {
+                Set tStatus = $ClassMethod(pNewClass, tName _ "IsValid", tValue)
+                Set tRemove = $Select($$$ISERR(tStatus): 1, 1: '$Data(tClassSettings(":", tName)))
+            } ElseIf tTarget = "Adapter" {
+                Set tStatus = $ClassMethod(tAdapter, tName _ "IsValid", tValue)
+                Set tRemove = $Select($$$ISERR(tStatus): 1, 1: '$Data(tAdapterSettings(":", tName)))
+            }
+        } Catch {
+            Set tRemove = 1
+        }
+        If tRemove {
+            Set pDropped($Increment(pDropped)) = $ListBuild(tTarget, tName, tValue)
+            Set pPositions(pDropped) = tI
+        }
+    }
+    Set tSettings = ""
+    Set tSetting = ""
+}
+
+/// <p>Judge the change of the item <var>pItem</var> to the class <var>pNewClass</var> (Story 20.41): <var>pRefusal</var> is
+/// <code>SAMECLASS</code> when it already has that class, else <code>NEWCLASS</code> when the class is not one of
+/// <method>CandidateClasses</method> for the item's kind, else <code>""</code> and <var>pDropped</var> and <var>pPositions</var> are
+/// <method>DroppedSettings</method>'s. <var>pOld</var> is the item's class. Called while the production's namespace is switched; only
+/// vendor classes run.</p>
+ClassMethod JudgeChange(pItem As %RegisteredObject, pNewClass As %String, Output pRefusal As %String, Output pOld As %String, Output pDropped, Output pPositions) [ Private ]
+{
+    Kill pDropped, pPositions
+    Set pDropped = 0
+    Set pRefusal = ""
+    Set pOld = pItem.ClassName
+    If pOld = pNewClass {
+        Set pRefusal = "SAMECLASS"
+        Quit
+    }
+    Do ..CandidateClasses(##class(Ens.Config.Item).GetBusinessType(pOld, pItem), .tCandidates)
+    If '$Data(tCandidates(pNewClass)) {
+        Set pRefusal = "NEWCLASS"
+        Quit
+    }
+    Do ..DroppedSettings(pItem, pNewClass, .pDropped, .pPositions)
+}
+
+/// <p>The SHA-256 over the change of the item <var>pItem</var> of <var>pProduction</var> from <var>pOld</var> to <var>pNew</var> and
+/// the settings <var>pDropped</var> it removes (Story 20.41): the target and name of each, and its value unless the name is a
+/// credential's (<method>OcuPilot.Kernel.Audit.Log.IsCredentialName</method>), whose value takes no part. It names an
+/// <code>OcuPilot.*</code> class, so it is called after the namespace is restored.</p>
+ClassMethod ChangeDigest(pProduction As %String, pItem As %String, pOld As %String, pNew As %String, ByRef pDropped) As %String
+{
+    Set tList = $ListBuild(pProduction, pItem, pOld, pNew)
+    For tI = 1:1:+$Get(pDropped) {
+        Set tSecret = ''##class(OcuPilot.Kernel.Audit.Log).IsCredentialName($List(pDropped(tI), 2))
+        Set tList = tList _ $ListBuild($List(pDropped(tI), 1), $List(pDropped(tI), 2), $Select(tSecret: "", 1: $List(pDropped(tI), 3)), tSecret)
+    }
+    Quit ..Sha256Hex(tList)
+}
+
+/// <p>The item row <var>pRow</var> of the item <var>pName</var>, composed for the change to the class <var>pNewClass</var> (Story
+/// 20.41): it also carries <code>NewClass</code>, <code>Dropped</code>, <code>Reviewed</code> and <code>Digest</code>
+/// (<method>ChangeDigest</method>). A class the shape rule refuses, one the item's Classes tab does not list and one the item
+/// already has are 409 <code>INTEROP.ITEM.NEWCLASS</code> and <code>INTEROP.ITEM.SAMECLASS</code>, before any setting is judged.
+/// Composed for the action <var>pAction</var> (the change itself), a <var>pReviewed</var> that is not the digest of the settings
+/// as they stand is 409 <code>INTEROP.ITEM.REVIEWCHANGED</code>, and <code>Reviewed</code> answers <var>pReviewed</var>; a read
+/// composed for no action, such as the agent's confirm re-read, which carries the digest its proposal was read at, answers
+/// <code>Reviewed</code> empty, as its mint did.</p>
+ClassMethod ComposeChange(pNamespace As %String, pProduction As %String, pName As %String, pAction As %String, pNewClass As %String, pReviewed As %String, ByRef pRow As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    If '..NewClassShape(pNewClass) Quit ..Conflict(##class(OcuPilot.Api.InteropError).#ITEMNEWCLASS, .pHttpStatus, .pFault)
+    Set tCaught = ""
+    Set tRefusal = ""
+    Set tOld = ""
+    Set tAbsent = 0
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set tProduction = ##class(Ens.Config.Production).%OpenId(pProduction)
+        Set tItem = $Select($IsObject(tProduction): ..ItemObject(tProduction, pName), 1: "")
+        If '$IsObject(tItem) {
+            Set tAbsent = 1
+        } Else {
+            Do ..JudgeChange(tItem, pNewClass, .tRefusal, .tOld, .tDropped, .tPositions)
+        }
+        Set tItem = ""
+        Set tProduction = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tCaught = ex
+    }
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the change of class could not be judged", .pHttpStatus, .pFault)
+    If tAbsent Quit ..Absent(.pHttpStatus, .pFault)
+    If tRefusal '= "" Quit ..Conflict(..ItemCode(tRefusal), .pHttpStatus, .pFault)
+    Set tDigest = ..ChangeDigest(pProduction, pName, tOld, pNewClass, .tDropped)
+    If (pAction = ..#TYPECHANGECLASS) && (pReviewed '= "") && (pReviewed '= tDigest) Quit ..Conflict(##class(OcuPilot.Api.InteropError).#ITEMREVIEWCHANGED, .pHttpStatus, .pFault)
+    Set tRows = []
+    For tI = 1:1:+$Get(tDropped) {
+        Set tSecret = ''##class(OcuPilot.Kernel.Audit.Log).IsCredentialName($List(tDropped(tI), 2))
+        Set tDroppedRow = {}
+        Do tDroppedRow.%Set("Target", $List(tDropped(tI), 1) _ "", "string")
+        Do tDroppedRow.%Set("Name", $List(tDropped(tI), 2) _ "", "string")
+        Do tDroppedRow.%Set("Value", $Select(tSecret: "", 1: $List(tDropped(tI), 3) _ ""), "string")
+        Do tDroppedRow.%Set("Secret", tSecret, "boolean")
+        Do tRows.%Push(tDroppedRow)
+    }
+    Do pRow.%Set("NewClass", pNewClass, "string")
+    Do pRow.%Set("Dropped", tRows)
+    Do pRow.%Set("Reviewed", $Select(pAction '= "": pReviewed, 1: ""), "string")
+    Do pRow.%Set("Digest", tDigest, "string")
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>The change of class itself, in the current namespace, which must be <var>pNamespace</var>, against the production
+/// <var>pLocked</var>, which <method>PerformItem</method> holds at concurrency 4 (Story 20.41). In <var>pStep</var>: <code>absent</code>,
+/// <code>refusal</code> (a token <method>ItemCode</method> names), <code>vendor</code>, <code>audit</code> and <code>save</code>
+/// statuses, and <code>after</code> and <code>afterCount</code>, the item as it reads once changed. In this order, under the lock: the item is
+/// gathered (absent, or held more than once), the class and the dropped settings are judged again (<method>JudgeChange</method>),
+/// the digest is taken (<method>ChangeDigest</method>, with the install namespace current) and a <var>pReviewed</var> other than
+/// it is <code>REVIEWCHANGED</code>, before anything is written; then the class is set, the dropped settings removed, the item saved,
+/// <code>Ens.Util.Auditing</code>'s <code>ModifyConfiguration</code> recorded naming the old and the new class and each dropped
+/// setting's target and name, never a value, and the production class saved.</p>
+ClassMethod ChangeStep(pNamespace As %String, pProduction As %String, pName As %String, pNewClass As %String, pReviewed As %String, pOrigNS As %String, pLocked As %RegisteredObject, Output pStep) [ Private ]
+{
+    Kill pStep
+    Set pStep("absent") = 0
+    Set pStep("refusal") = ""
+    Set pStep("vendor") = $$$OK
+    Set pStep("audit") = $$$OK
+    Set pStep("save") = $$$OK
+    Set pStep("after") = ""
+    Set pStep("afterCount") = 0
+    Set tGatherSC = ..GatherItems(pNamespace, pProduction, pName, 0, .tExists, .tFound, .tCount, .tGatherCaught)
+    If $IsObject(tGatherCaught) Throw tGatherCaught
+    If tCount = 0 {
+        Set pStep("absent") = 1
+        Quit
+    }
+    If tCount > 1 {
+        Set pStep("refusal") = "AMBIGUOUS"
+        Quit
+    }
+    Set tItemName = $List(tFound(1), 1)
+    Set tItem = ..ItemObject(pLocked, tItemName)
+    If '$IsObject(tItem) {
+        Set pStep("absent") = 1
+        Quit
+    }
+    Do ..JudgeChange(tItem, pNewClass, .tRefusal, .tOld, .tDropped, .tPositions)
+    If tRefusal '= "" {
+        Set pStep("refusal") = tRefusal
+        Quit
+    }
+    Set $NAMESPACE = pOrigNS
+    Set tDigest = ..ChangeDigest(pProduction, tItemName, tOld, pNewClass, .tDropped)
+    Set $NAMESPACE = pNamespace
+    If (pReviewed '= "") && (pReviewed '= tDigest) {
+        Set pStep("refusal") = "REVIEWCHANGED"
+        Quit
+    }
+    Set tItem.ClassName = pNewClass
+    For tI = tDropped:-1:1 {
+        Do tItem.Settings.RemoveAt(tPositions(tI))
+    }
+    Set pStep("vendor") = tItem.%Save()
+    If $$$ISOK(pStep("vendor")) {
+        Set tActions = "item class changed by OcuPilot from " _ tOld _ " to " _ pNewClass
+        For tI = 1:1:tDropped {
+            Set tActions($List(tDropped(tI), 1) _ "." _ $List(tDropped(tI), 2)) = ""
+        }
+        Set pStep("audit") = ##class(Ens.Util.Auditing).AuditModifyProductionConfig(pProduction, tItemName, .tActions)
+        Set pStep("save") = pLocked.SaveToClass(tItem)
+        Set tItem = ""
+        Set tAfterSC = ..GatherItems(pNamespace, pProduction, tItemName, 0, .tAfterExists, .tAfterFound, .tAfterCount, .tAfterCaught)
+        If $IsObject(tAfterCaught) Throw tAfterCaught
+        If tAfterCount > 0 Set pStep("after") = tAfterFound(1)
+        Set pStep("afterCount") = tAfterCount
+    }
+    Set tItem = ""
+}
+
+/// <p>Serve the ItemClasses endpoint (Story 20.41) after <method>Invoke</method>'s gate: a <code>LIST</code> for the item
+/// <parameter>ITEMKEY</parameter> names, as the composite <code>[Production, Name]</code> or the vendor's
+/// <code>Production||Name</code>.</p>
+ClassMethod InvokeItemClasses(pNamespace As %String, ByRef pQuery, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pResult = ""
+    Try {
+        If '..ItemParts($Get(pQuery(..#ITEMKEY)), .tProduction, .tItem) {
+            Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONITEMIDREQUIRED, .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tMaxText = $Get(pQuery(..#MAXROWSKEY))
+        If (tMaxText '= "") && '$Match(tMaxText, "^[1-9][0-9]*$") {
+            Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONMAXROWS, .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tSC = ..ListItemClasses(pNamespace, tProduction, tItem, +tMaxText, .pResult, .pHttpStatus, .pFault)
+    } Catch ex {
+        Set pResult = ""
+        Set tSC = ..Fail("the item classes call failed inside the port", ex.AsStatus(), .pHttpStatus, .pFault)
+    }
+    Quit tSC
+}
+
+/// <p>The classes the item <var>pItem</var> of <var>pProduction</var> can change to, one row for each, at most <var>pMax</var> when
+/// it is above zero: <code>{Production, Item, ClassName, Type, Current}</code>, services then processes then operations, each in
+/// class-name order, <code>Current</code> true for the item's own class (Story 20.41). An item the production does not hold is 404
+/// <code>PORT.NOTFOUND</code>, unlogged, and a name it holds more than once is <code>INTEROP.ITEM.AMBIGUOUS</code>, both before
+/// any class is read. The classes are <method>CandidateClasses</method>'s for the item's kind, or all three kinds' for an item whose
+/// class reads as no business host.</p>
+ClassMethod ListItemClasses(pNamespace As %String, pProduction As %String, pItem As %String, pMax As %Integer, Output pRows As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRows = ""
+    Set tSC = ..GatherItems(pNamespace, pProduction, pItem, 0, .tExists, .tFound, .tCount, .tCaught)
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the item classes list failed", .pHttpStatus, .pFault)
+    If 'tExists || (tCount = 0) Quit ..Absent(.pHttpStatus, .pFault)
+    If tCount > 1 Quit ..Conflict(##class(OcuPilot.Api.InteropError).#ITEMAMBIGUOUS, .pHttpStatus, .pFault)
+    Set tLine = tFound(1)
+    Set tCaught = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Do ..CandidateClasses(+$List(tLine, 3), .tCandidates)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tCaught = ex
+    }
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the item classes list failed", .pHttpStatus, .pFault)
+    Set tName = ""
+    For {
+        Set tName = $Order(tCandidates(tName), 1, tKind)
+        If tName = "" Quit
+        Set tSorted(tKind, tName) = ""
+    }
+    Set pRows = []
+    Set tRowCount = 0
+    For tKind = 1, 2, 3 {
+        Set tName = ""
+        For {
+            Set tName = $Order(tSorted(tKind, tName))
+            If tName = "" Quit
+            If (pMax > 0) && (tRowCount >= pMax) Quit
+            Set tRowCount = tRowCount + 1
+            Set tRow = {}
+            Do tRow.%Set("Production", pProduction, "string")
+            Do tRow.%Set("Item", $List(tLine, 1) _ "", "string")
+            Do tRow.%Set("ClassName", tName, "string")
+            Do tRow.%Set("Type", $Case(tKind, 1: "service", 2: "process", : "operation"), "string")
+            Do tRow.%Set("Current", (tName = $List(tLine, 2)), "boolean")
+            Do pRows.%Push(tRow)
+        }
+    }
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
 /// <p>Whether <var>pNamespace</var> holds the production <var>pProduction</var>. A namespace this port's gate
 /// does not admit an item read in (<method>Admit</method>), and a fault in the look-up, answer 1 without a
 /// vendor call, so the write's own refusal decides rather than this one.</p>
@@ -1580,7 +2077,7 @@ ClassMethod Violations(ByRef pViolations, Output pHttpStatus As %Integer, Output
 /// <code>Enabled</code>, <var>pSource</var> <code>default</code> when a system default supplies it,
 /// <var>pBusinessType</var> its host type code and <var>pPoolSize</var> its pool size. Pure.</p>
 /// <ul>
-/// <li>Add: <code>TAKEN</code> when the name is held.</li>
+/// <li>Add and copy: <code>TAKEN</code> when the name is held.</li>
 /// <li>Any other write: <code>AMBIGUOUS</code> when more than one item holds the name.</li>
 /// <li>Enable: <code>ENABLED</code> when it is, else <code>DEFAULTSETTING</code> when a system default
 /// supplies <code>Enabled</code>.</li>
@@ -1599,7 +2096,7 @@ ClassMethod ItemRefusal(pType As %String, pCount As %Integer, pEnabled As %Boole
 /// production's namespace is switched, where a reference to another OcuPilot class does not resolve.</p>
 ClassMethod ItemRefusalToken(pType As %String, pCount As %Integer, pEnabled As %Boolean, pSource As %String, pBusinessType As %Integer, pPoolSize As %String) As %String
 {
-    If pType = ..#TYPEADD {
+    If (pType = ..#TYPEADD) || (pType = ..#TYPECOPY) {
         If pCount > 0 Quit "TAKEN"
         Quit ""
     }
@@ -1641,6 +2138,50 @@ ClassMethod ItemCode(pToken As %String) As %String
 {
     If pToken = "" Quit ""
     Quit ..#ITEMCODEPREFIX _ pToken
+}
+
+/// <p>The token (<code>NOTRUNNING</code>, <code>AMBIGUOUS</code>, <code>NOTENABLED</code>, <code>TEMPSTOPPED</code>,
+/// <code>NOTTEMPSTOPPED</code> or <code>NOJOBS</code>) naming why the item runtime action <var>pType</var>
+/// (<method>IsItemRunWrite</method>) is refused, <code>""</code> for none (Story 20.25), judged in this order. <var>pCount</var> is
+/// the number of items of the name, <var>pRunning</var> whether the item's production is the namespace's running one,
+/// <var>pEnabled</var> the item's effective <code>Enabled</code>, <var>pTempStopped</var> whether the vendor's temporary-stop flag
+/// is set and <var>pOwnJobs</var> whether the item runs jobs of its own. Each is a case the vendor answers as a silent success
+/// or with an error status. Pure, and it names no other class.</p>
+/// <ul>
+/// <li>Any action: <code>NOTRUNNING</code>, <code>AMBIGUOUS</code>, <code>NOTENABLED</code>.</li>
+/// <li>Stop and restart: <code>TEMPSTOPPED</code> when the flag is set, then <code>NOJOBS</code> when the item runs no jobs of its own.</li>
+/// <li>Start: <code>NOTTEMPSTOPPED</code> when the flag is not set.</li>
+/// </ul>
+ClassMethod ItemRunRefusal(pType As %String, pCount As %Integer, pRunning As %Boolean, pEnabled As %Boolean, pTempStopped As %Boolean, pOwnJobs As %Boolean) As %String
+{
+    If 'pRunning Quit "NOTRUNNING"
+    If pCount > 1 Quit "AMBIGUOUS"
+    If 'pEnabled Quit "NOTENABLED"
+    If pType = ..#TYPESTARTITEM {
+        If 'pTempStopped Quit "NOTTEMPSTOPPED"
+        Quit ""
+    }
+    If pTempStopped Quit "TEMPSTOPPED"
+    If 'pOwnJobs Quit "NOJOBS"
+    Quit ""
+}
+
+/// <p>Whether an item runs jobs of its own while not stopped, from the job and pool size the running production holds for it
+/// (<method>ItemRuntime</method>), judged as the vendor's <code>TempStopConfigItem</code> judges them: both nonzero. The job reads
+/// <code>-1</code> for an item whose adapter runs one job whatever its pool size (<code>SINGLEPOOLJOB</code>, a TCP inbound
+/// service's), 0 for an item that runs in its callers' jobs or the shared actor pool, has no adapter, or is stopped.</p>
+ClassMethod OwnsJobs(pRunAsJob As %Integer, pPoolSize As %Integer) As %Boolean
+{
+    Quit (+pRunAsJob '= 0) && (+pPoolSize '= 0)
+}
+
+/// <p>The code <method>ItemRunRefusal</method>'s token <var>pToken</var> names: the production's
+/// <code>NOTRUNNING</code>, else <method>ItemCode</method>'s; <code>""</code> for no token.</p>
+ClassMethod ItemRunCode(pToken As %String) As %String
+{
+    If pToken = "" Quit ""
+    If pToken = "NOTRUNNING" Quit ##class(OcuPilot.Api.InteropError).#NOTRUNNING
+    Quit ..ItemCode(pToken)
 }
 
 /// <p>Read the items of <var>pProduction</var> in <var>pNamespace</var> whose name is <var>pName</var>
@@ -1741,15 +2282,20 @@ ClassMethod ListItems(pNamespace As %String, pProduction As %String, pMax As %In
 /// unlogged, and so is an item an enable or a disable would not find (<method>VendorCannotFind</method>); a
 /// name the production holds more than once is <code>AMBIGUOUS</code>. With <var>pAction</var> it refuses
 /// what that action would be refused
-/// (<method>ItemRefusal</method>); for an add (AD-54) it inverts, so absence is the 404 the create
+/// (<method>ItemRefusal</method>); for an add or a copy (AD-54) it inverts, so absence is the 404 the create
 /// expects and a held name is <code>TAKEN</code>.</p>
-ClassMethod ReadItem(pNamespace As %String, pProduction As %String, pName As %String, pAction As %String, Output pRow As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+/// <p><var>pComposed</var> is 1 when the query names <parameter>NEWCLASSKEY</parameter>, and a change of class
+/// (<var>pAction</var> <parameter>TYPECHANGECLASS</parameter>) is always composed: the row then also answers
+/// <code>NewClass</code>, <code>Dropped</code> (<code>[{Target, Name, Value, Secret}]</code>, an empty <code>Value</code>
+/// for a credential-named setting), <code>Reviewed</code> (<var>pReviewed</var>) and <code>Digest</code>
+/// (<method>ComposeChange</method>).</p>
+ClassMethod ReadItem(pNamespace As %String, pProduction As %String, pName As %String, pAction As %String, Output pRow As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pComposed As %Boolean = 0, pNewClass As %String = "", pReviewed As %String = "") As %Status [ Private ]
 {
     Set pRow = ""
     If ..SourceControlled(pNamespace) Quit ..Conflict(##class(OcuPilot.Api.InteropError).#ITEMSOURCECONTROL, .pHttpStatus, .pFault)
     Set tSC = ..GatherItems(pNamespace, pProduction, pName, 0, .tExists, .tFound, .tCount, .tCaught)
     If $IsObject(tCaught) Quit ..Mapped(tCaught, "the item read failed", .pHttpStatus, .pFault)
-    If pAction = ..#TYPEADD {
+    If (pAction = ..#TYPEADD) || (pAction = ..#TYPECOPY) {
         If tCount > 0 Quit ..Conflict(##class(OcuPilot.Api.InteropError).#ITEMTAKEN, .pHttpStatus, .pFault)
         Quit ..Absent(.pHttpStatus, .pFault)
     }
@@ -1762,6 +2308,160 @@ ClassMethod ReadItem(pNamespace As %String, pProduction As %String, pName As %St
         If tCode '= "" Quit ..Conflict(tCode, .pHttpStatus, .pFault)
     }
     Set pRow = ..ItemRow(pProduction, tLine, pNamespace, tCount)
+    If pComposed || (pAction = ..#TYPECHANGECLASS) {
+        Set tComposeSC = ..ComposeChange(pNamespace, pProduction, $List(tLine, 1), pAction, pNewClass, pReviewed, pRow, .pHttpStatus, .pFault)
+        If $$$ISERR(tComposeSC) Set pRow = ""
+        Quit tComposeSC
+    }
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>The vendor's runtime facts for the item <var>pItemName</var> in <var>pNamespace</var> (Story 20.25), read from
+/// <code>^Ens.Runtime("ConfigItem",&lt;name&gt;,...)</code> and written by nothing here: <var>pStopped</var> whether the
+/// temporary-stop flag is set, <var>pRunAsJob</var> and <var>pPoolSize</var> the job and pool size the running production
+/// holds for it (<method>OwnsJobs</method> reads them). A fault is <var>pCaught</var>, with the namespace restored. Only this
+/// class runs while the namespace is switched.</p>
+ClassMethod ItemRuntime(pNamespace As %String, pItemName As %String, Output pStopped As %Boolean, Output pRunAsJob As %Integer, Output pPoolSize As %Integer, Output pCaught) As %Status [ Private ]
+{
+    Set pStopped = 0
+    Set pRunAsJob = 0
+    Set pPoolSize = 0
+    Set pCaught = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Set pStopped = ''$Get(^Ens.Runtime("ConfigItem", pItemName, "TemporarilyStop"))
+        Set pRunAsJob = +$Get(^Ens.Runtime("ConfigItem", pItemName, "Job"))
+        Set pPoolSize = +$Get(^Ens.Runtime("ConfigItem", pItemName, "PoolSize"))
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+    Quit $$$OK
+}
+
+/// <p>One item's runtime, fresh (Story 20.25): <code>{Production, Name, ClassName, Enabled, EnabledSource, Count, State,
+/// Current, TemporarilyStopped, OwnJobs, Jobs, NeedsUpdate, Namespace}</code>. <code>State</code> and <code>Current</code> are the
+/// production's (<method>ReadState</method>); <code>TemporarilyStopped</code>, <code>OwnJobs</code> (the item runs jobs of its own
+/// while not stopped) and <code>Jobs</code> (the processes the host holds now) are read only while the item's production is the
+/// namespace's running one and are false, false and 0 otherwise. An unknown production or item is 404 <code>PORT.NOTFOUND</code>,
+/// unlogged; a name the production holds more than once is <code>AMBIGUOUS</code>. With <var>pAction</var>, one of the item runtime
+/// writes, it refuses what that action would be refused (<method>ItemRunRefusal</method>).</p>
+ClassMethod ReadItemRun(pNamespace As %String, pProduction As %String, pName As %String, pAction As %String, Output pRow As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRow = ""
+    Set tSC = ..ReadState(pNamespace, pProduction, .tFacts, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    Set tSC = ..GatherItems(pNamespace, pProduction, pName, 0, .tExists, .tFound, .tCount, .tCaught)
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the item runtime read failed", .pHttpStatus, .pFault)
+    If 'tExists || (tCount = 0) Quit ..Absent(.pHttpStatus, .pFault)
+    If tCount > 1 Quit ..Conflict(##class(OcuPilot.Api.InteropError).#ITEMAMBIGUOUS, .pHttpStatus, .pFault)
+    Set tLine = tFound(1)
+    Set tRunning = (tFacts("current") = pProduction) && (tFacts("word") = "Running")
+    Set tStopped = 0
+    Set tOwnJobs = 0
+    Set tJobs = 0
+    If tRunning {
+        Set tSC = ..ItemRuntime(pNamespace, $List(tLine, 1), .tStopped, .tRunAsJob, .tPoolSize, .tCaught)
+        If $IsObject(tCaught) Quit ..Mapped(tCaught, "the item runtime read failed", .pHttpStatus, .pFault)
+        Set tOwnJobs = ..OwnsJobs(tRunAsJob, tPoolSize)
+        Set tSC = ..GatherJobs(pNamespace, pProduction, $List(tLine, 1), 0, .tCurrent, .tJobLines, .tCaught)
+        If $IsObject(tCaught) Quit ..Mapped(tCaught, "the item runtime read failed", .pHttpStatus, .pFault)
+        For tI = 1:1:tJobLines {
+            If '..JobRow(tJobLines(tI)).%Get("Dead") Set tJobs = tJobs + 1
+        }
+    }
+    If ..IsItemRunWrite(pAction) {
+        Set tCode = ..ItemRunCode(..ItemRunRefusal(pAction, tCount, tRunning, $List(tLine, 4), tStopped, tOwnJobs))
+        If tCode '= "" Quit ..Conflict(tCode, .pHttpStatus, .pFault)
+    }
+    Set tRow = {}
+    Do tRow.%Set("Production", pProduction, "string")
+    Do tRow.%Set("Name", $List(tLine, 1) _ "", "string")
+    Do tRow.%Set("ClassName", $List(tLine, 2) _ "", "string")
+    Do tRow.%Set("Enabled", ''$List(tLine, 4), "boolean")
+    Do tRow.%Set("EnabledSource", $List(tLine, 5), "string")
+    Do tRow.%Set("Count", +tCount, "number")
+    Do tRow.%Set("State", tFacts("word"), "string")
+    Do tRow.%Set("Current", tFacts("current"), "string")
+    Do tRow.%Set("TemporarilyStopped", ''tStopped, "boolean")
+    Do tRow.%Set("OwnJobs", ''tOwnJobs, "boolean")
+    Do tRow.%Set("Jobs", tJobs, "number")
+    Do tRow.%Set("NeedsUpdate", ''$Select(tRunning: tFacts("needsUpdate"), 1: 0), "boolean")
+    Do tRow.%Set("Namespace", pNamespace, "string")
+    Set pRow = tRow
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>The production's own update, with the wait capped at <var>pCap</var> seconds (<method>Perform</method>'s shape): the
+/// production's update timeout, or <var>pCap</var> when that is longer. Called while the production's namespace is switched; only
+/// vendor classes run.</p>
+ClassMethod UpdateCapped(pCap As %Integer) As %Status [ Private ]
+{
+    Set tTimeout = ##class(Ens.Director).GetRunningProductionUpdateTimeout()
+    If tTimeout > pCap Set tTimeout = pCap
+    Quit ##class(Ens.Director).UpdateProduction(tTimeout, 0)
+}
+
+/// <p>Stop, start or restart one item's jobs (Story 20.25) and answer the item's runtime as it stands. The item is read first
+/// and judged by <method>ItemRunRefusal</method>, so a production that is not running, a disabled item, a start of an item not
+/// stopped, a stop of one already stopped or running no jobs of its own, and a name held twice are refused with their own codes,
+/// 409, before any vendor call. Then, in one switched block, as the classic page does:</p>
+/// <ul>
+/// <li>Stop: <code>TempStopConfigItem(...,1,0)</code> and the production's capped update. An update the vendor refuses
+/// (<code>INTEROP.PRODUCTION.BUSY</code>) is followed by <code>TempStopConfigItem(...,0,0)</code>, so the flag is not left set.</li>
+/// <li>Start: <code>TempStopConfigItem(...,0,0)</code> and the capped update. An update the vendor refuses is
+/// <code>INTEROP.ITEM.STARTPENDING</code>: the flag is cleared and the next update starts the item.</li>
+/// <li>Restart: the stop, then the start.</li>
+/// </ul>
+/// <p>The update is the production's own, so it also applies any other change waiting for the production. Neither
+/// <code>EnableConfigItem</code> nor an update inside <code>TempStopConfigItem</code> is used. The vendor records
+/// <code>ModifyConfiguration</code> for each flag change, and the port records nothing of its own.</p>
+ClassMethod PerformItemRun(pNamespace As %String, pType As %String, pProduction As %String, pName As %String, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    Set tSC = ..ReadItemRun(pNamespace, pProduction, pName, pType, .tRow, .pHttpStatus, .pFault)
+    If $$$ISERR(tSC) Quit tSC
+    Set tConfigName = pProduction _ "||" _ tRow.%Get("Name")
+    Set tCap = ..StopSeconds()
+    Set tVendorSC = $$$OK
+    Set tRestoreSC = $$$OK
+    Set tStage = "stop"
+    Set tCaught = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        If pType '= ..#TYPESTARTITEM {
+            Set tVendorSC = ##class(Ens.Director).TempStopConfigItem(tConfigName, 1, 0)
+            If $$$ISOK(tVendorSC) {
+                Set tVendorSC = ..UpdateCapped(tCap)
+                If $$$ISERR(tVendorSC) Set tRestoreSC = ##class(Ens.Director).TempStopConfigItem(tConfigName, 0, 0)
+            }
+        }
+        If $$$ISOK(tVendorSC) && (pType '= ..#TYPESTOPITEM) {
+            Set tStage = "start"
+            Set tVendorSC = ##class(Ens.Director).TempStopConfigItem(tConfigName, 0, 0)
+            If $$$ISOK(tVendorSC) Set tVendorSC = ..UpdateCapped(tCap)
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tCaught = ex
+    }
+    If $$$ISERR(tRestoreSC) Do ..LogFault("the item's temporary stop could not be cleared", tRestoreSC)
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the item " _ pType _ " failed", .pHttpStatus, .pFault)
+    If $$$ISERR(tVendorSC) {
+        If (tStage = "start") && '..HasCode(tVendorSC, ..#CODEPRIVILEGE) && '(($System.Status.GetErrorText(tVendorSC)) [ "<PROTECT>") {
+            If '..HasCode(tVendorSC, ..#CODENOTQUIESCENT) && '..HasCode(tVendorSC, ..#CODEJOBNOTSTOPPED) Do ..LogFault("the item start's update failed", tVendorSC)
+            Quit ..Conflict(##class(OcuPilot.Api.InteropError).#ITEMSTARTPENDING, .pHttpStatus, .pFault)
+        }
+        Quit ..Statused(tVendorSC, "the item " _ pType _ " failed", .pHttpStatus, .pFault)
+    }
+    Set pResult = tRow
+    If $$$ISOK(..ReadItemRun(pNamespace, pProduction, pName, "", .tAfter, .tAfterHttp, .tAfterFault)) Set pResult = tAfter
     Set pHttpStatus = 200
     Quit $$$OK
 }
@@ -1790,26 +2490,31 @@ ClassMethod ItemObject(pProduction As %RegisteredObject, pName As %String) As %R
 /// The sequence, in one switched block:</p>
 /// <ol>
 /// <li>A namespace under source control is refused, before anything is read.</li>
-/// <li>An add's fields are validated (<method>AddViolations</method>): 422.</li>
+/// <li>An add's fields are validated (<method>AddViolations</method>), and a copy's (<method>CopyViolations</method>): 422.</li>
 /// <li>The production is opened at concurrency 4, so writers on one production wait on the vendor's row
 /// lock; a lock not taken in time is 503 <code>PORT.UNAVAILABLE</code>.</li>
 /// <li>The item's facts are read under that lock and judged by <method>ItemRefusal</method>: 409.</li>
-/// <li>Enable and disable call <code>Ens.Director:EnableConfigItem</code> with no update; add inserts a new
+/// <li>Enable and disable call <code>Ens.Director:EnableConfigItem</code> with no update; add and copy insert a new
 /// <code>Ens.Config.Item</code> and saves the production; remove calls <code>RemoveItem</code> and saves
 /// it. Add and remove record <code>%Ensemble/%Production/ModifyConfiguration</code> through
 /// <code>Ens.Util.Auditing</code>, naming the operation and the item and never a value; enable and
-/// disable carry the vendor's own event. The vendor answers an error status only when the audit call
+/// disable carry the vendor's own event. A copy (Story 20.40) refuses the new name held (<code>TAKEN</code>) and a source
+/// the production does not hold once (<code>COPYSOURCE</code> or <code>AMBIGUOUS</code>), 409, under the same lock; it
+/// inserts the source's clone, named, disabled, with a pool size of 1 when a business process's was 0, saves the production
+/// and records the vendor's event naming both items. The vendor answers an error status only when the audit call
 /// raises (an event that is disabled is dropped without one); that status is logged once the namespace is
 /// restored and never fails the write.</li>
 /// <li>The production class is saved every time (<code>SaveToClass</code>), because the configuration
 /// alone is reverted by the next compile of the class. A failure there, after the configuration saved, is
 /// a logged 500.</li>
 /// </ol>
-/// <p>Every reference is dropped before the namespace is restored.</p>
-ClassMethod PerformItem(pNamespace As %String, pType As %String, pProduction As %String, pName As %String, pBody As %DynamicObject, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pSettingTarget As %String = "", pSettingName As %String = "") As %Status [ Private ]
+/// <p>A change of class (Story 20.41) runs <method>ChangeStep</method> under the same lock, with <var>pNewClass</var> and the digest
+/// <var>pReviewed</var>, and answers the item as it then reads. Every reference is dropped before the namespace is restored.</p>
+ClassMethod PerformItem(pNamespace As %String, pType As %String, pProduction As %String, pName As %String, pBody As %DynamicObject, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pSettingTarget As %String = "", pSettingName As %String = "", pNewClass As %String = "", pReviewed As %String = "") As %Status [ Private ]
 {
     Set pResult = ""
     If ..SourceControlled(pNamespace) Quit ..Conflict(##class(OcuPilot.Api.InteropError).#ITEMSOURCECONTROL, .pHttpStatus, .pFault)
+    If (pType = ..#TYPECHANGECLASS) && '..NewClassShape(pNewClass) Quit ..Conflict(##class(OcuPilot.Api.InteropError).#ITEMNEWCLASS, .pHttpStatus, .pFault)
     Set tSetting = ..IsSettingWrite(pType)
     If pType = ..#TYPESET {
         If '$IsObject(pBody) || 'pBody.%IsA("%Library.DynamicObject") Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONITEMBODY, .pHttpStatus, .pFault)
@@ -1817,9 +2522,13 @@ ClassMethod PerformItem(pNamespace As %String, pType As %String, pProduction As 
         If $$$ISERR(tViolationSC) Quit ..Fail("the setting's value could not be judged", tViolationSC, .pHttpStatus, .pFault)
         If tViolations > 0 Quit ..Violations(.tViolations, .pHttpStatus, .pFault)
     }
-    If pType = ..#TYPEADD {
+    If (pType = ..#TYPEADD) || (pType = ..#TYPECOPY) {
         If '$IsObject(pBody) || 'pBody.%IsA("%Library.DynamicObject") Quit ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONITEMBODY, .pHttpStatus, .pFault)
-        Set tViolationSC = ..AddViolations(pNamespace, pName, pBody, .tViolations)
+        If pType = ..#TYPECOPY {
+            Set tViolationSC = ..CopyViolations(pNamespace, pProduction, pName, pBody, .tViolations)
+        } Else {
+            Set tViolationSC = ..AddViolations(pNamespace, pName, pBody, .tViolations)
+        }
         If $$$ISERR(tViolationSC) Quit ..Fail("the item's fields could not be judged", tViolationSC, .pHttpStatus, .pFault)
         If tViolations > 0 Quit ..Violations(.tViolations, .pHttpStatus, .pFault)
     }
@@ -1854,11 +2563,20 @@ ClassMethod PerformItem(pNamespace As %String, pType As %String, pProduction As 
                 Set tAfter = tStep("after")
                 Set tCount = tStep("afterCount")
                 Set tItemName = tStep("itemName")
+            } ElseIf pType = ..#TYPECHANGECLASS {
+                Do ..ChangeStep(pNamespace, pProduction, pName, pNewClass, pReviewed, tOrigNS, tProduction, .tStep)
+                Set tAbsent = tStep("absent")
+                Set tRefusal = tStep("refusal")
+                Set tVendorSC = tStep("vendor")
+                Set tAuditSC = tStep("audit")
+                Set tSaveSC = tStep("save")
+                Set tAfter = tStep("after")
+                Set tAfterCount = tStep("afterCount")
             } Else {
                 Set tFactsSC = ..GatherItems(pNamespace, pProduction, pName, 0, .tExists, .tFound, .tCount, .tGatherCaught)
                 If $IsObject(tGatherCaught) Throw tGatherCaught
                 Set tLine = $Get(tFound(1))
-                If (pType '= ..#TYPEADD) && (tCount = 0) {
+                If (pType '= ..#TYPEADD) && (pType '= ..#TYPECOPY) && (tCount = 0) {
                     Set tAbsent = 1
                 } ElseIf ..VendorCannotFind(pType, tCount, tLine) {
                     Set tAbsent = 1
@@ -1869,12 +2587,38 @@ ClassMethod PerformItem(pNamespace As %String, pType As %String, pProduction As 
                         Set tRefusal = ..ItemRefusalToken(pType, tCount, $List(tLine, 4), $List(tLine, 5), $List(tLine, 3), $List(tLine, 6))
                     }
                 }
+                If (pType = ..#TYPECOPY) && (tRefusal = "") && 'tAbsent {
+                    ; The source is read under the same lock and copied as it stands now.
+                    Set tSourceSC = ..GatherItems(pNamespace, pProduction, pBody.%Get("CopyFrom"), 0, .tSourceExists, .tSourceFound, .tSourceCount, .tSourceCaught)
+                    If $IsObject(tSourceCaught) Throw tSourceCaught
+                    If tSourceCount = 0 Set tRefusal = "COPYSOURCE"
+                    If tSourceCount > 1 Set tRefusal = "AMBIGUOUS"
+                }
                 If (tRefusal = "") && 'tAbsent {
                     Set tName = $Select(tLine = "": pName, 1: $List(tLine, 1))
                     Set tTarget = ""
                     If (pType = ..#TYPEENABLE) || (pType = ..#TYPEDISABLE) {
                         Set tVendorSC = ##class(Ens.Director).EnableConfigItem(pProduction _ "||" _ tName, (pType = ..#TYPEENABLE), 0)
                         If $$$ISOK(tVendorSC) Set tSaveSC = tProduction.SaveToClass(..ItemObject(tProduction, tName))
+                    } ElseIf pType = ..#TYPECOPY {
+                        Set tSourceName = $List(tSourceFound(1), 1)
+                        Kill %objlasterror
+                        Set tNew = ..ItemObject(tProduction, tSourceName).%ConstructClone(1)
+                        If '$IsObject(tNew) {
+                            Set tVendorSC = $$$ERROR($$$GeneralError, "the source item could not be cloned: " _ $System.Status.GetErrorText($Get(%objlasterror, $$$OK)))
+                        } Else {
+                            Set tNew.Name = pName
+                            Set tNew.Enabled = 0
+                            If (tNew.BusinessType() = 2) && (tNew.PoolSize = 0) Set tNew.PoolSize = 1
+                            Do tProduction.Items.Insert(tNew)
+                            Set tVendorSC = tProduction.%Save()
+                        }
+                        If $$$ISOK(tVendorSC) {
+                            Set tActions = "item added by OcuPilot as a copy of " _ tSourceName
+                            Set tAuditSC = ##class(Ens.Util.Auditing).AuditModifyProductionConfig(pProduction, pName, .tActions)
+                            Set tSaveSC = tProduction.SaveToClass(tNew)
+                        }
+                        Set tNew = ""
                     } ElseIf pType = ..#TYPEADD {
                         Set tNew = ##class(Ens.Config.Item).%New(pBody.%Get("ClassName"))
                         Set tNew.Name = pName
@@ -5031,10 +5775,11 @@ ClassMethod AuditRuntime(pVerb As %String, pType As %String, pId As %String, pEf
 /// reads and anything else, which have no script form (AD-59).</p>
 ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
 {
-    If (pEndpoint = ..#ENDPOINTITEMS) && ..IsItemWrite(pType) Quit "objectscript"
+    If (pEndpoint = ..#ENDPOINTITEMS) && (..IsItemWrite(pType) || ..IsItemRunWrite(pType)) Quit "objectscript"
     If (pEndpoint = ..#ENDPOINTSETTINGS) && ..IsSettingWrite(pType) Quit "objectscript"
     If ..IsRuntimeWrite(pType) && ..Serves(pEndpoint, pType) Quit "objectscript"
     If (..IsLookupWrite(pType) || (pType = ..#TYPEEXPORT)) && ..Serves(pEndpoint, pType) Quit "objectscript"
+    If (pEndpoint = ..#ENDPOINTBUSINESSPARTNERS) && ..IsPartnerWrite(pType) Quit "objectscript"
     If (pEndpoint = ..#ENDPOINTITEMTEST) && ..IsTestWrite(pType) Quit "objectscript"
     If (pEndpoint = ..#ENDPOINTTRANSFORMS) && (pType = ..#TYPETRANSFORMTEST) Quit "objectscript"
     If (pEndpoint = ..#ENDPOINTMESSAGES) && ..IsMessageWrite(pType) Quit "objectscript"
@@ -5048,9 +5793,9 @@ ClassMethod SnippetForm(pEndpoint As %String, pType As %String) As %String
 /// <code>StartProduction</code> of the one production, <code>StopProduction</code>,
 /// <code>RestartProduction</code> and <code>UpdateProduction</code> with the production's own timeout capped
 /// at <parameter>STOPSECONDS</parameter>, and <code>RecoverProduction</code>; an item's
-/// <code>EnableConfigItem</code>, add and remove, each followed by the production class's
+/// <code>EnableConfigItem</code>, add, copy, change of class and remove, each followed by the production class's
 /// <code>SaveToClass</code>; the queue and job actions (<method>RuntimeSnippet</method>); and the message resend and edit and resend
-/// (<method>MessageSnippet</method>). A read writes nothing and answers no step. Every value is rendered as a
+/// (<method>MessageSnippet</method>); and the business partner writes (<method>PartnerSnippet</method>). A read writes nothing and answers no step. Every value is rendered as a
 /// string literal, so nothing the query carries runs as code, and every line closes any block it opens.
 /// Whoever runs the script is checked by the vendor's own run resource, and a recover by the namespace's
 /// database alone; an item write is checked by the databases alone.</p>
@@ -5059,9 +5804,11 @@ ClassMethod Snippet(pEndpoint As %String, pType As %String, ByRef pQuery, pBody 
     If ..SnippetForm(pEndpoint, pType) = "" Quit []
     Set tText = " Set $NAMESPACE = " _ ..Literal($Get(pQuery(..#NAMESPACEKEY)))
     If pEndpoint = ..#ENDPOINTITEMS {
-        Set tText = tText _ ..ItemSnippet(pType, $Get(pQuery(..#IDKEY)), pBody)
+        Set tText = tText _ ..ItemSnippet(pType, $Get(pQuery(..#IDKEY)), pBody, .pQuery, pContext)
     } ElseIf pEndpoint = ..#ENDPOINTSETTINGS {
         Set tText = tText _ ..SettingSnippet(pType, $Get(pQuery(..#IDKEY)), pBody)
+    } ElseIf pEndpoint = ..#ENDPOINTBUSINESSPARTNERS {
+        Set tText = tText _ ..PartnerSnippet(pType, $Get(pQuery(..#IDKEY)), pBody)
     } ElseIf pEndpoint = ..#ENDPOINTITEMTEST {
         Set tText = tText _ ..TestSnippet($Get(pQuery(..#IDKEY)), .pQuery)
     } ElseIf pEndpoint = ..#ENDPOINTTRANSFORMS {
@@ -5135,15 +5882,18 @@ ClassMethod RuntimeSnippet(pType As %String, pId As %String, pContext As %Dynami
 }
 
 /// <p>The lines <method>Snippet</method> adds for the item write <var>pType</var> of the item the composite
-/// id <var>pId</var> names, carrying the add's body <var>pBody</var>. The last line drops the production, so a
+/// id <var>pId</var> names, carrying the add's or the copy's body <var>pBody</var>. A change of class sets the class
+/// <var>pQuery</var> names under <parameter>NEWCLASSKEY</parameter> and removes the settings the proposal's stored payload
+/// (<var>pContext</var>'s <code>payload.Dropped</code>) lists. The last line drops the production, so a
 /// terminal that runs the script does not keep its exclusive lock.</p>
-ClassMethod ItemSnippet(pType As %String, pId As %String, pBody As %DynamicAbstractObject) As %String [ Private ]
+ClassMethod ItemSnippet(pType As %String, pId As %String, pBody As %DynamicAbstractObject, ByRef pQuery, pContext As %DynamicObject = "") As %String [ Private ]
 {
     Set tParts = ##class(OcuPilot.Kernel.EntityId).SplitComposite(pId)
     Set tProduction = ..Literal($ListGet(tParts, 1))
     Set tName = ..Literal($ListGet(tParts, 2))
     Set tConfigName = ..Literal($ListGet(tParts, 1) _ "||" _ $ListGet(tParts, 2))
     Set tNL = $Char(10)
+    If ..IsItemRunWrite(pType) Quit ..ItemRunSnippet(pType, tConfigName)
     Set tText = tNL _ " Set tProduction = ##class(Ens.Config.Production).%OpenId(" _ tProduction _ ", 4)"
     If (pType = ..#TYPEENABLE) || (pType = ..#TYPEDISABLE) {
         Set tText = tText _ tNL _ " Set tSC = ##class(Ens.Director).EnableConfigItem(" _ tConfigName _ ", " _ (pType = ..#TYPEENABLE) _ ", 0)"
@@ -5162,6 +5912,29 @@ ClassMethod ItemSnippet(pType As %String, pId As %String, pBody As %DynamicAbstr
         Set tText = tText _ tNL _ " Do tProduction.Items.Insert(tItem)"
         Set tText = tText _ tNL _ " Set tSC = tProduction.%Save()"
         Set tText = tText _ tNL _ " If $System.Status.IsOK(tSC) Set tSC = tProduction.SaveToClass(tItem)"
+    } ElseIf pType = ..#TYPECOPY {
+        Set tFrom = ""
+        If $IsObject(pBody) && (pBody.%GetTypeOf("CopyFrom") = "string") Set tFrom = pBody.%Get("CopyFrom")
+        Set tText = tText _ tNL _ " Set tItem = tProduction.FindItemByConfigName(" _ ..Literal(tFrom) _ ").%ConstructClone(1)"
+        Set tText = tText _ tNL _ " Set tItem.Name = " _ tName
+        Set tText = tText _ tNL _ " Set tItem.Enabled = 0"
+        Set tText = tText _ tNL _ " If (tItem.BusinessType() = 2) && (tItem.PoolSize = 0) Set tItem.PoolSize = 1"
+        Set tText = tText _ tNL _ " Do tProduction.Items.Insert(tItem)"
+        Set tText = tText _ tNL _ " Set tSC = tProduction.%Save()"
+        Set tText = tText _ tNL _ " If $System.Status.IsOK(tSC) Set tSC = tProduction.SaveToClass(tItem)"
+    } ElseIf pType = ..#TYPECHANGECLASS {
+        Set tText = tText _ tNL _ " Set tItem = tProduction.FindItemByConfigName(" _ tName _ ")"
+        Set tText = tText _ tNL _ " Set tItem.ClassName = " _ ..Literal($Get(pQuery(..#NEWCLASSKEY)))
+        Set tDropped = ""
+        If $IsObject(pContext) && (pContext.%GetTypeOf("payload") = "object") && (pContext.%Get("payload").%GetTypeOf("Dropped") = "array") {
+            Set tIterator = pContext.%Get("payload").%Get("Dropped").%GetIterator()
+            While tIterator.%GetNext(.tIndex, .tEntry) {
+                If $IsObject(tEntry) Set tDropped = tDropped _ $Select(tDropped = "": "", 1: ", ") _ ..Literal(tEntry.%Get("Target") _ "." _ tEntry.%Get("Name"))
+            }
+        }
+        If tDropped '= "" Set tText = tText _ tNL _ " For tI = tItem.Settings.Count():-1:1 { Set tSetting = tItem.Settings.GetAt(tI) If $ListFind($ListBuild(" _ tDropped _ "), tSetting.Target _ ""."" _ tSetting.Name) Do tItem.Settings.RemoveAt(tI) }"
+        Set tText = tText _ tNL _ " Set tSC = tItem.%Save()"
+        Set tText = tText _ tNL _ " If $System.Status.IsOK(tSC) Set tSC = tProduction.SaveToClass(tItem)"
     } Else {
         Set tText = tText _ tNL _ " Do tProduction.RemoveItem(tProduction.FindItemByConfigName(" _ tName _ "))"
         Set tText = tText _ tNL _ " Set tSC = tProduction.%Save()"
@@ -5169,6 +5942,26 @@ ClassMethod ItemSnippet(pType As %String, pId As %String, pBody As %DynamicAbstr
     }
     ; The production was opened with its exclusive lock, which lasts while a reference to it does.
     Set tText = tText _ tNL _ " Kill tItem, tProduction"
+    Quit tText
+}
+
+/// <p>The lines <method>ItemSnippet</method> adds for the item runtime write <var>pType</var> (Story 20.25) of the item the string
+/// literal <var>pConfigName</var> names (<code>Production||Name</code>): <code>TempStopConfigItem</code> with no update, then the
+/// production's update timeout capped at <parameter>STOPSECONDS</parameter> and <code>UpdateProduction</code>; after a refused
+/// stop's update the flag is cleared again. A restart does the stop and then the start. Each line closes any block it opens, and every
+/// condition takes a block, so no command after it on the line is conditional on it.</p>
+ClassMethod ItemRunSnippet(pType As %String, pConfigName As %String) As %String [ Private ]
+{
+    Set tNL = $Char(10)
+    Set tText = ""
+    If pType '= ..#TYPESTARTITEM {
+        Set tText = tText _ tNL _ " Set tSC = ##class(Ens.Director).TempStopConfigItem(" _ pConfigName _ ", 1, 0)"
+        Set tText = tText _ tNL _ " If $System.Status.IsOK(tSC) { Set tTimeout = ##class(Ens.Director).GetRunningProductionUpdateTimeout() If tTimeout > " _ ..#STOPSECONDS _ " { Set tTimeout = " _ ..#STOPSECONDS _ " } Set tSC = ##class(Ens.Director).UpdateProduction(tTimeout, 0) If $System.Status.IsError(tSC) { Do ##class(Ens.Director).TempStopConfigItem(" _ pConfigName _ ", 0, 0) } }"
+    }
+    If pType '= ..#TYPESTOPITEM {
+        Set tText = tText _ tNL _ " If " _ $Select(pType = ..#TYPESTARTITEM: "1", 1: "$System.Status.IsOK(tSC)") _ " { Set tSC = ##class(Ens.Director).TempStopConfigItem(" _ pConfigName _ ", 0, 0)"
+        Set tText = tText _ " If $System.Status.IsOK(tSC) { Set tTimeout = ##class(Ens.Director).GetRunningProductionUpdateTimeout() If tTimeout > " _ ..#STOPSECONDS _ " { Set tTimeout = " _ ..#STOPSECONDS _ " } Set tSC = ##class(Ens.Director).UpdateProduction(tTimeout, 0) } }"
+    }
     Quit tText
 }
 
@@ -6125,15 +6918,7 @@ ClassMethod ListPartners(pNamespace As %String, pMax As %Integer, Output pRows A
                 Set tName = tResultSet.GetData(1)
                 Set tLine = $ListBuild(tName, tResultSet.GetData(2))
                 Set tPartner = ##class(Ens.Config.BusinessPartner).%OpenId(tName)
-                For tContact = "PrimaryContact", "AlternativeContact" {
-                    Set tObject = $Select($IsObject(tPartner): $Property(tPartner, tContact), 1: "")
-                    If $IsObject(tObject) {
-                        Set tLine = tLine _ $ListBuild(tObject.Name, tObject.Title, tObject.Email, tObject.PhoneNumber, tObject.MobileNumber, tObject.Notes)
-                    } Else {
-                        Set tLine = tLine _ $ListBuild("", "", "", "", "", "")
-                    }
-                    Set tObject = ""
-                }
+                Set tLine = tLine _ ..PartnerContacts(tPartner)
                 Set tPartner = ""
                 Set tFound = tFound + 1
                 Set tFound(tFound) = tLine
@@ -6148,17 +6933,438 @@ ClassMethod ListPartners(pNamespace As %String, pMax As %Integer, Output pRows A
     }
     If $IsObject(tCaught) Quit ..Mapped(tCaught, "the business partner list failed", .pHttpStatus, .pFault)
     If $$$ISERR(tStatusSC) Quit ..Statused(tStatusSC, "the business partner list failed", .pHttpStatus, .pFault)
-    Set tNames = $ListBuild("Name", "Description", "PrimaryContact", "PrimaryTitle", "PrimaryEmail", "PrimaryPhone", "PrimaryMobile", "PrimaryNotes", "AlternativeContact", "AlternativeTitle", "AlternativeEmail", "AlternativePhone", "AlternativeMobile", "AlternativeNotes")
     Set pRows = []
     For tI = 1:1:tFound {
-        Set tRow = {}
-        For tJ = 1:1:$ListLength(tNames) {
-            Do tRow.%Set($List(tNames, tJ), $List(tFound(tI), tJ) _ "", "string")
-        }
-        Do pRows.%Push(tRow)
+        Do pRows.%Push(..PartnerRow(tFound(tI)))
     }
     Set pHttpStatus = 200
     Quit $$$OK
+}
+
+/// <p>Whether the instance can address <code>^Ens.Config.BusinessPartnerD</code> by the name <var>pName</var> (Story 20.26): a
+/// name whose encoded form is past the instance's subscript limit raises <code>&lt;SUBSCRIPT&gt;</code> in the vendor's own
+/// calls, so no partner holds it. The test reads a process-private global whose name is as long as the vendor's, which nothing
+/// writes. Pure; it names no other class, so it runs while a namespace is switched.</p>
+ClassMethod PartnerFits(pName As %String) As %Boolean
+{
+    Set tFits = 1
+    Try {
+        Set tProbe = $Data(^||Ens.Config.BusinessPartnerD(pName))
+    } Catch {
+        Set tFits = 0
+    }
+    Quit tFits
+}
+
+/// <p>The most characters the vendor stores for the partner field <var>pField</var> (Story 20.26, measured): 5,000 for the
+/// description, 1,000 for a contact's notes, 50 for a phone or mobile number and 255 for every other field. Pure.</p>
+ClassMethod PartnerLimit(pField As %String) As %Integer
+{
+    Quit $Case(pField, "Description": 5000, "PrimaryNotes": 1000, "AlternativeNotes": 1000, "PrimaryPhone": 50, "PrimaryMobile": 50, "AlternativePhone": 50, "AlternativeMobile": 50, : ..#PARTNERNAMEMAX)
+}
+
+/// <p>The 422 violations of a partner's name and fields, in <var>pViolations</var> as <code>pViolations(n) = $ListBuild(field,
+/// code)</code> with the count in <code>pViolations</code> (Story 20.26): <code>Name</code> is 1 to 255 characters with no control
+/// character and one the instance can address (<method>PartnerFits</method>), judged only when <var>pJudgeName</var> (an add: a
+/// partner already held keeps the name it has), and each of the thirteen fields in
+/// <var>pFields</var> (<code>pFields(field) = value</code>, a field not supplied is not judged) is within
+/// <method>PartnerLimit</method>. They are the vendor's own limits (measured), and the vendor would refuse each with an error that
+/// names none of them. Pure.</p>
+ClassMethod PartnerViolations(pName As %String, ByRef pFields, Output pViolations, pJudgeName As %Boolean = 1) As %Status
+{
+    Kill pViolations
+    Set pViolations = 0
+    If pJudgeName && ((pName = "") || ($Length(pName) > ..#PARTNERNAMEMAX) || ($ZStrip(pName, "*C") '= pName) || '..PartnerFits(pName)) {
+        Set pViolations($Increment(pViolations)) = $ListBuild("Name", ##class(OcuPilot.Api.InteropError).#PARTNERNAME)
+    }
+    Set tNames = $ListFromString(..#PARTNERSETFIELDS)
+    For tI = 1:1:$ListLength(tNames) {
+        Set tField = $List(tNames, tI)
+        If $Length($Get(pFields(tField))) > ..PartnerLimit(tField) Set pViolations($Increment(pViolations)) = $ListBuild(tField, ##class(OcuPilot.Api.InteropError).#PARTNERLENGTH)
+    }
+    Quit $$$OK
+}
+
+/// <p>The decision a partner write <var>pType</var> is refused with, as the last segment of its code (<code>TAKEN</code>,
+/// <code>NAMECASE</code>, <code>NAMED</code>) or <code>ABSENT</code> for a target that is not there, else <code>""</code> (Story
+/// 20.26): whatever the vendor would answer as a silent success, or get wrong, is refused here by its own name. <var>pExists</var>
+/// is whether the partner is held under exactly that name, <var>pMatch</var> the spelling it is held under in another letter case
+/// (<code>""</code> when none) and <var>pNamed</var> how many items of any production name it. It names no other class, so it runs
+/// while the partner's namespace is switched. Pure.</p>
+/// <ul>
+/// <li>Add: <code>TAKEN</code> when the name is held, <code>NAMECASE</code> when it is absent but held in another letter case.</li>
+/// <li>Set: <code>ABSENT</code> unless the partner is held.</li>
+/// <li>Remove: <code>ABSENT</code> unless the partner is held, then <code>NAMED</code> while any item names it.</li>
+/// </ul>
+ClassMethod PartnerWriteToken(pType As %String, pExists As %Boolean, pMatch As %String, pNamed As %Integer) As %String
+{
+    If pType = ..#TYPEADDPARTNER {
+        If pExists Quit "TAKEN"
+        If pMatch '= "" Quit "NAMECASE"
+        Quit ""
+    }
+    If 'pExists Quit "ABSENT"
+    If (pType = ..#TYPEREMOVEPARTNER) && (pNamed > 0) Quit "NAMED"
+    Quit ""
+}
+
+/// <p>The dotted path, from the partner, of the property its field <var>pField</var> names (Story 20.26): <code>Description</code>,
+/// or a contact's property, <code>PrimaryContact.Name</code> for <code>PrimaryContact</code> and so on. Pure.</p>
+ClassMethod PartnerPath(pField As %String) As %String
+{
+    If pField = "Description" Quit "Description"
+    Set tPrimary = ($Extract(pField, 1, 7) = "Primary")
+    Set tRest = $Extract(pField, $Select(tPrimary: 8, 1: 12), *)
+    Quit $Select(tPrimary: "PrimaryContact", 1: "AlternativeContact") _ "." _ $Case(tRest, "Contact": "Name", "Phone": "PhoneNumber", "Mobile": "MobileNumber", : tRest)
+}
+
+/// <p>Store <var>pValue</var> in the field <var>pField</var> of the partner <var>pPartner</var>, making its contact when it has none
+/// (Story 20.26). It runs while a namespace is switched.</p>
+ClassMethod PartnerSet(pPartner As %RegisteredObject, pField As %String, pValue As %String) [ Private ]
+{
+    Set tPath = ..PartnerPath(pField)
+    If tPath '[ "." {
+        Set $Property(pPartner, tPath) = pValue
+        Quit
+    }
+    Set tContact = $Piece(tPath, ".", 1)
+    Set tObject = $Property(pPartner, tContact)
+    If '$IsObject(tObject) {
+        Set $Property(pPartner, tContact) = ##class(Ens.Config.BusinessPartnerContact).%New()
+        Set tObject = $Property(pPartner, tContact)
+    }
+    Set $Property(tObject, $Piece(tPath, ".", 2)) = pValue
+}
+
+/// <p>The twelve contact fields of the partner <var>pPartner</var>, as a <class>%List</class> in <parameter>PARTNERFIELDS</parameter>'
+/// order after the description: the primary contact's name, title, email, phone, mobile and notes, then the alternative's. A
+/// partner with no contact object, or no partner, reads as empty (Story 20.26). It runs while a namespace is switched.</p>
+ClassMethod PartnerContacts(pPartner As %RegisteredObject) As %List [ Private ]
+{
+    Set tLine = ""
+    For tContact = "PrimaryContact", "AlternativeContact" {
+        Set tObject = $Select($IsObject(pPartner): $Property(pPartner, tContact), 1: "")
+        If $IsObject(tObject) {
+            Set tLine = tLine _ $ListBuild(tObject.Name, tObject.Title, tObject.Email, tObject.PhoneNumber, tObject.MobileNumber, tObject.Notes)
+        } Else {
+            Set tLine = tLine _ $ListBuild("", "", "", "", "", "")
+        }
+        Set tObject = ""
+    }
+    Quit tLine
+}
+
+/// <p>The partner <var>pPartner</var> named <var>pName</var> as the fourteen values <parameter>PARTNERFIELDS</parameter> names, in
+/// order (Story 20.26). It runs while a namespace is switched.</p>
+ClassMethod PartnerLine(pName As %String, pPartner As %RegisteredObject) As %List [ Private ]
+{
+    Quit $ListBuild(pName, $Select($IsObject(pPartner): pPartner.Description, 1: "")) _ ..PartnerContacts(pPartner)
+}
+
+/// <p>The row a partner list and the partner read answer, from the fourteen values <var>pLine</var> of
+/// <method>PartnerLine</method>: <code>{Name, Description, ...}</code>, all strings; with <var>pNamespace</var> (the partner read)
+/// <code>NamedBy</code>, how many items name the partner, and <code>Namespace</code> too. Runs in the install namespace.</p>
+ClassMethod PartnerRow(pLine As %List, pNamed As %Integer = 0, pNamespace As %String = "") As %DynamicObject [ Private ]
+{
+    Set tNames = $ListFromString(..#PARTNERFIELDS)
+    Set tRow = {}
+    For tJ = 1:1:$ListLength(tNames) {
+        Do tRow.%Set($List(tNames, tJ), $List(pLine, tJ) _ "", "string")
+    }
+    If pNamespace '= "" {
+        Do tRow.%Set("NamedBy", +pNamed, "number")
+        Do tRow.%Set("Namespace", pNamespace, "string")
+    }
+    Quit tRow
+}
+
+/// <p>How many items of every production of the current namespace name the partner <var>pName</var> in their Host
+/// <code>BusinessPartner</code> setting, compared exactly, a running production or not (Story 20.26). A production whose
+/// listing fails raises, so a partner is never read as named by nothing for want of an answer. Only vendor classes run, so it
+/// runs while a namespace is switched. A credential, a system default setting or a managed alert that names the partner is not
+/// counted.</p>
+ClassMethod PartnerNamedByHere(pName As %String) As %Integer
+{
+    Set tCount = 0
+    Kill tProductions
+    Set tResultSet = ##class(%ResultSet).%New("Ens.Config.Production:ProductionStatus")
+    Set tStatus = tResultSet.Execute()
+    If $$$ISERR(tStatus) Throw ##class(%Exception.StatusException).CreateFromStatus(tStatus)
+    While tResultSet.Next() {
+        Set tProductions($Increment(tProductions)) = tResultSet.GetData(1)
+    }
+    Do tResultSet.Close()
+    Set tResultSet = ""
+    For tI = 1:1:$Get(tProductions) {
+        Set tProduction = ##class(Ens.Config.Production).%OpenId(tProductions(tI))
+        If '$IsObject(tProduction) Continue
+        For tJ = 1:1:tProduction.Items.Count() {
+            Set tItem = tProduction.Items.GetAt(tJ)
+            If '$IsObject(tItem) Continue
+            Set tSetting = tItem.FindSettingByName("BusinessPartner", "Host")
+            If $IsObject(tSetting) && (tSetting.Value = pName) Set tCount = tCount + 1
+        }
+        Set tSetting = ""
+        Set tItem = ""
+        Set tProduction = ""
+    }
+    Quit tCount
+}
+
+/// <p>The facts about the partner <var>pName</var>, read in the current namespace, which the caller has already switched, and kept
+/// in <var>pFacts</var>: <code>exists</code> (the partner is held under exactly that name), <code>match</code> (the spelling it
+/// is held under in another letter case, else <code>""</code>, found by comparing every partner's name in upper case, so the work
+/// is bounded by the partner count), and, for a partner that exists, <code>line</code> (<method>PartnerLine</method>) and
+/// <code>named</code> (<method>PartnerNamedByHere</method>). A name the instance cannot address is not held. Nothing is written
+/// (Story 20.26).</p>
+ClassMethod PartnerFactsHere(pName As %String, ByRef pFacts) [ Private ]
+{
+    Kill pFacts
+    Set pFacts("exists") = 0
+    Set pFacts("match") = ""
+    Set pFacts("named") = 0
+    Set pFacts("line") = ""
+    If '..PartnerFits(pName) Quit
+    Set pFacts("exists") = ''##class(Ens.Config.BusinessPartner).%ExistsId(pName)
+    If 'pFacts("exists") {
+        Set tUpper = $ZConvert(pName, "U")
+        Set tResultSet = ##class(%ResultSet).%New("Ens.Config.BusinessPartner:List")
+        Set tStatus = tResultSet.Execute()
+        If $$$ISOK(tStatus) {
+            While tResultSet.Next() {
+                Set tHeld = tResultSet.GetData(1)
+                If $ZConvert(tHeld, "U") = tUpper {
+                    Set pFacts("match") = tHeld
+                    Quit
+                }
+            }
+            Do tResultSet.Close()
+        }
+        Set tResultSet = ""
+        Quit
+    }
+    Set tPartner = ##class(Ens.Config.BusinessPartner).%OpenId(pName)
+    If $IsObject(tPartner) Set pFacts("line") = ..PartnerLine(pName, tPartner)
+    Set tPartner = ""
+    Set pFacts("named") = ..PartnerNamedByHere(pName)
+}
+
+/// <p><method>PartnerFactsHere</method> in <var>pNamespace</var>; a fault is <var>pCaught</var>, with the namespace restored
+/// (Story 20.26).</p>
+ClassMethod PartnerFacts(pNamespace As %String, pName As %String, Output pFacts, Output pCaught) [ Private ]
+{
+    Kill pFacts
+    Set pCaught = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Do ..PartnerFactsHere(pName, .pFacts)
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pCaught = ex
+    }
+}
+
+/// <p>One business partner, fresh (Story 20.26): the fourteen fields of <method>ListPartners</method> and <code>NamedBy</code> (how
+/// many items name it) and <code>Namespace</code>. A partner not held under exactly that name is 404 <code>PORT.NOTFOUND</code>,
+/// unlogged. With <var>pAction</var> it refuses what that write would be refused, in this order: <code>SOURCECONTROL</code> for any
+/// write; for an add (AD-54, which inverts the read) <code>TAKEN</code> when the name is held, <code>NAMECASE</code> when it is held
+/// in another letter case, and otherwise the 404 a create expects; for a remove <code>NAMED</code> while any item names it.</p>
+ClassMethod ReadPartner(pNamespace As %String, pName As %String, pAction As %String, Output pRow As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pRow = ""
+    If (pAction '= "") && ..SourceControlled(pNamespace) Quit ..Conflict(##class(OcuPilot.Api.InteropError).#PARTNERSOURCECONTROL, .pHttpStatus, .pFault)
+    Do ..PartnerFacts(pNamespace, pName, .tFacts, .tCaught)
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the business partner read failed", .pHttpStatus, .pFault)
+    If pAction = ..#TYPEADDPARTNER {
+        Set tToken = ..PartnerWriteToken(pAction, tFacts("exists"), tFacts("match"), 0)
+        If tToken '= "" Quit ..Conflict(..#PARTNERCODEPREFIX _ tToken, .pHttpStatus, .pFault)
+        Quit ..Absent(.pHttpStatus, .pFault)
+    }
+    If 'tFacts("exists") Quit ..Absent(.pHttpStatus, .pFault)
+    If pAction '= "" {
+        Set tToken = ..PartnerWriteToken(pAction, 1, "", tFacts("named"))
+        If tToken '= "" Quit ..Conflict(..#PARTNERCODEPREFIX _ tToken, .pHttpStatus, .pFault)
+    }
+    Set pRow = ..PartnerRow(tFacts("line"), tFacts("named"), pNamespace)
+    Set pHttpStatus = 200
+    Quit $$$OK
+}
+
+/// <p>Serve the BusinessPartners endpoint's single-partner types (Story 20.26) after <method>Invoke</method>'s gate: the
+/// <code>PARTNER</code> read and the three writes, the partner named under <parameter>IDKEY</parameter> by its name, kept exactly
+/// (AD-13). An <parameter>ACTIONKEY</parameter> names the write the read is composed for.</p>
+ClassMethod InvokePartner(pNamespace As %String, pType As %String, ByRef pQuery, pBody As %DynamicAbstractObject, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pResult = ""
+    Try {
+        Set tName = $Get(pQuery(..#IDKEY))
+        If tName = "" {
+            Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#PORTVALIDATION, ..#REASONIDREQUIRED, .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tAction = $Select(..IsPartnerWrite(pType): pType, 1: $Get(pQuery(..#ACTIONKEY)))
+        If (tAction '= "") && '..IsPartnerWrite(tAction) {
+            Set tSC = ..Refuse(501, ##class(OcuPilot.Api.Error).#NOTIMPLEMENTED, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, ..#REASONNOTIMPLEMENTED, .pHttpStatus, .pFault)
+            Quit
+        }
+        If ..IsPartnerWrite(pType) {
+            Set tSC = ..PerformPartner(pNamespace, pType, tName, pBody, .pResult, .pHttpStatus, .pFault)
+        } Else {
+            Set tSC = ..ReadPartner(pNamespace, tName, tAction, .pResult, .pHttpStatus, .pFault)
+        }
+    } Catch ex {
+        Set pResult = ""
+        Set tSC = ..Fail("the business partner call failed inside the port", ex.AsStatus(), .pHttpStatus, .pFault)
+    }
+    Quit tSC
+}
+
+/// <p>Run partner write <var>pType</var> on the partner <var>pName</var> in <var>pNamespace</var> and answer what it leaves (Story
+/// 20.26). The sequence:</p>
+/// <ol>
+/// <li>A namespace under source control is <code>INTEROP.PARTNER.SOURCECONTROL</code>, before anything is read.</li>
+/// <li>An add's or set's fields are judged by <method>PartnerViolations</method> (422, a value that is not a string the field's
+/// shape); a remove of a name the instance cannot address is 404.</li>
+/// <li>In the namespace the partner is read again and judged by <method>PartnerWriteToken</method>, so a state that moved since the
+/// review is refused by its own code with no vendor call; then the vendor's <code>%Save</code> of a new partner, <code>%Save</code>
+/// of the opened partner (concurrency 4, the reference dropped right after) with each field that differs, or
+/// <code>%DeleteId</code> runs. A set that moves no field calls nothing. A partner another process holds locked is 503.</li>
+/// <li>The namespace is restored, then OcuPilot's own audit row is recorded (<method>AuditRuntime</method>), because the vendor
+/// records none. It carries the namespace and, for a set, the names of the fields it changed, never a value.</li>
+/// </ol>
+/// <p>The answer is the partner's row read again (<method>ReadPartner</method>); after a remove <code>{Name, Namespace}</code>.</p>
+ClassMethod PerformPartner(pNamespace As %String, pType As %String, pName As %String, pBody As %DynamicAbstractObject, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set pResult = ""
+    If ..SourceControlled(pNamespace) Quit ..Conflict(##class(OcuPilot.Api.InteropError).#PARTNERSOURCECONTROL, .pHttpStatus, .pFault)
+    Kill tValues
+    Set tFields = $ListFromString(..#PARTNERSETFIELDS)
+    If pType '= ..#TYPEREMOVEPARTNER {
+        Set tViolations = 0
+        If '$IsObject(pBody) || 'pBody.%IsA("%Library.DynamicObject") Set pBody = {}
+        For tI = 1:1:$ListLength(tFields) {
+            Set tField = $List(tFields, tI)
+            Set tFieldType = pBody.%GetTypeOf(tField)
+            If tFieldType = "string" {
+                Set tValues(tField) = pBody.%Get(tField)
+            } ElseIf tFieldType '= "unassigned" {
+                Set tViolations($Increment(tViolations)) = $ListBuild(tField, ##class(OcuPilot.Api.Error).#PORTFIELDSHAPE)
+            }
+        }
+        Set tSC = ..PartnerViolations(pName, .tValues, .tFieldViolations, (pType = ..#TYPEADDPARTNER))
+        If $$$ISERR(tSC) Quit tSC
+        For tI = 1:1:tFieldViolations {
+            Set tViolations($Increment(tViolations)) = tFieldViolations(tI)
+        }
+        If tViolations Quit ..Violations(.tViolations, .pHttpStatus, .pFault)
+    } ElseIf '..PartnerFits(pName) {
+        Quit ..Absent(.pHttpStatus, .pFault)
+    }
+    Set tToken = ""
+    Set tCaught = ""
+    Set tVendorSC = $$$OK
+    Set tBusy = 0
+    Set tChanged = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = pNamespace
+        Do ..PartnerFactsHere(pName, .tFacts)
+        Set tToken = ..PartnerWriteToken(pType, tFacts("exists"), tFacts("match"), tFacts("named"))
+        If tToken = "" {
+            If pType = ..#TYPEADDPARTNER {
+                Set tPartner = ##class(Ens.Config.BusinessPartner).%New()
+                Set tPartner.PartnerName = pName
+                For tI = 1:1:$ListLength(tFields) {
+                    Do ..PartnerSet(tPartner, $List(tFields, tI), $Get(tValues($List(tFields, tI))))
+                }
+                Set tVendorSC = tPartner.%Save()
+            } ElseIf pType = ..#TYPESETPARTNER {
+                Set tPartner = ##class(Ens.Config.BusinessPartner).%OpenId(pName, 4)
+                If '$IsObject(tPartner) {
+                    Set tBusy = 1
+                } Else {
+                    Set tHeld = ..PartnerLine(pName, tPartner)
+                    For tI = 1:1:$ListLength(tFields) {
+                        Set tField = $List(tFields, tI)
+                        If '$Data(tValues(tField)) Continue
+                        If $List(tHeld, $ListFind($ListFromString(..#PARTNERFIELDS), tField)) = tValues(tField) Continue
+                        Do ..PartnerSet(tPartner, tField, tValues(tField))
+                        Set tChanged = tChanged _ $ListBuild(tField)
+                    }
+                    If tChanged '= "" Set tVendorSC = tPartner.%Save()
+                }
+            } Else {
+                Set tVendorSC = ##class(Ens.Config.BusinessPartner).%DeleteId(pName)
+            }
+        }
+        ; The partner's lock is released in the namespace it was taken in.
+        Set tPartner = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Try {
+            Set $NAMESPACE = pNamespace
+        } Catch {
+        }
+        Set tPartner = ""
+        Set $NAMESPACE = tOrigNS
+        Set tCaught = ex
+    }
+    If $IsObject(tCaught) Quit ..Mapped(tCaught, "the business partner write failed", .pHttpStatus, .pFault)
+    If tBusy Quit ..Unavailable(.pHttpStatus, .pFault)
+    If tToken = "ABSENT" Quit ..Absent(.pHttpStatus, .pFault)
+    If tToken '= "" Quit ..Conflict(..#PARTNERCODEPREFIX _ tToken, .pHttpStatus, .pFault)
+    If $$$ISERR(tVendorSC) Quit ..Statused(tVendorSC, "the business partner write failed", .pHttpStatus, .pFault)
+    If (pType '= ..#TYPESETPARTNER) || (tChanged '= "") {
+        Set tEffects = {}
+        Do tEffects.%Set("namespace", pNamespace, "string")
+        If pType = ..#TYPESETPARTNER Do tEffects.%Set("fields", $ListToString(tChanged, ","), "string")
+        Do ..AuditRuntime($Case(pType, ..#TYPEADDPARTNER: ..#VERBADD, ..#TYPESETPARTNER: ..#VERBSET, : ..#VERBREMOVE), ..#ENTITYPARTNER, pName, tEffects)
+    }
+    If pType = ..#TYPEREMOVEPARTNER {
+        Set pResult = {}
+        Do pResult.%Set("Name", pName, "string")
+        Do pResult.%Set("Namespace", pNamespace, "string")
+        Set pHttpStatus = 200
+        Quit $$$OK
+    }
+    Set tReadSC = ..ReadPartner(pNamespace, pName, "", .tRow, .tReadHttp, .tReadFault)
+    If $$$ISERR(tReadSC) {
+        Set tRow = {}
+        Do tRow.%Set("Name", pName, "string")
+        Do tRow.%Set("Namespace", pNamespace, "string")
+    }
+    Set pResult = tRow
+    Set pHttpStatus = 200
+    Set pFault = ""
+    Quit $$$OK
+}
+
+/// <p>The lines <method>Snippet</method> adds for the partner write <var>pType</var> of the partner named <var>pId</var>
+/// (Story 20.26): the vendor's <code>%Save</code> of a new partner with each of the thirteen fields the body <var>pBody</var>
+/// carries, a <code>%Save</code> of the partner opened at concurrency 4 with the fields it carries, or
+/// <code>%DeleteId</code>. Names and values are string literals.</p>
+ClassMethod PartnerSnippet(pType As %String, pId As %String, pBody As %DynamicAbstractObject) As %String [ Private ]
+{
+    Set tNL = $Char(10)
+    Set tName = ..Literal(pId)
+    If pType = ..#TYPEREMOVEPARTNER Quit tNL _ " Set tSC = ##class(Ens.Config.BusinessPartner).%DeleteId(" _ tName _ ")"
+    If pType = ..#TYPEADDPARTNER {
+        Set tText = tNL _ " Set tPartner = ##class(Ens.Config.BusinessPartner).%New()" _ tNL _ " Set tPartner.PartnerName = " _ tName
+    } Else {
+        Set tText = tNL _ " Set tPartner = ##class(Ens.Config.BusinessPartner).%OpenId(" _ tName _ ", 4)"
+    }
+    Set tFields = $ListFromString(..#PARTNERSETFIELDS)
+    For tI = 1:1:$ListLength(tFields) {
+        Set tField = $List(tFields, tI)
+        Set tValue = ""
+        Set tSupplied = $IsObject(pBody) && (pBody.%GetTypeOf(tField) = "string")
+        If tSupplied Set tValue = pBody.%Get(tField)
+        If tSupplied || (pType = ..#TYPEADDPARTNER) Set tText = tText _ tNL _ " Set tPartner." _ ..PartnerPath(tField) _ " = " _ ..Literal(tValue)
+    }
+    Quit tText _ tNL _ " Set tSC = tPartner.%Save()" _ tNL _ " Set tPartner = """""
 }
 
 /// <p>The lines <method>Snippet</method> adds for the lookup write <var>pType</var> of the table or entry the id <var>pId</var>

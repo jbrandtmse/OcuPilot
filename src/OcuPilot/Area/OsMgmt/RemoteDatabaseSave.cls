@@ -33,8 +33,8 @@ ClassMethod HandleUpdate(pId As %String) As %Status
     Set tSC = $$$OK
     Set tHoldKey = ""
     Try {
-        If '..Body(.tBody) {
-            Set tSC = ##class(OcuPilot.Api.Error).Render(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#REASONAGENTBADBODY, ##class(OcuPilot.Api.Error).#AGENTBADBODY)
+        If '..Body(.tBody, .tBodyField) {
+            Set tSC = ##class(OcuPilot.Api.Error).RenderBodyRefusal(tBodyField)
             Quit
         }
         Set tName = ##class(OcuPilot.Kernel.EntityId).Decode(pId)

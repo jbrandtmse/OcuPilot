@@ -61,6 +61,38 @@ Parameter MDXSQL = "ANALYTICS.MDX.SQL";
 
 Parameter REASONMDXSQL = "This query may run server-side code or SQL, which the agent's read never runs; you can run it yourself on MDX query after confirming.";
 
+/// <p>409: a cube this build or synchronize reaches, the target or a cube that depends on it, is being built or synchronized now
+/// (Story 20.34).</p>
+Parameter CUBEBUSY = "ANALYTICS.CUBE.BUSY";
+
+Parameter REASONCUBEBUSY = "This cube, or a cube that depends on it, is being built or synchronized now. Try again when that ends.";
+
+/// <p>409: a synchronize of a cube, or of a cube that depends on it, whose source does not record its changes (DSTIME).</p>
+Parameter CUBENODSTIME = "ANALYTICS.CUBE.NODSTIME";
+
+Parameter REASONCUBENODSTIME = "This cube, or a cube that depends on it, has a source that does not record its changes (DSTIME), so it can only be built.";
+
+/// <p>409: a synchronize of a cube, or of a cube that depends on it, that has never been built.</p>
+Parameter CUBENOTBUILT = "ANALYTICS.CUBE.NOTBUILT";
+
+Parameter REASONCUBENOTBUILT = "This cube, or a cube that depends on it, has never been built, so there is nothing to synchronize. Build it first.";
+
+/// <p>409: the database the namespace keeps its cubes' facts in is read-only or not mounted.</p>
+Parameter CUBEREADONLY = "ANALYTICS.CUBE.READONLY";
+
+Parameter REASONCUBEREADONLY = "This namespace keeps its cubes' facts in a read-only database, so they cannot be built or synchronized here.";
+
+/// <p>409: the instance answered a build or synchronize with an error it was not asked about by name; its text is logged, never sent.</p>
+Parameter CUBEFAILED = "ANALYTICS.CUBE.FAILED";
+
+Parameter REASONCUBEFAILED = "The instance answered this update with an error, so it may not have finished. The cube's Facts and Last update show what it holds now.";
+
+/// <p>The consequence code of a build, which the proposal card and the typed-name dialog name.</p>
+Parameter CUBEBUILD = "ANALYTICS.CUBE.BUILD";
+
+/// <p>The consequence code of a synchronize.</p>
+Parameter CUBESYNCHRONIZE = "ANALYTICS.CUBE.SYNCHRONIZE";
+
 /// <p>The sentence for <var>pCode</var>, or <code>""</code> for a code this class does not hold.</p>
 ClassMethod ReasonFor(pCode As %String) As %String
 {
@@ -74,7 +106,32 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#MDXNOTFOUND Quit ..#REASONMDXNOTFOUND
     If pCode = ..#MDXLOST Quit ..#REASONMDXLOST
     If pCode = ..#MDXSQL Quit ..#REASONMDXSQL
+    If pCode = ..#CUBEBUSY Quit ..#REASONCUBEBUSY
+    If pCode = ..#CUBENODSTIME Quit ..#REASONCUBENODSTIME
+    If pCode = ..#CUBENOTBUILT Quit ..#REASONCUBENOTBUILT
+    If pCode = ..#CUBEREADONLY Quit ..#REASONCUBEREADONLY
+    If pCode = ..#CUBEFAILED Quit ..#REASONCUBEFAILED
     Quit ""
+}
+
+/// <p>The cube manager's codes (Story 20.34), as a <class>%List</class>: the five refusals of a build or synchronize.</p>
+ClassMethod CubeCodes() As %List
+{
+    Quit $ListBuild(..#CUBEBUSY, ..#CUBENODSTIME, ..#CUBENOTBUILT, ..#CUBEREADONLY, ..#CUBEFAILED)
+}
+
+/// <p>The refusals the cube manager's fresh read answers when the action does not fit the state, as a <class>%List</class>:
+/// those a build and a synchronize are refused with before any vendor call. <parameter>CUBEFAILED</parameter> is the vendor's
+/// answer, not a state.</p>
+ClassMethod CubePreconditionCodes() As %List
+{
+    Quit $ListBuild(..#CUBEBUSY, ..#CUBENODSTIME, ..#CUBENOTBUILT, ..#CUBEREADONLY, ..#NAMESPACE)
+}
+
+/// <p>The consequence codes of the cube manager's two writes, as a <class>%List</class>.</p>
+ClassMethod CubeConsequenceCodes() As %List
+{
+    Quit $ListBuild(..#CUBEBUILD, ..#CUBESYNCHRONIZE)
 }
 
 }

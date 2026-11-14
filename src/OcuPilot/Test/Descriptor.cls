@@ -73,6 +73,7 @@ XData ReadShapes
 <screen name="AllowedDirectoryList" filter="Directory,Restricted" sort="Directory,Restricted" kinds="Directory:name,Restricted:status"/>
 <screen name="AnalyticsCubeDimensionsTab" filter="Dimension,Hierarchy,Level" sort="Position,Dimension,Hierarchy,Level" kinds="Position:number,Dimension:text,Hierarchy:text,Level:name"/>
 <screen name="AnalyticsCubeList" filter="Name,Caption,Class" sort="Name,Caption,Class,LastBuild,Facts" kinds="Name:name,Caption:text,Class:identifier,LastBuild:text,Facts:number"/>
+<screen name="AnalyticsCubeManager" filter="Name,Caption,DependentCubes" sort="Name,Caption,Facts,LastBuild,LastUpdate" kinds="Name:name,Caption:text,Facts:number,LastBuild:text,LastUpdate:text,Synchronizes:status,Updating:status,DependentCubes:text"/>
 <screen name="AnalyticsCubeMeasuresTab" filter="Name,Caption,Type" sort="Name,Caption,Type,Hidden" kinds="Name:name,Caption:text,Type:text,Hidden:status"/>
 <screen name="AnalyticsCubeRelationshipsTab" filter="Name,RelatedCube" sort="Name,RelatedCube" kinds="Name:name,RelatedCube:text"/>
 <screen name="AnalyticsFolderItemList" filter="Name,Type,Owner" sort="Name,Type,Owner,Modified,Favorite" kinds="Name:name,Type:text,Owner:text,Modified:text,Favorite:status"/>
@@ -219,6 +220,7 @@ XData ReadShapes
 <screen name="InteropItemLogTab" filter="Type,Text,Job,SessionId" sort="TimeLogged,Type,Job" kinds="ID:name,TimeLogged:text,Type:status,Text:text,Job:identifier,SessionId:identifier"/>
 <screen name="InteropItemMessageTab" filter="Status,Source,Target,BodyClass,SessionId" sort="TimeCreated,Status,Source,Target" kinds="ID:name,TimeCreated:text,Status:status,Source:text,Target:text,BodyClass:identifier,SessionId:identifier"/>
 <screen name="InteropItemJobTab" filter="Job,Status,ActiveMessage" sort="Job,Status,LastActivity,Retry" kinds="Job:name,Status:status,AdapterState:text,LastActivity:text,Retry:number,ActiveMessage:identifier,Dead:status"/>
+<screen name="InteropItemClassTab" filter="ClassName,Type" sort="ClassName,Type" kinds="ClassName:name,Type:text,Current:status"/>
 <screen name="InteropItemTestTab" filter="RequestClass,Field,Type" sort="RequestClass,Field" kinds="RequestClass:identifier,Field:name,Type:text,Required:status,MaxLength:number,Values:text,Secret:status"/>
 <screen name="InteropLookupTableList" filter="Name" sort="Name,Modified" kinds="Name:name,Modified:text"/>
 <screen name="InteropLookupEntryList" filter="Key,Value" sort="Key,Value" kinds="Key:name,Value:text,Secret:status"/>
@@ -1161,7 +1163,7 @@ Method TestTheAllowedDirectoriesListDeclaresThePathSource()
 
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DeclarationProblem(tDeclaration), "", "the declaration validates")
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ReadProblem(tDeclaration), "", "including its read")
-    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).OwnPrivilegesProblem(tDeclaration), "", "and its own pair")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).OwnPrivilegesProblem(tDeclaration, ##class(OcuPilot.Screen.Area).PrivilegePairs(tDeclaration.area)), "", "and its own pair")
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ClassicLinkProblem(tDeclaration), "", "and it links out to nothing")
     Do $$$AssertEquals(tDeclaration.read.source.%ToJSON(), "{""port"":""path"",""endpoint"":""roots"",""type"":""LIST""}", "the allow-list's roots are the read's source (AD-21, AD-36)")
     Do $$$AssertTrue($ListFind($ListFromString(##class(OcuPilot.Port.PathPort).#SOURCES), tDeclaration.read.source.endpoint) > 0, "and its endpoint is one of the port's sources")
@@ -1231,7 +1233,7 @@ Method TestTheSixSecondaryLogViewersDeclareTheirSourceAndPair()
         Set tDeclaredSpec = ##class(OcuPilot.Kernel.Audit.Ledger).PairsToString($ClassMethod(tClass, "PrivilegePairs"), .tCut)
         Do $$$AssertEquals(tDeclaredSpec, tPortSpec, tClass _ ": declares the port's pair for its key")
         Do $$$AssertEquals(##class(OcuPilot.Kernel.Audit.Ledger).PairsToString($ClassMethod(tClass, "OwnPrivilegePairs"), .tCut), $Piece(tRow, "|", 5), tClass _ ": declares its own exactly the pairs the logs area does not carry")
-        Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).OwnPrivilegesProblem(tDeclaration), "", tClass _ ": each one of its privileges")
+        Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).OwnPrivilegesProblem(tDeclaration, ##class(OcuPilot.Screen.Area).PrivilegePairs("logs")), "", tClass _ ": each one of its privileges and none the logs area declares")
         Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).AreaCoverageProblem("logs", $ClassMethod(tClass, "PrivilegePairs"), $ClassMethod(tClass, "OwnPrivilegePairs")), "", tClass _ ": which the logs area covers, less its own")
         Do $$$AssertEquals(tDeclaration.id.%ToJSON(), "{""kind"":""none"",""parts"":[]}", tClass _ ": a log entry has no id (AD-13)")
         Do $$$AssertEquals(tDeclaration.suggestedPrompts.%Size(), 3, tClass _ ": three suggested prompts")
@@ -1321,24 +1323,30 @@ Method TestAnAreaThatDoesNotCoverItsScreensPairsIsRefused()
 /// <method>OcuPilot.Screen.Registry.AreaCoverageProblem</method> passes an own pair and still
 /// refuses an extra pair not declared own, beside one that is; and
 /// <method>OcuPilot.Screen.Registry.Validate</method> refuses <class>OcuPilot.Test.OwnPair.Bad</class>,
-/// whose own pair is not among its privileges.</p>
+/// whose own pair is not among its privileges, and <class>OcuPilot.Test.OwnPairArea.Bad</class>, whose
+/// own pair the shipped <code>logs</code> area declares.</p>
 /// <p>Mutation: make <method>OcuPilot.Screen.Registry.AreaCoverageProblem</method> ignore
 /// <var>pOwnPairs</var> -&gt; the own-pair coverage assertion and the production roster in
 /// <method>TestAnAreaThatDoesNotCoverItsScreensPairsIsRefused</method> go red. Delete the
 /// <method>OcuPilot.Screen.Registry.OwnPrivilegesProblem</method> call from
-/// <method>OcuPilot.Screen.Registry.Validate</method> -&gt; the fixture-roster assertion goes red.</p>
+/// <method>OcuPilot.Screen.Registry.Validate</method> -&gt; the fixture-roster assertion goes red.
+/// Make <method>OcuPilot.Screen.Registry.OwnPrivilegesProblem</method> ignore
+/// <var>pAreaPairs</var>, or call it from <method>OcuPilot.Screen.Registry.Validate</method> without
+/// the area's pairs -&gt; the area corpus cases or the <code>OwnPairArea.Bad</code> assertion go
+/// red.</p>
 Method TestAPairAScreenDeclaresItsOwnIsLeftOutOfItsAreasCoverage()
 {
     Set tSC = ##class(OcuPilot.Test.DeclarationCorpus).OwnPrivilegeCorpus(.tCorpus)
     Do $$$AssertStatusOK(tSC, "the own-pair corpus reads")
     If $IsObject(tCorpus) {
         Set tRefusals = 0
+        Set tAreaPairs = ##class(OcuPilot.Test.DeclarationCorpus).OwnPrivilegeAreaPairs(tCorpus)
         Set tIterator = tCorpus.cases.%GetIterator()
         While tIterator.%GetNext(.tIndex, .tCase) {
             Set tExpected = $Select(tCase.%GetTypeOf("expected") = "null": "", 1: tCase.expected)
             If tExpected '= "" Set tRefusals = tRefusals + 1
             Set tDeclaration = ##class(OcuPilot.Test.DeclarationCorpus).OwnPrivilegeDeclarationFor(tCorpus, tCase)
-            Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).OwnPrivilegesProblem(tDeclaration), tExpected, tCase.name)
+            Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).OwnPrivilegesProblem(tDeclaration, tAreaPairs), tExpected, tCase.name)
         }
         Do $$$AssertTrue(tRefusals > 0, "the corpus carries at least one refusing case: " _ tRefusals)
     }
@@ -1354,6 +1362,12 @@ Method TestAPairAScreenDeclaresItsOwnIsLeftOutOfItsAreasCoverage()
     Do $$$AssertStatusNotOK(tSC, "a roster whose screen owns a pair it does not require is refused")
     Do $$$AssertTrue(tProblem [ "OcuPilot.Test.OwnPair.Bad", "the refusal names the offending class: " _ tProblem)
     Do $$$AssertTrue(tProblem [ "own privilege pair %Ens_EventLog:USE is not one of the screen's declared privileges", "and the sentence OwnPrivilegesProblem returns: " _ tProblem)
+
+    ; Validate hands the area's declared pairs to OwnPrivilegesProblem.
+    Set tSC = ##class(OcuPilot.Test.OwnPairAreaRegistry).Validate(.tAreaProblem)
+    Do $$$AssertStatusNotOK(tSC, "a roster whose screen owns a pair its area declares is refused")
+    Do $$$AssertTrue(tAreaProblem [ "OcuPilot.Test.OwnPairArea.Bad", "the refusal names the offending class: " _ tAreaProblem)
+    Do $$$AssertTrue(tAreaProblem [ "own privilege pair %Admin_Operate:USE is one its area 'logs' already declares", "and the sentence OwnPrivilegesProblem returns: " _ tAreaProblem)
 }
 
 /// <p>Story 3.5 -- <method>OcuPilot.Screen.Registry.SideBarPositionProblem</method> refuses a

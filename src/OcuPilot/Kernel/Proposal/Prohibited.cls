@@ -279,7 +279,7 @@ Parameter WRITETOOLBASE = "OcuPilot.Screen.Tool.Write";
 /// <p>The entity types this release evaluates predicates for, comma-separated
 /// (<class>OcuPilot.Kernel.EntityType</class>'s spelling). A type outside this list is
 /// <parameter>UNCOVERED</parameter>.</p>
-Parameter COVEREDTYPES = "screen-permission,web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,database-configuration,database,language-server,lock,class,routine,journal-file,journal-settings,license-key,license-server,ecp-data-server,ecp-settings,ecp-ssl-connection,encryption-key-file,database-encryption-keys,data-element-encryption-keys,encryption-startup,docdb-database,authentication-options,superserver,mft-connection,production,pct-class-access,docdb-application,routine-application,production-item,production-item-setting,interop-queue,interop-message,interop-job,rest-service,lookup-table,lookup-entry,allowed-directory";
+Parameter COVEREDTYPES = "screen-permission,web-application,user,auditing-configuration,task,process,application-error,role,resource,x509-credential,wallet-secret,device,oauth2-client-configuration,oauth2-server-client,audit-event,audit-user-event,ssl-configuration,service,ldap-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,namespace,web-session,background-task,global-mapping,routine-mapping,package-mapping,database-configuration,database,language-server,lock,class,routine,journal-file,journal-settings,license-key,license-server,ecp-data-server,ecp-settings,ecp-ssl-connection,encryption-key-file,database-encryption-keys,data-element-encryption-keys,encryption-startup,docdb-database,authentication-options,superserver,mft-connection,production,pct-class-access,docdb-application,routine-application,production-item,production-item-setting,interop-queue,interop-message,interop-job,rest-service,lookup-table,lookup-entry,allowed-directory,cube,business-partner";
 
 /// <p>The covered types, each named once so the dispatch and the list cannot drift apart.</p>
 Parameter TYPEWEBAPPLICATION = "web-application";
@@ -307,8 +307,15 @@ Parameter TYPEPROCESS = "process";
 Parameter BROADCASTWRITETYPE = "BROADCAST";
 
 /// <p>The user write whose payload <method>Copied</method> checks, keyed on the tool's declared write type: a
-/// copy of an existing account (AD-10).</p>
+/// copy of an existing account (AD-10). A production item's copy (Story 20.40) declares the same write type and is
+/// judged by <method>Copied</method> over <parameter>ITEMCOPYFIELDS</parameter>.</p>
 Parameter COPYWRITETYPE = "COPY";
+
+/// <p>The only fields a production item copy's payload names, comma-separated: the source item's name and the
+/// <code>Enabled</code> flag, which a copy always sends false. The namespace it was composed in is removed before the check.
+/// <method>Copied</method> refuses any other, and
+/// <class>OcuPilot.Screen.Tool.InteropItemCopy</class> composes exactly these (AD-3, AD-10).</p>
+Parameter ITEMCOPYFIELDS = "CopyFrom,Enabled";
 
 /// <p>The only fields a user copy's payload names, comma-separated: the source, the full name, and the roles
 /// and escalation roles taken from the source. <method>Copied</method> refuses any other, and
@@ -733,12 +740,21 @@ Parameter TYPEINTEROPMESSAGE = "interop-message";
 
 Parameter TYPEINTEROPJOB = "interop-job";
 
+/// <p>An analytics cube, built or synchronized by the Cube manager (AD-65, Story 20.34). AD-10 names no effect on one: OcuPilot owns
+/// no cube, and a cube is a namespace's own analytics, so a write passes the reviewed-few sweep and nothing else.</p>
+Parameter TYPECUBE = "cube";
+
 /// <p>A lookup table of a namespace and one entry of it (AD-62, Story 20.5). AD-10 names no effect on either: OcuPilot stores
 /// nothing in <code>^Ens.LookupTable</code>, so no entry is self-protection. A write passes the reviewed-few sweep -- an
 /// entry's one changeable field is <code>Value</code> -- and nothing else.</p>
 Parameter TYPELOOKUPTABLE = "lookup-table";
 
 Parameter TYPELOOKUPENTRY = "lookup-entry";
+
+/// <p>A business partner of a namespace (AD-62, Story 20.26). AD-10 names no effect on one: a partner is informational data
+/// OcuPilot stores nothing in. A create sets its name and thirteen fields, a change the thirteen, and a write passes the
+/// reviewed-few sweep and nothing else.</p>
+Parameter TYPEBUSINESSPARTNER = "business-partner";
 
 /// <p>The two objects an ECP settings write carries, whose <code>&lt;Object&gt;.&lt;member&gt;</code>
 /// diff rows are judged as their object, as <parameter>CUSTOMFIELD</parameter>'s are (Story 18.21).</p>
@@ -1198,6 +1214,7 @@ ClassMethod PermittedChangeFields(pType As %String) As %List
     If pType = ..#TYPERESOURCE Quit $ListBuild("Description", ..#FIELDPUBLICPERMISSION)
     If pType = ..#TYPEPRODUCTIONITEMSETTING Quit $ListBuild("Value")
     If pType = ..#TYPELOOKUPENTRY Quit $ListBuild("Value")
+    If pType = ..#TYPEBUSINESSPARTNER Quit $ListFromString("Description,PrimaryContact,PrimaryTitle,PrimaryEmail,PrimaryPhone,PrimaryMobile,PrimaryNotes,AlternativeContact,AlternativeTitle,AlternativeEmail,AlternativePhone,AlternativeMobile,AlternativeNotes")
     If pType = ..#TYPEROLE Quit $ListBuild("Description", ..#FIELDESCALATIONONLY, ..#FIELDGRANTEDROLES, ..#FIELDRESOURCES)
     If pType = ..#TYPEX509 Quit $ListBuild("OwnerList", "PeerNames")
     If pType = ..#TYPEWALLETSECRET Quit $ListBuild("Usage", "RequireTLS", "AllowedHosts", "Secret")
@@ -1353,10 +1370,13 @@ ClassMethod PermittedCreateFields(pType As %String) As %List
     If pType = ..#TYPEDOCDBDATABASE Quit $ListBuild("Name")
     ; Story 18.32: a REST service create sets its package and its document, which the rest-service arm judges by the package.
     If pType = ..#TYPERESTSERVICE Quit $ListBuild("Name", "Document")
-    ; Story 20.3: an item add sets these six; its production is the id's and its namespace the payload's.
-    If pType = ..#TYPEPRODUCTIONITEM Quit $ListBuild("Name", "ClassName", "PoolSize", "Enabled", "Category", "Comment")
+    ; Story 20.3: an item add sets these six; its production is the id's and its namespace the payload's. Story 20.40: a copy names
+    ; the item it copies, which the create branch admits for a COPY write alone (Copied).
+    If pType = ..#TYPEPRODUCTIONITEM Quit $ListBuild("Name", "ClassName", "PoolSize", "Enabled", "Category", "Comment", "CopyFrom")
     ; Story 20.5: an entry add sets its key and its value; its table is the id's and its namespace the payload's.
     If pType = ..#TYPELOOKUPENTRY Quit $ListBuild("Key", "Value")
+    ; Story 20.26: a partner add sets its name and thirteen fields; its namespace is the payload's.
+    If pType = ..#TYPEBUSINESSPARTNER Quit $ListFromString("Name,Description,PrimaryContact,PrimaryTitle,PrimaryEmail,PrimaryPhone,PrimaryMobile,PrimaryNotes,AlternativeContact,AlternativeTitle,AlternativeEmail,AlternativePhone,AlternativeMobile,AlternativeNotes")
     Quit ""
 }
 
@@ -1437,7 +1457,7 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
         }
-        If (tType '= ..#TYPESCREENPERMISSION) && (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) && (tType '= ..#TYPEAPPLICATIONERROR) && (tType '= ..#TYPEROLE) && (tType '= ..#TYPERESOURCE) && (tType '= ..#TYPEX509) && (tType '= ..#TYPEWALLETSECRET) && (tType '= ..#TYPEDEVICE) && (tType '= ..#TYPEOAUTHCLIENT) && (tType '= ..#TYPEOAUTHSERVERCLIENT) && (tType '= ..#TYPEAUDITEVENT) && (tType '= ..#TYPEAUDITUSEREVENT) && (tType '= ..#TYPESSL) && (tType '= ..#TYPESERVICE) && (tType '= ..#TYPELDAP) && (tType '= ..#TYPEOAUTHSERVERDEF) && (tType '= ..#TYPEOAUTHRESOURCESERVER) && (tType '= ..#TYPEOAUTHAUTHSERVER) && (tType '= ..#TYPENAMESPACE) && (tType '= ..#TYPEWEBSESSION) && (tType '= ..#TYPEBACKGROUNDTASK) && (tType '= ..#TYPEDATABASECONFIG) && (tType '= ..#TYPEDATABASE) && '..IsMappingType(tType) && (tType '= ..#TYPELANGUAGESERVER) && (tType '= ..#TYPELOCK) && (tType '= ..#TYPECLASS) && (tType '= ..#TYPEROUTINE) && (tType '= ..#TYPEJOURNALFILE) && (tType '= ..#TYPEJOURNALSETTINGS) && (tType '= ..#TYPELICENSEKEY) && (tType '= ..#TYPELICENSESERVER) && (tType '= ..#TYPEECPDATASERVER) && (tType '= ..#TYPEECPSETTINGS) && (tType '= ..#TYPEECPSSLCONNECTION) && (tType '= ..#TYPEENCRYPTIONKEYFILE) && (tType '= ..#TYPEDATABASEKEYS) && (tType '= ..#TYPEDATAELEMENTKEYS) && (tType '= ..#TYPEENCRYPTIONSTARTUP) && (tType '= ..#TYPEAUTHOPTIONS) && (tType '= ..#TYPESUPERSERVER) && (tType '= ..#TYPEMFTCONNECTION) && (tType '= ..#TYPEDOCDBDATABASE) && (tType '= ..#TYPEPRODUCTION) && (tType '= ..#TYPEPRODUCTIONITEM) && (tType '= ..#TYPEPRODUCTIONITEMSETTING) && (tType '= ..#TYPEPCTACCESS) && (tType '= ..#TYPEDOCDBAPPLICATION) && (tType '= ..#TYPEROUTINEAPPLICATION) && (tType '= ..#TYPEINTEROPQUEUE) && (tType '= ..#TYPEINTEROPMESSAGE) && (tType '= ..#TYPEINTEROPJOB) && (tType '= ..#TYPERESTSERVICE) && (tType '= ..#TYPELOOKUPTABLE) && (tType '= ..#TYPELOOKUPENTRY) && (tType '= ..#TYPEALLOWEDDIRECTORY) {
+        If (tType '= ..#TYPESCREENPERMISSION) && (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) && (tType '= ..#TYPEAPPLICATIONERROR) && (tType '= ..#TYPEROLE) && (tType '= ..#TYPERESOURCE) && (tType '= ..#TYPEX509) && (tType '= ..#TYPEWALLETSECRET) && (tType '= ..#TYPEDEVICE) && (tType '= ..#TYPEOAUTHCLIENT) && (tType '= ..#TYPEOAUTHSERVERCLIENT) && (tType '= ..#TYPEAUDITEVENT) && (tType '= ..#TYPEAUDITUSEREVENT) && (tType '= ..#TYPESSL) && (tType '= ..#TYPESERVICE) && (tType '= ..#TYPELDAP) && (tType '= ..#TYPEOAUTHSERVERDEF) && (tType '= ..#TYPEOAUTHRESOURCESERVER) && (tType '= ..#TYPEOAUTHAUTHSERVER) && (tType '= ..#TYPENAMESPACE) && (tType '= ..#TYPEWEBSESSION) && (tType '= ..#TYPEBACKGROUNDTASK) && (tType '= ..#TYPEDATABASECONFIG) && (tType '= ..#TYPEDATABASE) && '..IsMappingType(tType) && (tType '= ..#TYPELANGUAGESERVER) && (tType '= ..#TYPELOCK) && (tType '= ..#TYPECLASS) && (tType '= ..#TYPEROUTINE) && (tType '= ..#TYPEJOURNALFILE) && (tType '= ..#TYPEJOURNALSETTINGS) && (tType '= ..#TYPELICENSEKEY) && (tType '= ..#TYPELICENSESERVER) && (tType '= ..#TYPEECPDATASERVER) && (tType '= ..#TYPEECPSETTINGS) && (tType '= ..#TYPEECPSSLCONNECTION) && (tType '= ..#TYPEENCRYPTIONKEYFILE) && (tType '= ..#TYPEDATABASEKEYS) && (tType '= ..#TYPEDATAELEMENTKEYS) && (tType '= ..#TYPEENCRYPTIONSTARTUP) && (tType '= ..#TYPEAUTHOPTIONS) && (tType '= ..#TYPESUPERSERVER) && (tType '= ..#TYPEMFTCONNECTION) && (tType '= ..#TYPEDOCDBDATABASE) && (tType '= ..#TYPEPRODUCTION) && (tType '= ..#TYPEPRODUCTIONITEM) && (tType '= ..#TYPEPRODUCTIONITEMSETTING) && (tType '= ..#TYPEPCTACCESS) && (tType '= ..#TYPEDOCDBAPPLICATION) && (tType '= ..#TYPEROUTINEAPPLICATION) && (tType '= ..#TYPEINTEROPQUEUE) && (tType '= ..#TYPEINTEROPMESSAGE) && (tType '= ..#TYPEINTEROPJOB) && (tType '= ..#TYPERESTSERVICE) && (tType '= ..#TYPELOOKUPTABLE) && (tType '= ..#TYPELOOKUPENTRY) && (tType '= ..#TYPEBUSINESSPARTNER) && (tType '= ..#TYPEALLOWEDDIRECTORY) && (tType '= ..#TYPECUBE) {
             ; A type COVEREDTYPES lists and no branch evaluates. Fail closed rather than write.
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
@@ -1563,11 +1583,20 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
             If tType = ..#TYPEPRODUCTIONITEM {
                 Set tItemPayload = ..ParsedObject(pPayload)
                 If tItemPayload.%GetTypeOf("Namespace") '= "unassigned" Do tItemPayload.%Remove("Namespace")
+                ; Story 20.40: a copy's payload is the source's name and a false Enabled, and no other field.
+                If ..WriteTypeOf(..ToolClassNamed(pToolName)) = ..#COPYWRITETYPE {
+                    Set tSC = ..Copied(tItemPayload, .pProhibits, .pCode, ..#ITEMCOPYFIELDS, "Enabled")
+                    Quit
+                }
+                If tItemPayload.%GetTypeOf("CopyFrom") '= "unassigned" {
+                    Do ..Refuse(..#UNCOVEREDFIELD, .pProhibits, .pCode)
+                    Quit
+                }
                 Set tSC = ..Created(tType, 0, tItemPayload, .pProhibits, .pCode, tId)
                 Quit
             }
             ; Story 20.5: an entry add carries the namespace it was composed in beside its fields, as an item add does.
-            If tType = ..#TYPELOOKUPENTRY {
+            If (tType = ..#TYPELOOKUPENTRY) || (tType = ..#TYPEBUSINESSPARTNER) {
                 Set tEntryPayload = ..ParsedObject(pPayload)
                 If tEntryPayload.%GetTypeOf("Namespace") '= "unassigned" Do tEntryPayload.%Remove("Namespace")
                 Set tSC = ..Created(tType, 0, tEntryPayload, .pProhibits, .pCode, tId)
@@ -1769,6 +1798,12 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
             Set tSC = ..ReviewedFewOnly(..#TYPEINTEROPJOB, .tChanged, .pProhibits, .pCode)
             Quit
         }
+        ; A cube (Story 20.34): AD-10 names no effect on one, because OcuPilot owns none, so a write passes the reviewed-few sweep and
+        ; nothing else.
+        If tType = ..#TYPECUBE {
+            Set tSC = ..ReviewedFewOnly(..#TYPECUBE, .tChanged, .pProhibits, .pCode)
+            Quit
+        }
         ; A lookup table and one of its entries (Story 20.5): AD-10 names no effect on either -- OcuPilot stores nothing in the
         ; vendor's lookup global -- so a write passes the reviewed-few sweep and nothing else.
         If tType = ..#TYPELOOKUPTABLE {
@@ -1777,6 +1812,12 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
         }
         If tType = ..#TYPELOOKUPENTRY {
             Set tSC = ..ReviewedFewOnly(..#TYPELOOKUPENTRY, .tChanged, .pProhibits, .pCode)
+            Quit
+        }
+        ; A business partner (Story 20.26): AD-10 names no effect on one, because OcuPilot stores nothing in it, so a write passes the
+        ; reviewed-few sweep and nothing else.
+        If tType = ..#TYPEBUSINESSPARTNER {
+            Set tSC = ..ReviewedFewOnly(..#TYPEBUSINESSPARTNER, .tChanged, .pProhibits, .pCode)
             Quit
         }
         ; The authentication and web session options (Story 18.8): OcuPilot's own sign-in and start are not cut.
@@ -4691,7 +4732,10 @@ ClassMethod ResourceNames(pObject As %DynamicObject, Output pNames) [ Private ]
 /// resource's <parameter>FIELDPUBLICPERMISSION</parameter>, which grants privilege when it adds a
 /// letter (<method>AddsPublicLetter</method>) on a resource
 /// <method>ResourceGrantsAdministrativePrivilege</method> names -- <var>pId</var>, the target's id,
-/// is what names it. A task's <code>RunAsUser</code> naming an account other than the caller's,
+/// is what names it -- or adds USE (<method>AddsPublicUse</method>) to a resource that an enabled application whose
+/// roles escalate uses (<method>GuardsPrivilegedApplication</method>, which reads the instance's applications as the
+/// caller and counts a lookup that fails). A form's per-choice half judges the name alone, so it states no
+/// consequence for the application half. A task's <code>RunAsUser</code> naming an account other than the caller's,
 /// compared without regard to case, grants that account's privileges to the task; so does an
 /// import's <code>runAs</code>, the accounts of the tasks it creates, when any is another account. The authorization
 /// server configuration's <code>CustomizationRoles</code> grants privilege when it adds a privileged
@@ -4715,7 +4759,7 @@ ClassMethod GrantsPrivilegeByEffect(pType As %String, pPayload As %DynamicObject
             Quit
         }
         If pType = ..#TYPERESOURCE {
-            Set pGrants = (..ResourceGrantsAdministrativePrivilege(pId) && ..AddsPublicLetter(pPayload, tTarget))
+            Set pGrants = (..AddsPublicLetter(pPayload, tTarget) && (..ResourceGrantsAdministrativePrivilege(pId) || (..AddsPublicUse(pPayload, tTarget) && ..GuardsPrivilegedApplication(pId))))
             Quit
         }
         If pType = ..#TYPEROLE {
@@ -6025,18 +6069,21 @@ ClassMethod ServingSessionId() As %String
 }
 
 
-/// <p>Whether a user copy's payload names only the fields its composition sets: <code>CopyFrom</code>,
-/// <code>FullName</code>, <code>Roles</code> and <code>EscalationRoles</code>. Any other field is refused
-/// <parameter>UNCOVEREDFIELD</parameter>, because the copy admits no other setting (Story 18.29).</p>
-ClassMethod Copied(pPayload As %DynamicObject, Output pProhibits As %Boolean, Output pCode As %String) As %Status [ Private ]
+/// <p>Whether a copy's payload names only the fields its composition sets, <var>pPermitted</var> (comma-separated): a user
+/// copy's <parameter>COPYFIELDS</parameter> when empty (Story 18.29), a production item copy's
+/// <parameter>ITEMCOPYFIELDS</parameter> (Story 20.40). Each field <var>pFalseOnly</var> names is admitted only when false,
+/// as a copy's <code>Enabled</code> is. Any other field, and such a field set true, is refused
+/// <parameter>UNCOVEREDFIELD</parameter>, because a copy admits no other setting. The caller removes the namespace.</p>
+ClassMethod Copied(pPayload As %DynamicObject, Output pProhibits As %Boolean, Output pCode As %String, pPermitted As %String = "", pFalseOnly As %String = "") As %Status [ Private ]
 {
     Set pProhibits = 0
     Set pCode = ""
     If '$IsObject(pPayload) Quit $$$OK
-    Set tPermitted = $ListFromString(..#COPYFIELDS)
+    Set tPermitted = $ListFromString($Select(pPermitted = "": ..#COPYFIELDS, 1: pPermitted))
+    Set tFalseOnly = $ListFromString(pFalseOnly)
     Set tIterator = pPayload.%GetIterator()
     While tIterator.%GetNext(.tKey, .tValue) {
-        If '$ListFind(tPermitted, tKey) {
+        If '$ListFind(tPermitted, tKey) || ($ListFind(tFalseOnly, tKey) && (tValue '= 0)) {
             Do ..Refuse(..#UNCOVEREDFIELD, .pProhibits, .pCode)
             Quit
         }
@@ -6130,6 +6177,62 @@ ClassMethod WidensPrivilegedReach(pPayload As %DynamicObject, pTarget As %Dynami
     Set pGrants = 0
     If '((pClears && ..ClearsResource(pPayload, pTarget)) || (..EnabledOn(pPayload) && '..EnabledOn(pTarget)) || ..RepointsToPublicResource(pPayload, pTarget)) Quit $$$OK
     Quit ..ApplicationRolesEscalate(pPayload, pTarget, .pGrants)
+}
+
+/// <p>Whether <var>pPayload</var>'s <parameter>FIELDPUBLICPERMISSION</parameter> carries USE that <var>pTarget</var>'s
+/// does not, compared without regard to case, as <method>AddsPublicLetter</method> reads letters. An absent member adds
+/// nothing.</p>
+ClassMethod AddsPublicUse(pPayload As %DynamicObject, pTarget As %DynamicObject) As %Boolean [ Private ]
+{
+    If '$IsObject(pPayload) Quit 0
+    Set tWanted = $ZConvert(..Rendered(pPayload, ..#FIELDPUBLICPERMISSION), "U")
+    Set tHeld = $ZConvert(..Rendered(pTarget, ..#FIELDPUBLICPERMISSION), "U")
+    Quit ((tWanted [ "U") && '(tHeld [ "U"))
+}
+
+/// <p>Whether an enabled web application or privileged routine application whose <code>Resource</code> is
+/// <var>pName</var>, compared without regard to case, has a target role in its <code>MatchRoles</code> that escalates
+/// (<method>ApplicationRolesEscalate</method>). Both lists are read through <method>PortClass</method> as the caller and
+/// each match is read with a <code>GET</code>, because a list row carries neither <code>MatchRoles</code> nor a
+/// routine application's <code>Enabled</code>. <b>A list or read that fails answers 1</b>, so a question the instance
+/// cannot answer is counted rather than passed.</p>
+ClassMethod GuardsPrivilegedApplication(pName As %String) As %Boolean [ Private ]
+{
+    Set tGuards = 0
+    Try {
+        Set tPort = ..PortClass()
+        Set tWanted = $ZConvert(pName, "U")
+        For tEndpoint = "WebApp.App", "Security.PrivilegedRoutine" {
+            Kill tQuery, tList
+            Set tSC = $ClassMethod(tPort, "Invoke", tEndpoint, "LIST", .tQuery, "", .tList, .tHttp, .tFault)
+            If $$$ISERR(tSC) || '$IsObject($Get(tList)) || 'tList.%IsA("%Library.DynamicArray") {
+                Set tGuards = 1
+                Quit
+            }
+            Set tIterator = tList.%GetIterator()
+            While tIterator.%GetNext(.tIndex, .tRow) {
+                If '$IsObject(tRow) || 'tRow.%IsA("%Library.DynamicObject") Continue
+                If $ZConvert(..Rendered(tRow, "Resource"), "U") '= tWanted Continue
+                Kill tQuery, tApp
+                Set tQuery("name") = ..Rendered(tRow, "Name")
+                Set tSC = $ClassMethod(tPort, "Invoke", tEndpoint, "GET", .tQuery, "", .tApp, .tHttp, .tFault)
+                If $$$ISERR(tSC) || '$IsObject($Get(tApp)) || 'tApp.%IsA("%Library.DynamicObject") {
+                    Set tGuards = 1
+                    Quit
+                }
+                If '..EnabledOn(tApp) Continue
+                Set tSC = ..ApplicationRolesEscalate({}, tApp, .tEscalates)
+                If $$$ISERR(tSC) || tEscalates {
+                    Set tGuards = 1
+                    Quit
+                }
+            }
+            If tGuards Quit
+        }
+    } Catch {
+        Set tGuards = 1
+    }
+    Quit tGuards
 }
 
 /// <p>Whether <var>pPayload</var> carries a <code>Resource</code> other than <var>pTarget</var>'s, compared without

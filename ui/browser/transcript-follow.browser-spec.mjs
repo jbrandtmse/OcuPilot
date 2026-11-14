@@ -19,7 +19,7 @@ import puppeteer from 'puppeteer';
 
 import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
 import { loadStrings } from '../tools/strings.mjs';
-import { signedInAt } from './panel-spec.mjs';
+import { signedInAt, waitForReplies as waitForFinishedReplies } from './panel-spec.mjs';
 import { INVARIANTS, componentMinimums, detectScreen } from './structural-walk.mjs';
 import {
   armProbeDefinition,
@@ -108,14 +108,7 @@ async function waitForMessages(page, count) {
  * is: each leg then observes the position the arrival itself produced.
  */
 async function waitForReplies(page, count) {
-  await page.waitForFunction(
-    (n, sendLabel) =>
-      document.querySelectorAll('app-reply').length >= n &&
-      document.querySelector('.ocu-panel-send')?.textContent?.trim() === sendLabel,
-    { timeout: config.navigationTimeoutMs },
-    count,
-    STRINGS.actionSend
-  );
+  await waitForFinishedReplies(page, count, config, STRINGS.actionSend);
   await settledTop(page);
   const wasAtNewest = (await distance(page)) <= TOLERANCE_PX;
   await page.evaluate(() => {

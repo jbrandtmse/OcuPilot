@@ -16,7 +16,8 @@
 /// bullet, added by this story): the field the client encodes is <code>Pid</code>, resolved by
 /// <method>OcuPilot.Screen.Registry.RowTargetProblem</method> and
 /// <method>OcuPilot.Screen.Registry.RowTargetResolutionProblem</method> and, on the client,
-/// ahead of the paired-surface chain in <file>ui/src/app/shell/data-table.ts</file>. Its
+/// ahead of the paired-surface chain in <code>nameLinkTarget</code>
+/// (<file>ui/src/app/core/navigation.ts</file>). Its
 /// <code>unless</code> names <code>RemoteOwner</code>: a row a remote client owns has no local pid,
 /// so its Process ID cell is text (Story 16.12, DW-1074).</p>
 /// <p><b>Its three row actions remove locks</b> (Story 16.12): <code>remove</code>, this lock

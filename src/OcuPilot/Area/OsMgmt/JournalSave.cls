@@ -52,8 +52,8 @@ ClassMethod HandleUpdate() As %Status
     Set tSC = $$$OK
     Set tHoldKey = ""
     Try {
-        If '..Body(.tBody) {
-            Set tSC = ##class(OcuPilot.Api.Error).Render(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#REASONAGENTBADBODY, ##class(OcuPilot.Api.Error).#AGENTBADBODY)
+        If '..Body(.tBody, .tBodyField) {
+            Set tSC = ##class(OcuPilot.Api.Error).RenderBodyRefusal(tBodyField)
             Quit
         }
         Set tGateSC = ..Gate(.tRefused, tBody)
@@ -224,11 +224,12 @@ ClassMethod Unexpected(pKey As %String) As %DynamicObject [ Private ]
     Quit tFault
 }
 
-/// <p>Read the request body into <var>pBody</var>; 0 when it is not a JSON object.</p>
-ClassMethod Body(Output pBody As %DynamicObject) As %Boolean [ Private ]
+/// <p>Read the request body into <var>pBody</var>; 0 when it is not a JSON object. <var>pField</var> names the top-level
+/// key holding a value the instance cannot hold (<code>*</code> when no one key is to blame), else <code>""</code>.</p>
+ClassMethod Body(Output pBody As %DynamicObject, Output pField As %String) As %Boolean [ Private ]
 {
     Set pBody = ""
-    Set tReadSC = ##class(OcuPilot.Kernel.Utils).ReadRequestBody(.pBody, .tStage)
+    Set tReadSC = ##class(OcuPilot.Kernel.Utils).ReadRequestBody(.pBody, .tStage, .pField)
     If $$$ISERR(tReadSC) || '$IsObject(pBody) || 'pBody.%IsA("%Library.DynamicObject") Quit 0
     Quit 1
 }

@@ -452,7 +452,8 @@ export interface TabDeclaration {
 /**
  * A list's single declared cross-screen row target (AD-5, Story 6.10): the route its name cell
  * opens and the row field, read with `fieldOf` and encoded with `encodeEntityId`, that route's
- * id is drawn from -- resolved ahead of the paired-surface chain in `shell/data-table.ts`.
+ * id is drawn from -- resolved ahead of the paired-surface chain in `nameLinkTarget`
+ * (`ui/src/app/core/navigation.ts`).
  */
 export interface ScreenRowTarget {
   readonly route: string;
@@ -2169,6 +2170,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     },
     "read": {
       "row": "cube",
+      "label": "Cubes with their class, last build and fact count; when each was updated, whether it can be synchronized and what depends on it are in analytics.cubemanager.",
       "source": {
         "port": "analytics",
         "endpoint": "Cubes",
@@ -2235,6 +2237,189 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.AnalyticsCubeManager",
+    "route": "analytics/cube-manager",
+    "area": "analytics",
+    "labelKey": "analyticsCubeManagerLabel",
+    "sideBarPosition": 8,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%DeepSee_Portal",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DeepSee_Admin",
+        "permission": "USE"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%DeepSee_Admin",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "cube",
+    "secondaryEntityTypes": [],
+    "scope": "namespace",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "build",
+        "selfProtection": ""
+      },
+      {
+        "id": "synchronize",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "Name",
+        "Caption",
+        "Facts",
+        "LastBuild",
+        "LastUpdate",
+        "Synchronizes",
+        "Updating",
+        "DependentCubes"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "analyticsCubesEmpty",
+    "commandAliases": [
+      "cube manager",
+      "build cube",
+      "synchronize cube"
+    ],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "analyticsCubeManagerPrompt1"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "analyticsCubeManagerPrompt2"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "analyticsCubeManagerPrompt3"
+      }
+    ],
+    "classicPage": "%DeepSee.UI.CubeRegistry",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "row": "cube with its build state",
+      "label": "Cubes with when each was last built and updated, whether it can be synchronized, whether an update runs now and which cubes depend on it; the cube model is in analytics.cubes.",
+      "source": {
+        "port": "analytics",
+        "endpoint": "CubeManager",
+        "type": "LIST"
+      },
+      "fields": [
+        "Name",
+        "Caption",
+        "Facts",
+        "LastBuild",
+        "LastUpdate",
+        "Synchronizes",
+        "Updating",
+        "DependentCubes"
+      ],
+      "filter": [
+        "Name",
+        "Caption",
+        "DependentCubes"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "Caption",
+          "Facts",
+          "LastBuild",
+          "LastUpdate"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "Caption",
+          "labelKey": "analyticsColumnCaption",
+          "kind": "text"
+        },
+        {
+          "field": "Facts",
+          "labelKey": "analyticsColumnFacts",
+          "kind": "number"
+        },
+        {
+          "field": "LastBuild",
+          "labelKey": "analyticsColumnLastBuild",
+          "kind": "text"
+        },
+        {
+          "field": "LastUpdate",
+          "labelKey": "systemUsageLastUpdate",
+          "kind": "text"
+        },
+        {
+          "field": "Synchronizes",
+          "labelKey": "analyticsColumnSynchronizes",
+          "kind": "status"
+        },
+        {
+          "field": "Updating",
+          "labelKey": "analyticsColumnUpdating",
+          "kind": "status"
+        },
+        {
+          "field": "DependentCubes",
+          "labelKey": "analyticsColumnDependentCubes",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "analyticsCubeManagerEmptyAgent"
+    },
+    "rowTarget": {
+      "route": "analytics/cubes/document",
+      "field": "Name"
+    },
+    "toolIdentifier": "analytics.cubemanager",
+    "refreshDefault": 0,
+    "banner": null,
+    "tab": null,
     "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
@@ -6148,11 +6333,14 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyNextKey": "tableReadOnlyEmptyNext",
       "emptyAgentKey": ""
     },
+    "rowTarget": {
+      "route": "os-management/databases/details",
+      "field": "Directory"
+    },
     "toolIdentifier": "osmgmt.databasefreespace",
     "refreshDefault": 0,
     "banner": null,
     "tab": null,
-    "rowTarget": null,
     "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],
@@ -13669,10 +13857,19 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "parts": []
     },
     "primaryAction": {
-      "id": "",
+      "id": "add",
       "selfProtection": ""
     },
-    "rowActions": [],
+    "rowActions": [
+      {
+        "id": "edit",
+        "selfProtection": ""
+      },
+      {
+        "id": "remove",
+        "selfProtection": ""
+      }
+    ],
     "context": {
       "fields": [
         "Name",
@@ -13776,13 +13973,168 @@ export const SCREENS: readonly ScreenDeclaration[] = [
           "kind": "text"
         }
       ],
-      "emptyNextKey": "interopBusinessPartnersEmptyNext",
-      "emptyAgentKey": ""
+      "emptyNextKey": "",
+      "emptyAgentKey": "interopBusinessPartnersEmptyAgent"
     },
     "toolIdentifier": "interop.businesspartners",
     "refreshDefault": 0,
     "banner": null,
     "tab": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.InteropItemClassTab",
+    "route": "interoperability/productions/items/classes",
+    "area": "interoperability",
+    "labelKey": "interopItemClassesLabel",
+    "sideBarPosition": 0,
+    "archetype": "detail",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Ens_Portal",
+        "permission": "USE"
+      },
+      {
+        "resource": "%Ens_ProductionConfig",
+        "permission": "READ"
+      },
+      {
+        "resource": "%Ens_ProductionConfig",
+        "permission": "WRITE"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Ens_ProductionConfig",
+        "permission": "READ"
+      },
+      {
+        "resource": "%Ens_ProductionConfig",
+        "permission": "WRITE"
+      }
+    ],
+    "entityType": "production-item",
+    "secondaryEntityTypes": [],
+    "scope": "namespace",
+    "parentScope": "interoperability/productions/items",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "Item",
+        "ClassName"
+      ]
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "ClassName",
+        "Type",
+        "Current"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "interopItemClassesEmpty",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "interopItemClassesPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "interopItemClassesPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "interopItemClassesPrompt3"
+      }
+    ],
+    "classicPage": "EnsPortal.ProductionConfig",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "row": "class this item can change to",
+      "source": {
+        "port": "interop",
+        "endpoint": "ItemClasses",
+        "type": "LIST"
+      },
+      "fields": [
+        "Production",
+        "Item",
+        "ClassName",
+        "Type",
+        "Current"
+      ],
+      "filter": [
+        "ClassName",
+        "Type"
+      ],
+      "sort": {
+        "fields": [
+          "ClassName",
+          "Type"
+        ],
+        "default": "ClassName",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "item",
+            "labelKey": "interopItemSettingsCriterionItem",
+            "kind": "text",
+            "maxLength": 352,
+            "hint": "One item, spelled as interop.items.read answers its Production, then two vertical bars and its Name."
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "ClassName",
+          "labelKey": "interopItemColumnClass",
+          "kind": "name"
+        },
+        {
+          "field": "Type",
+          "labelKey": "tableColumnType",
+          "kind": "text"
+        },
+        {
+          "field": "Current",
+          "labelKey": "interopItemClassesColumnCurrent",
+          "kind": "status"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "tab": {
+      "group": "interoperability/productions/items/document",
+      "position": 8,
+      "labelKey": "explorerClassListLabel"
+    },
+    "toolIdentifier": "interop.itemclasses",
+    "refreshDefault": 0,
+    "banner": null,
     "rowTarget": null,
     "multiSelect": null,
     "secretArguments": [],
@@ -14033,6 +14385,26 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       },
       {
         "id": "disable",
+        "selfProtection": ""
+      },
+      {
+        "id": "stop",
+        "selfProtection": ""
+      },
+      {
+        "id": "start",
+        "selfProtection": ""
+      },
+      {
+        "id": "restart",
+        "selfProtection": ""
+      },
+      {
+        "id": "copy",
+        "selfProtection": ""
+      },
+      {
+        "id": "changeclass",
         "selfProtection": ""
       },
       {
@@ -28994,11 +29366,14 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyNextKey": "",
       "emptyAgentKey": "taskOnDemandEmptyAgent"
     },
+    "rowTarget": {
+      "route": "tasks/schedule/details",
+      "field": "Id"
+    },
     "toolIdentifier": "tasks.ondemand",
     "refreshDefault": 0,
     "banner": null,
     "tab": null,
-    "rowTarget": null,
     "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": []
@@ -29575,11 +29950,14 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyNextKey": "tableReadOnlyEmptyNext",
       "emptyAgentKey": ""
     },
+    "rowTarget": {
+      "route": "tasks/schedule/details",
+      "field": "Id"
+    },
     "toolIdentifier": "tasks.upcoming",
     "refreshDefault": 0,
     "banner": null,
     "tab": null,
-    "rowTarget": null,
     "multiSelect": null,
     "secretArguments": [],
     "fingerprintExcludes": [],

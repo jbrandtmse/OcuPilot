@@ -73,27 +73,11 @@ ClassMethod SettableFields() As %List
     Quit $ListBuild(##class(OcuPilot.Port.AtelierPort).#CONTENTKEY, ##class(OcuPilot.Port.AtelierPort).#VERSIONKEY, ##class(OcuPilot.Port.AtelierPort).#COMPILEKEY)
 }
 
-/// <p>The screen's declared pairs, then the custom resource of each <parameter>CLASSICPAGES</parameter>
-/// page. WRITE is not among them: <method>ArgumentPairs</method> carries it (DW-2242).</p>
-ClassMethod PrivilegePairs(pDescriptor As %String = "", Output pResolved As %Boolean) As %List
-{
-    Set tPairs = ##class(OcuPilot.Screen.Gate).RequiredPairs(..#DESCRIPTORCLASS, .pResolved)
-    If 'pResolved Quit ""
-    Quit ##class(OcuPilot.Screen.Gate).WithClassicPages(tPairs, ..#CLASSICPAGES)
-}
-
-/// <p>The WRITE pair a save or a create of <var>pArgs</var> requires (DW-2242, AD-8): WRITE on the
-/// routines database of the namespace the proposal stored in its <code>Namespace</code> argument, else
-/// of the request's scope. <var>pResolved</var> is 0 when that database names no resource, which the
-/// caller refuses.</p>
-ClassMethod ArgumentPairs(pDescriptor As %String = "", pArgs As %DynamicObject, Output pResolved As %Boolean) As %List
-{
-    Quit ..CodeWritePairs(pArgs, .pResolved)
-}
-
 /// <p>The WRITE pair on the routines database of <var>pArgs</var>' <code>Namespace</code>, or of the
-/// request's scope when that is absent or empty (<method>ArgumentPairs</method>). Shared by a save and a
-/// create (<class>OcuPilot.Screen.Tool.ExplorerCreate</class>).</p>
+/// request's scope when that is absent or empty: every System Explorer write of code
+/// (<method>OcuPilot.Screen.Tool.ExplorerWrite.ArgumentPairs</method>) and a REST service's create
+/// (<class>OcuPilot.Screen.Tool.RestServiceWrite</class>). <var>pResolved</var> is 0 when that
+/// database names no resource, which the caller refuses.</p>
 ClassMethod CodeWritePairs(pArgs As %DynamicObject, Output pResolved As %Boolean) As %List
 {
     Set tNamespace = ""

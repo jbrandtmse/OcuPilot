@@ -39,6 +39,7 @@ XData Declaration
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
     "row": "cube",
+    "label": "Cubes with their class, last build and fact count; when each was updated, whether it can be synchronized and what depends on it are in analytics.cubemanager.",
     "source": {"port": "analytics", "endpoint": "Cubes", "type": "LIST"},
     "fields": ["Name", "Caption", "Class", "LastBuild", "Facts"],
     "filter": ["Name", "Caption", "Class"],

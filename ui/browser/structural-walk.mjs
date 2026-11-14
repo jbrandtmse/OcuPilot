@@ -42,7 +42,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
-import { retryOnce } from './protocol-retry.mjs';
+import { WALKCALLDEADLINE, closeOrAbandon, isConnectionLoss, isProtocolTimeout, retryOnce, withDeadline } from './protocol-retry.mjs';
 import { signedInAt } from './panel-spec.mjs';
 import { escapeOs, markerValue, runIris } from './turnprobe-spec.mjs';
 
@@ -119,6 +119,8 @@ export const SKIP = {
   'interoperability/productions/items/jobs': 'HSCUSTOM holds no production, so the Productions list opens with no row to open',
   // Story 20.6: the item's Test tab is reached from the same row; interop-item-test.browser-spec.mjs walks it on the probe production.
   'interoperability/productions/items/test': 'HSCUSTOM holds no production, so the Productions list opens with no row to open',
+  // Story 20.41: the item's Classes tab is reached from the same row; interop-host-tabs.browser-spec.mjs walks it on the probe production.
+  'interoperability/productions/items/classes': 'HSCUSTOM holds no production, so the Productions list opens with no row to open',
   'interoperability/queues/messages': 'HSCUSTOM runs no production, so the Queues list opens with no row to open',
   // Story 20.5: a table's entries are reached from a Lookup tables name cell and need that table's name as their id, which the
   // walk does not create; interop-lookup-tables.browser-spec.mjs walks them on the probe table it creates.
@@ -180,8 +182,24 @@ export function removeConversation(config, key) {
 /** How long a screen may take to settle before the walk records it as unsettled. */
 const SETTLE_TIMEOUT_MS = 20000;
 
+/** How many of the slowest visits the report prints. */
+const SLOWEST_VISITS = 5;
+
 /** A screen is settled once no `/api/ocupilot` request or shell script has been in flight for this long. */
 const QUIET_MS = 500;
+
+/**
+ * Await one page call the walk issues, abandoning it after `WALKCALLDEADLINE`. The rejection is a
+ * protocol-timeout error naming `label`, so the pass's `retryOnce` runs the pass once more.
+ */
+function bounded(label, call) {
+  return withDeadline(call, WALKCALLDEADLINE, label);
+}
+
+/** The label of a walk step: the pass the tracker is standing in, then the step. */
+function stepLabel(requests, step) {
+  return `${requests?.pass ?? 'walk'}: ${step}`;
+}
 
 /**
  * Declared minimum widths, each with its source. The CSS-px floor applies to every control; a more
@@ -591,20 +609,24 @@ async function fieldNames(page) {
  * background the contrast check could not resolve (a gradient or image under them).
  */
 export async function detectScreen(page, { route, checks, viewport, theme, minimums }) {
-  const found = await page.evaluate(detectInPage, {
-    checks,
-    floorPx: MIN_WIDTH_SOURCES.floor.px,
-    classMinimums: MIN_WIDTH_SOURCES.classes.map(({ className, px }) => ({ className, px })),
-    tokenMinimums: minimums,
-    overflowAllowances: OVERFLOW_ALLOWANCES.map(({ className, px }) => ({ className, px })),
-  });
+  const pass = `${viewport}px ${theme}`;
+  const found = await bounded(
+    `${pass}: detect ${route}`,
+    page.evaluate(detectInPage, {
+      checks,
+      floorPx: MIN_WIDTH_SOURCES.floor.px,
+      classMinimums: MIN_WIDTH_SOURCES.classes.map(({ className, px }) => ({ className, px })),
+      tokenMinimums: minimums,
+      overflowAllowances: OVERFLOW_ALLOWANCES.map(({ className, px }) => ({ className, px })),
+    })
+  );
   const entries = [];
   const contextFor = (invariant) => (invariant === 'contrast' ? theme : invariant === 'name' ? '' : String(viewport));
   for (const violation of found.violations) {
     entries.push({ route, invariant: violation.invariant, context: contextFor(violation.invariant), element: violation.element, measured: violation.measured });
   }
   if (checks.includes('name') && found.fields.length > 0) {
-    const names = await fieldNames(page);
+    const names = await bounded(`${pass}: field names ${route}`, fieldNames(page));
     for (const field of found.fields) {
       // A field Chrome leaves out of the accessibility tree, or one it answers nothing for, has no
       // name a reader can reach: a failed lookup is reported, never read as a pass.
@@ -658,66 +680,107 @@ function trackRequests(page) {
 
 /**
  * Wait until the screen is settled: no `/api/ocupilot` request or shell script in flight for `QUIET_MS`, no
- * `[aria-busy="true"]` left, and the fonts loaded. Answers false when it never settles.
+ * `[aria-busy="true"]` left, and the fonts loaded (`document.fonts.status` reads `loaded`). The font
+ * condition is a synchronous read inside the loop, so `SETTLE_TIMEOUT_MS` bounds it; a font that
+ * never loads leaves the screen unsettled, never the call waiting. `where`, when given, is the path the
+ * page stands on and joins the step's label. Answers `{settled, ms, why}`: whether the screen settled,
+ * how long that took, and, when it did not, what was still pending -- the in-flight requests, the busy
+ * element or the font status.
  */
-async function settle(page, requests) {
+export async function settle(page, requests, where = '') {
   const started = Date.now();
+  let pending = '';
   while (Date.now() - started < SETTLE_TIMEOUT_MS) {
     if (requests.inflight.size === 0 && Date.now() - requests.last >= QUIET_MS) {
-      const ready = await page.evaluate(async () => {
-        await document.fonts.ready;
-        return document.querySelector('[aria-busy="true"]') === null;
-      });
-      if (ready && requests.inflight.size === 0 && Date.now() - requests.last >= QUIET_MS) return true;
+      const ready = await bounded(
+        stepLabel(requests, where === '' ? 'settle' : `settle ${where}`),
+        page.evaluate(() => {
+          if (document.fonts.status !== 'loaded') return `fonts ${document.fonts.status}`;
+          const busy = document.querySelector('[aria-busy="true"]');
+          return busy === null ? true : `busy element ${busy.tagName.toLowerCase()}${busy.id ? '#' + busy.id : ''}`;
+        })
+      );
+      if (ready === true && requests.inflight.size === 0 && Date.now() - requests.last >= QUIET_MS) return { settled: true, ms: Date.now() - started, why: '' };
+      pending = ready === true ? '' : String(ready);
     }
     await new Promise((resolve) => setTimeout(resolve, 100));
   }
-  return false;
+  const inflight = [...requests.inflight].map((request) => pathOf(request.url()));
+  const why = inflight.length > 0 ? `in flight: ${inflight.join(', ')}` : pending !== '' ? pending : 'requests kept arriving';
+  return { settled: false, ms: Date.now() - started, why };
+}
+
+/** `url` as its path and query, or as given when it is not a URL. */
+function pathOf(url) {
+  try {
+    const parsed = new URL(url);
+    return parsed.pathname + parsed.search;
+  } catch {
+    return String(url);
+  }
 }
 
 /**
  * Move the running shell to `path` with the router's own navigation: a history entry and the
  * popstate the router listens for, never a second document -- which would bring the first-login
- * gate back (`shell-entry.mjs`).
+ * gate back (`shell-entry.mjs`). Answers `settle`'s `{settled, ms, why}`.
  */
-async function goInApp(page, requests, path, timeoutMs) {
+export async function goInApp(page, requests, path, timeoutMs) {
   const pathname = path.split('?')[0];
   requests.last = Date.now();
-  await page.evaluate((to) => {
-    window.history.pushState({}, '', to);
-    window.dispatchEvent(new PopStateEvent('popstate'));
-  }, path);
-  await page.waitForFunction((wanted) => window.location.pathname === wanted, { timeout: timeoutMs }, pathname);
-  return settle(page, requests);
+  await bounded(
+    stepLabel(requests, `navigate ${path}`),
+    page.evaluate((to) => {
+      window.history.pushState({}, '', to);
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    }, path)
+  );
+  await bounded(
+    stepLabel(requests, `await ${pathname}`),
+    page.waitForFunction((wanted) => window.location.pathname === wanted, { timeout: timeoutMs }, pathname)
+  );
+  return settle(page, requests, path);
 }
 
 /** The id segment of the first rendered row link on the list the page stands on under `route`. */
-async function firstRowSegment(page, route) {
-  return page.evaluate((prefix) => {
-    for (const link of document.querySelectorAll('a.ocu-data-table-link[href]')) {
-      const path = new URL(link.href).pathname;
-      if (!path.startsWith(prefix)) continue;
-      const segments = path.split('/').filter((part) => part !== '');
-      return segments[segments.length - 1];
-    }
-    return null;
-  }, `/ocupilot/${route}/`);
+async function firstRowSegment(page, requests, route) {
+  return bounded(
+    stepLabel(requests, `first row of ${route}`),
+    page.evaluate((prefix) => {
+      for (const link of document.querySelectorAll('a.ocu-data-table-link[href]')) {
+        const path = new URL(link.href).pathname;
+        if (!path.startsWith(prefix)) continue;
+        const segments = path.split('/').filter((part) => part !== '');
+        return segments[segments.length - 1];
+      }
+      return null;
+    }, `/ocupilot/${route}/`)
+  );
 }
 
 /** Flip the theme through the account menu's own item, and close the menu. */
 export async function toggleThemeThroughMenu(page, requests, timeoutMs) {
-  const wasDark = await page.evaluate((name) => document.documentElement.classList.contains(name), THEME_DARK_CLASS);
-  await page.click('#ocu-account-trigger');
-  await page.waitForSelector(THEME_ITEM, { visible: true, timeout: timeoutMs });
-  await page.click(THEME_ITEM);
-  await page.waitForFunction(
-    (name, dark) => document.documentElement.classList.contains(name) === dark,
-    { timeout: timeoutMs },
-    THEME_DARK_CLASS,
-    !wasDark
+  const wasDark = await bounded(
+    stepLabel(requests, 'read theme'),
+    page.evaluate((name) => document.documentElement.classList.contains(name), THEME_DARK_CLASS)
   );
-  await page.keyboard.press('Escape');
-  await page.waitForFunction(() => document.querySelector('.ocu-account-panel') === null, { timeout: timeoutMs });
+  await bounded(stepLabel(requests, 'open account menu'), page.click('#ocu-account-trigger'));
+  await page.waitForSelector(THEME_ITEM, { visible: true, timeout: timeoutMs });
+  await bounded(stepLabel(requests, 'choose theme item'), page.click(THEME_ITEM));
+  await bounded(
+    stepLabel(requests, 'await theme class'),
+    page.waitForFunction(
+      (name, dark) => document.documentElement.classList.contains(name) === dark,
+      { timeout: timeoutMs },
+      THEME_DARK_CLASS,
+      !wasDark
+    )
+  );
+  await bounded(stepLabel(requests, 'close account menu'), page.keyboard.press('Escape'));
+  await bounded(
+    stepLabel(requests, 'await account panel closed'),
+    page.waitForFunction(() => document.querySelector('.ocu-account-panel') === null, { timeout: timeoutMs })
+  );
   await settle(page, requests);
 }
 
@@ -745,6 +808,7 @@ function urlFor(screen, segments) {
 async function walkPass(page, requests, config, { viewport, theme, checks, minimums, report }) {
   const entries = [];
   const segments = new Map();
+  requests.pass = `${viewport}px ${theme}`;
   const { built } = declaredScreens();
   const ordered = [...built.filter((screen) => !needsId(screen)), ...built.filter(needsId)];
   for (const screen of ordered) {
@@ -757,10 +821,12 @@ async function walkPass(page, requests, config, { viewport, theme, checks, minim
       report.unresolved.add(screen.route);
       continue;
     }
-    const settled = await goInApp(page, requests, url, config.navigationTimeoutMs);
-    if (!settled) report.unsettled.add(`${screen.route} (${viewport} ${theme})`);
+    const visit = `${screen.route === '' ? '/' : screen.route} (${viewport} ${theme})`;
+    const { settled, ms, why } = await goInApp(page, requests, url, config.navigationTimeoutMs);
+    report.visits.push({ visit, ms, settled, why });
+    if (!settled) report.unsettled.add(visit);
     if (!needsId(screen)) {
-      const segment = await firstRowSegment(page, screen.route);
+      const segment = await firstRowSegment(page, requests, screen.route);
       if (segment !== null) segments.set(screen.route, segment);
     }
     const found = await detectScreen(page, { route: keyRoute(screen), checks, viewport, theme, minimums });
@@ -772,14 +838,78 @@ async function walkPass(page, requests, config, { viewport, theme, checks, minim
 }
 
 /**
+ * The walk's per-pass retry over `report` and `entries`, holding `browser`: answers `(name, body)`,
+ * which runs `body(found, browser)` against the browser held at that moment and joins `found` to
+ * `entries` once a run completes. A run that fails on a protocol timeout (an abandoned call
+ * included), or, when `relaunch` is given, on a lost connection (`isConnectionLoss`), is run once
+ * more through `retryOnce`, with `report` put back as it was before the pass,
+ * except for one `report.retried` line naming the pass and the call that failed. When `relaunch` is
+ * given, the rerun first closes the held browser (abandoned after `CLOSEDEADLINE` when it does not
+ * close) and holds the browser `relaunch()` answers, since a browser that stalled a call can stall
+ * the rerun too; without it the rerun uses the same browser. `held()` answers the browser held now.
+ * When a pass fails and `report.retried` holds any line (its own retry's, or an earlier pass's), the
+ * error carries those lines on `error.retried` and at the end of its message.
+ */
+export function passRetrier(report, entries, browser, relaunch = null) {
+  let current = browser;
+  const withRetry = async (name, body) => {
+    const saved = {
+      walked: new Set(report.walked),
+      skipped: new Set(report.skipped),
+      unresolved: new Set(report.unresolved),
+      unsettled: new Set(report.unsettled),
+      visits: [...(report.visits ?? [])],
+      unmeasurable: report.unmeasurable,
+    };
+    let failure = '';
+    const run = async () => {
+      const found = [];
+      try {
+        await body(found, current);
+      } catch (error) {
+        failure = String(error?.message ?? error);
+        throw error;
+      }
+      return found;
+    };
+    const reset = async () => {
+      Object.assign(report, saved);
+      report.retried.push(`${name} -- ${failure}`);
+      if (relaunch === null) return;
+      await closeOrAbandon(current);
+      current = await relaunch();
+    };
+    try {
+      const retryable = relaunch === null ? isProtocolTimeout : (error) => isProtocolTimeout(error) || isConnectionLoss(error);
+      entries.push(...(await retryOnce(run, reset, retryable)));
+    } catch (error) {
+      if (report.retried.length > 0 && error !== null && typeof error === 'object') {
+        error.retried = [...report.retried];
+        error.message = `${error.message}\nstructural walk retried: ${report.retried.join(' | ')}`;
+      }
+      throw error;
+    }
+  };
+  withRetry.held = () => current;
+  return withRetry;
+}
+
+/**
  * The whole walk: 1280 px in light (every invariant), then 1280 px in dark (contrast) after the
  * account menu's own toggle, switched back at the end; then 720 px in light (every structural
  * invariant). Each of the two passes is run once more in a fresh context when it fails on a
- * DevTools-protocol timeout. All of it runs with one conversation seeded (`seedConversation`) and removed on every exit
- * path. Answers `{entries, report}`; `report` counts walked, skipped, not built,
- * unresolved (an id-requiring screen neither walked nor skipped), unsettled and unmeasurable.
+ * DevTools-protocol timeout, or when one of its page calls goes unanswered for `WALKCALLDEADLINE`,
+ * or, when `relaunch` is given, when its connection to the browser is lost; the report names each
+ * retried pass. When `relaunch` (answers a new browser) is given, the rerun
+ * runs on a newly launched browser and the stalled one is closed, as `passRetrier` says; the walk
+ * answers the browser it ended on, which the caller closes. All of it runs with one conversation
+ * seeded (`seedConversation`) and removed on every exit path. Answers `{entries, report, browser}`;
+ * `report` counts walked, skipped, not built, unresolved (an id-requiring screen neither walked nor
+ * skipped), unsettled and unmeasurable, and `report.visits` holds each visit's `{visit, ms, settled,
+ * why}`. When the walk throws after any pass was retried, the error
+ * carries the retried lines.
  */
-export async function walk(browser, config) {
+export async function walk(browser, config, relaunch = null) {
   const minimums = componentMinimums();
   const report = {
     declared: declaredScreens().declared,
@@ -788,34 +918,21 @@ export async function walk(browser, config) {
     skipped: new Set(),
     unresolved: new Set(),
     unsettled: new Set(),
+    visits: [],
     unmeasurable: 0,
+    retried: [],
   };
   const entries = [];
   const reducedMotion = [{ name: 'prefers-reduced-motion', value: 'reduce' }];
 
   // A pass that fails on a protocol timeout is run once more in a fresh signed-in context, which
-  // starts light: `signedInAt` clears the account's remembered shell state, the theme with it. Its
-  // entries join the walk only when it completes, and the report is put back as it was first.
-  const withRetry = async (body) => {
-    const saved = {
-      walked: new Set(report.walked),
-      skipped: new Set(report.skipped),
-      unresolved: new Set(report.unresolved),
-      unsettled: new Set(report.unsettled),
-      unmeasurable: report.unmeasurable,
-    };
-    const run = async () => {
-      const found = [];
-      await body(found);
-      return found;
-    };
-    entries.push(...(await retryOnce(run, () => Object.assign(report, saved))));
-  };
+  // starts light: `signedInAt` clears the account's remembered shell state, the theme with it.
+  const withRetry = passRetrier(report, entries, browser, relaunch);
 
   const seeded = seedConversation(config);
   try {
-    await withRetry(async (found) => {
-      const wide = await signedInAt(browser, config, '/ocupilot/', VIEWPORTS.wide, reducedMotion);
+    await withRetry('1280px light then dark', async (found, held) => {
+      const wide = await signedInAt(held, config, '/ocupilot/', VIEWPORTS.wide, reducedMotion);
       try {
         const requests = trackRequests(wide.page);
         found.push(...(await walkPass(wide.page, requests, config, { viewport: VIEWPORTS.wide.width, theme: 'light', checks: INVARIANTS, minimums, report })));
@@ -824,33 +941,38 @@ export async function walk(browser, config) {
         await goInApp(wide.page, requests, `/ocupilot/${NAMESPACE_QUERY}`, config.navigationTimeoutMs);
         await toggleThemeThroughMenu(wide.page, requests, config.navigationTimeoutMs);
       } finally {
-        await wide.context.close();
+        await bounded('1280px light then dark: close context', wide.context.close());
       }
     });
 
-    await withRetry(async (found) => {
-      const narrow = await signedInAt(browser, config, '/ocupilot/', VIEWPORTS.narrow, reducedMotion);
+    await withRetry('720px light', async (found, held) => {
+      const narrow = await signedInAt(held, config, '/ocupilot/', VIEWPORTS.narrow, reducedMotion);
       try {
         const requests = trackRequests(narrow.page);
         found.push(...(await walkPass(narrow.page, requests, config, { viewport: VIEWPORTS.narrow.width, theme: 'light', checks: ['name', 'min-width', 'overflow'], minimums, report })));
       } finally {
-        await narrow.context.close();
+        await bounded('720px light: close context', narrow.context.close());
       }
     });
   } finally {
     removeConversation(config, seeded);
   }
-  return { entries: collapse(entries), report };
+  return { entries: collapse(entries), report, browser: withRetry.held() };
 }
 
 /** The walk's own report, as the lines the spec and `--write` print. */
 export function reportLines(report) {
+  const visits = report.visits ?? [];
+  const slowest = [...visits].sort((a, b) => b.ms - a.ms).slice(0, SLOWEST_VISITS);
   return [
     `structural walk: ${report.declared} declared screen(s); ${report.walked.size} walked, ${report.skipped.size} skipped, ${report.notBuilt.length} not built (${report.notBuilt.join(', ')})`,
     `structural walk: ${report.unresolved.size} id-requiring screen(s) neither walked nor skipped${report.unresolved.size === 0 ? '' : ': ' + [...report.unresolved].join(', ')}`,
     `structural walk: ${report.unmeasurable} text element(s) unmeasurable for contrast (a gradient or image behind them)`,
     `structural walk: ${report.unsettled.size} screen visit(s) did not settle within ${SETTLE_TIMEOUT_MS}ms${report.unsettled.size === 0 ? '' : ': ' + [...report.unsettled].join(', ')}`,
+    ...(slowest.length === 0 ? [] : [`structural walk: ${slowest.length} slowest visit(s): ${slowest.map((entry) => `${entry.visit} ${entry.ms}ms`).join('; ')}`]),
+    ...visits.filter((entry) => !entry.settled).map((entry) => `structural walk: unsettled ${entry.visit} after ${entry.ms}ms -- ${entry.why}`),
     ...Object.entries(SKIP).map(([route, reason]) => `structural walk: skipped ${route} -- ${reason}`),
+    ...report.retried.map((line) => `structural walk: pass retried once after a call failed: ${line}`),
   ];
 }
 

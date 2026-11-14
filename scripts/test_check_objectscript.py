@@ -1480,6 +1480,7 @@ class TestToolDispatchRule(FixtureTreeCase):
         self.cls("src/OcuPilot/Port/AdminPort.cls", "OcuPilot.Port.AdminPort", 'Set tSC = $ClassMethod(..#CAPTURECLASS, "BeginCaptureOutput", .tCookie)')
         self.cls("src/OcuPilot/Port/AtelierPort.cls", "OcuPilot.Port.AtelierPort", "Set tSC = $$BeginCapture^%SYS.Capture(.tCookie)")
         self.cls("src/OcuPilot/Port/InteropPort.cls", "OcuPilot.Port.InteropPort", "Set tSC = $$BeginCapture^%SYS.Capture(.tCookie)")
+        self.cls("src/OcuPilot/Port/AnalyticsPort.cls", "OcuPilot.Port.AnalyticsPort", "Set tSC = $$BeginCapture^%SYS.Capture(.tCookie)")
         self.cls("src/OcuPilot/Test/AdminPortFault.cls", "OcuPilot.Test.AdminPortFault", "Set tSC = $$BeginCapture^%SYS.Capture(.tCookie)")
         problems = self.problems()
         self.assertTrue(any(p.startswith("src/OcuPilot/Kernel/Agent/Dispatch.cls:6:") and "capture" in p for p in problems), f"got {problems}")

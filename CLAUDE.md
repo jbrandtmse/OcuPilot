@@ -132,7 +132,8 @@ The MCP-server rule above and the container detail below this block are the oper
   TypeScript 6.0.x exactly, and Node `^22.22.3 || ^24.15.0 || ^26.0.0`; Node 20 and TypeScript 5.9
   or 7 are refused by the toolchain.
 - Check ObjectScript with `uv run scripts/check-objectscript.py` (21 rules; the `.githooks/pre-commit`
-  hook runs it on staged paths and it blocks the commit) and its own harness with
+  hook runs it over the whole tree whenever a commit stages ObjectScript, `ui/`, `module.xml` or
+  `scripts/*.sh`, and it blocks the commit) and its own harness with
   `uv run scripts/test_check_objectscript.py`.
 - Ask a running instance whether OcuPilot works: `bash scripts/smoke.sh --container ocupilot
   --user _SYSTEM --password SYS` — `ocupilot` is slot A's dev container; a slot B runner passes

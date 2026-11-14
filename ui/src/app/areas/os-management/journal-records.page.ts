@@ -79,6 +79,7 @@ interface CriterionView {
   readonly choice: boolean;
   readonly options: readonly { readonly value: string; readonly label: string }[];
   readonly value: string;
+  readonly maxLength: number;
 }
 
 /** One field of the record dialog, resolved for drawing. */
@@ -278,6 +279,7 @@ function heldFor(store: ScreenStore | null, screen: ScreenDeclaration | null): J
                   class="ocu-criteria-input"
                   type="text"
                   [id]="field.id"
+                  [attr.maxlength]="field.maxLength"
                   [value]="field.value"
                   (input)="onCriterion(field.param, $event)"
                 />
@@ -372,6 +374,7 @@ export class JournalRecordsPage {
 
     const stopRefreshAction = this.actions.register(screen.descriptor, REFRESH_ACTION_ID, () => {
       this.refresh.bind(screen, this.boundRead(screen));
+      this.followOrder();
       void this.refresh.readNow();
     });
 
@@ -383,7 +386,14 @@ export class JournalRecordsPage {
         this.open();
       }) ?? null;
 
-    const stopStore = store.subscribe(() => this.bump());
+    let awaitingView = !store.remembered();
+    const stopStore = store.subscribe(() => {
+      if (awaitingView && store.remembered()) {
+        awaitingView = false;
+        if (store.restoredView()) this.followOrder();
+      }
+      this.bump();
+    });
     const stopSearch = this.search.subscribe(() => {
       this.bump();
       if (this.recordAwaitsFile && this.search.value('file') !== '') void this.loadRecord(this.entityId());
@@ -421,9 +431,34 @@ export class JournalRecordsPage {
     return search.readFor(() => recordsRead(api, screen, search));
   }
 
-  /** Run the held search once the scope has resolved; before then the framework's own read is the one. */
+  /**
+   * Run the held search once the scope has resolved; before then the framework's own read is the one.
+   * Under the declared sort, Newest first draws descending and Oldest first restores the declared
+   * direction; a sort the person chose on another column is left alone.
+   */
   private open(): void {
+    this.followOrder();
     if (this.scope.loaded()) void this.refresh.readNow();
+  }
+
+  /**
+   * Make the table's direction follow the form's order while the store sorts on the declared field.
+   * Before the remembered view is adopted the direction is set without being sent, so the view
+   * the instance holds is not replaced by this store's defaults.
+   */
+  private followOrder(): void {
+    const view = this.list;
+    const declared = view?.screen.read?.sort.default;
+    if (view === null || declared === undefined) return;
+    const sort = view.store.sort();
+    if (sort !== '' && sort !== declared) return;
+    const direction = view.store.direction();
+    const remember = view.store.remembered();
+    if (this.search.value('order') === '1') {
+      if (direction !== 'desc') view.store.setDirection('desc', remember);
+    } else if (direction === 'desc') {
+      view.store.setDirection('', remember);
+    }
   }
 
   /** Fetch the record the route names, or clear the dialog when it names none. */
@@ -477,6 +512,7 @@ export class JournalRecordsPage {
         choice: field.kind === 'choice',
         options: (field.options ?? []).map((option) => ({ value: option, label: stringFor(OPTION_LABEL_KEYS[field.param]?.[option] ?? '') })),
         value: this.search.value(field.param),
+        maxLength: field.maxLength,
       }));
   }
 

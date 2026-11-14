@@ -383,7 +383,7 @@ test('no harness code reaches the shipped bundle', () => {
   assertBuildSucceeded();
   for (const name of readdirSync(distBrowserDir).filter((file) => /\.(js|html|css)$/.test(file))) {
     const text = readFileSync(join(distBrowserDir, name), 'utf8');
-    for (const marker of ['ocuHarness', 'app-table-harness', 'OcuPilot.Screen.Descriptor.TableProbe']) {
+    for (const marker of ['ocuHarness', 'app-table-harness', 'web-applications/probe']) {
       assert.ok(!text.includes(marker), `${name} carries ${marker}`);
     }
   }

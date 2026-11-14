@@ -78,10 +78,10 @@ Parameter OPERATORTOOLS = "interop.businesspartners.read,interop.itemjobs.read,i
 /// Operator and Monitor roles do not), and the Schema viewer (Story 20.8) through the <code>%Ens_EDISchema:READ</code> the
 /// Administrator role holds and the Operator and Monitor roles do not, and a message's Contents tab (Story 20.9) through the
 /// <code>%Ens_MessageContent:USE</code> the Administrator role holds and the Operator role does not.</p>
-Parameter ADMINISTRATORSCREENS = "InteropItemTestTab,InteropMessageContentsTab,InteropProcessEditor,InteropProcessList,InteropRuleEditor,InteropRuleList,InteropSchemaViewer,InteropTransformEditor,InteropTransformList";
+Parameter ADMINISTRATORSCREENS = "InteropItemClassTab,InteropItemTestTab,InteropMessageContentsTab,InteropProcessEditor,InteropProcessList,InteropRuleEditor,InteropRuleList,InteropSchemaViewer,InteropTransformEditor,InteropTransformList";
 
 /// <p>See <parameter>ADMINISTRATORSCREENS</parameter>.</p>
-Parameter ADMINISTRATORTOOLS = "interop.itemtest.read,interop.messagecontents.read,interop.processes.read,interop.rules.read,interop.transforms.read";
+Parameter ADMINISTRATORTOOLS = "interop.itemclasses.read,interop.itemtest.read,interop.messagecontents.read,interop.processes.read,interop.rules.read,interop.transforms.read";
 
 /// <p>The principals' password for this run.</p>
 Property PreparedPassword As %String;

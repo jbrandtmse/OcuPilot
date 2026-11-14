@@ -6764,6 +6764,57 @@ export const STRINGS = {
   /** EXPERIENCE.md:604 */
   interopItemRefusalSourceControl: 'This namespace uses source control, so change this production\'s items in the classic production configuration page.',
   /** EXPERIENCE.md:604 */
+  interopItemStopConsequence:
+    'Stopping this item ends its jobs until it is started again, and updates the production now to apply it, along with any other change waiting for it. Messages sent to the item wait in its queue. The item stays enabled, and the stop ends when the production next restarts. If its jobs do not finish their current messages within 15 seconds, nothing is changed.',
+  /** EXPERIENCE.md:604 */
+  interopItemStartConsequence:
+    'Starting this item starts its jobs again, and updates the production now to apply it, along with any other change waiting for it.',
+  /** EXPERIENCE.md:604 */
+  interopItemRestartConsequence:
+    'Restarting this item stops its jobs and starts them again, updating the production twice, which also applies any other change waiting for it. If its jobs do not finish their current messages within 15 seconds, nothing is changed.',
+  /** EXPERIENCE.md:604 */
+  interopItemRefusalNotEnabled: 'This item is disabled, so it is not running. Enable it instead.',
+  /** EXPERIENCE.md:604 */
+  interopItemRefusalTempStopped: 'This item is already stopped. Start it to run it again.',
+  /** EXPERIENCE.md:604 */
+  interopItemRefusalNotTempStopped: 'This item has not been stopped with Stop, so there is nothing to start.',
+  /** EXPERIENCE.md:604 */
+  interopItemRefusalNoJobs:
+    'This item runs no jobs of its own now, so it cannot be stopped by itself. That is so for an item that runs in its callers\' jobs or in the shared actor pool, and for one its schedule has stopped.',
+  /** EXPERIENCE.md:604 */
+  interopItemRefusalStartPending:
+    'The production\'s work in progress did not finish within 15 seconds, so the item starts only when the production is next updated on Productions.',
+  /** EXPERIENCE.md:604 */
+  interopItemCopyTitle: 'Copy item',
+  /** EXPERIENCE.md:604 */
+  interopItemCopyConsequence:
+    'The copy is added to this production disabled, with this item\'s class and settings. A business process that runs in the shared actor pool is copied with a pool size of 1. Enable the copy to run it.',
+  /** EXPERIENCE.md:604 */
+  interopItemRefusalCopySource: 'This production holds no item of that name to copy.',
+  /** EXPERIENCE.md:604 */
+  interopItemChangeClassAction: 'Change class',
+  /** EXPERIENCE.md:604 */
+  interopItemChangeClassConsequence:
+    'Changing this item\'s class removes every setting the new class does not take, and they cannot be restored. The change takes effect when this production next starts or, while it runs, when it is updated on Productions.',
+  /** EXPERIENCE.md:604 */
+  interopItemRefusalNewClass: 'Choose a compiled class of this item\'s kind, as its Classes tab lists them.',
+  /** EXPERIENCE.md:604 */
+  interopItemRefusalSameClass: 'This item already uses that class.',
+  /** EXPERIENCE.md:604 */
+  interopItemRefusalReviewChanged: 'This item\'s settings changed after they were reviewed, so its class was not changed. Review it again.',
+  /** EXPERIENCE.md:604 */
+  interopItemClassesLabel: 'Host classes',
+  /** EXPERIENCE.md:604 */
+  interopItemClassesEmpty: 'No compiled class of this item\'s kind is in this namespace.',
+  /** EXPERIENCE.md:604 */
+  interopItemClassesPrompt1: 'Which classes can this item change to?',
+  /** EXPERIENCE.md:604 */
+  interopItemClassesPrompt2: 'Which of this item\'s settings would a change of class remove?',
+  /** EXPERIENCE.md:604 */
+  interopItemClassesPrompt3: 'What does each class this item could take do?',
+  /** EXPERIENCE.md:604 */
+  interopItemClassesColumnCurrent: 'Current',
+  /** EXPERIENCE.md:604 */
   interopItemSettingsLabel: 'Item settings',
   /** EXPERIENCE.md:604 */
   interopItemSettingsCriterionItem: 'Item',
@@ -6981,7 +7032,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:604 */
   interopBusinessPartnersEmpty: 'This namespace holds no business partners.',
   /** EXPERIENCE.md:604 */
-  interopBusinessPartnersEmptyNext: 'Business partners are added and changed in the classic Business Partners page.',
+  interopBusinessPartnersEmptyAgent: 'Ask the agent to add a business partner here.',
   /** EXPERIENCE.md:604 */
   interopLookupTablesEmptyAgent: 'Ask the agent to create a lookup table here.',
   /** EXPERIENCE.md:604 */
@@ -7012,6 +7063,40 @@ export const STRINGS = {
   interopPartnerColumnContact: 'Primary contact',
   /** EXPERIENCE.md:604 */
   interopPartnerColumnPhone: 'Phone',
+  /** EXPERIENCE.md:604 */
+  interopPartnerAddAction: 'New business partner',
+  /** EXPERIENCE.md:604 */
+  interopPartnerEditTitle: 'Edit business partner <name>',
+  /** EXPERIENCE.md:604 */
+  interopPartnerAlternativeContact: 'Alternative contact',
+  /** EXPERIENCE.md:604 */
+  interopPartnerFieldTitle: 'Title',
+  /** EXPERIENCE.md:604 */
+  interopPartnerFieldMobile: 'Mobile',
+  /** EXPERIENCE.md:604 */
+  interopPartnerFieldNotes: 'Notes',
+  /** EXPERIENCE.md:604 */
+  interopPartnerHelp: 'A business partner is information about an organization or application a production connects to. Saving one changes nothing in how a production runs.',
+  /** EXPERIENCE.md:604 */
+  interopPartnerRenameNote:
+    'A partner\'s name cannot be changed. To rename one, add a partner under the new name, change the Business partner setting of each item that names this one, then remove it.',
+  /** EXPERIENCE.md:604 */
+  interopPartnerRemoveConsequence: 'Removing this business partner deletes its description and both contacts, and it cannot be restored from OcuPilot.',
+  /** EXPERIENCE.md:604 */
+  interopPartnerRefusalTaken: 'This namespace already holds a business partner of that name.',
+  /** EXPERIENCE.md:604 */
+  interopPartnerRefusalNameCase:
+    'A business partner whose name differs from this one only in letter case already exists. Use its spelling, or choose another name.',
+  /** EXPERIENCE.md:604 */
+  interopPartnerRefusalNamed:
+    'Production items name this business partner in their Business partner setting, so it is not removed. Clear that setting on each of them first, then remove the partner.',
+  /** EXPERIENCE.md:604 */
+  interopPartnerRefusalSourceControl: 'This namespace uses source control, so change business partners in the classic Business Partners page.',
+  /** EXPERIENCE.md:604 */
+  interopPartnerRefusalName: 'A business partner name is 1 to 255 characters with no control character.',
+  /** EXPERIENCE.md:604 */
+  interopPartnerRefusalLength:
+    'This value is longer than a business partner keeps: at most 5,000 characters for a description, 1,000 for notes, 50 for a phone or mobile number and 255 for anything else.',
   /** EXPERIENCE.md:604 */
   interopLookupEntriesCriterionTable: 'Lookup table',
   /** EXPERIENCE.md:604 */
@@ -7677,6 +7762,48 @@ export const STRINGS = {
   analyticsRefusalMdxLost: 'The MDX run ended without an answer; run it again.',
   /** EXPERIENCE.md:604 */
   analyticsMdxSqlReason: 'This query may run server-side code or SQL, which the agent\'s read never runs; you can run it yourself on MDX query after confirming.',
+  /** EXPERIENCE.md:604 */
+  analyticsCubeManagerLabel: 'Cube manager',
+  /** EXPERIENCE.md:604 */
+  analyticsColumnSynchronizes: 'Synchronizes',
+  /** EXPERIENCE.md:604 */
+  analyticsColumnUpdating: 'Updating',
+  /** EXPERIENCE.md:604 */
+  analyticsColumnDependentCubes: 'Dependent cubes',
+  /** EXPERIENCE.md:604 */
+  actionSynchronize: 'Synchronize',
+  /** EXPERIENCE.md:604 */
+  analyticsCubeBuildAfterword: 'Rebuilt now',
+  /** EXPERIENCE.md:604 */
+  analyticsCubeSynchronizeAfterword: 'Synchronized now',
+  /** EXPERIENCE.md:604 */
+  analyticsCubeBuildConsequence: 'Building deletes this cube\'s facts and rebuilds them from its source, with every cube that depends on it. They cannot be queried until it ends, and a build that fails leaves their facts gone. The cube\'s own code and the namespace\'s analytics start-up code run as you.',
+  /** EXPERIENCE.md:604 */
+  analyticsCubeSynchronizeConsequence: 'Synchronizing applies the source changes recorded since the last update to this cube and the cubes that depend on it. They stay queryable, and their other facts are unchanged. The cube\'s own code runs as you.',
+  /** EXPERIENCE.md:604 */
+  analyticsRefusalCubeBusy: 'This cube, or a cube that depends on it, is being built or synchronized now. Try again when that ends.',
+  /** EXPERIENCE.md:604 */
+  analyticsRefusalCubeNoDstime: 'This cube, or a cube that depends on it, has a source that does not record its changes (DSTIME), so it can only be built.',
+  /** EXPERIENCE.md:604 */
+  analyticsRefusalCubeNotBuilt: 'This cube, or a cube that depends on it, has never been built, so there is nothing to synchronize. Build it first.',
+  /** EXPERIENCE.md:604 */
+  analyticsRefusalCubeReadonly: 'This namespace keeps its cubes\' facts in a read-only database, so they cannot be built or synchronized here.',
+  /** EXPERIENCE.md:604 */
+  analyticsRefusalCubeFailed: 'The instance answered this update with an error, so it may not have finished. The cube\'s Facts and Last update show what it holds now.',
+  /** EXPERIENCE.md:604 */
+  analyticsCubeManagerPrompt1: 'Which cubes can be synchronized rather than rebuilt?',
+  /** EXPERIENCE.md:604 */
+  analyticsCubeManagerPrompt2: 'Which cubes depend on another cube?',
+  /** EXPERIENCE.md:604 */
+  analyticsCubeManagerPrompt3: 'When was each cube last built or updated?',
+  /** EXPERIENCE.md:604 */
+  analyticsCubeManagerEmptyAgent: 'Ask the agent why no cube is listed here.',
+  /** EXPERIENCE.md:268 */
+  agentInvestigateEntryAction: 'Investigate this entry',
+  /** EXPERIENCE.md:268 */
+  agentInvestigateEntryMessage: 'Investigate the selected entry',
+  /** EXPERIENCE.md:268 */
+  agentEntryActionsColumn: 'Ask the agent',
 } as const;
 
 /**

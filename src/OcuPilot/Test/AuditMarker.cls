@@ -66,6 +66,7 @@ Method OnBeforeAllTests() As %Status
 
 Method OnAfterAllTests() As %Status
 {
+    If ($System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1) || ($System.Util.GetEnviron("OCUPILOT_ALLOW_PRODUCTION_INSTALL") '= 1) || ($System.Util.GetEnviron(..#PRINCIPALVARIABLE) '= 1) Quit $$$OK
     Set tSC = ##class(OcuPilot.Test.ProposalFixture).RemoveWriteTarget()
     If $$$ISERR(tSC) Quit tSC
     ; Put back whatever a method deleted, and refuse to pass while a triple is still missing: a

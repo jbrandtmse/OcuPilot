@@ -38,8 +38,8 @@ Parameter REMOTEDATABASEDELETE = "osmgmt.remotedatabases.delete";
 /// <p>The superserver delete, which the baseline also disables (Story 18.25).</p>
 Parameter SUPERSERVERDELETE = "security.superservers.delete";
 
-/// <p>Story 20.3's destructive item remove, which ships disabled (AD-22).</p>
-Parameter INTEROPITEMREMOVE = "interop.items.remove";
+/// <p>Story 20.3's destructive item remove and Story 20.41's item change of class, which ship disabled (AD-22).</p>
+Parameter INTEROPITEMREMOVE = "interop.items.remove,interop.items.changeclass";
 
 /// <p>Story 20.23's two queue aborts and its job abort, which ship disabled (AD-22).</p>
 Parameter INTEROPRUNTIMEDISABLED = "interop.queuemessages.abort,interop.queues.abort,interop.jobs.abort";
@@ -47,8 +47,15 @@ Parameter INTEROPRUNTIMEDISABLED = "interop.queuemessages.abort,interop.queues.a
 /// <p>Story 20.5's lookup entry remove and lookup table delete, which ship disabled (AD-22).</p>
 Parameter INTEROPLOOKUPDISABLED = "interop.lookupentries.remove,interop.lookuptables.delete,interop.lookuptables.import";
 
+/// <p>The business partner remove (Story 20.26): the one partner write that ships disabled.</p>
+Parameter INTEROPPARTNERDISABLED = "interop.businesspartners.remove";
+
 /// <p>Story 20.31's message resend and edit and resend, which ship disabled (AD-22): a delivered copy cannot be recalled.</p>
 Parameter INTEROPMESSAGEDISABLED = "interop.messages.resend,interop.messageheader.editresend";
+
+/// <p>Story 20.34's cube build, which ships disabled (AD-22): it deletes a cube's facts and those of the cubes that depend on it. Its
+/// synchronize ships enabled.</p>
+Parameter CUBEDISABLED = "analytics.cubemanager.build";
 
 /// <p>The managed file transfer connection delete and token revoke, which the baseline also disables
 /// (Story 18.26).</p>
@@ -170,10 +177,12 @@ Method TestTheDefaultEnablesEveryWriteButTheBaselineDisabled()
         Set tExpected = $Select((tKey = ..#PURGE) || (tKey = ..#NAMESPACEDELETE) || (tKey = ..#DATABASEDELETE) || (tKey = ..#TASKIMPORT) || (tKey = ..#ENABLEINTEROP) || (tKey = ..#PCTACCESSDELETE) || (tKey = ..#DOCDBAPPDELETE) || (tKey = ..#ROUTINEAPPDELETE) || (tKey = ..#RESTAPIDELETE) || $ListFind($ListFromString(..#DISKOPERATIONS), tKey) || $ListFind($ListFromString(..#EXPLORERDISABLED), tKey): "0|baseline", 1: "1|baseline")
         If tKey = ..#REMOTEDATABASEDELETE Set tExpected = "0|baseline"
         If tKey = ..#SUPERSERVERDELETE Set tExpected = "0|baseline"
-        If tKey = ..#INTEROPITEMREMOVE Set tExpected = "0|baseline"
+        If $ListFind($ListFromString(..#INTEROPITEMREMOVE), tKey) Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#INTEROPRUNTIMEDISABLED), tKey) Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#INTEROPLOOKUPDISABLED), tKey) Set tExpected = "0|baseline"
+        If $ListFind($ListFromString(..#INTEROPPARTNERDISABLED), tKey) Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#INTEROPMESSAGEDISABLED), tKey) Set tExpected = "0|baseline"
+        If tKey = ..#CUBEDISABLED Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#MFTDISABLED), tKey) Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#LICENSEDISABLED), tKey) Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#ECPDISABLED), tKey) Set tExpected = "0|baseline"

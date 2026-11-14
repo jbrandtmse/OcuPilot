@@ -15,7 +15,7 @@ import { Session } from '../core/session';
 import { SCREENS, type ScreenDeclaration } from '../core/screens.generated';
 import { STRINGS, stringFor } from '../core/strings';
 import { entityKeyOf } from '../core/table-model';
-import { tableDeclaration } from '../testing/table-declaration';
+import { TABLE_PROBE_DESCRIPTOR, tableDeclaration } from '../testing/table-declaration';
 import { DataTable, TABLE_STRING_LOOKUP } from './data-table';
 import { stubAccountPreferences } from '../testing/account-preferences';
 
@@ -422,6 +422,23 @@ describe('the data table', () => {
     grid.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
     grid.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
     await settle(wired.fixture);
+    expect(TestBed.inject(Router).url).toBe('/web-applications/probe?ns=HSCUSTOM');
+  });
+
+  it('Story 20.39: a list in no dialog set draws its name as text, and a click selects the row without navigating', async () => {
+    // Mutation (Rule 19): restore the old last arm of `nameLinkTarget` (`screen.parentScope === '' ? screen : null`)
+    // -> the name cell becomes an anchor and this goes red.
+    const wired = await wire(tableDeclaration({ descriptor: TABLE_PROBE_DESCRIPTOR }), ok(rows(2)));
+    await wired.refresh.readNow();
+    await settle(wired.fixture);
+
+    const nameCell = wired.host().querySelector('[aria-rowindex="2"] [role="gridcell"]') as HTMLElement;
+    expect(nameCell.querySelector('a')).toBeNull();
+    expect(nameCell.querySelector('.ocu-data-table-text')?.textContent?.trim()).toBe('/csp/app00');
+
+    nameCell.click();
+    await settle(wired.fixture);
+    expect(wired.store.selection()).toEqual(['/csp/app00']);
     expect(TestBed.inject(Router).url).toBe('/web-applications/probe?ns=HSCUSTOM');
   });
 

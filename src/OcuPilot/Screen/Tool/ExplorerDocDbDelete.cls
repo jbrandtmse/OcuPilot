@@ -51,23 +51,13 @@ ClassMethod NameDescription() As %String
     Quit "The document database to drop, named as this namespace's Document databases list reports it: a class name, letters and digits in parts separated by dots, whose class is ISC.DM.<name> when it has no package. Letter case does not matter. A database the list does not report is refused."
 }
 
-/// <p>The removal rows this proposal's card shows, from the fresh read <var>pFresh</var>: one per
-/// <parameter>REMOVALROWS</parameter> name, carrying the value the instance holds and no
-/// after-state.</p>
+/// <p>The removal rows this proposal's card shows, from the fresh read <var>pFresh</var>: the
+/// <parameter>REMOVALROWS</parameter> rows of <method>RemovalRows</method>, which carry the value the instance
+/// holds and no after-state.</p>
 ClassMethod StateDiff(pFresh As %DynamicObject, Output pRows As %DynamicArray, Output pProblem As %String) As %Status
 {
-    Set pRows = []
+    Set pRows = ..RemovalRows(pFresh)
     Set pProblem = ""
-    Set tNames = $ListFromString(..#REMOVALROWS)
-    For tI = 1:1:$ListLength(tNames) {
-        Set tField = $List(tNames, tI)
-        Set tRow = {}
-        Do tRow.%Set("field", tField, "string")
-        Do tRow.%Set("before", $Select($IsObject(pFresh): pFresh.%Get(tField) _ "", 1: ""), "string")
-        Do tRow.%Set("after", "", "string")
-        Do tRow.%Set("removed", 1, "boolean")
-        Do pRows.%Push(tRow)
-    }
     Quit $$$OK
 }
 

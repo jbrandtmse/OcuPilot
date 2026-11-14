@@ -81,6 +81,7 @@ XData Declaration
     "emptyNextKey": "tableReadOnlyEmptyNext",
     "emptyAgentKey": ""
   },
+  "rowTarget": {"route": "tasks/schedule/details", "field": "Id"},
   "toolIdentifier": "tasks.upcoming"
 }
 }

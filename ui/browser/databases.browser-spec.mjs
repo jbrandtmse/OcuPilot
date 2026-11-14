@@ -20,7 +20,7 @@ import { fileURLToPath } from 'node:url';
 import puppeteer from 'puppeteer';
 
 import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
-import { ROW_SELECTOR, viewCount, waitForRows } from './list-spec.mjs';
+import { ROW_SELECTOR, clickRowCentre, viewCount, waitForRows } from './list-spec.mjs';
 import { leaveFirstLoginGate } from './shell-entry.mjs';
 import { resetRememberedState } from './preferences-reset.mjs';
 
@@ -307,6 +307,36 @@ test("DW-1880: Database details' Volume files table is set in the app's type, he
       { header: families.heading, cell: families.heading },
       `the Volume files table takes the app's family: ${JSON.stringify(families)}`
     );
+  } finally {
+    await context.close();
+  }
+});
+
+// Story 20.39 AC1. Mutation (Rule 19): drop `rowTarget` from `DatabaseFreeSpace`, regenerate, rebuild and
+// redeploy -> the Directory is text, `clickRowCentre` finds no link, and this goes red.
+test("Story 20.39 AC1: a Directory on the Free-space view opens that database's details", async () => {
+  const { context, page } = await signedInAtGeneral();
+  try {
+    await waitForRows(page, config.navigationTimeoutMs);
+    await page.click(VIEW_TRIGGER);
+    await page.waitForSelector(VIEW_ITEM, { timeout: config.navigationTimeoutMs });
+    await page.click(VIEW_ITEM + ':nth-of-type(2)');
+    await page.waitForFunction((path) => window.location.pathname === path, { timeout: config.navigationTimeoutMs }, '/ocupilot/os-management/database-free-space');
+    await page.waitForFunction(
+      (label) => Array.from(document.querySelectorAll('[role="columnheader"]')).some((header) => header.textContent.includes(label)),
+      { timeout: config.navigationTimeoutMs },
+      STRINGS.databaseColumnDiskFree
+    );
+    await waitForRows(page, config.navigationTimeoutMs);
+    const directory = await page.$eval(ROW_SELECTOR, (row) => row.querySelector('[role="gridcell"]')?.textContent.trim() ?? '');
+    assert.notEqual(directory, '', 'a database row names its directory');
+    await clickRowCentre(page, { index: 0, link: true });
+    await page.waitForFunction(
+      (path) => window.location.pathname === path,
+      { timeout: config.navigationTimeoutMs },
+      `/ocupilot/os-management/databases/details/${encodeEntityId(directory)}`
+    );
+    await page.waitForSelector('.ocu-details-heading', { visible: true, timeout: config.navigationTimeoutMs });
   } finally {
     await context.close();
   }

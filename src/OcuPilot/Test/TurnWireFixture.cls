@@ -412,8 +412,8 @@ ClassMethod AwaitCall(pTag As %String, pCall As %Integer, pSeconds As %Integer) 
 /// terminate any that has not, remove every probe turn and the stub nodes of each tag in
 /// <var>pTags</var>, and answer
 /// what was left, <code>""</code> when nothing was: a live job, a turn, a held slot, a held
-/// conversation lock or a stub node. Every probe user's conversations and turn start records are
-/// removed too.</p>
+/// conversation lock, a ledger row or a stub node. Every probe user's conversations and turn start records are
+/// removed too, and so is every ledger row either probe user wrote: a ledger row outlives its turn.</p>
 ClassMethod Sweep(pTags As %List) As %String
 {
     Set tLeft = ""
@@ -442,11 +442,25 @@ ClassMethod Sweep(pTags As %List) As %String
     For tUser = ..#USERA, ..#USERB {
         If $$$ISERR(##class(OcuPilot.Kernel.State.Turn).GuardedForgetStarts(tUser)) Set tLeft = tLeft _ " starts of " _ tUser
     }
+    For tUser = ..#USERA, ..#USERB {
+        If $$$ISERR(##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForUser(tUser)) Set tLeft = tLeft _ " ledger of " _ tUser
+    }
+    Set tRows = ..LedgerRows()
+    If tRows '= 0 Set tLeft = tLeft _ " ledger rows (" _ tRows _ ")"
     For tI = 1:1:$ListLength(pTags) {
         Do ##class(OcuPilot.Test.TurnProvider).Forget($List(pTags, tI))
         If ##class(OcuPilot.Test.TurnProvider).Remains($List(pTags, tI)) Set tLeft = tLeft _ " stub " _ $List(pTags, tI)
     }
     Quit tLeft
+}
+
+/// <p>How many ledger rows either probe user holds, matched exactly, by direct SQL; <code>-1</code>
+/// when the count cannot be read.</p>
+ClassMethod LedgerRows() As %Integer
+{
+    Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT COUNT(*) FROM OcuPilot_Kernel_State.Ledger WHERE %EXACT(UserName) = ? OR %EXACT(UserName) = ?", ..#USERA, ..#USERB)
+    If (tRS.%SQLCODE < 0) || 'tRS.%Next() Quit -1
+    Quit +tRS.%GetData(1)
 }
 
 /// <p>The high-water mark of the one extent that holds every conversation, entry, turn, step and
@@ -468,7 +482,7 @@ ClassMethod SweepSince(pMark As %Integer, pUser As %String = "") As %String
     Set tLeft = ""
     Set tUserClause = $Select(pUser = "": "", 1: " AND %EXACT(UserName) = ?")
     Kill tUsers
-    Set tRS = ..RowsSince("SELECT DISTINCT UserName FROM OcuPilot_Kernel_State.Turn WHERE ID > ?" _ tUserClause, pMark, pUser)
+    Set tRS = ..RowsSince("SELECT DISTINCT %EXACT(UserName) AS UserName FROM OcuPilot_Kernel_State.Turn WHERE ID > ?" _ tUserClause, pMark, pUser)
     If tRS.%SQLCODE < 0 Quit " turns (SQLCODE=" _ tRS.%SQLCODE _ ")"
     While tRS.%Next() {
         Set tUsers(tRS.%GetData(1)) = ""
@@ -508,7 +522,7 @@ ClassMethod SweepSince(pMark As %Integer, pUser As %String = "") As %String
         If $$$ISERR(##class(OcuPilot.Kernel.State.Convo).GuardedDelete(tConvos(tI))) Set tLeft = tLeft _ " conversation " _ tConvos(tI)
     }
     Kill tOwners
-    Set tRS = ..RowsSince("SELECT DISTINCT TurnKey FROM OcuPilot_Kernel_State.Ledger WHERE ID > ?" _ tUserClause, pMark, pUser)
+    Set tRS = ..RowsSince("SELECT DISTINCT %EXACT(TurnKey) AS TurnKey FROM OcuPilot_Kernel_State.Ledger WHERE ID > ?" _ tUserClause, pMark, pUser)
     If tRS.%SQLCODE < 0 Quit tLeft _ " ledger (SQLCODE=" _ tRS.%SQLCODE _ ")"
     While tRS.%Next() {
         If tRS.%GetData(1) '= "" Set tOwners(tRS.%GetData(1)) = ""

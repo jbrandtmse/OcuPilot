@@ -90,9 +90,9 @@ ClassMethod Consequence(pPayload As %DynamicObject, pPrivileged As %Boolean = 0,
     Quit ..#CONSEQUENCECODE
 }
 
-/// <p>The removal rows this proposal's card shows, from the fresh read <var>pFresh</var>: one per
-/// <parameter>REMOVALROWS</parameter> name the read answers, carrying the value the instance holds and no
-/// after-state. A read that answered no <parameter>PRECONDITIONFIELD</parameter> is <var>pProblem</var>.</p>
+/// <p>The removal rows this proposal's card shows, from the fresh read <var>pFresh</var>: the
+/// <parameter>REMOVALROWS</parameter> rows of <method>RemovalRows</method> for the names the read answers,
+/// carrying the value the instance holds and no after-state. A read that answered no <parameter>PRECONDITIONFIELD</parameter> is <var>pProblem</var>.</p>
 ClassMethod StateDiff(pFresh As %DynamicObject, Output pRows As %DynamicArray, Output pProblem As %String) As %Status
 {
     Set pRows = []
@@ -103,17 +103,7 @@ ClassMethod StateDiff(pFresh As %DynamicObject, Output pRows As %DynamicArray, O
             Set pProblem = "this instance did not report which OAuth 2.0 client configuration that connection names, and a connection whose client is unknown is not one to delete"
             Quit
         }
-        Set tNames = $ListFromString(..#REMOVALROWS)
-        For tI = 1:1:$ListLength(tNames) {
-            Set tField = $List(tNames, tI)
-            If pFresh.%GetTypeOf(tField) = "unassigned" Continue
-            Set tRow = {}
-            Do tRow.%Set("field", tField, "string")
-            Do tRow.%Set("before", ##class(OcuPilot.Kernel.Proposal.Mint).Display(pFresh.%Get(tField), pFresh.%GetTypeOf(tField)), "string")
-            Do tRow.%Set("after", "", "string")
-            Do tRow.%Set("removed", 1, "boolean")
-            Do pRows.%Push(tRow)
-        }
+        Set pRows = ..RemovalRows(pFresh, 1)
     } Catch ex {
         Set pRows = []
         Set pProblem = ""

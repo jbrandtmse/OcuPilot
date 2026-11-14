@@ -259,7 +259,12 @@ Parameter PROVIDERUNAVAILABLE = "PROVIDER.UNAVAILABLE";
 Parameter PROVIDERTIMEOUT = "PROVIDER.TIMEOUT";
 
 /// <p>Machine code (AD-12, AD-39, AD-42): the request failed in transport -- the call raised, or
-/// returned a status that is neither a timeout nor an HTTP answer. <b>Never retried.</b></p>
+/// returned a status that is neither a timeout nor an HTTP answer. A transport failure before any
+/// status line arrived -- an error status that is not a timeout, with no status read -- is retried
+/// once, on a new connection, while attempts remain and inside the same attempt deadline and delay
+/// budget; a request body that could not be built, a call that raised, a connect that never opened
+/// (<code>ERROR #6059</code>) and a stream that failed after its status line are not
+/// (<class>OcuPilot.Kernel.Provider.Base</class>).</p>
 Parameter PROVIDERTRANSPORT = "PROVIDER.TRANSPORT";
 
 /// <p>Machine code (AD-12, AD-32, AD-39): the named TLS configuration is not present on this
@@ -1938,6 +1943,24 @@ ClassMethod Render(pStatus As %Integer, pSlug As %String, pReason As %String, pC
         Set tSC = ex.AsStatus()
     }
     Quit tSC
+}
+
+/// <p>Render the refusal of a request body that could not be used (AD-39). Without <var>pField</var>
+/// it is <parameter>AGENTBADBODY</parameter>: the body is missing, is not JSON, or is not the object the
+/// request expects. With one -- <method>OcuPilot.Kernel.Utils.ReadRequestBody</method>'s
+/// <var>pField</var>, the top-level key holding a value the instance cannot hold, or <code>*</code> --
+/// it is 400 <parameter>PORTFIELDSHAPE</parameter> with one <code>detail.violations</code> row
+/// <code>{field, code, reason}</code>, the reason being that code's published sentence.</p>
+/// <p>The field is a key of the caller's own document; the value is never quoted.</p>
+ClassMethod RenderBodyRefusal(pField As %String = "") As %Status
+{
+    If pField = "" {
+        Quit ..Render(400, ..#BADREQUEST, ..#REASONAGENTBADBODY, ..#AGENTBADBODY)
+    }
+    Set tReason = ..ReasonForViolation(..#PORTFIELDSHAPE)
+    Set tDetail = {"violations": []}
+    Do tDetail.%Get("violations").%Push({"field": (pField), "code": (..#PORTFIELDSHAPE), "reason": (tReason)})
+    Quit ..Render(400, ..#BADREQUEST, tReason, ..#PORTFIELDSHAPE, tDetail)
 }
 
 /// <p>Whether <var>pCode</var> is a well-formed machine code. Three refusals, in the order a

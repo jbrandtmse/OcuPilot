@@ -192,6 +192,34 @@ Method TestAPrivilegedPublicPermissionIsMarkedOnTheAgentsEdit()
     Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).WriteCount(), 1, "at the port")
 }
 
+/// <p>DW-2432, AD-10: adding USE to a resource's public permission asks the instance which applications the resource
+/// guards; where the fixture's port cannot answer that list, the question counts as a grant, and an edit that adds only
+/// read or adds nothing asks no such question.</p>
+/// <p>Mutation: answer a failed list or read as 0 in
+/// <method>OcuPilot.Kernel.Proposal.Prohibited.GuardsPrivilegedApplication</method> -> the first leg goes red.</p>
+Method TestAFailedLookupOfTheApplicationsAResourceGuardsCounts()
+{
+    For tCase = $ListBuild("U", "", 1, "adding USE, the guarding applications unreadable"), $ListBuild("R", "", 0, "adding only read"), $ListBuild("U", "U", 0, "USE the resource already holds") {
+        Set tSC = $ClassMethod(..#SETFIXTURE, "GrantsPrivilegeByEffect", $Parameter(..#SET, "TYPERESOURCE"), {"PublicPermission": ($List(tCase, 1))}, {"PublicPermission": ($List(tCase, 2))}, .tGrants, ..#PROBE)
+        Do $$$AssertEquals($System.Status.IsOK(tSC) _ " " _ tGrants, "1 " _ $List(tCase, 3), $List(tCase, 4))
+    }
+}
+
+/// <p>DW-2432, AD-10: an application the resource guards whose read fails, or reads as nothing, counts as a grant; an
+/// application naming another resource is never read; a read that raises, or a failed list of the privileged routine
+/// applications, counts.</p>
+/// <p>Mutation: answer a failed read as 0 in
+/// <method>OcuPilot.Kernel.Proposal.Prohibited.GuardsPrivilegedApplication</method> -> the failed-read leg goes red.</p>
+Method TestAnApplicationReadThatFailsCounts()
+{
+    For tCase = $ListBuild("getfails", ..#PROBE, 1, "the read of the guarding application fails"), $ListBuild("getempty", $ZConvert(..#PROBE, "U"), 1, "the read answers nothing, the resource named in another case"), $ListBuild("getfails", "OcuPilotProbeSomeOtherResource", 0, "the application uses another resource and is not read"), $ListBuild("getthrows", ..#PROBE, 1, "the read of the guarding application raises"), $ListBuild("routinelistfails", "OcuPilotProbeSomeOtherResource", 1, "the privileged routine application list fails after the web application list answered") {
+        Do ##class(OcuPilot.Test.ProhibitedGuardFixture).Arm($List(tCase, 2), $List(tCase, 1))
+        Set tSC = ##class(OcuPilot.Test.ProhibitedGuardFixture).GrantsPrivilegeByEffect($Parameter(..#SET, "TYPERESOURCE"), {"PublicPermission": "U"}, {"PublicPermission": ""}, .tGrants, ..#PROBE)
+        Do $$$AssertEquals($System.Status.IsOK(tSC) _ " " _ tGrants, "1 " _ $List(tCase, 3), $List(tCase, 4))
+    }
+    Do ##class(OcuPilot.Test.ProhibitedGuardFixture).Disarm()
+}
+
 /// <p>AD-10, P2: an edit that adds a public-permission letter to one of OcuPilot's own resources is
 /// refused <code>PROHIBITED.OCUPILOTRESOURCE</code> on the screen and inside the agent's confirm, for
 /// both names in another case; a Description-only edit of one is permitted.</p>

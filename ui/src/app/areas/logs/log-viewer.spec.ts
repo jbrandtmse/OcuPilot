@@ -1258,17 +1258,62 @@ describe('LogViewerPage: Explain this entry', () => {
     expect(entry.take()?.screen.route).toBe('logs/alerts');
   });
 
+  const investigateButtons = (fixture: ComponentFixture<LogViewerPage>): HTMLButtonElement[] =>
+    Array.from(fixture.nativeElement.querySelectorAll('[data-ocu-log="investigate"]'));
+
+  // Mutation (Rule 19): `ExplainEntry.request` ignores its kind -> the kind assertion goes red. Drop the
+  // control from the template -> the count goes red. Make the button request `explain` -> the kind goes red.
+  it('Story 20.36: each row carries Investigate beside Explain, in one wrapper, and a click requests investigate for that row', async () => {
+    const { fixture, entry } = await mountWith(MESSAGES_SCREEN);
+    const explains = explainButtons(fixture);
+    const investigates = investigateButtons(fixture);
+    expect(investigates).toHaveLength(2);
+    expect(investigates[1].textContent?.trim()).toBe(STRINGS.agentInvestigateEntryAction);
+    expect(investigates[1].getAttribute('aria-disabled')).toBeNull();
+    expect(investigates[1].parentElement).toBe(explains[1].parentElement);
+    expect(investigates[1].parentElement?.classList.contains('ocu-log-entry-actions')).toBe(true);
+    expect(investigates[1].parentElement?.parentElement?.classList.contains('ocu-log-row-explain')).toBe(true);
+
+    investigates[1].click();
+    const taken = entry.take();
+    expect(taken?.kind).toBe('investigate');
+    expect(taken?.row).toEqual({ time: '2026-09-18T07:33:56.057', severity: '0', text: 'an informational entry' });
+    explains[0].click();
+    expect(entry.take()?.kind).toBe('explain');
+  });
+
+  it('Story 20.36: Investigate is refused as Explain is, with the same described-by, and a click records nothing', async () => {
+    const cases: [Partial<ExplainEntryState>, string][] = [
+      [{ killSwitch: true }, KILL_SWITCH_ID],
+      [{ busy: true }, BUSY_REASON_ID],
+      [{ share: false }, CONTEXT_CHIP_OFF_ID],
+    ];
+    for (const [gate, reasonId] of cases) {
+      const { fixture, entry } = await mountWith(MESSAGES_SCREEN, gate);
+      const button = investigateButtons(fixture)[0];
+      expect(button.getAttribute('aria-disabled'), JSON.stringify(gate)).toBe('true');
+      expect(button.getAttribute('aria-describedby'), JSON.stringify(gate)).toBe(reasonId);
+      expect(button.getAttribute('aria-describedby')).toBe(explainButtons(fixture)[0].getAttribute('aria-describedby'));
+      button.click();
+      expect(entry.take(), JSON.stringify(gate)).toBeNull();
+      TestBed.inject(LogViewerStore).reset();
+      TestBed.resetTestingModule();
+    }
+  });
+
   it('Raw view: no entry control, since the file block is not rows', async () => {
     const { fixture } = await mountWith(MESSAGES_SCREEN);
     (fixture.nativeElement.querySelector('[data-ocu-log="raw"]') as HTMLButtonElement).click();
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('[data-ocu-log="raw-block"]')).not.toBeNull();
     expect(explainButtons(fixture)).toHaveLength(0);
+    expect(investigateButtons(fixture)).toHaveLength(0);
   });
 
   it('Unconfigured: no enabled definition, no control and no fifth track', async () => {
     const { fixture } = await mountWith(MESSAGES_SCREEN, { configured: false });
     expect(explainButtons(fixture)).toHaveLength(0);
+    expect(investigateButtons(fixture)).toHaveLength(0);
     expect(fixture.nativeElement.querySelector('.ocu-log-row-explain')).toBeNull();
   });
 

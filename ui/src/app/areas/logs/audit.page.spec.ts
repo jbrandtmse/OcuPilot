@@ -640,6 +640,27 @@ describe('the audit database viewer', () => {
     expect(TestBed.inject(AuditSearch).takeGridFocusRequest()).toBe(true);
   });
 
+  const investigateAction = (host: HTMLElement) =>
+    host.querySelector('[role="dialog"] [data-ocu-audit="investigate"]') as HTMLButtonElement | null;
+
+  // Mutation (Rule 19): the action requests `explain` -> the kind goes red. The action does not close the
+  // dialog on an accepted request -> the route assertion goes red.
+  it('Story 20.36: the dialog\u2019s investigate action sits beside Explain, requests investigate for the open row, then closes the dialog', async () => {
+    const { host, fixture, entry, router, url } = await openDialog();
+    const action = investigateAction(host) as HTMLButtonElement;
+    expect(action.textContent?.trim()).toBe(STRINGS.agentInvestigateEntryAction);
+    expect(action.getAttribute('aria-disabled')).toBeNull();
+    expect(action.previousElementSibling).toBe(explainAction(host));
+    action.click();
+    await settle(fixture);
+    const taken = entry.take();
+    expect(taken?.kind).toBe('investigate');
+    expect(taken?.screen.route).toBe('logs/audit');
+    expect((taken?.row as Record<string, unknown>)['Event']).toBe('UserCreated');
+    expect(router.url).not.toBe(url);
+    expect(router.url).toBe('/logs/audit?ns=HSCUSTOM');
+  });
+
   // Mutation (Rule 19): drop the page's `explainEntry.subscribe` -> this goes red on the stale action.
   it('Story 11.2: a gate that changes while the dialog is open re-renders its action', async () => {
     const { host, fixture, state, fire } = await openDialog();
@@ -649,12 +670,15 @@ describe('the audit database viewer', () => {
     await settle(fixture);
     expect(explainAction(host)?.getAttribute('aria-disabled')).toBe('true');
     expect(explainAction(host)?.getAttribute('aria-describedby')).toBe(BUSY_REASON_ID);
+    expect(investigateAction(host)?.getAttribute('aria-disabled')).toBe('true');
+    expect(investigateAction(host)?.getAttribute('aria-describedby')).toBe(BUSY_REASON_ID);
   });
 
   it('Story 11.2: unconfigured, the dialog carries no explain action', async () => {
     const { host } = await openDialog({ configured: false });
     expect(host.querySelector('[role="dialog"]')).not.toBeNull();
     expect(explainAction(host)).toBeNull();
+    expect(investigateAction(host)).toBeNull();
   });
 
   it('Story 11.2: blocked, the action is aria-disabled with its reason, hands nothing over, and the dialog stays', async () => {
@@ -669,6 +693,14 @@ describe('the audit database viewer', () => {
       expect(action.getAttribute('aria-disabled'), JSON.stringify(gate)).toBe('true');
       expect(action.getAttribute('aria-describedby'), JSON.stringify(gate)).toBe(reasonId);
       action.click();
+      await settle(fixture);
+      expect(entry.take(), JSON.stringify(gate)).toBeNull();
+      expect(router.url, JSON.stringify(gate)).toBe(url);
+      expect(host.querySelector('[role="dialog"]'), JSON.stringify(gate)).not.toBeNull();
+      const investigate = investigateAction(host) as HTMLButtonElement;
+      expect(investigate.getAttribute('aria-disabled'), JSON.stringify(gate)).toBe('true');
+      expect(investigate.getAttribute('aria-describedby'), JSON.stringify(gate)).toBe(reasonId);
+      investigate.click();
       await settle(fixture);
       expect(entry.take(), JSON.stringify(gate)).toBeNull();
       expect(router.url, JSON.stringify(gate)).toBe(url);

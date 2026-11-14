@@ -37,6 +37,9 @@ Parameter APP = "OcuProbe1831A";
 /// <p>The governance policy as it stood before the class ran.</p>
 Property PreparedPolicy [ MultiDimensional ];
 
+/// <p>Whether <method>OnBeforeAllTests</method> took the policy snapshot; the teardown restores only then.</p>
+Property PreparedPolicyTaken As %Boolean [ InitialExpression = 0 ];
+
 Property PreparedFacts As %String(MAXLEN = "") [ InitialExpression = "" ];
 
 /// <p>OcuPilot's own three applications as the vendor reads them before the test.</p>
@@ -50,6 +53,7 @@ Method OnBeforeAllTests() As %Status
     Set tSC = ##class(OcuPilot.Test.GovernanceFixture).Snapshot(.tRows)
     If $$$ISERR(tSC) Quit tSC
     Merge ..PreparedPolicy = tRows
+    Set ..PreparedPolicyTaken = 1
     Quit $ClassMethod(..#PROBE, "RemoveAll")
 }
 
@@ -80,6 +84,7 @@ Method OnAfterOneTest() As %Status
 
 Method OnAfterAllTests() As %Status
 {
+    If '..PreparedPolicyTaken Quit $$$OK
     Kill ^||OcuPilotDatabaseWritePort
     Merge tRows = ..PreparedPolicy
     Set tSC = ##class(OcuPilot.Test.GovernanceFixture).Restore(.tRows)

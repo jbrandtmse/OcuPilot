@@ -1628,6 +1628,15 @@ describe('the mapping lists\u2019 Delete and the Namespaces list\u2019s Copy map
     expect(actions.has(NAMESPACE_LIST, ENABLE_INTEROP)).toBe(false);
   });
 
+  it('leaves Production items\u2019 Copy undrawn, for the list\u2019s own page to register (Story 20.40)', () => {
+    // Mutation (Rule 19): drop the Production items list's entry from `UNDRAWN_ACTIONS` -> this goes red, and a later
+    // construction of the handler would replace the page's registration with a send that carries no source item.
+    const items = 'OcuPilot.Screen.Descriptor.InteropItemList';
+    const { actions } = mount(undefined, items);
+    expect(actions.has(items, 'remove')).toBe(true);
+    expect(actions.has(items, 'copy')).toBe(false);
+  });
+
   it('leaves the Task schedule\u2019s Export and Import undrawn, for its own page to register', () => {
     // Mutation (Rule 19): drop the Task schedule's entry from `UNDRAWN_ACTIONS` -> this goes red, and
     // Export would be sent at once with no file.
@@ -2371,10 +2380,10 @@ describe('Production items\u2019 row actions (Story 20.3)', () => {
   const ROW = { Production: PRODUCTION, Name: NAME, ClassName: 'Probe.Op', Type: 'operation', Enabled: true, PoolSize: 1 };
   const TARGET = { type: 'production-item', scope: 'USER', id: TARGET_ID };
 
-  it('registers the three declared row actions, and leaves Add for the page\u2019s own dialog', () => {
+  it('registers the six declared row actions, and leaves Add for the page\u2019s own dialog', () => {
     // Mutation (Rule 19): drop the list from SCREEN_ACTION_DESCRIPTORS -> nothing registers and this goes red.
     const { actions } = mount(undefined, ITEMS);
-    for (const id of ['enable', 'disable', 'remove']) expect(actions.has(ITEMS, id), id).toBe(true);
+    for (const id of ['enable', 'disable', 'stop', 'start', 'restart', 'remove']) expect(actions.has(ITEMS, id), id).toBe(true);
     expect(actions.has(ITEMS, 'add')).toBe(false);
   });
 
@@ -2393,6 +2402,31 @@ describe('Production items\u2019 row actions (Story 20.3)', () => {
       await settle();
       expect(calls.map((call) => JSON.parse(call.body))).toEqual([{ action, id: TARGET_ID }]);
       expect(events.map((event) => `${event.action} ${event.type} ${event.id}`)).toEqual([`updated production-item ${TARGET_ID}`]);
+      TestBed.resetTestingModule();
+    }
+  });
+
+  it('warns before Stop, Start and Restart (Story 20.25) with the sentence that states what each does, and sends once past Proceed with the row key', async () => {
+    // Mutation (Rule 19): remove stop, start or restart from the list's WARNING_CONSEQUENCES entry -> that action is sent at once
+    // and the pending-warning assertion goes red.
+    const sentences = {
+      stop: STRINGS.interopItemStopConsequence,
+      start: STRINGS.interopItemStartConsequence,
+      restart: STRINGS.interopItemRestartConsequence,
+    } as const;
+    for (const action of ['stop', 'start', 'restart'] as const) {
+      const { handler, store, calls, events } = mount({ kind: 'ok', status: 200, body: { action: 'updated', target: TARGET } }, ITEMS);
+      handler.startFor(ITEMS, action, TARGET_ID, ROW, store);
+      expect(handler.pending()?.kind, action).toBe('warning');
+      expect(handler.pending()?.consequence, action).toBe(sentences[action]);
+      handler.cancelPending();
+      await settle();
+      expect(calls, action).toHaveLength(0);
+      handler.startFor(ITEMS, action, TARGET_ID, ROW, store);
+      handler.confirmPending();
+      await settle();
+      expect(calls.map((call) => JSON.parse(call.body)), action).toEqual([{ action, id: TARGET_ID }]);
+      expect(events.map((event) => `${event.action} ${event.type} ${event.id}`), action).toEqual([`updated production-item ${TARGET_ID}`]);
       TestBed.resetTestingModule();
     }
   });

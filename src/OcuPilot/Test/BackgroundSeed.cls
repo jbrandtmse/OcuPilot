@@ -56,12 +56,13 @@ ClassMethod Directory() As %String
 }
 
 /// <p>Create the scratch database where it is absent -- resource first, then directory, database
-/// and configuration -- and fill it afresh: <parameter>NODES</parameter> nodes, the first half then
-/// killed, so its free space lies before its data.</p>
-ClassMethod Prepare() As %Status
+/// and configuration -- and fill it afresh: <var>pNodes</var> nodes (<parameter>NODES</parameter>
+/// when not given), the first half then killed, so its free space lies before its data.</p>
+ClassMethod Prepare(pNodes As %Integer = "") As %Status
 {
     Set tSC = ..Armed()
     If $$$ISERR(tSC) Quit tSC
+    If pNodes = "" Set pNodes = ..#NODES
     Set tOrigNS = $NAMESPACE
     Try {
         Set tDir = ..Directory()
@@ -101,10 +102,10 @@ ClassMethod Prepare() As %Status
         Set tGlobal = "^|""^^" _ tDir _ """|OcuPilotSeed"
         Kill @tGlobal
         Set tValue = $Justify("", 3900)
-        For tI = 1:1:..#NODES {
+        For tI = 1:1:pNodes {
             Set @tGlobal@(tI) = tValue
         }
-        For tI = 1:1:(..#NODES \ 2) {
+        For tI = 1:1:(pNodes \ 2) {
             Kill @tGlobal@(tI)
         }
         Set $NAMESPACE = tOrigNS
@@ -118,12 +119,13 @@ ClassMethod Prepare() As %Status
 /// <p>Prepare the scratch database and start the portal's compact of it, as the classic page starts
 /// one, then pause it as soon as its background task exists, answering the job number in
 /// <var>pJob</var> and the background task's id in <var>pTaskId</var>. An error status names a
-/// step that failed, including a compact that ended before it could be paused.</p>
-ClassMethod PausedCompact(Output pJob As %String, Output pTaskId As %String) As %Status
+/// step that failed, including a compact that ended before it could be paused. <var>pNodes</var>
+/// is the size of the fill, <parameter>NODES</parameter> when not given.</p>
+ClassMethod PausedCompact(Output pJob As %String, Output pTaskId As %String, pNodes As %Integer = "") As %Status
 {
     Set pJob = ""
     Set pTaskId = ""
-    Set tSC = ..Prepare()
+    Set tSC = ..Prepare(pNodes)
     If $$$ISERR(tSC) Quit tSC
     Set tOrigNS = $NAMESPACE
     Try {

@@ -141,16 +141,7 @@ ClassMethod StateDiff(pFresh As %DynamicObject, Output pRows As %DynamicArray, O
             Set pProblem = "this instance did not report that event's own record, and an event whose configuration is unknown is not one to delete"
             Quit
         }
-        Set tSubject = ..FingerprintSubject()
-        For tI = 1:1:$ListLength(tSubject) {
-            Set tField = $List(tSubject, tI)
-            Set tRow = {}
-            Do tRow.%Set("field", tField, "string")
-            Do tRow.%Set("before", ##class(OcuPilot.Kernel.Proposal.Mint).Display(pFresh.%Get(tField), pFresh.%GetTypeOf(tField)), "string")
-            Do tRow.%Set("after", "", "string")
-            Do tRow.%Set("removed", 1, "boolean")
-            Do pRows.%Push(tRow)
-        }
+        Set pRows = ..RemovalRows(pFresh, 0, ..FingerprintSubject())
     } Catch ex {
         Set pRows = []
         Set pProblem = ""

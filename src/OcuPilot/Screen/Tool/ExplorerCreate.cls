@@ -88,22 +88,6 @@ ClassMethod InputSchema(pDescriptor As %String = "") As %DynamicObject
     Quit tSchema
 }
 
-/// <p>The screen's declared pairs, then the custom resource of each <parameter>CLASSICPAGES</parameter>
-/// page. WRITE is not among them: <method>ArgumentPairs</method> carries it (DW-2242).</p>
-ClassMethod PrivilegePairs(pDescriptor As %String = "", Output pResolved As %Boolean) As %List
-{
-    Set tPairs = ##class(OcuPilot.Screen.Gate).RequiredPairs(..#DESCRIPTORCLASS, .pResolved)
-    If 'pResolved Quit ""
-    Quit ##class(OcuPilot.Screen.Gate).WithClassicPages(tPairs, ..#CLASSICPAGES)
-}
-
-/// <p>The WRITE pair on the routines database of the namespace the proposal stored, as a save's
-/// (<class>OcuPilot.Screen.Tool.ExplorerSave</class>.<method>CodeWritePairs</method>, DW-2242).</p>
-ClassMethod ArgumentPairs(pDescriptor As %String = "", pArgs As %DynamicObject, Output pResolved As %Boolean) As %List
-{
-    Quit ##class(OcuPilot.Screen.Tool.ExplorerSave).CodeWritePairs(pArgs, .pResolved)
-}
-
 /// <p>The composed payload and diff of the create (AD-54): <code>{content, Compile, Namespace}</code>,
 /// the text the mint stored, the compile on (a create always compiles) and the namespace the mint read.
 /// The diff is the one row the mint computed, the whole text as added lines, and the unchanged count is
