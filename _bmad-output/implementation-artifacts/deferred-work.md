@@ -12676,6 +12676,27 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: cycle-log-epic-23.md (23.10 batch 3 sweep, shard 17 resumed) | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: s17.log 18:0xZ; rerun 18:31Z 4/4 green; no CI occurrence found; Epic 23 never changed the class
 - 2026-11-13T18:31:20Z status=wontfix-accepted owner=23-10-the-range-end-cleanup-part-9-two-sweeps by=lead note=reopen_if=it recurs on a lead sweep or in a CI run (inference: a cube cache write still in flight when Remove ran)
+### DW-2534: flake: web-applications.browser-spec.mjs AC5 filterToSubset on "myapp" left 1 of 1 rows (expected a proper subset holding /csp/myapp) in CI browser shard 4/5
+- source: CI run 43445087881 (staging c2b0262a) | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: Red once, green on the unchanged rerun (--failed) of the same run; the filtered list held only /csp/myapp, so the subset check had nothing else to drop (inference: the list read before its other rows arrived)
+- 2026-11-13T15:58:45Z status=routed owner=burndown by=harvest note=CI flake for the Epic 20 burn-down
+
+### DW-2535: order or timing dependence: InteropItemRun.TestAStartThePortCannotFinishIsPending read the Productions Update as 409 INTEROP.PRODUCTION.UPTODATE right after Facts read needs=1 (CI instance shard 8/8 of staging c2b0262a)
+- source: CI run 43445087881 (staging c2b0262a), Story 20.25's test | severity: med | fix-risk: med | footprint: in-footprint
+- evidence: Red on attempt 1 and on the unchanged --failed rerun, after Installer and InteropItemRefusals; green on 8127b55f (43439116625), on staging ec81a3ec (43449535161), and locally in the same 26-class order on ocupilot-b-ci (runs 66-68, 69-94); the port's start path has no deferred update, so what applied the pending update is not known
+- 2026-11-13T16:12:54Z status=routed owner=burndown by=harvest note=Priority for the Epic 20 burn-down: find what applies the pending update between the Facts read and the Act (inference: a slower runner lets the vendor apply it), then harden the test or the start path
+- 2026-11-13T16:40:28Z owner=20-25-item-runtime-and-configuration-actions by=orchestrator note=fix_after_20.40
+- 2026-11-13T21:07:32Z status=resolved-by:20-25-item-runtime-and-configuration-actions by=adjudication note=InteropItemControl.StartProduction waits for the ScheduleHandler startup update (6d08b6ce), pinned by TestTheStartHelperWaitsForTheProductionsOwnUpdate (b38aa6b8); shard 8/8 order on a fresh ocupilot-b-ci green (InteropItemRun 9/9 at run 26)
+
+### DW-2536: InteropItemCopyStore repeats InteropItemAddStore's listener, generation, refusal and postInteropCreate plumbing (about 60 of its 147 lines)
+- source: spec-20-40-item-copy-and-change-of-class.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: ui/src/app/areas/interoperability/interop-item-copy.store.ts vs interop-item-add.store.ts; the spec's stated reason (the add's six-field state) covers the state, not the shared plumbing; Rule 2 copy with a weak reason
+- 2026-11-13T16:38:28Z status=wontfix-accepted owner=20-40-item-copy-and-change-of-class by=cr note=reopen_if=a third interop item create store (20.41 change of class or later) copies the same plumbing
+
+### DW-2539: flake: LanguageServerWire.TestTheExactPairsPrincipalStartsAndStopsTheProbe read the probe as running on the list (expected not running) on a second shard 13/20 run on a used ocupilot-b-ci
+- source: local shard re-run (Story 20.40 code head 80c03e4c) | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: Red once in shard 13 run after a full sweep on the same instance; green alone right after (runs 749, 771); green in the fresh sweep's shard 13 on d49eb2d3
+- 2026-11-13T19:36:37Z status=wontfix-accepted owner=20-40-item-copy-and-change-of-class by=harvest note=reopen_if=it reds on a fresh instance or in CI
 
 ### DW-2540: Journal records' Refresh action and refresh timer read the form's current criteria without going through open(), so an order picked but not yet searched reads in the new order while the table direction still follows the last search
 - source: _bmad-output/implementation-artifacts/spec-23-13-the-range-end-cleanup-part-11.md | severity: low | fix-risk: low | footprint: in-story
@@ -12706,28 +12727,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-23-14-epic-23-burn-down.md | severity: low | fix-risk: med | footprint: in-story
 - evidence: TestTheScreensActionsResumePauseAndCancelACompact routes a 200 Pause settling to Done into the Cancel-409 branch (spec batch 1 task); the seam class BackgroundTaskPortSeam pins the vendor Pause call on a fake
 - 2026-11-14T02:05:18Z status=by-design owner=23-14-epic-23-burn-down by=cr note=spec-bound: batch 1 task takes the ended branch on Done; seam pins dispatch; live 403 leg still reddens
-### DW-2534: flake: web-applications.browser-spec.mjs AC5 filterToSubset on "myapp" left 1 of 1 rows (expected a proper subset holding /csp/myapp) in CI browser shard 4/5
-- source: CI run 43445087881 (staging c2b0262a) | severity: med | fix-risk: low | footprint: out-of-footprint
-- evidence: Red once, green on the unchanged rerun (--failed) of the same run; the filtered list held only /csp/myapp, so the subset check had nothing else to drop (inference: the list read before its other rows arrived)
-- 2026-11-13T15:58:45Z status=routed owner=burndown by=harvest note=CI flake for the Epic 20 burn-down
-
-### DW-2535: order or timing dependence: InteropItemRun.TestAStartThePortCannotFinishIsPending read the Productions Update as 409 INTEROP.PRODUCTION.UPTODATE right after Facts read needs=1 (CI instance shard 8/8 of staging c2b0262a)
-- source: CI run 43445087881 (staging c2b0262a), Story 20.25's test | severity: med | fix-risk: med | footprint: in-footprint
-- evidence: Red on attempt 1 and on the unchanged --failed rerun, after Installer and InteropItemRefusals; green on 8127b55f (43439116625), on staging ec81a3ec (43449535161), and locally in the same 26-class order on ocupilot-b-ci (runs 66-68, 69-94); the port's start path has no deferred update, so what applied the pending update is not known
-- 2026-11-13T16:12:54Z status=routed owner=burndown by=harvest note=Priority for the Epic 20 burn-down: find what applies the pending update between the Facts read and the Act (inference: a slower runner lets the vendor apply it), then harden the test or the start path
-- 2026-11-13T16:40:28Z owner=20-25-item-runtime-and-configuration-actions by=orchestrator note=fix_after_20.40
-- 2026-11-13T21:07:32Z status=resolved-by:20-25-item-runtime-and-configuration-actions by=adjudication note=InteropItemControl.StartProduction waits for the ScheduleHandler startup update (6d08b6ce), pinned by TestTheStartHelperWaitsForTheProductionsOwnUpdate (b38aa6b8); shard 8/8 order on a fresh ocupilot-b-ci green (InteropItemRun 9/9 at run 26)
-
-### DW-2536: InteropItemCopyStore repeats InteropItemAddStore's listener, generation, refusal and postInteropCreate plumbing (about 60 of its 147 lines)
-- source: spec-20-40-item-copy-and-change-of-class.md | severity: low | fix-risk: med | footprint: in-story
-- evidence: ui/src/app/areas/interoperability/interop-item-copy.store.ts vs interop-item-add.store.ts; the spec's stated reason (the add's six-field state) covers the state, not the shared plumbing; Rule 2 copy with a weak reason
-- 2026-11-13T16:38:28Z status=wontfix-accepted owner=20-40-item-copy-and-change-of-class by=cr note=reopen_if=a third interop item create store (20.41 change of class or later) copies the same plumbing
-
-### DW-2539: flake: LanguageServerWire.TestTheExactPairsPrincipalStartsAndStopsTheProbe read the probe as running on the list (expected not running) on a second shard 13/20 run on a used ocupilot-b-ci
-- source: local shard re-run (Story 20.40 code head 80c03e4c) | severity: low | fix-risk: low | footprint: out-of-footprint
-- evidence: Red once in shard 13 run after a full sweep on the same instance; green alone right after (runs 749, 771); green in the fresh sweep's shard 13 on d49eb2d3
-- 2026-11-13T19:36:37Z status=wontfix-accepted owner=20-40-item-copy-and-change-of-class by=harvest note=reopen_if=it reds on a fresh instance or in CI
-
+- 2026-11-14T02:05:18Z status=by-design owner=23-14-epic-23-burn-down by=cr note=spec-bound: batch 1 task takes the ended branch on Done; seam pins dispatch; live 403 leg still reddens
 ### DW-2548: flake: analytics-mdx.browser-spec.mjs AC7 timed out waiting for [data-ocu-mdx="banner"] on attempt 1 and passed on the unchanged rerun
 - source: staging e9f727fb run 43543858957 (orchestrator, 23.13 merge) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: run 43543858957 attempt 1 red, attempt 2 green on the same head; same spec as the 23.13 batch 4 story red (AC1, ff913bec), whose rework restored the screen store's notify-on-change contract; a shared cause is not shown (inference)
