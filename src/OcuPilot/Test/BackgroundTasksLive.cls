@@ -181,15 +181,15 @@ Method TestASeededPortalCompactIsListedPaused()
 /// <p>AC2, AD-8, AD-53: the screen's Resume acts on a seeded compact -- 200, the updated change
 /// event's triple, and the compact running again -- and its Pause, sent by
 /// <parameter>READERUSER</parameter>, who holds the screen's pairs and nothing more, answers 200 or
-/// the vendor's state refusal of a compact that already ended. A 200 is followed by the screen's
-/// Cancel (200, the row re-reads Cancelled) and a Pause of the canceled compact (409
-/// <code>TASK.BACKGROUND.STATE</code> with the published sentence); a refusal is followed by a Cancel
-/// of the ended compact that answers 409 <code>TASK.BACKGROUND.STATE</code>. Any other answer to the
-/// Pause fails.</p>
-/// <p>The vendor carries a pause out at the task's next checkpoint, so each state read after a Resume
-/// or a 200 Pause waits for the state to leave the one it was in
-/// (<method>OcuPilot.Test.BackgroundSeed.Settled</method>): a Pause settles to Paused, or to Done when
-/// the work ended first, and that ended compact is followed by the Cancel refusal.</p>
+/// the vendor's state refusal of a compact that already ended. A 200 Pause that settles to Paused is
+/// followed by the screen's Cancel (200, the row re-reads Cancelled) and a Pause of the canceled
+/// compact (409 <code>TASK.BACKGROUND.STATE</code> with the published sentence); a refusal, or a 200
+/// Pause that settles to Done because the work ended first, is followed by a Cancel of the ended
+/// compact that answers 409 <code>TASK.BACKGROUND.STATE</code>. Any other answer to the Pause, or
+/// any other settled state, fails.</p>
+/// <p>The vendor's Pause and Resume take effect asynchronously, so each state read after a Resume or
+/// a 200 Pause waits for the state to leave the one it was in
+/// (<method>OcuPilot.Test.BackgroundSeed.Settled</method>).</p>
 /// <p>The live leg accepts the ended compact's state refusal, and
 /// <class>OcuPilot.Test.BackgroundTaskPortSeam</class> pins the 200 path at the port.</p>
 /// <p>Mutation (Rule 19): skip the vendor call in
@@ -213,8 +213,8 @@ Method TestTheScreensActionsResumePauseAndCancelACompact()
     Set tPauseBody = $Select($IsObject(tBody): tBody.%ToJSON(), 1: tBody)
     Set tEnded = 0
     If tStatus = 200 {
-        ; The vendor carries a pause out at the task's next checkpoint, so the state is read once it
-        ; has left Running: Paused, or Done when the work finished first.
+        ; A pause takes effect asynchronously, so the state is read once it has left Running:
+        ; Paused, or Done when the work finished first.
         Set tSettled = $ClassMethod(..#SEED, "Settled", tTaskId, "Running")
         Do $$$AssertTrue($ListFind($ListBuild("Paused", "Done"), tSettled), "a Pause that answers 200 settles to Paused, or to Done when the work ended first: " _ tSettled)
         If '$ListFind($ListBuild("Paused", "Done"), tSettled) Quit
@@ -291,7 +291,7 @@ Method TestAnAdminApiCompactIsListedAndPausedThroughAsyncResult()
     Do $$$AssertEquals(tStatus _ " " _ ..Code(tAnswer) _ " " _ $Select($IsObject(tAnswer): tAnswer.%Get("reason"), 1: ""), "409 TASK.BACKGROUND.STATE " _ ##class(OcuPilot.Api.Error).#REASONTASKBACKGROUNDSTATE, "AsyncResult refuses to cancel a paused compact, with the published sentence")
     Set tSC = ..Act("resume", tId, "", "", .tStatus, .tAnswer)
     Do $$$AssertEquals(tStatus, 200, "the screen's Resume answers 200: " _ $Select($IsObject(tAnswer): tAnswer.%ToJSON(), 1: tAnswer))
-    Do $$$AssertTrue($ListFind($ListBuild("Running", "Finished"), ..StatusOf("Admin API", tGuid)), "and the row re-reads running or finished")
+    Do $$$AssertTrue($ListFind($ListBuild("Running", "Finished"), ..SettledRow("Admin API", tGuid, "Paused")), "and the row re-reads running or finished")
 }
 
 /// <p>AC1: the admin API half is the caller's own. An async task row the test account owns is
@@ -544,8 +544,8 @@ Method StatusOf(pSource As %String, pId As %String) As %String
 }
 
 /// <p>The status the screen's row <var>pId</var> of <var>pSource</var> reads once it has left
-/// <var>pFrom</var>, read every 200 ms for at most 30 s: the vendor carries a pause or resume out at
-/// the task's next checkpoint.</p>
+/// <var>pFrom</var>, read at most 150 times, 200 ms apart, since a pause or resume takes effect
+/// asynchronously; the last read when it never leaves.</p>
 Method SettledRow(pSource As %String, pId As %String, pFrom As %String) As %String
 {
     Set tState = ..StatusOf(pSource, pId)

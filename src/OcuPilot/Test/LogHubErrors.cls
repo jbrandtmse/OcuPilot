@@ -3,12 +3,12 @@
 /// <method>OcuPilot.Port.LogSourcePort.RecentErrors</method> and the log hub in the hub's form: its
 /// date and time as <code>YYYY-MM-DDTHH:MM:SS.000</code>, severity 2, its summary text led by
 /// <code>[HSCUSTOM] </code>, and its composite id over the namespace, <code>DateList</code>'s own
-/// date and the error number. A second seed pins the cap and its cut, a bound after every error
-/// still answers the newest one as the hub's last entry, and a namespace whose own pairs fail is
-/// left out unread.</p>
-/// <p>It writes to <code>^ERRORS</code>, which cannot be un-logged, so it runs only where
-/// <parameter>ARMINGVARIABLE</parameter> reads 1 -- a <file>scripts/ci-throwaway.sh</file>
-/// container.</p>
+/// date and the error number. A second seed, and a stand-in seeded in USER after it, pin the cap
+/// and its cut, a bound after every error still answers the newest one as the hub's last entry, and
+/// a namespace whose own pairs fail is left out unread.</p>
+/// <p>It writes to <code>^ERRORS</code> in HSCUSTOM and USER and deletes what it wrote in
+/// <method>OnAfterOneTest</method>; it runs only where <parameter>ARMINGVARIABLE</parameter> reads
+/// 1 -- a <file>scripts/ci-throwaway.sh</file> container.</p>
 Class OcuPilot.Test.LogHubErrors Extends %UnitTest.TestCase
 {
 
@@ -187,17 +187,19 @@ Method Track(pNamespace As %String, pDay As %Integer, pNumber As %Integer)
 Method OnAfterOneTest() As %Status
 {
     Set tOrigNS = $NAMESPACE
+    Set tDeleted = $$$OK
     Try {
         Set $NAMESPACE = "%SYS"
         For tI = 1:1:$ListLength(..PreparedSeeds) {
             Set tSeed = $List(..PreparedSeeds, tI)
-            Do ##class(SYS.ApplicationError).DeleteByError($List(tSeed, 1), $ZDate($List(tSeed, 2), 1), $List(tSeed, 3))
+            Set tDeleted = $$$ADDSC(tDeleted, ##class(SYS.ApplicationError).DeleteByError($List(tSeed, 1), $ZDate($List(tSeed, 2), 1), $List(tSeed, 3)))
         }
         Set $NAMESPACE = tOrigNS
     } Catch ex {
         Set $NAMESPACE = tOrigNS
-        Do $$$AssertStatusOK(ex.AsStatus(), "the seeded errors are deleted")
+        Set tDeleted = $$$ADDSC(tDeleted, ex.AsStatus())
     }
+    Do $$$AssertStatusOK(tDeleted, "the seeded errors are deleted")
     For tI = 1:1:$ListLength(..PreparedSeeds) {
         Set tSeed = $List(..PreparedSeeds, tI)
         Set tSC = ##class(OcuPilot.Test.ErrorLogSeed).Read("list", $List(tSeed, 1), $ZDate($List(tSeed, 2), 1), "", .tList, .tStatus, .tFault)
