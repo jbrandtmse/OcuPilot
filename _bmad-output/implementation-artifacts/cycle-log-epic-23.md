@@ -1279,3 +1279,14 @@ spawn_at=2026-10-06T16:01:05Z	Story 23.4	cr_complete	batch=b 2026-10-06T20:34:58
 2026-11-14T05:58:22Z	Story 23.14	smoke_complete	batch=3 method=cli+browser result=pass iterations=1 defects_caught=0 evidence=smoke.sh_ocupilot-ci_50/50 model=claude-opus-5-5
 2026-11-14T05:59:51Z	Story 23.14	rework_opened	cycle_iteration=2 iteration=batch_5 trigger=next_batch(re-dispatch_after_the_ToolEmit_ruling) items=DW-2253 scope_baseline=e277d2072 spec_status=done->in-progress
 2026-11-14T05:59:51Z	Story 23.14	stage_spawned	stage=implement batch=5 spawn_at=2026-11-14T05:59:51Z model=sonnet agent_name=23-14-epic-23-burn-down-implement-5b cycle_iteration=2 items=DW-2253
+2026-11-14T07:07:11Z	Epic 23	runner_unattended_start	run=20261020T0940Z-20,23 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03 doctrine=3d11cec98d91c1d4d9c225fe3b265e1af418abe4 note=re-dispatch_after_the_owner_computer_crash(2026-11-14_~06:00Z)
+2026-11-14T07:07:11Z	Epic 23	lead_model_gate	model=claude-opus-5-5 action=proceed
+2026-11-14T07:07:11Z	Epic 23	runtime_gate	bmad=6.12.x uv=0.12.9 ci=gh bootstrap_check=ok slot=a(docker_port_ocupilot=52774,mcp_ocupilot-slot-a_baseUrl=52774) inbox_verify=ok hold=none
+2026-11-14T07:07:11Z	Epic 23	launch_env	depth=4 watchdog=default bash_max_ms=default
+2026-11-14T07:07:11Z	Story 23.14	committed	batch=4 sha=2dd39eab code_heads=1e546b07,2dd39eab ci=pending runs=43562565417 missing=none note=logged_after_the_crash(push_on_origin_before_06:00Z;entry_lost) amendments=none footprint_extensions=none upgrade_trigger=none
+2026-11-14T07:07:11Z	Story 23.14	ci_resolved	story=23.14 batch=4 sha=2dd39eab runs=43562565417 result=success failed=none via=none resolved_at=resume
+2026-11-14T07:07:11Z	Story 23.14	boundary_merged_by_orchestrator	batch=4 feature=24b9c2f1(code-equal),dd646817 note=not_reported_again_per_dispatch
+2026-11-14T07:07:11Z	Story 23.14	ci_resolved	story=23.14 batch=6 sha=9a5403b6 runs=43559590462 result=success failed=none via=none resolved_at=resume
+2026-11-14T07:07:11Z	Story 23.14	boundary_merged_by_orchestrator	batch=6 feature=8f07f4a8,572c3f84 note=merged_before_the_crash
+2026-11-14T07:07:11Z	Story 23.14	stage_dead	story=23.14 stage=implement batch=5 agent=23-14-epic-23-burn-down-implement-5b evidence=none(tree_clean_at_fb5c4828,nothing_to_save) rerun_from=implement
+2026-11-14T07:07:55Z	Story 23.14	committed	batch=3 sha=e277d207 code_heads=c4e10fbb,e277d207 ci=pending runs=43569579466 missing=none pushed_at=07:07Z push_route=e9bde929_first(skip-token_range,no_run),then_e277d207_alone amendments=none footprint_extensions=.github/workflows/ci.yml upgrade_trigger=none veto=U-32(loopback;condition=CI_browser_shards_green)
