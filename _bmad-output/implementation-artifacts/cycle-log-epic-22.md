@@ -1,0 +1,27 @@
+2026-11-14T17:48:02Z	Epic 22	lead_model_gate	model=claude-opus-5-5 action=proceed
+2026-11-14T17:48:02Z	Epic 22	runtime_gate	bmad=6.12.1 uv=0.12.9 ci=gh
+2026-11-14T17:48:02Z	Epic 22	launch_env	depth=4 watchdog=1 bash_max_ms=default
+2026-11-14T17:48:02Z	Epic 22	telemetry_gate	pending=0 action=none
+2026-11-14T17:48:02Z	Epic 22	runner_unattended_start	run=20261114T1656Z-21,22 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03 doctrine=3d11cec98d91c1d4d9c225fe3b265e1af418abe4 slot=b mcp_profile=ocupilot-slot-b dev_web_port=52775 binding=verified
+2026-11-14T17:48:02Z	Epic 22	epic_branch_checked_out	repos=. head=24a02c86f ci=gh integrated_from=origin/feature/OCU-1_ocupilot-mvp ff=bb672a5f0..24a02c86f
+2026-11-14T17:48:02Z	Epic 22	spine_resolved	path=_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md ads=66 status=final
+2026-11-14T17:48:02Z	Epic 22	ledger_load	total=2017 open=0 routed=41 escalated=0 decision_pending=51 terminal=1925 owner_unknown=0 burndown=51 reowned_none=0 epic22_owned=0
+2026-11-14T17:48:44Z	Epic 22	sprint_planning_complete	gate=PASS in_sync=true focus=epic-22 source=feature-catalog.md:P4 model=claude-opus-5-5
+2026-11-14T17:48:44Z	Epic 22	retro_review_skipped	reason=assigned_to_epic_21 retro_review=skip
+2026-11-14T17:51:59Z	Epic 22	epic_context_compiled	sha=4f9d2248f reason=initial model=claude-opus-5-5 lines=61
+2026-11-14T17:52:09Z	Story 22.1	stage_spawned	stage=plan spawn_at=2026-11-14T17:52:09Z model=opus agent_name=22-1-the-exclusion-register-plan-1 cycle_iteration=1
+2026-11-14T18:05:01Z	Story 22.1	story_created	spawn_at=2026-11-14T17:52:09Z model=claude-opus-5-5 path=_bmad-output/implementation-artifacts/spec-22-1-the-exclusion-register.md build_status=ready-for-dev epic_context=reused warnings=oversized
+2026-11-14T18:05:01Z	Story 22.1	spec_validated	service_introducing=false integration_ac=declared-none adr_constrained_acs= decision_dependency=none sections_created=none owned_ledger=none addressed=0 declined=0 mutates_shared_runtime=false model=claude-opus-5-5
+2026-11-14T18:05:03Z	Story 22.1	stage_spawned	stage=implement spawn_at=2026-11-14T18:05:03Z model=sonnet agent_name=22-1-the-exclusion-register-implement-1 cycle_iteration=1 story_base=2d9befbc8
+2026-11-14T18:18:34Z	Story 22.1	dev_complete	spawn_at=2026-11-14T18:05:03Z model=claude-sonnet build_sha=b27c9db75 baseline_revision=8774fda9f story_base=8774fda9f review_loop_iteration=0 followup_review_recommended=true deferred=0 files=2 loc_added=397 loc_removed=0 nfr_tripwires=0 adr_violations_surfaced=0 cycle_iteration=1
+2026-11-14T18:18:34Z	Story 22.1	adr_verifications_complete	tool=none acs= result=none_required evidence= mutations=none model=claude-opus-5-5
+2026-11-14T18:18:48Z	Story 22.1	stage_spawned	stage=qa spawn_at=2026-11-14T18:18:48Z model=sonnet agent_name=22-1-the-exclusion-register-qa-1 cycle_iteration=1
+2026-11-14T18:23:07Z	Story 22.1	qa_complete	spawn_at=2026-11-14T18:18:48Z model=claude-sonnet tests=ui/tools/exclusion-register.test.mjs tests_added=0 floors_added=2 mutations_demonstrated=8 first_run_failures=0 clarifications=0 closing_sections_present=true
+2026-11-14T18:23:07Z	Story 22.1	stage_spawned	stage=code-review spawn_at=2026-11-14T18:23:07Z model=opus agent_name=22-1-the-exclusion-register-code-review-1 cycle_iteration=1
+2026-11-14T18:37:02Z	Story 22.1	cr_complete	spawn_at=2026-11-14T18:23:07Z model=claude-opus-5-5 resolved=15 fixed_at_source=15 by_design=2 wontfix_theoretical=0 routed=0 escalated=0 decision_pending=0 deferred=0 dismissed=9 high=0 med=3 low=12 rows=36 unresolved_high_med=0 review_tier=full-opus layers=4 final_status=done clarifications=0 closing_sections_present=true
+2026-11-14T18:37:02Z	Story 22.1	ledger_adjudicated	owned=0 resolved=0 reowned=0 terminal=0 model=claude-opus-5-5
+2026-11-14T18:48:03Z	Story 22.1	smoke_complete	method=other result=pass iterations=1 defects_caught=0 evidence=exclusion-register.test_11/11+test:tools_2273/2273+lint-docs_0+client-lint_0+slot-b_readonly_recheck(sharding=0,zv1=3,hssys=1,msgbank=0;matches_register) model=claude-opus-5-5
+2026-11-14T18:48:03Z	Story 22.1	fresh_check	env=clean-checkout(tracked-tree_export,no_.git)+worktree tests=1_file_11_tests(export_forward)+test:tools_2273(worktree_forward_and_reverse_file_order) result=pass order=forward,reverse note=export_runs_fail_4_git-dependent_tests(shell-script_population,LF_checkout,two_release-branch_diffs)_in_both_orders_because_the_export_has_no_.git;not_story_related model=claude-opus-5-5
+2026-11-14T18:48:03Z	Story 22.1	ruling	question=standing_ruling_Rule_29_full_local_ObjectScript_sweep_20/20_before_first_code_push_for_a_story_with_no_ObjectScript_change choice=not_run(git_diff_8774fda9f_touches_no_src/OcuPilot_file;the_sweep_result_equals_feature_whose_head_0b3112f6_ran_green_in_CI_instance_shards;CI_instance_shards_rerun_the_suite_on_this_push) rejected=run_20_shards_on_a_fresh_ocupilot-b-ci(about_two_hours_and_a_throwaway_for_an_unchanged_suite) why=the_sweep_guards_ObjectScript_changes_and_none_exist category=decide policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03
+2026-11-14T18:51:06Z	Story 22.1	committed	sha=74ec38514 submodules= ci=pending runs=43628782453 amendments=none note=first_gate_read_before_run_registered_returned_unavailable(skip-token_heuristic);re-read_pending_missing=none
+2026-11-14T18:51:06Z	Story 22.1	story_cycle	plan_to_commit_min=58 implement_passes=1 reviews=1 rework=0 first_ci=pending models=plan:opus,implement:sonnet,qa:sonnet,cr:opus
