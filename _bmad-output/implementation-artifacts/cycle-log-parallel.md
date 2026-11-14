@@ -1937,3 +1937,11 @@
 2026-11-14T21:36:18Z	Epic 22	ci_green_verified	staging=f5e641ffa runs=43634085424 result=success note=feature_already_holds_22.1+README
 2026-11-14T21:36:18Z	orchestrator	hold_complete	shas=feature:a681ae4b7(+this_hold_commit),e21:0fdb14b7a(origin),e22:a66b07646(origin) throwaways=none_up hold_patches=none lock=released_after_push
 2026-11-14T21:36:18Z	orchestrator	unattended_report	merged=22.1 held=e21(21.1_pushed_unverified),e22(22.2_implement_next) open_owner=U-39,U-30,U-33,U-34 open_vetoes=U-20,U-29,U-31,U-32,U-35,U-37,U-38 release=1.0.15_on_main_6d65ea8c
+2026-11-14T21:52:35Z	orchestrator	lead_model_gate	model=claude-opus-5-5 action=proceed
+2026-11-14T21:52:35Z	orchestrator	runtime_gate	bmad=6.12.1 uv=0.12.9 ci=gh
+2026-11-14T21:52:35Z	orchestrator	launch_env	depth=4 watchdog=0 bash_max_ms=default
+2026-11-14T21:52:35Z	orchestrator	permission_mode_attested	mode=bypassPermissions source=session_system_prompt(interactive_reinvocation)
+2026-11-14T21:52:35Z	orchestrator	telemetry_gate	pending=0 action=none
+2026-11-14T21:52:35Z	orchestrator	hold_cleared	reason=resumed_by_the_owner(interactive_reinvocation_after_account_switch)
+2026-11-14T21:52:35Z	orchestrator	unattended_resumed	run=20261114T1656Z-21,22 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03 doctrine=3d11cec98d91c1d4d9c225fe3b265e1af418abe4 lock_token=1794693143-71436 feature=ae8b680aa deps=approved(hash_current) answers=none runtime_locks=none_to_sweep
+2026-11-14T21:52:35Z	orchestrator	dispatch_writeahead	epics=21(slot_a,held->running),22(slot_b,held->running) prompts=e21-unattended-20261114-prompt.md+resume/epic-21.md,e22-unattended-20261114-prompt.md+resume/epic-22.md gate=token-free_push(Rule_32)
