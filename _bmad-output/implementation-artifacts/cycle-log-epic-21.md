@@ -38,3 +38,5 @@
 2026-11-14T20:10:22Z	Epic 21	hold_ordered	reason=HOLD_file(usage_95pct_19:48Z) by=orchestrator instructions=finish_21.1_sweep_smoke_push;no_new_stage
 2026-11-14T21:34:43Z	Story 21.1	gate_step	step=full_sweep result=not_run reason=owner_hold_interrupt shards_green=19/20(shard_20_killed) redo=after_restart
 2026-11-14T21:34:43Z	Epic 21	ruling	question=push_before_rule29_sweep choice=push_all_local_commits_now authorized_by=owner(via_orchestrator_hold_order) waiver=rule29_sweep_before_first_code_push smoke=not_run fresh_check=pass(forward,reverse) category=owner_decision
+2026-11-14T22:44:24Z	Epic 21	runner_unattended_start	run=20261114T1656Z-21,22 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03 doctrine=3d11cec98d91c1d4d9c225fe3b265e1af418abe4 resumed=after_hold(owner_account_switch) model=claude-opus-5-5 hold_file=absent
+2026-11-14T22:44:24Z	Story 21.1	ci_resolved	story=21.1 sha=c7ccce2a9 runs=none result=unavailable reason=skip_token_in_push action=push_no_token_bookkeeping_head resolved_at=resume
