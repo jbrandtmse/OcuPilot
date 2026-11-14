@@ -265,6 +265,21 @@ Rejected:
 
 - [x] [Smoke] Full sweep on ddae7dc1 (fresh `ocupilot-b-ci`, 20 shards, 710 classes): four roster assertions the story's change missed -- (1) `OcuPilot.Test.ToolDispatch.TestTheShippedGateAllowsEveryLiveToolButTheBaselineDisabled` +24: "interop.items.changeclass: 1|" and "interop.items.remove: 1|"; (2) `OcuPilot.Test.CompositeMintSweep.TestTheRosterIsEveryCompositeIdMint` +34: "every composite-id mint has a row: OcuPilot.Screen.Tool.InteropItemChangeClassMint"; (3) `OcuPilot.Test.InteropHostDescriptor.TestTheItemTabsFormOneGroupInOrder` +18: "and the group has seven members" (the Classes tab joins the group); (4) `OcuPilot.Test.InteropHostDescriptor.TestThePortServesTheRuntimeEndpointsAndTheirPairs` +1: "the port's endpoint roster". Update each roster to the delivered shape (read every name from the instance, never recall it), find out why `interop.items.remove` now reads differently in ToolDispatch and fix the cause, not the symptom; add the three classes to `Shared surfaces:` and the `(loop)` class list; demonstrate one mutation per roster row added and record its `mutation:` line under `## Verification`.
 
+Code review 2026-11-14, rework re-review (`906b7b29..8721fd22`): clean. The four `[Smoke]` reds are fixed: `ToolDispatch` 19, `CompositeMintSweep` 5 and `InteropHostDescriptor` 8 green on `ocupilot-b-ci` (runs 762-764, source identical to the tree). The probe's `ArgumentProblem` stub and `REVIEWEDARGUMENT` reach no other row: `Mint.Mint` asks `ArgumentProblem` only after the read, where every sweep mode has already refused, and only `InteropItemChangeClassMint` reads the parameter.
+
+Rejected:
+
+- `low` the Classes-tab mutation line omits `TestTheNineDeclarationsRegister`, also red in run 754: the line is true and claims no "alone"; the fix edits this spec.
+- `low` the endpoint mutation changes the test's literal: the test pins the port's parameter against that literal, and a product-side drop reddens it too; already rejected in the rework's triage.
+- `low` the `ToolDispatch` mutation only reverts the fix: it reddens both names, which shows the test reads each verdict from the gate; a baseline set `true` reddens it the same way.
+- `low` `Governance.INTEROPITEMREMOVE` now also holds the change of class: both readers use `$ListFind` and both doc comments name the two tools; the parameter is round-1 code, outside this range.
+- `false` the probe's `REVIEWEDARGUMENT` is dead and could go stale: it keeps the stand-in faithful to the tool interface the mint reads, and no sweep row observes it, so a stale value changes no result.
+- `false` the probe's `ArgumentProblem` ignores `NewClass`: the sweep pins the readable-id pass, not argument rules, which `InteropItemChangeClass`'s own tests pin.
+- `low` a duplicate tab position would pass the eight-member count: the loop is unchanged apart from 7 to 8, and the registry's own roster check reddened on a position change in run 754.
+- `low` the Code Map table, `Shared surfaces:` grouping, the rework paragraph's wording and the triage heading's date: each fix edits this spec.
+- `false` the frontmatter reads `done` while tracking reads `review`: this is the rework convention, and the review does not set the frontmatter.
+- `low` `InteropItemChangeClassMint` drops an error status from `ArgumentProblem`: round-1 code outside this range, and the shipped `ArgumentProblem` always returns `$$$OK`.
+
 ## Spec Change Log
 
 - 2026-11-14, rework iteration 1 (runner): the full sweep found four roster assertions the story missed.
