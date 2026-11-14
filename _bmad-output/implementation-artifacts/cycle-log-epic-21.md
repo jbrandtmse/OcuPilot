@@ -14,3 +14,4 @@
 2026-11-14T17:53:33Z	Story 21.1	stage_spawned	stage=plan spawn_at=2026-11-14T17:53:33Z model=opus agent_name=21-1-the-harvest-seam-plan-1 cycle_iteration=1
 2026-11-14T18:09:07Z	Story 21.1	story_created	spawn_at=2026-11-14T17:55:00Z model=opus path=_bmad-output/implementation-artifacts/spec-21-1-the-harvest-seam.md build_status=ready-for-dev epic_context=reused oversized=true
 2026-11-14T18:09:07Z	Story 21.1	spec_validated	service_introducing=true integration_ac=declared-none(first_consumer=21.2) adr_constrained_acs=AD-23,AD-12,AD-39,AD-29,AD-16,AD-1,AD-7,AD-61 decision_dependency=none sections_created=none owned_ledger=none addressed=0 declined=0 mutates_shared_runtime=false proposed_ad_amendment=AD-23_rule,AD-29_binds(design_notes_only) model=claude-opus-5-5
+2026-11-14T18:09:09Z	Story 21.1	stage_spawned	stage=implement spawn_at=2026-11-14T18:09:09Z model=sonnet agent_name=21-1-the-harvest-seam-implement-1 cycle_iteration=1 story_base=2111ba65f
