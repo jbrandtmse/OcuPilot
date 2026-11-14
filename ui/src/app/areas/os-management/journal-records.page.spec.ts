@@ -361,7 +361,7 @@ describe('Journal records', () => {
 
   it('a direction chosen on the declared sort after the remembered view is adopted is kept', async () => {
     // Mutations (Rule 19), each applied and observed red here: run `followOrder` on every store change,
-    // or notify on adoption only when a remembered view moved something.
+    // or on the first notification after adoption whether or not a stored view replaced the defaults.
     const account = stubAccountPreferences();
     const { store, fixture } = await mount({ account });
     await account.load();
@@ -371,9 +371,10 @@ describe('Journal records', () => {
     expect(store.direction()).toBe('desc');
   });
 
-  it('a direction chosen on the declared sort is kept on a revisit that reads nothing', async () => {
+  it('a direction chosen on the declared sort is kept on a revisit that restores a stored view', async () => {
     // Mutation (Rule 19), applied and observed red here: start the subscriber's `awaitingView` at true.
-    const account = stubAccountPreferences();
+    const view = JSON.stringify({ sort: '', direction: 'asc', filter: '', maxRows: 500 });
+    const account = stubAccountPreferences({ views: { [RECORDS.route]: view } });
     await account.load();
     const { store, fixture } = await mount({ account });
     expect(store.remembered()).toBe(true);

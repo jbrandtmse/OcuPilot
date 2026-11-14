@@ -390,7 +390,7 @@ export class JournalRecordsPage {
     const stopStore = store.subscribe(() => {
       if (awaitingView && store.remembered()) {
         awaitingView = false;
-        this.followOrder();
+        if (store.restoredView()) this.followOrder();
       }
       this.bump();
     });

@@ -114,6 +114,9 @@ export class ScreenStore {
   /** Whether the instance's answer has been adopted since the last sign-in; `ShellState`'s flag. */
   private adopted = false;
 
+  /** Whether the adoption replaced the view with a stored one. */
+  private viewRestored = false;
+
   /** Released by `ScreenStores.reset()`, so a dropped store stops listening to the account store. */
   private stopAccount: () => void = () => {};
 
@@ -159,21 +162,24 @@ export class ScreenStore {
    * and a cap of `DEFAULT_MAX_ROWS` -- and a read that failed keeps them rather than clearing
    * anything. A remembered off is adopted like any rate, so a person who turned Home's refresh off
    * finds it off; a rate the descriptor no longer permits is ignored and the default stands. A view
-   * member of the wrong shape falls back field by field. Listeners are notified once on adoption,
-   * whether or not anything was remembered.
+   * member of the wrong shape falls back field by field. Listeners are notified only when the
+   * adoption moved the rate or the view.
    */
   private adoptRemembered(): void {
     if (!this.account.loaded()) {
       this.adopted = false;
+      this.viewRestored = false;
       return;
     }
     if (this.adopted || (this.route === '' && this.rateKey === '')) return;
     this.adopted = true;
+    let moved = false;
     const stored = this.rateKey === '' ? undefined : this.account.refreshRates().get(this.rateKey);
     const rate = stored === undefined ? NaN : Number(stored);
     const permitted = rate === RATE_OFF || this.permitted.includes(rate);
     if (Number.isFinite(rate) && permitted && rate !== this.rateSeconds) {
       this.rateSeconds = rate;
+      moved = true;
     }
     const view = this.route === '' ? null : this.storedView();
     if (view !== null) {
@@ -182,8 +188,10 @@ export class ScreenStore {
       this.filterText = view.filter;
       this.rowCap = view.maxRows;
       this.widths = view.widths;
+      this.viewRestored = true;
+      moved = true;
     }
-    this.notify();
+    if (moved) this.notify();
   }
 
   /**
@@ -194,6 +202,15 @@ export class ScreenStore {
    */
   remembered(): boolean {
     return this.adopted;
+  }
+
+  /**
+   * Whether adoption replaced this store's view with one the instance had stored. Adoption
+   * notifies listeners only when it moved something, so this tells a listener whether that first
+   * notification carried a replaced sort and direction.
+   */
+  restoredView(): boolean {
+    return this.viewRestored;
   }
 
   /** The remembered view, or `null` when nothing usable is stored. */
