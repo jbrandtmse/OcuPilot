@@ -467,6 +467,24 @@ Rejected (batch 5):
 - `low` No mint-then-confirm across namespaces for delete or import -- both inherit the compile's mint, `ExplorerTransfer` pins the import mint's stored namespace, and the `ArgumentPairs` legs cover all ten tools.
 - `low` No end-to-end refusal-by-name at dispatch for compile, delete and import, and the screen action's unchanged row has no new assertion -- the stored-namespace gate is the intent's row; the screen action's path is unchanged code.
 
+Code review (batch 5, stage):
+
+- [x] [Review][Patch] "Gate at the surface" was pinned in-process, so the port's checks and the compile ran as the test's superuser (high, Rule 3; fix-risk low) [src/OcuPilot/Test/AtelierPortWriteDenial.cls:TestAnAgentCompileIsGatedOnTheNamespaceItWrites] -- the principal now confirms over HTTP at `?ns=HSCUSTOM`: 200, compiled in USER.
+- [x] [Review][Patch] The new test's cleanup could not see a leftover and was skipped on an abort (med, Rule 19; fix-risk low) [AtelierPortWriteDenial.cls] -- `tRemaining = 0` asserted; `OnAfterOneTest` removes seeded rows and the read-and-write principal's ledger rows.
+- [x] [Review][Patch] Identical `PrivilegePairs`/`ArgumentPairs` overrides left in `ExplorerSave`, `ExplorerCreate` and `ExplorerExport` beside the new base (med, Rule 2; fix-risk low) [src/OcuPilot/Screen/Tool/ExplorerSave.cls, ExplorerCreate.cls, ExplorerExport.cls] -- deleted; `ExplorerWrite` is the one copy, Export keeps only its no-WRITE `ArgumentPairs`.
+- [x] [Review][Patch] Docs: mutation notes ("both go red", Export's `PrivilegePairs`), the converse leg called a confirm, the import's "declares" with no fallback, the mints saying the argument steers the write, finding ids in new comments (low) [AtelierPortWriteDenial.cls, ExplorerImport.cls, ExplorerMint.cls, ExplorerImportMint.cls, DeveloperFloor.cls, ExplorerWrite.cls (test), ExplorerTransfer.cls] -- corrected.
+- [x] [Review][Patch] `ExplorerWrite.WRITEPERMISSION` no longer read (low) [src/OcuPilot/Screen/Tool/ExplorerWrite.cls] -- removed.
+- [x] [Review][Defer] A confirm whose stored namespace stopped resolving answers 500, not a named refusal, as saves have since 20.20 (low) -- DW-2557 `wontfix-accepted`.
+
+Rejected (batch 5, stage):
+
+- `by-design` A proposal minted before the change gates on the request's namespace while the write follows the payload -- the I/O matrix's "no stored namespace" row.
+- `false` `CodeWritePairs` needing `tResolved` makes compile, delete and import stricter -- the port's `WritePairs` (`AtelierPort` :792) already refuses unresolved.
+- `low` The WRITE pair is listed twice when a screen's adjusted pairs already hold it -- needs an admin to add that pair; the dedupe is kernel-wide.
+- `low` `ExplorerTransfer`'s `%FromJSON("")` throws on a missing row -- it fails loudly, which is a red.
+- `low` `ToolEmit`'s ExplorerWrite branch would expect no WRITE of a future code-writing subclass -- contended file, future-only.
+- `low` No dispatch refusal-by-name pin for compile, delete and import -- the generic `Dispatch` path, as rejected above.
+
 **Acceptance Criteria:**
 
 - **Dispositions.** Given the 12 entries, when the story completes, then each is closed as Design Notes › Dispositions says, with its batch commit.
@@ -777,6 +795,10 @@ Batch 5:
 - Final, one class per call after the revert and a reload: `ExplorerWrite` run 20 (10 tests), `AtelierPortWriteDenial` run 21 (9), `ToolEmit` run 22 (11), `DeveloperFloor` run 23 (10; `TOOLS` holds 62 names and `HELDWRITES` 17, the held set matching on the instance), `ClassicPageGate` run 24 (9), `ExplorerTransfer` run 25 (10); 0 failed. `AtelierPortWriteDenial`'s principal's ledger rows are removed by its own test; `ocupilot-ci`'s `Ledger` still holds 48 `IRISOWNER` and 3 `OCUPROBE1814PAGEHOLDING` rows left by other classes (inference: `ExplorerTransfer` and `ClassicPageGate` teardowns, outside this batch).
 
 - (review) mutation: DW-2253 unresolved guard -- the `If 'pResolved Quit ""` line deleted from `ExplorerImport.ArgumentPairs`: `AtelierPortWriteDenial` run 27 red on `TestTheToolsTakeTheirWritePairFromTheStoredNamespace` (the stored namespace that names no routines database now resolves, with the file pair). Reverted (`cmp` identical). `FilePairs` dropped from the same method (`Quit tPairs`): run 28 red on that test and on `TestAnImportOfAServerFileWithoutTheFilePairIsRefusedByName`. Reverted (`cmp` identical). Final after the revert and a reload: `AtelierPortWriteDenial` run 30 (9), `ExplorerWrite` run 29 (10), `ToolEmit` run 31 (11), `DeveloperFloor` run 32 (10), `ClassicPageGate` run 33 (9), `ExplorerTransfer` run 34 (10), all 0 failed; `uv run scripts/check-objectscript.py` 0 problems.
+
+- (QA) `src/OcuPilot/Test/AtelierPortWriteDenial.cls` (QA): `TestAProposalWithNoStoredNamespaceIsGatedOnTheRequestsNamespace` pins the I/O matrix's "no stored namespace" row through `Operation.Gate` (a proposal stored without `Namespace`: accepted at USER for the USER-only principal, refused naming the install namespace's code WRITE at HSCUSTOM). mutation: DW-2253 no-stored-namespace fallback -- `ExplorerWrite.ArgumentPairs` defaulting to USER when none is stored (throwaway edit): run 36 red on the new test and on `TestTheToolsTakeTheirWritePairFromTheStoredNamespace`. Reverted (identical to `42fa78ca3`); run 37 green, 10 tests. Every other DW-2253 row already had a pin with an observed red.
+
+- (code review) mutation: DW-2253 surface -- `ExplorerWrite.ArgumentPairs` reading the request's scope (`CodeWritePairs({})`), after the confirm leg moved to HTTP as the principal: `AtelierPortWriteDenial` run 39 red, the confirm answering `403 AUTH.NOPRIVILEGE %DB_HSCUSTOM:WRITE` and nothing compiled in USER; the save and create legs red too, so they now read the one base method. Reverted (`cmp` identical); run 40 green, 10 tests. Then one class per call: `ExplorerWrite` 10, `ToolEmit` 11, `DeveloperFloor` 10, `ClassicPageGate` 9, `ExplorerTransfer` 10, `ExplorerSave` 8, `ExplorerCreateFlow` 8, `ExplorerSaveTurn` 1, `ExplorerCreateTurn` 1, all 0 failed; `uv run scripts/check-objectscript.py` 0 problems.
 
 Batch 6:
 
