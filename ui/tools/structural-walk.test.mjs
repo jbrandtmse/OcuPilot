@@ -6,8 +6,14 @@
 // Mutations (Rule 19):
 // - restore `await document.fonts.ready` inside the settle evaluate -> the first test goes red, its
 //   fake `fonts.ready` never resolving.
-// - drop the `document.fonts.status === 'loaded'` term from the settle evaluate -> the first test
-//   goes red on its lower bound: settle answered before the fonts reported loaded.
+// - drop the fonts term from the settle evaluate -> the first test goes red on its lower bound:
+//   settle answered before the fonts reported loaded.
+// - settle without its `why` (an empty reason) -> the unsettled-visit and fonts cases red; the report
+//   without its slowest-visits line -> the report case red.
+// - drop `visits` from `passRetrier`'s saved state -> the rerun case red on its visits.
+// - `walkPass` without `report.visits.push` -> the a11y spec's visits assertion red (browser tier).
+// - drop `isConnectionLoss` from the retrier's predicate -> the connection-loss rerun case red; give
+//   the no-relaunch retrier that predicate -> the no-relaunch connection-loss case red.
 // - call `page.evaluate` or `page.waitForFunction` in the walk without `bounded(` -> the second test
 //   goes red, naming the line.
 // - drop `bounded(` from the settle evaluate, the `detectScreen` evaluate or the theme toggle's class
@@ -67,7 +73,7 @@ test('settle answers true when fonts.ready never resolves but fonts.status turns
       }),
     ]);
     clearTimeout(raceTimer);
-    assert.equal(settled, true, 'settle answered rather than waiting on fonts.ready');
+    assert.equal(settled.settled, true, 'settle answered rather than waiting on fonts.ready');
     const elapsed = Date.now() - started;
     assert.ok(elapsed >= 900, `and only once the fonts reported loaded (${elapsed} ms)`);
     assert.ok(elapsed < 5000, `and within 5 s (${elapsed} ms)`);
@@ -236,7 +242,7 @@ test('a pass whose call hangs is re-run once and then completes, over a fake pag
     });
     await flush();
     mock.timers.tick(WALKCALLDEADLINE);
-    assert.equal(await finished, true, 'the second attempt settled');
+    assert.equal((await finished).settled, true, 'the second attempt settled');
   } finally {
     mock.timers.reset();
   }
@@ -370,7 +376,7 @@ test('a call that answers in time is untouched by the deadline', async () => {
 });
 
 test('a pass retried after an abandoned call leaves the report as it was before the pass, plus one line naming the pass and the call', { timeout: 10_000 }, async () => {
-  const report = { walked: new Set(['before']), skipped: new Set(), unresolved: new Set(), unsettled: new Set(), unmeasurable: 0, retried: [] };
+  const report = { walked: new Set(['before']), skipped: new Set(), unresolved: new Set(), unsettled: new Set(), visits: [{ visit: 'before (720px light)', ms: 5, settled: true, why: '' }], unmeasurable: 0, retried: [] };
   const entries = [];
   let attempts = 0;
   const withRetry = passRetrier(report, entries, null);
@@ -379,6 +385,7 @@ test('a pass retried after an abandoned call leaves the report as it was before 
     const finished = withRetry('720px light', async (found) => {
       attempts += 1;
       report.walked.add(`visit ${attempts}`);
+      report.visits.push({ visit: `visit ${attempts} (720px light)`, ms: 1, settled: true, why: '' });
       report.unmeasurable += 1;
       if (attempts === 1) await settle({ evaluate: hang }, { ...quiet(), pass: '720px light' }, '/ocupilot/tasks/schedule');
       found.push(`entry ${attempts}`);
@@ -392,6 +399,7 @@ test('a pass retried after an abandoned call leaves the report as it was before 
   assert.equal(attempts, 2, 'the pass ran twice');
   assert.deepEqual(entries, ['entry 2'], 'only the completed run joins the walk');
   assert.deepEqual([...report.walked], ['before', 'visit 2'], 'the first run\'s visits are put back');
+  assert.deepEqual(report.visits.map((entry) => entry.visit), ['before (720px light)', 'visit 2 (720px light)'], 'and its recorded visits');
   assert.equal(report.unmeasurable, 1, 'and its counts');
   assert.equal(report.retried.length, 1, 'one retried line');
   assert.match(report.retried[0], /^720px light -- 720px light: settle \/ocupilot\/tasks\/schedule timed out/, 'naming the pass and the abandoned call');
@@ -409,4 +417,89 @@ test("the walk's report names each retried pass", () => {
     retried: ['720px light -- 720px light: settle timed out.'],
   });
   assert.ok(lines.some((line) => line.includes('pass retried once') && line.includes('720px light -- 720px light: settle')), lines.join('\n'));
+});
+
+/** Run `settle` against `page` and `requests` on the mock clock until it gives up, and answer what it answered. */
+async function settleUntilGivenUp(page, requests) {
+  mock.timers.enable({ apis: ['setTimeout', 'Date'], now: Date.now() });
+  try {
+    const running = settle(page, requests);
+    for (let step = 0; step < 220; step += 1) {
+      await flush();
+      mock.timers.tick(100);
+    }
+    return await running;
+  } finally {
+    mock.timers.reset();
+  }
+}
+
+test('a request that never ends leaves the visit unsettled, and why names its URL', { timeout: 10_000 }, async () => {
+  const never = { url: () => 'http://localhost:52776/api/ocupilot/screens/logs.errors/read?ns=USER' };
+  const requests = { inflight: new Set([never]), last: Date.now(), pass: '1280px light' };
+  const answer = await settleUntilGivenUp({ evaluate: async () => true }, requests);
+  assert.equal(answer.settled, false, 'the visit did not settle');
+  assert.ok(answer.ms >= 20000, `after the settle timeout (${answer.ms} ms)`);
+  assert.match(answer.why, /in flight: \/api\/ocupilot\/screens\/logs\.errors\/read\?ns=USER/, 'naming the request still in flight');
+});
+
+test('a fonts status that never reads loaded is the reason, and a quiet screen answers its time', { timeout: 10_000 }, async () => {
+  const stuck = await settleUntilGivenUp({ evaluate: async () => 'fonts loading' }, quiet());
+  assert.equal(stuck.settled, false);
+  assert.equal(stuck.why, 'fonts loading');
+  const fine = await settle({ evaluate: async () => true }, quiet());
+  assert.deepEqual({ settled: fine.settled, why: fine.why }, { settled: true, why: '' });
+  assert.equal(typeof fine.ms, 'number');
+});
+
+test('the report prints the five slowest visits and every unsettled visit with its reason', () => {
+  const visits = [3000, 100, 4500, 200, 9000, 700, 120].map((ms, index) => ({ visit: `screen${index} (1280 light)`, ms, settled: true, why: '' }));
+  visits.push({ visit: 'stuck (1280 light)', ms: 20012, settled: false, why: 'in flight: /api/ocupilot/x' });
+  const lines = reportLines({
+    declared: 1,
+    notBuilt: [],
+    walked: new Set(),
+    skipped: new Set(),
+    unresolved: new Set(),
+    unsettled: new Set(['stuck (1280 light)']),
+    visits,
+    unmeasurable: 0,
+    retried: [],
+  });
+  const slowest = lines.find((line) => line.includes('slowest visit'));
+  assert.ok(slowest !== undefined, lines.join('\n'));
+  assert.match(slowest, /^structural walk: 5 slowest visit\(s\): stuck \(1280 light\) 20012ms; screen4 \(1280 light\) 9000ms; screen2 \(1280 light\) 4500ms; screen0 \(1280 light\) 3000ms; screen5 \(1280 light\) 700ms$/);
+  assert.ok(lines.includes('structural walk: unsettled stuck (1280 light) after 20012ms -- in flight: /api/ocupilot/x'), lines.join('\n'));
+});
+
+const connectionLoss = () => new Error('Protocol error: Connection closed. Most likely the page has been closed.');
+
+test('a pass that throws a lost connection is rerun on a new browser when a relaunch is given', { timeout: 10_000 }, async () => {
+  const report = freshReport();
+  const launcher = fakeLauncher();
+  const first = launcher.launch();
+  const withRetry = passRetrier(report, [], first, async () => launcher.launch());
+  const seen = [];
+  await withRetry('720px light', async (found, browser) => {
+    seen.push(browser.number);
+    if (browser.number === 1) throw connectionLoss();
+  });
+  assert.deepEqual(seen, [1, 2], 'the rerun ran on browser 2');
+  assert.equal(first.closed, 1, 'and browser 1 was closed');
+  assert.match(report.retried[0], /^720px light -- Protocol error: Connection closed/, 'the report names the pass and the loss');
+});
+
+test('without a relaunch a lost connection throws as before', async () => {
+  const report = freshReport();
+  const withRetry = passRetrier(report, [], { number: 1 });
+  let attempts = 0;
+  await assert.rejects(
+    withRetry('720px light', async () => {
+      attempts += 1;
+      throw connectionLoss();
+    }),
+    /Connection closed/
+  );
+  assert.equal(attempts, 1, 'the pass ran once');
+  assert.deepEqual(report.retried, []);
 });

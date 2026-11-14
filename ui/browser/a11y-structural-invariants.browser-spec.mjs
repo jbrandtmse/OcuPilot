@@ -80,6 +80,7 @@ test('AC5: every built screen is walked or skipped, and no id-requiring screen i
   );
   assert.ok(report.walked.size > 0, 'the walk reached at least one screen');
   assert.deepEqual([...report.unsettled], [], 'every visit settled before it was measured');
+  assert.ok(report.visits.length > 0 && report.visits.every((entry) => Number.isFinite(entry.ms)), 'every visit recorded its settle time');
 });
 
 test('AC5: no violation outside the baseline', () => {
