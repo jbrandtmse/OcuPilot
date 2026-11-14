@@ -353,6 +353,30 @@ Job logs for DW-2461 and DW-2111 are saved in `scratchpad/e23u/23-14/plan/browse
     - the store ignores `remember`;
     - drop the subscriber's `followOrder`.
 
+### Review Findings
+
+#### Batch 1 (2026-11-14)
+
+- [x] [Review][Patch] The admin API Resume re-read had no settle (med, fix-risk low) [src/OcuPilot/Test/BackgroundTasksLive.cls:TestAnAdminApiCompactIsListedAndPausedThroughAsyncResult] -- now `SettledRow(.., "Paused")`; run 33 green.
+- [x] [Review][Patch] No recorded red for DW-2526's old exact-newest assertion against the stand-in (low) [Verification] -- run 31, mutation line added.
+- [x] [Review][Patch] Nothing stood in for DW-2236's missing red (low) [Verification] -- forced-ended-branch mutation, run 32, mutation line added.
+- [x] [Review][Patch] `LogHubErrors` header still said `^ERRORS` cannot be un-logged and named two seeds (low) [src/OcuPilot/Test/LogHubErrors.cls:1-11]
+- [x] [Review][Patch] `OnAfterOneTest` discarded `DeleteByError`'s status (low) [src/OcuPilot/Test/LogHubErrors.cls:OnAfterOneTest] -- statuses folded with `$$$ADDSC` and asserted.
+- [x] [Review][Patch] The Resume/Pause test doc appended a paragraph that contradicted its first (low) [src/OcuPilot/Test/BackgroundTasksLive.cls:TestTheScreensActionsResumePauseAndCancelACompact] -- rewritten as one contract.
+- [x] [Review][Patch] Comments and the DW-2236 mutation line stated an unmeasured vendor cause ("next checkpoint", "Pause waits for the stopped job") as fact (low) -- comments say the effect is asynchronous; the mutation line marks `(inference)`.
+- [x] [Review][Patch] `SettledRow`'s doc said "at most 30 s" though each read is an HTTP list (low) -- states 150 reads, 200 ms apart.
+- [x] [Review][Patch] `SettledRow` repeats `BackgroundSeed.Settled`'s poll (low, Rule 31) -- reason: the admin API row has only a GUID and is read through the screen, while `Settled` reads the vendor task by id.
+- [x] [Review][Defer] A 200 Pause that settles to Done takes the Cancel-409 branch, so a Pause with no effect on the short compact reads green in the live leg [src/OcuPilot/Test/BackgroundTasksLive.cls] -- deferred: DW-2547 `by-design` (the batch 1 task specifies the branch; `BackgroundTaskPortSeam` pins the vendor call; the least-privilege 403 leg still reddens).
+
+Rejected (batch 1):
+
+- `false` Spec frontmatter reads `done` with five batches open -- build-auto's per-batch machine state, which this stage must not change.
+- `false` The read-back's 404 can pass a delete that never happened -- both namespaces exist, and an undeleted seed reads 200 with its row, which fails "is gone".
+- `low` Code Map's "answers at once" contradicts the stall measurement; a green run lacks its run number -- fixes edit the spec; the final runs are 33 and 34.
+- `low` One `DeleteByError` throw skips the later seeds; midnight inside the 2 s of hangs; a transient empty read ends `SettledRow`; an admin intermediate state -- unlikely, and each fix adds guards; each fails loudly.
+- `low` The cap-of-one assertion accepts a newer row that is not the newest -- spec-bound ("no older than that seed's"); the keep-oldest mutation pins the cap.
+- `low` The commit message says the stand-in keeps a later error from taking the row -- needs a history rewrite.
+
 **Acceptance Criteria:**
 
 - **Dispositions.** Given the 12 entries, when the story completes, then each is closed as Design Notes › Dispositions says, with its batch commit.
@@ -538,9 +562,12 @@ Sweep `ui/browser`, `ui/tools`, the `ui/src` specs and `src/OcuPilot/Test` for e
 
 Batch 1:
 
-- mutation: DW-2236 -- no deterministic red. A temporary leg (removed, uncommitted) resumed a seeded compact, called `BackgroundSeed.Stall(job, 3)`, then sent the screen's Pause: it answered 200 after 3.0 s (the vendor's Pause waits for the stopped job), and the row and the vendor state both read Paused at once, so the pre-fix immediate re-read stayed green (`ocupilot-ci`, run 15, 10 tests, 0 failed). The race is the vendor's checkpoint timing; the settle is the seed's established contract (`BackgroundSeed.PausedCompact`). The Resume settle and the admin API `SettledRow` read wait on the same vendor checkpoint, and no stall forces either to read the old state, so neither has a deterministic red. Final class: run 20, 9 tests, 0 failed.
+- mutation: DW-2236 -- no deterministic red. A temporary leg (removed, uncommitted) resumed a seeded compact, called `BackgroundSeed.Stall(job, 3)`, then sent the screen's Pause: it answered 200 after 3.0 s (the vendor's Pause waits for the stopped job (inference)), and the row and the vendor state both read Paused at once, so the pre-fix immediate re-read stayed green (`ocupilot-ci`, run 15, 10 tests, 0 failed). The race is the vendor's checkpoint timing; the settle is the seed's established contract (`BackgroundSeed.PausedCompact`). The Resume settles and the admin API `SettledRow` reads wait on the same asynchronous effect, and no stall was tried that forces either to read the old state (inference), so none has a recorded red. Final class: run 20, 9 tests, 0 failed.
 - mutation: DW-2526 -- `LogSourcePort.RecentErrors` iterating `tHeld` oldest first (cap keeps the oldest row): `LogHubErrors` run 18 red, "one row, no older than the second seed's ... 2026-11-14T01:27:14.000 against 2026-11-14T01:27:16.000". Reverted (`git status` shows no `Port/` change); run 19, 1 test, 0 failed.
 - mutation: DW-2526 teardown -- the `DeleteByError` call in `LogHubErrors.OnAfterOneTest` commented out: `LogHubErrors` run 25 red on the three "is gone" assertions (HSCUSTOM #19, #20, USER #1). Reverted (byte-identical copy); final run green, 1 test, 0 failed.
+- (QA) mutation: DW-2526 cap -- `LogSourcePort.RecentErrors` reading `tHeld` ascending, applied again on `ocupilot-ci` → `LogHubErrors` run 29 red; reverted byte-identical (shasum, `git status` clean), reloaded, run 30 green. No test file created or changed by QA; `BackgroundTasksLive` run 28 green (9 tests). DW-2236: no helper-level pin added, since `Settled` and `SettledRow` read live vendor state that no test can hold in the old state.
+- (review) mutation: DW-2526 red first -- the old exact-newest assertion (`"1|1|" _ tNewest`, newest of the full read) restored with the USER stand-in in place, throwaway copy only: `LogHubErrors` run 31 red on that assertion alone. Restored (`cmp` identical); run 34 green.
+- (review) mutation: DW-2236 stand-in -- `Set tEnded = 1` after the Pause-200 settle, throwaway copy only: `BackgroundTasksLive` run 32 red, the Cancel of the paused compact answered 200, not 409. Restored (`cmp` identical); run 33 green, 9 tests.
 
 ## Auto Run Result
 

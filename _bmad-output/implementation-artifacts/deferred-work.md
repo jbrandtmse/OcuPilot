@@ -10918,6 +10918,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-10T16:42:52Z status=resolved-by:20-3-production-items by=lead note=31babb36: the live leg accepts an ended compact's state refusal per compact (no at-least-one-200), the 200 mapping pinned at the port by BackgroundTaskPortSeam through a fake vendor task; the hold model measured and rejected (a cross-process Pause blocks 30 s); named limit in spec-20-3
 - 2026-10-20T23:33:34Z status=routed owner=burndown by=lead note=flake recurred: 20.12 local sweep 313b3401 shard 6/20 run 212, row re-reads Paused; green on unchanged rerun
 - 2026-11-14T00:52:31Z owner=23-14-epic-23-burn-down by=burndown note=chartered_in_Story_23.14(Epic_23_burn-down,orchestrator_ruling_2026-11-14)
+- 2026-11-14T02:10:24Z status=resolved-by:23-14-epic-23-burn-down by=adjudication note=batch_1:BackgroundTasksLive_waits_for_the_state_to_settle_(BackgroundSeed.Settled,new_SettledRow_for_the_admin_API_row)_after_Resume_and_a_200_Pause;red_shown_by_forcing_the_ended_branch(run_32);reopen_if=BackgroundTasksLive_reds_on_a_Pause,Resume_or_Cancel_after_the_settle
 
 ### DW-2239: The web-application tools can reach OcuPilot's own privileged routine applications (OcuPilotState, OcuPilotIdentity): no AD-10 arm refuses a delete or a MatchRoles :%All update, and the vendor's privileged-routine endpoint also writes any application type
 - source: spec-18-10-web-application-extras-and-spec-based-rest-services.md | severity: high | fix-risk: low | footprint: out-of-footprint
@@ -12592,6 +12593,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Red once ('one row, the newest, and the read says it cut'), green on the unchanged rerun; an unrelated adminport OAuth REFRESHJWKS error was logged the same second; local 2/2 green
 - 2026-11-13T00:50:26Z status=routed owner=burndown by=harvest note=CI flake for the burn-down: the test asserts on the store's newest row, which a concurrent error can take (inference)
 - 2026-11-14T00:52:33Z owner=23-14-epic-23-burn-down by=burndown note=chartered_in_Story_23.14(Epic_23_burn-down,orchestrator_ruling_2026-11-14)
+- 2026-11-14T02:10:24Z status=resolved-by:23-14-epic-23-burn-down by=adjudication note=batch_1:LogHubErrors_reads_the_second_seed_time_from_its_own_row,seeds_a_USER_stand-in_after_the_read,teardown_deletes_all_three_seeds;cap-keeps-oldest_mutation_red(run_29),old_assertion_red(run_31)
 ### DW-2522: flake: analytics-mdx.browser-spec.mjs AC1: the first query's grid did not appear within navigationTimeoutMs
 - source: 23.9 batch 4 CI (run 43292059964) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: run 43292059964 (9e7cc026) attempt 1, browser shard 2/5: waitForSelector [data-ocu-mdx=grid] failed at :258 after 37.6 s, the other 10 tests green; batch 4 touches no analytics or walk code
@@ -12687,3 +12689,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: batch 4 rework re-review (rejected as out of rework scope): open() -> followOrder() -> setDirection('desc') -> rememberView() before adoptRemembered; screen-store.ts setDirection/rememberView; settle by arriving at the records URL with order=1 after remembering a filter and reading the preference row
 - 2026-11-13T21:34:51Z status=routed owner=burndown by=lead note=fix idea: skip rememberView until remembered() is true, or defer followOrder's write until adoption
 - 2026-11-14T00:52:35Z owner=23-14-epic-23-burn-down by=burndown note=chartered_in_Story_23.14(Epic_23_burn-down,orchestrator_ruling_2026-11-14)
+
+### DW-2547: BackgroundTasksLive's live Pause leg passes a 200 Pause that settles to Done, so a Pause with no effect on a short compact reads green there
+- source: spec-23-14-epic-23-burn-down.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: TestTheScreensActionsResumePauseAndCancelACompact routes a 200 Pause settling to Done into the Cancel-409 branch (spec batch 1 task); the seam class BackgroundTaskPortSeam pins the vendor Pause call on a fake
+- 2026-11-14T02:05:18Z status=by-design owner=23-14-epic-23-burn-down by=cr note=spec-bound: batch 1 task takes the ended branch on Done; seam pins dispatch; live 403 leg still reddens
