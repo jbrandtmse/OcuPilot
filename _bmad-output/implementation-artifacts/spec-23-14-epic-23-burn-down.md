@@ -398,6 +398,17 @@ Rejected (batch 2):
 - `low` The task line's predicted red, and the alert selector scoped to `section.ocu-form-page`, are not recorded as decisions; "All are red before" does not fit the no-relaunch guard; `/i` on the pattern -- fixes edit the spec, or no harm.
 - `low` A wedged browser's `context.close()` in the error-log catch can hold the relaunch until the protocol timeout; the relaunched attempt does not repeat `resetRememberedState` -- the sibling `data-table-columns` has the same shape, and each fix adds a guard for an unshown case.
 
+#### Batch 6 (2026-11-14)
+
+- [x] [Review][Patch] The Oldest-first branch of `followOrder` (`setDirection('', remember)`) was unpinned: dropping `remember` there reddened no test, and an `order=1` arrival then one without it, before the account read, would post the defaults over the remembered view (med, fix-risk low) [ui/src/app/areas/os-management/journal-records.page.spec.ts] -- new case "an arrival without Newest first after one with it ..."; mutation line under Verification.
+
+Rejected (batch 6):
+
+- `low` A cold open with no stored view leaves `desc` in memory and unsent; a command-bar direction choice before adoption still sends -- the matrix constrains only the remembered-view case and "after adoption"; both were rejected in the batch 6 self-review, and a guard on every pre-adoption setter is a design change for a rarely reached window.
+- `low` The Auto Run Result's Residual and Verified lines predate QA's red-first run and its browser run; the batch 6 Triage Log entry is dated 2026-11-13 -- fixes edit the spec; the Verification QA line holds both runs.
+- `low` The new page case pins "draws descending" through `store.direction()`, not the drawn rows -- the direction-to-rows link is pinned by "Newest first draws descending under an explicit Address sort", and QA's `journal-records` browser run passed 5 of 5.
+- `low` Two batch 6 cycle-log `spawn_at` values differ from their `stage_spawned` lines -- the lead's log, outside this stage's writes; no code or gate reads the difference.
+
 **Acceptance Criteria:**
 
 - **Dispositions.** Given the 12 entries, when the story completes, then each is closed as Design Notes › Dispositions says, with its batch commit.
@@ -623,6 +634,8 @@ Batch 2:
 Batch 6:
 
 - mutation: DW-2543 -- `followOrder` passing `true` (the old behavior): the new `journal-records.page.spec.ts` case red on "no view POST before the account answers" (`expected [ { ... } ] to deeply equal []`). The store ignoring `remember` (`rememberView()` always called): the same case red, and the `screen-store.test.mjs` case "setDirection with remember false ..." red. `setDirection` not notifying: the store case red. The subscriber's `followOrder` dropped: the page case red, and the existing "Oldest first draws ascending when the remembered descending view is adopted" case red. Each reverted (`git diff` byte-identical to before the mutation). Final: page spec 23 pass; `screen-store.test.mjs` 29 pass; `npm run test:components` 3382 pass; `npm run test:tools` 2233 pass; `npm run build` passes. No browser run in this pass (the `journal-records` browser spec is the lead's fresh check).
+- (QA) no test file created or changed; the batch 6 pins cover the AC. mutation: DW-2543 original code -- `screen-store.ts` and `journal-records.page.ts` restored to `a99b19ff` (production change reverted only): the new page case red, "no view POST before the account answers" (the default view `{sort:'',direction:'desc',filter:'',maxRows:1000}` was posted); 22 other cases green. Restored byte-identical (`shasum`, `git status` clean). mutation: DW-2543 unchanged direction choice -- `setDirection` default `remember = false`: `screen-store.test.mjs` "a sort set on its own, and a direction set on its own, each survive a store rebuild" red (28 pass, 1 fail); reverted byte-identical. Re-run: `npm run test:components` 3382 pass; `npm run test:tools` 2233 pass; `npm run build` passes; `journal-records.browser-spec.mjs` on `ocupilot-ci` (bundle redeployed) 5 pass, 0 fail.
+- (review) mutation: DW-2543 Oldest-first branch -- `followOrder` calling `setDirection('')` without `remember`: the new case "an arrival without Newest first after one with it, before the account answers, sends no view, and the remembered view is kept" red alone (`expected [ { ... } ] to deeply equal []`), 23 other cases green; reverted (`shasum` identical). Page spec 24 pass; `npm run test:components` 3383 pass; `npm run test:tools` 2233 pass; `npm run build` passes.
 
 ## Auto Run Result
 
