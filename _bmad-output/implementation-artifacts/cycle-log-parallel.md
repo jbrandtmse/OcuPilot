@@ -1921,3 +1921,10 @@
 2026-11-14T16:58:44Z	Epic 21	worktree_bootstrapped	epic=21 result=ok
 2026-11-14T16:58:44Z	Epic 22	worktree_bootstrapped	epic=22 result=ok
 2026-11-14T16:58:44Z	orchestrator	dispatch_writeahead	epics=21(slot_a,retro_review=own),22(slot_b,retro_review=skip) prompts=e21-unattended-20261114-prompt.md,e22-unattended-20261114-prompt.md gate=token-free_push(Rule_32)
+2026-11-14T17:45:52Z	orchestrator	ci_green_verified	runs=43618538536 head=24a02c86f result=success gate=dispatch(Rule_32)
+2026-11-14T17:45:52Z	Epic 21	runner_dispatched	slot=a runner=epic-runner-21 model=opus prompt=e21-unattended-20261114-prompt.md hold_at=none(usage-triggered)
+2026-11-14T17:45:52Z	Epic 22	runner_dispatched	slot=b runner=epic-runner-22 model=opus prompt=e22-unattended-20261114-prompt.md hold_at=none(usage-triggered)
+2026-11-14T18:40:50Z	orchestrator	feature_external_commit	sha=b8a0b2e5 by=OcuPilot_Planner what=README.md_1.0.15_port(docs_only,no_token) release=1.0.15_merged_main_6d65ea8c(PR18) runners_integrate_forward=at_next_story_start
+2026-11-14T19:49:55Z	Epic 22	runner_reported	boundary=story_22.1 code_head=74ec38514(43628782453_success) ledger=DW-2558_filed(PRD_FR-80_vs_AD-22,routed_burndown) runner_ruling=rule29_sweep_skipped_for_docs-only_diff(no_src) orchestrator=accepted
+2026-11-14T19:49:55Z	Story 22.1	merged	feature=298f59de1 tip=e808b716f route=code_equal_merge checks=ledger_entry_check_0,dups_none,sprint_validate_ok upgrade_triggers=none new_keys=none
+2026-11-14T19:49:55Z	ci	timings_refreshed	rule=29 run=43628782453
