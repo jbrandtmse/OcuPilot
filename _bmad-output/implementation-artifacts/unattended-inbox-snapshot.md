@@ -2,7 +2,30 @@
 
 Answer an item with `bash _bmad/scripts/unattended-inbox.sh <this directory> answer U-<n> "<answer>" --by owner`, or run `/epic-cycle --review`. This file is generated: a hand edit is saved aside and never applied.
 
-**Hold requested 2026-11-13T09:59:25Z: owner: quota hold ("Order the hold tonight at 2am.")**
+## Parked
+
+### U-33 | parked | DW-2173, DW-2175, DW-2205, DW-2206 (vendor defect candidates) | 2026-11-14T10:35:16Z
+question: Epic 23's decision sheet holds four suspected IRIS defects found while building SQL privileges: a SQL column grant answers success and stores nothing (DW-2173); a grant naming an unknown namespace answers a server error (DW-2175); a one-part column list answers a server error (DW-2205); the admin list names a role holder 'Role - <role>' (DW-2206). Reporting anything to InterSystems is yours alone; OcuPilot already works around each.
+options: A: keep held, never report | B: draft reports for you to review and file
+recommendation: A: keep held (the product works around all four)
+blocks: nothing (no story waits on them)
+answer: (none yet -- answer with the script or --review)
+
+## Stopped
+
+### U-30 | stopped | DW-2431 | 2026-11-14T00:15:22Z
+question: Measured on our test instance: with journal encryption on, OcuPilot accepts switching key activation at startup to a KMIP server, and when that server cannot be reached the instance does not finish starting (it aborts into single-user mode on every start). Refusing this change needs a new refusal message and an amendment to the architecture's refusal rules (AD-10), which this run may not make while Epic 20 relies on that rule. Should OcuPilot refuse it?
+options: A: amend AD-10's KMIP bullet and add the refusal with the proposed sentence (Journal encryption is on, or a journal file the instance still needs is encrypted, and OcuPilot cannot check that the KMIP server is reachable and holds its key, so a start that cannot activate it does not finish. Keep Unattended, or make this change on the classic Database Encryption page.) | B: leave it to the classic Database Encryption page (no change; the risk stays documented)
+recommendation: A (stricter than the classic portal; measured: 8 starts all aborted 20 s in with 'Failure activating required database encryption key')
+blocks: DW-2431 only (Story 23.13's other batches continue)
+answer: (none yet -- answer with the script or --review)
+
+### U-34 | stopped | DW-2518 | 2026-11-14T10:35:22Z
+question: When a cube update is only partly applied (some steps succeed, then one fails), should it be written to the audit log, and how? The architecture decision on auditing (AD-15) does not say, and Epic 20's open stories cite AD-15, so this run cannot amend it.
+options: A: audit it as a failed configuration change, naming the steps that did apply (needs an AD-15 sentence) | B: audit nothing for a failed update, as today
+recommendation: A (a partial change to the instance should leave a record)
+blocks: nothing now; a later story implements the answer
+answer: (none yet -- answer with the script or --review)
 
 ## Veto window
 
@@ -11,6 +34,34 @@ question: Ruled at 20.36's spec gate: three new on-screen strings the plan chose
 options: keep all three | give other wording (each is one string and its EXPERIENCE.md row)
 recommendation: keep all three
 blocks: nothing (the story continues; a change is a string each)
+answer: (none yet -- answer with the script or --review)
+
+### U-29 | veto | Story 23.13 (DW-2432) | 2026-11-13T16:12:23Z
+question: Ruled at Story 23.13's spec gate: adding a public Use permission to a resource that an enabled web application or privileged routine application uses as its Resource, while that application grants a privileged role, is now treated like the reverse case the architecture already covers (pointing such an application at a resource with public Use): it counts as a privileged grant and gets the same confirmation, with no new field line. Read by effect under the existing rule, so AD-10's text is not changed in this run; a one-clause clarification for AD-10 is proposed in 23.13's spec for your next architecture update.
+options: keep | reverse (the write goes through with no privileged-grant confirmation)
+recommendation: keep: same effect as the case AD-10 already names; stricter than the classic portal, which asks nothing
+blocks: Story 23.13 batch 2 (DW-2432 part only)
+answer: (none yet -- answer with the script or --review)
+
+### U-31 | veto | DW-2501 | 2026-11-14T01:14:29Z
+question: Story 23.14 checks that a new stored property on a persistent class without a Storage section is declared last, compared with the previous release. You asked for the previous release tag, but the repository has no release tags, so the check compares with the newest release branch instead (it equals main), and it runs in local and stage runs only until CI fetches the release branches.
+options: Keep: newest origin/release/* branch as the baseline | Reverse: create and use release tags (an outward repository change, yours to make) and compare with the newest tag
+recommendation: Keep (no tags exist; the release branches are the release record)
+blocks: DW-2501 in Story 23.14 (reversal: switch the baseline lookup to tags once they exist)
+answer: (none yet -- answer with the script or --review)
+
+### U-32 | veto | DW-2123 | 2026-11-14T01:14:57Z
+question: Story 23.14 makes the test throwaway containers listen only on the local machine (127.0.0.1) instead of on every network interface, so a busy CI runner's port is less likely to be taken and the test instance is not reachable from other machines. It changes how the throwaways are reached; CI's browser shards must stay green on the exact head, or the change is reverted.
+options: Keep: throwaways publish on 127.0.0.1 | Reverse: publish on all interfaces as before
+recommendation: Keep (stricter; verified by the lead's rebuild and green CI browser shards)
+blocks: DW-2123 in Story 23.14 (reversal: drop the 127.0.0.1 bind in scripts/ci-throwaway.sh's compose ports)
+answer: (none yet -- answer with the script or --review)
+
+### U-35 | veto | DW-2474, DW-2442 (Epic 23 decision sheet) | 2026-11-14T10:35:22Z
+question: Ruled at Epic 23's decision sheet, both routed to the next cleanup story (21.10): (1) the cubes list, when the caller can see none of a namespace's cubes, will say 'No cube in this namespace is visible to you.' (DW-2474); (2) a message-trace arrow's accessible name will include its visible label, so screen-reader users hear what sighted users read (DW-2442, WCAG 2.5.3).
+options: keep | reverse either (name which)
+recommendation: keep both
+blocks: 21.10 when it runs
 answer: (none yet -- answer with the script or --review)
 
 ## Run reports
@@ -66,5 +117,6 @@ answer: (none yet -- answer with the script or --review)
 - U-25 | veto | Story 20.40 (item copy): Ruled at 20.40's spec gate. (1) New wording: the dialog title 'Copy item'; the banner and card 'The copy is added to this production disabled, with this item's class and settings. A business process that runs in the shared actor pool is copied with a pool size of 1. Enable the copy to run it.'; and the refusal 'This production holds no item of that name to copy.' (2) How secrets are handled: a copy clones every setting server-side, a secret-named one included, as the classic copy does; no value is read, shown or sent. Refusing such a copy would be stricter than the classic portal. -> Owner keeps both: 20.40's three strings as written, and the copy clones every setting server-side, secret-named ones included, as the classic copy does. (by planner, 2026-11-13T00:23:13Z#78; quoting the owner: "Keep both (Recommended)"); resolved by orchestrator, 2026-11-13T00:23:41Z -- veto kept (relayed by the Planner, quoting the owner)
 - U-26 | veto | Story 20.41 (item change of class): Ruled at 20.41's spec gate. (1) Privileges: the class picker's read and the change itself take %Ens_ProductionConfig:WRITE, the classic Change Class dialog's own resource, and the dialog is listed as a classic page so an operator's custom resource on it also gates OcuPilot's change (equal to the classic portal, not looser). (2) Twelve new on-screen strings: 'Change class' (row action and dialog title), the item tab title 'Host classes', its empty sentence and agent version, three suggested prompts, a 'Current' column label, the consequence sentence, and three refusals (no such class, same class, settings changed since review). Full text in the story's spec, Design Notes. -> Owner keeps both: %Ens_ProductionConfig:WRITE for the class picker and the change (the classic Change Class dialog's resource), and 20.41's twelve strings as written. (by planner, 2026-11-13T00:23:13Z#79; quoting the owner: "Keep both (Recommended)"); resolved by orchestrator, 2026-11-13T00:23:41Z -- veto kept (relayed by the Planner, quoting the owner)
 - U-27 | parked | DW-2468 (AD-24, guided-workflow tools): Story 20.36 (Investigate) is done. Its plan also tried to fix DW-2468: a guided workflow's step tools are not in the turn's starting tool set, so the model reaches a step's tool through one tool-search call when that tool is not on the current screen. Code review found that the fix breaks AD-24 (a turn starts with the always-on tools and the screen context's tools only), so it was reverted and the story shipped without it. Fixing it needs AD-24 amended, which is yours (done specs cite AD-24). Proposed wording: '... and the screen context's tools, and in a guided-workflow turn the tools its steps name (AD-66)'. -> (B): keep AD-24 as it is; a guided workflow's off-screen step tools stay reachable through the tool-search call. No amendment, no follow-up story; close DW-2468 as decided-keep. (by planner, 2026-11-13T07:49:55Z#86; quoting the owner: "B: keep it as is"); resolved by orchestrator, 2026-11-13T07:50:28Z -- owner chose B: AD-24 unchanged; DW-2468 closed by-design
+- U-28 | hold | Run 20261020T0940Z-20,23: Held 2026-11-13T09:59Z on the owner's word; feature 5135d0379; Epic 20 local head b8bf20539 (20.25 gates green on 8127b55f, push on resume); Epic 23 b3f01e196 with a hold patch for 23.10 batch 2; no throwaways up -> (no answer); resolved by orchestrator, 2026-11-14T00:21:51Z -- resumed by the owner 2026-11-13T13:22Z
 
-<!-- journal: 88 lines -->
+<!-- journal: 100 lines -->

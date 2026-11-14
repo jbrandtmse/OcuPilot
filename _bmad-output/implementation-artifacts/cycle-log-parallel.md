@@ -1880,3 +1880,4 @@
 2026-11-14T10:35:58Z	Epic 23	decision_sheet_recorded	decided=18 parked=4(U-33) stopped=1(U-34:DW-2518) vetoes=2(U-35:DW-2474,DW-2442) routed_21-10=9 by-design=3 to_epic20_burndown=1(DW-2519) untouched=DW-2394(owner_hold),DW-2431(U-30) by=unattended note=remaining_to_decision_sheet_entries_go_to_the_range-end_ledger_sweep_after_epic20
 2026-11-14T10:35:58Z	Epic 23	epic_retro_skipped	reason=policy(gates.retrospective=skip;owner_2026-10-01)
 2026-11-14T10:35:58Z	Epic 23	epic_merge_started	head=6d474647c feature=feature/OCU-1_ocupilot-mvp mode=fast_forward
+2026-11-14T10:38:04Z	Epic 23	epic_merged_to_feature	repos=. feature_sha=78212f9c2 merge_sha=78212f9c2 head=6d474647c ci=43586187015(pending) submodules= epic_status=done
