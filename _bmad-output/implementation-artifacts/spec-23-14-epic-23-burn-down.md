@@ -2,7 +2,7 @@
 title: 'Story 23.14: Epic 23 burn-down'
 type: 'bugfix'
 created: '2026-11-13'
-status: 'done'
+status: 'in-progress'
 baseline_revision: 'c92cdb4027ffe5af4adf802666504688e92797c2'
 baseline_commit: 'c92cdb4027ffe5af4adf802666504688e92797c2'
 review_loop_iteration: 0
