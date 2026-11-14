@@ -1844,3 +1844,6 @@
 2026-11-14T03:05:05Z	Story 23.13	merged	batches=2-4(story_complete) feature=e9f727fbb mode=fast_forward(staging_own_CI_green_43543858957_attempt2) checks=ledger_entry_check_0(2003),dup_none,sprint_validate_ok upgrade_triggers=none new_keys=none
 2026-11-14T03:05:05Z	ci	timings_refreshed	rule=29 run=43543858957
 2026-11-14T03:05:46Z	Epic 23	runner_reported	flakes_filed=DW-2548(analytics-mdx_AC7),DW-2549(agent-code-save_QA5-7) owner=21-10(holding) reason=23.14_at_burndown_story_max status=23.14_b1_staging_21d6495b(43545992116;DW-2461_flake_rerun),b2_QA orchestrator=accepted
+2026-11-14T03:36:25Z	Epic 23	runner_reported	boundary=23.14_batch1(DW-2236,DW-2526) staging=21d6495b(43545992116_success_attempt2;attempt1_DW-2461_occurrence) code=36621e51,62de6712 ledger=DW-2236,DW-2526_resolved;DW-2547_by-design upgrade_triggers=none
+2026-11-14T03:36:25Z	Story 23.14	merged_to_feature	batch=1 tip=21d6495b merge=c74a4af47 route=code_equal_merge(diff_vs_green_tip=ci-timings_only) checks=ledger_entry_check_0(2004),dups_fixed(DW-2534,2535,2536,2539_identical_union-merge_copies_dropped),sprint_validate_ok upgrade_triggers=none
+2026-11-14T03:36:25Z	ci	timings_refreshed	rule=29 run=43545992116
