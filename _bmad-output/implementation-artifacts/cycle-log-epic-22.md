@@ -13,3 +13,6 @@
 2026-11-14T18:05:01Z	Story 22.1	story_created	spawn_at=2026-11-14T17:52:09Z model=claude-opus-5-5 path=_bmad-output/implementation-artifacts/spec-22-1-the-exclusion-register.md build_status=ready-for-dev epic_context=reused warnings=oversized
 2026-11-14T18:05:01Z	Story 22.1	spec_validated	service_introducing=false integration_ac=declared-none adr_constrained_acs= decision_dependency=none sections_created=none owned_ledger=none addressed=0 declined=0 mutates_shared_runtime=false model=claude-opus-5-5
 2026-11-14T18:05:03Z	Story 22.1	stage_spawned	stage=implement spawn_at=2026-11-14T18:05:03Z model=sonnet agent_name=22-1-the-exclusion-register-implement-1 cycle_iteration=1 story_base=2d9befbc8
+2026-11-14T18:18:34Z	Story 22.1	dev_complete	spawn_at=2026-11-14T18:05:03Z model=claude-sonnet build_sha=b27c9db75 baseline_revision=8774fda9f story_base=8774fda9f review_loop_iteration=0 followup_review_recommended=true deferred=0 files=2 loc_added=397 loc_removed=0 nfr_tripwires=0 adr_violations_surfaced=0 cycle_iteration=1
+2026-11-14T18:18:34Z	Story 22.1	adr_verifications_complete	tool=none acs= result=none_required evidence= mutations=none model=claude-opus-5-5
+2026-11-14T18:18:48Z	Story 22.1	stage_spawned	stage=qa spawn_at=2026-11-14T18:18:48Z model=sonnet agent_name=22-1-the-exclusion-register-qa-1 cycle_iteration=1
