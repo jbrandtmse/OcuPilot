@@ -20,25 +20,115 @@ The register follows two planning documents and a test holds it equal to both:
 `ui/tools/exclusion-register.test.mjs` fails when a P4 row is missing from the register, when a row
 here is no longer P4, when a row sits under a different group than the extract puts it in, or when a
 row is incomplete. Promoting a row in the catalog therefore means removing it here and from the
-extract's Stage 5 in the same change.
+extract's Stage 5 in the same change; `## Picking up a row` below says how a request gets that far.
 
 Checks marked with a date were read on the development instance named slot B (IRIS for Health
 Community 2026.2, build 221U, which has the `HSSYS` namespace), read only, in the `HSCUSTOM`
 namespace, on 2026-11-14. A statement marked `(inference)` was
 not confirmed against the instance or the source.
 
+## Picking up a row
+
+A request names a row by its ID. Three steps follow, in this order. The first always runs; the second
+or the third runs depending on what the first reads. An ID the register does not hold is not excluded
+here, and this procedure does not apply to it.
+
+### Assess the gate first
+
+Find the row under `## The register` and read its `Gate kind`, its `Gate` and its
+`How to tell it has cleared`. The Gate kinds table below says how a request checks each kind. Nothing
+is designed or built until the row's recorded gate reads cleared.
+
+A license, edition or platform check is run again, read only, on the instance the request is for. The
+request names that instance; a tool's default is never the answer, and a request that names none is
+asked for one before anything is checked. Record the value the check returned and the date: in the
+answer when the gate has not cleared, and in the change proposal when it has. A check that fails to
+run has read neither way; the answer says it did not run, and nothing is built. The slot B reading in
+the row is what the register was written from, and says nothing about any other instance.
+
+### When the gate has not cleared
+
+The answer quotes the row's `Gate` and says what its `How to tell it has cleared` check read, on which
+instance and on which date where the check ran. A refused request changes no file: the row stays in the
+register and no repository file records the refusal, because the register already holds the evidence.
+
+### When the gate has cleared
+
+1. **Record the request.** Write a sprint change proposal with `bmad-correct-course` under
+   `_bmad-output/planning-artifacts/`, carrying the check's value and date, and have the owner approve
+   it. It re-tiers the row in the feature catalog,
+   `_bmad-output/planning-artifacts/research/technical-ocupilot-portal-feature-landscape-2026-09-08/feature-catalog.md`,
+   moves it out of Stage 5 in the stage extract,
+   `_bmad-output/planning-artifacts/prds/prd-OcuPilot-2026-09-08/extract-stages.md`, and adds the story
+   that builds it. The same change removes the row from this register.
+2. **Find the area that owns it.** The eleven area keys are in `src/OcuPilot/Screen/Area.cls`. A slice
+   lives in the area's folder under `src/OcuPilot/Area/`, where the area has one (its name shortens the
+   key: `OsMgmt` for `os-management`), and in `ui/src/app/areas/<area>/`, named by the key. No file
+   maps a catalog prefix to an area; the catalog's section headings are the nearest guide. If no area
+   owns the row, amend
+   `_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md`
+   first (FR-80 and the one-slice-per-area rule govern a pick-up; the spine has no decision for Stage 6).
+3. **Declare one descriptor per screen.** Each is a subclass of
+   `src/OcuPilot/Screen/Descriptor/Base.cls`, validated by `src/OcuPilot/Screen/Registry.cls` and
+   mirrored to the client by `ui/tools/screen-mirror.mjs`, which writes
+   `ui/src/app/core/screens.generated.ts`. It declares the screen's privilege set (AD-8) and the
+   classic page it replaces, or that it has none; the set is the union of the backing API's
+   requirement and any custom resource on that page (AD-5, AD-44). `ui/tools/classic-links.mjs` checks
+   its link-out.
+4. **Derive the read tool.** The `<toolIdentifier>.read` tool comes from the descriptor through
+   `src/OcuPilot/Screen/Tool/Registry.cls` and is answered by `src/OcuPilot/Screen/Tool/Read.cls` over
+   the one executor, `src/OcuPilot/Screen/Read.cls` (AD-36).
+5. **Confirm every write.** Each write tool follows `src/OcuPilot/Screen/Tool/Write.cls` and declares
+   the port it reaches its target through (AD-52). Its field list is derived, never transcribed:
+   `ui/tools/field-lists.mjs` joins the derived lists with the entries authored once per tool in
+   `src/OcuPilot/Screen/Tool/Classification.cls` and writes
+   `src/OcuPilot/Screen/Tool/ToolFields.cls` (AD-3). The write goes through a proposal minted by
+   `src/OcuPilot/Kernel/Proposal/Mint.cls` and confirmed by `src/OcuPilot/Kernel/Proposal/Confirm.cls`,
+   with its audit marker, and is one operation with the screen's own action (AD-6, AD-15, AD-53). An
+   action that must never be reachable, from the agent or from the screen, joins AD-10's prohibited
+   set: amend AD-10 in the spine, then declare it in `src/OcuPilot/Kernel/Proposal/Prohibited.cls`.
+   Every key a write tool yields gets a line in `src/OcuPilot/Kernel/Governance/Baseline.cls` (AD-22);
+   this register leaves each line's value to the pick-up story.
+6. **Reach outside through one port.** The ports are the classes in `src/OcuPilot/Port/`. The admin-v2
+   rows (OS-31, OS-32, SA-50) go through the admin port, `src/OcuPilot/Port/AdminPort.cls` (AD-27).
+   Interoperability rows go through `src/OcuPilot/Port/InteropPort.cls` (AD-62) and Analytics rows
+   through `src/OcuPilot/Port/AnalyticsPort.cls` (AD-65). Any other row uses the port its system
+   already has; a system with no port needs a new port, spine first, with its own authorization gate
+   (AD-29).
+7. **A gate the descriptor cannot declare.** `appliesWhen` is declared per area in
+   `src/OcuPilot/Screen/Area.cls`, never per screen. A license, edition, platform or installed-package
+   condition on one screen is therefore a spine amendment first.
+8. **New strings.** Add them to
+   `_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md` before any product
+   string exists.
+9. **Rosters.** These tests already hold every screen to this contract, and their derivations need no
+   change: `src/OcuPilot/Test/SurfaceCoverage.cls`, `src/OcuPilot/Test/EndpointCoverage.cls`,
+   `src/OcuPilot/Test/SaveHoldCoverage.cls`, `src/OcuPilot/Test/GovernanceBaseline.cls` and
+   `ui/tools/navigation.test.mjs`. The four classes redden on each new screen, write tool, route or
+   write key until the pick-up story adds its row (a pinning method, an endpoint probe, a Save hold or
+   exemption, a baseline line); the row is added, never the check removed.
+
+The worked example is License servers (Story 18.6): `src/OcuPilot/Screen/Descriptor/LicenseServerList.cls`,
+`src/OcuPilot/Screen/Descriptor/LicenseServerForm.cls`, `src/OcuPilot/Area/OsMgmt/LicenseServerSave.cls`
+and the write tools `src/OcuPilot/Screen/Tool/LicenseServerCreate.cls`,
+`src/OcuPilot/Screen/Tool/LicenseServerUpdate.cls` and `src/OcuPilot/Screen/Tool/LicenseServerDelete.cls`,
+all reaching the instance through `src/OcuPilot/Port/AdminPort.cls`.
+
+Acceptance of a built row is that contract plus the row's own backing route or class. Anything finer
+is the pick-up story's to author.
+
 ## Gate kinds
 
-| Kind | What clears it |
-| --- | --- |
-| `license` | A license the instance holds. A runnable check says whether it does. |
-| `edition` | The product edition or add-on the vendor tests for. A runnable check says whether it is present. |
-| `platform` | The operating system the vendor tests for. A runnable check says which one the instance runs on. |
-| `deprecation` | An owner decision to support a feature the vendor has deprecated. |
-| `dependency` | Something outside OcuPilot that does not exist yet. |
-| `vendor-page` | The vendor's page or class is live on a menu of a supported release. |
-| `not-applicable` | Only an amendment to the architecture makes the row apply. |
-| `demand` | Nothing beyond a recorded request that names the row. |
+| Kind | What clears it | How a request checks it |
+| --- | --- | --- |
+| `license` | A license the instance holds. A runnable check says whether it does. | Run the row's check, read only, on the instance the request is for, and record what it returned and the date. |
+| `edition` | The product edition or add-on the vendor tests for. A runnable check says whether it is present. | Run the row's check, read only, on the instance the request is for, and record what it returned and the date. |
+| `platform` | The operating system the vendor tests for. A runnable check says which one the instance runs on. | Run the row's check, read only, on the instance the request is for, and record which system it reported and the date. |
+| `deprecation` | An owner decision to support a feature the vendor has deprecated. | Ask the owner; the gate clears only on a recorded owner decision that names the deprecated feature. |
+| `dependency` | Something outside OcuPilot that does not exist yet. | Look for the missing thing and cite where it now exists; if it does not, the gate has not cleared. |
+| `vendor-page` | The vendor's page or class is live on a menu of a supported release. | Open the supported release's menu or class list and cite the page or class where it now appears. |
+| `not-applicable` | Only an amendment to the architecture makes the row apply. | Look for an approved amendment to the architecture spine that makes the row apply; without one it has not cleared. |
+| `demand` | Nothing beyond a recorded request that names the row. | Confirm the request names the row's ID; no instance check applies. |
 
 ## The register
 

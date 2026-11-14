@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
@@ -14,6 +14,11 @@ import { dirname, join } from 'node:path';
 // Both sides of every equality are read from the documents; no row-set ID or count is typed here. Nothing
 // calls an instance, so the test needs only the checkout. A document that parses to nothing fails
 // naming itself, never as a pass over an empty set.
+//
+// It also holds the register's `## Picking up a row` procedure: the section sits before `## Gate kinds`,
+// its three steps come in order, the assess and refuse steps quote the register's own column names
+// (taken from REGISTER_COLUMNS), every gate kind carries a check, every repository path the section
+// names exists, and each numbered item of the build step names what BUILD_ITEMS gives it.
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const PLANNING = join(REPO_ROOT, '_bmad-output', 'planning-artifacts');
@@ -32,6 +37,43 @@ const EM_DASH = '\u2014';
 const GROUP_LINE_RE = new RegExp(`^\\*\\*(.+)\\*\\* ${EM_DASH} (\\d+) rows?$`);
 const ISO_DATE_RE = /\b\d{4}-\d{2}-\d{2}\b/;
 const REGISTER_COLUMNS = ['ID', 'Feature', 'Reason', 'Gate kind', 'Gate', 'How to tell it has cleared'];
+const PICK_UP_HEADING = '## Picking up a row';
+const PICK_UP_STEPS = ['Assess the gate first', 'When the gate has not cleared', 'When the gate has cleared'];
+const KIND_CHECK_COLUMN = 'How a request checks it';
+const INSTANCE_PHRASE = 'the instance the request is for';
+const REPO_PATH_RE = /^(src|ui|docs|scripts|_bmad-output)\//;
+
+// What each numbered item of the build step must name, in item order: the screen contract a built
+// row is held to. A token holding '/' is a repository path and must appear backticked.
+const BUILD_ITEMS = [
+  ['bmad-correct-course', 'feature-catalog.md', 'extract-stages.md', 'removes the row from this register'],
+  ['src/OcuPilot/Screen/Area.cls', 'src/OcuPilot/Area/', 'ui/src/app/areas/<area>/', 'ARCHITECTURE-SPINE.md'],
+  ['src/OcuPilot/Screen/Descriptor/Base.cls', 'src/OcuPilot/Screen/Registry.cls', 'ui/tools/screen-mirror.mjs', 'AD-8', 'AD-44'],
+  ['src/OcuPilot/Screen/Tool/Registry.cls', 'src/OcuPilot/Screen/Tool/Read.cls', 'src/OcuPilot/Screen/Read.cls'],
+  [
+    'src/OcuPilot/Screen/Tool/Write.cls',
+    'ui/tools/field-lists.mjs',
+    'src/OcuPilot/Screen/Tool/Classification.cls',
+    'src/OcuPilot/Screen/Tool/ToolFields.cls',
+    'src/OcuPilot/Kernel/Proposal/Mint.cls',
+    'src/OcuPilot/Kernel/Proposal/Confirm.cls',
+    'src/OcuPilot/Kernel/Proposal/Prohibited.cls',
+    'amend AD-10',
+    'Every key a write tool yields',
+    'src/OcuPilot/Kernel/Governance/Baseline.cls'
+  ],
+  ['src/OcuPilot/Port/AdminPort.cls', 'src/OcuPilot/Port/InteropPort.cls', 'src/OcuPilot/Port/AnalyticsPort.cls', 'AD-29'],
+  ['appliesWhen', 'src/OcuPilot/Screen/Area.cls', 'spine amendment first'],
+  ['_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md'],
+  [
+    'src/OcuPilot/Test/SurfaceCoverage.cls',
+    'src/OcuPilot/Test/EndpointCoverage.cls',
+    'src/OcuPilot/Test/SaveHoldCoverage.cls',
+    'src/OcuPilot/Test/GovernanceBaseline.cls',
+    'ui/tools/navigation.test.mjs',
+    'never the check removed'
+  ]
+];
 
 /** The trimmed cells of one Markdown table line; `\|` stays inside its cell. */
 function cellsOf(line) {
@@ -106,7 +148,11 @@ function parseEpicsGroupWording() {
   throw new Error(`${EPICS_PATH}: Story 22.1 no longer says '${marker}'`);
 }
 
-/** The register's gate-kind vocabulary and its groups as `{ heading, rows }`, in document order. */
+/**
+ * The register's gate-kind vocabulary, the Gate kinds table as `{ kind, check }` rows (the check column
+ * read by the name its header gives it, `''` when the table has none), and its groups as
+ * `{ heading, rows }`, in document order.
+ */
 function parseRegister() {
   const lines = linesOf(REGISTER_PATH);
   const kindsAt = lines.indexOf('## Gate kinds');
@@ -115,10 +161,15 @@ function parseRegister() {
   assert.ok(registerAt > kindsAt, `${REGISTER_PATH}: no '## The register' heading after '## Gate kinds'`);
 
   const kinds = new Set();
+  const kindRows = [];
+  let checkAt = -1;
   for (const line of lines.slice(kindsAt + 1, registerAt)) {
-    const cell = line.startsWith('|') ? cellsOf(line)[0] : '';
-    const match = /^`([a-z-]+)`$/.exec(cell);
-    if (match !== null) kinds.add(match[1]);
+    const cells = line.startsWith('|') ? cellsOf(line) : [''];
+    if (cells[0] === 'Kind') checkAt = cells.indexOf(KIND_CHECK_COLUMN);
+    const match = /^`([a-z-]+)`$/.exec(cells[0]);
+    if (match === null) continue;
+    kinds.add(match[1]);
+    kindRows.push({ kind: match[1], check: checkAt >= 0 && cells[checkAt] !== undefined ? cells[checkAt] : '' });
   }
 
   const groups = [];
@@ -135,7 +186,27 @@ function parseRegister() {
       groups[groups.length - 1].rows.push({ id, feature, reason, kind: kind.replace(/^`|`$/g, ''), gate, tell });
     }
   }
-  return { kinds, groups };
+  return { kinds, kindRows, checkAt, groups };
+}
+
+/**
+ * The `## Picking up a row` section: its heading position, its `###` subsections as `{ heading, body }` in
+ * document order, and its whole text. `where` is the line index of the heading, -1 when it is absent.
+ */
+function parsePickUp() {
+  const lines = linesOf(REGISTER_PATH);
+  const where = lines.indexOf(PICK_UP_HEADING);
+  const kindsAt = lines.indexOf('## Gate kinds');
+  const steps = [];
+  let text = '';
+  if (where >= 0) {
+    for (let i = where + 1; i < lines.length && !lines[i].startsWith('## '); i += 1) {
+      text += `${lines[i]}\n`;
+      if (lines[i].startsWith('### ')) steps.push({ heading: lines[i].slice(4).trim(), body: '' });
+      else if (steps.length > 0) steps[steps.length - 1].body += `${lines[i]}\n`;
+    }
+  }
+  return { where, kindsAt, steps, text };
 }
 
 function sorted(values) {
@@ -280,4 +351,93 @@ test('AN-23 says the three analytics links ship and that rebuilding stays exclud
   assert.match(row.reason, /Architect, Analyzer and User Portal links ship/, `${REGISTER_PATH}: AN-23 does not say the three links ship`);
   assert.match(row.reason, /Story 20\.32/, `${REGISTER_PATH}: AN-23 does not name the story that delivered the links`);
   assert.match(row.reason, /Rebuilding them stays excluded/, `${REGISTER_PATH}: AN-23 does not say rebuilding stays excluded`);
+});
+
+test('the procedure section sits before the Gate kinds table, with its three steps in order', () => {
+  const pickUp = parsePickUp();
+  assert.ok(pickUp.where >= 0, `${REGISTER_PATH}: no '${PICK_UP_HEADING}' heading`);
+  assert.ok(pickUp.kindsAt >= 0, `${REGISTER_PATH}: no '## Gate kinds' heading`);
+  assert.ok(pickUp.where < pickUp.kindsAt, `${REGISTER_PATH}: '${PICK_UP_HEADING}' must come before '## Gate kinds'`);
+  assert.deepEqual(
+    pickUp.steps.map((step) => step.heading),
+    PICK_UP_STEPS,
+    `${REGISTER_PATH}: '${PICK_UP_HEADING}' must hold these steps in this order: ${PICK_UP_STEPS.join(' > ')}`
+  );
+});
+
+function stepBody(name) {
+  const step = parsePickUp().steps.find((candidate) => candidate.heading === name);
+  assert.ok(step, `${REGISTER_PATH}: no '### ${name}' step`);
+  return step.body;
+}
+
+test('the assess step and the refuse step quote the register columns they depend on, and assess says nothing is built before the gate reads cleared', () => {
+  const problems = [];
+  const wanted = [
+    [PICK_UP_STEPS[0], REGISTER_COLUMNS.slice(3, 6)],
+    [PICK_UP_STEPS[1], REGISTER_COLUMNS.slice(4, 6)]
+  ];
+  for (const [name, columns] of wanted) {
+    const body = stepBody(name);
+    for (const column of columns) {
+      if (!body.includes(`\`${column}\``)) problems.push(`step '${name}' does not name the column \`${column}\``);
+    }
+  }
+  assert.deepEqual(problems, [], `${REGISTER_PATH}: ${problems.join('; ')}`);
+  assert.match(stepBody(PICK_UP_STEPS[0]), /Nothing\s+is\s+designed\s+or\s+built/, `${REGISTER_PATH}: the assess step does not say nothing is built before the gate reads cleared`);
+  assert.match(stepBody(PICK_UP_STEPS[0]), /the\s+instance\s+the\s+request\s+is\s+for/, `${REGISTER_PATH}: the assess step does not say the check runs on the instance the request is for`);
+  assert.match(stepBody(PICK_UP_STEPS[0]), /Record\s+the\s+value[^.]*\s+and\s+the\s+date/, `${REGISTER_PATH}: the assess step does not say to record the value and the date`);
+  assert.match(stepBody(PICK_UP_STEPS[0]), /Gate kinds/, `${REGISTER_PATH}: the assess step does not point at the Gate kinds table`);
+  assert.match(stepBody(PICK_UP_STEPS[0]), /a\s+tool's\s+default\s+is\s+never\s+the\s+answer/, `${REGISTER_PATH}: the assess step does not refuse a tool's default instance`);
+  assert.match(stepBody(PICK_UP_STEPS[0]), /says\s+nothing\s+about\s+any\s+other\s+instance/, `${REGISTER_PATH}: the assess step does not say the slot B reading answers for no other instance`);
+  assert.match(stepBody(PICK_UP_STEPS[0]), /A\s+check\s+that\s+fails\s+to\s+run\s+has\s+read\s+neither\s+way/, `${REGISTER_PATH}: the assess step reads a check that did not run as an answer`);
+  assert.match(stepBody(PICK_UP_STEPS[1]), /changes\s+no\s+file/, `${REGISTER_PATH}: the refuse step does not say a refused request changes no file`);
+});
+
+test('every gate kind carries a check, and a license, edition or platform check is read on the requested instance', () => {
+  const { kindRows: kinds, checkAt } = parseRegister();
+  assert.ok(checkAt >= 0, `${REGISTER_PATH}: the Gate kinds table has no '${KIND_CHECK_COLUMN}' column`);
+  assert.ok(kinds.length > 0, `${REGISTER_PATH}: the Gate kinds table yields no kinds`);
+  const instanceKinds = ['license', 'edition', 'platform'];
+  const absent = instanceKinds.filter((kind) => !kinds.some((row) => row.kind === kind));
+  assert.deepEqual(absent, [], `${REGISTER_PATH}: the Gate kinds table has no row for: ${absent.join(', ')}`);
+  const problems = [];
+  for (const { kind, check } of kinds) {
+    if (check === '') problems.push(`${kind}: empty '${KIND_CHECK_COLUMN}' cell`);
+    else if (instanceKinds.includes(kind) && !check.includes(INSTANCE_PHRASE)) {
+      problems.push(`${kind}: does not say the check runs on ${INSTANCE_PHRASE}`);
+    }
+  }
+  assert.deepEqual(problems, [], `${REGISTER_PATH}: ${problems.join('; ')}`);
+});
+
+test('every repository path the procedure names exists', () => {
+  const { text, where } = parsePickUp();
+  assert.ok(where >= 0, `${REGISTER_PATH}: no '${PICK_UP_HEADING}' heading`);
+  const paths = [...text.matchAll(/`([^`\s]+)`/g)].map((match) => match[1]).filter((token) => REPO_PATH_RE.test(token));
+  assert.ok(paths.length > 0, `${REGISTER_PATH}: '${PICK_UP_HEADING}' names no repository path`);
+  const missing = [];
+  for (const path of new Set(paths)) {
+    // A `<placeholder>` segment stands for a name chosen later, so its parent directory is what must exist.
+    const concrete = path.includes('<') ? path.slice(0, path.indexOf('<')) : path;
+    if (!existsSync(join(REPO_ROOT, concrete))) missing.push(path);
+  }
+  assert.deepEqual(missing, [], `${REGISTER_PATH}: paths that do not exist: ${missing.join(', ')}`);
+});
+
+test('each numbered item of the build step names its part of the screen contract', () => {
+  const items = [];
+  for (const line of stepBody(PICK_UP_STEPS[2]).split('\n')) {
+    if (/^\d+\. \*\*/.test(line)) items.push(line);
+    else if (items.length > 0 && /^\s+\S/.test(line)) items[items.length - 1] += ` ${line.trim()}`;
+  }
+  assert.equal(items.length, BUILD_ITEMS.length, `${REGISTER_PATH}: step '${PICK_UP_STEPS[2]}' has ${items.length} numbered items, BUILD_ITEMS ${BUILD_ITEMS.length}`);
+  const problems = [];
+  BUILD_ITEMS.forEach((tokens, index) => {
+    for (const token of tokens) {
+      const wanted = token.includes('/') ? `\`${token}\`` : token;
+      if (!items[index].includes(wanted)) problems.push(`item ${index + 1} does not name ${wanted}`);
+    }
+  });
+  assert.deepEqual(problems, [], `${REGISTER_PATH}: step '${PICK_UP_STEPS[2]}': ${problems.join('; ')}`);
 });

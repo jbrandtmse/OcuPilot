@@ -12824,3 +12824,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: cycle-log-parallel.md (dispatch gate 2026-11-14) | severity: low | fix-risk: low | footprint: in-epic
 - evidence: run 43645120786 attempt 1 (head 76ccaa892) gates node 26.0.0 red on that one test; node 22/24 legs green; attempt 2 green
 - 2026-11-14T22:42:30Z status=routed owner=21-10-the-remaining-leaves-across-the-six-areas by=lead note=timing-sensitive pin of DW-2123's bind budget; routed with the other CI flakes to 21.10
+### DW-2558: PRD FR-80 says a later stage's destructive action is absent from the governance baseline and defaults to disabled; AD-22 as amended by the owner 2026-09-26 and GovernanceBaseline.cls require every new write key to join the baseline in its own story
+- source: spec-22-2-picking-up-a-row-when-its-gate-clears.md | severity: med | fix-risk: low | footprint: _bmad-output/planning-artifacts/prds/prd-OcuPilot-2026-09-08/prd.md
+- evidence: prd.md FR-80 bullet ('Every destructive action a later stage adds is absent from the governance baseline'); spine AD-22 Rule [AMENDED 2026-09-26, owner]
+- 2026-11-14T19:05:23Z status=routed owner=burndown by=spec_gate note=the PRD sentence is stale against an owner-amended AD; outside Epic 22's footprint; recommended: correct FR-80's bullet to point at AD-22's baseline rule
