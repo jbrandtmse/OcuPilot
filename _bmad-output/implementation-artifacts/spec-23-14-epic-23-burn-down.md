@@ -2,8 +2,8 @@
 title: 'Story 23.14: Epic 23 burn-down'
 type: 'bugfix'
 created: '2026-11-13'
-status: 'in-progress'
-baseline_revision: '05edbb883865863b211b2ca2898bb5c2e7c98048'
+status: 'done'
+baseline_revision: 'a99b19ff0e04e3052282a2c8e0e8116fc82ce776'
 baseline_commit: '05edbb883865863b211b2ca2898bb5c2e7c98048'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -341,7 +341,7 @@ Job logs for DW-2461 and DW-2111 are saved in `scratchpad/e23u/23-14/plan/browse
 
 ### Batch 6: Journal records
 
-- [ ] **DW-2543.**
+- [x] **DW-2543.**
   - `ui/src/app/core/screen-store.ts`: `setDirection(direction, remember = true)`. It always sets the direction and notifies, and calls `rememberView()` only when `remember` is true.
   - `ui/src/app/areas/os-management/journal-records.page.ts`: `followOrder()` passes `view.store.remembered()`.
   - The `command-bar.ts` caller is unchanged.
@@ -435,6 +435,14 @@ Rejected (batch 2):
   - `[low]` `[patch]` `CONNECTION_LOSS` missed puppeteer's `Navigating frame was detached`, and the test pinned the miss — the pattern is `frame (was |got )?detached` (puppeteer-core carries all three forms), the test asserts all five messages match and a refused connection does not; mutation (pattern without `was`) red.
   - `[low]` `[reject]` Nothing under `ui/tools` exercises the DW-2461 and DW-2397 spec edits — the spec records no deterministic red for DW-2461 and the browser specs are the tier; DW-2397's red was observed (partial streamed text).
   - `[false]` `[reject]` The Rule 19 mutations are only in test headers, not in the diff — the spec's Verification has a Batch 2 mutation line for each item, in this diff.
+
+### 2026-11-13 — Review pass (batch 6)
+
+- verdicts: 3 findings — high 0, medium 0, low 2, false 1, maybe-false 0
+- findings:
+  - `[low]` `[reject]` A cold open with no stored view on the instance is not pinned (verification-gap; the intent auditor's same point, plus a failed account read) — the new page case seeds a view only. With nothing restored the subscriber skips `followOrder`, so `desc` is held in memory and not sent; the matrix constrains only the remembered-view case, so a test would pin an undecided choice, and the direction is re-derived from the arrival's order on each open.
+  - `[false]` `[reject]` The no-send rule is enforced by the caller through a flag, not inside the store (intent auditor, reading B) — Design Notes "Decided in-stage" 4 chose the additive parameter on purpose: store-wide deferral would silence the table harness's width persistence.
+  - `[low]` `[reject]` A command-bar direction choice before adoption still sends, and the refresh-action path is untested (intent auditor) — the matrix row says "after adoption"; a person clicking before the account read answers is the pre-existing case, and the refresh path passes `remembered()` through the same call the new case pins.
 
 ## Design Notes
 
@@ -612,20 +620,22 @@ Batch 2:
 - (QA) tests: `ui/tools/structural-walk.test.mjs` +2 cases for DW-2301's `settle` reason, which ran the in-page check only through a mocked answer. The busy-element and fonts reasons run the real in-page function against a stubbed `document`, and a request URL that does not parse is named as given. mutation: the in-page check answering `busy === null` -> the busy-element case red (`busy element section#keys` expected); `pathOf` answering '' on a parse failure -> the unparsable-URL case red. Both reverted (`cmp` identical, `git status` unchanged). `structural-walk` + `protocol-retry` 46 pass, 0 fail. Re-run on `ocupilot-ci`, one spec per call: `encryption-startup` 3, `error-log` 5, `turn` 10, all green.
 - (review) mutation: DW-2301 -- the no-relaunch retrier given the connection-loss predicate: the no-relaunch case red; the report without its slowest-visits line: the report case red; `pending` kept after a ready check: the new cleared-reason case red; the `detached frame` form dropped: the `isConnectionLoss` case red. DW-2111 -- `retryOnce` retrying a second accepted error: the predicate case red (and three default-predicate cases); `openScreen` rethrowing a different error, and the relaunch answering `null`: the source-text case red. DW-2397 re-run with the old wait (bundle rebuilt and redeployed): red with the same actual, which is the partial reply's linked URL plus its host caption. All reverted (`git diff` clean against the patched files). `structural-walk` + `protocol-retry` 47 pass, 0 fail; on `ocupilot-ci`, `encryption-startup` 3, `a11y-structural-invariants` 13, 0 failed, 0 unsettled, the slowest visit labeled `/`.
 
+Batch 6:
+
+- mutation: DW-2543 -- `followOrder` passing `true` (the old behavior): the new `journal-records.page.spec.ts` case red on "no view POST before the account answers" (`expected [ { ... } ] to deeply equal []`). The store ignoring `remember` (`rememberView()` always called): the same case red, and the `screen-store.test.mjs` case "setDirection with remember false ..." red. `setDirection` not notifying: the store case red. The subscriber's `followOrder` dropped: the page case red, and the existing "Oldest first draws ascending when the remembered descending view is adopted" case red. Each reverted (`git diff` byte-identical to before the mutation). Final: page spec 23 pass; `screen-store.test.mjs` 29 pass; `npm run test:components` 3382 pass; `npm run test:tools` 2233 pass; `npm run build` passes. No browser run in this pass (the `journal-records` browser spec is the lead's fresh check).
+
 ## Auto Run Result
 
 Status: done
 Blocking condition: none
 
-Batch 1 (DW-2236, DW-2526) closed at its own commit `62de6712b`. This pass: batch 2 (DW-2461, DW-2397, DW-2111, DW-2301) only.
+Batches 1 and 2 closed at their own commits (`62de6712b`, `07b8d59ea`). This pass: batch 6 (DW-2543) only.
 
 - **Changed (all under `ui/`):**
-  - `browser/encryption-startup.browser-spec.mjs`: C1 waits for the keys page to settle and for its keys state before the click, then the startup path, then the None radio or an alert, and asserts the radio. The alert is scoped to `section.ocu-form-page` because the shell holds an empty status region with that role.
-  - `browser/turn.browser-spec.mjs`: the markup reply streams in slices; the wait is `waitForReplies` plus no `.ocu-panel-message-streamed`.
-  - `browser/error-log.browser-spec.mjs`: both sign-in helpers go through `relaunchOnce` (context closed on error, the relaunch reassigns `browser`) and `gotoNamingInflight`.
-  - `browser/structural-walk.mjs`, `browser/protocol-retry.mjs`: `settle` answers `{settled, ms, why}`; the walk records each visit; the report prints the five slowest and every unsettled visit with its reason; `isConnectionLoss`; `retryOnce` takes a predicate; `passRetrier` retries a lost connection only with a relaunch. Constants unchanged.
-  - `browser/a11y-structural-invariants.browser-spec.mjs`: asserts the visits were recorded.
-  - `tools/structural-walk.test.mjs`, `tools/protocol-retry.test.mjs`: pins for the above.
-- **Review:** 8 findings: 5 patched (low), 2 low rejected and 1 false rejected (reasons in the log); none deferred. Follow-up review recommended: false (patched high 0, medium 0).
-- **Verified on `ocupilot-ci`, one spec per call, bundle rebuilt and redeployed:** `encryption-startup` 3, `turn` 10, `error-log` 5, `a11y-structural-invariants` 13 (final run after the patches), 0 failed; the walk report prints the slowest visits and 0 unsettled. `npm run test:tools` 2229 pass, 0 fail; `npm run build` passes; `uv run scripts/check-objectscript.py` 0 problems.
-- **Residual:** DW-2461 and DW-2111 have no real-browser red (layout timing; a wedged browser), as the items say; their mutation lines name the pins that stand in.
+  - `src/app/core/screen-store.ts`: `setDirection(direction, remember = true)` sets the direction and notifies, and sends the view only when `remember` is true.
+  - `src/app/areas/os-management/journal-records.page.ts`: `followOrder()` passes `view.store.remembered()`, so an arrival before the account read sets the direction without replacing the remembered view. `command-bar.ts` is unchanged.
+  - `src/app/areas/os-management/journal-records.page.spec.ts`: a cold open with Newest first before the account answers sends no view, and the remembered filter, row limit and width survive adoption with direction `desc`.
+  - `tools/screen-store.test.mjs`: `setDirection('desc', false)` changes the direction, notifies and sends nothing.
+- **Review:** 3 findings: 0 patched, 0 deferred, 3 rejected (2 low, 1 false; reasons in the log). Follow-up review recommended: false (patched high 0, medium 0).
+- **Verified:** page spec 23 pass; `screen-store.test.mjs` 29 pass; `npm run test:components` 3382 pass; `npm run test:tools` 2233 pass, 0 fail; `npm run build` passes; `uv run scripts/check-objectscript.py` 0 problems; `bash scripts/lint-docs.sh` 0 issues. The `journal-records` browser spec: lead, fresh check (not run here; `ocupilot-ci` untouched).
+- **Residual:** the page case's red-first run against the original code was stood in for by the `followOrder`-passes-`true` mutation. A cold open with no stored view leaves `desc` in memory and unsent (not pinned; the matrix constrains only the remembered-view case).

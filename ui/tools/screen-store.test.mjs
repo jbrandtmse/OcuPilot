@@ -220,6 +220,27 @@ test('a sort set on its own, and a direction set on its own, each survive a stor
   assert.equal(afterDirection.sort(), '', 'while the field is still the declared default');
 });
 
+// A caller that sets the direction before the remembered view is adopted passes `remember` false, so
+// the instance's stored view is not replaced by this store's defaults.
+//
+// Mutation (Rule 19): make `setDirection` ignore `remember` -> the posted-nothing assertion goes red;
+// stop it notifying -> the notified assertion goes red.
+test('setDirection with remember false changes the direction, notifies, and sends no view', async () => {
+  const held = await account();
+  const store = new ScreenStores({ account: held }).for(ONE, []);
+  let notified = 0;
+  store.subscribe(() => (notified += 1));
+  const before = held.calls.length;
+  store.setDirection('desc', false);
+  await flush();
+  assert.equal(store.direction(), 'desc');
+  assert.equal(notified, 1, 'the table is told');
+  assert.equal(held.calls.length, before, 'and no request was sent');
+  store.setDirection('', true);
+  await flush();
+  assert.equal(held.calls.length, before + 1, 'the default still sends the view');
+});
+
 test('DW-18 scope switch: clearAnswers drops rows, selection, active, changed and scroll, and keeps the choices', () => {
   const store = new ScreenStores({ account: stubAccountPreferences() }).for(ONE, []);
   store.applyTick([{ Name: 'A' }], true, 'taskManagerSuspendedBanner', new Date(0));

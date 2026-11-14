@@ -16,7 +16,7 @@ import { assembleScreenContext } from '../../core/screen-context';
 import { ScreenStores } from '../../core/screen-store';
 import { SCREENS, type ScreenDeclaration } from '../../core/screens.generated';
 import { STRINGS } from '../../core/strings';
-import { type StubbedAccountPreferences, stubAccountPreferences } from '../../testing/account-preferences';
+import { type StubbedAccountPreferences, lastRemembered, stubAccountPreferences } from '../../testing/account-preferences';
 import { JournalRecordsPage, nextOffset } from './journal-records.page';
 
 /**
@@ -339,6 +339,33 @@ describe('Journal records', () => {
     arrivals.set({ route: RECORDS.route, criterion: '', criteria: { file: NEWEST } });
     await settle(fixture);
     expect(store.direction()).toBe('');
+  });
+
+  it('a cold open with Newest first before the account answers sends no view, and the remembered view is kept once it is adopted', async () => {
+    // Mutations (Rule 19), each applied and observed red here: `followOrder` passes `true` to
+    // `setDirection`; the store ignores `remember`; drop the subscriber's `followOrder`.
+    const view = JSON.stringify({ sort: '', direction: '', filter: '^OcuProbe', maxRows: 500, widths: { Address: 180 } });
+    const account = stubAccountPreferences({ views: { [RECORDS.route]: view } });
+    const arrivals = new ScreenArrivals();
+    arrivals.set({ route: RECORDS.route, criterion: '', criteria: { file: FILE, order: '1' } });
+    const { store, fixture } = await mount({ arrivals, account });
+    expect(store.remembered()).toBe(false);
+    expect(store.direction()).toBe('desc');
+    expect(account.calls.filter((call) => call.method === 'POST')).toEqual([]);
+    await account.load();
+    await settle(fixture);
+    expect(store.remembered()).toBe(true);
+    expect(store.filter()).toBe('^OcuProbe');
+    expect(store.maxRows()).toBe(500);
+    expect(store.columnWidths().get('Address')).toBe(180);
+    expect(store.direction()).toBe('desc');
+    expect(JSON.parse(lastRemembered(account.calls, RECORDS.route) ?? '{}')).toEqual({
+      sort: '',
+      direction: 'desc',
+      filter: '^OcuProbe',
+      maxRows: 500,
+      widths: { Address: 180 },
+    });
   });
 
   it('Oldest first draws ascending when the remembered descending view is adopted after the cold open', async () => {
