@@ -1277,3 +1277,5 @@ spawn_at=2026-10-06T16:01:05Z	Story 23.4	cr_complete	batch=b 2026-10-06T20:34:58
 2026-11-14T05:56:28Z	Story 23.14	ledger_adjudicated	batch=3 owned=2(DW-2123,DW-2501) resolved=2 reowned=0 terminal=0
 2026-11-14T05:58:22Z	Story 23.14	fresh_check	batch=3 env=recipe(down+up_ocupilot-ci_with_the_new_ci-throwaway.sh,STARTPATH-OK,ports=127.0.0.1:52776,127.0.0.1:1975,LoadDir_0,bundle_deployed) tests=TeardownGuard;journal-records.browser-spec(forward,reverse)_reached_localhost:52776 result=pass order=forward,reverse record=/Users/jbrandt/.ocupilot-throwaways/e23-fresh-23-14-b3
 2026-11-14T05:58:22Z	Story 23.14	smoke_complete	batch=3 method=cli+browser result=pass iterations=1 defects_caught=0 evidence=smoke.sh_ocupilot-ci_50/50 model=claude-opus-5-5
+2026-11-14T05:59:51Z	Story 23.14	rework_opened	cycle_iteration=2 iteration=batch_5 trigger=next_batch(re-dispatch_after_the_ToolEmit_ruling) items=DW-2253 scope_baseline=e277d2072 spec_status=done->in-progress
+2026-11-14T05:59:51Z	Story 23.14	stage_spawned	stage=implement batch=5 spawn_at=2026-11-14T05:59:51Z model=sonnet agent_name=23-14-epic-23-burn-down-implement-5b cycle_iteration=2 items=DW-2253
