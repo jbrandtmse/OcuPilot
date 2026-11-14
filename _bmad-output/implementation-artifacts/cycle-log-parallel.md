@@ -1893,3 +1893,16 @@
 2026-11-14T13:09:13Z	Epic 20	ci_green_verified	runs=43595329695 head=bd3bf0e5a result=success by=orchestrator
 2026-11-14T13:09:13Z	orchestrator	upgrade_triggers_checked	range=release/1.0.14(723a3662)..bd3bf0e5a kernel_state=none persistent=none install=Roster.cls_version_string_only module_xml=version_string_only compose=none baseline_keys=10_new(read_from_code_at_runtime;Seed_defaults_no_stored_row) upgrade_check=not_needed
 2026-11-14T13:09:13Z	Epic 20	epic_retro_skipped	reason=policy(gates.retrospective=skip;owner_2026-10-01)
+2026-11-14T13:10:30Z	Epic 20	epic_merge_started	head=bd3bf0e5a feature=feature/OCU-1_ocupilot-mvp
+2026-11-14T13:12:50Z	Epic 20	decision_sheet_recorded	decided=12(10_at_epic23_sheet+DW-2433_re-owned_21-7,DW-2519_wontfix-accepted,DW-2554_routed_21-7,DW-2555_action_item) by=unattended
+2026-11-14T13:12:50Z	Epic 20	epic_merged_to_feature	repos=. feature_sha=0b3112f6a merge_sha=0b3112f6a head=bd3bf0e5a ci=43598581340(pending) epic_status=done candidate=1.0.15
+2026-11-14T13:12:50Z	Epic 20	worktree_removed	path=.worktrees/epic-20
+2026-11-14T13:12:50Z	Epic 20	epic_branches_deleted	branch=OCU-1-epic20 local+remote slot_b=freed
+2026-11-14T13:15:21Z	orchestrator	ledger_routed_planned	story=21-7-interoperability-parity entries=6 excess=2(DW-2388,DW-2421) by=merge_gate(range_end_sweep)
+2026-11-14T13:15:21Z	orchestrator	ledger_routed_planned	story=21-10-the-remaining-leaves-across-the-six-areas entries=3(+3_existing=6) excess=24 by=merge_gate(range_end_sweep)
+2026-11-14T13:15:21Z	orchestrator	deps_hash_rerecorded	reason=ledger_routed hash=ca25b6cf4292
+2026-11-14T13:15:21Z	orchestrator	ledger_sweep	residue=burndown:51_decision-pending(49_owner_hold_vendor_defects,DW-2431_U-30,DW-2518_U-34) routed:21-10=30,21-7=8,17-2=3 terminal_or_named_owner=all test_tools=2262/2262
+2026-11-14T13:48:33Z	ci	timings_refreshed	rule=29 run=43598581340
+2026-11-14T13:48:33Z	orchestrator	candidate_ci_green	sha=0b3112f6a run=43598581340 release=1.0.15 sent_to=OcuPilot_Planner upgrade_check=not_needed new_keys=10
+2026-11-14T13:48:33Z	orchestrator	unattended_report	merged=epic20(41),epic23(14) since_resume=20.25,20.40,20.41,20.26,20.25fix,23.10,23.13,23.14 crash=survived(no_git_loss) open_owner=U-30,U-33,U-34 open_vetoes=U-20,U-29,U-31,U-32,U-35 action_items=1(DW-2555) ledger_residue=routed41(21-10:30,21-7:8,17-2:3),owner_hold49,inbox2 throwaways=down next=epics_21,22_attended
+2026-11-14T13:48:33Z	orchestrator	parallel_summary	epics_merged=20,23 stories=20:41,23:14(incl_burndown_23.14) run=20261020T0940Z-20,23 started=2026-10-20T09:40Z ended=2026-11-14T13:48:33Z

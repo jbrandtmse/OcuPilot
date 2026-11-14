@@ -9273,6 +9273,12 @@ So that the area reaches parity.
 - **Given** deployment
 - **When** it runs
 - **Then** it produces its log and rollback files, and the deployment history offers rollback and delete.
+- DW-2361: The probe-namespace guard drives only InteropPort's nine criterion-free LIST reads and ProductionState, so a stray OcuPilot call in the item, setting, queue-... (ledger; routed by range-end sweep 2026-11-14)
+- DW-2554: Business partners' Edit sends all thirteen values from the non-refreshing list row, so a field changed elsewhere after the list loaded is silently reverted (ledger; routed by range-end sweep 2026-11-14)
+- DW-2433: A message cut at the Contents read's 1,000,000-character cap shows no cut note: the inline TESTCUT reads like a 4,000-character line cut, so the lines after ... (ledger; routed by range-end sweep 2026-11-14)
+- DW-2378: A pasted HL7 message is read through ImportFromString, which translates its already-decoded text again, so a character past Latin-1 reaches the transformatio... (ledger; routed by range-end sweep 2026-11-14)
+- DW-2379: The host Test dialog's result is not announced: its status line is inserted with its text and has no role=status, so a screen reader hears nothing when a tes... (ledger; routed by range-end sweep 2026-11-14)
+- DW-2452: Epic 20 interop list screens give a full sentence as emptyAgentKey, so the write-capable empty state reads 'Or ask the agent: Ask the agent ...' (ledger; routed by range-end sweep 2026-11-14)
 
 ### Story 21.8: The analytics editors
 
@@ -9328,6 +9334,9 @@ So that no area has a remaining gap.
 - DW-1562: The Devices-list Delete row action with its typed-name confirmation (Story 8.8 AC2's screen delete) (ledger; routed by merge_gate 2026-10-06)
 - DW-1850: Operate-only dismount (parity with the classic Database details page): the self-protection check needs a Manage-free read of the protected set (OcuPilot's, the install namespace's and the seven system databases' directories), as an AD-27 named case, so dismount can drop %Admin_Manage:USE (ledger; routed by merge_gate 2026-10-06)
 - DW-1856: External language server editor: set JavaHome, PythonPath, LogFile and FilePath through PathPort's sixth case (directories, a source, a vendor-written file) instead of showing them only; ClassPath stays shown-only (a separator-joined list PathPort refuses) (ledger; routed by merge_gate 2026-10-06)
+- DW-2202: Literal shared-surface counts and lists asserted outside their roster's own test break each story that adds a member: derive them from the registry, descript... (ledger; routed by range-end sweep 2026-11-14)
+- DW-2534: flake: web-applications.browser-spec.mjs AC5 filterToSubset on "myapp" left 1 of 1 rows (expected a proper subset holding /csp/myapp) in CI browser shard 4/5 (ledger; routed by range-end sweep 2026-11-14)
+- DW-2548: flake: analytics-mdx.browser-spec.mjs AC7 timed out waiting for [data-ocu-mdx="banner"] on attempt 1 and passed on the unchanged rerun (ledger; routed by range-end sweep 2026-11-14)
 
 ### Story 21.11: The agent gains the harvested tools and undo
 
