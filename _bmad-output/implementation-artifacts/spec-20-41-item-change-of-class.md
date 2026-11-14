@@ -2,7 +2,7 @@
 title: 'Story 20.41: Item change of class'
 type: 'feature'
 created: '2026-11-12'
-status: 'done'
+status: 'in-progress'
 baseline_revision: '906b7b292fa7fa3cd257964abf9c861359ea15c6'
 baseline_commit: '906b7b292fa7fa3cd257964abf9c861359ea15c6'
 review_loop_iteration: 0
@@ -280,7 +280,11 @@ Rejected:
 - `false` the frontmatter reads `done` while tracking reads `review`: this is the rework convention, and the review does not set the frontmatter.
 - `low` `InteropItemChangeClassMint` drops an error status from `ArgumentProblem`: round-1 code outside this range, and the shipped `ArgumentProblem` always returns `$$$OK`.
 
+- [ ] [CI] staging d35237a5, run 43556455745, instance shard 1/8: `OcuPilot.Test.RemovalRowsSweep.TestEveryRemovalRowComesFromTheOneBuilder` names `OcuPilot.Screen.Tool.InteropItemChangeClass` -- Epic 23's roster (23.13 batch 3, now on this branch) requires every tool that writes a `removed` row in `StateDiff` to build it through `OcuPilot.Screen.Tool.Write.RemovalRows` or to be in that test's `Others()`. Build the dropped-setting rows through `RemovalRows` (Rule 2), keeping the card's rows as they are; only if the builder cannot take the rows, add an add-only `Others()` line and write a one-line reason here.
+
 ## Spec Change Log
+
+- 2026-11-14, rework iteration 2 (runner, CI story red on the staging head): the removed rows go through the shared builder.
 
 - 2026-11-14, rework iteration 1 (runner): the full sweep found four roster assertions the story missed.
 
