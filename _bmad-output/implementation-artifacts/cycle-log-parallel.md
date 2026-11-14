@@ -1872,3 +1872,12 @@
 2026-11-14T07:46:18Z	Epic 23	runner_reported	boundary=23.14_batch3(DW-2123,DW-2501) code_heads=c4e10fbb,e277d207(43569579466_success) U-32_bind_condition=held(browser_shards_green) footprint_extensions=.github/workflows/ci.yml(release_fetch_depth1;comment) upgrade_triggers=none
 2026-11-14T07:46:18Z	Story 23.14	merged_to_feature	batch=3 tip=90d4c3b3 merge=f1aec185d route=code_equal_merge checks=ledger_entry_check_0(2010),dups_none,sprint_validate_ok(23-14_in-progress_for_batch5) footprint_extension_verified=.github/workflows/ci.yml(not_contended) upgrade_triggers=none
 2026-11-14T07:46:18Z	ci	timings_refreshed	rule=29 run=43569579466
+2026-11-14T10:07:50Z	Epic 20	runner_reported	boundaries=20.41_fix(fdc0e406),20.26(ae506a6b+bca5eec0) code_head=bca5eec0(43580754800_success) staging=4011d2bd(merge_of_feature_9d2dd5d7;43583698196_pending) ledger=DW-2324_resolved;DW-2554,DW-2555_decision-pending;DW-2556_wontfix-accepted upgrade_triggers=baseline_keys:interop.businesspartners.add(true),.update(true),.remove(false) new_keys=3 next=e20_burndown
+2026-11-14T10:34:35Z	Epic 23	runner_complete	head=6d474647c stories=14 ci=success(43583281820) ledger=open_before=96,chartered=1,chartered_size=12,overflow=20,reowned=20,to_decision_sheet=64,open_after=76,drain_ratio=1.15 retro=skipped(policy) applied=none
+2026-11-14T10:34:35Z	Epic 23	merge_enqueued	head=6d474647c
+2026-11-14T10:35:58Z	Epic 23	amendments_verified	amendments=0 extensions=1(.github/workflows/ci.yml;not_contended;verified_at_batch3_merge) ok=true
+2026-11-14T10:35:58Z	Epic 23	ci_green_verified	runs=43583281820 head=6d474647c result=success by=orchestrator
+2026-11-14T10:35:58Z	Epic 23	decision_sheet_recorded	decided=18 parked=4(U-33) stopped=1(U-34:DW-2518) vetoes=2(U-35:DW-2474,DW-2442) routed_21-10=9 by-design=3 to_epic20_burndown=1(DW-2519) untouched=DW-2394(owner_hold),DW-2431(U-30) by=unattended note=remaining_to_decision_sheet_entries_go_to_the_range-end_ledger_sweep_after_epic20
+2026-11-14T10:35:58Z	Epic 23	epic_retro_skipped	reason=policy(gates.retrospective=skip;owner_2026-10-01)
+2026-11-14T10:35:58Z	Epic 23	epic_merge_started	head=6d474647c feature=feature/OCU-1_ocupilot-mvp mode=fast_forward
+2026-11-14T10:38:04Z	Epic 23	epic_merged_to_feature	repos=. feature_sha=78212f9c2 merge_sha=78212f9c2 head=6d474647c ci=43586187015(pending) submodules= epic_status=done

@@ -204,21 +204,19 @@ Method TestEveryLiveToolRequiresItsScreensPairs()
             Do $$$AssertTrue($ListLength(tExpected) > 0, tTool.name _ ": its screen declares pairs")
             Set tExpected = tExpected _ $ListBuild($ListBuild("%Development", "USE"), $ListBuild("%Ens_Code", "WRITE"))
             Set tExpectedAdded = ##class(OcuPilot.Screen.Tool.ExplorerSave).CodeWritePairs({}, .tExpectedAddedResolved)
-        } ElseIf $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.ExplorerSave") || $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.ExplorerCreate") {
+        } ElseIf $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.ExplorerSave") || $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.ExplorerCreate") || $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.ExplorerCompile") || $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.ExplorerDelete") || $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.ExplorerImport") {
             ; Story 20.20 (DW-2242): a save or a create declares its screen's pairs alone, and WRITE on
             ; the routines database of the namespace its proposal stored is an argument pair, which
-            ; with no namespace argument is the request's scope (AD-8).
+            ; with no namespace argument is the request's scope (AD-8). A compile, a delete and an import
+            ; take WRITE the same way.
             Set tExpected = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(tTool.class, "DESCRIPTORCLASS"), .tExpectedResolved)
             Do $$$AssertTrue($ListLength(tExpected) > 0, tTool.name _ ": its screen declares pairs")
             Set tExpectedAdded = ##class(OcuPilot.Screen.Tool.ExplorerSave).CodeWritePairs({}, .tExpectedAddedResolved)
         } ElseIf $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.ExplorerWrite") {
-            ; Story 19.2: System Explorer's compile, delete and import declare WRITE on the routines
-            ; database of the request's namespace, here this one's, after their screen's pairs (AD-8
-            ; as amended 2026-10-02); Story 19.13's export only reads and declares none.
+            ; Story 19.13: System Explorer's export only reads and declares its screen's pairs alone, with no WRITE
+            ; pair of the routines database.
             Set tExpected = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(tTool.class, "DESCRIPTORCLASS"), .tExpectedResolved)
             Do $$$AssertTrue($ListLength(tExpected) > 0, tTool.name _ ": its screen declares pairs")
-            Set tCodePair = $ListBuild(##class(OcuPilot.Test.DeveloperFloorFixture).CodeResource(), "WRITE")
-            If '$ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.ExplorerExport") && '$ListFind(tExpected, tCodePair) Set tExpected = tExpected _ $ListBuild(tCodePair)
         } ElseIf $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.ExplorerDocDbWrite") {
             ; Story 19.17: Document databases' create and drop declare WRITE on the routines and
             ; globals databases of the request's namespace, here this one's, after their screen's
