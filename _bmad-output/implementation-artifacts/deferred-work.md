@@ -12819,3 +12819,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-23-14-epic-23-burn-down.md | severity: low | fix-risk: med | footprint: in-epic
 - evidence: Operation.RequiredPairsOf turns ArgumentPairs' pResolved=0 (CodeWritePairs on a deleted namespace) into an error status; Confirm answers it through Internal (500 + log). Before batch 5 compile/delete/import resolved on the request scope and the port answered a named 400.
 - 2026-11-14T07:58:33Z status=wontfix-accepted owner=23-14-epic-23-burn-down by=cr note=reopen_if=a confirm of an Explorer write answers 500 naming unresolved argument pairs
+
+### DW-2558: PRD FR-80 says a later stage's destructive action is absent from the governance baseline and defaults to disabled; AD-22 as amended by the owner 2026-09-26 and GovernanceBaseline.cls require every new write key to join the baseline in its own story
+- source: spec-22-2-picking-up-a-row-when-its-gate-clears.md | severity: med | fix-risk: low | footprint: _bmad-output/planning-artifacts/prds/prd-OcuPilot-2026-09-08/prd.md
+- evidence: prd.md FR-80 bullet ('Every destructive action a later stage adds is absent from the governance baseline'); spine AD-22 Rule [AMENDED 2026-09-26, owner]
+- 2026-11-14T19:05:23Z status=routed owner=burndown by=spec_gate note=the PRD sentence is stale against an owner-amended AD; outside Epic 22's footprint; recommended: correct FR-80's bullet to point at AD-22's baseline rule
