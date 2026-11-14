@@ -57,6 +57,10 @@ Method OnAfterOneTest() As %Status
         Set tKey = $Order(..PreparedKeys(tKey))
         If tKey = "" Quit
         Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Turn).GuardedDelete(tKey), "turn " _ tKey _ " is removed")
+        ; A ledger row outlives its turn, so the turn's delete leaves the rows its steps wrote.
+        Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tKey), "turn " _ tKey _ "'s ledger rows are removed")
+        Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Ledger).GuardedCountForTurn(tKey, .tRows), "turn " _ tKey _ "'s ledger rows are counted")
+        Do $$$AssertEquals(tRows, 0, "and none of them survives")
     }
     If ..PreparedConvKey '= "" Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Convo).GuardedDelete(..PreparedConvKey), "the conversation is removed")
     Do $$$AssertEquals(##class(OcuPilot.Test.TurnFixture).SlotOwner($Username), "", "no turn slot is left held")
