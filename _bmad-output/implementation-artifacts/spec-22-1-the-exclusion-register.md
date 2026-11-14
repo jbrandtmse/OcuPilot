@@ -75,6 +75,38 @@ deferred: []
 - Given AN-23, when it is read, then its row says the Architect, Analyzer and User Portal links ship (Story 20.32) and that rebuilding them stays excluded.
 - Given the change, when `bash scripts/lint-docs.sh` runs, then it passes, and the diff adds no product string.
 
+### Review Findings
+
+Code review 2026-11-14, full mode, four layers (blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor). 36 raw findings, grouped into 15 entries (3 medium, 12 low), all patched. 9 rejected. Slot B values re-read (`ocupilot-slot-b`, `HSCUSTOM`, read only) all match the register.
+
+- [x] [Review][Patch] IO-76 and IO-77: the gate read cleared on slot B while the reason says Message Bank only. The gate is now a bank to link to, checked by `GetBankLink()`, which slot B read as empty. Medium; fix-risk low (wording only) [docs/exclusion-register.md:IO-76, IO-77]
+- [x] [Review][Patch] SA-50 to SA-52 did not say where the vendor evaluates the license ("the license routine evaluates it" is circular). They now cite `%CSP.UI.Portal.Application` lines 146 to 148. Medium; fix-risk low [docs/exclusion-register.md:SA-50..52]
+- [x] [Review][Patch] AC2's "a judgment gate says what evidence clears it" had no assertion that could fail. Added the test `a judgment gate says what evidence clears it`, with a floor, and mutations. Medium; fix-risk low [ui/tools/exclusion-register.test.mjs]
+- [x] [Review][Patch] OS-34 named the wrong macro. The Telnet page uses `$$$isWINDOWS` (`%occOptions.inc`:16) [docs/exclusion-register.md:OS-34]
+- [x] [Review][Patch] IO-90 cited line 216, a comment. The check is on line 217 [docs/exclusion-register.md:IO-90]
+- [x] [Review][Patch] The note on where the reads were taken named neither the namespace nor IRIS for Health. It now names `HSCUSTOM` and the irishealth-community image [docs/exclusion-register.md:opening]
+- [x] [Review][Patch] AN-23's slot B observation carried no date [docs/exclusion-register.md:AN-23]
+- [x] [Review][Patch] The promotion sentence did not mention the extract, which the test also holds equal [docs/exclusion-register.md:opening]
+- [x] [Review][Patch] SA-50 lacked the AD-27 citation the Design Notes promise [docs/exclusion-register.md:SA-50]
+- [x] [Review][Patch] The OS-31, OS-32 and OS-34 reasons carried words that are not in the catalog phrase. The admin-v2 sentence moved to the Gate column [docs/exclusion-register.md:OS-31, OS-32, OS-34]
+- [x] [Review][Patch] SA-62's gate said each class while its check said a class. Both now say each [docs/exclusion-register.md:SA-62]
+- [x] [Review][Patch] The prose hard-coded "56" and "eight", which no test pins. Removed [docs/exclusion-register.md:opening]
+- [x] [Review][Patch] The runnable-check rule accepted any backticked text. It now needs a backticked check followed by `returns` or `is`; WA-17 and OS-34 were reworded to match [ui/tools/exclusion-register.test.mjs]
+- [x] [Review][Patch] The test header said no ID is typed, but AN-23 and the kind floors are. Narrowed to the row-set IDs [ui/tools/exclusion-register.test.mjs:14]
+- [x] [Review][Patch] AC5 had no mutation line. Closed with a lint mutation. "No product string" holds because `git diff --name-only 8774fda9f` touches no `ui/src` or `src/OcuPilot` file [spec Verification]
+
+Rejected:
+
+- The Design Notes' stale line cites and `tableRows()` name: fixing them means editing this spec, which carries `oversized`. The register and the Auto Run Result carry the right values.
+- Spec `status: done` against tracker `review` (false): the frontmatter is build-auto's machine state, and the Review Triage Log is build-auto's own pass, not this review.
+- DT-12's `dependency` kind (by-design): the extract names "a debugger implementation" as the gate, and the harvested source lies outside OcuPilot.
+- No pointer from `CLAUDE.md` (`wontfix-accepted`): agent-instruction files are owner-only, and Story 22.2 reads the register by path. `reopen_if`: Story 22.2's plan cannot locate the register.
+- The gate-kind vocabulary is read from the register itself (by-design): the spec's matrix defines it as the Gate kinds table.
+- The Stage 5 scan running past `## 3.` (false): the `### Stage 1` heading stops it, and any stray ID row would redden the declared-count and extract-versus-catalog tests.
+- The register parse has no end bound (low): a later section would redden the group-count test loudly, and the fix adds a guard for a section that does not exist.
+- Vendor line numbers may drift (`wontfix-accepted`): the reads are dated, and Story 22.2 re-reads a gate before a pick-up. `reopen_if`: a vendor release changes `EnsPortal.Application`.
+- SA-62's partial class names (low): they are the catalog cell's own names, and they are resolved at pick-up.
+
 ## Spec Change Log
 
 ## Review Triage Log
@@ -173,6 +205,18 @@ deferred: []
 - mutation: blanked SA-52's reason -> `every row carries a reason, a gate and a way to tell it has cleared` went red naming SA-52; reverted.
 - mutation: removed the deprecated feature from LG-13's gate -> `a deprecation gate names the deprecated feature and the owner decision that clears it` went red naming LG-13; reverted.
 - mutation: renamed the `## The register` heading -> `the parsers read something from every document` went red; reverted.
+- mutation: (QA) changed every `platform` kind to `demand` -> `a license, edition or platform gate names a runnable check, and what slot B read on which day` went red on its new floor; reverted.
+- mutation: (QA) changed every `deprecation` kind to `demand` -> `a deprecation gate names the deprecated feature and the owner decision that clears it` went red on its new floor; reverted.
+- mutation: (QA) removed SA-50's slot B reading -> the license, edition or platform test went red; removed SA-51's observation date -> the same test went red; reverted.
+- mutation: (QA) replaced "owner decision" in LG-13's gate and how-to-tell -> the deprecation test went red; reverted.
+- mutation: (QA) renamed the first register group heading -> `each register group holds exactly the extract group of the same position, under the epics wording` went red; reverted.
+- mutation: (QA) set the extract's first group count to 99 -> `the extract declares the row counts it lists` went red; reverted.
+- mutation: (QA) renamed the catalog's Tier column header -> `the parsers read something from every document` and two row-set tests went red; renamed the extract's `### Stage 5` heading -> four tests went red; reverted, checksums identical.
+- (QA) `ui/tools/exclusion-register.test.mjs` -- extended with a floor in two tests (each checked kind has a row); no new file.
+- mutation: (CR) set SA-53's how-to-tell to "TBD" -> `a judgment gate says what evidence clears it` went red naming SA-53; set IO-72's to "TBD." -> red naming IO-72; reverted, checksum identical.
+- mutation: (CR) set EX-58's kind to `vendor-page` -> the same test's floor went red (no `not-applicable` row); reverted.
+- mutation: (CR) removed " returns 1" from SA-51's check -> `a license, edition or platform gate names a runnable check...` went red naming SA-51; reverted.
+- mutation: (CR) changed the register's `## Gate kinds` to `####` -> `bash scripts/lint-docs.sh` exit 1, one issue at `exclusion-register.md:30`; reverted, checksum identical.
 
 **Manual checks:**
 

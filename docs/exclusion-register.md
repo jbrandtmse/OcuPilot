@@ -1,6 +1,6 @@
 # Exclusion register
 
-OcuPilot does not build 56 of the portal features its catalog lists. The catalog marks them tier P4,
+OcuPilot does not build some of the portal features its catalog lists. The catalog marks them tier P4,
 "long tail, excluded by default", and gives a one-phrase reason in each row. This register records,
 row by row, why a feature was left out, what would have to become true before it could be built, and
 how to tell that it has. A request to build one is then answered against evidence rather than against
@@ -14,15 +14,17 @@ The register follows two planning documents and a test holds it equal to both:
 - the feature catalog, `_bmad-output/planning-artifacts/research/technical-ocupilot-portal-feature-landscape-2026-09-08/feature-catalog.md`,
   whose P4 rows are exactly the rows below;
 - the stage extract, `_bmad-output/planning-artifacts/prds/prd-OcuPilot-2026-09-08/extract-stages.md`,
-  whose "Stage 5" holds the eight groups. The product requirements and the epics call the same stage
+  whose "Stage 5" holds the groups. The product requirements and the epics call the same stage
   Stage 6, and the epics give the groups the wording used for the headings below.
 
 `ui/tools/exclusion-register.test.mjs` fails when a P4 row is missing from the register, when a row
 here is no longer P4, when a row sits under a different group than the extract puts it in, or when a
-row is incomplete. Promoting a row in the catalog therefore means removing it here in the same change.
+row is incomplete. Promoting a row in the catalog therefore means removing it here and from the
+extract's Stage 5 in the same change.
 
-Checks marked with a date were read on the development instance named slot B (IRIS 2026.2, build
-221U, which has the `HSSYS` namespace), read only, on 2026-11-14. A statement marked `(inference)` was
+Checks marked with a date were read on the development instance named slot B (IRIS for Health
+Community 2026.2, build 221U, which has the `HSSYS` namespace), read only, in the `HSCUSTOM`
+namespace, on 2026-11-14. A statement marked `(inference)` was
 not confirmed against the instance or the source.
 
 ## Gate kinds
@@ -44,9 +46,9 @@ not confirmed against the instance or the source.
 
 | ID | Feature | Reason | Gate kind | Gate | How to tell it has cleared |
 | --- | --- | --- | --- | --- | --- |
-| SA-50 | Enable sharding | Needs a sharding license, which Community Edition lacks. | `license` | The instance holds a sharding license. This row is backed by the admin-v2 API, so it needs no new API once the license is there. | `$$Sharding^%SYS.LICENSE` returns 1. The vendor's license routine evaluates it. Slot B read 0 on 2026-11-14. |
-| SA-51 | Configure node-level sharding | Needs a sharding license. | `license` | The instance holds a sharding license. | `$$Sharding^%SYS.LICENSE` returns 1. The vendor's license routine evaluates it. Slot B read 0 on 2026-11-14. |
-| SA-52 | Configure namespace-level sharding | Needs a sharding license. | `license` | The instance holds a sharding license. | `$$Sharding^%SYS.LICENSE` returns 1. The vendor's license routine evaluates it. Slot B read 0 on 2026-11-14. |
+| SA-50 | Enable sharding | Needs a sharding license, which Community Edition lacks. | `license` | The instance holds a sharding license. This row is backed by the admin-v2 API, so it needs no new API once the license is there; the architecture reaches that API only through its single port (AD-27). | `$$Sharding^%SYS.LICENSE` returns 1. The vendor's portal menu evaluates it and disables the Sharding entry without it (`%CSP.UI.Portal.Application`, lines 146 to 148). Slot B read 0 on 2026-11-14. |
+| SA-51 | Configure node-level sharding | Needs a sharding license. | `license` | The instance holds a sharding license. | `$$Sharding^%SYS.LICENSE` returns 1. The vendor's portal menu evaluates it and disables the Sharding entry without it (`%CSP.UI.Portal.Application`, lines 146 to 148). Slot B read 0 on 2026-11-14. |
+| SA-52 | Configure namespace-level sharding | Needs a sharding license. | `license` | The instance holds a sharding license. | `$$Sharding^%SYS.LICENSE` returns 1. The vendor's portal menu evaluates it and disables the Sharding entry without it (`%CSP.UI.Portal.Application`, lines 146 to 148). Slot B read 0 on 2026-11-14. |
 
 ### Edition-gated HealthShare, Message Bank, Enterprise and ITK pages
 
@@ -56,13 +58,13 @@ not confirmed against the instance or the source.
 | IO-71 | Agents page | Belongs to the Hub and IMT extension only. | `edition` | The Hub extension is installed. | `$Data(^EnsLib.Hub)` is non-zero. The vendor's interoperability menu evaluates it (`EnsPortal.Application`, line 226). Slot B read 0 on 2026-11-14. That the Hub menu links to the Agents page was not confirmed (inference). |
 | IO-74 | Generate DTL | Exists only on HealthShare. | `edition` | The HealthShare class that serves the page is present. | `##class(%Dictionary.ClassDefinition).%ExistsId("HS.InteropTools.HL7.GenerateDTL.UI.List")` returns 1. The vendor's interoperability menu evaluates it (`EnsPortal.Application`, line 90). Slot B read 1 on 2026-11-14, so it is cleared on IRIS for Health. |
 | IO-75 | Enterprise systems list | Part of the Enterprise systems feature. | `demand` | The vendor checks nothing: the menu lists the page on every instance (`EnsPortal.Application`, line 79). Only a recorded request is needed. | A request names IO-75. No instance check applies. |
-| IO-76 | Message Bank link | Message Bank only. | `edition` | The instance is not itself a Message Bank, which is when the vendor menu offers the link; the link target comes from `EnsPortal.FindMsgBank.GetBankLink()`. | `$Data(^Ens.MsgBankSvr)` is 0. The vendor's interoperability menu evaluates it (`EnsPortal.Application`, lines 66, 82 and 113 to 124). Slot B read 0 on 2026-11-14, so the menu offers the link there. |
-| IO-77 | Enterprise Message Bank | Message Bank only. | `edition` | The instance is not itself a Message Bank, which is when the vendor menu offers the link; the link target comes from `EnsPortal.FindMsgBank.GetBankLink()`. | `$Data(^Ens.MsgBankSvr)` is 0. The vendor's interoperability menu evaluates it (`EnsPortal.Application`, lines 66, 82 and 113 to 124). Slot B read 0 on 2026-11-14, so the menu offers the link there. |
+| IO-76 | Message Bank link | Message Bank only. | `edition` | A Message Bank server exists for this instance to link to. The vendor menu offers the Message Bank entries only where the instance is not itself a bank (`$Data(^Ens.MsgBankSvr)` is 0, `EnsPortal.Application`, lines 66, 82 and 113). | `##class(EnsPortal.FindMsgBank).GetBankLink()` returns a URL, which it does once a bank's web server, port and namespace are stored. The vendor's interoperability menu evaluates it (`EnsPortal.Application`, lines 114 to 124). Slot B read an empty link, and `$Data(^Ens.MsgBankSvr)` 0, on 2026-11-14, so no bank is linked there. |
+| IO-77 | Enterprise Message Bank | Message Bank only. | `edition` | A Message Bank server exists for this instance to link to. The vendor menu offers the Message Bank entries only where the instance is not itself a bank (`$Data(^Ens.MsgBankSvr)` is 0, `EnsPortal.Application`, lines 66, 82 and 113). | `##class(EnsPortal.FindMsgBank).GetBankLink()` returns a URL, which it does once a bank's web server, port and namespace are stored. The vendor's interoperability menu evaluates it (`EnsPortal.Application`, lines 114 to 124). Slot B read an empty link, and `$Data(^Ens.MsgBankSvr)` 0, on 2026-11-14, so no bank is linked there. |
 | IO-78 | Banked messages | Message Bank only. | `edition` | The instance is itself a Message Bank. | `$Data(^Ens.MsgBankSvr)` is non-zero. The vendor's interoperability menu evaluates it (`EnsPortal.Application`, lines 66 and 100 to 102). Slot B read 0 on 2026-11-14. |
 | IO-79 | Banked events | Message Bank only; goes with IO-78. | `edition` | The instance is itself a Message Bank, as for IO-78. | `$Data(^Ens.MsgBankSvr)` is non-zero. The vendor's interoperability menu evaluates it (`EnsPortal.Application`, lines 66 and 100 to 102). Slot B read 0 on 2026-11-14. |
 | IO-80 | Enterprise messages | Part of the Enterprise systems feature. | `edition` | The instance monitors enterprise clients. | `$Data(^Ens.Enterprise.MonitorClientD)\10` is true. The vendor's interoperability menu evaluates it (`EnsPortal.Application`, lines 67, 104 and 144). Slot B read 0 on 2026-11-14. |
 | IO-81 | Enterprise monitor | Part of the Enterprise systems feature; goes with IO-80. | `edition` | The instance monitors enterprise clients, as for IO-80. | `$Data(^Ens.Enterprise.MonitorClientD)\10` is true. The vendor's interoperability menu evaluates it (`EnsPortal.Application`, lines 67, 104 and 144). Slot B read 0 on 2026-11-14. |
-| IO-90 | ITK setup pages | The ITK package is absent from the instance. | `edition` | The ITK setup package is installed. | `##class(%Dictionary.PackageDefinition).%ExistsId("ITK.Setup")` returns 1. The vendor's interoperability menu evaluates it (`EnsPortal.Application`, line 216). Slot B read 0 on 2026-11-14. |
+| IO-90 | ITK setup pages | The ITK package is absent from the instance. | `edition` | The ITK setup package is installed. | `##class(%Dictionary.PackageDefinition).%ExistsId("ITK.Setup")` returns 1. The vendor's interoperability menu evaluates it (`EnsPortal.Application`, line 217). Slot B read 0 on 2026-11-14. |
 
 ### Deprecated shadowing and text analytics
 
@@ -93,11 +95,11 @@ not confirmed against the instance or the source.
 
 | ID | Feature | Reason | Gate kind | Gate | How to tell it has cleared |
 | --- | --- | --- | --- | --- | --- |
-| WA-17 | Client applications | The portal lists it only on Windows. | `platform` | The instance runs on Windows. | `$zversion(1)=2`, which is the vendor's `$$$ISWINDOWS` macro (`%sySite.inc`, line 17). The vendor's portal menu evaluates it (`%CSP.UI.Portal.Application`, line 291). Slot B read 3 on 2026-11-14, so it is not Windows. |
-| OS-31 | IO settings | Low usage. This row is backed by the admin-v2 API, so it needs no new API. | `demand` | A recorded request names OS-31. The architecture reaches that API only through its single port (AD-27). | A request names OS-31. No instance check applies. |
-| OS-32 | Device subtypes list and edit | Low usage. This row is backed by the admin-v2 API, so it needs no new API. | `demand` | A recorded request names OS-32. The architecture reaches that API only through its single port (AD-27). | A request names OS-32. No instance check applies. |
+| WA-17 | Client applications | The portal lists it only on Windows. | `platform` | The instance runs on Windows. | `$zversion(1)` returns 2, which is the vendor's `$$$ISWINDOWS` macro (`%sySite.inc`, line 17). The vendor's portal menu evaluates it (`%CSP.UI.Portal.Application`, line 291). Slot B read 3 on 2026-11-14, so it is not Windows. |
+| OS-31 | IO settings | Low usage. | `demand` | A recorded request names OS-31. This row is backed by the admin-v2 API, so it needs no new API; the architecture reaches that API only through its single port (AD-27). | A request names OS-31. No instance check applies. |
+| OS-32 | Device subtypes list and edit | Low usage. | `demand` | A recorded request names OS-32. This row is backed by the admin-v2 API, so it needs no new API; the architecture reaches that API only through its single port (AD-27). | A request names OS-32. No instance check applies. |
 | OS-33 | Magnetic tape devices | Low usage. | `demand` | A recorded request names OS-33. | A request names OS-33. No instance check applies. |
-| OS-34 | Telnet settings | Low usage; the page is read-only except on Windows. | `platform` | The instance runs on Windows. The menu lists the page on every platform (`%CSP.UI.Portal.Application`, line 236), and the page disables its fields off Windows (`%CSP.UI.Portal.Config.Telnet`, lines 29 and 52). | `$zversion(1)=2`, which is the vendor's `$$$ISWINDOWS` macro (`%sySite.inc`, line 17). The vendor's Telnet page evaluates it (`%CSP.UI.Portal.Config.Telnet`, lines 29 and 52). Slot B read 3 on 2026-11-14, so it is not Windows. |
+| OS-34 | Telnet settings | Low usage, on the Windows branch of the device settings. | `platform` | The instance runs on Windows. The menu lists the page on every platform (`%CSP.UI.Portal.Application`, line 236), and the page disables its fields off Windows (`%CSP.UI.Portal.Config.Telnet`, lines 29 and 52). | `$zversion(1)` returns 2, which is the vendor's `$$$isWINDOWS` macro (`%occOptions.inc`, line 16). The vendor's Telnet page evaluates it (`%CSP.UI.Portal.Config.Telnet`, lines 29 and 52). Slot B read 3 on 2026-11-14, so it is not Windows. |
 
 ### Non-HL7 EDI schema authoring, DICOM, PubSub and adapter dialogs
 
@@ -118,7 +120,7 @@ not confirmed against the instance or the source.
 
 | ID | Feature | Reason | Gate kind | Gate | How to tell it has cleared |
 | --- | --- | --- | --- | --- | --- |
-| AN-23 | Architect, Analyzer and User Portal rebuilt as OcuPilot screens | These are full applications, so OcuPilot links to them instead. The Architect, Analyzer and User Portal links ship (Story 20.32; the three link screens are compiled on slot B). Rebuilding them stays excluded. | `demand` | A recorded request that the links cannot answer. | A request names AN-23 and says what the links do not do. |
+| AN-23 | Architect, Analyzer and User Portal rebuilt as OcuPilot screens | These are full applications, so OcuPilot links to them instead. The Architect, Analyzer and User Portal links ship (Story 20.32; the three link screens were compiled on slot B on 2026-11-14). Rebuilding them stays excluded. | `demand` | A recorded request that the links cannot answer. | A request names AN-23 and says what the links do not do. |
 | EX-55 | FileMan mapping wizard | A legacy wizard specific to VA. | `demand` | A recorded request names EX-55. No OcuPilot link exists yet; the classic portal serves it. | A request names EX-55. No instance check applies. |
 | EX-56 | WebStress tool | WebStress. | `demand` | A recorded request names EX-56. No OcuPilot link exists yet; the classic portal serves it. | A request names EX-56. No instance check applies. |
 | EX-57 | UnitTest Portal | UnitTest Portal. | `demand` | A recorded request names EX-57. No OcuPilot link exists yet; the classic portal serves it. | A request names EX-57. No instance check applies. |
@@ -130,7 +132,7 @@ not confirmed against the instance or the source.
 | SH-29 | Tips panel ("Did you know?") | Cosmetic, with no value to an operator. | `demand` | A recorded request names SH-29. | A request names SH-29. No instance check applies. |
 | SA-60 | Provider pages | On no menu, and one page points at a class that does not exist. | `vendor-page` | The vendor's pages are live on a menu of a supported release. | The provider pages appear on the System Administration menu of a supported release. |
 | SA-61 | FileMan conversion settings | Its menu entry is commented out. | `vendor-page` | The vendor's page is live on a menu of a supported release. | The FileMan conversion page appears on a menu of a supported release. |
-| SA-62 | Dead references | The classes it names do not exist. | `vendor-page` | Each class the catalog row names exists on a supported release. | `##class(%Dictionary.CompiledClass).%ExistsId("<name>")` returns 1 for a class the catalog row names, on a supported release. |
+| SA-62 | Dead references | The classes it names do not exist. | `vendor-page` | Each class the catalog row names exists on a supported release. | `##class(%Dictionary.CompiledClass).%ExistsId("<name>")` returns 1 for each class the catalog row names, on a supported release. |
 | AN-24 | Worksheet builder, caption editor, Visual Reporting and other analytics pages | On no menu, and some of it is dead code. | `vendor-page` | The vendor's page is live on a menu of a supported release. | The page appears on the Analytics menu of a supported release. |
 | DT-12 | Debugger session and terminal tools | A placeholder with no implementation behind it. | `dependency` | A debugger implementation exists. The harvested tool is a placeholder. | A debugger tool exists that does more than return a placeholder answer. |
 | EX-58 | Data browser connection status and disconnect | OcuPilot runs in the instance it administers, so there is no connection to show (AD-1, AD-2). | `not-applicable` | Only an amendment to the architecture that lets OcuPilot administer a different instance makes the row apply. | An architecture decision lets OcuPilot connect to another instance. |

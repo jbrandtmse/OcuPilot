@@ -11,7 +11,7 @@ import { dirname, join } from 'node:path';
 //   groups, under the wording the epics give those groups (matched by position, since the extract
 //   and the epics list the groups in the same order).
 //
-// Both sides of every comparison are read from the documents; no ID or count is typed here. Nothing
+// Both sides of every equality are read from the documents; no row-set ID or count is typed here. Nothing
 // calls an instance, so the test needs only the checkout. A document that parses to nothing fails
 // naming itself, never as a pass over an empty set.
 
@@ -234,21 +234,44 @@ test('every row names a gate kind from the Gate kinds table', () => {
 
 test('a license, edition or platform gate names a runnable check, and what slot B read on which day', () => {
   const problems = [];
+  const checked = new Set();
   for (const row of registerRows(parseRegister())) {
     if (!['license', 'edition', 'platform'].includes(row.kind)) continue;
-    if (!/`[^`]+`/.test(row.tell)) problems.push(`${row.id}: no backticked check`);
+    checked.add(row.kind);
+    if (!/`[^`]+` (returns|is)\b/.test(row.tell)) problems.push(`${row.id}: no backticked check followed by what it returns`);
     if (!/evaluates it/i.test(row.tell)) problems.push(`${row.id}: does not say where the vendor evaluates it`);
     if (!/slot B read \S+/i.test(row.tell)) problems.push(`${row.id}: does not say what slot B read`);
     if (!ISO_DATE_RE.test(row.tell)) problems.push(`${row.id}: no observation date`);
   }
   assert.deepEqual(problems, [], `${REGISTER_PATH}: ${problems.join('; ')}`);
+  // Floor: a kind that no row carries any more would otherwise pass this test over an empty set.
+  assert.deepEqual(sorted(checked), ['edition', 'license', 'platform'], `${REGISTER_PATH}: no row carries one of the kinds this test checks; read [${sorted(checked).join(', ')}]`);
 });
 
 test('a deprecation gate names the deprecated feature and the owner decision that clears it', () => {
-  const problems = registerRows(parseRegister())
-    .filter((row) => row.kind === 'deprecation' && !(/deprecated feature is \S/i.test(row.gate) && /owner decision/i.test(`${row.gate} ${row.tell}`)))
+  const deprecated = registerRows(parseRegister()).filter((row) => row.kind === 'deprecation');
+  assert.ok(deprecated.length > 0, `${REGISTER_PATH}: no row carries the deprecation kind, so this test would check nothing`);
+  const problems = deprecated
+    .filter((row) => !(/deprecated feature is \S/i.test(row.gate) && /owner decision/i.test(`${row.gate} ${row.tell}`)))
     .map((row) => `${row.id}: does not name the deprecated feature and the owner decision`);
   assert.deepEqual(problems, [], `${REGISTER_PATH}: ${problems.join('; ')}`);
+});
+
+test('a judgment gate says what evidence clears it', () => {
+  const judged = registerRows(parseRegister()).filter((row) => ['demand', 'vendor-page', 'dependency', 'not-applicable'].includes(row.kind));
+  const problems = [];
+  const kinds = new Set();
+  for (const row of judged) {
+    kinds.add(row.kind);
+    if (row.kind === 'demand') {
+      if (!row.tell.includes(`A request names ${row.id}`)) problems.push(`${row.id}: does not say a request naming the row clears it`);
+    } else if (!/\.$/.test(row.tell) || row.tell.split(/\s+/).length < 5) {
+      problems.push(`${row.id}: does not say in a sentence what evidence clears it`);
+    }
+  }
+  assert.deepEqual(problems, [], `${REGISTER_PATH}: ${problems.join('; ')}`);
+  // Floor: a kind that no row carries any more would otherwise pass this test over an empty set.
+  assert.deepEqual(sorted(kinds), ['demand', 'dependency', 'not-applicable', 'vendor-page'], `${REGISTER_PATH}: no row carries one of the judgment kinds; read [${sorted(kinds).join(', ')}]`);
 });
 
 test('AN-23 says the three analytics links ship and that rebuilding stays excluded', () => {
