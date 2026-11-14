@@ -189,6 +189,38 @@ deferred: []
 - AC5: Given a caller missing one declared pair, `%Ens_ProductionConfig:WRITE` among them, when it acts by either caller, then it is refused 403 naming that pair before any vendor call.
 - AC6: Given the three tools, when the rosters run, then the destructiveness, key defaults and audit records are as Boundaries states, Task 0's measurements are recorded, and `ToolWrite`'s other-port count reads exactly three above the branch's pre-story value.
 
+### Review Findings
+
+Code review 2026-11-14 (four layers, full-opus): 6 patched, 3 ledgered, 15 rejected.
+
+- [x] [Review][Patch] `InteropPartnerControl.RowIn` answered the last row when the probe was not listed (a `For` counter ends on the last index), so AC4's "unlisted" leg went red whenever `USER` held another partner [src/OcuPilot/Test/InteropPartnerControl.cls:451] — found flag; red on the old helper with a second partner in `USER`, green on the fix.
+- [x] [Review][Patch] `PartnerFits` had no test: a name of 255 characters the instance cannot address [src/OcuPilot/Test/InteropPartnerRefusals.cls:139] — mint, port add (422) and port remove (404) legs added; mutation recorded under Verification.
+- [x] [Review][Patch] `InteropPartnerGate`'s doc claimed the exact principal's writes were checked against stored state [src/OcuPilot/Test/InteropPartnerGate.cls:153] — sentence narrowed to what it asserts.
+- [x] [Review][Patch] `InteropPartnerRefusals`' AC3 doc said the confirm answers `NAMED`; it closes target-changed, as the remove's `FINGERPRINTSUBJECT` (`NamedBy`) and the Matrix's "Changed since review" row specify [src/OcuPilot/Test/InteropPartnerRefusals.cls:213] — doc corrected; the code is as specified.
+- [x] [Review][Patch] `InteropError.PartnerCodes`' doc counted seven codes for six [src/OcuPilot/Api/InteropError.cls:632].
+- [x] [Review][Patch] The Edit title used a string replacement, so a name holding `$&` rendered mangled [ui/src/app/areas/interoperability/interop-business-partner-dialog.ts:195] — function replacer, as `database-wizard.page.ts` does.
+- [x] [Review][Defer] Edit sends all thirteen values from the non-refreshing list row, reverting a field changed elsewhere since the list loaded [ui/src/app/areas/interoperability/interop-business-partner-list.page.ts:143] — deferred: DW-2554, decision-pending (the task text says the dialog sends every field).
+- [x] [Review][Defer] AD-62 (10), AD-15 and AD-22 still describe partners as read-only with READ pairs — deferred: DW-2555, decision-pending, the owner's attended spine Update.
+- [x] [Review][Defer] The partner field-validation loop is repeated in three callers — deferred: DW-2556, wontfix-accepted.
+
+Rejected:
+
+- `false`: `InteropError.PreconditionCodes` lacks the partner codes. It feeds the production tools (`InteropPort.PreconditionCodes`, `InteropProductionAction`); each partner tool declares its own `PRECONDITIONCODES`, as the lookup tools do.
+- `low`: `PartnerNamedByHere` ignores a failed `Next` or an unopenable production, and the letter-case scan ignores a failed `List` query. Both are unlikely, and the fix adds guards that would block every remove behind one broken production.
+- `low`: a partner deleted between the facts read and the update's open answers 503, not 404. The window is the request, under the per-target hold.
+- `low`: a remove whose `%DeleteId` meets a held lock, or an add racing an out-of-band add, maps through `Statused`. Rare, and each needs a new branch.
+- `low`: the 404's "unlogged" is not asserted. `Absent` is a shared mapper this story did not change.
+- `low`: `ToolEmit`'s partner branch derives its expected pair from the tool. `InteropPartnerGate` pins the literal pair, and the lookup branch has the same shape.
+- `low`: the Matrix's Update row says a no-change edit is refused, while the screen's is accepted. The fix edits the spec; "Decided at implement" records it.
+- `low`: AC5's agent leg evaluates the tools' pairs rather than minting as each principal. That is `InteropLookupGate`'s pattern, and the mint runs the same pair gate.
+- `low`: `PartnerSnippet`'s scripts omit the port's checks. They render the vendor calls the port makes (AD-59), like `LookupSnippet`.
+- `low`: the thirteen-field list is a literal in each tool's parameters. Class parameters are literals, as in the sibling tools; the Prohibited lists are pinned against `PARTNERSETFIELDS`.
+- `low`: the description's fieldset has no legend. Its one field is labeled, and the structural walk passed.
+- `low`: a whitespace-only or padded name is admitted. The spec's name rule names empty names and control characters only.
+- `low`: an `installing` answer to the Edit leaves the dialog without a sentence. Seven sibling pages read `lastRefusal` the same way.
+- `low` (Rule 2 check): the page, dialog and store share about a third of their lines with the lookup entry trio, mostly the project's store shape. The spec names that sibling.
+- `low`: the Save's `TAKENREASON` is a literal beside `InteropError.REASONPARTNERTAKEN`, as `LookupEntrySave`'s is.
+
 ## Spec Change Log
 
 - 2026-11-12, spec gate (runner and orchestrator): the posture question is ruled (A), `%Ens_ProductionConfig:WRITE` and globals WRITE for add, update and remove (veto, orchestrator); the new strings are kept as proposed (veto U-23); nothing is written into the spine.
@@ -369,6 +401,20 @@ deferred: []
 - AC1: mutation: a misspelled field in `Prohibited.PermittedChangeFields` for `business-partner` -> `InteropPartnerControl.TestTheReviewedFieldListsAndPreconditionCodesAreTheTools` went red.
 - AC1: mutation: `PerformPartner`'s `tBusy` answer is skipped -> `InteropPartnerRefusals.TestAnEditOfAPartnerWhoseLockIsHeldIsRefusedUnavailable` went red.
 - AC6: mutation: the baseline line of `interop.businesspartners.remove` reads `true` -> `GovernanceBaseline.TestThePurgeIsTheOneDisabledLine` went red.
+
+**QA pass (Rule 19):**
+
+- (QA) `ui/src/app/shell/proposal-card.spec.ts`: a card for `INTEROP.PARTNER.REMOVE` states `interopPartnerRemoveConsequence`, drawn destructive.
+- AC1: mutation: `consequenceSentence` drops `INTEROP.PARTNER.REMOVE` -> `proposal-card.spec.ts` "Story 20.26: a business partner's removal states its published sentence" went red.
+- AC2: mutation: the dialog's name input is `[readOnly]="false"` -> `interop-business-partner-dialog.spec.ts` Edit test went red.
+- AC3: mutation: `PartnerWriteToken` tests `pNamed > 999999` -> `InteropPartnerRefusals.TestARemoveOfAPartnerAnItemNamesIsRefused` went red (loaded on `ocupilot-b-ci`, original reloaded, class green).
+- AC5: mutation: `Pairs` skips `PARTNERWRITEPAIR` -> `InteropPartnerGate.TestEachMissingPairIsRefusedByNameThroughThePort` went red (original reloaded, class green).
+- AC6: mutation: `interopPartnerRefusalNamed` reworded -> `ui/tools/interop.test.mjs` "each Interoperability refusal and consequence is one sentence on both surfaces" went red.
+
+**Code review (Rule 19):**
+
+- AC1: mutation: `PartnerFits` answers 1 for every name -> `InteropPartnerRefusals.TestANameOrAFieldOutsideItsRuleIsRefusedByItsCode`'s mint and port-add legs for a 255-character name of `$Char(20013)` went red (on `ocupilot-b-ci`, port and subclasses recompiled; reverted, class green).
+- AC4 (hermeticity): the pre-review `RowIn` with a second partner in `USER` -> `InteropPartnerControl.TestTheBusinessPartnersReadListsTheAddedChangedAndRemovedPartner`'s "unlisted" leg went red; the fixed helper is green with it present (partner removed after).
 
 ## Auto Run Result
 

@@ -11415,6 +11415,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: 20.5's AC: the read-only half ships first; the classic page declares no edit resource (inference from source); the vendor audits nothing (measured at 20.5's plan)
 - 2026-10-11T17:14:49Z status=routed owner=20-26-business-partners-saved-and-removed by=spec_gate note=chartered as Story 20.26 at 20.5's spec gate
 - 2026-10-11T23:29:55Z occurrence=20-5-lookup-tables-and-business-partners
+- 2026-11-14T07:30:21Z status=resolved-by:20-26-business-partners-saved-and-removed by=adjudication note=ae506a6b_PartnerSave+InteropPort_add/update/remove;name_read-only_on_edit(no_rename,AC2);remove_refused_when_an_item_names_it(AC3,InteropPartnerRefusals);posture_WRITE_pair_per_orchestrator_ruling(AC5,InteropPartnerGate)
 ### DW-2313: Prohibited.PermittedChangeFields' Doc DB clause still names the routine application type, unreachable since 18.33's routine line above it
 - source: spec-18-33-privileged-routine-application-roles-and-routines.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: Epic 20's committed 20.23 (6aa1f459) edits Prohibited.cls, so Rule 11 kept 18.33's edit to added lines; the old clause's routine term is dead
@@ -12732,3 +12733,17 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-23-14-epic-23-burn-down.md | severity: low | fix-risk: med | footprint: in-story
 - evidence: TestTheScreensActionsResumePauseAndCancelACompact routes a 200 Pause settling to Done into the Cancel-409 branch (spec batch 1 task); the seam class BackgroundTaskPortSeam pins the vendor Pause call on a fake
 - 2026-11-14T02:05:18Z status=by-design owner=23-14-epic-23-burn-down by=cr note=spec-bound: batch 1 task takes the ended branch on Done; seam pins dispatch; live 403 leg still reddens
+### DW-2554: Business partners' Edit sends all thirteen values from the non-refreshing list row, so a field changed elsewhere after the list loaded is silently reverted
+- source: spec-20-26-business-partners-saved-and-removed.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: interop-business-partner-list.page.ts onOpenEdit fills from the list row (AD-43, no refresh) and onEdit sends every field; PerformPartner writes each that differs from the fresh read. The spec's task says the dialog sends all thirteen.
+- 2026-11-14T07:27:06Z status=decision-pending owner=burndown by=cr note=product call: send only the fields the person changed, or refuse when the row moved; spec text says send all
+
+### DW-2555: AD-62 (10), AD-15 and AD-22 still describe business partners as read-only with READ pairs; Story 20.26's ADD/SET/REMOVEPARTNER amendments are unwritten
+- source: spec-20-26-business-partners-saved-and-removed.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: ARCHITECTURE-SPINE.md AD-62 (10) says partner save and remove are a later story and gives %Ens_ProductionConfig:READ; the code declares PARTNERWRITEPAIR :WRITE. The spec lists the wording under For the owner's attended Update.
+- 2026-11-14T07:27:06Z status=decision-pending owner=burndown by=cr note=human=owner's attended spine Update applying the spec's three AD sentences (Rule 20)
+
+### DW-2556: Partner field validation is repeated in three callers (PartnerSave.Violations, InteropPartnerAction.ArgumentProblem, PerformPartner): each reads the fields, flags non-strings, then calls PartnerViolations
+- source: spec-20-26-business-partners-saved-and-removed.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Three near-identical loops of about ten lines; a shared port helper would serve all three. AD-55 requires each caller to judge, so the calls stay; only the loop is copied.
+- 2026-11-14T07:27:07Z status=wontfix-accepted owner=20-26-business-partners-saved-and-removed by=cr note=reopen_if=a partner field rule changes in one of the three loops and not the others
