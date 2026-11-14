@@ -9807,3 +9807,34 @@ So that a privileged change is confirmed as one and the screens show what they s
 - DW-1979: Journal records' Newest first reads the newest records but the table shows them oldest first (ledger; routed by spec_gate 2026-11-12; moved from Story 23.9 to keep it within 12 entries)
 - DW-2525: sixteen more delete tools repeat the removal-row loop over FingerprintSubject() or ReadAnswers(), which Write.RemovalRows cannot absorb as written (ledger; routed by cr 2026-11-12)
 - DW-1822: a11y-structural-invariants AC5 settle on /agent/governance at 720 px timed out at protocol-retry.mjs:48 on staging run 43379465200 attempt 1, after Story 23.9's fix (ledger; routed by orchestrator 2026-11-13; CI flake, first priority)
+
+### Story 23.14: Epic 23 burn-down
+
+Chartered by Epic 23's burn-down gate on 2026-11-14 (Rule 17), after Story 23.13, from the 32 story-closable entries the `burndown` owner held. It takes the 12 by priority: the CI flakes first (Rule 27), then the security entry, then repeat occurrences and the lowest fix-risk. The other 20 were re-owned to Epic 21 stories by the orchestrator's ruling the same day; the IRIS defect candidates and other owner questions stay on the owner's sheet.
+
+As a maintainer of OcuPilot,
+I want the recurring CI flakes and the remaining range-end defects closed,
+So that a red CI run means a real defect and the screens behave as they say.
+
+**Acceptance Criteria:**
+
+- **Given** the entries re-owned to this story: DW-2236, DW-2461, DW-2123, DW-2301, DW-2397, DW-2111, DW-2526, DW-2253, DW-2403, DW-2408, DW-2501 and DW-2543
+- **When** this story completes
+- **Then** each has a disposition written by the ledger tool: `resolved-by` this story with the commit, or `wontfix-accepted` or `by-design` with a reason and, where a condition would reopen it, that condition.
+
+- **Given** a fix to code or a test
+- **When** it lands
+- **Then** a test reddens on the defect before the fix, or the entry says why none can, and the fixes land in batches grouped by area, each with CI green on its own head.
+
+- DW-2236: CI flake: BackgroundTasksLive's Pause and Cancel answer 409 TASK.BACKGROUND.STATE when the seeded compact has already left Running (ledger; routed by burndown 2026-11-14)
+- DW-2461: flake: encryption-startup.browser-spec.mjs C1, C2, C9 timed out waiting for the None start mode control in CI browser shard 1/5 (ledger; routed by burndown 2026-11-14)
+- DW-2123: CI flake: a GitHub runner held host port 52776 through all three bring-up attempts, so an instance shard failed before running any class (ledger; routed by burndown 2026-11-14)
+- DW-2301: flake: a11y-structural-invariants AC5 recorded security/auditing/user-events (1280 light) as unsettled within 20 s (ledger; routed by burndown 2026-11-14)
+- DW-2397: CI flake: turn.browser-spec.mjs 'Markup in a reply renders as literal text' read the reply before its text finished arriving (ledger; routed by burndown 2026-11-14)
+- DW-2111: five error-log browser navigations timed out at 30 s in one CI run and did not reproduce on a re-run (ledger; routed by burndown 2026-11-14)
+- DW-2526: flake: LogHubErrors.TestASeededErrorReadsInTheHubsForm read a row other than its seeded error as the newest (ledger; routed by burndown 2026-11-14)
+- DW-2253: System Explorer's compile, delete and import Confirm gate WRITE on the request's namespace while the write targets the proposal's (ledger; routed by burndown 2026-11-14)
+- DW-2403: the turn wire test classes leave their probe user's ledger rows, and SweepSince misses rows whose turn is gone (ledger; routed by burndown 2026-11-14)
+- DW-2408: interop-item-test.browser-spec.mjs's cleanup leaves the host test's message headers and the probe production's log rows behind in USER (ledger; routed by burndown 2026-11-14)
+- DW-2501: no check fails when a new stored property on a %Persistent class without a source Storage section is declared anywhere but last (ledger; routed by burndown 2026-11-14)
+- DW-2543: Journal records' cold open with Newest first saves the default view before the account read answers, which can lose the remembered filter, row limit and widths (ledger; routed by burndown 2026-11-14)
