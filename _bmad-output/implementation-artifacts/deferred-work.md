@@ -12651,3 +12651,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: CI run 43507916359 (Story 20.25 fix b38aa6b8) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: Red on attempt 1, green on the unchanged --failed rerun; the change under test was ObjectScript test-only; same navigation-timeout shape as DW-2512
 - 2026-11-13T22:15:24Z status=routed owner=burndown by=harvest note=CI flake for the Epic 20 burn-down
+
+### DW-2545: The Change class dialog's dismissal (Cancel, Escape, scrim) and the page's close handler are not exercised by any spec
+- source: _bmad-output/implementation-artifacts/spec-20-41-item-change-of-class.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: The dialog spec's host counts cancelled but never triggers it; the page spec's stub never emits it; the add and copy dialogs share the shape
+- 2026-11-14T00:10:06Z status=open owner=20-41-item-change-of-class by=harvest note=For 20.41's QA stage to cover, or close at adjudication
