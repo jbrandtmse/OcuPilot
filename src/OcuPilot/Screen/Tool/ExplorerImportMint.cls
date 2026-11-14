@@ -9,7 +9,8 @@
 /// <code>PREVIEW</code> of the file in the request's namespace
 /// (<method>OcuPilot.Kernel.Scope.Current</method>) is asked, and its refusal answered unchanged; and
 /// <code>documents</code> is set to the preview's summary, the reviewed argument the write
-/// compares.</p>
+/// compares. The same namespace is stored as the proposal's <code>Namespace</code> argument, which the
+/// confirm's gate reads.</p>
 Class OcuPilot.Screen.Tool.ExplorerImportMint Extends OcuPilot.Kernel.Proposal.Mint
 {
 
@@ -41,6 +42,7 @@ ClassMethod Mint(pDescriptor As %String, pToolName As %String, pUser As %String,
         Set pFault = ""
         Set tArgs = ##class(%DynamicAbstractObject).%FromJSON(pArgs.%ToJSON())
         Do tArgs.%Set(pIdArgument, tId, "string")
+        Do tArgs.%Set("Namespace", ##class(OcuPilot.Kernel.Scope).Current(), "string")
         Do tArgs.%Set($Parameter(tPort, "DOCUMENTSKEY"), tPreview.%Get($Parameter(tPort, "DOCUMENTSKEY")), "string")
         Set tSC = ##super(pDescriptor, pToolName, pUser, pConvKey, pTurnKey, tArgs, pLimitsClass, .pProposal, .pHttpStatus, .pFault, pEndpoint, pIdParam, tId, pIdArgument, pSettable, pToolClass)
     } Catch ex {

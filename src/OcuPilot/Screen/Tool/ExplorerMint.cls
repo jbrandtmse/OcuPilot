@@ -1,7 +1,11 @@
 /// <p>The mint System Explorer's compile and delete tools declare as their
-/// <method>OcuPilot.Screen.Tool.Write.MintClass</method> (AD-6, AD-13, Story 19.2): the kernel's own
+/// <method>OcuPilot.Screen.Tool.Write.MintClass</method>, and the export's mint extends
+/// (AD-6, AD-13, Story 19.2): the kernel's own
 /// mint, handed the set's canonical spelling once the set is sound and present. Everything else -- the
 /// fresh read, the diff, the fingerprint, the stored row -- is the superclass's, unchanged.</p>
+/// <p>The request's namespace (<method>OcuPilot.Kernel.Scope.Current</method>) is stored as the
+/// proposal's <code>Namespace</code> argument, so the confirm is gated on the namespace the set was read
+/// in, where the stored payload's namespace sends the write (<method>OcuPilot.Screen.Tool.ExplorerWrite.PortQuery</method>).</p>
 /// <p>In order: a set the tool's <method>OcuPilot.Screen.Tool.ExplorerWrite.SetProblem</method> refuses
 /// is 400 <code>TOOL.ARGUMENTS</code> before anything is read; the port's <code>DOCS</code> read of the
 /// canonical set is asked, and its refusal answered unchanged; and a set naming a document the
@@ -38,6 +42,7 @@ ClassMethod Mint(pDescriptor As %String, pToolName As %String, pUser As %String,
         Set pFault = ""
         Set tArgs = ##class(%DynamicAbstractObject).%FromJSON(pArgs.%ToJSON())
         Do tArgs.%Set(pIdArgument, tId, "string")
+        Do tArgs.%Set("Namespace", ##class(OcuPilot.Kernel.Scope).Current(), "string")
         Set tSC = ##super(pDescriptor, pToolName, pUser, pConvKey, pTurnKey, tArgs, pLimitsClass, .pProposal, .pHttpStatus, .pFault, pEndpoint, pIdParam, tId, pIdArgument, pSettable, pToolClass)
     } Catch ex {
         Set pProposal = ""

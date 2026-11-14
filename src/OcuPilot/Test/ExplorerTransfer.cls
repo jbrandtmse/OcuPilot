@@ -204,7 +204,8 @@ Method TestTheBrowserRoundTripRestoresEachDocument()
 /// ledger rows, holds an XML or console line.</p>
 /// <p>Mutation (Rule 19): put the written output on the mint's answer -- this goes red; drop
 /// <code>Compile</code> from <method>OcuPilot.Screen.Tool.ExplorerImport.InputSchema</method> -- the
-/// dispatcher refuses the import call and this goes red.</p>
+/// dispatcher refuses the import call and this goes red; leave <code>Namespace</code> out of
+/// <class>OcuPilot.Screen.Tool.ExplorerImportMint</class> -- the stored-arguments leg goes red.</p>
 Method TestTheAgentExportsAndImportsThroughConfirm()
 {
     Set tProbe = ..#PROBE
@@ -241,6 +242,8 @@ Method TestTheAgentExportsAndImportsThroughConfirm()
     Set tCard = tImport.changed.%ToJSON()
     Do $$$AssertTrue((tCard [ """root""") && (tCard [ """path""") && (tCard [ """documents""") && (tCard [ "OcuProbe1913.Alpha.cls new") && (tCard [ """Compile"""), "its card names the file, the reviewed documents and the compile choice: " _ tCard)
     Do $$$AssertEquals(tImport.target.id _ " " _ ..Stored(tImport.proposalId, "consequence"), "import EXPLORER.IMPORT.REPLACES", "its target is import, with the replacement consequence")
+    Set tStoredArguments = ##class(%DynamicObject).%FromJSON(..Stored(tImport.proposalId, "arguments"))
+    Do $$$AssertEquals(tStoredArguments.%Get("Namespace"), ..#PROBENAMESPACE, "its stored arguments hold the namespace the file was previewed in")
     Set tSC = ..ConfirmIn(tImport, .tResult, .tConfirmHttp, .tCode)
     Do $$$AssertStatusOK(tSC, "the import is confirmed: " _ $Get(tCode))
     If '$IsObject($Get(tResult)) Quit
