@@ -1465,3 +1465,5 @@
 2026-11-14T05:41:09Z	Story 20.26	adr_verifications_complete	tool=none acs= result=none_required evidence= mutations=none model=claude-opus-5-5
 2026-11-14T05:41:21Z	Story 20.41	rework_opened	cycle_iteration=3 iteration=2 trigger=ci items=CI_RemovalRowsSweep_InteropItemChangeClass scope_baseline=pending note=fix_for=20-41-item-change-of-class;orchestrator_agreed
 2026-11-14T05:41:21Z	Story 20.41	stage_spawned	stage=implement spawn_at=2026-11-14T05:41:21Z model=sonnet agent_name=20-41-implement-3 cycle_iteration=3 rework=2
+2026-11-14T05:52:02Z	Story 20.41	dev_complete	spawn_at=2026-11-14T05:41:21Z model=sonnet agent_name=20-41-implement-3 cycle_iteration=3 rework=2 build_sha=fdc0e406 baseline_revision=ab0e5c00 followup_review_recommended=false deferred=0 files=2 note=fallback:InteropItemChangeClass_added_to_RemovalRowsSweep.Others(add-only;reason_in_spec:rows_are_Target.Name_over_the_Dropped_array);RemovalRowsSweep_7/7,ChangeClass_7/7,Refusals_6/6
+2026-11-14T05:52:02Z	Story 20.41	stage_spawned	stage=code-review spawn_at=2026-11-14T05:52:02Z model=opus agent_name=20-41-code-review-3 cycle_iteration=3 baseline=ab0e5c00 scope=rework_2
