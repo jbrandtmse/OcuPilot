@@ -12749,3 +12749,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-23-14-epic-23-burn-down.md | severity: low | fix-risk: med | footprint: in-story
 - evidence: Reverting to SELECT DISTINCT UserName keeps every batch 4 test green: no test has a probe turn job running when SweepSince is called, and the teardown's Sweep abandons by the exact name right after.
 - 2026-11-14T04:48:28Z status=wontfix-accepted owner=23-14-epic-23-burn-down by=cr note=reopen_if=a SweepSince caller reports a ' job <pid>' leftover for a probe user's running turn
+
+### DW-2553: flake: SslSecret.TestTheScreenStoresTheRightPasswordRefusesAWrongOneAndLeaksNeither ('a wrong password is refused on its field') failed in CI instance shard 3/8 and passed on the unchanged rerun
+- source: cycle-log-epic-23.md (23.14 batch 2 CI, run 43553717520) | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: run 43553717520 attempt 1 red, attempt 2 green on 07b8d59e; batch 2 changed no src since the green 21d6495b
+- 2026-11-14T05:30:22Z status=routed owner=21-10-the-remaining-leaves-across-the-six-areas by=lead note=CI flake, priority in the next standing cleanup; 23.14 is at burndown_story_max (12)
