@@ -12825,3 +12825,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: prd.md FR-80 bullet ('Every destructive action a later stage adds is absent from the governance baseline'); spine AD-22 Rule [AMENDED 2026-09-26, owner]
 - 2026-11-14T19:05:23Z status=routed owner=burndown by=spec_gate note=the PRD sentence is stale against an owner-amended AD; outside Epic 22's footprint; recommended: correct FR-80's bullet to point at AD-22's baseline rule
 - 2026-11-14T23:57:21Z status=decision-pending owner=burndown by=burndown note=decision_sheet: no later story in Epic 22 and the PRD is outside its footprint; recommended: correct FR-80's baseline bullet to point at AD-22's amended baseline rule (a planning-text sync to an owner decision)
+### DW-2565: flake: ui/tools/ci.test.mjs 'DW-2123: the budget runs from the first bind failure, so a slow first attempt still leaves a retry' failed (2343 ms) on the gates node 26.0.0 leg and passed on the unchanged rerun
+- source: cycle-log-parallel.md (dispatch gate 2026-11-14) | severity: low | fix-risk: low | footprint: in-epic
+- evidence: run 43645120786 attempt 1 (head 76ccaa892) gates node 26.0.0 red on that one test; node 22/24 legs green; attempt 2 green
+- 2026-11-14T22:42:30Z status=routed owner=21-10-the-remaining-leaves-across-the-six-areas by=lead note=timing-sensitive pin of DW-2123's bind budget; routed with the other CI flakes to 21.10

@@ -1921,3 +1921,31 @@
 2026-11-14T16:58:44Z	Epic 21	worktree_bootstrapped	epic=21 result=ok
 2026-11-14T16:58:44Z	Epic 22	worktree_bootstrapped	epic=22 result=ok
 2026-11-14T16:58:44Z	orchestrator	dispatch_writeahead	epics=21(slot_a,retro_review=own),22(slot_b,retro_review=skip) prompts=e21-unattended-20261114-prompt.md,e22-unattended-20261114-prompt.md gate=token-free_push(Rule_32)
+2026-11-14T17:45:52Z	orchestrator	ci_green_verified	runs=43618538536 head=24a02c86f result=success gate=dispatch(Rule_32)
+2026-11-14T17:45:52Z	Epic 21	runner_dispatched	slot=a runner=epic-runner-21 model=opus prompt=e21-unattended-20261114-prompt.md hold_at=none(usage-triggered)
+2026-11-14T17:45:52Z	Epic 22	runner_dispatched	slot=b runner=epic-runner-22 model=opus prompt=e22-unattended-20261114-prompt.md hold_at=none(usage-triggered)
+2026-11-14T18:40:50Z	orchestrator	feature_external_commit	sha=b8a0b2e5 by=OcuPilot_Planner what=README.md_1.0.15_port(docs_only,no_token) release=1.0.15_merged_main_6d65ea8c(PR18) runners_integrate_forward=at_next_story_start
+2026-11-14T19:49:55Z	Epic 22	runner_reported	boundary=story_22.1 code_head=74ec38514(43628782453_success) ledger=DW-2558_filed(PRD_FR-80_vs_AD-22,routed_burndown) runner_ruling=rule29_sweep_skipped_for_docs-only_diff(no_src) orchestrator=accepted
+2026-11-14T19:49:55Z	Story 22.1	merged	feature=298f59de1 tip=e808b716f route=code_equal_merge checks=ledger_entry_check_0,dups_none,sprint_validate_ok upgrade_triggers=none new_keys=none
+2026-11-14T19:49:55Z	ci	timings_refreshed	rule=29 run=43628782453
+2026-11-14T19:51:23Z	orchestrator	hold_ordered	reason=owner(relay_Planner:weekly_usage_95pct_at_19:48Z;account_switch) hold_file=present dispatch=frozen runners=e21(running),e22(ended_hold)
+2026-11-14T19:51:23Z	Epic 22	runner_ended	reason=hold head=a66b07646 unpushed=none tree=clean state=held next=22.2_implement(spec_ready) staging_f5e641ffa_run_43634085424(pending_at_hold)
+2026-11-14T20:10:23Z	Epic 21	runner_reported	item=U-39 kind=parked unit=Story_21.12(Mirroring) reason=Community_license_NoMirror=1;join_needs_second_instance;AD-10_mirror_arm_DeleteDB_wording rec=A(21.12_monitor+refusal;writes_to_Epic_22_license-gated_group=epic_boundary_owner-only) split=21.2->21.2_Backup+21.12_Mirroring(decide;veto_U-38) open=U-37(readiness_veto) notify=push deps_hash=re-record_reason=split_at_merge
+2026-11-14T20:10:23Z	orchestrator	runner_resumed	epic=21 message=HOLD_in_effect:finish_sweep,push_21.1_code_alone_then_bookkeeping,no_new_stage,U11_hold_steps,end_reason_hold via=SendMessage
+2026-11-14T21:34:33Z	orchestrator	owner_instruction	via=relay(Contest_Planner->OcuPilot_Planner) effect=interrupt_e21_sweep_now;push_15_local_commits_as_is(21.1_unverified,sweep_not_run);patch_uncommitted;end_hold;then_hold_complete note=overrides_U11_no-interrupt_for_a_lead-owned_sweep_on_owner_word
+2026-11-14T21:36:18Z	Epic 21	runner_ended	reason=hold head=0fdb14b7a(on_origin) unpushed=none tree=clean hold_patch=none 21.1=pushed_unverified(sweep_19/20_stopped_on_owner_word;smoke+committed_pending;c7ccce2a9_CI_unknown) inbox=U-37,U-38,U-39 throwaway=ocupilot-ci_down state=held
+2026-11-14T21:36:18Z	Epic 22	ci_green_verified	staging=f5e641ffa runs=43634085424 result=success note=feature_already_holds_22.1+README
+2026-11-14T21:36:18Z	orchestrator	hold_complete	shas=feature:a681ae4b7(+this_hold_commit),e21:0fdb14b7a(origin),e22:a66b07646(origin) throwaways=none_up hold_patches=none lock=released_after_push
+2026-11-14T21:36:18Z	orchestrator	unattended_report	merged=22.1 held=e21(21.1_pushed_unverified),e22(22.2_implement_next) open_owner=U-39,U-30,U-33,U-34 open_vetoes=U-20,U-29,U-31,U-32,U-35,U-37,U-38 release=1.0.15_on_main_6d65ea8c
+2026-11-14T21:52:35Z	orchestrator	lead_model_gate	model=claude-opus-5-5 action=proceed
+2026-11-14T21:52:35Z	orchestrator	runtime_gate	bmad=6.12.1 uv=0.12.9 ci=gh
+2026-11-14T21:52:35Z	orchestrator	launch_env	depth=4 watchdog=0 bash_max_ms=default
+2026-11-14T21:52:35Z	orchestrator	permission_mode_attested	mode=bypassPermissions source=session_system_prompt(interactive_reinvocation)
+2026-11-14T21:52:35Z	orchestrator	telemetry_gate	pending=0 action=none
+2026-11-14T21:52:35Z	orchestrator	hold_cleared	reason=resumed_by_the_owner(interactive_reinvocation_after_account_switch)
+2026-11-14T21:52:35Z	orchestrator	unattended_resumed	run=20261114T1656Z-21,22 policy=b9ff703e911dc7a1ec80776f736e29fd2d07ac03 doctrine=3d11cec98d91c1d4d9c225fe3b265e1af418abe4 lock_token=1794693143-71436 feature=ae8b680aa deps=approved(hash_current) answers=none runtime_locks=none_to_sweep
+2026-11-14T21:52:35Z	orchestrator	dispatch_writeahead	epics=21(slot_a,held->running),22(slot_b,held->running) prompts=e21-unattended-20261114-prompt.md+resume/epic-21.md,e22-unattended-20261114-prompt.md+resume/epic-22.md gate=token-free_push(Rule_32)
+2026-11-14T22:42:39Z	orchestrator	ci_red_classified	run=43645120786 workflow=.github/workflows/ci.yml class=flake test=ci.test.mjs:DW-2123_bind_budget(gates_node_26.0.0) action=rerun_failed ledger=DW-2565(routed_21-10)
+2026-11-14T22:42:39Z	orchestrator	ci_green_verified	runs=43645120786 head=76ccaa892 result=success gate=dispatch(Rule_32) attempt=2
+2026-11-14T22:42:39Z	Epic 21	runner_dispatched	slot=a runner=epic-runner-21 model=opus prompt=e21-redispatch-20261114T2152Z-prompt.md(+e21-unattended-20261114-prompt.md,resume/epic-21.md) hold_at=none(usage-triggered) kind=redispatch_after_hold
+2026-11-14T22:42:39Z	Epic 22	runner_dispatched	slot=b runner=epic-runner-22 model=opus prompt=e22-redispatch-20261114T2152Z-prompt.md(+e22-unattended-20261114-prompt.md,resume/epic-22.md) hold_at=none(usage-triggered) kind=redispatch_after_hold
