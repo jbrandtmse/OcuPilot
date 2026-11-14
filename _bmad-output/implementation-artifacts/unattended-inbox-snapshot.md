@@ -1,6 +1,8 @@
-# Unattended inbox -- run 20261020T0940Z-20,23
+# Unattended inbox -- run 20261114T1656Z-21,22
 
 Answer an item with `bash _bmad/scripts/unattended-inbox.sh <this directory> answer U-<n> "<answer>" --by owner`, or run `/epic-cycle --review`. This file is generated: a hand edit is saved aside and never applied.
+
+**Hold requested 2026-11-14T19:48:55Z: owner: account switch (weekly usage 95% at 19:48Z, the owner's trigger, via the Contest Planner)**
 
 ## Parked
 
@@ -9,6 +11,13 @@ question: Epic 23's decision sheet holds four suspected IRIS defects found while
 options: A: keep held, never report | B: draft reports for you to review and file
 recommendation: A: keep held (the product works around all four)
 blocks: nothing (no story waits on them)
+answer: (none yet -- answer with the script or --review)
+
+### U-39 | parked | Story 21.12 (Mirroring) | 2026-11-14T20:09:55Z
+question: Mirroring cannot be exercised on any instance this project runs: the Community license this image carries does not allow mirroring at all (measured: the instance reports no mirroring license, and the mirror manager refuses to start), and joining needs a second instance, which the memory rule forbids. Only the mirror monitor (showing 'not a member') and OcuPilot's refusal of the one prohibited removal can be built and tested. Separately, the architecture's prohibited-action rule (AD-10) says removing a mirror 'with its databases' deletes them; the vendor's own documentation says that option only takes the databases out of mirroring and keeps them, so the rule's wording needs your correction.
+options: A: 21.12 keeps the mirror monitor and the prohibited-removal refusal; the mirroring writes (create, edit, join, member and database actions) move to Epic 22's license-gated group, and AD-10's mirror wording is corrected to 'takes the databases out of mirroring' | B: build every mirroring write anyway, checked only through refusals and test fixtures | C: you provide a mirroring-licensed key and a second instance
+recommendation: A (nothing else can be verified; B ships untested writes on the most destructive surface)
+blocks: Story 21.12 only (the rest of Epic 21 continues)
 answer: (none yet -- answer with the script or --review)
 
 ## Stopped
@@ -62,6 +71,29 @@ question: Ruled at Epic 23's decision sheet, both routed to the next cleanup sto
 options: keep | reverse either (name which)
 recommendation: keep both
 blocks: 21.10 when it runs
+answer: (none yet -- answer with the script or --review)
+
+### U-37 | veto | Epic 21 (readiness) | 2026-11-14T17:48:02Z
+question: Epic 21 starts on the readiness check taken at the run's launch (16:57Z, result: concerns) rather than a second identical run, since no planning document changed in between. The concerns: Story 21.11's undo needs a recorded design for capturing state before a write; Story 21.10 carries 30 routed cleanup items and will likely be split; one cleanup item waits on your architecture update (business partners writable); two architecture questions (KMIP refusal, partial cube-update audit) are still open with you.
+options: keep: continue with these concerns planned around | hold Epic 21 until they are resolved
+recommendation: keep (each concern is planned around; the ones that need you stay with you)
+blocks: nothing (Epic 21 continues)
+answer: (none yet -- answer with the script or --review)
+
+### U-38 | veto | Story 21.2 (Backup) | 2026-11-14T19:49:32Z
+question: Ruled at Story 21.2's spec gate: (1) the story was split: 21.2 is now Backup, and the mirroring criteria moved word for word to a new Story 21.12 (Mirroring), planned right after it, because the whole is too large for one pass and mirroring cannot be exercised on a single test instance. (2) A write freeze OcuPilot issues must name its own limit, from 1 to 600 seconds, with no default; 600 seconds is the point at which the instance itself starts blocking updates. (3) The new on-screen wording proposed in the spec (screen titles Backup tasks, Backup history, Backup database list; actions Run, Freeze writes, Thaw writes, Add database, Remove; the freeze limit field and its help; the frozen banner 'Database writes are frozen. Thaw them when the external backup finishes.'; the empty-list and run notes) is kept as proposed.
+options: keep all three | reverse the split (one story) | another limit | other wording (one string each)
+recommendation: keep all three
+blocks: nothing (Story 21.2 continues)
+answer: (none yet -- answer with the script or --review)
+
+## Holds
+
+### U-40 | hold | Run 20261114T1656Z-21,22 | 2026-11-14T21:36:19Z
+question: Held 2026-11-14 ~21:40Z for the account switch (owner's trigger: 95% weekly usage). Feature a681ae4b (Story 22.1 merged). Epic 21 held at 0fdb14b7 with Story 21.1 pushed but unverified (its sweep stopped at 19/20 on your word; redone on resume); Epic 22 held at a66b0764, 22.2 next. Everything pushed, worktrees clean, throwaways down. Waiting for you: U-39 (21.12 Mirroring, recommend A) and the earlier items.
+options: resume with /epic-cycle 21,22 --unattended after the switch
+recommendation: resume when you are ready
+blocks: the whole run
 answer: (none yet -- answer with the script or --review)
 
 ## Run reports
@@ -126,4 +158,4 @@ answer: (none yet -- answer with the script or --review)
 - U-27 | parked | DW-2468 (AD-24, guided-workflow tools): Story 20.36 (Investigate) is done. Its plan also tried to fix DW-2468: a guided workflow's step tools are not in the turn's starting tool set, so the model reaches a step's tool through one tool-search call when that tool is not on the current screen. Code review found that the fix breaks AD-24 (a turn starts with the always-on tools and the screen context's tools only), so it was reverted and the story shipped without it. Fixing it needs AD-24 amended, which is yours (done specs cite AD-24). Proposed wording: '... and the screen context's tools, and in a guided-workflow turn the tools its steps name (AD-66)'. -> (B): keep AD-24 as it is; a guided workflow's off-screen step tools stay reachable through the tool-search call. No amendment, no follow-up story; close DW-2468 as decided-keep. (by planner, 2026-11-13T07:49:55Z#86; quoting the owner: "B: keep it as is"); resolved by orchestrator, 2026-11-13T07:50:28Z -- owner chose B: AD-24 unchanged; DW-2468 closed by-design
 - U-28 | hold | Run 20261020T0940Z-20,23: Held 2026-11-13T09:59Z on the owner's word; feature 5135d0379; Epic 20 local head b8bf20539 (20.25 gates green on 8127b55f, push on resume); Epic 23 b3f01e196 with a hold patch for 23.10 batch 2; no throwaways up -> (no answer); resolved by orchestrator, 2026-11-14T00:21:51Z -- resumed by the owner 2026-11-13T13:22Z
 
-<!-- journal: 101 lines -->
+<!-- journal: 109 lines -->
