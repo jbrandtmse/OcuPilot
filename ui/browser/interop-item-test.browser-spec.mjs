@@ -13,8 +13,9 @@
  *
  * **It compiles, starts and writes a probe production in `USER`** through `OcuPilot.Test.ProductionProbe` and
  * `OcuPilot.Test.InteropTestFixture`, so it runs on a throwaway only; the `after` hook stops and removes the production, its
- * classes, its messages and its saved requests, whatever the tests answered, and the trace test (Story 20.30) removes the session it
- * caused as soon as it has read it (`OcuPilot.Test.InteropMessageTrace.ClearSession`) and checks that none of its headers is left.
+ * classes, its messages and its saved requests, whatever the tests answered, and asserts that the message headers and event-log rows
+ * of `USER` are back at the high-water mark `before` recorded. The trace test (Story 20.30) removes the session it caused as soon as
+ * it has read it (`OcuPilot.Test.InteropMessageTrace.ClearSession`) and checks that none of its headers is left.
  *
  * Run: `OCUPILOT_BROWSER_ORIGIN=<origin> OCUPILOT_BROWSER_CONTAINER=<container> \
  *   node --test --test-concurrency=1 browser/interop-item-test.browser-spec.mjs` (after `npm run build` and the bundle copied into
@@ -53,6 +54,8 @@ const REDUCED_MOTION = [{ name: 'prefers-reduced-motion', value: 'reduce' }];
 
 let browser = null;
 let created = false;
+/** `ProductionProbe.HighWater()` before the probe is created: what `after` sweeps back to. */
+let mark = '';
 
 /** Run one probe call in the throwaway and answer its marker. */
 function probe(name, expression) {
@@ -160,6 +163,9 @@ before(async () => {
   assert.match(config.container, /-ci$/, `this spec compiles and starts a probe production, so it runs only in a throwaway; ${config.container} is not one`);
   const removed = probe('ITCLEAN', `$System.Status.IsOK(##class(${FIXTURE}).Remove())_$System.Status.IsOK(##class(${PROBE}).Remove())`);
   assert.equal(removed.value, '11', `an earlier run's probe is removed: ${removed.output}`);
+  const marked = probe('ITMARK', `##class(${PROBE}).HighWater()`);
+  assert.match(marked.value ?? '', /^\d+\|\d+$/, `the message store's high-water mark is read: ${marked.output}`);
+  mark = marked.value;
   const made = probe('ITMADE', `$System.Status.IsOK(##class(${PROBE}).Create())_$System.Status.IsOK(##class(${FIXTURE}).Create())`);
   assert.equal(made.value, '11', `the probe production and the fixture's classes are created: ${made.output}`);
   created = true;
@@ -171,8 +177,11 @@ before(async () => {
 after(async () => {
   try {
     if (created && /-ci$/.test(config.container)) {
-      const gone = probe('ITGONE', `$System.Status.IsOK(##class(${PROBE}).Settle())_$System.Status.IsOK(##class(${FIXTURE}).Remove())_$System.Status.IsOK(##class(${PROBE}).Remove())_##class(${PROBE}).Gone()`);
-      assert.equal(gone.value, '1111', `the probe production is removed: ${gone.output}`);
+      const gone = probe(
+        'ITGONE',
+        `$System.Status.IsOK(##class(${PROBE}).Settle())_"|"_##class(${PROBE}).SweepSince("${mark}")_"|"_$System.Status.IsOK(##class(${FIXTURE}).Remove())_"|"_$System.Status.IsOK(##class(${PROBE}).Remove())_"|"_##class(${PROBE}).Gone()_"|"_##class(${PROBE}).HighWater()`
+      );
+      assert.equal(gone.value, `1|0|0|1|1|1|${mark}`, `the probe production is removed, and no message or log row is left above the mark ${mark}: ${gone.output}`);
     }
   } finally {
     if (browser !== null) await browser.close();

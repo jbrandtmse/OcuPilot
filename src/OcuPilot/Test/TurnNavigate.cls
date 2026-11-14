@@ -58,6 +58,10 @@ Method OnAfterOneTest() As %Status
         Set tKey = $Order(..PreparedKeys(tKey))
         If tKey = "" Quit
         Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Turn).GuardedDelete(tKey), "turn " _ tKey _ " is removed")
+        ; A ledger row outlives its turn, so the turn's delete leaves the rows its steps wrote.
+        Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(tKey), "turn " _ tKey _ "'s ledger rows are removed")
+        Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Ledger).GuardedCountForTurn(tKey, .tRows), "turn " _ tKey _ "'s ledger rows are counted")
+        Do $$$AssertEquals(tRows, 0, "and none of them survives")
     }
     ; Several methods here exercise a path that never reaches GuardedFinish -- a refused request,
     ; a settle-claim race, a wire status sweep -- and a reserve holds the user's slot lock until a
@@ -557,6 +561,8 @@ Method TestDeletingATurnRemovesItsDirective()
 
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Turn).GuardedDelete(tKey), "the turn is deleted")
     Kill ..PreparedKeys(tKey)
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Ledger).GuardedCountForTurn(tKey, .tRows), "the turn's ledger rows are counted")
+    Do $$$AssertEquals(tRows, 0, "and none of them is left, which this method's key leaves to no teardown")
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Nav).GuardedPending(tKey, .tAfterSeq, .tAfterRoute, .tAfterEntity, .tAfterSettled, .tAfterOutcome, .tAfterCode), "the directive reads again")
     Do $$$AssertEquals(tAfterSeq, 0, "and the row went with the turn")
 }

@@ -2,8 +2,8 @@
 title: 'Story 23.14: Epic 23 burn-down'
 type: 'bugfix'
 created: '2026-11-13'
-status: 'in-progress'
-baseline_revision: 'a99b19ff0e04e3052282a2c8e0e8116fc82ce776'
+status: 'done'
+baseline_revision: '134d0cbc7eb43c925fd597fb5e79cc3aff8b7546'
 baseline_commit: 'a99b19ff0e04e3052282a2c8e0e8116fc82ce776'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -298,7 +298,7 @@ Job logs for DW-2461 and DW-2111 are saved in `scratchpad/e23u/23-14/plan/browse
 
 ### Batch 4: test hygiene
 
-- [ ] **DW-2403.**
+- [x] **DW-2403.**
   - `src/OcuPilot/Test/TurnWireFixture.cls`:
     - `SweepSince` selects `%EXACT(TurnKey)` at :511 and `%EXACT(UserName)` at :471.
     - `Sweep` calls `Ledger.GuardedDeleteForUser` for USERA and USERB, and adds `ledger rows (n)` to its report when a `%EXACT(UserName)` count is not 0.
@@ -308,7 +308,7 @@ Job logs for DW-2461 and DW-2111 are saved in `scratchpad/e23u/23-14/plan/browse
   - Red first: with the count added before the delete, `ExplorerSaveTurn` and `TurnWire` fail on `Sweep(...) = ""`. A `SweepSince` leg (a USERA ledger row above the mark with no turn) reports it, and `TurnNavigate`'s count is non-zero.
   - Before relying on the new delete, check that no class calls `Sweep` mid-test while it still needs ledger rows.
   - Mutations: drop the `GuardedDeleteForUser` call; restore the bare `TurnKey` at :511.
-- [ ] **DW-2408.** `ui/browser/interop-item-test.browser-spec.mjs`:
+- [x] **DW-2408.** `ui/browser/interop-item-test.browser-spec.mjs`:
   - `before` records `ProductionProbe.HighWater()` before `Create`.
   - `after` runs `Settle`, `SweepSince(mark)`, `InteropTestFixture.Remove`, `ProductionProbe.Remove`, then `Gone`, and asserts that `HighWater()` is at the mark.
   - No ObjectScript change.
@@ -454,6 +454,21 @@ Rejected (batch 6):
   - `[low]` `[reject]` A cold open with no stored view on the instance is not pinned (verification-gap; the intent auditor's same point, plus a failed account read) — the new page case seeds a view only. With nothing restored the subscriber skips `followOrder`, so `desc` is held in memory and not sent; the matrix constrains only the remembered-view case, so a test would pin an undecided choice, and the direction is re-derived from the arrival's order on each open.
   - `[false]` `[reject]` The no-send rule is enforced by the caller through a flag, not inside the store (intent auditor, reading B) — Design Notes "Decided in-stage" 4 chose the additive parameter on purpose: store-wide deferral would silence the table harness's width persistence.
   - `[low]` `[reject]` A command-bar direction choice before adoption still sends, and the refresh-action path is untested (intent auditor) — the matrix row says "after adoption"; a person clicking before the account read answers is the pre-existing case, and the refresh path passes `remembered()` through the same call the new case pins.
+
+### 2026-11-13 — Review pass (batch 4)
+
+- verdicts: 10 findings — high 0, medium 1, low 5, false 2, maybe-false 2
+- findings:
+  - `[medium]` `[patch]` `TestDeletingATurnRemovesItsDirective`'s `GuardedDeleteForTurn` is never observed (verification-gap) — verified: dropping it left the method green (run 14), because the method's own steps write no ledger row. Patched: the method asserts `GuardedCountForTurn` = 0 and keeps no delete call; a ledger row appended for its key reddens that method alone (run 16).
+  - `[low]` `[patch]` `SweepSince`'s `%EXACT(UserName)` select has no pin (verification-gap) — the abandon signal dies with the turn, so no test can see it without a job that honours the signal; the mutation section says so instead of a red line.
+  - `[low]` `[patch]` `TurnNavigate`'s first `GuardedCountForTurn` in the teardown is overwritten unread (verification-gap) — removed.
+  - `[low]` `[reject]` The `SweepSince` ledger leg is pinned from `InteropEditorSaveTurn`, which does not own the fixture (verification-gap) — that class is the fixture's only `SweepSince` user; a new owner class would add a file for one case.
+  - `[maybe-false]` `[reject]` About 18 other classes' `Sweep` calls now also delete ledger rows (verification-gap) — their calls are in setup and teardown by grep, plus the three mid-test callers the implement pass read; the lead's full sweep runs them. Would be low.
+  - `[maybe-false]` `[reject]` `HighWater()` equal to the mark could flake on an unrelated USER writer (verification-gap) — the resend spec asserts the same comparison; a flake there is its own ledger entry. Would be low.
+  - `[low]` `[reject]` `Sweep` deletes every ledger row of USERA and USERB, not only the caller's (intent auditor, reading F) — those two users exist only for the fixture, and the spec's Decided 5 puts the delete in `Sweep` on purpose.
+  - `[false]` `[reject]` The cleaner and the detector are one call chain (intent auditor) — `LedgerRows()` is a separate exact SQL count, so a delete that fails or misses leaves a nonzero count and `Sweep` names it.
+  - `[false]` `[reject]` `TurnNavigate`'s `irisowner` rows are not covered by the USERA/USERB sweep (intent auditor) — `TurnNavigate` deletes by its own turn keys, and the teardown asserts each key's count is 0.
+  - `[low]` `[reject]` The DW-2408 check is relative to a mark and covers only the spec's own window (intent auditor) — it copies the resend spec's cleanup, which the spec's Siblings names.
 
 ## Design Notes
 
@@ -631,6 +646,15 @@ Batch 2:
 - (QA) tests: `ui/tools/structural-walk.test.mjs` +2 cases for DW-2301's `settle` reason, which ran the in-page check only through a mocked answer. The busy-element and fonts reasons run the real in-page function against a stubbed `document`, and a request URL that does not parse is named as given. mutation: the in-page check answering `busy === null` -> the busy-element case red (`busy element section#keys` expected); `pathOf` answering '' on a parse failure -> the unparsable-URL case red. Both reverted (`cmp` identical, `git status` unchanged). `structural-walk` + `protocol-retry` 46 pass, 0 fail. Re-run on `ocupilot-ci`, one spec per call: `encryption-startup` 3, `error-log` 5, `turn` 10, all green.
 - (review) mutation: DW-2301 -- the no-relaunch retrier given the connection-loss predicate: the no-relaunch case red; the report without its slowest-visits line: the report case red; `pending` kept after a ready check: the new cleared-reason case red; the `detached frame` form dropped: the `isConnectionLoss` case red. DW-2111 -- `retryOnce` retrying a second accepted error: the predicate case red (and three default-predicate cases); `openScreen` rethrowing a different error, and the relaunch answering `null`: the source-text case red. DW-2397 re-run with the old wait (bundle rebuilt and redeployed): red with the same actual, which is the partial reply's linked URL plus its host caption. All reverted (`git diff` clean against the patched files). `structural-walk` + `protocol-retry` 47 pass, 0 fail; on `ocupilot-ci`, `encryption-startup` 3, `a11y-structural-invariants` 13, 0 failed, 0 unsettled, the slowest visit labeled `/`.
 
+Batch 4:
+
+- mutation: DW-2403 `Sweep` -- the `GuardedDeleteForUser` loop absent (the count kept; the state before the fix): `ExplorerSaveTurn` run 1 red on "no probe job, turn, slot or stub node survives the method", `TurnWire` run 2 red, 15 of 15 methods, on the same assertion. With the loop: `ExplorerSaveTurn`, `TurnWire` (15), `LedgerWire` (6), `Retention` (10), `TurnProviderFault` (6, whose `Sweep` runs mid-test) and `ScreenAccessTurn` (2, same) green on `ocupilot-ci`.
+- mutation: DW-2403 `SweepSince` -- the bare `TurnKey` restored in its ledger leg (throwaway copy): the new `InteropEditorSaveTurn.TestSweepSinceRemovesALedgerRowWhoseTurnIsGone` red on both its assertions (the sweep answered a ledger row, and the row was still there), run 6, the other test green. Reverted (`cmp` identical); the class then ran green, 2 tests.
+- mutation: DW-2403 `TurnNavigate` -- the teardown's and `TestDeletingATurnRemovesItsDirective`'s `GuardedDeleteForTurn` calls dropped (throwaway copy): run 4 red on "and none of them survives" in 6 of 15 methods, so the count was non-zero before the delete. Reverted (`cmp` identical); run green, 15 tests, 0 failed. The `irisowner` ledger rows that red run left were removed with `Ledger.GuardedDeleteForUser`; `OcuPilot_Kernel_State.Ledger` reads 0 rows on `ocupilot-ci`.
+- mutation: DW-2403 `TestDeletingATurnRemovesItsDirective` -- its own steps write no ledger row (run 14: the delete dropped, the count still 0), so the method asserts the count is 0 and keeps no delete call. A ledger row appended for its key before the count (throwaway copy): run 16 red on that method alone, 14 other methods green. Reverted (`cmp` identical); the key's row removed (`Ledger` reads 0 rows); run 17 green, 15 tests.
+- no red: DW-2403 `SweepSince`'s `%EXACT(UserName)` select. The abandon signal it feeds is killed with the turn, so a sweep that abandons nothing leaves no trace, and a pin needs a running job that honours the signal, which only the 25 armed turn classes start; the bare select returns the collated uppercase name, which the exact-match abandon would not find (inference).
+- mutation: DW-2408 -- the sweep dropped from `after` (`SweepSince` answering `0|0`): `interop-item-test` red on "no message or log row is left above the mark 0|0", actual `1|0|0|1|1|1|1|14` against `1|0|0|1|1|1|0|0`, so USER held 1 header and 14 log rows past the mark. Reverted (`cmp` identical) and USER swept back to `0|0`; run green, 5 tests, 0 failed, with `HighWater()` back at the mark.
+
 Batch 6:
 
 - mutation: DW-2543 -- `followOrder` passing `true` (the old behavior): the new `journal-records.page.spec.ts` case red on "no view POST before the account answers" (`expected [ { ... } ] to deeply equal []`). The store ignoring `remember` (`rememberView()` always called): the same case red, and the `screen-store.test.mjs` case "setDirection with remember false ..." red. `setDirection` not notifying: the store case red. The subscriber's `followOrder` dropped: the page case red, and the existing "Oldest first draws ascending when the remembered descending view is adopted" case red. Each reverted (`git diff` byte-identical to before the mutation). Final: page spec 23 pass; `screen-store.test.mjs` 29 pass; `npm run test:components` 3382 pass; `npm run test:tools` 2233 pass; `npm run build` passes. No browser run in this pass (the `journal-records` browser spec is the lead's fresh check).
@@ -642,13 +666,13 @@ Batch 6:
 Status: done
 Blocking condition: none
 
-Batches 1 and 2 closed at their own commits (`62de6712b`, `07b8d59ea`). This pass: batch 6 (DW-2543) only.
+Batches 1, 2 and 6 closed at their own commits. This pass: batch 4 (DW-2403, DW-2408) only.
 
-- **Changed (all under `ui/`):**
-  - `src/app/core/screen-store.ts`: `setDirection(direction, remember = true)` sets the direction and notifies, and sends the view only when `remember` is true.
-  - `src/app/areas/os-management/journal-records.page.ts`: `followOrder()` passes `view.store.remembered()`, so an arrival before the account read sets the direction without replacing the remembered view. `command-bar.ts` is unchanged.
-  - `src/app/areas/os-management/journal-records.page.spec.ts`: a cold open with Newest first before the account answers sends no view, and the remembered filter, row limit and width survive adoption with direction `desc`.
-  - `tools/screen-store.test.mjs`: `setDirection('desc', false)` changes the direction, notifies and sends nothing.
-- **Review:** 3 findings: 0 patched, 0 deferred, 3 rejected (2 low, 1 false; reasons in the log). Follow-up review recommended: false (patched high 0, medium 0).
-- **Verified:** page spec 23 pass; `screen-store.test.mjs` 29 pass; `npm run test:components` 3382 pass; `npm run test:tools` 2233 pass, 0 fail; `npm run build` passes; `uv run scripts/check-objectscript.py` 0 problems; `bash scripts/lint-docs.sh` 0 issues. The `journal-records` browser spec: lead, fresh check (not run here; `ocupilot-ci` untouched).
-- **Residual:** the page case's red-first run against the original code was stood in for by the `followOrder`-passes-`true` mutation. A cold open with no stored view leaves `desc` in memory and unsent (not pinned; the matrix constrains only the remembered-view case).
+- **Changed:**
+  - `src/OcuPilot/Test/TurnWireFixture.cls`: `SweepSince` selects `%EXACT(TurnKey)` and `%EXACT(UserName)`. `Sweep` deletes USERA's and USERB's ledger rows and reports `ledger rows (n)` from an exact SQL count (`LedgerRows`).
+  - `src/OcuPilot/Test/TurnNavigate.cls`: the teardown deletes each prepared key's ledger rows and asserts the count is 0. `TestDeletingATurnRemovesItsDirective` asserts the count is 0 for its own key.
+  - `src/OcuPilot/Test/InteropEditorSaveTurn.cls`: `TestSweepSinceRemovesALedgerRowWhoseTurnIsGone`.
+  - `ui/browser/interop-item-test.browser-spec.mjs`: `before` records `ProductionProbe.HighWater()`; `after` sweeps above the mark and asserts the high-water is back at it.
+- **Review:** 10 findings: 3 patched (1 medium, 2 low), 0 deferred, 7 rejected (reasons in the log). Follow-up review recommended: false (patched high 0, medium 1).
+- **Verified (all on `ocupilot-ci`, one class or spec per call):** `ExplorerSaveTurn`, `TurnWire` (15), `LedgerWire` (6), `Retention` (10), `TurnProviderFault` (6), `ScreenAccessTurn` (2), `InteropEditorSaveTurn` (2) green; `TurnNavigate` run 17, 15 tests, 0 failed; `interop-item-test` 5 tests, 0 failed after a rebuild and redeploy; `npm run test:tools` 2233 pass; `uv run scripts/check-objectscript.py` 0 problems. Red-first and mutation runs are under Verification, Batch 4.
+- **Residual:** the `%EXACT(UserName)` select in `SweepSince` has no test that reddens (reason under Verification, Batch 4). The 25 armed turn classes that call `Sweep` run in the lead's full sweep.
