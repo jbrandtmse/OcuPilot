@@ -10260,6 +10260,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-11T02:03:07Z status=routed owner=burndown by=merge_gate note=owner decision 2026-10-10 on 23.7, "Pull 5, hold rest (Recommended)", relayed by the Planner; CI flake, the next epic burn-down gate takes it
 - 2026-11-12T20:10:17Z occurrence=20-34-the-cube-manager-s-build-and-synchronize
 - 2026-11-14T00:52:32Z owner=23-14-epic-23-burn-down by=burndown note=chartered_in_Story_23.14(Epic_23_burn-down,orchestrator_ruling_2026-11-14)
+- 2026-11-14T05:56:28Z status=resolved-by:23-14-epic-23-burn-down by=adjudication note=batch_3:ci-throwaway.sh_retries_only_bind_failures_within_a_budget(OCUPILOT_BIND_WAIT_SECONDS,default_120,from_the_first_bind_failure;waits_2,4,8,16,30s),prints_ss_for_the_port,publishes_on_127.0.0.1(veto_U-32);ci.yml_port-reservation_comments_corrected;pins_in_ui/tools/ci.test.mjs;reopen_if=an_instance_or_browser_shard_fails_bring-up_on_a_held_port_after_the_budget
 
 ### DW-2124: IRIS defect candidate: the admin API's Wallet.Secret PUT of a %Wallet.SymmetricKey stores a random key when Length rides with Secret64, and stores no Length for an imported key (SymmetricKey.Create sets Length on a local subscript)
 - source: spec-18-24-rsa-and-symmetric-key-wallet-secrets.md | severity: low | fix-risk: high | footprint: out-of-footprint
@@ -12473,6 +12474,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-23T02:50:28Z status=routed owner=burndown by=orchestrator note=owner request 2026-10-22 (relayed by the Planner): cleanup backlog, not built now; compare each persistent class's stored property order against the previous release tag
 - 2026-10-23T04:55:51Z occurrence=20-37-sqlrun-stored-slot-order
 - 2026-11-14T00:52:34Z owner=23-14-epic-23-burn-down by=burndown note=chartered_in_Story_23.14(Epic_23_burn-down,orchestrator_ruling_2026-11-14)
+- 2026-11-14T05:56:28Z status=resolved-by:23-14-epic-23-burn-down by=adjudication note=batch_3:ui/tools/stored-order.mjs+test_check_each_stored_class's_own_properties_against_the_newest_origin/release/*(veto_U-31);ci.yml_gates_leg_fetches_release/*_tips_at_depth_1;full-clone_and_HEAD_legs_pinned
 
 ### DW-2502: No test replaces an owner's ended SqlRun row whose Kind is NULL through GuardedReserve's ended-row delete, so dropping its COALESCE(Kind, 'sql') reddens nothing
 - source: _bmad-output/implementation-artifacts/spec-20-37-sqlrun-stored-slot-order.md | severity: low | fix-risk: low | footprint: in-epic
