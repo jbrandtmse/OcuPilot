@@ -10361,6 +10361,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Measured at 20.1 plan on slot B (M1-M5, candidates A-F in that spec's Auto Run Result at 9faa902f): an unsandboxed same-origin frame signs in silently but can read ocupilot.token-pair; a noopener tab keeps both ADs but drops in-place and 20.7's messages; sandboxed frames never sign in
 - 2026-10-07T05:16:47Z status=decision-pending owner=burndown by=orchestrator note=security posture, queued for the owner's morning summary 2026-10-07; recommended A (same-origin frame, normal mode, AD-62 named case)
 - 2026-10-07T10:04:43Z status=routed owner=20-13-the-sign-in-hand-off-to-the-embedded-vendor-editors by=owner note=owner decision 2026-10-07: option A, written by the orchestrator as AD-63 (feature 75014fdc)
+- 2026-11-14T10:07:50Z status=resolved-by:20-13-the-sign-in-hand-off-to-the-embedded-vendor-editors by=burndown note=owner_option_A_delivered_by_20.13_(9104d78f,green_38272302931):same-origin_frame_named_case_written_as_AD-63;never_adjudicated_at_20.13(its_gate_listed_DW-2349_only)
 
 ### DW-2148: EXPERIENCE.md's rail row (:612 nine rail-items) and area-tile row (:653 Seven tiles) understate a namespace that reports interoperability or analytics
 - source: spec-20-1-namespace-category-gating.md | severity: low | fix-risk: low | footprint: in-epic
@@ -11552,6 +11553,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Probed on ocupilot-b-ci HSSYSLOCALTEMP (no interoperability): #include Ensemble fails MPP5635 and an argument As Ens.Config.Item fails #5373 (both probes removed); README:365 admits an IPM install into any non-system namespace
 - 2026-10-12T08:23:20Z status=decision-pending owner=burndown by=cr note=product call: support a non-interop install namespace (drop include and Ens types) or say README needs one
 - 2026-10-12T12:33:19Z status=routed owner=20-28-ocupilot-compiles-in-a-namespace-without-interoperability by=lead note=orchestrator ruling 2026-10-12 chartered Story 20.28 (no Ensemble include, no Ens.Config argument types, a non-interop compile guard in CI)
+- 2026-11-14T10:07:50Z status=resolved-by:20-28-ocupilot-compiles-in-a-namespace-without-interoperability by=burndown note=20.28_(5ee4c8c4,green_38303997167)_removed_Include_Ensemble_and_Ens.Config_argument_types(InteropPort_has_neither_today)+non-interop_compile_guard_in_CI;never_adjudicated_at_20.28
 
 ### DW-2344: The Test dialog builds its form from the tab's capped rows, so past the row cap a class can be offered with fields missing, and the dialog does not say the list is cut
 - source: spec-20-6-testing-hosts-and-transformations.md | severity: low | fix-risk: low | footprint: in-story
@@ -12681,6 +12683,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: CI run 43445087881 (staging c2b0262a) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: Red once, green on the unchanged rerun (--failed) of the same run; the filtered list held only /csp/myapp, so the subset check had nothing else to drop (inference: the list read before its other rows arrived)
 - 2026-11-13T15:58:45Z status=routed owner=burndown by=harvest note=CI flake for the Epic 20 burn-down
+- 2026-11-14T10:07:51Z owner=21-10-the-remaining-leaves-across-the-six-areas by=burndown note=overflow:_Epic_20_burn-down_not_chartered(2_story-closable_entries,cap_8,no_entry_with_2_occurrences);a_web-applications_browser-spec_flake_waits_for_Epic_21's_remaining-leaves_story,as_the_orchestrator_routed_Epic_23's_non-interop_overflow
 
 ### DW-2535: order or timing dependence: InteropItemRun.TestAStartThePortCannotFinishIsPending read the Productions Update as 409 INTEROP.PRODUCTION.UPTODATE right after Facts read needs=1 (CI instance shard 8/8 of staging c2b0262a)
 - source: CI run 43445087881 (staging c2b0262a), Story 20.25's test | severity: med | fix-risk: med | footprint: in-footprint
@@ -12703,6 +12706,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: CI run 43507916359 (Story 20.25 fix b38aa6b8) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: Red on attempt 1, green on the unchanged --failed rerun; the change under test was ObjectScript test-only; same navigation-timeout shape as DW-2512
 - 2026-11-13T22:15:24Z status=routed owner=burndown by=harvest note=CI flake for the Epic 20 burn-down
+- 2026-11-14T10:07:51Z owner=21-10-the-remaining-leaves-across-the-six-areas by=burndown note=overflow:_Epic_20_burn-down_not_chartered(2_story-closable_entries,cap_8,no_entry_with_2_occurrences);stream-reply_navigation-timeout_flake_waits_for_Epic_21's_remaining-leaves_story
 
 ### DW-2545: The Change class dialog's dismissal (Cancel, Escape, scrim) and the page's close handler are not exercised by any spec
 - source: _bmad-output/implementation-artifacts/spec-20-41-item-change-of-class.md | severity: low | fix-risk: low | footprint: in-story
