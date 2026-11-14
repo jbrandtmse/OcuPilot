@@ -60,6 +60,8 @@ import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '..
 import { parseMarkers } from './iris-session.mjs';
 import { ROW_SELECTOR, clickRowCentre, viewCount } from './list-spec.mjs';
 import { leaveFirstLoginGate } from './shell-entry.mjs';
+import { gotoNamingInflight, trackInflightRequests } from './panel-spec.mjs';
+import { relaunchOnce } from './protocol-retry.mjs';
 import { resetRememberedState } from './preferences-reset.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -222,25 +224,51 @@ async function signedInAtScreen(username = config.username, password = config.pa
   // one account every spec signs in as, so a fresh context is no longer a fresh slate on its
   // own -- see `preferences-reset.mjs`.
   await resetRememberedState();
-  const context = await browser.createBrowserContext();
-  const page = await context.newPage();
-  page.setDefaultNavigationTimeout(config.navigationTimeoutMs);
-  const reads = [];
-  page.on('request', (request) => {
-    const url = new URL(request.url());
-    if (url.pathname.startsWith('/api/ocupilot/logs/errors/')) reads.push(url.pathname + url.search);
-  });
-  await page.goto(`${config.origin}${SCREEN_URL}`, { waitUntil: 'networkidle2' });
-  await page.waitForSelector('#ocu-signin-user', { visible: true, timeout: config.navigationTimeoutMs });
-  await page.type('#ocu-signin-user', username);
-  await page.type('#ocu-signin-password', password);
-  await page.click('.ocu-signin-card button[type="submit"]');
-  await page.waitForSelector('app-rail .ocu-rail', { timeout: config.navigationTimeoutMs });
-  // The first-login gate takes an administrator to the Definition form on an instance with no
-  // enabled definition, whatever URL was asked for (Story 3.6). Back returns to this one.
-  await leaveFirstLoginGate(page, config.navigationTimeoutMs, SCREEN_URL);
-  await settled(page, 'namespaces');
-  return { context, page, reads };
+  return openOnSharedBrowser((holder) => openScreen(holder, username, password));
+}
+
+/**
+ * Run `open` on the shared browser, which is replaced once when a navigation on it times out
+ * (`relaunchOnce`); the replacement is what `browser` holds afterwards.
+ */
+function openOnSharedBrowser(open) {
+  return relaunchOnce(
+    open,
+    async () => {
+      browser = await puppeteer.launch(launchOptions(config));
+      return browser;
+    },
+    browser
+  );
+}
+
+/** One attempt: a context signed in at the screen on `holder`, closed again when any step throws. */
+async function openScreen(holder, username, password) {
+  const context = await holder.createBrowserContext();
+  try {
+    const page = await context.newPage();
+    page.setDefaultNavigationTimeout(config.navigationTimeoutMs);
+    const reads = [];
+    page.on('request', (request) => {
+      const url = new URL(request.url());
+      if (url.pathname.startsWith('/api/ocupilot/logs/errors/')) reads.push(url.pathname + url.search);
+    });
+    const listInflight = trackInflightRequests(page);
+    await gotoNamingInflight(page, `${config.origin}${SCREEN_URL}`, { waitUntil: 'networkidle2' }, listInflight);
+    await page.waitForSelector('#ocu-signin-user', { visible: true, timeout: config.navigationTimeoutMs });
+    await page.type('#ocu-signin-user', username);
+    await page.type('#ocu-signin-password', password);
+    await page.click('.ocu-signin-card button[type="submit"]');
+    await page.waitForSelector('app-rail .ocu-rail', { timeout: config.navigationTimeoutMs });
+    // The first-login gate takes an administrator to the Definition form on an instance with no
+    // enabled definition, whatever URL was asked for (Story 3.6). Back returns to this one.
+    await leaveFirstLoginGate(page, config.navigationTimeoutMs, SCREEN_URL);
+    await settled(page, 'namespaces');
+    return { context, page, reads };
+  } catch (error) {
+    await context.close().catch(() => {});
+    throw error;
+  }
 }
 
 /**
@@ -257,40 +285,51 @@ async function signedInAtScreen(username = config.username, password = config.pa
  */
 async function signedInAtScreenIntercepting() {
   await resetRememberedState();
-  const context = await browser.createBrowserContext();
-  const page = await context.newPage();
-  page.setDefaultNavigationTimeout(config.navigationTimeoutMs);
-  let armed = null;
-  await page.setRequestInterception(true);
-  page.on('request', (request) => {
-    if (armed !== null) {
-      const url = new URL(request.url());
-      if (url.pathname === armed.pathname) {
-        url.searchParams.set(armed.param, armed.value);
-        armed = null;
-        request.continue({ url: url.toString() });
-        return;
+  return openOnSharedBrowser(openInterceptingScreen);
+}
+
+/** One attempt of `signedInAtScreenIntercepting` on `holder`; its context is closed when any step throws. */
+async function openInterceptingScreen(holder) {
+  const context = await holder.createBrowserContext();
+  try {
+    const page = await context.newPage();
+    page.setDefaultNavigationTimeout(config.navigationTimeoutMs);
+    let armed = null;
+    await page.setRequestInterception(true);
+    page.on('request', (request) => {
+      if (armed !== null) {
+        const url = new URL(request.url());
+        if (url.pathname === armed.pathname) {
+          url.searchParams.set(armed.param, armed.value);
+          armed = null;
+          request.continue({ url: url.toString() });
+          return;
+        }
       }
-    }
-    request.continue();
-  });
-  await page.goto(`${config.origin}${SCREEN_URL}`, { waitUntil: 'networkidle2' });
-  await page.waitForSelector('#ocu-signin-user', { visible: true, timeout: config.navigationTimeoutMs });
-  await page.type('#ocu-signin-user', config.username);
-  await page.type('#ocu-signin-password', config.password);
-  await page.click('.ocu-signin-card button[type="submit"]');
-  await page.waitForSelector('app-rail .ocu-rail', { timeout: config.navigationTimeoutMs });
-  // The first-login gate takes an administrator to the Definition form on an instance with no
-  // enabled definition, whatever URL was asked for (Story 3.6). Back returns to this one.
-  await leaveFirstLoginGate(page, config.navigationTimeoutMs, SCREEN_URL);
-  await settled(page, 'namespaces');
-  return {
-    context,
-    page,
-    armRewrite(pathname, param, value) {
-      armed = { pathname, param, value };
-    },
-  };
+      request.continue();
+    });
+    const listInflight = trackInflightRequests(page);
+    await gotoNamingInflight(page, `${config.origin}${SCREEN_URL}`, { waitUntil: 'networkidle2' }, listInflight);
+    await page.waitForSelector('#ocu-signin-user', { visible: true, timeout: config.navigationTimeoutMs });
+    await page.type('#ocu-signin-user', config.username);
+    await page.type('#ocu-signin-password', config.password);
+    await page.click('.ocu-signin-card button[type="submit"]');
+    await page.waitForSelector('app-rail .ocu-rail', { timeout: config.navigationTimeoutMs });
+    // The first-login gate takes an administrator to the Definition form on an instance with no
+    // enabled definition, whatever URL was asked for (Story 3.6). Back returns to this one.
+    await leaveFirstLoginGate(page, config.navigationTimeoutMs, SCREEN_URL);
+    await settled(page, 'namespaces');
+    return {
+      context,
+      page,
+      armRewrite(pathname, param, value) {
+        armed = { pathname, param, value };
+      },
+    };
+  } catch (error) {
+    await context.close().catch(() => {});
+    throw error;
+  }
 }
 
 /**

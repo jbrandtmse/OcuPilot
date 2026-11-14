@@ -36,6 +36,14 @@ export function isProtocolTimeout(error) {
   return PROTOCOL_TIMEOUT.test(String(error?.message ?? error ?? ''));
 }
 
+/** The message a browser, target, session or frame that is gone carries. */
+export const CONNECTION_LOSS = /Connection closed|Target closed|Session (closed|already detached)|frame (was |got )?detached|detached frame/i;
+
+/** Whether `error` says the browser connection, its target, its session or its frame was lost. */
+export function isConnectionLoss(error) {
+  return CONNECTION_LOSS.test(String(error?.message ?? error ?? ''));
+}
+
 /**
  * Settle with `promise`, or reject after `ms` with an error that `isProtocolTimeout` matches and
  * that names `label`, so `retryOnce` treats an abandoned call like a protocol timeout. The abandoned
@@ -64,15 +72,16 @@ export function withDeadline(promise, ms, label) {
 }
 
 /**
- * Run `create`; when it fails with a protocol timeout that has not had its retry, await `reset` (it
- * may be synchronous or answer a promise) and run it once more. The second attempt's error is
- * marked, so no other retry repeats it. An error `reset` throws propagates unmarked.
+ * Run `create`; when it fails with an error `retryable` accepts (a protocol timeout by default) that
+ * has not had its retry, await `reset` (it may be synchronous or answer a promise) and run it once
+ * more. The second attempt's error is marked, so no other retry repeats it. An error `reset` throws
+ * propagates unmarked.
  */
-export async function retryOnce(create, reset = () => {}) {
+export async function retryOnce(create, reset = () => {}, retryable = isProtocolTimeout) {
   try {
     return await create();
   } catch (error) {
-    if (!isProtocolTimeout(error) || error[RETRIED] === true) throw error;
+    if (!retryable(error) || error[RETRIED] === true) throw error;
     await reset();
     try {
       return await create();

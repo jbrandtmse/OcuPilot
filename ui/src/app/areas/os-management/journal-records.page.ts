@@ -441,7 +441,11 @@ export class JournalRecordsPage {
     if (this.scope.loaded()) void this.refresh.readNow();
   }
 
-  /** Make the table's direction follow the form's order while the store sorts on the declared field. */
+  /**
+   * Make the table's direction follow the form's order while the store sorts on the declared field.
+   * Before the remembered view is adopted the direction is set without being sent, so the view
+   * the instance holds is not replaced by this store's defaults.
+   */
   private followOrder(): void {
     const view = this.list;
     const declared = view?.screen.read?.sort.default;
@@ -449,10 +453,11 @@ export class JournalRecordsPage {
     const sort = view.store.sort();
     if (sort !== '' && sort !== declared) return;
     const direction = view.store.direction();
+    const remember = view.store.remembered();
     if (this.search.value('order') === '1') {
-      if (direction !== 'desc') view.store.setDirection('desc');
+      if (direction !== 'desc') view.store.setDirection('desc', remember);
     } else if (direction === 'desc') {
-      view.store.setDirection('');
+      view.store.setDirection('', remember);
     }
   }
 

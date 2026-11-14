@@ -10189,6 +10189,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-11T00:42:33Z status=routed owner=23-7-the-range-end-cleanup-part-6 by=load note=re-own from range-end-cleanup: kit 2026-10-10.1 owners are story keys or burndown
 - 2026-10-11T02:03:07Z status=routed owner=burndown by=merge_gate note=owner decision 2026-10-10 on 23.7, "Pull 5, hold rest (Recommended)", relayed by the Planner; CI flake, the next epic burn-down gate takes it
 - 2026-11-14T00:52:33Z owner=23-14-epic-23-burn-down by=burndown note=chartered_in_Story_23.14(Epic_23_burn-down,orchestrator_ruling_2026-11-14)
+- 2026-11-14T03:31:10Z status=resolved-by:23-14-epic-23-burn-down by=adjudication note=batch_2:error-log_sign-in_helpers_go_through_relaunchOnce+gotoNamingInflight,closing_the_context_on_error;source-text_pin_in_protocol-retry.test.mjs;the_ledger's_'same_shape_in_run_36483764167'_was_wrong(that_run_timed_out_in_the_explain-screen_spec);recurred_2026-11-13_run_43371448555;reopen_if=error-log_navigations_time_out_again_after_a_relaunch
 
 ### DW-2112: SaveHoldCoverage checks Save handler source text; only the web-application Save is held at runtime, so a wrong hold key in another Save is not caught
 - source: spec-23-4-the-range-end-cleanup-part-4.md | severity: med | fix-risk: low | footprint: in-story
@@ -10259,6 +10260,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-11T02:03:07Z status=routed owner=burndown by=merge_gate note=owner decision 2026-10-10 on 23.7, "Pull 5, hold rest (Recommended)", relayed by the Planner; CI flake, the next epic burn-down gate takes it
 - 2026-11-12T20:10:17Z occurrence=20-34-the-cube-manager-s-build-and-synchronize
 - 2026-11-14T00:52:32Z owner=23-14-epic-23-burn-down by=burndown note=chartered_in_Story_23.14(Epic_23_burn-down,orchestrator_ruling_2026-11-14)
+- 2026-11-14T05:56:28Z status=resolved-by:23-14-epic-23-burn-down by=adjudication note=batch_3:ci-throwaway.sh_retries_only_bind_failures_within_a_budget(OCUPILOT_BIND_WAIT_SECONDS,default_120,from_the_first_bind_failure;waits_2,4,8,16,30s),prints_ss_for_the_port,publishes_on_127.0.0.1(veto_U-32);ci.yml_port-reservation_comments_corrected;pins_in_ui/tools/ci.test.mjs;reopen_if=an_instance_or_browser_shard_fails_bring-up_on_a_held_port_after_the_budget
 
 ### DW-2124: IRIS defect candidate: the admin API's Wallet.Secret PUT of a %Wallet.SymmetricKey stores a random key when Length rides with Secret64, and stores no Length for an imported key (SymmetricKey.Create sets Length on a local subscript)
 - source: spec-18-24-rsa-and-symmetric-key-wallet-secrets.md | severity: low | fix-risk: high | footprint: out-of-footprint
@@ -11343,6 +11345,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-12T03:29:02Z occurrence=20-5-lookup-tables-and-business-partners
 - 2026-10-12T03:29:02Z status=routed owner=burndown by=runner note=second form caught: headless Chrome dropped its connection mid-run (frame detached, Connection closed); green on unchanged rerun
 - 2026-11-14T00:52:32Z owner=23-14-epic-23-burn-down by=burndown note=chartered_in_Story_23.14(Epic_23_burn-down,orchestrator_ruling_2026-11-14)
+- 2026-11-14T03:31:10Z status=resolved-by:23-14-epic-23-burn-down by=adjudication note=batch_2:settle_answers_{settled,ms,why},the_walk_records_each_visit_and_reports_the_slowest_and_every_unsettled_one_with_its_reason;a_lost_connection_reruns_the_pass_on_a_relaunched_browser;pins_in_ui/tools(structural-walk,protocol-retry)
 
 ### DW-2302: Jobs lists no job of Ens.MonitorService, Ens.Alarm or Ens.Alert, because EnumerateHostStatus, its host list, skips those three
 - source: spec-20-4-per-host-tabs-the-monitor-queues-and-jobs.md | severity: low | fix-risk: low | footprint: in-story
@@ -11874,6 +11877,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-13T21:11:34Z status=routed owner=burndown by=runner note=rerun once (attempt 2); if green it is a flake: the spec must wait for the reply's settled state before reading its text
 - 2026-10-13T21:52:09Z occurrence=20-7-the-three-embedded-vendor-editors note=attempt 2 of run 38463014073 green unchanged: a flake (orchestrator noted)
 - 2026-11-14T00:52:32Z owner=23-14-epic-23-burn-down by=burndown note=chartered_in_Story_23.14(Epic_23_burn-down,orchestrator_ruling_2026-11-14)
+- 2026-11-14T03:31:10Z status=resolved-by:23-14-epic-23-burn-down by=adjudication note=batch_2:the_markup_test_streams_the_reply_in_slices_and_waits_for_no_streamed_marker_before_reading;red_on_the_old_wait_in_a_real_browser
 
 ### DW-2398: Saved message searches are not offered: each vendor store (the classic namespace-shared one and the per-user Ens.Message.SavedSearch) belongs to its own search engine, which OcuPilot's header search cannot run
 - source: spec-20-9 gate (orchestrator ruling Q2) | severity: low | fix-risk: med | footprint: in-epic
@@ -11903,6 +11907,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-14T00:51:43Z status=routed owner=burndown by=cr note=20.16's InteropEditorSaveTurn calls SweepSince before Sweep; fix SweepSince with %EXACT and sweep the others
 - 2026-10-22T14:11:37Z occurrence=23-8-the-range-end-cleanup-part-7 note=Test/TurnNavigate's teardown deletes its turns but not their ledger rows (seen in 23.8 batch 4 code review)
 - 2026-11-14T00:52:34Z owner=23-14-epic-23-burn-down by=burndown note=chartered_in_Story_23.14(Epic_23_burn-down,orchestrator_ruling_2026-11-14)
+- 2026-11-14T04:51:39Z status=resolved-by:23-14-epic-23-burn-down by=adjudication note=batch_4:TurnWireFixture.SweepSince_selects_%EXACT(TurnKey)/%EXACT(UserName),Sweep_deletes_the_probe_users'_ledger_rows(LedgerRows_count);TurnNavigate,TurnLoop,TurnCitations,AnthropicThinking_teardowns_delete_and_count_their_turns'_ledger_rows;new_InteropEditorSaveTurn.TestSweepSinceRemovesALedgerRowWhoseTurnIsGone;mutations_red
 
 ### DW-2405: OcuPilot's create and delete of a class or routine drop the source-control class's follow-up user action (an 'add to source control?' question for a new document or after a delete is never asked and AfterUserAction never runs)
 - source: spec-20-10-source-control-hooks.md (plan, harvested at the spec gate) | severity: med | fix-risk: med | footprint: out-of-footprint
@@ -11922,6 +11927,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-14T03:47:33Z status=routed owner=burndown by=spec_gate note=Rule 19 hermeticity: the spec (Story 20.6's) removes the headers and log rows it caused
 - 2026-10-15T02:29:03Z occurrence=20-30-the-session-trace
 - 2026-11-14T00:52:34Z owner=23-14-epic-23-burn-down by=burndown note=chartered_in_Story_23.14(Epic_23_burn-down,orchestrator_ruling_2026-11-14)
+- 2026-11-14T04:51:39Z status=resolved-by:23-14-epic-23-burn-down by=adjudication note=batch_4:interop-item-test.browser-spec.mjs_records_ProductionProbe.HighWater()_before_and_runs_SweepSince(mark)_after,asserting_the_high-water_is_back;dropping_the_sweep_reddens_the_spec
 
 ### DW-2414: A deleted account that was the first to run the install gate's version-row read after its cached queries were purged (an install, an uninstall) is refused 503 INSTALL.UNREADABLE instead of 401 AUTH.DISABLED
 - source: spec-20-16 (harvest, CI rework 2) | severity: low | fix-risk: med | footprint: out-of-footprint
@@ -12254,6 +12260,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-23T16:32:53Z occurrence=23-12-the-agent-picks-the-right-list
 - 2026-11-12T18:39:53Z occurrence=23-9-the-range-end-cleanup-part-8 note=run 43275467803 (74a6348f) attempt 1, browser shard 3/5: encryption-startup C1 not ok; rerun --failed
 - 2026-11-14T00:52:32Z owner=23-14-epic-23-burn-down by=burndown note=chartered_in_Story_23.14(Epic_23_burn-down,orchestrator_ruling_2026-11-14)
+- 2026-11-14T03:03:18Z occurrence=23-14-epic-23-burn-down note=staging_21d6495b_run_43545992116_attempt_1_browser_shard_1/5:C1,C2,C9_waiting_for_DBEncStartMode-None(before_batch_2's_fix);rerun_--failed
+- 2026-11-14T03:31:10Z status=resolved-by:23-14-epic-23-burn-down by=adjudication note=batch_2:C1_waits_for_the_keys_page_and_state_before_the_click,then_the_startup_path_and_the_None_radio_or_a_scoped_alert,naming_the_alert_text;no_deterministic_red(layout_timing,recorded);reopen_if=encryption-startup_C1/C2/C9_reds_again_in_CI
 
 ### DW-2463: The interop-editor browser specs keep local copies of the helpers interop-editor-spec.mjs now shares (answered, editorShows, the frame selector) and of 20.7's readSettings, settingsNode and shellAt
 - source: spec-20-10-source-control-hooks.md (code review) | severity: low | fix-risk: low | footprint: in-epic
@@ -12468,6 +12476,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-10-23T02:50:28Z status=routed owner=burndown by=orchestrator note=owner request 2026-10-22 (relayed by the Planner): cleanup backlog, not built now; compare each persistent class's stored property order against the previous release tag
 - 2026-10-23T04:55:51Z occurrence=20-37-sqlrun-stored-slot-order
 - 2026-11-14T00:52:34Z owner=23-14-epic-23-burn-down by=burndown note=chartered_in_Story_23.14(Epic_23_burn-down,orchestrator_ruling_2026-11-14)
+- 2026-11-14T05:56:28Z status=resolved-by:23-14-epic-23-burn-down by=adjudication note=batch_3:ui/tools/stored-order.mjs+test_check_each_stored_class's_own_properties_against_the_newest_origin/release/*(veto_U-31);ci.yml_gates_leg_fetches_release/*_tips_at_depth_1;full-clone_and_HEAD_legs_pinned
 
 ### DW-2502: No test replaces an owner's ended SqlRun row whose Kind is NULL through GuardedReserve's ended-row delete, so dropping its COALESCE(Kind, 'sql') reddens nothing
 - source: _bmad-output/implementation-artifacts/spec-20-37-sqlrun-stored-slot-order.md | severity: low | fix-risk: low | footprint: in-epic
@@ -12728,6 +12737,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: batch 4 rework re-review (rejected as out of rework scope): open() -> followOrder() -> setDirection('desc') -> rememberView() before adoptRemembered; screen-store.ts setDirection/rememberView; settle by arriving at the records URL with order=1 after remembering a filter and reading the preference row
 - 2026-11-13T21:34:51Z status=routed owner=burndown by=lead note=fix idea: skip rememberView until remembered() is true, or defer followOrder's write until adoption
 - 2026-11-14T00:52:35Z owner=23-14-epic-23-burn-down by=burndown note=chartered_in_Story_23.14(Epic_23_burn-down,orchestrator_ruling_2026-11-14)
+- 2026-11-14T04:04:21Z status=resolved-by:23-14-epic-23-burn-down by=adjudication note=batch_6:ScreenStore.setDirection_takes_remember(default_true);followOrder_passes_store.remembered(),so_an_arrival_before_the_account_read_sets_the_direction_without_posting_the_default_view;component_cases_red_against_the_pre-batch_code(QA)_and_for_the_order_0_path(review);journal-records.browser-spec_5/5
 
 ### DW-2547: BackgroundTasksLive's live Pause leg passes a 200 Pause that settles to Done, so a Pause with no effect on a short compact reads green there
 - source: spec-23-14-epic-23-burn-down.md | severity: low | fix-risk: med | footprint: in-story
@@ -12747,3 +12757,33 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-20-26-business-partners-saved-and-removed.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: Three near-identical loops of about ten lines; a shared port helper would serve all three. AD-55 requires each caller to judge, so the calls stay; only the loop is copied.
 - 2026-11-14T07:27:07Z status=wontfix-accepted owner=20-26-business-partners-saved-and-removed by=cr note=reopen_if=a partner field rule changes in one of the three loops and not the others
+- 2026-11-14T02:05:18Z status=by-design owner=23-14-epic-23-burn-down by=cr note=spec-bound: batch 1 task takes the ended branch on Done; seam pins dispatch; live 403 leg still reddens
+### DW-2548: flake: analytics-mdx.browser-spec.mjs AC7 timed out waiting for [data-ocu-mdx="banner"] on attempt 1 and passed on the unchanged rerun
+- source: staging e9f727fb run 43543858957 (orchestrator, 23.13 merge) | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: run 43543858957 attempt 1 red, attempt 2 green on the same head; same spec as the 23.13 batch 4 story red (AC1, ff913bec), whose rework restored the screen store's notify-on-change contract; a shared cause is not shown (inference)
+- 2026-11-14T03:05:37Z status=routed owner=21-10-the-remaining-leaves-across-the-six-areas by=lead note=CI flake, priority in the next standing cleanup; 23.14 is at burndown_story_max (12)
+
+### DW-2549: flake: agent-code-save.browser-spec.mjs QA 5-7 timed out waiting for app-proposal-card .ocu-proposal-card-confirm on attempt 1 and passed on the unchanged rerun
+- source: staging e9f727fb run 43543858957 (orchestrator, 23.13 merge) | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: run 43543858957 attempt 1 red, attempt 2 green on the same head; no earlier ledger entry for this spec
+- 2026-11-14T03:05:37Z status=routed owner=21-10-the-remaining-leaves-across-the-six-areas by=lead note=CI flake, priority in the next standing cleanup; 23.14 is at burndown_story_max (12)
+
+### DW-2550: The structural walk's per-visit record is pinned only by the a11y browser spec, which checks a numeric ms per visit but not that walkPass carries goInApp's settled and why into the visit
+- source: spec-23-14-epic-23-burn-down.md | severity: low | fix-risk: low | footprint: in-footprint
+- evidence: ui/browser/structural-walk.mjs walkPass report.visits.push; a11y-structural-invariants.browser-spec.mjs asserts only visits.length and Number.isFinite(ms); a push of settled:true, why:'' stays green (verification-gap layer, 23.14 batch 2 review)
+- 2026-11-14T03:24:09Z status=wontfix-accepted owner=23-14-epic-23-burn-down by=cr note=reopen_if=a walk report lists an unsettled visit with no 'structural walk: unsettled' reason line, or walkPass gains a fake-page unit harness
+
+### DW-2551: DW-2461's pre-click waits (aria-busy false, the keys state) and post-click path wait have no run in which the old C1 is red and the new one green
+- source: spec-23-14-epic-23-burn-down.md | severity: low | fix-risk: low | footprint: in-footprint
+- evidence: spec Tasks Batch 2 DW-2461 'No deterministic red: the miss depends on layout timing'; Verification batch 2 records two forced misses, both red; removing the pre-click waits reddens nothing (verification-gap layer, 23.14 batch 2 review)
+- 2026-11-14T03:24:10Z status=by-design owner=23-14-epic-23-burn-down by=cr note=spec-bound: the batch 2 task records that no deterministic red exists; DW-2461's reopen_if (C1 fails on the startup-path wait or names an alert) is the watch
+
+### DW-2552: TurnWireFixture.SweepSince's exact UserName select (the abandon leg) has no test that reddens without it
+- source: spec-23-14-epic-23-burn-down.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: Reverting to SELECT DISTINCT UserName keeps every batch 4 test green: no test has a probe turn job running when SweepSince is called, and the teardown's Sweep abandons by the exact name right after.
+- 2026-11-14T04:48:28Z status=wontfix-accepted owner=23-14-epic-23-burn-down by=cr note=reopen_if=a SweepSince caller reports a ' job <pid>' leftover for a probe user's running turn
+
+### DW-2553: flake: SslSecret.TestTheScreenStoresTheRightPasswordRefusesAWrongOneAndLeaksNeither ('a wrong password is refused on its field') failed in CI instance shard 3/8 and passed on the unchanged rerun
+- source: cycle-log-epic-23.md (23.14 batch 2 CI, run 43553717520) | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: run 43553717520 attempt 1 red, attempt 2 green on 07b8d59e; batch 2 changed no src since the green 21d6495b
+- 2026-11-14T05:30:22Z status=routed owner=21-10-the-remaining-leaves-across-the-six-areas by=lead note=CI flake, priority in the next standing cleanup; 23.14 is at burndown_story_max (12)

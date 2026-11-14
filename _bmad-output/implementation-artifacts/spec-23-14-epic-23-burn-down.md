@@ -2,9 +2,9 @@
 title: 'Story 23.14: Epic 23 burn-down'
 type: 'bugfix'
 created: '2026-11-13'
-status: 'done'
-baseline_revision: 'c92cdb4027ffe5af4adf802666504688e92797c2'
-baseline_commit: 'c92cdb4027ffe5af4adf802666504688e92797c2'
+status: 'in-progress'
+baseline_revision: '04df7ef5c6b8e5054b8f1072c98bf63f0b62326b'
+baseline_commit: '04df7ef5c6b8e5054b8f1072c98bf63f0b62326b'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -240,21 +240,21 @@ Job logs for DW-2461 and DW-2111 are saved in `scratchpad/e23u/23-14/plan/browse
 
 ### Batch 2: browser-spec flakes
 
-- [ ] **DW-2461.** `ui/browser/encryption-startup.browser-spec.mjs` C1:
+- [x] **DW-2461.** `ui/browser/encryption-startup.browser-spec.mjs` C1:
   - Before clicking, wait for `section.ocu-form-page[aria-busy="false"]` and for either `[data-encryption-keys="empty"]` or `[data-encryption-keys="keys"]`.
   - After clicking, wait for the startup path.
   - Then wait for the None radio or `[role="alert"]`, and assert which one came.
   - No deterministic red: the miss depends on layout timing (Design Notes). Mutation: drop the new path wait; a forced miss (click the paragraph instead of the link) then fails on the radio and not on the path.
-- [ ] **DW-2397.** `ui/browser/turn.browser-spec.mjs` 'Markup in a reply renders as literal text':
+- [x] **DW-2397.** `ui/browser/turn.browser-spec.mjs` 'Markup in a reply renders as literal text':
   - Script the markup reply through `scriptStreamReply(..., 2)`, so it arrives in slices.
   - Replace the wait at :405-409 with `waitForReplies(page, 1, config, 'Send')`, plus the condition that no `.ocu-panel-message-streamed` remains.
   - Red first: the sliced reply with the old wait reads a partial text. Mutation: restore the old wait.
-- [ ] **DW-2111.** `ui/browser/error-log.browser-spec.mjs`:
+- [x] **DW-2111.** `ui/browser/error-log.browser-spec.mjs`:
   - Route `signedInAtScreen` and `signedInAtScreenIntercepting` through `relaunchOnce`, with an open that closes its context on error and a relaunch that reassigns the module's `browser`, as `data-table-columns.browser-spec.mjs:111-125` does.
   - Navigate with `trackInflightRequests` and `gotoNamingInflight`.
   - No real-browser red is possible. The helper's wedged-browser pin is `protocol-retry.test.mjs:256-277`.
   - Mutation: pass the shared browser straight to the open. A new `ui/tools` source-text case asserts that both helpers go through `relaunchOnce`, and it reddens.
-- [ ] **DW-2301.** `ui/browser/structural-walk.mjs` and `ui/browser/protocol-retry.mjs`. Waits for escalation 2.
+- [x] **DW-2301.** `ui/browser/structural-walk.mjs` and `ui/browser/protocol-retry.mjs`. Waits for escalation 2.
   - `settle` answers `{settled, ms, why}`, where `why` names the in-flight URLs, the busy element or the font status.
   - `walkPass` records each visit's settle time. `reportLines` prints the five slowest visits and every unsettled visit with its `why`.
   - Add an `isConnectionLoss` predicate (`/Connection closed|Target closed|Session closed|frame (got )?detached/`) in `protocol-retry.mjs`.
@@ -269,7 +269,7 @@ Job logs for DW-2461 and DW-2111 are saved in `scratchpad/e23u/23-14/plan/browse
 
 ### Batch 3: CI tooling
 
-- [ ] **DW-2123.** `scripts/ci-throwaway.sh` (escalations 1 and 5):
+- [x] **DW-2123.** `scripts/ci-throwaway.sh` (escalations 1 and 5):
   - Replace the three attempts with a time budget, `OCUPILOT_BIND_WAIT_SECONDS` (default 120). Back off 2, 4, 8, 16, then 30 s, and still retry only bind failures.
   - On each bind failure, print `ss -Htan "( sport = :$WEB_PORT )"` when `command -v ss` succeeds.
   - Publish both ports on `127.0.0.1:` (:236-238).
@@ -280,7 +280,7 @@ Job logs for DW-2461 and DW-2111 are saved in `scratchpad/e23u/23-14/plan/browse
     - the backoff regexes follow the new form;
     - a new case keeps the written `compose.yml` and asserts both `127.0.0.1:` port lines.
   - Mutations: restore a 3-attempt cap; drop the `127.0.0.1:` prefix.
-- [ ] **DW-2501.** New `ui/tools/stored-order.mjs` (a pure `compareStoredOrder(baseline, current)` plus a git reader) and `ui/tools/stored-order.test.mjs`:
+- [x] **DW-2501.** New `ui/tools/stored-order.mjs` (a pure `compareStoredOrder(baseline, current)` plus a git reader) and `ui/tools/stored-order.test.mjs`:
   - **Scope.** Every `src/OcuPilot/**/*.cls` that is persistent by its in-tree Extends chain (to `%Persistent`, `Ens.Request` or `Ens.Response`) and has no `Storage` section.
   - **Stored members.** `Property` and `Relationship` declarations, excluding Calculated, Transient, MultiDimensional and many- or children-side relationships.
   - **Rule.** Each class's own stored members at the baseline, in declaration order, must be a prefix of its current list. A removed class fails. A changed primary superclass fails. A class absent at the baseline passes.
@@ -298,7 +298,7 @@ Job logs for DW-2461 and DW-2111 are saved in `scratchpad/e23u/23-14/plan/browse
 
 ### Batch 4: test hygiene
 
-- [ ] **DW-2403.**
+- [x] **DW-2403.**
   - `src/OcuPilot/Test/TurnWireFixture.cls`:
     - `SweepSince` selects `%EXACT(TurnKey)` at :511 and `%EXACT(UserName)` at :471.
     - `Sweep` calls `Ledger.GuardedDeleteForUser` for USERA and USERB, and adds `ledger rows (n)` to its report when a `%EXACT(UserName)` count is not 0.
@@ -308,7 +308,7 @@ Job logs for DW-2461 and DW-2111 are saved in `scratchpad/e23u/23-14/plan/browse
   - Red first: with the count added before the delete, `ExplorerSaveTurn` and `TurnWire` fail on `Sweep(...) = ""`. A `SweepSince` leg (a USERA ledger row above the mark with no turn) reports it, and `TurnNavigate`'s count is non-zero.
   - Before relying on the new delete, check that no class calls `Sweep` mid-test while it still needs ledger rows.
   - Mutations: drop the `GuardedDeleteForUser` call; restore the bare `TurnKey` at :511.
-- [ ] **DW-2408.** `ui/browser/interop-item-test.browser-spec.mjs`:
+- [x] **DW-2408.** `ui/browser/interop-item-test.browser-spec.mjs`:
   - `before` records `ProductionProbe.HighWater()` before `Create`.
   - `after` runs `Settle`, `SweepSince(mark)`, `InteropTestFixture.Remove`, `ProductionProbe.Remove`, then `Gone`, and asserts that `HighWater()` is at the mark.
   - No ObjectScript change.
@@ -341,7 +341,7 @@ Job logs for DW-2461 and DW-2111 are saved in `scratchpad/e23u/23-14/plan/browse
 
 ### Batch 6: Journal records
 
-- [ ] **DW-2543.**
+- [x] **DW-2543.**
   - `ui/src/app/core/screen-store.ts`: `setDirection(direction, remember = true)`. It always sets the direction and notifies, and calls `rememberView()` only when `remember` is true.
   - `ui/src/app/areas/os-management/journal-records.page.ts`: `followOrder()` passes `view.store.remembered()`.
   - The `command-bar.ts` caller is unchanged.
@@ -377,6 +377,83 @@ Rejected (batch 1):
 - `low` The cap-of-one assertion accepts a newer row that is not the newest -- spec-bound ("no older than that seed's"); the keep-oldest mutation pins the cap.
 - `low` The commit message says the stand-in keeps a later error from taking the row -- needs a history rewrite.
 
+#### Batch 2 (2026-11-14)
+
+- [x] [Review][Patch] `CONNECTION_LOSS` missed three puppeteer-core forms: `Attempted to use detached Frame`, `Execution context is not available in detached frame`, `Session already detached` (low, fix-risk low) [ui/browser/protocol-retry.mjs] -- pattern widened; the `isConnectionLoss` case carries all nine messages.
+- [x] [Review][Patch] `settle` kept an in-page reason after a later check read ready, so a timeout could name a cleared busy element or font status (low) [ui/browser/structural-walk.mjs:settle] -- `pending` is cleared on a ready answer; new cleared-reason case.
+- [x] [Review][Patch] The busy-element case's mutation comment predicted the wrong red (low) [ui/tools/structural-walk.test.mjs] -- `why` reads "false", as the QA line's mutation gives.
+- [x] [Review][Patch] The connection-loss retry was not in `passRetrier`'s or `walk`'s contract, `walk` did not name `visits`, the report's retried line said "a call went unanswered" for a lost connection, and `protocol-retry.test.mjs`'s header listed none of the new mutations (low) [ui/browser/structural-walk.mjs, ui/tools/protocol-retry.test.mjs] -- docs updated; the line reads "after a call failed".
+- [x] [Review][Patch] The predicate case's "only once" was unpinned for a custom predicate (low) [ui/tools/protocol-retry.test.mjs] -- asserts two attempts when both errors are accepted.
+- [x] [Review][Patch] DW-2111's source pin passed with a rethrow of a different error or a relaunch that does not hand the new browser on (low) [ui/tools/protocol-retry.test.mjs] -- the pin matches the unchanged rethrow, the first open's shared browser and `return browser`; a behavioural pin stays spec-bound (no real-browser red).
+- [x] [Review][Patch] DW-2461's waits failed without naming an alert: a refused keys read timed out on the keys-state wait, and an alert after the click showed an empty id (low) [ui/browser/encryption-startup.browser-spec.mjs:C1] -- the keys-state wait accepts the reason alert and asserts it did not come, naming its text; the radio assertion shows an alert's text.
+- [x] [Review][Patch] The home screen's visit printed as a blank name in the slowest-visits and unsettled lines (low) [ui/browser/structural-walk.mjs:walkPass] -- labeled `/`.
+- [x] [Review][Patch] Two batch 2 mutations named in the test header had no `mutation:` line (low, Rule 19) [Verification] -- run and recorded.
+- [x] [Review][Defer] The per-visit record is pinned only in the browser tier, and not for `settled`/`why` [ui/browser/structural-walk.mjs:walkPass] -- deferred: DW-2550 `wontfix-accepted` (needs a fake-page `walkPass` harness).
+- [x] [Review][Defer] No run shows DW-2461's new waits turning a red green [ui/browser/encryption-startup.browser-spec.mjs] -- deferred: DW-2551 `by-design` (the task records no deterministic red).
+
+Rejected (batch 2):
+
+- `false` DW-2397's recorded red `<img src="http://2030.0.0.203` is not a prefix of the markup -- re-run: the partial reply's bare URL is linked and the reply parser appends its host caption (`parseReply` on the prefix answers that text); the red stands.
+- `false` `settle`'s in-page check can answer `false` or `undefined` -- it answers only `true` or a reason string.
+- `low` The task line's predicted red, and the alert selector scoped to `section.ocu-form-page`, are not recorded as decisions; "All are red before" does not fit the no-relaunch guard; `/i` on the pattern -- fixes edit the spec, or no harm.
+- `low` A wedged browser's `context.close()` in the error-log catch can hold the relaunch until the protocol timeout; the relaunched attempt does not repeat `resetRememberedState` -- the sibling `data-table-columns` has the same shape, and each fix adds a guard for an unshown case.
+
+#### Batch 6 (2026-11-14)
+
+- [x] [Review][Patch] The Oldest-first branch of `followOrder` (`setDirection('', remember)`) was unpinned: dropping `remember` there reddened no test, and an `order=1` arrival then one without it, before the account read, would post the defaults over the remembered view (med, fix-risk low) [ui/src/app/areas/os-management/journal-records.page.spec.ts] -- new case "an arrival without Newest first after one with it ..."; mutation line under Verification.
+
+Rejected (batch 6):
+
+- `low` A cold open with no stored view leaves `desc` in memory and unsent; a command-bar direction choice before adoption still sends -- the matrix constrains only the remembered-view case and "after adoption"; both were rejected in the batch 6 self-review, and a guard on every pre-adoption setter is a design change for a rarely reached window.
+- `low` The Auto Run Result's Residual and Verified lines predate QA's red-first run and its browser run; the batch 6 Triage Log entry is dated 2026-11-13 -- fixes edit the spec; the Verification QA line holds both runs.
+- `low` The new page case pins "draws descending" through `store.direction()`, not the drawn rows -- the direction-to-rows link is pinned by "Newest first draws descending under an explicit Address sort", and QA's `journal-records` browser run passed 5 of 5.
+- `low` Two batch 6 cycle-log `spawn_at` values differ from their `stage_spawned` lines -- the lead's log, outside this stage's writes; no code or gate reads the difference.
+
+#### Batch 4 (2026-11-14)
+
+- [x] [Review][Patch] DW-2403's teardown leak remained in three sibling classes: `TurnLoop`, `TurnCitations` and `AnthropicThinking` deleted their turns but not the turns' ledger rows (measured on `ocupilot-ci`: +17, +8 and +9 `irisowner` rows; `TurnTools`, `ToolNavigateParent` and `InjectionChannels` +0) (med, fix-risk low) [src/OcuPilot/Test/TurnLoop.cls, TurnCitations.cls, AnthropicThinking.cls:OnAfterOneTest] -- each teardown deletes and counts its keys' rows as `TurnNavigate`'s does; runs 27-29 green with no row added; mutation line under Verification.
+- [x] [Review][Patch] `TestDeletingATurnRemovesItsDirective` left a ledger row behind whenever its count went red, since its key is out of the teardown's and is not a probe user's (low) [src/OcuPilot/Test/TurnNavigate.cls] -- it removes the key's rows after the count assertion, and its doc says so; run 32 green.
+- [x] [Review][Patch] The new `SweepSince` test discarded its cleanup's status (low) [src/OcuPilot/Test/InteropEditorSaveTurn.cls:TestSweepSinceRemovesALedgerRowWhoseTurnIsGone] -- asserted.
+- [x] [Review][Patch] `InteropEditorSaveTurn`'s header did not say the class pins `SweepSince`'s ledger leg (low) [src/OcuPilot/Test/InteropEditorSaveTurn.cls:1-11] -- the header names it.
+- [x] [Review][Patch] Nothing said the new test's key must be lower case for the bare-`TurnKey` mutation to redden (low) [src/OcuPilot/Test/InteropEditorSaveTurn.cls:TestSweepSinceRemovesALedgerRowWhoseTurnIsGone] -- the method doc says so.
+- [x] [Review][Patch] `interop-item-test` set `created` only after both creates passed, so a half-made probe skipped the `after` sweep (low) [ui/browser/interop-item-test.browser-spec.mjs:before] -- set before the creates, as the resend spec does; 5 tests, 0 failed after a rebuild and redeploy.
+- [x] [Review][Defer] `SweepSince`'s exact `UserName` select has no test that reddens without it [src/OcuPilot/Test/TurnWireFixture.cls:SweepSince] -- deferred: DW-2552 `wontfix-accepted` (a pin needs a probe turn job still running at the sweep).
+
+Rejected (batch 4):
+
+- `false` `turnprobe-spec.mjs` also calls `SweepSince`, so the exact ledger leg now deletes in browser specs -- its contract already says those rows go, and its caller asserts the sweep empty; the change can only turn a red green.
+- `false` `HighWater()` equal to the mark fails if a row at or below the mark is deleted mid-run -- `before` runs the same removals ahead of the mark.
+- `low` The batch 4 task line names a delete `TestDeletingATurnRemovesItsDirective` did not make; the "no red" residual's "only the armed turn classes" reason is too strong -- fixes edit the spec (the first is true again after the patch above).
+- `low` `Sweep` reports `ledger rows (-1)` for an unread count -- still non-empty, so red either way; the fix adds a branch.
+- `low` A ledger row above the mark with an empty `TurnKey` is reported, not deleted -- no writer appends one, and it fails loudly.
+- `low` `TestDeletingATurnRemovesItsDirective`'s count is a tripwire for a later product write, not a pin of this batch's change -- it can fail (run 16); no defect.
+
+#### Batch 3 (2026-11-14)
+
+- [x] [Review][Patch] The bind budget's clock started before the first `up`, which also pulls the image, so a first attempt that ran past the budget and then failed on the bind exited with no retry (med, fix-risk low) [scripts/ci-throwaway.sh:up] -- the deadline is set at the first bind failure; new `ci.test.mjs` case "the budget runs from the first bind failure"; mutation line under Verification.
+- [x] [Review][Patch] The browser-shard job's copy of the port-reservation comment kept the old claim ("removing the race rather than retrying through it", three bounded retries) and its incident history (low, fix-risk low) [.github/workflows/ci.yml:browser-shard] -- now the same text as the instance-shard copy (escalation 7 ruling).
+- [x] [Review][Patch] The real-clock backoff test still described the `ATTEMPT`-keyed sleep, and its floor could not tell doubling from a flat wait (2 s of sleeps plus the script's overhead clears 2.9 s) (low) [ui/tools/ci.test.mjs:"the retry actually waits on a real clock"] -- it now pins only that real waits happen (growth is the wait-sequence case's); the section header names the budget.
+- [x] [Review][Patch] The `fails: 4` case's comment carried incident history (low) [ui/tools/ci.test.mjs] -- states the contract.
+- [x] [Review][Patch] The `ss` comment said the line names the holder; `ss -tan` lists sockets, not processes (low) [scripts/ci-throwaway.sh:up] -- "so the log shows the connection holding it".
+- [x] [Review][Patch] `gitLegReady`'s full-clone failure read "a full clone must hold needs ... in the clone" and named no remedy (low) [ui/tools/stored-order.test.mjs:gitLegReady] -- names the refs, the missing ones and the fetch command.
+- [x] [Review][Patch] `gitIn` passed every inherited `GIT_*` variable to the scratch repositories, so a run under a git hook (`GIT_DIR`, `GIT_INDEX_FILE`) would commit the fixtures into the enclosing repository (low, Rule 19) [ui/tools/stored-order.test.mjs:gitIn] -- `GIT_*` dropped; observed under a decoy `GIT_DIR`: 0 commits land in it, 3 without the filter.
+- [x] [Review][Patch] No `mutation:` line for the exhaustion exit or the pass-side DW-2501 cases (append, absent-at-baseline, allow-list) or the shallow-skip branch (low, Rule 19) [Verification] -- run and recorded.
+
+Rejected (batch 3):
+
+- `false` `localhost` reaching `::1` with no IPv4 fallback once the ports bind 127.0.0.1 -- the readers are curl, Node 22 (`autoSelectFamily`) and Chrome, each of which tries both; the lead's down/up and the CI browser shards are the ruled evidence.
+- `false` CI on an older `release/*` branch reads newer releases' members as removals -- release branches are never pushed after the cut.
+- `low` A shallow clone whose fetch brought no release ref skips the HEAD leg with CI green -- the refs exist and the fetch step and its place are pinned; a CI-only fail branch contradicts the task's shallow-skip rule.
+- `low` The 120 s and 2 s defaults are pinned by source text only -- a behavioural default case needs a stub clock; the QA source pin holds both literals.
+- `low` The git legs read clone state they did not create; a full clone without origin release refs fails -- spec-bound (escalation 6, "in a full clone with no release ref, it fails"); the message now names the fetch.
+- `low` A newest release not yet integrated into an epic branch reds it ("holds (nothing)") -- epic branches integrate the feature branch forward at each story, the red names class and slot, and CI's shallow clone has no ancestry to choose another baseline.
+- `low` Parent-side relationships, single-property IdKeys and `array Of` hold no data slot but are counted -- the task excludes only many/children sides; fail-closed, and no in-scope class has one.
+- `low` Members of a secondary superclass, a removed Storage section, a changed type at an unchanged slot -- outside the task's own-members rule, and no in-scope class has a secondary superclass or a Storage section.
+- `low` Nothing checks the parser's lists against compiled storage -- all 21 classes' `DefaultData` lists match it on `ocupilot-slot-a` today; a live-instance test is new scope.
+- `low` `ss` reads only the web port; the bind guard also covers `down`; `08`-style values; `/* */` or XData lines at column 0; quoted property names; `[` inside a type parameter; quoted `ls-tree` paths; an abbreviated SHA -- the task names the web port, the variables are test-only, none occurs in the tree, and each fails loudly.
+- `low` New comments carry ledger ids -- the file's existing convention, as its test names do.
+- `low` Ruling preconditions (the browser shard's route to the port, Epic 20's `.github` log) unrecorded; `status: done` with batch 5 open; stale Auto Run counts; the commit message's wording of the prefix rule -- fixes edit the spec, its machine state or history; the auditor checked both preconditions hold.
+
 **Acceptance Criteria:**
 
 - **Dispositions.** Given the 12 entries, when the story completes, then each is closed as Design Notes › Dispositions says, with its batch commit.
@@ -401,6 +478,62 @@ Rejected (batch 1):
   - `[low]` `[patch]` DW-2236 Resume and admin API settle sites have no recorded red — the DW-2236 mutation line now says neither has a deterministic red; same vendor-checkpoint cause.
   - `[false]` `[reject]` DW-2526 `Hang` sleeps are not a readiness signal — they separate two one-second-resolution timestamps, which the assertion needs; the assertion holds either way.
   - `[false]` `[reject]` Pause-200 branch final `StatusOf` read is a single read — it follows the seed's settle on the same process-state source; no defect shown.
+
+### 2026-11-13 — Review pass (batch 2)
+
+- verdicts: 8 findings — high 0, medium 0, low 7, false 1, maybe-false 0
+- findings:
+  - `[low]` `[patch]` `walkPass` visit recording has no test, and the test header claimed one — the a11y spec now asserts `report.visits` is non-empty with a numeric `ms` per visit; the header names that tier; mutation `walkPass` without `visits.push` red (12 pass, 1 fail).
+  - `[low]` `[patch]` `passRetrier`'s restore of `report.visits` unpinned — the rerun case carries `visits` and asserts them put back; mutation (drop `visits` from the saved state) red.
+  - `[low]` `[patch]` DW-2111 source-text pin could pass on a broken relaunch or an unfound function end — the pin asserts `browser = await puppeteer.launch(` in `openOnSharedBrowser` and that each function's closing brace is found; mutation (relaunch with no assignment) red.
+  - `[low]` `[patch]` DW-2461's pre-click waits have no mutation line — the line says they have no deterministic red (layout timing).
+  - `[low]` `[reject]` `settle`'s busy-element `why` is not exercised by a test — it is page-side diagnostic text; a test would need a fake document, more than a direct correction.
+  - `[low]` `[patch]` `CONNECTION_LOSS` missed puppeteer's `Navigating frame was detached`, and the test pinned the miss — the pattern is `frame (was |got )?detached` (puppeteer-core carries all three forms), the test asserts all five messages match and a refused connection does not; mutation (pattern without `was`) red.
+  - `[low]` `[reject]` Nothing under `ui/tools` exercises the DW-2461 and DW-2397 spec edits — the spec records no deterministic red for DW-2461 and the browser specs are the tier; DW-2397's red was observed (partial streamed text).
+  - `[false]` `[reject]` The Rule 19 mutations are only in test headers, not in the diff — the spec's Verification has a Batch 2 mutation line for each item, in this diff.
+
+### 2026-11-13 — Review pass (batch 6)
+
+- verdicts: 3 findings — high 0, medium 0, low 2, false 1, maybe-false 0
+- findings:
+  - `[low]` `[reject]` A cold open with no stored view on the instance is not pinned (verification-gap; the intent auditor's same point, plus a failed account read) — the new page case seeds a view only. With nothing restored the subscriber skips `followOrder`, so `desc` is held in memory and not sent; the matrix constrains only the remembered-view case, so a test would pin an undecided choice, and the direction is re-derived from the arrival's order on each open.
+  - `[false]` `[reject]` The no-send rule is enforced by the caller through a flag, not inside the store (intent auditor, reading B) — Design Notes "Decided in-stage" 4 chose the additive parameter on purpose: store-wide deferral would silence the table harness's width persistence.
+  - `[low]` `[reject]` A command-bar direction choice before adoption still sends, and the refresh-action path is untested (intent auditor) — the matrix row says "after adoption"; a person clicking before the account read answers is the pre-existing case, and the refresh path passes `remembered()` through the same call the new case pins.
+
+### 2026-11-13 — Review pass (batch 4)
+
+- verdicts: 10 findings — high 0, medium 1, low 5, false 2, maybe-false 2
+- findings:
+  - `[medium]` `[patch]` `TestDeletingATurnRemovesItsDirective`'s `GuardedDeleteForTurn` is never observed (verification-gap) — verified: dropping it left the method green (run 14), because the method's own steps write no ledger row. Patched: the method asserts `GuardedCountForTurn` = 0 and keeps no delete call; a ledger row appended for its key reddens that method alone (run 16).
+  - `[low]` `[patch]` `SweepSince`'s `%EXACT(UserName)` select has no pin (verification-gap) — the abandon signal dies with the turn, so no test can see it without a job that honours the signal; the mutation section says so instead of a red line.
+  - `[low]` `[patch]` `TurnNavigate`'s first `GuardedCountForTurn` in the teardown is overwritten unread (verification-gap) — removed.
+  - `[low]` `[reject]` The `SweepSince` ledger leg is pinned from `InteropEditorSaveTurn`, which does not own the fixture (verification-gap) — that class is the fixture's only `SweepSince` user; a new owner class would add a file for one case.
+  - `[maybe-false]` `[reject]` About 18 other classes' `Sweep` calls now also delete ledger rows (verification-gap) — their calls are in setup and teardown by grep, plus the three mid-test callers the implement pass read; the lead's full sweep runs them. Would be low.
+  - `[maybe-false]` `[reject]` `HighWater()` equal to the mark could flake on an unrelated USER writer (verification-gap) — the resend spec asserts the same comparison; a flake there is its own ledger entry. Would be low.
+  - `[low]` `[reject]` `Sweep` deletes every ledger row of USERA and USERB, not only the caller's (intent auditor, reading F) — those two users exist only for the fixture, and the spec's Decided 5 puts the delete in `Sweep` on purpose.
+  - `[false]` `[reject]` The cleaner and the detector are one call chain (intent auditor) — `LedgerRows()` is a separate exact SQL count, so a delete that fails or misses leaves a nonzero count and `Sweep` names it.
+  - `[false]` `[reject]` `TurnNavigate`'s `irisowner` rows are not covered by the USERA/USERB sweep (intent auditor) — `TurnNavigate` deletes by its own turn keys, and the teardown asserts each key's count is 0.
+  - `[low]` `[reject]` The DW-2408 check is relative to a mark and covers only the spec's own window (intent auditor) — it copies the resend spec's cleanup, which the spec's Siblings names.
+
+### 2026-11-13 — Review pass (batch 3)
+
+- verdicts: 15 findings — high 0, medium 2, low 13, false 0, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` The gates job's release fetch is pinned only by the declared-gates multiset, so moving it to another job or below `npm test` keeps CI green while the git leg skips (verification-gap) — new `ci.test.mjs` case reads `jobSteps(workflow, 'gates')` for the fetch before `npm test`; mutations under Verification.
+  - `[medium]` `[patch]` The HEAD-against-release leg passes on an empty baseline, since `compareStoredOrder` loops over the baseline's classes (verification-gap) — the leg asserts the baseline holds at least 21 stored classes; `sourcesAtRef` answering none reddens both git legs.
+  - `[low]` `[patch]` The numeric guard on the two bind variables has no case (verification-gap) — new refusal case (status 2, nothing brought up); mutation under Verification.
+  - `[low]` `[patch]` Pinning tests lacking `mutation:` lines (Transient, MultiDimensional, relationship sides, removed and superclass kinds, scope, `ss`, the `ci.yml` step) (verification-gap) — each mutation run and recorded under Verification.
+  - `[low]` `[patch]` The budget case needs the first attempt to finish inside a second, since the budget clock is whole seconds (verification-gap) — the case asserts at least one attempt and fewer than 99; the `fails: 4` case pins the retry.
+  - `[low]` `[reject]` The two git legs read release refs and a commit from the clone, so they depend on its state (verification-gap) — the spec states this ("in a full clone with no release ref, it fails"); the gate's job is to read that state.
+  - `[low]` `[reject]` The Storage-section route's `removed` message is unexercised (verification-gap, inference) — message text only; the `removed` kind and the scope case are pinned.
+  - `[low]` `[reject]` Nothing in the diff verifies that no consumer reaches the throwaway from another network namespace (verification-gap) — the browser shard runs Chrome on the runner host (`ci.yml` installs it there); the first CI run is the evidence the ruling names.
+  - `[low]` `[reject]` The checker has no CLI or exit code, so enforcement is the test file (intent auditor) — the spec's task is a pure `compareStoredOrder` plus a git reader, consumed by its test under `npm run test:tools`, and forbids a new `prebuild` checker.
+  - `[low]` `[reject]` The `release/1.0.12` against `dd2d53f22` leg skips in CI's shallow clone, so the pair does not both run there (intent auditor) — spec-bound: escalation 6 puts the history leg local, and the HEAD leg runs in CI after the fetch.
+  - `[low]` `[patch]` The fetch is asserted by shape, not by its effect (intent auditor) — same root cause as the first row; the new case pins its place.
+  - `[low]` `[reject]` The 127.0.0.1 binds and the retry budget are tested only against stubs (intent auditor) — the stage may not recreate `ocupilot-ci`; the lead's down/up check and CI are the real-bind evidence.
+  - `[low]` `[reject]` The exact budget cutoff and the clipped last sleep are unpinned (intent auditor) — no user-reachable harm; the exhaustion case pins the stop and the message.
+  - `[low]` `[reject]` A retry wait of 0 retries without a pause for the whole budget (intent auditor) — documented in the script, and used only by tests that stub docker.
+  - `[low]` `[patch]` Numeric validation is an extra the intent does not list (intent auditor) — kept, since a non-numeric value would abort `up` in an arithmetic error; pinned by the refusal case above.
 
 ## Design Notes
 
@@ -499,6 +632,8 @@ No new on-screen string, product timeout, guarantee change or stored-schema chan
 - Escalation 6 (DW-2501): the baseline is the newest `origin/release/*` branch, since no release tags exist (veto item U-31). Enforcement is local (stage and lead runs) unless the orchestrator rules a `ci.yml` fetch for the gates leg.
 - Orchestrator rulings (2026-11-14): escalations 1 (`scripts/ci-throwaway.sh`), 2 (`ui/browser/structural-walk.mjs`) and 3 (`Test/ClassicPageGate.cls` :75 `OWNPAIRS`; whoever integrates second keeps 20.41's `interop.items.changeclass` and removes the compile and import entries) are allowed. Escalation 5 (publish on 127.0.0.1) is allowed as veto item U-32, on condition that CI's browser shards, which reach the throwaway from inside the `ocupilot-browser-ci` container, stay green on the exact head: check how that container reaches the throwaway's port before the push (through the host's published port from another network namespace, 127.0.0.1 breaks it); a red that traces to the bind is a story red — revert to all interfaces and ledger the idea. Escalations 6 and 7 (`ci.yml`): allowed as a footprint extension — fetch `origin/release/*` for the gates leg only (only the refs needed, never deepening the whole checkout), and correct the port-reservation comment to say what the reservation does, without incident history; check `git log origin/OCU-1-epic20 -- .github` before editing.
 
+- Orchestrator ruling (2026-11-14, batch 5): `src/OcuPilot/Test/ToolEmit.cls` is allowed — this story widens the save/create branch (~:206-221) of `TestEveryLiveToolRequiresItsScreensPairs`; Epic 20's business-partner branch (~:297) stays as it is; whoever integrates second keeps both. If the merged roster test needs either branch to assert something the other epic's tools don't satisfy, it goes to the orchestrator.
+
 **Contended** (Epic 20 at `ddae7dc1d`, worktree clean). Re-check before each batch with `git -C /Users/jbrandt/git/OcuPilot/.worktrees/epic-20 diff --stat origin/feature/OCU-1_ocupilot-mvp...HEAD` and `status -s`.
 
 - Changed by Epic 20: `scripts/ci-throwaway.sh`, `ui/browser/structural-walk.mjs` and `src/OcuPilot/Test/ClassicPageGate.cls` (escalations 1-3).
@@ -569,17 +704,61 @@ Batch 1:
 - (review) mutation: DW-2526 red first -- the old exact-newest assertion (`"1|1|" _ tNewest`, newest of the full read) restored with the USER stand-in in place, throwaway copy only: `LogHubErrors` run 31 red on that assertion alone. Restored (`cmp` identical); run 34 green.
 - (review) mutation: DW-2236 stand-in -- `Set tEnded = 1` after the Pause-200 settle, throwaway copy only: `BackgroundTasksLive` run 32 red, the Cancel of the paused compact answered 200, not 409. Restored (`cmp` identical); run 33 green, 9 tests.
 
+Batch 2:
+
+- mutation: DW-2461 -- no deterministic red (layout timing). Forced miss (the click aimed at the keys paragraph or table instead of the link), path wait kept: C1 red on the path wait, `Waiting failed: 30000ms exceeded`. Forced miss with the path wait dropped: red on the immediate path assertion ("the link opens the form", 2.7 s), so the wait is what lets a late navigation through. The two pre-click waits (`aria-busy` false, the keys state) have no deterministic red either: the miss is layout timing. Reverted (`cmp` identical); final `encryption-startup` 3 tests, 0 failed.
+- mutation: DW-2397 -- the old first-non-empty-text wait restored over the sliced reply (`ocupilot-ci`, bundle redeployed): red, "the markup renders as literal text", actual `<img src="http://2030.0.0.203` (a partial streamed text). Reverted (`cmp` identical); final `turn` 10 tests, 0 failed.
+- mutation: DW-2111 -- `openOnSharedBrowser` handing the shared browser straight to the open: the new `protocol-retry.test.mjs` source-text case red. No real-browser red is possible. The relaunch not reassigning `browser` (`await puppeteer.launch(...)` with no assignment in `openOnSharedBrowser`): the same case red. Reverted (`cmp` identical); `error-log` 5 tests, 0 failed.
+- mutation: DW-2301 -- the retrier's predicate reduced to `isProtocolTimeout`: the connection-loss rerun case red. `settle`'s `why` forced empty: the unsettled-request and fonts cases red. Both reverted (`cmp` identical). (review) `visits` dropped from `passRetrier`'s saved state: the rerun case red. The `frame (was |got )?detached` pattern without `was`: the `isConnectionLoss` case red. `walkPass` without `report.visits.push`: `a11y-structural-invariants` red on "every visit recorded its settle time" (12 pass, 1 fail). All reverted (`cmp` identical). `a11y-structural-invariants` 13 tests, 0 failed, 0 unsettled visits; the report prints the five slowest visits (slowest 3763 ms). Final: `a11y-structural-invariants` run green, 13 tests, 0 failed; `npm run test:tools` 2229 pass, 0 fail.
+- (QA) tests: `ui/tools/structural-walk.test.mjs` +2 cases for DW-2301's `settle` reason, which ran the in-page check only through a mocked answer. The busy-element and fonts reasons run the real in-page function against a stubbed `document`, and a request URL that does not parse is named as given. mutation: the in-page check answering `busy === null` -> the busy-element case red (`busy element section#keys` expected); `pathOf` answering '' on a parse failure -> the unparsable-URL case red. Both reverted (`cmp` identical, `git status` unchanged). `structural-walk` + `protocol-retry` 46 pass, 0 fail. Re-run on `ocupilot-ci`, one spec per call: `encryption-startup` 3, `error-log` 5, `turn` 10, all green.
+- (review) mutation: DW-2301 -- the no-relaunch retrier given the connection-loss predicate: the no-relaunch case red; the report without its slowest-visits line: the report case red; `pending` kept after a ready check: the new cleared-reason case red; the `detached frame` form dropped: the `isConnectionLoss` case red. DW-2111 -- `retryOnce` retrying a second accepted error: the predicate case red (and three default-predicate cases); `openScreen` rethrowing a different error, and the relaunch answering `null`: the source-text case red. DW-2397 re-run with the old wait (bundle rebuilt and redeployed): red with the same actual, which is the partial reply's linked URL plus its host caption. All reverted (`git diff` clean against the patched files). `structural-walk` + `protocol-retry` 47 pass, 0 fail; on `ocupilot-ci`, `encryption-startup` 3, `a11y-structural-invariants` 13, 0 failed, 0 unsettled, the slowest visit labeled `/`.
+
+Batch 3:
+
+- mutation: DW-2123 -- a three-attempt cap restored (the budget check forced to zero from the third attempt): the `runThrowawayUp({fails: 4})` case red (non-zero exit) and the wait-sequence case red. That cap is the behavior before the change, so the case is red before it. Reverted (`cmp` identical).
+- mutation: DW-2123 loopback -- the `127.0.0.1:` prefix dropped from the web port line: the compose-lines case red. Reverted (`cmp` identical). The `ups === 3` case is now the `fails: 99` budget case (retry 1 s, budget 2 s); the wait sequence is read with a stub `sleep` (2, 4, 8, 16, 30, 30, 30); the `ss` call is read with a stub `ss`. `ci.test.mjs` + `stored-order.test.mjs` 119 pass, 0 fail.
+- mutation: DW-2501 -- the member comparison as a set (`includes`) instead of a prefix: the insert case, the allow-list (reorder) case and the SqlRun git leg red; the rename, removal and removed-class cases stay red under it, since a missing name fails either way. The Calculated filter dropped from `NO_SLOT_KEYWORDS`: the Calculated-ignored, the Calculated and the multi-line declaration cases red. Both reverted (`cmp` identical). Git legs on this full clone: HEAD against `origin/release/1.0.14` reports nothing (21 stored classes); `origin/release/1.0.12` against `dd2d53f22` reports `SqlRun` once, at slot 4, now holding `Kind`.
+
+- (review) mutation: DW-2501 -- the Transient keyword dropped from the filter set: the Transient cases red. MultiDimensional dropped: its case red. The many/children skip removed: the relationship case red. `isOn` answering true for a switched-off keyword: the MultiDimensional/`Transient = 0` case red. The superclass comparison disabled: the changed-superclass case red. The removed-class branch disabled: the removed-class case red. A Storage-section class kept in scope: the scope case red. `Ens.Request` dropped from the roots: the Extends-chain case red. `sourcesAtRef` answering no sources: both git legs red (the HEAD leg on the new baseline-count assertion). All reverted (`cmp` identical). No red for `gitLegReady`'s shallow-skip and full-clone-fail branches: this clone is full and holds the refs, so neither branch runs here (they run only where a ref is missing).
+- (review) mutation: DW-2501 `ci.yml` -- the fetch step deleted: the three declared-gates cases and the new gates-job case red; the step moved below `npm test`: the new case red alone. Reverted (`cmp` identical).
+- (review) mutation: DW-2123 -- the numeric guard deleted: the new refusal case red. The `ss` call dropped, or its filter changed to `dport`: the `ss` case red. Both reverted (`cmp` identical). The budget case now asserts at least one attempt and fewer than 99, so a slow first attempt cannot redden it. `ci.test.mjs` + `stored-order.test.mjs` 121 pass, 0 fail; `npm run test:tools` 2258 pass, 0 fail; `bash -n scripts/ci-throwaway.sh` clean; `uv run scripts/test_check_objectscript.py` 146 OK; `uv run scripts/check-objectscript.py` 0 problems.
+- (QA) files: `ui/tools/stored-order.test.mjs` (three cases added: `newestReleaseRef`, `sourcesAtRef`, the shallow/full-clone skip-or-fail branch, each against a scratch repository the test builds and removes; `gitLegReady` takes the refs as a list and an optional directory) and `ui/tools/ci.test.mjs` (the backoff source pin now holds the 2 s first wait, the 120 s budget default and the 30 s cap).
+- (QA) mutation: DW-2501 baseline choice -- `newestReleaseRef` sorting the refs as text: the new ordering case red, and the HEAD leg red with it. Reverted (`cmp` identical).
+- (QA) mutation: DW-2501 reader -- the `.cls` filter dropped from `sourcesAtRef`: the new reader case red. Blob size read in characters (latin1 decode): the reader case, the HEAD leg and the SqlRun leg red. Reverted (`cmp` identical).
+- (QA) mutation: DW-2501 shallow/full-clone branches -- the `assert.fail` of a full clone removed: the new branch case red. This closes the gap the review pass recorded. Reverted (`cmp` identical).
+- (QA) mutation: DW-2123 -- the budget default 120 changed to 60: the doc/source pin red. The 30 s cap changed to 60: the wait-sequence case and the source pin red. Both reverted (`cmp` identical). `node --test tools/ci.test.mjs tools/stored-order.test.mjs` 124 pass; `npm run test:tools` 2261 pass, 0 fail; `client-lint` clean; `bash -n scripts/ci-throwaway.sh` clean; `uv run scripts/test_check_objectscript.py` 146 OK.
+- (review) mutation: DW-2123 -- the budget clock started before the first attempt: the new slow-first-attempt case red (one attempt, non-zero exit). The exhaustion `exit 1` made `exit 0`: the budget case red. The doubling dropped: the wait-sequence case red (the real-clock case stays green, so its claim now covers only that real waits happen); the `sleep` deleted: the real-clock case red. All reverted (`cmp` identical).
+- (review) mutation: DW-2501 pass side -- a length mismatch flagged: the append case red (with the insert, removal and SqlRun cases). Classes new since the baseline reported: the absent-at-baseline case red. The allow-list `continue` dropped: the allow-list case red. The shallow branch made `assert.fail`: the skip-or-fail case red. All reverted (`cmp` identical). `ci.test.mjs` + `stored-order.test.mjs` 125 pass, 0 fail; `npm run test:tools` 2262 pass, 0 fail; `client-lint` clean; `bash -n scripts/ci-throwaway.sh` clean; `uv run scripts/test_check_objectscript.py` 146 OK; `uv run scripts/check-objectscript.py` 0 problems.
+
+Batch 4:
+
+- mutation: DW-2403 `Sweep` -- the `GuardedDeleteForUser` loop absent (the count kept; the state before the fix): `ExplorerSaveTurn` run 1 red on "no probe job, turn, slot or stub node survives the method", `TurnWire` run 2 red, 15 of 15 methods, on the same assertion. With the loop: `ExplorerSaveTurn`, `TurnWire` (15), `LedgerWire` (6), `Retention` (10), `TurnProviderFault` (6, whose `Sweep` runs mid-test) and `ScreenAccessTurn` (2, same) green on `ocupilot-ci`.
+- mutation: DW-2403 `SweepSince` -- the bare `TurnKey` restored in its ledger leg (throwaway copy): the new `InteropEditorSaveTurn.TestSweepSinceRemovesALedgerRowWhoseTurnIsGone` red on both its assertions (the sweep answered a ledger row, and the row was still there), run 6, the other test green. Reverted (`cmp` identical); the class then ran green, 2 tests.
+- mutation: DW-2403 `TurnNavigate` -- the teardown's and `TestDeletingATurnRemovesItsDirective`'s `GuardedDeleteForTurn` calls dropped (throwaway copy): run 4 red on "and none of them survives" in 6 of 15 methods, so the count was non-zero before the delete. Reverted (`cmp` identical); run green, 15 tests, 0 failed. The `irisowner` ledger rows that red run left were removed with `Ledger.GuardedDeleteForUser`; `OcuPilot_Kernel_State.Ledger` reads 0 rows on `ocupilot-ci`.
+- mutation: DW-2403 `TestDeletingATurnRemovesItsDirective` -- its own steps write no ledger row (run 14: the delete dropped, the count still 0), so the method asserts the count is 0 and keeps no delete call. A ledger row appended for its key before the count (throwaway copy): run 16 red on that method alone, 14 other methods green. Reverted (`cmp` identical); the key's row removed (`Ledger` reads 0 rows); run 17 green, 15 tests.
+- no red: DW-2403 `SweepSince`'s `%EXACT(UserName)` select. The abandon signal it feeds is killed with the turn, so a sweep that abandons nothing leaves no trace, and a pin needs a running job that honours the signal, which only the 25 armed turn classes start; the bare select returns the collated uppercase name, which the exact-match abandon would not find (inference).
+- (QA) mutation: DW-2403 `SweepSince` -- the bare `TurnKey` restored in its ledger leg, re-run independently on `ocupilot-ci`: `InteropEditorSaveTurn.TestSweepSinceRemovesALedgerRowWhoseTurnIsGone` red (run 19, 1 of 2 failed). Reverted; `git status --short` empty; class green, 2 tests (run 20). QA added no test file; every batch 4 AC has a pin with an observed red except the recorded `%EXACT(UserName)` case.
+- mutation: DW-2408 -- the sweep dropped from `after` (`SweepSince` answering `0|0`): `interop-item-test` red on "no message or log row is left above the mark 0|0", actual `1|0|0|1|1|1|1|14` against `1|0|0|1|1|1|0|0`, so USER held 1 header and 14 log rows past the mark. Reverted (`cmp` identical) and USER swept back to `0|0`; run green, 5 tests, 0 failed, with `HighWater()` back at the mark.
+- (review) mutation: DW-2403 sibling teardowns -- `TurnLoop`'s `GuardedDeleteForTurn` dropped (throwaway copy): run 30 red, 6 of 11 methods on "and none of them survives". Reverted (`cmp` identical) and the `irisowner` rows removed (`Ledger` 0 rows); run 31 green. `TurnCitations` run 28, `AnthropicThinking` run 29, `TurnNavigate` run 32 (15) and `InteropEditorSaveTurn` run 33 (2) green, `Ledger` 0 rows after; `interop-item-test` 5 tests, 0 failed after a rebuild and redeploy.
+
+Batch 6:
+
+- mutation: DW-2543 -- `followOrder` passing `true` (the old behavior): the new `journal-records.page.spec.ts` case red on "no view POST before the account answers" (`expected [ { ... } ] to deeply equal []`). The store ignoring `remember` (`rememberView()` always called): the same case red, and the `screen-store.test.mjs` case "setDirection with remember false ..." red. `setDirection` not notifying: the store case red. The subscriber's `followOrder` dropped: the page case red, and the existing "Oldest first draws ascending when the remembered descending view is adopted" case red. Each reverted (`git diff` byte-identical to before the mutation). Final: page spec 23 pass; `screen-store.test.mjs` 29 pass; `npm run test:components` 3382 pass; `npm run test:tools` 2233 pass; `npm run build` passes. No browser run in this pass (the `journal-records` browser spec is the lead's fresh check).
+- (QA) no test file created or changed; the batch 6 pins cover the AC. mutation: DW-2543 original code -- `screen-store.ts` and `journal-records.page.ts` restored to `a99b19ff` (production change reverted only): the new page case red, "no view POST before the account answers" (the default view `{sort:'',direction:'desc',filter:'',maxRows:1000}` was posted); 22 other cases green. Restored byte-identical (`shasum`, `git status` clean). mutation: DW-2543 unchanged direction choice -- `setDirection` default `remember = false`: `screen-store.test.mjs` "a sort set on its own, and a direction set on its own, each survive a store rebuild" red (28 pass, 1 fail); reverted byte-identical. Re-run: `npm run test:components` 3382 pass; `npm run test:tools` 2233 pass; `npm run build` passes; `journal-records.browser-spec.mjs` on `ocupilot-ci` (bundle redeployed) 5 pass, 0 fail.
+- (review) mutation: DW-2543 Oldest-first branch -- `followOrder` calling `setDirection('')` without `remember`: the new case "an arrival without Newest first after one with it, before the account answers, sends no view, and the remembered view is kept" red alone (`expected [ { ... } ] to deeply equal []`), 23 other cases green; reverted (`shasum` identical). Page spec 24 pass; `npm run test:components` 3383 pass; `npm run test:tools` 2233 pass; `npm run build` passes.
+
 ## Auto Run Result
 
 Status: done
 Blocking condition: none
 
-Batch 1 (DW-2236, DW-2526), this pass only.
+Batch 3 (CI tooling: DW-2123, DW-2501). Batches 1, 2, 4 and 6 closed at their own commits; batch 5 (DW-2253) is open.
 
 - **Changed:**
-  - `src/OcuPilot/Test/BackgroundTasksLive.cls`: settles after Resume and after a 200 Pause through `BackgroundSeed.Settled` (Paused continues to Cancel, Done takes the ended-compact Cancel 409 branch, other states fail naming the state); `SettledRow` settles the admin API row's Paused re-read.
-  - `src/OcuPilot/Test/LogHubErrors.cls`: the second seed's time comes from its own row by namespace, day and `errorNumber`; a stand-in error seeded in USER after the full read; `OnAfterOneTest` deletes all three seeds and checks they are gone.
-  - This spec: boxes checked, mutation lines, triage log.
-- **Review:** 5 findings: 2 patched (teardown read-back status plus mutation, DW-2236 mutation line), 3 rejected (reasons in the log); none deferred. Follow-up review recommended: false (patched low 2, medium 0, high 0).
-- **Verified on `ocupilot-ci`, one class per call:** `BackgroundTasksLive` run 20 green (9 tests); `LogHubErrors` green on the final code; DW-2526 mutations red (runs 18, 25); `uv run scripts/check-objectscript.py` 0 problems; `npm run test:tools` 2221 pass, 0 fail. DW-2236 has no deterministic red (stall measurement, Verification).
-- **Residual:** the DW-2236 settles are unfalsified by a red; the mutation line says why.
+  - `scripts/ci-throwaway.sh`: a time budget (`OCUPILOT_BIND_WAIT_SECONDS`, default 120) with waits of 2, 4, 8, 16, then 30 s replaces the three attempts, still on bind failures only. Each bind failure prints the web port's sockets when `ss` exists. Both ports publish on `127.0.0.1`.
+  - `.github/workflows/ci.yml`: the gates job fetches `origin/release/*` tips at depth 1; the port-reservation comment states what the reservation does.
+  - `ui/tools/ci.test.mjs`: budget, wait-sequence, `ss`, loopback, refusal and gates-fetch cases; `DECLARED_GATES` carries the fetch.
+  - `ui/tools/stored-order.mjs` and `ui/tools/stored-order.test.mjs` (new): the stored-property order check against the newest `origin/release/*`.
+- **Review:** 15 findings: 7 patched (2 medium, 5 low), 0 deferred, 8 rejected (reasons in the log). Follow-up review recommended: false (no high patched).
+- **Verified:** `bash -n scripts/ci-throwaway.sh` clean; `ci.test.mjs` + `stored-order.test.mjs` 121 pass; `npm run test:tools` 2258 pass; `uv run scripts/test_check_objectscript.py` 146 OK; `uv run scripts/check-objectscript.py` 0 problems. Mutations under Verification, Batch 3.
+- **Residual:** the loopback bind and the new fetch step meet a real Docker port and a real GitHub checkout only at the lead's down/up check and in CI (inference until then). The shallow-skip and full-clone-fail branches of the git legs run only where a release ref is missing.

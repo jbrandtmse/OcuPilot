@@ -24,6 +24,7 @@ import puppeteer from 'puppeteer';
 
 import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
 import { leaveFirstLoginGate, pathOf } from './shell-entry.mjs';
+import { waitForReplies } from './panel-spec.mjs';
 import { resetRememberedState } from './preferences-reset.mjs';
 import {
   armProbeDefinition,
@@ -34,6 +35,7 @@ import {
   nextTag as sharedNextTag,
   runIris as sharedRunIris,
   scriptReply as sharedScriptReply,
+  scriptStreamReply as sharedScriptStreamReply,
   setTag as sharedSetTag,
 } from './turnprobe-spec.mjs';
 
@@ -84,6 +86,11 @@ function setTag(tag) {
  * what every earlier spec expects: HTTP 200 and no header. */
 function scriptReply(tag, hangSeconds, bodyExpr, httpStatus = 200, retryAfter = '') {
   sharedScriptReply(probe, tag, hangSeconds, bodyExpr, httpStatus, retryAfter);
+}
+
+/** Script one reply for `tag` that arrives in slices over `midHangSeconds`, so its text is drawn while the turn still runs. */
+function scriptStreamReply(tag, bodyExpr, midHangSeconds) {
+  sharedScriptStreamReply(probe, tag, 0, bodyExpr, midHangSeconds);
 }
 
 function toolUseReply(toolWireName) {
@@ -395,7 +402,7 @@ test('Markup in a reply renders as literal text, and the browser makes no reques
   const tag = nextTag();
   setTag(tag);
   const markup = '<img src="' + 'http:' + '//' + '203.0.113.9' + '/x">';
-  scriptReply(tag, 0, textReply(markup));
+  scriptStreamReply(tag, textReply(markup), 2);
   const { context, page } = await signedInAt(HOME_URL);
   const offOriginRequests = [];
   page.on('request', (request) => {
@@ -404,10 +411,8 @@ test('Markup in a reply renders as literal text, and the browser makes no reques
   });
   try {
     await typeAndSend(page, 'send me markup');
-    await page.waitForFunction(
-      () => (document.querySelector('.ocu-panel-message-agent-text')?.textContent ?? '') !== '',
-      { timeout: config.navigationTimeoutMs }
-    );
+    await waitForReplies(page, 1, config, 'Send');
+    await page.waitForFunction(() => document.querySelector('.ocu-panel-message-streamed') === null, { timeout: config.navigationTimeoutMs });
     const rendered = await page.evaluate(() => document.querySelector('.ocu-panel-message-agent-text').textContent);
     assert.equal(rendered, markup, 'the markup renders as literal text');
     const hasImg = await page.evaluate(() => document.querySelector('.ocu-panel-message-agent-text img') !== null);

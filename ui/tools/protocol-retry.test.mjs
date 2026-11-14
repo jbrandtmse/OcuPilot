@@ -9,12 +9,16 @@
 // cases go red. Drop the close in `relaunchOnce` -> the wedged-browser case goes red; retry any error
 // there -> the other-error case goes red. Drop the `await` on `retryOnce`'s reset -> the async-reset
 // case goes red. Swallow the error `reset` throws, or call `reset` inside the second attempt's `try`
-// -> the reset-error case goes red.
+// -> the reset-error case goes red. Drop a form from CONNECTION_LOSS -> the isConnectionLoss case goes
+// red. Retry a second error the predicate accepts -> the predicate case goes red. In the error-log
+// spec, hand the shared browser straight to the open, rethrow a different error, or relaunch without
+// handing the new browser on -> the source-text case goes red.
 
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
-import { WALKCALLDEADLINE, installProtocolRetry, isNavigationTimeout, isProtocolTimeout, relaunchOnce, retryOnce, withDeadline, wrapBrowser } from '../browser/protocol-retry.mjs';
+import { WALKCALLDEADLINE, installProtocolRetry, isConnectionLoss, isNavigationTimeout, isProtocolTimeout, relaunchOnce, retryOnce, withDeadline, wrapBrowser } from '../browser/protocol-retry.mjs';
 
 const timeout = (command) =>
   new Error(`${command} timed out. Increase the 'protocolTimeout' setting in launch/connect calls for a higher timeout if needed.`);
@@ -287,4 +291,51 @@ test('a browser that will not close is abandoned after the close deadline, and t
   first.close = () => new Promise(() => {});
   const page = await relaunchOnce(launcher.open, async () => launcher.launch(), first, 50);
   assert.equal(page.page, 'page of browser 2');
+});
+
+/** The text of the top-level function `name` in the error-log spec, up to its closing brace. */
+function errorLogFunction(name) {
+  const source = readFileSync(new URL('../browser/error-log.browser-spec.mjs', import.meta.url), 'utf8');
+  const start = source.indexOf(`function ${name}(`);
+  assert.notEqual(start, -1, `${name} exists in the error-log spec`);
+  const end = source.indexOf('\n}\n', start);
+  assert.notEqual(end, -1, `${name} ends at a closing brace`);
+  return source.slice(start, end);
+}
+
+test('the error-log spec opens its screens through relaunchOnce and navigates through gotoNamingInflight', () => {
+  // Mutation (Rule 19): hand the shared browser straight to the open in `openOnSharedBrowser` -> the first assertion goes red.
+  const shared = errorLogFunction('openOnSharedBrowser');
+  assert.match(shared, /relaunchOnce\(/, 'the shared browser is replaced once on a navigation timeout');
+  assert.match(shared, /browser = await puppeteer\.launch\([^\n]*\);\s*return browser;/, 'and the replacement is what the spec holds afterwards, and what the second open gets');
+  assert.match(shared, /,\s*browser\s*\);\s*$/, 'the first open runs on the shared browser');
+  for (const entry of ['signedInAtScreen', 'signedInAtScreenIntercepting']) {
+    assert.match(errorLogFunction(entry), /openOnSharedBrowser\(/, `${entry} opens through the relaunching helper`);
+  }
+  for (const open of ['openScreen', 'openInterceptingScreen']) {
+    const body = errorLogFunction(open);
+    assert.match(body, /gotoNamingInflight\(/, `${open} names the requests in flight when its navigation times out`);
+    assert.doesNotMatch(body, /page\.goto\(/, `${open} navigates only through gotoNamingInflight`);
+    assert.match(body, /catch \(error\) \{\s*await context\.close\(\)\.catch\(\(\) => \{\}\);\s*throw error;\s*\}/, `${open} closes its context when a step throws, and rethrows that error unchanged`);
+  }
+});
+
+test('isConnectionLoss matches a lost connection, target, session or frame, and nothing else', () => {
+  for (const message of ['Protocol error: Connection closed.', 'Target closed', 'Session closed. Most likely the page has been closed.', 'Navigating frame was detached', 'frame got detached', 'Frame detached.', "Attempted to use detached Frame 'F1'.", 'Execution context is not available in detached frame or worker "about:blank" (are you trying to evaluate?)', 'Session already detached. Most likely the page has been closed.']) {
+    assert.equal(isConnectionLoss(new Error(message)), true, message);
+  }
+  assert.equal(isConnectionLoss(new Error('net::ERR_CONNECTION_REFUSED at http://localhost')), false, 'a refused connection is not a lost one');
+  assert.equal(isConnectionLoss(timeout('Network.enable')), false, 'a protocol timeout is isProtocolTimeout\'s');
+});
+
+test('retryOnce retries what its predicate accepts, and only once', async () => {
+  let attempts = 0;
+  const lost = () => new Error('Target closed');
+  assert.equal(await retryOnce(async () => (++attempts === 1 ? Promise.reject(lost()) : 'ok'), () => {}, isConnectionLoss), 'ok');
+  attempts = 0;
+  await assert.rejects(() => retryOnce(async () => { attempts += 1; throw lost(); }, () => {}), /Target closed/);
+  assert.equal(attempts, 1, 'the default predicate does not retry a lost connection');
+  attempts = 0;
+  await assert.rejects(() => retryOnce(async () => { attempts += 1; throw lost(); }, () => {}, isConnectionLoss), /Target closed/);
+  assert.equal(attempts, 2, 'a second error the predicate accepts is not retried');
 });

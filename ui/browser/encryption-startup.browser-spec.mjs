@@ -191,11 +191,16 @@ function refusalOf(page, id) {
 test('C1, C2, C9: Database encryption links to the form, which states each mode, refuses KMIP with no server configured, and passes DW-1337', async () => {
   const { context, page } = await signedInAt(browser, config, `/ocupilot/${DATABASE_ROUTE}?ns=HSCUSTOM`, VIEWPORTS.wide);
   try {
+    await page.waitForSelector('section.ocu-form-page[aria-busy="false"]', { timeout: config.navigationTimeoutMs });
+    const keysState = await page.waitForSelector('[data-encryption-keys="empty"], [data-encryption-keys="keys"], [data-encryption-keys="reason"]', { timeout: config.navigationTimeoutMs });
+    assert.notEqual(await keysState.evaluate((node) => node.dataset.encryptionKeys), 'reason', `the keys read answered: ${await keysState.evaluate((node) => node.textContent.trim())}`);
     await page.waitForSelector('[data-encryption-keys="startup"]', { visible: true, timeout: config.navigationTimeoutMs });
     assert.equal(await page.$eval('[data-encryption-keys="startup"]', (node) => node.textContent.trim()), STRINGS.encryptionStartupLink);
     await page.click('[data-encryption-keys="startup"]');
-    await page.waitForSelector(`#${MODE_ID}-None`, { timeout: config.navigationTimeoutMs });
+    await page.waitForFunction((path) => location.pathname === path, { timeout: config.navigationTimeoutMs }, `/ocupilot/${STARTUP_ROUTE}`);
     assert.equal(new URL(page.url()).pathname, `/ocupilot/${STARTUP_ROUTE}`, 'the link opens the form');
+    const arrived = await page.waitForSelector(`#${MODE_ID}-None, section.ocu-form-page [role="alert"]`, { timeout: config.navigationTimeoutMs });
+    assert.equal(await arrived.evaluate((node) => node.id || node.textContent.trim()), `${MODE_ID}-None`, 'the form drew its modes, not an alert');
     const sentences = await page.$$eval('[data-slot="mode-sentence"]', (nodes) => nodes.map((node) => node.textContent.trim()));
     assert.deepEqual(sentences, [
       STRINGS.encryptionStartupNoneConsequence,
