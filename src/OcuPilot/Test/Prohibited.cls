@@ -445,8 +445,9 @@ Method TestNoWriteToolAdmitsAnAlwaysProhibitedField()
         If tValued && $ListFind($ListBuild("security.encryptionkeyfileadmins.removeadministrator:Admin", "security.encryptionkeyfile.removekey:KeyId"), tEntry.%Get("name") _ ":" _ $ListToString(tSettable)) Set tValued = 0, tSettable = ""
         If 'tSendsBody {
             If 'tComposed && 'tValued Do $$$AssertEquals($ListLength(tSettable), 0, tEntry.%Get("name") _ " sends no body, so it admits no field")
-            ; Story 20.31: the resend's one value is the digest a person reviewed it at.
-            If tValued Do $$$AssertEquals(tEntry.%Get("name") _ ":" _ $ListToString(tSettable), $Case(tEntry.%Get("name"), "interop.messages.resend": "interop.messages.resend:Reviewed", : "osmgmt.localdatabases.delete:DeleteFile"), tEntry.%Get("name") _ " sends no body and admits only the value its screen action declares, which its port reads from its query")
+            ; Story 20.31: the resend's one value is the digest a person reviewed it at. Story 20.41: the change of class's two are the class
+            ; and that digest.
+            If tValued Do $$$AssertEquals(tEntry.%Get("name") _ ":" _ $ListToString(tSettable), $Case(tEntry.%Get("name"), "interop.messages.resend": "interop.messages.resend:Reviewed", "interop.items.changeclass": "interop.items.changeclass:NewClass,Reviewed", : "osmgmt.localdatabases.delete:DeleteFile"), tEntry.%Get("name") _ " sends no body and admits only the value its screen action declares, which its port reads from its query")
             ; Story 12.4's key-set refresh is composed from the stored JWKS URL alone, so it admits
             ; no argument beyond its target's issuer; Story 12.6's mapping writes from a service and
             ; a key; Story 18.14's copy of mappings from its source namespace; Story 19.13's export

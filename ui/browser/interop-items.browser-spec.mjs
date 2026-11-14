@@ -10,7 +10,8 @@
  * it; a refused Add shows the server's sentence in the dialog; and the list passes the structural and
  * contrast checks at 1280 light, 720 light and 1280 dark, with no entry beyond the baseline (DW-1337). Story
  * 20.40's Copy opens its dialog on the selected item, refuses a held name with the server's sentence, adds a disabled copy of the item under a new
- * name and removes it. Story 20.25's last test starts the probe production, then Stop warns with the published sentence and, past Proceed,
+ * name and removes it. Story 20.41's Change class opens its dialog on a probe item of the operation class, lists the classes the Classes tab lists but the
+ * item's own, reviews the settings the new class does not take, and changes the class once the item's name is typed, which the list then reads. Story 20.25's last test starts the probe production, then Stop warns with the published sentence and, past Proceed,
  * ends the operation's jobs, so its Jobs tab lists none; Start warns and runs a job again.
  *
  * **It compiles and writes a probe production in `USER`** through `OcuPilot.Test.ProductionProbe`, so it runs
@@ -48,6 +49,11 @@ const PRODUCTIONS_URL = '/ocupilot/interoperability/productions?ns=USER';
 const ACTION_PATH = '/api/ocupilot/screens/interop.items/action';
 const ADD_PATH = '/api/ocupilot/interop/items';
 const COPY_PATH = '/api/ocupilot/interop/items/copy';
+const DRY_RUN_PATH = '/api/ocupilot/screens/interop.items/dryrun';
+const CHANGE = 'OcuPilot.Test.InteropItemChangeClass';
+const CHANGED = 'OcuPilotProbeChg';
+const OLD_CLASS = 'OcuPilotProbe.Interop.Op';
+const NEW_CLASS = 'OcuPilotProbe.Interop.TearOp';
 const COPIED = 'OcuPilotProbeCopy';
 const ROW_ID = (name) => `${PRODUCTION}\u0001${name}`;
 const NAME_TEXT = '.ocu-data-table-link, .ocu-data-table-text';
@@ -126,6 +132,24 @@ function rowPresent(page, name, present = true) {
     name,
     NAME_TEXT,
     present
+  );
+}
+
+/** Wait until the row named `name` reads `word` in its class cell. */
+function waitForClassCell(page, name, word) {
+  return page.waitForFunction(
+    (rowSelector, wanted, textSelector, expected) => {
+      const row = Array.from(document.querySelectorAll(rowSelector)).find((node) => {
+        const cell = node.querySelector('[role="gridcell"]');
+        return ((cell?.querySelector(textSelector) ?? cell)?.textContent ?? '').trim() === wanted;
+      });
+      return row !== undefined && row.querySelectorAll('[role="gridcell"]')[1]?.textContent.trim() === expected;
+    },
+    { timeout: config.navigationTimeoutMs },
+    ROW_SELECTOR,
+    name,
+    NAME_TEXT,
+    word
   );
 }
 
@@ -468,6 +492,75 @@ test('AC1: Copy opens its dialog on the selected item; a held name is refused wi
     await rowPresent(page, COPIED, false);
     assert.deepEqual(actions, [{ action: 'remove', id: ROW_ID(COPIED) }], 'the copy is removed with its typed name');
     assert.equal(stored(COPIED), '', 'the stored configuration no longer holds it');
+  } finally {
+    await context.close();
+  }
+});
+
+// AC1. Mutation (Rule 19): make the review's typed name the item's composite id (drop the `name` argument of `startDryRun` in
+// `InteropItemListPage.onChosenClass`), or read the Production items list in place of the Classes tab in the dialog's store; rebuild and
+// redeploy first -> the typed name or the option list goes red.
+test('AC1: Change class lists the Classes tab\'s other classes, reviews the settings the new class drops, and changes the class once the item\'s name is typed', async () => {
+  const prepared = probe('CHGPREP', `$System.Status.IsOK(##class(${CHANGE}).Prepare())`);
+  assert.equal(prepared.value, '1', `the probe item and its settings are stored: ${prepared.output}`);
+  const { context, page } = await signedInAt(browser, config, PRODUCTIONS_URL, VIEWPORTS.wide);
+  const posts = [];
+  const dryRuns = [];
+  page.on('request', (request) => {
+    if (request.method() !== 'POST') return;
+    const path = new URL(request.url()).pathname;
+    if (path === ACTION_PATH) posts.push(JSON.parse(request.postData() ?? '{}'));
+    if (path === DRY_RUN_PATH) dryRuns.push(JSON.parse(request.postData() ?? '{}'));
+  });
+  try {
+    await openItems(page);
+    await rowPresent(page, CHANGED);
+    await rowAction(page, CHANGED, STRINGS.interopItemChangeClassAction);
+    await page.waitForSelector('select[data-interop-item-class-select]', { visible: true, timeout: config.navigationTimeoutMs });
+    await page.waitForFunction(() => document.querySelectorAll('select[data-interop-item-class-select] option').length > 1, { timeout: config.navigationTimeoutMs });
+    const opened = await page.evaluate(() => ({
+      title: document.querySelector('[role="dialog"] .ocu-dialog-title')?.textContent?.trim(),
+      consequence: document.querySelector('[data-interop-item-class-consequence]')?.textContent?.trim(),
+      options: Array.from(document.querySelectorAll('select[data-interop-item-class-select] option')).map((option) => option.value),
+    }));
+    assert.equal(opened.title, STRINGS.interopItemChangeClassAction, 'the dialog is titled with the published words');
+    assert.equal(opened.consequence, STRINGS.interopItemChangeClassConsequence, 'and states the change\'s consequence');
+    assert.ok(opened.options.includes(NEW_CLASS), 'it lists the other operation class the Classes tab lists');
+    assert.ok(!opened.options.includes(OLD_CLASS), 'and not the class the item has');
+    assert.deepEqual(dryRuns, [], 'nothing is reviewed before a class is chosen');
+
+    await page.select('select[data-interop-item-class-select]', NEW_CLASS);
+    await page.click('[data-interop-item-class-review]');
+    await page.waitForSelector('[data-ocu-review]', { visible: true, timeout: config.navigationTimeoutMs });
+    const review = await page.$$eval('[data-ocu-review] li', (nodes) => nodes.map((node) => node.textContent.trim()));
+    assert.deepEqual(
+      review,
+      [`- ClassName: ${OLD_CLASS}`, `+ ClassName: ${NEW_CLASS}`, '- Host.HangSeconds: 4471', '- Host.ApiToken:'],
+      'the review lists the class change and the two settings the new class does not take, the credential-named one with no value'
+    );
+    assert.deepEqual(dryRuns, [{ action: 'changeclass', id: ROW_ID(CHANGED), values: { NewClass: NEW_CLASS } }], 'one review, of the class chosen');
+    assert.deepEqual(posts, [], 'and the change is not sent before the name is typed');
+    assert.equal(
+      await page.$eval('.ocu-typed-name-consequence', (node) => node.textContent.trim()),
+      STRINGS.interopItemChangeClassConsequence,
+      'the review states the destructive consequence'
+    );
+    await page.type('.ocu-typed-name-field', CHANGED);
+    await page.keyboard.press('Enter');
+    await page.waitForFunction(() => document.querySelector('[role="dialog"]') === null, { timeout: config.navigationTimeoutMs });
+    assert.equal(posts.length, 1, 'one change was sent once the item\'s name matched');
+    assert.deepEqual({ ...posts[0], values: { NewClass: posts[0].values?.NewClass } }, { action: 'changeclass', id: ROW_ID(CHANGED), values: { NewClass: NEW_CLASS } }, 'with the row key and the class');
+    assert.match(posts[0].values?.Reviewed ?? '', /^[0-9a-f]{64}$/, 'and the digest of the review');
+    await waitForClassCell(page, CHANGED, NEW_CLASS);
+    assert.equal(probe('CHGSTORED', `##class(${CHANGE}).Stored("${CHANGED}")`).value, `${NEW_CLASS}|Host.TearDownSeconds=7`, 'the stored configuration holds the new class and the one setting it takes');
+
+    await rowAction(page, CHANGED, STRINGS.actionRemove);
+    await page.waitForSelector('.ocu-typed-name-consequence', { visible: true, timeout: config.navigationTimeoutMs });
+    await page.type('.ocu-typed-name-field', CHANGED);
+    await page.keyboard.press('Enter');
+    await page.waitForFunction(() => document.querySelector('[role="dialog"]') === null, { timeout: config.navigationTimeoutMs });
+    await rowPresent(page, CHANGED, false);
+    assert.equal(stored(CHANGED), '', 'the item is removed again');
   } finally {
     await context.close();
   }

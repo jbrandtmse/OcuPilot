@@ -12,6 +12,7 @@ import { STRINGS } from '../../core/strings';
 import { ListPage } from '../../shell/list-page';
 import { ScreenActionHandler } from '../../shell/screen-action-handler';
 import { InteropItemAddDialog } from './interop-item-add-dialog';
+import { InteropItemChangeClassDialog } from './interop-item-change-class-dialog';
 import { InteropItemCopyDialog } from './interop-item-copy-dialog';
 
 /** The Production items list's descriptor (Story 20.3). */
@@ -23,17 +24,25 @@ export const INTEROP_ITEM_ADD_ACTION = 'add';
 /** The declared row action id: Copy on the selected item, which opens the copy dialog. */
 export const INTEROP_ITEM_COPY_ACTION = 'copy';
 
+/** The declared row action id: Change class on the selected item, which opens the class picker, then the review (Story 20.41). */
+export const INTEROP_ITEM_CHANGE_CLASS_ACTION = 'changeclass';
+
+/** The value the review and the confirmed action carry: the class the item changes to (AD-56). */
+export const INTEROP_ITEM_NEW_CLASS_VALUE = 'NewClass';
+
 /** The Configuration diagram's descriptor (Story 20.8), which this page links to for the production it lists. */
 const INTEROP_PRODUCTION_DIAGRAM = 'OcuPilot.Screen.Descriptor.InteropProductionDiagram';
 
 /**
- * Interoperability's Production items (Story 20.3, AD-5): the shared list page, over it the add dialog and the copy dialog.
+ * Interoperability's Production items (Story 20.3, AD-5): the shared list page, over it the add, copy and change class dialogs.
  *
- * **Add item and Copy are this page's own actions**, registered on the descriptor after injecting the shell's handler,
+ * **Add item, Copy and Change class are this page's own actions**, registered on the descriptor after injecting the shell's handler,
  * whose construction registers the list's other declared row actions (Copy is left to this page through its `UNDRAWN_ACTIONS`
  * entry). The dialogs add the item to the
  * production the route names, in the namespace the shell is scoped to, which is the one the list reads. Copy
- * (Story 20.40) opens on the selected row and never over another dialog.
+ * (Story 20.40) opens on the selected row and never over another dialog. Change class (Story 20.41) opens the class picker on the
+ * selected row; the class it chooses closes it and starts the handler's review of what the change removes, whose typed name is the
+ * item's name.
  *
  * **A link above the list opens the production's Configuration diagram** (Story 20.8), the unlisted screen under
  * Productions, while the route names a production and the diagram is declared. It is the diagram's only entry
@@ -42,7 +51,7 @@ const INTEROP_PRODUCTION_DIAGRAM = 'OcuPilot.Screen.Descriptor.InteropProduction
 @Component({
   selector: 'app-interop-item-list-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ListPage, InteropItemAddDialog, InteropItemCopyDialog],
+  imports: [ListPage, InteropItemAddDialog, InteropItemCopyDialog, InteropItemChangeClassDialog],
   // The height chain every page host carries, so the list's viewport keeps its height.
   styles: `
     :host {
@@ -75,6 +84,14 @@ const INTEROP_PRODUCTION_DIAGRAM = 'OcuPilot.Screen.Descriptor.InteropProduction
         (copied)="onCloseCopy()"
         (cancelled)="onCloseCopy()"
       />
+    }
+    @if (classItem) {
+      <app-interop-item-change-class-dialog
+        [production]="production"
+        [item]="classItem"
+        (chosen)="onChosenClass($event)"
+        (cancelled)="onCloseClass()"
+      />
     }`,
 })
 export class InteropItemListPage {
@@ -105,17 +122,22 @@ export class InteropItemListPage {
   /** The name of the item the open copy dialog copies, or `''` while none is open. */
   private readonly copying = signal('');
 
+  /** The item the open change class dialog changes, or `null` while none is open: its row id and its name. */
+  private readonly classing = signal<{ readonly id: string; readonly name: string } | null>(null);
+
   constructor() {
     const screen = SCREENS.find((entry) => entry.descriptor === INTEROP_ITEM_LIST) ?? null;
     this.store = screen === null ? null : this.stores.for(screen.descriptor, screen.refreshRates);
     const stop = this.actions.register(INTEROP_ITEM_LIST, INTEROP_ITEM_ADD_ACTION, () => this.onOpen());
     const stopCopy = this.actions.register(INTEROP_ITEM_LIST, INTEROP_ITEM_COPY_ACTION, () => this.onOpenCopy());
+    const stopClass = this.actions.register(INTEROP_ITEM_LIST, INTEROP_ITEM_CHANGE_CLASS_ACTION, () => this.onOpenClass());
     const stopUrl = this.router.events.subscribe((event) => {
       if (event instanceof NavigationEnd) this.url.set(this.router.url);
     });
     inject(DestroyRef).onDestroy(() => {
       stop();
       stopCopy();
+      stopClass();
       stopUrl.unsubscribe();
     });
   }
@@ -127,6 +149,11 @@ export class InteropItemListPage {
   /** The item being copied while the copy dialog is open, `''` (falsy) otherwise. */
   protected get copySource(): string {
     return this.copying();
+  }
+
+  /** The name of the item being changed while the change class dialog is open, `''` (falsy) otherwise. */
+  protected get classItem(): string {
+    return this.classing()?.name ?? '';
   }
 
   protected get namespace(): string {
@@ -167,16 +194,36 @@ export class InteropItemListPage {
 
   /** Open the add dialog, never over a dialog of the handler's or the copy dialog. */
   protected onOpen(): void {
-    if (this.open() || this.copying() !== '' || this.handler.pending() !== null) return;
+    if (this.open() || this.copying() !== '' || this.classing() !== null || this.handler.pending() !== null) return;
     this.open.set(true);
   }
 
   /** Open the copy dialog on the selected row, never over another dialog. With no selection nothing opens. */
   protected onOpenCopy(): void {
-    if (this.open() || this.copying() !== '' || this.handler.pending() !== null) return;
+    if (this.open() || this.copying() !== '' || this.classing() !== null || this.handler.pending() !== null) return;
     const selected = this.store?.selection()[0] ?? '';
     const name = selected === '' ? '' : (splitCompositeId(selected)[1] ?? '');
     if (name !== '') this.copying.set(name);
+  }
+
+  /** Open the change class dialog on the selected row, never over another dialog. With no selection nothing opens. */
+  protected onOpenClass(): void {
+    if (this.open() || this.copying() !== '' || this.classing() !== null || this.handler.pending() !== null) return;
+    const selected = this.store?.selection()[0] ?? '';
+    const name = selected === '' ? '' : (splitCompositeId(selected)[1] ?? '');
+    if (name !== '') this.classing.set({ id: selected, name });
+  }
+
+  /** The class was chosen: the dialog gives way to the review of what the change removes, whose typed name is the item's. */
+  protected onChosenClass(newClass: string): void {
+    const target = this.classing();
+    this.classing.set(null);
+    if (target === null || this.store === null) return;
+    void this.handler.startDryRun(INTEROP_ITEM_LIST, INTEROP_ITEM_CHANGE_CLASS_ACTION, target.id, { [INTEROP_ITEM_NEW_CLASS_VALUE]: newClass }, this.store, target.name);
+  }
+
+  protected onCloseClass(): void {
+    this.classing.set(null);
   }
 
   protected onCloseCopy(): void {

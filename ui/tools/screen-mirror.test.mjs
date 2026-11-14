@@ -1043,6 +1043,7 @@ test('tabProblem and tabGroupProblem return every sentence OcuPilot.Test.TabCorp
     ['system-explorer/sql-tables/constraints', 'system-explorer/sql-tables/document', 7, 0],
     ['interoperability/productions/items/test', 'interoperability/productions/items/document', 7, 0],
     ['system-explorer/sql-tables/cached-queries', 'system-explorer/sql-tables/document', 8, 0],
+    ['interoperability/productions/items/classes', 'interoperability/productions/items/document', 8, 0],
     ['system-explorer/sql-tables/statements', 'system-explorer/sql-tables/document', 9, 0],
   ]);
   assert.ok(emitted.every((screen) => 'tab' in screen), 'every screen emits tab, null when it is no tab');
@@ -1587,6 +1588,7 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
       'OcuPilot.Screen.Descriptor.ExplorerSqlViewStatements',
       'OcuPilot.Screen.Descriptor.ExplorerSqlViews',
       'OcuPilot.Screen.Descriptor.GlobalMappingList',
+      'OcuPilot.Screen.Descriptor.InteropItemClassTab',
       'OcuPilot.Screen.Descriptor.InteropItemJobTab',
       'OcuPilot.Screen.Descriptor.InteropItemList',
       'OcuPilot.Screen.Descriptor.InteropItemLogTab',
@@ -2728,6 +2730,7 @@ test('ownPrivilegesProblem returns every sentence OwnPrivilegeCases declares, an
       'OcuPilot.Screen.Descriptor.EncryptionKeyFileForm',
       'OcuPilot.Screen.Descriptor.ExplorerDocDbList',
       'OcuPilot.Screen.Descriptor.InteropBusinessPartnerList',
+      'OcuPilot.Screen.Descriptor.InteropItemClassTab',
       'OcuPilot.Screen.Descriptor.InteropItemJobTab',
       'OcuPilot.Screen.Descriptor.InteropItemList',
       'OcuPilot.Screen.Descriptor.InteropItemLogTab',

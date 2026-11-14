@@ -13978,6 +13978,161 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "entityLabelKey": ""
   },
   {
+    "descriptor": "OcuPilot.Screen.Descriptor.InteropItemClassTab",
+    "route": "interoperability/productions/items/classes",
+    "area": "interoperability",
+    "labelKey": "interopItemClassesLabel",
+    "sideBarPosition": 0,
+    "archetype": "detail",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Ens_Portal",
+        "permission": "USE"
+      },
+      {
+        "resource": "%Ens_ProductionConfig",
+        "permission": "READ"
+      },
+      {
+        "resource": "%Ens_ProductionConfig",
+        "permission": "WRITE"
+      }
+    ],
+    "ownPrivileges": [
+      {
+        "resource": "%Ens_ProductionConfig",
+        "permission": "READ"
+      },
+      {
+        "resource": "%Ens_ProductionConfig",
+        "permission": "WRITE"
+      }
+    ],
+    "entityType": "production-item",
+    "secondaryEntityTypes": [],
+    "scope": "namespace",
+    "parentScope": "interoperability/productions/items",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "Item",
+        "ClassName"
+      ]
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "ClassName",
+        "Type",
+        "Current"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "interopItemClassesEmpty",
+    "commandAliases": [],
+    "suggestedPrompts": [
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "interopItemClassesPrompt1"
+      },
+      {
+        "groupKey": "promptGroupTroubleshooting",
+        "textKey": "interopItemClassesPrompt2"
+      },
+      {
+        "groupKey": "promptGroupGettingStarted",
+        "textKey": "interopItemClassesPrompt3"
+      }
+    ],
+    "classicPage": "EnsPortal.ProductionConfig",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "row": "class this item can change to",
+      "source": {
+        "port": "interop",
+        "endpoint": "ItemClasses",
+        "type": "LIST"
+      },
+      "fields": [
+        "Production",
+        "Item",
+        "ClassName",
+        "Type",
+        "Current"
+      ],
+      "filter": [
+        "ClassName",
+        "Type"
+      ],
+      "sort": {
+        "fields": [
+          "ClassName",
+          "Type"
+        ],
+        "default": "ClassName",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "item",
+            "labelKey": "interopItemSettingsCriterionItem",
+            "kind": "text",
+            "maxLength": 352,
+            "hint": "One item, spelled as interop.items.read answers its Production, then two vertical bars and its Name."
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "ClassName",
+          "labelKey": "interopItemColumnClass",
+          "kind": "name"
+        },
+        {
+          "field": "Type",
+          "labelKey": "tableColumnType",
+          "kind": "text"
+        },
+        {
+          "field": "Current",
+          "labelKey": "interopItemClassesColumnCurrent",
+          "kind": "status"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "tab": {
+      "group": "interoperability/productions/items/document",
+      "position": 8,
+      "labelKey": "explorerClassListLabel"
+    },
+    "toolIdentifier": "interop.itemclasses",
+    "refreshDefault": 0,
+    "banner": null,
+    "rowTarget": null,
+    "multiSelect": null,
+    "secretArguments": [],
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
+  },
+  {
     "descriptor": "OcuPilot.Screen.Descriptor.InteropItemJobTab",
     "route": "interoperability/productions/items/jobs",
     "area": "interoperability",
@@ -14237,6 +14392,10 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       },
       {
         "id": "copy",
+        "selfProtection": ""
+      },
+      {
+        "id": "changeclass",
         "selfProtection": ""
       },
       {

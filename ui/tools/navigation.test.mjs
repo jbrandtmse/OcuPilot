@@ -378,6 +378,8 @@ test('a side bar lists only built screens, in side-bar order', () => {
       // Story 20.3: the unlisted Production items list, reached from a Productions row, ahead of its area's listed lists.
       // Story 20.4: the item's tabs around it -- Jobs, Log, Messages, Queue, Item settings (Story 20.22) and the Status
       // head -- and Queue messages after them, all unlisted, in the descriptors' class order.
+      // Story 20.41: the item's Classes tab, the strip's eighth, sorts before Jobs by class name.
+      'interoperability/productions/items/classes',
       'interoperability/productions/items/jobs',
       'interoperability/productions/items',
       'interoperability/productions/items/log',
@@ -837,8 +839,9 @@ test('Story 20.4: the Status tab is what an item row opens, from Production item
       'interoperability/productions/items/messages',
       'interoperability/productions/items/jobs',
       'interoperability/productions/items/test',
+      'interoperability/productions/items/classes',
     ],
-    'the strip reads Status, Settings, Queue, Log, Messages, Jobs, Test'
+    'the strip reads Status, Settings, Queue, Log, Messages, Jobs, Test, Classes'
   );
   assert.equal(
     screenForChange({ type: 'production-item-setting', id: `P.Prod${sep}Item${sep}Host${sep}InitSeconds` })?.route,

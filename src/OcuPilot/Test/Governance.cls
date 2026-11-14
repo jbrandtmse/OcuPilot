@@ -38,8 +38,8 @@ Parameter REMOTEDATABASEDELETE = "osmgmt.remotedatabases.delete";
 /// <p>The superserver delete, which the baseline also disables (Story 18.25).</p>
 Parameter SUPERSERVERDELETE = "security.superservers.delete";
 
-/// <p>Story 20.3's destructive item remove, which ships disabled (AD-22).</p>
-Parameter INTEROPITEMREMOVE = "interop.items.remove";
+/// <p>Story 20.3's destructive item remove and Story 20.41's item change of class, which ship disabled (AD-22).</p>
+Parameter INTEROPITEMREMOVE = "interop.items.remove,interop.items.changeclass";
 
 /// <p>Story 20.23's two queue aborts and its job abort, which ship disabled (AD-22).</p>
 Parameter INTEROPRUNTIMEDISABLED = "interop.queuemessages.abort,interop.queues.abort,interop.jobs.abort";
@@ -174,7 +174,7 @@ Method TestTheDefaultEnablesEveryWriteButTheBaselineDisabled()
         Set tExpected = $Select((tKey = ..#PURGE) || (tKey = ..#NAMESPACEDELETE) || (tKey = ..#DATABASEDELETE) || (tKey = ..#TASKIMPORT) || (tKey = ..#ENABLEINTEROP) || (tKey = ..#PCTACCESSDELETE) || (tKey = ..#DOCDBAPPDELETE) || (tKey = ..#ROUTINEAPPDELETE) || (tKey = ..#RESTAPIDELETE) || $ListFind($ListFromString(..#DISKOPERATIONS), tKey) || $ListFind($ListFromString(..#EXPLORERDISABLED), tKey): "0|baseline", 1: "1|baseline")
         If tKey = ..#REMOTEDATABASEDELETE Set tExpected = "0|baseline"
         If tKey = ..#SUPERSERVERDELETE Set tExpected = "0|baseline"
-        If tKey = ..#INTEROPITEMREMOVE Set tExpected = "0|baseline"
+        If $ListFind($ListFromString(..#INTEROPITEMREMOVE), tKey) Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#INTEROPRUNTIMEDISABLED), tKey) Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#INTEROPLOOKUPDISABLED), tKey) Set tExpected = "0|baseline"
         If $ListFind($ListFromString(..#INTEROPMESSAGEDISABLED), tKey) Set tExpected = "0|baseline"

@@ -26,7 +26,7 @@ import puppeteer from 'puppeteer';
 
 import { LIVE_CONTAINER, browserConfig, launchOptions } from '../browser.config.mjs';
 import { loadStrings } from '../tools/strings.mjs';
-import { ROW_SELECTOR, clickRowCentre, waitForRows } from './list-spec.mjs';
+import { FILTER_SELECTOR, ROW_SELECTOR, clickRowCentre, waitForRows } from './list-spec.mjs';
 import { waitForMapAnswered } from './namespace-features.mjs';
 import { settleViewport, signedInAt, transitionsSettled } from './panel-spec.mjs';
 import { INVARIANTS, VIEWPORTS, assertThrowaway, collapse, compare, componentMinimums, detectScreen, readBaseline } from './structural-walk.mjs';
@@ -51,6 +51,8 @@ const TABS = [
   { route: `${ITEMS}/jobs`, label: STRINGS.interopJobsLabel },
   // Story 20.6: the seventh tab, which interop-item-test.browser-spec.mjs opens and sends from.
   { route: `${ITEMS}/test`, label: STRINGS.serverFlagTest },
+  // Story 20.41: the eighth tab, the classes the item can change to, which interop-items.browser-spec.mjs reads through its Change class dialog.
+  { route: `${ITEMS}/classes`, label: STRINGS.explorerClassListLabel },
 ];
 const PRODUCTIONS_URL = '/ocupilot/interoperability/productions?ns=USER';
 const MONITOR_URL = '/ocupilot/interoperability/monitor?ns=USER';
@@ -227,11 +229,11 @@ after(async () => {
 // AC1, AC3, AC7. Mutation (Rule 19): drop `InteropItemQueueTab`'s `tab` -> the strip reads six tabs and the labels leg
 // goes red; keep `<app-list-page />` in `InteropItemSettingListPage`, rebuild and redeploy -> the strip is missing on the
 // Settings tab and the second leg goes red.
-test('AC1, AC3, AC7: the operation opens on its Status tab, the strip reads the seven tabs, and each tab shows its rows', async () => {
+test('AC1, AC3, AC7: the operation opens on its Status tab, the strip reads the eight tabs, and each tab shows its rows', async () => {
   const { context, page } = await signedInAt(browser, config, PRODUCTIONS_URL, VIEWPORTS.wide, REDUCED_MOTION);
   try {
     await openOperation(page);
-    assert.deepEqual(await stripLabels(page), TABS.map((tab) => tab.label), 'the strip reads Status, Settings, Queue, Log, Messages, Jobs and Test');
+    assert.deepEqual(await stripLabels(page), TABS.map((tab) => tab.label), 'the strip reads Status, Settings, Queue, Log, Messages, Jobs, Test and Classes');
     const status = await rowNamed(page, OPERATION);
     assert.deepEqual(
       [status[0], status[1], status[2], status[3], status[4]],
@@ -266,6 +268,17 @@ test('AC1, AC3, AC7: the operation opens on its Status tab, the strip reads the 
     assert.equal(jobs.length, 1, 'the Jobs tab shows the operation\'s one job');
     assert.ok(jobs[0].includes(messageIds[0]), 'with the first message, which it is working on');
     assert.deepEqual(await structural(page, TABS[5].route), [], 'Jobs: no violation beyond the baseline\'s entries');
+
+    // Story 20.41: the Classes tab lists the operation classes the item can change to and marks the item's own. The list holds every
+    // operation class of the namespace, so the probe's are found through the filter.
+    await openTab(page, TABS[7].route);
+    await page.type(FILTER_SELECTOR, 'OcuPilotProbe.Interop');
+    const own = await rowNamed(page, 'OcuPilotProbe.Interop.Op');
+    const classes = await allRows(page);
+    assert.ok(own.includes('operation') && own.includes(STRINGS.tableStatusYes), `the Classes tab marks the operation's own class current: ${JSON.stringify(own)}`);
+    assert.ok(classes.some((row) => row[0] === 'OcuPilotProbe.Interop.TearOp' && !row.includes(STRINGS.tableStatusYes)), 'and lists the other probe operation class, not current');
+    assert.ok(classes.every((row) => row.includes('operation')), 'every row is an operation class');
+    assert.deepEqual(await structural(page, TABS[7].route), [], 'Classes: no violation beyond the baseline\'s entries');
   } finally {
     await context.close();
   }

@@ -51,7 +51,7 @@ Method OnAfterOneTest() As %Status
 
 /// <p>The descriptor declares what the spec names: a built, unlisted list under the Productions list, its
 /// composite id, the Productions list's pairs with the classic page's resource as its own, the add as its
-/// primary action and enable, disable, stop, start, restart, copy and remove as its row actions, three prompts, and the interop
+/// primary action and enable, disable, stop, start, restart, copy, change class and remove as its row actions, three prompts, and the interop
 /// source's Items endpoint with the production as its one criterion; and it passes the registry.</p>
 /// <p>Mutation (Rule 19): change <code>parentScope</code> to <code>interoperability/processes</code> -- this
 /// goes red.</p>
@@ -69,7 +69,7 @@ Method TestTheDescriptorDeclaresTheProductionItemsList()
     While tIterator.%GetNext(.tIndex, .tAction) {
         Set tActions = tActions _ $Select(tActions = "": "", 1: ",") _ tAction.id
     }
-    Do $$$AssertEquals(tActions _ "|" _ tDeclaration.context.fields.%ToJSON(), "enable,disable,stop,start,restart,copy,remove|[""Name"",""ClassName"",""Type"",""Enabled"",""PoolSize""]", "its seven row actions, remove last, and its context fields")
+    Do $$$AssertEquals(tActions _ "|" _ tDeclaration.context.fields.%ToJSON(), "enable,disable,stop,start,restart,copy,changeclass,remove|[""Name"",""ClassName"",""Type"",""Enabled"",""PoolSize""]", "its eight row actions, remove last, and its context fields")
     Do $$$AssertEquals(tDeclaration.suggestedPrompts.%Size(), 3, "three suggested prompts")
     Do $$$AssertEquals(tDeclaration.read.source.port _ "|" _ tDeclaration.read.source.endpoint _ "|" _ tDeclaration.read.source.type, "interop|Items|LIST", "read through the interop port's Items endpoint")
     Do $$$AssertEquals(tDeclaration.read.criteria.fields.%Size() _ "|" _ tDeclaration.read.criteria.fields.%Get(0).param _ "|" _ (tDeclaration.read.criteria.fields.%Get(0).hint '= ""), "1|production|1", "one criterion, the production, with a hint")
@@ -353,8 +353,8 @@ ClassMethod Names(pRows As %DynamicArray) As %String
 Method TestEveryItemCodeResolves()
 {
     Set tError = "OcuPilot.Api.InteropError"
-    Set tCodes = ##class(OcuPilot.Api.InteropError).ItemCodes() _ $ListBuild(##class(OcuPilot.Api.InteropError).#ITEMPENDING, ##class(OcuPilot.Api.InteropError).#ITEMREMOVE, ##class(OcuPilot.Api.InteropError).#ITEMSTOP, ##class(OcuPilot.Api.InteropError).#ITEMSTART, ##class(OcuPilot.Api.InteropError).#ITEMRESTART, ##class(OcuPilot.Api.InteropError).#ITEMCOPY)
-    Do $$$AssertEquals($ListLength(tCodes), 23, "seventeen item codes and six consequences")
+    Set tCodes = ##class(OcuPilot.Api.InteropError).ItemCodes() _ $ListBuild(##class(OcuPilot.Api.InteropError).#ITEMPENDING, ##class(OcuPilot.Api.InteropError).#ITEMREMOVE, ##class(OcuPilot.Api.InteropError).#ITEMSTOP, ##class(OcuPilot.Api.InteropError).#ITEMSTART, ##class(OcuPilot.Api.InteropError).#ITEMRESTART, ##class(OcuPilot.Api.InteropError).#ITEMCOPY, ##class(OcuPilot.Api.InteropError).#ITEMCHANGECLASS)
+    Do $$$AssertEquals($ListLength(tCodes), 27, "twenty item codes and seven consequences")
     For tI = 1:1:$ListLength(tCodes) {
         Set tCode = $List(tCodes, tI)
         Set tReason = $ClassMethod(tError, "ReasonFor", tCode)
@@ -365,7 +365,7 @@ Method TestEveryItemCodeResolves()
     For tCode = ##class(OcuPilot.Api.InteropError).#ITEMCLASS, ##class(OcuPilot.Api.InteropError).#ITEMNAME, ##class(OcuPilot.Api.InteropError).#ITEMVALUE {
         Do $$$AssertTrue('$ListFind(##class(OcuPilot.Api.InteropError).ItemPreconditionCodes(), tCode), tCode _ " is an add's violation, not an item refusal")
     }
-    For tCode = ##class(OcuPilot.Api.InteropError).#ITEMPENDING, ##class(OcuPilot.Api.InteropError).#ITEMREMOVE, ##class(OcuPilot.Api.InteropError).#ITEMSTOP, ##class(OcuPilot.Api.InteropError).#ITEMSTART, ##class(OcuPilot.Api.InteropError).#ITEMRESTART, ##class(OcuPilot.Api.InteropError).#ITEMCOPY {
+    For tCode = ##class(OcuPilot.Api.InteropError).#ITEMPENDING, ##class(OcuPilot.Api.InteropError).#ITEMREMOVE, ##class(OcuPilot.Api.InteropError).#ITEMSTOP, ##class(OcuPilot.Api.InteropError).#ITEMSTART, ##class(OcuPilot.Api.InteropError).#ITEMRESTART, ##class(OcuPilot.Api.InteropError).#ITEMCOPY, ##class(OcuPilot.Api.InteropError).#ITEMCHANGECLASS {
         Do $$$AssertTrue($ListFind(##class(OcuPilot.Api.InteropError).ConsequenceCodes(), tCode) > 0, tCode _ " is a consequence code")
     }
     Do $$$AssertTrue($ListFind(##class(OcuPilot.Api.InteropError).Codes(), ##class(OcuPilot.Api.InteropError).#SUSPENDED) && $ListFind(##class(OcuPilot.Api.InteropError).Codes(), ##class(OcuPilot.Api.InteropError).#PARTSTOPPED), "the stop outcomes are refusal codes")
@@ -388,4 +388,48 @@ Method TestTheRemoveCardListsWhatTheItemLeavesWith()
     Do $$$AssertStatusOK($ClassMethod(tTool, "StateDiff", {"ClassName": "OcuPilotProbe.Interop.Op"}, .tRows, .tProblem), "a read without the state is answered")
     Do $$$AssertTrue((tProblem '= "") && (tRows.%Size() = 0), "and refused with a problem and no row")
 }
+
+/// <p>AC4 (Story 20.41): the change of class tool declares what the spec names -- the port's <code>CHANGECLASS</code> over its composed
+/// <code>ITEM</code> read, destructive, reviewed by a dry run, its two screen values with the digest optional, its subject, its
+/// consequence and its precondition codes, each a declared item refusal -- passes the subject's adequacy rule, is advertised and is
+/// listed in the governance baseline disabled; and its card is the class change, then one removed row for each dropped setting, a
+/// credential-named one showing no value even when the read carried one.</p>
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Screen.Tool.InteropItemChangeClass.StateDiff</method> return the <code>Value</code> of a
+/// credential-named setting -- the card leg goes red; set <code>interop.items.changeclass</code> <code>true</code> in
+/// <class>OcuPilot.Kernel.Governance.Baseline</class> -- the key leg goes red.</p>
+Method TestTheChangeOfClassToolAndItsCard()
+{
+    Set tTool = "OcuPilot.Screen.Tool.InteropItemChangeClass"
+    Do $$$AssertEquals($Parameter(tTool, "TOOLNAME") _ "|" _ $ClassMethod(tTool, "WriteType") _ "|" _ $ClassMethod(tTool, "ReadType") _ "|" _ $ClassMethod(tTool, "PortClass") _ "|" _ $ClassMethod(tTool, "Endpoint"), "interop.items.changeclass|CHANGECLASS|ITEM|OcuPilot.Port.InteropPort|Items", "its name, types, port and endpoint")
+    Do $$$AssertEquals($ClassMethod(tTool, "SendsBody") _ "|" _ $ClassMethod(tTool, "Destructive") _ "|" _ $ClassMethod(tTool, "ChangeAction") _ "|" _ $ListToString($ClassMethod(tTool, "ScreenActionIds")) _ "|" _ $Parameter(tTool, "DRYRUN") _ "|" _ $Parameter(tTool, "READSVALUES"), "0|1|updated|changeclass|1|1", "no body, destructive, the updated action, the screen's changeclass, reviewed, and a read composed from its values")
+    Do $$$AssertEquals($Parameter(tTool, "SCREENVALUES") _ "|" _ $Parameter(tTool, "SCREENOPTIONAL"), "changeclass=NewClass:Reviewed|changeclass=Reviewed", "the screen's two values, the digest optional")
+    Do $$$AssertEquals($ListToString($ClassMethod(tTool, "FingerprintSubject")) _ "|" _ $ClassMethod(tTool, "Consequence", {}, 0, ""), "ClassName,NewClass,Dropped,Digest,Reviewed,Namespace|INTEROP.ITEM.CHANGECLASS", "its subject and its consequence")
+    Do $$$AssertEquals($Parameter(tTool, "STATEMARKER") _ "|" _ $Parameter(tTool, "PRECONDITIONFIELD"), "Dropped|Dropped", "the dropped settings are its state marker and its precondition field")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).FingerprintSubjectProblem(tTool), "", "it passes the subject's adequacy rule")
+    Do $$$AssertEquals($ClassMethod(tTool, "MintClass"), "OcuPilot.Screen.Tool.InteropItemChangeClassMint", "it mints through the class that refuses an unsound class before the read")
+    Do $$$AssertTrue($Parameter(tTool, "ADVERTISED") = 1, "it is advertised")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.Governance.Baseline).Seed("interop.items.changeclass", .tListed) _ "|" _ tListed, "0|1", "listed in the governance baseline, disabled")
+    Set tCodes = $ClassMethod(tTool, "PreconditionCodes")
+    Do $$$AssertEquals($ListToString(tCodes), "INTEROP.ITEM.NEWCLASS,INTEROP.ITEM.SAMECLASS,INTEROP.ITEM.AMBIGUOUS,INTEROP.ITEM.SOURCECONTROL,INTEROP.NAMESPACE", "its precondition codes")
+    For tI = 1:1:$ListLength(tCodes) {
+        Do $$$AssertTrue(($ListFind(##class(OcuPilot.Api.InteropError).ItemPreconditionCodes(), $List(tCodes, tI)) > 0) || ($List(tCodes, tI) = ##class(OcuPilot.Api.InteropError).#NAMESPACE), $List(tCodes, tI) _ " is a declared item refusal")
+    }
+    Kill tQuery
+    Do $ClassMethod(tTool, "PortQuery", {"Name": "N", "NewClass": "A.New"}, .tQuery)
+    Do $$$AssertEquals($Get(tQuery("action")) _ "|" _ $Get(tQuery("newClass")) _ "|" _ $Data(tQuery("digest")), "CHANGECLASS|A.New|0", "the read made from a call's arguments is composed for the change and holds no digest")
+    Kill tQuery
+    Do $ClassMethod(tTool, "PortQuery", {"ClassName": "A.Old", "NewClass": "A.New", "Dropped": [], "Digest": "abc", "Reviewed": "", "Namespace": "USER"}, .tQuery)
+    Do $$$AssertEquals($Get(tQuery("action")) _ "|" _ $Get(tQuery("newClass")) _ "|" _ $Get(tQuery("digest")) _ "|" _ $Get(tQuery("namespace")), "|A.New|abc|USER", "the read made from the stored payload names the class and the digest the proposal was read at")
+    Kill tQuery
+    Do $ClassMethod(tTool, "PortQuery", {"ClassName": "A.Old", "NewClass": "A.New", "Dropped": [], "Digest": "abc", "Reviewed": "def"}, .tQuery)
+    Do $$$AssertEquals($Get(tQuery("digest")), "def", "and a person's own digest takes its place")
+    Set tFresh = {"ClassName": "A.Old", "NewClass": "A.New", "Dropped": [{"Target": "Host", "Name": "Plain", "Value": "5", "Secret": false}, {"Target": "Adapter", "Name": "ApiToken", "Value": "LEAK", "Secret": true}]}
+    Set tSC = $ClassMethod(tTool, "StateDiff", tFresh, .tRows, .tProblem)
+    Do $$$AssertStatusOK(tSC, "the card's rows are computed")
+    Do $$$AssertEquals(tProblem, "", "from a read that names the change")
+    Do $$$AssertEquals(tRows.%ToJSON(), "[{""field"":""ClassName"",""before"":""A.Old"",""after"":""A.New""},{""field"":""Host.Plain"",""before"":""5"",""after"":"""",""removed"":true},{""field"":""Adapter.ApiToken"",""before"":"""",""after"":"""",""removed"":true}]", "the class change, then one removed row for each dropped setting, the credential-named one showing no value")
+    Set tSC = $ClassMethod(tTool, "StateDiff", {"ClassName": "A.Old"}, .tRows, .tProblem)
+    Do $$$AssertTrue(tProblem '= "", "a read that names no dropped settings is a problem the mint refuses")
+}
+
 }

@@ -6792,6 +6792,29 @@ export const STRINGS = {
   /** EXPERIENCE.md:604 */
   interopItemRefusalCopySource: 'This production holds no item of that name to copy.',
   /** EXPERIENCE.md:604 */
+  interopItemChangeClassAction: 'Change class',
+  /** EXPERIENCE.md:604 */
+  interopItemChangeClassConsequence:
+    'Changing this item\'s class removes every setting the new class does not take, and they cannot be restored. The change takes effect when this production next starts or, while it runs, when it is updated on Productions.',
+  /** EXPERIENCE.md:604 */
+  interopItemRefusalNewClass: 'Choose a compiled class of this item\'s kind, as its Classes tab lists them.',
+  /** EXPERIENCE.md:604 */
+  interopItemRefusalSameClass: 'This item already uses that class.',
+  /** EXPERIENCE.md:604 */
+  interopItemRefusalReviewChanged: 'This item\'s settings changed after they were reviewed, so its class was not changed. Review it again.',
+  /** EXPERIENCE.md:604 */
+  interopItemClassesLabel: 'Host classes',
+  /** EXPERIENCE.md:604 */
+  interopItemClassesEmpty: 'No compiled class of this item\'s kind is in this namespace.',
+  /** EXPERIENCE.md:604 */
+  interopItemClassesPrompt1: 'Which classes can this item change to?',
+  /** EXPERIENCE.md:604 */
+  interopItemClassesPrompt2: 'Which of this item\'s settings would a change of class remove?',
+  /** EXPERIENCE.md:604 */
+  interopItemClassesPrompt3: 'What does each class this item could take do?',
+  /** EXPERIENCE.md:604 */
+  interopItemClassesColumnCurrent: 'Current',
+  /** EXPERIENCE.md:604 */
   interopItemSettingsLabel: 'Item settings',
   /** EXPERIENCE.md:604 */
   interopItemSettingsCriterionItem: 'Item',

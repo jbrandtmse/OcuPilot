@@ -189,6 +189,7 @@ XData Elsewhere
 <screen name="ExplorerSqlViews"/>
 <screen name="Home"/>
 <screen name="InteropBusinessPartnerList"/>
+<screen name="InteropItemClassTab"/>
 <screen name="InteropItemJobTab"/>
 <screen name="InteropItemList"/>
 <screen name="InteropItemLogTab"/>

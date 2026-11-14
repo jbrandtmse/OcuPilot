@@ -380,6 +380,8 @@ const REVIEWED_VALUE = 'Reviewed';
 const DRY_RUN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   [INTEROP_MESSAGE_LIST]: [MESSAGE_RESEND],
   [INTEROP_MESSAGE_HEADER]: [MESSAGE_EDIT_RESEND],
+  // Story 20.41: Production items' Change class lists the settings the new class does not take before it is confirmed.
+  'OcuPilot.Screen.Descriptor.InteropItemList': ['changeclass'],
 };
 
 /**
@@ -445,8 +447,9 @@ const UNDRAWN_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   [ECP_DATA_SERVER_LIST]: [ECP_CHANGE_STATUS],
   // Screen permissions' page registers Change permissions itself, whose dialog sends Add and Remove (Story 20.15).
   [SCREEN_PERMISSIONS]: [SCREEN_PERMISSIONS_ADD, SCREEN_PERMISSIONS_REMOVE],
-  // Production items' page registers Copy itself, whose dialog posts to the copy tool's own Save route (Story 20.40).
-  'OcuPilot.Screen.Descriptor.InteropItemList': ['copy'],
+  // Production items' page registers Copy itself, whose dialog posts to the copy tool's own Save route (Story 20.40), and Change class
+  // itself, whose dialog picks the class and starts the review (Story 20.41).
+  'OcuPilot.Screen.Descriptor.InteropItemList': ['copy', 'changeclass'],
   // Item settings' page registers Set value itself, whose dialog sends the value (Story 20.22).
   'OcuPilot.Screen.Descriptor.InteropItemSettingList': ['set'],
   // The Lookup tables' page registers Export itself and draws Import as a screen-level action, whose dialogs send the four transfer
@@ -614,7 +617,11 @@ const DESTRUCTIVE_CONSEQUENCES: Readonly<Record<string, Readonly<Record<string, 
   // Story 19.17: a document database's Drop types its name.
   'OcuPilot.Screen.Descriptor.ExplorerDocDbList': { delete: STRINGS.explorerDocDbDropConsequence },
   // Story 20.3: a production item's Remove types its name and deletes the settings it holds.
-  'OcuPilot.Screen.Descriptor.InteropItemList': { remove: STRINGS.interopItemRemoveConsequence },
+  'OcuPilot.Screen.Descriptor.InteropItemList': {
+    remove: STRINGS.interopItemRemoveConsequence,
+    // Story 20.41: the dialog the review opens in states what the change removes.
+    changeclass: STRINGS.interopItemChangeClassConsequence,
+  },
   // Story 20.5: a lookup table's Delete removes every entry in it, and an entry's Remove removes the table too when it is the last.
   'OcuPilot.Screen.Descriptor.InteropLookupTableList': { delete: STRINGS.interopLookupDeleteConsequence },
   'OcuPilot.Screen.Descriptor.InteropLookupEntryList': { remove: STRINGS.interopLookupRemoveConsequence },
@@ -980,6 +987,8 @@ export interface DryRunRow {
   readonly field: string;
   readonly before: string;
   readonly after: string;
+  /** The row names a value the action removes (Story 20.41), so a review draws no after-line for it. */
+  readonly removed?: boolean;
 }
 
 /**
@@ -1521,9 +1530,17 @@ export class ScreenActionHandler {
    * Review `actionId` on `id`, then open its typed-name dialog over the review (Story 20.31): the lines the dry run answered above the
    * action's consequence, the typed name the message id -- or, over a set of several, how many of them will be sent -- and the digest of
    * the review kept to be sent as `Reviewed` when the person confirms. A refusal is `sink`'s; nothing opens over another dialog.
-   * `values` are the action's declared values the review was made with, sent again on the confirm.
+   * `values` are the action's declared values the review was made with, sent again on the confirm. `name` is what the person types where
+   * the target's id is not it (Story 20.41: the item's name for its composite id); absent, the id, or the count of a set.
    */
-  async startDryRun(descriptor: string, actionId: string, id: string, values: ActionValues | undefined, sink: ActionSink): Promise<boolean> {
+  async startDryRun(
+    descriptor: string,
+    actionId: string,
+    id: string,
+    values: ActionValues | undefined,
+    sink: ActionSink,
+    name?: string
+  ): Promise<boolean> {
     if (this.waiting() !== null) return false;
     sink.setRefusal('');
     const run = await this.dryRunFor(descriptor, actionId, id, values);
@@ -1531,7 +1548,7 @@ export class ScreenActionHandler {
       sink.setRefusal(run.refusal.reason);
       return false;
     }
-    return this.openReview(descriptor, actionId, id, values, run, sink);
+    return this.openReview(descriptor, actionId, id, values, run, sink, name);
   }
 
   /** Open the review dialog for a dry run that was answered (`startDryRun`'s second half); `false` where another dialog stands or no digest came. */
@@ -1541,13 +1558,15 @@ export class ScreenActionHandler {
     id: string,
     values: ActionValues | undefined,
     run: Extract<DryRunResult, { readonly kind: 'ok' }>,
-    sink: ActionSink
+    sink: ActionSink,
+    name?: string
   ): boolean {
     const digest = run.review['Digest'];
     if (this.waiting() !== null || typeof digest !== 'string' || digest === '') return false;
     const lines = reviewLinesOf(run.rows);
     const sendable = lines.filter((line) => line.endsWith(`: ${STRINGS.interopResendVerdictResend}`)).length;
-    this.open('typed-name', descriptor, actionId, id, this.consequence(descriptor, actionId), [], sink, id.includes(',') ? String(sendable) : id);
+    const typed = name ?? (id.includes(',') ? String(sendable) : id);
+    this.open('typed-name', descriptor, actionId, id, this.consequence(descriptor, actionId), [], sink, typed);
     const opened = this.waiting();
     if (opened === null) return false;
     this.waiting.set({ ...opened, review: lines, reviewed: digest, ...(values === undefined ? {} : { reviewValues: values }) });
@@ -1574,6 +1593,8 @@ export class ScreenActionHandler {
       this.store(screen.descriptor, screen.refreshRates).setChecked([]);
     }
     if (this.waiting() !== null) return;
+    // An action that answers no line (a change of class, Story 20.41) ends with its change event, and no outcome dialog.
+    if (applied && outcomeLinesOf(this.lastOutputValue).length === 0) return;
     this.open('typed-name', pending.descriptor, pending.actionId, pending.target, '', [], sink, pending.name, '', pending.verb);
     const opened = this.waiting();
     if (opened === null) return;
@@ -1863,6 +1884,7 @@ function dryRunRowsOf(rows: unknown): readonly DryRunRow[] {
       field,
       before: typeof row['before'] === 'string' ? row['before'] : '',
       after: typeof row['after'] === 'string' ? row['after'] : '',
+      ...(row['removed'] === true ? { removed: true } : {}),
     });
   }
   return out;
@@ -1876,9 +1898,18 @@ function dryRunRowsOf(rows: unknown): readonly DryRunRow[] {
 function reviewLinesOf(rows: readonly DryRunRow[]): readonly string[] {
   const row = rows[0];
   if (row === undefined) return [];
+  // Several rows (a change of class, Story 20.41) read as a diff of fields: each row's old value marked `-`, its new one marked `+`
+  // unless the row is removed.
+  if (rows.length > 1) return rows.flatMap((entry) => fieldReviewLines(entry));
   const after = textLines(row.after);
   if (row.before === '') return after;
   return [...textLines(row.before).map((line) => `- ${line}`), ...after.map((line) => `+ ${line}`)];
+}
+
+/** One row of a review of several fields: `- <field>: <before>`, then `+ <field>: <after>` unless the row is removed. */
+function fieldReviewLines(row: DryRunRow): readonly string[] {
+  const before = `- ${row.field}: ${row.before}`.trimEnd();
+  return row.removed === true ? [before] : [before, `+ ${row.field}: ${row.after}`.trimEnd()];
 }
 
 /** The lines of `text`, its one closing line feed ending the last line; none for empty text. */

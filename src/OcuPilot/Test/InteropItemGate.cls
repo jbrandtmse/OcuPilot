@@ -50,16 +50,16 @@ Parameter PRINCIPALS = "OcuP203Exact:%Development:U,%Ens_Portal:U,%Ens_Productio
 
 /// <p>The port legs a probe runs, in order, <code>&lt;endpoint&gt;|&lt;type&gt;</code>. The disable is followed
 /// by the enable and the add by the remove, so a principal admitted to all leaves the probe as it was; the copy (Story 20.40) is
-/// removed by the probe itself when it is admitted.</p>
-Parameter LEGS = "Items|LIST,Items|ITEM,Items|DISABLE,Items|ENABLE,Items|ADD,Items|REMOVE,Items|COPY";
+/// removed by the probe itself when it is admitted, and the change of class (Story 20.41) is changed back by it.</p>
+Parameter LEGS = "Items|LIST,Items|ITEM,Items|DISABLE,Items|ENABLE,Items|ADD,Items|REMOVE,Items|COPY,Items|CHANGECLASS";
 
 /// <p>The tools whose pairs the probe evaluates.</p>
-Parameter TOOLS = "InteropItemEnable,InteropItemDisable,InteropItemRemove,InteropItemAdd,InteropSettingSet,InteropSettingReset,InteropItemCopy";
+Parameter TOOLS = "InteropItemEnable,InteropItemDisable,InteropItemRemove,InteropItemAdd,InteropSettingSet,InteropSettingReset,InteropItemCopy,InteropItemChangeClass";
 
-/// <p>What each principal's seven port legs answer, <code>&lt;user&gt;=&lt;the pair a refused leg names, or
+/// <p>What each principal's eight port legs answer, <code>&lt;user&gt;=&lt;the pair a refused leg names, or
 /// empty when the leg is admitted&gt;</code> per leg in <parameter>LEGS</parameter> order, separated by
 /// <code>,</code>.</p>
-Parameter EXPECTED = "OcuP203Exact=,,,,,,;OcuP203NoPortal=%Ens_Portal:USE,%Ens_Portal:USE,%Ens_Portal:USE,%Ens_Portal:USE,%Ens_Portal:USE,%Ens_Portal:USE,%Ens_Portal:USE;OcuP203NoCfgRead=%Ens_ProductionConfig:READ,%Ens_ProductionConfig:READ,%Ens_ProductionConfig:READ,%Ens_ProductionConfig:READ,%Ens_ProductionConfig:READ,%Ens_ProductionConfig:READ,%Ens_ProductionConfig:READ;OcuP203NoCfgWrite=,,%Ens_ProductionConfig:WRITE,%Ens_ProductionConfig:WRITE,%Ens_ProductionConfig:WRITE,%Ens_ProductionConfig:WRITE,%Ens_ProductionConfig:WRITE;OcuP203NoRead=%DB_USER:READ,%DB_USER:READ,%DB_USER:WRITE,%DB_USER:WRITE,%DB_USER:WRITE,%DB_USER:WRITE,%DB_USER:WRITE;OcuP203NoWrite=,,%DB_USER:WRITE,%DB_USER:WRITE,%DB_USER:WRITE,%DB_USER:WRITE,%DB_USER:WRITE";
+Parameter EXPECTED = "OcuP203Exact=,,,,,,,;OcuP203NoPortal=%Ens_Portal:USE,%Ens_Portal:USE,%Ens_Portal:USE,%Ens_Portal:USE,%Ens_Portal:USE,%Ens_Portal:USE,%Ens_Portal:USE,%Ens_Portal:USE;OcuP203NoCfgRead=%Ens_ProductionConfig:READ,%Ens_ProductionConfig:READ,%Ens_ProductionConfig:READ,%Ens_ProductionConfig:READ,%Ens_ProductionConfig:READ,%Ens_ProductionConfig:READ,%Ens_ProductionConfig:READ,%Ens_ProductionConfig:READ;OcuP203NoCfgWrite=,,%Ens_ProductionConfig:WRITE,%Ens_ProductionConfig:WRITE,%Ens_ProductionConfig:WRITE,%Ens_ProductionConfig:WRITE,%Ens_ProductionConfig:WRITE,%Ens_ProductionConfig:WRITE;OcuP203NoRead=%DB_USER:READ,%DB_USER:READ,%DB_USER:WRITE,%DB_USER:WRITE,%DB_USER:WRITE,%DB_USER:WRITE,%DB_USER:WRITE,%DB_USER:WRITE;OcuP203NoWrite=,,%DB_USER:WRITE,%DB_USER:WRITE,%DB_USER:WRITE,%DB_USER:WRITE,%DB_USER:WRITE,%DB_USER:WRITE";
 
 /// <p>The first pair each principal's four tools fail on, in the order screen pairs, configuration write,
 /// database write.</p>
@@ -139,7 +139,7 @@ ClassMethod ExpectedFor(pUser As %String) As %List
     Quit $ListFromString($Piece(tEntry, "=", 2), ",")
 }
 
-/// <p>AC4: each principal's seven port legs are admitted or refused naming the pair <parameter>EXPECTED</parameter>
+/// <p>AC4: each principal's eight port legs are admitted or refused naming the pair <parameter>EXPECTED</parameter>
 /// says, with 403 <code>AUTH.NOPRIVILEGE</code> on a refusal; a refused leg changes no item, and the exact
 /// principal's disable, enable, add and remove leave the items as they began.</p>
 /// <p>Mutation (Rule 19): drop <code>%Ens_ProductionConfig:WRITE</code> from
@@ -403,6 +403,7 @@ ClassMethod Probe(pParent As %Integer, pUsername As %String, pNamespace As %Stri
                 If tType = "COPY" Set tBody = {"CopyFrom": (..#ITEM), "Enabled": false}
             } Else {
                 Set tQuery("id") = pProduction _ $Char(1) _ ..#ITEM
+                If tType = "CHANGECLASS" Set tQuery("newClass") = "OcuPilotProbe.Interop.TearOp"
             }
             Set tHttp = 0
             Set tFault = ""
@@ -415,6 +416,13 @@ ClassMethod Probe(pParent As %Integer, pUsername As %String, pNamespace As %Stri
                 If $IsObject(tFault.%Get("detail")) Do tLeg.%Set("failedPair", tFault.detail.%Get("failedPair"))
             }
             Do tOut.%Set(tLegName, tLeg)
+            If (tType = "CHANGECLASS") && (+tHttp = 200) {
+                Kill tBackQuery
+                Set tBackQuery("namespace") = pNamespace
+                Set tBackQuery("id") = pProduction _ $Char(1) _ ..#ITEM
+                Set tBackQuery("newClass") = "OcuPilotProbe.Interop.Op"
+                Set tBackSC = ##class(OcuPilot.Port.InteropPort).Invoke("Items", "CHANGECLASS", .tBackQuery, "", .tBackResult, .tBackHttp, .tBackFault)
+            }
             If (tType = "COPY") && (+tHttp = 200) {
                 Kill tCleanQuery
                 Set tCleanQuery("namespace") = pNamespace

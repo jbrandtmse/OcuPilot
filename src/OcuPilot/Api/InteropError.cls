@@ -124,6 +124,21 @@ Parameter ITEMCOPYSOURCE = "INTEROP.ITEM.COPYSOURCE";
 
 Parameter REASONITEMCOPYSOURCE = "This production holds no item of that name to copy.";
 
+/// <p>A change of class to one the item's Classes tab does not list (Story 20.41): not compiled, abstract, or of another kind.</p>
+Parameter ITEMNEWCLASS = "INTEROP.ITEM.NEWCLASS";
+
+Parameter REASONITEMNEWCLASS = "Choose a compiled class of this item's kind, as its Classes tab lists them.";
+
+/// <p>A change of class to the class the item already has.</p>
+Parameter ITEMSAMECLASS = "INTEROP.ITEM.SAMECLASS";
+
+Parameter REASONITEMSAMECLASS = "This item already uses that class.";
+
+/// <p>A change of class whose dropped settings moved after they were reviewed: nothing is written.</p>
+Parameter ITEMREVIEWCHANGED = "INTEROP.ITEM.REVIEWCHANGED";
+
+Parameter REASONITEMREVIEWCHANGED = "This item's settings changed after they were reviewed, so its class was not changed. Review it again.";
+
 /// <p>Violation code (422), on <code>ClassName</code>: not a business service, process or operation class
 /// compiled in the namespace.</p>
 Parameter ITEMCLASS = "INTEROP.ITEM.CLASS";
@@ -159,6 +174,11 @@ Parameter REASONITEMPENDING = "The change takes effect when this production next
 Parameter ITEMREMOVE = "INTEROP.ITEM.REMOVE";
 
 Parameter REASONITEMREMOVE = "Removing this item deletes it and every setting it holds from the production.";
+
+/// <p>The consequence code of an item change of class (Story 20.41).</p>
+Parameter ITEMCHANGECLASS = "INTEROP.ITEM.CHANGECLASS";
+
+Parameter REASONITEMCHANGECLASS = "Changing this item's class removes every setting the new class does not take, and they cannot be restored. The change takes effect when this production next starts or, while it runs, when it is updated on Productions.";
 
 /// <p>The consequence code of an item copy (Story 20.40).</p>
 Parameter ITEMCOPY = "INTEROP.ITEM.COPY";
@@ -521,13 +541,13 @@ ClassMethod Codes() As %List
 /// <p>The consequence codes, as a <class>%List</class>.</p>
 ClassMethod ConsequenceCodes() As %List
 {
-    Quit $ListBuild(..#STOP, ..#RESTART, ..#UPDATE, ..#RECOVER, ..#ITEMPENDING, ..#ITEMREMOVE, ..#ITEMCOPY, ..#SETTINGLOCATION, ..#MESSAGEABORT, ..#QUEUEABORT, ..#JOBABORT, ..#JOBSUSPEND, ..#JOBSTOP, ..#ITEMSTOP, ..#ITEMSTART, ..#ITEMRESTART, ..#LOOKUPREMOVE, ..#LOOKUPDELETE, ..#LOOKUPIMPORT, ..#TESTSENDS, ..#TRANSFORMRUNS, ..#MESSAGERESEND, ..#MESSAGEEDITRESEND)
+    Quit $ListBuild(..#STOP, ..#RESTART, ..#UPDATE, ..#RECOVER, ..#ITEMPENDING, ..#ITEMREMOVE, ..#ITEMCOPY, ..#ITEMCHANGECLASS, ..#SETTINGLOCATION, ..#MESSAGEABORT, ..#QUEUEABORT, ..#JOBABORT, ..#JOBSUSPEND, ..#JOBSTOP, ..#ITEMSTOP, ..#ITEMSTART, ..#ITEMRESTART, ..#LOOKUPREMOVE, ..#LOOKUPDELETE, ..#LOOKUPIMPORT, ..#TESTSENDS, ..#TRANSFORMRUNS, ..#MESSAGERESEND, ..#MESSAGEEDITRESEND)
 }
 
 /// <p>The item codes, as a <class>%List</class>: the refusals an item read or write answers with.</p>
 ClassMethod ItemCodes() As %List
 {
-    Quit $ListBuild(..#ITEMENABLED, ..#ITEMDISABLED, ..#ITEMDEFAULTSETTING, ..#ITEMPOOLZERO, ..#ITEMTAKEN, ..#ITEMAMBIGUOUS, ..#ITEMCLASS, ..#ITEMNAME, ..#ITEMVALUE, ..#ITEMENABLEDREMOVE, ..#ITEMSOURCECONTROL, ..#ITEMNOTENABLED, ..#ITEMTEMPSTOPPED, ..#ITEMNOTTEMPSTOPPED, ..#ITEMNOJOBS, ..#ITEMSTARTPENDING, ..#ITEMCOPYSOURCE)
+    Quit $ListBuild(..#ITEMENABLED, ..#ITEMDISABLED, ..#ITEMDEFAULTSETTING, ..#ITEMPOOLZERO, ..#ITEMTAKEN, ..#ITEMAMBIGUOUS, ..#ITEMCLASS, ..#ITEMNAME, ..#ITEMVALUE, ..#ITEMENABLEDREMOVE, ..#ITEMSOURCECONTROL, ..#ITEMNOTENABLED, ..#ITEMTEMPSTOPPED, ..#ITEMNOTTEMPSTOPPED, ..#ITEMNOJOBS, ..#ITEMSTARTPENDING, ..#ITEMCOPYSOURCE, ..#ITEMNEWCLASS, ..#ITEMSAMECLASS, ..#ITEMREVIEWCHANGED)
 }
 
 /// <p>The item refusals an item tool's fresh read answers when the action does not fit the item, and a copy's source refusal, which the
@@ -536,7 +556,7 @@ ClassMethod ItemCodes() As %List
 /// and <parameter>ITEMVALUE</parameter>) are an add's body and are not among them.</p>
 ClassMethod ItemPreconditionCodes() As %List
 {
-    Quit $ListBuild(..#ITEMENABLED, ..#ITEMDISABLED, ..#ITEMDEFAULTSETTING, ..#ITEMPOOLZERO, ..#ITEMTAKEN, ..#ITEMAMBIGUOUS, ..#ITEMENABLEDREMOVE, ..#ITEMSOURCECONTROL, ..#ITEMNOTENABLED, ..#ITEMTEMPSTOPPED, ..#ITEMNOTTEMPSTOPPED, ..#ITEMNOJOBS, ..#ITEMCOPYSOURCE)
+    Quit $ListBuild(..#ITEMENABLED, ..#ITEMDISABLED, ..#ITEMDEFAULTSETTING, ..#ITEMPOOLZERO, ..#ITEMTAKEN, ..#ITEMAMBIGUOUS, ..#ITEMENABLEDREMOVE, ..#ITEMSOURCECONTROL, ..#ITEMNOTENABLED, ..#ITEMTEMPSTOPPED, ..#ITEMNOTTEMPSTOPPED, ..#ITEMNOJOBS, ..#ITEMCOPYSOURCE, ..#ITEMNEWCLASS, ..#ITEMSAMECLASS)
 }
 
 /// <p>The setting codes (Story 20.22), as a <class>%List</class>: the refusals an item setting read or write answers
@@ -670,6 +690,10 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#ITEMREMOVE Quit ..#REASONITEMREMOVE
     If pCode = ..#ITEMCOPY Quit ..#REASONITEMCOPY
     If pCode = ..#ITEMCOPYSOURCE Quit ..#REASONITEMCOPYSOURCE
+    If pCode = ..#ITEMNEWCLASS Quit ..#REASONITEMNEWCLASS
+    If pCode = ..#ITEMSAMECLASS Quit ..#REASONITEMSAMECLASS
+    If pCode = ..#ITEMREVIEWCHANGED Quit ..#REASONITEMREVIEWCHANGED
+    If pCode = ..#ITEMCHANGECLASS Quit ..#REASONITEMCHANGECLASS
     If pCode = ..#ITEMNOTENABLED Quit ..#REASONITEMNOTENABLED
     If pCode = ..#ITEMTEMPSTOPPED Quit ..#REASONITEMTEMPSTOPPED
     If pCode = ..#ITEMNOTTEMPSTOPPED Quit ..#REASONITEMNOTTEMPSTOPPED
