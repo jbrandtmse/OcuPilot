@@ -12832,6 +12832,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-21-1-the-harvest-seam.md | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: Handler.RenderResponseBody only records on the stub; HarvestPort has no PAIRS and PortGate needed a <caller> row; the spec's proposed amendment adds HarvestPort to AD-29's Binds but no Rule sentence
 - 2026-11-14T19:22:46Z status=escalated owner=burndown by=cr note=runner's Rule 20 veto window for 21.1: apply AD-23 amendment and add an AD-29 Rule sentence for a caller-declared gate
+- 2026-11-15T09:50:11Z occurrence=21-3-startup-memory-and-compatibility-settings note=ConfigPort joins the AD-29 Binds proposal
 
 ### DW-2560: Nothing polices harvested body classes: a body is a public class method any code or route could call past HarvestPort's gate, and PortGate has no row kind for a body class under Port/Harvest/
 - source: spec-21-1-the-harvest-seam.md | severity: med | fix-risk: med | footprint: in-epic
