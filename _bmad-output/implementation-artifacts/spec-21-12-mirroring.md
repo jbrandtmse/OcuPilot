@@ -2,7 +2,7 @@
 title: 'Story 21.12: Mirroring'
 type: 'feature'
 created: '2026-11-14'
-status: 'blocked'
+status: 'draft'
 review_loop_iteration: 0
 followup_review_recommended: false
 context: []
@@ -32,6 +32,10 @@ These are the only two rows that hold under every option below. Both are observe
 |---|---|---|---|
 | Monitor, not a member | `IsMember()` 0, `NoMirror()` 1 | No member or database rows, and the not-a-member and license notes | none |
 | Kernel case | a mirror-removal proposal with `DeleteDB` set | Refused `PROHIBITED.MIRRORDATABASES` before any vendor call, from either caller | nothing called |
+
+## Owner answer U-39 (2026-11-15)
+
+The owner chose option A, quoted: "A: monitor + refusal (Recommended)". This story keeps the mirror monitor and OcuPilot's refusal of removing a mirror with the option that takes its databases out of mirroring (AD-10, wording corrected in the spine the same day). The mirroring writes are not built: each gets a row in Epic 22's exclusion register (`docs/exclusion-register.md`) in its license-gated group, add-only (Epic 24 also adds rows there). The story's criteria in `epics.md` are narrowed to match.
 
 </intent-contract>
 
