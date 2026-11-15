@@ -45,3 +45,6 @@
 2026-11-15T09:24:32Z	Epic 24	split_applied	story=24-2-the-analytics-editors children=24-10,24-11,24-12,24-13,24-14 split_children_total=6 limit=6 deps_hash=needs_rerecord_reason_split
 2026-11-15T09:32:07Z	Story 24.1	ci_resolved	story=24.1 sha=06dad46b8 runs=43696951376 failed=none via=none result=success resolved_at=next_plan first_ci=success
 2026-11-15T09:32:34Z	Story 24.2	clarification_requested	stage=spec_gate to=orchestrator question=contended_non_add_only_edits files=ReadTool,ToolRoundTrip,ToolWrite,GovernanceBaseline,Prohibited(kernel+test),ClassicPageGate,MappingDescriptor epic21_changed=yes
+2026-11-15T09:33:23Z	Story 24.2	orchestrator_ruling	question=contended_non_add_only_edits ruling=A_proceed_append_only resolve=union_rederive_counts_check_count_reddens stop_if=reorder_or_changed_assertion covers=24.1,24.2,24.3
+2026-11-15T09:33:23Z	Story 24.1	merged_to_feature_reported	by=orchestrator method=fast_forward sha=06dad46b8 feature_ci=43699768641
+2026-11-15T09:33:23Z	Story 24.2	integrate_forward_check	feature=06dad46b8 result=ancestor_nothing_to_merge
