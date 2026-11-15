@@ -2,7 +2,7 @@
 title: 'Story 21.15: Locale and table import'
 type: 'feature'
 created: '2026-11-15'
-status: 'ready-for-dev'
+status: 'draft'
 review_loop_iteration: 0
 followup_review_recommended: false
 context: []
@@ -37,6 +37,10 @@ deferred: []
 | Current locale | a record named as the current locale, or a table in its `GetTables` set | refused at review and at the write, key on or off | 409 `LOCALE.IMPORT.CURRENT` |
 | Changed | the text's digest or the replaced-record count differs at the write | nothing imported | 409 `LOCALE.IMPORT.CHANGED` |
 | Key off | default baseline | governance refusal, both callers | as every key-off write |
+
+## Owner answer U-58 (2026-11-15)
+
+The owner chose option A, quoted: "A: both + Export (Recommended)". The AD-51 named entry this plan proposed for `LocalePort`'s import is allowed; the runner writes it into the spine at this story's spec gate. Locale Export (catalog SA-27, with the classic page's file browse; ledger DW-2606, routed here) joins this story: plan it beside import on the same `LocalePort`, with no caller value naming a path (AD-21), and say whether Export needs its own AD-51 or AD-21 entry; if it does, propose the text, which the same owner answer covers.
 
 </intent-contract>
 

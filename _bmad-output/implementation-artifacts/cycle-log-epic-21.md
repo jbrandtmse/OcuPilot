@@ -207,3 +207,4 @@
 2026-11-15T21:34:27Z	Story 21.4	ruling	question=sweep_after_test-only_rework choice=rerun_shard9+shards11-20(shards1-8,10_green_on_same_product_code) rejected=full_rerun why=change_is_one_test_class category=decide policy=b9ff703e
 2026-11-15T21:41:55Z	Story 21.4	cr_complete	spawn_at=2026-11-15T21:35:00Z model=opus resolved=0 deferred=1 dismissed=8 high=0 med=1 low=4 rows=17 unresolved_high_med=1(DW-2610_decision-pending) clarifications=0 closing_sections_present=true final=done cycle_iteration=2 note=static_review
 2026-11-15T21:41:55Z	Story 21.4	ledger_adjudicated	owned=0 resolved=0 reowned=0 terminal=0 filed=DW-2609(wontfix-accepted_flake),DW-2610(decision-pending_burndown)
+2026-11-15T21:42:05Z	Story 21.15	stage_spawned	stage=plan spawn_at=2026-11-15T21:42:05Z model=opus agent_name=21-15-locale-and-table-import-plan-2 cycle_iteration=2
